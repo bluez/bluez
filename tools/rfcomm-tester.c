@@ -548,7 +548,7 @@ static void test_connect(const void *test_data)
 	GIOChannel *io;
 	int sk;
 
-	bthost_add_l2cap_server(bthost, 0x0003, NULL, NULL);
+	bthost_add_l2cap_server(bthost, 0x0003, NULL, NULL, NULL);
 	bthost_add_rfcomm_server(bthost, cli->server_channel,
 						rfcomm_connect_cb, NULL);
 

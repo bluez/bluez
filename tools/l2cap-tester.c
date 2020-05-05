@@ -55,6 +55,7 @@ struct test_data {
 	uint16_t dcid;
 	int sk;
 	int sk2;
+	bool host_disconnected;
 };
 
 struct l2cap_data {
@@ -93,6 +94,8 @@ struct l2cap_data {
 	bool server_not_advertising;
 	bool direct_advertising;
 	bool close_1;
+
+	bool shut_sock_wr;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -314,6 +317,12 @@ static const struct l2cap_data client_connect_write_success_test = {
 	.server_psm = 0x1001,
 	.write_data = l2_data,
 	.data_len = sizeof(l2_data),
+};
+
+static const struct l2cap_data client_connect_shut_wr_success_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.shut_sock_wr = true,
 };
 
 static const struct l2cap_data client_connect_nval_psm_test_1 = {
@@ -967,6 +976,27 @@ static void server_bthost_received_data(const void *buf, uint16_t len,
 		tester_test_passed();
 }
 
+static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+
+	if (l2data->shut_sock_wr) {
+		/* if socket is closed using SHUT_WR, L2CAP disconnection
+		 * response must be received first before G_IO_HUP event.
+		 */
+		if (data->host_disconnected)
+			tester_test_passed();
+		else {
+			tester_warn("G_IO_HUP received before receiving L2CAP disconnection");
+			tester_test_failed();
+		}
+	}
+
+	return FALSE;
+}
+
 static bool check_mtu(struct test_data *data, int sk)
 {
 	const struct l2cap_data *l2data = data->test_data;
@@ -1061,6 +1091,11 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 			tester_warn("Unable to write all data");
 			tester_test_failed();
 		}
+
+		return FALSE;
+	} else if (l2data->shut_sock_wr) {
+		g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
+		shutdown(sk, SHUT_WR);
 
 		return FALSE;
 	}
@@ -1214,6 +1249,13 @@ static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
 	data->handle = handle;
 }
 
+static void client_l2cap_disconnect_cb(void *user_data)
+{
+	struct test_data *data = user_data;
+
+	data->host_disconnected = true;
+}
+
 static void direct_adv_cmd_complete(uint16_t opcode, const void *param,
 						uint8_t len, void *user_data)
 {
@@ -1254,13 +1296,18 @@ static void test_connect(const void *test_data)
 
 	if (l2data->server_psm) {
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+		bthost_l2cap_connect_cb host_connect_cb = NULL;
+		bthost_l2cap_disconnect_cb host_disconnect_cb = NULL;
 
-		if (!l2data->data_len)
-			bthost_add_l2cap_server(bthost, l2data->server_psm,
-						NULL, NULL);
-		else
-			bthost_add_l2cap_server(bthost, l2data->server_psm,
-						client_l2cap_connect_cb, data);
+		if (l2data->data_len)
+			host_connect_cb = client_l2cap_connect_cb;
+
+		if (l2data->shut_sock_wr)
+			host_disconnect_cb = client_l2cap_disconnect_cb;
+
+		bthost_add_l2cap_server(bthost, l2data->server_psm,
+					host_connect_cb, host_disconnect_cb,
+					data);
 	}
 
 	if (l2data->direct_advertising)
@@ -1639,7 +1686,7 @@ static void test_connect_2(const void *test_data)
 
 		if (!l2data->data_len)
 			bthost_add_l2cap_server(bthost, l2data->server_psm,
-						NULL, NULL);
+						NULL, NULL, NULL);
 	}
 
 	defer = (l2data->mode == BT_MODE_EXT_FLOWCTL);
@@ -1925,6 +1972,10 @@ int main(int argc, char *argv[])
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM 3",
 					&client_connect_nval_psm_test_3,
+					setup_powered_client, test_connect);
+
+	test_l2cap_bredr("L2CAP BR/EDR Client - Socket Shut WR Success",
+					&client_connect_shut_wr_success_test,
 					setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Server - Success",

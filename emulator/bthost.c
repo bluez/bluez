@@ -180,6 +180,7 @@ struct l2cap_pending_req {
 struct l2cap_conn_cb_data {
 	uint16_t psm;
 	bthost_l2cap_connect_cb func;
+	bthost_l2cap_disconnect_cb disconn_func;
 	void *user_data;
 	struct l2cap_conn_cb_data *next;
 };
@@ -1510,7 +1511,9 @@ static bool l2cap_disconn_req(struct bthost *bthost, struct btconn *conn,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	const struct bt_l2cap_pdu_disconn_req *req = data;
+	struct l2cap_conn_cb_data *cb_data;
 	struct bt_l2cap_pdu_disconn_rsp rsp;
+	struct l2conn *l2conn;
 
 	if (len < sizeof(*req))
 		return false;
@@ -1521,6 +1524,15 @@ static bool l2cap_disconn_req(struct bthost *bthost, struct btconn *conn,
 
 	l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_DISCONN_RSP, ident, &rsp,
 								sizeof(rsp));
+
+	l2conn = btconn_find_l2cap_conn_by_scid(conn, rsp.scid);
+	if (!l2conn)
+		return true;
+
+	cb_data = bthost_find_l2cap_cb_by_psm(bthost, l2conn->psm);
+
+	if (cb_data && cb_data->disconn_func)
+		cb_data->disconn_func(cb_data->user_data);
 
 	return true;
 }
@@ -2553,7 +2565,9 @@ uint64_t bthost_conn_get_fixed_chan(struct bthost *bthost, uint16_t handle)
 }
 
 void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
-				bthost_l2cap_connect_cb func, void *user_data)
+				bthost_l2cap_connect_cb func,
+				bthost_l2cap_disconnect_cb disconn_func,
+				void *user_data)
 {
 	struct l2cap_conn_cb_data *data;
 
@@ -2564,6 +2578,7 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 	data->psm = psm;
 	data->user_data = user_data;
 	data->func = func;
+	data->disconn_func = disconn_func;
 	data->next = bthost->new_l2cap_conn_data;
 
 	bthost->new_l2cap_conn_data = data;

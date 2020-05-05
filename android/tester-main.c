@@ -2867,7 +2867,7 @@ void emu_add_l2cap_server_action(void)
 	bthost = hciemu_client_get_host(data->hciemu);
 
 	bthost_add_l2cap_server(bthost, l2cap_data->psm, l2cap_data->func,
-							l2cap_data->user_data);
+						NULL, l2cap_data->user_data);
 
 	step->action_status = BT_STATUS_SUCCESS;
 
