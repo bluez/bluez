@@ -3138,6 +3138,86 @@ Read Security Information Command
 				Invalid Index
 
 
+Read Experimental Features Information Command
+==============================================
+
+	Command Code:		0x0049
+	Controller Index:	<controller id> or <non-controller>
+	Command Parameters:
+	Return Parameters:	Feature_Count (2 Octets)
+				Feature1 {
+					UUID (16 Octets)
+					Flags (4 Octets)
+				}
+				Feature2 {  }
+				...
+
+	This command is used to retrieve the supported experimental features
+	by the host stack.
+
+	The UUID values are not defined here. They can change over time and
+	are on purpose not stable. Features that mature will be removed at
+	some point. The mapping of feature UUID to the actual functionality
+	of a given feature is out of scope here.
+
+	The following bits are defined for the Flags parameter:
+
+		0	Feature active
+		1	Causes change in supported settings
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
+Set Experimental Feature Command
+================================
+
+	Command Code:		0x004a
+	Controller Index:	<controller id> or <non-controller>
+	Command Parameters:	UUID (16 Octets)
+				Action (1 Octet)
+	Return Parameters:	UUID (16 Octets)
+				Flags (4 Octets)
+
+	This command is used to change the setting of an experimental feature
+	of the host stack.
+
+	The UUID value must be a supported value returned from the Read
+	Experimental Features Information command.
+
+	The Action parameter is UUID specific, but in most cases it will be
+	just a simple on/off toggle with these values:
+
+		0x00	Disable feature
+		0x01	Enable feature
+
+	It depends on the feature if the command can be used when the
+	controller is powered up. See Flags parameter of Read Experimental
+	Features Information command for details if the controller has
+	to be powered down first.
+
+	The following bits are defined for the Flags return parameter:
+
+		0	Feature active
+		1	Supported settings changed
+
+	When a feature causes the change of supported settings, then it is
+	a good idea to re-read the controller information.
+
+	When the UUID parameter is an empty UUID (16 x 0x00), then all
+	experimental features will be deactivated.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Not Powered
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
@@ -4021,3 +4101,20 @@ PHY Configuration Changed Event
 	one through which the change was triggered.
 
 	Refer Get PHY Configuration command for PHYs parameter.
+
+
+Experimental Feature Changed Event
+==================================
+
+	Event Code:		0x0027
+	Controller Index:	<controller id>
+	Event Parameters:	UUID (16 Octets)
+				Flags (4 Octets)
+
+	This event indicates that the status of an experimental feature
+	has been changed.
+
+	The event will only be sent to management sockets other than the
+	one through which the change was triggered.
+
+	Refer to Set Experimental Feature command for the Flags parameter.
