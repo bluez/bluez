@@ -217,11 +217,11 @@ uint16_t remote_get_subnet_idx(uint16_t addr)
 	return (uint16_t) net_idx;
 }
 
-static void print_key(void *net_key, void *user_data)
+static void print_key(void *key, void *user_data)
 {
-	uint16_t net_idx = L_PTR_TO_UINT(net_key);
+	uint16_t idx = L_PTR_TO_UINT(key);
 
-	bt_shell_printf("%3.3x, ", net_idx);
+	bt_shell_printf("%u (0x%3.3x), ", idx, idx);
 }
 
 static void print_node(void *rmt, void *user_data)

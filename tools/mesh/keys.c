@@ -193,15 +193,15 @@ static void print_appkey(void *app_key, void *user_data)
 {
 	uint16_t app_idx = L_PTR_TO_UINT(app_key);
 
-	bt_shell_printf("0x%3.3x, ", app_idx);
+	bt_shell_printf("%u (0x%3.3x), ", app_idx, app_idx);
 }
 
 static void print_netkey(void *net_key, void *user_data)
 {
 	struct net_key *key = net_key;
 
-	bt_shell_printf(COLOR_YELLOW "NetKey: 0x%3.3x, phase: %u\n" COLOR_OFF,
-							key->idx, key->phase);
+	bt_shell_printf(COLOR_YELLOW "NetKey: %u (0x%3.3x), phase: %u\n"
+				COLOR_OFF, key->idx, key->idx, key->phase);
 
 	if (!key->app_keys || l_queue_isempty(key->app_keys))
 		return;

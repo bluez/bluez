@@ -338,12 +338,14 @@ static bool send_key(void *user_data, uint16_t dst, uint16_t key_idx,
 	}
 
 	if (!is_appkey && !keys_subnet_exists(key_idx)) {
-		bt_shell_printf("Local NetKey %u not found\n", key_idx);
+		bt_shell_printf("Local NetKey %u (0x%3.3x) not found\n",
+							key_idx, key_idx);
 		return false;
 	}
 
 	if (is_appkey && (keys_get_bound_key(key_idx) == NET_IDX_INVALID)) {
-		bt_shell_printf("Local AppKey %u not found\n", key_idx);
+		bt_shell_printf("Local AppKey %u (0x%3.3x) not found\n",
+							key_idx, key_idx);
 		return false;
 	}
 
