@@ -89,7 +89,7 @@ Service		org.bluez
 Interface	org.bluez.AdvertisementMonitorManager1 [experimental]
 Object path	/org/bluez/{hci0,hci1,...}
 
-Methods		void RegisterApplication(object application)
+Methods		void RegisterMonitor(object application)
 
 			This registers a hierarchy of advertisement monitors.
 			The application object path together with the D-Bus
@@ -99,7 +99,7 @@ Methods		void RegisterApplication(object application)
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.AlreadyExists
 
-		void UnregisterApplication(object application)
+		void UnregisterMonitor(object application)
 
 			This unregisters advertisement monitors that have been
 			previously registered. The object path parameter must
@@ -118,7 +118,7 @@ Properties	array{string} SupportedMonitorTypes [read-only]
 
 			Possible values for monitor types:
 
-			"patterns_with_logic_or"
+			"or_patterns"
 				Patterns with logic OR applied. With this type,
 				property "Patterns" must exist and has at least
 				one pattern.
@@ -130,7 +130,7 @@ Properties	array{string} SupportedMonitorTypes [read-only]
 
 			Possible values for features:
 
-			"controller-based-monitor-by-patterns"
+			"controller-patterns"
 				If the controller is capable of performing
 				advertisement monitoring by patterns, BlueZ
 				would offload the patterns to the controller to
