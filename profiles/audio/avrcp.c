@@ -2223,7 +2223,7 @@ static gboolean avrcp_list_player_attributes_rsp(struct avctp *conn,
 	uint8_t len, count = 0;
 	int i;
 
-	if (code == AVC_CTYPE_REJECTED)
+	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED)
 		return FALSE;
 
 	len = pdu->params[0];
