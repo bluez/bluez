@@ -1860,9 +1860,12 @@ static int parse_options(DBusMessageIter *iter, uint16_t *offset, uint16_t *mtu,
 		} else if (strcasecmp(key, "prepare-authorize") == 0) {
 			if (var != DBUS_TYPE_BOOLEAN)
 				return -EINVAL;
-			if (prep_authorize)
-				dbus_message_iter_get_basic(&value,
-								prep_authorize);
+			if (prep_authorize) {
+				int tmp;
+
+				dbus_message_iter_get_basic(&value, &tmp);
+				*prep_authorize = !!tmp;
+			}
 		}
 
 		dbus_message_iter_next(&dict);
