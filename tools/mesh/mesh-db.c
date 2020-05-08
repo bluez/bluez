@@ -45,6 +45,7 @@
 #include "tools/mesh/mesh-db.h"
 
 #define KEY_IDX_INVALID NET_IDX_INVALID
+#define DEFAULT_LOCATION 0x0000
 
 struct mesh_db {
 	json_object *jcfg;
@@ -217,6 +218,23 @@ static bool write_uint16_hex(json_object *jobj, const char *desc,
 	return true;
 }
 
+static bool write_uint32_hex(json_object *jobj, const char *desc, uint32_t val)
+{
+	json_object *jstring;
+	char buf[9];
+
+	snprintf(buf, 9, "%8.8x", val);
+	jstring = json_object_new_string(buf);
+	if (!jstring)
+		return false;
+
+	/* Overwrite old value if present */
+	json_object_object_del(jobj, desc);
+
+	json_object_object_add(jobj, desc, jstring);
+	return true;
+}
+
 static json_object *get_node_by_uuid(json_object *jcfg, uint8_t uuid[16])
 {
 	json_object *jarray = NULL;
@@ -338,6 +356,65 @@ static int compare_group_addr(const void *a, const void *b, void *user_data)
 	return 0;
 }
 
+static bool load_composition(json_object *jnode, uint16_t unicast)
+{
+	json_object *jarray;
+	int i, ele_cnt;
+
+	if (!json_object_object_get_ex(jnode, "elements", &jarray))
+		return false;
+
+	if (json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	ele_cnt = json_object_array_length(jarray);
+
+	for (i = 0; i < ele_cnt; ++i) {
+		json_object *jentry, *jval, *jmods;
+		int32_t index;
+		int k, mod_cnt;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		if (!json_object_object_get_ex(jentry, "index", &jval))
+			return false;
+
+		index = json_object_get_int(jval);
+		if (index > 0xff)
+			return false;
+
+		if (!json_object_object_get_ex(jentry, "models", &jmods))
+			return false;
+
+		mod_cnt = json_object_array_length(jmods);
+
+		for (k = 0; k < mod_cnt; ++k) {
+			json_object *jmod, *jid;
+			uint32_t mod_id, len;
+			const char *str;
+
+			jmod = json_object_array_get_idx(jmods, k);
+			if (!json_object_object_get_ex(jmod, "modelId", &jid))
+				return false;
+
+			str = json_object_get_string(jid);
+			len = strlen(str);
+
+			if (len != 4 && len != 8)
+				return false;
+
+			if ((len == 4) && (sscanf(str, "%04x", &mod_id) != 1))
+				return false;
+
+			if ((len == 8) && (sscanf(str, "%08x", &mod_id) != 1))
+				return false;
+
+			remote_set_model(unicast, index, mod_id, len == 8);
+		}
+	}
+
+	return true;
+}
+
 static void load_remotes(json_object *jcfg)
 {
 	json_object *jnodes;
@@ -419,6 +496,8 @@ static void load_remotes(json_object *jcfg)
 			if (key_idx != KEY_IDX_INVALID)
 				remote_add_app_key(unicast, key_idx);
 		}
+
+		load_composition(jnode, unicast);
 
 		node_count++;
 
@@ -819,12 +898,34 @@ struct l_queue *mesh_db_load_groups(void)
 	return groups;
 }
 
+static json_object *init_elements(uint8_t num_els)
+{
+	json_object *jelements;
+	uint8_t i;
+
+	jelements = json_object_new_array();
+
+	for (i = 0; i < num_els; ++i) {
+		json_object *jelement, *jmods;
+
+		jelement = json_object_new_object();
+
+		write_int(jelement, "index", i);
+		write_uint16_hex(jelement, "location", DEFAULT_LOCATION);
+		jmods = json_object_new_array();
+		json_object_object_add(jelement, "models", jmods);
+
+		json_object_array_add(jelements, jelement);
+	}
+
+	return jelements;
+}
+
 bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 							uint16_t net_idx)
 {
 	json_object *jnode;
 	json_object *jelements, *jnodes, *jnetkeys, *jappkeys;
-	int i;
 
 	if (!cfg || !cfg->jcfg)
 		return false;
@@ -842,22 +943,7 @@ bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 	if (!add_u8_16(jnode, "uuid", uuid))
 		goto fail;
 
-	jelements = json_object_new_array();
-	if (!jelements)
-		goto fail;
-
-	for (i = 0; i < num_els; ++i) {
-		json_object *jelement = json_object_new_object();
-
-		if (!jelement) {
-			json_object_put(jelements);
-			goto fail;
-		}
-
-		write_int(jelement, "elementIndex", i);
-		json_object_array_add(jelements, jelement);
-	}
-
+	jelements = init_elements(num_els);
 	json_object_object_add(jnode, "elements", jelements);
 
 	jnetkeys = json_object_new_array();
@@ -930,6 +1016,173 @@ bool mesh_db_del_node(uint16_t unicast)
 	json_object_array_del_idx(jarray, i, 1);
 
 	return save_config();
+}
+
+static json_object *init_model(uint16_t mod_id)
+{
+	json_object *jmod;
+
+	jmod = json_object_new_object();
+
+	if (!write_uint16_hex(jmod, "modelId", mod_id)) {
+		json_object_put(jmod);
+		return NULL;
+	}
+
+	return jmod;
+}
+
+static json_object *init_vendor_model(uint32_t mod_id)
+{
+	json_object *jmod;
+
+	jmod = json_object_new_object();
+
+	if (!write_uint32_hex(jmod, "modelId", mod_id)) {
+		json_object_put(jmod);
+		return NULL;
+	}
+
+	return jmod;
+}
+
+bool mesh_db_node_set_composition(uint16_t unicast, uint8_t *data, uint16_t len)
+{
+	uint16_t features;
+	int sz, i = 0;
+	json_object *jnode, *jobj, *jelements;
+	uint16_t crpl;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(unicast);
+	if (!jnode)
+		return false;
+
+	/* skip page -- We only support Page Zero */
+	data++;
+	len--;
+
+	/* If "crpl" property is present, composition is already recorded */
+	if (json_object_object_get_ex(jnode, "crpl", &jobj))
+		return true;
+
+	if (!write_uint16_hex(jnode, "cid", l_get_le16(&data[0])))
+		return false;
+
+	if (!write_uint16_hex(jnode, "pid", l_get_le16(&data[2])))
+		return false;
+
+	if (!write_uint16_hex(jnode, "vid", l_get_le16(&data[4])))
+		return false;
+
+	crpl = l_get_le16(&data[6]);
+
+	features = l_get_le16(&data[8]);
+	data += 10;
+	len -= 10;
+
+	jobj = json_object_object_get(jnode, "features");
+	if (!jobj) {
+		jobj = json_object_new_object();
+		json_object_object_add(jnode, "features", jobj);
+	}
+
+	if (!(features & FEATURE_RELAY))
+		write_int(jobj, "relay", 2);
+
+	if (!(features & FEATURE_FRIEND))
+		write_int(jobj, "friend", 2);
+
+	if (!(features & FEATURE_PROXY))
+		write_int(jobj, "proxy", 2);
+
+	if (!(features & FEATURE_LPN))
+		write_int(jobj, "lowPower", 2);
+
+	jelements = json_object_object_get(jnode, "elements");
+	if (!jelements)
+		return false;
+
+	sz = json_object_array_length(jelements);
+
+	while (len) {
+		json_object *jentry, *jmods;
+		uint32_t mod_id;
+		uint8_t m, v;
+
+		/* Mismatch in the element count */
+		if (i >= sz)
+			return false;
+
+		jentry = json_object_array_get_idx(jelements, i);
+
+		write_int(jentry, "index", i);
+
+		if (!write_uint16_hex(jentry, "location", l_get_le16(data)))
+			return false;
+
+		data += 2;
+		len -= 2;
+
+		m = *data++;
+		v = *data++;
+		len -= 2;
+
+		jmods = json_object_object_get(jentry, "models");
+		if (!jmods) {
+			/* For backwards compatibility */
+			jmods = json_object_new_array();
+			json_object_object_add(jentry, "models", jmods);
+		}
+
+		while (len >= 2 && m--) {
+			mod_id = l_get_le16(data);
+
+			jobj = init_model(mod_id);
+			if (!jobj)
+				goto fail;
+
+			json_object_array_add(jmods, jobj);
+			data += 2;
+			len -= 2;
+		}
+
+		while (len >= 4 && v--) {
+			jobj = json_object_new_object();
+			mod_id = l_get_le16(data + 2);
+			mod_id = l_get_le16(data) << 16 | mod_id;
+
+			jobj = init_vendor_model(mod_id);
+			if (!jobj)
+				goto fail;
+
+			json_object_array_add(jmods, jobj);
+
+			data += 4;
+			len -= 4;
+		}
+
+		i++;
+	}
+
+	/* CRPL is written last. Will be used to check composition's presence */
+	if (!write_uint16_hex(jnode, "crpl", crpl))
+		goto fail;
+
+	/* Initiate remote's composition from storage */
+	if (!load_composition(jnode, unicast))
+		goto fail;
+
+	return save_config();
+
+fail:
+	/* Reset elements array */
+	json_object_object_del(jnode, "elements");
+	init_elements(sz);
+
+	return false;
 }
 
 bool mesh_db_get_token(uint8_t token[8])

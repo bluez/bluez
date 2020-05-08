@@ -38,11 +38,11 @@ bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high);
 bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 							uint16_t net_idx);
 bool mesh_db_del_node(uint16_t unicast);
-bool mesh_db_node_set_composition(uint16_t unicast, uint16_t cid, uint16_t pid,
-						uint16_t vid, uint16_t crpl,
-						struct mesh_config_modes modes,
-						struct l_queue *elements);
-
+bool mesh_db_node_set_composition(uint16_t unicast, uint8_t *data,
+								uint16_t len);
+bool mesh_db_add_provisioner(const char *name, uint8_t uuid[16],
+				uint16_t unicast_low, uint16_t unicast_high,
+				uint16_t group_low, uint16_t group_high);
 bool mesh_db_node_set_net_transmit(uint16_t unicast, uint8_t cnt,
 							uint16_t interval);
 bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx);

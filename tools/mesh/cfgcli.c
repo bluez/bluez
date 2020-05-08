@@ -434,6 +434,8 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		print_composition(data, len);
 
+		if (!mesh_db_node_set_composition(src, data, len))
+			bt_shell_printf("Failed to save node composition!\n");
 		break;
 
 	case OP_APPKEY_STATUS:
