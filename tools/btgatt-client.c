@@ -1492,8 +1492,8 @@ static void usage(void)
 		"\t-d, --dest <addr>\t\tSpecify the destination address\n"
 		"\t-t, --type [random|public] \tSpecify the LE address type\n"
 		"\t-m, --mtu <mtu> \t\tThe ATT MTU to use\n"
-		"\t-s, --security-level <sec> \tSet security level (low|"
-								"medium|high)\n"
+		"\t-s, --security-level <sec> \tSet security level (low|medium|"
+								"high|fips)\n"
 		"\t-v, --verbose\t\t\tEnable extra logging\n"
 		"\t-h, --help\t\t\tDisplay help\n");
 }
@@ -1537,6 +1537,8 @@ int main(int argc, char *argv[])
 				sec = BT_SECURITY_MEDIUM;
 			else if (strcmp(optarg, "high") == 0)
 				sec = BT_SECURITY_HIGH;
+			else if (strcmp(optarg, "fips") == 0)
+				sec = BT_SECURITY_FIPS;
 			else {
 				fprintf(stderr, "Invalid security level\n");
 				return EXIT_FAILURE;
