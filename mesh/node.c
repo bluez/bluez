@@ -1378,7 +1378,7 @@ static bool check_req_node(struct managed_obj_request *req)
 {
 	uint8_t node_comp[MAX_MSG_LEN - 2];
 	uint8_t attach_comp[MAX_MSG_LEN - 2];
-
+	uint16_t offset = 10;
 	uint16_t node_len = node_generate_comp(req->node, node_comp,
 							sizeof(node_comp));
 
@@ -1389,12 +1389,10 @@ static bool check_req_node(struct managed_obj_request *req)
 		uint16_t attach_len = node_generate_comp(req->attach,
 					attach_comp, sizeof(attach_comp));
 
-		/* Ignore feature bits in Composition Compare */
-		node_comp[8] = 0;
-		attach_comp[8] = 0;
-
+		/* Verify only element/models composition */
 		if (node_len != attach_len ||
-				memcmp(node_comp, attach_comp, node_len)) {
+				memcmp(&node_comp[offset], &attach_comp[offset],
+							node_len - offset)) {
 			l_debug("Failed to verify app's composition data");
 			return false;
 		}
