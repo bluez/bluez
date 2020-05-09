@@ -2057,6 +2057,38 @@ bool mesh_config_write_ttl(struct mesh_config *cfg, uint8_t ttl)
 	return save_config(cfg->jnode, cfg->node_dir_path);
 }
 
+bool mesh_config_update_company_id(struct mesh_config *cfg, uint16_t cid)
+{
+	if (!cfg || !write_uint16_hex(cfg->jnode, "cid", cid))
+		return false;
+
+	return save_config(cfg->jnode, cfg->node_dir_path);
+}
+
+bool mesh_config_update_product_id(struct mesh_config *cfg, uint16_t pid)
+{
+	if (!cfg || !write_uint16_hex(cfg->jnode, "pid", pid))
+		return false;
+
+	return save_config(cfg->jnode, cfg->node_dir_path);
+}
+
+bool mesh_config_update_version_id(struct mesh_config *cfg, uint16_t vid)
+{
+	if (!cfg || !write_uint16_hex(cfg->jnode, "vid", vid))
+		return false;
+
+	return save_config(cfg->jnode, cfg->node_dir_path);
+}
+
+bool mesh_config_update_crpl(struct mesh_config *cfg, uint16_t crpl)
+{
+	if (!cfg || !write_uint16_hex(cfg->jnode, "crpl", crpl))
+		return false;
+
+	return save_config(cfg->jnode, cfg->node_dir_path);
+}
+
 static bool load_node(const char *fname, const uint8_t uuid[16],
 				mesh_config_node_func_t cb, void *user_data)
 {
