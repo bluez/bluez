@@ -1366,8 +1366,6 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 
 	update_net_settings(node);
 
-	mesh_config_save(node->cfg, true, NULL, NULL);
-
 	/* Initialize configuration server model */
 	cfgmod_server_init(node, PRIMARY_ELE_IDX);
 
