@@ -76,6 +76,9 @@ automatically includes this option.
   Copy configuration file which specifies the required security policies
     # sudo cp ./src/bluetooth.conf /etc/dbus-1/system.d/
 
+  Disable SELinux
+    # sudo setenforce 0
+
   Run daemon in foreground with debugging
     # sudo ./src/bluetoothd -n -d -f ./src/main.conf
 
