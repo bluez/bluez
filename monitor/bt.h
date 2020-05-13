@@ -2776,6 +2776,11 @@ struct bt_hci_cmd_le_setup_iso_path {
 	uint8_t  codec_cfg[0];
 } __attribute__ ((packed));
 
+struct bt_hci_rsp_le_setup_iso_path {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_REMOVE_ISO_PATH		0x206f
 #define BT_HCI_BIT_LE_REMOVE_ISO_PATH		BT_HCI_CMD_BIT(43, 4)
 struct bt_hci_cmd_le_remove_iso_path {

@@ -8125,6 +8125,18 @@ static void le_setup_iso_path_cmd(const void *data, uint8_t size)
 						cmd->codec_cfg_len);
 }
 
+static void le_setup_iso_path_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_setup_iso_path *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("Handle: %d", le16_to_cpu(rsp->handle));
+}
+
 static void le_remove_iso_path_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_remove_iso_path *cmd = data;
@@ -9050,7 +9062,9 @@ static const struct opcode_data opcode_table[] = {
 				"LE Setup Isochronous Data Path",
 				le_setup_iso_path_cmd,
 				sizeof(struct bt_hci_cmd_le_setup_iso_path),
-				true, status_rsp, 1, true },
+				true, le_setup_iso_path_rsp,
+				sizeof(struct bt_hci_rsp_le_setup_iso_path),
+				true },
 	{ BT_HCI_CMD_LE_REMOVE_ISO_PATH, BT_HCI_BIT_LE_REMOVE_ISO_PATH,
 				"LE Remove Isochronous Data Path",
 				le_remove_iso_path_cmd,
