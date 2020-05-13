@@ -218,7 +218,9 @@ if (test "${enable_udev}" != "no" && test -z "${path_udevdir}"); then
 fi
 AC_SUBST(UDEV_DIR, [${path_udevdir}])
 
-AM_CONDITIONAL(HID2HCI, test "${enable_tools}" != "no" &&
+AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci],
+		[enable hid2hci tool]), [enable_hid2hci=${enableval}])
+AM_CONDITIONAL(HID2HCI, test "${enable_hid2hci}" = "yes" &&
 						test "${enable_udev}" != "no")
 
 AC_ARG_ENABLE(cups, AC_HELP_STRING([--disable-cups],
