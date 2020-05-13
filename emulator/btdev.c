@@ -2422,33 +2422,36 @@ static void btdev_reset(struct btdev *btdev)
 static void le_setup_iso_path(struct btdev *dev, uint16_t handle,
 					uint8_t dir, uint8_t path)
 {
-	uint8_t status = BT_HCI_ERR_SUCCESS;
+	struct bt_hci_rsp_le_setup_iso_path rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
 
 	if (!dev->conn || handle != ISO_HANDLE) {
-		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
 		goto done;
 	}
 
 	/* Only support HCI or disabled paths */
 	if (path && path != 0xff) {
-		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
 		goto done;
 	}
 
 	switch (dir) {
 	case 0x00:
 		dev->le_iso_path[0] = path;
+		rsp.handle = cpu_to_le16(ISO_HANDLE);
 		break;
 	case 0x01:
 		dev->le_iso_path[1] = path;
+		rsp.handle = cpu_to_le16(ISO_HANDLE);
 		break;
 	default:
-		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
 	}
 
 done:
-	cmd_complete(dev, BT_HCI_CMD_LE_SETUP_ISO_PATH, &status,
-						sizeof(status));
+	cmd_complete(dev, BT_HCI_CMD_LE_SETUP_ISO_PATH, &rsp, sizeof(rsp));
 }
 
 static void default_cmd(struct btdev *btdev, uint16_t opcode,
