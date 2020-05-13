@@ -2667,15 +2667,22 @@ static void discover_cb(struct avdtp *session, GSList *seps,
 				struct avdtp_error *err, void *user_data)
 {
 	struct a2dp_setup *setup = user_data;
+	uint16_t version = avdtp_get_version(session);
 
-	DBG("err %p", err);
+	DBG("version 0x%04x err %p", version, err);
 
 	setup->seps = seps;
 	setup->err = err;
 
 	if (!err) {
 		g_slist_foreach(seps, register_remote_sep, setup->chan);
-		store_remote_seps(setup->chan);
+
+		/* Only store version has been initialized as features like
+		 * Delay Reporting may not be queried if the version in
+		 * unknown.
+		 */
+		if (version)
+			store_remote_seps(setup->chan);
 	}
 
 	finalize_discover(setup);

@@ -2256,7 +2256,7 @@ static uint16_t get_version(struct avdtp *session)
 	const sdp_record_t *rec;
 	sdp_list_t *protos;
 	sdp_data_t *proto_desc;
-	uint16_t ver = 0x0100;
+	uint16_t ver = 0x0000;
 
 	rec = btd_device_get_record(session->device, A2DP_SINK_UUID);
 	if (!rec)
@@ -2394,6 +2394,11 @@ struct avdtp *avdtp_new(GIOChannel *chan, struct btd_device *device,
 	avdtp_connect_cb(chan, NULL, session);
 
 	return session;
+}
+
+uint16_t avdtp_get_version(struct avdtp *session)
+{
+	return session->version;
 }
 
 static GIOChannel *l2cap_connect(struct avdtp *session)
