@@ -287,10 +287,86 @@ static void configure_hci(struct mesh_io_private *io)
 				sizeof(cmd), hci_generic_callback, NULL, NULL);
 }
 
+static void scan_enable_rsp(const void *buf, uint8_t size,
+							void *user_data)
+{
+	uint8_t status = *((uint8_t *) buf);
+
+	if (status)
+		l_error("LE Scan enable failed (0x%02x)", status);
+}
+
+static void set_recv_scan_enable(const void *buf, uint8_t size,
+							void *user_data)
+{
+	struct mesh_io_private *pvt = user_data;
+	struct bt_hci_cmd_le_set_scan_enable cmd;
+
+	cmd.enable = 0x01;	/* Enable scanning */
+	cmd.filter_dup = 0x00;	/* Report duplicates */
+	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+			&cmd, sizeof(cmd), scan_enable_rsp, pvt, NULL);
+}
+
+static void scan_disable_rsp(const void *buf, uint8_t size,
+							void *user_data)
+{
+	struct bt_hci_cmd_le_set_scan_parameters cmd;
+	struct mesh_io_private *pvt = user_data;
+	uint8_t status = *((uint8_t *) buf);
+
+	if (status)
+		l_error("LE Scan disable failed (0x%02x)", status);
+
+	cmd.type = pvt->active ? 0x01 : 0x00;	/* Passive/Active scanning */
+	cmd.interval = L_CPU_TO_LE16(0x0010);	/* 10 ms */
+	cmd.window = L_CPU_TO_LE16(0x0010);	/* 10 ms */
+	cmd.own_addr_type = 0x01;		/* ADDR_TYPE_RANDOM */
+	cmd.filter_policy = 0x00;		/* Accept all */
+
+	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
+			&cmd, sizeof(cmd),
+			set_recv_scan_enable, pvt, NULL);
+}
+
+static bool find_active(const void *a, const void *b)
+{
+	const struct pvt_rx_reg *rx_reg = a;
+
+	/* Mesh specific AD types do *not* require active scanning,
+	 * so do not turn on Active Scanning on their account.
+	 */
+	if (rx_reg->filter[0] < MESH_AD_TYPE_PROVISION ||
+			rx_reg->filter[0] > MESH_AD_TYPE_BEACON)
+		return true;
+
+	return false;
+}
+
+static void restart_scan(struct mesh_io_private *pvt)
+{
+	struct bt_hci_cmd_le_set_scan_enable cmd;
+
+	if (l_queue_isempty(pvt->rx_regs))
+		return;
+
+	pvt->active = l_queue_find(pvt->rx_regs, find_active, NULL);
+	cmd.enable = 0x00;	/* Disable scanning */
+	cmd.filter_dup = 0x00;	/* Report duplicates */
+	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+				&cmd, sizeof(cmd), scan_disable_rsp, pvt, NULL);
+}
+
 static void hci_init(void *user_data)
 {
 	struct mesh_io *io = user_data;
 	bool result = true;
+	bool restarted = false;
+
+	if (io->pvt->hci) {
+		restarted = true;
+		bt_hci_unref(io->pvt->hci);
+	}
 
 	io->pvt->hci = bt_hci_new_user_channel(io->pvt->index);
 	if (!io->pvt->hci) {
@@ -306,6 +382,9 @@ static void hci_init(void *user_data)
 						event_callback, io, NULL);
 
 		l_debug("Started mesh on hci %u", io->pvt->index);
+
+		if (restarted)
+			restart_scan(io->pvt);
 	}
 
 	if (io->pvt->ready_callback)
@@ -711,62 +790,6 @@ static bool find_by_filter(const void *a, const void *b)
 	const uint8_t *filter = b;
 
 	return !memcmp(rx_reg->filter, filter, rx_reg->len);
-}
-
-static void scan_enable_rsp(const void *buf, uint8_t size,
-							void *user_data)
-{
-	uint8_t status = *((uint8_t *) buf);
-
-	if (status)
-		l_error("LE Scan enable failed (0x%02x)", status);
-}
-
-static void set_recv_scan_enable(const void *buf, uint8_t size,
-							void *user_data)
-{
-	struct mesh_io_private *pvt = user_data;
-	struct bt_hci_cmd_le_set_scan_enable cmd;
-
-	cmd.enable = 0x01;	/* Enable scanning */
-	cmd.filter_dup = 0x00;	/* Report duplicates */
-	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
-			&cmd, sizeof(cmd), scan_enable_rsp, pvt, NULL);
-}
-
-static void scan_disable_rsp(const void *buf, uint8_t size,
-							void *user_data)
-{
-	struct bt_hci_cmd_le_set_scan_parameters cmd;
-	struct mesh_io_private *pvt = user_data;
-	uint8_t status = *((uint8_t *) buf);
-
-	if (status)
-		l_error("LE Scan disable failed (0x%02x)", status);
-
-	cmd.type = pvt->active ? 0x01 : 0x00;	/* Passive/Active scanning */
-	cmd.interval = L_CPU_TO_LE16(0x0010);	/* 10 ms */
-	cmd.window = L_CPU_TO_LE16(0x0010);	/* 10 ms */
-	cmd.own_addr_type = 0x01;		/* ADDR_TYPE_RANDOM */
-	cmd.filter_policy = 0x00;		/* Accept all */
-
-	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
-			&cmd, sizeof(cmd),
-			set_recv_scan_enable, pvt, NULL);
-}
-
-static bool find_active(const void *a, const void *b)
-{
-	const struct pvt_rx_reg *rx_reg = a;
-
-	/* Mesh specific AD types do *not* require active scanning,
-	 * so do not turn on Active Scanning on their account.
-	 */
-	if (rx_reg->filter[0] < MESH_AD_TYPE_PROVISION ||
-			rx_reg->filter[0] > MESH_AD_TYPE_BEACON)
-		return true;
-
-	return false;
 }
 
 static bool recv_register(struct mesh_io *io, const uint8_t *filter,
