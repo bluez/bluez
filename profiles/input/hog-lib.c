@@ -1387,10 +1387,19 @@ static void dis_notify(uint8_t source, uint16_t vendor, uint16_t product,
 					uint16_t version, void *user_data)
 {
 	struct bt_hog *hog = user_data;
+	GSList *l;
 
 	hog->vendor = vendor;
 	hog->product = product;
 	hog->version = version;
+
+	for (l = hog->instances; l; l = l->next) {
+		struct bt_hog *instance = l->data;
+
+		instance->vendor = vendor;
+		instance->product = product;
+		instance->version = version;
+	}
 }
 
 struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
