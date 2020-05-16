@@ -21,6 +21,7 @@
 #define KEY_REFRESH		0x01
 #define IV_INDEX_UPDATE		0x02
 
+void net_key_cleanup(void);
 bool net_key_confirm(uint32_t id, const uint8_t master[16]);
 bool net_key_retrieve(uint32_t id, uint8_t *master);
 uint32_t net_key_add(const uint8_t master[16]);

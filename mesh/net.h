@@ -265,7 +265,8 @@ typedef void (*mesh_net_status_func_t)(uint16_t remote, uint8_t status,
 					void *user_data);
 
 struct mesh_net *mesh_net_new(struct mesh_node *node);
-void mesh_net_free(struct mesh_net *net);
+void mesh_net_free(void *net);
+void mesh_net_cleanup(void);
 void mesh_net_flush_msg_queues(struct mesh_net *net);
 void mesh_net_set_iv_index(struct mesh_net *net, uint32_t index, bool update);
 bool mesh_net_iv_index_update(struct mesh_net *net);

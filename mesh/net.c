@@ -681,8 +681,10 @@ struct mesh_net *mesh_net_new(struct mesh_node *node)
 	return net;
 }
 
-void mesh_net_free(struct mesh_net *net)
+void mesh_net_free(void *user_data)
 {
+	struct mesh_net *net = user_data;
+
 	if (!net)
 		return;
 
@@ -699,6 +701,14 @@ void mesh_net_free(struct mesh_net *net)
 	l_queue_destroy(net->app_keys, appkey_key_free);
 
 	l_free(net);
+}
+
+void mesh_net_cleanup(void)
+{
+	l_queue_destroy(fast_cache, l_free);
+	fast_cache = NULL;
+	l_queue_destroy(nets, mesh_net_free);
+	nets = NULL;
 }
 
 bool mesh_net_set_seq_num(struct mesh_net *net, uint32_t seq)

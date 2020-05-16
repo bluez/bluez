@@ -245,6 +245,7 @@ void mesh_agent_cleanup(void)
 		return;
 
 	l_queue_destroy(agents, agent_free);
+	agents = NULL;
 
 }
 

@@ -523,3 +523,9 @@ void net_key_beacon_disable(uint32_t id)
 	l_timeout_remove(key->snb.timeout);
 	key->snb.timeout = NULL;
 }
+
+void net_key_cleanup(void)
+{
+	l_queue_destroy(keys, l_free);
+	keys = NULL;
+}
