@@ -335,6 +335,7 @@ static void free_node_resources(void *data)
 
 	free_node_dbus_resources(node);
 
+	mesh_config_release(node->cfg);
 	mesh_net_free(node->net);
 	l_free(node->storage_dir);
 	l_free(node);

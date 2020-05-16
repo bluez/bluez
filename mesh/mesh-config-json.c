@@ -447,8 +447,6 @@ static bool read_app_keys(json_object *jobj, struct mesh_config_node *node)
 	if (!len)
 		return true;
 
-	node->appkeys = l_queue_new();
-
 	for (i = 0; i < len; ++i) {
 		json_object *jtemp, *jvalue;
 		char *str;
@@ -504,8 +502,6 @@ static bool read_net_keys(json_object *jobj, struct mesh_config_node *node)
 	len = json_object_array_length(jarray);
 	if (!len)
 		return false;
-
-	node->netkeys = l_queue_new();
 
 	for (i = 0; i < len; ++i) {
 		json_object *jtemp, *jvalue;
@@ -1133,8 +1129,6 @@ static bool parse_elements(json_object *jelems, struct mesh_config_node *node)
 		/* Allow "empty" nodes */
 		return true;
 
-	node->elements = l_queue_new();
-
 	for (i = 0; i < num_ele; ++i) {
 		json_object *jelement;
 		json_object *jmodels;
@@ -1154,6 +1148,7 @@ static bool parse_elements(json_object *jelems, struct mesh_config_node *node)
 		ele = l_new(struct mesh_config_element, 1);
 		ele->index = index;
 		ele->models = l_queue_new();
+		l_queue_push_tail(node->elements, ele);
 
 		if (!json_object_object_get_ex(jelement, "location", &jvalue))
 			goto fail;
@@ -1167,8 +1162,6 @@ static bool parse_elements(json_object *jelems, struct mesh_config_node *node)
 						!parse_models(jmodels, ele))
 				goto fail;
 		}
-
-		l_queue_push_tail(node->elements, ele);
 	}
 
 	return true;
@@ -2133,6 +2126,11 @@ static bool load_node(const char *fname, const uint8_t uuid[16],
 		goto done;
 
 	memset(&node, 0, sizeof(node));
+
+	node.elements = l_queue_new();
+	node.netkeys = l_queue_new();
+	node.appkeys = l_queue_new();
+
 	result = read_node(jnode, &node);
 
 	if (result) {
@@ -2148,6 +2146,7 @@ static bool load_node(const char *fname, const uint8_t uuid[16],
 		result = cb(&node, uuid, cfg, user_data);
 
 		if (!result) {
+			l_free(cfg->idles);
 			l_free(cfg->node_dir_path);
 			l_free(cfg);
 		}
@@ -2157,6 +2156,7 @@ static bool load_node(const char *fname, const uint8_t uuid[16],
 	l_free(node.net_transmit);
 	l_queue_destroy(node.netkeys, l_free);
 	l_queue_destroy(node.appkeys, l_free);
+	l_queue_destroy(node.elements, free_element);
 
 	if (!result)
 		json_object_put(jnode);

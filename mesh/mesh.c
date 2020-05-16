@@ -209,7 +209,7 @@ static void parse_settings(const char *mesh_conf_fname)
 
 	settings = l_settings_new();
 	if (!l_settings_load_from_file(settings, mesh_conf_fname))
-		return;
+		goto done;
 
 	str = l_settings_get_string(settings, "General", "Beacon");
 	if (str) {
@@ -242,6 +242,9 @@ static void parse_settings(const char *mesh_conf_fname)
 
 	if (l_settings_get_uint(settings, "General", "ProvTimeout", &value))
 		mesh.prov_timeout = value;
+
+done:
+	l_settings_free(settings);
 }
 
 bool mesh_init(const char *config_dir, const char *mesh_conf_fname,
