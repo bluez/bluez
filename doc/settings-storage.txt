@@ -218,9 +218,10 @@ Sample Attributes section:
 
 [Endpoints] group contains:
 
-	<xx>:<xx>:<xxxxxxxx...>	String	First field is the endpoint type,
-					followed by codec type and its
-					capabilies as hexadecimal encoded
+	<xx>:<xx>:<xx>::<xx...> String	First field is the endpoint type,
+					followed by codec type and delay
+					reporting and its
+					capabilities as hexadecimal encoded
 					string.
 	LastUsed:<xx>:<xx>	String	LastUsed has two fields which are the
 					local and remote seids as hexadecimal
