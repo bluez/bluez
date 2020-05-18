@@ -580,6 +580,10 @@ Properties	string UUID [readonly, optional]:
 
 			Device object which the endpoint is belongs to.
 
+		bool DelayReporting [readonly, optional]:
+
+			Indicates if endpoint supports Delay Reporting.
+
 MediaTransport1 hierarchy
 =========================
 
