@@ -1847,11 +1847,25 @@ static gboolean get_device(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean get_delay_reporting(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct a2dp_remote_sep *sep = data;
+	dbus_bool_t delay_report;
+
+	delay_report = avdtp_get_delay_reporting(sep->sep);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &delay_report);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable sep_properties[] = {
 	{ "UUID", "s", get_uuid, NULL, NULL },
 	{ "Codec", "y", get_codec, NULL, NULL },
 	{ "Capabilities", "ay", get_capabilities, NULL, NULL },
 	{ "Device", "o", get_device, NULL, NULL },
+	{ "DelayReporting", "b", get_delay_reporting, NULL, NULL },
 	{ }
 };
 
@@ -1942,6 +1956,7 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 	for (; *seids; seids++) {
 		uint8_t type;
 		uint8_t codec;
+		uint8_t delay_reporting;
 		GSList *l = NULL;
 		char caps[256];
 		uint8_t data[128];
@@ -1955,11 +1970,17 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 		if (!value)
 			continue;
 
-		if (sscanf(value, "%02hhx:%02hhx:%s", &type, &codec,
+		/* Try loading with delay_reporting first */
+		if (sscanf(value, "%02hhx:%02hhx:%02hhx:%s", &type, &codec,
+					&delay_reporting, caps) != 4) {
+			/* Try old format */
+			if (sscanf(value, "%02hhx:%02hhx:%s", &type, &codec,
 								caps) != 3) {
-			warn("Unable to load Endpoint: seid %u", rseid);
-			g_free(value);
-			continue;
+				warn("Unable to load Endpoint: seid %u", rseid);
+				g_free(value);
+				continue;
+			}
+			delay_reporting = false;
 		}
 
 		for (i = 0, size = strlen(caps); i < size; i += 2) {
@@ -1979,7 +2000,8 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 
 		caps_add_codec(&l, codec, data, size / 2);
 
-		rsep = avdtp_register_remote_sep(chan->session, rseid, type, l);
+		rsep = avdtp_register_remote_sep(chan->session, rseid, type, l,
+							delay_reporting);
 		if (!rsep) {
 			warn("Unable to register Endpoint: seid %u", rseid);
 			continue;
@@ -2605,7 +2627,7 @@ static struct queue *a2dp_select_eps(struct avdtp *session, uint8_t type,
 static void store_remote_sep(void *data, void *user_data)
 {
 	struct a2dp_remote_sep *sep = data;
-	GKeyFile *key_file = (void *) user_data;
+	GKeyFile *key_file = user_data;
 	char seid[4], value[256];
 	struct avdtp_service_capability *service = avdtp_get_codec(sep->sep);
 	struct avdtp_media_codec_capability *codec = (void *) service->data;
@@ -2614,12 +2636,12 @@ static void store_remote_sep(void *data, void *user_data)
 
 	sprintf(seid, "%02hhx", avdtp_get_seid(sep->sep));
 
-	offset = sprintf(value, "%02hhx:%02hhx:", avdtp_get_type(sep->sep),
-						codec->media_codec_type);
+	offset = sprintf(value, "%02hhx:%02hhx:%02hhx:",
+			avdtp_get_type(sep->sep), codec->media_codec_type,
+			avdtp_get_delay_reporting(sep->sep));
 
 	for (i = 0; i < service->length - sizeof(*codec); i++)
 		offset += sprintf(value + offset, "%02hhx", codec->data[i]);
-
 
 	g_key_file_set_string(key_file, "Endpoints", seid, value);
 }
@@ -2644,7 +2666,8 @@ static void store_remote_seps(struct a2dp_channel *chan)
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
-	data = g_key_file_get_string(key_file, "Endpoints", "LastUsed", NULL);
+	data = g_key_file_get_string(key_file, "Endpoints", "LastUsed",
+								NULL);
 
 	/* Remove current endpoints since it might have changed */
 	g_key_file_remove_group(key_file, "Endpoints", NULL);
@@ -2652,7 +2675,8 @@ static void store_remote_seps(struct a2dp_channel *chan)
 	queue_foreach(chan->seps, store_remote_sep, key_file);
 
 	if (data) {
-		g_key_file_set_string(key_file, "Endpoints", "LastUsed", data);
+		g_key_file_set_string(key_file, "Endpoints", "LastUsed",
+						data);
 		g_free(data);
 	}
 

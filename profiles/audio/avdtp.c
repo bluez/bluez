@@ -3210,6 +3210,11 @@ struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep)
 	return sep->codec;
 }
 
+bool avdtp_get_delay_reporting(struct avdtp_remote_sep *sep)
+{
+	return sep->delay_reporting;
+}
+
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int length)
 {
@@ -3229,7 +3234,8 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
 							uint8_t seid,
 							uint8_t type,
-							GSList *caps)
+							GSList *caps,
+							bool delay_reporting)
 {
 	struct avdtp_remote_sep *sep;
 	GSList *l;
@@ -3244,6 +3250,7 @@ struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
 	sep->type = type;
 	sep->media_type = AVDTP_MEDIA_TYPE_AUDIO;
 	sep->caps = caps;
+	sep->delay_reporting = delay_reporting;
 
 	for (l = caps; l; l = g_slist_next(l)) {
 		struct avdtp_service_capability *cap = l->data;
@@ -3252,7 +3259,9 @@ struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
 			sep->codec = cap;
 	}
 
-	DBG("seid %d type %d media %d", sep->seid, sep->type, sep->media_type);
+	DBG("seid %d type %d media %d delay_reporting %s", sep->seid, sep->type,
+				sep->media_type,
+				sep->delay_reporting ? "true" : "false");
 
 	return sep;
 }
