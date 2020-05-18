@@ -218,11 +218,6 @@ if (test "${enable_udev}" != "no" && test -z "${path_udevdir}"); then
 fi
 AC_SUBST(UDEV_DIR, [${path_udevdir}])
 
-AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci],
-		[enable hid2hci tool]), [enable_hid2hci=${enableval}])
-AM_CONDITIONAL(HID2HCI, test "${enable_hid2hci}" = "yes" &&
-						test "${enable_udev}" != "no")
-
 AC_ARG_ENABLE(cups, AC_HELP_STRING([--disable-cups],
                 [disable CUPS printer support]), [enable_cups=${enableval}])
 AM_CONDITIONAL(CUPS, test "${enable_cups}" != "no")
@@ -349,6 +344,11 @@ AC_ARG_ENABLE(sixaxis, AC_HELP_STRING([--enable-sixaxis],
 		[enable sixaxis plugin]), [enable_sixaxis=${enableval}])
 AM_CONDITIONAL(SIXAXIS, test "${enable_sixaxis}" = "yes" &&
 					 test "${enable_udev}" != "no")
+
+AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci],
+		[enable hid2hci tool]), [enable_hid2hci=${enableval}])
+AM_CONDITIONAL(HID2HCI, test "${enable_hid2hci}" = "yes" &&
+					test "${enable_udev}" != "no")
 
 AC_ARG_ENABLE(logger, AC_HELP_STRING([--enable-logger],
 		[enable HCI logger service]), [enable_logger=${enableval}])
