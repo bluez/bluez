@@ -424,6 +424,7 @@ static void set_bredr20_commands(struct btdev *btdev)
 
 static void set_le_50_commands(struct btdev *btdev)
 {
+	btdev->commands[35] |= 0x20;	/* LE Set Default PHY */
 	btdev->commands[36] |= 0x02;	/* LE Set Adv Set Random Address */
 	btdev->commands[36] |= 0x04;	/* LE Set Ext Adv Parameters */
 	btdev->commands[36] |= 0x08;	/* LE Set Ext Adv Data */
