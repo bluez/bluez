@@ -22,6 +22,7 @@ fi
 		--enable-health \
 		--enable-android \
 		--enable-sixaxis \
+		--enable-hid2hci \
 		--enable-midi \
 		--enable-mesh \
 		--enable-btpclient \
