@@ -323,18 +323,16 @@ static void free_node_resources(void *data)
 	struct mesh_node *node = data;
 
 	/* Unregister io callbacks */
-	if (node->net)
-		mesh_net_detach(node->net);
+	mesh_net_detach(node->net);
 
-	l_queue_destroy(node->elements, element_free);
-	node->elements = NULL;
 
 	/* In case of a provisioner, stop active scanning */
 	if (node->provisioner)
 		manager_scan_cancel(node);
 
+	/* Free dynamic resources */
 	free_node_dbus_resources(node);
-
+	l_queue_destroy(node->elements, element_free);
 	mesh_config_release(node->cfg);
 	mesh_net_free(node->net);
 	l_free(node->storage_dir);
@@ -352,8 +350,7 @@ void node_remove(struct mesh_node *node)
 
 	l_queue_remove(nodes, node);
 
-	if (node->cfg)
-		mesh_config_destroy(node->cfg);
+	mesh_config_destroy_nvm(node->cfg);
 
 	free_node_resources(node);
 }
@@ -576,13 +573,10 @@ fail:
 static void cleanup_node(void *data)
 {
 	struct mesh_node *node = data;
-	struct mesh_net *net = node->net;
+	uint32_t seq_num = mesh_net_get_seq_num(node->net);
 
-	/* Preserve the last sequence number */
-	if (node->cfg)
-		mesh_config_write_seq_number(node->cfg,
-						mesh_net_get_seq_num(net),
-						false);
+	/* Preserve the last used sequence number */
+	mesh_config_write_seq_number(node->cfg, seq_num, false);
 
 	free_node_resources(node);
 }

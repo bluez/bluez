@@ -114,7 +114,7 @@ typedef bool (*mesh_config_node_func_t)(struct mesh_config_node *node,
 bool mesh_config_load_nodes(const char *cfgdir_name, mesh_config_node_func_t cb,
 							void *user_data);
 void mesh_config_release(struct mesh_config *cfg);
-void mesh_config_destroy(struct mesh_config *cfg);
+void mesh_config_destroy_nvm(struct mesh_config *cfg);
 bool mesh_config_save(struct mesh_config *cfg, bool no_wait,
 				mesh_config_status_func_t cb, void *user_data);
 struct mesh_config *mesh_config_create(const char *cfgdir_name,
