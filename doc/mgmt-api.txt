@@ -30,7 +30,8 @@ Linux kernel v4.6	Version 1.12
 Linux kernel v4.8	Version 1.13
 Linux kernel v4.9	Version 1.14
 Linux kernel v5.5	Version 1.15
-Linux kernel v5.6	Version 1.16 (not yet released)
+Linux kernel v5.6	Version 1.16
+Linux kernel v5.7	Version 1.17 (not yet released)
 
 Version 1.1 introduces Set Device ID command.
 
@@ -93,6 +94,10 @@ Load Blocked Keys commands.
 
 Version 1.16 introduces Wideband Speech setting and its corresponding
 Set Wideband Speech command.
+
+Version 1.17 introduces Read Security Information command, Read Experimental
+Features Information command, Set Experimental Feature command and the
+Experimental Feature Changed event.
 
 
 Example
