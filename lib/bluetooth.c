@@ -1008,7 +1008,7 @@ const char *bt_compidtostr(int compid)
 	case 368:
 		return "Roche Diabetes Care AG";
 	case 369:
-		return "Amazon Fulfillment Service";
+		return "Amazon.com Services, LLC (formerly Amazon Fulfillment Service)";
 	case 370:
 		return "Connovate Technology Private Limited";
 	case 371:
@@ -2060,7 +2060,7 @@ const char *bt_compidtostr(int compid)
 	case 894:
 		return "lulabytes S.L.";
 	case 895:
-		return "Nestec S.A.";
+		return "Société des Produits Nestlé S.A. (formerly Nestec S.A.)";
 	case 896:
 		return "LLC \"MEGA-F service\"";
 	case 897:
@@ -2180,7 +2180,7 @@ const char *bt_compidtostr(int compid)
 	case 954:
 		return "Maxscend Microelectronics Company Limited";
 	case 955:
-		return "Abbott Diabetes Care";
+		return "Abbott";
 	case 956:
 		return "ASB Bank Ltd";
 	case 957:
@@ -4713,6 +4713,44 @@ const char *bt_compidtostr(int compid)
 		return "Kayamatics Limited";
 	case 2222:
 		return "Moticon ReGo AG";
+	case 2223:
+		return "Polidea Sp. z o.o.";
+	case 2224:
+		return "Trivedi Advanced Technologies LLC";
+	case 2225:
+		return "CORE|vision BV";
+	case 2226:
+		return "PF SCHWEISSTECHNOLOGIE GMBH";
+	case 2227:
+		return "IONIQ Skincare GmbH & Co. KG";
+	case 2228:
+		return "Sengled Co., Ltd.";
+	case 2229:
+		return "TransferFi";
+	case 2230:
+		return "Boehringer Ingelheim Vetmedica GmbH";
+	case 2231:
+		return "ABB Inc";
+	case 2232:
+		return "Check Technology Solutions LLC";
+	case 2233:
+		return "U-Shin Ltd.";
+	case 2234:
+		return "HYPER ICE, INC.";
+	case 2235:
+		return "Tokai-rika co.,ltd.";
+	case 2236:
+		return "Prevayl Limited";
+	case 2237:
+		return "bf1systems limited";
+	case 2238:
+		return "ubisys technologies GmbH";
+	case 2239:
+		return "SIRC Co., Ltd.";
+	case 2240:
+		return "Accent Advanced Systems SLU";
+	case 2241:
+		return "Rayden.Earth LTD";
 	case 65535:
 		return "internal use";
 	default:
