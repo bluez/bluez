@@ -2427,7 +2427,7 @@ static void le_setup_iso_path(struct btdev *dev, uint16_t handle,
 
 	memset(&rsp, 0, sizeof(rsp));
 
-	if (!dev->conn || handle != ISO_HANDLE) {
+	if (handle != ISO_HANDLE) {
 		rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
 		goto done;
 	}
