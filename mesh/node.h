@@ -92,8 +92,6 @@ bool node_import(const char *app_root, const char *sender, const uint8_t *uuid,
 			uint16_t net_idx, bool kr, bool ivu,
 			uint32_t iv_index, uint16_t unicast,
 			node_ready_func_t cb, void *user_data);
-void node_id_set(struct mesh_node *node, uint16_t node_id);
-uint16_t node_id_get(struct mesh_node *node);
 bool node_dbus_init(struct l_dbus *bus);
 void node_cleanup_all(void);
 struct mesh_config *node_config_get(struct mesh_node *node);
