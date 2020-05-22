@@ -1634,20 +1634,23 @@ fail:
 }
 
 /* Establish relationship between application and mesh node */
-int node_attach(const char *app_root, const char *sender, uint64_t token,
+void node_attach(const char *app_root, const char *sender, uint64_t token,
 					node_ready_func_t cb, void *user_data)
 {
 	struct managed_obj_request *req;
 	struct mesh_node *node;
 
 	node = l_queue_find(nodes, match_token, (void *) &token);
-	if (!node)
-		return MESH_ERROR_NOT_FOUND;
+	if (!node) {
+		cb(user_data, MESH_ERROR_NOT_FOUND, NULL);
+		return;
+	}
 
 	/* Check if the node is already in use */
 	if (node->owner) {
 		l_warn("The node is already in use");
-		return MESH_ERROR_ALREADY_EXISTS;
+		cb(user_data, MESH_ERROR_ALREADY_EXISTS, NULL);
+		return;
 	}
 
 	req = l_new(struct managed_obj_request, 1);
@@ -1668,10 +1671,7 @@ int node_attach(const char *app_root, const char *sender, uint64_t token,
 					"GetManagedObjects", NULL,
 					get_managed_objects_cb,
 					req, l_free);
-	return MESH_ERROR_NONE;
-
 }
-
 
 /* Create a temporary pre-provisioned node */
 void node_join(const char *app_root, const char *sender, const uint8_t *uuid,

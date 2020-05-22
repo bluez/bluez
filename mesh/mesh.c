@@ -617,24 +617,17 @@ static void attach_ready_cb(void *user_data, int status, struct mesh_node *node)
 	struct l_dbus_message *reply;
 	struct l_dbus_message *pending_msg;
 
-	pending_msg = l_queue_find(pending_queue, simple_match, user_data);
+	pending_msg = l_queue_remove_if(pending_queue, simple_match, user_data);
 	if (!pending_msg)
 		return;
 
-	if (status != MESH_ERROR_NONE) {
-		const char *desc = (status == MESH_ERROR_NOT_FOUND) ?
-				"Node match not found" : "Attach failed";
-		reply = dbus_error(pending_msg, status, desc);
-		goto done;
-	}
+	if (status == MESH_ERROR_NONE) {
+		reply = l_dbus_message_new_method_return(pending_msg);
+		node_build_attach_reply(node, reply);
+	} else
+		reply = dbus_error(pending_msg, status, "Attach failed");
 
-	reply = l_dbus_message_new_method_return(pending_msg);
-
-	node_build_attach_reply(node, reply);
-
-done:
 	l_dbus_send(dbus_get_bus(), reply);
-	l_queue_remove(pending_queue, pending_msg);
 }
 
 static struct l_dbus_message *attach_call(struct l_dbus *dbus,
@@ -644,7 +637,6 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 	uint64_t token;
 	const char *app_path, *sender;
 	struct l_dbus_message *pending_msg;
-	int status;
 
 	l_debug("Attach");
 
@@ -656,14 +648,9 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 	pending_msg = l_dbus_message_ref(msg);
 	l_queue_push_tail(pending_queue, pending_msg);
 
-	status = node_attach(app_path, sender, token, attach_ready_cb,
-								pending_msg);
-	if (status == MESH_ERROR_NONE)
-		return NULL;
+	node_attach(app_path, sender, token, attach_ready_cb, pending_msg);
 
-	l_queue_remove(pending_queue, pending_msg);
-
-	return dbus_error(msg, status, NULL);
+	return NULL;
 }
 
 static struct l_dbus_message *leave_call(struct l_dbus *dbus,
