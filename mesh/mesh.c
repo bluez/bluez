@@ -309,6 +309,7 @@ static void pending_request_exit(void *data)
 
 	reply = dbus_error(msg, MESH_ERROR_FAILED, "Failed. Exiting");
 	l_dbus_send(dbus_get_bus(), reply);
+	l_dbus_message_unref(msg);
 }
 
 static void free_pending_join_call(bool failed)
@@ -628,6 +629,7 @@ static void attach_ready_cb(void *user_data, int status, struct mesh_node *node)
 		reply = dbus_error(pending_msg, status, "Attach failed");
 
 	l_dbus_send(dbus_get_bus(), reply);
+	l_dbus_message_unref(pending_msg);
 }
 
 static struct l_dbus_message *attach_call(struct l_dbus *dbus,
@@ -700,6 +702,7 @@ static void create_node_ready_cb(void *user_data, int status,
 	if (status != MESH_ERROR_NONE) {
 		reply = dbus_error(pending_msg, status, NULL);
 		l_dbus_send(dbus_get_bus(), reply);
+		l_dbus_message_unref(pending_msg);
 		return;
 	}
 
@@ -719,6 +722,7 @@ static void create_node_ready_cb(void *user_data, int status,
 	l_dbus_message_set_arguments(msg, "t", l_get_be64(token));
 	dbus_send_with_timeout(dbus, msg, create_join_complete_reply_cb,
 						node, DEFAULT_DBUS_TIMEOUT);
+	l_dbus_message_unref(pending_msg);
 }
 
 static struct l_dbus_message *create_network_call(struct l_dbus *dbus,
