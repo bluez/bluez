@@ -1596,6 +1596,8 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		/* Generate device and primary network keys */
 		l_getrandom(dev_key, sizeof(dev_key));
 		l_getrandom(net_key.old_key, sizeof(net_key.old_key));
+		memcpy(net_key.new_key, net_key.old_key,
+						sizeof(net_key.old_key));
 		net_key.net_idx = PRIMARY_NET_IDX;
 		net_key.phase = KEY_REFRESH_PHASE_NONE;
 
