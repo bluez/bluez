@@ -560,4 +560,9 @@ void pb_adv_unreg(void *user_data)
 	send_close_ind(session, 0);
 	l_queue_remove(pb_sessions, session);
 	l_free(session);
+
+	if (!l_queue_length(pb_sessions)) {
+		l_queue_destroy(pb_sessions, l_free);
+		pb_sessions = NULL;
+	}
 }
