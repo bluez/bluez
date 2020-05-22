@@ -297,6 +297,8 @@ bool mesh_init(const char *config_dir, const char *mesh_conf_fname,
 	mesh_io_get_caps(mesh.io, &caps);
 	mesh.max_filters = caps.max_num_filters;
 
+	pending_queue = l_queue_new();
+
 	return true;
 }
 
@@ -652,9 +654,6 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 	sender = l_dbus_message_get_sender(msg);
 
 	pending_msg = l_dbus_message_ref(msg);
-	if (!pending_queue)
-		pending_queue = l_queue_new();
-
 	l_queue_push_tail(pending_queue, pending_msg);
 
 	status = node_attach(app_path, sender, token, attach_ready_cb,
@@ -760,10 +759,8 @@ static struct l_dbus_message *create_network_call(struct l_dbus *dbus,
 							"Bad device UUID");
 
 	sender = l_dbus_message_get_sender(msg);
-	pending_msg = l_dbus_message_ref(msg);
-	if (!pending_queue)
-		pending_queue = l_queue_new();
 
+	pending_msg = l_dbus_message_ref(msg);
 	l_queue_push_tail(pending_queue, pending_msg);
 
 	node_create(app_path, sender, uuid, create_node_ready_cb,
@@ -851,11 +848,8 @@ static struct l_dbus_message *import_call(struct l_dbus *dbus,
 							"Bad address");
 
 	sender = l_dbus_message_get_sender(msg);
+
 	pending_msg = l_dbus_message_ref(msg);
-
-	if (!pending_queue)
-		pending_queue = l_queue_new();
-
 	l_queue_push_tail(pending_queue, pending_msg);
 
 	if (!node_import(app_path, sender, uuid, dev_key, net_key, net_idx,
