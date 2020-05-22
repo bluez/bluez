@@ -341,6 +341,7 @@ void mesh_cleanup(void)
 			reply = dbus_error(join_pending->msg, MESH_ERROR_FAILED,
 							"Failed. Exiting");
 			l_dbus_send(dbus_get_bus(), reply);
+			l_dbus_message_unref(join_pending->msg);
 		}
 
 		acceptor_cancel(&mesh);
@@ -390,11 +391,6 @@ static void prov_disc_cb(struct l_dbus *bus, void *user_data)
 {
 	if (!join_pending)
 		return;
-
-	if (join_pending->msg) {
-		l_dbus_message_unref(join_pending->msg);
-		join_pending->msg = NULL;
-	}
 
 	acceptor_cancel(&mesh);
 	join_pending->disc_watch = 0;
@@ -501,39 +497,40 @@ static void node_init_cb(struct mesh_node *node, struct mesh_agent *agent)
 {
 	struct l_dbus_message *reply;
 	uint8_t num_ele;
+	bool is_error = false;
+	struct l_dbus *dbus = dbus_get_bus();
 
 	if (!node) {
 		reply = dbus_error(join_pending->msg, MESH_ERROR_FAILED,
 				"Failed to create node from application");
-		goto fail;
+		is_error = true;
+		goto done;
 	}
 
 	join_pending->node = node;
 	num_ele = node_get_num_elements(node);
 
 	if (!acceptor_start(num_ele, join_pending->uuid, mesh.algorithms,
-				mesh.prov_timeout, agent, prov_complete_cb,
-				&mesh))
-	{
+						mesh.prov_timeout, agent,
+						prov_complete_cb, &mesh)) {
 		reply = dbus_error(join_pending->msg, MESH_ERROR_FAILED,
 				"Failed to start provisioning acceptor");
-		goto fail;
-	}
+		is_error = true;
+	} else
+		reply = l_dbus_message_new_method_return(join_pending->msg);
 
-	reply = l_dbus_message_new_method_return(join_pending->msg);
-	l_dbus_send(dbus_get_bus(), reply);
+done:
+	l_dbus_send(dbus, reply);
+	l_dbus_message_unref(join_pending->msg);
 	join_pending->msg = NULL;
 
-	/* Setup disconnect watch */
-	join_pending->disc_watch = l_dbus_add_disconnect_watch(dbus_get_bus(),
+	if (is_error)
+		free_pending_join_call(true);
+	else
+		/* Setup disconnect watch */
+		join_pending->disc_watch = l_dbus_add_disconnect_watch(dbus,
 						join_pending->sender,
 						prov_disc_cb, NULL, NULL);
-
-	return;
-
-fail:
-	l_dbus_send(dbus_get_bus(), reply);
-	free_pending_join_call(true);
 }
 
 static struct l_dbus_message *join_network_call(struct l_dbus *dbus,
@@ -591,25 +588,23 @@ static struct l_dbus_message *cancel_join_call(struct l_dbus *dbus,
 
 	l_debug("Cancel Join");
 
-	if (!join_pending) {
-		reply = dbus_error(msg, MESH_ERROR_DOES_NOT_EXIST,
+	if (!join_pending)
+		return dbus_error(msg, MESH_ERROR_DOES_NOT_EXIST,
 							"No join in progress");
-		goto done;
-	}
-
 	acceptor_cancel(&mesh);
 
 	/* Return error to the original Join call */
 	if (join_pending->msg) {
 		reply = dbus_error(join_pending->msg, MESH_ERROR_FAILED, NULL);
 		l_dbus_send(dbus_get_bus(), reply);
+		l_dbus_message_unref(join_pending->msg);
 	}
 
 	reply = l_dbus_message_new_method_return(msg);
 	l_dbus_message_set_arguments(reply, "");
 
 	free_pending_join_call(true);
-done:
+
 	return reply;
 }
 
