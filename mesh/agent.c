@@ -188,9 +188,6 @@ static void agent_free(void *agent_data)
 	mesh_agent_key_cb_t key_cb;
 	mesh_agent_number_cb_t number_cb;
 
-	if (!l_queue_find(agents, simple_match, agent))
-		return;
-
 	err = MESH_ERROR_DOES_NOT_EXIST;
 
 	if (agent->req && agent->req->cb) {
@@ -228,15 +225,16 @@ static void agent_free(void *agent_data)
 
 	l_free(agent->path);
 	l_free(agent->owner);
+	l_free(agent);
 }
 
 void mesh_agent_remove(struct mesh_agent *agent)
 {
-	if (!agent || !l_queue_find(agents, simple_match, agent))
+	if (!agent)
 		return;
 
-	agent_free(agent);
-	l_queue_remove(agents, agent);
+	if (l_queue_remove(agents, agent))
+		agent_free(agent);
 }
 
 void mesh_agent_cleanup(void)
