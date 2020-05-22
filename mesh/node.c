@@ -1693,7 +1693,7 @@ void node_join(const char *app_root, const char *sender, const uint8_t *uuid,
 					req, l_free);
 }
 
-bool node_import(const char *app_root, const char *sender, const uint8_t *uuid,
+void node_import(const char *app_root, const char *sender, const uint8_t *uuid,
 			const uint8_t dev_key[16], const uint8_t net_key[16],
 			uint16_t net_idx, bool kr, bool ivu,
 			uint32_t iv_index, uint16_t unicast,
@@ -1725,7 +1725,6 @@ bool node_import(const char *app_root, const char *sender, const uint8_t *uuid,
 						"GetManagedObjects", NULL,
 						get_managed_objects_cb,
 						req, l_free);
-	return true;
 }
 
 void node_create(const char *app_root, const char *sender, const uint8_t *uuid,

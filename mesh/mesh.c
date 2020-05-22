@@ -706,22 +706,19 @@ static void create_node_ready_cb(void *user_data, int status,
 	const char *path;
 	const uint8_t *token;
 
-	pending_msg = l_queue_find(pending_queue, simple_match, user_data);
+	pending_msg = l_queue_remove_if(pending_queue, simple_match, user_data);
 	if (!pending_msg)
 		return;
 
 	if (status != MESH_ERROR_NONE) {
 		reply = dbus_error(pending_msg, status, NULL);
-
 		l_dbus_send(dbus_get_bus(), reply);
-		l_queue_remove(pending_queue, pending_msg);
 		return;
 	}
 
 	reply = l_dbus_message_new_method_return(pending_msg);
 
 	l_dbus_send(dbus, reply);
-	l_queue_remove(pending_queue, pending_msg);
 
 	owner = l_dbus_message_get_sender(pending_msg);
 	path = node_get_app_path(node);
@@ -825,19 +822,13 @@ static struct l_dbus_message *import_call(struct l_dbus *dbus,
 							"Bad net index");
 
 	while (l_dbus_message_iter_next_entry(&iter_flags, &key, &var)) {
-		if (!strcmp(key, "IVUpdate")) {
-			if (!l_dbus_message_iter_get_variant(&var, "b",
-								&ivu))
-				goto fail;
+		if (!strcmp(key, "IVUpdate") &&
+			l_dbus_message_iter_get_variant(&var, "b", &ivu))
 			continue;
-		}
 
-		if (!strcmp(key, "KeyRefresh")) {
-			if (!l_dbus_message_iter_get_variant(&var, "b",
-								&kr))
-				goto fail;
+		if (!strcmp(key, "KeyRefresh") &&
+			l_dbus_message_iter_get_variant(&var, "b", &kr))
 			continue;
-		}
 
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Bad flags");
@@ -852,20 +843,10 @@ static struct l_dbus_message *import_call(struct l_dbus *dbus,
 	pending_msg = l_dbus_message_ref(msg);
 	l_queue_push_tail(pending_queue, pending_msg);
 
-	if (!node_import(app_path, sender, uuid, dev_key, net_key, net_idx,
-					kr, ivu, iv_index, unicast,
-					create_node_ready_cb, pending_msg))
-		goto fail;
+	node_import(app_path, sender, uuid, dev_key, net_key, net_idx, kr, ivu,
+			iv_index, unicast, create_node_ready_cb, pending_msg);
 
 	return NULL;
-
-fail:
-	if (pending_msg) {
-		l_dbus_message_unref(msg);
-		l_queue_remove(pending_queue, pending_msg);
-	}
-
-	return dbus_error(msg, MESH_ERROR_INVALID_ARGS, "Node import failed");
 }
 
 static void setup_network_interface(struct l_dbus_interface *iface)
