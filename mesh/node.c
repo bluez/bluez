@@ -992,12 +992,6 @@ static void attach_io(void *a, void *b)
 		mesh_net_attach(node->net, io);
 }
 
-/* Register callback for the node's io */
-void node_attach_io(struct mesh_node *node, struct mesh_io *io)
-{
-	attach_io(node, io);
-}
-
 /* Register callbacks for all nodes io */
 void node_attach_io_all(struct mesh_io *io)
 {
@@ -1467,7 +1461,6 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 	const char *path;
 	struct mesh_node *node = req->node;
 	struct node_import *import;
-	void *agent = NULL;
 	bool have_app = false;
 	unsigned int num_ele;
 	struct keyring_net_key net_key;
@@ -1515,12 +1508,10 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 				const char *sender;
 
 				sender = l_dbus_message_get_sender(msg);
-				agent = mesh_agent_create(path, sender,
+				node->agent = mesh_agent_create(path, sender,
 								&properties);
-				if (!agent)
+				if (!node->agent)
 					goto fail;
-
-				node->agent = agent;
 
 			} else if (!strcmp(MESH_PROVISIONER_INTERFACE,
 								interface)) {
@@ -1629,9 +1620,6 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 	}
 
 fail:
-	if (agent)
-		mesh_agent_remove(agent);
-
 	/* Handle failed requests */
 	if (node)
 		node_remove(node);
@@ -2347,4 +2335,27 @@ struct mesh_agent *node_get_agent(struct mesh_node *node)
 bool node_load_from_storage(const char *storage_dir)
 {
 	return mesh_config_load_nodes(storage_dir, init_from_storage, NULL);
+}
+
+/*
+ * This is called for a new node that:
+ *         - has been created as a result of successful completion of Join()
+ *           or Create() or Import() methods
+ *     and
+ *         - has been confirmed via successful token delivery to the application
+ *
+ * After a node has been created, the information gathered during initial
+ * GetManagedObjects() call is cleared. The subsequent call to Attach() would
+ * verify node's integrity and re-initialize node's D-Bus resources.
+ */
+void node_finalize_new_node(struct mesh_node *node, struct mesh_io *io)
+{
+	if (!node)
+		return;
+
+	free_node_dbus_resources(node);
+	mesh_agent_remove(node->agent);
+
+	/* Register callback for the node's io */
+	attach_io(node, io);
 }

@@ -449,7 +449,7 @@ static void prov_join_complete_reply_cb(struct l_dbus_message *message,
 		failed = true;
 
 	if (!failed)
-		node_attach_io(join_pending->node, mesh.io);
+		node_finalize_new_node(join_pending->node, mesh.io);
 
 	free_pending_join_call(failed);
 }
@@ -693,7 +693,7 @@ static void create_join_complete_reply_cb(struct l_dbus_message *message,
 		return;
 	}
 
-	node_attach_io(node, mesh.io);
+	node_finalize_new_node(node, mesh.io);
 }
 
 static void create_node_ready_cb(void *user_data, int status,
