@@ -228,6 +228,7 @@ static void add_start(void *user_data, int err)
 				"Failed to start provisioning initiator");
 
 	l_dbus_send(dbus_get_bus(), reply);
+	l_dbus_message_unref(add_pending->msg);
 
 	add_pending->msg = NULL;
 }
@@ -264,7 +265,6 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 	/* Invoke Prov Initiator */
 
 	add_pending = l_new(struct add_data, 1);
-	add_pending->msg = l_dbus_message_ref(msg);
 	memcpy(add_pending->uuid, uuid, 16);
 	add_pending->node = node;
 	add_pending->agent = node_get_agent(node);
@@ -277,6 +277,7 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 		goto fail;
 	}
 
+	add_pending->msg = l_dbus_message_ref(msg);
 	initiator_start(PB_ADV, uuid, 99, 60, add_pending->agent, add_start,
 				add_data_get, add_cmplt, node, add_pending);
 
