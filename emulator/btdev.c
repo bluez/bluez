@@ -1417,6 +1417,9 @@ static void le_cis_estabilished(struct btdev *dev, uint8_t status)
 
 	evt.status = status;
 
+	if (dev->conn)
+		dev = dev->conn;
+
 	if (!evt.status) {
 		evt.conn_handle = cpu_to_le16(ISO_HANDLE);
 		/* TODO: Figure out if these values makes sense */
@@ -1435,8 +1438,8 @@ static void le_cis_estabilished(struct btdev *dev, uint8_t status)
 		evt.s_bn = 0x01;
 		evt.m_ft = 0x01;
 		evt.s_ft = 0x01;
-		evt.m_mtu = dev->iso_mtu;
-		evt.s_mtu = dev->iso_mtu;
+		evt.m_mtu = dev->le_cig.cis.m_sdu;
+		evt.s_mtu = dev->le_cig.cis.s_sdu;
 		evt.interval = dev->le_cig.params.m_latency;
 	}
 
