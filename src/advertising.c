@@ -697,9 +697,12 @@ static bool parse_discoverable(DBusMessageIter *iter,
 
 	dbus_message_iter_get_basic(iter, &discoverable);
 
-	if (discoverable)
-		flags = 0x02;
-	else
+	if (discoverable) {
+		/* Set BR/EDR Not Supported if adapter is no discoverable */
+		if (!btd_adapter_get_discoverable(client->manager->adapter))
+			flags = 0x04;
+		flags |= 0x02;
+	} else
 		flags = 0x00;
 
 	if (!set_flags(client , flags))
