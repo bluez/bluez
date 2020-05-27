@@ -1277,10 +1277,10 @@ bool bt_shell_attach(int fd)
 
 	io = io_new(fd);
 
-	if (!data.mode)
+	if (!data.mode) {
 		io_set_read_handler(io, input_read, NULL, NULL);
-
-	io_set_disconnect_handler(io, io_hup, NULL, NULL);
+		io_set_disconnect_handler(io, io_hup, NULL, NULL);
+	}
 
 	data.input = io;
 
