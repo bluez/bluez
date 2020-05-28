@@ -1468,6 +1468,118 @@ static void free_discovery_filter(struct discovery_filter *discovery_filter)
 	g_free(discovery_filter);
 }
 
+static void invalidate_rssi_and_tx_power(gpointer a)
+{
+	struct btd_device *dev = a;
+
+	device_set_rssi(dev, 0);
+	device_set_tx_power(dev, 127);
+}
+
+static gboolean remove_temp_devices(gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	GSList *l, *next;
+
+	DBG("%s", adapter->path);
+
+	adapter->temp_devices_timeout = 0;
+
+	for (l = adapter->devices; l != NULL; l = next) {
+		struct btd_device *dev = l->data;
+
+		next = g_slist_next(l);
+
+		if (device_is_temporary(dev) && !btd_device_is_connected(dev))
+			btd_adapter_remove_device(adapter, dev);
+	}
+
+	return FALSE;
+}
+
+static void discovery_cleanup(struct btd_adapter *adapter)
+{
+	GSList *l, *next;
+
+	adapter->discovery_type = 0x00;
+
+	if (adapter->discovery_idle_timeout > 0) {
+		g_source_remove(adapter->discovery_idle_timeout);
+		adapter->discovery_idle_timeout = 0;
+	}
+
+	if (adapter->temp_devices_timeout > 0) {
+		g_source_remove(adapter->temp_devices_timeout);
+		adapter->temp_devices_timeout = 0;
+	}
+
+	g_slist_free_full(adapter->discovery_found,
+						invalidate_rssi_and_tx_power);
+	adapter->discovery_found = NULL;
+
+	if (!adapter->devices)
+		return;
+
+	for (l = adapter->devices; l != NULL; l = next) {
+		struct btd_device *dev = l->data;
+
+		next = g_slist_next(l);
+
+		if (device_is_temporary(dev) && !device_is_connectable(dev))
+			btd_adapter_remove_device(adapter, dev);
+	}
+
+	adapter->temp_devices_timeout = g_timeout_add_seconds(TEMP_DEV_TIMEOUT,
+						remove_temp_devices, adapter);
+}
+
+static void discovery_free(void *user_data)
+{
+	struct watch_client *client = user_data;
+
+	if (client->watch)
+		g_dbus_remove_watch(dbus_conn, client->watch);
+
+	if (client->discovery_filter) {
+		free_discovery_filter(client->discovery_filter);
+		client->discovery_filter = NULL;
+	}
+
+	if (client->msg)
+		dbus_message_unref(client->msg);
+
+	g_free(client->owner);
+	g_free(client);
+}
+
+static void discovery_remove(struct watch_client *client, bool exit)
+{
+	struct btd_adapter *adapter = client->adapter;
+
+	DBG("owner %s", client->owner);
+
+	adapter->set_filter_list = g_slist_remove(adapter->set_filter_list,
+								client);
+
+	adapter->discovery_list = g_slist_remove(adapter->discovery_list,
+								client);
+
+	if (!exit && client->discovery_filter)
+		adapter->set_filter_list = g_slist_prepend(
+					adapter->set_filter_list, client);
+	else
+		discovery_free(client);
+
+	/*
+	 * If there are other client discoveries in progress, then leave
+	 * it active. If not, then make sure to stop the restart timeout.
+	 */
+	if (adapter->discovery_list)
+		return;
+
+	discovery_cleanup(adapter);
+}
+
 static void trigger_start_discovery(struct btd_adapter *adapter, guint delay);
 
 static void start_discovery_complete(uint8_t status, uint16_t length,
@@ -1538,6 +1650,7 @@ fail:
 		reply = btd_error_busy(client->msg);
 		g_dbus_send_message(dbus_conn, reply);
 		g_dbus_remove_watch(dbus_conn, client->watch);
+		discovery_remove(client, false);
 		return;
 	}
 
@@ -1784,90 +1897,6 @@ static void discovering_callback(uint16_t index, uint16_t length,
 	}
 }
 
-static void invalidate_rssi_and_tx_power(gpointer a)
-{
-	struct btd_device *dev = a;
-
-	device_set_rssi(dev, 0);
-	device_set_tx_power(dev, 127);
-}
-
-static gboolean remove_temp_devices(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-	GSList *l, *next;
-
-	DBG("%s", adapter->path);
-
-	adapter->temp_devices_timeout = 0;
-
-	for (l = adapter->devices; l != NULL; l = next) {
-		struct btd_device *dev = l->data;
-
-		next = g_slist_next(l);
-
-		if (device_is_temporary(dev) && !btd_device_is_connected(dev))
-			btd_adapter_remove_device(adapter, dev);
-	}
-
-	return FALSE;
-}
-
-static void discovery_cleanup(struct btd_adapter *adapter)
-{
-	GSList *l, *next;
-
-	adapter->discovery_type = 0x00;
-
-	if (adapter->discovery_idle_timeout > 0) {
-		g_source_remove(adapter->discovery_idle_timeout);
-		adapter->discovery_idle_timeout = 0;
-	}
-
-	if (adapter->temp_devices_timeout > 0) {
-		g_source_remove(adapter->temp_devices_timeout);
-		adapter->temp_devices_timeout = 0;
-	}
-
-	g_slist_free_full(adapter->discovery_found,
-						invalidate_rssi_and_tx_power);
-	adapter->discovery_found = NULL;
-
-	if (!adapter->devices)
-		return;
-
-	for (l = adapter->devices; l != NULL; l = next) {
-		struct btd_device *dev = l->data;
-
-		next = g_slist_next(l);
-
-		if (device_is_temporary(dev) && !device_is_connectable(dev))
-			btd_adapter_remove_device(adapter, dev);
-	}
-
-	adapter->temp_devices_timeout = g_timeout_add_seconds(TEMP_DEV_TIMEOUT,
-						remove_temp_devices, adapter);
-}
-
-static void discovery_free(void *user_data)
-{
-	struct watch_client *client = user_data;
-
-	if (client->watch)
-		g_dbus_remove_watch(dbus_conn, client->watch);
-
-	if (client->discovery_filter) {
-		free_discovery_filter(client->discovery_filter);
-		client->discovery_filter = NULL;
-	}
-
-	if (client->msg)
-		dbus_message_unref(client->msg);
-
-	g_free(client->owner);
-	g_free(client);
-}
-
 static bool set_discovery_discoverable(struct btd_adapter *adapter, bool enable)
 {
 	if (adapter->discovery_discoverable == enable)
@@ -1880,34 +1909,6 @@ static bool set_discovery_discoverable(struct btd_adapter *adapter, bool enable)
 	adapter->discovery_discoverable = enable;
 
 	return set_discoverable(adapter, enable, 0);
-}
-
-static void discovery_remove(struct watch_client *client, bool exit)
-{
-	struct btd_adapter *adapter = client->adapter;
-
-	DBG("owner %s", client->owner);
-
-	adapter->set_filter_list = g_slist_remove(adapter->set_filter_list,
-								client);
-
-	adapter->discovery_list = g_slist_remove(adapter->discovery_list,
-								client);
-
-	if (!exit && client->discovery_filter)
-		adapter->set_filter_list = g_slist_prepend(
-					adapter->set_filter_list, client);
-	else
-		discovery_free(client);
-
-	/*
-	 * If there are other client discoveries in progress, then leave
-	 * it active. If not, then make sure to stop the restart timeout.
-	 */
-	if (adapter->discovery_list)
-		return;
-
-	discovery_cleanup(adapter);
 }
 
 static void stop_discovery_complete(uint8_t status, uint16_t length,
