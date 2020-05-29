@@ -628,6 +628,24 @@ struct mgmt_rp_set_exp_feature {
 	uint32_t flags;
 } __packed;
 
+#define MGMT_OP_READ_DEFAULT_SYSTEM_PARAMETERS	0x004b
+
+struct mgmt_system_parameter_tlv {
+	uint16_t type;
+	uint8_t  length;
+	uint8_t  value[];
+} __packed;
+
+struct mgmt_rp_read_default_system_parameters {
+	uint8_t  parameters[0]; /* mgmt_system_parameter_tlv */
+} __packed;
+
+#define MGMT_OP_SET_DEFAULT_SYSTEM_PARAMETERS	0x004c
+
+struct mgmt_cp_set_default_system_parameters {
+	uint8_t  parameters[0]; /* mgmt_system_parameter_tlv */
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -933,6 +951,8 @@ static const char *mgmt_op[] = {
 	"Read Security Information",			/* 0x0048 */
 	"Read Experimental Features Information",
 	"Set Experimental Feature",
+	"Read Default System Configuration",
+	"Set Default System Configuration",
 };
 
 static const char *mgmt_ev[] = {
