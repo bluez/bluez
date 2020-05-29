@@ -54,7 +54,12 @@
 #define AVC_DOWN			0x02
 #define AVC_LEFT			0x03
 #define AVC_RIGHT			0x04
+#define AVC_RIGHT_UP			0x05
+#define AVC_RIGHT_DOWN			0x06
+#define AVC_LEFT_UP			0x07
+#define AVC_LEFT_DOWN			0x08
 #define AVC_ROOT_MENU			0x09
+#define AVC_SETUP_MENU			0x0a
 #define AVC_CONTENTS_MENU		0x0b
 #define AVC_FAVORITE_MENU		0x0c
 #define AVC_EXIT			0x0d
@@ -72,9 +77,11 @@
 #define AVC_9				0x29
 #define AVC_DOT				0x2a
 #define AVC_ENTER			0x2b
+#define AVC_CLEAR			0x2c
 #define AVC_CHANNEL_UP			0x30
 #define AVC_CHANNEL_DOWN		0x31
 #define AVC_CHANNEL_PREVIOUS		0x32
+#define AVC_SOUND_SELECT		0x33
 #define AVC_INPUT_SELECT		0x34
 #define AVC_INFO			0x35
 #define AVC_HELP			0x36
@@ -95,6 +102,8 @@
 #define AVC_FORWARD			0x4b
 #define AVC_BACKWARD			0x4c
 #define AVC_LIST			0x4d
+#define AVC_ANGLE			0x50
+#define AVC_SUBPICTURE			0x51
 #define AVC_F1				0x71
 #define AVC_F2				0x72
 #define AVC_F3				0x73
@@ -108,6 +117,7 @@
 #define AVC_GREEN			0x7b
 #define AVC_BLUE			0x7c
 #define AVC_YELLOW			0x7c
+#define AVC_VENDOR_UNIQUE		0x7e
 
 struct avctp;
 
@@ -183,3 +193,4 @@ int avctp_send_vendordep_req(struct avctp *session, uint8_t code,
 int avctp_send_browsing_req(struct avctp *session,
 				uint8_t *operands, size_t operand_count,
 				avctp_browsing_rsp_cb func, void *user_data);
+bool avctp_supports_avc(uint8_t avc);

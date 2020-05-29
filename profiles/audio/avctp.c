@@ -2222,3 +2222,14 @@ bool avctp_is_initiator(struct avctp *session)
 {
 	return session->initiator;
 }
+
+bool avctp_supports_avc(uint8_t avc)
+{
+	int i;
+
+	for (i = 0; key_map[i].name != NULL; i++) {
+		if (key_map[i].avc == avc)
+			return true;
+	}
+	return false;
+}

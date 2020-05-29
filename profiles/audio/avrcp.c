@@ -293,15 +293,75 @@ struct control_pdu_handler {
 							uint8_t transaction);
 };
 
+static struct {
+	uint8_t feature_bit;
+	uint8_t avc;
+} passthrough_map[] = {
+	{ 0, AVC_SELECT },
+	{ 1, AVC_UP },
+	{ 2, AVC_DOWN },
+	{ 3, AVC_LEFT },
+	{ 4, AVC_RIGHT },
+	{ 5, AVC_RIGHT_UP },
+	{ 6, AVC_RIGHT_DOWN },
+	{ 7, AVC_LEFT_UP },
+	{ 8, AVC_LEFT_DOWN },
+	{ 9, AVC_ROOT_MENU },
+	{ 10, AVC_SETUP_MENU },
+	{ 11, AVC_CONTENTS_MENU },
+	{ 12, AVC_FAVORITE_MENU },
+	{ 13, AVC_EXIT },
+	{ 14, AVC_0 },
+	{ 15, AVC_1 },
+	{ 16, AVC_2 },
+	{ 17, AVC_3 },
+	{ 18, AVC_4 },
+	{ 19, AVC_5 },
+	{ 20, AVC_6 },
+	{ 21, AVC_7 },
+	{ 22, AVC_8 },
+	{ 23, AVC_9 },
+	{ 24, AVC_DOT },
+	{ 25, AVC_ENTER },
+	{ 26, AVC_CLEAR },
+	{ 27, AVC_CHANNEL_UP },
+	{ 28, AVC_CHANNEL_DOWN },
+	{ 29, AVC_CHANNEL_PREVIOUS },
+	{ 30, AVC_SOUND_SELECT },
+	{ 31, AVC_INPUT_SELECT },
+	{ 32, AVC_INFO },
+	{ 33, AVC_HELP },
+	{ 34, AVC_PAGE_UP },
+	{ 35, AVC_PAGE_DOWN },
+	{ 36, AVC_POWER },
+	{ 37, AVC_VOLUME_UP },
+	{ 38, AVC_VOLUME_DOWN },
+	{ 39, AVC_MUTE },
+	{ 40, AVC_PLAY },
+	{ 41, AVC_STOP },
+	{ 42, AVC_PAUSE },
+	{ 43, AVC_RECORD },
+	{ 44, AVC_REWIND },
+	{ 45, AVC_FAST_FORWARD },
+	{ 46, AVC_EJECT },
+	{ 47, AVC_FORWARD },
+	{ 48, AVC_BACKWARD },
+	{ 49, AVC_ANGLE },
+	{ 50, AVC_SUBPICTURE },
+	{ 51, AVC_F1 },
+	{ 52, AVC_F2 },
+	{ 53, AVC_F3 },
+	{ 54, AVC_F4 },
+	{ 55, AVC_F5 },
+	{ 56, AVC_VENDOR_UNIQUE },
+	{ 0xff, 0xff }
+};
+
 static GSList *servers = NULL;
 static unsigned int avctp_id = 0;
 
-/* Default feature bit mask for media player as per avctp.c:key_map */
-static const uint8_t features[16] = {
-				0xF8, 0xBF, 0xFF, 0xBF, 0x1F,
-				0xFB, 0x3F, 0x60, 0x00, 0x00,
-				0x00, 0x00, 0x00, 0x00, 0x00,
-				0x00 };
+/* Default feature bit mask for media player */
+static uint8_t default_features[16];
 
 /* Company IDs supported by this device */
 static uint32_t company_ids[] = {
@@ -488,6 +548,22 @@ static sdp_record_t *avrcp_tg_record(void)
 	sdp_list_free(svclass_id, NULL);
 
 	return record;
+}
+
+static void populate_default_features(void)
+{
+	int i;
+
+	for (i = 0; passthrough_map[i].feature_bit != 0xff; i++) {
+		if (avctp_supports_avc(passthrough_map[i].avc)) {
+			uint8_t bit = passthrough_map[i].feature_bit;
+
+			default_features[bit >> 3] |= (1 << (bit & 7));
+		}
+	}
+
+	/* supports at least AVRCP 1.4 */
+	default_features[7] |= (1 << 2);
 }
 
 static unsigned int attr_get_max_val(uint8_t attr)
@@ -1913,7 +1989,8 @@ static void avrcp_handle_media_player_list(struct avrcp *session,
 		item->subtype = htonl(0x01); /* Audio Book */
 		item->status = player_get_status(player);
 		/* Assign Default Feature Bit Mask */
-		memcpy(&item->features, &features, sizeof(features));
+		memcpy(&item->features, &default_features,
+					sizeof(default_features));
 
 		item->charset = htons(AVRCP_CHARSET_UTF8);
 
@@ -4582,6 +4659,8 @@ static int avrcp_init(void)
 {
 	btd_profile_register(&avrcp_controller_profile);
 	btd_profile_register(&avrcp_target_profile);
+
+	populate_default_features();
 
 	return 0;
 }
