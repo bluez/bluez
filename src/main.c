@@ -54,6 +54,7 @@
 #include "shared/att-types.h"
 #include "shared/mainloop.h"
 #include "lib/uuid.h"
+#include "shared/util.h"
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
@@ -97,6 +98,37 @@ static const char *supported_options[] = {
 	NULL
 };
 
+static const char *controller_options[] = {
+	"BRPageScanType",
+	"BRPageScanInterval",
+	"BRPageScanWindow",
+	"BRInquiryScanType",
+	"BRInquiryScanInterval",
+	"BRInquiryScanWindow",
+	"BRLinkSupervisionTimeout",
+	"BRPageTimeout",
+	"BRMinSniffInterval",
+	"BRMaxSniffInterval",
+	"LEMinAdvertisementInterval",
+	"LEMaxAdvertisementInterval",
+	"LEMultiAdvertisementRotationInterval",
+	"LEScanIntervalAutoConnect",
+	"LEScanWindowAutoConnect",
+	"LEScanIntervalSuspend",
+	"LEScanWindowSuspend",
+	"LEScanIntervalDiscovery",
+	"LEScanWindowDiscovery",
+	"LEScanIntervalAdvMonitoring",
+	"LEScanWindowAdvMonitoring",
+	"LEScanIntervalConnect",
+	"LEScanWindowConnect",
+	"LEMinConnectionInterval",
+	"LEMaxConnectionInterval",
+	"LEConnectionLatency",
+	"LEConnectionSupervisionTimeout",
+	NULL
+};
+
 static const char *policy_options[] = {
 	"ReconnectUUIDs",
 	"ReconnectAttempts",
@@ -118,6 +150,7 @@ static const struct group_table {
 	const char **options;
 } valid_groups[] = {
 	{ "General",	supported_options },
+	{ "Controller", controller_options },
 	{ "Policy",	policy_options },
 	{ "GATT",	gatt_options },
 	{ }
@@ -281,6 +314,129 @@ static int get_mode(const char *str)
 	error("Unknown controller mode \"%s\"", str);
 
 	return BT_MODE_DUAL;
+}
+
+static void parse_controller_config(GKeyFile *config)
+{
+	static const struct {
+		const char * const val_name;
+		uint16_t * const val;
+		const uint16_t min;
+		const uint16_t max;
+	} params[] = {
+		{ "BRPageScanType",
+		  &main_opts.default_params.br_page_scan_type,
+		  0,
+		  1},
+		{ "BRPageScanInterval",
+		  &main_opts.default_params.br_page_scan_interval,
+		  0x0012,
+		  0x1000},
+		{ "BRPageScanWindow",
+		  &main_opts.default_params.br_page_scan_win,
+		  0x0011,
+		  0x1000},
+		{ "BRInquiryScanType",
+		  &main_opts.default_params.br_scan_type,
+		  0,
+		  1},
+		{ "BRInquiryScanInterval",
+		  &main_opts.default_params.br_scan_interval,
+		  0x0012,
+		  0x1000},
+		{ "BRInquiryScanWindow",
+		  &main_opts.default_params.br_scan_win,
+		  0x0011,
+		  0x1000},
+		{ "BRLinkSupervisionTimeout",
+		  &main_opts.default_params.br_link_supervision_timeout,
+		  0x0001,
+		  0xFFFF},
+		{ "BRPageTimeout",
+		  &main_opts.default_params.br_page_timeout,
+		  0x0001,
+		  0xFFFF},
+		{ "BRMinSniffInterval",
+		  &main_opts.default_params.br_min_sniff_interval,
+		  0x0001,
+		  0xFFFE},
+		{ "BRMaxSniffInterval",
+		  &main_opts.default_params.br_max_sniff_interval,
+		  0x0001,
+		  0xFFFE},
+		{ "LEMinAdvertisementInterval",
+		  &main_opts.default_params.le_min_adv_interval,
+		  0x0020,
+		  0x4000},
+		{ "LEMaxAdvertisementInterval",
+		  &main_opts.default_params.le_max_adv_interval,
+		  0x0020,
+		  0x4000},
+		{ "LEMultiAdvertisementRotationInterval",
+		  &main_opts.default_params.le_multi_adv_rotation_interval,
+		  0x0001,
+		  0xFFFF},
+		{ "LEScanIntervalAutoConnect",
+		  &main_opts.default_params.le_scan_interval_autoconnect,
+		  0x0004,
+		  0x4000},
+		{ "LEScanWindowAutoConnect",
+		  &main_opts.default_params.le_scan_win_autoconnect,
+		  0x0004,
+		  0x4000},
+		{ "LEScanIntervalSuspend",
+		  &main_opts.default_params.le_scan_interval_suspend,
+		  0x0004,
+		  0x4000},
+		{ "LEScanWindowSuspend",
+		  &main_opts.default_params.le_scan_win_suspend,
+		  0x0004,
+		  0x4000},
+		{ "LEScanIntervalDiscovery",
+		  &main_opts.default_params.le_scan_interval_discovery,
+		  0x0004,
+		  0x4000},
+		{ "LEScanWindowDiscovery",
+		  &main_opts.default_params.le_scan_win_discovery,
+		  0x0004,
+		  0x4000},
+		{ "LEScanIntervalAdvMonitor",
+		  &main_opts.default_params.le_scan_interval_adv_monitor,
+		  0x0004,
+		  0x4000},
+		{ "LEScanWindowAdvMonitor",
+		  &main_opts.default_params.le_scan_win_adv_monitor,
+		  0x0004,
+		  0x4000},
+		{ "LEScanIntervalConnect",
+		  &main_opts.default_params.le_scan_interval_connect,
+		  0x0004,
+		  0x4000},
+		{ "LEScanWindowConnect",
+		  &main_opts.default_params.le_scan_win_connect,
+		  0x0004,
+		  0x4000},
+	};
+	uint16_t i;
+
+	if (!config)
+		return;
+
+	for (i = 0; i < ARRAY_SIZE(params); ++i) {
+		GError *err = NULL;
+		int val = g_key_file_get_integer(config, "Controller",
+						params[i].val_name, &err);
+		if (err) {
+			g_clear_error(&err);
+		} else {
+			DBG("%s=%d", params[i].val_name, val);
+
+			val = MIN(val, params[i].min);
+			val = MAX(val, params[i].max);
+			*params[i].val = val;
+			++main_opts.default_params.num_entries;
+		}
+	}
 }
 
 static void parse_config(GKeyFile *config)
@@ -484,6 +640,8 @@ static void parse_config(GKeyFile *config)
 		val = MAX(val, 1);
 		main_opts.gatt_channels = val;
 	}
+
+	parse_controller_config(config);
 }
 
 static void init_defaults(void)
@@ -499,6 +657,10 @@ static void init_defaults(void)
 	main_opts.reverse_discovery = TRUE;
 	main_opts.name_resolv = TRUE;
 	main_opts.debug_keys = FALSE;
+
+	main_opts.default_params.num_entries = 0;
+	main_opts.default_params.br_page_scan_type = 0xFFFF;
+	main_opts.default_params.br_scan_type = 0xFFFF;
 
 	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
 		return;
