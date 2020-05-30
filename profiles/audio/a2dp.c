@@ -1719,7 +1719,7 @@ static int a2dp_reconfig(struct a2dp_channel *chan, const char *sender,
 	return 0;
 
 fail:
-	setup_unref(setup);
+	setup_cb_free(cb_data);
 	return err;
 }
 
