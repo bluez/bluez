@@ -173,7 +173,7 @@ static void event_callback(const void *buf, uint8_t size, void *user_data)
 		break;
 
 	default:
-		l_info("Other Meta Evt - %d", event);
+		l_debug("Other Meta Evt - %d", event);
 	}
 }
 
@@ -804,7 +804,6 @@ static bool recv_register(struct mesh_io *io, const uint8_t *filter,
 	if (!cb || !filter || !len)
 		return false;
 
-	l_info("%s %2.2x", __func__, filter[0]);
 	rx_reg = l_queue_remove_if(pvt->rx_regs, find_by_filter, filter);
 
 	l_free(rx_reg);

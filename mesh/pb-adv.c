@@ -157,8 +157,6 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 		init_size = size;
 	}
 
-	/* print_packet("FULL-TX", data, size); */
-
 	l_debug("Sending %u fragments for %u octets", max_seg + 1, size);
 
 	buf[6] = max_seg << 2;
@@ -168,7 +166,6 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 
 	l_debug("max_seg: %2.2x", max_seg);
 	l_debug("size: %2.2x, CRC: %2.2x", size, buf[9]);
-	/* print_packet("PB-TX", buf + 1, init_size + 9); */
 
 	pb_adv_send(session, MESH_IO_TX_COUNT_UNLIMITED, 200,
 							buf, init_size + 10);
@@ -185,8 +182,6 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 
 		buf[6] = (i << 2) | 0x02;
 		memcpy(buf + 7, data + consumed, seg_size);
-
-		/* print_packet("PB-TX", buf + 1, seg_size + 6); */
 
 		pb_adv_send(session, MESH_IO_TX_COUNT_UNLIMITED, 200,
 							buf, seg_size + 7);
@@ -225,7 +220,7 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 
 	mesh_send_cancel(filter, sizeof(filter));
 
-	l_info("TX timeout");
+	l_debug("TX timeout");
 	cb = session->close_cb;
 	user_data = session->user_data;
 	cb(user_data, 1);

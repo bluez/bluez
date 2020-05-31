@@ -770,7 +770,7 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		break;
 
 	case PROV_COMPLETE: /* Complete */
-		l_info("Provisioning Complete");
+		l_debug("Provisioning Complete");
 		prov->state = INT_PROV_IDLE;
 		int_prov_close(prov, PROV_ERR_SUCCESS);
 		break;

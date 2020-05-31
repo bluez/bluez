@@ -219,7 +219,7 @@ static void add_start(void *user_data, int err)
 {
 	struct l_dbus_message *reply;
 
-	l_info("Start callback");
+	l_debug("Start callback");
 
 	if (err == MESH_ERROR_NONE)
 		reply = l_dbus_message_new_method_return(add_pending->msg);
@@ -270,8 +270,8 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 	add_pending->agent = node_get_agent(node);
 
 	if (!node_is_provisioner(node) || (add_pending->agent == NULL)) {
-		l_info("Provisioner: %d", node_is_provisioner(node));
-		l_info("Agent: %p", add_pending->agent);
+		l_debug("Provisioner: %d", node_is_provisioner(node));
+		l_debug("Agent: %p", add_pending->agent);
 		reply = dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED,
 							"Missing Interfaces");
 		goto fail;
