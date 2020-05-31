@@ -508,29 +508,6 @@ static int virt_packet_decrypt(struct mesh_net *net, const uint8_t *data,
 	return -1;
 }
 
-static void cmplt(uint16_t remote, uint8_t status,
-					void *data, uint16_t size,
-					void *user_data)
-{
-	struct timeval tx_end;
-
-	gettimeofday(&tx_end, NULL);
-
-	if (tx_end.tv_sec == tx_start.tv_sec) {
-		l_debug("Duration 0.%6.6lu seconds",
-				tx_end.tv_usec - tx_start.tv_usec);
-	} else {
-		if (tx_start.tv_usec > tx_end.tv_usec)
-			l_debug("Duration %lu.%6.6lu seconds",
-				tx_end.tv_sec - tx_start.tv_sec - 1,
-				tx_end.tv_usec + 1000000 - tx_start.tv_usec);
-		else
-			l_debug("Duration %lu.%6.6lu seconds",
-					tx_end.tv_sec - tx_start.tv_sec,
-					tx_end.tv_usec - tx_start.tv_usec);
-	}
-}
-
 static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
 		uint32_t dst, uint16_t app_idx, uint16_t net_idx,
 		uint8_t *label, uint8_t ttl, bool segmented,
@@ -585,9 +562,9 @@ static bool msg_send(struct mesh_node *node, bool credential, uint16_t src,
 		goto done;
 	}
 
-	ret = mesh_net_app_send(net, credential, src, dst, key_aid, net_idx,
+	ret =  mesh_net_app_send(net, credential, src, dst, key_aid, net_idx,
 					ttl, seq_num, iv_index, segmented,
-					szmic, out, out_len, cmplt, NULL);
+					szmic, out, out_len);
 done:
 	l_free(out);
 	return ret;

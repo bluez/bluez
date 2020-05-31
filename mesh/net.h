@@ -260,9 +260,6 @@ struct mesh_friend_msg {
 };
 
 typedef void (*mesh_status_func_t)(void *user_data, bool result);
-typedef void (*mesh_net_status_func_t)(uint16_t remote, uint8_t status,
-					void *data, uint16_t size,
-					void *user_data);
 
 struct mesh_net *mesh_net_new(struct mesh_node *node);
 void mesh_net_free(void *net);
@@ -313,10 +310,8 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 				uint16_t dst, uint8_t key_id, uint16_t net_idx,
 				uint8_t ttl, uint32_t seq, uint32_t iv_index,
-				bool segmented, bool szmic,
-				const void *msg, uint16_t msg_len,
-				mesh_net_status_func_t status_func,
-				void *user_data);
+				bool segmented, bool szmic, const void *msg,
+				uint16_t msg_len);
 void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id,
 				uint32_t iv_index, uint8_t ttl, uint32_t seq,
 				uint16_t src, uint16_t dst, bool rly,
