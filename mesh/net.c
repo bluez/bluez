@@ -124,7 +124,6 @@ struct mesh_net {
 	uint8_t chan; /* Channel of recent Rx */
 	uint8_t default_ttl;
 	uint8_t tid;
-	uint8_t window_accuracy;
 
 	struct {
 		bool enable;
@@ -144,21 +143,6 @@ struct mesh_net {
 	struct l_queue *friends;
 	struct l_queue *negotiations;
 	struct l_queue *destinations;
-
-	uint8_t prov_priv_key[32];
-
-	/* Unprovisioned Identity */
-	char id_name[20];
-	uint8_t id_uuid[16];
-
-	/* Provisioner: unicast address range */
-	struct mesh_net_addr_range prov_uni_addr;
-
-	/* Test Data */
-	uint8_t prov_rand[16];
-	uint8_t test_bd_addr[6];
-	struct mesh_net_prov_caps prov_caps;
-	bool test_mode;
 };
 
 struct mesh_msg {
@@ -648,9 +632,6 @@ struct mesh_net *mesh_net_new(struct mesh_node *node)
 	net->seq_num = DEFAULT_SEQUENCE_NUMBER;
 	net->default_ttl = TTL_MASK;
 
-	memset(&net->prov_caps, 0, sizeof(net->prov_caps));
-	net->prov_caps.algorithms = 1;
-
 	net->tx_cnt = DEFAULT_TRANSMIT_COUNT;
 	net->tx_interval = DEFAULT_TRANSMIT_INTERVAL;
 
@@ -829,93 +810,6 @@ bool mesh_net_set_relay_mode(struct mesh_net *net, bool enable,
 	return true;
 }
 
-struct mesh_net_prov_caps *mesh_net_prov_caps_get(struct mesh_net *net)
-{
-	if (net)
-		return &net->prov_caps;
-
-	return NULL;
-}
-
-char *mesh_net_id_name(struct mesh_net *net)
-{
-	if (net && net->id_name[0])
-		return net->id_name;
-
-	return NULL;
-}
-
-bool mesh_net_id_uuid_set(struct mesh_net *net, uint8_t uuid[16])
-{
-	if (!net)
-		return false;
-
-	memcpy(net->id_uuid, uuid, 16);
-
-	return true;
-}
-
-uint8_t *mesh_net_priv_key_get(struct mesh_net *net)
-{
-	if (net)
-		return net->prov_priv_key;
-
-	return NULL;
-}
-
-bool mesh_net_priv_key_set(struct mesh_net *net, uint8_t key[32])
-{
-	if (!net)
-		return false;
-
-	memcpy(net->prov_priv_key, key, 32);
-	return true;
-}
-
-uint8_t *mesh_net_test_addr(struct mesh_net *net)
-{
-	const uint8_t zero_addr[] = {0, 0, 0, 0, 0, 0};
-
-	if (net && memcmp(net->test_bd_addr, zero_addr, 6))
-		return net->test_bd_addr;
-
-	return NULL;
-}
-
-uint8_t *mesh_net_prov_rand(struct mesh_net *net)
-{
-	if (net)
-		return net->prov_rand;
-
-	return NULL;
-}
-
-uint16_t mesh_net_prov_uni(struct mesh_net *net, uint8_t ele_cnt)
-{
-	uint16_t uni;
-	uint16_t next;
-
-	if (!net)
-		return 0;
-
-	next = net->prov_uni_addr.next + ele_cnt;
-	if (next > 0x8000 || next > net->prov_uni_addr.high)
-		return UNASSIGNED_ADDRESS;
-
-	uni = net->prov_uni_addr.next;
-	net->prov_uni_addr.next = next;
-
-	return uni;
-}
-
-bool mesh_net_test_mode(struct mesh_net *net)
-{
-	if (net)
-		return net->test_mode;
-
-	return false;
-}
-
 int mesh_net_get_identity_mode(struct mesh_net *net, uint16_t idx,
 								uint8_t *mode)
 {
@@ -1024,11 +918,6 @@ int mesh_net_add_key(struct mesh_net *net, uint16_t idx, const uint8_t *value)
 	}
 
 	return MESH_STATUS_SUCCESS;
-}
-
-void mesh_net_flush_msg_queues(struct mesh_net *net)
-{
-	l_queue_clear(net->msg_cache, l_free);
 }
 
 uint32_t mesh_net_get_iv_index(struct mesh_net *net)
@@ -2543,7 +2432,7 @@ static void iv_upd_to(struct l_timeout *upd_timeout, void *user_data)
 							net->iv_index, false);
 		l_queue_foreach(net->subnets, refresh_beacon, net);
 		queue_friend_update(net);
-		mesh_net_flush_msg_queues(net);
+		l_queue_clear(net->msg_cache, l_free);
 		break;
 
 	case IV_UPD_INIT:
@@ -2937,7 +2826,7 @@ bool mesh_net_iv_index_update(struct mesh_net *net)
 		return false;
 
 	l_debug("iv_upd_state = IV_UPD_UPDATING");
-	mesh_net_flush_msg_queues(net);
+	l_queue_clear(net->msg_cache, l_free);
 
 	if (!mesh_config_write_iv_index(node_config_get(net->node),
 						net->iv_index + 1, true))
@@ -2996,15 +2885,6 @@ bool mesh_net_dst_unreg(struct mesh_net *net, uint16_t dst)
 	l_queue_remove(net->destinations, dest);
 
 	l_free(dest);
-	return true;
-}
-
-bool mesh_net_flush(struct mesh_net *net)
-{
-	if (!net)
-		return false;
-
-	/* TODO mesh-io Flush */
 	return true;
 }
 
@@ -3430,7 +3310,7 @@ int mesh_net_update_key(struct mesh_net *net, uint16_t idx,
 	return MESH_STATUS_SUCCESS;
 }
 
-uint16_t mesh_net_get_features(struct mesh_net *net)
+static uint16_t get_features(struct mesh_net *net)
 {
 	uint16_t features = 0;
 
@@ -3473,20 +3353,7 @@ void mesh_net_heartbeat_init(struct mesh_net *net)
 
 	memset(hb, 0, sizeof(struct mesh_net_heartbeat));
 	hb->sub_min_hops = 0xff;
-	hb->features = mesh_net_get_features(net);
-}
-
-void mesh_net_uni_range_set(struct mesh_net *net,
-				struct mesh_net_addr_range *range)
-{
-	net->prov_uni_addr.low = range->low;
-	net->prov_uni_addr.high = range->high;
-	net->prov_uni_addr.next = range->next;
-}
-
-struct mesh_net_addr_range mesh_net_uni_range_get(struct mesh_net *net)
-{
-	return net->prov_uni_addr;
+	hb->features = get_features(net);
 }
 
 void mesh_net_set_iv_index(struct mesh_net *net, uint32_t index, bool update)
@@ -3580,14 +3447,6 @@ bool mesh_net_is_local_address(struct mesh_net *net, uint16_t src,
 
 	return (src >= net->src_addr && src <= net->last_addr) &&
 			(last >= net->src_addr && last <= net->last_addr);
-}
-
-void mesh_net_set_window_accuracy(struct mesh_net *net, uint8_t accuracy)
-{
-	if (!net)
-		return;
-
-	net->window_accuracy = accuracy;
 }
 
 void mesh_net_transmit_params_set(struct mesh_net *net, uint8_t count,
