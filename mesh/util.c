@@ -34,9 +34,14 @@
 
 #include "mesh/util.h"
 
+static bool debug_enabled;
+
 void print_packet(const char *label, const void *data, uint16_t size)
 {
 	struct timeval pkt_time;
+
+	if (!debug_enabled)
+		return;
 
 	gettimeofday(&pkt_time, NULL);
 
@@ -153,4 +158,10 @@ static int del_fobject(const char *fpath, const struct stat *sb, int typeflag,
 void del_path(const char *path)
 {
 	nftw(path, del_fobject, 5, FTW_DEPTH | FTW_PHYS);
+}
+
+void enable_debug(void)
+{
+	debug_enabled = true;
+	l_debug_enable("*");
 }

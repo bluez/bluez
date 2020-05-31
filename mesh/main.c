@@ -37,6 +37,7 @@
 #include "mesh/crypto.h"
 #include "mesh/dbus.h"
 #include "mesh/mesh-io.h"
+#include "mesh/util.h"
 
 static const char *config_dir;
 static const char *mesh_conf_fname;
@@ -210,7 +211,7 @@ int main(int argc, char *argv[])
 			detached = false;
 			break;
 		case 'd':
-			l_debug_enable("*");
+			enable_debug();
 			break;
 		case 'c':
 			config_dir = optarg;
