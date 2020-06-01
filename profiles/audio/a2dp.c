@@ -2218,6 +2218,12 @@ static void transport_cb(GIOChannel *io, GError *err, gpointer user_data)
 	struct a2dp_setup *setup = user_data;
 	uint16_t omtu, imtu;
 
+	if (!g_slist_find(setups, setup)) {
+		warn("bt_io_accept: setup %p no longer valid", setup);
+		g_io_channel_shutdown(io, TRUE, NULL);
+		return;
+	}
+
 	if (err) {
 		error("%s", err->message);
 		goto drop;
@@ -3376,4 +3382,4 @@ static void a2dp_exit(void)
 }
 
 BLUETOOTH_PLUGIN_DEFINE(a2dp, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
-							a2dp_init, a2dp_exit)
+		a2dp_init, a2dp_exit)
