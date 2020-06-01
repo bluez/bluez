@@ -655,7 +655,7 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 						endpoint_setconf_cb,
 						a2dp_sep->user_data);
 		if (ret == 0) {
-			/* Attempt to reverve discover if there are no remote
+			/* Attempt to reverse discover if there are no remote
 			 * SEPs.
 			 */
 			if (queue_isempty(setup->chan->seps))
