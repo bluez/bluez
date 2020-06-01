@@ -1988,7 +1988,6 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 
 			if (sscanf(caps + i, "%02hhx", tmp) != 1) {
 				warn("Unable to load Endpoint: seid %u", rseid);
-				g_free(value);
 				break;
 			}
 		}
