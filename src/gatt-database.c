@@ -1211,10 +1211,14 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 				cli_feat_read_cb, cli_feat_write_cb,
 				database);
 
-	bt_uuid16_create(&uuid, GATT_CHARAC_DB_HASH);
-	database->db_hash = gatt_db_service_add_characteristic(service,
+
+	/* Only expose database hash chrc if supported */
+	if (gatt_db_hash_support(database->db)) {
+		bt_uuid16_create(&uuid, GATT_CHARAC_DB_HASH);
+		database->db_hash = gatt_db_service_add_characteristic(service,
 				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
 				db_hash_read_cb, NULL, database);
+	}
 
 	/* Only enable EATT if there is a socket listening */
 	if (database->eatt_io) {

@@ -597,6 +597,14 @@ uint8_t *gatt_db_get_hash(struct gatt_db *db)
 	return db->hash;
 }
 
+bool gatt_db_hash_support(struct gatt_db *db)
+{
+	if (!db || !db->crypto)
+		return false;
+
+	return true;
+}
+
 static struct gatt_db_service *find_insert_loc(struct gatt_db *db,
 						uint16_t start, uint16_t end,
 						struct gatt_db_service **after)
