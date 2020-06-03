@@ -140,7 +140,7 @@ uint8_t util_get_uid(unsigned int *bitmap, uint8_t max)
 	if (!id || id > max)
 		return 0;
 
-	*bitmap |= 1 << (id - 1);
+	*bitmap |= 1u << (id - 1);
 
 	return id;
 }
@@ -151,7 +151,7 @@ void util_clear_uid(unsigned int *bitmap, uint8_t id)
 	if (!id)
 		return;
 
-	*bitmap &= ~(1 << (id - 1));
+	*bitmap &= ~(1u << (id - 1));
 }
 
 static const struct {
