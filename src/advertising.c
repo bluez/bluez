@@ -675,6 +675,13 @@ static bool set_flags(struct btd_adv_client *client, uint8_t flags)
 	if (!btd_adapter_get_bredr(client->manager->adapter))
 		flags |= BT_AD_FLAG_NO_BREDR;
 
+	/* Set BR/EDR Not Supported if adapter is not discoverable but the
+	 * instance is.
+	 */
+	if ((flags & (BT_AD_FLAG_GENERAL | BT_AD_FLAG_LIMITED)) &&
+			!btd_adapter_get_discoverable(client->manager->adapter))
+		flags |= BT_AD_FLAG_NO_BREDR;
+
 	if (!bt_ad_add_flags(client->data, &flags, 1))
 		return false;
 
@@ -697,12 +704,9 @@ static bool parse_discoverable(DBusMessageIter *iter,
 
 	dbus_message_iter_get_basic(iter, &discoverable);
 
-	if (discoverable) {
-		/* Set BR/EDR Not Supported if adapter is no discoverable */
-		if (!btd_adapter_get_discoverable(client->manager->adapter))
-			flags = BT_AD_FLAG_NO_BREDR;
-		flags |= BT_AD_FLAG_GENERAL;
-	} else
+	if (discoverable)
+		flags = BT_AD_FLAG_GENERAL;
+	else
 		flags = 0x00;
 
 	if (!set_flags(client , flags))
