@@ -597,6 +597,20 @@ static gboolean get_key_size(int sock, int *size, GError **err)
 	return FALSE;
 }
 
+static uint8_t mode_l2mode(uint8_t mode)
+{
+	switch (mode) {
+	case BT_IO_MODE_BASIC:
+		return L2CAP_MODE_BASIC;
+	case BT_IO_MODE_ERTM:
+		return L2CAP_MODE_ERTM;
+	case BT_IO_MODE_STREAMING:
+		return L2CAP_MODE_STREAMING;
+	default:
+		return UINT8_MAX;
+	}
+}
+
 static gboolean set_l2opts(int sock, uint16_t imtu, uint16_t omtu,
 						uint8_t mode, GError **err)
 {
@@ -614,8 +628,14 @@ static gboolean set_l2opts(int sock, uint16_t imtu, uint16_t omtu,
 		l2o.imtu = imtu;
 	if (omtu)
 		l2o.omtu = omtu;
-	if (mode)
-		l2o.mode = mode;
+
+	if (mode) {
+		l2o.mode = mode_l2mode(mode);
+		if (l2o.mode == UINT8_MAX) {
+			ERROR_FAILED(err, "Unsupported mode", errno);
+			return FALSE;
+		}
+	}
 
 	if (setsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o)) < 0) {
 		ERROR_FAILED(err, "setsockopt(L2CAP_OPTIONS)", errno);
