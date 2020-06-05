@@ -71,6 +71,11 @@
 #define BT_AD_3D_INFO_DATA		0x3d
 #define BT_AD_MANUFACTURER_DATA		0xff
 
+/* Low Energy Advertising Flags */
+#define BT_AD_FLAG_LIMITED		0x01 /* Limited Discoverable */
+#define BT_AD_FLAG_GENERAL		0x02 /* General Discoverable */
+#define BT_AD_FLAG_NO_BREDR		0x04 /* BR/EDR not supported */
+
 typedef void (*bt_ad_func_t)(void *data, void *user_data);
 
 struct bt_ad;
