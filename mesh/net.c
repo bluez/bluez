@@ -3362,16 +3362,6 @@ void mesh_net_set_iv_index(struct mesh_net *net, uint32_t index, bool update)
 	net->iv_update = update;
 }
 
-void mesh_net_provisioner_mode_set(struct mesh_net *net, bool mode)
-{
-	net->provisioner = mode;
-}
-
-bool mesh_net_provisioner_mode_get(struct mesh_net *net)
-{
-	return net->provisioner;
-}
-
 uint16_t mesh_net_get_primary_idx(struct mesh_net *net)
 {
 	struct mesh_subnet *subnet;

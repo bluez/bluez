@@ -907,7 +907,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	 * The packet needs to be decoded by the correct key which
 	 * is hinted by key_aid, but is not necessarily definitive
 	 */
-	if (key_aid == APP_AID_DEV || mesh_net_provisioner_mode_get(net))
+	if (key_aid == APP_AID_DEV || node_is_provisioner(node))
 		decrypt_idx = dev_packet_decrypt(node, data, size, szmict, src,
 						dst, key_aid, seq0, iv_index,
 						clear_text);

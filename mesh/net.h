@@ -335,8 +335,6 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t key_id,
 struct mesh_net_heartbeat *mesh_net_heartbeat_get(struct mesh_net *net);
 void mesh_net_heartbeat_init(struct mesh_net *net);
 void mesh_net_heartbeat_send(struct mesh_net *net);
-void mesh_net_provisioner_mode_set(struct mesh_net *net, bool mode);
-bool mesh_net_provisioner_mode_get(struct mesh_net *net);
 bool mesh_net_key_list_get(struct mesh_net *net, uint8_t *buf, uint16_t *count);
 uint16_t mesh_net_get_primary_idx(struct mesh_net *net);
 uint32_t mesh_net_friend_timeout(struct mesh_net *net, uint16_t addr);
