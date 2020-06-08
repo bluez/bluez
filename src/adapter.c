@@ -1926,10 +1926,18 @@ static bool set_discovery_discoverable(struct btd_adapter *adapter, bool enable)
 static void stop_discovery_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
-	struct watch_client *client = user_data;
-	struct btd_adapter *adapter = client->adapter;
+	struct btd_adapter *adapter = user_data;
+	struct watch_client *client;
 
 	DBG("status 0x%02x", status);
+
+	/* Is there are no clients the discovery must have been stopped while
+	 * discovery command was pending.
+	 */
+	if (!adapter->discovery_list)
+		return;
+
+	client = adapter->discovery_list->data;
 
 	discovery_reply(client, status);
 
