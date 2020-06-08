@@ -1650,13 +1650,13 @@ int avctp_register(struct btd_adapter *adapter, gboolean master)
 
 	server = g_new0(struct avctp_server, 1);
 
-	server->control_io = avctp_server_socket(src, master, L2CAP_MODE_BASIC,
+	server->control_io = avctp_server_socket(src, master, BT_IO_MODE_BASIC,
 							AVCTP_CONTROL_PSM);
 	if (!server->control_io) {
 		g_free(server);
 		return -1;
 	}
-	server->browsing_io = avctp_server_socket(src, master, L2CAP_MODE_ERTM,
+	server->browsing_io = avctp_server_socket(src, master, BT_IO_MODE_ERTM,
 							AVCTP_BROWSING_PSM);
 	if (!server->browsing_io) {
 		if (server->control_io) {
@@ -2190,7 +2190,7 @@ int avctp_connect_browsing(struct avctp *session)
 				device_get_address(session->device),
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_PSM, AVCTP_BROWSING_PSM,
-				BT_IO_OPT_MODE, L2CAP_MODE_ERTM,
+				BT_IO_OPT_MODE, BT_IO_MODE_ERTM,
 				BT_IO_OPT_INVALID);
 	if (err) {
 		error("%s", err->message);
