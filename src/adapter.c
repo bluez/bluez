@@ -1584,13 +1584,30 @@ static void discovery_remove(struct watch_client *client, bool exit)
 
 static void trigger_start_discovery(struct btd_adapter *adapter, guint delay);
 
+static void discovery_reply(struct watch_client *client, uint8_t status)
+{
+	DBusMessage *reply;
+
+	if (!client->msg)
+		return;
+
+	if (!status) {
+		g_dbus_send_reply(dbus_conn, client->msg, DBUS_TYPE_INVALID);
+	} else  {
+		reply = btd_error_busy(client->msg);
+		g_dbus_send_message(dbus_conn, reply);
+	}
+
+	dbus_message_unref(client->msg);
+	client->msg = NULL;
+}
+
 static void start_discovery_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct watch_client *client;
 	const struct mgmt_cp_start_discovery *rp = param;
-	DBusMessage *reply;
 
 	DBG("status 0x%02x", status);
 
@@ -1630,12 +1647,7 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 		else
 			adapter->filtered_discovery = false;
 
-		if (client->msg) {
-			g_dbus_send_reply(dbus_conn, client->msg,
-						DBUS_TYPE_INVALID);
-			dbus_message_unref(client->msg);
-			client->msg = NULL;
-		}
+		discovery_reply(client, status);
 
 		if (adapter->discovering)
 			return;
@@ -1649,8 +1661,7 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 fail:
 	/* Reply with an error if the first discovery has failed */
 	if (client->msg) {
-		reply = btd_error_busy(client->msg);
-		g_dbus_send_message(dbus_conn, reply);
+		discovery_reply(client, status);
 		discovery_remove(client, false);
 		return;
 	}
@@ -1917,23 +1928,13 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 {
 	struct watch_client *client = user_data;
 	struct btd_adapter *adapter = client->adapter;
-	DBusMessage *reply;
 
 	DBG("status 0x%02x", status);
 
-	if (status != MGMT_STATUS_SUCCESS) {
-		if (client->msg) {
-			reply = btd_error_busy(client->msg);
-			g_dbus_send_message(dbus_conn, reply);
-		}
-		goto done;
-	}
+	discovery_reply(client, status);
 
-	if (client->msg) {
-		g_dbus_send_reply(dbus_conn, client->msg, DBUS_TYPE_INVALID);
-		dbus_message_unref(client->msg);
-		client->msg = NULL;
-	}
+	if (status != MGMT_STATUS_SUCCESS)
+		goto done;
 
 	adapter->discovery_type = 0x00;
 	adapter->discovery_enable = 0x00;
