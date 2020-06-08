@@ -543,9 +543,9 @@ static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 	}
 
 	if (hdp_chann->config == HDP_RELIABLE_DC)
-		mode = L2CAP_MODE_ERTM;
+		mode = BT_IO_MODE_ERTM;
 	else
-		mode = L2CAP_MODE_STREAMING;
+		mode = BT_IO_MODE_STREAMING;
 
 	if (mcap_connect_mdl(hdp_chann->mdl, mode, dcpsm, hdp_conn->cb,
 					hdp_tmp_dc_data_ref(hdp_conn),
@@ -914,11 +914,11 @@ static gboolean check_channel_conf(struct hdp_channel *chan)
 
 	switch (chan->config) {
 	case HDP_RELIABLE_DC:
-		if (mode != L2CAP_MODE_ERTM)
+		if (mode != BT_IO_MODE_ERTM)
 			return FALSE;
 		break;
 	case HDP_STREAMING_DC:
-		if (mode != L2CAP_MODE_STREAMING)
+		if (mode != BT_IO_MODE_STREAMING)
 			return FALSE;
 		break;
 	default:
@@ -1057,8 +1057,8 @@ static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 
 static uint8_t hdp2l2cap_mode(uint8_t hdp_mode)
 {
-	return hdp_mode == HDP_STREAMING_DC ? L2CAP_MODE_STREAMING :
-								L2CAP_MODE_ERTM;
+	return hdp_mode == HDP_STREAMING_DC ? BT_IO_MODE_STREAMING :
+								BT_IO_MODE_ERTM;
 }
 
 static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
@@ -1089,7 +1089,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 		}
 
 		if (!mcap_set_data_chan_mode(dev->hdp_adapter->mi,
-						L2CAP_MODE_ERTM, &err)) {
+						BT_IO_MODE_ERTM, &err)) {
 			error("Error: %s", err->message);
 			g_error_free(err);
 			return MCAP_MDL_BUSY;
