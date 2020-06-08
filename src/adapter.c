@@ -1651,7 +1651,6 @@ fail:
 	if (client->msg) {
 		reply = btd_error_busy(client->msg);
 		g_dbus_send_message(dbus_conn, reply);
-		g_dbus_remove_watch(dbus_conn, client->watch);
 		discovery_remove(client, false);
 		return;
 	}
