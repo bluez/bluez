@@ -108,7 +108,6 @@ struct mesh_net {
 	bool friend_enable;
 	bool beacon_enable;
 	bool proxy_enable;
-	bool provisioner;
 	bool friend_seq;
 	struct l_timeout *iv_update_timeout;
 	enum _iv_upd_state iv_upd_state;
