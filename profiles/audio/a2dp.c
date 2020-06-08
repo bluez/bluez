@@ -43,6 +43,7 @@
 
 #include "gdbus/gdbus.h"
 
+#include "src/hcid.h"
 #include "src/plugin.h"
 #include "src/adapter.h"
 #include "src/device.h"
@@ -2331,14 +2332,21 @@ drop:
 static bool a2dp_server_listen(struct a2dp_server *server)
 {
 	GError *err = NULL;
+	BtIOMode mode;
 
 	if (server->io)
 		return true;
+
+	if (main_opts.mps == MPS_OFF)
+		mode = BT_IO_MODE_BASIC;
+	else
+		mode = BT_IO_MODE_STREAMING;
 
 	server->io = bt_io_listen(NULL, confirm_cb, server, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR,
 				btd_adapter_get_address(server->adapter),
 				BT_IO_OPT_PSM, AVDTP_PSM,
+				BT_IO_OPT_MODE, mode,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_MASTER, true,
 				BT_IO_OPT_INVALID);

@@ -41,6 +41,12 @@ enum jw_repairing_t {
 	JW_REPAIRING_ALWAYS,
 };
 
+enum mps_mode_t {
+	MPS_OFF,
+	MPS_SINGLE,
+	MPS_MULTIPLE,
+};
+
 struct main_opts {
 	char		*name;
 	uint32_t	class;
@@ -102,6 +108,7 @@ struct main_opts {
 	bt_gatt_cache_t gatt_cache;
 	uint16_t	gatt_mtu;
 	uint8_t		gatt_channels;
+	enum mps_mode_t	mps;
 
 	uint8_t		key_size;
 

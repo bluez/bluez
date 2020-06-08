@@ -42,6 +42,7 @@
 #include "lib/uuid.h"
 
 #include "btio/btio.h"
+#include "src/hcid.h"
 #include "src/log.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
@@ -2406,8 +2407,14 @@ static GIOChannel *l2cap_connect(struct avdtp *session)
 	GError *err = NULL;
 	GIOChannel *io;
 	const bdaddr_t *src;
+	BtIOMode mode;
 
 	src = btd_adapter_get_address(device_get_adapter(session->device));
+
+	if (main_opts.mps == MPS_OFF)
+		mode = BT_IO_MODE_BASIC;
+	else
+		mode = BT_IO_MODE_STREAMING;
 
 	if (session->phy)
 		io = bt_io_connect(avdtp_connect_cb, session,
@@ -2416,6 +2423,7 @@ static GIOChannel *l2cap_connect(struct avdtp *session)
 					BT_IO_OPT_DEST_BDADDR,
 					device_get_address(session->device),
 					BT_IO_OPT_PSM, AVDTP_PSM,
+					BT_IO_OPT_MODE, mode,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					/* Set Input MTU to 0 to auto-tune */
 					BT_IO_OPT_IMTU, 0,
@@ -2427,6 +2435,7 @@ static GIOChannel *l2cap_connect(struct avdtp *session)
 					BT_IO_OPT_DEST_BDADDR,
 					device_get_address(session->device),
 					BT_IO_OPT_PSM, AVDTP_PSM,
+					BT_IO_OPT_MODE, mode,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID);
 	if (!io) {
