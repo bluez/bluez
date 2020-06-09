@@ -1026,14 +1026,19 @@ static bool is_connected(struct input_device *idev)
 
 static int connection_disconnect(struct input_device *idev, uint32_t flags)
 {
+	int sock;
+
 	if (!is_connected(idev))
 		return -ENOTCONN;
 
-	/* Standard HID disconnect */
-	if (idev->intr_io)
-		g_io_channel_shutdown(idev->intr_io, TRUE, NULL);
-	if (idev->ctrl_io)
-		g_io_channel_shutdown(idev->ctrl_io, TRUE, NULL);
+	/* Standard HID disconnect
+	 * Intr channel must be disconnected before ctrl channel, so only
+	 * disconnect intr here, ctrl is disconnected in intr_watch_cb.
+	 */
+	if (idev->intr_io) {
+		sock = g_io_channel_unix_get_fd(idev->intr_io);
+		shutdown(sock, SHUT_WR);
+	}
 
 	if (idev->uhid)
 		return 0;
