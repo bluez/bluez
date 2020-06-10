@@ -61,7 +61,6 @@
 #include "profiles/battery/bas.h"
 #include "profiles/input/hog-lib.h"
 
-#define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
 #define HOG_UUID16		0x1812
 
 #define HOG_INFO_UUID		0x2A4A

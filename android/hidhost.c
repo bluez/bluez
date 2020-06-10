@@ -87,8 +87,6 @@
 /* HID Virtual Cable Unplug */
 #define HID_VIRTUAL_CABLE_UNPLUG	0x05
 
-#define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
-
 static bdaddr_t adapter_addr;
 
 static GIOChannel *ctrl_io = NULL;
