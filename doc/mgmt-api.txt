@@ -31,7 +31,8 @@ Linux kernel v4.8	Version 1.13
 Linux kernel v4.9	Version 1.14
 Linux kernel v5.5	Version 1.15
 Linux kernel v5.6	Version 1.16
-Linux kernel v5.7	Version 1.17 (not yet released)
+Linux kernel v5.7	Version 1.17
+Linux kernel v5.8	Version 1.18 (not yet released)
 
 Version 1.1 introduces Set Device ID command.
 
@@ -98,6 +99,10 @@ Set Wideband Speech command.
 Version 1.17 introduces Read Security Information command, Read Experimental
 Features Information command, Set Experimental Feature command and the
 Experimental Feature Changed event.
+
+Version 1.18 introduces Read Default System Configuration command, Set
+Default System Configuration command, Read Default Runtime Configuration
+command and Set Default Runtime Configuration command.
 
 
 Example
