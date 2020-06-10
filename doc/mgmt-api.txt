@@ -3313,6 +3313,70 @@ Set Default System Configuration Command
 				Invalid Index
 
 
+Read Default Runtime Configuration Command
+==========================================
+
+	Command Code:		0x004d
+	Controller Index:	<controller id>
+	Command Parameters:
+	Return Parameters:	Parameter1 {
+					Parameter_Type (2 Octet)
+					Value_Length (1 Octet)
+					Value (0-255 Octets)
+				}
+				Parameter2 { }
+				...
+
+	This command is used to read a list of default runtime parameters.
+
+	Currently no Parameter_Type values are defined and an empty list
+	will be returned.
+
+	This command can be used at any time and will return a list of
+	supported default parameters as well as their current value.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
+Set Default Runtime Configuration Command
+=========================================
+
+	Command Code:		0x004e
+	Controller Index:	<controller id>
+	Command Parameters:	Parameter1 {
+					Parameter_Type (2 Octet)
+					Value_Length (1 Octet)
+					Value (0-255 Octets)
+				}
+				Parameter2 { }
+				...
+	Return Parameters:
+
+	This command is used to set a list of default runtime parameters.
+
+	See Read Default Runtime Configuration command for list of supported
+	Parameter_Type values.
+
+	This command can be used at any time and will change the runtime
+	default. Changes however will not apply to existing connections or
+	currently active operations.
+
+	When providing unsupported values or invalid values, no parameter
+	value will be changed and all values discarded.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+	Possible errors:	Rejected
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
