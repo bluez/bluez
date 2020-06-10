@@ -412,8 +412,6 @@ class Application(dbus.service.Object):
 
 		token = value
 		have_token = True
-		if attached == False:
-			attach(token)
 
 	@dbus.service.method(MESH_APPLICATION_IFACE,
 					in_signature="s", out_signature="")

@@ -655,13 +655,21 @@ static struct l_dbus_message *leave_call(struct l_dbus *dbus,
 						void *user_data)
 {
 	uint64_t token;
+	struct mesh_node *node;
 
 	l_debug("Leave");
 
 	if (!l_dbus_message_get_arguments(msg, "t", &token))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
-	node_remove(node_find_by_token(token));
+	node = node_find_by_token(token);
+	if (!node)
+		return dbus_error(msg, MESH_ERROR_NOT_FOUND, NULL);
+
+	if (node_is_busy(node))
+		return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+
+	node_remove(node);
 
 	return l_dbus_message_new_method_return(msg);
 }

@@ -88,6 +88,7 @@ struct mesh_node {
 	char *storage_dir;
 	uint32_t disc_watch;
 	uint32_t seq_number;
+	bool busy;
 	bool provisioner;
 	uint16_t primary;
 	struct node_composition comp;
@@ -596,6 +597,11 @@ void node_cleanup_all(void)
 bool node_is_provisioner(struct mesh_node *node)
 {
 	return node->provisioner;
+}
+
+bool node_is_busy(struct mesh_node *node)
+{
+	return node->busy;
 }
 
 void node_app_key_delete(struct mesh_node *node, uint16_t net_idx,
@@ -1352,6 +1358,8 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 	/* Initialize configuration server model */
 	cfgmod_server_init(node, PRIMARY_ELE_IDX);
 
+	node->busy = true;
+
 	return true;
 }
 
@@ -1458,6 +1466,9 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 	unsigned int num_ele;
 	struct keyring_net_key net_key;
 	uint8_t dev_key[16];
+
+	if (req->type == REQUEST_TYPE_ATTACH)
+		req->attach->busy = false;
 
 	if (!msg || l_dbus_message_is_error(msg)) {
 		l_error("Failed to get app's dbus objects");
@@ -1654,6 +1665,12 @@ void node_attach(const char *app_root, const char *sender, uint64_t token,
 		return;
 	}
 
+	/* Check if there is a pending request associated with this node */
+	if (node->busy) {
+		cb(user_data, MESH_ERROR_BUSY, NULL);
+		return;
+	}
+
 	/* Check if the node is already in use */
 	if (node->owner) {
 		l_warn("The node is already in use");
@@ -1673,6 +1690,8 @@ void node_attach(const char *app_root, const char *sender, uint64_t token,
 	req->pending_msg = user_data;
 	req->attach = node;
 	req->type = REQUEST_TYPE_ATTACH;
+
+	node->busy = true;
 
 	send_managed_objects_request(sender, app_root, req);
 }
@@ -2346,6 +2365,8 @@ void node_finalize_new_node(struct mesh_node *node, struct mesh_io *io)
 
 	free_node_dbus_resources(node);
 	mesh_agent_remove(node->agent);
+
+	node->busy = false;
 
 	/* Register callback for the node's io */
 	attach_io(node, io);
