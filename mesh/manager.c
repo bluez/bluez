@@ -60,7 +60,7 @@ static void scan_cancel(struct l_timeout *timeout, void *user_data)
 	struct mesh_io *io;
 	struct mesh_net *net;
 
-	l_debug("scan_cancel");
+	l_debug("");
 
 	if (scan_timeout)
 		l_timeout_remove(scan_timeout);
@@ -249,11 +249,10 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
 	if (!l_dbus_message_iter_get_fixed_array(&iter_uuid, &uuid, &n)
-	    || n != 16) {
-		l_debug("n = %u", n);
+								|| n != 16)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Bad device UUID");
-	}
+
 	/* Allow AddNode to cancel Scanning if from the same node */
 	if (scan_node) {
 		if (scan_node != node)
@@ -263,7 +262,6 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 	}
 
 	/* Invoke Prov Initiator */
-
 	add_pending = l_new(struct add_data, 1);
 	memcpy(add_pending->uuid, uuid, 16);
 	add_pending->node = node;
@@ -554,7 +552,8 @@ static struct l_dbus_message *update_subnet_call(struct l_dbus *dbus,
 	}
 
 	/* All other phases mean KR already in progress over-the-air */
-	return dbus_error(msg, MESH_ERROR_BUSY, "Key Refresh in progress");
+	return dbus_error(msg, MESH_ERROR_IN_PROGRESS,
+					"Key Refresh in progress");
 }
 
 static struct l_dbus_message *delete_subnet_call(struct l_dbus *dbus,
