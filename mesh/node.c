@@ -598,11 +598,6 @@ bool node_is_provisioner(struct mesh_node *node)
 	return node->provisioner;
 }
 
-bool node_is_provisioned(struct mesh_node *node)
-{
-	return (!IS_UNASSIGNED(node->primary));
-}
-
 void node_app_key_delete(struct mesh_node *node, uint16_t net_idx,
 							uint16_t app_idx)
 {
