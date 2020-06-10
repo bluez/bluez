@@ -101,8 +101,9 @@ Features Information command, Set Experimental Feature command and the
 Experimental Feature Changed event.
 
 Version 1.18 introduces Read Default System Configuration command, Set
-Default System Configuration command, Read Default Runtime Configuration
-command and Set Default Runtime Configuration command.
+Default System Configuration command, Default System Configuration Changed
+event, Read Default Runtime Configuration command, Set Default Runtime
+Configuration command and Default Runtime Configuration Changed event.
 
 
 Example
@@ -4282,3 +4283,51 @@ Experimental Feature Changed Event
 	one through which the change was triggered.
 
 	Refer to Set Experimental Feature command for the Flags parameter.
+
+
+Default System Configuration Changed Event
+==========================================
+
+	Event Code:		0x0028
+	Controller Index:	<controller id>
+	Event Parameters:	Parameter1 {
+					Parameter_Type (2 Octet)
+					Value_Length (1 Octet)
+					Value (0-255 Octets)
+				}
+				Parameter2 { }
+				...
+
+	This event indicates the change of default system parameter values.
+
+	The event will only be sent to management sockets other than the
+	one through which the change was trigged. In addition it will
+	only be sent to sockets that have issues the Read Default System
+	Configuration command.
+
+	Refer to Read Default System configuration command for the supported
+	Parameter_Type values.
+
+
+Default Runtime Configuration Changed Event
+===========================================
+
+	Event Code:		0x0029
+	Controller Index:	<controller id>
+	Event Parameters:	Parameter1 {
+					Parameter_Type (2 Octet)
+					Value_Length (1 Octet)
+					Value (0-255 Octets)
+				}
+				Parameter2 { }
+				...
+
+	This event indicates the change of default runtime parameter values.
+
+	The event will only be sent to management sockets other than the
+	one through which the change was trigged. In addition it will
+	only be sent to sockets that have issues the Read Default Runtime
+	Configuration command.
+
+	Refer to Read Default Runtime configuration command for the supported
+	Parameter_Type values.
