@@ -103,7 +103,9 @@ Experimental Feature Changed event.
 Version 1.18 introduces Read Default System Configuration command, Set
 Default System Configuration command, Default System Configuration Changed
 event, Read Default Runtime Configuration command, Set Default Runtime
-Configuration command and Default Runtime Configuration Changed event.
+Configuration command, Default Runtime Configuration Changed event, Get
+Device Flags command, Set Device Flags command and Device Flags Changed
+event.
 
 
 Example
@@ -3383,6 +3385,74 @@ Set Default Runtime Configuration Command
 				Invalid Index
 
 
+Get Device Flags Command
+========================
+
+	Command Code:		0x004f
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Supported_Flags (4 Octets)
+				Current_Flags (4 Octets)
+
+	This command is used to retrieve additional flags and settings
+	for devices that are added via Add Device command.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	The Flags parameters are a bitmask with currently the following
+	available bits:
+
+		0	Remote Wakeup enabled
+
+	This command generates a Command Complete event on success
+	or a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
+Set Device Flags Command
+========================
+
+	Command Code:		0x0050
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Current_Flags (4 Octets)
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+
+	This command is used to configure additional flags and settings
+	for devices that are added via Add Device command.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	The list of supported Flags can be retrieved via the Get Device
+	Flags or Device Flags Changed command. Selecting unsupported flags
+	will result in an Invalid Parameter error;
+
+	Refer to the Get Device Flags command for a detailed description
+	of the Flags parameters.
+
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	This command generates a Command Complete event on success
+	or a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
@@ -4331,3 +4401,30 @@ Default Runtime Configuration Changed Event
 
 	Refer to Read Default Runtime configuration command for the supported
 	Parameter_Type values.
+
+
+Device Flags Changed Event
+==========================
+
+	Event Code:		0x002a
+	Controller Index:	<controller id>
+	Event Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Supported_Flags (4 Octets)
+				Current_Flags (4 Octets)
+
+	This event indicates that the device flags have been changed via
+	the Set Device Flags command or that a new device has been added
+	via the Add Device command. In the latter case it is send right
+	after the Device Added event.
+
+	Possible values for the Address_Type parameter:
+		0	BR/EDR
+		1	LE Public
+		2	LE Random
+
+	The event will only be sent to management sockets other than the
+	one through which the command was sent.
+
+	In case this event is triggered by Add Device then it is sent to
+	all management sockets.
