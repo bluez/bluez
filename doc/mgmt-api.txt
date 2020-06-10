@@ -657,8 +657,8 @@ Set Low Energy Command
 				Invalid Index
 
 
-Set Device Class
-================
+Set Device Class Command
+========================
 
 	Command Code:		0x000E
 	Controller Index:	<controller id>
