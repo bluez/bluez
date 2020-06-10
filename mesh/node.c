@@ -1459,7 +1459,7 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 	struct keyring_net_key net_key;
 	uint8_t dev_key[16];
 
-	if (l_dbus_message_is_error(msg)) {
+	if (!msg || l_dbus_message_is_error(msg)) {
 		l_error("Failed to get app's dbus objects");
 		goto fail;
 	}
@@ -1616,8 +1616,7 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 
 fail:
 	/* Handle failed requests */
-	if (node)
-		node_remove(node);
+	node_remove(node);
 
 	if (req->type == REQUEST_TYPE_JOIN)
 		req->join_ready_cb(NULL, NULL);
@@ -1626,6 +1625,20 @@ fail:
 
 	if (req->type == REQUEST_TYPE_IMPORT)
 		l_free(req->import);
+}
+
+static void send_managed_objects_request(const char *destination,
+						const char *path,
+						struct managed_obj_request *req)
+{
+	struct l_dbus_message *msg;
+
+	msg = l_dbus_message_new_method_call(dbus_get_bus(), destination, path,
+						L_DBUS_INTERFACE_OBJECT_MANAGER,
+						"GetManagedObjects");
+	l_dbus_message_set_arguments(msg, "");
+	dbus_send_with_timeout(dbus_get_bus(), msg, get_managed_objects_cb,
+					req, l_free, DEFAULT_DBUS_TIMEOUT);
 }
 
 /* Establish relationship between application and mesh node */
@@ -1661,11 +1674,7 @@ void node_attach(const char *app_root, const char *sender, uint64_t token,
 	req->attach = node;
 	req->type = REQUEST_TYPE_ATTACH;
 
-	l_dbus_method_call(dbus_get_bus(), sender, app_root,
-					L_DBUS_INTERFACE_OBJECT_MANAGER,
-					"GetManagedObjects", NULL,
-					get_managed_objects_cb,
-					req, l_free);
+	send_managed_objects_request(sender, app_root, req);
 }
 
 /* Create a temporary pre-provisioned node */
@@ -1681,11 +1690,7 @@ void node_join(const char *app_root, const char *sender, const uint8_t *uuid,
 	req->join_ready_cb = cb;
 	req->type = REQUEST_TYPE_JOIN;
 
-	l_dbus_method_call(dbus_get_bus(), sender, app_root,
-					L_DBUS_INTERFACE_OBJECT_MANAGER,
-					"GetManagedObjects", NULL,
-					get_managed_objects_cb,
-					req, l_free);
+	send_managed_objects_request(sender, app_root, req);
 }
 
 void node_import(const char *app_root, const char *sender, const uint8_t *uuid,
@@ -1715,11 +1720,7 @@ void node_import(const char *app_root, const char *sender, const uint8_t *uuid,
 
 	req->type = REQUEST_TYPE_IMPORT;
 
-	l_dbus_method_call(dbus_get_bus(), sender, app_root,
-						L_DBUS_INTERFACE_OBJECT_MANAGER,
-						"GetManagedObjects", NULL,
-						get_managed_objects_cb,
-						req, l_free);
+	send_managed_objects_request(sender, app_root, req);
 }
 
 void node_create(const char *app_root, const char *sender, const uint8_t *uuid,
@@ -1735,11 +1736,7 @@ void node_create(const char *app_root, const char *sender, const uint8_t *uuid,
 	req->pending_msg = user_data;
 	req->type = REQUEST_TYPE_CREATE;
 
-	l_dbus_method_call(dbus_get_bus(), sender, app_root,
-					L_DBUS_INTERFACE_OBJECT_MANAGER,
-					"GetManagedObjects", NULL,
-					get_managed_objects_cb,
-					req, l_free);
+	send_managed_objects_request(sender, app_root, req);
 }
 
 static void build_element_config(void *a, void *b)
