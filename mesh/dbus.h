@@ -36,4 +36,5 @@ struct l_dbus_message *dbus_error(struct l_dbus_message *msg, int err,
 void dbus_send_with_timeout(struct l_dbus *dbus, struct l_dbus_message *msg,
 						l_dbus_message_func_t cb,
 						void *user_data,
+						l_dbus_destroy_func_t destroy,
 						unsigned int seconds);

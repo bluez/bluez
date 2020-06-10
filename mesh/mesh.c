@@ -439,12 +439,12 @@ static void send_join_failed(const char *owner, const char *path,
 	free_pending_join_call(true);
 }
 
-static void prov_join_complete_reply_cb(struct l_dbus_message *message,
+static void prov_join_complete_reply_cb(struct l_dbus_message *msg,
 								void *user_data)
 {
 	bool failed = false;
 
-	if (!message || l_dbus_message_is_error(message))
+	if (!msg || l_dbus_message_is_error(msg))
 		failed = true;
 
 	if (!failed)
@@ -488,7 +488,7 @@ static bool prov_complete_cb(void *user_data, uint8_t status,
 
 	l_dbus_message_set_arguments(msg, "t", l_get_be64(token));
 	dbus_send_with_timeout(dbus, msg, prov_join_complete_reply_cb,
-						NULL, DEFAULT_DBUS_TIMEOUT);
+					NULL, NULL, DEFAULT_DBUS_TIMEOUT);
 
 	return true;
 }
@@ -666,12 +666,12 @@ static struct l_dbus_message *leave_call(struct l_dbus *dbus,
 	return l_dbus_message_new_method_return(msg);
 }
 
-static void create_join_complete_reply_cb(struct l_dbus_message *message,
+static void create_join_complete_reply_cb(struct l_dbus_message *msg,
 								void *user_data)
 {
 	struct mesh_node *node = user_data;
 
-	if (!message || l_dbus_message_is_error(message)) {
+	if (!msg || l_dbus_message_is_error(msg)) {
 		node_remove(node);
 		return;
 	}
@@ -716,7 +716,7 @@ static void create_node_ready_cb(void *user_data, int status,
 
 	l_dbus_message_set_arguments(msg, "t", l_get_be64(token));
 	dbus_send_with_timeout(dbus, msg, create_join_complete_reply_cb,
-						node, DEFAULT_DBUS_TIMEOUT);
+					node, NULL, DEFAULT_DBUS_TIMEOUT);
 	l_dbus_message_unref(pending_msg);
 }
 
