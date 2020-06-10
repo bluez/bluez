@@ -333,8 +333,10 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 		idev->intr_io = NULL;
 	}
 
-	/* Close control channel */
-	if (idev->ctrl_io && !(cond & G_IO_NVAL))
+	/* Close control channel if the closing of interrupt channel is not
+	 * initiated by the other party
+	 */
+	if (idev->ctrl_io && !(cond & (G_IO_NVAL | G_IO_ERR)))
 		g_io_channel_shutdown(idev->ctrl_io, TRUE, NULL);
 
 	btd_service_disconnecting_complete(idev->service, 0);
