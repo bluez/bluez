@@ -59,6 +59,8 @@
 
 #define SAR_KEY(src, seq0)	((((uint32_t)(seq0)) << 16) | (src))
 
+#define FAST_CACHE_SIZE 8
+
 enum _relay_advice {
 	RELAY_NONE,		/* Relay not enabled in node */
 	RELAY_ALLOWED,		/* Relay enabled, msg not to node's unicast */
@@ -179,30 +181,6 @@ struct mesh_destination {
 	uint16_t ref_cnt;
 };
 
-struct msg_rx {
-	const uint8_t *data;
-	uint32_t iv_index;
-	uint32_t seq;
-	uint16_t src;
-	uint16_t dst;
-	uint16_t size;
-	uint8_t tc;
-	bool done;
-	bool szmic;
-	union {
-		struct {
-			uint16_t app_idx;
-			uint8_t key_aid;
-		} m;
-		struct {
-			uint16_t seq0;
-		} a;
-		struct {
-			uint8_t opcode;
-		} c;
-	} u;
-};
-
 struct net_decode {
 	struct mesh_net *net;
 	struct mesh_friend *frnd;
@@ -241,7 +219,6 @@ struct net_beacon_data {
 	bool processed;
 };
 
-#define FAST_CACHE_SIZE 8
 static struct l_queue *fast_cache;
 static struct l_queue *nets;
 
@@ -289,6 +266,7 @@ static void trigger_heartbeat(struct mesh_net *net, uint16_t feature,
 	struct mesh_net_heartbeat *hb = &net->heartbeat;
 
 	l_debug("%s: %4.4x --> %d", __func__, feature, in_use);
+
 	if (in_use) {
 		if (net->heartbeat.features & feature)
 			return; /* no change */
@@ -402,17 +380,15 @@ struct mesh_friend *mesh_friend_new(struct mesh_net *net, uint16_t dst,
 	subnet = get_primary_subnet(net);
 	/* TODO: the primary key must be present, do we need to add check?. */
 
-	frnd->net_key_cur = net_key_frnd_add(subnet->net_key_cur,
-							dst, net->src_addr,
-							lp_cnt, fn_cnt);
+	frnd->net_key_cur = net_key_frnd_add(subnet->net_key_cur, dst,
+						net->src_addr, lp_cnt, fn_cnt);
 
 	if (!subnet->net_key_upd)
 		return frnd;
 
 	frnd->net_idx = subnet->idx;
-	frnd->net_key_upd = net_key_frnd_add(subnet->net_key_upd,
-							dst, net->src_addr,
-							lp_cnt, fn_cnt);
+	frnd->net_key_upd = net_key_frnd_add(subnet->net_key_upd, dst,
+						net->src_addr, lp_cnt, fn_cnt);
 
 	return frnd;
 }
@@ -436,8 +412,7 @@ bool mesh_friend_clear(struct mesh_net *net, struct mesh_friend *frnd)
 }
 
 void mesh_friend_sub_add(struct mesh_net *net, uint16_t lpn, uint8_t ele_cnt,
-							uint8_t grp_cnt,
-							const uint8_t *list)
+					uint8_t grp_cnt, const uint8_t *list)
 {
 	uint16_t *new_list;
 	uint16_t *grp_list;
@@ -463,15 +438,13 @@ void mesh_friend_sub_add(struct mesh_net *net, uint16_t lpn, uint8_t ele_cnt,
 	frnd->u.active.grp_cnt += grp_cnt;
 }
 
-void mesh_friend_sub_del(struct mesh_net *net, uint16_t lpn,
-						uint8_t cnt,
-						const uint8_t *del_list)
+void mesh_friend_sub_del(struct mesh_net *net, uint16_t lpn, uint8_t cnt,
+							const uint8_t *del_list)
 {
 	uint16_t *grp_list;
 	int16_t i, grp_cnt;
 	size_t cnt16 = cnt * sizeof(uint16_t);
-	struct mesh_friend *frnd = l_queue_find(net->friends,
-							match_by_friend,
+	struct mesh_friend *frnd = l_queue_find(net->friends, match_by_friend,
 							L_UINT_TO_PTR(lpn));
 	if (!frnd)
 		return;
@@ -747,14 +720,6 @@ bool mesh_net_register_unicast(struct mesh_net *net,
 	} while (num_ele > 0);
 
 	return true;
-}
-
-uint8_t mesh_net_get_num_ele(struct mesh_net *net)
-{
-	if (!net)
-		return 0;
-
-	return net->last_addr - net->src_addr + 1;
 }
 
 bool mesh_net_set_proxy_mode(struct mesh_net *net, bool enable)
@@ -3315,8 +3280,10 @@ static uint16_t get_features(struct mesh_net *net)
 
 	if (net->relay.enable)
 		features |= FEATURE_RELAY;
+
 	if (net->proxy_enable)
 		features |= FEATURE_PROXY;
+
 	if (net->friend_enable)
 		features |= FEATURE_FRIEND;
 
@@ -3553,10 +3520,9 @@ bool net_msg_check_replay_cache(struct mesh_net *net, uint16_t src,
 			l_debug("Ignoring replayed packet");
 			return true;
 		}
-	}
+	} else if (l_queue_length(net->replay_cache) >= crpl) {
+		/* SRC not in Replay Cache... see if there is space for it */
 
-	/* SRC not in Replay Cache... see if there is space for it */
-	else if (l_queue_length(net->replay_cache) >= crpl) {
 		int ret = l_queue_foreach_remove(net->replay_cache,
 				clean_old_iv_index, L_UINT_TO_PTR(iv_index));
 
