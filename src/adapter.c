@@ -2224,7 +2224,7 @@ static int discovery_stop(struct watch_client *client, bool exit)
 
 	mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
 				adapter->dev_id, sizeof(cp), &cp,
-				stop_discovery_complete, client, NULL);
+				stop_discovery_complete, adapter, NULL);
 
 	return -EINPROGRESS;
 }
