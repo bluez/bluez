@@ -251,6 +251,7 @@ struct btd_adapter {
 					 */
 	/* current discovery filter, if any */
 	struct mgmt_cp_start_service_discovery *current_discovery_filter;
+	struct watch_client *client;	/* active discovery client */
 
 	GSList *discovery_found;	/* list of found devices */
 	guint discovery_idle_timeout;	/* timeout between discovery runs */
@@ -1539,6 +1540,8 @@ static void discovery_free(void *user_data)
 {
 	struct watch_client *client = user_data;
 
+	DBG("%p", client);
+
 	if (client->watch)
 		g_dbus_remove_watch(dbus_conn, client->watch);
 
@@ -1554,7 +1557,7 @@ static void discovery_free(void *user_data)
 	g_free(client);
 }
 
-static void discovery_remove(struct watch_client *client, bool exit)
+static void discovery_remove(struct watch_client *client)
 {
 	struct btd_adapter *adapter = client->adapter;
 
@@ -1566,7 +1569,10 @@ static void discovery_remove(struct watch_client *client, bool exit)
 	adapter->discovery_list = g_slist_remove(adapter->discovery_list,
 								client);
 
-	if (!exit && client->discovery_filter)
+	if (adapter->client == client)
+		adapter->client = NULL;
+
+	if (client->watch && client->discovery_filter)
 		adapter->set_filter_list = g_slist_prepend(
 					adapter->set_filter_list, client);
 	else
@@ -1584,12 +1590,19 @@ static void discovery_remove(struct watch_client *client, bool exit)
 
 static void trigger_start_discovery(struct btd_adapter *adapter, guint delay);
 
-static void discovery_reply(struct watch_client *client, uint8_t status)
+static struct watch_client *discovery_complete(struct btd_adapter *adapter,
+						uint8_t status)
 {
+	struct watch_client *client = adapter->client;
 	DBusMessage *reply;
 
+	if (!client)
+		return NULL;
+
+	adapter->client = NULL;
+
 	if (!client->msg)
-		return;
+		return client;
 
 	if (!status) {
 		g_dbus_send_reply(dbus_conn, client->msg, DBUS_TYPE_INVALID);
@@ -1600,6 +1613,8 @@ static void discovery_reply(struct watch_client *client, uint8_t status)
 
 	dbus_message_unref(client->msg);
 	client->msg = NULL;
+
+	return client;
 }
 
 static void start_discovery_complete(uint8_t status, uint16_t length,
@@ -1628,13 +1643,10 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	client = adapter->discovery_list->data;
-
 	if (length < sizeof(*rp)) {
 		btd_error(adapter->dev_id,
 			"Wrong size of start discovery return parameters");
-		if (client->msg)
-			goto fail;
+		discovery_complete(adapter, MGMT_STATUS_FAILED);
 		return;
 	}
 
@@ -1647,7 +1659,7 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 		else
 			adapter->filtered_discovery = false;
 
-		discovery_reply(client, status);
+		discovery_complete(adapter, status);
 
 		if (adapter->discovering)
 			return;
@@ -1658,11 +1670,10 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-fail:
 	/* Reply with an error if the first discovery has failed */
-	if (client->msg) {
-		discovery_reply(client, status);
-		discovery_remove(client, false);
+	client = discovery_complete(adapter, status);
+	if (client) {
+		discovery_remove(client);
 		return;
 	}
 
@@ -1739,8 +1750,10 @@ static gboolean start_discovery_timeout(gpointer user_data)
 
 		cp.type = new_type;
 		mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
-				adapter->dev_id, sizeof(cp), &cp,
-				start_discovery_complete, adapter, NULL);
+					adapter->dev_id, sizeof(cp), &cp,
+					start_discovery_complete, adapter,
+					NULL);
+
 		return FALSE;
 	}
 
@@ -1931,18 +1944,9 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 
 	DBG("status 0x%02x", status);
 
-	/* Is there are no clients the discovery must have been stopped while
-	 * discovery command was pending.
-	 */
-	if (!adapter->discovery_list)
-		return;
-
-	client = adapter->discovery_list->data;
-
-	discovery_reply(client, status);
-
-	if (status != MGMT_STATUS_SUCCESS)
-		goto done;
+	client = discovery_complete(adapter, status);
+	if (client)
+		discovery_remove(client);
 
 	adapter->discovery_type = 0x00;
 	adapter->discovery_enable = 0x00;
@@ -1953,9 +1957,6 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 					ADAPTER_INTERFACE, "Discovering");
 
 	trigger_passive_scanning(adapter);
-
-done:
-	discovery_remove(client, false);
 }
 
 static int compare_sender(gconstpointer a, gconstpointer b)
@@ -2190,14 +2191,14 @@ static int update_discovery_filter(struct btd_adapter *adapter)
 	return -EINPROGRESS;
 }
 
-static int discovery_stop(struct watch_client *client, bool exit)
+static int discovery_stop(struct watch_client *client)
 {
 	struct btd_adapter *adapter = client->adapter;
 	struct mgmt_cp_stop_discovery cp;
 
 	/* Check if there are more client discovering */
 	if (g_slist_next(adapter->discovery_list)) {
-		discovery_remove(client, exit);
+		discovery_remove(client);
 		update_discovery_filter(adapter);
 		return 0;
 	}
@@ -2210,7 +2211,7 @@ static int discovery_stop(struct watch_client *client, bool exit)
 	 * and so it is enough to send out the signal and just return.
 	 */
 	if (adapter->discovery_enable == 0x00) {
-		discovery_remove(client, exit);
+		discovery_remove(client);
 		adapter->discovering = false;
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discovering");
@@ -2221,10 +2222,11 @@ static int discovery_stop(struct watch_client *client, bool exit)
 	}
 
 	cp.type = adapter->discovery_type;
+	adapter->client = client;
 
 	mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
-				adapter->dev_id, sizeof(cp), &cp,
-				stop_discovery_complete, adapter, NULL);
+			adapter->dev_id, sizeof(cp), &cp,
+			stop_discovery_complete, adapter, NULL);
 
 	return -EINPROGRESS;
 }
@@ -2235,7 +2237,9 @@ static void discovery_disconnect(DBusConnection *conn, void *user_data)
 
 	DBG("owner %s", client->owner);
 
-	discovery_stop(client, true);
+	client->watch = 0;
+
+	discovery_stop(client);
 }
 
 /*
@@ -2327,6 +2331,7 @@ done:
 	/* If the discovery has to be started wait it complete to reply */
 	if (err == -EINPROGRESS) {
 		client->msg = dbus_message_ref(msg);
+		adapter->client = client;
 		return NULL;
 	}
 
@@ -2644,12 +2649,13 @@ static DBusMessage *stop_discovery(DBusConnection *conn,
 	if (client->msg)
 		return btd_error_busy(msg);
 
-	err = discovery_stop(client, false);
+	err = discovery_stop(client);
 	switch (err) {
 	case 0:
 		return dbus_message_new_method_return(msg);
 	case -EINPROGRESS:
 		client->msg = dbus_message_ref(msg);
+		adapter->client = client;
 		return NULL;
 	default:
 		return btd_error_failed(msg, strerror(-err));
