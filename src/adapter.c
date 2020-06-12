@@ -120,7 +120,7 @@ static bool kernel_conn_control = false;
 
 static bool kernel_blocked_keys_supported = false;
 
-static bool kernel_set_system_params = false;
+static bool kernel_set_system_config = false;
 
 static GList *adapter_list = NULL;
 static unsigned int adapter_remaining = 0;
@@ -4180,7 +4180,7 @@ static void probe_devices(void *user_data)
 static void load_default_system_params(struct btd_adapter *adapter)
 {
 	struct {
-		struct mgmt_system_parameter_tlv entry;
+		struct mgmt_tlv entry;
 		union {
 			uint16_t u16;
 		};
@@ -4189,7 +4189,7 @@ static void load_default_system_params(struct btd_adapter *adapter)
 	size_t len = 0;
 	unsigned int err;
 
-	if (!main_opts.default_params.num_entries || !kernel_set_system_params)
+	if (!main_opts.default_params.num_entries || !kernel_set_system_config)
 		return;
 
 	params = malloc0(sizeof(*params) *
@@ -4423,11 +4423,11 @@ static void load_default_system_params(struct btd_adapter *adapter)
 		len += sizeof(params[i].u16);
 	}
 
-	err = mgmt_send(adapter->mgmt, MGMT_OP_SET_DEFAULT_SYSTEM_PARAMETERS,
+	err = mgmt_send(adapter->mgmt, MGMT_OP_SET_DEF_SYSTEM_CONFIG,
 			adapter->dev_id, len, params, NULL, NULL, NULL);
 	if (!err)
 		btd_error(adapter->dev_id,
-				"Failed to set default system params for hci%u",
+				"Failed to set default system config for hci%u",
 				adapter->dev_id);
 
 	free(params);
@@ -9435,9 +9435,9 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 			DBG("kernel supports the set_blocked_keys op");
 			kernel_blocked_keys_supported = true;
 			break;
-		case MGMT_OP_SET_DEFAULT_SYSTEM_PARAMETERS:
-			DBG("kernel supports set system params");
-			kernel_set_system_params = true;
+		case MGMT_OP_SET_DEF_SYSTEM_CONFIG:
+			DBG("kernel supports set system confic");
+			kernel_set_system_config = true;
 			break;
 		default:
 			break;

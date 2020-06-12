@@ -56,6 +56,12 @@ struct mgmt_hdr {
 } __packed;
 #define MGMT_HDR_SIZE	6
 
+struct mgmt_tlv {
+	uint16_t type;
+	uint8_t  length;
+	uint8_t  value[];
+} __packed;
+
 struct mgmt_addr_info {
 	bdaddr_t bdaddr;
 	uint8_t type;
@@ -628,22 +634,24 @@ struct mgmt_rp_set_exp_feature {
 	uint32_t flags;
 } __packed;
 
-#define MGMT_OP_READ_DEFAULT_SYSTEM_PARAMETERS	0x004b
-
-struct mgmt_system_parameter_tlv {
-	uint16_t type;
-	uint8_t  length;
-	uint8_t  value[];
+#define MGMT_OP_READ_DEF_SYSTEM_CONFIG	0x004b
+struct mgmt_rp_read_default_system_config {
+	uint8_t parameters[0]; /* mgmt_tlv */
 } __packed;
 
-struct mgmt_rp_read_default_system_parameters {
-	uint8_t  parameters[0]; /* mgmt_system_parameter_tlv */
+#define MGMT_OP_SET_DEF_SYSTEM_CONFIG	0x004c
+struct mgmt_cp_set_default_system_config {
+	uint8_t parameters[0]; /* mgmt_tlv */
 } __packed;
 
-#define MGMT_OP_SET_DEFAULT_SYSTEM_PARAMETERS	0x004c
+#define MGMT_OP_READ_DEF_RUNTIME_CONFIG	0x004d
+struct mgmt_rp_read_default_runtime_config {
+	uint8_t parameters[0]; /* mgmt_tlv */
+} __packed;
 
-struct mgmt_cp_set_default_system_parameters {
-	uint8_t  parameters[0]; /* mgmt_system_parameter_tlv */
+#define MGMT_OP_SET_DEF_RUNTIME_CONFIG	0x004e
+struct mgmt_cp_set_default_runtime_config {
+	uint8_t parameters[0]; /* mgmt_tlv */
 } __packed;
 
 #define MGMT_ADV_MONITOR_FEATURE_MASK_OR_PATTERNS	(1 << 0)
