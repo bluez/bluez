@@ -2623,7 +2623,7 @@ Add Advertising Command
 				Duration (2 Octets)
 				Timeout (2 Octets)
 				Adv_Data_Len (1 Octet)
-				Scan_Rsp_len (1 Octet)
+				Scan_Rsp_Len (1 Octet)
 				Adv_Data (0-255 Octets)
 				Scan_Rsp (0-255 Octets)
 	Return Parameters:	Instance (1 Octet)
