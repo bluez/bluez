@@ -1949,6 +1949,9 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 	if (client)
 		discovery_remove(client);
 
+	if (status != MGMT_STATUS_SUCCESS)
+		return;
+
 	adapter->discovery_type = 0x00;
 	adapter->discovery_enable = 0x00;
 	adapter->filtered_discovery = false;
