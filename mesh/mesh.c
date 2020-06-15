@@ -816,7 +816,7 @@ static struct l_dbus_message *import_call(struct l_dbus *dbus,
 							"Bad net index");
 
 	while (l_dbus_message_iter_next_entry(&iter_flags, &key, &var)) {
-		if (!strcmp(key, "IVUpdate") &&
+		if (!strcmp(key, "IvUpdate") &&
 			l_dbus_message_iter_get_variant(&var, "b", &ivu))
 			continue;
 

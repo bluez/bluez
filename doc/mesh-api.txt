@@ -193,7 +193,7 @@ Methods:
 		The flags parameter is a dictionary containing provisioning
 		flags. Supported values are:
 
-			boolean IVUpdate
+			boolean IvUpdate
 
 				When true, indicates that the network is in the
 				middle of IV Index Update procedure.
