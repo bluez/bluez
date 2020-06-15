@@ -91,6 +91,7 @@ struct main_opts {
 		uint16_t	le_max_conn_interval;
 		uint16_t	le_conn_latency;
 		uint16_t	le_conn_lsto;
+		uint16_t	le_autoconnect_timeout;
 	} default_params;
 
 

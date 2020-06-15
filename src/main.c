@@ -120,6 +120,7 @@ static const char *controller_options[] = {
 	"LEMaxConnectionInterval",
 	"LEConnectionLatency",
 	"LEConnectionSupervisionTimeout",
+	"LEAutoconnecttimeout",
 	NULL
 };
 
@@ -409,6 +410,10 @@ static void parse_controller_config(GKeyFile *config)
 		{ "LEScanWindowConnect",
 		  &main_opts.default_params.le_scan_win_connect,
 		  0x0004,
+		  0x4000},
+		{ "LEAutoconnecttimeout",
+		  &main_opts.default_params.le_autoconnect_timeout,
+		  0x0001,
 		  0x4000},
 	};
 	uint16_t i;

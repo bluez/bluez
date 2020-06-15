@@ -4423,6 +4423,14 @@ static void load_default_system_params(struct btd_adapter *adapter)
 		len += sizeof(params[i].u16);
 	}
 
+	if (main_opts.default_params.le_autoconnect_timeout) {
+		params[i].entry.type = 0x001b;
+		params[i].entry.length = sizeof(params[i].u16);
+		params[i].u16 = main_opts.default_params.le_autoconnect_timeout;
+		++i;
+		len += sizeof(params[i].u16);
+	}
+
 	err = mgmt_send(adapter->mgmt, MGMT_OP_SET_DEF_SYSTEM_CONFIG,
 			adapter->dev_id, len, params, NULL, NULL, NULL);
 	if (!err)
