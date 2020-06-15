@@ -1366,16 +1366,18 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 static void update_composition(struct mesh_node *node, struct mesh_node *attach)
 {
 	if (node->comp.cid != attach->comp.cid)
-		mesh_config_update_company_id(node->cfg, attach->comp.cid);
+		mesh_config_update_company_id(attach->cfg, node->comp.cid);
 
 	if (node->comp.pid != attach->comp.pid)
-		mesh_config_update_product_id(node->cfg, attach->comp.pid);
+		mesh_config_update_product_id(attach->cfg, node->comp.pid);
 
 	if (node->comp.vid != attach->comp.vid)
-		mesh_config_update_version_id(node->cfg, attach->comp.vid);
+		mesh_config_update_version_id(attach->cfg, node->comp.vid);
 
 	if (node->comp.crpl != attach->comp.crpl)
-		mesh_config_update_crpl(node->cfg, attach->comp.crpl);
+		mesh_config_update_crpl(attach->cfg, node->comp.crpl);
+
+	attach->comp = node->comp;
 }
 
 static bool check_req_node(struct managed_obj_request *req)
