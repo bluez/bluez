@@ -1008,7 +1008,7 @@ static const char *mgmt_op[] = {
 	"Read Default System Configuration",
 	"Set Default System Configuration",
 	"Read Advertisement Monitor Features",
-	"Add Advertisement Monitor",
+	"Add Advertisement Patterns Monitor",
 	"Remove Advertisement Monitor",
 };
 
