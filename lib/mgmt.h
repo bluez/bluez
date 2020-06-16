@@ -673,7 +673,7 @@ struct mgmt_adv_pattern {
 	uint8_t value[31];
 } __packed;
 
-#define MGMT_OP_ADD_ADV_MONITOR			0x0052
+#define MGMT_OP_ADD_ADV_PATTERNS_MONITOR	0x0052
 struct mgmt_cp_add_adv_monitor {
 	uint8_t pattern_count;
 	struct mgmt_adv_pattern patterns[0];
