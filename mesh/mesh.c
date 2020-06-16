@@ -104,6 +104,10 @@ static struct l_queue *pending_queue;
 
 static const char *storage_dir;
 
+/* Forward static decalrations */
+static void def_attach(struct l_timeout *timeout, void *user_data);
+static void def_leave(struct l_timeout *timeout, void *user_data);
+
 static bool simple_match(const void *a, const void *b)
 {
 	return a == b;
@@ -634,11 +638,25 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 	uint64_t token;
 	const char *app_path, *sender;
 	struct l_dbus_message *pending_msg;
+	struct mesh_node *node;
 
 	l_debug("Attach");
 
 	if (!l_dbus_message_get_arguments(msg, "ot", &app_path, &token))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
+
+	node = node_find_by_token(token);
+	if (!node)
+		return dbus_error(msg, MESH_ERROR_NOT_FOUND, "Attach failed");
+
+	if (node_is_busy(node)) {
+		if (user_data)
+			return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+
+		/* Try once more in 1 second */
+		l_timeout_create(1, def_attach, l_dbus_message_ref(msg), NULL);
+		return NULL;
+	}
 
 	sender = l_dbus_message_get_sender(msg);
 
@@ -648,6 +666,19 @@ static struct l_dbus_message *attach_call(struct l_dbus *dbus,
 	node_attach(app_path, sender, token, attach_ready_cb, pending_msg);
 
 	return NULL;
+}
+
+static void def_attach(struct l_timeout *timeout, void *user_data)
+{
+	struct l_dbus *dbus = dbus_get_bus();
+	struct l_dbus_message *msg = user_data;
+	struct l_dbus_message *reply;
+
+	l_timeout_remove(timeout);
+
+	reply = attach_call(dbus, msg, (void *) true);
+	l_dbus_send(dbus, reply);
+	l_dbus_message_unref(msg);
 }
 
 static struct l_dbus_message *leave_call(struct l_dbus *dbus,
@@ -666,12 +697,31 @@ static struct l_dbus_message *leave_call(struct l_dbus *dbus,
 	if (!node)
 		return dbus_error(msg, MESH_ERROR_NOT_FOUND, NULL);
 
-	if (node_is_busy(node))
-		return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+	if (node_is_busy(node)) {
+		if (user_data)
+			return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+
+		/* Try once more in 1 second */
+		l_timeout_create(1, def_leave, l_dbus_message_ref(msg), NULL);
+		return NULL;
+	}
 
 	node_remove(node);
 
 	return l_dbus_message_new_method_return(msg);
+}
+
+static void def_leave(struct l_timeout *timeout, void *user_data)
+{
+	struct l_dbus *dbus = dbus_get_bus();
+	struct l_dbus_message *msg = user_data;
+	struct l_dbus_message *reply;
+
+	l_timeout_remove(timeout);
+
+	reply = leave_call(dbus, msg, (void *) true);
+	l_dbus_send(dbus, reply);
+	l_dbus_message_unref(msg);
 }
 
 static void create_join_complete_reply_cb(struct l_dbus_message *msg,
