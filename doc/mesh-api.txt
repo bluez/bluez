@@ -422,11 +422,11 @@ Properties:
 		This property indicates whether the periodic beaconing is
 		enabled (true) or disabled (false).
 
-	uint8 BeaconFlags [read-only]
+	boolean IvUpdate [read-only]
 
-		This property may be read at any time to determine the flag
-		field setting on sent and received beacons of the primary
-		network key.
+		When true, indicates that the network is in the middle of IV
+		Index Update procedure. This information is only useful for
+		provisioning.
 
 	uint32 IvIndex [read-only]
 
