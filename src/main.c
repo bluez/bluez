@@ -421,12 +421,13 @@ static void parse_controller_config(GKeyFile *config)
 		int val = g_key_file_get_integer(config, "Controller",
 						params[i].val_name, &err);
 		if (err) {
+			warn("%s", err->message);
 			g_clear_error(&err);
 		} else {
-			DBG("%s=%d", params[i].val_name, val);
+			info("%s=%d", params[i].val_name, val);
 
-			val = MIN(val, params[i].min);
-			val = MAX(val, params[i].max);
+			val = MAX(val, params[i].min);
+			val = MIN(val, params[i].max);
 			*params[i].val = val;
 			++main_opts.default_params.num_entries;
 		}
