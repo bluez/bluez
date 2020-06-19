@@ -1255,6 +1255,143 @@ bool mesh_db_set_iv_index(uint32_t ivi)
 	return save_config();
 }
 
+static int get_blacklisted_by_iv_index(json_object *jarray, uint32_t iv_index)
+{
+	int i, cnt;
+
+	cnt = json_object_array_length(jarray);
+
+	for (i = 0; i < cnt; i++) {
+		json_object *jentry;
+		int index;
+
+		jentry = json_object_array_get_idx(jarray, i);
+
+		if (!get_int(jentry, "ivIndex", &index))
+			continue;
+
+		if (iv_index == (uint32_t)index)
+			return i;
+	}
+
+	return -1;
+}
+
+static bool load_blacklisted(json_object *jobj)
+{
+	json_object *jarray;
+	int i, cnt;
+
+	json_object_object_get_ex(jobj, "blacklistedAddresses", &jarray);
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return true;
+
+	cnt = json_object_array_length(jarray);
+
+	for (i = 0; i < cnt; i++) {
+		json_object *jaddrs, *jentry, *jval;
+		int iv_index, addr_cnt, j;
+
+		jentry = json_object_array_get_idx(jarray, i);
+
+		if (!get_int(jentry, "ivIndex", &iv_index))
+			return false;
+
+		if (!json_object_object_get_ex(jentry, "addresses",
+								&jaddrs))
+			return false;
+
+		addr_cnt = json_object_array_length(jaddrs);
+
+		for (j = 0; j < addr_cnt; j++) {
+			const char *str;
+			uint16_t unicast;
+
+			jval = json_object_array_get_idx(jaddrs, j);
+			str = json_object_get_string(jval);
+
+			if (sscanf(str, "%04hx", &unicast) != 1)
+				return false;
+
+			remote_add_blacklisted_address(unicast, iv_index,
+								false);
+		}
+	}
+
+	return true;
+}
+
+bool mesh_db_add_blacklisted_addr(uint16_t unicast, uint32_t iv_index)
+{
+	json_object *jarray, *jobj, *jaddrs, *jstring;
+	int idx;
+	char buf[5];
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	json_object_object_get_ex(cfg->jcfg, "blacklistedAddresses", &jarray);
+	if (!jarray) {
+		jarray = json_object_new_array();
+		json_object_object_add(cfg->jcfg, "blacklistedAddresses",
+									jarray);
+	}
+
+	idx = get_blacklisted_by_iv_index(jarray, iv_index);
+
+	if (idx < 0) {
+		jobj = json_object_new_object();
+
+		if (!write_int(jobj, "ivIndex", iv_index))
+			goto fail;
+
+		jaddrs = json_object_new_array();
+		json_object_object_add(jobj, "addresses", jaddrs);
+
+	} else {
+		jobj = json_object_array_get_idx(jarray, idx);
+	}
+
+	json_object_object_get_ex(jobj, "addresses", &jaddrs);
+
+	snprintf(buf, 5, "%4.4x", unicast);
+	jstring = json_object_new_string(buf);
+	if (!jstring)
+		goto fail;
+
+	json_object_array_add(jaddrs, jstring);
+
+	if (idx < 0)
+		json_object_array_add(jarray, jobj);
+
+	return save_config();
+
+fail:
+	json_object_put(jobj);
+	return false;
+}
+
+bool mesh_db_clear_blacklisted(uint32_t iv_index)
+{
+	json_object *jarray;
+	int idx;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	json_object_object_get_ex(cfg->jcfg, "blacklistedAddresses", &jarray);
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	idx = get_blacklisted_by_iv_index(jarray, iv_index);
+	if (idx < 0)
+		return true;
+
+	json_object_array_del_idx(jarray, idx, 1);
+
+	return save_config();
+}
+
 bool mesh_db_create(const char *fname, const uint8_t token[8],
 							const char *mesh_name)
 {
@@ -1304,6 +1441,12 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 		goto fail;
 
 	json_object_object_add(jcfg, "appKeys", jarray);
+
+	jarray = json_object_new_array();
+	if (!jarray)
+		goto fail;
+
+	json_object_object_add(jcfg, "blacklistedAddresses", jarray);
 
 	write_int(jcfg, "ivIndex", 0);
 
@@ -1369,6 +1512,8 @@ bool mesh_db_load(const char *fname)
 		goto fail;
 
 	load_remotes(jcfg);
+
+	load_blacklisted(jcfg);
 
 	return true;
 fail:

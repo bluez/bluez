@@ -31,6 +31,8 @@
 #include "tools/mesh/mesh-db.h"
 #include "tools/mesh/remote.h"
 
+#define abs_diff(a, b) ((a) > (b) ? (a) - (b) : (b) - (a))
+
 struct remote_node {
 	uint16_t unicast;
 	struct l_queue *net_keys;
@@ -40,8 +42,13 @@ struct remote_node {
 	uint8_t num_ele;
 };
 
-static struct l_queue *nodes;
+struct blacklisted_addr {
+	uint32_t iv_index;
+	uint16_t unicast;
+};
 
+static struct l_queue *nodes;
+static struct l_queue *blacklisted;
 
 static bool key_present(struct l_queue *keys, uint16_t app_idx)
 {
@@ -115,6 +122,7 @@ uint8_t remote_del_node(uint16_t unicast)
 {
 	struct remote_node *rmt;
 	uint8_t num_ele, i;
+	uint32_t iv_index = mesh_db_get_iv_index();
 
 	rmt = l_queue_remove_if(nodes, match_node_addr, L_UINT_TO_PTR(unicast));
 	if (!rmt)
@@ -122,9 +130,10 @@ uint8_t remote_del_node(uint16_t unicast)
 
 	num_ele = rmt->num_ele;
 
-	for (i = 0; i < num_ele; ++i)
+	for (i = 0; i < num_ele; ++i) {
 		l_queue_destroy(rmt->els[i], NULL);
-
+		remote_add_blacklisted_address(unicast + i, iv_index, true);
+	}
 	l_free(rmt->els);
 
 	l_queue_destroy(rmt->net_keys, l_free);
@@ -331,6 +340,46 @@ static void print_node(void *rmt, void *user_data)
 		print_element(node->els[i], i);
 }
 
+static bool match_black_addr(const void *a, const void *b)
+{
+	const struct blacklisted_addr *addr = a;
+	uint16_t unicast = L_PTR_TO_UINT(b);
+
+	return addr->unicast == unicast;
+}
+
+static uint16_t get_next_addr(uint16_t high, uint16_t addr,
+							uint8_t ele_cnt)
+{
+	while ((addr + ele_cnt - 1) <= high) {
+		int i = 0;
+
+		for (i = 0; i < ele_cnt; i++) {
+			struct blacklisted_addr *black;
+
+			black = l_queue_find(blacklisted, match_black_addr,
+						L_UINT_TO_PTR(addr + i));
+			if (!black)
+				break;
+		}
+
+		addr += i;
+
+		if ((i != ele_cnt) && (addr + ele_cnt - 1) <= high)
+			return addr;
+	}
+
+	return 0;
+}
+
+static bool check_iv_index(const void *a, const void *b)
+{
+	const struct blacklisted_addr *black_addr = a;
+	uint32_t iv_index = L_PTR_TO_UINT(b);
+
+	return (abs_diff(iv_index, black_addr->iv_index) > 2);
+}
+
 void remote_print_node(uint16_t addr)
 {
 	struct remote_node *rmt;
@@ -373,15 +422,56 @@ uint16_t remote_get_next_unicast(uint16_t low, uint16_t high, uint8_t ele_cnt)
 	for (; l; l = l->next) {
 		rmt = l->data;
 
-		if (rmt->unicast >= (addr + ele_cnt))
-			return addr;
+		if (rmt->unicast < low)
+			continue;
 
-		if ((rmt->unicast + rmt->num_ele) > addr)
-			addr = rmt->unicast + rmt->num_ele;
+		if (rmt->unicast >= (addr + ele_cnt)) {
+			uint16_t unicast;
+
+			unicast = get_next_addr(rmt->unicast - 1, addr,
+								ele_cnt);
+			if (unicast)
+				return unicast;
+		}
+
+		addr = rmt->unicast + rmt->num_ele;
 	}
 
-	if ((addr + ele_cnt - 1) <= high)
-		return addr;
+	addr = get_next_addr(high, addr, ele_cnt);
 
-	return 0;
+	return addr;
+}
+
+void remote_add_blacklisted_address(uint16_t addr, uint32_t iv_index,
+								bool save)
+{
+	struct blacklisted_addr *black_addr;
+
+	if (!blacklisted)
+		blacklisted = l_queue_new();
+
+	black_addr = l_new(struct blacklisted_addr, 1);
+	black_addr->unicast = addr;
+	black_addr->iv_index = iv_index;
+
+	l_queue_push_tail(blacklisted, black_addr);
+
+	if (save)
+		mesh_db_add_blacklisted_addr(addr, iv_index);
+}
+
+void remote_clear_blacklisted_addresses(uint32_t iv_index)
+{
+	struct blacklisted_addr *black_addr;
+
+	black_addr = l_queue_remove_if(blacklisted, check_iv_index,
+						L_UINT_TO_PTR(iv_index));
+
+	while (black_addr) {
+		l_free(black_addr);
+		black_addr = l_queue_remove_if(blacklisted, check_iv_index,
+						L_UINT_TO_PTR(iv_index));
+	}
+
+	mesh_db_clear_blacklisted(iv_index);
 }
