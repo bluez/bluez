@@ -144,6 +144,7 @@ static const char *range_opt;
 static const char *net_idx_opt;
 static const char *config_opt;
 
+static uint32_t iv_index;
 static uint16_t low_addr;
 static uint16_t high_addr;
 static uint16_t prov_net_idx;
@@ -664,6 +665,7 @@ static void attach_node_reply(struct l_dbus_proxy *proxy,
 {
 	struct meshcfg_node *node = user_data;
 	struct l_dbus_message_iter iter_cfg;
+	uint32_t ivi;
 
 	if (l_dbus_message_is_error(msg)) {
 		const char *name;
@@ -692,6 +694,12 @@ static void attach_node_reply(struct l_dbus_proxy *proxy,
 
 	/* Inititalize config client model */
 	client_init();
+
+	if (l_dbus_proxy_get_property(local->proxy, "IvIndex", "u", &ivi) &&
+							ivi != iv_index) {
+		iv_index = ivi;
+		mesh_db_set_iv_index(ivi);
+	}
 
 	return;
 
@@ -1792,6 +1800,33 @@ static struct l_dbus_message *join_complete(struct l_dbus *dbus,
 	return l_dbus_message_new_method_return(message);
 }
 
+static void property_changed(struct l_dbus_proxy *proxy, const char *name,
+				struct l_dbus_message *msg, void *user_data)
+{
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+	const char *path = l_dbus_proxy_get_path(proxy);
+
+	if (strcmp(path, local->path))
+		return;
+
+	bt_shell_printf("Property changed: %s %s %s\n", name, path, interface);
+
+	if (!strcmp(interface, "org.bluez.mesh.Node1")) {
+
+		if (!strcmp(name, "IvIndex")) {
+			uint32_t ivi;
+
+			if (!l_dbus_message_get_arguments(msg, "u", &ivi))
+				return;
+
+			bt_shell_printf("New IV Index: %u\n", ivi);
+
+			iv_index = ivi;
+			mesh_db_set_iv_index(ivi);
+		}
+	}
+}
+
 static void setup_app_iface(struct l_dbus_interface *iface)
 {
 	l_dbus_interface_property(iface, "CompanyID", 0, "q", cid_getter,
@@ -1974,6 +2009,8 @@ static bool read_mesh_config(void)
 		high_addr = range_h;
 	}
 
+	iv_index = mesh_db_get_iv_index();
+
 	return true;
 }
 
@@ -2040,7 +2077,7 @@ int main(int argc, char *argv[])
 	l_dbus_client_set_disconnect_handler(client, client_disconnected, NULL,
 									NULL);
 	l_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
-							NULL, NULL, NULL);
+						property_changed, NULL, NULL);
 	l_dbus_client_set_ready_handler(client, client_ready, NULL, NULL);
 
 	node_proxies = l_queue_new();

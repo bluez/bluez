@@ -26,7 +26,8 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 bool mesh_db_load(const char *fname);
 
 bool mesh_db_get_token(uint8_t token[8]);
-
+bool mesh_db_set_iv_index(uint32_t ivi);
+uint32_t mesh_db_get_iv_index(void);
 bool mesh_db_net_key_add(uint16_t idx);
 bool mesh_db_net_key_del(uint16_t idx);
 bool mesh_db_net_key_phase_set(uint16_t net_idx, uint8_t phase);

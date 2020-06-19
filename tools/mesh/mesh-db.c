@@ -1232,6 +1232,29 @@ bool mesh_db_set_addr_range(uint16_t low, uint16_t high)
 	return save_config();
 }
 
+uint32_t mesh_db_get_iv_index(void)
+{
+	int ivi;
+
+	if (!cfg || !cfg->jcfg)
+		return 0;
+
+	if (!get_int(cfg->jcfg, "ivIndex", &ivi))
+		return 0;
+
+	return (uint32_t) ivi;
+}
+
+bool mesh_db_set_iv_index(uint32_t ivi)
+{
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	write_int(cfg->jcfg, "ivIndex", ivi);
+
+	return save_config();
+}
+
 bool mesh_db_create(const char *fname, const uint8_t token[8],
 							const char *mesh_name)
 {
@@ -1281,6 +1304,8 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 		goto fail;
 
 	json_object_object_add(jcfg, "appKeys", jarray);
+
+	write_int(jcfg, "ivIndex", 0);
 
 	if (!save_config())
 		goto fail;
