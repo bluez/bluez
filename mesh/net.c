@@ -2566,6 +2566,8 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		rpl_init(net->node, iv_index);
 	}
 
+	node_property_changed(net->node, "IVIndex");
+
 	net->iv_index = iv_index;
 	net->iv_update = ivu;
 }

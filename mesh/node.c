@@ -2280,6 +2280,15 @@ static void setup_node_interface(struct l_dbus_interface *iface)
 									NULL);
 }
 
+void node_property_changed(struct mesh_node *node, const char *property)
+{
+	struct l_dbus *bus = dbus_get_bus();
+
+	if (bus)
+		l_dbus_property_changed(dbus_get_bus(), node->obj_path,
+						MESH_NODE_INTERFACE, property);
+}
+
 bool node_dbus_init(struct l_dbus *bus)
 {
 	if (!l_dbus_register_interface(bus, MESH_NODE_INTERFACE,

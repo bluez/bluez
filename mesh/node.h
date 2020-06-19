@@ -99,3 +99,4 @@ struct mesh_agent *node_get_agent(struct mesh_node *node);
 const char *node_get_storage_dir(struct mesh_node *node);
 bool node_load_from_storage(const char *storage_dir);
 void node_finalize_new_node(struct mesh_node *node, struct mesh_io *io);
+void node_property_changed(struct mesh_node *node, const char *property);
