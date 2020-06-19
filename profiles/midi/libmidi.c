@@ -77,8 +77,13 @@ inline static void append_timestamp_high_maybe(struct midi_write_parser *parser)
 	if (midi_write_has_data(parser))
 		return;
 
-	parser->rtime = g_get_monotonic_time() / 1000; /* convert µs to ms */
-	timestamp_high |= (parser->rtime & 0x1F80) >> 7;
+	/* Make sure timesampt_high is assigned a non-zero value */
+	do {
+		/* convert µs to ms */
+		parser->rtime = g_get_monotonic_time() / 1000;
+		timestamp_high |= (parser->rtime & 0x1F80) >> 7;
+	} while (timestamp_high == 0x80);
+
 	/* set timestampHigh */
 	buffer_append_byte(&parser->midi_stream, timestamp_high);
 }
