@@ -1013,6 +1013,20 @@ static void advertising_removed(uint16_t index, uint16_t len,
 	print("hci%u advertising_removed: instance %u", index, ev->instance);
 }
 
+static void advmon_added(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_adv_monitor_added *ev = param;
+
+	if (len < sizeof(*ev)) {
+		error("Too small (%u bytes) %s event", len, __func__);
+		return;
+	}
+
+	print("hci%u %s: handle %u", index, __func__,
+					le16_to_cpu(ev->monitor_handle));
+}
+
 static void advmon_removed(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -4658,6 +4672,112 @@ static void cmd_advmon_features(int argc, char **argv)
 	}
 }
 
+static void advmon_add_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_add_adv_patterns_monitor *rp = param;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Could not add advertisement monitor with status "
+				"0x%02x (%s)", status, mgmt_errstr(status));
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print("Advertisement monitor with handle:0x%04x added",
+					le16_to_cpu(rp->monitor_handle));
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static bool str2pattern(struct mgmt_adv_pattern *pattern, const char *str)
+{
+	int type_len, offset_len, offset_end_pos, str_len;
+	int i, j;
+	char pattern_str[62] = { 0 };
+	char tmp;
+
+	if (sscanf(str, "%2hhx%n:%2hhx%n:%s", &pattern->ad_type, &type_len,
+			&pattern->offset, &offset_end_pos, pattern_str) != 3)
+		return false;
+
+	offset_len = offset_end_pos - type_len - 1;
+	str_len = strlen(pattern_str);
+	pattern->length = str_len / 2 + str_len % 2;
+
+	if (type_len > 2 || offset_len > 2 ||
+					pattern->offset + pattern->length > 31)
+		return false;
+
+	for (i = 0, j = 0; i < str_len; i++, j++) {
+		if (sscanf(&pattern_str[i++], "%2hhx", &pattern->value[j])
+									!= 1)
+			return false;
+		if (i < str_len && sscanf(&pattern_str[i], "%1hhx", &tmp) != 1)
+			return false;
+	}
+
+	return true;
+}
+
+static void advmon_add_usage(void)
+{
+	bt_shell_usage();
+	print("Monitor Types:\n\t-p <ad_type:offset:pattern>..."
+		"\tPattern Monitor\ne.g.:\n\tadd -p 0:1:c504 1:a:9a55beef");
+}
+
+static bool advmon_add_pattern(int argc, char **argv)
+{
+	uint16_t index;
+	int i, cp_len;
+	struct mgmt_cp_add_adv_monitor *cp = NULL;
+	bool success = false;
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	cp_len = sizeof(struct mgmt_cp_add_adv_monitor) +
+			argc * sizeof(struct mgmt_adv_pattern);
+
+	cp = malloc0(cp_len);
+	cp->pattern_count = argc;
+
+	for (i = 0; i < argc; i++) {
+		if (!str2pattern(&cp->patterns[i], argv[i])) {
+			error("Failed to parse monitor patterns.");
+			goto done;
+		}
+	}
+
+	if (!mgmt_send(mgmt, MGMT_OP_ADD_ADV_PATTERNS_MONITOR, index, cp_len,
+					cp, advmon_add_rsp, NULL, NULL)) {
+		error("Unable to send \"Add Advertising Monitor\" command");
+		goto done;
+	}
+
+	success = true;
+
+done:
+	free(cp);
+	return success;
+}
+
+static void cmd_advmon_add(int argc, char **argv)
+{
+	bool success = false;
+
+	if (strcasecmp(argv[1], "-p") == 0 && argc > 2) {
+		argc -= 2;
+		argv += 2;
+		success = advmon_add_pattern(argc, argv);
+	}
+
+	if (!success) {
+		advmon_add_usage();
+		bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void advmon_remove_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -4748,6 +4868,8 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 						advertising_added, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_ADVERTISING_REMOVED, index,
 					advertising_removed, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_ADV_MONITOR_ADDED, index, advmon_added,
+								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_ADV_MONITOR_REMOVED, index, advmon_removed,
 								NULL, NULL);
 }
@@ -4775,6 +4897,8 @@ static const struct bt_shell_menu monitor_menu = {
 					"features"			},
 	{ "remove",		"<handle>",
 		cmd_advmon_remove,	"Remove advertisement monitor "	},
+	{ "add",		"<-p|-h> [options...]",
+		cmd_advmon_add,		"Add advertisement monitor"	},
 	{ } },
 };
 
