@@ -1064,9 +1064,15 @@ static void sep_free(gpointer data)
 
 static void remove_disconnect_timer(struct avdtp *session)
 {
+	if (!session->dc_timer)
+		return;
+
 	g_source_remove(session->dc_timer);
 	session->dc_timer = 0;
 	session->stream_setup = FALSE;
+
+	/* Release disconnect timer reference */
+	avdtp_unref(session);
 }
 
 static void avdtp_free(void *data)
@@ -1086,9 +1092,6 @@ static void avdtp_free(void *data)
 		g_source_remove(session->io_id);
 		session->io_id = 0;
 	}
-
-	if (session->dc_timer)
-		remove_disconnect_timer(session);
 
 	if (session->req)
 		pending_req_free(session->req);
@@ -1136,24 +1139,28 @@ static gboolean disconnect_timeout(gpointer user_data)
 	service = btd_device_get_service(session->device, A2DP_SINK_UUID);
 	if (service && stream_setup) {
 		sink_setup_stream(service, session);
-		return FALSE;
+		goto done;
 	}
 
 	service = btd_device_get_service(session->device, A2DP_SOURCE_UUID);
 	if (service && stream_setup) {
 		source_setup_stream(service, session);
-		return FALSE;
+		goto done;
 	}
 
 	connection_lost(session, ETIMEDOUT);
+
+done:
+	/* Release disconnect timer reference */
+	avdtp_unref(session);
 
 	return FALSE;
 }
 
 static void set_disconnect_timer(struct avdtp *session)
 {
-	if (session->dc_timer)
-		remove_disconnect_timer(session);
+	/* Take a ref while disconnect timer is active */
+	avdtp_ref(session);
 
 	DBG("timeout %d", session->dc_timeout);
 
@@ -1195,8 +1202,7 @@ struct avdtp *avdtp_ref(struct avdtp *session)
 {
 	session->ref++;
 	DBG("%p: ref=%d", session, session->ref);
-	if (session->dc_timer)
-		remove_disconnect_timer(session);
+	remove_disconnect_timer(session);
 	return session;
 }
 
