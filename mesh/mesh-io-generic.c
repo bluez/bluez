@@ -569,6 +569,9 @@ static void send_pkt(struct mesh_io_private *pvt, struct tx_pkt *tx,
 {
 	struct bt_hci_cmd_le_set_adv_enable cmd;
 
+	if (pvt->tx && pvt->tx->delete)
+		l_free(pvt->tx);
+
 	pvt->tx = tx;
 	pvt->interval = interval;
 
@@ -583,7 +586,7 @@ static void send_pkt(struct mesh_io_private *pvt, struct tx_pkt *tx,
 				set_send_adv_params, pvt, NULL);
 }
 
-static void tx_timeout(struct l_timeout *timeout, void *user_data)
+static void tx_to(struct l_timeout *timeout, void *user_data)
 {
 	struct mesh_io_private *pvt = user_data;
 	struct tx_pkt *tx;
@@ -616,8 +619,9 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	send_pkt(pvt, tx, ms);
 
 	if (count == 1) {
-		/* send_pkt will delete when done */
+		/* Recalculate wakeup if we are responding to POLL */
 		tx = l_queue_peek_head(pvt->tx_pkts);
+
 		if (tx && tx->info.type == MESH_IO_TIMING_TYPE_POLL_RSP) {
 			ms = instant_remaining_ms(tx->info.u.poll_rsp.instant +
 						tx->info.u.poll_rsp.delay);
@@ -629,8 +633,7 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 		pvt->tx_timeout = timeout;
 		l_timeout_modify_ms(timeout, ms);
 	} else
-		pvt->tx_timeout = l_timeout_create_ms(ms, tx_timeout,
-								pvt, NULL);
+		pvt->tx_timeout = l_timeout_create_ms(ms, tx_to, pvt, NULL);
 }
 
 static void tx_worker(void *user_data)
@@ -679,12 +682,11 @@ static void tx_worker(void *user_data)
 	}
 
 	if (!delay)
-		tx_timeout(pvt->tx_timeout, pvt);
+		tx_to(pvt->tx_timeout, pvt);
 	else if (pvt->tx_timeout)
 		l_timeout_modify_ms(pvt->tx_timeout, delay);
 	else
-		pvt->tx_timeout = l_timeout_create_ms(delay, tx_timeout,
-								pvt, NULL);
+		pvt->tx_timeout = l_timeout_create_ms(delay, tx_to, pvt, NULL);
 }
 
 static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
@@ -698,8 +700,6 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 		return false;
 
 	tx = l_new(struct tx_pkt, 1);
-	if (!tx)
-		return false;
 
 	memcpy(&tx->info, info, sizeof(tx->info));
 	memcpy(&tx->pkt, data, len);
@@ -708,7 +708,11 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 	if (info->type == MESH_IO_TIMING_TYPE_POLL_RSP)
 		l_queue_push_head(pvt->tx_pkts, tx);
 	else {
-		sending = !l_queue_isempty(pvt->tx_pkts);
+		if (pvt->tx)
+			sending = true;
+		else
+			sending = !l_queue_isempty(pvt->tx_pkts);
+
 		l_queue_push_tail(pvt->tx_pkts, tx);
 	}
 
