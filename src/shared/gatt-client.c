@@ -190,6 +190,7 @@ struct notify_data {
 	struct bt_gatt_client *client;
 	unsigned int id;
 	unsigned int att_id;
+	uint8_t att_ecode;
 	int ref_count;
 	struct notify_chrc *chrc;
 	bt_gatt_client_register_callback_t callback;
@@ -1565,7 +1566,8 @@ static void complete_notify_request(void *data)
 	notify_data->att_id = 0;
 
 	if (notify_data->callback)
-		notify_data->callback(0, notify_data->user_data);
+		notify_data->callback(notify_data->att_ecode,
+						notify_data->user_data);
 }
 
 static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
@@ -1613,43 +1615,35 @@ static uint8_t process_error(const void *pdu, uint16_t length)
 	return error_pdu->ecode;
 }
 
+static bool notify_set_ecode(const void *data, const void *match_data)
+{
+	struct notify_data *notify_data = (void *)data;
+	uint8_t ecode = PTR_TO_UINT(match_data);
+
+	notify_data->att_ecode = ecode;
+
+	return true;
+}
+
 static void enable_ccc_callback(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
 	struct notify_data *notify_data = user_data;
-	uint8_t att_ecode;
 
 	assert(notify_data->chrc->ccc_write_id);
 
 	notify_data->chrc->ccc_write_id = 0;
 
-	if (opcode == BT_ATT_OP_ERROR_RSP) {
-		att_ecode = process_error(pdu, length);
-
-		/* Failed to enable. Complete the current request and move on to
-		 * the next one in the queue. If there was an error sending the
-		 * write request, then just move on to the next queued entry.
-		 */
-		queue_remove(notify_data->client->notify_list, notify_data);
-		notify_data->callback(att_ecode, notify_data->user_data);
-
-		while ((notify_data = queue_pop_head(
-					notify_data->chrc->reg_notify_queue))) {
-
-			if (notify_data_write_ccc(notify_data, true,
-							enable_ccc_callback))
-				return;
-		}
-
-		return;
-	}
-
-	/* Success! Report success for all remaining requests. */
 	bt_gatt_client_ref(notify_data->client);
 
+	if (opcode == BT_ATT_OP_ERROR_RSP)
+		notify_data->att_ecode = process_error(pdu, length);
+
+	/* Notify for all remaining requests. */
 	complete_notify_request(notify_data);
-	queue_remove_all(notify_data->chrc->reg_notify_queue, NULL, NULL,
-						complete_notify_request);
+	queue_remove_all(notify_data->chrc->reg_notify_queue, notify_set_ecode,
+				UINT_TO_PTR(notify_data->att_ecode),
+				complete_notify_request);
 
 	bt_gatt_client_unref(notify_data->client);
 }
