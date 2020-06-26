@@ -46,12 +46,10 @@ static void send_pub_status(struct mesh_node *node, uint16_t net_idx,
 	n = mesh_model_opcode_set(OP_CONFIG_MODEL_PUB_STATUS, msg);
 	msg[n++] = status;
 	l_put_le16(ele_addr, msg + n);
-	n += 2;
-	l_put_le16(pub_addr, msg + n);
-	n += 2;
+	l_put_le16(pub_addr, msg + n + 2);
 	idx |= cred_flag ? CREDFLAG_MASK : 0;
-	l_put_le16(idx, msg + n);
-	n += 2;
+	l_put_le16(idx, msg + n + 4);
+	n += 6;
 	msg[n++] = ttl;
 	msg[n++] = period;
 	msg[n++] = retransmit;
@@ -61,16 +59,15 @@ static void send_pub_status(struct mesh_node *node, uint16_t net_idx,
 		n += 2;
 	} else {
 		l_put_le16(mod_id >> 16, msg + n);
-		n += 2;
-		l_put_le16(mod_id, msg + n);
-		n += 2;
+		l_put_le16(mod_id, msg + n + 2);
+		n += 4;
 	}
 
 	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
 								false, msg, n);
 }
 
-static bool config_pub_get(struct mesh_node *node, uint16_t net_idx,
+static void config_pub_get(struct mesh_node *node, uint16_t net_idx,
 					uint16_t src, uint16_t dst,
 					const uint8_t *pkt, uint16_t size)
 {
@@ -86,7 +83,7 @@ static bool config_pub_get(struct mesh_node *node, uint16_t net_idx,
 		mod_id = l_get_le16(pkt + 2) << 16;
 		mod_id |= l_get_le16(pkt + 4);
 	} else
-		return false;
+		return;
 
 	ele_addr = l_get_le16(pkt);
 	pub = mesh_model_pub_get(node, ele_addr, mod_id, &status);
@@ -98,16 +95,15 @@ static bool config_pub_get(struct mesh_node *node, uint16_t net_idx,
 	else
 		send_pub_status(node, net_idx, src, dst, status, ele_addr,
 				mod_id, 0, 0, 0, 0, 0, 0);
-	return true;
 }
 
 static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 					uint16_t src, uint16_t dst,
-					const uint8_t *pkt, uint8_t virt_offset,
+					const uint8_t *pkt, bool virt,
 					bool vendor, bool unreliable)
 {
 	uint32_t mod_id;
-	uint16_t ele_addr, idx, ota = 0;
+	uint16_t ele_addr, idx, ota = UNASSIGNED_ADDRESS;
 	const uint8_t *pub_addr;
 	uint16_t test_addr;
 	uint8_t ttl, period;
@@ -115,34 +111,33 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 	int status;
 	bool cred_flag;
 
-	idx = l_get_le16(pkt + 4 + virt_offset);
-	ttl = pkt[6 + virt_offset];
-	period = pkt[7 + virt_offset];
-	retransmit = pkt[8 + virt_offset];
-	mod_id = l_get_le16(pkt + 9 + virt_offset);
+	ele_addr = l_get_le16(pkt);
+	pub_addr = pkt + 2;
+
+	pkt += (virt ? 14 : 0);
+
+	idx = l_get_le16(pkt + 4);
+	ttl = pkt[6];
+	period = pkt[7];
+	retransmit = pkt[8];
+	mod_id = l_get_le16(pkt + 9);
 
 	if (!vendor)
 		mod_id |= VENDOR_ID_MASK;
 	else
-		mod_id = (mod_id << 16) | l_get_le16(pkt + 11 + virt_offset);
+		mod_id = (mod_id << 16) | l_get_le16(pkt + 11);
 
-	ele_addr = l_get_le16(pkt);
-	pub_addr = pkt + 2;
-
-	/* Doesn't accept virtual seeming addresses */
+	/* Don't accept virtual seeming addresses */
 	test_addr = l_get_le16(pub_addr);
-	if (!virt_offset && IS_VIRTUAL(test_addr))
+	if (!virt && IS_VIRTUAL(test_addr))
 		return;
 
-	/* Get cred_flag */
 	cred_flag = !!(CREDFLAG_MASK & idx);
-
-	/* Get AppKey index */
 	idx &= APP_IDX_MASK;
 
 	status = mesh_model_pub_set(node, ele_addr, mod_id, pub_addr, idx,
 					cred_flag, ttl, period, retransmit,
-					virt_offset != 0, &ota);
+					virt, &ota);
 
 	l_debug("pub_set: status %d, ea %4.4x, ota: %4.4x, mod: %x, idx: %3.3x",
 					status, ele_addr, ota, mod_id, idx);
@@ -155,16 +150,17 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 		return;
 	}
 
-	if (IS_UNASSIGNED(ota) && !virt_offset) {
+	if (IS_UNASSIGNED(test_addr) && !virt) {
 		ttl = period = idx = 0;
 
 		/* Remove model publication from config file */
-		mesh_config_model_pub_del(node_config_get(node), ele_addr,
+		if (!mesh_config_model_pub_del(node_config_get(node), ele_addr,
 				vendor ? mod_id : mod_id & ~VENDOR_ID_MASK,
-								vendor);
+									vendor))
+			status = MESH_STATUS_STORAGE_FAIL;
 	} else {
 		struct mesh_config_pub db_pub = {
-			.virt = (virt_offset != 0),
+			.virt = virt,
 			.addr = ota,
 			.idx = idx,
 			.ttl = ttl,
@@ -174,7 +170,7 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 			.interval = ((retransmit >> 3) + 1) * 50
 		};
 
-		if (virt_offset)
+		if (virt)
 			memcpy(db_pub.virt_addr, pub_addr, 16);
 
 		/* Save model publication to config file */
@@ -186,7 +182,8 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 
 	if (!unreliable)
 		send_pub_status(node, net_idx, src, dst, status, ele_addr,
-			mod_id, ota, idx, cred_flag, ttl, period, retransmit);
+					mod_id, ota, idx, cred_flag, ttl,
+					period, retransmit);
 }
 
 static void send_sub_status(struct mesh_node *node, uint16_t net_idx,
@@ -781,16 +778,16 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		if (size != 25 && size != 27)
 			return true;
 
-		config_pub_set(node, net_idx, src, dst, pkt, 14, size == 27,
-				!!(opcode & OP_UNRELIABLE));
-		break;
+		virt = true;
+		/* Fall Through */
 
 	case OP_CONFIG_MODEL_PUB_SET:
-		if (size != 11 && size != 13)
+		if (!virt && (size != 11 && size != 13))
 			return true;
 
-		config_pub_set(node, net_idx, src, dst, pkt, 0, size == 13,
-				!!(opcode & OP_UNRELIABLE));
+		config_pub_set(node, net_idx, src, dst, pkt, virt,
+						size == 13 || size == 27,
+						!!(opcode & OP_UNRELIABLE));
 		break;
 
 	case OP_CONFIG_MODEL_PUB_GET:
