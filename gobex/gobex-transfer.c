@@ -100,6 +100,11 @@ static void transfer_complete(struct transfer *transfer, GError *err)
 
 	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", id);
 
+	if (err) {
+		/* No further tx must be performed */
+		g_obex_drop_tx_queue(transfer->obex);
+	}
+
 	transfer->complete_func(transfer->obex, err, transfer->user_data);
 	/* Check if the complete_func removed the transfer */
 	if (find_transfer(id) == NULL)
