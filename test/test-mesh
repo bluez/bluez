@@ -430,32 +430,35 @@ class Element(dbus.service.Object):
 		dbus.service.Object.__init__(self, bus, self.path)
 
 	def _get_sig_models(self):
-		ids = []
+		mods = []
 		for model in self.models:
+			opts = []
 			id = model.get_id()
 			vendor = model.get_vendor()
 			if vendor == VENDOR_ID_NONE:
-				ids.append(id)
-		return ids
+				mod = (id, opts)
+				mods.append(mod)
+		return mods
 
 	def _get_v_models(self):
-		ids = []
+		mods = []
 		for model in self.models:
+			opts = []
 			id = model.get_id()
 			v = model.get_vendor()
 			if v != VENDOR_ID_NONE:
-				vendor_id = (v, id)
-				ids.append(vendor_id)
-		return ids
+				mod = (v, id, opts)
+				mods.append(mod)
+		return mods
 
 	def get_properties(self):
 		vendor_models = self._get_v_models()
 		sig_models = self._get_sig_models()
 
 		props = {'Index' : dbus.Byte(self.index)}
-		props['Models'] = dbus.Array(sig_models, signature='q')
+		props['Models'] = dbus.Array(sig_models, signature='(qa{sv})')
 		props['VendorModels'] = dbus.Array(vendor_models,
-							signature='(qq)')
+							signature='(qqa{sv})')
 		#print(props)
 		return { MESH_ELEMENT_IFACE: props }
 
