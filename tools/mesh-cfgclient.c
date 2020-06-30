@@ -1448,14 +1448,26 @@ static void proxy_removed(struct l_dbus_proxy *proxy, void *user_data)
 	}
 }
 
+static void build_model(struct l_dbus_message_builder *builder, uint16_t mod_id,
+					bool pub_enable, bool sub_enable)
+{
+	l_dbus_message_builder_enter_struct(builder, "qa{sv}");
+	l_dbus_message_builder_append_basic(builder, 'q', &mod_id);
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+	append_dict_entry_basic(builder, "Subscribe", "b", &sub_enable);
+	append_dict_entry_basic(builder, "Publish", "b", &pub_enable);
+	l_dbus_message_builder_leave_array(builder);
+	l_dbus_message_builder_leave_struct(builder);
+}
+
 static bool mod_getter(struct l_dbus *dbus,
 				struct l_dbus_message *message,
 				struct l_dbus_message_builder *builder,
 				void *user_data)
 {
-	l_dbus_message_builder_enter_array(builder, "q");
-	l_dbus_message_builder_append_basic(builder, 'q', &app.ele.mods[0]);
-	l_dbus_message_builder_append_basic(builder, 'q', &app.ele.mods[1]);
+	l_dbus_message_builder_enter_array(builder, "(qa{sv})");
+	build_model(builder, app.ele.mods[0], false, false);
+	build_model(builder, app.ele.mods[1], false, false);
 	l_dbus_message_builder_leave_array(builder);
 
 	return true;
@@ -1466,7 +1478,7 @@ static bool vmod_getter(struct l_dbus *dbus,
 				struct l_dbus_message_builder *builder,
 				void *user_data)
 {
-	l_dbus_message_builder_enter_array(builder, "(qq)");
+	l_dbus_message_builder_enter_array(builder, "(qqa{sv})");
 	l_dbus_message_builder_leave_array(builder);
 
 	return true;
@@ -1517,9 +1529,10 @@ static void setup_ele_iface(struct l_dbus_interface *iface)
 	/* Properties */
 	l_dbus_interface_property(iface, "Index", 0, "y", ele_idx_getter,
 									NULL);
-	l_dbus_interface_property(iface, "VendorModels", 0, "a(qq)",
+	l_dbus_interface_property(iface, "VendorModels", 0, "a(qqa{sv})",
 							vmod_getter, NULL);
-	l_dbus_interface_property(iface, "Models", 0, "aq", mod_getter, NULL);
+	l_dbus_interface_property(iface, "Models", 0, "a(qa{sv})", mod_getter,
+									NULL);
 
 	/* Methods */
 	l_dbus_interface_method(iface, "DevKeyMessageReceived", 0,
