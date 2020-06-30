@@ -888,15 +888,43 @@ Properties:
 		Element index. It is required that the application follows
 		sequential numbering scheme for the elements, starting with 0.
 
-	array{uint16} Models [read-only]
+	array{(uint16 id, dict caps)} Models [read-only]
 
-		An array of SIG Model Identifiers. The array may be empty.
+		An array of SIG Models:
 
-	array{(uint16, uint16)} VendorModels [read-only]
+			id - SIG Model Identifier
 
-		An array of pairs (vendor, model ID): vendor is a 16-bit
-		Bluetooth-assigned Company ID as defined by Bluetooth SIG.
-		model ID is a 16-bit vendor-assigned Model Identifier
+			options - a dictionary that may contain additional model
+			info. The following keys are defined:
+
+				boolean Publish - indicates whether the model
+					supports publication mechanism. If not
+					present, publication is enabled.
+
+				boolean Subscribe - indicates whether the model
+					supports subscription mechanism. If not
+					present, subscriptons are enabled.
+
+		The array may be empty.
+
+
+	array{(uint16 vendor, uint16 id, dict options)} VendorModels [read-only]
+
+		An array of Vendor Models:
+
+			vendor - a 16-bit Bluetooth-assigned Company ID as
+			defined by Bluetooth SIG.
+
+			id - a 16-bit vendor-assigned Model Identifier
+
+			options - a dictionary that may contain additional model
+			info. The following keys are defined:
+
+				boolean Publish - indicates whether the model
+					supports publication mechanism
+
+				boolean Subscribe - indicates whether the model
+					supports subscription mechanism
 
 		The array may be empty.
 
