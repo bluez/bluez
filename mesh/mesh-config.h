@@ -45,6 +45,8 @@ struct mesh_config_model {
 	uint16_t *bindings;
 	uint32_t id;
 	bool vendor;
+	bool sub_enabled;
+	bool pub_enabled;
 	uint32_t num_bindings;
 	uint32_t num_subs;
 };
@@ -156,6 +158,12 @@ bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t ele_addr,
 						struct mesh_config_sub *sub);
 bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor);
+bool mesh_config_model_pub_enable(struct mesh_config *cfg, uint16_t ele_addr,
+						uint32_t mod_id, bool vendor,
+						bool enable);
+bool mesh_config_model_sub_enable(struct mesh_config *cfg, uint16_t ele_addr,
+						uint32_t mod_id, bool vendor,
+						bool enable);
 bool mesh_config_app_key_add(struct mesh_config *cfg, uint16_t net_idx,
 				uint16_t app_idx, const uint8_t key[16]);
 bool mesh_config_app_key_update(struct mesh_config *cfg, uint16_t app_idx,

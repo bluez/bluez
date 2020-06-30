@@ -386,6 +386,12 @@ static bool add_models_from_storage(struct mesh_node *node,
 		if (!mod)
 			return false;
 
+		if (!db_mod->pub_enabled)
+			mesh_model_enable_pub(mod, false);
+
+		if (!db_mod->sub_enabled)
+			mesh_model_enable_sub(node, mod, false);
+
 		l_queue_insert(ele->models, mod, compare_model_id, NULL);
 	}
 
@@ -1041,65 +1047,99 @@ static void app_disc_cb(struct l_dbus *bus, void *user_data)
 	free_node_dbus_resources(node);
 }
 
-static bool get_sig_models_from_properties(struct node_element *ele,
-					struct l_dbus_message_iter *property)
+static bool get_model_options(struct mesh_node *node, struct mesh_model *mod,
+					struct l_dbus_message_iter *opts)
 {
-	struct l_dbus_message_iter ids;
-	uint16_t mod_id;
+	const char *key;
+	struct l_dbus_message_iter var;
+	bool opt;
 
-	if (!ele->models)
-		ele->models = l_queue_new();
+	while (l_dbus_message_iter_next_entry(opts, &key, &var)) {
 
-	if (!l_dbus_message_iter_get_variant(property, "aq", &ids))
-		return false;
-
-	/* Bluetooth SIG defined models */
-	while (l_dbus_message_iter_next_entry(&ids, &mod_id)) {
-		struct mesh_model *mod;
-		uint32_t id = mod_id | VENDOR_ID_MASK;
-
-		/* Allow Config Server Model only on the primary element */
-		if (ele->idx != PRIMARY_ELE_IDX && id == CONFIG_SRV_MODEL)
+		if (!strcmp(key, "Publish")) {
+			if (!l_dbus_message_iter_get_variant(&var, "b", &opt))
+				return false;
+			mesh_model_enable_pub(mod, opt);
+		} else if (!strcmp(key, "Subscribe")) {
+			if (!l_dbus_message_iter_get_variant(&var, "b", &opt))
+				return false;
+			mesh_model_enable_sub(node, mod, opt);
+		} else
 			return false;
-
-		/* Disallow duplicates */
-		if (l_queue_find(ele->models, match_model_id,
-						L_UINT_TO_PTR(id)))
-			return false;
-
-		mod = mesh_model_new(ele->idx, id);
-
-		l_queue_insert(ele->models, mod, compare_model_id, NULL);
 	}
 
 	return true;
 }
 
-static bool get_vendor_models_from_properties(struct node_element *ele,
+static bool generate_model(struct mesh_node *node, struct node_element *ele,
+				uint32_t id, struct l_dbus_message_iter *opts)
+{
+	struct mesh_model *mod;
+
+	/* Disallow duplicates */
+	if (l_queue_find(ele->models, match_model_id,
+			 L_UINT_TO_PTR(id)))
+		return false;
+
+	mod = mesh_model_new(ele->idx, id);
+
+	if (!get_model_options(node, mod, opts)) {
+		l_free(mod);
+		return false;
+	}
+
+	l_queue_insert(ele->models, mod, compare_model_id, NULL);
+
+	return true;
+}
+
+static bool get_sig_models_from_properties(struct mesh_node *node,
+					struct node_element *ele,
 					struct l_dbus_message_iter *property)
 {
-	struct l_dbus_message_iter ids;
-	uint16_t mod_id, vendor_id;
+	struct l_dbus_message_iter mods, var;
+	uint16_t m_id;
 
 	if (!ele->models)
 		ele->models = l_queue_new();
 
-	if (!l_dbus_message_iter_get_variant(property, "a(qq)", &ids))
+	if (!l_dbus_message_iter_get_variant(property, "a(qa{sv})", &mods))
+		return false;
+
+	/* Bluetooth SIG defined models */
+	while (l_dbus_message_iter_next_entry(&mods, &m_id, &var)) {
+		uint32_t id = m_id | VENDOR_ID_MASK;
+
+		/* Allow Config Server Model only on the primary element */
+		if (ele->idx != PRIMARY_ELE_IDX && id == CONFIG_SRV_MODEL)
+			return false;
+
+		if (!generate_model(node, ele, id, &var))
+			return false;
+	}
+
+	return true;
+}
+
+static bool get_vendor_models_from_properties(struct mesh_node *node,
+					struct node_element *ele,
+					struct l_dbus_message_iter *property)
+{
+	struct l_dbus_message_iter mods, var;
+	uint16_t m_id, v_id;
+
+	if (!ele->models)
+		ele->models = l_queue_new();
+
+	if (!l_dbus_message_iter_get_variant(property, "a(qqa{sv})", &mods))
 		return false;
 
 	/* Vendor defined models */
-	while (l_dbus_message_iter_next_entry(&ids, &vendor_id, &mod_id)) {
-		struct mesh_model *mod;
-		uint32_t id = mod_id | (vendor_id << 16);
+	while (l_dbus_message_iter_next_entry(&mods, &v_id, &m_id, &var)) {
+		uint32_t id = m_id | (v_id << 16);
 
-		/* Disallow duplicates */
-		if (l_queue_find(ele->models, match_model_id,
-							L_UINT_TO_PTR(id)))
+		if (!generate_model(node, ele, id, &var))
 			return false;
-
-		mod = mesh_model_new(ele->idx, id);
-
-		l_queue_insert(ele->models, mod, compare_model_id, NULL);
 	}
 
 	return true;
@@ -1130,14 +1170,19 @@ static bool get_element_properties(struct mesh_node *node, const char *path,
 
 		} else if (!strcmp(key, "Models")) {
 
-			if (mods || !get_sig_models_from_properties(ele, &var))
+			if (mods)
+				goto fail;
+
+			if (!get_sig_models_from_properties(node, ele, &var))
 				goto fail;
 
 			mods = true;
 		} else if (!strcmp(key, "VendorModels")) {
 
-			if (vendor_mods ||
-				!get_vendor_models_from_properties(ele, &var))
+			if (vendor_mods)
+				goto fail;
+
+			if (!get_vendor_models_from_properties(node, ele, &var))
 				goto fail;
 
 			vendor_mods = true;
@@ -1225,7 +1270,8 @@ static void convert_node_to_storage(struct mesh_node *node,
 			db_mod->id = mod_id;
 			db_mod->vendor = ((mod_id & VENDOR_ID_MASK)
 							!= VENDOR_ID_MASK);
-
+			db_mod->pub_enabled = mesh_model_is_pub_enabled(mod);
+			db_mod->sub_enabled = mesh_model_is_sub_enabled(mod);
 			l_queue_push_tail(db_ele->models, db_mod);
 		}
 		l_queue_push_tail(db_node->elements, db_ele);
@@ -1381,6 +1427,63 @@ static void update_composition(struct mesh_node *node, struct mesh_node *attach)
 	attach->comp = node->comp;
 }
 
+static void update_model_options(struct mesh_node *node,
+						struct mesh_node *attach)
+{
+	uint32_t len, i;
+	struct node_element *ele, *ele_attach;
+
+	len = l_queue_length(node->elements);
+
+	for (i = 0; i < len; i++) {
+		const struct l_queue_entry *entry;
+
+		ele = l_queue_find(node->elements, match_element_idx,
+							L_UINT_TO_PTR(i));
+		ele_attach = l_queue_find(attach->elements, match_element_idx,
+							L_UINT_TO_PTR(i));
+		if (!ele || !ele_attach)
+			continue;
+
+		entry = l_queue_get_entries(ele->models);
+
+		for (; entry; entry = entry->next) {
+			struct mesh_model *mod, *updated_mod = entry->data;
+			uint32_t id = mesh_model_get_model_id(updated_mod);
+			bool opt, updated_opt;
+			bool vendor = id < VENDOR_ID_MASK;
+
+			mod = l_queue_find(ele_attach->models, match_model_id,
+							L_UINT_TO_PTR(id));
+			if (!mod)
+				continue;
+
+			if (!vendor)
+				id &= ~VENDOR_ID_MASK;
+
+			opt = mesh_model_is_pub_enabled(mod);
+			updated_opt = mesh_model_is_pub_enabled(updated_mod);
+
+			if (updated_opt != opt) {
+				mesh_model_enable_pub(mod, updated_opt);
+				mesh_config_model_pub_enable(attach->cfg,
+							attach->primary + i, id,
+							vendor, updated_opt);
+			}
+
+			opt = mesh_model_is_sub_enabled(mod);
+			updated_opt = mesh_model_is_sub_enabled(updated_mod);
+
+			if (updated_opt != opt) {
+				mesh_model_enable_sub(node, mod, updated_opt);
+				mesh_config_model_sub_enable(attach->cfg,
+							attach->primary + i, id,
+							vendor, updated_opt);
+			}
+		}
+	}
+}
+
 static bool check_req_node(struct managed_obj_request *req)
 {
 	uint8_t node_comp[MAX_MSG_LEN - 2];
@@ -1452,6 +1555,7 @@ static bool attach_req_node(struct mesh_node *attach, struct mesh_node *node)
 	node->owner = NULL;
 
 	update_composition(node, attach);
+	update_model_options(node, attach);
 
 	node_remove(node);
 

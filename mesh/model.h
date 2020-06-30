@@ -112,5 +112,11 @@ bool mesh_model_opcode_get(const uint8_t *buf, uint16_t size, uint32_t *opcode,
 								uint16_t *n);
 void model_build_config(void *model, void *msg_builder);
 
+void mesh_model_enable_pub(struct mesh_model *mod, bool enable);
+bool mesh_model_is_pub_enabled(struct mesh_model *mod);
+void mesh_model_enable_sub(struct mesh_node *node, struct mesh_model *mod,
+								bool enable);
+bool mesh_model_is_sub_enabled(struct mesh_model *mod);
+
 void mesh_model_init(void);
 void mesh_model_cleanup(void);
