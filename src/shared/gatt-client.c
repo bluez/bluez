@@ -1608,7 +1608,7 @@ static uint8_t process_error(const void *pdu, uint16_t length)
 	const struct bt_att_pdu_error_rsp *error_pdu;
 
 	if (!pdu || length != sizeof(struct bt_att_pdu_error_rsp))
-		return 0;
+		return BT_ATT_ERROR_UNLIKELY;
 
 	error_pdu = pdu;
 
