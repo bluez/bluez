@@ -65,6 +65,7 @@ static struct adapter *default_ctrl;
 static GDBusProxy *default_dev;
 static GDBusProxy *default_attr;
 static GList *ctrl_list;
+static GList *battery_proxies;
 
 static const char *agent_arguments[] = {
 	"on",
@@ -107,7 +108,9 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 	bt_shell_set_prompt(PROMPT_OFF);
 
 	g_list_free_full(ctrl_list, proxy_leak);
+	g_list_free_full(battery_proxies, proxy_leak);
 	ctrl_list = NULL;
+	battery_proxies = NULL;
 
 	default_ctrl = NULL;
 }
@@ -271,7 +274,7 @@ static void print_iter(const char *label, const char *name,
 		break;
 	case DBUS_TYPE_BYTE:
 		dbus_message_iter_get_basic(iter, &byte);
-		bt_shell_printf("%s%s: 0x%02x\n", label, name, byte);
+		bt_shell_printf("%s%s: 0x%02x (%d)\n", label, name, byte, byte);
 		break;
 	case DBUS_TYPE_VARIANT:
 		dbus_message_iter_recurse(iter, &subiter);
@@ -309,14 +312,20 @@ static void print_iter(const char *label, const char *name,
 	}
 }
 
-static void print_property(GDBusProxy *proxy, const char *name)
+static void print_property_with_label(GDBusProxy *proxy, const char *name,
+					const char *label)
 {
 	DBusMessageIter iter;
 
 	if (g_dbus_proxy_get_property(proxy, name, &iter) == FALSE)
 		return;
 
-	print_iter("\t", name, &iter);
+	print_iter("\t", label ? label : name, &iter);
+}
+
+static void print_property(GDBusProxy *proxy, const char *name)
+{
+	print_property_with_label(proxy, name, NULL);
 }
 
 static void print_uuid(const char *uuid)
@@ -445,6 +454,16 @@ done:
 	g_free(desc);
 }
 
+static void battery_added(GDBusProxy *proxy)
+{
+	battery_proxies = g_list_append(battery_proxies, proxy);
+}
+
+static void battery_removed(GDBusProxy *proxy)
+{
+	battery_proxies = g_list_remove(battery_proxies, proxy);
+}
+
 static void device_added(GDBusProxy *proxy)
 {
 	DBusMessageIter iter;
@@ -539,6 +558,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		gatt_add_manager(proxy);
 	} else if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
 		ad_manager_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.Battery1")) {
+		battery_added(proxy);
 	}
 }
 
@@ -630,6 +651,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		gatt_remove_manager(proxy);
 	} else if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
 		ad_unregister(dbus_conn, NULL);
+	} else if (!strcmp(interface, "org.bluez.Battery1")) {
+		battery_removed(proxy);
 	}
 }
 
@@ -758,6 +781,20 @@ static struct adapter *find_ctrl_by_address(GList *source, const char *address)
 
 		if (!strcasecmp(str, address))
 			return adapter;
+	}
+
+	return NULL;
+}
+
+static GDBusProxy *find_battery_by_path(GList *source, const char *path)
+{
+	GList *list;
+
+	for (list = g_list_first(source); list; list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+
+		if (strcmp(g_dbus_proxy_get_path(proxy), path) == 0)
+			return proxy;
 	}
 
 	return NULL;
@@ -1606,6 +1643,7 @@ static struct GDBusProxy *find_device(int argc, char *argv[])
 static void cmd_info(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
+	GDBusProxy *battery_proxy;
 	DBusMessageIter iter;
 	const char *address;
 
@@ -1646,6 +1684,11 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "TxPower");
 	print_property(proxy, "AdvertisingFlags");
 	print_property(proxy, "AdvertisingData");
+
+	battery_proxy = find_battery_by_path(battery_proxies,
+					g_dbus_proxy_get_path(proxy));
+	print_property_with_label(battery_proxy, "Percentage",
+					"Battery Percentage");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
