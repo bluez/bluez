@@ -34,6 +34,12 @@
 
 #define CFG_MAX_MSG_LEN 380
 
+/* Supported composition pages, sorted high to low */
+/* Only page 0 is currently supported */
+static const uint8_t supported_pages[] = {
+	0
+};
+
 static void send_pub_status(struct mesh_node *node, uint16_t net_idx,
 			uint16_t src, uint16_t dst,
 			uint8_t status, uint16_t ele_addr, uint32_t mod_id,
@@ -701,6 +707,33 @@ static void node_reset(void *user_data)
 	node_remove(node);
 }
 
+static uint16_t get_composition(struct mesh_node *node, uint8_t page,
+								uint8_t *buf)
+{
+	const uint8_t *comp;
+	uint16_t len = 0;
+	size_t i;
+
+	for (i = 0; i < sizeof(supported_pages); i++) {
+		if (page < supported_pages[i])
+			continue;
+
+		page = supported_pages[i];
+		comp = node_get_comp(node, page, &len);
+
+		if (!page || len)
+			break;
+	}
+
+	if (!len)
+		return 0;
+
+	*buf++ = page;
+	memcpy(buf, comp, len);
+
+	return len + 1;
+}
+
 static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 				uint16_t net_idx, const uint8_t *data,
 				uint16_t size, const void *user_data)
@@ -746,16 +779,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		if (size != 1)
 			return false;
 
-		/* Only page 0 is currently supported */
-		if (pkt[0] != 0) {
-			l_debug("Unsupported page number %d", pkt[0]);
-			l_debug("Returning page number 0");
-		}
 		long_msg = l_malloc(CFG_MAX_MSG_LEN);
 		n = mesh_model_opcode_set(OP_DEV_COMP_STATUS, long_msg);
-		long_msg[n++] = 0;
-		n += node_generate_comp(node, long_msg + n,
-							CFG_MAX_MSG_LEN - n);
+		n += get_composition(node, pkt[0], long_msg + n);
 
 		break;
 

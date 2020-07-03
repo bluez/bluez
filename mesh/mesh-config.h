@@ -17,6 +17,8 @@
  *
  */
 
+#define MIN_COMP_SIZE 14
+
 struct mesh_config;
 
 struct mesh_config_sub {
@@ -88,10 +90,17 @@ struct mesh_config_transmit {
 	uint8_t count;
 };
 
+struct mesh_config_comp_page {
+	uint16_t len;
+	uint8_t page_num;
+	uint8_t data[];
+};
+
 struct mesh_config_node {
 	struct l_queue *elements;
 	struct l_queue *netkeys;
 	struct l_queue *appkeys;
+	struct l_queue *pages;
 	uint32_t seq_number;
 	uint32_t iv_index;
 	bool iv_update;
@@ -139,6 +148,9 @@ bool mesh_config_write_relay_mode(struct mesh_config *cfg, uint8_t mode,
 bool mesh_config_write_ttl(struct mesh_config *cfg, uint8_t ttl);
 bool mesh_config_write_mode(struct mesh_config *cfg, const char *keyword,
 								int value);
+bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
+						uint8_t *data, uint16_t size);
+bool mesh_config_comp_page_mv(struct mesh_config *cfg, uint8_t old, uint8_t nw);
 bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
 						bool vendor, uint32_t mod_id,
 							uint16_t app_idx);

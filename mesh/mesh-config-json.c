@@ -430,6 +430,54 @@ static bool read_device_key(json_object *jobj, uint8_t key_buf[16])
 	return true;
 }
 
+static bool read_comp_pages(json_object *jobj, struct mesh_config_node *node)
+{
+	json_object *jarray, *jentry;
+	struct mesh_config_comp_page *page;
+	int len;
+	int i;
+
+	if (!json_object_object_get_ex(jobj, "pages", &jarray))
+		return true;
+
+	if (json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	len = json_object_array_length(jarray);
+
+	for (i = 0; i < len; i++) {
+		size_t clen;
+		char *str;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		str = (char *)json_object_get_string(jentry);
+		clen = strlen(str);
+
+		if (clen < ((MIN_COMP_SIZE * 2) + 1))
+			continue;
+
+		clen = (clen / 2) - 1;
+
+		page = l_malloc(sizeof(struct mesh_config_comp_page) + clen);
+
+		if (!str2hex(str + 2, clen * 2, page->data, clen))
+			goto parse_fail;
+
+		if (sscanf(str, "%02hhx", &page->page_num) != 1)
+			goto parse_fail;
+
+		page->len = clen;
+
+		l_queue_push_tail(node->pages, page);
+	}
+
+	return true;
+
+parse_fail:
+	l_free(page);
+	return false;
+}
+
 static bool read_app_keys(json_object *jobj, struct mesh_config_node *node)
 {
 	json_object *jarray;
@@ -1384,6 +1432,11 @@ static bool read_node(json_object *jnode, struct mesh_config_node *node)
 		return false;
 	}
 
+	if (!read_comp_pages(jnode, node)) {
+		l_info("Failed to read Composition Pages");
+		return false;
+	}
+
 	if (!parse_elements(jvalue, node)) {
 		l_info("Failed to parse elements");
 		return false;
@@ -1889,6 +1942,113 @@ bool mesh_config_model_pub_del(struct mesh_config *cfg, uint16_t addr,
 	return save_config(cfg->jnode, cfg->node_dir_path);
 }
 
+static void del_page(json_object *jarray, uint8_t page)
+{
+	char buf[3];
+	int i, len;
+
+	if (!jarray)
+		return;
+
+	snprintf(buf, 3, "%2.2x", page);
+
+	len = json_object_array_length(jarray);
+
+	for (i = 0; i < len; i++) {
+		json_object *jentry;
+		char *str;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		str = (char *)json_object_get_string(jentry);
+
+		/* Delete matching page(s) */
+		if (!memcmp(str, buf, 2))
+			json_object_array_del_idx(jarray, i, 1);
+	}
+}
+
+bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
+						uint8_t *data, uint16_t size)
+{
+	json_object *jnode, *jstring, *jarray = NULL;
+	char *buf;
+	int len;
+
+	if (!cfg)
+		return false;
+
+	jnode = cfg->jnode;
+
+	json_object_object_get_ex(jnode, "pages", &jarray);
+
+	len = (size * 2) + 3;
+	buf = l_malloc(len);
+	snprintf(buf, len, "%2.2x", page);
+	hex2str(data, size, buf + 2, len - 2);
+
+	if (jarray && jarray_has_string(jarray, buf, len)) {
+		l_free(buf);
+		return true;
+	} else if (!jarray) {
+		jarray = json_object_new_array();
+		json_object_object_add(jnode, "pages", jarray);
+	} else
+		del_page(jarray, page);
+
+	jstring = json_object_new_string(buf);
+	json_object_array_add(jarray, jstring);
+	l_free(buf);
+
+	return save_config(jnode, cfg->node_dir_path);
+}
+
+bool mesh_config_comp_page_mv(struct mesh_config *cfg, uint8_t old, uint8_t nw)
+{
+	json_object *jnode, *jarray = NULL;
+	uint8_t *data;
+	char *str;
+	char old_buf[3];
+	int i, len, dlen = 0;
+	bool status = true;
+
+	if (!cfg || old == nw)
+		return false;
+
+	jnode = cfg->jnode;
+
+	json_object_object_get_ex(jnode, "pages", &jarray);
+
+	if (!jarray)
+		return false;
+
+	snprintf(old_buf, 3, "%2.2x", old);
+	data = l_malloc(MAX_MSG_LEN);
+
+	len = json_object_array_length(jarray);
+
+	for (i = 0; i < len; i++) {
+		json_object *jentry;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		str = (char *)json_object_get_string(jentry);
+
+		/* Delete matching page(s) but save data*/
+		if (!memcmp(str, old_buf, 2)) {
+			dlen = strlen(str + 2);
+			str2hex(str + 2, dlen, data, MAX_MSG_LEN);
+			dlen /= 2;
+			json_object_array_del_idx(jarray, i, 1);
+		}
+	}
+
+	if (dlen)
+		status = mesh_config_comp_page_add(cfg, nw, data, dlen);
+
+	l_free(data);
+
+	return status;
+}
+
 bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
 						struct mesh_config_sub *sub)
@@ -2212,6 +2372,7 @@ static bool load_node(const char *fname, const uint8_t uuid[16],
 	node.elements = l_queue_new();
 	node.netkeys = l_queue_new();
 	node.appkeys = l_queue_new();
+	node.pages = l_queue_new();
 
 	result = read_node(jnode, &node);
 
@@ -2238,6 +2399,7 @@ static bool load_node(const char *fname, const uint8_t uuid[16],
 	l_free(node.net_transmit);
 	l_queue_destroy(node.netkeys, l_free);
 	l_queue_destroy(node.appkeys, l_free);
+	l_queue_destroy(node.pages, l_free);
 	l_queue_destroy(node.elements, free_element);
 
 	if (!result)

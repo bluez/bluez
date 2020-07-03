@@ -63,7 +63,11 @@ struct l_queue *node_get_element_models(struct mesh_node *node, uint8_t ele_idx,
 uint16_t node_get_crpl(struct mesh_node *node);
 bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
 					struct mesh_config_node *db_node);
-uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf, uint16_t sz);
+const uint8_t *node_get_comp(struct mesh_node *node, uint8_t page_num,
+								uint16_t *len);
+bool node_set_comp(struct mesh_node *node, uint8_t page_num,
+					const uint8_t *data, uint16_t len);
+bool node_replace_comp(struct mesh_node *node, uint8_t retire, uint8_t with);
 uint8_t node_lpn_mode_get(struct mesh_node *node);
 bool node_relay_mode_set(struct mesh_node *node, bool enable, uint8_t cnt,
 							uint16_t interval);

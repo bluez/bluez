@@ -46,8 +46,6 @@
 #include "mesh/manager.h"
 #include "mesh/node.h"
 
-#define MIN_COMP_SIZE 14
-
 #define MESH_NODE_PATH_PREFIX "/node"
 
 /* Default values for a new locally created node */
@@ -81,6 +79,7 @@ struct node_composition {
 struct mesh_node {
 	struct mesh_net *net;
 	struct l_queue *elements;
+	struct l_queue *pages;
 	char *app_path;
 	char *owner;
 	char *obj_path;
@@ -266,6 +265,7 @@ static struct mesh_node *node_new(const uint8_t uuid[16])
 	node = l_new(struct mesh_node, 1);
 	node->net = mesh_net_new(node);
 	node->elements = l_queue_new();
+	node->pages = l_queue_new();
 	memcpy(node->uuid, uuid, sizeof(node->uuid));
 	set_defaults(node);
 
@@ -335,6 +335,7 @@ static void free_node_resources(void *data)
 	/* Free dynamic resources */
 	free_node_dbus_resources(node);
 	l_queue_destroy(node->elements, element_free);
+	l_queue_destroy(node->pages, l_free);
 	mesh_agent_remove(node->agent);
 	mesh_config_release(node->cfg);
 	mesh_net_free(node->net);
@@ -557,8 +558,15 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 
 	l_queue_foreach(db_node->netkeys, set_net_key, node);
 
-	if (db_node->appkeys)
-		l_queue_foreach(db_node->appkeys, set_appkey, node);
+	l_queue_foreach(db_node->appkeys, set_appkey, node);
+
+	while (l_queue_length(db_node->pages)) {
+		struct mesh_config_comp_page *page;
+
+		/* Move the composition pages to the node struct */
+		page = l_queue_pop_head(db_node->pages);
+		l_queue_push_tail(node->pages, page);
+	}
 
 	mesh_net_set_seq_num(node->net, node->seq_number);
 	mesh_net_set_default_ttl(node->net, node->ttl);
@@ -877,7 +885,8 @@ uint8_t node_friend_mode_get(struct mesh_node *node)
 	return node->friend;
 }
 
-uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf, uint16_t sz)
+static uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf,
+								uint16_t sz)
 {
 	uint16_t n, features;
 	uint16_t num_ele = 0;
@@ -989,6 +998,78 @@ element_done:
 		return 0;
 
 	return n;
+}
+
+static bool match_page(const void *a, const void *b)
+{
+	const struct mesh_config_comp_page *page = a;
+	uint8_t page_num = L_PTR_TO_UINT(b);
+
+	return page->page_num == page_num;
+}
+
+bool node_set_comp(struct mesh_node *node, uint8_t page_num,
+					const uint8_t *data, uint16_t len)
+{
+	struct mesh_config_comp_page *page;
+
+	if (!node || len < MIN_COMP_SIZE)
+		return false;
+
+	page = l_queue_remove_if(node->pages, match_page,
+						L_UINT_TO_PTR(page_num));
+
+	l_free(page);
+
+	page = l_malloc(sizeof(struct mesh_config_comp_page) + len);
+	page->len = len;
+	page->page_num = page_num;
+	memcpy(page->data, data, len);
+	l_queue_push_tail(node->pages, page);
+
+	mesh_config_comp_page_add(node->cfg, page_num, page->data, len);
+
+	return true;
+}
+
+const uint8_t *node_get_comp(struct mesh_node *node, uint8_t page_num,
+								uint16_t *len)
+{
+	struct mesh_config_comp_page *page = NULL;
+
+	if (node)
+		page = l_queue_find(node->pages, match_page,
+						L_UINT_TO_PTR(page_num));
+
+	if (!page) {
+		*len = 0;
+		return NULL;
+	}
+
+	*len = page->len;
+	return page->data;
+}
+
+bool node_replace_comp(struct mesh_node *node, uint8_t retire, uint8_t with)
+{
+	struct mesh_config_comp_page *old_page, *keep;
+
+	if (!node)
+		return false;
+
+	keep = l_queue_find(node->pages, match_page, L_UINT_TO_PTR(with));
+
+	if (!keep)
+		return false;
+
+	old_page = l_queue_remove_if(node->pages, match_page,
+							L_UINT_TO_PTR(retire));
+
+	l_free(old_page);
+	keep->page_num = retire;
+	mesh_config_comp_page_mv(node->cfg, with, retire);
+
+	return true;
 }
 
 static void attach_io(void *a, void *b)
@@ -1486,27 +1567,30 @@ static void update_model_options(struct mesh_node *node,
 
 static bool check_req_node(struct managed_obj_request *req)
 {
-	uint8_t node_comp[MAX_MSG_LEN - 2];
-	uint8_t attach_comp[MAX_MSG_LEN - 2];
-	uint16_t offset = 10;
-	uint16_t node_len = node_generate_comp(req->node, node_comp,
-							sizeof(node_comp));
+	struct mesh_node *node;
+	const int offset = 8;
+	uint16_t node_len, len;
+	uint8_t comp[MAX_MSG_LEN - 2];
+	const uint8_t *node_comp;
 
-	if (!node_len)
+	if (req->type == REQUEST_TYPE_ATTACH)
+		node = req->attach;
+	else
+		node = req->node;
+
+	node_comp = node_get_comp(node, 0, &node_len);
+	len = node_generate_comp(node, comp, sizeof(comp));
+
+	/* If no page 0 exists, save it and return */
+	if (req->type != REQUEST_TYPE_ATTACH || !node_len || !node_comp)
+		return node_set_comp(node, 0, comp, len);
+
+	if (node_len != len || memcmp(&node_comp[offset], &comp[offset],
+							node_len - offset))
 		return false;
 
-	if (req->type == REQUEST_TYPE_ATTACH) {
-		uint16_t attach_len = node_generate_comp(req->attach,
-					attach_comp, sizeof(attach_comp));
-
-		/* Verify only element/models composition */
-		if (node_len != attach_len ||
-				memcmp(&node_comp[offset], &attach_comp[offset],
-							node_len - offset)) {
-			l_debug("Failed to verify app's composition data");
-			return false;
-		}
-	}
+	else if (memcmp(node_comp, comp, node_len))
+		return node_set_comp(node, 0, comp, len);
 
 	return true;
 }
