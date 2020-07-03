@@ -2388,7 +2388,7 @@ void node_property_changed(struct mesh_node *node, const char *property)
 {
 	struct l_dbus *bus = dbus_get_bus();
 
-	if (bus)
+	if (bus && node->obj_path)
 		l_dbus_property_changed(dbus_get_bus(), node->obj_path,
 						MESH_NODE_INTERFACE, property);
 }
