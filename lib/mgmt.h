@@ -665,6 +665,8 @@ struct mgmt_rp_get_device_flags {
 	uint32_t current_flags;
 } __packed;
 
+#define DEVICE_FLAG_REMOTE_WAKEUP	(1 << 0)
+
 #define MGMT_OP_SET_DEVICE_FLAGS	0x0050
 #define MGMT_SET_DEVICE_FLAGS_SIZE	11
 struct mgmt_cp_set_device_flags {
