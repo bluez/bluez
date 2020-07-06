@@ -654,6 +654,27 @@ struct mgmt_cp_set_default_runtime_config {
 	uint8_t parameters[0]; /* mgmt_tlv */
 } __packed;
 
+#define MGMT_OP_GET_DEVICE_FLAGS	0x004F
+#define MGMT_GET_DEVICE_FLAGS_SIZE	7
+struct mgmt_cp_get_device_flags {
+	struct mgmt_addr_info addr;
+} __packed;
+struct mgmt_rp_get_device_flags {
+	struct mgmt_addr_info addr;
+	uint32_t supported_flags;
+	uint32_t current_flags;
+} __packed;
+
+#define MGMT_OP_SET_DEVICE_FLAGS	0x0050
+#define MGMT_SET_DEVICE_FLAGS_SIZE	11
+struct mgmt_cp_set_device_flags {
+	struct mgmt_addr_info addr;
+	uint32_t current_flags;
+} __packed;
+struct mgmt_rp_set_device_flags {
+	struct mgmt_addr_info addr;
+} __packed;
+
 #define MGMT_ADV_MONITOR_FEATURE_MASK_OR_PATTERNS	(1 << 0)
 
 #define MGMT_OP_READ_ADV_MONITOR_FEATURES	0x0051
@@ -919,6 +940,13 @@ struct mgmt_ev_exp_feature_changed {
 	uint32_t flags;
 } __packed;
 
+#define MGMT_EV_DEVICE_FLAGS_CHANGED		0x002a
+struct mgmt_ev_device_flags_changed {
+	struct mgmt_addr_info addr;
+	uint32_t supported_flags;
+	uint32_t current_flags;
+} __packed;
+
 #define MGMT_EV_ADV_MONITOR_ADDED	0x002b
 struct mgmt_ev_adv_monitor_added {
 	uint16_t monitor_handle;
@@ -1007,6 +1035,8 @@ static const char *mgmt_op[] = {
 	"Set Experimental Feature",
 	"Read Default System Configuration",
 	"Set Default System Configuration",
+	"Get Device Flags",
+	"Set Device Flags",				/* 0x0050 */
 	"Read Advertisement Monitor Features",
 	"Add Advertisement Patterns Monitor",
 	"Remove Advertisement Monitor",
@@ -1053,6 +1083,7 @@ static const char *mgmt_ev[] = {
 	"Extended Controller Information Changed",
 	"PHY Configuration Changed",
 	"Experimental Feature Changed",
+	"Device Flags Changed",
 	"Advertisement Monitor Added",			/* 0x002b */
 	"Advertisement Monitor Removed",
 };
