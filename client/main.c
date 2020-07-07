@@ -925,6 +925,7 @@ static void cmd_show(int argc, char *argv[])
 	print_uuids(adapter->proxy);
 	print_property(adapter->proxy, "Modalias");
 	print_property(adapter->proxy, "Discovering");
+	print_property(adapter->proxy, "Roles");
 
 	if (adapter->ad_proxy) {
 		bt_shell_printf("Advertising Features:\n");
