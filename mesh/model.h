@@ -19,8 +19,6 @@
 
 struct mesh_model;
 
-#define OP_UNRELIABLE			0x0100
-
 #define MAX_BINDINGS	10
 #define MAX_GRP_PER_MOD	10
 
