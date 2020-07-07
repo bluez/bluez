@@ -122,6 +122,8 @@ static bool kernel_blocked_keys_supported = false;
 
 static bool kernel_set_system_config = false;
 
+static bool kernel_exp_features = false;
+
 static GList *adapter_list = NULL;
 static unsigned int adapter_remaining = 0;
 static bool powering_down = false;
@@ -293,6 +295,8 @@ struct btd_adapter {
 	unsigned int db_id;		/* Service event handler for GATT db */
 
 	bool is_default;		/* true if adapter is default one */
+
+	bool le_simult_roles_supported;
 };
 
 typedef enum {
@@ -3199,6 +3203,35 @@ static gboolean property_get_modalias(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean property_get_roles(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &entry);
+
+	if (adapter->supported_settings & MGMT_SETTING_LE) {
+		const char *str = "central";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+
+	if (adapter->supported_settings & MGMT_SETTING_ADVERTISING) {
+		const char *str = "peripheral";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+
+	if (adapter->le_simult_roles_supported) {
+		const char *str = "central-peripheral";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+
+	dbus_message_iter_close_container(iter, &entry);
+
+	return TRUE;
+}
+
 static int device_path_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct btd_device *device = a;
@@ -3479,6 +3512,7 @@ static const GDBusPropertyTable adapter_properties[] = {
 	{ "UUIDs", "as", property_get_uuids },
 	{ "Modalias", "s", property_get_modalias, NULL,
 					property_exists_modalias },
+	{ "Roles", "as", property_get_roles },
 	{ }
 };
 
@@ -9116,6 +9150,56 @@ static bool set_blocked_keys(struct btd_adapter *adapter)
 						adapter, NULL);
 }
 
+static void read_exp_features_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_rp_read_exp_features_info *rp = param;
+	size_t feature_count = 0;
+	size_t i = 0;
+
+	DBG("index %u status 0x%02x", adapter->dev_id, status);
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		btd_error(adapter->dev_id,
+				"Failed to read exp features info: %s (0x%02x)",
+				mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		btd_error(adapter->dev_id, "Response too small");
+		return;
+	}
+
+	feature_count = le16_to_cpu(rp->feature_count);
+	for (i = 0; i < feature_count; ++i) {
+
+		/* 671b10b5-42c0-4696-9227-eb28d1b049d6 */
+		static const uint8_t le_simult_central_peripheral[16] = {
+			0xd6, 0x49, 0xb0, 0xd1, 0x28, 0xeb, 0x27, 0x92,
+			0x96, 0x46, 0xc0, 0x42, 0xb5, 0x10, 0x1b, 0x67,
+		};
+
+		if (memcmp(rp->features[i].uuid, le_simult_central_peripheral,
+				sizeof(le_simult_central_peripheral)) == 0) {
+			uint32_t flags = le32_to_cpu(rp->features[i].flags);
+
+			adapter->le_simult_roles_supported = flags & 0x01;
+		}
+	}
+}
+
+static void read_exp_features(struct btd_adapter *adapter)
+{
+	if (mgmt_send(adapter->mgmt, MGMT_OP_READ_EXP_FEATURES_INFO,
+			adapter->dev_id, 0, NULL, read_exp_features_complete,
+			adapter, NULL) > 0)
+		return;
+
+	btd_error(adapter->dev_id, "Failed to read exp features info");
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -9224,6 +9308,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (main_opts.fast_conn &&
 			(missing_settings & MGMT_SETTING_FAST_CONNECTABLE))
 		set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, 0x01);
+
+	if (kernel_exp_features)
+		read_exp_features(adapter);
 
 	err = adapter_register(adapter);
 	if (err < 0) {
@@ -9539,6 +9626,10 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 		case MGMT_OP_SET_DEF_SYSTEM_CONFIG:
 			DBG("kernel supports set system confic");
 			kernel_set_system_config = true;
+			break;
+		case MGMT_OP_READ_EXP_FEATURES_INFO:
+			DBG("kernel supports exp features");
+			kernel_exp_features = true;
 			break;
 		default:
 			break;
