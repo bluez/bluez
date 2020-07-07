@@ -73,7 +73,7 @@ static bool server_msg_recvd(uint16_t src, uint8_t *data,
 
 	n = 0;
 
-	switch (opcode & ~OP_UNRELIABLE) {
+	switch (opcode) {
 	default:
 		return false;
 

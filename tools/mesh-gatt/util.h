@@ -25,8 +25,6 @@
 
 struct mesh_publication;
 
-#define OP_UNRELIABLE			0x0100
-
 void set_menu_prompt(const char *name, const char *id);
 void print_byte_array(const char *prefix, const void *ptr, int len);
 bool str2hex(const char *str, uint16_t in_len, uint8_t *out_buf,

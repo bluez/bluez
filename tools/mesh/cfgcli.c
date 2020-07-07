@@ -416,7 +416,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 	bt_shell_printf("Received %s (len %u)\n", opcode_str(opcode), len);
 
-	req = get_req_by_rsp(src, (opcode & ~OP_UNRELIABLE));
+	req = get_req_by_rsp(src, opcode);
 	if (req) {
 		cmd = req->cmd;
 		free_request(req);
@@ -424,7 +424,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 	} else
 		cmd = NULL;
 
-	switch (opcode & ~OP_UNRELIABLE) {
+	switch (opcode) {
 	default:
 		return false;
 

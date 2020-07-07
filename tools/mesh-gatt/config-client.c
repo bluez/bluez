@@ -100,7 +100,7 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 	if (primary != src)
 		return false;
 
-	switch (opcode & ~OP_UNRELIABLE) {
+	switch (opcode) {
 	default:
 		return false;
 

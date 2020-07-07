@@ -123,7 +123,7 @@ static bool client_msg_recvd(uint16_t src, uint8_t *data,
 								len, opcode);
 	print_byte_array("\t",data, len);
 
-	switch (opcode & ~OP_UNRELIABLE) {
+	switch (opcode) {
 	default:
 		return false;
 

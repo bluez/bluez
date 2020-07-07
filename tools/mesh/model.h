@@ -18,7 +18,6 @@
  *
  */
 
-#define OP_UNRELIABLE	0x0100
 #define VENDOR_ID_INVALID	0xFFFF
 
 typedef bool (*model_send_msg_func_t) (void *user_data, uint16_t dst,
