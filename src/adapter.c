@@ -1505,7 +1505,7 @@ static gboolean remove_temp_devices(gpointer user_data)
 	return FALSE;
 }
 
-static void discovery_cleanup(struct btd_adapter *adapter)
+static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 {
 	GSList *l, *next;
 
@@ -1537,7 +1537,7 @@ static void discovery_cleanup(struct btd_adapter *adapter)
 			btd_adapter_remove_device(adapter, dev);
 	}
 
-	adapter->temp_devices_timeout = g_timeout_add_seconds(TEMP_DEV_TIMEOUT,
+	adapter->temp_devices_timeout = g_timeout_add_seconds(timeout,
 						remove_temp_devices, adapter);
 }
 
@@ -1590,7 +1590,7 @@ static void discovery_remove(struct discovery_client *client)
 	if (adapter->discovery_list)
 		return;
 
-	discovery_cleanup(adapter);
+	discovery_cleanup(adapter, TEMP_DEV_TIMEOUT);
 }
 
 static void trigger_start_discovery(struct btd_adapter *adapter, guint delay);
@@ -6362,7 +6362,7 @@ static void adapter_remove(struct btd_adapter *adapter)
 	g_slist_free(adapter->devices);
 	adapter->devices = NULL;
 
-	discovery_cleanup(adapter);
+	discovery_cleanup(adapter, 0);
 
 	unload_drivers(adapter);
 
@@ -6889,7 +6889,7 @@ static void adapter_stop(struct btd_adapter *adapter)
 	g_slist_free_full(adapter->discovery_list, discovery_free);
 	adapter->discovery_list = NULL;
 
-	discovery_cleanup(adapter);
+	discovery_cleanup(adapter, 0);
 
 	adapter->filtered_discovery = false;
 	adapter->no_scan_restart_delay = false;
