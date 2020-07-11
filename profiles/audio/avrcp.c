@@ -3625,12 +3625,13 @@ static void avrcp_volume_changed(struct avrcp *session,
 	struct avrcp_player *player = target_get_player(session);
 	uint8_t volume;
 
-	if (!player)
-		return;
-
 	volume = pdu->params[1] & 0x7F;
 
-	player->cb->set_volume(volume, session->dev, player->user_data);
+	/* Always attempt to update the transport volume */
+	media_transport_update_device_volume(session->dev, volume);
+
+	if (player)
+		player->cb->set_volume(volume, session->dev, player->user_data);
 }
 
 static void avrcp_status_changed(struct avrcp *session,
@@ -4377,6 +4378,9 @@ static gboolean avrcp_handle_set_volume(struct avctp *conn, uint8_t code,
 		return FALSE;
 
 	volume = pdu->params[0] & 0x7F;
+
+	/* Always attempt to update the transport volume */
+	media_transport_update_device_volume(session->dev, volume);
 
 	if (player != NULL)
 		player->cb->set_volume(volume, session->dev, player->user_data);

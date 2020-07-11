@@ -1202,27 +1202,11 @@ static uint32_t get_duration(void *user_data)
 static void set_volume(uint8_t volume, struct btd_device *dev, void *user_data)
 {
 	struct media_player *mp = user_data;
-	GSList *l;
 
 	if (mp->volume == volume)
 		return;
 
 	mp->volume = volume;
-
-	for (l = mp->adapter->endpoints; l; l = l->next) {
-		struct media_endpoint *endpoint = l->data;
-		struct media_transport *transport;
-
-		/* Volume is A2DP only */
-		if (endpoint->sep == NULL)
-			continue;
-
-		transport = find_device_transport(endpoint, dev);
-		if (transport == NULL)
-			continue;
-
-		media_transport_update_volume(transport, volume);
-	}
 }
 
 static bool media_player_send(struct media_player *mp, const char *name)
