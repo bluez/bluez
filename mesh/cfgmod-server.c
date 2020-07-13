@@ -754,7 +754,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 
 	case OP_DEV_COMP_GET:
 		if (size != 1)
-			return false;
+			return true;
 
 		n = mesh_model_opcode_set(OP_DEV_COMP_STATUS, msg);
 		n += get_composition(node, pkt[0], msg + n);
@@ -770,6 +770,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		/* Fall Through */
 
 	case OP_CONFIG_DEFAULT_TTL_GET:
+		if (opcode == OP_CONFIG_DEFAULT_TTL_GET && size != 0)
+			return true;
+
 		l_debug("Get/Set Default TTL");
 
 		n = mesh_model_opcode_set(OP_CONFIG_DEFAULT_TTL_STATUS, msg);
@@ -792,6 +795,8 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_CONFIG_MODEL_PUB_GET:
+		if (size != 4 && size != 6)
+			return true;
 		config_pub_get(node, net_idx, src, dst, pkt, size);
 		break;
 
@@ -832,6 +837,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		/* Fall Through */
 
 	case OP_CONFIG_RELAY_GET:
+		if (opcode == OP_CONFIG_RELAY_GET && size != 0)
+			return true;
+
 		n = mesh_model_opcode_set(OP_CONFIG_RELAY_STATUS, msg);
 
 		msg[n++] = node_relay_mode_get(node, &count, &interval);
@@ -853,6 +861,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		/* Fall Through */
 
 	case OP_CONFIG_NETWORK_TRANSMIT_GET:
+		if (opcode == OP_CONFIG_NETWORK_TRANSMIT_GET && size != 0)
+			return true;
+
 		n = mesh_model_opcode_set(OP_CONFIG_NETWORK_TRANSMIT_STATUS,
 									msg);
 		mesh_net_transmit_params_get(net, &count, &interval);
@@ -869,6 +880,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		/* Fall Through */
 
 	case OP_CONFIG_PROXY_GET:
+		if (opcode == OP_CONFIG_PROXY_GET && size != 0)
+			return true;
+
 		n = mesh_model_opcode_set(OP_CONFIG_PROXY_STATUS, msg);
 
 		msg[n++] = node_proxy_mode_get(node);
@@ -883,9 +897,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		if (n_idx > 0xfff)
 			return true;
 
-		/*
-		 * Currently no support for proxy: node identity not supported
-		 */
+		/* Currently setting node identity not supported */
 
 		/* Fall Through */
 
@@ -918,6 +930,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		/* Fall Through */
 
 	case OP_CONFIG_BEACON_GET:
+		if (opcode == OP_CONFIG_BEACON_GET && size != 0)
+			return true;
+
 		n = mesh_model_opcode_set(OP_CONFIG_BEACON_STATUS, msg);
 
 		msg[n++] = node_beacon_mode_get(node);
@@ -932,6 +947,8 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		/* Fall Through */
 
 	case OP_CONFIG_FRIEND_GET:
+		if (opcode == OP_CONFIG_FRIEND_GET && size != 0)
+			return true;
 
 		n = mesh_model_opcode_set(OP_CONFIG_FRIEND_STATUS, msg);
 
@@ -1071,13 +1088,14 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_NETKEY_GET:
+		if (size != 0)
+			return true;
+
 		n = mesh_model_opcode_set(OP_NETKEY_LIST, msg);
 		size = MAX_MSG_LEN - n;
 
 		if (mesh_net_key_list_get(net, msg + n, &size))
 			n += size;
-		else
-			n = 0;
 		break;
 
 	case OP_MODEL_APP_BIND:
@@ -1089,21 +1107,22 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	case OP_VEND_MODEL_APP_GET:
 		if (size != 6)
 			return true;
+
 		model_app_list(node, net_idx, src, dst, pkt, size);
 		break;
 
 	case OP_MODEL_APP_GET:
 		if (size != 4)
 			return true;
+
 		model_app_list(node, net_idx, src, dst, pkt, size);
 		break;
 
 	case OP_CONFIG_HEARTBEAT_PUB_SET:
 		l_debug("OP_CONFIG_HEARTBEAT_PUB_SET");
-		if (size != 9) {
-			l_debug("bad size %d", size);
+		if (size != 9)
 			return true;
-		}
+
 		if (pkt[2] > 0x11 || pkt[3] > 0x10 || pkt[4] > 0x7f)
 			return true;
 		else if (IS_VIRTUAL(l_get_le16(pkt)))
@@ -1150,6 +1169,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_CONFIG_HEARTBEAT_PUB_GET:
+		if (size != 0)
+			return true;
+
 		n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_PUB_STATUS, msg);
 		msg[n++] = b_res;
 		l_put_le16(hb->pub_dst, msg + n);
@@ -1179,6 +1201,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		/* Fall through */
 
 	case OP_CONFIG_HEARTBEAT_SUB_GET:
+		if (opcode == OP_CONFIG_HEARTBEAT_SUB_GET && size != 0)
+			return true;
+
 		gettimeofday(&time_now, NULL);
 		time_now.tv_sec -= hb->sub_start;
 
@@ -1218,6 +1243,9 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_NODE_RESET:
+		if (size != 0)
+			return true;
+
 		n = mesh_model_opcode_set(OP_NODE_RESET_STATUS, msg);
 
 		/* Delay node removal to give it a chance to send the status */
