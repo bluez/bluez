@@ -32,13 +32,13 @@
 #include "mesh/mesh-config.h"
 #include "mesh/cfgmod.h"
 
-#define CFG_MAX_MSG_LEN 380
-
 /* Supported composition pages, sorted high to low */
 /* Only page 0 is currently supported */
 static const uint8_t supported_pages[] = {
 	0
 };
+
+static uint8_t msg[MAX_MSG_LEN];
 
 static void send_pub_status(struct mesh_node *node, uint16_t net_idx,
 			uint16_t src, uint16_t dst,
@@ -46,7 +46,6 @@ static void send_pub_status(struct mesh_node *node, uint16_t net_idx,
 			uint16_t pub_addr, uint16_t idx, bool cred_flag,
 			uint8_t ttl, uint8_t period, uint8_t retransmit)
 {
-	uint8_t msg[16];
 	size_t n;
 
 	n = mesh_model_opcode_set(OP_CONFIG_MODEL_PUB_STATUS, msg);
@@ -193,7 +192,6 @@ static void send_sub_status(struct mesh_node *node, uint16_t net_idx,
 					uint8_t status, uint16_t ele_addr,
 					uint16_t addr, uint32_t mod)
 {
-	uint8_t msg[12];
 	int n = mesh_model_opcode_set(OP_CONFIG_MODEL_SUB_STATUS, msg);
 
 	msg[n++] = status;
@@ -224,7 +222,6 @@ static bool config_sub_get(struct mesh_node *node, uint16_t net_idx,
 	int status;
 	uint8_t *msg_status;
 	uint16_t buf_size;
-	uint8_t msg[5 + sizeof(uint16_t) * MAX_GRP_PER_MOD];
 
 	/* Incoming message has already been size-checked */
 	ele_addr = l_get_le16(pkt);
@@ -430,7 +427,6 @@ static void send_model_app_status(struct mesh_node *node, uint16_t net_idx,
 					uint8_t status, uint16_t addr,
 					uint32_t id, uint16_t idx)
 {
-	uint8_t msg[12];
 	size_t n = mesh_model_opcode_set(OP_MODEL_APP_STATUS, msg);
 
 	msg[n++] = status;
@@ -455,21 +451,14 @@ static void model_app_list(struct mesh_node *node, uint16_t net_idx,
 {
 	uint16_t ele_addr;
 	uint32_t mod_id = 0xffff;
-	uint8_t *msg = NULL;
 	uint8_t *status;
-	uint16_t n, buf_size;
+	uint16_t n;
 	int result;
-
-	buf_size = MAX_BINDINGS * sizeof(uint16_t);
-	msg = l_malloc(7 + buf_size);
-	if (!msg)
-		return;
 
 	ele_addr = l_get_le16(pkt);
 
 	switch (size) {
 	default:
-		l_free(msg);
 		return;
 	case 4:
 		n = mesh_model_opcode_set(OP_MODEL_APP_LIST, msg);
@@ -495,7 +484,7 @@ static void model_app_list(struct mesh_node *node, uint16_t net_idx,
 
 
 	result = mesh_model_get_bindings(node, ele_addr, mod_id, msg + n,
-							buf_size, &size);
+						MAX_MSG_LEN - n, &size);
 	n += size;
 
 	if (result >= 0) {
@@ -503,8 +492,6 @@ static void model_app_list(struct mesh_node *node, uint16_t net_idx,
 		mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
 						DEFAULT_TTL, false, msg, n);
 	}
-
-	l_free(msg);
 }
 
 static bool model_app_bind(struct mesh_node *node, uint16_t net_idx,
@@ -736,8 +723,6 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	struct timeval time_now;
 	uint32_t opcode, tmp32;
 	int b_res = MESH_STATUS_SUCCESS;
-	uint8_t msg[11];
-	uint8_t *long_msg = NULL;
 	struct mesh_net_heartbeat *hb;
 	uint16_t n_idx, a_idx;
 	uint8_t state, status;
@@ -771,9 +756,8 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		if (size != 1)
 			return false;
 
-		long_msg = l_malloc(CFG_MAX_MSG_LEN);
-		n = mesh_model_opcode_set(OP_DEV_COMP_STATUS, long_msg);
-		n += get_composition(node, pkt[0], long_msg + n);
+		n = mesh_model_opcode_set(OP_DEV_COMP_STATUS, msg);
+		n += get_composition(node, pkt[0], msg + n);
 
 		break;
 
@@ -1040,14 +1024,13 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 
 		n_idx = l_get_le16(pkt);
 
-		long_msg = l_malloc(CFG_MAX_MSG_LEN);
-		n = mesh_model_opcode_set(OP_APPKEY_LIST, long_msg);
+		n = mesh_model_opcode_set(OP_APPKEY_LIST, msg);
 
-		status = appkey_list(net, n_idx, long_msg + n + 3,
-						CFG_MAX_MSG_LEN - n - 3, &size);
+		status = appkey_list(net, n_idx, msg + n + 3,
+						MAX_MSG_LEN - n - 3, &size);
 
-		long_msg[n] = status;
-		l_put_le16(n_idx, long_msg + n + 1);
+		msg[n] = status;
+		l_put_le16(n_idx, msg + n + 1);
 		n += (size + 3);
 		break;
 
@@ -1088,11 +1071,10 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_NETKEY_GET:
-		long_msg = l_malloc(CFG_MAX_MSG_LEN);
-		n = mesh_model_opcode_set(OP_NETKEY_LIST, long_msg);
-		size = CFG_MAX_MSG_LEN - n;
+		n = mesh_model_opcode_set(OP_NETKEY_LIST, msg);
+		size = MAX_MSG_LEN - n;
 
-		if (mesh_net_key_list_get(net, long_msg + n, &size))
+		if (mesh_net_key_list_get(net, msg + n, &size))
 			n += size;
 		else
 			n = 0;
@@ -1244,11 +1226,8 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	}
 
 	if (n)
-		mesh_model_send(node, dst, src,
-				APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL, false,
-				long_msg ? long_msg : msg, n);
-
-	l_free(long_msg);
+		mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
+						DEFAULT_TTL, false, msg, n);
 
 	return true;
 }
