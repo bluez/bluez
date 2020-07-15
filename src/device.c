@@ -233,6 +233,7 @@ struct btd_device {
 	bool		connectable;
 	guint		disconn_timer;
 	guint		discov_timer;
+	guint		temporary_timer;	/* Temporary/disappear timer */
 	struct browse_req *browse;		/* service discover request */
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
@@ -697,6 +698,9 @@ static void device_free(gpointer user_data)
 
 	if (device->discov_timer)
 		g_source_remove(device->discov_timer);
+
+	if (device->temporary_timer)
+		g_source_remove(device->temporary_timer);
 
 	if (device->connect)
 		dbus_message_unref(device->connect);
@@ -4232,12 +4236,34 @@ void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 	store_device_info(device);
 }
 
+static gboolean device_disappeared(gpointer user_data)
+{
+	struct btd_device *dev = user_data;
+
+	dev->temporary_timer = 0;
+
+	btd_adapter_remove_device(dev->adapter, dev);
+
+	return FALSE;
+}
+
 void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
 {
 	if (bdaddr_type == BDADDR_BREDR)
 		device->bredr_seen = time(NULL);
 	else
 		device->le_seen = time(NULL);
+
+	if (!device_is_temporary(device))
+		return;
+
+	/* Restart temporary timer */
+	if (device->temporary_timer)
+		g_source_remove(device->temporary_timer);
+
+	device->temporary_timer = g_timeout_add_seconds(main_opts.tmpto,
+							device_disappeared,
+							device);
 }
 
 /* It is possible that we have two device objects for the same device in
@@ -5610,10 +5636,18 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 
 	device->temporary = temporary;
 
+	if (device->temporary_timer) {
+		g_source_remove(device->temporary_timer);
+		device->temporary_timer = 0;
+	}
+
 	if (temporary) {
 		if (device->bredr)
 			adapter_whitelist_remove(device->adapter, device);
 		adapter_connect_list_remove(device->adapter, device);
+		device->temporary_timer = g_timeout_add_seconds(main_opts.tmpto,
+							device_disappeared,
+							device);
 		return;
 	}
 

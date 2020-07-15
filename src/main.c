@@ -67,6 +67,7 @@
 
 #define DEFAULT_PAIRABLE_TIMEOUT       0 /* disabled */
 #define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
+#define DEFAULT_TEMPORARY_TIMEOUT     30 /* 30 seconds */
 
 #define SHUTDOWN_GRACE_SECONDS 10
 
@@ -89,6 +90,7 @@ static const char *supported_options[] = {
 	"FastConnectable",
 	"Privacy",
 	"JustWorksRepairing",
+	"TemporaryTimeout",
 	NULL
 };
 
@@ -531,6 +533,16 @@ static void parse_config(GKeyFile *config)
 		g_free(str);
 	}
 
+	val = g_key_file_get_integer(config, "General",
+						"TemporaryTimeout", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("tmpto=%d", val);
+		main_opts.tmpto = val;
+	}
+
 	str = g_key_file_get_string(config, "General", "Name", &err);
 	if (err) {
 		DBG("%s", err->message);
@@ -672,6 +684,7 @@ static void init_defaults(void)
 	main_opts.class = 0x000000;
 	main_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
 	main_opts.discovto = DEFAULT_DISCOVERABLE_TIMEOUT;
+	main_opts.tmpto = DEFAULT_TEMPORARY_TIMEOUT;
 	main_opts.reverse_discovery = TRUE;
 	main_opts.name_resolv = TRUE;
 	main_opts.debug_keys = FALSE;
