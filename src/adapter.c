@@ -258,7 +258,6 @@ struct btd_adapter {
 	GSList *discovery_found;	/* list of found devices */
 	guint discovery_idle_timeout;	/* timeout between discovery runs */
 	guint passive_scan_timeout;	/* timeout between passive scans */
-	guint temp_devices_timeout;	/* timeout for temporary devices */
 
 	guint pairable_timeout_id;	/* pairable timeout id */
 	guint auth_idle_id;		/* Pending authorization dequeue */
@@ -1484,27 +1483,6 @@ static void invalidate_rssi_and_tx_power(gpointer a)
 	device_set_tx_power(dev, 127);
 }
 
-static gboolean remove_temp_devices(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-	GSList *l, *next;
-
-	DBG("%s", adapter->path);
-
-	adapter->temp_devices_timeout = 0;
-
-	for (l = adapter->devices; l != NULL; l = next) {
-		struct btd_device *dev = l->data;
-
-		next = g_slist_next(l);
-
-		if (device_is_temporary(dev) && !btd_device_is_connected(dev))
-			btd_adapter_remove_device(adapter, dev);
-	}
-
-	return FALSE;
-}
-
 static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 {
 	GSList *l, *next;
@@ -1514,11 +1492,6 @@ static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 	if (adapter->discovery_idle_timeout > 0) {
 		g_source_remove(adapter->discovery_idle_timeout);
 		adapter->discovery_idle_timeout = 0;
-	}
-
-	if (adapter->temp_devices_timeout > 0) {
-		g_source_remove(adapter->temp_devices_timeout);
-		adapter->temp_devices_timeout = 0;
 	}
 
 	g_slist_free_full(adapter->discovery_found,
@@ -1536,9 +1509,6 @@ static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 		if (device_is_temporary(dev) && !device_is_connectable(dev))
 			btd_adapter_remove_device(adapter, dev);
 	}
-
-	adapter->temp_devices_timeout = g_timeout_add_seconds(timeout,
-						remove_temp_devices, adapter);
 }
 
 static void discovery_free(void *user_data)
