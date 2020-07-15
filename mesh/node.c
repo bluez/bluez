@@ -1579,7 +1579,7 @@ static bool check_req_node(struct managed_obj_request *req)
 		node = req->node;
 
 	node_comp = node_get_comp(node, 0, &node_len);
-	len = node_generate_comp(node, comp, sizeof(comp));
+	len = node_generate_comp(req->node, comp, sizeof(comp));
 
 	/* If no page 0 exists, save it and return */
 	if (req->type != REQUEST_TYPE_ATTACH || !node_len || !node_comp)
