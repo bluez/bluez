@@ -35,6 +35,10 @@ struct btd_profile {
 	const char *remote_uuid;
 
 	bool auto_connect;
+	/* Some profiles are considered safe to be handled internally and also
+	 * be exposed in the GATT API. This flag give such profiles exception
+	 * from being claimed internally.
+	 */
 	bool external;
 
 	int (*device_probe) (struct btd_service *service);

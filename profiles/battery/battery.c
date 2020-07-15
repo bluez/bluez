@@ -354,6 +354,7 @@ static struct btd_profile batt_profile = {
 	.device_remove	= batt_remove,
 	.accept		= batt_accept,
 	.disconnect	= batt_disconnect,
+	.external	= true,
 };
 
 static int batt_init(void)
