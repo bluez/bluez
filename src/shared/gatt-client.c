@@ -174,9 +174,12 @@ static void request_unref(void *data)
 }
 
 struct notify_chrc {
+	struct bt_gatt_client *client;
+	struct gatt_db_attribute *attr;
 	uint16_t value_handle;
 	uint16_t ccc_handle;
 	uint16_t properties;
+	unsigned int notify_id;
 	int notify_count;  /* Reference count of registered notify callbacks */
 
 	/* Pending calls to register_notify are queued here so that they can be
@@ -235,6 +238,51 @@ static void find_ccc(struct gatt_db_attribute *attr, void *user_data)
 	*ccc_ptr = attr;
 }
 
+static bool match_notify_chrc(const void *data, const void *user_data)
+{
+	const struct notify_data *notify_data = data;
+	const struct notify_chrc *chrc = user_data;
+
+	return notify_data->chrc == chrc;
+}
+
+static void notify_data_cleanup(void *data)
+{
+	struct notify_data *notify_data = data;
+
+	if (notify_data->att_id)
+		bt_att_cancel(notify_data->client->att, notify_data->att_id);
+
+	notify_data_unref(notify_data);
+}
+
+static void notify_chrc_free(void *data)
+{
+	struct notify_chrc *chrc = data;
+
+	if (chrc->notify_id)
+		gatt_db_attribute_unregister(chrc->attr, chrc->notify_id);
+
+	queue_destroy(chrc->reg_notify_queue, notify_data_unref);
+	free(chrc);
+}
+
+static void chrc_removed(struct gatt_db_attribute *attr, void *user_data)
+{
+	struct notify_chrc *chrc = user_data;
+	struct bt_gatt_client *client = chrc->client;
+	struct notify_data *data;
+
+	chrc->notify_id = 0;
+
+	while ((data = queue_remove_if(client->notify_list, match_notify_chrc,
+								chrc)))
+		notify_data_cleanup(data);
+
+	queue_remove(client->notify_chrcs, chrc);
+	notify_chrc_free(chrc);
+}
+
 static struct notify_chrc *notify_chrc_create(struct bt_gatt_client *client,
 							uint16_t value_handle)
 {
@@ -274,20 +322,16 @@ static struct notify_chrc *notify_chrc_create(struct bt_gatt_client *client,
 	if (ccc)
 		chrc->ccc_handle = gatt_db_attribute_get_handle(ccc);
 
+	chrc->client = client;
+	chrc->attr = attr;
 	chrc->value_handle = value_handle;
 	chrc->properties = properties;
+	chrc->notify_id = gatt_db_attribute_register(attr, chrc_removed, chrc,
+									NULL);
 
 	queue_push_tail(client->notify_chrcs, chrc);
 
 	return chrc;
-}
-
-static void notify_chrc_free(void *data)
-{
-	struct notify_chrc *chrc = data;
-
-	queue_destroy(chrc->reg_notify_queue, notify_data_unref);
-	free(chrc);
 }
 
 static bool match_notify_data_id(const void *a, const void *b)
@@ -302,16 +346,6 @@ struct handle_range {
 	uint16_t start;
 	uint16_t end;
 };
-
-static void notify_data_cleanup(void *data)
-{
-	struct notify_data *notify_data = data;
-
-	if (notify_data->att_id)
-		bt_att_cancel(notify_data->client->att, notify_data->att_id);
-
-	notify_data_unref(notify_data);
-}
 
 struct discovery_op;
 
