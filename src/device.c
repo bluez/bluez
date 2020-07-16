@@ -4364,6 +4364,20 @@ static void delete_folder_tree(const char *dirname)
 	rmdir(dirname);
 }
 
+void device_remove_bonding(struct btd_device *device, uint8_t bdaddr_type)
+{
+	if (bdaddr_type == BDADDR_BREDR)
+		device->bredr_state.bonded = false;
+	else
+		device->le_state.bonded = false;
+
+	if (!device->bredr_state.bonded && !device->le_state.bonded)
+		btd_device_set_temporary(device, true);
+
+	btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
+							bdaddr_type);
+}
+
 static void device_remove_stored(struct btd_device *device)
 {
 	char device_addr[18];
@@ -4372,17 +4386,11 @@ static void device_remove_stored(struct btd_device *device)
 	char *data;
 	gsize length = 0;
 
-	if (device->bredr_state.bonded) {
-		device->bredr_state.bonded = false;
-		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
-								BDADDR_BREDR);
-	}
+	if (device->bredr_state.bonded)
+		device_remove_bonding(device, BDADDR_BREDR);
 
-	if (device->le_state.bonded) {
-		device->le_state.bonded = false;
-		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
-							device->bdaddr_type);
-	}
+	if (device->le_state.bonded)
+		device_remove_bonding(device, device->bdaddr_type);
 
 	device->bredr_state.paired = false;
 	device->le_state.paired = false;
