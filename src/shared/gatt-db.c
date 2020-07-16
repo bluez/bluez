@@ -81,6 +81,13 @@ struct notify {
 	void *user_data;
 };
 
+struct attribute_notify {
+	unsigned int id;
+	gatt_db_attribute_cb_t removed;
+	gatt_db_destroy_func_t destroy;
+	void *user_data;
+};
+
 struct pending_read {
 	struct gatt_db_attribute *attrib;
 	unsigned int id;
@@ -114,6 +121,9 @@ struct gatt_db_attribute {
 
 	unsigned int write_id;
 	struct queue *pending_writes;
+
+	unsigned int next_notify_id;
+	struct queue *notify_list;
 };
 
 struct gatt_db_service {
@@ -171,6 +181,16 @@ static void pending_write_free(void *data)
 	pending_write_result(p, -ECANCELED);
 }
 
+static void attribute_notify_destroy(void *data)
+{
+	struct attribute_notify *notify = data;
+
+	if (notify->destroy)
+		notify->destroy(notify->user_data);
+
+	free(notify);
+}
+
 static void attribute_destroy(struct gatt_db_attribute *attribute)
 {
 	/* Attribute was not initialized by user */
@@ -179,6 +199,7 @@ static void attribute_destroy(struct gatt_db_attribute *attribute)
 
 	queue_destroy(attribute->pending_reads, pending_read_free);
 	queue_destroy(attribute->pending_writes, pending_write_free);
+	queue_destroy(attribute->notify_list, attribute_notify_destroy);
 
 	free(attribute->value);
 	free(attribute);
@@ -208,6 +229,7 @@ static struct gatt_db_attribute *new_attribute(struct gatt_db_service *service,
 
 	attribute->pending_reads = queue_new();
 	attribute->pending_writes = queue_new();
+	attribute->notify_list = queue_new();
 
 	return attribute;
 
@@ -352,11 +374,37 @@ static bool db_hash_update(void *user_data)
 	return false;
 }
 
+static void handle_attribute_notify(void *data, void *user_data)
+{
+	struct attribute_notify *notify = data;
+	struct gatt_db_attribute *attrib = user_data;
+
+	if (notify->removed)
+		notify->removed(attrib, notify->user_data);
+}
+
+static void notify_attribute_changed(struct gatt_db_service *service)
+{
+	int i;
+
+	for (i = 0; i < service->num_handles; i++) {
+		struct gatt_db_attribute *attr = service->attributes[i];
+
+		if (!attr)
+			continue;
+
+		queue_foreach(attr->notify_list, handle_attribute_notify, attr);
+	}
+}
+
 static void notify_service_changed(struct gatt_db *db,
 						struct gatt_db_service *service,
 						bool added)
 {
 	struct notify_data data;
+
+	if (!added)
+		notify_attribute_changed(service);
 
 	if (queue_isempty(db->notify_list))
 		return;
@@ -1992,4 +2040,59 @@ void *gatt_db_attribute_get_user_data(struct gatt_db_attribute *attrib)
 		return NULL;
 
 	return attrib->user_data;
+}
+
+static bool match_attribute_notify_id(const void *a, const void *b)
+{
+	const struct attribute_notify *notify = a;
+	unsigned int id = PTR_TO_UINT(b);
+
+	return notify->id == id;
+}
+
+unsigned int gatt_db_attribute_register(struct gatt_db_attribute *attrib,
+					gatt_db_attribute_cb_t removed,
+					void *user_data,
+					gatt_db_destroy_func_t destroy)
+{
+	struct attribute_notify *notify;
+
+	if (!attrib || !removed)
+		return 0;
+
+	notify = new0(struct attribute_notify, 1);
+	notify->removed = removed;
+	notify->destroy = destroy;
+	notify->user_data = user_data;
+
+	if (attrib->next_notify_id < 1)
+		attrib->next_notify_id = 1;
+
+	notify->id = attrib->next_notify_id++;
+
+	if (!queue_push_tail(attrib->notify_list, notify)) {
+		free(notify);
+		return 0;
+	}
+
+	return notify->id;
+}
+
+bool gatt_db_attribute_unregister(struct gatt_db_attribute *attrib,
+						unsigned int id)
+{
+	struct attribute_notify *notify;
+
+	if (!attrib || !id)
+		return false;
+
+	notify = queue_find(attrib->notify_list, match_attribute_notify_id,
+						UINT_TO_PTR(id));
+	if (!notify)
+		return false;
+
+	queue_remove(attrib->notify_list, notify);
+	attribute_notify_destroy(notify);
+
+	return true;
 }
