@@ -84,6 +84,7 @@ struct bt_att {
 	struct queue *req_queue;	/* Queued ATT protocol requests */
 	struct queue *ind_queue;	/* Queued ATT protocol indications */
 	struct queue *write_queue;	/* Queue of PDUs ready to send */
+	bool in_disc;			/* Cleanup queues on disconnect_cb */
 
 	bt_att_timeout_func_t timeout_callback;
 	bt_att_destroy_func_t timeout_destroy;
@@ -222,8 +223,10 @@ static void destroy_att_send_op(void *data)
 	free(op);
 }
 
-static void cancel_att_send_op(struct att_send_op *op)
+static void cancel_att_send_op(void *data)
 {
+	struct att_send_op *op = data;
+
 	if (op->destroy)
 		op->destroy(op->user_data);
 
@@ -631,11 +634,6 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	/* Dettach channel */
 	queue_remove(att->chans, chan);
 
-	/* Notify request callbacks */
-	queue_remove_all(att->req_queue, NULL, NULL, disc_att_send_op);
-	queue_remove_all(att->ind_queue, NULL, NULL, disc_att_send_op);
-	queue_remove_all(att->write_queue, NULL, NULL, disc_att_send_op);
-
 	if (chan->pending_req) {
 		disc_att_send_op(chan->pending_req);
 		chan->pending_req = NULL;
@@ -653,6 +651,15 @@ static bool disconnect_cb(struct io *io, void *user_data)
 		return false;
 
 	bt_att_ref(att);
+
+	att->in_disc = true;
+
+	/* Notify request callbacks */
+	queue_remove_all(att->req_queue, NULL, NULL, disc_att_send_op);
+	queue_remove_all(att->ind_queue, NULL, NULL, disc_att_send_op);
+	queue_remove_all(att->write_queue, NULL, NULL, disc_att_send_op);
+
+	att->in_disc = false;
 
 	queue_foreach(att->disconn_list, disconn_handler, INT_TO_PTR(err));
 
@@ -1574,6 +1581,30 @@ bool bt_att_chan_cancel(struct bt_att_chan *chan, unsigned int id)
 	return true;
 }
 
+static bool bt_att_disc_cancel(struct bt_att *att, unsigned int id)
+{
+	struct att_send_op *op;
+
+	op = queue_find(att->req_queue, match_op_id, UINT_TO_PTR(id));
+	if (op)
+		goto done;
+
+	op = queue_find(att->ind_queue, match_op_id, UINT_TO_PTR(id));
+	if (op)
+		goto done;
+
+	op = queue_find(att->write_queue, match_op_id, UINT_TO_PTR(id));
+
+done:
+	if (!op)
+		return false;
+
+	/* Just cancel since disconnect_cb will be cleaning up */
+	cancel_att_send_op(op);
+
+	return true;
+}
+
 bool bt_att_cancel(struct bt_att *att, unsigned int id)
 {
 	const struct queue_entry *entry;
@@ -1590,6 +1621,9 @@ bool bt_att_cancel(struct bt_att *att, unsigned int id)
 		if (bt_att_chan_cancel(chan, id))
 			return true;
 	}
+
+	if (att->in_disc)
+		return bt_att_disc_cancel(att, id);
 
 	op = queue_remove_if(att->req_queue, match_op_id, UINT_TO_PTR(id));
 	if (op)
