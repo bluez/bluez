@@ -2232,6 +2232,7 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 {
 	bt_gatt_client_cancel_all(client);
 
+	queue_destroy(client->notify_chrcs, notify_chrc_free);
 	queue_destroy(client->notify_list, notify_data_cleanup);
 
 	queue_destroy(client->ready_cbs, ready_destroy);
@@ -2252,7 +2253,6 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 	queue_destroy(client->clones, NULL);
 	queue_destroy(client->svc_chngd_queue, free);
 	queue_destroy(client->long_write_queue, request_unref);
-	queue_destroy(client->notify_chrcs, notify_chrc_free);
 	queue_destroy(client->pending_requests, request_unref);
 
 	if (client->parent) {
