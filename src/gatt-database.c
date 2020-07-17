@@ -57,6 +57,7 @@
 
 #define UUID_GAP	0x1800
 #define UUID_GATT	0x1801
+#define UUID_DIS	0x180a
 
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -1233,11 +1234,51 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 	database_add_record(database, service);
 }
 
+static void device_info_read_pnp_id_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	uint8_t pdu[7];
+
+	pdu[0] = main_opts.did_source;
+	put_le16(main_opts.did_vendor, &pdu[1]);
+	put_le16(main_opts.did_product, &pdu[3]);
+	put_le16(main_opts.did_version, &pdu[5]);
+
+	gatt_db_attribute_read_result(attrib, id, 0, pdu, sizeof(pdu));
+}
+
+static void populate_devinfo_service(struct btd_gatt_database *database)
+{
+	struct gatt_db_attribute *service;
+	bt_uuid_t uuid;
+
+	bt_uuid16_create(&uuid, UUID_DIS);
+	service = gatt_db_add_service(database->db, &uuid, true, 3);
+
+	if (main_opts.did_source > 0) {
+		bt_uuid16_create(&uuid, GATT_CHARAC_PNP_ID);
+		gatt_db_service_add_characteristic(service, &uuid,
+						BT_ATT_PERM_READ,
+						BT_GATT_CHRC_PROP_READ,
+						device_info_read_pnp_id_cb,
+						NULL, database);
+	}
+
+	gatt_db_service_set_active(service, true);
+
+	database_add_record(database, service);
+}
 
 static void register_core_services(struct btd_gatt_database *database)
 {
 	populate_gap_service(database);
 	populate_gatt_service(database);
+
+	if (main_opts.did_source > 0)
+		populate_devinfo_service(database);
+
 }
 
 static void conf_cb(void *user_data)
