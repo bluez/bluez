@@ -53,9 +53,9 @@ const char *att_ecode2str(uint8_t status)
 	case ATT_ECODE_INVALID_HANDLE:
 		return "Invalid handle";
 	case ATT_ECODE_READ_NOT_PERM:
-		return "Attribute can't be read";
+		return "Attribute read not permitted";
 	case ATT_ECODE_WRITE_NOT_PERM:
-		return "Attribute can't be written";
+		return "Attribute write not permitted";
 	case ATT_ECODE_INVALID_PDU:
 		return "Attribute PDU was invalid";
 	case ATT_ECODE_AUTHENTICATION:
