@@ -412,6 +412,10 @@ static void discovery_op_complete(struct discovery_op *op, bool success,
 		struct gatt_db_attribute *attr = svc->data;
 		uint16_t start, end;
 
+		/* Leave active services if operation was aborted */
+		if ((!success && err == 0) && gatt_db_service_get_active(attr))
+			continue;
+
 		gatt_db_attribute_get_service_data(attr, &start, &end,
 							NULL, NULL);
 
