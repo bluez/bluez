@@ -1460,8 +1460,10 @@ static bool read_db_hash(struct discovery_op *op)
 	struct bt_gatt_client *client = op->client;
 	bt_uuid_t uuid;
 
-	/* Check if hash was already read */
-	if (op->hash)
+	/* Check if hash was already been read or there are more services to
+	 * process.
+	 */
+	if (op->hash || !queue_isempty(client->svc_chngd_queue))
 		return false;
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_DB_HASH);
