@@ -1107,6 +1107,49 @@ static void discovery_found_service(struct discovery_op *op,
 		op->last = end;
 }
 
+static bool discovery_parse_services(struct discovery_op *op, bool primary,
+						struct bt_gatt_iter *iter)
+{
+	struct bt_gatt_client *client = op->client;
+	struct gatt_db_attribute *attr;
+	uint16_t start, end;
+	uint128_t u128;
+	bt_uuid_t uuid;
+	char uuid_str[MAX_LEN_UUID_STR];
+
+	while (bt_gatt_iter_next_service(iter, &start, &end, u128.data)) {
+		bt_uuid128_create(&uuid, u128);
+
+		/* Log debug message */
+		bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
+		util_debug(client->debug_callback, client->debug_data,
+				"start: 0x%04x, end: 0x%04x, uuid: %s",
+				start, end, uuid_str);
+
+		/* Store the service */
+		attr = gatt_db_insert_service(client->db, start, &uuid, primary,
+							end - start + 1);
+		if (!attr) {
+			gatt_db_clear_range(client->db, start, end);
+			attr = gatt_db_insert_service(client->db, start, &uuid,
+							false, end - start + 1);
+			if (!attr) {
+				util_debug(client->debug_callback,
+						client->debug_data,
+						"Failed to store service");
+				return false;
+			}
+			/* Database has changed adjust last handle */
+			op->last = end;
+		}
+
+		/* Update pending list */
+		discovery_found_service(op, attr, start, end);
+	}
+
+	return true;
+}
+
 static void discover_secondary_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data)
@@ -1114,11 +1157,6 @@ static void discover_secondary_cb(bool success, uint8_t att_ecode,
 	struct discovery_op *op = user_data;
 	struct bt_gatt_client *client = op->client;
 	struct bt_gatt_iter iter;
-	struct gatt_db_attribute *attr;
-	uint16_t start, end;
-	uint128_t u128;
-	bt_uuid_t uuid;
-	char uuid_str[MAX_LEN_UUID_STR];
 	struct handle_range *range;
 
 	discovery_req_clear(client);
@@ -1147,36 +1185,11 @@ static void discover_secondary_cb(bool success, uint8_t att_ecode,
 					"Secondary services found: %u",
 					bt_gatt_result_service_count(result));
 
-	while (bt_gatt_iter_next_service(&iter, &start, &end, u128.data)) {
-		bt_uuid128_create(&uuid, u128);
-
-		/* Log debug message */
-		bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
-		util_debug(client->debug_callback, client->debug_data,
-				"start: 0x%04x, end: 0x%04x, uuid: %s",
-				start, end, uuid_str);
-
-		/* Store the service */
-		attr = gatt_db_insert_service(client->db, start, &uuid, false,
-							end - start + 1);
-		if (!attr) {
-			gatt_db_clear_range(client->db, start, end);
-			attr = gatt_db_insert_service(client->db, start, &uuid,
-							false, end - start + 1);
-			if (!attr) {
-				util_debug(client->debug_callback,
-						client->debug_data,
-						"Failed to store service");
-				success = false;
-				goto done;
-			}
-			/* Database has changed adjust last handle */
-			op->last = end;
-		}
-
-		/* Update pending list */
-		discovery_found_service(op, attr, start, end);
+	if (!discovery_parse_services(op, false, &iter)) {
+		success = false;
+		goto done;
 	}
+
 
 next:
 	if (queue_isempty(op->pending_svcs) || queue_isempty(op->discov_ranges))
@@ -1214,11 +1227,6 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 	struct discovery_op *op = user_data;
 	struct bt_gatt_client *client = op->client;
 	struct bt_gatt_iter iter;
-	struct gatt_db_attribute *attr;
-	uint16_t start, end;
-	uint128_t u128;
-	bt_uuid_t uuid;
-	char uuid_str[MAX_LEN_UUID_STR];
 
 	discovery_req_clear(client);
 
@@ -1246,34 +1254,9 @@ static void discover_primary_cb(bool success, uint8_t att_ecode,
 					"Primary services found: %u",
 					bt_gatt_result_service_count(result));
 
-	while (bt_gatt_iter_next_service(&iter, &start, &end, u128.data)) {
-		bt_uuid128_create(&uuid, u128);
-
-		/* Log debug message. */
-		bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
-		util_debug(client->debug_callback, client->debug_data,
-				"start: 0x%04x, end: 0x%04x, uuid: %s",
-				start, end, uuid_str);
-
-		attr = gatt_db_insert_service(client->db, start, &uuid, true,
-							end - start + 1);
-		if (!attr) {
-			gatt_db_clear_range(client->db, start, end);
-			attr = gatt_db_insert_service(client->db, start, &uuid,
-							true, end - start + 1);
-			if (!attr) {
-				util_debug(client->debug_callback,
-						client->debug_data,
-						"Failed to store service");
-				success = false;
-				goto done;
-			}
-			/* Database has changed adjust last handle */
-			op->last = end;
-		}
-
-		/* Update pending list */
-		discovery_found_service(op, attr, start, end);
+	if (!discovery_parse_services(op, true, &iter)) {
+		success = false;
+		goto done;
 	}
 
 secondary:
