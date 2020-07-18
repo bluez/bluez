@@ -2988,6 +2988,12 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type)
 	if (dev->le_state.connected && dev->bredr_state.connected)
 		return;
 
+	/* Remove temporary timer while connected */
+	if (dev->temporary_timer) {
+		g_source_remove(dev->temporary_timer);
+		dev->temporary_timer = 0;
+	}
+
 	g_dbus_emit_property_changed(dbus_conn, dev->path, DEVICE_INTERFACE,
 								"Connected");
 }
