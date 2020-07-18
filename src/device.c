@@ -3039,6 +3039,8 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 	if (device->bredr_state.connected || device->le_state.connected)
 		return;
 
+	device_update_last_seen(device, bdaddr_type);
+
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
 }

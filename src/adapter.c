@@ -6837,13 +6837,6 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 		return;
 
 	adapter->connections = g_slist_remove(adapter->connections, device);
-
-	if (device_is_temporary(device) && !device_is_retrying(device)) {
-		const char *path = device_get_path(device);
-
-		DBG("Removing temporary device %s", path);
-		btd_adapter_remove_device(adapter, device);
-	}
 }
 
 static void adapter_stop(struct btd_adapter *adapter)
