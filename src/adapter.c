@@ -1670,10 +1670,10 @@ static gboolean start_discovery_timeout(gpointer user_data)
 	adapter->discovery_idle_timeout = 0;
 
 	/* If we're doing filtered discovery, it must be quickly restarted */
-	adapter->no_scan_restart_delay = !!adapter->current_discovery_filter;
+	adapter->no_scan_restart_delay = adapter->current_discovery_filter != NULL;
 
 	DBG("adapter->current_discovery_filter == %d",
-	    !!adapter->current_discovery_filter);
+        adapter->current_discovery_filter != NULL);
 
 	new_type = get_scan_type(adapter);
 
