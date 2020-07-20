@@ -44,8 +44,7 @@
 #include "tools/mesh-gatt/prov-db.h"
 #include "tools/mesh-gatt/net.h"
 
-struct address_range
-{
+struct address_range {
 	uint16_t min;
 	uint16_t max;
 };
