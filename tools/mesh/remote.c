@@ -134,10 +134,11 @@ uint8_t remote_del_node(uint16_t unicast)
 		l_queue_destroy(rmt->els[i], NULL);
 		remote_add_blacklisted_address(unicast + i, iv_index, true);
 	}
+
 	l_free(rmt->els);
 
-	l_queue_destroy(rmt->net_keys, l_free);
-	l_queue_destroy(rmt->app_keys, l_free);
+	l_queue_destroy(rmt->net_keys, NULL);
+	l_queue_destroy(rmt->app_keys, NULL);
 	l_free(rmt);
 
 	mesh_db_del_node(unicast);
