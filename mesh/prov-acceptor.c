@@ -143,6 +143,7 @@ static void prov_to(struct l_timeout *timeout, void *user_data)
 	if (rx_prov != prov)
 		return;
 
+	l_timeout_remove(prov->timeout);
 	prov->timeout = NULL;
 
 	if (prov->cmplt && prov->trans_tx) {
