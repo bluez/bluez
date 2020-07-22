@@ -112,6 +112,12 @@ void input_set_classic_bonded_only(bool state)
 static void input_device_enter_reconnect_mode(struct input_device *idev);
 static int connection_disconnect(struct input_device *idev, uint32_t flags);
 
+static bool input_device_bonded(struct input_device *idev)
+{
+	return device_is_bonded(idev->device,
+				btd_device_get_bdaddr_type(idev->device));
+}
+
 static void input_device_free(struct input_device *idev)
 {
 	bt_uhid_unref(idev->uhid);
@@ -979,8 +985,7 @@ static int hidp_add_connection(struct input_device *idev)
 		device_get_name(idev->device, req->name, sizeof(req->name));
 
 	/* Make sure the device is bonded if required */
-	if (classic_bonded_only && !device_is_bonded(idev->device,
-				btd_device_get_bdaddr_type(idev->device))) {
+	if (classic_bonded_only && !input_device_bonded(idev)) {
 		error("Rejected connection from !bonded device %s", dst_addr);
 		goto cleanup;
 	}
@@ -1153,16 +1158,23 @@ static int dev_connect(struct input_device *idev)
 {
 	GError *err = NULL;
 	GIOChannel *io;
+	BtIOSecLevel sec_level;
 
 	if (idev->disable_sdp)
 		bt_clear_cached_session(&idev->src, &idev->dst);
+
+	/* encrypt connection if device is bonded */
+	if (input_device_bonded(idev))
+		sec_level = BT_IO_SEC_MEDIUM;
+	else
+		sec_level = BT_IO_SEC_LOW;
 
 	io = bt_io_connect(control_connect_cb, idev,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
 				BT_IO_OPT_DEST_BDADDR, &idev->dst,
 				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 	idev->ctrl_io = io;
 
@@ -1227,8 +1239,7 @@ static void input_device_enter_reconnect_mode(struct input_device *idev)
 				reconnect_mode_to_string(idev->reconnect_mode));
 
 	/* Make sure the device is bonded if required */
-	if (classic_bonded_only && !device_is_bonded(idev->device,
-				btd_device_get_bdaddr_type(idev->device)))
+	if (classic_bonded_only && !input_device_bonded(idev))
 		return;
 
 	/* Only attempt an auto-reconnect when the device is required to
