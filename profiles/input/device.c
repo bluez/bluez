@@ -109,6 +109,11 @@ void input_set_classic_bonded_only(bool state)
 	classic_bonded_only = state;
 }
 
+bool input_get_classic_bonded_only(void)
+{
+	return classic_bonded_only;
+}
+
 static void input_device_enter_reconnect_mode(struct input_device *idev);
 static int connection_disconnect(struct input_device *idev, uint32_t flags);
 
