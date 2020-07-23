@@ -957,20 +957,29 @@ static void agent_destroy(gpointer data)
 	agent_unref(agent);
 }
 
+struct capability {
+	char * cap;
+	uint8_t parse_capability;
+};
+
+static struct capability g_cap[]  = {
+	{"", IO_CAPABILITY_KEYBOARDDISPLAY},
+	{"DisplayOnly", IO_CAPABILITY_DISPLAYONLY},
+	{"DisplayYesNo", IO_CAPABILITY_DISPLAYYESNO},
+	{"KeyboardOnly", IO_CAPABILITY_KEYBOARDONLY},
+	{"NoInputNoOutput", IO_CAPABILITY_NOINPUTNOOUTPUT},
+	{"KeyboardDisplay", IO_CAPABILITY_KEYBOARDDISPLAY}
+};
+
 static uint8_t parse_io_capability(const char *capability)
 {
-	if (g_str_equal(capability, ""))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
-	if (g_str_equal(capability, "DisplayOnly"))
-		return IO_CAPABILITY_DISPLAYONLY;
-	if (g_str_equal(capability, "DisplayYesNo"))
-		return IO_CAPABILITY_DISPLAYYESNO;
-	if (g_str_equal(capability, "KeyboardOnly"))
-		return IO_CAPABILITY_KEYBOARDONLY;
-	if (g_str_equal(capability, "NoInputNoOutput"))
-		return IO_CAPABILITY_NOINPUTNOOUTPUT;
-	if (g_str_equal(capability, "KeyboardDisplay"))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
+	size_t count = sizeof(g_cap) / sizeof(g_cap[0]); 
+	for (size_t i = 0; i < count; i++)
+	{
+		if(g_str_equal(capability, g_cap[i].cap)) {
+			return g_cap[i].parse_capability;
+		}
+	}
 	return IO_CAPABILITY_INVALID;
 }
 
