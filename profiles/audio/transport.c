@@ -977,7 +977,7 @@ void media_transport_update_device_volume(struct btd_device *dev,
 {
 	GSList *l;
 
-	if (dev == NULL)
+	if (dev == NULL || volume < 0)
 		return;
 
 	for (l = transports; l; l = l->next) {

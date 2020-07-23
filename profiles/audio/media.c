@@ -239,6 +239,20 @@ static void media_endpoint_exit(DBusConnection *connection, void *user_data)
 	media_endpoint_remove(endpoint);
 }
 
+static struct media_adapter *find_adapter(struct btd_device *device)
+{
+	GSList *l;
+
+	for (l = adapters; l; l = l->next) {
+		struct media_adapter *adapter = l->data;
+
+		if (adapter->btd_adapter == device_get_adapter(device))
+			return adapter;
+	}
+
+	return NULL;
+}
+
 static void clear_configuration(struct media_endpoint *endpoint,
 					struct media_transport *transport)
 {
@@ -426,6 +440,33 @@ struct a2dp_config_data {
 	a2dp_endpoint_config_t cb;
 };
 
+int8_t media_player_get_device_volume(struct btd_device *device)
+{
+	struct avrcp_player *target_player;
+	struct media_adapter *adapter;
+	GSList *l;
+
+	if (!device)
+		return -1;
+
+	target_player = avrcp_get_target_player_by_device(device);
+	if (!target_player)
+		return -1;
+
+	adapter = find_adapter(device);
+	if (!adapter)
+		return -1;
+
+	for (l = adapter->players; l; l = l->next) {
+		struct media_player *mp = l->data;
+
+		if (mp->player == target_player)
+			return mp->volume;
+	}
+
+	return -1;
+}
+
 static gboolean set_configuration(struct media_endpoint *endpoint,
 					uint8_t *configuration, size_t size,
 					media_endpoint_cb_t cb,
@@ -439,6 +480,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	const char *path;
 	DBusMessageIter iter;
 	struct media_transport *transport;
+	int8_t init_volume;
 
 	transport = find_device_transport(endpoint, device);
 
@@ -450,6 +492,9 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 					configuration, size, endpoint);
 	if (transport == NULL)
 		return FALSE;
+
+	init_volume = media_player_get_device_volume(device);
+	media_transport_update_volume(transport, init_volume);
 
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
 						MEDIA_ENDPOINT_INTERFACE,
@@ -644,20 +689,6 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 		return FALSE;
 
 	return TRUE;
-}
-
-static struct media_adapter *find_adapter(struct btd_device *device)
-{
-	GSList *l;
-
-	for (l = adapters; l; l = l->next) {
-		struct media_adapter *adapter = l->data;
-
-		if (adapter->btd_adapter == device_get_adapter(device))
-			return adapter;
-	}
-
-	return NULL;
 }
 
 static bool endpoint_properties_exists(const char *uuid,
@@ -1779,6 +1810,7 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 	mp->sender = g_strdup(sender);
 	mp->path = g_strdup(path);
 	mp->timer = g_timer_new();
+	mp->volume = -1;
 
 	mp->watch = g_dbus_add_disconnect_watch(conn, sender,
 						media_player_exit, mp,
