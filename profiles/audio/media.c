@@ -120,7 +120,7 @@ struct media_player {
 	char			*status;
 	uint32_t		position;
 	uint32_t		duration;
-	uint8_t			volume;
+	int8_t			volume;
 	GTimer			*timer;
 	bool			play;
 	bool			pause;
@@ -1199,7 +1199,7 @@ static uint32_t get_duration(void *user_data)
 	return mp->duration;
 }
 
-static void set_volume(uint8_t volume, struct btd_device *dev, void *user_data)
+static void set_volume(int8_t volume, struct btd_device *dev, void *user_data)
 {
 	struct media_player *mp = user_data;
 

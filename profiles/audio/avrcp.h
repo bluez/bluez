@@ -83,27 +83,27 @@
 #define AVRCP_EVENT_LAST			AVRCP_EVENT_VOLUME_CHANGED
 
 struct avrcp_player_cb {
-	GList *(*list_settings) (void *user_data);
-	const char *(*get_setting) (const char *key, void *user_data);
-	int (*set_setting) (const char *key, const char *value,
+	GList *(*list_settings)(void *user_data);
+	const char *(*get_setting)(const char *key, void *user_data);
+	int (*set_setting)(const char *key, const char *value,
 							void *user_data);
-	uint64_t (*get_uid) (void *user_data);
-	const char *(*get_metadata) (const char *key, void *user_data);
-	GList *(*list_metadata) (void *user_data);
-	const char *(*get_status) (void *user_data);
-	uint32_t (*get_position) (void *user_data);
-	uint32_t (*get_duration) (void *user_data);
-	const char *(*get_name) (void *user_data);
-	void (*set_volume) (uint8_t volume, struct btd_device *dev,
+	uint64_t (*get_uid)(void *user_data);
+	const char *(*get_metadata)(const char *key, void *user_data);
+	GList *(*list_metadata)(void *user_data);
+	const char *(*get_status)(void *user_data);
+	uint32_t (*get_position)(void *user_data);
+	uint32_t (*get_duration)(void *user_data);
+	const char *(*get_name)(void *user_data);
+	void (*set_volume)(int8_t volume, struct btd_device *dev,
 							void *user_data);
-	bool (*play) (void *user_data);
-	bool (*stop) (void *user_data);
-	bool (*pause) (void *user_data);
-	bool (*next) (void *user_data);
-	bool (*previous) (void *user_data);
+	bool (*play)(void *user_data);
+	bool (*stop)(void *user_data);
+	bool (*pause)(void *user_data);
+	bool (*next)(void *user_data);
+	bool (*previous)(void *user_data);
 };
 
-int avrcp_set_volume(struct btd_device *dev, uint8_t volume, bool notify);
+int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify);
 
 struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
 						struct avrcp_player_cb *cb,
@@ -113,7 +113,6 @@ void avrcp_unregister_player(struct avrcp_player *player);
 
 void avrcp_player_event(struct avrcp_player *player, uint8_t id,
 							const void *data);
-
 
 size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands);
 size_t avrcp_browsing_general_reject(uint8_t *operands);
