@@ -1126,17 +1126,14 @@ static bool parse_models(json_object *jmodels, struct mesh_config_element *ele)
 			if (sscanf(str, "%04x", &id) != 1)
 				goto fail;
 
-			id |= VENDOR_ID_MASK;
 		} else if (len == 8) {
 			if (sscanf(str, "%08x", &id) != 1)
 				goto fail;
+			mod->vendor = true;
 		} else
 			goto fail;
 
 		mod->id = id;
-
-		if (len == 8)
-			mod->vendor = true;
 
 		if (json_object_object_get_ex(jmodel, "bind", &jarray)) {
 			if (json_object_get_type(jarray) != json_type_array ||

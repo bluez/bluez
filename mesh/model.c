@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2018-2019  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2018-2020  Intel Corporation. All rights reserved.
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -54,7 +54,6 @@ struct mesh_model {
 	bool sub_enabled;
 	bool pub_enabled;
 	uint32_t id;
-	uint8_t ele_idx;
 };
 
 struct mesh_virtual {
@@ -131,44 +130,42 @@ static bool find_virt_by_label(const void *a, const void *b)
 
 static bool match_model_id(const void *a, const void *b)
 {
-	const struct mesh_model *model = a;
+	const struct mesh_model *mod = a;
 	uint32_t id = L_PTR_TO_UINT(b);
 
-	return (mesh_model_get_model_id(model) == id);
+	return (mod->id == id);
+}
+
+static int compare_model_id(const void *a, const void *b, void *user_data)
+{
+	const struct mesh_model *mod_a = a;
+	const struct mesh_model *mod_b = b;
+
+	if (mod_a->id < mod_b->id)
+		return -1;
+
+	if (mod_a->id > mod_b->id)
+		return 1;
+
+	return 0;
 }
 
 static struct mesh_model *get_model(struct mesh_node *node, uint8_t ele_idx,
-						uint32_t id, int *status)
+								uint32_t id)
 {
-	struct l_queue *models;
-	struct mesh_model *model;
+	struct l_queue *mods;
+	struct mesh_model *mod;
 
-	models = node_get_element_models(node, ele_idx, status);
-	if (!models) {
-		*status = MESH_STATUS_INVALID_MODEL;
+	mods = node_get_element_models(node, ele_idx);
+	if (!mods)
 		return NULL;
-	}
 
-	model = l_queue_find(models, match_model_id, L_UINT_TO_PTR(id));
+	mod = l_queue_find(mods, match_model_id, L_UINT_TO_PTR(id));
 
-	*status = (model) ? MESH_STATUS_SUCCESS : MESH_STATUS_INVALID_MODEL;
+	if (!mod)
+		l_debug("Model not found");
 
-	return model;
-}
-
-static struct mesh_model *find_model(struct mesh_node *node, uint16_t addr,
-						uint32_t mod_id, int *status)
-{
-	int ele_idx;
-
-	ele_idx = node_get_element_idx(node, addr);
-
-	if (ele_idx < 0) {
-		*status = MESH_STATUS_INVALID_ADDRESS;
-		return NULL;
-	}
-
-	return get_model(node, (uint8_t) ele_idx, mod_id, status);
+	return mod;
 }
 
 static uint32_t pub_period_to_ms(uint8_t pub_period)
@@ -212,15 +209,17 @@ static struct l_dbus_message *create_config_update_msg(struct mesh_node *node,
 
 	*builder = l_dbus_message_builder_new(msg);
 
-	model_id = (uint16_t) id;
+	model_id = (uint16_t) MODEL_ID(id);
 
 	l_dbus_message_builder_append_basic(*builder, 'q', &model_id);
 
 	l_dbus_message_builder_enter_array(*builder, "{sv}");
 
-	if ((id & VENDOR_ID_MASK) != VENDOR_ID_MASK) {
-		uint16_t vendor = id >> 16;
-		dbus_append_dict_entry_basic(*builder, "Vendor", "q", &vendor);
+	if (IS_VENDOR(id)) {
+		uint16_t vendor_id = (uint16_t) VENDOR_ID(id);
+
+		dbus_append_dict_entry_basic(*builder, "Vendor", "q",
+								&vendor_id);
 	}
 
 	return msg;
@@ -268,15 +267,14 @@ static void append_dict_uint16_array(struct l_dbus_message_builder *builder,
 	l_dbus_message_builder_leave_dict(builder);
 }
 
-static void config_update_model_bindings(struct mesh_node *node,
+static void cfg_update_mod_bindings(struct mesh_node *node, uint16_t ele_idx,
 							struct mesh_model *mod)
 {
 	struct l_dbus *dbus = dbus_get_bus();
 	struct l_dbus_message *msg;
 	struct l_dbus_message_builder *builder;
 
-	msg = create_config_update_msg(node, mod->ele_idx, mod->id,
-								&builder);
+	msg = create_config_update_msg(node, ele_idx, mod->id, &builder);
 	if (!msg)
 		return;
 
@@ -331,15 +329,14 @@ done:
 	l_dbus_message_builder_leave_dict(builder);
 }
 
-static void config_update_model_subscriptions(struct mesh_node *node,
+static void cfg_update_model_subs(struct mesh_node *node, uint16_t ele_idx,
 							struct mesh_model *mod)
 {
 	struct l_dbus *dbus = dbus_get_bus();
 	struct l_dbus_message *msg;
 	struct l_dbus_message_builder *builder;
 
-	msg = create_config_update_msg(node, mod->ele_idx, mod->id,
-								&builder);
+	msg = create_config_update_msg(node, ele_idx, mod->id, &builder);
 	if (!msg)
 		return;
 
@@ -572,7 +569,8 @@ done:
 	return ret;
 }
 
-static void remove_pub(struct mesh_node *node, struct mesh_model *mod)
+static void remove_pub(struct mesh_node *node, uint16_t ele_idx,
+							struct mesh_model *mod)
 {
 	if (mod->pub) {
 		if (mod->pub->virt)
@@ -584,31 +582,31 @@ static void remove_pub(struct mesh_node *node, struct mesh_model *mod)
 
 	if (!mod->cbs)
 		/* External models */
-		config_update_model_pub_period(node, mod->ele_idx, mod->id, 0);
+		config_update_model_pub_period(node, ele_idx, mod->id, 0);
 	else if (mod->cbs && mod->cbs->pub)
 		/* Internal models */
 		mod->cbs->pub(NULL);
 }
 
-static void model_unbind_idx(struct mesh_node *node, struct mesh_model *mod,
-								uint16_t idx)
+static void model_unbind_idx(struct mesh_node *node, uint16_t ele_idx,
+					struct mesh_model *mod, uint16_t idx)
 {
 	l_queue_remove(mod->bindings, L_UINT_TO_PTR(idx));
 
 	if (!mod->cbs)
 		/* External model */
-		config_update_model_bindings(node, mod);
+		cfg_update_mod_bindings(node, ele_idx, mod);
 	else if (mod->cbs->bind)
 		/* Internal model */
 		mod->cbs->bind(idx, ACTION_DELETE);
 
 	/* Remove model publication if the publication key is unbound */
 	if (mod->pub && idx == mod->pub->idx)
-		remove_pub(node, mod);
+		remove_pub(node, ele_idx, mod);
 }
 
-static void model_bind_idx(struct mesh_node *node, struct mesh_model *mod,
-								uint16_t idx)
+static void model_bind_idx(struct mesh_node *node, uint16_t ele_idx,
+					struct mesh_model *mod, uint16_t idx)
 {
 	if (!mod->bindings)
 		mod->bindings = l_queue_new();
@@ -619,7 +617,7 @@ static void model_bind_idx(struct mesh_node *node, struct mesh_model *mod,
 
 	if (!mod->cbs)
 		/* External model */
-		config_update_model_bindings(node, mod);
+		cfg_update_mod_bindings(node, ele_idx, mod);
 	else if (mod->cbs->bind)
 		/* Internal model */
 		mod->cbs->bind(idx, ACTION_ADD);
@@ -628,18 +626,17 @@ static void model_bind_idx(struct mesh_node *node, struct mesh_model *mod,
 static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 						uint16_t app_idx, bool unbind)
 {
-	int status;
 	struct mesh_model *mod;
-	bool is_present, is_vendor;
+	bool is_present;
+	int ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 	if (!mod) {
-		l_debug("Model not found");
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 	}
-
-	is_vendor = id < VENDOR_ID_MASK && id > 0xffff;
-	id = !is_vendor ? (id & 0xffff) : id;
 
 	if (id == CONFIG_SRV_MODEL || id == CONFIG_CLI_MODEL)
 		return MESH_STATUS_INVALID_MODEL;
@@ -656,9 +653,10 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 		return MESH_STATUS_SUCCESS;
 
 	if (unbind) {
-		model_unbind_idx(node, mod, app_idx);
+		model_unbind_idx(node, ele_idx, mod, app_idx);
 		if (!mesh_config_model_binding_del(node_config_get(node),
-					addr, is_vendor, id, app_idx))
+							addr, IS_VENDOR(id),
+							id, app_idx))
 			return MESH_STATUS_STORAGE_FAIL;
 
 		l_debug("Unbind key %4.4x to model %8.8x", app_idx, mod->id);
@@ -668,11 +666,11 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (l_queue_length(mod->bindings) >= MAX_BINDINGS)
 		return MESH_STATUS_INSUFF_RESOURCES;
 
-	if (!mesh_config_model_binding_add(node_config_get(node),
-					addr, is_vendor, id, app_idx))
+	if (!mesh_config_model_binding_add(node_config_get(node), addr,
+						IS_VENDOR(id), id, app_idx))
 		return MESH_STATUS_STORAGE_FAIL;
 
-	model_bind_idx(node, mod, app_idx);
+	model_bind_idx(node, ele_idx, mod, app_idx);
 
 	return MESH_STATUS_SUCCESS;
 
@@ -964,7 +962,6 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 
 	is_subscription = !(IS_UNICAST(dst));
 
-
 	for (i = 0; i < num_ele; i++) {
 		struct l_queue *models;
 
@@ -974,7 +971,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 		forward.unicast = addr + i;
 		forward.has_dst = false;
 
-		models = node_get_element_models(node, i, NULL);
+		models = node_get_element_models(node, i);
 
 		/* Internal models */
 		l_queue_foreach(models, forward_model, &forward);
@@ -1023,16 +1020,15 @@ done:
 	return result;
 }
 
-int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
-				uint16_t src, uint8_t ttl,
-				const void *msg, uint16_t msg_len)
+int mesh_model_publish(struct mesh_node *node, uint32_t id, uint16_t src,
+				uint8_t ttl, const void *msg, uint16_t msg_len)
 {
 	struct mesh_net *net = node_get_net(node);
 	struct mesh_model *mod;
 	uint8_t *label = NULL;
 	uint16_t net_idx;
 	bool result;
-	int status;
+	int ele_idx;
 
 	if (!net || msg_len > 380)
 		return MESH_ERROR_INVALID_ARGS;
@@ -1041,14 +1037,16 @@ int mesh_model_publish(struct mesh_node *node, uint32_t mod_id,
 	if (src == 0)
 		src = mesh_net_get_address(net);
 
-	mod = find_model(node, src, mod_id, &status);
-	if (!mod) {
-		l_debug("model %x not found", mod_id);
+	ele_idx = node_get_element_idx(node, src);
+	if (ele_idx < 0)
 		return MESH_ERROR_NOT_FOUND;
-	}
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
+	if (!mod)
+		return MESH_ERROR_NOT_FOUND;
 
 	if (!mod->pub) {
-		l_debug("publication doesn't exist (model %x)", mod_id);
+		l_debug("publication doesn't exist (model %x)", id);
 		return MESH_ERROR_DOES_NOT_EXIST;
 	}
 
@@ -1093,11 +1091,14 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 			bool is_virt, uint16_t *dst)
 {
 	struct mesh_model *mod;
-	int status;
+	int status, ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 	if (!mod)
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 
 	if (!mod->pub_enabled || (mod->cbs && !(mod->cbs->pub)))
 		return MESH_STATUS_INVALID_PUB_PARAM;
@@ -1110,7 +1111,7 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 	 * remove the publication
 	 */
 	if (!is_virt && IS_UNASSIGNED(l_get_le16(pub_addr))) {
-		remove_pub(node, mod);
+		remove_pub(node, ele_idx, mod);
 		return MESH_STATUS_SUCCESS;
 	}
 
@@ -1134,7 +1135,7 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 
 	if (!mod->cbs)
 		/* External model */
-		config_update_model_pub_period(node, mod->ele_idx, id,
+		config_update_model_pub_period(node, ele_idx, id,
 						pub_period_to_ms(period));
 	else {
 		/* Internal model, call registered callbacks */
@@ -1149,10 +1150,18 @@ struct mesh_model_pub *mesh_model_pub_get(struct mesh_node *node, uint16_t addr,
 						uint32_t mod_id, int *status)
 {
 	struct mesh_model *mod;
+	int ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, mod_id, status);
-	if (!mod)
+	if (ele_idx < 0) {
+		*status = MESH_STATUS_INVALID_ADDRESS;
 		return NULL;
+	}
+
+	mod = get_model(node, (uint8_t) ele_idx, mod_id);
+	if (!mod) {
+		*status = MESH_STATUS_INVALID_MODEL;
+		return NULL;
+	}
 
 	if (!mod->pub_enabled || (mod->cbs && !(mod->cbs->pub)))
 		*status = MESH_STATUS_INVALID_PUB_PARAM;
@@ -1173,12 +1182,25 @@ void mesh_model_free(void *data)
 	l_free(mod);
 }
 
-struct mesh_model *mesh_model_new(uint8_t ele_idx, uint32_t id)
+static void remove_subs(struct mesh_node *node, struct mesh_model *mod)
+{
+	const struct l_queue_entry *entry;
+	struct mesh_net *net = node_get_net(node);
+
+	entry = l_queue_get_entries(mod->subs);
+
+	for (; entry; entry = entry->next)
+		mesh_net_dst_unreg(net, (uint16_t) L_PTR_TO_UINT(entry->data));
+
+	l_queue_clear(mod->subs, NULL);
+	l_queue_clear(mod->virtuals, unref_virt);
+}
+
+static struct mesh_model *model_new(uint32_t id)
 {
 	struct mesh_model *mod = l_new(struct mesh_model, 1);
 
 	mod->id = id;
-	mod->ele_idx = ele_idx;
 	mod->virtuals = l_queue_new();
 
 	/*
@@ -1188,6 +1210,75 @@ struct mesh_model *mesh_model_new(uint8_t ele_idx, uint32_t id)
 	mod->sub_enabled = true;
 	mod->pub_enabled = true;
 	return mod;
+}
+
+static void model_enable_pub(struct mesh_model *mod, bool enable)
+{
+	mod->pub_enabled = enable;
+
+	if (!mod->pub_enabled && mod->pub) {
+		if (mod->pub->virt)
+			unref_virt(mod->pub->virt);
+
+		l_free(mod->pub);
+		mod->pub = NULL;
+	}
+}
+
+static void model_enable_sub(struct mesh_node *node, struct mesh_model *mod,
+								bool enable)
+{
+	mod->sub_enabled = enable;
+
+	if (!mod->sub_enabled)
+		remove_subs(node, mod);
+}
+
+static bool get_model_options(struct mesh_model *mod,
+					struct l_dbus_message_iter *opts)
+{
+	const char *key;
+	struct l_dbus_message_iter var;
+	bool opt;
+
+	while (l_dbus_message_iter_next_entry(opts, &key, &var)) {
+
+		if (!strcmp(key, "Publish")) {
+			if (!l_dbus_message_iter_get_variant(&var, "b", &opt))
+				return false;
+
+			mod->pub_enabled = opt;
+		} else if (!strcmp(key, "Subscribe")) {
+			if (!l_dbus_message_iter_get_variant(&var, "b", &opt))
+				return false;
+
+			mod->sub_enabled = opt;
+		} else
+			return false;
+	}
+
+	return true;
+}
+
+bool mesh_model_add(struct mesh_node *node, struct l_queue *mods,
+			uint32_t id, struct l_dbus_message_iter *opts)
+{
+	struct mesh_model *mod;
+
+	/* Disallow duplicates */
+	mod = l_queue_find(mods, match_model_id, L_UINT_TO_PTR(id));
+	if (mod)
+		return false;
+
+	mod = model_new(id);
+
+	if (opts && !get_model_options(mod, opts)) {
+		mesh_model_free(mod);
+		return false;
+	}
+
+	l_queue_insert(mods, mod, compare_model_id, NULL);
+	return true;
 }
 
 /* Internal models only */
@@ -1213,26 +1304,16 @@ static void restore_model_state(struct mesh_model *mod)
 
 }
 
-uint32_t mesh_model_get_model_id(const struct mesh_model *model)
-{
-	return model->id;
-}
-
 /* This registers an internal model, i.e. implemented within meshd */
-bool mesh_model_register(struct mesh_node *node, uint8_t ele_idx,
-					uint32_t mod_id,
+bool mesh_model_register(struct mesh_node *node, uint8_t ele_idx, uint32_t id,
 					const struct mesh_model_ops *cbs,
 					void *user_data)
 {
 	struct mesh_model *mod;
-	int status;
 
-	/* Internal models are always SIG models */
-	mod_id = VENDOR_ID_MASK | mod_id;
-
-	mod = get_model(node, ele_idx, mod_id, &status);
+	mod = get_model(node, ele_idx, id);
 	if (!mod)
-		return false;
+		return MESH_STATUS_INVALID_MODEL;
 
 	mod->cbs = cbs;
 	mod->user_data = user_data;
@@ -1242,15 +1323,15 @@ bool mesh_model_register(struct mesh_node *node, uint8_t ele_idx,
 	return true;
 }
 
-void mesh_model_app_key_delete(struct mesh_node *node, struct l_queue *models,
-							uint16_t app_idx)
+void mesh_model_app_key_delete(struct mesh_node *node, uint16_t ele_idx,
+				struct l_queue *models, uint16_t app_idx)
 {
 	const struct l_queue_entry *entry = l_queue_get_entries(models);
 
 	for (; entry; entry = entry->next) {
-		struct mesh_model *model = entry->data;
+		struct mesh_model *mod = entry->data;
 
-		model_unbind_idx(node, model, app_idx);
+		model_unbind_idx(node, ele_idx, mod, app_idx);
 	}
 }
 
@@ -1269,18 +1350,20 @@ int mesh_model_binding_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 int mesh_model_get_bindings(struct mesh_node *node, uint16_t addr, uint32_t id,
 				uint8_t *buf, uint16_t buf_size, uint16_t *size)
 {
-	int status;
 	struct mesh_model *mod;
 	const struct l_queue_entry *entry;
 	uint16_t n;
 	uint32_t idx_pair;
-	int i;
+	int i, ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 
 	if (!mod) {
 		*size = 0;
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 	}
 
 	entry = l_queue_get_entries(mod->bindings);
@@ -1325,14 +1408,17 @@ done:
 int mesh_model_sub_get(struct mesh_node *node, uint16_t addr, uint32_t id,
 			uint8_t *buf, uint16_t buf_size, uint16_t *size)
 {
-	int status;
 	int16_t n;
 	struct mesh_model *mod;
 	const struct l_queue_entry *entry;
+	int ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 	if (!mod)
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 
 	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
 		return MESH_STATUS_NOT_SUB_MOD;
@@ -1370,12 +1456,15 @@ int mesh_model_sub_get(struct mesh_node *node, uint16_t addr, uint32_t id,
 int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *group, bool is_virt, uint16_t *dst)
 {
-	int status;
 	struct mesh_model *mod;
+	int status, ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 	if (!mod)
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 
 	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
 		return MESH_STATUS_NOT_SUB_MOD;
@@ -1387,7 +1476,7 @@ int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 
 	if (!mod->cbs)
 		/* External models */
-		config_update_model_subscriptions(node, mod);
+		cfg_update_model_subs(node, ele_idx, mod);
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -1395,13 +1484,16 @@ int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *group, bool is_virt, uint16_t *dst)
 {
-	int status;
 	struct l_queue *virtuals, *subs;
 	struct mesh_model *mod;
+	int status, ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 	if (!mod)
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 
 	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
 		return MESH_STATUS_NOT_SUB_MOD;
@@ -1439,7 +1531,7 @@ int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 
 	if (!mod->cbs)
 		/* External models */
-		config_update_model_subscriptions(node, mod);
+		cfg_update_model_subs(node, ele_idx, mod);
 
 	return status;
 }
@@ -1447,13 +1539,16 @@ int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
 int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *group, bool is_virt, uint16_t *dst)
 {
-	int status;
 	uint16_t grp;
 	struct mesh_model *mod;
+	int ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 	if (!mod)
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 
 	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
 		return MESH_STATUS_NOT_SUB_MOD;
@@ -1481,34 +1576,23 @@ int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
 
 		if (!mod->cbs)
 			/* External models */
-			config_update_model_subscriptions(node, mod);
+			cfg_update_model_subs(node, ele_idx, mod);
 	}
 
 	return MESH_STATUS_SUCCESS;
 }
 
-static void remove_subs(struct mesh_node *node, struct mesh_model *mod)
-{
-	const struct l_queue_entry *entry;
-	struct mesh_net *net = node_get_net(node);
-
-	entry = l_queue_get_entries(mod->subs);
-
-	for (; entry; entry = entry->next)
-		mesh_net_dst_unreg(net, (uint16_t) L_PTR_TO_UINT(entry->data));
-
-	l_queue_clear(mod->subs, NULL);
-	l_queue_clear(mod->virtuals, unref_virt);
-}
-
 int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id)
 {
-	int status;
 	struct mesh_model *mod;
+	int ele_idx = node_get_element_idx(node, addr);
 
-	mod = find_model(node, addr, id, &status);
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
 	if (!mod)
-		return status;
+		return MESH_STATUS_INVALID_MODEL;
 
 	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
 		return MESH_STATUS_NOT_SUB_MOD;
@@ -1517,17 +1601,15 @@ int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id)
 
 	if (!mod->cbs)
 		/* External models */
-		config_update_model_subscriptions(node, mod);
+		cfg_update_model_subs(node, ele_idx, mod);
 
 	return MESH_STATUS_SUCCESS;
 }
 
-struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
-								void *data)
+static struct mesh_model *model_setup(struct mesh_net *net, uint8_t ele_idx,
+					struct mesh_config_model *db_mod)
 {
-	struct mesh_config_model *db_mod = data;
 	struct mesh_model *mod;
-	struct mesh_net *net;
 	struct mesh_config_pub *pub = db_mod->pub;
 	uint32_t i;
 
@@ -1537,8 +1619,8 @@ struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 		return NULL;
 	}
 
-	mod = mesh_model_new(ele_idx, db_mod->vendor ? db_mod->id :
-						db_mod->id | VENDOR_ID_MASK);
+	mod = model_new(db_mod->vendor ? db_mod->id :
+						SET_ID(SIG_VENDOR, db_mod->id));
 
 	/* Implicitly bind config server model to device key */
 	if (db_mod->id == CONFIG_SRV_MODEL) {
@@ -1557,17 +1639,18 @@ struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 		return mod;
 	}
 
-	net = node_get_net(node);
-
 	/* Add application key bindings if present */
 	if (db_mod->bindings) {
 		mod->bindings = l_queue_new();
 		for (i = 0; i < db_mod->num_bindings; i++)
-			model_bind_idx(node, mod, db_mod->bindings[i]);
+			l_queue_push_tail(mod->bindings,
+					L_UINT_TO_PTR(db_mod->bindings[i]));
 	}
 
-	/* Add publication if present */
-	if (pub) {
+	mod->pub_enabled = db_mod->pub_enabled;
+
+	/* Add publication if enabled and present */
+	if (mod->pub_enabled && pub) {
 		uint8_t retransmit = pub->count +
 					((pub->interval / 50 - 1) << 3);
 		if (pub->virt)
@@ -1579,8 +1662,10 @@ struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 				pub->ttl, pub->period, retransmit);
 	}
 
-	/* Add subscriptions if present */
-	if (!db_mod->subs)
+	mod->sub_enabled = db_mod->sub_enabled;
+
+	/* Add subscriptions if enabled and present */
+	if (!db_mod->subs || !mod->sub_enabled)
 		return mod;
 
 	for (i = 0; i < db_mod->num_subs; i++) {
@@ -1603,6 +1688,60 @@ struct mesh_model *mesh_model_setup(struct mesh_node *node, uint8_t ele_idx,
 	}
 
 	return mod;
+}
+
+bool mesh_model_add_from_storage(struct mesh_node *node, uint8_t ele_idx,
+				struct l_queue *mods, struct l_queue *db_mods)
+{
+	struct mesh_net *net = node_get_net(node);
+	const struct l_queue_entry *entry;
+
+	/* Allow empty elements */
+	if (!db_mods)
+		return true;
+
+	entry = l_queue_get_entries(db_mods);
+
+	for (; entry; entry = entry->next) {
+		struct mesh_model *mod;
+		struct mesh_config_model *db_mod;
+		uint32_t id;
+
+		db_mod = entry->data;
+
+		id = db_mod->vendor ? db_mod->id :
+						SET_ID(SIG_VENDOR, db_mod->id);
+
+		if (l_queue_find(mods, match_model_id, L_UINT_TO_PTR(id)))
+			return false;
+
+		mod = model_setup(net, ele_idx, db_mod);
+		if (!mod)
+			return false;
+
+		l_queue_insert(mods, mod, compare_model_id, NULL);
+	}
+
+	return true;
+}
+
+void mesh_model_convert_to_storage(struct l_queue *db_mods,
+							struct l_queue *mods)
+{
+
+	const struct l_queue_entry *entry = l_queue_get_entries(mods);
+
+	for (; entry; entry = entry->next) {
+		struct mesh_model *mod = entry->data;
+		struct mesh_config_model *db_mod;
+
+		db_mod = l_new(struct mesh_config_model, 1);
+		db_mod->id = mod->id;
+		db_mod->vendor = IS_VENDOR(mod->id);
+		db_mod->pub_enabled = mod->pub_enabled;
+		db_mod->sub_enabled = mod->sub_enabled;
+		l_queue_push_tail(db_mods, db_mod);
+	}
 }
 
 uint16_t mesh_model_opcode_set(uint32_t opcode, uint8_t *buf)
@@ -1669,7 +1808,7 @@ bool mesh_model_opcode_get(const uint8_t *buf, uint16_t size,
 	return true;
 }
 
-void model_build_config(void *model, void *msg_builder)
+void mesh_model_build_config(void *model, void *msg_builder)
 {
 	struct l_dbus_message_builder *builder = msg_builder;
 	struct mesh_model *mod = model;
@@ -1685,14 +1824,14 @@ void model_build_config(void *model, void *msg_builder)
 	l_dbus_message_builder_enter_struct(builder, "qa{sv}");
 
 	/* Model id */
-	id = mod->id & 0xffff;
+	id = MODEL_ID(mod->id);
 	l_dbus_message_builder_append_basic(builder, 'q', &id);
 
 	l_dbus_message_builder_enter_array(builder, "{sv}");
 
 	/* For vendor models, add vendor id */
-	if ((mod->id & VENDOR_ID_MASK) != VENDOR_ID_MASK) {
-		uint16_t vendor = mod->id >> 16;
+	if (IS_VENDOR(mod->id)) {
+		uint16_t vendor = VENDOR_ID(mod->id);
 		dbus_append_dict_entry_basic(builder, "Vendor", "q", &vendor);
 	}
 
@@ -1715,36 +1854,101 @@ void model_build_config(void *model, void *msg_builder)
 	l_dbus_message_builder_leave_struct(builder);
 }
 
-void mesh_model_enable_pub(struct mesh_model *mod, bool enable)
+void mesh_model_update_opts(struct mesh_node *node, uint8_t ele_idx,
+				struct l_queue *curr, struct l_queue *updated)
 {
-	mod->pub_enabled = enable;
+	uint16_t primary;
+	const struct l_queue_entry *entry;
 
-	if (!mod->pub_enabled && mod->pub) {
-		if (mod->pub->virt)
-			unref_virt(mod->pub->virt);
+	primary = node_get_primary(node);
+	entry = l_queue_get_entries(curr);
 
-		l_free(mod->pub);
-		mod->pub = NULL;
+	for (; entry; entry = entry->next) {
+		struct mesh_model *mod, *updated_mod = entry->data;
+		uint32_t id = updated_mod->id;
+		bool updated_opt, vendor = IS_VENDOR(id);
+
+		mod = l_queue_find(curr, match_model_id, L_UINT_TO_PTR(id));
+		if (!mod)
+			continue;
+
+		if (!vendor)
+			id = MODEL_ID(id);
+
+		updated_opt = updated_mod->pub_enabled;
+		if (mod->pub_enabled != updated_opt) {
+			model_enable_pub(mod, updated_opt);
+			mesh_config_model_pub_enable(node_config_get(node),
+							primary + ele_idx, id,
+							vendor, updated_opt);
+		}
+
+		updated_opt = updated_mod->sub_enabled;
+
+		if (mod->pub_enabled != updated_opt) {
+			model_enable_sub(node, mod, updated_opt);
+			mesh_config_model_sub_enable(node_config_get(node),
+							primary + ele_idx, id,
+							vendor, updated_opt);
+			}
+		}
+}
+
+/* Populate composition buffer with model IDs */
+uint16_t mesh_model_generate_composition(struct l_queue *mods, uint16_t buf_sz,
+								uint8_t *buf)
+{
+	const struct l_queue_entry *entry;
+	uint8_t num_s = 0, num_v = 0;
+	uint8_t *mod_buf;
+	uint16_t n;
+
+	/* Store models IDs, store num_s and num_v later */
+	mod_buf = buf;
+	n = 2;
+
+	entry = l_queue_get_entries(mods);
+
+	/* Get SIG models */
+	for (; entry; entry = entry->next) {
+		struct mesh_model *mod = entry->data;
+
+		if (n + 2 > buf_sz)
+			goto done;
+
+		if (IS_VENDOR(mod->id))
+			continue;
+
+		l_put_le16((uint16_t) (MODEL_ID(mod->id)), buf + n);
+		n += 2;
+		num_s++;
 	}
-}
 
-bool mesh_model_is_pub_enabled(struct mesh_model *mod)
-{
-	return mod->pub_enabled;
-}
+	/* Get vendor models */
+	entry = l_queue_get_entries(mods);
 
-void mesh_model_enable_sub(struct mesh_node *node, struct mesh_model *mod,
-								bool enable)
-{
-	mod->sub_enabled = enable;
+	for (; entry; entry = entry->next) {
+		struct mesh_model *mod = entry->data;
+		uint16_t vendor_id;
 
-	if (!mod->sub_enabled)
-		remove_subs(node, mod);
-}
+		if (n + 4 > buf_sz)
+			goto done;
 
-bool mesh_model_is_sub_enabled(struct mesh_model *mod)
-{
-	return mod->sub_enabled;
+		if (!IS_VENDOR(mod->id))
+			continue;
+
+		vendor_id = (uint16_t) (VENDOR_ID(mod->id));
+		l_put_le16(vendor_id, buf + n);
+		n += 2;
+		l_put_le16((uint16_t) (MODEL_ID(mod->id)), buf + n);
+		n += 2;
+		num_v++;
+	}
+
+done:
+	mod_buf[0] = num_s;
+	mod_buf[1] = num_v;
+	return n;
 }
 
 void mesh_model_init(void)

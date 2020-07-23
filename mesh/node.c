@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2017-2019  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2017-2020  Intel Corporation. All rights reserved.
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -186,28 +186,6 @@ static bool match_element_path(const void *a, const void *b)
 	return (!strcmp(element->path, path));
 }
 
-static bool match_model_id(const void *a, const void *b)
-{
-	const struct mesh_model *mod = a;
-	uint32_t mod_id = L_PTR_TO_UINT(b);
-
-	return mesh_model_get_model_id(mod) == mod_id;
-}
-
-static int compare_model_id(const void *a, const void *b, void *user_data)
-{
-	uint32_t a_id = mesh_model_get_model_id(a);
-	uint32_t b_id = mesh_model_get_model_id(b);
-
-	if (a_id < b_id)
-		return -1;
-
-	if (a_id > b_id)
-		return 1;
-
-	return 0;
-}
-
 struct mesh_node *node_find_by_uuid(uint8_t uuid[16])
 {
 	return l_queue_find(nodes, match_device_uuid, uuid);
@@ -223,25 +201,6 @@ uint8_t *node_uuid_get(struct mesh_node *node)
 	if (!node)
 		return NULL;
 	return node->uuid;
-}
-
-static void add_internal_model(struct mesh_node *node, uint32_t mod_id,
-								uint8_t ele_idx)
-{
-	struct node_element *ele;
-	struct mesh_model *mod;
-
-	ele = l_queue_find(node->elements, match_element_idx,
-							L_UINT_TO_PTR(ele_idx));
-	if (!ele)
-		return;
-
-	if (l_queue_find(ele->models, match_model_id, L_UINT_TO_PTR(mod_id)))
-		return;
-
-	mod = mesh_model_new(ele_idx, mod_id);
-
-	l_queue_insert(ele->models, mod, compare_model_id, NULL);
 }
 
 static void set_defaults(struct mesh_node *node)
@@ -359,46 +318,6 @@ void node_remove(struct mesh_node *node)
 	free_node_resources(node);
 }
 
-static bool add_models_from_storage(struct mesh_node *node,
-					struct node_element *ele,
-					struct mesh_config_element *db_ele)
-{
-	const struct l_queue_entry *entry;
-
-	if (!ele->models)
-		ele->models = l_queue_new();
-
-	entry = l_queue_get_entries(db_ele->models);
-
-	for (; entry; entry = entry->next) {
-		struct mesh_model *mod;
-		struct mesh_config_model *db_mod;
-		uint32_t id;
-
-		db_mod = entry->data;
-
-		id = db_mod->vendor ? db_mod->id : db_mod->id | VENDOR_ID_MASK;
-
-		if (l_queue_find(ele->models, match_model_id,
-							L_UINT_TO_PTR(id)))
-			return false;
-
-		mod = mesh_model_setup(node, ele->idx, db_mod);
-		if (!mod)
-			return false;
-
-		if (!db_mod->pub_enabled)
-			mesh_model_enable_pub(mod, false);
-
-		if (!db_mod->sub_enabled)
-			mesh_model_enable_sub(node, mod, false);
-
-		l_queue_insert(ele->models, mod, compare_model_id, NULL);
-	}
-
-	return true;
-}
-
 static bool add_element_from_storage(struct mesh_node *node,
 					struct mesh_config_element *db_ele)
 {
@@ -411,7 +330,12 @@ static bool add_element_from_storage(struct mesh_node *node,
 	ele->idx = db_ele->index;
 	ele->location = db_ele->location;
 
-	if (!db_ele->models || !add_models_from_storage(node, ele, db_ele))
+
+	if (!ele->models)
+		ele->models = l_queue_new();
+
+	if (!mesh_model_add_from_storage(node, ele->idx, ele->models,
+							db_ele->models))
 		return false;
 
 	l_queue_push_tail(node->elements, ele);
@@ -424,12 +348,13 @@ static bool add_elements_from_storage(struct mesh_node *node,
 	const struct l_queue_entry *entry;
 
 	entry = l_queue_get_entries(db_node->elements);
+
 	for (; entry; entry = entry->next)
 		if (!add_element_from_storage(node, entry->data))
 			return false;
 
 	/* Add configuration server model on the primary element */
-	add_internal_model(node, CONFIG_SRV_MODEL, PRIMARY_ELE_IDX);
+	mesh_model_add(node, PRIMARY_ELE_IDX, CONFIG_SRV_MODEL, NULL);
 
 	return true;
 }
@@ -628,7 +553,7 @@ void node_app_key_delete(struct mesh_node *node, uint16_t net_idx,
 	for (; entry; entry = entry->next) {
 		struct node_element *ele = entry->data;
 
-		mesh_model_app_key_delete(node, ele->models, app_idx);
+		mesh_model_app_key_delete(node, ele->idx, ele->models, app_idx);
 	}
 }
 
@@ -666,27 +591,17 @@ uint8_t node_get_num_elements(struct mesh_node *node)
 	return node->num_ele;
 }
 
-struct l_queue *node_get_element_models(struct mesh_node *node,
-						uint8_t ele_idx, int *status)
+struct l_queue *node_get_element_models(struct mesh_node *node, uint8_t ele_idx)
 {
 	struct node_element *ele;
 
-	if (!node) {
-		if (status)
-			*status = MESH_STATUS_INVALID_ADDRESS;
+	if (!node)
 		return NULL;
-	}
 
 	ele = l_queue_find(node->elements, match_element_idx,
 							L_UINT_TO_PTR(ele_idx));
-	if (!ele) {
-		if (status)
-			*status = MESH_STATUS_INVALID_ADDRESS;
+	if (!ele)
 		return NULL;
-	}
-
-	if (status)
-		*status = MESH_STATUS_SUCCESS;
 
 	return ele->models;
 }
@@ -888,9 +803,8 @@ uint8_t node_friend_mode_get(struct mesh_node *node)
 static uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf,
 								uint16_t sz)
 {
-	uint16_t n, features;
-	uint16_t num_ele = 0;
-	const struct l_queue_entry *ele_entry;
+	uint16_t n, features, num_ele = 0;
+	const struct l_queue_entry *entry;
 
 	if (!node || sz < MIN_COMP_SIZE)
 		return 0;
@@ -920,12 +834,10 @@ static uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf,
 	l_put_le16(features, buf + n);
 	n += 2;
 
-	ele_entry = l_queue_get_entries(node->elements);
-	for (; ele_entry; ele_entry = ele_entry->next) {
-		struct node_element *ele = ele_entry->data;
-		const struct l_queue_entry *mod_entry;
-		uint8_t num_s = 0, num_v = 0;
-		uint8_t *mod_buf;
+	entry = l_queue_get_entries(node->elements);
+
+	for (; entry; entry = entry->next) {
+		struct node_element *ele = entry->data;
 
 		if (ele->idx != num_ele)
 			return 0;
@@ -939,59 +851,8 @@ static uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf,
 		l_put_le16(ele->location, buf + n);
 		n += 2;
 
-		/* Store models IDs, store num_s and num_v later */
-		mod_buf = buf + n;
-		n += 2;
-
-		/* Get SIG models */
-		mod_entry = l_queue_get_entries(ele->models);
-		for (; mod_entry; mod_entry = mod_entry->next) {
-			struct mesh_model *mod = mod_entry->data;
-			uint32_t mod_id;
-
-			mod_id = mesh_model_get_model_id(
-					(const struct mesh_model *) mod);
-
-			if ((mod_id & VENDOR_ID_MASK) == VENDOR_ID_MASK) {
-				if (n + 2 > sz)
-					goto element_done;
-
-				l_put_le16((uint16_t) (mod_id & 0xffff),
+		n += mesh_model_generate_composition(ele->models, sz - n,
 								buf + n);
-				n += 2;
-				num_s++;
-			}
-		}
-
-		/* Get vendor models */
-		mod_entry = l_queue_get_entries(ele->models);
-		for (; mod_entry; mod_entry = mod_entry->next) {
-			struct mesh_model *mod = mod_entry->data;
-			uint32_t mod_id;
-			uint16_t vendor;
-
-			mod_id = mesh_model_get_model_id(
-					(const struct mesh_model *) mod);
-
-			vendor = (uint16_t) (mod_id >> 16);
-			if (vendor != 0xffff) {
-				if (n + 4 > sz)
-					goto element_done;
-
-				l_put_le16(vendor, buf + n);
-				n += 2;
-				l_put_le16((uint16_t) (mod_id & 0xffff),
-								buf + n);
-				n += 2;
-				num_v++;
-			}
-
-		}
-
-element_done:
-		mod_buf[0] = num_s;
-		mod_buf[1] = num_v;
-
 	}
 
 	if (!num_ele)
@@ -1128,52 +989,6 @@ static void app_disc_cb(struct l_dbus *bus, void *user_data)
 	free_node_dbus_resources(node);
 }
 
-static bool get_model_options(struct mesh_node *node, struct mesh_model *mod,
-					struct l_dbus_message_iter *opts)
-{
-	const char *key;
-	struct l_dbus_message_iter var;
-	bool opt;
-
-	while (l_dbus_message_iter_next_entry(opts, &key, &var)) {
-
-		if (!strcmp(key, "Publish")) {
-			if (!l_dbus_message_iter_get_variant(&var, "b", &opt))
-				return false;
-			mesh_model_enable_pub(mod, opt);
-		} else if (!strcmp(key, "Subscribe")) {
-			if (!l_dbus_message_iter_get_variant(&var, "b", &opt))
-				return false;
-			mesh_model_enable_sub(node, mod, opt);
-		} else
-			return false;
-	}
-
-	return true;
-}
-
-static bool generate_model(struct mesh_node *node, struct node_element *ele,
-				uint32_t id, struct l_dbus_message_iter *opts)
-{
-	struct mesh_model *mod;
-
-	/* Disallow duplicates */
-	if (l_queue_find(ele->models, match_model_id,
-			 L_UINT_TO_PTR(id)))
-		return false;
-
-	mod = mesh_model_new(ele->idx, id);
-
-	if (!get_model_options(node, mod, opts)) {
-		l_free(mod);
-		return false;
-	}
-
-	l_queue_insert(ele->models, mod, compare_model_id, NULL);
-
-	return true;
-}
-
 static bool get_sig_models_from_properties(struct mesh_node *node,
 					struct node_element *ele,
 					struct l_dbus_message_iter *property)
@@ -1189,13 +1004,13 @@ static bool get_sig_models_from_properties(struct mesh_node *node,
 
 	/* Bluetooth SIG defined models */
 	while (l_dbus_message_iter_next_entry(&mods, &m_id, &var)) {
-		uint32_t id = m_id | VENDOR_ID_MASK;
+		uint32_t id = SET_ID(SIG_VENDOR, m_id);
 
 		/* Allow Config Server Model only on the primary element */
 		if (ele->idx != PRIMARY_ELE_IDX && id == CONFIG_SRV_MODEL)
 			return false;
 
-		if (!generate_model(node, ele, id, &var))
+		if (!mesh_model_add(node, ele->models, id, &var))
 			return false;
 	}
 
@@ -1217,9 +1032,9 @@ static bool get_vendor_models_from_properties(struct mesh_node *node,
 
 	/* Vendor defined models */
 	while (l_dbus_message_iter_next_entry(&mods, &v_id, &m_id, &var)) {
-		uint32_t id = m_id | (v_id << 16);
+		uint32_t id = SET_ID(v_id, m_id);
 
-		if (!generate_model(node, ele, id, &var))
+		if (!mesh_model_add(node, ele->models, id, &var))
 			return false;
 	}
 
@@ -1295,7 +1110,7 @@ static bool get_element_properties(struct mesh_node *node, const char *path,
 	 * the operation below will be a "no-op".
 	 */
 	if (ele->idx == PRIMARY_ELE_IDX)
-		add_internal_model(node, CONFIG_SRV_MODEL, PRIMARY_ELE_IDX);
+		mesh_model_add(node, ele->models, CONFIG_SRV_MODEL, NULL);
 
 	return true;
 fail:
@@ -1332,7 +1147,6 @@ static void convert_node_to_storage(struct mesh_node *node,
 	for (; entry; entry = entry->next) {
 		struct node_element *ele = entry->data;
 		struct mesh_config_element *db_ele;
-		const struct l_queue_entry *mod_entry;
 
 		db_ele = l_new(struct mesh_config_element, 1);
 
@@ -1340,21 +1154,8 @@ static void convert_node_to_storage(struct mesh_node *node,
 		db_ele->location = ele->location;
 		db_ele->models = l_queue_new();
 
-		mod_entry = l_queue_get_entries(ele->models);
+		mesh_model_convert_to_storage(db_ele->models, ele->models);
 
-		for (; mod_entry; mod_entry = mod_entry->next) {
-			struct mesh_model *mod = mod_entry->data;
-			struct mesh_config_model *db_mod;
-			uint32_t mod_id = mesh_model_get_model_id(mod);
-
-			db_mod = l_new(struct mesh_config_model, 1);
-			db_mod->id = mod_id;
-			db_mod->vendor = ((mod_id & VENDOR_ID_MASK)
-							!= VENDOR_ID_MASK);
-			db_mod->pub_enabled = mesh_model_is_pub_enabled(mod);
-			db_mod->sub_enabled = mesh_model_is_sub_enabled(mod);
-			l_queue_push_tail(db_ele->models, db_mod);
-		}
 		l_queue_push_tail(db_node->elements, db_ele);
 	}
 
@@ -1375,6 +1176,7 @@ static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
 
 	/* Free temporarily allocated resources */
 	entry = l_queue_get_entries(db_node.elements);
+
 	for (; entry; entry = entry->next) {
 		struct mesh_config_element *db_ele = entry->data;
 
@@ -1517,7 +1319,6 @@ static void update_model_options(struct mesh_node *node,
 	len = l_queue_length(node->elements);
 
 	for (i = 0; i < len; i++) {
-		const struct l_queue_entry *entry;
 
 		ele = l_queue_find(node->elements, match_element_idx,
 							L_UINT_TO_PTR(i));
@@ -1526,42 +1327,8 @@ static void update_model_options(struct mesh_node *node,
 		if (!ele || !ele_attach)
 			continue;
 
-		entry = l_queue_get_entries(ele->models);
-
-		for (; entry; entry = entry->next) {
-			struct mesh_model *mod, *updated_mod = entry->data;
-			uint32_t id = mesh_model_get_model_id(updated_mod);
-			bool opt, updated_opt;
-			bool vendor = id < VENDOR_ID_MASK;
-
-			mod = l_queue_find(ele_attach->models, match_model_id,
-							L_UINT_TO_PTR(id));
-			if (!mod)
-				continue;
-
-			if (!vendor)
-				id &= ~VENDOR_ID_MASK;
-
-			opt = mesh_model_is_pub_enabled(mod);
-			updated_opt = mesh_model_is_pub_enabled(updated_mod);
-
-			if (updated_opt != opt) {
-				mesh_model_enable_pub(mod, updated_opt);
-				mesh_config_model_pub_enable(attach->cfg,
-							attach->primary + i, id,
-							vendor, updated_opt);
-			}
-
-			opt = mesh_model_is_sub_enabled(mod);
-			updated_opt = mesh_model_is_sub_enabled(updated_mod);
-
-			if (updated_opt != opt) {
-				mesh_model_enable_sub(node, mod, updated_opt);
-				mesh_config_model_sub_enable(attach->cfg,
-							attach->primary + i, id,
-							vendor, updated_opt);
-			}
-		}
+		mesh_model_update_opts(node, ele->idx, ele_attach->models,
+								ele->models);
 	}
 }
 
@@ -1964,7 +1731,7 @@ static void build_element_config(void *a, void *b)
 	l_dbus_message_builder_enter_array(builder, "(qa{sv})");
 
 	/* Iterate over models */
-	l_queue_foreach(ele->models, model_build_config, builder);
+	l_queue_foreach(ele->models, mesh_model_build_config, builder);
 
 	l_dbus_message_builder_leave_array(builder);
 
@@ -2216,8 +1983,8 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 	struct l_dbus_message_iter iter_data;
 	uint16_t mod_id, src;
 	struct node_element *ele;
-	uint8_t *data;
-	uint32_t len;
+	uint8_t *data, ttl;
+	uint32_t len, id;
 	int result;
 
 	l_debug("Publish");
@@ -2243,8 +2010,10 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
-	result = mesh_model_publish(node, VENDOR_ID_MASK | mod_id, src,
-				mesh_net_get_default_ttl(node->net), data, len);
+	ttl = mesh_net_get_default_ttl(node->net);
+
+	id = SET_ID(SIG_VENDOR, mod_id);
+	result = mesh_model_publish(node, id, src, ttl, data, len);
 
 	if (result != MESH_ERROR_NONE)
 		return dbus_error(msg, result, NULL);
@@ -2259,11 +2028,9 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	struct mesh_node *node = user_data;
 	const char *sender, *ele_path;
 	struct l_dbus_message_iter iter_data;
-	uint16_t src;
-	uint16_t model_id, vendor;
-	uint32_t vendor_mod_id;
+	uint16_t src, mod_id, vendor_id;
 	struct node_element *ele;
-	uint8_t *data = NULL;
+	uint8_t ttl, *data = NULL;
 	uint32_t len;
 	int result;
 
@@ -2274,8 +2041,8 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	if (strcmp(sender, node->owner))
 		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
-	if (!l_dbus_message_get_arguments(msg, "oqqay", &ele_path, &vendor,
-							&model_id, &iter_data))
+	if (!l_dbus_message_get_arguments(msg, "oqqay", &ele_path, &vendor_id,
+							&mod_id, &iter_data))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
 	ele = l_queue_find(node->elements, match_element_path, ele_path);
@@ -2290,9 +2057,9 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
-	vendor_mod_id = (vendor << 16) | model_id;
-	result = mesh_model_publish(node, vendor_mod_id, src,
-				mesh_net_get_default_ttl(node->net), data, len);
+	ttl = mesh_net_get_default_ttl(node->net);
+	result = mesh_model_publish(node, SET_ID(vendor_id, mod_id), src, ttl,
+								data, len);
 
 	if (result != MESH_ERROR_NONE)
 		return dbus_error(msg, result, NULL);
