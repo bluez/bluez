@@ -298,6 +298,11 @@ struct btd_adapter {
 	bool le_simult_roles_supported;
 };
 
+struct mgmt_callback{
+		uint16_t event;
+		mgmt_notify_func_t callback;
+};
+
 typedef enum {
 	ADAPTER_AUTHORIZE_DISCONNECTED = 0,
 	ADAPTER_AUTHORIZE_CHECK_CONNECTED
@@ -9170,6 +9175,41 @@ static void read_exp_features(struct btd_adapter *adapter)
 	btd_error(adapter->dev_id, "Failed to read exp features info");
 }
 
+static struct mgmt_callback g_mgmt_callback_table[] = {
+	{MGMT_EV_NEW_SETTINGS, new_settings_callback},
+	{MGMT_EV_CLASS_OF_DEV_CHANGED, dev_class_changed_callback},
+	{MGMT_EV_LOCAL_NAME_CHANGED, local_name_changed_callback},
+	{MGMT_EV_DISCOVERING, discovering_callback},
+	{MGMT_EV_DEVICE_FOUND, device_found_callback},
+	{MGMT_EV_DEVICE_DISCONNECTED, disconnected_callback},
+	{MGMT_EV_DEVICE_CONNECTED, connected_callback},
+	{MGMT_EV_CONNECT_FAILED, connect_failed_callback},
+	{MGMT_EV_DEVICE_UNPAIRED, unpaired_callback},
+	{MGMT_EV_AUTH_FAILED, auth_failed_callback},
+	{MGMT_EV_NEW_LINK_KEY, new_link_key_callback},
+	{MGMT_EV_NEW_LONG_TERM_KEY, new_long_term_key_callback},
+	{MGMT_EV_NEW_CSRK, new_csrk_callback},
+	{MGMT_EV_NEW_IRK, new_irk_callback},
+	{MGMT_EV_NEW_CONN_PARAM, new_conn_param},
+	{MGMT_EV_DEVICE_BLOCKED, device_blocked_callback},
+	{MGMT_EV_DEVICE_UNBLOCKED, device_unblocked_callback},
+	{MGMT_EV_PIN_CODE_REQUEST, pin_code_request_callback},
+	{MGMT_EV_USER_CONFIRM_REQUEST, user_confirm_request_callback},
+	{MGMT_EV_USER_PASSKEY_REQUEST, user_passkey_request_callback},
+	{MGMT_EV_PASSKEY_NOTIFY, user_passkey_notify_callback}
+};
+
+static void mgmt_event_register(struct btd_adapter *adapter)
+{
+	int len = sizeof(g_mgmt_callback_table)/sizeof(g_mgmt_callback_table[0]);
+
+	for (int i = 0; i < len; i++) {
+		mgmt_register(adapter->mgmt, g_mgmt_callback_table[i].event, 
+					adapter->dev_id, g_mgmt_callback_table[i].callback,
+					adapter, NULL);
+	}
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -9295,107 +9335,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	 * controller info. From now on they can track updates and
 	 * notifications.
 	 */
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->dev_id,
-					new_settings_callback, adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED,
-						adapter->dev_id,
-						dev_class_changed_callback,
-						adapter, NULL);
-	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
-						adapter->dev_id,
-						local_name_changed_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_DISCOVERING,
-						adapter->dev_id,
-						discovering_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_FOUND,
-						adapter->dev_id,
-						device_found_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_DISCONNECTED,
-						adapter->dev_id,
-						disconnected_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_CONNECTED,
-						adapter->dev_id,
-						connected_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_CONNECT_FAILED,
-						adapter->dev_id,
-						connect_failed_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_UNPAIRED,
-						adapter->dev_id,
-						unpaired_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_AUTH_FAILED,
-						adapter->dev_id,
-						auth_failed_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_LINK_KEY,
-						adapter->dev_id,
-						new_link_key_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_LONG_TERM_KEY,
-						adapter->dev_id,
-						new_long_term_key_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_CSRK,
-						adapter->dev_id,
-						new_csrk_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_IRK,
-						adapter->dev_id,
-						new_irk_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_CONN_PARAM,
-						adapter->dev_id,
-						new_conn_param,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_BLOCKED,
-						adapter->dev_id,
-						device_blocked_callback,
-						adapter, NULL);
-	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_UNBLOCKED,
-						adapter->dev_id,
-						device_unblocked_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_PIN_CODE_REQUEST,
-						adapter->dev_id,
-						pin_code_request_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
-						adapter->dev_id,
-						user_confirm_request_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_USER_PASSKEY_REQUEST,
-						adapter->dev_id,
-						user_passkey_request_callback,
-						adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_PASSKEY_NOTIFY,
-						adapter->dev_id,
-						user_passkey_notify_callback,
-						adapter, NULL);
-
+	mgmt_event_register(adapter);
+	
 	set_dev_class(adapter);
 
 	set_name(adapter, btd_adapter_get_name(adapter));
