@@ -79,7 +79,7 @@ static const char *supported_options[] = {
 	"Name",
 	"Class",
 	"DiscoverableTimeout",
-	"AlwaysPairable"
+	"AlwaysPairable",
 	"PairableTimeout",
 	"DeviceID",
 	"ReverseServiceDiscovery",
