@@ -170,20 +170,21 @@ static struct mesh_model *get_model(struct mesh_node *node, uint8_t ele_idx,
 
 static uint32_t pub_period_to_ms(uint8_t pub_period)
 {
-	int n;
+	int step_res, num_steps;
 
-	n = pub_period >> 2;
+	step_res = pub_period >> 6;
+	num_steps = pub_period & 0x3f;
 
-	switch (pub_period & 0x3) {
+	switch (step_res) {
 	default:
-		return n * 100;
+		return num_steps * 100;
 	case 2:
-		n *= 10;
+		num_steps *= 10;
 		/* Fall Through */
 	case 1:
-		return n * 1000;
+		return num_steps * 1000;
 	case 3:
-		return n * 10 * 60 * 1000;
+		return num_steps * 10 * 60 * 1000;
 	}
 }
 
