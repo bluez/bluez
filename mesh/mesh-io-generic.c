@@ -714,6 +714,14 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 			sending = !l_queue_isempty(pvt->tx_pkts);
 
 		l_queue_push_tail(pvt->tx_pkts, tx);
+
+		/*
+		 * If transmitter is idle, send packets at least twice to
+		 * guard against in-line cancelation of HCI command chain.
+		 */
+		if (info->type == MESH_IO_TIMING_TYPE_GENERAL && !sending &&
+							tx->info.u.gen.cnt == 1)
+			tx->info.u.gen.cnt++;
 	}
 
 	if (!sending) {
