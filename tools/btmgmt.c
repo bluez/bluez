@@ -882,7 +882,18 @@ static void ask(uint16_t index, uint16_t req, const struct mgmt_addr_info *addr,
 	snprintf(msg + off, sizeof(msg) - off, " %s ",
 					COLOR_BOLDGRAY ">>" COLOR_OFF);
 
-	bt_shell_prompt_input("", msg, prompt_input, NULL);
+	if (req == MGMT_EV_PIN_CODE_REQUEST) {
+		char *env = getenv("BT_PIN");
+		printf("%s\n", env);
+
+		if (env)
+			mgmt_pin_reply(prompt.index, &prompt.addr, env, strlen(env));
+		else
+			bt_shell_prompt_input("", msg, prompt_input, NULL);
+	}
+	else {
+		bt_shell_prompt_input("", msg, prompt_input, NULL);
+	}
 }
 
 static void request_pin(uint16_t index, uint16_t len, const void *param,
