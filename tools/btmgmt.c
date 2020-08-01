@@ -884,7 +884,6 @@ static void ask(uint16_t index, uint16_t req, const struct mgmt_addr_info *addr,
 
 	if (req == MGMT_EV_PIN_CODE_REQUEST) {
 		char *env = getenv("BT_PIN");
-		printf("%s\n", env);
 
 		if (env)
 			mgmt_pin_reply(prompt.index, &prompt.addr, env, strlen(env));
