@@ -63,7 +63,7 @@
 #define HIDP_DATA_RSRVD_MASK			0x0c
 #define HIDP_DATA_RTYPE_OTHER			0x00
 #define HIDP_DATA_RTYPE_INPUT			0x01
-#define HIDP_DATA_RTYPE_OUPUT			0x02
+#define HIDP_DATA_RTYPE_OUTPUT			0x02
 #define HIDP_DATA_RTYPE_FEATURE			0x03
 
 /* HIDP protocol header parameters */

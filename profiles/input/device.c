@@ -220,7 +220,7 @@ static bool hidp_send_intr_message(struct input_device *idev, uint8_t hdr,
 	return hidp_send_message(idev->intr_io, hdr, data, size);
 }
 
-static bool uhid_send_feature_answer(struct input_device *idev,
+static bool uhid_send_get_report_reply(struct input_device *idev,
 					const uint8_t *data, size_t size,
 					uint32_t id, uint16_t err)
 {
@@ -230,8 +230,8 @@ static bool uhid_send_feature_answer(struct input_device *idev,
 	if (data == NULL)
 		size = 0;
 
-	if (size > sizeof(ev.u.feature_answer.data))
-		size = sizeof(ev.u.feature_answer.data);
+	if (size > sizeof(ev.u.get_report_reply.data))
+		size = sizeof(ev.u.get_report_reply.data);
 
 	if (!idev->uhid_created) {
 		DBG("HID report (%zu bytes) dropped", size);
@@ -239,13 +239,13 @@ static bool uhid_send_feature_answer(struct input_device *idev,
 	}
 
 	memset(&ev, 0, sizeof(ev));
-	ev.type = UHID_FEATURE_ANSWER;
-	ev.u.feature_answer.id = id;
-	ev.u.feature_answer.err = err;
-	ev.u.feature_answer.size = size;
+	ev.type = UHID_GET_REPORT_REPLY;
+	ev.u.get_report_reply.id = id;
+	ev.u.get_report_reply.err = err;
+	ev.u.get_report_reply.size = size;
 
 	if (size > 0)
-		memcpy(ev.u.feature_answer.data, data, size);
+		memcpy(ev.u.get_report_reply.data, data, size);
 
 	ret = bt_uhid_send(idev->uhid, &ev);
 	if (ret < 0) {
@@ -399,7 +399,7 @@ static void hidp_recv_ctrl_handshake(struct input_device *idev, uint8_t param)
 	case HIDP_HSHK_ERR_FATAL:
 		if (pending_req_type == HIDP_TRANS_GET_REPORT) {
 			DBG("GET_REPORT failed (%u)", param);
-			uhid_send_feature_answer(idev, NULL, 0,
+			uhid_send_get_report_reply(idev, NULL, 0,
 						idev->report_rsp_id, EIO);
 			pending_req_complete = true;
 		} else if (pending_req_type == HIDP_TRANS_SET_REPORT) {
@@ -460,8 +460,8 @@ static void hidp_recv_ctrl_data(struct input_device *idev, uint8_t param,
 	switch (param) {
 	case HIDP_DATA_RTYPE_FEATURE:
 	case HIDP_DATA_RTYPE_INPUT:
-	case HIDP_DATA_RTYPE_OUPUT:
-		uhid_send_feature_answer(idev, data + 1, size - 1,
+	case HIDP_DATA_RTYPE_OUTPUT:
+		uhid_send_get_report_reply(idev, data + 1, size - 1,
 							idev->report_rsp_id, 0);
 		break;
 
@@ -626,7 +626,7 @@ static void hidp_send_set_report(struct uhid_event *ev, void *user_data)
 		break;
 	case UHID_OUTPUT_REPORT:
 		/* Send DATA on interrupt channel */
-		hdr = HIDP_TRANS_DATA | HIDP_DATA_RTYPE_OUPUT;
+		hdr = HIDP_TRANS_DATA | HIDP_DATA_RTYPE_OUTPUT;
 		hidp_send_intr_message(idev, hdr, ev->u.output.data,
 							ev->u.output.size);
 		break;
@@ -646,13 +646,13 @@ static void hidp_send_get_report(struct uhid_event *ev, void *user_data)
 
 	if (idev->report_req_pending) {
 		DBG("Old GET_REPORT or SET_REPORT still pending");
-		uhid_send_feature_answer(idev, NULL, 0, ev->u.feature.id,
+		uhid_send_get_report_reply(idev, NULL, 0, ev->u.get_report.id,
 									EBUSY);
 		return;
 	}
 
 	/* Send GET_REPORT on control channel */
-	switch (ev->u.feature.rtype) {
+	switch (ev->u.get_report.rtype) {
 	case UHID_FEATURE_REPORT:
 		hdr = HIDP_TRANS_GET_REPORT | HIDP_DATA_RTYPE_FEATURE;
 		break;
@@ -660,21 +660,21 @@ static void hidp_send_get_report(struct uhid_event *ev, void *user_data)
 		hdr = HIDP_TRANS_GET_REPORT | HIDP_DATA_RTYPE_INPUT;
 		break;
 	case UHID_OUTPUT_REPORT:
-		hdr = HIDP_TRANS_GET_REPORT | HIDP_DATA_RTYPE_OUPUT;
+		hdr = HIDP_TRANS_GET_REPORT | HIDP_DATA_RTYPE_OUTPUT;
 		break;
 	default:
-		DBG("Unsupported HID report type %u", ev->u.feature.rtype);
+		DBG("Unsupported HID report type %u", ev->u.get_report.rtype);
 		return;
 	}
 
-	sent = hidp_send_ctrl_message(idev, hdr, &ev->u.feature.rnum,
-						sizeof(ev->u.feature.rnum));
+	sent = hidp_send_ctrl_message(idev, hdr, &ev->u.get_report.rnum,
+						sizeof(ev->u.get_report.rnum));
 	if (sent) {
 		idev->report_req_pending = hdr;
 		idev->report_req_timer =
 			g_timeout_add_seconds(REPORT_REQ_TIMEOUT,
 						hidp_report_req_timeout, idev);
-		idev->report_rsp_id = ev->u.feature.id;
+		idev->report_rsp_id = ev->u.get_report.id;
 	}
 }
 
@@ -909,7 +909,8 @@ static int uhid_connadd(struct input_device *idev, struct hidp_connadd_req *req)
 	}
 
 	bt_uhid_register(idev->uhid, UHID_OUTPUT, hidp_send_set_report, idev);
-	bt_uhid_register(idev->uhid, UHID_FEATURE, hidp_send_get_report, idev);
+	bt_uhid_register(idev->uhid, UHID_GET_REPORT, hidp_send_get_report,
+									idev);
 
 	idev->uhid_created = true;
 
