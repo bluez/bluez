@@ -258,6 +258,29 @@ static bool uhid_send_get_report_reply(struct input_device *idev,
 	return true;
 }
 
+static bool uhid_send_set_report_reply(struct input_device *idev,
+					uint32_t id, uint16_t err)
+{
+	struct uhid_event ev;
+	int ret;
+
+	if (!idev->uhid_created)
+		return false;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.type = UHID_SET_REPORT_REPLY;
+	ev.u.set_report_reply.id = id;
+	ev.u.set_report_reply.err = err;
+
+	ret = bt_uhid_send(idev->uhid, &ev);
+	if (ret < 0) {
+		error("bt_uhid_send: %s (%d)", strerror(-ret), -ret);
+		return false;
+	}
+
+	return true;
+}
+
 static bool uhid_send_input_report(struct input_device *idev,
 					const uint8_t *data, size_t size)
 {
@@ -404,6 +427,8 @@ static void hidp_recv_ctrl_handshake(struct input_device *idev, uint8_t param)
 			pending_req_complete = true;
 		} else if (pending_req_type == HIDP_TRANS_SET_REPORT) {
 			DBG("SET_REPORT failed (%u)", param);
+			uhid_send_set_report_reply(idev, idev->report_rsp_id,
+							EIO);
 			pending_req_complete = true;
 		} else
 			DBG("Spurious HIDP_HSHK_ERR");
@@ -446,7 +471,8 @@ static void hidp_recv_ctrl_data(struct input_device *idev, uint8_t param,
 	DBG("");
 
 	pending_req_type = idev->report_req_pending & HIDP_HEADER_TRANS_MASK;
-	if (pending_req_type != HIDP_TRANS_GET_REPORT) {
+	if (pending_req_type != HIDP_TRANS_GET_REPORT &&
+				pending_req_type != HIDP_TRANS_SET_REPORT) {
 		DBG("Spurious DATA on control channel");
 		return;
 	}
@@ -461,8 +487,12 @@ static void hidp_recv_ctrl_data(struct input_device *idev, uint8_t param,
 	case HIDP_DATA_RTYPE_FEATURE:
 	case HIDP_DATA_RTYPE_INPUT:
 	case HIDP_DATA_RTYPE_OUTPUT:
-		uhid_send_get_report_reply(idev, data + 1, size - 1,
+		if (pending_req_type == HIDP_TRANS_GET_REPORT)
+			uhid_send_get_report_reply(idev, data + 1, size - 1,
 							idev->report_rsp_id, 0);
+		else
+			uhid_send_set_report_reply(idev, idev->report_rsp_id,
+							0);
 		break;
 
 	case HIDP_DATA_RTYPE_OTHER:
@@ -579,9 +609,13 @@ static gboolean hidp_report_req_timeout(gpointer data)
 	switch (pending_req_type) {
 	case HIDP_TRANS_GET_REPORT:
 		req_type_str = "GET_REPORT";
+		uhid_send_get_report_reply(idev, NULL, 0, idev->report_rsp_id,
+								ETIMEDOUT);
 		break;
 	case HIDP_TRANS_SET_REPORT:
 		req_type_str = "SET_REPORT";
+		uhid_send_set_report_reply(idev, idev->report_rsp_id,
+								ETIMEDOUT);
 		break;
 	default:
 		/* Should never happen */
@@ -598,6 +632,17 @@ static gboolean hidp_report_req_timeout(gpointer data)
 	return FALSE;
 }
 
+static void hidp_send_output(struct uhid_event *ev, void *user_data)
+{
+	struct input_device *idev = user_data;
+	uint8_t hdr = HIDP_TRANS_DATA | HIDP_DATA_RTYPE_OUTPUT;
+
+	DBG("");
+
+	hidp_send_intr_message(idev, hdr, ev->u.output.data,
+						ev->u.output.size);
+}
+
 static void hidp_send_set_report(struct uhid_event *ev, void *user_data)
 {
 	struct input_device *idev = user_data;
@@ -606,34 +651,37 @@ static void hidp_send_set_report(struct uhid_event *ev, void *user_data)
 
 	DBG("");
 
-	switch (ev->u.output.rtype) {
+	switch (ev->u.set_report.rtype) {
 	case UHID_FEATURE_REPORT:
-		/* Send SET_REPORT on control channel */
-		if (idev->report_req_pending) {
-			DBG("Old GET_REPORT or SET_REPORT still pending");
-			return;
-		}
-
 		hdr = HIDP_TRANS_SET_REPORT | HIDP_DATA_RTYPE_FEATURE;
-		sent = hidp_send_ctrl_message(idev, hdr, ev->u.output.data,
-							ev->u.output.size);
-		if (sent) {
-			idev->report_req_pending = hdr;
-			idev->report_req_timer =
-				g_timeout_add_seconds(REPORT_REQ_TIMEOUT,
-						hidp_report_req_timeout, idev);
-		}
+		break;
+	case UHID_INPUT_REPORT:
+		hdr = HIDP_TRANS_SET_REPORT | HIDP_DATA_RTYPE_INPUT;
 		break;
 	case UHID_OUTPUT_REPORT:
-		/* Send DATA on interrupt channel */
-		hdr = HIDP_TRANS_DATA | HIDP_DATA_RTYPE_OUTPUT;
-		hidp_send_intr_message(idev, hdr, ev->u.output.data,
-							ev->u.output.size);
+		hdr = HIDP_TRANS_SET_REPORT | HIDP_DATA_RTYPE_OUTPUT;
 		break;
 	default:
-		DBG("Unsupported HID report type %u", ev->u.output.rtype);
+		DBG("Unsupported HID report type %u", ev->u.set_report.rtype);
 		return;
 	}
+
+	if (idev->report_req_pending) {
+		DBG("Old GET_REPORT or SET_REPORT still pending");
+		uhid_send_set_report_reply(idev, ev->u.set_report.id, EBUSY);
+		return;
+	}
+
+	sent = hidp_send_ctrl_message(idev, hdr, ev->u.set_report.data,
+						ev->u.set_report.size);
+	if (sent) {
+		idev->report_req_pending = hdr;
+		idev->report_req_timer =
+			g_timeout_add_seconds(REPORT_REQ_TIMEOUT,
+					hidp_report_req_timeout, idev);
+		idev->report_rsp_id = ev->u.set_report.id;
+	} else
+		uhid_send_set_report_reply(idev, ev->u.set_report.id, EIO);
 }
 
 static void hidp_send_get_report(struct uhid_event *ev, void *user_data)
@@ -675,7 +723,9 @@ static void hidp_send_get_report(struct uhid_event *ev, void *user_data)
 			g_timeout_add_seconds(REPORT_REQ_TIMEOUT,
 						hidp_report_req_timeout, idev);
 		idev->report_rsp_id = ev->u.get_report.id;
-	}
+	} else
+		uhid_send_get_report_reply(idev, NULL, 0, ev->u.get_report.id,
+									EIO);
 }
 
 static void epox_endian_quirk(unsigned char *data, int size)
@@ -908,8 +958,10 @@ static int uhid_connadd(struct input_device *idev, struct hidp_connadd_req *req)
 		return err;
 	}
 
-	bt_uhid_register(idev->uhid, UHID_OUTPUT, hidp_send_set_report, idev);
+	bt_uhid_register(idev->uhid, UHID_OUTPUT, hidp_send_output, idev);
 	bt_uhid_register(idev->uhid, UHID_GET_REPORT, hidp_send_get_report,
+									idev);
+	bt_uhid_register(idev->uhid, UHID_SET_REPORT, hidp_send_set_report,
 									idev);
 
 	idev->uhid_created = true;
