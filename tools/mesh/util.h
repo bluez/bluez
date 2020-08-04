@@ -27,3 +27,4 @@ uint16_t mesh_opcode_set(uint32_t opcode, uint8_t *buf);
 bool mesh_opcode_get(const uint8_t *buf, uint16_t sz, uint32_t *opcode, int *n);
 const char *mesh_status_str(uint8_t status);
 void swap_u256_bytes(uint8_t *u256);
+const char *sig_model_string(uint16_t sig_model_id);

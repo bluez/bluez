@@ -30,6 +30,7 @@
 #include "tools/mesh/keys.h"
 #include "tools/mesh/mesh-db.h"
 #include "tools/mesh/remote.h"
+#include "tools/mesh/util.h"
 
 #define abs_diff(a, b) ((a) > (b) ? (a) - (b) : (b) - (a))
 
@@ -293,8 +294,8 @@ static void print_model(void *model, void *user_data)
 
 	if (mod_id >= VENDOR_ID_MASK) {
 		mod_id &= ~VENDOR_ID_MASK;
-		bt_shell_printf("\t\t\t" COLOR_GREEN "SIG model: %4.4x\n"
-							COLOR_OFF, mod_id);
+		bt_shell_printf("\t\t\t" COLOR_GREEN "SIG model: %4.4x \"%s\"\n"
+				COLOR_OFF, mod_id, sig_model_string(mod_id));
 		return;
 	}
 

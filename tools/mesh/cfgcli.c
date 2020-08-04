@@ -263,7 +263,8 @@ static uint32_t print_mod_id(uint8_t *data, bool vendor, const char *offset)
 
 	if (!vendor) {
 		mod_id = get_le16(data);
-		bt_shell_printf("%sModel ID\t%4.4x\n", offset, mod_id);
+		bt_shell_printf("%sModel ID\t%4.4x \"%s\"\n",
+				offset, mod_id, sig_model_string(mod_id));
 		mod_id = VENDOR_ID_MASK | mod_id;
 	} else {
 		mod_id = get_le16(data + 2);
