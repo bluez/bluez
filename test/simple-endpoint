@@ -18,6 +18,8 @@ A2DP_SINK_UUID = "0000110B-0000-1000-8000-00805F9B34FB"
 HFP_AG_UUID = "0000111F-0000-1000-8000-00805F9B34FB"
 HFP_HF_UUID = "0000111E-0000-1000-8000-00805F9B34FB"
 HSP_AG_UUID = "00001112-0000-1000-8000-00805F9B34FB"
+PAC_SINK_UUID = "00008f96-0000-1000-8000-00805F9B34FB"
+PAC_SOURCE_UUID = "00008f98-0000-1000-8000-00805F9B34FB"
 
 SBC_CODEC = dbus.Byte(0x00)
 #Channel Modes: Mono DualChannel Stereo JointStereo
@@ -40,6 +42,11 @@ MP3_CODEC = dbus.Byte(0x01)
 MP3_CAPABILITIES = dbus.Array([dbus.Byte(0x3f), dbus.Byte(0x07), dbus.Byte(0xff), dbus.Byte(0xfe)])
 # JointStereo 44.1Khz Layer: 3 Bit Rate: VBR Format: RFC-2250
 MP3_CONFIGURATION = dbus.Array([dbus.Byte(0x21), dbus.Byte(0x02), dbus.Byte(0x00), dbus.Byte(0x80)])
+
+LC3_CODEC = dbus.Byte(0x06)
+#Bits per sample: 16
+#Bit Rate: 96kbps
+LC3_CAPABILITIES = dbus.Array([dbus.Byte(16), dbus.Byte(96)])
 
 PCM_CODEC = dbus.Byte(0x00)
 PCM_CONFIGURATION = dbus.Array([], signature="ay")
@@ -131,6 +138,16 @@ if __name__ == '__main__':
 							"Codec" : CVSD_CODEC,
 							"Capabilities" :  PCM_CONFIGURATION })
 			endpoint.default_configuration(dbus.Array([]))
+		if sys.argv[2] == "lc3sink":
+			properties = dbus.Dictionary({ "UUID" : PAC_SINK_UUID,
+							"Codec" : LC3_CODEC,
+							"Capabilities" :
+                                                        LC3_CAPABILITIES })
+		if sys.argv[2] == "lc3source":
+			properties = dbus.Dictionary({ "UUID" : PAC_SOURCE_UUID,
+							"Codec" : LC3_CODEC,
+							"Capabilities" :
+                                                        LC3_CAPABILITIES })
 
 	print(properties)
 
