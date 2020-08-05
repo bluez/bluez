@@ -3731,9 +3731,12 @@ static void device_add_gatt_services(struct btd_device *device)
 static void device_accept_gatt_profiles(struct btd_device *device)
 {
 	GSList *l;
+	bool initiator = get_initiator(device);
+
+	DBG("initiator %s", initiator ? "true" : "false");
 
 	for (l = device->services; l != NULL; l = g_slist_next(l))
-		service_accept(l->data, get_initiator(device));
+		service_accept(l->data, initiator);
 }
 
 static void device_remove_gatt_service(struct btd_device *device,
@@ -5424,6 +5427,9 @@ int device_connect_le(struct btd_device *dev)
 
 	DBG("Connection attempt to: %s", addr);
 
+	/* Set as initiator */
+	dev->le_state.initiator = true;
+
 	if (dev->le_state.paired)
 		sec_level = BT_IO_SEC_MEDIUM;
 	else
@@ -5461,8 +5467,6 @@ int device_connect_le(struct btd_device *dev)
 
 	/* Keep this, so we can cancel the connection */
 	dev->att_io = io;
-	/* Set as initiator */
-	dev->le_state.initiator = true;
 
 	return 0;
 }
