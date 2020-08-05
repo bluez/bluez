@@ -146,6 +146,24 @@ extern "C" {
 /* GATT Server Supported features */
 #define GATT_CHARAC_SERVER_FEAT				0x2B3A
 
+/* TODO: Update these on final UUID is given */
+#define PACS_UUID					0x1850
+#define PAC_SINK_CHRC_UUID				0x2bc9
+#define PAC_SINK_UUID		"00002bc9-0000-1000-8000-00805f9b34fb"
+#define PAC_SINK_LOC_CHRC_UUID				0x2bca
+
+#define PAC_SOURCE_CHRC_UUID				0x2bcb
+#define PAC_SOURCE_UUID		"00002bcb-0000-1000-8000-00805f9b34fb"
+#define PAC_SOURCE_LOC_CHRC_UUID			0x2bcc
+
+#define PAC_CONTEXT					0x2bcd
+#define PAC_SUPPORTED_CONTEXT				0x2bce
+
+#define ASCS_UUID					0x184e
+#define ASE_SINK_UUID					0x2bc4
+#define ASE_SOURCE_UUID					0x2bc5
+#define ASE_CP_UUID					0x2bc6
+
 typedef struct {
 	enum {
 		BT_UUID_UNSPEC = 0,
