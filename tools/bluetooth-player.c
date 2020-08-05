@@ -26,7 +26,6 @@
 #include <glib.h>
 
 #include "gdbus/gdbus.h"
-
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
 
@@ -36,6 +35,7 @@
 
 #define PROMPT_ON	COLOR_BLUE "[bluetooth]" COLOR_OFF "# "
 #define PROMPT_OFF	"[bluetooth]# "
+
 
 static DBusConnection *dbus_conn;
 
