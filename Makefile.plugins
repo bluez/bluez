@@ -116,3 +116,8 @@ plugins_sixaxis_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version
 plugins_sixaxis_la_LIBADD = $(UDEV_LIBS)
 plugins_sixaxis_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
 endif
+
+if BAP
+builtin_modules += bap
+builtin_sources += profiles/audio/bap.c
+endif

@@ -23,6 +23,7 @@
 #include "lib/uuid.h"
 
 #include "gdbus/gdbus.h"
+#include "btio/btio.h"
 
 #include "src/adapter.h"
 #include "src/device.h"
@@ -30,7 +31,9 @@
 
 #include "src/log.h"
 #include "src/error.h"
+#include "src/shared/util.h"
 #include "src/shared/queue.h"
+#include "src/shared/bap.h"
 
 #include "avdtp.h"
 #include "media.h"
@@ -76,6 +79,19 @@ struct a2dp_transport {
 	int8_t			volume;
 };
 
+struct bap_transport {
+	struct bt_bap_stream	*stream;
+	unsigned int		state_id;
+	bool			linked;
+	uint32_t		interval;
+	uint8_t			framing;
+	uint8_t			phy;
+	uint16_t		sdu;
+	uint8_t			rtn;
+	uint16_t		latency;
+	uint32_t		delay;
+};
+
 struct media_transport {
 	char			*path;		/* Transport object path */
 	struct btd_device	*device;	/* Transport device */
@@ -97,6 +113,8 @@ struct media_transport {
 					struct media_owner *owner);
 	void			(*cancel) (struct media_transport *transport,
 								guint id);
+	void			(*set_state) (struct media_transport *transport,
+						transport_state_t state);
 	GDestroyNotify		destroy;
 	void			*data;
 };
@@ -134,6 +152,29 @@ static gboolean state_in_use(transport_state_t state)
 	return FALSE;
 }
 
+static struct media_transport *
+find_transport_by_bap_stream(const struct bt_bap_stream *stream)
+{
+	GSList *l;
+
+	for (l = transports; l; l = g_slist_next(l)) {
+		struct media_transport *transport = l->data;
+		const char *uuid = media_endpoint_get_uuid(transport->endpoint);
+		struct bap_transport *bap;
+
+		if (strcasecmp(uuid, PAC_SINK_UUID) &&
+				strcasecmp(uuid, PAC_SOURCE_UUID))
+			continue;
+
+		bap = transport->data;
+
+		if (bap->stream == stream)
+			return transport;
+	}
+
+	return NULL;
+}
+
 static void transport_set_state(struct media_transport *transport,
 							transport_state_t state)
 {
@@ -155,6 +196,10 @@ static void transport_set_state(struct media_transport *transport,
 						transport->path,
 						MEDIA_TRANSPORT_INTERFACE,
 						"State");
+
+	/* Update transport specific data */
+	if (transport->set_state)
+		transport->set_state(transport, state);
 }
 
 void media_transport_destroy(struct media_transport *transport)
@@ -239,6 +284,9 @@ static void media_owner_free(struct media_owner *owner)
 static void media_transport_remove_owner(struct media_transport *transport)
 {
 	struct media_owner *owner = transport->owner;
+
+	if (!transport->owner)
+		return;
 
 	DBG("Transport %s Owner %s", transport->path, owner->name);
 
@@ -597,7 +645,8 @@ static gboolean get_state(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean delay_exists(const GDBusPropertyTable *property, void *data)
+static gboolean delay_reporting_exists(const GDBusPropertyTable *property,
+							void *data)
 {
 	struct media_transport *transport = data;
 	struct a2dp_transport *a2dp = transport->data;
@@ -605,7 +654,7 @@ static gboolean delay_exists(const GDBusPropertyTable *property, void *data)
 	return a2dp->delay != 0;
 }
 
-static gboolean get_delay(const GDBusPropertyTable *property,
+static gboolean get_delay_reporting(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct media_transport *transport = data;
@@ -709,16 +758,178 @@ static const GDBusMethodTable transport_methods[] = {
 	{ },
 };
 
-static const GDBusPropertyTable transport_properties[] = {
+static const GDBusPropertyTable a2dp_properties[] = {
 	{ "Device", "o", get_device },
 	{ "UUID", "s", get_uuid },
 	{ "Codec", "y", get_codec },
 	{ "Configuration", "ay", get_configuration },
 	{ "State", "s", get_state },
-	{ "Delay", "q", get_delay, NULL, delay_exists },
+	{ "Delay", "q", get_delay_reporting, NULL, delay_reporting_exists },
 	{ "Volume", "q", get_volume, set_volume, volume_exists },
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists,
 				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ }
+};
+
+static gboolean get_interval(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &bap->interval);
+
+	return TRUE;
+}
+
+static gboolean get_framing(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	dbus_bool_t val = bap->framing;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
+
+	return TRUE;
+}
+
+static gboolean get_sdu(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &bap->sdu);
+
+	return TRUE;
+}
+
+static gboolean get_retransmissions(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &bap->rtn);
+
+	return TRUE;
+}
+
+static gboolean get_latency(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &bap->latency);
+
+	return TRUE;
+}
+
+static gboolean get_delay(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &bap->delay);
+
+	return TRUE;
+}
+
+static gboolean get_location(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	uint32_t location = bt_bap_stream_get_location(bap->stream);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &location);
+
+	return TRUE;
+}
+
+static gboolean get_metadata(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	struct iovec *meta = bt_bap_stream_get_metadata(bap->stream);
+	DBusMessageIter array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+
+	if (meta)
+		dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+							&meta->iov_base,
+							meta->iov_len);
+
+	dbus_message_iter_close_container(iter, &array);
+
+	return TRUE;
+}
+
+static gboolean links_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	return bap->linked;
+}
+
+static void append_links(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+	DBusMessageIter *array = user_data;
+	struct media_transport *transport;
+
+	transport = find_transport_by_bap_stream(stream);
+	if (!transport) {
+		error("Unable to find transport");
+		return;
+	}
+
+	dbus_message_iter_append_basic(array, DBUS_TYPE_OBJECT_PATH,
+					&transport->path);
+}
+
+static gboolean get_links(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	struct queue *links = bt_bap_stream_io_get_links(bap->stream);
+	DBusMessageIter array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_OBJECT_PATH_AS_STRING,
+					&array);
+
+	queue_foreach(links, append_links, &array);
+
+	dbus_message_iter_close_container(iter, &array);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable bap_properties[] = {
+	{ "Device", "o", get_device },
+	{ "UUID", "s", get_uuid },
+	{ "Codec", "y", get_codec },
+	{ "Configuration", "ay", get_configuration },
+	{ "State", "s", get_state },
+	{ "Interval", "u", get_interval },
+	{ "Framing", "b", get_framing },
+	{ "SDU", "q", get_sdu },
+	{ "Retransmissions", "y", get_retransmissions },
+	{ "Latency", "q", get_latency },
+	{ "Delay", "u", get_delay },
+	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
+	{ "Location", "u", get_location },
+	{ "Metadata", "ay", get_metadata },
+	{ "Links", "ao", get_links, NULL, links_exists },
 	{ }
 };
 
@@ -842,15 +1053,337 @@ static int media_transport_init_sink(struct media_transport *transport)
 	return 0;
 }
 
+static void bap_enable_complete(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	struct media_owner *owner = user_data;
+
+	if (code)
+		media_transport_remove_owner(owner->transport);
+}
+
+static gboolean resume_complete(void *data)
+{
+	struct media_transport *transport = data;
+	struct media_owner *owner = transport->owner;
+
+	if (!owner)
+		return FALSE;
+
+	if (transport->fd < 0) {
+		media_transport_remove_owner(transport);
+		return FALSE;
+	}
+
+	if (owner->pending) {
+		gboolean ret;
+
+		ret = g_dbus_send_reply(btd_get_dbus_connection(),
+					owner->pending->msg,
+					DBUS_TYPE_UNIX_FD, &transport->fd,
+					DBUS_TYPE_UINT16, &transport->imtu,
+					DBUS_TYPE_UINT16, &transport->omtu,
+						DBUS_TYPE_INVALID);
+		if (!ret) {
+			media_transport_remove_owner(transport);
+			return FALSE;
+		}
+	}
+
+	media_owner_remove(owner);
+
+	transport_set_state(transport, TRANSPORT_STATE_ACTIVE);
+
+	return FALSE;
+}
+
+static void bap_update_links(const struct media_transport *transport);
+
+static bool match_link_transport(const void *data, const void *user_data)
+{
+	const struct bt_bap_stream *stream = data;
+	const struct media_transport *transport;
+
+	transport = find_transport_by_bap_stream(stream);
+	if (!transport)
+		return false;
+
+	bap_update_links(transport);
+
+	return true;
+}
+
+static void bap_update_links(const struct media_transport *transport)
+{
+	struct bap_transport *bap = transport->data;
+	struct queue *links = bt_bap_stream_io_get_links(bap->stream);
+
+	if (bap->linked == !queue_isempty(links))
+		return;
+
+	bap->linked = !queue_isempty(links);
+
+	/* Check if the links transport has been create yet */
+	if (bap->linked && !queue_find(links, match_link_transport, NULL)) {
+		bap->linked = false;
+		return;
+	}
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), transport->path,
+						MEDIA_TRANSPORT_INTERFACE,
+						"Links");
+
+	DBG("stream %p linked %s", bap->stream, bap->linked ? "true" : "false");
+}
+
+static guint resume_bap(struct media_transport *transport,
+				struct media_owner *owner)
+{
+	struct bap_transport *bap = transport->data;
+	guint id;
+
+	if (!bap->stream)
+		return 0;
+
+	bap_update_links(transport);
+
+	switch (bt_bap_stream_get_state(bap->stream)) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+		bap_enable_complete(bap->stream, 0x00, 0x00, owner);
+		if (owner->pending)
+			return owner->pending->id;
+		return 0;
+	case BT_BAP_STREAM_STATE_STREAMING:
+		return g_idle_add(resume_complete, transport);
+	}
+
+	id = bt_bap_stream_enable(bap->stream, bap->linked, NULL,
+					bap_enable_complete, owner);
+	if (!id)
+		return 0;
+
+	if (transport->state == TRANSPORT_STATE_IDLE)
+		transport_set_state(transport, TRANSPORT_STATE_REQUESTING);
+
+	return id;
+}
+
+static void bap_stop_complete(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	struct media_owner *owner = user_data;
+	struct media_request *req = owner->pending;
+	struct media_transport *transport = owner->transport;
+
+	/* Release always succeeds */
+	if (req) {
+		req->id = 0;
+		media_request_reply(req, 0);
+		media_owner_remove(owner);
+	}
+
+	transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	media_transport_remove_owner(transport);
+}
+
+static void bap_disable_complete(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	bap_stop_complete(stream, code, reason, user_data);
+}
+
+static guint suspend_bap(struct media_transport *transport,
+				struct media_owner *owner)
+{
+	struct bap_transport *bap = transport->data;
+	bt_bap_stream_func_t func = NULL;
+
+	if (!bap->stream)
+		return 0;
+
+	if (owner)
+		func = bap_disable_complete;
+	else
+		transport_set_state(transport, TRANSPORT_STATE_IDLE);
+
+	bap_update_links(transport);
+
+	return bt_bap_stream_disable(bap->stream, bap->linked, func, owner);
+}
+
+static void cancel_bap(struct media_transport *transport, guint id)
+{
+	struct bap_transport *bap = transport->data;
+
+	if (!bap->stream)
+		return;
+
+	bt_bap_stream_cancel(bap->stream, id);
+}
+
+static void link_set_state(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+	transport_state_t state = PTR_TO_UINT(user_data);
+	struct media_transport *transport;
+
+	transport = find_transport_by_bap_stream(stream);
+	if (!transport) {
+		error("Unable to find transport");
+		return;
+	}
+
+	transport_set_state(transport, state);
+}
+
+static void set_state_bap(struct media_transport *transport,
+					transport_state_t state)
+{
+	struct bap_transport *bap = transport->data;
+
+	if (!bap->linked)
+		return;
+
+	/* Update links */
+	queue_foreach(bt_bap_stream_io_get_links(bap->stream), link_set_state,
+							UINT_TO_PTR(state));
+}
+
+static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
+				uint8_t new_state, void *user_data)
+{
+	struct media_transport *transport = user_data;
+	struct bap_transport *bap = transport->data;
+	struct media_owner *owner = transport->owner;
+	struct io *io;
+	GIOChannel *chan;
+	GError *err = NULL;
+	int fd;
+	uint16_t imtu, omtu;
+
+	if (bap->stream != stream)
+		return;
+
+	DBG("stream %p: %s(%u) -> %s(%u)", stream,
+			bt_bap_stream_statestr(old_state), old_state,
+			bt_bap_stream_statestr(new_state), new_state);
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_IDLE:
+	case BT_BAP_STREAM_STATE_CONFIG:
+	case BT_BAP_STREAM_STATE_QOS:
+		/* If a request is pending wait it to complete */
+		if (owner && owner->pending)
+			return;
+		transport_update_playing(transport, FALSE);
+		return;
+	case BT_BAP_STREAM_STATE_DISABLING:
+		return;
+	case BT_BAP_STREAM_STATE_ENABLING:
+		if (!bt_bap_stream_get_io(stream))
+			return;
+		break;
+	case BT_BAP_STREAM_STATE_STREAMING:
+		break;
+	}
+
+	io = bt_bap_stream_get_io(stream);
+	if (!io) {
+		error("Unable to get stream IO");
+		/* TODO: Fail if IO has not been established */
+		goto done;
+	}
+
+	fd = io_get_fd(io);
+	if (fd < 0) {
+		error("Unable to get IO fd");
+		goto done;
+	}
+
+	chan = g_io_channel_unix_new(fd);
+
+	if (!bt_io_get(chan, &err, BT_IO_OPT_OMTU, &omtu,
+					BT_IO_OPT_IMTU, &imtu,
+					BT_IO_OPT_INVALID)) {
+		error("%s", err->message);
+		goto done;
+	}
+
+	g_io_channel_unref(chan);
+
+	media_transport_set_fd(transport, fd, imtu, omtu);
+	transport_update_playing(transport, TRUE);
+
+done:
+	resume_complete(transport);
+}
+
+static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
+							void *user_data)
+{
+	struct media_transport *transport = user_data;
+	struct bap_transport *bap = transport->data;
+
+	if (bap->stream != stream)
+		return;
+
+	bap_update_links(transport);
+}
+
+static void free_bap(void *data)
+{
+	struct bap_transport *bap = data;
+
+	bt_bap_state_unregister(bt_bap_stream_get_session(bap->stream),
+							bap->state_id);
+	free(bap);
+}
+
+static int media_transport_init_bap(struct media_transport *transport,
+							void *stream)
+{
+	struct bt_bap_qos *qos;
+	struct bap_transport *bap;
+
+	qos = bt_bap_stream_get_qos(stream);
+
+	bap = new0(struct bap_transport, 1);
+	bap->stream = stream;
+	bap->interval = qos->interval;
+	bap->framing = qos->framing;
+	bap->phy = qos->phy;
+	bap->rtn = qos->rtn;
+	bap->latency = qos->latency;
+	bap->delay = qos->delay;
+	bap->state_id = bt_bap_state_register(bt_bap_stream_get_session(stream),
+						bap_state_changed,
+						bap_connecting,
+						transport, NULL);
+
+	transport->data = bap;
+	transport->resume = resume_bap;
+	transport->suspend = suspend_bap;
+	transport->cancel = cancel_bap;
+	transport->set_state = set_state_bap;
+	transport->destroy = free_bap;
+
+	return 0;
+}
+
 struct media_transport *media_transport_create(struct btd_device *device,
 						const char *remote_endpoint,
 						uint8_t *configuration,
-						size_t size, void *data)
+						size_t size, void *data,
+						void *stream)
 {
 	struct media_endpoint *endpoint = data;
 	struct media_transport *transport;
 	const char *uuid;
 	static int fd = 0;
+	const GDBusPropertyTable *properties;
 
 	transport = g_new0(struct media_transport, 1);
 	transport->device = device;
@@ -868,15 +1401,22 @@ struct media_transport *media_transport_create(struct btd_device *device,
 	if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
 		if (media_transport_init_source(transport) < 0)
 			goto fail;
+		properties = a2dp_properties;
 	} else if (strcasecmp(uuid, A2DP_SINK_UUID) == 0) {
 		if (media_transport_init_sink(transport) < 0)
 			goto fail;
+		properties = a2dp_properties;
+	} else if (!strcasecmp(uuid, PAC_SINK_UUID) ||
+				!strcasecmp(uuid, PAC_SOURCE_UUID)) {
+		if (media_transport_init_bap(transport, stream) < 0)
+			goto fail;
+		properties = bap_properties;
 	} else
 		goto fail;
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),
 				transport->path, MEDIA_TRANSPORT_INTERFACE,
-				transport_methods, NULL, transport_properties,
+				transport_methods, NULL, properties,
 				transport, media_transport_free) == FALSE) {
 		error("Could not register transport %s", transport->path);
 		goto fail;

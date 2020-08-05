@@ -14,7 +14,8 @@ struct media_transport;
 struct media_transport *media_transport_create(struct btd_device *device,
 						const char *remote_endpoint,
 						uint8_t *configuration,
-						size_t size, void *data);
+						size_t size, void *data,
+						void *stream);
 
 void media_transport_destroy(struct media_transport *transport);
 const char *media_transport_get_path(struct media_transport *transport);

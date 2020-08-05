@@ -195,6 +195,10 @@ AC_ARG_ENABLE(health, AS_HELP_STRING([--enable-health],
 		[enable health profiles]), [enable_health=${enableval}])
 AM_CONDITIONAL(HEALTH, test "${enable_health}" = "yes")
 
+AC_ARG_ENABLE(bap, AS_HELP_STRING([--disable-bap],
+		[disable BAP profile]), [enable_bap=${enableval}])
+AM_CONDITIONAL(BAP, test "${enable_bap}" != "no")
+
 AC_ARG_ENABLE(tools, AS_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
