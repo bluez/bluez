@@ -1983,7 +1983,7 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 	struct l_dbus_message_iter iter_data;
 	uint16_t mod_id, src;
 	struct node_element *ele;
-	uint8_t *data, ttl;
+	uint8_t *data;
 	uint32_t len, id;
 	int result;
 
@@ -2010,10 +2010,8 @@ static struct l_dbus_message *publish_call(struct l_dbus *dbus,
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
-	ttl = mesh_net_get_default_ttl(node->net);
-
 	id = SET_ID(SIG_VENDOR, mod_id);
-	result = mesh_model_publish(node, id, src, ttl, data, len);
+	result = mesh_model_publish(node, id, src, data, len);
 
 	if (result != MESH_ERROR_NONE)
 		return dbus_error(msg, result, NULL);
@@ -2030,7 +2028,7 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 	struct l_dbus_message_iter iter_data;
 	uint16_t src, mod_id, vendor_id;
 	struct node_element *ele;
-	uint8_t ttl, *data = NULL;
+	uint8_t *data = NULL;
 	uint32_t len;
 	int result;
 
@@ -2057,8 +2055,7 @@ static struct l_dbus_message *vendor_publish_call(struct l_dbus *dbus,
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Incorrect data");
 
-	ttl = mesh_net_get_default_ttl(node->net);
-	result = mesh_model_publish(node, SET_ID(vendor_id, mod_id), src, ttl,
+	result = mesh_model_publish(node, SET_ID(vendor_id, mod_id), src,
 								data, len);
 
 	if (result != MESH_ERROR_NONE)

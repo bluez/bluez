@@ -103,7 +103,7 @@ bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 					uint8_t ttl, bool segmented,
 					const void *msg, uint16_t msg_len);
 int mesh_model_publish(struct mesh_node *node, uint32_t id, uint16_t src,
-				uint8_t ttl, const void *msg, uint16_t msg_len);
+					const void *msg, uint16_t msg_len);
 bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 			uint32_t seq, uint32_t iv_index, uint16_t net_idx,
 			uint16_t src, uint16_t dst, uint8_t key_aid,
