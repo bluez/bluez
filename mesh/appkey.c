@@ -320,7 +320,7 @@ int appkey_key_delete(struct mesh_net *net, uint16_t net_idx,
 	key = l_queue_find(app_keys, match_key_index, L_UINT_TO_PTR(app_idx));
 
 	if (!key)
-		return MESH_STATUS_INVALID_APPKEY;
+		return MESH_STATUS_SUCCESS;
 
 	if (key->net_idx != net_idx)
 		return MESH_STATUS_INVALID_NETKEY;
