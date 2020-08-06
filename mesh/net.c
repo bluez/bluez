@@ -800,14 +800,14 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	if (!net)
 		return MESH_STATUS_UNSPECIFIED_ERROR;
 
-	/* Cannot remove primary key */
-	if (l_queue_length(net->subnets) <= 1)
-		return MESH_STATUS_CANNOT_REMOVE;
-
 	subnet = l_queue_find(net->subnets, match_key_index,
 							L_UINT_TO_PTR(idx));
 	if (!subnet)
 		return MESH_STATUS_SUCCESS;
+
+	/* Cannot remove primary key */
+	if (l_queue_length(net->subnets) <= 1)
+		return MESH_STATUS_CANNOT_REMOVE;
 
 	/* Delete associated app keys */
 	appkey_delete_bound_keys(net, idx);
