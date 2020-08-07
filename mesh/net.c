@@ -2433,6 +2433,10 @@ static int key_refresh_phase_two(struct mesh_net *net, uint16_t idx)
 		return MESH_STATUS_INVALID_NETKEY;
 
 	l_debug("Key refresh procedure phase 2: start using new net TX keys");
+
+	if (subnet->kr_phase == KEY_REFRESH_PHASE_TWO)
+		return MESH_STATUS_SUCCESS;
+
 	subnet->key_refresh = 1;
 	subnet->net_key_tx = subnet->net_key_upd;
 	/*
@@ -2445,8 +2449,9 @@ static int key_refresh_phase_two(struct mesh_net *net, uint16_t idx)
 
 	l_queue_foreach(net->friends, frnd_kr_phase2, net);
 
-	mesh_config_net_key_set_phase(node_config_get(net->node), idx,
-						KEY_REFRESH_PHASE_TWO);
+	if (!mesh_config_net_key_set_phase(node_config_get(net->node), idx,
+							KEY_REFRESH_PHASE_TWO))
+		return MESH_STATUS_STORAGE_FAIL;
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -2479,8 +2484,9 @@ static int key_refresh_finish(struct mesh_net *net, uint16_t idx)
 
 	l_queue_foreach(net->friends, frnd_kr_phase3, net);
 
-	mesh_config_net_key_set_phase(node_config_get(net->node), idx,
-							KEY_REFRESH_PHASE_NONE);
+	if (!mesh_config_net_key_set_phase(node_config_get(net->node), idx,
+							KEY_REFRESH_PHASE_NONE))
+		return MESH_STATUS_STORAGE_FAIL;
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -3168,45 +3174,22 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 		send_msg_pkt(net, pkt, pkt_len + 1);
 }
 
-uint8_t mesh_net_key_refresh_phase_set(struct mesh_net *net, uint16_t idx,
+int mesh_net_key_refresh_phase_set(struct mesh_net *net, uint16_t idx,
 							uint8_t transition)
 {
-	struct mesh_subnet *subnet;
-
-	if (!net)
-		return MESH_STATUS_UNSPECIFIED_ERROR;
-
-	subnet = l_queue_find(net->subnets, match_key_index,
-							L_UINT_TO_PTR(idx));
-	if (!subnet)
-		return MESH_STATUS_INVALID_NETKEY;
-
-	if (transition == subnet->kr_phase)
-		return MESH_STATUS_SUCCESS;
-
-	if ((transition != 2 && transition != 3) ||
-						transition < subnet->kr_phase)
-		return MESH_STATUS_CANNOT_SET;
-
 	switch (transition) {
-	case 2:
-		if (key_refresh_phase_two(net, idx)
-							!= MESH_STATUS_SUCCESS)
-			return MESH_STATUS_CANNOT_SET;
-		break;
-	case 3:
-		if (key_refresh_finish(net, idx)
-							!= MESH_STATUS_SUCCESS)
-			return MESH_STATUS_CANNOT_SET;
-		break;
-	default:
-		return MESH_STATUS_CANNOT_SET;
-	}
+	case KEY_REFRESH_TRANS_TWO:
+		return key_refresh_phase_two(net, idx);
 
-	return MESH_STATUS_SUCCESS;
+	case KEY_REFRESH_TRANS_THREE:
+		return key_refresh_finish(net, idx);
+
+	default:
+		return MESH_STATUS_UNSPECIFIED_ERROR;
+	}
 }
 
-uint8_t mesh_net_key_refresh_phase_get(struct mesh_net *net, uint16_t idx,
+int mesh_net_key_refresh_phase_get(struct mesh_net *net, uint16_t idx,
 								uint8_t *phase)
 {
 	struct mesh_subnet *subnet;

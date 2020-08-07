@@ -320,9 +320,9 @@ void mesh_friend_sub_add(struct mesh_net *net, uint16_t lpn, uint8_t ele_cnt,
 							const uint8_t *list);
 void mesh_friend_sub_del(struct mesh_net *net, uint16_t lpn, uint8_t cnt,
 						const uint8_t *del_list);
-uint8_t mesh_net_key_refresh_phase_set(struct mesh_net *net, uint16_t net_idx,
+int mesh_net_key_refresh_phase_set(struct mesh_net *net, uint16_t net_idx,
 							uint8_t transition);
-uint8_t mesh_net_key_refresh_phase_get(struct mesh_net *net, uint16_t net_idx,
+int mesh_net_key_refresh_phase_get(struct mesh_net *net, uint16_t net_idx,
 							uint8_t *phase);
 void mesh_net_send_seg(struct mesh_net *net, uint32_t key_id,
 				uint32_t iv_index, uint8_t ttl, uint32_t seq,
