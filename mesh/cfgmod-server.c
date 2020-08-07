@@ -454,50 +454,6 @@ done:
 	return n + 3;
 }
 
-static void hb_pub_timeout_func(struct l_timeout *timeout, void *user_data)
-{
-	struct mesh_net *net = user_data;
-	struct mesh_net_heartbeat *hb = mesh_net_heartbeat_get(net);
-
-	mesh_net_heartbeat_send(net);
-
-	if (hb->pub_count != 0xffff)
-		hb->pub_count--;
-	if (hb->pub_count > 0)
-		l_timeout_modify(hb->pub_timer, hb->pub_period);
-	else {
-		l_timeout_remove(hb->pub_timer);
-		hb->pub_timer = NULL;
-	}
-}
-
-static void update_hb_pub_timer(struct mesh_net *net,
-						struct mesh_net_heartbeat *hb)
-{
-	if (IS_UNASSIGNED(hb->pub_dst) || hb->pub_count == 0) {
-		l_timeout_remove(hb->pub_timer);
-		hb->pub_timer = NULL;
-		return;
-	}
-
-	if (!hb->pub_timer)
-		hb->pub_timer = l_timeout_create(hb->pub_period,
-					hb_pub_timeout_func, net, NULL);
-	else
-		l_timeout_modify(hb->pub_timer, hb->pub_period);
-}
-
-static void hb_sub_timeout_func(struct l_timeout *timeout, void *user_data)
-{
-	struct mesh_net *net = user_data;
-	struct mesh_net_heartbeat *hb = mesh_net_heartbeat_get(net);
-
-	l_debug("HB Subscription Ended");
-	l_timeout_remove(hb->sub_timer);
-	hb->sub_timer = NULL;
-	hb->sub_enabled = false;
-}
-
 static uint8_t uint32_to_log(uint32_t value)
 {
 	uint32_t val = 1;
@@ -516,85 +472,112 @@ static uint8_t uint32_to_log(uint32_t value)
 	return ret;
 }
 
-static uint32_t log_to_uint32(uint8_t log, uint8_t offset)
+static uint16_t hb_subscription_get(struct mesh_node *node, int status)
 {
-	if (!log)
-		return 0x0000;
-	else if (log > 0x11)
-		return 0xffff;
+	struct mesh_net *net = node_get_net(node);
+	struct mesh_net_heartbeat_sub *sub = mesh_net_get_heartbeat_sub(net);
+	struct timeval time_now;
+	uint16_t n;
+
+	gettimeofday(&time_now, NULL);
+	time_now.tv_sec -= sub->start;
+
+	if (time_now.tv_sec >= (long) sub->period)
+		time_now.tv_sec = 0;
 	else
-		return (1 << (log - offset));
+		time_now.tv_sec = sub->period - time_now.tv_sec;
+
+	l_debug("Sub Period (Log %2.2x) %d sec", uint32_to_log(time_now.tv_sec),
+							(int) time_now.tv_sec);
+
+	n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_SUB_STATUS, msg);
+	msg[n++] = status;
+	l_put_le16(sub->src, msg + n);
+	n += 2;
+	l_put_le16(sub->dst, msg + n);
+	n += 2;
+	msg[n++] = uint32_to_log(time_now.tv_sec);
+	msg[n++] = uint32_to_log(sub->count);
+	msg[n++] = sub->count ? sub->min_hops : 0;
+	msg[n++] = sub->max_hops;
+
+	return n;
 }
 
-
-static int hb_subscription_set(struct mesh_net *net, uint16_t src,
-					uint16_t dst, uint8_t period_log)
+static uint16_t hb_subscription_set(struct mesh_node *node, const uint8_t *pkt)
 {
-	struct mesh_net_heartbeat *hb = mesh_net_heartbeat_get(net);
-	struct timeval time_now;
+	uint16_t src, dst;
+	uint8_t period_log;
+	struct mesh_net *net;
+	int status;
+
+	src = l_get_le16(pkt);
+	dst = l_get_le16(pkt + 2);
 
 	/* SRC must be Unicast, DST can be any legal address except Virtual */
 	if ((!IS_UNASSIGNED(src) && !IS_UNICAST(src)) || IS_VIRTUAL(dst))
-		return -1;
+		return 0;
 
-	/* Check if the subscription should be disabled */
-	if (IS_UNASSIGNED(src) || IS_UNASSIGNED(dst)) {
-		if (IS_GROUP(hb->sub_dst))
-			mesh_net_dst_unreg(net, hb->sub_dst);
+	period_log = pkt[4];
 
-		l_timeout_remove(hb->sub_timer);
-		hb->sub_timer = NULL;
-		hb->sub_enabled = false;
-		hb->sub_dst = UNASSIGNED_ADDRESS;
-		hb->sub_src = UNASSIGNED_ADDRESS;
-		hb->sub_count = 0;
-		hb->sub_period = 0;
-		hb->sub_min_hops = 0;
-		hb->sub_max_hops = 0;
-		return MESH_STATUS_SUCCESS;
+	if (period_log > 0x11)
+		return 0;
 
-	} else if (!period_log && src == hb->sub_src && dst == hb->sub_dst) {
-		/* Preserve collected data, but disable */
-		l_timeout_remove(hb->sub_timer);
-		hb->sub_timer = NULL;
-		hb->sub_enabled = false;
-		hb->sub_period = 0;
-		return MESH_STATUS_SUCCESS;
-	}
+	net = node_get_net(node);
 
-	if (hb->sub_dst != dst) {
-		if (IS_GROUP(hb->sub_dst))
-			mesh_net_dst_unreg(net, hb->sub_dst);
-		if (IS_GROUP(dst))
-			mesh_net_dst_reg(net, dst);
-	}
+	status = mesh_net_set_heartbeat_sub(net, src, dst, period_log);
 
-	hb->sub_enabled = !!period_log;
-	hb->sub_src = src;
-	hb->sub_dst = dst;
-	hb->sub_count = 0;
-	hb->sub_period = log_to_uint32(period_log, 1);
-	hb->sub_min_hops = 0x00;
-	hb->sub_max_hops = 0x00;
+	return hb_subscription_get(node, status);
+}
 
-	gettimeofday(&time_now, NULL);
-	hb->sub_start = time_now.tv_sec;
+static uint16_t hb_publication_get(struct mesh_node *node, int status)
+{
+	struct mesh_net *net = node_get_net(node);
+	struct mesh_net_heartbeat_pub *pub = mesh_net_get_heartbeat_pub(net);
+	uint16_t n;
 
-	if (!hb->sub_enabled) {
-		l_timeout_remove(hb->sub_timer);
-		hb->sub_timer = NULL;
-		return MESH_STATUS_SUCCESS;
-	}
+	n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_PUB_STATUS, msg);
+	msg[n++] = status;
+	l_put_le16(pub->dst, msg + n);
+	n += 2;
+	msg[n++] = uint32_to_log(pub->count);
+	msg[n++] = uint32_to_log(pub->period);
+	msg[n++] = pub->ttl;
+	l_put_le16(pub->features, msg + n);
+	n += 2;
+	l_put_le16(pub->net_idx, msg + n);
+	n += 2;
 
-	hb->sub_min_hops = 0xff;
+	return n;
+}
 
-	if (!hb->sub_timer)
-		hb->sub_timer = l_timeout_create(hb->sub_period,
-						hb_sub_timeout_func, net, NULL);
-	else
-		l_timeout_modify(hb->sub_timer, hb->sub_period);
+static uint16_t hb_publication_set(struct mesh_node *node, const uint8_t *pkt)
+{
+	uint16_t dst, features, net_idx;
+	uint8_t period_log, count_log, ttl;
+	struct mesh_net *net;
+	int status;
 
-	return MESH_STATUS_SUCCESS;
+	dst = l_get_le16(pkt);
+	count_log = pkt[2];
+	period_log = pkt[3];
+	ttl = pkt[4];
+
+	if (count_log > 0x11 && count_log != 0xff)
+		return 0;
+
+	if (period_log > 0x11 || ttl > TTL_MASK || IS_VIRTUAL(dst))
+		return 0;
+
+	features = l_get_le16(pkt + 5) & 0xf;
+	net_idx = l_get_le16(pkt + 7);
+
+	net = node_get_net(node);
+
+	status = mesh_net_set_heartbeat_pub(net, dst, features, net_idx, ttl,
+						count_log, period_log);
+
+	return hb_publication_get(node, status);
 }
 
 static void node_reset(void *user_data)
@@ -755,10 +738,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	struct mesh_node *node = (struct mesh_node *) user_data;
 	struct mesh_net *net;
 	const uint8_t *pkt = data;
-	struct timeval time_now;
 	uint32_t opcode;
-	int b_res = MESH_STATUS_SUCCESS;
-	struct mesh_net_heartbeat *hb;
 	uint16_t n_idx;
 	uint8_t state;
 	bool virt = false;
@@ -774,7 +754,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		return false;
 
 	net = node_get_net(node);
-	hb = mesh_net_heartbeat_get(net);
+
 	l_debug("CONFIG-SRV-opcode 0x%x size %u idx %3.3x", opcode, size,
 								net_idx);
 
@@ -1051,113 +1031,35 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_CONFIG_HEARTBEAT_PUB_SET:
-		l_debug("OP_CONFIG_HEARTBEAT_PUB_SET");
+		l_debug("Config Heartbeat Publication Set");
 		if (size != 9)
 			return true;
 
-		if (pkt[2] > 0x11 || pkt[3] > 0x10 || pkt[4] > 0x7f)
-			return true;
-		else if (IS_VIRTUAL(l_get_le16(pkt)))
-			b_res = MESH_STATUS_INVALID_ADDRESS;
-		else if (l_get_le16(pkt + 7) != mesh_net_get_primary_idx(net))
-			/* Future work: check for valid subnets */
-			b_res = MESH_STATUS_INVALID_NETKEY;
-
-		n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_PUB_STATUS,
-						msg);
-		msg[n++] = b_res;
-
-		memcpy(&msg[n], pkt, 9);
-
-		/* Ignore RFU bits in features */
-		l_put_le16(l_get_le16(pkt + 5) & 0xf, &msg[n + 5]);
-
-		/* Add octet count to status */
-		n += 9;
-
-		if (b_res != MESH_STATUS_SUCCESS)
-			break;
-
-		hb->pub_dst = l_get_le16(pkt);
-		if (hb->pub_dst == UNASSIGNED_ADDRESS ||
-				pkt[2] == 0 || pkt[3] == 0) {
-			/*
-			 * We might still have a pub_dst here in case
-			 * we need it for State Change heartbeat
-			 */
-			hb->pub_count = 0;
-			hb->pub_period = 0;
-		} else {
-			hb->pub_count = (pkt[2] != 0xff) ?
-				log_to_uint32(pkt[2], 1) : 0xffff;
-			hb->pub_period = log_to_uint32(pkt[3], 1);
-		}
-
-		hb->pub_ttl = pkt[4];
-		hb->pub_features = l_get_le16(pkt + 5) & 0xf;
-		hb->pub_net_idx = l_get_le16(pkt + 7);
-		update_hb_pub_timer(net, hb);
-
+		n = hb_publication_set(node, pkt);
 		break;
 
 	case OP_CONFIG_HEARTBEAT_PUB_GET:
 		if (size != 0)
 			return true;
 
-		n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_PUB_STATUS, msg);
-		msg[n++] = b_res;
-		l_put_le16(hb->pub_dst, msg + n);
-		n += 2;
-		msg[n++] = uint32_to_log(hb->pub_count);
-		msg[n++] = uint32_to_log(hb->pub_period);
-		msg[n++] = hb->pub_ttl;
-		l_put_le16(hb->pub_features, msg + n);
-		n += 2;
-		l_put_le16(hb->pub_net_idx, msg + n);
-		n += 2;
+		n = hb_publication_get(node, MESH_STATUS_SUCCESS);
 		break;
 
 	case OP_CONFIG_HEARTBEAT_SUB_SET:
 		if (size != 5)
 			return true;
 
-		l_debug("Set Sub Period (Log %2.2x) %d sec",
-				pkt[4], log_to_uint32(pkt[4], 1));
+		l_debug("Set HB Sub Period Log %2.2x", pkt[4]);
 
-		b_res = hb_subscription_set(net, l_get_le16(pkt),
-						l_get_le16(pkt + 2),
-						pkt[4]);
-		if (b_res < 0)
-			return true;
-
-		/* Fall through */
+		n = hb_subscription_set(node, pkt);
+		break;
 
 	case OP_CONFIG_HEARTBEAT_SUB_GET:
-		if (opcode == OP_CONFIG_HEARTBEAT_SUB_GET && size != 0)
+
+		if (size != 0)
 			return true;
 
-		gettimeofday(&time_now, NULL);
-		time_now.tv_sec -= hb->sub_start;
-
-		if (time_now.tv_sec >= (long int) hb->sub_period)
-			time_now.tv_sec = 0;
-		else
-			time_now.tv_sec = hb->sub_period - time_now.tv_sec;
-
-		l_debug("Sub Period (Log %2.2x) %d sec",
-				uint32_to_log(time_now.tv_sec),
-				(int) time_now.tv_sec);
-
-		n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_SUB_STATUS, msg);
-		msg[n++] = b_res;
-		l_put_le16(hb->sub_src, msg + n);
-		n += 2;
-		l_put_le16(hb->sub_dst, msg + n);
-		n += 2;
-		msg[n++] = uint32_to_log(time_now.tv_sec);
-		msg[n++] = uint32_to_log(hb->sub_count);
-		msg[n++] = hb->sub_count ? hb->sub_min_hops : 0;
-		msg[n++] = hb->sub_max_hops;
+		n = hb_subscription_get(node, MESH_STATUS_SUCCESS);
 		break;
 
 	case OP_CONFIG_POLL_TIMEOUT_GET:
@@ -1187,13 +1089,6 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 
 static void cfgmod_srv_unregister(void *user_data)
 {
-	struct mesh_node *node = user_data;
-	struct mesh_net *net = node_get_net(node);
-	struct mesh_net_heartbeat *hb = mesh_net_heartbeat_get(net);
-
-	l_timeout_remove(hb->pub_timer);
-	l_timeout_remove(hb->sub_timer);
-	hb->pub_timer = hb->sub_timer = NULL;
 }
 
 static const struct mesh_model_ops ops = {

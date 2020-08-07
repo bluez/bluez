@@ -129,25 +129,27 @@ struct mesh_net_prov_caps {
 	uint16_t input_action;
 } __packed;
 
-struct mesh_net_heartbeat {
-	struct l_timeout *pub_timer;
-	struct l_timeout *sub_timer;
-	struct timeval sub_time;
-	bool sub_enabled;
-	uint32_t pub_period;
-	uint32_t sub_period;
-	uint32_t sub_start;
-	uint16_t pub_dst;
-	uint16_t pub_count;
-	uint16_t pub_features;
+struct mesh_net_heartbeat_sub {
+	struct l_timeout *timer;
+	uint32_t start;
+	uint32_t period;
 	uint16_t features;
-	uint16_t pub_net_idx;
-	uint16_t sub_src;
-	uint16_t sub_dst;
-	uint16_t sub_count;
-	uint8_t pub_ttl;
-	uint8_t sub_min_hops;
-	uint8_t sub_max_hops;
+	uint16_t src;
+	uint16_t dst;
+	uint16_t count;
+	bool enabled;
+	uint8_t min_hops;
+	uint8_t max_hops;
+};
+
+struct mesh_net_heartbeat_pub {
+	struct l_timeout *timer;
+	uint32_t period;
+	uint16_t dst;
+	uint16_t count;
+	uint16_t features;
+	uint16_t net_idx;
+	uint8_t ttl;
 };
 
 struct mesh_key_set {
@@ -328,9 +330,13 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t key_id,
 				uint32_t iv_index, uint8_t ttl, uint32_t seq,
 				uint16_t src, uint16_t dst, uint32_t hdr,
 				const void *seg, uint16_t seg_len);
-struct mesh_net_heartbeat *mesh_net_heartbeat_get(struct mesh_net *net);
-void mesh_net_heartbeat_init(struct mesh_net *net);
-void mesh_net_heartbeat_send(struct mesh_net *net);
+struct mesh_net_heartbeat_sub *mesh_net_get_heartbeat_sub(struct mesh_net *net);
+int mesh_net_set_heartbeat_sub(struct mesh_net *net, uint16_t src, uint16_t dst,
+							uint8_t period_log);
+struct mesh_net_heartbeat_pub *mesh_net_get_heartbeat_pub(struct mesh_net *net);
+int mesh_net_set_heartbeat_pub(struct mesh_net *net, uint16_t dst,
+				uint16_t features, uint16_t idx, uint8_t ttl,
+				uint8_t count_log, uint8_t period_log);
 bool mesh_net_key_list_get(struct mesh_net *net, uint8_t *buf, uint16_t *count);
 uint16_t mesh_net_get_primary_idx(struct mesh_net *net);
 uint32_t mesh_net_friend_timeout(struct mesh_net *net, uint16_t addr);
