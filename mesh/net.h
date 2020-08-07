@@ -32,8 +32,6 @@ struct mesh_node;
 
 #define CTL		0x80
 
-#define CREDFLAG_MASK	0x1000
-
 #define KEY_CACHE_SIZE	64
 #define FRND_CACHE_MAX	32
 

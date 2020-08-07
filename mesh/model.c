@@ -1076,7 +1076,7 @@ bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 			const uint8_t *pub_addr, uint16_t idx, bool cred_flag,
 			uint8_t ttl, uint8_t period, uint8_t retransmit,
-			bool is_virt, uint16_t *dst)
+			bool is_virt, uint16_t *pub_dst)
 {
 	struct mesh_model *mod;
 	int status, ele_idx = node_get_element_idx(node, addr);
@@ -1103,6 +1103,9 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 		return MESH_STATUS_SUCCESS;
 	}
 
+	if (cred_flag && node_lpn_mode_get(node) != MESH_MODE_ENABLED)
+		return MESH_STATUS_FEATURE_NO_SUPPORT;
+
 	/* Check if the old publication destination is a virtual label */
 	if (mod->pub && mod->pub->virt) {
 		unref_virt(mod->pub->virt);
@@ -1116,7 +1119,7 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 		status = set_virt_pub(mod, pub_addr, idx, cred_flag, ttl,
 						period, retransmit);
 
-	*dst = mod->pub->addr;
+	*pub_dst = mod->pub->addr;
 
 	if (status != MESH_STATUS_SUCCESS)
 		return status;
