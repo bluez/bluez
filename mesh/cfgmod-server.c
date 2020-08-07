@@ -396,6 +396,27 @@ static uint16_t model_app_bind(struct mesh_node *node, const uint8_t *pkt,
 	return n;
 }
 
+static uint16_t cfg_relay_msg(struct mesh_node *node, const uint8_t *pkt,
+								int opcode)
+{
+	uint8_t count;
+	uint16_t interval;
+	uint16_t n;
+
+	if (opcode == OP_CONFIG_RELAY_SET) {
+		count = (pkt[1] & 0x7) + 1;
+		interval = ((pkt[1] >> 3) + 1) * 10;
+		node_relay_mode_set(node, !!pkt[0], count, interval);
+	}
+
+	n = mesh_model_opcode_set(OP_CONFIG_RELAY_STATUS, msg);
+
+	msg[n++] = node_relay_mode_get(node, &count, &interval);
+	msg[n++] = (count - 1) + ((interval/10 - 1) << 3);
+
+	return n;
+}
+
 static void hb_pub_timeout_func(struct l_timeout *timeout, void *user_data)
 {
 	struct mesh_net *net = user_data;
@@ -775,22 +796,13 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	case OP_CONFIG_RELAY_SET:
 		if (size != 2 || pkt[0] > 0x01)
 			return true;
-
-		count = (pkt[1] & 0x7) + 1;
-		interval = ((pkt[1] >> 3) + 1) * 10;
-		node_relay_mode_set(node, !!pkt[0], count, interval);
 		/* Fall Through */
 
 	case OP_CONFIG_RELAY_GET:
 		if (opcode == OP_CONFIG_RELAY_GET && size != 0)
 			return true;
 
-		n = mesh_model_opcode_set(OP_CONFIG_RELAY_STATUS, msg);
-
-		msg[n++] = node_relay_mode_get(node, &count, &interval);
-		msg[n++] = (count - 1) + ((interval/10 - 1) << 3);
-
-		l_debug("Get/Set Relay Config (%d)", msg[n-1]);
+		n = cfg_relay_msg(node, pkt, opcode);
 		break;
 
 	case OP_CONFIG_NETWORK_TRANSMIT_SET:
