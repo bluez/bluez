@@ -662,6 +662,28 @@ static uint16_t cfg_poll_timeout_msg(struct mesh_node *node, const uint8_t *pkt)
 	return n;
 }
 
+static uint16_t cfg_net_tx_msg(struct mesh_node *node, const uint8_t *pkt,
+								int opcode)
+{
+	uint8_t cnt;
+	uint16_t interval, n;
+	struct mesh_net *net = node_get_net(node);
+
+	cnt = (pkt[0] & 0x7) + 1;
+	interval = ((pkt[0] >> 3) + 1) * 10;
+
+	if (opcode == OP_CONFIG_NETWORK_TRANSMIT_SET &&
+			mesh_config_write_net_transmit(node_config_get(node),
+							cnt, interval))
+		mesh_net_transmit_params_set(net, cnt, interval);
+
+	n = mesh_model_opcode_set(OP_CONFIG_NETWORK_TRANSMIT_STATUS, msg);
+
+	mesh_net_transmit_params_get(net, &cnt, &interval);
+	msg[n++] = (cnt - 1) + ((interval/10 - 1) << 3);
+	return n;
+}
+
 static uint16_t get_composition(struct mesh_node *node, uint8_t page,
 								uint8_t *buf)
 {
@@ -704,8 +726,6 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	uint8_t state, status;
 	uint8_t phase;
 	bool virt = false;
-	uint8_t count;
-	uint16_t interval;
 	uint16_t n;
 
 	if (app_idx != APP_IDX_DEV_LOCAL)
@@ -827,25 +847,13 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	case OP_CONFIG_NETWORK_TRANSMIT_SET:
 		if (size != 1)
 			return true;
-
-		count = (pkt[0] & 0x7) + 1;
-		interval = ((pkt[0] >> 3) + 1) * 10;
-
-		if (mesh_config_write_net_transmit(node_config_get(node), count,
-								interval))
-			mesh_net_transmit_params_set(net, count, interval);
 		/* Fall Through */
 
 	case OP_CONFIG_NETWORK_TRANSMIT_GET:
 		if (opcode == OP_CONFIG_NETWORK_TRANSMIT_GET && size != 0)
 			return true;
 
-		n = mesh_model_opcode_set(OP_CONFIG_NETWORK_TRANSMIT_STATUS,
-									msg);
-		mesh_net_transmit_params_get(net, &count, &interval);
-		msg[n++] = (count - 1) + ((interval/10 - 1) << 3);
-
-		l_debug("Get/Set Network Transmit Config");
+		n = cfg_net_tx_msg(node, pkt, opcode);
 		break;
 
 	case OP_CONFIG_PROXY_SET:
