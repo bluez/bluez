@@ -112,8 +112,7 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 	uint16_t ele_addr, idx, ota = UNASSIGNED_ADDRESS;
 	const uint8_t *pub_addr;
 	uint16_t test_addr;
-	uint8_t ttl, period;
-	uint8_t retransmit;
+	uint8_t ttl, period, retransmit;
 	int status;
 	bool cred_flag;
 
@@ -362,115 +361,56 @@ static uint16_t config_sub_del_all(struct mesh_node *node, const uint8_t *pkt,
 	return n;
 }
 
-static void send_model_app_status(struct mesh_node *node, uint16_t net_idx,
-					uint16_t src, uint16_t dst,
-					uint8_t status, uint16_t addr,
-					uint32_t id, uint16_t idx)
-{
-	size_t n = mesh_model_opcode_set(OP_MODEL_APP_STATUS, msg);
-
-	msg[n++] = status;
-	l_put_le16(addr, msg + n);
-	n += 2;
-	l_put_le16(idx, msg + n);
-	n += 2;
-
-	if (IS_VENDOR(id)) {
-		l_put_le16(VENDOR_ID(id), msg + n);
-		n += 2;
-	}
-
-	l_put_le16(MODEL_ID(id), msg + n);
-	n += 2;
-
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
-								false, msg, n);
-}
-
-static void model_app_list(struct mesh_node *node, uint16_t net_idx,
-					uint16_t src, uint16_t dst,
+static uint16_t model_app_list(struct mesh_node *node,
 					const uint8_t *pkt, uint16_t size)
 {
-	uint16_t ele_addr;
+	uint16_t ele_addr, n, bnd_len;
 	uint32_t id;
-	uint8_t *status;
-	uint16_t n;
-	int result;
+	int opcode;
 
+	opcode = (size == 4) ? OP_MODEL_APP_LIST : OP_VEND_MODEL_APP_LIST;
 	ele_addr = l_get_le16(pkt);
 
-	switch (size) {
-	default:
-		return;
-	case 4:
-		n = mesh_model_opcode_set(OP_MODEL_APP_LIST, msg);
-		status = msg + n;
-		id = l_get_le16(pkt + 2);
-		l_put_le16(ele_addr, msg + 1 + n);
-		l_put_le16((uint16_t) id, msg + 3 + n);
-		id = SET_ID(SIG_VENDOR, id);
-		n += 5;
-		break;
-	case 6:
-		n = mesh_model_opcode_set(OP_VEND_MODEL_APP_LIST, msg);
-		status = msg + n;
-		id = SET_ID(l_get_le16(pkt + 2), l_get_le16(pkt + 4));
+	n = mesh_model_opcode_set(opcode, msg);
+	memcpy(msg + n + 1, pkt, size);
 
-		l_put_le16(ele_addr, msg + 1 + n);
-		l_put_le16((uint16_t) VENDOR_ID(id), msg + 3 + n);
-		l_put_le16((uint16_t) MODEL_ID(id), msg + 5 + n);
-		n += 7;
-		break;
-	}
+	id = CFG_GET_ID(size == 6, pkt + 2);
 
-	result = mesh_model_get_bindings(node, ele_addr, id, msg + n,
-						MAX_MSG_LEN - n, &size);
-	n += size;
+	msg[n] = mesh_model_get_bindings(node, ele_addr, id, msg + n + 1 + size,
+					MAX_MSG_LEN - (n + 1 + size), &bnd_len);
 
-	if (result >= 0) {
-		*status = result;
-		mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
-						DEFAULT_TTL, false, msg, n);
-	}
+	if (msg[n] == MESH_STATUS_SUCCESS)
+		n += bnd_len;
+
+	n += (size + 1);
+	return n;
 }
 
-static bool model_app_bind(struct mesh_node *node, uint16_t net_idx,
-					uint16_t src, uint16_t dst,
-					const uint8_t *pkt, uint16_t size,
-					bool unbind)
+static uint16_t model_app_bind(struct mesh_node *node, const uint8_t *pkt,
+						uint16_t size, bool unbind)
 {
-	uint16_t ele_addr;
+	uint16_t ele_addr, idx, n;
 	uint32_t id;
-	uint16_t idx;
-	int result;
 
-	switch (size) {
-	default:
-		return false;
 
-	case 6:
-		id = SET_ID(SIG_VENDOR, l_get_le16(pkt + 4));
-		break;
-	case 8:
-		id = SET_ID(l_get_le16(pkt + 4), l_get_le16(pkt + 6));
-		break;
-	}
+	idx = l_get_le16(pkt + 2);
+	if (idx > APP_IDX_MAX)
+		return 0;
 
 	ele_addr = l_get_le16(pkt);
-	idx = l_get_le16(pkt + 2);
+	id = CFG_GET_ID(size == 8, pkt + 4);
 
-	if (idx > 0xfff)
-		return false;
+	n = mesh_model_opcode_set(OP_MODEL_APP_STATUS, msg);
 
 	if (unbind)
-		result = mesh_model_binding_del(node, ele_addr, id, idx);
+		msg[n] = mesh_model_binding_del(node, ele_addr, id, idx);
 	else
-		result = mesh_model_binding_add(node, ele_addr, id, idx);
+		msg[n] = mesh_model_binding_add(node, ele_addr, id, idx);
 
-	send_model_app_status(node, net_idx, src, dst, result, ele_addr,
-								id, idx);
+	memcpy(msg + n + 1, pkt, size);
+	n += (size + 1);
 
-	return true;
+	return n;
 }
 
 static void hb_pub_timeout_func(struct l_timeout *timeout, void *user_data)
@@ -703,8 +643,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		if (size != 1 || pkt[0] > TTL_MASK || pkt[0] == 1)
 			return true;
 
-		if (pkt[0] <= TTL_MASK)
-			node_default_ttl_set(node, pkt[0]);
+		node_default_ttl_set(node, pkt[0]);
 		/* Fall Through */
 
 	case OP_CONFIG_DEFAULT_TTL_GET:
@@ -1048,22 +987,25 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 
 	case OP_MODEL_APP_BIND:
 	case OP_MODEL_APP_UNBIND:
-		model_app_bind(node, net_idx, src, dst, pkt, size,
-				opcode != OP_MODEL_APP_BIND);
+		if (size != 6 && size != 8)
+			return true;
+
+		n = model_app_bind(node, pkt, size,
+						opcode != OP_MODEL_APP_BIND);
 		break;
 
 	case OP_VEND_MODEL_APP_GET:
 		if (size != 6)
 			return true;
 
-		model_app_list(node, net_idx, src, dst, pkt, size);
+		n = model_app_list(node, pkt, size);
 		break;
 
 	case OP_MODEL_APP_GET:
 		if (size != 4)
 			return true;
 
-		model_app_list(node, net_idx, src, dst, pkt, size);
+		n = model_app_list(node, pkt, size);
 		break;
 
 	case OP_CONFIG_HEARTBEAT_PUB_SET:

@@ -49,10 +49,6 @@ const uint8_t *node_get_token(struct mesh_node *node);
 const uint8_t *node_get_device_key(struct mesh_node *node);
 void node_set_num_elements(struct mesh_node *node, uint8_t num_ele);
 uint8_t node_get_num_elements(struct mesh_node *node);
-bool node_add_binding(struct mesh_node *node, uint8_t ele_idx,
-			uint32_t model_id, uint16_t app_idx);
-bool node_del_binding(struct mesh_node *node, uint8_t ele_idx,
-			uint32_t model_id, uint16_t app_idx);
 uint8_t node_default_ttl_get(struct mesh_node *node);
 bool node_default_ttl_set(struct mesh_node *node, uint8_t ttl);
 bool node_set_sequence_number(struct mesh_node *node, uint32_t seq);

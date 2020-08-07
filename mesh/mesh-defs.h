@@ -105,6 +105,9 @@
 #define NET_IDX_INVALID	0xffff
 #define NET_NID_INVALID	0xff
 
+#define NET_IDX_MAX		0x0fff
+#define APP_IDX_MAX		0x0fff
+
 #define APP_IDX_MASK		0x0fff
 #define APP_IDX_DEV_REMOTE	0x6fff
 #define APP_IDX_DEV_LOCAL	0x7fff

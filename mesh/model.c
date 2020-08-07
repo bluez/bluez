@@ -111,13 +111,7 @@ static bool simple_match(const void *a, const void *b)
 
 static bool has_binding(struct l_queue *bindings, uint16_t idx)
 {
-	const struct l_queue_entry *l;
-
-	for (l = l_queue_get_entries(bindings); l; l = l->next) {
-		if (L_PTR_TO_UINT(l->data) == idx)
-			return true;
-	}
-	return false;
+	return l_queue_find(bindings, simple_match, L_UINT_TO_PTR(idx)) != NULL;
 }
 
 static bool find_virt_by_label(const void *a, const void *b)
@@ -628,7 +622,6 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 						uint16_t app_idx, bool unbind)
 {
 	struct mesh_model *mod;
-	bool is_present;
 	int ele_idx = node_get_element_idx(node, addr);
 
 	if (ele_idx < 0)
@@ -645,12 +638,11 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (!appkey_have_key(node_get_net(node), app_idx))
 		return MESH_STATUS_INVALID_APPKEY;
 
-	is_present = has_binding(mod->bindings, app_idx);
-
-	if (!is_present && unbind)
-		return MESH_STATUS_SUCCESS;
-
-	if (is_present && !unbind)
+	/*
+	 * If deleting a binding that is not present, return success.
+	 * If adding a binding that already exists, return success.
+	 */
+	if (unbind ^ has_binding(mod->bindings, app_idx))
 		return MESH_STATUS_SUCCESS;
 
 	if (unbind) {
