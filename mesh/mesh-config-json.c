@@ -1069,11 +1069,11 @@ static bool parse_model_subscriptions(json_object *jsubs,
 
 		switch (len) {
 		case 4:
-			if (sscanf(str, "%04hx", &subs[i].src.addr) != 1)
+			if (sscanf(str, "%04hx", &subs[i].addr.grp) != 1)
 				goto fail;
 		break;
 		case 32:
-			if (!str2hex(str, len, subs[i].src.virt_addr, 16))
+			if (!str2hex(str, len, subs[i].addr.label, 16))
 				goto fail;
 			subs[i].virt = true;
 			break;
@@ -2068,10 +2068,10 @@ bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 		return false;
 
 	if (!sub->virt) {
-		snprintf(buf, 5, "%4.4x", sub->src.addr);
+		snprintf(buf, 5, "%4.4x", sub->addr.grp);
 		len = 4;
 	} else {
-		hex2str(sub->src.virt_addr, 16, buf, 33);
+		hex2str(sub->addr.label, 16, buf, 33);
 		len = 32;
 	}
 
@@ -2122,10 +2122,10 @@ bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t ele_addr,
 		return true;
 
 	if (!sub->virt) {
-		snprintf(buf, 5, "%4.4x", sub->src.addr);
+		snprintf(buf, 5, "%4.4x", sub->addr.grp);
 		len = 4;
 	} else {
-		hex2str(sub->src.virt_addr, 16, buf, 33);
+		hex2str(sub->addr.label, 16, buf, 33);
 		len = 32;
 	}
 

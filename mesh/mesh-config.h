@@ -24,9 +24,9 @@ struct mesh_config;
 struct mesh_config_sub {
 	bool virt;
 	union {
-		uint16_t	addr;
-		uint8_t	virt_addr[16];
-	} src;
+		uint16_t grp;
+		uint8_t	label[16];
+	} addr;
 };
 
 struct mesh_config_pub {

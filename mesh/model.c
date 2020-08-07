@@ -664,7 +664,7 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 		return MESH_STATUS_SUCCESS;
 	}
 
-	if (l_queue_length(mod->bindings) >= MAX_BINDINGS)
+	if (l_queue_length(mod->bindings) >= MAX_MODEL_BINDINGS)
 		return MESH_STATUS_INSUFF_RESOURCES;
 
 	if (!mesh_config_model_binding_add(node_config_get(node), addr,
@@ -737,7 +737,7 @@ static int set_virt_pub(struct mesh_model *mod, const uint8_t *label,
 }
 
 static int add_virt_sub(struct mesh_net *net, struct mesh_model *mod,
-			     const uint8_t *label, uint16_t *dst)
+				const uint8_t *label, uint16_t *addr)
 {
 	struct mesh_virtual *virt = l_queue_find(mod->virtuals,
 						find_virt_by_label, label);
@@ -745,40 +745,35 @@ static int add_virt_sub(struct mesh_net *net, struct mesh_model *mod,
 	if (!virt) {
 		virt = add_virtual(label);
 		if (!virt)
-			return MESH_STATUS_STORAGE_FAIL;
+			return MESH_STATUS_INSUFF_RESOURCES;
 
 		l_queue_push_head(mod->virtuals, virt);
 		mesh_net_dst_reg(net, virt->addr);
 		l_debug("Added virtual sub addr %4.4x", virt->addr);
 	}
 
-	if (dst)
-		*dst = virt->addr;
+	if (addr)
+		*addr = virt->addr;
 
 	return MESH_STATUS_SUCCESS;
 }
 
 static int add_sub(struct mesh_net *net, struct mesh_model *mod,
-			const uint8_t *group, bool b_virt, uint16_t *dst)
+							uint16_t addr)
 {
-	uint16_t grp;
+	if (!mod->subs)
+		mod->subs = l_queue_new();
 
-	if (b_virt)
-		return add_virt_sub(net, mod, group, dst);
+	if (l_queue_find(mod->subs, simple_match, L_UINT_TO_PTR(addr)))
+		return MESH_STATUS_SUCCESS;
 
-	grp = l_get_le16(group);
-	if (dst)
-		*dst = grp;
+	if ((l_queue_length(mod->subs) + l_queue_length(mod->virtuals)) >=
+						MAX_MODEL_SUBS)
+		return MESH_STATUS_INSUFF_RESOURCES;
 
-	if (!l_queue_find(mod->subs, simple_match, L_UINT_TO_PTR(grp))) {
-
-		if (!mod->subs)
-			mod->subs = l_queue_new();
-
-		l_queue_push_tail(mod->subs, L_UINT_TO_PTR(grp));
-		mesh_net_dst_reg(net, grp);
-		l_debug("Added group subscription %4.4x", grp);
-	}
+	l_queue_push_tail(mod->subs, L_UINT_TO_PTR(addr));
+	mesh_net_dst_reg(net, addr);
+	l_debug("Added group subscription %4.4x", addr);
 
 	return MESH_STATUS_SUCCESS;
 }
@@ -1454,8 +1449,8 @@ int mesh_model_sub_get(struct mesh_node *node, uint16_t addr, uint32_t id,
 	return MESH_STATUS_SUCCESS;
 }
 
-int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
-			const uint8_t *group, bool is_virt, uint16_t *dst)
+int mesh_model_sub_add(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
+								uint16_t addr)
 {
 	struct mesh_model *mod;
 	int status, ele_idx = node_get_element_idx(node, addr);
@@ -1470,7 +1465,35 @@ int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
 		return MESH_STATUS_NOT_SUB_MOD;
 
-	status = add_sub(node_get_net(node), mod, group, is_virt, dst);
+	status = add_sub(node_get_net(node), mod, addr);
+	if (status != MESH_STATUS_SUCCESS)
+		return status;
+
+	if (!mod->cbs)
+		/* External models */
+		cfg_update_model_subs(node, ele_idx, mod);
+
+	return MESH_STATUS_SUCCESS;
+}
+
+int mesh_model_virt_sub_add(struct mesh_node *node, uint16_t ele_addr,
+				uint32_t id, const uint8_t *label,
+				uint16_t *pub_addr)
+{
+	struct mesh_model *mod;
+	int status, ele_idx = node_get_element_idx(node, ele_addr);
+
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
+	if (!mod)
+		return MESH_STATUS_INVALID_MODEL;
+
+	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
+		return MESH_STATUS_NOT_SUB_MOD;
+
+	status = add_virt_sub(node_get_net(node), mod, label, pub_addr);
 
 	if (status != MESH_STATUS_SUCCESS)
 		return status;
@@ -1482,65 +1505,9 @@ int mesh_model_sub_add(struct mesh_node *node, uint16_t addr, uint32_t id,
 	return MESH_STATUS_SUCCESS;
 }
 
-int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
-			const uint8_t *group, bool is_virt, uint16_t *dst)
+int mesh_model_sub_ovrt(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
+								uint16_t addr)
 {
-	struct l_queue *virtuals, *subs;
-	struct mesh_model *mod;
-	int status, ele_idx = node_get_element_idx(node, addr);
-
-	if (ele_idx < 0)
-		return MESH_STATUS_INVALID_ADDRESS;
-
-	mod = get_model(node, (uint8_t) ele_idx, id);
-	if (!mod)
-		return MESH_STATUS_INVALID_MODEL;
-
-	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
-		return MESH_STATUS_NOT_SUB_MOD;
-
-	subs = mod->subs;
-	virtuals = mod->virtuals;
-	mod->subs = l_queue_new();
-	mod->virtuals = l_queue_new();
-
-	if (!mod->subs || !mod->virtuals)
-		return MESH_STATUS_INSUFF_RESOURCES;
-
-	status = add_sub(node_get_net(node), mod, group, is_virt, dst);
-
-	if (status != MESH_STATUS_SUCCESS) {
-		/* Adding new group failed, so revert to old lists */
-		l_queue_destroy(mod->subs, NULL);
-		mod->subs = subs;
-		l_queue_destroy(mod->virtuals, unref_virt);
-		mod->virtuals = virtuals;
-	} else {
-		const struct l_queue_entry *entry;
-		struct mesh_net *net = node_get_net(node);
-
-		entry = l_queue_get_entries(subs);
-
-		for (; entry; entry = entry->next)
-			mesh_net_dst_unreg(net,
-					(uint16_t) L_PTR_TO_UINT(entry->data));
-
-		/* Destroy old lists */
-		l_queue_destroy(subs, NULL);
-		l_queue_destroy(virtuals, unref_virt);
-	}
-
-	if (!mod->cbs)
-		/* External models */
-		cfg_update_model_subs(node, ele_idx, mod);
-
-	return status;
-}
-
-int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
-			const uint8_t *group, bool is_virt, uint16_t *dst)
-{
-	uint16_t grp;
 	struct mesh_model *mod;
 	int ele_idx = node_get_element_idx(node, addr);
 
@@ -1554,26 +1521,104 @@ int mesh_model_sub_del(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
 		return MESH_STATUS_NOT_SUB_MOD;
 
-	if (is_virt) {
-		struct mesh_virtual *virt;
+	l_queue_clear(mod->subs, NULL);
+	l_queue_clear(mod->virtuals, unref_virt);
 
-		virt = l_queue_find(mod->virtuals, find_virt_by_label, group);
-		if (virt) {
-			l_queue_remove(mod->virtuals, virt);
-			grp = virt->addr;
-			unref_virt(virt);
-		} else {
-			if (!mesh_crypto_virtual_addr(group, &grp))
-				return MESH_STATUS_STORAGE_FAIL;
-		}
-	} else {
-		grp = l_get_le16(group);
+	add_sub(node_get_net(node), mod, addr);
+
+	if (!mod->cbs)
+		/* External models */
+		cfg_update_model_subs(node, ele_idx, mod);
+
+	return MESH_STATUS_SUCCESS;
+}
+
+int mesh_model_virt_sub_ovrt(struct mesh_node *node, uint16_t ele_addr,
+					uint32_t id, const uint8_t *label,
+					uint16_t *addr)
+{
+	struct mesh_model *mod;
+	int status, ele_idx = node_get_element_idx(node, ele_addr);
+
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
+	if (!mod)
+		return MESH_STATUS_INVALID_MODEL;
+
+	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
+		return MESH_STATUS_NOT_SUB_MOD;
+
+	l_queue_clear(mod->subs, NULL);
+	l_queue_clear(mod->virtuals, unref_virt);
+
+	status = add_virt_sub(node_get_net(node), mod, label, addr);
+
+	if (!mod->cbs)
+		/* External models */
+		cfg_update_model_subs(node, ele_idx, mod);
+
+	return status;
+}
+
+int mesh_model_sub_del(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
+								uint16_t addr)
+{
+	struct mesh_model *mod;
+	int ele_idx = node_get_element_idx(node, addr);
+
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
+	if (!mod)
+		return MESH_STATUS_INVALID_MODEL;
+
+	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
+		return MESH_STATUS_NOT_SUB_MOD;
+
+	if (l_queue_remove(mod->subs, L_UINT_TO_PTR(addr))) {
+		mesh_net_dst_unreg(node_get_net(node), addr);
+
+		if (!mod->cbs)
+			/* External models */
+			cfg_update_model_subs(node, ele_idx, mod);
 	}
 
-	*dst = grp;
+	return MESH_STATUS_SUCCESS;
+}
 
-	if (l_queue_remove(mod->subs, L_UINT_TO_PTR(grp))) {
-		mesh_net_dst_unreg(node_get_net(node), grp);
+int mesh_model_virt_sub_del(struct mesh_node *node, uint16_t ele_addr,
+					uint32_t id, const uint8_t *label,
+					uint16_t *addr)
+{
+	struct mesh_model *mod;
+	struct mesh_virtual *virt;
+	int ele_idx = node_get_element_idx(node, ele_addr);
+
+	if (ele_idx < 0)
+		return MESH_STATUS_INVALID_ADDRESS;
+
+	mod = get_model(node, (uint8_t) ele_idx, id);
+	if (!mod)
+		return MESH_STATUS_INVALID_MODEL;
+
+	if (!mod->sub_enabled || (mod->cbs && !(mod->cbs->sub)))
+		return MESH_STATUS_NOT_SUB_MOD;
+
+	virt = l_queue_remove_if(mod->virtuals, find_virt_by_label, label);
+
+	if (virt) {
+		*addr = virt->addr;
+		unref_virt(virt);
+	} else {
+		*addr = UNASSIGNED_ADDRESS;
+		return MESH_STATUS_SUCCESS;
+	}
+
+	if (l_queue_remove(mod->subs, L_UINT_TO_PTR(*addr))) {
+		mesh_net_dst_unreg(node_get_net(node), *addr);
 
 		if (!mod->cbs)
 			/* External models */
@@ -1614,9 +1659,9 @@ static struct mesh_model *model_setup(struct mesh_net *net, uint8_t ele_idx,
 	struct mesh_config_pub *pub = db_mod->pub;
 	uint32_t i;
 
-	if (db_mod->num_bindings > MAX_BINDINGS) {
+	if (db_mod->num_bindings > MAX_MODEL_BINDINGS) {
 		l_warn("Binding list too long %u (max %u)",
-					db_mod->num_bindings, MAX_BINDINGS);
+				db_mod->num_bindings, MAX_MODEL_BINDINGS);
 		return NULL;
 	}
 
@@ -1670,22 +1715,12 @@ static struct mesh_model *model_setup(struct mesh_net *net, uint8_t ele_idx,
 		return mod;
 
 	for (i = 0; i < db_mod->num_subs; i++) {
-		uint16_t group;
-		uint8_t *src;
+		struct mesh_config_sub *sub = &db_mod->subs[i];
 
-		/*
-		 * To keep calculations for virtual label coherent,
-		 * convert to little endian.
-		 */
-		l_put_le16(db_mod->subs[i].src.addr, &group);
-		src = db_mod->subs[i].virt ? db_mod->subs[i].src.virt_addr :
-			(uint8_t *) &group;
-
-		if (add_sub(net, mod, src, db_mod->subs[i].virt, NULL) !=
-							MESH_STATUS_SUCCESS) {
-			mesh_model_free(mod);
-			return NULL;
-		}
+		if (!sub->virt)
+			add_sub(net, mod, sub->addr.grp);
+		else
+			add_virt_sub(net, mod, sub->addr.label, NULL);
 	}
 
 	return mod;

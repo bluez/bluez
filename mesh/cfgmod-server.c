@@ -32,6 +32,10 @@
 #include "mesh/mesh-config.h"
 #include "mesh/cfgmod.h"
 
+#define CFG_GET_ID(vendor, pkt)	((vendor) ?	\
+		(SET_ID(l_get_le16((pkt)), l_get_le16((pkt) + 2))) :	\
+		(SET_ID(SIG_VENDOR, l_get_le16(pkt))))
+
 /* Supported composition pages, sorted high to low */
 /* Only page 0 is currently supported */
 static const uint8_t supported_pages[] = {
@@ -185,237 +189,177 @@ static void config_pub_set(struct mesh_node *node, uint16_t net_idx,
 				idx, cred_flag, ttl, period, retransmit);
 }
 
-static void send_sub_status(struct mesh_node *node, uint16_t net_idx,
-					uint16_t src, uint16_t dst,
-					uint8_t status, uint16_t ele_addr,
-					uint16_t addr, uint32_t id)
+static uint16_t cfg_sub_get_msg(struct mesh_node *node, const uint8_t *pkt,
+								uint16_t size)
 {
-	int n = mesh_model_opcode_set(OP_CONFIG_MODEL_SUB_STATUS, msg);
-
-	msg[n++] = status;
-	l_put_le16(ele_addr, msg + n);
-	n += 2;
-	l_put_le16(addr, msg + n);
-	n += 2;
-
-	if (IS_VENDOR(id)) {
-		l_put_le16(VENDOR_ID(id), msg + n);
-		l_put_le16(MODEL_ID(id), msg + n + 2);
-		n += 4;
-	} else {
-		l_put_le16(MODEL_ID(id), msg + n);
-		n += 2;
-	}
-
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
-								false, msg, n);
-}
-
-static bool config_sub_get(struct mesh_node *node, uint16_t net_idx,
-					uint16_t src, uint16_t dst,
-					const uint8_t *pkt, uint16_t size)
-{
-	uint16_t ele_addr;
+	uint16_t ele_addr, n, sub_len;
 	uint32_t id;
-	uint16_t n = 0;
-	int status;
-	uint8_t *msg_status;
-	uint16_t buf_size;
+	int opcode;
+	bool vendor = (size == 6);
 
-	/* Incoming message has already been size-checked */
 	ele_addr = l_get_le16(pkt);
+	id = CFG_GET_ID(vendor, pkt + 2);
+	opcode = vendor ? OP_CONFIG_VEND_MODEL_SUB_LIST :
+						OP_CONFIG_MODEL_SUB_LIST;
+	n = mesh_model_opcode_set(opcode, msg);
+	memcpy(msg + n + 1, pkt, size);
 
-	switch (size) {
-	default:
-		l_debug("Bad length %d", size);
-		return false;
+	msg[n] = mesh_model_sub_get(node, ele_addr, id, msg + n + 1 + size,
+					MAX_MSG_LEN - (n + 1 + size), &sub_len);
 
-	case 4:
-		id = l_get_le16(pkt + 2);
-		n = mesh_model_opcode_set(OP_CONFIG_MODEL_SUB_LIST, msg);
-		msg_status = msg + n;
-		msg[n++] = 0;
-		l_put_le16(ele_addr, msg + n);
-		n += 2;
-		l_put_le16(id, msg + n);
-		n += 2;
-		id = SET_ID(SIG_VENDOR, id);
-		break;
+	if (msg[n] == MESH_STATUS_SUCCESS)
+		n += sub_len;
 
-	case 6:
-		id = SET_ID(l_get_le16(pkt + 2), l_get_le16(pkt + 4));
-		n = mesh_model_opcode_set(OP_CONFIG_VEND_MODEL_SUB_LIST, msg);
-		msg_status = msg + n;
-		msg[n++] = 0;
-		l_put_le16(ele_addr, msg + n);
-		n += 2;
-		l_put_le16(VENDOR_ID(id), msg + n);
-		n += 2;
-		l_put_le16(MODEL_ID(id), msg + n);
-		n += 2;
-		break;
-	}
-
-	buf_size = sizeof(uint16_t) * MAX_GRP_PER_MOD;
-	status = mesh_model_sub_get(node, ele_addr, id, msg + n, buf_size,
-									&size);
-
-	if (status == MESH_STATUS_SUCCESS)
-		n += size;
-
-	*msg_status = (uint8_t) status;
-
-	mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx, DEFAULT_TTL,
-								false, msg, n);
-	return true;
+	n += (size + 1);
+	return n;
 }
 
-static bool save_config_sub(struct mesh_node *node, uint16_t ele_addr,
-					uint32_t id, bool vendor,
-					const uint8_t *addr, bool virt,
-					uint16_t grp, uint32_t opcode)
+static bool save_cfg_sub(struct mesh_node *node, uint16_t ele_addr,
+				uint32_t id, bool vendor, const uint8_t *label,
+				bool virt, uint16_t grp, uint32_t opcode)
 {
+	struct mesh_config *cfg = node_config_get(node);
 	struct mesh_config_sub db_sub = {
 				.virt = virt,
-				.src.addr = grp
+				.addr.grp = grp
 				};
 
+	id = (vendor) ? id : MODEL_ID(id);
+
 	if (virt)
-		memcpy(db_sub.src.virt_addr, addr, 16);
+		memcpy(db_sub.addr.label, label, 16);
+
+	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_DELETE &&
+			opcode == OP_CONFIG_MODEL_SUB_DELETE)
+		return mesh_config_model_sub_del(cfg, ele_addr, id, vendor,
+								&db_sub);
 
 	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE ||
 					opcode == OP_CONFIG_MODEL_SUB_OVERWRITE)
-		mesh_config_model_sub_del_all(node_config_get(node), ele_addr,
-						vendor ? id : MODEL_ID(id),
-									vendor);
 
-	if (opcode != OP_CONFIG_MODEL_SUB_VIRT_DELETE &&
-			opcode != OP_CONFIG_MODEL_SUB_DELETE)
-		return mesh_config_model_sub_add(node_config_get(node),
-					ele_addr, vendor ? id : MODEL_ID(id),
-					vendor, &db_sub);
-	else
-		return mesh_config_model_sub_del(node_config_get(node),
-					ele_addr, vendor ? id : MODEL_ID(id),
-					vendor, &db_sub);
+		if (!mesh_config_model_sub_del_all(cfg, ele_addr, id, vendor))
+			return false;
+
+	return mesh_config_model_sub_add(cfg, ele_addr, id, vendor, &db_sub);
 }
 
-static void config_sub_set(struct mesh_node *node, uint16_t net_idx,
-					uint16_t src, uint16_t dst,
-					const uint8_t *pkt, uint16_t size,
-					bool virt, uint32_t opcode)
+static uint16_t cfg_sub_add_msg(struct mesh_node *node, const uint8_t *pkt,
+					bool vendor, uint32_t opcode)
 {
-	uint16_t grp, ele_addr;
+	uint16_t addr, ele_addr, n;
 	uint32_t id;
-	const uint8_t *addr = NULL;
-	int status = MESH_STATUS_SUCCESS;
-	bool vendor = false;
 
-	switch (size) {
-	default:
-		l_error("Bad length: %d", size);
-		return;
-	case 4:
-		if (opcode != OP_CONFIG_MODEL_SUB_DELETE_ALL)
-			return;
+	addr = l_get_le16(pkt + 2);
 
-		id = SET_ID(SIG_VENDOR, l_get_le16(pkt + 2));
-		break;
-	case 6:
-		if (virt)
-			return;
-
-		if (opcode != OP_CONFIG_MODEL_SUB_DELETE_ALL) {
-			id = SET_ID(SIG_VENDOR, l_get_le16(pkt + 4));
-		} else {
-			id = SET_ID(l_get_le16(pkt + 2), l_get_le16(pkt + 4));
-			vendor = true;
-		}
-
-		break;
-	case 8:
-		if (virt)
-			return;
-
-		id = SET_ID(l_get_le16(pkt + 4), l_get_le16(pkt + 6));
-		vendor = true;
-		break;
-	case 20:
-		if (!virt)
-			return;
-
-		id = SET_ID(SIG_VENDOR, l_get_le16(pkt + 18));
-		break;
-	case 22:
-		if (!virt)
-			return;
-
-		vendor = true;
-		id = SET_ID(l_get_le16(pkt + 18), l_get_le16(pkt + 20));
-		break;
-	}
+	if (!IS_GROUP(addr))
+		return 0;
 
 	ele_addr = l_get_le16(pkt);
+	id = CFG_GET_ID(vendor, pkt + 4);
 
-	if (opcode != OP_CONFIG_MODEL_SUB_DELETE_ALL) {
-		addr = pkt + 2;
-		grp = l_get_le16(addr);
-	} else
-		grp = UNASSIGNED_ADDRESS;
+	n = mesh_model_opcode_set(OP_CONFIG_MODEL_SUB_STATUS, msg);
 
-	switch (opcode) {
-	default:
-		l_debug("Bad opcode: %x", opcode);
-		return;
+	if (opcode == OP_CONFIG_MODEL_SUB_OVERWRITE)
+		msg[n] = mesh_model_sub_ovrt(node, ele_addr, id, addr);
+	else if (opcode == OP_CONFIG_MODEL_SUB_ADD)
+		msg[n] = mesh_model_sub_add(node, ele_addr, id, addr);
+	else
+		msg[n] = mesh_model_sub_del(node, ele_addr, id, addr);
 
-	case OP_CONFIG_MODEL_SUB_DELETE_ALL:
-		status = mesh_model_sub_del_all(node, ele_addr, id);
+	if (msg[n] == MESH_STATUS_SUCCESS &&
+			!save_cfg_sub(node, ele_addr, id, vendor, NULL, false,
+								addr, opcode))
+		msg[n] = MESH_STATUS_STORAGE_FAIL;
 
-		if (status == MESH_STATUS_SUCCESS)
-			mesh_config_model_sub_del_all(node_config_get(node),
-					ele_addr, vendor ? id : MODEL_ID(id),
-									vendor);
-		break;
-
-	case OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE:
-		grp = UNASSIGNED_ADDRESS;
-		/* Fall Through */
-	case OP_CONFIG_MODEL_SUB_OVERWRITE:
-		status = mesh_model_sub_ovr(node, ele_addr, id,
-							addr, virt, &grp);
-
-		if (status == MESH_STATUS_SUCCESS)
-			save_config_sub(node, ele_addr, id, vendor, addr,
-							virt, grp, opcode);
-		break;
-	case OP_CONFIG_MODEL_SUB_VIRT_ADD:
-		grp = UNASSIGNED_ADDRESS;
-		/* Fall Through */
-	case OP_CONFIG_MODEL_SUB_ADD:
-		status = mesh_model_sub_add(node, ele_addr, id,
-							addr, virt, &grp);
-
-		if (status == MESH_STATUS_SUCCESS &&
-				!save_config_sub(node, ele_addr, id, vendor,
-						addr, virt, grp, opcode))
-			status = MESH_STATUS_STORAGE_FAIL;
-
-		break;
-	case OP_CONFIG_MODEL_SUB_VIRT_DELETE:
-		grp = UNASSIGNED_ADDRESS;
-		/* Fall Through */
-	case OP_CONFIG_MODEL_SUB_DELETE:
-		status = mesh_model_sub_del(node, ele_addr, id, addr, virt,
-									&grp);
-
-		if (status == MESH_STATUS_SUCCESS)
-			save_config_sub(node, ele_addr, id, vendor, addr,
-							virt, grp, opcode);
-
-		break;
+	if (vendor) {
+		memcpy(msg + n + 1, pkt, 8);
+		n += 9;
+	} else {
+		memcpy(msg + n + 1, pkt, 6);
+		n += 7;
 	}
 
-	send_sub_status(node, net_idx, src, dst, status, ele_addr, grp, id);
+	return n;
+}
+
+static uint16_t cfg_virt_sub_add_msg(struct mesh_node *node, const uint8_t *pkt,
+						bool vendor, uint32_t opcode)
+{
+	uint16_t addr, ele_addr, n;
+	uint32_t id;
+	const uint8_t *label;
+
+	n = mesh_model_opcode_set(OP_CONFIG_MODEL_SUB_STATUS, msg);
+
+	ele_addr = l_get_le16(pkt);
+	label = pkt + 2;
+	id = CFG_GET_ID(vendor, pkt + 18);
+
+	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE)
+		msg[n] = mesh_model_virt_sub_ovrt(node, ele_addr, id, label,
+									&addr);
+	else if (opcode == OP_CONFIG_MODEL_SUB_VIRT_ADD)
+		msg[n] = mesh_model_virt_sub_add(node, ele_addr, id, label,
+									&addr);
+	else
+		msg[n] = mesh_model_virt_sub_del(node, ele_addr, id, label,
+									&addr);
+
+	if (msg[n] == MESH_STATUS_SUCCESS &&
+				!save_cfg_sub(node, ele_addr, id, vendor,
+						label, true, addr, opcode))
+		msg[n] = MESH_STATUS_STORAGE_FAIL;
+
+	l_put_le16(ele_addr, msg + n + 1);
+	l_put_le16(addr, msg + n + 3);
+
+	if (vendor) {
+		l_put_le16(VENDOR_ID(id), msg + n + 5);
+		l_put_le16(MODEL_ID(id), msg + n + 7);
+		n += 9;
+	} else {
+		l_put_le16(MODEL_ID(id), msg + n + 5);
+		n += 7;
+	}
+
+	return n;
+}
+
+static uint16_t config_sub_del_all(struct mesh_node *node, const uint8_t *pkt,
+								bool vendor)
+{
+	uint16_t ele_addr, n, grp = UNASSIGNED_ADDRESS;
+	uint32_t id;
+
+	n = mesh_model_opcode_set(OP_CONFIG_MODEL_SUB_STATUS, msg);
+
+	ele_addr = l_get_le16(pkt);
+	id = CFG_GET_ID(vendor, pkt + 2);
+
+	msg[n] = mesh_model_sub_del_all(node, ele_addr, id);
+
+	if (msg[n] == MESH_STATUS_SUCCESS) {
+		struct mesh_config *cfg = node_config_get(node);
+
+		if (!mesh_config_model_sub_del_all(cfg, ele_addr,
+						vendor ? id : MODEL_ID(id),
+						vendor))
+			msg[n] = MESH_STATUS_STORAGE_FAIL;
+	}
+
+	l_put_le16(ele_addr, msg + n + 1);
+	l_put_le16(grp, msg + n + 3);
+
+	if (vendor) {
+		l_put_le16(VENDOR_ID(id), msg + n + 5);
+		l_put_le16(MODEL_ID(id), msg + n + 7);
+		n += 9;
+	} else {
+		l_put_le16(MODEL_ID(id), msg + n + 5);
+		n += 7;
+	}
+
+	return n;
 }
 
 static void send_model_app_status(struct mesh_node *node, uint16_t net_idx,
@@ -797,28 +741,38 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 	case OP_CONFIG_VEND_MODEL_SUB_GET:
 		if (size != 6)
 			return true;
-
-		config_sub_get(node, net_idx, src, dst, pkt, size);
-		break;
+		/* Fall Through */
 
 	case OP_CONFIG_MODEL_SUB_GET:
-		if (size != 4)
+		if (size != 4 && opcode == OP_CONFIG_MODEL_SUB_GET)
 			return true;
 
-		config_sub_get(node, net_idx, src, dst, pkt, size);
+		n = cfg_sub_get_msg(node, pkt, size);
 		break;
 
 	case OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE:
 	case OP_CONFIG_MODEL_SUB_VIRT_DELETE:
 	case OP_CONFIG_MODEL_SUB_VIRT_ADD:
-		virt = true;
-		/* Fall Through */
+		if (size != 20 && size != 22)
+			return true;
+
+		n = cfg_virt_sub_add_msg(node, pkt, size == 22, opcode);
+		break;
+
 	case OP_CONFIG_MODEL_SUB_OVERWRITE:
 	case OP_CONFIG_MODEL_SUB_DELETE:
 	case OP_CONFIG_MODEL_SUB_ADD:
+		if (size != 6 && size != 8)
+			return true;
+
+		n = cfg_sub_add_msg(node, pkt, size == 8, opcode);
+		break;
+
 	case OP_CONFIG_MODEL_SUB_DELETE_ALL:
-		config_sub_set(node, net_idx, src, dst, pkt, size, virt,
-									opcode);
+		if (size != 4 && size != 6)
+			return true;
+
+		n = config_sub_del_all(node, pkt, size == 6);
 		break;
 
 	case OP_CONFIG_RELAY_SET:

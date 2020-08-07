@@ -19,8 +19,8 @@
 
 struct mesh_model;
 
-#define MAX_BINDINGS	10
-#define MAX_GRP_PER_MOD	10
+#define MAX_MODEL_BINDINGS	10
+#define MAX_MODEL_SUBS		10
 
 #define ACTION_ADD	1
 #define ACTION_UPDATE	2
@@ -89,12 +89,21 @@ int mesh_model_get_bindings(struct mesh_node *node, uint16_t ele_addr,
 				uint32_t id, uint8_t *buf, uint16_t buf_sz,
 								uint16_t *len);
 int mesh_model_sub_add(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
-				const uint8_t *grp, bool b_virt, uint16_t *dst);
+								uint16_t grp);
+int mesh_model_virt_sub_add(struct mesh_node *node, uint16_t ele_addr,
+					uint32_t id, const uint8_t *label,
+					uint16_t *addr);
 int mesh_model_sub_del(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
-				const uint8_t *grp, bool b_virt, uint16_t *dst);
+								uint16_t grp);
+int mesh_model_virt_sub_del(struct mesh_node *node, uint16_t ele_addr,
+					uint32_t id, const uint8_t *label,
+					uint16_t *addr);
 int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id);
-int mesh_model_sub_ovr(struct mesh_node *node, uint16_t addr, uint32_t id,
-				const uint8_t *grp, bool b_virt, uint16_t *dst);
+int mesh_model_sub_ovrt(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
+								uint16_t addr);
+int mesh_model_virt_sub_ovrt(struct mesh_node *node, uint16_t ele_addr,
+					uint32_t id, const uint8_t *label,
+					uint16_t *addr);
 int mesh_model_sub_get(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
 			uint8_t *buf, uint16_t buf_size, uint16_t *size);
 uint16_t mesh_model_cfg_blk(uint8_t *pkt);
