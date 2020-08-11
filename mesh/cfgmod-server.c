@@ -211,7 +211,7 @@ static bool save_cfg_sub(struct mesh_node *node, uint16_t ele_addr,
 	if (virt)
 		memcpy(db_sub.addr.label, label, 16);
 
-	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_DELETE &&
+	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_DELETE ||
 			opcode == OP_CONFIG_MODEL_SUB_DELETE)
 		return mesh_config_model_sub_del(cfg, ele_addr, id, vendor,
 								&db_sub);
