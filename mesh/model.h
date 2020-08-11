@@ -98,7 +98,8 @@ int mesh_model_sub_del(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
 int mesh_model_virt_sub_del(struct mesh_node *node, uint16_t ele_addr,
 					uint32_t id, const uint8_t *label,
 					uint16_t *addr);
-int mesh_model_sub_del_all(struct mesh_node *node, uint16_t addr, uint32_t id);
+int mesh_model_sub_del_all(struct mesh_node *node, uint16_t ele_addr,
+								uint32_t id);
 int mesh_model_sub_ovrt(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
 								uint16_t addr);
 int mesh_model_virt_sub_ovrt(struct mesh_node *node, uint16_t ele_addr,
