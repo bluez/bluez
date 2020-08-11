@@ -447,11 +447,11 @@ static uint16_t cfg_key_refresh_phase(struct mesh_node *node,
 
 done:
 	msg[n] = status;
-	l_put_le16(idx, msg + n);
-	msg[n + 2] = (status != MESH_STATUS_SUCCESS) ?
+	l_put_le16(idx, &msg[n + 1]);
+	msg[n + 3] = (status != MESH_STATUS_SUCCESS) ?
 						KEY_REFRESH_PHASE_NONE : phase;
 
-	return n + 3;
+	return n + 4;
 }
 
 static uint8_t uint32_to_log(uint32_t value)
