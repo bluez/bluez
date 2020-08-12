@@ -659,7 +659,7 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 		model_unbind_idx(node, ele_idx, mod, app_idx);
 
 		if (!mesh_config_model_binding_del(node_config_get(node),
-							addr, vendor, id,
+							addr, id, vendor,
 								app_idx))
 			return MESH_STATUS_STORAGE_FAIL;
 
@@ -671,7 +671,7 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 		return MESH_STATUS_INSUFF_RESOURCES;
 
 	if (!mesh_config_model_binding_add(node_config_get(node), addr,
-						vendor, id, app_idx))
+							id, vendor, app_idx))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	model_bind_idx(node, ele_idx, mod, app_idx);

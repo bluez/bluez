@@ -837,7 +837,7 @@ bool mesh_config_app_key_del(struct mesh_config *cfg, uint16_t net_idx,
 }
 
 bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
-						bool vendor, uint32_t mod_id,
+						uint32_t mod_id, bool vendor,
 							uint16_t app_idx)
 {
 	json_object *jnode, *jmodel, *jstring, *jarray = NULL;
@@ -882,7 +882,7 @@ bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
 }
 
 bool mesh_config_model_binding_del(struct mesh_config *cfg, uint16_t ele_addr,
-						bool vendor, uint32_t mod_id,
+						uint32_t mod_id, bool vendor,
 							uint16_t app_idx)
 {
 	json_object *jnode, *jmodel, *jarray;
