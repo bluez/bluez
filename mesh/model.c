@@ -628,6 +628,7 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 						uint16_t app_idx, bool unbind)
 {
 	struct mesh_model *mod;
+	bool vendor;
 	int ele_idx = node_get_element_idx(node, addr);
 
 	if (ele_idx < 0)
@@ -651,11 +652,15 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (unbind ^ has_binding(mod->bindings, app_idx))
 		return MESH_STATUS_SUCCESS;
 
+	vendor = IS_VENDOR(id);
+	id = vendor ? id : MODEL_ID(id);
+
 	if (unbind) {
 		model_unbind_idx(node, ele_idx, mod, app_idx);
+
 		if (!mesh_config_model_binding_del(node_config_get(node),
-							addr, IS_VENDOR(id),
-							id, app_idx))
+							addr, vendor, id,
+								app_idx))
 			return MESH_STATUS_STORAGE_FAIL;
 
 		l_debug("Unbind key %4.4x to model %8.8x", app_idx, mod->id);
@@ -666,13 +671,12 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 		return MESH_STATUS_INSUFF_RESOURCES;
 
 	if (!mesh_config_model_binding_add(node_config_get(node), addr,
-						IS_VENDOR(id), id, app_idx))
+						vendor, id, app_idx))
 		return MESH_STATUS_STORAGE_FAIL;
 
 	model_bind_idx(node, ele_idx, mod, app_idx);
 
 	return MESH_STATUS_SUCCESS;
-
 }
 
 static struct mesh_virtual *add_virtual(const uint8_t *v)

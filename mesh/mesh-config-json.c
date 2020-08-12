@@ -169,11 +169,6 @@ static json_object *get_element_model(json_object *jnode, int ele_idx,
 	size_t len;
 	char buf[9];
 
-	if (!vendor)
-		snprintf(buf, 5, "%4.4x", (uint16_t)mod_id);
-	else
-		snprintf(buf, 9, "%8.8x", mod_id);
-
 	if (!json_object_object_get_ex(jnode, "elements", &jelements))
 		return NULL;
 
@@ -189,7 +184,7 @@ static json_object *get_element_model(json_object *jnode, int ele_idx,
 		return NULL;
 
 	if (!vendor) {
-		snprintf(buf, 5, "%4.4x", mod_id);
+		snprintf(buf, 5, "%4.4x", (uint16_t)mod_id);
 		len = 4;
 	} else {
 		snprintf(buf, 9, "%8.8x", mod_id);
