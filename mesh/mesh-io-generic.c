@@ -329,6 +329,30 @@ static void scan_disable_rsp(const void *buf, uint8_t size,
 			set_recv_scan_enable, pvt, NULL);
 }
 
+static bool simple_match(const void *a, const void *b)
+{
+	return a == b;
+}
+
+static bool find_by_ad_type(const void *a, const void *b)
+{
+	const struct tx_pkt *tx = a;
+	uint8_t ad_type = L_PTR_TO_UINT(b);
+
+	return !ad_type || ad_type == tx->pkt[0];
+}
+
+static bool find_by_pattern(const void *a, const void *b)
+{
+	const struct tx_pkt *tx = a;
+	const struct tx_pattern *pattern = b;
+
+	if (tx->len < pattern->len)
+		return false;
+
+	return (!memcmp(tx->pkt, pattern->data, pattern->len));
+}
+
 static bool find_active(const void *a, const void *b)
 {
 	const struct pvt_rx_reg *rx_reg = a;
@@ -533,8 +557,10 @@ static void set_send_adv_data(const void *buf, uint8_t size,
 					&cmd, sizeof(cmd),
 					set_send_adv_enable, pvt, NULL);
 done:
-	if (tx->delete)
+	if (tx->delete) {
+		l_queue_remove_if(pvt->tx_pkts, simple_match, tx);
 		l_free(tx);
+	}
 
 	pvt->tx = NULL;
 }
@@ -569,8 +595,11 @@ static void send_pkt(struct mesh_io_private *pvt, struct tx_pkt *tx,
 {
 	struct bt_hci_cmd_le_set_adv_enable cmd;
 
-	if (pvt->tx && pvt->tx->delete)
+	/* Delete superseded packet in favor of new packet */
+	if (pvt->tx && pvt->tx != tx && pvt->tx->delete) {
+		l_queue_remove_if(pvt->tx_pkts, simple_match, pvt->tx);
 		l_free(pvt->tx);
+	}
 
 	pvt->tx = tx;
 	pvt->interval = interval;
@@ -731,25 +760,6 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 	}
 
 	return true;
-}
-
-static bool find_by_ad_type(const void *a, const void *b)
-{
-	const struct tx_pkt *tx = a;
-	uint8_t ad_type = L_PTR_TO_UINT(b);
-
-	return !ad_type || ad_type == tx->pkt[0];
-}
-
-static bool find_by_pattern(const void *a, const void *b)
-{
-	const struct tx_pkt *tx = a;
-	const struct tx_pattern *pattern = b;
-
-	if (tx->len < pattern->len)
-		return false;
-
-	return (!memcmp(tx->pkt, pattern->data, pattern->len));
 }
 
 static bool tx_cancel(struct mesh_io *io, const uint8_t *data, uint8_t len)
