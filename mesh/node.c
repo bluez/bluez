@@ -353,9 +353,6 @@ static bool add_elements_from_storage(struct mesh_node *node,
 		if (!add_element_from_storage(node, entry->data))
 			return false;
 
-	/* Add configuration server model on the primary element */
-	mesh_model_add(node, PRIMARY_ELE_IDX, CONFIG_SRV_MODEL, NULL);
-
 	return true;
 }
 
