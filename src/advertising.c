@@ -119,9 +119,13 @@ static void client_free(void *data)
 	}
 
 	if (client->reg) {
-		g_dbus_send_message(btd_get_dbus_connection(),
-				dbus_message_new_method_return(client->reg));
+		DBusMessage *reply;
+
+		reply = btd_error_failed(client->reg,
+					"Failed to complete registration");
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
 		dbus_message_unref(client->reg);
+		client->reg = NULL;
 	}
 
 	if (client->add_adv_id)
@@ -1152,8 +1156,6 @@ static struct btd_adv_client *client_create(struct btd_adv_manager *manager,
 	g_dbus_client_set_proxy_handlers(client->client, client_proxy_added,
 							NULL, NULL, client);
 
-	client->reg = dbus_message_ref(msg);
-
 	client->data = bt_ad_new();
 	if (!client->data)
 		goto fail;
@@ -1215,6 +1217,8 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 	}
 
 	DBG("Registered advertisement at path %s", match.path);
+
+	client->reg = dbus_message_ref(msg);
 
 	queue_push_tail(manager->clients, client);
 
