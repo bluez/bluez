@@ -27,6 +27,8 @@
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
 
+#define BT_AD_MAX_DATA_LEN		31
+
 #define BT_AD_FLAGS			0x01
 #define BT_AD_UUID16_SOME		0x02
 #define BT_AD_UUID16_ALL		0x03

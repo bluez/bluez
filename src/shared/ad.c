@@ -33,8 +33,6 @@
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 
-#define MAX_ADV_DATA_LEN 31
-
 struct bt_ad {
 	int ref_count;
 	char *name;
@@ -257,8 +255,8 @@ static size_t name_length(const char *name, size_t *pos)
 
 	len = 2 + strlen(name);
 
-	if (len > MAX_ADV_DATA_LEN - *pos)
-		len = MAX_ADV_DATA_LEN - *pos;
+	if (len > BT_AD_MAX_DATA_LEN - *pos)
+		len = BT_AD_MAX_DATA_LEN - *pos;
 
 	return len;
 }
@@ -426,9 +424,9 @@ static void serialize_name(const char *name, uint8_t *buf, uint8_t *pos)
 		return;
 
 	len = strlen(name);
-	if (len > MAX_ADV_DATA_LEN - (*pos + 2)) {
+	if (len > BT_AD_MAX_DATA_LEN - (*pos + 2)) {
 		type = BT_AD_NAME_SHORT;
-		len = MAX_ADV_DATA_LEN - (*pos + 2);
+		len = BT_AD_MAX_DATA_LEN - (*pos + 2);
 	}
 
 	buf[(*pos)++] = len + 1;
@@ -478,7 +476,7 @@ uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 
 	*length = calculate_length(ad);
 
-	if (*length > MAX_ADV_DATA_LEN)
+	if (*length > BT_AD_MAX_DATA_LEN)
 		return NULL;
 
 	adv_data = malloc0(*length);
@@ -586,7 +584,7 @@ bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t manufacturer_id,
 	if (!ad)
 		return false;
 
-	if (len > (MAX_ADV_DATA_LEN - 2 - sizeof(uint16_t)))
+	if (len > (BT_AD_MAX_DATA_LEN - 2 - sizeof(uint16_t)))
 		return false;
 
 	new_data = queue_find(ad->manufacturer_data, manufacturer_id_data_match,
@@ -723,7 +721,7 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 	if (!ad)
 		return false;
 
-	if (len > (MAX_ADV_DATA_LEN - 2 - (size_t)bt_uuid_len(uuid)))
+	if (len > (BT_AD_MAX_DATA_LEN - 2 - (size_t)bt_uuid_len(uuid)))
 		return false;
 
 	new_data = queue_find(ad->service_data, service_uuid_match, uuid);
@@ -942,7 +940,7 @@ bool bt_ad_add_data(struct bt_ad *ad, uint8_t type, void *data, size_t len)
 	if (!ad)
 		return false;
 
-	if (len > (MAX_ADV_DATA_LEN - 2))
+	if (len > (BT_AD_MAX_DATA_LEN - 2))
 		return false;
 
 	for (i = 0; i < sizeof(type_blacklist); i++) {
