@@ -1658,6 +1658,15 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 	}
 
 not_for_friend:
+	if (dst == FRIENDS_ADDRESS && !net->friend_enable)
+		return false;
+
+	if (dst == RELAYS_ADDRESS && !net->relay.enable)
+		return false;
+
+	if (dst == PROXIES_ADDRESS && !net->proxy_enable)
+		return false;
+
 	return mesh_model_rx(net->node, szmic, seqAuth, seq, iv_index, net_idx,
 						src, dst, key_aid, data, size);
 }

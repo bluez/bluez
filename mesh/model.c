@@ -937,27 +937,6 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	if (!num_ele || IS_UNASSIGNED(addr))
 		goto done;
 
-	/*
-	 * In case of fixed group  addresses check if the
-	 * corresponding mode is enabled.
-	 */
-	if (dst == PROXIES_ADDRESS &&
-			(node_proxy_mode_get(node) != MESH_MODE_ENABLED))
-		goto done;
-
-	if (dst == FRIENDS_ADDRESS &&
-			(node_friend_mode_get(node) != MESH_MODE_ENABLED))
-		goto done;
-
-	if (dst == RELAYS_ADDRESS) {
-		uint8_t cnt;
-		uint16_t interval;
-
-		if (node_relay_mode_get(node, &cnt, &interval) !=
-							MESH_MODE_ENABLED)
-			goto done;
-	}
-
 	is_subscription = !(IS_UNICAST(dst));
 
 	for (i = 0; i < num_ele; i++) {
