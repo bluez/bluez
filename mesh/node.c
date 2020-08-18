@@ -399,24 +399,16 @@ static bool init_storage_dir(struct mesh_node *node)
 
 static void update_net_settings(struct mesh_node *node)
 {
-	uint8_t mode;
+	struct mesh_net *net = node->net;
 
-	mode = node->proxy;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_proxy_mode(node->net, mode == MESH_MODE_ENABLED);
+	mesh_net_set_proxy_mode(net, node->proxy == MESH_MODE_ENABLED);
 
-	mode = node->friend;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_friend_mode(node->net, mode == MESH_MODE_ENABLED);
+	mesh_net_set_friend_mode(net, node->friend == MESH_MODE_ENABLED);
 
-	mode = node->relay.mode;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_relay_mode(node->net, mode == MESH_MODE_ENABLED,
+	mesh_net_set_relay_mode(net, node->relay.mode == MESH_MODE_ENABLED,
 					node->relay.cnt, node->relay.interval);
 
-	mode = node->beacon;
-	if (mode == MESH_MODE_ENABLED || mode == MESH_MODE_DISABLED)
-		mesh_net_set_beacon_mode(node->net, mode == MESH_MODE_ENABLED);
+	mesh_net_set_beacon_mode(net, node->beacon == MESH_MODE_ENABLED);
 }
 
 static bool init_from_storage(struct mesh_config_node *db_node,
