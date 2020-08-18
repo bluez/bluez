@@ -627,6 +627,13 @@ static void parse_config(GKeyFile *config)
 	else
 		main_opts.fast_conn = boolean;
 
+	boolean = g_key_file_get_boolean(config, "General",
+						"RefreshDiscovery", &err);
+	if (err)
+		g_clear_error(&err);
+	else
+		main_opts.refresh_discovery = boolean;
+
 	str = g_key_file_get_string(config, "GATT", "Cache", &err);
 	if (err) {
 		DBG("%s", err->message);
@@ -688,6 +695,7 @@ static void init_defaults(void)
 	main_opts.reverse_discovery = TRUE;
 	main_opts.name_resolv = TRUE;
 	main_opts.debug_keys = FALSE;
+	main_opts.refresh_discovery = TRUE;
 
 	main_opts.default_params.num_entries = 0;
 	main_opts.default_params.br_page_scan_type = 0xFFFF;

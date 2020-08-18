@@ -4076,7 +4076,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	device->db_id = gatt_db_register(device->db, gatt_service_added,
 					gatt_service_removed, device, NULL);
 
-	device->refresh_discovery = true;
+	device->refresh_discovery = main_opts.refresh_discovery;
 
 	return btd_device_ref(device);
 }

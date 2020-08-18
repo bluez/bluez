@@ -100,6 +100,7 @@ struct main_opts {
 	gboolean	name_resolv;
 	gboolean	debug_keys;
 	gboolean	fast_conn;
+	gboolean	refresh_discovery;
 
 	uint16_t	did_source;
 	uint16_t	did_vendor;
