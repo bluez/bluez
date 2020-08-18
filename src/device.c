@@ -195,6 +195,7 @@ struct btd_device {
 	bool		le;
 	bool		pending_paired;		/* "Paired" waiting for SDP */
 	bool		svc_refreshed;
+	bool		refresh_discovery;
 
 	/* Manage whether this device can wake the system from suspend.
 	 * - wake_support: Requires a profile that supports wake (i.e. HID)
@@ -1472,7 +1473,6 @@ static gboolean dev_property_wake_allowed_exist(
 	return device_get_wake_support(device);
 }
 
-
 static gboolean disconnect_all(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -1805,7 +1805,7 @@ done:
 				btd_error_failed(dev->connect, strerror(-err)));
 	} else {
 		/* Start passive SDP discovery to update known services */
-		if (dev->bredr && !dev->svc_refreshed)
+		if (dev->bredr && !dev->svc_refreshed && dev->refresh_discovery)
 			device_browse_sdp(dev, NULL);
 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
 	}
@@ -2570,6 +2570,11 @@ done:
 
 	if (req)
 		browse_request_free(req);
+}
+
+void device_set_refresh_discovery(struct btd_device *dev, bool refresh)
+{
+	dev->refresh_discovery = refresh;
 }
 
 static void device_set_svc_refreshed(struct btd_device *device, bool value)
@@ -4070,6 +4075,8 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	device->db_id = gatt_db_register(device->db, gatt_service_added,
 					gatt_service_removed, device, NULL);
+
+	device->refresh_discovery = true;
 
 	return btd_device_ref(device);
 }
