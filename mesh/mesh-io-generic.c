@@ -209,6 +209,7 @@ static void configure_hci(struct mesh_io_private *io)
 	struct bt_hci_cmd_le_set_scan_parameters cmd;
 	struct bt_hci_cmd_set_event_mask cmd_sem;
 	struct bt_hci_cmd_le_set_event_mask cmd_slem;
+	struct bt_hci_cmd_le_set_random_address cmd_raddr;
 
 	/* Set scan parameters */
 	cmd.type = 0x00; /* Passive Scanning. No scanning PDUs shall be sent */
@@ -261,6 +262,10 @@ static void configure_hci(struct mesh_io_private *io)
 	cmd_slem.mask[6] = 0x00;
 	cmd_slem.mask[7] = 0x00;
 
+	/* Set LE random address */
+	l_getrandom(cmd_raddr.addr, 6);
+	cmd_raddr.addr[5] |= 0xc0;
+
 	/* TODO: Move to suitable place. Set suitable masks */
 	/* Reset Command */
 	bt_hci_send(io->hci, BT_HCI_CMD_RESET, NULL, 0, hci_generic_callback,
@@ -281,6 +286,10 @@ static void configure_hci(struct mesh_io_private *io)
 	/* Set LE event mask */
 	bt_hci_send(io->hci, BT_HCI_CMD_LE_SET_EVENT_MASK, &cmd_slem,
 			sizeof(cmd_slem), hci_generic_callback, NULL, NULL);
+
+	/* Set LE random address */
+	bt_hci_send(io->hci, BT_HCI_CMD_LE_SET_RANDOM_ADDRESS, &cmd_raddr,
+			sizeof(cmd_raddr), hci_generic_callback, NULL, NULL);
 
 	/* Scan Params */
 	bt_hci_send(io->hci, BT_HCI_CMD_LE_SET_SCAN_PARAMETERS, &cmd,
