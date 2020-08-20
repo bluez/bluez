@@ -34,10 +34,10 @@ struct mesh_config_pub {
 	uint32_t period;
 	uint16_t addr;
 	uint16_t idx;
+	uint16_t interval;
 	uint8_t ttl;
 	uint8_t credential;
-	uint8_t count;
-	uint8_t interval;
+	uint8_t cnt;
 	uint8_t virt_addr[16];
 };
 

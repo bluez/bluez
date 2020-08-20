@@ -48,7 +48,7 @@ static uint8_t msg[MAX_MSG_LEN];
 
 static uint16_t set_pub_status(uint8_t status, uint16_t ele_addr, uint32_t id,
 				uint16_t pub_addr, uint16_t idx, bool cred_flag,
-				uint8_t ttl, uint8_t period, uint8_t retransmit)
+				uint8_t ttl, uint8_t period, uint8_t rtx)
 {
 	size_t n;
 
@@ -61,7 +61,7 @@ static uint16_t set_pub_status(uint8_t status, uint16_t ele_addr, uint32_t id,
 	n += 6;
 	msg[n++] = ttl;
 	msg[n++] = period;
-	msg[n++] = retransmit;
+	msg[n++] = rtx;
 
 	if (!IS_VENDOR(id)) {
 		l_put_le16(MODEL_ID(id), msg + n);
@@ -80,6 +80,7 @@ static uint16_t config_pub_get(struct mesh_node *node, const uint8_t *pkt,
 {
 	uint32_t id;
 	uint16_t ele_addr;
+	uint8_t rtx;
 	struct mesh_model_pub *pub;
 	int status;
 
@@ -88,10 +89,12 @@ static uint16_t config_pub_get(struct mesh_node *node, const uint8_t *pkt,
 
 	pub = mesh_model_pub_get(node, ele_addr, id, &status);
 
+	rtx = pub->rtx.cnt + (((pub->rtx.interval / 50) - 1) << 3);
+
 	if (pub && status == MESH_STATUS_SUCCESS)
 		return set_pub_status(status, ele_addr, id, pub->addr, pub->idx,
 					pub->credential, pub->ttl, pub->period,
-					pub->retransmit);
+					rtx);
 	else
 		return set_pub_status(status, ele_addr, id, 0, 0, 0, 0, 0, 0);
 }
@@ -102,7 +105,7 @@ static uint16_t config_pub_set(struct mesh_node *node, const uint8_t *pkt,
 	uint32_t id;
 	uint16_t ele_addr, idx, pub_dst;
 	const uint8_t *pub_addr;
-	uint8_t ttl, period, retransmit;
+	uint8_t ttl, period, rtx, cnt, interval;
 	int status;
 	bool cred_flag;
 
@@ -124,12 +127,15 @@ static uint16_t config_pub_set(struct mesh_node *node, const uint8_t *pkt,
 	idx &= APP_IDX_MASK;
 	ttl = pkt[6];
 	period = pkt[7];
-	retransmit = pkt[8];
+	rtx = pkt[8];
 	id = CFG_GET_ID(vendor, pkt + 9);
 
+	cnt = rtx & 0x7;
+	interval = ((rtx >> 3) + 1) * 50;
+
 	status = mesh_model_pub_set(node, ele_addr, id, pub_addr, idx,
-					cred_flag, ttl, period, retransmit,
-					virt, &pub_dst);
+					cred_flag, ttl, period, cnt,
+					interval, virt, &pub_dst);
 
 	l_debug("pub_set: status %d, ea %4.4x, ota: %4.4x, id: %x, idx: %3.3x",
 					status, ele_addr, pub_dst, id, idx);
@@ -153,8 +159,8 @@ static uint16_t config_pub_set(struct mesh_node *node, const uint8_t *pkt,
 			.ttl = ttl,
 			.credential = cred_flag,
 			.period = period,
-			.count = retransmit & 0x7,
-			.interval = ((retransmit >> 3) + 1) * 50
+			.cnt = cnt,
+			.interval = interval
 		};
 
 		if (virt)
@@ -168,7 +174,7 @@ static uint16_t config_pub_set(struct mesh_node *node, const uint8_t *pkt,
 	}
 
 	return set_pub_status(status, ele_addr, id, pub_dst, idx, cred_flag,
-						ttl, period, retransmit);
+						ttl, period, rtx);
 }
 
 static uint16_t cfg_sub_get_msg(struct mesh_node *node, const uint8_t *pkt,

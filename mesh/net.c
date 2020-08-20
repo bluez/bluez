@@ -212,6 +212,8 @@ struct net_queue_data {
 
 struct oneshot_tx {
 	struct mesh_net *net;
+	uint16_t interval;
+	uint8_t cnt;
 	uint8_t size;
 	uint8_t packet[30];
 };
@@ -1399,7 +1401,8 @@ static void friend_ack_rxed(struct mesh_net *net, uint32_t iv_index,
 	l_queue_foreach(net->friends, enqueue_friend_pkt, &frnd_ack);
 }
 
-static bool send_seg(struct mesh_net *net, struct mesh_sar *msg, uint8_t seg);
+static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
+					struct mesh_sar *msg, uint8_t seg);
 
 static void send_frnd_ack(struct mesh_net *net, uint16_t src, uint16_t dst,
 						uint32_t hdr, uint32_t flags)
@@ -1593,7 +1596,7 @@ static void ack_received(struct mesh_net *net, bool timeout,
 		l_debug("Resend Seg %d net:%p dst:%x app_idx:%3.3x",
 				i, net, outgoing->remote, outgoing->app_idx);
 
-		send_seg(net, outgoing, i);
+		send_seg(net, net->tx_cnt, net->tx_interval, outgoing, i);
 	}
 
 	l_timeout_remove(outgoing->seg_timeout);
@@ -2152,8 +2155,8 @@ static void send_msg_pkt_oneshot(void *user_data)
 
 	tx->packet[0] = MESH_AD_TYPE_NETWORK;
 	info.type = MESH_IO_TIMING_TYPE_GENERAL;
-	info.u.gen.interval = net->tx_interval;
-	info.u.gen.cnt = net->tx_cnt;
+	info.u.gen.interval = tx->interval;
+	info.u.gen.cnt = tx->cnt;
 	info.u.gen.min_delay = DEFAULT_MIN_DELAY;
 	/* No extra randomization when sending regular mesh messages */
 	info.u.gen.max_delay = DEFAULT_MIN_DELAY;
@@ -2162,11 +2165,14 @@ static void send_msg_pkt_oneshot(void *user_data)
 	l_free(tx);
 }
 
-static void send_msg_pkt(struct mesh_net *net, uint8_t *packet, uint8_t size)
+static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
+						uint8_t *packet, uint8_t size)
 {
 	struct oneshot_tx *tx = l_new(struct oneshot_tx, 1);
 
 	tx->net = net;
+	tx->interval = interval;
+	tx->cnt = cnt;
 	tx->size = size;
 	memcpy(tx->packet, packet, size);
 
@@ -2881,7 +2887,8 @@ bool mesh_net_dst_unreg(struct mesh_net *net, uint16_t dst)
 	return true;
 }
 
-static bool send_seg(struct mesh_net *net, struct mesh_sar *msg, uint8_t segO)
+static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
+					struct mesh_sar *msg, uint8_t segO)
 {
 	struct mesh_subnet *subnet;
 	uint8_t seg_len;
@@ -2936,7 +2943,7 @@ static bool send_seg(struct mesh_net *net, struct mesh_sar *msg, uint8_t segO)
 		return false;
 	}
 
-	send_msg_pkt(net, packet, packet_len + 1);
+	send_msg_pkt(net, cnt, interval, packet, packet_len + 1);
 
 	msg->last_seg = segO;
 
@@ -2976,7 +2983,8 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 		return;
 	}
 
-	send_msg_pkt(net, packet, packet_len + 1);
+	send_msg_pkt(net, net->tx_cnt, net->tx_interval, packet,
+								packet_len + 1);
 
 	l_debug("TX: Friend Seg-%d %04x -> %04x : len %u) : TTL %d : SEQ %06x",
 					segO, src, dst, packet_len, ttl, seq);
@@ -2986,9 +2994,9 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 
 bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 				uint16_t dst, uint8_t key_aid, uint16_t net_idx,
-				uint8_t ttl, uint32_t seq, uint32_t iv_index,
-				bool segmented, bool szmic,
-				const void *msg, uint16_t msg_len)
+				uint8_t ttl, uint8_t cnt, uint16_t interval,
+				uint32_t seq, uint32_t iv_index, bool segmented,
+				bool szmic, const void *msg, uint16_t msg_len)
 {
 	struct mesh_sar *payload = NULL;
 	uint8_t seg, seg_max;
@@ -3063,11 +3071,12 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 
 		for (i = 0; i < 4; i++) {
 			for (seg = 0; seg <= seg_max && result; seg++)
-				result = send_seg(net, payload, seg);
+				result = send_seg(net, cnt, interval, payload,
+									seg);
 		}
 	} else {
 		for (seg = 0; seg <= seg_max && result; seg++)
-			result = send_seg(net, payload, seg);
+			result = send_seg(net, cnt, interval, payload, seg);
 	}
 
 	/* Reliable: Cache; Unreliable: Flush*/
@@ -3117,7 +3126,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id, uint32_t iv_index,
 		return;
 	}
 
-	send_msg_pkt(net, pkt, pkt_len + 1);
+	send_msg_pkt(net, net->tx_cnt, net->tx_interval, pkt, pkt_len + 1);
 
 	l_debug("TX: Friend ACK %04x -> %04x : len %u : TTL %d : SEQ %06x",
 					src, dst, pkt_len, ttl, seq);
@@ -3191,8 +3200,9 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 		return;
 	}
 
-	if (dst != 0)
-		send_msg_pkt(net, pkt, pkt_len + 1);
+	if (!(IS_UNASSIGNED(dst)))
+		send_msg_pkt(net, net->tx_cnt, net->tx_interval, pkt,
+								pkt_len + 1);
 }
 
 int mesh_net_key_refresh_phase_set(struct mesh_net *net, uint16_t idx,

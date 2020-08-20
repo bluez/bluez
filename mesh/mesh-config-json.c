@@ -1021,7 +1021,7 @@ static struct mesh_config_pub *parse_model_publication(json_object *jpub)
 
 	if (!get_int(jvalue, "count", &value))
 		goto fail;
-	pub->count = (uint8_t) value;
+	pub->cnt = (uint8_t) value;
 
 	if (!get_int(jvalue, "interval", &value))
 		goto fail;
@@ -1339,20 +1339,20 @@ static bool parse_composition(json_object *jcomp, struct mesh_config_node *node)
 
 static bool read_net_transmit(json_object *jobj, struct mesh_config_node *node)
 {
-	json_object *jretransmit, *jvalue;
+	json_object *jrtx, *jvalue;
 	uint16_t interval;
 	uint8_t cnt;
 
-	if (!json_object_object_get_ex(jobj, "retransmit", &jretransmit))
+	if (!json_object_object_get_ex(jobj, "retransmit", &jrtx))
 		return true;
 
-	if (!json_object_object_get_ex(jretransmit, "count", &jvalue))
+	if (!json_object_object_get_ex(jrtx, "count", &jvalue))
 		return false;
 
 	/* TODO: add range checking */
 	cnt = (uint8_t) json_object_get_int(jvalue);
 
-	if (!json_object_object_get_ex(jretransmit, "interval", &jvalue))
+	if (!json_object_object_get_ex(jrtx, "interval", &jvalue))
 		return false;
 
 	interval = (uint16_t) json_object_get_int(jvalue);
@@ -1566,30 +1566,30 @@ bool mesh_config_write_relay_mode(struct mesh_config *cfg, uint8_t mode,
 bool mesh_config_write_net_transmit(struct mesh_config *cfg, uint8_t cnt,
 							uint16_t interval)
 {
-	json_object *jnode, *jretransmit;
+	json_object *jnode, *jrtx;
 
 	if (!cfg)
 		return false;
 
 	jnode = cfg->jnode;
 
-	jretransmit = json_object_new_object();
-	if (!jretransmit)
+	jrtx = json_object_new_object();
+	if (!jrtx)
 		return false;
 
-	if (!write_int(jretransmit, "count", cnt))
+	if (!write_int(jrtx, "count", cnt))
 		goto fail;
 
-	if (!write_int(jretransmit, "interval", interval))
+	if (!write_int(jrtx, "interval", interval))
 		goto fail;
 
 	json_object_object_del(jnode, "retransmit");
-	json_object_object_add(jnode, "retransmit", jretransmit);
+	json_object_object_add(jnode, "retransmit", jrtx);
 
 	return save_config(cfg->jnode, cfg->node_dir_path);
 
 fail:
-	json_object_put(jretransmit);
+	json_object_put(jrtx);
 	return false;
 
 }
@@ -1841,7 +1841,7 @@ bool mesh_config_model_pub_add(struct mesh_config *cfg, uint16_t ele_addr,
 					uint32_t mod_id, bool vendor,
 					struct mesh_config_pub *pub)
 {
-	json_object *jnode, *jmodel, *jpub, *jretransmit;
+	json_object *jnode, *jmodel, *jpub, *jrtx;
 	bool res;
 	int ele_idx;
 
@@ -1885,17 +1885,17 @@ bool mesh_config_model_pub_add(struct mesh_config *cfg, uint16_t ele_addr,
 						pub->credential ? 1 : 0))
 		goto fail;
 
-	jretransmit = json_object_new_object();
-	if (!jretransmit)
+	jrtx = json_object_new_object();
+	if (!jrtx)
 		goto fail;
 
-	if (!write_int(jretransmit, "count", pub->count))
+	if (!write_int(jrtx, "count", pub->cnt))
 		goto fail;
 
-	if (!write_int(jretransmit, "interval", pub->interval))
+	if (!write_int(jrtx, "interval", pub->interval))
 		goto fail;
 
-	json_object_object_add(jpub, "retransmit", jretransmit);
+	json_object_object_add(jpub, "retransmit", jrtx);
 	json_object_object_add(jmodel, "publish", jpub);
 
 	return save_config(jnode, cfg->node_dir_path);

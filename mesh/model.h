@@ -40,10 +40,13 @@ struct mesh_model_pub {
 	struct mesh_virtual *virt;
 	uint16_t addr;
 	uint16_t idx;
+	struct {
+		uint16_t interval;
+		uint8_t cnt;
+	} rtx;
 	uint8_t ttl;
 	uint8_t credential;
 	uint8_t period;
-	uint8_t retransmit;
 };
 
 typedef void (*mesh_model_unregister)(void *user_data);
@@ -78,8 +81,8 @@ struct mesh_model_pub *mesh_model_pub_get(struct mesh_node *node,
 						uint32_t id, int *status);
 int mesh_model_pub_set(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
 			const uint8_t *addr, uint16_t idx, bool cred_flag,
-			uint8_t ttl, uint8_t period, uint8_t retransmit,
-			bool is_virt, uint16_t *dst);
+			uint8_t ttl, uint8_t period, uint8_t rtx_cnt,
+			uint16_t rtx_interval, bool is_virt, uint16_t *dst);
 
 int mesh_model_binding_add(struct mesh_node *node, uint16_t ele_addr,
 						uint32_t id, uint16_t idx);
