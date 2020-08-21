@@ -547,8 +547,6 @@ static bool msg_send(struct mesh_node *node, bool cred, uint16_t src,
 			l_debug("no app key for (%x)", app_idx);
 			return false;
 		}
-
-		net_idx = appkey_net_idx(node_get_net(node), app_idx);
 	}
 
 	out = l_malloc(out_len);

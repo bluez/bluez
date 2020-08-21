@@ -1753,7 +1753,7 @@ static struct l_dbus_message *send_call(struct l_dbus *dbus,
 	const char *sender, *ele_path;
 	struct l_dbus_message_iter iter_data;
 	struct node_element *ele;
-	uint16_t dst, app_idx, src;
+	uint16_t dst, app_idx, net_idx, src;
 	uint8_t *data;
 	uint32_t len;
 
@@ -1782,10 +1782,15 @@ static struct l_dbus_message *send_call(struct l_dbus *dbus,
 
 	if (app_idx & ~APP_IDX_MASK)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
-						"Invalid key_index");
+						"Invalid key index");
 
-	if (!mesh_model_send(node, src, dst, app_idx, 0, DEFAULT_TTL, false,
-								data, len))
+	net_idx = appkey_net_idx(node_get_net(node), app_idx);
+	if (net_idx == NET_IDX_INVALID)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Key not found");
+
+	if (!mesh_model_send(node, src, dst, app_idx, net_idx, DEFAULT_TTL,
+							false, data, len))
 		return dbus_error(msg, MESH_ERROR_FAILED, NULL);
 
 	return l_dbus_message_new_method_return(msg);
