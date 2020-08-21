@@ -186,6 +186,7 @@ Methods		array{byte} ReadValue(dict options)
 			Possible Errors: org.bluez.Error.Failed
 					 org.bluez.Error.NotPermitted
 					 org.bluez.Error.InProgress
+					 org.bluez.Error.NotConnected
 					 org.bluez.Error.NotSupported
 
 		void StopNotify()
