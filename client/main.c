@@ -1742,6 +1742,39 @@ static void cmd_pair(int argc, char *argv[])
 	bt_shell_printf("Attempting to pair with %s\n", proxy_address(proxy));
 }
 
+static void cancel_pairing_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to cancel pairing: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	bt_shell_printf("Cancel pairing successful\n");
+}
+
+static void cmd_cancel_pairing(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	proxy = find_device(argc, argv);
+	if (!proxy)
+		return;
+
+	if (g_dbus_proxy_method_call(proxy, "CancelPairing", NULL,
+				cancel_pairing_reply, NULL, NULL) == FALSE) {
+		bt_shell_printf("Failed to cancel pairing\n");
+		return;
+	}
+
+	bt_shell_printf("Attempting to cancel pairing with %s\n",
+							proxy_address(proxy));
+}
+
 static void cmd_trust(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -2816,6 +2849,8 @@ static const struct bt_shell_menu main_menu = {
 							dev_generator },
 	{ "pair",         "[dev]",    cmd_pair, "Pair with device",
 							dev_generator },
+	{ "cancel-pairing",  "[dev]",    cmd_cancel_pairing,
+				"Cancel pairing with device", dev_generator },
 	{ "trust",        "[dev]",    cmd_trust, "Trust device",
 							dev_generator },
 	{ "untrust",      "[dev]",    cmd_untrust, "Untrust device",
