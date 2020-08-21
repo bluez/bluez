@@ -3006,6 +3006,7 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type)
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 {
 	struct bearer_state *state = get_state(device, bdaddr_type);
+	DBusMessage *reply;
 
 	if (!state->connected)
 		return;
@@ -3018,6 +3019,18 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 	if (device->disconn_timer > 0) {
 		g_source_remove(device->disconn_timer);
 		device->disconn_timer = 0;
+	}
+
+	/* This could be executed while the client is waiting for Connect() but
+	 * att_connect_cb has not been invoked.
+	 * In that case reply the client that the connection failed.
+	 */
+	if (device->connect) {
+		DBG("connection removed while Connect() is waiting reply");
+		reply = btd_error_failed(device->connect, "Disconnected early");
+		g_dbus_send_message(dbus_conn, reply);
+		dbus_message_unref(device->connect);
+		device->connect = NULL;
 	}
 
 	while (device->disconnects) {
