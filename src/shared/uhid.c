@@ -219,6 +219,15 @@ bool bt_uhid_unregister(struct bt_uhid *uhid, unsigned int id)
 	return true;
 }
 
+bool bt_uhid_unregister_all(struct bt_uhid *uhid)
+{
+	if (!uhid)
+		return false;
+
+	queue_remove_all(uhid->notify_list, NULL, NULL, free);
+	return true;
+}
+
 int bt_uhid_send(struct bt_uhid *uhid, const struct uhid_event *ev)
 {
 	ssize_t len;

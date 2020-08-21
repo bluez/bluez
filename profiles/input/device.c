@@ -982,6 +982,8 @@ static int uhid_disconnect(struct input_device *idev)
 	if (!idev->uhid_created)
 		return 0;
 
+	bt_uhid_unregister_all(idev->uhid);
+
 	memset(&ev, 0, sizeof(ev));
 	ev.type = UHID_DESTROY;
 
