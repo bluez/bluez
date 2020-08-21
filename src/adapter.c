@@ -5316,11 +5316,25 @@ static void free_service_auth(gpointer data, gpointer user_data)
 	g_free(auth);
 }
 
+static void remove_discovery_list(struct btd_adapter *adapter)
+{
+	g_slist_free_full(adapter->set_filter_list, discovery_free);
+	adapter->set_filter_list = NULL;
+
+	g_slist_free_full(adapter->discovery_list, discovery_free);
+	adapter->discovery_list = NULL;
+}
+
 static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
 	DBG("%p", adapter);
+
+	/* Make sure the adapter's discovery list is cleaned up before freeing
+	 * the adapter.
+	 */
+	remove_discovery_list(adapter);
 
 	if (adapter->pairable_timeout_id > 0) {
 		g_source_remove(adapter->pairable_timeout_id);
@@ -6846,11 +6860,7 @@ static void adapter_stop(struct btd_adapter *adapter)
 
 	cancel_passive_scanning(adapter);
 
-	g_slist_free_full(adapter->set_filter_list, discovery_free);
-	adapter->set_filter_list = NULL;
-
-	g_slist_free_full(adapter->discovery_list, discovery_free);
-	adapter->discovery_list = NULL;
+	remove_discovery_list(adapter);
 
 	discovery_cleanup(adapter, 0);
 
