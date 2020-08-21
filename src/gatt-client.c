@@ -1545,6 +1545,12 @@ static DBusMessage *characteristic_start_notify(DBusConnection *conn,
 	const char *sender = dbus_message_get_sender(msg);
 	struct async_dbus_op *op;
 	struct notify_client *client;
+	struct btd_device *device = chrc->service->client->device;
+
+	if (device_is_disconnecting(device)) {
+		error("Device is disconnecting. StartNotify is not allowed.");
+		return btd_error_not_connected(msg);
+	}
 
 	if (chrc->notify_io)
 		return btd_error_not_permitted(msg, "Notify acquired");
