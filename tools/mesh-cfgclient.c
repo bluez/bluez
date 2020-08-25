@@ -274,6 +274,14 @@ static void send_msg_setup(struct l_dbus_message *msg, void *user_data)
 		l_dbus_message_builder_append_basic(builder, 'b', &req->rmt);
 
 	l_dbus_message_builder_append_basic(builder, 'q', &req->idx);
+
+	/* Options */
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+	l_dbus_message_builder_enter_dict(builder, "sv");
+	l_dbus_message_builder_leave_dict(builder);
+	l_dbus_message_builder_leave_array(builder);
+
+	/* Data */
 	append_byte_array(builder, req->data, req->len);
 	l_dbus_message_builder_finalize(builder);
 	l_dbus_message_builder_destroy(builder);
