@@ -229,7 +229,7 @@ Object path	/org/bluez/mesh/node<uuid>
 
 Methods:
 	void Send(object element_path, uint16 destination, uint16 key_index,
-							array{byte} data)
+						dict options, array{byte} data)
 
 		This method is used to send a message originated by a local
 		model.
@@ -248,6 +248,14 @@ Methods:
 		this element. Otherwise, org.bluez.mesh.Error.NotAuthorized will
 		be returned.
 
+		The options parameter is a dictionary with the following keys
+		defined:
+
+			bool ForceSegmented
+				Specifies whether to force sending of a short
+				message as one-segment payload. If not present,
+				the default setting is "false".
+
 		The data parameter is an outgoing message to be encypted by the
 		bluetooth-meshd daemon and sent on.
 
@@ -257,7 +265,7 @@ Methods:
 			org.bluez.mesh.Error.NotFound
 
 	void DevKeySend(object element_path, uint16 destination, boolean remote,
-					uint16 net_index, array{byte} data)
+			uint16 net_index, dict options, array{byte} data)
 
 		This method is used to send a message originated by a local
 		model encoded with the device key of the remote node.
@@ -278,6 +286,14 @@ Methods:
 
 		The net_index parameter is the subnet index of the network on
 		which the message is to be sent.
+
+		The options parameter is a dictionary with the following keys
+		defined:
+
+			bool ForceSegmented
+				Specifies whether to force sending of a short
+				message as one-segment payload. If not present,
+				the default setting is "false".
 
 		The data parameter is an outgoing message to be encypted by the
 		meshd daemon and sent on.
@@ -344,7 +360,8 @@ Methods:
 			org.bluez.mesh.Error.InvalidArguments
 			org.bluez.mesh.Error.NotFound
 
-	void Publish(object element_path, uint16 model, array{byte} data)
+	void Publish(object element_path, uint16 model, dict options,
+							array{byte} data)
 
 		This method is used to send a publication originated by a local
 		model. If the model does not exist, or it has no publication
@@ -356,7 +373,24 @@ Methods:
 		Hierarchy section).
 
 		The model parameter contains a model ID, as defined by the
-		Bluetooth SIG.
+		Bluetooth SIG. If the options dictionary contains a "Vendor"
+		key, then this ID is defined by the specified vendor.
+
+		The options parameter is a dictionary with the following keys
+		defined:
+
+			bool ForceSegmented
+				Specifies whether to force sending of a short
+				message as one-segment payload. If not present,
+				the default setting is "false".
+
+			uint16 Vendor
+				A 16-bit Company ID as defined by the
+				Bluetooth SIG. This key should only exist when
+				publishing on a Vendor defined model.
+
+		The data parameter is an outgoing message to be encypted by the
+		meshd daemon and sent on.
 
 		Since only one Publish record may exist per element-model, the
 		destination and key_index are obtained from the Publication
@@ -366,30 +400,6 @@ Methods:
 			org.bluez.mesh.Error.DoesNotExist
 			org.bluez.mesh.Error.InvalidArguments
 
-	void VendorPublish(object element_path, uint16 vendor, uint16 model_id,
-							array{byte} data)
-
-		This method is used to send a publication originated by a local
-		vendor model. If the model does not exist, or it has no
-		publication record, the method returns
-		org.bluez.mesh.Error.DoesNotExist error.
-
-		The element_path parameter is the object path of an element from
-		a collection of the application elements (see Mesh Application
-		Hierarchy section).
-
-		The vendor parameter is a 16-bit Bluetooth-assigned Company ID.
-
-		The model_id parameter is a 16-bit vendor-assigned Model
-		Identifier.
-
-		Since only one Publish record may exist per element-model, the
-		destination and key_index are obtained from the Publication
-		record cached by the daemon.
-
-		Possible errors:
-			org.bluez.mesh.Error.DoesNotExist
-			org.bluez.mesh.Error.InvalidArguments
 
 Properties:
 	dict Features [read-only]
