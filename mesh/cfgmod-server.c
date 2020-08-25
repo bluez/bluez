@@ -1088,7 +1088,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 
 	if (n)
 		mesh_model_send(node, dst, src, APP_IDX_DEV_LOCAL, net_idx,
-						DEFAULT_TTL, false, msg, n);
+						DEFAULT_TTL, false, n, msg);
 
 	return true;
 }

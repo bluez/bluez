@@ -999,7 +999,7 @@ done:
 }
 
 int mesh_model_publish(struct mesh_node *node, uint32_t id, uint16_t src,
-					const void *msg, uint16_t msg_len)
+			bool segmented, uint16_t msg_len, const void *msg)
 {
 	struct mesh_net *net = node_get_net(node);
 	struct mesh_model *mod;
@@ -1041,7 +1041,7 @@ int mesh_model_publish(struct mesh_node *node, uint32_t id, uint16_t src,
 	result = msg_send(node, mod->pub->credential != 0, src, mod->pub->addr,
 				mod->pub->idx, net_idx, label, mod->pub->ttl,
 				mod->pub->rtx.cnt, mod->pub->rtx.interval,
-				false, msg, msg_len);
+				segmented, msg, msg_len);
 
 	return result ? MESH_ERROR_NONE : MESH_ERROR_FAILED;
 }
@@ -1049,7 +1049,7 @@ int mesh_model_publish(struct mesh_node *node, uint32_t id, uint16_t src,
 bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 					uint16_t app_idx, uint16_t net_idx,
 					uint8_t ttl, bool segmented,
-					const void *msg, uint16_t msg_len)
+					uint16_t msg_len, const void *msg)
 {
 	struct mesh_net *net = node_get_net(node);
 	uint8_t cnt;
