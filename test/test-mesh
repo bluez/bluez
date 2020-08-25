@@ -184,6 +184,9 @@ current_menu = None
 user_input = 0
 input_error = False
 
+send_opts = dbus.Dictionary(signature='sv')
+send_opts = {'ForceSegmented' : dbus.Boolean(True)}
+
 def raise_error(str_value):
 	global input_error
 
@@ -538,14 +541,18 @@ class Model():
 		self.pub_period = period
 
 	def send_publication(self, data):
+		pub_opts = dbus.Dictionary(signature='sv')
+
 		print('Send publication ', end='')
 		print(data)
-		node.Publish(self.path, self.model_id, data,
+		node.Publish(self.path, self.model_id, pub_opts, data,
 						reply_handler=generic_reply_cb,
 						error_handler=generic_error_cb)
 
 	def send_message(self, dest, key, data):
-		node.Send(self.path, dest, key, data,
+		global send_opts
+
+		node.Send(self.path, dest, key, send_opts, data,
 						reply_handler=generic_reply_cb,
 						error_handler=generic_error_cb)
 
