@@ -2008,6 +2008,7 @@ static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
 	DBusMessageIter iter;
 	DBusMessageIter array;
 	char *obj;
+	int type;
 
 	/* Includes property is optional */
 	if (!g_dbus_proxy_get_property(proxy, "Includes", &iter))
@@ -2018,9 +2019,9 @@ static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
 
 	dbus_message_iter_recurse(&iter, &array);
 
-	do {
-		if (dbus_message_iter_get_arg_type(&array) !=
-						DBUS_TYPE_OBJECT_PATH)
+	while ((type = dbus_message_iter_get_arg_type(&array))
+					!= DBUS_TYPE_INVALID) {
+		if (type != DBUS_TYPE_OBJECT_PATH)
 			return false;
 
 		dbus_message_iter_get_basic(&array, &obj);
@@ -2028,11 +2029,12 @@ static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
 		if (!queue_push_tail(service->includes, obj)) {
 			error("Failed to add Includes path in queue\n");
 			return false;
-
 		}
 
 		incr_attr_count(service, 1);
-	} while (dbus_message_iter_next(&array));
+
+		dbus_message_iter_next(&array);
+	}
 
 	return true;
 }
