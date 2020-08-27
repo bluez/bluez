@@ -216,9 +216,9 @@ static void bnep_conn_cb(char *iface, int err, void *data)
 		goto failed;
 	}
 
+	memcpy(nc->dev, iface, sizeof(nc->dev));
 	info("%s connected", nc->dev);
 
-	memcpy(nc->dev, iface, sizeof(nc->dev));
 	btd_service_connecting_complete(nc->service, 0);
 
 	if (nc->connect)
