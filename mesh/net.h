@@ -358,3 +358,4 @@ bool net_msg_check_replay_cache(struct mesh_net *net, uint16_t src,
 				uint16_t crpl, uint32_t seq, uint32_t iv_index);
 void net_msg_add_replay_cache(struct mesh_net *net, uint16_t src, uint32_t seq,
 							uint32_t iv_index);
+bool mesh_net_load_rpl(struct mesh_net *net);

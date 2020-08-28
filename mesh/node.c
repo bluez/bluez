@@ -44,6 +44,7 @@
 #include "mesh/dbus.h"
 #include "mesh/agent.h"
 #include "mesh/manager.h"
+#include "mesh/rpl.h"
 #include "mesh/node.h"
 
 #define MESH_NODE_PATH_PREFIX "/node"
@@ -399,7 +400,8 @@ static bool init_storage_dir(struct mesh_node *node)
 
 	node->storage_dir = l_strdup(dir_name);
 
-	return true;
+	/* Initialize directory for storing RPL info */
+	return rpl_init(node->storage_dir);
 }
 
 static void update_net_settings(struct mesh_node *node)
@@ -470,6 +472,10 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 
 	mesh_net_set_iv_index(node->net, db_node->iv_index, db_node->iv_update);
 
+	/* Initialize directory for storing keyring and RPL info */
+	if (!init_storage_dir(node) || !mesh_net_load_rpl(node->net))
+		goto fail;
+
 	if (db_node->net_transmit)
 		mesh_net_transmit_params_set(node->net,
 					db_node->net_transmit->count,
@@ -496,9 +502,6 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 	cfgmod_server_init(node, PRIMARY_ELE_IDX);
 
 	node->cfg = cfg;
-
-	/* Initialize directory for storing keyring info */
-	init_storage_dir(node);
 
 	return true;
 fail:

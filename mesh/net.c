@@ -633,6 +633,7 @@ struct mesh_net *mesh_net_new(struct mesh_node *node)
 	net->frnd_msgs = l_queue_new();
 	net->destinations = l_queue_new();
 	net->app_keys = l_queue_new();
+	net->replay_cache = l_queue_new();
 
 	if (!nets)
 		nets = l_queue_new();
@@ -2596,7 +2597,7 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		mesh_config_write_iv_index(cfg, iv_index, ivu);
 
 		/* Cleanup Replay Protection List NVM */
-		rpl_init(net->node, iv_index);
+		rpl_update(net->node, iv_index);
 	}
 
 	node_property_changed(net->node, "IVIndex");
@@ -3480,12 +3481,6 @@ bool net_msg_check_replay_cache(struct mesh_net *net, uint16_t src,
 	if (!net || !net->node)
 		return true;
 
-	if (!net->replay_cache) {
-		net->replay_cache = l_queue_new();
-		rpl_init(net->node, net->iv_index);
-		rpl_get_list(net->node, net->replay_cache);
-	}
-
 	rpe = l_queue_find(net->replay_cache, match_replay_cache,
 						L_UINT_TO_PTR(src));
 
@@ -3687,4 +3682,9 @@ int mesh_net_set_heartbeat_pub(struct mesh_net *net, uint16_t dst,
 
 	/* TODO: Save to node config */
 	return MESH_STATUS_SUCCESS;
+}
+
+bool mesh_net_load_rpl(struct mesh_net *net)
+{
+	return rpl_get_list(net->node, net->replay_cache);
 }

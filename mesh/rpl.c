@@ -51,7 +51,7 @@ bool rpl_put_entry(struct mesh_node *node, uint16_t src, uint32_t iv_index,
 	DIR *dir;
 	int fd;
 
-	if (!node || !IS_UNICAST(src))
+	if (!IS_UNICAST(src))
 		return false;
 
 	node_path = node_get_storage_dir(node);
@@ -100,7 +100,7 @@ void rpl_del_entry(struct mesh_node *node, uint16_t src)
 	struct dirent *entry;
 	DIR *dir;
 
-	if (!node || !IS_UNICAST(src))
+	if (!IS_UNICAST(src))
 		return;
 
 	node_path = node_get_storage_dir(node);
@@ -205,12 +205,12 @@ bool rpl_get_list(struct mesh_node *node, struct l_queue *rpl_list)
 	size_t len;
 	DIR *dir;
 
-	if (!node || !rpl_list)
+	if (!rpl_list)
 		return false;
 
 	node_path = node_get_storage_dir(node);
 
-	len = strlen(node_path) + strlen(rpl_dir) + 14;
+	len = strlen(node_path) + strlen(rpl_dir) + 15;
 
 	if (len > PATH_MAX)
 		return false;
@@ -241,7 +241,7 @@ bool rpl_get_list(struct mesh_node *node, struct l_queue *rpl_list)
 	return true;
 }
 
-void rpl_init(struct mesh_node *node, uint32_t cur)
+void rpl_update(struct mesh_node *node, uint32_t cur)
 {
 	uint32_t old = cur - 1;
 	const char *node_path;
@@ -249,12 +249,11 @@ void rpl_init(struct mesh_node *node, uint32_t cur)
 	char path[PATH_MAX];
 	DIR *dir;
 
-	if (!node)
+	node_path = node_get_storage_dir(node);
+	if (!node_path)
 		return;
 
-	node_path = node_get_storage_dir(node);
-
-	if (strlen(node_path) + strlen(rpl_dir) + 10 >= PATH_MAX)
+	if (strlen(node_path) + strlen(rpl_dir) + 15 >= PATH_MAX)
 		return;
 
 	/* Make sure path exists */
@@ -286,4 +285,16 @@ void rpl_init(struct mesh_node *node, uint32_t cur)
 	}
 
 	closedir(dir);
+}
+
+bool rpl_init(const char *node_path)
+{
+	char path[PATH_MAX];
+
+	if (strlen(node_path) + strlen(rpl_dir) + 15 >= PATH_MAX)
+		return false;
+
+	snprintf(path, PATH_MAX, "%s%s", node_path, rpl_dir);
+	mkdir(path, 0755);
+	return true;
 }
