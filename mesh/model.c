@@ -862,9 +862,9 @@ static void send_msg_rcvd(struct mesh_node *node, uint8_t ele_idx,
 }
 
 bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
-			uint32_t seq, uint32_t iv_index,
-			uint16_t net_idx, uint16_t src, uint16_t dst,
-			uint8_t key_aid, const uint8_t *data, uint16_t size)
+			uint32_t iv_index, uint16_t net_idx, uint16_t src,
+			uint16_t dst, uint8_t key_aid, const uint8_t *data,
+								uint16_t size)
 {
 	uint8_t *clear_text;
 	struct mod_forward forward = {
@@ -877,7 +877,7 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 	struct mesh_net *net = node_get_net(node);
 	uint8_t num_ele;
 	int decrypt_idx, i, ele_idx;
-	uint16_t addr, crpl;
+	uint16_t addr;
 	struct mesh_virtual *decrypt_virt = NULL;
 	bool result = false;
 	bool is_subscription;
@@ -890,12 +890,6 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 
 	if (dst < 0x8000 && ele_idx < 0)
 		/* Unicast and not addressed to us */
-		return false;
-
-	/* Don't process if already in RPL */
-	crpl = node_get_crpl(node);
-
-	if (net_msg_check_replay_cache(net, src, crpl, seq, iv_index))
 		return false;
 
 	clear_text = l_malloc(size);
@@ -987,10 +981,6 @@ bool mesh_model_rx(struct mesh_node *node, bool szmict, uint32_t seq0,
 		if (IS_FIXED_GROUP_ADDRESS(dst))
 			break;
 	}
-
-	/* If message has been handled by us, add to RPL */
-	if (result)
-		net_msg_add_replay_cache(net, src, seq, iv_index);
 
 done:
 	l_free(clear_text);
