@@ -120,6 +120,7 @@ tools/btconfig
 tools/btmgmt
 tools/btsnoop
 tools/btpclient
+tools/btpclientctl
 tools/btmon-logger
 tools/bluetooth-logger.service
 peripheral/btsensor

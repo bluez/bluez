@@ -492,11 +492,15 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/test-gatt-profile test/test-mesh test/agent.py
 
 if BTPCLIENT
-noinst_PROGRAMS += tools/btpclient
+noinst_PROGRAMS += tools/btpclient tools/btpclientctl
 
 tools_btpclient_SOURCES = tools/btpclient.c src/shared/btp.c src/shared/btp.h
 tools_btpclient_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-ell.la $(ell_ldadd)
 tools_btpclient_DEPENDENCIES = lib/libbluetooth-internal.la $(ell_dependencies)
 tools/btpclient.$(OBJEXT): src/libshared-ell.la ell/internal
+
+tools_btpclientctl_SOURCES = tools/btpclientctl.c client/display.c
+tools_btpclientctl_LDADD = src/libshared-mainloop.la src/libshared-glib.la \
+				lib/libbluetooth-internal.la -lreadline
 endif
