@@ -941,6 +941,9 @@ void media_transport_update_volume(struct media_transport *transport,
 {
 	struct a2dp_transport *a2dp = transport->data;
 
+	if (volume < 0)
+		return;
+
 	/* Check if volume really changed */
 	if (a2dp->volume == volume)
 		return;
