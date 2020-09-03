@@ -39,14 +39,15 @@
 #include "mesh/mesh-io.h"
 #include "mesh/util.h"
 
-static const char *config_dir;
+static const char *storage_dir;
 static const char *mesh_conf_fname;
 static enum mesh_io_type io_type;
 static void *io_opts;
 
 static const struct option main_options[] = {
 	{ "io",		required_argument,	NULL, 'i' },
-	{ "config",	optional_argument,	NULL, 'c' },
+	{ "storage",	required_argument,	NULL, 's' },
+	{ "config",	required_argument,	NULL, 'c' },
 	{ "nodetach",	no_argument,		NULL, 'n' },
 	{ "debug",	no_argument,		NULL, 'd' },
 	{ "dbus-debug",	no_argument,		NULL, 'b' },
@@ -108,7 +109,7 @@ static void request_name_callback(struct l_dbus *dbus, bool success,
 		return;
 	}
 
-	if (!mesh_init(config_dir, mesh_conf_fname, io_type, io_opts,
+	if (!mesh_init(storage_dir, mesh_conf_fname, io_type, io_opts,
 					mesh_ready_callback, dbus)) {
 		l_error("Failed to initialize mesh");
 		l_main_quit();
@@ -195,7 +196,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "i:c:f:ndbh", main_options, NULL);
+		opt = getopt_long(argc, argv, "i:s:c:ndbh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -213,10 +214,10 @@ int main(int argc, char *argv[])
 		case 'd':
 			enable_debug();
 			break;
-		case 'c':
-			config_dir = optarg;
+		case 's':
+			storage_dir = optarg;
 			break;
-		case 'f':
+		case 'c':
 			mesh_conf_fname = optarg;
 			break;
 		case 'b':
