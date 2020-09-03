@@ -80,8 +80,6 @@ struct mod_forward {
 
 static struct l_queue *mesh_virtuals;
 
-static struct timeval tx_start;
-
 static bool is_internal(uint32_t id)
 {
 	if (id == CONFIG_SRV_MODEL || id == CONFIG_CLI_MODEL)
@@ -1018,8 +1016,6 @@ int mesh_model_publish(struct mesh_node *node, uint32_t id, uint16_t src,
 		return MESH_ERROR_DOES_NOT_EXIST;
 	}
 
-	gettimeofday(&tx_start, NULL);
-
 	if (IS_UNASSIGNED(mod->pub->addr))
 		return MESH_ERROR_DOES_NOT_EXIST;
 
@@ -1048,8 +1044,6 @@ bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 	/* If SRC is 0, use the Primary Element */
 	if (src == 0)
 		src = node_get_primary(node);
-
-	gettimeofday(&tx_start, NULL);
 
 	if (IS_UNASSIGNED(dst))
 		return false;
