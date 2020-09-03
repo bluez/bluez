@@ -60,6 +60,8 @@
  * command with the pressed value is valid for two seconds
  */
 #define AVC_PRESS_TIMEOUT	2
+/* We need to send hold event before AVC_PRESS time runs out */
+#define AVC_HOLD_TIMEOUT	1
 
 #define CONTROL_TIMEOUT		10
 #define BROWSING_TIMEOUT	10
@@ -191,6 +193,7 @@ struct avctp_channel {
 struct key_pressed {
 	uint16_t op;
 	guint timer;
+	bool hold;
 };
 
 struct avctp {
@@ -1500,6 +1503,7 @@ static struct avctp *avctp_get_internal(struct btd_device *device)
 	session->device = btd_device_ref(device);
 	session->state = AVCTP_STATE_DISCONNECTED;
 	session->uinput = -1;
+	session->key.op = AVC_INVALID;
 
 	server->sessions = g_slist_append(server->sessions, session);
 
@@ -1846,35 +1850,32 @@ static gboolean repeat_timeout(gpointer user_data)
 {
 	struct avctp *session = user_data;
 
-	avctp_passthrough_release(session, session->key.op);
 	avctp_passthrough_press(session, session->key.op);
 
 	return TRUE;
 }
 
-static void release_pressed(struct avctp *session)
+static int release_pressed(struct avctp *session)
 {
-	avctp_passthrough_release(session, session->key.op);
+	int ret = avctp_passthrough_release(session, session->key.op);
 
 	if (session->key.timer > 0)
 		g_source_remove(session->key.timer);
 
 	session->key.timer = 0;
+	session->key.op = AVC_INVALID;
+	session->key.hold = false;
+
+	return ret;
 }
 
-static bool set_pressed(struct avctp *session, uint8_t op)
+static bool hold_pressed(struct avctp *session, uint8_t op)
 {
-	if (session->key.timer > 0) {
-		if (session->key.op == op)
-			return TRUE;
-		release_pressed(session);
-	}
-
-	if (op != AVC_FAST_FORWARD && op != AVC_REWIND)
+	if (session->key.op != op || !session->key.hold)
 		return FALSE;
 
-	session->key.op = op;
-	session->key.timer = g_timeout_add_seconds(AVC_PRESS_TIMEOUT,
+	if (session->key.timer == 0)
+		session->key.timer = g_timeout_add_seconds(AVC_HOLD_TIMEOUT,
 							repeat_timeout,
 							session);
 
@@ -1886,25 +1887,42 @@ static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
+	uint8_t op = operands[0];
+
 	if (code != AVC_CTYPE_ACCEPTED)
 		return FALSE;
 
-	if (set_pressed(session, operands[0]))
+	if (hold_pressed(session, op))
 		return FALSE;
 
-	avctp_passthrough_release(session, operands[0]);
+	if (op == session->key.op)
+		release_pressed(session);
 
 	return FALSE;
 }
 
-int avctp_send_passthrough(struct avctp *session, uint8_t op)
+int avctp_send_passthrough(struct avctp *session, uint8_t op, bool hold)
 {
-	/* Auto release if key pressed */
-	if (session->key.timer > 0)
+	if (op & 0x80)
+		return -EINVAL;
+
+	/* Release previously unreleased key */
+	if (session->key.op != AVC_INVALID && session->key.op != op)
 		release_pressed(session);
 
+	session->key.op = op;
+	session->key.hold = hold;
 	return avctp_passthrough_press(session, op);
 }
+
+int avctp_send_release_passthrough(struct avctp *session)
+{
+	if (session->key.op != AVC_INVALID)
+		return release_pressed(session);
+
+	return 0;
+}
+
 
 int avctp_send_vendordep(struct avctp *session, uint8_t transaction,
 				uint8_t code, uint8_t subunit,

@@ -45,26 +45,31 @@ struct media_player;
 struct media_item;
 
 struct media_player_callback {
-	bool (*set_setting) (struct media_player *mp, const char *key,
+	bool (*set_setting)(struct media_player *mp, const char *key,
 				const char *value, void *user_data);
-	int (*play) (struct media_player *mp, void *user_data);
-	int (*pause) (struct media_player *mp, void *user_data);
-	int (*stop) (struct media_player *mp, void *user_data);
-	int (*next) (struct media_player *mp, void *user_data);
-	int (*previous) (struct media_player *mp, void *user_data);
-	int (*fast_forward) (struct media_player *mp, void *user_data);
-	int (*rewind) (struct media_player *mp, void *user_data);
-	int (*list_items) (struct media_player *mp, const char *name,
+	int (*play)(struct media_player *mp, void *user_data);
+	int (*pause)(struct media_player *mp, void *user_data);
+	int (*stop)(struct media_player *mp, void *user_data);
+	int (*next)(struct media_player *mp, void *user_data);
+	int (*previous)(struct media_player *mp, void *user_data);
+	int (*fast_forward)(struct media_player *mp, void *user_data);
+	int (*rewind)(struct media_player *mp, void *user_data);
+	int (*press)(struct media_player *mp, uint8_t avc_key,
+							void *user_data);
+	int (*hold)(struct media_player *mp, uint8_t avc_key,
+							void *user_data);
+	int (*release)(struct media_player *mp, void *user_data);
+	int (*list_items)(struct media_player *mp, const char *name,
 				uint32_t start, uint32_t end, void *user_data);
-	int (*change_folder) (struct media_player *mp, const char *path,
+	int (*change_folder)(struct media_player *mp, const char *path,
 						uint64_t uid, void *user_data);
-	int (*search) (struct media_player *mp, const char *string,
+	int (*search)(struct media_player *mp, const char *string,
 						void *user_data);
-	int (*play_item) (struct media_player *mp, const char *name,
+	int (*play_item)(struct media_player *mp, const char *name,
 					uint64_t uid, void *user_data);
-	int (*add_to_nowplaying) (struct media_player *mp, const char *name,
+	int (*add_to_nowplaying)(struct media_player *mp, const char *name,
 					uint64_t uid, void *user_data);
-	int (*total_items) (struct media_player *mp, const char *name,
+	int (*total_items)(struct media_player *mp, const char *name,
 						void *user_data);
 };
 

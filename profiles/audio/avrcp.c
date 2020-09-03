@@ -2978,20 +2978,38 @@ static bool ct_set_setting(struct media_player *mp, const char *key,
 
 static int ct_press(struct avrcp_player *player, uint8_t op)
 {
-	int err;
-	struct avrcp *session;
+	struct avrcp *session = player->sessions->data;
 
-	session = player->sessions->data;
 	if (session == NULL)
 		return -ENOTCONN;
 
 	set_ct_player(session, player);
 
-	err = avctp_send_passthrough(session->conn, op);
-	if (err < 0)
-		return err;
+	return avctp_send_passthrough(session->conn, op, false);
+}
 
-	return 0;
+static int ct_hold(struct avrcp_player *player, uint8_t op)
+{
+	struct avrcp *session = player->sessions->data;
+
+	if (session == NULL)
+		return -ENOTCONN;
+
+	set_ct_player(session, player);
+
+	return avctp_send_passthrough(session->conn, op, true);
+}
+
+static int ct_release(struct avrcp_player *player)
+{
+	struct avrcp *session = player->sessions->data;
+
+	if (session == NULL)
+		return -ENOTCONN;
+
+	set_ct_player(session, player);
+
+	return avctp_send_release_passthrough(session->conn);
 }
 
 static int ct_play(struct media_player *mp, void *user_data)
@@ -3033,14 +3051,37 @@ static int ct_fast_forward(struct media_player *mp, void *user_data)
 {
 	struct avrcp_player *player = user_data;
 
-	return ct_press(player, AVC_FAST_FORWARD);
+	return ct_hold(player, AVC_FAST_FORWARD);
 }
 
 static int ct_rewind(struct media_player *mp, void *user_data)
 {
 	struct avrcp_player *player = user_data;
 
-	return ct_press(player, AVC_REWIND);
+	return ct_hold(player, AVC_REWIND);
+}
+
+static int ct_press_key(struct media_player *mp, uint8_t avc_key,
+								void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, avc_key);
+}
+
+static int ct_hold_key(struct media_player *mp, uint8_t avc_key,
+								void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_hold(player, avc_key);
+}
+
+static int ct_release_key(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_release(player);
 }
 
 static int ct_list_items(struct media_player *mp, const char *name,
@@ -3388,6 +3429,9 @@ static const struct media_player_callback ct_cbs = {
 	.previous	= ct_previous,
 	.fast_forward	= ct_fast_forward,
 	.rewind		= ct_rewind,
+	.press		= ct_press_key,
+	.hold		= ct_hold_key,
+	.release	= ct_release_key,
 	.list_items	= ct_list_items,
 	.change_folder	= ct_change_folder,
 	.search		= ct_search,

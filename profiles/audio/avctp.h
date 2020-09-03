@@ -118,6 +118,7 @@
 #define AVC_BLUE			0x7c
 #define AVC_YELLOW			0x7c
 #define AVC_VENDOR_UNIQUE		0x7e
+#define AVC_INVALID			0xff
 
 struct avctp;
 
@@ -182,7 +183,9 @@ unsigned int avctp_register_browsing_pdu_handler(struct avctp *session,
 						GDestroyNotify destroy);
 gboolean avctp_unregister_browsing_pdu_handler(unsigned int id);
 
-int avctp_send_passthrough(struct avctp *session, uint8_t op);
+int avctp_send_passthrough(struct avctp *session, uint8_t op, bool hold);
+int avctp_send_release_passthrough(struct avctp *session);
+
 int avctp_send_vendordep(struct avctp *session, uint8_t transaction,
 				uint8_t code, uint8_t subunit,
 				uint8_t *operands, size_t operand_count);
