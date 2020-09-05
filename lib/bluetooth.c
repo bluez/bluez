@@ -4751,6 +4751,298 @@ const char *bt_compidtostr(int compid)
 		return "Accent Advanced Systems SLU";
 	case 2241:
 		return "Rayden.Earth LTD";
+	case 2242:
+		return "Lindinvent AB";
+	case 2243:
+		return "CHIPOLO d.o.o.";
+	case 2244:
+		return "CellAssist, LLC";
+	case 2245:
+		return "J. Wagner GmbH";
+	case 2246:
+		return "Integra Optics Inc";
+	case 2247:
+		return "Monadnock Systems Ltd.";
+	case 2248:
+		return "Liteboxer Technologies Inc.";
+	case 2249:
+		return "Noventa AG";
+	case 2250:
+		return "Nubia Technology Co.,Ltd.";
+	case 2251:
+		return "JT INNOVATIONS LIMITED";
+	case 2252:
+		return "TGM TECHNOLOGY CO., LTD.";
+	case 2253:
+		return "ifly";
+	case 2254:
+		return "ZIMI CORPORATION";
+	case 2255:
+		return "betternotstealmybike UG (with limited liability)";
+	case 2256:
+		return "ESTOM Infotech Kft.";
+	case 2257:
+		return "Sensovium Inc.";
+	case 2258:
+		return "Virscient Limited";
+	case 2259:
+		return "Novel Bits, LLC";
+	case 2260:
+		return "ADATA Technology Co., LTD.";
+	case 2261:
+		return "KEYes";
+	case 2262:
+		return "Nome Oy";
+	case 2263:
+		return "Inovonics Corp";
+	case 2264:
+		return "WARES";
+	case 2265:
+		return "Pointr Labs Limited";
+	case 2266:
+		return "Miridia Technology Incorporated";
+	case 2267:
+		return "Tertium Technology";
+	case 2268:
+		return "SHENZHEN AUKEY E BUSINESS CO., LTD";
+	case 2269:
+		return "code-Q";
+	case 2270:
+		return "Tyco Electronics Corporation a TE Connectivity Ltd Company";
+	case 2271:
+		return "IRIS OHYAMA CO.,LTD.";
+	case 2272:
+		return "Philia Technology";
+	case 2273:
+		return "KOZO KEIKAKU ENGINEERING Inc.";
+	case 2274:
+		return "Shenzhen Simo Technology co. LTD";
+	case 2275:
+		return "Republic Wireless, Inc.";
+	case 2276:
+		return "Rashidov ltd";
+	case 2277:
+		return "Crowd Connected Ltd";
+	case 2278:
+		return "Eneso Tecnologia de Adaptacion S.L.";
+	case 2279:
+		return "Barrot Technology Limited";
+	case 2280:
+		return "Naonext";
+	case 2281:
+		return "Taiwan Intelligent Home Corp.";
+	case 2282:
+		return "COWBELL ENGINEERING CO.,LTD.";
+	case 2283:
+		return "Beijing Big Moment Technology Co., Ltd.";
+	case 2284:
+		return "Denso Corporation";
+	case 2285:
+		return "IMI Hydronic Engineering International SA";
+	case 2286:
+		return "ASKEY";
+	case 2287:
+		return "Cumulus Digital Systems, Inc";
+	case 2288:
+		return "Joovv, Inc.";
+	case 2289:
+		return "The L.S. Starrett Company";
+	case 2290:
+		return "Microoled";
+	case 2291:
+		return "PSP - Pauli Services & Products GmbH";
+	case 2292:
+		return "Kodimo Technologies Company Limited";
+	case 2293:
+		return "Tymtix Technologies Private Limited";
+	case 2294:
+		return "Dermal Photonics Corporation";
+	case 2295:
+		return "MTD Products Inc & Affiliates";
+	case 2296:
+		return "instagrid GmbH";
+	case 2297:
+		return "Spacelabs Medical Inc.";
+	case 2298:
+		return "Troo Corporation";
+	case 2299:
+		return "Darkglass Electronics Oy";
+	case 2300:
+		return "Hill-Rom";
+	case 2301:
+		return "BioIntelliSense, Inc.";
+	case 2302:
+		return "Ketronixs Sdn Bhd";
+	case 2308:
+		return "SUNCORPORATION";
+	case 2309:
+		return "Yandex Services AG";
+	case 2310:
+		return "Scope Logistical Solutions";
+	case 2311:
+		return "User Hello, LLC";
+	case 2312:
+		return "Pinpoint Innovations Limited";
+	case 2313:
+		return "70mai Co.,Ltd.";
+	case 2314:
+		return "Zhuhai Hoksi Technology CO.,LTD";
+	case 2315:
+		return "EMBR labs, INC";
+	case 2316:
+		return "Radiawave Technologies Co.,Ltd.";
+	case 2317:
+		return "IOT Invent GmbH";
+	case 2318:
+		return "OPTIMUSIOT TECH LLP";
+	case 2319:
+		return "VC Inc.";
+	case 2320:
+		return "ASR Microelectronics (Shanghai) Co., Ltd.";
+	case 2321:
+		return "Douglas Lighting Controls Inc.";
+	case 2322:
+		return "Nerbio Medical Software Platforms Inc";
+	case 2323:
+		return "Braveheart Wireless, Inc.";
+	case 2324:
+		return "INEO-SENSE";
+	case 2325:
+		return "Honda Motor Co., Ltd.";
+	case 2326:
+		return "Ambient Sensors LLC";
+	case 2327:
+		return "ASR Microelectronics(ShenZhen)Co., Ltd.";
+	case 2328:
+		return "Technosphere Labs Pvt. Ltd.";
+	case 2329:
+		return "NO SMD LIMITED";
+	case 2330:
+		return "Albertronic BV";
+	case 2331:
+		return "Luminostics, Inc.";
+	case 2332:
+		return "Oblamatik AG";
+	case 2333:
+		return "Innokind, Inc.";
+	case 2334:
+		return "Melbot Studios, Sociedad Limitada";
+	case 2335:
+		return "Myzee Technology";
+	case 2336:
+		return "Omnisense Limited";
+	case 2337:
+		return "KAHA PTE. LTD.";
+	case 2338:
+		return "Shanghai MXCHIP Information Technology Co., Ltd.";
+	case 2339:
+		return "JSB TECH PTE LTD";
+	case 2340:
+		return "Fundacion Tecnalia Research and Innovation";
+	case 2341:
+		return "Yukai Engineering Inc.";
+	case 2342:
+		return "Gooligum Technologies Pty Ltd";
+	case 2343:
+		return "ROOQ GmbH";
+	case 2344:
+		return "AiRISTA";
+	case 2345:
+		return "Qingdao Haier Technology Co., Ltd.";
+	case 2346:
+		return "Sappl Verwaltungs- und Betriebs GmbH";
+	case 2347:
+		return "TekHome";
+	case 2348:
+		return "PCI Private Limited";
+	case 2349:
+		return "Leggett & Platt, Incorporated";
+	case 2350:
+		return "PS GmbH";
+	case 2351:
+		return "C.O.B.O. SpA";
+	case 2352:
+		return "James Walker RotaBolt Limited";
+	case 2353:
+		return "BREATHINGS Co., Ltd.";
+	case 2354:
+		return "BarVision, LLC";
+	case 2355:
+		return "SRAM";
+	case 2356:
+		return "KiteSpring Inc.";
+	case 2357:
+		return "Reconnect, Inc.";
+	case 2358:
+		return "Elekon AG";
+	case 2359:
+		return "RealThingks GmbH";
+	case 2360:
+		return "Henway Technologies, LTD.";
+	case 2361:
+		return "ASTEM Co.,Ltd.";
+	case 2362:
+		return "LinkedSemi Microelectronics (Xiamen) Co., Ltd";
+	case 2363:
+		return "ENSESO LLC";
+	case 2364:
+		return "Xenoma Inc.";
+	case 2365:
+		return "Adolf Wuerth GmbH & Co KG";
+	case 2366:
+		return "Catalyft Labs, Inc.";
+	case 2367:
+		return "JEPICO Corporation";
+	case 2368:
+		return "Hero Workout GmbH";
+	case 2369:
+		return "Rivian Automotive, LLC";
+	case 2370:
+		return "TRANSSION HOLDINGS LIMITED";
+	case 2371:
+		return "Inovonics Corp.";
+	case 2372:
+		return "Agitron d.o.o.";
+	case 2373:
+		return "Globe (Jiangsu) Co., Ltd";
+	case 2374:
+		return "AMC International Alfa Metalcraft Corporation AG";
+	case 2375:
+		return "First Light Technologies Ltd.";
+	case 2376:
+		return "Wearable Link Limited";
+	case 2377:
+		return "Metronom Health Europe";
+	case 2378:
+		return "Zwift, Inc.";
+	case 2379:
+		return "Kindeva Drug Delivery L.P.";
+	case 2380:
+		return "GimmiSys GmbH";
+	case 2381:
+		return "tkLABS INC.";
+	case 2382:
+		return "PassiveBolt, Inc.";
+	case 2383:
+		return "Limited Liability Company \"Mikrotikls\"";
+	case 2384:
+		return "Capetech";
+	case 2385:
+		return "PPRS";
+	case 2386:
+		return "Apptricity Corporation";
+	case 2387:
+		return "LogiLube, LLC";
+	case 2388:
+		return "Julbo";
+	case 2389:
+		return "Breville Group";
+	case 2390:
+		return "Kerlink";
+	case 2391:
+		return "Ohsung Electronics";
+	case 2392:
+		return "ZTE Corporation";
 	case 65535:
 		return "internal use";
 	default:
