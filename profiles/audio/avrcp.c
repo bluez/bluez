@@ -4477,6 +4477,11 @@ static int avrcp_event(struct avrcp *session, uint8_t id, const void *data)
 	return err;
 }
 
+static bool avrcp_event_registered(struct avrcp *session, uint8_t event)
+{
+	return session->registered_events & (1 << event);
+}
+
 int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify)
 {
 	struct avrcp_server *server;
@@ -4502,7 +4507,8 @@ int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify)
 								&volume);
 	}
 
-	if (!session->controller || session->controller->version < 0x0104)
+	if (!session->controller && !avrcp_event_registered(session,
+					AVRCP_EVENT_VOLUME_CHANGED))
 		return -ENOTSUP;
 
 	memset(buf, 0, sizeof(buf));
