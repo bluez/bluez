@@ -2582,6 +2582,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		struct bt_hci_rsp_le_set_cig_params params;
 		uint16_t handle;
 	} __attribute__ ((packed)) lscp;
+	struct bt_hci_rsp_le_remove_cig lrc;
 	struct bt_hci_cmd_le_setup_iso_path *lesip;
 	uint8_t status, page;
 
@@ -3882,6 +3883,15 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 
+		break;
+
+	case BT_HCI_CMD_LE_REMOVE_CIG:
+		if (btdev->type != BTDEV_TYPE_BREDRLE52)
+			goto unsupported;
+		memset(&btdev->le_cig, 0, sizeof(btdev->le_cig));
+		lrc.status = BT_HCI_ERR_SUCCESS;
+		lrc.cig_id = 0x00;
+		cmd_complete(btdev, opcode, &lrc, sizeof(lrc));
 		break;
 
 	case BT_HCI_CMD_LE_ACCEPT_CIS:
