@@ -65,7 +65,8 @@ struct reconnect_data {
 };
 
 static const char *default_reconnect[] = {
-			HSP_AG_UUID, HFP_AG_UUID, A2DP_SOURCE_UUID, NULL };
+			HSP_AG_UUID, HFP_AG_UUID, A2DP_SOURCE_UUID,
+			A2DP_SINK_UUID, NULL };
 static char **reconnect_uuids = NULL;
 
 static const size_t default_attempts = 7;
