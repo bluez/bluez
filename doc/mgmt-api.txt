@@ -3834,6 +3834,7 @@ Device Disconnected Event
 		2	Connection terminated by local host
 		3	Connection terminated by remote host
 		4	Connection terminated due to authentication failure
+		5	Connection terminated by local host for suspend
 
 	Note that the local/remote distinction just determines which side
 	terminated the low-level connection, regardless of the
@@ -4577,3 +4578,50 @@ Advertisement Monitor Removed Event
 
 	The event will only be sent to management sockets other than the
 	one through which the command was sent.
+
+
+Controller Suspend Event
+========================
+
+	Event code:		0x002d
+	Controller Index:	<controller_id>
+	Event Parameters:	Suspend_State (1 octet)
+
+	This event indicates that the controller is suspended for host suspend.
+
+	Possible values for the Suspend_State parameter:
+		0	Running (not disconnected)
+		1	Disconnected and not scanning
+		2	Page scanning and/or passive scanning.
+
+	The value 0 is used for the running state and may be sent if the
+	controller could not be configured to suspend properly.
+
+	This event will be sent to all management sockets.
+
+
+Controller Resume Event
+=======================
+
+	Event code:		0x002e
+	Controller Index:	<controller_id>
+	Event Parameters:	Wake_Reason (1 octet)
+				Address (6 octets)
+				Address_Type (1 octet)
+
+	This event indicates that the controller has resumed from suspend.
+
+	Possible values for the Wake_Reason parameter:
+		0	Resume from non-Bluetooth wake source
+		1	Wake due to unexpected event
+		2	Remote wake due to peer device connection
+
+	Currently, we expect that only peer reconnections should wake us from
+	the suspended state. Any other events that occurred while the system
+	should have been suspended results in wake due to unexpected event.
+
+	If the Wake_Reason is Remote wake due to connection, the address of the
+	peer device that caused the event will be shared in Address and
+	Address_Type. Otherwise, Address and Address_Type will both be zero.
+
+	This event will be sent to all management sockets.
