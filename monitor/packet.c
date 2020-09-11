@@ -7961,6 +7961,18 @@ static void le_remove_cig_cmd(const void *data, uint8_t size)
 	print_field("CIG ID: 0x%02x", cmd->cig_id);
 }
 
+static void le_remove_cig_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_remove_cig *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("CIG ID: 0x%2.2x", rsp->cig_id);
+}
+
 static void le_accept_cis_req_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_accept_cis *cmd = data;
@@ -9024,7 +9036,9 @@ static const struct opcode_data opcode_table[] = {
 				"LE Remove Connected Isochronous Group",
 				le_remove_cig_cmd,
 				sizeof(struct bt_hci_cmd_le_remove_cig), false,
-				status_rsp, 1, true },
+				le_remove_cig_rsp,
+				sizeof(struct bt_hci_rsp_le_remove_cig),
+				false },
 	{ BT_HCI_CMD_LE_ACCEPT_CIS, BT_HCI_BIT_LE_ACCEPT_CIS,
 				"LE Accept Connected Isochronous Stream Request",
 				le_accept_cis_req_cmd,

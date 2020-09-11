@@ -2667,6 +2667,11 @@ struct bt_hci_cmd_le_remove_cig {
 	uint8_t  cig_id;
 } __attribute__ ((packed));
 
+struct bt_hci_rsp_le_remove_cig {
+	uint8_t  status;
+	uint8_t  cig_id;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_ACCEPT_CIS		0x2066
 #define BT_HCI_BIT_LE_ACCEPT_CIS		BT_HCI_CMD_BIT(42, 3)
 struct bt_hci_cmd_le_accept_cis {
