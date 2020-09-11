@@ -8794,6 +8794,33 @@ static void connected_callback(uint16_t index, uint16_t length,
 	eir_data_free(&eir_data);
 }
 
+static void controller_resume_notify(struct btd_adapter *adapter)
+{
+	GSList *l;
+
+	for (l = adapter->drivers; l; l = g_slist_next(l)) {
+		struct btd_adapter_driver *driver = l->data;
+		if (driver->resume)
+			driver->resume(adapter);
+	}
+}
+
+static void controller_resume_callback(uint16_t index, uint16_t length,
+				       const void *param, void *user_data)
+{
+	const struct mgmt_ev_controller_resume *ev = param;
+	struct btd_adapter *adapter = user_data;
+
+	if (length < sizeof(*ev)) {
+		btd_error(adapter->dev_id, "Too small device resume event");
+		return;
+	}
+
+	info("Controller resume with wake event 0x%x", ev->wake_reason);
+
+	controller_resume_notify(adapter);
+}
+
 static void device_blocked_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -9417,6 +9444,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 						user_passkey_notify_callback,
 						adapter, NULL);
 
+	mgmt_register(adapter->mgmt, MGMT_EV_CONTROLLER_RESUME,
+						adapter->dev_id,
+						controller_resume_callback,
+						adapter, NULL);
+
 	set_dev_class(adapter);
 
 	set_name(adapter, btd_adapter_get_name(adapter));
@@ -9624,6 +9656,17 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 			kernel_features |= KERNEL_EXP_FEATURES;
 			break;
 		default:
+			break;
+		}
+	}
+
+	for (i = 0; i < num_events; i++) {
+		uint16_t ev = get_le16(rp->opcodes + num_commands + i);
+
+		switch(ev) {
+		case MGMT_EV_CONTROLLER_RESUME:
+			DBG("kernel supports suspend/resume events");
+			kernel_features |= KERNEL_HAS_RESUME_EVT;
 			break;
 		}
 	}
