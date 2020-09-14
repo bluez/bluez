@@ -693,7 +693,7 @@ void g_dbus_proxy_unref(GDBusProxy *proxy)
 	g_free(proxy);
 }
 
-const char *g_dbus_proxy_get_path(GDBusProxy *proxy)
+const char *g_dbus_proxy_get_path(const GDBusProxy *proxy)
 {
 	if (proxy == NULL)
 		return NULL;
