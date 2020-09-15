@@ -248,4 +248,4 @@ enum kernel_features {
 	KERNEL_HAS_RESUME_EVT		= 1 << 4,
 };
 
-bool has_kernel_features(uint32_t feature);
+bool btd_has_kernel_features(uint32_t feature);

@@ -673,7 +673,7 @@ static bool set_discoverable(struct btd_adapter *adapter, uint8_t mode,
 
 	DBG("sending set mode command for index %u", adapter->dev_id);
 
-	if (has_kernel_features(KERNEL_CONN_CONTROL)) {
+	if (btd_has_kernel_features(KERNEL_CONN_CONTROL)) {
 		if (mode)
 			set_mode(adapter, MGMT_OP_SET_CONNECTABLE, mode);
 		else
@@ -1329,7 +1329,7 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 	 * no need to start any discovery. The kernel will keep scanning
 	 * as long as devices are in its auto-connection list.
 	 */
-	if (has_kernel_features(KERNEL_CONN_CONTROL))
+	if (btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	/*
@@ -1380,7 +1380,7 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 	 * no need to stop any discovery. The kernel will handle the
 	 * auto-connection by itself.
 	 */
-	if (has_kernel_features(KERNEL_CONN_CONTROL))
+	if (btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	/*
@@ -2811,7 +2811,7 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 
 static void clear_discoverable(struct btd_adapter *adapter)
 {
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	if (!(adapter->current_settings & MGMT_SETTING_DISCOVERABLE))
@@ -2871,7 +2871,7 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 
 		break;
 	case MGMT_SETTING_DISCOVERABLE:
-		if (has_kernel_features(KERNEL_CONN_CONTROL)) {
+		if (btd_has_kernel_features(KERNEL_CONN_CONTROL)) {
 			if (mode) {
 				set_mode(adapter, MGMT_OP_SET_CONNECTABLE,
 									mode);
@@ -4189,7 +4189,7 @@ static void load_default_system_params(struct btd_adapter *adapter)
 	unsigned int err;
 
 	if (!main_opts.default_params.num_entries ||
-	    !has_kernel_features(KERNEL_SET_SYSTEM_CONFIG))
+	    !btd_has_kernel_features(KERNEL_SET_SYSTEM_CONFIG))
 		return;
 
 	params = malloc0(sizeof(*params) *
@@ -4874,7 +4874,7 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	 * adapter_auto_connect_add() function is used to maintain what to
 	 * connect.
 	 */
-	if (has_kernel_features(KERNEL_CONN_CONTROL))
+	if (btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return 0;
 
 	if (g_slist_find(adapter->connect_list, device)) {
@@ -4914,7 +4914,7 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	if (device == adapter->connect_le)
 		adapter->connect_le = NULL;
 
-	if (has_kernel_features(KERNEL_CONN_CONTROL))
+	if (btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	if (!g_slist_find(adapter->connect_list, device)) {
@@ -4976,7 +4976,7 @@ void adapter_whitelist_add(struct btd_adapter *adapter, struct btd_device *dev)
 {
 	struct mgmt_cp_add_device cp;
 
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	memset(&cp, 0, sizeof(cp));
@@ -5015,7 +5015,7 @@ void adapter_whitelist_remove(struct btd_adapter *adapter, struct btd_device *de
 {
 	struct mgmt_cp_remove_device cp;
 
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	memset(&cp, 0, sizeof(cp));
@@ -5071,7 +5071,7 @@ void adapter_auto_connect_add(struct btd_adapter *adapter,
 	uint8_t bdaddr_type;
 	unsigned int id;
 
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	if (g_slist_find(adapter->connect_list, device)) {
@@ -5143,7 +5143,7 @@ void adapter_set_device_wakeable(struct btd_adapter *adapter,
 	const bdaddr_t *bdaddr;
 	uint8_t bdaddr_type;
 
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	bdaddr = device_get_address(device);
@@ -5220,7 +5220,7 @@ void adapter_auto_connect_remove(struct btd_adapter *adapter,
 	uint8_t bdaddr_type;
 	unsigned int id;
 
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	if (!g_slist_find(adapter->connect_list, device)) {
@@ -6763,7 +6763,7 @@ connect_le:
 	 * If kernel background scan is used then the kernel is
 	 * responsible for connecting.
 	 */
-	if (has_kernel_features(KERNEL_CONN_CONTROL))
+	if (btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return;
 
 	/*
@@ -9007,7 +9007,7 @@ static int clear_devices(struct btd_adapter *adapter)
 {
 	struct mgmt_cp_remove_device cp;
 
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		return 0;
 
 	memset(&cp, 0, sizeof(cp));
@@ -9325,7 +9325,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			(missing_settings & MGMT_SETTING_FAST_CONNECTABLE))
 		set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, 0x01);
 
-	if (has_kernel_features(KERNEL_EXP_FEATURES))
+	if (btd_has_kernel_features(KERNEL_EXP_FEATURES))
 		read_exp_features(adapter);
 
 	err = adapter_register(adapter);
@@ -9451,7 +9451,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	set_name(adapter, btd_adapter_get_name(adapter));
 
-	if (has_kernel_features(KERNEL_BLOCKED_KEYS_SUPPORTED) &&
+	if (btd_has_kernel_features(KERNEL_BLOCKED_KEYS_SUPPORTED) &&
 	    !set_blocked_keys(adapter)) {
 		btd_error(adapter->dev_id,
 				"Failed to set blocked keys for index %u",
@@ -9463,7 +9463,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			!(adapter->current_settings & MGMT_SETTING_BONDABLE))
 		set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);
 
-	if (!has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
 		set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
 	else if (adapter->current_settings & MGMT_SETTING_CONNECTABLE)
 		set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x00);
@@ -9829,7 +9829,7 @@ bool btd_le_connect_before_pairing(void)
 	return false;
 }
 
-bool has_kernel_features(uint32_t features)
+bool btd_has_kernel_features(uint32_t features)
 {
-	return !!(kernel_features & features);
+	return (kernel_features & features) ? true : false;
 }

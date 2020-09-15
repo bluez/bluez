@@ -782,7 +782,7 @@ static void disconnect_cb(struct btd_device *dev, uint8_t reason)
 			 * preferable to set the reconnect timer there as it is
 			 * a more predictable delay.
 			 */
-			if (!has_kernel_features(KERNEL_HAS_RESUME_EVT))
+			if (!btd_has_kernel_features(KERNEL_HAS_RESUME_EVT))
 				reconnect_set_timer(reconnect, resume_delay);
 		}
 		break;
