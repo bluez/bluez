@@ -29,6 +29,8 @@
 #include <lib/bluetooth.h>
 #include <lib/sdp.h>
 
+#define ADAPTER_INTERFACE	"org.bluez.Adapter1"
+
 #define MAX_NAME_LENGTH		248
 
 /* Invalid SSP passkey value used to indicate negative replies */

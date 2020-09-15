@@ -3007,6 +3007,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 {
 	struct bearer_state *state = get_state(device, bdaddr_type);
 	DBusMessage *reply;
+	bool remove_device = false;
 
 	if (!state->connected)
 		return;
@@ -3036,6 +3037,10 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 	while (device->disconnects) {
 		DBusMessage *msg = device->disconnects->data;
 
+		if (dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
+								"RemoveDevice"))
+			remove_device = true;
+
 		g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
 		device->disconnects = g_slist_remove(device->disconnects, msg);
 		dbus_message_unref(msg);
@@ -3061,6 +3066,9 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
+
+	if (remove_device)
+		btd_adapter_remove_device(device->adapter, device);
 }
 
 guint device_add_disconnect_watch(struct btd_device *device,
@@ -4481,6 +4489,9 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 			g_source_remove(device->disconn_timer);
 		disconnect_all(device);
 	}
+
+	if (device->temporary_timer > 0)
+		g_source_remove(device->temporary_timer);
 
 	if (device->store_id > 0) {
 		g_source_remove(device->store_id);
