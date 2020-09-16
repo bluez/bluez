@@ -2719,6 +2719,85 @@ static void cmd_ad_clear(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static void print_add_or_pattern_with_rssi_usage(void)
+{
+	bt_shell_printf("rssi-range format:\n"
+			"\t<low-rssi>,<high-rssi>\n"
+			"\tBoth parameters can be skipped, in that case the\n"
+			"\tparamter will be set to its pre-defined value\n");
+	bt_shell_printf("\tPre-defined low-rssi,high-rssi: %d,%d\n",
+						RSSI_DEFAULT_LOW_THRESHOLD,
+						RSSI_DEFAULT_HIGH_THRESHOLD);
+	bt_shell_printf("timeout format:\n"
+			"\t<low-rssi>,<high-rssi>\n"
+			"\tBoth parameters can be skipped, in that case the\n"
+			"\tparamter will be set to its pre-defined value\n");
+	bt_shell_printf("\tPre-defined low-timeout,high-timeout: %d,%d\n",
+						RSSI_DEFAULT_LOW_TIMEOUT,
+						RSSI_DEFAULT_HIGH_TIMEOUT);
+	bt_shell_printf("pattern format:\n"
+			"\t<start_position> <ad_data_type> <content_of_pattern>\n");
+	bt_shell_printf("e.g.\n"
+			"\tadd-or-pattern-rssi -10, ,10 1 2 01ab55\n");
+	bt_shell_printf("or\n"
+			"\tadd-or-pattern-rssi -50,-30 , 1 2 01ab55 3 4 23cd66\n");
+}
+
+static void print_add_or_pattern_usage(void)
+{
+	bt_shell_printf("pattern format:\n"
+			"\t<start_position> <ad_data_type> <content_of_pattern>\n");
+	bt_shell_printf("e.g.\n"
+			"\tadd-or-pattern 1 2 01ab55 3 4 23cd66\n");
+}
+
+static void cmd_adv_monitor_print_usage(int argc, char *argv[])
+{
+	if (strcmp(argv[1], "add-or-pattern") == 0)
+		print_add_or_pattern_usage();
+	else if (strcmp(argv[1], "add-or-pattern-rssi") == 0)
+		print_add_or_pattern_with_rssi_usage();
+	else
+		bt_shell_printf("Invalid argument %s", argv[1]);
+}
+
+static void cmd_adv_monitor_add_or_monitor_with_rssi(int argc, char *argv[])
+{
+	adv_monitor_add_monitor(dbus_conn, "or_patterns", TRUE, argc, argv);
+}
+
+static void cmd_adv_monitor_add_or_monitor(int argc, char *argv[])
+{
+	adv_monitor_add_monitor(dbus_conn, "or_patterns", FALSE, argc, argv);
+}
+
+static void cmd_adv_monitor_print_monitor(int argc, char *argv[])
+{
+	int monitor_idx;
+
+	if (strcmp(argv[1], "all") == 0)
+		monitor_idx = -1;
+	else
+		monitor_idx = atoi(argv[1]);
+	adv_monitor_print_monitor(dbus_conn, monitor_idx);
+}
+
+static void cmd_adv_monitor_remove_monitor(int argc, char *argv[])
+{
+	int monitor_idx;
+
+	if (strcmp(argv[1], "all") == 0)
+		monitor_idx = -1;
+	else
+		monitor_idx = atoi(argv[1]);
+	adv_monitor_remove_monitor(dbus_conn, monitor_idx);
+}
+
+static void cmd_adv_monitor_get_supported_info(int argc, char *argv[])
+{
+	adv_monitor_get_supported_info();
+}
+
 static const struct bt_shell_menu advertise_menu = {
 	.name = "advertise",
 	.desc = "Advertise Options Submenu",
@@ -2752,6 +2831,35 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set/Get advertise secondary channel" },
 	{ "clear", "[uuids/service/manufacturer/config-name...]", cmd_ad_clear,
 			"Clear advertise config" },
+	{ } },
+};
+
+static const struct bt_shell_menu advertise_monitor_menu = {
+	.name = "monitor",
+	.desc = "Advertisement Monitor Options Submenu",
+	.entries = {
+	{ "add-or-pattern-rssi", "<rssi-range=low,high> <timeout=low,high> "
+				"[patterns=pattern1 pattern2 ...]",
+				cmd_adv_monitor_add_or_monitor_with_rssi,
+				"Add 'or pattern' type monitor with RSSI "
+				"filter" },
+	{ "add-or-pattern", "[patterns=pattern1 pattern2 ...]",
+				cmd_adv_monitor_add_or_monitor,
+				"Add 'or pattern' type monitor without RSSI "
+				"filter" },
+	{ "get-pattern", "<monitor-id/all>",
+				cmd_adv_monitor_print_monitor,
+				"Get advertisement monitor" },
+	{ "remove-pattern", "<monitor-id/all>",
+				cmd_adv_monitor_remove_monitor,
+				"Remove advertisement monitor" },
+	{ "get-supported-info", NULL,
+				cmd_adv_monitor_get_supported_info,
+				"Get advertisement manager supported "
+				"features and supported monitor types" },
+	{ "print-usage", "<add-or-pattern/add-or-pattern-rssi>",
+				cmd_adv_monitor_print_usage,
+				"Print the command usage"},
 	{ } },
 };
 
@@ -2932,6 +3040,7 @@ int main(int argc, char *argv[])
 	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
 	bt_shell_add_submenu(&advertise_menu);
+	bt_shell_add_submenu(&advertise_monitor_menu);
 	bt_shell_add_submenu(&scan_menu);
 	bt_shell_add_submenu(&gatt_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
