@@ -2981,15 +2981,66 @@ static int open_file(const char *filename, int flags)
 	return fd;
 }
 
-static int transport_send(struct transport *transport, int fd)
+#define NSEC_USEC(_t) (_t / 1000L)
+#define SEC_USEC(_t)  (_t  * 1000000L)
+#define TS_USEC(_ts)  (SEC_USEC((_ts)->tv_sec) + NSEC_USEC((_ts)->tv_nsec))
+
+static void send_wait(struct timespec *t_start, uint32_t us)
 {
+	struct timespec t_now;
+	struct timespec t_diff;
+	int64_t delta_us;
+
+	/* Skip sleep at start */
+	if (!us)
+		return;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &t_now) < 0) {
+		bt_shell_printf("clock_gettime: %s (%d)", strerror(errno),
+								errno);
+		return;
+	}
+
+	t_diff.tv_sec = t_now.tv_sec - t_start->tv_sec;
+	t_diff.tv_nsec = t_now.tv_nsec - t_start->tv_nsec;
+
+	delta_us = us - TS_USEC(&t_diff);
+
+	if (delta_us < 0) {
+		bt_shell_printf("Send is behind: %zd us - skip sleep",
+							delta_us);
+		delta_us = 1000;
+	}
+
+	usleep(delta_us);
+
+	if (clock_gettime(CLOCK_MONOTONIC, t_start) < 0)
+		bt_shell_printf("clock_gettime: %s (%d)", strerror(errno),
+								errno);
+}
+
+static int transport_send(struct transport *transport, int fd,
+					struct bt_iso_qos *qos)
+{
+	struct timespec t_start;
 	uint8_t *buf;
+	uint32_t num = 0;
+
+	if (qos && clock_gettime(CLOCK_MONOTONIC, &t_start) < 0) {
+		bt_shell_printf("clock_gettime: %s (%d)", strerror(errno),
+								errno);
+		return -errno;
+	}
 
 	buf = malloc(transport->mtu[1]);
 	if (!buf) {
 		bt_shell_printf("malloc: %s (%d)", strerror(errno), errno);
 		return -ENOMEM;
 	}
+
+	/* num of packets = latency (ms) / interval (us) */
+	if (qos)
+		num = (qos->out.latency * 1000 / qos->out.interval);
 
 	for (transport->seq = 0; ; transport->seq++) {
 		ssize_t ret;
@@ -3016,6 +3067,11 @@ static int transport_send(struct transport *transport, int fd)
 		bt_shell_printf("[seq %d] send: %zd bytes "
 				"(TIOCOUTQ %d bytes)\n",
 				transport->seq, ret, queued);
+
+		if (qos) {
+			if (transport->seq && !((transport->seq + 1) % num))
+				send_wait(&t_start, num * qos->out.interval);
+		}
 	}
 
 	free(buf);
@@ -3026,6 +3082,8 @@ static void cmd_send_transport(int argc, char *argv[])
 	GDBusProxy *proxy;
 	struct transport *transport;
 	int fd, err;
+	struct bt_iso_qos qos;
+	socklen_t len;
 
 	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
 					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
@@ -3049,7 +3107,14 @@ static void cmd_send_transport(int argc, char *argv[])
 
 	bt_shell_printf("Sending ...\n");
 
-	err = transport_send(transport, fd);
+	/* Read QoS if available */
+	memset(&qos, 0, sizeof(qos));
+	len = sizeof(qos);
+	if (getsockopt(transport->sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos,
+							&len) < 0)
+		err = transport_send(transport, fd, NULL);
+	else
+		err = transport_send(transport, fd, &qos);
 
 	close(fd);
 
