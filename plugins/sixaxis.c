@@ -411,7 +411,7 @@ get_pairing_type_for_device(struct udev_device *udevice, uint16_t *bus,
 
 	hid_id = udev_device_get_property_value(hid_parent, "HID_ID");
 
-	if (sscanf(hid_id, "%hx:%hx:%hx", bus, &vid, &pid) != 3)
+	if (!hid_id || sscanf(hid_id, "%hx:%hx:%hx", bus, &vid, &pid) != 3)
 		return NULL;
 
 	cp = get_pairing(vid, pid);
