@@ -1687,7 +1687,7 @@ static gboolean avdtp_open_cmd(struct avdtp *session, uint8_t transaction,
 
 	stream = sep->stream;
 
-	if (sep->ind && sep->ind->open) {
+	if (sep->ind && sep->ind->open && !session->pending_open) {
 		if (!sep->ind->open(session, sep, stream, &err,
 					sep->user_data))
 			goto failed;
@@ -1699,11 +1699,13 @@ static gboolean avdtp_open_cmd(struct avdtp *session, uint8_t transaction,
 						AVDTP_OPEN, NULL, 0))
 		return FALSE;
 
-	stream->open_acp = TRUE;
-	session->pending_open = stream;
-	stream->timer = g_timeout_add_seconds(REQ_TIMEOUT,
+	if (!session->pending_open) {
+		stream->open_acp = TRUE;
+		session->pending_open = stream;
+		stream->timer = g_timeout_add_seconds(REQ_TIMEOUT,
 						stream_open_timeout,
 						stream);
+	}
 
 	return TRUE;
 
