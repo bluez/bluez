@@ -1,4 +1,4 @@
-
+# SPDX-License-Identifier: GPL-2.0
 if CLIENT
 bin_PROGRAMS += client/bluetoothctl
 

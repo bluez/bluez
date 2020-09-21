@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 AC_PREREQ(2.60)
 AC_INIT(bluez, 5.55)
 

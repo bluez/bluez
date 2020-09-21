@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 if SYSTEMD
 systemduserunitdir = $(SYSTEMD_USERUNITDIR)
 systemduserunit_DATA = obexd/src/obex.service
