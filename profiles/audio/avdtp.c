@@ -388,6 +388,7 @@ struct avdtp {
 	GSList *prio_queue; /* Same as req_queue but is processed before it */
 
 	struct avdtp_stream *pending_open;
+	GIOChannel *pending_open_io;
 
 	uint32_t phy;
 	uint16_t imtu;
@@ -609,9 +610,31 @@ static gboolean stream_open_timeout(gpointer user_data)
 
 	stream->session->pending_open = NULL;
 
+	if (stream->session->pending_open_io) {
+		g_io_channel_unref(stream->session->pending_open_io);
+		stream->session->pending_open_io = NULL;
+	}
+
 	avdtp_abort(stream->session, stream);
 
 	return FALSE;
+}
+
+static void stream_set_timer(struct avdtp_stream *stream, guint timeout,
+							GSourceFunc func)
+{
+	if (stream->timer)
+		g_source_remove(stream->timer);
+
+	stream->timer = g_timeout_add_seconds(timeout, func, stream);
+}
+
+static void stream_set_pending_open(struct avdtp_stream *stream, GIOChannel *io)
+{
+	stream->open_acp = TRUE;
+	stream->session->pending_open = stream;
+	stream->session->pending_open_io = io;
+	stream_set_timer(stream, REQ_TIMEOUT, stream_open_timeout);
 }
 
 void avdtp_error_init(struct avdtp_error *err, uint8_t category, int id)
@@ -836,6 +859,12 @@ proceed:
 
 	stream->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) transport_cb, stream);
+
+	/* Release pending IO */
+	if (session->pending_open_io) {
+		g_io_channel_unref(session->pending_open_io);
+		session->pending_open_io = NULL;
+	}
 }
 
 static int pending_req_cmp(gconstpointer a, gconstpointer b)
@@ -1674,6 +1703,14 @@ static gboolean avdtp_open_cmd(struct avdtp *session, uint8_t transaction,
 
 	stream = sep->stream;
 
+	/* Check if the stream is pending and there is an IO set already */
+	if (stream == session->pending_open && session->pending_open_io) {
+		handle_transport_connect(session, session->pending_open_io,
+						stream->imtu, stream->omtu);
+		return avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
+							AVDTP_OPEN, NULL, 0);
+	}
+
 	if (sep->ind && sep->ind->open && !session->pending_open) {
 		if (!sep->ind->open(session, sep, stream, &err,
 					sep->user_data))
@@ -1686,13 +1723,8 @@ static gboolean avdtp_open_cmd(struct avdtp *session, uint8_t transaction,
 						AVDTP_OPEN, NULL, 0))
 		return FALSE;
 
-	if (!session->pending_open) {
-		stream->open_acp = TRUE;
-		session->pending_open = stream;
-		stream->timer = g_timeout_add_seconds(REQ_TIMEOUT,
-						stream_open_timeout,
-						stream);
-	}
+	if (!session->pending_open)
+		stream_set_pending_open(stream, NULL);
 
 	return TRUE;
 
@@ -3139,18 +3171,39 @@ struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
 gboolean avdtp_stream_set_transport(struct avdtp_stream *stream, int fd,
 						size_t imtu, size_t omtu)
 {
-	GIOChannel *io;
+	GIOChannel *io = g_io_channel_unix_new(fd);
 
-	if (stream != stream->session->pending_open)
-		return FALSE;
+	if (stream != stream->session->pending_open) {
+		uint8_t err;
 
-	io = g_io_channel_unix_new(fd);
+		if (stream->session->pending_open)
+			goto failed;
+
+		/* Attempt to Open there is no pending stream set yet */
+		if (stream->lsep->ind && stream->lsep->ind->open) {
+			if (!stream->lsep->ind->open(stream->session,
+						stream->lsep,
+						stream, &err,
+						stream->lsep->user_data))
+				goto failed;
+		}
+
+		stream_set_pending_open(stream, io);
+		stream->imtu = imtu;
+		stream->omtu = omtu;
+
+		return TRUE;
+	}
 
 	handle_transport_connect(stream->session, io, imtu, omtu);
 
 	g_io_channel_unref(io);
 
 	return TRUE;
+
+failed:
+	g_io_channel_unref(io);
+	return FALSE;
 }
 
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
