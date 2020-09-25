@@ -20,48 +20,96 @@
 
 #include "src/shared/io.h"
 
-struct io {
-	struct l_io *l_io;
-	io_callback_func_t read_cb;
-	io_destroy_func_t read_destroy;
-	void *read_data;
-	io_callback_func_t write_cb;
-	io_destroy_func_t write_destroy;
-	void *write_data;
+struct io_watch {
+	struct io *io;
+	io_callback_func_t cb;
+	io_destroy_func_t destroy;
+	void *user_data;
 };
 
-static bool read_callback(struct l_io *l_io, void *user_data)
+struct io {
+	int ref_count;
+	struct l_io *l_io;
+	struct io_watch *read_watch;
+	struct io_watch *write_watch;
+	struct io_watch *disc_watch;
+};
+
+static struct io *io_ref(struct io *io)
 {
-	struct io *io = user_data;
-	bool result = false;
-
 	if (!io)
-		return false;
+		return NULL;
 
-	if (io->read_cb)
-		result = io->read_cb(io, io->read_data);
+	__sync_fetch_and_add(&io->ref_count, 1);
 
-	if (io->read_destroy)
-		io->read_destroy(io->read_data);
-
-	return result;
+	return io;
 }
 
-static bool write_callback(struct l_io *l_io, void *user_data)
+static void io_unref(struct io *io)
 {
-	struct io *io = user_data;
-	bool result = false;
-
 	if (!io)
+		return;
+
+	if (__sync_sub_and_fetch(&io->ref_count, 1))
+		return;
+
+	l_free(io);
+}
+
+static void watch_destroy(void *user_data)
+{
+	struct io_watch *watch = user_data;
+	struct io *io;
+
+	if (!watch)
+		return;
+
+	io = watch->io;
+
+	if (watch == io->read_watch)
+		io->read_watch = NULL;
+	else if (watch == io->write_watch)
+		io->write_watch = NULL;
+	else if (watch == io->disc_watch)
+		io->disc_watch = NULL;
+
+	if (watch->destroy)
+		watch->destroy(watch->user_data);
+
+	io_unref(watch->io);
+	l_free(watch);
+}
+
+static struct io_watch *watch_new(struct io *io, io_callback_func_t cb,
+				void *user_data, io_destroy_func_t destroy)
+{
+	struct io_watch *watch;
+
+	watch = l_new(struct io_watch, 1);
+	watch->io = io_ref(io);
+	watch->cb = cb;
+	watch->user_data = user_data;
+	watch->destroy = destroy;
+
+	return watch;
+}
+
+static bool watch_callback(struct l_io *l_io, void *user_data)
+{
+	struct io_watch *watch = user_data;
+
+	if (!watch->cb)
 		return false;
 
-	if (io->write_cb)
-		result = io->write_cb(io, io->write_data);
+	return watch->cb(watch->io, watch->user_data);
+}
 
-	if (io->write_destroy)
-		io->write_destroy(io->write_data);
+static void disc_callback(struct l_io *l_io, void *user_data)
+{
+	struct io_watch *watch = user_data;
 
-	return result;
+	if (watch->cb)
+		watch->cb(watch->io, watch->user_data);
 }
 
 struct io *io_new(int fd)
@@ -84,7 +132,7 @@ struct io *io_new(int fd)
 
 	io->l_io = l_io;
 
-	return io;
+	return io_ref(io);
 }
 
 void io_destroy(struct io *io)
@@ -92,10 +140,22 @@ void io_destroy(struct io *io)
 	if (!io)
 		return;
 
-	if (io->l_io)
-		l_io_destroy(io->l_io);
+	l_io_set_read_handler(io->l_io, NULL, NULL, NULL);
+	watch_destroy(io->read_watch);
+	io->read_watch = NULL;
 
-	l_free(io);
+	l_io_set_write_handler(io->l_io, NULL, NULL, NULL);
+	watch_destroy(io->write_watch);
+	io->write_watch = NULL;
+
+	l_io_set_disconnect_handler(io->l_io, NULL, NULL, NULL);
+	watch_destroy(io->disc_watch);
+	io->disc_watch = NULL;
+
+	l_io_destroy(io->l_io);
+	io->l_io = NULL;
+
+	io_unref(io);
 }
 
 int io_get_fd(struct io *io)
@@ -117,37 +177,94 @@ bool io_set_close_on_destroy(struct io *io, bool do_close)
 bool io_set_read_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy)
 {
+	bool result;
+
 	if (!io || !io->l_io)
 		return false;
 
-	io->read_cb = callback;
-	io->read_data = user_data;
-	io->read_destroy = destroy;
+	if (io->read_watch) {
+		l_io_set_read_handler(io->l_io, NULL, NULL, NULL);
 
-	return l_io_set_read_handler(io->l_io, read_callback, io, NULL);
+		if (!callback) {
+			watch_destroy(io->read_watch);
+			io->read_watch = NULL;
+			return true;
+		}
+	}
+
+	io->read_watch = watch_new(io, callback, user_data, destroy);
+
+	result = l_io_set_read_handler(io->l_io, watch_callback, io->read_watch,
+								watch_destroy);
+
+	if (!result) {
+		watch_destroy(io->read_watch);
+		io->read_watch = NULL;
+	}
+
+	return result;
 }
 
 bool io_set_write_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy)
 {
+	bool result;
+
 	if (!io || !io->l_io)
 		return false;
 
-	io->write_cb = callback;
-	io->write_data = user_data;
-	io->write_destroy = destroy;
+	if (io->write_watch) {
+		l_io_set_write_handler(io->l_io, NULL, NULL, NULL);
 
-	return l_io_set_write_handler(io->l_io, write_callback, io, NULL);
+		if (!callback) {
+			watch_destroy(io->write_watch);
+			io->write_watch = NULL;
+			return true;
+		}
+	}
+
+	io->write_watch = watch_new(io, callback, user_data, destroy);
+
+	result = l_io_set_write_handler(io->l_io, watch_callback,
+						io->write_watch, watch_destroy);
+
+	if (!result) {
+		watch_destroy(io->write_watch);
+		io->write_watch = NULL;
+	}
+
+	return result;
 }
 
 bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy)
 {
+	bool result;
+
 	if (!io || !io->l_io)
 		return false;
 
-	return l_io_set_disconnect_handler(io->l_io, (void *) callback,
-							user_data, destroy);
+	if (io->disc_watch) {
+		l_io_set_disconnect_handler(io->l_io, NULL, NULL, NULL);
+
+		if (!callback) {
+			watch_destroy(io->disc_watch);
+			io->disc_watch = NULL;
+			return true;
+		}
+	}
+
+	io->disc_watch = watch_new(io, callback, user_data, destroy);
+
+	result = l_io_set_disconnect_handler(io->l_io, disc_callback,
+						io->disc_watch, watch_destroy);
+
+	if (!result) {
+		watch_destroy(io->disc_watch);
+		io->disc_watch = NULL;
+	}
+
+	return result;
 }
 
 ssize_t io_send(struct io *io, const struct iovec *iov, int iovcnt)
