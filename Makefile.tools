@@ -176,9 +176,8 @@ tools_userchan_tester_LDADD = lib/libbluetooth-internal.la \
 endif
 
 if TOOLS
-bin_PROGRAMS += tools/rctest tools/l2test tools/l2ping tools/bccmd \
-			tools/bluemoon tools/hex2hcd tools/mpris-proxy \
-			tools/btattach
+bin_PROGRAMS += tools/rctest tools/l2test tools/l2ping tools/bluemoon \
+		tools/hex2hcd tools/mpris-proxy tools/btattach
 
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/scotest tools/amptest tools/hwdb \
@@ -278,12 +277,6 @@ tools_l2test_LDADD = lib/libbluetooth-internal.la
 
 tools_l2ping_LDADD = lib/libbluetooth-internal.la
 
-tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
-			tools/csr_hci.c tools/csr_usb.c \
-			tools/csr_h4.c tools/csr_3wire.c \
-			tools/csr_bcsp.c tools/ubcsp.h tools/ubcsp.c
-tools_bccmd_LDADD = lib/libbluetooth-internal.la
-
 tools_bluemoon_SOURCES = tools/bluemoon.c monitor/bt.h
 tools_bluemoon_LDADD = src/libshared-mainloop.la
 
@@ -298,7 +291,7 @@ tools_gatt_service_LDADD = $(GLIB_LIBS) $(DBUS_LIBS) gdbus/libgdbus-internal.la
 profiles_iap_iapd_SOURCES = profiles/iap/main.c
 profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
 
-dist_man_MANS += tools/rctest.1 tools/l2ping.1 tools/bccmd.1 tools/btattach.1
+dist_man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1
 
 EXTRA_DIST += tools/bdaddr.1
 
@@ -360,7 +353,7 @@ tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_bcm43xx.c
 tools_hciattach_LDADD = lib/libbluetooth-internal.la
 
-tools_hciconfig_SOURCES = tools/hciconfig.c tools/csr.h tools/csr.c
+tools_hciconfig_SOURCES = tools/hciconfig.c
 tools_hciconfig_LDADD = lib/libbluetooth-internal.la
 
 tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c
@@ -409,7 +402,7 @@ EXTRA_DIST += tools/hciattach.1 tools/hciconfig.1 \
 			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1
 endif
 else
-EXTRA_DIST += tools/rctest.1 tools/l2ping.1 tools/bccmd.1 tools/btattach.1
+EXTRA_DIST += tools/rctest.1 tools/l2ping.1 tools/btattach.1
 endif
 
 if HID2HCI
