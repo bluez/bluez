@@ -3419,6 +3419,12 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
 
+	if (seqlen < 0) {
+		errno = EINVAL;
+		status = -1;
+		goto end;
+	}
+
 	SDPDBG("Data seq added : %d", seqlen);
 
 	/* set the length and increment the pointer */
@@ -3841,6 +3847,11 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
 
+	if (seqlen < 0) {
+		t->err = EINVAL;
+		goto end;
+	}
+
 	SDPDBG("Data seq added : %d", seqlen);
 
 	/* now set the length and increment the pointer */
@@ -4053,6 +4064,11 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 
 	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
+
+	if (seqlen < 0) {
+		t->err = EINVAL;
+		goto end;
+	}
 
 	SDPDBG("Data seq added : %d", seqlen);
 
