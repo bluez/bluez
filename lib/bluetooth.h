@@ -349,6 +349,7 @@ int basprintf(char *str, const char *format, ...);
 int basnprintf(char *str, size_t size, const char *format, ...);
 
 void *bt_malloc(size_t size);
+void *bt_malloc0(size_t size);
 void bt_free(void *ptr);
 
 int bt_error(uint16_t code);

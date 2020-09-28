@@ -173,6 +173,11 @@ void *bt_malloc(size_t size)
 	return malloc(size);
 }
 
+void *bt_malloc0(size_t size)
+{
+	return calloc(size, 1);
+}
+
 void bt_free(void *ptr)
 {
 	free(ptr);
