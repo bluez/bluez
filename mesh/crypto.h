@@ -26,7 +26,7 @@ bool mesh_aes_ecb_one(const uint8_t key[16],
 			const uint8_t plaintext[16], uint8_t encrypted[16]);
 bool mesh_crypto_nkik(const uint8_t network_key[16], uint8_t identity_key[16]);
 bool mesh_crypto_nkbk(const uint8_t network_key[16], uint8_t beacon_key[16]);
-bool mesh_crypto_nkpk(const uint8_t network_key[16], uint8_t proxy_key[16]);
+bool mesh_crypto_nkpk(const uint8_t network_key[16], uint8_t private_key[16]);
 bool mesh_crypto_identity(const uint8_t net_key[16], uint16_t addr,
 							uint8_t id[16]);
 bool mesh_crypto_beacon_cmac(const uint8_t encryption_key[16],

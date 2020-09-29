@@ -251,9 +251,9 @@ bool mesh_crypto_nkbk(const uint8_t n[16], uint8_t beacon_key[16])
 	return crypto_128(n, "nkbk", beacon_key);
 }
 
-bool mesh_crypto_nkpk(const uint8_t n[16], uint8_t proxy_key[16])
+bool mesh_crypto_nkpk(const uint8_t n[16], uint8_t private_key[16])
 {
-	return crypto_128(n, "nkpk", proxy_key);
+	return crypto_128(n, "nkpk", private_key);
 }
 
 bool mesh_crypto_k3(const uint8_t n[16], uint8_t out64[8])
