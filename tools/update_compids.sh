@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Download the list of company IDs from bluetooth.org and generate a diff which
 # can be applied to source tree to update bt_compidtostr(). Usage:
 #

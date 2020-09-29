@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # parse companies from
 # https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers
