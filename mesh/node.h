@@ -52,8 +52,6 @@ bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
 					struct mesh_config_node *db_node);
 const uint8_t *node_get_comp(struct mesh_node *node, uint8_t page_num,
 								uint16_t *len);
-bool node_set_comp(struct mesh_node *node, uint8_t page_num,
-					const uint8_t *data, uint16_t len);
 bool node_replace_comp(struct mesh_node *node, uint8_t retire, uint8_t with);
 uint8_t node_lpn_mode_get(struct mesh_node *node);
 bool node_relay_mode_set(struct mesh_node *node, bool enable, uint8_t cnt,

@@ -788,14 +788,11 @@ uint8_t node_friend_mode_get(struct mesh_node *node)
 	return node->friend;
 }
 
-static uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf,
+static uint16_t generate_node_comp(struct mesh_node *node, uint8_t *buf,
 								uint16_t sz)
 {
 	uint16_t n, features, num_ele = 0;
 	const struct l_queue_entry *entry;
-
-	if (!node || sz < MIN_COMP_SIZE)
-		return 0;
 
 	n = 0;
 
@@ -857,12 +854,81 @@ static bool match_page(const void *a, const void *b)
 	return page->page_num == page_num;
 }
 
-bool node_set_comp(struct mesh_node *node, uint8_t page_num,
+static void convert_node_to_storage(struct mesh_node *node,
+					struct mesh_config_node *db_node)
+{
+	const struct l_queue_entry *entry;
+
+	db_node->cid = node->comp.cid;
+	db_node->pid = node->comp.pid;
+	db_node->vid = node->comp.vid;
+	db_node->crpl = node->comp.crpl;
+	db_node->modes.lpn = node->lpn;
+	db_node->modes.proxy = node->proxy;
+
+	db_node->modes.friend = node->friend;
+	db_node->modes.relay.state = node->relay.mode;
+	db_node->modes.relay.cnt = node->relay.cnt;
+	db_node->modes.relay.interval = node->relay.interval;
+	db_node->modes.beacon = node->beacon;
+
+	db_node->ttl = node->ttl;
+	db_node->seq_number = node->seq_number;
+
+	db_node->elements = l_queue_new();
+
+	entry = l_queue_get_entries(node->elements);
+
+	for (; entry; entry = entry->next) {
+		struct node_element *ele = entry->data;
+		struct mesh_config_element *db_ele;
+
+		db_ele = l_new(struct mesh_config_element, 1);
+
+		db_ele->index = ele->idx;
+		db_ele->location = ele->location;
+		db_ele->models = l_queue_new();
+
+		mesh_model_convert_to_storage(db_ele->models, ele->models);
+
+		l_queue_push_tail(db_node->elements, db_ele);
+	}
+
+}
+
+static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
+{
+	struct mesh_config_node db_node;
+	const struct l_queue_entry *entry;
+	const char *storage_dir;
+
+	convert_node_to_storage(node, &db_node);
+	storage_dir = mesh_get_storage_dir();
+	node->cfg = mesh_config_create(storage_dir, uuid, &db_node);
+
+	if (node->cfg)
+		init_storage_dir(node);
+
+	/* Free temporarily allocated resources */
+	entry = l_queue_get_entries(db_node.elements);
+
+	for (; entry; entry = entry->next) {
+		struct mesh_config_element *db_ele = entry->data;
+
+		l_queue_destroy(db_ele->models, l_free);
+	}
+
+	l_queue_destroy(db_node.elements, l_free);
+
+	return node->cfg != NULL;
+}
+
+static bool set_node_comp(struct mesh_node *node, uint8_t page_num,
 					const uint8_t *data, uint16_t len)
 {
 	struct mesh_config_comp_page *page;
 
-	if (!node || len < MIN_COMP_SIZE)
+	if (len < MIN_COMP_SIZE)
 		return false;
 
 	page = l_queue_remove_if(node->pages, match_page,
@@ -876,9 +942,17 @@ bool node_set_comp(struct mesh_node *node, uint8_t page_num,
 	memcpy(page->data, data, len);
 	l_queue_push_tail(node->pages, page);
 
-	mesh_config_comp_page_add(node->cfg, page_num, page->data, len);
+	return mesh_config_comp_page_add(node->cfg, page_num, page->data, len);
+}
 
-	return true;
+static bool create_node_comp(struct mesh_node *node)
+{
+	uint16_t len;
+	uint8_t comp[MAX_MSG_LEN - 2];
+
+	len = generate_node_comp(node, comp, sizeof(comp));
+
+	return set_node_comp(node, 0, comp, len);
 }
 
 const uint8_t *node_get_comp(struct mesh_node *node, uint8_t page_num,
@@ -1107,75 +1181,6 @@ fail:
 	return false;
 }
 
-static void convert_node_to_storage(struct mesh_node *node,
-					struct mesh_config_node *db_node)
-{
-	const struct l_queue_entry *entry;
-
-	db_node->cid = node->comp.cid;
-	db_node->pid = node->comp.pid;
-	db_node->vid = node->comp.vid;
-	db_node->crpl = node->comp.crpl;
-	db_node->modes.lpn = node->lpn;
-	db_node->modes.proxy = node->proxy;
-
-	db_node->modes.friend = node->friend;
-	db_node->modes.relay.state = node->relay.mode;
-	db_node->modes.relay.cnt = node->relay.cnt;
-	db_node->modes.relay.interval = node->relay.interval;
-	db_node->modes.beacon = node->beacon;
-
-	db_node->ttl = node->ttl;
-	db_node->seq_number = node->seq_number;
-
-	db_node->elements = l_queue_new();
-
-	entry = l_queue_get_entries(node->elements);
-
-	for (; entry; entry = entry->next) {
-		struct node_element *ele = entry->data;
-		struct mesh_config_element *db_ele;
-
-		db_ele = l_new(struct mesh_config_element, 1);
-
-		db_ele->index = ele->idx;
-		db_ele->location = ele->location;
-		db_ele->models = l_queue_new();
-
-		mesh_model_convert_to_storage(db_ele->models, ele->models);
-
-		l_queue_push_tail(db_node->elements, db_ele);
-	}
-
-}
-
-static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
-{
-	struct mesh_config_node db_node;
-	const struct l_queue_entry *entry;
-	const char *storage_dir;
-
-	convert_node_to_storage(node, &db_node);
-	storage_dir = mesh_get_storage_dir();
-	node->cfg = mesh_config_create(storage_dir, uuid, &db_node);
-
-	if (node->cfg)
-		init_storage_dir(node);
-
-	/* Free temporarily allocated resources */
-	entry = l_queue_get_entries(db_node.elements);
-
-	for (; entry; entry = entry->next) {
-		struct mesh_config_element *db_ele = entry->data;
-
-		l_queue_destroy(db_ele->models, l_free);
-	}
-
-	l_queue_destroy(db_node.elements, l_free);
-
-	return node->cfg != NULL;
-}
-
 static bool get_app_properties(struct mesh_node *node, const char *path,
 					struct l_dbus_message_iter *properties)
 {
@@ -1322,31 +1327,32 @@ static void update_model_options(struct mesh_node *node,
 
 static bool check_req_node(struct managed_obj_request *req)
 {
-	struct mesh_node *node;
 	const int offset = 8;
 	uint16_t node_len, len;
 	uint8_t comp[MAX_MSG_LEN - 2];
 	const uint8_t *node_comp;
 
-	if (req->type == REQUEST_TYPE_ATTACH)
-		node = req->attach;
-	else
-		node = req->node;
+	len = generate_node_comp(req->node, comp, sizeof(comp));
 
-	node_comp = node_get_comp(node, 0, &node_len);
-	len = node_generate_comp(req->node, comp, sizeof(comp));
+	if (len < MIN_COMP_SIZE)
+		return false;
 
-	/* If no page 0 exists, save it and return */
-	if (req->type != REQUEST_TYPE_ATTACH || !node_len || !node_comp)
-		return node_set_comp(node, 0, comp, len);
+	node_comp = node_get_comp(req->attach, 0, &node_len);
 
+	/* If no page 0 exists, create it and accept */
+	if (!node_len || !node_comp)
+		return set_node_comp(req->attach, 0, comp, len);
+
+	/* Test Element/Model part of composition and reject if changed */
 	if (node_len != len || memcmp(&node_comp[offset], &comp[offset],
 							node_len - offset))
 		return false;
 
+	/* If comp has changed, but not Element/Models, resave and accept */
 	else if (memcmp(node_comp, comp, node_len))
-		return node_set_comp(node, 0, comp, len);
+		return set_node_comp(req->attach, 0, comp, len);
 
+	/* Nothing has changed */
 	return true;
 }
 
@@ -1494,7 +1500,16 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 
 	node->num_ele = num_ele;
 
-	if (!check_req_node(req))
+	if (req->type != REQUEST_TYPE_ATTACH) {
+		/* Generate node configuration for a brand new node */
+		if (!create_node_config(node, node->uuid))
+			goto fail;
+
+		/* Create node composition */
+		if (!create_node_comp(node))
+			goto fail;
+	} else if (!check_req_node(req))
+		/* Check the integrity of the node composition */
 		goto fail;
 
 	switch (req->type) {
@@ -1516,17 +1531,11 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 			goto fail;
 		}
 
-		if (!create_node_config(node, node->uuid))
-			goto fail;
-
 		req->join_ready_cb(node, node->agent);
 
 		return;
 
 	case REQUEST_TYPE_IMPORT:
-		if (!create_node_config(node, node->uuid))
-			goto fail;
-
 		import = req->import;
 		if (!add_local_node(node, import->unicast, import->flags.kr,
 					import->flags.ivu,
@@ -1540,9 +1549,6 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 		return;
 
 	case REQUEST_TYPE_CREATE:
-		if (!create_node_config(node, node->uuid))
-			goto fail;
-
 		/* Generate device and primary network keys */
 		l_getrandom(dev_key, sizeof(dev_key));
 		l_getrandom(net_key.old_key, sizeof(net_key.old_key));
