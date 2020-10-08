@@ -9,6 +9,7 @@
  */
 
 #define BEACON_TYPE_SNB		0x01
+#define BEACON_TYPE_MPB		0x02
 #define KEY_REFRESH		0x01
 #define IV_INDEX_UPDATE		0x02
 
@@ -23,12 +24,15 @@ uint32_t net_key_decrypt(uint32_t iv_index, const uint8_t *pkt, size_t len,
 					uint8_t **plain, size_t *plain_len);
 bool net_key_encrypt(uint32_t id, uint32_t iv_index, uint8_t *pkt, size_t len);
 uint32_t net_key_network_id(const uint8_t network[8]);
+uint32_t net_key_beacon(const uint8_t *data, uint16_t len, uint32_t *ivi,
+							bool *ivu, bool *kr);
 bool net_key_snb_check(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 								uint64_t cmac);
 bool net_key_snb_compose(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 								uint8_t *snb);
 void net_key_beacon_seen(uint32_t id);
-void net_key_beacon_enable(uint32_t id);
-bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu);
-void net_key_beacon_disable(uint32_t id);
+bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
+								bool force);
+void net_key_beacon_enable(uint32_t id, bool mpb, uint8_t refresh_count);
+void net_key_beacon_disable(uint32_t id, bool mpb);
 uint32_t net_key_beacon_last_seen(uint32_t id);

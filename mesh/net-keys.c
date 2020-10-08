@@ -21,39 +21,55 @@
 #include "mesh/net.h"
 #include "mesh/net-keys.h"
 
-#define BEACON_TYPE_SNB		0x01
-#define KEY_REFRESH		0x01
-#define IV_INDEX_UPDATE		0x02
-
 #define BEACON_INTERVAL_MIN	10
 #define BEACON_INTERVAL_MAX	600
 
-struct net_beacon {
+/* This allows daemon to skip decryption on recently seen beacons */
+#define BEACON_CACHE_MAX	10
+
+struct beacon_rx {
+	uint8_t data[28];
+	uint32_t id;
+	uint32_t ivi;
+	bool kr;
+	bool ivu;
+};
+
+struct beacon_observe {
 	struct l_timeout *timeout;
 	uint32_t ts;
-	uint16_t observe_period;
-	uint16_t observed;
+	uint16_t period;
+	uint16_t seen;
 	uint16_t expected;
 	bool half_period;
-	uint8_t beacon[23];
 };
 
 struct net_key {
 	uint32_t id;
-	struct net_beacon snb;
+	struct l_timeout *mpb_to;
+	uint8_t *mpb;
+	uint8_t *snb;
+	struct beacon_observe observe;
+	uint32_t ivi;
 	uint16_t ref_cnt;
-	uint16_t beacon_enables;
+	uint16_t mpb_enables;
+	uint16_t snb_enables;
+	uint8_t mpb_refresh;
 	uint8_t friend_key;
 	uint8_t nid;
 	uint8_t flooding[16];
-	uint8_t encrypt[16];
-	uint8_t privacy[16];
-	uint8_t beacon[16];
-	uint8_t network[8];
+	uint8_t enc_key[16];
+	uint8_t prv_key[16];
+	uint8_t snb_key[16];
+	uint8_t pvt_key[16];
+	uint8_t net_id[8];
+	bool kr;
+	bool ivu;
 };
 
-static struct l_queue *keys = NULL;
-static uint32_t last_flooding_id = 0;
+static struct l_queue *beacons;
+static struct l_queue *keys;
+static uint32_t last_flooding_id;
 
 /* To avoid re-decrypting same packet for multiple nodes, cache and check */
 static uint8_t cache_pkt[29];
@@ -81,9 +97,9 @@ static bool match_id(const void *a, const void *b)
 static bool match_network(const void *a, const void *b)
 {
 	const struct net_key *key = a;
-	const uint8_t *network = b;
+	const uint8_t *net_id = b;
 
-	return memcmp(key->network, network, sizeof(key->network)) == 0;
+	return memcmp(key->net_id, net_id, sizeof(key->net_id)) == 0;
 }
 
 /* Key added from Provisioning, NetKey Add or NetKey update */
@@ -101,19 +117,26 @@ uint32_t net_key_add(const uint8_t flooding[16])
 	if (!keys)
 		keys = l_queue_new();
 
+	if (!beacons)
+		beacons = l_queue_new();
+
 	key = l_new(struct net_key, 1);
 	memcpy(key->flooding, flooding, 16);
 	key->ref_cnt++;
-	result = mesh_crypto_k2(flooding, p, sizeof(p), &key->nid, key->encrypt,
-								key->privacy);
+	result = mesh_crypto_k2(flooding, p, sizeof(p), &key->nid, key->enc_key,
+								key->prv_key);
 	if (!result)
 		goto fail;
 
-	result = mesh_crypto_k3(flooding, key->network);
+	result = mesh_crypto_k3(flooding, key->net_id);
 	if (!result)
 		goto fail;
 
-	result = mesh_crypto_nkbk(flooding, key->beacon);
+	result = mesh_crypto_nkbk(flooding, key->snb_key);
+	if (!result)
+		goto fail;
+
+	result = mesh_crypto_nkpk(flooding, key->pvt_key);
 	if (!result)
 		goto fail;
 
@@ -146,7 +169,7 @@ uint32_t net_key_frnd_add(uint32_t flooding_id, uint16_t lpn, uint16_t frnd,
 	l_put_be16(fn_cnt, p + 7);
 
 	result = mesh_crypto_k2(key->flooding, p, sizeof(p), &frnd_key->nid,
-				frnd_key->encrypt, frnd_key->privacy);
+				frnd_key->enc_key, frnd_key->prv_key);
 
 	if (!result) {
 		l_free(frnd_key);
@@ -167,7 +190,7 @@ void net_key_unref(uint32_t id)
 
 	if (key && key->ref_cnt) {
 		if (--key->ref_cnt == 0) {
-			l_timeout_remove(key->snb.timeout);
+			l_timeout_remove(key->observe.timeout);
 			l_queue_remove(keys, key);
 			l_free(key);
 		}
@@ -206,7 +229,7 @@ static void decrypt_net_pkt(void *a, void *b)
 
 	result = mesh_crypto_packet_decode(cache_pkt, cache_len, false,
 						cache_plain, cache_iv_index,
-						key->encrypt, key->privacy);
+						key->enc_key, key->prv_key);
 
 	if (result) {
 		cache_id = key->id;
@@ -254,8 +277,8 @@ bool net_key_encrypt(uint32_t id, uint32_t iv_index, uint8_t *pkt, size_t len)
 	if (!key)
 		return false;
 
-	result = mesh_crypto_packet_encode(pkt, len, iv_index, key->encrypt,
-							key->privacy);
+	result = mesh_crypto_packet_encode(pkt, len, iv_index, key->enc_key,
+							key->prv_key);
 
 	if (!result)
 		return false;
@@ -265,14 +288,63 @@ bool net_key_encrypt(uint32_t id, uint32_t iv_index, uint8_t *pkt, size_t len)
 	return result;
 }
 
-uint32_t net_key_network_id(const uint8_t network[8])
+uint32_t net_key_network_id(const uint8_t net_id[8])
 {
-	struct net_key *key = l_queue_find(keys, match_network, network);
+	struct net_key *key = l_queue_find(keys, match_network, net_id);
 
 	if (!key)
 		return 0;
 
 	return key->id;
+}
+
+struct auth_check {
+	const uint8_t *data;
+	uint32_t id;
+	uint32_t ivi;
+	bool ivu;
+	bool kr;
+};
+
+static void check_auth(void *a, void *b)
+{
+	struct net_key *key = a;
+	struct auth_check *auth = b;
+	uint8_t out[5];
+
+
+	/* Stop checking if already found */
+	if (auth->id)
+		return;
+
+	if (mesh_crypto_aes_ccm_decrypt(auth->data + 1, key->pvt_key, NULL, 0,
+							auth->data + 14, 13,
+							out, NULL, 8)) {
+		auth->id = key->id;
+		auth->ivi = l_get_be32(out + 1);
+		auth->ivu = !!(out[0] & 0x02);
+		auth->kr = !!(out[0] & 0x01);
+	}
+}
+
+static uint32_t private_beacon_check(const void *beacon, uint32_t *ivi,
+							bool *ivu, bool *kr)
+{
+	struct auth_check auth = {
+		.data = beacon,
+		.id = 0,
+	};
+
+	auth.id = 0;
+	l_queue_foreach(keys, check_auth, &auth);
+
+	if (auth.id) {
+		*ivi = auth.ivi;
+		*ivu = auth.ivu;
+		*kr = auth.kr;
+	}
+
+	return auth.id;
 }
 
 bool net_key_snb_check(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
@@ -285,7 +357,7 @@ bool net_key_snb_check(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 		return false;
 
 	/* Any behavioral changes must pass CMAC test */
-	if (!mesh_crypto_beacon_cmac(key->beacon, key->network, iv_index, kr,
+	if (!mesh_crypto_beacon_cmac(key->snb_key, key->net_id, iv_index, kr,
 							ivu, &cmac_check)) {
 		l_error("mesh_crypto_beacon_cmac failed");
 		return false;
@@ -300,37 +372,140 @@ bool net_key_snb_check(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 	return true;
 }
 
-bool net_key_snb_compose(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
-								uint8_t *snb)
+static bool mpb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 {
-	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
+	uint8_t b_data[5 + 8];
+	uint8_t random[13];
+
+	if (!key)
+		return false;
+
+	b_data[0] = 0;
+	l_put_be32(ivi, b_data + 1);
+
+	if (kr)
+		b_data[0] |= KEY_REFRESH;
+
+	if (ivu)
+		b_data[0] |= IV_INDEX_UPDATE;
+
+	l_getrandom(random, sizeof(random));
+	if (!mesh_crypto_aes_ccm_encrypt(random, key->pvt_key, NULL, 0,
+						b_data, 5, b_data, NULL, 8))
+		return false;
+
+	key->mpb[0] = MESH_AD_TYPE_BEACON;
+	key->mpb[1] = BEACON_TYPE_MPB;
+	memcpy(key->mpb + 2, random, 13);
+	memcpy(key->mpb + 15, b_data, 13);
+
+	return true;
+}
+
+static bool snb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
+{
 	uint64_t cmac;
 
 	if (!key)
 		return false;
 
 	/* Any behavioral changes must pass CMAC test */
-	if (!mesh_crypto_beacon_cmac(key->beacon, key->network, iv_index, kr,
+	if (!mesh_crypto_beacon_cmac(key->snb_key, key->net_id, ivi, kr,
 								ivu, &cmac)) {
 		l_error("mesh_crypto_beacon_cmac failed");
 		return false;
 	}
 
-	snb[0] = MESH_AD_TYPE_BEACON;
-	snb[1] = BEACON_TYPE_SNB;
-	snb[2] = 0;
+	key->snb[0] = MESH_AD_TYPE_BEACON;
+	key->snb[1] = BEACON_TYPE_SNB;
+	key->snb[2] = 0;
 
 	if (kr)
-		snb[2] |= KEY_REFRESH;
+		key->snb[2] |= KEY_REFRESH;
 
 	if (ivu)
-		snb[2] |= IV_INDEX_UPDATE;
+		key->snb[2] |= IV_INDEX_UPDATE;
 
-	memcpy(snb + 3, key->network, 8);
-	l_put_be32(iv_index, snb + 11);
-	l_put_be64(cmac, snb + 15);
+	memcpy(key->snb + 3, key->net_id, 8);
+	l_put_be32(ivi, key->snb + 11);
+	l_put_be64(cmac, key->snb + 15);
 
 	return true;
+}
+
+static bool match_beacon(const void *a, const void *b)
+{
+	const struct beacon_rx *cached = a;
+	const uint8_t *incoming = b;
+
+	if (incoming[0] == BEACON_TYPE_MPB)
+		return !memcmp(cached->data, incoming, 27);
+
+	if (incoming[0] == BEACON_TYPE_SNB)
+		return !memcmp(cached->data, incoming, 22);
+
+	return false;
+}
+
+uint32_t net_key_beacon(const uint8_t *data, uint16_t len, uint32_t *ivi,
+							bool *ivu, bool *kr)
+{
+	struct net_key *key;
+	struct beacon_rx *beacon;
+	uint32_t b_id, b_ivi;
+	bool b_ivu, b_kr;
+
+	if (data[1] == BEACON_TYPE_SNB && len != 23)
+		return 0;
+
+	if (data[1] == BEACON_TYPE_MPB && len != 28)
+		return 0;
+
+	beacon = l_queue_remove_if(beacons, match_beacon, data + 1);
+
+	if (beacon)
+		goto accept;
+
+	/* Validate beacon data */
+	if (data[1] == BEACON_TYPE_SNB) {
+		key = l_queue_find(keys, match_network, data + 3);
+
+		if (!key)
+			return 0;
+
+		b_id = key->id;
+		b_ivu = !!(data[2] & 0x02);
+		b_kr = !!(data[2] & 0x01);
+		b_ivi = l_get_be32(data + 11);
+
+		if (!net_key_snb_check(b_id, b_ivi, b_kr, b_ivu,
+							l_get_be64(data + 15)))
+			return 0;
+
+	} else if (data[1] == BEACON_TYPE_MPB) {
+		b_id = private_beacon_check(data + 1, &b_ivi, &b_ivu, &b_kr);
+
+		if (!b_id)
+			return 0;
+
+	} else
+		return 0;
+
+	beacon = l_new(struct beacon_rx, 1);
+	memcpy(beacon->data, data + 1, len - 1);
+	beacon->id = b_id;
+	beacon->ivi = b_ivi;
+	beacon->ivu = b_ivu;
+	beacon->kr = b_kr;
+
+accept:
+	*ivi = beacon->ivi;
+	*ivu = beacon->ivu;
+	*kr = beacon->kr;
+
+	l_queue_push_head(beacons, beacon);
+
+	return beacon->id;
 }
 
 static void send_network_beacon(struct net_key *key)
@@ -343,10 +518,26 @@ static void send_network_beacon(struct net_key *key)
 		.u.gen.max_delay = DEFAULT_MAX_DELAY
 	};
 
-	mesh_io_send(NULL, &info, key->snb.beacon, sizeof(key->snb.beacon));
+	if (key->mpb_enables) {
+		/* If Interval steps == 0, refresh key every time */
+		if (!key->mpb_refresh || !key->mpb || !key->mpb[0])
+			net_key_beacon_refresh(key->id, key->ivi, key->kr,
+								key->ivu, true);
+
+		mesh_io_send(NULL, &info, key->mpb, 28);
+	}
+
+	if (key->snb_enables) {
+		if (!key->snb || !key->snb[0]) {
+			net_key_beacon_refresh(key->id, key->ivi, key->kr,
+								key->ivu, true);
+		}
+
+		mesh_io_send(NULL, &info, key->snb, 23);
+	}
 }
 
-static void snb_timeout(struct l_timeout *timeout, void *user_data)
+static void beacon_timeout(struct l_timeout *timeout, void *user_data)
 {
 	struct net_key *key = user_data;
 	uint32_t interval, scale_factor;
@@ -355,29 +546,29 @@ static void snb_timeout(struct l_timeout *timeout, void *user_data)
 	send_network_beacon(key);
 
 	/* Count our own beacons towards the vicinity total */
-	key->snb.observed++;
+	key->observe.seen++;
 
-	if (!key->snb.half_period) {
+	if (!key->observe.half_period) {
 
 		l_debug("beacon %d for %d nodes, period %d, obs %d, exp %d",
-						key->id,
-						key->beacon_enables,
-						key->snb.observe_period,
-						key->snb.observed,
-						key->snb.expected);
+					key->id,
+					key->snb_enables + key->mpb_enables,
+					key->observe.period,
+					key->observe.seen,
+					key->observe.expected);
 
 
-		interval = (key->snb.observe_period * key->snb.observed)
-							/ key->snb.expected;
+		interval = (key->observe.period * key->observe.seen)
+							/ key->observe.expected;
 
 		/* Limit Increases and Decreases by 10 seconds Up and
 		 * 20 seconds down each step, to avoid going nearly silent
 		 * in highly populated environments.
 		 */
-		if (interval - 10 > key->snb.observe_period)
-			interval = key->snb.observe_period + 10;
-		else if (interval + 20 < key->snb.observe_period)
-			interval = key->snb.observe_period - 20;
+		if (interval - 10 > key->observe.period)
+			interval = key->observe.period + 10;
+		else if (interval + 20 < key->observe.period)
+			interval = key->observe.period - 20;
 
 		/* Beaconing must be no *slower* than once every 10 minutes,
 		 * and no *faster* than once every 10 seconds, per spec.
@@ -388,26 +579,26 @@ static void snb_timeout(struct l_timeout *timeout, void *user_data)
 		else if (interval > BEACON_INTERVAL_MAX * 2)
 			interval = BEACON_INTERVAL_MAX * 2;
 
-		key->snb.observe_period = interval;
-		key->snb.observed = 0;
+		key->observe.period = interval;
+		key->observe.seen = 0;
 
 		/* To prevent "over slowing" of the beaconing frequency,
 		 * require more significant "over observing" the slower
 		 * our own beaconing frequency.
 		 */
-		key->snb.expected = interval / 10;
+		key->observe.expected = interval / 10;
 		scale_factor = interval / 60;
-		key->snb.expected += scale_factor * 3;
+		key->observe.expected += scale_factor * 3;
 	}
 
-	interval = key->snb.observe_period / 2;
-	key->snb.half_period = !key->snb.half_period;
+	interval = key->observe.period / 2;
+	key->observe.half_period = !key->observe.half_period;
 
-	if (key->beacon_enables)
+	if (key->mpb_enables || key->snb_enables)
 		l_timeout_modify(timeout, interval);
 	else {
 		l_timeout_remove(timeout);
-		key->snb.timeout = NULL;
+		key->observe.timeout = NULL;
 	}
 }
 
@@ -416,8 +607,8 @@ void net_key_beacon_seen(uint32_t id)
 	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
 
 	if (key) {
-		key->snb.observed++;
-		key->snb.ts = get_timestamp_secs();
+		key->observe.seen++;
+		key->observe.ts = get_timestamp_secs();
 	}
 }
 
@@ -426,12 +617,83 @@ uint32_t net_key_beacon_last_seen(uint32_t id)
 	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
 
 	if (key)
-		return key->snb.ts;
+		return key->observe.ts;
 
 	return 0;
 }
 
-void net_key_beacon_enable(uint32_t id)
+bool net_key_beacon_refresh(uint32_t id, uint32_t ivi, bool kr, bool ivu,
+								bool force)
+{
+	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
+	bool refresh = force;
+	uint32_t rand_ms;
+
+	if (!key)
+		return false;
+
+	if (key->snb_enables && !key->snb) {
+		key->snb = l_new(uint8_t, 23);
+		refresh = true;
+	}
+
+	if (key->mpb_enables && !key->mpb) {
+		key->mpb = l_new(uint8_t, 28);
+		refresh = true;
+	}
+
+	if (key->ivi != ivi || key->ivu != ivu || key->kr != kr)
+		refresh = true;
+
+	if (!refresh)
+		return true;
+
+	if (key->mpb) {
+		if (!mpb_compose(key, ivi, kr, ivu))
+			return false;
+
+		print_packet("Set MPB to", key->mpb, 28);
+	}
+
+	if (key->snb) {
+		if (!snb_compose(key, ivi, kr, ivu))
+			return false;
+
+		print_packet("Set SNB to", key->snb, 23);
+	}
+
+	l_debug("Set Beacon: IVI: %8.8x, IVU: %d, KR: %d", ivi, ivu, kr);
+
+	/* Propagate changes to all local nodes */
+	net_local_beacon(id, ivi, ivu, kr);
+
+	/* Send one new SNB soon, after all nodes have seen it */
+	l_getrandom(&rand_ms, sizeof(rand_ms));
+	rand_ms %= 1000;
+	key->observe.expected++;
+
+	if (key->observe.timeout)
+		l_timeout_modify_ms(key->observe.timeout, 500 + rand_ms);
+	else
+		key->observe.timeout = l_timeout_create_ms(500 + rand_ms,
+						beacon_timeout, key, NULL);
+
+	return true;
+}
+
+static void mpb_timeout(struct l_timeout *timeout, void *user_data)
+{
+	struct net_key *key = user_data;
+
+	if (key->mpb_refresh) {
+		l_debug("Refresh in %d seconds", key->mpb_refresh * 10);
+		l_timeout_modify(timeout, key->mpb_refresh * 10);
+	}
+
+	net_key_beacon_refresh(key->id, key->ivi, key->kr, key->ivu, true);
+}
+
+void net_key_beacon_enable(uint32_t id, bool mpb, uint8_t refresh_count)
 {
 	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
 	bool enabled;
@@ -440,8 +702,19 @@ void net_key_beacon_enable(uint32_t id)
 	if (!key)
 		return;
 
-	enabled = !!key->beacon_enables;
-	key->beacon_enables++;
+	enabled = !!key->snb_enables || !!key->mpb_enables;
+
+	if (mpb) {
+		key->mpb_enables++;
+		key->mpb_refresh = refresh_count;
+		l_timeout_remove(key->mpb_to);
+		if (refresh_count)
+			key->mpb_to = l_timeout_create(refresh_count * 10,
+						mpb_timeout, key, NULL);
+		else
+			key->mpb_to = NULL;
+	} else
+		key->snb_enables++;
 
 	/* If already Enabled, do nothing */
 	if (enabled)
@@ -453,70 +726,68 @@ void net_key_beacon_enable(uint32_t id)
 	rand_ms++;
 
 	/* Enable Periodic Beaconing on this key */
-	key->snb.observe_period = BEACON_INTERVAL_MIN * 2;
-	key->snb.expected = 2;
-	key->snb.observed = 0;
-	key->snb.half_period = true;
-	l_timeout_remove(key->snb.timeout);
-	key->snb.timeout = l_timeout_create_ms(rand_ms, snb_timeout, key, NULL);
+	key->observe.period = BEACON_INTERVAL_MIN * 2;
+	key->observe.expected = 2;
+	key->observe.seen = 0;
+	key->observe.half_period = true;
+	l_timeout_remove(key->observe.timeout);
+	key->observe.timeout = l_timeout_create_ms(rand_ms, beacon_timeout,
+								key, NULL);
 }
 
-bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu)
+void net_key_beacon_disable(uint32_t id, bool mpb)
 {
 	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
-	uint8_t beacon[23];
-	uint32_t rand_ms;
 
 	if (!key)
-		return false;
-
-	if (!net_key_snb_compose(id, iv_index, kr, ivu, beacon))
-		return false;
-
-	if (memcmp(key->snb.beacon, beacon, sizeof(beacon)))
-		memcpy(key->snb.beacon, beacon, sizeof(beacon));
-	else
-		return false;
-
-	l_debug("Setting SNB: IVI: %8.8x, IVU: %d, KR: %d", iv_index, ivu, kr);
-	print_packet("Set SNB Beacon to", beacon, sizeof(beacon));
-
-	/* Propagate changes to all local nodes */
-	net_local_beacon(id, beacon);
-
-	/* Send one new SNB soon, after all nodes have seen it */
-	l_getrandom(&rand_ms, sizeof(rand_ms));
-	rand_ms %= 1000;
-	key->snb.expected++;
-
-	if (key->snb.timeout)
-		l_timeout_modify_ms(key->snb.timeout, 500 + rand_ms);
-	else
-		key->snb.timeout = l_timeout_create_ms(500 + rand_ms,
-						snb_timeout, key, NULL);
-
-	return true;
-}
-
-void net_key_beacon_disable(uint32_t id)
-{
-	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
-
-	if (!key || !key->beacon_enables)
 		return;
 
-	key->beacon_enables--;
+	if (mpb) {
+		if (!key->mpb_enables)
+			return;
 
-	if (key->beacon_enables)
+		key->mpb_enables--;
+
+		if (!key->mpb_enables) {
+			l_free(key->mpb);
+			key->mpb = NULL;
+			l_timeout_remove(key->mpb_to);
+			key->mpb_to = NULL;
+		}
+	} else {
+		if (!key->snb_enables)
+			return;
+
+		key->snb_enables--;
+
+		if (!key->snb_enables) {
+			l_free(key->snb);
+			key->snb = NULL;
+		}
+	}
+
+	if (key->snb_enables || key->mpb_enables)
 		return;
 
 	/* Disable periodic Beaconing on this key */
-	l_timeout_remove(key->snb.timeout);
-	key->snb.timeout = NULL;
+	l_timeout_remove(key->observe.timeout);
+	key->observe.timeout = NULL;
+}
+
+static void free_key(void *data)
+{
+	struct net_key *key = data;
+
+	l_timeout_remove(key->mpb_to);
+	l_free(key->snb);
+	l_free(key->mpb);
+	l_free(key);
 }
 
 void net_key_cleanup(void)
 {
-	l_queue_destroy(keys, l_free);
+	l_queue_destroy(keys, free_key);
 	keys = NULL;
+	l_queue_destroy(beacons, l_free);
+	beacons = NULL;
 }

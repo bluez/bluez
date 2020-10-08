@@ -236,8 +236,10 @@ void mesh_net_set_frnd_seq(struct mesh_net *net, bool seq);
 uint16_t mesh_net_get_address(struct mesh_net *net);
 bool mesh_net_register_unicast(struct mesh_net *net,
 					uint16_t unicast, uint8_t num_ele);
-void net_local_beacon(uint32_t net_key_id, uint8_t *beacon);
-bool mesh_net_set_beacon_mode(struct mesh_net *net, bool enable);
+void net_local_beacon(uint32_t key_id, uint32_t ivi, bool ivu, bool kr);
+bool mesh_net_set_snb_mode(struct mesh_net *net, bool enable);
+bool mesh_net_set_mpb_mode(struct mesh_net *net, bool enabla, uint8_t period,
+								bool init);
 bool mesh_net_set_proxy_mode(struct mesh_net *net, bool enable);
 bool mesh_net_set_relay_mode(struct mesh_net *net, bool enable, uint8_t cnt,
 							uint8_t interval);

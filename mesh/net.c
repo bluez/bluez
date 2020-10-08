@@ -102,7 +102,8 @@ struct mesh_net {
 	unsigned int sar_id_next;
 
 	bool friend_enable;
-	bool beacon_enable;
+	bool snb_enable;
+	bool mpb_enable;
 	bool proxy_enable;
 	bool friend_seq;
 	struct l_timeout *iv_update_timeout;
@@ -119,6 +120,7 @@ struct mesh_net {
 	uint8_t chan; /* Channel of recent Rx */
 	uint8_t default_ttl;
 	uint8_t tid;
+	uint8_t mpb_period;
 
 	struct {
 		bool enable;
@@ -217,6 +219,7 @@ struct net_beacon_data {
 	bool ivu;
 	bool kr;
 	bool processed;
+	bool local;
 };
 
 static struct l_queue *fast_cache;
@@ -526,6 +529,13 @@ static void mesh_sar_free(void *data)
 static void subnet_free(void *data)
 {
 	struct mesh_subnet *subnet = data;
+	struct mesh_net *net = subnet->net;
+
+	if (net->snb_enable)
+		net_key_beacon_disable(subnet->net_key_tx, false);
+
+	if (net->mpb_enable)
+		net_key_beacon_disable(subnet->net_key_tx, true);
 
 	net_key_unref(subnet->net_key_cur);
 	net_key_unref(subnet->net_key_upd);
@@ -545,15 +555,27 @@ static struct mesh_subnet *subnet_new(struct mesh_net *net, uint16_t idx)
 	return subnet;
 }
 
-static void enable_beacon(void *a, void *b)
+static void enable_snb(void *a, void *b)
 {
 	struct mesh_subnet *subnet = a;
 	struct mesh_net *net = b;
 
-	if (net->beacon_enable)
-		net_key_beacon_enable(subnet->net_key_tx);
+	if (net->snb_enable)
+		net_key_beacon_enable(subnet->net_key_tx, false, 0);
 	else
-		net_key_beacon_disable(subnet->net_key_tx);
+		net_key_beacon_disable(subnet->net_key_tx, false);
+}
+
+static void enable_mpb(void *a, void *b)
+{
+	struct mesh_subnet *subnet = a;
+	struct mesh_net *net = b;
+
+	if (net->mpb_enable)
+		net_key_beacon_enable(subnet->net_key_tx, true,
+							net->mpb_period);
+	else
+		net_key_beacon_disable(subnet->net_key_tx, true);
 }
 
 static void enqueue_update(void *a, void *b);
@@ -602,7 +624,8 @@ static void refresh_beacon(void *a, void *b)
 	struct mesh_net *net = b;
 
 	net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
-		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update);
+		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update,
+									false);
 }
 
 struct mesh_net *mesh_net_new(struct mesh_node *node)
@@ -826,7 +849,7 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	if (idx == net->hb_pub.net_idx)
 		net->hb_pub.dst = UNASSIGNED_ADDRESS;
 
-	/* TODO: cancel beacon_enable on this subnet */
+	/* TODO: cancel snb_enable on this subnet */
 
 	l_queue_remove(net->subnets, subnet);
 	subnet_free(subnet);
@@ -853,10 +876,14 @@ static struct mesh_subnet *add_key(struct mesh_net *net, uint16_t idx,
 	}
 
 	net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
-						false, net->iv_update);
+						false, net->iv_update, false);
 
-	if (net->beacon_enable)
-		net_key_beacon_enable(subnet->net_key_tx);
+	if (net->snb_enable)
+		net_key_beacon_enable(subnet->net_key_tx, false, 0);
+
+	if (net->mpb_enable)
+		net_key_beacon_enable(subnet->net_key_tx, true,
+							net->mpb_period);
 
 	l_queue_push_tail(net->subnets, subnet);
 
@@ -2794,49 +2821,40 @@ static void process_beacon(void *net_ptr, void *user_data)
 	beacon_data->processed = true;
 
 	/*
-	 * Ignore the beacon if it doesn't change anything, unless we're
-	 * doing IV Recovery
+	 * Ignore local beacons and beacons that don't change anything,
+	 * unless we're doing IV Recovery
 	 */
-	if (net->iv_upd_state == IV_UPD_INIT || ivi != net->iv_index ||
+	if (!beacon_data->local) {
+		if (net->iv_upd_state == IV_UPD_INIT || ivi != net->iv_index ||
 							ivu != net->iv_update)
-		updated |= update_iv_ivu_state(net, ivi, ivu);
+			updated |= update_iv_ivu_state(net, ivi, ivu);
 
-	if (kr != local_kr || beacon_data->net_key_id != subnet->net_key_cur)
-		updated |= update_kr_state(subnet, kr, beacon_data->net_key_id);
+		if (kr != local_kr)
+			updated |= update_kr_state(subnet, kr,
+						beacon_data->net_key_id);
 
-	if (updated)
-		net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
+
+		if (updated)
+			net_key_beacon_refresh(beacon_data->net_key_id,
+				net->iv_index,
 				!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO),
-								net->iv_update);
+				net->iv_update, false);
+	}
 }
 
 static void beacon_recv(void *user_data, struct mesh_io_recv_info *info,
 					const uint8_t *data, uint16_t len)
 {
 	struct net_beacon_data beacon_data = {
+		.local = false,
 		.processed = false,
 	};
 
-	if (len != 23 || data[1] != 0x01)
-		return;
+	beacon_data.net_key_id = net_key_beacon(data, len, &beacon_data.ivi,
+					&beacon_data.ivu, &beacon_data.kr);
 
-	/* Ignore Network IDs unknown to this daemon */
-	beacon_data.net_key_id = net_key_network_id(data + 3);
 	if (!beacon_data.net_key_id)
 		return;
-
-	/* Get data bits from beacon */
-	beacon_data.ivu = !!(data[2] & 0x02);
-	beacon_data.kr = !!(data[2] & 0x01);
-	beacon_data.ivi = l_get_be32(data + 11);
-
-	/* Validate beacon before accepting */
-	if (!net_key_snb_check(beacon_data.net_key_id, beacon_data.ivi,
-					beacon_data.kr, beacon_data.ivu,
-					l_get_be64(data + 15))) {
-		l_error("mesh_crypto_beacon verify failed");
-		return;
-	}
 
 	l_queue_foreach(nets, process_beacon, &beacon_data);
 
@@ -2844,33 +2862,70 @@ static void beacon_recv(void *user_data, struct mesh_io_recv_info *info,
 		net_key_beacon_seen(beacon_data.net_key_id);
 }
 
-void net_local_beacon(uint32_t net_key_id, uint8_t *beacon)
+void net_local_beacon(uint32_t net_key_id, uint32_t ivi, bool ivu, bool kr)
 {
 	struct net_beacon_data beacon_data = {
+		.local = true,
+		.processed = false,
 		.net_key_id = net_key_id,
-		.ivu = !!(beacon[2] & 0x02),
-		.kr = !!(beacon[2] & 0x01),
-		.ivi = l_get_be32(beacon + 11),
+		.ivu = ivu,
+		.kr = kr,
+		.ivi = ivi,
 	};
 
 	/* Deliver locally generated beacons to all nodes */
 	l_queue_foreach(nets, process_beacon, &beacon_data);
 }
 
-bool mesh_net_set_beacon_mode(struct mesh_net *net, bool enable)
+bool mesh_net_set_snb_mode(struct mesh_net *net, bool enable)
 {
 	if (!net)
 		return false;
 
-	if (net->beacon_enable == enable)
+	if (net->snb_enable == enable)
 		return true;
 
-	net->beacon_enable = enable;
+	net->snb_enable = enable;
 
 	if (enable)
 		l_queue_foreach(net->subnets, refresh_beacon, net);
 
-	l_queue_foreach(net->subnets, enable_beacon, net);
+	l_queue_foreach(net->subnets, enable_snb, net);
+	queue_friend_update(net);
+
+	return true;
+}
+
+bool mesh_net_set_mpb_mode(struct mesh_net *net, bool enable, uint8_t period,
+								bool initialize)
+{
+	uint8_t old_period;
+	bool old_enable;
+
+	if (!net)
+		return false;
+
+	old_enable = net->mpb_enable;
+	old_period = net->mpb_period;
+
+	if (enable)
+		net->mpb_period = period;
+
+	if (old_enable == enable && old_period == net->mpb_period)
+		return true;
+
+	if (enable && !initialize) {
+		/* If enable with different period, disable and re-enable */
+		net->mpb_enable = false;
+		l_queue_foreach(net->subnets, enable_mpb, net);
+	}
+
+	net->mpb_enable = enable;
+
+	if (enable)
+		l_queue_foreach(net->subnets, refresh_beacon, net);
+
+	l_queue_foreach(net->subnets, enable_mpb, net);
 	queue_friend_update(net);
 
 	return true;
@@ -2908,17 +2963,25 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 		subnet->key_refresh = 1;
 		subnet->net_key_tx = subnet->net_key_upd;
 
-		if (net->beacon_enable) {
+		if (net->snb_enable) {
 			/* Switch beaconing key */
-			net_key_beacon_disable(subnet->net_key_cur);
-			net_key_beacon_enable(subnet->net_key_upd);
+			net_key_beacon_disable(subnet->net_key_cur, false);
+			net_key_beacon_enable(subnet->net_key_upd, false, 0);
+		}
+
+		if (net->mpb_enable) {
+			/* Switch beaconing key */
+			net_key_beacon_disable(subnet->net_key_cur, true);
+			net_key_beacon_enable(subnet->net_key_upd, true,
+							net->mpb_period);
 		}
 	}
 
 	subnet->kr_phase = phase;
 
 	net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
-		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update);
+		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update,
+									false);
 
 
 	return true;
@@ -2933,8 +2996,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 	first = l_queue_isempty(nets);
 	if (first) {
-		uint8_t snb[] = {MESH_AD_TYPE_BEACON, 0x01};
-		uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
+		const uint8_t snb[] = {MESH_AD_TYPE_BEACON, 1};
+		const uint8_t mpb[] = {MESH_AD_TYPE_BEACON, 2};
+		const uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
 
 		if (!nets)
 			nets = l_queue_new();
@@ -2943,6 +3007,8 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 			fast_cache = l_queue_new();
 
 		mesh_io_register_recv_cb(io, snb, sizeof(snb),
+							beacon_recv, NULL);
+		mesh_io_register_recv_cb(io, mpb, sizeof(mpb),
 							beacon_recv, NULL);
 		mesh_io_register_recv_cb(io, pkt, sizeof(pkt),
 							net_msg_recv, NULL);
@@ -2960,8 +3026,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 struct mesh_io *mesh_net_detach(struct mesh_net *net)
 {
-	uint8_t snb[] = {MESH_AD_TYPE_BEACON, 0x01};
-	uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
+	const uint8_t snb[] = {MESH_AD_TYPE_BEACON, 1};
+	const uint8_t mpb[] = {MESH_AD_TYPE_BEACON, 2};
+	const uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
 	struct mesh_io *io;
 	uint8_t type = 0;
 
@@ -2975,6 +3042,7 @@ struct mesh_io *mesh_net_detach(struct mesh_net *net)
 	/* Only deregister io if this is the last network detached.*/
 	if (l_queue_length(nets) < 2) {
 		mesh_io_deregister_recv_cb(io, snb, sizeof(snb));
+		mesh_io_deregister_recv_cb(io, mpb, sizeof(mpb));
 		mesh_io_deregister_recv_cb(io, pkt, sizeof(pkt));
 	}
 

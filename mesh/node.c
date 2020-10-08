@@ -414,7 +414,7 @@ static void update_net_settings(struct mesh_node *node)
 	mesh_net_set_relay_mode(net, node->relay.mode == MESH_MODE_ENABLED,
 					node->relay.cnt, node->relay.interval);
 
-	mesh_net_set_beacon_mode(net, node->beacon == MESH_MODE_ENABLED);
+	mesh_net_set_snb_mode(net, node->beacon == MESH_MODE_ENABLED);
 }
 
 static bool init_from_storage(struct mesh_config_node *db_node,
@@ -825,7 +825,7 @@ bool node_beacon_mode_set(struct mesh_node *node, bool enable)
 
 	if (res) {
 		node->beacon = beacon;
-		mesh_net_set_beacon_mode(node->net, enable);
+		mesh_net_set_snb_mode(node->net, enable);
 	}
 
 	return res;
