@@ -26,6 +26,7 @@
 #include "mesh/cfgmod.h"
 #include "mesh/prov.h"
 #include "mesh/remprv.h"
+#include "mesh/prv-beacon.h"
 #include "mesh/error.h"
 #include "mesh/dbus.h"
 #include "mesh/util.h"
@@ -79,6 +80,9 @@ static bool is_internal(uint32_t id)
 		return true;
 
 	if (id == REM_PROV_SRV_MODEL || id == REM_PROV_CLI_MODEL)
+		return true;
+
+	if (id == PRV_BEACON_SRV_MODEL || id == PRV_BEACON_CLI_MODEL)
 		return true;
 
 	return false;
@@ -645,6 +649,9 @@ static int update_binding(struct mesh_node *node, uint16_t addr, uint32_t id,
 	}
 
 	if (id == CONFIG_SRV_MODEL || id == CONFIG_CLI_MODEL)
+		return MESH_STATUS_INVALID_MODEL;
+
+	if (id == PRV_BEACON_SRV_MODEL || id == PRV_BEACON_CLI_MODEL)
 		return MESH_STATUS_INVALID_MODEL;
 
 	if (!appkey_have_key(node_get_net(node), app_idx))
@@ -1655,7 +1662,8 @@ static struct mesh_model *model_setup(struct mesh_net *net, uint8_t ele_idx,
 						SET_ID(SIG_VENDOR, db_mod->id));
 
 	/* Implicitly bind config server model to device key */
-	if (db_mod->id == CONFIG_SRV_MODEL) {
+	if (db_mod->id == CONFIG_SRV_MODEL ||
+					db_mod->id == PRV_BEACON_SRV_MODEL) {
 
 		if (ele_idx != PRIMARY_ELE_IDX) {
 			l_free(mod);
