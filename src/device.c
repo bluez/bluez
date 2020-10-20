@@ -4477,8 +4477,10 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		disconnect_all(device);
 	}
 
-	if (device->temporary_timer > 0)
+	if (device->temporary_timer > 0) {
 		g_source_remove(device->temporary_timer);
+		device->temporary_timer = 0;
+	}
 
 	if (device->store_id > 0) {
 		g_source_remove(device->store_id);
