@@ -1447,7 +1447,7 @@ static void le_cis_request(struct btdev *dev,
 
 		evt.acl_handle = cpu_to_le16(ACL_HANDLE);
 		evt.cis_handle = cpu_to_le16(ISO_HANDLE);
-		evt.cis_id = 0x00;
+		evt.cig_id = 0x00;
 		evt.cis_id = 0x00;
 
 		le_meta_event(remote, BT_HCI_EVT_LE_CIS_REQ, &evt, sizeof(evt));
