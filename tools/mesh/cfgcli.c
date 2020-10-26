@@ -410,8 +410,8 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 	req = get_req_by_rsp(src, opcode);
 	if (req) {
 		cmd = req->cmd;
-		free_request(req);
 		l_queue_remove(requests, req);
+		free_request(req);
 	} else
 		cmd = NULL;
 
@@ -1470,14 +1470,13 @@ static void subscription_cmd(int argc, char *argv[], uint32_t opcode)
 
 	grp = l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(sub_addr));
 
-	if (!grp && opcode != OP_CONFIG_MODEL_SUB_DELETE) {
-		grp = add_group(sub_addr);
-
-		if (!grp && IS_VIRTUAL(sub_addr)) {
-			print_virtual_not_found(sub_addr);
-			return bt_shell_noninteractive_quit(EXIT_FAILURE);
-		}
+	if (!grp && IS_VIRTUAL(sub_addr)) {
+		print_virtual_not_found(sub_addr);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
+
+	if (!grp && opcode != OP_CONFIG_MODEL_SUB_DELETE)
+		grp = add_group(sub_addr);
 
 	if (IS_VIRTUAL(sub_addr)) {
 		if (opcode == OP_CONFIG_MODEL_SUB_ADD)
