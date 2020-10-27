@@ -192,7 +192,6 @@ static char *const qemu_argv[] = {
 	"-machine", "type=q35,accel=kvm:tcg",
 	"-m", "192M",
 	"-nographic",
-	"-vga", "none",
 	"-net", "none",
 	"-no-acpi",
 	"-no-hpet",
@@ -249,7 +248,7 @@ static void start_qemu(void)
 	snprintf(cmdline, sizeof(cmdline),
 				"console=ttyS0,115200n8 earlyprintk=serial "
 				"rootfstype=9p "
-				"rootflags=trans=virtio,version=9p2000.L "
+				"rootflags=trans=virtio,version=9p2000.u "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
 				"bluetooth.enable_ecred=1 "
 				"TESTHOME=%s TESTDBUS=%u TESTDAEMON=%u "
@@ -614,6 +613,7 @@ static const char *test_table[] = {
 	"l2cap-tester",
 	"rfcomm-tester",
 	"sco-tester",
+	"iso-tester",
 	"bnep-tester",
 	"check-selftest",
 	"tools/mgmt-tester",
@@ -621,6 +621,7 @@ static const char *test_table[] = {
 	"tools/l2cap-tester",
 	"tools/rfcomm-tester",
 	"tools/sco-tester",
+	"tools/iso-tester",
 	"tools/bnep-tester",
 	"tools/check-selftest",
 	NULL
