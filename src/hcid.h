@@ -34,6 +34,52 @@ enum mps_mode_t {
 	MPS_MULTIPLE,
 };
 
+struct btd_br_defaults {
+	uint16_t	page_scan_type;
+	uint16_t	page_scan_interval;
+	uint16_t	page_scan_win;
+
+	uint16_t	scan_type;
+	uint16_t	scan_interval;
+	uint16_t	scan_win;
+
+	uint16_t	link_supervision_timeout;
+	uint16_t	page_timeout;
+
+	uint16_t	min_sniff_interval;
+	uint16_t	max_sniff_interval;
+};
+
+struct btd_le_defaults {
+	uint16_t	min_adv_interval;
+	uint16_t	max_adv_interval;
+	uint16_t	adv_rotation_interval;
+
+	uint16_t	scan_interval_autoconnect;
+	uint16_t	scan_win_autoconnect;
+	uint16_t	scan_interval_suspend;
+	uint16_t	scan_win_suspend;
+	uint16_t	scan_interval_discovery;
+	uint16_t	scan_win_discovery;
+	uint16_t	scan_interval_adv_monitor;
+	uint16_t	scan_win_adv_monitor;
+	uint16_t	scan_interval_connect;
+	uint16_t	scan_win_connect;
+
+	uint16_t	min_conn_interval;
+	uint16_t	max_conn_interval;
+	uint16_t	conn_latency;
+	uint16_t	conn_lsto;
+	uint16_t	autoconnect_timeout;
+};
+
+struct btd_defaults {
+	uint16_t	num_entries;
+
+	struct btd_br_defaults br;
+	struct btd_le_defaults le;
+};
+
 struct main_opts {
 	char		*name;
 	uint32_t	class;
@@ -43,45 +89,7 @@ struct main_opts {
 	uint32_t	tmpto;
 	uint8_t		privacy;
 
-	struct {
-		uint16_t	num_entries;
-
-		uint16_t	br_page_scan_type;
-		uint16_t	br_page_scan_interval;
-		uint16_t	br_page_scan_win;
-
-		uint16_t	br_scan_type;
-		uint16_t	br_scan_interval;
-		uint16_t	br_scan_win;
-
-		uint16_t	br_link_supervision_timeout;
-		uint16_t	br_page_timeout;
-
-		uint16_t	br_min_sniff_interval;
-		uint16_t	br_max_sniff_interval;
-
-		uint16_t	le_min_adv_interval;
-		uint16_t	le_max_adv_interval;
-		uint16_t	le_multi_adv_rotation_interval;
-
-		uint16_t	le_scan_interval_autoconnect;
-		uint16_t	le_scan_win_autoconnect;
-		uint16_t	le_scan_interval_suspend;
-		uint16_t	le_scan_win_suspend;
-		uint16_t	le_scan_interval_discovery;
-		uint16_t	le_scan_win_discovery;
-		uint16_t	le_scan_interval_adv_monitor;
-		uint16_t	le_scan_win_adv_monitor;
-		uint16_t	le_scan_interval_connect;
-		uint16_t	le_scan_win_connect;
-
-		uint16_t	le_min_conn_interval;
-		uint16_t	le_max_conn_interval;
-		uint16_t	le_conn_latency;
-		uint16_t	le_conn_lsto;
-		uint16_t	le_autoconnect_timeout;
-	} default_params;
-
+	struct btd_defaults defaults;
 
 	gboolean	reverse_discovery;
 	gboolean	name_resolv;

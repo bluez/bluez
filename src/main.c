@@ -81,35 +81,39 @@ static const char *supported_options[] = {
 	NULL
 };
 
-static const char *controller_options[] = {
-	"BRPageScanType",
-	"BRPageScanInterval",
-	"BRPageScanWindow",
-	"BRInquiryScanType",
-	"BRInquiryScanInterval",
-	"BRInquiryScanWindow",
-	"BRLinkSupervisionTimeout",
-	"BRPageTimeout",
-	"BRMinSniffInterval",
-	"BRMaxSniffInterval",
-	"LEMinAdvertisementInterval",
-	"LEMaxAdvertisementInterval",
-	"LEMultiAdvertisementRotationInterval",
-	"LEScanIntervalAutoConnect",
-	"LEScanWindowAutoConnect",
-	"LEScanIntervalSuspend",
-	"LEScanWindowSuspend",
-	"LEScanIntervalDiscovery",
-	"LEScanWindowDiscovery",
-	"LEScanIntervalAdvMonitoring",
-	"LEScanWindowAdvMonitoring",
-	"LEScanIntervalConnect",
-	"LEScanWindowConnect",
-	"LEMinConnectionInterval",
-	"LEMaxConnectionInterval",
-	"LEConnectionLatency",
-	"LEConnectionSupervisionTimeout",
-	"LEAutoconnecttimeout",
+static const char *br_options[] = {
+	"PageScanType",
+	"PageScanInterval",
+	"PageScanWindow",
+	"InquiryScanType",
+	"InquiryScanInterval",
+	"InquiryScanWindow",
+	"LinkSupervisionTimeout",
+	"PageTimeout",
+	"MinSniffInterval",
+	"MaxSniffInterval",
+	NULL
+};
+
+static const char *le_options[] = {
+	"MinAdvertisementInterval",
+	"MaxAdvertisementInterval",
+	"MultiAdvertisementRotationInterval",
+	"ScanIntervalAutoConnect",
+	"ScanWindowAutoConnect",
+	"ScanIntervalSuspend",
+	"ScanWindowSuspend",
+	"ScanIntervalDiscovery",
+	"ScanWindowDiscovery",
+	"ScanIntervalAdvMonitoring",
+	"ScanWindowAdvMonitoring",
+	"ScanIntervalConnect",
+	"ScanWindowConnect",
+	"MinConnectionInterval",
+	"MaxConnectionInterval",
+	"ConnectionLatency",
+	"ConnectionSupervisionTimeout",
+	"Autoconnecttimeout",
 	NULL
 };
 
@@ -135,7 +139,8 @@ static const struct group_table {
 	const char **options;
 } valid_groups[] = {
 	{ "General",	supported_options },
-	{ "Controller", controller_options },
+	{ "BR",		br_options },
+	{ "LE",		le_options },
 	{ "Policy",	policy_options },
 	{ "GATT",	gatt_options },
 	{ }
@@ -301,135 +306,26 @@ static int get_mode(const char *str)
 	return BT_MODE_DUAL;
 }
 
-static void parse_controller_config(GKeyFile *config)
+struct config_param {
+	const char * const val_name;
+	void * const val;
+	const size_t size;
+	const uint16_t min;
+	const uint16_t max;
+};
+
+static void parse_mode_config(GKeyFile *config, const char *group,
+				const struct config_param *params,
+				size_t params_len)
 {
-	static const struct {
-		const char * const val_name;
-		uint16_t * const val;
-		const uint16_t min;
-		const uint16_t max;
-	} params[] = {
-		{ "BRPageScanType",
-		  &main_opts.default_params.br_page_scan_type,
-		  0,
-		  1},
-		{ "BRPageScanInterval",
-		  &main_opts.default_params.br_page_scan_interval,
-		  0x0012,
-		  0x1000},
-		{ "BRPageScanWindow",
-		  &main_opts.default_params.br_page_scan_win,
-		  0x0011,
-		  0x1000},
-		{ "BRInquiryScanType",
-		  &main_opts.default_params.br_scan_type,
-		  0,
-		  1},
-		{ "BRInquiryScanInterval",
-		  &main_opts.default_params.br_scan_interval,
-		  0x0012,
-		  0x1000},
-		{ "BRInquiryScanWindow",
-		  &main_opts.default_params.br_scan_win,
-		  0x0011,
-		  0x1000},
-		{ "BRLinkSupervisionTimeout",
-		  &main_opts.default_params.br_link_supervision_timeout,
-		  0x0001,
-		  0xFFFF},
-		{ "BRPageTimeout",
-		  &main_opts.default_params.br_page_timeout,
-		  0x0001,
-		  0xFFFF},
-		{ "BRMinSniffInterval",
-		  &main_opts.default_params.br_min_sniff_interval,
-		  0x0001,
-		  0xFFFE},
-		{ "BRMaxSniffInterval",
-		  &main_opts.default_params.br_max_sniff_interval,
-		  0x0001,
-		  0xFFFE},
-		{ "LEMinAdvertisementInterval",
-		  &main_opts.default_params.le_min_adv_interval,
-		  0x0020,
-		  0x4000},
-		{ "LEMaxAdvertisementInterval",
-		  &main_opts.default_params.le_max_adv_interval,
-		  0x0020,
-		  0x4000},
-		{ "LEMultiAdvertisementRotationInterval",
-		  &main_opts.default_params.le_multi_adv_rotation_interval,
-		  0x0001,
-		  0xFFFF},
-		{ "LEScanIntervalAutoConnect",
-		  &main_opts.default_params.le_scan_interval_autoconnect,
-		  0x0004,
-		  0x4000},
-		{ "LEScanWindowAutoConnect",
-		  &main_opts.default_params.le_scan_win_autoconnect,
-		  0x0004,
-		  0x4000},
-		{ "LEScanIntervalSuspend",
-		  &main_opts.default_params.le_scan_interval_suspend,
-		  0x0004,
-		  0x4000},
-		{ "LEScanWindowSuspend",
-		  &main_opts.default_params.le_scan_win_suspend,
-		  0x0004,
-		  0x4000},
-		{ "LEScanIntervalDiscovery",
-		  &main_opts.default_params.le_scan_interval_discovery,
-		  0x0004,
-		  0x4000},
-		{ "LEScanWindowDiscovery",
-		  &main_opts.default_params.le_scan_win_discovery,
-		  0x0004,
-		  0x4000},
-		{ "LEScanIntervalAdvMonitor",
-		  &main_opts.default_params.le_scan_interval_adv_monitor,
-		  0x0004,
-		  0x4000},
-		{ "LEScanWindowAdvMonitor",
-		  &main_opts.default_params.le_scan_win_adv_monitor,
-		  0x0004,
-		  0x4000},
-		{ "LEScanIntervalConnect",
-		  &main_opts.default_params.le_scan_interval_connect,
-		  0x0004,
-		  0x4000},
-		{ "LEScanWindowConnect",
-		  &main_opts.default_params.le_scan_win_connect,
-		  0x0004,
-		  0x4000},
-		{ "LEMinConnectionInterval",
-		  &main_opts.default_params.le_min_conn_interval,
-		  0x0006,
-		  0x0C80},
-		{ "LEMaxConnectionInterval",
-		  &main_opts.default_params.le_max_conn_interval,
-		  0x0006,
-		  0x0C80},
-		{ "LEConnectionLatency",
-		  &main_opts.default_params.le_conn_latency,
-		  0x0000,
-		  0x01F3},
-		{ "LEConnectionSupervisionTimeout",
-		  &main_opts.default_params.le_conn_lsto,
-		  0x000A,
-		  0x0C80},
-		{ "LEAutoconnecttimeout",
-		  &main_opts.default_params.le_autoconnect_timeout,
-		  0x0001,
-		  0x4000},
-	};
 	uint16_t i;
 
 	if (!config)
 		return;
 
-	for (i = 0; i < ARRAY_SIZE(params); ++i) {
+	for (i = 0; i < params_len; ++i) {
 		GError *err = NULL;
-		int val = g_key_file_get_integer(config, "Controller",
+		int val = g_key_file_get_integer(config, group,
 						params[i].val_name, &err);
 		if (err) {
 			warn("%s", err->message);
@@ -439,10 +335,174 @@ static void parse_controller_config(GKeyFile *config)
 
 			val = MAX(val, params[i].min);
 			val = MIN(val, params[i].max);
-			*params[i].val = val;
-			++main_opts.default_params.num_entries;
+
+			val = htobl(val);
+			memcpy(params[i].val, &val, params[i].size);
+			++main_opts.defaults.num_entries;
 		}
 	}
+}
+
+static void parse_br_config(GKeyFile *config)
+{
+	static const struct config_param params[] = {
+		{ "PageScanType",
+		  &main_opts.defaults.br.page_scan_type,
+		  sizeof(main_opts.defaults.br.page_scan_type),
+		  0,
+		  1},
+		{ "PageScanInterval",
+		  &main_opts.defaults.br.page_scan_interval,
+		  sizeof(main_opts.defaults.br.page_scan_interval),
+		  0x0012,
+		  0x1000},
+		{ "PageScanWindow",
+		  &main_opts.defaults.br.page_scan_win,
+		  sizeof(main_opts.defaults.br.page_scan_win),
+		  0x0011,
+		  0x1000},
+		{ "InquiryScanType",
+		  &main_opts.defaults.br.scan_type,
+		  sizeof(main_opts.defaults.br.scan_type),
+		  0,
+		  1},
+		{ "InquiryScanInterval",
+		  &main_opts.defaults.br.scan_interval,
+		  sizeof(main_opts.defaults.br.scan_interval),
+		  0x0012,
+		  0x1000},
+		{ "InquiryScanWindow",
+		  &main_opts.defaults.br.scan_win,
+		  sizeof(main_opts.defaults.br.scan_win),
+		  0x0011,
+		  0x1000},
+		{ "LinkSupervisionTimeout",
+		  &main_opts.defaults.br.link_supervision_timeout,
+		  sizeof(main_opts.defaults.br.link_supervision_timeout),
+		  0x0001,
+		  0xFFFF},
+		{ "PageTimeout",
+		  &main_opts.defaults.br.page_timeout,
+		  sizeof(main_opts.defaults.br.page_scan_win),
+		  0x0001,
+		  0xFFFF},
+		{ "MinSniffInterval",
+		  &main_opts.defaults.br.min_sniff_interval,
+		  sizeof(main_opts.defaults.br.min_sniff_interval),
+		  0x0001,
+		  0xFFFE},
+		{ "MaxSniffInterval",
+		  &main_opts.defaults.br.max_sniff_interval,
+		  sizeof(main_opts.defaults.br.max_sniff_interval),
+		  0x0001,
+		  0xFFFE},
+	};
+
+	if (main_opts.mode == BT_MODE_LE)
+		return;
+
+	parse_mode_config(config, "BREDR", params, ARRAY_SIZE(params));
+}
+
+static void parse_le_config(GKeyFile *config)
+{
+	static const struct config_param params[] = {
+		{ "MinAdvertisementInterval",
+		  &main_opts.defaults.le.min_adv_interval,
+		  sizeof(main_opts.defaults.le.min_adv_interval),
+		  0x0020,
+		  0x4000},
+		{ "MaxAdvertisementInterval",
+		  &main_opts.defaults.le.max_adv_interval,
+		  sizeof(main_opts.defaults.le.max_adv_interval),
+		  0x0020,
+		  0x4000},
+		{ "MultiAdvertisementRotationInterval",
+		  &main_opts.defaults.le.adv_rotation_interval,
+		  sizeof(main_opts.defaults.le.adv_rotation_interval),
+		  0x0001,
+		  0xFFFF},
+		{ "ScanIntervalAutoConnect",
+		  &main_opts.defaults.le.scan_interval_autoconnect,
+		  sizeof(main_opts.defaults.le.scan_interval_autoconnect),
+		  0x0004,
+		  0x4000},
+		{ "ScanWindowAutoConnect",
+		  &main_opts.defaults.le.scan_win_autoconnect,
+		  sizeof(main_opts.defaults.le.scan_win_autoconnect),
+		  0x0004,
+		  0x4000},
+		{ "ScanIntervalSuspend",
+		  &main_opts.defaults.le.scan_interval_suspend,
+		  sizeof(main_opts.defaults.le.scan_interval_suspend),
+		  0x0004,
+		  0x4000},
+		{ "ScanWindowSuspend",
+		  &main_opts.defaults.le.scan_win_suspend,
+		  sizeof(main_opts.defaults.le.scan_win_suspend),
+		  0x0004,
+		  0x4000},
+		{ "ScanIntervalDiscovery",
+		  &main_opts.defaults.le.scan_interval_discovery,
+		  sizeof(main_opts.defaults.le.scan_interval_discovery),
+		  0x0004,
+		  0x4000},
+		{ "ScanWindowDiscovery",
+		  &main_opts.defaults.le.scan_win_discovery,
+		  sizeof(main_opts.defaults.le.scan_win_discovery),
+		  0x0004,
+		  0x4000},
+		{ "ScanIntervalAdvMonitor",
+		  &main_opts.defaults.le.scan_interval_adv_monitor,
+		  sizeof(main_opts.defaults.le.scan_interval_adv_monitor),
+		  0x0004,
+		  0x4000},
+		{ "ScanWindowAdvMonitor",
+		  &main_opts.defaults.le.scan_win_adv_monitor,
+		  sizeof(main_opts.defaults.le.scan_win_adv_monitor),
+		  0x0004,
+		  0x4000},
+		{ "ScanIntervalConnect",
+		  &main_opts.defaults.le.scan_interval_connect,
+		  sizeof(main_opts.defaults.le.scan_interval_connect),
+		  0x0004,
+		  0x4000},
+		{ "ScanWindowConnect",
+		  &main_opts.defaults.le.scan_win_connect,
+		  sizeof(main_opts.defaults.le.scan_win_connect),
+		  0x0004,
+		  0x4000},
+		{ "MinConnectionInterval",
+		  &main_opts.defaults.le.min_conn_interval,
+		  sizeof(main_opts.defaults.le.min_conn_interval),
+		  0x0006,
+		  0x0C80},
+		{ "MaxConnectionInterval",
+		  &main_opts.defaults.le.max_conn_interval,
+		  sizeof(main_opts.defaults.le.max_conn_interval),
+		  0x0006,
+		  0x0C80},
+		{ "ConnectionLatency",
+		  &main_opts.defaults.le.conn_latency,
+		  sizeof(main_opts.defaults.le.conn_latency),
+		  0x0000,
+		  0x01F3},
+		{ "ConnectionSupervisionTimeout",
+		  &main_opts.defaults.le.conn_lsto,
+		  sizeof(main_opts.defaults.le.conn_lsto),
+		  0x000A,
+		  0x0C80},
+		{ "Autoconnecttimeout",
+		  &main_opts.defaults.le.autoconnect_timeout,
+		  sizeof(main_opts.defaults.le.autoconnect_timeout),
+		  0x0001,
+		  0x4000},
+	};
+
+	if (main_opts.mode == BT_MODE_BREDR)
+		return;
+
+	parse_mode_config(config, "LE", params, ARRAY_SIZE(params));
 }
 
 static void parse_config(GKeyFile *config)
@@ -666,7 +726,8 @@ static void parse_config(GKeyFile *config)
 		main_opts.gatt_channels = val;
 	}
 
-	parse_controller_config(config);
+	parse_br_config(config);
+	parse_le_config(config);
 }
 
 static void init_defaults(void)
@@ -685,9 +746,9 @@ static void init_defaults(void)
 	main_opts.debug_keys = FALSE;
 	main_opts.refresh_discovery = TRUE;
 
-	main_opts.default_params.num_entries = 0;
-	main_opts.default_params.br_page_scan_type = 0xFFFF;
-	main_opts.default_params.br_scan_type = 0xFFFF;
+	main_opts.defaults.num_entries = 0;
+	main_opts.defaults.br.page_scan_type = 0xFFFF;
+	main_opts.defaults.br.scan_type = 0xFFFF;
 
 	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
 		return;

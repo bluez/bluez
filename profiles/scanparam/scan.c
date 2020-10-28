@@ -64,12 +64,12 @@ static void write_scan_params(struct scan *scan)
 	/* Unless scan parameters are configured, use the known kernel default
 	 * parameters
 	 */
-	put_le16(main_opts.default_params.le_scan_interval_autoconnect ?
-			main_opts.default_params.le_scan_interval_autoconnect :
+	put_le16(main_opts.defaults.le.scan_interval_autoconnect ?
+			main_opts.defaults.le.scan_interval_autoconnect :
 			0x60, &value[0]);
 
-	put_le16(main_opts.default_params.le_scan_win_autoconnect ?
-			main_opts.default_params.le_scan_win_autoconnect :
+	put_le16(main_opts.defaults.le.scan_win_autoconnect ?
+			main_opts.defaults.le.scan_win_autoconnect :
 			0x30, &value[2]);
 
 	bt_gatt_client_write_without_response(scan->client, scan->iwhandle,
