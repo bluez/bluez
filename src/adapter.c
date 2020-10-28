@@ -48,7 +48,7 @@
 #include "src/shared/gatt-db.h"
 
 #include "btio/btio.h"
-#include "hcid.h"
+#include "btd.h"
 #include "sdpd.h"
 #include "adapter.h"
 #include "device.h"

@@ -44,7 +44,7 @@
 #include "btio/btio.h"
 #include "lib/mgmt.h"
 #include "attrib/att.h"
-#include "hcid.h"
+#include "btd.h"
 #include "adapter.h"
 #include "gatt-database.h"
 #include "attrib/gattrib.h"

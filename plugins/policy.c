@@ -30,7 +30,7 @@
 #include "src/device.h"
 #include "src/service.h"
 #include "src/profile.h"
-#include "src/hcid.h"
+#include "src/btd.h"
 
 #define CONTROL_CONNECT_TIMEOUT 2
 #define SOURCE_RETRY_TIMEOUT 2

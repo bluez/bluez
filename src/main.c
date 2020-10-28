@@ -42,7 +42,7 @@
 #include "shared/mainloop.h"
 #include "lib/uuid.h"
 #include "shared/util.h"
-#include "hcid.h"
+#include "btd.h"
 #include "sdpd.h"
 #include "adapter.h"
 #include "device.h"

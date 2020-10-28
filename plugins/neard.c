@@ -29,7 +29,7 @@
 #include "src/device.h"
 #include "src/eir.h"
 #include "src/agent.h"
-#include "src/hcid.h"
+#include "src/btd.h"
 
 #define NEARD_NAME "org.neard"
 #define NEARD_PATH "/"

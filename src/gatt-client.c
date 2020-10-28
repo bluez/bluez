@@ -30,7 +30,7 @@
 
 #include "log.h"
 #include "error.h"
-#include "hcid.h"
+#include "btd.h"
 #include "adapter.h"
 #include "device.h"
 #include "src/shared/io.h"

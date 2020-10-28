@@ -29,7 +29,7 @@
 #include "lib/uuid.h"
 
 #include "btio/btio.h"
-#include "src/hcid.h"
+#include "src/btd.h"
 #include "src/log.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"

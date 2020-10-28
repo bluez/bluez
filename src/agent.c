@@ -30,7 +30,7 @@
 
 #include "log.h"
 #include "error.h"
-#include "hcid.h"
+#include "btd.h"
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"

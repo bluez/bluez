@@ -31,7 +31,7 @@
 #include "src/shared/gatt-server.h"
 #include "log.h"
 #include "error.h"
-#include "hcid.h"
+#include "btd.h"
 #include "adapter.h"
 #include "device.h"
 #include "gatt-database.h"
