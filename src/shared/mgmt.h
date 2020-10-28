@@ -38,6 +38,9 @@ struct mgmt_tlv_list *mgmt_tlv_list_new(void);
 void mgmt_tlv_list_free(struct mgmt_tlv_list *tlv_list);
 bool mgmt_tlv_add(struct mgmt_tlv_list *tlv_list, uint16_t type, uint8_t length,
 								void *value);
+#define mgmt_tlv_add_fixed(_list, _type, _value) \
+	mgmt_tlv_add(_list, _type, sizeof(*(_value)), _value)
+
 unsigned int mgmt_send_tlv(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 				struct mgmt_tlv_list *tlv_list,
 				mgmt_request_func_t callback,
