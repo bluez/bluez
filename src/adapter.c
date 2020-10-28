@@ -474,7 +474,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 
 	key_file = g_key_file_new();
 
-	if (adapter->pairable_timeout != main_opts.pairto)
+	if (adapter->pairable_timeout != btd_opts.pairto)
 		g_key_file_set_integer(key_file, "General", "PairableTimeout",
 					adapter->pairable_timeout);
 
@@ -487,7 +487,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 	g_key_file_set_boolean(key_file, "General", "Discoverable",
 							discoverable);
 
-	if (adapter->discoverable_timeout != main_opts.discovto)
+	if (adapter->discoverable_timeout != btd_opts.discovto)
 		g_key_file_set_integer(key_file, "General",
 					"DiscoverableTimeout",
 					adapter->discoverable_timeout);
@@ -4168,177 +4168,177 @@ static void load_default_system_params(struct btd_adapter *adapter)
 	struct mgmt_tlv_list *tlv_list;
 	unsigned int err = 0;
 
-	if (!main_opts.defaults.num_entries ||
+	if (!btd_opts.defaults.num_entries ||
 	    !btd_has_kernel_features(KERNEL_SET_SYSTEM_CONFIG))
 		return;
 
 	tlv_list = mgmt_tlv_list_new();
 
-	if (main_opts.defaults.br.page_scan_type != 0xFFFF) {
+	if (btd_opts.defaults.br.page_scan_type != 0xFFFF) {
 		if (!mgmt_tlv_add_fixed(tlv_list, 0x0000,
-					&main_opts.defaults.br.page_scan_type))
+					&btd_opts.defaults.br.page_scan_type))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.page_scan_interval) {
+	if (btd_opts.defaults.br.page_scan_interval) {
 		if (!mgmt_tlv_add_fixed(tlv_list, 0x0001,
-				&main_opts.defaults.br.page_scan_interval))
+				&btd_opts.defaults.br.page_scan_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.page_scan_win) {
+	if (btd_opts.defaults.br.page_scan_win) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0002,
-					&main_opts.defaults.br.page_scan_win))
+					&btd_opts.defaults.br.page_scan_win))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.scan_type != 0xFFFF) {
+	if (btd_opts.defaults.br.scan_type != 0xFFFF) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0003,
-					&main_opts.defaults.br.scan_type))
+					&btd_opts.defaults.br.scan_type))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.scan_interval) {
+	if (btd_opts.defaults.br.scan_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0004,
-					&main_opts.defaults.br.scan_interval))
+					&btd_opts.defaults.br.scan_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.scan_win) {
+	if (btd_opts.defaults.br.scan_win) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0005,
-					&main_opts.defaults.br.scan_win))
+					&btd_opts.defaults.br.scan_win))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.link_supervision_timeout) {
+	if (btd_opts.defaults.br.link_supervision_timeout) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0006,
-			&main_opts.defaults.br.link_supervision_timeout))
+			&btd_opts.defaults.br.link_supervision_timeout))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.page_timeout) {
+	if (btd_opts.defaults.br.page_timeout) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0007,
-					&main_opts.defaults.br.page_timeout))
+					&btd_opts.defaults.br.page_timeout))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.min_sniff_interval) {
+	if (btd_opts.defaults.br.min_sniff_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0008,
-				&main_opts.defaults.br.min_sniff_interval))
+				&btd_opts.defaults.br.min_sniff_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.br.max_sniff_interval) {
+	if (btd_opts.defaults.br.max_sniff_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0009,
-				&main_opts.defaults.br.max_sniff_interval))
+				&btd_opts.defaults.br.max_sniff_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.min_adv_interval) {
+	if (btd_opts.defaults.le.min_adv_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x000a,
-				&main_opts.defaults.le.min_adv_interval))
+				&btd_opts.defaults.le.min_adv_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.max_adv_interval) {
+	if (btd_opts.defaults.le.max_adv_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x000b,
-				&main_opts.defaults.le.max_adv_interval))
+				&btd_opts.defaults.le.max_adv_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.adv_rotation_interval) {
+	if (btd_opts.defaults.le.adv_rotation_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x000c,
-				&main_opts.defaults.le.adv_rotation_interval))
+				&btd_opts.defaults.le.adv_rotation_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_interval_autoconnect) {
+	if (btd_opts.defaults.le.scan_interval_autoconnect) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x000d,
-			&main_opts.defaults.le.scan_interval_autoconnect))
+			&btd_opts.defaults.le.scan_interval_autoconnect))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_win_autoconnect) {
+	if (btd_opts.defaults.le.scan_win_autoconnect) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x000e,
-				&main_opts.defaults.le.scan_win_autoconnect))
+				&btd_opts.defaults.le.scan_win_autoconnect))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_interval_suspend) {
+	if (btd_opts.defaults.le.scan_interval_suspend) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x000f,
-				&main_opts.defaults.le.scan_interval_suspend))
+				&btd_opts.defaults.le.scan_interval_suspend))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_win_suspend) {
+	if (btd_opts.defaults.le.scan_win_suspend) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0010,
-				&main_opts.defaults.le.scan_win_suspend))
+				&btd_opts.defaults.le.scan_win_suspend))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_interval_discovery) {
+	if (btd_opts.defaults.le.scan_interval_discovery) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0011,
-				&main_opts.defaults.le.scan_interval_discovery))
+				&btd_opts.defaults.le.scan_interval_discovery))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_win_discovery) {
+	if (btd_opts.defaults.le.scan_win_discovery) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0012,
-				&main_opts.defaults.le.scan_win_discovery))
+				&btd_opts.defaults.le.scan_win_discovery))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_interval_adv_monitor) {
+	if (btd_opts.defaults.le.scan_interval_adv_monitor) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0013,
-			&main_opts.defaults.le.scan_interval_adv_monitor))
+			&btd_opts.defaults.le.scan_interval_adv_monitor))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_win_adv_monitor) {
+	if (btd_opts.defaults.le.scan_win_adv_monitor) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0014,
-				&main_opts.defaults.le.scan_win_adv_monitor))
+				&btd_opts.defaults.le.scan_win_adv_monitor))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_interval_connect) {
+	if (btd_opts.defaults.le.scan_interval_connect) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0015,
-				&main_opts.defaults.le.scan_interval_connect))
+				&btd_opts.defaults.le.scan_interval_connect))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.scan_win_connect) {
+	if (btd_opts.defaults.le.scan_win_connect) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0016,
-				&main_opts.defaults.le.scan_win_connect))
+				&btd_opts.defaults.le.scan_win_connect))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.min_conn_interval) {
+	if (btd_opts.defaults.le.min_conn_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0017,
-				&main_opts.defaults.le.min_conn_interval))
+				&btd_opts.defaults.le.min_conn_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.max_conn_interval) {
+	if (btd_opts.defaults.le.max_conn_interval) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0018,
-				&main_opts.defaults.le.max_conn_interval))
+				&btd_opts.defaults.le.max_conn_interval))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.conn_latency) {
+	if (btd_opts.defaults.le.conn_latency) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x0019,
-					&main_opts.defaults.le.conn_latency))
+					&btd_opts.defaults.le.conn_latency))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.conn_lsto) {
+	if (btd_opts.defaults.le.conn_lsto) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x001a,
-					&main_opts.defaults.le.conn_lsto))
+					&btd_opts.defaults.le.conn_lsto))
 			goto done;
 	}
 
-	if (main_opts.defaults.le.autoconnect_timeout) {
+	if (btd_opts.defaults.le.autoconnect_timeout) {
 		if (mgmt_tlv_add_fixed(tlv_list, 0x001b,
-				&main_opts.defaults.le.autoconnect_timeout))
+				&btd_opts.defaults.le.autoconnect_timeout))
 			goto done;
 	}
 
@@ -4501,7 +4501,7 @@ free:
 
 	closedir(dir);
 
-	load_link_keys(adapter, keys, main_opts.debug_keys);
+	load_link_keys(adapter, keys, btd_opts.debug_keys);
 	g_slist_free_full(keys, g_free);
 
 	load_ltks(adapter, ltks);
@@ -6171,7 +6171,7 @@ static void load_config(struct btd_adapter *adapter)
 	adapter->pairable_timeout = g_key_file_get_integer(key_file, "General",
 						"PairableTimeout", &gerr);
 	if (gerr) {
-		adapter->pairable_timeout = main_opts.pairto;
+		adapter->pairable_timeout = btd_opts.pairto;
 		g_error_free(gerr);
 		gerr = NULL;
 	}
@@ -6189,7 +6189,7 @@ static void load_config(struct btd_adapter *adapter)
 	adapter->discoverable_timeout = g_key_file_get_integer(key_file,
 				"General", "DiscoverableTimeout", &gerr);
 	if (gerr) {
-		adapter->discoverable_timeout = main_opts.discovto;
+		adapter->discoverable_timeout = btd_opts.discovto;
 		g_error_free(gerr);
 		gerr = NULL;
 	}
@@ -6217,15 +6217,15 @@ static struct btd_adapter *btd_adapter_new(uint16_t index)
 	 * configuration. This is to make sure that sane defaults are
 	 * always present.
 	 */
-	adapter->system_name = g_strdup(main_opts.name);
-	adapter->major_class = (main_opts.class & 0x001f00) >> 8;
-	adapter->minor_class = (main_opts.class & 0x0000fc) >> 2;
-	adapter->modalias = bt_modalias(main_opts.did_source,
-						main_opts.did_vendor,
-						main_opts.did_product,
-						main_opts.did_version);
-	adapter->discoverable_timeout = main_opts.discovto;
-	adapter->pairable_timeout = main_opts.pairto;
+	adapter->system_name = g_strdup(btd_opts.name);
+	adapter->major_class = (btd_opts.class & 0x001f00) >> 8;
+	adapter->minor_class = (btd_opts.class & 0x0000fc) >> 2;
+	adapter->modalias = bt_modalias(btd_opts.did_source,
+						btd_opts.did_vendor,
+						btd_opts.did_product,
+						btd_opts.did_version);
+	adapter->discoverable_timeout = btd_opts.discovto;
+	adapter->pairable_timeout = btd_opts.pairto;
 
 	DBG("System name: %s", adapter->system_name);
 	DBG("Major class: %u", adapter->major_class);
@@ -8279,7 +8279,7 @@ int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 {
 	struct mgmt_cp_set_io_capability cp;
 
-	if (!main_opts.pairable) {
+	if (!btd_opts.pairable) {
 		if (io_cap == IO_CAPABILITY_INVALID) {
 			if (adapter->current_settings & MGMT_SETTING_BONDABLE)
 				set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x00);
@@ -8532,7 +8532,7 @@ static int adapter_register(struct btd_adapter *adapter)
 	 * non-LE controllers.
 	 */
 	if (!(adapter->supported_settings & MGMT_SETTING_LE) ||
-					main_opts.mode == BT_MODE_BREDR)
+					btd_opts.mode == BT_MODE_BREDR)
 		goto load;
 
 	adapter->database = btd_gatt_database_new(adapter);
@@ -8591,12 +8591,12 @@ load:
 
 	adapter->initialized = TRUE;
 
-	if (main_opts.did_source) {
+	if (btd_opts.did_source) {
 		/* DeviceID record is added by sdpd-server before any other
 		 * record is registered. */
 		adapter_service_insert(adapter, sdp_record_find(0x10000));
-		set_did(adapter, main_opts.did_vendor, main_opts.did_product,
-				main_opts.did_version, main_opts.did_source);
+		set_did(adapter, btd_opts.did_vendor, btd_opts.did_product,
+				btd_opts.did_version, btd_opts.did_source);
 	}
 
 	DBG("Adapter %s registered", adapter->path);
@@ -9191,7 +9191,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	missing_settings = adapter->current_settings ^
 						adapter->supported_settings;
 
-	switch (main_opts.mode) {
+	switch (btd_opts.mode) {
 	case BT_MODE_DUAL:
 		if (missing_settings & MGMT_SETTING_SSP)
 			set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
@@ -9232,9 +9232,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		set_mode(adapter, MGMT_OP_SET_SECURE_CONN, 0x01);
 
 	if (adapter->supported_settings & MGMT_SETTING_PRIVACY)
-		set_privacy(adapter, main_opts.privacy);
+		set_privacy(adapter, btd_opts.privacy);
 
-	if (main_opts.fast_conn &&
+	if (btd_opts.fast_conn &&
 			(missing_settings & MGMT_SETTING_FAST_CONNECTABLE))
 		set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, 0x01);
 
@@ -9372,7 +9372,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		goto failed;
 	}
 
-	if (main_opts.pairable &&
+	if (btd_opts.pairable &&
 			!(adapter->current_settings & MGMT_SETTING_BONDABLE))
 		set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);
 

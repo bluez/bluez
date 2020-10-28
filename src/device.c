@@ -553,7 +553,7 @@ static void browse_request_free(struct browse_req *req)
 
 static bool gatt_cache_is_enabled(struct btd_device *device)
 {
-	switch (main_opts.gatt_cache) {
+	switch (btd_opts.gatt_cache) {
 	case BT_GATT_CACHE_YES:
 		return device_is_paired(device, device->bdaddr_type);
 	case BT_GATT_CACHE_NO:
@@ -4084,7 +4084,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	device->db_id = gatt_db_register(device->db, gatt_service_added,
 					gatt_service_removed, device, NULL);
 
-	device->refresh_discovery = main_opts.refresh_discovery;
+	device->refresh_discovery = btd_opts.refresh_discovery;
 
 	return btd_device_ref(device);
 }
@@ -4284,7 +4284,7 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
 	if (device->temporary_timer)
 		g_source_remove(device->temporary_timer);
 
-	device->temporary_timer = g_timeout_add_seconds(main_opts.tmpto,
+	device->temporary_timer = g_timeout_add_seconds(btd_opts.tmpto,
 							device_disappeared,
 							device);
 }
@@ -5169,7 +5169,7 @@ static void gatt_client_init(struct btd_device *device)
 {
 	gatt_client_cleanup(device);
 
-	if (!device->connect && !main_opts.reverse_discovery) {
+	if (!device->connect && !btd_opts.reverse_discovery) {
 		DBG("Reverse service discovery disabled: skipping GATT client");
 		return;
 	}
@@ -5222,7 +5222,7 @@ static void gatt_server_init(struct btd_device *device,
 	gatt_server_cleanup(device);
 
 	device->server = bt_gatt_server_new(db, device->att, device->att_mtu,
-						main_opts.key_size);
+						btd_opts.key_size);
 	if (!device->server) {
 		error("Failed to initialize bt_gatt_server");
 		return;
@@ -5285,7 +5285,7 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	}
 
 	if (dev->att) {
-		if (main_opts.gatt_channels == bt_att_get_channels(dev->att)) {
+		if (btd_opts.gatt_channels == bt_att_get_channels(dev->att)) {
 			DBG("EATT channel limit reached");
 			return false;
 		}
@@ -5313,7 +5313,7 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 		}
 	}
 
-	dev->att_mtu = MIN(mtu, main_opts.gatt_mtu);
+	dev->att_mtu = MIN(mtu, btd_opts.gatt_mtu);
 	attrib = g_attrib_new(io,
 			cid == ATT_CID ? BT_ATT_DEFAULT_LE_MTU : dev->att_mtu,
 			false);
@@ -5690,7 +5690,7 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 			device->disable_auto_connect = TRUE;
 			device_set_auto_connect(device, FALSE);
 		}
-		device->temporary_timer = g_timeout_add_seconds(main_opts.tmpto,
+		device->temporary_timer = g_timeout_add_seconds(btd_opts.tmpto,
 							device_disappeared,
 							device);
 		return;
@@ -6091,7 +6091,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 		bonding_request_free(bonding);
 	} else if (!state->svc_resolved) {
 		if (!device->browse && !device->discov_timer &&
-				main_opts.reverse_discovery) {
+				btd_opts.reverse_discovery) {
 			/* If we are not initiators and there is no currently
 			 * active discovery or discovery timer, set discovery
 			 * timer */
@@ -6135,7 +6135,7 @@ unsigned int device_wait_for_svc_complete(struct btd_device *dev,
 
 	dev->svc_callbacks = g_slist_prepend(dev->svc_callbacks, cb);
 
-	if (state->svc_resolved || !main_opts.reverse_discovery)
+	if (state->svc_resolved || !btd_opts.reverse_discovery)
 		cb->idle_id = g_idle_add(svc_idle_cb, cb);
 	else if (dev->discov_timer > 0) {
 		g_source_remove(dev->discov_timer);
@@ -6415,12 +6415,12 @@ int device_confirm_passkey(struct btd_device *device, uint8_t type,
 
 	/* Just-Works repairing policy */
 	if (confirm_hint && device_is_paired(device, type)) {
-		if (main_opts.jw_repairing == JW_REPAIRING_NEVER) {
+		if (btd_opts.jw_repairing == JW_REPAIRING_NEVER) {
 			btd_adapter_confirm_reply(device->adapter,
 						  &device->bdaddr,
 						  type, FALSE);
 			return 0;
-		} else if (main_opts.jw_repairing == JW_REPAIRING_ALWAYS) {
+		} else if (btd_opts.jw_repairing == JW_REPAIRING_ALWAYS) {
 			btd_adapter_confirm_reply(device->adapter,
 						  &device->bdaddr,
 						  type, TRUE);

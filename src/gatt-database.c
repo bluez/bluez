@@ -1232,10 +1232,10 @@ static void device_info_read_pnp_id_cb(struct gatt_db_attribute *attrib,
 {
 	uint8_t pdu[7];
 
-	pdu[0] = main_opts.did_source;
-	put_le16(main_opts.did_vendor, &pdu[1]);
-	put_le16(main_opts.did_product, &pdu[3]);
-	put_le16(main_opts.did_version, &pdu[5]);
+	pdu[0] = btd_opts.did_source;
+	put_le16(btd_opts.did_vendor, &pdu[1]);
+	put_le16(btd_opts.did_product, &pdu[3]);
+	put_le16(btd_opts.did_version, &pdu[5]);
 
 	gatt_db_attribute_read_result(attrib, id, 0, pdu, sizeof(pdu));
 }
@@ -1248,7 +1248,7 @@ static void populate_devinfo_service(struct btd_gatt_database *database)
 	bt_uuid16_create(&uuid, UUID_DIS);
 	service = gatt_db_add_service(database->db, &uuid, true, 3);
 
-	if (main_opts.did_source > 0) {
+	if (btd_opts.did_source > 0) {
 		bt_uuid16_create(&uuid, GATT_CHARAC_PNP_ID);
 		gatt_db_service_add_characteristic(service, &uuid,
 						BT_ATT_PERM_READ,
@@ -1267,7 +1267,7 @@ static void register_core_services(struct btd_gatt_database *database)
 	populate_gap_service(database);
 	populate_gatt_service(database);
 
-	if (main_opts.did_source > 0)
+	if (btd_opts.did_source > 0)
 		populate_devinfo_service(database);
 
 }
@@ -3639,7 +3639,7 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 	}
 
 	/* If just just 1 channel is enabled EATT is not required */
-	if (main_opts.gatt_channels == 1)
+	if (btd_opts.gatt_channels == 1)
 		goto bredr;
 
 	/* EATT socket */
@@ -3650,7 +3650,7 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 					btd_adapter_get_address_type(adapter),
 					BT_IO_OPT_PSM, BT_ATT_EATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-					BT_IO_OPT_MTU, main_opts.gatt_mtu,
+					BT_IO_OPT_MTU, btd_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
 	if (!database->eatt_io) {
 		g_error_free(gerr);
@@ -3663,7 +3663,7 @@ bredr:
 					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_PSM, BT_ATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-					BT_IO_OPT_MTU, main_opts.gatt_mtu,
+					BT_IO_OPT_MTU, btd_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
 	if (database->bredr_io == NULL) {
 		error("Failed to start listening: %s", gerr->message);

@@ -58,7 +58,7 @@
 
 #define SHUTDOWN_GRACE_SECONDS 10
 
-struct main_opts main_opts;
+struct btd_opts btd_opts;
 static GKeyFile *main_conf;
 static char *main_conf_file_path;
 
@@ -198,10 +198,10 @@ static void parse_did(const char *did)
 		return;
 
 done:
-	main_opts.did_source = source;
-	main_opts.did_vendor = vendor;
-	main_opts.did_product = product;
-	main_opts.did_version = version;
+	btd_opts.did_source = source;
+	btd_opts.did_vendor = vendor;
+	btd_opts.did_product = product;
+	btd_opts.did_version = version;
 }
 
 static bt_gatt_cache_t parse_gatt_cache(const char *cache)
@@ -338,7 +338,7 @@ static void parse_mode_config(GKeyFile *config, const char *group,
 
 			val = htobl(val);
 			memcpy(params[i].val, &val, params[i].size);
-			++main_opts.defaults.num_entries;
+			++btd_opts.defaults.num_entries;
 		}
 	}
 }
@@ -347,58 +347,58 @@ static void parse_br_config(GKeyFile *config)
 {
 	static const struct config_param params[] = {
 		{ "PageScanType",
-		  &main_opts.defaults.br.page_scan_type,
-		  sizeof(main_opts.defaults.br.page_scan_type),
+		  &btd_opts.defaults.br.page_scan_type,
+		  sizeof(btd_opts.defaults.br.page_scan_type),
 		  0,
 		  1},
 		{ "PageScanInterval",
-		  &main_opts.defaults.br.page_scan_interval,
-		  sizeof(main_opts.defaults.br.page_scan_interval),
+		  &btd_opts.defaults.br.page_scan_interval,
+		  sizeof(btd_opts.defaults.br.page_scan_interval),
 		  0x0012,
 		  0x1000},
 		{ "PageScanWindow",
-		  &main_opts.defaults.br.page_scan_win,
-		  sizeof(main_opts.defaults.br.page_scan_win),
+		  &btd_opts.defaults.br.page_scan_win,
+		  sizeof(btd_opts.defaults.br.page_scan_win),
 		  0x0011,
 		  0x1000},
 		{ "InquiryScanType",
-		  &main_opts.defaults.br.scan_type,
-		  sizeof(main_opts.defaults.br.scan_type),
+		  &btd_opts.defaults.br.scan_type,
+		  sizeof(btd_opts.defaults.br.scan_type),
 		  0,
 		  1},
 		{ "InquiryScanInterval",
-		  &main_opts.defaults.br.scan_interval,
-		  sizeof(main_opts.defaults.br.scan_interval),
+		  &btd_opts.defaults.br.scan_interval,
+		  sizeof(btd_opts.defaults.br.scan_interval),
 		  0x0012,
 		  0x1000},
 		{ "InquiryScanWindow",
-		  &main_opts.defaults.br.scan_win,
-		  sizeof(main_opts.defaults.br.scan_win),
+		  &btd_opts.defaults.br.scan_win,
+		  sizeof(btd_opts.defaults.br.scan_win),
 		  0x0011,
 		  0x1000},
 		{ "LinkSupervisionTimeout",
-		  &main_opts.defaults.br.link_supervision_timeout,
-		  sizeof(main_opts.defaults.br.link_supervision_timeout),
+		  &btd_opts.defaults.br.link_supervision_timeout,
+		  sizeof(btd_opts.defaults.br.link_supervision_timeout),
 		  0x0001,
 		  0xFFFF},
 		{ "PageTimeout",
-		  &main_opts.defaults.br.page_timeout,
-		  sizeof(main_opts.defaults.br.page_scan_win),
+		  &btd_opts.defaults.br.page_timeout,
+		  sizeof(btd_opts.defaults.br.page_scan_win),
 		  0x0001,
 		  0xFFFF},
 		{ "MinSniffInterval",
-		  &main_opts.defaults.br.min_sniff_interval,
-		  sizeof(main_opts.defaults.br.min_sniff_interval),
+		  &btd_opts.defaults.br.min_sniff_interval,
+		  sizeof(btd_opts.defaults.br.min_sniff_interval),
 		  0x0001,
 		  0xFFFE},
 		{ "MaxSniffInterval",
-		  &main_opts.defaults.br.max_sniff_interval,
-		  sizeof(main_opts.defaults.br.max_sniff_interval),
+		  &btd_opts.defaults.br.max_sniff_interval,
+		  sizeof(btd_opts.defaults.br.max_sniff_interval),
 		  0x0001,
 		  0xFFFE},
 	};
 
-	if (main_opts.mode == BT_MODE_LE)
+	if (btd_opts.mode == BT_MODE_LE)
 		return;
 
 	parse_mode_config(config, "BREDR", params, ARRAY_SIZE(params));
@@ -408,98 +408,98 @@ static void parse_le_config(GKeyFile *config)
 {
 	static const struct config_param params[] = {
 		{ "MinAdvertisementInterval",
-		  &main_opts.defaults.le.min_adv_interval,
-		  sizeof(main_opts.defaults.le.min_adv_interval),
+		  &btd_opts.defaults.le.min_adv_interval,
+		  sizeof(btd_opts.defaults.le.min_adv_interval),
 		  0x0020,
 		  0x4000},
 		{ "MaxAdvertisementInterval",
-		  &main_opts.defaults.le.max_adv_interval,
-		  sizeof(main_opts.defaults.le.max_adv_interval),
+		  &btd_opts.defaults.le.max_adv_interval,
+		  sizeof(btd_opts.defaults.le.max_adv_interval),
 		  0x0020,
 		  0x4000},
 		{ "MultiAdvertisementRotationInterval",
-		  &main_opts.defaults.le.adv_rotation_interval,
-		  sizeof(main_opts.defaults.le.adv_rotation_interval),
+		  &btd_opts.defaults.le.adv_rotation_interval,
+		  sizeof(btd_opts.defaults.le.adv_rotation_interval),
 		  0x0001,
 		  0xFFFF},
 		{ "ScanIntervalAutoConnect",
-		  &main_opts.defaults.le.scan_interval_autoconnect,
-		  sizeof(main_opts.defaults.le.scan_interval_autoconnect),
+		  &btd_opts.defaults.le.scan_interval_autoconnect,
+		  sizeof(btd_opts.defaults.le.scan_interval_autoconnect),
 		  0x0004,
 		  0x4000},
 		{ "ScanWindowAutoConnect",
-		  &main_opts.defaults.le.scan_win_autoconnect,
-		  sizeof(main_opts.defaults.le.scan_win_autoconnect),
+		  &btd_opts.defaults.le.scan_win_autoconnect,
+		  sizeof(btd_opts.defaults.le.scan_win_autoconnect),
 		  0x0004,
 		  0x4000},
 		{ "ScanIntervalSuspend",
-		  &main_opts.defaults.le.scan_interval_suspend,
-		  sizeof(main_opts.defaults.le.scan_interval_suspend),
+		  &btd_opts.defaults.le.scan_interval_suspend,
+		  sizeof(btd_opts.defaults.le.scan_interval_suspend),
 		  0x0004,
 		  0x4000},
 		{ "ScanWindowSuspend",
-		  &main_opts.defaults.le.scan_win_suspend,
-		  sizeof(main_opts.defaults.le.scan_win_suspend),
+		  &btd_opts.defaults.le.scan_win_suspend,
+		  sizeof(btd_opts.defaults.le.scan_win_suspend),
 		  0x0004,
 		  0x4000},
 		{ "ScanIntervalDiscovery",
-		  &main_opts.defaults.le.scan_interval_discovery,
-		  sizeof(main_opts.defaults.le.scan_interval_discovery),
+		  &btd_opts.defaults.le.scan_interval_discovery,
+		  sizeof(btd_opts.defaults.le.scan_interval_discovery),
 		  0x0004,
 		  0x4000},
 		{ "ScanWindowDiscovery",
-		  &main_opts.defaults.le.scan_win_discovery,
-		  sizeof(main_opts.defaults.le.scan_win_discovery),
+		  &btd_opts.defaults.le.scan_win_discovery,
+		  sizeof(btd_opts.defaults.le.scan_win_discovery),
 		  0x0004,
 		  0x4000},
 		{ "ScanIntervalAdvMonitor",
-		  &main_opts.defaults.le.scan_interval_adv_monitor,
-		  sizeof(main_opts.defaults.le.scan_interval_adv_monitor),
+		  &btd_opts.defaults.le.scan_interval_adv_monitor,
+		  sizeof(btd_opts.defaults.le.scan_interval_adv_monitor),
 		  0x0004,
 		  0x4000},
 		{ "ScanWindowAdvMonitor",
-		  &main_opts.defaults.le.scan_win_adv_monitor,
-		  sizeof(main_opts.defaults.le.scan_win_adv_monitor),
+		  &btd_opts.defaults.le.scan_win_adv_monitor,
+		  sizeof(btd_opts.defaults.le.scan_win_adv_monitor),
 		  0x0004,
 		  0x4000},
 		{ "ScanIntervalConnect",
-		  &main_opts.defaults.le.scan_interval_connect,
-		  sizeof(main_opts.defaults.le.scan_interval_connect),
+		  &btd_opts.defaults.le.scan_interval_connect,
+		  sizeof(btd_opts.defaults.le.scan_interval_connect),
 		  0x0004,
 		  0x4000},
 		{ "ScanWindowConnect",
-		  &main_opts.defaults.le.scan_win_connect,
-		  sizeof(main_opts.defaults.le.scan_win_connect),
+		  &btd_opts.defaults.le.scan_win_connect,
+		  sizeof(btd_opts.defaults.le.scan_win_connect),
 		  0x0004,
 		  0x4000},
 		{ "MinConnectionInterval",
-		  &main_opts.defaults.le.min_conn_interval,
-		  sizeof(main_opts.defaults.le.min_conn_interval),
+		  &btd_opts.defaults.le.min_conn_interval,
+		  sizeof(btd_opts.defaults.le.min_conn_interval),
 		  0x0006,
 		  0x0C80},
 		{ "MaxConnectionInterval",
-		  &main_opts.defaults.le.max_conn_interval,
-		  sizeof(main_opts.defaults.le.max_conn_interval),
+		  &btd_opts.defaults.le.max_conn_interval,
+		  sizeof(btd_opts.defaults.le.max_conn_interval),
 		  0x0006,
 		  0x0C80},
 		{ "ConnectionLatency",
-		  &main_opts.defaults.le.conn_latency,
-		  sizeof(main_opts.defaults.le.conn_latency),
+		  &btd_opts.defaults.le.conn_latency,
+		  sizeof(btd_opts.defaults.le.conn_latency),
 		  0x0000,
 		  0x01F3},
 		{ "ConnectionSupervisionTimeout",
-		  &main_opts.defaults.le.conn_lsto,
-		  sizeof(main_opts.defaults.le.conn_lsto),
+		  &btd_opts.defaults.le.conn_lsto,
+		  sizeof(btd_opts.defaults.le.conn_lsto),
 		  0x000A,
 		  0x0C80},
 		{ "Autoconnecttimeout",
-		  &main_opts.defaults.le.autoconnect_timeout,
-		  sizeof(main_opts.defaults.le.autoconnect_timeout),
+		  &btd_opts.defaults.le.autoconnect_timeout,
+		  sizeof(btd_opts.defaults.le.autoconnect_timeout),
 		  0x0001,
 		  0x4000},
 	};
 
-	if (main_opts.mode == BT_MODE_BREDR)
+	if (btd_opts.mode == BT_MODE_BREDR)
 		return;
 
 	parse_mode_config(config, "LE", params, ARRAY_SIZE(params));
@@ -526,7 +526,7 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		DBG("discovto=%d", val);
-		main_opts.discovto = val;
+		btd_opts.discovto = val;
 	}
 
 	boolean = g_key_file_get_boolean(config, "General",
@@ -536,7 +536,7 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		DBG("pairable=%s", boolean ? "true" : "false");
-		main_opts.pairable = boolean;
+		btd_opts.pairable = boolean;
 	}
 
 	val = g_key_file_get_integer(config, "General",
@@ -546,24 +546,24 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		DBG("pairto=%d", val);
-		main_opts.pairto = val;
+		btd_opts.pairto = val;
 	}
 
 	str = g_key_file_get_string(config, "General", "Privacy", &err);
 	if (err) {
 		DBG("%s", err->message);
 		g_clear_error(&err);
-		main_opts.privacy = 0x00;
+		btd_opts.privacy = 0x00;
 	} else {
 		DBG("privacy=%s", str);
 
 		if (!strcmp(str, "device"))
-			main_opts.privacy = 0x01;
+			btd_opts.privacy = 0x01;
 		else if (!strcmp(str, "off"))
-			main_opts.privacy = 0x00;
+			btd_opts.privacy = 0x00;
 		else {
 			DBG("Invalid privacy option: %s", str);
-			main_opts.privacy = 0x00;
+			btd_opts.privacy = 0x00;
 		}
 
 		g_free(str);
@@ -574,10 +574,10 @@ static void parse_config(GKeyFile *config)
 	if (err) {
 		DBG("%s", err->message);
 		g_clear_error(&err);
-		main_opts.jw_repairing = JW_REPAIRING_NEVER;
+		btd_opts.jw_repairing = JW_REPAIRING_NEVER;
 	} else {
 		DBG("just_works_repairing=%s", str);
-		main_opts.jw_repairing = parse_jw_repairing(str);
+		btd_opts.jw_repairing = parse_jw_repairing(str);
 		g_free(str);
 	}
 
@@ -588,7 +588,7 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		DBG("tmpto=%d", val);
-		main_opts.tmpto = val;
+		btd_opts.tmpto = val;
 	}
 
 	str = g_key_file_get_string(config, "General", "Name", &err);
@@ -597,8 +597,8 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		DBG("name=%s", str);
-		g_free(main_opts.name);
-		main_opts.name = str;
+		g_free(btd_opts.name);
+		btd_opts.name = str;
 	}
 
 	str = g_key_file_get_string(config, "General", "Class", &err);
@@ -607,7 +607,7 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		DBG("class=%s", str);
-		main_opts.class = strtol(str, NULL, 16);
+		btd_opts.class = strtol(str, NULL, 16);
 		g_free(str);
 	}
 
@@ -627,28 +627,28 @@ static void parse_config(GKeyFile *config)
 		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else
-		main_opts.reverse_discovery = boolean;
+		btd_opts.reverse_discovery = boolean;
 
 	boolean = g_key_file_get_boolean(config, "General",
 						"NameResolving", &err);
 	if (err)
 		g_clear_error(&err);
 	else
-		main_opts.name_resolv = boolean;
+		btd_opts.name_resolv = boolean;
 
 	boolean = g_key_file_get_boolean(config, "General",
 						"DebugKeys", &err);
 	if (err)
 		g_clear_error(&err);
 	else
-		main_opts.debug_keys = boolean;
+		btd_opts.debug_keys = boolean;
 
 	str = g_key_file_get_string(config, "General", "ControllerMode", &err);
 	if (err) {
 		g_clear_error(&err);
 	} else {
 		DBG("ControllerMode=%s", str);
-		main_opts.mode = get_mode(str);
+		btd_opts.mode = get_mode(str);
 		g_free(str);
 	}
 
@@ -659,11 +659,11 @@ static void parse_config(GKeyFile *config)
 		DBG("MultiProfile=%s", str);
 
 		if (!strcmp(str, "single"))
-			main_opts.mps = MPS_SINGLE;
+			btd_opts.mps = MPS_SINGLE;
 		else if (!strcmp(str, "multiple"))
-			main_opts.mps = MPS_MULTIPLE;
+			btd_opts.mps = MPS_MULTIPLE;
 		else
-			main_opts.mps = MPS_OFF;
+			btd_opts.mps = MPS_OFF;
 
 		g_free(str);
 	}
@@ -673,21 +673,21 @@ static void parse_config(GKeyFile *config)
 	if (err)
 		g_clear_error(&err);
 	else
-		main_opts.fast_conn = boolean;
+		btd_opts.fast_conn = boolean;
 
 	boolean = g_key_file_get_boolean(config, "General",
 						"RefreshDiscovery", &err);
 	if (err)
 		g_clear_error(&err);
 	else
-		main_opts.refresh_discovery = boolean;
+		btd_opts.refresh_discovery = boolean;
 
 	str = g_key_file_get_string(config, "GATT", "Cache", &err);
 	if (err) {
 		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		main_opts.gatt_cache = parse_gatt_cache(str);
+		btd_opts.gatt_cache = parse_gatt_cache(str);
 		g_free(str);
 	}
 
@@ -699,7 +699,7 @@ static void parse_config(GKeyFile *config)
 		DBG("KeySize=%d", val);
 
 		if (val >=7 && val <= 16)
-			main_opts.key_size = val;
+			btd_opts.key_size = val;
 	}
 
 	val = g_key_file_get_integer(config, "GATT", "ExchangeMTU", &err);
@@ -711,7 +711,7 @@ static void parse_config(GKeyFile *config)
 		val = MIN(val, BT_ATT_MAX_LE_MTU);
 		val = MAX(val, BT_ATT_DEFAULT_LE_MTU);
 		DBG("ExchangeMTU=%d", val);
-		main_opts.gatt_mtu = val;
+		btd_opts.gatt_mtu = val;
 	}
 
 	val = g_key_file_get_integer(config, "GATT", "Channels", &err);
@@ -723,7 +723,7 @@ static void parse_config(GKeyFile *config)
 		/* Ensure the channels is within a valid range. */
 		val = MIN(val, 5);
 		val = MAX(val, 1);
-		main_opts.gatt_channels = val;
+		btd_opts.gatt_channels = val;
 	}
 
 	parse_br_config(config);
@@ -735,32 +735,32 @@ static void init_defaults(void)
 	uint8_t major, minor;
 
 	/* Default HCId settings */
-	memset(&main_opts, 0, sizeof(main_opts));
-	main_opts.name = g_strdup_printf("BlueZ %s", VERSION);
-	main_opts.class = 0x000000;
-	main_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
-	main_opts.discovto = DEFAULT_DISCOVERABLE_TIMEOUT;
-	main_opts.tmpto = DEFAULT_TEMPORARY_TIMEOUT;
-	main_opts.reverse_discovery = TRUE;
-	main_opts.name_resolv = TRUE;
-	main_opts.debug_keys = FALSE;
-	main_opts.refresh_discovery = TRUE;
+	memset(&btd_opts, 0, sizeof(btd_opts));
+	btd_opts.name = g_strdup_printf("BlueZ %s", VERSION);
+	btd_opts.class = 0x000000;
+	btd_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
+	btd_opts.discovto = DEFAULT_DISCOVERABLE_TIMEOUT;
+	btd_opts.tmpto = DEFAULT_TEMPORARY_TIMEOUT;
+	btd_opts.reverse_discovery = TRUE;
+	btd_opts.name_resolv = TRUE;
+	btd_opts.debug_keys = FALSE;
+	btd_opts.refresh_discovery = TRUE;
 
-	main_opts.defaults.num_entries = 0;
-	main_opts.defaults.br.page_scan_type = 0xFFFF;
-	main_opts.defaults.br.scan_type = 0xFFFF;
+	btd_opts.defaults.num_entries = 0;
+	btd_opts.defaults.br.page_scan_type = 0xFFFF;
+	btd_opts.defaults.br.scan_type = 0xFFFF;
 
 	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
 		return;
 
-	main_opts.did_source = 0x0002;		/* USB */
-	main_opts.did_vendor = 0x1d6b;		/* Linux Foundation */
-	main_opts.did_product = 0x0246;		/* BlueZ */
-	main_opts.did_version = (major << 8 | minor);
+	btd_opts.did_source = 0x0002;		/* USB */
+	btd_opts.did_vendor = 0x1d6b;		/* Linux Foundation */
+	btd_opts.did_product = 0x0246;		/* BlueZ */
+	btd_opts.did_version = (major << 8 | minor);
 
-	main_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
-	main_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
-	main_opts.gatt_channels = 3;
+	btd_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
+	btd_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
+	btd_opts.gatt_channels = 3;
 }
 
 static void log_handler(const gchar *log_domain, GLogLevelFlags log_level,
@@ -985,21 +985,21 @@ int main(int argc, char *argv[])
 	btd_agent_init();
 	btd_profile_init();
 
-	if (main_opts.mode != BT_MODE_LE) {
+	if (btd_opts.mode != BT_MODE_LE) {
 		if (option_compat == TRUE)
 			sdp_flags |= SDP_SERVER_COMPAT;
 
 		start_sdp_server(sdp_mtu, sdp_flags);
 
-		if (main_opts.did_source > 0)
-			register_device_id(main_opts.did_source,
-						main_opts.did_vendor,
-						main_opts.did_product,
-						main_opts.did_version);
+		if (btd_opts.did_source > 0)
+			register_device_id(btd_opts.did_source,
+						btd_opts.did_vendor,
+						btd_opts.did_product,
+						btd_opts.did_version);
 	}
 
-	if (main_opts.mps != MPS_OFF)
-		register_mps(main_opts.mps == MPS_MULTIPLE);
+	if (btd_opts.mps != MPS_OFF)
+		register_mps(btd_opts.mps == MPS_MULTIPLE);
 
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
@@ -1031,7 +1031,7 @@ int main(int argc, char *argv[])
 
 	rfkill_exit();
 
-	if (main_opts.mode != BT_MODE_LE)
+	if (btd_opts.mode != BT_MODE_LE)
 		stop_sdp_server();
 
 	if (main_conf)

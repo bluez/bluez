@@ -220,9 +220,9 @@ static DBusMessage *create_request_oob_reply(struct btd_adapter *adapter,
 	len = eir_create_oob(btd_adapter_get_address(adapter),
 				btd_adapter_get_name(adapter),
 				btd_adapter_get_class(adapter), hash,
-				randomizer, main_opts.did_vendor,
-				main_opts.did_product, main_opts.did_version,
-				main_opts.did_source,
+				randomizer, btd_opts.did_vendor,
+				btd_opts.did_product, btd_opts.did_version,
+				btd_opts.did_source,
 				btd_adapter_get_services(adapter), eir);
 
 	reply = dbus_message_new_method_return(msg);

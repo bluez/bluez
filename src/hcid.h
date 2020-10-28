@@ -80,7 +80,7 @@ struct btd_defaults {
 	struct btd_le_defaults le;
 };
 
-struct main_opts {
+struct btd_opts {
 	char		*name;
 	uint32_t	class;
 	gboolean	pairable;
@@ -113,7 +113,7 @@ struct main_opts {
 	enum jw_repairing_t jw_repairing;
 };
 
-extern struct main_opts main_opts;
+extern struct btd_opts btd_opts;
 
 gboolean plugin_init(const char *enable, const char *disable);
 void plugin_cleanup(void);

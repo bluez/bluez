@@ -2324,7 +2324,7 @@ static bool a2dp_server_listen(struct a2dp_server *server)
 	if (server->io)
 		return true;
 
-	if (main_opts.mps == MPS_OFF)
+	if (btd_opts.mps == MPS_OFF)
 		mode = BT_IO_MODE_BASIC;
 	else
 		mode = BT_IO_MODE_STREAMING;

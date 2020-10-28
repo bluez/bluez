@@ -2174,13 +2174,13 @@ static void eatt_connect(struct btd_gatt_client *client)
 	char addr[18];
 	int i;
 
-	if (bt_att_get_channels(att) == main_opts.gatt_channels)
+	if (bt_att_get_channels(att) == btd_opts.gatt_channels)
 		return;
 
 	ba2str(device_get_address(dev), addr);
 
-	for (i = bt_att_get_channels(att); i < main_opts.gatt_channels; i++) {
-		int defer_timeout = i + 1 < main_opts.gatt_channels ? 1 : 0;
+	for (i = bt_att_get_channels(att); i < btd_opts.gatt_channels; i++) {
+		int defer_timeout = i + 1 < btd_opts.gatt_channels ? 1 : 0;
 
 		DBG("Connection attempt to: %s defer %s", addr,
 					defer_timeout ? "true" : "false");
@@ -2198,7 +2198,7 @@ static void eatt_connect(struct btd_gatt_client *client)
 					BT_IO_OPT_MODE, BT_IO_MODE_EXT_FLOWCTL,
 					BT_IO_OPT_PSM, BT_ATT_EATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-					BT_IO_OPT_MTU, main_opts.gatt_mtu,
+					BT_IO_OPT_MTU, btd_opts.gatt_mtu,
 					BT_IO_OPT_DEFER_TIMEOUT, defer_timeout,
 					BT_IO_OPT_INVALID);
 		if (!io) {
@@ -2216,7 +2216,7 @@ static void eatt_connect(struct btd_gatt_client *client)
 					device_get_le_address_type(dev),
 					BT_IO_OPT_PSM, BT_ATT_EATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-					BT_IO_OPT_MTU, main_opts.gatt_mtu,
+					BT_IO_OPT_MTU, btd_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
 			if (!io) {
 				error("EATT bt_io_connect(%s): %s", addr,
