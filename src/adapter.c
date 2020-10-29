@@ -9570,6 +9570,10 @@ static void read_commands_complete(uint8_t status, uint16_t length,
 			DBG("kernel supports ext adv commands");
 			kernel_features |= KERNEL_HAS_EXT_ADV_ADD_CMDS;
 			break;
+		case MGMT_OP_READ_CONTROLLER_CAP:
+			DBG("kernel supports controller cap command");
+			kernel_features |= KERNEL_HAS_CONTROLLER_CAP_CMD;
+			break;
 		default:
 			break;
 		}
