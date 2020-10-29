@@ -138,6 +138,31 @@ Properties	string Type
 					"2M"
 					"Coded"
 
+		uint32 MinInterval [Experimental]
+
+			Minimum advertising interval to be used by the
+			advertising set, in milliseconds. Acceptable values
+			are in the range [20ms, 10,485s]. If the provided
+			MinInterval is larger than the provided MaxInterval,
+			the registration will return failure.
+
+		uint32 MaxInterval [Experimental]
+
+			Maximum advertising interval to be used by the
+			advertising set, in milliseconds. Acceptable values
+			are in the range [20ms, 10,485s]. If the provided
+			MinInterval is larger than the provided MaxInterval,
+			the registration will return failure.
+
+		int16 TxPower [Experimental]
+
+			Requested transmission power of this advertising set.
+			The provided value is used only if the "CanSetTxPower"
+			feature is enabled on the Advertising Manager. The
+			provided value must be in range [-127 to +20], where
+			units are in dBm.
+
+
 LE Advertising Manager hierarchy
 ================================
 
@@ -209,3 +234,26 @@ Properties	byte ActiveInstances
 			Possible values: "1M"
 					 "2M"
 					 "Coded"
+
+		dict SupportedCapabilities [Experimental]
+
+			Enumerates Advertising-related controller capabilities
+			useful to the client.
+
+			Possible Values:
+
+				byte MaxAdvLen
+
+					Max advertising data length
+
+				byte MaxScnRspLen
+
+					Max advertising scan response length
+
+				int16 MinTxPower
+
+					Min advertising tx power (dBm)
+
+				int16 MaxTxPower
+
+					Max advertising tx power (dBm)
