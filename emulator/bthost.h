@@ -23,6 +23,11 @@ void bthost_destroy(struct bthost *bthost);
 typedef void (*bthost_ready_cb) (void);
 void bthost_notify_ready(struct bthost *bthost, bthost_ready_cb cb);
 
+typedef void (*bthost_debug_func_t)(const char *str, void *user_data);
+typedef void (*bthost_destroy_func_t)(void *user_data);
+bool bthost_set_debug(struct bthost *bthost, bthost_debug_func_t callback,
+			void *user_data, bthost_destroy_func_t destroy);
+
 void bthost_set_send_handler(struct bthost *bthost, bthost_send_func handler,
 							void *user_data);
 
