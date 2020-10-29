@@ -6980,8 +6980,8 @@ static void le_set_ext_adv_params_cmd(const void *data, uint8_t size)
 	print_peer_addr_type("Peer address type", cmd->peer_addr_type);
 	print_addr("Peer address", cmd->peer_addr, cmd->peer_addr_type);
 	print_adv_filter_policy("Filter policy", cmd->filter_policy);
-	if (cmd->tx_power == 0xff)
-		print_field("TX power: Host has no preference (0xff)");
+	if (cmd->tx_power == 0x7f)
+		print_field("TX power: Host has no preference (0x7f)");
 	else
 		print_power_level(cmd->tx_power, NULL);
 
