@@ -3110,19 +3110,19 @@ Set Wideband Speech Command
 				Invalid Index
 
 
-Read Security Information Command
-=================================
+Read Controller Capabilities Command
+====================================
 
 	Command Code:		0x0048
 	Controller Index:	<controller id>
 	Command Parameters:
-	Return Parameters:	Security_Data_Length (2 Octets)
-				Security_Data (0-65535 Octets)
+	Return Parameters:	Capabilities_Data_Length (2 Octets)
+				Capabilities_Data (0-65535 Octets)
 
-	This command is used to retrieve the supported security features
+	This command is used to retrieve the supported capabilities
 	by the controller or the host stack.
 
-	The Security_Data_Length and Security_Data parameters provide
+	The Capabilities_Data_Length and Capabilities_Data parameters provide
 	a list of security settings, features and information. It uses
 	the same format as EIR_Data, but with the namespace defined here.
 
@@ -3131,6 +3131,7 @@ Read Security Information Command
 		0x01		Flags
 		0x02		Max Encryption Key Size (BR/EDR)
 		0x03		Max Encryption Key Size (LE)
+		0x04		Supported Tx Power (LE)
 
 	Flags (data type 0x01)
 
@@ -3145,6 +3146,14 @@ Read Security Information Command
 		indicating the max encryption key size. If the field is not
 		present, then it is unknown what the max encryption key
 		size of the controller or host is in use.
+
+	Supported LE Tx Power (data type 0x04)
+
+		When present, this 2-octet field provides the min and max
+		LE Tx power supported by the controller, respectively, as
+		reported by the LE Read Transmit Power HCI command. If this
+		field is not available, it indicates that the LE Read
+		Transmit Power HCI command was not available.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
