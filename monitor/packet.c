@@ -88,6 +88,7 @@
 #define COLOR_UNKNOWN_ADV_FLAG		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_PHY		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_ADDED_DEVICE_FLAG	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_ADVMON_FEATURES	COLOR_WHITE_BG
 
 #define COLOR_PHY_PACKET		COLOR_BLUE
 
@@ -13151,6 +13152,50 @@ static void mgmt_set_device_flags_rsp(const void *data, uint16_t size)
 	mgmt_print_address(data, type);
 }
 
+static const struct bitfield_data mgmt_adv_monitor_features_table[] = {
+	{ 1, "OR Patterns"	},
+	{ }
+};
+
+static void mgmt_print_adv_monitor_features(char *label, uint32_t flags)
+{
+	uint32_t mask;
+
+	print_field("%s: 0x%8.8x", label, flags);
+	mask = print_bitfield(2, flags, mgmt_adv_monitor_features_table);
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADVMON_FEATURES,
+			   "  Unknown Flags (0x%8.8x)", mask);
+}
+
+static void mgmt_print_adv_monitor_handles(const void *data, uint8_t len)
+{
+	uint8_t idx = 0;
+
+	while (idx + 2 <= len) {
+		print_field("  Handle: %d", get_le16(data + idx));
+		idx += 2;
+	}
+}
+
+static void mgmt_read_adv_monitor_features_rsp(const void *data, uint16_t size)
+{
+	uint32_t supported_features = get_le32(data);
+	uint32_t enabled_features = get_le32(data + 4);
+	uint16_t max_num_handles = get_le16(data + 8);
+	uint8_t max_num_patterns = get_u8(data + 10);
+	uint16_t num_handles = get_le16(data + 11);
+
+	mgmt_print_adv_monitor_features("Supported Features",
+							supported_features);
+	mgmt_print_adv_monitor_features("Enabled Features",
+							enabled_features);
+	print_field("Max number of handles: %d", max_num_handles);
+	print_field("Max number of patterns: %d", max_num_patterns);
+	print_field("Number of handles: %d", num_handles);
+	mgmt_print_adv_monitor_handles(data + 13, size - 13);
+}
+
 struct mgmt_data {
 	uint16_t opcode;
 	const char *str;
@@ -13382,6 +13427,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0050, "Set Device Flags",
 				mgmt_set_device_flags_cmd, 11, true,
 				mgmt_set_device_flags_rsp, 7, true},
+	{ 0x0051, "Read Advertisement Monitor Features",
+				mgmt_null_cmd, 0, true,
+				mgmt_read_adv_monitor_features_rsp, 13, false},
 	{ }
 };
 
