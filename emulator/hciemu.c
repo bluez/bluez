@@ -45,6 +45,10 @@ struct hciemu {
 	guint client_source;
 	struct queue *post_command_hooks;
 	char bdaddr_str[18];
+
+	hciemu_debug_func_t debug_callback;
+	hciemu_destroy_func_t debug_destroy;
+	void *debug_data;
 };
 
 struct hciemu_command_hook {
@@ -383,6 +387,50 @@ void hciemu_unref(struct hciemu *hciemu)
 	btdev_destroy(hciemu->master_dev);
 
 	free(hciemu);
+}
+
+static void bthost_debug(const char *str, void *user_data)
+{
+	struct hciemu *hciemu = user_data;
+
+	util_debug(hciemu->debug_callback, hciemu->debug_data,
+					"bthost: %s", str);
+}
+
+static void btdev_master_debug(const char *str, void *user_data)
+{
+	struct hciemu *hciemu = user_data;
+
+	util_debug(hciemu->debug_callback, hciemu->debug_data,
+					"btdev: %s", str);
+}
+
+static void btdev_client_debug(const char *str, void *user_data)
+{
+	struct hciemu *hciemu = user_data;
+
+	util_debug(hciemu->debug_callback, hciemu->debug_data,
+					"btdev[bthost]: %s", str);
+}
+
+bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
+			void *user_data, hciemu_destroy_func_t destroy)
+{
+	if (!hciemu)
+		return false;
+
+	if (hciemu->debug_destroy)
+		hciemu->debug_destroy(hciemu->debug_data);
+
+	hciemu->debug_callback = callback;
+	hciemu->debug_destroy = destroy;
+	hciemu->debug_data = user_data;
+
+	btdev_set_debug(hciemu->master_dev, btdev_master_debug, hciemu, NULL);
+	btdev_set_debug(hciemu->client_dev, btdev_client_debug, hciemu, NULL);
+	bthost_set_debug(hciemu->host_stack, bthost_debug, hciemu, NULL);
+
+	return true;
 }
 
 const char *hciemu_get_address(struct hciemu *hciemu)
