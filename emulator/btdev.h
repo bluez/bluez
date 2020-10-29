@@ -66,6 +66,11 @@ struct btdev;
 struct btdev *btdev_create(enum btdev_type type, uint16_t id);
 void btdev_destroy(struct btdev *btdev);
 
+typedef void (*btdev_debug_func_t)(const char *str, void *user_data);
+typedef void (*btdev_destroy_func_t)(void *user_data);
+bool btdev_set_debug(struct btdev *btdev, btdev_debug_func_t callback,
+			void *user_data, btdev_destroy_func_t destroy);
+
 const uint8_t *btdev_get_bdaddr(struct btdev *btdev);
 uint8_t *btdev_get_features(struct btdev *btdev);
 

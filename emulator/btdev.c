@@ -144,6 +144,10 @@ struct btdev {
 	uint8_t  sync_train_service_data;
 
 	uint16_t le_ext_adv_type;
+
+	btdev_debug_func_t debug_callback;
+	btdev_destroy_func_t debug_destroy;
+	void *debug_data;
 };
 
 struct inquiry_data {
@@ -255,45 +259,6 @@ static inline struct btdev *find_btdev_by_bdaddr_type(const uint8_t *bdaddr,
 	}
 
 	return NULL;
-}
-
-static void hexdump(const unsigned char *buf, uint16_t len)
-{
-	static const char hexdigits[] = "0123456789abcdef";
-	char str[68];
-	uint16_t i;
-
-	if (!len)
-		return;
-
-	for (i = 0; i < len; i++) {
-		str[((i % 16) * 3) + 0] = hexdigits[buf[i] >> 4];
-		str[((i % 16) * 3) + 1] = hexdigits[buf[i] & 0xf];
-		str[((i % 16) * 3) + 2] = ' ';
-		str[(i % 16) + 49] = isprint(buf[i]) ? buf[i] : '.';
-
-		if ((i + 1) % 16 == 0) {
-			str[47] = ' ';
-			str[48] = ' ';
-			str[65] = '\0';
-			printf("%-12c%s\n", ' ', str);
-			str[0] = ' ';
-		}
-	}
-
-	if (i % 16 > 0) {
-		uint16_t j;
-		for (j = (i % 16); j < 16; j++) {
-			str[(j * 3) + 0] = ' ';
-			str[(j * 3) + 1] = ' ';
-			str[(j * 3) + 2] = ' ';
-			str[j + 49] = ' ';
-		}
-		str[47] = ' ';
-		str[48] = ' ';
-		str[65] = '\0';
-		printf("%-12c%s\n", ' ', str);
-	}
 }
 
 static void get_bdaddr(uint16_t id, uint8_t index, uint8_t *bdaddr)
@@ -768,6 +733,22 @@ void btdev_destroy(struct btdev *btdev)
 	free(btdev);
 }
 
+bool btdev_set_debug(struct btdev *btdev, btdev_debug_func_t callback,
+			void *user_data, btdev_destroy_func_t destroy)
+{
+	if (!btdev)
+		return false;
+
+	if (btdev->debug_destroy)
+		btdev->debug_destroy(btdev->debug_data);
+
+	btdev->debug_callback = callback;
+	btdev->debug_destroy = destroy;
+	btdev->debug_data = user_data;
+
+	return true;
+}
+
 const uint8_t *btdev_get_bdaddr(struct btdev *btdev)
 {
 	return btdev->bdaddr;
@@ -824,8 +805,19 @@ void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
 static void send_packet(struct btdev *btdev, const struct iovec *iov,
 								int iovlen)
 {
+	int i;
+
 	if (!btdev->send_handler)
 		return;
+
+	for (i = 0; i < iovlen; i++) {
+		if (!i)
+			util_hexdump('<', iov[i].iov_base, iov[i].iov_len,
+				btdev->debug_callback, btdev->debug_data);
+		else
+			util_hexdump(' ', iov[i].iov_base, iov[i].iov_len,
+				btdev->debug_callback, btdev->debug_data);
+	}
 
 	btdev->send_handler(iov, iovlen, btdev->send_data);
 }
@@ -836,6 +828,9 @@ static void send_event(struct btdev *btdev, uint8_t event,
 	struct bt_hci_evt_hdr hdr;
 	struct iovec iov[3];
 	uint8_t pkt = BT_H4_EVT_PKT;
+
+	util_debug(btdev->debug_callback, btdev->debug_data,
+				"event 0x%02x", event);
 
 	iov[0].iov_base = &pkt;
 	iov[0].iov_len = sizeof(pkt);
@@ -862,6 +857,9 @@ static void send_cmd(struct btdev *btdev, uint8_t evt, uint16_t opcode,
 	struct iovec iov2[2 + iovlen];
 	uint8_t pkt = BT_H4_EVT_PKT;
 	int i;
+
+	util_debug(btdev->debug_callback, btdev->debug_data,
+				"event 0x%02x opcode 0x%04x", evt, opcode);
 
 	iov2[0].iov_base = &pkt;
 	iov2[0].iov_len = sizeof(pkt);
@@ -920,6 +918,9 @@ static void le_meta_event(struct btdev *btdev, uint8_t event,
 						void *data, uint8_t len)
 {
 	void *pkt_data;
+
+	util_debug(btdev->debug_callback, btdev->debug_data,
+				"meta event 0x%02x", event);
 
 	pkt_data = alloca(1 + len);
 	if (!pkt_data)
@@ -2089,15 +2090,12 @@ static void send_ext_adv(struct btdev *btdev, const struct btdev *remote,
 					uint16_t type, bool is_scan_rsp)
 {
 	struct __packed {
-		uint8_t subevent;
 		uint8_t num_reports;
 		union {
 			struct bt_hci_le_ext_adv_report lear;
 			uint8_t raw[24 + 31];
 		};
 	} meta_event;
-
-	meta_event.subevent = BT_HCI_EVT_LE_EXT_ADV_REPORT;
 
 	memset(&meta_event.lear, 0, sizeof(meta_event.lear));
 	meta_event.num_reports = 1;
@@ -2121,8 +2119,8 @@ static void send_ext_adv(struct btdev *btdev, const struct btdev *remote,
 						meta_event.lear.data_len);
 	}
 
-	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, &meta_event,
-					1 + 1 + 24 + meta_event.lear.data_len);
+	le_meta_event(btdev, BT_HCI_EVT_LE_EXT_ADV_REPORT, &meta_event,
+					1 + 24 + meta_event.lear.data_len);
 }
 
 static uint8_t get_adv_report_type(uint8_t adv_type)
@@ -3952,8 +3950,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	return;
 
 unsupported:
-	printf("Unsupported command 0x%4.4x\n", opcode);
-	hexdump(data, len);
+	util_debug(btdev->debug_callback, btdev->debug_data,
+			"Unsupported command 0x%4.4x\n", opcode);
 	cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, opcode);
 }
 
@@ -4267,6 +4265,9 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	callback.data = data + sizeof(*hdr);
 	callback.len = hdr->plen;
 
+	util_debug(btdev->debug_callback, btdev->debug_data,
+				"command 0x%04x", callback.opcode);
+
 	if (btdev->command_handler)
 		btdev->command_handler(callback.opcode,
 					callback.data, callback.len,
@@ -4331,6 +4332,9 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 	if (len < 1)
 		return;
 
+	util_hexdump('>', data, len, btdev->debug_callback,
+					btdev->debug_data);
+
 	pkt_type = ((const uint8_t *) data)[0];
 
 	switch (pkt_type) {
@@ -4348,7 +4352,8 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 			send_iso(btdev->conn, data, len);
 		break;
 	default:
-		printf("Unsupported packet 0x%2.2x\n", pkt_type);
+		util_debug(btdev->debug_callback, btdev->debug_data,
+				"Unsupported packet 0x%2.2x\n", pkt_type);
 		break;
 	}
 }
