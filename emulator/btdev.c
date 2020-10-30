@@ -2154,6 +2154,29 @@ static uint8_t get_ext_adv_type(uint8_t ext_adv_type)
 	return ext_adv_type;
 }
 
+static uint16_t ext_legacy_adv_type(uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		/* Connectable undirected - ADV_IND" */
+		return 0x0013;
+	case 0x01:
+		/* Connectable directed - ADV_DIRECT_IND */
+		return 0x0015;
+	case 0x02:
+		/* Scannable undirected - ADV_SCAN_IND */
+		return 0x0012;
+	case 0x03:
+		/* Non connectable undirected - ADV_NONCONN_IND */
+		return 0x0010;
+	case 0x04:
+		/* Scan response - SCAN_RSP */
+		return 0x0012;
+	}
+
+	return 0x0000;
+}
+
 static void le_set_adv_enable_complete(struct btdev *btdev)
 {
 	uint8_t report_type;
@@ -3413,6 +3436,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 		lsap = data;
 		btdev->le_adv_type = lsap->type;
+		/* Use Legacy PDU if the remote is using EXT Scan */
+		btdev->le_ext_adv_type = ext_legacy_adv_type(lsap->type);
 		btdev->le_adv_own_addr = lsap->own_addr_type;
 		btdev->le_adv_direct_addr_type = lsap->direct_addr_type;
 		memcpy(btdev->le_adv_direct_addr, lsap->direct_addr, 6);
