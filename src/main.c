@@ -114,6 +114,8 @@ static const char *le_options[] = {
 	"ConnectionLatency",
 	"ConnectionSupervisionTimeout",
 	"Autoconnecttimeout",
+	"AdvMonAllowlistScanDuration",
+	"AdvMonNoFilterScanDuration",
 	NULL
 };
 
@@ -497,6 +499,16 @@ static void parse_le_config(GKeyFile *config)
 		  sizeof(btd_opts.defaults.le.autoconnect_timeout),
 		  0x0001,
 		  0x4000},
+		{ "AdvMonAllowlistScanDuration",
+		  &btd_opts.defaults.le.advmon_allowlist_scan_duration,
+		  sizeof(btd_opts.defaults.le.advmon_allowlist_scan_duration),
+		  1,
+		  10000},
+		{ "AdvMonNoFilterScanDuration",
+		  &btd_opts.defaults.le.advmon_no_filter_scan_duration,
+		  sizeof(btd_opts.defaults.le.advmon_no_filter_scan_duration),
+		  1,
+		  10000},
 	};
 
 	if (btd_opts.mode == BT_MODE_BREDR)

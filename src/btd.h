@@ -71,6 +71,9 @@ struct btd_le_defaults {
 	uint16_t	conn_latency;
 	uint16_t	conn_lsto;
 	uint16_t	autoconnect_timeout;
+
+	uint16_t	advmon_allowlist_scan_duration;
+	uint16_t	advmon_no_filter_scan_duration;
 };
 
 struct btd_defaults {
