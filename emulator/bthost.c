@@ -1269,6 +1269,21 @@ static void evt_le_ltk_request(struct bthost *bthost, const void *data,
 								sizeof(cp));
 }
 
+static void evt_le_cis_req(struct bthost *bthost, const void *data, uint8_t len)
+{
+	const struct bt_hci_evt_le_cis_req *ev = data;
+	struct bt_hci_cmd_le_accept_cis cmd;
+
+	if (len < sizeof(*ev))
+		return;
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	cmd.handle = ev->cis_handle;
+
+	send_command(bthost, BT_HCI_CMD_LE_ACCEPT_CIS, &cmd, sizeof(cmd));
+}
+
 static void evt_le_meta_event(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -1296,6 +1311,9 @@ static void evt_le_meta_event(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE:
 		evt_le_ext_conn_complete(bthost, evt_data, len - 1);
+		break;
+	case BT_HCI_EVT_LE_CIS_REQ:
+		evt_le_cis_req(bthost, evt_data, len - 1);
 		break;
 	default:
 		util_debug(bthost->debug_callback, bthost->debug_data,
