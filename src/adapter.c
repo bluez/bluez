@@ -4187,157 +4187,157 @@ static void load_default_system_params(struct btd_adapter *adapter)
 	}
 
 	if (btd_opts.defaults.br.page_scan_win) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0002,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0002,
 					&btd_opts.defaults.br.page_scan_win))
 			goto done;
 	}
 
 	if (btd_opts.defaults.br.scan_type != 0xFFFF) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0003,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0003,
 					&btd_opts.defaults.br.scan_type))
 			goto done;
 	}
 
 	if (btd_opts.defaults.br.scan_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0004,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0004,
 					&btd_opts.defaults.br.scan_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.br.scan_win) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0005,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0005,
 					&btd_opts.defaults.br.scan_win))
 			goto done;
 	}
 
 	if (btd_opts.defaults.br.link_supervision_timeout) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0006,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0006,
 			&btd_opts.defaults.br.link_supervision_timeout))
 			goto done;
 	}
 
 	if (btd_opts.defaults.br.page_timeout) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0007,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0007,
 					&btd_opts.defaults.br.page_timeout))
 			goto done;
 	}
 
 	if (btd_opts.defaults.br.min_sniff_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0008,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0008,
 				&btd_opts.defaults.br.min_sniff_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.br.max_sniff_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0009,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0009,
 				&btd_opts.defaults.br.max_sniff_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.min_adv_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x000a,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x000a,
 				&btd_opts.defaults.le.min_adv_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.max_adv_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x000b,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x000b,
 				&btd_opts.defaults.le.max_adv_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.adv_rotation_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x000c,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x000c,
 				&btd_opts.defaults.le.adv_rotation_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_interval_autoconnect) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x000d,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x000d,
 			&btd_opts.defaults.le.scan_interval_autoconnect))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_win_autoconnect) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x000e,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x000e,
 				&btd_opts.defaults.le.scan_win_autoconnect))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_interval_suspend) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x000f,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x000f,
 				&btd_opts.defaults.le.scan_interval_suspend))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_win_suspend) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0010,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0010,
 				&btd_opts.defaults.le.scan_win_suspend))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_interval_discovery) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0011,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0011,
 				&btd_opts.defaults.le.scan_interval_discovery))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_win_discovery) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0012,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0012,
 				&btd_opts.defaults.le.scan_win_discovery))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_interval_adv_monitor) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0013,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0013,
 			&btd_opts.defaults.le.scan_interval_adv_monitor))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_win_adv_monitor) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0014,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0014,
 				&btd_opts.defaults.le.scan_win_adv_monitor))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_interval_connect) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0015,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0015,
 				&btd_opts.defaults.le.scan_interval_connect))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.scan_win_connect) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0016,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0016,
 				&btd_opts.defaults.le.scan_win_connect))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.min_conn_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0017,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0017,
 				&btd_opts.defaults.le.min_conn_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.max_conn_interval) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0018,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0018,
 				&btd_opts.defaults.le.max_conn_interval))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.conn_latency) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x0019,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x0019,
 					&btd_opts.defaults.le.conn_latency))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.conn_lsto) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x001a,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x001a,
 					&btd_opts.defaults.le.conn_lsto))
 			goto done;
 	}
 
 	if (btd_opts.defaults.le.autoconnect_timeout) {
-		if (mgmt_tlv_add_fixed(tlv_list, 0x001b,
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x001b,
 				&btd_opts.defaults.le.autoconnect_timeout))
 			goto done;
 	}
