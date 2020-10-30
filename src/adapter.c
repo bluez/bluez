@@ -4354,6 +4354,12 @@ static void load_default_system_params(struct btd_adapter *adapter)
 			goto done;
 	}
 
+	if (btd_opts.defaults.le.enable_advmon_interleave_scan != 0xFF) {
+		if (!mgmt_tlv_add_fixed(tlv_list, 0x001f,
+			&btd_opts.defaults.le.enable_advmon_interleave_scan))
+			goto done;
+	}
+
 	err = mgmt_send_tlv(adapter->mgmt, MGMT_OP_SET_DEF_SYSTEM_CONFIG,
 			adapter->dev_id, tlv_list, NULL, NULL, NULL);
 

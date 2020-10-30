@@ -74,6 +74,7 @@ struct btd_le_defaults {
 
 	uint16_t	advmon_allowlist_scan_duration;
 	uint16_t	advmon_no_filter_scan_duration;
+	uint8_t		enable_advmon_interleave_scan;
 };
 
 struct btd_defaults {

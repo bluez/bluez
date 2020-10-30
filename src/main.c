@@ -116,6 +116,7 @@ static const char *le_options[] = {
 	"Autoconnecttimeout",
 	"AdvMonAllowlistScanDuration",
 	"AdvMonNoFilterScanDuration",
+	"EnableAdvMonInterleaveScan",
 	NULL
 };
 
@@ -509,6 +510,11 @@ static void parse_le_config(GKeyFile *config)
 		  sizeof(btd_opts.defaults.le.advmon_no_filter_scan_duration),
 		  1,
 		  10000},
+		{ "EnableAdvMonInterleaveScan",
+		  &btd_opts.defaults.le.enable_advmon_interleave_scan,
+		  sizeof(btd_opts.defaults.le.enable_advmon_interleave_scan),
+		  0,
+		  1},
 	};
 
 	if (btd_opts.mode == BT_MODE_BREDR)
@@ -761,6 +767,7 @@ static void init_defaults(void)
 	btd_opts.defaults.num_entries = 0;
 	btd_opts.defaults.br.page_scan_type = 0xFFFF;
 	btd_opts.defaults.br.scan_type = 0xFFFF;
+	btd_opts.defaults.le.enable_advmon_interleave_scan = 0xFF;
 
 	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
 		return;
