@@ -4163,205 +4163,231 @@ static void probe_devices(void *user_data)
 	device_probe_profiles(device, btd_device_get_uuids(device));
 }
 
-static void load_default_system_params(struct btd_adapter *adapter)
+static bool load_bredr_defaults(struct btd_adapter *adapter,
+				struct mgmt_tlv_list *list,
+				struct btd_br_defaults *defaults)
 {
-	struct mgmt_tlv_list *tlv_list;
+	if (btd_opts.mode == BT_MODE_LE)
+		return true;
+
+	if (defaults->page_scan_type != 0xFFFF) {
+		if (!mgmt_tlv_add_fixed(list, 0x0000,
+					&defaults->page_scan_type))
+			return false;
+	}
+
+	if (defaults->page_scan_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x0001,
+					&defaults->page_scan_interval))
+			return false;
+	}
+
+	if (defaults->page_scan_win) {
+		if (!mgmt_tlv_add_fixed(list, 0x0002,
+					&defaults->page_scan_win))
+			return false;
+	}
+
+	if (defaults->scan_type != 0xFFFF) {
+		if (!mgmt_tlv_add_fixed(list, 0x0003,
+					&defaults->scan_type))
+			return false;
+	}
+
+	if (defaults->scan_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x0004,
+					&defaults->scan_interval))
+			return false;
+	}
+
+	if (defaults->scan_win) {
+		if (!mgmt_tlv_add_fixed(list, 0x0005,
+					&defaults->scan_win))
+			return false;
+	}
+
+	if (defaults->link_supervision_timeout) {
+		if (!mgmt_tlv_add_fixed(list, 0x0006,
+					&defaults->link_supervision_timeout))
+			return false;
+	}
+
+	if (defaults->page_timeout) {
+		if (!mgmt_tlv_add_fixed(list, 0x0007,
+					&defaults->page_timeout))
+			return false;
+	}
+
+	if (defaults->min_sniff_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x0008,
+					&defaults->min_sniff_interval))
+			return false;
+	}
+
+	if (defaults->max_sniff_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x0009,
+					&defaults->max_sniff_interval))
+			return false;
+	}
+
+	return true;
+}
+
+static bool load_le_defaults(struct btd_adapter *adapter,
+				struct mgmt_tlv_list *list,
+				struct btd_le_defaults *defaults)
+{
+	if (btd_opts.mode == BT_MODE_BREDR)
+		return true;
+
+	if (defaults->min_adv_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x000a,
+					&defaults->min_adv_interval))
+			return false;
+	}
+
+	if (defaults->max_adv_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x000b,
+					&defaults->max_adv_interval))
+			return false;
+	}
+
+	if (defaults->adv_rotation_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x000c,
+					&defaults->adv_rotation_interval))
+			return false;
+	}
+
+	if (defaults->scan_interval_autoconnect) {
+		if (!mgmt_tlv_add_fixed(list, 0x000d,
+					&defaults->scan_interval_autoconnect))
+			return false;
+	}
+
+	if (defaults->scan_win_autoconnect) {
+		if (!mgmt_tlv_add_fixed(list, 0x000e,
+					&defaults->scan_win_autoconnect))
+			return false;
+	}
+
+	if (defaults->scan_interval_suspend) {
+		if (!mgmt_tlv_add_fixed(list, 0x000f,
+					&defaults->scan_interval_suspend))
+			return false;
+	}
+
+	if (defaults->scan_win_suspend) {
+		if (!mgmt_tlv_add_fixed(list, 0x0010,
+					&defaults->scan_win_suspend))
+			return false;
+	}
+
+	if (defaults->scan_interval_discovery) {
+		if (!mgmt_tlv_add_fixed(list, 0x0011,
+					&defaults->scan_interval_discovery))
+			return false;
+	}
+
+	if (defaults->scan_win_discovery) {
+		if (!mgmt_tlv_add_fixed(list, 0x0012,
+					&defaults->scan_win_discovery))
+			return false;
+	}
+
+	if (defaults->scan_interval_adv_monitor) {
+		if (!mgmt_tlv_add_fixed(list, 0x0013,
+					&defaults->scan_interval_adv_monitor))
+			return false;
+	}
+
+	if (defaults->scan_win_adv_monitor) {
+		if (!mgmt_tlv_add_fixed(list, 0x0014,
+					&defaults->scan_win_adv_monitor))
+			return false;
+	}
+
+	if (defaults->scan_interval_connect) {
+		if (!mgmt_tlv_add_fixed(list, 0x0015,
+					&defaults->scan_interval_connect))
+			return false;
+	}
+
+	if (defaults->scan_win_connect) {
+		if (!mgmt_tlv_add_fixed(list, 0x0016,
+					&defaults->scan_win_connect))
+			return false;
+	}
+
+	if (defaults->min_conn_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x0017,
+					&defaults->min_conn_interval))
+			return false;
+	}
+
+	if (defaults->max_conn_interval) {
+		if (!mgmt_tlv_add_fixed(list, 0x0018,
+					&defaults->max_conn_interval))
+			return false;
+	}
+
+	if (defaults->conn_latency) {
+		if (!mgmt_tlv_add_fixed(list, 0x0019,
+					&defaults->conn_latency))
+			return false;
+	}
+
+	if (defaults->conn_lsto) {
+		if (!mgmt_tlv_add_fixed(list, 0x001a,
+					&defaults->conn_lsto))
+			return false;
+	}
+
+	if (defaults->autoconnect_timeout) {
+		if (!mgmt_tlv_add_fixed(list, 0x001b,
+					&defaults->autoconnect_timeout))
+			return false;
+	}
+
+	if (defaults->advmon_allowlist_scan_duration) {
+		if (!mgmt_tlv_add_fixed(list, 0x001d,
+				&defaults->advmon_allowlist_scan_duration))
+			return false;
+	}
+
+	if (defaults->advmon_no_filter_scan_duration) {
+		if (!mgmt_tlv_add_fixed(list, 0x001e,
+				&defaults->advmon_no_filter_scan_duration))
+			return false;
+	}
+
+	if (defaults->enable_advmon_interleave_scan != 0xFF) {
+		if (!mgmt_tlv_add_fixed(list, 0x001f,
+				&defaults->enable_advmon_interleave_scan))
+			return false;
+	}
+
+	return true;
+}
+
+static void load_defaults(struct btd_adapter *adapter)
+{
+	struct mgmt_tlv_list *list;
 	unsigned int err = 0;
 
 	if (!btd_opts.defaults.num_entries ||
 	    !btd_has_kernel_features(KERNEL_SET_SYSTEM_CONFIG))
 		return;
 
-	tlv_list = mgmt_tlv_list_new();
+	list = mgmt_tlv_list_new();
 
-	if (btd_opts.defaults.br.page_scan_type != 0xFFFF) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0000,
-					&btd_opts.defaults.br.page_scan_type))
-			goto done;
-	}
+	if (!load_bredr_defaults(adapter, list, &btd_opts.defaults.br))
+		goto done;
 
-	if (btd_opts.defaults.br.page_scan_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0001,
-				&btd_opts.defaults.br.page_scan_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.page_scan_win) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0002,
-					&btd_opts.defaults.br.page_scan_win))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.scan_type != 0xFFFF) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0003,
-					&btd_opts.defaults.br.scan_type))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.scan_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0004,
-					&btd_opts.defaults.br.scan_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.scan_win) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0005,
-					&btd_opts.defaults.br.scan_win))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.link_supervision_timeout) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0006,
-			&btd_opts.defaults.br.link_supervision_timeout))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.page_timeout) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0007,
-					&btd_opts.defaults.br.page_timeout))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.min_sniff_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0008,
-				&btd_opts.defaults.br.min_sniff_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.br.max_sniff_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0009,
-				&btd_opts.defaults.br.max_sniff_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.min_adv_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x000a,
-				&btd_opts.defaults.le.min_adv_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.max_adv_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x000b,
-				&btd_opts.defaults.le.max_adv_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.adv_rotation_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x000c,
-				&btd_opts.defaults.le.adv_rotation_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_interval_autoconnect) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x000d,
-			&btd_opts.defaults.le.scan_interval_autoconnect))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_win_autoconnect) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x000e,
-				&btd_opts.defaults.le.scan_win_autoconnect))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_interval_suspend) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x000f,
-				&btd_opts.defaults.le.scan_interval_suspend))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_win_suspend) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0010,
-				&btd_opts.defaults.le.scan_win_suspend))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_interval_discovery) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0011,
-				&btd_opts.defaults.le.scan_interval_discovery))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_win_discovery) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0012,
-				&btd_opts.defaults.le.scan_win_discovery))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_interval_adv_monitor) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0013,
-			&btd_opts.defaults.le.scan_interval_adv_monitor))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_win_adv_monitor) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0014,
-				&btd_opts.defaults.le.scan_win_adv_monitor))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_interval_connect) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0015,
-				&btd_opts.defaults.le.scan_interval_connect))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.scan_win_connect) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0016,
-				&btd_opts.defaults.le.scan_win_connect))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.min_conn_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0017,
-				&btd_opts.defaults.le.min_conn_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.max_conn_interval) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0018,
-				&btd_opts.defaults.le.max_conn_interval))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.conn_latency) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x0019,
-					&btd_opts.defaults.le.conn_latency))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.conn_lsto) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x001a,
-					&btd_opts.defaults.le.conn_lsto))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.autoconnect_timeout) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x001b,
-				&btd_opts.defaults.le.autoconnect_timeout))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.advmon_allowlist_scan_duration) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x001d,
-			&btd_opts.defaults.le.advmon_allowlist_scan_duration))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.advmon_no_filter_scan_duration) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x001e,
-			&btd_opts.defaults.le.advmon_no_filter_scan_duration))
-			goto done;
-	}
-
-	if (btd_opts.defaults.le.enable_advmon_interleave_scan != 0xFF) {
-		if (!mgmt_tlv_add_fixed(tlv_list, 0x001f,
-			&btd_opts.defaults.le.enable_advmon_interleave_scan))
-			goto done;
-	}
+	if (!load_le_defaults(adapter, list, &btd_opts.defaults.le))
+		goto done;
 
 	err = mgmt_send_tlv(adapter->mgmt, MGMT_OP_SET_DEF_SYSTEM_CONFIG,
-			adapter->dev_id, tlv_list, NULL, NULL, NULL);
+			adapter->dev_id, list, NULL, NULL, NULL);
 
 done:
 	if (!err)
@@ -4369,7 +4395,7 @@ done:
 				"Failed to set default system config for hci%u",
 				adapter->dev_id);
 
-	mgmt_tlv_list_free(tlv_list);
+	mgmt_tlv_list_free(list);
 }
 
 static void load_devices(struct btd_adapter *adapter)
@@ -8596,7 +8622,7 @@ load:
 	load_drivers(adapter);
 	btd_profile_foreach(probe_profile, adapter);
 	clear_blocked(adapter);
-	load_default_system_params(adapter);
+	load_defaults(adapter);
 	load_devices(adapter);
 
 	/* restore Service Changed CCC value for bonded devices */
