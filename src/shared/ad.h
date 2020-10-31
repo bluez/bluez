@@ -68,6 +68,7 @@
 typedef void (*bt_ad_func_t)(void *data, void *user_data);
 
 struct bt_ad;
+struct queue;
 
 struct bt_ad_manufacturer_data {
 	uint16_t manufacturer_id;
@@ -87,7 +88,16 @@ struct bt_ad_data {
 	size_t len;
 };
 
+struct bt_ad_pattern {
+	uint8_t type;
+	uint8_t offset;
+	uint8_t len;
+	uint8_t data[BT_AD_MAX_DATA_LEN];
+};
+
 struct bt_ad *bt_ad_new(void);
+
+struct bt_ad *bt_ad_new_with_data(size_t len, const uint8_t *data);
 
 struct bt_ad *bt_ad_ref(struct bt_ad *ad);
 
@@ -156,3 +166,9 @@ void bt_ad_foreach_data(struct bt_ad *ad, bt_ad_func_t func, void *user_data);
 bool bt_ad_remove_data(struct bt_ad *ad, uint8_t type);
 
 void bt_ad_clear_data(struct bt_ad *ad);
+
+struct bt_ad_pattern *bt_ad_pattern_new(uint8_t type, size_t offset,
+					size_t len, const uint8_t *data);
+
+struct bt_ad_pattern *bt_ad_pattern_match(struct bt_ad *ad,
+							struct queue *patterns);
