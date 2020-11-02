@@ -1497,6 +1497,7 @@ static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 static void discovery_free(void *user_data)
 {
 	struct discovery_client *client = user_data;
+	struct btd_adapter *adapter = client->adapter;
 
 	DBG("%p", client);
 
@@ -1508,8 +1509,14 @@ static void discovery_free(void *user_data)
 		client->discovery_filter = NULL;
 	}
 
-	if (client->msg)
+	if (client->msg) {
+		if (client == adapter->client) {
+			g_dbus_send_message(dbus_conn,
+						btd_error_busy(client->msg));
+			adapter->client = NULL;
+		}
 		dbus_message_unref(client->msg);
+	}
 
 	g_free(client->owner);
 	g_free(client);
