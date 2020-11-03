@@ -181,7 +181,6 @@ static void prepare_sandbox(void)
 static char *const qemu_argv[] = {
 	"",
 	"-nodefaults",
-	"-nodefconfig",
 	"-no-user-config",
 	"-monitor", "none",
 	"-display", "none",
@@ -190,7 +189,6 @@ static char *const qemu_argv[] = {
 	"-nographic",
 	"-vga", "none",
 	"-net", "none",
-	"-balloon", "none",
 	"-no-acpi",
 	"-no-hpet",
 	"-no-reboot",
