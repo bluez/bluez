@@ -6381,7 +6381,9 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 	}
 
 	if (memcmp(param, expect_hci_param, length) != 0) {
-		tester_warn("Unexpected HCI command parameter value");
+		tester_warn("Unexpected HCI command parameter value:");
+		util_hexdump('>', param, length, print_debug, "");
+		util_hexdump('!', expect_hci_param, length, print_debug, "");
 		tester_test_failed();
 		return;
 	}
