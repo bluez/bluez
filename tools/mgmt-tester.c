@@ -898,10 +898,10 @@ static uint16_t settings_powered_le_connectable_advertising[] = {
 					MGMT_OP_SET_ADVERTISING,
 					MGMT_OP_SET_POWERED, 0 };
 
-static uint8_t set_connectable_off_adv_param[] = {
-		0x00, 0x08,				/* min_interval */
-		0x00, 0x08,				/* max_interval */
-		0x03,					/* type */
+static uint8_t set_connectable_off_scan_adv_param[] = {
+		0x64, 0x00,				/* min_interval */
+		0x96, 0x00,				/* max_interval */
+		0x02,					/* type */
 		0x01,					/* own_addr_type */
 		0x00,					/* direct_addr_type */
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* direct_addr */
@@ -919,8 +919,8 @@ static const struct generic_data set_connectable_off_le_test_2 = {
 	.expect_len = sizeof(set_connectable_off_le_settings_2),
 	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
 	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
-	.expect_hci_param = set_connectable_off_adv_param,
-	.expect_hci_len = sizeof(set_connectable_off_adv_param),
+	.expect_hci_param = set_connectable_off_scan_adv_param,
+	.expect_hci_len = sizeof(set_connectable_off_scan_adv_param),
 };
 
 static uint16_t settings_powered_le_discoverable[] = {
@@ -946,8 +946,8 @@ static const struct generic_data set_connectable_off_le_test_3 = {
 	.expect_len = sizeof(set_connectable_off_le_settings_2),
 	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
 	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
-	.expect_hci_param = set_connectable_off_adv_param,
-	.expect_hci_len = sizeof(set_connectable_off_adv_param),
+	.expect_hci_param = set_connectable_off_scan_adv_param,
+	.expect_hci_len = sizeof(set_connectable_off_scan_adv_param),
 };
 
 static const struct generic_data set_connectable_off_le_test_4 = {
@@ -961,8 +961,8 @@ static const struct generic_data set_connectable_off_le_test_4 = {
 	.expect_len = sizeof(set_connectable_off_le_settings_2),
 	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
 	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
-	.expect_hci_param = set_connectable_off_adv_param,
-	.expect_hci_len = sizeof(set_connectable_off_adv_param),
+	.expect_hci_param = set_connectable_off_scan_adv_param,
+	.expect_hci_len = sizeof(set_connectable_off_scan_adv_param),
 };
 
 static const char set_fast_conn_on_param[] = { 0x01 };
@@ -4738,17 +4738,6 @@ static uint16_t settings_powered_le_connectable[] = {
 						MGMT_OP_SET_LE,
 						MGMT_OP_SET_CONNECTABLE, 0 };
 
-static uint8_t set_connectable_off_scan_adv_param[] = {
-		0x00, 0x08,				/* min_interval */
-		0x00, 0x08,				/* max_interval */
-		0x02,					/* type */
-		0x01,					/* own_addr_type */
-		0x00,					/* direct_addr_type */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* direct_addr */
-		0x07,					/* channel_map */
-		0x00,					/* filter_policy */
-};
-
 static const struct generic_data add_advertising_success_13 = {
 	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_ADD_ADVERTISING,
@@ -4760,6 +4749,17 @@ static const struct generic_data add_advertising_success_13 = {
 	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
 	.expect_hci_param = set_connectable_off_scan_adv_param,
 	.expect_hci_len = sizeof(set_connectable_off_scan_adv_param),
+};
+
+static uint8_t set_connectable_off_adv_param[] = {
+		0x64, 0x00,				/* min_interval */
+		0x96, 0x00,				/* max_interval */
+		0x03,					/* type */
+		0x01,					/* own_addr_type */
+		0x00,					/* direct_addr_type */
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* direct_addr */
+		0x07,					/* channel_map */
+		0x00,					/* filter_policy */
 };
 
 static const struct generic_data add_advertising_success_14 = {
