@@ -6051,12 +6051,6 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	struct mgmt_cp_user_confirm_reply cp;
 	uint16_t opcode;
 
-	if (test->just_works) {
-		tester_warn("User Confirmation received for just-works case");
-		tester_test_failed();
-		return;
-	}
-
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 
