@@ -6304,7 +6304,7 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 			test->send_opcode, mgmt_errstr(status), status);
 
 	if (status != test->expect_status) {
-		tester_test_failed();
+		tester_test_abort();
 		return;
 	}
 
