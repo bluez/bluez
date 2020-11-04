@@ -3760,8 +3760,19 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		if (btdev->le_adv_enable == lseae->enable)
 			status = BT_HCI_ERR_COMMAND_DISALLOWED;
 		else {
-			btdev->le_adv_enable = lseae->enable;
-			status = BT_HCI_ERR_SUCCESS;
+			const struct bt_hci_cmd_ext_adv_set *eas;
+
+			if (lseae->num_of_sets) {
+				eas = data + sizeof(*lseae);
+				if (eas->duration || lseae->num_of_sets > 1)
+					status = BT_HCI_ERR_INVALID_PARAMETERS;
+				else
+					status = BT_HCI_ERR_SUCCESS;
+			} else
+				status = BT_HCI_ERR_SUCCESS;
+
+			if (status == BT_HCI_ERR_SUCCESS)
+				btdev->le_adv_enable = lseae->enable;
 		}
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		if (status == BT_HCI_ERR_SUCCESS && btdev->le_adv_enable)
