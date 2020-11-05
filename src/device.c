@@ -569,6 +569,7 @@ static void gatt_cache_cleanup(struct btd_device *device)
 	if (gatt_cache_is_enabled(device))
 		return;
 
+	bt_gatt_client_cancel_all(device->client);
 	gatt_db_clear(device->db);
 }
 
