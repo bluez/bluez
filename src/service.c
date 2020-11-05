@@ -229,6 +229,9 @@ int btd_service_connect(struct btd_service *service)
 	if (!profile->connect)
 		return -ENOTSUP;
 
+	if (!btd_adapter_get_powered(device_get_adapter(service->device)))
+		return -ENETDOWN;
+
 	switch (service->state) {
 	case BTD_SERVICE_STATE_UNAVAILABLE:
 		return -EINVAL;
