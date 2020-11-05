@@ -258,8 +258,11 @@ gboolean sink_setup_stream(struct btd_service *service, struct avdtp *session)
 
 	sink->connect_id = a2dp_discover(sink->session, discovery_complete,
 								sink);
-	if (sink->connect_id == 0)
+	if (sink->connect_id == 0) {
+		avdtp_unref(sink->session);
+		sink->session = NULL;
 		return FALSE;
+	}
 
 	return TRUE;
 }

@@ -259,8 +259,11 @@ gboolean source_setup_stream(struct btd_service *service,
 
 	source->connect_id = a2dp_discover(source->session, discovery_complete,
 								source);
-	if (source->connect_id == 0)
+	if (source->connect_id == 0) {
+		avdtp_unref(source->session);
+		source->session = NULL;
 		return FALSE;
+	}
 
 	return TRUE;
 }
