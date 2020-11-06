@@ -100,11 +100,11 @@ bool appkey_key_init(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 	if (!app_keys)
 		return NULL;
 
-	key = app_key_new();
-	if (!key)
+	if (!mesh_net_have_key(net, net_idx))
 		return false;
 
-	if (!mesh_net_have_key(net, net_idx))
+	key = app_key_new();
+	if (!key)
 		return false;
 
 	key->net_idx = net_idx;

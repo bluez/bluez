@@ -80,13 +80,12 @@ static uint16_t config_pub_get(struct mesh_node *node, const uint8_t *pkt,
 
 	pub = mesh_model_pub_get(node, ele_addr, id, &status);
 
-	rtx = pub->rtx.cnt + (((pub->rtx.interval / 50) - 1) << 3);
-
-	if (pub && status == MESH_STATUS_SUCCESS)
+	if (pub && status == MESH_STATUS_SUCCESS) {
+		rtx = pub->rtx.cnt + (((pub->rtx.interval / 50) - 1) << 3);
 		return set_pub_status(status, ele_addr, id, pub->addr, pub->idx,
 					pub->credential, pub->ttl, pub->period,
 					rtx);
-	else
+	} else
 		return set_pub_status(status, ele_addr, id, 0, 0, 0, 0, 0, 0);
 }
 
@@ -592,12 +591,7 @@ static uint16_t cfg_appkey_msg(struct mesh_node *node, const uint8_t *pkt,
 	struct mesh_net *net = node_get_net(node);
 
 	n_idx = l_get_le16(pkt) & 0xfff;
-	if (n_idx > NET_IDX_MAX)
-		return 0;
-
 	a_idx = l_get_le16(pkt + 1) >> 4;
-	if (a_idx > APP_IDX_MAX)
-		return 0;
 
 	n = mesh_model_opcode_set(OP_APPKEY_STATUS, msg);
 

@@ -50,18 +50,22 @@ bool keyring_put_net_key(struct mesh_node *node, uint16_t net_idx,
 		return false;
 
 	snprintf(key_file, PATH_MAX, "%s%s", node_path, net_key_dir);
-	mkdir(key_file, 0755);
+
+	if (!mkdir(key_file, 0755))
+		return false;
+
 	snprintf(key_file, PATH_MAX, "%s%s/%3.3x", node_path, net_key_dir,
 								net_idx);
 	l_debug("Put Net Key %s", key_file);
 
 	fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-	if (fd >= 0) {
-		if (write(fd, key, sizeof(*key)) == sizeof(*key))
-			result = true;
+	if (fd < 0)
+		return false;
 
-		close(fd);
-	}
+	if (write(fd, key, sizeof(*key)) == sizeof(*key))
+		result = true;
+
+	close(fd);
 
 	return result;
 }
@@ -83,7 +87,10 @@ bool keyring_put_app_key(struct mesh_node *node, uint16_t app_idx,
 		return false;
 
 	snprintf(key_file, PATH_MAX, "%s%s", node_path, app_key_dir);
-	mkdir(key_file, 0755);
+
+	if (!mkdir(key_file, 0755))
+		return false;
+
 	snprintf(key_file, PATH_MAX, "%s%s/%3.3x", node_path, app_key_dir,
 								app_idx);
 	l_debug("Put App Key %s", key_file);
@@ -100,16 +107,17 @@ bool keyring_put_app_key(struct mesh_node *node, uint16_t app_idx,
 		}
 
 		lseek(fd, 0, SEEK_SET);
-	} else
+	} else {
 		fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC,
 							S_IRUSR | S_IWUSR);
-
-	if (fd >= 0) {
-		if (write(fd, key, sizeof(*key)) == sizeof(*key))
-			result = true;
-
-		close(fd);
+		if (fd < 0)
+			return false;
 	}
+
+	if (write(fd, key, sizeof(*key)) == sizeof(*key))
+		result = true;
+
+	close(fd);
 
 	return result;
 }
@@ -198,7 +206,9 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 		return false;
 
 	snprintf(key_file, PATH_MAX, "%s%s", node_path, dev_key_dir);
-	mkdir(key_file, 0755);
+
+	if (!mkdir(key_file, 0755))
+		return false;
 
 	for (i = 0; i < count; i++) {
 		snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path,
