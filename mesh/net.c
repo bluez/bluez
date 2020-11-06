@@ -2899,8 +2899,12 @@ struct mesh_io *mesh_net_detach(struct mesh_net *net)
 	io = net->io;
 
 	mesh_io_send_cancel(net->io, &type, 1);
-	mesh_io_deregister_recv_cb(io, snb, sizeof(snb));
-	mesh_io_deregister_recv_cb(io, pkt, sizeof(pkt));
+
+	/* Only deregister io if this is the last network detached.*/
+	if (l_queue_length(nets) < 2) {
+		mesh_io_deregister_recv_cb(io, snb, sizeof(snb));
+		mesh_io_deregister_recv_cb(io, pkt, sizeof(pkt));
+	}
 
 	net->io = NULL;
 	l_queue_remove(nets, net);
