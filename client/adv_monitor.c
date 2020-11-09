@@ -254,10 +254,16 @@ void adv_monitor_add_manager(DBusConnection *conn, GDBusProxy *proxy)
 
 void adv_monitor_remove_manager(DBusConnection *conn)
 {
-	if (manager.supported_types != NULL)
-		g_slist_free(g_steal_pointer(&(manager.supported_types)));
-	if (manager.supported_features != NULL)
-		g_slist_free(g_steal_pointer(&(manager.supported_features)));
+	if (manager.supported_types != NULL) {
+		g_slist_free(manager.supported_types);
+		manager.supported_types = NULL;
+	}
+
+	if (manager.supported_features != NULL) {
+		g_slist_free(manager.supported_features);
+		manager.supported_features = NULL;
+	}
+
 	manager.proxy = NULL;
 	manager.app_registered = FALSE;
 }
