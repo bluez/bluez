@@ -23,6 +23,7 @@ Methods		void StartDiscovery()
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
 
 		void StopDiscovery()
 
