@@ -27,6 +27,9 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#if defined(__linux__)
+#include <linux/sockios.h>
+#endif
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
