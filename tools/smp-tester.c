@@ -501,6 +501,10 @@ static void setup_powered_client(const void *test_data)
 	const struct smp_data *smp = data->test_data;
 	unsigned char param[] = { 0x01 };
 
+	mgmt_register(data->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
+			data->mgmt_index, user_confirm_request_callback,
+			data, NULL);
+
 	tester_print("Powering on controller");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
