@@ -1091,10 +1091,10 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 		status = set_virt_pub(mod, pub_addr, idx, cred_flag, ttl,
 							period, cnt, interval);
 
-	*pub_dst = mod->pub->addr;
-
 	if (status != MESH_STATUS_SUCCESS)
 		return status;
+
+	*pub_dst = mod->pub->addr;
 
 	if (!mod->cbs)
 		/* External model */
@@ -1639,8 +1639,10 @@ static struct mesh_model *model_setup(struct mesh_net *net, uint8_t ele_idx,
 	/* Implicitly bind config server model to device key */
 	if (db_mod->id == CONFIG_SRV_MODEL) {
 
-		if (ele_idx != PRIMARY_ELE_IDX)
+		if (ele_idx != PRIMARY_ELE_IDX) {
+			l_free(mod);
 			return NULL;
+		}
 
 		l_queue_push_head(mod->bindings,
 					L_UINT_TO_PTR(APP_IDX_DEV_LOCAL));
