@@ -326,16 +326,13 @@ static bool add_element_from_storage(struct mesh_node *node,
 
 	ele->idx = db_ele->index;
 	ele->location = db_ele->location;
-
-
-	if (!ele->models)
-		ele->models = l_queue_new();
+	ele->models = l_queue_new();
+	l_queue_push_tail(node->elements, ele);
 
 	if (!mesh_model_add_from_storage(node, ele->idx, ele->models,
 							db_ele->models))
 		return false;
 
-	l_queue_push_tail(node->elements, ele);
 	return true;
 }
 
