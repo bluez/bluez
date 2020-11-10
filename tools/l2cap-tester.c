@@ -501,8 +501,8 @@ static const uint8_t le_connect_req[] = {	0x80, 0x00, /* PSM */
 
 static const uint8_t le_connect_rsp[] = {	0x40, 0x00, /* DCID */
 						0xa0, 0x02, /* MTU */
-						0xe6, 0x00, /* MPS */
-						0x0a, 0x00, /* Credits */
+						0xbc, 0x00, /* MPS */
+						0x04, 0x00, /* Credits */
 						0x00, 0x00, /* Result */
 };
 
