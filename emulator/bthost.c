@@ -1678,6 +1678,19 @@ static void handle_pending_l2reqs(struct bthost *bthost, struct btconn *conn,
 	}
 }
 
+static bool l2cap_rsp(uint8_t code)
+{
+	switch (code) {
+	case BT_L2CAP_PDU_CMD_REJECT:
+	case BT_L2CAP_PDU_CONN_RSP:
+	case BT_L2CAP_PDU_CONFIG_RSP:
+	case BT_L2CAP_PDU_INFO_RSP:
+		return true;
+	}
+
+	return false;
+}
+
 static void l2cap_sig(struct bthost *bthost, struct btconn *conn,
 						const void *data, uint16_t len)
 {
@@ -1741,7 +1754,8 @@ static void l2cap_sig(struct bthost *bthost, struct btconn *conn,
 		ret = false;
 	}
 
-	handle_pending_l2reqs(bthost, conn, hdr->ident, hdr->code,
+	if (l2cap_rsp(hdr->code))
+		handle_pending_l2reqs(bthost, conn, hdr->ident, hdr->code,
 						data + sizeof(*hdr), hdr_len);
 
 	if (ret)
@@ -1898,6 +1912,19 @@ static bool l2cap_ecred_conn_rsp(struct bthost *bthost, struct btconn *conn,
 	return true;
 }
 
+static bool l2cap_le_rsp(uint8_t code)
+{
+	switch (code) {
+	case BT_L2CAP_PDU_CMD_REJECT:
+	case BT_L2CAP_PDU_CONN_PARAM_RSP:
+	case BT_L2CAP_PDU_LE_CONN_RSP:
+	case BT_L2CAP_PDU_ECRED_CONN_RSP:
+		return true;
+	}
+
+	return false;
+}
+
 static void l2cap_le_sig(struct bthost *bthost, struct btconn *conn,
 						const void *data, uint16_t len)
 {
@@ -1960,7 +1987,8 @@ static void l2cap_le_sig(struct bthost *bthost, struct btconn *conn,
 		ret = false;
 	}
 
-	handle_pending_l2reqs(bthost, conn, hdr->ident, hdr->code,
+	if (l2cap_le_rsp(hdr->code))
+		handle_pending_l2reqs(bthost, conn, hdr->ident, hdr->code,
 						data + sizeof(*hdr), hdr_len);
 
 	if (ret)
