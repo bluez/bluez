@@ -43,6 +43,7 @@ struct hciemu {
 	guint host_source;
 	guint master_source;
 	guint client_source;
+	guint start_source;
 	struct queue *post_command_hooks;
 	char bdaddr_str[18];
 
@@ -297,6 +298,8 @@ static gboolean start_stack(gpointer user_data)
 {
 	struct hciemu *hciemu = user_data;
 
+	hciemu->start_source = 0;
+
 	bthost_start(hciemu->host_stack);
 
 	return FALSE;
@@ -353,7 +356,7 @@ struct hciemu *hciemu_new(enum hciemu_type type)
 		return NULL;
 	}
 
-	g_idle_add(start_stack, hciemu);
+	hciemu->start_source = g_idle_add(start_stack, hciemu);
 
 	return hciemu_ref(hciemu);
 }
@@ -377,6 +380,9 @@ void hciemu_unref(struct hciemu *hciemu)
 		return;
 
 	queue_destroy(hciemu->post_command_hooks, destroy_command_hook);
+
+	if (hciemu->start_source)
+		g_source_remove(hciemu->start_source);
 
 	g_source_remove(hciemu->host_source);
 	g_source_remove(hciemu->client_source);
