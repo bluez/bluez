@@ -6867,10 +6867,10 @@ static const struct generic_data set_appearance_success = {
 };
 
 static const uint8_t read_adv_features_rsp_3[] =  {
-	0xff, 0x03, 0x00, 0x00,	/* supported flags */
+	0xff, 0x0f, 0x00, 0x00,	/* supported flags */
 	0x1f,			/* max_adv_data_len */
 	0x1f,			/* max_scan_rsp_len */
-	0x05,			/* max_instances */
+	0x01,			/* max_instances */
 	0x00,			/* num_instances */
 };
 
