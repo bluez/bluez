@@ -2577,6 +2577,7 @@ void bthost_set_ext_adv_enable(struct bthost *bthost, uint8_t enable)
 	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 							&cp, sizeof(cp));
 
+	memset(&cp_enable, 0, sizeof(cp_enable));
 	cp_enable.enable = enable;
 	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE, &cp_enable,
 					sizeof(cp_enable));
