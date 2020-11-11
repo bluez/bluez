@@ -106,6 +106,7 @@ static gboolean option_debug = FALSE;
 static gboolean option_monitor = FALSE;
 static gboolean option_list = FALSE;
 static const char *option_prefix = NULL;
+static const char *option_string = NULL;
 
 struct monitor_hdr {
 	uint16_t opcode;
@@ -280,6 +281,12 @@ void tester_add_full(const char *name, const void *test_data,
 		return;
 
 	if (option_prefix && !g_str_has_prefix(name, option_prefix)) {
+		if (destroy)
+			destroy(user_data);
+		return;
+	}
+
+	if (option_string && !strstr(name, option_string)) {
 		if (destroy)
 			destroy(user_data);
 		return;
@@ -804,6 +811,8 @@ static GOptionEntry options[] = {
 				"Only list the tests to be run" },
 	{ "prefix", 'p', 0, G_OPTION_ARG_STRING, &option_prefix,
 				"Run tests matching provided prefix" },
+	{ "string", 's', 0, G_OPTION_ARG_STRING, &option_string,
+				"Run tests matching provided string" },
 	{ NULL },
 };
 
