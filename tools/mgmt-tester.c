@@ -64,6 +64,23 @@ static void print_debug(const char *str, void *user_data)
 	tester_print("%s%s", prefix, str);
 }
 
+static void test_post_teardown(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	if (data->sk >= 0)
+		close(data->sk);
+
+	hciemu_unref(data->hciemu);
+	data->hciemu = NULL;
+}
+
+static void test_pre_setup_failed(void)
+{
+	test_post_teardown(NULL);
+	tester_pre_setup_failed();
+}
+
 static void read_version_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -74,7 +91,7 @@ static void read_version_callback(uint8_t status, uint16_t length,
 	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 		return;
 	}
 
@@ -92,9 +109,29 @@ static void read_commands_callback(uint8_t status, uint16_t length,
 	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 		return;
 	}
+}
+
+static bool check_settings(uint32_t supported, uint32_t expected)
+{
+	int i;
+
+	if (supported == expected)
+		return true;
+
+	for (i = 0; i < 17; i++) {
+		if (supported & BIT(i))
+			continue;
+
+		if (expected & BIT(i)) {
+			tester_warn("Expected bit %u not supported", i);
+			return false;
+		}
+	}
+
+	return true;
 }
 
 static void read_info_callback(uint8_t status, uint16_t length,
@@ -111,7 +148,7 @@ static void read_info_callback(uint8_t status, uint16_t length,
 	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 		return;
 	}
 
@@ -131,33 +168,43 @@ static void read_info_callback(uint8_t status, uint16_t length,
 	tester_print("  Short name: %s", rp->short_name);
 
 	if (strcmp(hciemu_get_address(data->hciemu), addr)) {
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 		return;
 	}
 
 	if (rp->version != data->expected_version) {
-		tester_pre_setup_failed();
+		tester_warn("Expected version: 0x%02x != 0x%02x",
+				rp->version, data->expected_version);
+		test_pre_setup_failed();
 		return;
 	}
 
 	if (manufacturer != data->expected_manufacturer) {
-		tester_pre_setup_failed();
+		tester_warn("Expected manufacturer: 0x%04x != 0x%04x",
+				manufacturer, data->expected_manufacturer);
+		test_pre_setup_failed();
 		return;
 	}
 
-	if (supported_settings != data->expected_supported_settings) {
-		tester_pre_setup_failed();
+	if (!check_settings(supported_settings,
+				data->expected_supported_settings)) {
+		tester_warn("Expected supported settings: 0x%08x != 0x%08x",
+				supported_settings,
+				data->expected_supported_settings);
+		test_pre_setup_failed();
 		return;
 	}
 
-	if (current_settings != data->initial_settings) {
-		tester_pre_setup_failed();
+	if (!check_settings(current_settings, data->initial_settings)) {
+		tester_warn("Initial settings: 0x%08x != 0x%08x",
+				current_settings, data->initial_settings);
+		test_pre_setup_failed();
 		return;
 	}
 
 	if (rp->dev_class[0] != 0x00 || rp->dev_class[1] != 0x00 ||
 						rp->dev_class[2] != 0x00) {
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 		return;
 	}
 
@@ -269,7 +316,7 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	tester_print("  Status: %s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status || !param) {
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 		return;
 	}
 
@@ -282,7 +329,7 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	data->hciemu = hciemu_new(data->hciemu_type);
 	if (!data->hciemu) {
 		tester_warn("Failed to setup HCI emulation");
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 	}
 
 	if (tester_use_debug())
@@ -299,14 +346,14 @@ static void test_pre_setup(const void *test_data)
 	data->mgmt = mgmt_new_default();
 	if (!data->mgmt) {
 		tester_warn("Failed to setup management interface");
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 		return;
 	}
 
 	data->mgmt_alt = mgmt_new_default();
 	if (!data->mgmt_alt) {
 		tester_warn("Failed to setup alternate management interface");
-		tester_pre_setup_failed();
+		test_pre_setup_failed();
 
 		mgmt_unref(data->mgmt);
 		data->mgmt = NULL;
@@ -328,17 +375,6 @@ static void test_pre_setup(const void *test_data)
 					read_index_list_callback, NULL, NULL);
 
 	data->sk = -1;
-}
-
-static void test_post_teardown(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-
-	if (data->sk >= 0)
-		close(data->sk);
-
-	hciemu_unref(data->hciemu);
-	data->hciemu = NULL;
 }
 
 static void test_add_condition(struct test_data *data)
@@ -382,94 +418,58 @@ static void test_condition_complete(struct test_data *data)
 	tester_test_passed();
 }
 
-#define test_bredrle_full(name, data, setup, func, timeout) \
+#define test_full(name, data, setup, func, timeout, type, version, \
+			expected_settings, settings) \
 	do { \
 		struct test_data *user; \
 		user = new0(struct test_data, 1); \
-		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
+		user->hciemu_type = type; \
 		user->test_setup = setup; \
 		user->test_data = data; \
-		user->expected_version = 0x09; \
+		user->expected_version = version; \
 		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x0001bfff; \
-		user->initial_settings = 0x00000080; \
+		user->expected_supported_settings = expected_settings; \
+		user->initial_settings = settings; \
 		tester_add_full(name, data, \
 				test_pre_setup, test_setup, func, NULL, \
 				test_post_teardown, timeout, user, free); \
 	} while (0)
+
+#define test_bredrle_full(name, data, setup, func, timeout) \
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE, \
+					0x09, 0x0001beff, 0x00000080)
 
 #define test_bredrle(name, data, setup, func) \
 	test_bredrle_full(name, data, setup, func, 2)
 
 #define test_bredr20(name, data, setup, func) \
-	do { \
-		struct test_data *user; \
-		user = new0(struct test_data, 1); \
-		user->hciemu_type = HCIEMU_TYPE_LEGACY; \
-		user->test_setup = setup; \
-		user->test_data = data; \
-		user->expected_version = 0x03; \
-		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x000110bf; \
-		user->initial_settings = 0x00000080; \
-		tester_add_full(name, data, \
-				test_pre_setup, test_setup, func, NULL, \
-				test_post_teardown, 2, user, free); \
-	} while (0)
+	test_full(name, data, setup, func, 2, HCIEMU_TYPE_LEGACY, \
+					0x03, 0x000110bf, 0x00000080)
 
 #define test_bredr(name, data, setup, func) \
-	do { \
-		struct test_data *user; \
-		user = new0(struct test_data, 1); \
-		user->hciemu_type = HCIEMU_TYPE_BREDR; \
-		user->test_setup = setup; \
-		user->test_data = data; \
-		user->expected_version = 0x05; \
-		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x000111ff; \
-		user->initial_settings = 0x00000080; \
-		tester_add_full(name, data, \
-				test_pre_setup, test_setup, func, NULL, \
-				test_post_teardown, 2, user, free); \
-	} while (0)
+	test_full(name, data, setup, func, 2, HCIEMU_TYPE_BREDR, \
+					0x05, 0x000110ff, 0x00000080)
 
 #define test_le_full(name, data, setup, func, timeout) \
-	do { \
-		struct test_data *user; \
-		user = new0(struct test_data, 1); \
-		user->hciemu_type = HCIEMU_TYPE_LE; \
-		user->test_setup = setup; \
-		user->test_data = data; \
-		user->expected_version = 0x09; \
-		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x0001be1b; \
-		user->initial_settings = 0x00000200; \
-		tester_add_full(name, data, \
-				test_pre_setup, test_setup, func, NULL, \
-				test_post_teardown, timeout, user, free); \
-	} while (0)
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_LE, \
+					0x09, 0x0001be1b, 0x00000200)
 
 #define test_le(name, data, setup, func) \
 	test_le_full(name, data, setup, func, 2)
 
 #define test_bredrle50_full(name, data, setup, func, timeout) \
-	do { \
-		struct test_data *user; \
-		user = new0(struct test_data, 1); \
-		user->hciemu_type = HCIEMU_TYPE_BREDRLE50; \
-		user->test_setup = setup; \
-		user->test_data = data; \
-		user->expected_version = 0x09; \
-		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x0001bfff; \
-		user->initial_settings = 0x00000080; \
-		tester_add_full(name, data, \
-				test_pre_setup, test_setup, func, NULL, \
-				test_post_teardown, timeout, user, free); \
-	} while (0)
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE50, \
+					0x09, 0x0001beff, 0x00000080)
 
 #define test_bredrle50(name, data, setup, func) \
-			test_bredrle50_full(name, data, setup, func, 2)
+	test_bredrle50_full(name, data, setup, func, 2)
+
+#define test_hs_full(name, data, setup, func, timeout) \
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE, \
+					0x09, 0x0001bfff, 0x00000080)
+
+#define test_hs(name, data, setup, func) \
+	test_hs_full(name, data, setup, func, 2)
 
 static void controller_setup(const void *test_data)
 {
@@ -5069,7 +5069,7 @@ static const char ext_ctrl_info1[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
 	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
-	0xff, 0xbf, 0x01, 0x00, /* supported settings */
+	0xff, 0xbe, 0x01, 0x00, /* supported settings */
 	0x80, 0x00, 0x00, 0x00, /* current settings */
 	0x09, 0x00, /* eir length */
 	0x04, /* dev class length */
@@ -5114,7 +5114,7 @@ static const char ext_ctrl_info2[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
 	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
-	0xff, 0xbf, 0x01, 0x00, /* supported settings */
+	0xff, 0xbe, 0x01, 0x00, /* supported settings */
 	0x81, 0x02, 0x00, 0x00, /* current settings */
 	0x0D, 0x00, /* eir length */
 	0x04, /* dev class length */
@@ -5145,7 +5145,7 @@ static const char ext_ctrl_info3[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
 	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
-	0xff, 0xbf, 0x01, 0x00, /* supported settings */
+	0xff, 0xbe, 0x01, 0x00, /* supported settings */
 	0x80, 0x02, 0x00, 0x00, /* current settings */
 	0x16, 0x00, /* eir length */
 	0x04, /* dev class length */
@@ -5180,7 +5180,7 @@ static const char ext_ctrl_info4[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
 	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
-	0xff, 0xbf, 0x01, 0x00, /* supported settings */
+	0xff, 0xbe, 0x01, 0x00, /* supported settings */
 	0x80, 0x02, 0x00, 0x00, /* current settings */
 	0x1a, 0x00, /* eir length */
 	0x04, /* dev class length */
@@ -5239,7 +5239,7 @@ static const char ext_ctrl_info5[] = {
 	0x00, 0x00, 0x00, 0x01, 0xaa, 0x00, /* btaddr */
 	0x09, /* version */
 	0x3f, 0x00, /* manufacturer */
-	0xff, 0xbf, 0x01, 0x00, /* supported settings */
+	0xff, 0xbe, 0x01, 0x00, /* supported settings */
 	0x81, 0x02, 0x00, 0x00, /* current settings */
 	0x1a, 0x00, /* eir len */
 	0x04, /* dev class len */
@@ -9080,19 +9080,19 @@ int main(int argc, char *argv[])
 				&set_sc_only_on_success_test_2,
 				NULL, test_command_generic);
 
-	test_bredrle("Set High Speed on - Success",
+	test_hs("Set High Speed on - Success",
 				&set_hs_on_success_test,
 				NULL, test_command_generic);
-	test_bredrle("Set High Speed on - Invalid parameters 1",
+	test_hs("Set High Speed on - Invalid parameters 1",
 				&set_hs_on_invalid_param_test_1,
 				NULL, test_command_generic);
-	test_bredrle("Set High Speed on - Invalid parameters 2",
+	test_hs("Set High Speed on - Invalid parameters 2",
 				&set_hs_on_invalid_param_test_2,
 				NULL, test_command_generic);
-	test_bredrle("Set High Speed on - Invalid parameters 3",
+	test_hs("Set High Speed on - Invalid parameters 3",
 				&set_hs_on_invalid_param_test_3,
 				NULL, test_command_generic);
-	test_bredrle("Set High Speed on - Invalid index",
+	test_hs("Set High Speed on - Invalid index",
 				&set_hs_on_invalid_index_test,
 				NULL, test_command_generic);
 
