@@ -6315,6 +6315,9 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 		if (expect_param && expect_len > 0 &&
 					memcmp(param, expect_param, length)) {
 			tester_warn("Unexpected cmd response parameter value");
+			util_hexdump('>', param, length, print_debug, "");
+			util_hexdump('!', expect_param, length, print_debug,
+								"");
 			tester_test_failed();
 			return;
 		}
