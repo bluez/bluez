@@ -47,6 +47,7 @@ static int test_argc;
 
 static bool run_auto = false;
 static bool start_dbus = false;
+static bool start_monitor = false;
 static int num_devs = 0;
 static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
@@ -245,9 +246,10 @@ static void start_qemu(void)
 				"rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.L "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
-				"TESTHOME=%s TESTDBUS=%u TESTDEVS=%d "
-				"TESTAUTO=%u TESTARGS=\'%s\'", initcmd, cwd,
-				start_dbus, num_devs, run_auto, testargs);
+				"TESTHOME=%s TESTDBUS=%u TESTMONITOR=%u "
+				"TESTDEVS=%d TESTAUTO=%u TESTARGS=\'%s\'",
+				initcmd, cwd, start_dbus, start_monitor,
+				num_devs, run_auto, testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
 				(sizeof(char *) * (4 + (num_devs * 4))));
@@ -532,12 +534,69 @@ static const char *test_table[] = {
 	NULL
 };
 
+static const char *monitor_table[] = {
+	"btmon",
+	"monitor/btmon",
+	"/usr/sbin/btmon",
+	NULL
+};
+
+static pid_t start_btmon(const char *home)
+{
+	const char *monitor = NULL;
+	char *argv[3], *envp[2];
+	pid_t pid;
+	int i;
+
+	if (chdir(home + 5) < 0) {
+		perror("Failed to change home directory for monitor");
+		return -1;
+	}
+
+	for (i = 0; monitor_table[i]; i++) {
+		struct stat st;
+
+		if (!stat(monitor_table[i], &st)) {
+			monitor = monitor_table[i];
+			break;
+		}
+	}
+
+	if (!monitor) {
+		fprintf(stderr, "Failed to locate Monitor binary\n");
+		return -1;
+	}
+
+	printf("Using Monitor %s\n", monitor);
+
+	argv[0] = (char *) monitor;
+	argv[1] = "-t";
+	argv[2] = NULL;
+
+	printf("Starting Monitor\n");
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		return -1;
+	}
+
+	if (pid == 0) {
+		execve(argv[0], argv, envp);
+		exit(EXIT_SUCCESS);
+	}
+
+	printf("Monitor process %d created\n", pid);
+
+	return pid;
+}
+
 static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
 	int pos = 0, idx = 0;
 	int serial_fd;
-	pid_t pid, dbus_pid, daemon_pid;
+	pid_t pid, dbus_pid, daemon_pid, monitor_pid;
 
 	if (num_devs) {
 		const char *node = "/dev/ttyS1";
@@ -561,6 +620,11 @@ static void run_command(char *cmdname, char *home)
 		dbus_pid = -1;
 		daemon_pid = -1;
 	}
+
+	if (start_monitor)
+		monitor_pid = start_btmon(home);
+	else
+		monitor_pid = -1;
 
 start_next:
 	if (run_auto) {
@@ -662,12 +726,19 @@ start_next:
 			daemon_pid = -1;
 		}
 
+		if (corpse == monitor_pid) {
+			printf("Bluetooth monitor terminated\n");
+			monitor_pid = -1;
+		}
+
 		if (corpse == pid) {
 			if (!run_auto) {
 				if (daemon_pid > 0)
 					kill(daemon_pid, SIGTERM);
 				if (dbus_pid > 0)
 					kill(dbus_pid, SIGTERM);
+				if (monitor_pid > 0)
+					kill(monitor_pid, SIGTERM);
 			}
 			break;
 		}
@@ -736,6 +807,12 @@ static void run_tests(void)
 		start_dbus = true;
 	}
 
+	ptr = strstr(cmdline, "TESTMONITOR=1");
+	if (ptr) {
+		printf("Monitor requested\n");
+		start_monitor = true;
+	}
+
 	ptr = strstr(cmdline, "TESTHOME=");
 	if (ptr) {
 		home = ptr + 4;
@@ -755,6 +832,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t-a, --auto             Find tests and run them\n"
 		"\t-d, --dbus             Start D-Bus daemon\n"
+		"\t-m, --monitor          Start btmon\n"
 		"\t-u, --unix [path]      Provide serial device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
@@ -766,6 +844,7 @@ static const struct option main_options[] = {
 	{ "auto",    no_argument,       NULL, 'a' },
 	{ "unix",    no_argument,       NULL, 'u' },
 	{ "dbus",    no_argument,       NULL, 'd' },
+	{ "monitor", no_argument,       NULL, 'm' },
 	{ "qemu",    required_argument, NULL, 'q' },
 	{ "kernel",  required_argument, NULL, 'k' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -787,7 +866,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "audq:k:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "audmq:k:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -800,6 +879,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			start_dbus = true;
+			break;
+		case 'm':
+			start_monitor = true;
 			break;
 		case 'q':
 			qemu_binary = optarg;
