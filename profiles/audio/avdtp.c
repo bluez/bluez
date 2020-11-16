@@ -2603,12 +2603,7 @@ static int send_req(struct avdtp *session, gboolean priority,
 	int err, timeout;
 
 	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
-		BtIOMode mode;
-
-		if (btd_opts.mps == MPS_OFF)
-			mode = BT_IO_MODE_BASIC;
-		else
-			mode = BT_IO_MODE_ERTM;
+		BtIOMode mode = btd_opts.avdtp.session_mode;
 
 		session->io = l2cap_connect(session, mode);
 		if (!session->io) {
@@ -2807,12 +2802,7 @@ static gboolean avdtp_open_resp(struct avdtp *session, struct avdtp_stream *stre
 				struct seid_rej *resp, int size)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
-	BtIOMode mode;
-
-	if (btd_opts.mps == MPS_OFF)
-		mode = BT_IO_MODE_BASIC;
-	else
-		mode = BT_IO_MODE_STREAMING;
+	BtIOMode mode = btd_opts.avdtp.stream_mode;
 
 	stream->io = l2cap_connect(session, mode);
 	if (!stream->io) {

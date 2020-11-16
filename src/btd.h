@@ -84,6 +84,11 @@ struct btd_defaults {
 	struct btd_le_defaults le;
 };
 
+struct btd_avdtp_opts {
+	uint8_t  session_mode;
+	uint8_t  stream_mode;
+};
+
 struct btd_opts {
 	char		*name;
 	uint32_t	class;
@@ -111,6 +116,8 @@ struct btd_opts {
 	uint16_t	gatt_mtu;
 	uint8_t		gatt_channels;
 	enum mps_mode_t	mps;
+
+	struct btd_avdtp_opts avdtp;
 
 	uint8_t		key_size;
 

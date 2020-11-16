@@ -34,6 +34,7 @@
 #include "lib/sdp.h"
 
 #include "gdbus/gdbus.h"
+#include "btio/btio.h"
 
 #include "log.h"
 #include "backtrace.h"
@@ -137,6 +138,12 @@ static const char *gatt_options[] = {
 	NULL
 };
 
+static const char *avdtp_options[] = {
+	"SessionMode",
+	"StreamMode",
+	NULL
+};
+
 static const struct group_table {
 	const char *name;
 	const char **options;
@@ -146,6 +153,7 @@ static const struct group_table {
 	{ "LE",		le_options },
 	{ "Policy",	policy_options },
 	{ "GATT",	gatt_options },
+	{ "AVDTP",	avdtp_options },
 	{ }
 };
 
@@ -744,6 +752,40 @@ static void parse_config(GKeyFile *config)
 		btd_opts.gatt_channels = val;
 	}
 
+	str = g_key_file_get_string(config, "AVDTP", "SessionMode", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("SessionMode=%s", str);
+
+		if (!strcmp(str, "basic"))
+			btd_opts.avdtp.session_mode = BT_IO_MODE_BASIC;
+		else if (!strcmp(str, "ertm"))
+			btd_opts.avdtp.session_mode = BT_IO_MODE_ERTM;
+		else {
+			DBG("Invalid mode option: %s", str);
+			btd_opts.avdtp.session_mode = BT_IO_MODE_BASIC;
+		}
+	}
+
+	val = g_key_file_get_integer(config, "AVDTP", "StreamMode", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("StreamMode=%s", str);
+
+		if (!strcmp(str, "basic"))
+			btd_opts.avdtp.stream_mode = BT_IO_MODE_BASIC;
+		else if (!strcmp(str, "streaming"))
+			btd_opts.avdtp.stream_mode = BT_IO_MODE_STREAMING;
+		else {
+			DBG("Invalid mode option: %s", str);
+			btd_opts.avdtp.stream_mode = BT_IO_MODE_BASIC;
+		}
+	}
+
 	parse_br_config(config);
 	parse_le_config(config);
 }
@@ -780,6 +822,9 @@ static void init_defaults(void)
 	btd_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
 	btd_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
 	btd_opts.gatt_channels = 3;
+
+	btd_opts.avdtp.session_mode = BT_IO_MODE_BASIC;
+	btd_opts.avdtp.stream_mode = BT_IO_MODE_BASIC;
 }
 
 static void log_handler(const gchar *log_domain, GLogLevelFlags log_level,
