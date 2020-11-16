@@ -79,7 +79,8 @@ enum monitor_state {
 	MONITOR_STATE_FAILED,	/* Failed to be init'ed */
 	MONITOR_STATE_INITED,	/* Init'ed but not yet sent to kernel */
 	MONITOR_STATE_ACTIVE,	/* Accepted by kernel */
-	MONITOR_STATE_REMOVING,	/* Removing from kernel */
+	MONITOR_STATE_REMOVED,	/* Removed from kernel */
+	MONITOR_STATE_RELEASED,	/* Dbus Object removed by app */
 };
 
 struct adv_monitor {
@@ -167,13 +168,8 @@ static void pattern_free(void *data)
 }
 
 /* Frees a monitor object */
-static void monitor_free(void *data)
+static void monitor_free(struct adv_monitor *monitor)
 {
-	struct adv_monitor *monitor = data;
-
-	if (!monitor)
-		return;
-
 	g_dbus_proxy_unref(monitor->proxy);
 	g_free(monitor->path);
 
@@ -186,18 +182,88 @@ static void monitor_free(void *data)
 }
 
 /* Calls Release() method of the remote Adv Monitor */
-static void monitor_release(void *data, void *user_data)
+static void monitor_release(struct adv_monitor *monitor)
 {
-	struct adv_monitor *monitor = data;
-
-	if (!monitor)
+	/* Release() method on a monitor can be called when -
+	 * 1. monitor initialization failed
+	 * 2. app calls UnregisterMonitor and monitors held by app are released
+	 * 3. monitor is removed by kernel
+	 */
+	if (monitor->state != MONITOR_STATE_FAILED &&
+	    monitor->state != MONITOR_STATE_ACTIVE &&
+	    monitor->state != MONITOR_STATE_REMOVED) {
 		return;
+	}
 
 	DBG("Calling Release() on Adv Monitor of owner %s at path %s",
 		monitor->app->owner, monitor->path);
 
 	g_dbus_proxy_method_call(monitor->proxy, "Release", NULL, NULL, NULL,
 					NULL);
+}
+
+/* Handles the callback of Remove Adv Monitor command */
+static void remove_adv_monitor_cb(uint8_t status, uint16_t length,
+				const void *param, void *user_data)
+{
+	const struct mgmt_rp_remove_adv_monitor *rp = param;
+
+	if (status != MGMT_STATUS_SUCCESS || !param) {
+		error("Failed to Remove Adv Monitor with status 0x%02x",
+				status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of Remove Adv Monitor response");
+		return;
+	}
+
+	DBG("Adv monitor with handle:0x%04x removed from kernel",
+		le16_to_cpu(rp->monitor_handle));
+}
+
+/* Sends Remove Adv Monitor command to the kernel */
+static void monitor_remove(struct adv_monitor *monitor)
+{
+	struct adv_monitor_app *app = monitor->app;
+	uint16_t adapter_id = app->manager->adapter_id;
+	struct mgmt_cp_remove_adv_monitor cp;
+
+	/* Monitor from kernel can be removed when -
+	 * 1. already activated monitor object is deleted by app
+	 * 2. app is destroyed and monitors held by app are marked as released
+	 */
+	if (monitor->state != MONITOR_STATE_ACTIVE &&
+	    monitor->state != MONITOR_STATE_RELEASED) {
+		return;
+	}
+
+	monitor->state = MONITOR_STATE_REMOVED;
+
+	cp.monitor_handle = cpu_to_le16(monitor->monitor_handle);
+
+	if (!mgmt_send(app->manager->mgmt, MGMT_OP_REMOVE_ADV_MONITOR,
+			adapter_id, sizeof(cp), &cp, remove_adv_monitor_cb,
+			app->manager, NULL)) {
+		btd_error(adapter_id,
+				"Unable to send Remove Advt Monitor command");
+	}
+}
+
+/* Destroys monitor object */
+static void monitor_destroy(void *data)
+{
+	struct adv_monitor *monitor = data;
+
+	if (!monitor)
+		return;
+
+	queue_remove(monitor->app->monitors, monitor);
+
+	monitor_release(monitor);
+	monitor_remove(monitor);
+	monitor_free(monitor);
 }
 
 /* Destroys an app object along with related D-Bus handlers */
@@ -210,8 +276,7 @@ static void app_destroy(void *data)
 
 	DBG("Destroy Adv Monitor app %s at path %s", app->owner, app->path);
 
-	queue_foreach(app->monitors, monitor_release, NULL);
-	queue_destroy(app->monitors, monitor_free);
+	queue_destroy(app->monitors, monitor_destroy);
 
 	if (app->reg) {
 		app_reply_msg(app, btd_error_failed(app->reg,
@@ -232,15 +297,34 @@ static void app_destroy(void *data)
 	free(app);
 }
 
+/* Updates monitor state to 'released' */
+static void monitor_state_released(void *data, void *user_data)
+{
+	struct adv_monitor *monitor = data;
+
+	if (!monitor && monitor->state != MONITOR_STATE_ACTIVE)
+		return;
+
+	monitor->state = MONITOR_STATE_RELEASED;
+}
+
 /* Handles a D-Bus disconnection event of an app */
 static void app_disconnect_cb(DBusConnection *conn, void *user_data)
 {
 	struct adv_monitor_app *app = user_data;
 
+	if (!app) {
+		error("Unexpected NULL app object upon app disconnect");
+		return;
+	}
+
 	btd_info(app->manager->adapter_id, "Adv Monitor app %s disconnected "
 			"from D-Bus", app->owner);
-	if (app && queue_remove(app->manager->apps, app))
+
+	if (queue_remove(app->manager->apps, app)) {
+		queue_foreach(app->monitors, monitor_state_released, NULL);
 		app_destroy(app);
+	}
 }
 
 /* Handles the ready signal of Adv Monitor app */
@@ -558,14 +642,16 @@ static void add_adv_patterns_monitor_cb(uint8_t status, uint16_t length,
 	if (status != MGMT_STATUS_SUCCESS || !param) {
 		btd_error(adapter_id, "Failed to Add Adv Patterns Monitor "
 				"with status 0x%02x", status);
-		monitor_release(monitor, NULL);
+		monitor->state = MONITOR_STATE_FAILED;
+		monitor_destroy(monitor);
 		return;
 	}
 
 	if (length < sizeof(*rp)) {
 		btd_error(adapter_id, "Wrong size of Add Adv Patterns Monitor "
 				"response");
-		monitor_release(monitor, NULL);
+		monitor->state = MONITOR_STATE_FAILED;
+		monitor_destroy(monitor);
 		return;
 	}
 
@@ -623,8 +709,7 @@ static void monitor_proxy_added_cb(GDBusProxy *proxy, void *user_data)
 	}
 
 	if (!monitor_process(monitor, app)) {
-		monitor_release(monitor, NULL);
-		monitor_free(monitor);
+		monitor_destroy(monitor);
 		DBG("Adv Monitor at path %s released due to invalid content",
 			path);
 		return;
@@ -652,77 +737,22 @@ done:
 	free(cp);
 }
 
-/* Handles the callback of Remove Adv Monitor command */
-static void remove_adv_monitor_cb(uint8_t status, uint16_t length,
-				const void *param, void *user_data)
-{
-	struct adv_monitor *monitor = user_data;
-	const struct mgmt_rp_remove_adv_monitor *rp = param;
-	uint16_t adapter_id = monitor->app->manager->adapter_id;
-
-	if (status != MGMT_STATUS_SUCCESS || !param) {
-		btd_error(adapter_id, "Failed to Remove Adv Monitor with "
-			"status 0x%02x", status);
-		goto done;
-	}
-
-	if (length < sizeof(*rp)) {
-		btd_error(adapter_id, "Wrong size of Remove Adv Monitor "
-				"response");
-		goto done;
-	}
-
-done:
-	queue_remove(monitor->app->monitors, monitor);
-
-	DBG("Adv Monitor removed with handle:0x%04x, path %s",
-		monitor->monitor_handle, monitor->path);
-
-	monitor_free(monitor);
-}
-
-
 /* Handles the removal of an Adv Monitor D-Bus proxy */
 static void monitor_proxy_removed_cb(GDBusProxy *proxy, void *user_data)
 {
 	struct adv_monitor *monitor;
-	struct mgmt_cp_remove_adv_monitor cp;
 	struct adv_monitor_app *app = user_data;
-	uint16_t adapter_id = app->manager->adapter_id;
 
 	monitor = queue_find(app->monitors, monitor_match, proxy);
 
-	/* A monitor removed event from kernel can remove a monitor and notify
-	 * the app on Release() where this callback can be invoked, so we
-	 * simply skip here.
-	 */
 	if (!monitor)
 		return;
-
-	if (monitor->state != MONITOR_STATE_ACTIVE)
-		goto done;
-
-	monitor->state = MONITOR_STATE_REMOVING;
-
-	cp.monitor_handle = cpu_to_le16(monitor->monitor_handle);
-
-	if (!mgmt_send(app->manager->mgmt, MGMT_OP_REMOVE_ADV_MONITOR,
-			adapter_id, sizeof(cp), &cp, remove_adv_monitor_cb,
-			monitor, NULL)) {
-		btd_error(adapter_id, "Unable to send Remove Advt Monitor "
-				"command");
-		goto done;
-	}
-
-	return;
-
-done:
-	queue_remove(app->monitors, monitor);
 
 	DBG("Adv Monitor removed in state %02x with path %s", monitor->state,
 		monitor->path);
 
-	monitor_free(monitor);
+	monitor_state_released(monitor, NULL);
+	monitor_destroy(monitor);
 }
 
 /* Creates an app object, initiates it and sets D-Bus event handlers */
@@ -943,22 +973,41 @@ static bool removed_monitor_match(const void *data, const void *user_data)
 	return monitor->monitor_handle == *handle;
 }
 
+/* Updates monitor state to 'removed' */
+static void monitor_state_removed(void *data, void *user_data)
+{
+	struct adv_monitor *monitor = data;
+
+	if (!monitor && monitor->state != MONITOR_STATE_ACTIVE)
+		return;
+
+	monitor->state = MONITOR_STATE_REMOVED;
+
+	DBG("Adv monitor with handle:0x%04x removed by kernel",
+		monitor->monitor_handle);
+}
+
 /* Remove the matched monitor and reports the removal to the app */
 static void app_remove_monitor(void *data, void *user_data)
 {
 	struct adv_monitor_app *app = data;
 	struct adv_monitor *monitor;
+	uint16_t *handle = user_data;
 
-	monitor = queue_find(app->monitors, removed_monitor_match, user_data);
+	if (handle && *handle == 0) {
+		/* handle = 0 indicates kernel has removed all monitors */
+		queue_foreach(app->monitors, monitor_state_removed, NULL);
+		queue_destroy(app->monitors, monitor_destroy);
+
+		return;
+	}
+
+	monitor = queue_find(app->monitors, removed_monitor_match, handle);
 	if (monitor) {
-		if (monitor->state == MONITOR_STATE_ACTIVE)
-			monitor_release(monitor, NULL);
-
-		queue_remove(app->monitors, monitor);
-
 		DBG("Adv Monitor at path %s removed", monitor->path);
 
-		monitor_free(monitor);
+		monitor_state_removed(monitor, NULL);
+		monitor_destroy(monitor);
 	}
 }
 
