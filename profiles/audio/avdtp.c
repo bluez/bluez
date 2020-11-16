@@ -2429,19 +2429,12 @@ uint16_t avdtp_get_version(struct avdtp *session)
 	return session->version;
 }
 
-static GIOChannel *l2cap_connect(struct avdtp *session)
+static GIOChannel *l2cap_connect(struct avdtp *session, BtIOMode mode)
 {
 	GError *err = NULL;
 	GIOChannel *io;
 	const bdaddr_t *src;
-	BtIOMode mode;
-
 	src = btd_adapter_get_address(device_get_adapter(session->device));
-
-	if (btd_opts.mps == MPS_OFF)
-		mode = BT_IO_MODE_BASIC;
-	else
-		mode = BT_IO_MODE_STREAMING;
 
 	if (session->phy)
 		io = bt_io_connect(avdtp_connect_cb, session,
@@ -2610,7 +2603,14 @@ static int send_req(struct avdtp *session, gboolean priority,
 	int err, timeout;
 
 	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
-		session->io = l2cap_connect(session);
+		BtIOMode mode;
+
+		if (btd_opts.mps == MPS_OFF)
+			mode = BT_IO_MODE_BASIC;
+		else
+			mode = BT_IO_MODE_ERTM;
+
+		session->io = l2cap_connect(session, mode);
 		if (!session->io) {
 			/* Report disconnection anyways, as the other layers
 			 * are using this state for cleanup.
@@ -2807,8 +2807,14 @@ static gboolean avdtp_open_resp(struct avdtp *session, struct avdtp_stream *stre
 				struct seid_rej *resp, int size)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
+	BtIOMode mode;
 
-	stream->io = l2cap_connect(session);
+	if (btd_opts.mps == MPS_OFF)
+		mode = BT_IO_MODE_BASIC;
+	else
+		mode = BT_IO_MODE_STREAMING;
+
+	stream->io = l2cap_connect(session, mode);
 	if (!stream->io) {
 		avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 		return FALSE;
