@@ -665,6 +665,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		if (!extcls && !extinf && !extoui) {
 			ba2str(&(info+i)->bdaddr, addr);
 
+			memset(name, 0, sizeof(name));
+			
 			if (hci_read_remote_name_with_clock_offset(dd,
 					&(info+i)->bdaddr,
 					(info+i)->pscan_rep_mode,
@@ -673,8 +675,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 				strcpy(name, "n/a");
 
 			for (n = 0; n < 248 && name[n]; n++) {
-				if ((unsigned char) name[i] < 32 || name[i] == 127)
-					name[i] = '.';
+				if ((unsigned char) name[n] < 32 || name[n] == 127)
+					name[n] = '.';
 			}
 
 			name[248] = '\0';
