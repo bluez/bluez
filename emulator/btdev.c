@@ -3882,7 +3882,8 @@ static void le_ext_conn_complete(struct btdev *btdev,
 	memcpy(ev.peer_addr, cmd->peer_addr, 6);
 	ev.role = 0x00;
 
-	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, &ev, sizeof(ev));
+	le_meta_event(btdev, BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE, &ev,
+						sizeof(ev));
 }
 
 static int cmd_ext_create_conn_complete(struct btdev *dev, const void *data,
