@@ -193,7 +193,8 @@ static char *const qemu_argv[] = {
 	"-no-acpi",
 	"-no-hpet",
 	"-no-reboot",
-	"-fsdev", "local,id=fsdev-root,path=/,readonly,security_model=none",
+	"-fsdev", "local,id=fsdev-root,path=/,readonly,security_model=none,"
+	"multidevs=remap",
 	"-device", "virtio-9p-pci,fsdev=fsdev-root,mount_tag=/dev/root",
 	"-chardev", "stdio,id=con,mux=on",
 	"-serial", "chardev:con",
