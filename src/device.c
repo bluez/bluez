@@ -509,7 +509,9 @@ void device_store_cached_name(struct btd_device *dev, const char *name)
 	char d_addr[18];
 	GKeyFile *key_file;
 	char *data;
+	char *data_old;
 	gsize length = 0;
+	gsize length_old = 0;
 
 	if (device_address_is_private(dev)) {
 		DBG("Can't store name for private addressed device %s",
@@ -524,11 +526,17 @@ void device_store_cached_name(struct btd_device *dev, const char *name)
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	data_old = g_key_file_to_data(key_file, &length_old, NULL);
+
 	g_key_file_set_string(key_file, "General", "Name", name);
 
 	data = g_key_file_to_data(key_file, &length, NULL);
-	g_file_set_contents(filename, data, length, NULL);
+
+	if ((length != length_old) || (memcmp(data, data_old, length)))
+		g_file_set_contents(filename, data, length, NULL);
+
 	g_free(data);
+	g_free(data_old);
 
 	g_key_file_free(key_file);
 }
