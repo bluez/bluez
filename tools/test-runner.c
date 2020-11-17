@@ -732,23 +732,23 @@ start_next:
 			monitor_pid = -1;
 		}
 
-		if (corpse == pid) {
-			if (!run_auto) {
-				if (daemon_pid > 0)
-					kill(daemon_pid, SIGTERM);
-				if (dbus_pid > 0)
-					kill(dbus_pid, SIGTERM);
-				if (monitor_pid > 0)
-					kill(monitor_pid, SIGTERM);
-			}
+		if (corpse == pid)
 			break;
-		}
 	}
 
 	if (run_auto) {
 		idx++;
 		goto start_next;
 	}
+
+	if (daemon_pid > 0)
+		kill(daemon_pid, SIGTERM);
+
+	if (dbus_pid > 0)
+		kill(dbus_pid, SIGTERM);
+
+	if (monitor_pid > 0)
+		kill(monitor_pid, SIGTERM);
 
 	if (serial_fd >= 0) {
 		close(serial_fd);
