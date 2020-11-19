@@ -1999,6 +1999,7 @@ static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
 	DBusMessageIter iter;
 	DBusMessageIter array;
 	char *obj;
+	char *includes;
 	int type;
 
 	/* Includes property is optional */
@@ -2017,7 +2018,11 @@ static bool parse_includes(GDBusProxy *proxy, struct external_service *service)
 
 		dbus_message_iter_get_basic(&array, &obj);
 
-		if (!queue_push_tail(service->includes, obj)) {
+		includes = g_strdup(obj);
+		if (!includes)
+			return false;
+
+		if (!queue_push_tail(service->includes, includes)) {
 			error("Failed to add Includes path in queue\n");
 			return false;
 		}
