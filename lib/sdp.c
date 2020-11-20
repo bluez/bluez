@@ -4705,7 +4705,8 @@ static int sdp_connect_l2cap(const bdaddr_t *src,
 
 	if (flags & SDP_WAIT_ON_CLOSE) {
 		struct linger l = { .l_onoff = 1, .l_linger = 1 };
-		setsockopt(sk, SOL_SOCKET, SO_LINGER, &l, sizeof(l));
+		if (setsockopt(sk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0)
+			return -1;
 	}
 
 	if ((flags & SDP_LARGE_MTU) &&

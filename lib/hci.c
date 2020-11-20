@@ -1246,12 +1246,14 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 
 failed:
 	err = errno;
-	setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of));
+	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of)) < 0)
+		err = errno;
 	errno = err;
 	return -1;
 
 done:
-	setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of));
+	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of)) < 0)
+		return -1;
 	return 0;
 }
 
