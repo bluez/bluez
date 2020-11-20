@@ -1701,8 +1701,11 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 
 	/* Use DEFER_SETUP when connecting using Ext-Flowctl */
 	if (opts.mode == BT_IO_MODE_EXT_FLOWCTL && opts.defer) {
-		setsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP, &opts.defer,
-							sizeof(opts.defer));
+		if (setsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP,
+					&opts.defer, sizeof(opts.defer)) < 0) {
+			ERROR_FAILED(gerr, "setsockopt(BT_DEFER_SETUP)", errno);
+			return NULL;
+		}
 	}
 
 	switch (opts.type) {
@@ -1761,8 +1764,11 @@ GIOChannel *bt_io_listen(BtIOConnect connect, BtIOConfirm confirm,
 	sock = g_io_channel_unix_get_fd(io);
 
 	if (confirm)
-		setsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP, &opts.defer,
-							sizeof(opts.defer));
+		if (setsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP,
+					&opts.defer, sizeof(opts.defer)) < 0) {
+			ERROR_FAILED(err, "setsockopt(BT_DEFER_SETUP)", errno);
+			return NULL;
+		}
 
 	if (listen(sock, 5) < 0) {
 		ERROR_FAILED(err, "listen", errno);
