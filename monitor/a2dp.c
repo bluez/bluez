@@ -364,7 +364,8 @@ static bool codec_mpeg12_cap(uint8_t losc, struct l2cap_frame *frame)
 	if (losc != 4)
 		return false;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	layer = (cap >> 8) & 0xe0;
 	crc = cap & 0x1000;
@@ -372,7 +373,8 @@ static bool codec_mpeg12_cap(uint8_t losc, struct l2cap_frame *frame)
 	mpf = cap & 0x0040;
 	freq = cap & 0x003f;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	vbr = cap & 0x8000;
 	bitrate = cap & 0x7fff;
@@ -414,7 +416,8 @@ static bool codec_mpeg12_cfg(uint8_t losc, struct l2cap_frame *frame)
 	if (losc != 4)
 		return false;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	layer = (cap >> 8) & 0xe0;
 	crc = cap & 0x1000;
@@ -422,7 +425,8 @@ static bool codec_mpeg12_cfg(uint8_t losc, struct l2cap_frame *frame)
 	mpf = cap & 0x0040;
 	freq = cap & 0x003f;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	vbr = cap & 0x8000;
 	bitrate = cap & 0x7fff;
@@ -466,19 +470,22 @@ static bool codec_aac_cap(uint8_t losc, struct l2cap_frame *frame)
 	if (losc != 6)
 		return false;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	type = cap >> 8;
 	freq = cap << 8;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	freq |= (cap >> 8) & 0xf0;
 	chan = (cap >> 8) & 0x0c;
 	bitrate = (cap << 16) & 0x7f0000;
 	vbr = cap & 0x0080;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	bitrate |= cap;
 
@@ -509,19 +516,22 @@ static bool codec_aac_cfg(uint8_t losc, struct l2cap_frame *frame)
 	if (losc != 6)
 		return false;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	type = cap >> 8;
 	freq = cap << 8;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	freq |= (cap >> 8) & 0xf0;
 	chan = (cap >> 8) & 0x0c;
 	bitrate = (cap << 16) & 0x7f0000;
 	vbr = cap & 0x0080;
 
-	l2cap_frame_get_be16(frame, &cap);
+	if (!l2cap_frame_get_be16(frame, &cap))
+		return false;
 
 	bitrate |= cap;
 

@@ -3243,6 +3243,9 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 		case L2CAP_MODE_LE_FLOWCTL:
 		case L2CAP_MODE_ECRED:
 			chan = get_chan(&frame);
+			if (!chan)
+				return;
+
 			if (!chan->sdu) {
 				if (!l2cap_frame_get_le16(&frame, &chan->sdu))
 					return;
