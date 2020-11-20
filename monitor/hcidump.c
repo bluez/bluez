@@ -184,7 +184,11 @@ static void open_device(uint16_t index)
 		return;
 	}
 
-	mainloop_add_fd(data->fd, EPOLLIN, device_callback, data, free_data);
+	if (mainloop_add_fd(data->fd, EPOLLIN, device_callback,
+						data, free_data) < 0) {
+		close(data->fd);
+		free(data);
+	}
 }
 
 static void device_info(int fd, uint16_t index, uint8_t *type, uint8_t *bus,
@@ -393,8 +397,12 @@ int hcidump_tracing(void)
 		return -1;
 	}
 
-	mainloop_add_fd(data->fd, EPOLLIN, stack_internal_callback,
-							data, free_data);
+	if (mainloop_add_fd(data->fd, EPOLLIN, stack_internal_callback,
+							data, free_data) < 0) {
+		close(data->fd);
+		free(data);
+		return -1;
+	}
 
 	return 0;
 }

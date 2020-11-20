@@ -1071,7 +1071,12 @@ static int open_channel(uint16_t channel)
 	if (filter_index != HCI_DEV_NONE)
 		attach_index_filter(data->fd, filter_index);
 
-	mainloop_add_fd(data->fd, EPOLLIN, data_callback, data, free_data);
+	if (mainloop_add_fd(data->fd, EPOLLIN, data_callback,
+						data, free_data) < 0) {
+		close(data->fd);
+		free(data);
+		return -1;
+	};
 
 	return 0;
 }
@@ -1148,7 +1153,11 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 	data->channel = HCI_CHANNEL_MONITOR;
 	data->fd = nfd;
 
-        mainloop_add_fd(data->fd, EPOLLIN, client_callback, data, free_data);
+	if (mainloop_add_fd(data->fd, EPOLLIN, client_callback,
+						data, free_data) < 0) {
+		close(data->fd);
+		free(data);
+	}
 }
 
 static int server_fd = -1;
@@ -1399,7 +1408,12 @@ int control_tty(const char *path, unsigned int speed)
 	data->channel = HCI_CHANNEL_MONITOR;
 	data->fd = fd;
 
-	mainloop_add_fd(data->fd, EPOLLIN, tty_callback, data, free_data);
+	if (mainloop_add_fd(data->fd, EPOLLIN, tty_callback,
+						data, free_data) < 0) {
+		close(data->fd);
+		free(data);
+		return -1;
+	}
 
 	return 0;
 }
