@@ -255,7 +255,11 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 
 	memset(&timeo, 0, sizeof(timeo));
 	timeo.tv_sec = 0;
-	setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
+	if (setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo,
+							sizeof(timeo)) < 0) {
+		error("bnep: Set setsockopt failed: %s", strerror(errno));
+		goto failed;
+	};
 
 	sk = g_io_channel_unix_get_fd(session->io);
 	if (bnep_connadd(sk, session->src, session->iface) < 0)
