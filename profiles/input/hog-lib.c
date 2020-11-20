@@ -779,7 +779,8 @@ fail:
 static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
-	struct bt_hog *hog = user_data;
+	struct report *report = user_data;
+	struct bt_hog *hog = report->hog;
 	struct uhid_event rsp;
 	int err;
 
@@ -808,13 +809,15 @@ static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
 
 	--len;
 	++pdu;
-	if (hog->has_report_id && len > 0) {
-		--len;
-		++pdu;
-	}
 
-	rsp.u.get_report_reply.size = len;
-	memcpy(rsp.u.get_report_reply.data, pdu, len);
+	if (hog->has_report_id && len > 0) {
+		rsp.u.get_report_reply.size = len + 1;
+		rsp.u.get_report_reply.data[0] = report->id;
+		memcpy(&rsp.u.get_report_reply.data[1], pdu, len);
+	} else {
+		rsp.u.get_report_reply.size = len;
+		memcpy(rsp.u.get_report_reply.data, pdu, len);
+	}
 
 exit:
 	rsp.u.get_report_reply.err = status;
@@ -846,7 +849,7 @@ static void get_report(struct uhid_event *ev, void *user_data)
 
 	hog->getrep_att = gatt_read_char(hog->attrib,
 						report->value_handle,
-						get_report_cb, hog);
+						get_report_cb, report);
 	if (!hog->getrep_att) {
 		err = ENOMEM;
 		goto fail;
