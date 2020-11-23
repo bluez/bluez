@@ -1887,8 +1887,8 @@ static void register_remote_sep(void *data, void *user_data)
 				sep, remote_sep_free) == FALSE) {
 		error("Could not register remote sep %s", sep->path);
 		free(sep->path);
-		sep->path = NULL;
-		goto done;
+		free(sep);
+		return;
 	}
 
 	DBG("Found remote SEP: %s", sep->path);
@@ -2627,9 +2627,14 @@ static void store_remote_sep(void *data, void *user_data)
 	GKeyFile *key_file = user_data;
 	char seid[4], value[256];
 	struct avdtp_service_capability *service = avdtp_get_codec(sep->sep);
-	struct avdtp_media_codec_capability *codec = (void *) service->data;
+	struct avdtp_media_codec_capability *codec;
 	unsigned int i;
 	ssize_t offset;
+
+	if (!service)
+		return;
+
+	codec = (void *) service->data;
 
 	sprintf(seid, "%02hhx", avdtp_get_seid(sep->sep));
 
