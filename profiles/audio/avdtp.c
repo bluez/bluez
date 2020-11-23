@@ -2706,7 +2706,8 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 
 		sep = find_remote_sep(session->seps, resp->seps[i].seid);
 		if (sep && sep->type == resp->seps[i].type &&
-				sep->media_type == resp->seps[i].media_type)
+				sep->media_type == resp->seps[i].media_type &&
+				sep->codec)
 			continue;
 
 		if (resp->seps[i].inuse && !stream)
