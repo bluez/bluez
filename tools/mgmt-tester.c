@@ -5282,6 +5282,195 @@ static const struct generic_data read_controller_cap_success = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
+static const char ext_adv_params_valid[] = {
+	0x01, /* instance */
+	0x00, 0xC0, 0x00, 0x00, /* flags, use tx power and intervals */
+	0x00, 0x00, /* duration */
+	0x00, 0x00, /* timeout */
+	0xA0, 0x00, 0x00, 0x00, /* min_interval */
+	0xA0, 0x00, 0x00, 0x00, /* max_interval */
+	0x7f, /* tx_power */
+};
+
+static const char ext_adv_hci_params_valid[] = {
+	0x01, /* handle */
+	0x10, 0x00, /* evt_properties */
+	0xA0, 0x00, 0x00, /* min_interval */
+	0xA0, 0x00, 0x00, /* max_interval */
+	0x07, /* channel_map */
+	0x01, /* own_addr_type */
+	0x00, /* peer_addr_type */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* peer_addr */
+	0x00, /* filter_policy */
+	0x7f, /* tx_power */
+	0x01, /* primary_phy */
+	0x00, /* secondary_max_skip */
+	0x01, /* secondary_phy */
+	0x00, /* sid */
+	0x00, /* notif_enable */
+};
+
+static const char ext_adv_params_mgmt_rsp_valid_50[] = {
+	0x01, /* instance */
+	0x00, /* tx_power defaults to 0 on BT5 platform*/
+	0x1f, /* max_adv_data_len */
+	0x1f, /* max_scan_rsp_len */
+};
+
+static const char ext_adv_params_mgmt_rsp_valid[] = {
+	0x01, /* instance */
+	0x7f, /* tx_power */
+	0x1f, /* max_adv_data_len */
+	0x1f, /* max_scan_rsp_len */
+};
+
+static const char ext_adv_data_mgmt_rsp_valid[] = {
+	0x01, /* instance */
+};
+
+static const uint8_t ext_adv_data_valid[] = {
+	0x01, /* instance */
+	0x04, /* Ad data len */
+	0x06, /* Scan response data len */
+	0x03, /* Section length */
+	0x19, /* GAP Appearance */
+	0x01,
+	0x23,
+	0x05, /* Section length */
+	0x08, /* ad type Short Name */
+	't',
+	'e',
+	's',
+	't',
+};
+
+static const char ext_adv_hci_ad_data_valid[] = {
+	0x01, /* handle */
+	0x03, /* operation */
+	0x01, /* minimize fragmentation */
+	0x04, /* data length */
+	0x03, /* Section length */
+	0x19, /* GAP Appearance */
+	0x01,
+	0x23,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static const char ext_adv_hci_scan_rsp_data_valid[] = {
+	0x01, /* handle */
+	0x03, /* operation */
+	0x01, /* minimize fragmentation */
+	0x06,
+	0x05, /* Section length */
+	0x08, /* ad type Short Name */
+	't',
+	'e',
+	's',
+	't',
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+static const uint8_t ext_adv_data_invalid[] = {
+	0x01, /* instance */
+	0x04, /* Ad data len */
+	0x06, /* Scan response data len */
+	0x03, /* Section length */
+	0x19, /* GAP Appearance */
+	0x01,
+	0x23,
+	0x07, /* Section length purposefully two octets too long */
+	0x08, /* ad type Short Name */
+	't',
+	'e',
+	's',
+	't',
+};
+
+static const struct generic_data adv_params_fail_unpowered = {
+	.setup_settings = settings_le, /* Unpowered */
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_PARAMS,
+	.send_param = ext_adv_params_valid,
+	.send_len = sizeof(ext_adv_params_valid),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
+static const struct generic_data adv_params_fail_invalid_params = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_PARAMS,
+	.send_param = dummy_data,
+	.send_len = sizeof(dummy_data),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data adv_params_success = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_PARAMS,
+	.send_param = ext_adv_params_valid,
+	.send_len = sizeof(ext_adv_params_valid),
+	.expect_param = ext_adv_params_mgmt_rsp_valid,
+	.expect_len = sizeof(ext_adv_params_mgmt_rsp_valid),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+static const struct generic_data adv_params_success_50 = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_PARAMS,
+	.send_param = ext_adv_params_valid,
+	.send_len = sizeof(ext_adv_params_valid),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_adv_params_mgmt_rsp_valid_50,
+	.expect_len = sizeof(ext_adv_params_mgmt_rsp_valid_50),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
+	.expect_hci_param = ext_adv_hci_params_valid,
+	.expect_hci_len = sizeof(ext_adv_hci_params_valid),
+};
+
+static const struct generic_data adv_data_fail_no_params = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_DATA,
+	.send_param = ext_adv_data_valid,
+	.send_len = sizeof(ext_adv_data_valid),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data adv_data_success = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_DATA,
+	.send_param = ext_adv_data_valid,
+	.send_len = sizeof(ext_adv_data_valid),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_adv_data_mgmt_rsp_valid,
+	.expect_len = sizeof(ext_adv_data_mgmt_rsp_valid),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_DATA,
+	.expect_hci_param = ext_adv_hci_ad_data_valid,
+	.expect_hci_len = sizeof(ext_adv_hci_ad_data_valid),
+};
+
+static const struct generic_data adv_scan_rsp_success = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_DATA,
+	.send_param = ext_adv_data_valid,
+	.send_len = sizeof(ext_adv_data_valid),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_adv_data_mgmt_rsp_valid,
+	.expect_len = sizeof(ext_adv_data_mgmt_rsp_valid),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_SCAN_RSP_DATA,
+	.expect_hci_param = ext_adv_hci_scan_rsp_data_valid,
+	.expect_hci_len = sizeof(ext_adv_hci_scan_rsp_data_valid),
+};
+
+static const struct generic_data adv_data_invalid_params = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_DATA,
+	.send_param = ext_adv_data_invalid,
+	.send_len = sizeof(ext_adv_data_invalid),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -6025,6 +6214,74 @@ static void setup_complete(uint8_t status, uint16_t length,
 		data->test_setup(data);
 	else
 		setup_bthost();
+}
+
+static void setup_set_unpowered_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	setup_bthost();
+}
+
+static void setup_set_le_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char power_param[] = { 0x00 };
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Disabling power");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+						sizeof(power_param),
+						&power_param,
+						setup_set_unpowered_callback,
+						NULL, NULL);
+}
+
+static void setup_ext_adv_not_powered(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Enabling LE");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+						sizeof(param), &param,
+						setup_set_le_callback,
+						NULL, NULL);
+}
+
+static void setup_set_ext_adv_params_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	setup_bthost();
+}
+
+static void setup_ext_adv_params(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	tester_print("Setting Extended Adv Params");
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_EXT_ADV_PARAMS, data->mgmt_index,
+					sizeof(ext_adv_params_valid),
+					&ext_adv_params_valid,
+					setup_set_ext_adv_params_callback,
+					NULL, NULL);
 }
 
 static void pin_code_request_callback(uint16_t index, uint16_t length,
@@ -10291,6 +10548,42 @@ int main(int argc, char *argv[])
 	test_bredrle50("Read Controller Capabilities - (5.0) Success",
 				&read_controller_cap_success,
 				NULL, test_50_controller_cap_response);
+
+	test_bredrle("Ext Adv MGMT Params - Unpowered",
+				&adv_params_fail_unpowered,
+				setup_ext_adv_not_powered,
+				test_command_generic);
+
+	test_bredrle("Ext Adv MGMT Params - Invalid parameters",
+				&adv_params_fail_invalid_params,
+				NULL, test_command_generic);
+
+	test_bredrle("Ext Adv MGMT Params - Success",
+				&adv_params_success,
+				NULL, test_command_generic);
+
+	test_bredrle50("Ext Adv MGMT Params - (5.0) Success",
+				&adv_params_success_50,
+				NULL, test_command_generic);
+
+	test_bredrle("Ext Adv MGMT - Data set without Params",
+				&adv_data_fail_no_params,
+				NULL, test_command_generic);
+
+	test_bredrle50("Ext Adv MGMT - AD Data (5.0) Invalid parameters",
+				&adv_data_invalid_params,
+				setup_ext_adv_params,
+				test_command_generic);
+
+	test_bredrle50("Ext Adv MGMT - AD Data (5.0) Success",
+				&adv_data_success,
+				setup_ext_adv_params,
+				test_command_generic);
+
+	test_bredrle50("Ext Adv MGMT - AD Scan Response (5.0) Success",
+				&adv_scan_rsp_success,
+				setup_ext_adv_params,
+				test_command_generic);
 
 	return tester_run();
 }
