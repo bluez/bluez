@@ -5269,6 +5269,19 @@ static const struct generic_data read_ext_ctrl_info5 = {
 	.expect_len = sizeof(ext_ctrl_info5),
 };
 
+static const struct generic_data read_controller_cap_invalid_param_test = {
+	.send_opcode = MGMT_OP_READ_CONTROLLER_CAP,
+	.send_param = dummy_data,
+	.send_len = sizeof(dummy_data),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data read_controller_cap_success = {
+	.send_opcode = MGMT_OP_READ_CONTROLLER_CAP,
+	.expect_ignore_param = true,
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -8762,6 +8775,61 @@ static void test_connected_and_advertising(const void *test_data)
 						data, NULL);
 }
 
+static void read_50_controller_cap_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct mgmt_rp_read_controller_cap *rp = param;
+	const uint8_t *ptr = rp->cap;
+	size_t offset = 0;
+	uint8_t tag_len;
+	uint8_t tag_type;
+
+	if (status || !param) {
+		tester_warn("Failed to read advertising features: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		tester_test_failed();
+	}
+
+	if (sizeof(rp->cap_len) + rp->cap_len != length) {
+		tester_warn("Controller capabilities malformed, size %lu != %u",
+				sizeof(rp->cap_len) + rp->cap_len, length);
+		tester_test_failed();
+	}
+
+	while (offset < rp->cap_len) {
+		tag_len = ptr[offset++];
+		tag_type = ptr[offset++];
+
+		switch (tag_type) {
+		case MGMT_CAP_LE_TX_PWR:
+			if ((tag_len - sizeof(tag_type)) != 2) {
+				tester_warn("TX power had unexpected length %d",
+					tag_len);
+				break;
+			}
+			tester_print("Expected Tx Power discovered: %d-%d",
+					ptr[offset], ptr[offset+1]);
+			test_condition_complete(data);
+		}
+
+		/* Step to the next entry */
+		offset += (tag_len - sizeof(tag_type));
+	}
+}
+
+static void test_50_controller_cap_response(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	test_add_condition(data);
+
+	mgmt_send(data->mgmt_alt, MGMT_OP_READ_CONTROLLER_CAP, data->mgmt_index,
+						0, NULL,
+						read_50_controller_cap_complete,
+						data, NULL);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -10215,6 +10283,14 @@ int main(int argc, char *argv[])
 				&conn_master_adv_non_conneactable_test,
 				setup_advertise_while_connected,
 				test_connected_and_advertising, 10);
+
+	test_bredrle("Read Controller Capabilities - Invalid parameters",
+				&read_controller_cap_invalid_param_test,
+				NULL, test_command_generic);
+
+	test_bredrle50("Read Controller Capabilities - (5.0) Success",
+				&read_controller_cap_success,
+				NULL, test_50_controller_cap_response);
 
 	return tester_run();
 }
