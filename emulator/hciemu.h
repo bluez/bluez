@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 struct hciemu;
+struct hciemu_client;
 
 enum hciemu_type {
 	HCIEMU_TYPE_BREDRLE,
@@ -30,9 +31,14 @@ enum hciemu_hook_type {
 };
 
 struct hciemu *hciemu_new(enum hciemu_type type);
+struct hciemu *hciemu_new_num(enum hciemu_type type, uint8_t num);
 
 struct hciemu *hciemu_ref(struct hciemu *hciemu);
 void hciemu_unref(struct hciemu *hciemu);
+
+struct hciemu_client *hciemu_get_client(struct hciemu *hciemu, int num);
+struct bthost *hciemu_client_host(struct hciemu_client *client);
+const uint8_t *hciemu_client_bdaddr(struct hciemu_client *client);
 
 typedef void (*hciemu_debug_func_t)(const char *str, void *user_data);
 typedef void (*hciemu_destroy_func_t)(void *user_data);

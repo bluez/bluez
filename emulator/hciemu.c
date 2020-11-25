@@ -34,16 +34,20 @@
 #include "src/shared/queue.h"
 #include "emulator/hciemu.h"
 
+struct hciemu_client {
+	struct bthost *host;
+	struct btdev *dev;
+	guint start_source;
+	guint host_source;
+	guint source;
+};
+
 struct hciemu {
 	int ref_count;
 	enum btdev_type btdev_type;
-	struct bthost *host_stack;
-	struct btdev *master_dev;
-	struct btdev *client_dev;
-	guint host_source;
-	guint master_source;
-	guint client_source;
-	guint start_source;
+	struct btdev *dev;
+	struct queue *clients;
+	guint source;
 	struct queue *post_command_hooks;
 	char bdaddr_str[18];
 
@@ -245,69 +249,123 @@ static bool create_vhci(struct hciemu *hciemu)
 		return false;
 	}
 
-	hciemu->master_dev = btdev;
+	hciemu->dev = btdev;
 
-	hciemu->master_source = create_source_btdev(fd, btdev);
+	hciemu->source = create_source_btdev(fd, btdev);
 
 	return true;
+}
+
+struct hciemu_client *hciemu_get_client(struct hciemu *hciemu, int num)
+{
+	const struct queue_entry *entry;
+
+	if (!hciemu)
+		return NULL;
+
+	for (entry = queue_get_entries(hciemu->clients); entry;
+					entry = entry->next, num--) {
+		if (!num)
+			return entry->data;
+	}
+
+	return NULL;
+}
+
+struct bthost *hciemu_client_host(struct hciemu_client *client)
+{
+	if (!client)
+		return NULL;
+
+	return client->host;
 }
 
 struct bthost *hciemu_client_get_host(struct hciemu *hciemu)
 {
+	struct hciemu_client *client;
+
 	if (!hciemu)
 		return NULL;
 
-	return hciemu->host_stack;
+	client = hciemu_get_client(hciemu, 0);
+
+	return hciemu_client_host(client);
 }
 
-static bool create_stack(struct hciemu *hciemu)
+static gboolean start_host(gpointer user_data)
 {
-	struct btdev *btdev;
-	struct bthost *bthost;
-	int sv[2];
+	struct hciemu_client *client = user_data;
 
-	btdev = btdev_create(hciemu->btdev_type, 0x00);
-	if (!btdev)
-		return false;
+	client->start_source = 0;
 
-	bthost = bthost_create();
-	if (!bthost) {
-		btdev_destroy(btdev);
-		return false;
-	}
-
-	btdev_set_command_handler(btdev, client_command_callback, hciemu);
-
-	if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC,
-								0, sv) < 0) {
-		bthost_destroy(bthost);
-		btdev_destroy(btdev);
-		return false;
-	}
-
-	hciemu->client_dev = btdev;
-	hciemu->host_stack = bthost;
-
-	hciemu->client_source = create_source_btdev(sv[0], btdev);
-	hciemu->host_source = create_source_bthost(sv[1], bthost);
-
-	return true;
-}
-
-static gboolean start_stack(gpointer user_data)
-{
-	struct hciemu *hciemu = user_data;
-
-	hciemu->start_source = 0;
-
-	bthost_start(hciemu->host_stack);
+	bthost_start(client->host);
 
 	return FALSE;
 }
 
-struct hciemu *hciemu_new(enum hciemu_type type)
+static void hciemu_client_destroy(void *data)
 {
+	struct hciemu_client *client = data;
+
+	if (client->start_source)
+		g_source_remove(client->start_source);
+
+	g_source_remove(client->host_source);
+	g_source_remove(client->source);
+
+	bthost_destroy(client->host);
+	btdev_destroy(client->dev);
+
+	free(client);
+}
+
+static struct hciemu_client *hciemu_client_new(struct hciemu *hciemu,
+							uint8_t id)
+{
+	struct hciemu_client *client;
+	int sv[2];
+
+	client = new0(struct hciemu_client, 1);
+	if (!client)
+		return NULL;
+
+	client->dev = btdev_create(hciemu->btdev_type, id++);
+	if (!client->dev) {
+		free(client);
+		return NULL;
+	}
+
+	client->host = bthost_create();
+	if (!client->host) {
+		btdev_destroy(client->dev);
+		free(client);
+		return NULL;
+	}
+
+	btdev_set_command_handler(client->dev, client_command_callback, client);
+
+	if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC,
+								0, sv) < 0) {
+		bthost_destroy(client->host);
+		btdev_destroy(client->dev);
+		return NULL;
+	}
+
+	client->source = create_source_btdev(sv[0], client->dev);
+	client->host_source = create_source_bthost(sv[1], client->host);
+	client->start_source = g_idle_add(start_host, client);
+
+	return client;
+}
+
+struct hciemu *hciemu_new_num(enum hciemu_type type, uint8_t num)
+{
+
 	struct hciemu *hciemu;
+	int i;
+
+	if (!num)
+		return NULL;
 
 	hciemu = new0(struct hciemu, 1);
 	if (!hciemu)
@@ -348,17 +406,25 @@ struct hciemu *hciemu_new(enum hciemu_type type)
 		return NULL;
 	}
 
-	if (!create_stack(hciemu)) {
-		g_source_remove(hciemu->master_source);
-		btdev_destroy(hciemu->master_dev);
-		queue_destroy(hciemu->post_command_hooks, NULL);
-		free(hciemu);
-		return NULL;
+	hciemu->clients = queue_new();
+
+	for (i = 0; i < num; i++) {
+		struct hciemu_client *client = hciemu_client_new(hciemu, i);
+
+		if (!client) {
+			queue_destroy(hciemu->clients, hciemu_client_destroy);
+			break;
+		}
+
+		queue_push_tail(hciemu->clients, client);
 	}
 
-	hciemu->start_source = g_idle_add(start_stack, hciemu);
-
 	return hciemu_ref(hciemu);
+}
+
+struct hciemu *hciemu_new(enum hciemu_type type)
+{
+	return hciemu_new_num(type, 1);
 }
 
 struct hciemu *hciemu_ref(struct hciemu *hciemu)
@@ -380,17 +446,10 @@ void hciemu_unref(struct hciemu *hciemu)
 		return;
 
 	queue_destroy(hciemu->post_command_hooks, destroy_command_hook);
+	queue_destroy(hciemu->clients, hciemu_client_destroy);
 
-	if (hciemu->start_source)
-		g_source_remove(hciemu->start_source);
-
-	g_source_remove(hciemu->host_source);
-	g_source_remove(hciemu->client_source);
-	g_source_remove(hciemu->master_source);
-
-	bthost_destroy(hciemu->host_stack);
-	btdev_destroy(hciemu->client_dev);
-	btdev_destroy(hciemu->master_dev);
+	g_source_remove(hciemu->source);
+	btdev_destroy(hciemu->dev);
 
 	free(hciemu);
 }
@@ -419,6 +478,15 @@ static void btdev_client_debug(const char *str, void *user_data)
 					"btdev[bthost]: %s", str);
 }
 
+static void hciemu_client_set_debug(void *data, void *user_data)
+{
+	struct hciemu_client *client = data;
+	struct hciemu *hciemu = user_data;
+
+	btdev_set_debug(client->dev, btdev_client_debug, hciemu, NULL);
+	bthost_set_debug(client->host, bthost_debug, hciemu, NULL);
+}
+
 bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
 			void *user_data, hciemu_destroy_func_t destroy)
 {
@@ -432,9 +500,9 @@ bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
 	hciemu->debug_destroy = destroy;
 	hciemu->debug_data = user_data;
 
-	btdev_set_debug(hciemu->master_dev, btdev_master_debug, hciemu, NULL);
-	btdev_set_debug(hciemu->client_dev, btdev_client_debug, hciemu, NULL);
-	bthost_set_debug(hciemu->host_stack, bthost_debug, hciemu, NULL);
+	btdev_set_debug(hciemu->dev, btdev_master_debug, hciemu, NULL);
+
+	queue_foreach(hciemu->clients, hciemu_client_set_debug, hciemu);
 
 	return true;
 }
@@ -443,10 +511,10 @@ const char *hciemu_get_address(struct hciemu *hciemu)
 {
 	const uint8_t *addr;
 
-	if (!hciemu || !hciemu->master_dev)
+	if (!hciemu || !hciemu->dev)
 		return NULL;
 
-	addr = btdev_get_bdaddr(hciemu->master_dev);
+	addr = btdev_get_bdaddr(hciemu->dev);
 	sprintf(hciemu->bdaddr_str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
 			addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
 	return hciemu->bdaddr_str;
@@ -454,50 +522,62 @@ const char *hciemu_get_address(struct hciemu *hciemu)
 
 uint8_t *hciemu_get_features(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->master_dev)
+	if (!hciemu || !hciemu->dev)
 		return NULL;
 
-	return btdev_get_features(hciemu->master_dev);
+	return btdev_get_features(hciemu->dev);
 }
 
 const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->master_dev)
+	if (!hciemu || !hciemu->dev)
 		return NULL;
 
-	return btdev_get_bdaddr(hciemu->master_dev);
+	return btdev_get_bdaddr(hciemu->dev);
+}
+
+const uint8_t *hciemu_client_bdaddr(struct hciemu_client *client)
+{
+	if (!client)
+		return NULL;
+
+	return btdev_get_bdaddr(client->dev);
 }
 
 const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->client_dev)
+	struct hciemu_client *client;
+
+	if (!hciemu)
 		return NULL;
 
-	return btdev_get_bdaddr(hciemu->client_dev);
+	client = hciemu_get_client(hciemu, 0);
+
+	return hciemu_client_bdaddr(client);
 }
 
 uint8_t hciemu_get_master_scan_enable(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->master_dev)
+	if (!hciemu || !hciemu->dev)
 		return 0;
 
-	return btdev_get_scan_enable(hciemu->master_dev);
+	return btdev_get_scan_enable(hciemu->dev);
 }
 
 uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->master_dev)
+	if (!hciemu || !hciemu->dev)
 		return 0;
 
-	return btdev_get_le_scan_enable(hciemu->master_dev);
+	return btdev_get_le_scan_enable(hciemu->dev);
 }
 
 void hciemu_set_master_le_states(struct hciemu *hciemu, const uint8_t *le_states)
 {
-	if (!hciemu || !hciemu->master_dev)
+	if (!hciemu || !hciemu->dev)
 		return;
 
-	btdev_set_le_states(hciemu->master_dev, le_states);
+	btdev_set_le_states(hciemu->dev, le_states);
 }
 
 bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
@@ -559,7 +639,7 @@ int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 		return -1;
 	}
 
-	return btdev_add_hook(hciemu->master_dev, hook_type, opcode, function,
+	return btdev_add_hook(hciemu->dev, hook_type, opcode, function,
 								user_data);
 }
 
@@ -588,5 +668,5 @@ bool hciemu_del_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 		return false;
 	}
 
-	return btdev_del_hook(hciemu->master_dev, hook_type, opcode);
+	return btdev_del_hook(hciemu->dev, hook_type, opcode);
 }
