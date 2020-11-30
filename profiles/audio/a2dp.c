@@ -105,6 +105,7 @@ struct a2dp_setup {
 	gboolean start;
 	GSList *cb;
 	GIOChannel *io;
+	guint id;
 	int ref;
 };
 
@@ -206,6 +207,9 @@ static void setup_free(struct a2dp_setup *s)
 		g_io_channel_shutdown(s->io, TRUE, NULL);
 		g_io_channel_unref(s->io);
 	}
+
+	if (s->id)
+		g_source_remove(s->id);
 
 	queue_destroy(s->eps, NULL);
 
@@ -1166,6 +1170,8 @@ static gboolean a2dp_reconfigure(gpointer data)
 	struct avdtp_media_codec_capability *rsep_codec;
 	struct avdtp_service_capability *cap;
 
+	setup->id = 0;
+
 	if (!sep->lsep) {
 		error("no valid local SEP");
 		posix_err = -EINVAL;
@@ -1200,6 +1206,20 @@ static gboolean a2dp_reconfigure(gpointer data)
 failed:
 	finalize_setup_errno(setup, posix_err, finalize_config, NULL);
 	return FALSE;
+}
+
+static bool setup_reconfigure(struct a2dp_setup *setup)
+{
+	if (!setup->reconfigure || setup->id)
+		return false;
+
+	DBG("%p", setup);
+
+	setup->id = g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
+
+	setup->reconfigure = FALSE;
+
+	return true;
 }
 
 static struct a2dp_remote_sep *get_remote_sep(struct a2dp_channel *chan,
@@ -1238,8 +1258,7 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup->rsep)
 		setup->rsep = get_remote_sep(setup->chan, stream);
 
-	if (setup->reconfigure)
-		g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
+	setup_reconfigure(setup);
 }
 
 static void abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -1283,10 +1302,8 @@ static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
-	if (setup->reconfigure) {
-		g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
+	if (setup_reconfigure(setup))
 		return;
-	}
 
 	setup_unref(setup);
 }
