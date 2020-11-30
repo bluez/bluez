@@ -127,7 +127,7 @@ static void batt_io_ccc_written_cb(uint16_t att_ecode, void *user_data)
 	}
 
 	batt->battery = btd_battery_register(device_get_path(batt->device),
-					     "GATT Battery Service");
+					     "GATT Battery Service", NULL);
 
 	if (!batt->battery) {
 		batt_reset(batt);
