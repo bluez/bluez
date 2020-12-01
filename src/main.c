@@ -394,7 +394,7 @@ static void parse_br_config(GKeyFile *config)
 		  0xFFFF},
 		{ "PageTimeout",
 		  &btd_opts.defaults.br.page_timeout,
-		  sizeof(btd_opts.defaults.br.page_scan_win),
+		  sizeof(btd_opts.defaults.br.page_timeout),
 		  0x0001,
 		  0xFFFF},
 		{ "MinSniffInterval",
