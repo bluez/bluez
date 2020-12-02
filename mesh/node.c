@@ -856,6 +856,8 @@ static void convert_node_to_storage(struct mesh_node *node,
 {
 	const struct l_queue_entry *entry;
 
+	memset(db_node, 0, sizeof(struct mesh_config_node));
+
 	db_node->cid = node->comp.cid;
 	db_node->pid = node->comp.pid;
 	db_node->vid = node->comp.vid;
