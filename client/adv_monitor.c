@@ -270,7 +270,7 @@ void adv_monitor_remove_manager(DBusConnection *conn)
 
 static void register_setup(DBusMessageIter *iter, void *user_data)
 {
-	const char *path = ADV_MONITOR_APP_PATH;
+	const char *path = "/";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
@@ -293,7 +293,7 @@ static void register_reply(DBusMessage *message, void *user_data)
 
 static void unregister_setup(DBusMessageIter *iter, void *user_data)
 {
-	const char *path = ADV_MONITOR_APP_PATH;
+	const char *path = "/";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
