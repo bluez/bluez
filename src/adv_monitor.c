@@ -775,7 +775,7 @@ static struct adv_monitor_app *app_create(DBusConnection *conn,
 	app->manager = manager;
 	app->reg = NULL;
 
-	app->client = g_dbus_client_new(conn, sender, path);
+	app->client = g_dbus_client_new_full(conn, sender, path, path);
 	if (!app->client) {
 		app_destroy(app);
 		return NULL;
