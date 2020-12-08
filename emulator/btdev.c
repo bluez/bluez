@@ -617,6 +617,15 @@ static int cmd_host_buffer_size(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_host_num_completed_pkts(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	/* This command is special in the sense that no event is
+	 * normally generated after the command has completed.
+	 */
+	return 0;
+}
+
 static int cmd_read_bdaddr(struct btdev *dev, const void *data, uint8_t len)
 {
 	struct bt_hci_rsp_read_bd_addr rsp;
@@ -637,6 +646,8 @@ static int cmd_read_bdaddr(struct btdev *dev, const void *data, uint8_t len)
 					cmd_remote_version_complete), \
 	CMD(BT_HCI_CMD_SET_HOST_FLOW_CONTROL, cmd_set_host_flowctl, NULL), \
 	CMD(BT_HCI_CMD_HOST_BUFFER_SIZE, cmd_host_buffer_size, NULL), \
+	CMD(BT_HCI_CMD_HOST_NUM_COMPLETED_PACKETS, \
+					cmd_host_num_completed_pkts, NULL), \
 	CMD(BT_HCI_CMD_READ_BD_ADDR, cmd_read_bdaddr, NULL)
 
 static void set_common_commands_bredrle(struct btdev *btdev)
