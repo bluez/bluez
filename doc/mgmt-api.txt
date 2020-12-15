@@ -3800,6 +3800,58 @@ Add Extended Advertising Data Command
 				Busy
 
 
+Add Advertisement Patterns Monitor With RSSI Threshold Command
+==============================================================
+
+	Command Code:		0x0056
+	Controller Index:	<controller id>
+	Command Parameters:	RSSI_Data {
+					High_Threshold (1 Octet)
+					High_Threshold_Timer (2 Octets)
+					Low_Threshold (1 Octet)
+					Low_Threshold_Timer (2 Octets)
+					Sampling_Period (1 Octet)
+				}
+				Pattern_Count (1 Octet)
+				Pattern1 {
+					AD_Type (1 Octet)
+					Offset (1 Octet)
+					Length (1 Octet)
+					Value (31 Octets)
+				}
+				Pattern2 { }
+				...
+	Return Parameters:	Monitor_Handle (2 Octets)
+
+	This command is essentially the same as Add Advertisement Patterns
+	Monitor Command (0x0052), but with an additional RSSI parameters.
+	As such, if the kernel supports advertisement filtering, then the
+	advertisement data will be filtered in accordance with the set
+	RSSI parameters. Otherwise, it would behave exactly the same as the
+	Add Advertisement Patterns Monitor Command.
+
+	Devices would be considered "in-range" if the RSSI of the received adv
+	packets are greater than High_Threshold dBm for High_Threshold_Timer
+	seconds. Similarly, devices would be considered lost if no received
+	adv have RSSI greater than Low_Threshold dBm for Low_Threshold_Timer
+	seconds. Only adv packets of "in-range" device would be propagated.
+
+	The meaning of Sampling_Period is as follows:
+		0x00	All adv packets from "in-range" devices would be
+			propagated.
+		0xFF	Only the first adv data of "in-range" devices would be
+			propagated. If the device becomes lost, then the first
+			data when it is found again will also be propagated.
+		other	Advertisement data would be grouped into 100ms * N
+			time period. Data in the same group will only be
+			reported once, with the RSSI value being averaged out.
+
+	Possible errors:	Failed
+				Busy
+				No Resources
+				Invalid Parameters
+
+
 Command Complete Event
 ======================
 
