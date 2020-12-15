@@ -4063,6 +4063,7 @@ static int cmd_read_iso_tx_sync(struct btdev *dev, const void *data,
 static int cmd_set_cig_params(struct btdev *dev, const void *data,
 							uint8_t len)
 {
+	const struct bt_hci_cmd_le_set_cig_params *cmd = data;
 	struct lescp {
 		struct bt_hci_rsp_le_set_cig_params params;
 		uint16_t handle;
@@ -4072,7 +4073,7 @@ static int cmd_set_cig_params(struct btdev *dev, const void *data,
 
 	memcpy(&dev->le_cig, data, len);
 	rsp.params.status = BT_HCI_ERR_SUCCESS;
-	rsp.params.cig_id = 0x00;
+	rsp.params.cig_id = cmd->cig_id;
 	rsp.params.num_handles = 1;
 	rsp.handle = cpu_to_le16(ISO_HANDLE);
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_CIG_PARAMS, &rsp, sizeof(rsp));
