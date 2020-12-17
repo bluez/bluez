@@ -923,6 +923,7 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 {
 	struct btconn *conn;
 	const uint8_t *ia, *ra;
+	uint8_t ia_type, ra_type;
 
 	conn = malloc(sizeof(*conn));
 	if (!conn)
@@ -939,14 +940,18 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 
 	if (bthost->conn_init) {
 		ia = bthost->bdaddr;
+		ia_type = addr_type;
 		ra = conn->bdaddr;
+		ra_type = conn->addr_type;
 	} else {
 		ia = conn->bdaddr;
+		ia_type = conn->addr_type;
 		ra = bthost->bdaddr;
+		ra_type = addr_type;
 	}
 
-	conn->smp_data = smp_conn_add(bthost->smp_data, handle, ia, ra,
-						addr_type, bthost->conn_init);
+	conn->smp_data = smp_conn_add(bthost->smp_data, handle, ia, ia_type,
+					ra, ra_type, bthost->conn_init);
 
 	if (bthost->new_conn_cb)
 		bthost->new_conn_cb(conn->handle, bthost->new_conn_data);

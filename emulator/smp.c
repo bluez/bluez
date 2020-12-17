@@ -834,8 +834,22 @@ void smp_conn_encrypted(void *conn_data, uint8_t encrypt)
 	distribute_keys(conn);
 }
 
-void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
-			const uint8_t *ra, uint8_t addr_type, bool conn_init)
+static uint8_t type2hci(uint8_t addr_type)
+{
+	switch (addr_type) {
+	case BDADDR_BREDR:
+	case BDADDR_LE_PUBLIC:
+		return LE_PUBLIC_ADDRESS;
+	case BDADDR_LE_RANDOM:
+		return LE_RANDOM_ADDRESS;
+	}
+
+	return 0x00;
+}
+
+void *smp_conn_add(void *smp_data, uint16_t handle,
+			const uint8_t *ia, uint8_t ia_type,
+			const uint8_t *ra, uint8_t ra_type, bool conn_init)
 {
 	struct smp *smp = smp_data;
 	struct smp_conn *conn;
@@ -848,11 +862,11 @@ void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
 
 	conn->smp = smp;
 	conn->handle = handle;
-	conn->addr_type = addr_type;
 	conn->out = conn_init;
+	conn->addr_type = conn_init ? ia_type : ra_type;
 
-	conn->ia_type = LE_PUBLIC_ADDRESS;
-	conn->ra_type = LE_PUBLIC_ADDRESS;
+	conn->ia_type = type2hci(ia_type);
+	conn->ra_type = type2hci(ra_type);
 	memcpy(conn->ia, ia, 6);
 	memcpy(conn->ra, ra, 6);
 

@@ -142,8 +142,9 @@ void bthost_start(struct bthost *bthost);
 
 void *smp_start(struct bthost *bthost);
 void smp_stop(void *smp_data);
-void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
-			const uint8_t *ra, uint8_t addr_type, bool conn_init);
+void *smp_conn_add(void *smp_data, uint16_t handle,
+			const uint8_t *ia, uint8_t ia_type,
+			const uint8_t *ra, uint8_t ra_type, bool conn_init);
 void smp_conn_del(void *conn_data);
 void smp_conn_encrypted(void *conn_data, uint8_t encrypt);
 void smp_data(void *conn_data, const void *data, uint16_t len);
