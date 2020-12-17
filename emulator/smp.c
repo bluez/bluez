@@ -857,6 +857,8 @@ void *smp_conn_add(void *smp_data, uint16_t handle, const uint8_t *ia,
 	memcpy(conn->ia, ia, 6);
 	memcpy(conn->ra, ra, 6);
 
+	bt_crypto_random_bytes(smp->crypto, conn->prnd, sizeof(conn->prnd));
+
 	return conn;
 }
 
