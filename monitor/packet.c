@@ -3879,7 +3879,7 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		index_current = index;
 	}
 
-	if (index != HCI_DEV_NONE && index > MAX_INDEX) {
+	if (index != HCI_DEV_NONE && index >= MAX_INDEX) {
 		print_field("Invalid index (%d)", index);
 		return;
 	}
@@ -11133,7 +11133,7 @@ void packet_hci_command(struct timeval *tv, struct ucred *cred, uint16_t index,
 	char extra_str[25], vendor_str[150];
 	int i;
 
-	if (index > MAX_INDEX) {
+	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
 		return;
 	}
@@ -11240,7 +11240,7 @@ void packet_hci_event(struct timeval *tv, struct ucred *cred, uint16_t index,
 	char extra_str[25];
 	int i;
 
-	if (index > MAX_INDEX) {
+	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
 		return;
 	}
@@ -11320,7 +11320,7 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint8_t flags = acl_flags(handle);
 	char handle_str[16], extra_str[32];
 
-	if (index > MAX_INDEX) {
+	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
 		return;
 	}
@@ -11369,7 +11369,7 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint8_t flags = acl_flags(handle);
 	char handle_str[16], extra_str[32];
 
-	if (index > MAX_INDEX) {
+	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
 		return;
 	}
@@ -11416,7 +11416,7 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint8_t flags = acl_flags(handle);
 	char handle_str[16], extra_str[32];
 
-	if (index > MAX_INDEX) {
+	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
 		return;
 	}
