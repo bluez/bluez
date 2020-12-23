@@ -4170,6 +4170,22 @@ static int cmd_read_per_adv_list_size(struct btdev *dev, const void *data,
 	return -ENOTSUP;
 }
 
+static int cmd_read_tx_power(struct btdev *dev, const void *data, uint8_t len)
+{
+	struct bt_hci_rsp_le_read_tx_power rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	/* a random default value */
+	rsp.max_tx_power = 0x07;
+	rsp.min_tx_power = 0xDE;
+
+	cmd_complete(dev, BT_HCI_CMD_LE_READ_TX_POWER, &rsp, sizeof(rsp));
+
+	return 0;
+}
+
 #define CMD_LE_50 \
 	CMD(BT_HCI_CMD_LE_SET_DEFAULT_PHY, cmd_set_default_phy,	NULL), \
 	CMD(BT_HCI_CMD_LE_SET_ADV_SET_RAND_ADDR, cmd_set_adv_rand_addr, NULL), \
@@ -4205,7 +4221,8 @@ static int cmd_read_per_adv_list_size(struct btdev *dev, const void *data,
 					NULL), \
 	CMD(BT_HCI_CMD_LE_CLEAR_PERIODIC_ADV_LIST, cmd_per_adv_clear, NULL), \
 	CMD(BT_HCI_CMD_LE_READ_PERIODIC_ADV_LIST_SIZE, \
-					cmd_read_per_adv_list_size, NULL)
+					cmd_read_per_adv_list_size, NULL), \
+	CMD(BT_HCI_CMD_LE_READ_TX_POWER, cmd_read_tx_power, NULL)
 
 static const struct btdev_cmd cmd_le_5_0[] = {
 	CMD_COMMON_ALL,
@@ -4240,6 +4257,7 @@ static void set_le_50_commands(struct btdev *btdev)
 	btdev->commands[38] |= 0x10;	/* LE Remove Periodic Adv List */
 	btdev->commands[38] |= 0x20;	/* LE Clear Periodic Adv List */
 	btdev->commands[38] |= 0x40;	/* LE Read Periodic Adv List Size */
+	btdev->commands[38] |= 0x80;	/* LE Read Transmit Power */
 	btdev->cmds = cmd_le_5_0;
 }
 
