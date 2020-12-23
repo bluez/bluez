@@ -7592,6 +7592,24 @@ static const struct generic_data add_ext_advertising_success_15 = {
 	.expect_hci_len = sizeof(set_connectable_on_ext_adv_param),
 };
 
+static uint8_t preset_connectable_on_ext_adv_param[] = {
+	0x01,					/* Handle */
+	0x13, 0x00,				/* Event type */
+	0x00, 0x08, 0x00,			/* min_interval */
+	0x00, 0x08, 0x00,			/* max_interval */
+	0x07,					/* channel_map */
+	0x00,					/* own_addr_type */
+	0x00,					/* peer_addr_type */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* peer_addr */
+	0x00,					/* filter_policy */
+	0x00,					/* Tx power */
+	0x01,					/* Primary PHY */
+	0x00,					/* primary adv max skip */
+	0x01,					/* Secondary PHY */
+	0x00,					/* adv sid*/
+	0x00,					/* Scan req notification */
+};
+
 static const struct generic_data add_ext_advertising_success_16 = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_on_param,
@@ -7600,8 +7618,26 @@ static const struct generic_data add_ext_advertising_success_16 = {
 	.expect_param = set_connectable_settings_param_3,
 	.expect_len = sizeof(set_connectable_settings_param_3),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
-	.expect_hci_param = set_connectable_on_ext_adv_param,
-	.expect_hci_len = sizeof(set_connectable_on_ext_adv_param),
+	.expect_hci_param = preset_connectable_on_ext_adv_param,
+	.expect_hci_len = sizeof(preset_connectable_on_ext_adv_param),
+};
+
+static uint8_t preset_connectable_off_ext_adv_param[] = {
+	0x01,					/* Handle */
+	0x10, 0x00,				/* Event type */
+	0x00, 0x08, 0x00,			/* min_interval */
+	0x00, 0x08, 0x00,			/* max_interval */
+	0x07,					/* channel_map */
+	0x01,					/* own_addr_type */
+	0x00,					/* peer_addr_type */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* peer_addr */
+	0x00,					/* filter_policy */
+	0x00,					/* Tx power */
+	0x01,					/* Primary PHY */
+	0x00,					/* primary adv max skip */
+	0x01,					/* Secondary PHY */
+	0x00,					/* adv sid*/
+	0x00,					/* Scan req notification */
 };
 
 static const struct generic_data add_ext_advertising_success_17 = {
@@ -7612,8 +7648,8 @@ static const struct generic_data add_ext_advertising_success_17 = {
 	.expect_param = set_le_settings_param_2,
 	.expect_len = sizeof(set_le_settings_param_2),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
-	.expect_hci_param = set_connectable_off_ext_adv_param,
-	.expect_hci_len = sizeof(set_connectable_off_ext_adv_param),
+	.expect_hci_param = preset_connectable_off_ext_adv_param,
+	.expect_hci_len = sizeof(preset_connectable_off_ext_adv_param),
 };
 
 static const struct generic_data add_ext_advertising_le_off = {
@@ -8240,6 +8276,24 @@ static void setup_add_advertising_1m(const void *test_data)
 						NULL, NULL);
 }
 
+static uint8_t preset_connectable_on_ext_pdu_adv_param[] = {
+	0x01,					/* Handle */
+	0x01, 0x00,				/* Event type */
+	0x00, 0x08, 0x00,			/* min_interval */
+	0x00, 0x08, 0x00,			/* max_interval */
+	0x07,					/* channel_map */
+	0x00,					/* own_addr_type */
+	0x00,					/* peer_addr_type */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* peer_addr */
+	0x00,					/* filter_policy */
+	0x00,					/* Tx power */
+	0x01,					/* Primary PHY */
+	0x00,					/* primary adv max skip */
+	0x01,					/* Secondary PHY */
+	0x00,					/* adv sid*/
+	0x00,					/* Scan req notification */
+};
+
 static const struct generic_data add_ext_advertising_conn_on_1m = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_on_param,
@@ -8248,8 +8302,8 @@ static const struct generic_data add_ext_advertising_conn_on_1m = {
 	.expect_param = set_connectable_settings_param_3,
 	.expect_len = sizeof(set_connectable_settings_param_3),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
-	.expect_hci_param = set_connectable_on_ext_pdu_adv_param,
-	.expect_hci_len = sizeof(set_connectable_on_ext_pdu_adv_param),
+	.expect_hci_param = preset_connectable_on_ext_pdu_adv_param,
+	.expect_hci_len = sizeof(preset_connectable_on_ext_pdu_adv_param),
 };
 
 static void setup_add_advertising_connectable_1m(const void *test_data)
@@ -8282,6 +8336,24 @@ static void setup_add_advertising_connectable_1m(const void *test_data)
 						NULL, NULL);
 }
 
+static uint8_t preset_connectable_off_ext_1m_adv_param[] = {
+	0x01,					/* Handle */
+	0x00, 0x00,				/* Event type */
+	0x00, 0x08, 0x00,			/* min_interval */
+	0x00, 0x08, 0x00,			/* max_interval */
+	0x07,					/* channel_map */
+	0x01,					/* own_addr_type */
+	0x00,					/* peer_addr_type */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* peer_addr */
+	0x00,					/* filter_policy */
+	0x00,					/* Tx power */
+	0x01,					/* Primary PHY */
+	0x00,					/* primary adv max skip */
+	0x01,					/* Secondary PHY */
+	0x00,					/* adv sid*/
+	0x00,					/* Scan req notification */
+};
+
 static const struct generic_data add_ext_advertising_conn_off_1m = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_off_param,
@@ -8290,8 +8362,8 @@ static const struct generic_data add_ext_advertising_conn_off_1m = {
 	.expect_param = set_le_settings_param_2,
 	.expect_len = sizeof(set_le_settings_param_2),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
-	.expect_hci_param = set_connectable_off_ext_1m_adv_param,
-	.expect_hci_len = sizeof(set_connectable_off_ext_1m_adv_param),
+	.expect_hci_param = preset_connectable_off_ext_1m_adv_param,
+	.expect_hci_len = sizeof(preset_connectable_off_ext_1m_adv_param),
 };
 
 static const uint8_t get_phy_param[] = {
