@@ -368,7 +368,8 @@ static void desc_read_cb(bool success, uint8_t att_ecode,
 	}
 
 	/* Read the stored data from db */
-	if (!gatt_db_attribute_read(desc->attr, 0, 0, NULL, read_op_cb, op)) {
+	if (!gatt_db_attribute_read(desc->attr, op->offset, 0, NULL, read_op_cb,
+									op)) {
 		error("Failed to read database");
 		att_ecode = BT_ATT_ERROR_UNLIKELY;
 		goto fail;
@@ -906,7 +907,8 @@ static void chrc_read_cb(bool success, uint8_t att_ecode, const uint8_t *value,
 	}
 
 	/* Read the stored data from db */
-	if (!gatt_db_attribute_read(chrc->attr, 0, 0, NULL, read_op_cb, op)) {
+	if (!gatt_db_attribute_read(chrc->attr, op->offset, 0, NULL, read_op_cb,
+									op)) {
 		error("Failed to read database");
 		att_ecode = BT_ATT_ERROR_UNLIKELY;
 		goto fail;
