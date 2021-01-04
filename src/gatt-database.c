@@ -1075,6 +1075,11 @@ static void cli_feat_read_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
+	if (offset >= sizeof(state->cli_feat)) {
+		ecode = BT_ATT_ERROR_INVALID_OFFSET;
+		goto done;
+	}
+
 	len = sizeof(state->cli_feat) - offset;
 	value = len ? &state->cli_feat[offset] : NULL;
 
