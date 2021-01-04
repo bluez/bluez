@@ -50,11 +50,40 @@ static bool match_bound_key(const void *a, const void *b)
 	return key->net_idx == idx;
 }
 
+static void finalize_key(void *a, void *b)
+{
+	struct mesh_app_key *key = a;
+	uint16_t net_idx = L_PTR_TO_UINT(b);
+
+	if (key->net_idx != net_idx)
+		return;
+
+	if (key->new_key_aid == APP_AID_INVALID)
+		return;
+
+	key->key_aid = key->new_key_aid;
+
+	key->new_key_aid = APP_AID_INVALID;
+
+	memcpy(key->key, key->new_key, 16);
+}
+
+void appkey_finalize(struct mesh_net *net, uint16_t net_idx)
+{
+	struct l_queue *app_keys;
+
+	app_keys = mesh_net_get_app_keys(net);
+	if (!app_keys)
+		return;
+
+	l_queue_foreach(app_keys, finalize_key, L_UINT_TO_PTR(net_idx));
+}
+
 static struct mesh_app_key *app_key_new(void)
 {
 	struct mesh_app_key *key = l_new(struct mesh_app_key, 1);
 
-	key->new_key_aid = 0xFF;
+	key->new_key_aid = APP_AID_INVALID;
 	return key;
 }
 
@@ -146,7 +175,7 @@ const uint8_t *appkey_get_key(struct mesh_net *net, uint16_t app_idx,
 		return app_key->key;
 	}
 
-	if (app_key->new_key_aid == NET_NID_INVALID)
+	if (app_key->new_key_aid == APP_AID_INVALID)
 		return NULL;
 
 	*key_aid = app_key->new_key_aid;

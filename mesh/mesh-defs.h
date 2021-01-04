@@ -100,6 +100,7 @@
 
 #define NET_IDX_MAX		0x0fff
 #define APP_IDX_MAX		0x0fff
+#define APP_AID_INVALID	0xff
 
 #define APP_IDX_MASK		0x0fff
 #define APP_IDX_DEV_REMOTE	0x6fff
