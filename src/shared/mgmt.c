@@ -595,7 +595,7 @@ static void mgmt_tlv_free(struct mgmt_tlv *entry)
 
 void mgmt_tlv_list_free(struct mgmt_tlv_list *tlv_list)
 {
-	queue_destroy(tlv_list->tlv_queue, NULL);
+	queue_destroy(tlv_list->tlv_queue, free);
 	free(tlv_list);
 }
 
