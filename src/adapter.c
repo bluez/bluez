@@ -610,6 +610,19 @@ static void set_mode_complete(uint8_t status, uint16_t length,
 	new_settings_callback(adapter->dev_id, length, param, adapter);
 }
 
+static void remove_temporary_devices(struct btd_adapter *adapter)
+{
+	GSList *l, *next;
+
+	for (l = adapter->devices; l; l = next) {
+		struct btd_device *dev = l->data;
+
+		next = g_slist_next(l);
+		if (device_is_temporary(dev))
+			btd_adapter_remove_device(adapter, dev);
+	}
+}
+
 static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
 							uint8_t mode)
 {
@@ -2888,8 +2901,10 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 		param = &mode;
 		len = sizeof(mode);
 
-		if (!mode)
+		if (!mode) {
 			clear_discoverable(adapter);
+			remove_temporary_devices(adapter);
+		}
 
 		break;
 	case MGMT_SETTING_DISCOVERABLE:
@@ -9875,6 +9890,7 @@ void adapter_shutdown(void)
 			continue;
 
 		clear_discoverable(adapter);
+		remove_temporary_devices(adapter);
 		set_mode(adapter, MGMT_OP_SET_POWERED, 0x00);
 
 		adapter_remaining++;
