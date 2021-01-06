@@ -241,6 +241,9 @@ bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 uint32_t
 gatt_db_attribute_get_permissions(const struct gatt_db_attribute *attrib);
 
+bool gatt_db_attribute_set_fixed_length(struct gatt_db_attribute *attrib,
+						uint16_t len);
+
 typedef void (*gatt_db_attribute_read_t) (struct gatt_db_attribute *attrib,
 						int err, const uint8_t *value,
 						size_t length, void *user_data);
