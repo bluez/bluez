@@ -108,9 +108,6 @@ struct bt_gatt_server {
 	struct queue *prep_queue;
 	unsigned int max_prep_queue_len;
 
-	struct async_read_op *pending_read_op;
-	struct async_write_op *pending_write_op;
-
 	bt_gatt_server_debug_func_t debug_callback;
 	bt_gatt_server_destroy_func_t debug_destroy;
 	void *debug_data;
@@ -139,12 +136,6 @@ static void bt_gatt_server_free(struct bt_gatt_server *server)
 	bt_att_unregister(server->att, server->read_multiple_vl_id);
 	bt_att_unregister(server->att, server->prep_write_id);
 	bt_att_unregister(server->att, server->exec_write_id);
-
-	if (server->pending_read_op)
-		server->pending_read_op->server = NULL;
-
-	if (server->pending_write_op)
-		server->pending_write_op->server = NULL;
 
 	queue_destroy(server->prep_queue, prep_write_data_destroy);
 
@@ -324,9 +315,7 @@ error:
 
 static void async_read_op_destroy(struct async_read_op *op)
 {
-	if (op->server)
-		op->server->pending_read_op = NULL;
-
+	bt_gatt_server_unref(op->server);
 	queue_destroy(op->db_data, NULL);
 	free(op->pdu);
 	free(op);
@@ -342,11 +331,6 @@ static void read_by_type_read_complete_cb(struct gatt_db_attribute *attr,
 	struct bt_gatt_server *server = op->server;
 	uint16_t mtu;
 	uint16_t handle;
-
-	if (!server) {
-		async_read_op_destroy(op);
-		return;
-	}
 
 	mtu = bt_att_get_mtu(server->att);
 	handle = gatt_db_attribute_get_handle(attr);
@@ -524,11 +508,6 @@ static void read_by_type_cb(struct bt_att_chan *chan, uint8_t opcode,
 		goto error;
 	}
 
-	if (server->pending_read_op) {
-		ecode = BT_ATT_ERROR_UNLIKELY;
-		goto error;
-	}
-
 	op = new0(struct async_read_op, 1);
 	op->pdu = malloc(bt_att_get_mtu(server->att));
 	if (!op->pdu) {
@@ -539,9 +518,8 @@ static void read_by_type_cb(struct bt_att_chan *chan, uint8_t opcode,
 
 	op->chan = chan;
 	op->opcode = opcode;
-	op->server = server;
+	op->server = bt_gatt_server_ref(server);
 	op->db_data = q;
-	server->pending_read_op = op;
 
 	process_read_by_type(op);
 
@@ -764,9 +742,7 @@ error:
 
 static void async_write_op_destroy(struct async_write_op *op)
 {
-	if (op->server)
-		op->server->pending_write_op = NULL;
-
+	bt_gatt_server_unref(op->server);
 	free(op);
 }
 
@@ -777,7 +753,7 @@ static void write_complete_cb(struct gatt_db_attribute *attr, int err,
 	struct bt_gatt_server *server = op->server;
 	uint16_t handle;
 
-	if (!server || op->opcode == BT_ATT_OP_WRITE_CMD) {
+	if (op->opcode == BT_ATT_OP_WRITE_CMD) {
 		async_write_op_destroy(op);
 		return;
 	}
@@ -841,16 +817,10 @@ static void write_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
 	if (ecode)
 		goto error;
 
-	if (server->pending_write_op) {
-		ecode = BT_ATT_ERROR_UNLIKELY;
-		goto error;
-	}
-
 	op = new0(struct async_write_op, 1);
 	op->chan = chan;
-	op->server = server;
+	op->server = bt_gatt_server_ref(server);
 	op->opcode = opcode;
-	server->pending_write_op = op;
 
 	if (gatt_db_attribute_write(attr, 0, pdu + 2, length - 2, opcode,
 							server->att,
@@ -901,11 +871,6 @@ static void read_complete_cb(struct gatt_db_attribute *attr, int err,
 	uint16_t mtu;
 	uint16_t handle;
 
-	if (!server) {
-		async_read_op_destroy(op);
-		return;
-	}
-
 	util_debug(server->debug_callback, server->debug_data,
 				"Read Complete: err %d", err);
 
@@ -954,16 +919,10 @@ static void handle_read_req(struct bt_att_chan *chan,
 	if (ecode)
 		goto error;
 
-	if (server->pending_read_op) {
-		ecode = BT_ATT_ERROR_UNLIKELY;
-		goto error;
-	}
-
 	op = new0(struct async_read_op, 1);
 	op->chan = chan;
 	op->opcode = opcode;
-	op->server = server;
-	server->pending_read_op = op;
+	op->server = bt_gatt_server_ref(server);
 
 	if (gatt_db_attribute_read(attr, offset, opcode, server->att,
 							read_complete_cb, op))
