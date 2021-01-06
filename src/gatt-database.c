@@ -161,12 +161,14 @@ struct notify {
 	void *user_data;
 };
 
+#define CLI_FEAT_SIZE 1
+
 struct device_state {
 	struct btd_gatt_database *db;
 	bdaddr_t bdaddr;
 	uint8_t bdaddr_type;
 	unsigned int disc_id;
-	uint8_t cli_feat[1];
+	uint8_t cli_feat[CLI_FEAT_SIZE];
 	bool change_aware;
 	bool out_of_sync;
 	struct queue *ccc_states;
@@ -688,18 +690,12 @@ static void gap_appearance_read_cb(struct gatt_db_attribute *attrib,
 
 	dev_class = btd_adapter_get_class(database->adapter);
 
-	if (offset > 2) {
-		error = BT_ATT_ERROR_INVALID_OFFSET;
-		goto done;
-	}
-
 	appearance[0] = dev_class & 0x00ff;
 	appearance[1] = (dev_class >> 8) & 0x001f;
 
 	len -= offset;
 	value = len ? &appearance[offset] : NULL;
 
-done:
 	gatt_db_attribute_read_result(attrib, id, error, value, len);
 }
 
@@ -820,7 +816,7 @@ static void database_add_record(struct btd_gatt_database *database,
 static void populate_gap_service(struct btd_gatt_database *database)
 {
 	bt_uuid_t uuid;
-	struct gatt_db_attribute *service;
+	struct gatt_db_attribute *service, *attrib;
 
 	/* Add the GAP service */
 	bt_uuid16_create(&uuid, UUID_GAP);
@@ -839,10 +835,12 @@ static void populate_gap_service(struct btd_gatt_database *database)
 	 * Device Appearance characteristic.
 	 */
 	bt_uuid16_create(&uuid, GATT_CHARAC_APPEARANCE);
-	gatt_db_service_add_characteristic(service, &uuid, BT_ATT_PERM_READ,
+	attrib = gatt_db_service_add_characteristic(service, &uuid,
+							BT_ATT_PERM_READ,
 							BT_GATT_CHRC_PROP_READ,
 							gap_appearance_read_cb,
 							NULL, database);
+	gatt_db_attribute_set_fixed_length(attrib, 2);
 
 	gatt_db_service_set_active(service, true);
 
@@ -864,11 +862,6 @@ static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
 	handle = gatt_db_attribute_get_handle(attrib);
 
 	DBG("CCC read called for handle: 0x%04x", handle);
-
-	if (offset) {
-		ecode = BT_ATT_ERROR_INVALID_OFFSET;
-		goto done;
-	}
 
 	ccc = get_ccc_state(database, att, handle);
 	if (!ccc) {
@@ -1046,6 +1039,8 @@ service_add_ccc(struct gatt_db_attribute *service,
 		return NULL;
 	}
 
+	gatt_db_attribute_set_fixed_length(ccc, 2);
+
 	ccc_cb->handle = gatt_db_attribute_get_handle(ccc);
 	ccc_cb->callback = write_callback;
 	ccc_cb->destroy = destroy;
@@ -1072,11 +1067,6 @@ static void cli_feat_read_cb(struct gatt_db_attribute *attrib,
 	state = get_device_state(database, att);
 	if (!state) {
 		ecode = BT_ATT_ERROR_UNLIKELY;
-		goto done;
-	}
-
-	if (offset >= sizeof(state->cli_feat)) {
-		ecode = BT_ATT_ERROR_INVALID_OFFSET;
 		goto done;
 	}
 
@@ -1208,6 +1198,7 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 				cli_feat_read_cb, cli_feat_write_cb,
 				database);
 
+	gatt_db_attribute_set_fixed_length(database->cli_feat, CLI_FEAT_SIZE);
 
 	/* Only expose database hash chrc if supported */
 	if (gatt_db_hash_support(database->db)) {
@@ -1215,6 +1206,7 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 		database->db_hash = gatt_db_service_add_characteristic(service,
 				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
 				db_hash_read_cb, NULL, database);
+		gatt_db_attribute_set_fixed_length(database->db_hash, 16);
 	}
 
 	/* Only enable EATT if there is a socket listening */
@@ -1223,6 +1215,7 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 		database->eatt = gatt_db_service_add_characteristic(service,
 				&uuid, BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ,
 				server_feat_read_cb, NULL, database);
+		gatt_db_attribute_set_fixed_length(database->eatt, 1);
 	}
 
 	gatt_db_service_set_active(service, true);
@@ -1254,12 +1247,15 @@ static void populate_devinfo_service(struct btd_gatt_database *database)
 	service = gatt_db_add_service(database->db, &uuid, true, 3);
 
 	if (btd_opts.did_source > 0) {
+		struct gatt_db_attribute *attrib;
+
 		bt_uuid16_create(&uuid, GATT_CHARAC_PNP_ID);
-		gatt_db_service_add_characteristic(service, &uuid,
+		attrib = gatt_db_service_add_characteristic(service, &uuid,
 						BT_ATT_PERM_READ,
 						BT_GATT_CHRC_PROP_READ,
 						device_info_read_pnp_id_cb,
 						NULL, database);
+		gatt_db_attribute_set_fixed_length(attrib, 7);
 	}
 
 	gatt_db_service_set_active(service, true);
