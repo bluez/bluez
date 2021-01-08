@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <alloca.h>
 #include <byteswap.h>
 #include <string.h>
@@ -88,6 +89,9 @@ int strsuffix(const char *str, const char *suffix);
 void *btd_malloc(size_t size);
 
 typedef void (*util_debug_func_t)(const char *str, void *user_data);
+
+void util_debug_va(util_debug_func_t function, void *user_data,
+				const char *format, va_list va);
 
 void util_debug(util_debug_func_t function, void *user_data,
 						const char *format, ...)
