@@ -13,6 +13,10 @@
 
 #include "src/shared/att-types.h"
 
+#define BT_ATT_DEBUG		0x00
+#define BT_ATT_DEBUG_VERBOSE	0x01
+#define BT_ATT_DEBUG_HEXDUMP	0x02
+
 struct bt_att;
 struct bt_att_chan;
 
@@ -41,8 +45,9 @@ typedef void (*bt_att_timeout_func_t)(unsigned int id, uint8_t opcode,
 typedef void (*bt_att_disconnect_func_t)(int err, void *user_data);
 typedef bool (*bt_att_counter_func_t)(uint32_t *sign_cnt, void *user_data);
 
-bool bt_att_set_debug(struct bt_att *att, bt_att_debug_func_t callback,
-				void *user_data, bt_att_destroy_func_t destroy);
+bool bt_att_set_debug(struct bt_att *att, uint8_t level,
+			bt_att_debug_func_t callback, void *user_data,
+			bt_att_destroy_func_t destroy);
 
 uint16_t bt_att_get_mtu(struct bt_att *att);
 bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu);

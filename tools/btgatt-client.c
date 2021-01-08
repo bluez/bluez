@@ -218,7 +218,8 @@ static struct client *client_create(int fd, uint16_t mtu)
 								NULL, NULL);
 
 	if (verbose) {
-		bt_att_set_debug(cli->att, att_debug_cb, "att: ", NULL);
+		bt_att_set_debug(cli->att, BT_ATT_DEBUG_VERBOSE, att_debug_cb,
+								"att: ", NULL);
 		bt_gatt_client_set_debug(cli->gatt, gatt_debug_cb, "gatt: ",
 									NULL);
 	}

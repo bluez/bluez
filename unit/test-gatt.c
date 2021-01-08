@@ -658,7 +658,7 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 
 	switch (test_data->context_type) {
 	case ATT:
-		bt_att_set_debug(context->att, print_debug, "bt_att:", NULL);
+		bt_att_set_debug(context->att, 1, print_debug, "bt_att:", NULL);
 
 		bt_gatt_exchange_mtu(context->att, mtu, NULL, NULL, NULL);
 		break;
