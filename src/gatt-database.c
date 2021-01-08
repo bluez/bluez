@@ -333,7 +333,7 @@ static void att_disconnected(int err, void *user_data)
 		handle = gatt_db_attribute_get_handle(state->db->svc_chngd_ccc);
 
 		ccc = find_ccc_state(state, handle);
-		if (ccc)
+		if (ccc && ccc->value)
 			device_store_svc_chng_ccc(device, state->bdaddr_type,
 								ccc->value);
 
