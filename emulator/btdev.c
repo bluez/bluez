@@ -4408,7 +4408,7 @@ static int cmd_create_cis_complete(struct btdev *dev, const void *data,
 		evt.cig_id = 0x00;
 		evt.cis_id = 0x00;
 
-		le_meta_event(iso->dev, BT_HCI_EVT_LE_CIS_REQ, &evt,
+		le_meta_event(iso->link->dev, BT_HCI_EVT_LE_CIS_REQ, &evt,
 					sizeof(evt));
 	}
 
