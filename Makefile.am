@@ -134,7 +134,6 @@ ell_headers = ell/util.h \
 			ell/base64.h \
 			ell/pkcs5.h \
 			ell/asn1-private.h \
-			ell/pkcs5-private.h \
 			ell/cert-private.h \
 			ell/pem-private.h
 
@@ -156,8 +155,8 @@ ell_sources = ell/private.h ell/missing.h \
 			ell/checksum.c \
 			ell/pem.c \
 			ell/cert.c \
+			ell/cert-crypto.c \
 			ell/key.c \
-			ell/pkcs5.c \
 			ell/base64.c \
 			ell/utf8.c \
 			ell/dbus-private.h \
