@@ -28,11 +28,16 @@
 #define ADV_MONITOR_APP_PATH	"/org/bluez/adv_monitor_app"
 #define ADV_MONITOR_INTERFACE	"org.bluez.AdvertisementMonitor1"
 
+#define RSSI_UNSET_THRESHOLD		127
+#define RSSI_UNSET_TIMEOUT		0
+#define RSSI_UNSET_SAMPLING_PERIOD	256
+
 struct rssi_setting {
 	int16_t high_threshold;
-	uint16_t high_timer;
+	uint16_t high_timeout;
 	int16_t low_threshold;
-	uint16_t low_timer;
+	uint16_t low_timeout;
+	uint16_t sampling_period;
 };
 
 struct pattern {
@@ -59,6 +64,7 @@ static struct adv_monitor_manager {
 
 static uint8_t adv_mon_idx;
 static GSList *adv_mons;
+static struct rssi_setting *current_rssi;
 
 static void remove_adv_monitor(void *data, void *user_data);
 
@@ -131,32 +137,105 @@ static gboolean get_type(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean get_rssi(const GDBusPropertyTable *property,
+static gboolean get_low_threshold(const GDBusPropertyTable *property,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct adv_monitor *adv_monitor = user_data;
 	struct rssi_setting *rssi = adv_monitor->rssi;
-	DBusMessageIter data_iter;
 
-	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
-							NULL, &data_iter);
-	dbus_message_iter_append_basic(&data_iter, DBUS_TYPE_INT16,
-							&rssi->high_threshold);
-	dbus_message_iter_append_basic(&data_iter, DBUS_TYPE_UINT16,
-							&rssi->high_timer);
-	dbus_message_iter_append_basic(&data_iter, DBUS_TYPE_INT16,
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_INT16,
 							&rssi->low_threshold);
-	dbus_message_iter_append_basic(&data_iter, DBUS_TYPE_UINT16,
-							&rssi->low_timer);
-	dbus_message_iter_close_container(iter, &data_iter);
 	return TRUE;
 }
 
-static gboolean rssi_exists(const GDBusPropertyTable *property, void *data)
+static gboolean get_high_threshold(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct adv_monitor *adv_monitor = user_data;
+	struct rssi_setting *rssi = adv_monitor->rssi;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_INT16,
+							&rssi->high_threshold);
+	return TRUE;
+}
+
+static gboolean get_low_timeout(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct adv_monitor *adv_monitor = user_data;
+	struct rssi_setting *rssi = adv_monitor->rssi;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+							&rssi->low_timeout);
+	return TRUE;
+}
+
+static gboolean get_high_timeout(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct adv_monitor *adv_monitor = user_data;
+	struct rssi_setting *rssi = adv_monitor->rssi;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+							&rssi->high_timeout);
+	return TRUE;
+}
+
+static gboolean get_sampling_period(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct adv_monitor *adv_monitor = user_data;
+	struct rssi_setting *rssi = adv_monitor->rssi;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+							&rssi->sampling_period);
+	return TRUE;
+}
+
+static gboolean low_threshold_exists(const GDBusPropertyTable *property,
+								void *data)
 {
 	struct adv_monitor *adv_monitor = data;
 
-	return adv_monitor->rssi != NULL;
+	return adv_monitor->rssi != NULL &&
+		adv_monitor->rssi->low_threshold != RSSI_UNSET_THRESHOLD;
+}
+
+static gboolean high_threshold_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct adv_monitor *adv_monitor = data;
+
+	return adv_monitor->rssi != NULL &&
+		adv_monitor->rssi->high_threshold != RSSI_UNSET_THRESHOLD;
+}
+
+static gboolean low_timeout_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct adv_monitor *adv_monitor = data;
+
+	return adv_monitor->rssi != NULL &&
+		adv_monitor->rssi->low_timeout != RSSI_UNSET_TIMEOUT;
+}
+
+static gboolean high_timeout_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct adv_monitor *adv_monitor = data;
+
+	return adv_monitor->rssi != NULL &&
+		adv_monitor->rssi->high_timeout != RSSI_UNSET_TIMEOUT;
+}
+
+static gboolean sampling_period_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct adv_monitor *adv_monitor = data;
+
+	return adv_monitor->rssi != NULL &&
+		adv_monitor->rssi->sampling_period !=
+						RSSI_UNSET_SAMPLING_PERIOD;
 }
 
 static void append_pattern_content_to_dbus(DBusMessageIter *iter,
@@ -212,7 +291,14 @@ static gboolean pattern_exists(const GDBusPropertyTable *property, void *data)
 
 static const GDBusPropertyTable adv_monitor_props[] = {
 	{ "Type", "s", get_type },
-	{ "RSSIThresholdsAndTimers", "(nqnq)", get_rssi, NULL, rssi_exists },
+	{ "RSSILowThreshold", "n", get_low_threshold, NULL,
+						low_threshold_exists },
+	{ "RSSIHighThreshold", "n", get_high_threshold, NULL,
+						high_threshold_exists },
+	{ "RSSILowTimeout", "q", get_low_timeout, NULL, low_timeout_exists },
+	{ "RSSIHighTimeout", "q", get_high_timeout, NULL, high_timeout_exists },
+	{ "RSSISamplingPeriod", "q", get_sampling_period, NULL,
+						sampling_period_exists },
 	{ "Patterns", "a(yyay)", get_patterns, NULL, pattern_exists },
 	{ }
 };
@@ -266,6 +352,9 @@ void adv_monitor_remove_manager(DBusConnection *conn)
 
 	manager.proxy = NULL;
 	manager.app_registered = FALSE;
+
+	g_free(current_rssi);
+	current_rssi = NULL;
 }
 
 static void register_setup(DBusMessageIter *iter, void *user_data)
@@ -376,58 +465,6 @@ static uint8_t str2bytearray(char *str, uint8_t *arr)
 	return arr_len;
 }
 
-static void parse_rssi_value_pair(char *value_pair, int *low, int *high)
-{
-	char *val1, *val2;
-	bool flag = value_pair[0] == ',';
-
-	val1 = strtok(value_pair, ",");
-
-	if (!val1)
-		return;
-
-	val2 = strtok(NULL, ",");
-
-	if (!val2) {
-		if (!flag)
-			*low = atoi(val1);
-		else
-			*high = atoi(val1);
-	} else {
-		*low = atoi(val1);
-		*high = atoi(val2);
-	}
-}
-
-static struct rssi_setting *parse_rssi(char *range, char *timeout)
-{
-	struct rssi_setting *rssi;
-	int high_threshold, low_threshold, high_timer, low_timer;
-
-	high_threshold = RSSI_DEFAULT_HIGH_THRESHOLD;
-	low_threshold = RSSI_DEFAULT_LOW_THRESHOLD;
-	high_timer = RSSI_DEFAULT_HIGH_TIMEOUT;
-	low_timer = RSSI_DEFAULT_LOW_TIMEOUT;
-
-	parse_rssi_value_pair(range, &low_threshold, &high_threshold);
-	parse_rssi_value_pair(timeout, &low_timer, &high_timer);
-
-	rssi = g_malloc0(sizeof(struct rssi_setting));
-
-	if (!rssi) {
-		bt_shell_printf("Failed to allocate rssi_setting");
-		bt_shell_noninteractive_quit(EXIT_FAILURE);
-		return NULL;
-	}
-
-	rssi->high_threshold = high_threshold;
-	rssi->high_timer = high_timer;
-	rssi->low_threshold = low_threshold;
-	rssi->low_timer = low_timer;
-
-	return rssi;
-}
-
 static struct pattern *parse_pattern(char *parameter_list[])
 {
 	struct pattern *pat;
@@ -435,7 +472,7 @@ static struct pattern *parse_pattern(char *parameter_list[])
 	pat = g_malloc0(sizeof(struct pattern));
 
 	if (!pat) {
-		bt_shell_printf("Failed to allocate pattern");
+		bt_shell_printf("Failed to allocate pattern\n");
 		bt_shell_noninteractive_quit(EXIT_FAILURE);
 		return NULL;
 	}
@@ -531,12 +568,14 @@ static void print_adv_monitor(struct adv_monitor *adv_monitor)
 		bt_shell_printf("\trssi:\n");
 		bt_shell_printf("\t\thigh threshold: %hd\n",
 					adv_monitor->rssi->high_threshold);
-		bt_shell_printf("\t\thigh threshold timer: %hu\n",
-					adv_monitor->rssi->high_timer);
+		bt_shell_printf("\t\thigh threshold timeout: %hu\n",
+					adv_monitor->rssi->high_timeout);
 		bt_shell_printf("\t\tlow threshold: %hd\n",
 					adv_monitor->rssi->low_threshold);
-		bt_shell_printf("\t\tlow threshold timer: %hu\n",
-					adv_monitor->rssi->low_timer);
+		bt_shell_printf("\t\tlow threshold timeout: %hu\n",
+					adv_monitor->rssi->low_timeout);
+		bt_shell_printf("\t\tsampling period: %hu\n",
+					adv_monitor->rssi->sampling_period);
 	}
 
 	if (adv_monitor->patterns) {
@@ -556,11 +595,62 @@ static void print_adv_monitor(struct adv_monitor *adv_monitor)
 	}
 }
 
+static struct rssi_setting *get_current_rssi(void)
+{
+	if (current_rssi)
+		return current_rssi;
+
+	current_rssi = g_malloc0(sizeof(struct rssi_setting));
+
+	if (!current_rssi)
+		bt_shell_printf("Failed to allocate rssi setting");
+
+	current_rssi->low_threshold = RSSI_UNSET_THRESHOLD;
+	current_rssi->high_threshold = RSSI_UNSET_THRESHOLD;
+	current_rssi->low_timeout = RSSI_UNSET_TIMEOUT;
+	current_rssi->high_timeout = RSSI_UNSET_TIMEOUT;
+	current_rssi->sampling_period = RSSI_UNSET_SAMPLING_PERIOD;
+
+	return current_rssi;
+}
+
+void adv_monitor_set_rssi_threshold(int16_t low_threshold,
+							int16_t high_threshold)
+{
+	struct rssi_setting *rssi = get_current_rssi();
+
+	if (!rssi)
+		return;
+
+	rssi->low_threshold = low_threshold;
+	rssi->high_threshold = high_threshold;
+}
+
+void adv_monitor_set_rssi_timeout(uint16_t low_timeout, uint16_t high_timeout)
+{
+	struct rssi_setting *rssi = get_current_rssi();
+
+	if (!rssi)
+		return;
+
+	rssi->low_timeout = low_timeout;
+	rssi->high_timeout = high_timeout;
+}
+
+void adv_monitor_set_rssi_sampling_period(uint16_t sampling)
+{
+	struct rssi_setting *rssi = get_current_rssi();
+
+	if (!rssi)
+		return;
+
+	rssi->sampling_period = sampling;
+}
+
 void adv_monitor_add_monitor(DBusConnection *conn, char *type,
-				gboolean rssi_enabled, int argc, char *argv[])
+							int argc, char *argv[])
 {
 	struct adv_monitor *adv_monitor;
-	struct rssi_setting *rssi;
 	GSList *patterns = NULL;
 
 	if (g_slist_length(adv_mons) >= UINT8_MAX) {
@@ -571,17 +661,6 @@ void adv_monitor_add_monitor(DBusConnection *conn, char *type,
 
 	while (find_adv_monitor_with_idx(adv_mon_idx))
 		adv_mon_idx += 1;
-
-	if (rssi_enabled == FALSE)
-		rssi = NULL;
-	else {
-		rssi = parse_rssi(argv[1], argv[2]);
-		if (rssi == NULL)
-			return;
-
-		argv += 2;
-		argc -= 2;
-	}
 
 	patterns = parse_patterns(argv+1, argc-1);
 	if (patterns == NULL) {
@@ -598,16 +677,19 @@ void adv_monitor_add_monitor(DBusConnection *conn, char *type,
 
 	adv_monitor->idx = adv_mon_idx;
 	adv_monitor->type = g_strdup(type);
-	adv_monitor->rssi = rssi;
+	adv_monitor->rssi = current_rssi;
 	adv_monitor->patterns = patterns;
 	adv_monitor->path = g_strdup_printf("%s/%hhu", ADV_MONITOR_APP_PATH,
 								adv_mon_idx);
+	current_rssi = NULL;
+
 	if (g_dbus_register_interface(conn, adv_monitor->path,
 					ADV_MONITOR_INTERFACE,
 					adv_monitor_methods, NULL,
 					adv_monitor_props, adv_monitor,
 					free_adv_monitor) == FALSE) {
 		bt_shell_printf("Failed to register advertisement monitor\n");
+		free_adv_monitor(adv_monitor);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 

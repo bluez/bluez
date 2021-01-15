@@ -2707,30 +2707,6 @@ static void cmd_ad_clear(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
-static void print_add_or_pattern_with_rssi_usage(void)
-{
-	bt_shell_printf("rssi-range format:\n"
-			"\t<low-rssi>,<high-rssi>\n"
-			"\tBoth parameters can be skipped, in that case the\n"
-			"\tparamter will be set to its pre-defined value\n");
-	bt_shell_printf("\tPre-defined low-rssi,high-rssi: %d,%d\n",
-						RSSI_DEFAULT_LOW_THRESHOLD,
-						RSSI_DEFAULT_HIGH_THRESHOLD);
-	bt_shell_printf("timeout format:\n"
-			"\t<low-rssi>,<high-rssi>\n"
-			"\tBoth parameters can be skipped, in that case the\n"
-			"\tparamter will be set to its pre-defined value\n");
-	bt_shell_printf("\tPre-defined low-timeout,high-timeout: %d,%d\n",
-						RSSI_DEFAULT_LOW_TIMEOUT,
-						RSSI_DEFAULT_HIGH_TIMEOUT);
-	bt_shell_printf("pattern format:\n"
-			"\t<start_position> <ad_data_type> <content_of_pattern>\n");
-	bt_shell_printf("e.g.\n"
-			"\tadd-or-pattern-rssi -10, ,10 1 2 01ab55\n");
-	bt_shell_printf("or\n"
-			"\tadd-or-pattern-rssi -50,-30 , 1 2 01ab55 3 4 23cd66\n");
-}
-
 static void print_add_or_pattern_usage(void)
 {
 	bt_shell_printf("pattern format:\n"
@@ -2743,20 +2719,38 @@ static void cmd_adv_monitor_print_usage(int argc, char *argv[])
 {
 	if (strcmp(argv[1], "add-or-pattern") == 0)
 		print_add_or_pattern_usage();
-	else if (strcmp(argv[1], "add-or-pattern-rssi") == 0)
-		print_add_or_pattern_with_rssi_usage();
 	else
 		bt_shell_printf("Invalid argument %s", argv[1]);
 }
 
-static void cmd_adv_monitor_add_or_monitor_with_rssi(int argc, char *argv[])
+static void cmd_adv_monitor_set_rssi_threshold(int argc, char *argv[])
 {
-	adv_monitor_add_monitor(dbus_conn, "or_patterns", TRUE, argc, argv);
+	int low_threshold, high_threshold;
+
+	low_threshold = atoi(argv[1]);
+	high_threshold = atoi(argv[2]);
+	adv_monitor_set_rssi_threshold(low_threshold, high_threshold);
+}
+
+static void cmd_adv_monitor_set_rssi_timeout(int argc, char *argv[])
+{
+	int low_timeout, high_timeout;
+
+	low_timeout = atoi(argv[1]);
+	high_timeout = atoi(argv[2]);
+	adv_monitor_set_rssi_timeout(low_timeout, high_timeout);
+}
+
+static void cmd_adv_monitor_set_rssi_sampling_period(int argc, char *argv[])
+{
+	int sampling = atoi(argv[1]);
+
+	adv_monitor_set_rssi_sampling_period(sampling);
 }
 
 static void cmd_adv_monitor_add_or_monitor(int argc, char *argv[])
 {
-	adv_monitor_add_monitor(dbus_conn, "or_patterns", FALSE, argc, argv);
+	adv_monitor_add_monitor(dbus_conn, "or_patterns", argc, argv);
 }
 
 static void cmd_adv_monitor_print_monitor(int argc, char *argv[])
@@ -2826,15 +2820,19 @@ static const struct bt_shell_menu advertise_monitor_menu = {
 	.name = "monitor",
 	.desc = "Advertisement Monitor Options Submenu",
 	.entries = {
-	{ "add-or-pattern-rssi", "<rssi-range=low,high> <timeout=low,high> "
-				"[patterns=pattern1 pattern2 ...]",
-				cmd_adv_monitor_add_or_monitor_with_rssi,
-				"Add 'or pattern' type monitor with RSSI "
-				"filter" },
+	{ "set-rssi-threshold", "<low_threshold> <high_threshold>",
+				cmd_adv_monitor_set_rssi_threshold,
+				"Set RSSI threshold parameter" },
+	{ "set-rssi-timeout", "<low_timeout> <high_timeout>",
+				cmd_adv_monitor_set_rssi_timeout,
+				"Set RSSI timeout parameter" },
+	{ "set-rssi-sampling-period", "<sampling_period>",
+				cmd_adv_monitor_set_rssi_sampling_period,
+				"Set RSSI sampling period parameter" },
 	{ "add-or-pattern", "[patterns=pattern1 pattern2 ...]",
 				cmd_adv_monitor_add_or_monitor,
-				"Add 'or pattern' type monitor without RSSI "
-				"filter" },
+				"Register 'or pattern' type monitor with the "
+				"specified RSSI parameters" },
 	{ "get-pattern", "<monitor-id/all>",
 				cmd_adv_monitor_print_monitor,
 				"Get advertisement monitor" },
@@ -2845,7 +2843,7 @@ static const struct bt_shell_menu advertise_monitor_menu = {
 				cmd_adv_monitor_get_supported_info,
 				"Get advertisement manager supported "
 				"features and supported monitor types" },
-	{ "print-usage", "<add-or-pattern/add-or-pattern-rssi>",
+	{ "print-usage", "<add-or-pattern>",
 				cmd_adv_monitor_print_usage,
 				"Print the command usage"},
 	{ } },
