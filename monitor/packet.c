@@ -13261,18 +13261,22 @@ static void mgmt_print_adv_monitor_patterns(const void *data, uint8_t len)
 
 	/* Reference: struct mgmt_adv_pattern in lib/mgmt.h. */
 	while (data_idx + 34 <= len) {
-		uint8_t ad_type = get_u8(data + data_idx);
-		uint8_t offset = get_u8(data + data_idx + 1);
-		uint8_t length = get_u8(data + data_idx + 2);
+		uint8_t ad_type = get_u8(data);
+		uint8_t offset = get_u8(data + 1);
+		uint8_t length = get_u8(data + 2);
 
 		print_field("  Pattern %d:", pattern_idx);
 		print_field("    AD type: %d", ad_type);
 		print_field("    Offset: %d", offset);
 		print_field("    Length: %d", length);
-		print_hex_field("    Value ", data + data_idx + 3, 31);
+		if (length <= 31)
+			print_hex_field("    Value ", data + 3, length);
+		else
+			print_text(COLOR_ERROR, "    invalid length");
 
 		pattern_idx += 1;
 		data_idx += 34;
+		data += 34;
 	}
 }
 
@@ -13282,6 +13286,33 @@ static void mgmt_add_adv_monitor_patterns_cmd(const void *data, uint16_t size)
 
 	print_field("Number of patterns: %d", pattern_count);
 	mgmt_print_adv_monitor_patterns(data + 1, size - 1);
+}
+
+static void mgmt_add_adv_monitor_patterns_rssi_cmd(const void *data,
+								uint16_t size)
+{
+	int8_t high_rssi = get_s8(data);
+	uint16_t high_rssi_timeout = get_le16(data + 1);
+	int8_t low_rssi = get_s8(data + 3);
+	uint16_t low_rssi_timeout = get_le16(data + 4);
+	uint8_t sampling_period = get_u8(data + 6);
+	uint8_t pattern_count = get_u8(data + 7);
+
+	print_field("RSSI data:");
+	print_field("  high threshold: %d dBm", high_rssi);
+	print_field("  high timeout: %d seconds", high_rssi_timeout);
+	print_field("  low threshold: %d dBm", low_rssi);
+	print_field("  low timeout: %d seconds", low_rssi_timeout);
+
+	if (sampling_period == 0)
+		print_field("  sampling: propagate all (0x00)");
+	else if (sampling_period == 0xff)
+		print_field("  sampling: just once (0xFF)");
+	else
+		print_field("  sampling: every %d ms", 100 * sampling_period);
+
+	print_field("Number of patterns: %d", pattern_count);
+	mgmt_print_adv_monitor_patterns(data + 8, size - 8);
 }
 
 static void mgmt_add_adv_monitor_patterns_rsp(const void *data, uint16_t size)
@@ -13553,6 +13584,10 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0055, "Add Ext Adv Data",
 				mgmt_add_ext_adv_data_cmd, 3, false,
 				mgmt_add_ext_adv_data_rsp, 1, true },
+	{ 0x0056, "Add Advertisement Monitor With RSSI",
+				mgmt_add_adv_monitor_patterns_rssi_cmd, 8,
+									false,
+				mgmt_add_adv_monitor_patterns_rsp, 2, true},
 	{ }
 };
 
