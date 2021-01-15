@@ -49,31 +49,59 @@ Properties	string Type [read-only]
 			org.bluez.AdvertisementMonitorManager1 for the available
 			options.
 
-		(Int16, Uint16, Int16, Uint16) RSSIThresholdsAndTimers [read-only, optional]
+		Int16 RSSILowThreshold [read-only, optional]
 
-			This contains HighRSSIThreshold, HighRSSIThresholdTimer,
-			LowRSSIThreshold, LowRSSIThresholdTimer in order. The
-			unit of HighRSSIThreshold and LowRSSIThreshold is dBm.
-			The unit of HighRSSIThresholdTimer and
-			LowRSSIThresholdTimer is second.
+			Used in conjunction with RSSILowTimeout to determine
+			whether a device becomes out-of-range. Valid range is
+			-127 to 20 (dBm), while 127 indicates unset.
 
-			If these are provided, RSSI would be used as a factor to
-			notify the client of whether a device stays in range or
-			move out of range. A device is considered in-range when
-			the RSSIs of the received advertisement(s) during
-			HighRSSIThresholdTimer seconds exceed HighRSSIThreshold.
-			Likewise, a device is considered out-of-range when the
-			RSSIs of the received advertisement(s) during
-			LowRSSIThresholdTimer do not reach LowRSSIThreshold.
+		Int16 RSSIHighThreshold [read-only, optional]
 
-			The valid range of a RSSI is -127 to +20 dBm while 127
-			dBm indicates unset. The valid range of a timer is 1 to
-			300 seconds while 0 indicates unset.
+			Used in conjunction with RSSIHighTimeout to determine
+			whether a device becomes in-range. Valid range is
+			-127 to 20 (dBm), while 127 indicates unset.
 
-			If the peer device advertising interval is greater than the
-			HighRSSIThresholdTimer, the device will never be found. Similarly,
-			if it is greater than LowRSSIThresholdTimer, the device will be
-			considered as lost. Consider configuring these values accordingly.
+		Uint16 RSSILowTimeout [read-only, optional]
+
+			The time it takes to consider a device as out-of-range.
+			If this many seconds elapses without receiving any
+			signal at least as strong as RSSILowThreshold, a
+			currently in-range device will be considered as
+			out-of-range (lost). Valid range is 1 to 300 (seconds),
+			while 0 indicates unset.
+
+		Uint16 RSSIHighTimeout [read-only, optional]
+
+			The time it takes to consider a device as in-range.
+			If this many seconds elapses while we continuously
+			receive signals at least as strong as RSSIHighThreshold,
+			a currently out-of-range device will be considered as
+			in-range (found). Valid range is 1 to 300 (seconds),
+			while 0 indicates unset.
+
+		Uint16 RSSISamplingPeriod [read-only, optional]
+
+			Grouping rules on how to propagate the received
+			advertisement packets to the client. Valid range is 0 to
+			255 while 256 indicates unset.
+
+			The meaning of this property is as follows:
+			0:
+				All advertisement packets from in-range devices
+				would be propagated.
+			255:
+				Only the first advertisement packet of in-range
+				devices would be propagated. If the device
+				becomes lost, then the first packet when it is
+				found again will also be propagated.
+			1 to 254:
+				Advertisement packets would be grouped into
+				100ms * N time period. Packets in the same group
+				will only be reported once, with the RSSI value
+				being averaged out.
+
+			Currently this is unimplemented in user space, so the
+			value is only used to be forwarded to the kernel.
 
 		array{(uint8, uint8, array{byte})} Patterns [read-only, optional]
 
