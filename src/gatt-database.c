@@ -1350,11 +1350,17 @@ static void send_notification_to_device(void *data, void *user_data)
 	if (!ccc->value || (notify->conf && !(ccc->value & 0x0002)))
 		return;
 
-	device = btd_adapter_get_device(notify->database->adapter,
+	device = btd_adapter_find_device(notify->database->adapter,
 						&device_state->bdaddr,
 						device_state->bdaddr_type);
-	if (!device)
+	if (!device) {
+		/* If ATT has not disconnect yet don't remove the state as it
+		 * will eventually be removed when att_disconnected is called.
+		 */
+		if (device_state->disc_id)
+			return;
 		goto remove;
+	}
 
 	server = btd_device_get_gatt_server(device);
 	if (!server) {
