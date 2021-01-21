@@ -308,8 +308,11 @@ struct avdtp_remote_sep {
 	uint8_t media_type;
 	struct avdtp_service_capability *codec;
 	gboolean delay_reporting;
+	bool discovered;
 	GSList *caps; /* of type struct avdtp_service_capability */
 	struct avdtp_stream *stream;
+	avdtp_remote_sep_destroy_t destroy;
+	void *user_data;
 };
 
 struct avdtp_local_sep {
@@ -1038,6 +1041,32 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		stream_free(stream);
 }
 
+static void sep_free(gpointer data)
+{
+	struct avdtp_remote_sep *sep = data;
+
+	if (sep->destroy)
+		sep->destroy(sep->user_data);
+
+	g_slist_free_full(sep->caps, g_free);
+	g_free(sep);
+}
+
+static void remove_disappeared(void *data, void *user_data)
+{
+	struct avdtp_remote_sep *sep = data;
+	struct avdtp *session = user_data;
+
+	if (sep->discovered)
+		return;
+
+	DBG("seid %d disappeared", sep->seid);
+
+	session->seps = g_slist_remove(session->seps, sep);
+
+	sep_free(sep);
+}
+
 static void finalize_discovery(struct avdtp *session, int err)
 {
 	struct discover_callback *discover = session->discover;
@@ -1050,6 +1079,9 @@ static void finalize_discovery(struct avdtp *session, int err)
 
 	if (discover->id > 0)
 		g_source_remove(discover->id);
+
+	if (!err)
+		g_slist_foreach(session->seps, remove_disappeared, session);
 
 	if (discover->cb)
 		discover->cb(session, session->seps, err ? &avdtp_err : NULL,
@@ -1068,14 +1100,6 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 		sep->cfm->abort(session, sep, stream, NULL, sep->user_data);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
-}
-
-static void sep_free(gpointer data)
-{
-	struct avdtp_remote_sep *sep = data;
-
-	g_slist_free_full(sep->caps, g_free);
-	g_free(sep);
 }
 
 static void remove_disconnect_timer(struct avdtp *session)
@@ -2707,8 +2731,10 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 		sep = find_remote_sep(session->seps, resp->seps[i].seid);
 		if (sep && sep->type == resp->seps[i].type &&
 				sep->media_type == resp->seps[i].media_type &&
-				sep->codec)
+				sep->codec) {
+			sep->discovered = true;
 			continue;
+		}
 
 		if (resp->seps[i].inuse && !stream)
 			continue;
@@ -2720,6 +2746,7 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 		sep->seid = resp->seps[i].seid;
 		sep->type = resp->seps[i].type;
 		sep->media_type = resp->seps[i].media_type;
+		sep->discovered = true;
 
 		memset(&req, 0, sizeof(req));
 		req.acp_seid = sep->seid;
@@ -3323,6 +3350,16 @@ struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
 				sep->delay_reporting ? "true" : "false");
 
 	return sep;
+}
+
+void avdtp_remote_sep_set_destroy(struct avdtp_remote_sep *sep, void *user_data,
+					avdtp_remote_sep_destroy_t destroy)
+{
+	if (!sep)
+		return;
+
+	sep->user_data = user_data;
+	sep->destroy = destroy;
 }
 
 static gboolean process_discover(gpointer data)

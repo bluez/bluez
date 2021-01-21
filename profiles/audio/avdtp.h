@@ -216,6 +216,11 @@ struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
 							GSList *caps,
 							bool delay_reporting);
 
+typedef void (*avdtp_remote_sep_destroy_t)(void *user_data);
+
+void avdtp_remote_sep_set_destroy(struct avdtp_remote_sep *sep, void *user_data,
+					avdtp_remote_sep_destroy_t destroy);
+
 uint8_t avdtp_get_seid(struct avdtp_remote_sep *sep);
 
 uint8_t avdtp_get_type(struct avdtp_remote_sep *sep);

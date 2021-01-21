@@ -1488,6 +1488,8 @@ static void remote_sep_free(void *data)
 {
 	struct a2dp_remote_sep *sep = data;
 
+	avdtp_remote_sep_set_destroy(sep->sep, NULL, NULL);
+
 	free(sep->path);
 	free(sep);
 }
@@ -1874,6 +1876,14 @@ static const GDBusPropertyTable sep_properties[] = {
 	{ }
 };
 
+static void remote_sep_destroy(void *user_data)
+{
+	struct a2dp_remote_sep *sep = user_data;
+
+	if (queue_remove(sep->chan->seps, sep))
+		remove_remote_sep(sep);
+}
+
 static void register_remote_sep(void *data, void *user_data)
 {
 	struct avdtp_remote_sep *rsep = data;
@@ -1909,6 +1919,8 @@ static void register_remote_sep(void *data, void *user_data)
 	}
 
 	DBG("Found remote SEP: %s", sep->path);
+
+	avdtp_remote_sep_set_destroy(rsep, sep, remote_sep_destroy);
 
 done:
 	queue_push_tail(chan->seps, sep);
