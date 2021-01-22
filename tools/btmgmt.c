@@ -4912,6 +4912,12 @@ static void cmd_advmon_add_pattern(int argc, char **argv)
 
 	cp_len = sizeof(*cp) + argc * sizeof(struct mgmt_adv_pattern);
 	cp = malloc0(cp_len);
+	if (!cp) {
+		error("Failed to alloc patterns.");
+		success = false;
+		goto done;
+	}
+
 	cp->pattern_count = argc;
 
 	for (i = 0; i < argc; i++) {
@@ -4987,6 +4993,12 @@ static void cmd_advmon_add_pattern_rssi(int argc, char **argv)
 
 	cp_len = sizeof(*cp) + argc * sizeof(struct mgmt_adv_pattern);
 	cp = malloc0(cp_len);
+	if (!cp) {
+		error("Failed to alloc patterns.");
+		success = false;
+		goto done;
+	}
+
 	cp->pattern_count = argc;
 	cp->rssi.high_threshold = rssi_high;
 	cp->rssi.low_threshold = rssi_low;
