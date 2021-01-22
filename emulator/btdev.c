@@ -4074,8 +4074,10 @@ static void le_ext_conn_complete(struct btdev *btdev,
 		if (!conn)
 			return;
 
-		btdev->le_adv_enable = 0;
-		conn->link->dev->le_adv_enable = 0;
+		if (!btdev->le_ext_adv_type) {
+			btdev->le_adv_enable = 0;
+			conn->link->dev->le_adv_enable = 0;
+		}
 
 		ev.status = status;
 		ev.peer_addr_type = btdev->le_scan_own_addr_type;
