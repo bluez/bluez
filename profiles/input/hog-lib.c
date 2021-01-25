@@ -336,6 +336,9 @@ static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 		return;
 	}
 
+	if (report->notifyid)
+		return;
+
 	report->notifyid = g_attrib_register(hog->attrib,
 					ATT_OP_HANDLE_NOTIFY,
 					report->value_handle,
@@ -1696,6 +1699,9 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 	 */
 	for (l = hog->reports; l; l = l->next) {
 		struct report *r = l->data;
+
+		if (r->notifyid)
+			continue;
 
 		r->notifyid = g_attrib_register(hog->attrib,
 					ATT_OP_HANDLE_NOTIFY,
