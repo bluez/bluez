@@ -132,7 +132,6 @@ ell_headers = ell/util.h \
 			ell/cert.h \
 			ell/pem.h \
 			ell/base64.h \
-			ell/pkcs5.h \
 			ell/asn1-private.h \
 			ell/cert-private.h \
 			ell/pem-private.h
