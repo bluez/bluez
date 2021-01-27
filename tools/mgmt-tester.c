@@ -9121,7 +9121,7 @@ static void read_50_controller_cap_complete(uint8_t status, uint16_t length,
 	}
 
 	if (sizeof(rp->cap_len) + rp->cap_len != length) {
-		tester_warn("Controller capabilities malformed, size %lu != %u",
+		tester_warn("Controller capabilities malformed, size %zu != %u",
 				sizeof(rp->cap_len) + rp->cap_len, length);
 		tester_test_failed();
 	}
