@@ -127,6 +127,8 @@ struct cmd_trigger_exception {
 	uint8_t  type;
 } __attribute__ ((packed));
 
+#define CMD_DDC_CONFIG_WRITE	0xfc8b
+
 #define CMD_MEMORY_WRITE	0xfc8e
 
 static struct bt_hci *hci_dev;
@@ -608,7 +610,10 @@ static const struct {
 	{ 0x0a, "iBT 2.1 (AG620)"	},
 	{ 0x0b, "iBT 3.0 (LnP)"		},
 	{ 0x0c, "iBT 3.0 (WsP)"		},
+	{ 0x11, "iBT 3.5 (JfP)"		},
 	{ 0x12, "iBT 3.5 (ThP)"		},
+	{ 0x13, "iBT 3.5 (HrP)"		},
+	{ 0x14, "iBT 3.5 (CcP)"		},
 	{ }
 };
 
@@ -657,6 +662,16 @@ static void read_version_complete(const void *data, uint8_t size,
 	}
 
 	if (load_firmware) {
+		/* This option is only supported for the legacy ROM produce,
+		 * which can be identified by the fw_variant == 0x01
+		 */
+		if (rsp->fw_variant != 0x01) {
+			printf("FW Variant: 0x%02x\n", rsp->fw_variant);
+			fprintf(stderr, "This device is not supported\n");
+			mainloop_quit();
+			return;
+		}
+
 		if (load_firmware_value) {
 			printf("Firmware: %s\n", load_firmware_value);
 			request_firmware(load_firmware_value);
@@ -735,6 +750,95 @@ static void read_version_complete(const void *data, uint8_t size,
 	mainloop_quit();
 }
 
+struct ddc {
+	uint8_t  size;
+	uint16_t id;
+	uint8_t  value[0];
+} __attribute__ ((packed));
+
+static unsigned int analyze_ddc(uint8_t *data, ssize_t len)
+{
+	unsigned int ddc_num;
+	ssize_t offset;
+	struct ddc *ddc;
+
+	ddc_num = 0;
+	offset = 0;
+
+	while (offset < len) {
+		ddc = (void *)&data[offset];
+		offset += ddc->size + 1;
+		ddc_num++;
+	}
+
+	return ddc_num;
+}
+
+static void analyze_firmware_bseq(uint8_t *data, ssize_t len)
+{
+	struct cmd_write_bd_data *bddata = NULL;
+	unsigned int cmd_num;
+	unsigned int evt_num;
+	unsigned int ddc_num;
+	ssize_t offset;
+
+	offset = 0;
+	cmd_num = 0;
+	evt_num = 0;
+	ddc_num = 0;
+
+	while (offset < len) {
+		uint8_t type;
+		struct bt_hci_cmd_hdr *cmd_hdr;
+		struct bt_hci_evt_hdr *evt_hdr;
+
+		type = data[offset];
+		offset += 1;
+
+		/* Command */
+		if (type == 0x01) {
+			cmd_hdr = (void *)&data[offset];
+
+			if (cmd_hdr->opcode == CMD_WRITE_BD_DATA)
+				bddata = (void *)&data[offset + 3];
+
+			if (cmd_hdr->opcode == CMD_DDC_CONFIG_WRITE)
+				ddc_num = analyze_ddc((void *)&data[offset + 3],
+						      cmd_hdr->plen);
+
+			offset += cmd_hdr->plen + sizeof(*cmd_hdr);
+			cmd_num++;
+
+		} else if (type == 0x02) {
+			evt_hdr = (void *)&data[offset];
+			offset += evt_hdr->plen + sizeof(*evt_hdr);
+			evt_num++;
+		} else {
+			fprintf(stderr, "Unknown type: 0x%02x\n", type);
+			return;
+		}
+
+	}
+
+	printf("Command count:\t%d\n", cmd_num);
+	printf("Event count:\t%d\n", evt_num);
+
+	if (bddata) {
+		printf("\n");
+		printf("BD Data Configuration\n");
+		printf("Features:\t%02X%02X %02X%02X %02X%02X %02X%02X\n",
+		       bddata->features[7], bddata->features[6],
+		       bddata->features[5], bddata->features[4],
+		       bddata->features[3], bddata->features[2],
+		       bddata->features[1], bddata->features[0]);
+		printf("LE Features:\t%02x\n", bddata->le_features);
+		printf("LMP Version:\t0x%02x\n", bddata->lmp_version);
+	}
+
+	if (ddc_num)
+		printf("Total DDC:\t%d\n", ddc_num);
+}
+
 struct css_hdr {
 	uint32_t module_type;
 	uint32_t header_len;
@@ -753,6 +857,7 @@ static void analyze_firmware(const char *path)
 {
 	unsigned int cmd_num = 0;
 	struct css_hdr *css;
+	const char *ext;
 	struct stat st;
 	ssize_t len;
 	int fd;
@@ -787,6 +892,32 @@ static void analyze_firmware(const char *path)
 
 	if (len != st.st_size) {
 		fprintf(stderr, "Failed to read complete firmware file\n");
+		goto done;
+	}
+
+	/* Check the file extension for file type */
+	ext = strrchr(path, '.');
+	if (!ext) {
+		fprintf(stderr, "Unable to get the file extension from path\n");
+		goto done;
+	}
+
+	if (!strncmp(ext, ".ddc", 4)) {
+		printf("Firmware file type: DDC file\n\n");
+		cmd_num = analyze_ddc(firmware_data, len);
+		printf("Total DDC:\t%d\n", cmd_num);
+		goto done;
+
+	} else if (!strncmp(ext, ".bseq", 5)) {
+		printf("Firmware file type: BSEQ file\n\n");
+		analyze_firmware_bseq(firmware_data, len);
+		goto done;
+
+	} else if (!strncmp(ext, ".sfi", 4))
+		printf("Firmware file type: SFI file\n\n");
+
+	else {
+		fprintf(stderr, "Unknown file extension: %s\n", ext);
 		goto done;
 	}
 
