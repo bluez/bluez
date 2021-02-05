@@ -42,8 +42,8 @@ struct a2dp_endpoint {
 
 typedef void (*a2dp_discover_cb_t) (struct avdtp *session, GSList *seps,
 						int err, void *user_data);
-typedef void (*a2dp_select_cb_t) (struct avdtp *session,
-					struct a2dp_sep *sep, GSList *caps,
+typedef void (*a2dp_select_cb_t) (struct avdtp *session, struct a2dp_sep *sep,
+					GSList *caps, int err,
 					void *user_data);
 typedef void (*a2dp_config_cb_t) (struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream, int err,

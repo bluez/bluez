@@ -183,12 +183,15 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 }
 
 static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
-			GSList *caps, void *user_data)
+			GSList *caps, int err, void *user_data)
 {
 	struct sink *sink = user_data;
 	int id;
 
 	sink->connect_id = 0;
+
+	if (err)
+		goto failed;
 
 	id = a2dp_config(session, sep, stream_setup_complete, caps, sink);
 	if (id == 0)

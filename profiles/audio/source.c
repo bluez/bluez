@@ -180,12 +180,15 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 }
 
 static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
-			GSList *caps, void *user_data)
+			GSList *caps, int err, void *user_data)
 {
 	struct source *source = user_data;
 	int id;
 
 	source->connect_id = 0;
+
+	if (err)
+		goto failed;
 
 	if (caps == NULL)
 		goto failed;

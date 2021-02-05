@@ -3847,11 +3847,17 @@ uint8_t avdtp_sep_get_seid(struct avdtp_local_sep *sep)
 
 struct btd_adapter *avdtp_get_adapter(struct avdtp *session)
 {
+	if (!session)
+		return NULL;
+
 	return device_get_adapter(session->device);
 }
 
 struct btd_device *avdtp_get_device(struct avdtp *session)
 {
+	if (!session)
+		return NULL;
+
 	return session->device;
 }
 

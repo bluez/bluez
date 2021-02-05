@@ -379,7 +379,8 @@ static void finalize_select(struct a2dp_setup *s)
 		if (!cb->select_cb)
 			continue;
 
-		cb->select_cb(s->session, s->sep, s->caps, cb->user_data);
+		cb->select_cb(s->session, s->sep, s->caps,
+					error_to_errno(s->err), cb->user_data);
 		setup_cb_free(cb);
 	}
 }
@@ -457,7 +458,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		int err;
 
 		setup = find_setup_by_stream(stream);
-		if (!setup || !setup->start)
+		if (!setup || !setup->start || setup->err)
 			return;
 
 		setup->start = FALSE;
@@ -606,7 +607,7 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 		DBG("Source %p: Set_Configuration_Ind", sep);
 
 	setup = a2dp_setup_get(session);
-	if (!session)
+	if (!setup)
 		return FALSE;
 
 	a2dp_sep->stream = stream;
@@ -715,7 +716,7 @@ static gboolean endpoint_getcap_ind(struct avdtp *session,
 
 static void endpoint_open_cb(struct a2dp_setup *setup, gboolean ret)
 {
-	int err;
+	int err = error_to_errno(setup->err);
 
 	if (ret == FALSE) {
 		setup->stream = NULL;
@@ -723,7 +724,9 @@ static void endpoint_open_cb(struct a2dp_setup *setup, gboolean ret)
 		goto done;
 	}
 
-	err = avdtp_open(setup->session, setup->stream);
+	if (err == 0)
+		err = avdtp_open(setup->session, setup->stream);
+
 	if (err == 0)
 		goto done;
 
@@ -1172,6 +1175,11 @@ static gboolean a2dp_reconfigure(gpointer data)
 
 	setup->id = 0;
 
+	if (setup->err) {
+		posix_err = error_to_errno(setup->err);
+		goto failed;
+	}
+
 	if (!sep->lsep) {
 		error("no valid local SEP");
 		posix_err = -EINVAL;
@@ -1510,6 +1518,7 @@ static void remove_remote_sep(void *data)
 static void channel_free(void *data)
 {
 	struct a2dp_channel *chan = data;
+	struct a2dp_setup *setup;
 
 	if (chan->auth_id > 0)
 		btd_cancel_authorization(chan->auth_id);
@@ -1526,6 +1535,15 @@ static void channel_free(void *data)
 
 	queue_destroy(chan->seps, remove_remote_sep);
 	free(chan->last_used);
+
+	setup = find_setup_by_session(chan->session);
+	if (setup) {
+		setup->chan = NULL;
+		avdtp_unref(setup->session);
+		setup->session = NULL;
+		finalize_setup_errno(setup, -ENOTCONN, NULL);
+	}
+
 	g_free(chan);
 }
 
@@ -2561,6 +2579,9 @@ static void select_cb(struct a2dp_setup *setup, void *ret, int size)
 	struct avdtp_media_codec_capability *codec;
 	int err;
 
+	if (setup->err)
+		goto done;
+
 	if (size >= 0) {
 		caps_add_codec(&setup->caps, setup->sep->codec, ret, size);
 		goto done;
@@ -2727,7 +2748,8 @@ static void discover_cb(struct avdtp *session, GSList *seps,
 	DBG("version 0x%04x err %p", version, err);
 
 	setup->seps = seps;
-	setup->err = err;
+	if (err)
+		setup->err = err;
 
 	if (!err) {
 		g_slist_foreach(seps, register_remote_sep, setup->chan);
