@@ -2321,6 +2321,7 @@ void node_finalize_new_node(struct mesh_node *node, struct mesh_io *io)
 
 	free_node_dbus_resources(node);
 	mesh_agent_remove(node->agent);
+	node->agent = NULL;
 
 	node->busy = false;
 
