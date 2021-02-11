@@ -387,6 +387,7 @@ get_pairing_type_for_device(struct udev_device *udevice, uint16_t *bus,
 						char **sysfs_path)
 {
 	struct udev_device *hid_parent;
+	const char *hid_name;
 	const char *hid_id;
 	const struct cable_pairing *cp;
 	uint16_t vid, pid;
@@ -401,7 +402,9 @@ get_pairing_type_for_device(struct udev_device *udevice, uint16_t *bus,
 	if (!hid_id || sscanf(hid_id, "%hx:%hx:%hx", bus, &vid, &pid) != 3)
 		return NULL;
 
-	cp = get_pairing(vid, pid);
+	hid_name = udev_device_get_property_value(hid_parent, "HID_NAME");
+
+	cp = get_pairing(vid, pid, hid_name);
 	*sysfs_path = g_strdup(udev_device_get_syspath(udevice));
 
 	return cp;

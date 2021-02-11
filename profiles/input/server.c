@@ -120,7 +120,7 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 	vid = btd_device_get_vendor(device);
 	pid = btd_device_get_product(device);
 
-	cp = get_pairing(vid, pid);
+	cp = get_pairing(vid, pid, NULL);
 	if (cp && (cp->type == CABLE_PAIRING_SIXAXIS ||
 					cp->type == CABLE_PAIRING_DS4))
 		return true;
