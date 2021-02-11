@@ -29,11 +29,19 @@ struct cable_pairing {
 };
 
 static inline const struct cable_pairing *
-get_pairing(uint16_t vid, uint16_t pid)
+get_pairing(uint16_t vid, uint16_t pid, const char *name)
 {
 	static const struct cable_pairing devices[] = {
 		{
 			.name = "Sony PLAYSTATION(R)3 Controller",
+			.source = 0x0002,
+			.vid = 0x054c,
+			.pid = 0x0268,
+			.version = 0x0000,
+			.type = CABLE_PAIRING_SIXAXIS,
+		},
+		{
+			.name = "SHANWAN PS3 GamePad",
 			.source = 0x0002,
 			.vid = 0x054c,
 			.pid = 0x0268,
@@ -71,6 +79,9 @@ get_pairing(uint16_t vid, uint16_t pid)
 		if (devices[i].vid != vid)
 			continue;
 		if (devices[i].pid != pid)
+			continue;
+
+		if (name && strcmp(name, devices[i].name))
 			continue;
 
 		return &devices[i];
