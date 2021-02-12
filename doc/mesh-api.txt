@@ -27,7 +27,8 @@ Methods:
 		The uuid parameter is a 16-byte array that contains Device UUID.
 		This UUID must be unique (at least from the daemon perspective),
 		therefore attempting to call this function using already
-		registered UUID results in an error.
+		registered UUID results in an error. The composition of the UUID
+		octets must be in compliance with RFC 4122.
 
 		When provisioning finishes, the daemon will call either
 		JoinComplete or JoinFailed method on object implementing
@@ -149,7 +150,8 @@ Methods:
 		The uuid parameter is a 16-byte array that contains Device UUID.
 		This UUID must be unique (at least from the daemon perspective),
 		therefore attempting to call this function using already
-		registered UUID results in an error.
+		registered UUID results in an error. The composition of the UUID
+		octets must be in compliance with RFC 4122.
 
 		The other information the bluetooth-meshd daemon will preserve
 		about the initial node, is to give it the initial primary
@@ -179,7 +181,8 @@ Methods:
 		The uuid parameter is a 16-byte array that contains Device UUID.
 		This UUID must be unique (at least from the daemon perspective),
 		therefore attempting to call this function using already
-		registered UUID results in an error.
+		registered UUID results in an error. The composition of the UUID
+		octets must be in compliance with RFC 4122.
 
 		The dev_key parameter is the 16-byte value of the dev key of
 		the imported mesh node.
