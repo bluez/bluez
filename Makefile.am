@@ -134,7 +134,8 @@ ell_headers = ell/util.h \
 			ell/base64.h \
 			ell/asn1-private.h \
 			ell/cert-private.h \
-			ell/pem-private.h
+			ell/pem-private.h \
+			ell/uuid.h
 
 ell_sources = ell/private.h ell/missing.h \
 			ell/util.c \
@@ -169,7 +170,8 @@ ell_sources = ell/private.h ell/missing.h \
 			ell/gvariant-private.h \
 			ell/gvariant-util.c \
 			ell/siphash-private.h \
-			ell/siphash.c
+			ell/siphash.c \
+			ell/uuid.c
 
 ell_libell_internal_la_SOURCES = $(ell_headers) $(ell_sources)
 endif
