@@ -1407,7 +1407,7 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 	if (!add_u8_8(jcfg, "token", token))
 		goto fail;
 
-	l_getrandom(uuid, 16);
+	l_uuid_v4(uuid);
 
 	if (!add_u8_16(jcfg, "uuid", uuid))
 		goto fail;
