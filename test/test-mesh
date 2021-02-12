@@ -887,12 +887,11 @@ class MainMenu(Menu):
 			print(set_error('Provisioning agent not found'))
 			return
 
-		uuid = bytearray.fromhex("0a0102030405060708090A0B0C0D0E0F")
-		random.shuffle(uuid)
-		uuid_str = array_to_string(uuid)
+		uuid_bytes = uuid.uuid4().bytes
+		uuid_str = array_to_string(uuid_bytes)
 
 		print(set_yellow('Joining with UUID ') + set_green(uuid_str))
-		mesh_net.Join(app.get_path(), uuid,
+		mesh_net.Join(app.get_path(), uuid_bytes,
 			reply_handler=join_cb,
 			error_handler=join_error_cb)
 
