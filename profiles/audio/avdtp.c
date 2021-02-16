@@ -2378,19 +2378,10 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		if (session->io_id)
 			g_source_remove(session->io_id);
 
-		/* This watch should be low priority since otherwise the
-		 * connect callback might be dispatched before the session
-		 * callback if the kernel wakes us up at the same time for
-		 * them. This could happen if a headset is very quick in
-		 * sending the Start command after connecting the stream
-		 * transport channel.
-		 */
-		session->io_id = g_io_add_watch_full(chan,
-						G_PRIORITY_LOW,
+		session->io_id = g_io_add_watch(chan,
 						G_IO_IN | G_IO_ERR | G_IO_HUP
 						| G_IO_NVAL,
-						(GIOFunc) session_cb, session,
-						NULL);
+						(GIOFunc) session_cb, session);
 
 		if (session->stream_setup)
 			set_disconnect_timer(session);
