@@ -1226,7 +1226,13 @@ void avdtp_unref(struct avdtp *session)
 
 	switch (session->state) {
 	case AVDTP_SESSION_STATE_CONNECTED:
-		set_disconnect_timer(session);
+		/* Only set disconnect timer if there are local endpoints
+		 * otherwise disconnect immediately.
+		 */
+		if (queue_isempty(session->lseps))
+			connection_lost(session, ECONNRESET);
+		else
+			set_disconnect_timer(session);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
 		connection_lost(session, ECONNABORTED);
