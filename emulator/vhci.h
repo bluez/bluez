@@ -20,5 +20,10 @@ enum vhci_type {
 
 struct vhci;
 
+typedef void (*vhci_debug_func_t)(const char *str, void *user_data);
+typedef void (*vhci_destroy_func_t)(void *user_data);
+bool vhci_set_debug(struct vhci *vhci, vhci_debug_func_t callback,
+			void *user_data, vhci_destroy_func_t destroy);
+
 struct vhci *vhci_open(enum vhci_type type);
 void vhci_close(struct vhci *vhci);

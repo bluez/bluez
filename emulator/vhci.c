@@ -82,6 +82,15 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 	}
 }
 
+bool vhci_set_debug(struct vhci *vhci, vhci_debug_func_t callback,
+			void *user_data, vhci_destroy_func_t destroy)
+{
+	if (!vhci)
+		return false;
+
+	return btdev_set_debug(vhci->btdev, callback, user_data, destroy);
+}
+
 struct vhci *vhci_open(enum vhci_type type)
 {
 	struct vhci *vhci;
