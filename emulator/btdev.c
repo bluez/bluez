@@ -5320,15 +5320,13 @@ static void send_acl(struct btdev *dev, const void *data, uint16_t len)
 	struct bt_hci_acl_hdr hdr;
 	struct iovec iov[3];
 	struct btdev_conn *conn;
+	uint8_t pkt_type = BT_H4_ACL_PKT;
 
 	/* Packet type */
-	iov[0].iov_base = (void *) data;
-	iov[0].iov_len = 1;
+	iov[0].iov_base = &pkt_type;
+	iov[0].iov_len = sizeof(pkt_type);
 
-	/* ACL_START_NO_FLUSH is only allowed from host to controller.
-	 * From controller to host this should be converted to ACL_START.
-	 */
-	memcpy(&hdr, data + 1, sizeof(hdr));
+	memcpy(&hdr, data, sizeof(hdr));
 
 	conn = queue_find(dev->conns, match_handle,
 					UINT_TO_PTR(acl_handle(hdr.handle)));
@@ -5337,14 +5335,17 @@ static void send_acl(struct btdev *dev, const void *data, uint16_t len)
 
 	num_completed_packets(dev, conn->handle);
 
+	/* ACL_START_NO_FLUSH is only allowed from host to controller.
+	 * From controller to host this should be converted to ACL_START.
+	 */
 	if (acl_flags(hdr.handle) == ACL_START_NO_FLUSH)
 		hdr.handle = acl_handle_pack(conn->handle, ACL_START);
 
 	iov[1].iov_base = &hdr;
 	iov[1].iov_len = sizeof(hdr);
 
-	iov[2].iov_base = (void *) (data + 1 + sizeof(hdr));
-	iov[2].iov_len = len - 1 - sizeof(hdr);
+	iov[2].iov_base = (void *) (data + sizeof(hdr));
+	iov[2].iov_len = len - sizeof(hdr);
 
 	send_packet(conn->link->dev, iov, 3);
 }
@@ -5352,11 +5353,16 @@ static void send_acl(struct btdev *dev, const void *data, uint16_t len)
 static void send_iso(struct btdev *dev, const void *data, uint16_t len)
 {
 	struct bt_hci_acl_hdr *hdr;
-	struct iovec iov;
+	struct iovec iov[2];
 	struct btdev_conn *conn;
+	uint8_t pkt_type = BT_H4_ISO_PKT;
 
-	iov.iov_base = hdr = (void *) (data);
-	iov.iov_len = len;
+	/* Packet type */
+	iov[0].iov_base = &pkt_type;
+	iov[0].iov_len = sizeof(pkt_type);
+
+	iov[1].iov_base = hdr = (void *) (data);
+	iov[1].iov_len = len;
 
 	conn = queue_find(dev->conns, match_handle,
 					UINT_TO_PTR(acl_handle(hdr->handle)));
@@ -5365,7 +5371,7 @@ static void send_iso(struct btdev *dev, const void *data, uint16_t len)
 
 	num_completed_packets(dev, conn->handle);
 
-	send_packet(conn->link->dev, &iov, 1);
+	send_packet(conn->link->dev, iov, 2);
 }
 
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
@@ -5388,10 +5394,10 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 		process_cmd(btdev, data + 1, len - 1);
 		break;
 	case BT_H4_ACL_PKT:
-		send_acl(btdev, data, len);
+		send_acl(btdev, data + 1, len - 1);
 		break;
 	case BT_H4_ISO_PKT:
-		send_iso(btdev, data, len);
+		send_iso(btdev, data + 1, len - 1);
 		break;
 	default:
 		util_debug(btdev->debug_callback, btdev->debug_data,
