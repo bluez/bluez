@@ -1344,10 +1344,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	}
 
 	ccc = find_ccc_state(device_state, notify->ccc_handle);
-	if (!ccc)
-		return;
-
-	if (!ccc->value || (notify->conf && !(ccc->value & 0x0002)))
+	if (!ccc || !(ccc->value & 0x0003))
 		return;
 
 	device = btd_adapter_find_device(notify->database->adapter,
@@ -1374,7 +1371,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	 * TODO: If the device is not connected but bonded, send the
 	 * notification/indication when it becomes connected.
 	 */
-	if (!notify->conf) {
+	if (!(ccc->value & 0x0002)) {
 		DBG("GATT server sending notification");
 		bt_gatt_server_send_notification(server,
 					notify->handle, notify->value,
@@ -2415,8 +2412,8 @@ static bool sock_io_read(struct io *io, void *user_data)
 				gatt_db_attribute_get_handle(chrc->attrib),
 				buf, bytes_read,
 				gatt_db_attribute_get_handle(chrc->ccc),
-				chrc->props & BT_GATT_CHRC_PROP_INDICATE ?
-				conf_cb : NULL, chrc->proxy);
+				conf_cb,
+				chrc->proxy);
 
 	return true;
 }
@@ -2725,8 +2722,8 @@ static void property_changed_cb(GDBusProxy *proxy, const char *name,
 				gatt_db_attribute_get_handle(chrc->attrib),
 				value, len,
 				gatt_db_attribute_get_handle(chrc->ccc),
-				chrc->props & BT_GATT_CHRC_PROP_INDICATE ?
-				conf_cb : NULL, proxy);
+				conf_cb,
+				proxy);
 }
 
 static bool database_add_ccc(struct external_service *service,
