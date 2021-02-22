@@ -645,7 +645,7 @@ static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
 		setting = MGMT_SETTING_DISCOVERABLE;
 		break;
 	case MGMT_OP_SET_BONDABLE:
-		setting = MGMT_SETTING_DISCOVERABLE;
+		setting = MGMT_SETTING_BONDABLE;
 		break;
 	}
 
