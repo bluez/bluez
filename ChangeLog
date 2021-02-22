@@ -1,3 +1,15 @@
+ver 5.56:
+	Fix issue with setting AVDTP disconnect timer.
+	Fix issue with AVDTP not sending GetCapabilities.
+	Fix issue with AVDTP connecting using streaming mode.
+	Fix issue with handling A2DP and remote SEP disappearing.
+	Fix issue with handling session of A2DP channels.
+	Fix issue with GATT and handling device removal.
+	Fix issue with GATT not accepting multiple requests.
+	Fix issue with HID report value callback registration.
+	Add support for new advertising management command.
+	Add support for battery D-Bus interface.
+
 ver 5.55:
 	Fix issue with handling security level for HoG.
 	Fix issue with handling HIDSDPDisable attribute.
