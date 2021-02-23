@@ -10575,6 +10575,12 @@ static void le_big_complete_evt(const void *data, uint8_t size)
 	print_usec_interval("BIG Synchronization Delay", evt->sync_delay);
 	print_usec_interval("Transport Latency", evt->latency);
 	print_le_phy("PHY", evt->phy);
+	print_field("NSE: %u", evt->nse);
+	print_field("BN: %u", evt->bn);
+	print_field("PTO: %u", evt->bn);
+	print_field("IRC: %u", evt->irc);
+	print_field("Maximum PDU: %u", evt->max_pdu);
+	print_slot_125("ISO Interval", evt->interval);
 	print_list(evt->handle, size, evt->num_bis, sizeof(*evt->handle),
 						print_bis_handle);
 }
