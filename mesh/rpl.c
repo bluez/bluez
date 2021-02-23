@@ -62,7 +62,7 @@ bool rpl_put_entry(struct mesh_node *node, uint16_t src, uint32_t iv_index,
 	snprintf(src_file, PATH_MAX, "%s%s/%8.8x/%4.4x", node_path, rpl_dir,
 								iv_index, src);
 
-	fd = open(src_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+	fd = open(src_file, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	if (fd >= 0) {
 		snprintf(seq_txt, 7, "%6.6x", seq);
 		if (write(fd, seq_txt, 6) == 6)
