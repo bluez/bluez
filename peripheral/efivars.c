@@ -98,8 +98,7 @@ int efivars_write(const char *name, uint32_t attributes,
 	if (!buf)
 		return -ENOMEM;
 
-	fd = open(pathname, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	fd = open(pathname, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644);
 	if (fd < 0) {
 		free(buf);
 		return -EIO;
