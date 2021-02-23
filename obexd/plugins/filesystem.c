@@ -116,15 +116,15 @@ static char *file_stat_line(char *filename, struct stat *fstat,
 
 	snprintf(perm, 50, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
-			(fstat->st_mode & S_IRUSR ? "R" : ""),
-			(fstat->st_mode & S_IWUSR ? "W" : ""),
-			(dstat->st_mode & S_IWUSR ? "D" : ""),
-			(fstat->st_mode & S_IRGRP ? "R" : ""),
-			(fstat->st_mode & S_IWGRP ? "W" : ""),
-			(dstat->st_mode & S_IWGRP ? "D" : ""),
-			(fstat->st_mode & S_IROTH ? "R" : ""),
-			(fstat->st_mode & S_IWOTH ? "W" : ""),
-			(dstat->st_mode & S_IWOTH ? "D" : ""));
+			(fstat->st_mode & 0400 ? "R" : ""),
+			(fstat->st_mode & 0200 ? "W" : ""),
+			(dstat->st_mode & 0200 ? "D" : ""),
+			(fstat->st_mode & 0040 ? "R" : ""),
+			(fstat->st_mode & 0020 ? "W" : ""),
+			(dstat->st_mode & 0020 ? "D" : ""),
+			(fstat->st_mode & 0004 ? "R" : ""),
+			(fstat->st_mode & 0002 ? "W" : ""),
+			(dstat->st_mode & 0002 ? "D" : ""));
 
 	strftime(atime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_atime));
 	strftime(ctime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_ctime));

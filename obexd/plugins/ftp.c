@@ -284,8 +284,8 @@ int ftp_setpath(struct obex_session *os, void *user_data)
 		goto done;
 	}
 
-	if (S_ISDIR(dstat.st_mode) && (dstat.st_mode & S_IRUSR) &&
-						(dstat.st_mode & S_IXUSR)) {
+	if (S_ISDIR(dstat.st_mode) && (dstat.st_mode & 0400) &&
+						(dstat.st_mode & 0100)) {
 		set_folder(ftp, fullname);
 		goto done;
 	}
