@@ -919,7 +919,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 
 		data = g_key_file_to_data(key_file, &length, NULL);
 		if (length > 0) {
-			create_file(filename, S_IRUSR | S_IWUSR);
+			create_file(filename, 0600);
 			g_file_set_contents(filename, data, length, NULL);
 		}
 

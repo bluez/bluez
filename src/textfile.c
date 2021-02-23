@@ -65,7 +65,7 @@ int create_file(const char *filename, const mode_t mode)
 {
 	int fd;
 
-	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR);
+	create_dirs(filename, 0700);
 
 	fd = open(filename, O_RDWR | O_CREAT, mode);
 	if (fd < 0)

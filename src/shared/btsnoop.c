@@ -151,7 +151,7 @@ struct btsnoop *btsnoop_create(const char *path, size_t max_size,
 	}
 
 	btsnoop->fd = open(real_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+									0644);
 	if (btsnoop->fd < 0) {
 		free(btsnoop);
 		return NULL;
@@ -230,7 +230,7 @@ static bool btsnoop_rotate(struct btsnoop *btsnoop)
 	btsnoop->cur_count++;
 
 	btsnoop->fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+									0644);
 	if (btsnoop->fd < 0)
 		return false;
 
