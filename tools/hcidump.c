@@ -434,7 +434,7 @@ static int open_file(char *file, int mode, unsigned long flags)
 	else
 		open_flags = O_RDONLY;
 
-	fd = open(file, open_flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	fd = open(file, open_flags, 0644);
 	if (fd < 0) {
 		perror("Can't open dump file");
 		exit(1);

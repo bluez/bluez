@@ -53,8 +53,7 @@
 
 static unsigned int ino_cnt = 721;
 
-#define REG_EXE	S_IFREG | \
-		S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH
+#define REG_EXE	S_IFREG | 0555
 
 static const struct {
 	const char *source;

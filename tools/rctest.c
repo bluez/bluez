@@ -631,8 +631,7 @@ static void automated_send_recv()
 			do_listen(recv_mode);
 		}
 
-		save_fd = open(savefile, O_CREAT | O_WRONLY,
-						S_IRUSR | S_IWUSR);
+		save_fd = open(savefile, O_CREAT | O_WRONLY, 0600);
 		if (save_fd < 0)
 			syslog(LOG_ERR, "Failed to open file to save data");
 

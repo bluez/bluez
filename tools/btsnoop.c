@@ -57,8 +57,7 @@ static int create_btsnoop(const char *path)
 	ssize_t written;
 	int fd;
 
-	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 	if (fd < 0) {
 		perror("failed to output file");
 		return -1;
