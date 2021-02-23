@@ -3554,6 +3554,12 @@ struct bt_hci_evt_le_big_sync_estabilished {
 	uint8_t  status;
 	uint8_t  big_id;
 	uint8_t  latency[3];
+	uint8_t  nse;
+	uint8_t  bn;
+	uint8_t  pto;
+	uint8_t  irc;
+	uint16_t max_pdu;
+	uint16_t interval;
 	uint8_t  num_bis;
 	uint16_t handle[0];
 } __attribute__ ((packed));

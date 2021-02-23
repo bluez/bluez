@@ -10600,6 +10600,12 @@ static void le_big_sync_estabilished_evt(const void *data, uint8_t size)
 	print_status(evt->status);
 	print_field("BIG ID: 0x%2.2x", evt->big_id);
 	print_usec_interval("Transport Latency", evt->latency);
+	print_field("NSE: %u", evt->nse);
+	print_field("BN: %u", evt->bn);
+	print_field("PTO: %u", evt->bn);
+	print_field("IRC: %u", evt->irc);
+	print_field("Maximum PDU: %u", evt->max_pdu);
+	print_slot_125("ISO Interval", evt->interval);
 	print_list(evt->handle, size, evt->num_bis, sizeof(*evt->handle),
 						print_bis_handle);
 }
