@@ -7996,7 +7996,7 @@ static void le_create_big_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_create_big *cmd = data;
 
-	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_field("Handle: 0x%2.2x", cmd->handle);
 	print_field("Advertising Handle: 0x%2.2x", cmd->adv_handle);
 	print_field("Number of BIS: %u", cmd->num_bis);
 
@@ -10571,7 +10571,7 @@ static void le_big_complete_evt(const void *data, uint8_t size)
 	const struct bt_hci_evt_le_big_complete *evt = data;
 
 	print_status(evt->status);
-	print_field("BIG ID: 0x%2.2x", evt->big_id);
+	print_field("Handle: 0x%2.2x", evt->handle);
 	print_usec_interval("BIG Synchronization Delay", evt->sync_delay);
 	print_usec_interval("Transport Latency", evt->latency);
 	print_le_phy("PHY", evt->phy);
@@ -10581,8 +10581,8 @@ static void le_big_complete_evt(const void *data, uint8_t size)
 	print_field("IRC: %u", evt->irc);
 	print_field("Maximum PDU: %u", evt->max_pdu);
 	print_slot_125("ISO Interval", evt->interval);
-	print_list(evt->handle, size, evt->num_bis, sizeof(*evt->handle),
-						print_bis_handle);
+	print_list(evt->bis_handle, size, evt->num_bis,
+				sizeof(*evt->bis_handle), print_bis_handle);
 }
 
 static void le_big_terminate_evt(const void *data, uint8_t size)

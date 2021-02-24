@@ -2687,7 +2687,7 @@ struct bt_hci_bis {
 } __attribute__ ((packed));
 
 struct bt_hci_cmd_le_create_big {
-	uint8_t  big_id;
+	uint8_t  handle;
 	uint8_t  adv_handle;
 	uint8_t  num_bis;
 	struct bt_hci_bis bis[0];
@@ -3529,7 +3529,7 @@ struct bt_hci_evt_le_cis_req {
 #define BT_HCI_EVT_LE_BIG_COMPLETE			0x1b
 struct bt_hci_evt_le_big_complete {
 	uint8_t  status;
-	uint8_t  big_id;
+	uint8_t  handle;
 	uint8_t  sync_delay[3];
 	uint8_t  latency[3];
 	uint8_t  phy;
@@ -3540,7 +3540,7 @@ struct bt_hci_evt_le_big_complete {
 	uint16_t max_pdu;
 	uint16_t interval;
 	uint8_t  num_bis;
-	uint16_t handle[0];
+	uint16_t bis_handle[0];
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_BIG_TERMINATE			0x1c
