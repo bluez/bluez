@@ -4614,6 +4614,37 @@ static int cmd_set_host_feature(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_read_local_codecs_v2(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	struct {
+		struct bt_hci_rsp_read_local_codecs rsp;
+		struct bt_hci_codec codec[6];
+		uint8_t num_vnd_codecs;
+	} pdu;
+
+	memset(&pdu, 0, sizeof(pdu));
+
+	pdu.rsp.status = BT_HCI_ERR_SUCCESS;
+	pdu.rsp.num_codecs = 0x06;
+	pdu.codec[0].id = 0x00;
+	pdu.codec[0].transport = BT_HCI_LOCAL_CODEC_BREDR_SCO;
+	pdu.codec[1].id = 0x01;
+	pdu.codec[1].transport = BT_HCI_LOCAL_CODEC_BREDR_SCO;
+	pdu.codec[2].id = 0x02;
+	pdu.codec[2].transport = BT_HCI_LOCAL_CODEC_BREDR_SCO;
+	pdu.codec[3].id = 0x03;
+	pdu.codec[3].transport = BT_HCI_LOCAL_CODEC_BREDR_SCO;
+	pdu.codec[4].id = 0x04;
+	pdu.codec[4].transport = BT_HCI_LOCAL_CODEC_BREDR_SCO;
+	pdu.codec[5].id = 0x05;
+	pdu.codec[5].transport = BT_HCI_LOCAL_CODEC_BREDR_SCO;
+
+	cmd_complete(dev, BT_HCI_CMD_READ_LOCAL_CODECS_V2, &pdu, sizeof(pdu));
+
+	return 0;
+}
+
 #define CMD_LE_52 \
 	CMD(BT_HCI_CMD_LE_READ_BUFFER_SIZE_V2, cmd_read_size_v2, NULL), \
 	CMD(BT_HCI_CMD_LE_READ_ISO_TX_SYNC, cmd_read_iso_tx_sync, NULL), \
@@ -4638,7 +4669,8 @@ static int cmd_set_host_feature(struct btdev *dev, const void *data,
 	CMD(BT_HCI_CMD_LE_ISO_READ_TEST_COUNTER, cmd_iso_read_test_counter, \
 					NULL), \
 	CMD(BT_HCI_CMD_LE_ISO_TEST_END, cmd_iso_test_end, NULL), \
-	CMD(BT_HCI_CMD_LE_SET_HOST_FEATURE, cmd_set_host_feature, NULL)
+	CMD(BT_HCI_CMD_LE_SET_HOST_FEATURE, cmd_set_host_feature, NULL), \
+	CMD(BT_HCI_CMD_READ_LOCAL_CODECS_V2, cmd_read_local_codecs_v2, NULL)
 
 static const struct btdev_cmd cmd_le_5_2[] = {
 	CMD_COMMON_ALL,
@@ -4672,6 +4704,7 @@ static void set_le_52_commands(struct btdev *btdev)
 	btdev->commands[43] |= 0x80;	/* LE ISO Read Test Counter */
 	btdev->commands[44] |= 0x01;	/* LE ISO Test End */
 	btdev->commands[44] |= 0x02;	/* LE ISO Set Host Feature */
+	btdev->commands[45] |= 0x04;	/* Read Local Supported Codecs v2 */
 	btdev->cmds = cmd_le_5_2;
 }
 
