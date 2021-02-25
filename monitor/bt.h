@@ -1792,6 +1792,27 @@ struct bt_hci_rsp_read_local_codecs_v2 {
 	struct bt_hci_codec codec[0];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LOCAL_CODEC_CAPS	0x100e
+#define BT_HCI_BIT_READ_LOCAL_CODEC_CAPS	BT_HCI_CMD_BIT(45, 3)
+struct bt_hci_cmd_read_local_codec_caps {
+	uint8_t  codec_id;
+	uint16_t codec_cid;
+	uint16_t codec_vid;
+	uint8_t  transport;
+	uint8_t  dir;
+} __attribute__ ((packed));
+
+struct bt_hci_codec_caps {
+	uint8_t  len;
+	uint8_t  data[0];
+} __attribute__ ((packed));
+
+struct bt_hci_rsp_read_local_codec_caps {
+	uint8_t  status;
+	uint8_t  num;
+	struct bt_hci_codec_caps caps[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_FAILED_CONTACT_COUNTER	0x1401
 struct bt_hci_cmd_read_failed_contact_counter {
 	uint16_t handle;

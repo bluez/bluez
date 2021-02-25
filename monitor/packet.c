@@ -5977,6 +5977,76 @@ static void read_local_codecs_rsp_v2(const void *data, uint8_t size)
 	print_field("Number of vendor codecs: %d", num_vnd_codecs);
 }
 
+static void print_path_direction(const char *prefix, uint8_t dir)
+{
+	const char *str;
+
+	switch (dir) {
+	case 0x00:
+		str = "Input (Host to Controller)";
+		break;
+	case 0x01:
+		str = "Output (Controller to Host)";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s: %s (0x%2.2x)", prefix, str, dir);
+}
+
+static void read_local_codec_caps_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_local_codec_caps *cmd = data;
+	uint8_t mask;
+
+	print_codec_id("Codec ID", cmd->codec_id);
+
+	if (cmd->codec_id == 0xff) {
+		packet_print_company("Company Codec ID",
+					le16_to_cpu(cmd->codec_cid));
+		print_field("Vendor Codec ID: %d",
+					le16_to_cpu(cmd->codec_vid));
+	}
+
+	print_field("Logical Transport Type: 0x%02x", cmd->transport);
+	mask = print_bitfield(2, cmd->transport, codec_transport_table);
+	if (mask)
+		print_text(COLOR_UNKNOWN_SERVICE_CLASS,
+				"  Unknown transport (0x%2.2x)", mask);
+
+	print_path_direction("Direction", cmd->dir);
+}
+
+static void read_local_codec_caps_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_codec_caps *rsp = data;
+	uint8_t i;
+
+	print_status(rsp->status);
+	print_field("Number of codec capabilities: %d", rsp->num);
+
+	data += sizeof(rsp);
+	size -= sizeof(rsp);
+
+	for (i = 0; i < rsp->num; i++) {
+		const struct bt_hci_codec_caps *caps = data;
+
+		if (size < sizeof(caps)) {
+			print_field("Invalid capabilities: %u < %zu",
+						size, sizeof(caps));
+			return;
+		}
+
+		print_field(" Capabilities #%u:", i);
+		packet_hexdump(caps->data, caps->len);
+
+		data += caps->len;
+		size -= caps->len;
+	}
+}
+
 static void read_local_pairing_options_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_local_pairing_options *rsp = data;
@@ -8150,22 +8220,6 @@ static void le_big_term_sync_cmd(const void *data, uint8_t size)
 	print_field("BIG Handle: 0x%2.2x", cmd->handle);
 }
 
-static void print_iso_dir(const char *prefix, uint8_t dir)
-{
-	switch (dir) {
-	case 0x00:
-		print_field("%s: Input (Host to Controller) (0x%2.2x)",
-							prefix, dir);
-		return;
-	case 0x01:
-		print_field("%s: Output (Controller to Host) (0x%2.2x)",
-							prefix, dir);
-		return;
-	default:
-		print_field("%s: Unknown (0x%2.2x)", prefix, dir);
-	}
-}
-
 static void print_iso_path(const char *prefix, uint8_t path)
 {
 	switch (path) {
@@ -8185,7 +8239,7 @@ static void le_setup_iso_path_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_setup_iso_path *cmd = data;
 
 	print_field("Handle: %d", le16_to_cpu(cmd->handle));
-	print_iso_dir("Data Path Direction", cmd->direction);
+	print_path_direction("Data Path Direction", cmd->direction);
 	print_iso_path("Data Path", cmd->path);
 	print_codec_id("Coding Format", cmd->codec);
 	packet_print_company("Company Codec ID", le16_to_cpu(cmd->codec_cid));
@@ -8213,7 +8267,7 @@ static void le_remove_iso_path_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_remove_iso_path *cmd = data;
 
 	print_field("Connection Handle: %d", le16_to_cpu(cmd->handle));
-	print_iso_dir("Data Path Direction", cmd->direction);
+	print_path_direction("Data Path Direction", cmd->direction);
 }
 
 static void le_req_peer_sca_cmd(const void *data, uint8_t size)
@@ -8753,6 +8807,14 @@ static const struct opcode_data opcode_table[] = {
 		read_local_codecs_rsp_v2,
 		sizeof(struct bt_hci_rsp_read_local_codecs_v2), false
 	},
+	{ BT_HCI_CMD_READ_LOCAL_CODEC_CAPS, BT_HCI_BIT_READ_LOCAL_CODEC_CAPS,
+		"Read Local Supported Codec Capabilities",
+		read_local_codec_caps_cmd,
+		sizeof(struct bt_hci_cmd_read_local_codec_caps), true,
+		read_local_codec_caps_rsp,
+		sizeof(struct bt_hci_rsp_read_local_codec_caps), false
+	},
+
 	/* OGF 5 - Status Parameter */
 	{ 0x1401, 122, "Read Failed Contact Counter",
 				read_failed_contact_counter_cmd, 2, true,
