@@ -1305,7 +1305,7 @@ static void print_air_mode(uint8_t mode)
 	print_field("Air mode: %s (0x%2.2x)", str, mode);
 }
 
-static void print_codec(const char *label, uint8_t codec)
+static void print_codec_id(const char *label, uint8_t codec)
 {
 	const char *str;
 
@@ -1337,6 +1337,26 @@ static void print_codec(const char *label, uint8_t codec)
 	}
 
 	print_field("%s: %s (0x%2.2x)", label, str, codec);
+}
+
+static const struct bitfield_data codec_transport_table[] = {
+	{  0, "Codec supported over BR/EDR ACL"		},
+	{  1, "Codec supported over BR/EDR SCO and eSCO"},
+	{  2, "Codec supported over LE CIS"		},
+	{  3, "Codec supported over LE BIS"		},
+	{ }
+};
+
+static void print_codec(const char *label, const struct bt_hci_codec *codec)
+{
+	uint8_t mask;
+
+	print_codec_id(label, codec->id);
+	print_field("  Logical Transport Type: 0x%02x", codec->transport);
+	mask = print_bitfield(4, codec->transport, codec_transport_table);
+	if (mask)
+		print_text(COLOR_UNKNOWN_SERVICE_CLASS,
+				"  Unknown transport (0x%2.2x)", mask);
 }
 
 static void print_inquiry_mode(uint8_t mode)
@@ -5886,7 +5906,7 @@ static void read_local_codecs_rsp(const void *data, uint8_t size)
 	print_field("Number of supported codecs: %d", rsp->num_codecs);
 
 	for (i = 0; i < rsp->num_codecs; i++)
-		print_codec("  Codec", rsp->codec[i]);
+		print_codec_id("  Codec", rsp->codec[i]);
 
 	num_vnd_codecs = rsp->codec[rsp->num_codecs];
 
@@ -5894,6 +5914,67 @@ static void read_local_codecs_rsp(const void *data, uint8_t size)
 
 	packet_hexdump(data + rsp->num_codecs + 3,
 					size - rsp->num_codecs - 3);
+}
+
+static void print_codecs(const void *data, int i)
+{
+	const struct bt_hci_codec *codec = data;
+
+	print_codec("  Codec", codec);
+}
+
+typedef void (*print_list_func_t)(const void *data, int i);
+
+static void print_list(const void *data, uint8_t size, int num_items,
+				size_t item_size, print_list_func_t func)
+{
+	int i;
+
+	for (i = 0; size >= item_size && num_items; i++) {
+		if (func)
+			func(data, i);
+		data += item_size;
+		size -= item_size;
+		num_items--;
+	}
+
+	if (num_items)
+		print_hex_field("", data, size);
+}
+
+static void read_local_codecs_rsp_v2(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_codecs_v2 *rsp = data;
+	uint8_t num_vnd_codecs;
+
+	if (rsp->num_codecs + 3 > size) {
+		print_field("Invalid number of codecs.");
+		return;
+	}
+
+	print_status(rsp->status);
+	print_field("Number of supported codecs: %d", rsp->num_codecs);
+
+	size -= sizeof(*rsp);
+
+	if (size < rsp->num_codecs * sizeof(*rsp->codec)) {
+		print_field("Invalid number of codecs.");
+		return;
+	}
+
+	print_list(rsp->codec, size, rsp->num_codecs, sizeof(*rsp->codec),
+							print_codecs);
+
+	size -= rsp->num_codecs * sizeof(*rsp->codec);
+
+	if (size < sizeof(uint8_t)) {
+		print_field("Invalid number of vendor codecs.");
+		return;
+	}
+
+	num_vnd_codecs = rsp->codec[rsp->num_codecs].id;
+
+	print_field("Number of vendor codecs: %d", num_vnd_codecs);
 }
 
 static void read_local_pairing_options_rsp(const void *data, uint8_t size)
@@ -7795,7 +7876,7 @@ static void le_read_iso_tx_sync_rsp(const void *data, uint8_t size)
 	print_field("Offset: %d", le32_to_cpu(offset));
 }
 
-static void print_cis_params(const void *data)
+static void print_cis_params(const void *data, int i)
 {
 	const struct bt_hci_cis_params *cis = data;
 
@@ -7810,20 +7891,6 @@ static void print_cis_params(const void *data)
 							cis->m_rtn);
 	print_field("Slave to Master Retransmission attempts: 0x%2.2x",
 							cis->s_rtn);
-}
-
-static void print_list(const void *data, uint8_t size, int num_items,
-			size_t item_size, void (*callback)(const void *data))
-{
-	while (size >= item_size && num_items) {
-		callback(data);
-		data += item_size;
-		size -= item_size;
-		num_items--;
-	}
-
-	if (num_items)
-		print_hex_field("", data, size);
 }
 
 static void print_usec_interval(const char *prefix, const uint8_t interval[3])
@@ -7857,7 +7924,7 @@ static void le_set_cig_params_cmd(const void *data, uint8_t size)
 						print_cis_params);
 }
 
-static void print_cis_params_test(const void *data)
+static void print_cis_params_test(const void *data, int i)
 {
 	const struct bt_hci_cis_params_test *cis = data;
 
@@ -7898,7 +7965,7 @@ static void le_set_cig_params_test_cmd(const void *data, uint8_t size)
 						print_cis_params_test);
 }
 
-static void print_cig_handle(const void *data)
+static void print_cig_handle(const void *data, int i)
 {
 	const uint16_t *handle = data;
 
@@ -7923,7 +7990,7 @@ static void le_set_cig_params_rsp(const void *data, uint8_t size)
 						print_cig_handle);
 }
 
-static void print_cis(const void *data)
+static void print_cis(const void *data, int i)
 {
 	const struct bt_hci_cis *cis = data;
 
@@ -7976,7 +8043,7 @@ static void le_reject_cis_req_cmd(const void *data, uint8_t size)
 	print_reason(cmd->reason);
 }
 
-static void print_bis(const void *data)
+static void print_bis(const void *data, int i)
 {
 	const struct bt_hci_bis *bis = data;
 
@@ -8005,7 +8072,7 @@ static void le_create_big_cmd(const void *data, uint8_t size)
 	print_list(cmd->bis, size, cmd->num_bis, sizeof(*cmd->bis), print_bis);
 }
 
-static void print_bis_test(const void *data)
+static void print_bis_test(const void *data, int i)
 {
 	const struct bt_hci_bis_test *bis = data;
 
@@ -8048,7 +8115,7 @@ static void le_terminate_big_cmd(const void *data, uint8_t size)
 	print_reason(cmd->reason);
 }
 
-static void print_bis_sync(const void *data)
+static void print_bis_sync(const void *data, int i)
 {
 	const uint8_t *bis_id = data;
 
@@ -8120,7 +8187,7 @@ static void le_setup_iso_path_cmd(const void *data, uint8_t size)
 	print_field("Handle: %d", le16_to_cpu(cmd->handle));
 	print_iso_dir("Data Path Direction", cmd->direction);
 	print_iso_path("Data Path", cmd->path);
-	print_codec("Coding Format", cmd->codec);
+	print_codec_id("Coding Format", cmd->codec);
 	packet_print_company("Company Codec ID", le16_to_cpu(cmd->codec_cid));
 	print_field("Vendor Codec ID: %d", le16_to_cpu(cmd->codec_vid));
 	print_usec_interval("Controller Delay", cmd->delay);
@@ -8680,7 +8747,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x100c, 331, "Read Local Simple Pairing Options",
 				null_cmd, 0, true,
 				read_local_pairing_options_rsp, 3, true },
-
+	{ BT_HCI_CMD_READ_LOCAL_CODECS_V2, BT_HCI_BIT_READ_LOCAL_CODECS_V2,
+		"Read Local Supported Codecs V2",
+		null_cmd, 0, true,
+		read_local_codecs_rsp_v2,
+		sizeof(struct bt_hci_rsp_read_local_codecs_v2), false
+	},
 	/* OGF 5 - Status Parameter */
 	{ 0x1401, 122, "Read Failed Contact Counter",
 				read_failed_contact_counter_cmd, 2, true,
@@ -10562,7 +10634,7 @@ static void le_req_cis_evt(const void *data, uint8_t size)
 	print_field("CIS ID: 0x%2.2x", evt->cis_id);
 }
 
-static void print_bis_handle(const void *data)
+static void print_bis_handle(const void *data, int i)
 {
 	const uint16_t *handle = data;
 

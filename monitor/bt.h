@@ -1768,6 +1768,30 @@ struct bt_hci_rsp_read_local_pairing_options {
 	uint8_t  max_key_size;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LOCAL_CODECS_V2		0x100d
+#define BT_HCI_BIT_READ_LOCAL_CODECS_V2		BT_HCI_CMD_BIT(45, 2)
+#define BT_HCI_LOCAL_CODEC_BREDR_ACL		BIT(0)
+#define BT_HCI_LOCAL_CODEC_BREDR_SCO		BIT(1)
+#define BT_HCI_LOCAL_CODEC_LE_CIS		BIT(2)
+#define BT_HCI_LOCAL_CODEC_LE_BIS		BIT(3)
+
+struct bt_hci_vnd_codec {
+	uint16_t company;
+	uint16_t id;
+	uint8_t  transport;
+} __attribute__ ((packed));
+
+struct bt_hci_codec {
+	uint8_t  id;
+	uint8_t  transport;
+} __attribute__ ((packed));
+
+struct bt_hci_rsp_read_local_codecs_v2 {
+	uint8_t  status;
+	uint8_t  num_codecs;
+	struct bt_hci_codec codec[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_FAILED_CONTACT_COUNTER	0x1401
 struct bt_hci_cmd_read_failed_contact_counter {
 	uint16_t handle;
