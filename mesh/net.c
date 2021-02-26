@@ -2609,29 +2609,33 @@ static int key_refresh_finish(struct mesh_net *net, uint16_t idx)
 	return MESH_STATUS_SUCCESS;
 }
 
-static void update_kr_state(struct mesh_subnet *subnet, bool kr, uint32_t id)
+static bool update_kr_state(struct mesh_subnet *subnet, bool kr, uint32_t id)
 {
 	/* Figure out the key refresh phase */
 	if (kr) {
 		if (id == subnet->net_key_upd) {
 			l_debug("Beacon based KR phase 2 change");
-			key_refresh_phase_two(subnet->net, subnet->idx);
+			return (key_refresh_phase_two(subnet->net, subnet->idx)
+							== MESH_STATUS_SUCCESS);
 		}
 	} else {
 		if (id == subnet->net_key_upd) {
 			l_debug("Beacon based KR phase 3 change");
-			key_refresh_finish(subnet->net, subnet->idx);
+			return (key_refresh_finish(subnet->net, subnet->idx)
+							== MESH_STATUS_SUCCESS);
 		}
 	}
+
+	return false;
 }
 
-static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
+static bool update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 								bool ivu)
 {
 	if ((iv_index - ivu) > (net->iv_index - net->iv_update)) {
 		/* Don't accept IV_Index changes when performing SAR Out */
 		if (l_queue_length(net->sar_out))
-			return;
+			return false;
 	}
 
 	/* If first beacon seen, accept without judgement */
@@ -2639,7 +2643,7 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		if (ivu) {
 			/* Ignore beacons with IVU if IV already updated */
 			if (iv_index == net->iv_index && !net->iv_update)
-				return;
+				return false;
 
 			/*
 			 * Other devices will be accepting old or new iv_index,
@@ -2660,12 +2664,12 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		if (!net->iv_update &&
 				net->iv_upd_state == IV_UPD_NORMAL_HOLD) {
 			l_error("Update attempted too soon");
-			return;
+			return false;
 		}
 
 		/* Ignore beacons with IVU if IV already updated */
 		if (iv_index == net->iv_index)
-			return;
+			return false;
 
 		if (!net->iv_update) {
 			l_debug("iv_upd_state = IV_UPD_UPDATING");
@@ -2675,7 +2679,7 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		}
 	} else if (net->iv_update) {
 		l_error("IVU clear attempted too soon");
-		return;
+		return false;
 	}
 
 	if ((iv_index - ivu) > (net->iv_index - net->iv_update))
@@ -2694,10 +2698,12 @@ static void update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 
 	net->iv_index = iv_index;
 	net->iv_update = ivu;
+	return true;
 }
 
 static void process_beacon(void *net_ptr, void *user_data)
 {
+	bool updated = false;
 	struct mesh_net *net = net_ptr;
 	struct net_beacon_data *beacon_data = user_data;
 	uint32_t ivi;
@@ -2731,13 +2737,15 @@ static void process_beacon(void *net_ptr, void *user_data)
 	 */
 	if (net->iv_upd_state == IV_UPD_INIT || ivi != net->iv_index ||
 							ivu != net->iv_update)
-		update_iv_ivu_state(net, ivi, ivu);
+		updated |= update_iv_ivu_state(net, ivi, ivu);
 
 	if (kr != local_kr)
-		update_kr_state(subnet, kr, beacon_data->key_id);
+		updated |= update_kr_state(subnet, kr, beacon_data->key_id);
 
-	net_key_beacon_refresh(beacon_data->key_id, net->iv_index,
-		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update);
+	if (updated)
+		net_key_beacon_refresh(beacon_data->key_id, net->iv_index,
+				!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO),
+								net->iv_update);
 }
 
 static void beacon_recv(void *user_data, struct mesh_io_recv_info *info,
