@@ -4653,7 +4653,7 @@ static int cmd_read_local_codec_caps(struct btdev *dev, const void *data,
 
 	memset(&rsp, 0, sizeof(rsp));
 
-	if (cmd->codec_id > 0x05)
+	if (cmd->codec.id > 0x05)
 		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
 
 	cmd_complete(dev, BT_HCI_CMD_READ_LOCAL_CODEC_CAPS, &rsp, sizeof(rsp));

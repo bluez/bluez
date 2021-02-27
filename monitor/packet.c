@@ -5996,26 +5996,31 @@ static void print_path_direction(const char *prefix, uint8_t dir)
 	print_field("%s: %s (0x%2.2x)", prefix, str, dir);
 }
 
-static void read_local_codec_caps_cmd(const void *data, uint8_t size)
+static void print_vnd_codec(const char *label,
+				const struct bt_hci_vnd_codec *codec)
 {
-	const struct bt_hci_cmd_read_local_codec_caps *cmd = data;
 	uint8_t mask;
 
-	print_codec_id("Codec ID", cmd->codec_id);
+	print_codec_id(label, codec->id);
 
-	if (cmd->codec_id == 0xff) {
+	if (codec->id == 0xff) {
 		packet_print_company("Company Codec ID",
-					le16_to_cpu(cmd->codec_cid));
-		print_field("Vendor Codec ID: %d",
-					le16_to_cpu(cmd->codec_vid));
+					le16_to_cpu(codec->cid));
+		print_field("Vendor Codec ID: %d", le16_to_cpu(codec->vid));
 	}
 
-	print_field("Logical Transport Type: 0x%02x", cmd->transport);
-	mask = print_bitfield(2, cmd->transport, codec_transport_table);
+	print_field("Logical Transport Type: 0x%02x", codec->transport);
+	mask = print_bitfield(2, codec->transport, codec_transport_table);
 	if (mask)
 		print_text(COLOR_UNKNOWN_SERVICE_CLASS,
 				"  Unknown transport (0x%2.2x)", mask);
+}
 
+static void read_local_codec_caps_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_local_codec_caps *cmd = data;
+
+	print_vnd_codec("Codec", &cmd->codec);
 	print_path_direction("Direction", cmd->dir);
 }
 
@@ -6045,6 +6050,33 @@ static void read_local_codec_caps_rsp(const void *data, uint8_t size)
 		data += caps->len;
 		size -= caps->len;
 	}
+}
+
+static void read_local_ctrl_delay_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_local_ctrl_delay *cmd = data;
+
+	print_vnd_codec("Codec", &cmd->codec);
+	print_path_direction("Direction", cmd->dir);
+	print_field("Length Codec Configuration: %u", cmd->codec_cfg_len);
+}
+
+static void print_usec_interval(const char *prefix, const uint8_t interval[3])
+{
+	uint32_t u24 = 0;
+
+	memcpy(&u24, interval, 3);
+	print_field("%s: %u us (0x%6.6x)", prefix, le32_to_cpu(u24),
+						le32_to_cpu(u24));
+}
+
+static void read_local_ctrl_delay_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_ctrl_delay *rsp = data;
+
+	print_status(rsp->status);
+	print_usec_interval("Minimum Controller delay", rsp->min_delay);
+	print_usec_interval("Maximum Controller delay", rsp->max_delay);
 }
 
 static void read_local_pairing_options_rsp(const void *data, uint8_t size)
@@ -7963,15 +7995,6 @@ static void print_cis_params(const void *data, int i)
 							cis->s_rtn);
 }
 
-static void print_usec_interval(const char *prefix, const uint8_t interval[3])
-{
-	uint32_t u24 = 0;
-
-	memcpy(&u24, interval, 3);
-	print_field("%s: %u us (0x%6.6x)", prefix, le32_to_cpu(u24),
-						le32_to_cpu(u24));
-}
-
 static void le_set_cig_params_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_cig_params *cmd = data;
@@ -8813,6 +8836,13 @@ static const struct opcode_data opcode_table[] = {
 		sizeof(struct bt_hci_cmd_read_local_codec_caps), true,
 		read_local_codec_caps_rsp,
 		sizeof(struct bt_hci_rsp_read_local_codec_caps), false
+	},
+	{ BT_HCI_CMD_READ_LOCAL_CTRL_DELAY, BT_HCI_BIT_READ_LOCAL_CTRL_DELAY,
+		"Read Local Supported Controller Delay",
+		read_local_ctrl_delay_cmd,
+		sizeof(struct bt_hci_cmd_read_local_ctrl_delay), false,
+		read_local_ctrl_delay_rsp,
+		sizeof(struct bt_hci_rsp_read_local_ctrl_delay), true
 	},
 
 	/* OGF 5 - Status Parameter */

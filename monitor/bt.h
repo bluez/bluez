@@ -1776,8 +1776,9 @@ struct bt_hci_rsp_read_local_pairing_options {
 #define BT_HCI_LOCAL_CODEC_LE_BIS		BIT(3)
 
 struct bt_hci_vnd_codec {
-	uint16_t company;
-	uint16_t id;
+	uint8_t  id;
+	uint16_t cid;
+	uint16_t vid;
 	uint8_t  transport;
 } __attribute__ ((packed));
 
@@ -1795,10 +1796,7 @@ struct bt_hci_rsp_read_local_codecs_v2 {
 #define BT_HCI_CMD_READ_LOCAL_CODEC_CAPS	0x100e
 #define BT_HCI_BIT_READ_LOCAL_CODEC_CAPS	BT_HCI_CMD_BIT(45, 3)
 struct bt_hci_cmd_read_local_codec_caps {
-	uint8_t  codec_id;
-	uint16_t codec_cid;
-	uint16_t codec_vid;
-	uint8_t  transport;
+	struct bt_hci_vnd_codec codec;
 	uint8_t  dir;
 } __attribute__ ((packed));
 
@@ -1811,6 +1809,21 @@ struct bt_hci_rsp_read_local_codec_caps {
 	uint8_t  status;
 	uint8_t  num;
 	struct bt_hci_codec_caps caps[0];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_LOCAL_CTRL_DELAY	0x100f
+#define BT_HCI_BIT_READ_LOCAL_CTRL_DELAY	BT_HCI_CMD_BIT(45, 4)
+struct bt_hci_cmd_read_local_ctrl_delay {
+	struct bt_hci_vnd_codec codec;
+	uint8_t  dir;
+	uint8_t  codec_cfg_len;
+	uint8_t  codec_cfg[0];
+} __attribute__ ((packed));
+
+struct bt_hci_rsp_read_local_ctrl_delay {
+	uint8_t  status;
+	uint8_t  min_delay[3];
+	uint8_t  max_delay[3];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_READ_FAILED_CONTACT_COUNTER	0x1401
