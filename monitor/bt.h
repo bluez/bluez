@@ -2722,7 +2722,7 @@ struct bt_hci_cmd_le_create_big_test {
 #define BT_HCI_CMD_LE_TERM_BIG			0x206a
 #define BT_HCI_BIT_LE_TERM_BIG			BT_HCI_CMD_BIT(42, 7)
 struct bt_hci_cmd_le_term_big {
-	uint8_t  big_id;
+	uint8_t  handle;
 	uint8_t  reason;
 } __attribute__ ((packed));
 
@@ -2745,7 +2745,7 @@ struct bt_hci_cmd_le_big_create_sync {
 #define BT_HCI_CMD_LE_BIG_TERM_SYNC		0x206c
 #define BT_HCI_BIT_LE_BIG_TERM_SYNC		BT_HCI_CMD_BIT(43, 1)
 struct bt_hci_cmd_le_big_term_sync {
-	uint8_t  big_id;
+	uint8_t  handle;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_REQ_PEER_SCA		0x206d
@@ -3546,13 +3546,13 @@ struct bt_hci_evt_le_big_complete {
 #define BT_HCI_EVT_LE_BIG_TERMINATE			0x1c
 struct bt_hci_evt_le_big_terminate {
 	uint8_t  reason;
-	uint8_t  big_id;
+	uint8_t  handle;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED		0x1d
 struct bt_hci_evt_le_big_sync_estabilished {
 	uint8_t  status;
-	uint8_t  big_id;
+	uint8_t  handle;
 	uint8_t  latency[3];
 	uint8_t  nse;
 	uint8_t  bn;
@@ -3561,7 +3561,7 @@ struct bt_hci_evt_le_big_sync_estabilished {
 	uint16_t max_pdu;
 	uint16_t interval;
 	uint8_t  num_bis;
-	uint16_t handle[0];
+	uint16_t bis[0];
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_BIG_SYNC_LOST			0x1e

@@ -8044,7 +8044,7 @@ static void le_terminate_big_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_term_big *cmd = data;
 
-	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_field("BIG Handle: 0x%2.2x", cmd->handle);
 	print_reason(cmd->reason);
 }
 
@@ -8080,7 +8080,7 @@ static void le_big_term_sync_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_big_term_sync *cmd = data;
 
-	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_field("BIG Handle: 0x%2.2x", cmd->handle);
 }
 
 static void print_iso_dir(const char *prefix, uint8_t dir)
@@ -10592,8 +10592,8 @@ static void le_big_terminate_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_big_terminate *evt = data;
 
+	print_field("BIG Handle: 0x%2.2x", evt->handle);
 	print_reason(evt->reason);
-	print_field("BIG ID: 0x%2.2x", evt->big_id);
 }
 
 static void le_big_sync_estabilished_evt(const void *data, uint8_t size)
@@ -10601,7 +10601,7 @@ static void le_big_sync_estabilished_evt(const void *data, uint8_t size)
 	const struct bt_hci_evt_le_big_sync_estabilished *evt = data;
 
 	print_status(evt->status);
-	print_field("BIG ID: 0x%2.2x", evt->big_id);
+	print_field("BIG Handle: 0x%2.2x", evt->handle);
 	print_usec_interval("Transport Latency", evt->latency);
 	print_field("NSE: %u", evt->nse);
 	print_field("BN: %u", evt->bn);
@@ -10609,7 +10609,7 @@ static void le_big_sync_estabilished_evt(const void *data, uint8_t size)
 	print_field("IRC: %u", evt->irc);
 	print_field("Maximum PDU: %u", evt->max_pdu);
 	print_slot_125("ISO Interval", evt->interval);
-	print_list(evt->handle, size, evt->num_bis, sizeof(*evt->handle),
+	print_list(evt->bis, size, evt->num_bis, sizeof(*evt->bis),
 						print_bis_handle);
 }
 
