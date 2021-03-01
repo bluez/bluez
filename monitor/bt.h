@@ -2732,13 +2732,13 @@ struct bt_hci_bis_sync {
 } __attribute__ ((packed));
 
 struct bt_hci_cmd_le_big_create_sync {
-	uint8_t  big_id;
+	uint8_t  handle;
 	uint16_t sync_handle;
-	uint8_t  num_bis;
 	uint8_t  encryption;
 	uint8_t  bcode[16];
 	uint8_t  mse;
 	uint16_t timeout;
+	uint8_t  num_bis;
 	struct bt_hci_bis_sync bis[0];
 } __attribute__ ((packed));
 

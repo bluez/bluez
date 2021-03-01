@@ -8059,13 +8059,16 @@ static void le_big_create_sync_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_big_create_sync *cmd = data;
 
-	print_field("BIG ID: 0x%2.2x", cmd->big_id);
-	print_field("Number of BIS: %u", cmd->num_bis);
-	print_field("Encryption: 0x%2.2x", cmd->encryption);
+	print_field("BIG Handle: 0x%2.2x", cmd->handle);
+	print_field("BIG Sync Handle: 0x%4.4x", le16_to_cpu(cmd->sync_handle));
+	print_field("Encryption: %s (0x%2.2x)",
+			cmd->encryption ? "Unencrypted" : "Encrypted",
+			cmd->encryption);
 	print_hex_field("Broadcast Code", cmd->bcode, 16);
-	print_field("Number Subevents: 0x%2.2x", cmd->mse);
+	print_field("Maximum Number Subevents: 0x%2.2x", cmd->mse);
 	print_field("Timeout: %d ms (0x%4.4x)", le16_to_cpu(cmd->timeout) * 10,
 						le16_to_cpu(cmd->timeout));
+	print_field("Number of BIS: %u", cmd->num_bis);
 
 	size -= sizeof(*cmd);
 
@@ -9051,7 +9054,7 @@ static const struct opcode_data opcode_table[] = {
 				"LE Broadcast Isochronous Group Create Sync",
 				le_big_create_sync_cmd,
 				sizeof(struct bt_hci_cmd_le_big_create_sync),
-				true },
+				false },
 	{ BT_HCI_CMD_LE_BIG_TERM_SYNC, BT_HCI_BIT_LE_BIG_TERM_SYNC,
 				"LE Broadcast Isochronous Group Terminate Sync",
 				le_big_term_sync_cmd,
