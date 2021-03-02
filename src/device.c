@@ -2105,7 +2105,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 
 	if (dev->bredr_state.connected) {
 		/*
-		 * Check if services have been resolved and there is at list
+		 * Check if services have been resolved and there is at least
 		 * one connected before switching to connect LE.
 		 */
 		if (dev->bredr_state.svc_resolved &&
