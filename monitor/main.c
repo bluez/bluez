@@ -30,6 +30,7 @@
 #include "analyze.h"
 #include "ellisys.h"
 #include "control.h"
+#include "display.h"
 
 static void signal_callback(int signum, void *user_data)
 {
@@ -67,6 +68,7 @@ static void usage(void)
 		"\t                       Read data from RTT\n"
 		"\t-R  --rtt [<address>],[<area>],[<name>]\n"
 		"\t                       RTT control block parameters\n"
+		"\t-C, --columns [width]  Output width if not a terminal\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -90,6 +92,7 @@ static const struct option main_options[] = {
 	{ "no-pager",  no_argument,       NULL, 'P' },
 	{ "jlink",     required_argument, NULL, 'J' },
 	{ "rtt",       required_argument, NULL, 'R' },
+	{ "columns",   required_argument, NULL, 'C' },
 	{ "todo",      no_argument,       NULL, '#' },
 	{ "version",   no_argument,       NULL, 'v' },
 	{ "help",      no_argument,       NULL, 'h' },
@@ -121,7 +124,7 @@ int main(int argc, char *argv[])
 		struct sockaddr_un addr;
 
 		opt = getopt_long(argc, argv,
-					"r:w:a:s:p:i:d:B:V:MNtTSAE:PJ:R:vh",
+					"r:w:a:s:p:i:d:B:V:MNtTSAE:PJ:R:C:vh",
 					main_options, NULL);
 		if (opt < 0)
 			break;
@@ -204,6 +207,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'R':
 			rtt = optarg;
+			break;
+		case 'C':
+			set_default_pager_num_columns(atoi(optarg));
 			break;
 		case '#':
 			packet_todo();

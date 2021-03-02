@@ -28,6 +28,7 @@
 #include "display.h"
 
 static pid_t pager_pid = 0;
+int default_pager_num_columns = FALLBACK_TERMINAL_WIDTH;
 
 bool use_color(void)
 {
@@ -39,6 +40,11 @@ bool use_color(void)
 	return cached_use_color;
 }
 
+void set_default_pager_num_columns(int num_columns)
+{
+	default_pager_num_columns = num_columns;
+}
+
 int num_columns(void)
 {
 	static int cached_num_columns = -1;
@@ -48,7 +54,7 @@ int num_columns(void)
 
 		if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0 ||
 								ws.ws_col == 0)
-			cached_num_columns = FALLBACK_TERMINAL_WIDTH;
+			cached_num_columns = default_pager_num_columns;
 		else
 			cached_num_columns = ws.ws_col;
 	}

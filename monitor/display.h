@@ -73,6 +73,7 @@ static inline uint64_t print_bitfield(int indent, uint64_t val,
 	return mask;
 }
 
+void set_default_pager_num_columns(int num_columns);
 int num_columns(void);
 
 void open_pager(void);
