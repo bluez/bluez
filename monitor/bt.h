@@ -1692,6 +1692,15 @@ struct bt_hci_cmd_write_ext_inquiry_length {
 	uint16_t interval;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_CONFIG_DATA_PATH		0x0c83
+#define BT_HCI_BIT_CONFIG_DATA_PATH		BT_HCI_CMD_BIT(45, 5)
+struct bt_hci_cmd_config_data_path {
+	uint8_t  dir;
+	uint8_t  id;
+	uint8_t  vnd_config_len;
+	uint8_t  vnd_config[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LOCAL_VERSION		0x1001
 struct bt_hci_rsp_read_local_version {
 	uint8_t  status;

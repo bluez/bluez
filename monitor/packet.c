@@ -6061,6 +6061,17 @@ static void read_local_ctrl_delay_cmd(const void *data, uint8_t size)
 	print_field("Length Codec Configuration: %u", cmd->codec_cfg_len);
 }
 
+static void config_data_path_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_config_data_path *cmd = data;
+
+	print_path_direction("Direction", cmd->dir);
+	print_field("ID: %u", cmd->id);
+	print_field("Vendor Specific Config Length: %u", cmd->vnd_config_len);
+	print_hex_field("Vendor Specific Config", cmd->vnd_config,
+						cmd->vnd_config_len);
+}
+
 static void print_usec_interval(const char *prefix, const uint8_t interval[3])
 {
 	uint32_t u24 = 0;
@@ -8843,6 +8854,12 @@ static const struct opcode_data opcode_table[] = {
 		sizeof(struct bt_hci_cmd_read_local_ctrl_delay), false,
 		read_local_ctrl_delay_rsp,
 		sizeof(struct bt_hci_rsp_read_local_ctrl_delay), true
+	},
+	{ BT_HCI_CMD_CONFIG_DATA_PATH, BT_HCI_BIT_CONFIG_DATA_PATH,
+		"Configure Data Path",
+		config_data_path_cmd,
+		sizeof(struct bt_hci_cmd_config_data_path), false,
+		status_rsp, 1, true
 	},
 
 	/* OGF 5 - Status Parameter */
