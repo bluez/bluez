@@ -444,9 +444,7 @@ static void process_read_by_type(struct async_read_op *op)
 		return;
 	}
 
-	ecode = check_permissions(server, attr, BT_ATT_PERM_READ |
-						BT_ATT_PERM_READ_AUTHEN |
-						BT_ATT_PERM_READ_ENCRYPT);
+	ecode = check_permissions(server, attr, BT_ATT_PERM_READ_MASK);
 	if (ecode)
 		goto error;
 
@@ -811,9 +809,7 @@ static void write_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
 				(opcode == BT_ATT_OP_WRITE_REQ) ? "Req" : "Cmd",
 				handle);
 
-	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE |
-						BT_ATT_PERM_WRITE_AUTHEN |
-						BT_ATT_PERM_WRITE_ENCRYPT);
+	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE_MASK);
 	if (ecode)
 		goto error;
 
@@ -913,9 +909,7 @@ static void handle_read_req(struct bt_att_chan *chan,
 			opcode == BT_ATT_OP_READ_BLOB_REQ ? "Blob " : "",
 			handle);
 
-	ecode = check_permissions(server, attr, BT_ATT_PERM_READ |
-						BT_ATT_PERM_READ_AUTHEN |
-						BT_ATT_PERM_READ_ENCRYPT);
+	ecode = check_permissions(server, attr, BT_ATT_PERM_READ_MASK);
 	if (ecode)
 		goto error;
 
@@ -1051,9 +1045,8 @@ static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
 		goto error;
 	}
 
-	ecode = check_permissions(data->server, next_attr, BT_ATT_PERM_READ |
-						BT_ATT_PERM_READ_AUTHEN |
-						BT_ATT_PERM_READ_ENCRYPT);
+	ecode = check_permissions(data->server, next_attr,
+						BT_ATT_PERM_READ_MASK);
 	if (ecode)
 		goto error;
 
@@ -1129,9 +1122,7 @@ static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
 		goto error;
 	}
 
-	ecode = check_permissions(data->server, attr, BT_ATT_PERM_READ |
-						BT_ATT_PERM_READ_AUTHEN |
-						BT_ATT_PERM_READ_ENCRYPT);
+	ecode = check_permissions(data->server, attr, BT_ATT_PERM_READ_MASK);
 	if (ecode)
 		goto error;
 
@@ -1308,9 +1299,7 @@ static void prep_write_cb(struct bt_att_chan *chan, uint8_t opcode,
 	util_debug(server->debug_callback, server->debug_data,
 				"Prep Write Req - handle: 0x%04x", handle);
 
-	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE |
-						BT_ATT_PERM_WRITE_AUTHEN |
-						BT_ATT_PERM_WRITE_ENCRYPT);
+	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE_MASK);
 	if (ecode)
 		goto error;
 
