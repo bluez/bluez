@@ -2880,12 +2880,18 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 
 	dbus_message_iter_get_basic(value, &enable);
 
+	if (adapter->pending_settings & setting) {
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Busy",
+						NULL);
+		return;
+	}
+
 	if (adapter->current_settings & setting)
 		current_enable = TRUE;
 	else
 		current_enable = FALSE;
 
-	if (enable == current_enable || adapter->pending_settings & setting) {
+	if (enable == current_enable) {
 		g_dbus_pending_property_success(id);
 		return;
 	}
