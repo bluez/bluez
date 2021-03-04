@@ -631,7 +631,7 @@ static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
 	memset(&cp, 0, sizeof(cp));
 	cp.val = mode;
 
-	switch (mode) {
+	switch (opcode) {
 	case MGMT_OP_SET_POWERED:
 		setting = MGMT_SETTING_POWERED;
 		break;
