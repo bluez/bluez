@@ -188,9 +188,15 @@ static void parse_did(const char *did)
 	int result;
 	uint16_t vendor, product, version , source;
 
-	/* version and source are optional */
+	vendor = 0x0000;
+	product = 0x0000;
 	version = 0x0000;
 	source = 0x0002;
+
+	if (!strcasecmp(did, "false")) {
+		source = 0x0000;
+		goto done;
+	}
 
 	result = sscanf(did, "bluetooth:%4hx:%4hx:%4hx",
 					&vendor, &product, &version);
