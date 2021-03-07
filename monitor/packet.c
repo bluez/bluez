@@ -7078,7 +7078,7 @@ static void le_set_adv_set_rand_addr(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_set_adv_set_rand_addr *cmd = data;
 
 	print_field("Advertising handle: 0x%2.2x", cmd->handle);
-	print_addr("Advertising random address", cmd->bdaddr, 0x00);
+	print_addr("Advertising random address", cmd->bdaddr, 0x01);
 }
 
 static const struct bitfield_data ext_adv_properties_table[] = {
