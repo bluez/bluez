@@ -6032,23 +6032,23 @@ static void read_local_codec_caps_rsp(const void *data, uint8_t size)
 	print_status(rsp->status);
 	print_field("Number of codec capabilities: %d", rsp->num);
 
-	data += sizeof(rsp);
-	size -= sizeof(rsp);
+	data += sizeof(*rsp);
+	size -= sizeof(*rsp);
 
 	for (i = 0; i < rsp->num; i++) {
 		const struct bt_hci_codec_caps *caps = data;
 
-		if (size < sizeof(caps)) {
+		if (size < sizeof(*caps)) {
 			print_field("Invalid capabilities: %u < %zu",
-						size, sizeof(caps));
+						size, sizeof(*caps));
 			return;
 		}
 
 		print_field(" Capabilities #%u:", i);
 		packet_hexdump(caps->data, caps->len);
 
-		data += caps->len;
-		size -= caps->len;
+		data += 1 + caps->len;
+		size -= 1 + caps->len;
 	}
 }
 
