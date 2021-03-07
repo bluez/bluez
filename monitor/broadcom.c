@@ -694,7 +694,13 @@ void broadcom_lm_diag(const void *data, uint8_t size)
 	}
 }
 
+static void lm_diag_evt(const void *data, uint8_t size)
+{
+	broadcom_lm_diag(data, 63);
+}
+
 static const struct vendor_evt vendor_evt_table[] = {
+	{ 0xb4, "LM Diag", lm_diag_evt, 64, true },
 	{ }
 };
 
