@@ -11306,7 +11306,7 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 			label = "Message";
 	}
 
-	if (ident[0] == '<' || ident[0] == '>') {
+	if (ident && (ident[0] == '<' || ident[0] == '>')) {
 		packet_decode(tv, cred, ident[0], index, color,
 				label == ident ? &ident[2] : label,
 				data, size);
