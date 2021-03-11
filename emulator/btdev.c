@@ -141,6 +141,12 @@ struct btdev {
 	uint8_t  le_scan_own_addr_type;
 	uint8_t  le_filter_dup;
 	uint8_t  le_adv_enable;
+	uint8_t  le_periodic_adv_enable;
+	uint16_t le_periodic_adv_properties;
+	uint16_t le_periodic_min_interval;
+	uint16_t le_periodic_max_interval;
+	uint8_t  le_periodic_data_len;
+	uint8_t  le_periodic_data[31];
 	uint8_t  le_ltk[16];
 	struct {
 		struct bt_hci_cmd_le_set_cig_params params;
@@ -3934,22 +3940,54 @@ static int cmd_clear_adv_sets(struct btdev *dev, const void *data,
 static int cmd_set_per_adv_params(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	const struct bt_hci_cmd_le_set_periodic_adv_params *cmd = data;
+	uint8_t status;
+
+	if (dev->le_periodic_adv_enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+	} else {
+		status = BT_HCI_ERR_SUCCESS;
+		dev->le_periodic_adv_properties = le16_to_cpu(cmd->properties);
+		dev->le_periodic_min_interval = cmd->min_interval;
+		dev->le_periodic_max_interval = cmd->max_interval;
+	}
+
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PERIODIC_ADV_PARAMS, &status,
+							sizeof(status));
+	return 0;
 }
 
 static int cmd_set_per_adv_data(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	const struct bt_hci_cmd_le_set_periodic_adv_data *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	dev->le_periodic_data_len = cmd->data_len;
+	memcpy(dev->le_periodic_data, cmd->data, 31);
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PERIODIC_ADV_DATA, &status,
+							sizeof(status));
+
+	return 0;
 }
 
 static int cmd_set_per_adv_enable(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	const struct bt_hci_cmd_le_set_periodic_adv_enable *cmd = data;
+	uint8_t status;
+
+	if (dev->le_periodic_adv_enable == cmd->enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+	} else {
+		dev->le_periodic_adv_enable = cmd->enable;
+		status = BT_HCI_ERR_SUCCESS;
+	}
+
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PERIODIC_ADV_ENABLE, &status,
+							sizeof(status));
+
+	return 0;
 }
 
 static int cmd_set_ext_scan_params(struct btdev *dev, const void *data,
