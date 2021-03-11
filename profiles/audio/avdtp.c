@@ -3381,10 +3381,18 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 	session->discover = g_new0(struct discover_callback, 1);
 
 	if (session->seps) {
-		session->discover->cb = cb;
-		session->discover->user_data = user_data;
-		session->discover->id = g_idle_add(process_discover, session);
-		return 0;
+		struct avdtp_remote_sep *sep = session->seps->data;
+
+		/* Check that SEP have been discovered as it may be loaded from
+		 * cache.
+		 */
+		if (sep->discovered) {
+			session->discover->cb = cb;
+			session->discover->user_data = user_data;
+			session->discover->id = g_idle_add(process_discover,
+								session);
+			return 0;
+		}
 	}
 
 	err = send_request(session, FALSE, NULL, AVDTP_DISCOVER, NULL, 0);
