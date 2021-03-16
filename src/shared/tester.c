@@ -36,6 +36,7 @@
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
 #include "src/shared/log.h"
+#include "src/shared/timeout.h"
 
 #define COLOR_OFF	"\x1B[0m"
 #define COLOR_BLACK	"\x1B[0;30m"
@@ -126,7 +127,7 @@ static void test_destroy(gpointer data)
 	struct test_case *test = data;
 
 	if (test->timeout_id > 0)
-		g_source_remove(test->timeout_id);
+		timeout_remove(test->timeout_id);
 
 	if (test->teardown_id > 0)
 		g_source_remove(test->teardown_id);
@@ -429,7 +430,7 @@ static gboolean teardown_callback(gpointer user_data)
 	return FALSE;
 }
 
-static gboolean test_timeout(gpointer user_data)
+static bool test_timeout(gpointer user_data)
 {
 	struct test_case *test = user_data;
 
@@ -470,8 +471,9 @@ static void next_test_case(void)
 	test->start_time = g_timer_elapsed(test_timer, NULL);
 
 	if (test->timeout > 0)
-		test->timeout_id = g_timeout_add_seconds(test->timeout,
-							test_timeout, test);
+		test->timeout_id = timeout_add_seconds(test->timeout,
+							test_timeout, test,
+							NULL);
 
 	test->stage = TEST_STAGE_PRE_SETUP;
 
@@ -542,7 +544,7 @@ void tester_pre_setup_failed(void)
 		return;
 
 	if (test->timeout_id > 0) {
-		g_source_remove(test->timeout_id);
+		timeout_remove(test->timeout_id);
 		test->timeout_id = 0;
 	}
 
@@ -583,7 +585,7 @@ void tester_setup_failed(void)
 	test->stage = TEST_STAGE_POST_TEARDOWN;
 
 	if (test->timeout_id > 0) {
-		g_source_remove(test->timeout_id);
+		timeout_remove(test->timeout_id);
 		test->timeout_id = 0;
 	}
 
@@ -606,7 +608,7 @@ static void test_result(enum test_result result)
 		return;
 
 	if (test->timeout_id > 0) {
-		g_source_remove(test->timeout_id);
+		timeout_remove(test->timeout_id);
 		test->timeout_id = 0;
 	}
 

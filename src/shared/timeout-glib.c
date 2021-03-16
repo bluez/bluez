@@ -71,3 +71,30 @@ void timeout_remove(unsigned int id)
 	if (source)
 		g_source_destroy(source);
 }
+
+unsigned int timeout_add_seconds(unsigned int timeout, timeout_func_t func,
+			void *user_data, timeout_destroy_func_t destroy)
+{
+	struct timeout_data *data;
+	guint id;
+
+	data = g_try_new0(struct timeout_data, 1);
+	if (!data)
+		return 0;
+
+	data->func = func;
+	data->destroy = destroy;
+	data->user_data = user_data;
+
+	if (!timeout)
+		id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, timeout_callback,
+							data, timeout_destroy);
+	else
+		id = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, timeout,
+							timeout_callback, data,
+							timeout_destroy);
+	if (!id)
+		g_free(data);
+
+	return id;
+}

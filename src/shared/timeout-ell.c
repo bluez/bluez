@@ -101,3 +101,9 @@ void timeout_remove(unsigned int id)
 	if (to)
 		l_timeout_remove(to);
 }
+
+unsigned int timeout_add_seconds(unsigned int timeout, timeout_func_t func,
+			void *user_data, timeout_destroy_func_t destroy)
+{
+	return timeout_add(timeout * 1000, func, user_data, destroy);
+}

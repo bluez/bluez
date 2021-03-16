@@ -16,3 +16,6 @@ typedef void (*timeout_destroy_func_t)(void *user_data);
 unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 			void *user_data, timeout_destroy_func_t destroy);
 void timeout_remove(unsigned int id);
+
+unsigned int timeout_add_seconds(unsigned int timeout, timeout_func_t func,
+			void *user_data, timeout_destroy_func_t destroy);
