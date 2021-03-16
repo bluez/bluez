@@ -3632,6 +3632,7 @@ Add Extended Advertising Parameters Command
 		13	The Timeout parameter should be used
 		14	The Interval parameters should be used
 		15	The Tx Power parameter should be used
+		16	The advertisement will contain a scan response
 
 	When the connectable flag is set, then the controller will use
 	undirected connectable advertising. The value of the connectable
@@ -3707,6 +3708,10 @@ Add Extended Advertising Parameters Command
 	to match the requested one, so the reply will contain the power
 	chosen by the controller. If the requested Tx Power is outside
 	the valid range, the registration will fail.
+
+	When flag bit 16 is enabled, it indicates that the subsequent request
+	to set advertising data will contain a scan response, and that the
+	parameters should set a PDU type that is scannable.
 
 	Re-adding an already existing instance (i.e. issuing the Add Extended
 	Advertising Parameters command with an Instance identifier of an
