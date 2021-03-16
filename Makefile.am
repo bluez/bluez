@@ -135,7 +135,9 @@ ell_headers = ell/util.h \
 			ell/asn1-private.h \
 			ell/cert-private.h \
 			ell/pem-private.h \
-			ell/uuid.h
+			ell/uuid.h \
+			ell/useful.h \
+			ell/main-private.h
 
 ell_sources = ell/private.h ell/missing.h \
 			ell/util.c \
