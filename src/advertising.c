@@ -793,6 +793,22 @@ static uint8_t *generate_scan_rsp(struct btd_adv_client *client,
 	return bt_ad_generate(client->scan, len);
 }
 
+static bool adv_client_has_scan_response(struct btd_adv_client *client,
+						uint32_t flags)
+{
+	/* The local name isn't added into the bt_ad structure until
+	 * generate_scan_rsp is called, so we must check these conditions as
+	 * well.
+	 */
+	if (!(flags & MGMT_ADV_FLAG_LOCAL_NAME) &&
+			!client->name &&
+			bt_ad_is_empty(client->scan)) {
+		return false;
+	}
+
+	return true;
+}
+
 static int get_adv_flags(struct btd_adv_client *client)
 {
 	uint32_t flags = 0;
@@ -917,7 +933,13 @@ static int refresh_extended_adv(struct btd_adv_client *client,
 		flags |= MGMT_ADV_PARAM_TX_POWER;
 	}
 
-	cp.flags = htobl(flags);
+	/* Indicate that this instance will be configured as scannable */
+	if (adv_client_has_scan_response(client, flags) &&
+		client->manager->supported_flags & MGMT_ADV_PARAM_SCAN_RSP) {
+		flags |= MGMT_ADV_PARAM_SCAN_RSP;
+	}
+
+	cp.flags = cpu_to_le32(flags);
 
 	mgmt_ret = mgmt_send(client->manager->mgmt, MGMT_OP_ADD_EXT_ADV_PARAMS,
 			client->manager->mgmt_index, sizeof(cp), &cp,

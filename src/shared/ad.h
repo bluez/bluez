@@ -105,6 +105,8 @@ void bt_ad_unref(struct bt_ad *ad);
 
 uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length);
 
+bool bt_ad_is_empty(struct bt_ad *ad);
+
 bool bt_ad_add_service_uuid(struct bt_ad *ad, const bt_uuid_t *uuid);
 
 bool bt_ad_remove_service_uuid(struct bt_ad *ad, bt_uuid_t *uuid);

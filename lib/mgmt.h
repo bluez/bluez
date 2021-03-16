@@ -509,6 +509,7 @@ struct mgmt_rp_add_advertising {
 #define MGMT_ADV_PARAM_TIMEOUT		(1 << 13)
 #define MGMT_ADV_PARAM_INTERVALS	(1 << 14)
 #define MGMT_ADV_PARAM_TX_POWER		(1 << 15)
+#define MGMT_ADV_PARAM_SCAN_RSP		(1 << 16)
 
 #define MGMT_OP_REMOVE_ADVERTISING	0x003F
 struct mgmt_cp_remove_advertising {

@@ -552,6 +552,23 @@ uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 	return adv_data;
 }
 
+bool bt_ad_is_empty(struct bt_ad *ad)
+{
+	/* If any of the bt_ad fields are non-empty or don't have the default
+	 * value, then bt_ad_generate will return a non-empty buffer
+	 */
+	if (!ad->name &&
+		ad->appearance == UINT16_MAX &&
+		queue_isempty(ad->service_uuids) &&
+		queue_isempty(ad->manufacturer_data) &&
+		queue_isempty(ad->solicit_uuids) &&
+		queue_isempty(ad->service_data) &&
+		queue_isempty(ad->data)) {
+		return true;
+	}
+	return false;
+}
+
 static bool queue_add_uuid(struct queue *queue, const bt_uuid_t *uuid)
 {
 	bt_uuid_t *new_uuid;
