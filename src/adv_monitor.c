@@ -31,6 +31,7 @@
 #include "src/error.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/queue.h"
+#include "src/shared/timeout.h"
 #include "src/shared/util.h"
 
 #include "adv_monitor.h"
@@ -125,7 +126,7 @@ struct adv_monitor_device {
 					 */
 	time_t last_seen;		/* Time when last Adv was received */
 	bool found;			/* State of the device - lost/found */
-	guint lost_timer;		/* Timer to track if the device goes
+	unsigned int lost_timer;	/* Timer to track if the device goes
 					 * offline/out-of-range
 					 */
 };
@@ -1385,7 +1386,7 @@ static void monitor_device_free(void *data)
 	}
 
 	if (dev->lost_timer) {
-		g_source_remove(dev->lost_timer);
+		timeout_remove(dev->lost_timer);
 		dev->lost_timer = 0;
 	}
 
@@ -1468,7 +1469,7 @@ static void report_device_state_setup(DBusMessageIter *iter, void *user_data)
 }
 
 /* Handles a situation where the device goes offline/out-of-range */
-static gboolean handle_device_lost_timeout(gpointer user_data)
+static bool handle_device_lost_timeout(gpointer user_data)
 {
 	struct adv_monitor_device *dev = user_data;
 	struct adv_monitor *monitor = dev->monitor;
@@ -1534,7 +1535,7 @@ static void adv_monitor_filter_rssi(struct adv_monitor *monitor,
 	}
 
 	if (dev->lost_timer) {
-		g_source_remove(dev->lost_timer);
+		timeout_remove(dev->lost_timer);
 		dev->lost_timer = 0;
 	}
 
@@ -1609,7 +1610,8 @@ static void adv_monitor_filter_rssi(struct adv_monitor *monitor,
 	 */
 	if (dev->found) {
 		dev->lost_timer =
-			g_timeout_add_seconds(monitor->low_rssi_timeout,
-					      handle_device_lost_timeout, dev);
+			timeout_add_seconds(monitor->low_rssi_timeout,
+					    handle_device_lost_timeout, dev,
+							NULL);
 	}
 }

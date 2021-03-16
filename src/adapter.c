@@ -46,6 +46,7 @@
 #include "src/shared/queue.h"
 #include "src/shared/att.h"
 #include "src/shared/gatt-db.h"
+#include "src/shared/timeout.h"
 
 #include "btio/btio.h"
 #include "btd.h"
@@ -237,10 +238,12 @@ struct btd_adapter {
 	struct discovery_client *client;	/* active discovery client */
 
 	GSList *discovery_found;	/* list of found devices */
-	guint discovery_idle_timeout;	/* timeout between discovery runs */
-	guint passive_scan_timeout;	/* timeout between passive scans */
+	unsigned int discovery_idle_timeout; /* timeout between discovery
+					      * runs
+					      */
+	unsigned int passive_scan_timeout; /* timeout between passive scans */
 
-	guint pairable_timeout_id;	/* pairable timeout id */
+	unsigned int pairable_timeout_id;	/* pairable timeout id */
 	guint auth_idle_id;		/* Pending authorization dequeue */
 	GQueue *auths;			/* Ongoing and pending auths */
 	bool pincode_requested;		/* PIN requested during last bonding */
@@ -268,13 +271,13 @@ struct btd_adapter {
 	struct oob_handler *oob_handler;
 
 	unsigned int load_ltks_id;
-	guint load_ltks_timeout;
+	unsigned int load_ltks_timeout;
 
 	unsigned int confirm_name_id;
-	guint confirm_name_timeout;
+	unsigned int confirm_name_timeout;
 
 	unsigned int pair_device_id;
-	guint pair_device_timeout;
+	unsigned int pair_device_timeout;
 
 	unsigned int db_id;		/* Service event handler for GATT db */
 
@@ -695,7 +698,7 @@ static bool set_discoverable(struct btd_adapter *adapter, uint8_t mode,
 	return false;
 }
 
-static gboolean pairable_timeout_handler(gpointer user_data)
+static bool pairable_timeout_handler(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
@@ -709,7 +712,7 @@ static gboolean pairable_timeout_handler(gpointer user_data)
 static void trigger_pairable_timeout(struct btd_adapter *adapter)
 {
 	if (adapter->pairable_timeout_id > 0) {
-		g_source_remove(adapter->pairable_timeout_id);
+		timeout_remove(adapter->pairable_timeout_id);
 		adapter->pairable_timeout_id = 0;
 	}
 
@@ -718,8 +721,9 @@ static void trigger_pairable_timeout(struct btd_adapter *adapter)
 
 	if (adapter->pairable_timeout > 0)
 		adapter->pairable_timeout_id =
-			g_timeout_add_seconds(adapter->pairable_timeout,
-					pairable_timeout_handler, adapter);
+			timeout_add_seconds(adapter->pairable_timeout,
+					pairable_timeout_handler, adapter,
+					NULL);
 }
 
 static void local_name_changed_callback(uint16_t index, uint16_t length,
@@ -1323,7 +1327,7 @@ static void passive_scanning_complete(uint8_t status, uint16_t length,
 	}
 }
 
-static gboolean passive_scanning_timeout(gpointer user_data)
+static bool passive_scanning_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct mgmt_cp_start_discovery cp;
@@ -1347,7 +1351,7 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 	DBG("");
 
 	if (adapter->passive_scan_timeout > 0) {
-		g_source_remove(adapter->passive_scan_timeout);
+		timeout_remove(adapter->passive_scan_timeout);
 		adapter->passive_scan_timeout = 0;
 	}
 
@@ -1386,8 +1390,9 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 	if (!adapter->connect_list)
 		return;
 
-	adapter->passive_scan_timeout = g_timeout_add_seconds(CONN_SCAN_TIMEOUT,
-					passive_scanning_timeout, adapter);
+	adapter->passive_scan_timeout = timeout_add_seconds(CONN_SCAN_TIMEOUT,
+					passive_scanning_timeout, adapter,
+					NULL);
 }
 
 static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
@@ -1467,7 +1472,7 @@ static void cancel_passive_scanning(struct btd_adapter *adapter)
 	DBG("");
 
 	if (adapter->passive_scan_timeout > 0) {
-		g_source_remove(adapter->passive_scan_timeout);
+		timeout_remove(adapter->passive_scan_timeout);
 		adapter->passive_scan_timeout = 0;
 	}
 }
@@ -1512,7 +1517,7 @@ static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 	adapter->discovery_type = 0x00;
 
 	if (adapter->discovery_idle_timeout > 0) {
-		g_source_remove(adapter->discovery_idle_timeout);
+		timeout_remove(adapter->discovery_idle_timeout);
 		adapter->discovery_idle_timeout = 0;
 	}
 
@@ -1688,7 +1693,7 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 	trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT * 2);
 }
 
-static gboolean start_discovery_timeout(gpointer user_data)
+static bool start_discovery_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct mgmt_cp_start_service_discovery *sd_cp;
@@ -1784,7 +1789,7 @@ static void trigger_start_discovery(struct btd_adapter *adapter, guint delay)
 	cancel_passive_scanning(adapter);
 
 	if (adapter->discovery_idle_timeout > 0) {
-		g_source_remove(adapter->discovery_idle_timeout);
+		timeout_remove(adapter->discovery_idle_timeout);
 		adapter->discovery_idle_timeout = 0;
 	}
 
@@ -1797,8 +1802,8 @@ static void trigger_start_discovery(struct btd_adapter *adapter, guint delay)
 	if (!btd_adapter_get_powered(adapter))
 		return;
 
-	adapter->discovery_idle_timeout = g_timeout_add_seconds(delay,
-					start_discovery_timeout, adapter);
+	adapter->discovery_idle_timeout = timeout_add_seconds(delay,
+					start_discovery_timeout, adapter, NULL);
 }
 
 static void suspend_discovery_complete(uint8_t status, uint16_t length,
@@ -1837,7 +1842,7 @@ static void suspend_discovery(struct btd_adapter *adapter)
 	 * The restart will be triggered when the discovery is resumed.
 	 */
 	if (adapter->discovery_idle_timeout > 0) {
-		g_source_remove(adapter->discovery_idle_timeout);
+		timeout_remove(adapter->discovery_idle_timeout);
 		adapter->discovery_idle_timeout = 0;
 	}
 
@@ -1918,7 +1923,7 @@ static void discovering_callback(uint16_t index, uint16_t length,
 
 	case 0x01:
 		if (adapter->discovery_idle_timeout > 0) {
-			g_source_remove(adapter->discovery_idle_timeout);
+			timeout_remove(adapter->discovery_idle_timeout);
 			adapter->discovery_idle_timeout = 0;
 		}
 
@@ -2404,7 +2409,7 @@ static bool parse_pathloss(DBusMessageIter *value,
 	return true;
 }
 
-static bool parse_transport(DBusMessageIter *value, 
+static bool parse_transport(DBusMessageIter *value,
 					struct discovery_filter *filter)
 {
 	char *transport_str;
@@ -3931,7 +3936,7 @@ static void load_link_keys(struct btd_adapter *adapter, GSList *keys,
 							adapter->dev_id);
 }
 
-static gboolean load_ltks_timeout(gpointer user_data)
+static bool load_ltks_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
@@ -3959,7 +3964,7 @@ static void load_ltks_complete(uint8_t status, uint16_t length,
 
 	adapter->load_ltks_id = 0;
 
-	g_source_remove(adapter->load_ltks_timeout);
+	timeout_remove(adapter->load_ltks_timeout);
 	adapter->load_ltks_timeout = 0;
 
 	DBG("LTKs loaded for hci%u", adapter->dev_id);
@@ -4036,8 +4041,9 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 	 * and forgets to send a command complete response. However in
 	 * case of failures it does send a command status.
 	 */
-	adapter->load_ltks_timeout = g_timeout_add_seconds(2,
-						load_ltks_timeout, adapter);
+	adapter->load_ltks_timeout = timeout_add_seconds(2,
+						load_ltks_timeout, adapter,
+						NULL);
 }
 
 static void load_irks_complete(uint8_t status, uint16_t length,
@@ -5337,23 +5343,23 @@ static void adapter_free(gpointer user_data)
 	remove_discovery_list(adapter);
 
 	if (adapter->pairable_timeout_id > 0) {
-		g_source_remove(adapter->pairable_timeout_id);
+		timeout_remove(adapter->pairable_timeout_id);
 		adapter->pairable_timeout_id = 0;
 	}
 
 	if (adapter->passive_scan_timeout > 0) {
-		g_source_remove(adapter->passive_scan_timeout);
+		timeout_remove(adapter->passive_scan_timeout);
 		adapter->passive_scan_timeout = 0;
 	}
 
 	if (adapter->load_ltks_timeout > 0)
-		g_source_remove(adapter->load_ltks_timeout);
+		timeout_remove(adapter->load_ltks_timeout);
 
 	if (adapter->confirm_name_timeout > 0)
-		g_source_remove(adapter->confirm_name_timeout);
+		timeout_remove(adapter->confirm_name_timeout);
 
 	if (adapter->pair_device_timeout > 0)
-		g_source_remove(adapter->pair_device_timeout);
+		timeout_remove(adapter->pair_device_timeout);
 
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
@@ -6386,7 +6392,7 @@ const bdaddr_t *btd_adapter_get_address(struct btd_adapter *adapter)
 	return &adapter->bdaddr;
 }
 
-static gboolean confirm_name_timeout(gpointer user_data)
+static bool confirm_name_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
@@ -6414,7 +6420,7 @@ static void confirm_name_complete(uint8_t status, uint16_t length,
 
 	adapter->confirm_name_id = 0;
 
-	g_source_remove(adapter->confirm_name_timeout);
+	timeout_remove(adapter->confirm_name_timeout);
 	adapter->confirm_name_timeout = 0;
 
 	DBG("Confirm name complete for hci%u", adapter->dev_id);
@@ -6445,7 +6451,7 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	}
 
 	if (adapter->confirm_name_timeout > 0) {
-		g_source_remove(adapter->confirm_name_timeout);
+		timeout_remove(adapter->confirm_name_timeout);
 		adapter->confirm_name_timeout = 0;
 	}
 
@@ -6470,8 +6476,9 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	 * and forgets to send a command complete response. However in
 	 * case of failures it does send a command status.
 	 */
-	adapter->confirm_name_timeout = g_timeout_add_seconds(2,
-						confirm_name_timeout, adapter);
+	adapter->confirm_name_timeout = timeout_add_seconds(2,
+						confirm_name_timeout, adapter,
+						NULL);
 }
 
 static void adapter_msd_notify(struct btd_adapter *adapter,
@@ -7722,7 +7729,7 @@ static void free_pair_device_data(void *user_data)
 	g_free(data);
 }
 
-static gboolean pair_device_timeout(gpointer user_data)
+static bool pair_device_timeout(gpointer user_data)
 {
 	struct pair_device_data *data = user_data;
 	struct btd_adapter *adapter = data->adapter;
@@ -7749,7 +7756,7 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	adapter->pair_device_id = 0;
 
 	if (adapter->pair_device_timeout > 0) {
-		g_source_remove(adapter->pair_device_timeout);
+		timeout_remove(adapter->pair_device_timeout);
 		adapter->pair_device_timeout = 0;
 	}
 
@@ -7835,8 +7842,9 @@ int adapter_bonding_attempt(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	 * request never times out. Therefore, add a timer to clean up
 	 * if no response arrives
 	 */
-	adapter->pair_device_timeout = g_timeout_add_seconds(BONDING_TIMEOUT,
-						pair_device_timeout, data);
+	adapter->pair_device_timeout = timeout_add_seconds(BONDING_TIMEOUT,
+						pair_device_timeout, data,
+						NULL);
 
 	return 0;
 }

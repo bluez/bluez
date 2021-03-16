@@ -21,6 +21,7 @@
 #include "lib/sdp_lib.h"
 
 #include "btio/btio.h"
+#include "shared/timeout.h"
 #include "log.h"
 #include "sdp-client.h"
 
@@ -31,7 +32,7 @@ struct cached_sdp_session {
 	bdaddr_t src;
 	bdaddr_t dst;
 	sdp_session_t *session;
-	guint timer;
+	unsigned int timer;
 	guint io_id;
 };
 
@@ -44,7 +45,7 @@ static void cleanup_cached_session(struct cached_sdp_session *cached)
 	g_free(cached);
 }
 
-static gboolean cached_session_expired(gpointer user_data)
+static bool cached_session_expired(gpointer user_data)
 {
 	struct cached_sdp_session *cached = user_data;
 
@@ -66,7 +67,7 @@ static sdp_session_t *get_cached_sdp_session(const bdaddr_t *src,
 		if (bacmp(&c->src, src) || bacmp(&c->dst, dst))
 			continue;
 
-		g_source_remove(c->timer);
+		timeout_remove(c->timer);
 		g_source_remove(c->io_id);
 
 		session = c->session;
@@ -85,7 +86,7 @@ static gboolean disconnect_watch(GIOChannel *chan, GIOCondition cond,
 {
 	struct cached_sdp_session *cached = user_data;
 
-	g_source_remove(cached->timer);
+	timeout_remove(cached->timer);
 	cleanup_cached_session(cached);
 
 	return FALSE;
@@ -107,9 +108,9 @@ static void cache_sdp_session(bdaddr_t *src, bdaddr_t *dst,
 
 	cached_sdp_sessions = g_slist_append(cached_sdp_sessions, cached);
 
-	cached->timer = g_timeout_add_seconds(CACHE_TIMEOUT,
+	cached->timer = timeout_add_seconds(CACHE_TIMEOUT,
 						cached_session_expired,
-						cached);
+						cached, NULL);
 
 	/* Watch the connection state during cache timeout */
 	sk = sdp_get_socket(session);
