@@ -14,6 +14,9 @@
 
 bool use_color(void);
 
+enum monitor_color { COLOR_AUTO, COLOR_ALWAYS, COLOR_NEVER };
+void set_monitor_color(enum monitor_color);
+
 #define COLOR_OFF	"\x1B[0m"
 #define COLOR_BLACK	"\x1B[0;30m"
 #define COLOR_RED	"\x1B[0;31m"

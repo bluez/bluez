@@ -29,12 +29,22 @@
 
 static pid_t pager_pid = 0;
 int default_pager_num_columns = FALLBACK_TERMINAL_WIDTH;
+enum monitor_color setting_monitor_color = COLOR_AUTO;
+
+void set_monitor_color(enum monitor_color color)
+{
+	setting_monitor_color = color;
+}
 
 bool use_color(void)
 {
 	static int cached_use_color = -1;
 
-	if (__builtin_expect(!!(cached_use_color < 0), 0))
+	if (setting_monitor_color == COLOR_ALWAYS)
+		cached_use_color = 1;
+	else if (setting_monitor_color == COLOR_NEVER)
+		cached_use_color = 0;
+	else if (__builtin_expect(!!(cached_use_color < 0), 0))
 		cached_use_color = isatty(STDOUT_FILENO) > 0 || pager_pid > 0;
 
 	return cached_use_color;
