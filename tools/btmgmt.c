@@ -4725,7 +4725,7 @@ static void cmd_phy(int argc, char **argv)
 	if (mgmt_send(mgmt, MGMT_OP_SET_PHY_CONFIGURATION, index, sizeof(cp),
 					&cp, set_phy_rsp, NULL, NULL) == 0) {
 		error("Unable to send %s cmd",
-				mgmt_opstr(MGMT_OP_GET_PHY_CONFIGURATION));
+				mgmt_opstr(MGMT_OP_SET_PHY_CONFIGURATION));
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
