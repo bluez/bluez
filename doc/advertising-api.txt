@@ -257,3 +257,21 @@ Properties	byte ActiveInstances
 				int16 MaxTxPower
 
 					Max advertising tx power (dBm)
+
+		array{string} SupportedFeatures [readonly,optional,Experimental]
+
+			List of supported platform features. If no features
+			are available on the platform, the SupportedFeatures
+			array will be empty.
+
+			Possible values: "CanSetTxPower"
+
+						Indicates whether platform can
+						specify tx power on each
+						advertising instance.
+
+					 "HardwareOffload"
+
+						Indicates whether multiple
+						advertising will be offloaded
+						to the controller.
