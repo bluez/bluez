@@ -31,6 +31,7 @@
 #include "btio/btio.h"
 #include "src/btd.h"
 #include "src/log.h"
+#include "src/shared/timeout.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/adapter.h"
@@ -298,7 +299,7 @@ struct pending_req {
 	void *data;
 	size_t data_size;
 	struct avdtp_stream *stream; /* Set if the request targeted a stream */
-	guint timeout;
+	unsigned int timeout;
 	gboolean collided;
 };
 
@@ -357,12 +358,12 @@ struct avdtp_stream {
 	GSList *callbacks;
 	struct avdtp_service_capability *codec;
 	guint io_id;		/* Transport GSource ID */
-	guint timer;		/* Waiting for other side to close or open
+	unsigned int timer;	/* Waiting for other side to close or open
 				 * the transport channel */
 	gboolean open_acp;	/* If we are in ACT role for Open */
 	gboolean close_int;	/* If we are in INT role for Close */
 	gboolean abort_int;	/* If we are in INT role for Abort */
-	guint start_timer;	/* Wait START command timer */
+	unsigned int start_timer;	/* Wait START command timer */
 	gboolean delay_reporting;
 	uint16_t delay;		/* AVDTP 1.3 Delay Reporting feature */
 	gboolean starting;	/* only valid while sep state == OPEN */
@@ -404,7 +405,7 @@ struct avdtp {
 	struct discover_callback *discover;
 	struct pending_req *req;
 
-	guint dc_timer;
+	unsigned int dc_timer;
 	int dc_timeout;
 
 	/* Attempt stream setup instead of disconnecting */
@@ -568,7 +569,7 @@ static void pending_req_free(void *data)
 	struct pending_req *req = data;
 
 	if (req->timeout)
-		g_source_remove(req->timeout);
+		timeout_remove(req->timeout);
 	g_free(req->data);
 	g_free(req);
 }
@@ -590,7 +591,7 @@ static void close_stream(struct avdtp_stream *stream)
 	stream->io = NULL;
 }
 
-static gboolean stream_close_timeout(gpointer user_data)
+static bool stream_close_timeout(gpointer user_data)
 {
 	struct avdtp_stream *stream = user_data;
 
@@ -603,7 +604,7 @@ static gboolean stream_close_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static gboolean stream_open_timeout(gpointer user_data)
+static bool stream_open_timeout(gpointer user_data)
 {
 	struct avdtp_stream *stream = user_data;
 
@@ -624,12 +625,12 @@ static gboolean stream_open_timeout(gpointer user_data)
 }
 
 static void stream_set_timer(struct avdtp_stream *stream, guint timeout,
-							GSourceFunc func)
+							timeout_func_t func)
 {
 	if (stream->timer)
-		g_source_remove(stream->timer);
+		timeout_remove(stream->timer);
 
-	stream->timer = g_timeout_add_seconds(timeout, func, stream);
+	stream->timer = timeout_add_seconds(timeout, func, stream, NULL);
 }
 
 static void stream_set_pending_open(struct avdtp_stream *stream, GIOChannel *io)
@@ -729,7 +730,7 @@ static void stream_free(void *data)
 		rsep->stream = NULL;
 
 	if (stream->timer)
-		g_source_remove(stream->timer);
+		timeout_remove(stream->timer);
 
 	if (stream->io)
 		close_stream(stream);
@@ -809,7 +810,7 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 	session->pending_open = NULL;
 
 	if (stream->timer) {
-		g_source_remove(stream->timer);
+		timeout_remove(stream->timer);
 		stream->timer = 0;
 	}
 
@@ -1001,7 +1002,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (stream->start_timer) {
-			g_source_remove(stream->start_timer);
+			timeout_remove(stream->start_timer);
 			stream->start_timer = 0;
 		}
 		stream->open_acp = FALSE;
@@ -1009,13 +1010,13 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	case AVDTP_STATE_CLOSING:
 	case AVDTP_STATE_ABORTING:
 		if (stream->start_timer) {
-			g_source_remove(stream->start_timer);
+			timeout_remove(stream->start_timer);
 			stream->start_timer = 0;
 		}
 		break;
 	case AVDTP_STATE_IDLE:
 		if (stream->start_timer) {
-			g_source_remove(stream->start_timer);
+			timeout_remove(stream->start_timer);
 			stream->start_timer = 0;
 		}
 		if (session->pending_open == stream)
@@ -1107,7 +1108,7 @@ static void remove_disconnect_timer(struct avdtp *session)
 	if (!session->dc_timer)
 		return;
 
-	g_source_remove(session->dc_timer);
+	timeout_remove(session->dc_timer);
 	session->dc_timer = 0;
 	session->stream_setup = FALSE;
 
@@ -1165,7 +1166,7 @@ static void connection_lost(struct avdtp *session, int err)
 	avdtp_unref(session);
 }
 
-static gboolean disconnect_timeout(gpointer user_data)
+static bool disconnect_timeout(gpointer user_data)
 {
 	struct avdtp *session = user_data;
 	struct btd_service *service;
@@ -1204,12 +1205,9 @@ static void set_disconnect_timer(struct avdtp *session)
 
 	DBG("timeout %d", session->dc_timeout);
 
-	if (!session->dc_timeout)
-		session->dc_timer = g_idle_add(disconnect_timeout, session);
-	else
-		session->dc_timer = g_timeout_add_seconds(session->dc_timeout,
-							disconnect_timeout,
-							session);
+	session->dc_timer = timeout_add_seconds(session->dc_timeout,
+						disconnect_timeout,
+						session, NULL);
 }
 
 void avdtp_unref(struct avdtp *session)
@@ -1865,9 +1863,9 @@ static gboolean avdtp_close_cmd(struct avdtp *session, uint8_t transaction,
 						AVDTP_CLOSE, NULL, 0))
 		return FALSE;
 
-	stream->timer = g_timeout_add_seconds(REQ_TIMEOUT,
+	stream->timer = timeout_add_seconds(REQ_TIMEOUT,
 					stream_close_timeout,
-					stream);
+					stream, NULL);
 
 	return TRUE;
 
@@ -2263,7 +2261,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 		return TRUE;
 	}
 
-	g_source_remove(session->req->timeout);
+	timeout_remove(session->req->timeout);
 	session->req->timeout = 0;
 
 	switch (header->message_type) {
@@ -2608,7 +2606,7 @@ done:
 	return err;
 }
 
-static gboolean request_timeout(gpointer user_data)
+static bool request_timeout(gpointer user_data)
 {
 	struct avdtp *session = user_data;
 
@@ -2669,7 +2667,8 @@ static int send_req(struct avdtp *session, gboolean priority,
 		timeout = REQ_TIMEOUT;
 	}
 
-	req->timeout = g_timeout_add_seconds(timeout, request_timeout, session);
+	req->timeout = timeout_add_seconds(timeout, request_timeout,
+						session, NULL);
 	return 0;
 
 failed:
@@ -3567,7 +3566,7 @@ int avdtp_open(struct avdtp *session, struct avdtp_stream *stream)
 							&req, sizeof(req));
 }
 
-static gboolean start_timeout(gpointer user_data)
+static bool start_timeout(gpointer user_data)
 {
 	struct avdtp_stream *stream = user_data;
 	struct avdtp *session = stream->session;
@@ -3602,9 +3601,9 @@ int avdtp_start(struct avdtp *session, struct avdtp_stream *stream)
 		if (stream->start_timer)
 			return 0;
 
-		stream->start_timer = g_timeout_add_seconds(START_TIMEOUT,
+		stream->start_timer = timeout_add_seconds(START_TIMEOUT,
 								start_timeout,
-								stream);
+								stream, NULL);
 		return 0;
 	}
 

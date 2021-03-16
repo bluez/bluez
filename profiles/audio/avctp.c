@@ -39,6 +39,7 @@
 #include "src/log.h"
 #include "src/error.h"
 #include "src/uinput.h"
+#include "src/shared/timeout.h"
 
 #include "avctp.h"
 #include "avrcp.h"
@@ -148,7 +149,7 @@ typedef int (*avctp_process_cb) (void *data);
 struct avctp_pending_req {
 	struct avctp_queue *queue;
 	uint8_t transaction;
-	guint timeout;
+	unsigned int timeout;
 	bool retry;
 	int err;
 	avctp_process_cb process;
@@ -179,7 +180,7 @@ struct avctp_channel {
 
 struct key_pressed {
 	uint16_t op;
-	guint timer;
+	unsigned int timer;
 	bool hold;
 };
 
@@ -320,7 +321,7 @@ static void send_key(int fd, uint16_t key, int pressed)
 	send_event(fd, EV_SYN, SYN_REPORT, 0);
 }
 
-static gboolean auto_release(gpointer user_data)
+static bool auto_release(gpointer user_data)
 {
 	struct avctp *session = user_data;
 
@@ -350,14 +351,15 @@ static void handle_press(struct avctp *session, uint16_t op)
 	send_key(session->uinput, op, 1);
 
 done:
-	session->key.timer = g_timeout_add_seconds(AVC_PRESS_TIMEOUT,
-							auto_release, session);
+	session->key.timer = timeout_add_seconds(AVC_PRESS_TIMEOUT,
+							auto_release, session,
+							NULL);
 }
 
 static void handle_release(struct avctp *session, uint16_t op)
 {
 	if (session->key.timer > 0) {
-		g_source_remove(session->key.timer);
+		timeout_remove(session->key.timer);
 		session->key.timer = 0;
 	}
 
@@ -507,7 +509,7 @@ static void pending_destroy(gpointer data, gpointer user_data)
 		req->destroy(req->data);
 
 	if (req->timeout > 0)
-		g_source_remove(req->timeout);
+		timeout_remove(req->timeout);
 
 	g_free(req);
 }
@@ -565,7 +567,7 @@ static void avctp_disconnected(struct avctp *session)
 	}
 
 	if (session->key.timer > 0)
-		g_source_remove(session->key.timer);
+		timeout_remove(session->key.timer);
 
 	if (session->uinput >= 0) {
 		char address[18];
@@ -778,7 +780,7 @@ done:
 	g_free(req);
 }
 
-static gboolean req_timeout(gpointer user_data)
+static bool req_timeout(gpointer user_data)
 {
 	struct avctp_queue *queue = user_data;
 	struct avctp_pending_req *p = queue->p;
@@ -816,8 +818,8 @@ static int process_passthrough(void *data)
 	if (ret < 0)
 		return ret;
 
-	p->timeout = g_timeout_add_seconds(AVC_PRESS_TIMEOUT, req_timeout,
-								p->queue);
+	p->timeout = timeout_add_seconds(AVC_PRESS_TIMEOUT, req_timeout,
+								p->queue, NULL);
 
 	return 0;
 }
@@ -836,8 +838,8 @@ static int process_control(void *data)
 
 	p->retry = !p->retry;
 
-	p->timeout = g_timeout_add_seconds(CONTROL_TIMEOUT, req_timeout,
-								p->queue);
+	p->timeout = timeout_add_seconds(CONTROL_TIMEOUT, req_timeout,
+								p->queue, NULL);
 
 	return 0;
 }
@@ -853,8 +855,8 @@ static int process_browsing(void *data)
 	if (ret < 0)
 		return ret;
 
-	p->timeout = g_timeout_add_seconds(BROWSING_TIMEOUT, req_timeout,
-								p->queue);
+	p->timeout = timeout_add_seconds(BROWSING_TIMEOUT, req_timeout,
+								p->queue, NULL);
 
 	return 0;
 }
@@ -912,7 +914,7 @@ static void control_response(struct avctp_channel *control,
 		control->processed = g_slist_prepend(control->processed, p);
 
 		if (p->timeout > 0) {
-			g_source_remove(p->timeout);
+			timeout_remove(p->timeout);
 			p->timeout = 0;
 		}
 
@@ -964,7 +966,7 @@ static void browsing_response(struct avctp_channel *browsing,
 		browsing->processed = g_slist_prepend(browsing->processed, p);
 
 		if (p->timeout > 0) {
-			g_source_remove(p->timeout);
+			timeout_remove(p->timeout);
 			p->timeout = 0;
 		}
 
@@ -1833,7 +1835,7 @@ static int avctp_passthrough_release(struct avctp *session, uint8_t op)
 				NULL, NULL);
 }
 
-static gboolean repeat_timeout(gpointer user_data)
+static bool repeat_timeout(gpointer user_data)
 {
 	struct avctp *session = user_data;
 
@@ -1847,7 +1849,7 @@ static int release_pressed(struct avctp *session)
 	int ret = avctp_passthrough_release(session, session->key.op);
 
 	if (session->key.timer > 0)
-		g_source_remove(session->key.timer);
+		timeout_remove(session->key.timer);
 
 	session->key.timer = 0;
 	session->key.op = AVC_INVALID;
@@ -1862,9 +1864,9 @@ static bool hold_pressed(struct avctp *session, uint8_t op)
 		return FALSE;
 
 	if (session->key.timer == 0)
-		session->key.timer = g_timeout_add_seconds(AVC_HOLD_TIMEOUT,
+		session->key.timer = timeout_add_seconds(AVC_HOLD_TIMEOUT,
 							repeat_timeout,
-							session);
+							session, NULL);
 
 	return TRUE;
 }

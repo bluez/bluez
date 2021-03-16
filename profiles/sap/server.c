@@ -31,6 +31,7 @@
 #include "src/log.h"
 #include "src/error.h"
 #include "src/dbus-common.h"
+#include "src/shared/timeout.h"
 #include "src/shared/util.h"
 
 #include "sap.h"
@@ -62,7 +63,7 @@ struct sap_connection {
 	GIOChannel *io;
 	uint32_t state;
 	uint8_t processing_req;
-	guint timer_id;
+	unsigned int timer_id;
 };
 
 struct sap_server {
@@ -74,7 +75,7 @@ struct sap_server {
 
 static void start_guard_timer(struct sap_server *server, guint interval);
 static void stop_guard_timer(struct sap_server *server);
-static gboolean guard_timeout(gpointer data);
+static bool guard_timeout(gpointer data);
 
 static size_t add_result_parameter(uint8_t result,
 					struct sap_parameter *param)
@@ -554,8 +555,8 @@ static void start_guard_timer(struct sap_server *server, guint interval)
 		return;
 
 	if (!conn->timer_id)
-		conn->timer_id = g_timeout_add_seconds(interval, guard_timeout,
-								server);
+		conn->timer_id = timeout_add_seconds(interval, guard_timeout,
+								server, NULL);
 	else
 		error("Timer is already active.");
 }
@@ -565,12 +566,12 @@ static void stop_guard_timer(struct sap_server *server)
 	struct sap_connection *conn = server->conn;
 
 	if (conn  && conn->timer_id) {
-		g_source_remove(conn->timer_id);
+		timeout_remove(conn->timer_id);
 		conn->timer_id = 0;
 	}
 }
 
-static gboolean guard_timeout(gpointer data)
+static bool guard_timeout(gpointer data)
 {
 	struct sap_server *server = data;
 	struct sap_connection *conn = server->conn;

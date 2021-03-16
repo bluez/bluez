@@ -32,6 +32,7 @@
 #include "lib/uuid.h"
 
 #include "src/log.h"
+#include "src/shared/timeout.h"
 #include "src/shared/util.h"
 #include "btio/btio.h"
 
@@ -54,7 +55,7 @@ struct bnep {
 	bdaddr_t	dst_addr;
 	char	iface[16];
 	guint	attempts;
-	guint	setup_to;
+	unsigned int	setup_to;
 	guint	watch;
 	bnep_connect_cb	conn_cb;
 	void	*conn_data;
@@ -209,7 +210,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 		return FALSE;
 
 	if (session->setup_to > 0) {
-		g_source_remove(session->setup_to);
+		timeout_remove(session->setup_to);
 		session->setup_to = 0;
 	}
 
@@ -313,7 +314,7 @@ static int bnep_setup_conn_req(struct bnep *session)
 	return 0;
 }
 
-static gboolean bnep_conn_req_to(gpointer user_data)
+static bool bnep_conn_req_to(gpointer user_data)
 {
 	struct bnep *session = user_data;
 
@@ -402,8 +403,9 @@ int bnep_connect(struct bnep *session, bnep_connect_cb conn_cb,
 	if (err < 0)
 		return err;
 
-	session->setup_to = g_timeout_add_seconds(CON_SETUP_TO,
-						bnep_conn_req_to, session);
+	session->setup_to = timeout_add_seconds(CON_SETUP_TO,
+						bnep_conn_req_to, session,
+						NULL);
 	return 0;
 }
 

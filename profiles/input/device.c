@@ -39,6 +39,7 @@
 #include "src/dbus-common.h"
 #include "src/error.h"
 #include "src/sdp-client.h"
+#include "src/shared/timeout.h"
 #include "src/shared/uhid.h"
 
 #include "device.h"
@@ -68,12 +69,12 @@ struct input_device {
 	struct hidp_connadd_req *req;
 	bool			disable_sdp;
 	enum reconnect_mode_t	reconnect_mode;
-	guint			reconnect_timer;
+	unsigned int		reconnect_timer;
 	uint32_t		reconnect_attempt;
 	struct bt_uhid		*uhid;
 	bool			uhid_created;
 	uint8_t			report_req_pending;
-	guint			report_req_timer;
+	unsigned int		report_req_timer;
 	uint32_t		report_rsp_id;
 	bool			virtual_cable_unplug;
 };
@@ -140,10 +141,10 @@ static void input_device_free(struct input_device *idev)
 	}
 
 	if (idev->reconnect_timer > 0)
-		g_source_remove(idev->reconnect_timer);
+		timeout_remove(idev->reconnect_timer);
 
 	if (idev->report_req_timer > 0)
-		g_source_remove(idev->report_req_timer);
+		timeout_remove(idev->report_req_timer);
 
 	g_free(idev);
 }
@@ -439,7 +440,7 @@ static void hidp_recv_ctrl_handshake(struct input_device *idev, uint8_t param)
 	if (pending_req_complete) {
 		idev->report_req_pending = 0;
 		if (idev->report_req_timer > 0) {
-			g_source_remove(idev->report_req_timer);
+			timeout_remove(idev->report_req_timer);
 			idev->report_req_timer = 0;
 		}
 		idev->report_rsp_id = 0;
@@ -499,7 +500,7 @@ static void hidp_recv_ctrl_data(struct input_device *idev, uint8_t param,
 
 	idev->report_req_pending = 0;
 	if (idev->report_req_timer > 0) {
-		g_source_remove(idev->report_req_timer);
+		timeout_remove(idev->report_req_timer);
 		idev->report_req_timer = 0;
 	}
 	idev->report_rsp_id = 0;
@@ -588,7 +589,7 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 
 #define REPORT_REQ_TIMEOUT  3
 
-static gboolean hidp_report_req_timeout(gpointer data)
+static bool hidp_report_req_timeout(gpointer data)
 {
 	struct input_device *idev = data;
 	uint8_t pending_req_type;
@@ -669,8 +670,8 @@ static void hidp_send_set_report(struct uhid_event *ev, void *user_data)
 	if (sent) {
 		idev->report_req_pending = hdr;
 		idev->report_req_timer =
-			g_timeout_add_seconds(REPORT_REQ_TIMEOUT,
-					hidp_report_req_timeout, idev);
+			timeout_add_seconds(REPORT_REQ_TIMEOUT,
+					hidp_report_req_timeout, idev, NULL);
 		idev->report_rsp_id = ev->u.set_report.id;
 	} else
 		uhid_send_set_report_reply(idev, ev->u.set_report.id, EIO);
@@ -712,8 +713,9 @@ static void hidp_send_get_report(struct uhid_event *ev, void *user_data)
 	if (sent) {
 		idev->report_req_pending = hdr;
 		idev->report_req_timer =
-			g_timeout_add_seconds(REPORT_REQ_TIMEOUT,
-						hidp_report_req_timeout, idev);
+			timeout_add_seconds(REPORT_REQ_TIMEOUT,
+						hidp_report_req_timeout, idev,
+						NULL);
 		idev->report_rsp_id = ev->u.get_report.id;
 	} else
 		uhid_send_get_report_reply(idev, NULL, 0, ev->u.get_report.id,
@@ -1282,7 +1284,7 @@ static int dev_connect(struct input_device *idev)
 	return -EIO;
 }
 
-static gboolean input_device_auto_reconnect(gpointer user_data)
+static bool input_device_auto_reconnect(gpointer user_data)
 {
 	struct input_device *idev = user_data;
 
@@ -1352,12 +1354,13 @@ static void input_device_enter_reconnect_mode(struct input_device *idev)
 		return;
 
 	if (idev->reconnect_timer > 0)
-		g_source_remove(idev->reconnect_timer);
+		timeout_remove(idev->reconnect_timer);
 
 	DBG("registering auto-reconnect");
 	idev->reconnect_attempt = 0;
-	idev->reconnect_timer = g_timeout_add_seconds(30,
-					input_device_auto_reconnect, idev);
+	idev->reconnect_timer = timeout_add_seconds(30,
+					input_device_auto_reconnect, idev,
+					NULL);
 
 }
 

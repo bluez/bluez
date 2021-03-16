@@ -41,6 +41,7 @@
 #include "src/log.h"
 #include "src/sdpd.h"
 #include "src/shared/queue.h"
+#include "src/shared/timeout.h"
 #include "src/shared/util.h"
 
 #include "btio/btio.h"
@@ -69,7 +70,7 @@ struct a2dp_sep {
 	struct avdtp_local_sep *lsep;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
-	guint suspend_timer;
+	unsigned int suspend_timer;
 	gboolean delay_reporting;
 	gboolean locked;
 	gboolean suspending;
@@ -480,7 +481,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		return;
 
 	if (sep->suspend_timer) {
-		g_source_remove(sep->suspend_timer);
+		timeout_remove(sep->suspend_timer);
 		sep->suspend_timer = 0;
 	}
 
@@ -970,7 +971,7 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	return;
 }
 
-static gboolean suspend_timeout(struct a2dp_sep *sep)
+static bool suspend_timeout(struct a2dp_sep *sep)
 {
 	if (avdtp_suspend(sep->session, sep->stream) == 0)
 		sep->suspending = TRUE;
@@ -997,9 +998,9 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (!a2dp_sep->locked) {
 		a2dp_sep->session = avdtp_ref(session);
-		a2dp_sep->suspend_timer = g_timeout_add_seconds(SUSPEND_TIMEOUT,
-						(GSourceFunc) suspend_timeout,
-						a2dp_sep);
+		a2dp_sep->suspend_timer = timeout_add_seconds(SUSPEND_TIMEOUT,
+					(timeout_func_t) suspend_timeout,
+					a2dp_sep, NULL);
 	}
 
 	if (!a2dp_sep->starting)
@@ -1055,7 +1056,7 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		DBG("Source %p: Suspend_Ind", sep);
 
 	if (a2dp_sep->suspend_timer) {
-		g_source_remove(a2dp_sep->suspend_timer);
+		timeout_remove(a2dp_sep->suspend_timer);
 		a2dp_sep->suspend_timer = 0;
 		avdtp_unref(a2dp_sep->session);
 		a2dp_sep->session = NULL;
@@ -2995,7 +2996,7 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (!sep->suspending && sep->suspend_timer) {
-			g_source_remove(sep->suspend_timer);
+			timeout_remove(sep->suspend_timer);
 			sep->suspend_timer = 0;
 			avdtp_unref(sep->session);
 			sep->session = NULL;

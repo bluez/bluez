@@ -26,6 +26,7 @@
 #include "bluetooth/l2cap.h"
 #include "btio/btio.h"
 #include "src/log.h"
+#include "src/shared/timeout.h"
 
 #include "mcap.h"
 
@@ -43,7 +44,7 @@
 
 #define RELEASE_TIMER(__mcl) do {		\
 	if (__mcl->tid) {			\
-		g_source_remove(__mcl->tid);	\
+		timeout_remove(__mcl->tid);	\
 		__mcl->tid = 0;			\
 	}					\
 } while(0)
@@ -483,7 +484,7 @@ static int compare_mdl(gconstpointer a, gconstpointer b)
 		return 1;
 }
 
-static gboolean wait_response_timer(gpointer data)
+static bool wait_response_timer(gpointer data)
 {
 	struct mcap_mcl *mcl = data;
 
@@ -549,8 +550,8 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 
 	mcl->mdls = g_slist_insert_sorted(mcl->mdls, mcap_mdl_ref(mdl),
 								compare_mdl);
-	mcl->tid = g_timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
-									mcl);
+	mcl->tid = timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
+					mcl, NULL);
 	return TRUE;
 }
 
@@ -587,8 +588,8 @@ gboolean mcap_reconnect_mdl(struct mcap_mdl *mdl,
 	mcl->state = MCL_ACTIVE;
 	mcl->priv_data = con;
 
-	mcl->tid = g_timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
-									mcl);
+	mcl->tid = timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
+					mcl, NULL);
 	return TRUE;
 }
 
@@ -607,8 +608,8 @@ static gboolean send_delete_req(struct mcap_mcl *mcl,
 
 	mcl->priv_data = con;
 
-	mcl->tid = g_timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
-									mcl);
+	mcl->tid = timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
+					mcl, NULL);
 	return TRUE;
 }
 
@@ -718,8 +719,8 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl, mcap_mdl_notify_cb abort_cb,
 	con->user_data = user_data;
 
 	mcl->priv_data = con;
-	mcl->tid = g_timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
-									mcl);
+	mcl->tid = timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
+					mcl, NULL);
 	return TRUE;
 }
 
