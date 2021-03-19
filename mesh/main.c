@@ -17,7 +17,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <signal.h>
 
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <ell/ell.h>
 
@@ -262,7 +264,13 @@ int main(int argc, char *argv[])
 	if (!detached)
 		umask(0077);
 
-	dbus = l_dbus_new_default(L_DBUS_SYSTEM_BUS);
+	if (io_type != MESH_IO_TYPE_UNIT_TEST)
+		dbus = l_dbus_new_default(L_DBUS_SYSTEM_BUS);
+	else {
+		dbus = l_dbus_new_default(L_DBUS_SESSION_BUS);
+		prctl(PR_SET_PDEATHSIG, SIGSEGV);
+	}
+
 	if (!dbus) {
 		l_error("unable to connect to D-Bus");
 		status = EXIT_FAILURE;
