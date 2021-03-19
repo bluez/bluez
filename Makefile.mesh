@@ -17,6 +17,8 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/error.h mesh/mesh-io-api.h \
 				mesh/mesh-io-generic.h \
 				mesh/mesh-io-generic.c \
+				mesh/mesh-io-unit.h \
+				mesh/mesh-io-unit.c \
 				mesh/net.h mesh/net.c \
 				mesh/crypto.h mesh/crypto.c \
 				mesh/friend.h mesh/friend.c \
