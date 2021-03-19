@@ -1752,6 +1752,42 @@ static void cmd_exp_debug(int argc, char **argv)
 	}
 }
 
+static void exp_privacy_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		error("Set LL privacy feature failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+	else
+		print("LL privacy feature successfully set");
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_exp_privacy(int argc, char **argv)
+{
+	/* 15c0a148-c273-11ea-b3de-0242ac130004 */
+	static const uint8_t uuid[16] = {
+				0x04, 0x00, 0x13, 0xac, 0x42, 0x02, 0xde, 0xb3,
+				0xea, 0x11, 0x73, 0xc2, 0x48, 0xa1, 0xc0, 0x15,
+	};
+	struct mgmt_cp_set_exp_feature cp;
+	uint8_t val;
+
+	if (parse_setting(argc, argv, &val) == false)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.uuid, uuid, 16);
+	cp.action = val;
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_EXP_FEATURE, mgmt_index,
+			sizeof(cp), &cp, exp_privacy_rsp, NULL, NULL) == 0) {
+		error("Unable to send LL privacy feature cmd");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void print_mgmt_tlv(void *data, void *user_data)
 {
 	const struct mgmt_tlv *entry = data;
@@ -5303,6 +5339,8 @@ static const struct bt_shell_menu main_menu = {
 		cmd_expinfo,		"Show experimental features"	},
 	{ "exp-debug",		"<on/off>",
 		cmd_exp_debug,		"Set debug feature"		},
+	{ "exp-privacy",	"<on/off>",
+		cmd_exp_privacy,	"Set LL privacy feature"	},
 	{ "read-sysconfig",	NULL,
 		cmd_read_sysconfig,	"Read System Configuration"	},
 	{ "set-sysconfig",	"<-v|-h> [options...]",
