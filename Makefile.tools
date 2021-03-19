@@ -44,6 +44,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				monitor/analyze.h monitor/analyze.c \
 				monitor/intel.h monitor/intel.c \
 				monitor/broadcom.h monitor/broadcom.c \
+				monitor/msft.h monitor/msft.c \
 				monitor/jlink.h monitor/jlink.c \
 				monitor/tty.h
 monitor_btmon_LDADD = lib/libbluetooth-internal.la \
