@@ -2638,6 +2638,16 @@ static const struct bitfield_data features_le[] = {
 	{ }
 };
 
+static const struct bitfield_data features_msft[] = {
+	{  0, "RSSI Monitoring feature for BR/EDR"		},
+	{  1, "RSSI Monitoring feature for LE connections"	},
+	{  2, "RSSI Monitoring of LE advertisements"		},
+	{  3, "Advertising Monitoring of LE advertisements"	},
+	{  4, "Verifying the validity of P-192 and P-256 keys"	},
+	{  5, "Continuous Advertising Monitoring"		},
+	{ }
+};
+
 static void print_features(uint8_t page, const uint8_t *features_array,
 								uint8_t type)
 {
@@ -2674,6 +2684,13 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 			break;
 		}
 		break;
+	case 0xf0:
+		switch (page) {
+		case 0:
+			features_table = features_msft;
+			break;
+		}
+		break;
 	}
 
 	if (!features_table)
@@ -2693,6 +2710,11 @@ void packet_print_features_lmp(const uint8_t *features, uint8_t page)
 void packet_print_features_ll(const uint8_t *features)
 {
 	print_features(0, features, 0x01);
+}
+
+void packet_print_features_msft(const uint8_t *features)
+{
+	print_features(0, features, 0xf0);
 }
 
 #define LE_STATE_SCAN_ADV		0x0001
