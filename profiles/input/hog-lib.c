@@ -786,11 +786,9 @@ fail:
 	set_report_cb(err, NULL, 0, hog);
 }
 
-static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
-							gpointer user_data)
+static void report_reply(struct bt_hog *hog, uint8_t status, uint8_t id,
+				 uint16_t len, const uint8_t *data)
 {
-	struct report *report = user_data;
-	struct bt_hog *hog = report->hog;
 	struct uhid_event rsp;
 	int err;
 
@@ -799,6 +797,31 @@ static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.type = UHID_GET_REPORT_REPLY;
 	rsp.u.get_report_reply.id = hog->getrep_id;
+
+	if (status)
+		goto done;
+
+	if (hog->has_report_id && len > 0) {
+		rsp.u.get_report_reply.size = len + 1;
+		rsp.u.get_report_reply.data[0] = id;
+		memcpy(&rsp.u.get_report_reply.data[1], data, len);
+	} else {
+		rsp.u.get_report_reply.size = len;
+		memcpy(rsp.u.get_report_reply.data, data, len);
+	}
+
+done:
+	rsp.u.get_report_reply.err = status;
+	err = bt_uhid_send(hog->uhid, &rsp);
+	if (err < 0)
+		error("bt_uhid_send: %s", strerror(-err));
+}
+
+static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
+{
+	struct report *report = user_data;
+	struct bt_hog *hog = report->hog;
 
 	if (status != 0) {
 		error("Error reading Report value: %s", att_ecode2str(status));
@@ -820,20 +843,8 @@ static void get_report_cb(guint8 status, const guint8 *pdu, guint16 len,
 	--len;
 	++pdu;
 
-	if (hog->has_report_id && len > 0) {
-		rsp.u.get_report_reply.size = len + 1;
-		rsp.u.get_report_reply.data[0] = report->id;
-		memcpy(&rsp.u.get_report_reply.data[1], pdu, len);
-	} else {
-		rsp.u.get_report_reply.size = len;
-		memcpy(rsp.u.get_report_reply.data, pdu, len);
-	}
-
 exit:
-	rsp.u.get_report_reply.err = status;
-	err = bt_uhid_send(hog->uhid, &rsp);
-	if (err < 0)
-		error("bt_uhid_send: %s", strerror(-err));
+	report_reply(hog, status, report->id, len, pdu);
 }
 
 static void get_report(struct uhid_event *ev, void *user_data)
@@ -868,8 +879,8 @@ static void get_report(struct uhid_event *ev, void *user_data)
 	return;
 
 fail:
-	/* cancel the request on failure */
-	get_report_cb(err, NULL, 0, hog);
+	/* reply with an error on failure */
+	report_reply(hog, err, 0, 0, NULL);
 }
 
 static bool get_descriptor_item_info(uint8_t *buf, ssize_t blen, ssize_t *len,
