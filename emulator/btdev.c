@@ -4447,8 +4447,8 @@ static int cmd_create_cis_complete(struct btdev *dev, const void *data,
 
 		evt.acl_handle = cpu_to_le16(acl->handle);
 		evt.cis_handle = cpu_to_le16(iso->handle);
-		evt.cig_id = 0x00;
-		evt.cis_id = 0x00;
+		evt.cig_id = iso->dev->le_cig.params.cig_id;
+		evt.cis_id = iso->dev->le_cig.cis.cis_id;
 
 		le_meta_event(iso->link->dev, BT_HCI_EVT_LE_CIS_REQ, &evt,
 					sizeof(evt));
