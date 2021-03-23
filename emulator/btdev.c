@@ -4381,11 +4381,11 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 	memset(&evt, 0, sizeof(evt));
 
 	evt.status = status;
+	evt.conn_handle = cpu_to_le16(conn->handle);
 
 	if (!evt.status) {
 		struct btdev *remote = conn->link->dev;
 
-		evt.conn_handle = cpu_to_le16(conn->handle);
 		/* TODO: Figure out if these values makes sense */
 		memcpy(evt.cig_sync_delay, remote->le_cig.params.m_interval,
 				sizeof(remote->le_cig.params.m_interval));
