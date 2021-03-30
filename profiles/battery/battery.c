@@ -75,6 +75,7 @@ static void batt_free(struct batt *batt)
 static void batt_reset(struct batt *batt)
 {
 	batt->attr = NULL;
+	batt->percentage = -1;
 	gatt_db_unref(batt->db);
 	batt->db = NULL;
 	bt_gatt_client_unref(batt->client);
