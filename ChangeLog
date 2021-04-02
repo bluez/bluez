@@ -1,3 +1,8 @@
+ver 5.57:
+	Fix issue with handling GATT notification PDU parsing.
+	Fix issue with registering DIS without a valid source.
+	Fix issue with removing remote SEPs when loading from cache.
+
 ver 5.56:
 	Fix issue with setting AVDTP disconnect timer.
 	Fix issue with AVDTP not sending GetCapabilities.
