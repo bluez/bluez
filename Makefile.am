@@ -100,12 +100,12 @@ if EXTERNAL_ELL
 ell_cflags = @ELL_CFLAGS@
 ell_ldadd = @ELL_LIBS@
 ell_dependencies =
-ell_built_sources =
+ell_built_sources = ell/shared
 else
 ell_cflags =
 ell_ldadd = ell/libell-internal.la
 ell_dependencies = $(ell_ldadd)
-ell_built_sources = ell/internal ell/ell.h
+ell_built_sources = ell/shared ell/internal ell/ell.h
 
 noinst_LTLIBRARIES += ell/libell-internal.la
 
@@ -136,7 +136,6 @@ ell_headers = ell/util.h \
 			ell/cert-private.h \
 			ell/pem-private.h \
 			ell/uuid.h \
-			ell/useful.h \
 			ell/main-private.h
 
 ell_sources = ell/private.h ell/missing.h \
@@ -175,7 +174,9 @@ ell_sources = ell/private.h ell/missing.h \
 			ell/siphash.c \
 			ell/uuid.c
 
-ell_libell_internal_la_SOURCES = $(ell_headers) $(ell_sources)
+ell_shared = ell/useful.h
+
+ell_libell_internal_la_SOURCES = $(ell_headers) $(ell_sources) $(ell_shared)
 endif
 
 CLEANFILES += $(ell_built_sources)
@@ -617,6 +618,13 @@ $(lib_libbluetooth_la_OBJECTS): $(local_headers)
 lib/bluetooth/%.h: lib/%.h
 	$(AM_V_at)$(MKDIR_P) lib/bluetooth
 	$(AM_V_GEN)$(LN_S) -f $(abspath $<) $@
+
+ell/shared: Makefile
+	$(AM_V_GEN)for f in $(ell_shared) ; do \
+		if [ ! -f $$f ] ; then \
+			$(LN_S) -t ell -f $(abs_srcdir)/../ell/$$f ; \
+		fi \
+	done > $@
 
 ell/internal: Makefile
 	$(AM_V_at)$(MKDIR_P) ell
