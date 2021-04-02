@@ -233,11 +233,6 @@ int main(int argc, char *argv[])
 	GError *err = NULL;
 	guint signal;
 
-#ifdef NEED_THREADS
-	if (g_thread_supported() == FALSE)
-		g_thread_init(NULL);
-#endif
-
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 

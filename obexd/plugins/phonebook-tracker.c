@@ -1421,7 +1421,6 @@ done:
 
 int phonebook_init(void)
 {
-	g_thread_init(NULL);
 	g_type_init();
 
 	return 0;
