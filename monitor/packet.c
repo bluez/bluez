@@ -2185,10 +2185,7 @@ static void print_adv_filter_policy(const char *label, uint8_t value)
 
 static void print_rssi(int8_t rssi)
 {
-	if ((uint8_t) rssi == 0x99 || rssi == 127)
-		print_field("RSSI: invalid (0x%2.2x)", (uint8_t) rssi);
-	else
-		print_field("RSSI: %d dBm (0x%2.2x)", rssi, (uint8_t) rssi);
+	packet_print_rssi("RSSI", rssi);
 }
 
 static void print_slot_625(const char *label, uint16_t value)
@@ -3798,9 +3795,13 @@ void packet_print_handle(uint16_t handle)
 	print_handle_native(handle);
 }
 
-void packet_print_rssi(int8_t rssi)
+void packet_print_rssi(const char *label, int8_t rssi)
 {
-	print_rssi(rssi);
+	if ((uint8_t) rssi == 0x99 || rssi == 127)
+		print_field("%s: invalid (0x%2.2x)", label, (uint8_t) rssi);
+	else
+		print_field("%s: %d dBm (0x%2.2x)", label, rssi,
+							(uint8_t) rssi);
 }
 
 void packet_print_ad(const void *data, uint8_t size)

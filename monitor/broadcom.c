@@ -39,7 +39,7 @@ static void print_handle(uint16_t handle)
 
 static void print_rssi(int8_t rssi)
 {
-	packet_print_rssi(rssi);
+	packet_print_rssi("RSSI", rssi);
 }
 
 static void print_sco_routing(uint8_t routing)
