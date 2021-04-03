@@ -1,3 +1,6 @@
+ver 5.58:
+	Fix issue with usage of deprecated GLib functions.
+
 ver 5.57:
 	Fix issue with handling GATT notification PDU parsing.
 	Fix issue with registering DIS without a valid source.
