@@ -1515,6 +1515,41 @@ static void cmd_extinfo(int argc, char **argv)
 	}
 }
 
+static void print_cap(const uint8_t *cap, uint16_t cap_len)
+{
+	uint16_t parsed = 0;
+
+	while (parsed < cap_len - 1) {
+		uint8_t field_len = cap[0];
+
+		if (field_len == 0)
+			break;
+
+		parsed += field_len + 1;
+
+		if (parsed > cap_len)
+			break;
+
+		switch (cap[1]) {
+		case 0x01:
+			print("\tFlags: 0x%02x", cap[2]);
+			break;
+		case 0x02:
+			print("\tMax Key Size (BR/EDR): %u", cap[2]);
+			break;
+		case 0x03:
+			print("\tMax Key Size (LE): %u", cap[2]);
+			break;
+		default:
+			print("\tType %u: %u byte%s", cap[1], field_len - 1,
+					(field_len - 1) == 1 ? "" : "s");
+			break;
+		}
+
+		cap += field_len + 1;
+	}
+}
+
 static void sec_info_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -1533,7 +1568,8 @@ static void sec_info_rsp(uint8_t status, uint16_t len, const void *param,
 	}
 
 	print("Primary controller (hci%u)", index);
-	print("\tSecurity info length: %u", le16_to_cpu(rp->cap_len));
+	print("\tInfo length: %u", le16_to_cpu(rp->cap_len));
+	print_cap(rp->cap, le16_to_cpu(rp->cap_len));
 
 done:
 	pending_index--;
