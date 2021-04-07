@@ -184,10 +184,6 @@ static void read_char(struct bt_hog *hog, GAttrib *attrib, uint16_t handle,
 	struct gatt_request *req;
 	unsigned int id;
 
-	/* Ignore if not connected */
-	if (!attrib)
-		return;
-
 	req = create_request(hog, user_data);
 	if (!req)
 		return;
