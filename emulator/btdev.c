@@ -982,9 +982,14 @@ static struct btdev_conn *conn_add_sco(struct btdev_conn *acl)
 	return conn_link(acl->dev, acl->link->dev, SCO_HANDLE, HCI_SCODATA_PKT);
 }
 
-static struct btdev_conn *conn_add_iso(struct btdev_conn *acl, uint16_t handle)
+static struct btdev_conn *conn_add_cis(struct btdev_conn *acl, uint16_t handle)
 {
 	return conn_link(acl->dev, acl->link->dev, handle, HCI_ISODATA_PKT);
+}
+
+static struct btdev_conn *conn_add_bis(struct btdev *dev, uint16_t handle)
+{
+	return conn_new(dev, handle, HCI_ISODATA_PKT);
 }
 
 static void conn_complete(struct btdev *btdev,
@@ -4437,7 +4442,7 @@ static int cmd_create_cis_complete(struct btdev *dev, const void *data,
 		iso = queue_find(dev->conns, match_handle,
 				UINT_TO_PTR(cpu_to_le16(cis->cis_handle)));
 		if (!iso) {
-			iso = conn_add_iso(acl, cpu_to_le16(cis->cis_handle));
+			iso = conn_add_cis(acl, cpu_to_le16(cis->cis_handle));
 			if (!iso) {
 				le_cis_estabilished(dev, NULL,
 						BT_HCI_ERR_UNKNOWN_CONN_ID);
@@ -4524,17 +4529,30 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 
 	for (i = 0; i < cmd->num_bis; i++) {
 		const struct bt_hci_bis *bis = &cmd->bis[i];
+		struct btdev_conn *conn;
 		struct {
 			struct bt_hci_evt_le_big_complete evt;
 			uint16_t handle;
 		} pdu;
 
-		pdu.evt.handle = cmd->handle;
-		pdu.evt.num_bis = cmd->num_bis;
-		pdu.evt.phy = bis->phy;
-		memcpy(&pdu.evt.latency, &(bis->latency), 3);
-		pdu.evt.handle = cpu_to_le16(ISO_HANDLE + i);
+		memset(&pdu, 0, sizeof(pdu));
 
+		conn = conn_add_bis(dev, ISO_HANDLE);
+		if (!conn) {
+			pdu.evt.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+			goto done;
+		}
+
+		pdu.evt.handle = cmd->handle;
+		pdu.evt.num_bis = 0x01;
+		pdu.evt.phy = bis->phy;
+		pdu.evt.max_pdu = bis->sdu;
+		memcpy(pdu.evt.sync_delay, bis->sdu_interval, 3);
+		memcpy(pdu.evt.latency, bis->sdu_interval, 3);
+		pdu.evt.interval = bis->latency / 1.25;
+		pdu.handle = cpu_to_le16(conn->handle);
+
+done:
 		le_meta_event(dev, BT_HCI_EVT_LE_BIG_COMPLETE, &pdu,
 					sizeof(pdu));
 	}
