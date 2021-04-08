@@ -347,14 +347,20 @@ static void send_pub_key(struct mesh_prov_acceptor *prov)
 	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 }
 
-static void send_conf(struct mesh_prov_acceptor *prov)
+static bool send_conf(struct mesh_prov_acceptor *prov)
 {
 	struct prov_conf_msg msg;
 
 	msg.opcode = PROV_CONFIRM;
 	mesh_crypto_aes_cmac(prov->calc_key, prov->rand_auth_workspace, 32,
 								msg.conf);
+
+	/* Fail if confirmations match */
+	if (!memcmp(msg.conf, prov->confirm, sizeof(msg.conf)))
+		return false;
+
 	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
+	return true;
 }
 
 static void send_rand(struct mesh_prov_acceptor *prov)
@@ -529,7 +535,10 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		memcpy(prov->confirm, data, 16);
 		prov->expected = PROV_RANDOM;
 
-		send_conf(prov);
+		if (!send_conf(prov)) {
+			fail.reason = PROV_ERR_INVALID_PDU;
+			goto failure;
+		}
 		break;
 
 	case PROV_RANDOM: /* Random Value */

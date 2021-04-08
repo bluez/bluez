@@ -279,6 +279,7 @@ static void send_confirm(struct mesh_prov_initiator *prov)
 	msg.opcode = PROV_CONFIRM;
 	mesh_crypto_aes_cmac(prov->calc_key, prov->rand_auth_workspace,
 			32, msg.conf);
+	memcpy(prov->confirm, msg.conf, sizeof(prov->confirm));
 	prov->trans_tx(prov->trans_data, &msg, sizeof(msg));
 	prov->state = INT_PROV_CONF_SENT;
 	prov->expected = PROV_CONFIRM;
@@ -732,6 +733,13 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 	case PROV_CONFIRM: /* Confirmation */
 		prov->state = INT_PROV_CONF_ACKED;
 		/* RXed Device Confirmation */
+
+		/* Disallow echoed values */
+		if (!memcmp(prov->confirm, data, 16)) {
+			fail_code[1] = PROV_ERR_INVALID_PDU;
+			goto failure;
+		}
+
 		memcpy(prov->confirm, data, 16);
 		print_packet("ConfirmationDevice", prov->confirm, 16);
 		send_random(prov);
