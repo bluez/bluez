@@ -280,6 +280,7 @@ struct generic_data {
 	uint16_t expect_alt_ev_len;
 	uint16_t expect_hci_command;
 	const void *expect_hci_param;
+	int (*expect_hci_param_check_func)(const void *param, uint16_t length);
 	uint8_t expect_hci_len;
 	const void * (*expect_hci_func)(uint8_t *len);
 	bool expect_pin;
@@ -6632,6 +6633,7 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 	const struct generic_data *test = data->test_data;
 	const void *expect_hci_param = test->expect_hci_param;
 	uint8_t expect_hci_len = test->expect_hci_len;
+	int ret;
 
 	tester_print("HCI Command 0x%04x length %u", opcode, length);
 
@@ -6647,7 +6649,11 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 		return;
 	}
 
-	if (memcmp(param, expect_hci_param, length) != 0) {
+	if (test->expect_hci_param_check_func)
+		ret = test->expect_hci_param_check_func(param, length);
+	else
+		ret = memcmp(param, expect_hci_param, length);
+	if (ret != 0) {
 		tester_warn("Unexpected HCI command parameter value:");
 		util_hexdump('>', param, length, print_debug, "");
 		util_hexdump('!', expect_hci_param, length, print_debug, "");
