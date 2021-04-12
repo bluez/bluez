@@ -1585,20 +1585,20 @@ static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
 {
 	uint8_t pdu[4];
 	unsigned int att_id;
+	uint16_t properties = notify_data->chrc->properties;
 
 	assert(notify_data->chrc->ccc_handle);
 	memset(pdu, 0, sizeof(pdu));
 	put_le16(notify_data->chrc->ccc_handle, pdu);
 
 	if (enable) {
-		/* Try to enable notifications and/or indications based on
+		/* Try to enable notifications or indications based on
 		 * whatever the characteristic supports.
 		 */
-		if (notify_data->chrc->properties & BT_GATT_CHRC_PROP_NOTIFY)
+		if (properties & BT_GATT_CHRC_PROP_NOTIFY)
 			pdu[2] = 0x01;
-
-		if (notify_data->chrc->properties & BT_GATT_CHRC_PROP_INDICATE)
-			pdu[2] |= 0x02;
+		else if (properties & BT_GATT_CHRC_PROP_INDICATE)
+			pdu[2] = 0x02;
 
 		if (!pdu[2])
 			return false;
