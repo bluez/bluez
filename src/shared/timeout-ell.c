@@ -68,7 +68,7 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 	data->timeout = timeout;
 
 	while (id == 0 && tries < 3) {
-		to = l_timeout_create(timeout, timeout_callback,
+		to = l_timeout_create_ms(timeout, timeout_callback,
 							data, timeout_destroy);
 		if (!to)
 			break;
