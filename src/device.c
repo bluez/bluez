@@ -4981,6 +4981,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
+	DBusMessage *reply;
 	GSList *primaries;
 	char addr[18];
 
@@ -5024,6 +5025,17 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 						DEVICE_INTERFACE, "UUIDs");
 
 send_reply:
+	/* If SDP search failed during an ongoing connection request, we should
+	 * reply to D-Bus method call.
+	 */
+	if (err < 0 && device->connect) {
+		DBG("SDP failed during connection");
+		reply = btd_error_failed(device->connect, strerror(-err));
+		g_dbus_send_message(dbus_conn, reply);
+		dbus_message_unref(device->connect);
+		device->connect = NULL;
+	}
+
 	device_svc_resolved(device, BROWSE_SDP, BDADDR_BREDR, err);
 }
 
