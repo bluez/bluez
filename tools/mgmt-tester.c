@@ -5552,7 +5552,7 @@ static void setup_bthost(void)
 
 	if (data->hciemu_type == HCIEMU_TYPE_LE ||
 		test->client_enable_adv) {
-		if (data->hciemu_type == HCIEMU_TYPE_BREDRLE50)
+		if (data->hciemu_type >= HCIEMU_TYPE_BREDRLE50)
 			bthost_set_ext_adv_enable(bthost, 0x01);
 		else
 			bthost_set_adv_enable(bthost, 0x01);
@@ -8887,7 +8887,7 @@ static void trigger_device_found(void *user_data)
 							test->adv_data_len);
 
 		bthost_set_adv_enable(bthost, 0x01);
-	} else if (data->hciemu_type == HCIEMU_TYPE_BREDRLE50) {
+	} else if (data->hciemu_type >= HCIEMU_TYPE_BREDRLE50) {
 		if (test->set_adv)
 			bthost_set_ext_adv_data(bthost, test->adv_data,
 							test->adv_data_len);
@@ -9054,7 +9054,7 @@ static void le_connected_event(uint16_t index, uint16_t length,
 
 	test_add_condition(data);
 
-	if (data->hciemu_type == HCIEMU_TYPE_BREDRLE50)
+	if (data->hciemu_type >= HCIEMU_TYPE_BREDRLE50)
 		hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_CMD,
 					BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE,
 					test_adv_enable_hook, data);
@@ -9101,7 +9101,7 @@ static void add_device_callback(uint8_t status, uint16_t len, const void *param,
 	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	if (data->hciemu_type == HCIEMU_TYPE_BREDRLE50)
+	if (data->hciemu_type >= HCIEMU_TYPE_BREDRLE50)
 		bthost_hci_ext_connect(bthost, master_bdaddr, BDADDR_LE_PUBLIC);
 	else
 		bthost_hci_connect(bthost, master_bdaddr, BDADDR_LE_PUBLIC);
