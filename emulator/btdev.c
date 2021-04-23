@@ -2013,6 +2013,24 @@ static int cmd_write_voice(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
+static int cmd_read_tx_power_level(struct btdev *dev, const void *data,
+				   uint8_t len)
+{
+	const struct bt_hci_cmd_read_tx_power *cmd = data;
+	struct bt_hci_rsp_read_tx_power rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.handle = le16_to_cpu(cmd->handle);
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	if (cmd->type)
+		rsp.level = 4;
+	else
+		rsp.level = -1;
+	cmd_complete(dev, BT_HCI_CMD_READ_TX_POWER, &rsp, sizeof(rsp));
+
+	return 0;
+}
+
 static int cmd_read_num_iac(struct btdev *dev, const void *data, uint8_t len)
 {
 	struct bt_hci_rsp_read_num_supported_iac rsp;
@@ -2182,6 +2200,21 @@ static int cmd_read_country_code(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_read_rssi(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_read_rssi *cmd = data;
+	struct bt_hci_rsp_read_rssi rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	rsp.handle = le16_to_cpu(cmd->handle);
+	rsp.rssi = -1;
+	cmd_complete(dev, BT_HCI_CMD_READ_RSSI, &rsp, sizeof(rsp));
+
+	return 0;
+}
+
 static int cmd_enable_dut_mode(struct btdev *dev, const void *data,
 							uint8_t len)
 {
@@ -2259,6 +2292,7 @@ static int cmd_enable_dut_mode(struct btdev *dev, const void *data,
 	CMD(BT_HCI_CMD_WRITE_CLASS_OF_DEV, cmd_write_class, NULL), \
 	CMD(BT_HCI_CMD_READ_VOICE_SETTING, cmd_read_voice, NULL), \
 	CMD(BT_HCI_CMD_WRITE_VOICE_SETTING, cmd_write_voice, NULL), \
+	CMD(BT_HCI_CMD_READ_TX_POWER, cmd_read_tx_power_level, NULL), \
 	CMD(BT_HCI_CMD_READ_NUM_SUPPORTED_IAC, cmd_read_num_iac, NULL), \
 	CMD(BT_HCI_CMD_READ_CURRENT_IAC_LAP, cmd_read_current_iac_lap, \
 					NULL), \
@@ -2273,6 +2307,7 @@ static int cmd_enable_dut_mode(struct btdev *dev, const void *data,
 	CMD(BT_HCI_CMD_READ_LOCAL_EXT_FEATURES, cmd_read_local_ext_features, \
 					NULL), \
 	CMD(BT_HCI_CMD_READ_COUNTRY_CODE, cmd_read_country_code, NULL), \
+	CMD(BT_HCI_CMD_READ_RSSI, cmd_read_rssi, NULL), \
 	CMD(BT_HCI_CMD_ENABLE_DUT_MODE, cmd_enable_dut_mode, NULL)
 
 static void set_common_commands_bredr20(struct btdev *btdev)
@@ -2319,6 +2354,7 @@ static void set_common_commands_bredr20(struct btdev *btdev)
 	btdev->commands[9]  |= 0x02;	/* Write Class Of Device */
 	btdev->commands[9]  |= 0x04;	/* Read Voice Setting */
 	btdev->commands[9]  |= 0x08;	/* Write Voice Setting */
+	btdev->commands[10] |= 0x04;	/* Read TX Power Level */
 	btdev->commands[11] |= 0x04;	/* Read Number of Supported IAC */
 	btdev->commands[11] |= 0x08;	/* Read Current IAC LAP */
 	btdev->commands[11] |= 0x10;	/* Write Current IAC LAP */
@@ -2330,6 +2366,7 @@ static void set_common_commands_bredr20(struct btdev *btdev)
 	btdev->commands[13] |= 0x08;	/* Write AFH Assess Mode */
 	btdev->commands[14] |= 0x40;	/* Read Local Extended Features */
 	btdev->commands[15] |= 0x01;	/* Read Country Code */
+	btdev->commands[15] |= 0x20;	/* Read RSSI */
 	btdev->commands[16] |= 0x04;	/* Enable Device Under Test Mode */
 }
 
