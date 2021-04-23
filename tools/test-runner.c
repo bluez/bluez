@@ -247,6 +247,7 @@ static void start_qemu(void)
 				"rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.L "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
+				"bluetooth.enable_ecred=1"
 				"TESTHOME=%s TESTDBUS=%u TESTMONITOR=%u "
 				"TESTDEVS=%d TESTAUTO=%u TESTARGS=\'%s\'",
 				initcmd, cwd, start_dbus, start_monitor,
