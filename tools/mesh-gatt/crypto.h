@@ -28,7 +28,7 @@ bool mesh_crypto_identity(const uint8_t net_key[16], uint16_t addr,
 bool mesh_crypto_identity_check(const uint8_t net_key[16], uint16_t addr,
 							uint8_t id[16]);
 bool mesh_crypto_beacon_cmac(const uint8_t encryption_key[16],
-				const uint8_t network_id[16],
+				const uint8_t network_id[8],
 				uint32_t iv_index, bool kr, bool iu,
 				uint64_t *cmac);
 bool mesh_crypto_network_nonce(bool frnd, uint8_t ttl, uint32_t seq,

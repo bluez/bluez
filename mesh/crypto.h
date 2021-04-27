@@ -30,7 +30,7 @@ bool mesh_crypto_nkpk(const uint8_t network_key[16], uint8_t proxy_key[16]);
 bool mesh_crypto_identity(const uint8_t net_key[16], uint16_t addr,
 							uint8_t id[16]);
 bool mesh_crypto_beacon_cmac(const uint8_t encryption_key[16],
-				const uint8_t network_id[16],
+				const uint8_t network_id[8],
 				uint32_t iv_index, bool kr,
 				bool iu, uint64_t *cmac);
 bool mesh_crypto_device_key(const uint8_t secret[32],
