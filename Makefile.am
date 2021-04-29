@@ -627,6 +627,7 @@ lib/bluetooth/%.h: lib/%.h
 	$(AM_V_GEN)$(LN_S) -f $(abspath $<) $@
 
 ell/shared: Makefile
+	$(AM_V_at)$(MKDIR_P) ell
 	$(AM_V_GEN)for f in $(ell_shared) ; do \
 		if [ ! -f $$f ] ; then \
 			$(LN_S) -t ell -f $(abs_srcdir)/../ell/$$f ; \
