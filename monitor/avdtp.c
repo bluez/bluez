@@ -715,10 +715,6 @@ static bool avdtp_signalling_packet(struct avdtp_frame *avdtp_frame)
 		return true;
 	}
 
-	/* General Reject */
-	if ((hdr & 0x03) == 0x03)
-		return true;
-
 	switch (sig_id) {
 	case AVDTP_DISCOVER:
 		return avdtp_discover(avdtp_frame);
