@@ -594,7 +594,7 @@ if LIBRARY
 pkgconfig_DATA = lib/bluez.pc
 endif
 
-EXTRA_DIST += $(manual_pages:.1=.txt)
+EXTRA_DIST += $(manual_pages:.1=.rst)
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-health \
@@ -616,11 +616,20 @@ SED_PROCESS = $(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
 		$(SED) -e 's,@pkglibexecdir\@,$(pkglibexecdir),g' \
 		< $< > $@
 
+if RUN_RST2MAN
+RST2MAN_PROCESS = $(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
+			$(RST2MAN) --strict --no-raw \
+			--no-generator --no-datestamp $< $@
+else
+RST2MAN_PROCESS = $(AM_V_GEN)test -f $@ || \
+		{ echo "Generated manual page $@ does not exist"; false; }
+endif
+
 %.service: %.service.in Makefile
 	$(SED_PROCESS)
 
-%.1: %.txt
-	$(AM_V_GEN)a2x --doctype manpage --format manpage $(srcdir)/$<
+%.1: %.rst Makefile
+	$(RST2MAN_PROCESS)
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@

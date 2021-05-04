@@ -51,10 +51,10 @@ monitor_btmon_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-mainloop.la $(UDEV_LIBS) -ldl
 
 if MANPAGES
-man_MANS += doc/btmon.1
+man_MANS += monitor/btmon.1
 endif
 endif
-manual_pages += doc/btmon.1
+manual_pages += monitor/btmon.1
 
 if LOGGER
 pkglibexec_PROGRAMS += tools/btmon-logger
