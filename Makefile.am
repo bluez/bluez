@@ -12,10 +12,6 @@ bin_PROGRAMS =
 
 noinst_PROGRAMS =
 
-dist_man_MANS =
-
-dist_noinst_MANS =
-
 CLEANFILES =
 
 EXTRA_DIST =
@@ -60,6 +56,10 @@ else
 build_plugindir = $(plugindir)
 endif
 
+if MANPAGES
+man_MANS =
+endif
+manual_pages =
 
 plugin_LTLIBRARIES =
 
@@ -342,7 +342,10 @@ nodist_src_bluetoothd_SOURCES = $(builtin_files)
 
 CLEANFILES += $(builtin_files) src/bluetooth.service
 
-man_MANS = src/bluetoothd.8
+if MANPAGES
+man_MANS += src/bluetoothd.8
+endif
+EXTRA_DIST += src/bluetoothd.8
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -589,12 +592,6 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 if LIBRARY
 pkgconfig_DATA = lib/bluez.pc
-endif
-
-manual_pages = doc/btmon.1
-
-if MANPAGES
-dist_noinst_MANS += $(manual_pages)
 endif
 
 EXTRA_DIST += $(manual_pages:.1=.txt)

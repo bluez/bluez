@@ -49,7 +49,12 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				monitor/tty.h
 monitor_btmon_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-mainloop.la $(UDEV_LIBS) -ldl
+
+if MANPAGES
+man_MANS += doc/btmon.1
 endif
+endif
+manual_pages += doc/btmon.1
 
 if LOGGER
 pkglibexec_PROGRAMS += tools/btmon-logger
@@ -292,9 +297,9 @@ tools_gatt_service_LDADD = $(GLIB_LIBS) $(DBUS_LIBS) gdbus/libgdbus-internal.la
 profiles_iap_iapd_SOURCES = profiles/iap/main.c
 profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
 
-dist_man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1
-
-EXTRA_DIST += tools/bdaddr.1
+if MANPAGES
+man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1
+endif
 
 if MESH
 bin_PROGRAMS += tools/meshctl
@@ -400,17 +405,18 @@ tools_hcidump_LDADD = lib/libbluetooth-internal.la
 
 tools_rfcomm_LDADD = lib/libbluetooth-internal.la
 
-dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 \
+if MANPAGES
+man_MANS += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
 			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1
-else
+endif
+endif
+endif
 EXTRA_DIST += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
-			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1
-endif
-else
-EXTRA_DIST += tools/rctest.1 tools/l2ping.1 tools/btattach.1
-endif
+			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1 \
+			tools/rctest.1 tools/l2ping.1 tools/btattach.1 \
+			tools/bdaddr.1
 
 if HID2HCI
 udevdir = $(UDEV_DIR)
@@ -419,10 +425,11 @@ udev_PROGRAMS = tools/hid2hci
 
 tools_hid2hci_LDADD = $(UDEV_LIBS)
 
-dist_man_MANS += tools/hid2hci.1
-else
-EXTRA_DIST += tools/hid2hci.1
+if MANPAGES
+man_MANS += tools/hid2hci.1
 endif
+endif
+EXTRA_DIST += tools/hid2hci.1
 
 if READLINE
 noinst_PROGRAMS += tools/btmgmt tools/obex-client-tool tools/obex-server-tool \
