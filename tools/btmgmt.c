@@ -5277,7 +5277,7 @@ static const struct bt_shell_menu main_menu = {
 	cmd_advertising,		"Toggle LE advertising",	},
 	{ "bredr",		"<on/off>",
 		cmd_bredr,		"Toggle BR/EDR support",	},
-	{ "privacy",		"<on/off>",
+	{ "privacy",		"<on/off> [irk]",
 		cmd_privacy,		"Toggle privacy support"	},
 	{ "class",		"<major> <minor>",
 		cmd_class,		"Set device major/minor class"	},
