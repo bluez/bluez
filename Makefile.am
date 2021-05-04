@@ -345,7 +345,7 @@ CLEANFILES += $(builtin_files) src/bluetooth.service
 if MANPAGES
 man_MANS += src/bluetoothd.8
 endif
-EXTRA_DIST += src/bluetoothd.8
+manual_pages += src/bluetoothd.8
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -629,6 +629,9 @@ endif
 	$(SED_PROCESS)
 
 %.1: %.rst Makefile
+	$(RST2MAN_PROCESS)
+
+%.8: %.rst Makefile
 	$(RST2MAN_PROCESS)
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
