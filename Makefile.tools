@@ -412,7 +412,7 @@ man_MANS += tools/hciattach.1 tools/hciconfig.1 \
 endif
 endif
 endif
-EXTRA_DIST += tools/hciattach.1 tools/hciconfig.1 \
+manual_pages += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
 			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1 \
 			tools/rctest.1 tools/l2ping.1 tools/btattach.1 \
@@ -429,7 +429,7 @@ if MANPAGES
 man_MANS += tools/hid2hci.1
 endif
 endif
-EXTRA_DIST += tools/hid2hci.1
+manual_pages += tools/hid2hci.1
 
 if READLINE
 noinst_PROGRAMS += tools/btmgmt tools/obex-client-tool tools/obex-server-tool \
