@@ -596,7 +596,8 @@ if LIBRARY
 pkgconfig_DATA = lib/bluez.pc
 endif
 
-EXTRA_DIST += $(manual_pages:.1=.rst)
+EXTRA_DIST += $(manual_pages) $(patsubst %.1,%.rst, \
+				$(patsubst %.8,%.rst,$(manual_pages)))
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-health \
