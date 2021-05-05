@@ -47,23 +47,33 @@ tools/avinfo
 tools/bccmd
 tools/hwdb
 tools/ciptool
+tools/ciptool.1
 tools/hciattach
+tools/hciattach.1
 tools/hciconfig
+tools/hciconfig.1
 tools/hcieventmask
 tools/hcisecfilter
 tools/hcitool
+tools/hcitool.1
 tools/hcidump
+tools/hcidump.1
 tools/hid2hci
+tools/hid2hci.1
 tools/rfcomm
+tools/rfcomm.1
 tools/l2ping
+tools/l2ping.1
 tools/l2test
 tools/cltest
 tools/rctest
+tools/rctest.1
 tools/scotest
 tools/amptest
 tools/oobtest
 tools/advtest
 tools/sdptool
+tools/sdptool.1
 tools/avtest
 tools/bdaddr
 tools/bluemoon
@@ -116,6 +126,7 @@ tools/rfcomm-tester
 tools/bnep-tester
 tools/userchan-tester
 tools/btattach
+tools/btattach.1
 tools/btconfig
 tools/btmgmt
 tools/btsnoop
@@ -125,15 +136,18 @@ tools/btmon-logger
 tools/bluetooth-logger.service
 peripheral/btsensor
 monitor/btmon
+monitor/btmon.1
 emulator/btvirt
 emulator/b1ee
 emulator/hfp
 client/bluetoothctl
 tools/meshctl
 tools/mesh-cfgclient
+tools/mesh-cfgtest
 mesh/bluetooth-meshd
 
 src/bluetoothd.8
+src/bluetoothd.rst
 src/bluetooth.service
 mesh/bluetooth-mesh.service
 
@@ -156,8 +170,6 @@ unit/test-gattrib
 unit/test-mesh-crypto
 unit/test-*.log
 unit/test-*.trs
-
-doc/btmon.1
 
 android/system-emulator
 android/bluetoothd
