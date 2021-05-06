@@ -495,6 +495,7 @@ unit_test_gdbus_client_SOURCES = unit/test-gdbus-client.c
 unit_test_gdbus_client_LDADD = gdbus/libgdbus-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS) $(DBUS_LIBS)
 
+if OBEX
 unit_tests += unit/test-gobex-header unit/test-gobex-packet unit/test-gobex \
 			unit/test-gobex-transfer unit/test-gobex-apparam
 
@@ -517,6 +518,7 @@ unit_test_gobex_transfer_LDADD = $(GLIB_LIBS)
 unit_test_gobex_apparam_SOURCES = $(gobex_sources) unit/util.c unit/util.h \
 						unit/test-gobex-apparam.c
 unit_test_gobex_apparam_LDADD = $(GLIB_LIBS)
+endif
 
 unit_tests += unit/test-lib
 
