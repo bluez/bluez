@@ -28,8 +28,9 @@ struct test_data {
 	GObex *obex;
 	guint id;
 	gsize total;
+	guint timer_id;
+	guint io_id;
 	GMainLoop *mainloop;
-	gboolean io_completed;
 };
 
 #define TEST_ERROR test_error_quark()
