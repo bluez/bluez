@@ -148,14 +148,14 @@ EXAMPLES
 Capture the traces from hci0 to hcidump.log file
 ------------------------------------------------
 
-.. code-block:: bash
+.. code-block::
 
    $ btmon -i hci0 -w hcidump.log
 
 Open the trace file
 -------------------
 
-.. code-block:: bash
+.. code-block::
 
    $ btmon -r hcidump.log
 
