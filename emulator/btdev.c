@@ -5122,6 +5122,7 @@ static void set_bredrle_features(struct btdev *btdev)
 	}
 
 	if (btdev->type >= BTDEV_TYPE_BREDRLE52) {
+		btdev->le_features[1] |= 0x20;  /* LE PER ADV */
 		btdev->le_features[3] |= 0x10;  /* LE CIS Master */
 		btdev->le_features[3] |= 0x20;  /* LE CIS Slave */
 		btdev->le_features[3] |= 0x40;  /* LE ISO Broadcaster */
