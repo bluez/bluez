@@ -323,8 +323,8 @@ AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 					[enable_datafiles=${enableval}])
 AM_CONDITIONAL(DATAFILES, test "${enable_datafiles}" != "no")
 
-AC_ARG_ENABLE(manpages, AC_HELP_STRING([--enable-manpages],
-			[enable building of manual pages]),
+AC_ARG_ENABLE(manpages, AC_HELP_STRING([--disable-manpages],
+			[disable building of manual pages]),
 					[enable_manpages=${enableval}])
 if (test "${enable_manpages}" != "no"); then
 	AC_CHECK_PROGS(RST2MAN, [rst2man rst2man.py], "no")
@@ -332,8 +332,8 @@ if (test "${enable_manpages}" != "no"); then
 		AC_MSG_ERROR([rst2man is required])
 	fi
 fi
-AM_CONDITIONAL(MANPAGES, test "${enable_manpages}" = "yes")
-AM_CONDITIONAL(RUN_RST2MAN, test "${enable_manpages}" = "yes" && test "${RST2MAN}" != "no")
+AM_CONDITIONAL(MANPAGES, test "${enable_manpages}" != "no")
+AM_CONDITIONAL(RUN_RST2MAN, test "${enable_manpages}" != "no" && test "${RST2MAN}" != "no")
 
 AC_ARG_ENABLE(testing, AC_HELP_STRING([--enable-testing],
 			[enable testing tools]),
