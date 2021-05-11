@@ -795,6 +795,7 @@ static void parse_config(GKeyFile *config)
 
 	parse_br_config(config);
 	parse_le_config(config);
+	g_free(str);
 }
 
 static void init_defaults(void)

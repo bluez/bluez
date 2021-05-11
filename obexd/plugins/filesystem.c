@@ -415,7 +415,7 @@ static void *capability_open(const char *name, int oflag, mode_t mode,
 			goto fail;
 		}
 
-		object->buffer = g_string_new(buf);
+		object->buffer = buf;
 
 		if (size)
 			*size = object->buffer->len;

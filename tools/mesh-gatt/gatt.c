@@ -525,6 +525,7 @@ bool mesh_gatt_notify(GDBusProxy *proxy, bool enable, GDBusReturnFunction cb,
 			notify_io_destroy();
 			if (cb)
 				cb(NULL, user_data);
+			g_free(data);
 			return true;
 		} else {
 			method = "StopNotify";
