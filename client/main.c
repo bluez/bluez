@@ -2625,6 +2625,40 @@ static void cmd_advertise_secondary(int argc, char *argv[])
 	ad_advertise_secondary(dbus_conn, argv[1]);
 }
 
+static void cmd_advertise_interval(int argc, char *argv[])
+{
+	uint32_t min, max;
+	char *endptr = NULL;
+
+	if (argc < 2) {
+		ad_advertise_interval(dbus_conn, NULL, NULL);
+		return;
+	}
+
+	min = strtol(argv[1], &endptr, 0);
+	if (!endptr || *endptr != '\0' || min < 20 || min > 10485) {
+		bt_shell_printf("Invalid argument\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	max = min;
+
+	if (argc > 2) {
+		max = strtol(argv[1], &endptr, 0);
+		if (!endptr || *endptr != '\0' || max < 20 || max > 10485) {
+			bt_shell_printf("Invalid argument\n");
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	if (min > max) {
+		bt_shell_printf("Invalid argument: %u > %u\n", min, max);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	ad_advertise_interval(dbus_conn, &min, &max);
+}
+
 static void ad_clear_uuids(void)
 {
 	ad_disable_uuids(dbus_conn);
@@ -2683,6 +2717,14 @@ static void ad_clear_secondary(void)
 	ad_advertise_secondary(dbus_conn, value);
 }
 
+static void ad_clear_interval(void)
+{
+	uint32_t min = 0;
+	uint32_t max = 0;
+
+	ad_advertise_interval(dbus_conn, &min, &max);
+}
+
 static const struct clear_entry ad_clear[] = {
 	{ "uuids",		ad_clear_uuids },
 	{ "service",		ad_clear_service },
@@ -2694,6 +2736,7 @@ static const struct clear_entry ad_clear[] = {
 	{ "duration",		ad_clear_duration },
 	{ "timeout",		ad_clear_timeout },
 	{ "secondary",		ad_clear_secondary },
+	{ "interval",		ad_clear_interval },
 	{}
 };
 
@@ -2812,6 +2855,8 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set/Get advertise timeout" },
 	{ "secondary", "[1M/2M/Coded]", cmd_advertise_secondary,
 			"Set/Get advertise secondary channel" },
+	{ "interval", "[min] [max] ", cmd_advertise_interval,
+			"Set/Get advertise interval range" },
 	{ "clear", "[uuids/service/manufacturer/config-name...]", cmd_ad_clear,
 			"Clear advertise config" },
 	{ } },
