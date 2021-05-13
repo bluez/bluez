@@ -56,7 +56,8 @@ static void usage(void)
 	fprintf(stderr,
 		"Options:\n"
 	       "\t--io <io>         Use specified io (default: generic)\n"
-	       "\t--config          Configuration directory\n"
+	       "\t--config          Daemon configuration directory\n"
+	       "\t--storage         Mesh node(s) configuration directory\n"
 	       "\t--nodetach        Run in foreground\n"
 	       "\t--debug           Enable debug output\n"
 	       "\t--dbus-debug      Enable D-Bus debugging\n"
