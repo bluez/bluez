@@ -352,6 +352,16 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	int flags = WRDE_NOCMD;
 	bool optargs = false;
 
+	if (argc == 2 && (!memcmp(argv[1], "help", 4) ||
+				!memcmp(argv[1], "--help", 6))) {
+		printf("%s\n", entry->desc);
+		printf(COLOR_HIGHLIGHT "Usage:" COLOR_OFF "\n");
+		printf("\t %s %-*s\n", entry->cmd,
+				(int)(CMD_LENGTH - strlen(entry->cmd)),
+					!entry->arg ? "" : entry->arg);
+		return 0;
+	}
+
 	if (!entry->arg || entry->arg[0] == '\0') {
 		if (argc > 1) {
 			print_text(COLOR_HIGHLIGHT, "Too many arguments");
