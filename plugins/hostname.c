@@ -213,10 +213,9 @@ static void read_dmi_fallback(void)
 		return;
 
 	type = atoi(contents);
+	g_free(contents);
 	if (type < 0 || type > 0x1D)
 		return;
-
-	g_free(contents);
 
 	/* from systemd hostname chassis list */
 	switch (type) {
