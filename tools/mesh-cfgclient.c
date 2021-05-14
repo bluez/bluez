@@ -914,7 +914,7 @@ static void cmd_import_node(int argc, char *argv[])
 
 	/* Number of elements */
 	if (sscanf(argv[4], "%u", &req->arg3) != 1)
-		return;
+		goto fail;
 
 	/* DevKey */
 	req->data2 = l_util_from_hexstring(argv[5], &sz);
