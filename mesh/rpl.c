@@ -143,8 +143,10 @@ static void get_entries(const char *iv_path, struct l_queue *rpl_list)
 		return;
 
 	iv_txt = basename(iv_path);
-	if (sscanf(iv_txt, "%08x", &iv_index) != 1)
+	if (sscanf(iv_txt, "%08x", &iv_index) != 1) {
+		closedir(dir);
 		return;
+	}
 
 	memset(seq_txt, 0, sizeof(seq_txt));
 
