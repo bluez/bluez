@@ -512,6 +512,9 @@ void ad_register(DBusConnection *conn, GDBusProxy *manager, const char *type)
 	g_free(ad.type);
 	ad.type = g_strdup(type);
 
+	if (!strcasecmp(ad.type, "Broadcast"))
+		ad.discoverable = false;
+
 	if (g_dbus_register_interface(conn, AD_PATH, AD_IFACE, ad_methods,
 					NULL, ad_props, NULL, NULL) == FALSE) {
 		bt_shell_printf("Failed to register advertising object\n");
