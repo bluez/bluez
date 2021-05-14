@@ -715,6 +715,13 @@ static void parse_config(GKeyFile *config)
 	else
 		btd_opts.refresh_discovery = boolean;
 
+	boolean = g_key_file_get_boolean(config, "General",
+						"Experimental", &err);
+	if (err)
+		g_clear_error(&err);
+	else
+		btd_opts.experimental = boolean;
+
 	str = g_key_file_get_string(config, "GATT", "Cache", &err);
 	if (err) {
 		DBG("%s", err->message);
@@ -813,6 +820,7 @@ static void init_defaults(void)
 	btd_opts.name_resolv = TRUE;
 	btd_opts.debug_keys = FALSE;
 	btd_opts.refresh_discovery = TRUE;
+	btd_opts.experimental = false;
 
 	btd_opts.defaults.num_entries = 0;
 	btd_opts.defaults.br.page_scan_type = 0xFFFF;
@@ -892,7 +900,6 @@ static char *option_configfile = NULL;
 static gboolean option_compat = FALSE;
 static gboolean option_detach = TRUE;
 static gboolean option_version = FALSE;
-static gboolean option_experimental = FALSE;
 
 static void free_options(void)
 {
@@ -976,7 +983,7 @@ static GOptionEntry options[] = {
 			"Specify an explicit path to the config file", "FILE"},
 	{ "compat", 'C', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Provide deprecated command line interfaces" },
-	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &option_experimental,
+	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &btd_opts.experimental,
 				"Enable experimental interfaces" },
 	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
@@ -1043,7 +1050,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (option_experimental)
+	if (btd_opts.experimental)
 		gdbus_flags = G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
 
 	g_dbus_set_flags(gdbus_flags);
