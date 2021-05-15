@@ -488,6 +488,7 @@ int messages_get_messages_listing(void *session, const char *name,
 			int err = -errno;
 			DBG("fopen(): %d, %s", -err, strerror(-err));
 			g_free(path);
+			g_free(mld);
 			return -EBADR;
 		}
 	}

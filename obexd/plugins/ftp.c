@@ -386,8 +386,10 @@ static int ftp_copy(struct ftp_session *ftp, const char *name,
 	ret = verify_path(destdir);
 	g_free(destdir);
 
-	if (ret < 0)
+	if (ret < 0) {
+		g_free(destination);
 		return ret;
+	}
 
 	source = g_build_filename(ftp->folder, name, NULL);
 
@@ -424,8 +426,10 @@ static int ftp_move(struct ftp_session *ftp, const char *name,
 	ret = verify_path(destdir);
 	g_free(destdir);
 
-	if (ret < 0)
+	if (ret < 0) {
+		g_free(destination);
 		return ret;
+	}
 
 	source = g_build_filename(ftp->folder, name, NULL);
 
