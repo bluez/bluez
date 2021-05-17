@@ -145,6 +145,8 @@ tools/meshctl
 tools/mesh-cfgclient
 tools/mesh-cfgtest
 mesh/bluetooth-meshd
+mesh/bluetooth-meshd.8
+mesh/bluetooth-meshd.rst
 
 src/bluetoothd.8
 src/bluetoothd.rst
