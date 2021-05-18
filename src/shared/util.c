@@ -1042,6 +1042,18 @@ const char *bt_uuid32_to_str(uint32_t uuid)
 	return "Unknown";
 }
 
+const char *bt_uuid128_to_str(const uint8_t uuid[16])
+{
+	char uuidstr[37];
+
+	sprintf(uuidstr, "%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
+				get_le32(&uuid[12]), get_le16(&uuid[10]),
+				get_le16(&uuid[8]), get_le16(&uuid[6]),
+				get_le32(&uuid[2]), get_le16(&uuid[0]));
+
+	return bt_uuidstr_to_str(uuidstr);
+}
+
 const char *bt_uuidstr_to_str(const char *uuid)
 {
 	uint32_t val;

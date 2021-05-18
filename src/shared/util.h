@@ -107,6 +107,7 @@ void util_clear_uid(unsigned int *bitmap, uint8_t id);
 
 const char *bt_uuid16_to_str(uint16_t uuid);
 const char *bt_uuid32_to_str(uint32_t uuid);
+const char *bt_uuid128_to_str(const uint8_t uuid[16]);
 const char *bt_uuidstr_to_str(const char *uuid);
 const char *bt_appear_to_str(uint16_t appearance);
 
