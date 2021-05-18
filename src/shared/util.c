@@ -1019,6 +1019,12 @@ static const struct {
 	{ "6e400001-b5a3-f393-e0a9-e50e24dcca9e", "Nordic UART Service" },
 	{ "6e400002-b5a3-f393-e0a9-e50e24dcca9e", "Nordic UART TX"	},
 	{ "6e400003-b5a3-f393-e0a9-e50e24dcca9e", "Nordic UART RX"	},
+	/* BlueZ Experimental Features */
+	{ "d4992530-b9ec-469f-ab01-6c481c47da1c", "BlueZ Experimental Debug" },
+	{ "671b10b5-42c0-4696-9227-eb28d1b049d6",
+		"BlueZ Experimental Simultaneous Central and Peripheral" },
+	{ "15c0a148-c273-11ea-b3de-0242ac130004",
+		"BlueZ Experimental LL privacy" },
 	{ }
 };
 
