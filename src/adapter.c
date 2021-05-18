@@ -9216,6 +9216,106 @@ static bool set_blocked_keys(struct btd_adapter *adapter)
 						adapter, NULL);
 }
 
+#define EXP_FEAT(_uuid, _func) \
+{ \
+	.uuid = _uuid, \
+	.func = _func, \
+}
+
+/* d4992530-b9ec-469f-ab01-6c481c47da1c */
+static const uint8_t debug_uuid[16] = {
+	0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c, 0x01, 0xab,
+	0x9f, 0x46, 0xec, 0xb9, 0x30, 0x25, 0x99, 0xd4,
+};
+
+/* 671b10b5-42c0-4696-9227-eb28d1b049d6 */
+static const uint8_t le_simult_central_peripheral_uuid[16] = {
+	0xd6, 0x49, 0xb0, 0xd1, 0x28, 0xeb, 0x27, 0x92,
+	0x96, 0x46, 0xc0, 0x42, 0xb5, 0x10, 0x1b, 0x67,
+};
+
+/* 15c0a148-c273-11ea-b3de-0242ac130004 */
+static const uint8_t rpa_resolution_uuid[16] = {
+	0x04, 0x00, 0x13, 0xac, 0x42, 0x02, 0xde, 0xb3,
+	0xea, 0x11, 0x73, 0xc2, 0x48, 0xa1, 0xc0, 0x15,
+};
+
+static void set_exp_debug_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	if (status != 0)
+		error("Set Experimental Debug failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+	else
+		DBG("Experimental Debug successfully set");
+}
+
+static void exp_debug_func(struct btd_adapter *adapter, uint32_t flags)
+{
+	struct mgmt_cp_set_exp_feature cp;
+
+	/* If already enabled don't attempt to set it again */
+	if (flags & BIT(0))
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.uuid, debug_uuid, 16);
+	cp.action = 0x01;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_EXP_FEATURE,
+			adapter->dev_id, sizeof(cp), &cp,
+			set_exp_debug_complete, adapter, NULL) > 0)
+		return;
+
+	btd_error(adapter->dev_id, "Failed to set exp debug");
+}
+
+static void le_simult_central_peripheral_func(struct btd_adapter *adapter,
+							uint32_t flags)
+{
+	adapter->le_simult_roles_supported = flags & 0x01;
+}
+
+static void set_rpa_resolution_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	if (status != 0)
+		error("Set RPA Resolution failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+	else
+		DBG("RPA Resolution successfully set");
+}
+
+static void rpa_resolution_func(struct btd_adapter *adapter, uint32_t flags)
+{
+	struct mgmt_cp_set_exp_feature cp;
+
+	/* If already enabled don't attempt to set it again */
+	if (flags & BIT(0))
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.uuid, rpa_resolution_uuid, 16);
+	cp.action = 0x01;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_EXP_FEATURE,
+			adapter->dev_id, sizeof(cp), &cp,
+			set_rpa_resolution_complete, adapter, NULL) > 0)
+		return;
+
+	btd_error(adapter->dev_id, "Failed to set RPA Resolution");
+}
+
+static const struct exp_feat {
+	const uint8_t *uuid;
+	void (*func)(struct btd_adapter *adapter, uint32_t flags);
+} exp_table[] = {
+	EXP_FEAT(debug_uuid, exp_debug_func),
+	EXP_FEAT(le_simult_central_peripheral_uuid,
+		 le_simult_central_peripheral_func),
+	EXP_FEAT(rpa_resolution_uuid, rpa_resolution_func),
+};
+
 static void read_exp_features_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -9239,19 +9339,24 @@ static void read_exp_features_complete(uint8_t status, uint16_t length,
 	}
 
 	feature_count = le16_to_cpu(rp->feature_count);
+
+	if (length < sizeof(*rp) + (sizeof(*rp->features) * feature_count)) {
+		btd_error(adapter->dev_id, "Response too small");
+		return;
+	}
+
 	for (i = 0; i < feature_count; ++i) {
+		size_t j;
 
-		/* 671b10b5-42c0-4696-9227-eb28d1b049d6 */
-		static const uint8_t le_simult_central_peripheral[16] = {
-			0xd6, 0x49, 0xb0, 0xd1, 0x28, 0xeb, 0x27, 0x92,
-			0x96, 0x46, 0xc0, 0x42, 0xb5, 0x10, 0x1b, 0x67,
-		};
+		for (j = 0; j < ARRAY_SIZE(exp_table); j++) {
+			const struct exp_feat *feat = &exp_table[j];
 
-		if (memcmp(rp->features[i].uuid, le_simult_central_peripheral,
-				sizeof(le_simult_central_peripheral)) == 0) {
-			uint32_t flags = le32_to_cpu(rp->features[i].flags);
+			if (memcmp(rp->features[i].uuid, feat->uuid,
+					sizeof(rp->features[i].uuid)))
+				continue;
 
-			adapter->le_simult_roles_supported = flags & 0x01;
+			if (feat->func)
+				feat->func(adapter, rp->features[i].flags);
 		}
 	}
 }
@@ -9375,7 +9480,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			(missing_settings & MGMT_SETTING_FAST_CONNECTABLE))
 		set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, 0x01);
 
-	if (btd_has_kernel_features(KERNEL_EXP_FEATURES))
+	if (btd_opts.experimental &&
+			btd_has_kernel_features(KERNEL_EXP_FEATURES))
 		read_exp_features(adapter);
 
 	err = adapter_register(adapter);
