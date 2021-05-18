@@ -3282,18 +3282,13 @@ static void print_uuid128_list(const char *label, const void *data,
 {
 	uint8_t count = data_len / 16;
 	unsigned int i;
-	char uuidstr[MAX_LEN_UUID_STR];
 
 	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	for (i = 0; i < count; i++) {
 		const uint8_t *uuid = data + (i * 16);
 
-		sprintf(uuidstr, "%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
-				get_le32(&uuid[12]), get_le16(&uuid[10]),
-				get_le16(&uuid[8]), get_le16(&uuid[6]),
-				get_le32(&uuid[2]), get_le16(&uuid[0]));
-		print_field("  %s (%s)", bt_uuidstr_to_str(uuidstr), uuidstr);
+		print_field("  %s", bt_uuid128_to_str(uuid));
 	}
 }
 
@@ -12006,16 +12001,6 @@ static void mgmt_print_name(const void *data)
 	print_field("Short name: %s", (char *) (data + 249));
 }
 
-static void mgmt_print_uuid(const void *data)
-{
-	const uint8_t *uuid = data;
-
-	print_field("UUID: %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
-				get_le32(&uuid[12]), get_le16(&uuid[10]),
-				get_le16(&uuid[8]), get_le16(&uuid[6]),
-				get_le32(&uuid[2]), get_le16(&uuid[0]));
-}
-
 static void mgmt_print_io_capability(uint8_t capability)
 {
 	const char *str;
@@ -12261,7 +12246,7 @@ static void mgmt_print_exp_feature(const void *data)
 	uint32_t flags = get_le32(data + 16);
 	uint32_t mask;
 
-	mgmt_print_uuid(data);
+	print_field("UUID: %s", bt_uuid128_to_str(data));
 	print_field("Flags: 0x%8.8x", flags);
 
 	mask = print_bitfield(2, flags, mgmt_exp_feature_flags_table);
@@ -12457,7 +12442,7 @@ static void mgmt_add_uuid_cmd(const void *data, uint16_t size)
 {
 	uint8_t service_class = get_u8(data + 16);
 
-	mgmt_print_uuid(data);
+	print_field("UUID: %s", bt_uuid128_to_str(data));
 	print_field("Service class: 0x%2.2x", service_class);
 }
 
@@ -12468,7 +12453,7 @@ static void mgmt_add_uuid_rsp(const void *data, uint16_t size)
 
 static void mgmt_remove_uuid_cmd(const void *data, uint16_t size)
 {
-	mgmt_print_uuid(data);
+	print_field("UUID: %s", bt_uuid128_to_str(data));
 }
 
 static void mgmt_remove_uuid_rsp(const void *data, uint16_t size)
@@ -13092,7 +13077,7 @@ static void mgmt_start_service_discovery_cmd(const void *data, uint16_t size)
 	}
 
 	for (i = 0; i < num_uuids; i++)
-		mgmt_print_uuid(data + 4 + (i * 16));
+		print_field("UUID: %s", bt_uuid128_to_str(data + 4 + (i * 16)));
 }
 
 static void mgmt_start_service_discovery_rsp(const void *data, uint16_t size)
@@ -13352,7 +13337,7 @@ static void mgmt_set_exp_feature_cmd(const void *data, uint16_t size)
 {
 	uint8_t enable = get_u8(data + 16);
 
-	mgmt_print_uuid(data);
+	print_field("UUID: %s", bt_uuid128_to_str(data));
 	print_enable("Action", enable);
 }
 
