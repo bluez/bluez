@@ -6893,7 +6893,7 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 
 	tester_print("HCI Command 0x%04x length %u", opcode, length);
 
-	if (opcode != test->expect_hci_command)
+	if (opcode != test->expect_hci_command || data->unmet_conditions <= 0)
 		return;
 
 	if (test->expect_hci_func)
@@ -7942,6 +7942,10 @@ static const char set_ext_adv_disable_param[] = {
 	0x00, 0x00,
 };
 
+static const char set_ext_adv_disable_param_1[] = {
+	0x00, 0x01, 0x01, 0x00, 0x00, 0x00
+};
+
 static const struct generic_data add_ext_advertising_timeout_expired = {
 	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
 	.expect_alt_ev_param = advertising_instance1_param,
@@ -7969,8 +7973,8 @@ static const struct generic_data remove_ext_advertising_success_1 = {
 	.expect_alt_ev_param = advertising_instance1_param,
 	.expect_alt_ev_len = sizeof(advertising_instance1_param),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE,
-	.expect_hci_param = set_ext_adv_disable_param,
-	.expect_hci_len = sizeof(set_ext_adv_disable_param),
+	.expect_hci_param = set_ext_adv_disable_param_1,
+	.expect_hci_len = sizeof(set_ext_adv_disable_param_1),
 };
 
 static const struct generic_data remove_ext_advertising_success_2 = {
