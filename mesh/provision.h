@@ -38,6 +38,7 @@ struct mesh_agent;
 #define PROV_DATA	0x07
 #define PROV_COMPLETE	0x08
 #define PROV_FAILED	0x09
+#define PROV_NONE	0xFF
 
 /* Spec defined Error Codes */
 #define PROV_ERR_SUCCESS		0x00
