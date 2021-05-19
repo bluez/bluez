@@ -462,7 +462,9 @@ static bool dev_destroy(struct mesh_io *io)
 	bt_hci_unref(pvt->hci);
 	l_timeout_remove(pvt->tx_timeout);
 	l_queue_destroy(pvt->rx_regs, l_free);
+	l_queue_remove_if(pvt->tx_pkts, simple_match, pvt->tx);
 	l_queue_destroy(pvt->tx_pkts, l_free);
+	l_free(pvt->tx);
 	l_free(pvt);
 	io->pvt = NULL;
 
