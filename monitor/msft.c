@@ -56,6 +56,31 @@ static void read_supported_features_rsp(const void *data, uint16_t size)
 	packet_hexdump(data + 9, size - 9);
 }
 
+static void le_monitor_advertisement_cmd(const void *data, uint16_t size)
+{
+	int8_t threshold_high = get_s8(data);
+	int8_t threshold_low = get_s8(data + 1);
+	uint8_t threshold_low_time_interval = get_u8(data + 2);
+	uint8_t sampling_period = get_u8(data + 3);
+
+	packet_print_rssi("RSSI threshold high", threshold_high);
+	packet_print_rssi("RSSI threshold low", threshold_low);
+	print_field("RSSI threshold low time interval: %u sec (0x%2.2x)",
+						threshold_low_time_interval,
+						threshold_low_time_interval);
+	print_field("RSSI sampling period: %u msec (0x%2.2x)",
+						sampling_period * 100,
+						sampling_period);
+	packet_hexdump(data + 4, size - 4);
+}
+
+static void le_monitor_advertisement_rsp(const void *data, uint16_t size)
+{
+	uint8_t handle = get_u8(data);
+
+	print_field("Monitor handle: %u", handle);
+}
+
 static void set_adv_filter_enable_cmd(const void *data, uint16_t size)
 {
 	uint8_t enable = get_u8(data);
@@ -89,7 +114,9 @@ static const struct {
 			read_supported_features_rsp },
 	{ 0x01, "Monitor RSSI" },
 	{ 0x02, "Cancel Monitor RSSI" },
-	{ 0x03, "LE Monitor Advertisement" },
+	{ 0x03, "LE Monitor Advertisement",
+			le_monitor_advertisement_cmd,
+			le_monitor_advertisement_rsp },
 	{ 0x04, "LE Cancel Monitor Advertisement" },
 	{ 0x05, "LE Set Advertisement Filter Enable",
 			set_adv_filter_enable_cmd,
