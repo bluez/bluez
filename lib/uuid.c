@@ -209,7 +209,7 @@ static int bt_string_to_uuid32(bt_uuid_t *uuid, const char *string)
 	uint32_t u32;
 	char *endptr = NULL;
 
-	u32 = strtol(string, &endptr, 16);
+	u32 = strtoul(string, &endptr, 16);
 	if (endptr && *endptr == '\0') {
 		bt_uuid32_create(uuid, u32);
 		return 0;
