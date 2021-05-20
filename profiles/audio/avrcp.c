@@ -1794,6 +1794,12 @@ static gboolean notify_addressed_player_changed(gpointer user_data)
 				};
 	uint8_t i;
 
+	/*
+	 * Set changed_id to an non-zero value to indicate addreddsed player
+	 * changed.
+	 */
+	player->changed_id = 1;
+
 	avrcp_player_event(player, AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED, NULL);
 
 	/*
