@@ -2534,6 +2534,65 @@ static const struct generic_data add_uuid_mix_test_1 = {
 	.expect_hci_len = sizeof(write_eir_uuid_mix_hci),
 };
 
+static const char remove_dun_uuid_param[] = {
+			0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,
+			0x00, 0x10, 0x00, 0x00, 0x03, 0x11, 0x00, 0x00 };
+
+static const char write_eir_remove_dun_hci[241] = {
+			0x00, 0x02, 0x0a, 0x00, 0x05, 0x03, 0x01, 0x11, 0x04,
+			0x11 };
+
+static const struct generic_data remove_uuid_success_1 = {
+	.send_opcode = MGMT_OP_REMOVE_UUID,
+	.send_param = remove_dun_uuid_param,
+	.send_len = sizeof(remove_dun_uuid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_dev_class_zero_rsp,
+	.expect_len = sizeof(set_dev_class_zero_rsp),
+	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
+	.expect_hci_param = write_eir_remove_dun_hci,
+	.expect_hci_len = sizeof(write_eir_remove_dun_hci),
+};
+
+static const char remove_all_uuid_param[16] = { 0x00 };
+
+static const struct generic_data remove_uuid_all_success_2 = {
+	.send_opcode = MGMT_OP_REMOVE_UUID,
+	.send_param = remove_all_uuid_param,
+	.send_len = sizeof(remove_all_uuid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_dev_class_zero_rsp,
+	.expect_len = sizeof(set_dev_class_zero_rsp),
+};
+
+static const struct generic_data remove_uuid_power_off_success_3 = {
+	.send_opcode = MGMT_OP_REMOVE_UUID,
+	.send_param = remove_dun_uuid_param,
+	.send_len = sizeof(remove_dun_uuid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_dev_class_zero_rsp,
+	.expect_len = sizeof(set_dev_class_zero_rsp),
+};
+
+static const struct generic_data remove_uuid_power_off_on_success_4 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_ssp_settings_param_2,
+	.expect_len = sizeof(set_ssp_settings_param_2),
+	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
+	.expect_hci_param = write_eir_remove_dun_hci,
+	.expect_hci_len = sizeof(write_eir_remove_dun_hci),
+};
+
+static const struct generic_data remove_uuid_invalid_params_1 = {
+	.send_opcode = MGMT_OP_REMOVE_UUID,
+	.send_param = add_opp_uuid_param,
+	.send_len = sizeof(add_opp_uuid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const char load_link_keys_valid_param_1[] = { 0x00, 0x00, 0x00 };
 static const char load_link_keys_valid_param_2[] = { 0x01, 0x00, 0x00 };
 static const char load_link_keys_invalid_param_1[] = { 0x02, 0x00, 0x00 };
@@ -5891,6 +5950,56 @@ static void setup_multi_uuid16(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
 					setup_powered_callback, NULL, NULL);
+}
+
+static void setup_multi_uuid16_power_off(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Adding UUIDs without powering on");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_UUID, data->mgmt_index,
+				sizeof(add_spp_uuid_param), add_spp_uuid_param,
+				NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_ADD_UUID, data->mgmt_index,
+				sizeof(add_dun_uuid_param), add_dun_uuid_param,
+				NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_ADD_UUID, data->mgmt_index,
+			sizeof(add_sync_uuid_param), add_sync_uuid_param,
+			NULL, NULL, NULL);
+
+	setup_bthost();
+}
+
+static void setup_multi_uuid16_power_off_remove(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Adding UUIDs without powering on and remove UUID");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_UUID, data->mgmt_index,
+				sizeof(add_spp_uuid_param), add_spp_uuid_param,
+				NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_ADD_UUID, data->mgmt_index,
+				sizeof(add_dun_uuid_param), add_dun_uuid_param,
+				NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_ADD_UUID, data->mgmt_index,
+			sizeof(add_sync_uuid_param), add_sync_uuid_param,
+			NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_REMOVE_UUID, data->mgmt_index,
+			sizeof(remove_dun_uuid_param), remove_dun_uuid_param,
+			NULL, NULL, NULL);
+
+	setup_bthost();
 }
 
 static void setup_multi_uuid16_2(const void *test_data)
@@ -9816,6 +9925,40 @@ int main(int argc, char *argv[])
 	test_bredrle("Add UUID - UUID mix",
 				&add_uuid_mix_test_1,
 				setup_uuid_mix, test_command_generic);
+
+	/* MGMT_OP_REMOVE_UUID
+	 * Remove existing UUID.
+	 */
+	test_bredrle("Remove UUID - Success 1",
+				&remove_uuid_success_1,
+				setup_multi_uuid16, test_command_generic);
+	/* MGMT_OP_REMOVE_UUID
+	 * Remove all UUID by sending zero filled UUID
+	 */
+	test_bredrle("Remove UUID - All UUID - Success 2",
+				&remove_uuid_all_success_2,
+				setup_multi_uuid16, test_command_generic);
+	/* MGMT_OP_REMOVE_UUID
+	 * Remove UUID while powering off
+	 * Expect the 0x000000 for the class of device
+	 */
+	test_bredrle("Remove UUID - Power Off - Success 3",
+				&remove_uuid_power_off_success_3,
+				setup_multi_uuid16_power_off,
+				test_command_generic);
+	/* MGMT_OP_REMOVE_UUID
+	 * Remove UUID while powering off and then powering on
+	 */
+	test_bredrle("Remove UUID - Power Off and On - Success 4",
+				&remove_uuid_power_off_on_success_4,
+				setup_multi_uuid16_power_off_remove,
+				test_command_generic);
+	/* MGMT_OP_REMOVE_UUID
+	 * Remove UUID doesn't exist - Invalid parameter
+	 */
+	test_bredrle("Remove UUID - Not Exist - Invalid Params 1",
+				&remove_uuid_invalid_params_1,
+				setup_multi_uuid16, test_command_generic);
 
 	test_bredrle("Load Link Keys - Empty List Success 1",
 				&load_link_keys_success_test_1,
