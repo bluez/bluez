@@ -5506,6 +5506,119 @@ static const struct generic_data adv_data_invalid_params = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const uint8_t set_dev_id_param_success_1[] = {
+	0x01, /* Source - 0x0001 (Bluetooth SIG) */
+	0x00,
+	0x02, /* Vendor */
+	0x00,
+	0xcd, /* Product */
+	0xab,
+	0x34,
+	0x12, /* Version */
+};
+
+static const char write_eir_set_dev_id_success_1[241] = {
+			0x00, 0x02, 0x0a, 0x00, 0x09, 0x10, 0x01, 0x00,
+			0x02, 0x00, 0xcd, 0xab, 0x34, 0x12 };
+
+static const struct generic_data set_dev_id_success_1 = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_SET_DEVICE_ID,
+	.send_param = set_dev_id_param_success_1,
+	.send_len = sizeof(set_dev_id_param_success_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
+	.expect_hci_param = write_eir_set_dev_id_success_1,
+	.expect_hci_len = sizeof(write_eir_set_dev_id_success_1),
+};
+
+static const uint8_t set_dev_id_param_success_2[] = {
+	0x02, /* Source - 0x0001 (Bluetooth SIG) */
+	0x00,
+	0x02, /* Vendor */
+	0x00,
+	0xcd, /* Product */
+	0xab,
+	0x34,
+	0x12, /* Version */
+};
+static const char write_eir_set_dev_id_success_2[241] = {
+			0x00, 0x02, 0x0a, 0x00, 0x09, 0x10, 0x02, 0x00,
+			0x02, 0x00, 0xcd, 0xab, 0x34, 0x12 };
+
+static const struct generic_data set_dev_id_success_2 = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_SET_DEVICE_ID,
+	.send_param = set_dev_id_param_success_2,
+	.send_len = sizeof(set_dev_id_param_success_2),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
+	.expect_hci_param = write_eir_set_dev_id_success_2,
+	.expect_hci_len = sizeof(write_eir_set_dev_id_success_2),
+};
+
+static const uint8_t set_dev_id_param_disable[8] = { 0x00 };
+
+static const struct generic_data set_dev_id_disable = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_SET_DEVICE_ID,
+	.send_param = set_dev_id_param_disable,
+	.send_len = sizeof(set_dev_id_param_disable),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+static const struct generic_data set_dev_id_power_off_on = {
+	.setup_settings = settings_ssp,
+	.setup_send_opcode = MGMT_OP_SET_DEVICE_ID,
+	.setup_send_param = set_dev_id_param_success_1,
+	.setup_send_len = sizeof(set_dev_id_param_success_1),
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_ssp_settings_param_2,
+	.expect_len = sizeof(set_ssp_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_POWERED,
+	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
+	.expect_hci_param = write_eir_set_dev_id_success_1,
+	.expect_hci_len = sizeof(write_eir_set_dev_id_success_1),
+};
+
+static const struct generic_data set_dev_id_ssp_off_on = {
+	.setup_settings = settings_powered,
+	.setup_send_opcode = MGMT_OP_SET_DEVICE_ID,
+	.setup_send_param = set_dev_id_param_success_1,
+	.setup_send_len = sizeof(set_dev_id_param_success_1),
+	.send_opcode = MGMT_OP_SET_SSP,
+	.send_param = set_ssp_on_param,
+	.send_len = sizeof(set_ssp_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_ssp_settings_param_2,
+	.expect_len = sizeof(set_ssp_settings_param_2),
+	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
+	.expect_hci_param = write_eir_set_dev_id_success_1,
+	.expect_hci_len = sizeof(write_eir_set_dev_id_success_1),
+};
+
+static const uint8_t set_dev_id_invalid_1[] = {
+	0x03, /* Source */
+	0x00,
+	0x02, /* Vendor */
+	0x00,
+	0xcd, /* Product */
+	0xab,
+	0x34,
+	0x12, /* Version */
+};
+
+static const struct generic_data set_dev_id_invalid_param = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_SET_DEVICE_ID,
+	.send_param = set_dev_id_invalid_1,
+	.send_len = sizeof(set_dev_id_invalid_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -10695,6 +10808,56 @@ int main(int argc, char *argv[])
 	test_bredrle50("Ext Adv MGMT - AD Scan Response (5.0) Success",
 				&adv_scan_rsp_success,
 				setup_ext_adv_params,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_ID
+	 * Using Bluetooth SIG for source.
+	 */
+	test_bredrle50("Set Device ID - Success 1",
+				&set_dev_id_success_1,
+				NULL,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_ID
+	 * Using SB Implementer's Forum for source.
+	 */
+	test_bredrle50("Set Device ID - Success 2",
+				&set_dev_id_success_2,
+				NULL,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_ID
+	 * Disable DID with disable flag for source.
+	 */
+	test_bredrle50("Set Device ID - Disable",
+				&set_dev_id_disable,
+				NULL,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_ID
+	 * Power off, set device id, and power on.
+	 * Expect Write_Extended_Inquiry with device id when power on.
+	 */
+	test_bredrle50("Set Device ID - Power off and Power on",
+				&set_dev_id_power_off_on,
+				setup_command_generic,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_ID
+	 * SSP off, set device id, and SSP on.
+	 * Expect Write_Extended_Inquiry with device id when SSP on.
+	 */
+	test_bredrle50("Set Device ID - SSP off and Power on",
+				&set_dev_id_ssp_off_on,
+				setup_command_generic,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_ID
+	 * Invalid parameter
+	 */
+	test_bredrle50("Set Device ID - Invalid Parameter",
+				&set_dev_id_invalid_param,
+				NULL,
 				test_command_generic);
 
 	return tester_run();
