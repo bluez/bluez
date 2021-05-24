@@ -1097,6 +1097,9 @@ static const char *mgmt_op[] = {
 	"Read Advertisement Monitor Features",
 	"Add Advertisement Patterns Monitor",
 	"Remove Advertisement Monitor",
+	"Add Extended Advertisement Parameters",	/* 0x0054 */
+	"Add Extended Advertisement Data",
+	"Add Advertisement Patterns Monitor RSSI",
 };
 
 static const char *mgmt_ev[] = {
