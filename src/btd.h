@@ -89,6 +89,10 @@ struct btd_avdtp_opts {
 	uint8_t  stream_mode;
 };
 
+struct btd_advmon_opts {
+	uint8_t		rssi_sampling_period;
+};
+
 struct btd_opts {
 	char		*name;
 	uint32_t	class;
@@ -123,6 +127,8 @@ struct btd_opts {
 	uint8_t		key_size;
 
 	enum jw_repairing_t jw_repairing;
+
+	struct btd_advmon_opts	advmon;
 };
 
 extern struct btd_opts btd_opts;

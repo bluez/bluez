@@ -25,6 +25,7 @@
 #include "lib/mgmt.h"
 
 #include "adapter.h"
+#include "btd.h"
 #include "dbus-common.h"
 #include "device.h"
 #include "log.h"
@@ -49,7 +50,6 @@
 #define ADV_MONITOR_DEFAULT_HIGH_TIMEOUT 10	/* second */
 #define ADV_MONITOR_UNSET_SAMPLING_PERIOD 256	/* 100 ms */
 #define ADV_MONITOR_MAX_SAMPLING_PERIOD	255	/* 100 ms */
-#define ADV_MONITOR_DEFAULT_SAMPLING_PERIOD 0	/* 100 ms */
 
 struct btd_adv_monitor_manager {
 	struct btd_adapter *adapter;
@@ -831,7 +831,7 @@ static bool parse_rssi_and_timeout(struct adv_monitor *monitor,
 		h_rssi_timeout = ADV_MONITOR_DEFAULT_HIGH_TIMEOUT;
 
 	if (sampling_period == ADV_MONITOR_UNSET_SAMPLING_PERIOD)
-		sampling_period = ADV_MONITOR_DEFAULT_SAMPLING_PERIOD;
+		sampling_period = btd_opts.advmon.rssi_sampling_period;
 
 	if (h_rssi < ADV_MONITOR_MIN_RSSI || h_rssi > ADV_MONITOR_MAX_RSSI ||
 		l_rssi < ADV_MONITOR_MIN_RSSI ||
