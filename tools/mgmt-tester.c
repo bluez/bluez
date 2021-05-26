@@ -6780,6 +6780,9 @@ static bool verify_alt_ev(const void *param, uint16_t length)
 	if (test->expect_alt_ev_param &&
 			memcmp(test->expect_alt_ev_param, param, length)) {
 		tester_warn("Event parameters do not match");
+		util_hexdump('>', param, length, print_debug, "");
+		util_hexdump('!', test->expect_alt_ev_param, length,
+							print_debug, "");
 		return false;
 	}
 
