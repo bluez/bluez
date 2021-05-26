@@ -8990,6 +8990,140 @@ static void setup_phy_configuration(const void *test_data)
 				NULL, NULL);
 }
 
+static const uint8_t get_dev_flags_param[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+};
+
+static const uint8_t get_dev_flags_rsp_param[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+	0x01, 0x00, 0x00, 0x00,			/* Supported Flages */
+	0x00, 0x00, 0x00, 0x00,			/* Current Flages */
+};
+
+static const struct generic_data get_dev_flags_success = {
+	.send_opcode = MGMT_OP_GET_DEVICE_FLAGS,
+	.send_param = get_dev_flags_param,
+	.send_len = sizeof(get_dev_flags_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = get_dev_flags_rsp_param,
+	.expect_len = sizeof(get_dev_flags_rsp_param),
+};
+
+static const uint8_t get_dev_flags_param_fail_1[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+};
+
+static const struct generic_data get_dev_flags_fail_1 = {
+	.send_opcode = MGMT_OP_GET_DEVICE_FLAGS,
+	.send_param = get_dev_flags_param_fail_1,
+	.send_len = sizeof(get_dev_flags_param_fail_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static void setup_get_dev_flags(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+	const unsigned char *add_param;
+	size_t add_param_len;
+
+	tester_print("Powering on controller (with added device)");
+
+	if (data->hciemu_type == HCIEMU_TYPE_LE) {
+		add_param = add_device_success_param_2;
+		add_param_len = sizeof(add_device_success_param_2);
+	} else {
+		add_param = add_device_success_param_1;
+		add_param_len = sizeof(add_device_success_param_1);
+	}
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
+			add_param_len, add_param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
+}
+
+static const uint8_t set_dev_flags_param[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+	0x01, 0x00, 0x00, 0x00,			/* Current Flages */
+};
+
+static const uint8_t set_dev_flags_rsp_param[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+};
+
+static const uint8_t dev_flags_changed_param[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+	0x01, 0x00, 0x00, 0x00,			/* Supported Flages */
+	0x01, 0x00, 0x00, 0x00,			/* Current Flages */
+};
+
+static const struct generic_data set_dev_flags_success = {
+	.send_opcode = MGMT_OP_SET_DEVICE_FLAGS,
+	.send_param = set_dev_flags_param,
+	.send_len = sizeof(set_dev_flags_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_dev_flags_rsp_param,
+	.expect_len = sizeof(set_dev_flags_rsp_param),
+	.expect_alt_ev = MGMT_EV_DEVICE_FLAGS_CHANGED,
+	.expect_alt_ev_param = dev_flags_changed_param,
+	.expect_alt_ev_len = sizeof(dev_flags_changed_param),
+};
+
+static const uint8_t set_dev_flags_param_fail_1[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+};
+
+static const struct generic_data set_dev_flags_fail_1 = {
+	.send_opcode = MGMT_OP_SET_DEVICE_FLAGS,
+	.send_param = set_dev_flags_param_fail_1,
+	.send_len = sizeof(set_dev_flags_param_fail_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const uint8_t set_dev_flags_param_fail_2[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+	0x03, 0x00, 0x00, 0x00,			/* Current Flages */
+};
+
+static const struct generic_data set_dev_flags_fail_2 = {
+	.send_opcode = MGMT_OP_SET_DEVICE_FLAGS,
+	.send_param = set_dev_flags_param_fail_2,
+	.send_len = sizeof(set_dev_flags_param_fail_2),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = set_dev_flags_rsp_param,
+	.expect_len = sizeof(set_dev_flags_rsp_param),
+};
+
+static const uint8_t set_dev_flags_param_fail_3[] = {
+	0x11, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+	0x01, 0x00, 0x00, 0x00,			/* Current Flages */
+};
+
+static const uint8_t set_dev_flags_rsp_param_fail_3[] = {
+	0x11, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* Address */
+	0x00,					/* Type */
+};
+
+static const struct generic_data set_dev_flags_fail_3 = {
+	.send_opcode = MGMT_OP_SET_DEVICE_FLAGS,
+	.send_param = set_dev_flags_param_fail_3,
+	.send_len = sizeof(set_dev_flags_param_fail_3),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = set_dev_flags_rsp_param_fail_3,
+	.expect_len = sizeof(set_dev_flags_rsp_param_fail_3),
+};
+
 static bool power_off(uint16_t index)
 {
 	int sk, err;
@@ -11008,6 +11142,54 @@ int main(int argc, char *argv[])
 	test_bredrle50("Set Device ID - Invalid Parameter",
 				&set_dev_id_invalid_param,
 				NULL,
+				test_command_generic);
+
+	/* MGMT_OP_GET_DEVICE_FLAGS
+	 * Success
+	 */
+	test_bredrle50("Get Device Flags - Success",
+				&get_dev_flags_success,
+				setup_get_dev_flags,
+				test_command_generic);
+
+	/* MGMT_OP_GET_DEVICE_FLAGS
+	 * Fail - Invalid parameter
+	 */
+	test_bredrle50("Get Device Flags - Invalid Parameter",
+				&get_dev_flags_fail_1,
+				setup_get_dev_flags,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_FLAGS
+	 * Success
+	 */
+	test_bredrle50("Set Device Flags - Success",
+				&set_dev_flags_success,
+				setup_get_dev_flags,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_FLAGS
+	 * Invalid Parameter - Missing parameter
+	 */
+	test_bredrle50("Set Device Flags - Invalid Parameter 1",
+				&set_dev_flags_fail_1,
+				setup_get_dev_flags,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_FLAGS
+	 * Invalid Parameter - Not supported value
+	 */
+	test_bredrle50("Set Device Flags - Invalid Parameter 2",
+				&set_dev_flags_fail_2,
+				setup_get_dev_flags,
+				test_command_generic);
+
+	/* MGMT_OP_SET_DEVICE_FLAGS
+	 * Device not exist
+	 */
+	test_bredrle50("Set Device Flags - Device not found",
+				&set_dev_flags_fail_3,
+				setup_get_dev_flags,
 				test_command_generic);
 
 	return tester_run();
