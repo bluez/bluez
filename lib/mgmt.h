@@ -1087,11 +1087,13 @@ static const char *mgmt_op[] = {
 	"Set PHY Configuration",
 	"Set Blocked Keys",
 	"Set Wideband Speech",
-	"Read Security Information",			/* 0x0048 */
+	"Read Controller Capabilities Information",	/* 0x0048 */
 	"Read Experimental Features Information",
 	"Set Experimental Feature",
 	"Read Default System Configuration",
 	"Set Default System Configuration",
+	"Read Default Runtime Configuration",
+	"Set Default Runtime Configuration",
 	"Get Device Flags",
 	"Set Device Flags",				/* 0x0050 */
 	"Read Advertisement Monitor Features",
@@ -1143,6 +1145,8 @@ static const char *mgmt_ev[] = {
 	"Extended Controller Information Changed",
 	"PHY Configuration Changed",
 	"Experimental Feature Changed",
+	"Default System Configuration Changed",		/* 0x0028 */
+	"Default Runtime Configuration Changed",
 	"Device Flags Changed",
 	"Advertisement Monitor Added",			/* 0x002b */
 	"Advertisement Monitor Removed",
@@ -1172,6 +1176,7 @@ static const char *mgmt_status[] = {
 	"Blocked through rfkill",
 	"Already Paired",
 	"Permission Denied",
+	"Connection Not Established",
 };
 
 #ifndef NELEM
