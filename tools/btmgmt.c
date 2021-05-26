@@ -1000,6 +1000,24 @@ static void advertising_removed(uint16_t index, uint16_t len,
 	print("hci%u advertising_removed: instance %u", index, ev->instance);
 }
 
+static void flags_changed(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_device_flags_changed *ev = param;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		error("Too small (%u bytes) %s event", len, __func__);
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	print("hci%u device_flags_changed: %s (%s)", index, addr,
+							typestr(ev->addr.type));
+	print("     supp: 0x%08x  curr: 0x%08x",
+					ev->supported_flags, ev->current_flags);
+}
+
 static void advmon_added(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
@@ -2108,6 +2126,156 @@ static void cmd_auto_power(int argc, char **argv)
 		error("Unable to send read index list cmd");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
+}
+
+static void get_flags_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_get_device_flags *rp = param;
+
+	if (status != 0) {
+		error("Get device flags failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print("Supported Flags: 0x%08x", rp->supported_flags);
+	print("Current Flags:   0x%08x", rp->current_flags);
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static struct option get_flags_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+static void cmd_get_flags(int argc, char **argv)
+{
+	struct mgmt_cp_get_device_flags cp;
+	uint8_t type = BDADDR_BREDR;
+	char addr[18];
+	int opt;
+	uint16_t index;
+
+	while ((opt = getopt_long(argc, argv, "+t:h", get_flags_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		default:
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		bt_shell_usage();
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
+
+	ba2str(&cp.addr.bdaddr, addr);
+	print("Get device flag of %s (%s)", addr, typestr(cp.addr.type));
+
+	if (mgmt_send(mgmt, MGMT_OP_GET_DEVICE_FLAGS, index, sizeof(cp), &cp,
+					get_flags_rsp, NULL, NULL) == 0) {
+		error("Unable to send Get Device Flags command");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void set_flags_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0) {
+		error("Set device flags failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static struct option set_flags_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ "flags",	1, 0, 'f' },
+	{ 0, 0, 0, 0 }
+};
+
+static void cmd_set_flags(int argc, char **argv)
+{
+	struct mgmt_cp_set_device_flags cp;
+	uint8_t type = BDADDR_BREDR;
+	uint32_t flags = 0;
+	char addr[18];
+	int opt;
+	uint16_t index;
+
+	while ((opt = getopt_long(argc, argv, "+f:t:h", set_flags_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 'f':
+			flags = strtol(optarg, NULL, 0);
+			break;
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		default:
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		bt_shell_usage();
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
+	cp.current_flags = flags;
+
+	ba2str(&cp.addr.bdaddr, addr);
+	print("Set device flag of %s (%s)", addr, typestr(cp.addr.type));
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_DEVICE_FLAGS, index, sizeof(cp), &cp,
+					set_flags_rsp, NULL, NULL) == 0) {
+		error("Unable to send Set Device Flags command");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
 }
 
 /* Wrapper to get the index and opcode to the response callback */
@@ -5197,6 +5365,8 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 						advertising_added, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_ADVERTISING_REMOVED, index,
 					advertising_removed, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DEVICE_FLAGS_CHANGED, index,
+					flags_changed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_ADV_MONITOR_ADDED, index, advmon_added,
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_ADV_MONITOR_REMOVED, index, advmon_removed,
@@ -5381,6 +5551,10 @@ static const struct bt_shell_menu main_menu = {
 		cmd_read_sysconfig,	"Read System Configuration"	},
 	{ "set-sysconfig",	"<-v|-h> [options...]",
 		cmd_set_sysconfig,	"Set System Configuration"	},
+	{ "get-flags",		"[-t type] <address>",
+		cmd_get_flags,		"Get device flags"		},
+	{ "set-flags",		"[-f flags] [-t type] <address>",
+		cmd_set_flags,		"Set device flags"		},
 	{} },
 };
 
