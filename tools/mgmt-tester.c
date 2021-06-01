@@ -9124,6 +9124,100 @@ static const struct generic_data set_dev_flags_fail_3 = {
 	.expect_len = sizeof(set_dev_flags_rsp_param_fail_3),
 };
 
+static const uint8_t read_exp_feat_param_success[] = {
+	0x02, 0x00,				/* Feature Count */
+	0xd6, 0x49, 0xb0, 0xd1, 0x28, 0xeb,	/* UUID - Simultaneous */
+	0x27, 0x92, 0x96, 0x46, 0xc0, 0x42,	/* Central Peripheral */
+	0xb5, 0x10, 0x1b, 0x67,
+	0x00, 0x00, 0x00, 0x00,			/* Flags */
+	0x04, 0x00, 0x13, 0xac, 0x42, 0x02,	/* UUID - LL Privacy */
+	0xde, 0xb3, 0xea, 0x11, 0x73, 0xc2,
+	0x48, 0xa1, 0xc0, 0x15,
+	0x02, 0x00, 0x00, 0x00,			/* Flags */
+};
+
+static const struct generic_data read_exp_feat_success = {
+	.send_opcode = MGMT_OP_READ_EXP_FEATURES_INFO,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = read_exp_feat_param_success,
+	.expect_len = sizeof(read_exp_feat_param_success),
+};
+
+static uint16_t settings_powered_le_privacy[] = { MGMT_OP_SET_LE,
+						MGMT_OP_SET_PRIVACY,
+						MGMT_OP_SET_POWERED, 0 };
+
+static const uint8_t set_exp_feat_param_ll_privacy[] = {
+	0x04, 0x00, 0x13, 0xac, 0x42, 0x02,	/* UUID - LL Privacy */
+	0xde, 0xb3, 0xea, 0x11, 0x73, 0xc2,
+	0x48, 0xa1, 0xc0, 0x15,
+	0x01,					/* Action - enable */
+};
+
+static const uint8_t set_exp_feat_rsp_param_ll_privacy[] = {
+	0x04, 0x00, 0x13, 0xac, 0x42, 0x02,	/* UUID - LL Privacy */
+	0xde, 0xb3, 0xea, 0x11, 0x73, 0xc2,
+	0x48, 0xa1, 0xc0, 0x15,
+	0x03, 0x00, 0x00, 0x00,			/* Action - enable */
+};
+
+static const struct generic_data set_exp_feat_enable_ll_privacy = {
+	.send_opcode = MGMT_OP_SET_EXP_FEATURE,
+	.send_param = set_exp_feat_param_ll_privacy,
+	.send_len = sizeof(set_exp_feat_param_ll_privacy),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_exp_feat_rsp_param_ll_privacy,
+	.expect_len = sizeof(set_exp_feat_rsp_param_ll_privacy),
+};
+
+static const uint8_t set_exp_feat_param_disable[17] = { 0x00 };
+static const uint8_t set_exp_feat_rsp_param_disable[20] = { 0x00 };
+
+static const struct generic_data set_exp_feat_disable = {
+	.send_opcode = MGMT_OP_SET_EXP_FEATURE,
+	.send_param = set_exp_feat_param_disable,
+	.send_len = sizeof(set_exp_feat_param_disable),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_exp_feat_rsp_param_disable,
+	.expect_len = sizeof(set_exp_feat_rsp_param_disable),
+};
+
+static const struct generic_data set_exp_feat_rejected = {
+	.setup_settings = settings_powered_le_privacy,
+	.send_opcode = MGMT_OP_SET_EXP_FEATURE,
+	.send_param = set_exp_feat_param_ll_privacy,
+	.send_len = sizeof(set_exp_feat_param_ll_privacy),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
+static const uint8_t set_exp_feat_param_invalid[] = {
+	0x04, 0x00, 0x13, 0xac, 0x42, 0x02,	/* UUID - LL Privacy */
+	0xde, 0xb3, 0xea, 0x11, 0x73, 0xc2,
+	0x48, 0xa1, 0xc0, 0x15,
+	0xff,					/* Action - invalid */
+};
+
+static const struct generic_data set_exp_feat_invalid = {
+	.send_opcode = MGMT_OP_SET_EXP_FEATURE,
+	.send_param = set_exp_feat_param_invalid,
+	.send_len = sizeof(set_exp_feat_param_invalid),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const uint8_t set_exp_feat_param_unknown[] = {
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff,	/* UUID - Unknown */
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff,
+	0x01,					/* Action - enable */
+};
+
+static const struct generic_data set_exp_feat_unknown = {
+	.send_opcode = MGMT_OP_SET_EXP_FEATURE,
+	.send_param = set_exp_feat_param_unknown,
+	.send_len = sizeof(set_exp_feat_param_unknown),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
 static bool power_off(uint16_t index)
 {
 	int sk, err;
@@ -11191,6 +11285,49 @@ int main(int argc, char *argv[])
 				&set_dev_flags_fail_3,
 				setup_get_dev_flags,
 				test_command_generic);
+
+	/* MGMT_OP_READ_EXP_FEATURE
+	 * Read Experimental features - success
+	 */
+	test_bredrle50("Read Exp Feature - Success",
+				&read_exp_feat_success,
+				NULL, test_command_generic);
+	/* MGMT_OP_SET_EXP_FEATURE
+	 * Enable LL Privacy
+	 */
+	test_bredrle50("Set Exp Feature - Enable LL Privacy",
+				&set_exp_feat_enable_ll_privacy,
+				NULL, test_command_generic);
+
+	/* MGMT_OP_SET_EXP_FEATURE
+	 * Disable all features by sending zero UUID
+	 */
+	test_bredrle50("Set Exp Feature - Disable all",
+				&set_exp_feat_disable,
+				NULL, test_command_generic);
+
+	/* MGMT_OP_SET_EXP_FEATURE
+	 * Rejected - If the power is on, the command should be rejected
+	 */
+	test_bredrle50("Set Exp Feature - Rejected",
+				&set_exp_feat_rejected,
+				NULL, test_command_generic);
+
+	/* MGMT_OP_SET_EXP_FEATURE
+	 * Invalid parameter
+	 */
+	test_bredrle50("Set Exp Feature - Invalid params",
+				&set_exp_feat_invalid,
+				NULL, test_command_generic);
+
+
+	/* MGMT_OP_SET_EXP_FEATURE
+	 * Not Supported UUID
+	 */
+	test_bredrle50("Set Exp Feature - Unknown feature",
+				&set_exp_feat_unknown,
+				NULL, test_command_generic);
+
 
 	return tester_run();
 }
