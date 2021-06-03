@@ -2076,6 +2076,9 @@ static const struct generic_data start_discovery_ll_privacy_disable_resolv = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = start_discovery_le_param,
 	.expect_len = sizeof(start_discovery_le_param),
+	.setup_expect_hci_command = BT_HCI_CMD_LE_SET_RESOLV_ENABLE,
+	.setup_expect_hci_param = set_resolv_on_param,
+	.setup_expect_hci_len = sizeof(set_resolv_on_param),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_RESOLV_ENABLE,
 	.expect_hci_param = set_resolv_off_param,
 	.expect_hci_len = sizeof(set_resolv_off_param),
@@ -9424,6 +9427,7 @@ static void setup_add_device_callback(uint8_t status, uint16_t length,
 static void setup_ll_privacy_device(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
 	unsigned char param[] = { 0x01 };
 	const uint8_t *ext_feat_param;
 	size_t ext_feat_len;
@@ -9434,6 +9438,12 @@ static void setup_ll_privacy_device(const void *test_data)
 	unsigned char privacy_param[] = { 0x01,
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+
+	tester_print("Setup expected HCI command 0x%04x",
+					 test->setup_expect_hci_command);
+	hciemu_add_master_post_command_hook(data->hciemu,
+					command_setup_hci_callback, data);
+	test_add_setup_condition(data);
 
 	tester_print("Enabling LL Privacy feature");
 
