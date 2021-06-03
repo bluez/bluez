@@ -5831,7 +5831,7 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 	if (status)
 		tester_setup_failed();
 	else
-		tester_setup_complete();
+		test_setup_condition_complete(data);
 }
 
 static void setup_bthost(void)
@@ -5842,6 +5842,7 @@ static void setup_bthost(void)
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, data);
+	test_add_setup_condition(data);
 
 	if (data->hciemu_type == HCIEMU_TYPE_LE ||
 		test->client_enable_adv) {
