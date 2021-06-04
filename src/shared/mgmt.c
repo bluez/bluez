@@ -248,6 +248,17 @@ static void request_complete(struct mgmt *mgmt, uint8_t status,
 
 	request = queue_remove_if(mgmt->pending_list,
 					match_request_opcode_index, &match);
+	if (!request) {
+		util_debug(mgmt->debug_callback, mgmt->debug_data,
+				"Unable to find request for opcode 0x%04x",
+				opcode);
+
+		/* Attempt to remove with no opcode */
+		request = queue_remove_if(mgmt->pending_list,
+						match_request_index,
+						UINT_TO_PTR(index));
+	}
+
 	if (request) {
 		if (request->callback)
 			request->callback(status, length, param,
