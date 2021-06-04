@@ -3424,7 +3424,6 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 	uint8_t status;
 	bool exists = false;
 	int i, pos = -1;
-	char addr[18];
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
@@ -3432,10 +3431,6 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 
 	for (i = 0; i < WL_SIZE; i++) {
 		struct btdev_wl *wl = &dev->le_wl[i];
-
-		ba2str(&wl->addr, addr);
-		util_debug(dev->debug_callback, dev->debug_data,
-			"type 0x%02x addr %s", wl->type, addr);
 
 		if (WL_ADDR_EQUAL(wl, cmd->addr_type, &cmd->addr)) {
 			exists = true;
@@ -3454,10 +3449,6 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 	}
 
 	wl_add(&dev->le_wl[pos], cmd->addr_type, (bdaddr_t *)&cmd->addr);
-
-	ba2str(&(dev->le_wl[pos]).addr, addr);
-	util_debug(dev->debug_callback, dev->debug_data,
-			"type 0x%02x addr %s", dev->le_wl[pos].type, addr);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(dev, BT_HCI_CMD_LE_ADD_TO_WHITE_LIST,
