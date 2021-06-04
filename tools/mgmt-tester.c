@@ -52,6 +52,7 @@ struct test_data {
 	uint16_t mgmt_index;
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
+	bool expect_hci_command_done;
 	int unmet_conditions;
 	int unmet_setup_conditions;
 	int sk;
@@ -7021,8 +7022,10 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 
 	tester_print("HCI Command 0x%04x length %u", opcode, length);
 
-	if (opcode != test->expect_hci_command || data->unmet_conditions <= 0)
+	if (opcode != test->expect_hci_command || data->expect_hci_command_done)
 		return;
+
+	data->expect_hci_command_done = true;
 
 	if (test->expect_hci_func)
 		expect_hci_param = test->expect_hci_func(&expect_hci_len);
