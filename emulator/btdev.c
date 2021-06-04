@@ -35,6 +35,7 @@
 
 #define WL_SIZE			16
 #define RL_SIZE			16
+#define CIS_SIZE		3
 
 #define has_bredr(btdev)	(!((btdev)->features[4] & 0x20))
 #define has_le(btdev)		(!!((btdev)->features[4] & 0x40))
@@ -57,6 +58,18 @@ struct btdev_conn {
 	uint8_t  type;
 	struct btdev *dev;
 	struct btdev_conn *link;
+};
+
+struct btdev_wl {
+	uint8_t type;
+	bdaddr_t addr;
+};
+
+struct btdev_rl {
+	uint8_t type;
+	bdaddr_t addr;
+	uint8_t peer_irk[16];
+	uint8_t local_irk[16];
 };
 
 struct btdev {
@@ -153,12 +166,12 @@ struct btdev {
 	uint8_t  le_ltk[16];
 	struct {
 		struct bt_hci_cmd_le_set_cig_params params;
-		struct bt_hci_cis_params cis;
+		struct bt_hci_cis_params cis[CIS_SIZE];
 	} __attribute__ ((packed)) le_cig;
 	uint8_t  le_iso_path[2];
 
-	uint8_t  le_wl[WL_SIZE][7];
-	uint8_t  le_rl[RL_SIZE][39];
+	struct btdev_wl le_wl[WL_SIZE];
+	struct btdev_rl le_rl[RL_SIZE];
 	uint8_t  le_rl_enable;
 	uint16_t le_rl_timeout;
 
@@ -391,14 +404,34 @@ static int cmd_set_event_mask(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
+static void wl_reset(struct btdev_wl *wl)
+{
+	wl->type = 0xff;
+	bacpy(&wl->addr, BDADDR_ANY);
+}
+
 static void wl_clear(struct btdev *dev)
 {
 	int i;
 
-	for (i = 0; i < WL_SIZE; i++) {
-		dev->le_wl[i][0] = 0xff;
-		memset(&dev->le_wl[i][1], 0, 6);
-	}
+	for (i = 0; i < WL_SIZE; i++)
+		wl_reset(&dev->le_wl[i]);
+}
+
+static void rl_reset(struct btdev_rl *rl)
+{
+	rl->type = 0xff;
+	bacpy(&rl->addr, BDADDR_ANY);
+	memset(rl->peer_irk, 0, 16);
+	memset(rl->local_irk, 0, 16);
+}
+
+static void rl_clear(struct btdev *dev)
+{
+	int i;
+
+	for (i = 0; i < RL_SIZE; i++)
+		rl_reset(&dev->le_rl[i]);
 }
 
 static void btdev_reset(struct btdev *btdev)
@@ -411,6 +444,7 @@ static void btdev_reset(struct btdev *btdev)
 	btdev->le_adv_enable		= 0x00;
 
 	wl_clear(btdev);
+	rl_clear(btdev);
 }
 
 static int cmd_reset(struct btdev *dev, const void *data, uint8_t len)
@@ -3375,24 +3409,38 @@ static int cmd_wl_clear(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
+#define WL_ADDR_EQUAL(_wl, _type, _addr) \
+	(_wl->type == _type && !bacmp(&_wl->addr, (bdaddr_t *)_addr))
+
+static void wl_add(struct btdev_wl *wl, uint8_t type, bdaddr_t *addr)
+{
+	wl->type = type;
+	bacpy(&wl->addr, addr);
+}
+
 static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_add_to_white_list *cmd = data;
 	uint8_t status;
 	bool exists = false;
 	int i, pos = -1;
+	char addr[18];
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
 		return -EINVAL;
 
 	for (i = 0; i < WL_SIZE; i++) {
-		if (dev->le_wl[i][0] == cmd->addr_type &&
-				!memcmp(&dev->le_wl[i][1],
-							cmd->addr, 6)) {
+		struct btdev_wl *wl = &dev->le_wl[i];
+
+		ba2str(&wl->addr, addr);
+		util_debug(dev->debug_callback, dev->debug_data,
+			"type 0x%02x addr %s", wl->type, addr);
+
+		if (WL_ADDR_EQUAL(wl, cmd->addr_type, &cmd->addr)) {
 			exists = true;
 			break;
-		} else if (pos < 0 && dev->le_wl[i][0] == 0xff)
+		} else if (pos < 0 && wl->type == 0xff)
 			pos = i;
 	}
 
@@ -3405,8 +3453,11 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 		return 0;
 	}
 
-	dev->le_wl[pos][0] = cmd->addr_type;
-	memcpy(&dev->le_wl[pos][1], cmd->addr, 6);
+	wl_add(&dev->le_wl[pos], cmd->addr_type, (bdaddr_t *)&cmd->addr);
+
+	ba2str(&(dev->le_wl[pos]).addr, addr);
+	util_debug(dev->debug_callback, dev->debug_data,
+			"type 0x%02x addr %s", dev->le_wl[pos].type, addr);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(dev, BT_HCI_CMD_LE_ADD_TO_WHITE_LIST,
@@ -3419,25 +3470,30 @@ static int cmd_remove_wl(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_remove_from_white_list *cmd = data;
 	uint8_t status;
-	int i, pos = -1;
+	int i;
+	char addr[18];
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
 		return -EINVAL;
 
 	for (i = 0; i < WL_SIZE; i++) {
-		if (dev->le_wl[i][0] == cmd->addr_type &&
-			    !memcmp(&dev->le_wl[i][1], cmd->addr, 6)) {
-			pos = i;
+		struct btdev_wl *wl = &dev->le_wl[i];
+
+		ba2str(&wl->addr, addr);
+
+		util_debug(dev->debug_callback, dev->debug_data,
+				"type 0x%02x addr %s", dev->le_wl[i].type,
+				addr);
+
+		if (WL_ADDR_EQUAL(wl, cmd->addr_type, &cmd->addr)) {
+			wl_reset(wl);
 			break;
 		}
 	}
 
-	if (pos < 0)
+	if (i == WL_SIZE)
 		return -EINVAL;
-
-	dev->le_wl[pos][0] = 0xff;
-	memset(&dev->le_wl[pos][1], 0, 6);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST,
@@ -3445,6 +3501,9 @@ static int cmd_remove_wl(struct btdev *dev, const void *data, uint8_t len)
 
 	return 0;
 }
+
+#define RL_ADDR_EQUAL(_rl, _type, _addr) \
+	(_rl->type == _type && !bacmp(&_rl->addr, (bdaddr_t *)_addr))
 
 static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 {
@@ -3458,11 +3517,12 @@ static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 		return -EINVAL;
 
 	for (i = 0; i < RL_SIZE; i++) {
-		if (dev->le_rl[i][0] == cmd->addr_type &&
-				!memcmp(&dev->le_rl[i][1], cmd->addr, 6)) {
+		struct btdev_rl *rl = &dev->le_rl[i];
+
+		if (RL_ADDR_EQUAL(rl, cmd->addr_type, &cmd->addr)) {
 			exists = true;
 			break;
-		} else if (pos < 0 && dev->le_rl[i][0] == 0xff)
+		} else if (pos < 0 && rl->type == 0xff)
 			pos = i;
 	}
 
@@ -3475,10 +3535,10 @@ static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 		return 0;
 	}
 
-	dev->le_rl[pos][0] = cmd->addr_type;
-	memcpy(&dev->le_rl[pos][1], cmd->addr, 6);
-	memcpy(&dev->le_rl[pos][7], cmd->peer_irk, 16);
-	memcpy(&dev->le_rl[pos][23], cmd->local_irk, 16);
+	dev->le_rl[pos].type = cmd->addr_type;
+	bacpy(&dev->le_rl[pos].addr, (bdaddr_t *)&cmd->addr);
+	memcpy(dev->le_rl[pos].peer_irk, cmd->peer_irk, 16);
+	memcpy(dev->le_rl[pos].local_irk, cmd->local_irk, 16);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(dev, BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
@@ -3491,41 +3551,29 @@ static int cmd_remove_rl(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_remove_from_resolv_list *cmd = data;
 	uint8_t status;
-	int i, pos = -1;
+	int i;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
 		return -EINVAL;
 
 	for (i = 0; i < RL_SIZE; i++) {
-		if (dev->le_rl[i][0] == cmd->addr_type &&
-				!memcmp(&dev->le_rl[i][1], cmd->addr, 6)) {
-			pos = i;
+		struct btdev_rl *rl = &dev->le_rl[i];
+
+		if (RL_ADDR_EQUAL(rl, cmd->addr_type, &cmd->addr)) {
+			rl_reset(rl);
 			break;
 		}
 	}
 
-	if (pos < 0)
+	if (i == RL_SIZE)
 		return -EINVAL;
-
-	dev->le_rl[pos][0] = 0xff;
-	memset(&dev->le_rl[pos][1], 0, 38);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
 						&status, sizeof(status));
 
 	return 0;
-}
-
-static void rl_clear(struct btdev *dev)
-{
-	int i;
-
-	for (i = 0; i < RL_SIZE; i++) {
-		dev->le_rl[i][0] = 0xff;
-		memset(&dev->le_rl[i][1], 0, 38);
-	}
 }
 
 static int cmd_clear_rl(struct btdev *dev, const void *data, uint8_t len)
@@ -4664,18 +4712,18 @@ static int cmd_set_cig_params(struct btdev *dev, const void *data,
 	const struct bt_hci_cmd_le_set_cig_params *cmd = data;
 	struct lescp {
 		struct bt_hci_rsp_le_set_cig_params params;
-		uint16_t handle[3];
+		uint16_t handle[CIS_SIZE];
 	} __attribute__ ((packed)) rsp;
 	int i = 0;
 
 	memset(&rsp, 0, sizeof(rsp));
 
-	memcpy(&dev->le_cig, data, len);
-
-	if (cmd->num_cis > ARRAY_SIZE(rsp.handle)) {
+	if (cmd->num_cis > ARRAY_SIZE(dev->le_cig.cis)) {
 		rsp.params.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 		goto done;
 	}
+
+	memcpy(&dev->le_cig, data, len);
 
 	rsp.params.status = BT_HCI_ERR_SUCCESS;
 	rsp.params.cig_id = cmd->cig_id;
@@ -4728,15 +4776,15 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 				sizeof(remote->le_cig.params.m_latency));
 		memcpy(evt.s_latency, &remote->le_cig.params.s_latency,
 				sizeof(remote->le_cig.params.s_latency));
-		evt.m_phy = remote->le_cig.cis.m_phy;
-		evt.s_phy = remote->le_cig.cis.s_phy;
+		evt.m_phy = remote->le_cig.cis[0].m_phy;
+		evt.s_phy = remote->le_cig.cis[0].s_phy;
 		evt.nse = 0x01;
 		evt.m_bn = 0x01;
 		evt.s_bn = 0x01;
 		evt.m_ft = 0x01;
 		evt.s_ft = 0x01;
-		evt.m_mtu = remote->le_cig.cis.m_sdu;
-		evt.s_mtu = remote->le_cig.cis.s_sdu;
+		evt.m_mtu = remote->le_cig.cis[0].m_sdu;
+		evt.s_mtu = remote->le_cig.cis[0].s_sdu;
 		evt.interval = remote->le_cig.params.m_latency;
 	}
 
@@ -4781,7 +4829,7 @@ static int cmd_create_cis_complete(struct btdev *dev, const void *data,
 		evt.acl_handle = cpu_to_le16(acl->handle);
 		evt.cis_handle = cpu_to_le16(iso->handle);
 		evt.cig_id = iso->dev->le_cig.params.cig_id;
-		evt.cis_id = iso->dev->le_cig.cis.cis_id;
+		evt.cis_id = iso->dev->le_cig.cis[0].cis_id;
 
 		le_meta_event(iso->link->dev, BT_HCI_EVT_LE_CIS_REQ, &evt,
 					sizeof(evt));
