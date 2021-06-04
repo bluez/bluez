@@ -614,8 +614,10 @@ static int cmd_disconnect_complete(struct btdev *dev, const void *data,
 	}
 
 	disconnect_complete(dev, conn->handle, BT_HCI_ERR_SUCCESS, cmd->reason);
-	disconnect_complete(conn->link->dev, conn->link->handle,
-				BT_HCI_ERR_SUCCESS, cmd->reason);
+
+	if (conn->link)
+		disconnect_complete(conn->link->dev, conn->link->handle,
+					BT_HCI_ERR_SUCCESS, cmd->reason);
 
 	conn_remove(conn);
 
