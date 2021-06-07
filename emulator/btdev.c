@@ -3566,6 +3566,16 @@ static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 	bool exists = false;
 	int i, pos = -1;
 
+	/* This command shall not be used when address resolution is enabled in
+	 * the Controller and:
+	 * • Advertising (other than periodic advertising) is enabled,
+	 * • Scanning is enabled, or
+	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
+	 * or HCI_LE_Periodic_Advertising_Create_Sync command is outstanding.
+	 */
+	if (dev->le_adv_enable || dev->le_scan_enable)
+		return -EPERM;
+
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
 		return -EINVAL;
@@ -3607,6 +3617,16 @@ static int cmd_remove_rl(struct btdev *dev, const void *data, uint8_t len)
 	uint8_t status;
 	int i;
 
+	/* This command shall not be used when address resolution is enabled in
+	 * the Controller and:
+	 * • Advertising (other than periodic advertising) is enabled,
+	 * • Scanning is enabled, or
+	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
+	 * or HCI_LE_Periodic_Advertising_Create_Sync command is outstanding.
+	 */
+	if (dev->le_adv_enable || dev->le_scan_enable)
+		return -EPERM;
+
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
 		return -EINVAL;
@@ -3633,6 +3653,16 @@ static int cmd_remove_rl(struct btdev *dev, const void *data, uint8_t len)
 static int cmd_clear_rl(struct btdev *dev, const void *data, uint8_t len)
 {
 	uint8_t status;
+
+	/* This command shall not be used when address resolution is enabled in
+	 * the Controller and:
+	 * • Advertising (other than periodic advertising) is enabled,
+	 * • Scanning is enabled, or
+	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
+	 * or HCI_LE_Periodic_Advertising_Create_Sync command is outstanding.
+	 */
+	if (dev->le_adv_enable || dev->le_scan_enable)
+		return -EPERM;
 
 	rl_clear(dev);
 
@@ -3698,6 +3728,16 @@ static int cmd_set_rl_enable(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_set_resolv_enable *cmd = data;
 	uint8_t status;
+
+	/* This command shall not be used when address resolution is enabled in
+	 * the Controller and:
+	 * • Advertising (other than periodic advertising) is enabled,
+	 * • Scanning is enabled, or
+	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
+	 * or HCI_LE_Periodic_Advertising_Create_Sync command is outstanding.
+	 */
+	if (dev->le_adv_enable || dev->le_scan_enable)
+		return -EPERM;
 
 	/* Valid range for address resolution enable is 0x00 to 0x01 */
 	if (cmd->enable > 0x01)
