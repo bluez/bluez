@@ -150,11 +150,13 @@ struct btdev {
 	uint8_t  le_adv_own_addr;
 	uint8_t  le_adv_direct_addr_type;
 	uint8_t  le_adv_direct_addr[6];
+	uint8_t  le_adv_filter_policy;
 	uint8_t  le_scan_data[31];
 	uint8_t  le_scan_data_len;
 	uint8_t  le_scan_enable;
 	uint8_t  le_scan_type;
 	uint8_t  le_scan_own_addr_type;
+	uint8_t  le_scan_filter_policy;
 	uint8_t  le_filter_dup;
 	uint8_t  le_adv_enable;
 	uint8_t  le_periodic_adv_enable;
@@ -3002,6 +3004,7 @@ static int cmd_set_adv_params(struct btdev *dev, const void *data, uint8_t len)
 	dev->le_adv_own_addr = cmd->own_addr_type;
 	dev->le_adv_direct_addr_type = cmd->direct_addr_type;
 	memcpy(dev->le_adv_direct_addr, cmd->direct_addr, 6);
+	dev->le_adv_filter_policy = cmd->filter_policy;
 
 	status = BT_HCI_ERR_SUCCESS;
 
@@ -3223,6 +3226,7 @@ static int cmd_set_scan_params(struct btdev *dev, const void *data, uint8_t len)
 	status = BT_HCI_ERR_SUCCESS;
 	dev->le_scan_type = cmd->type;
 	dev->le_scan_own_addr_type = cmd->own_addr_type;
+	dev->le_scan_filter_policy = cmd->filter_policy;
 
 done:
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_SCAN_PARAMETERS, &status,
@@ -3396,9 +3400,44 @@ static int cmd_read_wl_size(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
+static bool wl_can_change(struct btdev *dev)
+{
+	 /* filter policy uses the White List and advertising is enable. */
+	if (dev->le_adv_enable && dev->le_adv_filter_policy)
+		return false;
+
+	/* scanning filter policy uses the White List and scanning is enabled */
+	if (dev->le_scan_enable) {
+		switch (dev->le_scan_filter_policy) {
+		case 0x00:
+			return true;
+		case 0x01:
+			return false;
+		case 0x02:
+			return true;
+		case 0x03:
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static int cmd_wl_clear(struct btdev *dev, const void *data, uint8_t len)
 {
 	uint8_t status;
+
+	/* This command shall not be used when:
+	 * • any advertising filter policy uses the White List and advertising
+	 * is enabled,
+	 * • the scanning filter policy uses the White List and scanning is
+	 * enabled, or
+	 * • the initiator filter policy uses the White List and an
+	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
+	 * command is outstanding.
+	 */
+	if (!wl_can_change(dev))
+		return -EPERM;
 
 	wl_clear(dev);
 
@@ -3424,6 +3463,18 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 	uint8_t status;
 	bool exists = false;
 	int i, pos = -1;
+
+	/* This command shall not be used when:
+	 * • any advertising filter policy uses the White List and advertising
+	 * is enabled,
+	 * • the scanning filter policy uses the White List and scanning is
+	 * enabled, or
+	 * • the initiator filter policy uses the White List and an
+	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
+	 * command is outstanding.
+	 */
+	if (!wl_can_change(dev))
+		return -EPERM;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
@@ -3463,6 +3514,18 @@ static int cmd_remove_wl(struct btdev *dev, const void *data, uint8_t len)
 	uint8_t status;
 	int i;
 	char addr[18];
+
+	/* This command shall not be used when:
+	 * • any advertising filter policy uses the White List and advertising
+	 * is enabled,
+	 * • the scanning filter policy uses the White List and scanning is
+	 * enabled, or
+	 * • the initiator filter policy uses the White List and an
+	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
+	 * command is outstanding.
+	 */
+	if (!wl_can_change(dev))
+		return -EPERM;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
@@ -4120,6 +4183,7 @@ static int cmd_set_ext_adv_params(struct btdev *dev, const void *data,
 	dev->le_adv_own_addr = cmd->own_addr_type;
 	dev->le_adv_direct_addr_type = cmd->peer_addr_type;
 	memcpy(dev->le_adv_direct_addr, cmd->peer_addr, 6);
+	dev->le_adv_filter_policy = cmd->filter_policy;
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
 	rsp.tx_power = 0;
@@ -4380,6 +4444,7 @@ static int cmd_set_ext_scan_params(struct btdev *dev, const void *data,
 		 */
 		dev->le_scan_type = scan->type;
 		dev->le_scan_own_addr_type = cmd->own_addr_type;
+		dev->le_scan_filter_policy = cmd->filter_policy;
 	}
 
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_SCAN_PARAMS, &status,
@@ -5760,6 +5825,9 @@ static const struct btdev_cmd *default_cmd(struct btdev *btdev, uint16_t opcode,
 			goto failed;
 		case -EINVAL:
 			status = BT_HCI_ERR_INVALID_PARAMETERS;
+			goto failed;
+		case -EPERM:
+			status = BT_HCI_ERR_COMMAND_DISALLOWED;
 			goto failed;
 		default:
 			status = BT_HCI_ERR_UNSPECIFIED_ERROR;
