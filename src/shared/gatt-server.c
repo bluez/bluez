@@ -779,6 +779,20 @@ static uint8_t authorize_req(struct bt_gatt_server *server,
 						server->authorize_data);
 }
 
+static uint8_t check_length(uint16_t length, uint16_t offset)
+{
+	if (length > BT_ATT_MAX_VALUE_LEN)
+		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+
+	if (offset > BT_ATT_MAX_VALUE_LEN)
+		return BT_ATT_ERROR_INVALID_OFFSET;
+
+	if (length + offset > BT_ATT_MAX_VALUE_LEN)
+		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+
+	return 0;
+}
+
 static void write_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data)
 {
@@ -808,6 +822,10 @@ static void write_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
 				"Write %s - handle: 0x%04x",
 				(opcode == BT_ATT_OP_WRITE_REQ) ? "Req" : "Cmd",
 				handle);
+
+	ecode = check_length(length, 0);
+	if (ecode)
+		goto error;
 
 	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE_MASK);
 	if (ecode)
@@ -1298,6 +1316,10 @@ static void prep_write_cb(struct bt_att_chan *chan, uint8_t opcode,
 
 	util_debug(server->debug_callback, server->debug_data,
 				"Prep Write Req - handle: 0x%04x", handle);
+
+	ecode = check_length(length, offset);
+	if (ecode)
+		goto error;
 
 	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE_MASK);
 	if (ecode)
