@@ -2173,6 +2173,9 @@ static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
 			length -= 2;
 			pdu += 2;
 
+			if (data.len > length)
+				data.len = length;
+
 			data.data = pdu;
 
 			queue_foreach(client->notify_list, notify_handler,
