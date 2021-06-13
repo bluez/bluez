@@ -200,7 +200,6 @@ and Command Complete events:
 0x12	RFKilled
 0x13	Already Paired
 0x14	Permission Denied
-0x15	Connection Not Established
 
 As a general rule all commands generate the events as specified below,
 however invalid lengths or unknown commands will always generate a
@@ -1113,7 +1112,6 @@ Pair Device Command
 				Not Powered
 				Invalid Index
 				Already Paired
-				Connection Not Established
 
 
 Cancel Pair Device Command
