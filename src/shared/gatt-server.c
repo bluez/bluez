@@ -1690,6 +1690,17 @@ static bool notify_multiple(void *user_data)
 	return false;
 }
 
+static bool notify_append_le16(struct nfy_mult_data *data, uint16_t value)
+{
+	if (data->offset + sizeof(value) > data->len)
+		return false;
+
+	put_le16(value, data->pdu + data->offset);
+	data->offset += sizeof(value);
+
+	return true;
+}
+
 bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 					uint16_t handle, const uint8_t *value,
 					uint16_t length, bool multiple)
@@ -1700,8 +1711,19 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 	if (!server || (length && !value))
 		return false;
 
-	if (multiple)
+	if (multiple) {
 		data = server->nfy_mult;
+
+		/* flush buffered data if this request hits buffer size limit */
+		if (data && data->offset > 0 &&
+				data->len - data->offset < 4 + length) {
+			if (server->nfy_mult->id)
+				timeout_remove(server->nfy_mult->id);
+			notify_multiple(server);
+			/* data has been freed by notify_multiple */
+			data = NULL;
+		}
+	}
 
 	if (!data) {
 		data = new0(struct nfy_mult_data, 1);
@@ -1709,14 +1731,15 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 		data->pdu = malloc(data->len);
 	}
 
-	put_le16(handle, data->pdu + data->offset);
-	data->offset += 2;
-
-	length = MIN(data->len - data->offset, length);
+	if (!notify_append_le16(data, handle))
+		goto error;
 
 	if (multiple) {
-		put_le16(length, data->pdu + data->offset);
-		data->offset += 2;
+		length = MIN(data->len - data->offset - 2, length);
+		if (!notify_append_le16(data, length))
+			goto error;
+	} else {
+		length = MIN(data->len - data->offset, length);
 	}
 
 	memcpy(data->pdu + data->offset, value, length);
@@ -1740,6 +1763,12 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 	free(data);
 
 	return result;
+
+error:
+	if (data)
+		free(data);
+
+	return false;
 }
 
 struct ind_data {
