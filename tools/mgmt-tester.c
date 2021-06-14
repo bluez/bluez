@@ -308,6 +308,32 @@ struct generic_data {
 	uint8_t adv_data_len;
 };
 
+static const uint8_t set_exp_feat_param_debug[] = {
+	0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c, 0x01, 0xab, /* UUID - Debug */
+	0x9f, 0x46, 0xec, 0xb9, 0x30, 0x25, 0x99, 0xd4,
+	0x01,						/* Action - enable */
+};
+
+static void debug_exp_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_print("Debug feature could not be enabled");
+		return;
+	}
+
+	tester_print("Debug feature is enabled");
+}
+
+static void debup_exp_feature(struct test_data *data)
+{
+	tester_print("Enabling Debug feature");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_EXP_FEATURE, MGMT_INDEX_NONE,
+		sizeof(set_exp_feat_param_debug), set_exp_feat_param_debug,
+		debug_exp_callback, NULL, NULL);
+}
+
 static void read_index_list_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -365,6 +391,7 @@ static void test_pre_setup(const void *test_data)
 	if (tester_use_debug()) {
 		mgmt_set_debug(data->mgmt, print_debug, "mgmt: ", NULL);
 		mgmt_set_debug(data->mgmt_alt, print_debug, "mgmt-alt: ", NULL);
+		debup_exp_feature(data);
 	}
 
 	mgmt_send(data->mgmt, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
