@@ -10593,7 +10593,7 @@ static void le_ext_adv_report_evt(const void *data, uint8_t size)
 			print_field("  RSSI: reserved (0x%2.2x)",
 							(uint8_t) report->rssi);
 
-		print_slot_125("  Periodic advertising invteral",
+		print_slot_125("  Periodic advertising interval",
 							report->interval);
 		print_peer_addr_type("  Direct address type",
 						report->direct_addr_type);
@@ -10620,7 +10620,7 @@ static void le_per_adv_sync(const void *data, uint8_t size)
 	print_peer_addr_type("Advertiser address type", evt->addr_type);
 	print_addr("Advertiser address", evt->addr, evt->addr_type);
 	print_le_phy("Advertiser PHY", evt->phy);
-	print_slot_125("Periodic advertising invteral", evt->interval);
+	print_slot_125("Periodic advertising interval", evt->interval);
 	print_field("Advertiser clock accuracy: 0x%2.2x", evt->clock_accuracy);
 }
 
