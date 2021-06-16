@@ -325,7 +325,7 @@ static void debug_exp_callback(uint8_t status, uint16_t length,
 	tester_print("Debug feature is enabled");
 }
 
-static void debup_exp_feature(struct test_data *data)
+static void debug_exp_feature(struct test_data *data)
 {
 	tester_print("Enabling Debug feature");
 
@@ -391,7 +391,7 @@ static void test_pre_setup(const void *test_data)
 	if (tester_use_debug()) {
 		mgmt_set_debug(data->mgmt, print_debug, "mgmt: ", NULL);
 		mgmt_set_debug(data->mgmt_alt, print_debug, "mgmt-alt: ", NULL);
-		debup_exp_feature(data);
+		debug_exp_feature(data);
 	}
 
 	mgmt_send(data->mgmt, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
