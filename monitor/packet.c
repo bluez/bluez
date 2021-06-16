@@ -12030,9 +12030,10 @@ static void mgmt_print_io_capability(uint8_t capability)
 }
 
 static const struct bitfield_data mgmt_device_flags_table[] = {
-	{  0, "Confirm Name"	},
-	{  1, "Legacy Pairing"	},
-	{  2, "Not Connectable"	},
+	{  0, "Confirm Name"			},
+	{  1, "Legacy Pairing"			},
+	{  2, "Not Connectable"			},
+	{  3, "Connection Locally Initiated"	},
 	{ }
 };
 
