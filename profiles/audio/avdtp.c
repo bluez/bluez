@@ -1323,7 +1323,7 @@ static GSList *caps_to_list(uint8_t *data, size_t size,
 
 		cap = (struct avdtp_service_capability *)data;
 
-		if (sizeof(*cap) + cap->length >= size) {
+		if (sizeof(*cap) + cap->length > size) {
 			error("Invalid capability data in getcap resp");
 			break;
 		}
@@ -1345,7 +1345,7 @@ static GSList *caps_to_list(uint8_t *data, size_t size,
 		switch (cap->category) {
 		case AVDTP_MEDIA_CODEC:
 			if (codec)
-				*codec = cap;
+				*codec = cpy;
 			break;
 		case AVDTP_DELAY_REPORTING:
 			if (delay_reporting)
