@@ -6656,7 +6656,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	dev = btd_adapter_find_device(adapter, bdaddr, bdaddr_type);
 	if (!dev) {
-		if (!discoverable) {
+		if (!discoverable && !matched_monitors) {
 			eir_data_free(&eir_data);
 			return;
 		}
