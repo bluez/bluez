@@ -2963,6 +2963,14 @@ bool btd_device_is_connected(struct btd_device *dev)
 	return dev->bredr_state.connected || dev->le_state.connected;
 }
 
+static void clear_temporary_timer(struct btd_device *dev)
+{
+	if (dev->temporary_timer) {
+		timeout_remove(dev->temporary_timer);
+		dev->temporary_timer = 0;
+	}
+}
+
 void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type)
 {
 	struct bearer_state *state = get_state(dev, bdaddr_type);
@@ -2991,10 +2999,7 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type)
 		return;
 
 	/* Remove temporary timer while connected */
-	if (dev->temporary_timer) {
-		timeout_remove(dev->temporary_timer);
-		dev->temporary_timer = 0;
-	}
+	clear_temporary_timer(dev);
 
 	g_dbus_emit_property_changed(dbus_conn, dev->path, DEVICE_INTERFACE,
 								"Connected");
@@ -4280,6 +4285,17 @@ static bool device_disappeared(gpointer user_data)
 	return FALSE;
 }
 
+static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
+{
+	clear_temporary_timer(dev);
+
+	if (!timeout)
+		return;
+
+	dev->temporary_timer = timeout_add_seconds(timeout, device_disappeared,
+								dev, NULL);
+}
+
 void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
 {
 	if (bdaddr_type == BDADDR_BREDR)
@@ -4291,12 +4307,7 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
 		return;
 
 	/* Restart temporary timer */
-	if (device->temporary_timer)
-		timeout_remove(device->temporary_timer);
-
-	device->temporary_timer = timeout_add_seconds(btd_opts.tmpto,
-							device_disappeared,
-							device, NULL);
+	set_temporary_timer(device, btd_opts.tmpto);
 }
 
 /* It is possible that we have two device objects for the same device in
@@ -4487,10 +4498,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		disconnect_all(device);
 	}
 
-	if (device->temporary_timer > 0) {
-		timeout_remove(device->temporary_timer);
-		device->temporary_timer = 0;
-	}
+	clear_temporary_timer(device);
 
 	if (device->store_id > 0) {
 		g_source_remove(device->store_id);
@@ -5701,11 +5709,6 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 
 	device->temporary = temporary;
 
-	if (device->temporary_timer) {
-		timeout_remove(device->temporary_timer);
-		device->temporary_timer = 0;
-	}
-
 	if (temporary) {
 		if (device->bredr)
 			adapter_whitelist_remove(device->adapter, device);
@@ -5714,11 +5717,10 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 			device->disable_auto_connect = TRUE;
 			device_set_auto_connect(device, FALSE);
 		}
-		device->temporary_timer = timeout_add_seconds(btd_opts.tmpto,
-							device_disappeared,
-							device, NULL);
+		set_temporary_timer(device, btd_opts.tmpto);
 		return;
-	}
+	} else
+		clear_temporary_timer(device);
 
 	if (device->bredr)
 		adapter_whitelist_add(device->adapter, device);
