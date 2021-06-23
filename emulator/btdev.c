@@ -74,6 +74,7 @@ struct btdev_rl {
 };
 
 struct le_ext_adv {
+	struct btdev *dev;
 	uint8_t handle;
 	uint8_t enable;
 	uint8_t type;			/* evt_properties */
@@ -86,6 +87,7 @@ struct le_ext_adv {
 	uint8_t adv_data_len;
 	uint8_t scan_data[252];
 	uint8_t scan_data_len;
+	unsigned int id;
 };
 
 struct btdev {
@@ -4237,6 +4239,11 @@ static void ext_adv_disable(void *data, void *user_data)
 	if (handle && ext_adv->handle != handle)
 		return;
 
+	if (ext_adv->id) {
+		timeout_remove(ext_adv->id);
+		ext_adv->id = 0;
+	}
+
 	ext_adv->enable = 0x00;
 }
 
@@ -4253,6 +4260,7 @@ static struct le_ext_adv *le_ext_adv_new(struct btdev *btdev, uint8_t handle)
 	struct le_ext_adv *ext_adv;
 
 	ext_adv = new0(struct le_ext_adv, 1);
+	ext_adv->dev = btdev;
 	ext_adv->handle = handle;
 
 	/* Add to queue */
@@ -4267,6 +4275,12 @@ static struct le_ext_adv *le_ext_adv_new(struct btdev *btdev, uint8_t handle)
 static void le_ext_adv_free(void *data)
 {
 	struct le_ext_adv *ext_adv = data;
+
+	/* Remove to queue */
+	queue_remove(ext_adv->dev->le_ext_adv, ext_adv);
+
+	if (ext_adv->id)
+		timeout_remove(ext_adv->id);
 
 	free(ext_adv);
 }
@@ -4477,6 +4491,31 @@ static void le_set_ext_adv_enable_complete(struct btdev *btdev,
 		}
 	}
 }
+static void adv_set_terminate(struct btdev *dev, uint8_t status, uint8_t handle,
+					uint16_t conn_handle, uint8_t num_evts)
+{
+	struct bt_hci_evt_le_adv_set_term ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.status = status;
+	ev.handle = handle;
+	ev.conn_handle = cpu_to_le16(conn_handle);
+	ev.num_evts = num_evts;
+
+	le_meta_event(dev, BT_HCI_EVT_LE_ADV_SET_TERM, &ev, sizeof(ev));
+}
+
+static bool ext_adv_timeout(void *user_data)
+{
+	struct le_ext_adv *adv = user_data;
+
+	adv->id = 0;
+	adv_set_terminate(adv->dev, BT_HCI_ERR_ADV_TIMEOUT, adv->handle,
+								0x0000, 0x00);
+	le_ext_adv_free(adv);
+
+	return false;
+}
 
 static int cmd_set_ext_adv_enable(struct btdev *dev, const void *data,
 							uint8_t len)
@@ -4517,6 +4556,13 @@ static int cmd_set_ext_adv_enable(struct btdev *dev, const void *data,
 		}
 
 		ext_adv->enable = cmd->enable;
+
+		if (!cmd->enable)
+			ext_adv_disable(ext_adv, NULL);
+		else if (eas->duration)
+			ext_adv->id = timeout_add(eas->duration * 10,
+							ext_adv_timeout,
+							ext_adv, NULL);
 	}
 
 exit_complete:
@@ -4785,6 +4831,19 @@ static int cmd_ext_create_conn(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
+static void ext_adv_term(void *data, void *user_data)
+{
+	struct le_ext_adv *adv = data;
+	struct btdev_conn *conn = user_data;
+
+	/* if connectable bit is set the send adv terminate */
+	if (conn && adv->type & 0x01) {
+		adv_set_terminate(conn->dev, 0x00, adv->handle, conn->handle,
+									0x00);
+		le_ext_adv_free(adv);
+	}
+}
+
 static void le_ext_conn_complete(struct btdev *btdev,
 			const struct bt_hci_cmd_le_ext_create_conn *cmd,
 			struct le_ext_adv *ext_adv,
@@ -4803,9 +4862,8 @@ static void le_ext_conn_complete(struct btdev *btdev,
 			return;
 
 		/* Disable EXT ADV */
-		queue_foreach(btdev->le_ext_adv, ext_adv_disable, NULL);
-		queue_foreach(conn->link->dev->le_ext_adv, ext_adv_disable,
-									NULL);
+		queue_foreach(btdev->le_ext_adv, ext_adv_term, conn);
+		queue_foreach(conn->link->dev->le_ext_adv, ext_adv_term, conn);
 
 		ev.status = status;
 		ev.peer_addr_type = btdev->le_scan_own_addr_type;
