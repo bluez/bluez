@@ -2549,6 +2549,7 @@ void bthost_set_ext_adv_data(struct bthost *bthost, const uint8_t *data,
 	memset(adv_cp, 0, sizeof(*adv_cp));
 	memset(adv_cp->data, 0, 31);
 
+	adv_cp->handle = 1;
 	adv_cp->operation = 0x03;
 	adv_cp->fragment_preference = 0x01;
 
@@ -2572,20 +2573,33 @@ void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable)
 	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_ENABLE, &enable, 1);
 }
 
-void bthost_set_ext_adv_enable(struct bthost *bthost, uint8_t enable)
+void bthost_set_ext_adv_params(struct bthost *bthost)
 {
 	struct bt_hci_cmd_le_set_ext_adv_params cp;
-	struct bt_hci_cmd_le_set_ext_adv_enable cp_enable;
 
 	memset(&cp, 0, sizeof(cp));
+	cp.handle = 0x01;
 	cp.evt_properties = cpu_to_le16(0x0013);
 	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 							&cp, sizeof(cp));
+}
 
-	memset(&cp_enable, 0, sizeof(cp_enable));
-	cp_enable.enable = enable;
-	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE, &cp_enable,
-					sizeof(cp_enable));
+void bthost_set_ext_adv_enable(struct bthost *bthost, uint8_t enable)
+{
+	struct bt_hci_cmd_le_set_ext_adv_enable *cp_enable;
+	struct bt_hci_cmd_ext_adv_set *cp_set;
+	uint8_t cp[6];
+
+	memset(cp, 0, 6);
+
+	cp_enable = (struct bt_hci_cmd_le_set_ext_adv_enable *)cp;
+	cp_set = (struct bt_hci_cmd_ext_adv_set *)(cp + sizeof(*cp_enable));
+
+	cp_enable->enable = enable;
+	cp_enable->num_of_sets = 1;
+	cp_set->handle = 1;
+
+	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE, cp, 6);
 }
 
 void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)
