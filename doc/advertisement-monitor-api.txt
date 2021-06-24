@@ -105,10 +105,11 @@ Properties	string Type [read-only]
 
 		array{(uint8, uint8, array{byte})} Patterns [read-only, optional]
 
-			If Type is set to 0x01, this must exist and has at least
-			one entry in the array.
+			If the Type property is set to "or_patterns", then this
+			property must exist and have at least one entry in the
+			array.
 
-			The structure of a pattern contains the following.
+			The structure of a pattern contains the following:
 			uint8 start_position
 				The index in an AD data field where the search
 				should start. The beginning of an AD data field
