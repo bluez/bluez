@@ -560,7 +560,11 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 	if (changed_mask & MGMT_SETTING_DISCOVERABLE) {
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable");
-		store_adapter_info(adapter);
+		/* Only persist discoverable setting if it was not set
+		 * temporarily by discovery.
+		 */
+		if (!adapter->discovery_discoverable)
+			store_adapter_info(adapter);
 		btd_adv_manager_refresh(adapter->adv_manager);
 	}
 
@@ -2162,8 +2166,6 @@ static bool filters_equal(struct mgmt_cp_start_service_discovery *a,
 static int update_discovery_filter(struct btd_adapter *adapter)
 {
 	struct mgmt_cp_start_service_discovery *sd_cp;
-	GSList *l;
-
 
 	DBG("");
 
@@ -2173,17 +2175,24 @@ static int update_discovery_filter(struct btd_adapter *adapter)
 		return -ENOMEM;
 	}
 
-	for (l = adapter->discovery_list; l; l = g_slist_next(l)) {
-		struct discovery_client *client = l->data;
+	/* Only attempt to overwrite current discoverable setting when not
+	 * discoverable.
+	 */
+	if (!(adapter->current_settings & MGMT_OP_SET_DISCOVERABLE)) {
+		GSList *l;
 
-		if (!client->discovery_filter)
-			continue;
+		for (l = adapter->discovery_list; l; l = g_slist_next(l)) {
+			struct discovery_client *client = l->data;
 
-		if (client->discovery_filter->discoverable)
-			break;
+			if (!client->discovery_filter)
+				continue;
+
+			if (client->discovery_filter->discoverable) {
+				set_discovery_discoverable(adapter, true);
+				break;
+			}
+		}
 	}
-
-	set_discovery_discoverable(adapter, l ? true : false);
 
 	/*
 	 * If filters are equal, then don't update scan, except for when
@@ -2216,8 +2225,7 @@ static int discovery_stop(struct discovery_client *client)
 		return 0;
 	}
 
-	if (adapter->discovery_discoverable)
-		set_discovery_discoverable(adapter, false);
+	set_discovery_discoverable(adapter, false);
 
 	/*
 	 * In the idle phase of a discovery, there is no need to stop it
@@ -6913,6 +6921,7 @@ static void adapter_stop(struct btd_adapter *adapter)
 	g_free(adapter->current_discovery_filter);
 	adapter->current_discovery_filter = NULL;
 
+	set_discovery_discoverable(adapter, false);
 	adapter->discovering = false;
 
 	while (adapter->connections) {
