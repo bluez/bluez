@@ -9253,14 +9253,15 @@ static void set_exp_debug_complete(uint8_t status, uint16_t len,
 static void exp_debug_func(struct btd_adapter *adapter, uint32_t flags)
 {
 	struct mgmt_cp_set_exp_feature cp;
+	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
 
-	/* If already enabled don't attempt to set it again */
-	if (flags & BIT(0))
+	/* If already set don't attempt to set it again */
+	if (action == (flags & BIT(0)))
 		return;
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(cp.uuid, debug_uuid, 16);
-	cp.action = 0x01;
+	cp.action = btd_opts.experimental ? 0x01 : 0x00;
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_EXP_FEATURE,
 			adapter->dev_id, sizeof(cp), &cp,
@@ -9289,14 +9290,15 @@ static void set_rpa_resolution_complete(uint8_t status, uint16_t len,
 static void rpa_resolution_func(struct btd_adapter *adapter, uint32_t flags)
 {
 	struct mgmt_cp_set_exp_feature cp;
+	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
 
-	/* If already enabled don't attempt to set it again */
-	if (flags & BIT(0))
+	/* If already set don't attempt to set it again */
+	if (action == (flags & BIT(0)))
 		return;
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(cp.uuid, rpa_resolution_uuid, 16);
-	cp.action = 0x01;
+	cp.action = action;
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_EXP_FEATURE,
 			adapter->dev_id, sizeof(cp), &cp,
@@ -9479,10 +9481,6 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (btd_opts.fast_conn &&
 			(missing_settings & MGMT_SETTING_FAST_CONNECTABLE))
 		set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, 0x01);
-
-	if (btd_opts.experimental &&
-			btd_has_kernel_features(KERNEL_EXP_FEATURES))
-		read_exp_features(adapter);
 
 	err = adapter_register(adapter);
 	if (err < 0) {
@@ -9706,6 +9704,9 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 			"Unable to create new adapter for index %u", index);
 		return;
 	}
+
+	if (btd_has_kernel_features(KERNEL_EXP_FEATURES))
+		read_exp_features(adapter);
 
 	/*
 	 * Protect against potential two executions of read controller info.
