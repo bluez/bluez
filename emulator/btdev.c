@@ -624,8 +624,10 @@ static void conn_unlink(struct btdev_conn *conn1, struct btdev_conn *conn2)
 	conn2->link = NULL;
 }
 
-static void conn_remove(struct btdev_conn *conn)
+static void conn_remove(void *data)
 {
+	struct btdev_conn *conn = data;
+
 	if (conn->link) {
 		struct btdev_conn *link = conn->link;
 
@@ -6046,6 +6048,7 @@ void btdev_destroy(struct btdev *btdev)
 	bt_crypto_unref(btdev->crypto);
 	del_btdev(btdev);
 
+	queue_destroy(btdev->conns, conn_remove);
 	queue_destroy(btdev->le_ext_adv, le_ext_adv_free);
 
 	free(btdev);
