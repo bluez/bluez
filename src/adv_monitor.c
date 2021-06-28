@@ -1884,30 +1884,15 @@ static bool handle_device_lost_timeout(gpointer user_data)
 {
 	struct adv_monitor_device *dev = user_data;
 	struct adv_monitor *monitor = dev->monitor;
-	time_t curr_time = time(NULL);
 
-	DBG("Device Lost timeout triggered for device %p "
-	    "for the Adv Monitor at path %s", dev->device, monitor->path);
+	DBG("Device Lost timeout triggered for device %p. Calling DeviceLost() "
+	    "on Adv Monitor of owner %s at path %s", dev->device,
+					    monitor->app->owner, monitor->path);
 
+	g_dbus_proxy_method_call(monitor->proxy, "DeviceLost",
+				 report_device_state_setup,
+				 NULL, dev->device, NULL);
 	dev->lost_timer = 0;
-
-	if (dev->found && dev->last_seen) {
-		/* We were tracking for the Low RSSI filter. Check if there is
-		 * any Adv received after the timeout function is invoked.
-		 * If not, report the Device Lost event.
-		 */
-		if (difftime(curr_time, dev->last_seen) >=
-		    monitor->rssi.low_rssi_timeout) {
-			dev->found = false;
-
-			DBG("Calling DeviceLost() on Adv Monitor of owner %s "
-			    "at path %s", monitor->app->owner, monitor->path);
-
-			g_dbus_proxy_method_call(monitor->proxy, "DeviceLost",
-						 report_device_state_setup,
-						 NULL, dev->device, NULL);
-		}
-	}
 
 	return FALSE;
 }
