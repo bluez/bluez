@@ -22,6 +22,7 @@
 #include <getopt.h>
 #include <libgen.h>
 #include <signal.h>
+#include <limits.h>
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
