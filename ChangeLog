@@ -1,3 +1,11 @@
+ver 5.60:
+	Fix issue with reading from RFKILL device node.
+	Fix issue with AVDTP and parsing capabilities.
+	Fix issue with UnregisterApplication handling.
+	Fix issue with RegisterProfile if UUID already exists.
+	Fix issue with GATT client attribute read with offset.
+	Fix issue with non-discoverable device and advertising monitor.
+
 ver 5.59:
 	Fix issue with string to UUID-32 conversion.
 	Fix issue with connect request if SDP search failed.
