@@ -3917,6 +3917,53 @@ static const struct generic_data set_privacy_nval_param_test = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const void *get_clock_info_send_param_func(uint16_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static uint8_t param[7];
+
+	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
+	param[6] = 0x00; /* Address type */
+
+	*len = sizeof(param);
+
+	return param;
+}
+
+static const void *get_clock_info_expect_param_func(uint16_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static uint8_t param[17];
+	struct mgmt_rp_get_clock_info *rp;
+
+	rp = (struct mgmt_rp_get_clock_info *)param;
+	memset(param, 0, sizeof(param));
+	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
+	param[6] = 0x00; /* Address type */
+
+	rp->local_clock = 0x11223344;
+	rp->piconet_clock = 0x11223344;
+	rp->accuracy = 0x5566;
+
+	*len = sizeof(param);
+
+	return param;
+}
+
+static const void *get_clock_info_expect_param_not_powered_func(uint16_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static uint8_t param[17];
+
+	memset(param, 0, sizeof(param));
+	memcpy(param, hciemu_get_client_bdaddr(data->hciemu), 6);
+	param[6] = 0x00; /* Address type */
+
+	*len = sizeof(param);
+
+	return param;
+}
+
 static const void *get_conn_info_send_param_func(uint16_t *len)
 {
 	struct test_data *data = tester_get_data();
@@ -3961,6 +4008,21 @@ static const void *get_conn_info_error_expect_param_func(uint16_t *len)
 
 	return param;
 }
+
+static const struct generic_data get_clock_info_succes1_test = {
+	.setup_settings = settings_powered_connectable_bondable_ssp,
+	.send_opcode = MGMT_OP_GET_CLOCK_INFO,
+	.send_func = get_clock_info_send_param_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_func = get_clock_info_expect_param_func,
+};
+
+static const struct generic_data get_clock_info_fail1_test = {
+	.send_opcode = MGMT_OP_GET_CLOCK_INFO,
+	.send_func = get_clock_info_send_param_func,
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.expect_func = get_clock_info_expect_param_not_powered_func,
+};
 
 static const struct generic_data get_conn_info_succes1_test = {
 	.setup_settings = settings_powered_connectable_bondable_ssp,
@@ -9780,7 +9842,7 @@ static void test_command_generic_connect(const void *test_data)
 
 	addr_type = data->hciemu_type == HCIEMU_TYPE_BREDRLE ? BDADDR_BREDR :
 							BDADDR_LE_PUBLIC;
-
+	tester_print("ADDR TYPE: %d", addr_type);
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_hci_connect(bthost, master_bdaddr, addr_type);
 }
@@ -10754,6 +10816,13 @@ int main(int argc, char *argv[])
 	test_bredrle("Set Privacy - Invalid Parameters",
 				&set_privacy_nval_param_test,
 				NULL, test_command_generic);
+
+	test_bredrle("Get Clock Info - Success",
+				&get_clock_info_succes1_test, NULL,
+				test_command_generic_connect);
+	test_bredrle("Get Clock Info - Fail (Power Off)",
+				&get_clock_info_fail1_test, NULL,
+				test_command_generic);
 
 	test_bredrle("Get Conn Info - Success",
 				&get_conn_info_succes1_test, NULL,
