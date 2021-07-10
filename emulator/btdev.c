@@ -2296,6 +2296,22 @@ static int cmd_read_rssi(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_read_clock(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_read_clock *cmd = data;
+	struct bt_hci_rsp_read_clock rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	rsp.handle = le16_to_cpu(cmd->handle);
+	rsp.clock = 0x11223344;
+	rsp.accuracy = 0x5566;
+	cmd_complete(dev, BT_HCI_CMD_READ_CLOCK, &rsp, sizeof(rsp));
+
+	return 0;
+}
+
 static int cmd_enable_dut_mode(struct btdev *dev, const void *data,
 							uint8_t len)
 {
@@ -2389,6 +2405,7 @@ static int cmd_enable_dut_mode(struct btdev *dev, const void *data,
 					NULL), \
 	CMD(BT_HCI_CMD_READ_COUNTRY_CODE, cmd_read_country_code, NULL), \
 	CMD(BT_HCI_CMD_READ_RSSI, cmd_read_rssi, NULL), \
+	CMD(BT_HCI_CMD_READ_CLOCK, cmd_read_clock, NULL), \
 	CMD(BT_HCI_CMD_ENABLE_DUT_MODE, cmd_enable_dut_mode, NULL)
 
 static void set_common_commands_bredr20(struct btdev *btdev)
@@ -2448,6 +2465,7 @@ static void set_common_commands_bredr20(struct btdev *btdev)
 	btdev->commands[14] |= 0x40;	/* Read Local Extended Features */
 	btdev->commands[15] |= 0x01;	/* Read Country Code */
 	btdev->commands[15] |= 0x20;	/* Read RSSI */
+	btdev->commands[15] |= 0x80;	/* Read Clock */
 	btdev->commands[16] |= 0x04;	/* Enable Device Under Test Mode */
 }
 
