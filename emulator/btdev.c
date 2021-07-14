@@ -3219,10 +3219,28 @@ static void le_set_adv_enable_complete(struct btdev *btdev)
 	}
 }
 
+#define RL_ADDR_EQUAL(_rl, _type, _addr) \
+	(_rl->type == _type && !bacmp(&_rl->addr, (bdaddr_t *)_addr))
+
+static struct btdev_rl *rl_find(struct btdev *dev, uint8_t type, uint8_t *addr)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(dev->le_rl); i++) {
+		struct btdev_rl *rl = &dev->le_rl[i];
+
+		if (RL_ADDR_EQUAL(rl, type, addr))
+			return rl;
+	}
+
+	return NULL;
+}
+
 static int cmd_set_adv_enable(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_set_ext_adv_enable *cmd = data;
 	uint8_t status;
+	bool random_addr;
 
 	if (dev->le_adv_enable == cmd->enable) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
@@ -3231,6 +3249,36 @@ static int cmd_set_adv_enable(struct btdev *dev, const void *data, uint8_t len)
 
 	dev->le_adv_enable = cmd->enable;
 	status = BT_HCI_ERR_SUCCESS;
+
+	if (!cmd->enable)
+		goto done;
+
+	random_addr = bacmp((bdaddr_t *)dev->random_addr, BDADDR_ANY);
+
+	/* If Advertising_Enable is set to 0x01, the advertising parameters'
+	 * Own_Address_Type parameter is set to 0x01, and the random address for
+	 * the device has not been initialized, the Controller shall return the
+	 * error code Invalid HCI Command Parameters (0x12).
+	 */
+	if (dev->le_adv_own_addr == 0x01 && !random_addr) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	/* If Advertising_Enable is set to 0x01, the advertising parameters'
+	 * Own_Address_Type parameter is set to 0x03, the controller's resolving
+	 * list did not contain a matching entry, and the random address for the
+	 * device has not been initialized, the Controller shall return the
+	 * error code Invalid HCI Command Parameters (0x12).
+	 */
+	if (dev->le_adv_own_addr == 0x03 && !random_addr) {
+		if (!dev->le_rl_enable ||
+				!rl_find(dev, dev->le_adv_direct_addr_type,
+					dev->le_adv_direct_addr)) {
+			status = BT_HCI_ERR_INVALID_PARAMETERS;
+			goto done;
+		}
+	}
 
 done:
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_ADV_ENABLE, &status,
@@ -3271,6 +3319,18 @@ static int cmd_set_scan_enable(struct btdev *dev, const void *data, uint8_t len)
 
 	if (dev->le_scan_enable == cmd->enable) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
+
+	/* If LE_Scan_Enable is set to 0x01, the scanning parameters'
+	 * Own_Address_Type parameter is set to 0x01 or 0x03, and the random
+	 * address for the device has not been initialized, the Controller shall
+	 * return the error code Invalid HCI Command Parameters (0x12).
+	 */
+	if ((dev->le_scan_own_addr_type == 0x01 ||
+			dev->le_scan_own_addr_type == 0x03) &&
+			!bacmp((bdaddr_t *)dev->random_addr, BDADDR_ANY)) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
 		goto done;
 	}
 
@@ -3584,9 +3644,6 @@ static int cmd_remove_wl(struct btdev *dev, const void *data, uint8_t len)
 
 	return 0;
 }
-
-#define RL_ADDR_EQUAL(_rl, _type, _addr) \
-	(_rl->type == _type && !bacmp(&_rl->addr, (bdaddr_t *)_addr))
 
 static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 {
@@ -4537,20 +4594,6 @@ static bool ext_adv_timeout(void *user_data)
 	return false;
 }
 
-static struct btdev_rl *rl_find(struct btdev *dev, uint8_t type, uint8_t *addr)
-{
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(dev->le_rl); i++) {
-		struct btdev_rl *rl = &dev->le_rl[i];
-
-		if (RL_ADDR_EQUAL(rl, type, addr))
-			return rl;
-	}
-
-	return NULL;
-}
-
 static int cmd_set_ext_adv_enable(struct btdev *dev, const void *data,
 							uint8_t len)
 {
@@ -4818,14 +4861,28 @@ static int cmd_set_ext_scan_enable(struct btdev *dev, const void *data,
 	const struct bt_hci_cmd_le_set_ext_scan_enable *cmd = data;
 	uint8_t status;
 
-	if (dev->le_scan_enable == cmd->enable)
+	if (dev->le_scan_enable == cmd->enable) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
-	else {
-		dev->le_scan_enable = cmd->enable;
-		dev->le_filter_dup = cmd->filter_dup;
-		status = BT_HCI_ERR_SUCCESS;
+		goto done;
 	}
 
+	/* If Enable is set to 0x01, the scanning parameters' Own_Address_Type
+	 * parameter is set to 0x01 or 0x03, and the random address for the
+	 * device has not been initialized, the Controller shall return the
+	 * error code Invalid HCI Command Parameters (0x12).
+	 */
+	if ((dev->le_scan_own_addr_type == 0x01 ||
+			dev->le_scan_own_addr_type == 0x03) &&
+			!bacmp((bdaddr_t *)dev->random_addr, BDADDR_ANY)) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	dev->le_scan_enable = cmd->enable;
+	dev->le_filter_dup = cmd->filter_dup;
+	status = BT_HCI_ERR_SUCCESS;
+
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_SCAN_ENABLE, &status,
 							sizeof(status));
 
