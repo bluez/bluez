@@ -302,6 +302,7 @@ struct generic_data {
 	bool expect_sc_key;
 	bool force_power_off;
 	bool addr_type_avail;
+	bool fail_tolerant;
 	uint8_t addr_type;
 	bool set_adv;
 	const uint8_t *adv_data;
@@ -4063,6 +4064,7 @@ static const struct generic_data get_conn_info_power_off_test = {
 	.force_power_off = true,
 	.expect_status = MGMT_STATUS_NOT_POWERED,
 	.expect_func = get_conn_info_expect_param_power_off_func,
+	.fail_tolerant = true,
 };
 
 static const uint8_t load_conn_param_nval_1[16] = { 0x12, 0x11 };
@@ -7038,8 +7040,13 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 			test->send_opcode, mgmt_errstr(status), status);
 
 	if (status != test->expect_status) {
-		tester_test_abort();
-		return;
+		if (!test->fail_tolerant || !!status != !!test->expect_status) {
+			tester_test_abort();
+			return;
+		}
+
+		tester_warn("Unexpected status got %d expected %d",
+						status, test->expect_status);
 	}
 
 	if (!test->expect_ignore_param) {
