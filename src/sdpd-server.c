@@ -146,16 +146,12 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		sdp_svcdb_collect_all(sk);
-		return FALSE;
-	}
+	if (cond & (G_IO_HUP | G_IO_ERR))
+		goto cleanup;
 
 	len = recv(sk, &hdr, sizeof(sdp_pdu_hdr_t), MSG_PEEK);
-	if (len < 0 || (unsigned int) len < sizeof(sdp_pdu_hdr_t)) {
-		sdp_svcdb_collect_all(sk);
-		return FALSE;
-	}
+	if (len < 0 || (unsigned int) len < sizeof(sdp_pdu_hdr_t))
+		goto cleanup;
 
 	size = sizeof(sdp_pdu_hdr_t) + ntohs(hdr.plen);
 	buf = malloc(size);
@@ -168,14 +164,18 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 	 * inside handle_request() in order to produce ErrorResponse.
 	 */
 	if (len <= 0) {
-		sdp_svcdb_collect_all(sk);
 		free(buf);
-		return FALSE;
+		goto cleanup;
 	}
 
 	handle_request(sk, buf, len);
 
 	return TRUE;
+
+cleanup:
+	sdp_svcdb_collect_all(sk);
+	sdp_cstate_cleanup(sk);
+	return FALSE;
 }
 
 static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer data)

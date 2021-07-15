@@ -235,7 +235,7 @@ static gboolean client_handler(GIOChannel *channel, GIOCondition cond,
 	tester_monitor('>', 0x0000, 0x0001, buf, len);
 
 	g_assert(len > 0);
-	g_assert((size_t) len == rsp_pdu->raw_size + rsp_pdu->cont_len);
+	g_assert_cmpuint(len, ==, rsp_pdu->raw_size + rsp_pdu->cont_len);
 
 	g_assert(memcmp(buf, rsp_pdu->raw_data,	rsp_pdu->raw_size) == 0);
 

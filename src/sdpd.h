@@ -27,7 +27,10 @@ typedef struct request {
 	int      flags;
 	uint8_t  *buf;
 	int      len;
+	uint8_t  opcode;
 } sdp_req_t;
+
+void sdp_cstate_cleanup(int sock);
 
 void handle_internal_request(int sk, int mtu, void *data, int len);
 void handle_request(int sk, uint8_t *data, int len);

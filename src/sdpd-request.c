@@ -42,48 +42,78 @@ typedef struct {
 
 #define MIN(x, y) ((x) < (y)) ? (x): (y)
 
-typedef struct _sdp_cstate_list sdp_cstate_list_t;
+typedef struct sdp_cont_info sdp_cont_info_t;
 
-struct _sdp_cstate_list {
-	sdp_cstate_list_t *next;
+struct sdp_cont_info {
+	int sock;
+	uint8_t opcode;
 	uint32_t timestamp;
 	sdp_buf_t buf;
 };
 
-static sdp_cstate_list_t *cstates;
+static sdp_list_t *cstates;
 
-/* FIXME: should probably remove it when it's found */
-static sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
+static int cstate_match(const void *data, const void *user_data)
 {
-	sdp_cstate_list_t *p;
+	const sdp_cont_info_t *cinfo = data;
+	const sdp_cont_state_t *cstate = user_data;
 
-	for (p = cstates; p; p = p->next) {
-		/* Check timestamp */
-		if (p->timestamp != cstate->timestamp)
-			continue;
-
-		/* Check if requesting more than available */
-		if (cstate->cStateValue.maxBytesSent < p->buf.data_size)
-			return &p->buf;
-	}
-
-	return 0;
+	/* Check timestamp */
+	return cinfo->timestamp - cstate->timestamp;
 }
 
-static uint32_t sdp_cstate_alloc_buf(sdp_buf_t *buf)
+static void sdp_cont_info_free(sdp_cont_info_t *cinfo)
 {
-	sdp_cstate_list_t *cstate = malloc(sizeof(sdp_cstate_list_t));
+	if (!cinfo)
+		return;
+
+	cstates = sdp_list_remove(cstates, cinfo);
+	free(cinfo->buf.data);
+	free(cinfo);
+}
+
+static sdp_cont_info_t *sdp_get_cont_info(sdp_req_t *req,
+						sdp_cont_state_t *cstate)
+{
+	sdp_list_t *list;
+
+	list = sdp_list_find(cstates, cstate, cstate_match);
+	if (list) {
+		sdp_cont_info_t *cinfo = list->data;
+
+		if (cinfo->opcode == req->opcode)
+			return cinfo;
+
+		/* Cleanup continuation if the opcode doesn't match since its
+		 * response buffer shall only be valid for the original requests
+		 */
+		sdp_cont_info_free(cinfo);
+		return NULL;
+	}
+
+	/* Cleanup cstates if no continuation info could be found */
+	sdp_cstate_cleanup(req->sock);
+
+	return NULL;
+}
+
+static uint32_t sdp_cstate_alloc_buf(sdp_req_t *req, sdp_buf_t *buf)
+{
+	sdp_cont_info_t *cinfo = malloc(sizeof(sdp_cont_info_t));
 	uint8_t *data = malloc(buf->data_size);
 
 	memcpy(data, buf->data, buf->data_size);
-	memset((char *)cstate, 0, sizeof(sdp_cstate_list_t));
-	cstate->buf.data = data;
-	cstate->buf.data_size = buf->data_size;
-	cstate->buf.buf_size = buf->data_size;
-	cstate->timestamp = sdp_get_time();
-	cstate->next = cstates;
-	cstates = cstate;
-	return cstate->timestamp;
+	memset(cinfo, 0, sizeof(sdp_cont_info_t));
+	cinfo->buf.data = data;
+	cinfo->buf.data_size = buf->data_size;
+	cinfo->buf.buf_size = buf->data_size;
+	cinfo->timestamp = sdp_get_time();
+	cinfo->sock = req->sock;
+	cinfo->opcode = req->opcode;
+
+	cstates = sdp_list_append(cstates, cinfo);
+
+	return cinfo->timestamp;
 }
 
 /* Additional values for checking datatype (not in spec) */
@@ -274,14 +304,16 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 	return length;
 }
 
-static int sdp_cstate_get(uint8_t *buffer, size_t len,
-						sdp_cont_state_t **cstate)
+static int sdp_cstate_get(sdp_req_t *req, uint8_t *buffer, size_t len,
+			sdp_cont_state_t **cstate, sdp_cont_info_t **cinfo)
 {
 	uint8_t cStateSize = *buffer;
 
 	SDPDBG("Continuation State size : %d", cStateSize);
 
 	if (cStateSize == 0) {
+		/* Cleanup cstates if request doesn't contain a cstate */
+		sdp_cstate_cleanup(req->sock);
 		*cstate = NULL;
 		return 0;
 	}
@@ -305,6 +337,8 @@ static int sdp_cstate_get(uint8_t *buffer, size_t len,
 
 	SDPDBG("Cstate TS : 0x%x", (*cstate)->timestamp);
 	SDPDBG("Bytes sent : %d", (*cstate)->cStateValue.maxBytesSent);
+
+	*cinfo = sdp_get_cont_info(req, *cstate);
 
 	return 0;
 }
@@ -360,6 +394,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 	uint16_t expected, actual, rsp_count = 0;
 	uint8_t dtd;
 	sdp_cont_state_t *cstate = NULL;
+	sdp_cont_info_t *cinfo = NULL;
 	uint8_t *pCacheBuffer = NULL;
 	int handleSize = 0;
 	uint32_t cStateId = 0;
@@ -399,9 +434,9 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	/*
 	 * Check if continuation state exists, if yes attempt
-	 * to get rsp remainder from cache, else send error
+	 * to get rsp remainder from continuation info, else send error
 	 */
-	if (sdp_cstate_get(pdata, data_left, &cstate) < 0) {
+	if (sdp_cstate_get(req, pdata, data_left, &cstate, &cinfo) < 0) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
 	}
@@ -451,7 +486,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 		if (rsp_count > actual) {
 			/* cache the rsp and generate a continuation state */
-			cStateId = sdp_cstate_alloc_buf(buf);
+			cStateId = sdp_cstate_alloc_buf(req, buf);
 			/*
 			 * subtract handleSize since we now send only
 			 * a subset of handles
@@ -459,6 +494,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 			buf->data_size -= handleSize;
 		} else {
 			/* NULL continuation state */
+			sdp_cont_info_free(cinfo);
 			sdp_set_cstate_pdu(buf, NULL);
 		}
 	}
@@ -468,13 +504,15 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		short lastIndex = 0;
 
 		if (cstate) {
-			/*
-			 * Get the previous sdp_cont_state_t and obtain
-			 * the cached rsp
-			 */
-			sdp_buf_t *pCache = sdp_get_cached_rsp(cstate);
-			if (pCache) {
-				pCacheBuffer = pCache->data;
+			if (cinfo) {
+				/* Check if requesting more than available */
+				if (cstate->cStateValue.maxBytesSent >=
+						cinfo->buf.data_size) {
+					status = SDP_INVALID_CSTATE;
+					goto done;
+				}
+
+				pCacheBuffer = cinfo->buf.data;
 				/* get the rsp_count from the cached buffer */
 				rsp_count = get_be16(pCacheBuffer);
 
@@ -518,6 +556,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		if (i == rsp_count) {
 			/* set "null" continuationState */
 			sdp_set_cstate_pdu(buf, NULL);
+			sdp_cont_info_free(cinfo);
 		} else {
 			/*
 			 * there's more: set lastIndexSent to
@@ -540,6 +579,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 done:
 	free(cstate);
+
 	if (pattern)
 		sdp_list_free(pattern, free);
 
@@ -619,15 +659,21 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, sdp_buf_t *buf)
 }
 
 /* Build cstate response */
-static int sdp_cstate_rsp(sdp_cont_state_t *cstate, sdp_buf_t *buf,
-							uint16_t max)
+static int sdp_cstate_rsp(sdp_cont_info_t *cinfo, sdp_cont_state_t *cstate,
+					sdp_buf_t *buf, uint16_t max)
 {
-	/* continuation State exists -> get from cache */
-	sdp_buf_t *cache = sdp_get_cached_rsp(cstate);
+	sdp_buf_t *cache;
 	uint16_t sent;
 
-	if (!cache)
+	if (!cinfo)
 		return 0;
+
+	if (cstate->cStateValue.maxBytesSent >= cinfo->buf.data_size) {
+		sdp_cont_info_free(cinfo);
+		return 0;
+	}
+
+	cache = &cinfo->buf;
 
 	sent = MIN(max, cache->data_size - cstate->cStateValue.maxBytesSent);
 	memcpy(buf->data, cache->data + cstate->cStateValue.maxBytesSent, sent);
@@ -637,8 +683,10 @@ static int sdp_cstate_rsp(sdp_cont_state_t *cstate, sdp_buf_t *buf,
 	SDPDBG("Response size : %d sending now : %d bytes sent so far : %d",
 		cache->data_size, sent, cstate->cStateValue.maxBytesSent);
 
-	if (cstate->cStateValue.maxBytesSent == cache->data_size)
+	if (cstate->cStateValue.maxBytesSent == cache->data_size) {
+		sdp_cont_info_free(cinfo);
 		return sdp_set_cstate_pdu(buf, NULL);
+	}
 
 	return sdp_set_cstate_pdu(buf, cstate);
 }
@@ -652,6 +700,7 @@ static int sdp_cstate_rsp(sdp_cont_state_t *cstate, sdp_buf_t *buf,
 static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	sdp_cont_state_t *cstate = NULL;
+	sdp_cont_info_t *cinfo = NULL;
 	short cstate_size = 0;
 	sdp_list_t *seq = NULL;
 	uint8_t dtd = 0;
@@ -708,7 +757,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	 * if continuation state exists, attempt
 	 * to get rsp remainder from cache, else send error
 	 */
-	if (sdp_cstate_get(pdata, data_left, &cstate) < 0) {
+	if (sdp_cstate_get(req, pdata, data_left, &cstate, &cinfo) < 0) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
 	}
@@ -737,7 +786,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	buf->buf_size -= sizeof(uint16_t);
 
 	if (cstate) {
-		cstate_size = sdp_cstate_rsp(cstate, buf, max_rsp_size);
+		cstate_size = sdp_cstate_rsp(cinfo, cstate, buf, max_rsp_size);
 		if (!cstate_size) {
 			status = SDP_INVALID_CSTATE;
 			error("NULL cache buffer and non-NULL continuation state");
@@ -749,7 +798,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 			sdp_cont_state_t newState;
 
 			memset((char *)&newState, 0, sizeof(sdp_cont_state_t));
-			newState.timestamp = sdp_cstate_alloc_buf(buf);
+			newState.timestamp = sdp_cstate_alloc_buf(req, buf);
 			/*
 			 * Reset the buffer size to the maximum expected and
 			 * set the sdp_cont_state_t
@@ -793,6 +842,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	int scanned, rsp_count = 0;
 	sdp_list_t *pattern = NULL, *seq = NULL, *svcList;
 	sdp_cont_state_t *cstate = NULL;
+	sdp_cont_info_t *cinfo = NULL;
 	short cstate_size = 0;
 	uint8_t dtd = 0;
 	sdp_buf_t tmpbuf;
@@ -852,7 +902,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	 * if continuation state exists attempt
 	 * to get rsp remainder from cache, else send error
 	 */
-	if (sdp_cstate_get(pdata, data_left, &cstate) < 0) {
+	if (sdp_cstate_get(req, pdata, data_left, &cstate, &cinfo) < 0) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
 	}
@@ -906,7 +956,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 			sdp_cont_state_t newState;
 
 			memset((char *)&newState, 0, sizeof(sdp_cont_state_t));
-			newState.timestamp = sdp_cstate_alloc_buf(buf);
+			newState.timestamp = sdp_cstate_alloc_buf(req, buf);
 			/*
 			 * Reset the buffer size to the maximum expected and
 			 * set the sdp_cont_state_t
@@ -917,7 +967,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		} else
 			cstate_size = sdp_set_cstate_pdu(buf, NULL);
 	} else {
-		cstate_size = sdp_cstate_rsp(cstate, buf, max);
+		cstate_size = sdp_cstate_rsp(cinfo, cstate, buf, max);
 		if (!cstate_size) {
 			status = SDP_INVALID_CSTATE;
 			SDPDBG("Non-null continuation state, but null cache buffer");
@@ -974,6 +1024,9 @@ static void process_request(sdp_req_t *req)
 		status = SDP_INVALID_PDU_SIZE;
 		goto send_rsp;
 	}
+
+	req->opcode = reqhdr->pdu_id;
+
 	switch (reqhdr->pdu_id) {
 	case SDP_SVC_SEARCH_REQ:
 		SDPDBG("Got a svc srch req");
@@ -1020,6 +1073,8 @@ static void process_request(sdp_req_t *req)
 
 send_rsp:
 	if (status) {
+		/* Cleanup cstates on error */
+		sdp_cstate_cleanup(req->sock);
 		rsphdr->pdu_id = SDP_ERROR_RSP;
 		put_be16(status, rsp.data);
 		rsp.data_size = sizeof(uint16_t);
@@ -1107,4 +1162,21 @@ void handle_request(int sk, uint8_t *data, int len)
 	req.len  = len;
 
 	process_request(&req);
+}
+
+void sdp_cstate_cleanup(int sock)
+{
+	sdp_list_t *list;
+
+	/* Remove any cinfo for the client */
+	for (list = cstates; list;) {
+		sdp_cont_info_t *cinfo = list->data;
+
+		list = list->next;
+
+		if (cinfo->sock != sock)
+			continue;
+
+		sdp_cont_info_free(cinfo);
+	}
 }
