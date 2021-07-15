@@ -10607,6 +10607,7 @@ static void le_ext_adv_report_evt(const void *data, uint8_t size)
 		print_field("  Data length: 0x%2.2x", report->data_len);
 		data += sizeof(struct bt_hci_le_ext_adv_report);
 		packet_hexdump(data, report->data_len);
+		print_eir(data, report->data_len, true);
 		data += report->data_len;
 	}
 }
