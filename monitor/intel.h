@@ -15,4 +15,4 @@ struct vendor_ocf;
 struct vendor_evt;
 
 const struct vendor_ocf *intel_vendor_ocf(uint16_t ocf);
-const struct vendor_evt *intel_vendor_evt(uint8_t evt);
+const struct vendor_evt *intel_vendor_evt(const void *data, int *consumed_size);

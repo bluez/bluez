@@ -9371,9 +9371,14 @@ static const struct vendor_ocf *current_vendor_ocf(uint16_t ocf)
 	return NULL;
 }
 
-static const struct vendor_evt *current_vendor_evt(uint8_t evt)
+static const struct vendor_evt *current_vendor_evt(const void *data,
+							int *consumed_size)
 {
 	uint16_t manufacturer, msft_opcode;
+	uint8_t evt = *((const uint8_t *) data);
+
+	/* A regular vendor event consumes 1 byte. */
+	*consumed_size = 1;
 
 	if (index_current < MAX_INDEX) {
 		manufacturer = index_list[index_current].manufacturer;
@@ -9388,7 +9393,7 @@ static const struct vendor_evt *current_vendor_evt(uint8_t evt)
 
 	switch (manufacturer) {
 	case 2:
-		return intel_vendor_evt(evt);
+		return intel_vendor_evt(data, consumed_size);
 	case 15:
 		return broadcom_vendor_evt(evt);
 	}
@@ -11007,10 +11012,10 @@ static void le_meta_event_evt(const void *data, uint8_t size)
 
 static void vendor_evt(const void *data, uint8_t size)
 {
-	uint8_t subevent = *((const uint8_t *) data);
 	struct subevent_data vendor_data;
 	char vendor_str[150];
-	const struct vendor_evt *vnd = current_vendor_evt(subevent);
+	int consumed_size;
+	const struct vendor_evt *vnd = current_vendor_evt(data, &consumed_size);
 
 	if (vnd) {
 		const char *str = current_vendor_str();
@@ -11021,12 +11026,13 @@ static void vendor_evt(const void *data, uint8_t size)
 			vendor_data.str = vendor_str;
 		} else
 			vendor_data.str = vnd->str;
-		vendor_data.subevent = subevent;
+		vendor_data.subevent = vnd->evt;
 		vendor_data.func = vnd->evt_func;
 		vendor_data.size = vnd->evt_size;
 		vendor_data.fixed = vnd->evt_fixed;
 
-		print_subevent(&vendor_data, data + 1, size - 1);
+		print_subevent(&vendor_data, data + consumed_size,
+							size - consumed_size);
 	} else {
 		uint16_t manufacturer;
 
