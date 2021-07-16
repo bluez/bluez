@@ -2998,8 +2998,21 @@ static int cmd_set_random_address(struct btdev *dev, const void *data,
 	const struct bt_hci_cmd_le_set_random_address *cmd = data;
 	uint8_t status;
 
+	/* If the Host issues this command when any of advertising
+	 * (created using legacy advertising commands), scanning, or initiating
+	 * are enabled, the Controller shall return the error code
+	 * Command Disallowed (0x0C).
+	 */
+	if (dev->le_scan_enable || (dev->le_adv_enable &&
+					queue_isempty(dev->le_ext_adv))) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
+
 	memcpy(dev->random_addr, cmd->addr, 6);
 	status = BT_HCI_ERR_SUCCESS;
+
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_RANDOM_ADDRESS, &status,
 						sizeof(status));
 
