@@ -4143,7 +4143,7 @@ static void create_conn_cmd(const void *data, uint8_t size)
 		str = "Stay master";
 		break;
 	case 0x01:
-		str = "Allow slave";
+		str = "Master Or Slave";
 		break;
 	default:
 		str = "Reserved";
