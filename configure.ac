@@ -422,6 +422,15 @@ AC_ARG_WITH([phonebook], AC_HELP_STRING([--with-phonebook=PLUGIN],
 if (test -z "${plugin_phonebook}"); then
 	plugin_phonebook=dummy
 fi
+
+if (test "${plugin_phonebook}" = "ebook"); then
+	PKG_CHECK_MODULES(LIBEBOOK, [libebook-1.2 >= 3.3], dummy=yes, AC_MSG_ERROR(libebook >= 3.3 is required))
+	AC_SUBST(LIBEBOOK_CFLAGS)
+	AC_SUBST(LIBEBOOK_LIBS)
+	PKG_CHECK_MODULES(LIBEDATESERVER, [libedataserver-1.2 >= 3.3], dummy=yes, AC_MSG_ERROR(libedataserver >= 3.3 is required))
+	AC_SUBST(LIBEDATESERVER_CFLAGS)
+	AC_SUBST(LIBEDATESERVER_LIBS)
+fi
 AC_SUBST(PLUGIN_PHONEBOOK, [${plugin_phonebook}])
 
 AC_OUTPUT(Makefile src/bluetoothd.rst lib/bluez.pc mesh/bluetooth-meshd.rst)
