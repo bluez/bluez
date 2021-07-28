@@ -699,6 +699,18 @@ static void gap_appearance_read_cb(struct gatt_db_attribute *attrib,
 	gatt_db_attribute_read_result(attrib, id, error, value, len);
 }
 
+static void gap_car_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	uint8_t value = 0x01;
+
+	DBG("GAP Central Address Resolution read request\n");
+
+	gatt_db_attribute_read_result(attrib, id, 0, &value, sizeof(value));
+}
+
 static sdp_record_t *record_new(uuid_t *uuid, uint16_t start, uint16_t end)
 {
 	sdp_list_t *svclass_id, *apseq, *proto[2], *root, *aproto;
@@ -820,7 +832,7 @@ static void populate_gap_service(struct btd_gatt_database *database)
 
 	/* Add the GAP service */
 	bt_uuid16_create(&uuid, UUID_GAP);
-	service = gatt_db_add_service(database->db, &uuid, true, 5);
+	service = gatt_db_add_service(database->db, &uuid, true, 7);
 
 	/*
 	 * Device Name characteristic.
@@ -841,6 +853,17 @@ static void populate_gap_service(struct btd_gatt_database *database)
 							gap_appearance_read_cb,
 							NULL, database);
 	gatt_db_attribute_set_fixed_length(attrib, 2);
+
+	/*
+	 * Central Address Resolution characteristic.
+	 */
+	bt_uuid16_create(&uuid, GATT_CHARAC_CAR);
+	attrib = gatt_db_service_add_characteristic(service, &uuid,
+							BT_ATT_PERM_READ,
+							BT_GATT_CHRC_PROP_READ,
+							gap_car_read_cb,
+							NULL, database);
+	gatt_db_attribute_set_fixed_length(attrib, 1);
 
 	gatt_db_service_set_active(service, true);
 
@@ -3853,13 +3876,7 @@ void btd_gatt_database_restore_svc_chng_ccc(struct btd_gatt_database *database)
 	 */
 	btd_adapter_for_each_device(database->adapter, restore_state, database);
 
-	/* This needs to be updated (probably to 0x0001) if we ever change
-	 * core services
-	 *
-	 * TODO we could also store this info (along with CCC value) and be able
-	 * to send 0x0001-0xffff only once per device.
-	 */
-	put_le16(0x000a, value);
+	put_le16(0x0001, value);
 	put_le16(0xffff, value + 2);
 
 	send_notification_to_devices(database, handle, value, sizeof(value),
