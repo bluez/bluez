@@ -1348,9 +1348,9 @@ static void foreach_in_range(void *data, void *user_data)
 		return;
 
 	if (!foreach_data->attr) {
-		if (svc_start < foreach_data->start ||
-					svc_start > foreach_data->end)
+		if (svc_start < foreach_data->start)
 			return;
+
 		return foreach_service_in_range(data, user_data);
 	}
 
