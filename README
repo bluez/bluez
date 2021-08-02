@@ -20,6 +20,9 @@ In order to compile Bluetooth utilities you need following software packages:
 		sudo apt-get build-dep bluez
 		./bootstrap
 
+        On Ubuntu (20.04) you also need Python Doc utilities:
+                sudo apt-get install python-docutils
+
 To configure run:
 	./configure --prefix=/usr --mandir=/usr/share/man \
 				--sysconfdir=/etc --localstatedir=/var
