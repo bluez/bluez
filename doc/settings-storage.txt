@@ -36,6 +36,7 @@ root, named based on the address, which contains:
 
  - a settings file for the local adapter
  - an attributes file containing attributes of supported LE services
+ - an admin policy file containing current values of admin policies
  - a cache directory containing:
     - one file per device, named by remote device address, which contains
     device name
@@ -50,6 +51,7 @@ So the directory structure is:
     /var/lib/bluetooth/<adapter address>/
         ./settings
         ./attributes
+	./admin_policy_settings
         ./cache/
             ./<remote device address>
             ./<remote device address>
@@ -138,6 +140,24 @@ Sample:
   [6]
   UUID=00002a00-0000-1000-8000-00805f9b34fb
   Value=4578616D706C6520446576696365
+
+
+Admin Policy file format
+======================
+
+The admin policy file stores the current value of each admin policy.
+
+[General] group contains:
+
+  ServiceAllowlist	List of		List of service UUID allowed by
+			strings		adapter in 128-bits format, separated
+					by ','. Default is empty.
+
+Sample:
+  [General]
+  ServiceAllowlist=
+
+
 
 
 CCC file format
