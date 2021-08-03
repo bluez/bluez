@@ -41,6 +41,7 @@ struct btd_service {
 	void			*user_data;
 	btd_service_state_t	state;
 	int			err;
+	bool			is_allowed;
 };
 
 struct service_state_callback {
@@ -133,6 +134,7 @@ struct btd_service *service_create(struct btd_device *device,
 	service->device = device; /* Weak ref */
 	service->profile = profile;
 	service->state = BTD_SERVICE_STATE_UNAVAILABLE;
+	service->is_allowed = true;
 
 	return service;
 }
@@ -185,6 +187,12 @@ int service_accept(struct btd_service *service)
 
 	if (!service->profile->accept)
 		return -ENOSYS;
+
+	if (!service->is_allowed) {
+		info("service %s is not allowed",
+						service->profile->remote_uuid);
+		return -ECONNABORTED;
+	}
 
 	err = service->profile->accept(service);
 	if (!err)
@@ -243,6 +251,12 @@ int btd_service_connect(struct btd_service *service)
 		return -EALREADY;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		return -EBUSY;
+	}
+
+	if (!service->is_allowed) {
+		info("service %s is not allowed",
+						service->profile->remote_uuid);
+		return -ECONNABORTED;
 	}
 
 	err = profile->connect(service);
@@ -359,6 +373,25 @@ bool btd_service_remove_state_cb(unsigned int id)
 	}
 
 	return false;
+}
+
+void btd_service_set_allowed(struct btd_service *service, bool allowed)
+{
+	if (allowed == service->is_allowed)
+		return;
+
+	service->is_allowed = allowed;
+
+	if (!allowed && (service->state == BTD_SERVICE_STATE_CONNECTING ||
+			service->state == BTD_SERVICE_STATE_CONNECTED)) {
+		btd_service_disconnect(service);
+		return;
+	}
+}
+
+bool btd_service_is_allowed(struct btd_service *service)
+{
+	return service->is_allowed;
 }
 
 void btd_service_connecting_complete(struct btd_service *service, int err)
