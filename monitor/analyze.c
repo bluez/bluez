@@ -41,9 +41,93 @@ struct hci_dev {
 	unsigned long ctrl_msg;
 	unsigned long unknown;
 	uint16_t manufacturer;
+	struct queue *conn_list;
+};
+
+struct hci_conn {
+	uint16_t handle;
+	uint8_t type;
+	uint8_t bdaddr[6];
+	bool setup_seen;
+	bool terminated;
+	unsigned long num;
 };
 
 static struct queue *dev_list;
+
+static void conn_destroy(void *data)
+{
+	struct hci_conn *conn = data;
+	const char *str;
+
+	switch (conn->type) {
+	case 0x00:
+		str = "ACL";
+		break;
+	case 0x01:
+		str = "SCO";
+		break;
+	case 0x02:
+		str = "ISO";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+
+	printf("  Found %s connection with handle %u\n", str, conn->handle);
+	printf("    BD_ADDR %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
+			conn->bdaddr[5], conn->bdaddr[4], conn->bdaddr[3],
+			conn->bdaddr[2], conn->bdaddr[1], conn->bdaddr[0]);
+	if (!conn->setup_seen)
+		printf("    Connection setup missing\n");
+	printf("    %lu packets\n", conn->num);
+
+	free(conn);
+}
+
+static struct hci_conn *conn_alloc(struct hci_dev *dev, uint16_t handle,
+								uint8_t type)
+{
+	struct hci_conn *conn;
+
+	conn = new0(struct hci_conn, 1);
+
+	conn->handle = handle;
+	conn->type = type;
+
+	return conn;
+}
+
+static bool conn_match_handle(const void *a, const void *b)
+{
+	const struct hci_conn *conn = a;
+	uint16_t handle = PTR_TO_UINT(b);
+
+	return (conn->handle == handle && !conn->terminated);
+}
+
+static struct hci_conn *conn_lookup(struct hci_dev *dev, uint16_t handle)
+{
+	return queue_find(dev->conn_list, conn_match_handle,
+						UINT_TO_PTR(handle));
+}
+
+static struct hci_conn *conn_lookup_type(struct hci_dev *dev, uint16_t handle,
+								uint8_t type)
+{
+	struct hci_conn *conn;
+
+	conn = queue_find(dev->conn_list, conn_match_handle,
+						UINT_TO_PTR(handle));
+	if (!conn || conn->type != type) {
+		conn = conn_alloc(dev, handle, type);
+
+		queue_push_tail(dev->conn_list, conn);
+	}
+
+	return conn;
+}
 
 static void dev_destroy(void *data)
 {
@@ -81,6 +165,7 @@ static void dev_destroy(void *data)
 	printf("  %lu user logs\n", dev->user_log);
 	printf("  %lu control messages \n", dev->ctrl_msg);
 	printf("  %lu unknown opcodes\n", dev->unknown);
+	queue_destroy(dev->conn_list, conn_destroy);
 	printf("\n");
 
 	free(dev);
@@ -94,6 +179,8 @@ static struct hci_dev *dev_alloc(uint16_t index)
 
 	dev->index = index;
 	dev->manufacturer = 0xffff;
+
+	dev->conn_list = queue_new();
 
 	return dev;
 }
@@ -164,12 +251,49 @@ static void command_pkt(struct timeval *tv, uint16_t index,
 	dev->num_cmd++;
 }
 
+static void evt_conn_complete(struct hci_dev *dev, struct timeval *tv,
+					const void *data, uint16_t size)
+{
+	const struct bt_hci_evt_conn_complete *evt = data;
+	struct hci_conn *conn;
+
+	data += sizeof(*evt);
+	size -= sizeof(*evt);
+
+	if (evt->status)
+		return;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), 0x00);
+	if (!conn)
+		return;
+
+	memcpy(conn->bdaddr, evt->bdaddr, 6);
+	conn->setup_seen = true;
+}
+
+static void evt_disconnect_complete(struct hci_dev *dev, struct timeval *tv,
+					const void *data, uint16_t size)
+{
+	const struct bt_hci_evt_disconnect_complete *evt = data;
+	struct hci_conn *conn;
+
+	data += sizeof(*evt);
+	size -= sizeof(*evt);
+
+	if (evt->status)
+		return;
+
+	conn = conn_lookup(dev, le16_to_cpu(evt->handle));
+	if (!conn)
+		return;
+
+	conn->terminated = true;
+}
+
 static void rsp_read_bd_addr(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
 	const struct bt_hci_rsp_read_bd_addr *rsp = data;
-
-	printf("Read BD Addr event with status 0x%2.2x\n", rsp->status);
 
 	if (rsp->status)
 		return;
@@ -195,6 +319,18 @@ static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 	}
 }
 
+static void evt_le_meta_event(struct hci_dev *dev, struct timeval *tv,
+					const void *data, uint16_t size)
+{
+	uint8_t subtype = get_u8(data);
+
+	data += sizeof(subtype);
+	size -= sizeof(subtype);
+
+	switch (subtype) {
+	}
+}
+
 static void event_pkt(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
@@ -211,8 +347,17 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 	dev->num_evt++;
 
 	switch (hdr->evt) {
+	case BT_HCI_EVT_CONN_COMPLETE:
+		evt_conn_complete(dev, tv, data, size);
+		break;
+	case BT_HCI_EVT_DISCONNECT_COMPLETE:
+		evt_disconnect_complete(dev, tv, data, size);
+		break;
 	case BT_HCI_EVT_CMD_COMPLETE:
 		evt_cmd_complete(dev, tv, data, size);
+		break;
+	case BT_HCI_EVT_LE_META_EVENT:
+		evt_le_meta_event(dev, tv, data, size);
 		break;
 	}
 }
@@ -222,6 +367,7 @@ static void acl_pkt(struct timeval *tv, uint16_t index,
 {
 	const struct bt_hci_acl_hdr *hdr = data;
 	struct hci_dev *dev;
+	struct hci_conn *conn;
 
 	data += sizeof(*hdr);
 	size -= sizeof(*hdr);
@@ -231,6 +377,12 @@ static void acl_pkt(struct timeval *tv, uint16_t index,
 		return;
 
 	dev->num_acl++;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff, 0x00);
+	if (!conn)
+		return;
+
+	conn->num++;
 }
 
 static void sco_pkt(struct timeval *tv, uint16_t index,
