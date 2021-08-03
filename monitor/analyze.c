@@ -381,7 +381,6 @@ void analyze_trace(const char *path)
 			user_log(&tv, index, buf, pktlen);
 			break;
 		default:
-			fprintf(stderr, "Unknown opcode %u\n", opcode);
 			unknown_opcode(&tv, index, buf, pktlen);
 			break;
 		}
