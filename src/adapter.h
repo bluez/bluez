@@ -105,11 +105,19 @@ void btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 
 struct btd_adapter_driver {
 	const char *name;
-	int (*probe) (struct btd_adapter *adapter);
-	void (*remove) (struct btd_adapter *adapter);
-	void (*resume) (struct btd_adapter *adapter);
+	int (*probe)(struct btd_adapter *adapter);
+	void (*remove)(struct btd_adapter *adapter);
+	void (*resume)(struct btd_adapter *adapter);
+	void (*device_added)(struct btd_adapter *adapter,
+						struct btd_device *device);
+	void (*device_removed)(struct btd_adapter *adapter,
+						struct btd_device *device);
+	void (*device_resolved)(struct btd_adapter *adapter,
+						struct btd_device *device);
 };
 
+void device_resolved_drivers(struct btd_adapter *adapter,
+						struct btd_device *device);
 typedef void (*service_auth_cb) (DBusError *derr, void *user_data);
 
 void adapter_add_profile(struct btd_adapter *adapter, gpointer p);

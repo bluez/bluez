@@ -2633,6 +2633,8 @@ static void device_svc_resolved(struct btd_device *dev, uint8_t browse_type,
 							dev->svc_callbacks);
 		g_free(cb);
 	}
+
+	device_resolved_drivers(dev->adapter, dev);
 }
 
 static struct bonding_req *bonding_request_new(DBusMessage *msg,
