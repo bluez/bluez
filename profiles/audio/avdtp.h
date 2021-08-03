@@ -215,6 +215,8 @@ struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
 							uint8_t type,
 							GSList *caps,
 							bool delay_reporting);
+int avdtp_unregister_remote_sep(struct avdtp *session,
+						struct avdtp_remote_sep *rsep);
 
 typedef void (*avdtp_remote_sep_destroy_t)(void *user_data);
 

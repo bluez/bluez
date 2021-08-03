@@ -3364,6 +3364,19 @@ struct avdtp_remote_sep *avdtp_register_remote_sep(struct avdtp *session,
 	return sep;
 }
 
+int avdtp_unregister_remote_sep(struct avdtp *session,
+						struct avdtp_remote_sep *rsep)
+{
+	if (!session || !rsep)
+		return -EINVAL;
+
+	session->seps = g_slist_remove(session->seps, rsep);
+
+	sep_free(rsep);
+
+	return 0;
+}
+
 void avdtp_remote_sep_set_destroy(struct avdtp_remote_sep *sep, void *user_data,
 					avdtp_remote_sep_destroy_t destroy)
 {
