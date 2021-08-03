@@ -38,6 +38,7 @@ struct hci_dev {
 	unsigned long vendor_diag;
 	unsigned long system_note;
 	unsigned long user_log;
+	unsigned long ctrl_msg;
 	unsigned long unknown;
 	uint16_t manufacturer;
 };
@@ -78,6 +79,7 @@ static void dev_destroy(void *data)
 	printf("  %lu vendor diagnostics\n", dev->vendor_diag);
 	printf("  %lu system notes\n", dev->system_note);
 	printf("  %lu user logs\n", dev->user_log);
+	printf("  %lu control messages \n", dev->ctrl_msg);
 	printf("  %lu unknown opcodes\n", dev->unknown);
 	printf("\n");
 
@@ -301,6 +303,18 @@ static void user_log(struct timeval *tv, uint16_t index,
 	dev->user_log++;
 }
 
+static void ctrl_msg(struct timeval *tv, uint16_t index,
+					const void *data, uint16_t size)
+{
+	struct hci_dev *dev;
+
+	dev = dev_lookup(index);
+	if (!dev)
+		return;
+
+	dev->ctrl_msg++;
+}
+
 static void iso_pkt(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
@@ -397,6 +411,12 @@ void analyze_trace(const char *path)
 			break;
 		case BTSNOOP_OPCODE_USER_LOGGING:
 			user_log(&tv, index, buf, pktlen);
+			break;
+		case BTSNOOP_OPCODE_CTRL_OPEN:
+		case BTSNOOP_OPCODE_CTRL_CLOSE:
+		case BTSNOOP_OPCODE_CTRL_COMMAND:
+		case BTSNOOP_OPCODE_CTRL_EVENT:
+			ctrl_msg(&tv, index, buf, pktlen);
 			break;
 		case BTSNOOP_OPCODE_ISO_TX_PKT:
 		case BTSNOOP_OPCODE_ISO_RX_PKT:
