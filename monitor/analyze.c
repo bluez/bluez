@@ -112,8 +112,6 @@ static struct hci_dev *dev_lookup(uint16_t index)
 
 	dev = queue_find(dev_list, dev_match_index, UINT_TO_PTR(index));
 	if (!dev) {
-		fprintf(stderr, "Creating new device for unknown index\n");
-
 		dev = dev_alloc(index);
 
 		queue_push_tail(dev_list, dev);
