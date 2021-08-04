@@ -83,6 +83,7 @@ struct le_ext_adv {
 	uint8_t direct_addr[6];		/* peer_addr */
 	uint8_t filter_policy;		/* filter_policy */
 	uint8_t random_addr[6];
+	bool rpa;
 	uint8_t adv_data[252];
 	uint8_t adv_data_len;
 	uint8_t scan_data[252];
@@ -298,24 +299,42 @@ static inline struct btdev *find_btdev_by_bdaddr(const uint8_t *bdaddr)
 	return NULL;
 }
 
+static bool match_adv_addr(const void *data, const void *match_data)
+{
+	const struct le_ext_adv *adv = data;
+	const uint8_t *bdaddr = match_data;
+
+	return !memcmp(adv->random_addr, bdaddr, 6);
+}
+
 static inline struct btdev *find_btdev_by_bdaddr_type(const uint8_t *bdaddr,
 							uint8_t bdaddr_type)
 {
 	int i;
 
 	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
+		struct btdev *dev = btdev_list[i];
 		int cmp;
+		struct le_ext_adv *adv;
 
-		if (!btdev_list[i])
+		if (!dev)
 			continue;
 
 		if (bdaddr_type == 0x01)
-			cmp = memcmp(btdev_list[i]->random_addr, bdaddr, 6);
+			cmp = memcmp(dev->random_addr, bdaddr, 6);
 		else
-			cmp = memcmp(btdev_list[i]->bdaddr, bdaddr, 6);
+			cmp = memcmp(dev->bdaddr, bdaddr, 6);
 
 		if (!cmp)
-			return btdev_list[i];
+			return dev;
+
+		/* Check for instance own Random addresses */
+		if (bdaddr_type == 0x01) {
+			adv = queue_find(dev->le_ext_adv, match_adv_addr,
+								bdaddr);
+			if (adv)
+				return dev;
+		}
 	}
 
 	return NULL;
@@ -3235,12 +3254,13 @@ static void le_set_adv_enable_complete(struct btdev *btdev)
 #define RL_ADDR_EQUAL(_rl, _type, _addr) \
 	(_rl->type == _type && !bacmp(&_rl->addr, (bdaddr_t *)_addr))
 
-static struct btdev_rl *rl_find(struct btdev *dev, uint8_t type, uint8_t *addr)
+static const struct btdev_rl *rl_find(const struct btdev *dev, uint8_t type,
+							const uint8_t *addr)
 {
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(dev->le_rl); i++) {
-		struct btdev_rl *rl = &dev->le_rl[i];
+		const struct btdev_rl *rl = &dev->le_rl[i];
 
 		if (RL_ADDR_EQUAL(rl, type, addr))
 			return rl;
@@ -4291,11 +4311,39 @@ static int cmd_set_default_phy(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static const uint8_t *ext_adv_gen_rpa(const struct btdev *dev,
+						struct le_ext_adv *adv)
+{
+	const struct btdev_rl *rl;
+
+	if (adv->rpa)
+		return adv->random_addr;
+
+	/* Lookup for Local IRK in the resolving list */
+	rl = rl_find(dev, adv->direct_addr_type, adv->direct_addr);
+	if (rl) {
+		uint8_t rpa[6];
+
+		bt_crypto_random_bytes(dev->crypto, rpa + 3, 3);
+		rpa[5] &= 0x3f; /* Clear two most significant bits */
+		rpa[5] |= 0x40; /* Set second most significant bit */
+		bt_crypto_ah(dev->crypto, rl->peer_irk, rpa + 3, rpa);
+
+		memcpy(adv->random_addr, rpa, sizeof(rpa));
+		adv->rpa = true;
+	}
+
+	return adv->random_addr;
+}
+
 static const uint8_t *ext_adv_addr(const struct btdev *btdev,
 						struct le_ext_adv *ext_adv)
 {
 	if (ext_adv->own_addr_type == 0x01)
 		return ext_adv->random_addr;
+
+	if (ext_adv->own_addr_type == 0x03)
+		return ext_adv_gen_rpa(btdev, ext_adv);
 
 	return btdev->bdaddr;
 }
@@ -4504,6 +4552,23 @@ static int cmd_set_ext_scan_rsp_data(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static uint8_t ext_adv_addr_type(struct le_ext_adv *adv)
+{
+	/* Converts the address type on advertising params to advertising
+	 * report.
+	 */
+	switch (adv->own_addr_type) {
+	/* LL RPAs shall be advertised as random type or they need to be
+	 * resolved depending on the filter policy.
+	 */
+	case 0x02:
+	case 0x03:
+		return 0x01;
+	}
+
+	return adv->own_addr_type;
+}
+
 static void send_ext_adv(struct btdev *btdev, const struct btdev *remote,
 					struct le_ext_adv *ext_adv,
 					uint16_t type, bool is_scan_rsp)
@@ -4519,7 +4584,7 @@ static void send_ext_adv(struct btdev *btdev, const struct btdev *remote,
 	memset(&meta_event.lear, 0, sizeof(meta_event.lear));
 	meta_event.num_reports = 1;
 	meta_event.lear.event_type = cpu_to_le16(type);
-	meta_event.lear.addr_type = ext_adv->own_addr_type;
+	meta_event.lear.addr_type = ext_adv_addr_type(ext_adv);
 	memcpy(meta_event.lear.addr, ext_adv_addr(remote, ext_adv), 6);
 	meta_event.lear.rssi = 127;
 	meta_event.lear.tx_power = 127;
@@ -5022,6 +5087,11 @@ static void le_ext_conn_complete(struct btdev *btdev,
 	memcpy(ev.peer_addr, cmd->peer_addr, 6);
 	ev.role = 0x00;
 
+	/* Set Local RPA if an RPA was generated for the advertising */
+	if (ext_adv->rpa)
+		memcpy(ev.local_rpa, ext_adv->random_addr,
+					sizeof(ev.local_rpa));
+
 	le_meta_event(btdev, BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE, &ev,
 						sizeof(ev));
 }
@@ -5048,7 +5118,7 @@ static int cmd_ext_create_conn_complete(struct btdev *dev, const void *data,
 
 		if (ext_adv_is_connectable(ext_adv) &&
 			ext_adv_match_addr(dev, ext_adv) &&
-			ext_adv->own_addr_type == cmd->peer_addr_type) {
+			ext_adv_addr_type(ext_adv) == cmd->peer_addr_type) {
 			le_ext_conn_complete(dev, cmd, ext_adv, 0);
 			return 0;
 		}
