@@ -1,0 +1,159 @@
+Intel Hardware Varaints
+=======================
+
+These are the list of Intel Bluetooth devices and its information.
+
+Some of devices were tested the following test cases:
+	Firmware loading after cold boot
+	Firmware loading after restart
+	Device discovery
+	Connection to LE Mouse
+	A2DP
+	HFP
+	Update to new firmware if available
+
+All Intel firmware can be found from linux-firmware git repo.
+https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
+
+
+Device List
+-----------
+
+Wilkins Peak (WP)
+- HW ID:	USB(0x8087:0x07dc)
+- Device Type:	Legacy ROM device
+- Driver flag:	BTUSB_INTEL_BROKEN_INITIAL_NCMD
+- HW variant:	0x07
+- FW files:
+	WP2 B3
+	intel/ibt-hw-37.7.10-fw-1.80.2.3.d.bseq
+		tested: Patch Version: 87    Release Version: 20.60.0.2
+			70353356f ("linux-firmware: Update firmware patch for Intel Bluetooth 7260 (B3/B4)")
+	WP2 B5
+	intel/ibt-hw-37.7.10-fw-1.80.1.2d.d.bseq
+		tested: Patch Version: 42    Release Version: 20.60.0.2
+			629a5e089 ("linux-firmware: Update firmware patch for Intel Bluetooth 7260 (B5/B6)")
+
+	WP1 B3
+	intel/ibt-hw-37.7.10-fw-1.0.1.2d.d.bseq
+
+	WP1 B3
+	intel/ibt-hw-37.7.10-fw-1.0.2.3.d.bseq
+
+
+Stone Peak (StP)
+- HW ID:	USB(0x8087:0x0a2a)
+- Device Type:	Legacy ROM device
+- HW variant:	0x08
+- FW files:
+	StP
+	intel/ibt-hw-37.8.10-fw-1.10.2.27.d.bseq
+
+	StP D1
+	intel/ibt-hw-37.8.10-fw-1.10.3.11.e.bseq
+		tested: FW Build: REL_50_0002    Release Version: 20.60.0.2
+			9489f5524 ("linux-firmware: Update firmware patch for Intel Bluetooth 7265 (D0)")
+
+
+Sandy Peak (SdP)
+- HW ID:	USB(0x8087:0x0aa7)
+- Device Type:	Legacy ROM device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+- HW variant:	0x08
+	intel/ibt-hw-37.8.10-fw-22.50.19.14.f.bseq
+		tested: FW Patch Version: 0x42(66)
+			195ecf149 ("linux-firmware: Intel BT 7265: Fix Security Issues")
+
+
+Snow Field Peak (SfP) / Windstorm Peak (WsP)
+- HW ID:	USB(0x8087:0x0a2b)
+- Device Type:	Legacy Bootloader device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+- HW variant:	0x0b
+	SfP
+	intel/ibt-11-5.sfi
+		tested: FW Build: REL0522    Release Version: 20.100.0.3
+			f0896585b ("linux-firmware: Update firmware patch for Intel Bluetooth 8260")
+- HW variant:	0x0c
+	WsP
+	intel/ibt-12-16.sfi
+		tested: FW Build: REL1221    Release Version: 22.50.0.4
+			4116d72b9 ("linux-firmware: Update firmware file for Intel Bluetooth 8265")
+		tested: FW Build: REL0306    Release Version: 21.10.0.6
+			1f8ebdfc2 ("linux-firmware: Update firmware file for Intel Bluetooth 8265")
+
+
+Jefferson Peak (JfP)
+- HW ID:	USB(0x8087:0x0aaa)
+- Device Type:	Legacy Bootloader device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+		HCI_QUIRK_VALID_LE_STATES
+- HW variant:	0x11
+	intel/ibt-17-0-1.sfi
+	intel/ibt-17-16-1.sfi
+
+
+Thunder Peak (ThP)
+- HW ID:	USB(0x8087:0x0025)
+- Device Type:	Legacy Bootloader device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+		HCI_QUIRK_VALID_LE_STATES
+- HW variant:	0x12
+	intel/ibt-18-0-1.sfi
+	intel/ibt-18-16-1.sfi
+		tested: FW Build: REL19718    Release Version: 22.50.0.4
+			687d64a4d ("linux-firmware: Update firmware file for Intel Bluetooth 9260")
+		tested: FW Build: REL13313    Release Version: 21.120.0.4
+			db3038082 ("linux-firmware: Update firmware file for Intel Bluetooth 9260")
+
+
+Quasar(QsR) / Harrison Peak (HrP)
+- HW ID:	USB(0x8087:0x0026)
+- Device Type:	Legacy Bootloader device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+- HW variant: 	0x13
+	Quasar with JfP
+	intel/ibt-19-0-1.sfi
+	intel/ibt-19-240-1.sfi
+
+	Quasar with HrP
+	intel/ibt-19-0-4.sfi
+	intel/ibt-19-240-4.sfi
+
+	intel/ibt-19-0-0.sfi
+	intel/ibt-19-16-4.sfi
+	intel/ibt-19-32-0.sfi
+	intel/ibt-19-32-1.sfi
+	intel/ibt-19-32-4.sfi
+
+
+Cyclone Peak (CcP)
+- HW ID:	USB(0x8087:0x0029)
+- Device Type:	Legacy Bootloader device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+- HW variant:	0x14
+	intel/ibt-20-0-3.sfi
+	intel/ibt-20-1-3.sfi
+		tested: FW Build: REL25791    Release Version: 22.60.0.3
+			34803c20f ("linux-firmware: Update firmware file for Intel Bluetooth AX200")
+	intel/ibt-20-1-4.sfi
+
+
+Typhon Peak (TyP)
+- HW ID:	USB(0x8087:0x0032)
+- Device Type:	TLV based Bootloader device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+- HW variant:	0x17
+	intel/ibt-0041-0041.sfi
+		tested: FW Build: REL25171    Release Version: 22.60.0.3
+			25ddc612f ("linux-firmware: Update firmware file for Intel Bluetooth AX210")
+		tested: FW Build: REL17510    Release Version: 22.20.0.3
+			28185ecdc ("linux-firmware: Update firmware file for Intel Bluetooth AX210")
+
+
+Garfield Peak (GfP)
+- HW ID:	USB(0x8087:0x0033)
+- Device Type:	TLV based Bootloader device
+- HCI Quirks:	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED
+		HCI_QUIRK_VALID_LE_STATES
+- HW variant:	0x18
