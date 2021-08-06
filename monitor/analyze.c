@@ -110,12 +110,15 @@ static void conn_destroy(void *data)
 	printf("    %lu RX packets\n", conn->rx_num);
 	printf("    %lu TX packets\n", conn->tx_num);
 	printf("    %lu TX completed packets\n", conn->tx_num_comp);
-	printf("    %ld.%06ld seconds min latency\n",
-			conn->tx_lat_min.tv_sec, conn->tx_lat_min.tv_usec);
-	printf("    %ld.%06ld seconds max latency\n",
-			conn->tx_lat_max.tv_sec, conn->tx_lat_max.tv_usec);
-	printf("    %ld.%06ld seconds median latency\n",
-			conn->tx_lat_med.tv_sec, conn->tx_lat_med.tv_usec);
+	printf("    %ld msec min latency\n",
+			conn->tx_lat_min.tv_sec * 1000 +
+			conn->tx_lat_min.tv_usec / 1000);
+	printf("    %ld msec max latency\n",
+			conn->tx_lat_max.tv_sec * 1000 +
+			conn->tx_lat_max.tv_usec / 1000);
+	printf("    %ld msec median latency\n",
+			conn->tx_lat_med.tv_sec * 1000 +
+			conn->tx_lat_med.tv_usec / 1000);
 	printf("    %u octets TX min packet size\n", conn->tx_pkt_min);
 	printf("    %u octets TX max packet size\n", conn->tx_pkt_max);
 	printf("    %u octets TX median packet size\n", conn->tx_pkt_med);
