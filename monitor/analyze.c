@@ -62,8 +62,7 @@ struct hci_conn {
 	unsigned long tx_num;
 	unsigned long tx_num_comp;
 	size_t tx_bytes;
-	struct timeval last_tx;
-	struct timeval last_tx_comp;
+	struct queue *tx_queue;
 	struct timeval tx_lat_min;
 	struct timeval tx_lat_max;
 	struct timeval tx_lat_med;
@@ -121,6 +120,7 @@ static void conn_destroy(void *data)
 	printf("    %u octets TX max packet size\n", conn->tx_pkt_max);
 	printf("    %u octets TX median packet size\n", conn->tx_pkt_med);
 
+	queue_destroy(conn->tx_queue, free);
 	free(conn);
 }
 
@@ -133,6 +133,7 @@ static struct hci_conn *conn_alloc(struct hci_dev *dev, uint16_t handle,
 
 	conn->handle = handle;
 	conn->type = type;
+	conn->tx_queue = queue_new();
 
 	return conn;
 }
@@ -372,6 +373,7 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 		uint16_t count = get_le16(data + 2);
 		struct hci_conn *conn;
 		struct timeval res;
+		struct timeval *last_tx;
 
 		data += 4;
 		size -= 4;
@@ -381,10 +383,10 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 			continue;
 
 		conn->tx_num_comp += count;
-		conn->last_tx_comp = *tv;
 
-		if (timerisset(&conn->last_tx)) {
-			timersub(&conn->last_tx_comp, &conn->last_tx, &res);
+		last_tx = queue_pop_head(conn->tx_queue);
+		if (last_tx) {
+			timersub(tv, last_tx, &res);
 
 			if ((!timerisset(&conn->tx_lat_min) ||
 					timercmp(&res, &conn->tx_lat_min, <)) &&
@@ -414,7 +416,7 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 			} else
 				conn->tx_lat_med = res;
 
-			timerclear(&conn->last_tx);
+			free(last_tx);
 		}
 	}
 }
@@ -489,8 +491,12 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 		return;
 
 	if (out) {
+		struct timeval *last_tx;
+
 		conn->tx_num++;
-		conn->last_tx = *tv;
+		last_tx = new0(struct timeval, 1);
+		memcpy(last_tx, tv, sizeof(*tv));
+		queue_push_tail(conn->tx_queue, last_tx);
 		conn->tx_bytes += size;
 
 		if (!conn->tx_pkt_min || size < conn->tx_pkt_min)
