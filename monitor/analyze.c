@@ -61,6 +61,7 @@ struct hci_conn {
 	unsigned long rx_num;
 	unsigned long tx_num;
 	unsigned long tx_num_comp;
+	size_t tx_bytes;
 	struct timeval last_tx;
 	struct timeval last_tx_comp;
 	struct timeval tx_lat_min;
@@ -98,6 +99,8 @@ static void conn_destroy(void *data)
 		str = "unknown";
 		break;
 	}
+
+	conn->tx_pkt_med = conn->tx_bytes / conn->tx_num;
 
 	printf("  Found %s connection with handle %u\n", str, conn->handle);
 	printf("    BD_ADDR %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
@@ -485,16 +488,12 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	if (out) {
 		conn->tx_num++;
 		conn->last_tx = *tv;
+		conn->tx_bytes += size;
 
 		if (!conn->tx_pkt_min || size < conn->tx_pkt_min)
 			conn->tx_pkt_min = size;
 		if (!conn->tx_pkt_max || size > conn->tx_pkt_max)
 			conn->tx_pkt_max = size;
-		if (conn->tx_pkt_med) {
-			conn->tx_pkt_med += (size + 1);
-			conn->tx_pkt_med /= 2;
-		} else
-			conn->tx_pkt_med = size;
 	} else {
 		conn->rx_num++;
 	}
