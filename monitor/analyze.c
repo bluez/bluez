@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "lib/bluetooth.h"
 
@@ -30,6 +31,7 @@ struct hci_dev {
 	uint8_t bdaddr[6];
 	struct timeval time_added;
 	struct timeval time_removed;
+	unsigned long num_hci;
 	unsigned long num_cmd;
 	unsigned long num_evt;
 	unsigned long num_acl;
@@ -44,13 +46,29 @@ struct hci_dev {
 	struct queue *conn_list;
 };
 
+#define CONN_BR_ACL	0x01
+#define CONN_BR_SCO	0x02
+#define CONN_BR_ESCO	0x03
+#define CONN_LE_ACL	0x04
+#define CONN_LE_ISO	0x05
+
 struct hci_conn {
 	uint16_t handle;
 	uint8_t type;
 	uint8_t bdaddr[6];
 	bool setup_seen;
 	bool terminated;
-	unsigned long num;
+	unsigned long rx_num;
+	unsigned long tx_num;
+	unsigned long tx_num_comp;
+	struct timeval last_tx;
+	struct timeval last_tx_comp;
+	struct timeval tx_lat_min;
+	struct timeval tx_lat_max;
+	struct timeval tx_lat_med;
+	uint16_t tx_pkt_min;
+	uint16_t tx_pkt_max;
+	uint16_t tx_pkt_med;
 };
 
 static struct queue *dev_list;
@@ -61,14 +79,20 @@ static void conn_destroy(void *data)
 	const char *str;
 
 	switch (conn->type) {
-	case 0x00:
-		str = "ACL";
+	case CONN_BR_ACL:
+		str = "BR-ACL";
 		break;
-	case 0x01:
-		str = "SCO";
+	case CONN_BR_SCO:
+		str = "BR-SCO";
 		break;
-	case 0x02:
-		str = "ISO";
+	case CONN_BR_ESCO:
+		str = "BR-ESCO";
+		break;
+	case CONN_LE_ACL:
+		str = "LE-ACL";
+		break;
+	case CONN_LE_ISO:
+		str = "LE-ISO";
 		break;
 	default:
 		str = "unknown";
@@ -81,7 +105,18 @@ static void conn_destroy(void *data)
 			conn->bdaddr[2], conn->bdaddr[1], conn->bdaddr[0]);
 	if (!conn->setup_seen)
 		printf("    Connection setup missing\n");
-	printf("    %lu packets\n", conn->num);
+	printf("    %lu RX packets\n", conn->rx_num);
+	printf("    %lu TX packets\n", conn->tx_num);
+	printf("    %lu TX completed packets\n", conn->tx_num_comp);
+	printf("    %ld.%06ld seconds min latency\n",
+			conn->tx_lat_min.tv_sec, conn->tx_lat_min.tv_usec);
+	printf("    %ld.%06ld seconds max latency\n",
+			conn->tx_lat_max.tv_sec, conn->tx_lat_max.tv_usec);
+	printf("    %ld.%06ld seconds median latency\n",
+			conn->tx_lat_med.tv_sec, conn->tx_lat_med.tv_usec);
+	printf("    %u octets TX min packet size\n", conn->tx_pkt_min);
+	printf("    %u octets TX max packet size\n", conn->tx_pkt_max);
+	printf("    %u octets TX median packet size\n", conn->tx_pkt_med);
 
 	free(conn);
 }
@@ -248,6 +283,7 @@ static void command_pkt(struct timeval *tv, uint16_t index,
 	if (!dev)
 		return;
 
+	dev->num_hci++;
 	dev->num_cmd++;
 }
 
@@ -263,7 +299,7 @@ static void evt_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	if (evt->status)
 		return;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), 0x00);
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), CONN_BR_ACL);
 	if (!conn)
 		return;
 
@@ -319,6 +355,64 @@ static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 	}
 }
 
+static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
+					const void *data, uint16_t size)
+{
+	uint8_t num_handles = get_u8(data);
+	int i;
+
+	data += sizeof(num_handles);
+	size -= sizeof(num_handles);
+
+	for (i = 0; i < num_handles; i++) {
+		uint16_t handle = get_le16(data);
+		uint16_t count = get_le16(data + 2);
+		struct hci_conn *conn;
+		struct timeval res;
+
+		data += 4;
+		size -= 4;
+
+		conn = conn_lookup(dev, handle);
+		if (!conn)
+			continue;
+
+		conn->tx_num_comp += count;
+		conn->last_tx_comp = *tv;
+
+		if (timerisset(&conn->last_tx)) {
+			timersub(&conn->last_tx_comp, &conn->last_tx, &res);
+
+			if (!timerisset(&conn->tx_lat_min) ||
+					timercmp(&res, &conn->tx_lat_min, <))
+				conn->tx_lat_min = res;
+
+			if (!timerisset(&conn->tx_lat_max) ||
+					timercmp(&res, &conn->tx_lat_max, >))
+				conn->tx_lat_max = res;
+
+			if (timerisset(&conn->tx_lat_med)) {
+				struct timeval tmp;
+
+				timeradd(&conn->tx_lat_med, &res, &tmp);
+
+				tmp.tv_sec /= 2;
+				tmp.tv_usec /= 2;
+				if (tmp.tv_sec % 2) {
+					tmp.tv_usec += 500000;
+					if (tmp.tv_usec >= 1000000) {
+						tmp.tv_sec++;
+						tmp.tv_usec -= 1000000;
+					}
+				}
+			} else
+				conn->tx_lat_med = res;
+
+			timerclear(&conn->last_tx);
+		}
+	}
+}
+
 static void evt_le_meta_event(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
@@ -344,6 +438,7 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 	if (!dev)
 		return;
 
+	dev->num_hci++;
 	dev->num_evt++;
 
 	switch (hdr->evt) {
@@ -356,13 +451,16 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 	case BT_HCI_EVT_CMD_COMPLETE:
 		evt_cmd_complete(dev, tv, data, size);
 		break;
+	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
+		evt_num_completed_packets(dev, tv, data, size);
+		break;
 	case BT_HCI_EVT_LE_META_EVENT:
 		evt_le_meta_event(dev, tv, data, size);
 		break;
 	}
 }
 
-static void acl_pkt(struct timeval *tv, uint16_t index,
+static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 					const void *data, uint16_t size)
 {
 	const struct bt_hci_acl_hdr *hdr = data;
@@ -376,13 +474,30 @@ static void acl_pkt(struct timeval *tv, uint16_t index,
 	if (!dev)
 		return;
 
+	dev->num_hci++;
 	dev->num_acl++;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff, 0x00);
+	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+								CONN_BR_ACL);
 	if (!conn)
 		return;
 
-	conn->num++;
+	if (out) {
+		conn->tx_num++;
+		conn->last_tx = *tv;
+
+		if (!conn->tx_pkt_min || size < conn->tx_pkt_min)
+			conn->tx_pkt_min = size;
+		if (!conn->tx_pkt_max || size > conn->tx_pkt_max)
+			conn->tx_pkt_max = size;
+		if (conn->tx_pkt_med) {
+			conn->tx_pkt_med += (size + 1);
+			conn->tx_pkt_med /= 2;
+		} else
+			conn->tx_pkt_med = size;
+	} else {
+		conn->rx_num++;
+	}
 }
 
 static void sco_pkt(struct timeval *tv, uint16_t index,
@@ -398,6 +513,7 @@ static void sco_pkt(struct timeval *tv, uint16_t index,
 	if (!dev)
 		return;
 
+	dev->num_hci++;
 	dev->num_sco++;
 }
 
@@ -478,6 +594,7 @@ static void iso_pkt(struct timeval *tv, uint16_t index,
 	if (!dev)
 		return;
 
+	dev->num_hci++;
 	dev->num_iso++;
 }
 
@@ -540,8 +657,10 @@ void analyze_trace(const char *path)
 			event_pkt(&tv, index, buf, pktlen);
 			break;
 		case BTSNOOP_OPCODE_ACL_TX_PKT:
+			acl_pkt(&tv, index, true, buf, pktlen);
+			break;
 		case BTSNOOP_OPCODE_ACL_RX_PKT:
-			acl_pkt(&tv, index, buf, pktlen);
+			acl_pkt(&tv, index, false, buf, pktlen);
 			break;
 		case BTSNOOP_OPCODE_SCO_TX_PKT:
 		case BTSNOOP_OPCODE_SCO_RX_PKT:
