@@ -386,8 +386,9 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 		if (timerisset(&conn->last_tx)) {
 			timersub(&conn->last_tx_comp, &conn->last_tx, &res);
 
-			if (!timerisset(&conn->tx_lat_min) ||
-					timercmp(&res, &conn->tx_lat_min, <))
+			if ((!timerisset(&conn->tx_lat_min) ||
+					timercmp(&res, &conn->tx_lat_min, <)) &&
+					res.tv_sec >= 0 && res.tv_usec >= 0)
 				conn->tx_lat_min = res;
 
 			if (!timerisset(&conn->tx_lat_max) ||
@@ -408,6 +409,8 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 						tmp.tv_usec -= 1000000;
 					}
 				}
+
+				conn->tx_lat_med = tmp;
 			} else
 				conn->tx_lat_med = res;
 
