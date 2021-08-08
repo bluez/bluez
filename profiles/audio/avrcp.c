@@ -1923,9 +1923,9 @@ static size_t handle_vendordep_pdu(struct avctp *conn, uint8_t transaction,
 	operands += sizeof(*pdu);
 	operand_count -= sizeof(*pdu);
 
-	if (pdu->params_len != operand_count) {
+	if (ntohs(pdu->params_len) != operand_count) {
 		DBG("AVRCP PDU parameters length don't match");
-		pdu->params_len = operand_count;
+		pdu->params_len = htons(operand_count);
 	}
 
 	for (handler = session->control_handlers; handler->pdu_id; handler++) {
