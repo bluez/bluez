@@ -659,14 +659,14 @@ static void set_volume(const GDBusPropertyTable *property,
 	if (a2dp->volume == volume)
 		return;
 
-	a2dp->volume = volume;
-
 	notify = transport->source_watch ? true : false;
-	if (notify)
+	if (notify) {
+		a2dp->volume = volume;
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
 						transport->path,
 						MEDIA_TRANSPORT_INTERFACE,
 						"Volume");
+	}
 
 	avrcp_set_volume(transport->device, volume, notify);
 	return;
