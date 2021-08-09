@@ -13,6 +13,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
@@ -23,7 +24,9 @@
 #include "src/shared/queue.h"
 #include "src/shared/btsnoop.h"
 #include "monitor/bt.h"
-#include "analyze.h"
+#include "monitor/display.h"
+#include "monitor/packet.h"
+#include "monitor/analyze.h"
 
 struct hci_dev {
 	uint16_t index;
@@ -102,26 +105,25 @@ static void conn_destroy(void *data)
 	conn->tx_pkt_med = conn->tx_bytes / conn->tx_num;
 
 	printf("  Found %s connection with handle %u\n", str, conn->handle);
-	printf("    BD_ADDR %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
-			conn->bdaddr[5], conn->bdaddr[4], conn->bdaddr[3],
-			conn->bdaddr[2], conn->bdaddr[1], conn->bdaddr[0]);
+	/* TODO: Store address type */
+	packet_print_addr("Address", conn->bdaddr, 0x00);
 	if (!conn->setup_seen)
-		printf("    Connection setup missing\n");
-	printf("    %lu RX packets\n", conn->rx_num);
-	printf("    %lu TX packets\n", conn->tx_num);
-	printf("    %lu TX completed packets\n", conn->tx_num_comp);
-	printf("    %ld msec min latency\n",
+		print_field("Connection setup missing");
+	print_field("%lu RX packets", conn->rx_num);
+	print_field("%lu TX packets", conn->tx_num);
+	print_field("%lu TX completed packets", conn->tx_num_comp);
+	print_field("%ld msec min latency",
 			conn->tx_lat_min.tv_sec * 1000 +
 			conn->tx_lat_min.tv_usec / 1000);
-	printf("    %ld msec max latency\n",
+	print_field("%ld msec max latency",
 			conn->tx_lat_max.tv_sec * 1000 +
 			conn->tx_lat_max.tv_usec / 1000);
-	printf("    %ld msec median latency\n",
+	print_field("%ld msec median latency",
 			conn->tx_lat_med.tv_sec * 1000 +
 			conn->tx_lat_med.tv_usec / 1000);
-	printf("    %u octets TX min packet size\n", conn->tx_pkt_min);
-	printf("    %u octets TX max packet size\n", conn->tx_pkt_max);
-	printf("    %u octets TX median packet size\n", conn->tx_pkt_med);
+	print_field("%u octets TX min packet size", conn->tx_pkt_min);
+	print_field("%u octets TX max packet size", conn->tx_pkt_max);
+	print_field("%u octets TX median packet size", conn->tx_pkt_med);
 
 	queue_destroy(conn->tx_queue, free);
 	free(conn);

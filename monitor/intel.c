@@ -233,7 +233,7 @@ static void print_version_tlv_min_fw(const struct intel_version_tlv *tlv,
 static void print_version_tlv_otp_bdaddr(const struct intel_version_tlv *tlv,
 					 char *type_str)
 {
-	packet_print_addr(type_str, tlv->val, false);
+	packet_print_addr(type_str, tlv->val, 0x00);
 }
 
 static void print_version_tlv_unknown(const struct intel_version_tlv *tlv,
@@ -535,7 +535,7 @@ static void write_bd_data_cmd(const void *data, uint8_t size)
 {
 	uint8_t features[8];
 
-	packet_print_addr("Address", data, false);
+	packet_print_addr("Address", data, 0x00);
 	packet_hexdump(data + 6, 6);
 
 	memcpy(features, data + 12, 8);
@@ -553,13 +553,13 @@ static void read_bd_data_rsp(const void *data, uint8_t size)
 	uint8_t status = get_u8(data);
 
 	print_status(status);
-	packet_print_addr("Address", data + 1, false);
+	packet_print_addr("Address", data + 1, 0x00);
 	packet_hexdump(data + 7, size - 7);
 }
 
 static void write_bd_address_cmd(const void *data, uint8_t size)
 {
-	packet_print_addr("Address", data, false);
+	packet_print_addr("Address", data, 0x00);
 }
 
 static void act_deact_traces_cmd(const void *data, uint8_t size)
@@ -1119,7 +1119,7 @@ static void sco_rejected_via_lmp_evt(const void *data, uint8_t size)
 {
 	uint8_t reason = get_u8(data + 6);
 
-	packet_print_addr("Address", data, false);
+	packet_print_addr("Address", data, 0x00);
 	packet_print_error("Reason", reason);
 }
 

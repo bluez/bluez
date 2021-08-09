@@ -2749,63 +2749,6 @@ static void att_packet(uint16_t index, bool in, uint16_t handle,
 	opcode_data->func(&frame);
 }
 
-static void print_addr(const uint8_t *addr, uint8_t addr_type)
-{
-	const char *str;
-
-	switch (addr_type) {
-	case 0x00:
-		print_field("Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-						addr[5], addr[4], addr[3],
-						addr[2], addr[1], addr[0]);
-		break;
-	case 0x01:
-		switch ((addr[5] & 0xc0) >> 6) {
-		case 0x00:
-			str = "Non-Resolvable";
-			break;
-		case 0x01:
-			str = "Resolvable";
-			break;
-		case 0x03:
-			str = "Static";
-			break;
-		default:
-			str = "Reserved";
-			break;
-		}
-
-		print_field("Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
-					" (%s)", addr[5], addr[4], addr[3],
-					addr[2], addr[1], addr[0], str);
-		break;
-	default:
-		print_field("Address: %2.2X-%2.2X-%2.2X-%2.2X-%2.2X-%2.2X",
-						addr[5], addr[4], addr[3],
-						addr[2], addr[1], addr[0]);
-		break;
-	}
-}
-
-static void print_addr_type(uint8_t addr_type)
-{
-	const char *str;
-
-	switch (addr_type) {
-	case 0x00:
-		str = "Public";
-		break;
-	case 0x01:
-		str = "Random";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("Address type: %s (0x%2.2x)", str, addr_type);
-}
-
 static void print_smp_io_capa(uint8_t io_capa)
 {
 	const char *str;
@@ -3038,8 +2981,7 @@ static void smp_ident_addr_info(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_smp_ident_addr_info *pdu = frame->data;
 
-	print_addr_type(pdu->addr_type);
-	print_addr(pdu->addr, pdu->addr_type);
+	packet_print_addr("Address", pdu->addr, pdu->addr_type);
 
 	keys_update_identity_addr(pdu->addr, pdu->addr_type);
 }

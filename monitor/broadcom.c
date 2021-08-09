@@ -233,7 +233,7 @@ static void status_rsp(const void *data, uint8_t size)
 
 static void write_bd_addr_cmd(const void *data, uint8_t size)
 {
-	packet_print_addr("Address", data, false);
+	packet_print_addr("Address", data, 0x00);
 }
 
 static void update_uart_baud_rate_cmd(const void *data, uint8_t size)

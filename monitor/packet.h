@@ -37,7 +37,7 @@ void packet_print_error(const char *label, uint8_t error);
 void packet_print_version(const char *label, uint8_t version,
 				const char *sublabel, uint16_t subversion);
 void packet_print_company(const char *label, uint16_t company);
-void packet_print_addr(const char *label, const void *data, bool random);
+void packet_print_addr(const char *label, const void *data, uint8_t type);
 void packet_print_handle(uint16_t handle);
 void packet_print_rssi(const char *label, int8_t rssi);
 void packet_print_ad(const void *data, uint8_t size);

@@ -310,7 +310,7 @@ static void slot_offset(const void *data, uint8_t size)
 	const struct bt_lmp_slot_offset *pdu = data;
 
 	print_field("Offset: %u usec", le16_to_cpu(pdu->offset));
-	packet_print_addr("Address", pdu->bdaddr, false);
+	packet_print_addr("Address", pdu->bdaddr, 0x00);
 }
 
 static void page_scan_mode_req(const void *data, uint8_t size)

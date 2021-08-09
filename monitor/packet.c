@@ -713,10 +713,9 @@ static void print_addr_resolve(const char *label, const uint8_t *addr,
 	}
 }
 
-static void print_addr(const char *label, const uint8_t *addr,
-						uint8_t addr_type)
+static void print_addr(const char *label, const uint8_t *addr, uint8_t type)
 {
-	print_addr_resolve(label, addr, addr_type, true);
+	print_addr_resolve(label, addr, type, true);
 }
 
 static void print_bdaddr(const uint8_t *bdaddr)
@@ -3780,9 +3779,9 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		packet_hexdump(eir, eir_len - len);
 }
 
-void packet_print_addr(const char *label, const void *data, bool random)
+void packet_print_addr(const char *label, const void *data, uint8_t type)
 {
-	print_addr(label ? : "Address", data, random ? 0x01 : 0x00);
+	print_addr(label ? : "Address", data, type);
 }
 
 void packet_print_handle(uint16_t handle)
