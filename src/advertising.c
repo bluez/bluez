@@ -774,21 +774,14 @@ static uint8_t *generate_adv_data(struct btd_adv_client *client,
 static uint8_t *generate_scan_rsp(struct btd_adv_client *client,
 						uint32_t *flags, size_t *len)
 {
-	struct btd_adv_manager *manager = client->manager;
-	const char *name;
-
-	if (!(*flags & MGMT_ADV_FLAG_LOCAL_NAME) && !client->name) {
+	if (!client->name) {
 		*len = 0;
 		return NULL;
 	}
 
 	*flags &= ~MGMT_ADV_FLAG_LOCAL_NAME;
 
-	name = client->name;
-	if (!name)
-		name = btd_adapter_get_name(manager->adapter);
-
-	bt_ad_add_name(client->scan, name);
+	bt_ad_add_name(client->scan, client->name);
 
 	return bt_ad_generate(client->scan, len);
 }
