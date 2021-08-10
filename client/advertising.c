@@ -888,6 +888,13 @@ void ad_advertise_local_name(DBusConnection *conn, const char *name)
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "LocalName");
 
+	/* Remove local-name from Includes since LocalName would be set */
+	if (ad.name) {
+		ad.name = false;
+		g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							"Includes");
+	}
+
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
