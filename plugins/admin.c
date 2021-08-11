@@ -85,6 +85,14 @@ static void admin_policy_free(void *data)
 	g_free(admin_policy);
 }
 
+static bool uuid_match(const void *data, const void *match_data)
+{
+	const bt_uuid_t *uuid = data;
+	const bt_uuid_t *match_uuid = match_data;
+
+	return bt_uuid_cmp(uuid, match_uuid) == 0;
+}
+
 static struct queue *parse_allow_service_list(struct btd_adapter *adapter,
 							DBusMessage *msg)
 {
@@ -119,9 +127,15 @@ static struct queue *parse_allow_service_list(struct btd_adapter *adapter,
 			goto failed;
 		}
 
+		dbus_message_iter_next(&arr_iter);
+
+		if (queue_find(uuid_list, uuid_match, uuid)) {
+			g_free(uuid);
+			continue;
+		}
+
 		queue_push_head(uuid_list, uuid);
 
-		dbus_message_iter_next(&arr_iter);
 	} while (true);
 
 	return uuid_list;
