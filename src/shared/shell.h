@@ -8,6 +8,7 @@
  *
  */
 #include <getopt.h>
+#include <stdbool.h>
 
 #define COLOR_OFF	"\001\x1B[0m\002"
 #define COLOR_RED	"\001\x1B[0;91m\002"
