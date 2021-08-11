@@ -9,7 +9,9 @@ client_bluetoothctl_SOURCES = client/main.c \
 					client/advertising.c \
 					client/adv_monitor.h \
 					client/adv_monitor.c \
-					client/gatt.h client/gatt.c
+					client/gatt.h client/gatt.c \
+					client/admin.h \
+					client/admin.c
 client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
 endif

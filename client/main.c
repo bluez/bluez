@@ -29,6 +29,7 @@
 #include "gatt.h"
 #include "advertising.h"
 #include "adv_monitor.h"
+#include "admin.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -530,6 +531,23 @@ static void admon_manager_added(GDBusProxy *proxy)
 	adv_monitor_register_app(dbus_conn);
 }
 
+static void admin_policy_set_added(GDBusProxy *proxy)
+{
+	admin_policy_set_set_proxy(proxy);
+}
+
+static void admin_policy_status_added(GDBusProxy *proxy)
+{
+	struct adapter *adapter;
+
+	adapter = find_ctrl(ctrl_list, g_dbus_proxy_get_path(proxy));
+
+	if (!adapter)
+		return;
+
+	admin_policy_set_status_proxy(proxy);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -565,6 +583,10 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	} else if (!strcmp(interface,
 				"org.bluez.AdvertisementMonitorManager1")) {
 		admon_manager_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.AdminPolicySet1")) {
+		admin_policy_set_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.AdminPolicyStatus1")) {
+		admin_policy_status_added(proxy);
 	}
 }
 
@@ -621,6 +643,23 @@ static void adapter_removed(GDBusProxy *proxy)
 	}
 }
 
+static void admin_policy_set_removed(GDBusProxy *proxy)
+{
+	admin_policy_set_set_proxy(NULL);
+}
+
+static void admin_policy_status_removed(GDBusProxy *proxy)
+{
+	struct adapter *adapter;
+
+	adapter = find_ctrl(ctrl_list, g_dbus_proxy_get_path(proxy));
+
+	if (!adapter)
+		return;
+
+	admin_policy_set_status_proxy(NULL);
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -661,6 +700,10 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	} else if (!strcmp(interface,
 			"org.bluez.AdvertisementMonitorManager1")) {
 		adv_monitor_remove_manager(dbus_conn);
+	} else if (!strcmp(interface, "org.bluez.AdminPolicySet1")) {
+		admin_policy_set_removed(proxy);
+	} else if (!strcmp(interface, "org.bluez.AdminPolicyStatus1")) {
+		admin_policy_status_removed(proxy);
 	}
 }
 
@@ -2824,6 +2867,22 @@ static void cmd_adv_monitor_get_supported_info(int argc, char *argv[])
 	adv_monitor_get_supported_info();
 }
 
+static void cmd_admin_allow(int argc, char *argv[])
+{
+	if (check_default_ctrl() == FALSE)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (argc <= 1) {
+		admin_policy_read_service_allowlist(dbus_conn);
+		return;
+	}
+
+	if (strcmp(argv[1], "clear") == 0)
+		argc--;
+
+	admin_policy_set_service_allowlist(dbus_conn, argc - 1, argv + 1);
+}
+
 static const struct bt_shell_menu advertise_menu = {
 	.name = "advertise",
 	.desc = "Advertise Options Submenu",
@@ -2978,6 +3037,15 @@ static const struct bt_shell_menu gatt_menu = {
 	{ } },
 };
 
+static const struct bt_shell_menu admin_menu = {
+	.name = "admin",
+	.desc = "Admin Policy Submenu",
+	.entries = {
+	{ "allow", "[clear/uuid1 uuid2 ...]", cmd_admin_allow,
+				"Allow service UUIDs and block rest of them"},
+	{} },
+};
+
 static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
@@ -3075,6 +3143,7 @@ int main(int argc, char *argv[])
 	bt_shell_add_submenu(&advertise_monitor_menu);
 	bt_shell_add_submenu(&scan_menu);
 	bt_shell_add_submenu(&gatt_menu);
+	bt_shell_add_submenu(&admin_menu);
 	bt_shell_set_prompt(PROMPT_OFF);
 
 	if (agent_option)
