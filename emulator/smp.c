@@ -358,7 +358,8 @@ static bool verify_random(struct smp_conn *conn, const uint8_t rnd[16])
 		return false;
 
 	if (memcmp(conn->pcnf, confirm, sizeof(conn->pcnf)) != 0) {
-		printf("Confirmation values don't match\n");
+		bthost_debug(conn->smp->bthost,
+					"Confirmation values don't match");
 		return false;
 	}
 
@@ -698,12 +699,13 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 	uint8_t opcode;
 
 	if (len < 1) {
-		printf("Received too small SMP PDU\n");
+		bthost_debug(conn->smp->bthost, "Received too small SMP PDU");
 		return;
 	}
 
 	if (conn->addr_type == BDADDR_BREDR) {
-		printf("Received BR/EDR SMP data on LE link\n");
+		bthost_debug(conn->smp->bthost,
+					"Received BR/EDR SMP data on LE link");
 		return;
 	}
 
@@ -754,12 +756,13 @@ void smp_bredr_data(void *conn_data, const void *data, uint16_t len)
 	uint8_t opcode;
 
 	if (len < 1) {
-		printf("Received too small SMP PDU\n");
+		bthost_debug(conn->smp->bthost, "Received too small SMP PDU");
 		return;
 	}
 
 	if (conn->addr_type != BDADDR_BREDR) {
-		printf("Received LE SMP data on BR/EDR link\n");
+		bthost_debug(conn->smp->bthost,
+					"Received LE SMP data on BR/EDR link");
 		return;
 	}
 
@@ -853,6 +856,7 @@ void *smp_conn_add(void *smp_data, uint16_t handle,
 {
 	struct smp *smp = smp_data;
 	struct smp_conn *conn;
+	char ia_str[18], ra_str[18];
 
 	conn = malloc(sizeof(struct smp_conn));
 	if (!conn)
@@ -869,6 +873,12 @@ void *smp_conn_add(void *smp_data, uint16_t handle,
 	conn->ra_type = type2hci(ra_type);
 	memcpy(conn->ia, ia, 6);
 	memcpy(conn->ra, ra, 6);
+
+	ba2str((bdaddr_t *) ia, ia_str);
+	ba2str((bdaddr_t *) ra, ra_str);
+
+	bthost_debug(smp->bthost, "ia %s type 0x%02x ra %s type 0x%02x",
+					ia_str, ia_type, ra_str, ra_type);
 
 	bt_crypto_random_bytes(smp->crypto, conn->prnd, sizeof(conn->prnd));
 

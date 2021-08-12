@@ -691,8 +691,7 @@ static void send_command(struct bthost *bthost, uint16_t opcode,
 	uint8_t pkt = BT_H4_CMD_PKT;
 	struct iovec iov[3];
 
-	util_debug(bthost->debug_callback, bthost->debug_data,
-				"command 0x%02x", opcode);
+	bthost_debug(bthost, "command 0x%02x", opcode);
 
 	iov[0].iov_base = &pkt;
 	iov[0].iov_len = sizeof(pkt);
@@ -794,6 +793,18 @@ bool bthost_set_debug(struct bthost *bthost, bthost_debug_func_t callback,
 	return true;
 }
 
+void bthost_debug(struct bthost *host, const char *format, ...)
+{
+	va_list ap;
+
+	if (!host || !format || !host->debug_callback)
+		return;
+
+	va_start(ap, format);
+	util_debug_va(host->debug_callback, host->debug_data, format, ap);
+	va_end(ap);
+}
+
 static void read_local_features_complete(struct bthost *bthost,
 						const void *data, uint8_t len)
 {
@@ -870,8 +881,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 	case BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE:
 		break;
 	default:
-		util_debug(bthost->debug_callback, bthost->debug_data,
-				"Unhandled cmd_complete opcode 0x%04x", opcode);
+		bthost_debug(bthost, "Unhandled cmd_complete opcode 0x%04x",
+								opcode);
 		break;
 	}
 
@@ -1298,8 +1309,7 @@ static void evt_le_meta_event(struct bthost *bthost, const void *data,
 	if (len < 1)
 		return;
 
-	util_debug(bthost->debug_callback, bthost->debug_data,
-				"event 0x%02x", *event);
+	bthost_debug(bthost, "event 0x%02x", *event);
 
 	switch (*event) {
 	case BT_HCI_EVT_LE_CONN_COMPLETE:
@@ -1321,8 +1331,8 @@ static void evt_le_meta_event(struct bthost *bthost, const void *data,
 		evt_le_cis_req(bthost, evt_data, len - 1);
 		break;
 	default:
-		util_debug(bthost->debug_callback, bthost->debug_data,
-				"Unsupported LE Meta event 0x%2.2x", *event);
+		bthost_debug(bthost, "Unsupported LE Meta event 0x%2.2x",
+								*event);
 		break;
 	}
 }
@@ -1340,8 +1350,7 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	param = data + sizeof(*hdr);
 
-	util_debug(bthost->debug_callback, bthost->debug_data,
-				"event 0x%02x", hdr->evt);
+	bthost_debug(bthost, "event 0x%02x", hdr->evt);
 
 	switch (hdr->evt) {
 	case BT_HCI_EVT_CMD_COMPLETE:
@@ -1409,8 +1418,7 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 		break;
 
 	default:
-		util_debug(bthost->debug_callback, bthost->debug_data,
-				"Unsupported event 0x%2.2x", hdr->evt);
+		bthost_debug(bthost, "Unsupported event 0x%2.2x", hdr->evt);
 		break;
 	}
 }
@@ -1754,8 +1762,7 @@ static void l2cap_sig(struct bthost *bthost, struct btconn *conn,
 		break;
 
 	default:
-		util_debug(bthost->debug_callback, bthost->debug_data,
-				"Unknown L2CAP code 0x%02x", hdr->code);
+		bthost_debug(bthost, "Unknown L2CAP code 0x%02x", hdr->code);
 		ret = false;
 	}
 
@@ -1987,8 +1994,7 @@ static void l2cap_le_sig(struct bthost *bthost, struct btconn *conn,
 		break;
 
 	default:
-		util_debug(bthost->debug_callback, bthost->debug_data,
-				"Unknown L2CAP code 0x%02x", hdr->code);
+		bthost_debug(bthost, "Unknown L2CAP code 0x%02x", hdr->code);
 		ret = false;
 	}
 
@@ -2329,8 +2335,7 @@ static void process_rfcomm(struct bthost *bthost, struct btconn *conn,
 		rfcomm_uih_recv(bthost, conn, l2conn, data, len);
 		break;
 	default:
-		util_debug(bthost->debug_callback, bthost->debug_data,
-					"Unknown frame type");
+		bthost_debug(bthost, "Unknown frame type");
 		break;
 	}
 }
@@ -2355,8 +2360,8 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 	handle = acl_handle(acl_hdr->handle);
 	conn = bthost_find_conn(bthost, handle);
 	if (!conn) {
-		util_debug(bthost->debug_callback, bthost->debug_data,
-				"ACL data for unknown handle 0x%04x", handle);
+		bthost_debug(bthost, "ACL data for unknown handle 0x%04x",
+								handle);
 		return;
 	}
 
@@ -2392,7 +2397,7 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 		if (l2conn && l2conn->psm == 0x0003)
 			process_rfcomm(bthost, conn, l2conn, l2_data, l2_len);
 		else
-			util_debug(bthost->debug_callback, bthost->debug_data,
+			bthost_debug(bthost,
 					"Packet for unknown CID 0x%04x (%u)",
 					cid, cid);
 		break;
@@ -2422,8 +2427,7 @@ void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
 		process_acl(bthost, data + 1, len - 1);
 		break;
 	default:
-		util_debug(bthost->debug_callback, bthost->debug_data,
-				"Unsupported packet 0x%2.2x", pkt_type);
+		bthost_debug(bthost, "Unsupported packet 0x%2.2x", pkt_type);
 		break;
 	}
 }

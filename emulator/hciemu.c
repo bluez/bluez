@@ -454,7 +454,7 @@ void hciemu_unref(struct hciemu *hciemu)
 	free(hciemu);
 }
 
-static void bthost_debug(const char *str, void *user_data)
+static void bthost_print(const char *str, void *user_data)
 {
 	struct hciemu *hciemu = user_data;
 
@@ -484,7 +484,7 @@ static void hciemu_client_set_debug(void *data, void *user_data)
 	struct hciemu *hciemu = user_data;
 
 	btdev_set_debug(client->dev, btdev_client_debug, hciemu, NULL);
-	bthost_set_debug(client->host, bthost_debug, hciemu, NULL);
+	bthost_set_debug(client->host, bthost_print, hciemu, NULL);
 }
 
 bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
