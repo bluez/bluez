@@ -951,14 +951,20 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 
 	if (bthost->conn_init) {
 		ia = bthost->bdaddr;
-		ia_type = addr_type;
-		ra = conn->bdaddr;
-		ra_type = conn->addr_type;
-	} else {
-		ia = conn->bdaddr;
-		ia_type = conn->addr_type;
-		ra = bthost->bdaddr;
+		if (addr_type == BDADDR_BREDR)
+			ia_type = addr_type;
+		else
+			ia_type = BDADDR_LE_PUBLIC;
+		ra = bdaddr;
 		ra_type = addr_type;
+	} else {
+		ia = bdaddr;
+		ia_type = addr_type;
+		ra = bthost->bdaddr;
+		if (addr_type == BDADDR_BREDR)
+			ra_type = addr_type;
+		else
+			ra_type = BDADDR_LE_PUBLIC;
 	}
 
 	conn->smp_data = smp_conn_add(bthost->smp_data, handle, ia, ia_type,
