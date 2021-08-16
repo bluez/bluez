@@ -72,9 +72,65 @@ struct hci_conn {
 	uint16_t tx_pkt_min;
 	uint16_t tx_pkt_max;
 	uint16_t tx_pkt_med;
+	struct queue *chan_list;
+};
+
+struct l2cap_chan {
+	uint16_t cid;
+	bool out;
+	unsigned long num;
 };
 
 static struct queue *dev_list;
+
+static void chan_destroy(void *data)
+{
+	struct l2cap_chan *chan = data;
+
+	printf("    Found %s L2CAP channel with CID %u\n",
+					chan->out ? "TX" : "RX", chan->cid);
+	printf("      %lu packets\n", chan->num);
+
+	free(chan);
+}
+
+static struct l2cap_chan *chan_alloc(struct hci_conn *conn, uint16_t cid,
+								bool out)
+{
+	struct l2cap_chan *chan;
+
+	chan = new0(struct l2cap_chan, 1);
+
+	chan->cid = cid;
+	chan->out = out;
+
+	return chan;
+}
+
+static bool chan_match_cid(const void *a, const void *b)
+{
+	const struct l2cap_chan *chan = a;
+	uint32_t val = PTR_TO_UINT(b);
+	uint16_t cid = val & 0xffff;
+	bool out = val & 0x10000;
+
+	return chan->cid == cid && chan->out == out;
+}
+
+static struct l2cap_chan *chan_lookup(struct hci_conn *conn, uint16_t cid,
+								bool out)
+{
+	struct l2cap_chan *chan;
+	uint32_t val = cid | (out ? 0x10000 : 0);
+
+	chan = queue_find(conn->chan_list, chan_match_cid, UINT_TO_PTR(val));
+	if (!chan) {
+		chan = chan_alloc(conn, cid, out);
+		queue_push_tail(conn->chan_list, chan);
+	}
+
+	return chan;
+}
 
 static void conn_destroy(void *data)
 {
@@ -124,6 +180,7 @@ static void conn_destroy(void *data)
 	print_field("%u octets TX min packet size", conn->tx_pkt_min);
 	print_field("%u octets TX max packet size", conn->tx_pkt_max);
 	print_field("%u octets TX median packet size", conn->tx_pkt_med);
+	queue_destroy(conn->chan_list, chan_destroy);
 
 	queue_destroy(conn->tx_queue, free);
 	free(conn);
@@ -139,6 +196,8 @@ static struct hci_conn *conn_alloc(struct hci_dev *dev, uint16_t handle,
 	conn->handle = handle;
 	conn->type = type;
 	conn->tx_queue = queue_new();
+
+	conn->chan_list = queue_new();
 
 	return conn;
 }
@@ -166,7 +225,6 @@ static struct hci_conn *conn_lookup_type(struct hci_dev *dev, uint16_t handle,
 						UINT_TO_PTR(handle));
 	if (!conn || conn->type != type) {
 		conn = conn_alloc(dev, handle, type);
-
 		queue_push_tail(dev->conn_list, conn);
 	}
 
@@ -244,7 +302,6 @@ static struct hci_dev *dev_lookup(uint16_t index)
 	dev = queue_find(dev_list, dev_match_index, UINT_TO_PTR(index));
 	if (!dev) {
 		dev = dev_alloc(index);
-
 		queue_push_tail(dev_list, dev);
 	}
 
@@ -479,6 +536,8 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	const struct bt_hci_acl_hdr *hdr = data;
 	struct hci_dev *dev;
 	struct hci_conn *conn;
+	struct l2cap_chan *chan;
+	uint16_t cid;
 
 	data += sizeof(*hdr);
 	size -= sizeof(*hdr);
@@ -494,6 +553,16 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 								CONN_BR_ACL);
 	if (!conn)
 		return;
+
+	switch (le16_to_cpu(hdr->handle) >> 12) {
+	case 0x00:
+	case 0x02:
+		cid = get_le16(data + 2);
+		chan = chan_lookup(conn, cid, out);
+		if (chan)
+			chan->num++;
+		break;
+	}
 
 	if (out) {
 		struct timeval *last_tx;
