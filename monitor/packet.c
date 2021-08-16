@@ -8090,7 +8090,7 @@ static void le_set_cig_params_test_cmd(const void *data, uint8_t size)
 
 	print_field("CIG ID: 0x%2.2x", cmd->cig_id);
 	print_usec_interval("Master to Slave SDU Interval", cmd->m_interval);
-	print_usec_interval("Master to Slave SDU Interval", cmd->s_interval);
+	print_usec_interval("Slave to Master SDU Interval", cmd->s_interval);
 	print_field("Master to Slave Flush Timeout: 0x%2.2x", cmd->m_ft);
 	print_field("Slave to Master Flush Timeout: 0x%2.2x", cmd->s_ft);
 	print_field("ISO Interval: %.2f ms (0x%4.4x)",
