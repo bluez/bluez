@@ -2681,8 +2681,8 @@ struct bt_hci_cis_params_test {
 	uint8_t  nse;
 	uint16_t m_sdu;
 	uint16_t s_sdu;
-	uint8_t  m_pdu;
-	uint8_t  s_pdu;
+	uint16_t m_pdu;
+	uint16_t s_pdu;
 	uint8_t  m_phy;
 	uint8_t  s_phy;
 	uint8_t  m_bn;

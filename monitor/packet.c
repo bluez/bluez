@@ -8070,12 +8070,14 @@ static void print_cis_params_test(const void *data, int i)
 
 	print_field("CIS ID: 0x%2.2x", cis->cis_id);
 	print_field("NSE: 0x%2.2x", cis->nse);
-	print_field("Master to Slave Maximum SDU: 0x%4.4x", cis->m_sdu);
+	print_field("Master to Slave Maximum SDU: 0x%4.4x",
+						le16_to_cpu(cis->m_sdu));
 	print_field("Slave to Master Maximum SDU: 0x%4.4x",
 						le16_to_cpu(cis->s_sdu));
-	print_field("Master to Slave Maximum PDU: 0x%2.2x",
+	print_field("Master to Slave Maximum PDU: 0x%4.4x",
 						le16_to_cpu(cis->m_pdu));
-	print_field("Slave to Master Maximum PDU: 0x%2.2x", cis->s_pdu);
+	print_field("Slave to Master Maximum PDU: 0x%4.4x",
+						le16_to_cpu(cis->s_pdu));
 	print_le_phy("Master to Slave PHY", cis->m_phy);
 	print_le_phy("Slave to Master PHY", cis->s_phy);
 	print_field("Master to Slave Burst Number: 0x%2.2x", cis->m_bn);
