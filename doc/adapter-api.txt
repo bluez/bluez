@@ -335,3 +335,8 @@ Properties	string Address [readonly]
 				"peripheral": Supports the peripheral role.
 				"central-peripheral": Supports both roles
 						      concurrently.
+
+		array{string} ExperimentalFeatures [readonly, optional]
+
+			List of 128-bit UUIDs that represents the experimental
+			features currently enabled.
