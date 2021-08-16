@@ -266,6 +266,8 @@ struct index_data {
 	uint8_t  bdaddr[6];
 	uint16_t manufacturer;
 	uint16_t msft_opcode;
+	uint8_t  msft_evt_prefix[8];
+	uint8_t  msft_evt_len;
 	size_t   frame;
 };
 
@@ -279,6 +281,12 @@ void packet_set_fallback_manufacturer(uint16_t manufacturer)
 		index_list[i].manufacturer = manufacturer;
 
 	fallback_manufacturer = manufacturer;
+}
+
+void packet_set_msft_evt_prefix(const uint8_t *prefix, uint8_t len)
+{
+	if (index_current < MAX_INDEX && len < 8)
+		memcpy(index_list[index_current].msft_evt_prefix, prefix, len);
 }
 
 static void print_packet(struct timeval *tv, struct ucred *cred, char ident,

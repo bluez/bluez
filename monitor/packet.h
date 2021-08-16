@@ -31,6 +31,7 @@ void packet_del_filter(unsigned long filter);
 void packet_set_priority(const char *priority);
 void packet_select_index(uint16_t index);
 void packet_set_fallback_manufacturer(uint16_t manufacturer);
+void packet_set_msft_evt_prefix(const uint8_t *prefix, uint8_t len);
 
 void packet_hexdump(const unsigned char *buf, uint16_t len);
 void packet_print_error(const char *label, uint8_t error);

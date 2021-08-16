@@ -54,6 +54,8 @@ static void read_supported_features_rsp(const void *data, uint16_t size)
 	packet_print_features_msft(data);
 	print_field("Event prefix length: %u", evt_prefix_len);
 	packet_hexdump(data + 9, size - 9);
+
+	packet_set_msft_evt_prefix(data + 9, evt_prefix_len);
 }
 
 static void le_monitor_advertisement_cmd(const void *data, uint16_t size)
