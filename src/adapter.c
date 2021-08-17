@@ -5555,7 +5555,10 @@ static void adapter_free(gpointer user_data)
 	g_free(adapter->stored_alias);
 	g_free(adapter->current_alias);
 	free(adapter->modalias);
-	g_hash_table_destroy(adapter->allowed_uuid_set);
+
+	if (adapter->allowed_uuid_set)
+		g_hash_table_destroy(adapter->allowed_uuid_set);
+
 	g_free(adapter);
 }
 
