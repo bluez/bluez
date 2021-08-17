@@ -77,6 +77,7 @@ struct hci_conn {
 
 struct l2cap_chan {
 	uint16_t cid;
+	uint16_t psm;
 	bool out;
 	unsigned long num;
 };
@@ -89,6 +90,8 @@ static void chan_destroy(void *data)
 
 	printf("    Found %s L2CAP channel with CID %u\n",
 					chan->out ? "TX" : "RX", chan->cid);
+	if (chan->psm)
+		printf("      PSM %u\n", chan->psm);
 	printf("      %lu packets\n", chan->num);
 
 	free(chan);
@@ -306,6 +309,35 @@ static struct hci_dev *dev_lookup(uint16_t index)
 	}
 
 	return dev;
+}
+
+static void l2cap_sig(struct hci_conn *conn, bool out,
+					const void *data, uint16_t size)
+{
+	const struct bt_l2cap_hdr_sig *hdr = data;
+	struct l2cap_chan *chan;
+	uint16_t psm, scid, dcid;
+
+	switch (hdr->code) {
+	case BT_L2CAP_PDU_CONN_REQ:
+		psm = get_le16(data + 4);
+		scid = get_le16(data + 6);
+		chan = chan_lookup(conn, scid, out);
+		if (chan)
+			chan->psm = psm;
+		break;
+	case BT_L2CAP_PDU_CONN_RSP:
+		dcid = get_le16(data + 4);
+		scid = get_le16(data + 6);
+		chan = chan_lookup(conn, scid, !out);
+		if (chan) {
+			psm = chan->psm;
+			chan = chan_lookup(conn, dcid, out);
+			if (chan)
+				chan->psm = psm;
+		}
+		break;
+	}
 }
 
 static void new_index(struct timeval *tv, uint16_t index,
@@ -561,6 +593,8 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 		chan = chan_lookup(conn, cid, out);
 		if (chan)
 			chan->num++;
+		if (cid == 1)
+			l2cap_sig(conn, out, data + 4, size - 4);
 		break;
 	}
 
