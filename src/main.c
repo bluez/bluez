@@ -80,6 +80,7 @@ static const char *supported_options[] = {
 	"Privacy",
 	"JustWorksRepairing",
 	"TemporaryTimeout",
+	"Experimental",
 	NULL
 };
 
