@@ -5336,6 +5336,44 @@ static const struct generic_data read_local_oob_success_sc_test = {
 	.expect_hci_command = BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA,
 };
 
+static const uint8_t oob_type_bredr[] = { 0x01 };
+static const struct generic_data read_local_oob_ext_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_EXT_DATA,
+	.send_param = oob_type_bredr,
+	.send_len = sizeof(oob_type_bredr),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const struct generic_data read_local_oob_ext_legacy_pairing_test = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_EXT_DATA,
+	.send_param = oob_type_bredr,
+	.send_len = sizeof(oob_type_bredr),
+	.expect_ignore_param = true,
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
+static const struct generic_data read_local_oob_ext_success_ssp_test = {
+	.setup_settings = settings_powered_ssp,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_EXT_DATA,
+	.send_param = oob_type_bredr,
+	.send_len = sizeof(oob_type_bredr),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_ignore_param = true,
+	.expect_hci_command = BT_HCI_CMD_READ_LOCAL_OOB_DATA,
+};
+
+static const struct generic_data read_local_oob_ext_success_sc_test = {
+	.setup_settings = settings_powered_sc,
+	.send_opcode = MGMT_OP_READ_LOCAL_OOB_EXT_DATA,
+	.send_param = oob_type_bredr,
+	.send_len = sizeof(oob_type_bredr),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_ignore_param = true,
+	.expect_hci_command = BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA,
+};
+
 static const uint8_t le_states_conn_slave_adv_connectable[] = {
 			0x00, 0x00, 0x20, 0x00, 0x40, 0x00, 0x00, 0x00};
 static const uint8_t le_states_conn_slave_adv_non_connectable[] = {
@@ -11235,6 +11273,18 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Read Local OOB Data - Success SC",
 				&read_local_oob_success_sc_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Local OOB Ext Data - Invalid index",
+				&read_local_oob_ext_invalid_index_test,
+				NULL, test_command_generic);
+	test_bredr20("Read Local OOB Ext Data - Legacy pairing",
+				&read_local_oob_ext_legacy_pairing_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Local OOB Ext Data - Success SSP",
+				&read_local_oob_ext_success_ssp_test,
+				NULL, test_command_generic);
+	test_bredrle("Read Local OOB Ext Data - Success SC",
+				&read_local_oob_ext_success_sc_test,
 				NULL, test_command_generic);
 
 	test_bredrle("Device Found - Advertising data - Zero padded",
