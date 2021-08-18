@@ -2554,6 +2554,48 @@ static void cmd_privacy(int argc, char **argv)
 	}
 }
 
+static void exp_offload_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		error("Set offload codec failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+	else
+		print("Offload codec feature successfully set");
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_exp_offload_codecs(int argc, char **argv)
+{
+	/* a6695ace-ee7f-4fb9-881a-5fac66c629af */
+	static const uint8_t uuid[16] = {
+				0xaf, 0x29, 0xc6, 0x66, 0xac, 0x5f, 0x1a, 0x88,
+				0xb9, 0x4f, 0x7f, 0xee, 0xce, 0x5a, 0x69, 0xa6,
+	};
+
+	struct mgmt_cp_set_exp_feature cp;
+	uint8_t val;
+	uint16_t index;
+
+	if (parse_setting(argc, argv, &val) == false)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.uuid, uuid, 16);
+	cp.action = val;
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_EXP_FEATURE, index,
+			sizeof(cp), &cp, exp_offload_rsp, NULL, NULL) == 0) {
+		error("Unable to send offload codecs feature cmd");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void class_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 							const void *param)
 {
@@ -5595,6 +5637,8 @@ static const struct bt_shell_menu main_menu = {
 		cmd_exp_privacy,	"Set LL privacy feature"	},
 	{ "exp-quality",	"<on/off>", cmd_exp_quality,
 		"Set bluetooth quality report feature"			},
+	{ "exp-offload",		"<on/off>",
+		cmd_exp_offload_codecs,	"Toggle codec support"		},
 	{ "read-sysconfig",	NULL,
 		cmd_read_sysconfig,	"Read System Configuration"	},
 	{ "set-sysconfig",	"<-v|-h> [options...]",
