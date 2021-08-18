@@ -5104,21 +5104,16 @@ static void le_ext_conn_complete(struct btdev *btdev,
 			struct le_ext_adv *ext_adv,
 			uint8_t status)
 {
+	struct btdev_conn *conn = NULL;
 	struct bt_hci_evt_le_enhanced_conn_complete ev;
 	struct bt_hci_le_ext_create_conn *lecc = (void *)cmd->data;
 
 	memset(&ev, 0, sizeof(ev));
 
 	if (!status) {
-		struct btdev_conn *conn;
-
 		conn = conn_add_acl(btdev, cmd->peer_addr, cmd->peer_addr_type);
 		if (!conn)
 			return;
-
-		/* Disable EXT ADV */
-		queue_foreach(btdev->le_ext_adv, ext_adv_term, conn);
-		queue_foreach(conn->link->dev->le_ext_adv, ext_adv_term, conn);
 
 		ev.status = status;
 		ev.peer_addr_type = btdev->le_scan_own_addr_type;
@@ -5136,6 +5131,9 @@ static void le_ext_conn_complete(struct btdev *btdev,
 		le_meta_event(conn->link->dev,
 				BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE, &ev,
 				sizeof(ev));
+
+		/* Disable EXT ADV */
+		queue_foreach(conn->link->dev->le_ext_adv, ext_adv_term, conn);
 	}
 
 	ev.status = status;
@@ -5150,6 +5148,10 @@ static void le_ext_conn_complete(struct btdev *btdev,
 
 	le_meta_event(btdev, BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE, &ev,
 						sizeof(ev));
+
+	/* Disable EXT ADV */
+	if (conn)
+		queue_foreach(btdev->le_ext_adv, ext_adv_term, conn);
 }
 
 static int cmd_ext_create_conn_complete(struct btdev *dev, const void *data,
