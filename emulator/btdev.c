@@ -5093,7 +5093,7 @@ static void ext_adv_term(void *data, void *user_data)
 
 	/* if connectable bit is set the send adv terminate */
 	if (conn && adv->type & 0x01) {
-		adv_set_terminate(conn->dev, 0x00, adv->handle, conn->handle,
+		adv_set_terminate(adv->dev, 0x00, adv->handle, conn->handle,
 									0x00);
 		le_ext_adv_free(adv);
 	}
