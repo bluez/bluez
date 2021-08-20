@@ -6127,8 +6127,10 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 		 * treated as a newly discovered device.
 		 */
 		if (!device_is_paired(device, bdaddr_type) &&
-				!device_is_trusted(device))
+				!device_is_trusted(device)) {
 			btd_device_set_temporary(device, true);
+			btd_adapter_remove_device(device->adapter,device);
+		}
 
 		device_bonding_failed(device, status);
 		return;
