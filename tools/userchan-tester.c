@@ -40,6 +40,8 @@ struct test_data {
 	enum hciemu_type hciemu_type;
 	const void *test_data;
 	unsigned int remove_id;
+	struct bt_hci *hci;
+	uint32_t current_settings;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -80,6 +82,8 @@ static void read_info_callback(uint8_t status, uint16_t length,
 			rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 	tester_print("  Name: %s", rp->name);
 	tester_print("  Short name: %s", rp->short_name);
+
+	data->current_settings = current_settings;
 
 	if (strcmp(hciemu_get_address(data->hciemu), addr)) {
 		tester_pre_setup_failed();
@@ -291,6 +295,68 @@ static void test_open_failed(const void *test_data)
 	tester_test_failed();
 }
 
+static void close_read_info_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_info *rp = param;
+	uint32_t current_settings;
+
+	tester_print("Read Info callback");
+	tester_print("  Status: 0x%02x", status);
+
+	if (status || !param) {
+		tester_test_failed();
+		return;
+	}
+
+	current_settings = btohl(rp->current_settings);
+	if (current_settings & MGMT_SETTING_POWERED) {
+		tester_print("Controller is powered");
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
+}
+
+static void setup_channel_open(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* Check power off */
+	if (data->current_settings & MGMT_SETTING_POWERED) {
+		tester_print("Controller is powered");
+		tester_setup_failed();
+		return;
+	}
+
+	/* Open Channel */
+	data->hci = bt_hci_new_user_channel(data->mgmt_index);
+	if (!data->hci) {
+		mgmt_unregister(data->mgmt, data->remove_id);
+		data->remove_id = 0;
+
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("User Channel Opened");
+
+	tester_setup_complete();
+}
+
+static void test_close_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	tester_print("Close User Channel");
+	bt_hci_unref(data->hci);
+
+	/* Check if power is off */
+	mgmt_send(data->mgmt, MGMT_OP_READ_INFO, data->mgmt_index, 0, NULL,
+					close_read_info_callback, NULL, NULL);
+}
+
 #define test_user(name, data, setup, func) \
 	do { \
 		struct test_data *user; \
@@ -316,6 +382,9 @@ int main(int argc, char *argv[])
 					setup_powered, test_open_failed);
 	test_user("User channel open - Power Toggle Success", INT_TO_PTR(true),
 					toggle_powered, test_open_success);
+	test_user("User channel close - Success", NULL,
+					setup_channel_open, test_close_success);
+
 
 	return tester_run();
 }
