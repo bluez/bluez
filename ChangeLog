@@ -1,3 +1,11 @@
+ver 5.61:
+	Fix issue with A2DP while waiting for command response.
+	Fix issue with A2DP when SetConfiguration fails.
+	Fix issue with device removal handling.
+	Fix issue with storing discoverable setting.
+	Add support for Central Address Resolution characteristic.
+	Add support for admin policy plugin.
+
 ver 5.60:
 	Fix issue with reading from RFKILL device node.
 	Fix issue with AVDTP and parsing capabilities.
