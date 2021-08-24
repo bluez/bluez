@@ -4511,6 +4511,7 @@ static void device_remove_stored(struct btd_device *device)
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 	g_key_file_remove_group(key_file, "ServiceRecords", NULL);
+	g_key_file_remove_group(key_file, "Attributes", NULL);
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
