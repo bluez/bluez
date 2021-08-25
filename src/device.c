@@ -3129,6 +3129,9 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 
 	device_update_last_seen(device, bdaddr_type);
 
+	g_slist_free_full(device->eir_uuids, g_free);
+	device->eir_uuids = NULL;
+
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
 
