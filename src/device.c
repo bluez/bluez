@@ -5304,6 +5304,13 @@ static void gatt_client_init(struct btd_device *device)
 	}
 
 	btd_gatt_client_connected(device->client_dbus);
+
+	/* Only initiate EATT connection when acting as initiator, as acceptor
+	 * it shall be triggered only when ready to avoid possible clashes where
+	 * both sides attempt to connection at same time.
+	 */
+	if (device->connect)
+		btd_gatt_client_eatt_connect(device->client_dbus);
 }
 
 static void gatt_server_init(struct btd_device *device,

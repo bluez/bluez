@@ -2156,6 +2156,38 @@ static void register_notify(void *data, void *user_data)
 	notify_client_free(notify_client);
 }
 
+void btd_gatt_client_ready(struct btd_gatt_client *client)
+{
+	if (!client)
+		return;
+
+	if (!client->gatt) {
+		struct bt_gatt_client *gatt;
+
+		gatt = btd_device_get_gatt_client(client->device);
+		client->gatt = bt_gatt_client_clone(gatt);
+		if (!client->gatt) {
+			error("GATT client not initialized");
+			return;
+		}
+	}
+
+	client->ready = true;
+
+	DBG("GATT client ready");
+
+	create_services(client);
+
+	DBG("Features 0x%02x", client->features);
+
+	if (!client->features) {
+		client->features = bt_gatt_client_get_features(client->gatt);
+		DBG("Update Features 0x%02x", client->features);
+		if (client->features & BT_GATT_CHRC_CLI_FEAT_EATT)
+			btd_gatt_client_eatt_connect(client);
+	}
+}
+
 static void eatt_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct btd_gatt_client *client = user_data;
@@ -2166,7 +2198,7 @@ static void eatt_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	device_attach_att(client->device, io);
 }
 
-static void eatt_connect(struct btd_gatt_client *client)
+void btd_gatt_client_eatt_connect(struct btd_gatt_client *client)
 {
 	struct bt_att *att = bt_gatt_client_get_att(client->gatt);
 	struct btd_device *dev = client->device;
@@ -2175,6 +2207,9 @@ static void eatt_connect(struct btd_gatt_client *client)
 	GError *gerr = NULL;
 	char addr[18];
 	int i;
+
+	if (!(client->features & BT_GATT_CHRC_CLI_FEAT_EATT))
+		return;
 
 	if (bt_att_get_channels(att) == btd_opts.gatt_channels)
 		return;
@@ -2232,38 +2267,6 @@ static void eatt_connect(struct btd_gatt_client *client)
 	}
 }
 
-void btd_gatt_client_ready(struct btd_gatt_client *client)
-{
-	if (!client)
-		return;
-
-	if (!client->gatt) {
-		struct bt_gatt_client *gatt;
-
-		gatt = btd_device_get_gatt_client(client->device);
-		client->gatt = bt_gatt_client_clone(gatt);
-		if (!client->gatt) {
-			error("GATT client not initialized");
-			return;
-		}
-	}
-
-	client->ready = true;
-
-	DBG("GATT client ready");
-
-	create_services(client);
-
-	DBG("Features 0x%02x", client->features);
-
-	if (!client->features) {
-		client->features = bt_gatt_client_get_features(client->gatt);
-		DBG("Update Features 0x%02x", client->features);
-		if (client->features & BT_GATT_CHRC_CLI_FEAT_EATT)
-			eatt_connect(client);
-	}
-}
-
 void btd_gatt_client_connected(struct btd_gatt_client *client)
 {
 	struct bt_gatt_client *gatt;
@@ -2284,11 +2287,6 @@ void btd_gatt_client_connected(struct btd_gatt_client *client)
 	 * for any pre-registered notification sessions.
 	 */
 	queue_foreach(client->all_notify_clients, register_notify, client);
-
-	if (!(client->features & BT_GATT_CHRC_CLI_FEAT_EATT))
-		return;
-
-	eatt_connect(client);
 }
 
 void btd_gatt_client_service_added(struct btd_gatt_client *client,

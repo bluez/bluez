@@ -20,6 +20,7 @@ void btd_gatt_client_service_added(struct btd_gatt_client *client,
 void btd_gatt_client_service_removed(struct btd_gatt_client *client,
 					struct gatt_db_attribute *attrib);
 void btd_gatt_client_disconnected(struct btd_gatt_client *client);
+void btd_gatt_client_eatt_connect(struct btd_gatt_client *client);
 
 typedef void (*btd_gatt_client_service_path_t)(const char *service_path,
 							void *user_data);
