@@ -962,7 +962,8 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t *pdu,
 		 * link since the MTU size is negotiated using L2CAP channel
 		 * configuration procedures.
 		 */
-		if (bt_att_get_link_type(att) == BT_ATT_BREDR) {
+		if (bt_att_get_link_type(att) == BT_ATT_BREDR ||
+				chan->type == BT_ATT_EATT) {
 			switch (opcode) {
 			case BT_ATT_OP_MTU_REQ:
 				goto not_supported;
