@@ -729,7 +729,7 @@ typedef struct {
 typedef struct {
 	uint8_t		flt_type;
 	uint8_t		cond_type;
-	uint8_t		condition[0];
+	uint8_t		condition[];
 } __attribute__ ((packed)) set_event_flt_cp;
 #define SET_EVENT_FLT_CP_SIZE 2
 
@@ -2135,7 +2135,7 @@ typedef struct {
 #define EVT_LE_META_EVENT	0x3E
 typedef struct {
 	uint8_t		subevent;
-	uint8_t		data[0];
+	uint8_t		data[];
 } __attribute__ ((packed)) evt_le_meta_event;
 #define EVT_LE_META_EVENT_SIZE 1
 
@@ -2159,7 +2159,7 @@ typedef struct {
 	uint8_t		bdaddr_type;
 	bdaddr_t	bdaddr;
 	uint8_t		length;
-	uint8_t		data[0];
+	uint8_t		data[];
 } __attribute__ ((packed)) le_advertising_info;
 #define LE_ADVERTISING_INFO_SIZE 9
 
@@ -2246,7 +2246,7 @@ typedef struct {
 typedef struct {
 	uint16_t		total_num_blocks;
 	uint8_t			num_handles;
-	cmplt_handle		handles[0];
+	cmplt_handle		handles[];
 }  __attribute__ ((packed)) evt_num_completed_blocks;
 
 #define EVT_AMP_STATUS_CHANGE			0x4D
@@ -2264,7 +2264,7 @@ typedef struct {
 #define EVT_STACK_INTERNAL		0xFD
 typedef struct {
 	uint16_t	type;
-	uint8_t		data[0];
+	uint8_t		data[];
 } __attribute__ ((packed)) evt_stack_internal;
 #define EVT_STACK_INTERNAL_SIZE 2
 
@@ -2407,19 +2407,19 @@ struct hci_dev_req {
 
 struct hci_dev_list_req {
 	uint16_t dev_num;
-	struct hci_dev_req dev_req[0];	/* hci_dev_req structures */
+	struct hci_dev_req dev_req[];	/* hci_dev_req structures */
 };
 
 struct hci_conn_list_req {
 	uint16_t dev_id;
 	uint16_t conn_num;
-	struct hci_conn_info conn_info[0];
+	struct hci_conn_info conn_info[];
 };
 
 struct hci_conn_info_req {
 	bdaddr_t bdaddr;
 	uint8_t  type;
-	struct hci_conn_info conn_info[0];
+	struct hci_conn_info conn_info[];
 };
 
 struct hci_auth_info_req {
