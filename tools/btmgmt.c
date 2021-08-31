@@ -1906,17 +1906,18 @@ static void read_sysconfig_rsp(uint8_t status, uint16_t len, const void *param,
 	if (status != 0) {
 		error("Read system configuration failed with status "
 				"0x%02x (%s)", status, mgmt_errstr(status));
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	tlv_list = mgmt_tlv_list_load_from_buf(param, len);
 	if (!tlv_list) {
 		error("Unable to parse response of read system configuration");
-		return;
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	mgmt_tlv_list_foreach(tlv_list, print_mgmt_tlv, NULL);
 	mgmt_tlv_list_free(tlv_list);
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_read_sysconfig(int argc, char **argv)
