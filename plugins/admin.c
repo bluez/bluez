@@ -196,12 +196,17 @@ static char **new_uuid_strings(struct queue *allowlist, gsize *num)
 	char **uuid_strs = NULL;
 	gsize i = 0, allowlist_num;
 
+	allowlist_num = queue_length(allowlist);
+	if (!allowlist_num) {
+		*num = 0;
+		return NULL;
+	}
+
 	/* Set num to a non-zero number so that whoever call this could know if
 	 * this function success or not
 	 */
 	*num = 1;
 
-	allowlist_num = queue_length(allowlist);
 	uuid_strs = g_try_malloc_n(allowlist_num, sizeof(char *));
 	if (!uuid_strs)
 		return NULL;
