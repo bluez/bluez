@@ -903,6 +903,8 @@ static char **shell_completion(const char *text, int start, int end)
 {
 	char **matches = NULL;
 
+	rl_attempted_completion_over = 1;
+
 	if (!data.menu)
 		return NULL;
 
@@ -924,9 +926,6 @@ static char **shell_completion(const char *text, int start, int end)
 		rl_completion_display_matches_hook = NULL;
 		matches = rl_completion_matches(text, cmd_generator);
 	}
-
-	if (!matches)
-		rl_attempted_completion_over = 1;
 
 	return matches;
 }
