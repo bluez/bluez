@@ -448,7 +448,7 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	else {
 		if (!l2cap_frame_get_u8(l2cap_frame, &ex_length))
 			goto fail;
-		hdr.length = ((uint16_t)length << 8) | ex_length;
+		hdr.length = ((uint16_t)ex_length << 8) | length;
 		hdr.length = GET_LEN16(hdr.length);
 	}
 
