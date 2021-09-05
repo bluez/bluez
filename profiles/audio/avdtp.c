@@ -44,7 +44,6 @@
 #define AVDTP_PSM 25
 
 #define MAX_SEID 0x3E
-static uint64_t seids;
 
 #ifndef MAX
 # define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -3768,7 +3767,9 @@ int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 							&req, sizeof(req));
 }
 
-struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,
+struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps,
+						uint64_t *seid_pool,
+						uint8_t type,
 						uint8_t media_type,
 						uint8_t codec_type,
 						gboolean delay_reporting,
@@ -3777,7 +3778,7 @@ struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,
 						void *user_data)
 {
 	struct avdtp_local_sep *sep;
-	uint8_t seid = util_get_uid(&seids, MAX_SEID);
+	uint8_t seid = util_get_uid(seid_pool, MAX_SEID);
 
 	if (!seid)
 		return NULL;
@@ -3794,18 +3795,21 @@ struct avdtp_local_sep *avdtp_register_sep(struct queue *lseps, uint8_t type,
 	sep->user_data = user_data;
 	sep->delay_reporting = delay_reporting;
 
-	DBG("SEP %p registered: type:%d codec:%d seid:%d", sep,
-			sep->info.type, sep->codec, sep->info.seid);
+	DBG("SEP %p registered: type:%d codec:%d seid_pool:%p seid:%d", sep,
+			sep->info.type, sep->codec, seid_pool,
+			sep->info.seid);
 
 	if (!queue_push_tail(lseps, sep)) {
 		g_free(sep);
+		util_clear_uid(seid_pool, seid);
 		return NULL;
 	}
 
 	return sep;
 }
 
-int avdtp_unregister_sep(struct queue *lseps, struct avdtp_local_sep *sep)
+int avdtp_unregister_sep(struct queue *lseps, uint64_t *seid_pool,
+						struct avdtp_local_sep *sep)
 {
 	if (!sep)
 		return -EINVAL;
@@ -3813,10 +3817,11 @@ int avdtp_unregister_sep(struct queue *lseps, struct avdtp_local_sep *sep)
 	if (sep->stream)
 		release_stream(sep->stream, sep->stream->session);
 
-	DBG("SEP %p unregistered: type:%d codec:%d seid:%d", sep,
-			sep->info.type, sep->codec, sep->info.seid);
+	DBG("SEP %p unregistered: type:%d codec:%d seid_pool:%p seid:%d", sep,
+			sep->info.type, sep->codec, seid_pool,
+			sep->info.seid);
 
-	util_clear_uid(&seids, sep->info.seid);
+	util_clear_uid(seid_pool, sep->info.seid);
 	queue_remove(lseps, sep);
 	g_free(sep);
 

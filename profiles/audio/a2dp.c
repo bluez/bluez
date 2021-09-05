@@ -118,6 +118,7 @@ struct a2dp_server {
 	uint32_t sink_record_id;
 	gboolean sink_enabled;
 	gboolean source_enabled;
+	uint64_t seid_pool;
 	GIOChannel *io;
 	struct queue *seps;
 	struct queue *channels;
@@ -2553,7 +2554,7 @@ static void a2dp_unregister_sep(struct a2dp_sep *sep)
 		sep->endpoint = NULL;
 	}
 
-	avdtp_unregister_sep(server->seps, sep->lsep);
+	avdtp_unregister_sep(server->seps, &server->seid_pool, sep->lsep);
 
 	g_free(sep);
 
@@ -2615,7 +2616,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 
 	sep = g_new0(struct a2dp_sep, 1);
 
-	sep->lsep = avdtp_register_sep(server->seps, type,
+	sep->lsep = avdtp_register_sep(server->seps, &server->seid_pool, type,
 					AVDTP_MEDIA_TYPE_AUDIO, codec,
 					delay_reporting, &endpoint_ind,
 					&cfm, sep);
