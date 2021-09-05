@@ -80,7 +80,9 @@ get_pairing(uint16_t vid, uint16_t pid, const char *name)
 			continue;
 		if (devices[i].pid != pid)
 			continue;
-
+		// treat all fake PS3 controller as SHANWAN
+		if (strcmp(devices[i].name, "SHANWAN PS3 GamePad") == 0)
+			return &devices[i];
 		if (name && strcmp(name, devices[i].name))
 			continue;
 
