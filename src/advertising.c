@@ -48,7 +48,7 @@ struct btd_adv_manager {
 	uint8_t max_scan_rsp_len;
 	uint8_t max_ads;
 	uint32_t supported_flags;
-	unsigned int instance_bitmap;
+	uint64_t instance_bitmap;
 	bool extended_add_cmds;
 	int8_t min_tx_power;
 	int8_t max_tx_power;

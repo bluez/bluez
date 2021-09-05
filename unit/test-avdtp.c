@@ -550,7 +550,7 @@ static void test_server_seid(gconstpointer data)
 	struct avdtp_local_sep *sep;
 	unsigned int i;
 
-	for (i = 0; i < sizeof(int) * 8; i++) {
+	for (i = 0; i < MAX_SEID; i++) {
 		sep = avdtp_register_sep(context->lseps, AVDTP_SEP_TYPE_SINK,
 						AVDTP_MEDIA_TYPE_AUDIO,
 						0x00, TRUE, &sep_ind, NULL,

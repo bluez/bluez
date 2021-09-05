@@ -102,8 +102,8 @@ void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 
 unsigned char util_get_dt(const char *parent, const char *name);
 
-uint8_t util_get_uid(unsigned int *bitmap, uint8_t max);
-void util_clear_uid(unsigned int *bitmap, uint8_t id);
+uint8_t util_get_uid(uint64_t *bitmap, uint8_t max);
+void util_clear_uid(uint64_t *bitmap, uint8_t id);
 
 const char *bt_uuid16_to_str(uint16_t uuid);
 const char *bt_uuid32_to_str(uint32_t uuid);

@@ -34,7 +34,7 @@
 #include "../profiles/audio/a2dp-codecs.h"
 
 #define MAX_SEID 0x3E
-static unsigned int seids;
+static uint64_t seids;
 
 #ifndef MAX
 # define MAX(x, y) ((x) > (y) ? (x) : (y))
