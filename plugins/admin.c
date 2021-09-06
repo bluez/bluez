@@ -67,7 +67,7 @@ static struct btd_admin_policy *admin_policy_new(struct btd_adapter *adapter)
 
 	admin_policy->adapter = adapter;
 	admin_policy->adapter_id = btd_adapter_get_index(adapter);
-	admin_policy->service_allowlist = NULL;
+	admin_policy->service_allowlist = queue_new();
 
 	return admin_policy;
 }
@@ -335,12 +335,8 @@ static void load_policy_settings(struct btd_admin_policy *admin_policy)
 	char *filename = ADMIN_POLICY_STORAGE;
 	struct stat st;
 
-	if (stat(filename, &st) < 0) {
-		btd_error(admin_policy->adapter_id,
-				"Failed to get file %s information",
-				filename);
-		return;
-	}
+	if (stat(filename, &st) < 0)
+		store_policy_settings(policy_data);
 
 	key_file = g_key_file_new();
 
