@@ -85,6 +85,17 @@ static void admin_policy_free(void *data)
 	g_free(admin_policy);
 }
 
+static void admin_policy_destroy(struct btd_admin_policy *admin_policy)
+{
+	const char *path = adapter_get_path(admin_policy->adapter);
+
+	g_dbus_unregister_interface(dbus_conn, path,
+						ADMIN_POLICY_SET_INTERFACE);
+	g_dbus_unregister_interface(dbus_conn, path,
+						ADMIN_POLICY_STATUS_INTERFACE);
+	admin_policy_free(admin_policy);
+}
+
 static bool uuid_match(const void *data, const void *match_data)
 {
 	const bt_uuid_t *uuid = data;
@@ -492,7 +503,7 @@ static int admin_policy_adapter_probe(struct btd_adapter *adapter)
 	if (!g_dbus_register_interface(dbus_conn, adapter_path,
 					ADMIN_POLICY_SET_INTERFACE,
 					admin_policy_adapter_methods, NULL,
-					NULL, policy_data, admin_policy_free)) {
+					NULL, policy_data, NULL)) {
 		btd_error(policy_data->adapter_id,
 			"Admin Policy Set interface init failed on path %s",
 								adapter_path);
@@ -506,7 +517,7 @@ static int admin_policy_adapter_probe(struct btd_adapter *adapter)
 					ADMIN_POLICY_STATUS_INTERFACE,
 					NULL, NULL,
 					admin_policy_adapter_properties,
-					policy_data, admin_policy_free)) {
+					policy_data, NULL)) {
 		btd_error(policy_data->adapter_id,
 			"Admin Policy Status interface init failed on path %s",
 								adapter_path);
@@ -574,10 +585,24 @@ static void admin_policy_device_removed(struct btd_adapter *adapter,
 		unregister_device_data(data, NULL);
 }
 
+static void admin_policy_remove(struct btd_adapter *adapter)
+{
+	DBG("");
+
+	queue_foreach(devices, unregister_device_data, NULL);
+	queue_destroy(devices, g_free);
+
+	if (policy_data) {
+		admin_policy_destroy(policy_data);
+		policy_data = NULL;
+	}
+}
+
 static struct btd_adapter_driver admin_policy_driver = {
 	.name	= "admin_policy",
 	.probe	= admin_policy_adapter_probe,
 	.resume = NULL,
+	.remove = admin_policy_remove,
 	.device_resolved = admin_policy_device_added,
 	.device_removed = admin_policy_device_removed
 };
@@ -597,11 +622,7 @@ static void admin_exit(void)
 	DBG("");
 
 	btd_unregister_adapter_driver(&admin_policy_driver);
-	queue_foreach(devices, unregister_device_data, NULL);
-	queue_destroy(devices, g_free);
-
-	if (policy_data)
-		admin_policy_free(policy_data);
+	admin_policy_remove(NULL);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(admin, VERSION,
