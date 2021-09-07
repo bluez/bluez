@@ -375,6 +375,43 @@ end:
 	close(sk);
 }
 
+static void test_codecs_setsockopt(const void *test_data)
+{
+	int sk, err;
+	char buffer[255];
+	struct bt_codecs *codecs;
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (sk < 0) {
+		tester_warn("Can't create socket: %s (%d)", strerror(errno),
+									errno);
+		tester_test_failed();
+		return;
+	}
+
+	memset(buffer, 0, sizeof(buffer));
+
+	codecs = (void *)buffer;
+
+	codecs->codecs[0].id = 0x05;
+	codecs->num_codecs = 1;
+	codecs->codecs[0].data_path_id = 1;
+	codecs->codecs[0].num_caps = 0x00;
+
+	err = setsockopt(sk, SOL_BLUETOOTH, BT_CODEC, codecs, sizeof(buffer));
+	if (err < 0) {
+		tester_warn("Can't set socket option : %s (%d)",
+			    strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+
+	tester_test_passed();
+
+end:
+	close(sk);
+}
+
 static void test_getsockopt(const void *test_data)
 {
 	int sk, err;
@@ -668,6 +705,9 @@ int main(int argc, char *argv[])
 
 	test_offload_sco("Basic SCO Get Socket Option - Offload - Success",
 				NULL, setup_powered, test_codecs_getsockopt);
+
+	test_offload_sco("Basic SCO Set Socket Option - Offload - Success",
+				NULL, setup_powered, test_codecs_setsockopt);
 
 	return tester_run();
 }
