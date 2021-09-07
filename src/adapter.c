@@ -135,6 +135,13 @@ static const struct mgmt_exp_uuid rpa_resolution_uuid = {
 	.str = "15c0a148-c273-11ea-b3de-0242ac130004"
 };
 
+/* a6695ace-ee7f-4fb9-881a-5fac66c629af */
+static const struct mgmt_exp_uuid codec_offload_uuid = {
+	.val = { 0xaf, 0x29, 0xc6, 0x66, 0xac, 0x5f, 0x1a, 0x88,
+		0xb9, 0x4f, 0x7f, 0xee, 0xce, 0x5a, 0x69, 0xa6 },
+	.str = "a6695ace-ee7f-4fb9-881a-5fac66c629af"
+};
+
 static DBusConnection *dbus_conn = NULL;
 
 static uint32_t kernel_features = 0;
@@ -9555,6 +9562,40 @@ static void rpa_resolution_func(struct btd_adapter *adapter, uint8_t action)
 	btd_error(adapter->dev_id, "Failed to set RPA Resolution");
 }
 
+static void codec_offload_complete(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
+
+	if (status != 0) {
+		error("Set Codec Offload failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		return;
+	}
+
+	DBG("Codec Offload successfully set");
+
+	if (action)
+		queue_push_tail(adapter->exps, (void *)codec_offload_uuid.val);
+}
+
+static void codec_offload_func(struct btd_adapter *adapter, uint8_t action)
+{
+	struct mgmt_cp_set_exp_feature cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.uuid, codec_offload_uuid.val, 16);
+	cp.action = action;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_EXP_FEATURE,
+			adapter->dev_id, sizeof(cp), &cp,
+			codec_offload_complete, adapter, NULL) > 0)
+		return;
+
+	btd_error(adapter->dev_id, "Failed to set Codec Offload");
+}
+
 static const struct exp_feat {
 	const struct mgmt_exp_uuid *uuid;
 	void (*func)(struct btd_adapter *adapter, uint8_t action);
@@ -9564,6 +9605,7 @@ static const struct exp_feat {
 		 le_simult_central_peripheral_func),
 	EXP_FEAT(&quality_report_uuid, quality_report_func),
 	EXP_FEAT(&rpa_resolution_uuid, rpa_resolution_func),
+	EXP_FEAT(&codec_offload_uuid, codec_offload_func),
 };
 
 static void read_exp_features_complete(uint8_t status, uint16_t length,
