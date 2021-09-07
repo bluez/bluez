@@ -38,6 +38,7 @@ struct test_data {
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
 	bool disable_esco;
+	bool enable_codecs;
 };
 
 struct sco_client_data {
@@ -124,6 +125,18 @@ static void index_removed_callback(uint16_t index, uint16_t length,
 	tester_post_teardown_complete();
 }
 
+static void enable_codec_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_warn("Failed to enable codecs");
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Enabled codecs");
+}
+
 static void read_index_list_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -202,7 +215,7 @@ static void test_data_free(void *test_data)
 	free(data);
 }
 
-#define test_sco_full(name, data, setup, func, _disable_esco) \
+#define test_sco_full(name, data, setup, func, _disable_esco, _enable_codecs) \
 	do { \
 		struct test_data *user; \
 		user = malloc(sizeof(struct test_data)); \
@@ -212,16 +225,20 @@ static void test_data_free(void *test_data)
 		user->io_id = 0; \
 		user->test_data = data; \
 		user->disable_esco = _disable_esco; \
+		user->enable_codecs = _enable_codecs; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
 #define test_sco(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, false)
+	test_sco_full(name, data, setup, func, false, false)
 
 #define test_sco_11(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, true)
+	test_sco_full(name, data, setup, func, true, false)
+
+#define test_offload_sco(name, data, setup, func) \
+	test_sco_full(name, data, setup, func, false, true)
 
 static const struct sco_client_data connect_success = {
 	.expect_err = 0
@@ -281,6 +298,25 @@ static void setup_powered(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
+	if (data->enable_codecs) {
+		/* a6695ace-ee7f-4fb9-881a-5fac66c629af */
+		static const uint8_t uuid[16] = {
+				0xaf, 0x29, 0xc6, 0x66, 0xac, 0x5f, 0x1a, 0x88,
+				0xb9, 0x4f, 0x7f, 0xee, 0xce, 0x5a, 0x69, 0xa6,
+		};
+
+		struct mgmt_cp_set_exp_feature cp;
+
+		memset(&cp, 0, sizeof(cp));
+		memcpy(cp.uuid, uuid, 16);
+		cp.action = 1;
+
+		tester_print("Enabling codecs");
+
+		mgmt_send(data->mgmt, MGMT_OP_SET_EXP_FEATURE, data->mgmt_index,
+			  sizeof(cp), &cp, enable_codec_callback, NULL, NULL);
+	}
+
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
 					setup_powered_callback, NULL, NULL);
@@ -306,6 +342,37 @@ static void test_socket(const void *test_data)
 	close(sk);
 
 	tester_test_passed();
+}
+
+static void test_codecs_getsockopt(const void *test_data)
+{
+	int sk, err;
+	socklen_t len;
+	char buffer[255];
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (sk < 0) {
+		tester_warn("Can't create socket: %s (%d)", strerror(errno),
+									errno);
+		tester_test_failed();
+		return;
+	}
+
+	len = sizeof(buffer);
+	memset(buffer, 0, len);
+
+	err = getsockopt(sk, SOL_BLUETOOTH, BT_CODEC, buffer, &len);
+	if (err < 0) {
+		tester_warn("Can't get socket option : %s (%d)",
+			    strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+
+	tester_test_passed();
+
+end:
+	close(sk);
 }
 
 static void test_getsockopt(const void *test_data)
@@ -598,6 +665,9 @@ int main(int argc, char *argv[])
 
 	test_sco_11("SCO mSBC 1.1 - Failure", &connect_failure, setup_powered,
 							test_connect_transp);
+
+	test_offload_sco("Basic SCO Get Socket Option - Offload - Success",
+				NULL, setup_powered, test_codecs_getsockopt);
 
 	return tester_run();
 }

@@ -140,6 +140,24 @@ struct bt_voice {
 
 #define BT_SCM_PKT_STATUS	0x03
 
+#define BT_CODEC 19
+struct bt_codec {
+	uint8_t id;
+	uint16_t cid;
+	uint16_t vid;
+	uint8_t data_path_id;
+	uint8_t num_caps;
+	struct codec_caps {
+		uint8_t len;
+		uint8_t data[];
+	} caps[];
+} __attribute__((packed));
+
+struct bt_codecs {
+	uint8_t num_codecs;
+	struct bt_codec codecs[];
+} __attribute__((packed));
+
 /* Connection and socket states */
 enum {
 	BT_CONNECTED = 1, /* Equal to TCP_ESTABLISHED to make net code happy */
