@@ -675,6 +675,52 @@ end:
 	close(sk);
 }
 
+static void test_connect_offload_msbc(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+	int sk, err;
+	int len;
+	char buffer[255];
+	struct bt_codecs *codecs;
+
+	sk = create_sco_sock(data);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	len = sizeof(buffer);
+	memset(buffer, 0, len);
+
+	codecs = (void *)buffer;
+
+	codecs->codecs[0].id = 0x05;
+	codecs->num_codecs = 1;
+	codecs->codecs[0].data_path_id = 1;
+	codecs->codecs[0].num_caps = 0x00;
+
+	err = setsockopt(sk, SOL_BLUETOOTH, BT_CODEC, codecs, sizeof(buffer));
+	if (err < 0) {
+		tester_warn("Can't set socket option : %s (%d)",
+			    strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+	err = connect_sco_sock(data, sk);
+
+	tester_warn("Connect returned %s (%d), expected %s (%d)",
+			strerror(-err), -err,
+			strerror(scodata->expect_err), scodata->expect_err);
+
+	if (-err != scodata->expect_err)
+		tester_test_failed();
+	else
+		tester_test_passed();
+
+end:
+	close(sk);
+}
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -708,6 +754,9 @@ int main(int argc, char *argv[])
 
 	test_offload_sco("Basic SCO Set Socket Option - Offload - Success",
 				NULL, setup_powered, test_codecs_setsockopt);
+
+	test_offload_sco("eSCO mSBC - Offload - Success",
+		&connect_success, setup_powered, test_connect_offload_msbc);
 
 	return tester_run();
 }
