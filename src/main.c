@@ -42,6 +42,7 @@
 #include "shared/att-types.h"
 #include "shared/mainloop.h"
 #include "shared/timeout.h"
+#include "shared/queue.h"
 #include "lib/uuid.h"
 #include "shared/util.h"
 #include "btd.h"
@@ -545,10 +546,78 @@ static void parse_le_config(GKeyFile *config)
 	parse_mode_config(config, "LE", params, ARRAY_SIZE(params));
 }
 
+static bool match_experimental(const void *data, const void *match_data)
+{
+	const char *value = data;
+	const char *uuid = match_data;
+
+	if (!strcmp(value, "*"))
+		return true;
+
+	return !strcasecmp(value, uuid);
+}
+
+bool btd_experimental_enabled(const char *uuid)
+{
+	if (!btd_opts.experimental)
+		false;
+
+	return queue_find(btd_opts.experimental, match_experimental, uuid);
+}
+
+static const char *valid_uuids[] = {
+	"d4992530-b9ec-469f-ab01-6c481c47da1c",
+	"671b10b5-42c0-4696-9227-eb28d1b049d6",
+	"15c0a148-c273-11ea-b3de-0242ac130004",
+	"330859bc-7506-492d-9370-9a6f0614037f",
+	"a6695ace-ee7f-4fb9-881a-5fac66c629af",
+	"*"
+};
+
+static void btd_parse_experimental(char **list)
+{
+	int i;
+
+	if (btd_opts.experimental) {
+		warn("Unable to parse Experimental: list already set");
+		return;
+	}
+
+	btd_opts.experimental = queue_new();
+
+	for (i = 0; list[i]; i++) {
+		size_t j;
+		const char *uuid = list[i];
+
+		if (!strcasecmp("false", uuid) || !strcasecmp("off", uuid)) {
+			queue_destroy(btd_opts.experimental, free);
+			btd_opts.experimental = NULL;
+		}
+
+		if (!strcasecmp("true", uuid) || !strcasecmp("on", uuid))
+			uuid = "*";
+
+		for (j = 0; j < ARRAY_SIZE(valid_uuids); j++) {
+			if (!strcasecmp(valid_uuids[j], uuid))
+				break;
+		}
+
+		/* Ignored if UUID is considered invalid */
+		if (j == ARRAY_SIZE(valid_uuids)) {
+			warn("Invalid Experimental UUID: %s", uuid);
+			continue;
+		}
+
+		DBG("%s", uuid);
+
+		queue_push_tail(btd_opts.experimental, strdup(uuid));
+	}
+}
+
 static void parse_config(GKeyFile *config)
 {
 	GError *err = NULL;
-	char *str;
+	char *str, **strlist;
 	int val;
 	gboolean boolean;
 
@@ -722,12 +791,14 @@ static void parse_config(GKeyFile *config)
 	else
 		btd_opts.refresh_discovery = boolean;
 
-	boolean = g_key_file_get_boolean(config, "General",
-						"Experimental", &err);
+	strlist = g_key_file_get_string_list(config, "General", "Experimental",
+						NULL, &err);
 	if (err)
 		g_clear_error(&err);
-	else
-		btd_opts.experimental = boolean;
+	else {
+		btd_parse_experimental(strlist);
+		g_strfreev(strlist);
+	}
 
 	str = g_key_file_get_string(config, "GATT", "Cache", &err);
 	if (err) {
@@ -840,7 +911,6 @@ static void init_defaults(void)
 	btd_opts.name_resolv = TRUE;
 	btd_opts.debug_keys = FALSE;
 	btd_opts.refresh_discovery = TRUE;
-	btd_opts.experimental = false;
 
 	btd_opts.defaults.num_entries = 0;
 	btd_opts.defaults.br.page_scan_type = 0xFFFF;
@@ -993,6 +1063,24 @@ static gboolean parse_debug(const char *key, const char *value,
 	return TRUE;
 }
 
+static gboolean parse_experimental(const char *key, const char *value,
+					gpointer user_data, GError **error)
+{
+	char **strlist;
+
+	if (value) {
+		strlist = g_strsplit(value, ",", -1);
+		btd_parse_experimental(strlist);
+		g_strfreev(strlist);
+	} else {
+		if (!btd_opts.experimental)
+			btd_opts.experimental = queue_new();
+		queue_push_head(btd_opts.experimental, strdup("*"));
+	}
+
+	return TRUE;
+}
+
 static GOptionEntry options[] = {
 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
 				G_OPTION_ARG_CALLBACK, parse_debug,
@@ -1005,8 +1093,9 @@ static GOptionEntry options[] = {
 			"Specify an explicit path to the config file", "FILE"},
 	{ "compat", 'C', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Provide deprecated command line interfaces" },
-	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &btd_opts.experimental,
-				"Enable experimental interfaces" },
+	{ "experimental", 'E', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_experimental,
+				"Enable experimental features/interfaces" },
 	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Run with logging in foreground" },
@@ -1134,6 +1223,9 @@ int main(int argc, char *argv[])
 
 	if (btd_opts.mode != BT_MODE_LE)
 		stop_sdp_server();
+
+	if (btd_opts.experimental)
+		queue_destroy(btd_opts.experimental, free);
 
 	if (main_conf)
 		g_key_file_free(main_conf);

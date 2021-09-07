@@ -10,6 +10,8 @@
  *
  */
 
+#include <stdbool.h>
+
 typedef enum {
 	BT_MODE_DUAL,
 	BT_MODE_BREDR,
@@ -109,7 +111,7 @@ struct btd_opts {
 	gboolean	debug_keys;
 	gboolean	fast_conn;
 	gboolean	refresh_discovery;
-	gboolean	experimental;
+	struct queue	*experimental;
 
 	uint16_t	did_source;
 	uint16_t	did_vendor;
@@ -140,5 +142,6 @@ void rfkill_init(void);
 void rfkill_exit(void);
 
 GKeyFile *btd_get_main_conf(void);
+bool btd_experimental_enabled(const char *uuid);
 
 void btd_exit(void);

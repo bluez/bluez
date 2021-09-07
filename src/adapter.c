@@ -102,28 +102,37 @@ static const struct mgmt_blocked_key_info blocked_keys[] = {
 		 0x22, 0x8e, 0x07, 0x56, 0xb4, 0xe8, 0x5f, 0x01}},
 };
 
+struct mgmt_exp_uuid {
+	uint8_t val[16];
+	const char *str;
+};
+
 /* d4992530-b9ec-469f-ab01-6c481c47da1c */
-static const uint8_t debug_uuid[16] = {
-	0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c, 0x01, 0xab,
-	0x9f, 0x46, 0xec, 0xb9, 0x30, 0x25, 0x99, 0xd4,
+static const struct mgmt_exp_uuid debug_uuid = {
+	.val = { 0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c, 0x01, 0xab,
+		0x9f, 0x46, 0xec, 0xb9, 0x30, 0x25, 0x99, 0xd4 },
+	.str = "d4992530-b9ec-469f-ab01-6c481c47da1c"
 };
 
 /* 671b10b5-42c0-4696-9227-eb28d1b049d6 */
-static const uint8_t le_simult_central_peripheral_uuid[16] = {
-	0xd6, 0x49, 0xb0, 0xd1, 0x28, 0xeb, 0x27, 0x92,
-	0x96, 0x46, 0xc0, 0x42, 0xb5, 0x10, 0x1b, 0x67,
+static const struct mgmt_exp_uuid le_simult_central_peripheral_uuid = {
+	.val = { 0xd6, 0x49, 0xb0, 0xd1, 0x28, 0xeb, 0x27, 0x92,
+		0x96, 0x46, 0xc0, 0x42, 0xb5, 0x10, 0x1b, 0x67 },
+	.str = "671b10b5-42c0-4696-9227-eb28d1b049d6"
 };
 
 /* 330859bc-7506-492d-9370-9a6f0614037f */
-static const uint8_t quality_report_uuid[16] = {
-	0x7f, 0x03, 0x14, 0x06, 0x6f, 0x9a, 0x70, 0x93,
-	0x2d, 0x49, 0x06, 0x75, 0xbc, 0x59, 0x08, 0x33,
+static const struct mgmt_exp_uuid quality_report_uuid = {
+	.val = { 0x7f, 0x03, 0x14, 0x06, 0x6f, 0x9a, 0x70, 0x93,
+		0x2d, 0x49, 0x06, 0x75, 0xbc, 0x59, 0x08, 0x33 },
+	.str = "330859bc-7506-492d-9370-9a6f0614037f"
 };
 
 /* 15c0a148-c273-11ea-b3de-0242ac130004 */
-static const uint8_t rpa_resolution_uuid[16] = {
-	0x04, 0x00, 0x13, 0xac, 0x42, 0x02, 0xde, 0xb3,
-	0xea, 0x11, 0x73, 0xc2, 0x48, 0xa1, 0xc0, 0x15,
+static const struct mgmt_exp_uuid rpa_resolution_uuid = {
+	.val = { 0x04, 0x00, 0x13, 0xac, 0x42, 0x02, 0xde, 0xb3,
+		0xea, 0x11, 0x73, 0xc2, 0x48, 0xa1, 0xc0, 0x15 },
+	.str = "15c0a148-c273-11ea-b3de-0242ac130004"
 };
 
 static DBusConnection *dbus_conn = NULL;
@@ -3274,7 +3283,7 @@ static gboolean property_get_roles(const GDBusPropertyTable *property,
 	}
 
 	if (queue_find(adapter->exps, NULL,
-				le_simult_central_peripheral_uuid)) {
+				le_simult_central_peripheral_uuid.val)) {
 		const char *str = "central-peripheral";
 		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
 	}
@@ -9479,23 +9488,15 @@ static void set_exp_debug_complete(uint8_t status, uint16_t len,
 	DBG("Experimental Debug successfully set");
 
 	if (action)
-		queue_push_tail(adapter->exps, (void *)debug_uuid);
+		queue_push_tail(adapter->exps, (void *)debug_uuid.val);
 }
 
-static void exp_debug_func(struct btd_adapter *adapter, uint32_t flags)
+static void exp_debug_func(struct btd_adapter *adapter, uint8_t action)
 {
 	struct mgmt_cp_set_exp_feature cp;
-	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
-
-	/* If already set don't attempt to set it again */
-	if (action == (flags & BIT(0))) {
-		if (action)
-			queue_push_tail(adapter->exps, (void *)debug_uuid);
-		return;
-	}
 
 	memset(&cp, 0, sizeof(cp));
-	memcpy(cp.uuid, debug_uuid, 16);
+	memcpy(cp.uuid, debug_uuid.val, 16);
 	cp.action = action;
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_EXP_FEATURE,
@@ -9507,17 +9508,17 @@ static void exp_debug_func(struct btd_adapter *adapter, uint32_t flags)
 }
 
 static void le_simult_central_peripheral_func(struct btd_adapter *adapter,
-							uint32_t flags)
+							uint8_t action)
 {
-	if (flags & 0x01)
+	if (action)
 		queue_push_tail(adapter->exps,
-				(void *)le_simult_central_peripheral_uuid);
+				(void *)le_simult_central_peripheral_uuid.val);
 }
 
-static void quality_report_func(struct btd_adapter *adapter, uint32_t flags)
+static void quality_report_func(struct btd_adapter *adapter, uint8_t action)
 {
-	if (flags & 0x01)
-		queue_push_tail(adapter->exps, (void *)quality_report_uuid);
+	if (action)
+		queue_push_tail(adapter->exps, (void *)quality_report_uuid.val);
 }
 
 static void set_rpa_resolution_complete(uint8_t status, uint16_t len,
@@ -9535,24 +9536,15 @@ static void set_rpa_resolution_complete(uint8_t status, uint16_t len,
 	DBG("RPA Resolution successfully set");
 
 	if (action)
-		queue_push_tail(adapter->exps, (void *)rpa_resolution_uuid);
+		queue_push_tail(adapter->exps, (void *)rpa_resolution_uuid.val);
 }
 
-static void rpa_resolution_func(struct btd_adapter *adapter, uint32_t flags)
+static void rpa_resolution_func(struct btd_adapter *adapter, uint8_t action)
 {
 	struct mgmt_cp_set_exp_feature cp;
-	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
-
-	/* If already set don't attempt to set it again */
-	if (action == (flags & BIT(0))) {
-		if (action)
-			queue_push_tail(adapter->exps,
-						(void *)rpa_resolution_uuid);
-		return;
-	}
 
 	memset(&cp, 0, sizeof(cp));
-	memcpy(cp.uuid, rpa_resolution_uuid, 16);
+	memcpy(cp.uuid, rpa_resolution_uuid.val, 16);
 	cp.action = action;
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_EXP_FEATURE,
@@ -9564,14 +9556,14 @@ static void rpa_resolution_func(struct btd_adapter *adapter, uint32_t flags)
 }
 
 static const struct exp_feat {
-	const uint8_t *uuid;
-	void (*func)(struct btd_adapter *adapter, uint32_t flags);
+	const struct mgmt_exp_uuid *uuid;
+	void (*func)(struct btd_adapter *adapter, uint8_t action);
 } exp_table[] = {
-	EXP_FEAT(debug_uuid, exp_debug_func),
-	EXP_FEAT(le_simult_central_peripheral_uuid,
+	EXP_FEAT(&debug_uuid, exp_debug_func),
+	EXP_FEAT(&le_simult_central_peripheral_uuid,
 		 le_simult_central_peripheral_func),
-	EXP_FEAT(quality_report_uuid, quality_report_func),
-	EXP_FEAT(rpa_resolution_uuid, rpa_resolution_func),
+	EXP_FEAT(&quality_report_uuid, quality_report_func),
+	EXP_FEAT(&rpa_resolution_uuid, rpa_resolution_func),
 };
 
 static void read_exp_features_complete(uint8_t status, uint16_t length,
@@ -9608,13 +9600,27 @@ static void read_exp_features_complete(uint8_t status, uint16_t length,
 
 		for (j = 0; j < ARRAY_SIZE(exp_table); j++) {
 			const struct exp_feat *feat = &exp_table[j];
+			uint8_t action;
 
-			if (memcmp(rp->features[i].uuid, feat->uuid,
+			if (memcmp(rp->features[i].uuid, feat->uuid->val,
 					sizeof(rp->features[i].uuid)))
 				continue;
 
+			action = btd_experimental_enabled(feat->uuid->str);
+
+			DBG("%s flags %u action %u", feat->uuid->str,
+				rp->features[i].flags, action);
+
+			/* If already set don't attempt to set it again */
+			if (action == (rp->features[i].flags & BIT(0))) {
+				if (action)
+					queue_push_tail(adapter->exps,
+						(void *)feat->uuid->val);
+				continue;
+			}
+
 			if (feat->func)
-				feat->func(adapter, rp->features[i].flags);
+				feat->func(adapter, action);
 		}
 	}
 }
