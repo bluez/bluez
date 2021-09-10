@@ -2967,6 +2967,8 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 		len = sizeof(mode);
 
 		if (!mode) {
+			btd_adv_monitor_power_down(
+						adapter->adv_monitor_manager);
 			clear_discoverable(adapter);
 			remove_temporary_devices(adapter);
 		}
