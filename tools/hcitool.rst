@@ -74,7 +74,7 @@ cmd <*ogf*> <*ocf*> [*parameters*]
 con
     Display active baseband connections
 
-cc [--*role*\=m|s] [--*pkt-type*\=<*ptype*>] <*bdaddr*>
+cc [--*role*\=c|p] [--*pkt-type*\=<*ptype*>] <*bdaddr*>
     Create baseband connection to remote device with Bluetooth address *bdaddr*.
 
     Option **--pkt-type** specifies a list  of  allowed packet types.
@@ -82,9 +82,9 @@ cc [--*role*\=m|s] [--*pkt-type*\=<*ptype*>] <*bdaddr*>
     packet types are **DM1**, **DM3**, **DM5**, **DH1**, **DH3**, **DH5**,
     **HV1**, **HV2**, **HV3**. Default is to allow all packet types.
 
-    Option  **--role** can have value **m** (do not allow role switch, stay
-    master) or **s** (allow role switch, become slave if the peer asks to become
-    master). Default is **m**.
+    Option  **--role** can have value **c** (do not allow role switch, stay
+    central) or **p** (allow role switch, become peripheral if the peer asks to
+    become central). Default is **c**.
 
 dc <*bdaddr*> [*reason*]
     Delete baseband connection from remote device with Bluetooth address
@@ -96,7 +96,7 @@ dc <*bdaddr*> [*reason*]
 
 sr <*bdaddr*> <*role*>
     Switch role for the baseband connection from the remote device to
-    **master** or **slave**.
+    **central** or **peripheral**.
 
 cpt <*bdaddr*> <*ptypes*>
     Change packet types for baseband connection to device with Bluetooth
@@ -157,23 +157,23 @@ clock [*bdaddr*] [*clock*]
     The *clock* can be **0** for the local clock or **1** for the piconet
     clock (which is default).
 
-lescan [--*privacy*] [--*passive*] [--*whitelist*] [--*discovery*\=g|l] [--*duplicates*]
+lescan [--*privacy*] [--*passive*] [--*acceptlist*] [--*discovery*\=g|l] [--*duplicates*]
     Start LE scan
 
 leinfo [--*static*] [--*random*] <*bdaddr*>
     Get LE remote information
 
-lewladd [--*random*] <*bdaddr*>
-    Add device to LE White List
+lealadd [--*random*] <*bdaddr*>
+    Add device to LE Accept List
 
-lewlrm <*bdaddr*>
-    Remove device from LE White List
+lealrm <*bdaddr*>
+    Remove device from LE Accept List
 
-lewlsz
-    Read size of LE White List
+lealsz
+    Read size of LE Accept List
 
-lewlclr
-    Clear LE White List
+lealclr
+    Clear LE Accept List
 
 lerladd [--*local_irk*] [--*peer_irk*] [--*random*] <*bdaddr*>
     Add device to LE Resolving List
@@ -193,7 +193,7 @@ lerlon
 lerloff
     Disable LE Address Resolution
 
-lecc [--*static*] [--*random*] <*bdaddr*> | [--*whitelist*]
+lecc [--*static*] [--*random*] <*bdaddr*> | [--*acceptlist*]
     Create a LE Connection
 
 ledc <*handle*> [*reason*]

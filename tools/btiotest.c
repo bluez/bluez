@@ -576,8 +576,10 @@ static GOptionEntry options[] = {
 				"Disconnect connection after N seconds" },
 	{ "accept", 'a', 0, G_OPTION_ARG_INT, &opt_accept,
 				"Accept connection after N seconds" },
+	{ "central", 'C', 0, G_OPTION_ARG_NONE, &opt_central,
+				"Central role switch (incoming connections)" },
 	{ "master", 'm', 0, G_OPTION_ARG_NONE, &opt_central,
-				"Master role switch (incoming connections)" },
+				"Deprecated. Use central instead." },
 	{ "priority", 'P', 0, G_OPTION_ARG_INT, &opt_priority,
 				"Transmission priority: Setting a priority "
 				"outside the range 0 to 6 requires the"

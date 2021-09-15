@@ -646,7 +646,7 @@ static void usage(void)
 		"\t-A, --auth                     Enable authentication\n"
 		"\t-E, --encrypt                  Enable encryption\n"
 		"\t-S, --secure                   Secure connection\n"
-		"\t-M, --master                   Become the master of a piconet\n"
+		"\t-C, --central                  Become the central of a piconet\n"
 		"\t-L, --linger [seconds]         Set linger timeout\n"
 		"\t-a                             Show all devices (default)\n"
 		"\n");
@@ -668,7 +668,8 @@ static struct option main_options[] = {
 	{ "auth",	0, 0, 'A' },
 	{ "encrypt",	0, 0, 'E' },
 	{ "secure",	0, 0, 'S' },
-	{ "master",	0, 0, 'M' },
+	{ "master",	0, 0, 'M' }, /* Deprecated. Kept for compatibility. */
+	{ "central",	0, 0, 'C' },
 	{ "linger",	1, 0, 'L' },
 	{ 0, 0, 0, 0 }
 };
@@ -680,7 +681,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:rahAESML:", main_options,
+	while ((opt = getopt_long(argc, argv, "+i:rahAESMCL:", main_options,
 								NULL)) != -1) {
 		switch(opt) {
 		case 'i':
@@ -714,7 +715,8 @@ int main(int argc, char *argv[])
 			secure = 1;
 			break;
 
-		case 'M':
+		case 'M': /* Deprecated. Kept for compatibility. */
+		case 'C':
 			central = 1;
 			break;
 
