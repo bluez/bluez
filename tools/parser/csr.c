@@ -257,7 +257,7 @@ static inline void pskey_dump(int level, struct frame *frm)
 		uint16_dump(level + 1, "MAX_SCOS", frm);
 		break;
 	case 0x000f:
-		uint16_dump(level + 1, "MAX_REMOTE_MASTERS", frm);
+		uint16_dump(level + 1, "MAX_REMOTE_CENTRALS", frm);
 		break;
 	case 0x00da:
 		uint16_dump(level + 1, "ENC_KEY_LMIN", frm);
@@ -546,7 +546,7 @@ static char *frag2str(uint8_t frag)
 void csr_dump(int level, struct frame *frm)
 {
 	uint8_t desc, cid, type;
-	uint16_t handle, master, addr;
+	uint16_t handle, central, addr;
 
 	desc = CSR_U8(frm);
 
@@ -564,24 +564,25 @@ void csr_dump(int level, struct frame *frm)
 			switch (type) {
 			case 0x0f:
 				frm->handle =  ((uint8_t *) frm->ptr)[17];
-				frm->master = 0;
+				frm->central = 0;
 				frm->len--;
 				lmp_dump(level, frm);
 				return;
 			case 0x10:
 				frm->handle = ((uint8_t *) frm->ptr)[17];
-				frm->master = 1;
+				frm->central = 1;
 				frm->len--;
 				lmp_dump(level, frm);
 				return;
 			case 0x12:
 				handle = CSR_U16(frm);
-				master = CSR_U16(frm);
+				central = CSR_U16(frm);
 				addr = CSR_U16(frm);
 				p_indent(level, frm);
-				printf("FHS: handle %d addr %d (%s)\n", handle,
-					addr, master ? "master" : "slave");
-				if (!master) {
+				printf("FHS: handle %d addr %d (%s)\n",
+					handle, addr,
+					central ? "central" : "peripheral");
+				if (!central) {
 					char addr[18];
 					p_ba2str((bdaddr_t *) frm->ptr, addr);
 					p_indent(level + 1, frm);

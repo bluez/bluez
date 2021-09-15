@@ -37,7 +37,7 @@ static int rfcomm_raw_tty = 0;
 static int auth = 0;
 static int encryption = 0;
 static int secure = 0;
-static int master = 0;
+static int central = 0;
 static int linger = 0;
 
 static char *rfcomm_state[] = {
@@ -434,7 +434,7 @@ static void cmd_listen(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv
 	}
 
 	lm = 0;
-	if (master)
+	if (central)
 		lm |= RFCOMM_LM_MASTER;
 	if (auth)
 		lm |= RFCOMM_LM_AUTH;
@@ -680,7 +680,8 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:rahAESML:", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+i:rahAESML:", main_options,
+								NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strncmp(optarg, "hci", 3) == 0)
@@ -714,7 +715,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'M':
-			master = 1;
+			central = 1;
 			break;
 
 		case 'L':

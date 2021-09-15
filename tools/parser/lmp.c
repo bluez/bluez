@@ -28,22 +28,22 @@
 
 static enum {
 	IN_RAND,
-	COMB_KEY_M,
-	COMB_KEY_S,
-	AU_RAND_M,
-	AU_RAND_S,
-	SRES_M,
-	SRES_S,
+	COMB_KEY_C,
+	COMB_KEY_P,
+	AU_RAND_C,
+	AU_RAND_P,
+	SRES_C,
+	SRES_P,
 } pairing_state = IN_RAND;
 
 static struct {
 	uint8_t in_rand[16];
-	uint8_t comb_key_m[16];
-	uint8_t comb_key_s[16];
-	uint8_t au_rand_m[16];
-	uint8_t au_rand_s[16];
-	uint8_t sres_m[4];
-	uint8_t sres_s[4];
+	uint8_t comb_key_c[16];
+	uint8_t comb_key_p[16];
+	uint8_t au_rand_c[16];
+	uint8_t au_rand_p[16];
+	uint8_t sres_c[4];
+	uint8_t sres_p[4];
 } pairing_data;
 
 static inline void pairing_data_dump(void)
@@ -59,31 +59,31 @@ static inline void pairing_data_dump(void)
 	p_indent(6, NULL);
 	printf("COMB_KEY ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", pairing_data.comb_key_m[i]);
+		printf("%2.2x", pairing_data.comb_key_c[i]);
 	printf(" (M)\n");
 
 	p_indent(6, NULL);
 	printf("COMB_KEY ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", pairing_data.comb_key_s[i]);
+		printf("%2.2x", pairing_data.comb_key_p[i]);
 	printf(" (S)\n");
 
 	p_indent(6, NULL);
 	printf("AU_RAND  ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", pairing_data.au_rand_m[i]);
+		printf("%2.2x", pairing_data.au_rand_c[i]);
 	printf(" SRES ");
 	for (i = 0; i < 4; i++)
-		printf("%2.2x", pairing_data.sres_m[i]);
+		printf("%2.2x", pairing_data.sres_c[i]);
 	printf(" (M)\n");
 
 	p_indent(6, NULL);
 	printf("AU_RAND  ");
 	for (i = 0; i < 16; i++)
-		printf("%2.2x", pairing_data.au_rand_s[i]);
+		printf("%2.2x", pairing_data.au_rand_p[i]);
 	printf(" SRES ");
 	for (i = 0; i < 4; i++)
-		printf("%2.2x", pairing_data.sres_s[i]);
+		printf("%2.2x", pairing_data.sres_p[i]);
 	printf(" (S)\n");
 }
 
@@ -92,7 +92,7 @@ static inline void in_rand(struct frame *frm)
 	uint8_t *val = frm->ptr;
 
 	memcpy(pairing_data.in_rand, val, 16);
-	pairing_state = COMB_KEY_M;
+	pairing_state = COMB_KEY_C;
 }
 
 static inline void comb_key(struct frame *frm)
@@ -100,19 +100,19 @@ static inline void comb_key(struct frame *frm)
 	uint8_t *val = frm->ptr;
 
 	switch (pairing_state) {
-	case COMB_KEY_M:
-		memcpy(pairing_data.comb_key_m, val, 16);
-		pairing_state = COMB_KEY_S;
+	case COMB_KEY_C:
+		memcpy(pairing_data.comb_key_c, val, 16);
+		pairing_state = COMB_KEY_P;
 		break;
-	case COMB_KEY_S:
-		memcpy(pairing_data.comb_key_s, val, 16);
-		pairing_state = AU_RAND_M;
+	case COMB_KEY_P:
+		memcpy(pairing_data.comb_key_p, val, 16);
+		pairing_state = AU_RAND_C;
 		break;
 	case IN_RAND:
-	case AU_RAND_M:
-	case AU_RAND_S:
-	case SRES_M:
-	case SRES_S:
+	case AU_RAND_C:
+	case AU_RAND_P:
+	case SRES_C:
+	case SRES_P:
 	default:
 		pairing_state = IN_RAND;
 		break;
@@ -124,19 +124,19 @@ static inline void au_rand(struct frame *frm)
 	uint8_t *val = frm->ptr;
 
 	switch (pairing_state) {
-	case AU_RAND_M:
-		memcpy(pairing_data.au_rand_m, val, 16);
-		pairing_state = SRES_M;
+	case AU_RAND_C:
+		memcpy(pairing_data.au_rand_c, val, 16);
+		pairing_state = SRES_C;
 		break;
-	case AU_RAND_S:
-		memcpy(pairing_data.au_rand_s, val, 16);
-		pairing_state = SRES_S;
+	case AU_RAND_P:
+		memcpy(pairing_data.au_rand_p, val, 16);
+		pairing_state = SRES_P;
 		break;
-	case COMB_KEY_M:
-	case COMB_KEY_S:
+	case COMB_KEY_C:
+	case COMB_KEY_P:
 	case IN_RAND:
-	case SRES_M:
-	case SRES_S:
+	case SRES_C:
+	case SRES_P:
 	default:
 		pairing_state = IN_RAND;
 		break;
@@ -148,20 +148,20 @@ static inline void sres(struct frame *frm)
 	uint8_t *val = frm->ptr;
 
 	switch (pairing_state) {
-	case SRES_M:
-		memcpy(pairing_data.sres_m, val, 4);
-		pairing_state = AU_RAND_S;
+	case SRES_C:
+		memcpy(pairing_data.sres_c, val, 4);
+		pairing_state = AU_RAND_P;
 		break;
-	case SRES_S:
-		memcpy(pairing_data.sres_s, val, 4);
+	case SRES_P:
+		memcpy(pairing_data.sres_p, val, 4);
 		pairing_state = IN_RAND;
 		pairing_data_dump();
 		break;
-	case COMB_KEY_M:
-	case COMB_KEY_S:
+	case COMB_KEY_C:
+	case COMB_KEY_P:
 	case IN_RAND:
-	case AU_RAND_M:
-	case AU_RAND_S:
+	case AU_RAND_C:
+	case AU_RAND_P:
 	default:
 		pairing_state = IN_RAND;
 		break;
@@ -1016,10 +1016,10 @@ static inline void esco_link_req_dump(int level, struct frame *frm)
 	uint8_t desco = LMP_U8(frm);
 	uint8_t tesco = LMP_U8(frm);
 	uint8_t wesco = LMP_U8(frm);
-	uint8_t mspkt = LMP_U8(frm);
-	uint8_t smpkt = LMP_U8(frm);
-	uint16_t mslen = LMP_U16(frm);
-	uint16_t smlen = LMP_U16(frm);
+	uint8_t cppkt = LMP_U8(frm);
+	uint8_t pcpkt = LMP_U8(frm);
+	uint16_t cplen = LMP_U16(frm);
+	uint16_t pclen = LMP_U16(frm);
 	uint8_t airmode = LMP_U8(frm);
 	uint8_t negstate = LMP_U8(frm);
 
@@ -1036,10 +1036,10 @@ static inline void esco_link_req_dump(int level, struct frame *frm)
 	printf("D_eSCO %d T_eSCO %d W_eSCO %d\n", desco, tesco, wesco);
 
 	p_indent(level, frm);
-	printf("eSCO M->S packet type 0x%2.2x length %d\n", mspkt, mslen);
+	printf("eSCO C->P packet type 0x%2.2x length %d\n", cppkt, cplen);
 
 	p_indent(level, frm);
-	printf("eSCO S->M packet type 0x%2.2x length %d\n", smpkt, smlen);
+	printf("eSCO P->C packet type 0x%2.2x length %d\n", pcpkt, pclen);
 
 	p_indent(level, frm);
 	printf("air mode 0x%2.2x\n", airmode);
@@ -1141,8 +1141,8 @@ void lmp_dump(int level, struct frame *frm)
 		opcode += tmp << 7;
 	}
 
-	printf("LMP(%c): %s(%c): ", frm->master ? 's' : 'r',
-				opcode2str(opcode), tid ? 's' : 'm');
+	printf("LMP(%c): %s(%c): ", frm->central ? 's' : 'r',
+				opcode2str(opcode), tid ? 'p' : 'c');
 
 	if (opcode > 123)
 		printf("op code %d/%d", opcode & 0x7f, opcode >> 7);

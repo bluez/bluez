@@ -29,7 +29,7 @@ void ericsson_dump(int level, struct frame *frm)
 		raw_dump(level, frm);
 	}
 
-	frm->master = !(buf[0] & 0x01);
+	frm->central = !(buf[0] & 0x01);
 	frm->handle = buf[1] | (buf[2] << 8);
 
 	buf[5] = (buf[5] << 1) | (buf[3] & 0x01);

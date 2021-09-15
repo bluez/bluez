@@ -2512,7 +2512,7 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 			scan_type = 0x00; /* Passive */
 			break;
 		case 'w':
-			filter_policy = 0x01; /* Whitelist */
+			filter_policy = 0x01; /* Accept list */
 			break;
 		case 'd':
 			filter_type = optarg[0];
@@ -2708,7 +2708,7 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 			peer_bdaddr_type = LE_RANDOM_ADDRESS;
 			break;
 		case 'w':
-			initiator_filter = 0x01; /* Use white list */
+			initiator_filter = 0x01; /* Use accept list */
 			break;
 		default:
 			printf("%s", lecc_help);
@@ -2798,7 +2798,7 @@ static void cmd_lewladd(int dev_id, int argc, char **argv)
 
 	if (err < 0) {
 		err = -errno;
-		fprintf(stderr, "Can't add to white list: %s(%d)\n",
+		fprintf(stderr, "Can't add to accept list: %s(%d)\n",
 							strerror(-err), -err);
 		exit(1);
 	}
@@ -2844,7 +2844,7 @@ static void cmd_lewlrm(int dev_id, int argc, char **argv)
 
 	if (err < 0) {
 		err = errno;
-		fprintf(stderr, "Can't remove from white list: %s(%d)\n",
+		fprintf(stderr, "Can't remove from accept list: %s(%d)\n",
 							strerror(err), err);
 		exit(1);
 	}
@@ -2888,12 +2888,12 @@ static void cmd_lewlsz(int dev_id, int argc, char **argv)
 
 	if (err < 0) {
 		err = -errno;
-		fprintf(stderr, "Can't read white list size: %s(%d)\n",
+		fprintf(stderr, "Can't read accept list size: %s(%d)\n",
 							strerror(-err), -err);
 		exit(1);
 	}
 
-	printf("White list size: %d\n", size);
+	printf("Accept list size: %d\n", size);
 }
 
 static struct option lewlclr_options[] = {
@@ -2933,7 +2933,7 @@ static void cmd_lewlclr(int dev_id, int argc, char **argv)
 
 	if (err < 0) {
 		err = -errno;
-		fprintf(stderr, "Can't clear white list: %s(%d)\n",
+		fprintf(stderr, "Can't clear accept list: %s(%d)\n",
 							strerror(-err), -err);
 		exit(1);
 	}
@@ -3287,7 +3287,7 @@ static const char *lecup_help =
 	"\t    --handle=<0xXXXX>  LE connection handle\n"
 	"\t    --min=<interval>   Range: 0x0006 to 0x0C80\n"
 	"\t    --max=<interval>   Range: 0x0006 to 0x0C80\n"
-	"\t    --latency=<range>  Slave latency. Range: 0x0000 to 0x03E8\n"
+	"\t    --latency=<range>  Peripheral latency. Range: 0x0000 to 0x03E8\n"
 	"\t    --timeout=<time>   N * 10ms. Range: 0x000A to 0x0C80\n"
 	"\n\t min/max range: 7.5ms to 4s. Multiply factor: 1.25ms"
 	"\n\t timeout range: 100ms to 32.0s. Larger than max interval\n";

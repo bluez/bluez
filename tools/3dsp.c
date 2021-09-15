@@ -112,10 +112,10 @@ static void start_inquiry(void)
 						inquiry_started, NULL, NULL);
 }
 
-static void set_slave_broadcast_receive(const void *data, uint8_t size,
+static void set_peripheral_broadcast_receive(const void *data, uint8_t size,
 							void *user_data)
 {
-	printf("Slave broadcast receiption enabled\n");
+	printf("Peripheral broadcast reception enabled\n");
 }
 
 static void sync_train_received(const void *data, uint8_t size,
@@ -149,7 +149,7 @@ static void sync_train_received(const void *data, uint8_t size,
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_PERIPHERAL_BROADCAST_RECEIVE,
 				&cmd, sizeof(cmd),
-				set_slave_broadcast_receive, NULL, NULL);
+				set_peripheral_broadcast_receive, NULL, NULL);
 }
 
 static void brcm_sync_train_received(const void *data, uint8_t size,
@@ -183,7 +183,7 @@ static void brcm_sync_train_received(const void *data, uint8_t size,
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_PERIPHERAL_BROADCAST_RECEIVE,
 				&cmd, sizeof(cmd),
-				set_slave_broadcast_receive, NULL, NULL);
+				set_peripheral_broadcast_receive, NULL, NULL);
 }
 
 static void truncated_page_complete(const void *data, uint8_t size,
@@ -209,7 +209,7 @@ static void truncated_page_complete(const void *data, uint8_t size,
 							NULL, NULL, NULL);
 }
 
-static void slave_broadcast_timeout(const void *data, uint8_t size,
+static void peripheral_broadcast_timeout(const void *data, uint8_t size,
 							void *user_data)
 {
 	const struct bt_hci_evt_peripheral_broadcast_timeout *evt = data;
@@ -226,7 +226,7 @@ static void slave_broadcast_timeout(const void *data, uint8_t size,
 							NULL, NULL, NULL);
 }
 
-static void slave_broadcast_receive(const void *data, uint8_t size,
+static void peripheral_broadcast_receive(const void *data, uint8_t size,
 							void *user_data)
 {
 	const struct bt_hci_evt_peripheral_broadcast_receive *evt = data;
@@ -327,9 +327,9 @@ static void start_glasses(void)
 	bt_hci_register(hci_dev, BT_HCI_EVT_TRUNCATED_PAGE_COMPLETE,
 					truncated_page_complete, NULL, NULL);
 	bt_hci_register(hci_dev, BT_HCI_EVT_PERIPHERAL_BROADCAST_TIMEOUT,
-					slave_broadcast_timeout, NULL, NULL);
+				peripheral_broadcast_timeout, NULL, NULL);
 	bt_hci_register(hci_dev, BT_HCI_EVT_PERIPHERAL_BROADCAST_RECEIVE,
-					slave_broadcast_receive, NULL, NULL);
+				peripheral_broadcast_receive, NULL, NULL);
 
 	start_inquiry();
 }
@@ -381,7 +381,7 @@ static void conn_request(const void *data, uint8_t size, void *user_data)
 	start_sync_train();
 }
 
-static void slave_page_response_timeout(const void *data, uint8_t size,
+static void peripheral_page_response_timeout(const void *data, uint8_t size,
 							void *user_data)
 {
 	printf("Incoming truncated page received\n");
@@ -389,8 +389,8 @@ static void slave_page_response_timeout(const void *data, uint8_t size,
 	start_sync_train();
 }
 
-static void slave_broadcast_channel_map_change(const void *data, uint8_t size,
-								void *user_data)
+static void peripheral_broadcast_channel_map_change(const void *data,
+						uint8_t size, void *user_data)
 {
 	printf("Broadcast channel map changed\n");
 
@@ -447,13 +447,14 @@ static void read_clock(const void *data, uint8_t size, void *user_data)
 			bcastdata, sizeof(bcastdata), NULL, NULL, NULL);
 }
 
-static void set_slave_broadcast(const void *data, uint8_t size, void *user_data)
+static void set_peripheral_broadcast(const void *data, uint8_t size,
+								void *user_data)
 {
 	const struct bt_hci_rsp_set_peripheral_broadcast *rsp = data;
 	struct bt_hci_cmd_read_clock cmd;
 
 	if (rsp->status) {
-		printf("Failed to set slave broadcast transmission\n");
+		printf("Failed to set peripheral broadcast transmission\n");
 		shutdown_device();
 		return;
 	}
@@ -493,10 +494,10 @@ static void start_display(void)
 						conn_request, NULL, NULL);
 
 	bt_hci_register(hci_dev, BT_HCI_EVT_PERIPHERAL_PAGE_RESPONSE_TIMEOUT,
-				slave_page_response_timeout, NULL, NULL);
+				peripheral_page_response_timeout, NULL, NULL);
 	bt_hci_register(hci_dev,
 			BT_HCI_EVT_PERIPHERAL_BROADCAST_CHANNEL_MAP_CHANGE,
-			slave_broadcast_channel_map_change, NULL, NULL);
+			peripheral_broadcast_channel_map_change, NULL, NULL);
 	bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_COMPLETE,
 					sync_train_complete, NULL, NULL);
 
@@ -512,7 +513,7 @@ static void start_display(void)
 	cmd.timeout = cpu_to_le16(0xfffe);
 
 	bt_hci_send(hci_dev, BT_HCI_CMD_SET_PERIPHERAL_BROADCAST, &cmd,
-			sizeof(cmd), set_slave_broadcast, NULL, NULL);
+			sizeof(cmd), set_peripheral_broadcast, NULL, NULL);
 }
 
 static void signal_callback(int signum, void *user_data)

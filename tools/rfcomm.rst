@@ -47,7 +47,7 @@ OPTIONS
 
 -S     Secure connection
 
--M     Become the master of a piconet
+-C     Become the central of a piconet
 
 -L <seconds>    Set linger timeout
 

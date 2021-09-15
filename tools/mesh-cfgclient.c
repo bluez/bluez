@@ -720,7 +720,7 @@ static void attach_node_reply(struct l_dbus_proxy *proxy,
 							ivi != iv_index) {
 		iv_index = ivi;
 		mesh_db_set_iv_index(ivi);
-		remote_clear_blacklisted_addresses(ivi);
+		remote_clear_rejected_addresses(ivi);
 	}
 
 	return;
@@ -1858,7 +1858,7 @@ static void property_changed(struct l_dbus_proxy *proxy, const char *name,
 
 			iv_index = ivi;
 			mesh_db_set_iv_index(ivi);
-			remote_clear_blacklisted_addresses(ivi);
+			remote_clear_rejected_addresses(ivi);
 		}
 	}
 }

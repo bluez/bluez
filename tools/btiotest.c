@@ -310,7 +310,7 @@ static void l2cap_connect(const char *src, const char *dst, uint8_t addr_type,
 static void l2cap_listen(const char *src, uint8_t addr_type, uint16_t psm,
 				uint16_t cid, int defer, int reject,
 				int disconn, int accept, int sec,
-				gboolean master)
+				gboolean central)
 {
 	struct io_data *data;
 	BtIOConnect conn;
@@ -343,7 +343,7 @@ static void l2cap_listen(const char *src, uint8_t addr_type, uint16_t psm,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_CID, cid,
 					BT_IO_OPT_SEC_LEVEL, sec,
-					BT_IO_OPT_CENTRAL, master,
+					BT_IO_OPT_CENTRAL, central,
 					BT_IO_OPT_INVALID);
 	else
 		l2_srv = bt_io_listen(conn, cfm, data,
@@ -353,7 +353,7 @@ static void l2cap_listen(const char *src, uint8_t addr_type, uint16_t psm,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_CID, cid,
 					BT_IO_OPT_SEC_LEVEL, sec,
-					BT_IO_OPT_CENTRAL, master,
+					BT_IO_OPT_CENTRAL, central,
 					BT_IO_OPT_INVALID);
 
 	if (!l2_srv) {
@@ -402,7 +402,7 @@ static void rfcomm_connect(const char *src, const char *dst, uint8_t ch,
 
 static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 				int reject, int disconn, int accept,
-				int sec, gboolean master)
+				int sec, gboolean central)
 {
 	struct io_data *data;
 	BtIOConnect conn;
@@ -427,7 +427,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_CHANNEL, ch,
 					BT_IO_OPT_SEC_LEVEL, sec,
-					BT_IO_OPT_CENTRAL, master,
+					BT_IO_OPT_CENTRAL, central,
 					BT_IO_OPT_INVALID);
 	else
 		rc_srv = bt_io_listen(conn, cfm,
@@ -435,7 +435,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 					&err,
 					BT_IO_OPT_CHANNEL, ch,
 					BT_IO_OPT_SEC_LEVEL, sec,
-					BT_IO_OPT_CENTRAL, master,
+					BT_IO_OPT_CENTRAL, central,
 					BT_IO_OPT_INVALID);
 
 	if (!rc_srv) {
@@ -540,7 +540,7 @@ static int opt_reject = -1;
 static int opt_disconn = -1;
 static int opt_accept = DEFAULT_ACCEPT_TIMEOUT;
 static int opt_sec = 0;
-static gboolean opt_master = FALSE;
+static gboolean opt_central = FALSE;
 static int opt_priority = 0;
 static int opt_cid = 0;
 static guint8 opt_addr_type = 0;
@@ -576,7 +576,7 @@ static GOptionEntry options[] = {
 				"Disconnect connection after N seconds" },
 	{ "accept", 'a', 0, G_OPTION_ARG_INT, &opt_accept,
 				"Accept connection after N seconds" },
-	{ "master", 'm', 0, G_OPTION_ARG_NONE, &opt_master,
+	{ "master", 'm', 0, G_OPTION_ARG_NONE, &opt_central,
 				"Master role switch (incoming connections)" },
 	{ "priority", 'P', 0, G_OPTION_ARG_INT, &opt_priority,
 				"Transmission priority: Setting a priority "
@@ -614,7 +614,7 @@ int main(int argc, char *argv[])
 		else
 			l2cap_listen(opt_dev, opt_addr_type, opt_psm, opt_cid,
 					opt_defer, opt_reject, opt_disconn,
-					opt_accept, opt_sec, opt_master);
+					opt_accept, opt_sec, opt_central);
 	}
 
 	if (opt_channel != -1) {
@@ -624,7 +624,7 @@ int main(int argc, char *argv[])
 		else
 			rfcomm_listen(opt_dev, opt_channel, opt_defer,
 					opt_reject, opt_disconn, opt_accept,
-					opt_sec, opt_master);
+					opt_sec, opt_central);
 	}
 
 	if (opt_sco) {

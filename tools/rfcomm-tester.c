@@ -534,7 +534,7 @@ static void test_connect(const void *test_data)
 	struct test_data *data = tester_get_data();
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	const struct rfcomm_client_data *cli = data->test_data;
-	const uint8_t *client_addr, *master_addr;
+	const uint8_t *client_addr, *central_addr;
 	GIOChannel *io;
 	int sk;
 
@@ -542,10 +542,10 @@ static void test_connect(const void *test_data)
 	bthost_add_rfcomm_server(bthost, cli->server_channel,
 						rfcomm_connect_cb, NULL);
 
-	master_addr = hciemu_get_central_bdaddr(data->hciemu);
+	central_addr = hciemu_get_central_bdaddr(data->hciemu);
 	client_addr = hciemu_get_client_bdaddr(data->hciemu);
 
-	sk = create_rfcomm_sock((bdaddr_t *) master_addr, 0);
+	sk = create_rfcomm_sock((bdaddr_t *) central_addr, 0);
 
 	if (connect_rfcomm_sock(sk, (const bdaddr_t *) client_addr,
 					cli->client_channel) < 0) {
@@ -675,14 +675,14 @@ static void test_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_server_data *srv = data->test_data;
-	const uint8_t *master_addr;
+	const uint8_t *central_addr;
 	struct bthost *bthost;
 	GIOChannel *io;
 	int sk;
 
-	master_addr = hciemu_get_central_bdaddr(data->hciemu);
+	central_addr = hciemu_get_central_bdaddr(data->hciemu);
 
-	sk = create_rfcomm_sock((bdaddr_t *) master_addr, srv->server_channel);
+	sk = create_rfcomm_sock((bdaddr_t *) central_addr, srv->server_channel);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
@@ -707,7 +707,7 @@ static void test_server(const void *test_data)
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, client_new_conn, data);
 
-	bthost_hci_connect(bthost, master_addr, BDADDR_BREDR);
+	bthost_hci_connect(bthost, central_addr, BDADDR_BREDR);
 }
 
 #define test_rfcomm(name, data, setup, func) \

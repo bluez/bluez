@@ -110,7 +110,7 @@ static int seq_start = 0;
 static const char *filename = NULL;
 
 static int rfcmode = 0;
-static int master = 0;
+static int central = 0;
 static int auth = 0;
 static int encr = 0;
 static int secure = 0;
@@ -483,7 +483,7 @@ static int do_connect(char *svr)
 	opt = 0;
 	if (reliable)
 		opt |= L2CAP_LM_RELIABLE;
-	if (master)
+	if (central)
 		opt |= L2CAP_LM_MASTER;
 	if (auth)
 		opt |= L2CAP_LM_AUTH;
@@ -586,7 +586,7 @@ static void do_listen(void (*handler)(int sk))
 	opt = 0;
 	if (reliable)
 		opt |= L2CAP_LM_RELIABLE;
-	if (master)
+	if (central)
 		opt |= L2CAP_LM_MASTER;
 	if (auth)
 		opt |= L2CAP_LM_AUTH;
@@ -1323,7 +1323,7 @@ static void usage(void)
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
-		"\t[-M] become master\n"
+		"\t[-M] become central\n"
 		"\t[-T] enable timestamps\n"
 		"\t[-V type] address type (help for list, default = bredr)\n"
 		"\t[-e seq] initial sequence value (default = 0)\n");
@@ -1489,7 +1489,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'M':
-			master = 1;
+			central = 1;
 			break;
 
 		case 'A':

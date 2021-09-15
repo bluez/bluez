@@ -765,11 +765,11 @@ static void smp_new_conn(uint16_t handle, void *user_data)
 
 static void init_bdaddr(struct test_data *data)
 {
-	const uint8_t *master_bdaddr, *client_bdaddr;
+	const uint8_t *central_bdaddr, *client_bdaddr;
 
-	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
-	if (!master_bdaddr) {
-		tester_warn("No master bdaddr");
+	central_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
+	if (!central_bdaddr) {
+		tester_warn("No central bdaddr");
 		tester_test_failed();
 		return;
 	}
@@ -786,9 +786,9 @@ static void init_bdaddr(struct test_data *data)
 
 	if (data->out) {
 		memcpy(data->ia, client_bdaddr, sizeof(data->ia));
-		memcpy(data->ra, master_bdaddr, sizeof(data->ra));
+		memcpy(data->ra, central_bdaddr, sizeof(data->ra));
 	} else {
-		memcpy(data->ia, master_bdaddr, sizeof(data->ia));
+		memcpy(data->ia, central_bdaddr, sizeof(data->ia));
 		memcpy(data->ra, client_bdaddr, sizeof(data->ra));
 	}
 }

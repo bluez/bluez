@@ -605,7 +605,7 @@ void avdtp_dump(int level, struct frame *frm)
 		nsp = (hdr & 0x0c) == 0x04 ? p_get_u8(frm) : 0;
 		sid = hdr & 0x08 ? 0x00 : p_get_u8(frm);
 
-		printf("AVDTP(s): %s %s: transaction %d nsp 0x%02x\n",
+		printf("AVDTP(p): %s %s: transaction %d nsp 0x%02x\n",
 			hdr & 0x08 ? pt2str(hdr) : si2str(sid),
 			mt2str(hdr), hdr >> 4, nsp);
 
@@ -659,9 +659,12 @@ void avdtp_dump(int level, struct frame *frm)
 		time = p_get_u32(frm);
 		ssrc = p_get_u32(frm);
 
-		printf("AVDTP(m): ver %d %s%scc %d %spt %d seqn %d time %d ssrc %d\n",
-			hdr >> 6, hdr & 0x20 ? "pad " : "", hdr & 0x10 ? "ext " : "",
-			hdr & 0xf, type & 0x80 ? "mark " : "", type & 0x7f, seqn, time, ssrc);
+		printf("AVDTP(c): ver %d %s%scc"
+			" %d %spt %d seqn %d time %d ssrc %d\n",
+			hdr >> 6, hdr & 0x20 ? "pad " : "",
+			hdr & 0x10 ? "ext " : "", hdr & 0xf,
+			type & 0x80 ? "mark " : "", type & 0x7f,
+			seqn, time, ssrc);
 		break;
 	}
 

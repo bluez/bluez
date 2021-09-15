@@ -61,7 +61,7 @@ FILES
 =====
 
 /usr/share/misc/oui.txt
-    IEEE Organizationally Unique Identifier master file.
+    IEEE Organizationally Unique Identifier consolidated file.
     Manually update from: http://standards.ieee.org/regauth/oui/oui.txt
 
 

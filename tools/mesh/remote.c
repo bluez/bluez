@@ -34,13 +34,13 @@ struct remote_node {
 	uint8_t num_ele;
 };
 
-struct blacklisted_addr {
+struct rejected_addr {
 	uint32_t iv_index;
 	uint16_t unicast;
 };
 
 static struct l_queue *nodes;
-static struct l_queue *blacklisted;
+static struct l_queue *reject_list;
 
 static bool key_present(struct l_queue *keys, uint16_t app_idx)
 {
@@ -124,7 +124,7 @@ uint8_t remote_del_node(uint16_t unicast)
 
 	for (i = 0; i < num_ele; ++i) {
 		l_queue_destroy(rmt->els[i], NULL);
-		remote_add_blacklisted_address(unicast + i, iv_index, true);
+		remote_add_rejected_address(unicast + i, iv_index, true);
 	}
 
 	l_free(rmt->els);
@@ -333,9 +333,9 @@ static void print_node(void *rmt, void *user_data)
 		print_element(node->els[i], i);
 }
 
-static bool match_black_addr(const void *a, const void *b)
+static bool match_rejected_addr(const void *a, const void *b)
 {
-	const struct blacklisted_addr *addr = a;
+	const struct rejected_addr *addr = a;
 	uint16_t unicast = L_PTR_TO_UINT(b);
 
 	return addr->unicast == unicast;
@@ -348,11 +348,11 @@ static uint16_t get_next_addr(uint16_t high, uint16_t addr,
 		int i = 0;
 
 		for (i = 0; i < ele_cnt; i++) {
-			struct blacklisted_addr *black;
+			struct rejected_addr *reject;
 
-			black = l_queue_find(blacklisted, match_black_addr,
+			reject = l_queue_find(reject_list, match_rejected_addr,
 						L_UINT_TO_PTR(addr + i));
-			if (!black)
+			if (!reject)
 				break;
 		}
 
@@ -367,10 +367,10 @@ static uint16_t get_next_addr(uint16_t high, uint16_t addr,
 
 static bool check_iv_index(const void *a, const void *b)
 {
-	const struct blacklisted_addr *black_addr = a;
+	const struct rejected_addr *reject = a;
 	uint32_t iv_index = L_PTR_TO_UINT(b);
 
-	return (abs_diff(iv_index, black_addr->iv_index) > 2);
+	return (abs_diff(iv_index, reject->iv_index) > 2);
 }
 
 void remote_print_node(uint16_t addr)
@@ -435,36 +435,35 @@ uint16_t remote_get_next_unicast(uint16_t low, uint16_t high, uint8_t ele_cnt)
 	return addr;
 }
 
-void remote_add_blacklisted_address(uint16_t addr, uint32_t iv_index,
-								bool save)
+void remote_add_rejected_address(uint16_t addr, uint32_t iv_index, bool save)
 {
-	struct blacklisted_addr *black_addr;
+	struct rejected_addr *reject;
 
-	if (!blacklisted)
-		blacklisted = l_queue_new();
+	if (!reject_list)
+		reject_list = l_queue_new();
 
-	black_addr = l_new(struct blacklisted_addr, 1);
-	black_addr->unicast = addr;
-	black_addr->iv_index = iv_index;
+	reject = l_new(struct rejected_addr, 1);
+	reject->unicast = addr;
+	reject->iv_index = iv_index;
 
-	l_queue_push_tail(blacklisted, black_addr);
+	l_queue_push_tail(reject_list, reject);
 
 	if (save)
-		mesh_db_add_blacklisted_addr(addr, iv_index);
+		mesh_db_add_rejected_addr(addr, iv_index);
 }
 
-void remote_clear_blacklisted_addresses(uint32_t iv_index)
+void remote_clear_rejected_addresses(uint32_t iv_index)
 {
-	struct blacklisted_addr *black_addr;
+	struct rejected_addr *reject;
 
-	black_addr = l_queue_remove_if(blacklisted, check_iv_index,
+	reject = l_queue_remove_if(reject_list, check_iv_index,
 						L_UINT_TO_PTR(iv_index));
 
-	while (black_addr) {
-		l_free(black_addr);
-		black_addr = l_queue_remove_if(blacklisted, check_iv_index,
+	while (reject) {
+		l_free(reject);
+		reject = l_queue_remove_if(reject_list, check_iv_index,
 						L_UINT_TO_PTR(iv_index));
 	}
 
-	mesh_db_clear_blacklisted(iv_index);
+	mesh_db_clear_rejected(iv_index);
 }

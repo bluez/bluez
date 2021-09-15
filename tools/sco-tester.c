@@ -527,7 +527,7 @@ end:
 
 static int create_sco_sock(struct test_data *data)
 {
-	const uint8_t *master_bdaddr;
+	const uint8_t *central_bdaddr;
 	struct sockaddr_sco addr;
 	int sk, err;
 
@@ -540,15 +540,15 @@ static int create_sco_sock(struct test_data *data)
 		return err;
 	}
 
-	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
-	if (!master_bdaddr) {
-		tester_warn("No master bdaddr");
+	central_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
+	if (!central_bdaddr) {
+		tester_warn("No central bdaddr");
 		return -ENODEV;
 	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, (void *) master_bdaddr);
+	bacpy(&addr.sco_bdaddr, (void *) central_bdaddr);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = -errno;

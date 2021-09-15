@@ -66,7 +66,7 @@ OPTIONS
 
 -S              secure connection
 
--M              become master
+-M              become central
 
 -T              enable timestamps
 

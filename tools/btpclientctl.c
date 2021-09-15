@@ -676,7 +676,7 @@ const struct indexstr_data ad_type_table[] = {
 	{ 0x10, "BT_AD_DEVICE_ID" },
 	{ 0x10, "BT_AD_SMP_TK" },
 	{ 0x11, "BT_AD_SMP_OOB_FLAGS" },
-	{ 0x12, "BT_AD_SLAVE_CONN_INTERVAL" },
+	{ 0x12, "BT_AD_PERIPHERAL_CONN_INTERVAL" },
 	{ 0x14, "BT_AD_SOLICIT16" },
 	{ 0x15, "BT_AD_SOLICIT128" },
 	{ 0x16, "BT_AD_SERVICE_DATA16" },

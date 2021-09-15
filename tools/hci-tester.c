@@ -335,12 +335,12 @@ static void test_read_local_supported_codecs(const void *test_data)
 	test_command(BT_HCI_CMD_READ_LOCAL_CODECS);
 }
 
-static void test_le_read_white_list_size(const void *test_data)
+static void test_le_read_accept_list_size(const void *test_data)
 {
 	test_command(BT_HCI_CMD_LE_READ_ACCEPT_LIST_SIZE);
 }
 
-static void test_le_clear_white_list(const void *test_data)
+static void test_le_clear_accept_list(const void *test_data)
 {
 	test_command(BT_HCI_CMD_LE_CLEAR_ACCEPT_LIST);
 }
@@ -944,10 +944,10 @@ int main(int argc, char *argv[])
 	test_hci_local("Read Local Supported Codecs", NULL, NULL,
 				test_read_local_supported_codecs);
 
-	test_hci_local("LE Read White List Size", NULL, NULL,
-				test_le_read_white_list_size);
-	test_hci_local("LE Clear White List", NULL, NULL,
-				test_le_clear_white_list);
+	test_hci_local("LE Read Accept List Size", NULL, NULL,
+				test_le_read_accept_list_size);
+	test_hci_local("LE Clear Accept List", NULL, NULL,
+				test_le_clear_accept_list);
 	test_hci_local("LE Encrypt", NULL, NULL,
 				test_le_encrypt);
 	test_hci_local("LE Rand", NULL, NULL,

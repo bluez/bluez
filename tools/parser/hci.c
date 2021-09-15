@@ -45,7 +45,7 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Remote Name Req Complete",
 	"Encrypt Change",
 	"Change Connection Link Key Complete",
-	"Master Link Key Complete",
+	"Temporary Link Key Complete",
 	"Read Remote Supported Features",
 	"Read Remote Ver Info Complete",
 	"QoS Setup Complete",
@@ -150,7 +150,7 @@ static char *cmd_linkctl_str[CMD_LINKCTL_NUM + 1] = {
 	"Unknown",
 	"Change Connection Link Key",
 	"Unknown",
-	"Master Link Key",
+	"Temporary Link Key",
 	"Unknown",
 	"Remote Name Request",
 	"Remote Name Request Cancel",
@@ -383,10 +383,10 @@ static char *cmd_le_str[CMD_LE_NUM + 1] = {
 	"LE Set Scan Enable",
 	"LE Create Connection",
 	"LE Create Connection Cancel",
-	"LE Read White List Size",
-	"LE Clear White List",
-	"LE Add Device To White List",
-	"LE Remove Device From White List",
+	"LE Read Accept List Size",
+	"LE Clear Accept List",
+	"LE Add Device To Accept List",
+	"LE Remove Device From Accept List",
 	"LE Connection Update",
 	"LE Set Host Channel Classification",
 	"LE Read Channel Map",
@@ -568,9 +568,9 @@ static char *role2str(uint8_t role)
 {
 	switch (role) {
 	case 0x00:
-		return "Master";
+		return "Central";
 	case 0x01:
-		return "Slave";
+		return "Peripheral";
 	default:
 		return "Unknown";
 	}
@@ -739,11 +739,11 @@ static char *filterpolicy2str(uint8_t policy)
 	case 0x00:
 		return "Allow scan from any, connection from any";
 	case 0x01:
-		return "Allow scan from white list, connection from any";
+		return "Allow scan from accept list, connection from any";
 	case 0x02:
-		return "Allow scan from any, connection from white list";
+		return "Allow scan from any, connection from accept list";
 	case 0x03:
-		return "Allow scan and connection from white list";
+		return "Allow scan and connection from accept list";
 	default:
 		return "Reserved";
 	}
@@ -1082,7 +1082,7 @@ static inline void remote_name_req_dump(int level, struct frame *frm)
 		clkoffset & 0x7fff, clkoffset & 0x8000 ? " (valid)" : "");
 }
 
-static inline void master_link_key_dump(int level, struct frame *frm)
+static inline void temporary_link_key_dump(int level, struct frame *frm)
 {
 	master_link_key_cp *cp = frm->ptr;
 
@@ -1638,9 +1638,10 @@ static inline void le_set_scan_parameters_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("own address: 0x%02x (%s) policy: %s\n", cp->own_bdaddr_type,
-			bdaddrtype2str(cp->own_bdaddr_type),
+		bdaddrtype2str(cp->own_bdaddr_type),
 		(cp->filter == 0x00 ? "All" :
-			(cp->filter == 0x01 ? "white list only" : "reserved")));
+			(cp->filter == 0x01 ? "accept list only" :
+			"reserved")));
 }
 
 static inline void le_set_scan_enable_dump(int level, struct frame *frm)
@@ -1772,7 +1773,7 @@ static inline void command_dump(int level, struct frame *frm)
 			generic_command_dump(level + 1, frm);
 			return;
 		case OCF_MASTER_LINK_KEY:
-			master_link_key_dump(level + 1, frm);
+			temporary_link_key_dump(level + 1, frm);
 			return;
 		case OCF_READ_REMOTE_EXT_FEATURES:
 			read_remote_ext_features_dump(level + 1, frm);
@@ -3114,7 +3115,8 @@ static inline void remote_name_req_complete_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void master_link_key_complete_dump(int level, struct frame *frm)
+static inline void temporary_link_key_complete_dump(int level,
+							struct frame *frm)
 {
 	evt_master_link_key_complete *evt = frm->ptr;
 
@@ -3565,7 +3567,7 @@ static inline void evt_le_conn_complete_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d, role %s\n",
 					evt->status, btohs(evt->handle),
-					evt->role ? "slave" : "master");
+					evt->role ? "peripheral" : "central");
 
 	p_indent(level, frm);
 	p_ba2str(&evt->peer_bdaddr, addr);
@@ -3875,7 +3877,7 @@ static inline void event_dump(int level, struct frame *frm)
 		generic_response_dump(level + 1, frm);
 		break;
 	case EVT_MASTER_LINK_KEY_COMPLETE:
-		master_link_key_complete_dump(level + 1, frm);
+		temporary_link_key_complete_dump(level + 1, frm);
 		break;
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
 		remote_name_req_complete_dump(level + 1, frm);

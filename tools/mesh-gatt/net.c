@@ -47,11 +47,11 @@ struct mesh_net {
 	uint8_t default_ttl;
 	bool iv_update;
 	bool provisioner;
-	bool blacklist;
+	bool reject_list;
 	guint iv_update_timeout;
 	GDBusProxy *proxy_in;
 	GList *address_pool;
-	GList *dest;	/* List of valid local destinations for Whitelist */
+	GList *dest;	/* List of valid local destinations for Accept List */
 	GList *sar_in;	/* Incoming segmented messages in progress */
 	GList *msg_out;	/* Pre-Network encoded, might be multi-segment */
 	GList *pkt_out; /* Fully encoded packets awaiting Tx in order */
@@ -200,8 +200,8 @@ struct mesh_destination {
 #define FILTER_STATUS		0x03
 
 /* Proxy Filter Types */
-#define WHITELIST_FILTER	0x00
-#define BLACKLIST_FILTER	0x01
+#define ACCEPT_LIST_FILTER	0x00
+#define REJECT_LIST_FILTER	0x01
 
 /* IV Updating states for timing enforcement */
 #define IV_UPD_INIT 		0
@@ -919,45 +919,45 @@ void net_dest_unref(uint16_t dst)
 	}
 }
 
-struct build_whitelist {
+struct build_accept_list {
 	uint8_t len;
 	uint8_t data[12];
 };
 
-static void whitefilter_add(gpointer data, gpointer user_data)
+static void accept_filter_add(gpointer data, gpointer user_data)
 {
 	struct mesh_destination	*dest = data;
-	struct build_whitelist *white = user_data;
+	struct build_accept_list *accept = user_data;
 
-	if (white->len == 0)
-		white->data[white->len++] = FILTER_ADD;
+	if (accept->len == 0)
+		accept->data[accept->len++] = FILTER_ADD;
 
-	put_be16(dest->dst, white->data + white->len);
-	white->len += 2;
+	put_be16(dest->dst, accept->data + accept->len);
+	accept->len += 2;
 
-	if (white->len > (sizeof(white->data) - sizeof(uint16_t))) {
-		net_ctl_msg_send(0, 0, 0, white->data, white->len);
-		white->len = 0;
+	if (accept->len > (sizeof(accept->data) - sizeof(uint16_t))) {
+		net_ctl_msg_send(0, 0, 0, accept->data, accept->len);
+		accept->len = 0;
 	}
 }
 
-static void setup_whitelist()
+static void setup_accept_list(void)
 {
-	struct build_whitelist white;
+	struct build_accept_list accept;
 
-	white.len = 0;
+	accept.len = 0;
 
-	/* Enable (and Clear) Proxy Whitelist */
-	white.data[white.len++] = FILTER_SETUP;
-	white.data[white.len++] = WHITELIST_FILTER;
+	/* Enable (and Clear) Proxy Accept List */
+	accept.data[accept.len++] = FILTER_SETUP;
+	accept.data[accept.len++] = ACCEPT_LIST_FILTER;
 
-	net_ctl_msg_send(0, 0, 0, white.data, white.len);
+	net_ctl_msg_send(0, 0, 0, accept.data, accept.len);
 
-	white.len = 0;
-	g_list_foreach(net.dest, whitefilter_add, &white);
+	accept.len = 0;
+	g_list_foreach(net.dest, accept_filter_add, &accept);
 
-	if (white.len)
-		net_ctl_msg_send(0, 0, 0, white.data, white.len);
+	if (accept.len)
+		net_ctl_msg_send(0, 0, 0, accept.data, accept.len);
 }
 
 static void beacon_update(bool first, bool iv_update, uint32_t iv_index)
@@ -1009,7 +1009,7 @@ static void beacon_update(bool first, bool iv_update, uint32_t iv_index)
 
 	if (first) {
 		/* Must be done once per Proxy Connection after Beacon RXed */
-		setup_whitelist();
+		setup_accept_list();
 		if (net.open_cb)
 			net.open_cb(0);
 	}
@@ -1388,9 +1388,9 @@ static bool proxy_ctl_rxed(uint16_t net_idx, uint32_t iv_index,
 			if (len != 4)
 				return false;
 
-			net.blacklist = !!(trans[1] == BLACKLIST_FILTER);
-			bt_shell_printf("Proxy %slist filter length: %d\n",
-					net.blacklist ? "Black" : "White",
+			net.reject_list = !!(trans[1] == REJECT_LIST_FILTER);
+			bt_shell_printf("Proxy %s list filter length: %d\n",
+					net.reject_list ? "Reject" : "Accept",
 					get_be16(trans + 2));
 
 			return true;
@@ -1950,7 +1950,7 @@ bool net_session_open(GDBusProxy *data_in, bool provisioner,
 
 	net.proxy_in = data_in;
 	net.iv_upd_state = IV_UPD_INIT;
-	net.blacklist = false;
+	net.reject_list = false;
 	net.provisioner = provisioner;
 	net.open_cb = cb;
 	flush_pkt_list(&net.pkt_out);

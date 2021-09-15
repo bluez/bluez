@@ -26,7 +26,7 @@ struct frame {
 	uint32_t	len;
 	uint16_t	dev_id;
 	uint8_t		in;
-	uint8_t		master;
+	uint8_t		central;
 	uint16_t	handle;
 	uint16_t	cid;
 	uint16_t	num;

@@ -216,24 +216,24 @@ revision
     Display revision information.
 
 lm [*mode*]
-    With no *mode*, prints link mode. **MASTER** or **SLAVE** mean,
-    respectively, to ask to become master or to remain slave when a connection
-    request comes in. The additional keyword **ACCEPT** means that baseband
-    connections will be accepted even if there are no listening *AF_BLUETOOTH*
-    sockets. *mode* is **NONE** or a comma-separated list of keywords, where
-    possible keywords are **MASTER** and **ACCEPT**. **NONE** sets link policy
-    to the default behaviour of remaining slave and not accepting baseband
-    connections when there are no listening *AF_BLUETOOTH* sockets.  If
-    **MASTER** is  present, the device will ask to become master if a
-    connection request comes in. If **ACCEPT** is present, the device will
+    With no *mode*, prints link mode. **CENTRAL** or **PERIPHERAL** mean,
+    respectively, to ask to become central or to remain peripheral when a
+    connection request comes in. The additional keyword **ACCEPT** means that
+    baseband connections will be accepted even if there are no listening
+    *AF_BLUETOOTH* sockets. *mode* is **NONE** or a comma-separated list of
+    keywords, where possible keywords are **CENTRAL** and **ACCEPT**. **NONE**
+    sets link policy to the default behaviour of remaining peripheral and not
+    accepting baseband connections when there are no listening *AF_BLUETOOTH*
+    sockets.  If **CENTRAL** is  present, the device will ask to become central
+    if a connection request comes in. If **ACCEPT** is present, the device will
     accept baseband connections even when there are no listening *AF_BLUETOOTH*
     sockets.
 
 block <*bdaddr*>
-    Add a device to the blacklist
+    Add a device to the reject list
 
 unblock <*bdaddr*>
-    Remove a device from the blacklist
+    Remove a device from the reject list
 
 lerandaddr <*bdaddr*>
     Set LE Random Address
