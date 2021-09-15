@@ -2171,16 +2171,16 @@ static void print_adv_filter_policy(const char *label, uint8_t value)
 			"Allow Connect Request from Any";
 		break;
 	case 0x01:
-		str = "Allow Scan Request from White List Only, "
+		str = "Allow Scan Request from Accept List Only, "
 			"Allow Connect Request from Any";
 		break;
 	case 0x02:
 		str = "Allow Scan Request from Any, "
-			"Allow Connect Request from White List Only";
+			"Allow Connect Request from Accept List Only";
 		break;
 	case 0x03:
-		str = "Allow Scan Request from White List Only, "
-			"Allow Connect Request from White List Only";
+		str = "Allow Scan Request from Accept List Only, "
+			"Allow Connect Request from Accept List Only";
 		break;
 	default:
 		str = "Reserved";
@@ -2234,10 +2234,10 @@ static void print_role(uint8_t role)
 
 	switch (role) {
 	case 0x00:
-		str = "Master";
+		str = "Central";
 		break;
 	case 0x01:
-		str = "Slave";
+		str = "Peripheral";
 		break;
 	default:
 		str = "Reserved";
@@ -2556,16 +2556,16 @@ static const struct bitfield_data features_page0[] = {
 	{ 31, "Extended SCO link (EV3 packets)"		},
 	{ 32, "EV4 packets"				},
 	{ 33, "EV5 packets"				},
-	{ 35, "AFH capable slave"			},
-	{ 36, "AFH classification slave"		},
+	{ 35, "AFH capable peripheral"			},
+	{ 36, "AFH classification peripheral"		},
 	{ 37, "BR/EDR Not Supported"			},
 	{ 38, "LE Supported (Controller)"		},
 	{ 39, "3-slot Enhanced Data Rate ACL packets"	},
 	{ 40, "5-slot Enhanced Data Rate ACL packets"	},
 	{ 41, "Sniff subrating"				},
 	{ 42, "Pause encryption"			},
-	{ 43, "AFH capable master"			},
-	{ 44, "AFH classification master"		},
+	{ 43, "AFH capable central"			},
+	{ 44, "AFH classification central"		},
 	{ 45, "Enhanced Data Rate eSCO 2 Mbps mode"	},
 	{ 46, "Enhanced Data Rate eSCO 3 Mbps mode"	},
 	{ 47, "3-slot Enhanced Data Rate eSCO packets"	},
@@ -2591,17 +2591,17 @@ static const struct bitfield_data features_page1[] = {
 };
 
 static const struct bitfield_data features_page2[] = {
-	{  0, "Connectionless Slave Broadcast - Master"	},
-	{  1, "Connectionless Slave Broadcast - Slave"	},
-	{  2, "Synchronization Train"			},
-	{  3, "Synchronization Scan"			},
-	{  4, "Inquiry Response Notification Event"	},
-	{  5, "Generalized interlaced scan"		},
-	{  6, "Coarse Clock Adjustment"			},
-	{  8, "Secure Connections (Controller Support)"	},
-	{  9, "Ping"					},
-	{ 10, "Slot Availability Mask"			},
-	{ 11, "Train nudging"				},
+	{  0, "Connectionless Peripheral Broadcast - Central"	},
+	{  1, "Connectionless Peripheral Broadcast - Peripheral"},
+	{  2, "Synchronization Train"				},
+	{  3, "Synchronization Scan"				},
+	{  4, "Inquiry Response Notification Event"		},
+	{  5, "Generalized interlaced scan"			},
+	{  6, "Coarse Clock Adjustment"				},
+	{  8, "Secure Connections (Controller Support)"		},
+	{  9, "Ping"						},
+	{ 10, "Slot Availability Mask"				},
+	{ 11, "Train nudging"					},
 	{ }
 };
 
@@ -2609,7 +2609,7 @@ static const struct bitfield_data features_le[] = {
 	{  0, "LE Encryption"					},
 	{  1, "Connection Parameter Request Procedure"		},
 	{  2, "Extended Reject Indication"			},
-	{  3, "Slave-initiated Features Exchange"		},
+	{  3, "Peripheral-initiated Features Exchange"		},
 	{  4, "LE Ping"						},
 	{  5, "LE Data Packet Length Extension"			},
 	{  6, "LL Privacy"					},
@@ -2634,8 +2634,8 @@ static const struct bitfield_data features_le[] = {
 	{ 25, "Periodic Advertising Sync Transfer - Recipient"	},
 	{ 26, "Sleep Clock Accuracy Updates"			},
 	{ 27, "Remote Public Key Validation"			},
-	{ 28, "Connected Isochronous Stream - Master"		},
-	{ 29, "Connected Isochronous Stream - Slave"		},
+	{ 28, "Connected Isochronous Stream - Central"		},
+	{ 29, "Connected Isochronous Stream - Peripheral"	},
 	{ 30, "Isochronous Broadcaster"				},
 	{ 31, "Synchronized Receiver"				},
 	{ 32, "Isochronous Channels (Host Support)"		},
@@ -2729,11 +2729,11 @@ void packet_print_features_msft(const uint8_t *features)
 #define LE_STATE_ACTIVE_SCAN		0x0020
 #define LE_STATE_PASSIVE_SCAN		0x0040
 #define LE_STATE_INITIATING		0x0080
-#define LE_STATE_CONN_MASTER		0x0100
-#define LE_STATE_CONN_SLAVE		0x0200
-#define LE_STATE_MASTER_MASTER		0x0400
-#define LE_STATE_SLAVE_SLAVE		0x0800
-#define LE_STATE_MASTER_SLAVE		0x1000
+#define LE_STATE_CONN_CENTRAL		0x0100
+#define LE_STATE_CONN_PERIPHERAL	0x0200
+#define LE_STATE_CENTRAL_CENTRAL	0x0400
+#define LE_STATE_PERIPHERAL_PERIPHERAL	0x0800
+#define LE_STATE_CENTRAL_PERIPHERAL	0x1000
 
 static const struct bitfield_data le_states_desc_table[] = {
 	{  0, "Scannable Advertising State"			},
@@ -2744,11 +2744,11 @@ static const struct bitfield_data le_states_desc_table[] = {
 	{  5, "Active Scanning State"				},
 	{  6, "Passive Scanning State"				},
 	{  7, "Initiating State"				},
-	{  8, "Connection State (Master Role)"			},
-	{  9, "Connection State (Slave Role)"			},
-	{ 10, "Master Role & Master Role"			},
-	{ 11, "Slave Role & Slave Role"				},
-	{ 12, "Master Role & Slave Role"			},
+	{  8, "Connection State (Central Role)"			},
+	{  9, "Connection State (Peripheral Role)"		},
+	{ 10, "Central Role & Central Role"			},
+	{ 11, "Peripheral Role & Peripheral Role"		},
+	{ 12, "Central Role & Peripheral Role"			},
 	{ }
 };
 
@@ -2756,59 +2756,59 @@ static const struct {
 	uint8_t bit;
 	uint16_t states;
 } le_states_comb_table[] = {
-	{  0, LE_STATE_NONCONN_ADV				},
-	{  1, LE_STATE_SCAN_ADV					},
-	{  2, LE_STATE_CONN_ADV					},
-	{  3, LE_STATE_HIGH_DIRECT_ADV				},
-	{  4, LE_STATE_PASSIVE_SCAN				},
-	{  5, LE_STATE_ACTIVE_SCAN				},
-	{  6, LE_STATE_INITIATING | LE_STATE_CONN_MASTER	},
-	{  7, LE_STATE_CONN_SLAVE				},
-	{  8, LE_STATE_PASSIVE_SCAN | LE_STATE_NONCONN_ADV	},
-	{  9, LE_STATE_PASSIVE_SCAN | LE_STATE_SCAN_ADV		},
-	{ 10, LE_STATE_PASSIVE_SCAN | LE_STATE_CONN_ADV		},
-	{ 11, LE_STATE_PASSIVE_SCAN | LE_STATE_HIGH_DIRECT_ADV	},
-	{ 12, LE_STATE_ACTIVE_SCAN | LE_STATE_NONCONN_ADV	},
-	{ 13, LE_STATE_ACTIVE_SCAN | LE_STATE_SCAN_ADV		},
-	{ 14, LE_STATE_ACTIVE_SCAN | LE_STATE_CONN_ADV		},
-	{ 15, LE_STATE_ACTIVE_SCAN | LE_STATE_HIGH_DIRECT_ADV	},
-	{ 16, LE_STATE_INITIATING | LE_STATE_NONCONN_ADV	},
-	{ 17, LE_STATE_INITIATING | LE_STATE_SCAN_ADV		},
-	{ 18, LE_STATE_CONN_MASTER | LE_STATE_NONCONN_ADV	},
-	{ 19, LE_STATE_CONN_MASTER | LE_STATE_SCAN_ADV		},
-	{ 20, LE_STATE_CONN_SLAVE | LE_STATE_NONCONN_ADV	},
-	{ 21, LE_STATE_CONN_SLAVE | LE_STATE_SCAN_ADV		},
-	{ 22, LE_STATE_INITIATING | LE_STATE_PASSIVE_SCAN	},
-	{ 23, LE_STATE_INITIATING | LE_STATE_ACTIVE_SCAN	},
-	{ 24, LE_STATE_CONN_MASTER | LE_STATE_PASSIVE_SCAN	},
-	{ 25, LE_STATE_CONN_MASTER | LE_STATE_ACTIVE_SCAN	},
-	{ 26, LE_STATE_CONN_SLAVE | LE_STATE_PASSIVE_SCAN	},
-	{ 27, LE_STATE_CONN_SLAVE | LE_STATE_ACTIVE_SCAN	},
-	{ 28, LE_STATE_INITIATING | LE_STATE_CONN_MASTER |
-					LE_STATE_MASTER_MASTER	},
-	{ 29, LE_STATE_LOW_DIRECT_ADV				},
-	{ 30, LE_STATE_LOW_DIRECT_ADV | LE_STATE_PASSIVE_SCAN	},
-	{ 31, LE_STATE_LOW_DIRECT_ADV | LE_STATE_ACTIVE_SCAN	},
+	{  0, LE_STATE_NONCONN_ADV					},
+	{  1, LE_STATE_SCAN_ADV						},
+	{  2, LE_STATE_CONN_ADV						},
+	{  3, LE_STATE_HIGH_DIRECT_ADV					},
+	{  4, LE_STATE_PASSIVE_SCAN					},
+	{  5, LE_STATE_ACTIVE_SCAN					},
+	{  6, LE_STATE_INITIATING | LE_STATE_CONN_CENTRAL		},
+	{  7, LE_STATE_CONN_PERIPHERAL					},
+	{  8, LE_STATE_PASSIVE_SCAN | LE_STATE_NONCONN_ADV		},
+	{  9, LE_STATE_PASSIVE_SCAN | LE_STATE_SCAN_ADV			},
+	{ 10, LE_STATE_PASSIVE_SCAN | LE_STATE_CONN_ADV			},
+	{ 11, LE_STATE_PASSIVE_SCAN | LE_STATE_HIGH_DIRECT_ADV		},
+	{ 12, LE_STATE_ACTIVE_SCAN | LE_STATE_NONCONN_ADV		},
+	{ 13, LE_STATE_ACTIVE_SCAN | LE_STATE_SCAN_ADV			},
+	{ 14, LE_STATE_ACTIVE_SCAN | LE_STATE_CONN_ADV			},
+	{ 15, LE_STATE_ACTIVE_SCAN | LE_STATE_HIGH_DIRECT_ADV		},
+	{ 16, LE_STATE_INITIATING | LE_STATE_NONCONN_ADV		},
+	{ 17, LE_STATE_INITIATING | LE_STATE_SCAN_ADV			},
+	{ 18, LE_STATE_CONN_CENTRAL | LE_STATE_NONCONN_ADV		},
+	{ 19, LE_STATE_CONN_CENTRAL | LE_STATE_SCAN_ADV			},
+	{ 20, LE_STATE_CONN_PERIPHERAL | LE_STATE_NONCONN_ADV		},
+	{ 21, LE_STATE_CONN_PERIPHERAL | LE_STATE_SCAN_ADV		},
+	{ 22, LE_STATE_INITIATING | LE_STATE_PASSIVE_SCAN		},
+	{ 23, LE_STATE_INITIATING | LE_STATE_ACTIVE_SCAN		},
+	{ 24, LE_STATE_CONN_CENTRAL | LE_STATE_PASSIVE_SCAN		},
+	{ 25, LE_STATE_CONN_CENTRAL | LE_STATE_ACTIVE_SCAN		},
+	{ 26, LE_STATE_CONN_PERIPHERAL | LE_STATE_PASSIVE_SCAN		},
+	{ 27, LE_STATE_CONN_PERIPHERAL | LE_STATE_ACTIVE_SCAN		},
+	{ 28, LE_STATE_INITIATING | LE_STATE_CONN_CENTRAL |
+					LE_STATE_CENTRAL_CENTRAL	},
+	{ 29, LE_STATE_LOW_DIRECT_ADV					},
+	{ 30, LE_STATE_LOW_DIRECT_ADV | LE_STATE_PASSIVE_SCAN		},
+	{ 31, LE_STATE_LOW_DIRECT_ADV | LE_STATE_ACTIVE_SCAN		},
 	{ 32, LE_STATE_INITIATING | LE_STATE_CONN_ADV |
-					LE_STATE_MASTER_SLAVE	},
+					LE_STATE_CENTRAL_PERIPHERAL	},
 	{ 33, LE_STATE_INITIATING | LE_STATE_HIGH_DIRECT_ADV |
-					LE_STATE_MASTER_SLAVE	},
+					LE_STATE_CENTRAL_PERIPHERAL	},
 	{ 34, LE_STATE_INITIATING | LE_STATE_LOW_DIRECT_ADV |
-					LE_STATE_MASTER_SLAVE	},
-	{ 35, LE_STATE_CONN_MASTER | LE_STATE_CONN_ADV |
-					LE_STATE_MASTER_SLAVE	},
-	{ 36, LE_STATE_CONN_MASTER | LE_STATE_HIGH_DIRECT_ADV |
-					LE_STATE_MASTER_SLAVE	},
-	{ 37, LE_STATE_CONN_MASTER | LE_STATE_LOW_DIRECT_ADV |
-					LE_STATE_MASTER_SLAVE	},
-	{ 38, LE_STATE_CONN_SLAVE | LE_STATE_CONN_ADV |
-					LE_STATE_MASTER_SLAVE	},
-	{ 39, LE_STATE_CONN_SLAVE | LE_STATE_HIGH_DIRECT_ADV |
-					LE_STATE_SLAVE_SLAVE	},
-	{ 40, LE_STATE_CONN_SLAVE | LE_STATE_LOW_DIRECT_ADV |
-					LE_STATE_SLAVE_SLAVE	},
-	{ 41, LE_STATE_INITIATING | LE_STATE_CONN_SLAVE |
-					LE_STATE_MASTER_SLAVE	},
+					LE_STATE_CENTRAL_PERIPHERAL	},
+	{ 35, LE_STATE_CONN_CENTRAL | LE_STATE_CONN_ADV |
+					LE_STATE_CENTRAL_PERIPHERAL	},
+	{ 36, LE_STATE_CONN_CENTRAL | LE_STATE_HIGH_DIRECT_ADV |
+					LE_STATE_CENTRAL_PERIPHERAL	},
+	{ 37, LE_STATE_CONN_CENTRAL | LE_STATE_LOW_DIRECT_ADV |
+					LE_STATE_CENTRAL_PERIPHERAL	},
+	{ 38, LE_STATE_CONN_PERIPHERAL | LE_STATE_CONN_ADV |
+					LE_STATE_CENTRAL_PERIPHERAL	},
+	{ 39, LE_STATE_CONN_PERIPHERAL | LE_STATE_HIGH_DIRECT_ADV |
+					LE_STATE_PERIPHERAL_PERIPHERAL	},
+	{ 40, LE_STATE_CONN_PERIPHERAL | LE_STATE_LOW_DIRECT_ADV |
+					LE_STATE_PERIPHERAL_PERIPHERAL	},
+	{ 41, LE_STATE_INITIATING | LE_STATE_CONN_PERIPHERAL |
+					LE_STATE_CENTRAL_PERIPHERAL	},
 	{ }
 };
 
@@ -2908,7 +2908,7 @@ static const struct bitfield_data events_table[] = {
 	{  6, "Remote Name Request Complete"				},
 	{  7, "Encryption Change"					},
 	{  8, "Change Connection Link Key Complete"			},
-	{  9, "Master Link Key Complete"				},
+	{  9, "Link Key Type Changed"					},
 	{ 10, "Read Remote Supported Features Complete"			},
 	{ 11, "Read Remote Version Information Complete"		},
 	{ 12, "QoS Setup Complete"					},
@@ -2989,11 +2989,11 @@ static const struct bitfield_data events_page2_table[] = {
 	{ 14, "Triggered Clock Capture"					},
 	{ 15, "Synchronization Train Complete"				},
 	{ 16, "Synchronization Train Received"				},
-	{ 17, "Connectionless Slave Broadcast Receive"			},
-	{ 18, "Connectionless Slave Broadcast Timeout"			},
+	{ 17, "Connectionless Peripheral Broadcast Receive"		},
+	{ 18, "Connectionless Peripheral Broadcast Timeout"		},
 	{ 19, "Truncated Page Complete"					},
-	{ 20, "Slave Page Response Timeout"				},
-	{ 21, "Connectionless Slave Broadcast Channel Map Change"	},
+	{ 20, "Peripheral Page Response Timeout"			},
+	{ 21, "Connectionless Peripheral Broadcast Channel Map Change"	},
 	{ 22, "Inquiry Response Notification"				},
 	{ 23, "Authenticated Payload Timeout Expired"			},
 	{ 24, "SAM Status Change"					},
@@ -3065,7 +3065,7 @@ static void print_fec(uint8_t fec)
 #define BT_EIR_DEVICE_ID		0x10
 #define BT_EIR_SMP_TK			0x10
 #define BT_EIR_SMP_OOB_FLAGS		0x11
-#define BT_EIR_SLAVE_CONN_INTERVAL	0x12
+#define BT_EIR_PERIPHERAL_CONN_INTERVAL	0x12
 #define BT_EIR_SERVICE_UUID16		0x14
 #define BT_EIR_SERVICE_UUID128		0x15
 #define BT_EIR_SERVICE_DATA		0x16
@@ -3675,10 +3675,11 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			print_field("SMP OOB Flags: 0x%2.2x", *data);
 			break;
 
-		case BT_EIR_SLAVE_CONN_INTERVAL:
+		case BT_EIR_PERIPHERAL_CONN_INTERVAL:
 			if (data_len < 4)
 				break;
-			print_field("Slave Conn. Interval: 0x%4.4x - 0x%4.4x",
+			print_field("Peripheral Conn. Interval: "
+							"0x%4.4x - 0x%4.4x",
 							get_le16(&data[0]),
 							get_le16(&data[2]));
 			break;
@@ -4147,10 +4148,10 @@ static void create_conn_cmd(const void *data, uint8_t size)
 
 	switch (cmd->role_switch) {
 	case 0x00:
-		str = "Stay master";
+		str = "Stay central";
 		break;
 	case 0x01:
-		str = "Allow slave";
+		str = "Allow peripheral";
 		break;
 	default:
 		str = "Reserved";
@@ -4260,9 +4261,9 @@ static void change_conn_link_key_cmd(const void *data, uint8_t size)
 	print_handle(cmd->handle);
 }
 
-static void master_link_key_cmd(const void *data, uint8_t size)
+static void link_key_selection_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_master_link_key *cmd = data;
+	const struct bt_hci_cmd_link_key_selection *cmd = data;
 
 	print_key_flag(cmd->key_flag);
 }
@@ -4554,9 +4555,9 @@ static void truncated_page_cancel_cmd(const void *data, uint8_t size)
 	print_bdaddr(cmd->bdaddr);
 }
 
-static void set_slave_broadcast_cmd(const void *data, uint8_t size)
+static void set_peripheral_broadcast_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_set_slave_broadcast *cmd = data;
+	const struct bt_hci_cmd_set_peripheral_broadcast *cmd = data;
 
 	print_field("Enable: 0x%2.2x", cmd->enable);
 	print_lt_addr(cmd->lt_addr);
@@ -4567,18 +4568,18 @@ static void set_slave_broadcast_cmd(const void *data, uint8_t size)
 	print_slot_625("Supervision timeout", cmd->timeout);
 }
 
-static void set_slave_broadcast_rsp(const void *data, uint8_t size)
+static void set_peripheral_broadcast_rsp(const void *data, uint8_t size)
 {
-	const struct bt_hci_rsp_set_slave_broadcast *rsp = data;
+	const struct bt_hci_rsp_set_peripheral_broadcast *rsp = data;
 
 	print_status(rsp->status);
 	print_lt_addr(rsp->lt_addr);
 	print_interval(rsp->interval);
 }
 
-static void set_slave_broadcast_receive_cmd(const void *data, uint8_t size)
+static void set_peripheral_broadcast_receive_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_set_slave_broadcast_receive *cmd = data;
+	const struct bt_hci_cmd_set_peripheral_broadcast_receive *cmd = data;
 
 	print_field("Enable: 0x%2.2x", cmd->enable);
 	print_bdaddr(cmd->bdaddr);
@@ -4594,9 +4595,9 @@ static void set_slave_broadcast_receive_cmd(const void *data, uint8_t size)
 	print_channel_map(cmd->map);
 }
 
-static void set_slave_broadcast_receive_rsp(const void *data, uint8_t size)
+static void set_peripheral_broadcast_receive_rsp(const void *data, uint8_t size)
 {
-	const struct bt_hci_rsp_set_slave_broadcast_receive *rsp = data;
+	const struct bt_hci_rsp_set_peripheral_broadcast_receive *rsp = data;
 
 	print_status(rsp->status);
 	print_bdaddr(rsp->bdaddr);
@@ -5665,9 +5666,9 @@ static void delete_reserved_lt_addr_rsp(const void *data, uint8_t size)
 	print_lt_addr(rsp->lt_addr);
 }
 
-static void set_slave_broadcast_data_cmd(const void *data, uint8_t size)
+static void set_peripheral_broadcast_data_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_set_slave_broadcast_data *cmd = data;
+	const struct bt_hci_cmd_set_peripheral_broadcast_data *cmd = data;
 
 	print_lt_addr(cmd->lt_addr);
 	print_broadcast_fragment(cmd->fragment);
@@ -5680,9 +5681,9 @@ static void set_slave_broadcast_data_cmd(const void *data, uint8_t size)
 	packet_hexdump(data + 3, size - 3);
 }
 
-static void set_slave_broadcast_data_rsp(const void *data, uint8_t size)
+static void set_peripheral_broadcast_data_rsp(const void *data, uint8_t size)
 {
-	const struct bt_hci_rsp_set_slave_broadcast_data *rsp = data;
+	const struct bt_hci_rsp_set_peripheral_broadcast_data *rsp = data;
 
 	print_status(rsp->status);
 	print_lt_addr(rsp->lt_addr);
@@ -6541,13 +6542,13 @@ static void print_scan_filter_policy(uint8_t policy)
 		str = "Accept all advertisement";
 		break;
 	case 0x01:
-		str = "Ignore not in white list";
+		str = "Ignore not in accept list";
 		break;
 	case 0x02:
 		str = "Accept all advertisement, inc. directed unresolved RPA";
 		break;
 	case 0x03:
-		str = "Ignore not in white list, exc. directed unresolved RPA";
+		str = "Ignore not in accept list, exc. directed unresolved RPA";
 		break;
 	default:
 		str = "Reserved";
@@ -6586,10 +6587,10 @@ static void le_create_conn_cmd(const void *data, uint8_t size)
 
 	switch (cmd->filter_policy) {
 	case 0x00:
-		str = "White list is not used";
+		str = "Accept list is not used";
 		break;
 	case 0x01:
-		str = "White list is used";
+		str = "Accept list is used";
 		break;
 	default:
 		str = "Reserved";
@@ -6612,25 +6613,25 @@ static void le_create_conn_cmd(const void *data, uint8_t size)
 	print_slot_625("Max connection length", cmd->max_length);
 }
 
-static void le_read_white_list_size_rsp(const void *data, uint8_t size)
+static void le_read_accept_list_size_rsp(const void *data, uint8_t size)
 {
-	const struct bt_hci_rsp_le_read_white_list_size *rsp = data;
+	const struct bt_hci_rsp_le_read_accept_list_size *rsp = data;
 
 	print_status(rsp->status);
 	print_field("Size: %u", rsp->size);
 }
 
-static void le_add_to_white_list_cmd(const void *data, uint8_t size)
+static void le_add_to_accept_list_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_add_to_white_list *cmd = data;
+	const struct bt_hci_cmd_le_add_to_accept_list *cmd = data;
 
 	print_addr_type("Address type", cmd->addr_type);
 	print_addr("Address", cmd->addr, cmd->addr_type);
 }
 
-static void le_remove_from_white_list_cmd(const void *data, uint8_t size)
+static void le_remove_from_accept_list_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_remove_from_white_list *cmd = data;
+	const struct bt_hci_cmd_le_remove_from_accept_list *cmd = data;
 
 	print_addr_type("Address type", cmd->addr_type);
 	print_addr("Address", cmd->addr, cmd->addr_type);
@@ -7569,10 +7570,10 @@ static void le_ext_create_conn_cmd(const void *data, uint8_t size)
 
 	switch (cmd->filter_policy) {
 	case 0x00:
-		str = "White list is not used";
+		str = "Accept list is not used";
 		break;
 	case 0x01:
-		str = "White list is used";
+		str = "Accept list is used";
 		break;
 	default:
 		str = "Reserved";
@@ -8030,16 +8031,16 @@ static void print_cis_params(const void *data, int i)
 	const struct bt_hci_cis_params *cis = data;
 
 	print_field("CIS ID: 0x%2.2x", cis->cis_id);
-	print_field("Master to Slave Maximum SDU Size: %u",
-						le16_to_cpu(cis->m_sdu));
-	print_field("Slave to Master Maximum SDU Size: %u",
-						le16_to_cpu(cis->s_sdu));
-	print_le_phy("Master to Slave PHY", cis->m_phy);
-	print_le_phy("Slave to Master PHY", cis->s_phy);
-	print_field("Master to Slave Retransmission attempts: 0x%2.2x",
-							cis->m_rtn);
-	print_field("Slave to Master Retransmission attempts: 0x%2.2x",
-							cis->s_rtn);
+	print_field("Central to Peripheral Maximum SDU Size: %u",
+						le16_to_cpu(cis->c_sdu));
+	print_field("Peripheral to Central Maximum SDU Size: %u",
+						le16_to_cpu(cis->p_sdu));
+	print_le_phy("Central to Peripheral PHY", cis->c_phy);
+	print_le_phy("Peripheral to Central PHY", cis->p_phy);
+	print_field("Central to Peripheral Retransmission attempts: 0x%2.2x",
+							cis->c_rtn);
+	print_field("Peripheral to Central Retransmission attempts: 0x%2.2x",
+							cis->p_rtn);
 }
 
 static void le_set_cig_params_cmd(const void *data, uint8_t size)
@@ -8047,15 +8048,17 @@ static void le_set_cig_params_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_set_cig_params *cmd = data;
 
 	print_field("CIG ID: 0x%2.2x", cmd->cig_id);
-	print_usec_interval("Master to Slave SDU Interval", cmd->m_interval);
-	print_usec_interval("Slave to Master SDU Interval", cmd->s_interval);
+	print_usec_interval("Central to Peripheral SDU Interval",
+							cmd->c_interval);
+	print_usec_interval("Peripheral to Central SDU Interval",
+							cmd->p_interval);
 	print_sca(cmd->sca);
 	print_packing(cmd->packing);
 	print_framing(cmd->framing);
-	print_field("Master to Slave Maximum Latency: %d ms (0x%4.4x)",
-		le16_to_cpu(cmd->m_latency), le16_to_cpu(cmd->m_latency));
-	print_field("Slave to Master Maximum Latency: %d ms (0x%4.4x)",
-		le16_to_cpu(cmd->s_latency), le16_to_cpu(cmd->s_latency));
+	print_field("Central to Peripheral Maximum Latency: %d ms (0x%4.4x)",
+		le16_to_cpu(cmd->c_latency), le16_to_cpu(cmd->c_latency));
+	print_field("Peripheral to Central Maximum Latency: %d ms (0x%4.4x)",
+		le16_to_cpu(cmd->p_latency), le16_to_cpu(cmd->p_latency));
 	print_field("Number of CIS: %u", cmd->num_cis);
 
 	size -= sizeof(*cmd);
@@ -8070,18 +8073,18 @@ static void print_cis_params_test(const void *data, int i)
 
 	print_field("CIS ID: 0x%2.2x", cis->cis_id);
 	print_field("NSE: 0x%2.2x", cis->nse);
-	print_field("Master to Slave Maximum SDU: 0x%4.4x",
-						le16_to_cpu(cis->m_sdu));
-	print_field("Slave to Master Maximum SDU: 0x%4.4x",
-						le16_to_cpu(cis->s_sdu));
-	print_field("Master to Slave Maximum PDU: 0x%4.4x",
-						le16_to_cpu(cis->m_pdu));
-	print_field("Slave to Master Maximum PDU: 0x%4.4x",
-						le16_to_cpu(cis->s_pdu));
-	print_le_phy("Master to Slave PHY", cis->m_phy);
-	print_le_phy("Slave to Master PHY", cis->s_phy);
-	print_field("Master to Slave Burst Number: 0x%2.2x", cis->m_bn);
-	print_field("Slave to Master Burst Number: 0x%2.2x", cis->s_bn);
+	print_field("Central to Peripheral Maximum SDU: 0x%4.4x",
+						le16_to_cpu(cis->c_sdu));
+	print_field("Peripheral to Central Maximum SDU: 0x%4.4x",
+						le16_to_cpu(cis->p_sdu));
+	print_field("Central to Peripheral Maximum PDU: 0x%4.4x",
+						le16_to_cpu(cis->c_pdu));
+	print_field("Peripheral to Central Maximum PDU: 0x%4.4x",
+						le16_to_cpu(cis->p_pdu));
+	print_le_phy("Central to Peripheral PHY", cis->c_phy);
+	print_le_phy("Peripheral to Central PHY", cis->p_phy);
+	print_field("Central to Peripheral Burst Number: 0x%2.2x", cis->c_bn);
+	print_field("Peripheral to Central Burst Number: 0x%2.2x", cis->p_bn);
 }
 
 static void le_set_cig_params_test_cmd(const void *data, uint8_t size)
@@ -8089,10 +8092,12 @@ static void le_set_cig_params_test_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_set_cig_params_test *cmd = data;
 
 	print_field("CIG ID: 0x%2.2x", cmd->cig_id);
-	print_usec_interval("Master to Slave SDU Interval", cmd->m_interval);
-	print_usec_interval("Slave to Master SDU Interval", cmd->s_interval);
-	print_field("Master to Slave Flush Timeout: 0x%2.2x", cmd->m_ft);
-	print_field("Slave to Master Flush Timeout: 0x%2.2x", cmd->s_ft);
+	print_usec_interval("Central to Peripheral SDU Interval",
+							cmd->c_interval);
+	print_usec_interval("Peripheral to Central SDU Interval",
+							cmd->p_interval);
+	print_field("Central to Peripheral Flush Timeout: 0x%2.2x", cmd->c_ft);
+	print_field("Peripheral to Central Flush Timeout: 0x%2.2x", cmd->p_ft);
 	print_field("ISO Interval: %.2f ms (0x%4.4x)",
 				le16_to_cpu(cmd->iso_interval) * 1.25,
 				le16_to_cpu(cmd->iso_interval));
@@ -8425,8 +8430,8 @@ static const struct opcode_data opcode_table[] = {
 				set_conn_encrypt_cmd, 3, true },
 	{ 0x0415,  17, "Change Connection Link Key",
 				change_conn_link_key_cmd, 2, true },
-	{ 0x0417,  18, "Master Link Key",
-				master_link_key_cmd, 1, true },
+	{ 0x0417,  18, "Temporary Link Key",
+				link_key_selection_cmd, 1, true },
 	{ 0x0419,  19, "Remote Name Request",
 				remote_name_request_cmd, 10, true },
 	{ 0x041a,  20, "Remote Name Request Cancel",
@@ -8499,12 +8504,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0440, 247, "Truncated Page Cancel",
 				truncated_page_cancel_cmd, 6, true,
 				status_bdaddr_rsp, 7, true },
-	{ 0x0441, 248, "Set Connectionless Slave Broadcast",
-				set_slave_broadcast_cmd, 11, true,
-				set_slave_broadcast_rsp, 4, true },
-	{ 0x0442, 249, "Set Connectionless Slave Broadcast Receive",
-				set_slave_broadcast_receive_cmd, 34, true,
-				set_slave_broadcast_receive_rsp, 8, true },
+	{ 0x0441, 248, "Set Connectionless Peripheral Broadcast",
+				set_peripheral_broadcast_cmd, 11, true,
+				set_peripheral_broadcast_rsp, 4, true },
+	{ 0x0442, 249, "Set Connectionless Peripheral Broadcast Receive",
+				set_peripheral_broadcast_receive_cmd, 34, true,
+				set_peripheral_broadcast_receive_rsp, 8, true },
 	{ 0x0443, 250, "Start Synchronization Train",
 				null_cmd, 0, true },
 	{ 0x0444, 251, "Receive Synchronization Train",
@@ -8805,9 +8810,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c75, 253, "Delete Reserved LT_ADDR",
 				delete_reserved_lt_addr_cmd, 1, true,
 				delete_reserved_lt_addr_rsp, 2, true },
-	{ 0x0c76, 254, "Set Connectionless Slave Broadcast Data",
-				set_slave_broadcast_data_cmd, 3, false,
-				set_slave_broadcast_data_rsp, 2, true },
+	{ 0x0c76, 254, "Set Connectionless Peripheral Broadcast Data",
+				set_peripheral_broadcast_data_cmd, 3, false,
+				set_peripheral_broadcast_data_rsp, 2, true },
 	{ 0x0c77, 255, "Read Synchronization Train Parameters",
 				null_cmd, 0, true,
 				read_sync_train_params_rsp, 8, true },
@@ -8995,17 +9000,17 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x200e, 213, "LE Create Connection Cancel",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
-	{ 0x200f, 214, "LE Read White List Size",
+	{ 0x200f, 214, "LE Read Accept List Size",
 				null_cmd, 0, true,
-				le_read_white_list_size_rsp, 2, true },
-	{ 0x2010, 215, "LE Clear White List",
+				le_read_accept_list_size_rsp, 2, true },
+	{ 0x2010, 215, "LE Clear Accept List",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
-	{ 0x2011, 216, "LE Add Device To White List",
-				le_add_to_white_list_cmd, 7, true,
+	{ 0x2011, 216, "LE Add Device To Accept List",
+				le_add_to_accept_list_cmd, 7, true,
 				status_rsp, 1, true },
-	{ 0x2012, 217, "LE Remove Device From White List",
-				le_remove_from_white_list_cmd, 7, true,
+	{ 0x2012, 217, "LE Remove Device From Accept List",
+				le_remove_from_accept_list_cmd, 7, true,
 				status_rsp, 1, true },
 	{ 0x2013, 218, "LE Connection Update",
 				le_conn_update_cmd, 14, true },
@@ -9502,9 +9507,9 @@ static void change_conn_link_key_complete_evt(const void *data, uint8_t size)
 	print_handle(evt->handle);
 }
 
-static void master_link_key_complete_evt(const void *data, uint8_t size)
+static void link_key_type_changed_evt(const void *data, uint8_t size)
 {
-	const struct bt_hci_evt_master_link_key_complete *evt = data;
+	const struct bt_hci_evt_link_key_type_changed *evt = data;
 
 	print_status(evt->status);
 	print_handle(evt->handle);
@@ -10209,9 +10214,9 @@ static void sync_train_received_evt(const void *data, uint8_t size)
 	print_field("Service Data: 0x%2.2x", evt->service_data);
 }
 
-static void slave_broadcast_receive_evt(const void *data, uint8_t size)
+static void peripheral_broadcast_receive_evt(const void *data, uint8_t size)
 {
-	const struct bt_hci_evt_slave_broadcast_receive *evt = data;
+	const struct bt_hci_evt_peripheral_broadcast_receive *evt = data;
 
 	print_bdaddr(evt->bdaddr);
 	print_lt_addr(evt->lt_addr);
@@ -10231,9 +10236,9 @@ static void slave_broadcast_receive_evt(const void *data, uint8_t size)
 		packet_hexdump(data + 18, size - 18);
 }
 
-static void slave_broadcast_timeout_evt(const void *data, uint8_t size)
+static void peripheral_broadcast_timeout_evt(const void *data, uint8_t size)
 {
-	const struct bt_hci_evt_slave_broadcast_timeout *evt = data;
+	const struct bt_hci_evt_peripheral_broadcast_timeout *evt = data;
 
 	print_bdaddr(evt->bdaddr);
 	print_lt_addr(evt->lt_addr);
@@ -10247,13 +10252,13 @@ static void truncated_page_complete_evt(const void *data, uint8_t size)
 	print_bdaddr(evt->bdaddr);
 }
 
-static void slave_page_response_timeout_evt(const void *data, uint8_t size)
+static void peripheral_page_response_timeout_evt(const void *data, uint8_t size)
 {
 }
 
-static void slave_broadcast_channel_map_change_evt(const void *data, uint8_t size)
+static void channel_map_change_evt(const void *data, uint8_t size)
 {
-	const struct bt_hci_evt_slave_broadcast_channel_map_change *evt = data;
+	const struct bt_hci_evt_channel_map_change *evt = data;
 
 	print_channel_map(evt->map);
 }
@@ -10287,7 +10292,7 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 	print_field("Supervision timeout: %d msec (0x%4.4x)",
 					le16_to_cpu(evt->supv_timeout) * 10,
 					le16_to_cpu(evt->supv_timeout));
-	print_field("Master clock accuracy: 0x%2.2x", evt->clock_accuracy);
+	print_field("Central clock accuracy: 0x%2.2x", evt->clock_accuracy);
 
 	if (evt->status == 0x00)
 		assign_handle(le16_to_cpu(evt->handle), 0x01);
@@ -10408,7 +10413,7 @@ static void le_enhanced_conn_complete_evt(const void *data, uint8_t size)
 	print_field("Supervision timeout: %d msec (0x%4.4x)",
 					le16_to_cpu(evt->supv_timeout) * 10,
 					le16_to_cpu(evt->supv_timeout));
-	print_field("Master clock accuracy: 0x%2.2x", evt->clock_accuracy);
+	print_field("Central clock accuracy: 0x%2.2x", evt->clock_accuracy);
 
 	if (evt->status == 0x00)
 		assign_handle(le16_to_cpu(evt->handle), 0x01);
@@ -10784,17 +10789,17 @@ static void le_cis_established_evt(const void *data, uint8_t size)
 	print_field("Connection Handle: %d", le16_to_cpu(evt->conn_handle));
 	print_usec_interval("CIG Synchronization Delay", evt->cig_sync_delay);
 	print_usec_interval("CIS Synchronization Delay", evt->cis_sync_delay);
-	print_usec_interval("Master to Slave Latency", evt->m_latency);
-	print_usec_interval("Slave to Master Latency", evt->s_latency);
-	print_le_phy("Master to Slave PHY", evt->m_phy);
-	print_le_phy("Slave to Master PHY", evt->s_phy);
+	print_usec_interval("Central to Peripheral Latency", evt->c_latency);
+	print_usec_interval("Peripheral to Central Latency", evt->p_latency);
+	print_le_phy("Central to Peripheral PHY", evt->c_phy);
+	print_le_phy("Peripheral to Central PHY", evt->p_phy);
 	print_field("Number of Subevents: %u", evt->nse);
-	print_field("Master to Slave Burst Number: %u", evt->m_bn);
-	print_field("Slave to Master Burst Number: %u", evt->s_bn);
-	print_field("Master to Slave Flush Timeout: %u", evt->m_ft);
-	print_field("Slave to Master Flush Timeout: %u", evt->s_ft);
-	print_field("Master to Slave MTU: %u", le16_to_cpu(evt->m_mtu));
-	print_field("Slave to Master MTU: %u", le16_to_cpu(evt->s_mtu));
+	print_field("Central to Peripheral Burst Number: %u", evt->c_bn);
+	print_field("Peripheral to Central Burst Number: %u", evt->p_bn);
+	print_field("Central to Peripheral Flush Timeout: %u", evt->c_ft);
+	print_field("Peripheral to Central Flush Timeout: %u", evt->p_ft);
+	print_field("Central to Peripheral MTU: %u", le16_to_cpu(evt->c_mtu));
+	print_field("Peripheral to Central MTU: %u", le16_to_cpu(evt->p_mtu));
 	print_field("ISO Interval: %u", le16_to_cpu(evt->interval));
 }
 
@@ -11082,8 +11087,8 @@ static const struct event_data event_table[] = {
 				encrypt_change_evt, 4, true },
 	{ 0x09, "Change Connection Link Key Complete",
 				change_conn_link_key_complete_evt, 3, true },
-	{ 0x0a, "Master Link Key Complete",
-				master_link_key_complete_evt, 4, true },
+	{ 0x0a, "Link Key Type Changed",
+				link_key_type_changed_evt, 4, true },
 	{ 0x0b, "Read Remote Supported Features",
 				remote_features_complete_evt, 11, true },
 	{ 0x0c, "Read Remote Version Complete",
@@ -11199,16 +11204,16 @@ static const struct event_data event_table[] = {
 				sync_train_complete_evt, 1, true },
 	{ 0x50, "Synchronization Train Received",
 				sync_train_received_evt, 29, true },
-	{ 0x51, "Connectionless Slave Broadcast Receive",
-				slave_broadcast_receive_evt, 18, false },
-	{ 0x52, "Connectionless Slave Broadcast Timeout",
-				slave_broadcast_timeout_evt, 7, true },
+	{ 0x51, "Connectionless Peripheral Broadcast Receive",
+				peripheral_broadcast_receive_evt, 18, false },
+	{ 0x52, "Connectionless Peripheral Broadcast Timeout",
+				peripheral_broadcast_timeout_evt, 7, true },
 	{ 0x53, "Truncated Page Complete",
 				truncated_page_complete_evt, 7, true },
-	{ 0x54, "Slave Page Response Timeout",
-				slave_page_response_timeout_evt, 0, true },
-	{ 0x55, "Connectionless Slave Broadcast Channel Map Change",
-				slave_broadcast_channel_map_change_evt, 10, true },
+	{ 0x54, "Peripheral Page Response Timeout",
+				peripheral_page_response_timeout_evt, 0, true },
+	{ 0x55, "Connectionless Peripheral Broadcast Channel Map Change",
+				channel_map_change_evt, 10, true },
 	{ 0x56, "Inquiry Response Notification",
 				inquiry_response_notify_evt, 4, true },
 	{ 0x57, "Authenticated Payload Timeout Expired",
@@ -12171,7 +12176,7 @@ static void mgmt_print_long_term_key(const void *data)
 {
 	uint8_t address_type = get_u8(data + 6);
 	uint8_t key_type = get_u8(data + 7);
-	uint8_t master = get_u8(data + 8);
+	uint8_t central = get_u8(data + 8);
 	uint8_t enc_size = get_u8(data + 9);
 	const char *str;
 
@@ -12199,7 +12204,7 @@ static void mgmt_print_long_term_key(const void *data)
 	}
 
 	print_field("Key type: %s (0x%2.2x)", str, key_type);
-	print_field("Master: 0x%2.2x", master);
+	print_field("Central: 0x%2.2x", central);
 	print_field("Encryption size: %u", enc_size);
 	print_hex_field("Diversifier", data + 10, 2);
 	print_hex_field("Randomizer", data + 12, 8);

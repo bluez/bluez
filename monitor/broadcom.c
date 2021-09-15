@@ -120,10 +120,10 @@ static void print_sync_mode(uint8_t mode)
 
 	switch (mode) {
 	case 0x00:
-		str = "Slave";
+		str = "Peripheral";
 		break;
 	case 0x01:
-		str = "Master";
+		str = "Central";
 		break;
 	default:
 		str = "Reserved";
@@ -139,10 +139,10 @@ static void print_clock_mode(uint8_t mode)
 
 	switch (mode) {
 	case 0x00:
-		str = "Slave";
+		str = "Peripheral";
 		break;
 	case 0x01:
-		str = "Master";
+		str = "Central";
 		break;
 	default:
 		str = "Reserved";

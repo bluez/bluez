@@ -186,7 +186,7 @@ static void advertising_packet(const void *data, uint8_t size)
 		print_field("Transmit window size: %u", win_size);
 		print_field("Transmit window offset: %u", win_offset);
 		print_field("Connection interval: %u", interval);
-		print_field("Connection slave latency: %u", latency);
+		print_field("Connection peripheral latency: %u", latency);
 		print_field("Connection supervision timeout: %u", timeout);
 
 		packet_print_channel_map_ll(ptr + 30);
@@ -371,8 +371,10 @@ static void conn_update_req(const void *data, uint8_t size)
 	print_field("Transmit window size: %u", pdu->win_size);
 	print_field("Transmit window offset: %u", le16_to_cpu(pdu->win_offset));
 	print_field("Connection interval: %u", le16_to_cpu(pdu->interval));
-	print_field("Connection slave latency: %u", le16_to_cpu(pdu->latency));
-	print_field("Connection supervision timeout: %u", le16_to_cpu(pdu->timeout));
+	print_field("Connection peripheral latency: %u",
+						le16_to_cpu(pdu->latency));
+	print_field("Connection supervision timeout: %u",
+						le16_to_cpu(pdu->timeout));
 	print_field("Connection instant: %u", le16_to_cpu(pdu->instant));
 }
 
@@ -397,16 +399,16 @@ static void enc_req(const void *data, uint8_t size)
 
 	print_field("Rand: 0x%16.16" PRIx64, le64_to_cpu(pdu->rand));
 	print_field("EDIV: 0x%4.4x", le16_to_cpu(pdu->ediv));
-	print_field("SKD (master): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
-	print_field("IV (master): 0x%8.8x", le32_to_cpu(pdu->iv));
+	print_field("SKD (central): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
+	print_field("IV (central): 0x%8.8x", le32_to_cpu(pdu->iv));
 }
 
 static void enc_rsp(const void *data, uint8_t size)
 {
 	const struct bt_ll_enc_rsp *pdu = data;
 
-	print_field("SKD (slave): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
-	print_field("IV (slave): 0x%8.8x", le32_to_cpu(pdu->iv));
+	print_field("SKD (peripheral): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
+	print_field("IV (peripheral): 0x%8.8x", le32_to_cpu(pdu->iv));
 }
 
 static const char *opcode_to_string(uint8_t opcode);
@@ -449,9 +451,9 @@ static void reject_ind(const void *data, uint8_t size)
 	packet_print_error("Error code", pdu->error);
 }
 
-static void slave_feature_req(const void *data, uint8_t size)
+static void peripheral_feature_req(const void *data, uint8_t size)
 {
-	const struct bt_ll_slave_feature_req *pdu = data;
+	const struct bt_ll_peripheral_feature_req *pdu = data;
 
 	packet_print_features_ll(pdu->features);
 }
@@ -505,16 +507,16 @@ static void phy_update_ind(const void *data, uint8_t size)
 	const struct bt_ll_phy_update_ind *pdu = data;
 	uint8_t mask;
 
-	print_field("M_TO_S_PHY: 0x%2.2x", pdu->m_phy);
+	print_field("C_TO_P_PHY: 0x%2.2x", pdu->c_phy);
 
-	mask = print_bitfield(2, pdu->m_phy, le_phys);
+	mask = print_bitfield(2, pdu->c_phy, le_phys);
 	if (mask)
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
 
-	print_field("S_TO_M_PHY: 0x%2.2x", pdu->s_phy);
+	print_field("P_TO_C_PHY: 0x%2.2x", pdu->p_phy);
 
-	mask = print_bitfield(2, pdu->s_phy, le_phys);
+	mask = print_bitfield(2, pdu->p_phy, le_phys);
 	if (mask)
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
@@ -596,38 +598,40 @@ static void cis_req(const void *data, uint8_t size)
 
 	print_field("CIG ID: 0x%2.2x", cmd->cig);
 	print_field("CIS ID: 0x%2.2x", cmd->cis);
-	print_field("Master to Slave PHY: 0x%2.2x", cmd->m_phy);
+	print_field("Central to Peripheral PHY: 0x%2.2x", cmd->c_phy);
 
-	mask = print_bitfield(2, cmd->m_phy, le_phys);
+	mask = print_bitfield(2, cmd->c_phy, le_phys);
 	if (mask)
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
 
-	print_field("Slave To Master PHY: 0x%2.2x", cmd->s_phy);
+	print_field("Peripheral To Central PHY: 0x%2.2x", cmd->p_phy);
 
-	mask = print_bitfield(2, cmd->s_phy, le_phys);
+	mask = print_bitfield(2, cmd->p_phy, le_phys);
 	if (mask)
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
 
-	print_field("Master to Slave Maximum SDU: %u", cmd->m_sdu);
-	print_field("Slave to Master Maximum SDU: %u", cmd->s_sdu);
+	print_field("Central to Peripheral Maximum SDU: %u", cmd->c_sdu);
+	print_field("Peripheral to Central Maximum SDU: %u", cmd->p_sdu);
 
-	memcpy(&interval, cmd->m_interval, sizeof(cmd->m_interval));
-	print_field("Master to Slave Interval: 0x%6.6x", le32_to_cpu(interval));
-	memcpy(&interval, cmd->s_interval, sizeof(cmd->s_interval));
-	print_field("Slave to Master Interval: 0x%6.6x", le32_to_cpu(interval));
+	memcpy(&interval, cmd->c_interval, sizeof(cmd->c_interval));
+	print_field("Central to Peripheral Interval: 0x%6.6x",
+							le32_to_cpu(interval));
+	memcpy(&interval, cmd->p_interval, sizeof(cmd->p_interval));
+	print_field("Peripheral to Central Interval: 0x%6.6x",
+							le32_to_cpu(interval));
 
-	print_field("Master to Slave Maximum PDU: %u", cmd->m_pdu);
-	print_field("Slave to Master Maximum PDU: %u", cmd->s_pdu);
+	print_field("Central to Peripheral Maximum PDU: %u", cmd->c_pdu);
+	print_field("Peripheral to Central Maximum PDU: %u", cmd->p_pdu);
 
 	print_field("Burst Number: %u us", cmd->bn);
 
 	memcpy(&interval, cmd->sub_interval, sizeof(cmd->sub_interval));
 	print_field("Sub-Interval: 0x%6.6x", le32_to_cpu(interval));
 
-	print_field("Master to Slave Flush Timeout: %u", cmd->m_ft);
-	print_field("Slave to Master Flush Timeout: %u", cmd->s_ft);
+	print_field("Central to Peripheral Flush Timeout: %u", cmd->c_ft);
+	print_field("Peripheral to Central Flush Timeout: %u", cmd->p_ft);
 
 	print_field("ISO Interval: 0x%4.4x", le16_to_cpu(cmd->iso_interval));
 
@@ -702,7 +706,7 @@ static const struct llcp_data llcp_table[] = {
 	{ 0x0b, "LL_PAUSE_ENC_RSP",         null_pdu,           0, true },
 	{ 0x0c, "LL_VERSION_IND",           version_ind,        5, true },
 	{ 0x0d, "LL_REJECT_IND",            reject_ind,         1, true },
-	{ 0x0e, "LL_SLAVE_FEATURE_REQ",     slave_feature_req,  8, true },
+	{ 0x0e, "LL_PERIPHERAL_FEATURE_REQ", peripheral_feature_req, 8, true },
 	{ 0x0f, "LL_CONNECTION_PARAM_REQ",  NULL,              23, true },
 	{ 0x10, "LL_CONNECTION_PARAM_RSP",  NULL,              23, true },
 	{ 0x11, "LL_REJECT_IND_EXT",        reject_ind_ext,     2, true },

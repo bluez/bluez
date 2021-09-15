@@ -839,7 +839,7 @@ void lmp_packet(const void *data, uint8_t size, bool padded)
 	tid = ((const uint8_t *) data)[0] & 0x01;
 	opcode = (((const uint8_t *) data)[0] & 0xfe) >> 1;
 
-	tid_str = tid == 0x00 ? "Master" : "Slave";
+	tid_str = tid == 0x00 ? "Central" : "Peripheral";
 
 	switch (opcode) {
 	case 127:

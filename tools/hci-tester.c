@@ -337,12 +337,12 @@ static void test_read_local_supported_codecs(const void *test_data)
 
 static void test_le_read_white_list_size(const void *test_data)
 {
-	test_command(BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE);
+	test_command(BT_HCI_CMD_LE_READ_ACCEPT_LIST_SIZE);
 }
 
 static void test_le_clear_white_list(const void *test_data)
 {
-	test_command(BT_HCI_CMD_LE_CLEAR_WHITE_LIST);
+	test_command(BT_HCI_CMD_LE_CLEAR_ACCEPT_LIST);
 }
 
 static void test_le_encrypt_complete(const void *data, uint8_t size,

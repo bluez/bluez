@@ -383,7 +383,7 @@ static void distribute_keys(struct smp_conn *conn)
 	if (conn->local_key_dist & DIST_ENC_KEY) {
 		memset(buf, 0, sizeof(buf));
 		smp_send(conn, BT_L2CAP_SMP_ENCRYPT_INFO, buf, sizeof(buf));
-		smp_send(conn, BT_L2CAP_SMP_MASTER_IDENT, buf, 10);
+		smp_send(conn, BT_L2CAP_SMP_CENTRAL_IDENT, buf, 10);
 	}
 
 	if (conn->local_key_dist & DIST_ID_KEY) {
@@ -571,7 +571,7 @@ static void encrypt_info(struct smp_conn *conn, const void *data, uint16_t len)
 {
 }
 
-static void master_ident(struct smp_conn *conn, const void *data, uint16_t len)
+static void central_ident(struct smp_conn *conn, const void *data, uint16_t len)
 {
 	conn->remote_key_dist &= ~DIST_ENC_KEY;
 
@@ -727,8 +727,8 @@ void smp_data(void *conn_data, const void *data, uint16_t len)
 	case BT_L2CAP_SMP_ENCRYPT_INFO:
 		encrypt_info(conn, data, len);
 		break;
-	case BT_L2CAP_SMP_MASTER_IDENT:
-		master_ident(conn, data, len);
+	case BT_L2CAP_SMP_CENTRAL_IDENT:
+		central_ident(conn, data, len);
 		break;
 	case BT_L2CAP_SMP_IDENT_ADDR_INFO:
 		ident_addr_info(conn, data, len);

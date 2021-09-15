@@ -4248,7 +4248,7 @@ static const struct generic_data add_device_success_6 = {
 	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
 	.expect_alt_ev_param = add_device_success_param_6,
 	.expect_alt_ev_len = sizeof(add_device_success_param_6),
-	.expect_hci_command = BT_HCI_CMD_LE_ADD_TO_WHITE_LIST,
+	.expect_hci_command = BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST,
 	.expect_hci_param = le_add_to_white_list_param,
 	.expect_hci_len = sizeof(le_add_to_white_list_param),
 };
@@ -4418,7 +4418,7 @@ static const struct generic_data remove_device_success_7 = {
 	.expect_param = remove_device_param_2,
 	.expect_len = sizeof(remove_device_param_2),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_hci_command = BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST,
+	.expect_hci_command = BT_HCI_CMD_LE_REMOVE_FROM_ACCEPT_LIST,
 	.expect_hci_param = le_add_to_white_list_param,
 	.expect_hci_len = sizeof(le_add_to_white_list_param),
 	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,

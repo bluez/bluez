@@ -122,7 +122,7 @@ static void sync_train_received(const void *data, uint8_t size,
 							void *user_data)
 {
 	const struct bt_hci_evt_sync_train_received *evt = data;
-	struct bt_hci_cmd_set_slave_broadcast_receive cmd;
+	struct bt_hci_cmd_set_peripheral_broadcast_receive cmd;
 
 	if (evt->status) {
 		printf("Failed to synchronize with 3D display\n");
@@ -147,7 +147,7 @@ static void sync_train_received(const void *data, uint8_t size,
 	cmd.pkt_type = cpu_to_le16(PKT_TYPE);
 	memcpy(cmd.map, evt->map, 10);
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_RECEIVE,
+	bt_hci_send(hci_dev, BT_HCI_CMD_SET_PERIPHERAL_BROADCAST_RECEIVE,
 				&cmd, sizeof(cmd),
 				set_slave_broadcast_receive, NULL, NULL);
 }
@@ -156,7 +156,7 @@ static void brcm_sync_train_received(const void *data, uint8_t size,
 							void *user_data)
 {
 	const struct brcm_evt_sync_train_received *evt = data;
-	struct bt_hci_cmd_set_slave_broadcast_receive cmd;
+	struct bt_hci_cmd_set_peripheral_broadcast_receive cmd;
 
 	if (evt->status) {
 		printf("Failed to synchronize with 3D display\n");
@@ -181,7 +181,7 @@ static void brcm_sync_train_received(const void *data, uint8_t size,
 	cmd.pkt_type = cpu_to_le16(PKT_TYPE);
 	memcpy(cmd.map, evt->map, 10);
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_RECEIVE,
+	bt_hci_send(hci_dev, BT_HCI_CMD_SET_PERIPHERAL_BROADCAST_RECEIVE,
 				&cmd, sizeof(cmd),
 				set_slave_broadcast_receive, NULL, NULL);
 }
@@ -212,7 +212,7 @@ static void truncated_page_complete(const void *data, uint8_t size,
 static void slave_broadcast_timeout(const void *data, uint8_t size,
 							void *user_data)
 {
-	const struct bt_hci_evt_slave_broadcast_timeout *evt = data;
+	const struct bt_hci_evt_peripheral_broadcast_timeout *evt = data;
 	struct bt_hci_cmd_receive_sync_train cmd;
 
 	printf("Re-synchronizing with 3D display\n");
@@ -229,7 +229,7 @@ static void slave_broadcast_timeout(const void *data, uint8_t size,
 static void slave_broadcast_receive(const void *data, uint8_t size,
 							void *user_data)
 {
-	const struct bt_hci_evt_slave_broadcast_receive *evt = data;
+	const struct bt_hci_evt_peripheral_broadcast_receive *evt = data;
 	struct bt_hci_cmd_read_clock cmd;
 
 	if (evt->status != 0x00)
@@ -326,9 +326,9 @@ static void start_glasses(void)
 
 	bt_hci_register(hci_dev, BT_HCI_EVT_TRUNCATED_PAGE_COMPLETE,
 					truncated_page_complete, NULL, NULL);
-	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_TIMEOUT,
+	bt_hci_register(hci_dev, BT_HCI_EVT_PERIPHERAL_BROADCAST_TIMEOUT,
 					slave_broadcast_timeout, NULL, NULL);
-	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_RECEIVE,
+	bt_hci_register(hci_dev, BT_HCI_EVT_PERIPHERAL_BROADCAST_RECEIVE,
 					slave_broadcast_receive, NULL, NULL);
 
 	start_inquiry();
@@ -443,13 +443,13 @@ static void read_clock(const void *data, uint8_t size, void *user_data)
 	msg.frame_sync_period_fraction = 0;
 	memcpy(bcastdata + 3, &msg, sizeof(msg));
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST_DATA,
+	bt_hci_send(hci_dev, BT_HCI_CMD_SET_PERIPHERAL_BROADCAST_DATA,
 			bcastdata, sizeof(bcastdata), NULL, NULL, NULL);
 }
 
 static void set_slave_broadcast(const void *data, uint8_t size, void *user_data)
 {
-	const struct bt_hci_rsp_set_slave_broadcast *rsp = data;
+	const struct bt_hci_rsp_set_peripheral_broadcast *rsp = data;
 	struct bt_hci_cmd_read_clock cmd;
 
 	if (rsp->status) {
@@ -467,7 +467,7 @@ static void set_slave_broadcast(const void *data, uint8_t size, void *user_data)
 
 static void start_display(void)
 {
-	struct bt_hci_cmd_set_slave_broadcast cmd;
+	struct bt_hci_cmd_set_peripheral_broadcast cmd;
 	uint8_t evtmask1[] = { 0x1c, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t evtmask2[] = { 0x00, 0xc0, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	uint8_t sspmode = 0x01;
@@ -492,10 +492,11 @@ static void start_display(void)
 	bt_hci_register(hci_dev, BT_HCI_EVT_CONN_REQUEST,
 						conn_request, NULL, NULL);
 
-	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_PAGE_RESPONSE_TIMEOUT,
+	bt_hci_register(hci_dev, BT_HCI_EVT_PERIPHERAL_PAGE_RESPONSE_TIMEOUT,
 				slave_page_response_timeout, NULL, NULL);
-	bt_hci_register(hci_dev, BT_HCI_EVT_SLAVE_BROADCAST_CHANNEL_MAP_CHANGE,
-				slave_broadcast_channel_map_change, NULL, NULL);
+	bt_hci_register(hci_dev,
+			BT_HCI_EVT_PERIPHERAL_BROADCAST_CHANNEL_MAP_CHANGE,
+			slave_broadcast_channel_map_change, NULL, NULL);
 	bt_hci_register(hci_dev, BT_HCI_EVT_SYNC_TRAIN_COMPLETE,
 					sync_train_complete, NULL, NULL);
 
@@ -510,8 +511,8 @@ static void start_display(void)
 	cmd.max_interval = cpu_to_le16(0x00a0);		/* 100 ms */
 	cmd.timeout = cpu_to_le16(0xfffe);
 
-	bt_hci_send(hci_dev, BT_HCI_CMD_SET_SLAVE_BROADCAST, &cmd, sizeof(cmd),
-					set_slave_broadcast, NULL, NULL);
+	bt_hci_send(hci_dev, BT_HCI_CMD_SET_PERIPHERAL_BROADCAST, &cmd,
+			sizeof(cmd), set_slave_broadcast, NULL, NULL);
 }
 
 static void signal_callback(int signum, void *user_data)

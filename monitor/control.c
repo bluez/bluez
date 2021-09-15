@@ -305,19 +305,19 @@ static void mgmt_new_long_term_key(uint16_t len, const void *buf)
 		return;
 	}
 
-	/* LE SC keys are both for master and slave */
+	/* LE SC keys are both for central and peripheral */
 	switch (ev->key.type) {
 	case 0x00:
 		if (ev->key.central)
-			type = "Master (Unauthenticated)";
+			type = "Central (Unauthenticated)";
 		else
-			type = "Slave (Unauthenticated)";
+			type = "Peripheral (Unauthenticated)";
 		break;
 	case 0x01:
 		if (ev->key.central)
-			type = "Master (Authenticated)";
+			type = "Central (Authenticated)";
 		else
-			type = "Slave (Authenticated)";
+			type = "Peripheral (Authenticated)";
 		break;
 	case 0x02:
 		type = "SC (Unauthenticated)";
