@@ -42,6 +42,7 @@ struct mgmt {
 	bool in_notify;
 	void *buf;
 	uint16_t len;
+	uint16_t mtu;
 	mgmt_debug_func_t debug_callback;
 	mgmt_destroy_func_t debug_destroy;
 	void *debug_data;
@@ -380,6 +381,32 @@ static bool can_read_data(struct io *io, void *user_data)
 	return true;
 }
 
+static void mgmt_set_mtu(struct mgmt *mgmt)
+{
+	socklen_t len = 0;
+
+	/* Check if kernel support BT_SNDMTU to read the current MTU set */
+	if (getsockopt(mgmt->fd, SOL_BLUETOOTH, BT_SNDMTU, &mgmt->mtu,
+							&len) < 0) {
+		/* If BT_SNDMTU is not supported then MTU cannot be changed and
+		 * MTU is fixed to HCI_MAX_ACL_SIZE.
+		 */
+		mgmt->mtu = HCI_MAX_ACL_SIZE;
+		return;
+	}
+
+	if (mgmt->mtu < UINT16_MAX) {
+		uint16_t mtu = UINT16_MAX;
+
+		/* Try increasing the MTU since some commands may go
+		 * over HCI_MAX_ACL_SIZE (1024)
+		 */
+		if (!setsockopt(mgmt->fd, SOL_BLUETOOTH, BT_SNDMTU, &mtu,
+							sizeof(mtu)))
+			mgmt->mtu = mtu;
+	}
+}
+
 struct mgmt *mgmt_new(int fd)
 {
 	struct mgmt *mgmt;
@@ -422,6 +449,8 @@ struct mgmt *mgmt_new(int fd)
 	}
 
 	mgmt->writer_active = false;
+
+	mgmt_set_mtu(mgmt);
 
 	return mgmt_ref(mgmt);
 }
@@ -534,9 +563,9 @@ bool mgmt_set_close_on_unref(struct mgmt *mgmt, bool do_close)
 	return true;
 }
 
-static struct mgmt_request *create_request(uint16_t opcode, uint16_t index,
-				uint16_t length, const void *param,
-				mgmt_request_func_t callback,
+static struct mgmt_request *create_request(struct mgmt *mgmt, uint16_t opcode,
+				uint16_t index, uint16_t length,
+				const void *param, mgmt_request_func_t callback,
 				void *user_data, mgmt_destroy_func_t destroy)
 {
 	struct mgmt_request *request;
@@ -547,6 +576,11 @@ static struct mgmt_request *create_request(uint16_t opcode, uint16_t index,
 
 	if (length > 0 && !param)
 		return NULL;
+
+	if (length > mgmt->mtu) {
+		printf("length %u > %u mgmt->mtu", length, mgmt->mtu);
+		return NULL;
+	}
 
 	request = new0(struct mgmt_request, 1);
 	request->len = length + MGMT_HDR_SIZE;
@@ -711,7 +745,7 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	if (!mgmt)
 		return 0;
 
-	request = create_request(opcode, index, length, param,
+	request = create_request(mgmt, opcode, index, length, param,
 					callback, user_data, destroy);
 	if (!request)
 		return 0;
@@ -742,7 +776,7 @@ unsigned int mgmt_send_nowait(struct mgmt *mgmt, uint16_t opcode, uint16_t index
 	if (!mgmt)
 		return 0;
 
-	request = create_request(opcode, index, length, param,
+	request = create_request(mgmt, opcode, index, length, param,
 					callback, user_data, destroy);
 	if (!request)
 		return 0;
@@ -768,7 +802,7 @@ unsigned int mgmt_reply(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	if (!mgmt)
 		return 0;
 
-	request = create_request(opcode, index, length, param,
+	request = create_request(mgmt, opcode, index, length, param,
 					callback, user_data, destroy);
 	if (!request)
 		return 0;
