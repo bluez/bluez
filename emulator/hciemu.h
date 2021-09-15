@@ -50,14 +50,14 @@ struct bthost *hciemu_client_get_host(struct hciemu *hciemu);
 const char *hciemu_get_address(struct hciemu *hciemu);
 uint8_t *hciemu_get_features(struct hciemu *hciemu);
 
-const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu);
+const uint8_t *hciemu_get_central_bdaddr(struct hciemu *hciemu);
 const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu);
 
-uint8_t hciemu_get_master_scan_enable(struct hciemu *hciemu);
+uint8_t hciemu_get_central_scan_enable(struct hciemu *hciemu);
 
-uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu);
+uint8_t hciemu_get_central_le_scan_enable(struct hciemu *hciemu);
 
-void hciemu_set_master_le_states(struct hciemu *hciemu,
+void hciemu_set_central_le_states(struct hciemu *hciemu,
 						const uint8_t *le_states);
 
 typedef void (*hciemu_command_func_t)(uint16_t opcode, const void *data,
@@ -66,10 +66,10 @@ typedef void (*hciemu_command_func_t)(uint16_t opcode, const void *data,
 typedef bool (*hciemu_hook_func_t)(const void *data, uint16_t len,
 							void *user_data);
 
-bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
+bool hciemu_add_central_post_command_hook(struct hciemu *hciemu,
 			hciemu_command_func_t function, void *user_data);
 
-bool hciemu_clear_master_post_command_hooks(struct hciemu *hciemu);
+bool hciemu_clear_central_post_command_hooks(struct hciemu *hciemu);
 
 int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 				uint16_t opcode, hciemu_hook_func_t function,

@@ -2786,7 +2786,7 @@ void emu_remote_connect_hci_action(void)
 	struct step *step = g_new0(struct step, 1);
 	const uint8_t *master_addr;
 
-	master_addr = hciemu_get_master_bdaddr(data->hciemu);
+	master_addr = hciemu_get_central_bdaddr(data->hciemu);
 
 	tester_print("Trying to connect hci");
 

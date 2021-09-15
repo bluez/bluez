@@ -151,19 +151,19 @@ static void open_pty(struct serial *serial)
 
 	serial->fd = posix_openpt(O_RDWR | O_NOCTTY);
 	if (serial->fd < 0) {
-		perror("Failed to get master pseudo terminal");
+		perror("Failed to get central pseudo terminal");
 		return;
 	}
 
 	if (grantpt(serial->fd) < 0) {
-		perror("Failed to grant slave pseudo terminal");
+		perror("Failed to grant peripheral pseudo terminal");
 		close(serial->fd);
 		serial->fd = -1;
 		return;
 	}
 
 	if (unlockpt(serial->fd) < 0) {
-		perror("Failed to unlock slave pseudo terminal");
+		perror("Failed to unlock peripheral pseudo terminal");
 		close(serial->fd);
 		serial->fd = -1;
 		return;

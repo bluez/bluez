@@ -33,7 +33,7 @@
 #include "monitor/bt.h"
 #include "btdev.h"
 
-#define WL_SIZE			16
+#define AL_SIZE			16
 #define RL_SIZE			16
 #define CIS_SIZE		3
 
@@ -61,7 +61,7 @@ struct btdev_conn {
 	struct btdev_conn *link;
 };
 
-struct btdev_wl {
+struct btdev_al {
 	uint8_t type;
 	bdaddr_t addr;
 };
@@ -191,7 +191,7 @@ struct btdev {
 	} __attribute__ ((packed)) le_cig;
 	uint8_t  le_iso_path[2];
 
-	struct btdev_wl le_wl[WL_SIZE];
+	struct btdev_al le_al[AL_SIZE];
 	struct btdev_rl le_rl[RL_SIZE];
 	uint8_t  le_rl_enable;
 	uint16_t le_rl_timeout;
@@ -445,18 +445,18 @@ static int cmd_set_event_mask(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
-static void wl_reset(struct btdev_wl *wl)
+static void al_reset(struct btdev_al *al)
 {
-	wl->type = 0xff;
-	bacpy(&wl->addr, BDADDR_ANY);
+	al->type = 0xff;
+	bacpy(&al->addr, BDADDR_ANY);
 }
 
-static void wl_clear(struct btdev *dev)
+static void al_clear(struct btdev *dev)
 {
 	int i;
 
-	for (i = 0; i < WL_SIZE; i++)
-		wl_reset(&dev->le_wl[i]);
+	for (i = 0; i < AL_SIZE; i++)
+		al_reset(&dev->le_al[i]);
 }
 
 static void rl_reset(struct btdev_rl *rl)
@@ -484,7 +484,7 @@ static void btdev_reset(struct btdev *btdev)
 	btdev->le_scan_enable		= 0x00;
 	btdev->le_adv_enable		= 0x00;
 
-	wl_clear(btdev);
+	al_clear(btdev);
 	rl_clear(btdev);
 }
 
@@ -3566,25 +3566,25 @@ static int cmd_le_create_conn_complete(struct btdev *dev, const void *data,
 	return 0;
 }
 
-static int cmd_read_wl_size(struct btdev *dev, const void *data, uint8_t len)
+static int cmd_read_al_size(struct btdev *dev, const void *data, uint8_t len)
 {
 	struct bt_hci_rsp_le_read_accept_list_size rsp;
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
-	rsp.size = WL_SIZE;
+	rsp.size = AL_SIZE;
 	cmd_complete(dev, BT_HCI_CMD_LE_READ_ACCEPT_LIST_SIZE, &rsp,
 						sizeof(rsp));
 
 	return 0;
 }
 
-static bool wl_can_change(struct btdev *dev)
+static bool al_can_change(struct btdev *dev)
 {
-	 /* filter policy uses the White List and advertising is enable. */
+	 /* filter policy uses the Accept List and advertising is enable. */
 	if (dev->le_adv_enable && dev->le_adv_filter_policy)
 		return false;
 
-	/* scanning filter policy uses the White List and scanning is enabled */
+	/* scan filter policy uses the Accept List and scanning is enabled */
 	if (dev->le_scan_enable) {
 		switch (dev->le_scan_filter_policy) {
 		case 0x00:
@@ -3601,23 +3601,23 @@ static bool wl_can_change(struct btdev *dev)
 	return true;
 }
 
-static int cmd_wl_clear(struct btdev *dev, const void *data, uint8_t len)
+static int cmd_al_clear(struct btdev *dev, const void *data, uint8_t len)
 {
 	uint8_t status;
 
 	/* This command shall not be used when:
-	 * • any advertising filter policy uses the White List and advertising
-	 * is enabled,
-	 * • the scanning filter policy uses the White List and scanning is
+	 * • any advertising filter policy uses the Accept List and
+	 * advertising is enabled,
+	 * • the scanning filter policy uses the Accept List and scanning is
 	 * enabled, or
-	 * • the initiator filter policy uses the White List and an
+	 * • the initiator filter policy uses the Accept List and an
 	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
 	 * command is outstanding.
 	 */
-	if (!wl_can_change(dev))
+	if (!al_can_change(dev))
 		return -EPERM;
 
-	wl_clear(dev);
+	al_clear(dev);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(dev, BT_HCI_CMD_LE_CLEAR_ACCEPT_LIST, &status,
@@ -3626,16 +3626,16 @@ static int cmd_wl_clear(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
-#define WL_ADDR_EQUAL(_wl, _type, _addr) \
-	(_wl->type == _type && !bacmp(&_wl->addr, (bdaddr_t *)_addr))
+#define AL_ADDR_EQUAL(_al, _type, _addr) \
+	(_al->type == _type && !bacmp(&_al->addr, (bdaddr_t *)_addr))
 
-static void wl_add(struct btdev_wl *wl, uint8_t type, bdaddr_t *addr)
+static void al_add(struct btdev_al *al, uint8_t type, bdaddr_t *addr)
 {
-	wl->type = type;
-	bacpy(&wl->addr, addr);
+	al->type = type;
+	bacpy(&al->addr, addr);
 }
 
-static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
+static int cmd_add_al(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_add_to_accept_list *cmd = data;
 	uint8_t status;
@@ -3643,28 +3643,28 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 	int i, pos = -1;
 
 	/* This command shall not be used when:
-	 * • any advertising filter policy uses the White List and advertising
-	 * is enabled,
-	 * • the scanning filter policy uses the White List and scanning is
+	 * • any advertising filter policy uses the Accept List and
+	 * advertising is enabled,
+	 * • the scanning filter policy uses the Accept List and scanning is
 	 * enabled, or
-	 * • the initiator filter policy uses the White List and an
+	 * • the initiator filter policy uses the Accept List and an
 	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
 	 * command is outstanding.
 	 */
-	if (!wl_can_change(dev))
+	if (!al_can_change(dev))
 		return -EPERM;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
 		return -EINVAL;
 
-	for (i = 0; i < WL_SIZE; i++) {
-		struct btdev_wl *wl = &dev->le_wl[i];
+	for (i = 0; i < AL_SIZE; i++) {
+		struct btdev_al *al = &dev->le_al[i];
 
-		if (WL_ADDR_EQUAL(wl, cmd->addr_type, &cmd->addr)) {
+		if (AL_ADDR_EQUAL(al, cmd->addr_type, &cmd->addr)) {
 			exists = true;
 			break;
-		} else if (pos < 0 && wl->type == 0xff)
+		} else if (pos < 0 && al->type == 0xff)
 			pos = i;
 	}
 
@@ -3677,7 +3677,7 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 		return 0;
 	}
 
-	wl_add(&dev->le_wl[pos], cmd->addr_type, (bdaddr_t *)&cmd->addr);
+	al_add(&dev->le_al[pos], cmd->addr_type, (bdaddr_t *)&cmd->addr);
 
 	status = BT_HCI_ERR_SUCCESS;
 	cmd_complete(dev, BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST,
@@ -3686,7 +3686,7 @@ static int cmd_add_wl(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
-static int cmd_remove_wl(struct btdev *dev, const void *data, uint8_t len)
+static int cmd_remove_al(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_remove_from_accept_list *cmd = data;
 	uint8_t status;
@@ -3694,37 +3694,37 @@ static int cmd_remove_wl(struct btdev *dev, const void *data, uint8_t len)
 	char addr[18];
 
 	/* This command shall not be used when:
-	 * • any advertising filter policy uses the White List and advertising
-	 * is enabled,
-	 * • the scanning filter policy uses the White List and scanning is
+	 * • any advertising filter policy uses the Accept List and
+	 * advertising is enabled,
+	 * • the scanning filter policy uses the Accept List and scanning is
 	 * enabled, or
-	 * • the initiator filter policy uses the White List and an
+	 * • the initiator filter policy uses the Accept List and an
 	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
 	 * command is outstanding.
 	 */
-	if (!wl_can_change(dev))
+	if (!al_can_change(dev))
 		return -EPERM;
 
 	/* Valid range for address type is 0x00 to 0x01 */
 	if (cmd->addr_type > 0x01)
 		return -EINVAL;
 
-	for (i = 0; i < WL_SIZE; i++) {
-		struct btdev_wl *wl = &dev->le_wl[i];
+	for (i = 0; i < AL_SIZE; i++) {
+		struct btdev_al *al = &dev->le_al[i];
 
-		ba2str(&wl->addr, addr);
+		ba2str(&al->addr, addr);
 
 		util_debug(dev->debug_callback, dev->debug_data,
-				"type 0x%02x addr %s", dev->le_wl[i].type,
+				"type 0x%02x addr %s", dev->le_al[i].type,
 				addr);
 
-		if (WL_ADDR_EQUAL(wl, cmd->addr_type, &cmd->addr)) {
-			wl_reset(wl);
+		if (AL_ADDR_EQUAL(al, cmd->addr_type, &cmd->addr)) {
+			al_reset(al);
 			break;
 		}
 	}
 
-	if (i == WL_SIZE)
+	if (i == AL_SIZE)
 		return -EINVAL;
 
 	status = BT_HCI_ERR_SUCCESS;
@@ -4313,10 +4313,10 @@ static int cmd_gen_dhkey(struct btdev *dev, const void *data, uint8_t len)
 					cmd_set_scan_enable_complete), \
 	CMD(BT_HCI_CMD_LE_CREATE_CONN, cmd_le_create_conn, \
 					cmd_le_create_conn_complete), \
-	CMD(BT_HCI_CMD_LE_READ_ACCEPT_LIST_SIZE, cmd_read_wl_size, NULL), \
-	CMD(BT_HCI_CMD_LE_CLEAR_ACCEPT_LIST, cmd_wl_clear, NULL), \
-	CMD(BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST, cmd_add_wl, NULL), \
-	CMD(BT_HCI_CMD_LE_REMOVE_FROM_ACCEPT_LIST, cmd_remove_wl, NULL), \
+	CMD(BT_HCI_CMD_LE_READ_ACCEPT_LIST_SIZE, cmd_read_al_size, NULL), \
+	CMD(BT_HCI_CMD_LE_CLEAR_ACCEPT_LIST, cmd_al_clear, NULL), \
+	CMD(BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST, cmd_add_al, NULL), \
+	CMD(BT_HCI_CMD_LE_REMOVE_FROM_ACCEPT_LIST, cmd_remove_al, NULL), \
 	CMD(BT_HCI_CMD_LE_CONN_UPDATE, cmd_conn_update, \
 					cmd_conn_update_complete), \
 	CMD(BT_HCI_CMD_LE_READ_REMOTE_FEATURES, cmd_le_read_remote_features, \
@@ -5887,10 +5887,10 @@ static void set_le_commands(struct btdev *btdev)
 	btdev->commands[26] |= 0x04;	/* LE Set Scan Parameters */
 	btdev->commands[26] |= 0x08;	/* LE Set Scan Enable */
 	btdev->commands[26] |= 0x10;	/* LE Create Connection */
-	btdev->commands[26] |= 0x40;	/* LE Read White List Size */
-	btdev->commands[26] |= 0x80;	/* LE Clear White List */
-	btdev->commands[27] |= 0x01;	/* LE Add Device to White List */
-	btdev->commands[27] |= 0x02;	/* LE Remove Device from White List */
+	btdev->commands[26] |= 0x40;	/* LE Read Accept List Size */
+	btdev->commands[26] |= 0x80;	/* LE Clear Accept List */
+	btdev->commands[27] |= 0x01;	/* LE Add Device to Accept List */
+	btdev->commands[27] |= 0x02;	/* LE Remove Device from Accept List */
 	btdev->commands[27] |= 0x04;	/* LE Connection Update */
 	btdev->commands[27] |= 0x20;	/* LE Read Remote Used Features */
 	btdev->commands[27] |= 0x40;	/* LE Encrypt */
@@ -6077,13 +6077,13 @@ static void set_bredrle_features(struct btdev *btdev)
 	btdev->features[2] |= 0x08;	/* Transparent SCO */
 	btdev->features[3] |= 0x40;	/* RSSI with inquiry results */
 	btdev->features[3] |= 0x80;	/* Extended SCO link */
-	btdev->features[4] |= 0x08;	/* AFH capable slave */
-	btdev->features[4] |= 0x10;	/* AFH classification slave */
+	btdev->features[4] |= 0x08;	/* AFH capable peripheral */
+	btdev->features[4] |= 0x10;	/* AFH classification peripheral */
 	btdev->features[4] |= 0x40;	/* LE Supported */
 	btdev->features[5] |= 0x02;	/* Sniff subrating */
 	btdev->features[5] |= 0x04;	/* Pause encryption */
-	btdev->features[5] |= 0x08;	/* AFH capable master */
-	btdev->features[5] |= 0x10;	/* AFH classification master */
+	btdev->features[5] |= 0x08;	/* AFH capable central */
+	btdev->features[5] |= 0x10;	/* AFH classification central */
 	btdev->features[6] |= 0x01;	/* Extended Inquiry Response */
 	btdev->features[6] |= 0x02;	/* Simultaneous LE and BR/EDR */
 	btdev->features[6] |= 0x08;	/* Secure Simple Pairing */
@@ -6113,15 +6113,15 @@ static void set_bredrle_features(struct btdev *btdev)
 
 	if (btdev->type >= BTDEV_TYPE_BREDRLE52) {
 		btdev->le_features[1] |= 0x20;  /* LE PER ADV */
-		btdev->le_features[3] |= 0x10;  /* LE CIS Master */
-		btdev->le_features[3] |= 0x20;  /* LE CIS Slave */
+		btdev->le_features[3] |= 0x10;  /* LE CIS Central */
+		btdev->le_features[3] |= 0x20;  /* LE CIS Peripheral */
 		btdev->le_features[3] |= 0x40;  /* LE ISO Broadcaster */
 		btdev->le_features[3] |= 0x80;  /* LE Synchronized Receiver */
 		btdev->le_features[4] |= 0x01;  /* LE ISO channels */
 	}
 
-	btdev->feat_page_2[0] |= 0x01;	/* CSB - Master Operation */
-	btdev->feat_page_2[0] |= 0x02;	/* CSB - Slave Operation */
+	btdev->feat_page_2[0] |= 0x01;	/* CPB - Central Operation */
+	btdev->feat_page_2[0] |= 0x02;	/* CPB - Peripheral Operation */
 	btdev->feat_page_2[0] |= 0x04;	/* Synchronization Train */
 	btdev->feat_page_2[0] |= 0x08;	/* Synchronization Scan */
 	btdev->feat_page_2[0] |= 0x10;	/* Inquiry Response Notification */
@@ -6139,12 +6139,12 @@ static void set_bredr_features(struct btdev *btdev)
 	btdev->features[1] |= 0x08;	/* SCO link */
 	btdev->features[3] |= 0x40;	/* RSSI with inquiry results */
 	btdev->features[3] |= 0x80;	/* Extended SCO link */
-	btdev->features[4] |= 0x08;	/* AFH capable slave */
-	btdev->features[4] |= 0x10;	/* AFH classification slave */
+	btdev->features[4] |= 0x08;	/* AFH capable peripheral */
+	btdev->features[4] |= 0x10;	/* AFH classification peripheral */
 	btdev->features[5] |= 0x02;	/* Sniff subrating */
 	btdev->features[5] |= 0x04;	/* Pause encryption */
-	btdev->features[5] |= 0x08;	/* AFH capable master */
-	btdev->features[5] |= 0x10;	/* AFH classification master */
+	btdev->features[5] |= 0x08;	/* AFH capable central */
+	btdev->features[5] |= 0x10;	/* AFH classification central */
 	btdev->features[6] |= 0x01;	/* Extended Inquiry Response */
 	btdev->features[6] |= 0x08;	/* Secure Simple Pairing */
 	btdev->features[6] |= 0x10;	/* Encapsulated PDU */
@@ -6165,12 +6165,12 @@ static void set_bredr20_features(struct btdev *btdev)
 	btdev->features[1] |= 0x08;	/* SCO link */
 	btdev->features[3] |= 0x40;	/* RSSI with inquiry results */
 	btdev->features[3] |= 0x80;	/* Extended SCO link */
-	btdev->features[4] |= 0x08;	/* AFH capable slave */
-	btdev->features[4] |= 0x10;	/* AFH classification slave */
+	btdev->features[4] |= 0x08;	/* AFH capable peripheral */
+	btdev->features[4] |= 0x10;	/* AFH classification peripheral */
 	btdev->features[5] |= 0x02;	/* Sniff subrating */
 	btdev->features[5] |= 0x04;	/* Pause encryption */
-	btdev->features[5] |= 0x08;	/* AFH capable master */
-	btdev->features[5] |= 0x10;	/* AFH classification master */
+	btdev->features[5] |= 0x08;	/* AFH capable central */
+	btdev->features[5] |= 0x10;	/* AFH classification central */
 	btdev->features[7] |= 0x80;	/* Extended features */
 
 	btdev->max_page = 1;
@@ -6185,7 +6185,7 @@ static void set_le_features(struct btdev *btdev)
 
 	btdev->le_features[0] |= 0x01;	/* LE Encryption */
 	btdev->le_features[0] |= 0x02;	/* Connection Parameters Request */
-	btdev->le_features[0] |= 0x08;	/* Slave-initiated Features Exchange */
+	btdev->le_features[0] |= 0x08;	/* Peripheral-initd Features Exchange */
 }
 
 static void set_le_states(struct btdev *btdev)
@@ -6198,7 +6198,7 @@ static void set_le_states(struct btdev *btdev)
 	btdev->le_states[4] = 0xff;
 	btdev->le_states[5] = 0x03;
 
-	wl_clear(btdev);
+	al_clear(btdev);
 	rl_clear(btdev);
 	btdev->le_rl_enable = 0x00;
 	btdev->le_rl_timeout = 0x0384;	/* 900 secs or 15 minutes */

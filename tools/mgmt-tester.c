@@ -365,7 +365,7 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 		hciemu_set_debug(data->hciemu, print_debug, "hciemu: ", NULL);
 
 	if (test && test->setup_le_states)
-		hciemu_set_master_le_states(data->hciemu, test->le_states);
+		hciemu_set_central_le_states(data->hciemu, test->le_states);
 }
 
 static void test_pre_setup(const void *test_data)
@@ -7136,7 +7136,7 @@ static void command_setup_hci_callback(uint16_t opcode, const void *param,
 		return;
 	}
 
-	hciemu_clear_master_post_command_hooks(data->hciemu);
+	hciemu_clear_central_post_command_hooks(data->hciemu);
 	test_setup_condition_complete(data);
 }
 
@@ -7202,7 +7202,7 @@ static void setup_command_generic(const void *test_data)
 		tester_print("Registering setup expected HCI command callback");
 		tester_print("Setup expected HCI command 0x%04x",
 					 test->setup_expect_hci_command);
-		hciemu_add_master_post_command_hook(data->hciemu,
+		hciemu_add_central_post_command_hook(data->hciemu,
 					command_setup_hci_callback, data);
 		test_add_setup_condition(data);
 	}
@@ -9533,7 +9533,7 @@ static void setup_ll_privacy_device(const void *test_data)
 
 	tester_print("Setup expected HCI command 0x%04x",
 					 test->setup_expect_hci_command);
-	hciemu_add_master_post_command_hook(data->hciemu,
+	hciemu_add_central_post_command_hook(data->hciemu,
 					command_setup_hci_callback, data);
 	test_add_setup_condition(data);
 
@@ -9690,7 +9690,7 @@ static void test_command_generic(const void *test_data)
 
 	if (test->expect_hci_command) {
 		tester_print("Registering HCI command callback");
-		hciemu_add_master_post_command_hook(data->hciemu,
+		hciemu_add_central_post_command_hook(data->hciemu,
 						command_hci_callback, data);
 		test_add_condition(data);
 	}
@@ -9724,13 +9724,13 @@ static void check_scan(void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
-	if (hciemu_get_master_le_scan_enable(data->hciemu)) {
+	if (hciemu_get_central_le_scan_enable(data->hciemu)) {
 		tester_warn("LE scan still enabled");
 		tester_test_failed();
 		return;
 	}
 
-	if (hciemu_get_master_scan_enable(data->hciemu)) {
+	if (hciemu_get_central_scan_enable(data->hciemu)) {
 		tester_warn("BR/EDR scan still enabled");
 		tester_test_failed();
 		return;
@@ -9821,7 +9821,7 @@ static void test_pairing_acceptor(const void *test_data)
 		test_add_condition(data);
 	}
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
 		tester_test_failed();
@@ -9886,7 +9886,7 @@ static void test_command_generic_connect(const void *test_data)
 	data->mgmt_alt_ev_id = id;
 	test_add_condition(data);
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
 		tester_test_failed();
@@ -9965,7 +9965,7 @@ static void add_device_callback(uint8_t status, uint16_t len, const void *param,
 	if (test->client_enable_adv)
 		return;
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
 		tester_test_failed();

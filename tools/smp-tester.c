@@ -767,7 +767,7 @@ static void init_bdaddr(struct test_data *data)
 {
 	const uint8_t *master_bdaddr, *client_bdaddr;
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
 		tester_test_failed();
@@ -808,7 +808,7 @@ static void test_client(const void *test_data)
 
 	if (smp->expect_hci_command) {
 		tester_print("Registering HCI command callback");
-		hciemu_add_master_post_command_hook(data->hciemu,
+		hciemu_add_central_post_command_hook(data->hciemu,
 						command_hci_callback, data);
 		test_add_condition(data);
 	}
@@ -889,7 +889,7 @@ static void test_server(const void *test_data)
 
 	if (smp->expect_hci_command) {
 		tester_print("Registering HCI command callback");
-		hciemu_add_master_post_command_hook(data->hciemu,
+		hciemu_add_central_post_command_hook(data->hciemu,
 						command_hci_callback, data);
 		test_add_condition(data);
 	}

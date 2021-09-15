@@ -1116,7 +1116,7 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 		return err;
 	}
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
 		close(sk);
@@ -1301,7 +1301,7 @@ static void test_connect(const void *test_data)
 	}
 
 	if (l2data->direct_advertising)
-		hciemu_add_master_post_command_hook(data->hciemu,
+		hciemu_add_central_post_command_hook(data->hciemu,
 						direct_adv_cmd_complete, NULL);
 
 	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level,
@@ -1419,7 +1419,7 @@ static gboolean test_close_socket_1_part_3(gpointer arg)
 		return FALSE;
 	}
 
-	if (hciemu_get_master_le_scan_enable(data->hciemu)) {
+	if (hciemu_get_central_le_scan_enable(data->hciemu)) {
 		tester_print("Delayed check whether scann is off failed");
 		tester_test_failed();
 		return FALSE;
@@ -1440,7 +1440,7 @@ static gboolean test_close_socket_1_part_2(gpointer args)
 	 * was added to kernel whitelist, and scan was started. We
 	 * should be still scanning.
 	 */
-	if (!hciemu_get_master_le_scan_enable(data->hciemu)) {
+	if (!hciemu_get_central_le_scan_enable(data->hciemu)) {
 		tester_print("Error - should be still scanning");
 		tester_test_failed();
 		return FALSE;
@@ -1467,7 +1467,7 @@ static gboolean test_close_socket_2_part_3(gpointer arg)
 	int err;
 
 	/* Scan should be already over, we're trying to create connection */
-	if (hciemu_get_master_le_scan_enable(data->hciemu)) {
+	if (hciemu_get_central_le_scan_enable(data->hciemu)) {
 		tester_print("Error - should no longer scan");
 		tester_test_failed();
 		return FALSE;
@@ -1563,7 +1563,7 @@ static void test_close_socket(const void *test_data)
 	const struct l2cap_data *l2data = data->test_data;
 	const uint8_t *client_bdaddr;
 
-	hciemu_add_master_post_command_hook(data->hciemu,
+	hciemu_add_central_post_command_hook(data->hciemu,
 					test_close_socket_router, data);
 
 	if (l2data->client_bdaddr != NULL)
@@ -1668,7 +1668,7 @@ static void test_connect_2(const void *test_data)
 	test_2_connect_cb_cnt = 0;
 	test_scan_enable_counter = 0;
 
-	hciemu_add_master_post_command_hook(data->hciemu,
+	hciemu_add_central_post_command_hook(data->hciemu,
 				test_connect_2_router, data);
 
 	if (l2data->server_psm) {
@@ -1869,7 +1869,7 @@ static void test_server(const void *test_data)
 		tester_print("Listening for connections");
 	}
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
 		tester_test_failed();

@@ -542,7 +542,7 @@ static void test_connect(const void *test_data)
 	bthost_add_rfcomm_server(bthost, cli->server_channel,
 						rfcomm_connect_cb, NULL);
 
-	master_addr = hciemu_get_master_bdaddr(data->hciemu);
+	master_addr = hciemu_get_central_bdaddr(data->hciemu);
 	client_addr = hciemu_get_client_bdaddr(data->hciemu);
 
 	sk = create_rfcomm_sock((bdaddr_t *) master_addr, 0);
@@ -680,7 +680,7 @@ static void test_server(const void *test_data)
 	GIOChannel *io;
 	int sk;
 
-	master_addr = hciemu_get_master_bdaddr(data->hciemu);
+	master_addr = hciemu_get_central_bdaddr(data->hciemu);
 
 	sk = create_rfcomm_sock((bdaddr_t *) master_addr, srv->server_channel);
 	if (sk < 0) {

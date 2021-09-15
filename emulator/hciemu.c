@@ -84,7 +84,7 @@ static void run_command_hook(void *data, void *user_data)
 					run_data->len, hook->user_data);
 }
 
-static void master_command_callback(uint16_t opcode,
+static void central_command_callback(uint16_t opcode,
 				const void *data, uint8_t len,
 				btdev_callback callback, void *user_data)
 {
@@ -230,7 +230,7 @@ static bool create_vhci(struct hciemu *hciemu)
 	if (!btdev)
 		return false;
 
-	btdev_set_command_handler(btdev, master_command_callback, hciemu);
+	btdev_set_command_handler(btdev, central_command_callback, hciemu);
 
 	fd = open("/dev/vhci", O_RDWR | O_NONBLOCK | O_CLOEXEC);
 	if (fd < 0) {
@@ -462,7 +462,7 @@ static void bthost_print(const char *str, void *user_data)
 					"bthost: %s", str);
 }
 
-static void btdev_master_debug(const char *str, void *user_data)
+static void btdev_central_debug(const char *str, void *user_data)
 {
 	struct hciemu *hciemu = user_data;
 
@@ -500,7 +500,7 @@ bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
 	hciemu->debug_destroy = destroy;
 	hciemu->debug_data = user_data;
 
-	btdev_set_debug(hciemu->dev, btdev_master_debug, hciemu, NULL);
+	btdev_set_debug(hciemu->dev, btdev_central_debug, hciemu, NULL);
 
 	queue_foreach(hciemu->clients, hciemu_client_set_debug, hciemu);
 
@@ -528,7 +528,7 @@ uint8_t *hciemu_get_features(struct hciemu *hciemu)
 	return btdev_get_features(hciemu->dev);
 }
 
-const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu)
+const uint8_t *hciemu_get_central_bdaddr(struct hciemu *hciemu)
 {
 	if (!hciemu || !hciemu->dev)
 		return NULL;
@@ -556,7 +556,7 @@ const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu)
 	return hciemu_client_bdaddr(client);
 }
 
-uint8_t hciemu_get_master_scan_enable(struct hciemu *hciemu)
+uint8_t hciemu_get_central_scan_enable(struct hciemu *hciemu)
 {
 	if (!hciemu || !hciemu->dev)
 		return 0;
@@ -564,7 +564,7 @@ uint8_t hciemu_get_master_scan_enable(struct hciemu *hciemu)
 	return btdev_get_scan_enable(hciemu->dev);
 }
 
-uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu)
+uint8_t hciemu_get_central_le_scan_enable(struct hciemu *hciemu)
 {
 	if (!hciemu || !hciemu->dev)
 		return 0;
@@ -572,7 +572,8 @@ uint8_t hciemu_get_master_le_scan_enable(struct hciemu *hciemu)
 	return btdev_get_le_scan_enable(hciemu->dev);
 }
 
-void hciemu_set_master_le_states(struct hciemu *hciemu, const uint8_t *le_states)
+void hciemu_set_central_le_states(struct hciemu *hciemu,
+						const uint8_t *le_states)
 {
 	if (!hciemu || !hciemu->dev)
 		return;
@@ -580,7 +581,7 @@ void hciemu_set_master_le_states(struct hciemu *hciemu, const uint8_t *le_states
 	btdev_set_le_states(hciemu->dev, le_states);
 }
 
-bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
+bool hciemu_add_central_post_command_hook(struct hciemu *hciemu,
 			hciemu_command_func_t function, void *user_data)
 {
 	struct hciemu_command_hook *hook;
@@ -603,7 +604,7 @@ bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 	return true;
 }
 
-bool hciemu_clear_master_post_command_hooks(struct hciemu *hciemu)
+bool hciemu_clear_central_post_command_hooks(struct hciemu *hciemu)
 {
 	if (!hciemu)
 		return false;
