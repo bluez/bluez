@@ -721,7 +721,7 @@ bool hfp_gw_send_result(struct hfp_gw *hfp, enum hfp_result result)
 	case HFP_RESULT_BUSY:
 	case HFP_RESULT_NO_ANSWER:
 	case HFP_RESULT_DELAYED:
-	case HFP_RESULT_BLACKLISTED:
+	case HFP_RESULT_REJECTED:
 	case HFP_RESULT_CME_ERROR:
 	case HFP_RESULT_NO_DIALTONE:
 	case HFP_RESULT_CONNECT:
@@ -1018,7 +1018,7 @@ static bool is_response(const char *prefix, enum hfp_result *result,
 	}
 
 	if (strcmp(prefix, "BLACKLISTED") == 0) {
-		*result = HFP_RESULT_BLACKLISTED;
+		*result = HFP_RESULT_REJECTED;
 		*cme_err = 0;
 		return true;
 	}

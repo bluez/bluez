@@ -959,7 +959,7 @@ void bt_ad_clear_flags(struct bt_ad *ad)
 							data_destroy);
 }
 
-static uint8_t type_blacklist[] = {
+static uint8_t type_reject_list[] = {
 	BT_AD_FLAGS,
 	BT_AD_UUID16_SOME,
 	BT_AD_UUID16_ALL,
@@ -976,7 +976,7 @@ static uint8_t type_blacklist[] = {
 	BT_AD_DEVICE_ID,
 	BT_AD_SMP_TK,
 	BT_AD_SMP_OOB_FLAGS,
-	BT_AD_SLAVE_CONN_INTERVAL,
+	BT_AD_PERIPHERAL_CONN_INTERVAL,
 	BT_AD_SOLICIT16,
 	BT_AD_SOLICIT128,
 	BT_AD_SERVICE_DATA16,
@@ -1012,8 +1012,8 @@ bool bt_ad_add_data(struct bt_ad *ad, uint8_t type, void *data, size_t len)
 	if (len > (BT_AD_MAX_DATA_LEN - 2))
 		return false;
 
-	for (i = 0; i < sizeof(type_blacklist); i++) {
-		if (type == type_blacklist[i])
+	for (i = 0; i < sizeof(type_reject_list); i++) {
+		if (type == type_reject_list[i])
 			return false;
 	}
 

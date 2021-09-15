@@ -405,7 +405,7 @@ static void cmd_complete_cb(enum hfp_result result, enum hfp_error cme_err,
 	case HFP_RESULT_DELAYED:
 		ev.type = HAL_HF_CLIENT_CMD_COMP_ERR_DELAYED;
 		break;
-	case HFP_RESULT_BLACKLISTED:
+	case HFP_RESULT_REJECTED:
 		ev.type = HAL_HF_CLIENT_CMD_COMP_ERR_BACKLISTED;
 		break;
 	case HFP_RESULT_CME_ERROR:
