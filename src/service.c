@@ -42,6 +42,7 @@ struct btd_service {
 	btd_service_state_t	state;
 	int			err;
 	bool			is_allowed;
+	bool			initiator;
 };
 
 struct service_state_callback {
@@ -96,6 +97,9 @@ static void change_state(struct btd_service *service, btd_service_state_t state,
 
 		cb->cb(service, old, state, cb->user_data);
 	}
+
+	if (state == BTD_SERVICE_STATE_DISCONNECTED)
+		service->initiator = false;
 }
 
 struct btd_service *btd_service_ref(struct btd_service *service)
@@ -261,6 +265,7 @@ int btd_service_connect(struct btd_service *service)
 
 	err = profile->connect(service);
 	if (err == 0) {
+		service->initiator = true;
 		change_state(service, BTD_SERVICE_STATE_CONNECTING, 0);
 		return 0;
 	}
@@ -341,6 +346,11 @@ btd_service_state_t btd_service_get_state(const struct btd_service *service)
 int btd_service_get_error(const struct btd_service *service)
 {
 	return service->err;
+}
+
+bool btd_service_is_initiator(const struct btd_service *service)
+{
+	return service->initiator;
 }
 
 unsigned int btd_service_add_state_cb(btd_service_state_cb cb, void *user_data)

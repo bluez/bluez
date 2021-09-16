@@ -47,6 +47,7 @@ struct btd_device *btd_service_get_device(const struct btd_service *service);
 struct btd_profile *btd_service_get_profile(const struct btd_service *service);
 btd_service_state_t btd_service_get_state(const struct btd_service *service);
 int btd_service_get_error(const struct btd_service *service);
+bool btd_service_is_initiator(const struct btd_service *service);
 
 unsigned int btd_service_add_state_cb(btd_service_state_cb cb,
 							void *user_data);
