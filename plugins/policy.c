@@ -279,7 +279,7 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 		/* Check if service initiate the connection then proceed
 		 * immediatelly otherwise set timer
 		 */
-		if (old_state == BTD_SERVICE_STATE_CONNECTING)
+		if (btd_service_is_initiator(service))
 			policy_connect(data, controller);
 		else if (btd_service_get_state(controller) !=
 						BTD_SERVICE_STATE_CONNECTED)
@@ -315,7 +315,7 @@ static void hs_cb(struct btd_service *service, btd_service_state_t old_state,
 		/* Check if service initiate the connection then proceed
 		 * immediately otherwise set timer
 		 */
-		if (old_state == BTD_SERVICE_STATE_CONNECTING)
+		if (btd_service_is_initiator(service))
 			policy_connect(data, sink);
 		else if (btd_service_get_state(sink) !=
 						BTD_SERVICE_STATE_CONNECTED)
@@ -430,7 +430,7 @@ static void source_cb(struct btd_service *service,
 		/* Check if service initiate the connection then proceed
 		 * immediatelly otherwise set timer
 		 */
-		if (old_state == BTD_SERVICE_STATE_CONNECTING)
+		if (btd_service_is_initiator(service))
 			policy_connect(data, target);
 		else if (btd_service_get_state(target) !=
 						BTD_SERVICE_STATE_CONNECTED)
