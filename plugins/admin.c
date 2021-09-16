@@ -12,6 +12,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 #include <sys/file.h>
@@ -74,7 +75,7 @@ static struct btd_admin_policy *admin_policy_new(struct btd_adapter *adapter)
 
 static void free_service_allowlist(struct queue *q)
 {
-	queue_destroy(q, g_free);
+	queue_destroy(q, free);
 }
 
 static void admin_policy_free(void *data)
@@ -307,7 +308,7 @@ static void key_file_load_service_allowlist(GKeyFile *key_file,
 		if (!uuid)
 			goto failed;
 
-		if (bt_string_to_uuid(uuid, *uuids)) {
+		if (bt_string_to_uuid(uuid, uuids[i])) {
 
 			btd_error(admin_policy->adapter_id,
 					"Failed to convert '%s' to uuid struct",
@@ -318,14 +319,16 @@ static void key_file_load_service_allowlist(GKeyFile *key_file,
 		}
 
 		queue_push_tail(uuid_list, uuid);
-		uuids++;
 	}
 
 	if (!service_allowlist_set(admin_policy, uuid_list))
 		goto failed;
 
+	g_strfreev(uuids);
+
 	return;
 failed:
+	g_strfreev(uuids);
 	free_service_allowlist(uuid_list);
 }
 
