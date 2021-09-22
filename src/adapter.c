@@ -4163,8 +4163,9 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 {
 	struct mgmt_cp_load_long_term_keys *cp;
 	struct mgmt_ltk_info *key;
-	size_t key_count, cp_size;
+	size_t key_count, max_key_count, cp_size;
 	GSList *l;
+	uint16_t mtu;
 
 	/*
 	 * If the controller does not support Low Energy operation,
@@ -4180,6 +4181,9 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 		return;
 
 	key_count = g_slist_length(keys);
+	mtu = mgmt_get_mtu(adapter->mgmt);
+	max_key_count = (mtu - sizeof(*cp)) / sizeof(*key);
+	key_count = MIN(max_key_count, key_count);
 
 	DBG("hci%u keys %zu", adapter->dev_id, key_count);
 
@@ -4199,8 +4203,10 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 	 */
 	cp->key_count = htobs(key_count);
 
-	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
+	for (l = keys, key = cp->keys; l && key_count;
+			l = g_slist_next(l), key++, key_count--) {
 		struct smp_ltk_info *info = l->data;
+		struct btd_device *dev;
 
 		bacpy(&key->addr.bdaddr, &info->bdaddr);
 		key->addr.type = info->bdaddr_type;
@@ -4210,6 +4216,16 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 		key->type = info->authenticated;
 		key->central = info->central;
 		key->enc_size = info->enc_size;
+
+		/* Mark device as paired as their LTKs can be loaded. */
+		dev = btd_adapter_find_device(adapter, &info->bdaddr,
+							info->bdaddr_type);
+		if (dev) {
+			device_set_paired(dev, info->bdaddr_type);
+			device_set_bonded(dev, info->bdaddr_type);
+			device_set_ltk_enc_size(dev, info->enc_size);
+			device_set_ltk_enc_size(dev, info->enc_size);
+		}
 	}
 
 	adapter->load_ltks_id = mgmt_send(adapter->mgmt,
@@ -4767,18 +4783,6 @@ device_exist:
 		if (key_info) {
 			device_set_paired(device, BDADDR_BREDR);
 			device_set_bonded(device, BDADDR_BREDR);
-		}
-
-		if (ltk_info || peripheral_ltk_info) {
-			device_set_paired(device, bdaddr_type);
-			device_set_bonded(device, bdaddr_type);
-
-			if (ltk_info)
-				device_set_ltk_enc_size(device,
-							ltk_info->enc_size);
-			else if (peripheral_ltk_info)
-				device_set_ltk_enc_size(device,
-						peripheral_ltk_info->enc_size);
 		}
 
 free:
