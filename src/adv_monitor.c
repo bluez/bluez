@@ -1892,7 +1892,9 @@ static bool handle_device_lost_timeout(gpointer user_data)
 	g_dbus_proxy_method_call(monitor->proxy, "DeviceLost",
 				 report_device_state_setup,
 				 NULL, dev->device, NULL);
+
 	dev->lost_timer = 0;
+	dev->found = false;
 
 	return FALSE;
 }
