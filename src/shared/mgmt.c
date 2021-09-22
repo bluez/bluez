@@ -963,3 +963,11 @@ bool mgmt_unregister_all(struct mgmt *mgmt)
 
 	return true;
 }
+
+uint16_t mgmt_get_mtu(struct mgmt *mgmt)
+{
+	if (!mgmt)
+		return 0;
+
+	return mgmt->mtu;
+}

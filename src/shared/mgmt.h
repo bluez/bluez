@@ -76,3 +76,5 @@ unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 bool mgmt_unregister(struct mgmt *mgmt, unsigned int id);
 bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index);
 bool mgmt_unregister_all(struct mgmt *mgmt);
+
+uint16_t mgmt_get_mtu(struct mgmt *mgmt);
