@@ -334,7 +334,7 @@ static void print_pub(uint16_t ele_addr, uint32_t mod_id,
 						struct model_pub *pub)
 {
 	bt_shell_printf("\tElement: %4.4x\n", ele_addr);
-	bt_shell_printf("\tPub Addr: %4.4x\n", pub->u.addr16);
+	bt_shell_printf("\tPub Addr: %4.4x\n", pub->u.addr);
 
 	if (mod_id < VENDOR_ID_MASK)
 		bt_shell_printf("\tModel: %8.8x\n", mod_id);
@@ -634,31 +634,51 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		mod_id = print_mod_id(data + 10, len == 14, "");
 
-		pub.u.addr16 = get_le16(data + 3);
+		pub.u.addr = get_le16(data + 3);
+
 		pub.app_idx = get_le16(data + 5);
+		pub.cred = ((pub.app_idx & 0x1000) != 0);
+		pub.app_idx &= 0x3ff;
+
 		pub.ttl = data[7];
-		pub.period = data[8];
-		n = (data[8] & 0x3f);
+		pub.prd_steps = (data[8] & 0x3f);
 
 		print_pub(ele_addr, mod_id, &pub);
 
 		switch (data[8] >> 6) {
 		case 0:
-			bt_shell_printf("Period\t\t%d ms\n", n * 100);
+			pub.prd_res = 100;
 			break;
 		case 2:
-			n *= 10;
-			/* fall through */
+			pub.prd_res = 10;
+			break;
 		case 1:
-			bt_shell_printf("Period\t\t%d sec\n", n);
+			pub.prd_res = 10000;
 			break;
 		case 3:
-			bt_shell_printf("Period\t\t%d min\n", n * 10);
+			pub.prd_res = 600000;
 			break;
 		}
 
-		bt_shell_printf("Rexmit count\t%d\n", data[9] & 0x7);
-		bt_shell_printf("Rexmit steps\t%d\n", data[9] >> 3);
+		bt_shell_printf("Period\t\t%d ms\n", pub.period);
+
+		pub.rtx_cnt = data[9] & 0x7;
+		pub.rtx_interval = ((data[9] >> 3) + 1) * 50;
+		bt_shell_printf("Rexmit count\t%d\n", pub.rtx_cnt);
+		bt_shell_printf("Rexmit steps\t%d\n", pub.rtx_interval);
+
+		if (IS_VIRTUAL(pub.u.addr)) {
+			grp = l_queue_find(groups, match_group_addr,
+						L_UINT_TO_PTR(pub.u.addr));
+			if (!grp)
+				return true;
+
+			memcpy(pub.u.label, grp->label, sizeof(pub.u.label));
+
+		}
+
+		mesh_db_node_model_set_pub(src, ele_addr, len == 14, mod_id,
+						&pub, IS_VIRTUAL(pub.u.addr));
 
 		break;
 

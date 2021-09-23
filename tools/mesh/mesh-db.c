@@ -32,6 +32,7 @@
 #include "tools/mesh/keys.h"
 #include "tools/mesh/remote.h"
 #include "tools/mesh/cfgcli.h"
+#include "tools/mesh/model.h"
 #include "tools/mesh/mesh-db.h"
 
 #define KEY_IDX_INVALID NET_IDX_INVALID
@@ -990,6 +991,86 @@ bool mesh_db_node_model_overwrt_sub_virt(uint16_t unicast, uint16_t ele,
 	hex2str(label, 16, buf, sizeof(buf));
 
 	return sub_overwrite(unicast, ele, vendor, mod_id, buf);
+}
+
+static bool add_transmit_info(json_object *jobj, int cnt, int interval,
+							const char *desc)
+{
+	json_object *jtxmt;
+
+	jtxmt = json_object_new_object();
+
+	if (!write_int(jtxmt, "count", cnt))
+		return false;
+
+	if (!write_int(jtxmt, "interval", interval))
+		return false;
+
+	json_object_object_add(jobj, desc, jtxmt);
+	return true;
+}
+
+bool mesh_db_node_model_set_pub(uint16_t unicast, uint16_t ele_addr,
+					bool vendor, uint32_t mod_id,
+					struct model_pub *pub, bool virt)
+{
+	json_object *jmod, *jpub, *jobj = NULL;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jmod = get_model(unicast, ele_addr, mod_id, vendor);
+	if (!jmod)
+		return false;
+
+	jpub = json_object_new_object();
+
+	if (!virt && !write_uint16_hex(jpub, "address", pub->u.addr))
+		goto fail;
+
+	if (virt) {
+		char buf[33];
+
+		hex2str(pub->u.label, 16, buf, sizeof(buf));
+
+		if (!add_string(jpub, "address", buf))
+			goto fail;
+	}
+
+	if (!write_int(jpub, "index", pub->app_idx))
+		goto fail;
+
+	if (!write_int(jpub, "ttl", pub->ttl))
+		goto fail;
+
+	if (!write_int(jpub, "credentials", pub->cred ? 1 : 0))
+		goto fail;
+
+	if (!add_transmit_info(jpub, pub->rtx_cnt, pub->rtx_interval,
+							"retransmit"))
+		goto fail;
+
+	jobj = json_object_new_object();
+
+	if (!write_int(jobj, "numberOfSteps", pub->prd_steps))
+		goto fail;
+
+	if (!write_int(jobj, "resolution", pub->prd_res))
+		goto fail;
+
+	json_object_object_add(jpub, "period", jobj);
+
+	json_object_object_del(jmod, "publish");
+	json_object_object_add(jmod, "publish", jpub);
+
+	return save_config();
+
+fail:
+	if (jobj)
+		json_object_put(jobj);
+
+	json_object_put(jpub);
+	return false;
 }
 
 static void jarray_key_del(json_object *jarray, int16_t idx)
