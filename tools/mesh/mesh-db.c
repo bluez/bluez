@@ -245,7 +245,7 @@ static json_object *get_node_by_uuid(json_object *jcfg, uint8_t uuid[16])
 		const char *str;
 
 		jentry = json_object_array_get_idx(jarray, i);
-		if (!json_object_object_get_ex(jentry, "uuid", &jval))
+		if (!json_object_object_get_ex(jentry, "UUID", &jval))
 			return NULL;
 
 		str = json_object_get_string(jval);
@@ -429,7 +429,7 @@ static void load_remotes(json_object *jcfg)
 		if (!jnode)
 			continue;
 
-		if (!json_object_object_get_ex(jnode, "uuid", &jval))
+		if (!json_object_object_get_ex(jnode, "UUID", &jval))
 			continue;
 
 		str = json_object_get_string(jval);
@@ -931,7 +931,7 @@ bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 	if (!jnode)
 		return false;
 
-	if (!add_u8_16(jnode, "uuid", uuid))
+	if (!add_u8_16(jnode, "UUID", uuid))
 		goto fail;
 
 	jelements = init_elements(num_els);
@@ -1188,14 +1188,32 @@ bool mesh_db_get_token(uint8_t token[8])
 
 bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high)
 {
-	json_object *jlow, *jhigh;
+	json_object *jprov, *jarray, *jobj, *jlow, *jhigh;
 	const char *str;
 
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	if (!json_object_object_get_ex(cfg->jcfg, "low", &jlow) ||
-			!json_object_object_get_ex(cfg->jcfg, "high", &jhigh))
+	jarray = json_object_object_get(cfg->jcfg, "provisioniers");
+
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	/* Assumption: only one provisioner in the system */
+	jprov = json_object_array_get_idx(jarray, 0);
+	if (!jprov)
+		return false;
+
+	if (!json_object_object_get_ex(jprov, "allocatedUnicastRange", &jarray))
+		return false;
+
+	/* Assumption: only one contiguous range is specified */
+	jobj = json_object_array_get_idx(jarray, 0);
+	if (!jobj)
+		return false;
+
+	if (!json_object_object_get_ex(jobj, "lowAddress", &jlow) ||
+			!json_object_object_get_ex(jobj, "highAddress", &jhigh))
 		return false;
 
 	str = json_object_get_string(jlow);
@@ -1209,18 +1227,82 @@ bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high)
 	return true;
 }
 
-bool mesh_db_set_addr_range(uint16_t low, uint16_t high)
+/*
+ * This is a simplistic implementation onf allocated range, where
+ * the range is one contiguous chunk of the address space.
+ */
+static bool add_range(json_object *jobj, const char *keyword, uint16_t low,
+								uint16_t high)
 {
+	json_object *jarray, *jrange;
+
+	jrange = json_object_new_object();
+
+	if (!write_uint16_hex(jrange, "lowAddress", low))
+		goto fail;
+
+	if (!write_uint16_hex(jrange, "highAddress", high))
+		goto fail;
+
+	jarray = json_object_new_array();
+	if (!jarray)
+		goto fail;
+
+	json_object_array_add(jarray, jrange);
+	json_object_object_add(jobj, keyword, jarray);
+
+	return true;
+
+fail:
+	json_object_put(jrange);
+
+	return false;
+}
+
+bool mesh_db_add_provisioner(const char *name, uint8_t uuid[16],
+				uint16_t unicast_low, uint16_t unicast_high,
+					uint16_t group_low, uint16_t group_high)
+{
+	json_object *jprovs, *jprov, *jscenes;
+
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	if (!write_uint16_hex(cfg->jcfg, "low", low))
+	if (!json_object_object_get_ex(cfg->jcfg, "provisioners", &jprovs))
 		return false;
 
-	if (!write_uint16_hex(cfg->jcfg, "high", high))
+	if (!jprovs || json_object_get_type(jprovs) != json_type_array)
 		return false;
+
+	jprov = json_object_new_object();
+
+	if (!add_string(jprov, "provisionerName", name))
+		goto fail;
+
+	if (!add_u8_16(jprov, "UUID", uuid))
+		goto fail;
+
+	if (!add_range(jprov, "allocatedUnicastRange", unicast_low,
+								unicast_high))
+		goto fail;
+
+	if (!add_range(jprov, "allocatedGroupRange", group_low, group_high))
+		goto fail;
+
+	/* Scenes are not supported. Just add an empty array */
+	jscenes = json_object_new_array();
+	if (!jscenes)
+		goto fail;
+
+	json_object_object_add(jprov, "allocatedSceneRange", jscenes);
+
+	json_object_array_add(jprovs, jprov);
 
 	return save_config();
+
+fail:
+	json_object_put(jprov);
+	return false;
 }
 
 uint32_t mesh_db_get_iv_index(void)
@@ -1408,10 +1490,10 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 
 	l_uuid_v4(uuid);
 
-	if (!add_u8_16(jcfg, "uuid", uuid))
+	if (!add_u8_16(jcfg, "meshUUID", uuid))
 		goto fail;
 
-	if (mesh_name && !add_string(jcfg, "name", mesh_name))
+	if (mesh_name && !add_string(jcfg, "meshName", mesh_name))
 		goto fail;
 
 	jarray = json_object_new_array();
@@ -1419,6 +1501,12 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 		goto fail;
 
 	json_object_object_add(jcfg, "nodes", jarray);
+
+	jarray = json_object_new_array();
+	if (!jarray)
+		goto fail;
+
+	json_object_object_add(jcfg, "provisioners", jarray);
 
 	jarray = json_object_new_array();
 	if (!jarray)

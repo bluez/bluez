@@ -1823,12 +1823,15 @@ static struct l_dbus_message *join_complete(struct l_dbus *dbus,
 		return l_dbus_message_new_error(message, dbus_err_fail, NULL);
 	}
 
-	mesh_db_set_addr_range(low_addr, high_addr);
 	keys_add_net_key(PRIMARY_NET_IDX);
 	mesh_db_net_key_add(PRIMARY_NET_IDX);
 
 	remote_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
 	mesh_db_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
+
+	mesh_db_add_provisioner("BlueZ mesh-cfgclient", app.uuid,
+					low_addr, high_addr,
+					GROUP_ADDRESS_LOW, GROUP_ADDRESS_HIGH);
 
 	l_idle_oneshot(attach_node, NULL, NULL);
 
