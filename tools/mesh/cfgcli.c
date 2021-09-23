@@ -434,6 +434,9 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		if (!mesh_db_node_set_composition(src, data, len))
 			bt_shell_printf("Failed to save node composition!\n");
+		else
+			remote_set_composition(src, true);
+
 		break;
 
 	case OP_APPKEY_STATUS:
@@ -1233,6 +1236,12 @@ static void cmd_bind(uint32_t opcode, int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	if (!remote_has_composition(target)) {
+		bt_shell_printf("Node composition is unknown\n");
+		bt_shell_printf("Call \"get-composition\" first\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
 	n = mesh_opcode_set(opcode, msg);
 
 	put_le16(parms[0], msg + n);
@@ -1429,6 +1438,12 @@ static void cmd_pub_set(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	if (!remote_has_composition(target)) {
+		bt_shell_printf("Node composition is unknown\n");
+		bt_shell_printf("Call \"get-composition\" first\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
 	pub_addr = parms[1];
 
 	grp = l_queue_find(groups, match_group_addr, L_UINT_TO_PTR(pub_addr));
@@ -1520,6 +1535,12 @@ static void subscription_cmd(int argc, char *argv[], uint32_t opcode)
 	if ((!IS_GROUP(parms[1]) || IS_ALL_NODES(parms[1])) &&
 							!IS_VIRTUAL(parms[1])) {
 		bt_shell_printf("Bad subscription address %x\n", parms[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!remote_has_composition(target)) {
+		bt_shell_printf("Node composition is unknown\n");
+		bt_shell_printf("Call \"get-composition\" first\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1721,6 +1742,11 @@ static void cmd_hb_sub_set(int argc, char *argv[])
 	uint16_t n;
 	uint8_t msg[32];
 	uint32_t parm_cnt;
+
+	if (IS_UNASSIGNED(target)) {
+		bt_shell_printf("Destination not set\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
 
 	n = mesh_opcode_set(OP_CONFIG_HEARTBEAT_SUB_SET, msg);
 

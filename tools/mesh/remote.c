@@ -35,6 +35,7 @@ struct remote_node {
 	struct l_queue *net_keys;
 	struct l_queue *app_keys;
 	struct l_queue **els;
+	bool comp;
 	uint8_t uuid[16];
 	uint8_t num_ele;
 };
@@ -190,6 +191,28 @@ bool remote_set_model(uint16_t unicast, uint8_t ele_idx, uint32_t mod_id,
 							compare_mod_id, NULL);
 
 	return true;
+}
+
+void remote_set_composition(uint16_t addr, bool comp)
+{
+	struct remote_node *rmt;
+
+	rmt = l_queue_find(nodes, match_node_addr, L_UINT_TO_PTR(addr));
+	if (!rmt)
+		return;
+
+	rmt->comp = comp;
+}
+
+bool remote_has_composition(uint16_t addr)
+{
+	struct remote_node *rmt;
+
+	rmt = l_queue_find(nodes, match_node_addr, L_UINT_TO_PTR(addr));
+	if (!rmt)
+		return false;
+
+	return rmt->comp;
 }
 
 bool remote_add_net_key(uint16_t addr, uint16_t net_idx, bool save)

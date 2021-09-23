@@ -574,11 +574,17 @@ static void load_remotes(json_object *jcfg)
 			remote_update_app_key(unicast, key_idx, updated, false);
 		}
 
-		load_composition(jnode, unicast);
+		if (!load_composition(jnode, unicast))
+			continue;
 
-		node_count++;
+		/* If "crpl" is present, composition's is available */
+		jval = NULL;
+		if (json_object_object_get_ex(jnode, "crpl", &jval) && jval)
+			remote_set_composition(unicast, true);
 
 		/* TODO: Add the rest of the configuration */
+
+		node_count++;
 	}
 
 	if (node_count != sz)
