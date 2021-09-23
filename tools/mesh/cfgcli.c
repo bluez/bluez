@@ -387,14 +387,21 @@ static void print_appkey_list(uint16_t len, uint8_t *data)
 	}
 }
 
+static bool match_group_addr(const void *a, const void *b)
+{
+	const struct mesh_group *grp = a;
+	uint16_t addr = L_PTR_TO_UINT(b);
+
+	return grp->addr == addr;
+}
+
 static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 							uint16_t len)
 {
-	uint32_t opcode;
+	uint32_t opcode, mod_id;
 	const struct cfg_cmd *cmd;
-	uint16_t app_idx, net_idx, addr;
-	uint16_t ele_addr;
-	uint32_t mod_id;
+	uint16_t app_idx, net_idx, addr, ele_addr;
+	struct mesh_group *grp;
 	struct model_pub pub;
 	int n;
 	struct pending_req *req;
@@ -664,9 +671,52 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		addr = get_le16(data + 3);
 		bt_shell_printf("Element Addr\t%4.4x\n", ele_addr);
 
-		print_mod_id(data + 5, len == 9, "");
+		mod_id = print_mod_id(data + 5, len == 9, "");
 
 		bt_shell_printf("Subscr Addr\t%4.4x\n", addr);
+
+		grp = l_queue_find(groups, match_group_addr,
+							L_UINT_TO_PTR(addr));
+
+		if (data[0] != MESH_STATUS_SUCCESS || !cmd)
+			return true;
+
+		switch (cmd->opcode) {
+		default:
+			return true;
+		case OP_CONFIG_MODEL_SUB_ADD:
+			mesh_db_node_model_add_sub(src, ele_addr, len == 9,
+								mod_id, addr);
+			break;
+		case OP_CONFIG_MODEL_SUB_DELETE:
+			mesh_db_node_model_del_sub(src, ele_addr, len == 9,
+								mod_id, addr);
+			break;
+		case OP_CONFIG_MODEL_SUB_OVERWRITE:
+			mesh_db_node_model_overwrt_sub(src, ele_addr, len == 9,
+								mod_id, addr);
+			break;
+		case OP_CONFIG_MODEL_SUB_DELETE_ALL:
+			mesh_db_node_model_del_sub_all(src, ele_addr, len == 9,
+									mod_id);
+			break;
+		case OP_CONFIG_MODEL_SUB_VIRT_ADD:
+			if (grp)
+				mesh_db_node_model_add_sub_virt(src, ele_addr,
+						len == 9, mod_id, grp->label);
+			break;
+		case OP_CONFIG_MODEL_SUB_VIRT_DELETE:
+			if (grp)
+				mesh_db_node_model_del_sub_virt(src, ele_addr,
+						len == 9, mod_id, grp->label);
+			break;
+		case OP_CONFIG_MODEL_SUB_VIRT_OVERWRITE:
+			if (grp)
+				mesh_db_node_model_overwrt_sub_virt(src,
+							ele_addr, len == 9,
+							mod_id, grp->label);
+			break;
+		}
 
 		break;
 
@@ -818,14 +868,6 @@ static uint32_t read_input_parameters(int argc, char *argv[])
 	}
 
 	return i;
-}
-
-static bool match_group_addr(const void *a, const void *b)
-{
-	const struct mesh_group *grp = a;
-	uint16_t addr = L_PTR_TO_UINT(b);
-
-	return grp->addr == addr;
 }
 
 static int compare_group_addr(const void *a, const void *b, void *user_data)

@@ -814,6 +814,178 @@ bool mesh_db_node_model_unbind(uint16_t unicast, uint16_t ele_addr, bool vendor,
 						(int) app_idx, "bind", false);
 }
 
+static void jarray_string_del(json_object *jarray, const char *str, size_t len)
+{
+	int i, sz = json_object_array_length(jarray);
+
+	for (i = 0; i < sz; ++i) {
+		json_object *jentry;
+		char *str_entry;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		str_entry = (char *)json_object_get_string(jentry);
+
+		if (str_entry && (strlen(str_entry) == len) &&
+						!strncmp(str, str_entry, len)) {
+			json_object_array_del_idx(jarray, i, 1);
+			return;
+		}
+	}
+}
+
+static bool update_model_string_array(uint16_t unicast, uint16_t ele_addr,
+						bool vendor, uint32_t mod_id,
+						const char *str, uint32_t len,
+						const char *keyword, bool add)
+{
+	json_object *jarray, *jmod, *jstring;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jmod = get_model(unicast, ele_addr, mod_id, vendor);
+	if (!jmod)
+		return false;
+
+	if (!json_object_object_get_ex(jmod, keyword, &jarray))
+		return false;
+
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	jarray_string_del(jarray, str, len);
+
+	if (!add)
+		return true;
+
+	jstring = json_object_new_string(str);
+	if (!jstring)
+		return false;
+
+	json_object_array_add(jarray, jstring);
+
+	return save_config();
+}
+
+bool mesh_db_node_model_add_sub(uint16_t unicast, uint16_t ele, bool vendor,
+						uint32_t mod_id, uint16_t addr)
+{
+	char buf[5];
+
+	snprintf(buf, 5, "%4.4x", addr);
+
+	return update_model_string_array(unicast, ele, vendor, mod_id, buf, 4,
+							"subscribe", true);
+}
+
+bool mesh_db_node_model_del_sub(uint16_t unicast, uint16_t ele, bool vendor,
+						uint32_t mod_id, uint16_t addr)
+{
+	char buf[5];
+
+	snprintf(buf, 5, "%4.4x", addr);
+
+	return update_model_string_array(unicast, ele, vendor, mod_id, buf, 4,
+							"subscribe", false);
+}
+
+bool mesh_db_node_model_add_sub_virt(uint16_t unicast, uint16_t ele,
+						bool vendor, uint32_t mod_id,
+								uint8_t *label)
+{
+	char buf[33];
+
+	hex2str(label, 16, buf, sizeof(buf));
+
+	return update_model_string_array(unicast, ele, vendor, mod_id, buf, 32,
+							"subscribe", true);
+
+}
+
+bool mesh_db_node_model_del_sub_virt(uint16_t unicast, uint16_t ele,
+						bool vendor, uint32_t mod_id,
+								uint8_t *label)
+{
+	char buf[33];
+
+	hex2str(label, 16, buf, sizeof(buf));
+
+	return update_model_string_array(unicast, ele, vendor, mod_id, buf, 32,
+							"subscribe", false);
+}
+
+static json_object *delete_subs(uint16_t unicast, uint16_t ele, bool vendor,
+								uint32_t mod_id)
+{
+	json_object *jarray, *jmod;
+
+	if (!cfg || !cfg->jcfg)
+		return NULL;
+
+	jmod = get_model(unicast, ele, mod_id, vendor);
+	if (!jmod)
+		return NULL;
+
+	json_object_object_del(jmod, "subscribe");
+
+	jarray = json_object_new_array();
+	if (!jarray)
+		return NULL;
+
+	json_object_object_add(jmod, "subscribe", jarray);
+
+	return jarray;
+}
+
+bool mesh_db_node_model_del_sub_all(uint16_t unicast, uint16_t ele, bool vendor,
+								uint32_t mod_id)
+{
+
+	if (!delete_subs(unicast, ele, vendor, mod_id))
+		return false;
+
+	return save_config();
+}
+
+static bool sub_overwrite(uint16_t unicast, uint16_t ele, bool vendor,
+						uint32_t mod_id, char *buf)
+{
+	json_object *jarray, *jstring;
+
+	jarray = delete_subs(unicast, ele, vendor, mod_id);
+	if (!jarray)
+		return false;
+
+	jstring = json_object_new_string(buf);
+	if (!jstring)
+		return false;
+
+	json_object_array_add(jarray, jstring);
+
+	return save_config();
+}
+
+bool mesh_db_node_model_overwrt_sub(uint16_t unicast, uint16_t ele, bool vendor,
+						uint32_t mod_id, uint16_t addr)
+{
+	char buf[5];
+
+	snprintf(buf, 5, "%4.4x", addr);
+
+	return sub_overwrite(unicast, ele, vendor, mod_id, buf);
+}
+
+bool mesh_db_node_model_overwrt_sub_virt(uint16_t unicast, uint16_t ele,
+						bool vendor, uint32_t mod_id,
+								uint8_t *label)
+{
+	char buf[33];
+
+	hex2str(label, 16, buf, sizeof(buf));
+
+	return sub_overwrite(unicast, ele, vendor, mod_id, buf);
+}
+
 static void jarray_key_del(json_object *jarray, int16_t idx)
 {
 	int i, sz = json_object_array_length(jarray);
@@ -1340,6 +1512,9 @@ static json_object *init_model(uint16_t mod_id)
 	jarray = json_object_new_array();
 	json_object_object_add(jmod, "bind", jarray);
 
+	jarray = json_object_new_array();
+	json_object_object_add(jmod, "subscribe", jarray);
+
 	return jmod;
 }
 
@@ -1356,6 +1531,9 @@ static json_object *init_vendor_model(uint32_t mod_id)
 
 	jarray = json_object_new_array();
 	json_object_object_add(jmod, "bind", jarray);
+
+	jarray = json_object_new_array();
+	json_object_object_add(jmod, "subscribe", jarray);
 
 	return jmod;
 }
