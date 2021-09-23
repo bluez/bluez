@@ -137,12 +137,12 @@ static void release_config(void)
 	cfg = NULL;
 }
 
-static json_object *get_node_by_unicast(uint16_t unicast)
+static json_object *get_node_by_unicast(json_object *jcfg, uint16_t unicast)
 {
 	json_object *jarray;
 	int i, sz;
 
-	if (!json_object_object_get_ex(cfg->jcfg, "nodes", &jarray))
+	if (!json_object_object_get_ex(jcfg, "nodes", &jarray))
 		return NULL;
 
 	if (!jarray || json_object_get_type(jarray) != json_type_array)
@@ -655,11 +655,134 @@ bool mesh_db_node_set_ttl(uint16_t unicast, uint8_t ttl)
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 
 	if (!write_int(jnode, "defaultTTL", ttl))
+		return false;
+
+	return save_config();
+}
+
+static bool add_transmit_info(json_object *jobj, int cnt, int interval,
+							const char *desc)
+{
+	json_object *jtxmt;
+
+	json_object_object_del(jobj, desc);
+	jtxmt = json_object_new_object();
+
+	if (!write_int(jtxmt, "count", cnt))
+		goto fail;
+
+	if (!write_int(jtxmt, "interval", interval))
+		goto fail;
+
+	json_object_object_add(jobj, desc, jtxmt);
+	return true;
+
+fail:
+	json_object_put(jtxmt);
+	return false;
+}
+
+bool mesh_db_node_set_net_transmit(uint16_t unicast, uint8_t cnt,
+							uint16_t interval)
+{
+	json_object *jnode;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
+	if (!jnode)
+		return false;
+
+	if (!add_transmit_info(jnode, cnt, interval, "networkTransmit"))
+		return false;
+
+	return save_config();
+}
+
+static bool set_feature(json_object *jnode, const char *desc, uint8_t feature)
+{
+	json_object *jobj;
+
+	if (feature > MESH_MODE_UNSUPPORTED)
+		return false;
+
+	jobj = json_object_object_get(jnode, "features");
+	if (!jobj) {
+		jobj = json_object_new_object();
+		json_object_object_add(jnode, "features", jobj);
+	}
+
+	if (!write_int(jobj, desc, feature))
+		return false;
+
+	return save_config();
+}
+
+bool mesh_db_node_set_relay(uint16_t unicast, uint8_t relay, uint8_t cnt,
+							uint16_t interval)
+{
+	json_object *jnode;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
+	if (!jnode)
+		return false;
+
+	if (relay < MESH_MODE_UNSUPPORTED &&
+		!add_transmit_info(jnode, cnt, interval, "relayRetransmit"))
+		return false;
+
+	return set_feature(jnode, "relay", relay);
+}
+
+bool mesh_db_node_set_proxy(uint16_t unicast, uint8_t proxy)
+{
+	json_object *jnode;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
+	if (!jnode)
+		return false;
+
+	return set_feature(jnode, "proxy", proxy);
+}
+
+bool mesh_db_node_set_friend(uint16_t unicast, uint8_t friend)
+{
+	json_object *jnode;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
+	if (!jnode)
+		return false;
+
+	return set_feature(jnode, "friend", friend);
+}
+
+bool mesh_db_node_set_beacon(uint16_t unicast, bool enabled)
+{
+	json_object *jnode;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
+	if (!jnode)
+		return false;
+
+	if (!write_bool(jnode, "secureNetworkBeacon", enabled))
 		return false;
 
 	return save_config();
@@ -670,7 +793,7 @@ static json_object *get_element(uint16_t unicast, uint16_t ele_addr)
 	json_object *jnode, *jarray;
 	int i, ele_cnt;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 
@@ -993,23 +1116,6 @@ bool mesh_db_node_model_overwrt_sub_virt(uint16_t unicast, uint16_t ele,
 	return sub_overwrite(unicast, ele, vendor, mod_id, buf);
 }
 
-static bool add_transmit_info(json_object *jobj, int cnt, int interval,
-							const char *desc)
-{
-	json_object *jtxmt;
-
-	jtxmt = json_object_new_object();
-
-	if (!write_int(jtxmt, "count", cnt))
-		return false;
-
-	if (!write_int(jtxmt, "interval", interval))
-		return false;
-
-	json_object_object_add(jobj, desc, jtxmt);
-	return true;
-}
-
 bool mesh_db_node_model_set_pub(uint16_t unicast, uint16_t ele_addr,
 					bool vendor, uint32_t mod_id,
 					struct model_pub *pub, bool virt)
@@ -1113,7 +1219,7 @@ bool mesh_db_node_add_net_key(uint16_t unicast, uint16_t idx)
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 
@@ -1127,7 +1233,7 @@ bool mesh_db_node_del_net_key(uint16_t unicast, uint16_t net_idx)
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 
@@ -1143,7 +1249,7 @@ static bool key_update(uint16_t unicast, int16_t idx, bool updated,
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 
@@ -1180,7 +1286,7 @@ bool mesh_db_node_add_app_key(uint16_t unicast, uint16_t idx)
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 
@@ -1194,7 +1300,7 @@ bool mesh_db_node_del_app_key(uint16_t unicast, uint16_t idx)
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 
@@ -1635,7 +1741,7 @@ bool mesh_db_node_set_composition(uint16_t unicast, uint8_t *data, uint16_t len)
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jnode = get_node_by_unicast(unicast);
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
 	if (!jnode)
 		return false;
 

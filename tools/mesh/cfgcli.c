@@ -594,6 +594,8 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("Node %4.4x: Config Beacon Status 0x%02x\n",
 				src, data[0]);
+
+		saved = mesh_db_node_set_beacon(src, data[0] != 0);
 		break;
 
 	case OP_CONFIG_RELAY_STATUS:
@@ -602,6 +604,10 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("Node %4.4x: Relay 0x%02x, cnt %d, steps %d\n",
 				src, data[0], data[1] & 0x7, data[1] >> 3);
+
+		saved = mesh_db_node_set_relay(src, data[0], data[1] & 7,
+						((data[1] >> 3) + 1) * 10);
+
 		break;
 
 	case OP_CONFIG_PROXY_STATUS:
@@ -610,6 +616,8 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("Node %4.4x Proxy state 0x%02x\n",
 				src, data[0]);
+
+		saved = mesh_db_node_set_proxy(src, data[0]);
 		break;
 
 	case OP_CONFIG_DEFAULT_TTL_STATUS:
@@ -618,7 +626,6 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("Node %4.4x Default TTL %d\n", src, data[0]);
 		saved = mesh_db_node_set_ttl(src, data[0]);
-
 		break;
 
 	case OP_CONFIG_MODEL_PUB_STATUS:
@@ -838,6 +845,9 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("Node %4.4x: Net transmit cnt %d, steps %d\n",
 				src, data[0] & 7, data[0] >> 3);
+
+		saved = mesh_db_node_set_net_transmit(src, data[0] & 7,
+						((data[0] >> 3) + 1) * 10);
 		break;
 
 	/* Per Mesh Profile 4.3.2.54 */
@@ -855,6 +865,8 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("Node %4.4x Friend state 0x%02x\n",
 				src, data[0]);
+
+		saved = mesh_db_node_set_friend(src, data[0]);
 		break;
 	}
 

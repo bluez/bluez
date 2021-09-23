@@ -37,6 +37,11 @@ bool mesh_db_add_provisioner(const char *name, uint8_t uuid[16],
 				uint16_t group_low, uint16_t group_high);
 bool mesh_db_node_set_net_transmit(uint16_t unicast, uint8_t cnt,
 							uint16_t interval);
+bool mesh_db_node_set_relay(uint16_t unicast, uint8_t relay, uint8_t cnt,
+							uint16_t interval);
+bool mesh_db_node_set_proxy(uint16_t unicast, uint8_t proxy);
+bool mesh_db_node_set_friend(uint16_t unicast, uint8_t friend);
+bool mesh_db_node_set_beacon(uint16_t unicast, bool enabled);
 bool mesh_db_node_add_net_key(uint16_t unicast, uint16_t idx);
 bool mesh_db_node_del_net_key(uint16_t unicast, uint16_t idx);
 bool mesh_db_node_update_net_key(uint16_t unicast, uint16_t idx, bool updated);
