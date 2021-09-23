@@ -3,7 +3,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2019  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2019-2020  Intel Corporation. All rights reserved.
  *
  *
  */
@@ -20,9 +20,8 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
-
-#include <sys/time.h>
 
 #include <ell/ell.h>
 #include <json-c/json.h>
@@ -42,12 +41,38 @@ struct mesh_db {
 	json_object *jcfg;
 	char *cfg_fname;
 	uint8_t token[8];
-	struct timeval write_time;
 };
 
 static struct mesh_db *cfg;
 static const char *bak_ext = ".bak";
 static const char *tmp_ext = ".tmp";
+
+static bool add_string(json_object *jobj, const char *desc, const char *str)
+{
+	json_object *jstring = json_object_new_string(str);
+
+	if (!jstring)
+		return false;
+
+	json_object_object_add(jobj, desc, jstring);
+	return true;
+}
+
+static bool set_timestamp(json_object *jobj)
+{
+	time_t time_raw;
+	struct tm *tp;
+	char buf[80];
+
+	time(&time_raw);
+	tp = gmtime(&time_raw);
+
+	strftime(buf, 80, "%FT%TZ", tp);
+
+	json_object_object_del(jobj, "timestamp");
+
+	return add_string(jobj, "timestamp", buf);
+}
 
 static bool save_config_file(const char *fname)
 {
@@ -60,6 +85,8 @@ static bool save_config_file(const char *fname)
 		l_error("Failed to save configuration to %s", cfg->cfg_fname);
 		return false;
 	}
+
+	set_timestamp(cfg->jcfg);
 
 	str = json_object_to_json_string_ext(cfg->jcfg,
 						JSON_C_TO_STRING_PRETTY);
@@ -96,8 +123,6 @@ static bool save_config(void)
 
 	l_free(fname_tmp);
 	l_free(fname_bak);
-
-	gettimeofday(&cfg->write_time, NULL);
 
 	return result;
 }
@@ -282,17 +307,6 @@ static bool add_u8_16(json_object *jobj, const char *desc,
 
 	hex2str((uint8_t *) value, 16, buf, 33);
 	jstring = json_object_new_string(buf);
-	if (!jstring)
-		return false;
-
-	json_object_object_add(jobj, desc, jstring);
-	return true;
-}
-
-static bool add_string(json_object *jobj, const char *desc, const char *str)
-{
-	json_object *jstring = json_object_new_string(str);
-
 	if (!jstring)
 		return false;
 
@@ -726,6 +740,9 @@ bool mesh_db_net_key_add(uint16_t net_idx)
 	if (!write_int(jkey, "phase", KEY_REFRESH_PHASE_NONE))
 		goto fail;
 
+	if (!set_timestamp(jkey))
+		goto fail;
+
 	json_object_array_add(jarray, jkey);
 
 	return save_config();
@@ -960,10 +977,7 @@ bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 
 	json_object_array_add(jnodes, jnode);
 
-	if (!save_config())
-		goto fail;
-
-	return true;
+	return save_config();
 
 fail:
 	json_object_put(jnode);
