@@ -447,13 +447,12 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		if (!cmd)
 			break;
 
-		if (cmd->opcode == OP_APPKEY_ADD) {
-			if (remote_add_app_key(src, app_idx))
-				mesh_db_node_app_key_add(src, app_idx);
-		} else if (cmd->opcode == OP_APPKEY_DELETE) {
-			if (remote_del_app_key(src, app_idx))
-				mesh_db_node_app_key_del(src, app_idx);
-		}
+		if (cmd->opcode == OP_APPKEY_ADD)
+			remote_add_app_key(src, app_idx, true);
+		else if (cmd->opcode == OP_APPKEY_DELETE)
+			remote_del_app_key(src, app_idx);
+		else if (cmd->opcode == OP_APPKEY_UPDATE)
+			remote_update_app_key(src, app_idx, true, true);
 
 		break;
 
@@ -492,13 +491,12 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		if (!cmd)
 			break;
 
-		if (cmd->opcode == OP_NETKEY_ADD) {
-			if (remote_add_net_key(src, net_idx))
-				mesh_db_node_net_key_add(src, net_idx);
-		} else if (cmd->opcode == OP_NETKEY_DELETE) {
-			if (remote_del_net_key(src, net_idx))
-				mesh_db_node_net_key_del(src, net_idx);
-		}
+		if (cmd->opcode == OP_NETKEY_ADD)
+			remote_add_net_key(src, net_idx, true);
+		else if (cmd->opcode == OP_NETKEY_DELETE)
+			remote_del_net_key(src, net_idx);
+		else if (cmd->opcode == OP_NETKEY_UPDATE)
+			remote_update_net_key(src, net_idx, true, true);
 
 		break;
 
@@ -534,6 +532,13 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("\tNetKey %u (0x%3.3x)\n", net_idx, net_idx);
 		bt_shell_printf("\tKR Phase %2.2x\n", data[3]);
+
+		if (data[0] != MESH_STATUS_SUCCESS)
+			return true;
+
+		if (data[3] == KEY_REFRESH_PHASE_NONE)
+			remote_finish_key_refresh(src, net_idx);
+
 		break;
 
 	case OP_MODEL_APP_STATUS:

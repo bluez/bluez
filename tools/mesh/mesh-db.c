@@ -200,6 +200,38 @@ static bool write_int(json_object *jobj, const char *keyword, int val)
 	return true;
 }
 
+static bool get_bool(json_object *jobj, const char *keyword, bool *value)
+{
+	json_object *jvalue;
+
+	if (!json_object_object_get_ex(jobj, keyword, &jvalue))
+		return false;
+
+	if (json_object_get_type(jvalue) != json_type_boolean) {
+		l_error("Error: %s should contain a boolean value\n",
+								keyword);
+		return false;
+	}
+
+	*value = json_object_get_boolean(jvalue);
+
+	return true;
+}
+
+static bool write_bool(json_object *jobj, const char *keyword, bool val)
+{
+	json_object *jval;
+
+	json_object_object_del(jobj, keyword);
+
+	jval = json_object_new_boolean(val);
+	if (!jval)
+		return false;
+
+	json_object_object_add(jobj, keyword, jval);
+	return true;
+}
+
 static json_object *get_key_object(json_object *jarray, uint16_t idx)
 {
 	int i, sz = json_object_array_length(jarray);
@@ -347,6 +379,20 @@ static uint16_t node_parse_key(json_object *jarray, int i)
 	return (uint16_t)idx;
 }
 
+static bool node_check_key_updated(json_object *jarray, int i, bool *updated)
+{
+	json_object *jkey;
+
+	jkey = json_object_array_get_idx(jarray, i);
+	if (!jkey)
+		return false;
+
+	if (!get_bool(jkey, "updated", updated))
+		return false;
+
+	return true;
+}
+
 static int compare_group_addr(const void *a, const void *b, void *user_data)
 {
 	const struct mesh_group *grp0 = a;
@@ -483,10 +529,17 @@ static void load_remotes(json_object *jcfg)
 		remote_add_node((const uint8_t *)uuid, unicast, ele_cnt,
 								key_idx);
 		for (j = 1; j < key_cnt; j++) {
+			bool updated = false;
+
 			key_idx = node_parse_key(jarray, j);
 
-			if (key_idx != KEY_IDX_INVALID)
-				remote_add_net_key(unicast, key_idx);
+			if (key_idx == KEY_IDX_INVALID)
+				continue;
+
+			remote_add_net_key(unicast, key_idx, false);
+
+			node_check_key_updated(jarray, j, &updated);
+			remote_update_net_key(unicast, key_idx, updated, false);
 		}
 
 		json_object_object_get_ex(jnode, "appKeys", &jarray);
@@ -496,10 +549,17 @@ static void load_remotes(json_object *jcfg)
 		key_cnt = json_object_array_length(jarray);
 
 		for (j = 0; j < key_cnt; j++) {
+			bool updated = false;
+
 			key_idx = node_parse_key(jarray, j);
 
-			if (key_idx != KEY_IDX_INVALID)
-				remote_add_app_key(unicast, key_idx);
+			if (key_idx == KEY_IDX_INVALID)
+				continue;
+
+			remote_add_app_key(unicast, key_idx, false);
+
+			node_check_key_updated(jarray, j, &updated);
+			remote_update_app_key(unicast, key_idx, updated, false);
 		}
 
 		load_composition(jnode, unicast);
@@ -554,28 +614,19 @@ static bool add_node_key(json_object *jobj, const char *desc, uint16_t idx)
 
 	jkey = json_object_new_object();
 
-	if (!write_int(jkey, "index", (int)idx)) {
-		json_object_put(jkey);
-		return false;
-	}
+	if (!write_int(jkey, "index", (int)idx))
+		goto fail;
+
+	if (!write_bool(jkey, "updated", false))
+		goto fail;
 
 	json_object_array_add(jarray, jkey);
 
 	return save_config();
-}
 
-bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx)
-{
-	json_object *jnode;
-
-	if (!cfg || !cfg->jcfg)
-		return false;
-
-	jnode = get_node_by_unicast(unicast);
-	if (!jnode)
-		return false;
-
-	return add_node_key(jnode, "netKeys", idx);
+fail:
+	json_object_put(jkey);
+	return false;
 }
 
 bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl)
@@ -628,6 +679,20 @@ static bool delete_key(json_object *jobj, const char *desc, uint16_t idx)
 	return save_config();
 }
 
+bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx)
+{
+	json_object *jnode;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(unicast);
+	if (!jnode)
+		return false;
+
+	return add_node_key(jnode, "netKeys", idx);
+}
+
 bool mesh_db_node_net_key_del(uint16_t unicast, uint16_t net_idx)
 {
 	json_object *jnode;
@@ -640,6 +705,45 @@ bool mesh_db_node_net_key_del(uint16_t unicast, uint16_t net_idx)
 		return false;
 
 	return delete_key(jnode, "netKeys", net_idx);
+}
+
+static bool key_update(uint16_t unicast, int16_t idx, bool updated,
+							const char *desc)
+{
+	json_object *jnode, *jarray;
+	int i, sz;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(unicast);
+	if (!jnode)
+		return false;
+
+	if (!json_object_object_get_ex(jnode, desc, &jarray))
+		return false;
+
+	sz = json_object_array_length(jarray);
+
+	for (i = 0; i < sz; ++i) {
+		json_object *jentry;
+		int val;
+
+		jentry = json_object_array_get_idx(jarray, i);
+
+		if (!get_int(jentry, "index", &val))
+			continue;
+
+		if ((val == idx) && write_bool(jentry, "updated", updated))
+			return save_config();
+	}
+
+	return false;
+}
+
+bool mesh_db_node_net_key_update(uint16_t unicast, uint16_t idx, bool updated)
+{
+	return key_update(unicast, idx, updated, "netKeys");
 }
 
 bool mesh_db_node_app_key_add(uint16_t unicast, uint16_t idx)
@@ -668,6 +772,11 @@ bool mesh_db_node_app_key_del(uint16_t unicast, uint16_t idx)
 		return false;
 
 	return delete_key(jnode, "appKeys", idx);
+}
+
+bool mesh_db_node_app_key_update(uint16_t unicast, uint16_t idx, bool updated)
+{
+	return key_update(unicast, idx, updated, "appKeys");
 }
 
 static bool load_keys(json_object *jobj)

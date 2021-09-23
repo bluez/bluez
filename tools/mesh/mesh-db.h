@@ -38,8 +38,10 @@ bool mesh_db_node_set_net_transmit(uint16_t unicast, uint8_t cnt,
 							uint16_t interval);
 bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx);
 bool mesh_db_node_net_key_del(uint16_t unicast, uint16_t idx);
+bool mesh_db_node_net_key_update(uint16_t unicast, uint16_t idx, bool updated);
 bool mesh_db_node_app_key_add(uint16_t unicast, uint16_t idx);
 bool mesh_db_node_app_key_del(uint16_t unicast, uint16_t idx);
+bool mesh_db_node_app_key_update(uint16_t unicast, uint16_t idx, bool updated);
 bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl);
 bool mesh_db_node_write_mode(uint16_t unicast, const char *keyword, int value);
 bool mesh_db_node_model_binding_add(uint16_t unicast, uint8_t ele, bool vendor,
