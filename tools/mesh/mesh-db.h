@@ -82,3 +82,10 @@ struct l_queue *mesh_db_load_groups(void);
 bool mesh_db_add_group(struct mesh_group *grp);
 bool mesh_db_add_rejected_addr(uint16_t unicast, uint32_t iv_index);
 bool mesh_db_clear_rejected(uint32_t iv_index);
+bool mesh_db_set_device_key(void *expt_cfg, uint16_t unicast, uint8_t key[16]);
+bool mesh_db_set_net_key(void *expt_cfg, uint16_t idx, uint8_t key[16],
+					uint8_t *old_key, uint8_t phase);
+bool mesh_db_set_app_key(void *expt_cfg, uint16_t net_idx, uint16_t app_idx,
+					uint8_t key[16], uint8_t *old_key);
+void *mesh_db_prepare_export(void);
+bool mesh_db_finish_export(bool is_error, void *expt_cfg, const char *fname);

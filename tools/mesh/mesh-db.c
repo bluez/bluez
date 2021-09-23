@@ -48,6 +48,13 @@ static struct mesh_db *cfg;
 static const char *bak_ext = ".bak";
 static const char *tmp_ext = ".tmp";
 
+static const char *js_schema = "http://json-schema.org/draft-04/schema#";
+static const char *schema_id = "http://www.bluetooth.com/specifications/"
+				"assigned-numbers/mesh-profile/"
+				"cdb-schema.json#";
+const char *schema_version = "1.0.0";
+
+
 static bool add_string(json_object *jobj, const char *desc, const char *str)
 {
 	json_object *jstring = json_object_new_string(str);
@@ -2411,4 +2418,188 @@ fail:
 	release_config();
 
 	return false;
+}
+
+bool mesh_db_set_device_key(void *expt_cfg, uint16_t unicast, uint8_t key[16])
+{
+	json_object *jnode;
+
+	if (!expt_cfg)
+		return false;
+
+	jnode = get_node_by_unicast(expt_cfg, unicast);
+	if (!jnode)
+		return false;
+
+	return add_u8_16(jnode, "deviceKey", key);
+}
+
+bool mesh_db_set_net_key(void *expt_cfg, uint16_t idx, uint8_t key[16],
+					uint8_t *old_key, uint8_t phase)
+{
+	json_object *jarray, *jkey;
+
+	if (!expt_cfg)
+		return false;
+
+	json_object_object_get_ex(expt_cfg, "netKeys", &jarray);
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	jkey = get_key_object(jarray, idx);
+	if (!jkey)
+		return false;
+
+	if (!write_int(jkey, "phase", phase))
+		return false;
+
+	if (!add_u8_16(jkey, "key", key))
+		return false;
+
+	if (old_key && !(!add_u8_16(jkey, "oldKey", old_key)))
+		return false;
+
+	return true;
+}
+
+
+bool mesh_db_set_app_key(void *expt_cfg, uint16_t net_idx, uint16_t app_idx,
+					uint8_t key[16], uint8_t *old_key)
+{
+	json_object *jarray, *jkey;
+
+	if (!expt_cfg)
+		return false;
+
+	json_object_object_get_ex(expt_cfg, "appKeys", &jarray);
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	jkey = get_key_object(jarray, app_idx);
+	if (!jkey)
+		return false;
+
+	if (!add_u8_16(jkey, "key", key))
+		return false;
+
+	if (old_key && !(!add_u8_16(jkey, "oldKey", old_key)))
+		return false;
+
+	return true;
+}
+
+void *mesh_db_prepare_export(void)
+{
+	json_object *export = NULL, *jarray;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	if (json_object_deep_copy(cfg->jcfg, &export, NULL) != 0)
+		return NULL;
+
+	/* Delete token */
+	json_object_object_del(export, "token");
+
+	/* Delete IV index */
+	json_object_object_del(export, "ivIndex");
+
+	/* Scenes are not supported. Just add an empty array */
+	jarray = json_object_new_array();
+	json_object_object_add(export, "scenes", jarray);
+
+	write_bool(export, "partial", false);
+
+	return export;
+}
+
+bool mesh_db_finish_export(bool is_error, void *expt_cfg, const char *fname)
+{
+	FILE *outfile = NULL;
+	const char *str, *hdr;
+	json_object *jhdr = NULL;
+	bool result = false;
+	char *pos;
+
+	uint32_t sz;
+
+	if (!expt_cfg)
+		return false;
+
+	if (is_error) {
+		json_object_put(expt_cfg);
+		return true;
+	}
+
+	if (!fname)
+		goto done;
+
+	outfile = fopen(fname, "w");
+	if (!outfile) {
+		l_error("Failed to save configuration to %s", fname);
+		goto done;
+	}
+
+	jhdr = json_object_new_object();
+	if (!add_string(jhdr, "$schema", js_schema))
+		goto done;
+
+	if (!add_string(jhdr, "id", schema_id))
+		goto done;
+
+	if (!add_string(jhdr, "version", schema_version))
+		goto done;
+
+	hdr = json_object_to_json_string_ext(jhdr, JSON_C_TO_STRING_PRETTY |
+						JSON_C_TO_STRING_NOSLASHESCAPE);
+
+	str = json_object_to_json_string_ext(expt_cfg, JSON_C_TO_STRING_PRETTY |
+						JSON_C_TO_STRING_NOSLASHESCAPE);
+
+	if (!hdr || !str)
+		goto done;
+
+	/*
+	 * Write two strings to the output while stripping closing "}" from the
+	 * header string and opening "{" from the config object.
+	 */
+
+	pos = strrchr(hdr, '}');
+	if (!pos)
+		goto done;
+
+	*pos = '\0';
+
+	pos = strrchr(hdr, '"');
+	if (!pos)
+		goto done;
+
+	pos[1] = ',';
+
+	if (fwrite(hdr, sizeof(char), strlen(hdr), outfile) < strlen(hdr))
+		goto done;
+
+	pos = strchr(str, '{');
+	if (!pos || pos[1] == '\0')
+		goto done;
+
+	pos++;
+
+	sz = strlen(pos);
+
+	if (fwrite(pos, sizeof(char), sz, outfile) < sz)
+		goto done;
+
+	result = true;
+
+done:
+	if (outfile)
+		fclose(outfile);
+
+	json_object_put(expt_cfg);
+
+	if (jhdr)
+		json_object_put(jhdr);
+
+	return result;
 }
