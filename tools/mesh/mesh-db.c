@@ -1590,6 +1590,10 @@ bool mesh_db_add_group(struct mesh_group *grp)
 			goto fail;
 	}
 
+	/* Initialize parent group to unassigned address for now*/
+	if (!write_uint16_hex(jgroup, "parentAddress", UNASSIGNED_ADDRESS))
+		goto fail;
+
 	json_object_array_add(jgroups, jgroup);
 
 	return save_config();
