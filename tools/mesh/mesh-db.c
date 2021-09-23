@@ -658,6 +658,162 @@ bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl)
 	return save_config();
 }
 
+static json_object *get_element(uint16_t unicast, uint16_t ele_addr)
+{
+	json_object *jnode, *jarray;
+	int i, ele_cnt;
+
+	jnode = get_node_by_unicast(unicast);
+	if (!jnode)
+		return false;
+
+	if (!json_object_object_get_ex(jnode, "elements", &jarray))
+		return NULL;
+
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return NULL;
+
+	ele_cnt = json_object_array_length(jarray);
+
+	for (i = 0; i < ele_cnt; ++i) {
+		json_object *jentry, *jval;
+		int32_t index;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		if (!json_object_object_get_ex(jentry, "index", &jval))
+			return NULL;
+
+		index = json_object_get_int(jval);
+		if (index > 0xff)
+			return NULL;
+
+		if (ele_addr == unicast + index)
+			return jentry;
+	}
+
+	return NULL;
+}
+
+static json_object *get_model(uint16_t unicast, uint16_t ele_addr,
+						uint32_t mod_id, bool vendor)
+{
+	json_object *jelement, *jarray;
+	int i, sz;
+
+	jelement = get_element(unicast, ele_addr);
+	if (!jelement)
+		return false;
+
+	if (!json_object_object_get_ex(jelement, "models", &jarray))
+		return NULL;
+
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return NULL;
+
+	if (!vendor)
+		mod_id = mod_id & ~VENDOR_ID_MASK;
+
+	sz = json_object_array_length(jarray);
+
+	for (i = 0; i < sz; ++i) {
+		json_object *jentry, *jval;
+		uint32_t id, len;
+		const char *str;
+
+		jentry = json_object_array_get_idx(jarray, i);
+		if (!json_object_object_get_ex(jentry, "modelId",
+								&jval))
+			return NULL;
+
+		str = json_object_get_string(jval);
+		len = strlen(str);
+		if (len != 4 && len != 8)
+			return NULL;
+
+		if ((len == 4 && vendor) || (len == 8 && !vendor))
+			continue;
+
+		if (sscanf(str, "%08x", &id) != 1)
+			return NULL;
+
+		if (id == mod_id)
+			return jentry;
+	}
+
+	return NULL;
+}
+
+static void jarray_int_del(json_object *jarray, int val)
+{
+	int i, sz = json_object_array_length(jarray);
+
+	for (i = 0; i < sz; ++i) {
+		json_object *jentry;
+
+		jentry = json_object_array_get_idx(jarray, i);
+
+		if (val == json_object_get_int(jentry)) {
+			json_object_array_del_idx(jarray, i, 1);
+			return;
+		}
+	}
+}
+
+static bool update_model_int_array(uint16_t unicast, uint16_t ele_addr,
+					bool vendor, uint32_t mod_id,
+					int val, const char *keyword, bool add)
+{
+	json_object *jarray, *jmod, *jvalue;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jmod = get_model(unicast, ele_addr, mod_id, vendor);
+	if (!jmod)
+		return false;
+
+	if (!json_object_object_get_ex(jmod, keyword, &jarray))
+		return false;
+
+	if (!jarray || json_object_get_type(jarray) != json_type_array)
+		return false;
+
+	jarray_int_del(jarray, val);
+
+	if (!add)
+		return true;
+
+	jvalue = json_object_new_int(val);
+	if (!jvalue)
+		return false;
+
+	json_object_array_add(jarray, jvalue);
+
+	return save_config();
+}
+
+bool mesh_db_node_model_bind(uint16_t unicast, uint16_t ele_addr, bool vendor,
+					uint32_t mod_id, uint16_t app_idx)
+{
+	char buf[5];
+
+	snprintf(buf, 5, "%4.4x", app_idx);
+
+	return update_model_int_array(unicast, ele_addr, vendor, mod_id,
+						(int) app_idx, "bind", true);
+}
+
+bool mesh_db_node_model_unbind(uint16_t unicast, uint16_t ele_addr, bool vendor,
+					uint32_t mod_id, uint16_t app_idx)
+{
+	char buf[5];
+
+	snprintf(buf, 5, "%4.4x", app_idx);
+
+	return update_model_int_array(unicast, ele_addr, vendor, mod_id,
+						(int) app_idx, "bind", false);
+}
+
 static void jarray_key_del(json_object *jarray, int16_t idx)
 {
 	int i, sz = json_object_array_length(jarray);
@@ -1172,7 +1328,7 @@ bool mesh_db_del_node(uint16_t unicast)
 
 static json_object *init_model(uint16_t mod_id)
 {
-	json_object *jmod;
+	json_object *jmod, *jarray;
 
 	jmod = json_object_new_object();
 
@@ -1181,12 +1337,15 @@ static json_object *init_model(uint16_t mod_id)
 		return NULL;
 	}
 
+	jarray = json_object_new_array();
+	json_object_object_add(jmod, "bind", jarray);
+
 	return jmod;
 }
 
 static json_object *init_vendor_model(uint32_t mod_id)
 {
-	json_object *jmod;
+	json_object *jmod, *jarray;
 
 	jmod = json_object_new_object();
 
@@ -1194,6 +1353,9 @@ static json_object *init_vendor_model(uint32_t mod_id)
 		json_object_put(jmod);
 		return NULL;
 	}
+
+	jarray = json_object_new_array();
+	json_object_object_add(jmod, "bind", jarray);
 
 	return jmod;
 }

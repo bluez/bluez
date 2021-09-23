@@ -340,7 +340,7 @@ static void print_pub(uint16_t ele_addr, uint32_t mod_id,
 		bt_shell_printf("\tModel: %8.8x\n", mod_id);
 	else
 		bt_shell_printf("\tModel: %4.4x\n",
-				(uint16_t) (mod_id & 0xffff));
+					(uint16_t) (mod_id & ~VENDOR_ID_MASK));
 
 	bt_shell_printf("\tApp Key Idx: %u (0x%3.3x)\n", pub->app_idx,
 								pub->app_idx);
@@ -552,9 +552,19 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 
 		bt_shell_printf("Element Addr\t%4.4x\n", addr);
 
-		print_mod_id(data + 5, len == 9, "");
+		mod_id = print_mod_id(data + 5, len == 9, "");
 
 		bt_shell_printf("AppIdx\t\t%u (0x%3.3x)\n ", app_idx, app_idx);
+
+		if (data[0] != MESH_STATUS_SUCCESS || !cmd)
+			break;
+
+		if (cmd->opcode == OP_MODEL_APP_BIND)
+			mesh_db_node_model_bind(src, addr, len == 9, mod_id,
+								app_idx);
+		else
+			mesh_db_node_model_unbind(src, addr, len == 9, mod_id,
+								app_idx);
 
 		break;
 

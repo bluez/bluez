@@ -44,9 +44,9 @@ bool mesh_db_node_app_key_del(uint16_t unicast, uint16_t idx);
 bool mesh_db_node_app_key_update(uint16_t unicast, uint16_t idx, bool updated);
 bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl);
 bool mesh_db_node_write_mode(uint16_t unicast, const char *keyword, int value);
-bool mesh_db_node_model_binding_add(uint16_t unicast, uint8_t ele, bool vendor,
+bool mesh_db_node_model_bind(uint16_t unicast, uint16_t ele_addr, bool vendor,
 					uint32_t mod_id, uint16_t app_idx);
-bool mesh_db_node_model_binding_del(uint16_t unicast, uint8_t ele, bool vendor,
+bool mesh_db_node_model_unbind(uint16_t unicast, uint16_t ele_addr, bool vendor,
 					uint32_t mod_id, uint16_t app_idx);
 struct l_queue *mesh_db_load_groups(void);
 bool mesh_db_add_group(struct mesh_group *grp);
