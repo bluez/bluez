@@ -728,6 +728,62 @@ Methods:
 		PossibleErrors:
 			org.bluez.mesh.Error.InvalidArguments
 
+	dict ExportKeys(void)
+
+		This method is used by the application to export information
+		about network keys, application keys and device keys present
+		in the local key database.
+
+		dict
+			A dictionary that contains information for the keys
+			stored in the keyring with the following keys defined:
+
+			NetKeys:
+				array{struct} net_keys:
+
+				uint16 index
+					Subnet index
+
+				array{byte}[16] key
+
+				dict:
+					A dictionary that contains optional
+					key info with the following keys
+					defined:
+
+					uint8 Phase
+						Key Refresh phase of the subnet
+
+					array{byte}[16] OldKey
+
+					array{struct} AppKeys:
+
+						uint16 index
+
+							Application key index
+
+						array{byte}[16] key
+
+						dict:
+							A dictionary of optional
+							key info with the
+							following keys defined:
+
+							array{byte}[16] OldKey
+
+			DevKeys:
+				array{struct} dev_keys:
+
+				Device Key information for known remote
+				nodes in the configured Mesh network
+
+				uint16 unicast
+
+					Unicast address of the node's primary
+					element
+
+				array{byte}[16] key
+
 Mesh Application Hierarchy
 ==========================
 Service		unique name
