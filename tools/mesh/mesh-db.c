@@ -54,6 +54,9 @@ static bool add_string(json_object *jobj, const char *desc, const char *str)
 	if (!jstring)
 		return false;
 
+	/* Overwrite old value if present */
+	json_object_object_del(jobj, desc);
+
 	json_object_object_add(jobj, desc, jstring);
 	return true;
 }
@@ -68,8 +71,6 @@ static bool set_timestamp(json_object *jobj)
 	tp = gmtime(&time_raw);
 
 	strftime(buf, 80, "%FT%TZ", tp);
-
-	json_object_object_del(jobj, "timestamp");
 
 	return add_string(jobj, "timestamp", buf);
 }
@@ -190,11 +191,12 @@ static bool write_int(json_object *jobj, const char *keyword, int val)
 {
 	json_object *jval;
 
-	json_object_object_del(jobj, keyword);
-
 	jval = json_object_new_int(val);
 	if (!jval)
 		return false;
+
+	/* Overwrite old value if present */
+	json_object_object_del(jobj, keyword);
 
 	json_object_object_add(jobj, keyword, jval);
 	return true;
@@ -222,11 +224,12 @@ static bool write_bool(json_object *jobj, const char *keyword, bool val)
 {
 	json_object *jval;
 
-	json_object_object_del(jobj, keyword);
-
 	jval = json_object_new_boolean(val);
 	if (!jval)
 		return false;
+
+	/* Overwrite old value if present */
+	json_object_object_del(jobj, keyword);
 
 	json_object_object_add(jobj, keyword, jval);
 	return true;
@@ -261,6 +264,9 @@ static bool write_uint16_hex(json_object *jobj, const char *desc,
 	jstring = json_object_new_string(buf);
 	if (!jstring)
 		return false;
+
+	/* Overwrite old value if present */
+	json_object_object_del(jobj, desc);
 
 	json_object_object_add(jobj, desc, jstring);
 	return true;
@@ -327,6 +333,9 @@ static bool add_u8_8(json_object *jobj, const char *desc,
 	if (!jstring)
 		return false;
 
+	/* Overwrite old value if present */
+	json_object_object_del(jobj, desc);
+
 	json_object_object_add(jobj, desc, jstring);
 	return true;
 }
@@ -341,6 +350,9 @@ static bool add_u8_16(json_object *jobj, const char *desc,
 	jstring = json_object_new_string(buf);
 	if (!jstring)
 		return false;
+
+	/* Overwrite old value if present */
+	json_object_object_del(jobj, desc);
 
 	json_object_object_add(jobj, desc, jstring);
 	return true;
