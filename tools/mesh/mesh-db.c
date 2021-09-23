@@ -293,10 +293,11 @@ static bool write_uint32_hex(json_object *jobj, const char *desc, uint32_t val)
 static json_object *get_node_by_uuid(json_object *jcfg, uint8_t uuid[16])
 {
 	json_object *jarray = NULL;
-	char buf[33];
+	char buf[37];
 	int i, sz;
 
-	hex2str(uuid, 16, buf, sizeof(buf));
+	if (!l_uuid_to_string(uuid, buf, sizeof(buf)))
+		return NULL;
 
 	json_object_object_get_ex(jcfg, "nodes", &jarray);
 	if (!jarray || json_object_get_type(jarray) != json_type_array)
@@ -313,7 +314,7 @@ static json_object *get_node_by_uuid(json_object *jcfg, uint8_t uuid[16])
 			return NULL;
 
 		str = json_object_get_string(jval);
-		if (strlen(str) != 32)
+		if (strlen(str) != 36)
 			continue;
 
 		if (!strcmp(buf, str))
@@ -506,10 +507,11 @@ static void load_remotes(json_object *jcfg)
 			continue;
 
 		str = json_object_get_string(jval);
-		if (strlen(str) != 32)
+		if (strlen(str) != 36)
 			continue;
 
-		str2hex(str, 32, uuid, 16);
+		if (!l_uuid_from_string(str, uuid))
+			continue;
 
 		if (!json_object_object_get_ex(jnode, "unicastAddress", &jval))
 			continue;
@@ -1698,6 +1700,7 @@ bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 {
 	json_object *jnode;
 	json_object *jelements, *jnodes, *jnetkeys, *jappkeys;
+	char buf[37];
 
 	if (!cfg || !cfg->jcfg)
 		return false;
@@ -1712,9 +1715,11 @@ bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 	if (!jnode)
 		return false;
 
-	if (!add_u8_16(jnode, "UUID", uuid))
+	if (!l_uuid_to_string(uuid, buf, sizeof(buf)))
 		goto fail;
 
+	if (!add_string(jnode, "UUID", buf))
+		goto fail;
 
 	if (!add_string(jnode, "security", "secure"))
 		goto fail;
@@ -2065,6 +2070,7 @@ bool mesh_db_add_provisioner(const char *name, uint8_t uuid[16],
 					uint16_t group_low, uint16_t group_high)
 {
 	json_object *jprovs, *jprov, *jscenes;
+	char buf[37];
 
 	if (!cfg || !cfg->jcfg)
 		return false;
@@ -2080,7 +2086,10 @@ bool mesh_db_add_provisioner(const char *name, uint8_t uuid[16],
 	if (!add_string(jprov, "provisionerName", name))
 		goto fail;
 
-	if (!add_u8_16(jprov, "UUID", uuid))
+	if (!l_uuid_to_string(uuid, buf, sizeof(buf)))
+		goto fail;
+
+	if (!add_string(jprov, "UUID", buf))
 		goto fail;
 
 	if (!add_range(jprov, "allocatedUnicastRange", unicast_low,
@@ -2270,6 +2279,7 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 {
 	json_object *jcfg, *jarray;
 	uint8_t uuid[16];
+	char buf[37];
 
 	if (cfg)
 		return false;
@@ -2291,7 +2301,10 @@ bool mesh_db_create(const char *fname, const uint8_t token[8],
 
 	l_uuid_v4(uuid);
 
-	if (!add_u8_16(jcfg, "meshUUID", uuid))
+	if (!l_uuid_to_string(uuid, buf, sizeof(buf)))
+		goto fail;
+
+	if (!add_string(jcfg, "meshUUID", buf))
 		goto fail;
 
 	if (mesh_name && !add_string(jcfg, "meshName", mesh_name))
