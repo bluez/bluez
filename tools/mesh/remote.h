@@ -24,7 +24,7 @@ bool remote_add_app_key(uint16_t addr, uint16_t app_idx, bool save);
 bool remote_del_app_key(uint16_t addr, uint16_t app_idx);
 bool remote_update_app_key(uint16_t addr, uint16_t app_idx, bool update,
 								bool save);
-void remote_finish_key_refresh(uint16_t addr, uint16_t net_idx);
+bool remote_finish_key_refresh(uint16_t addr, uint16_t net_idx);
 void remote_set_composition(uint16_t addr, bool comp);
 bool remote_has_composition(uint16_t addr);
 uint16_t remote_get_subnet_idx(uint16_t addr);

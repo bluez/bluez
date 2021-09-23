@@ -351,18 +351,19 @@ bool remote_update_app_key(uint16_t addr, uint16_t app_idx, bool update,
 		return true;
 }
 
-void remote_finish_key_refresh(uint16_t addr, uint16_t net_idx)
+bool remote_finish_key_refresh(uint16_t addr, uint16_t net_idx)
 {
 	struct remote_node *rmt;
 	struct remote_key *key;
 	const struct l_queue_entry *l;
+	bool res = true;
 
 	rmt = l_queue_find(nodes, match_node_addr, L_UINT_TO_PTR(addr));
 	if (!rmt)
-		return;
+		return false;
 
 	if (!remote_update_net_key(addr, net_idx, false, true))
-		return;
+		return false;
 
 	l = l_queue_get_entries(rmt->app_keys);
 
@@ -374,9 +375,10 @@ void remote_finish_key_refresh(uint16_t addr, uint16_t net_idx)
 
 		key->updated = false;
 
-		mesh_db_node_app_key_update(addr, key->idx, false);
+		res &= mesh_db_node_app_key_update(addr, key->idx, false);
 	}
 
+	return res;
 }
 
 uint16_t remote_get_subnet_idx(uint16_t addr)
