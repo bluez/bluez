@@ -3074,6 +3074,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 	struct bearer_state *state = get_state(device, bdaddr_type);
 	DBusMessage *reply;
 	bool remove_device = false;
+	bool paired_status_updated = false;
 
 	if (!state->connected)
 		return;
@@ -3112,18 +3113,33 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 		dbus_message_unref(msg);
 	}
 
-	if (state->paired && !state->bonded) {
-		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
-								bdaddr_type);
-
-		state->paired = false;
-
-		/* report change only if both bearers are unpaired */
-		if (!device->bredr_state.paired && !device->le_state.paired)
-			g_dbus_emit_property_changed(dbus_conn, device->path,
-							DEVICE_INTERFACE,
-							"Paired");
+	/* Check paired status of both bearers since it's possible to be
+	 * paired but not connected via link key to LTK conversion.
+	 */
+	if (!device->bredr_state.connected && device->bredr_state.paired &&
+						!device->bredr_state.bonded) {
+		btd_adapter_remove_bonding(device->adapter,
+						&device->bdaddr,
+						BDADDR_BREDR);
+		device->bredr_state.paired = false;
+		paired_status_updated = true;
 	}
+
+	if (!device->le_state.connected && device->le_state.paired &&
+						!device->le_state.bonded) {
+		btd_adapter_remove_bonding(device->adapter,
+						&device->bdaddr,
+						device->bdaddr_type);
+		device->le_state.paired = false;
+		paired_status_updated = true;
+	}
+
+	/* report change only if both bearers are unpaired */
+	if (!device->bredr_state.paired && !device->le_state.paired &&
+							paired_status_updated)
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE,
+						"Paired");
 
 	if (device->bredr_state.connected || device->le_state.connected)
 		return;
