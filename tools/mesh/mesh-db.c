@@ -517,12 +517,18 @@ static void load_remotes(json_object *jcfg)
 static bool add_app_key(json_object *jobj, uint16_t net_idx, uint16_t app_idx)
 {
 	json_object *jkey, *jarray;
+	char buf[12];
 
 	json_object_object_get_ex(jobj, "appKeys", &jarray);
 	if (!jarray || json_object_get_type(jarray) != json_type_array)
 		return false;
 
 	jkey = json_object_new_object();
+
+	snprintf(buf, 12, "AppKey %4.4x", app_idx);
+
+	if (!add_string(jkey, "name", buf))
+		goto fail;
 
 	if (!write_int(jkey, "boundNetKey", (int)net_idx))
 		goto fail;
@@ -721,6 +727,7 @@ static bool load_keys(json_object *jobj)
 bool mesh_db_net_key_add(uint16_t net_idx)
 {
 	json_object *jkey, *jarray;
+	char buf[12];
 
 	if (!cfg || !cfg->jcfg)
 		return false;
@@ -734,10 +741,18 @@ bool mesh_db_net_key_add(uint16_t net_idx)
 
 	jkey = json_object_new_object();
 
+	snprintf(buf, 12, "Subnet %4.4x", net_idx);
+
+	if (!add_string(jkey, "name", buf))
+		goto fail;
+
 	if (!write_int(jkey, "index", net_idx))
 		goto fail;
 
 	if (!write_int(jkey, "phase", KEY_REFRESH_PHASE_NONE))
+		goto fail;
+
+	if (!add_string(jkey, "minSecurity", "secure"))
 		goto fail;
 
 	if (!set_timestamp(jkey))
