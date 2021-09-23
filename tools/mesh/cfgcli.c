@@ -400,7 +400,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 {
 	uint32_t opcode, mod_id;
 	const struct cfg_cmd *cmd;
-	uint16_t app_idx, net_idx, addr, ele_addr;
+	uint16_t app_idx, net_idx, addr, ele_addr, features;
 	struct mesh_group *grp;
 	struct model_pub pub;
 	int n;
@@ -813,13 +813,21 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		bt_shell_printf("\nNode %4.4x Heartbeat publish status %s\n",
 				src, mesh_status_str(data[0]));
 
-		bt_shell_printf("Destination\t%4.4x\n", get_le16(data + 1));
-		bt_shell_printf("Count\t\t%2.2x\n", data[3]);
-		bt_shell_printf("Period\t\t%2.2x\n", data[4]);
+		if (data[0] != MESH_STATUS_SUCCESS)
+			return true;
+
+		addr = get_le16(data + 1);
+		bt_shell_printf("Destination\t%4.4x\n", addr);
+		bt_shell_printf("CountLog\t\t%2.2x\n", data[3]);
+		bt_shell_printf("PeriodLog\t\t%2.2x\n", data[4]);
 		bt_shell_printf("TTL\t\t%2.2x\n", data[5]);
-		bt_shell_printf("Features\t%4.4x\n", get_le16(data + 6));
+		features = get_le16(data + 6);
+		bt_shell_printf("Features\t%4.4x\n", features);
 		net_idx = get_le16(data + 8);
 		bt_shell_printf("Net_Idx\t%u (0x%3.3x)\n", net_idx, net_idx);
+
+		saved = mesh_db_node_set_hb_pub(src, addr, net_idx, data[4],
+							data[5], features);
 		break;
 
 	/* Per Mesh Profile 4.3.2.66 */
@@ -830,12 +838,20 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		bt_shell_printf("\nNode %4.4x Heartbeat subscribe status %s\n",
 				src, mesh_status_str(data[0]));
 
-		bt_shell_printf("Source\t\t%4.4x\n", get_le16(data + 1));
-		bt_shell_printf("Destination\t%4.4x\n", get_le16(data + 3));
+		if (data[0] != MESH_STATUS_SUCCESS)
+			return true;
+
+		ele_addr = get_le16(data + 1);
+		bt_shell_printf("Source\t\t%4.4x\n", ele_addr);
+		addr = get_le16(data + 3);
+		bt_shell_printf("Destination\t%4.4x\n", addr);
 		bt_shell_printf("Period\t\t%2.2x\n", data[5]);
 		bt_shell_printf("Count\t\t%2.2x\n", data[6]);
 		bt_shell_printf("Min Hops\t%2.2x\n", data[7]);
 		bt_shell_printf("Max Hops\t%2.2x\n", data[8]);
+
+		saved = mesh_db_node_set_hb_sub(src, ele_addr, addr);
+
 		break;
 
 	/* Per Mesh Profile 4.3.2.71 */

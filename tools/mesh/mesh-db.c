@@ -963,12 +963,24 @@ static void jarray_string_del(json_object *jarray, const char *str, size_t len)
 	}
 }
 
+static bool add_array_string(json_object *jarray, const char *str)
+{
+	json_object *jstring;
+
+	jstring = json_object_new_string(str);
+	if (!jstring)
+		return false;
+
+	json_object_array_add(jarray, jstring);
+	return true;
+}
+
 static bool update_model_string_array(uint16_t unicast, uint16_t ele_addr,
 						bool vendor, uint32_t mod_id,
 						const char *str, uint32_t len,
 						const char *keyword, bool add)
 {
-	json_object *jarray, *jmod, *jstring;
+	json_object *jarray, *jmod;
 
 	if (!cfg || !cfg->jcfg)
 		return false;
@@ -988,11 +1000,8 @@ static bool update_model_string_array(uint16_t unicast, uint16_t ele_addr,
 	if (!add)
 		return true;
 
-	jstring = json_object_new_string(str);
-	if (!jstring)
+	if (!add_array_string(jarray, str))
 		return false;
-
-	json_object_array_add(jarray, jstring);
 
 	return save_config();
 }
@@ -1176,6 +1185,100 @@ fail:
 		json_object_put(jobj);
 
 	json_object_put(jpub);
+	return false;
+}
+
+bool mesh_db_node_set_hb_pub(uint16_t unicast, uint16_t dst, uint16_t net_idx,
+						uint8_t period_log, uint8_t ttl,
+							uint16_t features)
+{
+	json_object *jnode, *jpub, *jarray = NULL;
+	uint32_t period;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	if (period_log > 0x12 || ttl > 0x7F)
+		return  false;
+
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
+	if (!jnode)
+		return false;
+
+	jpub = json_object_new_object();
+
+	if (!write_uint16_hex(jpub, "address", dst))
+		goto fail;
+
+	period = period_log ? 1 << (period_log - 1) : 0;
+
+	if (!write_int(jpub, "period", period))
+		goto fail;
+
+	if (!write_int(jpub, "ttl", ttl))
+		goto fail;
+
+	if (!write_int(jpub, "index", net_idx))
+		goto fail;
+
+	jarray = json_object_new_array();
+
+	if (features & FEATURE_PROXY)
+		if (!add_array_string(jarray, "proxy"))
+			goto fail;
+
+	if (features & FEATURE_RELAY)
+		if (!add_array_string(jarray, "relay"))
+			goto fail;
+
+	if (features & FEATURE_FRIEND)
+		if (!add_array_string(jarray, "friend"))
+			goto fail;
+
+	if (features & FEATURE_LPN)
+		if (!add_array_string(jarray, "lowPower"))
+			goto fail;
+
+	json_object_object_add(jpub, "features", jarray);
+	json_object_object_del(jnode, "heartbeatPub");
+	json_object_object_add(jnode, "heartbeatPub", jpub);
+
+	return save_config();
+
+fail:
+	if (jarray)
+		json_object_put(jarray);
+
+	json_object_put(jpub);
+	return false;
+}
+
+bool mesh_db_node_set_hb_sub(uint16_t unicast, uint16_t src, uint16_t dst)
+{
+	json_object *jnode, *jsub;
+
+	if (!cfg || !cfg->jcfg)
+		return false;
+
+	jnode = get_node_by_unicast(cfg->jcfg, unicast);
+	if (!jnode)
+		return false;
+
+	jsub = json_object_new_object();
+
+	if (!write_uint16_hex(jsub, "source", src))
+		goto fail;
+
+	if (!write_uint16_hex(jsub, "destination", dst))
+		goto fail;
+
+	json_object_object_del(jnode, "heartbeatSub");
+	json_object_object_add(jnode, "heartbeatSub", jsub);
+
+	return save_config();
+
+fail:
+	json_object_put(jsub);
 	return false;
 }
 

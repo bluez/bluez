@@ -74,6 +74,10 @@ bool mesh_db_node_model_del_sub_all(uint16_t unicast, uint16_t ele, bool vendor,
 bool mesh_db_node_model_set_pub(uint16_t unicast, uint16_t ele_addr,
 					bool vendor, uint32_t mod_id,
 					struct model_pub *pub, bool virt);
+bool mesh_db_node_set_hb_pub(uint16_t unicast, uint16_t dst, uint16_t net_idx,
+						uint8_t period_log, uint8_t ttl,
+							uint16_t features);
+bool mesh_db_node_set_hb_sub(uint16_t unicast, uint16_t src, uint16_t dst);
 struct l_queue *mesh_db_load_groups(void);
 bool mesh_db_add_group(struct mesh_group *grp);
 bool mesh_db_add_rejected_addr(uint16_t unicast, uint32_t iv_index);
