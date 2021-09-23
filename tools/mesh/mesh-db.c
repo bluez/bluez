@@ -1075,7 +1075,18 @@ bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 	if (!add_u8_16(jnode, "UUID", uuid))
 		goto fail;
 
+
+	if (!add_string(jnode, "security", "secure"))
+		goto fail;
+
+	if (!write_bool(jnode, "excluded", false))
+		goto fail;
+
+	if (!write_bool(jnode, "configComplete", false))
+		goto fail;
+
 	jelements = init_elements(num_els);
+
 	json_object_object_add(jnode, "elements", jelements);
 
 	jnetkeys = json_object_new_array();
