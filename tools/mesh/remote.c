@@ -233,7 +233,7 @@ bool remote_add_net_key(uint16_t addr, uint16_t net_idx, bool save)
 	l_queue_push_tail(rmt->net_keys, key);
 
 	if (save)
-		return mesh_db_node_net_key_add(addr, net_idx);
+		return mesh_db_node_add_net_key(addr, net_idx);
 	else
 		return true;
 }
@@ -252,14 +252,14 @@ bool remote_del_net_key(uint16_t addr, uint16_t net_idx)
 	if (!key)
 		return false;
 
-	mesh_db_node_net_key_del(addr, net_idx);
+	mesh_db_node_del_net_key(addr, net_idx);
 
 	l_free(key);
 	key = l_queue_remove_if(rmt->app_keys, match_bound_key,
 						L_UINT_TO_PTR(net_idx));
 
 	while (key) {
-		mesh_db_node_app_key_del(rmt->unicast, key->idx);
+		mesh_db_node_del_app_key(rmt->unicast, key->idx);
 		l_free(key);
 
 		key = l_queue_remove_if(rmt->app_keys, match_bound_key,
@@ -284,7 +284,7 @@ bool remote_update_net_key(uint16_t addr, uint16_t net_idx, bool update,
 	key->updated = update;
 
 	if (save)
-		return mesh_db_node_net_key_update(addr, net_idx, update);
+		return mesh_db_node_update_net_key(addr, net_idx, update);
 	else
 		return true;
 }
@@ -310,7 +310,7 @@ bool remote_add_app_key(uint16_t addr, uint16_t app_idx, bool save)
 	l_queue_push_tail(rmt->app_keys, key);
 
 	if (save)
-		return mesh_db_node_app_key_add(addr, app_idx);
+		return mesh_db_node_add_app_key(addr, app_idx);
 	else
 		return true;
 }
@@ -328,7 +328,7 @@ bool remote_del_app_key(uint16_t addr, uint16_t app_idx)
 						L_UINT_TO_PTR(app_idx));
 	l_free(key);
 
-	return mesh_db_node_app_key_del(addr, app_idx);
+	return mesh_db_node_del_app_key(addr, app_idx);
 }
 
 bool remote_update_app_key(uint16_t addr, uint16_t app_idx, bool update,
@@ -346,7 +346,7 @@ bool remote_update_app_key(uint16_t addr, uint16_t app_idx, bool update,
 	key->updated = update;
 
 	if (save)
-		return mesh_db_node_app_key_update(addr, app_idx, update);
+		return mesh_db_node_update_app_key(addr, app_idx, update);
 	else
 		return true;
 }
@@ -375,7 +375,7 @@ bool remote_finish_key_refresh(uint16_t addr, uint16_t net_idx)
 
 		key->updated = false;
 
-		res &= mesh_db_node_app_key_update(addr, key->idx, false);
+		res &= mesh_db_node_update_app_key(addr, key->idx, false);
 	}
 
 	return res;

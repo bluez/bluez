@@ -20,13 +20,13 @@ bool mesh_db_load(const char *fname);
 bool mesh_db_get_token(uint8_t token[8]);
 bool mesh_db_set_iv_index(uint32_t ivi);
 uint32_t mesh_db_get_iv_index(void);
-bool mesh_db_net_key_add(uint16_t idx);
-bool mesh_db_net_key_del(uint16_t idx);
-bool mesh_db_net_key_phase_set(uint16_t net_idx, uint8_t phase);
-bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx);
-bool mesh_db_app_key_del(uint16_t app_idx);
-bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high);
 
+bool mesh_db_add_net_key(uint16_t idx);
+bool mesh_db_del_net_key(uint16_t idx);
+bool mesh_db_set_net_key_phase(uint16_t net_idx, uint8_t phase);
+bool mesh_db_add_app_key(uint16_t net_idx, uint16_t app_idx);
+bool mesh_db_del_app_key(uint16_t app_idx);
+bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high);
 bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 							uint16_t net_idx);
 bool mesh_db_del_node(uint16_t unicast);
@@ -37,13 +37,13 @@ bool mesh_db_add_provisioner(const char *name, uint8_t uuid[16],
 				uint16_t group_low, uint16_t group_high);
 bool mesh_db_node_set_net_transmit(uint16_t unicast, uint8_t cnt,
 							uint16_t interval);
-bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx);
-bool mesh_db_node_net_key_del(uint16_t unicast, uint16_t idx);
-bool mesh_db_node_net_key_update(uint16_t unicast, uint16_t idx, bool updated);
-bool mesh_db_node_app_key_add(uint16_t unicast, uint16_t idx);
-bool mesh_db_node_app_key_del(uint16_t unicast, uint16_t idx);
-bool mesh_db_node_app_key_update(uint16_t unicast, uint16_t idx, bool updated);
-bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl);
+bool mesh_db_node_add_net_key(uint16_t unicast, uint16_t idx);
+bool mesh_db_node_del_net_key(uint16_t unicast, uint16_t idx);
+bool mesh_db_node_update_net_key(uint16_t unicast, uint16_t idx, bool updated);
+bool mesh_db_node_add_app_key(uint16_t unicast, uint16_t idx);
+bool mesh_db_node_del_app_key(uint16_t unicast, uint16_t idx);
+bool mesh_db_node_update_app_key(uint16_t unicast, uint16_t idx, bool updated);
+bool mesh_db_node_set_ttl(uint16_t unicast, uint8_t ttl);
 bool mesh_db_node_write_mode(uint16_t unicast, const char *keyword, int value);
 bool mesh_db_node_model_bind(uint16_t unicast, uint16_t ele_addr, bool vendor,
 					uint32_t mod_id, uint16_t app_idx);

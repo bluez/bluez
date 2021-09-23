@@ -617,7 +617,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 			return true;
 
 		bt_shell_printf("Node %4.4x Default TTL %d\n", src, data[0]);
-		saved = mesh_db_node_ttl_set(src, data[0]);
+		saved = mesh_db_node_set_ttl(src, data[0]);
 
 		break;
 

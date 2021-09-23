@@ -648,7 +648,7 @@ fail:
 	return false;
 }
 
-bool mesh_db_node_ttl_set(uint16_t unicast, uint8_t ttl)
+bool mesh_db_node_set_ttl(uint16_t unicast, uint8_t ttl)
 {
 	json_object *jnode;
 
@@ -1106,7 +1106,7 @@ static bool delete_key(json_object *jobj, const char *desc, uint16_t idx)
 	return save_config();
 }
 
-bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx)
+bool mesh_db_node_add_net_key(uint16_t unicast, uint16_t idx)
 {
 	json_object *jnode;
 
@@ -1120,7 +1120,7 @@ bool mesh_db_node_net_key_add(uint16_t unicast, uint16_t idx)
 	return add_node_key(jnode, "netKeys", idx);
 }
 
-bool mesh_db_node_net_key_del(uint16_t unicast, uint16_t net_idx)
+bool mesh_db_node_del_net_key(uint16_t unicast, uint16_t net_idx)
 {
 	json_object *jnode;
 
@@ -1168,12 +1168,12 @@ static bool key_update(uint16_t unicast, int16_t idx, bool updated,
 	return false;
 }
 
-bool mesh_db_node_net_key_update(uint16_t unicast, uint16_t idx, bool updated)
+bool mesh_db_node_update_net_key(uint16_t unicast, uint16_t idx, bool updated)
 {
 	return key_update(unicast, idx, updated, "netKeys");
 }
 
-bool mesh_db_node_app_key_add(uint16_t unicast, uint16_t idx)
+bool mesh_db_node_add_app_key(uint16_t unicast, uint16_t idx)
 {
 	json_object *jnode;
 
@@ -1187,7 +1187,7 @@ bool mesh_db_node_app_key_add(uint16_t unicast, uint16_t idx)
 	return add_node_key(jnode, "appKeys", idx);
 }
 
-bool mesh_db_node_app_key_del(uint16_t unicast, uint16_t idx)
+bool mesh_db_node_del_app_key(uint16_t unicast, uint16_t idx)
 {
 	json_object *jnode;
 
@@ -1201,7 +1201,7 @@ bool mesh_db_node_app_key_del(uint16_t unicast, uint16_t idx)
 	return delete_key(jnode, "appKeys", idx);
 }
 
-bool mesh_db_node_app_key_update(uint16_t unicast, uint16_t idx, bool updated)
+bool mesh_db_node_update_app_key(uint16_t unicast, uint16_t idx, bool updated)
 {
 	return key_update(unicast, idx, updated, "appKeys");
 }
@@ -1260,7 +1260,7 @@ static bool load_keys(json_object *jobj)
 	return true;
 }
 
-bool mesh_db_net_key_add(uint16_t net_idx)
+bool mesh_db_add_net_key(uint16_t net_idx)
 {
 	json_object *jkey, *jarray;
 	char buf[12];
@@ -1303,7 +1303,7 @@ fail:
 	return false;
 }
 
-bool mesh_db_net_key_del(uint16_t net_idx)
+bool mesh_db_del_net_key(uint16_t net_idx)
 {
 	if (!cfg || !cfg->jcfg)
 		return false;
@@ -1311,7 +1311,7 @@ bool mesh_db_net_key_del(uint16_t net_idx)
 	return delete_key(cfg->jcfg, "netKeys", net_idx);
 }
 
-bool mesh_db_net_key_phase_set(uint16_t net_idx, uint8_t phase)
+bool mesh_db_set_net_key_phase(uint16_t net_idx, uint8_t phase)
 {
 	json_object *jval, *jarray, *jkey;
 
@@ -1335,7 +1335,7 @@ bool mesh_db_net_key_phase_set(uint16_t net_idx, uint8_t phase)
 	return save_config();
 }
 
-bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx)
+bool mesh_db_add_app_key(uint16_t net_idx, uint16_t app_idx)
 {
 	if (!cfg || !cfg->jcfg)
 		return false;
@@ -1346,7 +1346,7 @@ bool mesh_db_app_key_add(uint16_t net_idx, uint16_t app_idx)
 	return save_config();
 }
 
-bool mesh_db_app_key_del(uint16_t app_idx)
+bool mesh_db_del_app_key(uint16_t app_idx)
 {
 	if (!cfg || !cfg->jcfg)
 		return false;

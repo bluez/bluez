@@ -1041,15 +1041,15 @@ static void mgr_key_reply(struct l_dbus_proxy *proxy,
 
 	if (!strcmp("CreateSubnet", method)) {
 		keys_add_net_key(idx);
-		mesh_db_net_key_add(idx);
+		mesh_db_add_net_key(idx);
 	} else if (!strcmp("DeleteSubnet", method)) {
 		keys_del_net_key(idx);
-		mesh_db_net_key_del(idx);
+		mesh_db_del_net_key(idx);
 	} else if (!strcmp("UpdateSubnet", method)) {
 		keys_set_net_key_phase(idx, KEY_REFRESH_PHASE_ONE, true);
 	} else if (!strcmp("DeleteAppKey", method)) {
 		keys_del_app_key(idx);
-		mesh_db_app_key_del(idx);
+		mesh_db_del_app_key(idx);
 	}
 }
 
@@ -1133,13 +1133,13 @@ static void add_key_reply(struct l_dbus_proxy *proxy,
 
 	if (!strcmp(method, "ImportSubnet")) {
 		keys_add_net_key(net_idx);
-		mesh_db_net_key_add(net_idx);
+		mesh_db_add_net_key(net_idx);
 		return;
 	}
 
 	app_idx = (uint16_t) req->arg2;
 	keys_add_app_key(net_idx, app_idx);
-	mesh_db_app_key_add(net_idx, app_idx);
+	mesh_db_add_app_key(net_idx, app_idx);
 }
 
 static void import_appkey_setup(struct l_dbus_message *msg, void *user_data)
@@ -1824,7 +1824,7 @@ static struct l_dbus_message *join_complete(struct l_dbus *dbus,
 	}
 
 	keys_add_net_key(PRIMARY_NET_IDX);
-	mesh_db_net_key_add(PRIMARY_NET_IDX);
+	mesh_db_add_net_key(PRIMARY_NET_IDX);
 
 	remote_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
 	mesh_db_add_node(app.uuid, 0x0001, 1, PRIMARY_NET_IDX);
