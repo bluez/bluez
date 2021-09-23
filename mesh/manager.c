@@ -776,6 +776,38 @@ static struct l_dbus_message *set_key_phase_call(struct l_dbus *dbus,
 	return l_dbus_message_new_method_return(msg);
 }
 
+static struct l_dbus_message *export_keys_call(struct l_dbus *dbus,
+						struct l_dbus_message *msg,
+						void *user_data)
+{
+	const char *sender = l_dbus_message_get_sender(msg);
+	struct l_dbus_message_builder *builder;
+	struct l_dbus_message *reply;
+	struct mesh_node *node = user_data;
+
+	l_debug("Export Keys");
+
+	if (strcmp(sender, node_get_owner(node)))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
+
+	reply = l_dbus_message_new_method_return(msg);
+	builder = l_dbus_message_builder_new(reply);
+
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+
+	if (!keyring_build_export_keys_reply(node, builder)) {
+		l_dbus_message_builder_destroy(builder);
+		l_dbus_message_unref(reply);
+		return dbus_error(msg, MESH_ERROR_FAILED, NULL);
+	}
+
+	l_dbus_message_builder_leave_array(builder);
+	l_dbus_message_builder_finalize(builder);
+	l_dbus_message_builder_destroy(builder);
+
+	return reply;
+}
+
 static void setup_management_interface(struct l_dbus_interface *iface)
 {
 	l_dbus_interface_method(iface, "AddNode", 0, add_node_call, "",
@@ -807,6 +839,9 @@ static void setup_management_interface(struct l_dbus_interface *iface)
 							"app_index", "app_key");
 	l_dbus_interface_method(iface, "SetKeyPhase", 0, set_key_phase_call, "",
 						"qy", "net_index", "phase");
+	l_dbus_interface_method(iface, "ExportKeys", 0, export_keys_call,
+							"a(qaya{sv})a(qay)", "",
+							"net_keys", "dev_keys");
 }
 
 bool manager_dbus_init(struct l_dbus *bus)
