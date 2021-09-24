@@ -208,6 +208,7 @@ struct get_total_number_of_items_rsp {
 
 struct avrcp_server {
 	struct btd_adapter *adapter;
+	bool browsing;
 	uint32_t tg_record_id;
 	uint32_t ct_record_id;
 	GSList *players;
@@ -367,21 +368,49 @@ static uint32_t company_ids[] = {
 static void avrcp_register_notification(struct avrcp *session, uint8_t event);
 static GList *player_list_settings(struct avrcp_player *player);
 
-static sdp_record_t *avrcp_ct_record(void)
+static void avrcp_browsing_record(sdp_record_t *record, sdp_data_t *version)
 {
-	sdp_list_t *svclass_id, *pfseq, *apseq, *apseq1, *root;
+	sdp_list_t *apseq;
+	uuid_t l2cap, avctp;
+	sdp_list_t *aproto, *proto[2];
+	sdp_data_t *psm;
+	uint16_t ap = AVCTP_BROWSING_PSM;
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(NULL, &l2cap);
+	psm = sdp_data_alloc(SDP_UINT16, &ap);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(NULL, proto[0]);
+
+	sdp_uuid16_create(&avctp, AVCTP_UUID);
+	proto[1] = sdp_list_append(NULL, &avctp);
+	proto[1] = sdp_list_append(proto[1], version);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(NULL, apseq);
+	sdp_set_add_access_protos(record, aproto);
+
+	free(psm);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(aproto, NULL);
+}
+
+static sdp_record_t *avrcp_ct_record(bool browsing)
+{
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avctp, avrct, avrctr;
 	sdp_profile_desc_t profile[1];
-	sdp_list_t *aproto, *aproto1, *proto[2], *proto1[2];
+	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
 	sdp_data_t *psm[2], *version, *features;
-	uint16_t lp = AVCTP_CONTROL_PSM, ap = AVCTP_BROWSING_PSM;
+	uint16_t lp = AVCTP_CONTROL_PSM;
 	uint16_t avctp_ver = 0x0103;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 						AVRCP_FEATURE_CATEGORY_2 |
 						AVRCP_FEATURE_CATEGORY_3 |
-						AVRCP_FEATURE_CATEGORY_4 |
-						AVRCP_FEATURE_BROWSING);
+						AVRCP_FEATURE_CATEGORY_4);
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -415,19 +444,10 @@ static sdp_record_t *avrcp_ct_record(void)
 	sdp_set_access_protos(record, aproto);
 
 	/* Additional Protocol Descriptor List */
-	sdp_uuid16_create(&l2cap, L2CAP_UUID);
-	proto1[0] = sdp_list_append(NULL, &l2cap);
-	psm[1] = sdp_data_alloc(SDP_UINT16, &ap);
-	proto1[0] = sdp_list_append(proto1[0], psm[1]);
-	apseq1 = sdp_list_append(NULL, proto1[0]);
-
-	sdp_uuid16_create(&avctp, AVCTP_UUID);
-	proto1[1] = sdp_list_append(NULL, &avctp);
-	proto1[1] = sdp_list_append(proto1[1], version);
-	apseq1 = sdp_list_append(apseq1, proto1[1]);
-
-	aproto1 = sdp_list_append(NULL, apseq1);
-	sdp_set_add_access_protos(record, aproto1);
+	if (browsing) {
+		feat |= AVRCP_FEATURE_BROWSING;
+		avrcp_browsing_record(record, version);
+	}
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
@@ -441,15 +461,10 @@ static sdp_record_t *avrcp_ct_record(void)
 	sdp_set_info_attr(record, "AVRCP CT", NULL, NULL);
 
 	free(psm[0]);
-	free(psm[1]);
 	free(version);
 	sdp_list_free(proto[0], NULL);
 	sdp_list_free(proto[1], NULL);
 	sdp_list_free(apseq, NULL);
-	sdp_list_free(proto1[0], NULL);
-	sdp_list_free(proto1[1], NULL);
-	sdp_list_free(aproto1, NULL);
-	sdp_list_free(apseq1, NULL);
 	sdp_list_free(pfseq, NULL);
 	sdp_list_free(aproto, NULL);
 	sdp_list_free(root, NULL);
@@ -458,23 +473,20 @@ static sdp_record_t *avrcp_ct_record(void)
 	return record;
 }
 
-static sdp_record_t *avrcp_tg_record(void)
+static sdp_record_t *avrcp_tg_record(bool browsing)
 {
-	sdp_list_t *svclass_id, *pfseq, *apseq, *root, *apseq_browsing;
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avctp, avrtg;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto_control, *proto_control[2];
 	sdp_record_t *record;
-	sdp_data_t *psm_control, *version, *features, *psm_browsing;
-	sdp_list_t *aproto_browsing, *proto_browsing[2] = {0};
+	sdp_data_t *psm_control, *version, *features;
 	uint16_t lp = AVCTP_CONTROL_PSM;
-	uint16_t lp_browsing = AVCTP_BROWSING_PSM;
 	uint16_t avctp_ver = 0x0103;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 					AVRCP_FEATURE_CATEGORY_2 |
 					AVRCP_FEATURE_CATEGORY_3 |
 					AVRCP_FEATURE_CATEGORY_4 |
-					AVRCP_FEATURE_BROWSING |
 					AVRCP_FEATURE_PLAYER_SETTINGS );
 
 	record = sdp_record_alloc();
@@ -505,17 +517,12 @@ static sdp_record_t *avrcp_tg_record(void)
 
 	aproto_control = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto_control);
-	proto_browsing[0] = sdp_list_append(NULL, &l2cap);
-	psm_browsing = sdp_data_alloc(SDP_UINT16, &lp_browsing);
-	proto_browsing[0] = sdp_list_append(proto_browsing[0], psm_browsing);
-	apseq_browsing = sdp_list_append(NULL, proto_browsing[0]);
 
-	proto_browsing[1] = sdp_list_append(NULL, &avctp);
-	proto_browsing[1] = sdp_list_append(proto_browsing[1], version);
-	apseq_browsing = sdp_list_append(apseq_browsing, proto_browsing[1]);
-
-	aproto_browsing = sdp_list_append(NULL, apseq_browsing);
-	sdp_set_add_access_protos(record, aproto_browsing);
+	/* Additional Protocol Descriptor List */
+	if (browsing) {
+		feat |= AVRCP_FEATURE_BROWSING;
+		avrcp_browsing_record(record, version);
+	}
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
@@ -527,12 +534,6 @@ static sdp_record_t *avrcp_tg_record(void)
 	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
 	sdp_set_info_attr(record, "AVRCP TG", NULL, NULL);
-
-	free(psm_browsing);
-	sdp_list_free(proto_browsing[0], NULL);
-	sdp_list_free(proto_browsing[1], NULL);
-	sdp_list_free(apseq_browsing, NULL);
-	sdp_list_free(aproto_browsing, NULL);
 
 	free(psm_control);
 	free(version);
@@ -4364,12 +4365,14 @@ static void state_changed(struct btd_device *device, avctp_state_t old_state,
 static struct avrcp_server *avrcp_server_register(struct btd_adapter *adapter)
 {
 	struct avrcp_server *server;
+	bool browsing;
 
-	if (avctp_register(adapter, TRUE) < 0)
+	if (avctp_register(adapter, TRUE, &browsing) < 0)
 		return NULL;
 
 	server = g_new0(struct avrcp_server, 1);
 	server->adapter = btd_adapter_ref(adapter);
+	server->browsing = browsing;
 
 	servers = g_slist_append(servers, server);
 
@@ -4687,7 +4690,7 @@ static int avrcp_target_server_probe(struct btd_profile *p,
 		return -EPROTONOSUPPORT;
 
 done:
-	record = avrcp_tg_record();
+	record = avrcp_tg_record(server->browsing);
 	if (!record) {
 		error("Unable to allocate new service record");
 		avrcp_target_server_remove(p, adapter);
@@ -4770,7 +4773,7 @@ static int avrcp_controller_server_probe(struct btd_profile *p,
 		return -EPROTONOSUPPORT;
 
 done:
-	record = avrcp_ct_record();
+	record = avrcp_ct_record(server->browsing);
 	if (!record) {
 		error("Unable to allocate new service record");
 		avrcp_controller_server_remove(p, adapter);

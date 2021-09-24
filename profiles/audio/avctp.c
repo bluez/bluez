@@ -1636,7 +1636,7 @@ static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean central,
 	return io;
 }
 
-int avctp_register(struct btd_adapter *adapter, gboolean central)
+int avctp_register(struct btd_adapter *adapter, bool central, bool *browsing)
 {
 	struct avctp_server *server;
 	const bdaddr_t *src = btd_adapter_get_address(adapter);
@@ -1649,8 +1649,11 @@ int avctp_register(struct btd_adapter *adapter, gboolean central)
 		g_free(server);
 		return -1;
 	}
+
 	server->browsing_io = avctp_server_socket(src, central, BT_IO_MODE_ERTM,
 							AVCTP_BROWSING_PSM);
+	if (browsing)
+		*browsing = server->browsing_io ? true : false;
 
 	server->adapter = btd_adapter_ref(adapter);
 
