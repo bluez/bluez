@@ -1651,15 +1651,6 @@ int avctp_register(struct btd_adapter *adapter, gboolean central)
 	}
 	server->browsing_io = avctp_server_socket(src, central, BT_IO_MODE_ERTM,
 							AVCTP_BROWSING_PSM);
-	if (!server->browsing_io) {
-		if (server->control_io) {
-			g_io_channel_shutdown(server->control_io, TRUE, NULL);
-			g_io_channel_unref(server->control_io);
-			server->control_io = NULL;
-		}
-		g_free(server);
-		return -1;
-	}
 
 	server->adapter = btd_adapter_ref(adapter);
 
@@ -1681,9 +1672,11 @@ void avctp_unregister(struct btd_adapter *adapter)
 
 	servers = g_slist_remove(servers, server);
 
-	g_io_channel_shutdown(server->browsing_io, TRUE, NULL);
-	g_io_channel_unref(server->browsing_io);
-	server->browsing_io = NULL;
+	if (server->browsing_io) {
+		g_io_channel_shutdown(server->browsing_io, TRUE, NULL);
+		g_io_channel_unref(server->browsing_io);
+		server->browsing_io = NULL;
+	}
 
 	g_io_channel_shutdown(server->control_io, TRUE, NULL);
 	g_io_channel_unref(server->control_io);
