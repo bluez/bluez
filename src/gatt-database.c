@@ -1656,27 +1656,21 @@ static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
 			*ext_props |= BT_GATT_CHRC_EXT_PROP_WRITABLE_AUX;
 		} else if (!strcmp("encrypt-read", flag)) {
 			*props |= BT_GATT_CHRC_PROP_READ;
-			*ext_props |= BT_GATT_CHRC_EXT_PROP_ENC_READ;
 			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_ENCRYPT;
 		} else if (!strcmp("encrypt-write", flag)) {
 			*props |= BT_GATT_CHRC_PROP_WRITE;
-			*ext_props |= BT_GATT_CHRC_EXT_PROP_ENC_WRITE;
 			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_ENCRYPT;
 		} else if (!strcmp("encrypt-authenticated-read", flag)) {
 			*props |= BT_GATT_CHRC_PROP_READ;
-			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_READ;
 			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_AUTHEN;
 		} else if (!strcmp("encrypt-authenticated-write", flag)) {
 			*props |= BT_GATT_CHRC_PROP_WRITE;
-			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_WRITE;
 			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_AUTHEN;
 		} else if (!strcmp("secure-read", flag)) {
 			*props |= BT_GATT_CHRC_PROP_READ;
-			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_READ;
 			*perm |= BT_ATT_PERM_READ | BT_ATT_PERM_READ_SECURE;
 		} else if (!strcmp("secure-write", flag)) {
 			*props |= BT_GATT_CHRC_PROP_WRITE;
-			*ext_props |= BT_GATT_CHRC_EXT_PROP_AUTH_WRITE;
 			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_SECURE;
 		} else if (!strcmp("authorize", flag)) {
 			*req_prep_authorization = true;
