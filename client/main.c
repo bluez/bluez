@@ -2232,6 +2232,7 @@ static void cmd_attribute_info(int argc, char *argv[])
 		print_property(proxy, "Value");
 		print_property(proxy, "Notifying");
 		print_property(proxy, "Flags");
+		print_property(proxy, "MTU");
 		print_property(proxy, "Descriptors");
 	} else if (!strcmp(iface, "org.bluez.GattDescriptor1")) {
 		bt_shell_printf("Descriptor - %s\n", text);
