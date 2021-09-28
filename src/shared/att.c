@@ -64,6 +64,7 @@ struct bt_att {
 
 	struct queue *notify_list;	/* List of registered callbacks */
 	struct queue *disconn_list;	/* List of disconnect handlers */
+	struct queue *exchange_list;	/* List of MTU changed handlers */
 
 	unsigned int next_send_id;	/* IDs for "send" ops */
 	unsigned int next_reg_id;	/* IDs for registered callbacks */
@@ -257,6 +258,14 @@ struct att_disconn {
 	void *user_data;
 };
 
+struct att_exchange {
+	unsigned int id;
+	bool removed;
+	bt_att_exchange_func_t callback;
+	bt_att_destroy_func_t destroy;
+	void *user_data;
+};
+
 static void destroy_att_disconn(void *data)
 {
 	struct att_disconn *disconn = data;
@@ -265,6 +274,16 @@ static void destroy_att_disconn(void *data)
 		disconn->destroy(disconn->user_data);
 
 	free(disconn);
+}
+
+static void destroy_att_exchange(void *data)
+{
+	struct att_exchange *exchange = data;
+
+	if (exchange->destroy)
+		exchange->destroy(exchange->user_data);
+
+	free(exchange);
 }
 
 static bool match_disconn_id(const void *a, const void *b)
@@ -1116,6 +1135,7 @@ static void bt_att_free(struct bt_att *att)
 	queue_destroy(att->write_queue, NULL);
 	queue_destroy(att->notify_list, NULL);
 	queue_destroy(att->disconn_list, NULL);
+	queue_destroy(att->exchange_list, NULL);
 	queue_destroy(att->chans, bt_att_chan_free);
 
 	free(att);
@@ -1242,6 +1262,7 @@ struct bt_att *bt_att_new(int fd, bool ext_signed)
 	att->write_queue = queue_new();
 	att->notify_list = queue_new();
 	att->disconn_list = queue_new();
+	att->exchange_list = queue_new();
 
 	bt_att_attach_chan(att, chan);
 
@@ -1357,6 +1378,18 @@ uint16_t bt_att_get_mtu(struct bt_att *att)
 	return att->mtu;
 }
 
+static void exchange_handler(void *data, void *user_data)
+{
+	struct att_exchange *exchange = data;
+	uint16_t mtu = PTR_TO_INT(user_data);
+
+	if (exchange->removed)
+		return;
+
+	if (exchange->callback)
+		exchange->callback(mtu, exchange->user_data);
+}
+
 bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu)
 {
 	struct bt_att_chan *chan;
@@ -1382,8 +1415,11 @@ bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu)
 	chan->mtu = mtu;
 	chan->buf = buf;
 
-	if (chan->mtu > att->mtu)
+	if (chan->mtu > att->mtu) {
 		att->mtu = chan->mtu;
+		queue_foreach(att->exchange_list, exchange_handler,
+						INT_TO_PTR(att->mtu));
+	}
 
 	return true;
 }
@@ -1471,6 +1507,61 @@ bool bt_att_unregister_disconnect(struct bt_att *att, unsigned int id)
 		return false;
 
 	destroy_att_disconn(disconn);
+	return true;
+}
+
+unsigned int bt_att_register_exchange(struct bt_att *att,
+					bt_att_exchange_func_t callback,
+					void *user_data,
+					bt_att_destroy_func_t destroy)
+{
+	struct att_exchange *mtu;
+
+	if (!att || queue_isempty(att->chans))
+		return 0;
+
+	mtu = new0(struct att_exchange, 1);
+	mtu->callback = callback;
+	mtu->destroy = destroy;
+	mtu->user_data = user_data;
+
+	if (att->next_reg_id < 1)
+		att->next_reg_id = 1;
+
+	mtu->id = att->next_reg_id++;
+
+	if (!queue_push_tail(att->exchange_list, mtu)) {
+		free(att);
+		return 0;
+	}
+
+	return mtu->id;
+}
+
+bool bt_att_unregister_exchange(struct bt_att *att, unsigned int id)
+{
+	struct att_exchange *mtu;
+
+	if (!att || !id)
+		return false;
+
+	/* Check if disconnect is running */
+	if (queue_isempty(att->chans)) {
+		mtu = queue_find(att->exchange_list, match_disconn_id,
+							UINT_TO_PTR(id));
+		if (!mtu)
+			return false;
+
+		mtu->removed = true;
+		return true;
+	}
+
+	mtu = queue_remove_if(att->exchange_list, match_disconn_id,
+							UINT_TO_PTR(id));
+	if (!mtu)
+		return false;
+
+	destroy_att_exchange(mtu);
 	return true;
 }
 
@@ -1785,6 +1876,7 @@ bool bt_att_unregister_all(struct bt_att *att)
 
 	queue_remove_all(att->notify_list, NULL, NULL, destroy_att_notify);
 	queue_remove_all(att->disconn_list, NULL, NULL, destroy_att_disconn);
+	queue_remove_all(att->exchange_list, NULL, NULL, destroy_att_exchange);
 
 	return true;
 }
