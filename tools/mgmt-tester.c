@@ -15,6 +15,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
 
@@ -308,6 +311,34 @@ struct generic_data {
 	const uint8_t *adv_data;
 	uint8_t adv_data_len;
 };
+
+static int set_debugfs_force_suspend(int index, bool enable)
+{
+	int fd, n, err;
+	char val, path[64];
+
+	err = 0;
+
+	/* path for the debugfs file
+	 * /sys/kernel/debug/bluetooth/hciX/force_suspend
+	 */
+	memset(path, 0, sizeof(path));
+	sprintf(path, "/sys/kernel/debug/bluetooth/hci%d/force_suspend", index);
+
+	fd = open(path, O_RDWR);
+	if (fd < 0)
+		return -errno;
+
+	val = (enable) ? 'Y' : 'N';
+
+	n = write(fd, &val, sizeof(val));
+	if (n < (ssize_t) sizeof(val))
+		err = -errno;
+
+	close(fd);
+
+	return err;
+}
 
 static const uint8_t set_exp_feat_param_debug[] = {
 	0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c, 0x01, 0xab, /* UUID - Debug */
@@ -10068,6 +10099,213 @@ static void test_50_controller_cap_response(const void *test_data)
 						data, NULL);
 }
 
+static const uint8_t suspend_state_param_running[] = {
+	0x00,
+};
+
+static const uint8_t suspend_state_param_page_scan[] = {
+	0x02,
+};
+
+static const uint8_t resume_state_param_non_bt_wake[] = {
+	0x00,
+	0x00, 0x00, 0x0, 0x00, 0x00, 0x00,
+	0x00
+};
+
+static const struct generic_data suspend_resume_success_1 = {
+	.setup_settings = settings_powered,
+	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
+	.expect_alt_ev_param = suspend_state_param_page_scan,
+	.expect_alt_ev_len = sizeof(suspend_state_param_page_scan),
+};
+
+static void test_suspend_resume_success_1(const void *test_data)
+{
+	bool suspend;
+	int err;
+
+	/* Triggers the suspend */
+	suspend = true;
+	err = set_debugfs_force_suspend(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		tester_test_failed();
+		return;
+	}
+	test_command_generic(test_data);
+}
+
+static const struct generic_data suspend_resume_success_2 = {
+	.setup_settings = settings_powered,
+	.expect_alt_ev = MGMT_EV_CONTROLLER_RESUME,
+	.expect_alt_ev_param = resume_state_param_non_bt_wake,
+	.expect_alt_ev_len = sizeof(resume_state_param_non_bt_wake),
+};
+
+static void test_suspend_resume_success_2(const void *test_data)
+{
+	bool suspend;
+	int err;
+
+	/* Triggers the suspend */
+	suspend = true;
+	err = set_debugfs_force_suspend(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		tester_test_failed();
+		return;
+	}
+
+	/* Triggers the resume */
+	suspend = false;
+	err = set_debugfs_force_suspend(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		tester_test_failed();
+		return;
+	}
+	test_command_generic(test_data);
+}
+
+static const struct generic_data suspend_resume_success_3 = {
+	.setup_expect_hci_command = BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST,
+	.setup_expect_hci_param = le_add_to_accept_list_param,
+	.setup_expect_hci_len = sizeof(le_add_to_accept_list_param),
+	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
+	.expect_alt_ev_param = suspend_state_param_page_scan,
+	.expect_alt_ev_len = sizeof(suspend_state_param_page_scan),
+};
+
+static void setup_suspend_resume_success_3(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	/* Add Device 1 */
+	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
+					sizeof(add_device_success_param_3),
+					add_device_success_param_3,
+					setup_add_device_callback,
+					NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
+}
+
+static void test_suspend_resume_success_3(const void *test_data)
+{
+	bool suspend;
+	int err;
+
+	/* Triggers the suspend */
+	suspend = true;
+	err = set_debugfs_force_suspend(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		tester_test_failed();
+		return;
+	}
+	test_command_generic(test_data);
+}
+
+static const struct generic_data suspend_resume_success_4 = {
+	.setup_expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE,
+	.setup_expect_hci_param = set_ext_adv_on_set_adv_enable_param,
+	.setup_expect_hci_len = sizeof(set_ext_adv_on_set_adv_enable_param),
+	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
+	.expect_alt_ev_param = suspend_state_param_page_scan,
+	.expect_alt_ev_len = sizeof(suspend_state_param_page_scan),
+};
+
+static void setup_suspend_resume_success_4(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct mgmt_cp_add_advertising *cp;
+	unsigned char adv_param[sizeof(*cp) + TESTER_ADD_ADV_DATA_LEN];
+	unsigned char param[] = { 0x01 };
+
+	cp = (struct mgmt_cp_add_advertising *) adv_param;
+	setup_add_adv_param(cp, 1);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+					sizeof(param), &param,
+					NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_ADVERTISING, data->mgmt_index,
+					sizeof(adv_param), adv_param,
+					setup_add_advertising_callback,
+					NULL, NULL);
+}
+
+static void test_suspend_resume_success_4(const void *test_data)
+{
+	bool suspend;
+	int err;
+
+	test_command_generic(test_data);
+
+	/* Triggers the suspend */
+	suspend = true;
+	tester_print("Set the system into Suspend via force_suspend");
+	err = set_debugfs_force_suspend(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		tester_test_failed();
+		return;
+	}
+}
+
+static const struct generic_data suspend_resume_success_5 = {
+	.setup_settings = settings_powered_connectable_bondable,
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
+	.expect_alt_ev_param = suspend_state_param_running,
+	.expect_alt_ev_len = sizeof(suspend_state_param_running),
+};
+
+static void trigger_force_suspend(void *user_data)
+{
+	bool suspend;
+	int err;
+
+	/* Triggers the suspend */
+	suspend = true;
+	tester_print("Set the system into Suspend via force_suspend");
+	err = set_debugfs_force_suspend(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		return;
+	}
+}
+
+static void test_suspend_resume_success_5(const void *test_data)
+{
+	test_pairing_acceptor(test_data);
+	tester_wait(1, trigger_force_suspend, NULL);
+}
+
+static const struct generic_data suspend_resume_success_6 = {
+	.setup_settings = settings_powered_connectable_bondable_ssp,
+	.client_enable_ssp = true,
+	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
+	.expect_alt_ev_param = suspend_state_param_running,
+	.expect_alt_ev_len = sizeof(suspend_state_param_running),
+	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
+	.expect_hci_func = client_bdaddr_param_func,
+	.io_cap = 0x03, /* NoInputNoOutput */
+	.client_io_cap = 0x03, /* NoInputNoOutput */
+	.just_works = true,
+};
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -11763,6 +12001,63 @@ int main(int argc, char *argv[])
 				&set_dev_flags_fail_3,
 				setup_get_dev_flags,
 				test_command_generic);
+
+	/* Suspend/Resume
+	 * Setup : Power on and register Suspend Event
+	 * Run: Enable suspend via force_suspend
+	 * Expect: Receive the Suspend Event
+	 */
+	test_bredrle50("Suspend/Resume - Success 1 (Suspend)",
+				&suspend_resume_success_1,
+				NULL, test_suspend_resume_success_1);
+
+	/* Suspend/Resume
+	 * Setup : Power on and register Suspend Event
+	 * Run: Enable suspend, and then resume via force_suspend
+	 * Expect: Receive the Resume Event
+	 */
+	test_bredrle50("Suspend/Resume - Success 2 (Resume)",
+				&suspend_resume_success_2,
+				NULL, test_suspend_resume_success_2);
+
+	/* Suspend/Resume
+	 * Setup: Enable LL Privacy and power on
+	 * Run: Add new device, and enable suspend.
+	 * Expect: Receive the Suspend Event
+	 */
+	test_bredrle50("Suspend/Resume - Success 3 (Device in WL)",
+				&suspend_resume_success_3,
+				setup_suspend_resume_success_3,
+				test_suspend_resume_success_3);
+
+	/* Suspend/Resume
+	 * Setup: Start advertising and power on.
+	 * Run: Enable suspend
+	 * Expect: Receive the Suspend Event
+	 */
+	test_bredrle50("Suspend/Resume - Success 4 (Advertising)",
+				&suspend_resume_success_4,
+				setup_suspend_resume_success_4,
+				test_suspend_resume_success_4);
+
+	/* Suspend/Resume
+	 * Setup: Pair.
+	 * Run: Enable suspend
+	 * Expect: Receive the Suspend Event
+	 */
+	test_bredrle("Suspend/Resume - Success 5 (Pairing - Legacy)",
+				&suspend_resume_success_5, NULL,
+				test_suspend_resume_success_5);
+
+	/* Suspend/Resume
+	 * Setup: Pair.
+	 * Run: Enable suspend
+	 * Expect: Receive the Suspend Event
+	 */
+	test_bredrle("Suspend/Resume - Success 6 (Pairing - SSP)",
+				&suspend_resume_success_6,
+				setup_pairing_acceptor,
+				test_suspend_resume_success_5);
 
 	/* MGMT_OP_READ_EXP_FEATURE
 	 * Read Experimental features - success
