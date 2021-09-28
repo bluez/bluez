@@ -281,6 +281,12 @@ Properties	string UUID [read-only]
 			shall be used which will cause the allocated handle to
 			be set once registered.
 
+		uint16 MTU [read-only]
+
+			Characteristic MTU, this is valid both for ReadValue
+			and WriteValue but either method can use long
+			procedures when supported.
+
 Characteristic Descriptors hierarchy
 ====================================
 
