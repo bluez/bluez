@@ -115,6 +115,7 @@ struct external_chrc {
 	uint8_t props;
 	uint8_t ext_props;
 	uint32_t perm;
+	uint32_t ccc_perm;
 	uint16_t mtu;
 	struct io *write_io;
 	struct io *notify_io;
@@ -1059,7 +1060,7 @@ static struct gatt_db_attribute *
 service_add_ccc(struct gatt_db_attribute *service,
 				struct btd_gatt_database *database,
 				btd_gatt_database_ccc_write_t write_callback,
-				void *user_data,
+				void *user_data, uint32_t perm,
 				btd_gatt_database_destroy_t destroy)
 {
 	struct gatt_db_attribute *ccc;
@@ -1068,9 +1069,14 @@ service_add_ccc(struct gatt_db_attribute *service,
 
 	ccc_cb = new0(struct ccc_cb_data, 1);
 
+	/*
+	 * Provide a way for the permissions on a characteristic to dictate
+	 * the permissions on the CCC
+	 */
+	perm |= BT_ATT_PERM_READ | BT_ATT_PERM_WRITE;
+
 	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
-	ccc = gatt_db_service_add_descriptor(service, &uuid,
-				BT_ATT_PERM_READ | BT_ATT_PERM_WRITE,
+	ccc = gatt_db_service_add_descriptor(service, &uuid, perm,
 				gatt_ccc_read_cb, gatt_ccc_write_cb, database);
 	if (!ccc) {
 		error("Failed to create CCC entry in database");
@@ -1227,7 +1233,7 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 				NULL, NULL, database);
 
 	database->svc_chngd_ccc = service_add_ccc(service, database, NULL, NULL,
-									NULL);
+								    0, NULL);
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_CLI_FEAT);
 	database->cli_feat = gatt_db_service_add_characteristic(service,
@@ -1633,11 +1639,18 @@ static bool incr_attr_count(struct external_service *service, uint16_t incr)
 
 static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
 					uint8_t *ext_props, uint32_t *perm,
+					uint32_t *ccc_perm,
 					bool *req_prep_authorization)
 {
 	const char *flag;
 
-	*props = *ext_props = 0;
+	if (!props || !ext_props || !perm || !ccc_perm)
+		return false;
+
+	*props = 0;
+	*ext_props = 0;
+	*perm = 0;
+	*ccc_perm = 0;
 
 	do {
 		if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_STRING)
@@ -1690,6 +1703,24 @@ static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
 			*perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_SECURE;
 		} else if (!strcmp("authorize", flag)) {
 			*req_prep_authorization = true;
+		} else if (!strcmp("encrypt-notify", flag)) {
+			*ccc_perm |= BT_ATT_PERM_WRITE_ENCRYPT;
+			*props |= BT_GATT_CHRC_PROP_NOTIFY;
+		} else if (!strcmp("encrypt-authenticated-notify", flag)) {
+			*ccc_perm |= BT_ATT_PERM_WRITE_AUTHEN;
+			*props |= BT_GATT_CHRC_PROP_NOTIFY;
+		} else if (!strcmp("secure-notify", flag)) {
+			*ccc_perm |= BT_ATT_PERM_WRITE_SECURE;
+			*props |= BT_GATT_CHRC_PROP_NOTIFY;
+		} else if (!strcmp("encrypt-indicate", flag)) {
+			*ccc_perm |= BT_ATT_PERM_WRITE_ENCRYPT;
+			*props |= BT_GATT_CHRC_PROP_INDICATE;
+		} else if (!strcmp("encrypt-authenticated-indicate", flag)) {
+			*ccc_perm |= BT_ATT_PERM_WRITE_AUTHEN;
+			*props |= BT_GATT_CHRC_PROP_INDICATE;
+		} else if (!strcmp("secure-indicate", flag)) {
+			*ccc_perm |= BT_ATT_PERM_WRITE_SECURE;
+			*props |= BT_GATT_CHRC_PROP_INDICATE;
 		} else {
 			error("Invalid characteristic flag: %s", flag);
 			return false;
@@ -1743,7 +1774,8 @@ static bool parse_desc_flags(DBusMessageIter *array, uint32_t *perm,
 }
 
 static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props,
-				uint32_t *perm, bool *req_prep_authorization)
+					    uint32_t *perm, uint32_t *ccc_perm,
+					    bool *req_prep_authorization)
 {
 	DBusMessageIter iter, array;
 	const char *iface;
@@ -1760,7 +1792,7 @@ static bool parse_flags(GDBusProxy *proxy, uint8_t *props, uint8_t *ext_props,
 	if (!strcmp(iface, GATT_DESC_IFACE))
 		return parse_desc_flags(&array, perm, req_prep_authorization);
 
-	return parse_chrc_flags(&array, props, ext_props, perm,
+	return parse_chrc_flags(&array, props, ext_props, perm, ccc_perm,
 							req_prep_authorization);
 }
 
@@ -1810,7 +1842,7 @@ static struct external_chrc *chrc_create(struct gatt_app *app,
 	 * created.
 	 */
 	if (!parse_flags(proxy, &chrc->props, &chrc->ext_props, &chrc->perm,
-					&chrc->req_prep_authorization)) {
+			&chrc->ccc_perm, &chrc->req_prep_authorization)) {
 		error("Failed to parse characteristic properties");
 		goto fail;
 	}
@@ -1892,7 +1924,7 @@ static struct external_desc *desc_create(struct gatt_app *app,
 	 * Parse descriptors flags here since they are used to
 	 * determine the permission the descriptor should have
 	 */
-	if (!parse_flags(proxy, NULL, NULL, &desc->perm,
+	if (!parse_flags(proxy, NULL, NULL, &desc->perm, NULL,
 					&desc->req_prep_authorization)) {
 		error("Failed to parse characteristic properties");
 		goto fail;
@@ -2796,7 +2828,7 @@ static bool database_add_ccc(struct external_service *service,
 		return true;
 
 	chrc->ccc = service_add_ccc(service->attrib, service->app->database,
-						ccc_write_cb, chrc, NULL);
+				    ccc_write_cb, chrc, chrc->ccc_perm, NULL);
 	if (!chrc->ccc) {
 		error("Failed to create CCC entry for characteristic");
 		return false;
