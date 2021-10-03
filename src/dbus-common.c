@@ -72,9 +72,9 @@ const char *class_to_icon(uint32_t class)
 		switch ((class & 0xfc) >> 2) {
 		case 0x01:
 		case 0x02:
-			return "audio-card";	/* Headset */
+			return "audio-headset";
 		case 0x06:
-			return "audio-card";	/* Headphone */
+			return "audio-headphones";
 		case 0x0b: /* VCR */
 		case 0x0c: /* Video Camera */
 		case 0x0d: /* Camcorder */
