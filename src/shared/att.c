@@ -1615,6 +1615,65 @@ unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 	return op->id;
 }
 
+int bt_att_resend(struct bt_att *att, unsigned int id, uint8_t opcode,
+				const void *pdu, uint16_t length,
+				bt_att_response_func_t callback,
+				void *user_data,
+				bt_att_destroy_func_t destroy)
+{
+	const struct queue_entry *entry;
+	struct att_send_op *op;
+	bool result;
+
+	if (!att || !id)
+		return -EINVAL;
+
+	/* Lookup request on each channel */
+	for (entry = queue_get_entries(att->chans); entry;
+						entry = entry->next) {
+		struct bt_att_chan *chan = entry->data;
+
+		if (chan->pending_req && chan->pending_req->id == id)
+			break;
+	}
+
+	if (!entry)
+		return -ENOENT;
+
+	/* Only allow requests to be resend */
+	if (get_op_type(opcode) != ATT_OP_TYPE_REQ)
+		return -EOPNOTSUPP;
+
+	op = create_att_send_op(att, opcode, pdu, length, callback, user_data,
+								destroy);
+	if (!op)
+		return -ENOMEM;
+
+	op->id = id;
+
+	switch (opcode) {
+	/* Only prepend requests that could be a continuation */
+	case BT_ATT_OP_READ_BLOB_REQ:
+	case BT_ATT_OP_PREP_WRITE_REQ:
+	case BT_ATT_OP_EXEC_WRITE_REQ:
+		result = queue_push_head(att->req_queue, op);
+		break;
+	default:
+		result = queue_push_tail(att->req_queue, op);
+		break;
+	}
+
+	if (!result) {
+		free(op->pdu);
+		free(op);
+		return -ENOMEM;
+	}
+
+	wakeup_writer(att);
+
+	return 0;
+}
+
 unsigned int bt_att_chan_send(struct bt_att_chan *chan, uint8_t opcode,
 				const void *pdu, uint16_t len,
 				bt_att_response_func_t callback,

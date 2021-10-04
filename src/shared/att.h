@@ -63,6 +63,11 @@ unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 					bt_att_response_func_t callback,
 					void *user_data,
 					bt_att_destroy_func_t destroy);
+int bt_att_resend(struct bt_att *att, unsigned int id, uint8_t opcode,
+					const void *pdu, uint16_t length,
+					bt_att_response_func_t callback,
+					void *user_data,
+					bt_att_destroy_func_t destroy);
 unsigned int bt_att_chan_send(struct bt_att_chan *chan, uint8_t opcode,
 					const void *pdu, uint16_t len,
 					bt_att_response_func_t callback,
