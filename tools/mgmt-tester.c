@@ -340,6 +340,34 @@ static int set_debugfs_force_suspend(int index, bool enable)
 	return err;
 }
 
+static int set_debugfs_force_wakeup(int index, bool enable)
+{
+	int fd, n, err;
+	char val, path[64];
+
+	err = 0;
+
+	/* path for the debugfs file
+	 * /sys/kernel/debug/bluetooth/hciX/force_suspend
+	 */
+	memset(path, 0, sizeof(path));
+	sprintf(path, "/sys/kernel/debug/bluetooth/hci%d/force_wakeup", index);
+
+	fd = open(path, O_RDWR);
+	if (fd < 0)
+		return -errno;
+
+	val = (enable) ? 'Y' : 'N';
+
+	n = write(fd, &val, sizeof(val));
+	if (n < (ssize_t) sizeof(val))
+		err = -errno;
+
+	close(fd);
+
+	return err;
+}
+
 static const uint8_t set_exp_feat_param_debug[] = {
 	0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c, 0x01, 0xab, /* UUID - Debug */
 	0x9f, 0x46, 0xec, 0xb9, 0x30, 0x25, 0x99, 0xd4,
@@ -10390,6 +10418,10 @@ static const uint8_t suspend_state_param_running[] = {
 	0x00,
 };
 
+static const uint8_t suspend_state_param_disconnect[] = {
+	0x01,
+};
+
 static const uint8_t suspend_state_param_page_scan[] = {
 	0x02,
 };
@@ -10403,8 +10435,8 @@ static const uint8_t resume_state_param_non_bt_wake[] = {
 static const struct generic_data suspend_resume_success_1 = {
 	.setup_settings = settings_powered,
 	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
-	.expect_alt_ev_param = suspend_state_param_page_scan,
-	.expect_alt_ev_len = sizeof(suspend_state_param_page_scan),
+	.expect_alt_ev_param = suspend_state_param_disconnect,
+	.expect_alt_ev_len = sizeof(suspend_state_param_disconnect),
 };
 
 static void test_suspend_resume_success_1(const void *test_data)
@@ -10460,8 +10492,8 @@ static const struct generic_data suspend_resume_success_3 = {
 	.setup_expect_hci_param = le_add_to_accept_list_param,
 	.setup_expect_hci_len = sizeof(le_add_to_accept_list_param),
 	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
-	.expect_alt_ev_param = suspend_state_param_page_scan,
-	.expect_alt_ev_len = sizeof(suspend_state_param_page_scan),
+	.expect_alt_ev_param = suspend_state_param_disconnect,
+	.expect_alt_ev_len = sizeof(suspend_state_param_disconnect),
 };
 
 static void setup_suspend_resume_success_3(const void *test_data)
@@ -10502,8 +10534,8 @@ static const struct generic_data suspend_resume_success_4 = {
 	.setup_expect_hci_param = set_ext_adv_on_set_adv_enable_param,
 	.setup_expect_hci_len = sizeof(set_ext_adv_on_set_adv_enable_param),
 	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
-	.expect_alt_ev_param = suspend_state_param_page_scan,
-	.expect_alt_ev_len = sizeof(suspend_state_param_page_scan),
+	.expect_alt_ev_param = suspend_state_param_disconnect,
+	.expect_alt_ev_len = sizeof(suspend_state_param_disconnect),
 };
 
 static void setup_suspend_resume_success_4(const void *test_data)
@@ -10592,6 +10624,39 @@ static const struct generic_data suspend_resume_success_6 = {
 	.client_io_cap = 0x03, /* NoInputNoOutput */
 	.just_works = true,
 };
+
+static const struct generic_data suspend_resume_success_7 = {
+	.setup_settings = settings_powered,
+	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
+	.expect_alt_ev_param = suspend_state_param_page_scan,
+	.expect_alt_ev_len = sizeof(suspend_state_param_page_scan),
+};
+
+static void test_suspend_resume_success_7(const void *test_data)
+{
+	bool suspend;
+	int err;
+
+	/* Set Force Wakeup */
+	suspend = true;
+	err = set_debugfs_force_wakeup(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_wakeup");
+		tester_test_failed();
+		return;
+	}
+
+	/* Triggers the suspend */
+	suspend = true;
+	err = set_debugfs_force_suspend(0, suspend);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		tester_test_failed();
+		return;
+	}
+	test_command_generic(test_data);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -12357,6 +12422,15 @@ int main(int argc, char *argv[])
 				&suspend_resume_success_6,
 				setup_pairing_acceptor,
 				test_suspend_resume_success_5);
+
+	/* Suspend/Resume
+	 * Setup : Power on and register Suspend Event
+	 * Run: Enable suspend via force_suspend
+	 * Expect: Receive the Suspend Event
+	 */
+	test_bredrle50("Suspend/Resume - Success 7 (Suspend/Force Wakeup)",
+				&suspend_resume_success_7,
+				NULL, test_suspend_resume_success_7);
 
 	/* MGMT_OP_READ_EXP_FEATURE
 	 * Read Experimental features - success
