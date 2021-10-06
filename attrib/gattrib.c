@@ -41,13 +41,8 @@ struct _GAttrib {
 	struct queue *track_ids;
 };
 
-struct id_pair {
-	unsigned int org_id;
-	unsigned int pend_id;
-};
-
 struct attrib_callbacks {
-	struct id_pair *id;
+	unsigned int id;
 	GAttribResultFunc result_func;
 	GAttribNotifyFunc notify_func;
 	GDestroyNotify destroy_func;
@@ -55,32 +50,6 @@ struct attrib_callbacks {
 	GAttrib *parent;
 	uint16_t notify_handle;
 };
-
-static bool find_with_org_id(const void *data, const void *user_data)
-{
-	const struct id_pair *p = data;
-	unsigned int orig_id = PTR_TO_UINT(user_data);
-
-	return (p->org_id == orig_id);
-}
-
-static struct id_pair *store_id(GAttrib *attrib, unsigned int org_id,
-							unsigned int pend_id)
-{
-	struct id_pair *t;
-
-	t = new0(struct id_pair, 1);
-	if (!t)
-		return NULL;
-
-	t->org_id = org_id;
-	t->pend_id = pend_id;
-
-	if (queue_push_tail(attrib->track_ids, t))
-		return t;
-
-	return NULL;
-}
 
 GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu, bool ext_signed)
 {
@@ -150,9 +119,6 @@ static void attrib_callbacks_destroy(void *data)
 	if (cb->destroy_func)
 		cb->destroy_func(cb->user_data);
 
-	if (queue_remove(cb->parent->track_ids, cb->id))
-		free(cb->id);
-
 	free(data);
 }
 
@@ -182,7 +148,7 @@ void g_attrib_unref(GAttrib *attrib)
 	bt_att_unref(attrib->att);
 
 	queue_destroy(attrib->callbacks, attrib_callbacks_destroy);
-	queue_destroy(attrib->track_ids, free);
+	queue_destroy(attrib->track_ids, NULL);
 
 	free(attrib->buf);
 
@@ -295,7 +261,6 @@ guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
 	struct attrib_callbacks *cb = NULL;
 	bt_att_response_func_t response_cb = NULL;
 	bt_att_destroy_func_t destroy_cb = NULL;
-	unsigned int pend_id;
 
 	if (!attrib)
 		return 0;
@@ -317,62 +282,47 @@ guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
 
 	}
 
-	pend_id = bt_att_send(attrib->att, pdu[0], (void *) pdu + 1, len - 1,
-						response_cb, cb, destroy_cb);
-
-	/*
-	 * We store here pair as it is easier to handle it in response and in
-	 * case where user request us to use specific id request - see below.
-	 */
 	if (id == 0)
-		id = pend_id;
+		id = bt_att_send(attrib->att, pdu[0], (void *) pdu + 1,
+					len - 1, response_cb, cb, destroy_cb);
+	else {
+		int err;
+
+		err = bt_att_resend(attrib->att, id, pdu[0], (void *) pdu + 1,
+					len - 1, response_cb, cb, destroy_cb);
+		if (err)
+			return 0;
+	}
+
+	if (!id)
+		return id;
 
 	/*
 	 * If user what us to use given id, lets keep track on that so we give
 	 * user a possibility to cancel ongoing request.
 	 */
-	if (cb)
-		cb->id = store_id(attrib, id, pend_id);
+	if (cb) {
+		cb->id = id;
+		queue_push_tail(attrib->track_ids, UINT_TO_PTR(id));
+	}
 
 	return id;
 }
 
 gboolean g_attrib_cancel(GAttrib *attrib, guint id)
 {
-	struct id_pair *p;
-
 	if (!attrib)
 		return FALSE;
-
-	/*
-	 * If request belongs to gattrib and is not yet done it has to be on
-	 * the tracking id queue
-	 *
-	 * FIXME: It can happen that on the queue there is id_pair with
-	 * given id which was provided by the user. In the same time it might
-	 * happen that other attrib user got dynamic allocated req_id with same
-	 * value as the one provided by the other user.
-	 * In such case there are two clients having same request id and in
-	 * this point of time we don't know which one calls cancel. For
-	 * now we cancel request in which id was specified by the user.
-	 */
-	p = queue_remove_if(attrib->track_ids, find_with_org_id,
-							UINT_TO_PTR(id));
-	if (!p)
-		return FALSE;
-
-	id = p->pend_id;
-	free(p);
 
 	return bt_att_cancel(attrib->att, id);
 }
 
 static void cancel_request(void *data, void *user_data)
 {
-	struct id_pair *p = data;
+	unsigned int id = PTR_TO_UINT(data);
 	GAttrib *attrib = user_data;
 
-	bt_att_cancel(attrib->att, p->pend_id);
+	bt_att_cancel(attrib->att, id);
 }
 
 gboolean g_attrib_cancel_all(GAttrib *attrib)
@@ -380,9 +330,8 @@ gboolean g_attrib_cancel_all(GAttrib *attrib)
 	if (!attrib)
 		return FALSE;
 
-	/* Cancel only request which belongs to gattrib */
 	queue_foreach(attrib->track_ids, cancel_request, attrib);
-	queue_remove_all(attrib->track_ids, NULL, NULL, free);
+	queue_remove_all(attrib->track_ids, NULL, NULL, NULL);
 
 	return TRUE;
 }
