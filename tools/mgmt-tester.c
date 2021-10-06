@@ -10414,10 +10414,6 @@ static void test_50_controller_cap_response(const void *test_data)
 						data, NULL);
 }
 
-static const uint8_t suspend_state_param_running[] = {
-	0x00,
-};
-
 static const uint8_t suspend_state_param_disconnect[] = {
 	0x01,
 };
@@ -10587,8 +10583,8 @@ static const struct generic_data suspend_resume_success_5 = {
 	.client_pin = pair_device_pin,
 	.client_pin_len = sizeof(pair_device_pin),
 	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
-	.expect_alt_ev_param = suspend_state_param_running,
-	.expect_alt_ev_len = sizeof(suspend_state_param_running),
+	.expect_alt_ev_param = suspend_state_param_disconnect,
+	.expect_alt_ev_len = sizeof(suspend_state_param_disconnect),
 };
 
 static void trigger_force_suspend(void *user_data)
@@ -10616,8 +10612,8 @@ static const struct generic_data suspend_resume_success_6 = {
 	.setup_settings = settings_powered_connectable_bondable_ssp,
 	.client_enable_ssp = true,
 	.expect_alt_ev = MGMT_EV_CONTROLLER_SUSPEND,
-	.expect_alt_ev_param = suspend_state_param_running,
-	.expect_alt_ev_len = sizeof(suspend_state_param_running),
+	.expect_alt_ev_param = suspend_state_param_disconnect,
+	.expect_alt_ev_len = sizeof(suspend_state_param_disconnect),
 	.expect_hci_command = BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY,
 	.expect_hci_func = client_bdaddr_param_func,
 	.io_cap = 0x03, /* NoInputNoOutput */
