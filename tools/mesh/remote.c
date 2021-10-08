@@ -281,6 +281,9 @@ bool remote_update_net_key(uint16_t addr, uint16_t net_idx, bool update,
 
 	key = l_queue_find(rmt->net_keys, match_key,
 						L_UINT_TO_PTR(net_idx));
+	if (!key)
+		return false;
+
 	key->updated = update;
 
 	if (save)
@@ -343,6 +346,9 @@ bool remote_update_app_key(uint16_t addr, uint16_t app_idx, bool update,
 
 	key = l_queue_find(rmt->app_keys, match_key,
 						L_UINT_TO_PTR(app_idx));
+	if (!key)
+		return false;
+
 	key->updated = update;
 
 	if (save)

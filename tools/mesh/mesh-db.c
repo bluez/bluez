@@ -2508,7 +2508,8 @@ void *mesh_db_prepare_export(void)
 	jarray = json_object_new_array();
 	json_object_object_add(export, "scenes", jarray);
 
-	write_bool(export, "partial", false);
+	if (!write_bool(export, "partial", false))
+		l_warn("Failed to write\"partial\" property");
 
 	return export;
 }

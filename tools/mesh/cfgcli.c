@@ -668,8 +668,6 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 			break;
 		}
 
-		bt_shell_printf("Period\t\t%d ms\n", pub.period);
-
 		pub.rtx_cnt = data[9] & 0x7;
 		pub.rtx_interval = ((data[9] >> 3) + 1) * 50;
 		bt_shell_printf("Rexmit count\t%d\n", pub.rtx_cnt);
