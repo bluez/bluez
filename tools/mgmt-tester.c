@@ -390,8 +390,8 @@ static void debug_exp_feature(struct test_data *data)
 	tester_print("Enabling Debug feature");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_EXP_FEATURE, MGMT_INDEX_NONE,
-		sizeof(set_exp_feat_param_debug), set_exp_feat_param_debug,
-		debug_exp_callback, NULL, NULL);
+		  sizeof(set_exp_feat_param_debug), set_exp_feat_param_debug,
+		  debug_exp_callback, NULL, NULL);
 }
 
 static void read_index_list_callback(uint8_t status, uint16_t length,
@@ -9702,6 +9702,23 @@ static const struct generic_data read_exp_feat_success = {
 	.expect_len = sizeof(read_exp_feat_param_success),
 };
 
+
+static const uint8_t read_exp_feat_param_success_index_none[] = {
+	0x01, 0x00,				/* Feature Count */
+	0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c,	/* UUID - Debug */
+	0x01, 0xab, 0x9f, 0x46, 0xec, 0xb9,
+	0x30, 0x25, 0x99, 0xd4,
+	0x00, 0x00, 0x00, 0x00,			/* Flags */
+};
+
+static const struct generic_data read_exp_feat_success_index_none = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_EXP_FEATURES_INFO,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = read_exp_feat_param_success_index_none,
+	.expect_len = sizeof(read_exp_feat_param_success_index_none),
+};
+
 static uint16_t settings_powered_le_privacy[] = { MGMT_OP_SET_LE,
 						MGMT_OP_SET_PRIVACY,
 						MGMT_OP_SET_POWERED, 0 };
@@ -9720,6 +9737,20 @@ static const uint8_t set_exp_feat_rsp_param_ll_privacy[] = {
 	0x03, 0x00, 0x00, 0x00,			/* Action - enable */
 };
 
+static const uint8_t set_exp_feat_param_offload_codec[] = {
+	0xaf, 0x29, 0xc6, 0x66, 0xac, 0x5f,	/* UUID - Codec Offload */
+	0x1a, 0x88, 0xb9, 0x4f, 0x7f, 0xee,
+	0xce, 0x5a, 0x69, 0xa6,
+	0x01,					/* Action - enable */
+};
+
+static const uint8_t set_exp_feat_rsp_param_offload_codec[] = {
+	0xaf, 0x29, 0xc6, 0x66, 0xac, 0x5f,	/* UUID - Codec Offload */
+	0x1a, 0x88, 0xb9, 0x4f, 0x7f, 0xee,
+	0xce, 0x5a, 0x69, 0xa6,
+	0x01, 0x00, 0x00, 0x00,			/* Action - enable */
+};
+
 static const struct generic_data set_exp_feat_enable_ll_privacy = {
 	.send_opcode = MGMT_OP_SET_EXP_FEATURE,
 	.send_param = set_exp_feat_param_ll_privacy,
@@ -9727,6 +9758,44 @@ static const struct generic_data set_exp_feat_enable_ll_privacy = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_exp_feat_rsp_param_ll_privacy,
 	.expect_len = sizeof(set_exp_feat_rsp_param_ll_privacy),
+	.expect_alt_ev = MGMT_EV_EXP_FEATURE_CHANGE,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_exp_feature_changed),
+};
+
+static void read_exp_feature_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Received Read Experimental Features Info");
+
+	tester_setup_complete();
+}
+
+static void setup_set_exp_feature_alt(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* Send the Read Experiemental Features Information command to receive
+	 * the Experiemental Feature Changed event
+	 */
+	mgmt_send(data->mgmt_alt, MGMT_OP_READ_EXP_FEATURES_INFO,
+			data->mgmt_index, 0, NULL,
+			read_exp_feature_callback, NULL, NULL);
+}
+
+static const struct generic_data set_exp_feat_offload_codec = {
+	.send_opcode = MGMT_OP_SET_EXP_FEATURE,
+	.send_param = set_exp_feat_param_offload_codec,
+	.send_len = sizeof(set_exp_feat_param_offload_codec),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_exp_feat_rsp_param_offload_codec,
+	.expect_len = sizeof(set_exp_feat_rsp_param_offload_codec),
+	.expect_alt_ev = MGMT_EV_EXP_FEATURE_CHANGE,
+	.expect_alt_ev_len = sizeof(struct mgmt_ev_exp_feature_changed),
 };
 
 static const uint8_t set_exp_feat_param_disable[17] = { 0x00 };
@@ -12434,12 +12503,29 @@ int main(int argc, char *argv[])
 	test_bredrle50("Read Exp Feature - Success",
 				&read_exp_feat_success,
 				NULL, test_command_generic);
+
+	/* MGMT_OP_READ_EXP_FEATURE
+	 * Read Experimental features - success (Index None)
+	 */
+	test_bredrle50("Read Exp Feature - Success (Index None)",
+				&read_exp_feat_success_index_none,
+				NULL, test_command_generic);
+
 	/* MGMT_OP_SET_EXP_FEATURE
 	 * Enable LL Privacy
 	 */
 	test_bredrle50("Set Exp Feature - Enable LL Privacy",
 				&set_exp_feat_enable_ll_privacy,
-				NULL, test_command_generic);
+				setup_set_exp_feature_alt,
+				test_command_generic);
+
+	/* MGMT_OP_SET_EXP_FEATURE
+	 * Offload Codec
+	 */
+	test_bredrle50("Set Exp Feature - Offload Codec",
+				&set_exp_feat_offload_codec,
+				setup_set_exp_feature_alt,
+				test_command_generic);
 
 	/* MGMT_OP_SET_EXP_FEATURE
 	 * Disable all features by sending zero UUID
