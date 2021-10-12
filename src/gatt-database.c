@@ -978,7 +978,7 @@ static struct pending_op *pending_ccc_new(struct bt_att *att,
 	op->attrib = attrib;
 	op->link_type = link_type;
 
-	bt_att_register_disconnect(att,
+	op->disconn_id = bt_att_register_disconnect(att,
 				   pending_disconnect_cb,
 				   op,
 				   NULL);
@@ -2387,9 +2387,7 @@ static void write_reply_cb(DBusMessage *message, void *user_data)
 	}
 
 done:
-	/* Make sure that only reply if the device is connected */
-	if (!bt_att_get_fd(op->att))
-		gatt_db_attribute_write_result(op->attrib, op->id, ecode);
+	gatt_db_attribute_write_result(op->attrib, op->id, ecode);
 }
 
 static struct pending_op *pending_write_new(struct bt_att *att,
@@ -2418,7 +2416,7 @@ static struct pending_op *pending_write_new(struct bt_att *att,
 	op->prep_authorize = prep_authorize;
 	queue_push_tail(owner_queue, op);
 
-	bt_att_register_disconnect(att,
+	op->disconn_id = bt_att_register_disconnect(att,
 			    pending_disconnect_cb,
 			    op, NULL);
 
