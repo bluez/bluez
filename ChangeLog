@@ -1,3 +1,11 @@
+ver 5.62:
+	Fix issue with handling truncation when loading LTKs.
+	Fix issue with accepting Exchange MTU on EATT bearer.
+	Fix issue with clearing DeviceLost timers on power down.
+	Fix issue with AVCTP browsing channel and missing ERTM.
+	Fix issue with AVDTP and local SEID pool for each adapter.
+	Add support for BR/EDR and LE connection failure reasons.
+
 ver 5.61:
 	Fix issue with A2DP while waiting for command response.
 	Fix issue with A2DP when SetConfiguration fails.
