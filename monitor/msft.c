@@ -30,6 +30,9 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#include "lib/bluetooth.h"
+#include "lib/uuid.h"
+
 #include "src/shared/util.h"
 #include "display.h"
 #include "packet.h"
@@ -49,46 +52,132 @@ static void null_rsp(const void *data, uint16_t size)
 
 static void read_supported_features_rsp(const void *data, uint16_t size)
 {
-	uint8_t evt_prefix_len = get_u8(data + 8);
+	const struct msft_rsp_read_supported_features *rsp = data;
 
-	packet_print_features_msft(data);
-	print_field("Event prefix length: %u", evt_prefix_len);
-	packet_hexdump(data + 9, size - 9);
+	packet_print_features_msft(rsp->features);
+	print_field("Event prefix length: %u", rsp->evt_prefix_len);
+	print_field("Event prefix:");
+	packet_hexdump(rsp->evt_prefix, rsp->evt_prefix_len);
+	packet_set_msft_evt_prefix(rsp->evt_prefix, rsp->evt_prefix_len);
+}
 
-	packet_set_msft_evt_prefix(data + 9, evt_prefix_len);
+static void monitor_rssi_cmd(const void *data, uint16_t size)
+{
+	const struct msft_cmd_monitor_rssi *cmd = data;
+
+	print_field("Connection handle: 0x%04x", cmd->handle);
+	packet_print_rssi("RSSI threshold high", cmd->rssi_high);
+	packet_print_rssi("RSSI threshold low", cmd->rssi_low);
+	print_field("RSSI threshold low time interval: %u sec (0x%2.2x)",
+						cmd->rssi_low_interval,
+						cmd->rssi_low_interval);
+	print_field("RSSI sampling period: %u msec (0x%2.2x)",
+						cmd->rssi_period * 100,
+						cmd->rssi_period);
+}
+
+static void cancel_monitor_rssi_cmd(const void *data, uint16_t size)
+{
+	const struct msft_cmd_cancel_monitor_rssi *cmd = data;
+
+	print_field("Connection handle: 0x%04x", cmd->handle);
 }
 
 static void le_monitor_advertisement_cmd(const void *data, uint16_t size)
 {
-	int8_t threshold_high = get_s8(data);
-	int8_t threshold_low = get_s8(data + 1);
-	uint8_t threshold_low_time_interval = get_u8(data + 2);
-	uint8_t sampling_period = get_u8(data + 3);
+	const struct msft_cmd_le_monitor_adv *cmd = data;
+	const struct msft_le_monitor_adv_patterns *patterns;
+	const struct msft_le_monitor_adv_uuid *uuid;
+	const struct msft_le_monitor_adv_irk *irk;
+	const struct msft_le_monitor_adv_addr *addr;
+	const char *str;
+	char uuidstr[MAX_LEN_UUID_STR];
 
-	packet_print_rssi("RSSI threshold high", threshold_high);
-	packet_print_rssi("RSSI threshold low", threshold_low);
+	packet_print_rssi("RSSI threshold high", cmd->rssi_high);
+	packet_print_rssi("RSSI threshold low", cmd->rssi_low);
 	print_field("RSSI threshold low time interval: %u sec (0x%2.2x)",
-						threshold_low_time_interval,
-						threshold_low_time_interval);
+						cmd->rssi_low_interval,
+						cmd->rssi_low_interval);
 	print_field("RSSI sampling period: %u msec (0x%2.2x)",
-						sampling_period * 100,
-						sampling_period);
-	packet_hexdump(data + 4, size - 4);
+						cmd->rssi_period * 100,
+						cmd->rssi_period);
+
+	switch (cmd->type) {
+	case MSFT_LE_MONITOR_ADV_PATTERN:
+		print_field("Type: Pattern (0x%2.2x)", cmd->type);
+		patterns = (void *)cmd->data;
+		print_field("Number of patterns: %u", patterns->num);
+		packet_hexdump((void *)patterns->data,
+			       size - (sizeof(*cmd) + sizeof(*patterns)));
+		break;
+	case MSFT_LE_MONITOR_ADV_UUID:
+		print_field("Type: UUID (0x%2.2x)", cmd->type);
+		uuid = (void *)cmd->data;
+
+		switch (uuid->type) {
+		case 0x01:
+			str = bt_uuid16_to_str(uuid->value.u16);
+			print_field("UUID: %s (0x%4.4x)", str, uuid->value.u16);
+			break;
+		case 0x02:
+			str = bt_uuid32_to_str(uuid->value.u32);
+			print_field("UUID: %s (0x%8.8x)", str, uuid->value.u32);
+			break;
+		case 0x03:
+			sprintf(uuidstr, "%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
+				get_le32(uuid->value.u128 + 12),
+				get_le16(uuid->value.u128 + 10),
+				get_le16(uuid->value.u128 + 8),
+				get_le16(uuid->value.u128 + 6),
+				get_le32(uuid->value.u128 + 2),
+				get_le16(uuid->value.u128 + 0));
+			str = bt_uuidstr_to_str(uuidstr);
+			print_field("UUID: %s (%s)", str, uuidstr);
+			break;
+		default:
+			packet_hexdump((void *)&uuid->value,
+					size - sizeof(*cmd));
+			break;
+		}
+		break;
+	case MSFT_LE_MONITOR_ADV_IRK:
+		print_field("Type: IRK (0x%2.2x)", cmd->type);
+		irk = (void *)cmd->data;
+		print_field("IRK:");
+		packet_hexdump(irk->irk, size - sizeof(*cmd));
+		break;
+	case MSFT_LE_MONITOR_ADV_ADDR:
+		print_field("Type: Adderss (0x%2.2x)", cmd->type);
+		addr = (void *)cmd->data;
+		packet_print_addr(NULL, addr->addr, addr->type);
+		break;
+	default:
+		print_field("Type: Unknown (0x%2.2x)", cmd->type);
+		packet_hexdump(cmd->data, size - sizeof(*cmd));
+		break;
+	}
 }
 
 static void le_monitor_advertisement_rsp(const void *data, uint16_t size)
 {
-	uint8_t handle = get_u8(data);
+	const struct msft_rsp_le_monitor_adv *rsp = data;
 
-	print_field("Monitor handle: %u", handle);
+	print_field("Monitor handle: %u", rsp->handle);
+}
+
+static void le_cancel_monitor_adv_cmd(const void *data, uint16_t size)
+{
+	const struct msft_cmd_le_cancel_monitor_adv *cmd = data;
+
+	print_field("Monitor handle: %u", cmd->handle);
 }
 
 static void set_adv_filter_enable_cmd(const void *data, uint16_t size)
 {
-	uint8_t enable = get_u8(data);
+	const struct msft_cmd_le_monitor_adv_enable *cmd = data;
 	const char *str;
 
-	switch (enable) {
+	switch (cmd->enable) {
 	case 0x00:
 		str = "Current allow list";
 		break;
@@ -100,7 +189,7 @@ static void set_adv_filter_enable_cmd(const void *data, uint16_t size)
 		break;
 	}
 
-	print_field("Enable: %s (0x%2.2x)", str, enable);
+	print_field("Enable: %s (0x%2.2x)", str, cmd->enable);
 }
 
 typedef void (*func_t) (const void *data, uint16_t size);
@@ -114,12 +203,15 @@ static const struct {
 	{ 0x00, "Read Supported Features",
 			null_cmd,
 			read_supported_features_rsp },
-	{ 0x01, "Monitor RSSI" },
-	{ 0x02, "Cancel Monitor RSSI" },
+	{ 0x01, "Monitor RSSI",
+			monitor_rssi_cmd },
+	{ 0x02, "Cancel Monitor RSSI",
+			cancel_monitor_rssi_cmd },
 	{ 0x03, "LE Monitor Advertisement",
 			le_monitor_advertisement_cmd,
 			le_monitor_advertisement_rsp },
-	{ 0x04, "LE Cancel Monitor Advertisement" },
+	{ 0x04, "LE Cancel Monitor Advertisement",
+			le_cancel_monitor_adv_cmd },
 	{ 0x05, "LE Set Advertisement Filter Enable",
 			set_adv_filter_enable_cmd,
 			null_rsp },
@@ -156,7 +248,7 @@ static void msft_cmd(const void *data, uint8_t size)
 						" (0x%2.2x)", code);
 
 	if (code_func)
-		code_func(data + 1, size - 1);
+		code_func(data, size);
 	else
 		packet_hexdump(data + 1, size - 1);
 }
@@ -193,7 +285,7 @@ static void msft_rsp(const void *data, uint8_t size)
 	packet_print_error("Status", status);
 
 	if (code_func)
-		code_func(data + 2, size - 2);
+		code_func(data, size);
 	else
 		packet_hexdump(data + 2, size - 2);
 }
