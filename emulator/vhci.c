@@ -29,10 +29,8 @@
 #include "btdev.h"
 #include "vhci.h"
 
-#define uninitialized_var(x) x = x
-
 struct vhci {
-	enum vhci_type type;
+	enum btdev_type type;
 	int fd;
 	struct btdev *btdev;
 };
@@ -91,32 +89,22 @@ bool vhci_set_debug(struct vhci *vhci, vhci_debug_func_t callback,
 	return btdev_set_debug(vhci->btdev, callback, user_data, destroy);
 }
 
-struct vhci *vhci_open(enum vhci_type type)
+struct vhci_create_req {
+	uint8_t  pkt_type;
+	uint8_t  opcode;
+} __attribute__((packed));
+
+struct vhci_create_rsp {
+	uint8_t  pkt_type;
+	uint8_t  opcode;
+	uint16_t index;
+} __attribute__((packed));
+
+struct vhci *vhci_open(uint8_t type)
 {
 	struct vhci *vhci;
-	enum btdev_type uninitialized_var(btdev_type);
-	unsigned char uninitialized_var(ctrl_type);
-	unsigned char setup_cmd[2];
-	static uint8_t id = 0x23;
-
-	switch (type) {
-	case VHCI_TYPE_BREDRLE:
-		btdev_type = BTDEV_TYPE_BREDRLE52;
-		ctrl_type = HCI_PRIMARY;
-		break;
-	case VHCI_TYPE_BREDR:
-		btdev_type = BTDEV_TYPE_BREDR;
-		ctrl_type = HCI_PRIMARY;
-		break;
-	case VHCI_TYPE_LE:
-		btdev_type = BTDEV_TYPE_LE;
-		ctrl_type = HCI_PRIMARY;
-		break;
-	case VHCI_TYPE_AMP:
-		btdev_type = BTDEV_TYPE_AMP;
-		ctrl_type = HCI_AMP;
-		break;
-	}
+	struct vhci_create_req req;
+	struct vhci_create_rsp rsp;
 
 	vhci = malloc(sizeof(*vhci));
 	if (!vhci)
@@ -131,16 +119,33 @@ struct vhci *vhci_open(enum vhci_type type)
 		return NULL;
 	}
 
-	setup_cmd[0] = HCI_VENDOR_PKT;
-	setup_cmd[1] = ctrl_type;
+	memset(&req, 0, sizeof(req));
+	req.pkt_type = HCI_VENDOR_PKT;
 
-	if (write(vhci->fd, setup_cmd, sizeof(setup_cmd)) < 0) {
+	switch (type) {
+	case BTDEV_TYPE_AMP:
+		req.opcode = HCI_AMP;
+		break;
+	default:
+		req.opcode = HCI_PRIMARY;
+		break;
+	}
+
+	if (write(vhci->fd, &req, sizeof(req)) < 0) {
 		close(vhci->fd);
 		free(vhci);
 		return NULL;
 	}
 
-	vhci->btdev = btdev_create(btdev_type, id++);
+	memset(&rsp, 0, sizeof(rsp));
+
+	if (read(vhci->fd, &rsp, sizeof(rsp)) < 0) {
+		close(vhci->fd);
+		free(vhci);
+		return NULL;
+	}
+
+	vhci->btdev = btdev_create(type, rsp.index);
 	if (!vhci->btdev) {
 		close(vhci->fd);
 		free(vhci);
@@ -166,4 +171,12 @@ void vhci_close(struct vhci *vhci)
 		return;
 
 	mainloop_remove_fd(vhci->fd);
+}
+
+struct btdev *vhci_get_btdev(struct vhci *vhci)
+{
+	if (!vhci)
+		return NULL;
+
+	return vhci->btdev;
 }

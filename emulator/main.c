@@ -17,12 +17,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <getopt.h>
+#include <sys/uio.h>
 
 #include "src/shared/mainloop.h"
 #include "src/shared/util.h"
 
 #include "serial.h"
 #include "server.h"
+#include "btdev.h"
 #include "vhci.h"
 #include "amp.h"
 #include "le.h"
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
 	int letest_count = 0;
 	int amptest_count = 0;
 	int vhci_count = 0;
-	enum vhci_type vhci_type = VHCI_TYPE_BREDRLE;
+	enum btdev_type type = BTDEV_TYPE_BREDRLE52;
 	int i;
 
 	mainloop_init();
@@ -120,13 +122,13 @@ int main(int argc, char *argv[])
 				vhci_count = 1;
 			break;
 		case 'L':
-			vhci_type = VHCI_TYPE_LE;
+			type = BTDEV_TYPE_LE;
 			break;
 		case 'B':
-			vhci_type = VHCI_TYPE_BREDR;
+			type = BTDEV_TYPE_BREDR;
 			break;
 		case 'A':
-			vhci_type = VHCI_TYPE_AMP;
+			type = BTDEV_TYPE_AMP;
 			break;
 		case 'U':
 			if (optarg)
@@ -182,7 +184,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < vhci_count; i++) {
 		struct vhci *vhci;
 
-		vhci = vhci_open(vhci_type);
+		vhci = vhci_open(type);
 		if (!vhci) {
 			fprintf(stderr, "Failed to open Virtual HCI device\n");
 			return EXIT_FAILURE;
