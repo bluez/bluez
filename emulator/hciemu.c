@@ -28,6 +28,7 @@
 #include "lib/hci.h"
 
 #include "monitor/bt.h"
+#include "emulator/vhci.h"
 #include "emulator/btdev.h"
 #include "emulator/bthost.h"
 #include "src/shared/util.h"
@@ -45,9 +46,8 @@ struct hciemu_client {
 struct hciemu {
 	int ref_count;
 	enum btdev_type btdev_type;
-	struct btdev *dev;
+	struct vhci *vhci;
 	struct queue *clients;
-	guint source;
 	struct queue *post_command_hooks;
 	char bdaddr_str[18];
 
@@ -221,37 +221,15 @@ static guint create_source_btdev(int fd, struct btdev *btdev)
 
 static bool create_vhci(struct hciemu *hciemu)
 {
-	struct btdev *btdev;
-	uint8_t create_req[2];
-	ssize_t written;
-	int fd;
+	struct vhci *vhci;
 
-	btdev = btdev_create(hciemu->btdev_type, 0x00);
-	if (!btdev)
+	vhci = vhci_open(hciemu->btdev_type);
+	if (!vhci)
 		return false;
 
-	btdev_set_command_handler(btdev, central_command_callback, hciemu);
-
-	fd = open("/dev/vhci", O_RDWR | O_NONBLOCK | O_CLOEXEC);
-	if (fd < 0) {
-		perror("Opening /dev/vhci failed");
-		btdev_destroy(btdev);
-		return false;
-	}
-
-	create_req[0] = HCI_VENDOR_PKT;
-	create_req[1] = HCI_PRIMARY;
-
-	written = write(fd, create_req, sizeof(create_req));
-	if (written < 0) {
-		close(fd);
-		btdev_destroy(btdev);
-		return false;
-	}
-
-	hciemu->dev = btdev;
-
-	hciemu->source = create_source_btdev(fd, btdev);
+	btdev_set_command_handler(vhci_get_btdev(vhci),
+					central_command_callback, hciemu);
+	hciemu->vhci = vhci;
 
 	return true;
 }
@@ -448,8 +426,7 @@ void hciemu_unref(struct hciemu *hciemu)
 	queue_destroy(hciemu->post_command_hooks, destroy_command_hook);
 	queue_destroy(hciemu->clients, hciemu_client_destroy);
 
-	g_source_remove(hciemu->source);
-	btdev_destroy(hciemu->dev);
+	vhci_close(hciemu->vhci);
 
 	free(hciemu);
 }
@@ -462,12 +439,12 @@ static void bthost_print(const char *str, void *user_data)
 					"bthost: %s", str);
 }
 
-static void btdev_central_debug(const char *str, void *user_data)
+static void vhci_debug(const char *str, void *user_data)
 {
 	struct hciemu *hciemu = user_data;
 
 	util_debug(hciemu->debug_callback, hciemu->debug_data,
-					"btdev: %s", str);
+					"vhci: %s", str);
 }
 
 static void btdev_client_debug(const char *str, void *user_data)
@@ -475,7 +452,7 @@ static void btdev_client_debug(const char *str, void *user_data)
 	struct hciemu *hciemu = user_data;
 
 	util_debug(hciemu->debug_callback, hciemu->debug_data,
-					"btdev[bthost]: %s", str);
+					"btdev: %s", str);
 }
 
 static void hciemu_client_set_debug(void *data, void *user_data)
@@ -500,7 +477,7 @@ bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
 	hciemu->debug_destroy = destroy;
 	hciemu->debug_data = user_data;
 
-	btdev_set_debug(hciemu->dev, btdev_central_debug, hciemu, NULL);
+	vhci_set_debug(hciemu->vhci, vhci_debug, hciemu, NULL);
 
 	queue_foreach(hciemu->clients, hciemu_client_set_debug, hciemu);
 
@@ -510,11 +487,16 @@ bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
 const char *hciemu_get_address(struct hciemu *hciemu)
 {
 	const uint8_t *addr;
+	struct btdev *dev;
 
-	if (!hciemu || !hciemu->dev)
+	if (!hciemu || !hciemu->vhci)
 		return NULL;
 
-	addr = btdev_get_bdaddr(hciemu->dev);
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return NULL;
+
+	addr = btdev_get_bdaddr(dev);
 	sprintf(hciemu->bdaddr_str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
 			addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
 	return hciemu->bdaddr_str;
@@ -522,18 +504,30 @@ const char *hciemu_get_address(struct hciemu *hciemu)
 
 uint8_t *hciemu_get_features(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->dev)
+	struct btdev *dev;
+
+	if (!hciemu || !hciemu->vhci)
 		return NULL;
 
-	return btdev_get_features(hciemu->dev);
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return NULL;
+
+	return btdev_get_features(dev);
 }
 
 const uint8_t *hciemu_get_central_bdaddr(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->dev)
+	struct btdev *dev;
+
+	if (!hciemu || !hciemu->vhci)
 		return NULL;
 
-	return btdev_get_bdaddr(hciemu->dev);
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return NULL;
+
+	return btdev_get_bdaddr(dev);
 }
 
 const uint8_t *hciemu_client_bdaddr(struct hciemu_client *client)
@@ -558,27 +552,45 @@ const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu)
 
 uint8_t hciemu_get_central_scan_enable(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->dev)
+	struct btdev *dev;
+
+	if (!hciemu || !hciemu->vhci)
 		return 0;
 
-	return btdev_get_scan_enable(hciemu->dev);
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return 0;
+
+	return btdev_get_scan_enable(dev);
 }
 
 uint8_t hciemu_get_central_le_scan_enable(struct hciemu *hciemu)
 {
-	if (!hciemu || !hciemu->dev)
+	struct btdev *dev;
+
+	if (!hciemu || !hciemu->vhci)
 		return 0;
 
-	return btdev_get_le_scan_enable(hciemu->dev);
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return 0;
+
+	return btdev_get_le_scan_enable(dev);
 }
 
 void hciemu_set_central_le_states(struct hciemu *hciemu,
 						const uint8_t *le_states)
 {
-	if (!hciemu || !hciemu->dev)
+	struct btdev *dev;
+
+	if (!hciemu || !hciemu->vhci)
 		return;
 
-	btdev_set_le_states(hciemu->dev, le_states);
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return;
+
+	btdev_set_le_states(dev, le_states);
 }
 
 bool hciemu_add_central_post_command_hook(struct hciemu *hciemu,
@@ -619,9 +631,14 @@ int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 				void *user_data)
 {
 	enum btdev_hook_type hook_type;
+	struct btdev *dev;
 
-	if (!hciemu)
+	if (!hciemu || !hciemu->vhci)
 		return -1;
+
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return 0;
 
 	switch (type) {
 	case HCIEMU_HOOK_PRE_CMD:
@@ -640,16 +657,20 @@ int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 		return -1;
 	}
 
-	return btdev_add_hook(hciemu->dev, hook_type, opcode, function,
-								user_data);
+	return btdev_add_hook(dev, hook_type, opcode, function, user_data);
 }
 
 bool hciemu_del_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 								uint16_t opcode)
 {
 	enum btdev_hook_type hook_type;
+	struct btdev *dev;
 
-	if (!hciemu)
+	if (!hciemu || !hciemu->vhci)
+		return false;
+
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
 		return false;
 
 	switch (type) {
@@ -669,5 +690,5 @@ bool hciemu_del_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 		return false;
 	}
 
-	return btdev_del_hook(hciemu->dev, hook_type, opcode);
+	return btdev_del_hook(dev, hook_type, opcode);
 }

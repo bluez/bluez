@@ -148,6 +148,7 @@ android_haltest_LDADD = -ldl -lm
 noinst_PROGRAMS += android/android-tester
 
 android_android_tester_SOURCES = emulator/hciemu.h emulator/hciemu.c \
+				emulator/vhci.h emulator/vhci.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c \
@@ -172,6 +173,7 @@ android_android_tester_LDFLAGS = $(AM_LDFLAGS) -pthread
 noinst_PROGRAMS += android/ipc-tester
 
 android_ipc_tester_SOURCES = emulator/hciemu.h emulator/hciemu.c \
+				emulator/vhci.h emulator/vhci.c \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c \

@@ -21,6 +21,8 @@
 #include <sys/uio.h>
 #include <stdint.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -43,6 +45,8 @@
 #define ACL_HANDLE 42
 #define ISO_HANDLE 257
 #define SCO_HANDLE 257
+
+#define DEBUGFS_PATH "/sys/kernel/debug/bluetooth"
 
 struct hook {
 	btdev_hook_func handler;
@@ -93,6 +97,7 @@ struct le_ext_adv {
 
 struct btdev {
 	enum btdev_type type;
+	uint16_t id;
 
 	struct queue *conns;
 
@@ -135,6 +140,7 @@ struct btdev {
 	uint8_t  le_features[8];
 	uint8_t  le_states[8];
 	const struct btdev_cmd *cmds;
+	uint16_t msft_opcode;
 
 	uint16_t default_link_policy;
 	uint8_t  event_mask[8];
@@ -6230,7 +6236,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	}
 
 	btdev->type = type;
-
+	btdev->id = id;
 	btdev->manufacturer = 63;
 	btdev->revision = 0x0000;
 
