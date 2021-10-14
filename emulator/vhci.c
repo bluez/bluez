@@ -24,14 +24,14 @@
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
 
-#include "src/shared/mainloop.h"
+#include "src/shared/io.h"
 #include "monitor/bt.h"
 #include "btdev.h"
 #include "vhci.h"
 
 struct vhci {
 	enum btdev_type type;
-	int fd;
+	struct io *io;
 	struct btdev *btdev;
 };
 
@@ -40,8 +40,7 @@ static void vhci_destroy(void *user_data)
 	struct vhci *vhci = user_data;
 
 	btdev_destroy(vhci->btdev);
-
-	close(vhci->fd);
+	io_destroy(vhci->io);
 
 	free(vhci);
 }
@@ -52,23 +51,21 @@ static void vhci_write_callback(const struct iovec *iov, int iovlen,
 	struct vhci *vhci = user_data;
 	ssize_t written;
 
-	written = writev(vhci->fd, iov, iovlen);
+	written = io_send(vhci->io, iov, iovlen);
 	if (written < 0)
 		return;
 }
 
-static void vhci_read_callback(int fd, uint32_t events, void *user_data)
+static bool vhci_read_callback(struct io *io, void *user_data)
 {
 	struct vhci *vhci = user_data;
+	int fd = io_get_fd(vhci->io);
 	unsigned char buf[4096];
 	ssize_t len;
 
-	if (events & (EPOLLERR | EPOLLHUP))
-		return;
-
-	len = read(vhci->fd, buf, sizeof(buf));
+	len = read(fd, buf, sizeof(buf));
 	if (len < 1)
-		return;
+		return false;
 
 	switch (buf[0]) {
 	case BT_H4_CMD_PKT:
@@ -78,6 +75,8 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 		btdev_receive_h4(vhci->btdev, buf, len);
 		break;
 	}
+
+	return true;
 }
 
 bool vhci_set_debug(struct vhci *vhci, vhci_debug_func_t callback,
@@ -105,19 +104,11 @@ struct vhci *vhci_open(uint8_t type)
 	struct vhci *vhci;
 	struct vhci_create_req req;
 	struct vhci_create_rsp rsp;
+	int fd;
 
-	vhci = malloc(sizeof(*vhci));
-	if (!vhci)
+	fd = open("/dev/vhci", O_RDWR | O_NONBLOCK);
+	if (fd < 0)
 		return NULL;
-
-	memset(vhci, 0, sizeof(*vhci));
-	vhci->type = type;
-
-	vhci->fd = open("/dev/vhci", O_RDWR | O_NONBLOCK);
-	if (vhci->fd < 0) {
-		free(vhci);
-		return NULL;
-	}
 
 	memset(&req, 0, sizeof(req));
 	req.pkt_type = HCI_VENDOR_PKT;
@@ -131,34 +122,38 @@ struct vhci *vhci_open(uint8_t type)
 		break;
 	}
 
-	if (write(vhci->fd, &req, sizeof(req)) < 0) {
-		close(vhci->fd);
-		free(vhci);
+	if (write(fd, &req, sizeof(req)) < 0) {
+		close(fd);
 		return NULL;
 	}
 
 	memset(&rsp, 0, sizeof(rsp));
 
-	if (read(vhci->fd, &rsp, sizeof(rsp)) < 0) {
-		close(vhci->fd);
-		free(vhci);
+	if (read(fd, &rsp, sizeof(rsp)) < 0) {
+		close(fd);
 		return NULL;
 	}
 
+	vhci = malloc(sizeof(*vhci));
+	if (!vhci)
+		return NULL;
+
+	memset(vhci, 0, sizeof(*vhci));
+	vhci->type = type;
+	vhci->io = io_new(fd);
+
+	io_set_close_on_destroy(vhci->io, true);
+
 	vhci->btdev = btdev_create(type, rsp.index);
 	if (!vhci->btdev) {
-		close(vhci->fd);
-		free(vhci);
+		vhci_destroy(vhci);
 		return NULL;
 	}
 
 	btdev_set_send_handler(vhci->btdev, vhci_write_callback, vhci);
 
-	if (mainloop_add_fd(vhci->fd, EPOLLIN, vhci_read_callback,
-						vhci, vhci_destroy) < 0) {
-		btdev_destroy(vhci->btdev);
-		close(vhci->fd);
-		free(vhci);
+	if (!io_set_read_handler(vhci->io, vhci_read_callback, vhci, NULL)) {
+		vhci_destroy(vhci);
 		return NULL;
 	}
 
@@ -170,7 +165,7 @@ void vhci_close(struct vhci *vhci)
 	if (!vhci)
 		return;
 
-	mainloop_remove_fd(vhci->fd);
+	vhci_destroy(vhci);
 }
 
 struct btdev *vhci_get_btdev(struct vhci *vhci)
