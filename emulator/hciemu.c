@@ -234,6 +234,14 @@ static bool create_vhci(struct hciemu *hciemu)
 	return true;
 }
 
+struct vhci *hciemu_get_vhci(struct hciemu *hciemu)
+{
+	if (!hciemu)
+		return NULL;
+
+	return hciemu->vhci;
+}
+
 struct hciemu_client *hciemu_get_client(struct hciemu *hciemu, int num)
 {
 	const struct queue_entry *entry;

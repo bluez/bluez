@@ -30,6 +30,7 @@
 #include "lib/l2cap.h"
 
 #include "monitor/bt.h"
+#include "emulator/vhci.h"
 #include "emulator/bthost.h"
 #include "emulator/hciemu.h"
 
@@ -312,62 +313,6 @@ struct generic_data {
 	const uint8_t *adv_data;
 	uint8_t adv_data_len;
 };
-
-static int set_debugfs_force_suspend(int index, bool enable)
-{
-	int fd, n, err;
-	char val, path[64];
-
-	err = 0;
-
-	/* path for the debugfs file
-	 * /sys/kernel/debug/bluetooth/hciX/force_suspend
-	 */
-	memset(path, 0, sizeof(path));
-	sprintf(path, "/sys/kernel/debug/bluetooth/hci%d/force_suspend", index);
-
-	fd = open(path, O_RDWR);
-	if (fd < 0)
-		return -errno;
-
-	val = (enable) ? 'Y' : 'N';
-
-	n = write(fd, &val, sizeof(val));
-	if (n < (ssize_t) sizeof(val))
-		err = -errno;
-
-	close(fd);
-
-	return err;
-}
-
-static int set_debugfs_force_wakeup(int index, bool enable)
-{
-	int fd, n, err;
-	char val, path[64];
-
-	err = 0;
-
-	/* path for the debugfs file
-	 * /sys/kernel/debug/bluetooth/hciX/force_suspend
-	 */
-	memset(path, 0, sizeof(path));
-	sprintf(path, "/sys/kernel/debug/bluetooth/hci%d/force_wakeup", index);
-
-	fd = open(path, O_RDWR);
-	if (fd < 0)
-		return -errno;
-
-	val = (enable) ? 'Y' : 'N';
-
-	n = write(fd, &val, sizeof(val));
-	if (n < (ssize_t) sizeof(val))
-		err = -errno;
-
-	close(fd);
-
-	return err;
-}
 
 static const uint8_t set_exp_feat_param_debug[] = {
 	0x1c, 0xda, 0x47, 0x1c, 0x48, 0x6c, 0x01, 0xab, /* UUID - Debug */
@@ -10512,12 +10457,12 @@ static const struct generic_data suspend_resume_success_1 = {
 
 static void test_suspend_resume_success_1(const void *test_data)
 {
-	bool suspend;
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
 	int err;
 
 	/* Triggers the suspend */
-	suspend = true;
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, true);
 	if (err) {
 		tester_warn("Unable to enable the force_suspend");
 		tester_test_failed();
@@ -10535,12 +10480,12 @@ static const struct generic_data suspend_resume_success_2 = {
 
 static void test_suspend_resume_success_2(const void *test_data)
 {
-	bool suspend;
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
 	int err;
 
 	/* Triggers the suspend */
-	suspend = true;
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, true);
 	if (err) {
 		tester_warn("Unable to enable the force_suspend");
 		tester_test_failed();
@@ -10548,8 +10493,7 @@ static void test_suspend_resume_success_2(const void *test_data)
 	}
 
 	/* Triggers the resume */
-	suspend = false;
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, false);
 	if (err) {
 		tester_warn("Unable to enable the force_suspend");
 		tester_test_failed();
@@ -10586,12 +10530,12 @@ static void setup_suspend_resume_success_3(const void *test_data)
 
 static void test_suspend_resume_success_3(const void *test_data)
 {
-	bool suspend;
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
 	int err;
 
 	/* Triggers the suspend */
-	suspend = true;
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, true);
 	if (err) {
 		tester_warn("Unable to enable the force_suspend");
 		tester_test_failed();
@@ -10635,15 +10579,15 @@ static void setup_suspend_resume_success_4(const void *test_data)
 
 static void test_suspend_resume_success_4(const void *test_data)
 {
-	bool suspend;
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
 	int err;
 
 	test_command_generic(test_data);
 
 	/* Triggers the suspend */
-	suspend = true;
 	tester_print("Set the system into Suspend via force_suspend");
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, true);
 	if (err) {
 		tester_warn("Unable to enable the force_suspend");
 		tester_test_failed();
@@ -10664,13 +10608,13 @@ static const struct generic_data suspend_resume_success_5 = {
 
 static void trigger_force_suspend(void *user_data)
 {
-	bool suspend;
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
 	int err;
 
 	/* Triggers the suspend */
-	suspend = true;
 	tester_print("Set the system into Suspend via force_suspend");
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, true);
 	if (err) {
 		tester_warn("Unable to enable the force_suspend");
 		return;
@@ -10679,13 +10623,13 @@ static void trigger_force_suspend(void *user_data)
 
 static void trigger_force_resume(void *user_data)
 {
-	bool suspend;
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
 	int err;
 
 	/* Triggers the suspend */
-	suspend = false;
 	tester_print("Set the system into Resume via force_suspend");
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, false);
 	if (err) {
 		tester_warn("Unable to disable the force_suspend");
 		return;
@@ -10720,12 +10664,12 @@ static const struct generic_data suspend_resume_success_7 = {
 
 static void test_suspend_resume_success_7(const void *test_data)
 {
-	bool suspend;
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
 	int err;
 
 	/* Set Force Wakeup */
-	suspend = true;
-	err = set_debugfs_force_wakeup(0, suspend);
+	err = vhci_set_force_wakeup(vhci, true);
 	if (err) {
 		tester_warn("Unable to enable the force_wakeup");
 		tester_test_failed();
@@ -10733,8 +10677,7 @@ static void test_suspend_resume_success_7(const void *test_data)
 	}
 
 	/* Triggers the suspend */
-	suspend = true;
-	err = set_debugfs_force_suspend(0, suspend);
+	err = vhci_set_force_suspend(vhci, true);
 	if (err) {
 		tester_warn("Unable to enable the force_suspend");
 		tester_test_failed();

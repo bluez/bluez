@@ -45,6 +45,7 @@ typedef void (*hciemu_destroy_func_t)(void *user_data);
 bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
 			void *user_data, hciemu_destroy_func_t destroy);
 
+struct vhci *hciemu_get_vhci(struct hciemu *hciemu);
 struct bthost *hciemu_client_get_host(struct hciemu *hciemu);
 
 const char *hciemu_get_address(struct hciemu *hciemu);
