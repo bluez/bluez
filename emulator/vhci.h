@@ -22,3 +22,8 @@ struct vhci *vhci_open(uint8_t type);
 void vhci_close(struct vhci *vhci);
 
 struct btdev *vhci_get_btdev(struct vhci *vhci);
+
+int vhci_set_force_suspend(struct vhci *vhci, bool enable);
+int vhci_set_force_wakeup(struct vhci *vhci, bool enable);
+int vhci_set_msft_opcode(struct vhci *vhci, uint16_t opcode);
+int vhci_set_aosp_capable(struct vhci *vhci, bool enable);

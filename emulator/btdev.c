@@ -46,8 +46,6 @@
 #define ISO_HANDLE 257
 #define SCO_HANDLE 257
 
-#define DEBUGFS_PATH "/sys/kernel/debug/bluetooth"
-
 struct hook {
 	btdev_hook_func handler;
 	void *user_data;
@@ -141,6 +139,7 @@ struct btdev {
 	uint8_t  le_states[8];
 	const struct btdev_cmd *cmds;
 	uint16_t msft_opcode;
+	bool aosp_capable;
 
 	uint16_t default_link_policy;
 	uint8_t  event_mask[8];
@@ -6676,4 +6675,24 @@ bool btdev_del_hook(struct btdev *btdev, enum btdev_hook_type type,
 	}
 
 	return false;
+}
+
+int btdev_set_msft_opcode(struct btdev *btdev, uint16_t opcode)
+{
+	if (!btdev)
+		return -EINVAL;
+
+	btdev->msft_opcode = opcode;
+
+	return 0;
+}
+
+int btdev_set_aosp_capable(struct btdev *btdev, bool enable)
+{
+	if (!btdev)
+		return -EINVAL;
+
+	btdev->aosp_capable = enable;
+
+	return 0;
 }

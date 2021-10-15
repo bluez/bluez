@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/uio.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -29,8 +31,11 @@
 #include "btdev.h"
 #include "vhci.h"
 
+#define DEBUGFS_PATH "/sys/kernel/debug/bluetooth"
+
 struct vhci {
 	enum btdev_type type;
+	uint16_t index;
 	struct io *io;
 	struct btdev *btdev;
 };
@@ -140,6 +145,7 @@ struct vhci *vhci_open(uint8_t type)
 
 	memset(vhci, 0, sizeof(*vhci));
 	vhci->type = type;
+	vhci->index = rsp.index;
 	vhci->io = io_new(fd);
 
 	io_set_close_on_destroy(vhci->io, true);
@@ -174,4 +180,64 @@ struct btdev *vhci_get_btdev(struct vhci *vhci)
 		return NULL;
 
 	return vhci->btdev;
+}
+
+static int vhci_debugfs_write(struct vhci *vhci, char *option, void *data,
+			      size_t len)
+{
+	char path[64];
+	int fd, err;
+	size_t n;
+
+	if (!vhci)
+		return -EINVAL;
+
+	memset(path, 0, sizeof(path));
+	sprintf(path, DEBUGFS_PATH "/hci%d/%s", vhci->index, option);
+
+	fd = open(path, O_RDWR);
+	if (fd < 0)
+		return -errno;
+
+	n = write(fd, data, len);
+	if (n == len)
+		err = 0;
+	else
+		err = -errno;
+
+	close(fd);
+
+	return err;
+}
+
+int vhci_set_force_suspend(struct vhci *vhci, bool enable)
+{
+	char val;
+
+	val = (enable) ? 'Y' : 'N';
+
+	return vhci_debugfs_write(vhci, "force_suspend", &val, sizeof(val));
+}
+
+int vhci_set_force_wakeup(struct vhci *vhci, bool enable)
+{
+	char val;
+
+	val = (enable) ? 'Y' : 'N';
+
+	return vhci_debugfs_write(vhci, "force_wakeup", &val, sizeof(val));
+}
+
+int vhci_set_msft_opcode(struct vhci *vhci, uint16_t opcode)
+{
+	return vhci_debugfs_write(vhci, "msft_opcode", &opcode, sizeof(opcode));
+}
+
+int vhci_set_aosp_capable(struct vhci *vhci, bool enable)
+{
+	char val;
+
+	val = (enable) ? 'Y' : 'N';
+
+	return vhci_debugfs_write(vhci, "aosp_capable", &val, sizeof(val));
 }

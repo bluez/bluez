@@ -93,3 +93,6 @@ int btdev_add_hook(struct btdev *btdev, enum btdev_hook_type type,
 
 bool btdev_del_hook(struct btdev *btdev, enum btdev_hook_type type,
 							uint16_t opcode);
+
+int btdev_set_msft_opcode(struct btdev *btdev, uint16_t opcode);
+int btdev_set_aosp_capable(struct btdev *btdev, bool enable);
