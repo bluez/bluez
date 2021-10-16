@@ -145,6 +145,7 @@ ell_headers = ell/util.h \
 			ell/tls-private.h \
 			ell/ecc.h \
 			ell/ecc-private.h \
+			ell/cleanup.h \
 			ell/ecdh.h
 
 ell_sources = ell/private.h ell/missing.h \
