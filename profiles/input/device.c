@@ -1050,7 +1050,11 @@ static int hidp_add_connection(struct input_device *idev)
 	sprintf(handle, "0x%8.8X", idev->handle);
 
 	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+		error("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+		g_error_free(gerr);
+	}
 	str = g_key_file_get_string(key_file, "ServiceRecords", handle, NULL);
 	g_key_file_free(key_file);
 
