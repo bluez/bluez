@@ -816,6 +816,7 @@ static void store_remote_seps(struct a2dp_channel *chan)
 	char filename[PATH_MAX];
 	char dst_addr[18];
 	GKeyFile *key_file;
+	GError *gerr = NULL;
 	char *data;
 	gsize length = 0;
 
@@ -828,7 +829,11 @@ static void store_remote_seps(struct a2dp_channel *chan)
 			btd_adapter_get_storage_dir(device_get_adapter(device)),
 			dst_addr);
 	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+		error("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+		g_error_free(gerr);
+	}
 
 	data = g_key_file_get_string(key_file, "Endpoints", "LastUsed",
 								NULL);
@@ -845,7 +850,11 @@ static void store_remote_seps(struct a2dp_channel *chan)
 	}
 
 	data = g_key_file_to_data(key_file, &length, NULL);
-	g_file_set_contents(filename, data, length, NULL);
+	if (!g_file_set_contents(filename, data, length, &gerr)) {
+		error("Unable set contents for %s: (%s)", filename,
+								gerr->message);
+		g_error_free(gerr);
+	}
 
 	g_free(data);
 	g_key_file_free(key_file);
@@ -981,6 +990,7 @@ static void store_last_used(struct a2dp_channel *chan, uint8_t lseid,
 							uint8_t rseid)
 {
 	GKeyFile *key_file;
+	GError *gerr = NULL;
 	char filename[PATH_MAX];
 	char dst_addr[18];
 	char value[6];
@@ -993,14 +1003,22 @@ static void store_last_used(struct a2dp_channel *chan, uint8_t lseid,
 		btd_adapter_get_storage_dir(device_get_adapter(chan->device)),
 		dst_addr);
 	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+		error("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+		g_error_free(gerr);
+	}
 
 	sprintf(value, "%02hhx:%02hhx", lseid, rseid);
 
 	g_key_file_set_string(key_file, "Endpoints", "LastUsed", value);
 
 	data = g_key_file_to_data(key_file, &len, NULL);
-	g_file_set_contents(filename, data, len, NULL);
+	if (!g_file_set_contents(filename, data, len, &gerr)) {
+		error("Unable set contents for %s: (%s)", filename,
+								gerr->message);
+		g_error_free(gerr);
+	}
 
 	g_free(data);
 	g_key_file_free(key_file);
@@ -2218,6 +2236,7 @@ static void load_remote_seps(struct a2dp_channel *chan)
 	char dst_addr[18];
 	char **keys;
 	GKeyFile *key_file;
+	GError *gerr = NULL;
 
 	ba2str(device_get_address(device), dst_addr);
 
@@ -2225,7 +2244,11 @@ static void load_remote_seps(struct a2dp_channel *chan)
 			btd_adapter_get_storage_dir(device_get_adapter(device)),
 			dst_addr);
 	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+		error("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+		g_error_free(gerr);
+	}
 	keys = g_key_file_get_keys(key_file, "Endpoints", NULL, NULL);
 
 	load_remote_sep(chan, key_file, keys);
