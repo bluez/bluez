@@ -50,7 +50,8 @@ static int open_key_file(struct mesh_node *node, const char *key_dir,
 
 	if (flags & O_CREAT) {
 		snprintf(fname, PATH_MAX, "%s%s", node_path, key_dir);
-		mkdir(fname, 0755);
+		if (mkdir(fname, 0755) != 0)
+			l_error("Failed to create dir(%d): %s", errno, fname);
 	}
 
 	snprintf(fname, PATH_MAX, "%s%s/%3.3x", node_path, key_dir, idx);
@@ -206,7 +207,8 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 
 	snprintf(key_file, PATH_MAX, "%s%s", node_path, dev_key_dir);
 
-	mkdir(key_file, 0755);
+	if (mkdir(key_file, 0755) != 0)
+		l_error("Failed to create dir(%d): %s", errno, key_file);
 
 	for (i = 0; i < count; i++) {
 		snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path,

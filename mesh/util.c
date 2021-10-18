@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE
 #include <dirent.h>
+#include <errno.h>
 #include <ftw.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -117,12 +118,14 @@ int create_dir(const char *dir_name)
 		}
 
 		strncat(dir, prev + 1, next - prev);
-		mkdir(dir, 0755);
+		if (mkdir(dir, 0755) != 0)
+			l_error("Failed to create dir(%d): %s", errno, dir);
 
 		prev = next;
 	}
 
-	mkdir(dir_name, 0755);
+	if (mkdir(dir_name, 0755) != 0)
+		l_error("Failed to create dir(%d): %s", errno, dir_name);
 
 	return 0;
 }
@@ -138,7 +141,9 @@ static int del_fobject(const char *fpath, const struct stat *sb, int typeflag,
 
 	case FTW_SL:
 	default:
-		remove(fpath);
+		if (remove(fpath) < 0)
+			l_error("Failed to remove(%d): %s", errno, fpath);
+
 		l_debug("RM %s", fpath);
 		break;
 	}

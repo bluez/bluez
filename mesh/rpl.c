@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <errno.h>
 
 #include <sys/stat.h>
 
@@ -54,9 +55,10 @@ bool rpl_put_entry(struct mesh_node *node, uint16_t src, uint32_t iv_index,
 								iv_index);
 	dir = opendir(src_file);
 
-	if (!dir)
-		mkdir(src_file, 0755);
-	else
+	if (!dir) {
+		if (mkdir(src_file, 0755) != 0)
+			l_error("Failed to create dir: %s", src_file);
+	} else
 		closedir(dir);
 
 	snprintf(src_file, PATH_MAX, "%s%s/%8.8x/%4.4x", node_path, rpl_dir,
@@ -78,8 +80,8 @@ bool rpl_put_entry(struct mesh_node *node, uint16_t src, uint32_t iv_index,
 	iv_index--;
 	snprintf(src_file, PATH_MAX, "%s%s/%8.8x/%4.4x", node_path, rpl_dir,
 								iv_index, src);
-	remove(src_file);
-
+	if (remove(src_file) < 0)
+		l_error("Failed to remove(%d): %s", errno, src_file);
 
 	return result;
 }
@@ -110,7 +112,9 @@ void rpl_del_entry(struct mesh_node *node, uint16_t src)
 		if (entry->d_type == DT_DIR && entry->d_name[0] != '.') {
 			snprintf(rpl_path, PATH_MAX, "%s%s/%s/%4.4x",
 					node_path, rpl_dir, entry->d_name, src);
-			remove(rpl_path);
+			if (remove(rpl_path) < 0)
+				l_error("Failed to remove(%d): %s", errno,
+								rpl_path);
 		}
 	}
 
@@ -251,7 +255,8 @@ void rpl_update(struct mesh_node *node, uint32_t cur)
 
 	/* Make sure path exists */
 	snprintf(path, PATH_MAX, "%s%s", node_path, rpl_dir);
-	mkdir(path, 0755);
+	if (mkdir(path, 0755) != 0)
+		l_error("Failed to create dir(%d): %s", errno, path);
 
 	dir = opendir(path);
 	if (!dir)
@@ -288,6 +293,7 @@ bool rpl_init(const char *node_path)
 		return false;
 
 	snprintf(path, PATH_MAX, "%s%s", node_path, rpl_dir);
-	mkdir(path, 0755);
+	if (mkdir(path, 0755) != 0)
+		l_error("Failed to create dir(%d): %s", errno, path);
 	return true;
 }

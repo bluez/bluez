@@ -133,7 +133,8 @@ static bool incoming(struct l_io *sio, void *user_data)
 
 		buf[0] = 0;
 		memcpy(buf + 1, pvt->unique_name, size + 1);
-		send(pvt->fd, buf, size + 2, MSG_DONTWAIT);
+		if (send(pvt->fd, buf, size + 2, MSG_DONTWAIT) < 0)
+			l_error("Failed to send(%d)", errno);
 	}
 
 	return true;
@@ -304,7 +305,8 @@ static bool simple_match(const void *a, const void *b)
 static void send_pkt(struct mesh_io_private *pvt, struct tx_pkt *tx,
 							uint16_t interval)
 {
-	send(pvt->fd, tx->pkt, tx->len, MSG_DONTWAIT);
+	if (send(pvt->fd, tx->pkt, tx->len, MSG_DONTWAIT) < 0)
+		l_error("Failed to send(%d)", errno);
 
 	if (tx->delete) {
 		l_queue_remove_if(pvt->tx_pkts, simple_match, tx);
