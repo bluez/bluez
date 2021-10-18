@@ -420,8 +420,11 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 
 	if (transfer->op == G_OBEX_OP_GET &&
 				transfer->status != TRANSFER_STATUS_COMPLETE &&
-				transfer->filename)
-		remove(transfer->filename);
+				transfer->filename) {
+		if (remove(transfer->filename) < 0)
+			error("remove(%s): %s(%d)", transfer->filename,
+							strerror(errno), errno);
+	}
 
 	if (transfer->fd > 0)
 		close(transfer->fd);
@@ -521,7 +524,10 @@ static gboolean transfer_open(struct obc_transfer *transfer, int flags,
 	}
 
 	if (transfer->filename == NULL) {
-		remove(filename); /* remove always only if NULL was given */
+		/* remove always only if NULL was given */
+		if (remove(filename) < 0)
+			error("remove(%s): %s(%d)", filename, strerror(errno),
+									errno);
 		g_free(filename);
 	} else {
 		g_free(transfer->filename);

@@ -270,7 +270,9 @@ int main(int argc, char *argv[])
 	if (option_root == NULL) {
 		option_root = g_build_filename(g_get_user_cache_dir(), "obexd",
 									NULL);
-		g_mkdir_with_parents(option_root, 0700);
+		if (g_mkdir_with_parents(option_root, 0700) < 0)
+			error("Failed to create dir(%d): %s", errno,
+								option_root);
 	}
 
 	if (option_root[0] != '/') {

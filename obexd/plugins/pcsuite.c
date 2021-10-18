@@ -219,7 +219,9 @@ static void pcsuite_disconnect(struct obex_session *os, void *user_data)
 		close(pcsuite->fd);
 
 	if (pcsuite->lock_file) {
-		remove(pcsuite->lock_file);
+		if (remove(pcsuite->lock_file) < 0)
+			error("remove(%s): %s(%d)", pcsuite->lock_file,
+							strerror(errno), errno);
 		g_free(pcsuite->lock_file);
 	}
 
