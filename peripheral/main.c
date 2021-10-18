@@ -77,7 +77,8 @@ static void prepare_filesystem(void)
 
 		if (lstat(mount_table[i].target, &st) < 0) {
 			printf("Creating %s\n", mount_table[i].target);
-			mkdir(mount_table[i].target, 0755);
+			if (mkdir(mount_table[i].target, 0755) < 0)
+				perror("Failed to create dir");
 		}
 
 		printf("Mounting %s to %s\n", mount_table[i].fstype,
