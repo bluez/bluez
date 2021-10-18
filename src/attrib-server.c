@@ -752,6 +752,7 @@ static int read_device_ccc(struct btd_device *device, uint16_t handle,
 {
 	char *filename;
 	GKeyFile *key_file;
+	GError *gerr = NULL;
 	char group[6];
 	char *str;
 	unsigned int config;
@@ -764,7 +765,11 @@ static int read_device_ccc(struct btd_device *device, uint16_t handle,
 	}
 
 	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+		error("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+		g_error_free(gerr);
+	}
 
 	sprintf(group, "%hu", handle);
 
@@ -867,6 +872,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 	struct attribute *a;
 	uint8_t status;
 	GList *l;
+	GError *gerr = NULL;
 	guint h = handle;
 
 	l = g_list_find_custom(channel->server->database,
@@ -911,7 +917,11 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 		}
 
 		key_file = g_key_file_new();
-		g_key_file_load_from_file(key_file, filename, 0, NULL);
+		if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+			error("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+			g_error_free(gerr);
+		}
 
 		sprintf(group, "%hu", handle);
 		sprintf(value, "%hX", cccval);
@@ -920,7 +930,12 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 		data = g_key_file_to_data(key_file, &length, NULL);
 		if (length > 0) {
 			create_file(filename, 0600);
-			g_file_set_contents(filename, data, length, NULL);
+			if (!g_file_set_contents(filename, data, length,
+								&gerr)) {
+				error("Unable set contents for %s: (%s)",
+						filename, gerr->message);
+				g_error_free(gerr);
+			}
 		}
 
 		g_free(data);
