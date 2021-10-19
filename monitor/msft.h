@@ -87,7 +87,7 @@ struct msft_le_monitor_adv_uuid {
 	union {
 		uint16_t u16;
 		uint32_t u32;
-		uint8_t  u128[8];
+		uint8_t  u128[16];
 	} value;
 } __attribute__((packed));
 
