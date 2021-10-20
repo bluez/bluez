@@ -6236,7 +6236,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	btdev->type = type;
 	btdev->id = id;
-	btdev->manufacturer = 63;
+	btdev->manufacturer = 1521;
 	btdev->revision = 0x0000;
 
 	switch (btdev->type) {
