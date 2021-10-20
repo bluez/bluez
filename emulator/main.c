@@ -192,6 +192,8 @@ int main(int argc, char *argv[])
 
 		if (debug_enabled)
 			vhci_set_debug(vhci, vhci_debug, UINT_TO_PTR(i), NULL);
+
+		vhci_set_msft_opcode(vhci, 0xfc1e);
 	}
 
 	if (serial_enabled) {
