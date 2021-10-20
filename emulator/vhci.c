@@ -230,7 +230,16 @@ int vhci_set_force_wakeup(struct vhci *vhci, bool enable)
 
 int vhci_set_msft_opcode(struct vhci *vhci, uint16_t opcode)
 {
-	return vhci_debugfs_write(vhci, "msft_opcode", &opcode, sizeof(opcode));
+	int err;
+	char val[7];
+
+	snprintf(val, sizeof(val), "0x%4x", opcode);
+
+	err = vhci_debugfs_write(vhci, "msft_opcode", &val, sizeof(val));
+	if (err)
+		return err;
+
+	return btdev_set_msft_opcode(vhci->btdev, opcode);
 }
 
 int vhci_set_aosp_capable(struct vhci *vhci, bool enable)
