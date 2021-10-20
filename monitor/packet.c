@@ -4021,6 +4021,15 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 				 */
 				index_list[index].msft_opcode = 0xFCF0;
 				break;
+			case 1521:
+				/*
+				 * Emulator controllers use Linux Foundation as
+				 * manufacturer and support the
+				 * Microsoft vendor extenions using
+				 * 0xFC1E for VsMsftOpCode.
+				 */
+				index_list[index].msft_opcode = 0xFC1E;
+				break;
 			}
 		}
 
