@@ -5124,9 +5124,10 @@ static void le_ext_conn_complete(struct btdev *btdev,
 
 		ev.status = status;
 		ev.peer_addr_type = btdev->le_scan_own_addr_type;
-		if (ev.peer_addr_type == 0x01)
+		if (ev.peer_addr_type == 0x01 || ev.peer_addr_type == 0x03) {
+			ev.peer_addr_type = 0x01;
 			memcpy(ev.peer_addr, btdev->random_addr, 6);
-		else
+		} else
 			memcpy(ev.peer_addr, btdev->bdaddr, 6);
 
 		ev.role = 0x01;
@@ -5134,6 +5135,11 @@ static void le_ext_conn_complete(struct btdev *btdev,
 		ev.interval = lecc->max_interval;
 		ev.latency = lecc->latency;
 		ev.supv_timeout = lecc->supv_timeout;
+
+		/* Set Local RPA if an RPA was generated for the advertising */
+		if (ext_adv->rpa)
+			memcpy(ev.local_rpa, ext_adv->random_addr,
+					sizeof(ev.local_rpa));
 
 		le_meta_event(conn->link->dev,
 				BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE, &ev,
@@ -5148,10 +5154,13 @@ static void le_ext_conn_complete(struct btdev *btdev,
 	memcpy(ev.peer_addr, cmd->peer_addr, 6);
 	ev.role = 0x00;
 
-	/* Set Local RPA if an RPA was generated for the advertising */
-	if (ext_adv->rpa)
-		memcpy(ev.local_rpa, ext_adv->random_addr,
-					sizeof(ev.local_rpa));
+	/* Use random address as Local RPA if Create Connection own_addr_type
+	 * is 0x03 since that expects the controller to generate the RPA.
+	 */
+	if (btdev->le_scan_own_addr_type == 0x03)
+		memcpy(ev.local_rpa, btdev->random_addr, 6);
+	else
+		memset(ev.local_rpa, 0, sizeof(ev.local_rpa));
 
 	le_meta_event(btdev, BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE, &ev,
 						sizeof(ev));
