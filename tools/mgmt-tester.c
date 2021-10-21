@@ -462,7 +462,7 @@ static void test_condition_complete(struct test_data *data)
 		user->test_setup = setup; \
 		user->test_data = data; \
 		user->expected_version = version; \
-		user->expected_manufacturer = 0x003f; \
+		user->expected_manufacturer = 0x05f1; \
 		user->expected_supported_settings = expected_settings; \
 		user->initial_settings = settings; \
 		tester_add_full(name, data, \
