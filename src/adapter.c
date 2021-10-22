@@ -8660,19 +8660,21 @@ static void store_irk(struct btd_adapter *adapter, const bdaddr_t *peer,
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
 			btd_adapter_get_storage_dir(adapter), device_addr);
+	create_file(filename, 0600);
+
 	key_file = g_key_file_new();
 	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", filename,
 								gerr->message);
 		g_error_free(gerr);
+		g_key_file_free(key_file);
+		return;
 	}
 
 	for (i = 0; i < 16; i++)
 		sprintf(str + (i * 2), "%2.2X", key[i]);
 
 	g_key_file_set_string(key_file, "IdentityResolvingKey", "Key", str);
-
-	create_file(filename, 0600);
 
 	store_data = g_key_file_to_data(key_file, &length, NULL);
 	if (!g_file_set_contents(filename, store_data, length, &gerr)) {
