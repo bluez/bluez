@@ -3658,12 +3658,16 @@ static int cmd_add_al(struct btdev *dev, const void *data, uint8_t len)
 	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
 	 * command is outstanding.
 	 */
-	if (!al_can_change(dev))
-		return -EPERM;
+	if (!al_can_change(dev)) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
 
 	/* Valid range for address type is 0x00 to 0x01 */
-	if (cmd->addr_type > 0x01)
-		return -EINVAL;
+	if (cmd->addr_type > 0x01) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	for (i = 0; i < AL_SIZE; i++) {
 		struct btdev_al *al = &dev->le_al[i];
@@ -3675,18 +3679,25 @@ static int cmd_add_al(struct btdev *dev, const void *data, uint8_t len)
 			pos = i;
 	}
 
-	if (exists)
-		return -EALREADY;
+	/* If the device is already in the Filter Accept List, the Controller
+	 * should not add the device to the Filter Accept List again and should
+	 * return success.
+	 */
+	if (exists) {
+		status = BT_HCI_ERR_SUCCESS;
+		goto done;
+	}
 
 	if (pos < 0) {
-		cmd_status(dev, BT_HCI_ERR_MEM_CAPACITY_EXCEEDED,
-					BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST);
-		return 0;
+		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+		goto done;
 	}
 
 	al_add(&dev->le_al[pos], cmd->addr_type, (bdaddr_t *)&cmd->addr);
 
 	status = BT_HCI_ERR_SUCCESS;
+
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST,
 						&status, sizeof(status));
 
@@ -3709,12 +3720,16 @@ static int cmd_remove_al(struct btdev *dev, const void *data, uint8_t len)
 	 * HCI_LE_Create_Connection or HCI_LE_Extended_Create_Connection
 	 * command is outstanding.
 	 */
-	if (!al_can_change(dev))
-		return -EPERM;
+	if (!al_can_change(dev)) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
 
 	/* Valid range for address type is 0x00 to 0x01 */
-	if (cmd->addr_type > 0x01)
-		return -EINVAL;
+	if (cmd->addr_type > 0x01) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	for (i = 0; i < AL_SIZE; i++) {
 		struct btdev_al *al = &dev->le_al[i];
@@ -3731,10 +3746,14 @@ static int cmd_remove_al(struct btdev *dev, const void *data, uint8_t len)
 		}
 	}
 
-	if (i == AL_SIZE)
-		return -EINVAL;
+	if (i == AL_SIZE) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	status = BT_HCI_ERR_SUCCESS;
+
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_FROM_ACCEPT_LIST,
 						&status, sizeof(status));
 
@@ -3755,12 +3774,16 @@ static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
 	 * or HCI_LE_Periodic_Advertising_Create_Sync command is outstanding.
 	 */
-	if (dev->le_adv_enable || dev->le_scan_enable)
-		return -EPERM;
+	if (dev->le_adv_enable || dev->le_scan_enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
 
 	/* Valid range for address type is 0x00 to 0x01 */
-	if (cmd->addr_type > 0x01)
-		return -EINVAL;
+	if (cmd->addr_type > 0x01) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	for (i = 0; i < RL_SIZE; i++) {
 		struct btdev_rl *rl = &dev->le_rl[i];
@@ -3772,13 +3795,18 @@ static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 			pos = i;
 	}
 
-	if (exists)
-		return -EALREADY;
+	/* If an entry already exists in the resolving list with the same four
+	 * parameter values, the Controller shall either reject the command or
+	 * not add the device to the resolving list again and return success.
+	 */
+	if (exists) {
+		status = BT_HCI_ERR_SUCCESS;
+		goto done;
+	}
 
 	if (pos < 0) {
-		cmd_status(dev, BT_HCI_ERR_MEM_CAPACITY_EXCEEDED,
-					BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST);
-		return 0;
+		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+		goto done;
 	}
 
 	dev->le_rl[pos].type = cmd->addr_type;
@@ -3787,6 +3815,8 @@ static int cmd_add_rl(struct btdev *dev, const void *data, uint8_t len)
 	memcpy(dev->le_rl[pos].local_irk, cmd->local_irk, 16);
 
 	status = BT_HCI_ERR_SUCCESS;
+
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
 						&status, sizeof(status));
 
@@ -3806,12 +3836,16 @@ static int cmd_remove_rl(struct btdev *dev, const void *data, uint8_t len)
 	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
 	 * or HCI_LE_Periodic_Advertising_Create_Sync command is outstanding.
 	 */
-	if (dev->le_adv_enable || dev->le_scan_enable)
-		return -EPERM;
+	if (dev->le_adv_enable || dev->le_scan_enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
 
 	/* Valid range for address type is 0x00 to 0x01 */
-	if (cmd->addr_type > 0x01)
-		return -EINVAL;
+	if (cmd->addr_type > 0x01) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	for (i = 0; i < RL_SIZE; i++) {
 		struct btdev_rl *rl = &dev->le_rl[i];
@@ -3822,10 +3856,14 @@ static int cmd_remove_rl(struct btdev *dev, const void *data, uint8_t len)
 		}
 	}
 
-	if (i == RL_SIZE)
-		return -EINVAL;
+	if (i == RL_SIZE) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	status = BT_HCI_ERR_SUCCESS;
+
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
 						&status, sizeof(status));
 
@@ -3843,12 +3881,16 @@ static int cmd_clear_rl(struct btdev *dev, const void *data, uint8_t len)
 	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
 	 * or HCI_LE_Periodic_Advertising_Create_Sync command is outstanding.
 	 */
-	if (dev->le_adv_enable || dev->le_scan_enable)
-		return -EPERM;
+	if (dev->le_adv_enable || dev->le_scan_enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
 
 	rl_clear(dev);
 
 	status = BT_HCI_ERR_SUCCESS;
+
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_CLEAR_RESOLV_LIST,
 						&status, sizeof(status));
 
@@ -3875,12 +3917,15 @@ static int cmd_read_peer_rl_addr(struct btdev *dev, const void *data,
 	struct bt_hci_rsp_le_read_peer_resolv_addr rsp;
 
 	/* Valid range for address type is 0x00 to 0x01 */
-	if (cmd->addr_type > 0x01)
-		return -EINVAL;
+	if (cmd->addr_type > 0x01) {
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
 	memset(rsp.addr, 0, 6);
 
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_READ_PEER_RESOLV_ADDR,
 							&rsp, sizeof(rsp));
 
@@ -3894,12 +3939,15 @@ static int cmd_read_local_rl_addr(struct btdev *dev, const void *data,
 	struct bt_hci_rsp_le_read_local_resolv_addr rsp;
 
 	/* Valid range for address type is 0x00 to 0x01 */
-	if (cmd->addr_type > 0x01)
-		return -EINVAL;
+	if (cmd->addr_type > 0x01) {
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
 
 	rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
 	memset(rsp.addr, 0, 6);
 
+done:
 	cmd_complete(dev, BT_HCI_CMD_LE_READ_LOCAL_RESOLV_ADDR,
 							&rsp, sizeof(rsp));
 
