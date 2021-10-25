@@ -4703,6 +4703,7 @@ static void send_ext_adv(struct btdev *btdev, const struct btdev *remote,
 					struct le_ext_adv *ext_adv,
 					uint16_t type, bool is_scan_rsp)
 {
+
 	struct __packed {
 		uint8_t num_reports;
 		union {
@@ -4818,6 +4819,9 @@ static int cmd_set_ext_adv_enable(struct btdev *dev, const void *data,
 
 		/* Disable all advertising sets */
 		queue_foreach(dev->le_ext_adv, ext_adv_disable, NULL);
+
+		dev->le_adv_enable = 0x00;
+
 		goto exit_complete;
 	}
 
@@ -4871,6 +4875,8 @@ static int cmd_set_ext_adv_enable(struct btdev *dev, const void *data,
 		}
 
 		ext_adv->enable = cmd->enable;
+
+		dev->le_adv_enable = 0x01;
 
 		if (!cmd->enable)
 			ext_adv_disable(ext_adv, NULL);
@@ -4936,7 +4942,7 @@ static int cmd_remove_adv_set(struct btdev *dev, const void *data,
 						UINT_TO_PTR(cmd->handle));
 	if (!ext_adv) {
 		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
-		cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_ADV_DATA, &status,
+		cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_ADV_SET, &status,
 						sizeof(status));
 		return 0;
 	}
@@ -5206,7 +5212,7 @@ static void le_ext_conn_complete(struct btdev *btdev,
 		/* Set Local RPA if an RPA was generated for the advertising */
 		if (ext_adv->rpa)
 			memcpy(ev.local_rpa, ext_adv->random_addr,
-					sizeof(ev.local_rpa));
+							sizeof(ev.local_rpa));
 
 		le_meta_event(conn->link->dev,
 				BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE, &ev,
@@ -6433,6 +6439,19 @@ uint8_t btdev_get_scan_enable(struct btdev *btdev)
 uint8_t btdev_get_le_scan_enable(struct btdev *btdev)
 {
 	return btdev->le_scan_enable;
+}
+
+const uint8_t *btdev_get_adv_addr(struct btdev *btdev, uint8_t handle)
+{
+	struct le_ext_adv *ext_adv;
+
+	/* Check if Ext Adv is already existed */
+	ext_adv = queue_find(btdev->le_ext_adv, match_ext_adv_handle,
+							UINT_TO_PTR(handle));
+	if (!ext_adv)
+		return NULL;
+
+	return ext_adv_addr(btdev, ext_adv);
 }
 
 void btdev_set_le_states(struct btdev *btdev, const uint8_t *le_states)
