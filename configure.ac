@@ -242,7 +242,7 @@ AM_CONDITIONAL(MIDI, test "${enable_midi}" = "yes")
 
 if (test "${enable_midi}" = "yes"); then
 	PKG_CHECK_MODULES(ALSA, alsa, dummy=yes,
-				AC_MSG_ERROR(ALSA lib is required for MIDI support))
+			AC_MSG_ERROR(ALSA lib is required for MIDI support))
 	AC_SUBST(ALSA_CFLAGS)
 	AC_SUBST(ALSA_LIBS)
 fi
@@ -333,7 +333,8 @@ if (test "${enable_manpages}" != "no"); then
 	fi
 fi
 AM_CONDITIONAL(MANPAGES, test "${enable_manpages}" != "no")
-AM_CONDITIONAL(RUN_RST2MAN, test "${enable_manpages}" != "no" && test "${RST2MAN}" != "no")
+AM_CONDITIONAL(RUN_RST2MAN, test "${enable_manpages}" != "no" &&
+				test "${RST2MAN}" != "no")
 
 AC_ARG_ENABLE(testing, AC_HELP_STRING([--enable-testing],
 			[enable testing tools]),
@@ -405,14 +406,14 @@ AM_CONDITIONAL(ANDROID, test "${enable_android}" = "yes")
 
 if (test "${enable_android}" = "yes"); then
 	PKG_CHECK_MODULES(SBC, sbc >= 1.2, dummy=yes,
-					AC_MSG_ERROR(SBC library >= 1.2 is required))
+			AC_MSG_ERROR(SBC library >= 1.2 is required))
 	AC_SUBST(SBC_CFLAGS)
 	AC_SUBST(SBC_LIBS)
 fi
 
 if (test "${enable_android}" = "yes"); then
 	PKG_CHECK_MODULES(SPEEXDSP, speexdsp >= 1.2, dummy=yes,
-					AC_MSG_ERROR(SPEEXDSP library >= 1.2 is required))
+			AC_MSG_ERROR(SPEEXDSP library >= 1.2 is required))
 	AC_SUBST(SPEEXDSP_CFLAGS)
 	AC_SUBST(SPEEXDSP_LIBS)
 fi
@@ -421,17 +422,20 @@ AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
 			[Directory for the Android daemon storage files])
 
 AC_ARG_WITH([phonebook], AC_HELP_STRING([--with-phonebook=PLUGIN],
-				[obexd phonebook plugin (default=dummy)]),
-					[plugin_phonebook=${withval}])
+			[obexd phonebook plugin (default=dummy)]),
+			[plugin_phonebook=${withval}])
 if (test -z "${plugin_phonebook}"); then
 	plugin_phonebook=dummy
 fi
 
 if (test "${plugin_phonebook}" = "ebook"); then
-	PKG_CHECK_MODULES(LIBEBOOK, [libebook-1.2 >= 3.3], dummy=yes, AC_MSG_ERROR(libebook >= 3.3 is required))
+	PKG_CHECK_MODULES(LIBEBOOK, [libebook-1.2 >= 3.3], dummy=yes,
+			AC_MSG_ERROR(libebook >= 3.3 is required))
 	AC_SUBST(LIBEBOOK_CFLAGS)
 	AC_SUBST(LIBEBOOK_LIBS)
-	PKG_CHECK_MODULES(LIBEDATESERVER, [libedataserver-1.2 >= 3.3], dummy=yes, AC_MSG_ERROR(libedataserver >= 3.3 is required))
+	PKG_CHECK_MODULES(LIBEDATESERVER, [libedataserver-1.2 >= 3.3],
+			dummy=yes,
+			AC_MSG_ERROR(libedataserver >= 3.3 is required))
 	AC_SUBST(LIBEDATESERVER_CFLAGS)
 	AC_SUBST(LIBEDATESERVER_LIBS)
 fi
