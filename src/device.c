@@ -5003,7 +5003,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	if (!g_key_file_load_from_file(sdp_key_file, sdp_file, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", sdp_file,
 								gerr->message);
-		g_error_free(gerr);
+		g_clear_error(&gerr);
 	}
 
 	snprintf(att_file, PATH_MAX, STORAGEDIR "/%s/%s/attributes", srcaddr,
@@ -5013,7 +5013,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	if (!g_key_file_load_from_file(att_key_file, att_file, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", att_file,
 								gerr->message);
-		g_error_free(gerr);
+		g_clear_error(&gerr);
 	}
 
 	for (seq = recs; seq; seq = seq->next) {
@@ -5073,7 +5073,7 @@ next:
 								&gerr)) {
 				error("Unable set contents for %s: (%s)",
 						sdp_file, gerr->message);
-				g_error_free(gerr);
+				g_clear_error(&gerr);
 			}
 		}
 
@@ -5089,7 +5089,7 @@ next:
 								&gerr)) {
 				error("Unable set contents for %s: (%s)",
 						att_file, gerr->message);
-				g_error_free(gerr);
+				g_clear_error(&gerr);
 			}
 		}
 
