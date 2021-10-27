@@ -4998,22 +4998,28 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 
 	snprintf(sdp_file, PATH_MAX, STORAGEDIR "/%s/cache/%s", srcaddr,
 								dstaddr);
+	create_file(sdp_file, 0600);
 
 	sdp_key_file = g_key_file_new();
 	if (!g_key_file_load_from_file(sdp_key_file, sdp_file, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", sdp_file,
 								gerr->message);
-		g_error_free(gerr);
+		g_clear_error(&gerr);
+		g_key_file_free(sdp_key_file);
+		sdp_key_file = NULL;
 	}
 
 	snprintf(att_file, PATH_MAX, STORAGEDIR "/%s/%s/attributes", srcaddr,
 								dstaddr);
+	create_file(att_file, 0600);
 
 	att_key_file = g_key_file_new();
 	if (!g_key_file_load_from_file(att_key_file, att_file, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", att_file,
 								gerr->message);
-		g_error_free(gerr);
+		g_clear_error(&gerr);
+		g_key_file_free(att_key_file);
+		att_key_file = NULL;
 	}
 
 	for (seq = recs; seq; seq = seq->next) {
@@ -5068,12 +5074,11 @@ next:
 	if (sdp_key_file) {
 		data = g_key_file_to_data(sdp_key_file, &length, NULL);
 		if (length > 0) {
-			create_file(sdp_file, 0600);
 			if (!g_file_set_contents(sdp_file, data, length,
 								&gerr)) {
 				error("Unable set contents for %s: (%s)",
 						sdp_file, gerr->message);
-				g_error_free(gerr);
+				g_clear_error(&gerr);
 			}
 		}
 
@@ -5084,12 +5089,11 @@ next:
 	if (att_key_file) {
 		data = g_key_file_to_data(att_key_file, &length, NULL);
 		if (length > 0) {
-			create_file(att_file, 0600);
 			if (!g_file_set_contents(att_file, data, length,
 								&gerr)) {
 				error("Unable set contents for %s: (%s)",
 						att_file, gerr->message);
-				g_error_free(gerr);
+				g_clear_error(&gerr);
 			}
 		}
 
