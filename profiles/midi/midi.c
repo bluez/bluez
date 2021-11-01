@@ -255,6 +255,15 @@ static void midi_device_remove(struct btd_service *service)
 		return;
 	}
 
+	if (midi->seq_handle) {
+		midi_read_free(&midi->midi_in);
+		midi_write_free(&midi->midi_out);
+		io_destroy(midi->io);
+		snd_seq_delete_simple_port(midi->seq_handle, midi->seq_port_id);
+		midi->seq_port_id = 0;
+		snd_seq_close(midi->seq_handle);
+	}
+
 	btd_device_unref(midi->dev);
 	g_free(midi);
 }
