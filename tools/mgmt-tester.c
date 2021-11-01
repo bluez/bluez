@@ -4136,15 +4136,29 @@ static const struct generic_data load_irks_not_supported_test = {
 	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
 };
 
-static const char set_privacy_valid_param[] = { 0x01,
+static const char set_privacy_1_valid_param[] = { 0x01,
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
 static const char set_privacy_settings_param[] = { 0x80, 0x20, 0x00, 0x00 };
 
-static const struct generic_data set_privacy_success_test = {
+static const struct generic_data set_privacy_success_1_test = {
 	.send_opcode = MGMT_OP_SET_PRIVACY,
-	.send_param = set_privacy_valid_param,
-	.send_len = sizeof(set_privacy_valid_param),
+	.send_param = set_privacy_1_valid_param,
+	.send_len = sizeof(set_privacy_1_valid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_privacy_settings_param,
+	.expect_len = sizeof(set_privacy_settings_param),
+	.expect_settings_set = MGMT_SETTING_PRIVACY,
+};
+
+static const char set_privacy_2_valid_param[] = { 0x02,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+
+static const struct generic_data set_privacy_success_2_test = {
+	.send_opcode = MGMT_OP_SET_PRIVACY,
+	.send_param = set_privacy_2_valid_param,
+	.send_len = sizeof(set_privacy_2_valid_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_privacy_settings_param,
 	.expect_len = sizeof(set_privacy_settings_param),
@@ -4154,8 +4168,8 @@ static const struct generic_data set_privacy_success_test = {
 static const struct generic_data set_privacy_powered_test = {
 	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_PRIVACY,
-	.send_param = set_privacy_valid_param,
-	.send_len = sizeof(set_privacy_valid_param),
+	.send_param = set_privacy_1_valid_param,
+	.send_len = sizeof(set_privacy_1_valid_param),
 	.expect_status = MGMT_STATUS_REJECTED,
 };
 
@@ -13063,8 +13077,11 @@ int main(int argc, char *argv[])
 				&load_irks_not_supported_test,
 				NULL, test_command_generic);
 
-	test_bredrle("Set Privacy - Success",
-				&set_privacy_success_test,
+	test_bredrle("Set Privacy - Success 1",
+				&set_privacy_success_1_test,
+				NULL, test_command_generic);
+	test_bredrle("Set Privacy - Success 2 (Device Mode)",
+				&set_privacy_success_2_test,
 				NULL, test_command_generic);
 	test_bredrle("Set Privacy - Rejected",
 				&set_privacy_powered_test,
