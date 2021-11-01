@@ -666,8 +666,10 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("privacy=%s", str);
 
-		if (!strcmp(str, "device"))
+		if (!strcmp(str, "network") || !strcmp(str, "on"))
 			btd_opts.privacy = 0x01;
+		if (!strcmp(str, "device") || !strcmp(str, "limited"))
+			btd_opts.privacy = 0x02;
 		else if (!strcmp(str, "off"))
 			btd_opts.privacy = 0x00;
 		else {
