@@ -4381,6 +4381,8 @@ void device_set_class(struct btd_device *device, uint32_t class)
 void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 							uint8_t bdaddr_type)
 {
+	bool auto_connect = device->auto_connect;
+
 	if (!bacmp(bdaddr, &device->bdaddr) &&
 					bdaddr_type == device->bdaddr_type)
 		return;
@@ -4389,6 +4391,12 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 	 * Resolving purposes we can now assume LE is supported.
 	 */
 	device->le = true;
+
+	/* Remove old address from accept/auto-connect list since its address
+	 * will be changed.
+	 */
+	if (auto_connect)
+		device_set_auto_connect(device, FALSE);
 
 	bacpy(&device->bdaddr, bdaddr);
 	device->bdaddr_type = bdaddr_type;
@@ -4399,6 +4407,9 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 						DEVICE_INTERFACE, "Address");
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "AddressType");
+
+	if (auto_connect)
+		device_set_auto_connect(device, TRUE);
 }
 
 void device_set_bredr_support(struct btd_device *device)
