@@ -120,9 +120,9 @@ Properties	string Type
 
 		uint16_t Duration
 
-			Duration of the advertisement in seconds. If there are
-			other applications advertising no duration is set the
-			default is 2 seconds.
+			Rotation duration of the advertisement in seconds. If
+			there are other applications advertising no duration is
+			set the default is 2 seconds.
 
 		uint16_t Timeout
 
