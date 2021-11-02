@@ -72,6 +72,7 @@ struct btdev_al {
 struct btdev_rl {
 	uint8_t type;
 	bdaddr_t addr;
+	uint8_t mode;
 	uint8_t peer_irk[16];
 	uint8_t local_irk[16];
 };
@@ -5336,6 +5337,48 @@ static int cmd_read_tx_power(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
+static int cmd_set_privacy_mode(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_set_priv_mode *cmd = data;
+	const struct btdev_rl *rl;
+	uint8_t status;
+
+	/* This command shall not be used when address resolution is enabled in
+	 * the Controller and:
+	 * • Advertising (other than periodic advertising) is enabled,
+	 * • Scanning is enabled, or
+	 * • an HCI_LE_Create_Connection, HCI_LE_Extended_Create_Connection,
+	 * or HCI_LE_Periodic_Advertising_Create_Sync command is pending.
+	 */
+	if (dev->le_rl_enable || dev->le_adv_enable || dev->le_scan_enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
+
+	/* If the device is not on the resolving list, the Controller shall
+	 * return the error code Unknown Connection Identifier (0x02).
+	 */
+	rl = rl_find(dev, cmd->peer_id_addr_type, cmd->peer_id_addr);
+	if (!rl) {
+		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		goto done;
+	}
+
+	if (cmd->priv_mode > 0x01) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	((struct btdev_rl *)rl)->mode = cmd->priv_mode;
+	status = BT_HCI_ERR_SUCCESS;
+
+done:
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PRIV_MODE, &status, sizeof(status));
+
+	return 0;
+}
+
 #define CMD_LE_50 \
 	CMD(BT_HCI_CMD_LE_SET_DEFAULT_PHY, cmd_set_default_phy,	NULL), \
 	CMD(BT_HCI_CMD_LE_SET_ADV_SET_RAND_ADDR, cmd_set_adv_rand_addr, NULL), \
@@ -5372,7 +5415,8 @@ static int cmd_read_tx_power(struct btdev *dev, const void *data, uint8_t len)
 	CMD(BT_HCI_CMD_LE_CLEAR_PERIODIC_ADV_LIST, cmd_per_adv_clear, NULL), \
 	CMD(BT_HCI_CMD_LE_READ_PERIODIC_ADV_LIST_SIZE, \
 					cmd_read_per_adv_list_size, NULL), \
-	CMD(BT_HCI_CMD_LE_READ_TX_POWER, cmd_read_tx_power, NULL)
+	CMD(BT_HCI_CMD_LE_READ_TX_POWER, cmd_read_tx_power, NULL), \
+	CMD(BT_HCI_CMD_LE_SET_PRIV_MODE, cmd_set_privacy_mode, NULL)
 
 static const struct btdev_cmd cmd_le_5_0[] = {
 	CMD_COMMON_ALL,
@@ -5408,6 +5452,7 @@ static void set_le_50_commands(struct btdev *btdev)
 	btdev->commands[38] |= 0x20;	/* LE Clear Periodic Adv List */
 	btdev->commands[38] |= 0x40;	/* LE Read Periodic Adv List Size */
 	btdev->commands[38] |= 0x80;	/* LE Read Transmit Power */
+	btdev->commands[39] |= 0x04;	/* LE Set Privacy Mode */
 	btdev->cmds = cmd_le_5_0;
 }
 
