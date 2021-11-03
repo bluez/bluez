@@ -3779,8 +3779,6 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 					uint8_t peer_type, const char *group)
 {
 	struct smp_ltk_info *ltk = NULL;
-	GError *gerr = NULL;
-	bool central;
 	char *key;
 	char *rand = NULL;
 
@@ -3835,12 +3833,6 @@ static struct smp_ltk_info *get_ltk(GKeyFile *key_file, const char *peer,
 	ltk->enc_size = g_key_file_get_integer(key_file, group, "EncSize",
 									NULL);
 	ltk->ediv = g_key_file_get_integer(key_file, group, "EDiv", NULL);
-
-	central = g_key_file_get_boolean(key_file, group, "Master", &gerr);
-	if (gerr)
-		g_error_free(gerr);
-	else
-		ltk->central = central;
 
 	ltk->is_blocked = is_blocked_key(HCI_BLOCKED_KEY_TYPE_LTK,
 								ltk->val);
@@ -5907,7 +5899,6 @@ static void convert_ltk_entry(GKeyFile *key_file, void *value)
 	g_free(str);
 
 	g_key_file_set_integer(key_file, "LongTermKey", "Authenticated", auth);
-	g_key_file_set_integer(key_file, "LongTermKey", "Master", central);
 	g_key_file_set_integer(key_file, "LongTermKey", "EncSize", enc_size);
 	g_key_file_set_integer(key_file, "LongTermKey", "EDiv", ediv);
 
@@ -8447,9 +8438,6 @@ static void store_ltk_group(struct btd_adapter *adapter, const bdaddr_t *peer,
 								gerr->message);
 		g_error_free(gerr);
 	}
-
-	/* Old files may contain this so remove it in case it exists */
-	g_key_file_remove_key(key_file, "LongTermKey", "Master", NULL);
 
 	for (i = 0; i < 16; i++)
 		sprintf(key_str + (i * 2), "%2.2X", key[i]);
