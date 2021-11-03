@@ -3421,6 +3421,7 @@ Get Device Flags Command
 	available bits:
 
 		0	Remote Wakeup enabled
+		1	Device Privacy Mode enabled
 
 	This command generates a Command Complete event on success
 	or a Command Status event on failure.
