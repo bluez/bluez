@@ -314,9 +314,9 @@ Long term key) related to a remote device.
   Rand			Integer		Randomizer
 
 
-[SlaveLongTermKey] group contains:
+[PeripheralLongTermKey] group contains:
 
-  Same as the [LongTermKey] group, except for slave keys.
+  Same as the [LongTermKey] group, except for peripheral keys.
 
 
 [ConnectionParameters] group contains:
