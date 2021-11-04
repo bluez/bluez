@@ -1403,23 +1403,7 @@ void device_set_wake_override(struct btd_device *device, bool wake_override)
 	}
 }
 
-void device_set_wake_allowed(struct btd_device *device, bool wake_allowed,
-			     GDBusPendingPropertySet id)
-{
-	/* Pending and current value are the same unless there is a change in
-	 * progress. Only update wake allowed if pending value doesn't match the
-	 * new value.
-	 */
-	if (wake_allowed == device->pending_wake_allowed)
-		return;
-
-	device->wake_id = id;
-	device->pending_wake_allowed = wake_allowed;
-	adapter_set_device_wakeable(device_get_adapter(device), device,
-				    wake_allowed);
-}
-
-void device_set_wake_allowed_complete(struct btd_device *device)
+static void device_set_wake_allowed_complete(struct btd_device *device)
 {
 	if (device->wake_id != -1U) {
 		g_dbus_pending_property_success(device->wake_id);
@@ -1433,6 +1417,50 @@ void device_set_wake_allowed_complete(struct btd_device *device)
 	store_device_info(device);
 }
 
+static void set_wake_allowed_complete(uint8_t status, uint16_t length,
+					 const void *param, void *user_data)
+{
+	const struct mgmt_rp_set_device_flags *rp = param;
+	struct btd_device *dev = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Set device flags return status: %s",
+					mgmt_errstr(status));
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Too small Set Device Flags complete event: %d", length);
+		return;
+	}
+
+	device_set_wake_allowed_complete(dev);
+}
+
+void device_set_wake_allowed(struct btd_device *device, bool wake_allowed,
+			     GDBusPendingPropertySet id)
+{
+	uint32_t flags;
+
+	/* Pending and current value are the same unless there is a change in
+	 * progress. Only update wake allowed if pending value doesn't match the
+	 * new value.
+	 */
+	if (wake_allowed == device->pending_wake_allowed)
+		return;
+
+	device->wake_id = id;
+	device->pending_wake_allowed = wake_allowed;
+
+	flags = device->current_flags;
+	if (wake_allowed)
+		flags |= DEVICE_FLAG_REMOTE_WAKEUP;
+	else
+		flags &= ~DEVICE_FLAG_REMOTE_WAKEUP;
+
+	adapter_set_device_flags(device->adapter, device, flags,
+					set_wake_allowed_complete, device);
+}
 
 static gboolean
 dev_property_get_wake_allowed(const GDBusPropertyTable *property,
