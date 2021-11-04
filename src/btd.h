@@ -103,6 +103,7 @@ struct btd_opts {
 	uint32_t	discovto;
 	uint32_t	tmpto;
 	uint8_t		privacy;
+	bool		device_privacy;
 
 	struct btd_defaults defaults;
 

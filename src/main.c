@@ -666,13 +666,27 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("privacy=%s", str);
 
-		if (!strcmp(str, "network") || !strcmp(str, "on"))
+		if (!strcmp(str, "network") || !strcmp(str, "on")) {
 			btd_opts.privacy = 0x01;
-		if (!strcmp(str, "device") || !strcmp(str, "limited"))
+		} else if (!strcmp(str, "device")) {
+			btd_opts.privacy = 0x01;
+			btd_opts.device_privacy = true;
+		} else if (!strcmp(str, "limited-network")) {
+			if (btd_opts.mode != BT_MODE_DUAL) {
+				DBG("Invalid privacy option: %s", str);
+				btd_opts.privacy = 0x00;
+			}
+			btd_opts.privacy = 0x01;
+		} else if (!strcmp(str, "limited-device")) {
+			if (btd_opts.mode != BT_MODE_DUAL) {
+				DBG("Invalid privacy option: %s", str);
+				btd_opts.privacy = 0x00;
+			}
 			btd_opts.privacy = 0x02;
-		else if (!strcmp(str, "off"))
+			btd_opts.device_privacy = true;
+		} else if (!strcmp(str, "off")) {
 			btd_opts.privacy = 0x00;
-		else {
+		} else {
 			DBG("Invalid privacy option: %s", str);
 			btd_opts.privacy = 0x00;
 		}
