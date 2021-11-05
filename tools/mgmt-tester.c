@@ -10578,6 +10578,63 @@ static const struct generic_data ll_privacy_unpair_2 = {
 	.expect_hci_len = sizeof(add_to_al_client),
 };
 
+static const uint8_t set_device_flags_param_1[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* BDADDR */
+	0x01,					/* Type - LE Public */
+	0x02, 0x00, 0x00, 0x00			/* Flags - Device Privacy */
+};
+
+static const uint8_t set_device_flags_rsp[] =  {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* BDADDR */
+	0x01					/* Type - LE Public */
+};
+
+static const uint8_t le_set_priv_mode_param[] = {
+	0x00,					/* Type */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* BDADDR */
+	0x01					/* Privacy Mode */
+};
+
+static const struct hci_cmd_data ll_privacy_set_device_flags_1_hci_list[] = {
+	{
+		.opcode = BT_HCI_CMD_LE_SET_RESOLV_ENABLE,
+		.param = set_resolv_off_param,
+		.len = sizeof(set_resolv_off_param),
+	},
+	{
+		.opcode = BT_HCI_CMD_LE_SET_PRIV_MODE,
+		.param = le_set_priv_mode_param,
+		.len = sizeof(le_set_priv_mode_param),
+	},
+	{
+		.opcode = BT_HCI_CMD_LE_SET_RESOLV_ENABLE,
+		.param = set_resolv_on_param,
+		.len = sizeof(set_resolv_on_param),
+	},
+};
+
+static const uint8_t device_flags_changed_params_1[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* BDADDR */
+	0x01,					/* Type - LE Public */
+	0x03, 0x00, 0x00, 0x00,			/* Supported Flags */
+	0x02, 0x00, 0x00, 0x00			/* Current Flags */
+};
+
+static const struct generic_data ll_privacy_set_device_flag_1 = {
+	.setup_settings = settings_le_privacy_ll_privacy,
+	.setup_exp_feat_param = set_exp_feat_param_ll_privacy,
+	.send_opcode = MGMT_OP_SET_DEVICE_FLAGS,
+	.send_param = set_device_flags_param_1,
+	.send_len = sizeof(set_device_flags_param_1),
+	.expect_param = set_device_flags_rsp,
+	.expect_len = sizeof(set_device_flags_rsp),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_FLAGS_CHANGED,
+	.expect_alt_ev_param = device_flags_changed_params_1,
+	.expect_alt_ev_len = sizeof(device_flags_changed_params_1),
+	.expect_hci_list = ll_privacy_set_device_flags_1_hci_list,
+};
+
 static void setup_load_irks_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -11083,6 +11140,27 @@ static void setup_ll_privacy_add_adv(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
 					setup_powered_callback, NULL, NULL);
+}
+
+static void setup_ll_privacy_add_device(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
+					sizeof(load_irks_le_public_param_1),
+					load_irks_le_public_param_1,
+					setup_load_irks_callback, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
+					sizeof(add_device_le_public_param_1),
+					add_device_le_public_param_1,
+					setup_add_device_callback, NULL, NULL);
+
 }
 
 static bool power_off(uint16_t index)
@@ -14405,6 +14483,16 @@ int main(int argc, char *argv[])
 				&ll_privacy_unpair_2,
 				NULL,
 				test_ll_privacy_unpair_2, 5);
+
+	/* LL Privacy
+	 * Setup: Enable LL Privacy, add IRK of new device, Add Device
+	 * Run: Set Device Flags
+	 * Expect: Device Privacy Mode is set.
+	 */
+	test_bredrle50("LL Privacy - Set Device Flag 1 (Device Privacy)",
+				&ll_privacy_set_device_flag_1,
+				setup_ll_privacy_add_device,
+				test_command_generic);
 
 	return tester_run();
 }
