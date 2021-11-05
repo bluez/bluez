@@ -972,7 +972,7 @@ static void cmd_sub_add(int argc, char *argv[])
 	n = mesh_opcode_set(OP_CONFIG_MODEL_SUB_ADD, msg);
 
 	parm_cnt = read_input_parameters(argc, argv);
-	if (parm_cnt != 3) {
+	if (parm_cnt != 3 && parm_cnt != 4) {
 		bt_shell_printf("Bad arguments: %s\n", argv[1]);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -984,9 +984,15 @@ static void cmd_sub_add(int argc, char *argv[])
 	/* Subscription Address */
 	put_le16(parms[1], msg + n);
 	n += 2;
-	/* SIG Model ID */
-	put_le16(parms[2], msg + n);
-	n += 2;
+	/* Model ID */
+	if (parm_cnt == 4) {
+		put_le16(parms[3], msg + n);
+		put_le16(parms[2], msg + n + 2);
+		n += 4;
+	} else {
+		put_le16(parms[2], msg + n);
+		n += 2;
+	}
 
 	if (!config_send(msg, n)) {
 		bt_shell_printf("Failed to send \"ADD SUBSCRIPTION\"\n");
@@ -1222,7 +1228,7 @@ static const struct bt_shell_menu cfg_menu = {
 				cmd_hb_sub_set,     "Set heartbeat subscribe"},
 	{"hb-sub-get",           NULL,                   cmd_hb_sub_get,
 						"Get heartbeat subscribe"},
-	{"sub-add", "<ele_addr> <sub_addr> <model id>",
+	{"sub-add", "<ele_addr> <sub_addr> <mod id> [cid]",
 				cmd_sub_add,    "Add subscription"},
 	{"sub-get", "<ele_addr> <model id>",
 				cmd_sub_get,    "Get subscription"},
