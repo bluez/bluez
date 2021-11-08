@@ -647,22 +647,40 @@ static void read_attribute(GDBusProxy *proxy, uint16_t offset)
 	bt_shell_printf("Attempting to read %s\n", g_dbus_proxy_get_path(proxy));
 }
 
+static int parse_offset(const char *arg)
+{
+	char *endptr = NULL;
+	unsigned long offset;
+
+	offset = strtoul(arg, &endptr, 0);
+	if (!endptr || *endptr != '\0' || offset > UINT16_MAX) {
+		bt_shell_printf("Invalid offload: %s", arg);
+		return -EINVAL;
+	}
+
+	return offset;
+}
+
 void gatt_read_attribute(GDBusProxy *proxy, int argc, char *argv[])
 {
 	const char *iface;
-	uint16_t offset = 0;
+	int offset = 0;
 
 	iface = g_dbus_proxy_get_interface(proxy);
 	if (!strcmp(iface, "org.bluez.GattCharacteristic1") ||
 				!strcmp(iface, "org.bluez.GattDescriptor1")) {
 
-		if (argc == 2)
-			offset = atoi(argv[1]);
+		if (argc == 2) {
+			offset = parse_offset(argv[1]);
+			if (offset < 0)
+				goto fail;
+		}
 
 		read_attribute(proxy, offset);
 		return;
 	}
 
+fail:
 	bt_shell_printf("Unable to read attribute %s\n",
 						g_dbus_proxy_get_path(proxy));
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -805,8 +823,15 @@ void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[])
 				!strcmp(iface, "org.bluez.GattDescriptor1")) {
 		data.iov.iov_base = str2bytearray(argv[1], &data.iov.iov_len);
 
-		if (argc > 2)
-			data.offset = atoi(argv[2]);
+		if (argc > 2) {
+			int offset;
+
+			offset = parse_offset(argv[2]);
+			if (offset < 0)
+				goto fail;
+
+			data.offset = offset;
+		}
 
 		if (argc > 3)
 			data.type = argv[3];
@@ -815,6 +840,7 @@ void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[])
 		return;
 	}
 
+fail:
 	bt_shell_printf("Unable to write attribute %s\n",
 						g_dbus_proxy_get_path(proxy));
 
@@ -1469,6 +1495,20 @@ static void service_set_primary(const char *input, void *user_data)
 	}
 }
 
+static uint16_t parse_handle(const char *arg)
+{
+	char *endptr = NULL;
+	unsigned long handle;
+
+	handle = strtoul(arg, &endptr, 0);
+	if (!endptr || *endptr != '\0' || !handle || handle > UINT16_MAX) {
+		bt_shell_printf("Invalid handle: %s", arg);
+		return 0;
+	}
+
+	return handle;
+}
+
 void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 						int argc, char *argv[])
 {
@@ -1482,8 +1522,11 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 					g_list_length(local_services));
 	service->primary = primary;
 
-	if (argc > 2)
-		service->handle = atoi(argv[2]);
+	if (argc > 2) {
+		service->handle = parse_handle(argv[2]);
+		if (!service->handle)
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
 
 	if (g_dbus_register_interface(conn, service->path,
 					SERVICE_INTERFACE, NULL, NULL,
@@ -2574,8 +2617,11 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 	chrc->flags = g_strsplit(argv[2], ",", -1);
 	chrc->authorization_req = attr_authorization_flag_exists(chrc->flags);
 
-	if (argc > 3)
-		chrc->handle = atoi(argv[3]);
+	if (argc > 3) {
+		chrc->handle = parse_handle(argv[3]);
+		if (!chrc->handle)
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
 
 	if (g_dbus_register_interface(conn, chrc->path, CHRC_INTERFACE,
 					chrc_methods, NULL, chrc_properties,
@@ -2851,8 +2897,11 @@ void gatt_register_desc(DBusConnection *conn, GDBusProxy *proxy,
 					g_list_length(desc->chrc->descs));
 	desc->flags = g_strsplit(argv[2], ",", -1);
 
-	if (argc > 3)
-		desc->handle = atoi(argv[3]);
+	if (argc > 3) {
+		desc->handle = parse_handle(argv[3]);
+		if (!desc->handle)
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
 
 	if (g_dbus_register_interface(conn, desc->path, DESC_INTERFACE,
 					desc_methods, NULL, desc_properties,
