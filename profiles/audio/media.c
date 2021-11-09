@@ -1910,6 +1910,7 @@ static void app_free(void *data)
 {
 	struct media_app *app = data;
 
+	queue_destroy(app->proxies, NULL);
 	queue_destroy(app->endpoints, media_endpoint_remove);
 	queue_destroy(app->players, media_player_remove);
 
