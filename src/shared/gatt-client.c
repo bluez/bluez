@@ -562,8 +562,9 @@ static void discover_incl_cb(bool success, uint8_t att_ecode,
 		attr = gatt_db_get_attribute(client->db, start);
 		if (!attr) {
 			util_debug(client->debug_callback, client->debug_data,
-				"Unable to find attribute at 0x%04x", start);
-			goto failed;
+				"Unable to find attribute at 0x%04x: skipping",
+				start);
+			continue;
 		}
 
 		attr = gatt_db_insert_included(client->db, handle, attr);
