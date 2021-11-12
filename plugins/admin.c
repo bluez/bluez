@@ -496,6 +496,9 @@ static int admin_policy_adapter_probe(struct btd_adapter *adapter)
 {
 	const char *adapter_path;
 
+	if (!devices)
+		devices = queue_new();
+
 	if (policy_data) {
 		btd_warn(policy_data->adapter_id,
 						"Policy data already exists");
@@ -623,7 +626,6 @@ static int admin_init(void)
 	DBG("");
 
 	dbus_conn = btd_get_dbus_connection();
-	devices = queue_new();
 
 	return btd_register_adapter_driver(&admin_policy_driver);
 }
