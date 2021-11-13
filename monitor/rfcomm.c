@@ -437,6 +437,7 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	if (frame->size < 4)
 		goto fail;
 
+	memset(&hdr, 0, sizeof(hdr));
 	if (!l2cap_frame_get_u8(l2cap_frame, &hdr.address) ||
 			!l2cap_frame_get_u8(l2cap_frame, &hdr.control) ||
 			!l2cap_frame_get_u8(l2cap_frame, &length))
