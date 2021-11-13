@@ -175,6 +175,7 @@ static void print_service_proxy(GDBusProxy *proxy, const char *description)
 
 	dbus_message_iter_get_basic(&iter, &primary);
 
+	memset(&service, 0, sizeof(service));
 	service.path = (char *) g_dbus_proxy_get_path(proxy);
 	service.uuid = (char *) uuid;
 	service.primary = primary;
@@ -257,6 +258,7 @@ static void print_characteristic(GDBusProxy *proxy, const char *description)
 
 	dbus_message_iter_get_basic(&iter, &uuid);
 
+	memset(&chrc, 0, sizeof(chrc));
 	chrc.path = (char *) g_dbus_proxy_get_path(proxy);
 	chrc.uuid = (char *) uuid;
 
@@ -350,6 +352,7 @@ static void print_descriptor(GDBusProxy *proxy, const char *description)
 
 	dbus_message_iter_get_basic(&iter, &uuid);
 
+	memset(&desc, 0, sizeof(desc));
 	desc.path = (char *) g_dbus_proxy_get_path(proxy);
 	desc.uuid = (char *) uuid;
 
