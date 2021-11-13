@@ -1570,6 +1570,7 @@ static void rfcomm_sabm_send(struct bthost *bthost, struct btconn *conn,
 {
 	struct rfcomm_cmd cmd;
 
+	memset(&cmd, 0, sizeof(cmd));
 	cmd.address = RFCOMM_ADDR(cr, dlci);
 	cmd.control = RFCOMM_CTRL(RFCOMM_SABM, 1);
 	cmd.length = RFCOMM_LEN8(0);
@@ -2123,6 +2124,7 @@ static void rfcomm_ua_send(struct bthost *bthost, struct btconn *conn,
 {
 	struct rfcomm_cmd cmd;
 
+	memset(&cmd, 0, sizeof(cmd));
 	cmd.address = RFCOMM_ADDR(cr, dlci);
 	cmd.control = RFCOMM_CTRL(RFCOMM_UA, 1);
 	cmd.length = RFCOMM_LEN8(0);
@@ -2136,6 +2138,7 @@ static void rfcomm_dm_send(struct bthost *bthost, struct btconn *conn,
 {
 	struct rfcomm_cmd cmd;
 
+	memset(&cmd, 0, sizeof(cmd));
 	cmd.address = RFCOMM_ADDR(cr, dlci);
 	cmd.control = RFCOMM_CTRL(RFCOMM_DM, 1);
 	cmd.length = RFCOMM_LEN8(0);
