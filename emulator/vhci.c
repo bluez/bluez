@@ -140,8 +140,10 @@ struct vhci *vhci_open(uint8_t type)
 	}
 
 	vhci = malloc(sizeof(*vhci));
-	if (!vhci)
+	if (!vhci) {
+		close(fd);
 		return NULL;
+	}
 
 	memset(vhci, 0, sizeof(*vhci));
 	vhci->type = type;
