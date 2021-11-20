@@ -4911,3 +4911,63 @@ Controller Resume Event
 	Address_Type. Otherwise, Address and Address_Type will both be zero.
 
 	This event will be sent to all management sockets.
+
+
+Advertisement Monitor Device Found Event
+========================================
+
+	Event code:		0x002f
+	Controller Index:	<controller_id>
+	Event Parameters:	Monitor_Handle (2 Octets)
+				Address (6 Octets)
+				Address_Type (1 Octet)
+				RSSI (1 Octet)
+				Flags (4 Octets)
+				AD_Data_Length (2 Octets)
+				AD_Data (0-65535 Octets)
+
+	This event indicates that the controller has started tracking a device
+	matching an Advertisement Monitor with handle Monitor_Handle.
+
+	Monitor_Handle 0 indicates that we are not active scanning and this
+	is a subsequent advertisement report for already matched Advertisement
+	Monitor or the controller offloading support is not available so need
+	to report all advertisements for software based filtering.
+
+	The address of the device being tracked will be shared in Address and
+	Address_Type.
+
+	Possible values for the Address_Type parameter:
+		0	Reserved (not in use)
+		1	LE Public
+		2	LE Random
+
+	For the RSSI field a value of 127 indicates that the RSSI is
+	not available. That can happen with Bluetooth 1.1 and earlier
+	controllers or with bad radio conditions.
+
+	This event will be sent to all management sockets.
+
+
+Advertisement Monitor Device Lost Event
+=======================================
+
+	Event code:		0x0030
+	Controller Index:	<controller_id>
+	Event Parameters:	Monitor_Handle (2 Octets)
+				Address (6 Octets)
+				Address_Type (1 Octet)
+
+	This event indicates that the controller has stopped tracking a device
+	that was being tracked by an Advertisement Monitor with the handle
+	Monitor_Handle.
+
+	The address of the device being tracked will be shared in Address and
+	Address_Type.
+
+	Possible values for the Address_Type parameter:
+		0	Reserved (not in use)
+		1	LE Public
+		2	LE Random
+
+	This event will be sent to all management sockets.
