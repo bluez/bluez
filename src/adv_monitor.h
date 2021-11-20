@@ -27,6 +27,8 @@ struct btd_adv_monitor_manager *btd_adv_monitor_manager_create(
 						struct mgmt *mgmt);
 void btd_adv_monitor_manager_destroy(struct btd_adv_monitor_manager *manager);
 
+bool btd_adv_monitor_offload_supported(struct btd_adv_monitor_manager *manager);
+
 struct queue *btd_adv_monitor_content_filter(
 				struct btd_adv_monitor_manager *manager,
 				struct bt_ad *ad);

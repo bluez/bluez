@@ -6974,12 +6974,13 @@ static bool device_is_discoverable(struct btd_adapter *adapter,
 	return discoverable;
 }
 
-static void update_found_devices(struct btd_adapter *adapter,
+void btd_adapter_update_found_device(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm, bool legacy,
 					bool not_connectable,
-					const uint8_t *data, uint8_t data_len)
+					const uint8_t *data, uint8_t data_len,
+					bool monitoring)
 {
 	struct btd_device *dev;
 	struct bt_ad *ad = NULL;
@@ -6989,20 +6990,24 @@ static void update_found_devices(struct btd_adapter *adapter,
 	bool duplicate = false;
 	struct queue *matched_monitors = NULL;
 
-	if (bdaddr_type != BDADDR_BREDR)
-		ad = bt_ad_new_with_data(data_len, data);
+	if (!btd_adv_monitor_offload_supported(adapter->adv_monitor_manager)) {
+		if (bdaddr_type != BDADDR_BREDR)
+			ad = bt_ad_new_with_data(data_len, data);
 
-	/* During the background scanning, update the device only when the data
-	 * match at least one Adv monitor
-	 */
-	if (ad) {
-		matched_monitors = btd_adv_monitor_content_filter(
-					adapter->adv_monitor_manager, ad);
-		bt_ad_unref(ad);
-		ad = NULL;
+		/* During the background scanning, update the device only when
+		 * the data match at least one Adv monitor
+		 */
+		if (ad) {
+			matched_monitors = btd_adv_monitor_content_filter(
+						adapter->adv_monitor_manager,
+						ad);
+			bt_ad_unref(ad);
+			ad = NULL;
+			monitoring = matched_monitors ? true : false;
+		}
 	}
 
-	if (!adapter->discovering && !matched_monitors)
+	if (!adapter->discovering && !monitoring)
 		return;
 
 	memset(&eir_data, 0, sizeof(eir_data));
@@ -7015,7 +7020,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	dev = btd_adapter_find_device(adapter, bdaddr, bdaddr_type);
 	if (!dev) {
-		if (!discoverable && !matched_monitors) {
+		if (!discoverable && !monitoring) {
 			eir_data_free(&eir_data);
 			return;
 		}
@@ -7054,7 +7059,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	 */
 	if (!btd_device_is_connected(dev) &&
 		(device_is_temporary(dev) && !adapter->discovery_list) &&
-		!matched_monitors) {
+		!monitoring) {
 		eir_data_free(&eir_data);
 		return;
 	}
@@ -7062,7 +7067,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	/* If there is no matched Adv monitors, don't continue if not
 	 * discoverable or if active discovery filter don't match.
 	 */
-	if (!matched_monitors && (!discoverable ||
+	if (!monitoring && (!discoverable ||
 		(adapter->filtered_discovery && !is_filter_match(
 				adapter->discovery_list, &eir_data, rssi)))) {
 		eir_data_free(&eir_data);
@@ -7192,6 +7197,7 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	bool confirm_name;
 	bool legacy;
 	char addr[18];
+	bool not_connectable;
 
 	if (length < sizeof(*ev)) {
 		btd_error(adapter->dev_id,
@@ -7220,11 +7226,12 @@ static void device_found_callback(uint16_t index, uint16_t length,
 
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
+	not_connectable = (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
 
-	update_found_devices(adapter, &ev->addr.bdaddr, ev->addr.type,
-					ev->rssi, confirm_name, legacy,
-					flags & MGMT_DEV_FOUND_NOT_CONNECTABLE,
-					eir, eir_len);
+	btd_adapter_update_found_device(adapter, &ev->addr.bdaddr,
+					ev->addr.type, ev->rssi, confirm_name,
+					legacy, not_connectable, eir, eir_len,
+					false);
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)

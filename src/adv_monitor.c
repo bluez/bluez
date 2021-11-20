@@ -1531,6 +1531,77 @@ static void adv_monitor_removed_callback(uint16_t index, uint16_t length,
 		ev->monitor_handle);
 }
 
+/* Processes Adv Monitor Device Found event from kernel */
+static void adv_monitor_device_found_callback(uint16_t index, uint16_t length,
+						const void *param,
+						void *user_data)
+{
+	const struct mgmt_ev_adv_monitor_device_found *ev = param;
+	struct btd_adv_monitor_manager *manager = user_data;
+	const uint16_t adapter_id = manager->adapter_id;
+	struct btd_adapter *adapter = manager->adapter;
+	const uint8_t *ad_data = NULL;
+	uint16_t ad_data_len;
+	uint32_t flags;
+	bool confirm_name;
+	bool legacy;
+	char addr[18];
+	bool not_connectable;
+
+	if (length < sizeof(*ev)) {
+		btd_error(adapter_id,
+				"Too short Adv Monitor Device Found event");
+		return;
+	}
+
+	ad_data_len = btohs(ev->ad_data_len);
+	if (length != sizeof(*ev) + ad_data_len) {
+		btd_error(adapter_id,
+				"Wrong size of Adv Monitor Device Found event");
+		return;
+	}
+
+	if (ad_data_len > 0)
+		ad_data = ev->ad_data;
+
+	flags = btohl(ev->flags);
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u addr %s, rssi %d flags 0x%04x ad_data_len %u",
+			index, addr, ev->rssi, flags, ad_data_len);
+
+	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
+	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
+	not_connectable = (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
+
+	btd_adapter_update_found_device(adapter, &ev->addr.bdaddr,
+					ev->addr.type, ev->rssi, confirm_name,
+					legacy, not_connectable, ad_data,
+					ad_data_len, true);
+}
+
+/* Processes Adv Monitor Device Lost event from kernel */
+static void adv_monitor_device_lost_callback(uint16_t index, uint16_t length,
+						const void *param,
+						void *user_data)
+{
+	struct btd_adv_monitor_manager *manager = user_data;
+	const struct mgmt_ev_adv_monitor_device_lost *ev = param;
+	uint16_t handle = le16_to_cpu(ev->monitor_handle);
+	const uint16_t adapter_id = manager->adapter_id;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		btd_error(adapter_id,
+				"Wrong size of Adv Monitor Device Lost event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("Adv Monitor with handle 0x%04x stopped tracking the device %s",
+		handle, addr);
+}
+
 /* Allocates a manager object */
 static struct btd_adv_monitor_manager *manager_new(
 						struct btd_adapter *adapter,
@@ -1553,6 +1624,14 @@ static struct btd_adv_monitor_manager *manager_new(
 
 	mgmt_register(manager->mgmt, MGMT_EV_ADV_MONITOR_REMOVED,
 			manager->adapter_id, adv_monitor_removed_callback,
+			manager, NULL);
+
+	mgmt_register(manager->mgmt, MGMT_EV_ADV_MONITOR_DEVICE_FOUND,
+			manager->adapter_id, adv_monitor_device_found_callback,
+			manager, NULL);
+
+	mgmt_register(manager->mgmt, MGMT_EV_ADV_MONITOR_DEVICE_LOST,
+			manager->adapter_id, adv_monitor_device_lost_callback,
 			manager, NULL);
 
 	return manager;
@@ -1664,6 +1743,17 @@ void btd_adv_monitor_manager_destroy(struct btd_adv_monitor_manager *manager)
 	btd_info(manager->adapter_id, "Destroy Adv Monitor Manager");
 
 	manager_destroy(manager);
+}
+
+bool btd_adv_monitor_offload_supported(struct btd_adv_monitor_manager *manager)
+{
+	if (!manager) {
+		error("Manager is NULL, get offload support failed");
+		return false;
+	}
+
+	return !!(manager->enabled_features &
+				MGMT_ADV_MONITOR_FEATURE_MASK_OR_PATTERNS);
 }
 
 /* Processes the content matching based pattern(s) of a monitor */
