@@ -772,7 +772,7 @@ static bool parse_rssi_and_timeout(struct adv_monitor *monitor,
 	int16_t l_rssi = ADV_MONITOR_UNSET_RSSI;
 	uint16_t h_rssi_timeout = ADV_MONITOR_UNSET_TIMEOUT;
 	uint16_t l_rssi_timeout = ADV_MONITOR_UNSET_TIMEOUT;
-	int16_t sampling_period = ADV_MONITOR_UNSET_SAMPLING_PERIOD;
+	uint16_t sampling_period = ADV_MONITOR_UNSET_SAMPLING_PERIOD;
 	uint16_t adapter_id = monitor->app->manager->adapter_id;
 
 	/* Extract RSSIHighThreshold */
