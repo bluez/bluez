@@ -68,7 +68,7 @@ endif
 
 if HOG
 builtin_modules += hog
-builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
+builtin_sources += profiles/input/hog.c \
 			profiles/input/hog-lib.c profiles/input/hog-lib.h \
 			profiles/deviceinfo/dis.c profiles/deviceinfo/dis.h \
 			profiles/battery/bas.c profiles/battery/bas.h \

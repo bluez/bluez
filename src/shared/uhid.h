@@ -10,8 +10,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
-#include "profiles/input/uhid_copy.h"
+#include <linux/uhid.h>
 
 struct bt_uhid;
 
