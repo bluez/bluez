@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <linux/uinput.h>
 
 #include <glib.h>
 
@@ -38,7 +39,6 @@
 #include "src/device.h"
 #include "src/log.h"
 #include "src/error.h"
-#include "src/uinput.h"
 #include "src/shared/timeout.h"
 
 #include "avctp.h"
@@ -302,7 +302,7 @@ static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
 
 static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
-	struct uinput_event event;
+	struct input_event event;
 
 	memset(&event, 0, sizeof(event));
 	event.type	= type;
@@ -1156,7 +1156,7 @@ failed:
 static int uinput_create(struct btd_device *device, const char *name,
 			 const char *suffix)
 {
-	struct uinput_dev dev;
+	struct uinput_user_dev dev;
 	int fd, err, i;
 	char src[18];
 

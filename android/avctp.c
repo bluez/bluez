@@ -26,14 +26,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <linux/uinput.h>
 
 #include <glib.h>
 
 #include "lib/sdp.h"
-
 #include "src/log.h"
-#include "src/uinput.h"
-
 #include "avctp.h"
 
 /*
@@ -259,7 +257,7 @@ static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
 
 static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
-	struct uinput_event event;
+	struct input_event event;
 	int err;
 
 	memset(&event, 0, sizeof(event));
@@ -1012,7 +1010,7 @@ failed:
 
 static int uinput_create(const char *name)
 {
-	struct uinput_dev dev;
+	struct uinput_user_dev dev;
 	int fd, err, i;
 
 	fd = open("/dev/uinput", O_RDWR);
