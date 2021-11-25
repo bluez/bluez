@@ -92,6 +92,7 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm, bool legacy,
 					bool not_connectable,
+					bool name_resolve_failed,
 					const uint8_t *data, uint8_t data_len,
 					bool monitored);
 

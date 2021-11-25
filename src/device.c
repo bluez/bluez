@@ -79,6 +79,8 @@
 #define GATT_INCLUDE_UUID_STR "2802"
 #define GATT_CHARAC_UUID_STR "2803"
 
+#define NAME_RESOLVE_RETRY_DELAY	300 /* seconds */
+
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
 
@@ -272,6 +274,8 @@ struct btd_device {
 
 	GIOChannel	*att_io;
 	guint		store_id;
+
+	time_t		name_resolve_failed_time;
 };
 
 static const uint16_t uuid_list[] = {
@@ -4387,6 +4391,29 @@ void device_get_name(struct btd_device *device, char *name, size_t len)
 bool device_name_known(struct btd_device *device)
 {
 	return device->name[0] != '\0';
+}
+
+bool device_is_name_resolve_allowed(struct btd_device *device)
+{
+	struct timespec now;
+
+	if (!device)
+		return false;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec >= device->name_resolve_failed_time +
+						NAME_RESOLVE_RETRY_DELAY;
+}
+
+void device_name_resolve_fail(struct btd_device *device)
+{
+	struct timespec now;
+
+	if (!device)
+		return;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	device->name_resolve_failed_time = now.tv_sec;
 }
 
 void device_set_class(struct btd_device *device, uint32_t class)

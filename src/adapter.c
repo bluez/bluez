@@ -6979,6 +6979,7 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm, bool legacy,
 					bool not_connectable,
+					bool name_resolve_failed,
 					const uint8_t *data, uint8_t data_len,
 					bool monitoring)
 {
@@ -7076,6 +7077,9 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 
 	device_set_legacy(dev, legacy);
 
+	if (name_resolve_failed)
+		device_name_resolve_fail(dev);
+
 	if (adapter->filtered_discovery)
 		device_set_rssi_with_delta(dev, rssi, 0);
 	else
@@ -7146,7 +7150,10 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 	if (g_slist_find(adapter->discovery_found, dev))
 		return;
 
-	if (confirm)
+	/* If name is unknown but it's not allowed to resolve, don't send
+	 * MGMT_OP_CONFIRM_NAME.
+	 */
+	if (confirm && (name_known || device_is_name_resolve_allowed(dev)))
 		confirm_name(adapter, bdaddr, bdaddr_type, name_known);
 
 	adapter->discovery_found = g_slist_prepend(adapter->discovery_found,
@@ -7196,8 +7203,9 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	uint32_t flags;
 	bool confirm_name;
 	bool legacy;
-	char addr[18];
 	bool not_connectable;
+	bool name_resolve_failed;
+	char addr[18];
 
 	if (length < sizeof(*ev)) {
 		btd_error(adapter->dev_id,
@@ -7227,10 +7235,12 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
 	not_connectable = (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
+	name_resolve_failed = (flags & MGMT_DEV_FOUND_NAME_REQUEST_FAILED);
 
 	btd_adapter_update_found_device(adapter, &ev->addr.bdaddr,
 					ev->addr.type, ev->rssi, confirm_name,
-					legacy, not_connectable, eir, eir_len,
+					legacy, not_connectable,
+					name_resolve_failed, eir, eir_len,
 					false);
 }
 

@@ -1585,8 +1585,9 @@ static void adv_monitor_device_found_callback(uint16_t index, uint16_t length,
 	uint32_t flags;
 	bool confirm_name;
 	bool legacy;
-	char addr[18];
 	bool not_connectable;
+	bool name_resolve_failed;
+	char addr[18];
 
 	if (length < sizeof(*ev)) {
 		btd_error(adapter_id,
@@ -1613,10 +1614,12 @@ static void adv_monitor_device_found_callback(uint16_t index, uint16_t length,
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
 	not_connectable = (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
+	name_resolve_failed = (flags & MGMT_DEV_FOUND_NAME_REQUEST_FAILED);
 
 	btd_adapter_update_found_device(adapter, &ev->addr.bdaddr,
 					ev->addr.type, ev->rssi, confirm_name,
-					legacy, not_connectable, ad_data,
+					legacy, not_connectable,
+					name_resolve_failed, ad_data,
 					ad_data_len, true);
 
 	if (handle) {
