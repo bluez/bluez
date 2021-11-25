@@ -104,6 +104,7 @@ struct btd_opts {
 	uint32_t	tmpto;
 	uint8_t		privacy;
 	bool		device_privacy;
+	uint32_t	name_request_retry_delay;
 
 	struct btd_defaults defaults;
 

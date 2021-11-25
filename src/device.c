@@ -79,8 +79,6 @@
 #define GATT_INCLUDE_UUID_STR "2802"
 #define GATT_CHARAC_UUID_STR "2803"
 
-#define NAME_RESOLVE_RETRY_DELAY	300 /* seconds */
-
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
 
@@ -4489,7 +4487,7 @@ bool device_is_name_resolve_allowed(struct btd_device *device)
 	 */
 	return now.tv_sec < device->name_resolve_failed_time ||
 		now.tv_sec >= device->name_resolve_failed_time +
-						NAME_RESOLVE_RETRY_DELAY;
+					btd_opts.name_request_retry_delay;
 }
 
 void device_name_resolve_fail(struct btd_device *device)
