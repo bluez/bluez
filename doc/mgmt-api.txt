@@ -4090,6 +4090,7 @@ Device Connected Event
 		1	Legacy Pairing
 		2	Reserved (not in use)
 		3	Initiated Connection
+		4	Reserved (not in use)
 
 
 Device Disconnected Event
@@ -4264,6 +4265,7 @@ Device Found Event
 		1	Legacy Pairing
 		2	Not Connectable
 		3	Reserved (not in use)
+		4	Name Request Failed
 
 	For the RSSI field a value of 127 indicates that the RSSI is
 	not available. That can happen with Bluetooth 1.1 and earlier
@@ -4285,6 +4287,11 @@ Device Found Event
 	The Not Connectable flag indicates that the device will not
 	accept any connections. This can be indicated by Low Energy
 	devices that are in broadcaster role.
+
+	The Name Request Failed flag indicates that name resolving
+	procedure has ended with failure for this device. The user space
+	should use this information to determine when is a good time to
+	retry the name resolving procedure.
 
 
 Discovering Event

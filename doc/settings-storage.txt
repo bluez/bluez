@@ -179,7 +179,7 @@ Cache directory file format
 ============================
 
 Each file, named by remote device address, may includes multiple groups
-(General, ServiceRecords, Attributes, Endpoints).
+(General, ServiceRecords, Attributes, Endpoints, NameResolving).
 
 In ServiceRecords, SDP records are stored using their handle as key
 (hexadecimal format).
@@ -192,6 +192,9 @@ In "Endpoints" group A2DP remote endpoints are stored using the seid as key
 (hexadecimal format) and ":" is used to separate fields. It may also contain
 an entry which key is set to "LastUsed" which represented the last endpoint
 used.
+
+In "NameResolving", information regarding remote name resolving are stored to
+prevent wasting time resolving name for unresponsive devices.
 
 [General] group contains:
 
@@ -246,6 +249,12 @@ Sample Attributes section:
 	LastUsed:<xx>:<xx>	String	LastUsed has two fields which are the
 					local and remote seids as hexadecimal
 					encoded string.
+
+[NameResolving] group contains:
+
+  FailedTime	Integer		The last time  we failed to complete name
+				resolving procedure, measured from an
+				arbitrary, fixed point in the past.
 
 Info file format
 ================
