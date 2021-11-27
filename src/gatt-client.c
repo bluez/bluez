@@ -883,10 +883,7 @@ static gboolean characteristic_get_mtu(const GDBusPropertyTable *property,
 	uint16_t mtu;
 
 	att = bt_gatt_client_get_att(gatt);
-	if (!att)
-		return FALSE;
-
-	mtu = bt_att_get_mtu(att);
+	mtu = att ? bt_att_get_mtu(att) : BT_ATT_DEFAULT_LE_MTU;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &mtu);
 
