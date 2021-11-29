@@ -890,6 +890,14 @@ static gboolean characteristic_get_mtu(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean characteristic_mtu_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct characteristic *chrc = data;
+
+	return chrc->service->client->gatt ? TRUE : FALSE;
+}
+
 static void write_characteristic_cb(struct gatt_db_attribute *attr, int err,
 								void *user_data)
 {
@@ -1663,7 +1671,7 @@ static const GDBusPropertyTable characteristic_properties[] = {
 				characteristic_write_acquired_exists },
 	{ "NotifyAcquired", "b", characteristic_get_notify_acquired, NULL,
 				characteristic_notify_acquired_exists },
-	{ "MTU", "q", characteristic_get_mtu, NULL, NULL },
+	{ "MTU", "q", characteristic_get_mtu, NULL, characteristic_mtu_exists },
 	{ }
 };
 
