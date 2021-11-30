@@ -118,13 +118,13 @@ int create_dir(const char *dir_name)
 		}
 
 		strncat(dir, prev + 1, next - prev);
-		if (mkdir(dir, 0755) != 0)
+		if (mkdir(dir, 0755) != 0 && errno != EEXIST)
 			l_error("Failed to create dir(%d): %s", errno, dir);
 
 		prev = next;
 	}
 
-	if (mkdir(dir_name, 0755) != 0)
+	if (mkdir(dir_name, 0755) != 0 && errno != EEXIST)
 		l_error("Failed to create dir(%d): %s", errno, dir_name);
 
 	return 0;

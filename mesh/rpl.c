@@ -255,7 +255,7 @@ void rpl_update(struct mesh_node *node, uint32_t cur)
 
 	/* Make sure path exists */
 	snprintf(path, PATH_MAX, "%s%s", node_path, rpl_dir);
-	if (mkdir(path, 0755) != 0)
+	if (mkdir(path, 0755) != 0 && errno != EEXIST)
 		l_error("Failed to create dir(%d): %s", errno, path);
 
 	dir = opendir(path);
@@ -293,7 +293,7 @@ bool rpl_init(const char *node_path)
 		return false;
 
 	snprintf(path, PATH_MAX, "%s%s", node_path, rpl_dir);
-	if (mkdir(path, 0755) != 0)
+	if (mkdir(path, 0755) != 0 && errno != EEXIST)
 		l_error("Failed to create dir(%d): %s", errno, path);
 	return true;
 }

@@ -50,7 +50,7 @@ static int open_key_file(struct mesh_node *node, const char *key_dir,
 
 	if (flags & O_CREAT) {
 		snprintf(fname, PATH_MAX, "%s%s", node_path, key_dir);
-		if (mkdir(fname, 0755) != 0)
+		if (mkdir(fname, 0755) != 0 && errno != EEXIST)
 			l_error("Failed to create dir(%d): %s", errno, fname);
 	}
 
