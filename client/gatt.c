@@ -2749,7 +2749,7 @@ static DBusMessage *desc_write_value(DBusConnection *conn, DBusMessage *msg,
 	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) written",
 			desc->path, bt_uuidstr_to_str(desc->uuid));
 
-	g_dbus_emit_property_changed(conn, desc->path, CHRC_INTERFACE, "Value");
+	g_dbus_emit_property_changed(conn, desc->path, DESC_INTERFACE, "Value");
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
