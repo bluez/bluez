@@ -20,6 +20,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/random.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -284,9 +285,13 @@ static bool hr_msrmt_cb(void *user_data)
 	uint16_t len = 2;
 	uint8_t pdu[4];
 	uint32_t cur_ee;
+	uint32_t val;
+
+	if (getrandom(&val, sizeof(val), 0) < 0)
+		return false;
 
 	pdu[0] = 0x06;
-	pdu[1] = 90 + (rand() % 40);
+	pdu[1] = 90 + (val % 40);
 
 	if (expended_present) {
 		pdu[0] |= 0x08;
