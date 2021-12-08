@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/random.h>
 
 #include <glib.h>
 
@@ -49,6 +50,7 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 	char pinstr[7];
 	char name[25];
 	uint32_t class;
+	uint32_t val;
 
 	ba2str(device_get_address(device), addr);
 
@@ -129,8 +131,12 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 			if (attempt >= 4)
 				return 0;
 
+			if (getrandom(&val, sizeof(val), 0) < 0) {
+				error("Failed to get a random pincode");
+				return 0;
+			}
 			snprintf(pinstr, sizeof(pinstr), "%06u",
-						rand() % 1000000);
+						val % 1000000);
 			*display = true;
 			memcpy(pinbuf, pinstr, 6);
 			return 6;
