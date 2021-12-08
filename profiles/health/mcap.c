@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/random.h>
 
 #include <glib.h>
 
@@ -1888,6 +1889,7 @@ gboolean mcap_create_mcl(struct mcap_instance *mi,
 {
 	struct mcap_mcl *mcl;
 	struct connect_mcl *con;
+	uint16_t val;
 
 	mcl = find_mcl(mi->mcls, addr);
 	if (mcl) {
@@ -1903,7 +1905,12 @@ gboolean mcap_create_mcl(struct mcap_instance *mi,
 		mcl->state = MCL_IDLE;
 		bacpy(&mcl->addr, addr);
 		set_default_cb(mcl);
-		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
+		if (getrandom(&val, sizeof(val), 0) < 0) {
+			mcap_instance_unref(mcl->mi);
+			g_free(mcl);
+			return FALSE;
+		}
+		mcl->next_mdl = (val % MCAP_MDLID_FINAL) + 1;
 	}
 
 	mcl->ctrl |= MCAP_CTRL_CONN;
@@ -2013,6 +2020,7 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 	bdaddr_t dst;
 	char address[18], srcstr[18];
 	GError *err = NULL;
+	uint16_t val;
 
 	if (gerr)
 		return;
@@ -2041,7 +2049,12 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 		mcl->mi = mcap_instance_ref(mi);
 		bacpy(&mcl->addr, &dst);
 		set_default_cb(mcl);
-		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
+		if (getrandom(&val, sizeof(val), 0) < 0) {
+			mcap_instance_unref(mcl->mi);
+			g_free(mcl);
+			goto drop;
+		}
+		mcl->next_mdl = (val % MCAP_MDLID_FINAL) + 1;
 	}
 
 	set_mcl_conf(chan, mcl);
