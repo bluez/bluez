@@ -3593,6 +3593,17 @@ static int cmd_le_create_conn_complete(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_le_create_conn_cancel(struct btdev *dev, const void *data,
+				     uint8_t len)
+{
+	uint8_t status = BT_HCI_ERR_COMMAND_DISALLOWED;
+
+	cmd_complete(dev, BT_HCI_CMD_LE_CREATE_CONN_CANCEL, &status,
+		     sizeof(status));
+
+	return 0;
+}
+
 static int cmd_read_al_size(struct btdev *dev, const void *data, uint8_t len)
 {
 	struct bt_hci_rsp_le_read_accept_list_size rsp;
@@ -4388,6 +4399,8 @@ static int cmd_gen_dhkey(struct btdev *dev, const void *data, uint8_t len)
 					cmd_set_scan_enable_complete), \
 	CMD(BT_HCI_CMD_LE_CREATE_CONN, cmd_le_create_conn, \
 					cmd_le_create_conn_complete), \
+	CMD(BT_HCI_CMD_LE_CREATE_CONN_CANCEL, cmd_le_create_conn_cancel, \
+					NULL), \
 	CMD(BT_HCI_CMD_LE_READ_ACCEPT_LIST_SIZE, cmd_read_al_size, NULL), \
 	CMD(BT_HCI_CMD_LE_CLEAR_ACCEPT_LIST, cmd_al_clear, NULL), \
 	CMD(BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST, cmd_add_al, NULL), \
@@ -6021,6 +6034,7 @@ static void set_le_commands(struct btdev *btdev)
 	btdev->commands[26] |= 0x04;	/* LE Set Scan Parameters */
 	btdev->commands[26] |= 0x08;	/* LE Set Scan Enable */
 	btdev->commands[26] |= 0x10;	/* LE Create Connection */
+	btdev->commands[26] |= 0x20;	/* LE Create Connection Cancel */
 	btdev->commands[26] |= 0x40;	/* LE Read Accept List Size */
 	btdev->commands[26] |= 0x80;	/* LE Clear Accept List */
 	btdev->commands[27] |= 0x01;	/* LE Add Device to Accept List */
