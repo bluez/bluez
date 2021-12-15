@@ -1786,6 +1786,13 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 	manager->max_ads = feat->max_instances;
 	manager->supported_flags |= feat->supported_flags;
 
+	/* Registering interface after querying properties */
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+				       adapter_get_path(manager->adapter),
+				       LE_ADVERTISING_MGR_IFACE, methods,
+				       NULL, properties, manager, NULL))
+		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
+
 	if (manager->max_ads == 0)
 		return;
 
@@ -1860,14 +1867,6 @@ static struct btd_adv_manager *manager_create(struct btd_adapter *adapter,
 			btd_has_kernel_features(KERNEL_HAS_EXT_ADV_ADD_CMDS);
 	manager->min_tx_power = ADV_TX_POWER_NO_PREFERENCE;
 	manager->max_tx_power = ADV_TX_POWER_NO_PREFERENCE;
-
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					adapter_get_path(manager->adapter),
-					LE_ADVERTISING_MGR_IFACE, methods,
-					NULL, properties, manager, NULL)) {
-		error("Failed to register " LE_ADVERTISING_MGR_IFACE);
-		goto fail;
-	}
 
 	if (!mgmt_send(manager->mgmt, MGMT_OP_READ_ADV_FEATURES,
 				manager->mgmt_index, 0, NULL,
