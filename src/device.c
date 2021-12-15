@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -3614,6 +3615,7 @@ static void load_att_info(struct btd_device *device, const char *local,
 				const char *peer)
 {
 	char filename[PATH_MAX];
+	struct stat st;
 	GKeyFile *key_file;
 	GError *gerr = NULL;
 	char *prim_uuid, *str;
@@ -3623,11 +3625,12 @@ static void load_att_info(struct btd_device *device, const char *local,
 	char tmp[3];
 	int i;
 
-	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	prim_uuid = bt_uuid2string(&uuid);
-
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/attributes", local,
 			peer);
+
+	/* Check if attributes file exists */
+	if (stat(filename, &st) < 0)
+		return;
 
 	key_file = g_key_file_new();
 	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
@@ -3636,6 +3639,9 @@ static void load_att_info(struct btd_device *device, const char *local,
 		g_error_free(gerr);
 	}
 	groups = g_key_file_get_groups(key_file, NULL);
+
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	prim_uuid = bt_uuid2string(&uuid);
 
 	for (handle = groups; *handle; handle++) {
 		gboolean uuid_ok;
