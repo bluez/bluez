@@ -28,6 +28,9 @@ fi
 		--enable-btpclient \
 		--enable-logger \
 		--enable-pie \
+		--enable-asan \
+		--enable-lsan \
+		--enable-ubsan \
 		--enable-cups \
 		--enable-library \
 		--enable-admin \
