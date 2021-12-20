@@ -1119,8 +1119,6 @@ static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
 	}
 
 	data = read_mult_data_new(server, chan, opcode, length / 2);
-	if (!data)
-		goto error;
 
 	for (i = 0; i < data->num_handles; i++)
 		data->handles[i] = get_le16(pdu + i * 2);

@@ -108,7 +108,7 @@ static int bnep_connadd(int sk, uint16_t role, char *dev)
 	struct bnep_connadd_req req;
 
 	memset(&req, 0, sizeof(req));
-	strncpy(req.device, dev, 16);
+	strncpy(req.device, dev, 15);
 	req.device[15] = '\0';
 
 	req.sock = sk;
@@ -345,7 +345,7 @@ struct bnep *bnep_new(int sk, uint16_t local_role, uint16_t remote_role,
 	session->io = g_io_channel_unix_new(dup_fd);
 	session->src = local_role;
 	session->dst = remote_role;
-	strncpy(session->iface, iface, 16);
+	strncpy(session->iface, iface, 15);
 	session->iface[15] = '\0';
 
 	g_io_channel_set_close_on_unref(session->io, TRUE);

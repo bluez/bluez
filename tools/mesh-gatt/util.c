@@ -41,9 +41,14 @@ void print_byte_array(const char *prefix, const void *ptr, int len)
 	char *line, *bytes;
 	int i;
 
-	line = g_malloc(strlen(prefix) + (16 * 3) + 2);
-	sprintf(line, "%s ", prefix);
-	bytes = line + strlen(prefix) + 1;
+	if (prefix) {
+		line = g_malloc(strlen(prefix) + (16 * 3) + 2);
+		sprintf(line, "%s ", prefix);
+		bytes = line + strlen(prefix) + 1;
+	} else {
+		line = g_malloc((16 * 3) + 2);
+		bytes = line + 1;
+	}
 
 	for (i = 0; i < len; ++i) {
 		sprintf(bytes, "%2.2x ", data[i]);

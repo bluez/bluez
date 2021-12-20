@@ -1338,9 +1338,12 @@ static gboolean a2dp_reconfigure(gpointer data)
 	if (setup->rsep) {
 		cap = avdtp_get_codec(setup->rsep->sep);
 		rsep_codec = (struct avdtp_media_codec_capability *) cap->data;
+		/* Check that codec really match after closing */
+		if (sep->codec != rsep_codec->media_codec_type)
+			setup->rsep = NULL;
 	}
 
-	if (!setup->rsep || sep->codec != rsep_codec->media_codec_type)
+	if (!setup->rsep)
 		setup->rsep = find_remote_sep(setup->chan, sep);
 
 	if (!setup->rsep) {

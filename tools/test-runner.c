@@ -136,7 +136,7 @@ static void prepare_sandbox(void)
 {
 	int i;
 
-	for (i = 0; mount_table[i].fstype; i++) {
+	for (i = 0; mount_table[i].fstype && mount_table[i].target; i++) {
 		struct stat st;
 
 		if (lstat(mount_table[i].target, &st) < 0) {

@@ -1177,7 +1177,7 @@ static int uinput_create(struct btd_device *device, const char *name,
 	memset(&dev, 0, sizeof(dev));
 
 	if (name) {
-		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE);
+		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE - 1);
 		dev.name[UINPUT_MAX_NAME_SIZE - 1] = '\0';
 	}
 
