@@ -195,7 +195,9 @@ static uint8_t *construct_full_pdu(uint8_t opcode, const void *pdu,
 		return NULL;
 
 	buf[0] = opcode;
-	memcpy(buf + 1, pdu, length);
+
+	if (pdu && length)
+		memcpy(buf + 1, pdu, length);
 
 	return buf;
 }
