@@ -34,6 +34,7 @@
 #include "src/shared/queue.h"
 #include "monitor/bt.h"
 #include "monitor/msft.h"
+#include "monitor/emulator.h"
 #include "btdev.h"
 
 #define AL_SIZE			16
@@ -142,6 +143,8 @@ struct btdev {
 	const struct btdev_cmd *cmds;
 	uint16_t msft_opcode;
 	const struct btdev_cmd *msft_cmds;
+	uint16_t emu_opcode;
+	const struct btdev_cmd *emu_cmds;
 	bool aosp_capable;
 
 	uint16_t default_link_policy;
@@ -6586,12 +6589,11 @@ static const struct btdev_cmd *run_cmd(struct btdev *btdev,
 	return NULL;
 }
 
-static const struct btdev_cmd *msft_cmd(struct btdev *btdev, const void *data,
-								uint8_t len)
+static const struct btdev_cmd *vnd_cmd(struct btdev *btdev, uint8_t op,
+					const struct btdev_cmd *cmd,
+					const void *data, uint8_t len)
 {
-	const struct btdev_cmd *cmd;
-
-	for (cmd = btdev->msft_cmds; cmd->func; cmd++) {
+	for (; cmd && cmd->func; cmd++) {
 		if (cmd->opcode != ((uint8_t *)data)[0])
 			continue;
 
@@ -6599,10 +6601,10 @@ static const struct btdev_cmd *msft_cmd(struct btdev *btdev, const void *data,
 	}
 
 	util_debug(btdev->debug_callback, btdev->debug_data,
-			"Unsupported MSFT subcommand 0x%2.2x\n",
+			"Unsupported Vendor subcommand 0x%2.2x\n",
 			((uint8_t *)data)[0]);
 
-	cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, btdev->msft_opcode);
+	cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, op);
 
 	return NULL;
 }
@@ -6612,8 +6614,11 @@ static const struct btdev_cmd *default_cmd(struct btdev *btdev, uint16_t opcode,
 {
 	const struct btdev_cmd *cmd;
 
+	if (btdev->emu_opcode == opcode)
+		return vnd_cmd(btdev, opcode, btdev->emu_cmds, data, len);
+
 	if (btdev->msft_opcode == opcode)
-		return msft_cmd(btdev, data, len);
+		return vnd_cmd(btdev, opcode, btdev->msft_cmds, data, len);
 
 	for (cmd = btdev->cmds; cmd->func; cmd++) {
 		if (cmd->opcode != opcode)
@@ -7048,4 +7053,51 @@ int btdev_set_aosp_capable(struct btdev *btdev, bool enable)
 	btdev->aosp_capable = enable;
 
 	return 0;
+}
+
+static int cmd_emu_test_event(struct btdev *dev, const void *data, uint8_t len)
+{
+	const struct emu_cmd_test_event *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	if (len < sizeof(*cmd)) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	send_event(dev, cmd->evt, cmd->data, len - sizeof(*cmd));
+
+done:
+	cmd_complete(dev, dev->emu_opcode, &status, sizeof(status));
+
+	return 0;
+}
+
+#define CMD_EMU \
+	CMD(EMU_SUBCMD_TEST_EVENT, cmd_emu_test_event, NULL)
+
+static const struct btdev_cmd cmd_emu[] = {
+	CMD_EMU,
+	{}
+};
+
+int btdev_set_emu_opcode(struct btdev *btdev, uint16_t opcode)
+{
+	if (!btdev)
+		return -EINVAL;
+
+	switch (btdev->type) {
+	case BTDEV_TYPE_BREDRLE:
+	case BTDEV_TYPE_BREDRLE50:
+	case BTDEV_TYPE_BREDRLE52:
+		btdev->emu_opcode = opcode;
+		btdev->emu_cmds = cmd_emu;
+		return 0;
+	case BTDEV_TYPE_BREDR:
+	case BTDEV_TYPE_LE:
+	case BTDEV_TYPE_AMP:
+	case BTDEV_TYPE_BREDR20:
+	default:
+		return -ENOTSUP;
+	}
 }

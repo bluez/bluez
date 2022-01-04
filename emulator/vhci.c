@@ -252,3 +252,8 @@ int vhci_set_aosp_capable(struct vhci *vhci, bool enable)
 
 	return vhci_debugfs_write(vhci, "aosp_capable", &val, sizeof(val));
 }
+
+int vhci_set_emu_opcode(struct vhci *vhci, uint16_t opcode)
+{
+	return btdev_set_emu_opcode(vhci->btdev, opcode);
+}
