@@ -71,13 +71,13 @@ AC_DEFUN([COMPILER_FLAGS], [
 AC_DEFUN([MISC_FLAGS], [
 	misc_cflags=""
 	misc_ldflags=""
-	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
+	AC_ARG_ENABLE(optimization, AS_HELP_STRING([--disable-optimization],
 			[disable code optimization through compiler]), [
 		if (test "${enableval}" = "no"); then
 			misc_cflags="$misc_cflags -O0"
 		fi
 	])
-	AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
+	AC_ARG_ENABLE(asan, AS_HELP_STRING([--enable-asan],
 			[enable linking with address sanitizer]), [
 		save_LIBS=$LIBS
 		AC_CHECK_LIB(asan, _init)
@@ -90,7 +90,7 @@ AC_DEFUN([MISC_FLAGS], [
 			AC_SUBST([ASAN_LIB], ${ac_cv_lib_asan__init})
 		fi
 	])
-	AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
+	AC_ARG_ENABLE(lsan, AS_HELP_STRING([--enable-lsan],
 			[enable linking with address sanitizer]), [
 		save_LIBS=$LIBS
 		AC_CHECK_LIB(lsan, _init)
@@ -103,7 +103,7 @@ AC_DEFUN([MISC_FLAGS], [
 			AC_SUBST([ASAN_LIB], ${ac_cv_lib_lsan__init})
 		fi
 	])
-	AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
+	AC_ARG_ENABLE(ubsan, AS_HELP_STRING([--enable-ubsan],
 			[enable linking with address sanitizer]), [
 		save_LIBS=$LIBS
 		AC_CHECK_LIB(ubsan, _init)
@@ -115,14 +115,14 @@ AC_DEFUN([MISC_FLAGS], [
 			misc_ldflags="$misc_ldflags -fsanitize=undefined";
 		fi
 	])
-	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
+	AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],
 			[enable compiling with debugging information]), [
 		if (test "${enableval}" = "yes" &&
 				test "${ac_cv_prog_cc_g}" = "yes"); then
 			misc_cflags="$misc_cflags -g"
 		fi
 	])
-	AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
+	AC_ARG_ENABLE(pie, AS_HELP_STRING([--enable-pie],
 			[enable position independent executables flag]), [
 		if (test "${enableval}" = "yes" &&
 				test "${ac_cv_prog_cc_pie}" = "yes"); then

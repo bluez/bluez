@@ -16,7 +16,7 @@ PKG_PROG_PKG_CONFIG
 
 COMPILER_FLAGS
 
-AC_LANG_C
+AC_LANG([C])
 
 AC_C_RESTRICT
 
@@ -49,7 +49,7 @@ MISC_FLAGS
 AM_CONDITIONAL(VALGRIND, test "${enable_valgrind}" = "yes" &&
 		test "$ASAN_LIB" != "yes" && test "LSAN_LIB" != "yes")
 
-AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
+AC_ARG_ENABLE(threads, AS_HELP_STRING([--enable-threads],
 		[enable threading support]), [enable_threads=${enableval}])
 
 AC_CHECK_FUNCS(explicit_bzero)
@@ -88,7 +88,7 @@ PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.6, dummy=yes,
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-AC_ARG_WITH([dbusconfdir], AC_HELP_STRING([--with-dbusconfdir=DIR],
+AC_ARG_WITH([dbusconfdir], AS_HELP_STRING([--with-dbusconfdir=DIR],
 				[path to D-Bus configuration directory]),
 					[path_dbusconfdir=${withval}])
 if (test -z "${path_dbusconfdir}"); then
@@ -101,7 +101,7 @@ if (test -z "${path_dbusconfdir}"); then
 fi
 AC_SUBST(DBUS_CONFDIR, [${path_dbusconfdir}])
 
-AC_ARG_WITH([dbussystembusdir], AC_HELP_STRING([--with-dbussystembusdir=DIR],
+AC_ARG_WITH([dbussystembusdir], AS_HELP_STRING([--with-dbussystembusdir=DIR],
 				[path to D-Bus system bus services directory]),
 					[path_dbussystembusdir=${withval}])
 if (test -z "${path_dbussystembusdir}"); then
@@ -114,7 +114,7 @@ if (test -z "${path_dbussystembusdir}"); then
 fi
 AC_SUBST(DBUS_SYSTEMBUSDIR, [${path_dbussystembusdir}])
 
-AC_ARG_WITH([dbussessionbusdir], AC_HELP_STRING([--with-dbussessionbusdir=DIR],
+AC_ARG_WITH([dbussessionbusdir], AS_HELP_STRING([--with-dbussessionbusdir=DIR],
 				[path to D-Bus session bus services directory]),
 					[path_dbussessionbusdir=${withval}])
 if (test -z "${path_dbussessionbusdir}"); then
@@ -127,7 +127,7 @@ if (test -z "${path_dbussessionbusdir}"); then
 fi
 AC_SUBST(DBUS_SESSIONBUSDIR, [${path_dbussessionbusdir}])
 
-AC_ARG_WITH([zsh-completion-dir], AC_HELP_STRING([--with-zsh-completion-dir=DIR],
+AC_ARG_WITH([zsh-completion-dir], AS_HELP_STRING([--with-zsh-completion-dir=DIR],
 				[path to install zsh completions]),
 					[path_zshcompletiondir=${withval}],
 						[path_zshcompletiondir="yes"])
@@ -139,7 +139,7 @@ fi
 AC_SUBST(ZSH_COMPLETIONDIR, [${path_zshcompletiondir}])
 AM_CONDITIONAL(ZSH_COMPLETIONS, test "${path_zshcompletiondir}" != "no")
 
-AC_ARG_ENABLE(backtrace, AC_HELP_STRING([--enable-backtrace],
+AC_ARG_ENABLE(backtrace, AS_HELP_STRING([--enable-backtrace],
 		[compile backtrace support]), [enable_backtrace=${enableval}])
 
 if (test "${enable_backtrace}" = "yes"); then
@@ -153,55 +153,55 @@ if (test "${enable_backtrace}" = "yes"); then
 	AC_SUBST(BACKTRACE_LIBS)
 fi
 
-AC_ARG_ENABLE(library, AC_HELP_STRING([--enable-library],
+AC_ARG_ENABLE(library, AS_HELP_STRING([--enable-library],
 		[install Bluetooth library]), [enable_library=${enableval}])
 AM_CONDITIONAL(LIBRARY, test "${enable_library}" = "yes")
 
-AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
+AC_ARG_ENABLE(test, AS_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
 
-AC_ARG_ENABLE(nfc, AC_HELP_STRING([--enable-nfc],
+AC_ARG_ENABLE(nfc, AS_HELP_STRING([--enable-nfc],
 		[enable NFC paring]), [enable_nfc=${enableval}])
 AM_CONDITIONAL(NFC, test "${enable_nfc}" = "yes")
 
-AC_ARG_ENABLE(sap, AC_HELP_STRING([--enable-sap],
+AC_ARG_ENABLE(sap, AS_HELP_STRING([--enable-sap],
 		[enable SAP profile]), [enable_sap=${enableval}])
 AM_CONDITIONAL(SAP, test "${enable_sap}" = "yes")
 
-AC_ARG_ENABLE(a2dp, AC_HELP_STRING([--disable-a2dp],
+AC_ARG_ENABLE(a2dp, AS_HELP_STRING([--disable-a2dp],
 		[disable A2DP profile]), [enable_a2dp=${enableval}])
 AM_CONDITIONAL(A2DP, test "${enable_a2dp}" != "no")
 
-AC_ARG_ENABLE(avrcp, AC_HELP_STRING([--disable-avrcp],
+AC_ARG_ENABLE(avrcp, AS_HELP_STRING([--disable-avrcp],
 		[disable AVRCP profile]), [enable_avrcp=${enableval}])
 AM_CONDITIONAL(AVRCP, test "${enable_avrcp}" != "no")
 
-AC_ARG_ENABLE(network, AC_HELP_STRING([--disable-network],
+AC_ARG_ENABLE(network, AS_HELP_STRING([--disable-network],
 		[disable network profiles]), [enable_network=${enableval}])
 AM_CONDITIONAL(NETWORK, test "${enable_network}" != "no")
 
-AC_ARG_ENABLE(hid, AC_HELP_STRING([--disable-hid],
+AC_ARG_ENABLE(hid, AS_HELP_STRING([--disable-hid],
 		[disable HID profile]), [enable_hid=${enableval}])
 AM_CONDITIONAL(HID, test "${enable_hid}" != "no")
 
-AC_ARG_ENABLE(hog, AC_HELP_STRING([--disable-hog],
+AC_ARG_ENABLE(hog, AS_HELP_STRING([--disable-hog],
 		[disable HoG profile]), [enable_hog=${enableval}])
 AM_CONDITIONAL(HOG, test "${enable_hog}" != "no")
 
-AC_ARG_ENABLE(health, AC_HELP_STRING([--enable-health],
+AC_ARG_ENABLE(health, AS_HELP_STRING([--enable-health],
 		[enable health profiles]), [enable_health=${enableval}])
 AM_CONDITIONAL(HEALTH, test "${enable_health}" = "yes")
 
-AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
+AC_ARG_ENABLE(tools, AS_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
-AC_ARG_ENABLE(monitor, AC_HELP_STRING([--disable-monitor],
+AC_ARG_ENABLE(monitor, AS_HELP_STRING([--disable-monitor],
 		[disable Bluetooth monitor]), [enable_monitor=${enableval}])
 AM_CONDITIONAL(MONITOR, test "${enable_monitor}" != "no")
 
-AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
+AC_ARG_ENABLE(udev, AS_HELP_STRING([--disable-udev],
 		[disable udev device support]), [enable_udev=${enableval}])
 if (test "${enable_tools}" != "no" && test "${enable_udev}" != "no"); then
 	PKG_CHECK_MODULES(UDEV, libudev >= 172, dummy=yes,
@@ -214,7 +214,7 @@ if (test "${enable_tools}" != "no" && test "${enable_udev}" != "no"); then
 fi
 AM_CONDITIONAL(UDEV, test "${enable_udev}" != "no")
 
-AC_ARG_WITH([udevdir], AC_HELP_STRING([--with-udevdir=DIR],
+AC_ARG_WITH([udevdir], AS_HELP_STRING([--with-udevdir=DIR],
 			[path to udev directory]), [path_udevdir=${withval}])
 if (test "${enable_udev}" != "no" && test -z "${path_udevdir}"); then
 	AC_MSG_CHECKING([udev directory])
@@ -226,11 +226,11 @@ if (test "${enable_udev}" != "no" && test -z "${path_udevdir}"); then
 fi
 AC_SUBST(UDEV_DIR, [${path_udevdir}])
 
-AC_ARG_ENABLE(cups, AC_HELP_STRING([--disable-cups],
+AC_ARG_ENABLE(cups, AS_HELP_STRING([--disable-cups],
                 [disable CUPS printer support]), [enable_cups=${enableval}])
 AM_CONDITIONAL(CUPS, test "${enable_cups}" != "no")
 
-AC_ARG_ENABLE(mesh, AC_HELP_STRING([--enable-mesh],
+AC_ARG_ENABLE(mesh, AS_HELP_STRING([--enable-mesh],
 		[enable Mesh profile support]), [enable_mesh=${enableval}])
 AM_CONDITIONAL(MESH, test "${enable_mesh}" = "yes")
 
@@ -241,7 +241,7 @@ if (test "${enable_mesh}" = "yes"); then
 	AC_SUBST(JSON_LIBS)
 fi
 
-AC_ARG_ENABLE(midi, AC_HELP_STRING([--enable-midi],
+AC_ARG_ENABLE(midi, AS_HELP_STRING([--enable-midi],
                 [enable MIDI support]), [enable_midi=${enableval}])
 AM_CONDITIONAL(MIDI, test "${enable_midi}" = "yes")
 
@@ -252,7 +252,7 @@ if (test "${enable_midi}" = "yes"); then
 	AC_SUBST(ALSA_LIBS)
 fi
 
-AC_ARG_ENABLE(obex, AC_HELP_STRING([--disable-obex],
+AC_ARG_ENABLE(obex, AS_HELP_STRING([--disable-obex],
 		[disable OBEX profile support]), [enable_obex=${enableval}])
 if (test "${enable_obex}" != "no"); then
 	PKG_CHECK_MODULES(ICAL, libical, dummy=yes,
@@ -262,11 +262,11 @@ if (test "${enable_obex}" != "no"); then
 fi
 AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
 
-AC_ARG_ENABLE(btpclient, AC_HELP_STRING([--enable-btpclient],
+AC_ARG_ENABLE(btpclient, AS_HELP_STRING([--enable-btpclient],
 		[enable BTP client]), [enable_btpclient=${enableval}])
 AM_CONDITIONAL(BTPCLIENT, test "${enable_btpclient}" = "yes")
 
-AC_ARG_ENABLE([external_ell], AC_HELP_STRING([--enable-external-ell],
+AC_ARG_ENABLE([external_ell], AS_HELP_STRING([--enable-external-ell],
 				[enable external Embedded Linux library]),
 					[enable_external_ell=${enableval}])
 if (test "${enable_external_ell}" = "yes"); then
@@ -281,7 +281,7 @@ AM_CONDITIONAL(EXTERNAL_ELL, test "${enable_external_ell}" = "yes" ||
 AM_CONDITIONAL(LIBSHARED_ELL, test "${enable_btpclient}" = "yes" ||
 						test "${enable_mesh}" = "yes")
 
-AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
+AC_ARG_ENABLE(client, AS_HELP_STRING([--disable-client],
 		[disable command line client]), [enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
 
@@ -291,12 +291,12 @@ if (test "${enable_client}" != "no" || test "${enable_mesh}" = "yes"); then
 fi
 AM_CONDITIONAL(READLINE, test "${enable_readline}" = "yes")
 
-AC_ARG_ENABLE(systemd, AC_HELP_STRING([--disable-systemd],
+AC_ARG_ENABLE(systemd, AS_HELP_STRING([--disable-systemd],
 		[disable systemd integration]), [enable_systemd=${enableval}])
 AM_CONDITIONAL(SYSTEMD, test "${enable_systemd}" != "no")
 
 AC_ARG_WITH([systemdsystemunitdir],
-			AC_HELP_STRING([--with-systemdsystemunitdir=DIR],
+			AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
 			[path to systemd system unit directory]),
 					[path_systemunitdir=${withval}])
 if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
@@ -310,7 +310,7 @@ fi
 AC_SUBST(SYSTEMD_SYSTEMUNITDIR, [${path_systemunitdir}])
 
 AC_ARG_WITH([systemduserunitdir],
-			AC_HELP_STRING([--with-systemduserunitdir=DIR],
+			AS_HELP_STRING([--with-systemduserunitdir=DIR],
 			[path to systemd user unit directory]),
 					[path_userunitdir=${withval}])
 if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
@@ -323,12 +323,12 @@ if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
 fi
 AC_SUBST(SYSTEMD_USERUNITDIR, [${path_userunitdir}])
 
-AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
+AC_ARG_ENABLE(datafiles, AS_HELP_STRING([--disable-datafiles],
 			[do not install configuration and data files]),
 					[enable_datafiles=${enableval}])
 AM_CONDITIONAL(DATAFILES, test "${enable_datafiles}" != "no")
 
-AC_ARG_ENABLE(manpages, AC_HELP_STRING([--disable-manpages],
+AC_ARG_ENABLE(manpages, AS_HELP_STRING([--disable-manpages],
 			[disable building of manual pages]),
 					[enable_manpages=${enableval}])
 if (test "${enable_manpages}" != "no"); then
@@ -341,36 +341,36 @@ AM_CONDITIONAL(MANPAGES, test "${enable_manpages}" != "no")
 AM_CONDITIONAL(RUN_RST2MAN, test "${enable_manpages}" != "no" &&
 				test "${RST2MAN}" != "no")
 
-AC_ARG_ENABLE(testing, AC_HELP_STRING([--enable-testing],
+AC_ARG_ENABLE(testing, AS_HELP_STRING([--enable-testing],
 			[enable testing tools]),
 					[enable_testing=${enableval}])
 AM_CONDITIONAL(TESTING, test "${enable_testing}" = "yes")
 
-AC_ARG_ENABLE(experimental, AC_HELP_STRING([--enable-experimental],
+AC_ARG_ENABLE(experimental, AS_HELP_STRING([--enable-experimental],
 			[enable experimental tools]),
 					[enable_experimental=${enableval}])
 AM_CONDITIONAL(EXPERIMENTAL, test "${enable_experimental}" = "yes")
 
-AC_ARG_ENABLE(deprecated, AC_HELP_STRING([--enable-deprecated],
+AC_ARG_ENABLE(deprecated, AS_HELP_STRING([--enable-deprecated],
 			[enable deprecated tools]),
 					[enable_deprecated=${enableval}])
 AM_CONDITIONAL(DEPRECATED, test "${enable_deprecated}" = "yes")
 
-AC_ARG_ENABLE(sixaxis, AC_HELP_STRING([--enable-sixaxis],
+AC_ARG_ENABLE(sixaxis, AS_HELP_STRING([--enable-sixaxis],
 		[enable sixaxis plugin]), [enable_sixaxis=${enableval}])
 AM_CONDITIONAL(SIXAXIS, test "${enable_sixaxis}" = "yes" &&
 					 test "${enable_udev}" != "no")
 
-AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci],
+AC_ARG_ENABLE(hid2hci, AS_HELP_STRING([--enable-hid2hci],
 		[enable hid2hci tool]), [enable_hid2hci=${enableval}])
 AM_CONDITIONAL(HID2HCI, test "${enable_hid2hci}" = "yes" &&
 					test "${enable_udev}" != "no")
 
-AC_ARG_ENABLE(logger, AC_HELP_STRING([--enable-logger],
+AC_ARG_ENABLE(logger, AS_HELP_STRING([--enable-logger],
 		[enable HCI logger service]), [enable_logger=${enableval}])
 AM_CONDITIONAL(LOGGER, test "${enable_logger}" = "yes")
 
-AC_ARG_ENABLE(admin, AC_HELP_STRING([--enable-admin],
+AC_ARG_ENABLE(admin, AS_HELP_STRING([--enable-admin],
 		[enable admin policy plugin]), [enable_admin=${enableval}])
 AM_CONDITIONAL(ADMIN, test "${enable_admin}" = "yes")
 
@@ -404,7 +404,7 @@ AC_DEFINE_UNQUOTED(MESH_STORAGEDIR, "${storagedir}/mesh",
 			[Directory for the mesh daemon storage files])
 AC_SUBST(MESH_STORAGEDIR, "${storagedir}/mesh")
 
-AC_ARG_ENABLE(android, AC_HELP_STRING([--enable-android],
+AC_ARG_ENABLE(android, AS_HELP_STRING([--enable-android],
 			[enable BlueZ for Android]),
 					[enable_android=${enableval}])
 AM_CONDITIONAL(ANDROID, test "${enable_android}" = "yes")
@@ -426,7 +426,7 @@ fi
 AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
 			[Directory for the Android daemon storage files])
 
-AC_ARG_WITH([phonebook], AC_HELP_STRING([--with-phonebook=PLUGIN],
+AC_ARG_WITH([phonebook], AS_HELP_STRING([--with-phonebook=PLUGIN],
 			[obexd phonebook plugin (default=dummy)]),
 			[plugin_phonebook=${withval}])
 if (test -z "${plugin_phonebook}"); then
@@ -446,4 +446,5 @@ if (test "${plugin_phonebook}" = "ebook"); then
 fi
 AC_SUBST(PLUGIN_PHONEBOOK, [${plugin_phonebook}])
 
-AC_OUTPUT(Makefile src/bluetoothd.rst lib/bluez.pc mesh/bluetooth-meshd.rst)
+AC_CONFIG_FILES(Makefile src/bluetoothd.rst lib/bluez.pc mesh/bluetooth-meshd.rst)
+AC_OUTPUT
