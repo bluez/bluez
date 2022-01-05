@@ -1333,7 +1333,7 @@ static GSList *caps_to_list(uint8_t *data, size_t size,
 			break;
 		}
 
-		cpy = btd_malloc(sizeof(*cpy) + cap->length);
+		cpy = util_malloc(sizeof(*cpy) + cap->length);
 		memcpy(cpy, cap, sizeof(*cap) + cap->length);
 
 		size -= sizeof(*cap) + cap->length;

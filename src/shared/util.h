@@ -75,7 +75,7 @@ do {						\
 		size_t __n = (size_t) (count);	\
 		size_t __s = sizeof(type);	\
 		void *__p;			\
-		__p = btd_malloc(__n * __s);	\
+		__p = util_malloc(__n * __s);	\
 		memset(__p, 0, __n * __s);	\
 		__p;				\
 	}))
@@ -86,7 +86,7 @@ do {						\
 char *strdelimit(char *str, char *del, char c);
 int strsuffix(const char *str, const char *suffix);
 
-void *btd_malloc(size_t size);
+void *util_malloc(size_t size);
 
 typedef void (*util_debug_func_t)(const char *str, void *user_data);
 

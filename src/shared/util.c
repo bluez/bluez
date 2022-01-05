@@ -25,7 +25,7 @@
 
 #include "src/shared/util.h"
 
-void *btd_malloc(size_t size)
+void *util_malloc(size_t size)
 {
 	if (__builtin_expect(!!size, 1)) {
 		void *ptr;
