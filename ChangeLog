@@ -1,3 +1,8 @@
+ver 5.63:
+	Fix issue with storing IRK causing invalid read access.
+	Fix issue with disconnecting due to GattCharacteristic1.MTU.
+	Add support for Device{Found,Lost} of advertising monitoring.
+
 ver 5.62:
 	Fix issue with handling truncation when loading LTKs.
 	Fix issue with accepting Exchange MTU on EATT bearer.
