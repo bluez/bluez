@@ -73,7 +73,7 @@ struct context {
 #define raw_pdu(args...)					\
 	{							\
 		.valid = true,					\
-		.data = g_memdup(data(args), sizeof(data(args))), \
+		.data = util_memdup(data(args), sizeof(data(args))), \
 		.size = sizeof(data(args)),			\
 	}
 
@@ -94,7 +94,7 @@ struct context {
 		data.uuid = bt_uuid;					\
 		data.step = test_step;					\
 		data.source_db = db;					\
-		data.pdu_list = g_memdup(pdus, sizeof(pdus));		\
+		data.pdu_list = util_memdup(pdus, sizeof(pdus));	\
 		tester_add(name, &data, NULL, function, NULL);		\
 	} while (0)
 

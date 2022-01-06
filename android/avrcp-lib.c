@@ -2620,7 +2620,7 @@ static char *parse_folder_list(uint8_t *params, uint16_t params_len,
 			return NULL;
 		}
 
-		folders[count] = g_memdup(&params[i], len);
+		folders[count] = util_memdup(&params[i], len);
 		i += len;
 	}
 

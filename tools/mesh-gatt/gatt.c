@@ -24,6 +24,7 @@
 
 #include "src/shared/io.h"
 #include "src/shared/shell.h"
+#include "src/shared/util.h"
 #include "gdbus/gdbus.h"
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
@@ -86,7 +87,7 @@ static void write_data_free(void *user_data)
 {
 	struct write_data *data = user_data;
 
-	g_free(data->gatt_data);
+	free(data->gatt_data);
 	free(data);
 }
 
@@ -338,7 +339,7 @@ bool mesh_gatt_write(GDBusProxy *proxy, uint8_t *buf, uint16_t len,
 	/* TODO: should keep in queue in case we need to cancel write? */
 
 	data->gatt_len = len;
-	data->gatt_data = g_memdup(buf, len);
+	data->gatt_data = util_memdup(buf, len);
 	data->gatt_data[0] &= GATT_TYPE_MASK;
 	data->iov.iov_base = data->gatt_data;
 	data->iov.iov_len = len;

@@ -32,6 +32,7 @@
 #include "src/profile.h"
 #include "src/btd.h"
 #include "src/shared/timeout.h"
+#include "src/shared/util.h"
 
 #define CONTROL_CONNECT_TIMEOUT 2
 #define SOURCE_RETRY_TIMEOUT 2
@@ -855,7 +856,7 @@ static int policy_init(void)
 		reconnect_attempts = default_attempts;
 		reconnect_intervals_len = sizeof(default_intervals) /
 						sizeof(*reconnect_intervals);
-		reconnect_intervals = g_memdup(default_intervals,
+		reconnect_intervals = util_memdup(default_intervals,
 						sizeof(default_intervals));
 		goto done;
 	}
@@ -886,7 +887,7 @@ static int policy_init(void)
 		g_clear_error(&gerr);
 		reconnect_intervals_len = sizeof(default_intervals) /
 						sizeof(*reconnect_intervals);
-		reconnect_intervals = g_memdup(default_intervals,
+		reconnect_intervals = util_memdup(default_intervals,
 						sizeof(default_intervals));
 	}
 
@@ -919,7 +920,7 @@ static void policy_exit(void)
 	if (reconnect_uuids)
 		g_strfreev(reconnect_uuids);
 
-	g_free(reconnect_intervals);
+	free(reconnect_intervals);
 
 	g_slist_free_full(reconnects, reconnect_destroy);
 

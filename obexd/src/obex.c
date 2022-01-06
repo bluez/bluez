@@ -40,6 +40,7 @@
 #include "mimetype.h"
 #include "service.h"
 #include "transport.h"
+#include "src/shared/util.h"
 
 typedef struct {
 	uint8_t  version;
@@ -145,7 +146,7 @@ static void os_reset_session(struct obex_session *os)
 		os->path = NULL;
 	}
 	if (os->apparam) {
-		g_free(os->apparam);
+		free(os->apparam);
 		os->apparam = NULL;
 		os->apparam_len = 0;
 	}
@@ -594,7 +595,7 @@ static void parse_apparam(struct obex_session *os, GObexPacket *req)
 	if (!g_obex_header_get_bytes(hdr, &apparam, &len))
 		return;
 
-	os->apparam = g_memdup(apparam, len);
+	os->apparam = util_memdup(apparam, len);
 	os->apparam_len = len;
 	DBG("APPARAM");
 }

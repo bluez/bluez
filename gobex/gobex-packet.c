@@ -17,6 +17,7 @@
 #include "gobex-defs.h"
 #include "gobex-packet.h"
 #include "gobex-debug.h"
+#include "src/shared/util.h"
 
 #define FINAL_BIT 0x80
 
@@ -201,7 +202,7 @@ gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 
 	switch (data_policy) {
 	case G_OBEX_DATA_COPY:
-		pkt->data.buf = g_memdup(data, len);
+		pkt->data.buf = util_memdup(data, len);
 		break;
 	case G_OBEX_DATA_REF:
 		pkt->data.buf_ref = data;
@@ -259,7 +260,7 @@ void g_obex_packet_free(GObexPacket *pkt)
 	switch (pkt->data_policy) {
 	case G_OBEX_DATA_INHERIT:
 	case G_OBEX_DATA_COPY:
-		g_free(pkt->data.buf);
+		free(pkt->data.buf);
 		break;
 	case G_OBEX_DATA_REF:
 		break;

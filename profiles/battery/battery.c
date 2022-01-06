@@ -66,7 +66,7 @@ static void batt_free(struct batt *batt)
 	gatt_db_unref(batt->db);
 	bt_gatt_client_unref(batt->client);
 	btd_device_unref(batt->device);
-	g_free (batt->initial_value);
+	free(batt->initial_value);
 	if (batt->battery)
 		btd_battery_unregister(batt->battery);
 	g_free(batt);
@@ -159,7 +159,7 @@ static void read_initial_battery_level_cb(bool success,
 	if (!length)
 		return;
 
-	batt->initial_value = g_memdup(value, length);
+	batt->initial_value = util_memdup(value, length);
 
 	/* request notify */
 	batt->batt_level_cb_id =

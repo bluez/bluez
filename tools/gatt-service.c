@@ -26,6 +26,7 @@
 #include "gdbus/gdbus.h"
 
 #include "src/error.h"
+#include "src/shared/util.h"
 
 #define GATT_MGR_IFACE			"org.bluez.GattManager1"
 #define GATT_SERVICE_IFACE		"org.bluez.GattService1"
@@ -126,8 +127,8 @@ static gboolean desc_get_value(const GDBusPropertyTable *property,
 
 static void desc_write(struct descriptor *desc, const uint8_t *value, int len)
 {
-	g_free(desc->value);
-	desc->value = g_memdup(value, len);
+	free(desc->value);
+	desc->value = util_memdup(value, len);
 	desc->vlen = len;
 
 	g_dbus_emit_property_changed(connection, desc->path,
@@ -264,8 +265,8 @@ static gboolean chr_get_props(const GDBusPropertyTable *property,
 
 static void chr_write(struct characteristic *chr, const uint8_t *value, int len)
 {
-	g_free(chr->value);
-	chr->value = g_memdup(value, len);
+	free(chr->value);
+	chr->value = util_memdup(value, len);
 	chr->vlen = len;
 
 	g_dbus_emit_property_changed(connection, chr->path, GATT_CHR_IFACE,
@@ -388,7 +389,7 @@ static void chr_iface_destroy(gpointer user_data)
 
 	g_free(chr->uuid);
 	g_free(chr->service);
-	g_free(chr->value);
+	free(chr->value);
 	g_free(chr->path);
 	g_free(chr);
 }
@@ -398,7 +399,7 @@ static void desc_iface_destroy(gpointer user_data)
 	struct descriptor *desc = user_data;
 
 	g_free(desc->uuid);
-	g_free(desc->value);
+	free(desc->value);
 	g_free(desc->path);
 	g_free(desc);
 }
@@ -592,7 +593,7 @@ static gboolean register_characteristic(const char *chr_uuid,
 
 	chr = g_new0(struct characteristic, 1);
 	chr->uuid = g_strdup(chr_uuid);
-	chr->value = g_memdup(value, vlen);
+	chr->value = util_memdup(value, vlen);
 	chr->vlen = vlen;
 	chr->props = props;
 	chr->service = g_strdup(service_path);

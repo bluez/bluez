@@ -91,7 +91,7 @@ static void scpp_free(struct bt_scpp *scan)
 {
 	bt_scpp_detach(scan);
 
-	g_free(scan->primary);
+	free(scan->primary);
 	queue_destroy(scan->gatt_op, NULL); /* cleared in bt_scpp_detach */
 	g_free(scan);
 }
@@ -110,7 +110,7 @@ struct bt_scpp *bt_scpp_new(void *primary)
 	scan->gatt_op = queue_new();
 
 	if (primary)
-		scan->primary = g_memdup(primary, sizeof(*scan->primary));
+		scan->primary = util_memdup(primary, sizeof(*scan->primary));
 
 	return bt_scpp_ref(scan);
 }

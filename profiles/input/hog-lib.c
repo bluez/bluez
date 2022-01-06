@@ -527,9 +527,9 @@ static void report_read_cb(guint8 status, const guint8 *pdu, guint16 len,
 	}
 
 	if (report->value)
-		g_free(report->value);
+		free(report->value);
 
-	report->value = g_memdup(pdu, len);
+	report->value = util_memdup(pdu, len);
 	report->len = len;
 }
 
@@ -1217,7 +1217,7 @@ static void report_free(void *data)
 {
 	struct report *report = data;
 
-	g_free(report->value);
+	free(report->value);
 	g_free(report);
 }
 
@@ -1241,7 +1241,7 @@ static void hog_free(void *data)
 	bt_uhid_unref(hog->uhid);
 	g_slist_free_full(hog->reports, report_free);
 	g_free(hog->name);
-	g_free(hog->primary);
+	free(hog->primary);
 	queue_destroy(hog->gatt_op, (void *) destroy_gatt_req);
 	if (hog->gatt_db)
 		gatt_db_unref(hog->gatt_db);
@@ -1609,7 +1609,7 @@ static void hog_attach_hog(struct bt_hog *hog, struct gatt_primary *primary)
 	struct bt_hog *instance;
 
 	if (!hog->primary) {
-		hog->primary = g_memdup(primary, sizeof(*primary));
+		hog->primary = util_memdup(primary, sizeof(*primary));
 		discover_char(hog, hog->attrib, primary->range.start,
 						primary->range.end, NULL,
 						char_discovered_cb, hog);
@@ -1623,7 +1623,7 @@ static void hog_attach_hog(struct bt_hog *hog, struct gatt_primary *primary)
 	if (!instance)
 		return;
 
-	instance->primary = g_memdup(primary, sizeof(*primary));
+	instance->primary = util_memdup(primary, sizeof(*primary));
 	find_included(instance, hog->attrib, primary->range.start,
 			primary->range.end, find_included_cb, instance);
 

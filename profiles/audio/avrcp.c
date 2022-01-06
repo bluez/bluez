@@ -1298,7 +1298,7 @@ static uint8_t avrcp_handle_get_current_player_value(struct avrcp *session,
 	 * Save a copy of requested settings because we can override them
 	 * while responding
 	 */
-	settings = g_memdup(&pdu->params[1], pdu->params[0]);
+	settings = util_memdup(&pdu->params[1], pdu->params[0]);
 	len = 0;
 
 	/*
@@ -1323,7 +1323,7 @@ static uint8_t avrcp_handle_get_current_player_value(struct avrcp *session,
 		pdu->params[++len] = val;
 	}
 
-	g_free(settings);
+	free(settings);
 
 	if (len) {
 		pdu->params[0] = len / 2;
@@ -2801,7 +2801,7 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 			break;
 		}
 
-		folders[count] = g_memdup(&pdu->params[i], len);
+		folders[count] = util_memdup(&pdu->params[i], len);
 		i += len;
 	}
 
@@ -2888,7 +2888,7 @@ static void avrcp_player_parse_features(struct avrcp_player *player,
 {
 	struct media_player *mp = player->user_data;
 
-	player->features = g_memdup(features, 16);
+	player->features = util_memdup(features, 16);
 
 	if (features[7] & 0x08) {
 		media_player_set_browsable(mp, true);
@@ -3622,7 +3622,7 @@ static void player_destroy(gpointer data)
 	g_slist_free(player->sessions);
 	g_free(player->path);
 	g_free(player->change_path);
-	g_free(player->features);
+	free(player->features);
 	g_free(player);
 }
 

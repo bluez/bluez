@@ -72,7 +72,7 @@ static void dis_free(struct bt_dis *dis)
 {
 	bt_dis_detach(dis);
 
-	g_free(dis->primary);
+	free(dis->primary);
 	queue_destroy(dis->gatt_op, (void *) destroy_gatt_req);
 	g_free(dis);
 }
@@ -143,7 +143,7 @@ struct bt_dis *bt_dis_new_primary(void *primary)
 	dis->gatt_op = queue_new();
 
 	if (primary)
-		dis->primary = g_memdup(primary, sizeof(*dis->primary));
+		dis->primary = util_memdup(primary, sizeof(*dis->primary));
 
 	return bt_dis_ref(dis);
 }

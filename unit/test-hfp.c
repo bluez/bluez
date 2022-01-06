@@ -17,6 +17,7 @@
 #include <glib.h>
 #include "src/shared/hfp.h"
 #include "src/shared/tester.h"
+#include "src/shared/util.h"
 
 struct context {
 	guint watch_id;
@@ -50,7 +51,7 @@ struct test_data {
 #define raw_pdu(args...)					\
 	{							\
 		.valid = true,					\
-		.data = g_memdup(data(args), sizeof(data(args))), \
+		.data = util_memdup(data(args), sizeof(data(args))), \
 		.size = sizeof(data(args)),			\
 	}
 
@@ -62,7 +63,7 @@ struct test_data {
 #define type_pdu(cmd_type, args...)				\
 	{							\
 		.valid = true,					\
-		.data = g_memdup(data(args), sizeof(data(args))), \
+		.data = util_memdup(data(args), sizeof(data(args))), \
 		.size = sizeof(data(args)),			\
 		.type = cmd_type,				\
 	}
@@ -70,7 +71,7 @@ struct test_data {
 #define frg_pdu(args...)					\
 	{							\
 		.valid = true,					\
-		.data = g_memdup(data(args), sizeof(data(args))), \
+		.data = util_memdup(data(args), sizeof(data(args))), \
 		.size = sizeof(data(args)),			\
 		.fragmented = true,				\
 	}
@@ -82,7 +83,7 @@ struct test_data {
 		};							\
 		static struct test_data data;				\
 		data.test_name = g_strdup(name);			\
-		data.pdu_list = g_memdup(pdus, sizeof(pdus));		\
+		data.pdu_list = util_memdup(pdus, sizeof(pdus));	\
 		data.result_func = result_function;			\
 		tester_add(name, &data, NULL, function, NULL);		\
 		data.test_handler = test_handler;			\
@@ -96,7 +97,7 @@ struct test_data {
 		};							\
 		static struct test_data data;				\
 		data.test_name = g_strdup(name);			\
-		data.pdu_list = g_memdup(pdus, sizeof(pdus));		\
+		data.pdu_list = util_memdup(pdus, sizeof(pdus));	\
 		data.hf_result_func = result_func;			\
 		data.response_func = response_function;			\
 		tester_add(name, &data, NULL, function, NULL);		\

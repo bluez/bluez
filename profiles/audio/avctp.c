@@ -40,6 +40,7 @@
 #include "src/log.h"
 #include "src/error.h"
 #include "src/shared/timeout.h"
+#include "src/shared/util.h"
 
 #include "avctp.h"
 #include "avrcp.h"
@@ -760,7 +761,7 @@ static void control_req_destroy(void *data)
 						NULL, 0, req->user_data);
 
 done:
-	g_free(req->operands);
+	free(req->operands);
 	g_free(req);
 }
 
@@ -776,7 +777,7 @@ static void browsing_req_destroy(void *data)
 	req->func(session, NULL, 0, req->user_data);
 
 done:
-	g_free(req->operands);
+	free(req->operands);
 	g_free(req);
 }
 
@@ -1727,7 +1728,7 @@ static int avctp_send_req(struct avctp *session, uint8_t code,
 	req->subunit = subunit;
 	req->op = opcode;
 	req->func = func;
-	req->operands = g_memdup(operands, operand_count);
+	req->operands = util_memdup(operands, operand_count);
 	req->operand_count = operand_count;
 	req->user_data = user_data;
 
@@ -1765,7 +1766,7 @@ int avctp_send_browsing_req(struct avctp *session,
 
 	req = g_new0(struct avctp_browsing_req, 1);
 	req->func = func;
-	req->operands = g_memdup(operands, operand_count);
+	req->operands = util_memdup(operands, operand_count);
 	req->operand_count = operand_count;
 	req->user_data = user_data;
 

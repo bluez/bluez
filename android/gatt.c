@@ -1338,7 +1338,8 @@ static void discover_primary_cb(uint8_t status, GSList *services,
 		}
 
 		bt_uuid_to_uuid128(&uuid, &u128);
-		new_uuid = g_memdup(&u128.value.u128, sizeof(u128.value.u128));
+		new_uuid = util_memdup(&u128.value.u128,
+					sizeof(u128.value.u128));
 
 		uuids = g_slist_prepend(uuids, new_uuid);
 	}
@@ -6633,7 +6634,7 @@ static uint8_t write_prep_request(const uint8_t *cmd, uint16_t cmd_len,
 
 	queue_push_tail(dev->pending_requests, data);
 
-	data->value = g_memdup(value, vlen);
+	data->value = util_memdup(value, vlen);
 	data->length = vlen;
 
 	if (!gatt_db_attribute_write(attrib, offset, value, vlen, cmd[0],

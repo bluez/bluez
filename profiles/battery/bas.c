@@ -62,7 +62,7 @@ static void bas_free(struct bt_bas *bas)
 {
 	bt_bas_detach(bas);
 
-	g_free(bas->primary);
+	free(bas->primary);
 	queue_destroy(bas->gatt_op, (void *) destroy_gatt_req);
 	free(bas);
 }
@@ -75,7 +75,7 @@ struct bt_bas *bt_bas_new(void *primary)
 	bas->gatt_op = queue_new();
 
 	if (primary)
-		bas->primary = g_memdup(primary, sizeof(*bas->primary));
+		bas->primary = util_memdup(primary, sizeof(*bas->primary));
 
 	return bt_bas_ref(bas);
 }

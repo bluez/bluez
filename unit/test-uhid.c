@@ -61,7 +61,7 @@ struct context {
 		};							\
 		static struct test_data data;				\
 		data.test_name = g_strdup(name);			\
-		data.pdu_list = g_memdup(pdus, sizeof(pdus));		\
+		data.pdu_list = util_memdup(pdus, sizeof(pdus));	\
 		tester_add(name, &data, NULL, function, NULL);		\
 	} while (0)
 

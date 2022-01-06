@@ -689,7 +689,8 @@ static void hid_sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 				goto fail;
 
 			dev->rd_size = data->unitSize;
-			dev->rd_data = g_memdup(data->val.str, data->unitSize);
+			dev->rd_data = util_memdup(data->val.str,
+							data->unitSize);
 		}
 	}
 

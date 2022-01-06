@@ -811,7 +811,7 @@ static uint8_t *str2bytearray(char *arg, size_t *val_len)
 
 	*val_len = i;
 
-	return g_memdup(value, i);
+	return util_memdup(value, i);
 }
 
 void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[])

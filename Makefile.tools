@@ -302,7 +302,8 @@ tools_mpris_proxy_SOURCES = tools/mpris-proxy.c
 tools_mpris_proxy_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
 
 tools_gatt_service_SOURCES = tools/gatt-service.c
-tools_gatt_service_LDADD = $(GLIB_LIBS) $(DBUS_LIBS) gdbus/libgdbus-internal.la
+tools_gatt_service_LDADD = gdbus/libgdbus-internal.la \
+			   src/libshared-mainloop.la $(GLIB_LIBS) $(DBUS_LIBS)
 
 profiles_iap_iapd_SOURCES = profiles/iap/main.c
 profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
@@ -448,11 +449,12 @@ noinst_PROGRAMS += tools/btmgmt tools/obex-client-tool tools/obex-server-tool \
 tools_obex_client_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 						tools/obex-client-tool.c
 tools_obex_client_tool_LDADD = lib/libbluetooth-internal.la \
-						$(GLIB_LIBS) -lreadline
+			       src/libshared-glib.la $(GLIB_LIBS) -lreadline
 
 tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 						tools/obex-server-tool.c
-tools_obex_server_tool_LDADD = lib/libbluetooth-internal.la $(GLIB_LIBS)
+tools_obex_server_tool_LDADD = lib/libbluetooth-internal.la \
+			       src/libshared-glib.la $(GLIB_LIBS)
 
 tools_bluetooth_player_SOURCES = tools/bluetooth-player.c
 tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
@@ -461,7 +463,8 @@ tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
 
 tools_obexctl_SOURCES = tools/obexctl.c
 tools_obexctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
-				$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
+			src/libshared-glib.la $(GLIB_LIBS) $(DBUS_LIBS) \
+			-lreadline
 
 tools_btmgmt_SOURCES = tools/btmgmt.c src/uuid-helper.c client/display.c
 tools_btmgmt_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la \

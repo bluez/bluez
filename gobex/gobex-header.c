@@ -15,6 +15,7 @@
 
 #include "gobex-header.h"
 #include "gobex-debug.h"
+#include "src/shared/util.h"
 
 /* Header types */
 #define G_OBEX_HDR_ENC_UNICODE	(0 << 6)
@@ -222,7 +223,7 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 
 		switch (data_policy) {
 		case G_OBEX_DATA_COPY:
-			header->v.data = g_memdup(ptr, header->vlen);
+			header->v.data = util_memdup(ptr, header->vlen);
 			break;
 		case G_OBEX_DATA_REF:
 			header->extdata = TRUE;
@@ -282,7 +283,7 @@ void g_obex_header_free(GObexHeader *header)
 		break;
 	case G_OBEX_HDR_ENC_BYTES:
 		if (!header->extdata)
-			g_free(header->v.data);
+			free(header->v.data);
 		break;
 	case G_OBEX_HDR_ENC_UINT8:
 	case G_OBEX_HDR_ENC_UINT32:
@@ -410,7 +411,7 @@ GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len)
 	header->id = id;
 	header->vlen = len;
 	header->hlen = len + 3;
-	header->v.data = g_memdup(data, len);
+	header->v.data = util_memdup(data, len);
 
 	return header;
 }

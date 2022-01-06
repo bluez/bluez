@@ -53,9 +53,9 @@ void eir_data_free(struct eir_data *eir)
 	eir->services = NULL;
 	g_free(eir->name);
 	eir->name = NULL;
-	g_free(eir->hash);
+	free(eir->hash);
 	eir->hash = NULL;
-	g_free(eir->randomizer);
+	free(eir->randomizer);
 	eir->randomizer = NULL;
 	g_slist_free_full(eir->msd_list, g_free);
 	eir->msd_list = NULL;
@@ -323,13 +323,13 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 		case EIR_SSP_HASH:
 			if (data_len < 16)
 				break;
-			eir->hash = g_memdup(data, 16);
+			eir->hash = util_memdup(data, 16);
 			break;
 
 		case EIR_SSP_RANDOMIZER:
 			if (data_len < 16)
 				break;
-			eir->randomizer = g_memdup(data, 16);
+			eir->randomizer = util_memdup(data, 16);
 			break;
 
 		case EIR_DEVICE_ID:

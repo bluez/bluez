@@ -135,7 +135,7 @@ static void discover_char_unref(void *data)
 
 	g_slist_free_full(dc->characteristics, g_free);
 	g_attrib_unref(dc->attrib);
-	g_free(dc->uuid);
+	free(dc->uuid);
 	g_free(dc);
 }
 
@@ -157,7 +157,7 @@ static void discover_desc_unref(void *data)
 
 	g_slist_free_full(dd->descriptors, g_free);
 	g_attrib_unref(dd->attrib);
-	g_free(dd->uuid);
+	free(dd->uuid);
 	g_free(dd);
 }
 
@@ -696,7 +696,7 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 	dc->user_data = user_data;
 	dc->end = end;
 	dc->start = start;
-	dc->uuid = g_memdup(uuid, sizeof(bt_uuid_t));
+	dc->uuid = util_memdup(uuid, sizeof(bt_uuid_t));
 
 	dc->id = g_attrib_send(attrib, 0, buf, plen, char_discovered_cb,
 				discover_char_ref(dc), discover_char_unref);
@@ -905,7 +905,7 @@ static void prepare_write_cb(guint8 status, const guint8 *rpdu, guint16 rlen,
 	if (long_write->offset == long_write->vlen) {
 		execute_write(long_write->attrib, ATT_WRITE_ALL_PREP_WRITES,
 				long_write->func, long_write->user_data);
-		g_free(long_write->value);
+		free(long_write->value);
 		g_free(long_write);
 
 		return;
@@ -964,7 +964,7 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, const uint8_t *value,
 	long_write->func = func;
 	long_write->user_data = user_data;
 	long_write->handle = handle;
-	long_write->value = g_memdup(value, vlen);
+	long_write->value = util_memdup(value, vlen);
 	long_write->vlen = vlen;
 
 	return prepare_write(long_write);
@@ -1130,7 +1130,7 @@ guint gatt_discover_desc(GAttrib *attrib, uint16_t start, uint16_t end,
 	dd->user_data = user_data;
 	dd->start = start;
 	dd->end = end;
-	dd->uuid = g_memdup(uuid, sizeof(bt_uuid_t));
+	dd->uuid = util_memdup(uuid, sizeof(bt_uuid_t));
 
 	dd->id = g_attrib_send(attrib, 0, buf, plen, desc_discovered_cb,
 				discover_desc_ref(dd), discover_desc_unref);
