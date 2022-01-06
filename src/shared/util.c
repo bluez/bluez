@@ -41,6 +41,22 @@ void *util_malloc(size_t size)
 	return NULL;
 }
 
+void *util_memdup(const void *src, size_t size)
+{
+	void *cpy;
+
+	if (!src || !size)
+		return NULL;
+
+	cpy = util_malloc(size);
+	if (!cpy)
+		return NULL;
+
+	memcpy(cpy, src, size);
+
+	return cpy;
+}
+
 void util_debug_va(util_debug_func_t function, void *user_data,
 				const char *format, va_list va)
 {

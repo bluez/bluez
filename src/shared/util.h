@@ -87,6 +87,7 @@ char *strdelimit(char *str, char *del, char c);
 int strsuffix(const char *str, const char *suffix);
 
 void *util_malloc(size_t size);
+void *util_memdup(const void *src, size_t size);
 
 typedef void (*util_debug_func_t)(const char *str, void *user_data);
 
