@@ -62,7 +62,6 @@
 #include "agent.h"
 #include "textfile.h"
 #include "storage.h"
-#include "attrib-server.h"
 #include "eir.h"
 
 #define DISCONNECT_TIMER	2

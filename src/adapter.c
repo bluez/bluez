@@ -62,7 +62,6 @@
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
-#include "attrib-server.h"
 #include "gatt-database.h"
 #include "advertising.h"
 #include "adv_monitor.h"
@@ -827,10 +826,6 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 						ADAPTER_INTERFACE, "Alias");
-
-	attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
-				(const uint8_t *) adapter->current_alias,
-					strlen(adapter->current_alias));
 }
 
 static void set_local_name_complete(uint8_t status, uint16_t length,
