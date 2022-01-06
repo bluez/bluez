@@ -1291,7 +1291,7 @@ static void cmd_bind(uint32_t opcode, int argc, char *argv[])
 
 	if (!remote_has_composition(target)) {
 		bt_shell_printf("Node composition is unknown\n");
-		bt_shell_printf("Call \"get-composition\" first\n");
+		bt_shell_printf("Call \"composition-get\" first\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1493,7 +1493,7 @@ static void cmd_pub_set(int argc, char *argv[])
 
 	if (!remote_has_composition(target)) {
 		bt_shell_printf("Node composition is unknown\n");
-		bt_shell_printf("Call \"get-composition\" first\n");
+		bt_shell_printf("Call \"composition-get\" first\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -1593,7 +1593,7 @@ static void subscription_cmd(int argc, char *argv[], uint32_t opcode)
 
 	if (!remote_has_composition(target)) {
 		bt_shell_printf("Node composition is unknown\n");
-		bt_shell_printf("Call \"get-composition\" first\n");
+		bt_shell_printf("Call \"composition-get\" first\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
