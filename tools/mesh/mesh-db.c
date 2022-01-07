@@ -2007,7 +2007,7 @@ bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high)
 	if (!cfg || !cfg->jcfg)
 		return false;
 
-	jarray = json_object_object_get(cfg->jcfg, "provisioniers");
+	jarray = json_object_object_get(cfg->jcfg, "provisioners");
 
 	if (!jarray || json_object_get_type(jarray) != json_type_array)
 		return false;
@@ -2041,7 +2041,7 @@ bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high)
 }
 
 /*
- * This is a simplistic implementation onf allocated range, where
+ * This is a simplistic implementation of allocated range, where
  * the range is one contiguous chunk of the address space.
  */
 static bool add_range(json_object *jobj, const char *keyword, uint16_t low,
