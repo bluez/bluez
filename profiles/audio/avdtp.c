@@ -497,7 +497,9 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 		single.signal_id = signal_id;
 
 		memcpy(session->buf, &single, sizeof(single));
-		memcpy(session->buf + sizeof(single), data, len);
+
+		if (data)
+			memcpy(session->buf + sizeof(single), data, len);
 
 		return try_send(sock, session->buf, sizeof(single) + len);
 	}
@@ -569,7 +571,7 @@ static void pending_req_free(void *data)
 
 	if (req->timeout)
 		timeout_remove(req->timeout);
-	g_free(req->data);
+	free(req->data);
 	g_free(req);
 }
 
@@ -2687,7 +2689,7 @@ static int send_req(struct avdtp *session, gboolean priority,
 	return 0;
 
 failed:
-	g_free(req->data);
+	free(req->data);
 	g_free(req);
 	return err;
 }
@@ -2705,8 +2707,7 @@ static int send_request(struct avdtp *session, gboolean priority,
 
 	req = g_new0(struct pending_req, 1);
 	req->signal_id = signal_id;
-	req->data = g_malloc(size);
-	memcpy(req->data, buffer, size);
+	req->data = util_memdup(buffer, size);
 	req->data_size = size;
 	req->stream = stream;
 
@@ -3323,7 +3324,9 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 	cap = g_malloc(sizeof(struct avdtp_service_capability) + length);
 	cap->category = category;
 	cap->length = length;
-	memcpy(cap->data, data, length);
+
+	if (data)
+		memcpy(cap->data, data, length);
 
 	return cap;
 }
