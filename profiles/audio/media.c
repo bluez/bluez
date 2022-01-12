@@ -241,6 +241,16 @@ static struct media_adapter *find_adapter(struct btd_device *device)
 	return NULL;
 }
 
+static void endpoint_remove_transport(struct media_endpoint *endpoint,
+					struct media_transport *transport)
+{
+	if (!endpoint || !transport)
+		return;
+
+	endpoint->transports = g_slist_remove(endpoint->transports, transport);
+	media_transport_destroy(transport);
+}
+
 static void clear_configuration(struct media_endpoint *endpoint,
 					struct media_transport *transport)
 {
@@ -260,8 +270,7 @@ static void clear_configuration(struct media_endpoint *endpoint,
 							DBUS_TYPE_INVALID);
 	g_dbus_send_message(btd_get_dbus_connection(), msg);
 done:
-	endpoint->transports = g_slist_remove(endpoint->transports, transport);
-	media_transport_destroy(transport);
+	endpoint_remove_transport(endpoint, transport);
 }
 
 static void clear_endpoint(struct media_endpoint *endpoint)
@@ -301,12 +310,8 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 
 		if (dbus_message_is_method_call(request->msg,
 					MEDIA_ENDPOINT_INTERFACE,
-					"SetConfiguration")) {
-			if (request->transport == NULL)
-				error("Expected to destroy transport");
-			else
-				media_transport_destroy(request->transport);
-		}
+					"SetConfiguration"))
+			endpoint_remove_transport(endpoint, request->transport);
 
 		dbus_error_free(&err);
 		goto done;
