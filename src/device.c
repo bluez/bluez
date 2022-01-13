@@ -4487,12 +4487,24 @@ bool device_is_name_resolve_allowed(struct btd_device *device)
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	/* If now < failed_time, it means the clock has somehow turned back,
-	 * possibly because of system restart. Allow name request in this case.
+	/* failed_time is empty (0), meaning no prior failure. */
+	if (device->name_resolve_failed_time == 0)
+		return true;
+
+	/* now < failed_time, meaning the clock has somehow turned back,
+	 * possibly because of system restart. Allow just to be safe.
 	 */
-	return now.tv_sec < device->name_resolve_failed_time ||
-		now.tv_sec >= device->name_resolve_failed_time +
-					btd_opts.name_request_retry_delay;
+	if (now.tv_sec < device->name_resolve_failed_time)
+		return true;
+
+	/* now >= failed_time + name_request_retry_delay, meaning the
+	 * period of not sending name request is over.
+	 */
+	if (now.tv_sec >= device->name_resolve_failed_time +
+					btd_opts.name_request_retry_delay)
+		return true;
+
+	return false;
 }
 
 void device_name_resolve_fail(struct btd_device *device)
