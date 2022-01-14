@@ -1192,7 +1192,7 @@ static bool avrcp_get_element_attributes(struct avctp_frame *avctp_frame,
 	for (; num > 0; num--) {
 		uint32_t attr;
 
-		if (!l2cap_frame_get_le32(frame, &attr))
+		if (!l2cap_frame_get_be32(frame, &attr))
 			return false;
 
 		print_field("%*cAttributeID: 0x%08x (%s)", (indent - 8),
