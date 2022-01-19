@@ -1325,7 +1325,6 @@ static bool friend_packet_queue(struct mesh_net *net,
 			hdr += (1 << SEGO_HDR_SHIFT);
 		}
 
-		frnd_msg->u.s12[seg_max].seq = seq;
 		frnd_msg->cnt_in = seg_max;
 		frnd_msg->last_len = size % 12;
 		if (!frnd_msg->last_len)
