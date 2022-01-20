@@ -92,6 +92,7 @@ gatt_db_service_add_descriptor(struct gatt_db_attribute *attrib,
 					gatt_db_read_t read_func,
 					gatt_db_write_t write_func,
 					void *user_data);
+
 struct gatt_db_attribute *
 gatt_db_service_insert_descriptor(struct gatt_db_attribute *attrib,
 					uint16_t handle,
@@ -100,6 +101,9 @@ gatt_db_service_insert_descriptor(struct gatt_db_attribute *attrib,
 					gatt_db_read_t read_func,
 					gatt_db_write_t write_func,
 					void *user_data);
+
+struct gatt_db_attribute *
+gatt_db_service_add_ccc(struct gatt_db_attribute *attrib, uint32_t permissions);
 
 struct gatt_db_attribute *
 gatt_db_insert_included(struct gatt_db *db, uint16_t handle,
@@ -191,6 +195,9 @@ unsigned int gatt_db_register(struct gatt_db *db,
 					void *user_data,
 					gatt_db_destroy_func_t destroy);
 bool gatt_db_unregister(struct gatt_db *db, unsigned int id);
+
+void gatt_db_ccc_register(struct gatt_db *db, gatt_db_read_t read_func,
+				gatt_db_write_t write_func, void *user_data);
 
 typedef uint8_t (*gatt_db_authorize_cb_t)(struct gatt_db_attribute *attrib,
 					uint8_t opcode, struct bt_att *att,

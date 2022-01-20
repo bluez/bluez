@@ -44,6 +44,12 @@ static const bt_uuid_t included_service_uuid = { .type = BT_UUID16,
 static const bt_uuid_t ext_desc_uuid = { .type = BT_UUID16,
 				.value.u16 = GATT_CHARAC_EXT_PROPER_UUID };
 
+struct gatt_db_ccc {
+	gatt_db_read_t read_func;
+	gatt_db_write_t write_func;
+	void *user_data;
+};
+
 struct gatt_db {
 	int ref_count;
 	struct bt_crypto *crypto;
@@ -57,6 +63,8 @@ struct gatt_db {
 
 	gatt_db_authorize_cb_t authorize;
 	void *authorize_data;
+
+	struct gatt_db_ccc *ccc;
 };
 
 struct notify {
@@ -444,6 +452,7 @@ static void gatt_db_destroy(struct gatt_db *db)
 		timeout_remove(db->hash_id);
 
 	queue_destroy(db->services, gatt_db_service_destroy);
+	free(db->ccc);
 	free(db);
 }
 
@@ -1036,6 +1045,50 @@ gatt_db_service_add_descriptor(struct gatt_db_attribute *attrib,
 	return service_insert_descriptor(attrib->service, 0, uuid,
 					permissions, read_func, write_func,
 					user_data);
+}
+
+struct gatt_db_attribute *
+gatt_db_service_add_ccc(struct gatt_db_attribute *attrib, uint32_t permissions)
+{
+	struct gatt_db *db;
+	struct gatt_db_attribute *ccc;
+	bt_uuid_t uuid;
+
+	if (!attrib)
+		return NULL;
+
+	db = attrib->service->db;
+
+	if (!db->ccc)
+		return NULL;
+
+	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
+
+	ccc = service_insert_descriptor(attrib->service, 0, &uuid,
+					permissions,
+					db->ccc->read_func,
+					db->ccc->write_func,
+					db->ccc->user_data);
+	if (!ccc)
+		return ccc;
+
+	gatt_db_attribute_set_fixed_length(ccc, 2);
+
+	return ccc;
+}
+
+void gatt_db_ccc_register(struct gatt_db *db, gatt_db_read_t read_func,
+				gatt_db_write_t write_func, void *user_data)
+{
+	if (!db)
+		return;
+
+	if (!db->ccc)
+		db->ccc = new0(struct gatt_db_ccc, 1);
+
+	db->ccc->read_func = read_func;
+	db->ccc->write_func = write_func;
+	db->ccc->user_data = user_data;
 }
 
 static struct gatt_db_attribute *
