@@ -1018,13 +1018,6 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
-	ccc_cb = queue_find(database->ccc_callbacks, ccc_cb_match_handle,
-			UINT_TO_PTR(gatt_db_attribute_get_handle(attrib)));
-	if (!ccc_cb) {
-		ecode = BT_ATT_ERROR_UNLIKELY;
-		goto done;
-	}
-
 	if (len == 1)
 		val = *value;
 	else
@@ -1034,7 +1027,9 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 	if (val == ccc->value)
 		goto done;
 
-	if (ccc_cb->callback) {
+	ccc_cb = queue_find(database->ccc_callbacks, ccc_cb_match_handle,
+			UINT_TO_PTR(gatt_db_attribute_get_handle(attrib)));
+	if (ccc_cb) {
 		struct pending_op *op;
 
 		op = pending_ccc_new(att, attrib, val,
@@ -1056,6 +1051,22 @@ done:
 	gatt_db_attribute_write_result(attrib, id, ecode);
 }
 
+static void ccc_add_cb(struct btd_gatt_database *database,
+			struct gatt_db_attribute *ccc,
+			btd_gatt_database_ccc_write_t callback,
+			void *user_data, btd_gatt_database_destroy_t destroy)
+{
+	struct ccc_cb_data *ccc_cb;
+
+	ccc_cb = new0(struct ccc_cb_data, 1);
+	ccc_cb->handle = gatt_db_attribute_get_handle(ccc);
+	ccc_cb->callback = callback;
+	ccc_cb->destroy = destroy;
+	ccc_cb->user_data = user_data;
+
+	queue_push_tail(database->ccc_callbacks, ccc_cb);
+}
+
 static struct gatt_db_attribute *
 service_add_ccc(struct gatt_db_attribute *service,
 				struct btd_gatt_database *database,
@@ -1064,34 +1075,14 @@ service_add_ccc(struct gatt_db_attribute *service,
 				btd_gatt_database_destroy_t destroy)
 {
 	struct gatt_db_attribute *ccc;
-	struct ccc_cb_data *ccc_cb;
-	bt_uuid_t uuid;
 
-	ccc_cb = new0(struct ccc_cb_data, 1);
+	ccc = gatt_db_service_add_ccc(service, perm);
+	if (!ccc)
+		return ccc;
 
-	/*
-	 * Provide a way for the permissions on a characteristic to dictate
-	 * the permissions on the CCC
-	 */
-	perm |= BT_ATT_PERM_READ | BT_ATT_PERM_WRITE;
-
-	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
-	ccc = gatt_db_service_add_descriptor(service, &uuid, perm,
-				gatt_ccc_read_cb, gatt_ccc_write_cb, database);
-	if (!ccc) {
-		error("Failed to create CCC entry in database");
-		free(ccc_cb);
-		return NULL;
-	}
-
-	gatt_db_attribute_set_fixed_length(ccc, 2);
-
-	ccc_cb->handle = gatt_db_attribute_get_handle(ccc);
-	ccc_cb->callback = write_callback;
-	ccc_cb->destroy = destroy;
-	ccc_cb->user_data = user_data;
-
-	queue_push_tail(database->ccc_callbacks, ccc_cb);
+	/* Only add ccc_cb if callback is set */
+	if (write_callback)
+		ccc_add_cb(database, ccc, write_callback, user_data, destroy);
 
 	return ccc;
 }
@@ -1310,6 +1301,9 @@ static void populate_devinfo_service(struct btd_gatt_database *database)
 
 static void register_core_services(struct btd_gatt_database *database)
 {
+	gatt_db_ccc_register(database->db, gatt_ccc_read_cb, gatt_ccc_write_cb,
+								database);
+
 	populate_gap_service(database);
 	populate_gatt_service(database);
 	populate_devinfo_service(database);
