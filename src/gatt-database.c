@@ -1302,7 +1302,7 @@ static void populate_devinfo_service(struct btd_gatt_database *database)
 static void register_core_services(struct btd_gatt_database *database)
 {
 	gatt_db_ccc_register(database->db, gatt_ccc_read_cb, gatt_ccc_write_cb,
-								database);
+							NULL, database);
 
 	populate_gap_service(database);
 	populate_gatt_service(database);

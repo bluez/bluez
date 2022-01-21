@@ -47,6 +47,10 @@ typedef void (*gatt_db_write_t) (struct gatt_db_attribute *attrib,
 					const uint8_t *value, size_t len,
 					uint8_t opcode, struct bt_att *att,
 					void *user_data);
+typedef void (*gatt_db_notify_t) (struct gatt_db_attribute *attrib,
+					struct gatt_db_attribute *ccc,
+					const uint8_t *value, size_t len,
+					struct bt_att *att, void *user_data);
 
 struct gatt_db_attribute *
 gatt_db_service_add_characteristic(struct gatt_db_attribute *attrib,
@@ -197,7 +201,9 @@ unsigned int gatt_db_register(struct gatt_db *db,
 bool gatt_db_unregister(struct gatt_db *db, unsigned int id);
 
 void gatt_db_ccc_register(struct gatt_db *db, gatt_db_read_t read_func,
-				gatt_db_write_t write_func, void *user_data);
+					gatt_db_write_t write_func,
+					gatt_db_notify_t notify_func,
+					void *user_data);
 
 typedef uint8_t (*gatt_db_authorize_cb_t)(struct gatt_db_attribute *attrib,
 					uint8_t opcode, struct bt_att *att,
@@ -274,6 +280,13 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 
 bool gatt_db_attribute_write_result(struct gatt_db_attribute *attrib,
 						unsigned int id, int err);
+
+struct gatt_db_attribute *
+gatt_db_attribute_get_ccc(struct gatt_db_attribute *attrib);
+
+bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
+					const uint8_t *value, size_t len,
+					struct bt_att *att);
 
 bool gatt_db_attribute_reset(struct gatt_db_attribute *attrib);
 
