@@ -378,6 +378,18 @@ static bool get_dst_info(struct bt_att *att, bdaddr_t *dst, uint8_t *dst_type)
 	return true;
 }
 
+static struct device_state *
+find_device_state_by_att(struct btd_gatt_database *database, struct bt_att *att)
+{
+	bdaddr_t bdaddr;
+	uint8_t bdaddr_type;
+
+	if (!get_dst_info(att, &bdaddr, &bdaddr_type))
+		return NULL;
+
+	return find_device_state(database, &bdaddr, bdaddr_type);
+}
+
 static struct device_state *get_device_state(struct btd_gatt_database *database,
 						struct bt_att *att)
 {
@@ -1299,16 +1311,6 @@ static void populate_devinfo_service(struct btd_gatt_database *database)
 	database_add_record(database, service);
 }
 
-static void register_core_services(struct btd_gatt_database *database)
-{
-	gatt_db_ccc_register(database->db, gatt_ccc_read_cb, gatt_ccc_write_cb,
-							NULL, database);
-
-	populate_gap_service(database);
-	populate_gatt_service(database);
-	populate_devinfo_service(database);
-}
-
 static void conf_cb(void *user_data)
 {
 	GDBusProxy *proxy = user_data;
@@ -1432,6 +1434,49 @@ remove:
 	}
 }
 
+static void gatt_notify_cb(struct gatt_db_attribute *attrib,
+					struct gatt_db_attribute *ccc,
+					const uint8_t *value, size_t len,
+					struct bt_att *att, void *user_data)
+{
+	struct btd_gatt_database *database = user_data;
+	struct notify notify;
+
+	memset(&notify, 0, sizeof(notify));
+
+	notify.database = database;
+	notify.handle = gatt_db_attribute_get_handle(attrib);
+	notify.ccc_handle = gatt_db_attribute_get_handle(ccc);
+	notify.value = (void *) value;
+	notify.len = len;
+
+	if (attrib == database->svc_chngd)
+		notify.conf = service_changed_conf;
+
+	/* If a specific att is provided notify only to that device */
+	if (att) {
+		struct device_state *state;
+
+		state = find_device_state_by_att(database, att);
+		if (!state)
+			return;
+
+		send_notification_to_device(state, &notify);
+	} else
+		queue_foreach(database->device_states,
+				send_notification_to_device, &notify);
+}
+
+static void register_core_services(struct btd_gatt_database *database)
+{
+	gatt_db_ccc_register(database->db, gatt_ccc_read_cb, gatt_ccc_write_cb,
+						gatt_notify_cb, database);
+
+	populate_gap_service(database);
+	populate_gatt_service(database);
+	populate_devinfo_service(database);
+}
+
 static void send_notification_to_devices(struct btd_gatt_database *database,
 					uint16_t handle, uint8_t *value,
 					uint16_t len, uint16_t ccc_handle,
@@ -1478,8 +1523,8 @@ static void send_service_changed(struct btd_gatt_database *database,
 	put_le16(start, value);
 	put_le16(end, value + 2);
 
-	send_notification_to_devices(database, handle, value, sizeof(value),
-					ccc_handle, service_changed_conf, NULL);
+	gatt_db_attribute_notify(database->svc_chngd, value, sizeof(value),
+				NULL);
 }
 
 static void gatt_db_service_added(struct gatt_db_attribute *attrib,
@@ -3917,6 +3962,6 @@ void btd_gatt_database_restore_svc_chng_ccc(struct btd_gatt_database *database)
 	put_le16(0x0001, value);
 	put_le16(0xffff, value + 2);
 
-	send_notification_to_devices(database, handle, value, sizeof(value),
-					ccc_handle, service_changed_conf, NULL);
+	gatt_db_attribute_notify(database->svc_chngd, value, sizeof(value),
+				NULL);
 }
