@@ -17,6 +17,10 @@ LimitNPROC=1
 ProtectHome=true
 ProtectSystem=full
 PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths=@statedir@
+ReadOnlyPaths=@confdir@
 
 # Privilege escalation
 NoNewPrivileges=true
