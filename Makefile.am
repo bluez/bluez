@@ -28,14 +28,14 @@ AM_CFLAGS = $(MISC_CFLAGS) $(WARNING_CFLAGS) $(UDEV_CFLAGS) $(LIBEBOOK_CFLAGS) \
 				$(LIBEDATASERVER_CFLAGS) $(ell_cflags)
 AM_LDFLAGS = $(MISC_LDFLAGS)
 
+confdir = $(sysconfdir)/bluetooth
+statedir = $(localstatedir)/lib/bluetooth
+
 if DATAFILES
 dbusdir = $(DBUS_CONFDIR)/dbus-1/system.d
 dbus_DATA = src/bluetooth.conf
 
-confdir = $(sysconfdir)/bluetooth
 conf_DATA =
-
-statedir = $(localstatedir)/lib/bluetooth
 state_DATA =
 endif
 
