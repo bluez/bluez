@@ -22,8 +22,14 @@ ProtectControlGroups=true
 ReadWritePaths=@statedir@
 ReadOnlyPaths=@confdir@
 
+# Execute Mappings
+MemoryDenyWriteExecute=true
+
 # Privilege escalation
 NoNewPrivileges=true
+
+# Real-time
+RestrictRealtime=true
 
 [Install]
 WantedBy=bluetooth.target
