@@ -5733,8 +5733,24 @@ static int cmd_create_big_test(struct btdev *dev, const void *data, uint8_t len)
 
 static int cmd_term_big(struct btdev *dev, const void *data, uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_DISCONNECT);
+
+	return 0;
+}
+
+static int cmd_term_big_complete(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_term_big *cmd = data;
+	struct bt_hci_evt_le_big_terminate rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.reason = cmd->reason;
+	rsp.handle = cmd->handle;
+
+	le_meta_event(dev, BT_HCI_EVT_LE_BIG_TERMINATE, &rsp, sizeof(rsp));
+
+	return 0;
 }
 
 static int cmd_big_create_sync(struct btdev *dev, const void *data, uint8_t len)
@@ -5953,7 +5969,7 @@ static int cmd_config_data_path(struct btdev *dev, const void *data,
 	CMD(BT_HCI_CMD_LE_CREATE_BIG, cmd_create_big, \
 			cmd_create_big_complete), \
 	CMD(BT_HCI_CMD_LE_CREATE_BIG_TEST, cmd_create_big_test, NULL), \
-	CMD(BT_HCI_CMD_LE_TERM_BIG, cmd_term_big, NULL), \
+	CMD(BT_HCI_CMD_LE_TERM_BIG, cmd_term_big, cmd_term_big_complete), \
 	CMD(BT_HCI_CMD_LE_BIG_CREATE_SYNC, cmd_big_create_sync, NULL), \
 	CMD(BT_HCI_CMD_LE_BIG_TERM_SYNC, cmd_big_term_sync, NULL), \
 	CMD(BT_HCI_CMD_LE_REQ_PEER_SCA, cmd_req_peer_sca, NULL), \
