@@ -8124,9 +8124,9 @@ static void le_set_cig_params_test_cmd(const void *data, uint8_t size)
 
 static void print_cig_handle(const void *data, int i)
 {
-	const uint16_t *handle = data;
+	uint16_t handle = get_le16(data);
 
-	print_field("Connection Handle: %d", le16_to_cpu(*handle));
+	print_field("Connection Handle #%d: %d", i, handle);
 }
 
 static void le_set_cig_params_rsp(const void *data, uint8_t size)
@@ -10825,9 +10825,9 @@ static void le_req_cis_evt(const void *data, uint8_t size)
 
 static void print_bis_handle(const void *data, int i)
 {
-	const uint16_t *handle = data;
+	uint16_t handle = get_le16(data);
 
-	print_field("Connection Handle: %d", le16_to_cpu(*handle));
+	print_field("Connection Handle #%d: %d", i, handle);
 }
 
 static void le_big_complete_evt(const void *data, uint8_t size)
