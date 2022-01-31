@@ -5733,7 +5733,7 @@ static int cmd_create_big_test(struct btdev *dev, const void *data, uint8_t len)
 
 static int cmd_term_big(struct btdev *dev, const void *data, uint8_t len)
 {
-	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_DISCONNECT);
+	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_TERM_BIG);
 
 	return 0;
 }
