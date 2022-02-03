@@ -207,7 +207,7 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 
 	snprintf(key_file, PATH_MAX, "%s%s", node_path, dev_key_dir);
 
-	if (mkdir(key_file, 0755) != 0)
+	if (mkdir(key_file, 0755) != 0 && errno != EEXIST)
 		l_error("Failed to create dir(%d): %s", errno, key_file);
 
 	for (i = 0; i < count; i++) {

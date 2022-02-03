@@ -80,7 +80,7 @@ bool rpl_put_entry(struct mesh_node *node, uint16_t src, uint32_t iv_index,
 	iv_index--;
 	snprintf(src_file, PATH_MAX, "%s%s/%8.8x/%4.4x", node_path, rpl_dir,
 								iv_index, src);
-	if (remove(src_file) < 0)
+	if (remove(src_file) < 0 && errno != ENOENT)
 		l_error("Failed to remove(%d): %s", errno, src_file);
 
 	return result;
