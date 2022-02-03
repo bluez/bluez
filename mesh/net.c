@@ -195,7 +195,7 @@ struct net_queue_data {
 	uint8_t *out;
 	size_t out_size;
 	enum _relay_advice relay_advice;
-	uint32_t key_id;
+	uint32_t net_key_id;
 	uint32_t iv_index;
 	uint16_t len;
 	bool seen;
@@ -210,7 +210,7 @@ struct oneshot_tx {
 };
 
 struct net_beacon_data {
-	uint32_t key_id;
+	uint32_t net_key_id;
 	uint32_t ivi;
 	bool ivu;
 	bool kr;
@@ -238,19 +238,19 @@ static bool match_key_index(const void *a, const void *b)
 static bool match_key_id(const void *a, const void *b)
 {
 	const struct mesh_subnet *subnet = a;
-	uint32_t key_id = L_PTR_TO_UINT(b);
+	uint32_t net_key_id = L_PTR_TO_UINT(b);
 
-	return (key_id == subnet->net_key_cur) ||
-					(key_id == subnet->net_key_upd);
+	return (net_key_id == subnet->net_key_cur) ||
+					(net_key_id == subnet->net_key_upd);
 }
 
 static bool match_friend_key_id(const void *a, const void *b)
 {
 	const struct mesh_friend *friend = a;
-	uint32_t key_id = L_PTR_TO_UINT(b);
+	uint32_t net_key_id = L_PTR_TO_UINT(b);
 
-	return (key_id == friend->net_key_cur) ||
-					(key_id == friend->net_key_upd);
+	return (net_key_id == friend->net_key_cur) ||
+					(net_key_id == friend->net_key_upd);
 }
 
 static void send_hb_publication(void *data)
@@ -322,9 +322,9 @@ static void free_friend_internals(struct mesh_friend *frnd)
 static void frnd_kr_phase1(void *a, void *b)
 {
 	struct mesh_friend *frnd = a;
-	uint32_t key_id = L_PTR_TO_UINT(b);
+	uint32_t net_key_id = L_PTR_TO_UINT(b);
 
-	frnd->net_key_upd = net_key_frnd_add(key_id, frnd->lp_addr,
+	frnd->net_key_upd = net_key_frnd_add(net_key_id, frnd->lp_addr,
 			frnd->net->src_addr, frnd->lp_cnt, frnd->fn_cnt);
 }
 
@@ -918,7 +918,7 @@ void mesh_net_get_snb_state(struct mesh_net *net, uint8_t *flags,
 }
 
 bool mesh_net_get_key(struct mesh_net *net, bool new_key, uint16_t idx,
-							uint32_t *key_id)
+							uint32_t *net_key_id)
 {
 	struct mesh_subnet *subnet;
 
@@ -931,14 +931,14 @@ bool mesh_net_get_key(struct mesh_net *net, bool new_key, uint16_t idx,
 		return false;
 
 	if (!new_key) {
-		*key_id = subnet->net_key_cur;
+		*net_key_id = subnet->net_key_cur;
 		return true;
 	}
 
 	if (!subnet->net_key_upd)
 		return false;
 
-	*key_id = subnet->net_key_upd;
+	*net_key_id = subnet->net_key_upd;
 	return true;
 }
 
@@ -1763,7 +1763,7 @@ not_for_friend:
 	return true;
 }
 
-static uint16_t key_id_to_net_idx(struct mesh_net *net, uint32_t key_id)
+static uint16_t key_id_to_net_idx(struct mesh_net *net, uint32_t net_key_id)
 {
 	struct mesh_subnet *subnet;
 	struct mesh_friend *friend;
@@ -1772,19 +1772,19 @@ static uint16_t key_id_to_net_idx(struct mesh_net *net, uint32_t key_id)
 		return NET_IDX_INVALID;
 
 	subnet = l_queue_find(net->subnets, match_key_id,
-						L_UINT_TO_PTR(key_id));
+						L_UINT_TO_PTR(net_key_id));
 
 	if (subnet)
 		return subnet->idx;
 
 	friend = l_queue_find(net->friends, match_friend_key_id,
-						L_UINT_TO_PTR(key_id));
+						L_UINT_TO_PTR(net_key_id));
 
 	if (friend)
 		return friend->net_idx;
 
 	friend = l_queue_find(net->negotiations, match_friend_key_id,
-						L_UINT_TO_PTR(key_id));
+						L_UINT_TO_PTR(net_key_id));
 
 	if (friend)
 		return friend->net_idx;
@@ -2028,7 +2028,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 	return false;
 }
 
-static bool ctl_received(struct mesh_net *net, uint16_t key_id,
+static bool ctl_received(struct mesh_net *net, uint16_t net_key_id,
 						uint32_t iv_index, uint8_t ttl,
 						uint32_t seq,
 						uint16_t src, uint16_t dst,
@@ -2078,7 +2078,7 @@ static bool ctl_received(struct mesh_net *net, uint16_t key_id,
 			return false;
 
 		print_packet("Rx-NET_OP_FRND_REQUEST", pkt, len);
-		net_idx = key_id_to_net_idx(net, key_id);
+		net_idx = key_id_to_net_idx(net, net_key_id);
 		friend_request(net, net_idx, src, pkt[0], pkt[1],
 				l_get_be32(pkt + 1) & 0xffffff,
 				l_get_be16(pkt + 5), pkt[7],
@@ -2269,13 +2269,13 @@ static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 }
 
 static enum _relay_advice packet_received(void *user_data,
-				uint32_t key_id, uint32_t iv_index,
+				uint32_t net_key_id, uint32_t iv_index,
 				const void *data, uint8_t size, int8_t rssi)
 {
 	struct mesh_net *net = user_data;
 	const uint8_t *msg = data;
 	uint8_t app_msg_len;
-	uint8_t net_ttl, net_key_id, net_segO, net_segN, net_opcode;
+	uint8_t net_ttl, key_aid, net_segO, net_segN, net_opcode;
 	uint32_t net_seq, cache_cookie;
 	uint16_t net_src, net_dst, net_seqZero;
 	uint16_t net_idx;
@@ -2284,7 +2284,7 @@ static enum _relay_advice packet_received(void *user_data,
 
 	memcpy(packet + 2, data, size);
 
-	net_idx = key_id_to_net_idx(net, key_id);
+	net_idx = key_id_to_net_idx(net, net_key_id);
 	if (net_idx == NET_IDX_INVALID)
 		return RELAY_NONE;
 
@@ -2293,7 +2293,7 @@ static enum _relay_advice packet_received(void *user_data,
 	if (!mesh_crypto_packet_parse(packet + 2, size, &net_ctl, &net_ttl,
 					&net_seq, &net_src, &net_dst,
 					&cache_cookie, &net_opcode,
-					&net_segmented, &net_key_id, &net_szmic,
+					&net_segmented, &key_aid, &net_szmic,
 					&net_relay, &net_seqZero, &net_segO,
 					&net_segN, &msg, &app_msg_len)) {
 		l_error("Failed to parse packet content");
@@ -2347,7 +2347,7 @@ static enum _relay_advice packet_received(void *user_data,
 							net_seqZero,
 							l_get_be32(msg + 3));
 			} else {
-				ctl_received(net, key_id, iv_index, net_ttl,
+				ctl_received(net, key_aid, iv_index, net_ttl,
 						net_seq, net_src, net_dst,
 						net_opcode, rssi, msg,
 								app_msg_len);
@@ -2372,14 +2372,14 @@ static enum _relay_advice packet_received(void *user_data,
 			} else {
 				seg_rxed(net, NULL, iv_index, net_ttl,
 						net_seq, net_idx, net_src,
-						net_dst, net_key_id, net_szmic,
+						net_dst, key_aid, net_szmic,
 						net_seqZero, net_segO, net_segN,
 						msg, app_msg_len);
 			}
 
 		} else {
 			msg_rxed(net, NULL, iv_index, net_ttl, net_seq, net_idx,
-					net_src, net_dst, net_key_id, false,
+					net_src, net_dst, key_aid, false,
 					false, net_seq & SEQ_ZERO_MASK, msg,
 					app_msg_len);
 		}
@@ -2413,7 +2413,7 @@ static void net_rx(void *net_ptr, void *user_data)
 	enum _relay_advice relay_advice;
 	uint8_t *out;
 	size_t out_size;
-	uint32_t key_id;
+	uint32_t net_key_id;
 	int8_t rssi = 0;
 	bool ivi_net = !!(net->iv_index & 1);
 	bool ivi_pkt = !!(data->data[0] & 0x80);
@@ -2421,10 +2421,10 @@ static void net_rx(void *net_ptr, void *user_data)
 	/* if IVI flag differs, use previous IV Index */
 	uint32_t iv_index = net->iv_index - (ivi_pkt ^ ivi_net);
 
-	key_id = net_key_decrypt(iv_index, data->data, data->len,
+	net_key_id = net_key_decrypt(iv_index, data->data, data->len,
 							&out, &out_size);
 
-	if (!key_id)
+	if (!net_key_id)
 		return;
 
 	if (!data->seen) {
@@ -2438,12 +2438,12 @@ static void net_rx(void *net_ptr, void *user_data)
 		rssi = data->info->rssi;
 	}
 
-	relay_advice = packet_received(net, key_id, iv_index, out, out_size,
+	relay_advice = packet_received(net, net_key_id, iv_index, out, out_size,
 									rssi);
 	if (relay_advice > data->relay_advice) {
 		data->iv_index = iv_index;
 		data->relay_advice = relay_advice;
-		data->key_id = key_id;
+		data->net_key_id = net_key_id;
 		data->net = net;
 		data->out = out;
 		data->out_size = out_size;
@@ -2481,7 +2481,7 @@ static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 
 		net_data.out[1] &=  ~TTL_MASK;
 		net_data.out[1] |= ttl - 1;
-		net_key_encrypt(net_data.key_id, net_data.iv_index,
+		net_key_encrypt(net_data.net_key_id, net_data.iv_index,
 					net_data.out, net_data.out_size);
 		send_relay_pkt(net_data.net, net_data.out, net_data.out_size);
 	}
@@ -2718,7 +2718,7 @@ static void process_beacon(void *net_ptr, void *user_data)
 
 	/* Ignore beacons not in this universe */
 	subnet = l_queue_find(net->subnets, match_key_id,
-					L_UINT_TO_PTR(beacon_data->key_id));
+					L_UINT_TO_PTR(beacon_data->net_key_id));
 
 	if (!subnet)
 		return;
@@ -2740,10 +2740,10 @@ static void process_beacon(void *net_ptr, void *user_data)
 		updated |= update_iv_ivu_state(net, ivi, ivu);
 
 	if (kr != local_kr)
-		updated |= update_kr_state(subnet, kr, beacon_data->key_id);
+		updated |= update_kr_state(subnet, kr, beacon_data->net_key_id);
 
 	if (updated)
-		net_key_beacon_refresh(beacon_data->key_id, net->iv_index,
+		net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
 				!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO),
 								net->iv_update);
 }
@@ -2759,8 +2759,8 @@ static void beacon_recv(void *user_data, struct mesh_io_recv_info *info,
 		return;
 
 	/* Ignore Network IDs unknown to this daemon */
-	beacon_data.key_id = net_key_network_id(data + 3);
-	if (!beacon_data.key_id)
+	beacon_data.net_key_id = net_key_network_id(data + 3);
+	if (!beacon_data.net_key_id)
 		return;
 
 	/* Get data bits from beacon */
@@ -2769,7 +2769,7 @@ static void beacon_recv(void *user_data, struct mesh_io_recv_info *info,
 	beacon_data.ivi = l_get_be32(data + 11);
 
 	/* Validate beacon before accepting */
-	if (!net_key_snb_check(beacon_data.key_id, beacon_data.ivi,
+	if (!net_key_snb_check(beacon_data.net_key_id, beacon_data.ivi,
 					beacon_data.kr, beacon_data.ivu,
 					l_get_be64(data + 15))) {
 		l_error("mesh_crypto_beacon verify failed");
@@ -2779,13 +2779,13 @@ static void beacon_recv(void *user_data, struct mesh_io_recv_info *info,
 	l_queue_foreach(nets, process_beacon, &beacon_data);
 
 	if (beacon_data.processed)
-		net_key_beacon_seen(beacon_data.key_id);
+		net_key_beacon_seen(beacon_data.net_key_id);
 }
 
-void net_local_beacon(uint32_t key_id, uint8_t *beacon)
+void net_local_beacon(uint32_t net_key_id, uint8_t *beacon)
 {
 	struct net_beacon_data beacon_data = {
-		.key_id = key_id,
+		.net_key_id = net_key_id,
 		.ivu = !!(beacon[2] & 0x02),
 		.kr = !!(beacon[2] & 0x01),
 		.ivi = l_get_be32(beacon + 11),
@@ -3061,7 +3061,7 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 	uint8_t packet[30];
 	uint8_t packet_len;
 	bool segmented = !!((hdr >> SEG_HDR_SHIFT) & true);
-	uint8_t app_key_id = (hdr >> KEY_HDR_SHIFT) & KEY_ID_MASK;
+	uint8_t key_aid = (hdr >> KEY_HDR_SHIFT) & KEY_ID_MASK;
 	bool szmic = !!((hdr >> SZMIC_HDR_SHIFT) & true);
 	uint16_t seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) & SEQ_ZERO_MASK;
 	uint8_t segO = (hdr >> SEGO_HDR_SHIFT) & SEG_MASK;
@@ -3074,7 +3074,7 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 	l_debug("segO: %d", segO);
 
 	if (!mesh_crypto_packet_build(false, ttl, seq, src, dst, 0,
-					segmented, app_key_id, szmic, false,
+					segmented, key_aid, szmic, false,
 					seqZero, segO, segN, seg, seg_len,
 					packet + 1, &packet_len)) {
 		l_error("Failed to build packet");
@@ -3196,9 +3196,10 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
 	return result;
 }
 
-void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id, uint32_t iv_index,
-			uint8_t ttl, uint32_t seq, uint16_t src, uint16_t dst,
-			bool rly, uint16_t seqZero, uint32_t ack_flags)
+void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
+			uint32_t iv_index, uint8_t ttl, uint32_t seq,
+			uint16_t src, uint16_t dst, bool rly, uint16_t seqZero,
+			uint32_t ack_flags)
 {
 	uint32_t hdr;
 	uint8_t data[7];
@@ -3218,13 +3219,13 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id, uint32_t iv_index,
 					pkt + 1, &pkt_len))
 		return;
 
-	if (!key_id) {
+	if (!net_key_id) {
 		struct mesh_subnet *subnet = get_primary_subnet(net);
 
-		key_id = subnet->net_key_tx;
+		net_key_id = subnet->net_key_tx;
 	}
 
-	if (!net_key_encrypt(key_id, iv_index, pkt + 1, pkt_len)) {
+	if (!net_key_encrypt(net_key_id, iv_index, pkt + 1, pkt_len)) {
 		l_error("Failed to encode packet");
 		return;
 	}
@@ -3236,7 +3237,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t key_id, uint32_t iv_index,
 	print_packet("TX: Friend ACK", pkt + 1, pkt_len);
 }
 
-void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
+void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 				uint16_t net_idx, uint32_t iv_index,
 				uint8_t ttl, uint32_t seq, uint16_t src,
 				uint16_t dst, const uint8_t *msg,
@@ -3264,7 +3265,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 		return;
 
 	/* Enqueue for Friend if forwardable and from us */
-	if (!key_id && src >= net->src_addr && src <= net->last_addr) {
+	if (!net_key_id && src >= net->src_addr && src <= net->last_addr) {
 		uint32_t hdr = msg[0] << OPCODE_HDR_SHIFT;
 		uint8_t frnd_ttl = ttl;
 
@@ -3276,17 +3277,17 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 
 	/* Deliver to Local entities if applicable */
 	if (!(dst & 0x8000) && src >= net->src_addr && src <= net->last_addr)
-		result = ctl_received(net, key_id, iv_index, ttl,
+		result = ctl_received(net, net_key_id, iv_index, ttl,
 					mesh_net_next_seq_num(net), src, dst,
 					msg[0], 0, msg + 1, msg_len - 1);
 
-	if (!key_id) {
+	if (!net_key_id) {
 		struct mesh_subnet *subnet = l_queue_find(net->subnets,
 				match_key_index, L_UINT_TO_PTR(net_idx));
 		if (!subnet)
 			return;
 
-		key_id = subnet->net_key_tx;
+		net_key_id = subnet->net_key_tx;
 		use_seq = mesh_net_next_seq_num(net);
 
 		if (result || (dst >= net->src_addr && dst <= net->last_addr))
@@ -3298,7 +3299,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t key_id,
 				msg_len - 1, pkt + 1, &pkt_len))
 		return;
 
-	if (!net_key_encrypt(key_id, iv_index, pkt + 1, pkt_len)) {
+	if (!net_key_encrypt(net_key_id, iv_index, pkt + 1, pkt_len)) {
 		l_error("Failed to encode packet");
 		return;
 	}

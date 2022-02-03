@@ -18,7 +18,7 @@ bool appkey_key_init(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 void appkey_key_free(void *data);
 void appkey_finalize(struct mesh_net *net, uint16_t net_idx);
 const uint8_t *appkey_get_key(struct mesh_net *net, uint16_t app_idx,
-							uint8_t *key_id);
+							uint8_t *key_aid);
 int appkey_get_key_idx(struct mesh_app_key *app_key,
 				const uint8_t **key, uint8_t *key_aid,
 				const uint8_t **new_key, uint8_t *new_key_aid);
