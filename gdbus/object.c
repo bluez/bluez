@@ -551,6 +551,12 @@ static void emit_interfaces_added(struct generic_data *data)
 	if (root == NULL || data == root)
 		return;
 
+	/* Emit InterfacesAdded on the parent first so it appears first on the
+	 * bus as child objects may point to it.
+	 */
+	if (data->parent && data->parent->added)
+		emit_interfaces_added(data->parent);
+
 	signal = dbus_message_new_signal(root->path,
 					DBUS_INTERFACE_OBJECT_MANAGER,
 					"InterfacesAdded");
