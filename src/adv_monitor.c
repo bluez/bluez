@@ -1844,12 +1844,10 @@ void btd_adv_monitor_manager_destroy(struct btd_adv_monitor_manager *manager)
 	manager_destroy(manager);
 }
 
-bool btd_adv_monitor_offload_supported(struct btd_adv_monitor_manager *manager)
+bool btd_adv_monitor_offload_enabled(struct btd_adv_monitor_manager *manager)
 {
-	if (!manager) {
-		error("Manager is NULL, get offload support failed");
+	if (!manager)
 		return false;
-	}
 
 	return !!(manager->enabled_features &
 				MGMT_ADV_MONITOR_FEATURE_MASK_OR_PATTERNS);

@@ -6892,7 +6892,7 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 	bool duplicate = false;
 	struct queue *matched_monitors = NULL;
 
-	if (!btd_adv_monitor_offload_supported(adapter->adv_monitor_manager)) {
+	if (!btd_adv_monitor_offload_enabled(adapter->adv_monitor_manager)) {
 		if (bdaddr_type != BDADDR_BREDR)
 			ad = bt_ad_new_with_data(data_len, data);
 
