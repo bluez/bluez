@@ -488,6 +488,7 @@ struct bt_hci_cmd_hdr {
 struct bt_hci_acl_hdr {
 	uint16_t handle;
 	uint16_t dlen;
+	uint8_t  data[];
 } __attribute__ ((packed));
 
 struct bt_hci_sco_hdr {
@@ -3663,6 +3664,7 @@ struct bt_hci_evt_le_req_peer_sca_complete {
 struct bt_l2cap_hdr {
 	uint16_t len;
 	uint16_t cid;
+	uint8_t  data[];
 } __attribute__ ((packed));
 
 struct bt_l2cap_hdr_sig {
