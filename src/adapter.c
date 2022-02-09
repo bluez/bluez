@@ -8214,11 +8214,15 @@ static void store_link_key(struct btd_adapter *adapter,
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
 			btd_adapter_get_storage_dir(adapter), device_addr);
+	create_file(filename, 0600);
+
 	key_file = g_key_file_new();
 	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", filename,
 								gerr->message);
 		g_error_free(gerr);
+		g_key_file_free(key_file);
+		return;
 	}
 
 	for (i = 0; i < 16; i++)
@@ -8228,8 +8232,6 @@ static void store_link_key(struct btd_adapter *adapter,
 
 	g_key_file_set_integer(key_file, "LinkKey", "Type", type);
 	g_key_file_set_integer(key_file, "LinkKey", "PINLength", pin_length);
-
-	create_file(filename, 0600);
 
 	str = g_key_file_to_data(key_file, &length, NULL);
 	if (!g_file_set_contents(filename, str, length, &gerr)) {
