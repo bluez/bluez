@@ -39,6 +39,7 @@ struct test_data {
 	const void *test_data;
 	unsigned int io_id;
 	uint16_t conn_handle;
+	uint16_t recv_len;
 };
 
 struct rfcomm_client_data {
@@ -297,7 +298,24 @@ const struct rfcomm_client_data connect_send_success = {
 	.server_channel = 0x0c,
 	.client_channel = 0x0c,
 	.data_len = sizeof(data),
-	.send_data = data
+	.send_data = data,
+};
+
+const uint8_t data_8k[8192] = { [0 ... 1023] =  0x00,
+				[1024 ... 2047] =  0x01,
+				[2048 ... 3071] =  0x02,
+				[3072 ... 4095] =  0x03,
+				[4096 ... 5119] =  0x04,
+				[5120 ... 6143] =  0x05,
+				[6144 ... 7167] =  0x06,
+				[7168 ... 8191] =  0x07,
+};
+
+const struct rfcomm_client_data connect_send_8k_success = {
+	.server_channel = 0x0c,
+	.client_channel = 0x0c,
+	.data_len = sizeof(data_8k),
+	.send_data = data_8k,
 };
 
 const struct rfcomm_client_data connect_read_success = {
@@ -448,7 +466,6 @@ static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
 		ssize_t ret;
 
 		tester_print("Writing %u bytes of data", cli->data_len);
-
 		ret = write(sk, cli->send_data, cli->data_len);
 		if (cli->data_len != ret) {
 			tester_warn("Failed to write %u bytes: %s (%d)",
@@ -483,16 +500,29 @@ static void client_hook_func(const void *data, uint16_t len,
 
 	tester_print("bthost received %u bytes of data", len);
 
-	if (cli->data_len != len) {
+	if (test_data->recv_len + len > cli->data_len) {
+		tester_print("received more data than expected");
 		tester_test_failed();
 		return;
 	}
 
-	ret = memcmp(cli->send_data, data, len);
-	if (ret)
+	ret = memcmp(cli->send_data + test_data->recv_len, data, len);
+	if (ret) {
 		tester_test_failed();
-	else
-		tester_test_passed();
+		return;
+	}
+
+	test_data->recv_len += len;
+
+	tester_print("bthost received progress %u/%u", test_data->recv_len,
+							cli->data_len);
+
+	if (cli->data_len != test_data->recv_len)
+		return;
+
+	test_data->recv_len = 0;
+
+	tester_test_passed();
 }
 
 static void server_hook_func(const void *data, uint16_t len,
@@ -734,6 +764,9 @@ int main(int argc, char *argv[])
 					setup_powered_client, test_connect);
 	test_rfcomm("Basic RFCOMM Socket Client - Write Success",
 				&connect_send_success, setup_powered_client,
+				test_connect);
+	test_rfcomm("Basic RFCOMM Socket Client - Write 8k Success",
+				&connect_send_8k_success, setup_powered_client,
 				test_connect);
 	test_rfcomm("Basic RFCOMM Socket Client - Read Success",
 				&connect_read_success, setup_powered_client,
