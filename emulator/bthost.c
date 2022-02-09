@@ -2322,7 +2322,7 @@ static void rfcomm_pn_recv(struct bthost *bthost, struct btconn *conn,
 	pn_cmd.ack_timer = pn->ack_timer;
 	pn_cmd.max_retrans = pn->max_retrans;
 	pn_cmd.mtu = pn->mtu;
-	pn_cmd.credits = pn->credits;
+	pn_cmd.credits = 255;
 
 	rfcomm_uih_send(bthost, conn, l2conn, RFCOMM_ADDR(1, 0),
 			RFCOMM_MCC_TYPE(0, RFCOMM_PN), &pn_cmd, sizeof(pn_cmd));
