@@ -2373,20 +2373,25 @@ static void rfcomm_uih_recv(struct bthost *bthost, struct btconn *conn,
 	uint16_t hdr_len, data_len;
 	const void *p;
 
-	if (len < sizeof(*hdr))
+	if (len < sizeof(*hdr)) {
+		bthost_debug(bthost, "RFCOMM UIH: too short");
 		return;
+	}
 
 	if (RFCOMM_TEST_EA(hdr->length)) {
 		data_len = (uint16_t) GET_LEN8(hdr->length);
 		hdr_len = sizeof(*hdr);
 	} else {
 		uint8_t ex_len = *((uint8_t *)(data + sizeof(*hdr)));
-		data_len = ((uint16_t) hdr->length << 8) | ex_len;
+		data_len = GET_LEN16((((uint16_t) ex_len << 8) | hdr->length));
 		hdr_len = sizeof(*hdr) + sizeof(uint8_t);
 	}
 
-	if (len < hdr_len + data_len)
+	if (len < hdr_len + data_len) {
+		bthost_debug(bthost, "RFCOMM UIH: %u != %u", len,
+						hdr_len + data_len);
 		return;
+	}
 
 	p = data + hdr_len;
 
@@ -2407,6 +2412,8 @@ static void process_rfcomm(struct bthost *bthost, struct btconn *conn,
 				uint16_t len)
 {
 	const struct rfcomm_hdr *hdr = data;
+
+	bthost_debug(bthost, "RFCOMM data: %u bytes", len);
 
 	switch (RFCOMM_GET_TYPE(hdr->control)) {
 	case RFCOMM_SABM:
