@@ -271,7 +271,7 @@ static void print_composition(uint8_t *data, uint16_t len)
 	uint16_t features;
 	int i = 0;
 
-	bt_shell_printf("Received composion:\n");
+	bt_shell_printf("Received composition:\n");
 
 	/* skip page -- We only support Page Zero */
 	data++;
