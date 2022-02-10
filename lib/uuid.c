@@ -251,6 +251,9 @@ static int bt_string_to_uuid128(bt_uuid_t *uuid, const char *string)
 
 int bt_string_to_uuid(bt_uuid_t *uuid, const char *string)
 {
+	if (!string)
+		return -EINVAL;
+
 	if (is_base_uuid128(string))
 		return bt_string_to_uuid16(uuid, string + 4);
 	else if (is_uuid128(string))
