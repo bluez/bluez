@@ -494,7 +494,7 @@ static void handle_continuation(struct tid_data *tid, bool nested,
 		cont_list[n].data = NULL;
 		cont_list[n].size = 0;
 	} else
-		memcpy(cont_list[i].cont, data + bytes, data[bytes] + 1);
+		memcpy(cont_list[n].cont, data + bytes, data[bytes] + 1);
 }
 
 static uint16_t common_rsp(const struct l2cap_frame *frame,
