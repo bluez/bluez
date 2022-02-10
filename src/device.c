@@ -3200,6 +3200,28 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type)
 								"Connected");
 }
 
+static bool device_disappeared(gpointer user_data)
+{
+	struct btd_device *dev = user_data;
+
+	dev->temporary_timer = 0;
+
+	btd_adapter_remove_device(dev->adapter, dev);
+
+	return FALSE;
+}
+
+static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
+{
+	clear_temporary_timer(dev);
+
+	if (!timeout)
+		return;
+
+	dev->temporary_timer = timeout_add_seconds(timeout, device_disappeared,
+								dev, NULL);
+}
+
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 {
 	struct bearer_state *state = get_state(device, bdaddr_type);
@@ -3285,7 +3307,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 						DEVICE_INTERFACE, "Connected");
 
 	if (remove_device)
-		btd_adapter_remove_device(device->adapter, device);
+		set_temporary_timer(device, 0);
 }
 
 guint device_add_disconnect_watch(struct btd_device *device,
@@ -4588,28 +4610,6 @@ void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 	device->bdaddr_type = bdaddr_type;
 
 	store_device_info(device);
-}
-
-static bool device_disappeared(gpointer user_data)
-{
-	struct btd_device *dev = user_data;
-
-	dev->temporary_timer = 0;
-
-	btd_adapter_remove_device(dev->adapter, dev);
-
-	return FALSE;
-}
-
-static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
-{
-	clear_temporary_timer(dev);
-
-	if (!timeout)
-		return;
-
-	dev->temporary_timer = timeout_add_seconds(timeout, device_disappeared,
-								dev, NULL);
 }
 
 void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type)
