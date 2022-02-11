@@ -121,6 +121,7 @@ struct btd_opts {
 	uint16_t	did_version;
 
 	bt_mode_t	mode;
+	uint16_t	max_adapters;
 	bt_gatt_cache_t gatt_cache;
 	uint16_t	gatt_mtu;
 	uint8_t		gatt_channels;

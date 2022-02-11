@@ -10078,6 +10078,13 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 		return;
 	}
 
+	/* Check if at maximum adapters allowed in the system then ignore the
+	 * adapter.
+	 */
+	if (btd_opts.max_adapters &&
+			btd_opts.max_adapters == g_slist_length(adapters))
+		return;
+
 	reset_adv_monitors(index);
 
 	adapter = btd_adapter_new(index);
