@@ -832,7 +832,7 @@ static void store_remote_seps(struct a2dp_channel *chan)
 	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", filename,
 								gerr->message);
-		g_error_free(gerr);
+		g_clear_error(&gerr);
 	}
 
 	data = g_key_file_get_string(key_file, "Endpoints", "LastUsed",
@@ -1006,7 +1006,7 @@ static void store_last_used(struct a2dp_channel *chan, uint8_t lseid,
 	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
 		error("Unable to load key file from %s: (%s)", filename,
 								gerr->message);
-		g_error_free(gerr);
+		g_clear_error(&gerr);
 	}
 
 	sprintf(value, "%02hhx:%02hhx", lseid, rseid);
