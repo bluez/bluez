@@ -9807,6 +9807,16 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			goto failed;
 		}
 	} else {
+		struct btd_adapter *tmp;
+
+		tmp = adapter_find(&rp->bdaddr);
+		if (tmp) {
+			btd_error(adapter->dev_id,
+				"Bluetooth address for index %u match index %u",
+				adapter->dev_id, tmp->dev_id);
+			goto failed;
+		}
+
 		bacpy(&adapter->bdaddr, &rp->bdaddr);
 		if (!(adapter->supported_settings & MGMT_SETTING_LE))
 			adapter->bdaddr_type = BDADDR_BREDR;
