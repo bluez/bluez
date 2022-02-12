@@ -27,7 +27,7 @@
 						"argument"
 #define ERR_BREDR_CONN_ADAPTER_NOT_POWERED	"br-connection-adapter-not-"\
 						"powered"
-#define ERR_BREDR_CONN_NOT_SUPPORTED		"br-connection-not-suuported"
+#define ERR_BREDR_CONN_NOT_SUPPORTED		"br-connection-not-supported"
 #define ERR_BREDR_CONN_BAD_SOCKET		"br-connection-bad-socket"
 #define ERR_BREDR_CONN_MEMORY_ALLOC		"br-connection-memory-"\
 						"allocation"
