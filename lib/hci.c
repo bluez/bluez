@@ -323,7 +323,7 @@ int hci_strtolm(char *str, unsigned int *val)
 	int ret = hci_str2bit(link_mode_map, str, val);
 
 	/* Deprecated name. Kept for compatibility. */
-	if (strcasestr(str, "MASTER")) {
+	if (!!str && strcasestr(str, "MASTER")) {
 		ret = 1;
 		*val |= HCI_LM_MASTER;
 	}
