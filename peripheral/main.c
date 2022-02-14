@@ -25,13 +25,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/mount.h>
-#include <sys/random.h>
 
 #ifndef WAIT_ANY
 #define WAIT_ANY (-1)
 #endif
 
 #include "src/shared/mainloop.h"
+#include "src/shared/util.h"
 #include "peripheral/efivars.h"
 #include "peripheral/attach.h"
 #include "peripheral/gap.h"
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 							addr, 6) < 0) {
 			printf("Generating new persistent static address\n");
 
-			if (getrandom(addr, sizeof(addr), 0) < 0) {
+			if (util_getrandom(addr, sizeof(addr), 0) < 0) {
 				perror("Failed to get random static address");
 				return EXIT_FAILURE;
 			}

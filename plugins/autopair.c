@@ -17,7 +17,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sys/random.h>
 
 #include <glib.h>
 
@@ -29,6 +28,7 @@
 #include "src/device.h"
 #include "src/log.h"
 #include "src/storage.h"
+#include "src/shared/util.h"
 
 /*
  * Plugin to handle automatic pairing of devices with reduced user
@@ -131,7 +131,7 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 			if (attempt >= 4)
 				return 0;
 
-			if (getrandom(&val, sizeof(val), 0) < 0) {
+			if (util_getrandom(&val, sizeof(val), 0) < 0) {
 				error("Failed to get a random pincode");
 				return 0;
 			}

@@ -19,7 +19,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <time.h>
-#include <sys/random.h>
 
 #include <glib.h>
 
@@ -28,6 +27,7 @@
 #include "btio/btio.h"
 #include "src/log.h"
 #include "src/shared/timeout.h"
+#include "src/shared/util.h"
 
 #include "mcap.h"
 
@@ -1905,7 +1905,7 @@ gboolean mcap_create_mcl(struct mcap_instance *mi,
 		mcl->state = MCL_IDLE;
 		bacpy(&mcl->addr, addr);
 		set_default_cb(mcl);
-		if (getrandom(&val, sizeof(val), 0) < 0) {
+		if (util_getrandom(&val, sizeof(val), 0) < 0) {
 			mcap_instance_unref(mcl->mi);
 			g_free(mcl);
 			return FALSE;
@@ -2049,7 +2049,7 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 		mcl->mi = mcap_instance_ref(mi);
 		bacpy(&mcl->addr, &dst);
 		set_default_cb(mcl);
-		if (getrandom(&val, sizeof(val), 0) < 0) {
+		if (util_getrandom(&val, sizeof(val), 0) < 0) {
 			mcap_instance_unref(mcl->mi);
 			g_free(mcl);
 			goto drop;

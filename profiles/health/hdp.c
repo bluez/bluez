@@ -16,7 +16,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <sys/random.h>
 
 #include <glib.h>
 
@@ -33,6 +32,7 @@
 #include "src/device.h"
 #include "src/sdpd.h"
 #include "src/shared/timeout.h"
+#include "src/shared/util.h"
 #include "btio/btio.h"
 
 #include "hdp_types.h"
@@ -1490,7 +1490,7 @@ static void *generate_echo_packet(void)
 	if (!buf)
 		return NULL;
 
-	if (getrandom(buf, HDP_ECHO_LEN, 0) < 0) {
+	if (util_getrandom(buf, HDP_ECHO_LEN, 0) < 0) {
 		g_free(buf);
 		return NULL;
 	}

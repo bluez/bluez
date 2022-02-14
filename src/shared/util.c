@@ -13,6 +13,7 @@
 #endif
 
 #define _GNU_SOURCE
+#include <fcntl.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <stdbool.h>
@@ -22,6 +23,10 @@
 #include <dirent.h>
 #include <limits.h>
 #include <string.h>
+
+#ifdef HAVE_SYS_RANDOM_H
+#include <sys/random.h>
+#endif
 
 #include "src/shared/util.h"
 
@@ -136,6 +141,26 @@ unsigned char util_get_dt(const char *parent, const char *name)
 		return DT_DIR;
 
 	return DT_UNKNOWN;
+}
+
+/* Helper for getting a random in case getrandom unavailable (glibc < 2.25) */
+ssize_t util_getrandom(void *buf, size_t buflen, unsigned int flags)
+{
+#ifdef HAVE_GETRANDOM
+	return getrandom(buf, buflen, flags);
+#else
+	int fd;
+	ssize_t bytes;
+
+	fd = open("/dev/urandom", O_CLOEXEC);
+	if (fd < 0)
+		return -1;
+
+	bytes = read(fd, buf, buflen);
+	close(fd);
+
+	return bytes;
+#endif
 }
 
 /* Helpers for bitfield operations */
