@@ -419,6 +419,8 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	GObex *obex = user_data;
+	struct pending_pkt *p = NULL;
+	GError *err = NULL;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -427,9 +429,9 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		goto stop_tx;
 
 	if (obex->tx_data == 0) {
-		struct pending_pkt *p = g_queue_pop_head(obex->tx_queue);
 		ssize_t len;
 
+		p = g_queue_pop_head(obex->tx_queue);
 		if (p == NULL)
 			goto stop_tx;
 
@@ -480,8 +482,19 @@ encode:
 		return FALSE;
 	}
 
-	if (!obex->write(obex, NULL))
+	if (!obex->write(obex, &err)) {
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
+
+		if (p) {
+			if (p->rsp_func)
+				p->rsp_func(obex, err, NULL, p->rsp_data);
+
+			pending_pkt_free(p);
+		}
+
+		g_error_free(err);
 		goto stop_tx;
+	}
 
 done:
 	if (obex->tx_data > 0 || g_queue_get_length(obex->tx_queue) > 0)
