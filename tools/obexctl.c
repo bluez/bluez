@@ -114,6 +114,7 @@ static void connect_reply(DBusMessage *message, void *user_data)
 struct connect_args {
 	char *dev;
 	char *target;
+	uint8_t channel;
 };
 
 static void connect_args_free(void *data)
@@ -139,13 +140,14 @@ static void connect_setup(DBusMessageIter *iter, void *user_data)
 					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					&dict);
 
-	if (args->target == NULL)
-		goto done;
-
-	g_dbus_dict_append_entry(&dict, "Target",
+	if (args->target)
+		g_dbus_dict_append_entry(&dict, "Target",
 					DBUS_TYPE_STRING, &args->target);
 
-done:
+	if (args->channel)
+		g_dbus_dict_append_entry(&dict, "Channel",
+					DBUS_TYPE_BYTE, &args->channel);
+
 	dbus_message_iter_close_container(iter, &dict);
 }
 
@@ -153,6 +155,7 @@ static void cmd_connect(int argc, char *argv[])
 {
 	struct connect_args *args;
 	const char *target = "opp";
+	int channel = 0;
 
 	if (!client) {
 		bt_shell_printf("Client proxy not available\n");
@@ -162,9 +165,20 @@ static void cmd_connect(int argc, char *argv[])
 	if (argc > 2)
 		target = argv[2];
 
+	if (argc > 3) {
+		char *endptr = NULL;
+
+		channel = strtol(argv[3], &endptr, 0);
+		if (!endptr || *endptr != '\0' || channel > UINT8_MAX) {
+			bt_shell_printf("Invalid channel\n");
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
 	args = g_new0(struct connect_args, 1);
 	args->dev = g_strdup(argv[1]);
 	args->target = g_strdup(target);
+	args->channel = channel;
 
 	if (g_dbus_proxy_method_call(client, "CreateSession", connect_setup,
 			connect_reply, args, connect_args_free) == FALSE) {
@@ -1832,7 +1846,8 @@ static void cmd_mkdir(int argc, char *argv[])
 static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
-	{ "connect",      "<dev> [uuid]", cmd_connect, "Connect session" },
+	{ "connect",      "<dev> [uuid] [channel]", cmd_connect,
+						"Connect session" },
 	{ "disconnect",   "[session]", cmd_disconnect, "Disconnect session",
 						session_generator },
 	{ "list",         NULL,       cmd_list, "List available sessions" },
