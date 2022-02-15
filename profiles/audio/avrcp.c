@@ -2402,6 +2402,8 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 	struct media_item *item;
 	int i;
 
+	media_player_clear_metadata(mp);
+
 	item = media_player_set_playlist_item(mp, player->uid);
 
 	for (i = 0; count > 0; count--) {
@@ -2428,6 +2430,8 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 
 		i += len;
 	}
+
+	media_player_metadata_changed(mp);
 }
 
 static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,

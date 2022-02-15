@@ -70,9 +70,11 @@ void media_player_set_setting(struct media_player *mp, const char *key,
 							const char *value);
 const char *media_player_get_status(struct media_player *mp);
 void media_player_set_status(struct media_player *mp, const char *status);
+void media_player_clear_metadata(struct media_player *mp);
 void media_player_set_metadata(struct media_player *mp,
 				struct media_item *item, const char *key,
 				void *data, size_t len);
+void media_player_metadata_changed(struct media_player *mp);
 void media_player_set_type(struct media_player *mp, const char *type);
 void media_player_set_subtype(struct media_player *mp, const char *subtype);
 void media_player_set_name(struct media_player *mp, const char *name);
