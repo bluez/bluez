@@ -37,8 +37,10 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	const void *test_data;
+	GIOChannel *io;
 	unsigned int io_id;
 	uint16_t conn_handle;
+	uint16_t send_len;
 	uint16_t recv_len;
 };
 
@@ -198,6 +200,9 @@ static void test_post_teardown(const void *test_data)
 		data->io_id = 0;
 	}
 
+	if (data->io)
+		g_io_channel_unref(data->io);
+
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
 }
@@ -301,21 +306,21 @@ const struct rfcomm_client_data connect_send_success = {
 	.send_data = data,
 };
 
-const uint8_t data_8k[8192] = { [0 ... 1023] =  0x00,
-				[1024 ... 2047] =  0x01,
-				[2048 ... 3071] =  0x02,
-				[3072 ... 4095] =  0x03,
-				[4096 ... 5119] =  0x04,
-				[5120 ... 6143] =  0x05,
-				[6144 ... 7167] =  0x06,
-				[7168 ... 8191] =  0x07,
+const uint8_t data_32k[32768] = { [0 ... 4095] =  0x00,
+				[4096 ... 8191] =  0x01,
+				[8192 ... 12287] =  0x02,
+				[12288 ... 16383] =  0x03,
+				[16384 ... 20479] =  0x04,
+				[20480 ... 24575] =  0x05,
+				[24576 ... 28671] =  0x06,
+				[28672 ... 32767] =  0x07,
 };
 
-const struct rfcomm_client_data connect_send_8k_success = {
+const struct rfcomm_client_data connect_send_32k_success = {
 	.server_channel = 0x0c,
 	.client_channel = 0x0c,
-	.data_len = sizeof(data_8k),
-	.send_data = data_8k,
+	.data_len = sizeof(data_32k),
+	.send_data = data_32k,
 };
 
 const struct rfcomm_client_data connect_read_success = {
@@ -438,6 +443,44 @@ static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
 	return false;
 }
 
+static gboolean rc_write_data(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = user_data;
+	const struct rfcomm_client_data *cli = data->test_data;
+	int sk;
+	ssize_t ret;
+
+	if (cond & G_IO_NVAL)
+		return false;
+
+	if (cond & (G_IO_HUP | G_IO_ERR))
+		goto done;
+
+	tester_print("Writing %u bytes of data",
+			cli->data_len - data->send_len);
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	ret = write(sk, cli->send_data + data->send_len,
+			cli->data_len - data->send_len);
+	if (ret < 0) {
+		tester_warn("Failed to write %u bytes: %s (%d)",
+				cli->data_len, strerror(errno), errno);
+		tester_test_failed();
+		goto done;
+	}
+
+	data->send_len += ret;
+
+	tester_print("Written %u/%u bytes", data->send_len, cli->data_len);
+
+	/* Don't retry write since that seems to block bthost from receiving */
+done:
+	data->io_id = 0;
+	return false;
+}
+
 static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -463,16 +506,9 @@ static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	if (cli->send_data) {
-		ssize_t ret;
-
-		tester_print("Writing %u bytes of data", cli->data_len);
-		ret = write(sk, cli->send_data, cli->data_len);
-		if (cli->data_len != ret) {
-			tester_warn("Failed to write %u bytes: %s (%d)",
-					cli->data_len, strerror(errno), errno);
-			tester_test_failed();
-		}
-
+		data->io = g_io_channel_ref(io);
+		cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+		data->io_id = g_io_add_watch(io, cond, rc_write_data, data);
 		return false;
 	} else if (cli->read_data) {
 		g_io_add_watch(io, G_IO_IN, client_received_data, NULL);
@@ -517,8 +553,14 @@ static void client_hook_func(const void *data, uint16_t len,
 	tester_print("bthost received progress %u/%u", test_data->recv_len,
 							cli->data_len);
 
-	if (cli->data_len != test_data->recv_len)
+	if (cli->data_len != test_data->recv_len) {
+		if (cli->data_len != test_data->send_len)
+			test_data->io_id = g_io_add_watch(test_data->io,
+						     G_IO_OUT | G_IO_HUP |
+						     G_IO_ERR | G_IO_NVAL,
+						     rc_write_data, test_data);
 		return;
+	}
 
 	test_data->recv_len = 0;
 
@@ -765,8 +807,8 @@ int main(int argc, char *argv[])
 	test_rfcomm("Basic RFCOMM Socket Client - Write Success",
 				&connect_send_success, setup_powered_client,
 				test_connect);
-	test_rfcomm("Basic RFCOMM Socket Client - Write 8k Success",
-				&connect_send_8k_success, setup_powered_client,
+	test_rfcomm("Basic RFCOMM Socket Client - Write 32k Success",
+				&connect_send_32k_success, setup_powered_client,
 				test_connect);
 	test_rfcomm("Basic RFCOMM Socket Client - Read Success",
 				&connect_read_success, setup_powered_client,
