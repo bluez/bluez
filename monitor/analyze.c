@@ -161,7 +161,8 @@ static void conn_destroy(void *data)
 		break;
 	}
 
-	conn->tx_pkt_med = conn->tx_bytes / conn->tx_num;
+	if (conn->tx_num > 0)
+		conn->tx_pkt_med = conn->tx_bytes / conn->tx_num;
 
 	printf("  Found %s connection with handle %u\n", str, conn->handle);
 	/* TODO: Store address type */
