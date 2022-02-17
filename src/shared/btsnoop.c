@@ -336,7 +336,7 @@ bool btsnoop_write_hci(struct btsnoop *btsnoop, struct timeval *tv,
 		break;
 
 	case BTSNOOP_FORMAT_MONITOR:
-		flags = (index << 16) | opcode;
+		flags = ((uint32_t)index << 16) | opcode;
 		break;
 
 	default:
