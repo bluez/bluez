@@ -463,8 +463,7 @@ tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
 
 tools_obexctl_SOURCES = tools/obexctl.c
 tools_obexctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
-			src/libshared-glib.la $(GLIB_LIBS) $(DBUS_LIBS) \
-			-lreadline
+			$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
 
 tools_btmgmt_SOURCES = tools/btmgmt.c src/uuid-helper.c client/display.c
 tools_btmgmt_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la \
