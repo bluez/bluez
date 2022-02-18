@@ -471,6 +471,8 @@ encode:
 				check_srm_final(obex,
 						obex->tx_buf[0] & ~FINAL_BIT);
 			pending_pkt_free(p);
+			/* g_free() doesn't set the pointer to NULL */
+			p = NULL;
 		}
 
 		obex->tx_data = len;
