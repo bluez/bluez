@@ -354,13 +354,22 @@ static void parse_mode_config(GKeyFile *config, const char *group,
 
 	for (i = 0; i < params_len; ++i) {
 		GError *err = NULL;
-		int val = g_key_file_get_integer(config, group,
-						params[i].val_name, &err);
+		char *str;
+
+		str = g_key_file_get_string(config, group, params[i].val_name,
+									&err);
 		if (err) {
 			DBG("%s", err->message);
 			g_clear_error(&err);
 		} else {
-			info("%s=%d", params[i].val_name, val);
+			char *endptr = NULL;
+			int val;
+
+			val = strtol(str, &endptr, 0);
+			if (!endptr || *endptr != '\0')
+				continue;
+
+			info("%s=%s(%d)", params[i].val_name, str, val);
 
 			val = MAX(val, params[i].min);
 			val = MIN(val, params[i].max);
