@@ -575,14 +575,12 @@ static int process_message(DBusMessage *msg, struct oob_params *remote)
 			if (process_nokia_com_bt(data, size, remote))
 				goto error;
 		} else if (strcasecmp(key, "State") == 0) {
-			DBusMessageIter array;
 			const char *state;
 
 			if (dbus_message_iter_get_arg_type(&value) !=
 					DBUS_TYPE_STRING)
 				goto error;
 
-			dbus_message_iter_recurse(&value, &array);
 			dbus_message_iter_get_basic(&value, &state);
 
 			remote->power_state = process_state(state);
