@@ -14,6 +14,7 @@
 #include <alloca.h>
 #include <byteswap.h>
 #include <string.h>
+#include <sys/types.h>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define BIT(n)  (1 << (n))
