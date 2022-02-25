@@ -47,8 +47,9 @@ struct sockaddr_hci {
 	unsigned short  hci_channel;
 };
 #define HCI_CHANNEL_USER	1
+#define HCI_INDEX_NONE		0xffff
 
-static uint16_t hci_index = 0;
+static uint16_t hci_index = HCI_INDEX_NONE;
 static bool client_active = false;
 static bool debug_enabled = false;
 static bool emulate_ecc = false;
@@ -535,9 +536,12 @@ static bool setup_proxy(int host_fd, bool host_shutdown,
 static int open_channel(uint16_t index)
 {
 	struct sockaddr_hci addr;
-	int fd;
+	int fd, err;
 
-	printf("Opening user channel for hci%u\n", hci_index);
+	if (index == HCI_INDEX_NONE)
+		index = 0;
+
+	printf("Opening user channel for hci%u\n", index);
 
 	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (fd < 0) {
@@ -551,7 +555,16 @@ static int open_channel(uint16_t index)
 	addr.hci_channel = HCI_CHANNEL_USER;
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = -errno;
 		close(fd);
+
+		/* Open next available controller if no specific index was
+		 * provided and the error indicates that the controller.
+		 */
+		if (hci_index == HCI_INDEX_NONE &&
+				(err == -EBUSY || err == -EUSERS))
+			return open_channel(++index);
+
 		perror("Failed to bind Bluetooth socket");
 		return -1;
 	}
@@ -588,7 +601,7 @@ static void server_callback(int fd, uint32_t events, void *user_data)
 		return;
 	}
 
-	if (client_active) {
+	if (client_active && hci_index != HCI_INDEX_NONE) {
 		fprintf(stderr, "Active client already present\n");
 		close(host_fd);
 		return;
