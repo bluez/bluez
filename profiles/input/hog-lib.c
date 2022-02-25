@@ -81,6 +81,7 @@ struct bt_hog {
 	struct bt_uhid		*uhid;
 	int			uhid_fd;
 	bool			uhid_created;
+	bool			uhid_start;
 	uint64_t		uhid_flags;
 	uint16_t		bcdhid;
 	uint8_t			bcountrycode;
@@ -358,8 +359,8 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 		ev.u.input.size = len;
 	}
 
-	/* If uhid had not been created yet queue up the input */
-	if (!hog->uhid_created) {
+	/* If uhid had not sent UHID_START yet queue up the input */
+	if (!hog->uhid_created || !hog->uhid_start) {
 		if (!hog->input)
 			hog->input = queue_new();
 
@@ -809,16 +810,34 @@ static void set_numbered(void *data, void *user_data)
 	}
 }
 
+static bool input_dequeue(const void *data, const void *match_data)
+{
+	const struct uhid_event *ev = data;
+	const struct bt_hog *hog = match_data;
+	int err;
+
+	err = bt_uhid_send(hog->uhid, ev);
+	if (err < 0) {
+		error("bt_uhid_send: %s (%d)", strerror(-err), -err);
+		return false;
+	}
+
+	return true;
+}
+
 static void start_flags(struct uhid_event *ev, void *user_data)
 {
 	struct bt_hog *hog = user_data;
 
+	hog->uhid_start = true;
 	hog->uhid_flags = ev->u.start.dev_flags;
 
 	DBG("uHID device flags: 0x%16" PRIx64, hog->uhid_flags);
 
 	if (hog->uhid_flags)
 		g_slist_foreach(hog->reports, set_numbered, hog);
+
+	queue_remove_all(hog->input, input_dequeue, hog, free);
 }
 
 static void set_report_cb(guint8 status, const guint8 *pdu,
@@ -992,21 +1011,6 @@ fail:
 	report_reply(hog, err, 0, false, 0, NULL);
 }
 
-static bool input_dequeue(const void *data, const void *match_data)
-{
-	const struct uhid_event *ev = data;
-	const struct bt_hog *hog = match_data;
-	int err;
-
-	err = bt_uhid_send(hog->uhid, ev);
-	if (err < 0) {
-		error("bt_uhid_send: %s (%d)", strerror(-err), -err);
-		return false;
-	}
-
-	return true;
-}
-
 static void uhid_create(struct bt_hog *hog, uint8_t *report_map,
 							size_t report_map_len)
 {
@@ -1068,10 +1072,9 @@ static void uhid_create(struct bt_hog *hog, uint8_t *report_map,
 	bt_uhid_register(hog->uhid, UHID_SET_REPORT, set_report, hog);
 
 	hog->uhid_created = true;
+	hog->uhid_start = false;
 
 	DBG("HoG created uHID device");
-
-	queue_remove_all(hog->input, input_dequeue, hog, free);
 }
 
 static void db_report_map_write_value_cb(struct gatt_db_attribute *attr,
