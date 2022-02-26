@@ -3423,6 +3423,11 @@ static struct external_profile *create_profile(struct gatt_app *app,
 		goto fail;
 	}
 
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		DBG("UUIDs wrongly formatted");
+		goto fail;
+	}
+
 	dbus_message_iter_recurse(&iter, &array);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
