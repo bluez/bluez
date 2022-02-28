@@ -47,6 +47,7 @@ static int test_argc;
 
 static bool run_auto = false;
 static bool start_dbus = false;
+static bool start_emulator = false;
 static bool start_monitor = false;
 static int num_devs = 0;
 static const char *qemu_binary = NULL;
@@ -249,9 +250,10 @@ static void start_qemu(void)
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
 				"bluetooth.enable_ecred=1"
 				"TESTHOME=%s TESTDBUS=%u TESTMONITOR=%u "
-				"TESTDEVS=%d TESTAUTO=%u TESTARGS=\'%s\'",
+				"TESTEMULATOR=%u TESTDEVS=%d TESTAUTO=%u "
+				"TESTARGS=\'%s\'",
 				initcmd, cwd, start_dbus, start_monitor,
-				num_devs, run_auto, testargs);
+				start_emulator, num_devs, run_auto, testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
 				(sizeof(char *) * (4 + (num_devs * 4))));
@@ -600,12 +602,64 @@ static pid_t start_btmon(const char *home)
 	return pid;
 }
 
+static const char *btvirt_table[] = {
+	"btvirt",
+	"emulator/btvirt",
+	"/usr/sbin/btvirt",
+	NULL
+};
+
+static pid_t start_btvirt(void)
+{
+	const char *btvirt = NULL;
+	char *argv[3], *envp[2];
+	pid_t pid;
+	int i;
+
+	for (i = 0; btvirt_table[i]; i++) {
+		struct stat st;
+
+		if (!stat(btvirt_table[i], &st)) {
+			btvirt = btvirt_table[i];
+			break;
+		}
+	}
+
+	if (!btvirt) {
+		fprintf(stderr, "Failed to locate btvirt binary\n");
+		return -1;
+	}
+
+	printf("Using %s\n", btvirt);
+
+	argv[0] = (char *) btvirt;
+	argv[1] = "-l";
+	argv[2] = NULL;
+
+	printf("Starting Emulator\n");
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		return -1;
+	}
+
+	if (pid == 0) {
+		execve(argv[0], argv, envp);
+		exit(EXIT_SUCCESS);
+	}
+
+	printf("Emulator process %d created\n", pid);
+
+	return pid;
+}
+
 static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
 	int pos = 0, idx = 0;
 	int serial_fd;
-	pid_t pid, dbus_pid, daemon_pid, monitor_pid;
+	pid_t pid, dbus_pid, daemon_pid, monitor_pid, emulator_pid;
 
 	if (num_devs) {
 		const char *node = "/dev/ttyS1";
@@ -634,6 +688,11 @@ static void run_command(char *cmdname, char *home)
 		monitor_pid = start_btmon(home);
 	else
 		monitor_pid = -1;
+
+	if (start_emulator)
+		emulator_pid = start_btvirt();
+	else
+		emulator_pid = -1;
 
 start_next:
 	if (run_auto) {
@@ -735,6 +794,11 @@ start_next:
 			daemon_pid = -1;
 		}
 
+		if (corpse == emulator_pid) {
+			printf("Bluetooth emulator terminated\n");
+			emulator_pid = -1;
+		}
+
 		if (corpse == monitor_pid) {
 			printf("Bluetooth monitor terminated\n");
 			monitor_pid = -1;
@@ -753,6 +817,9 @@ start_next:
 		kill(daemon_pid, SIGTERM);
 
 	if (dbus_pid > 0)
+		kill(dbus_pid, SIGTERM);
+
+	if (emulator_pid > 0)
 		kill(dbus_pid, SIGTERM);
 
 	if (monitor_pid > 0)
@@ -822,6 +889,12 @@ static void run_tests(void)
 		start_monitor = true;
 	}
 
+	ptr = strstr(cmdline, "TESTEMULATOR=1");
+	if (ptr) {
+		printf("Emulator requested\n");
+		start_emulator = true;
+	}
+
 	ptr = strstr(cmdline, "TESTHOME=");
 	if (ptr) {
 		home = ptr + 4;
@@ -853,6 +926,7 @@ static const struct option main_options[] = {
 	{ "auto",    no_argument,       NULL, 'a' },
 	{ "unix",    no_argument,       NULL, 'u' },
 	{ "dbus",    no_argument,       NULL, 'd' },
+	{ "emulator", no_argument,      NULL, 'l' },
 	{ "monitor", no_argument,       NULL, 'm' },
 	{ "qemu",    required_argument, NULL, 'q' },
 	{ "kernel",  required_argument, NULL, 'k' },
@@ -875,7 +949,8 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "audmq:k:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "audlmq:k:vh", main_options,
+								NULL);
 		if (opt < 0)
 			break;
 
@@ -888,6 +963,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			start_dbus = true;
+			break;
+		case 'l':
+			start_emulator = true;
 			break;
 		case 'm':
 			start_monitor = true;
