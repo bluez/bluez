@@ -3831,7 +3831,7 @@ static int load_chrc(char *handle, char *value,
 	uint16_t properties, value_handle, handle_int;
 	char uuid_str[MAX_LEN_UUID_STR];
 	struct gatt_db_attribute *att;
-	char val_str[32];
+	char val_str[33];
 	uint8_t val[16];
 	size_t val_len;
 	bt_uuid_t uuid;
