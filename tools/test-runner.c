@@ -716,25 +716,7 @@ start_next:
 		argv[0] = (char *) test_table[idx];
 		argv[1] = "-q";
 		argv[2] = NULL;
-	} else {
-		while (1) {
-			char *ptr;
-
-			ptr = strchr(cmdname, ' ');
-			if (!ptr) {
-				argv[pos++] = cmdname;
-				break;
-			}
-
-			*ptr = '\0';
-			argv[pos++] = cmdname;
-			if (pos > 8)
-				break;
-
-			cmdname = ptr + 1;
-		}
-
-		argv[pos] = NULL;
+		cmdname = NULL;
 	}
 
 	pos = 0;
@@ -743,7 +725,7 @@ start_next:
 		envp[pos++] = home;
 	envp[pos] = NULL;
 
-	printf("Running command %s\n", argv[0]);
+	printf("Running command %s\n", cmdname ? cmdname : argv[0]);
 
 	pid = fork();
 	if (pid < 0) {
@@ -758,7 +740,11 @@ start_next:
 				perror("Failed to change directory");
 		}
 
-		execve(argv[0], argv, envp);
+		if (!cmdname)
+			execve(argv[0], argv, envp);
+		else
+			execl("/bin/sh", "sh", "-c", cmdname, NULL);
+
 		exit(EXIT_SUCCESS);
 	}
 
