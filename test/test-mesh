@@ -361,8 +361,14 @@ class ModTimer():
 
 	def cancel(self):
 		if self.thread is not None:
-			self.thread.cancel()
-			self.thread = None
+                    #As per Timer documentation, thread.cancel() works only
+                    #If the callback action has not began, or has ended
+                    #Thus wait for callback action to finish
+                    #Else, thread.cancel() will not be affective
+                    while self.busy == False:
+                        time.sleep(0.5)
+		    self.thread.cancel()
+		    self.thread = None
 
 class Application(dbus.service.Object):
 
