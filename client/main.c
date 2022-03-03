@@ -1294,6 +1294,7 @@ static struct set_discovery_filter_args {
 	dbus_bool_t discoverable;
 	bool set;
 	bool active;
+	unsigned int timeout;
 } filter = {
 	.rssi = DISTANCE_VAL_INVALID,
 	.pathloss = DISTANCE_VAL_INVALID,
@@ -1415,18 +1416,33 @@ static void set_discovery_filter(bool cleared)
 	filter.set = true;
 }
 
+static const char *scan_arguments[] = {
+	"on",
+	"off",
+	"bredr",
+	"le",
+	NULL
+};
+
 static void cmd_scan(int argc, char *argv[])
 {
 	dbus_bool_t enable;
 	const char *method;
+	const char *mode;
 
-	if (!parse_argument(argc, argv, NULL, NULL, &enable, NULL))
+	if (!parse_argument(argc, argv, scan_arguments, "Mode", &enable,
+								&mode))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (check_default_ctrl() == FALSE)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (enable == TRUE) {
+		if (strcmp(mode, "")) {
+			g_free(filter.transport);
+			filter.transport = g_strdup(mode);
+		}
+
 		set_discovery_filter(false);
 		method = "StartDiscovery";
 	} else
@@ -2514,6 +2530,11 @@ static char *capability_generator(const char *text, int state)
 	return argument_generator(text, state, agent_arguments);
 }
 
+static char *scan_generator(const char *text, int state)
+{
+	return argument_generator(text, state, scan_arguments);
+}
+
 static void cmd_advertise(int argc, char *argv[])
 {
 	dbus_bool_t enable;
@@ -3117,7 +3138,8 @@ static const struct bt_shell_menu main_menu = {
 				"Enable/disable advertising with given type",
 							ad_generator},
 	{ "set-alias",    "<alias>",  cmd_set_alias, "Set device alias" },
-	{ "scan",         "<on/off>", cmd_scan, "Scan for devices", NULL },
+	{ "scan",         "<on/off/bredr/le>", cmd_scan,
+				"Scan for devices", scan_generator },
 	{ "info",         "[dev]",    cmd_info, "Device information",
 							dev_generator },
 	{ "pair",         "[dev]",    cmd_pair, "Pair with device",
