@@ -3660,6 +3660,7 @@ struct bt_hci_evt_le_req_peer_sca_complete {
 #define BT_HCI_ERR_ADV_TIMEOUT                 0x3c
 #define BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH	0x3e
 #define BT_HCI_ERR_UNKNOWN_ADVERTISING_ID	0x42
+#define BT_HCI_ERR_CANCELLED			0x44
 
 struct bt_l2cap_hdr {
 	uint16_t len;

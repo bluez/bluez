@@ -48,6 +48,7 @@
 #define ISO_HANDLE 257
 #define SCO_HANDLE 257
 #define SYC_HANDLE 1
+#define INV_HANDLE 0xffff
 
 struct hook {
 	btdev_hook_func handler;
@@ -5301,7 +5302,7 @@ static int cmd_per_adv_create_sync(struct btdev *dev, const void *data,
 	if (dev->le_periodic_sync_handle)
 		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 	else
-		dev->le_periodic_sync_handle = SYC_HANDLE;
+		dev->le_periodic_sync_handle = INV_HANDLE;
 
 	cmd_status(dev, status, BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC);
 
@@ -5351,10 +5352,13 @@ static void le_per_adv_sync_estabilished(struct btdev *dev,
 	ev.status = status;
 
 	if (status) {
+		dev->le_periodic_sync_handle = 0x0000;
 		le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev,
 							sizeof(ev));
 		return;
 	}
+
+	dev->le_periodic_sync_handle = SYC_HANDLE;
 
 	ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
 	ev.addr_type = cmd->addr_type;
@@ -5394,8 +5398,28 @@ static int cmd_per_adv_create_sync_complete(struct btdev *dev, const void *data,
 static int cmd_per_adv_create_sync_cancel(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	/* If the Host issues this command while no
+	 * HCI_LE_Periodic_Advertising_Create_Sync command is pending, the
+	 * Controller shall return the error code Command Disallowed (0x0C).
+	 */
+	if (dev->le_periodic_sync_handle != INV_HANDLE)
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+
+	cmd_complete(dev, BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL,
+					&status, sizeof(status));
+
+	/* After the HCI_Command_Complete is sent and if the cancellation was
+	 * successful, the Controller sends an
+	 * HCI_LE_Periodic_Advertising_Sync_Established event to the Host with
+	 * the error code Operation Cancelled by Host (0x44).
+	 */
+	if (!status)
+		le_per_adv_sync_estabilished(dev, NULL, NULL,
+							BT_HCI_ERR_CANCELLED);
+
+	return 0;
 }
 
 static int cmd_per_adv_term_sync(struct btdev *dev, const void *data,
