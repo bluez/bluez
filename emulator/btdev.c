@@ -6055,8 +6055,43 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 
 static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	const struct bt_hci_cmd_le_big_term_sync *cmd = data;
+	struct bt_hci_rsp_le_big_term_sync rsp;
+	const struct queue_entry *entry;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	/* If the Host issues this command with a BIG_Handle that does not
+	 * exist, the Controller shall return the error code Unknown
+	 * Advertising Identifier (0x42).
+	 */
+	if (dev->big_handle != cmd->handle) {
+		rsp.status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
+		goto done;
+	}
+
+	rsp.status = BT_HCI_ERR_COMMAND_DISALLOWED;
+	rsp.handle = cmd->handle;
+
+	/* Cleanup existing connections */
+	for (entry = queue_get_entries(dev->conns); entry;
+					entry = entry->next) {
+		struct btdev_conn *conn = entry->data;
+
+		if (!conn->data)
+			continue;
+
+		rsp.status = BT_HCI_ERR_SUCCESS;
+		disconnect_complete(dev, conn->handle, BT_HCI_ERR_SUCCESS,
+								0x16);
+
+		conn_remove(conn);
+	}
+
+done:
+	cmd_complete(dev, BT_HCI_CMD_LE_BIG_TERM_SYNC, &rsp, sizeof(rsp));
+
+	return 0;
 }
 
 static int cmd_req_peer_sca(struct btdev *dev, const void *data, uint8_t len)

@@ -2817,6 +2817,11 @@ struct bt_hci_cmd_le_big_term_sync {
 	uint8_t  handle;
 } __attribute__ ((packed));
 
+struct bt_hci_rsp_le_big_term_sync {
+	uint8_t  status;
+	uint8_t  handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_REQ_PEER_SCA		0x206d
 #define BT_HCI_BIT_LE_REQ_PEER_SCA		BT_HCI_CMD_BIT(43, 2)
 struct bt_hci_cmd_le_req_peer_sca {
