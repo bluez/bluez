@@ -95,6 +95,8 @@ void bthost_set_ext_adv_data(struct bthost *bthost, const uint8_t *data,
 								uint8_t len);
 void bthost_set_ext_adv_params(struct bthost *bthost);
 void bthost_set_ext_adv_enable(struct bthost *bthost, uint8_t enable);
+void bthost_set_pa_params(struct bthost *bthost);
+void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable);
 bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr);
 
 void bthost_set_scan_params(struct bthost *bthost, uint8_t scan_type,
