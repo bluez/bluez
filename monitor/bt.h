@@ -499,11 +499,13 @@ struct bt_hci_sco_hdr {
 struct bt_hci_iso_hdr {
 	uint16_t handle;
 	uint16_t dlen;
+	uint8_t  data[];
 } __attribute__ ((packed));
 
 struct bt_hci_iso_data_start {
 	uint16_t sn;
 	uint16_t slen;
+	uint8_t  data[];
 } __attribute__ ((packed));
 
 struct bt_hci_evt_hdr {
