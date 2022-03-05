@@ -5425,8 +5425,21 @@ static int cmd_per_adv_create_sync_cancel(struct btdev *dev, const void *data,
 static int cmd_per_adv_term_sync(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	/* If the periodic advertising train corresponding to the Sync_Handle
+	 * parameter does not exist, then the Controller shall return the error
+	 * code Unknown Advertising Identifier (0x42).
+	 */
+	if (dev->le_periodic_sync_handle != SYC_HANDLE)
+		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
+	else
+		dev->le_periodic_sync_handle = 0x0000;
+
+	cmd_complete(dev, BT_HCI_CMD_LE_PERIODIC_ADV_TERM_SYNC,
+					&status, sizeof(status));
+
+	return 0;
 }
 
 static int cmd_per_adv_add(struct btdev *dev, const void *data, uint8_t len)
