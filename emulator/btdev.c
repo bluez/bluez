@@ -47,6 +47,7 @@
 #define ACL_HANDLE 42
 #define ISO_HANDLE 257
 #define SCO_HANDLE 257
+#define SYC_HANDLE 1
 
 struct hook {
 	btdev_hook_func handler;
@@ -195,6 +196,7 @@ struct btdev {
 	uint16_t le_periodic_max_interval;
 	uint8_t  le_periodic_data_len;
 	uint8_t  le_periodic_data[31];
+	uint16_t le_periodic_sync_handle;
 	uint8_t  le_ltk[16];
 	struct {
 		struct bt_hci_cmd_le_set_cig_params params;
@@ -5294,8 +5296,99 @@ static int cmd_ext_create_conn_complete(struct btdev *dev, const void *data,
 static int cmd_per_adv_create_sync(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	if (dev->le_periodic_sync_handle)
+		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+	else
+		dev->le_periodic_sync_handle = SYC_HANDLE;
+
+	cmd_status(dev, status, BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC);
+
+	return 0;
+}
+
+static void send_per_adv(struct btdev *dev, const struct btdev *remote,
+						uint8_t offset)
+{
+	struct __packed {
+		struct bt_hci_le_per_adv_report ev;
+		uint8_t data[31];
+	} pdu;
+
+	memset(&pdu.ev, 0, sizeof(pdu.ev));
+	pdu.ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
+	pdu.ev.tx_power = 127;
+	pdu.ev.rssi = 127;
+	pdu.ev.cte_type = 0x0ff;
+
+	if ((size_t) remote->le_periodic_data_len - offset > sizeof(pdu.data)) {
+		pdu.ev.data_status = 0x01;
+		pdu.ev.data_len = sizeof(pdu.data);
+	} else {
+		pdu.ev.data_status = 0x00;
+		pdu.ev.data_len = remote->le_periodic_data_len - offset;
+	}
+
+	memcpy(pdu.data, remote->le_periodic_data + offset, pdu.ev.data_len);
+
+	le_meta_event(dev, BT_HCI_EVT_LE_PER_ADV_REPORT, &pdu,
+					sizeof(pdu.ev) + pdu.ev.data_len);
+
+	if (pdu.ev.data_status == 0x01) {
+		offset += pdu.ev.data_len;
+		send_per_adv(dev, remote, offset);
+	}
+}
+
+static void le_per_adv_sync_estabilished(struct btdev *dev,
+		const struct bt_hci_cmd_le_periodic_adv_create_sync *cmd,
+		struct btdev *remote, uint8_t status)
+{
+	struct bt_hci_evt_le_per_sync_established ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.status = status;
+
+	if (status) {
+		le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev,
+							sizeof(ev));
+		return;
+	}
+
+	ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
+	ev.addr_type = cmd->addr_type;
+	memcpy(ev.addr, cmd->addr, sizeof(ev.addr));
+	ev.phy = 0x01;
+	ev.interval = remote->le_periodic_min_interval;
+	ev.clock_accuracy = 0x07;
+
+	le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev, sizeof(ev));
+	send_per_adv(dev, remote, 0);
+}
+
+static int cmd_per_adv_create_sync_complete(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_periodic_adv_create_sync *cmd = data;
+	struct btdev *remote;
+
+	/* This command may be issued whether or not scanning is enabled and
+	 * scanning may be enabled and disabled (see the LE Set Extended Scan
+	 * Enable command) while this command is pending. However,
+	 * synchronization can only occur when scanning is enabled. While
+	 * scanning is disabled, no attempt to synchronize will take place.
+	 */
+	if (!dev->scan_enable)
+		return 0;
+
+	remote = find_btdev_by_bdaddr_type(cmd->addr, cmd->addr_type);
+	if (!remote || !remote->le_periodic_adv_enable)
+		return 0;
+
+	le_per_adv_sync_estabilished(dev, cmd, remote, BT_HCI_ERR_SUCCESS);
+
+	return 0;
 }
 
 static int cmd_per_adv_create_sync_cancel(struct btdev *dev, const void *data,
@@ -5420,7 +5513,7 @@ done:
 	CMD(BT_HCI_CMD_LE_EXT_CREATE_CONN, cmd_ext_create_conn, \
 					cmd_ext_create_conn_complete), \
 	CMD(BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC, cmd_per_adv_create_sync, \
-					NULL), \
+					cmd_per_adv_create_sync_complete), \
 	CMD(BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL, \
 					cmd_per_adv_create_sync_cancel, NULL), \
 	CMD(BT_HCI_CMD_LE_PERIODIC_ADV_TERM_SYNC, cmd_per_adv_term_sync, \
