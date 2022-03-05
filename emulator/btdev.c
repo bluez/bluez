@@ -5692,10 +5692,10 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 							uint8_t len)
 {
 	const struct bt_hci_cmd_le_create_big *cmd = data;
+	const struct bt_hci_bis *bis = &cmd->bis;
 	int i;
 
 	for (i = 0; i < cmd->num_bis; i++) {
-		const struct bt_hci_bis *bis = &cmd->bis[i];
 		struct btdev_conn *conn;
 		struct {
 			struct bt_hci_evt_le_big_complete evt;

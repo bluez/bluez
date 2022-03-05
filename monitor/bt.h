@@ -2758,7 +2758,7 @@ struct bt_hci_cmd_le_create_big {
 	uint8_t  handle;
 	uint8_t  adv_handle;
 	uint8_t  num_bis;
-	struct bt_hci_bis bis[0];
+	struct bt_hci_bis bis;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_CREATE_BIG_TEST		0x2069

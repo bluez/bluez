@@ -8200,10 +8200,8 @@ static void le_reject_cis_req_cmd(const void *data, uint8_t size)
 	print_reason(cmd->reason);
 }
 
-static void print_bis(const void *data, int i)
+static void print_bis(const struct bt_hci_bis *bis)
 {
-	const struct bt_hci_bis *bis = data;
-
 	print_usec_interval("SDU Interval", bis->sdu_interval);
 	print_field("Maximum SDU size: %u", le16_to_cpu(bis->sdu));
 	print_field("Maximum Latency: %u ms (0x%4.4x)",
@@ -8223,10 +8221,7 @@ static void le_create_big_cmd(const void *data, uint8_t size)
 	print_field("Handle: 0x%2.2x", cmd->handle);
 	print_field("Advertising Handle: 0x%2.2x", cmd->adv_handle);
 	print_field("Number of BIS: %u", cmd->num_bis);
-
-	size -= sizeof(*cmd);
-
-	print_list(cmd->bis, size, cmd->num_bis, sizeof(*cmd->bis), print_bis);
+	print_bis(&cmd->bis);
 }
 
 static void print_bis_test(const void *data, int i)
