@@ -191,14 +191,14 @@ struct btdev {
 	uint8_t  le_scan_filter_policy;
 	uint8_t  le_filter_dup;
 	uint8_t  le_adv_enable;
-	uint8_t  le_periodic_adv_enable;
-	uint16_t le_periodic_adv_properties;
-	uint16_t le_periodic_min_interval;
-	uint16_t le_periodic_max_interval;
-	uint8_t  le_periodic_data_len;
-	uint8_t  le_periodic_data[31];
-	struct bt_hci_cmd_le_periodic_adv_create_sync pa_sync_cmd;
-	uint16_t le_periodic_sync_handle;
+	uint8_t  le_pa_enable;
+	uint16_t le_pa_properties;
+	uint16_t le_pa_min_interval;
+	uint16_t le_pa_max_interval;
+	uint8_t  le_pa_data_len;
+	uint8_t  le_pa_data[31];
+	struct bt_hci_cmd_le_pa_create_sync pa_sync_cmd;
+	uint16_t le_pa_sync_handle;
 	uint8_t  le_ltk[16];
 	struct {
 		struct bt_hci_cmd_le_set_cig_params params;
@@ -5010,120 +5010,119 @@ static int cmd_clear_adv_sets(struct btdev *dev, const void *data,
 	return 0;
 }
 
-static int cmd_set_per_adv_params(struct btdev *dev, const void *data,
+static int cmd_set_pa_params(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	const struct bt_hci_cmd_le_set_periodic_adv_params *cmd = data;
+	const struct bt_hci_cmd_le_set_pa_params *cmd = data;
 	uint8_t status;
 
-	if (dev->le_periodic_adv_enable) {
+	if (dev->le_pa_enable) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 	} else {
 		status = BT_HCI_ERR_SUCCESS;
-		dev->le_periodic_adv_properties = le16_to_cpu(cmd->properties);
-		dev->le_periodic_min_interval = cmd->min_interval;
-		dev->le_periodic_max_interval = cmd->max_interval;
+		dev->le_pa_properties = le16_to_cpu(cmd->properties);
+		dev->le_pa_min_interval = cmd->min_interval;
+		dev->le_pa_max_interval = cmd->max_interval;
 	}
 
-	cmd_complete(dev, BT_HCI_CMD_LE_SET_PERIODIC_ADV_PARAMS, &status,
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_PARAMS, &status,
 							sizeof(status));
 	return 0;
 }
 
-static int cmd_set_per_adv_data(struct btdev *dev, const void *data,
+static int cmd_set_pa_data(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	const struct bt_hci_cmd_le_set_periodic_adv_data *cmd = data;
+	const struct bt_hci_cmd_le_set_pa_data *cmd = data;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
 
-	dev->le_periodic_data_len = cmd->data_len;
-	memcpy(dev->le_periodic_data, cmd->data, 31);
-	cmd_complete(dev, BT_HCI_CMD_LE_SET_PERIODIC_ADV_DATA, &status,
+	dev->le_pa_data_len = cmd->data_len;
+	memcpy(dev->le_pa_data, cmd->data, 31);
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_DATA, &status,
 							sizeof(status));
 
 	return 0;
 }
 
-static void send_per_adv(struct btdev *dev, const struct btdev *remote,
+static void send_pa(struct btdev *dev, const struct btdev *remote,
 						uint8_t offset)
 {
 	struct __packed {
-		struct bt_hci_le_per_adv_report ev;
+		struct bt_hci_le_pa_report ev;
 		uint8_t data[31];
 	} pdu;
 
 	memset(&pdu.ev, 0, sizeof(pdu.ev));
-	pdu.ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
+	pdu.ev.handle = cpu_to_le16(dev->le_pa_sync_handle);
 	pdu.ev.tx_power = 127;
 	pdu.ev.rssi = 127;
 	pdu.ev.cte_type = 0x0ff;
 
-	if ((size_t) remote->le_periodic_data_len - offset > sizeof(pdu.data)) {
+	if ((size_t) remote->le_pa_data_len - offset > sizeof(pdu.data)) {
 		pdu.ev.data_status = 0x01;
 		pdu.ev.data_len = sizeof(pdu.data);
 	} else {
 		pdu.ev.data_status = 0x00;
-		pdu.ev.data_len = remote->le_periodic_data_len - offset;
+		pdu.ev.data_len = remote->le_pa_data_len - offset;
 	}
 
-	memcpy(pdu.data, remote->le_periodic_data + offset, pdu.ev.data_len);
+	memcpy(pdu.data, remote->le_pa_data + offset, pdu.ev.data_len);
 
-	le_meta_event(dev, BT_HCI_EVT_LE_PER_ADV_REPORT, &pdu,
+	le_meta_event(dev, BT_HCI_EVT_LE_PA_REPORT, &pdu,
 					sizeof(pdu.ev) + pdu.ev.data_len);
 
 	if (pdu.ev.data_status == 0x01) {
 		offset += pdu.ev.data_len;
-		send_per_adv(dev, remote, offset);
+		send_pa(dev, remote, offset);
 	}
 }
 
-static void le_per_adv_sync_estabilished(struct btdev *dev,
-					struct btdev *remote, uint8_t status)
+static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
+						uint8_t status)
 {
 	struct bt_hci_evt_le_per_sync_established ev;
-	struct bt_hci_cmd_le_periodic_adv_create_sync *cmd = &dev->pa_sync_cmd;
+	struct bt_hci_cmd_le_pa_create_sync *cmd = &dev->pa_sync_cmd;
 
 	memset(&ev, 0, sizeof(ev));
 	ev.status = status;
 
 	if (status) {
 		memset(&dev->pa_sync_cmd, 0, sizeof(dev->pa_sync_cmd));
-		dev->le_periodic_sync_handle = 0x0000;
-		le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev,
+		dev->le_pa_sync_handle = 0x0000;
+		le_meta_event(dev, BT_HCI_EVT_LE_PA_SYNC_ESTABLISHED, &ev,
 							sizeof(ev));
 		return;
 	}
 
-	dev->le_periodic_sync_handle = SYC_HANDLE;
+	dev->le_pa_sync_handle = SYC_HANDLE;
 
-	ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
+	ev.handle = cpu_to_le16(dev->le_pa_sync_handle);
 	ev.addr_type = cmd->addr_type;
 	memcpy(ev.addr, cmd->addr, sizeof(ev.addr));
 	ev.phy = 0x01;
-	ev.interval = remote->le_periodic_min_interval;
+	ev.interval = remote->le_pa_min_interval;
 	ev.clock_accuracy = 0x07;
 
 	memset(&dev->pa_sync_cmd, 0, sizeof(dev->pa_sync_cmd));
 
-	le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev, sizeof(ev));
-	send_per_adv(dev, remote, 0);
+	le_meta_event(dev, BT_HCI_EVT_LE_PA_SYNC_ESTABLISHED, &ev, sizeof(ev));
+	send_pa(dev, remote, 0);
 }
 
-static int cmd_set_per_adv_enable(struct btdev *dev, const void *data,
-							uint8_t len)
+static int cmd_set_pa_enable(struct btdev *dev, const void *data, uint8_t len)
 {
-	const struct bt_hci_cmd_le_set_periodic_adv_enable *cmd = data;
+	const struct bt_hci_cmd_le_set_pa_enable *cmd = data;
 	uint8_t status;
 	int i;
 
-	if (dev->le_periodic_adv_enable == cmd->enable) {
+	if (dev->le_pa_enable == cmd->enable) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 	} else {
-		dev->le_periodic_adv_enable = cmd->enable;
+		dev->le_pa_enable = cmd->enable;
 		status = BT_HCI_ERR_SUCCESS;
 	}
 
-	cmd_complete(dev, BT_HCI_CMD_LE_SET_PERIODIC_ADV_ENABLE, &status,
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_ENABLE, &status,
 							sizeof(status));
 
 	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
@@ -5133,8 +5132,8 @@ static int cmd_set_per_adv_enable(struct btdev *dev, const void *data,
 			continue;
 
 		if (remote->le_scan_enable &&
-			remote->le_periodic_sync_handle == INV_HANDLE)
-			le_per_adv_sync_estabilished(remote, dev,
+			remote->le_pa_sync_handle == INV_HANDLE)
+			le_pa_sync_estabilished(remote, dev,
 							BT_HCI_ERR_SUCCESS);
 	}
 
@@ -5239,17 +5238,16 @@ static void scan_ext_adv(struct btdev *dev, struct btdev *remote)
 	}
 }
 
-static void scan_per_adv(struct btdev *dev, struct btdev *remote)
+static void scan_pa(struct btdev *dev, struct btdev *remote)
 {
-	if (dev->le_periodic_sync_handle != INV_HANDLE ||
-				!remote->le_periodic_adv_enable)
+	if (dev->le_pa_sync_handle != INV_HANDLE || !remote->le_pa_enable)
 		return;
 
 	if (remote != find_btdev_by_bdaddr_type(dev->pa_sync_cmd.addr,
 						dev->pa_sync_cmd.addr_type))
 		return;
 
-	le_per_adv_sync_estabilished(dev, remote, BT_HCI_ERR_SUCCESS);
+	le_pa_sync_estabilished(dev, remote, BT_HCI_ERR_SUCCESS);
 }
 
 static int cmd_set_ext_scan_enable_complete(struct btdev *dev, const void *data,
@@ -5266,7 +5264,7 @@ static int cmd_set_ext_scan_enable_complete(struct btdev *dev, const void *data,
 			continue;
 
 		scan_ext_adv(dev, btdev_list[i]);
-		scan_per_adv(dev, btdev_list[i]);
+		scan_pa(dev, btdev_list[i]);
 	}
 
 	return 0;
@@ -5387,27 +5385,26 @@ static int cmd_ext_create_conn_complete(struct btdev *dev, const void *data,
 	return 0;
 }
 
-static int cmd_per_adv_create_sync(struct btdev *dev, const void *data,
-							uint8_t len)
+static int cmd_pa_create_sync(struct btdev *dev, const void *data, uint8_t len)
 {
 	uint8_t status = BT_HCI_ERR_SUCCESS;
 
-	if (dev->le_periodic_sync_handle)
+	if (dev->le_pa_sync_handle)
 		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 	else {
-		dev->le_periodic_sync_handle = INV_HANDLE;
+		dev->le_pa_sync_handle = INV_HANDLE;
 		memcpy(&dev->pa_sync_cmd, data, len);
 	}
 
-	cmd_status(dev, status, BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC);
+	cmd_status(dev, status, BT_HCI_CMD_LE_PA_CREATE_SYNC);
 
 	return 0;
 }
 
-static int cmd_per_adv_create_sync_complete(struct btdev *dev, const void *data,
+static int cmd_pa_create_sync_complete(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	const struct bt_hci_cmd_le_periodic_adv_create_sync *cmd = data;
+	const struct bt_hci_cmd_le_pa_create_sync *cmd = data;
 	struct btdev *remote;
 
 	/* This command may be issued whether or not scanning is enabled and
@@ -5420,15 +5417,15 @@ static int cmd_per_adv_create_sync_complete(struct btdev *dev, const void *data,
 		return 0;
 
 	remote = find_btdev_by_bdaddr_type(cmd->addr, cmd->addr_type);
-	if (!remote || !remote->le_periodic_adv_enable)
+	if (!remote || !remote->le_pa_enable)
 		return 0;
 
-	le_per_adv_sync_estabilished(dev, remote, BT_HCI_ERR_SUCCESS);
+	le_pa_sync_estabilished(dev, remote, BT_HCI_ERR_SUCCESS);
 
 	return 0;
 }
 
-static int cmd_per_adv_create_sync_cancel(struct btdev *dev, const void *data,
+static int cmd_pa_create_sync_cancel(struct btdev *dev, const void *data,
 							uint8_t len)
 {
 	uint8_t status = BT_HCI_ERR_SUCCESS;
@@ -5437,10 +5434,10 @@ static int cmd_per_adv_create_sync_cancel(struct btdev *dev, const void *data,
 	 * HCI_LE_Periodic_Advertising_Create_Sync command is pending, the
 	 * Controller shall return the error code Command Disallowed (0x0C).
 	 */
-	if (dev->le_periodic_sync_handle != INV_HANDLE)
+	if (dev->le_pa_sync_handle != INV_HANDLE)
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 
-	cmd_complete(dev, BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL,
+	cmd_complete(dev, BT_HCI_CMD_LE_PA_CREATE_SYNC_CANCEL,
 					&status, sizeof(status));
 
 	/* After the HCI_Command_Complete is sent and if the cancellation was
@@ -5449,13 +5446,12 @@ static int cmd_per_adv_create_sync_cancel(struct btdev *dev, const void *data,
 	 * the error code Operation Cancelled by Host (0x44).
 	 */
 	if (!status)
-		le_per_adv_sync_estabilished(dev, NULL, BT_HCI_ERR_CANCELLED);
+		le_pa_sync_estabilished(dev, NULL, BT_HCI_ERR_CANCELLED);
 
 	return 0;
 }
 
-static int cmd_per_adv_term_sync(struct btdev *dev, const void *data,
-							uint8_t len)
+static int cmd_pa_term_sync(struct btdev *dev, const void *data, uint8_t len)
 {
 	uint8_t status = BT_HCI_ERR_SUCCESS;
 
@@ -5463,36 +5459,36 @@ static int cmd_per_adv_term_sync(struct btdev *dev, const void *data,
 	 * parameter does not exist, then the Controller shall return the error
 	 * code Unknown Advertising Identifier (0x42).
 	 */
-	if (dev->le_periodic_sync_handle != SYC_HANDLE)
+	if (dev->le_pa_sync_handle != SYC_HANDLE)
 		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
 	else
-		dev->le_periodic_sync_handle = 0x0000;
+		dev->le_pa_sync_handle = 0x0000;
 
-	cmd_complete(dev, BT_HCI_CMD_LE_PERIODIC_ADV_TERM_SYNC,
+	cmd_complete(dev, BT_HCI_CMD_LE_PA_TERM_SYNC,
 					&status, sizeof(status));
 
 	return 0;
 }
 
-static int cmd_per_adv_add(struct btdev *dev, const void *data, uint8_t len)
+static int cmd_pa_add(struct btdev *dev, const void *data, uint8_t len)
 {
 	/* TODO */
 	return -ENOTSUP;
 }
 
-static int cmd_per_adv_remove(struct btdev *dev, const void *data, uint8_t len)
+static int cmd_pa_remove(struct btdev *dev, const void *data, uint8_t len)
 {
 	/* TODO */
 	return -ENOTSUP;
 }
 
-static int cmd_per_adv_clear(struct btdev *dev, const void *data, uint8_t len)
+static int cmd_pa_clear(struct btdev *dev, const void *data, uint8_t len)
 {
 	/* TODO */
 	return -ENOTSUP;
 }
 
-static int cmd_read_per_adv_list_size(struct btdev *dev, const void *data,
+static int cmd_read_pa_list_size(struct btdev *dev, const void *data,
 							uint8_t len)
 {
 	/* TODO */
@@ -5571,28 +5567,24 @@ done:
 					NULL), \
 	CMD(BT_HCI_CMD_LE_REMOVE_ADV_SET, cmd_remove_adv_set, NULL), \
 	CMD(BT_HCI_CMD_LE_CLEAR_ADV_SETS, cmd_clear_adv_sets, NULL), \
-	CMD(BT_HCI_CMD_LE_SET_PERIODIC_ADV_PARAMS, cmd_set_per_adv_params, \
+	CMD(BT_HCI_CMD_LE_SET_PA_PARAMS, cmd_set_pa_params, \
 					NULL), \
-	CMD(BT_HCI_CMD_LE_SET_PERIODIC_ADV_DATA, cmd_set_per_adv_data, NULL), \
-	CMD(BT_HCI_CMD_LE_SET_PERIODIC_ADV_ENABLE, cmd_set_per_adv_enable, \
-					NULL), \
+	CMD(BT_HCI_CMD_LE_SET_PA_DATA, cmd_set_pa_data, NULL), \
+	CMD(BT_HCI_CMD_LE_SET_PA_ENABLE, cmd_set_pa_enable, NULL), \
 	CMD(BT_HCI_CMD_LE_SET_EXT_SCAN_PARAMS, cmd_set_ext_scan_params, NULL), \
 	CMD(BT_HCI_CMD_LE_SET_EXT_SCAN_ENABLE, cmd_set_ext_scan_enable, \
 					cmd_set_ext_scan_enable_complete), \
 	CMD(BT_HCI_CMD_LE_EXT_CREATE_CONN, cmd_ext_create_conn, \
 					cmd_ext_create_conn_complete), \
-	CMD(BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC, cmd_per_adv_create_sync, \
-					cmd_per_adv_create_sync_complete), \
-	CMD(BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL, \
-					cmd_per_adv_create_sync_cancel, NULL), \
-	CMD(BT_HCI_CMD_LE_PERIODIC_ADV_TERM_SYNC, cmd_per_adv_term_sync, \
+	CMD(BT_HCI_CMD_LE_PA_CREATE_SYNC, cmd_pa_create_sync, \
+					cmd_pa_create_sync_complete), \
+	CMD(BT_HCI_CMD_LE_PA_CREATE_SYNC_CANCEL, cmd_pa_create_sync_cancel, \
 					NULL), \
-	CMD(BT_HCI_CMD_LE_ADD_DEV_PERIODIC_ADV_LIST, cmd_per_adv_add, NULL), \
-	CMD(BT_HCI_CMD_LE_REMOVE_DEV_PERIODIC_ADV_LIST, cmd_per_adv_remove, \
-					NULL), \
-	CMD(BT_HCI_CMD_LE_CLEAR_PERIODIC_ADV_LIST, cmd_per_adv_clear, NULL), \
-	CMD(BT_HCI_CMD_LE_READ_PERIODIC_ADV_LIST_SIZE, \
-					cmd_read_per_adv_list_size, NULL), \
+	CMD(BT_HCI_CMD_LE_PA_TERM_SYNC, cmd_pa_term_sync, NULL), \
+	CMD(BT_HCI_CMD_LE_ADD_DEV_PA_LIST, cmd_pa_add, NULL), \
+	CMD(BT_HCI_CMD_LE_REMOVE_DEV_PA_LIST, cmd_pa_remove, NULL), \
+	CMD(BT_HCI_CMD_LE_CLEAR_PA_LIST, cmd_pa_clear, NULL), \
+	CMD(BT_HCI_CMD_LE_READ_PA_LIST_SIZE, cmd_read_pa_list_size, NULL), \
 	CMD(BT_HCI_CMD_LE_READ_TX_POWER, cmd_read_tx_power, NULL), \
 	CMD(BT_HCI_CMD_LE_SET_PRIV_MODE, cmd_set_privacy_mode, NULL)
 

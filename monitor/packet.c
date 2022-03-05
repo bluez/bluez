@@ -7400,37 +7400,37 @@ static void le_remove_adv_set_cmd(const void *data, uint8_t size)
 	print_handle(cmd->handle);
 }
 
-static const struct bitfield_data periodic_adv_properties_table[] = {
+static const struct bitfield_data pa_properties_table[] = {
 	{  6, "Include TxPower"		},
 	{ }
 };
 
-static void print_periodic_adv_properties(uint16_t flags)
+static void print_pa_properties(uint16_t flags)
 {
 	uint16_t mask;
 
 	print_field("Properties: 0x%4.4x", flags);
 
-	mask = print_bitfield(2, flags, periodic_adv_properties_table);
+	mask = print_bitfield(2, flags, pa_properties_table);
 	if (mask)
 		print_text(COLOR_UNKNOWN_ADV_FLAG,
 				"  Unknown advertising properties (0x%4.4x)",
 									mask);
 }
 
-static void le_set_periodic_adv_params_cmd(const void *data, uint8_t size)
+static void le_set_pa_params_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_set_periodic_adv_params *cmd = data;
+	const struct bt_hci_cmd_le_set_pa_params *cmd = data;
 
 	print_handle(cmd->handle);
 	print_slot_125("Min interval", cmd->min_interval);
 	print_slot_125("Max interval", cmd->max_interval);
-	print_periodic_adv_properties(cmd->properties);
+	print_pa_properties(cmd->properties);
 }
 
-static void le_set_periodic_adv_data_cmd(const void *data, uint8_t size)
+static void le_set_pa_data_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_set_periodic_adv_data *cmd = data;
+	const struct bt_hci_cmd_le_set_pa_data *cmd = data;
 	const char *str;
 
 	print_handle(cmd->handle);
@@ -7458,9 +7458,9 @@ static void le_set_periodic_adv_data_cmd(const void *data, uint8_t size)
 	print_eir(cmd->data, cmd->data_len, true);
 }
 
-static void le_set_periodic_adv_enable_cmd(const void *data, uint8_t size)
+static void le_set_pa_enable_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_set_periodic_adv_enable *cmd = data;
+	const struct bt_hci_cmd_le_set_pa_enable *cmd = data;
 
 	print_enable("Periodic advertising", cmd->enable);
 	print_handle(cmd->handle);
@@ -7657,9 +7657,9 @@ static void print_create_sync_options(uint8_t flags)
 	}
 }
 
-static void le_periodic_adv_create_sync_cmd(const void *data, uint8_t size)
+static void le_pa_create_sync_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_periodic_adv_create_sync *cmd = data;
+	const struct bt_hci_cmd_le_pa_create_sync *cmd = data;
 
 	print_create_sync_options(cmd->options);
 	print_field("SID: 0x%2.2x", cmd->sid);
@@ -7672,34 +7672,34 @@ static void le_periodic_adv_create_sync_cmd(const void *data, uint8_t size)
 	print_create_sync_cte_type(cmd->sync_cte_type);
 }
 
-static void le_periodic_adv_term_sync_cmd(const void *data, uint8_t size)
+static void le_pa_term_sync_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_periodic_adv_term_sync *cmd = data;
+	const struct bt_hci_cmd_le_pa_term_sync *cmd = data;
 
 	print_field("Sync handle: 0x%4.4x", cmd->sync_handle);
 }
 
-static void le_add_dev_periodic_adv_list_cmd(const void *data, uint8_t size)
+static void le_add_dev_pa_list_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_add_dev_periodic_adv_list *cmd = data;
+	const struct bt_hci_cmd_le_add_dev_pa_list *cmd = data;
 
 	print_addr_type("Adv address type", cmd->addr_type);
 	print_addr("Adv address", cmd->addr, cmd->addr_type);
 	print_field("SID: 0x%2.2x", cmd->sid);
 }
 
-static void le_remove_dev_periodic_adv_list_cmd(const void *data, uint8_t size)
+static void le_remove_dev_pa_list_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_remove_dev_periodic_adv_list *cmd = data;
+	const struct bt_hci_cmd_le_remove_dev_pa_list *cmd = data;
 
 	print_addr_type("Adv address type", cmd->addr_type);
 	print_addr("Adv address", cmd->addr, cmd->addr_type);
 	print_field("SID: 0x%2.2x", cmd->sid);
 }
 
-static void le_read_periodic_adv_list_size_rsp(const void *data, uint8_t size)
+static void le_read_pa_list_size_rsp(const void *data, uint8_t size)
 {
-	const struct bt_hci_rsp_le_read_dev_periodic_adv_list_size *rsp = data;
+	const struct bt_hci_rsp_le_read_dev_pa_list_size *rsp = data;
 
 	print_status(rsp->status);
 	print_field("List size: 0x%2.2x", rsp->list_size);
@@ -7861,15 +7861,15 @@ static void le_tx_test_cmd_v3(const void *data, uint8_t size)
 		print_field("  Antenna ID: %u", cmd->antenna_ids[i]);
 }
 
-static void le_periodic_adv_rec_enable(const void *data, uint8_t size)
+static void le_pa_rec_enable(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_set_periodic_adv_enable *cmd = data;
+	const struct bt_hci_cmd_le_set_pa_enable *cmd = data;
 
 	print_field("Sync handle: %d", cmd->handle);
 	print_enable("Reporting", cmd->enable);
 }
 
-static void le_periodic_adv_sync_trans(const void *data, uint8_t size)
+static void le_pa_sync_trans(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_periodic_sync_trans *cmd = data;
 
@@ -7878,9 +7878,9 @@ static void le_periodic_adv_sync_trans(const void *data, uint8_t size)
 	print_field("Sync handle: %d", cmd->sync_handle);
 }
 
-static void le_periodic_adv_set_info_trans(const void *data, uint8_t size)
+static void le_pa_set_info_trans(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_periodic_adv_set_info_trans *cmd = data;
+	const struct bt_hci_cmd_pa_set_info_trans *cmd = data;
 
 	print_field("Connection handle: %d", cmd->handle);
 	print_field("Service data: 0x%4.4x", cmd->service_data);
@@ -7909,9 +7909,9 @@ static void print_sync_mode(uint8_t mode)
 	print_field("Mode: %s (0x%2.2x)", str, mode);
 }
 
-static void le_periodic_adv_sync_trans_params(const void *data, uint8_t size)
+static void le_pa_sync_trans_params(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_periodic_adv_sync_trans_params *cmd = data;
+	const struct bt_hci_cmd_pa_sync_trans_params *cmd = data;
 
 	print_field("Connection handle: %d", cmd->handle);
 	print_sync_mode(cmd->mode);
@@ -7922,10 +7922,10 @@ static void le_periodic_adv_sync_trans_params(const void *data, uint8_t size)
 	print_create_sync_cte_type(cmd->cte_type);
 }
 
-static void le_set_default_periodic_adv_sync_trans_params(const void *data,
+static void le_set_default_pa_sync_trans_params(const void *data,
 								uint8_t size)
 {
-	const struct bt_hci_cmd_default_periodic_adv_sync_trans_params *cmd = data;
+	const struct bt_hci_cmd_default_pa_sync_trans_params *cmd = data;
 
 	print_sync_mode(cmd->mode);
 	print_field("Skip: 0x%2.2x", cmd->skip);
@@ -9141,13 +9141,13 @@ static const struct opcode_data opcode_table[] = {
 				null_cmd, 0, true,
 				status_rsp, 1, true },
 	{ 0x203e, 298, "LE Set Periodic Advertising Parameters",
-				le_set_periodic_adv_params_cmd, 7, true,
+				le_set_pa_params_cmd, 7, true,
 				status_rsp, 1, true },
 	{ 0x203f, 299, "LE Set Periodic Advertising Data",
-				le_set_periodic_adv_data_cmd, 3, false,
+				le_set_pa_data_cmd, 3, false,
 				status_rsp, 1, true },
 	{ 0x2040, 300, "LE Set Periodic Advertising Enable",
-				le_set_periodic_adv_enable_cmd, 2, true,
+				le_set_pa_enable_cmd, 2, true,
 				status_rsp, 1, true },
 	{ 0x2041, 301, "LE Set Extended Scan Parameters",
 				le_set_ext_scan_params_cmd, 3, false,
@@ -9159,26 +9159,26 @@ static const struct opcode_data opcode_table[] = {
 				le_ext_create_conn_cmd, 10, false,
 				status_rsp, 1, true },
 	{ 0x2044, 304, "LE Periodic Advertising Create Sync",
-				le_periodic_adv_create_sync_cmd, 14, true,
+				le_pa_create_sync_cmd, 14, true,
 				status_rsp, 1, true },
 	{ 0x2045, 305, "LE Periodic Advertising Create Sync Cancel",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
 	{ 0x2046, 306, "LE Periodic Advertising Terminate Sync",
-				le_periodic_adv_term_sync_cmd, 2, true,
+				le_pa_term_sync_cmd, 2, true,
 				status_rsp, 1, true },
 	{ 0x2047, 307, "LE Add Device To Periodic Advertiser List",
-				le_add_dev_periodic_adv_list_cmd, 8, true,
+				le_add_dev_pa_list_cmd, 8, true,
 				status_rsp, 1, true },
 	{ 0x2048, 308, "LE Remove Device From Periodic Advertiser List",
-				le_remove_dev_periodic_adv_list_cmd, 8, true,
+				le_remove_dev_pa_list_cmd, 8, true,
 				status_rsp, 1, true },
 	{ 0x2049, 309, "LE Clear Periodic Advertiser List",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
 	{ 0x204a, 310, "LE Read Periodic Advertiser List Size",
 				null_cmd, 0, true,
-				le_read_periodic_adv_list_size_rsp, 2, true },
+				le_read_pa_list_size_rsp, 2, true },
 	{ 0x204b, 311, "LE Read Transmit Power",
 				null_cmd, 0, true,
 				le_read_tx_power_rsp, 3, true },
@@ -9198,20 +9198,20 @@ static const struct opcode_data opcode_table[] = {
 				le_tx_test_cmd_v3, 9, false,
 				status_rsp, 1, true },
 	{ 0x2059, 325, "LE Periodic Advertising Receive Enable",
-				le_periodic_adv_rec_enable, 3, true,
+				le_pa_rec_enable, 3, true,
 				status_rsp, 1, true },
 	{ 0x205a, 326, "LE Periodic Advertising Sync Transfer",
-				le_periodic_adv_sync_trans, 6, true,
+				le_pa_sync_trans, 6, true,
 				status_handle_rsp, 3, true },
 	{ 0x205b, 327, "LE Periodic Advertising Set Info Transfer",
-				le_periodic_adv_set_info_trans, 5, true,
+				le_pa_set_info_trans, 5, true,
 				status_handle_rsp, 3, true },
 	{ 0x205c, 328, "LE Periodic Advertising Sync Transfer Parameters",
-				le_periodic_adv_sync_trans_params, 8, true,
+				le_pa_sync_trans_params, 8, true,
 				status_handle_rsp, 3, true},
 	{ 0x205d, 329, "LE Set Default Periodic Advertisng Sync Transfer "
 				"Parameters",
-				le_set_default_periodic_adv_sync_trans_params,
+				le_set_default_pa_sync_trans_params,
 				6, true, status_rsp, 1, true},
 	{ BT_HCI_CMD_LE_READ_BUFFER_SIZE_V2,
 				BT_HCI_BIT_LE_READ_BUFFER_SIZE_V2,
@@ -10631,7 +10631,7 @@ static void le_ext_adv_report_evt(const void *data, uint8_t size)
 	}
 }
 
-static void le_per_adv_sync(const void *data, uint8_t size)
+static void le_pa_sync(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_per_sync_established *evt = data;
 
@@ -10649,9 +10649,9 @@ static void le_per_adv_sync(const void *data, uint8_t size)
 	print_field("Advertiser clock accuracy: 0x%2.2x", evt->clock_accuracy);
 }
 
-static void le_per_adv_report_evt(const void *data, uint8_t size)
+static void le_pa_report_evt(const void *data, uint8_t size)
 {
-	const struct bt_hci_le_per_adv_report *evt = data;
+	const struct bt_hci_le_pa_report *evt = data;
 	const char *color_on;
 	const char *str;
 
@@ -10710,7 +10710,7 @@ static void le_per_adv_report_evt(const void *data, uint8_t size)
 	packet_hexdump(evt->data, evt->data_len);
 }
 
-static void le_per_adv_sync_lost(const void *data, uint8_t size)
+static void le_pa_sync_lost(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_per_sync_lost *evt = data;
 
@@ -10768,9 +10768,9 @@ static void le_cte_request_failed_evt(const void *data, uint8_t size)
 	print_field("Connection handle: %d", evt->handle);
 }
 
-static void le_per_adv_sync_trans_rec_evt(const void *data, uint8_t size)
+static void le_pa_sync_trans_rec_evt(const void *data, uint8_t size)
 {
-	const struct bt_hci_evt_le_per_adv_sync_trans_rec *evt = data;
+	const struct bt_hci_evt_le_pa_sync_trans_rec *evt = data;
 
 	print_status(evt->status);
 	print_field("Handle: %d", evt->handle);
@@ -10957,11 +10957,11 @@ static const struct subevent_data le_meta_event_table[] = {
 	{ 0x0d, "LE Extended Advertising Report",
 				le_ext_adv_report_evt, 1, false},
 	{ 0x0e, "LE Periodic Advertising Sync Established",
-				le_per_adv_sync, 15, true },
+				le_pa_sync, 15, true },
 	{ 0x0f, "LE Periodic Advertising Report",
-				le_per_adv_report_evt, 7, false},
+				le_pa_report_evt, 7, false},
 	{ 0x10, "LE Periodic Advertising Sync Lost",
-				le_per_adv_sync_lost, 2, true},
+				le_pa_sync_lost, 2, true},
 	{ 0x11, "LE Scan Timeout" },
 	{ 0x12, "LE Advertising Set Terminated",
 				le_adv_set_term_evt, 5, true},
@@ -10972,7 +10972,7 @@ static const struct subevent_data le_meta_event_table[] = {
 	{ 0x17, "LE CTE Request Failed",
 				le_cte_request_failed_evt, 3, true},
 	{ 0x18, "LE Periodic Advertising Sync Transfer Received",
-					le_per_adv_sync_trans_rec_evt, 19,
+					le_pa_sync_trans_rec_evt, 19,
 					true},
 	{ BT_HCI_EVT_LE_CIS_ESTABLISHED,
 				"LE Connected Isochronous Stream Established",
