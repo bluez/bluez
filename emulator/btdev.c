@@ -197,6 +197,7 @@ struct btdev {
 	uint16_t le_periodic_max_interval;
 	uint8_t  le_periodic_data_len;
 	uint8_t  le_periodic_data[31];
+	struct bt_hci_cmd_le_periodic_adv_create_sync pa_sync_cmd;
 	uint16_t le_periodic_sync_handle;
 	uint8_t  le_ltk[16];
 	struct {
@@ -5160,6 +5161,85 @@ static void scan_ext_adv(struct btdev *dev, struct btdev *remote)
 	}
 }
 
+static void send_per_adv(struct btdev *dev, const struct btdev *remote,
+						uint8_t offset)
+{
+	struct __packed {
+		struct bt_hci_le_per_adv_report ev;
+		uint8_t data[31];
+	} pdu;
+
+	memset(&pdu.ev, 0, sizeof(pdu.ev));
+	pdu.ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
+	pdu.ev.tx_power = 127;
+	pdu.ev.rssi = 127;
+	pdu.ev.cte_type = 0x0ff;
+
+	if ((size_t) remote->le_periodic_data_len - offset > sizeof(pdu.data)) {
+		pdu.ev.data_status = 0x01;
+		pdu.ev.data_len = sizeof(pdu.data);
+	} else {
+		pdu.ev.data_status = 0x00;
+		pdu.ev.data_len = remote->le_periodic_data_len - offset;
+	}
+
+	memcpy(pdu.data, remote->le_periodic_data + offset, pdu.ev.data_len);
+
+	le_meta_event(dev, BT_HCI_EVT_LE_PER_ADV_REPORT, &pdu,
+					sizeof(pdu.ev) + pdu.ev.data_len);
+
+	if (pdu.ev.data_status == 0x01) {
+		offset += pdu.ev.data_len;
+		send_per_adv(dev, remote, offset);
+	}
+}
+
+static void le_per_adv_sync_estabilished(struct btdev *dev,
+					struct btdev *remote, uint8_t status)
+{
+	struct bt_hci_evt_le_per_sync_established ev;
+	struct bt_hci_cmd_le_periodic_adv_create_sync *cmd = &dev->pa_sync_cmd;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.status = status;
+
+	if (status) {
+		memset(&dev->pa_sync_cmd, 0, sizeof(dev->pa_sync_cmd));
+		dev->le_periodic_sync_handle = 0x0000;
+		le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev,
+							sizeof(ev));
+		return;
+	}
+
+	dev->le_periodic_sync_handle = SYC_HANDLE;
+
+	ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
+	ev.addr_type = cmd->addr_type;
+	memcpy(ev.addr, cmd->addr, sizeof(ev.addr));
+	ev.phy = 0x01;
+	ev.interval = remote->le_periodic_min_interval;
+	ev.clock_accuracy = 0x07;
+
+	memset(&dev->pa_sync_cmd, 0, sizeof(dev->pa_sync_cmd));
+
+	le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev, sizeof(ev));
+	send_per_adv(dev, remote, 0);
+}
+
+static void scan_per_adv(struct btdev *dev, struct btdev *remote)
+{
+	if (dev->le_periodic_sync_handle != INV_HANDLE ||
+				!remote->le_periodic_adv_enable)
+		return;
+
+
+	if (remote != find_btdev_by_bdaddr_type(dev->pa_sync_cmd.addr,
+						dev->pa_sync_cmd.addr_type))
+		return;
+
+	le_per_adv_sync_estabilished(dev, remote, BT_HCI_ERR_SUCCESS);
+}
+
 static int cmd_set_ext_scan_enable_complete(struct btdev *dev, const void *data,
 							uint8_t len)
 {
@@ -5174,6 +5254,7 @@ static int cmd_set_ext_scan_enable_complete(struct btdev *dev, const void *data,
 			continue;
 
 		scan_ext_adv(dev, btdev_list[i]);
+		scan_per_adv(dev, btdev_list[i]);
 	}
 
 	return 0;
@@ -5301,74 +5382,14 @@ static int cmd_per_adv_create_sync(struct btdev *dev, const void *data,
 
 	if (dev->le_periodic_sync_handle)
 		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
-	else
+	else {
 		dev->le_periodic_sync_handle = INV_HANDLE;
+		memcpy(&dev->pa_sync_cmd, data, len);
+	}
 
 	cmd_status(dev, status, BT_HCI_CMD_LE_PERIODIC_ADV_CREATE_SYNC);
 
 	return 0;
-}
-
-static void send_per_adv(struct btdev *dev, const struct btdev *remote,
-						uint8_t offset)
-{
-	struct __packed {
-		struct bt_hci_le_per_adv_report ev;
-		uint8_t data[31];
-	} pdu;
-
-	memset(&pdu.ev, 0, sizeof(pdu.ev));
-	pdu.ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
-	pdu.ev.tx_power = 127;
-	pdu.ev.rssi = 127;
-	pdu.ev.cte_type = 0x0ff;
-
-	if ((size_t) remote->le_periodic_data_len - offset > sizeof(pdu.data)) {
-		pdu.ev.data_status = 0x01;
-		pdu.ev.data_len = sizeof(pdu.data);
-	} else {
-		pdu.ev.data_status = 0x00;
-		pdu.ev.data_len = remote->le_periodic_data_len - offset;
-	}
-
-	memcpy(pdu.data, remote->le_periodic_data + offset, pdu.ev.data_len);
-
-	le_meta_event(dev, BT_HCI_EVT_LE_PER_ADV_REPORT, &pdu,
-					sizeof(pdu.ev) + pdu.ev.data_len);
-
-	if (pdu.ev.data_status == 0x01) {
-		offset += pdu.ev.data_len;
-		send_per_adv(dev, remote, offset);
-	}
-}
-
-static void le_per_adv_sync_estabilished(struct btdev *dev,
-		const struct bt_hci_cmd_le_periodic_adv_create_sync *cmd,
-		struct btdev *remote, uint8_t status)
-{
-	struct bt_hci_evt_le_per_sync_established ev;
-
-	memset(&ev, 0, sizeof(ev));
-	ev.status = status;
-
-	if (status) {
-		dev->le_periodic_sync_handle = 0x0000;
-		le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev,
-							sizeof(ev));
-		return;
-	}
-
-	dev->le_periodic_sync_handle = SYC_HANDLE;
-
-	ev.handle = cpu_to_le16(dev->le_periodic_sync_handle);
-	ev.addr_type = cmd->addr_type;
-	memcpy(ev.addr, cmd->addr, sizeof(ev.addr));
-	ev.phy = 0x01;
-	ev.interval = remote->le_periodic_min_interval;
-	ev.clock_accuracy = 0x07;
-
-	le_meta_event(dev, BT_HCI_EVT_LE_PER_SYNC_ESTABLISHED, &ev, sizeof(ev));
-	send_per_adv(dev, remote, 0);
 }
 
 static int cmd_per_adv_create_sync_complete(struct btdev *dev, const void *data,
@@ -5390,7 +5411,7 @@ static int cmd_per_adv_create_sync_complete(struct btdev *dev, const void *data,
 	if (!remote || !remote->le_periodic_adv_enable)
 		return 0;
 
-	le_per_adv_sync_estabilished(dev, cmd, remote, BT_HCI_ERR_SUCCESS);
+	le_per_adv_sync_estabilished(dev, remote, BT_HCI_ERR_SUCCESS);
 
 	return 0;
 }
@@ -5416,8 +5437,7 @@ static int cmd_per_adv_create_sync_cancel(struct btdev *dev, const void *data,
 	 * the error code Operation Cancelled by Host (0x44).
 	 */
 	if (!status)
-		le_per_adv_sync_estabilished(dev, NULL, NULL,
-							BT_HCI_ERR_CANCELLED);
+		le_per_adv_sync_estabilished(dev, NULL, BT_HCI_ERR_CANCELLED);
 
 	return 0;
 }
