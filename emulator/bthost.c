@@ -3096,6 +3096,19 @@ void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable)
 	send_command(bthost, BT_HCI_CMD_LE_SET_PA_ENABLE, &cp, sizeof(cp));
 }
 
+void bthost_create_big(struct bthost *bthost, uint8_t num_bis)
+{
+	struct bt_hci_cmd_le_create_big cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = 0x01;
+	cp.adv_handle = 0x01;
+	cp.num_bis = num_bis;
+	cp.bis.sdu = 40;
+	cp.bis.phy = 0x01;
+	send_command(bthost, BT_HCI_CMD_LE_CREATE_BIG, &cp, sizeof(cp));
+}
+
 bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr)
 {
 	const struct queue_entry *entry;
