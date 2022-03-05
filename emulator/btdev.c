@@ -40,6 +40,7 @@
 #define AL_SIZE			16
 #define RL_SIZE			16
 #define CIS_SIZE		3
+#define BIS_SIZE		3
 
 #define has_bredr(btdev)	(!((btdev)->features[4] & 0x20))
 #define has_le(btdev)		(!!((btdev)->features[4] & 0x40))
@@ -65,6 +66,7 @@ struct btdev_conn {
 	uint8_t  type;
 	struct btdev *dev;
 	struct btdev_conn *link;
+	void *data;
 };
 
 struct btdev_al {
@@ -199,6 +201,7 @@ struct btdev {
 	uint8_t  le_pa_data[31];
 	struct bt_hci_cmd_le_pa_create_sync pa_sync_cmd;
 	uint16_t le_pa_sync_handle;
+	uint8_t  big_handle;
 	uint8_t  le_ltk[16];
 	struct {
 		struct bt_hci_cmd_le_set_cig_params params;
@@ -690,6 +693,7 @@ static void conn_remove(void *data)
 
 	queue_remove(conn->dev->conns, conn);
 
+	free(conn->data);
 	free(conn);
 }
 
@@ -1121,9 +1125,65 @@ static struct btdev_conn *conn_add_cis(struct btdev_conn *acl, uint16_t handle)
 	return conn_link(acl->dev, acl->link->dev, handle, HCI_ISODATA_PKT);
 }
 
-static struct btdev_conn *conn_add_bis(struct btdev *dev, uint16_t handle)
+static struct btdev_conn *conn_add_bis(struct btdev *dev, uint16_t handle,
+						const struct bt_hci_bis *bis)
 {
-	return conn_new(dev, handle, HCI_ISODATA_PKT);
+	struct btdev_conn *conn;
+
+	conn = conn_new(dev, handle, HCI_ISODATA_PKT);
+	if (!conn)
+		return conn;
+
+	conn->data = util_memdup(bis, sizeof(*bis));
+
+	return conn;
+}
+
+static struct btdev_conn *find_bis_index(struct btdev *remote, uint8_t index)
+{
+	struct btdev_conn *conn;
+	const struct queue_entry *entry;
+
+	for (entry = queue_get_entries(remote->conns); entry;
+					entry = entry->next) {
+		conn = entry->data;
+
+		/* Skip if not a broadcast */
+		if (conn->type != HCI_ISODATA_PKT || conn->link)
+			continue;
+
+		if (!index)
+			return conn;
+
+		index--;
+	}
+
+	return NULL;
+}
+
+static struct btdev_conn *conn_link_bis(struct btdev *dev, struct btdev *remote,
+							uint8_t index)
+{
+	struct btdev_conn *conn;
+	struct btdev_conn *bis;
+
+	bis = find_bis_index(remote, index);
+	if (!bis)
+		return NULL;
+
+	conn = conn_add_bis(dev, ISO_HANDLE, bis->data);
+	if (!conn)
+		return NULL;
+
+	bis->link = conn;
+	conn->link = bis;
+
+	util_debug(dev->debug_callback, dev->debug_data,
+				"bis %p handle 0x%04x", bis, bis->handle);
+	util_debug(dev->debug_callback, dev->debug_data,
+				"conn %p handle 0x%04x", conn, conn->handle);
+
+	return conn;
 }
 
 static void conn_complete(struct btdev *btdev,
@@ -5103,8 +5163,6 @@ static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
 	ev.interval = remote->le_pa_min_interval;
 	ev.clock_accuracy = 0x07;
 
-	memset(&dev->pa_sync_cmd, 0, sizeof(dev->pa_sync_cmd));
-
 	le_meta_event(dev, BT_HCI_EVT_LE_PA_SYNC_ESTABLISHED, &ev, sizeof(ev));
 	send_pa(dev, remote, 0);
 }
@@ -5858,14 +5916,14 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 
 		memset(&pdu, 0, sizeof(pdu));
 
-		conn = conn_add_bis(dev, ISO_HANDLE);
+		conn = conn_add_bis(dev, ISO_HANDLE, bis);
 		if (!conn) {
 			pdu.evt.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 			goto done;
 		}
 
 		pdu.evt.handle = cmd->handle;
-		pdu.evt.num_bis = 0x01;
+		pdu.evt.num_bis++;
 		pdu.evt.phy = bis->phy;
 		pdu.evt.max_pdu = bis->sdu;
 		memcpy(pdu.evt.sync_delay, bis->sdu_interval, 3);
@@ -5910,8 +5968,89 @@ static int cmd_term_big_complete(struct btdev *dev, const void *data,
 
 static int cmd_big_create_sync(struct btdev *dev, const void *data, uint8_t len)
 {
-	/* TODO */
-	return -ENOTSUP;
+	const struct bt_hci_cmd_le_big_create_sync *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	/* If the Sync_Handle does not exist, the Controller shall return the
+	 * error code Unknown Advertising Identifier (0x42).
+	 */
+	if (dev->le_pa_sync_handle != le16_to_cpu(cmd->sync_handle))
+		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
+
+	/* If the Host sends this command with a BIG_Handle that is already
+	 * allocated, the Controller shall return the error code Command
+	 * Disallowed (0x0C).
+	 */
+	if (dev->big_handle == cmd->handle)
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+
+	/* If the Num_BIS parameter is greater than the total number of BISes
+	 * in the BIG, the Controller shall return the error code Unsupported
+	 * Feature or Parameter Value (0x11).
+	 */
+	if (cmd->num_bis != len - sizeof(*cmd))
+		status = BT_HCI_ERR_UNSUPPORTED_FEATURE;
+
+	if (status)
+		return status;
+
+	cmd_status(dev, status, BT_HCI_CMD_LE_BIG_CREATE_SYNC);
+
+	return status;
+}
+
+static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_big_create_sync *cmd = data;
+	struct __packed {
+		struct bt_hci_evt_le_big_sync_estabilished ev;
+		uint16_t bis[BIS_SIZE];
+	} pdu;
+	struct btdev *remote;
+	struct btdev_conn *conn = NULL;
+	struct bt_hci_bis *bis;
+	int i;
+
+	remote = find_btdev_by_bdaddr_type(dev->pa_sync_cmd.addr,
+						dev->pa_sync_cmd.addr_type);
+	if (!remote)
+		return 0;
+
+	memset(&pdu.ev, 0, sizeof(pdu.ev));
+
+	for (i = 0; i < cmd->num_bis; i++) {
+		conn = conn_link_bis(dev, remote, i);
+		if (!conn)
+			break;
+
+		pdu.bis[i] = cpu_to_le16(conn->handle);
+	}
+
+	if (i != cmd->num_bis || !conn) {
+		pdu.ev.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+		le_meta_event(dev, BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED, &pdu,
+					sizeof(pdu.ev));
+		return 0;
+	}
+
+	dev->big_handle = cmd->handle;
+	bis = conn->data;
+
+	pdu.ev.handle = cmd->handle;
+	memcpy(pdu.ev.latency, bis->sdu_interval, sizeof(pdu.ev.interval));
+	pdu.ev.nse = 0x01;
+	pdu.ev.bn = 0x01;
+	pdu.ev.pto = 0x00;
+	pdu.ev.irc = 0x01;
+	pdu.ev.max_pdu = bis->sdu;
+	pdu.ev.interval = bis->latency;
+	pdu.ev.num_bis = cmd->num_bis;
+
+	le_meta_event(dev, BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED, &pdu,
+			sizeof(pdu.ev) + (cmd->num_bis * sizeof(uint16_t)));
+
+	return 0;
 }
 
 static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
@@ -6125,7 +6264,8 @@ static int cmd_config_data_path(struct btdev *dev, const void *data,
 			cmd_create_big_complete), \
 	CMD(BT_HCI_CMD_LE_CREATE_BIG_TEST, cmd_create_big_test, NULL), \
 	CMD(BT_HCI_CMD_LE_TERM_BIG, cmd_term_big, cmd_term_big_complete), \
-	CMD(BT_HCI_CMD_LE_BIG_CREATE_SYNC, cmd_big_create_sync, NULL), \
+	CMD(BT_HCI_CMD_LE_BIG_CREATE_SYNC, cmd_big_create_sync, \
+			cmd_big_create_sync_complete), \
 	CMD(BT_HCI_CMD_LE_BIG_TERM_SYNC, cmd_big_term_sync, NULL), \
 	CMD(BT_HCI_CMD_LE_REQ_PEER_SCA, cmd_req_peer_sca, NULL), \
 	CMD(BT_HCI_CMD_LE_SETUP_ISO_PATH, cmd_setup_iso_path, NULL), \

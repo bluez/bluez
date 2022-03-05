@@ -2797,6 +2797,7 @@ struct bt_hci_cmd_le_term_big {
 #define BT_HCI_CMD_LE_BIG_CREATE_SYNC		0x206b
 #define BT_HCI_BIT_LE_BIG_CREATE_SYNC		BT_HCI_CMD_BIT(43, 0)
 struct bt_hci_bis_sync {
+	uint8_t  index;
 } __attribute__ ((packed));
 
 struct bt_hci_cmd_le_big_create_sync {
