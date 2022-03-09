@@ -906,6 +906,7 @@ static void usage(void)
 		"\t-a, --auto             Find tests and run them\n"
 		"\t-d, --dbus             Start D-Bus daemon\n"
 		"\t-m, --monitor          Start btmon\n"
+		"\t-l, --emulator         Start btvirt\n"
 		"\t-u, --unix [path]      Provide serial device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
