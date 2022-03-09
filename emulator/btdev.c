@@ -4671,7 +4671,8 @@ static int cmd_set_ext_adv_params(struct btdev *dev, const void *data,
 	const struct bt_hci_cmd_le_set_ext_adv_params *cmd = data;
 	struct bt_hci_rsp_le_set_ext_adv_params rsp;
 	struct le_ext_adv *ext_adv;
-	uint8_t status;
+
+	memset(&rsp, 0, sizeof(rsp));
 
 	/* Check if Ext Adv is already existed */
 	ext_adv = queue_find(dev->le_ext_adv, match_ext_adv_handle,
@@ -4679,26 +4680,26 @@ static int cmd_set_ext_adv_params(struct btdev *dev, const void *data,
 	if (!ext_adv) {
 		/* No more than maximum number */
 		if (queue_length(dev->le_ext_adv) >= MAX_EXT_ADV_SETS) {
-			status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+			rsp.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 			cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
-						&status, sizeof(status));
+						&rsp, sizeof(rsp));
 			return 0;
 		}
 
 		/* Create new set */
 		ext_adv = le_ext_adv_new(dev, cmd->handle);
 		if (!ext_adv) {
-			status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+			rsp.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 			cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
-						&status, sizeof(status));
+						&rsp, sizeof(rsp));
 			return 0;
 		}
 	}
 
 	if (ext_adv->enable) {
-		status = BT_HCI_ERR_COMMAND_DISALLOWED;
-		cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS, &status,
-							sizeof(status));
+		rsp.status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS, &rsp,
+							sizeof(rsp));
 		return 0;
 	}
 
