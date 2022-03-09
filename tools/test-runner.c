@@ -609,12 +609,17 @@ static const char *btvirt_table[] = {
 	NULL
 };
 
-static pid_t start_btvirt(void)
+static pid_t start_btvirt(const char *home)
 {
 	const char *btvirt = NULL;
 	char *argv[3], *envp[2];
 	pid_t pid;
 	int i;
+
+	if (chdir(home + 5) < 0) {
+		perror("Failed to change home directory for daemon");
+		return -1;
+	}
 
 	for (i = 0; btvirt_table[i]; i++) {
 		struct stat st;
@@ -690,7 +695,7 @@ static void run_command(char *cmdname, char *home)
 		monitor_pid = -1;
 
 	if (start_emulator)
-		emulator_pid = start_btvirt();
+		emulator_pid = start_btvirt(home);
 	else
 		emulator_pid = -1;
 
