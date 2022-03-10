@@ -5860,7 +5860,7 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 	memset(&evt, 0, sizeof(evt));
 
 	evt.status = status;
-	evt.conn_handle = cpu_to_le16(conn->handle);
+	evt.conn_handle = conn ? cpu_to_le16(conn->handle) : 0x0000;
 
 	if (!evt.status) {
 		struct btdev *remote = conn->link->dev;

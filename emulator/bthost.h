@@ -100,6 +100,12 @@ void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable);
 void bthost_create_big(struct bthost *bthost, uint8_t num_bis);
 bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr);
 
+void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
+						uint8_t cis_id);
+void bthost_create_cis(struct bthost *bthost, uint16_t cis_handle,
+						uint16_t acl_handle);
+
+
 void bthost_set_scan_params(struct bthost *bthost, uint8_t scan_type,
 				uint8_t addr_type, uint8_t filter_policy);
 void bthost_set_scan_enable(struct bthost *bthost, uint8_t enable);

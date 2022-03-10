@@ -3127,6 +3127,48 @@ bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr)
 	return false;
 }
 
+void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
+						uint8_t cis_id)
+{
+	struct bt_hci_cmd_le_set_cig_params *cp;
+
+	cp = malloc(sizeof(*cp) + sizeof(*cp->cis));
+	memset(cp, 0, sizeof(*cp) + sizeof(*cp->cis));
+	cp->cig_id = cig_id;
+	put_le24(10000, cp->c_interval);
+	put_le24(10000, cp->p_interval);
+	cp->c_latency = cpu_to_le16(10);
+	cp->p_latency = cpu_to_le16(10);
+	cp->num_cis = 0x01;
+	cp->cis[0].cis_id = cis_id;
+	cp->cis[0].c_sdu = 40;
+	cp->cis[0].p_sdu = 40;
+	cp->cis[0].c_phy = 0x02;
+	cp->cis[0].p_phy = 0x02;
+	cp->cis[0].c_rtn = 2;
+	cp->cis[0].p_rtn = 2;
+
+	send_command(bthost, BT_HCI_CMD_LE_SET_CIG_PARAMS, cp,
+				sizeof(*cp) + sizeof(*cp->cis));
+	free(cp);
+}
+
+void bthost_create_cis(struct bthost *bthost, uint16_t cis_handle,
+						uint16_t acl_handle)
+{
+	struct bt_hci_cmd_le_create_cis *cp;
+
+	cp = malloc(sizeof(*cp) + sizeof(*cp->cis));
+	memset(cp, 0, sizeof(*cp) + sizeof(*cp->cis));
+	cp->num_cis = 0x01;
+	cp->cis[0].cis_handle = cpu_to_le16(cis_handle);
+	cp->cis[0].acl_handle = cpu_to_le16(acl_handle);
+
+	send_command(bthost, BT_HCI_CMD_LE_CREATE_CIS, cp,
+				sizeof(*cp) + sizeof(*cp->cis));
+	free(cp);
+}
+
 void bthost_write_ssp_mode(struct bthost *bthost, uint8_t mode)
 {
 	send_command(bthost, BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE, &mode, 1);
