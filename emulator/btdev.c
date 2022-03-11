@@ -5870,10 +5870,10 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 				sizeof(remote->le_cig.params.c_interval));
 		memcpy(evt.cis_sync_delay, remote->le_cig.params.p_interval,
 				sizeof(remote->le_cig.params.p_interval));
-		memcpy(evt.c_latency, &remote->le_cig.params.c_latency,
-				sizeof(remote->le_cig.params.c_latency));
-		memcpy(evt.p_latency, &remote->le_cig.params.p_latency,
-				sizeof(remote->le_cig.params.p_latency));
+		memcpy(evt.c_latency, &remote->le_cig.params.c_interval,
+				sizeof(remote->le_cig.params.c_interval));
+		memcpy(evt.p_latency, &remote->le_cig.params.p_interval,
+				sizeof(remote->le_cig.params.p_interval));
 		evt.c_phy = remote->le_cig.cis[0].c_phy;
 		evt.p_phy = remote->le_cig.cis[0].p_phy;
 		evt.nse = 0x01;
