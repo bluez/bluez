@@ -3104,8 +3104,11 @@ void bthost_create_big(struct bthost *bthost, uint8_t num_bis)
 	cp.handle = 0x01;
 	cp.adv_handle = 0x01;
 	cp.num_bis = num_bis;
+	put_le24(10000, cp.bis.sdu_interval);
 	cp.bis.sdu = 40;
-	cp.bis.phy = 0x01;
+	cp.bis.latency = cpu_to_le16(10);
+	cp.bis.rtn = 0x02;
+	cp.bis.phy = 0x02;
 	send_command(bthost, BT_HCI_CMD_LE_CREATE_BIG, &cp, sizeof(cp));
 }
 
