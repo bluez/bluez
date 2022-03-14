@@ -1523,8 +1523,9 @@ static void send_service_changed(struct btd_gatt_database *database,
 	put_le16(start, value);
 	put_le16(end, value + 2);
 
-	gatt_db_attribute_notify(database->svc_chngd, value, sizeof(value),
-				NULL);
+	if (!gatt_db_attribute_notify(database->svc_chngd, value, sizeof(value),
+								NULL))
+		error("Failed to notify Service Changed");
 }
 
 static void gatt_db_service_added(struct gatt_db_attribute *attrib,
@@ -3967,6 +3968,7 @@ void btd_gatt_database_restore_svc_chng_ccc(struct btd_gatt_database *database)
 	put_le16(0x0001, value);
 	put_le16(0xffff, value + 2);
 
-	gatt_db_attribute_notify(database->svc_chngd, value, sizeof(value),
-				NULL);
+	if (!gatt_db_attribute_notify(database->svc_chngd, value, sizeof(value),
+								NULL))
+		error("Failed to notify Service Changed");
 }
