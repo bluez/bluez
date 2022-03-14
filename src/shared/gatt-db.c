@@ -1528,32 +1528,71 @@ void gatt_db_service_foreach_char(struct gatt_db_attribute *attrib,
 	gatt_db_service_foreach(attrib, &characteristic_uuid, func, user_data);
 }
 
+static int gatt_db_attribute_get_index(struct gatt_db_attribute *attrib)
+{
+	struct gatt_db_service *service;
+	int index;
+
+	if (!attrib)
+		return -1;
+
+	service = attrib->service;
+	index = attrib->handle - service->attributes[0]->handle;
+
+	if (index > (service->num_handles - 1))
+		return -1;
+
+	return index;
+}
+
+static struct gatt_db_attribute *
+gatt_db_attribute_get_value(struct gatt_db_attribute *attrib)
+{
+	struct gatt_db_service *service;
+	int index;
+
+	if (!attrib)
+		return NULL;
+
+	index = gatt_db_attribute_get_index(attrib);
+	if (index < 0)
+		return NULL;
+
+	service = attrib->service;
+
+	if (!bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
+		index++;
+	else if (bt_uuid_cmp(&characteristic_uuid,
+				&service->attributes[index - 1]->uuid))
+		return NULL;
+
+	return service->attributes[index];
+}
+
 void gatt_db_service_foreach_desc(struct gatt_db_attribute *attrib,
 						gatt_db_attribute_cb_t func,
 						void *user_data)
 {
 	struct gatt_db_service *service;
 	struct gatt_db_attribute *attr;
+	int index;
 	uint16_t i;
 
 	if (!attrib || !func)
 		return;
 
-	/* Return if this attribute is not a characteristic declaration */
-	if (bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
+	attrib = gatt_db_attribute_get_value(attrib);
+	if (!attrib)
+		return;
+
+	index = gatt_db_attribute_get_index(attrib);
+	if (index < 0)
 		return;
 
 	service = attrib->service;
 
 	/* Start from the attribute following the value handle */
-	for (i = 0; i < service->num_handles; i++) {
-		if (service->attributes[i] == attrib) {
-			i += 2;
-			break;
-		}
-	}
-
-	for (; i < service->num_handles; i++) {
+	for (i = index + 1; i < service->num_handles; i++) {
 		attr = service->attributes[i];
 		if (!attr)
 			continue;
@@ -2163,8 +2202,8 @@ bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
 	if (!attrib || !attrib->notify_func)
 		return false;
 
-	/* Return if this attribute is not a characteristic declaration */
-	if (bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
+	attrib = gatt_db_attribute_get_value(attrib);
+	if (!attrib)
 		return false;
 
 	ccc = gatt_db_attribute_get_ccc(attrib);
