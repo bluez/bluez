@@ -1,3 +1,11 @@
+ver 5.64:
+	Fix issue with handling A2DP discover procedure.
+	Fix issue with media endpoint replies and SetConfiguration.
+	Fix issue with HoG queuing events before report map is read.
+	Fix issue with HoG and read order of GATT attributes.
+	Fix issue with HoG and not using UHID_CREATE2 interface.
+	Fix issue with failed scanning for 5 minutes after reboot.
+
 ver 5.63:
 	Fix issue with storing IRK causing invalid read access.
 	Fix issue with disconnecting due to GattCharacteristic1.MTU.
