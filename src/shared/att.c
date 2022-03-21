@@ -308,10 +308,12 @@ static void att_log(struct bt_att *att, uint8_t level, const char *format,
 }
 
 #define att_debug(_att, _format, _arg...) \
-	att_log(_att, BT_ATT_DEBUG, _format, ## _arg)
+	att_log(_att, BT_ATT_DEBUG, "%s:%s() " _format, __FILE__, __func__,\
+		## _arg)
 
 #define att_verbose(_att, _format, _arg...) \
-	att_log(_att, BT_ATT_DEBUG_VERBOSE, _format, ## _arg)
+	att_log(_att, BT_ATT_DEBUG_VERBOSE, "%s:%s() " _format, __FILE__, \
+		__func__, ## _arg)
 
 static void att_hexdump(struct bt_att *att, char dir, const void *data,
 							size_t len)
