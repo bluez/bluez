@@ -5545,7 +5545,7 @@ static void gatt_client_service_changed(uint16_t start_handle,
 
 static void gatt_debug(const char *str, void *user_data)
 {
-	DBG("%s", str);
+	DBG_IDX(0xffff, "%s", str);
 }
 
 static void gatt_client_init(struct btd_device *device)
