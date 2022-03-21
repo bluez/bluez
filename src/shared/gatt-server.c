@@ -41,6 +41,9 @@
 
 #define NFY_MULT_TIMEOUT 10
 
+#define DBG(_server, _format, arg...) \
+	gatt_log(_server, "%s:%s() " _format, __FILE__, __func__, ## arg)
+
 struct async_read_op {
 	struct bt_att_chan *chan;
 	struct bt_gatt_server *server;
@@ -233,6 +236,18 @@ static bool encode_read_by_grp_type_rsp(struct gatt_db *db, struct queue *q,
 	return true;
 }
 
+static void gatt_log(struct bt_gatt_server *server, const char *format, ...)
+{
+	va_list ap;
+
+	if (!server || !format || !server->debug_callback)
+		return;
+
+	va_start(ap, format);
+	util_debug_va(server->debug_callback, server->debug_data, format, ap);
+	va_end(ap);
+}
+
 static void read_by_grp_type_cb(struct bt_att_chan *chan, uint8_t opcode,
 					const void *pdu, uint16_t length,
 					void *user_data)
@@ -259,9 +274,7 @@ static void read_by_grp_type_cb(struct bt_att_chan *chan, uint8_t opcode,
 	end = get_le16(pdu + 2);
 	get_uuid_le(pdu + 4, length - 4, &type);
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Read By Grp Type - start: 0x%04x end: 0x%04x",
-				start, end);
+	DBG(server, "Read By Grp Type - start: 0x%04x end: 0x%04x", start, end);
 
 	if (!start || !end) {
 		ecode = BT_ATT_ERROR_INVALID_HANDLE;
@@ -483,9 +496,7 @@ static void read_by_type_cb(struct bt_att_chan *chan, uint8_t opcode,
 	end = get_le16(pdu + 2);
 	get_uuid_le(pdu + 4, length - 4, &type);
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Read By Type - start: 0x%04x end: 0x%04x",
-				start, end);
+	DBG(server, "Read By Type - start: 0x%04x end: 0x%04x", start, end);
 
 	if (!start || !end) {
 		ecode = BT_ATT_ERROR_INVALID_HANDLE;
@@ -605,9 +616,7 @@ static void find_info_cb(struct bt_att_chan *chan, uint8_t opcode,
 	start = get_le16(pdu);
 	end = get_le16(pdu + 2);
 
-	util_debug(server->debug_callback, server->debug_data,
-					"Find Info - start: 0x%04x end: 0x%04x",
-					start, end);
+	DBG(server, "Find Info - start: 0x%04x end: 0x%04x", start, end);
 
 	if (!start || !end) {
 		ecode = BT_ATT_ERROR_INVALID_HANDLE;
@@ -708,9 +717,10 @@ static void find_by_type_val_cb(struct bt_att_chan *chan, uint8_t opcode,
 	end = get_le16(pdu + 2);
 	uuid16 = get_le16(pdu + 4);
 
-	util_debug(server->debug_callback, server->debug_data,
-			"Find By Type Value - start: 0x%04x end: 0x%04x uuid: 0x%04x",
-			start, end, uuid16);
+	DBG(server,
+	    "Find By Type Value - start: 0x%04x end: 0x%04x uuid: 0x%04x",
+	    start, end, uuid16);
+
 	ehandle = start;
 	if (start > end) {
 		data.ecode = BT_ATT_ERROR_INVALID_HANDLE;
@@ -756,8 +766,7 @@ static void write_complete_cb(struct gatt_db_attribute *attr, int err,
 		return;
 	}
 
-	util_debug(server->debug_callback, server->debug_data,
-						"Write Complete: err %d", err);
+	DBG(server, "Write Complete: err %d", err);
 
 	handle = gatt_db_attribute_get_handle(attr);
 
@@ -818,10 +827,8 @@ static void write_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
 		goto error;
 	}
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Write %s - handle: 0x%04x",
-				(opcode == BT_ATT_OP_WRITE_REQ) ? "Req" : "Cmd",
-				handle);
+	DBG(server, "Write %s - handle: 0x%04x",
+		(opcode == BT_ATT_OP_WRITE_REQ) ? "Req" : "Cmd", handle);
 
 	ecode = check_length(length, 0);
 	if (ecode)
@@ -885,8 +892,7 @@ static void read_complete_cb(struct gatt_db_attribute *attr, int err,
 	uint16_t mtu;
 	uint16_t handle;
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Read Complete: err %d", err);
+	DBG(server, "Read Complete: err %d", err);
 
 	mtu = bt_att_get_mtu(server->att);
 	handle = gatt_db_attribute_get_handle(attr);
@@ -922,10 +928,8 @@ static void handle_read_req(struct bt_att_chan *chan,
 		goto error;
 	}
 
-	util_debug(server->debug_callback, server->debug_data,
-			"Read %sReq - handle: 0x%04x",
-			opcode == BT_ATT_OP_READ_BLOB_REQ ? "Blob " : "",
-			handle);
+	DBG(server, "Read %sReq - handle: 0x%04x",
+		opcode == BT_ATT_OP_READ_BLOB_REQ ? "Blob " : "", handle);
 
 	ecode = check_permissions(server, attr, BT_ATT_PERM_READ_MASK);
 	if (ecode)
@@ -1125,8 +1129,7 @@ static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
 
 	handle = data->handles[0];
 
-	util_debug(server->debug_callback, server->debug_data,
-			"%s Req - %zu handles, 1st: 0x%04x",
+	DBG(server, "%s Req - %zu handles, 1st: 0x%04x",
 			data->opcode == BT_ATT_OP_READ_MULT_REQ ?
 			"Read Multiple" : "Read Multiple Variable Length",
 			data->num_handles, handle);
@@ -1312,8 +1315,7 @@ static void prep_write_cb(struct bt_att_chan *chan, uint8_t opcode,
 		goto error;
 	}
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Prep Write Req - handle: 0x%04x", handle);
+	DBG(server, "Prep Write Req - handle: 0x%04x", handle);
 
 	ecode = check_length(length, offset);
 	if (ecode)
@@ -1433,8 +1435,7 @@ static void exec_write_cb(struct bt_att_chan *chan, uint8_t opcode,
 
 	flags = ((uint8_t *) pdu)[0];
 
-	util_debug(server->debug_callback, server->debug_data,
-				"Exec Write Req - flags: 0x%02x", flags);
+	DBG(server, "Exec Write Req - flags: 0x%02x", flags);
 
 	if (flags == 0x00)
 		write = false;
@@ -1505,8 +1506,7 @@ static void exchange_mtu_cb(struct bt_att_chan *chan, uint8_t opcode,
 	server->mtu = final_mtu;
 	bt_att_set_mtu(server->att, final_mtu);
 
-	util_debug(server->debug_callback, server->debug_data,
-			"MTU exchange complete, with MTU: %u", final_mtu);
+	DBG(server, "MTU exchange complete, with MTU: %u", final_mtu);
 }
 
 static bool gatt_server_register_att_handlers(struct bt_gatt_server *server)
