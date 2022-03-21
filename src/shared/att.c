@@ -307,11 +307,11 @@ static void att_log(struct bt_att *att, uint8_t level, const char *format,
 	va_end(va);
 }
 
-#define att_debug(_att, _format, _arg...) \
+#define DBG(_att, _format, _arg...) \
 	att_log(_att, BT_ATT_DEBUG, "%s:%s() " _format, __FILE__, __func__,\
 		## _arg)
 
-#define att_verbose(_att, _format, _arg...) \
+#define VERBOSE(_att, _format, _arg...) \
 	att_log(_att, BT_ATT_DEBUG_VERBOSE, "%s:%s() " _format, __FILE__, \
 		__func__, ## _arg)
 
@@ -359,7 +359,7 @@ static bool encode_pdu(struct bt_att *att, struct att_send_op *op,
 				sign_cnt, &((uint8_t *) op->pdu)[1 + length])))
 		return true;
 
-	att_debug(att, "ATT unable to generate signature");
+	DBG(att, "ATT unable to generate signature");
 
 fail:
 	free(op->pdu);
@@ -488,7 +488,7 @@ static bool timeout_cb(void *user_data)
 	if (!op)
 		return false;
 
-	att_debug(att, "(chan %p) Operation timed out: 0x%02x", chan,
+	DBG(att, "(chan %p) Operation timed out: 0x%02x", chan,
 						op->opcode);
 
 	if (att->timeout_callback)
@@ -524,11 +524,11 @@ static ssize_t bt_att_chan_write(struct bt_att_chan *chan, uint8_t opcode,
 	iov.iov_base = (void *) pdu;
 	iov.iov_len = len;
 
-	att_verbose(att, "(chan %p) ATT op 0x%02x", chan, opcode);
+	VERBOSE(att, "(chan %p) ATT op 0x%02x", chan, opcode);
 
 	ret = io_send(chan->io, &iov, 1);
 	if (ret < 0) {
-		att_debug(att, "(chan %p) write failed: %s", chan,
+		DBG(att, "(chan %p) write failed: %s", chan,
 						strerror(-ret));
 		return ret;
 	}
@@ -661,12 +661,12 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	len = sizeof(err);
 
 	if (getsockopt(chan->fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
-		att_debug(att, "(chan %p) Failed to obtain disconnect "
+		DBG(att, "(chan %p) Failed to obtain disconnect "
 				"error: %s", chan, strerror(errno));
 		err = 0;
 	}
 
-	att_debug(att, "Channel %p disconnected: %s", chan, strerror(err));
+	DBG(att, "Channel %p disconnected: %s", chan, strerror(err));
 
 	/* Dettach channel */
 	queue_remove(att->chans, chan);
@@ -795,7 +795,7 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 		op->timeout_id = 0;
 	}
 
-	att_debug(att, "(chan %p) Retrying operation %p", chan, op);
+	DBG(att, "(chan %p) Retrying operation %p", chan, op);
 
 	chan->pending_req = NULL;
 
@@ -818,7 +818,7 @@ static void handle_rsp(struct bt_att_chan *chan, uint8_t opcode, uint8_t *pdu,
 	 * the bearer.
 	 */
 	if (!op) {
-		att_debug(att, "(chan %p) Received unexpected ATT response",
+		DBG(att, "(chan %p) Received unexpected ATT response",
 								chan);
 		io_shutdown(chan->io);
 		return;
@@ -850,7 +850,7 @@ static void handle_rsp(struct bt_att_chan *chan, uint8_t opcode, uint8_t *pdu,
 	goto done;
 
 fail:
-	att_debug(att, "(chan %p) Failed to handle response PDU; opcode: "
+	DBG(att, "(chan %p) Failed to handle response PDU; opcode: "
 			"0x%02x", chan, opcode);
 
 	rsp_opcode = BT_ATT_OP_ERROR_RSP;
@@ -875,7 +875,7 @@ static void handle_conf(struct bt_att_chan *chan, uint8_t *pdu, ssize_t pdu_len)
 	 * invalid.
 	 */
 	if (!op || pdu_len) {
-		att_debug(att, "(chan %p) Received unexpected/invalid ATT "
+		DBG(att, "(chan %p) Received unexpected/invalid ATT "
 				"confirmation", chan);
 		io_shutdown(chan->io);
 		return;
@@ -949,7 +949,7 @@ static bool handle_signed(struct bt_att *att, uint8_t *pdu, ssize_t pdu_len)
 	return true;
 
 fail:
-	att_debug(att, "ATT failed to verify signature: 0x%02x", opcode);
+	DBG(att, "ATT failed to verify signature: 0x%02x", opcode);
 
 	return false;
 }
@@ -1032,7 +1032,7 @@ static bool can_read_data(struct io *io, void *user_data)
 	if (bytes_read < 0)
 		return false;
 
-	att_verbose(att, "(chan %p) ATT received: %zd", chan, bytes_read);
+	VERBOSE(att, "(chan %p) ATT received: %zd", chan, bytes_read);
 
 	att_hexdump(att, '>', chan->buf, bytes_read);
 
@@ -1047,12 +1047,12 @@ static bool can_read_data(struct io *io, void *user_data)
 	/* Act on the received PDU based on the opcode type */
 	switch (get_op_type(opcode)) {
 	case ATT_OP_TYPE_RSP:
-		att_verbose(att, "(chan %p) ATT response received: 0x%02x",
+		VERBOSE(att, "(chan %p) ATT response received: 0x%02x",
 				chan, opcode);
 		handle_rsp(chan, opcode, pdu + 1, bytes_read - 1);
 		break;
 	case ATT_OP_TYPE_CONF:
-		att_verbose(att, "(chan %p) ATT confirmation received: 0x%02x",
+		VERBOSE(att, "(chan %p) ATT confirmation received: 0x%02x",
 				chan, opcode);
 		handle_conf(chan, pdu + 1, bytes_read - 1);
 		break;
@@ -1063,7 +1063,7 @@ static bool can_read_data(struct io *io, void *user_data)
 		 * promptly notify the upper layer via disconnect handlers.
 		 */
 		if (chan->in_req) {
-			att_debug(att, "(chan %p) Received request while "
+			DBG(att, "(chan %p) Received request while "
 					"another is pending: 0x%02x",
 					chan, opcode);
 			io_shutdown(chan->io);
@@ -1083,7 +1083,7 @@ static bool can_read_data(struct io *io, void *user_data)
 		/* For all other opcodes notify the upper layer of the PDU and
 		 * let them act on it.
 		 */
-		att_debug(att, "(chan %p) ATT PDU received: 0x%02x", chan,
+		DBG(att, "(chan %p) ATT PDU received: 0x%02x", chan,
 							opcode);
 		handle_notify(chan, pdu, bytes_read);
 		break;
@@ -1237,7 +1237,7 @@ static void bt_att_attach_chan(struct bt_att *att, struct bt_att_chan *chan)
 
 	io_set_close_on_destroy(chan->io, att->close_on_unref);
 
-	att_debug(att, "Channel %p attached", chan);
+	DBG(att, "Channel %p attached", chan);
 
 	wakeup_chan_writer(chan, NULL);
 }
