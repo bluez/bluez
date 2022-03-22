@@ -9,6 +9,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
@@ -52,10 +53,11 @@ void __btd_enable_debug(struct btd_debug_desc *start,
 		.file = __FILE__, .flags = BTD_DEBUG_FLAG_DEFAULT, \
 	}; \
 	if (__btd_debug_desc.flags & BTD_DEBUG_FLAG_PRINT) \
-		btd_debug(idx, "%s:%s() " fmt, __FILE__, __func__ , ## arg); \
+		btd_debug(idx, fmt, ## arg); \
 } while (0)
 
-#define DBG(fmt, arg...) DBG_IDX(0xffff, fmt, ## arg)
+#define DBG(fmt, arg...) \
+	DBG_IDX(0xffff, "%s:%s() " fmt, __FILE__, __func__, ## arg)
 #define error(fmt, arg...) \
 	btd_error(0xffff, "%s:%s() " fmt, __FILE__, __func__, ## arg)
 #define warn(fmt, arg...) \
