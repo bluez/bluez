@@ -50,6 +50,7 @@ struct mgmt {
 	mgmt_debug_func_t debug_callback;
 	mgmt_destroy_func_t debug_destroy;
 	void *debug_data;
+	bool verbose;
 };
 
 struct mgmt_request {
@@ -192,6 +193,15 @@ static void mgmt_log(struct mgmt *mgmt, const char *format, ...)
 	va_end(ap);
 }
 
+static void mgmt_hexdump(struct mgmt *mgmt, char dir, const void *data,
+							size_t len)
+{
+	if (!mgmt->verbose)
+		return;
+
+	util_hexdump(dir, data, len, mgmt->debug_callback, mgmt->debug_data);
+}
+
 static bool send_request(struct mgmt *mgmt, struct mgmt_request *request)
 {
 	struct iovec iov;
@@ -219,8 +229,7 @@ static bool send_request(struct mgmt *mgmt, struct mgmt_request *request)
 
 	DBG(mgmt, "[0x%04x] command 0x%04x", request->index, request->opcode);
 
-	util_hexdump('<', request->buf, ret, mgmt->debug_callback,
-							mgmt->debug_data);
+	mgmt_hexdump(mgmt, '<', request->buf, ret);
 
 	queue_push_tail(mgmt->pending_list, request);
 
@@ -373,8 +382,7 @@ static bool can_read_data(struct io *io, void *user_data)
 	if (bytes_read < 0)
 		return false;
 
-	util_hexdump('>', mgmt->buf, bytes_read,
-				mgmt->debug_callback, mgmt->debug_data);
+	mgmt_hexdump(mgmt, '>', mgmt->buf, bytes_read);
 
 	if (bytes_read < MGMT_HDR_SIZE)
 		return true;
@@ -592,6 +600,14 @@ bool mgmt_set_debug(struct mgmt *mgmt, mgmt_debug_func_t callback,
 	mgmt->debug_data = user_data;
 
 	return true;
+}
+
+void mgmt_set_verbose(struct mgmt *mgmt, bool value)
+{
+	if (!mgmt)
+		return;
+
+	mgmt->verbose = value;
 }
 
 bool mgmt_set_close_on_unref(struct mgmt *mgmt, bool do_close)
