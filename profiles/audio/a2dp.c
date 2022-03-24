@@ -872,12 +872,10 @@ static void store_remote_seps(struct a2dp_channel *chan)
 static void invalidate_remote_cache(struct a2dp_setup *setup,
 						struct avdtp_error *err)
 {
-	if (err->category == AVDTP_ERRNO ||
-			err->err.error_code != AVDTP_UNSUPPORTED_CONFIGURATION)
+	if (err->category == AVDTP_ERRNO)
 		return;
 
-	/* Attempt to unregister Remote SEP if configuration
-	 * fails with Unsupported Configuration and it was
+	/* Attempt to unregister Remote SEP if configuration fails and it was
 	 * loaded from cache.
 	 */
 	if (setup->rsep && setup->rsep->from_cache) {
