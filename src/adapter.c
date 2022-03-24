@@ -1220,6 +1220,13 @@ int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec)
 {
 	int ret;
 
+	/*
+	 * If the controller does not support BR/EDR operation,
+	 * there is no point in trying to add SDP records.
+	 */
+	if (btd_opts.mode == BT_MODE_LE)
+		return -ENOTSUP;
+
 	DBG("%s", adapter->path);
 
 	ret = add_record_to_server(&adapter->bdaddr, rec);
@@ -1233,10 +1240,17 @@ int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec)
 
 void adapter_service_remove(struct btd_adapter *adapter, uint32_t handle)
 {
-	sdp_record_t *rec = sdp_record_find(handle);
+	sdp_record_t *rec;
+	/*
+	 * If the controller does not support BR/EDR operation,
+	 * there is no point in trying to remote SDP records.
+	 */
+	if (btd_opts.mode == BT_MODE_LE)
+		return;
 
 	DBG("%s", adapter->path);
 
+	rec = sdp_record_find(handle);
 	if (!rec)
 		return;
 
