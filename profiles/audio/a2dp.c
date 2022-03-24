@@ -2668,8 +2668,6 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	sep->codec = codec;
 	sep->type = type;
 	sep->delay_reporting = delay_reporting;
-	sep->user_data = user_data;
-	sep->destroy = destroy;
 
 	if (type == AVDTP_SEP_TYPE_SOURCE) {
 		l = &server->sources;
@@ -2712,6 +2710,9 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 
 add:
 	*l = g_slist_append(*l, sep);
+
+	sep->user_data = user_data;
+	sep->destroy = destroy;
 
 	if (err)
 		*err = 0;
