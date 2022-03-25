@@ -28,7 +28,6 @@ typedef void (*mgmt_debug_func_t)(const char *str, void *user_data);
 
 bool mgmt_set_debug(struct mgmt *mgmt, mgmt_debug_func_t callback,
 				void *user_data, mgmt_destroy_func_t destroy);
-void mgmt_set_verbose(struct mgmt *mgmt, bool value);
 
 bool mgmt_set_close_on_unref(struct mgmt *mgmt, bool do_close);
 
