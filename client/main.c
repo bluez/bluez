@@ -30,6 +30,7 @@
 #include "advertising.h"
 #include "adv_monitor.h"
 #include "admin.h"
+#include "player.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -3215,6 +3216,8 @@ int main(int argc, char *argv[])
 
 	bt_shell_set_env("DBUS_CONNECTION", dbus_conn);
 
+	player_add_submenu();
+
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
 
 	g_dbus_client_set_connect_watch(client, connect_handler, NULL);
@@ -3227,6 +3230,8 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_ready_watch(client, client_ready, NULL);
 
 	status = bt_shell_run();
+
+	player_remove_submenu();
 
 	g_dbus_client_unref(client);
 
