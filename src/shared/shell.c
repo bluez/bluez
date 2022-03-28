@@ -1248,6 +1248,9 @@ bool bt_shell_add_submenu(const struct bt_shell_menu *menu)
 	if (!menu)
 		return false;
 
+	if (!data.main)
+		return bt_shell_set_menu(menu);
+
 	if (!data.submenus)
 		data.submenus = queue_new();
 
