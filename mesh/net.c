@@ -1375,7 +1375,7 @@ static void friend_ack_rxed(struct mesh_net *net, uint32_t iv_index,
 {
 	uint32_t hdr = l_get_be32(pkt) &
 		((SEQ_ZERO_MASK << SEQ_ZERO_HDR_SHIFT) | /* Preserve SeqZero */
-		 (true << RELAY_HDR_SHIFT));		/* Preserve Relay bit */
+		 ((uint32_t) 0x01 << RELAY_HDR_SHIFT)); /* Preserve Relay bit */
 	uint32_t flags = l_get_be32(pkt + 3);
 	struct mesh_friend_msg frnd_ack = {
 		.ctl = true,
@@ -1410,14 +1410,14 @@ static void send_frnd_ack(struct mesh_net *net, uint16_t src, uint16_t dst,
 	expected = 0xffffffff >> (31 - SEG_TOTAL(hdr));
 
 	/* Clear Hdr bits that don't apply to Seg ACK */
-	hdr &= ~((true << SEG_HDR_SHIFT) |
+	hdr &= ~(((uint32_t) 0x01 << SEG_HDR_SHIFT) |
 			(OPCODE_MASK << OPCODE_HDR_SHIFT) |
-			(true << SZMIC_HDR_SHIFT) |
+			((uint32_t) 0x01 << SZMIC_HDR_SHIFT) |
 			(SEG_MASK << SEGO_HDR_SHIFT) |
 			(SEG_MASK << SEGN_HDR_SHIFT));
 
 	hdr |= NET_OP_SEG_ACKNOWLEDGE << OPCODE_HDR_SHIFT;
-	hdr |= true << RELAY_HDR_SHIFT;
+	hdr |= (uint32_t) 0x01 << RELAY_HDR_SHIFT;
 
 	/* Clear all unexpected bits */
 	flags &= expected;
@@ -1454,7 +1454,7 @@ static void send_net_ack(struct mesh_net *net, struct mesh_sar *sar,
 	hdr |= sar->seqZero << SEQ_ZERO_HDR_SHIFT;
 
 	if (is_lpn_friend(net, src))
-		hdr |= true << RELAY_HDR_SHIFT;
+		hdr |= (uint32_t) 0x01 << RELAY_HDR_SHIFT;
 
 	l_put_be32(hdr, msg);
 	l_put_be32(flags, msg + 3);
@@ -1726,7 +1726,7 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 		}
 
 		if (szmic || size > 15) {
-			hdr |= true << SEG_HDR_SHIFT;
+			hdr |= (uint32_t) 0x01 << SEG_HDR_SHIFT;
 			hdr |= szmic << SZMIC_HDR_SHIFT;
 			hdr |= (seqZero & SEQ_ZERO_MASK) << SEQ_ZERO_HDR_SHIFT;
 			hdr |= SEG_MAX(true, size) << SEGN_HDR_SHIFT;

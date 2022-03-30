@@ -37,7 +37,7 @@ struct mesh_node;
 #define SEGMENTED	0x80
 #define UNSEGMENTED	0x00
 #define SEG_HDR_SHIFT	31
-#define IS_SEGMENTED(hdr)	(!!((hdr) & (true << SEG_HDR_SHIFT)))
+#define IS_SEGMENTED(hdr)	(!!((hdr) & ((uint32_t) 0x1 << SEG_HDR_SHIFT)))
 
 #define KEY_ID_MASK	0x7f
 #define KEY_AID_MASK	0x3f
@@ -45,7 +45,7 @@ struct mesh_node;
 #define KEY_AID_SHIFT	0
 #define AKF_HDR_SHIFT	30
 #define KEY_HDR_SHIFT	24
-#define HAS_APP_KEY(hdr)	(!!((hdr) & (true << AKF_HDR_SHIFT)))
+#define HAS_APP_KEY(hdr)	(!!((hdr) & ((uint32_t) 0x1 << AKF_HDR_SHIFT)))
 
 #define OPCODE_MASK	0x7f
 #define OPCODE_HDR_SHIFT	24
@@ -55,8 +55,8 @@ struct mesh_node;
 #define SZMIC_HDR_SHIFT	23
 #define SEQ_ZERO_MASK	0x1fff
 #define SEQ_ZERO_HDR_SHIFT	10
-#define IS_RELAYED(hdr)	(!!((hdr) & (true << RELAY_HDR_SHIFT)))
-#define HAS_MIC64(hdr)	(!!((hdr) & (true << SZMIC_HDR_SHIFT)))
+#define IS_RELAYED(hdr)	(!!((hdr) & ((uint32_t) 0x1 << RELAY_HDR_SHIFT)))
+#define HAS_MIC64(hdr)	(!!((hdr) & ((uint32_t) 0x1 << SZMIC_HDR_SHIFT)))
 
 #define SEG_MASK	0x1f
 #define SEGO_HDR_SHIFT	5

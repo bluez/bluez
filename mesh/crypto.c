@@ -553,8 +553,11 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 	n = 9;
 
 	if (!ctl) {
-		hdr = segmented << SEG_HDR_SHIFT;
+		uint32_t tmp = segmented ? 0x1 : 0;
+
+		hdr = tmp << SEG_HDR_SHIFT;
 		hdr |= (key_aid & KEY_ID_MASK) << KEY_HDR_SHIFT;
+
 		if (segmented) {
 			hdr |= szmic << SZMIC_HDR_SHIFT;
 			hdr |= (seqZero & SEQ_ZERO_MASK) << SEQ_ZERO_HDR_SHIFT;
