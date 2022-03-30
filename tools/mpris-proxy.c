@@ -1978,7 +1978,7 @@ static void register_player(GDBusProxy *proxy)
 
 	player->conn = g_dbus_setup_private(DBUS_BUS_SESSION, player->bus_name,
 									NULL);
-	if (!session) {
+	if (!player->conn) {
 		fprintf(stderr, "Could not register bus name %s",
 							player->bus_name);
 		goto fail;
