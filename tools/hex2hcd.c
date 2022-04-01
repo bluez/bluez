@@ -248,7 +248,7 @@ static void ver_parse_file(const char *pathname)
 
 	memset(ver, 0, sizeof(*ver));
 
-	if (sscanf(pathname, "%[A-Z0-9]_%3c.%3c.%3c.%4c.%4c.hex",
+	if (sscanf(pathname, "%19[A-Z0-9]_%3c.%3c.%3c.%4c.%4c.hex",
 					ver->name, ver->major, ver->minor,
 					ver->build, dummy1, dummy2) != 6) {
 		printf("\t/* failed to parse %s */\n", pathname);

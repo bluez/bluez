@@ -5164,7 +5164,7 @@ static bool str2pattern(struct mgmt_adv_pattern *pattern, const char *str)
 	char pattern_str[62] = { 0 };
 	char tmp;
 
-	if (sscanf(str, "%2hhx%n:%2hhx%n:%s", &pattern->ad_type, &type_len,
+	if (sscanf(str, "%2hhx%n:%2hhx%n:%61s", &pattern->ad_type, &type_len,
 			&pattern->offset, &offset_end_pos, pattern_str) != 3)
 		return false;
 
