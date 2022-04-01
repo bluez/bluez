@@ -3790,8 +3790,8 @@ static int load_desc(char *handle, char *value,
 		return -EIO;
 
 	/* Check if there is any value stored, otherwise it is just the UUID */
-	if (sscanf(value, "%04hx:%s", &val, uuid_str) != 2) {
-		if (sscanf(value, "%s", uuid_str) != 1)
+	if (sscanf(value, "%04hx:%36s", &val, uuid_str) != 2) {
+		if (sscanf(value, "%36s", uuid_str) != 1)
 			return -EIO;
 		val = 0;
 	}
@@ -3840,9 +3840,9 @@ static int load_chrc(char *handle, char *value,
 		return -EIO;
 
 	/* Check if there is any value stored */
-	if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%32s:%s",
+	if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%32s:%36s",
 			&value_handle, &properties, val_str, uuid_str) != 4) {
-		if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%s",
+		if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%36s",
 				&value_handle, &properties, uuid_str) != 3)
 			return -EIO;
 		val_len = 0;
@@ -3884,8 +3884,8 @@ static int load_incl(struct gatt_db *db, char *handle, char *value,
 	if (sscanf(handle, "%04hx", &start) != 1)
 		return -EIO;
 
-	if (sscanf(value, GATT_INCLUDE_UUID_STR ":%04hx:%04hx:%s", &start, &end,
-								uuid_str) != 3)
+	if (sscanf(value, GATT_INCLUDE_UUID_STR ":%04hx:%04hx:%36s", &start,
+							&end, uuid_str) != 3)
 		return -EIO;
 
 	/* Log debug message. */
@@ -3918,7 +3918,7 @@ static int load_service(struct gatt_db *db, char *handle, char *value)
 	if (sscanf(handle, "%04hx", &start) != 1)
 		return -EIO;
 
-	if (sscanf(value, "%[^:]:%04hx:%s", type, &end, uuid_str) != 3)
+	if (sscanf(value, "%[^:]:%04hx:%36s", type, &end, uuid_str) != 3)
 		return -EIO;
 
 	if (g_str_equal(type, GATT_PRIM_SVC_UUID_STR))
