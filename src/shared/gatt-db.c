@@ -1537,12 +1537,12 @@ static int gatt_db_attribute_get_index(struct gatt_db_attribute *attrib)
 		return -1;
 
 	service = attrib->service;
-	index = attrib->handle - service->attributes[0]->handle;
+	for (index = 0; index < service->num_handles; index++) {
+		if (service->attributes[index] == attrib)
+			return index;
+	}
 
-	if (index > (service->num_handles - 1))
-		return -1;
-
-	return index;
+	return -1;
 }
 
 static struct gatt_db_attribute *
