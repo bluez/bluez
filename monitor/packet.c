@@ -10887,6 +10887,25 @@ static void le_req_sca_complete_evt(const void *data, uint8_t size)
 	print_sca(evt->sca);
 }
 
+static void le_big_info_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_big_info_adv_report *evt = data;
+
+	print_field("Sync Handle: 0x%4.4x", evt->sync_handle);
+	print_field("Number BIS: %u", evt->num_bis);
+	print_field("NSE: %u", evt->nse);
+	print_slot_125("ISO Interval", evt->iso_interval);
+	print_field("BN: %u", evt->bn);
+	print_field("PTO: %u", evt->bn);
+	print_field("IRC: %u", evt->irc);
+	print_field("Maximum PDU: %u", evt->max_pdu);
+	print_usec_interval("SDU Interval", evt->sdu_interval);
+	print_field("Maximum SDU: %u", evt->max_sdu);
+	print_le_phy("PHY", evt->phy);
+	print_framing(evt->framing);
+	print_field("Encryption: 0x%02x", evt->encryption);
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -11005,6 +11024,10 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_req_sca_complete_evt,
 				sizeof(
 				struct bt_hci_evt_le_req_peer_sca_complete)},
+	{ BT_HCI_EVT_LE_BIG_INFO_ADV_REPORT,
+		"LE Broadcast Isochronous Group Info Advertising Report",
+		le_big_info_evt,
+		sizeof(struct bt_hci_evt_le_big_info_adv_report) },
 	{ }
 };
 
