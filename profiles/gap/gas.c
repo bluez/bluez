@@ -142,6 +142,11 @@ static void read_appearance_cb(bool success, uint8_t att_ecode,
 
 static void handle_appearance(struct gas *gas, uint16_t value_handle)
 {
+	uint16_t value;
+
+	if (!device_get_appearance(gas->device, &value))
+		return;
+
 	if (!bt_gatt_client_read_value(gas->client, value_handle,
 						read_appearance_cb, gas, NULL))
 		DBG("Failed to send request to read appearance");
