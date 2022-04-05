@@ -1139,7 +1139,8 @@ static struct btdev_conn *conn_add_bis(struct btdev *dev, uint16_t handle,
 	return conn;
 }
 
-static struct btdev_conn *find_bis_index(struct btdev *remote, uint8_t index)
+static struct btdev_conn *find_bis_index(const struct btdev *remote,
+							uint8_t index)
 {
 	struct btdev_conn *conn;
 	const struct queue_entry *entry;
@@ -5105,6 +5106,40 @@ static int cmd_set_pa_data(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static void send_biginfo(struct btdev *dev, const struct btdev *remote)
+{
+	struct bt_hci_evt_le_big_info_adv_report ev;
+	const struct btdev_conn *conn;
+	struct bt_hci_bis *bis;
+
+	conn = find_bis_index(remote, 0);
+	if (!conn)
+		return;
+
+	bis = conn->data;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.sync_handle = cpu_to_le16(dev->le_pa_sync_handle);
+	ev.num_bis = 1;
+
+	while (find_bis_index(remote, ev.num_bis))
+		ev.num_bis++;
+
+	ev.nse = 0x01;
+	ev.iso_interval = bis->latency / 1.25;
+	ev.bn = 0x01;
+	ev.pto = 0x00;
+	ev.irc = 0x01;
+	ev.max_pdu = bis->sdu;
+	memcpy(ev.sdu_interval, bis->sdu_interval, sizeof(ev.sdu_interval));
+	ev.max_sdu = bis->sdu;
+	ev.phy = bis->phy;
+	ev.framing = bis->framing;
+	ev.encryption = bis->encryption;
+
+	le_meta_event(dev, BT_HCI_EVT_LE_BIG_INFO_ADV_REPORT, &ev, sizeof(ev));
+}
+
 static void send_pa(struct btdev *dev, const struct btdev *remote,
 						uint8_t offset)
 {
@@ -5135,7 +5170,10 @@ static void send_pa(struct btdev *dev, const struct btdev *remote,
 	if (pdu.ev.data_status == 0x01) {
 		offset += pdu.ev.data_len;
 		send_pa(dev, remote, offset);
+		return;
 	}
+
+	send_biginfo(dev, remote);
 }
 
 static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
