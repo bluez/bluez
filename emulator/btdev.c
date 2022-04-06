@@ -6070,15 +6070,19 @@ static int cmd_big_create_sync(struct btdev *dev, const void *data, uint8_t len)
 	/* If the Sync_Handle does not exist, the Controller shall return the
 	 * error code Unknown Advertising Identifier (0x42).
 	 */
-	if (dev->le_pa_sync_handle != le16_to_cpu(cmd->sync_handle))
+	if (dev->le_pa_sync_handle != le16_to_cpu(cmd->sync_handle)) {
 		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
+		goto done;
+	}
 
 	/* If the Host sends this command with a BIG_Handle that is already
 	 * allocated, the Controller shall return the error code Command
 	 * Disallowed (0x0C).
 	 */
-	if (dev->big_handle == cmd->handle)
+	if (dev->big_handle == cmd->handle) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
 
 	/* If the Num_BIS parameter is greater than the total number of BISes
 	 * in the BIG, the Controller shall return the error code Unsupported
@@ -6087,12 +6091,10 @@ static int cmd_big_create_sync(struct btdev *dev, const void *data, uint8_t len)
 	if (cmd->num_bis != len - sizeof(*cmd))
 		status = BT_HCI_ERR_UNSUPPORTED_FEATURE;
 
-	if (status)
-		return status;
-
+done:
 	cmd_status(dev, status, BT_HCI_CMD_LE_BIG_CREATE_SYNC);
 
-	return status;
+	return 0;
 }
 
 static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
@@ -6140,7 +6142,7 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 	pdu.ev.pto = 0x00;
 	pdu.ev.irc = 0x01;
 	pdu.ev.max_pdu = bis->sdu;
-	pdu.ev.interval = bis->latency;
+	pdu.ev.interval = bis->latency / 1.25;
 	pdu.ev.num_bis = cmd->num_bis;
 
 	le_meta_event(dev, BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED, &pdu,
@@ -6873,6 +6875,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->iso_mtu = 251;
 	btdev->iso_max_pkt = 1;
 	btdev->le_cig.params.cig_id = 0xff;
+	btdev->big_handle = 0xff;
 
 	btdev->country_code = 0x00;
 
