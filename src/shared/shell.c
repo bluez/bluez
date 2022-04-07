@@ -911,6 +911,26 @@ static char **menu_completion(const struct bt_shell_menu_entry *entry,
 	return matches;
 }
 
+static char **submenu_completion(const char *text, int argc, char *input_cmd)
+{
+	const struct bt_shell_menu *menu;
+	char *cmd;
+
+	if (data.main != data.menu)
+		return NULL;
+
+	cmd = strrchr(input_cmd, '.');
+	if (!cmd)
+		return NULL;
+
+	menu = find_menu(input_cmd, cmd - input_cmd, NULL);
+	if (!menu)
+		return NULL;
+
+	return menu_completion(menu->entries, text, argc,
+				input_cmd + strlen(menu->name) + 1);
+}
+
 static char **shell_completion(const char *text, int start, int end)
 {
 	char **matches = NULL;
@@ -928,10 +948,14 @@ static char **shell_completion(const char *text, int start, int end)
 
 		matches = menu_completion(default_menu, text, w.we_wordc,
 							w.we_wordv[0]);
-		if (!matches)
+		if (!matches) {
 			matches = menu_completion(data.menu->entries, text,
 							w.we_wordc,
 							w.we_wordv[0]);
+			if (!matches)
+				matches = submenu_completion(text, w.we_wordc,
+								w.we_wordv[0]);
+		}
 
 		wordfree(&w);
 	} else {
