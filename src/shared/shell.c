@@ -139,13 +139,21 @@ static void cmd_help(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static const struct bt_shell_menu *find_menu(const char *name, size_t len)
+static const struct bt_shell_menu *find_menu(const char *name, size_t len,
+							int *index)
 {
 	const struct queue_entry *entry;
+	int i;
 
-	for (entry = queue_get_entries(data.submenus); entry;
-						entry = entry->next) {
+	for (i = 0, entry = queue_get_entries(data.submenus); entry;
+						entry = entry->next, i++) {
 		struct bt_shell_menu *menu = entry->data;
+
+		if (index) {
+			if (i < *index)
+				continue;
+			(*index)++;
+		}
 
 		if (!strncmp(menu->name, name, len))
 			return menu;
@@ -188,7 +196,7 @@ static void cmd_menu(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	menu = find_menu(argv[1], strlen(argv[1]));
+	menu = find_menu(argv[1], strlen(argv[1]), NULL);
 	if (!menu) {
 		bt_shell_printf("Unable find menu with name: %s\n", argv[1]);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -485,7 +493,7 @@ static int submenu_exec(int argc, char *argv[])
 	len = name - argv[0];
 	name[0] = '\0';
 
-	submenu = find_menu(argv[0], strlen(argv[0]));
+	submenu = find_menu(argv[0], strlen(argv[0]), NULL);
 	if (!submenu)
 		return -ENOENT;
 
@@ -735,7 +743,7 @@ static char *find_cmd(const char *text,
 static char *cmd_generator(const char *text, int state)
 {
 	static int index;
-	static bool default_menu_enabled, submenu_enabled;
+	static bool default_menu_enabled, menu_enabled, submenu_enabled;
 	static const struct bt_shell_menu *menu;
 	char *cmd;
 
@@ -754,7 +762,20 @@ static char *cmd_generator(const char *text, int state)
 			index = 0;
 			menu = data.menu;
 			default_menu_enabled = false;
+
+			if (data.main == data.menu)
+				menu_enabled = true;
 		}
+	}
+
+	if (menu_enabled) {
+		menu = find_menu(text, strlen(text), &index);
+		if (menu)
+			return strdup(menu->name);
+
+		index = 0;
+		menu = data.menu;
+		menu_enabled = false;
 	}
 
 	if (!submenu_enabled) {
@@ -766,7 +787,7 @@ static char *cmd_generator(const char *text, int state)
 		if (!cmd)
 			return NULL;
 
-		menu = find_menu(text, cmd - text);
+		menu = find_menu(text, cmd - text, NULL);
 		if (!menu)
 			return NULL;
 
