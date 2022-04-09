@@ -1993,7 +1993,7 @@ static bool set_discovery_discoverable(struct btd_adapter *adapter, bool enable)
 		return true;
 
 	/* Reset discoverable filter if already set */
-	if (enable && (adapter->current_settings & MGMT_OP_SET_DISCOVERABLE))
+	if (enable && (adapter->current_settings & MGMT_SETTING_DISCOVERABLE))
 		return true;
 
 	adapter->discovery_discoverable = enable;
@@ -2229,7 +2229,7 @@ static int update_discovery_filter(struct btd_adapter *adapter)
 	/* Only attempt to overwrite current discoverable setting when not
 	 * discoverable.
 	 */
-	if (!(adapter->current_settings & MGMT_OP_SET_DISCOVERABLE)) {
+	if (!(adapter->current_settings & MGMT_SETTING_DISCOVERABLE)) {
 		GSList *l;
 
 		for (l = adapter->discovery_list; l; l = g_slist_next(l)) {
