@@ -1366,6 +1366,11 @@ static void auth_complete(struct btdev_conn *conn, uint8_t status)
 	ev.status = status;
 
 	send_event(conn->dev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
+
+	conn->dev->ssp_status = 0;
+	conn->dev->ssp_auth_complete = false;
+	conn->link->dev->ssp_status = 0;
+	conn->link->dev->ssp_auth_complete = false;
 }
 
 static int cmd_link_key_reply_complete(struct btdev *dev, const void *data,
