@@ -892,7 +892,11 @@ static int policy_init(void)
 	}
 
 	auto_enable = g_key_file_get_boolean(conf, "Policy", "AutoEnable",
-									NULL);
+								&gerr);
+	if (gerr) {
+		g_clear_error(&gerr);
+		auto_enable = true;
+	}
 
 	resume_delay = g_key_file_get_integer(
 			conf, "Policy", "ResumeDelay", &gerr);
