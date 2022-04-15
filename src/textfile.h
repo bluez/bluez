@@ -8,9 +8,10 @@
  *
  */
 
+int create_filename(char *str, size_t size, const char *fmt, ...)
+					__attribute__((format(printf, 3, 4)));
 int create_file(const char *filename, const mode_t mode);
-int create_name(char *buf, size_t size, const char *path,
-				const char *address, const char *name);
+int create_name(char *buf, size_t size, const char *address, const char *name);
 
 int textfile_put(const char *pathname, const char *key, const char *value);
 int textfile_del(const char *pathname, const char *key);
