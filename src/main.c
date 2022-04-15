@@ -64,7 +64,7 @@
 
 struct btd_opts btd_opts;
 static GKeyFile *main_conf;
-static char *main_conf_file_path;
+static char main_conf_file_path[PATH_MAX];
 
 static const char *supported_options[] = {
 	"Name",
@@ -175,18 +175,41 @@ GKeyFile *btd_get_main_conf(void)
 	return main_conf;
 }
 
-static GKeyFile *load_config(const char *file)
+static GKeyFile *load_config(const char *name)
 {
 	GError *err = NULL;
 	GKeyFile *keyfile;
+	int len;
+
+	if (name)
+		snprintf(main_conf_file_path, PATH_MAX, "%s", name);
+	else {
+		const char *configdir = getenv("CONFIGURATION_DIRECTORY");
+
+		/* Check if running as service */
+		if (configdir) {
+			/* Check if there multiple paths given */
+			if (strstr(configdir, ":"))
+				len = strstr(configdir, ":") - configdir;
+			else
+				len = strlen(configdir);
+		} else {
+			configdir = CONFIGDIR;
+			len = strlen(configdir);
+		}
+
+		snprintf(main_conf_file_path, PATH_MAX, "%*s/main.conf", len,
+						 configdir);
+	}
 
 	keyfile = g_key_file_new();
 
 	g_key_file_set_list_separator(keyfile, ',');
 
-	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+	if (!g_key_file_load_from_file(keyfile, main_conf_file_path, 0, &err)) {
 		if (!g_error_matches(err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
-			error("Parsing %s failed: %s", file, err->message);
+			error("Parsing %s failed: %s", main_conf_file_path,
+				err->message);
 		g_error_free(err);
 		g_key_file_free(keyfile);
 		return NULL;
@@ -1194,12 +1217,7 @@ int main(int argc, char *argv[])
 
 	mainloop_sd_notify("STATUS=Starting up");
 
-	if (option_configfile)
-		main_conf_file_path = option_configfile;
-	else
-		main_conf_file_path = CONFIGDIR "/main.conf";
-
-	main_conf = load_config(main_conf_file_path);
+	main_conf = load_config(option_configfile);
 
 	parse_config(main_conf);
 
