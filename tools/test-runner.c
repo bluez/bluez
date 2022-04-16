@@ -47,6 +47,7 @@ static int test_argc;
 
 static bool run_auto = false;
 static bool start_dbus = false;
+static bool start_daemon = false;
 static bool start_emulator = false;
 static bool start_monitor = false;
 static int num_devs = 0;
@@ -249,11 +250,12 @@ static void start_qemu(void)
 				"rootflags=trans=virtio,version=9p2000.L "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
 				"bluetooth.enable_ecred=1"
-				"TESTHOME=%s TESTDBUS=%u TESTMONITOR=%u "
-				"TESTEMULATOR=%u TESTDEVS=%d TESTAUTO=%u "
-				"TESTARGS=\'%s\'",
-				initcmd, cwd, start_dbus, start_monitor,
-				start_emulator, num_devs, run_auto, testargs);
+				"TESTHOME=%s TESTDBUS=%u TESTDAEMON=%u "
+				"TESTMONITOR=%u TESTEMULATOR=%u TESTDEVS=%d "
+				"TESTAUTO=%u TESTARGS=\'%s\'",
+				initcmd, cwd, start_dbus, start_daemon,
+				start_monitor, start_emulator, num_devs,
+				run_auto, testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
 				(sizeof(char *) * (4 + (num_devs * 4))));
@@ -683,11 +685,13 @@ static void run_command(char *cmdname, char *home)
 	if (start_dbus) {
 		create_dbus_system_conf();
 		dbus_pid = start_dbus_daemon();
-		daemon_pid = start_bluetooth_daemon(home);
-	} else {
+	} else
 		dbus_pid = -1;
+
+	if (start_daemon)
+		daemon_pid = start_bluetooth_daemon(home);
+	else
 		daemon_pid = -1;
-	}
 
 	if (start_monitor)
 		monitor_pid = start_btmon(home);
@@ -874,6 +878,12 @@ static void run_tests(void)
 		start_dbus = true;
 	}
 
+	ptr = strstr(cmdline, "TESTDAEMON=1");
+	if (ptr) {
+		printf("bluetoothd requested\n");
+		start_daemon = true;
+	}
+
 	ptr = strstr(cmdline, "TESTMONITOR=1");
 	if (ptr) {
 		printf("Monitor requested\n");
@@ -904,7 +914,8 @@ static void usage(void)
 	printf("\ttest-runner [options] [--] <command> [args]\n");
 	printf("Options:\n"
 		"\t-a, --auto             Find tests and run them\n"
-		"\t-d, --dbus             Start D-Bus daemon\n"
+		"\t-b, --dbus             Start D-Bus daemon\n"
+		"\t-d, --daemon           Start bluetoothd\n"
 		"\t-m, --monitor          Start btmon\n"
 		"\t-l, --emulator         Start btvirt\n"
 		"\t-u, --unix [path]      Provide serial device\n"
@@ -916,8 +927,9 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "all",     no_argument,       NULL, 'a' },
 	{ "auto",    no_argument,       NULL, 'a' },
+	{ "dbus",    no_argument,       NULL, 'b' },
 	{ "unix",    no_argument,       NULL, 'u' },
-	{ "dbus",    no_argument,       NULL, 'd' },
+	{ "daemon",  no_argument,       NULL, 'd' },
 	{ "emulator", no_argument,      NULL, 'l' },
 	{ "monitor", no_argument,       NULL, 'm' },
 	{ "qemu",    required_argument, NULL, 'q' },
@@ -941,7 +953,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "audlmq:k:vh", main_options,
+		opt = getopt_long(argc, argv, "aubdlmq:k:vh", main_options,
 								NULL);
 		if (opt < 0)
 			break;
@@ -953,8 +965,12 @@ int main(int argc, char *argv[])
 		case 'u':
 			num_devs = 1;
 			break;
+		case 'b':
+			start_dbus = true;
+			break;
 		case 'd':
 			start_dbus = true;
+			start_daemon = true;
 			break;
 		case 'l':
 			start_emulator = true;
