@@ -1789,21 +1789,10 @@ static void cmd_unregister_endpoint(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-struct codec_qos {
-	uint32_t interval;
-	uint8_t  framing;
-	char *phy;
-	uint16_t sdu;
-	uint8_t  rtn;
-	uint16_t latency;
-	uint32_t delay;
-};
-
 struct endpoint_config {
 	GDBusProxy *proxy;
 	struct endpoint *ep;
 	struct iovec *caps;
-	struct codec_qos qos;
 };
 
 static void config_endpoint_setup(DBusMessageIter *iter, void *user_data)
@@ -1823,40 +1812,6 @@ static void config_endpoint_setup(DBusMessageIter *iter, void *user_data)
 	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING, &key,
 					DBUS_TYPE_BYTE, &cfg->caps->iov_base,
 					cfg->caps->iov_len);
-
-	bt_shell_printf("Interval %u\n", cfg->qos.interval);
-
-	g_dbus_dict_append_entry(&dict, "Interval", DBUS_TYPE_UINT32,
-						&cfg->qos.interval);
-
-	bt_shell_printf("Framing %s\n", cfg->qos.framing ? "true" : "false");
-
-	g_dbus_dict_append_entry(&dict, "Framing", DBUS_TYPE_BOOLEAN,
-						&cfg->qos.framing);
-
-	bt_shell_printf("PHY %s\n", cfg->qos.phy);
-
-	g_dbus_dict_append_entry(&dict, "PHY", DBUS_TYPE_STRING, &cfg->qos.phy);
-
-	bt_shell_printf("SDU %u\n", cfg->qos.sdu);
-
-	g_dbus_dict_append_entry(&dict, "SDU", DBUS_TYPE_UINT16,
-						&cfg->qos.sdu);
-
-	bt_shell_printf("Retransmissions %u\n", cfg->qos.rtn);
-
-	g_dbus_dict_append_entry(&dict, "Retransmissions", DBUS_TYPE_BYTE,
-						&cfg->qos.rtn);
-
-	bt_shell_printf("Latency %u\n", cfg->qos.latency);
-
-	g_dbus_dict_append_entry(&dict, "Latency", DBUS_TYPE_UINT16,
-						&cfg->qos.latency);
-
-	bt_shell_printf("Delay %u\n", cfg->qos.delay);
-
-	g_dbus_dict_append_entry(&dict, "Delay", DBUS_TYPE_UINT32,
-						&cfg->qos.delay);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -1896,72 +1851,6 @@ static void endpoint_set_config(struct endpoint_config *cfg)
 	}
 }
 
-static void qos_delay(const char *input, void *user_data)
-{
-	struct endpoint_config *cfg = user_data;
-
-	cfg->qos.delay = strtol(input, NULL, 0);
-
-	endpoint_set_config(cfg);
-}
-
-static void qos_latency(const char *input, void *user_data)
-{
-	struct endpoint_config *cfg = user_data;
-
-	cfg->qos.latency = strtol(input, NULL, 0);
-
-	bt_shell_prompt_input(cfg->ep->path, "Enter Delay:", qos_delay, cfg);
-}
-
-static void qos_rtn(const char *input, void *user_data)
-{
-	struct endpoint_config *cfg = user_data;
-
-	cfg->qos.rtn = strtol(input, NULL, 0);
-
-	bt_shell_prompt_input(cfg->ep->path, "Enter Latency:",
-							qos_latency, cfg);
-}
-
-static void qos_sdu(const char *input, void *user_data)
-{
-	struct endpoint_config *cfg = user_data;
-
-	cfg->qos.sdu = strtol(input, NULL, 0);
-
-	bt_shell_prompt_input(cfg->ep->path, "Enter Retransmissions:",
-							qos_rtn, cfg);
-}
-
-static void qos_phy(const char *input, void *user_data)
-{
-	struct endpoint_config *cfg = user_data;
-
-	cfg->qos.phy = strdup(input);
-
-	bt_shell_prompt_input(cfg->ep->path, "Enter SDU:", qos_sdu, cfg);
-}
-
-static void qos_framing(const char *input, void *user_data)
-{
-	struct endpoint_config *cfg = user_data;
-
-	cfg->qos.framing = strtol(input, NULL, 0);
-
-	bt_shell_prompt_input(cfg->ep->path, "Enter PHY:", qos_phy, cfg);
-}
-
-static void qos_interval(const char *input, void *user_data)
-{
-	struct endpoint_config *cfg = user_data;
-
-	cfg->qos.interval = strtol(input, NULL, 0);
-
-	bt_shell_prompt_input(cfg->ep->path, "Enter Framing:", qos_framing,
-									cfg);
-}
-
 static void endpoint_config(const char *input, void *user_data)
 {
 	struct endpoint_config *cfg = user_data;
@@ -1973,8 +1862,7 @@ static void endpoint_config(const char *input, void *user_data)
 	iov_append(&cfg->caps, data, len);
 	free(data);
 
-	bt_shell_prompt_input(cfg->ep->path, "Enter Interval:", qos_interval,
-									cfg);
+	endpoint_set_config(cfg);
 }
 
 static void cmd_config_endpoint(int argc, char *argv[])
