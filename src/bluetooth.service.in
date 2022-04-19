@@ -22,6 +22,7 @@ ProtectControlGroups=true
 StateDirectory=bluetooth
 StateDirectoryMode=0700
 ConfigurationDirectory=bluetooth
+ConfigurationDirectoryMode=0555
 
 # Execute Mappings
 MemoryDenyWriteExecute=true
