@@ -20,6 +20,7 @@ PrivateTmp=true
 ProtectKernelTunables=true
 ProtectControlGroups=true
 StateDirectory=bluetooth
+StateDirectoryMode=0700
 ConfigurationDirectory=bluetooth
 
 # Execute Mappings
