@@ -61,7 +61,7 @@ if (args[0] == "list"):
 		om = dbus.Interface(bus.get_object("org.bluez", "/"),
 					"org.freedesktop.DBus.ObjectManager")
 		objects = om.GetManagedObjects()
-		for path, interfaces in objects.iteritems():
+		for path, interfaces in objects.items():
 			if "org.bluez.Adapter1" not in interfaces:
 				continue
 

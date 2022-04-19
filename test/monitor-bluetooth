@@ -14,17 +14,17 @@ relevant_ifaces = [ "org.bluez.Adapter1", "org.bluez.Device1" ]
 
 def property_changed(interface, changed, invalidated, path):
 	iface = interface[interface.rfind(".") + 1:]
-	for name, value in changed.iteritems():
+	for name, value in changed.items():
 		val = str(value)
 		print("{%s.PropertyChanged} [%s] %s = %s" % (iface, path, name,
 									val))
 
 def interfaces_added(path, interfaces):
-	for iface, props in interfaces.iteritems():
+	for iface, props in interfaces.items():
 		if not(iface in relevant_ifaces):
 			continue
 		print("{Added %s} [%s]" % (iface, path))
-		for name, value in props.iteritems():
+		for name, value in props.items():
 			print("      %s = %s" % (name, value))
 
 def interfaces_removed(path, interfaces):

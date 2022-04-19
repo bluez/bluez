@@ -33,7 +33,7 @@ def unwrap(x):
         return tuple(map(unwrap, x))
 
     if isinstance(x, dict):
-        return dict([(unwrap(k), unwrap(v)) for k, v in x.iteritems()])
+        return dict([(unwrap(k), unwrap(v)) for k, v in x.items()])
 
     for t in [unicode, str, long, int, float, bool]:
         if isinstance(x, t):

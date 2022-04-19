@@ -49,7 +49,7 @@ if (args[0] == "list"):
 					"org.freedesktop.DBus.ObjectManager")
 	objects = om.GetManagedObjects()
 
-	for path, interfaces in objects.iteritems():
+	for path, interfaces in objects.items():
 		if "org.bluez.Device1" not in interfaces:
 			continue
 		properties = interfaces["org.bluez.Device1"]

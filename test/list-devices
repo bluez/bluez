@@ -32,10 +32,10 @@ def extract_uuids(uuid_list):
 
 objects = manager.GetManagedObjects()
 
-all_devices = (str(path) for path, interfaces in objects.iteritems() if
+all_devices = (str(path) for path, interfaces in objects.items() if
 					"org.bluez.Device1" in interfaces.keys())
 
-for path, interfaces in objects.iteritems():
+for path, interfaces in objects.items():
 	if "org.bluez.Adapter1" not in interfaces.keys():
 		continue
 

@@ -41,7 +41,7 @@ manager = dbus.Interface(bus.get_object(BUS_NAME, "/"),
 objects = manager.GetManagedObjects()
 adapters = []
 
-for path, ifaces in objects.iteritems():
+for path, ifaces in objects.items():
 	if ifaces.has_key(ADAPTER_INTERFACE):
 		adapters.append(path)
 
@@ -67,7 +67,7 @@ adapter =  dbus.Interface(bus.get_object(BUS_NAME, select),
 						ADAPTER_INTERFACE)
 
 devices = []
-for path, interfaces in objects.iteritems():
+for path, interfaces in objects.items():
 	if "org.bluez.Device1" not in interfaces:
 		continue
 	properties = interfaces["org.bluez.Device1"]
