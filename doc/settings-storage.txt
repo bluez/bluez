@@ -18,6 +18,11 @@ change.
 Default storage directory is /var/lib/bluetooth. This can be adjusted
 by the --localstatedir configure switch. Default is --localstatedir=/var.
 
+When loading as a service the storage directory can be set via
+StateDirectory environment variable:
+
+https://www.freedesktop.org/software/systemd/man/systemd.exec.html
+
 All files are in ini-file format.
 
 
