@@ -348,7 +348,14 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 	ev.type = UHID_INPUT;
 	buf = ev.u.input.data;
 
-	if (report->numbered) {
+	/* BLUETOOTH SPECIFICATION Page 16 of 26
+	 * HID Service Specification
+	 *
+	 * Report ID shall be nonzero in a Report Reference characteristic
+	 * descriptor where there is more than one instance of the Report
+	 * characteristic for any given Report Type.
+	 */
+	if (report->numbered && report->id) {
 		buf[0] = report->id;
 		len = MIN(len, sizeof(ev.u.input.data) - 1);
 		memcpy(buf + 1, pdu, len);
