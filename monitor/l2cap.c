@@ -1331,7 +1331,7 @@ static void sig_ecred_conn_req(const struct l2cap_frame *frame)
 	const struct bt_l2cap_pdu_ecred_conn_req *pdu = frame->data;
 	uint16_t scid;
 
-	l2cap_frame_pull((void *)frame, frame, sizeof(pdu));
+	l2cap_frame_pull((void *)frame, frame, sizeof(*pdu));
 
 	print_psm(pdu->psm);
 	print_field("MTU: %u", le16_to_cpu(pdu->mtu));
