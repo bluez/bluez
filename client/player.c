@@ -572,11 +572,13 @@ static void print_iter(const char *label, const char *name,
 		break;
 	case DBUS_TYPE_UINT32:
 		dbus_message_iter_get_basic(iter, &valu32);
-		bt_shell_printf("%s%s: 0x%06x\n", label, name, valu32);
+		bt_shell_printf("%s%s: 0x%08x (%u)\n", label, name, valu32,
+								valu32);
 		break;
 	case DBUS_TYPE_UINT16:
 		dbus_message_iter_get_basic(iter, &valu16);
-		bt_shell_printf("%s%s: 0x%04x\n", label, name, valu16);
+		bt_shell_printf("%s%s: 0x%04x (%u)\n", label, name, valu16,
+								valu16);
 		break;
 	case DBUS_TYPE_INT16:
 		dbus_message_iter_get_basic(iter, &vals16);
@@ -2525,6 +2527,51 @@ static void cmd_send_transport(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void volume_callback(const DBusError *error, void *user_data)
+{
+	if (dbus_error_is_set(error)) {
+		bt_shell_printf("Failed to set Volume: %s\n", error->name);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Changing Volume succeeded\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_volume_transport(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	char *endptr = NULL;
+	int volume;
+
+	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Transport %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+
+	if (argc == 2) {
+		print_property(proxy, "Volume");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	volume = strtol(argv[2], &endptr, 0);
+	if (!endptr || *endptr != '\0' || volume > UINT16_MAX) {
+		bt_shell_printf("Invalid argument: %s\n", argv[2]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!g_dbus_proxy_set_property_basic(proxy, "Volume", DBUS_TYPE_UINT16,
+						&volume, volume_callback,
+						NULL, NULL)) {
+		bt_shell_printf("Failed release transport\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static const struct bt_shell_menu transport_menu = {
 	.name = "transport",
 	.desc = "Media Transport Submenu",
@@ -2542,6 +2589,9 @@ static const struct bt_shell_menu transport_menu = {
 						transport_generator },
 	{ "send",        "<filename>",	cmd_send_transport,
 						"Send contents of a file" },
+	{ "volume",      "<transport> [value]",	cmd_volume_transport,
+						"Get/Set transport volume",
+						transport_generator },
 	{} },
 };
 
