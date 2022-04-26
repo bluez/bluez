@@ -3301,11 +3301,44 @@ static void print_uuid128_list(const char *label, const void *data,
 	}
 }
 
+static void print_broadcast_annoucement(const uint8_t *data, uint8_t data_len)
+{
+	uint32_t bid;
+
+	if (data_len < 3) {
+		print_hex_field("  Data", data, data_len);
+		return;
+	}
+
+	bid = get_le24(data);
+	print_field("Broadcast ID: %u (0x%06x)", bid, bid);
+}
+
+static const struct service_data_decoder {
+	uint16_t uuid;
+	void (*func)(const uint8_t *data, uint8_t data_len);
+} service_data_decoders[] = {
+	{ 0x1852, print_broadcast_annoucement }
+};
+
 static void print_service_data(const uint8_t *data, uint8_t data_len)
 {
 	uint16_t uuid = get_le16(&data[0]);
+	size_t i;
 
 	print_field("Service Data: %s (0x%4.4x)", bt_uuid16_to_str(uuid), uuid);
+
+	for (i = 0; i < ARRAY_SIZE(service_data_decoders); i++) {
+		const struct service_data_decoder *decoder;
+
+		decoder = &service_data_decoders[i];
+
+		if (decoder->uuid == uuid) {
+			decoder->func(&data[2], data_len - 2);
+			return;
+		}
+	}
+
 	print_hex_field("  Data", &data[2], data_len - 2);
 }
 
