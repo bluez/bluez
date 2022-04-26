@@ -3517,6 +3517,34 @@ struct bt_hci_evt_le_per_sync_established {
 	uint8_t  clock_accuracy;
 } __attribute__ ((packed));
 
+struct bt_hci_le_pa_base_codec {
+	uint8_t  id;
+	uint16_t cid;
+	uint16_t vid;
+} __attribute__ ((packed));
+
+struct bt_hci_lv_data {
+	uint8_t  len;
+	uint8_t  data[];
+} __attribute__ ((packed));
+
+struct bt_hci_le_pa_base_bis {
+	uint8_t  index;
+	struct bt_hci_lv_data codec_cfg[];
+} __attribute__ ((packed));
+
+struct bt_hci_le_pa_base_subgroup {
+	uint8_t  num_bis;
+	struct bt_hci_le_pa_base_codec codec;
+	uint8_t  data[];
+} __attribute__ ((packed));
+
+struct bt_hci_le_pa_base_data {
+	uint8_t  pd[3];
+	uint8_t  num_subgroups;
+	struct bt_hci_le_pa_base_subgroup subgroups[];
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LE_PA_REPORT			0x0f
 struct bt_hci_le_pa_report {
 	uint16_t handle;

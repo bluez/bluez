@@ -3301,6 +3301,111 @@ static void print_uuid128_list(const char *label, const void *data,
 	}
 }
 
+static void *iov_pull(struct iovec *iov, size_t len)
+{
+	void *data;
+
+	if (iov->iov_len < len)
+		return NULL;
+
+	data = iov->iov_base;
+	iov->iov_base += len;
+	iov->iov_len -= len;
+
+	return data;
+}
+
+static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
+{
+	struct iovec iov;
+	struct bt_hci_le_pa_base_data *base_data;
+	uint8_t i;
+
+	iov.iov_base = (void *) data;
+	iov.iov_len = data_len;
+
+	base_data = iov_pull(&iov, sizeof(*base_data));
+	if (!base_data)
+		goto done;
+
+	/* Level 1 - BASE */
+	print_field("  Presetation Delay: %u", get_le24(base_data->pd));
+	print_field("  Number of Subgroups: %u", base_data->num_subgroups);
+
+	/* Level 2 - Subgroups*/
+	for (i = 0; i < base_data->num_subgroups; i++) {
+		struct bt_hci_le_pa_base_subgroup *subgroup;
+		struct bt_hci_lv_data *codec_cfg;
+		struct bt_hci_lv_data *metadata;
+		uint8_t j;
+
+		print_field("    Subgroup #%u:", i);
+
+		subgroup = iov_pull(&iov, sizeof(*subgroup));
+		if (!subgroup)
+			goto done;
+
+		print_field("    Number of BIS(s): %u", subgroup->num_bis);
+		print_codec_id("    Codec", subgroup->codec.id);
+
+		if (subgroup->codec.id == 0xff) {
+			uint16_t id;
+
+			id = le16_to_cpu(subgroup->codec.vid);
+			print_field("    Codec Company ID: %s (0x%04x)",
+						bt_compidtostr(id), id);
+			print_field("    Codec Vendor ID: 0x%04x",
+						subgroup->codec.vid);
+		}
+
+		codec_cfg = iov_pull(&iov, sizeof(*codec_cfg));
+		if (!codec_cfg)
+			goto done;
+
+		if (!iov_pull(&iov, codec_cfg->len))
+			goto done;
+
+		print_hex_field("    Codec Specific Configuration",
+					codec_cfg->data, codec_cfg->len);
+
+		metadata = iov_pull(&iov, sizeof(*metadata));
+		if (!metadata)
+			goto done;
+
+		if (!iov_pull(&iov, metadata->len))
+			goto done;
+
+		print_hex_field("    Metadata", metadata->data, metadata->len);
+
+		/* Level 3 - BIS(s)*/
+		for (j = 0; j < subgroup->num_bis; j++) {
+			struct bt_hci_le_pa_base_bis *bis;
+
+			print_field("      BIS #%u:", j);
+
+			bis = iov_pull(&iov, sizeof(*bis));
+			if (!bis)
+				goto done;
+
+			print_field("      Index: %u", bis->index);
+
+			codec_cfg = iov_pull(&iov, sizeof(*codec_cfg));
+			if (!codec_cfg)
+				goto done;
+
+			if (!iov_pull(&iov, codec_cfg->len))
+				goto done;
+
+			print_hex_field("      Codec Specific Configuration",
+					codec_cfg->data, codec_cfg->len);
+		}
+	}
+
+done:
+	if (iov.iov_len)
+		print_hex_field("  Data", iov.iov_base, iov.iov_len);
+}
+
 static void print_broadcast_annoucement(const uint8_t *data, uint8_t data_len)
 {
 	uint32_t bid;
@@ -3318,6 +3423,7 @@ static const struct service_data_decoder {
 	uint16_t uuid;
 	void (*func)(const uint8_t *data, uint8_t data_len);
 } service_data_decoders[] = {
+	{ 0x1851, print_base_annoucement },
 	{ 0x1852, print_broadcast_annoucement }
 };
 
