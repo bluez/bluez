@@ -1337,6 +1337,9 @@ static void print_codec_id(const char *label, uint8_t codec)
 	case 0x05:
 		str = "mSBC";
 		break;
+	case 0x06:
+		str = "LC3";
+		break;
 	case 0xff:
 		str = "Vendor specific";
 		break;
