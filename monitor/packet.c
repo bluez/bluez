@@ -3301,6 +3301,14 @@ static void print_uuid128_list(const char *label, const void *data,
 	}
 }
 
+static void print_service_data(const uint8_t *data, uint8_t data_len)
+{
+	uint16_t uuid = get_le16(&data[0]);
+
+	print_field("Service Data: %s (0x%4.4x)", bt_uuid16_to_str(uuid), uuid);
+	print_hex_field("  Data", &data[2], data_len - 2);
+}
+
 static const struct bitfield_data eir_flags_table[] = {
 	{ 0, "LE Limited Discoverable Mode"		},
 	{ 1, "LE General Discoverable Mode"		},
@@ -3703,9 +3711,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_SERVICE_DATA:
 			if (data_len < 2)
 				break;
-			sprintf(label, "Service Data (UUID 0x%4.4x)",
-							get_le16(&data[0]));
-			print_hex_field(label, &data[2], data_len - 2);
+			print_service_data(data, data_len);
 			break;
 
 		case BT_EIR_RANDOM_ADDRESS:
