@@ -949,6 +949,7 @@ int8_t media_transport_get_device_volume(struct btd_device *dev)
 	if (dev == NULL)
 		return -1;
 
+	/* Attempt to locate the transport to get its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
 		if (transport->device != dev)
@@ -959,7 +960,8 @@ int8_t media_transport_get_device_volume(struct btd_device *dev)
 			return media_transport_get_volume(transport);
 	}
 
-	return 0;
+	/* If transport volume doesn't exists use device_volume */
+	return btd_device_get_volume(dev);
 }
 
 void media_transport_update_device_volume(struct btd_device *dev,
@@ -970,13 +972,19 @@ void media_transport_update_device_volume(struct btd_device *dev,
 	if (dev == NULL || volume < 0)
 		return;
 
+	/* Attempt to locate the transport to set its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
 		if (transport->device != dev)
 			continue;
 
 		/* Volume is A2DP only */
-		if (media_endpoint_get_sep(transport->endpoint))
+		if (media_endpoint_get_sep(transport->endpoint)) {
 			media_transport_update_volume(transport, volume);
+			return;
+		}
 	}
+
+	/* If transport volume doesn't exists add to device_volume */
+	btd_device_set_volume(dev, volume);
 }

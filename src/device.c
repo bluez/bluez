@@ -274,6 +274,8 @@ struct btd_device {
 	guint		store_id;
 
 	time_t		name_resolve_failed_time;
+
+	int8_t		volume;
 };
 
 static const uint16_t uuid_list[] = {
@@ -4334,6 +4336,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 		return NULL;
 
 	device->tx_power = 127;
+	device->volume = -1;
 
 	device->db = gatt_db_new();
 	if (!device->db) {
@@ -7302,4 +7305,14 @@ void btd_device_init(void)
 void btd_device_cleanup(void)
 {
 	btd_service_remove_state_cb(service_state_cb_id);
+}
+
+void btd_device_set_volume(struct btd_device *device, int8_t volume)
+{
+	device->volume = volume;
+}
+
+int8_t btd_device_get_volume(struct btd_device *device)
+{
+	return device->volume;
 }

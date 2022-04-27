@@ -456,11 +456,11 @@ int8_t media_player_get_device_volume(struct btd_device *device)
 
 	target_player = avrcp_get_target_player_by_device(device);
 	if (!target_player)
-		return -1;
+		goto done;
 
 	adapter = find_adapter(device);
 	if (!adapter)
-		return -1;
+		goto done;
 
 	for (l = adapter->players; l; l = l->next) {
 		struct media_player *mp = l->data;
@@ -469,7 +469,9 @@ int8_t media_player_get_device_volume(struct btd_device *device)
 			return mp->volume;
 	}
 
-	return -1;
+done:
+	/* If media_player doesn't exists use device_volume */
+	return btd_device_get_volume(device);
 }
 
 static gboolean set_configuration(struct media_endpoint *endpoint,

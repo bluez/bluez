@@ -180,3 +180,6 @@ bool btd_device_all_services_allowed(struct btd_device *dev);
 void btd_device_update_allowed_services(struct btd_device *dev);
 void btd_device_init(void);
 void btd_device_cleanup(void);
+
+void btd_device_set_volume(struct btd_device *dev, int8_t volume);
+int8_t btd_device_get_volume(struct btd_device *dev);
