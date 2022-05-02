@@ -3318,6 +3318,44 @@ static void *iov_pull(struct iovec *iov, size_t len)
 	return data;
 }
 
+static void print_ltv(const char *label, const uint8_t *data, uint8_t len)
+{
+	struct iovec iov;
+	int i;
+
+	iov.iov_base = (void *) data;
+	iov.iov_len = len;
+
+	for (i = 0; iov.iov_len; i++) {
+		uint8_t l, t, *v;
+
+		l = get_u8(iov_pull(&iov, sizeof(l)));
+		if (!l) {
+			print_field("%s #%d: len 0x%02x", label, i, l);
+			break;
+		}
+
+		v = iov_pull(&iov, sizeof(*v));
+		if (!v)
+			break;
+
+		t = get_u8(v);
+
+		print_field("%s #%d: len 0x%02x type 0x%02x", label, i, l, t);
+
+		l -= 1;
+
+		v = iov_pull(&iov, l);
+		if (!v)
+			break;
+
+		print_hex_field(label, v, l);
+	}
+
+	if (iov.iov_len)
+		print_hex_field(label, iov.iov_base, iov.iov_len);
+}
+
 static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 {
 	struct iovec iov;
@@ -3368,7 +3406,7 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 		if (!iov_pull(&iov, codec_cfg->len))
 			goto done;
 
-		print_hex_field("    Codec Specific Configuration",
+		print_ltv("    Codec Specific Configuration",
 					codec_cfg->data, codec_cfg->len);
 
 		metadata = iov_pull(&iov, sizeof(*metadata));
@@ -3378,7 +3416,7 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 		if (!iov_pull(&iov, metadata->len))
 			goto done;
 
-		print_hex_field("    Metadata", metadata->data, metadata->len);
+		print_ltv("    Metadata", metadata->data, metadata->len);
 
 		/* Level 3 - BIS(s)*/
 		for (j = 0; j < subgroup->num_bis; j++) {
