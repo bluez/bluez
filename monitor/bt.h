@@ -3649,8 +3649,8 @@ struct bt_hci_evt_le_big_complete {
 
 #define BT_HCI_EVT_LE_BIG_TERMINATE		0x1c
 struct bt_hci_evt_le_big_terminate {
-	uint8_t  reason;
 	uint8_t  handle;
+	uint8_t  reason;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED	0x1d
