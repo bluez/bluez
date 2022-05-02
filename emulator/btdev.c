@@ -509,6 +509,42 @@ void btdev_set_rl_len(struct btdev *btdev, uint8_t len)
 	btdev->le_rl_len = len;
 }
 
+static void conn_unlink(struct btdev_conn *conn1, struct btdev_conn *conn2)
+{
+	conn1->link = NULL;
+	conn2->link = NULL;
+}
+
+static void conn_remove(void *data)
+{
+	struct btdev_conn *conn = data;
+
+	if (conn->link) {
+		struct btdev_conn *link = conn->link;
+
+		conn_unlink(conn, conn->link);
+		conn_remove(link);
+	}
+
+	queue_remove(conn->dev->conns, conn);
+
+	free(conn->data);
+	free(conn);
+}
+
+static void le_ext_adv_free(void *data)
+{
+	struct le_ext_adv *ext_adv = data;
+
+	/* Remove to queue */
+	queue_remove(ext_adv->dev->le_ext_adv, ext_adv);
+
+	if (ext_adv->id)
+		timeout_remove(ext_adv->id);
+
+	free(ext_adv);
+}
+
 static void btdev_reset(struct btdev *btdev)
 {
 	/* FIXME: include here clearing of all states that should be
@@ -517,12 +553,16 @@ static void btdev_reset(struct btdev *btdev)
 
 	btdev->le_scan_enable		= 0x00;
 	btdev->le_adv_enable		= 0x00;
+	btdev->le_pa_enable		= 0x00;
 
 	al_clear(btdev);
 	rl_clear(btdev);
 
 	btdev->le_al_len = AL_SIZE;
 	btdev->le_rl_len = RL_SIZE;
+
+	queue_remove_all(btdev->conns, NULL, NULL, conn_remove);
+	queue_remove_all(btdev->le_ext_adv, NULL, NULL, le_ext_adv_free);
 }
 
 static int cmd_reset(struct btdev *dev, const void *data, uint8_t len)
@@ -672,29 +712,6 @@ static bool match_handle(const void *data, const void *match_data)
 	uint16_t handle = PTR_TO_UINT(match_data);
 
 	return conn->handle == handle;
-}
-
-static void conn_unlink(struct btdev_conn *conn1, struct btdev_conn *conn2)
-{
-	conn1->link = NULL;
-	conn2->link = NULL;
-}
-
-static void conn_remove(void *data)
-{
-	struct btdev_conn *conn = data;
-
-	if (conn->link) {
-		struct btdev_conn *link = conn->link;
-
-		conn_unlink(conn, conn->link);
-		conn_remove(link);
-	}
-
-	queue_remove(conn->dev->conns, conn);
-
-	free(conn->data);
-	free(conn);
 }
 
 static void disconnect_complete(struct btdev *dev, uint16_t handle,
@@ -4625,19 +4642,6 @@ static struct le_ext_adv *le_ext_adv_new(struct btdev *btdev, uint8_t handle)
 	}
 
 	return ext_adv;
-}
-
-static void le_ext_adv_free(void *data)
-{
-	struct le_ext_adv *ext_adv = data;
-
-	/* Remove to queue */
-	queue_remove(ext_adv->dev->le_ext_adv, ext_adv);
-
-	if (ext_adv->id)
-		timeout_remove(ext_adv->id);
-
-	free(ext_adv);
 }
 
 static int cmd_set_adv_rand_addr(struct btdev *dev, const void *data,
