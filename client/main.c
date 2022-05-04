@@ -78,6 +78,14 @@ static const char *ad_arguments[] = {
 	NULL
 };
 
+static const char * const device_arguments[] = {
+	"Paired",
+	"Bonded",
+	"Trusted",
+	"Connected",
+	NULL
+};
+
 static void proxy_leak(gpointer data)
 {
 	printf("Leaking proxy %p\n", data);
@@ -912,6 +920,28 @@ static gboolean check_default_ctrl(void)
 	return TRUE;
 }
 
+static gboolean parse_argument_devices(int argc, char *argv[],
+				       const char * const *arg_table,
+				       const char **option)
+{
+	const char * const *opt;
+
+	if (argc < 2) {
+		*option = NULL;
+		return TRUE;
+	}
+
+	for (opt = arg_table; opt && *opt; opt++) {
+		if (strcmp(argv[1], *opt) == 0) {
+			*option = *opt;
+			return TRUE;
+		}
+	}
+
+	bt_shell_printf("Invalid argument %s\n", argv[1]);
+	return FALSE;
+}
+
 static gboolean parse_argument(int argc, char *argv[], const char **arg_table,
 					const char *msg, dbus_bool_t *value,
 					const char **option)
@@ -1051,22 +1081,11 @@ static void cmd_select(int argc, char *argv[])
 static void cmd_devices(int argc, char *argv[])
 {
 	GList *ll;
+	const char *property;
 
-	if (check_default_ctrl() == FALSE)
-		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
-
-	for (ll = g_list_first(default_ctrl->devices);
-			ll; ll = g_list_next(ll)) {
-		GDBusProxy *proxy = ll->data;
-		print_device(proxy, NULL);
-	}
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
-}
-
-static void cmd_paired_devices(int argc, char *argv[])
-{
-	GList *ll;
+	if (!parse_argument_devices(argc, argv, device_arguments,
+					&property))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (check_default_ctrl() == FALSE)
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -1075,15 +1094,17 @@ static void cmd_paired_devices(int argc, char *argv[])
 			ll; ll = g_list_next(ll)) {
 		GDBusProxy *proxy = ll->data;
 		DBusMessageIter iter;
-		dbus_bool_t paired;
+		dbus_bool_t status;
 
-		if (g_dbus_proxy_get_property(proxy, "Paired", &iter) == FALSE)
-			continue;
+		if (property) {
+			if (g_dbus_proxy_get_property(proxy,
+					property, &iter) == FALSE)
+				continue;
 
-		dbus_message_iter_get_basic(&iter, &paired);
-		if (!paired)
-			continue;
-
+			dbus_message_iter_get_basic(&iter, &status);
+			if (!status)
+				continue;
+		}
 		print_device(proxy, NULL);
 	}
 
@@ -1781,6 +1802,7 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "Appearance");
 	print_property(proxy, "Icon");
 	print_property(proxy, "Paired");
+	print_property(proxy, "Bonded");
 	print_property(proxy, "Trusted");
 	print_property(proxy, "Blocked");
 	print_property(proxy, "Connected");
@@ -3113,9 +3135,9 @@ static const struct bt_shell_menu main_menu = {
 							ctrl_generator },
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
 							ctrl_generator },
-	{ "devices",      NULL,       cmd_devices, "List available devices" },
-	{ "paired-devices", NULL,     cmd_paired_devices,
-					"List paired devices"},
+	{ "devices",      "[Paired/Bonded/Trusted/Connected]", cmd_devices,
+					"List available devices, with an "
+					"optional property as the filter" },
 	{ "system-alias", "<name>",   cmd_system_alias,
 					"Set controller alias" },
 	{ "reset-alias",  NULL,       cmd_reset_alias,
