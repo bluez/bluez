@@ -169,7 +169,17 @@ Properties	string Address [readonly]
 
 		boolean Paired [readonly]
 
-			Indicates if the remote device is paired.
+			Indicates if the remote device is paired. Pairing is
+			the process where devices exchange the information to
+			establish an encrypted connection.
+
+		boolean Bonded [readonly]
+
+			Indicates if the remote device is bonded. Bonded means
+			the link key or the ltk from the pairing process has
+			been stored.
+			A PropertiesChanged signal indicate changes to this
+			status.
 
 		boolean Connected [readonly]
 
