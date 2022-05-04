@@ -1044,6 +1044,22 @@ static gboolean dev_property_get_paired(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean dev_property_get_bonded(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *dev = data;
+	dbus_bool_t val;
+
+	if (dev->bredr_state.bonded || dev->le_state.bonded)
+		val = TRUE;
+	else
+		val = FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
+
+	return TRUE;
+}
+
 static gboolean dev_property_get_legacy(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -3122,6 +3138,7 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "Icon", "s", dev_property_get_icon, NULL,
 					dev_property_exists_icon },
 	{ "Paired", "b", dev_property_get_paired },
+	{ "Bonded", "b", dev_property_get_bonded },
 	{ "Trusted", "b", dev_property_get_trusted, dev_property_set_trusted },
 	{ "Blocked", "b", dev_property_get_blocked, dev_property_set_blocked },
 	{ "LegacyPairing", "b", dev_property_get_legacy },
@@ -6118,17 +6135,30 @@ void btd_device_set_trusted(struct btd_device *device, gboolean trusted)
 
 void device_set_bonded(struct btd_device *device, uint8_t bdaddr_type)
 {
+	struct bearer_state *state;
+
 	if (!device)
 		return;
 
-	DBG("");
+	state = get_state(device, bdaddr_type);
 
-	if (bdaddr_type == BDADDR_BREDR)
-		device->bredr_state.bonded = true;
-	else
-		device->le_state.bonded = true;
+	if (state->bonded)
+		return;
+
+	DBG("setting bonded for device to true");
+
+	state->bonded = true;
 
 	btd_device_set_temporary(device, false);
+
+	/* If the other bearer state was already true we don't need to
+	 * send any property signals.
+	 */
+	if (device->bredr_state.bonded == device->le_state.bonded)
+		return;
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Bonded");
 }
 
 void device_set_legacy(struct btd_device *device, bool legacy)
