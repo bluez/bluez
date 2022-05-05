@@ -1306,14 +1306,19 @@ static void process_data(struct control_data *data)
 
 		data_len = le16_to_cpu(hdr->data_len);
 
+		if (data_len + 2 > sizeof(data->buf)) {
+			fprintf(stderr, "Received corrupted data from TTY\n");
+			data->offset -= 2;
+			memmove(data->buf, data->buf + 2, data->offset);
+			continue;
+		}
+
 		if (data->offset < 2 + data_len)
 			return;
 
 		if (data->offset < sizeof(*hdr) + hdr->hdr_len) {
 			fprintf(stderr, "Received corrupted data from TTY\n");
-			memmove(data->buf, data->buf + 2 + data_len,
-								data->offset);
-			return;
+			goto _drop;
 		}
 
 		if (!tty_parse_header(hdr->ext_hdr, hdr->hdr_len,
@@ -1330,6 +1335,7 @@ static void process_data(struct control_data *data)
 		packet_monitor(tv, NULL, 0, opcode,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
 
+_drop:
 		data->offset -= 2 + data_len;
 
 		if (data->offset > 0)
