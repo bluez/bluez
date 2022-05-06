@@ -533,7 +533,15 @@ static bool parse_local_name(DBusMessageIter *iter,
 	dbus_message_iter_get_basic(iter, &name);
 
 	free(client->name);
-	client->name = strdup(name);
+
+	/* Treat empty string the same as omitting since there is no point on
+	 * adding a empty name as AD data as it just take space that could be
+	 * used for something else.
+	 */
+	if (name[0] != '\0')
+		client->name = strdup(name);
+	else
+		client->name = NULL;
 
 	return true;
 }
