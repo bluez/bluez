@@ -80,7 +80,11 @@ static void print_pkt_type(struct hci_dev_info *di)
 
 static void print_link_policy(struct hci_dev_info *di)
 {
-	printf("\tLink policy: %s\n", hci_lptostr(di->link_policy));
+	char *str;
+
+	str = hci_lptostr(di->link_policy);
+	printf("\tLink policy: %s\n", str);
+	bt_free(str);
 }
 
 static void print_link_mode(struct hci_dev_info *di)
