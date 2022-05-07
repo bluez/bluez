@@ -1355,12 +1355,16 @@ static void prompt_read_cb(int fd, uint32_t events, void *user_data)
 		return;
 	}
 
-	if ((read = getline(&line, &len, stdin)) == -1)
+	read = getline(&line, &len, stdin);
+	if (read < 0) {
+		free(line);
 		return;
+	}
 
 	if (read <= 1) {
 		cmd_help(cli, NULL);
 		print_prompt();
+		free(line);
 		return;
 	}
 
