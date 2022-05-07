@@ -1568,6 +1568,8 @@ static void dev_property_set_wake_allowed(const GDBusPropertyTable *property,
 		return;
 	}
 
+	dbus_message_iter_get_basic(value, &b);
+
 	/* Emit busy or success depending on current value. */
 	if (b == device->pending_wake_allowed) {
 		if (device->wake_allowed == device->pending_wake_allowed)
@@ -1580,7 +1582,6 @@ static void dev_property_set_wake_allowed(const GDBusPropertyTable *property,
 		return;
 	}
 
-	dbus_message_iter_get_basic(value, &b);
 	device_set_wake_override(device, b);
 	device_set_wake_allowed(device, b, id);
 }
