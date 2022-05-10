@@ -3107,8 +3107,11 @@ static DBusMessage *cancel_pairing(DBusConnection *conn, DBusMessage *msg,
 
 	DBG("");
 
-	if (!req)
+	if (!req) {
+		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
+						device->bdaddr_type);
 		return btd_error_does_not_exist(msg);
+	}
 
 	device_cancel_bonding(device, MGMT_STATUS_CANCELLED);
 
