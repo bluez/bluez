@@ -24,6 +24,9 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 					UUID of the profile which the endpoint
 					is for.
 
+					UUID must be in the list of
+					SupportedUUIDS.
+
 				byte Codec:
 
 					Assigned number of codec that the
@@ -87,6 +90,12 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist
+
+Properties	array{string} SupportedUUIDs [readonly]:
+
+			List of 128-bit UUIDs that represents the supported
+			Endpoint registration.
+
 Media Control hierarchy
 =======================
 
@@ -564,7 +573,18 @@ Methods		void SetConfiguration(object transport, dict properties)
 			endpoint oject which will be configured and the
 			properties must contain the following properties:
 
-				array{byte} Capabilities
+				array{byte} Capabilities [Mandatory]
+				array{byte} Metadata [ISO only]
+				byte CIG [ISO only]
+				byte CIS [ISO only]
+				uint32 Interval [ISO only]
+				bool Framing [ISO only]
+				string PHY [ISO only]
+				uint16 SDU [ISO only]
+				byte Retransmissions [ISO only]
+				uint16 Latency [ISO only]
+				uint32 Delay [ISO only]
+				uint8 TargetLatency [ISO Latency]
 
 		array{byte} SelectConfiguration(array{byte} capabilities)
 
@@ -576,6 +596,19 @@ Methods		void SetConfiguration(object transport, dict properties)
 
 			Note: There is no need to cache the selected
 			configuration since on success the configuration is
+			send back as parameter of SetConfiguration.
+
+		dict SelectProperties(dict properties)
+
+			Select preferable properties from the supported
+			properties. Refer to SetConfiguration for the list of
+			possible properties.
+
+			Returns propeties which can be used to setup
+			a transport.
+
+			Note: There is no need to cache the selected
+			properties since on success the configuration is
 			send back as parameter of SetConfiguration.
 
 		void ClearConfiguration(object transport)
@@ -612,6 +645,46 @@ Properties	string UUID [readonly, optional]:
 		bool DelayReporting [readonly, optional]:
 
 			Indicates if endpoint supports Delay Reporting.
+
+		byte Framing [ISO only]
+
+			Indicates endpoint support framing.
+
+		byte PHY [ISO only]
+
+			Indicates endpoint supported PHY.
+
+		uint16_t MaximumLatency [ISO only]
+
+			Indicates endpoint maximum latency.
+
+		uint32_t MinimumDelay [ISO only]
+
+			Indicates endpoint minimum presentation delay.
+
+		uint32_t MaximumDelay [ISO only]
+
+			Indicates endpoint maximum presentation delay.
+
+		uint32_t PreferredMinimumDelay [ISO only]
+
+			Indicates endpoint preferred minimum presentation delay.
+
+		uint32_t PreferredMinimumDelay [ISO only]
+
+			Indicates endpoint preferred minimum presentation delay.
+
+		uint32 Location [ISO only]
+
+			Indicates endpoint supported locations.
+
+		uint16 SupportedContext [ISO only]
+
+			Indicates endpoint supported audio context.
+
+		uint16 Context [ISO only]
+
+			Indicates endpoint available audio context.
 
 MediaTransport1 hierarchy
 =========================
@@ -689,3 +762,16 @@ Properties	object Device [readonly]
 
 			Endpoint object which the transport is associated
 			with.
+
+		uint32 Location [readonly, ISO only, experimental]
+
+			Indicates transport Audio Location.
+
+		array{byte} Metadata [ISO Only, experimental]
+
+			Indicates transport Metadata.
+
+		array{object} Links [readonly, optional, ISO only, experimental]
+
+			Linked transport objects which the transport is
+			associated with.
