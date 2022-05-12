@@ -1528,7 +1528,7 @@ void gatt_db_service_foreach_char(struct gatt_db_attribute *attrib,
 	gatt_db_service_foreach(attrib, &characteristic_uuid, func, user_data);
 }
 
-static int gatt_db_attribute_get_index(struct gatt_db_attribute *attrib)
+static int gatt_db_attribute_get_index(const struct gatt_db_attribute *attrib)
 {
 	struct gatt_db_service *service;
 	int index;
@@ -1853,8 +1853,18 @@ bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 	if (!attrib)
 		return false;
 
-	if (bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
-		return false;
+	if (bt_uuid_cmp(&characteristic_uuid, &attrib->uuid)) {
+		int index;
+
+		/* Check if Characteristic Value was passed instead */
+		index = gatt_db_attribute_get_index(attrib);
+		if (index < 0)
+			return NULL;
+
+		attrib = attrib->service->attributes[index - 1];
+		if (bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
+			return false;
+	}
 
 	/*
 	 * Characteristic declaration value:
