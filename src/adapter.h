@@ -254,6 +254,16 @@ void btd_adapter_for_each_device(struct btd_adapter *adapter,
 
 bool btd_le_connect_before_pairing(void);
 
+enum experimental_features {
+	EXP_FEAT_DEBUG			= 1 << 0,
+	EXP_FEAT_LE_SIMULT_ROLES	= 1 << 1,
+	EXP_FEAT_BQR			= 1 << 2,
+	EXP_FEAT_RPA_RESOLUTION		= 1 << 3,
+	EXP_FEAT_CODEC_OFFLOAD		= 1 << 4,
+};
+
+bool btd_adapter_has_exp_feature(struct btd_adapter *adapter, uint32_t feature);
+
 enum kernel_features {
 	KERNEL_CONN_CONTROL		= 1 << 0,
 	KERNEL_BLOCKED_KEYS_SUPPORTED	= 1 << 1,

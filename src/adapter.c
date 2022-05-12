@@ -4761,6 +4761,9 @@ static void load_devices(struct btd_adapter *adapter)
 		if (!device)
 			goto free;
 
+		if (irk_info)
+			device_set_rpa(device, true);
+
 		btd_device_set_temporary(device, false);
 		adapter_add_device(adapter, device);
 
@@ -9569,8 +9572,9 @@ static bool set_blocked_keys(struct btd_adapter *adapter)
 						adapter, NULL);
 }
 
-#define EXP_FEAT(_uuid, _func) \
+#define EXP_FEAT(_flag, _uuid, _func) \
 { \
+	.flag = _flag, \
 	.uuid = _uuid, \
 	.func = _func, \
 }
@@ -9692,15 +9696,18 @@ static void codec_offload_func(struct btd_adapter *adapter, uint8_t action)
 }
 
 static const struct exp_feat {
+	uint32_t flag;
 	const struct mgmt_exp_uuid *uuid;
 	void (*func)(struct btd_adapter *adapter, uint8_t action);
 } exp_table[] = {
-	EXP_FEAT(&debug_uuid, exp_debug_func),
-	EXP_FEAT(&le_simult_central_peripheral_uuid,
+	EXP_FEAT(EXP_FEAT_DEBUG, &debug_uuid, exp_debug_func),
+	EXP_FEAT(EXP_FEAT_LE_SIMULT_ROLES, &le_simult_central_peripheral_uuid,
 		 le_simult_central_peripheral_func),
-	EXP_FEAT(&quality_report_uuid, quality_report_func),
-	EXP_FEAT(&rpa_resolution_uuid, rpa_resolution_func),
-	EXP_FEAT(&codec_offload_uuid, codec_offload_func),
+	EXP_FEAT(EXP_FEAT_BQR, &quality_report_uuid, quality_report_func),
+	EXP_FEAT(EXP_FEAT_RPA_RESOLUTION, &rpa_resolution_uuid,
+		rpa_resolution_func),
+	EXP_FEAT(EXP_FEAT_CODEC_OFFLOAD, &codec_offload_uuid,
+		codec_offload_func),
 };
 
 static void read_exp_features_complete(uint8_t status, uint16_t length,
@@ -10450,4 +10457,19 @@ bool btd_le_connect_before_pairing(void)
 bool btd_has_kernel_features(uint32_t features)
 {
 	return (kernel_features & features) ? true : false;
+}
+
+bool btd_adapter_has_exp_feature(struct btd_adapter *adapter, uint32_t feature)
+{
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(exp_table); i++) {
+		const struct exp_feat *feat = &exp_table[i];
+
+		if ((feat->flag & feature) && queue_find(adapter->exps, NULL,
+							feat->uuid->val))
+			return true;
+	}
+
+	return false;
 }
