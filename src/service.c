@@ -172,7 +172,7 @@ void service_remove(struct btd_service *service)
 	btd_service_unref(service);
 }
 
-int service_accept(struct btd_service *service)
+int service_accept(struct btd_service *service, bool initiator)
 {
 	char addr[18];
 	int err;
@@ -197,6 +197,8 @@ int service_accept(struct btd_service *service)
 						service->profile->remote_uuid);
 		return -ECONNABORTED;
 	}
+
+	service->initiator = initiator;
 
 	err = service->profile->accept(service);
 	if (!err)

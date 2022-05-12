@@ -158,6 +158,7 @@ struct bearer_state {
 	bool bonded;
 	bool connected;
 	bool svc_resolved;
+	bool initiator;
 };
 
 struct csrk_info {
@@ -295,6 +296,16 @@ static struct bearer_state *get_state(struct btd_device *dev,
 		return &dev->bredr_state;
 	else
 		return &dev->le_state;
+}
+
+static bool get_initiator(struct btd_device *dev)
+{
+	if (dev->le_state.connected)
+		return dev->le_state.initiator;
+	if (dev->bredr_state.connected)
+		return dev->bredr_state.initiator;
+
+	return false;
 }
 
 static GSList *find_service_with_profile(GSList *list, struct btd_profile *p)
@@ -3256,6 +3267,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type)
 		return;
 
 	state->connected = false;
+	state->initiator = false;
 	device->general_connect = FALSE;
 
 	device_set_svc_refreshed(device, false);
@@ -4169,7 +4181,7 @@ done:
 	}
 
 	/* Notify driver about the new connection */
-	service_accept(service);
+	service_accept(service, get_initiator(device));
 }
 
 static void device_add_gatt_services(struct btd_device *device)
@@ -4191,7 +4203,7 @@ static void device_accept_gatt_profiles(struct btd_device *device)
 	GSList *l;
 
 	for (l = device->services; l != NULL; l = g_slist_next(l))
-		service_accept(l->data);
+		service_accept(l->data, get_initiator(device));
 }
 
 static void device_remove_gatt_service(struct btd_device *device,
@@ -5899,6 +5911,8 @@ int device_connect_le(struct btd_device *dev)
 
 	/* Keep this, so we can cancel the connection */
 	dev->att_io = io;
+	/* Set as initiator */
+	dev->le_state.initiator = true;
 
 	return 0;
 }
