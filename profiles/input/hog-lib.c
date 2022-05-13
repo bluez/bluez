@@ -1518,6 +1518,7 @@ static void hog_attach_instance(struct bt_hog *hog,
 	if (!instance)
 		return;
 
+	instance->gatt_db = gatt_db_ref(hog->gatt_db);
 	hog->instances = g_slist_append(hog->instances, bt_hog_ref(instance));
 }
 
@@ -1557,6 +1558,8 @@ struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
 	if (!hog)
 		return NULL;
 
+	hog->gatt_db = gatt_db_ref(db);
+
 	if (db) {
 		bt_uuid_t uuid;
 
@@ -1573,8 +1576,6 @@ struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
 			hog->dis = bt_dis_new(db);
 			bt_dis_set_notification(hog->dis, dis_notify, hog);
 		}
-
-		hog->gatt_db = gatt_db_ref(db);
 	}
 
 	return bt_hog_ref(hog);
@@ -1675,7 +1676,8 @@ static void hog_attach_hog(struct bt_hog *hog, struct gatt_primary *primary)
 	}
 
 	instance = bt_hog_new(hog->uhid_fd, hog->name, hog->vendor,
-					hog->product, hog->version, NULL);
+					hog->product, hog->version,
+					hog->gatt_db);
 	if (!instance)
 		return;
 
