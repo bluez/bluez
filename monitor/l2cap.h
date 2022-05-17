@@ -26,6 +26,11 @@ struct l2cap_frame {
 	uint16_t size;
 };
 
+void l2cap_frame_init(struct l2cap_frame *frame, uint16_t index, bool in,
+				uint16_t handle, uint8_t ident,
+				uint16_t cid, uint16_t psm,
+				const void *data, uint16_t size);
+
 static inline void l2cap_frame_pull(struct l2cap_frame *frame,
 				const struct l2cap_frame *source, uint16_t len)
 {
