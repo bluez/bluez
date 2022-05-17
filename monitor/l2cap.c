@@ -2123,20 +2123,6 @@ static void amp_packet(uint16_t index, bool in, uint16_t handle,
 	opcode_data->func(&frame);
 }
 
-static void print_hex_field(const char *label, const uint8_t *data,
-								uint8_t len)
-{
-	char str[len * 2 + 1];
-	uint8_t i;
-
-	str[0] = '\0';
-
-	for (i = 0; i < len; i++)
-		sprintf(str + (i * 2), "%2.2x", data[i]);
-
-	print_field("%s: %s", label, str);
-}
-
 static void print_uuid(const char *label, const void *data, uint16_t size)
 {
 	const char *str;

@@ -76,6 +76,20 @@ static inline uint64_t print_bitfield(int indent, uint64_t val,
 	return mask;
 }
 
+static inline void print_hex_field(const char *label, const uint8_t *data,
+								uint8_t len)
+{
+	char str[len * 2 + 1];
+	uint8_t i;
+
+	str[0] = '\0';
+
+	for (i = 0; i < len; i++)
+		sprintf(str + (i * 2), "%2.2x", data[i]);
+
+	print_field("%s: %s", label, str);
+}
+
 void set_default_pager_num_columns(int num_columns);
 int num_columns(void);
 
