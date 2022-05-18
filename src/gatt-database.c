@@ -38,6 +38,8 @@
 #include "dbus-common.h"
 #include "profile.h"
 #include "service.h"
+#include "textfile.h"
+#include "settings.h"
 
 #define GATT_MANAGER_IFACE	"org.bluez.GattManager1"
 #define GATT_PROFILE_IFACE	"org.bluez.GattProfile1"
@@ -1528,6 +1530,17 @@ static void send_service_changed(struct btd_gatt_database *database,
 		error("Failed to notify Service Changed");
 }
 
+static void database_store(struct btd_gatt_database *database)
+{
+	char filename[PATH_MAX];
+
+	create_filename(filename, PATH_MAX, "/%s/attributes",
+				btd_adapter_get_storage_dir(database->adapter));
+	create_file(filename, 0600);
+
+	btd_settings_gatt_db_store(database->db, filename);
+}
+
 static void gatt_db_service_added(struct gatt_db_attribute *attrib,
 								void *user_data)
 {
@@ -1538,6 +1551,8 @@ static void gatt_db_service_added(struct gatt_db_attribute *attrib,
 	database_add_record(database, attrib);
 
 	send_service_changed(database, attrib);
+
+	database_store(database);
 }
 
 static bool ccc_match_service(const void *data, const void *match_data)
