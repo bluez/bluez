@@ -86,18 +86,18 @@ static void print_module(uint8_t module)
 	print_field("Module: %s (0x%2.2x)", str, module);
 }
 
-static void null_cmd(const void *data, uint8_t size)
+static void null_cmd(uint16_t index, const void *data, uint8_t size)
 {
 }
 
-static void status_rsp(const void *data, uint8_t size)
+static void status_rsp(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t status = get_u8(data);
 
 	print_status(status);
 }
 
-static void reset_cmd(const void *data, uint8_t size)
+static void reset_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t reset_type = get_u8(data);
 	uint8_t patch_enable = get_u8(data + 1);
@@ -326,7 +326,7 @@ static void read_version_tlv_rsp(const void *data, uint8_t size)
 	}
 }
 
-static void read_version_rsp(const void *data, uint8_t size)
+static void read_version_rsp(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t status = get_u8(data);
 	uint8_t hw_platform = get_u8(data + 1);
@@ -363,7 +363,7 @@ static void read_version_rsp(const void *data, uint8_t size)
 	print_field("Firmware patch: %u", fw_patch);
 }
 
-static void read_version_cmd(const void *data, uint8_t size)
+static void read_version_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	char *str;
 	uint8_t type;
@@ -406,7 +406,8 @@ static void read_version_cmd(const void *data, uint8_t size)
 	}
 }
 
-static void set_uart_baudrate_cmd(const void *data, uint8_t size)
+static void set_uart_baudrate_cmd(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t baudrate = get_u8(data);
 	const char *str;
@@ -465,7 +466,7 @@ static void set_uart_baudrate_cmd(const void *data, uint8_t size)
 	print_field("Baudrate: %s (0x%2.2x)", str, baudrate);
 }
 
-static void secure_send_cmd(const void *data, uint8_t size)
+static void secure_send_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t type = get_u8(data);
 	const char *str;
@@ -493,7 +494,8 @@ static void secure_send_cmd(const void *data, uint8_t size)
 	packet_hexdump(data + 1, size - 1);
 }
 
-static void manufacturer_mode_cmd(const void *data, uint8_t size)
+static void manufacturer_mode_cmd(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t mode = get_u8(data);
 	uint8_t reset = get_u8(data + 1);
@@ -531,7 +533,7 @@ static void manufacturer_mode_cmd(const void *data, uint8_t size)
 	print_field("Reset behavior: %s (0x%2.2x)", str, reset);
 }
 
-static void write_bd_data_cmd(const void *data, uint8_t size)
+static void write_bd_data_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t features[8];
 
@@ -548,7 +550,7 @@ static void write_bd_data_cmd(const void *data, uint8_t size)
 	packet_hexdump(data + 21, size - 21);
 }
 
-static void read_bd_data_rsp(const void *data, uint8_t size)
+static void read_bd_data_rsp(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t status = get_u8(data);
 
@@ -557,12 +559,12 @@ static void read_bd_data_rsp(const void *data, uint8_t size)
 	packet_hexdump(data + 7, size - 7);
 }
 
-static void write_bd_address_cmd(const void *data, uint8_t size)
+static void write_bd_address_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	packet_print_addr("Address", data, 0x00);
 }
 
-static void act_deact_traces_cmd(const void *data, uint8_t size)
+static void act_deact_traces_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t tx = get_u8(data);
 	uint8_t tx_arq = get_u8(data + 1);
@@ -573,7 +575,8 @@ static void act_deact_traces_cmd(const void *data, uint8_t size)
 	print_field("Receive traces: 0x%2.2x", rx);
 }
 
-static void stimulate_exception_cmd(const void *data, uint8_t size)
+static void stimulate_exception_cmd(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t type = get_u8(data);
 	const char *str;
@@ -609,7 +612,7 @@ static const struct {
 	{ }
 };
 
-static void set_event_mask_cmd(const void *data, uint8_t size)
+static void set_event_mask_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	const uint8_t *events_array = data;
 	uint64_t mask, events = 0;
@@ -634,7 +637,7 @@ static void set_event_mask_cmd(const void *data, uint8_t size)
 						"(0x%16.16" PRIx64 ")", mask);
 }
 
-static void ddc_config_write_cmd(const void *data, uint8_t size)
+static void ddc_config_write_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	while (size > 0) {
 		uint8_t param_len = get_u8(data);
@@ -648,7 +651,7 @@ static void ddc_config_write_cmd(const void *data, uint8_t size)
 	}
 }
 
-static void ddc_config_write_rsp(const void *data, uint8_t size)
+static void ddc_config_write_rsp(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t status = get_u8(data);
 	uint16_t param_id = get_le16(data + 1);
@@ -657,7 +660,7 @@ static void ddc_config_write_rsp(const void *data, uint8_t size)
 	print_field("Identifier: 0x%4.4x", param_id);
 }
 
-static void memory_write_cmd(const void *data, uint8_t size)
+static void memory_write_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	uint32_t addr = get_le32(data);
 	uint8_t mode = get_u8(data + 4);
@@ -687,14 +690,16 @@ static void memory_write_cmd(const void *data, uint8_t size)
 	packet_hexdump(data + 6, size - 6);
 }
 
-static void read_supported_features_cmd(const void *data, uint8_t size)
+static void read_supported_features_cmd(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t page = get_u8(data);
 
 	print_field("Page: 0x%2.2x", page);
 }
 
-static void read_supported_features_rsp(const void *data, uint8_t size)
+static void read_supported_features_rsp(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t status = get_u8(data);
 	uint8_t page = get_u8(data + 1);
@@ -788,11 +793,11 @@ const struct vendor_ocf *intel_vendor_ocf(uint16_t ocf)
 	return NULL;
 }
 
-static void startup_evt(const void *data, uint8_t size)
+static void startup_evt(uint16_t index, const void *data, uint8_t size)
 {
 }
 
-static void fatal_exception_evt(const void *data, uint8_t size)
+static void fatal_exception_evt(uint16_t index, const void *data, uint8_t size)
 {
 	uint16_t line = get_le16(data);
 	uint8_t module = get_u8(data + 2);
@@ -803,7 +808,7 @@ static void fatal_exception_evt(const void *data, uint8_t size)
 	print_field("Reason: 0x%2.2x", reason);
 }
 
-static void bootup_evt(const void *data, uint8_t size)
+static void bootup_evt(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t zero = get_u8(data);
 	uint8_t num_packets = get_u8(data + 1);
@@ -906,7 +911,7 @@ static void bootup_evt(const void *data, uint8_t size)
 	print_field("DDC status: %s (0x%2.2x)", str, ddc_status);
 }
 
-static void default_bd_data_evt(const void *data, uint8_t size)
+static void default_bd_data_evt(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t mem_status = get_u8(data);
 	const char *str;
@@ -923,7 +928,8 @@ static void default_bd_data_evt(const void *data, uint8_t size)
 	print_field("Memory status: %s (0x%2.2x)", str, mem_status);
 }
 
-static void secure_send_commands_result_evt(const void *data, uint8_t size)
+static void secure_send_commands_result_evt(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t result = get_u8(data);
 	uint16_t opcode = get_le16(data + 1);
@@ -967,7 +973,7 @@ static void secure_send_commands_result_evt(const void *data, uint8_t size)
 	print_status(status);
 }
 
-static void debug_exception_evt(const void *data, uint8_t size)
+static void debug_exception_evt(uint16_t index, const void *data, uint8_t size)
 {
 	uint16_t line = get_le16(data);
 	uint8_t module = get_u8(data + 2);
@@ -978,7 +984,8 @@ static void debug_exception_evt(const void *data, uint8_t size)
 	print_field("Reason: 0x%2.2x", reason);
 }
 
-static void le_link_established_evt(const void *data, uint8_t size)
+static void le_link_established_evt(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint16_t handle = get_le16(data);
 	uint32_t access_addr = get_le32(data + 10);
@@ -992,7 +999,7 @@ static void le_link_established_evt(const void *data, uint8_t size)
 	packet_hexdump(data + 14, size - 14);
 }
 
-static void scan_status_evt(const void *data, uint8_t size)
+static void scan_status_evt(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t enable = get_u8(data);
 
@@ -1007,14 +1014,15 @@ static void scan_status_evt(const void *data, uint8_t size)
 
 }
 
-static void act_deact_traces_complete_evt(const void *data, uint8_t size)
+static void act_deact_traces_complete_evt(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t status = get_u8(data);
 
 	print_status(status);
 }
 
-static void lmp_pdu_trace_evt(const void *data, uint8_t size)
+static void lmp_pdu_trace_evt(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t type, len, id;
 	uint16_t handle, count;
@@ -1108,14 +1116,16 @@ static void lmp_pdu_trace_evt(const void *data, uint8_t size)
 	}
 }
 
-static void write_bd_data_complete_evt(const void *data, uint8_t size)
+static void write_bd_data_complete_evt(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t status = get_u8(data);
 
 	print_status(status);
 }
 
-static void sco_rejected_via_lmp_evt(const void *data, uint8_t size)
+static void sco_rejected_via_lmp_evt(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint8_t reason = get_u8(data + 6);
 
@@ -1123,7 +1133,8 @@ static void sco_rejected_via_lmp_evt(const void *data, uint8_t size)
 	packet_print_error("Reason", reason);
 }
 
-static void ptt_switch_notification_evt(const void *data, uint8_t size)
+static void ptt_switch_notification_evt(uint16_t index, const void *data,
+							uint8_t size)
 {
 	uint16_t handle = get_le16(data);
 	uint8_t table = get_u8(data + 2);
@@ -1146,7 +1157,7 @@ static void ptt_switch_notification_evt(const void *data, uint8_t size)
 	print_field("Packet type table: %s (0x%2.2x)", str, table);
 }
 
-static void system_exception_evt(const void *data, uint8_t size)
+static void system_exception_evt(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t type = get_u8(data);
 	const char *str;
@@ -1614,7 +1625,7 @@ static const struct intel_tlv *process_ext_subevent(const struct intel_tlv *tlv,
 	return next_tlv;
 }
 
-static void intel_vendor_ext_evt(const void *data, uint8_t size)
+static void intel_vendor_ext_evt(uint16_t index, const void *data, uint8_t size)
 {
 	/* The data pointer points to a number of tlv.*/
 	const struct intel_tlv *tlv = data;

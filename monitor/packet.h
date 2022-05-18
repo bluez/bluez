@@ -23,6 +23,18 @@
 #define PACKET_FILTER_SHOW_A2DP_STREAM	(1 << 6)
 #define PACKET_FILTER_SHOW_MGMT_SOCKET	(1 << 7)
 
+struct packet_conn_data {
+	uint16_t index;
+	uint16_t handle;
+	uint8_t  type;
+	uint8_t  dst[6];
+	uint8_t  dst_type;
+	void     *data;
+	void     (*destroy)(void *data);
+};
+
+struct packet_conn_data *packet_get_conn_data(uint16_t handle);
+
 bool packet_has_filter(unsigned long filter);
 void packet_set_filter(unsigned long filter);
 void packet_add_filter(unsigned long filter);

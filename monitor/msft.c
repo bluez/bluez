@@ -219,7 +219,7 @@ static const struct {
 	{ }
 };
 
-static void msft_cmd(const void *data, uint8_t size)
+static void msft_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t code = get_u8(data);
 	const char *code_color, *code_str = NULL;
@@ -253,7 +253,7 @@ static void msft_cmd(const void *data, uint8_t size)
 		packet_hexdump(data + 1, size - 1);
 }
 
-static void msft_rsp(const void *data, uint8_t size)
+static void msft_rsp(uint16_t index, const void *data, uint8_t size)
 {
 	uint8_t status = get_u8(data);
 	uint8_t code = get_u8(data + 1);
@@ -299,7 +299,7 @@ const struct vendor_ocf *msft_vendor_ocf(void)
 	return &vendor_ocf_entry;
 }
 
-static void msft_evt(const void *data, uint8_t size)
+static void msft_evt(uint16_t index, const void *data, uint8_t size)
 {
 	packet_hexdump(data, size);
 }

@@ -14,10 +14,10 @@
 struct vendor_ocf {
 	uint16_t ocf;
 	const char *str;
-	void (*cmd_func) (const void *data, uint8_t size);
+	void (*cmd_func) (uint16_t index, const void *data, uint8_t size);
 	uint8_t cmd_size;
 	bool cmd_fixed;
-	void (*rsp_func) (const void *data, uint8_t size);
+	void (*rsp_func) (uint16_t index, const void *data, uint8_t size);
 	uint8_t rsp_size;
 	bool rsp_fixed;
 };
@@ -25,7 +25,7 @@ struct vendor_ocf {
 struct vendor_evt {
 	uint8_t evt;
 	const char *str;
-	void (*evt_func) (const void *data, uint8_t size);
+	void (*evt_func) (uint16_t index, const void *data, uint8_t size);
 	uint8_t evt_size;
 	bool evt_fixed;
 };
