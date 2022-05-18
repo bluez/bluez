@@ -581,6 +581,13 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (idev->intr_io && !(cond & G_IO_NVAL))
 		g_io_channel_shutdown(idev->intr_io, TRUE, NULL);
 
+	/* It's possible this is triggered while the intr channel is not even
+	 * connected yet, therefore we are still in the connecting state.
+	 */
+	if (btd_service_get_state(idev->service) ==
+						BTD_SERVICE_STATE_CONNECTING)
+		btd_service_connecting_complete(idev->service, -EIO);
+
 	if (!idev->intr_io && idev->virtual_cable_unplug)
 		virtual_cable_unplug(idev);
 
