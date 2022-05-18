@@ -765,7 +765,7 @@ static void print_handle_native(uint16_t handle)
 	}
 
 	sprintf(label, "Handle: %d Address", handle);
-	print_addr("  Address", conn->dst, conn->dst_type);
+	print_addr(label, conn->dst, conn->dst_type);
 }
 
 static void print_handle(uint16_t handle)

@@ -18,11 +18,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <errno.h>
+#include <linux/limits.h>
 
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
 
 #include "src/shared/util.h"
+#include "src/shared/queue.h"
+#include "src/shared/att.h"
+#include "src/shared/gatt-db.h"
+#include "src/textfile.h"
+#include "src/settings.h"
 #include "bt.h"
 #include "packet.h"
 #include "display.h"
@@ -316,11 +326,123 @@ static void att_read_type_rsp(const struct l2cap_frame *frame)
 					frame->data + 1, frame->size - 1);
 }
 
+struct att_conn_data {
+	struct gatt_db *ldb;
+	struct gatt_db *rdb;
+};
+
+static void att_conn_data_free(void *data)
+{
+	struct att_conn_data *att_data = data;
+
+	gatt_db_unref(att_data->rdb);
+	gatt_db_unref(att_data->ldb);
+	free(att_data);
+}
+
+static void load_gatt_db(struct packet_conn_data *conn)
+{
+	struct att_conn_data *data;
+	char filename[PATH_MAX];
+	bdaddr_t src;
+	char local[18];
+	char peer[18];
+
+	if (hci_devba(conn->index, &src) < 0)
+		return;
+
+	data = new0(struct att_conn_data, 1);
+	data->rdb = gatt_db_new();
+	data->ldb = gatt_db_new();
+	conn->data = data;
+	conn->destroy = att_conn_data_free;
+
+	ba2str(&src, local);
+
+	create_filename(filename, PATH_MAX, "/%s/attributes", local);
+
+	btd_settings_gatt_db_load(data->ldb, filename);
+
+	ba2str((bdaddr_t *)conn->dst, peer);
+
+	create_filename(filename, PATH_MAX, "/%s/cache/%s", local, peer);
+
+	btd_settings_gatt_db_load(data->rdb, filename);
+}
+
+static struct gatt_db_attribute *get_attribute(const struct l2cap_frame *frame,
+						uint16_t handle, bool rsp)
+{
+	struct packet_conn_data *conn;
+	struct att_conn_data *data;
+	struct gatt_db *db;
+
+	conn = packet_get_conn_data(frame->handle);
+	if (!conn)
+		return NULL;
+
+	data = conn->data;
+	/* Try loading local and remote gatt_db if not loaded yet */
+	if (!data) {
+		load_gatt_db(conn);
+		data = conn->data;
+		if (!data)
+			return NULL;
+	}
+
+	if (frame->in) {
+		if (rsp)
+			db = data->rdb;
+		else
+			db = data->ldb;
+	} else {
+		if (rsp)
+			db = data->ldb;
+		else
+			db = data->rdb;
+	}
+
+	return gatt_db_get_attribute(db, handle);
+}
+
+static void print_handle(const struct l2cap_frame *frame, uint16_t handle,
+								bool rsp)
+{
+	struct gatt_db_attribute *attr;
+	const bt_uuid_t *uuid;
+	char label[21];
+
+	attr = get_attribute(frame, handle, rsp);
+	if (!attr)
+		goto done;
+
+	uuid = gatt_db_attribute_get_type(attr);
+	if (!uuid)
+		goto done;
+
+	switch (uuid->type) {
+	case BT_UUID16:
+		sprintf(label, "Handle: 0x%4.4x Type", handle);
+		print_uuid(label, &cpu_to_le16(uuid->value.u16), 2);
+		return;
+	case BT_UUID128:
+		sprintf(label, "Handle: 0x%4.4x Type", handle);
+		print_uuid(label, &uuid->value.u128, 16);
+		return;
+	case BT_UUID_UNSPEC:
+	case BT_UUID32:
+		break;
+	}
+
+done:
+	print_field("Handle: 0x%4.4x", handle);
+}
+
 static void att_read_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_read_req *pdu = frame->data;
 
-	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
+	print_handle(frame, le16_to_cpu(pdu->handle), false);
 }
 
 static void att_read_rsp(const struct l2cap_frame *frame)
@@ -330,7 +452,7 @@ static void att_read_rsp(const struct l2cap_frame *frame)
 
 static void att_read_blob_req(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_handle(frame, get_le16(frame->data), false);
 	print_field("Offset: 0x%4.4x", get_le16(frame->data + 2));
 }
 
@@ -346,8 +468,7 @@ static void att_read_multiple_req(const struct l2cap_frame *frame)
 	count = frame->size / 2;
 
 	for (i = 0; i < count; i++)
-		print_field("Handle: 0x%4.4x",
-					get_le16(frame->data + (i * 2)));
+		print_handle(frame, get_le16(frame->data + (i * 2)), false);
 }
 
 static void att_read_group_type_req(const struct l2cap_frame *frame)
@@ -390,7 +511,7 @@ static void att_read_group_type_rsp(const struct l2cap_frame *frame)
 
 static void att_write_req(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_handle(frame, get_le16(frame->data), false);
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
@@ -400,14 +521,14 @@ static void att_write_rsp(const struct l2cap_frame *frame)
 
 static void att_prepare_write_req(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_handle(frame, get_le16(frame->data), false);
 	print_field("Offset: 0x%4.4x", get_le16(frame->data + 2));
 	print_hex_field("  Data", frame->data + 4, frame->size - 4);
 }
 
 static void att_prepare_write_rsp(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_handle(frame, get_le16(frame->data), true);
 	print_field("Offset: 0x%4.4x", get_le16(frame->data + 2));
 	print_hex_field("  Data", frame->data + 4, frame->size - 4);
 }
@@ -436,7 +557,7 @@ static void att_handle_value_notify(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_notify *pdu = frame->data;
 
-	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
+	print_handle(frame, le16_to_cpu(pdu->handle), true);
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
@@ -444,7 +565,7 @@ static void att_handle_value_ind(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_ind *pdu = frame->data;
 
-	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
+	print_handle(frame, le16_to_cpu(pdu->handle), true);
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
@@ -463,7 +584,7 @@ static void att_multiple_vl_rsp(const struct l2cap_frame *frame)
 		if (!l2cap_frame_get_le16(f, &handle))
 			return;
 
-		print_field("Handle: 0x%4.4x", handle);
+		print_handle(frame, get_le16(frame->data), true);
 
 		if (!l2cap_frame_get_le16(f, &len))
 			return;
@@ -484,13 +605,13 @@ static void att_multiple_vl_rsp(const struct l2cap_frame *frame)
 
 static void att_write_command(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_handle(frame, get_le16(frame->data), false);
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
 static void att_signed_write_command(const struct l2cap_frame *frame)
 {
-	print_field("Handle: 0x%4.4x", get_le16(frame->data));
+	print_handle(frame, get_le16(frame->data), false);
 	print_hex_field("  Data", frame->data + 2, frame->size - 2 - 12);
 	print_hex_field("  Signature", frame->data + frame->size - 12, 12);
 }
