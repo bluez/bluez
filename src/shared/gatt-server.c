@@ -121,10 +121,25 @@ struct bt_gatt_server {
 	struct nfy_mult_data *nfy_mult;
 };
 
+static void notify_multiple_free(struct bt_gatt_server *server)
+{
+	if (!server->nfy_mult)
+		return;
+
+	if (server->nfy_mult->id)
+		timeout_remove(server->nfy_mult->id);
+
+	free(server->nfy_mult->pdu);
+	free(server->nfy_mult);
+	server->nfy_mult = NULL;
+}
+
 static void bt_gatt_server_free(struct bt_gatt_server *server)
 {
 	if (server->debug_destroy)
 		server->debug_destroy(server->debug_data);
+
+	notify_multiple_free(server);
 
 	bt_att_unregister(server->att, server->mtu_id);
 	bt_att_unregister(server->att, server->read_by_grp_type_id);
@@ -1695,17 +1710,26 @@ bool bt_gatt_server_set_debug(struct bt_gatt_server *server,
 	return true;
 }
 
+static void notify_multiple_timeout_remove(struct bt_gatt_server *server)
+{
+	if (!server->nfy_mult->id)
+		return;
+
+	timeout_remove(server->nfy_mult->id);
+	server->nfy_mult->id = 0;
+}
+
 static bool notify_multiple(void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
+
+	server->nfy_mult->id = 0;
 
 	bt_att_send(server->att, BT_ATT_OP_HANDLE_NFY_MULT,
 			server->nfy_mult->pdu, server->nfy_mult->offset, NULL,
 			NULL, NULL);
 
-	free(server->nfy_mult->pdu);
-	free(server->nfy_mult);
-	server->nfy_mult = NULL;
+	notify_multiple_free(server);
 
 	return false;
 }
@@ -1737,8 +1761,7 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 		/* flush buffered data if this request hits buffer size limit */
 		if (data && data->offset > 0 &&
 				data->len - data->offset < 4 + length) {
-			if (server->nfy_mult->id)
-				timeout_remove(server->nfy_mult->id);
+			notify_multiple_timeout_remove(server);
 			notify_multiple(server);
 			/* data has been freed by notify_multiple */
 			data = NULL;
