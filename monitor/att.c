@@ -215,6 +215,82 @@ static void att_error_response(const struct l2cap_frame *frame)
 	print_field("Error: %s (0x%2.2x)", str, pdu->error);
 }
 
+static const struct bitfield_data ccc_value_table[] = {
+	{  0, "Notification (0x01)"		},
+	{  1, "Indication (0x02)"		},
+	{ }
+};
+
+static void print_ccc_value(uint8_t value)
+{
+	uint8_t mask = value;
+
+	mask = print_bitfield(4, value, ccc_value_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+}
+
+static void gatt_ccc_read(const struct l2cap_frame *frame)
+{
+	uint8_t value;
+
+	if (!l2cap_frame_get_u8((void *)frame, &value)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	print_ccc_value(value);
+}
+
+static void gatt_ccc_write(const struct l2cap_frame *frame)
+{
+	uint8_t value;
+
+	if (!l2cap_frame_get_u8((void *)frame, &value)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	print_ccc_value(value);
+}
+
+#define GATT_HANDLER(_uuid, _read, _write, _notify) \
+{ \
+	.uuid = { \
+		.type = BT_UUID16, \
+		.value.u16 = _uuid, \
+	}, \
+	.read = _read, \
+	.write = _write, \
+	.notify = _notify \
+}
+
+struct gatt_handler {
+	bt_uuid_t uuid;
+	void (*read)(const struct l2cap_frame *frame);
+	void (*write)(const struct l2cap_frame *frame);
+	void (*notify)(const struct l2cap_frame *frame);
+} gatt_handlers[] = {
+	GATT_HANDLER(GATT_CLIENT_CHARAC_CFG_UUID, gatt_ccc_read,
+					gatt_ccc_write, NULL)
+};
+
+static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
+{
+	const bt_uuid_t *uuid = gatt_db_attribute_get_type(attr);
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(gatt_handlers); i++) {
+		struct gatt_handler *handler = &gatt_handlers[i];
+
+		if (!bt_uuid_cmp(&handler->uuid, uuid))
+			return handler;
+	}
+
+	return NULL;
+}
+
 static void att_exchange_mtu_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_exchange_mtu_req *pdu = frame->data;
@@ -326,9 +402,16 @@ static void att_read_type_rsp(const struct l2cap_frame *frame)
 					frame->data + 1, frame->size - 1);
 }
 
+struct att_read {
+	struct gatt_db_attribute *attr;
+	uint16_t cid;
+	void (*func)(const struct l2cap_frame *frame);
+};
+
 struct att_conn_data {
 	struct gatt_db *ldb;
 	struct gatt_db *rdb;
+	struct queue *reads;
 };
 
 static void att_conn_data_free(void *data)
@@ -337,6 +420,7 @@ static void att_conn_data_free(void *data)
 
 	gatt_db_unref(att_data->rdb);
 	gatt_db_unref(att_data->ldb);
+	queue_destroy(att_data->reads, free);
 	free(att_data);
 }
 
@@ -441,13 +525,67 @@ done:
 static void att_read_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_read_req *pdu = frame->data;
+	uint16_t handle;
+	struct packet_conn_data *conn;
+	struct att_conn_data *data;
+	struct att_read *read;
+	struct gatt_db_attribute *attr;
+	struct gatt_handler *handler;
 
-	print_handle(frame, le16_to_cpu(pdu->handle), false);
+	l2cap_frame_pull((void *)frame, frame, sizeof(*pdu));
+
+	handle = le16_to_cpu(pdu->handle);
+	print_handle(frame, handle, false);
+
+	attr = get_attribute(frame, handle, false);
+	if (!attr)
+		return;
+
+	handler = get_handler(attr);
+	if (!handler)
+		return;
+
+	conn = packet_get_conn_data(frame->handle);
+	data = conn->data;
+
+	if (!data->reads)
+		data->reads = queue_new();
+
+	read = new0(struct att_read, 1);
+	read->attr = attr;
+	read->cid = frame->cid;
+	read->func = handler->read;
+
+	queue_push_tail(data->reads, read);
+}
+
+static bool match_read_frame(const void *data, const void *match_data)
+{
+	const struct att_read *read = data;
+	const struct l2cap_frame *frame = match_data;
+
+	return read->cid == frame->cid;
 }
 
 static void att_read_rsp(const struct l2cap_frame *frame)
 {
+	struct packet_conn_data *conn;
+	struct att_conn_data *data;
+	struct att_read *read;
+
 	print_hex_field("Value", frame->data, frame->size);
+
+	conn = packet_get_conn_data(frame->handle);
+	if (!conn)
+		return;
+
+	data = conn->data;
+
+	read = queue_find(data->reads, match_read_frame, frame);
+	if (!read)
+		return;
+
+	read->func(frame);
 }
 
 static void att_read_blob_req(const struct l2cap_frame *frame)
@@ -509,10 +647,41 @@ static void att_read_group_type_rsp(const struct l2cap_frame *frame)
 					frame->data + 1, frame->size - 1);
 }
 
+static void print_write(const struct l2cap_frame *frame, uint16_t handle,
+							size_t len)
+{
+	struct gatt_db_attribute *attr;
+	struct gatt_handler *handler;
+
+	print_handle(frame, handle, false);
+	print_hex_field("  Data", frame->data, frame->size);
+
+	if (len > frame->size) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	attr = get_attribute(frame, handle, false);
+	if (!attr)
+		return;
+
+	handler = get_handler(attr);
+	if (!handler)
+		return;
+
+	handler->write(frame);
+}
+
 static void att_write_req(const struct l2cap_frame *frame)
 {
-	print_handle(frame, get_le16(frame->data), false);
-	print_hex_field("  Data", frame->data + 2, frame->size - 2);
+	uint16_t handle;
+
+	if (!l2cap_frame_get_le16((void *)frame, &handle)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	print_write(frame, handle, frame->size);
 }
 
 static void att_write_rsp(const struct l2cap_frame *frame)
@@ -553,20 +722,49 @@ static void att_execute_write_req(const struct l2cap_frame *frame)
 	print_field("Flags: %s (0x%02x)", flags_str, flags);
 }
 
+static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
+								size_t len)
+{
+	struct gatt_db_attribute *attr;
+	struct gatt_handler *handler;
+
+	print_handle(frame, handle, true);
+	print_hex_field("  Data", frame->data, len);
+
+	if (len > frame->size) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	attr = get_attribute(frame, handle, true);
+	if (!attr)
+		return;
+
+	handler = get_handler(attr);
+	if (!handler)
+		return;
+
+	handler->notify(frame);
+}
+
 static void att_handle_value_notify(const struct l2cap_frame *frame)
 {
+	uint16_t handle;
 	const struct bt_l2cap_att_handle_value_notify *pdu = frame->data;
 
-	print_handle(frame, le16_to_cpu(pdu->handle), true);
-	print_hex_field("  Data", frame->data + 2, frame->size - 2);
+	l2cap_frame_pull((void *)frame, frame, sizeof(*pdu));
+
+	handle = le16_to_cpu(pdu->handle);
+	print_notify(frame, handle, frame->size);
 }
 
 static void att_handle_value_ind(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_ind *pdu = frame->data;
 
-	print_handle(frame, le16_to_cpu(pdu->handle), true);
-	print_hex_field("  Data", frame->data + 2, frame->size - 2);
+	l2cap_frame_pull((void *)frame, frame, sizeof(*pdu));
+
+	print_notify(frame, le16_to_cpu(pdu->handle), frame->size);
 }
 
 static void att_handle_value_conf(const struct l2cap_frame *frame)
@@ -591,13 +789,7 @@ static void att_multiple_vl_rsp(const struct l2cap_frame *frame)
 
 		print_field("Length: 0x%4.4x", len);
 
-		print_hex_field("  Data", f->data,
-				len < f->size ? len : f->size);
-
-		if (len > f->size) {
-			print_text(COLOR_ERROR, "invalid size");
-			return;
-		}
+		print_notify(frame, handle, len);
 
 		l2cap_frame_pull(f, f, len);
 	}
@@ -605,14 +797,27 @@ static void att_multiple_vl_rsp(const struct l2cap_frame *frame)
 
 static void att_write_command(const struct l2cap_frame *frame)
 {
-	print_handle(frame, get_le16(frame->data), false);
-	print_hex_field("  Data", frame->data + 2, frame->size - 2);
+	uint16_t handle;
+
+	if (!l2cap_frame_get_le16((void *)frame, &handle)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	print_write(frame, handle, frame->size);
 }
 
 static void att_signed_write_command(const struct l2cap_frame *frame)
 {
-	print_handle(frame, get_le16(frame->data), false);
-	print_hex_field("  Data", frame->data + 2, frame->size - 2 - 12);
+	uint16_t handle;
+
+	if (!l2cap_frame_get_le16((void *)frame, &handle)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	print_write(frame, handle, frame->size - 12);
+	print_hex_field("  Data", frame->data, frame->size - 12);
 	print_hex_field("  Signature", frame->data + frame->size - 12, 12);
 }
 
