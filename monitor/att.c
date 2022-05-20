@@ -404,7 +404,8 @@ static void att_read_type_rsp(const struct l2cap_frame *frame)
 
 struct att_read {
 	struct gatt_db_attribute *attr;
-	uint16_t cid;
+	bool in;
+	uint16_t chan;
 	void (*func)(const struct l2cap_frame *frame);
 };
 
@@ -553,7 +554,8 @@ static void att_read_req(const struct l2cap_frame *frame)
 
 	read = new0(struct att_read, 1);
 	read->attr = attr;
-	read->cid = frame->cid;
+	read->in = frame->in;
+	read->chan = frame->chan;
 	read->func = handler->read;
 
 	queue_push_tail(data->reads, read);
@@ -564,7 +566,13 @@ static bool match_read_frame(const void *data, const void *match_data)
 	const struct att_read *read = data;
 	const struct l2cap_frame *frame = match_data;
 
-	return read->cid == frame->cid;
+	/* Read frame and response frame shall be in the opposite direction to
+	 * match.
+	 */
+	if (read->in == frame->in)
+		return false;
+
+	return read->chan == frame->chan;
 }
 
 static void att_read_rsp(const struct l2cap_frame *frame)
