@@ -542,7 +542,7 @@ static void att_read_req(const struct l2cap_frame *frame)
 		return;
 
 	handler = get_handler(attr);
-	if (!handler)
+	if (!handler || !handler->read)
 		return;
 
 	conn = packet_get_conn_data(frame->handle);
@@ -581,11 +581,13 @@ static void att_read_rsp(const struct l2cap_frame *frame)
 
 	data = conn->data;
 
-	read = queue_find(data->reads, match_read_frame, frame);
+	read = queue_remove_if(data->reads, match_read_frame, (void *)frame);
 	if (!read)
 		return;
 
 	read->func(frame);
+
+	free(read);
 }
 
 static void att_read_blob_req(const struct l2cap_frame *frame)
