@@ -730,7 +730,7 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
 	struct gatt_db_attribute *attr;
 	struct gatt_handler *handler;
 
-	print_handle(frame, handle, true);
+	print_handle(frame, handle, false);
 	print_hex_field("  Data", frame->data, len);
 
 	if (len > frame->size) {
@@ -738,7 +738,7 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
 		return;
 	}
 
-	attr = get_attribute(frame, handle, true);
+	attr = get_attribute(frame, handle, false);
 	if (!attr)
 		return;
 
