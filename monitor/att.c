@@ -792,8 +792,6 @@ static void att_multiple_vl_rsp(const struct l2cap_frame *frame)
 		if (!l2cap_frame_get_le16(f, &handle))
 			return;
 
-		print_handle(frame, get_le16(frame->data), true);
-
 		if (!l2cap_frame_get_le16(f, &len))
 			return;
 
