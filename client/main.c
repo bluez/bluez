@@ -2768,7 +2768,7 @@ static void cmd_advertise_interval(int argc, char *argv[])
 	max = min;
 
 	if (argc > 2) {
-		max = strtol(argv[1], &endptr, 0);
+		max = strtol(argv[2], &endptr, 0);
 		if (!endptr || *endptr != '\0' || max < 20 || max > 10485) {
 			bt_shell_printf("Invalid argument\n");
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
