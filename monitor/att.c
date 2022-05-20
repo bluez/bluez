@@ -247,6 +247,96 @@ static void ccc_write(const struct l2cap_frame *frame)
 	print_ccc_value(frame);
 }
 
+static void print_pac(const struct l2cap_frame *frame)
+{
+	uint8_t num = 0, i;
+
+	if (!l2cap_frame_get_u8((void *)frame, &num)) {
+		print_text(COLOR_ERROR, "Number of PAC(s): invalid size");
+		goto done;
+	}
+
+	print_field("  Number of PAC(s): %u", num);
+
+	for (i = 0; i < num; i++) {
+		uint8_t codec_id;
+		uint16_t codec_cid, codec_vid;
+		struct bt_hci_lv_data *cc;
+		struct bt_hci_lv_data *meta;
+
+		print_field("  PAC #%u:", i);
+
+		if (!l2cap_frame_get_u8((void *)frame, &codec_id)) {
+			print_text(COLOR_ERROR, "Codec: invalid size");
+			goto done;
+		}
+
+		packet_print_codec_id("    Codec", codec_id);
+
+		if (!l2cap_frame_get_le16((void *)frame, &codec_cid)) {
+			print_text(COLOR_ERROR,
+					"Codec Company ID: invalid size");
+			goto done;
+		}
+
+		if (!l2cap_frame_get_le16((void *)frame, &codec_vid)) {
+			print_text(COLOR_ERROR,
+					"Codec Vendor ID: invalid size");
+			goto done;
+		}
+
+		if (codec_id == 0xff) {
+			print_field("    Codec Company ID: %s (0x%04x)",
+						bt_compidtostr(codec_cid),
+						codec_cid);
+			print_field("    Codec Vendor ID: 0x%04x", codec_vid);
+		}
+
+		cc = l2cap_frame_pull((void *)frame, frame, sizeof(*cc));
+		if (!cc) {
+			print_text(COLOR_ERROR,
+				"Codec Specific Configuration: invalid size");
+			goto done;
+		}
+
+		if (!l2cap_frame_pull((void *)frame, frame, cc->len)) {
+			print_text(COLOR_ERROR,
+				"Codec Specific Configuration: invalid size");
+			goto done;
+		}
+
+		packet_print_ltv("    Codec Specific Configuration", cc->data,
+								cc->len);
+
+		meta = l2cap_frame_pull((void *)frame, frame, sizeof(*meta));
+		if (!meta) {
+			print_text(COLOR_ERROR, "Metadata: invalid size");
+			goto done;
+		}
+
+		if (!l2cap_frame_pull((void *)frame, frame, meta->len)) {
+			print_text(COLOR_ERROR, "Metadata: invalid size");
+			goto done;
+		}
+
+		packet_print_ltv("    Metadata", meta->data, meta->len);
+	}
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void pac_read(const struct l2cap_frame *frame)
+{
+	print_pac(frame);
+}
+
+static void pac_notify(const struct l2cap_frame *frame)
+{
+	print_pac(frame);
+}
+
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
 	.uuid = { \
@@ -265,6 +355,8 @@ struct gatt_handler {
 	void (*notify)(const struct l2cap_frame *frame);
 } gatt_handlers[] = {
 	GATT_HANDLER(0x2902, ccc_read, ccc_write, NULL),
+	GATT_HANDLER(0x2bc9, pac_read, NULL, pac_notify),
+	GATT_HANDLER(0x2bcb, pac_read, NULL, pac_notify),
 };
 
 static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)

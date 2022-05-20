@@ -48,13 +48,21 @@ static inline void l2cap_frame_clone(struct l2cap_frame *frame,
 	}
 }
 
-static inline void l2cap_frame_pull(struct l2cap_frame *frame,
+static inline void *l2cap_frame_pull(struct l2cap_frame *frame,
 				const struct l2cap_frame *source, uint16_t len)
 {
+	void *data;
+
 	l2cap_frame_clone(frame, source);
 
+	if (source->size < len)
+		return NULL;
+
+	data = (void *)frame->data;
 	frame->data = source->data + len;
 	frame->size = source->size - len;
+
+	return data;
 }
 
 static inline bool l2cap_frame_get_u8(struct l2cap_frame *frame, uint8_t *value)

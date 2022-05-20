@@ -61,6 +61,8 @@ void packet_print_channel_map_lmp(const uint8_t *map);
 void packet_print_channel_map_ll(const uint8_t *map);
 void packet_print_io_capability(uint8_t capability);
 void packet_print_io_authentication(uint8_t authentication);
+void packet_print_codec_id(const char *label, uint8_t codec);
+void packet_print_ltv(const char *label, const uint8_t *data, uint8_t len);
 
 void packet_control(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint16_t opcode,

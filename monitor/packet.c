@@ -1377,6 +1377,11 @@ static void print_codec_id(const char *label, uint8_t codec)
 	print_field("%s: %s (0x%2.2x)", label, str, codec);
 }
 
+void packet_print_codec_id(const char *label, uint8_t codec)
+{
+	print_codec_id(label, codec);
+}
+
 static const struct bitfield_data codec_transport_table[] = {
 	{  0, "Codec supported over BR/EDR ACL"		},
 	{  1, "Codec supported over BR/EDR SCO and eSCO"},
@@ -3366,6 +3371,11 @@ static void print_ltv(const char *label, const uint8_t *data, uint8_t len)
 
 	if (iov.iov_len)
 		print_hex_field(label, iov.iov_base, iov.iov_len);
+}
+
+void packet_print_ltv(const char *label, const uint8_t *data, uint8_t len)
+{
+	print_ltv(label, data, len);
 }
 
 static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
