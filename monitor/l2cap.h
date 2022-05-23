@@ -78,6 +78,21 @@ static inline bool l2cap_frame_get_u8(struct l2cap_frame *frame, uint8_t *value)
 	return true;
 }
 
+static inline bool l2cap_frame_print_u8(struct l2cap_frame *frame,
+					const char *label)
+{
+	uint8_t u8;
+
+	if (!l2cap_frame_get_u8(frame, &u8)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%2.2x", label, u8);
+
+	return true;
+}
+
 static inline bool l2cap_frame_get_be16(struct l2cap_frame *frame,
 								uint16_t *value)
 {
@@ -88,6 +103,21 @@ static inline bool l2cap_frame_get_be16(struct l2cap_frame *frame,
 		*value = get_be16(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
+
+	return true;
+}
+
+static inline bool l2cap_frame_print_be16(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint16_t u16;
+
+	if (!l2cap_frame_get_be16(frame, &u16)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%4.4x", label, u16);
 
 	return true;
 }
@@ -106,6 +136,79 @@ static inline bool l2cap_frame_get_le16(struct l2cap_frame *frame,
 	return true;
 }
 
+static inline bool l2cap_frame_print_le16(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint16_t u16;
+
+	if (!l2cap_frame_get_le16(frame, &u16)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%4.4x", label, u16);
+
+	return true;
+}
+
+static inline bool l2cap_frame_get_be24(struct l2cap_frame *frame,
+								uint32_t *value)
+{
+	if (frame->size < sizeof(uint24_t))
+		return false;
+
+	if (value)
+		*value = get_be24(frame->data);
+
+	l2cap_frame_pull(frame, frame, sizeof(uint24_t));
+
+	return true;
+}
+
+static inline bool l2cap_frame_print_be24(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint32_t u24;
+
+	if (!l2cap_frame_get_be24(frame, &u24)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%6.6x", label, u24);
+
+	return true;
+}
+
+static inline bool l2cap_frame_get_le24(struct l2cap_frame *frame,
+								uint32_t *value)
+{
+	if (frame->size < sizeof(uint24_t))
+		return false;
+
+	if (value)
+		*value = get_le24(frame->data);
+
+	l2cap_frame_pull(frame, frame, sizeof(uint24_t));
+
+	return true;
+}
+
+static inline bool l2cap_frame_print_le24(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint32_t u24;
+
+	if (!l2cap_frame_get_le24(frame, &u24)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%6.6x", label, u24);
+
+	return true;
+}
+
 static inline bool l2cap_frame_get_be32(struct l2cap_frame *frame,
 								uint32_t *value)
 {
@@ -116,6 +219,21 @@ static inline bool l2cap_frame_get_be32(struct l2cap_frame *frame,
 		*value = get_be32(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
+
+	return true;
+}
+
+static inline bool l2cap_frame_print_be32(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint32_t u32;
+
+	if (!l2cap_frame_get_be32(frame, &u32)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%8.8x", label, u32);
 
 	return true;
 }
@@ -134,6 +252,21 @@ static inline bool l2cap_frame_get_le32(struct l2cap_frame *frame,
 	return true;
 }
 
+static inline bool l2cap_frame_print_le32(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint32_t u32;
+
+	if (!l2cap_frame_get_le32(frame, &u32)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%8.8x", label, u32);
+
+	return true;
+}
+
 static inline bool l2cap_frame_get_be64(struct l2cap_frame *frame,
 								uint64_t *value)
 {
@@ -148,6 +281,21 @@ static inline bool l2cap_frame_get_be64(struct l2cap_frame *frame,
 	return true;
 }
 
+static inline bool l2cap_frame_print_be64(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint64_t u64;
+
+	if (!l2cap_frame_get_be64(frame, &u64)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%zx", label, u64);
+
+	return true;
+}
+
 static inline bool l2cap_frame_get_le64(struct l2cap_frame *frame,
 								uint64_t *value)
 {
@@ -158,6 +306,21 @@ static inline bool l2cap_frame_get_le64(struct l2cap_frame *frame,
 		*value = get_le64(frame->data);
 
 	l2cap_frame_pull(frame, frame, sizeof(*value));
+
+	return true;
+}
+
+static inline bool l2cap_frame_print_le64(struct l2cap_frame *frame,
+						const char *label)
+{
+	uint64_t u64;
+
+	if (!l2cap_frame_get_le64(frame, &u64)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	print_field("%s: 0x%zx", label, u64);
 
 	return true;
 }

@@ -378,6 +378,10 @@ int bt_error(uint16_t code);
 const char *bt_compidtostr(int id);
 
 typedef struct {
+	uint8_t data[3];
+} uint24_t;
+
+typedef struct {
 	uint8_t data[16];
 } uint128_t;
 

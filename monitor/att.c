@@ -247,6 +247,38 @@ static void ccc_write(const struct l2cap_frame *frame)
 	print_ccc_value(frame);
 }
 
+static bool print_codec(const struct l2cap_frame *frame)
+{
+	uint8_t codec_id;
+	uint16_t codec_cid, codec_vid;
+
+	if (!l2cap_frame_get_u8((void *)frame, &codec_id)) {
+		print_text(COLOR_ERROR, "Codec: invalid size");
+		return false;
+	}
+
+	packet_print_codec_id("    Codec", codec_id);
+
+	if (!l2cap_frame_get_le16((void *)frame, &codec_cid)) {
+		print_text(COLOR_ERROR, "Codec Company ID: invalid size");
+		return false;
+	}
+
+	if (!l2cap_frame_get_le16((void *)frame, &codec_vid)) {
+		print_text(COLOR_ERROR, "Codec Vendor ID: invalid size");
+		return false;
+	}
+
+	if (codec_id == 0xff) {
+		print_field("    Codec Company ID: %s (0x%04x)",
+						bt_compidtostr(codec_cid),
+						codec_cid);
+		print_field("    Codec Vendor ID: 0x%04x", codec_vid);
+	}
+
+	return true;
+}
+
 static void print_pac(const struct l2cap_frame *frame)
 {
 	uint8_t num = 0, i;
@@ -259,38 +291,13 @@ static void print_pac(const struct l2cap_frame *frame)
 	print_field("  Number of PAC(s): %u", num);
 
 	for (i = 0; i < num; i++) {
-		uint8_t codec_id;
-		uint16_t codec_cid, codec_vid;
 		struct bt_hci_lv_data *cc;
 		struct bt_hci_lv_data *meta;
 
 		print_field("  PAC #%u:", i);
 
-		if (!l2cap_frame_get_u8((void *)frame, &codec_id)) {
-			print_text(COLOR_ERROR, "Codec: invalid size");
+		if (!print_codec(frame))
 			goto done;
-		}
-
-		packet_print_codec_id("    Codec", codec_id);
-
-		if (!l2cap_frame_get_le16((void *)frame, &codec_cid)) {
-			print_text(COLOR_ERROR,
-					"Codec Company ID: invalid size");
-			goto done;
-		}
-
-		if (!l2cap_frame_get_le16((void *)frame, &codec_vid)) {
-			print_text(COLOR_ERROR,
-					"Codec Vendor ID: invalid size");
-			goto done;
-		}
-
-		if (codec_id == 0xff) {
-			print_field("    Codec Company ID: %s (0x%04x)",
-						bt_compidtostr(codec_cid),
-						codec_cid);
-			print_field("    Codec Vendor ID: 0x%04x", codec_vid);
-		}
 
 		cc = l2cap_frame_pull((void *)frame, frame, sizeof(*cc));
 		if (!cc) {
@@ -337,6 +344,310 @@ static void pac_notify(const struct l2cap_frame *frame)
 	print_pac(frame);
 }
 
+static void print_prefer_framing(uint8_t value)
+{
+	switch (value) {
+	case 0x00:
+		print_field("    Framing: Unframed ISOAL PDUs supported "
+							"(0x%2.2x)", value);
+		return;
+	case 0x01:
+		print_field("    Framing: Unframed ISOAL PDUs not supported "
+							"(0x%2.2x)", value);
+		return;
+	default:
+		print_field("    Framing: Reserved (0x%2.2x)", value);
+	}
+}
+
+static const struct bitfield_data prefer_phy_table[] = {
+	{  0, "LE 1M PHY preffered (0x01)"		},
+	{  1, "LE 2M PHY preffered (0x02)"		},
+	{  2, "LE Codec PHY preffered (0x04)"		},
+	{ }
+};
+
+static void print_prefer_phy(uint8_t phy)
+{
+	uint8_t mask;
+
+	mask = print_bitfield(4, phy, prefer_phy_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+}
+
+static void print_ase_config(const struct l2cap_frame *frame)
+{
+	uint8_t framing, phy, rtn;
+	uint16_t latency;
+	uint32_t pd_min, pd_max, ppd_min, ppd_max;
+	struct bt_hci_lv_data *cc;
+
+	if (!l2cap_frame_get_u8((void *)frame, &framing)) {
+		print_text(COLOR_ERROR, "Framing: invalid size");
+		return;
+	}
+
+	print_prefer_framing(framing);
+
+	if (!l2cap_frame_get_u8((void *)frame, &phy)) {
+		print_text(COLOR_ERROR, "PHY: invalid size");
+		return;
+	}
+
+	print_prefer_phy(phy);
+
+	if (!l2cap_frame_get_u8((void *)frame, &rtn)) {
+		print_text(COLOR_ERROR, "RTN: invalid size");
+		return;
+	}
+
+	print_field("    RTN: %u", rtn);
+
+	if (!l2cap_frame_get_le16((void *)frame, &latency)) {
+		print_text(COLOR_ERROR, "RTN: invalid size");
+		return;
+	}
+
+	print_field("    Max Transport Latency: %u ms", latency);
+
+	if (!l2cap_frame_get_le24((void *)frame, &pd_min)) {
+		print_text(COLOR_ERROR, "Presentation Delay Min: invalid size");
+		return;
+	}
+
+	print_field("    Presentation Delay Min: %u us", pd_min);
+
+	if (!l2cap_frame_get_le24((void *)frame, &pd_max)) {
+		print_text(COLOR_ERROR, "Presentation Delay Max: invalid size");
+		return;
+	}
+
+	print_field("    Presentation Delay Max: %u us", pd_max);
+
+	if (!l2cap_frame_get_le24((void *)frame, &ppd_min)) {
+		print_text(COLOR_ERROR,
+			"Preferred Presentation Delay Min: invalid size");
+		return;
+	}
+
+	print_field("    Preferred Presentation Delay Min: %u us", ppd_min);
+
+	if (!l2cap_frame_get_le24((void *)frame, &ppd_max)) {
+		print_text(COLOR_ERROR,
+			"Preferred Presentation Delay Max: invalid size");
+		return;
+	}
+
+	print_field("    Preferred Presentation Delay Max: %u us", ppd_max);
+
+	if (!print_codec(frame))
+		return;
+
+	cc = l2cap_frame_pull((void *)frame, frame, sizeof(*cc));
+	if (!cc) {
+		print_text(COLOR_ERROR,
+				"Codec Specific Configuration: invalid size");
+		return;
+	}
+
+	if (!l2cap_frame_pull((void *)frame, frame, cc->len)) {
+		print_text(COLOR_ERROR,
+				"Codec Specific Configuration: invalid size");
+		return;
+	}
+
+	packet_print_ltv("    Codec Specific Configuration", cc->data, cc->len);
+}
+
+static void print_framing(uint8_t value)
+{
+	switch (value) {
+	case 0x00:
+		print_field("    Framing: Unframed (0x%2.2x)", value);
+		break;
+	case 0x01:
+		print_field("    Framing: Framed (0x%2.2x)", value);
+		break;
+	default:
+		print_field("    Framing: Reserved (0x%2.2x)", value);
+	}
+}
+
+static const struct bitfield_data phy_table[] = {
+	{  0, "LE 1M PHY (0x01)"		},
+	{  1, "LE 2M PHY (0x02)"		},
+	{  2, "LE Codec PHY (0x04)"		},
+	{ }
+};
+
+static void print_phy(uint8_t phy)
+{
+	uint8_t mask;
+
+	mask = print_bitfield(4, phy, phy_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+}
+
+static void print_ase_qos(const struct l2cap_frame *frame)
+{
+	uint8_t framing, phy, rtn;
+	uint16_t sdu, latency;
+	uint32_t interval, pd;
+
+	if (!l2cap_frame_print_u8((void *)frame, "    CIG ID"))
+		return;
+
+	if (!l2cap_frame_print_u8((void *)frame, "    CIS ID"))
+		return;
+
+	if (!l2cap_frame_get_le24((void *)frame, &interval)) {
+		print_text(COLOR_ERROR, "SDU Interval: invalid size");
+		return;
+	}
+
+	print_field("    SDU Interval: %u us", interval);
+
+	if (!l2cap_frame_get_u8((void *)frame, &framing)) {
+		print_text(COLOR_ERROR, "Framing: invalid size");
+		return;
+	}
+
+	print_framing(framing);
+
+	if (!l2cap_frame_get_u8((void *)frame, &phy)) {
+		print_text(COLOR_ERROR, "PHY: invalid size");
+		return;
+	}
+
+	print_phy(phy);
+
+	if (!l2cap_frame_get_le16((void *)frame, &sdu)) {
+		print_text(COLOR_ERROR, "Max SDU: invalid size");
+		return;
+	}
+
+	print_field("    Max SDU: %u", sdu);
+
+	if (!l2cap_frame_get_u8((void *)frame, &rtn)) {
+		print_text(COLOR_ERROR, "RTN: invalid size");
+		return;
+	}
+
+	print_field("    RTN: %u", rtn);
+
+	if (!l2cap_frame_get_le16((void *)frame, &latency)) {
+		print_text(COLOR_ERROR, "Max Transport Latency: invalid size");
+		return;
+	}
+
+	print_field("    Max Transport Latency: %u", sdu);
+
+	if (!l2cap_frame_get_le24((void *)frame, &pd)) {
+		print_text(COLOR_ERROR, "Presentation Delay: invalid size");
+		return;
+	}
+
+	print_field("    Presentation Delay: %u us", pd);
+}
+
+static void print_ase_metadata(const struct l2cap_frame *frame)
+{
+	struct bt_hci_lv_data *meta;
+
+	if (!l2cap_frame_print_u8((void *)frame, "    CIG ID"))
+		return;
+
+	if (!l2cap_frame_print_u8((void *)frame, "    CIS ID"))
+		return;
+
+	meta = l2cap_frame_pull((void *)frame, frame, sizeof(*meta));
+	if (!meta) {
+		print_text(COLOR_ERROR, "Metadata: invalid size");
+		return;
+	}
+
+	if (!l2cap_frame_pull((void *)frame, frame, meta->len)) {
+		print_text(COLOR_ERROR, "Metadata: invalid size");
+		return;
+	}
+
+	packet_print_ltv("    Metadata", meta->data, meta->len);
+}
+
+static void print_ase_status(const struct l2cap_frame *frame)
+{
+	uint8_t id, state;
+
+	if (!l2cap_frame_get_u8((void *)frame, &id)) {
+		print_text(COLOR_ERROR, "ASE ID: invalid size");
+		goto done;
+	}
+
+	print_field("    ASE ID: %u", id);
+
+	if (!l2cap_frame_get_u8((void *)frame, &state)) {
+		print_text(COLOR_ERROR, "ASE State: invalid size");
+		goto done;
+	}
+
+	switch (state) {
+	/* ASE_State = 0x00 (Idle) */
+	case 0x00:
+		print_field("    State: Idle (0x00)");
+		break;
+	/* ASE_State = 0x01 (Codec Configured) */
+	case 0x01:
+		print_field("    State: Codec Configured (0x01)");
+		print_ase_config(frame);
+		break;
+	/* ASE_State = 0x02 (QoS Configured) */
+	case 0x02:
+		print_field("    State: QoS Configured (0x02)");
+		print_ase_qos(frame);
+		break;
+	/* ASE_Status = 0x03 (Enabling) */
+	case 0x03:
+		print_field("    State: Enabling (0x03)");
+		print_ase_metadata(frame);
+		break;
+	/* ASE_Status = 0x04 (Streaming) */
+	case 0x04:
+		print_field("    State: Streaming (0x04)");
+		print_ase_metadata(frame);
+		break;
+	/* ASE_Status = 0x05 (Disabling) */
+	case 0x05:
+		print_field("    State: Disabling (0x05)");
+		print_ase_metadata(frame);
+		break;
+	/* ASE_Status = 0x06 (Releasing) */
+	case 0x06:
+		print_field("    State: Releasing (0x06)");
+		break;
+	default:
+		print_field("    State: Reserved (0x%2.2x)", state);
+		break;
+	}
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void ase_read(const struct l2cap_frame *frame)
+{
+	print_ase_status(frame);
+}
+
+static void ase_notify(const struct l2cap_frame *frame)
+{
+	print_ase_status(frame);
+}
+
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
 	.uuid = { \
@@ -355,6 +666,8 @@ struct gatt_handler {
 	void (*notify)(const struct l2cap_frame *frame);
 } gatt_handlers[] = {
 	GATT_HANDLER(0x2902, ccc_read, ccc_write, NULL),
+	GATT_HANDLER(0x2bc4, ase_read, NULL, ase_notify),
+	GATT_HANDLER(0x2bc5, ase_read, NULL, ase_notify),
 	GATT_HANDLER(0x2bc9, pac_read, NULL, pac_notify),
 	GATT_HANDLER(0x2bcb, pac_read, NULL, pac_notify),
 };
