@@ -742,6 +742,7 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
 {
 	struct gatt_db_attribute *attr;
 	struct gatt_handler *handler;
+	struct l2cap_frame clone;
 
 	print_handle(frame, handle, false);
 	print_hex_field("  Data", frame->data, len);
@@ -758,6 +759,15 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
 	handler = get_handler(attr);
 	if (!handler)
 		return;
+
+	/* Use a clone if the callback is not expected to parse the whole
+	 * frame.
+	 */
+	if (len != frame->size) {
+		l2cap_frame_clone(&clone, frame);
+		clone.size = len;
+		frame = &clone;
+	}
 
 	handler->notify(frame);
 }
