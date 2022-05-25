@@ -427,32 +427,39 @@ static void att_conn_data_free(void *data)
 
 static void load_gatt_db(struct packet_conn_data *conn)
 {
-	struct att_conn_data *data;
+	struct att_conn_data *data = conn->data;
 	char filename[PATH_MAX];
 	bdaddr_t src;
 	char local[18];
 	char peer[18];
 
+	if (!data) {
+		data = new0(struct att_conn_data, 1);
+		data->rdb = gatt_db_new();
+		data->ldb = gatt_db_new();
+		conn->data = data;
+		conn->destroy = att_conn_data_free;
+	}
+
+	if (!gatt_db_isempty(data->ldb) && !gatt_db_isempty(data->rdb))
+		return;
+
 	if (hci_devba(conn->index, &src) < 0)
 		return;
 
-	data = new0(struct att_conn_data, 1);
-	data->rdb = gatt_db_new();
-	data->ldb = gatt_db_new();
-	conn->data = data;
-	conn->destroy = att_conn_data_free;
-
 	ba2str(&src, local);
-
-	create_filename(filename, PATH_MAX, "/%s/attributes", local);
-
-	btd_settings_gatt_db_load(data->ldb, filename);
-
 	ba2str((bdaddr_t *)conn->dst, peer);
 
-	create_filename(filename, PATH_MAX, "/%s/cache/%s", local, peer);
+	if (gatt_db_isempty(data->ldb)) {
+		create_filename(filename, PATH_MAX, "/%s/attributes", local);
+		btd_settings_gatt_db_load(data->ldb, filename);
+	}
 
-	btd_settings_gatt_db_load(data->rdb, filename);
+	if (gatt_db_isempty(data->rdb)) {
+		create_filename(filename, PATH_MAX, "/%s/cache/%s", local,
+								peer);
+		btd_settings_gatt_db_load(data->rdb, filename);
+	}
 }
 
 static struct gatt_db_attribute *get_attribute(const struct l2cap_frame *frame,
@@ -466,14 +473,12 @@ static struct gatt_db_attribute *get_attribute(const struct l2cap_frame *frame,
 	if (!conn)
 		return NULL;
 
-	data = conn->data;
 	/* Try loading local and remote gatt_db if not loaded yet */
-	if (!data) {
-		load_gatt_db(conn);
-		data = conn->data;
-		if (!data)
-			return NULL;
-	}
+	load_gatt_db(conn);
+
+	data = conn->data;
+	if (!data)
+		return NULL;
 
 	if (frame->in) {
 		if (rsp)
