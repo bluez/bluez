@@ -332,6 +332,7 @@ Read Controller Information Command
 		15	Static Address
 		16	PHY Configuration
 		17	Wideband Speech
+		18	Quality Report
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -2924,6 +2925,7 @@ Read Extended Controller Information Command
 		15	Static Address
 		16	PHY Configuration
 		17	Wideband Speech
+		18	Quality Report
 
 	The EIR_Data field contains information about class of device,
 	local name and other values. Not all of them might be present. For
@@ -3856,6 +3858,45 @@ Add Advertisement Patterns Monitor With RSSI Threshold Command
 				Busy
 				No Resources
 				Invalid Parameters
+
+
+Set Quality Report Command
+==========================
+
+	Command Code:		0x0057
+	Controller Index:	<controller id>
+	Command Parameters:	Quality_Report (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is used to enable and disable the controller's quality
+	report feature. The allowed values for the Quality_Report command
+	parameter are 0x00 and 0x01. All other values will return Invalid
+	Parameters.
+
+	The value 0x00 disables the Quality Report, and the value 0x01
+	enables the Quality Report feature.
+
+	This command is only available for the controllers that support
+	either AOSP Bluetooth quality report or Intel telemetry event.
+	It is supported if the supported_settings indicate support for it.
+
+	This command requires to use a valid controller index. Otherwise,
+	an Invalid Index status will be returned.
+
+	The command is sent to the controller to enable/disable the quality
+	report feature, and generates a Command Complete event on success.
+	If the controller failed to execute the action, a Failed status will
+	be returned.
+
+	The quality report state is maintained by the kernel over the adapter
+	power cycle. When the adapter is powered off, the quality report
+	feature is disabled by the kernel. When the adapter is powered on, it
+	is enabled again by the kernel if it was enabled before.
+
+	Possible errors:	Failed
+				Invalid Index
+				Invalid Parameters
+				Not Supported
 
 
 Command Complete Event
@@ -4976,5 +5017,24 @@ Advertisement Monitor Device Lost Event
 		0	Reserved (not in use)
 		1	LE Public
 		2	LE Random
+
+	This event will be sent to all management sockets.
+
+
+Quality Report Event
+====================
+
+	Event code:		0x0031
+	Controller Index:	<controller_id>
+	Event Parameters:	Quality_Spec (1 Octet)
+				Report_Len (2 Octets)
+				Report (0-65535 Octets)
+
+	This event carries the Bluetooth quality report sent by the
+	controller.
+
+	Possible values for the Quality_Spec parameter:
+		0	AOSP Bluetooth Quality Report Event
+		1	Intel Telemetry Event
 
 	This event will be sent to all management sockets.
