@@ -221,9 +221,15 @@ static const struct bitfield_data ccc_value_table[] = {
 	{ }
 };
 
-static void print_ccc_value(uint8_t value)
+static void print_ccc_value(const struct l2cap_frame *frame)
 {
-	uint8_t mask = value;
+	uint8_t value;
+	uint8_t mask;
+
+	if (!l2cap_frame_get_u8((void *)frame, &value)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
 
 	mask = print_bitfield(4, value, ccc_value_table);
 	if (mask)
@@ -231,28 +237,14 @@ static void print_ccc_value(uint8_t value)
 								mask);
 }
 
-static void gatt_ccc_read(const struct l2cap_frame *frame)
+static void ccc_read(const struct l2cap_frame *frame)
 {
-	uint8_t value;
-
-	if (!l2cap_frame_get_u8((void *)frame, &value)) {
-		print_text(COLOR_ERROR, "invalid size");
-		return;
-	}
-
-	print_ccc_value(value);
+	print_ccc_value(frame);
 }
 
-static void gatt_ccc_write(const struct l2cap_frame *frame)
+static void ccc_write(const struct l2cap_frame *frame)
 {
-	uint8_t value;
-
-	if (!l2cap_frame_get_u8((void *)frame, &value)) {
-		print_text(COLOR_ERROR, "invalid size");
-		return;
-	}
-
-	print_ccc_value(value);
+	print_ccc_value(frame);
 }
 
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
@@ -272,8 +264,7 @@ struct gatt_handler {
 	void (*write)(const struct l2cap_frame *frame);
 	void (*notify)(const struct l2cap_frame *frame);
 } gatt_handlers[] = {
-	GATT_HANDLER(GATT_CLIENT_CHARAC_CFG_UUID, gatt_ccc_read,
-					gatt_ccc_write, NULL)
+	GATT_HANDLER(0x2902, ccc_read, ccc_write, NULL),
 };
 
 static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
