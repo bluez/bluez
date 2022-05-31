@@ -72,6 +72,7 @@ static bool send_message(const bdaddr_t *src, const bdaddr_t *dst,
 		return false;
 	}
 
+	close(fd);
 	return true;
 }
 
