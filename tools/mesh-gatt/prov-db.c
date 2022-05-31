@@ -859,7 +859,8 @@ bool prov_db_local_set_iv_index(uint32_t iv_index, bool update, bool prov)
 
 		set_local_iv_index(jmain, iv_index, update);
 		prov_file_write(jmain, false);
-	}
+	} else
+		return true;
 
 	res = true;
 done:
