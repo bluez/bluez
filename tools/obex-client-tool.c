@@ -312,6 +312,7 @@ static GIOChannel *unix_connect(GObexTransportType transport)
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = errno;
 		g_printerr("connect: %s (%d)\n", strerror(err), err);
+		close(sk);
 		return NULL;
 	}
 
