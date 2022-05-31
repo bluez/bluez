@@ -2015,7 +2015,6 @@ int main(int argc, char *argv[])
 
 fail:
 	bt_shell_cleanup();
-	g_free(mesh_dir);
 
 	return EXIT_FAILURE;
 }
