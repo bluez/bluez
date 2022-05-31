@@ -1709,6 +1709,7 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 
 	if (!check_mtu(data, new_sk)) {
 		tester_test_failed();
+		close(new_sk);
 		return FALSE;
 	}
 
