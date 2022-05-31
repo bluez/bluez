@@ -139,11 +139,15 @@ bool appkey_key_init(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 	key->net_idx = net_idx;
 	key->app_idx = app_idx;
 
-	if (key_value && !set_key(key, app_idx, key_value, false))
+	if (key_value && !set_key(key, app_idx, key_value, false)) {
+		appkey_key_free(key);
 		return false;
+	}
 
-	if (new_key_value && !set_key(key, app_idx, new_key_value, true))
+	if (new_key_value && !set_key(key, app_idx, new_key_value, true)) {
+		appkey_key_free(key);
 		return false;
+	}
 
 	l_queue_push_tail(app_keys, key);
 
