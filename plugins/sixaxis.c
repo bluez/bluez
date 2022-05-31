@@ -424,10 +424,15 @@ static void device_added(struct udev_device *udevice)
 
 	cp = get_pairing_type_for_device(udevice, &bus, &sysfs_path);
 	if (!cp || (cp->type != CABLE_PAIRING_SIXAXIS &&
-				cp->type != CABLE_PAIRING_DS4))
+				cp->type != CABLE_PAIRING_DS4)) {
+		g_free(sysfs_path);
 		return;
-	if (bus != BUS_USB)
+	}
+
+	if (bus != BUS_USB) {
+		g_free(sysfs_path);
 		return;
+	}
 
 	info("sixaxis: compatible device connected: %s (%04X:%04X %s)",
 				cp->name, cp->vid, cp->pid, sysfs_path);
