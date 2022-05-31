@@ -925,10 +925,11 @@ static DBusMessage *pbap_search(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
 
-	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING)
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
+		g_obex_apparam_free(apparam);
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
-
+	}
 	dbus_message_iter_get_basic(&args, &value);
 	dbus_message_iter_next(&args);
 
