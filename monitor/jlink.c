@@ -107,9 +107,12 @@ int jlink_init(void)
 			!jlink.tif_select || !jlink.setspeed ||
 			!jlink.connect || !jlink.getsn ||
 			!jlink.emu_getproductname ||
-			!jlink.rtterminal_control || !jlink.rtterminal_read)
+			!jlink.rtterminal_control || !jlink.rtterminal_read) {
+		dlclose(so);
 		return -EIO;
+	}
 
+	dlclose(so);
 	return 0;
 }
 
