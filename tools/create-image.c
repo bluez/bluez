@@ -97,11 +97,12 @@ static void write_block(FILE *fp, const char *pathname, unsigned int ino,
 
 	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
 	if (!map || map == MAP_FAILED) {
-		close(fd);
-		fd = -1;
 		map = NULL;
 		st.st_size = 0;
         }
+
+	close(fd);
+	fd = -1;
 
 done:
 	fprintf(fp, HDR_FMT, HDR_MAGIC, ino, mode, 0, 0, 1, 0,
@@ -117,9 +118,7 @@ done:
 		pad = 3 - ((st.st_size + 3) % 4);
 		for (i = 0; i < pad; i++)
 			fputc(0, fp);
-
 		munmap(map, st.st_size);
-		close(fd);
 	}
 }
 
