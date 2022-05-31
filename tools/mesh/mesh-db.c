@@ -2384,6 +2384,8 @@ bool mesh_db_load(const char *fname)
 
 	sz = read(fd, str, st.st_size);
 	if (sz != st.st_size) {
+		close(fd);
+		l_free(str);
 		l_error("Failed to read configuration file %s", fname);
 		return false;
 	}
