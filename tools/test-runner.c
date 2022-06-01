@@ -452,13 +452,13 @@ static pid_t start_dbus_daemon(void)
 
 		if (!stat("/run/dbus/system_bus_socket", &st)) {
 			printf("Found D-Bus daemon socket\n");
-			break;
+			return pid;
 		}
 
-		usleep(25 * 1000);
+		sleep(1);
 	}
 
-	return pid;
+	return -1;
 }
 
 static const char *daemon_table[] = {
