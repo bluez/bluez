@@ -282,6 +282,7 @@ struct generic_data {
 	const void *setup_send_param;
 	uint16_t setup_send_len;
 	const struct setup_mgmt_cmd *setup_mgmt_cmd_arr;
+	size_t setup_mgmt_cmd_arr_size;
 	bool send_index_none;
 	const void *setup_discovery_param;
 	uint16_t send_opcode;
@@ -1861,11 +1862,6 @@ static const struct setup_mgmt_cmd set_advertising_mgmt_cmd_arr[] = {
 		.send_opcode = MGMT_OP_SET_LOCAL_NAME,
 		.send_param = set_adv_set_local_name_param,
 		.send_len = sizeof(set_adv_set_local_name_param),
-	},
-	{ /* last element should always have opcode 0x00 */
-		.send_opcode = 0x00,
-		.send_param = NULL,
-		.send_len = 0,
 	}
 };
 
@@ -1887,6 +1883,7 @@ static const uint8_t set_adv_scan_rsp_data_name_and_appearance[] = {
 static const struct generic_data set_adv_on_local_name_appear_test_1 = {
 	.setup_settings = settings_powered_le,
 	.setup_mgmt_cmd_arr = set_advertising_mgmt_cmd_arr,
+	.setup_mgmt_cmd_arr_size = ARRAY_SIZE(set_advertising_mgmt_cmd_arr),
 	.send_opcode = MGMT_OP_SET_ADVERTISING,
 	.send_param = set_adv_on_param,
 	.expect_param = set_adv_settings_param_2,
@@ -5620,11 +5617,6 @@ static const struct setup_mgmt_cmd set_dev_class_cmd_arr1[] = {
 		.send_opcode = MGMT_OP_ADD_UUID,
 		.send_param = add_spp_uuid_param,
 		.send_len = sizeof(add_spp_uuid_param),
-	},
-	{ /* last element should always have opcode 0x00 */
-		.send_opcode = 0x00,
-		.send_param = NULL,
-		.send_len = 0,
 	}
 };
 
@@ -5653,6 +5645,7 @@ static const char ext_ctrl_info2[] = {
 static const struct generic_data read_ext_ctrl_info2 = {
 	.setup_settings = settings_powered_le,
 	.setup_mgmt_cmd_arr = set_dev_class_cmd_arr1,
+	.setup_mgmt_cmd_arr_size = ARRAY_SIZE(set_dev_class_cmd_arr1),
 	.send_opcode = MGMT_OP_READ_EXT_INFO,
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = ext_ctrl_info2,
@@ -5745,11 +5738,6 @@ static const struct setup_mgmt_cmd set_dev_class_cmd_arr2[] = {
 		.send_opcode = MGMT_OP_SET_LOCAL_NAME,
 		.send_param = &set_local_name_cp,
 		.send_len = sizeof(set_local_name_cp),
-	},
-	{ /* last element should always have opcode 0x00 */
-		.send_opcode = 0x00,
-		.send_param = NULL,
-		.send_len = 0,
 	}
 };
 
@@ -5781,6 +5769,7 @@ static const char ext_ctrl_info5[] = {
 static const struct generic_data read_ext_ctrl_info5 = {
 	.setup_settings = settings_powered_le,
 	.setup_mgmt_cmd_arr = set_dev_class_cmd_arr2,
+	.setup_mgmt_cmd_arr_size = ARRAY_SIZE(set_dev_class_cmd_arr2),
 	.send_opcode = MGMT_OP_READ_EXT_INFO,
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = ext_ctrl_info5,
@@ -7476,7 +7465,7 @@ static void setup_command_generic(const void *test_data)
 	const struct generic_data *test = data->test_data;
 	const void *send_param = test->setup_send_param;
 	uint16_t send_len = test->setup_send_len;
-	size_t i = 0;
+	size_t i;
 
 	if (test->setup_expect_hci_command) {
 		tester_print("Registering setup expected HCI command callback");
@@ -7500,11 +7489,8 @@ static void setup_command_generic(const void *test_data)
 	}
 
 	tester_print("Sending setup opcode array");
-	for (; test->setup_mgmt_cmd_arr + i; ++i) {
-		const struct setup_mgmt_cmd *cmd = test->setup_mgmt_cmd_arr + i;
-
-		if (cmd->send_opcode == 0x00)
-			break;
+	for (i = 0; i < test->setup_mgmt_cmd_arr_size; ++i) {
+		const struct setup_mgmt_cmd *cmd = &test->setup_mgmt_cmd_arr[i];
 
 		tester_print("Setup sending %s (0x%04x)",
 				mgmt_opstr(cmd->send_opcode),
@@ -7909,6 +7895,7 @@ static const uint8_t set_scan_rsp_data_name_data_appear[] = {
 static const struct generic_data add_advertising_name_data_appear = {
 	.setup_settings = settings_powered_le,
 	.setup_mgmt_cmd_arr = add_advertising_mgmt_cmd_arr,
+	.setup_mgmt_cmd_arr_size = ARRAY_SIZE(add_advertising_mgmt_cmd_arr),
 	.send_opcode = MGMT_OP_ADD_ADVERTISING,
 	.send_param = add_advertising_param_name_data_appear,
 	.send_len = sizeof(add_advertising_param_name_data_appear),
@@ -8925,6 +8912,7 @@ static const uint8_t set_ext_scan_rsp_data_name_data_appear[] = {
 static const struct generic_data add_ext_advertising_name_data_appear = {
 	.setup_settings = settings_powered_le,
 	.setup_mgmt_cmd_arr = add_advertising_mgmt_cmd_arr,
+	.setup_mgmt_cmd_arr_size = ARRAY_SIZE(add_advertising_mgmt_cmd_arr),
 	.send_opcode = MGMT_OP_ADD_ADVERTISING,
 	.send_param = add_advertising_param_name_data_appear,
 	.send_len = sizeof(add_advertising_param_name_data_appear),
