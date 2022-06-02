@@ -1228,7 +1228,6 @@ static void load_gatt_db(struct packet_conn_data *conn)
 {
 	struct att_conn_data *data = conn->data;
 	char filename[PATH_MAX];
-	bdaddr_t src;
 	char local[18];
 	char peer[18];
 
@@ -1243,10 +1242,7 @@ static void load_gatt_db(struct packet_conn_data *conn)
 	if (!gatt_db_isempty(data->ldb) && !gatt_db_isempty(data->rdb))
 		return;
 
-	if (hci_devba(conn->index, &src) < 0)
-		return;
-
-	ba2str(&src, local);
+	ba2str((bdaddr_t *)conn->src, local);
 	ba2str((bdaddr_t *)conn->dst, peer);
 
 	if (gatt_db_isempty(data->ldb)) {

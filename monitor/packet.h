@@ -25,6 +25,7 @@
 
 struct packet_conn_data {
 	uint16_t index;
+	uint8_t  src[6];
 	uint16_t handle;
 	uint8_t  type;
 	uint8_t  dst[6];

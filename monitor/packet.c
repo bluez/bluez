@@ -178,6 +178,9 @@ static void assign_handle(uint16_t index, uint16_t handle, uint8_t type,
 
 	for (i = 0; i < MAX_CONN; i++) {
 		if (conn_list[i].handle == 0x0000) {
+			if (hci_devba(index, (bdaddr_t *)conn_list[i].src) < 0)
+				return;
+
 			conn_list[i].index = index;
 			conn_list[i].handle = handle;
 			conn_list[i].type = type;
