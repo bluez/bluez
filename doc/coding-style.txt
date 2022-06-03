@@ -7,14 +7,14 @@ some level of consistency among developers so that code can be easily
 understood and maintained.
 
 First of all, BlueZ coding style must follow every rule for Linux kernel
-(http://www.kernel.org/doc/Documentation/CodingStyle). There also exists a tool
-named checkpatch.pl to help you check the compliance with it. Just type
-"checkpatch.pl --no-tree patch_name" to check your patch. In theory, you need
-to clean up all the warnings and errors except this one: "ERROR: Missing
-Signed-off-by: line(s)". BlueZ does not used Signed-Off lines, so including
-them is actually an error.  In certain circumstances one can ignore the 80
-character per line limit.  This is generally only allowed if the alternative
-would make the code even less readable.
+(https://www.kernel.org/doc/Documentation/process/coding-style.rst). There also
+exists a tool named checkpatch.pl to help you check the compliance with it.
+Just type "checkpatch.pl --no-tree patch_name" to check your patch. In theory,
+you need to clean up all the warnings and errors except this one: "ERROR:
+Missing Signed-off-by: line(s)". BlueZ does not used Signed-Off lines, so
+including them is actually an error.  In certain circumstances one can ignore
+the 80 character per line limit.  This is generally only allowed if the
+alternative would make the code even less readable.
 
 Besides the kernel coding style above, BlueZ has special flavors for its own.
 Some of them are mandatory (marked as 'M'), while some others are optional
