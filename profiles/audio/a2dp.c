@@ -1876,8 +1876,10 @@ static int a2dp_reconfig(struct a2dp_channel *chan, const char *sender,
 		if (tmp->stream) {
 			/* Only allow switching sep from the same sender */
 			if (strcmp(sender, tmp->endpoint->get_name(tmp,
-							tmp->user_data)))
-				return -EPERM;
+							tmp->user_data))) {
+				err = -EPERM;
+				goto fail;
+			}
 
 			/* Check if stream is for the channel */
 			if (!avdtp_has_stream(chan->session, tmp->stream))
