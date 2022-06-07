@@ -1547,7 +1547,7 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
 		return;
 	}
 
-	attr = get_attribute(frame, handle, false);
+	attr = get_attribute(frame, handle, true);
 	if (!attr)
 		return;
 
