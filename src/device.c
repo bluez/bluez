@@ -4278,7 +4278,7 @@ static void delete_folder_tree(const char *dirname)
 		if (entry->d_type == DT_UNKNOWN)
 			entry->d_type = util_get_dt(dirname, entry->d_name);
 
-		create_filename(filename, PATH_MAX, "%s/%s", dirname,
+		snprintf(filename, PATH_MAX, "%s/%s", dirname,
 				entry->d_name);
 
 		if (entry->d_type == DT_DIR)
