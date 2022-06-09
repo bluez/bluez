@@ -3444,7 +3444,7 @@ static void device_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 
 	/* continue with service discovery and connection */
 	btd_device_set_temporary(device, false);
-	device_update_last_seen(device, data->dst_type);
+	device_update_last_seen(device, data->dst_type, true);
 
 	if (data->dst_type != BDADDR_BREDR){
 		g_io_channel_set_close_on_unref(io, FALSE);
@@ -6954,7 +6954,7 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 		return;
 	}
 
-	device_update_last_seen(dev, bdaddr_type);
+	device_update_last_seen(dev, bdaddr_type, !not_connectable);
 
 	/*
 	 * FIXME: We need to check for non-zero flags first because
@@ -6966,7 +6966,7 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 					!(eir_data.flags & EIR_BREDR_UNSUP)) {
 		device_set_bredr_support(dev);
 		/* Update last seen for BR/EDR in case its flag is set */
-		device_update_last_seen(dev, BDADDR_BREDR);
+		device_update_last_seen(dev, BDADDR_BREDR, !not_connectable);
 	}
 
 	if (eir_data.name != NULL && eir_data.name_complete)

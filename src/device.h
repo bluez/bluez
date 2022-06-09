@@ -33,7 +33,8 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 							uint8_t bdaddr_type);
 void device_set_bredr_support(struct btd_device *device);
 void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type);
-void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type);
+void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type,
+							bool connectable);
 void device_merge_duplicate(struct btd_device *dev, struct btd_device *dup);
 uint32_t btd_device_get_class(struct btd_device *device);
 uint16_t btd_device_get_vendor(struct btd_device *device);
