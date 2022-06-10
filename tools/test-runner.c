@@ -54,6 +54,7 @@ static bool start_monitor = false;
 static int num_devs = 0;
 static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
+static bool audio_support;
 
 static const char *qemu_table[] = {
 	"qemu-system-x86_64",
@@ -261,12 +262,27 @@ static void start_qemu(void)
 				run_auto, testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
+				(audio_support ? 4 : 0) +
 				(sizeof(char *) * (4 + (num_devs * 4))));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
 
 	pos = (sizeof(qemu_argv) / sizeof(char *)) - 1;
 
 	argv[0] = (char *) qemu_binary;
+
+	if (audio_support) {
+		char *xdg_runtime_dir, *audiodev;
+
+		xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+		audiodev = alloca(40 + strlen(xdg_runtime_dir));
+		sprintf(audiodev, "id=audio,driver=pa,server=%s/pulse/native",
+				xdg_runtime_dir);
+
+		argv[pos++] = "-audiodev";
+		argv[pos++] = audiodev;
+		argv[pos++] = "-device";
+		argv[pos++] = "AC97,audiodev=audio";
+	}
 
 	argv[pos++] = "-kernel";
 	argv[pos++] = (char *) kernel_image;
@@ -990,6 +1006,7 @@ static void usage(void)
 		"\t-u, --unix [path]      Provide serial device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
+		"\t-A, --audio            Add audio support\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -1004,6 +1021,7 @@ static const struct option main_options[] = {
 	{ "monitor", no_argument,       NULL, 'm' },
 	{ "qemu",    required_argument, NULL, 'q' },
 	{ "kernel",  required_argument, NULL, 'k' },
+	{ "audio",   no_argument,       NULL, 'A' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -1023,7 +1041,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "aubdslmq:k:vh", main_options,
+		opt = getopt_long(argc, argv, "aubdslmq:k:Avh", main_options,
 								NULL);
 		if (opt < 0)
 			break;
@@ -1056,6 +1074,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'k':
 			kernel_image = optarg;
+			break;
+		case 'A':
+			audio_support = true;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
