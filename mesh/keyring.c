@@ -39,6 +39,7 @@ static int open_key_file(struct mesh_node *node, const char *key_dir,
 {
 	const char *node_path;
 	char fname[PATH_MAX];
+	int len;
 
 	if (!node)
 		return -1;
@@ -49,12 +50,16 @@ static int open_key_file(struct mesh_node *node, const char *key_dir,
 		return -1;
 
 	if (flags & O_CREAT) {
-		snprintf(fname, PATH_MAX, "%s%s", node_path, key_dir);
+		len = snprintf(fname, PATH_MAX, "%s%s", node_path, key_dir);
+		if (len >= PATH_MAX)
+			return -1;
 		if (mkdir(fname, 0755) != 0 && errno != EEXIST)
 			l_error("Failed to create dir(%d): %s", errno, fname);
 	}
 
-	snprintf(fname, PATH_MAX, "%s%s/%3.3x", node_path, key_dir, idx);
+	len = snprintf(fname, PATH_MAX, "%s%s/%3.3x", node_path, key_dir, idx);
+	if (len >= PATH_MAX)
+		return -1;
 
 	if (flags & O_CREAT)
 		return open(fname, flags, 0600);
