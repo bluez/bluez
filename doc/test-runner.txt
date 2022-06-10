@@ -54,6 +54,11 @@ For Bluetooth functionality:
 
 	CONFIG_UHID=y
 
+For Audio functionality:
+	CONFIG_SYSVIPC=y
+	CONFIG_SOUND=y
+	CONFIG_SND=y
+	CONFIG_SND_INTEL8X0=y
 
 These options should be installed as .config in the kernel source directory
 followed by this command.
