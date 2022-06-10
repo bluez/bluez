@@ -725,7 +725,6 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 {
 	struct mesh_io_private *pvt = io->pvt;
 	struct tx_pkt *tx;
-	bool sending = false;
 
 	if (!info || !data || !len || len > sizeof(tx->pkt))
 		return false;
@@ -739,23 +738,21 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 	if (info->type == MESH_IO_TIMING_TYPE_POLL_RSP)
 		l_queue_push_head(pvt->tx_pkts, tx);
 	else {
-		if (pvt->tx)
-			sending = true;
-		else
-			sending = !l_queue_isempty(pvt->tx_pkts);
-
-		l_queue_push_tail(pvt->tx_pkts, tx);
-
 		/*
 		 * If transmitter is idle, send packets at least twice to
 		 * guard against in-line cancelation of HCI command chain.
 		 */
-		if (info->type == MESH_IO_TIMING_TYPE_GENERAL && !sending &&
-							tx->info.u.gen.cnt == 1)
+		if (info->type == MESH_IO_TIMING_TYPE_GENERAL &&
+					!pvt->tx &&
+					l_queue_isempty(pvt->tx_pkts) &&
+					tx->info.u.gen.cnt == 1)
 			tx->info.u.gen.cnt++;
+
+		l_queue_push_tail(pvt->tx_pkts, tx);
 	}
 
-	if (!sending) {
+    /* If not already sending, schedule the tx worker */
+	if (!pvt->tx) {
 		l_timeout_remove(pvt->tx_timeout);
 		pvt->tx_timeout = NULL;
 		l_idle_oneshot(tx_worker, pvt, NULL);
