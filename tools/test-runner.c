@@ -251,13 +251,14 @@ static void start_qemu(void)
 				"rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.L "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
-				"bluetooth.enable_ecred=1"
+				"bluetooth.enable_ecred=1 "
 				"TESTHOME=%s TESTDBUS=%u TESTDAEMON=%u "
 				"TESTDBUSSESSION=%u XDG_RUNTIME_DIR=/run/user/0 "
+				"TESTAUDIO=%u "
 				"TESTMONITOR=%u TESTEMULATOR=%u TESTDEVS=%d "
 				"TESTAUTO=%u TESTARGS=\'%s\'",
 				initcmd, cwd, start_dbus, start_daemon,
-				start_dbus_session,
+				start_dbus_session, audio_support,
 				start_monitor, start_emulator, num_devs,
 				run_auto, testargs);
 
@@ -724,13 +725,70 @@ static pid_t start_btvirt(const char *home)
 	return pid;
 }
 
+static void trigger_udev(void)
+{
+	char *argv[3], *envp[1];
+	pid_t pid;
+
+	argv[0] = "/bin/udevadm";
+	argv[1] = "trigger";
+	argv[2] = NULL;
+
+	envp[0] = NULL;
+
+	printf("Triggering udev events\n");
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		return;
+	}
+
+	if (pid == 0) {
+		execve(argv[0], argv, envp);
+		exit(EXIT_SUCCESS);
+	}
+
+	printf("udev trigger process %d created\n", pid);
+}
+
+static pid_t start_udevd(void)
+{
+	char *argv[2], *envp[1];
+	pid_t pid;
+
+	argv[0] = "/lib/systemd/systemd-udevd";
+	argv[1] = NULL;
+
+	envp[0] = NULL;
+
+	printf("Starting udevd daemon\n");
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		return -1;
+	}
+
+	if (pid == 0) {
+		execve(argv[0], argv, envp);
+		exit(EXIT_SUCCESS);
+	}
+
+	printf("udevd daemon process %d created\n", pid);
+
+	trigger_udev();
+
+	return pid;
+}
+
 static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
 	int pos = 0, idx = 0;
 	int serial_fd;
 	pid_t pid, dbus_pid, daemon_pid, monitor_pid, emulator_pid,
-	      dbus_session_pid;
+	      dbus_session_pid, udevd_pid;
 
 	if (num_devs) {
 		const char *node = "/dev/ttyS1";
@@ -745,6 +803,11 @@ static void run_command(char *cmdname, char *home)
 								extra_flags);
 	} else
 		serial_fd = -1;
+
+	if (audio_support)
+		udevd_pid = start_udevd();
+	else
+		udevd_pid = -1;
 
 	if (start_dbus) {
 		create_dbus_system_conf();
@@ -874,6 +937,11 @@ start_next:
 			monitor_pid = -1;
 		}
 
+		if (corpse == udevd_pid) {
+			printf("udevd terminated\n");
+			udevd_pid = -1;
+		}
+
 		if (corpse == pid)
 			break;
 	}
@@ -897,6 +965,9 @@ start_next:
 
 	if (monitor_pid > 0)
 		kill(monitor_pid, SIGTERM);
+
+	if (udevd_pid > 0)
+		kill(udevd_pid, SIGTERM);
 
 	if (serial_fd >= 0) {
 		close(serial_fd);
@@ -978,6 +1049,12 @@ static void run_tests(void)
 	if (ptr) {
 		printf("Emulator requested\n");
 		start_emulator = true;
+	}
+
+	ptr = strstr(cmdline, "TESTAUDIO=1");
+	if (ptr) {
+		printf("Audio support requested\n");
+		audio_support = true;
 	}
 
 	ptr = strstr(cmdline, "TESTHOME=");
