@@ -666,7 +666,10 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 	else
 		transfer_set_status(transfer, TRANSFER_STATUS_COMPLETE);
 
-	if (callback)
+	if (callback == NULL)
+		return;
+
+	if (callback->func)
 		callback->func(transfer, err, callback->data);
 }
 
