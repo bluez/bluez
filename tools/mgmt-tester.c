@@ -7868,11 +7868,6 @@ static const struct setup_mgmt_cmd add_advertising_mgmt_cmd_arr[] = {
 		.send_opcode = MGMT_OP_SET_LOCAL_NAME,
 		.send_param = &set_local_name_cp,
 		.send_len = sizeof(set_local_name_cp),
-	},
-	{ /* last element should always have opcode 0x00 */
-		.send_opcode = 0x00,
-		.send_param = NULL,
-		.send_len = 0,
 	}
 };
 
