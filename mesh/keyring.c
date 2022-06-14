@@ -39,26 +39,24 @@ static int open_key_file(struct mesh_node *node, const char *key_dir,
 {
 	const char *node_path;
 	char fname[PATH_MAX];
-	int len;
+	int ret;
 
 	if (!node)
 		return -1;
 
 	node_path = node_get_storage_dir(node);
 
-	if (strlen(node_path) + strlen(key_dir) + 1 + 3 >= PATH_MAX)
-		return -1;
-
 	if (flags & O_CREAT) {
-		len = snprintf(fname, PATH_MAX, "%s%s", node_path, key_dir);
-		if (len >= PATH_MAX)
+		ret = snprintf(fname, PATH_MAX, "%s%s", node_path, key_dir);
+		if (ret < 0)
 			return -1;
+
 		if (mkdir(fname, 0755) != 0 && errno != EEXIST)
 			l_error("Failed to create dir(%d): %s", errno, fname);
 	}
 
-	len = snprintf(fname, PATH_MAX, "%s%s/%3.3x", node_path, key_dir, idx);
-	if (len >= PATH_MAX)
+	ret = snprintf(fname, PATH_MAX, "%s%s/%3.3x", node_path, key_dir, idx);
+	if (ret < 0)
 		return -1;
 
 	if (flags & O_CREAT)
@@ -157,7 +155,7 @@ bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_idx)
 	const char *node_path;
 	char key_dir[PATH_MAX];
 	DIR *dir;
-	int dir_fd;
+	int ret, dir_fd;
 	struct dirent *entry;
 
 	if (!node)
@@ -165,10 +163,10 @@ bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_idx)
 
 	node_path = node_get_storage_dir(node);
 
-	if (strlen(node_path) + strlen(app_key_dir) + 1 >= PATH_MAX)
+	ret = snprintf(key_dir, PATH_MAX, "%s%s", node_path, app_key_dir);
+	if (ret < 0)
 		return false;
 
-	snprintf(key_dir, PATH_MAX, "%s%s", node_path, app_key_dir);
 	dir = opendir(key_dir);
 	if (!dir) {
 		if (errno == ENOENT)
@@ -197,7 +195,7 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 	const char *node_path;
 	char key_file[PATH_MAX];
 	bool result = true;
-	int fd, i;
+	int ret, fd, i;
 
 	if (!IS_UNICAST_RANGE(unicast, count))
 		return false;
@@ -207,17 +205,19 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 
 	node_path = node_get_storage_dir(node);
 
-	if (strlen(node_path) + strlen(dev_key_dir) + 1 + 4 >= PATH_MAX)
+	ret = snprintf(key_file, PATH_MAX, "%s%s", node_path, dev_key_dir);
+	if (ret < 0)
 		return false;
-
-	snprintf(key_file, PATH_MAX, "%s%s", node_path, dev_key_dir);
 
 	if (mkdir(key_file, 0755) != 0 && errno != EEXIST)
 		l_error("Failed to create dir(%d): %s", errno, key_file);
 
 	for (i = 0; i < count; i++) {
-		snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path,
+		ret = snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path,
 						dev_key_dir, unicast + i);
+		if (ret < 0)
+			return false;
+
 		l_debug("Put Dev Key %s", key_file);
 
 		fd = open(key_file, O_WRONLY | O_CREAT | O_TRUNC, 0600);
@@ -272,7 +272,7 @@ bool keyring_get_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 	const char *node_path;
 	char key_file[PATH_MAX];
 	bool result = false;
-	int fd;
+	int ret, fd;
 
 	if (!IS_UNICAST(unicast))
 		return false;
@@ -282,8 +282,11 @@ bool keyring_get_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 
 	node_path = node_get_storage_dir(node);
 
-	snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path, dev_key_dir,
+	ret = snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path, dev_key_dir,
 								unicast);
+	if (ret < 0)
+		return false;
+
 	fd = open(key_file, O_RDONLY);
 	if (fd >= 0) {
 		if (read(fd, dev_key, 16) == 16)
@@ -299,13 +302,17 @@ bool keyring_del_net_key(struct mesh_node *node, uint16_t net_idx)
 {
 	const char *node_path;
 	char key_file[PATH_MAX];
+	int ret;
 
 	if (!node)
 		return false;
 
 	node_path = node_get_storage_dir(node);
-	snprintf(key_file, PATH_MAX, "%s%s/%3.3x", node_path, net_key_dir,
+	ret = snprintf(key_file, PATH_MAX, "%s%s/%3.3x", node_path, net_key_dir,
 								net_idx);
+	if (ret < 0)
+		return false;
+
 	l_debug("RM Net Key %s", key_file);
 	remove(key_file);
 
@@ -319,13 +326,17 @@ bool keyring_del_app_key(struct mesh_node *node, uint16_t app_idx)
 {
 	const char *node_path;
 	char key_file[PATH_MAX];
+	int ret;
 
 	if (!node)
 		return false;
 
 	node_path = node_get_storage_dir(node);
-	snprintf(key_file, PATH_MAX, "%s%s/%3.3x", node_path, app_key_dir,
+	ret = snprintf(key_file, PATH_MAX, "%s%s/%3.3x", node_path, app_key_dir,
 								app_idx);
+	if (ret < 0)
+		return false;
+
 	l_debug("RM App Key %s", key_file);
 	remove(key_file);
 
@@ -337,7 +348,7 @@ bool keyring_del_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 {
 	const char *node_path;
 	char key_file[PATH_MAX];
-	int i;
+	int ret, i;
 
 	if (!IS_UNICAST_RANGE(unicast, count))
 		return false;
@@ -348,8 +359,11 @@ bool keyring_del_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 	node_path = node_get_storage_dir(node);
 
 	for (i = 0; i < count; i++) {
-		snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path,
+		ret = snprintf(key_file, PATH_MAX, "%s%s/%4.4x", node_path,
 						dev_key_dir, unicast + i);
+		if (ret < 0)
+			return false;
+
 		l_debug("RM Dev Key %s", key_file);
 		remove(key_file);
 	}
@@ -361,18 +375,16 @@ static DIR *open_key_dir(const char *node_path, const char *key_dir_name)
 {
 	char dir_path[PATH_MAX];
 	DIR *key_dir;
+	int ret;
 
-	if (strlen(node_path) + strlen(key_dir_name) + 1 >= PATH_MAX)
+	ret = snprintf(dir_path, PATH_MAX, "%s%s", node_path, key_dir_name);
+	if (ret < 0)
 		return NULL;
-
-	snprintf(dir_path, PATH_MAX, "%s%s", node_path, key_dir_name);
 
 	key_dir = opendir(dir_path);
-	if (!key_dir) {
+	if (!key_dir)
 		l_error("Failed to open keyring storage directory: %s",
 								dir_path);
-		return NULL;
-	}
 
 	return key_dir;
 }
