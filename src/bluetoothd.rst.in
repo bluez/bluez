@@ -67,6 +67,10 @@ OPTIONS
 -E, --experimental  Enable experimental interfaces. Those interfaces are not
                     guaranteed to be compatible or present in future releases.
 
+-K, --kernel=<uuid1>,<uuid2>,...
+    Enable Kernel experimental features. Kernel experimental features are
+    considered unstable and may be removed from future kernel releases.
+
 FILES
 =====
 
