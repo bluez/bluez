@@ -9583,7 +9583,7 @@ static void set_exp_debug_complete(uint8_t status, uint16_t len,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
+	uint8_t action;
 
 	if (status != 0) {
 		error("Set Experimental Debug failed with status 0x%02x (%s)",
@@ -9591,7 +9591,9 @@ static void set_exp_debug_complete(uint8_t status, uint16_t len,
 		return;
 	}
 
-	DBG("Experimental Debug successfully set");
+	action = btd_kernel_experimental_enabled(debug_uuid.str);
+
+	DBG("Experimental Debug successfully %s", action ? "set" : "reset");
 
 	if (action)
 		queue_push_tail(adapter->exps, (void *)debug_uuid.val);
@@ -9631,7 +9633,7 @@ static void set_rpa_resolution_complete(uint8_t status, uint16_t len,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
+	uint8_t action;
 
 	if (status != 0) {
 		error("Set RPA Resolution failed with status 0x%02x (%s)",
@@ -9639,7 +9641,9 @@ static void set_rpa_resolution_complete(uint8_t status, uint16_t len,
 		return;
 	}
 
-	DBG("RPA Resolution successfully set");
+	action = btd_kernel_experimental_enabled(rpa_resolution_uuid.str);
+
+	DBG("RPA Resolution successfully %s", action ? "set" : "reset");
 
 	if (action)
 		queue_push_tail(adapter->exps, (void *)rpa_resolution_uuid.val);
@@ -9665,7 +9669,7 @@ static void codec_offload_complete(uint8_t status, uint16_t len,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	uint8_t action = btd_opts.experimental ? 0x01 : 0x00;
+	uint8_t action;
 
 	if (status != 0) {
 		error("Set Codec Offload failed with status 0x%02x (%s)",
@@ -9673,7 +9677,9 @@ static void codec_offload_complete(uint8_t status, uint16_t len,
 		return;
 	}
 
-	DBG("Codec Offload successfully set");
+	action = btd_kernel_experimental_enabled(codec_offload_uuid.str);
+
+	DBG("Codec Offload successfully %s", action ? "set" : "reset");
 
 	if (action)
 		queue_push_tail(adapter->exps, (void *)codec_offload_uuid.val);
@@ -9744,20 +9750,22 @@ static void read_exp_features_complete(uint8_t status, uint16_t length,
 
 		for (j = 0; j < ARRAY_SIZE(exp_table); j++) {
 			const struct exp_feat *feat = &exp_table[j];
+			const char *str;
 			uint8_t action;
 
 			if (memcmp(rp->features[i].uuid, feat->uuid->val,
 					sizeof(rp->features[i].uuid)))
 				continue;
 
-			action = btd_experimental_enabled(feat->uuid->str);
+			str = feat->uuid->str;
+			action = btd_kernel_experimental_enabled(str);
 
-			DBG("%s flags %u action %u", feat->uuid->str,
-				rp->features[i].flags, action);
+			DBG("%s flags %u action %u", str,
+					rp->features[i].flags, action);
 
 			/* If already set don't attempt to set it again */
 			if (action == (rp->features[i].flags & BIT(0))) {
-				if (action)
+				if (action & BIT(0))
 					queue_push_tail(adapter->exps,
 						(void *)feat->uuid->val);
 				continue;

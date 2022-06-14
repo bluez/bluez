@@ -84,6 +84,7 @@ static const char *supported_options[] = {
 	"JustWorksRepairing",
 	"TemporaryTimeout",
 	"Experimental",
+	"KernelExperimental",
 	"RemoteNameRequestRetryDelay",
 	NULL
 };
@@ -592,12 +593,12 @@ static bool match_experimental(const void *data, const void *match_data)
 	return !strcasecmp(value, uuid);
 }
 
-bool btd_experimental_enabled(const char *uuid)
+bool btd_kernel_experimental_enabled(const char *uuid)
 {
-	if (!btd_opts.experimental)
+	if (!btd_opts.kernel)
 		false;
 
-	return queue_find(btd_opts.experimental, match_experimental, uuid);
+	return queue_find(btd_opts.kernel, match_experimental, uuid);
 }
 
 static const char *valid_uuids[] = {
@@ -609,24 +610,24 @@ static const char *valid_uuids[] = {
 	"*"
 };
 
-static void btd_parse_experimental(char **list)
+static void btd_parse_kernel_experimental(char **list)
 {
 	int i;
 
-	if (btd_opts.experimental) {
-		warn("Unable to parse Experimental: list already set");
+	if (btd_opts.kernel) {
+		warn("Unable to parse KernelExperimental: list already set");
 		return;
 	}
 
-	btd_opts.experimental = queue_new();
+	btd_opts.kernel = queue_new();
 
 	for (i = 0; list[i]; i++) {
 		size_t j;
 		const char *uuid = list[i];
 
 		if (!strcasecmp("false", uuid) || !strcasecmp("off", uuid)) {
-			queue_destroy(btd_opts.experimental, free);
-			btd_opts.experimental = NULL;
+			queue_destroy(btd_opts.kernel, free);
+			btd_opts.kernel = NULL;
 		}
 
 		if (!strcasecmp("true", uuid) || !strcasecmp("on", uuid))
@@ -639,13 +640,13 @@ static void btd_parse_experimental(char **list)
 
 		/* Ignored if UUID is considered invalid */
 		if (j == ARRAY_SIZE(valid_uuids)) {
-			warn("Invalid Experimental UUID: %s", uuid);
+			warn("Invalid KernelExperimental UUID: %s", uuid);
 			continue;
 		}
 
 		DBG("%s", uuid);
 
-		queue_push_tail(btd_opts.experimental, strdup(uuid));
+		queue_push_tail(btd_opts.kernel, strdup(uuid));
 	}
 }
 
@@ -850,12 +851,20 @@ static void parse_config(GKeyFile *config)
 	else
 		btd_opts.refresh_discovery = boolean;
 
-	strlist = g_key_file_get_string_list(config, "General", "Experimental",
+	boolean = g_key_file_get_boolean(config, "General", "Experimental",
+						&err);
+	if (err)
+		g_clear_error(&err);
+	else
+		btd_opts.experimental = boolean;
+
+	strlist = g_key_file_get_string_list(config, "General",
+						"KernelExperimental",
 						NULL, &err);
 	if (err)
 		g_clear_error(&err);
 	else {
-		btd_parse_experimental(strlist);
+		btd_parse_kernel_experimental(strlist);
 		g_strfreev(strlist);
 	}
 
@@ -1133,19 +1142,19 @@ static gboolean parse_debug(const char *key, const char *value,
 	return TRUE;
 }
 
-static gboolean parse_experimental(const char *key, const char *value,
+static gboolean parse_kernel_experimental(const char *key, const char *value,
 					gpointer user_data, GError **error)
 {
 	char **strlist;
 
 	if (value) {
 		strlist = g_strsplit(value, ",", -1);
-		btd_parse_experimental(strlist);
+		btd_parse_kernel_experimental(strlist);
 		g_strfreev(strlist);
 	} else {
-		if (!btd_opts.experimental)
-			btd_opts.experimental = queue_new();
-		queue_push_head(btd_opts.experimental, strdup("*"));
+		if (!btd_opts.kernel)
+			btd_opts.kernel = queue_new();
+		queue_push_head(btd_opts.kernel, strdup("*"));
 	}
 
 	return TRUE;
@@ -1163,9 +1172,11 @@ static GOptionEntry options[] = {
 			"Specify an explicit path to the config file", "FILE"},
 	{ "compat", 'C', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Provide deprecated command line interfaces" },
-	{ "experimental", 'E', G_OPTION_FLAG_OPTIONAL_ARG,
-				G_OPTION_ARG_CALLBACK, parse_experimental,
-				"Enable experimental features/interfaces" },
+	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &btd_opts.experimental,
+				"Enable experimental D-Bus interfaces" },
+	{ "kernel", 'K', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK,
+				parse_kernel_experimental,
+				"Enable kernel experimental features" },
 	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Run with logging in foreground" },
@@ -1289,8 +1300,8 @@ int main(int argc, char *argv[])
 	if (btd_opts.mode != BT_MODE_LE)
 		stop_sdp_server();
 
-	if (btd_opts.experimental)
-		queue_destroy(btd_opts.experimental, free);
+	if (btd_opts.kernel)
+		queue_destroy(btd_opts.kernel, free);
 
 	if (main_conf)
 		g_key_file_free(main_conf);
