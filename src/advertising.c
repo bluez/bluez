@@ -776,6 +776,18 @@ static uint8_t *generate_adv_data(struct btd_adv_client *client,
 		bt_ad_add_appearance(client->data, appearance);
 	}
 
+	/* Scan response shall not be used when connectable and setting a
+	 * secondary PHY since that would end up using EA types instead of
+	 * legacy which doesn't support being connectable and scannable
+	 * simultaneously.
+	 */
+	if ((*flags & MGMT_ADV_FLAG_CONNECTABLE) &&
+				(*flags & MGMT_ADV_FLAG_SEC_MASK) &&
+				client->name) {
+		*flags &= ~MGMT_ADV_FLAG_LOCAL_NAME;
+		bt_ad_add_name(client->data, client->name);
+	}
+
 	return bt_ad_generate(client->data, len);
 }
 
@@ -806,6 +818,15 @@ static bool adv_client_has_scan_response(struct btd_adv_client *client,
 			bt_ad_is_empty(client->scan)) {
 		return false;
 	}
+
+	/* Scan response shall not be used when connectable and setting a
+	 * secondary PHY since that would end up using EA types instead of
+	 * legacy which doesn't support being connectable and scannable
+	 * simultaneously.
+	 */
+	if (flags & MGMT_ADV_FLAG_CONNECTABLE &&
+				flags & MGMT_ADV_FLAG_SEC_MASK)
+		return false;
 
 	return true;
 }
@@ -1250,7 +1271,7 @@ static void add_adv_params_callback(uint8_t status, uint16_t length,
 	uint8_t *adv_data = NULL;
 	size_t adv_data_len;
 	uint8_t *scan_rsp = NULL;
-	size_t scan_rsp_len = -1;
+	size_t scan_rsp_len = 0;
 	uint32_t flags = 0;
 	unsigned int mgmt_ret;
 	dbus_int16_t tx_power;
@@ -1281,11 +1302,13 @@ static void add_adv_params_callback(uint8_t status, uint16_t length,
 		goto fail;
 	}
 
-	scan_rsp = generate_scan_rsp(client, &flags, &scan_rsp_len);
-	if ((!scan_rsp && scan_rsp_len) ||
-			scan_rsp_len > rp->max_scan_rsp_len) {
-		error("Scan data couldn't be generated.");
-		goto fail;
+	if (adv_client_has_scan_response(client, flags)) {
+		scan_rsp = generate_scan_rsp(client, &flags, &scan_rsp_len);
+		if ((!scan_rsp && scan_rsp_len) ||
+				scan_rsp_len > rp->max_scan_rsp_len) {
+			error("Scan data couldn't be generated.");
+			goto fail;
+		}
 	}
 
 	param_len = sizeof(struct mgmt_cp_add_advertising) + adv_data_len +
@@ -1301,7 +1324,9 @@ static void add_adv_params_callback(uint8_t status, uint16_t length,
 	cp->adv_data_len = adv_data_len;
 	cp->scan_rsp_len = scan_rsp_len;
 	memcpy(cp->data, adv_data, adv_data_len);
-	memcpy(cp->data + adv_data_len, scan_rsp, scan_rsp_len);
+
+	if (scan_rsp)
+		memcpy(cp->data + adv_data_len, scan_rsp, scan_rsp_len);
 
 	free(adv_data);
 	free(scan_rsp);

@@ -511,6 +511,9 @@ struct mgmt_rp_add_advertising {
 #define MGMT_ADV_PARAM_TX_POWER		(1 << 15)
 #define MGMT_ADV_PARAM_SCAN_RSP		(1 << 16)
 
+#define MGMT_ADV_FLAG_SEC_MASK	(MGMT_ADV_FLAG_SEC_1M | MGMT_ADV_FLAG_SEC_2M | \
+				 MGMT_ADV_FLAG_SEC_CODED)
+
 #define MGMT_OP_REMOVE_ADVERTISING	0x003F
 struct mgmt_cp_remove_advertising {
 	uint8_t instance;
