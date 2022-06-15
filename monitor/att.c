@@ -1050,6 +1050,74 @@ static void ase_cp_notify(const struct l2cap_frame *frame)
 	print_ase_cp_rsp(frame);
 }
 
+static const struct bitfield_data pac_loc_table[] = {
+	{  0, "Front Left (0x00000001)"			},
+	{  1, "Front Right (0x00000002)"		},
+	{  2, "Front Center (0x00000004)"		},
+	{  3, "Low Frequency Effects 1 (0x00000008)"	},
+	{  4, "Back Left (0x00000010)"			},
+	{  5, "Back Right (0x00000020)"			},
+	{  6, "Front Left of Center (0x00000040)"	},
+	{  7, "Front Right of Center (0x00000080)"	},
+	{  8, "Back Center (0x00000100)"		},
+	{  9, "Low Frequency Effects 2 (0x00000200)"	},
+	{  10, "Side Left (0x00000400)"			},
+	{  11, "Side Right (0x00000800)"		},
+	{  12, "Top Front Left (0x00001000)"		},
+	{  13, "Top Front Right (0x00002000)"		},
+	{  14, "Top Front Center (0x00004000)"		},
+	{  15, "Top Center (0x00008000)"		},
+	{  16, "Top Back Left (0x00010000)"		},
+	{  17, "Top Back Right (0x00020000)"		},
+	{  18, "Top Side Left (0x00040000)"		},
+	{  19, "Top Side Right (0x00080000)"		},
+	{  20, "Top Back Center (0x00100000)"		},
+	{  21, "Bottom Front Center (0x00200000)"	},
+	{  22, "Bottom Front Left (0x00400000)"		},
+	{  23, "Bottom Front Right (0x00800000)"	},
+	{  24, "Front Left Wide (0x01000000)"		},
+	{  25, "Front Right Wide (0x02000000)"		},
+	{  26, "Left Surround (0x04000000)"		},
+	{  27, "Right Surround (0x08000000)"		},
+	{  28, "RFU (0x10000000)"			},
+	{  29, "RFU (0x20000000)"			},
+	{  30, "RFU (0x40000000)"			},
+	{  31, "RFU (0x80000000)"			},
+	{ }
+};
+
+static void print_loc_pac(const struct l2cap_frame *frame)
+{
+	uint32_t value;
+	uint8_t mask;
+
+	if (!l2cap_frame_get_le32((void *)frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("  Location: 0x%8.8x", value);
+
+	mask = print_bitfield(4, value, pac_loc_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void pac_loc_read(const struct l2cap_frame *frame)
+{
+	print_loc_pac(frame);
+}
+
+static void pac_loc_notify(const struct l2cap_frame *frame)
+{
+	print_loc_pac(frame);
+}
+
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
 	.uuid = { \
@@ -1072,7 +1140,9 @@ struct gatt_handler {
 	GATT_HANDLER(0x2bc5, ase_read, NULL, ase_notify),
 	GATT_HANDLER(0x2bc6, NULL, ase_cp_write, ase_cp_notify),
 	GATT_HANDLER(0x2bc9, pac_read, NULL, pac_notify),
+	GATT_HANDLER(0x2bca, pac_loc_read, NULL, pac_loc_notify),
 	GATT_HANDLER(0x2bcb, pac_read, NULL, pac_notify),
+	GATT_HANDLER(0x2bcc, pac_loc_read, NULL, pac_loc_notify),
 };
 
 static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
