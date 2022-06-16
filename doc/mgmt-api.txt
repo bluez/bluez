@@ -3593,7 +3593,6 @@ Add Extended Advertising Parameters Command
 	Controller Index:	<controller id>
 	Command Parameters:	Instance (1 Octet)
 				Flags (4 Octets)
-				Params (2 Octets)
 				Duration (2 Octets)
 				Timeout (2 Octets)
 				MinInterval (4 Octets)
@@ -3631,6 +3630,8 @@ Add Extended Advertising Parameters Command
 		7	Secondary Channel with LE 1M
 		8	Secondary Channel with LE 2M
 		9	Secondary Channel with LE Coded
+		10	Indicate tx power can be specified
+		11	Indicate HW supports the advertising offload
 		12	The Duration parameter should be used
 		13	The Timeout parameter should be used
 		14	The Interval parameters should be used
