@@ -1118,6 +1118,69 @@ static void pac_loc_notify(const struct l2cap_frame *frame)
 	print_loc_pac(frame);
 }
 
+static const struct bitfield_data pac_context_table[] = {
+	{  0, "Unspecified (0x0001)"			},
+	{  1, "Conversational (0x0002)"			},
+	{  2, "Media (0x0004)"				},
+	{  3, "Game (0x0008)"				},
+	{  4, "Instructional (0x0010)"			},
+	{  5, "Voice Assistants (0x0020)"		},
+	{  6, "Live (0x0040)"				},
+	{  7, "Sound Effects (0x0080)"			},
+	{  8, "Notifications (0x0100)"			},
+	{  9, "Ringtone (0x0200)"			},
+	{  10, "Alerts (0x0400)"			},
+	{  11, "Emergency alarm (0x0800)"		},
+	{  12, "RFU (0x1000)"				},
+	{  13, "RFU (0x2000)"				},
+	{  14, "RFU (0x4000)"				},
+	{  15, "RFU (0x8000)"				},
+};
+
+static void print_pac_context(const struct l2cap_frame *frame)
+{
+	uint16_t snk, src;
+	uint16_t mask;
+
+	if (!l2cap_frame_get_le16((void *)frame, &snk)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("  Sink Context: 0x%4.4x", snk);
+
+	mask = print_bitfield(4, snk, pac_context_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%4.4x)",
+								mask);
+
+	if (!l2cap_frame_get_le16((void *)frame, &src)) {
+		print_text(COLOR_ERROR, "    sink: invalid size");
+		goto done;
+	}
+
+	print_field("  Source Context: 0x%4.4x", src);
+
+	mask = print_bitfield(4, src, pac_context_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%4.4x)",
+								mask);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void pac_context_read(const struct l2cap_frame *frame)
+{
+	print_pac_context(frame);
+}
+
+static void pac_context_notify(const struct l2cap_frame *frame)
+{
+	print_pac_context(frame);
+}
+
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
 	.uuid = { \
@@ -1143,6 +1206,8 @@ struct gatt_handler {
 	GATT_HANDLER(0x2bca, pac_loc_read, NULL, pac_loc_notify),
 	GATT_HANDLER(0x2bcb, pac_read, NULL, pac_notify),
 	GATT_HANDLER(0x2bcc, pac_loc_read, NULL, pac_loc_notify),
+	GATT_HANDLER(0x2bcd, pac_context_read, NULL, pac_context_notify),
+	GATT_HANDLER(0x2bce, pac_context_read, NULL, pac_context_notify),
 };
 
 static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
