@@ -3338,7 +3338,26 @@ static void *iov_pull(struct iovec *iov, size_t len)
 	return data;
 }
 
-static void print_ltv(const char *label, const uint8_t *data, uint8_t len)
+static struct packet_ltv_decoder*
+get_ltv_decoder(struct packet_ltv_decoder *decoder, size_t num, uint8_t type)
+{
+	size_t i;
+
+	if (!decoder || !num)
+		return NULL;
+
+	for (i = 0; i < num; i++) {
+		struct packet_ltv_decoder *dec = &decoder[i];
+
+		if (dec->type == type)
+			return dec;
+	}
+
+	return NULL;
+}
+
+static void print_ltv(const char *label, const uint8_t *data, uint8_t len,
+			struct packet_ltv_decoder *decoder, size_t num)
 {
 	struct iovec iov;
 	int i;
@@ -3348,6 +3367,7 @@ static void print_ltv(const char *label, const uint8_t *data, uint8_t len)
 
 	for (i = 0; iov.iov_len; i++) {
 		uint8_t l, t, *v;
+		struct packet_ltv_decoder *dec;
 
 		l = get_u8(iov_pull(&iov, sizeof(l)));
 		if (!l) {
@@ -3369,16 +3389,21 @@ static void print_ltv(const char *label, const uint8_t *data, uint8_t len)
 		if (!v)
 			break;
 
-		print_hex_field(label, v, l);
+		dec = get_ltv_decoder(decoder, num, t);
+		if (dec)
+			dec->func(v, l);
+		else
+			print_hex_field(label, v, l);
 	}
 
 	if (iov.iov_len)
 		print_hex_field(label, iov.iov_base, iov.iov_len);
 }
 
-void packet_print_ltv(const char *label, const uint8_t *data, uint8_t len)
+void packet_print_ltv(const char *label, const uint8_t *data, uint8_t len,
+			struct packet_ltv_decoder *decoder, size_t decoder_len)
 {
-	print_ltv(label, data, len);
+	print_ltv(label, data, len, decoder, decoder_len);
 }
 
 static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
@@ -3432,7 +3457,8 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 			goto done;
 
 		print_ltv("    Codec Specific Configuration",
-					codec_cfg->data, codec_cfg->len);
+					codec_cfg->data, codec_cfg->len,
+					NULL, 0);
 
 		metadata = iov_pull(&iov, sizeof(*metadata));
 		if (!metadata)
@@ -3441,7 +3467,8 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 		if (!iov_pull(&iov, metadata->len))
 			goto done;
 
-		print_ltv("    Metadata", metadata->data, metadata->len);
+		print_ltv("    Metadata", metadata->data, metadata->len,
+					NULL, 0);
 
 		/* Level 3 - BIS(s)*/
 		for (j = 0; j < subgroup->num_bis; j++) {

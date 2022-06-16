@@ -279,7 +279,8 @@ static bool print_ase_codec(const struct l2cap_frame *frame)
 	return true;
 }
 
-static bool print_ase_lv(const struct l2cap_frame *frame, const char *label)
+static bool print_ase_lv(const struct l2cap_frame *frame, const char *label,
+			struct packet_ltv_decoder *decoder, size_t decoder_len)
 {
 	struct bt_hci_lv_data *lv;
 
@@ -294,20 +295,298 @@ static bool print_ase_lv(const struct l2cap_frame *frame, const char *label)
 		return false;
 	}
 
-	packet_print_ltv(label, lv->data, lv->len);
+	packet_print_ltv(label, lv->data, lv->len, decoder, decoder_len);
 
 	return true;
 }
 
-static bool print_ase_cc(const struct l2cap_frame *frame)
+static bool print_ase_cc(const struct l2cap_frame *frame, const char *label,
+			struct packet_ltv_decoder *decoder, size_t decoder_len)
 {
-	return print_ase_lv(frame, "    Codec Specific Configuration");
+	return print_ase_lv(frame, label, decoder, decoder_len);
 }
+
+static const struct bitfield_data pac_context_table[] = {
+	{  0, "Unspecified (0x0001)"			},
+	{  1, "Conversational (0x0002)"			},
+	{  2, "Media (0x0004)"				},
+	{  3, "Game (0x0008)"				},
+	{  4, "Instructional (0x0010)"			},
+	{  5, "Voice Assistants (0x0020)"		},
+	{  6, "Live (0x0040)"				},
+	{  7, "Sound Effects (0x0080)"			},
+	{  8, "Notifications (0x0100)"			},
+	{  9, "Ringtone (0x0200)"			},
+	{  10, "Alerts (0x0400)"			},
+	{  11, "Emergency alarm (0x0800)"		},
+	{  12, "RFU (0x1000)"				},
+	{  13, "RFU (0x2000)"				},
+	{  14, "RFU (0x4000)"				},
+	{  15, "RFU (0x8000)"				},
+	{ }
+};
+
+static void print_context(const struct l2cap_frame *frame, const char *label)
+{
+	uint16_t value;
+	uint16_t mask;
+
+	if (!l2cap_frame_get_le16((void *)frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("%s: 0x%4.4x", label, value);
+
+	mask = print_bitfield(8, value, pac_context_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%4.4x)",
+								mask);
+
+done:
+	if (frame->size)
+		print_hex_field("    Data", frame->data, frame->size);
+}
+
+static void ase_decode_preferred_context(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	print_context(&frame, "      Preferred Context");
+}
+
+static void ase_decode_context(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	print_context(&frame, "      Context");
+}
+
+static void ase_decode_program_info(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	const char *str;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	str = l2cap_frame_pull(&frame, &frame, len);
+	if (!str) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Program Info: %s", str);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static void ase_decode_language(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint32_t value;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_le24(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Language: 0x%6.6x", value);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+struct packet_ltv_decoder ase_metadata_table[] = {
+	LTV_DEC(0x01, ase_decode_preferred_context),
+	LTV_DEC(0x02, ase_decode_context),
+	LTV_DEC(0x03, ase_decode_program_info),
+	LTV_DEC(0x04, ase_decode_language)
+};
 
 static bool print_ase_metadata(const struct l2cap_frame *frame)
 {
-	return print_ase_lv(frame, "    Metadata");
+	return print_ase_lv(frame, "    Metadata", NULL, 0);
 }
+
+static const struct bitfield_data pac_freq_table[] = {
+	{  0, "8 Khz (0x0001)"				},
+	{  1, "11.25 Khz (0x0002)"			},
+	{  2, "16 Khz (0x0004)"				},
+	{  3, "22.05 Khz (0x0008)"			},
+	{  4, "24 Khz (0x0010)"				},
+	{  5, "32 Khz (0x0020)"				},
+	{  6, "44.1 Khz (0x0040)"			},
+	{  7, "48 Khz (0x0080)"				},
+	{  8, "88.2 Khz (0x0100)"			},
+	{  9, "96 Khz (0x0200)"				},
+	{  10, "176.4 Khz (0x0400)"			},
+	{  11, "192 Khz (0x0800)"			},
+	{  12, "384 Khz (0x1000)"			},
+	{  13, "RFU (0x2000)"				},
+	{  14, "RFU (0x4000)"				},
+	{  15, "RFU (0x8000)"				},
+	{ }
+};
+
+static void pac_decode_freq(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint16_t value;
+	uint16_t mask;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_le16(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Sampling Frequencies: 0x%4.4x", value);
+
+	mask = print_bitfield(8, value, pac_freq_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%4.4x)",
+								mask);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static const struct bitfield_data pac_duration_table[] = {
+	{  0, "7.5 ms (0x01)"				},
+	{  1, "10 ms (0x02)"				},
+	{  2, "RFU (0x04)"				},
+	{  3, "RFU (0x08)"				},
+	{  4, "7.5 ms preferred (0x10)"			},
+	{  5, "10 ms preferred (0x20)"			},
+	{  6, "RFU (0x40)"				},
+	{  7, "RFU (0x80)"				},
+	{ }
+};
+
+static void pac_decode_duration(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint8_t value;
+	uint8_t mask;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_u8(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Frame Duration: 0x%4.4x", value);
+
+	mask = print_bitfield(8, value, pac_duration_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static const struct bitfield_data pac_channel_table[] = {
+	{  0, "1 channel (0x01)"			},
+	{  1, "2 channels (0x02)"			},
+	{  2, "3 channels (0x04)"			},
+	{  3, "4 chanenls (0x08)"			},
+	{  4, "5 channels (0x10)"			},
+	{  5, "6 channels (0x20)"			},
+	{  6, "7 channels (0x40)"			},
+	{  7, "8 channels (0x80)"			},
+	{ }
+};
+
+static void pac_decode_channels(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint8_t value;
+	uint8_t mask;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_u8(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Audio Channel Count: 0x%2.2x", value);
+
+	mask = print_bitfield(8, value, pac_channel_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static void pac_decode_frame_length(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint16_t min, max;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_le16(&frame, &min)) {
+		print_text(COLOR_ERROR, "    min: invalid size");
+		goto done;
+	}
+
+	if (!l2cap_frame_get_le16(&frame, &max)) {
+		print_text(COLOR_ERROR, "    min: invalid size");
+		goto done;
+	}
+
+	print_field("      Frame Length: %u (0x%4.4x) - %u (0x%4.4x)",
+							min, min, max, max);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static void pac_decode_sdu(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint8_t value;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_u8(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Max SDU: %u (0x%2.2x)", value, value);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+struct packet_ltv_decoder pac_cap_table[] = {
+	LTV_DEC(0x01, pac_decode_freq),
+	LTV_DEC(0x02, pac_decode_duration),
+	LTV_DEC(0x03, pac_decode_channels),
+	LTV_DEC(0x04, pac_decode_frame_length),
+	LTV_DEC(0x05, pac_decode_sdu)
+};
 
 static void print_pac(const struct l2cap_frame *frame)
 {
@@ -326,7 +605,8 @@ static void print_pac(const struct l2cap_frame *frame)
 		if (!print_ase_codec(frame))
 			goto done;
 
-		if (!print_ase_cc(frame))
+		if (!print_ase_cc(frame, "    Codec Specific Capabilities",
+				pac_cap_table, ARRAY_SIZE(pac_cap_table)))
 			break;
 
 		if (!print_ase_metadata(frame))
@@ -441,6 +721,210 @@ static bool print_ase_pd(const struct l2cap_frame *frame, const char *label)
 	return true;
 }
 
+static void ase_decode_freq(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint8_t value;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_u8(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	switch (value) {
+	case 0x01:
+		print_field("      Sampling Frequency: 8 Khz (0x01)");
+		break;
+	case 0x02:
+		print_field("      Sampling Frequency: 11.25 Khz (0x02)");
+		break;
+	case 0x03:
+		print_field("      Sampling Frequency: 16 Khz (0x03)");
+		break;
+	case 0x04:
+		print_field("      Sampling Frequency: 22.05 Khz (0x04)");
+		break;
+	case 0x05:
+		print_field("      Sampling Frequency: 24 Khz (0x04)");
+		break;
+	case 0x06:
+		print_field("      Sampling Frequency: 32 Khz (0x04)");
+		break;
+	case 0x07:
+		print_field("      Sampling Frequency: 44.1 Khz (0x04)");
+		break;
+	case 0x08:
+		print_field("      Sampling Frequency: 48 Khz (0x04)");
+		break;
+	case 0x09:
+		print_field("      Sampling Frequency: 88.2 Khz (0x04)");
+		break;
+	case 0x0a:
+		print_field("      Sampling Frequency: 96 Khz (0x04)");
+		break;
+	case 0x0b:
+		print_field("      Sampling Frequency: 176.4 Khz (0x04)");
+		break;
+	case 0x0c:
+		print_field("      Sampling Frequency: 192 Khz (0x04)");
+		break;
+	case 0x0d:
+		print_field("      Sampling Frequency: 384 Khz (0x04)");
+		break;
+	default:
+		print_field("      Sampling Frequency: RFU (0x%2.2x)", value);
+		break;
+	}
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static void ase_decode_duration(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint8_t value;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_u8(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	switch (value) {
+	case 0x00:
+		print_field("      Frame Duration: 7.5 ms (0x00)");
+		break;
+	case 0x01:
+		print_field("      Frame Duration: 10 ms (0x01)");
+		break;
+	default:
+		print_field("      Frame Duration: RFU (0x%2.2x)", value);
+		break;
+	}
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static const struct bitfield_data channel_location_table[] = {
+	{  0, "Front Left (0x00000001)"			},
+	{  1, "Front Right (0x00000002)"		},
+	{  2, "Front Center (0x00000004)"		},
+	{  3, "Low Frequency Effects 1 (0x00000008)"	},
+	{  4, "Back Left (0x00000010)"			},
+	{  5, "Back Right (0x00000020)"			},
+	{  6, "Front Left of Center (0x00000040)"	},
+	{  7, "Front Right of Center (0x00000080)"	},
+	{  8, "Back Center (0x00000100)"		},
+	{  9, "Low Frequency Effects 2 (0x00000200)"	},
+	{  10, "Side Left (0x00000400)"			},
+	{  11, "Side Right (0x00000800)"		},
+	{  12, "Top Front Left (0x00001000)"		},
+	{  13, "Top Front Right (0x00002000)"		},
+	{  14, "Top Front Center (0x00004000)"		},
+	{  15, "Top Center (0x00008000)"		},
+	{  16, "Top Back Left (0x00010000)"		},
+	{  17, "Top Back Right (0x00020000)"		},
+	{  18, "Top Side Left (0x00040000)"		},
+	{  19, "Top Side Right (0x00080000)"		},
+	{  20, "Top Back Center (0x00100000)"		},
+	{  21, "Bottom Front Center (0x00200000)"	},
+	{  22, "Bottom Front Left (0x00400000)"		},
+	{  23, "Bottom Front Right (0x00800000)"	},
+	{  24, "Front Left Wide (0x01000000)"		},
+	{  25, "Front Right Wide (0x02000000)"		},
+	{  26, "Left Surround (0x04000000)"		},
+	{  27, "Right Surround (0x08000000)"		},
+	{  28, "RFU (0x10000000)"			},
+	{  29, "RFU (0x20000000)"			},
+	{  30, "RFU (0x40000000)"			},
+	{  31, "RFU (0x80000000)"			},
+	{ }
+};
+
+static void print_location(const struct l2cap_frame *frame)
+{
+	uint32_t value;
+	uint32_t mask;
+
+	if (!l2cap_frame_get_le32((void *)frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("   Location: 0x%8.8x", value);
+
+	mask = print_bitfield(6, value, channel_location_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%8.8x)",
+								mask);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void ase_decode_location(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	print_location(&frame);
+}
+
+static void ase_decode_frame_length(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint16_t value;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_le16(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Frame Length: %u (0x%4.4x)", value, value);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+static void ase_decode_blocks(const uint8_t *data, uint8_t len)
+{
+	struct l2cap_frame frame;
+	uint8_t value;
+
+	l2cap_frame_init(&frame, 0, 0, 0, 0, 0, 0, data, len);
+
+	if (!l2cap_frame_get_u8(&frame, &value)) {
+		print_text(COLOR_ERROR, "    value: invalid size");
+		goto done;
+	}
+
+	print_field("      Frame Blocks per SDU: %u (0x%2.2x)", value, value);
+
+done:
+	if (frame.size)
+		print_hex_field("    Data", frame.data, frame.size);
+}
+
+struct packet_ltv_decoder ase_cc_table[] = {
+	LTV_DEC(0x01, ase_decode_freq),
+	LTV_DEC(0x02, ase_decode_duration),
+	LTV_DEC(0x03, ase_decode_location),
+	LTV_DEC(0x04, ase_decode_frame_length),
+	LTV_DEC(0x05, ase_decode_blocks)
+};
+
 static void print_ase_config(const struct l2cap_frame *frame)
 {
 	if (!print_prefer_framing(frame))
@@ -470,7 +954,8 @@ static void print_ase_config(const struct l2cap_frame *frame)
 	if (!print_ase_codec(frame))
 		return;
 
-	print_ase_cc(frame);
+	print_ase_cc(frame, "    Codec Specific Configuration",
+			ase_cc_table, ARRAY_SIZE(ase_cc_table));
 }
 
 static bool print_ase_framing(const struct l2cap_frame *frame,
@@ -704,7 +1189,8 @@ static bool ase_config_cmd(const struct l2cap_frame *frame)
 	if (!print_ase_codec(frame))
 		return false;
 
-	if (!print_ase_cc(frame))
+	if (!print_ase_cc(frame, "    Codec Specific Configuration",
+				ase_cc_table, ARRAY_SIZE(ase_cc_table)))
 		return false;
 
 	return true;
@@ -1050,92 +1536,15 @@ static void ase_cp_notify(const struct l2cap_frame *frame)
 	print_ase_cp_rsp(frame);
 }
 
-static const struct bitfield_data pac_loc_table[] = {
-	{  0, "Front Left (0x00000001)"			},
-	{  1, "Front Right (0x00000002)"		},
-	{  2, "Front Center (0x00000004)"		},
-	{  3, "Low Frequency Effects 1 (0x00000008)"	},
-	{  4, "Back Left (0x00000010)"			},
-	{  5, "Back Right (0x00000020)"			},
-	{  6, "Front Left of Center (0x00000040)"	},
-	{  7, "Front Right of Center (0x00000080)"	},
-	{  8, "Back Center (0x00000100)"		},
-	{  9, "Low Frequency Effects 2 (0x00000200)"	},
-	{  10, "Side Left (0x00000400)"			},
-	{  11, "Side Right (0x00000800)"		},
-	{  12, "Top Front Left (0x00001000)"		},
-	{  13, "Top Front Right (0x00002000)"		},
-	{  14, "Top Front Center (0x00004000)"		},
-	{  15, "Top Center (0x00008000)"		},
-	{  16, "Top Back Left (0x00010000)"		},
-	{  17, "Top Back Right (0x00020000)"		},
-	{  18, "Top Side Left (0x00040000)"		},
-	{  19, "Top Side Right (0x00080000)"		},
-	{  20, "Top Back Center (0x00100000)"		},
-	{  21, "Bottom Front Center (0x00200000)"	},
-	{  22, "Bottom Front Left (0x00400000)"		},
-	{  23, "Bottom Front Right (0x00800000)"	},
-	{  24, "Front Left Wide (0x01000000)"		},
-	{  25, "Front Right Wide (0x02000000)"		},
-	{  26, "Left Surround (0x04000000)"		},
-	{  27, "Right Surround (0x08000000)"		},
-	{  28, "RFU (0x10000000)"			},
-	{  29, "RFU (0x20000000)"			},
-	{  30, "RFU (0x40000000)"			},
-	{  31, "RFU (0x80000000)"			},
-	{ }
-};
-
-static void print_loc_pac(const struct l2cap_frame *frame)
-{
-	uint32_t value;
-	uint8_t mask;
-
-	if (!l2cap_frame_get_le32((void *)frame, &value)) {
-		print_text(COLOR_ERROR, "    value: invalid size");
-		goto done;
-	}
-
-	print_field("  Location: 0x%8.8x", value);
-
-	mask = print_bitfield(4, value, pac_loc_table);
-	if (mask)
-		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
-								mask);
-
-done:
-	if (frame->size)
-		print_hex_field("  Data", frame->data, frame->size);
-}
-
 static void pac_loc_read(const struct l2cap_frame *frame)
 {
-	print_loc_pac(frame);
+	print_location(frame);
 }
 
 static void pac_loc_notify(const struct l2cap_frame *frame)
 {
-	print_loc_pac(frame);
+	print_location(frame);
 }
-
-static const struct bitfield_data pac_context_table[] = {
-	{  0, "Unspecified (0x0001)"			},
-	{  1, "Conversational (0x0002)"			},
-	{  2, "Media (0x0004)"				},
-	{  3, "Game (0x0008)"				},
-	{  4, "Instructional (0x0010)"			},
-	{  5, "Voice Assistants (0x0020)"		},
-	{  6, "Live (0x0040)"				},
-	{  7, "Sound Effects (0x0080)"			},
-	{  8, "Notifications (0x0100)"			},
-	{  9, "Ringtone (0x0200)"			},
-	{  10, "Alerts (0x0400)"			},
-	{  11, "Emergency alarm (0x0800)"		},
-	{  12, "RFU (0x1000)"				},
-	{  13, "RFU (0x2000)"				},
-	{  14, "RFU (0x4000)"				},
-	{  15, "RFU (0x8000)"				},
-};
 
 static void print_pac_context(const struct l2cap_frame *frame)
 {
@@ -1143,7 +1552,7 @@ static void print_pac_context(const struct l2cap_frame *frame)
 	uint16_t mask;
 
 	if (!l2cap_frame_get_le16((void *)frame, &snk)) {
-		print_text(COLOR_ERROR, "    value: invalid size");
+		print_text(COLOR_ERROR, "  sink: invalid size");
 		goto done;
 	}
 
@@ -1151,11 +1560,11 @@ static void print_pac_context(const struct l2cap_frame *frame)
 
 	mask = print_bitfield(4, snk, pac_context_table);
 	if (mask)
-		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%4.4x)",
+		print_text(COLOR_WHITE_BG, "  Unknown fields (0x%4.4x)",
 								mask);
 
 	if (!l2cap_frame_get_le16((void *)frame, &src)) {
-		print_text(COLOR_ERROR, "    sink: invalid size");
+		print_text(COLOR_ERROR, "  source: invalid size");
 		goto done;
 	}
 
@@ -1163,7 +1572,7 @@ static void print_pac_context(const struct l2cap_frame *frame)
 
 	mask = print_bitfield(4, src, pac_context_table);
 	if (mask)
-		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%4.4x)",
+		print_text(COLOR_WHITE_BG, "  Unknown fields (0x%4.4x)",
 								mask);
 
 done:
