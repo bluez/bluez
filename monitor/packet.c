@@ -12694,10 +12694,13 @@ static const struct bitfield_data mgmt_adv_flags_table[] = {
 	{  7, "Advertise in 1M on Secondary channel"	},
 	{  8, "Advertise in 2M on Secondary channel"	},
 	{  9, "Advertise in CODED on Secondary channel"	},
+	{  10, "Support setting Tx Power"		},
+	{  11, "Support HW offload"			},
 	{  12, "Use provided duration parameter"	},
 	{  13, "Use provided timeout parameter"		},
 	{  14, "Use provided interval parameters"	},
 	{  15, "Use provided tx power parameter"	},
+	{  16, "Contain Scan Response Data"		},
 	{ }
 };
 #define MGMT_ADV_PARAM_DURATION		(1 << 12)
