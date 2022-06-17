@@ -275,6 +275,10 @@ static void start_qemu(void)
 		char *xdg_runtime_dir, *audiodev;
 
 		xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+		if (!xdg_runtime_dir) {
+			fprintf(stderr, "XDG_RUNTIME_DIR not set\n");
+			exit(1);
+		}
 		audiodev = alloca(40 + strlen(xdg_runtime_dir));
 		sprintf(audiodev, "id=audio,driver=pa,server=%s/pulse/native",
 				xdg_runtime_dir);
@@ -474,8 +478,14 @@ static void create_dbus_session_conf(void)
 				"/usr/share/dbus-1/session.conf") < 0)
 		perror("Failed to create session.conf symlink");
 
-	mkdir("/run/user", 0755);
-	mkdir("/run/user/0", 0755);
+	if (mkdir("/run/user", 0755) < 0) {
+		fprintf(stderr, "unable to create /run/user directory\n");
+		return;
+	}
+	if (mkdir("/run/user/0", 0755) < 0) {
+		fprintf(stderr, "unable to create /run/user/0 directory\n");
+		return;
+	}
 }
 
 static pid_t start_dbus_daemon(bool session)
@@ -919,7 +929,7 @@ start_next:
 
 		if (corpse == dbus_session_pid) {
 			printf("D-Bus session daemon terminated\n");
-			dbus_pid = -1;
+			dbus_session_pid = -1;
 		}
 
 		if (corpse == daemon_pid) {
