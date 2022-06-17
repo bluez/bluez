@@ -1290,16 +1290,11 @@ static struct gatt_db_attribute *get_attribute(const struct l2cap_frame *frame,
 	return gatt_db_get_attribute(db, handle);
 }
 
-static void print_handle(const struct l2cap_frame *frame, uint16_t handle,
-								bool rsp)
+static void print_attribute(struct gatt_db_attribute *attr)
 {
-	struct gatt_db_attribute *attr;
+	uint16_t handle = gatt_db_attribute_get_handle(attr);
 	const bt_uuid_t *uuid;
 	char label[21];
-
-	attr = get_attribute(frame, handle, rsp);
-	if (!attr)
-		goto done;
 
 	uuid = gatt_db_attribute_get_type(attr);
 	if (!uuid)
@@ -1321,6 +1316,20 @@ static void print_handle(const struct l2cap_frame *frame, uint16_t handle,
 
 done:
 	print_field("Handle: 0x%4.4x", handle);
+}
+
+static void print_handle(const struct l2cap_frame *frame, uint16_t handle,
+								bool rsp)
+{
+	struct gatt_db_attribute *attr;
+
+	attr = get_attribute(frame, handle, rsp);
+	if (!attr) {
+		print_field("Handle: 0x%4.4x", handle);
+		return;
+	}
+
+	print_attribute(attr);
 }
 
 static void att_read_req(const struct l2cap_frame *frame)
@@ -1392,6 +1401,8 @@ static void att_read_rsp(const struct l2cap_frame *frame)
 	read = queue_remove_if(data->reads, match_read_frame, (void *)frame);
 	if (!read)
 		return;
+
+	print_attribute(read->attr);
 
 	read->func(frame);
 
