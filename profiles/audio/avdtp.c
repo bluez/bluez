@@ -3429,6 +3429,11 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 	if (err == 0) {
 		session->discover->cb = cb;
 		session->discover->user_data = user_data;
+	} else {
+		if (session->discover) {
+			g_free(session->discover);
+			session->discover = NULL;
+		}
 	}
 
 	return err;
