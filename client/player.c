@@ -77,17 +77,16 @@ static GList *items = NULL;
 static GList *endpoints = NULL;
 static GList *local_endpoints = NULL;
 static GList *transports = NULL;
+static struct queue *ios = NULL;
 
 struct transport {
+	GDBusProxy *proxy;
 	int sk;
-	int mtu[2];
+	uint16_t mtu[2];
 	char *filename;
 	int fd;
 	struct io *io;
 	uint32_t seq;
-} transport = {
-	.sk = -1,
-	.fd = -1,
 };
 
 static void endpoint_unregister(void *data)
@@ -2208,19 +2207,38 @@ static struct endpoint *find_ep_by_transport(const char *path)
 	return NULL;
 }
 
+static void transport_close(struct transport *transport)
+{
+	if (transport->fd < 0)
+		return;
+
+	close(transport->fd);
+	free(transport->filename);
+}
+
+static void transport_free(void *data)
+{
+	struct transport *transport = data;
+
+	io_destroy(transport->io);
+	free(transport);
+}
+
 static bool transport_disconnected(struct io *io, void *user_data)
 {
+	struct transport *transport = user_data;
+
 	bt_shell_printf("Transport fd disconnected\n");
 
-	io_destroy(transport.io);
-	transport.io = NULL;
-	transport.sk = -1;
+	if (queue_remove(ios, transport))
+		transport_free(transport);
 
 	return false;
 }
 
 static bool transport_recv(struct io *io, void *user_data)
 {
+	struct transport *transport = user_data;
 	uint8_t buf[1024];
 	int ret, len;
 
@@ -2231,12 +2249,12 @@ static bool transport_recv(struct io *io, void *user_data)
 		return true;
 	}
 
-	bt_shell_printf("[seq %d] recv: %u bytes\n", transport.seq, ret);
+	bt_shell_printf("[seq %d] recv: %u bytes\n", transport->seq, ret);
 
-	transport.seq++;
+	transport->seq++;
 
-	if (transport.fd) {
-		len = write(transport.fd, buf, ret);
+	if (transport->fd) {
+		len = write(transport->fd, buf, ret);
 		if (len < 0)
 			bt_shell_printf("Unable to write: %s (%d)",
 						strerror(errno), -errno);
@@ -2245,9 +2263,34 @@ static bool transport_recv(struct io *io, void *user_data)
 	return true;
 }
 
+static void transport_new(GDBusProxy *proxy, int sk, uint16_t mtu[2])
+{
+	struct transport *transport;
+
+	transport = new0(struct transport, 1);
+	transport->proxy = proxy;
+	transport->sk = sk;
+	transport->mtu[0] = mtu[0];
+	transport->mtu[1] = mtu[1];
+	transport->io = io_new(sk);
+	transport->fd = -1;
+
+	io_set_disconnect_handler(transport->io, transport_disconnected,
+							transport, NULL);
+	io_set_read_handler(transport->io, transport_recv, transport, NULL);
+
+	if (!ios)
+		ios = queue_new();
+
+	queue_push_tail(ios, transport);
+}
+
 static void acquire_reply(DBusMessage *message, void *user_data)
 {
+	GDBusProxy *proxy = user_data;
 	DBusError error;
+	int sk;
+	uint16_t mtu[2];
 
 	dbus_error_init(&error);
 
@@ -2258,9 +2301,9 @@ static void acquire_reply(DBusMessage *message, void *user_data)
 	}
 
 	if (!dbus_message_get_args(message, &error,
-				   DBUS_TYPE_UNIX_FD, &transport.sk,
-				   DBUS_TYPE_UINT16, &transport.mtu[0],
-				   DBUS_TYPE_UINT16, &transport.mtu[1],
+				   DBUS_TYPE_UNIX_FD, &sk,
+				   DBUS_TYPE_UINT16, &mtu[0],
+				   DBUS_TYPE_UINT16, &mtu[1],
 				   DBUS_TYPE_INVALID)) {
 		bt_shell_printf("Failed to parse Acquire() reply: %s",
 							error.name);
@@ -2268,15 +2311,10 @@ static void acquire_reply(DBusMessage *message, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Acquire successful: fd %d MTU %d:%d\n", transport.sk,
-					transport.mtu[0], transport.mtu[1]);
+	bt_shell_printf("Acquire successful: fd %d MTU %u:%u\n", sk, mtu[0],
+								mtu[1]);
 
-	io_destroy(transport.io);
-	transport.io = io_new(transport.sk);
-
-	io_set_disconnect_handler(transport.io, transport_disconnected, NULL,
-								NULL);
-	io_set_read_handler(transport.io, transport_recv, NULL, NULL);
+	transport_new(proxy, sk, mtu);
 
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
@@ -2287,7 +2325,7 @@ static void transport_acquire(const char *input, void *user_data)
 
 	if (!strcasecmp(input, "y") || !strcasecmp(input, "yes")) {
 		if (!g_dbus_proxy_method_call(proxy, "Acquire", NULL,
-						acquire_reply, NULL, NULL))
+						acquire_reply, proxy, NULL))
 			bt_shell_printf("Failed acquire transport\n");
 	}
 }
@@ -2320,7 +2358,7 @@ static void transport_property_changed(GDBusProxy *proxy, const char *name,
 	if (ep->auto_accept) {
 		bt_shell_printf("Auto Accepting...\n");
 		if (!g_dbus_proxy_method_call(proxy, "Acquire", NULL,
-						acquire_reply, NULL, NULL))
+						acquire_reply, proxy, NULL))
 			bt_shell_printf("Failed acquire transport\n");
 		return;
 	}
@@ -2390,15 +2428,22 @@ static void cmd_show_transport(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static bool match_proxy(const void *data, const void *user_data)
+{
+	const struct transport *transport = data;
+	const GDBusProxy *proxy = user_data;
+
+	return transport->proxy == proxy;
+}
+
+static struct transport *find_transport(GDBusProxy *proxy)
+{
+	return queue_find(ios, match_proxy, proxy);
+}
+
 static void cmd_acquire_transport(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
-
-	if (transport.sk >= 0) {
-		bt_shell_printf("Transport socked %d already acquired\n",
-							transport.sk);
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
 
 	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
 					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
@@ -2407,8 +2452,13 @@ static void cmd_acquire_transport(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	if (find_transport(proxy)) {
+		bt_shell_printf("Transport %s already acquired\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
 	if (!g_dbus_proxy_method_call(proxy, "Acquire", NULL,
-					acquire_reply, NULL, NULL)) {
+					acquire_reply, proxy, NULL)) {
 		bt_shell_printf("Failed acquire transport\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -2418,6 +2468,7 @@ static void cmd_acquire_transport(int argc, char *argv[])
 
 static void release_reply(DBusMessage *message, void *user_data)
 {
+	struct transport *transport = user_data;
 	DBusError error;
 
 	dbus_error_init(&error);
@@ -2428,8 +2479,8 @@ static void release_reply(DBusMessage *message, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	close(transport.sk);
-	transport.sk = -1;
+	if (queue_remove(ios, transport))
+		transport_free(transport);
 
 	bt_shell_printf("Release successful\n");
 
@@ -2439,11 +2490,7 @@ static void release_reply(DBusMessage *message, void *user_data)
 static void cmd_release_transport(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
-
-	if (transport.sk < 0) {
-		bt_shell_printf("No Transport Socked found\n");
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
+	struct transport *transport;
 
 	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
 					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
@@ -2452,8 +2499,14 @@ static void cmd_release_transport(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
+	transport = find_transport(proxy);
+	if (!transport) {
+		bt_shell_printf("Transport %s not acquired\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
 	if (!g_dbus_proxy_method_call(proxy, "Release", NULL,
-					release_reply, NULL, NULL)) {
+					release_reply, transport, NULL)) {
 		bt_shell_printf("Failed release transport\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -2479,21 +2532,21 @@ static int open_file(const char *filename, int flags)
 	return fd;
 }
 
-static int transport_send(int fd)
+static int transport_send(struct transport *transport, int fd)
 {
 	uint8_t *buf;
 
-	buf = malloc(transport.mtu[1]);
+	buf = malloc(transport->mtu[1]);
 	if (!buf) {
 		bt_shell_printf("malloc: %s (%d)", strerror(errno), errno);
 		return -ENOMEM;
 	}
 
-	for (transport.seq = 0; ; transport.seq++) {
+	for (transport->seq = 0; ; transport->seq++) {
 		ssize_t ret;
 		int queued;
 
-		ret = read(fd, buf, transport.mtu[1]);
+		ret = read(fd, buf, transport->mtu[1]);
 		if (ret <= 0) {
 			if (ret < 0)
 				bt_shell_printf("read failed: %s (%d)",
@@ -2502,18 +2555,18 @@ static int transport_send(int fd)
 			return ret;
 		}
 
-		ret = send(transport.sk, buf, ret, 0);
+		ret = send(transport->sk, buf, ret, 0);
 		if (ret <= 0) {
 			bt_shell_printf("Send failed: %s (%d)",
 							strerror(errno), errno);
 			return -errno;
 		}
 
-		ioctl(transport.sk, TIOCOUTQ, &queued);
+		ioctl(transport->sk, TIOCOUTQ, &queued);
 
 		bt_shell_printf("[seq %d] send: %zd bytes "
 				"(TIOCOUTQ %d bytes)\n",
-				transport.seq, ret, queued);
+				transport->seq, ret, queued);
 	}
 
 	free(buf);
@@ -2521,17 +2574,33 @@ static int transport_send(int fd)
 
 static void cmd_send_transport(int argc, char *argv[])
 {
+	GDBusProxy *proxy;
+	struct transport *transport;
 	int fd, err;
 
-	if (transport.sk < 0) {
+	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Transport %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	transport = find_transport(proxy);
+	if (!transport) {
+		bt_shell_printf("Transport %s not acquired\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (transport->sk < 0) {
 		bt_shell_printf("No Transport Socked found\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	fd = open_file(argv[1], O_RDONLY);
+	fd = open_file(argv[2], O_RDONLY);
 
 	bt_shell_printf("Sending ...\n");
-	err = transport_send(fd);
+
+	err = transport_send(transport, fd);
 
 	close(fd);
 
@@ -2541,34 +2610,39 @@ static void cmd_send_transport(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static void transport_close(void)
-{
-	if (transport.fd < 0)
-		return;
-
-	close(transport.fd);
-	transport.fd = -1;
-
-	free(transport.filename);
-	transport.filename = NULL;
-}
 
 static void cmd_receive_transport(int argc, char *argv[])
 {
-	if (argc == 1) {
-		bt_shell_printf("Filename: %s\n", transport.filename);
-		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	GDBusProxy *proxy;
+	struct transport *transport;
+
+	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Transport %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	transport_close();
+	transport = find_transport(proxy);
+	if (!transport) {
+		bt_shell_printf("Transport %s not acquired\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
 
-	transport.fd = open_file(argv[1], O_RDWR | O_CREAT);
-	if (transport.fd < 0)
+	if (transport->sk < 0) {
+		bt_shell_printf("No Transport Socked found\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	transport_close(transport);
+
+	transport->fd = open_file(argv[2], O_RDWR | O_CREAT);
+	if (transport->fd < 0)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	transport.filename = strdup(argv[1]);
+	transport->filename = strdup(argv[2]);
 
-	bt_shell_printf("Filename: %s\n", transport.filename);
+	bt_shell_printf("Filename: %s\n", transport->filename);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -2633,9 +2707,9 @@ static const struct bt_shell_menu transport_menu = {
 	{ "release",     "<transport>",	cmd_release_transport,
 						"Release Transport",
 						transport_generator },
-	{ "send",        "<filename>",	cmd_send_transport,
+	{ "send",        "<transport> <filename>", cmd_send_transport,
 						"Send contents of a file" },
-	{ "receive",     "[filename]",	cmd_receive_transport,
+	{ "receive",     "<transport> [filename]", cmd_receive_transport,
 						"Get/Set file to receive" },
 	{ "volume",      "<transport> [value]",	cmd_volume_transport,
 						"Get/Set transport volume",
@@ -2665,5 +2739,5 @@ void player_add_submenu(void)
 void player_remove_submenu(void)
 {
 	g_dbus_client_unref(client);
-	transport_close();
+	queue_destroy(ios, transport_free);
 }
