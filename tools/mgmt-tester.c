@@ -6156,6 +6156,23 @@ static void setup_pairing_acceptor(const void *test_data)
 	setup_bthost();
 }
 
+/* Generic callback for checking the mgmt evnet status
+ */
+static void generic_mgmt_status_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	bool bthost = PTR_TO_INT(user_data);
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	if (bthost)
+		setup_bthost();
+}
+
+
 static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -6988,6 +7005,66 @@ static void setup_ext_adv_params(const void *test_data)
 					&ext_adv_params_valid,
 					setup_set_ext_adv_params_callback,
 					NULL, NULL);
+}
+
+static const uint8_t hci_set_ext_adv_data_name[] = {
+	0x01, /* Handle */
+	0x03, /* Operation */
+	0x01, /* Complete name */
+	0x06, 0x05, 0x08, 0x74, 0x65, 0x73, 0x74
+};
+
+static const struct generic_data add_ext_adv_scan_resp_off_on = {
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_DATA,
+	.send_param = ext_adv_data_valid,
+	.send_len = sizeof(ext_adv_data_valid),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_adv_data_mgmt_rsp_valid,
+	.expect_len = sizeof(ext_adv_data_mgmt_rsp_valid),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_SCAN_RSP_DATA,
+	.expect_hci_param = hci_set_ext_adv_data_name,
+	.expect_hci_len = sizeof(hci_set_ext_adv_data_name),
+};
+
+static void setup_add_ext_adv_on_off(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+	int enable_bthost = 1;
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+					sizeof(param), &param,
+					NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), &param,
+					generic_mgmt_status_callback,
+					NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_EXT_ADV_PARAMS, data->mgmt_index,
+					sizeof(ext_adv_params_valid),
+					&ext_adv_params_valid,
+					generic_mgmt_status_callback,
+					NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_EXT_ADV_DATA, data->mgmt_index,
+					sizeof(ext_adv_data_valid),
+					&ext_adv_data_valid,
+					generic_mgmt_status_callback,
+					NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_REMOVE_ADVERTISING, data->mgmt_index,
+					sizeof(remove_advertising_param_1),
+					&remove_advertising_param_1,
+					generic_mgmt_status_callback,
+					NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_ADD_EXT_ADV_PARAMS, data->mgmt_index,
+					sizeof(ext_adv_params_valid),
+					&ext_adv_params_valid,
+					generic_mgmt_status_callback,
+					INT_TO_PTR(enable_bthost), NULL);
+
 }
 
 static void pin_code_request_callback(uint16_t index, uint16_t length,
@@ -13960,10 +14037,16 @@ int main(int argc, char *argv[])
 				setup_ext_adv_params,
 				test_command_generic);
 
-	test_bredrle50("zxcv Ext Adv MGMT - AD Scan Response (5.0) Success",
+	test_bredrle50("Ext Adv MGMT - AD Scan Response (5.0) Success",
 				&adv_scan_rsp_success,
 				setup_ext_adv_params,
 				test_command_generic);
+
+	test_bredrle50("Ext Adv MGMT - AD Scan Resp - Off and On",
+				&add_ext_adv_scan_resp_off_on,
+				setup_add_ext_adv_on_off,
+				test_command_generic);
+
 
 	/* MGMT_OP_SET_DEVICE_ID
 	 * Using Bluetooth SIG for source.
