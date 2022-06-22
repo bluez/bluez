@@ -1403,6 +1403,12 @@ static DBusMessage *endpoint_select_configuration(DBusConnection *conn,
 	if (!p)
 		NULL;
 
+	if (p->data.iov_base) {
+		reply = g_dbus_create_error(msg, "org.bluez.Error.Rejected",
+								NULL);
+		return reply;
+	}
+
 	reply = endpoint_select_config_reply(msg, p->data.iov_base,
 						p->data.iov_len);
 	if (!reply)
@@ -1859,7 +1865,7 @@ static void endpoint_config(const char *input, void *user_data)
 {
 	struct endpoint_config *cfg = user_data;
 	uint8_t *data;
-	size_t len;
+	size_t len = 0;
 
 	data = str2bytearray((char *) input, &len);
 
