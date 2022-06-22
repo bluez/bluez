@@ -125,8 +125,6 @@ static void print_uuid(const char *uuid)
 			str[sizeof(str) - 3] = '.';
 			if (str[sizeof(str) - 4] == ' ')
 				str[sizeof(str) - 4] = '.';
-
-			n = sizeof(str) - 1;
 		}
 
 		bt_shell_printf("UUID: %s(%s)\n", str, uuid);
@@ -1009,13 +1007,13 @@ void ad_advertise_interval(DBusConnection *conn, uint32_t *min, uint32_t *max)
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
-	if (ad.min_interval != *min) {
+	if (min && ad.min_interval != *min) {
 		ad.min_interval = *min;
 		g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"MinInterval");
 	}
 
-	if (ad.max_interval != *max) {
+	if (max && ad.max_interval != *max) {
 		ad.max_interval = *max;
 		g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"MaxInterval");
