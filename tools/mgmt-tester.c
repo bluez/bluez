@@ -12020,12 +12020,14 @@ static void read_50_controller_cap_complete(uint8_t status, uint16_t length,
 		tester_warn("Failed to read advertising features: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		tester_test_failed();
+		return;
 	}
 
 	if (sizeof(rp->cap_len) + rp->cap_len != length) {
 		tester_warn("Controller capabilities malformed, size %zu != %u",
 				sizeof(rp->cap_len) + rp->cap_len, length);
 		tester_test_failed();
+		return;
 	}
 
 	while (offset < rp->cap_len) {
