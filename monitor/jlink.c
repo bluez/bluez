@@ -112,7 +112,7 @@ int jlink_init(void)
 		return -EIO;
 	}
 
-	dlclose(so);
+	/* don't dlclose(so) here cause symbols from it are in use now */
 	return 0;
 }
 
