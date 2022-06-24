@@ -231,7 +231,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/gap.h src/shared/gap.c \
 			src/shared/log.h src/shared/log.c \
 			src/shared/bap.h src/shared/bap.c src/shared/ascs.h \
-			src/shared/tty.h
+			src/shared/lc3.h src/shared/tty.h
 
 if READLINE
 shared_sources += src/shared/shell.c src/shared/shell.h
