@@ -291,7 +291,7 @@ static inline bool l2cap_frame_print_be64(struct l2cap_frame *frame,
 		return false;
 	}
 
-	print_field("%s: 0x%zx", label, u64);
+	print_field("%s: 0x%" PRIx64, label, u64);
 
 	return true;
 }
@@ -320,7 +320,7 @@ static inline bool l2cap_frame_print_le64(struct l2cap_frame *frame,
 		return false;
 	}
 
-	print_field("%s: 0x%zx", label, u64);
+	print_field("%s: 0x%" PRIx64, label, u64);
 
 	return true;
 }
