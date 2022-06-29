@@ -156,7 +156,7 @@ static json_object *get_element_model(json_object *jnode, int ele_idx,
 						uint32_t mod_id, bool vendor)
 {
 	json_object *jelements, *jelement, *jmodels;
-	int i, num_mods;
+	int i, num_mods, ret;
 	size_t len;
 	char buf[9];
 
@@ -174,13 +174,15 @@ static json_object *get_element_model(json_object *jnode, int ele_idx,
 	if (!num_mods)
 		return NULL;
 
-	if (!vendor) {
-		snprintf(buf, 5, "%4.4x", (uint16_t)mod_id);
-		len = 4;
-	} else {
-		snprintf(buf, 9, "%8.8x", mod_id);
-		len = 8;
-	}
+	if (!vendor)
+		ret = snprintf(buf, 5, "%4.4x", (uint16_t)mod_id);
+	else
+		ret = snprintf(buf, 9, "%8.8x", mod_id);
+
+	if (ret < 0)
+		return NULL;
+
+	len = ret;
 
 	for (i = 0; i < num_mods; ++i) {
 		json_object *jmodel, *jvalue;
@@ -818,13 +820,17 @@ bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
 							uint16_t app_idx)
 {
 	json_object *jnode, *jmodel, *jstring, *jarray = NULL;
-	int ele_idx;
+	int ele_idx, ret;
 	char buf[5];
 
 	if (!cfg)
 		return false;
 
 	jnode = cfg->jnode;
+
+	ret = snprintf(buf, 5, "%4.4x", app_idx);
+	if (ret < 0)
+		return false;
 
 	ele_idx = get_element_index(jnode, ele_addr);
 	if (ele_idx < 0)
@@ -833,8 +839,6 @@ bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
 	jmodel = get_element_model(jnode, ele_idx, mod_id, vendor);
 	if (!jmodel)
 		return false;
-
-	snprintf(buf, 5, "%4.4x", app_idx);
 
 	json_object_object_get_ex(jmodel, "bind", &jarray);
 	if (jarray && jarray_has_string(jarray, buf, 4))
@@ -863,13 +867,17 @@ bool mesh_config_model_binding_del(struct mesh_config *cfg, uint16_t ele_addr,
 							uint16_t app_idx)
 {
 	json_object *jnode, *jmodel, *jarray;
-	int ele_idx;
+	int ele_idx, ret;
 	char buf[5];
 
 	if (!cfg)
 		return false;
 
 	jnode = cfg->jnode;
+
+	ret = snprintf(buf, 5, "%4.4x", app_idx);
+	if (ret < 0)
+		return false;
 
 	ele_idx = get_element_index(jnode, ele_addr);
 	if (ele_idx < 0)
@@ -881,8 +889,6 @@ bool mesh_config_model_binding_del(struct mesh_config *cfg, uint16_t ele_addr,
 
 	if (!json_object_object_get_ex(jmodel, "bind", &jarray))
 		return true;
-
-	snprintf(buf, 5, "%4.4x", app_idx);
 
 	jarray_string_del(jarray, buf, 4);
 
@@ -1415,9 +1421,13 @@ static bool write_uint16_hex(json_object *jobj, const char *desc,
 								uint16_t value)
 {
 	json_object *jstring;
+	int ret;
 	char buf[5];
 
-	snprintf(buf, 5, "%4.4x", value);
+	ret = snprintf(buf, 5, "%4.4x", value);
+	if (ret < 0)
+		return false;
+
 	jstring = json_object_new_string(buf);
 	if (!jstring)
 		return false;
@@ -1430,9 +1440,13 @@ static bool write_uint16_hex(json_object *jobj, const char *desc,
 static bool write_uint32_hex(json_object *jobj, const char *desc, uint32_t val)
 {
 	json_object *jstring;
+	int ret;
 	char buf[9];
 
-	snprintf(buf, 9, "%8.8x", val);
+	ret = snprintf(buf, 9, "%8.8x", val);
+	if (ret < 0)
+		return false;
+
 	jstring = json_object_new_string(buf);
 	if (!jstring)
 		return false;
@@ -1716,22 +1730,24 @@ struct mesh_config *mesh_config_create(const char *cfgdir_name,
 	char uuid_buf[33];
 	char name_buf[PATH_MAX];
 	struct mesh_config *cfg;
-	size_t max_len = strlen(cfgnode_name) + strlen(bak_ext);
+	int ret;
 
 	if (!hex2str((uint8_t *) uuid, 16, uuid_buf, sizeof(uuid_buf)))
 		return NULL;
 
-	snprintf(name_buf, PATH_MAX, "%s/%s", cfgdir_name, uuid_buf);
-
-	if (strlen(name_buf) + max_len >= PATH_MAX)
+	ret = snprintf(name_buf, PATH_MAX, "%s/%s", cfgdir_name, uuid_buf);
+	if (ret < 0)
 		return NULL;
 
 	/* Create a new directory and node.json file */
 	if (mkdir(name_buf, 0755) != 0)
 		return NULL;
 
-	snprintf(name_buf, PATH_MAX, "%s/%s%s", cfgdir_name, uuid_buf,
+	ret = snprintf(name_buf, PATH_MAX, "%s/%s%s", cfgdir_name, uuid_buf,
 								cfgnode_name);
+	if (ret < 0)
+		return NULL;
+
 	l_debug("New node config %s", name_buf);
 
 	cfg = create_config(name_buf, uuid, db_node);
@@ -1904,12 +1920,14 @@ bool mesh_config_model_pub_del(struct mesh_config *cfg, uint16_t addr,
 static void del_page(json_object *jarray, uint8_t page)
 {
 	char buf[3];
-	int i, len;
+	int i, len, ret;
 
 	if (!jarray)
 		return;
 
-	snprintf(buf, 3, "%2.2x", page);
+	ret = snprintf(buf, 3, "%2.2x", page);
+	if (ret < 0)
+		return;
 
 	len = json_object_array_length(jarray);
 
@@ -1931,7 +1949,7 @@ bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
 {
 	json_object *jnode, *jstring, *jarray = NULL;
 	char *buf;
-	int len;
+	int len, ret;
 
 	if (!cfg)
 		return false;
@@ -1942,7 +1960,10 @@ bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
 
 	len = (size * 2) + 3;
 	buf = l_malloc(len);
-	snprintf(buf, len, "%2.2x", page);
+	ret = snprintf(buf, len, "%2.2x", page);
+	if (ret < 0)
+		return false;
+
 	hex2str(data, size, buf + 2, len - 2);
 
 	if (jarray && jarray_has_string(jarray, buf, len)) {
@@ -1967,10 +1988,14 @@ bool mesh_config_comp_page_mv(struct mesh_config *cfg, uint8_t old, uint8_t nw)
 	uint8_t *data;
 	char *str;
 	char old_buf[3];
-	int i, len, dlen = 0;
+	int i, len, ret, dlen = 0;
 	bool status = true;
 
 	if (!cfg || old == nw)
+		return false;
+
+	ret = snprintf(old_buf, 3, "%2.2x", old);
+	if (ret < 0)
 		return false;
 
 	jnode = cfg->jnode;
@@ -1980,7 +2005,6 @@ bool mesh_config_comp_page_mv(struct mesh_config *cfg, uint8_t old, uint8_t nw)
 	if (!jarray)
 		return false;
 
-	snprintf(old_buf, 3, "%2.2x", old);
 	data = l_malloc(MAX_MSG_LEN);
 
 	len = json_object_array_length(jarray);
@@ -2030,8 +2054,9 @@ bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 		return false;
 
 	if (!sub->virt) {
-		snprintf(buf, 5, "%4.4x", sub->addr.grp);
-		len = 4;
+		len = snprintf(buf, 5, "%4.4x", sub->addr.grp);
+		if (len < 0)
+			return false;
 	} else {
 		hex2str(sub->addr.label, 16, buf, 33);
 		len = 32;
@@ -2084,8 +2109,9 @@ bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t ele_addr,
 		return true;
 
 	if (!sub->virt) {
-		snprintf(buf, 5, "%4.4x", sub->addr.grp);
-		len = 4;
+		len = snprintf(buf, 5, "%4.4x", sub->addr.grp);
+		if (len < 0)
+			return false;
 	} else {
 		hex2str(sub->addr.label, 16, buf, 33);
 		len = 32;
