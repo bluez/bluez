@@ -2765,8 +2765,11 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 
 		ret = send_request(session, TRUE, NULL, getcap_cmd,
 							&req, sizeof(req));
-		if (ret < 0)
+		if (ret < 0) {
+			session->seps = g_slist_remove(session->seps, sep);
+			g_free(sep);
 			break;
+		}
 		getcap_pending = TRUE;
 	}
 
