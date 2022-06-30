@@ -1961,8 +1961,10 @@ bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
 	len = (size * 2) + 3;
 	buf = l_malloc(len);
 	ret = snprintf(buf, len, "%2.2x", page);
-	if (ret < 0)
+	if (ret < 0) {
+		l_free(buf);
 		return false;
+	}
 
 	hex2str(data, size, buf + 2, len - 2);
 
