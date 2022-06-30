@@ -2028,7 +2028,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
 	return false;
 }
 
-static bool ctl_received(struct mesh_net *net, uint16_t net_key_id,
+static bool ctl_received(struct mesh_net *net, uint32_t net_key_id,
 						uint32_t iv_index, uint8_t ttl,
 						uint32_t seq,
 						uint16_t src, uint16_t dst,
@@ -2347,7 +2347,7 @@ static enum _relay_advice packet_received(void *user_data,
 							net_seqZero,
 							l_get_be32(msg + 3));
 			} else {
-				ctl_received(net, key_aid, iv_index, net_ttl,
+				ctl_received(net, net_key_id, iv_index, net_ttl,
 						net_seq, net_src, net_dst,
 						net_opcode, rssi, msg,
 								app_msg_len);
