@@ -2696,7 +2696,6 @@ static void cmd_disconnect(int argc, char **argv)
 		}
 	}
 
-	argc -= optind;
 	argv += optind;
 	optind = 0;
 
@@ -2856,8 +2855,6 @@ static void cmd_find_service(int argc, char **argv)
 		}
 	}
 
-	argc -= optind;
-	argv += optind;
 	optind = 0;
 
 	cp = (void *) buf;
@@ -2931,8 +2928,6 @@ static void cmd_find(int argc, char **argv)
 		}
 	}
 
-	argc -= optind;
-	argv += optind;
 	optind = 0;
 
 	memset(&cp, 0, sizeof(cp));
@@ -2997,8 +2992,6 @@ static void cmd_stop_find(int argc, char **argv)
 		}
 	}
 
-	argc -= optind;
-	argv += optind;
 	optind = 0;
 
 	memset(&cp, 0, sizeof(cp));
@@ -3258,7 +3251,7 @@ static void cmd_unpair(int argc, char **argv)
 	struct mgmt_cp_unpair_device cp;
 	uint8_t type = BDADDR_BREDR;
 	int opt;
-	uint16_t index = mgmt_index;
+	uint16_t index;
 
 	while ((opt = getopt_long(argc, argv, "+t:h", unpair_options,
 								NULL)) != -1) {
@@ -3447,8 +3440,6 @@ static void cmd_irks(int argc, char **argv)
 		}
 	}
 
-	argc -= optind;
-	argv += optind;
 	optind = 0;
 
 	cp->irk_count = cpu_to_le16(count);
@@ -4819,8 +4810,11 @@ static void cmd_add_adv(int argc, char **argv)
 		memcpy(cp->data + 2, uuids, uuid_bytes - 2);
 	}
 
-	memcpy(cp->data + uuid_bytes, adv_data, adv_len);
-	memcpy(cp->data + uuid_bytes + adv_len, scan_rsp, scan_rsp_len);
+	if (adv_len)
+		memcpy(cp->data + uuid_bytes, adv_data, adv_len);
+
+	if (scan_rsp_len)
+		memcpy(cp->data + uuid_bytes + adv_len, scan_rsp, scan_rsp_len);
 
 	if (!mgmt_send(mgmt, MGMT_OP_ADD_ADVERTISING, index, cp_len, cp,
 						add_adv_rsp, NULL, NULL)) {
@@ -5241,8 +5235,11 @@ static void cmd_add_ext_adv_data(int argc, char **argv)
 		memcpy(cp->data + 2, uuids, uuid_bytes - 2);
 	}
 
-	memcpy(cp->data + uuid_bytes, adv_data, adv_len);
-	memcpy(cp->data + uuid_bytes + adv_len, scan_rsp, scan_rsp_len);
+	if (adv_len)
+		memcpy(cp->data + uuid_bytes, adv_data, adv_len);
+
+	if (scan_rsp_len)
+		memcpy(cp->data + uuid_bytes + adv_len, scan_rsp, scan_rsp_len);
 
 	if (!mgmt_send(mgmt, MGMT_OP_ADD_EXT_ADV_DATA, index, cp_len, cp,
 					add_ext_adv_data_rsp, NULL, NULL)) {
