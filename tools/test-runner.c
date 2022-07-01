@@ -269,6 +269,11 @@ static void start_qemu(void)
 
 	pos = (sizeof(qemu_argv) / sizeof(char *)) - 1;
 
+	/* Make sure qemu_binary is not null */
+	if (!qemu_binary) {
+		fprintf(stderr, "No QEMU binary is set\n");
+		exit(1);
+	}
 	argv[0] = (char *) qemu_binary;
 
 	if (audio_support) {
@@ -800,6 +805,11 @@ static void run_command(char *cmdname, char *home)
 	pid_t pid, dbus_pid, daemon_pid, monitor_pid, emulator_pid,
 	      dbus_session_pid, udevd_pid;
 
+	if (!home) {
+		perror("Invalid parameter: TESTHOME");
+		return;
+	}
+
 	if (num_devs) {
 		const char *node = "/dev/ttyS1";
 		unsigned int basic_flags, extra_flags;
@@ -979,10 +989,8 @@ start_next:
 	if (udevd_pid > 0)
 		kill(udevd_pid, SIGTERM);
 
-	if (serial_fd >= 0) {
+	if (serial_fd >= 0)
 		close(serial_fd);
-		serial_fd = -1;
-	}
 }
 
 static void run_tests(void)
