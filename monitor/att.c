@@ -1847,7 +1847,9 @@ static void print_attribute(struct gatt_db_attribute *attr)
 	switch (uuid->type) {
 	case BT_UUID16:
 		sprintf(label, "Handle: 0x%4.4x Type", handle);
-		print_uuid(label, &cpu_to_le16(uuid->value.u16), 2);
+		print_field("%s: %s (0x%4.4x)", label,
+				bt_uuid16_to_str(uuid->value.u16),
+				uuid->value.u16);
 		return;
 	case BT_UUID128:
 		sprintf(label, "Handle: 0x%4.4x Type", handle);
