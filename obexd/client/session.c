@@ -950,7 +950,7 @@ static void transfer_complete(struct obc_transfer *transfer,
 {
 	struct obc_session *session = user_data;
 
-	if (err != 0)
+	if (err)
 		goto fail;
 
 	session_notify_complete(session, transfer);
