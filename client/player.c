@@ -1340,7 +1340,7 @@ static uint8_t *str2bytearray(char *arg, size_t *val_len)
 
 	*val_len = i;
 
-	return g_memdup(value, i);
+	return util_memdup(value, i);
 }
 
 static void select_config_response(const char *input, void *user_data)
