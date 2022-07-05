@@ -32,7 +32,25 @@
 
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	return server_start(btd_adapter_get_address(adapter));
+    const bdaddr_t* address;
+    char addr[18];
+    char** exclude_adapters;
+    gsize num_exclude_adapters;
+
+    address = btd_adapter_get_address(adapter);
+    ba2str(address, addr);
+    exclude_adapters = input_get_exclude_adapters();
+    num_exclude_adapters = input_get_num_exclude_adapters();
+
+    for(int i = 0; i < num_exclude_adapters; i++)
+    {
+        if(strcmp(addr, exclude_adapters[i]))
+        {
+            return 0;
+        }
+    }
+
+	return server_start(address);
 }
 
 static void hid_server_remove(struct btd_profile *p,
@@ -80,9 +98,13 @@ static int input_init(void)
 	GKeyFile *config;
 	GError *err = NULL;
 
+    DBG("CONFIGDIR: %s", CONFIGDIR);
 	config = load_config_file(CONFIGDIR "/input.conf");
 	if (config) {
 		int idle_timeout;
+        char* exclude_adapters_str;
+        char** exclude_adapters;
+        gsize num_exclude_adapters;
 		gboolean uhid_enabled, classic_bonded_only, auto_sec;
 
 		idle_timeout = g_key_file_get_integer(config, "General",
@@ -121,6 +143,18 @@ static int input_init(void)
 		} else
 			g_clear_error(&err);
 
+        g_key_file_set_list_separator(config, ',');
+
+        exclude_adapters_str = g_key_file_get_string(config, "General",
+                "ExcludeAdapters", &err);
+        exclude_adapters = g_key_file_get_string_list(config, "General",
+                "ExcludeAdapters", &num_exclude_adapters, &err);
+		if (!err) {
+			DBG("input.conf: ExcludeAdapters=%s", exclude_adapters_str);
+			input_set_exclude_adapters(exclude_adapters);
+			input_set_num_exclude_adapters(num_exclude_adapters);
+		} else
+			g_clear_error(&err);
 	}
 
 	btd_profile_register(&input_profile);

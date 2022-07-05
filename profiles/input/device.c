@@ -82,6 +82,9 @@ struct input_device {
 static int idle_timeout = 0;
 static bool uhid_enabled = false;
 static bool classic_bonded_only = false;
+static char* exclude_adapter_address;
+static char** exclude_adapters;
+static gsize num_exclude_adapters;
 
 void input_set_idle_timeout(int timeout)
 {
@@ -101,6 +104,26 @@ void input_set_classic_bonded_only(bool state)
 bool input_get_classic_bonded_only(void)
 {
 	return classic_bonded_only;
+}
+
+char** input_get_exclude_adapters(void)
+{
+	return exclude_adapters;
+}
+
+void input_set_exclude_adapters(char** adapters)
+{
+    exclude_adapters = adapters;
+}
+
+gsize input_get_num_exclude_adapters(void)
+{
+	return num_exclude_adapters;
+}
+
+void input_set_num_exclude_adapters(gsize num)
+{
+    num_exclude_adapters = num;
 }
 
 static void input_device_enter_reconnect_mode(struct input_device *idev);
