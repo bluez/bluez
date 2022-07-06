@@ -82,7 +82,6 @@ struct input_device {
 static int idle_timeout = 0;
 static bool uhid_enabled = false;
 static bool classic_bonded_only = false;
-static char* exclude_adapter_address;
 static char** exclude_adapters;
 static gsize num_exclude_adapters;
 
