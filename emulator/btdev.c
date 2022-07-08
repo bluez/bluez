@@ -5831,8 +5831,25 @@ static int cmd_set_cig_params(struct btdev *dev, const void *data,
 	rsp.params.cig_id = cmd->cig_id;
 
 	for (i = 0; i < cmd->num_cis; i++) {
+		struct btdev_conn *iso;
+
 		rsp.params.num_handles++;
 		rsp.handle[i] = cpu_to_le16(ISO_HANDLE + i);
+
+		/* BLUETOOTH CORE SPECIFICATION Version 5.3 | Vol 4, Part E
+		 * page 2553
+		 *
+		 * If the Host issues this command when the CIG is not in the
+		 * configurable state, the Controller shall return the error
+		 * code Command Disallowed (0x0C).
+		 */
+		iso = queue_find(dev->conns, match_handle,
+				UINT_TO_PTR(cpu_to_le16(rsp.handle[i])));
+		if (iso) {
+			rsp.params.status = BT_HCI_ERR_INVALID_PARAMETERS;
+			i = 0;
+			goto done;
+		}
 	}
 
 done:
