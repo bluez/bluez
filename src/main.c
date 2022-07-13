@@ -699,6 +699,7 @@ static void parse_config(GKeyFile *config)
 		DBG("%s", err->message);
 		g_clear_error(&err);
 		btd_opts.privacy = 0x00;
+		btd_opts.device_privacy = true;
 	} else {
 		DBG("privacy=%s", str);
 
@@ -722,6 +723,7 @@ static void parse_config(GKeyFile *config)
 			btd_opts.device_privacy = true;
 		} else if (!strcmp(str, "off")) {
 			btd_opts.privacy = 0x00;
+			btd_opts.device_privacy = true;
 		} else {
 			DBG("Invalid privacy option: %s", str);
 			btd_opts.privacy = 0x00;
