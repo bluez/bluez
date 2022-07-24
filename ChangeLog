@@ -1,3 +1,19 @@
+ver 5.65:
+	Fix issue with A2DP cache invalidation handling.
+	Fix issue with A2DP and not initialized SEP codec.
+	Fix issue with A2DP and multiple SetConfiguration to same SEP
+	Fix issue with AVRCP and not properly initialized volume.
+	Fix issue with SDP records when operating in LE only mode.
+	Fix issue with HoG and not reading report map of instances.
+	Fix issue with GATT server crashing while disconnecting.
+	Fix issue with not removing connected devices.
+	Fix issue with enabling wake support without RPA Resolution.
+	Fix issue with pairing failed due to the error of Already Paired.
+	Add support for CONFIGURATION_DIRECTORY environment variable.
+	Add support for STATE_DIRECTORY environment variable.
+	Add support for "Bonded" property with Device API.
+	Add experimental support for ISO socket.
+
 ver 5.64:
 	Fix issue with handling A2DP discover procedure.
 	Fix issue with media endpoint replies and SetConfiguration.
