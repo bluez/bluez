@@ -567,6 +567,13 @@ static const struct iso_client_data connect_16_2_1_defer_send = {
 	.defer = true,
 };
 
+static const struct iso_client_data connect_48_2_1_defer_send = {
+	.qos = QOS_48_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.defer = true,
+};
+
 static const struct iso_client_data listen_16_2_1_defer_recv = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
@@ -1671,6 +1678,10 @@ int main(int argc, char *argv[])
 							test_defer);
 
 	test_iso("ISO Defer Send - Success", &connect_16_2_1_defer_send,
+							setup_powered,
+							test_connect);
+
+	test_iso("ISO 48_2_1 Defer Send - Success", &connect_48_2_1_defer_send,
 							setup_powered,
 							test_connect);
 
