@@ -4574,7 +4574,8 @@ void device_probe_profile(gpointer a, gpointer b)
 
 	device->services = g_slist_append(device->services, service);
 
-	if (!profile->auto_connect || !device->general_connect)
+	if (!profile->auto_connect || (!btd_device_is_connected(device) &&
+					!device->general_connect))
 		return;
 
 	device->pending = g_slist_append(device->pending, service);
