@@ -2989,7 +2989,7 @@ static void desc_write_cb(struct gatt_db_attribute *attrib,
 	}
 
 	if (opcode == BT_ATT_OP_PREP_WRITE_REQ) {
-		if (!device_is_trusted(device) && !desc->prep_authorized &&
+		if (!btd_device_is_trusted(device) && !desc->prep_authorized &&
 						desc->req_prep_authorization)
 			send_write(att, attrib, desc->proxy,
 					desc->pending_writes, id, value, len,
@@ -3120,7 +3120,7 @@ static void chrc_write_cb(struct gatt_db_attribute *attrib,
 		queue = NULL;
 
 	if (opcode == BT_ATT_OP_PREP_WRITE_REQ) {
-		if (!device_is_trusted(device) && !chrc->prep_authorized &&
+		if (!btd_device_is_trusted(device) && !chrc->prep_authorized &&
 						chrc->req_prep_authorization)
 			send_write(att, attrib, chrc->proxy, queue,
 					id, value, len, offset,

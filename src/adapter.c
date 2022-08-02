@@ -7334,7 +7334,7 @@ static gboolean process_auth_queue(gpointer user_data)
 			goto next;
 		}
 
-		if (device_is_trusted(device) == TRUE) {
+		if (btd_device_is_trusted(device) == TRUE) {
 			auth->cb(NULL, auth->user_data);
 			goto next;
 		}

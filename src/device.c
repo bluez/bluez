@@ -257,7 +257,7 @@ struct btd_device {
 
 	sdp_list_t	*tmp_records;
 
-	gboolean	trusted;
+	bool		trusted;
 	gboolean	blocked;
 	gboolean	auto_connect;
 	gboolean	disable_auto_connect;
@@ -826,7 +826,7 @@ bool device_is_bonded(struct btd_device *device, uint8_t bdaddr_type)
 	return state->bonded;
 }
 
-gboolean device_is_trusted(struct btd_device *device)
+bool btd_device_is_trusted(struct btd_device *device)
 {
 	return device->trusted;
 }
@@ -1163,7 +1163,7 @@ static gboolean dev_property_get_trusted(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
-	gboolean val = device_is_trusted(device);
+	gboolean val = btd_device_is_trusted(device);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
 
@@ -6031,7 +6031,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 		 * treated as a newly discovered device.
 		 */
 		if (!device_is_paired(device, bdaddr_type) &&
-				!device_is_trusted(device))
+				!btd_device_is_trusted(device))
 			btd_device_set_temporary(device, true);
 
 		device_bonding_failed(device, status);
