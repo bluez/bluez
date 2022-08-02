@@ -54,6 +54,7 @@ struct device_addr_type {
 
 int device_addr_type_cmp(gconstpointer a, gconstpointer b);
 GSList *btd_device_get_uuids(struct btd_device *device);
+bool btd_device_has_uuid(struct btd_device *device, const char *uuid);
 void device_probe_profiles(struct btd_device *device, GSList *profiles);
 
 void btd_device_set_record(struct btd_device *device, const char *uuid,

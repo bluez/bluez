@@ -294,7 +294,6 @@ static void agent_auth_cb(DBusError *derr, void *user_data)
 	}
 
 	remove_device = false;
-	btd_device_set_trusted(closure->device, true);
 	btd_device_set_temporary(closure->device, false);
 
 	if (closure->type == CABLE_PAIRING_SIXAXIS)
@@ -336,10 +335,9 @@ static bool setup_device(int fd, const char *sysfs_path,
 	 * connected eg. to charge up battery. */
 	device = btd_adapter_find_device(adapter, &device_bdaddr,
 							BDADDR_BREDR);
-	if (device != NULL &&
-		btd_device_is_connected(device) &&
-		g_slist_find_custom(btd_device_get_uuids(device), HID_UUID,
-						(GCompareFunc)strcasecmp)) {
+	if (device && btd_device_has_uuid(device, HID_UUID) &&
+			(btd_device_is_connected(device) ||
+			 btd_device_is_trusted(device))) {
 		char device_addr[18];
 		ba2str(&device_bdaddr, device_addr);
 		DBG("device %s already known, skipping", device_addr);
@@ -352,7 +350,6 @@ static bool setup_device(int fd, const char *sysfs_path,
 
 	btd_device_device_set_name(device, cp->name);
 	btd_device_set_pnpid(device, cp->source, cp->vid, cp->pid, cp->version);
-	btd_device_set_trusted(device, false);
 	btd_device_set_temporary(device, true);
 
 	closure = g_new0(struct authentication_closure, 1);

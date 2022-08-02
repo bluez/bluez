@@ -4509,6 +4509,12 @@ GSList *btd_device_get_uuids(struct btd_device *device)
 	return device->uuids;
 }
 
+bool btd_device_has_uuid(struct btd_device *device, const char *uuid)
+{
+	return g_slist_find_custom(device->uuids, uuid,
+						(GCompareFunc)strcasecmp);
+}
+
 struct probe_data {
 	struct btd_device *dev;
 	GSList *uuids;
