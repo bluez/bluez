@@ -1240,6 +1240,19 @@ static void setup_connect(struct test_data *data, uint8_t num, GIOFunc func)
 	}
 
 	if (isodata->defer) {
+		int defer;
+		socklen_t len;
+
+		/* Check if socket has DEFER_SETUP set */
+		len = sizeof(defer);
+		if (getsockopt(sk, SOL_BLUETOOTH, BT_DEFER_SETUP, &defer,
+				&len) < 0) {
+			tester_warn("getsockopt: %s (%d)", strerror(errno),
+								errno);
+			tester_test_failed();
+			return;
+		}
+
 		memset(&pfd, 0, sizeof(pfd));
 		pfd.fd = sk;
 		pfd.events = POLLOUT;
