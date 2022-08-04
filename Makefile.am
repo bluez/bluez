@@ -407,6 +407,11 @@ EXTRA_DIST += tools/magic.btsnoop
 
 AM_CPPFLAGS += $(DBUS_CFLAGS) $(GLIB_CFLAGS) -I$(builddir)/lib
 
+unit_tests += unit/test-tester
+
+unit_test_tester_SOURCES = unit/test-tester.c
+unit_test_tester_LDADD = src/libshared-glib.la lib/libbluetooth-internal.la \
+								$(GLIB_LIBS)
 
 unit_tests += unit/test-eir
 
