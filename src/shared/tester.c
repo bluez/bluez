@@ -81,6 +81,8 @@ struct test_case {
 	enum test_result result;
 	enum test_stage stage;
 	const void *test_data;
+	const struct iovec *iov;
+	size_t iovcnt;
 	tester_data_func_t pre_setup_func;
 	tester_data_func_t setup_func;
 	tester_data_func_t test_func;
@@ -346,14 +348,20 @@ void tester_add(const char *name, const void *test_data,
 					teardown_func, NULL, 0, NULL, NULL);
 }
 
-void *tester_get_data(void)
+static struct test_case *tester_get_test(void)
 {
-	struct test_case *test;
-
 	if (!test_current)
 		return NULL;
 
-	test = test_current->data;
+	return test_current->data;
+}
+
+void *tester_get_data(void)
+{
+	struct test_case *test = tester_get_test();
+
+	if (!test)
+		return NULL;
 
 	return test->user_data;
 }
@@ -859,6 +867,142 @@ void tester_init(int *argc, char ***argv)
 	test_current = NULL;
 }
 
+static struct io *ios[2];
+
+static bool io_disconnected(struct io *io, void *user_data)
+{
+	if (io == ios[0]) {
+		io_destroy(ios[0]);
+		ios[0] = NULL;
+	} else if (io == ios[1]) {
+		io_destroy(ios[1]);
+		ios[1] = NULL;
+	}
+
+	return false;
+}
+
+static const struct iovec *test_get_iov(struct test_case *test)
+{
+	const struct iovec *iov;
+
+	if (!test || !test->iov || !test->iovcnt)
+		return NULL;
+
+	iov = test->iov;
+
+	test->iov++;
+	test->iovcnt--;
+
+	return iov;
+}
+
+static bool test_io_send(struct io *io, void *user_data)
+{
+	struct test_case *test = tester_get_test();
+	const struct iovec *iov = test_get_iov(test);
+	ssize_t len;
+
+	if (!iov)
+		return false;
+
+	len = io_send(io, iov, 1);
+
+	tester_monitor('<', 0x0004, 0x0000, iov->iov_base, len);
+
+	g_assert_cmpint(len, ==, iov->iov_len);
+
+	return false;
+}
+
+static bool test_io_recv(struct io *io, void *user_data)
+{
+	struct test_case *test = tester_get_test();
+	const struct iovec *iov = test_get_iov(test);
+	unsigned char buf[512];
+	int fd;
+	ssize_t len;
+
+	fd = io_get_fd(io);
+
+	len = read(fd, buf, sizeof(buf));
+
+	g_assert(len > 0);
+
+	tester_monitor('>', 0x0004, 0x0000, buf, len);
+
+	if (!iov)
+		return true;
+
+	g_assert_cmpint(len, ==, iov->iov_len);
+
+	g_assert(memcmp(buf, iov->iov_base, len) == 0);
+
+	if (test->iovcnt)
+		io_set_write_handler(io, test_io_send, NULL, NULL);
+
+	return true;
+}
+
+static void setup_io(void)
+{
+	int fd[2], err;
+
+	io_destroy(ios[0]);
+	io_destroy(ios[1]);
+
+	err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, fd);
+	if (err < 0) {
+		tester_warn("socketpair: %s (%d)", strerror(errno), errno);
+		return;
+	}
+
+	ios[0] = io_new(fd[0]);
+	if (!ios[0]) {
+		tester_warn("io_new: %p", ios[0]);
+		return;
+	}
+
+	io_set_close_on_destroy(ios[0], true);
+	io_set_disconnect_handler(ios[0], io_disconnected, NULL, NULL);
+
+	ios[1] = io_new(fd[1]);
+	if (!ios[1]) {
+		tester_warn("io_new: %p", ios[1]);
+		return;
+	}
+
+	io_set_close_on_destroy(ios[1], true);
+	io_set_disconnect_handler(ios[1], io_disconnected, NULL, NULL);
+	io_set_read_handler(ios[1], test_io_recv, NULL, NULL);
+}
+
+struct io *tester_setup_io(const struct iovec *iov, int iovcnt)
+{
+	struct test_case *test = tester_get_test();
+
+	if (!ios[0] || !ios[1]) {
+		setup_io();
+		if (!ios[0] || !ios[1]) {
+			tester_warn("Unable to setup IO");
+			return NULL;
+		}
+	}
+
+	test->iov = iov;
+	test->iovcnt = iovcnt;
+
+	return ios[0];
+}
+
+void tester_io_send(void)
+{
+	struct test_case *test = tester_get_test();
+
+	if (test->iovcnt)
+		io_set_write_handler(ios[1], test_io_send, NULL, NULL);
+}
+
 int tester_run(void)
 {
 	int ret;
@@ -878,6 +1022,9 @@ int tester_run(void)
 
 	if (option_monitor)
 		bt_log_close();
+
+	io_destroy(ios[0]);
+	io_destroy(ios[1]);
 
 	return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -11,6 +11,15 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "src/shared/io.h"
+
+#define data(args...) ((const unsigned char[]) { args })
+
+#define IOV_DATA(args...) \
+	{ \
+		.iov_base = (void *)data(args), \
+		.iov_len = sizeof(data(args)), \
+	}
 
 void tester_init(int *argc, char ***argv);
 int tester_run(void);
@@ -66,3 +75,6 @@ typedef void (*tester_wait_func_t)(void *user_data);
 
 void tester_wait(unsigned int seconds, tester_wait_func_t func,
 							void *user_data);
+
+struct io *tester_setup_io(const struct iovec *iov, int iovcnt);
+void tester_io_send(void);
