@@ -541,6 +541,12 @@ static const struct iovec send_16_2_1 = {
 	.iov_len = sizeof(data_16_2_1),
 };
 
+static const uint8_t data_48_2_1[100] = { [0 ... 99] = 0xff };
+static const struct iovec send_48_2_1 = {
+	.iov_base = (void *)data_48_2_1,
+	.iov_len = sizeof(data_48_2_1),
+};
+
 static const struct iso_client_data connect_16_2_1_send = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
@@ -578,6 +584,14 @@ static const struct iso_client_data listen_16_2_1_defer_recv = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
 	.recv = &send_16_2_1,
+	.server = true,
+	.defer = true,
+};
+
+static const struct iso_client_data listen_48_2_1_defer_recv = {
+	.qos = QOS_48_2_1,
+	.expect_err = 0,
+	.recv = &send_48_2_1,
 	.server = true,
 	.defer = true,
 };
@@ -973,7 +987,7 @@ static bool check_io_qos(const struct bt_iso_io_qos *io1,
 		return false;
 	}
 
-	if (io1->sdu != io2->sdu) {
+	if (io1->sdu && io2->sdu && io1->sdu != io2->sdu) {
 		tester_warn("Unexpected IO SDU: %u != %u", io1->sdu, io2->sdu);
 		return false;
 	}
@@ -1699,6 +1713,10 @@ int main(int argc, char *argv[])
 							test_connect);
 
 	test_iso("ISO Defer Receive - Success", &listen_16_2_1_defer_recv,
+						setup_powered, test_listen);
+
+	test_iso("ISO 48_2_1 Defer Receive - Success",
+						&listen_48_2_1_defer_recv,
 						setup_powered, test_listen);
 
 	test_iso("ISO Defer Reject - Success", &listen_16_2_1_defer_reject,
