@@ -3131,25 +3131,29 @@ bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr)
 }
 
 void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
-						uint8_t cis_id)
+				uint8_t cis_id, const struct bt_iso_qos *qos)
 {
 	struct bt_hci_cmd_le_set_cig_params *cp;
 
 	cp = malloc(sizeof(*cp) + sizeof(*cp->cis));
 	memset(cp, 0, sizeof(*cp) + sizeof(*cp->cis));
 	cp->cig_id = cig_id;
-	put_le24(10000, cp->c_interval);
-	put_le24(10000, cp->p_interval);
-	cp->c_latency = cpu_to_le16(10);
-	cp->p_latency = cpu_to_le16(10);
+	put_le24(qos->in.interval ? qos->in.interval : qos->out.interval,
+							cp->c_interval);
+	put_le24(qos->out.interval ? qos->out.interval : qos->in.interval,
+							cp->p_interval);
+	cp->c_latency = cpu_to_le16(qos->in.latency ? qos->in.latency :
+							qos->out.latency);
+	cp->p_latency = cpu_to_le16(qos->out.latency ? qos->out.latency :
+							qos->in.latency);
 	cp->num_cis = 0x01;
 	cp->cis[0].cis_id = cis_id;
-	cp->cis[0].c_sdu = 40;
-	cp->cis[0].p_sdu = 40;
-	cp->cis[0].c_phy = 0x02;
-	cp->cis[0].p_phy = 0x02;
-	cp->cis[0].c_rtn = 2;
-	cp->cis[0].p_rtn = 2;
+	cp->cis[0].c_sdu = qos->in.sdu;
+	cp->cis[0].p_sdu = qos->out.sdu;
+	cp->cis[0].c_phy = qos->in.phy ? qos->in.phy : qos->out.phy;
+	cp->cis[0].p_phy = qos->out.phy ? qos->out.phy : qos->in.phy;
+	cp->cis[0].c_rtn = qos->in.rtn;
+	cp->cis[0].p_rtn = qos->out.rtn;
 
 	send_command(bthost, BT_HCI_CMD_LE_SET_CIG_PARAMS, cp,
 				sizeof(*cp) + sizeof(*cp->cis));
