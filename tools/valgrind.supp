@@ -25,3 +25,10 @@
    socketcall.bind(my_addr.rc_channel)
    fun:bind
 }
+{
+   bt_log_open
+   Memcheck:Param
+   socketcall.bind(my_addr.rc_bdaddr)
+   fun:bind
+   fun:bt_log_open
+}
