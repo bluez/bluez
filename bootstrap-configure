@@ -33,4 +33,5 @@ fi
 		--enable-ubsan \
 		--enable-cups \
 		--enable-library \
+		--enable-admin \
 		--disable-datafiles $*
