@@ -6821,6 +6821,11 @@ uint32_t btd_device_get_current_flags(struct btd_device *dev)
 	return dev->current_flags;
 }
 
+uint32_t btd_device_get_supported_flags(struct btd_device *dev)
+{
+	return dev->supported_flags;
+}
+
 /* This event is sent immediately after add device on all mgmt sockets.
  * Afterwards, it is only sent to mgmt sockets other than the one which called
  * set_device_flags.

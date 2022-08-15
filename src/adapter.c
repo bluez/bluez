@@ -5395,10 +5395,12 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
 				mgmt_request_func_t func, void *user_data)
 {
 	struct mgmt_cp_set_device_flags cp;
+	uint32_t supported = btd_device_get_supported_flags(device);
 	const bdaddr_t *bdaddr;
 	uint8_t bdaddr_type;
 
-	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL))
+	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL) ||
+				(supported | flags) != supported)
 		return;
 
 	bdaddr = device_get_address(device);
