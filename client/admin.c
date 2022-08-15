@@ -31,20 +31,22 @@
 #include "admin.h"
 #define _GNU_SOURCE
 
+static DBusConnection *dbus_conn;
+static GList *admin_proxies;
 static GDBusProxy *set_proxy;
 static GDBusProxy *status_proxy;
 
-void admin_policy_set_set_proxy(GDBusProxy *proxy)
+static void admin_policy_set_set_proxy(GDBusProxy *proxy)
 {
 	set_proxy = proxy;
 }
 
-void admin_policy_set_status_proxy(GDBusProxy *proxy)
+static void admin_policy_set_status_proxy(GDBusProxy *proxy)
 {
 	status_proxy = proxy;
 }
 
-void admin_policy_read_service_allowlist(DBusConnection *dbus_conn)
+static void admin_policy_read_service_allowlist(DBusConnection *dbus_conn)
 {
 	DBusMessageIter iter, subiter;
 	char *uuid = NULL;
@@ -111,8 +113,7 @@ static void set_service_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
-void admin_policy_set_service_allowlist(DBusConnection *dbus_connd,
-							int argc, char *argv[])
+static void admin_policy_set_service_allowlist(int argc, char *argv[])
 {
 	struct uuid_list_data data;
 
@@ -130,4 +131,90 @@ void admin_policy_set_service_allowlist(DBusConnection *dbus_connd,
 		bt_shell_printf("Failed to call method\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
+}
+
+static void cmd_admin_allow(int argc, char *argv[])
+{
+	if (argc <= 1) {
+		admin_policy_read_service_allowlist(dbus_conn);
+		return;
+	}
+
+	if (strcmp(argv[1], "clear") == 0)
+		argc--;
+
+	admin_policy_set_service_allowlist(argc - 1, argv + 1);
+}
+
+static const struct bt_shell_menu admin_menu = {
+	.name = "admin",
+	.desc = "Admin Policy Submenu",
+	.entries = {
+	{ "allow", "[clear/uuid1 uuid2 ...]", cmd_admin_allow,
+				"Allow service UUIDs and block rest of them"},
+	{} },
+};
+
+static void admin_policy_status_added(GDBusProxy *proxy)
+{
+	admin_proxies = g_list_append(admin_proxies, proxy);
+	admin_policy_set_status_proxy(proxy);
+}
+
+static void proxy_added(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.AdminPolicySet1"))
+		admin_policy_set_set_proxy(proxy);
+	else if (!strcmp(interface, "org.bluez.AdminPolicyStatus1"))
+		admin_policy_status_added(proxy);
+}
+
+static void admin_policy_status_removed(GDBusProxy *proxy)
+{
+	admin_proxies = g_list_remove(admin_proxies, proxy);
+	admin_policy_set_status_proxy(NULL);
+}
+
+static void proxy_removed(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.AdminPolicySet1"))
+		admin_policy_set_set_proxy(NULL);
+	else if (!strcmp(interface, "org.bluez.AdminPolicyStatus1"))
+		admin_policy_status_removed(proxy);
+}
+
+static GDBusClient *client;
+
+static void disconnect_handler(DBusConnection *connection, void *user_data)
+{
+	g_list_free_full(admin_proxies, NULL);
+	admin_proxies = NULL;
+}
+
+void admin_add_submenu(void)
+{
+	bt_shell_add_submenu(&admin_menu);
+
+	dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
+	if (!dbus_conn || client)
+		return;
+
+	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
+	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
+							NULL, NULL);
+	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
+}
+
+void admin_remove_submenu(void)
+{
+	g_dbus_client_unref(client);
+	client = NULL;
 }

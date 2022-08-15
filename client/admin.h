@@ -17,9 +17,5 @@
  *
  */
 
-void admin_policy_set_set_proxy(GDBusProxy *proxy);
-void admin_policy_set_status_proxy(GDBusProxy *proxy);
-
-void admin_policy_read_service_allowlist(DBusConnection *dbus_conn);
-void admin_policy_set_service_allowlist(DBusConnection *dbus_conn,
-							int argc, char *argv[]);
+void admin_add_submenu(void);
+void admin_remove_submenu(void);
