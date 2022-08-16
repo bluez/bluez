@@ -590,6 +590,9 @@ static struct report *report_new(struct bt_hog *hog, struct gatt_char *chr)
 	struct report *report;
 	GSList *l;
 
+	if (!chr)
+		return NULL;
+
 	/* Skip if report already exists */
 	l = g_slist_find_custom(hog->reports, chr, report_chrc_cmp);
 	if (l)
@@ -629,6 +632,9 @@ static void external_service_char_cb(uint8_t status, GSList *chars,
 
 		chr = l->data;
 		next = l->next ? l->next->data : NULL;
+
+		if (!chr)
+			continue;
 
 		DBG("0x%04x UUID: %s properties: %02x",
 				chr->handle, chr->uuid, chr->properties);
@@ -1231,6 +1237,9 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 
 		chr = l->data;
 		next = l->next ? l->next->data : NULL;
+
+		if (!chr)
+			continue;
 
 		DBG("0x%04x UUID: %s properties: %02x",
 				chr->handle, chr->uuid, chr->properties);
