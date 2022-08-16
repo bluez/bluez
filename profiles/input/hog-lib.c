@@ -64,7 +64,6 @@
 #define HOG_PROTO_MODE_BOOT    0
 #define HOG_PROTO_MODE_REPORT  1
 
-#define HOG_REPORT_MAP_MAX_SIZE        512
 #define HID_INFO_SIZE			4
 #define ATT_NOTIFICATION_HEADER_SIZE	3
 
@@ -101,11 +100,6 @@ struct bt_hog {
 	struct gatt_db		*gatt_db;
 	struct gatt_db_attribute	*report_map_attr;
 	struct queue		*input;
-};
-
-struct report_map {
-	uint8_t	value[HOG_REPORT_MAP_MAX_SIZE];
-	size_t	length;
 };
 
 struct report {
@@ -1096,7 +1090,7 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 {
 	struct gatt_request *req = user_data;
 	struct bt_hog *hog = req->user_data;
-	uint8_t value[HOG_REPORT_MAP_MAX_SIZE];
+	uint8_t *value;
 	ssize_t vlen;
 
 	remove_gatt_req(req, status);
@@ -1106,10 +1100,12 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		return;
 	}
 
-	vlen = dec_read_resp(pdu, plen, value, sizeof(value));
+	value = new0(uint8_t, plen);
+
+	vlen = dec_read_resp(pdu, plen, value, plen);
 	if (vlen < 0) {
 		error("ATT protocol error");
-		return;
+		goto done;
 	}
 
 	uhid_create(hog, value, vlen);
@@ -1120,6 +1116,9 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 					NULL, db_report_map_write_value_cb,
 					NULL);
 	}
+
+done:
+	free(value);
 }
 
 static void read_report_map(struct bt_hog *hog)
@@ -1394,7 +1393,7 @@ static void db_report_map_read_value_cb(struct gatt_db_attribute *attrib,
 						int err, const uint8_t *value,
 						size_t length, void *user_data)
 {
-	struct report_map *map = user_data;
+	struct iovec *map = user_data;
 
 	if (err) {
 		error("Error reading report map from gatt db %s",
@@ -1405,8 +1404,9 @@ static void db_report_map_read_value_cb(struct gatt_db_attribute *attrib,
 	if (!length)
 		return;
 
-	map->length = length < sizeof(map->value) ? length : sizeof(map->value);
-	memcpy(map->value, value, map->length);
+
+	map->iov_len = length;
+	map->iov_base = (void *) value;
 }
 
 static void foreach_hog_chrc(struct gatt_db_attribute *attr, void *user_data)
@@ -1415,7 +1415,7 @@ static void foreach_hog_chrc(struct gatt_db_attribute *attr, void *user_data)
 	bt_uuid_t uuid, report_uuid, report_map_uuid, info_uuid;
 	bt_uuid_t proto_mode_uuid, ctrlpt_uuid;
 	uint16_t handle, value_handle;
-	struct report_map report_map = {0};
+	struct iovec map = {};
 
 	gatt_db_attribute_get_char_data(attr, &handle, &value_handle, NULL,
 					NULL, &uuid);
@@ -1438,14 +1438,14 @@ static void foreach_hog_chrc(struct gatt_db_attribute *attr, void *user_data)
 			gatt_db_attribute_read(hog->report_map_attr, 0,
 						BT_ATT_OP_READ_REQ, NULL,
 						db_report_map_read_value_cb,
-						&report_map);
+						&map);
 		}
 
-		if (report_map.length) {
+		if (map.iov_len) {
 			/* Report map found in the cache, straight to creating
 			 * UHID to optimize reconnection.
 			 */
-			uhid_create(hog, report_map.value, report_map.length);
+			uhid_create(hog, map.iov_base, map.iov_len);
 		}
 
 		gatt_db_service_foreach_desc(attr, foreach_hog_external, hog);
