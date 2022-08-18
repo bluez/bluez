@@ -338,7 +338,7 @@ static const struct {
 	{ 0x1849, "Generic Media Control"			},
 	{ 0x184b, "Telephony Bearer"				},
 	{ 0x184c, "Generic Telephony Bearer"			},
-	{ 0x184c, "Microphone Control"				},
+	{ 0x184d, "Microphone Control"				},
 	{ 0x184e, "Audio Stream Control"			},
 	{ 0x184f, "Broadcast Audio Scan"			},
 	{ 0x1850, "Published Audio Capabilities"		},
