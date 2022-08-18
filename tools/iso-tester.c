@@ -1185,18 +1185,18 @@ static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 
 static void iso_shutdown(struct test_data *data, GIOChannel *io)
 {
-	int sk, cl;
+	int sk;
 
 	sk = g_io_channel_unix_get_fd(io);
-	cl = dup(sk);
 
 	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_disconnected, data);
 
-	/* Shutdown clone fd so the original fd don't HUP immediately and
-	 * properly wait for socket to be closed.
+	/* Shutdown using SHUT_WR as SHUT_RDWR cause the socket to HUP
+	 * immediately instead of waiting for Disconnect Complete event.
 	 */
-	shutdown(cl, SHUT_RDWR);
-	close(cl);
+	shutdown(sk, SHUT_WR);
+
+	tester_print("Disconnecting...");
 }
 
 static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
