@@ -137,6 +137,7 @@ struct rfcomm_chan_hook {
 struct iso_hook {
 	bthost_cid_hook_func_t func;
 	void *user_data;
+	bthost_destroy_func_t destroy;
 };
 
 struct btconn {
@@ -305,6 +306,9 @@ static void btconn_free(struct btconn *conn)
 		conn->rfcomm_chan_hooks = hook->next;
 		free(hook);
 	}
+
+	if (conn->iso_hook && conn->iso_hook->destroy)
+		conn->iso_hook->destroy(conn->iso_hook->user_data);
 
 	free(conn->iso_hook);
 	free(conn->recv_data);
@@ -676,7 +680,8 @@ void bthost_add_cid_hook(struct bthost *bthost, uint16_t handle, uint16_t cid,
 }
 
 void bthost_add_iso_hook(struct bthost *bthost, uint16_t handle,
-				bthost_cid_hook_func_t func, void *user_data)
+				bthost_iso_hook_func_t func, void *user_data,
+				bthost_destroy_func_t destroy)
 {
 	struct iso_hook *hook;
 	struct btconn *conn;
@@ -693,6 +698,7 @@ void bthost_add_iso_hook(struct bthost *bthost, uint16_t handle,
 
 	hook->func = func;
 	hook->user_data = user_data;
+	hook->destroy = destroy;
 
 	conn->iso_hook = hook;
 }

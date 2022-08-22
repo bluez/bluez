@@ -1137,7 +1137,7 @@ static void iso_send(struct test_data *data, GIOChannel *io)
 	tester_print("Writing %zu bytes of data", isodata->send->iov_len);
 
 	host = hciemu_client_get_host(data->hciemu);
-	bthost_add_iso_hook(host, data->handle, bthost_recv_data, data);
+	bthost_add_iso_hook(host, data->handle, bthost_recv_data, data, NULL);
 
 	ret = writev(sk, isodata->send, 1);
 	if (ret < 0 || isodata->send->iov_len != (size_t) ret) {
