@@ -676,13 +676,42 @@ static void client_connectable_complete(uint16_t opcode, uint8_t status,
 	}
 }
 
+static void bthost_recv_data(const void *buf, uint16_t len, void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct iso_client_data *isodata = data->test_data;
+
+	tester_print("Client received %u bytes of data", len);
+
+	if (isodata->send && (isodata->send->iov_len != len ||
+			memcmp(isodata->send->iov_base, buf, len))) {
+		if (!isodata->recv->iov_base)
+			tester_test_failed();
+	} else
+		tester_test_passed();
+}
+
+static void bthost_iso_disconnected(void *user_data)
+{
+	struct test_data *data = user_data;
+
+	tester_print("ISO handle 0x%04x disconnected", data->handle);
+
+	data->handle = 0x0000;
+}
+
 static void iso_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
+	struct bthost *host;
 
 	tester_print("New client connection with handle 0x%04x", handle);
 
 	data->handle = handle;
+
+	host = hciemu_client_get_host(data->hciemu);
+	bthost_add_iso_hook(host, data->handle, bthost_recv_data, data,
+				bthost_iso_disconnected);
 }
 
 static void acl_new_conn(uint16_t handle, void *user_data)
@@ -722,7 +751,7 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 		if (!isodata)
 			continue;
 
-		if (isodata->send || isodata->recv)
+		if (isodata->send || isodata->recv || isodata->disconnect)
 			bthost_set_iso_cb(host, iso_new_conn, data);
 
 		if (isodata->bcast) {
@@ -1110,34 +1139,15 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 	data->io_id[0] = g_io_add_watch(io, G_IO_IN, iso_recv_data, data);
 }
 
-static void bthost_recv_data(const void *buf, uint16_t len, void *user_data)
-{
-	struct test_data *data = user_data;
-	const struct iso_client_data *isodata = data->test_data;
-
-	tester_print("Client received %u bytes of data", len);
-
-	if (isodata->send && (isodata->send->iov_len != len ||
-			memcmp(isodata->send->iov_base, buf, len))) {
-		if (!isodata->recv->iov_base)
-			tester_test_failed();
-	} else
-		tester_test_passed();
-}
-
 static void iso_send(struct test_data *data, GIOChannel *io)
 {
 	const struct iso_client_data *isodata = data->test_data;
-	struct bthost *host;
 	ssize_t ret;
 	int sk;
 
 	sk = g_io_channel_unix_get_fd(io);
 
 	tester_print("Writing %zu bytes of data", isodata->send->iov_len);
-
-	host = hciemu_client_get_host(data->hciemu);
-	bthost_add_iso_hook(host, data->handle, bthost_recv_data, data, NULL);
 
 	ret = writev(sk, isodata->send, 1);
 	if (ret < 0 || isodata->send->iov_len != (size_t) ret) {
@@ -1167,7 +1177,7 @@ static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 
 	data->io_id[0] = 0;
 
-	if (cond & G_IO_HUP) {
+	if ((cond & G_IO_HUP) && !data->handle) {
 		tester_print("Successfully disconnected");
 
 		if (data->reconnect) {
