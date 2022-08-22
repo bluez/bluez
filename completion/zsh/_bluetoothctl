@@ -68,8 +68,7 @@ _bluetoothctl() {
 		'(info)'{-m,--monitor}'[Enable monitor output]' \
 		+ 'command' \
 		'(info):command:->command' \
-		'(info):: :->argument' \
-		': :_message "no more arguments"'
+		'(info):: :->argument'
 
 	if [[ $state == "command" ]]; then
 		_describe -t commands 'command' all_commands
