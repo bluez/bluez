@@ -66,6 +66,9 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 	/* The iCade shouldn't use random PINs like normal keyboards */
 	if (strstr(name, "iCade") != NULL)
 		return 0;
+	/* Nissan Connect carkits use PIN 1234 but refuse a retry */
+	if (name != NULL && strstr(name, "NISSAN CONNECT") != NULL)
+		return 0;
 
 	/* This is a class-based pincode guesser. Ignore devices with an
 	 * unknown class.
