@@ -301,7 +301,7 @@ static bool get_initiator(struct btd_device *dev)
 	if (dev->bredr_state.connected)
 		return dev->bredr_state.initiator;
 
-	return false;
+	return dev->att_io ? true : false;
 }
 
 static GSList *find_service_with_profile(GSList *list, struct btd_profile *p)
@@ -5367,6 +5367,9 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		err = -ECONNABORTED;
 		goto done;
 	}
+
+	/* Update connected state */
+	device->le_state.connected = true;
 
 	if (!device_attach_att(device, io))
 		goto done;
