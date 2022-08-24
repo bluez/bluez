@@ -281,9 +281,26 @@ static void media_owner_free(struct media_owner *owner)
 	g_free(owner);
 }
 
+static void linked_transport_remove_owner(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+	struct media_owner *owner = user_data;
+	struct media_transport *transport;
+
+	transport = find_transport_by_bap_stream(stream);
+	if (!transport) {
+		error("Unable to find transport");
+		return;
+	}
+
+	DBG("Transport %s Owner %s", transport->path, owner->name);
+	transport->owner = NULL;
+}
+
 static void media_transport_remove_owner(struct media_transport *transport)
 {
 	struct media_owner *owner = transport->owner;
+	struct bap_transport *bap = transport->data;
 
 	if (!transport->owner)
 		return;
@@ -295,6 +312,9 @@ static void media_transport_remove_owner(struct media_transport *transport)
 		media_request_reply(owner->pending, EIO);
 
 	transport->owner = NULL;
+	if (bap->linked)
+		queue_foreach(bt_bap_stream_io_get_links(bap->stream),
+				linked_transport_remove_owner, owner);
 
 	if (owner->watch)
 		g_dbus_remove_watch(btd_get_dbus_connection(), owner->watch);
@@ -452,11 +472,34 @@ static void media_owner_exit(DBusConnection *connection, void *user_data)
 	media_transport_remove_owner(owner->transport);
 }
 
+static void linked_transport_set_owner(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+	struct media_owner *owner = user_data;
+	struct media_transport *transport;
+
+	transport = find_transport_by_bap_stream(stream);
+	if (!transport) {
+		error("Unable to find transport");
+		return;
+	}
+
+	DBG("Transport %s Owner %s", transport->path, owner->name);
+	transport->owner = owner;
+}
+
 static void media_transport_set_owner(struct media_transport *transport,
 					struct media_owner *owner)
 {
+	struct bap_transport *bap = transport->data;
+
 	DBG("Transport %s Owner %s", transport->path, owner->name);
 	transport->owner = owner;
+
+	if (bap->linked)
+		queue_foreach(bt_bap_stream_io_get_links(bap->stream),
+				linked_transport_set_owner, owner);
+
 	owner->transport = transport;
 	owner->watch = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
 							owner->name,
