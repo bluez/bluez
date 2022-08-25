@@ -2183,7 +2183,7 @@ static void get_flags_rsp(uint8_t status, uint16_t len, const void *param,
 	if (status != 0) {
 		error("Get device flags failed with status 0x%02x (%s)",
 						status, mgmt_errstr(status));
-		bt_shell_noninteractive_quit(EXIT_FAILURE);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
 	print("Supported Flags: 0x%08x", rp->supported_flags);
