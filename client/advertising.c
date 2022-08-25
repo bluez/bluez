@@ -329,7 +329,8 @@ static gboolean get_includes(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean local_name_exits(const GDBusPropertyTable *property, void *data)
+static gboolean local_name_exists(const GDBusPropertyTable *property,
+							void *data)
 {
 	return ad.local_name ? TRUE : FALSE;
 }
@@ -342,7 +343,8 @@ static gboolean get_local_name(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean appearance_exits(const GDBusPropertyTable *property, void *data)
+static gboolean appearance_exists(const GDBusPropertyTable *property,
+							void *data)
 {
 	return ad.local_appearance != UINT16_MAX ? TRUE : FALSE;
 }
@@ -356,7 +358,7 @@ static gboolean get_appearance(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean duration_exits(const GDBusPropertyTable *property, void *data)
+static gboolean duration_exists(const GDBusPropertyTable *property, void *data)
 {
 	return ad.duration;
 }
@@ -369,7 +371,7 @@ static gboolean get_duration(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean timeout_exits(const GDBusPropertyTable *property, void *data)
+static gboolean timeout_exists(const GDBusPropertyTable *property, void *data)
 {
 	return ad.timeout;
 }
@@ -420,7 +422,7 @@ static gboolean get_discoverable(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean discoverable_timeout_exits(const GDBusPropertyTable *property,
+static gboolean discoverable_timeout_exists(const GDBusPropertyTable *property,
 							void *data)
 {
 	return ad.discoverable_to;
@@ -435,7 +437,7 @@ static gboolean get_discoverable_timeout(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean secondary_exits(const GDBusPropertyTable *property, void *data)
+static gboolean secondary_exists(const GDBusPropertyTable *property, void *data)
 {
 	return ad.secondary ? TRUE : FALSE;
 }
@@ -449,7 +451,7 @@ static gboolean get_secondary(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean min_interval_exits(const GDBusPropertyTable *property,
+static gboolean min_interval_exists(const GDBusPropertyTable *property,
 							void *data)
 {
 	return ad.min_interval;
@@ -464,7 +466,7 @@ static gboolean get_min_interval(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean max_interval_exits(const GDBusPropertyTable *property,
+static gboolean max_interval_exists(const GDBusPropertyTable *property,
 							void *data)
 {
 	return ad.max_interval;
@@ -488,15 +490,15 @@ static const GDBusPropertyTable ad_props[] = {
 	{ "Data", "a{yv}", get_data, NULL, data_exists },
 	{ "Discoverable", "b", get_discoverable, NULL, discoverable_exists },
 	{ "DiscoverableTimeout", "q", get_discoverable_timeout, NULL,
-						discoverable_timeout_exits },
+						discoverable_timeout_exists },
 	{ "Includes", "as", get_includes, NULL, includes_exists },
-	{ "LocalName", "s", get_local_name, NULL, local_name_exits },
-	{ "Appearance", "q", get_appearance, NULL, appearance_exits },
-	{ "Duration", "q", get_duration, NULL, duration_exits },
-	{ "Timeout", "q", get_timeout, NULL, timeout_exits },
-	{ "MinInterval", "u", get_min_interval, NULL, min_interval_exits },
-	{ "MaxInterval", "u", get_max_interval, NULL, max_interval_exits },
-	{ "SecondaryChannel", "s", get_secondary, NULL, secondary_exits },
+	{ "LocalName", "s", get_local_name, NULL, local_name_exists },
+	{ "Appearance", "q", get_appearance, NULL, appearance_exists },
+	{ "Duration", "q", get_duration, NULL, duration_exists },
+	{ "Timeout", "q", get_timeout, NULL, timeout_exists },
+	{ "MinInterval", "u", get_min_interval, NULL, min_interval_exists },
+	{ "MaxInterval", "u", get_max_interval, NULL, max_interval_exists },
+	{ "SecondaryChannel", "s", get_secondary, NULL, secondary_exists },
 	{ }
 };
 
