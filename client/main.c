@@ -3109,23 +3109,27 @@ static const struct bt_shell_menu main_menu = {
 
 static const struct option options[] = {
 	{ "agent",	required_argument, 0, 'a' },
+	{ "endpoints",	no_argument, 0, 'e' },
 	{ 0, 0, 0, 0 }
 };
 
 static const char *agent_option;
+static const char *endpoint_option;
 
 static const char **optargs[] = {
-	&agent_option
+	&agent_option,
+	&endpoint_option
 };
 
 static const char *help[] = {
-	"Register agent handler: <capability>"
+	"Register agent handler: <capability>",
+	"Register Media endpoints"
 };
 
 static const struct bt_shell_opt opt = {
 	.options = options,
 	.optno = sizeof(options) / sizeof(struct option),
-	.optstr = "a:",
+	.optstr = "a:e",
 	.optarg = optargs,
 	.help = help,
 };
@@ -3157,6 +3161,10 @@ int main(int argc, char *argv[])
 	g_dbus_attach_object_manager(dbus_conn);
 
 	bt_shell_set_env("DBUS_CONNECTION", dbus_conn);
+
+	if (endpoint_option)
+		bt_shell_set_env("AUTO_REGISTER_ENDPOINT",
+					(void *)endpoint_option);
 
 	admin_add_submenu();
 	player_add_submenu();

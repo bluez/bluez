@@ -510,41 +510,6 @@ static char *proxy_description(GDBusProxy *proxy, const char *title,
 					title, path);
 }
 
-static void print_media(GDBusProxy *proxy, const char *description)
-{
-	char *str;
-
-	str = proxy_description(proxy, "Media", description);
-
-	bt_shell_printf("%s\n", str);
-
-	g_free(str);
-}
-
-static void print_player(GDBusProxy *proxy, const char *description)
-{
-	char *str;
-
-	str = proxy_description(proxy, "Player", description);
-
-	bt_shell_printf("%s%s\n", str,
-			default_player == proxy ? "[default]" : "");
-
-	g_free(str);
-}
-
-static void cmd_list(int argc, char *arg[])
-{
-	GList *l;
-
-	for (l = players; l; l = g_list_next(l)) {
-		GDBusProxy *proxy = l->data;
-		print_player(proxy, NULL);
-	}
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
-}
-
 static void print_iter(const char *label, const char *name,
 						DBusMessageIter *iter)
 {
@@ -625,6 +590,42 @@ static void print_property(GDBusProxy *proxy, const char *name)
 		return;
 
 	print_iter("\t", name, &iter);
+}
+
+static void print_media(GDBusProxy *proxy, const char *description)
+{
+	char *str;
+
+	str = proxy_description(proxy, "Media", description);
+
+	bt_shell_printf("%s\n", str);
+	print_property(proxy, "SupportedUUIDs");
+
+	g_free(str);
+}
+
+static void print_player(GDBusProxy *proxy, const char *description)
+{
+	char *str;
+
+	str = proxy_description(proxy, "Player", description);
+
+	bt_shell_printf("%s%s\n", str,
+			default_player == proxy ? "[default]" : "");
+
+	g_free(str);
+}
+
+static void cmd_list(int argc, char *arg[])
+{
+	GList *l;
+
+	for (l = players; l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+		print_player(proxy, NULL);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_show_item(int argc, char *argv[])
@@ -2412,11 +2413,62 @@ static const struct bt_shell_menu endpoint_menu = {
 	{} },
 };
 
+static struct endpoint *endpoint_new(const struct capabilities *cap)
+{
+	struct endpoint *ep;
+
+	ep = new0(struct endpoint, 1);
+	ep->uuid = g_strdup(cap->uuid);
+	ep->codec = cap->codec_id;
+	ep->path = g_strdup_printf("%s/ep%u", BLUEZ_MEDIA_ENDPOINT_PATH,
+					g_list_length(local_endpoints));
+	/* Copy capabilities */
+	iov_append(&ep->caps, cap->data.iov_base, cap->data.iov_len);
+	local_endpoints = g_list_append(local_endpoints, ep);
+
+	return ep;
+}
+
+static void register_endpoints(GDBusProxy *proxy)
+{
+	struct endpoint *ep;
+	DBusMessageIter iter, array;
+
+	if (!g_dbus_proxy_get_property(proxy, "SupportedUUIDs", &iter))
+		return;
+
+	dbus_message_iter_recurse(&iter, &array);
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
+		const char *uuid;
+		size_t i;
+
+		dbus_message_iter_get_basic(&array, &uuid);
+
+		for (i = 0; i < ARRAY_SIZE(caps); i++) {
+			const struct capabilities *cap = &caps[i];
+
+			if (strcasecmp(cap->uuid, uuid))
+				continue;
+
+			ep = endpoint_new(cap);
+			ep->auto_accept = true;
+			ep->cig = BT_ISO_QOS_CIG_UNSET;
+			ep->cis = BT_ISO_QOS_CIS_UNSET;
+			endpoint_register(ep);
+		}
+
+		dbus_message_iter_next(&array);
+	}
+}
+
 static void media_added(GDBusProxy *proxy)
 {
 	medias = g_list_append(medias, proxy);
 
 	print_media(proxy, COLORED_NEW);
+
+	if (bt_shell_get_env("AUTO_REGISTER_ENDPOINT"))
+		register_endpoints(proxy);
 }
 
 static void player_added(GDBusProxy *proxy)
