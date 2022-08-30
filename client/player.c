@@ -604,8 +604,10 @@ static void print_media(GDBusProxy *proxy, const char *description)
 	g_free(str);
 }
 
-static void print_player(GDBusProxy *proxy, const char *description)
+static void print_player(void *data, void *user_data)
 {
+	GDBusProxy *proxy = data;
+	const char *description = user_data;
 	char *str;
 
 	str = proxy_description(proxy, "Player", description);
@@ -618,12 +620,7 @@ static void print_player(GDBusProxy *proxy, const char *description)
 
 static void cmd_list(int argc, char *arg[])
 {
-	GList *l;
-
-	for (l = players; l; l = g_list_next(l)) {
-		GDBusProxy *proxy = l->data;
-		print_player(proxy, NULL);
-	}
+	g_list_foreach(players, print_player, NULL);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
