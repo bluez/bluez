@@ -889,16 +889,20 @@ done:
 	data->cb(data->pac, err, caps, metadata, &qos, data->user_data);
 }
 
-static int pac_select(struct bt_bap_pac *pac, struct bt_bap_pac_qos *qos,
-			struct iovec *caps, struct iovec *metadata,
+static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
+			struct bt_bap_pac_qos *qos,
 			bt_bap_pac_select_t cb, void *cb_data, void *user_data)
 {
 	struct media_endpoint *endpoint = user_data;
+	struct iovec *caps;
+	struct iovec *metadata;
+	const char *endpoint_path;
 	struct pac_select_data *data;
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
 	const char *key = "Capabilities";
 
+	bt_bap_pac_get_codec(rpac, NULL, &caps, &metadata);
 	if (!caps)
 		return -EINVAL;
 
@@ -911,13 +915,18 @@ static int pac_select(struct bt_bap_pac *pac, struct bt_bap_pac_qos *qos,
 	}
 
 	data = new0(struct pac_select_data, 1);
-	data->pac = pac;
+	data->pac = lpac;
 	data->cb = cb;
 	data->user_data = cb_data;
 
 	dbus_message_iter_init_append(msg, &iter);
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+	endpoint_path = bt_bap_pac_get_user_data(rpac);
+	if (endpoint_path)
+		g_dbus_dict_append_entry(&dict, "Endpoint",
+					DBUS_TYPE_OBJECT_PATH, &endpoint_path);
 
 	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING, &key,
 					DBUS_TYPE_BYTE, &caps->iov_base,

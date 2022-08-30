@@ -3934,6 +3934,16 @@ int bt_bap_pac_get_codec(struct bt_bap_pac *pac, uint8_t *id,
 	return bt_bap_pac_get_vendor_codec(pac, id, NULL, NULL, data, metadata);
 }
 
+void bt_bap_pac_set_user_data(struct bt_bap_pac *pac, void *user_data)
+{
+	pac->user_data = user_data;
+}
+
+void *bt_bap_pac_get_user_data(struct bt_bap_pac *pac)
+{
+	return pac->user_data;
+}
+
 static bool find_ep_unused(const void *data, const void *user_data)
 {
 	const struct bt_bap_endpoint *ep = data;
@@ -4066,7 +4076,7 @@ int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	if (!lpac->ops || !lpac->ops->select)
 		return -EOPNOTSUPP;
 
-	lpac->ops->select(lpac, &rpac->qos, rpac->data, rpac->metadata,
+	lpac->ops->select(lpac, rpac, &rpac->qos,
 					func, user_data, lpac->user_data);
 
 	return 0;

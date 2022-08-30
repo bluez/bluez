@@ -555,6 +555,8 @@ static struct bap_ep *ep_register(struct btd_service *service,
 		return NULL;
 	}
 
+	bt_bap_pac_set_user_data(rpac, ep->path);
+
 	DBG("ep %p lpac %p rpac %p path %s", ep, ep->lpac, ep->rpac, ep->path);
 
 	queue_push_tail(queue, ep);
