@@ -1254,20 +1254,23 @@ static bool endpoint_properties_get(const char *uuid,
 	return true;
 }
 
-static bool endpoint_supported(void)
+static bool endpoint_supported(struct btd_adapter *adapter)
 {
 	return true;
 }
 
-static bool experimental_endpoint_supported(void)
+static bool experimental_endpoint_supported(struct btd_adapter *adapter)
 {
+	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET))
+		return false;
+
 	return g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
 }
 
 static struct media_endpoint_init {
 	const char *uuid;
 	bool (*func)(struct media_endpoint *endpoint, int *err);
-	bool (*supported)(void);
+	bool (*supported)(struct btd_adapter *adapter);
 } init_table[] = {
 	{ A2DP_SOURCE_UUID, endpoint_init_a2dp_source, endpoint_supported },
 	{ A2DP_SINK_UUID, endpoint_init_a2dp_sink, endpoint_supported },
@@ -1314,6 +1317,9 @@ media_endpoint_create(struct media_adapter *adapter,
 
 	for (i = 0; i < ARRAY_SIZE(init_table); i++) {
 		init = &init_table[i];
+
+		if (!init->supported(adapter->btd_adapter))
+			continue;
 
 		if (!strcasecmp(init->uuid, uuid)) {
 			succeeded = init->func(endpoint, err);
@@ -2971,6 +2977,7 @@ static const GDBusMethodTable media_methods[] = {
 static gboolean supported_uuids(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
+	struct media_adapter *adapter = data;
 	DBusMessageIter entry;
 	size_t i;
 
@@ -2980,7 +2987,7 @@ static gboolean supported_uuids(const GDBusPropertyTable *property,
 	for (i = 0; i < ARRAY_SIZE(init_table); i++) {
 		struct media_endpoint_init *init = &init_table[i];
 
-		if (init->supported())
+		if (init->supported(adapter->btd_adapter))
 			dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
 							&init->uuid);
 	}
