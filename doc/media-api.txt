@@ -601,8 +601,10 @@ Methods		void SetConfiguration(object transport, dict properties)
 		dict SelectProperties(dict properties)
 
 			Select preferable properties from the supported
-			properties. Refer to SetConfiguration for the list of
-			possible properties.
+			properties:
+				object Endpoint [ISO only]
+				Refer to SetConfiguration for the list of
+					other possible properties.
 
 			Returns propeties which can be used to setup
 			a transport.
