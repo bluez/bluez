@@ -1101,6 +1101,7 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 	struct option options[256];
 	char optstr[256];
 	size_t offset;
+	char *endptr = NULL;
 
 	offset = sizeof(main_options) / sizeof(struct option);
 
@@ -1132,7 +1133,11 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			data.mode = 1;
 			goto done;
 		case 't':
-			data.timeout = atoi(optarg);
+			if (optarg)
+				data.timeout = strtol(optarg, &endptr, 0);
+
+			if (!endptr || *endptr != '\0')
+				printf("Unable to parse timeout\n");
 			break;
 		case 'z':
 			data.zsh = 1;
