@@ -144,6 +144,7 @@ void plugin_cleanup(void);
 
 void rfkill_init(void);
 void rfkill_exit(void);
+int rfkill_get_blocked(uint16_t index);
 
 GKeyFile *btd_get_main_conf(void);
 bool btd_kernel_experimental_enabled(const char *uuid);
