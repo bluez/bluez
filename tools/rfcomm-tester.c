@@ -788,7 +788,7 @@ static void test_server(const void *test_data)
 		user = malloc(sizeof(struct test_data)); \
 		if (!user) \
 			break; \
-		user->hciemu_type = HCIEMU_TYPE_BREDR; \
+		user->hciemu_type = HCIEMU_TYPE_BREDRLE52; \
 		user->test_data = data; \
 		user->io_id = 0; \
 		tester_add_full(name, data, \
