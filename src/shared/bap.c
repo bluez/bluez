@@ -158,6 +158,7 @@ struct bt_bap {
 	unsigned int cp_id;
 
 	unsigned int process_id;
+	unsigned int disconn_id;
 	struct queue *reqs;
 	struct queue *pending;
 	struct queue *notify;
@@ -623,6 +624,8 @@ static void bap_disconnected(int err, void *user_data)
 {
 	struct bt_bap *bap = user_data;
 
+	bap->disconn_id = 0;
+
 	DBG(bap, "bap %p disconnected err %d", bap, err);
 
 	bt_bap_detach(bap);
@@ -642,8 +645,6 @@ static struct bt_bap *bap_get_session(struct bt_att *att, struct gatt_db *db)
 
 	bap = bt_bap_new(db, NULL);
 	bap->att = att;
-
-	bt_att_register_disconnect(att, bap_disconnected, bap, NULL);
 
 	bt_bap_attach(bap, NULL);
 
@@ -3643,6 +3644,19 @@ static void bap_endpoint_foreach(void *data, void *user_data)
 	bap_endpoint_attach(bap, ep);
 }
 
+static void bap_attach_att(struct bt_bap *bap, struct bt_att *att)
+{
+	if (bap->disconn_id) {
+		if (att == bt_bap_get_att(bap))
+			return;
+		bt_att_unregister_disconnect(bap->att, bap->disconn_id);
+	}
+
+	bap->disconn_id = bt_att_register_disconnect(bap->att,
+							bap_disconnected,
+							bap, NULL);
+}
+
 bool bt_bap_attach(struct bt_bap *bap, struct bt_gatt_client *client)
 {
 	bt_uuid_t uuid;
@@ -3663,8 +3677,10 @@ bool bt_bap_attach(struct bt_bap *bap, struct bt_gatt_client *client)
 
 	queue_foreach(bap_cbs, bap_attached, bap);
 
-	if (!client)
+	if (!client) {
+		bap_attach_att(bap, bap->att);
 		return true;
+	}
 
 	if (bap->client)
 		return false;
@@ -3673,6 +3689,8 @@ clone:
 	bap->client = bt_gatt_client_clone(client);
 	if (!bap->client)
 		return false;
+
+	bap_attach_att(bap, bt_gatt_client_get_att(client));
 
 	if (bap->rdb->pacs) {
 		uint16_t value_handle;
@@ -3732,6 +3750,9 @@ void bt_bap_detach(struct bt_bap *bap)
 
 	bt_gatt_client_unref(bap->client);
 	bap->client = NULL;
+
+	bt_att_unregister_disconnect(bap->att, bap->disconn_id);
+	bap->att = NULL;
 
 	queue_foreach(bap->streams, stream_foreach_detach, bap);
 	queue_foreach(bap_cbs, bap_detached, bap);
