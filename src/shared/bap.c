@@ -1050,12 +1050,14 @@ static void bap_stream_free(void *data)
 	free(stream);
 }
 
-static void bap_ep_detach(struct bt_bap_endpoint *ep)
+static void bap_stream_detach(struct bt_bap_stream *stream)
 {
-	struct bt_bap_stream *stream = ep->stream;
+	struct bt_bap_endpoint *ep = stream->ep;
 
-	if (!stream)
+	if (!ep)
 		return;
+
+	DBG(stream->bap, "stream %p ep %p", stream, ep);
 
 	queue_remove(stream->bap->streams, stream);
 	bap_stream_clear_cfm(stream);
@@ -1281,7 +1283,7 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 	/* Post notification updates */
 	switch (stream->ep->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
-		bap_ep_detach(stream->ep);
+		bap_stream_detach(stream);
 		break;
 	case BT_ASCS_ASE_STATE_QOS:
 		break;
@@ -1838,7 +1840,8 @@ static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
 {
 	DBG(stream->bap, "stream %p", stream);
 
-	if (!stream || stream->ep->state == BT_BAP_STREAM_STATE_QOS)
+	if (!stream || stream->ep->state == BT_BAP_STREAM_STATE_QOS ||
+			stream->ep->state == BT_BAP_STREAM_STATE_IDLE)
 		return 0;
 
 	ascs_ase_rsp_success(rsp, stream->ep->id);
