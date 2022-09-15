@@ -164,6 +164,13 @@ extern "C" {
 #define ASE_SOURCE_UUID					0x2bc5
 #define ASE_CP_UUID					0x2bc6
 
+#define VCS_UUID					0x1844
+#define VOL_OFFSET_CS_UUID				0x1845
+#define AUDIO_INPUT_CS_UUID				0x1843
+#define VOL_STATE_CHRC_UUID				0x2B7D
+#define VOL_CP_CHRC_UUID				0x2B7E
+#define VOL_FLAG_CHRC_UUID				0x2B7F
+
 typedef struct {
 	enum {
 		BT_UUID_UNSPEC = 0,
