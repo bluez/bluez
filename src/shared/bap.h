@@ -10,8 +10,6 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include "src/shared/io.h"
-
 #ifndef __packed
 #define __packed __attribute__((packed))
 #endif

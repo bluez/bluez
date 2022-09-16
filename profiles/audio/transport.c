@@ -34,6 +34,7 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/bap.h"
+#include "src/shared/io.h"
 
 #include "avdtp.h"
 #include "media.h"
