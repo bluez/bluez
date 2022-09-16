@@ -20,6 +20,7 @@
 
 #include <glib.h>
 
+#include "src/shared/io.h"
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
 

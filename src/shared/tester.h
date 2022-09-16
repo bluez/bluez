@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "src/shared/io.h"
+#include <sys/uio.h>
 
 #define data(args...) ((const unsigned char[]) { args })
 
