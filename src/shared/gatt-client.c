@@ -211,22 +211,6 @@ static void notify_data_unref(void *data)
 	free(notify_data);
 }
 
-static void find_ccc(struct gatt_db_attribute *attr, void *user_data)
-{
-	struct gatt_db_attribute **ccc_ptr = user_data;
-	bt_uuid_t uuid;
-
-	if (*ccc_ptr)
-		return;
-
-	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
-
-	if (bt_uuid_cmp(&uuid, gatt_db_attribute_get_type(attr)))
-		return;
-
-	*ccc_ptr = attr;
-}
-
 static bool match_notify_chrc(const void *data, const void *user_data)
 {
 	const struct notify_data *notify_data = data;
@@ -273,24 +257,25 @@ static void chrc_removed(struct gatt_db_attribute *attr, void *user_data)
 }
 
 static struct notify_chrc *notify_chrc_create(struct bt_gatt_client *client,
-							uint16_t value_handle)
+							uint16_t handle)
 {
 	struct gatt_db_attribute *attr, *ccc;
 	struct notify_chrc *chrc;
-	bt_uuid_t uuid;
+	uint16_t value_handle;
 	uint8_t properties;
 
-	/* Check that chrc_value_handle belongs to a known characteristic */
-	attr = gatt_db_get_attribute(client->db, value_handle - 1);
+	/* Check that there is an attribute with handle */
+	attr = gatt_db_get_attribute(client->db, handle);
 	if (!attr)
 		return NULL;
 
-	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	if (bt_uuid_cmp(&uuid, gatt_db_attribute_get_type(attr)))
+	if (!gatt_db_attribute_get_char_data(attr, NULL, &value_handle,
+						&properties, NULL, NULL))
 		return NULL;
 
-	if (!gatt_db_attribute_get_char_data(attr, NULL, NULL, &properties,
-								NULL, NULL))
+	/* Check that there is an attribute with value_handle */
+	attr = gatt_db_get_attribute(client->db, value_handle);
+	if (!attr)
 		return NULL;
 
 	chrc = new0(struct notify_chrc, 1);
@@ -301,13 +286,7 @@ static struct notify_chrc *notify_chrc_create(struct bt_gatt_client *client,
 		return NULL;
 	}
 
-	/*
-	 * Find the CCC characteristic. Some characteristics that allow
-	 * notifications may not have a CCC descriptor. We treat these as
-	 * automatically successful.
-	 */
-	ccc = NULL;
-	gatt_db_service_foreach_desc(attr, find_ccc, &ccc);
+	ccc = gatt_db_attribute_get_ccc(attr);
 	if (ccc)
 		chrc->ccc_handle = gatt_db_attribute_get_handle(ccc);
 
