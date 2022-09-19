@@ -121,3 +121,8 @@ if BAP
 builtin_modules += bap
 builtin_sources += profiles/audio/bap.c
 endif
+
+if VCP
+builtin_modules += vcp
+builtin_sources += profiles/audio/vcp.c
+endif
