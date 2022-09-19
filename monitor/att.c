@@ -1590,6 +1590,162 @@ static void pac_context_notify(const struct l2cap_frame *frame)
 	print_pac_context(frame);
 }
 
+static void print_vcs_state(const struct l2cap_frame *frame)
+{
+	uint8_t vol_set, mute, chng_ctr;
+
+	if (!l2cap_frame_get_u8((void *)frame, &vol_set)) {
+		print_text(COLOR_ERROR, "Volume Settings: invalid size");
+		goto done;
+	}
+	print_field("    Volume Setting: %u", vol_set);
+
+	if (!l2cap_frame_get_u8((void *)frame, &mute)) {
+		print_text(COLOR_ERROR, "Mute Filed: invalid size");
+		goto done;
+	}
+
+	switch (mute) {
+	case 0x00:
+		print_field("    Not Muted: %u", mute);
+		break;
+	case 0x01:
+		print_field("    Muted: %u", mute);
+		break;
+	default:
+		print_field("    Unknown Mute Value: %u", mute);
+		break;
+	}
+
+	if (!l2cap_frame_get_u8((void *)frame, &chng_ctr)) {
+		print_text(COLOR_ERROR, "Change Counter: invalid size");
+		goto done;
+	}
+	print_field("    Change Counter: %u", chng_ctr);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void vol_state_read(const struct l2cap_frame *frame)
+{
+	print_vcs_state(frame);
+}
+
+static void vol_state_notify(const struct l2cap_frame *frame)
+{
+	print_vcs_state(frame);
+}
+
+static bool vcs_config_cmd(const struct l2cap_frame *frame)
+{
+	if (!l2cap_frame_print_u8((void *)frame, "    Change Counter"))
+		return false;
+
+	return true;
+}
+
+static bool vcs_absolute_cmd(const struct l2cap_frame *frame)
+{
+	if (!l2cap_frame_print_u8((void *)frame, "    Change Counter"))
+		return false;
+
+	if (!l2cap_frame_print_u8((void *)frame, "    Volume Setting"))
+		return false;
+
+	return true;
+}
+
+#define VCS_CMD(_op, _desc, _func) \
+[_op] = { \
+	.desc = _desc, \
+	.func = _func, \
+}
+
+struct vcs_cmd {
+	const char *desc;
+	bool (*func)(const struct l2cap_frame *frame);
+} vcs_cmd_table[] = {
+	/* Opcode = 0x00 (Relative Volume Down) */
+	VCS_CMD(0x00, "Relative Volume Down", vcs_config_cmd),
+	/* Opcode = 0x01 (Relative Volume Up) */
+	VCS_CMD(0x01, "Relative Volume Up", vcs_config_cmd),
+	/* Opcode = 0x02 (Unmute/Relative Volume Down) */
+	VCS_CMD(0x02, "Unmute/Relative Volume Down", vcs_config_cmd),
+	/* Opcode = 0x03 (Unmute/Relative Volume Up) */
+	VCS_CMD(0x03, "Unmute/Relative Volume Up", vcs_config_cmd),
+	/* Opcode = 0x04 (Set Absolute Volume) */
+	VCS_CMD(0x04, "Set Absolute Volume", vcs_absolute_cmd),
+	/* Opcode = 0x05 (Unmute) */
+	VCS_CMD(0x05, "Unmute", vcs_config_cmd),
+	/* Opcode = 0x06 (Mute) */
+	VCS_CMD(0x06, "Mute", vcs_config_cmd),
+};
+
+static struct vcs_cmd *vcs_get_cmd(uint8_t op)
+{
+	if (op > ARRAY_SIZE(vcs_cmd_table))
+		return NULL;
+
+	return &vcs_cmd_table[op];
+}
+
+static void print_vcs_cmd(const struct l2cap_frame *frame)
+{
+	uint8_t op;
+	struct vcs_cmd *cmd;
+
+	if (!l2cap_frame_get_u8((void *)frame, &op)) {
+		print_text(COLOR_ERROR, "opcode: invalid size");
+		goto done;
+	}
+
+	cmd = vcs_get_cmd(op);
+	if (!cmd) {
+		print_field("    Opcode: Reserved (0x%2.2x)", op);
+		goto done;
+	}
+
+	print_field("    Opcode: %s (0x%2.2x)", cmd->desc, op);
+	if (!cmd->func(frame))
+		print_field("    Unknown Opcode");
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void vol_cp_write(const struct l2cap_frame *frame)
+{
+	print_vcs_cmd(frame);
+}
+
+static void print_vcs_flag(const struct l2cap_frame *frame)
+{
+	uint8_t vol_flag;
+
+	if (!l2cap_frame_get_u8((void *)frame, &vol_flag)) {
+		print_text(COLOR_ERROR, "Volume Flag: invalid size");
+		goto done;
+	}
+	print_field("    Volume Falg: %u", vol_flag);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void vol_flag_read(const struct l2cap_frame *frame)
+{
+	print_vcs_flag(frame);
+}
+
+static void vol_flag_notify(const struct l2cap_frame *frame)
+{
+	print_vcs_flag(frame);
+}
+
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
 	.uuid = { \
@@ -1617,6 +1773,9 @@ struct gatt_handler {
 	GATT_HANDLER(0x2bcc, pac_loc_read, NULL, pac_loc_notify),
 	GATT_HANDLER(0x2bcd, pac_context_read, NULL, pac_context_notify),
 	GATT_HANDLER(0x2bce, pac_context_read, NULL, pac_context_notify),
+	GATT_HANDLER(0x2b7d, vol_state_read, NULL, vol_state_notify),
+	GATT_HANDLER(0x2b7e, NULL, vol_cp_write, NULL),
+	GATT_HANDLER(0x2b7f, vol_flag_read, NULL, vol_flag_notify),
 };
 
 static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
