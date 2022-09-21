@@ -1238,7 +1238,8 @@ static void populate_gatt_service(struct btd_gatt_database *database)
 				NULL, NULL, database);
 
 	database->svc_chngd_ccc = service_add_ccc(service, database, NULL, NULL,
-								    0, NULL);
+						BT_ATT_PERM_READ |
+						BT_ATT_PERM_WRITE, NULL);
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_CLI_FEAT);
 	database->cli_feat = gatt_db_service_add_characteristic(service,
@@ -1726,8 +1727,10 @@ static bool parse_chrc_flags(DBusMessageIter *array, uint8_t *props,
 			*perm |= BT_ATT_PERM_WRITE;
 		} else if (!strcmp("notify", flag)) {
 			*props |= BT_GATT_CHRC_PROP_NOTIFY;
+			*ccc_perm |= BT_ATT_PERM_WRITE;
 		} else if (!strcmp("indicate", flag)) {
 			*props |= BT_GATT_CHRC_PROP_INDICATE;
+			*ccc_perm |= BT_ATT_PERM_WRITE;
 		} else if (!strcmp("authenticated-signed-writes", flag)) {
 			*props |= BT_GATT_CHRC_PROP_AUTH;
 			*perm |= BT_ATT_PERM_WRITE;
@@ -2895,6 +2898,9 @@ static bool database_add_ccc(struct external_service *service,
 	if (!(chrc->props & BT_GATT_CHRC_PROP_NOTIFY) &&
 				!(chrc->props & BT_GATT_CHRC_PROP_INDICATE))
 		return true;
+
+	/* Always set read/write permissions */
+	chrc->ccc_perm |= BT_ATT_PERM_WRITE | BT_ATT_PERM_READ;
 
 	chrc->ccc = service_add_ccc(service->attrib, service->app->database,
 				    ccc_write_cb, chrc, chrc->ccc_perm, NULL);
