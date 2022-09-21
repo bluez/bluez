@@ -3538,8 +3538,8 @@ static void register_characteristic(void *data, void *user_data)
 {
 	struct gatt_app *app = user_data;
 	GDBusProxy *proxy = data;
-	const char *iface = g_dbus_proxy_get_interface(proxy);
-	const char *path = g_dbus_proxy_get_path(proxy);
+	const char *iface;
+	const char *path;
 
 	if (app->failed)
 		return;
