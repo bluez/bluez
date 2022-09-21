@@ -2518,7 +2518,7 @@ static DBusMessage *chrc_start_notify(DBusConnection *conn, DBusMessage *msg,
 
 	chrc->notifying = true;
 	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) notifications "
-			"enabled", chrc->path, bt_uuidstr_to_str(chrc->uuid));
+			"enabled\n", chrc->path, bt_uuidstr_to_str(chrc->uuid));
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE,
 							"Notifying");
 
@@ -2538,7 +2538,8 @@ static DBusMessage *chrc_stop_notify(DBusConnection *conn, DBusMessage *msg,
 
 	chrc->notifying = false;
 	bt_shell_printf("[" COLORED_CHG "] Attribute %s (%s) notifications "
-			"disabled", chrc->path, bt_uuidstr_to_str(chrc->uuid));
+			"disabled\n", chrc->path,
+			bt_uuidstr_to_str(chrc->uuid));
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE,
 							"Notifying");
 
