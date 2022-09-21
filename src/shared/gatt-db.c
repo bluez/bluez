@@ -1066,7 +1066,7 @@ gatt_db_service_add_ccc(struct gatt_db_attribute *attrib, uint32_t permissions)
 	struct gatt_db_attribute *value;
 	uint16_t handle = 0;
 
-	if (!attrib)
+	if (!attrib || !permissions)
 		return NULL;
 
 	db = attrib->service->db;
