@@ -1063,7 +1063,8 @@ int mesh_model_pub_set(struct mesh_node *node, uint16_t addr, uint32_t id,
 	if (!mod->pub_enabled || (mod->cbs && !(mod->cbs->pub)))
 		return MESH_STATUS_INVALID_PUB_PARAM;
 
-	if (!appkey_have_key(node_get_net(node), idx))
+	if (!appkey_have_key(node_get_net(node), idx) ||
+			!has_binding(mod->bindings, idx))
 		return MESH_STATUS_INVALID_APPKEY;
 
 	/*
