@@ -110,8 +110,6 @@ static uint16_t config_pub_set(struct mesh_node *node, const uint8_t *pkt,
 	pkt += (virt ? 14 : 0);
 
 	idx = l_get_le16(pkt + 4);
-	if (idx > CREDFLAG_MASK)
-		return 0;
 
 	cred_flag = !!(CREDFLAG_MASK & idx);
 	idx &= APP_IDX_MASK;
