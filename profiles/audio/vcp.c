@@ -62,6 +62,11 @@ struct vcp_data {
 
 static struct queue *sessions;
 
+static void vcp_debug(const char *str, void *user_data)
+{
+	DBG_IDX(0xffff, "%s", str);
+}
+
 static int vcp_disconnect(struct btd_service *service)
 {
 	DBG("");
@@ -86,6 +91,8 @@ static void vcp_data_add(struct vcp_data *data)
 		error("data %p already added", data);
 		return;
 	}
+
+	bt_vcp_set_debug(data->vcp, vcp_debug, NULL, NULL);
 
 	if (!sessions)
 		sessions = queue_new();
