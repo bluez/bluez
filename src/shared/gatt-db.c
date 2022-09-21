@@ -709,21 +709,24 @@ struct gatt_db_attribute *gatt_db_insert_service(struct gatt_db *db,
 	if (service) {
 		const bt_uuid_t *type;
 		bt_uuid_t value;
+		struct gatt_db_attribute *attr = service->attributes[0];
+
+		if (!attr)
+			return NULL;
 
 		if (primary)
 			type = &primary_service_uuid;
 		else
 			type = &secondary_service_uuid;
 
-		gatt_db_attribute_get_service_uuid(service->attributes[0],
-									&value);
+		gatt_db_attribute_get_service_uuid(attr, &value);
 
 		/* Check if service match */
-		if (!bt_uuid_cmp(&service->attributes[0]->uuid, type) &&
+		if (!bt_uuid_cmp(&attr->uuid, type) &&
 				!bt_uuid_cmp(&value, uuid) &&
 				service->num_handles == num_handles &&
-				service->attributes[0]->handle == handle)
-			return service->attributes[0];
+				attr->handle == handle)
+			return attr;
 
 		return NULL;
 	}
@@ -1328,6 +1331,7 @@ unsigned int gatt_db_find_by_type_value(struct gatt_db *db,
 {
 	struct find_by_type_value_data data;
 
+	memset(&data, 0, sizeof(data));
 	data.func = func;
 	data.user_data = user_data;
 	data.value = value;
