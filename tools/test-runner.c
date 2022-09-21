@@ -615,6 +615,7 @@ static const char *test_table[] = {
 	"sco-tester",
 	"iso-tester",
 	"mesh-tester",
+	"ioctl-tester",
 	"bnep-tester",
 	"check-selftest",
 	"tools/mgmt-tester",
@@ -624,6 +625,7 @@ static const char *test_table[] = {
 	"tools/sco-tester",
 	"tools/iso-tester",
 	"tools/mesh-tester",
+	"tools/ioctl-tester",
 	"tools/bnep-tester",
 	"tools/check-selftest",
 	NULL
