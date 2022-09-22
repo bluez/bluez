@@ -19,6 +19,7 @@
 
 #include "monitor/bt.h"
 #include "src/shared/hci.h"
+#include "src/shared/mgmt.h"
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 
@@ -29,14 +30,12 @@
 #include "mesh/mesh-io-generic.h"
 
 struct mesh_io_private {
+	struct mesh_io *io;
 	struct bt_hci *hci;
-	void *user_data;
-	mesh_io_ready_func_t ready_callback;
 	struct l_timeout *tx_timeout;
 	struct l_queue *rx_regs;
 	struct l_queue *tx_pkts;
 	struct tx_pkt *tx;
-	uint16_t index;
 	uint16_t interval;
 	bool sending;
 	bool active;
@@ -385,16 +384,13 @@ static void hci_init(void *user_data)
 {
 	struct mesh_io *io = user_data;
 	bool result = true;
-	bool restarted = false;
 
-	if (io->pvt->hci) {
-		restarted = true;
+	if (io->pvt->hci)
 		bt_hci_unref(io->pvt->hci);
-	}
 
-	io->pvt->hci = bt_hci_new_user_channel(io->pvt->index);
+	io->pvt->hci = bt_hci_new_user_channel(io->index);
 	if (!io->pvt->hci) {
-		l_error("Failed to start mesh io (hci %u): %s", io->pvt->index,
+		l_error("Failed to start mesh io (hci %u): %s", io->index,
 							strerror(errno));
 		result = false;
 	}
@@ -405,47 +401,26 @@ static void hci_init(void *user_data)
 		bt_hci_register(io->pvt->hci, BT_HCI_EVT_LE_META_EVENT,
 						event_callback, io, NULL);
 
-		l_debug("Started mesh on hci %u", io->pvt->index);
+		l_debug("Started mesh on hci %u", io->index);
 
-		if (restarted)
-			restart_scan(io->pvt);
+		restart_scan(io->pvt);
 	}
 
-	if (io->pvt->ready_callback)
-		io->pvt->ready_callback(io->pvt->user_data, result);
+	if (io->ready)
+		io->ready(io->user_data, result);
 }
 
-static void read_info(int index, void *user_data)
-{
-	struct mesh_io *io = user_data;
-
-	if (io->pvt->index != MGMT_INDEX_NONE &&
-					index != io->pvt->index) {
-		l_debug("Ignore index %d", index);
-		return;
-	}
-
-	io->pvt->index = index;
-	hci_init(io);
-}
-
-static bool dev_init(struct mesh_io *io, void *opts,
-				mesh_io_ready_func_t cb, void *user_data)
+static bool dev_init(struct mesh_io *io, void *opts, void *user_data)
 {
 	if (!io || io->pvt)
 		return false;
 
 	io->pvt = l_new(struct mesh_io_private, 1);
-	io->pvt->index = *(int *)opts;
 
 	io->pvt->rx_regs = l_queue_new();
 	io->pvt->tx_pkts = l_queue_new();
 
-	io->pvt->ready_callback = cb;
-	io->pvt->user_data = user_data;
-
-	if (io->pvt->index == MGMT_INDEX_NONE)
-		return mesh_mgmt_list(read_info, io);
+	io->pvt->io = io;
 
 	l_idle_oneshot(hci_init, io, NULL);
 

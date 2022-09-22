@@ -25,13 +25,13 @@
 #include "mesh/dbus.h"
 #include "mesh/mesh-io.h"
 #include "mesh/mesh-io-api.h"
-#include "mesh/mesh-io-generic.h"
+#include "mesh/mesh-io-unit.h"
 
 struct mesh_io_private {
+	struct mesh_io *io;
 	struct l_io *sio;
 	void *user_data;
 	char *unique_name;
-	mesh_io_ready_func_t ready_callback;
 	struct l_timeout *tx_timeout;
 	struct l_queue *rx_regs;
 	struct l_queue *tx_pkts;
@@ -203,14 +203,13 @@ static void unit_up(void *user_data)
 
 	l_debug("Started io-unit");
 
-	if (pvt->ready_callback)
-		pvt->ready_callback(pvt->user_data, true);
+	if (pvt->io && pvt->io->ready)
+		pvt->io->ready(pvt->user_data, true);
 
 	l_timeout_create_ms(1, get_name, pvt, NULL);
 }
 
-static bool unit_init(struct mesh_io *io, void *opt,
-				mesh_io_ready_func_t cb, void *user_data)
+static bool unit_init(struct mesh_io *io, void *opt, void *user_data)
 {
 	struct mesh_io_private *pvt;
 	char *sk_path;
@@ -247,7 +246,7 @@ static bool unit_init(struct mesh_io *io, void *opt,
 	pvt->rx_regs = l_queue_new();
 	pvt->tx_pkts = l_queue_new();
 
-	pvt->ready_callback = cb;
+	pvt->io = io;
 	pvt->user_data = user_data;
 
 	io->pvt = pvt;

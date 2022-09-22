@@ -324,11 +324,15 @@ static void free_pending_join_call(bool failed)
 	join_pending = NULL;
 }
 
-void mesh_cleanup(void)
+void mesh_cleanup(bool signaled)
 {
 	struct l_dbus_message *reply;
 
 	mesh_io_destroy(mesh.io);
+	mesh.io = NULL;
+
+	if (signaled)
+		return;
 
 	if (join_pending) {
 

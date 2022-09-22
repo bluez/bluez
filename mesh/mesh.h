@@ -28,7 +28,7 @@ typedef void (*prov_rx_cb_t)(void *user_data, const uint8_t *data,
 bool mesh_init(const char *config_dir, const char *mesh_conf_fname,
 					enum mesh_io_type type, void *opts,
 					mesh_ready_func_t cb, void *user_data);
-void mesh_cleanup(void);
+void mesh_cleanup(bool signaled);
 bool mesh_dbus_init(struct l_dbus *dbus);
 
 const char *mesh_status_str(uint8_t err);

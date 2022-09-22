@@ -13,12 +13,11 @@ endif
 mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/net-keys.h mesh/net-keys.c \
 				mesh/mesh-io.h mesh/mesh-io.c \
-				mesh/mesh-mgmt.c mesh/mesh-mgmt.h \
+				mesh/mesh-mgmt.h  mesh/mesh-mgmt.c \
 				mesh/error.h mesh/mesh-io-api.h \
-				mesh/mesh-io-generic.h \
-				mesh/mesh-io-generic.c \
-				mesh/mesh-io-unit.h \
-				mesh/mesh-io-unit.c \
+				mesh/mesh-io-unit.h mesh/mesh-io-unit.c \
+				mesh/mesh-io-mgmt.h mesh/mesh-io-mgmt.c \
+				mesh/mesh-io-generic.h mesh/mesh-io-generic.c \
 				mesh/net.h mesh/net.c \
 				mesh/crypto.h mesh/crypto.c \
 				mesh/friend.h mesh/friend.c \
