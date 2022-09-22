@@ -1170,6 +1170,10 @@ static const char *mgmt_op[] = {
 	"Add Extended Advertisement Parameters",	/* 0x0054 */
 	"Add Extended Advertisement Data",
 	"Add Advertisement Patterns Monitor RSSI",
+	"Set Mesh Receiver",
+	"Read Mesh Features",
+	"Mesh Send",
+	"Mesh Send Cancel",
 };
 
 static const char *mgmt_ev[] = {
@@ -1222,6 +1226,8 @@ static const char *mgmt_ev[] = {
 	"Controller Resume",
 	"Advertisement Monitor Device Found",		/* 0x002f */
 	"Advertisement Monitor Device Lost",
+	"Mesh Packet Found",
+	"Mesh Packet Complete",
 };
 
 static const char *mgmt_status[] = {
