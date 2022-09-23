@@ -2143,7 +2143,8 @@ static int write_value(size_t *dst_len, uint8_t **dst_value, uint8_t *src_val,
 		*dst_value = g_realloc(*dst_value, *dst_len);
 	}
 
-	memcpy(*dst_value + offset, src_val, src_len);
+	if (src_val && src_len)
+		memcpy(*dst_value + offset, src_val, src_len);
 
 	return 0;
 }
