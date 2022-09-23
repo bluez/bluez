@@ -15,7 +15,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -3056,7 +3056,7 @@ static void send_wait(struct timespec *t_start, uint32_t us)
 	delta_us = us - TS_USEC(&t_diff);
 
 	if (delta_us < 0) {
-		bt_shell_printf("Send is behind: %zd us - skip sleep",
+		bt_shell_printf("Send is behind: %" PRId64 " us - skip sleep",
 							delta_us);
 		delta_us = 1000;
 	}
