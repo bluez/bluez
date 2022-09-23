@@ -1055,7 +1055,7 @@ static bool parse_secondary(DBusMessageIter *iter,
 
 	dbus_message_iter_get_basic(iter, &str);
 
-	for (sec = secondary; sec && sec->name; sec++) {
+	for (sec = secondary; sec->name; sec++) {
 		if (strcmp(str, sec->name))
 			continue;
 
