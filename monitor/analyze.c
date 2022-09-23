@@ -172,15 +172,18 @@ static void conn_destroy(void *data)
 	print_field("%lu RX packets", conn->rx_num);
 	print_field("%lu TX packets", conn->tx_num);
 	print_field("%lu TX completed packets", conn->tx_num_comp);
-	print_field("%ld msec min latency",
-			conn->tx_lat_min.tv_sec * 1000 +
-			conn->tx_lat_min.tv_usec / 1000);
-	print_field("%ld msec max latency",
-			conn->tx_lat_max.tv_sec * 1000 +
-			conn->tx_lat_max.tv_usec / 1000);
-	print_field("%ld msec median latency",
-			conn->tx_lat_med.tv_sec * 1000 +
-			conn->tx_lat_med.tv_usec / 1000);
+	print_field("%lld msec min latency",
+			(long long)
+			(conn->tx_lat_min.tv_sec * 1000 +
+			conn->tx_lat_min.tv_usec / 1000));
+	print_field("%lld msec max latency",
+			(long long)
+			(conn->tx_lat_max.tv_sec * 1000 +
+			conn->tx_lat_max.tv_usec / 1000));
+	print_field("%lld msec median latency",
+			(long long)
+			(conn->tx_lat_med.tv_sec * 1000 +
+			conn->tx_lat_med.tv_usec / 1000));
 	print_field("%u octets TX min packet size", conn->tx_pkt_min);
 	print_field("%u octets TX max packet size", conn->tx_pkt_max);
 	print_field("%u octets TX median packet size", conn->tx_pkt_med);
