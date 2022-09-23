@@ -252,7 +252,7 @@ static void provided_battery_property_changed_cb(GDBusProxy *proxy,
 						 DBusMessageIter *iter,
 						 void *user_data)
 {
-	uint8_t percentage;
+	uint8_t percentage = 0;
 	const char *export_path;
 	DBusMessageIter dev_iter;
 
@@ -264,10 +264,12 @@ static void provided_battery_property_changed_cb(GDBusProxy *proxy,
 	if (strcmp(name, "Percentage") != 0)
 		return;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BYTE)
-		return;
+	if (iter) {
+		if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BYTE)
+			return;
 
-	dbus_message_iter_get_basic(iter, &percentage);
+		dbus_message_iter_get_basic(iter, &percentage);
+	}
 
 	DBG("battery percentage changed on %s, percentage = %d",
 	    g_dbus_proxy_get_path(proxy), percentage);
