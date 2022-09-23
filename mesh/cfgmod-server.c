@@ -286,6 +286,10 @@ static uint16_t cfg_virt_sub_add_msg(struct mesh_node *node, const uint8_t *pkt,
 						label, true, addr, opcode))
 		msg[n] = MESH_STATUS_STORAGE_FAIL;
 
+	/* If processing failed, set addr field to zero in reply */
+	if (msg[n] != MESH_STATUS_SUCCESS)
+		addr = UNASSIGNED_ADDRESS;
+
 	l_put_le16(ele_addr, msg + n + 1);
 	l_put_le16(addr, msg + n + 3);
 
