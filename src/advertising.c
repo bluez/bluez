@@ -1047,6 +1047,12 @@ static bool parse_secondary(DBusMessageIter *iter,
 	const char *str;
 	struct adv_secondary *sec;
 
+	if (!iter) {
+		/* Reset secondary channels */
+		client->flags &= ~MGMT_ADV_FLAG_SEC_MASK;
+		return true;
+	}
+
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
 		return false;
 
