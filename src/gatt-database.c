@@ -2867,17 +2867,19 @@ static void property_changed_cb(GDBusProxy *proxy, const char *name,
 	if (strcmp(name, "Value"))
 		return;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
-		DBG("Malformed \"Value\" property received");
-		return;
-	}
+	if (iter) {
+		if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
+			DBG("Malformed \"Value\" property received");
+			return;
+		}
 
-	dbus_message_iter_recurse(iter, &array);
-	dbus_message_iter_get_fixed_array(&array, &value, &len);
+		dbus_message_iter_recurse(iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &value, &len);
 
-	if (len < 0) {
-		DBG("Malformed \"Value\" property received");
-		return;
+		if (len < 0) {
+			DBG("Malformed \"Value\" property received");
+			return;
+		}
 	}
 
 	/* Truncate the value if it's too large */
