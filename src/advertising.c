@@ -1051,7 +1051,7 @@ static bool parse_secondary(DBusMessageIter *iter,
 		return false;
 
 	/* Reset secondary channels before parsing */
-	client->flags &= 0xfe00;
+	client->flags &= ~MGMT_ADV_FLAG_SEC_MASK;
 
 	dbus_message_iter_get_basic(iter, &str);
 
