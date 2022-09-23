@@ -296,7 +296,9 @@ int appkey_key_add(struct mesh_net *net, uint16_t net_idx, uint16_t app_idx,
 
 	key = l_queue_find(app_keys, match_key_index, L_UINT_TO_PTR(app_idx));
 	if (key) {
-		if (memcmp(new_key, key->key, 16) == 0)
+		if (key->net_idx != net_idx)
+			return MESH_STATUS_INVALID_NETKEY;
+		else if (memcmp(new_key, key->key, 16) == 0)
 			return MESH_STATUS_SUCCESS;
 		else
 			return MESH_STATUS_IDX_ALREADY_STORED;
