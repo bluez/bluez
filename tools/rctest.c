@@ -500,8 +500,9 @@ static void recv_mode(int sk)
 					timestamp = 0;
 					memset(ts, 0, sizeof(ts));
 				} else {
-					sprintf(ts, "[%ld.%ld] ",
-							tv.tv_sec, tv.tv_usec);
+					sprintf(ts, "[%lld.%lld] ",
+							(long long)tv.tv_sec,
+							(long long)tv.tv_usec);
 				}
 			}
 
