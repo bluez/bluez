@@ -1153,8 +1153,10 @@ static bool parse_tx_power(DBusMessageIter *iter,
 	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
 		return true;
 
-	if (!iter)
+	if (!iter) {
+		client->tx_power = ADV_TX_POWER_NO_PREFERENCE;
 		return false;
+	}
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INT16)
 		return false;
