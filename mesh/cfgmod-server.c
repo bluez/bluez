@@ -470,7 +470,7 @@ static uint8_t uint32_to_log(uint32_t value)
 	return ret;
 }
 
-static uint16_t hb_subscription_get(struct mesh_node *node, int status)
+static uint16_t hb_subscription_status(struct mesh_node *node, int status)
 {
 	struct mesh_net *net = node_get_net(node);
 	struct mesh_net_heartbeat_sub *sub = mesh_net_get_heartbeat_sub(net);
@@ -502,6 +502,28 @@ static uint16_t hb_subscription_get(struct mesh_node *node, int status)
 	return n;
 }
 
+static uint16_t hb_subscription_get(struct mesh_node *node, int status)
+{
+	struct mesh_net *net = node_get_net(node);
+	struct mesh_net_heartbeat_sub *sub = mesh_net_get_heartbeat_sub(net);
+
+	/*
+	 * MshPRFv1.0.1 section 4.4.1.2.16, Heartbeat Subscription state:
+	 * If this is a GET request and the source or destination is unassigned,
+	 * all fields shall be set to zero in the status reply.
+	 */
+	if (IS_UNASSIGNED(sub->src) || IS_UNASSIGNED(sub->dst)) {
+		uint16_t n;
+
+		n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_SUB_STATUS, msg);
+		memset(msg + n, 0, 9);
+		n += 9;
+		return n;
+	}
+
+	return hb_subscription_status(node, status);
+}
+
 static uint16_t hb_subscription_set(struct mesh_node *node, const uint8_t *pkt)
 {
 	uint16_t src, dst;
@@ -525,7 +547,7 @@ static uint16_t hb_subscription_set(struct mesh_node *node, const uint8_t *pkt)
 
 	status = mesh_net_set_heartbeat_sub(net, src, dst, period_log);
 
-	return hb_subscription_get(node, status);
+	return hb_subscription_status(node, status);
 }
 
 static uint16_t hb_publication_get(struct mesh_node *node, int status)
