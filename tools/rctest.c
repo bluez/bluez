@@ -94,7 +94,7 @@ static float tv2fl(struct timeval tv)
 static uint8_t get_channel(const char *svr, uint16_t uuid)
 {
 	sdp_session_t *sdp;
-	sdp_list_t *srch, *attrs, *rsp, *protos;
+	sdp_list_t *srch, *attrs, *rsp, *protos = NULL;
 	uuid_t svclass;
 	uint16_t attr;
 	bdaddr_t dst;
