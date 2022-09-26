@@ -375,11 +375,7 @@ static void del_index(struct timeval *tv, uint16_t index,
 static void command_pkt(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
-	const struct bt_hci_cmd_hdr *hdr = data;
 	struct hci_dev *dev;
-
-	data += sizeof(*hdr);
-	size -= sizeof(*hdr);
 
 	dev = dev_lookup(index);
 	if (!dev)
@@ -394,9 +390,6 @@ static void evt_conn_complete(struct hci_dev *dev, struct timeval *tv,
 {
 	const struct bt_hci_evt_conn_complete *evt = data;
 	struct hci_conn *conn;
-
-	data += sizeof(*evt);
-	size -= sizeof(*evt);
 
 	if (evt->status)
 		return;
@@ -414,9 +407,6 @@ static void evt_disconnect_complete(struct hci_dev *dev, struct timeval *tv,
 {
 	const struct bt_hci_evt_disconnect_complete *evt = data;
 	struct hci_conn *conn;
-
-	data += sizeof(*evt);
-	size -= sizeof(*evt);
 
 	if (evt->status)
 		return;
@@ -522,13 +512,6 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 static void evt_le_meta_event(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
-	uint8_t subtype = get_u8(data);
-
-	data += sizeof(subtype);
-	size -= sizeof(subtype);
-
-	switch (subtype) {
-	}
 }
 
 static void event_pkt(struct timeval *tv, uint16_t index,
@@ -623,11 +606,7 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 static void sco_pkt(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
-	const struct bt_hci_sco_hdr *hdr = data;
 	struct hci_dev *dev;
-
-	data += sizeof(*hdr);
-	size -= sizeof(*hdr);
 
 	dev = dev_lookup(index);
 	if (!dev)
@@ -642,9 +621,6 @@ static void info_index(struct timeval *tv, uint16_t index,
 {
 	const struct btsnoop_opcode_index_info *hdr = data;
 	struct hci_dev *dev;
-
-	data += sizeof(*hdr);
-	size -= sizeof(*hdr);
 
 	dev = dev_lookup(index);
 	if (!dev)
@@ -704,11 +680,7 @@ static void ctrl_msg(struct timeval *tv, uint16_t index,
 static void iso_pkt(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
-	const struct bt_hci_iso_hdr *hdr = data;
 	struct hci_dev *dev;
-
-	data += sizeof(*hdr);
-	size -= sizeof(*hdr);
 
 	dev = dev_lookup(index);
 	if (!dev)
