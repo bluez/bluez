@@ -455,14 +455,14 @@ done:
 static uint8_t uint32_to_log(uint32_t value)
 {
 	uint32_t val = 1;
-	uint8_t ret = 1;
+	uint8_t ret = 0;
 
 	if (!value)
 		return 0;
 	else if (value > 0x10000)
 		return 0xff;
 
-	while (val < value) {
+	while (val <= value) {
 		val <<= 1;
 		ret++;
 	}
@@ -495,7 +495,7 @@ static uint16_t hb_subscription_get(struct mesh_node *node, int status)
 	l_put_le16(sub->dst, msg + n);
 	n += 2;
 	msg[n++] = uint32_to_log(time_now.tv_sec);
-	msg[n++] = uint32_to_log(sub->count);
+	msg[n++] = sub->count != 0xffff ? uint32_to_log(sub->count) : 0xff;
 	msg[n++] = sub->count ? sub->min_hops : 0;
 	msg[n++] = sub->max_hops;
 
@@ -538,7 +538,7 @@ static uint16_t hb_publication_get(struct mesh_node *node, int status)
 	msg[n++] = status;
 	l_put_le16(pub->dst, msg + n);
 	n += 2;
-	msg[n++] = uint32_to_log(pub->count);
+	msg[n++] = pub->count != 0xffff ? uint32_to_log(pub->count) : 0xff;
 	msg[n++] = uint32_to_log(pub->period);
 	msg[n++] = pub->ttl;
 	l_put_le16(pub->features, msg + n);
