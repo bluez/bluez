@@ -3608,24 +3608,14 @@ int mesh_net_set_heartbeat_sub(struct mesh_net *net, uint16_t src, uint16_t dst,
 		return MESH_STATUS_UNSPECIFIED_ERROR;
 
 	/* Check if the subscription should be disabled */
-	if (IS_UNASSIGNED(src) || IS_UNASSIGNED(dst)) {
-		if (IS_GROUP(sub->dst))
-			mesh_net_dst_unreg(net, sub->dst);
-
-		sub->enabled = false;
-		sub->dst = UNASSIGNED_ADDRESS;
-		sub->src = UNASSIGNED_ADDRESS;
-		sub->count = 0;
-		sub->period = 0;
-		sub->min_hops = 0;
-		sub->max_hops = 0;
-
-	} else if (!period_log && src == sub->src && dst == sub->dst) {
+	if (IS_UNASSIGNED(src) || IS_UNASSIGNED(dst) || !period_log) {
 		if (IS_GROUP(sub->dst))
 			mesh_net_dst_unreg(net, sub->dst);
 
 		/* Preserve collected data, but disable */
 		sub->enabled = false;
+		sub->dst = UNASSIGNED_ADDRESS;
+		sub->src = UNASSIGNED_ADDRESS;
 		sub->period = 0;
 
 	} else {
@@ -3637,12 +3627,12 @@ int mesh_net_set_heartbeat_sub(struct mesh_net *net, uint16_t src, uint16_t dst,
 				mesh_net_dst_reg(net, dst);
 		}
 
-		sub->enabled = !!period_log;
+		sub->enabled = true;
 		sub->src = src;
 		sub->dst = dst;
 		sub->count = 0;
 		sub->period = log_to_uint32(period_log);
-		sub->min_hops = 0x00;
+		sub->min_hops = 0x7f;
 		sub->max_hops = 0x00;
 		gettimeofday(&time_now, NULL);
 		sub->start = time_now.tv_sec;
@@ -3655,8 +3645,6 @@ int mesh_net_set_heartbeat_sub(struct mesh_net *net, uint16_t src, uint16_t dst,
 		sub->timer = NULL;
 		return MESH_STATUS_SUCCESS;
 	}
-
-	sub->min_hops = 0xff;
 
 	if (!sub->timer)
 		sub->timer = l_timeout_create(sub->period, hb_sub_timeout_func,

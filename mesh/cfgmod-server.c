@@ -496,7 +496,7 @@ static uint16_t hb_subscription_get(struct mesh_node *node, int status)
 	n += 2;
 	msg[n++] = uint32_to_log(time_now.tv_sec);
 	msg[n++] = sub->count != 0xffff ? uint32_to_log(sub->count) : 0xff;
-	msg[n++] = sub->count ? sub->min_hops : 0;
+	msg[n++] = sub->min_hops;
 	msg[n++] = sub->max_hops;
 
 	return n;
