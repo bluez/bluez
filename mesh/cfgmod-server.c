@@ -575,7 +575,17 @@ static uint16_t hb_publication_set(struct mesh_node *node, const uint8_t *pkt)
 	status = mesh_net_set_heartbeat_pub(net, dst, features, net_idx, ttl,
 						count_log, period_log);
 
-	return hb_publication_get(node, status);
+	if (status != MESH_STATUS_SUCCESS) {
+		uint16_t n;
+
+		n = mesh_model_opcode_set(OP_CONFIG_HEARTBEAT_PUB_STATUS, msg);
+		msg[n++] = status;
+		memcpy(msg + n, pkt, 9);
+		n += 9;
+
+		return n;
+	} else
+		return hb_publication_get(node, status);
 }
 
 static void node_reset(void *user_data)
