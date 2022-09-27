@@ -1345,6 +1345,10 @@ static const uint8_t send_mesh_cancel_2[] = {
 	0x02
 };
 
+static const uint8_t mesh_cancel_rsp_param_mesh[] = {
+	0x00
+};
+
 static const struct generic_data mesh_send_mesh_cancel_1 = {
 	.send_opcode = MGMT_OP_MESH_SEND_CANCEL,
 	.send_param = send_mesh_cancel_1,
@@ -1353,6 +1357,10 @@ static const struct generic_data mesh_send_mesh_cancel_1 = {
 	.expect_alt_ev = MGMT_EV_MESH_PACKET_CMPLT,
 	.expect_alt_ev_param = send_mesh_cancel_1,
 	.expect_alt_ev_len = sizeof(send_mesh_cancel_1),
+
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_ENABLE,
+	.expect_hci_param = mesh_cancel_rsp_param_mesh,
+	.expect_hci_len = sizeof(mesh_cancel_rsp_param_mesh),
 };
 
 static const struct generic_data mesh_send_mesh_cancel_2 = {
@@ -1363,6 +1371,10 @@ static const struct generic_data mesh_send_mesh_cancel_2 = {
 	.expect_alt_ev = MGMT_EV_MESH_PACKET_CMPLT,
 	.expect_alt_ev_param = send_mesh_cancel_2,
 	.expect_alt_ev_len = sizeof(send_mesh_cancel_2),
+
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_ENABLE,
+	.expect_hci_param = mesh_cancel_rsp_param_mesh,
+	.expect_hci_len = sizeof(mesh_cancel_rsp_param_mesh),
 };
 
 static void setup_multi_mesh_send(const void *test_data)
