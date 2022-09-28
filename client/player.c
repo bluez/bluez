@@ -65,6 +65,7 @@ struct endpoint {
 	uint8_t codec;
 	struct iovec *caps;
 	bool auto_accept;
+	bool acquiring;
 	uint8_t cig;
 	uint8_t cis;
 	char *transport;
@@ -2688,6 +2689,30 @@ static struct endpoint *find_ep_by_transport(const char *path)
 	return NULL;
 }
 
+static struct endpoint *find_link_by_proxy(GDBusProxy *proxy)
+{
+	DBusMessageIter iter, array;
+
+	if (!g_dbus_proxy_get_property(proxy, "Links", &iter))
+		return NULL;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) ==
+				DBUS_TYPE_OBJECT_PATH) {
+		const char *transport;
+		struct endpoint *link;
+
+		dbus_message_iter_get_basic(&array, &transport);
+
+		link = find_ep_by_transport(transport);
+		if (link)
+			return link;
+	}
+
+	return NULL;
+}
+
 static void transport_close(struct transport *transport)
 {
 	if (transport->fd < 0)
@@ -2769,9 +2794,18 @@ static void transport_new(GDBusProxy *proxy, int sk, uint16_t mtu[2])
 static void acquire_reply(DBusMessage *message, void *user_data)
 {
 	GDBusProxy *proxy = user_data;
+	struct endpoint *ep, *link;
 	DBusError error;
 	int sk;
 	uint16_t mtu[2];
+
+	ep = find_ep_by_transport(g_dbus_proxy_get_path(proxy));
+	if (ep) {
+		ep->acquiring = false;
+		link = find_link_by_proxy(proxy);
+		if (link)
+			link->acquiring = false;
+	}
 
 	dbus_error_init(&error);
 
@@ -2803,11 +2837,22 @@ static void acquire_reply(DBusMessage *message, void *user_data)
 static void transport_acquire(const char *input, void *user_data)
 {
 	GDBusProxy *proxy = user_data;
+	struct endpoint *ep, *link;
 
 	if (!strcasecmp(input, "y") || !strcasecmp(input, "yes")) {
-		if (!g_dbus_proxy_method_call(proxy, "Acquire", NULL,
+		if (g_dbus_proxy_method_call(proxy, "Acquire", NULL,
 						acquire_reply, proxy, NULL))
-			bt_shell_printf("Failed acquire transport\n");
+			return;
+		bt_shell_printf("Failed acquire transport\n");
+	}
+
+	/* Reset acquiring */
+	ep = find_ep_by_transport(g_dbus_proxy_get_path(proxy));
+	if (ep) {
+		ep->acquiring = false;
+		link = find_link_by_proxy(proxy);
+		if (link)
+			link->acquiring = false;
 	}
 }
 
@@ -2815,7 +2860,7 @@ static void transport_property_changed(GDBusProxy *proxy, const char *name,
 						DBusMessageIter *iter)
 {
 	char *str;
-	struct endpoint *ep;
+	struct endpoint *ep, *link;
 
 	str = proxy_description(proxy, "Transport", COLORED_CHG);
 	print_iter(str, name, iter);
@@ -2833,14 +2878,29 @@ static void transport_property_changed(GDBusProxy *proxy, const char *name,
 	 * endpoint.
 	 */
 	ep = find_ep_by_transport(g_dbus_proxy_get_path(proxy));
-	if (!ep)
+	if (!ep || ep->acquiring)
 		return;
+
+	ep->acquiring = true;
+
+	link = find_link_by_proxy(proxy);
+	if (link) {
+		bt_shell_printf("Link %s found\n", link->transport);
+		/* If link already acquiring wait it to be complete */
+		if (link->acquiring)
+			return;
+		link->acquiring = true;
+	}
 
 	if (ep->auto_accept) {
 		bt_shell_printf("Auto Acquiring...\n");
 		if (!g_dbus_proxy_method_call(proxy, "Acquire", NULL,
-						acquire_reply, proxy, NULL))
+						acquire_reply, proxy, NULL)) {
 			bt_shell_printf("Failed acquire transport\n");
+			ep->acquiring = false;
+			if (link)
+				link->acquiring = false;
+		}
 		return;
 	}
 
