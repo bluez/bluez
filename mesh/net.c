@@ -2671,6 +2671,10 @@ static bool update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 		if (iv_index == net->iv_index)
 			return false;
 
+		/* Ignore beacon with invalid IV index value */
+		if (net->iv_update && iv_index == net->iv_index + 1)
+			return false;
+
 		if (!net->iv_update) {
 			l_debug("iv_upd_state = IV_UPD_UPDATING");
 			net->iv_upd_state = IV_UPD_UPDATING;
