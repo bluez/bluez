@@ -2613,7 +2613,8 @@ static bool update_kr_state(struct mesh_subnet *subnet, bool kr, uint32_t id)
 {
 	/* Figure out the key refresh phase */
 	if (kr) {
-		if (id == subnet->net_key_upd) {
+		if (subnet->kr_phase == KEY_REFRESH_PHASE_ONE &&
+						id == subnet->net_key_upd) {
 			l_debug("Beacon based KR phase 2 change");
 			return (key_refresh_phase_two(subnet->net, subnet->idx)
 							== MESH_STATUS_SUCCESS);
@@ -2754,7 +2755,7 @@ static void process_beacon(void *net_ptr, void *user_data)
 							ivu != net->iv_update)
 		updated |= update_iv_ivu_state(net, ivi, ivu);
 
-	if (kr != local_kr)
+	if (kr != local_kr || beacon_data->net_key_id != subnet->net_key_cur)
 		updated |= update_kr_state(subnet, kr, beacon_data->net_key_id);
 
 	if (updated)
