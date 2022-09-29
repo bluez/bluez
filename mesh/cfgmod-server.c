@@ -436,6 +436,10 @@ static uint16_t cfg_key_refresh_phase(struct mesh_node *node,
 				return 0;
 		}
 
+		if (pkt[2] == KEY_REFRESH_TRANS_THREE &&
+						phase == KEY_REFRESH_PHASE_NONE)
+			goto done;
+
 		status = mesh_net_key_refresh_phase_set(net, idx, pkt[2]);
 		l_debug("Set KR Phase: net=%3.3x transition=%d", idx, pkt[2]);
 
