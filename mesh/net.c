@@ -2708,7 +2708,7 @@ static void process_beacon(void *net_ptr, void *user_data)
 	struct net_beacon_data *beacon_data = user_data;
 	uint32_t ivi;
 	bool ivu, kr, local_kr;
-	struct mesh_subnet *subnet;
+	struct mesh_subnet *subnet, *primary_subnet;
 
 	ivi = beacon_data->ivi;
 
@@ -2721,6 +2721,17 @@ static void process_beacon(void *net_ptr, void *user_data)
 					L_UINT_TO_PTR(beacon_data->net_key_id));
 
 	if (!subnet)
+		return;
+
+	/*
+	 * @MshPRFv1.0.1 section 3.10.5: IV Update procedure
+	 * If this node is a member of a primary subnet and receives a Secure
+	 * Network beacon on a secondary subnet with an IV Index greater than
+	 * the last known IV Index of the primary subnet, the Secure Network
+	 * beacon shall be ignored.
+	 */
+	primary_subnet = get_primary_subnet(net);
+	if (primary_subnet && subnet != primary_subnet && ivi > net->iv_index)
 		return;
 
 	/* Get IVU and KR boolean bits from beacon */
