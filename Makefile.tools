@@ -348,6 +348,8 @@ man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1 tools/isotest.1
 endif
 
 if MESH
+
+if DEPRECATED
 bin_PROGRAMS += tools/meshctl
 
 tools_meshctl_SOURCES = tools/meshctl.c \
@@ -372,6 +374,9 @@ tools_meshctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la \
 				$(GLIB_LIBS) $(DBUS_LIBS) -ljson-c -lreadline
 
+EXTRA_DIST += tools/mesh-gatt/local_node.json tools/mesh-gatt/prov_db.json
+endif
+
 bin_PROGRAMS +=  tools/mesh-cfgclient
 
 tools_mesh_cfgclient_SOURCES = tools/mesh-cfgclient.c \
@@ -394,8 +399,6 @@ tools_mesh_cfgtest_SOURCES = tools/mesh-cfgtest.c
 tools_mesh_cfgtest_LDADD = lib/libbluetooth-internal.la src/libshared-ell.la \
 						$(ell_ldadd)
 endif
-
-EXTRA_DIST += tools/mesh-gatt/local_node.json tools/mesh-gatt/prov_db.json
 
 if DEPRECATED
 bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
