@@ -2703,6 +2703,7 @@ static bool update_iv_ivu_state(struct mesh_net *net, uint32_t iv_index,
 
 	net->iv_index = iv_index;
 	net->iv_update = ivu;
+	queue_friend_update(net);
 	return true;
 }
 
