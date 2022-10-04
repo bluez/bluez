@@ -25,7 +25,7 @@
 
 #define MAX_FRND_GROUPS		20
 #define FRND_RELAY_WINDOW	250		/* 250 ms */
-#define FRND_CACHE_SIZE		16
+#define FRND_CACHE_SIZE		FRND_CACHE_MAX
 #define FRND_SUB_LIST_SIZE	8
 
 #define RESPONSE_DELAY		(100 - 12)	/*  100  ms - 12ms hw delay */
