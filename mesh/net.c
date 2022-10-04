@@ -1763,13 +1763,17 @@ not_for_friend:
 	return true;
 }
 
-static uint16_t key_id_to_net_idx(struct mesh_net *net, uint32_t net_key_id)
+static uint16_t key_id_to_net_idx(struct mesh_net *net,
+				uint32_t net_key_id, bool *frnd)
 {
 	struct mesh_subnet *subnet;
 	struct mesh_friend *friend;
 
 	if (!net)
 		return NET_IDX_INVALID;
+
+	if (frnd)
+		*frnd = false;
 
 	subnet = l_queue_find(net->subnets, match_key_id,
 						L_UINT_TO_PTR(net_key_id));
@@ -1780,8 +1784,12 @@ static uint16_t key_id_to_net_idx(struct mesh_net *net, uint32_t net_key_id)
 	friend = l_queue_find(net->friends, match_friend_key_id,
 						L_UINT_TO_PTR(net_key_id));
 
-	if (friend)
+	if (friend) {
+		if (frnd)
+			*frnd = true;
+
 		return friend->net_idx;
+	}
 
 	friend = l_queue_find(net->negotiations, match_friend_key_id,
 						L_UINT_TO_PTR(net_key_id));
@@ -2078,7 +2086,7 @@ static bool ctl_received(struct mesh_net *net, uint32_t net_key_id,
 			return false;
 
 		print_packet("Rx-NET_OP_FRND_REQUEST", pkt, len);
-		net_idx = key_id_to_net_idx(net, net_key_id);
+		net_idx = key_id_to_net_idx(net, net_key_id, NULL);
 		friend_request(net, net_idx, src, pkt[0], pkt[1],
 				l_get_be32(pkt + 1) & 0xffffff,
 				l_get_be16(pkt + 5), pkt[7],
@@ -2269,7 +2277,8 @@ static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 }
 
 static enum _relay_advice packet_received(void *user_data,
-				uint32_t net_key_id, uint32_t iv_index,
+				uint32_t net_key_id, uint16_t net_idx,
+				bool frnd, uint32_t iv_index,
 				const void *data, uint8_t size, int8_t rssi)
 {
 	struct mesh_net *net = user_data;
@@ -2278,15 +2287,10 @@ static enum _relay_advice packet_received(void *user_data,
 	uint8_t net_ttl, key_aid, net_segO, net_segN, net_opcode;
 	uint32_t net_seq, cache_cookie;
 	uint16_t net_src, net_dst, net_seqZero;
-	uint16_t net_idx;
 	uint8_t packet[31];
 	bool net_ctl, net_segmented, net_szmic, net_relay;
 
 	memcpy(packet + 2, data, size);
-
-	net_idx = key_id_to_net_idx(net, net_key_id);
-	if (net_idx == NET_IDX_INVALID)
-		return RELAY_NONE;
 
 	print_packet("RX: Network [clr] :", packet + 2, size);
 
@@ -2389,6 +2393,13 @@ static enum _relay_advice packet_received(void *user_data,
 			return RELAY_DISALLOWED;
 	}
 
+	/*
+	 * Messages that are encrypted with friendship credentials
+	 * should *always* be relayed
+	 */
+	if (frnd)
+		return RELAY_ALWAYS;
+
 	/* If relay not enable, or no more hops allowed */
 	if (!net->relay.enable || net_ttl < 0x02)
 		return RELAY_NONE;
@@ -2414,7 +2425,9 @@ static void net_rx(void *net_ptr, void *user_data)
 	uint8_t *out;
 	size_t out_size;
 	uint32_t net_key_id;
+	uint16_t net_idx;
 	int8_t rssi = 0;
+	bool frnd;
 	bool ivi_net = !!(net->iv_index & 1);
 	bool ivi_pkt = !!(data->data[0] & 0x80);
 
@@ -2438,9 +2451,21 @@ static void net_rx(void *net_ptr, void *user_data)
 		rssi = data->info->rssi;
 	}
 
-	relay_advice = packet_received(net, net_key_id, iv_index, out, out_size,
-									rssi);
+	net_idx = key_id_to_net_idx(net, net_key_id, &frnd);
+
+	if (net_idx == NET_IDX_INVALID)
+		return;
+
+	relay_advice = packet_received(net, net_key_id, net_idx, frnd,
+						iv_index, out, out_size, rssi);
 	if (relay_advice > data->relay_advice) {
+		/*
+		 * If packet was encrypted with friendship credentials,
+		 * relay it using master credentials
+		 */
+		if (frnd && !mesh_net_get_key(net, false, net_idx, &net_key_id))
+			return;
+
 		data->iv_index = iv_index;
 		data->relay_advice = relay_advice;
 		data->net_key_id = net_key_id;
