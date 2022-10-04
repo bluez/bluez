@@ -2059,7 +2059,7 @@ static bool ctl_received(struct mesh_net *net, uint32_t net_key_id,
 		break;
 
 	case NET_OP_FRND_POLL:
-		if (len != 1 || ttl)
+		if (len != 1 || ttl || pkt[0] > 1)
 			return false;
 
 		print_packet("Rx-NET_OP_FRND_POLL", pkt, len);
