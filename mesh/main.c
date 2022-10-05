@@ -137,8 +137,14 @@ static void signal_handler(uint32_t signo, void *user_data)
 		return;
 
 	l_info("Terminating");
+
 	mesh_cleanup(true);
-	l_timeout_create(1, kill_to, NULL, NULL);
+
+	if (io_type != MESH_IO_TYPE_UNIT_TEST)
+		l_timeout_create(1, kill_to, NULL, NULL);
+	else
+		l_main_quit();
+
 	terminated = true;
 }
 

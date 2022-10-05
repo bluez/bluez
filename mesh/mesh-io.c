@@ -151,7 +151,7 @@ struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts,
 
 	default_io->api = api;
 
-	if (!api->init(default_io, &default_io->favored_index, user_data))
+	if (!api->init(default_io, opts, user_data))
 		goto fail;
 
 	return default_io;
