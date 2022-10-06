@@ -384,6 +384,47 @@ static void send_rand(struct mesh_prov_acceptor *prov)
 	prov_send(prov, &msg, sizeof(msg));
 }
 
+static bool prov_start_check(struct prov_start *start,
+						struct mesh_net_prov_caps *caps)
+{
+	if (start->algorithm || start->pub_key > 1 || start->auth_method > 3)
+		return false;
+
+	if (start->pub_key && !caps->pub_type)
+		return false;
+
+	switch (start->auth_method) {
+	case 0: /* No OOB */
+		if (start->auth_action != 0 || start->auth_size != 0)
+			return false;
+
+		break;
+
+	case 1: /* Static OOB */
+		if (!caps->static_type || start->auth_action != 0 ||
+							start->auth_size != 0)
+			return false;
+
+		break;
+
+	case 2: /* Output OOB */
+		if (!(caps->output_action & (1 << start->auth_action)) ||
+							start->auth_size == 0)
+			return false;
+
+		break;
+
+	case 3: /* Input OOB */
+		if (!(caps->input_action & (1 << start->auth_action)) ||
+							start->auth_size == 0)
+			return false;
+
+		break;
+	}
+
+	return true;
+}
+
 static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 {
 	struct mesh_prov_acceptor *rx_prov = user_data;
@@ -433,22 +474,16 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		memcpy(&prov->conf_inputs.start, data,
 				sizeof(prov->conf_inputs.start));
 
-		if (prov->conf_inputs.start.algorithm ||
-				prov->conf_inputs.start.pub_key > 1 ||
-				prov->conf_inputs.start.auth_method > 3) {
+		if (!prov_start_check(&prov->conf_inputs.start,
+						&prov->conf_inputs.caps)) {
 			fail.reason = PROV_ERR_INVALID_FORMAT;
 			goto failure;
 		}
 
 		if (prov->conf_inputs.start.pub_key) {
-			if (prov->conf_inputs.caps.pub_type) {
-				/* Prompt Agent for Private Key of OOB */
-				mesh_agent_request_private_key(prov->agent,
-							priv_key_cb, prov);
-			} else {
-				fail.reason = PROV_ERR_INVALID_PDU;
-				goto failure;
-			}
+			/* Prompt Agent for Private Key of OOB */
+			mesh_agent_request_private_key(prov->agent,
+						priv_key_cb, prov);
 		} else {
 			/* Ephemeral Public Key requested */
 			ecc_make_key(prov->conf_inputs.dev_pub_key,
