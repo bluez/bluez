@@ -70,6 +70,7 @@ struct mesh_prov_acceptor {
 	uint8_t material;
 	uint8_t expected;
 	int8_t previous;
+	bool failed;
 	struct conf_input conf_inputs;
 	uint8_t calc_key[16];
 	uint8_t salt[16];
@@ -408,7 +409,8 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 	if (type == prov->previous) {
 		l_error("Ignore repeated %2.2x packet", type);
 		return;
-	} else if (type > prov->expected || type < prov->previous) {
+	} else if (prov->failed || type > prov->expected ||
+							type < prov->previous) {
 		l_error("Expected %2.2x, Got:%2.2x", prov->expected, type);
 		fail.reason = PROV_ERR_UNEXPECTED_PDU;
 		goto failure;
@@ -648,6 +650,8 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 failure:
 	fail.opcode = PROV_FAILED;
 	prov_send(prov, &fail, sizeof(fail));
+	prov->failed = true;
+	prov->previous = -1;
 	if (prov->cmplt)
 		prov->cmplt(prov->caller_data, fail.reason, NULL);
 	prov->cmplt = NULL;
@@ -707,6 +711,7 @@ bool acceptor_start(uint8_t num_ele, uint8_t uuid[16],
 	prov->cmplt = complete_cb;
 	prov->ob = l_queue_new();
 	prov->previous = -1;
+	prov->failed = false;
 	prov->out_opcode = PROV_NONE;
 	prov->caller_data = caller_data;
 
