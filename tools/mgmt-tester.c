@@ -4065,6 +4065,9 @@ static const struct generic_data set_static_addr_success_test = {
 	.expect_param = set_static_addr_settings,
 	.expect_len = sizeof(set_static_addr_settings),
 	.expect_settings_set = MGMT_SETTING_STATIC_ADDRESS,
+	.expect_hci_command = BT_HCI_CMD_LE_SET_RANDOM_ADDRESS,
+	.expect_hci_param = set_static_addr_valid_param,
+	.expect_hci_len = sizeof(set_static_addr_valid_param),
 };
 
 static const char set_static_addr_settings_dual[] = { 0x80, 0x00, 0x00, 0x00 };
@@ -4076,6 +4079,9 @@ static const struct generic_data set_static_addr_success_test_2 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_static_addr_settings_dual,
 	.expect_len = sizeof(set_static_addr_settings_dual),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_RANDOM_ADDRESS,
+	.expect_hci_param = set_static_addr_valid_param,
+	.expect_hci_len = sizeof(set_static_addr_valid_param),
 };
 
 static const struct generic_data set_static_addr_failure_test = {
