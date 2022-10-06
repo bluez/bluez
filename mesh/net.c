@@ -1026,12 +1026,11 @@ static bool msg_in_cache(struct mesh_net *net, uint16_t src, uint32_t seq,
 		.mic = mic,
 	};
 
-	msg = l_queue_remove_if(net->msg_cache, match_cache, &tst);
+	msg = l_queue_find(net->msg_cache, match_cache, &tst);
 
 	if (msg) {
 		l_debug("Supressing duplicate %4.4x + %6.6x + %8.8x",
 							src, seq, mic);
-		l_queue_push_head(net->msg_cache, msg);
 		return true;
 	}
 
