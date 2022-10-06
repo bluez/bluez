@@ -1270,8 +1270,8 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 							MESH_STATUS_SUCCESS)
 			return false;
 
-		if (!mesh_config_net_key_set_phase(node->cfg, net_key_idx,
-							KEY_REFRESH_PHASE_TWO))
+		if (mesh_net_key_refresh_phase_set(node->net, net_key_idx,
+				KEY_REFRESH_PHASE_TWO) != MESH_STATUS_SUCCESS)
 			return false;
 	}
 
