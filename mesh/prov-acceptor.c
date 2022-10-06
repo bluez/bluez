@@ -399,6 +399,12 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 	l_debug("Provisioning packet received type: %2.2x (%u octets)",
 								type, len);
 
+	if (type >= L_ARRAY_SIZE(expected_pdu_size)) {
+		l_error("Unknown PDU type: %2.2x", type);
+		fail.reason = PROV_ERR_INVALID_PDU;
+		goto failure;
+	}
+
 	if (type == prov->previous) {
 		l_error("Ignore repeated %2.2x packet", type);
 		return;
@@ -408,8 +414,7 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		goto failure;
 	}
 
-	if (type >= L_ARRAY_SIZE(expected_pdu_size) ||
-					len != expected_pdu_size[type]) {
+	if (len != expected_pdu_size[type]) {
 		l_error("Expected PDU size %d, Got %d (type: %2.2x)",
 			len, expected_pdu_size[type], type);
 		fail.reason = PROV_ERR_INVALID_FORMAT;
