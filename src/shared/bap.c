@@ -958,10 +958,14 @@ static void stream_notify_metadata(struct bt_bap_stream *stream)
 	struct bt_ascs_ase_status *status;
 	struct bt_ascs_ase_status_metadata *meta;
 	size_t len;
+	size_t meta_len = 0;
 
 	DBG(stream->bap, "stream %p", stream);
 
-	len = sizeof(*status) + sizeof(*meta) + sizeof(stream->meta->iov_len);
+	if (stream->meta)
+		meta_len = stream->meta->iov_len;
+
+	len = sizeof(*status) + sizeof(*meta) + meta_len;
 	status = malloc(len);
 
 	memset(status, 0, len);
@@ -1743,7 +1747,7 @@ static uint8_t ep_enable(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 		return 0;
 	}
 
-	return stream_enable(ep->stream, iov, rsp);
+	return stream_enable(ep->stream, &meta, rsp);
 }
 
 static uint8_t ascs_enable(struct bt_ascs *ascs, struct bt_bap *bap,
