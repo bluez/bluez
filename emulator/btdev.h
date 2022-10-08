@@ -72,6 +72,8 @@ bool btdev_set_debug(struct btdev *btdev, btdev_debug_func_t callback,
 			void *user_data, btdev_destroy_func_t destroy);
 
 const uint8_t *btdev_get_bdaddr(struct btdev *btdev);
+bool btdev_set_bdaddr(struct btdev *btdev, const uint8_t *bdaddr);
+
 uint8_t *btdev_get_features(struct btdev *btdev);
 
 uint8_t btdev_get_scan_enable(struct btdev *btdev);

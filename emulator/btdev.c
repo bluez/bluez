@@ -6960,6 +6960,16 @@ const uint8_t *btdev_get_bdaddr(struct btdev *btdev)
 	return btdev->bdaddr;
 }
 
+bool btdev_set_bdaddr(struct btdev *btdev, const uint8_t *bdaddr)
+{
+	if (!btdev || !bdaddr)
+		return false;
+
+	memcpy(btdev->bdaddr, bdaddr, sizeof(btdev->bdaddr));
+
+	return true;
+}
+
 uint8_t *btdev_get_features(struct btdev *btdev)
 {
 	return btdev->features;
