@@ -14,6 +14,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -33,6 +34,7 @@
 #include "emulator/vhci.h"
 #include "emulator/bthost.h"
 #include "emulator/hciemu.h"
+#include "emulator/btdev.h"
 
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
@@ -299,6 +301,7 @@ struct hci_entry {
 };
 
 struct generic_data {
+	bdaddr_t *setup_bdaddr;
 	bool setup_le_states;
 	const uint8_t *le_states;
 	const uint16_t *setup_settings;
@@ -415,6 +418,16 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 
 	if (tester_use_debug())
 		hciemu_set_debug(data->hciemu, print_debug, "hciemu: ", NULL);
+
+	if (test && test->setup_bdaddr) {
+		struct vhci *vhci = hciemu_get_vhci(data->hciemu);
+		struct btdev *btdev = vhci_get_btdev(vhci);
+
+		if (!btdev_set_bdaddr(btdev, test->setup_bdaddr->b)) {
+			tester_warn("btdev_set_bdaddr failed");
+			tester_pre_setup_failed();
+		}
+	}
 
 	if (test && test->setup_le_states)
 		hciemu_set_central_le_states(data->hciemu, test->le_states);
@@ -4055,30 +4068,38 @@ static const struct generic_data unblock_device_invalid_param_test_1 = {
 
 static const char set_static_addr_valid_param[] = {
 			0x11, 0x22, 0x33, 0x44, 0x55, 0xc0 };
-static const char set_static_addr_settings[] = { 0x00, 0x82, 0x00, 0x00 };
+static const char set_static_addr_settings_param[] = { 0x01, 0x82, 0x00, 0x00 };
 
 static const struct generic_data set_static_addr_success_test = {
-	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
-	.send_param = set_static_addr_valid_param,
-	.send_len = sizeof(set_static_addr_valid_param),
+	.setup_bdaddr = BDADDR_ANY,
+	.setup_send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
+	.setup_send_param = set_static_addr_valid_param,
+	.setup_send_len = sizeof(set_static_addr_valid_param),
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_static_addr_settings,
-	.expect_len = sizeof(set_static_addr_settings),
+	.expect_param = set_static_addr_settings_param,
+	.expect_len = sizeof(set_static_addr_settings_param),
 	.expect_settings_set = MGMT_SETTING_STATIC_ADDRESS,
 	.expect_hci_command = BT_HCI_CMD_LE_SET_RANDOM_ADDRESS,
 	.expect_hci_param = set_static_addr_valid_param,
 	.expect_hci_len = sizeof(set_static_addr_valid_param),
 };
 
-static const char set_static_addr_settings_dual[] = { 0x80, 0x00, 0x00, 0x00 };
+static const char set_static_addr_settings_dual[] = { 0x81, 0x80, 0x00, 0x00 };
 
 static const struct generic_data set_static_addr_success_test_2 = {
-	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
-	.send_param = set_static_addr_valid_param,
-	.send_len = sizeof(set_static_addr_valid_param),
+	.setup_send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
+	.setup_send_param = set_static_addr_valid_param,
+	.setup_send_len = sizeof(set_static_addr_valid_param),
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_static_addr_settings_dual,
 	.expect_len = sizeof(set_static_addr_settings_dual),
+	.expect_settings_set = MGMT_SETTING_STATIC_ADDRESS,
 	.expect_hci_command = BT_HCI_CMD_LE_SET_RANDOM_ADDRESS,
 	.expect_hci_param = set_static_addr_valid_param,
 	.expect_hci_len = sizeof(set_static_addr_valid_param),
@@ -11386,6 +11407,23 @@ static void test_command_generic(const void *test_data)
 	test_add_condition(data);
 }
 
+static void setup_set_static_addr_success_2(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
+	int err;
+
+	/* Force use of static address */
+	err = vhci_set_force_static_address(vhci, true);
+	if (err) {
+		tester_warn("Unable to set force_static_address: %s (%d)",
+					strerror(-err), -err);
+		tester_test_failed();
+		return;
+	}
+	setup_command_generic(test_data);
+}
+
 static void check_scan(void *user_data)
 {
 	struct test_data *data = tester_get_data();
@@ -13233,10 +13271,11 @@ int main(int argc, char *argv[])
 
 	test_le("Set Static Address - Success 1",
 				&set_static_addr_success_test,
-				NULL, test_command_generic);
+				setup_command_generic, test_command_generic);
 	test_bredrle("Set Static Address - Success 2",
 				&set_static_addr_success_test_2,
-				NULL, test_command_generic);
+				setup_set_static_addr_success_2,
+				test_command_generic);
 	test_bredrle("Set Static Address - Failure 1",
 				&set_static_addr_failure_test,
 				NULL, test_command_generic);
