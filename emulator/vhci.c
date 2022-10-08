@@ -257,3 +257,13 @@ int vhci_set_emu_opcode(struct vhci *vhci, uint16_t opcode)
 {
 	return btdev_set_emu_opcode(vhci->btdev, opcode);
 }
+
+int vhci_set_force_static_address(struct vhci *vhci, bool enable)
+{
+	char val;
+
+	val = (enable) ? 'Y' : 'N';
+
+	return vhci_debugfs_write(vhci, "force_static_address", &val,
+							sizeof(val));
+}

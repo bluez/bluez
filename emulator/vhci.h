@@ -28,3 +28,4 @@ int vhci_set_force_wakeup(struct vhci *vhci, bool enable);
 int vhci_set_msft_opcode(struct vhci *vhci, uint16_t opcode);
 int vhci_set_aosp_capable(struct vhci *vhci, bool enable);
 int vhci_set_emu_opcode(struct vhci *vhci, uint16_t opcode);
+int vhci_set_force_static_address(struct vhci *vhci, bool enable);
