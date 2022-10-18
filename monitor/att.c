@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <linux/limits.h>
+#include <sys/stat.h>
 
 #include <glib.h>
 
@@ -2426,7 +2427,9 @@ struct att_read {
 
 struct att_conn_data {
 	struct gatt_db *ldb;
+	struct timespec ldb_mtim;
 	struct gatt_db *rdb;
+	struct timespec rdb_mtim;
 	struct queue *reads;
 };
 
@@ -2438,6 +2441,28 @@ static void att_conn_data_free(void *data)
 	gatt_db_unref(att_data->ldb);
 	queue_destroy(att_data->reads, free);
 	free(att_data);
+}
+
+static void gatt_load_db(struct gatt_db *db, const char *filename,
+						struct timespec *mtim)
+{
+	struct stat st;
+
+	if (lstat(filename, &st))
+		return;
+
+	if (!gatt_db_isempty(db)) {
+		/* Check if file has been modified since last time */
+		if (st.st_mtim.tv_sec == mtim->tv_sec &&
+				    st.st_mtim.tv_nsec == mtim->tv_nsec)
+			return;
+		/* Clear db before reloading */
+		gatt_db_clear(db);
+	}
+
+	*mtim = st.st_mtim;
+
+	btd_settings_gatt_db_load(db, filename);
 }
 
 static void load_gatt_db(struct packet_conn_data *conn)
@@ -2455,22 +2480,14 @@ static void load_gatt_db(struct packet_conn_data *conn)
 		conn->destroy = att_conn_data_free;
 	}
 
-	if (!gatt_db_isempty(data->ldb) && !gatt_db_isempty(data->rdb))
-		return;
-
 	ba2str((bdaddr_t *)conn->src, local);
 	ba2str((bdaddr_t *)conn->dst, peer);
 
-	if (gatt_db_isempty(data->ldb)) {
-		create_filename(filename, PATH_MAX, "/%s/attributes", local);
-		btd_settings_gatt_db_load(data->ldb, filename);
-	}
+	create_filename(filename, PATH_MAX, "/%s/attributes", local);
+	gatt_load_db(data->ldb, filename, &data->ldb_mtim);
 
-	if (gatt_db_isempty(data->rdb)) {
-		create_filename(filename, PATH_MAX, "/%s/cache/%s", local,
-								peer);
-		btd_settings_gatt_db_load(data->rdb, filename);
-	}
+	create_filename(filename, PATH_MAX, "/%s/cache/%s", local, peer);
+	gatt_load_db(data->rdb, filename, &data->rdb_mtim);
 }
 
 static struct gatt_db_attribute *get_attribute(const struct l2cap_frame *frame,
