@@ -171,6 +171,21 @@ extern "C" {
 #define VOL_CP_CHRC_UUID				0x2B7E
 #define VOL_FLAG_CHRC_UUID				0x2B7F
 
+#define GMCS_UUID                               0x1849
+#define MEDIA_PLAYER_NAME_CHRC_UUID             0x2b93
+#define MEDIA_TRACK_CHNGD_CHRC_UUID             0x2b96
+#define MEDIA_TRACK_TITLE_CHRC_UUID             0x2b97
+#define MEDIA_TRACK_DURATION_CHRC_UUID          0x2b98
+#define MEDIA_TRACK_POSTION_CHRC_UUID           0x2b99
+#define MEDIA_PLAYBACK_SPEED_CHRC_UUID          0x2b9a
+#define MEDIA_SEEKING_SPEED_CHRC_UUID           0x2b9b
+#define MEDIA_PLAYING_ORDER_CHRC_UUID           0x2ba1
+#define MEDIA_PLAY_ORDER_SUPPRTD_CHRC_UUID      0x2ba2
+#define MEDIA_STATE_CHRC_UUID                   0x2ba3
+#define MEDIA_CP_CHRC_UUID                      0x2ba4
+#define MEDIA_CP_OP_SUPPORTED_CHRC_UUID         0x2ba5
+#define MEDIA_CONTENT_CONTROL_ID_CHRC_UUID      0x2bba
+
 typedef struct {
 	enum {
 		BT_UUID_UNSPEC = 0,
