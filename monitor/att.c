@@ -2785,7 +2785,7 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
 	struct gatt_handler *handler;
 	struct l2cap_frame clone;
 
-	print_handle(frame, handle, false);
+	print_handle(frame, handle, true);
 	print_hex_field("  Data", frame->data, len);
 
 	if (len > frame->size) {
