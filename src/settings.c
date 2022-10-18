@@ -269,6 +269,7 @@ static int gatt_db_load(struct gatt_db *db, GKeyFile *key_file, char **keys)
 							&primary, &uuid);
 
 			bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
+			ret = 0;
 		} else if (g_str_equal(type, GATT_INCLUDE_UUID_STR)) {
 			ret = load_incl(db, *handle, value, current_service);
 		} else if (g_str_equal(type, GATT_CHARAC_UUID_STR)) {
