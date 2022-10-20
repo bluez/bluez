@@ -760,7 +760,7 @@ void ad_advertise_data(DBusConnection *conn, int argc, char *argv[])
 	struct ad_data data;
 
 	if (argc < 2 || !strlen(argv[1])) {
-		if (ad.manufacturer.data.len) {
+		if (ad.data.data.len) {
 			bt_shell_printf("Type: 0x%02x\n", ad.data.type);
 			bt_shell_hexdump(ad.data.data.data, ad.data.data.len);
 		}
