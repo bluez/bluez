@@ -131,6 +131,12 @@ void ellisys_inject_hci(struct timeval *tv, uint16_t index, uint16_t opcode,
 	case BTSNOOP_OPCODE_SCO_RX_PKT:
 		msg[20] = 0x83;
 		break;
+	case BTSNOOP_OPCODE_ISO_TX_PKT:
+		msg[20] = 0x05;
+		break;
+	case BTSNOOP_OPCODE_ISO_RX_PKT:
+		msg[20] = 0x85;
+		break;
 	default:
 		return;
 	}
