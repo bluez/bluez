@@ -30,9 +30,9 @@
 #include "mesh/node.h"
 #include "mesh/keyring.h"
 
-const char *dev_key_dir = "/dev_keys";
-const char *app_key_dir = "/app_keys";
-const char *net_key_dir = "/net_keys";
+static const char *dev_key_dir = "/dev_keys";
+static const char *app_key_dir = "/app_keys";
+static const char *net_key_dir = "/net_keys";
 
 static int open_key_file(struct mesh_node *node, const char *key_dir,
 							uint16_t idx, int flags)
@@ -367,6 +367,28 @@ bool keyring_del_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 		l_debug("RM Dev Key %s", key_file);
 		remove(key_file);
 	}
+
+	return true;
+}
+
+bool keyring_del_remote_dev_key_all(struct mesh_node *node, uint16_t unicast)
+{
+	uint8_t dev_key[16];
+	uint8_t test_key[16];
+	uint8_t cnt = 1;
+
+	if (!keyring_get_remote_dev_key(node, unicast, dev_key))
+		return false;
+
+	while (keyring_get_remote_dev_key(node, unicast + cnt, test_key)) {
+		if (memcmp(dev_key, test_key, sizeof(dev_key)))
+			break;
+
+		cnt++;
+	}
+
+	if (cnt > 1)
+		return keyring_del_remote_dev_key(node, unicast + 1, cnt - 1);
 
 	return true;
 }

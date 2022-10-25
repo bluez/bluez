@@ -119,6 +119,7 @@ void mesh_config_release(struct mesh_config *cfg);
 void mesh_config_destroy_nvm(struct mesh_config *cfg);
 bool mesh_config_save(struct mesh_config *cfg, bool no_wait,
 				mesh_config_status_func_t cb, void *user_data);
+void mesh_config_reset(struct mesh_config *cfg, struct mesh_config_node *node);
 struct mesh_config *mesh_config_create(const char *cfgdir_name,
 						const uint8_t uuid[16],
 						struct mesh_config_node *node);
@@ -126,6 +127,9 @@ struct mesh_config *mesh_config_create(const char *cfgdir_name,
 bool mesh_config_write_net_transmit(struct mesh_config *cfg, uint8_t cnt,
 							uint16_t interval);
 bool mesh_config_write_device_key(struct mesh_config *cfg, uint8_t *key);
+bool mesh_config_write_candidate(struct mesh_config *cfg, uint8_t *key);
+bool mesh_config_read_candidate(struct mesh_config *cfg, uint8_t *key);
+bool mesh_config_finalize_candidate(struct mesh_config *cfg);
 bool mesh_config_write_token(struct mesh_config *cfg, uint8_t *token);
 bool mesh_config_write_network_key(struct mesh_config *cfg, uint16_t idx,
 				uint8_t *key, uint8_t *new_key, int phase);
@@ -141,7 +145,7 @@ bool mesh_config_write_mode(struct mesh_config *cfg, const char *keyword,
 								int value);
 bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
 						uint8_t *data, uint16_t size);
-bool mesh_config_comp_page_mv(struct mesh_config *cfg, uint8_t old, uint8_t nw);
+void mesh_config_comp_page_del(struct mesh_config *cfg, uint8_t page);
 bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
 							uint16_t app_idx);

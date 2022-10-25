@@ -21,73 +21,135 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh-io.h"
 #include "mesh/node.h"
+#include "mesh/model.h"
 #include "mesh/net.h"
 #include "mesh/keyring.h"
 #include "mesh/agent.h"
 #include "mesh/provision.h"
+#include "mesh/prov.h"
+#include "mesh/remprv.h"
 #include "mesh/manager.h"
 
-struct add_data{
+struct prov_remote_data {
 	struct l_dbus_message *msg;
 	struct mesh_agent *agent;
 	struct mesh_node *node;
 	uint32_t disc_watch;
+	uint16_t original;
 	uint16_t primary;
 	uint16_t net_idx;
+	uint8_t transport;
 	uint8_t num_ele;
 	uint8_t uuid[16];
 };
 
-static int8_t scan_rssi;
-static uint8_t scan_uuid[16];
-static struct mesh_node *scan_node;
-static struct l_timeout *scan_timeout;
-static struct add_data *add_pending;
+struct scan_req {
+	struct mesh_node *node;
+	struct l_timeout *timeout;
+	uint16_t server;
+	uint16_t net_idx;
+	uint8_t uuid[16];
+	int8_t rssi;
+	bool ext;
+};
+
+static struct l_queue *scans;
+static struct prov_remote_data *prov_pending;
 static const uint8_t prvb[2] = {MESH_AD_TYPE_BEACON, 0x00};
+
+static bool by_scan(const void *a, const void *b)
+{
+	return a == b;
+}
+
+static bool by_node(const void *a, const void *b)
+{
+	const struct scan_req *req = a;
+	const struct mesh_node *node = b;
+
+	return req->node == node;
+}
+
+static bool by_node_svr(const void *a, const void *b)
+{
+	const struct scan_req *req = a;
+	const struct scan_req *test = b;
+
+	return req->node == test->node && req->server == test->server;
+}
 
 static void scan_cancel(struct l_timeout *timeout, void *user_data)
 {
-	struct mesh_node *node = user_data;
+	struct scan_req *req = user_data;
 	struct mesh_io *io;
 	struct mesh_net *net;
+	uint8_t msg[4];
+	int n;
 
 	l_debug("");
 
-	if (scan_timeout)
-		l_timeout_remove(scan_timeout);
+	req = l_queue_remove_if(scans, by_scan, req);
 
-	net = node_get_net(node);
-	io = mesh_net_get_io(net);
-	mesh_io_deregister_recv_cb(io, prvb, sizeof(prvb));
-	scan_node = NULL;
-	scan_timeout = NULL;
-}
-
-static void free_pending_add_call()
-{
-	if (!add_pending)
+	if (!req)
 		return;
 
-	if (add_pending->disc_watch)
+	l_timeout_remove(req->timeout);
+
+	if (req->server) {
+		n = mesh_model_opcode_set(OP_REM_PROV_SCAN_STOP, msg);
+		mesh_model_send(req->node, 0, req->server, APP_IDX_DEV_REMOTE,
+						req->net_idx, DEFAULT_TTL,
+						true, n, msg);
+	} else {
+		net = node_get_net(req->node);
+		io = mesh_net_get_io(net);
+		mesh_io_deregister_recv_cb(io, prvb, sizeof(prvb));
+	}
+
+	initiator_scan_unreg(req->node);
+	l_free(req);
+}
+
+static void free_pending_add_call(void)
+{
+	if (!prov_pending)
+		return;
+
+	if (prov_pending->disc_watch)
 		l_dbus_remove_watch(dbus_get_bus(),
-						add_pending->disc_watch);
+						prov_pending->disc_watch);
 
-	if (add_pending->msg)
-		l_dbus_message_unref(add_pending->msg);
+	if (prov_pending->msg)
+		l_dbus_message_unref(prov_pending->msg);
 
-	l_free(add_pending);
-	add_pending = NULL;
+	l_free(prov_pending);
+	prov_pending = NULL;
 }
 
 static void prov_disc_cb(struct l_dbus *bus, void *user_data)
 {
-	if (!add_pending)
+	if (!prov_pending)
 		return;
 
-	initiator_cancel(add_pending);
-	add_pending->disc_watch = 0;
+	initiator_cancel(prov_pending);
+	prov_pending->disc_watch = 0;
 
 	free_pending_add_call();
+}
+
+static void append_dict_entry_basic(struct l_dbus_message_builder *builder,
+					const char *key, const char *signature,
+					const void *data)
+{
+	if (!builder)
+		return;
+
+	l_dbus_message_builder_enter_dict(builder, "sv");
+	l_dbus_message_builder_append_basic(builder, 's', key);
+	l_dbus_message_builder_enter_variant(builder, signature);
+	l_dbus_message_builder_append_basic(builder, signature[0], data);
+	l_dbus_message_builder_leave_variant(builder);
+	l_dbus_message_builder_leave_dict(builder);
 }
 
 static void send_add_failed(const char *owner, const char *path,
@@ -102,7 +164,7 @@ static void send_add_failed(const char *owner, const char *path,
 						"AddNodeFailed");
 
 	builder = l_dbus_message_builder_new(msg);
-	dbus_append_byte_array(builder, add_pending->uuid, 16);
+	dbus_append_byte_array(builder, prov_pending->uuid, 16);
 	l_dbus_message_builder_append_basic(builder, 's',
 						mesh_prov_status_str(status));
 	l_dbus_message_builder_finalize(builder);
@@ -115,14 +177,14 @@ static void send_add_failed(const char *owner, const char *path,
 static bool add_cmplt(void *user_data, uint8_t status,
 					struct mesh_prov_node_info *info)
 {
-	struct add_data *pending = user_data;
+	struct prov_remote_data *pending = user_data;
 	struct mesh_node *node = pending->node;
 	struct l_dbus *dbus = dbus_get_bus();
 	struct l_dbus_message_builder *builder;
 	struct l_dbus_message *msg;
 	bool result;
 
-	if (pending != add_pending)
+	if (pending != prov_pending)
 		return false;
 
 	if (status != PROV_ERR_SUCCESS) {
@@ -131,7 +193,12 @@ static bool add_cmplt(void *user_data, uint8_t status,
 		return false;
 	}
 
-	result = keyring_put_remote_dev_key(add_pending->node, info->unicast,
+	/* If Unicast address changing, delete old dev key */
+	if (pending->transport == PB_NPPI_01)
+		keyring_del_remote_dev_key_all(pending->node,
+							pending->original);
+
+	result = keyring_put_remote_dev_key(pending->node, info->unicast,
 					info->num_ele, info->device_key);
 
 	if (!result) {
@@ -140,13 +207,29 @@ static bool add_cmplt(void *user_data, uint8_t status,
 		return false;
 	}
 
-	msg = l_dbus_message_new_method_call(dbus, node_get_owner(node),
+	if (pending->transport > PB_NPPI_02)
+		msg = l_dbus_message_new_method_call(dbus, node_get_owner(node),
 						node_get_app_path(node),
 						MESH_PROVISIONER_INTERFACE,
 						"AddNodeComplete");
+	else
+		msg = l_dbus_message_new_method_call(dbus, node_get_owner(node),
+						node_get_app_path(node),
+						MESH_PROVISIONER_INTERFACE,
+						"ReprovComplete");
 
 	builder = l_dbus_message_builder_new(msg);
-	dbus_append_byte_array(builder, add_pending->uuid, 16);
+
+	if (pending->transport > PB_NPPI_02)
+		dbus_append_byte_array(builder, pending->uuid, 16);
+	else {
+		uint8_t nppi = (uint8_t) pending->transport;
+
+		l_dbus_message_builder_append_basic(builder, 'q',
+							&pending->original);
+		l_dbus_message_builder_append_basic(builder, 'y', &nppi);
+	}
+
 	l_dbus_message_builder_append_basic(builder, 'q', &info->unicast);
 	l_dbus_message_builder_append_basic(builder, 'y', &info->num_ele);
 	l_dbus_message_builder_finalize(builder);
@@ -161,47 +244,66 @@ static bool add_cmplt(void *user_data, uint8_t status,
 
 static void mgr_prov_data (struct l_dbus_message *reply, void *user_data)
 {
-	struct add_data *pending = user_data;
+	struct prov_remote_data *pending = user_data;
 	uint16_t net_idx;
 	uint16_t primary;
 
-	if (pending != add_pending)
+	if (pending != prov_pending)
 		return;
 
 	if (l_dbus_message_is_error(reply))
 		return;
 
-	if (!l_dbus_message_get_arguments(reply, "qq", &net_idx, &primary))
+	if (pending->transport == PB_NPPI_01) {
+		/* If performing NPPI, we only get new primary unicast here */
+		if (!l_dbus_message_get_arguments(reply, "q", &primary))
+			return;
+
+		net_idx = pending->net_idx;
+
+	} else if (!l_dbus_message_get_arguments(reply, "qq", &net_idx,
+								&primary))
 		return;
 
-	add_pending->primary = primary;
-	add_pending->net_idx = net_idx;
-	initiator_prov_data(net_idx, primary, add_pending);
+	pending->primary = primary;
+	pending->net_idx = net_idx;
+	initiator_prov_data(net_idx, primary, pending);
 }
 
 static bool add_data_get(void *user_data, uint8_t num_ele)
 {
-	struct add_data *pending = user_data;
+	struct prov_remote_data *pending = user_data;
 	struct l_dbus_message *msg;
 	struct l_dbus *dbus;
 	const char *app_path;
 	const char *sender;
 
-	if (pending != add_pending)
+	if (pending != prov_pending)
 		return false;
 
 	dbus = dbus_get_bus();
-	app_path = node_get_app_path(add_pending->node);
-	sender = node_get_owner(add_pending->node);
+	app_path = node_get_app_path(pending->node);
+	sender = node_get_owner(pending->node);
 
-	msg = l_dbus_message_new_method_call(dbus, sender, app_path,
+	if (pending->transport > PB_NPPI_02) {
+		msg = l_dbus_message_new_method_call(dbus, sender, app_path,
 						MESH_PROVISIONER_INTERFACE,
 						"RequestProvData");
 
-	l_dbus_message_set_arguments(msg, "y", num_ele);
-	l_dbus_send_with_reply(dbus, msg, mgr_prov_data, add_pending, NULL);
+		l_dbus_message_set_arguments(msg, "y", num_ele);
+	} else if (pending->transport == PB_NPPI_01) {
+		msg = l_dbus_message_new_method_call(dbus, sender, app_path,
+						MESH_PROVISIONER_INTERFACE,
+						"RequestReprovData");
 
-	add_pending->num_ele = num_ele;
+		l_dbus_message_set_arguments(msg, "qy", pending->original,
+								num_ele);
+	} else
+		return false;
+
+	l_dbus_send_with_reply(dbus, msg, mgr_prov_data, pending, NULL);
+
+	pending->num_ele = num_ele;
 
 	return true;
 }
@@ -213,15 +315,95 @@ static void add_start(void *user_data, int err)
 	l_debug("Start callback");
 
 	if (err == MESH_ERROR_NONE)
-		reply = l_dbus_message_new_method_return(add_pending->msg);
+		reply = l_dbus_message_new_method_return(prov_pending->msg);
 	else
-		reply = dbus_error(add_pending->msg, MESH_ERROR_FAILED,
+		reply = dbus_error(prov_pending->msg, MESH_ERROR_FAILED,
 				"Failed to start provisioning initiator");
 
 	l_dbus_send(dbus_get_bus(), reply);
-	l_dbus_message_unref(add_pending->msg);
+	l_dbus_message_unref(prov_pending->msg);
 
-	add_pending->msg = NULL;
+	prov_pending->msg = NULL;
+}
+
+static struct l_dbus_message *reprovision_call(struct l_dbus *dbus,
+						struct l_dbus_message *msg,
+						void *user_data)
+{
+	struct mesh_node *node = user_data;
+	struct l_dbus_message_iter options, var;
+	struct l_dbus_message *reply;
+	struct mesh_net *net = node_get_net(node);
+	const char *key;
+	uint16_t subidx;
+	uint16_t server = 0;
+	uint8_t nppi = 0;
+
+	l_debug("Reprovision request");
+
+	if (!l_dbus_message_get_arguments(msg, "qa{sv}", &server, &options))
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
+
+	if (!IS_UNICAST(server))
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, "Bad Unicast");
+
+	/* Default to nodes primary subnet index */
+	subidx = mesh_net_get_primary_idx(net);
+
+	/* Get Provisioning Options */
+	while (l_dbus_message_iter_next_entry(&options, &key, &var)) {
+		bool failed = true;
+
+		if (!strcmp(key, "NPPI")) {
+			if (l_dbus_message_iter_get_variant(&var, "y", &nppi)) {
+				if (nppi <= 2)
+					failed = false;
+			}
+		} else if (!strcmp(key, "Subnet")) {
+			if (l_dbus_message_iter_get_variant(&var, "q",
+								&subidx)) {
+				if (subidx <= MAX_KEY_IDX)
+					failed = false;
+			}
+		}
+
+		if (failed)
+			return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Invalid options");
+	}
+
+	/* AddNode cancels all outstanding Scanning from node */
+	manager_scan_cancel(node);
+
+	/* Invoke Prov Initiator */
+	prov_pending = l_new(struct prov_remote_data, 1);
+
+	prov_pending->transport = nppi;
+	prov_pending->node = node;
+	prov_pending->original = server;
+	prov_pending->agent = node_get_agent(node);
+
+	if (!node_is_provisioner(node) || (prov_pending->agent == NULL)) {
+		reply = dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED,
+							"Missing Interfaces");
+		goto fail;
+	}
+
+	prov_pending->msg = l_dbus_message_ref(msg);
+	initiator_start(prov_pending->transport, server, subidx, NULL, 99, 60,
+					prov_pending->agent, add_start,
+					add_data_get, add_cmplt, node,
+					prov_pending);
+
+	prov_pending->disc_watch = l_dbus_add_disconnect_watch(dbus,
+						node_get_owner(node),
+						prov_disc_cb, NULL, NULL);
+
+	return NULL;
+fail:
+	l_free(prov_pending);
+	prov_pending = NULL;
+	return reply;
 }
 
 static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
@@ -229,55 +411,101 @@ static struct l_dbus_message *add_node_call(struct l_dbus *dbus,
 						void *user_data)
 {
 	struct mesh_node *node = user_data;
-	struct l_dbus_message_iter iter_uuid, options;
+	struct l_dbus_message_iter iter_uuid, options, var;
 	struct l_dbus_message *reply;
+	struct mesh_net *net = node_get_net(node);
+	const char *key;
 	uint8_t *uuid;
-	uint32_t n = 22;
+	uint32_t n = 0;
+	uint16_t subidx;
+	uint16_t sec = 60;
+	uint16_t server = 0;
 
 	l_debug("AddNode request");
 
 	if (!l_dbus_message_get_arguments(msg, "aya{sv}", &iter_uuid, &options))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
-	if (!l_dbus_message_iter_get_fixed_array(&iter_uuid, &uuid, &n)
-								|| n != 16)
+	if (!l_dbus_message_iter_get_fixed_array(&iter_uuid, &uuid, &n) ||
+									n != 16)
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
 							"Bad device UUID");
 
-	/* Allow AddNode to cancel Scanning if from the same node */
-	if (scan_node) {
-		if (scan_node != node)
-			return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+	/* Default to nodes primary subnet index */
+	subidx = mesh_net_get_primary_idx(net);
 
-		scan_cancel(NULL, node);
+	/* Get Provisioning Options */
+	while (l_dbus_message_iter_next_entry(&options, &key, &var)) {
+		bool failed = true;
+
+		if (!strcmp(key, "Seconds")) {
+			if (l_dbus_message_iter_get_variant(&var, "q", &sec))
+				failed = false;
+		} else if (!strcmp(key, "Server")) {
+			if (l_dbus_message_iter_get_variant(&var, "q",
+								&server)) {
+				if (server < 0x8000)
+					failed = false;
+			}
+		} else if (!strcmp(key, "Subnet")) {
+			if (l_dbus_message_iter_get_variant(&var, "q",
+								&subidx)) {
+				if (subidx <= MAX_KEY_IDX)
+					failed = false;
+			}
+		}
+
+		if (failed)
+			return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Invalid options");
 	}
 
-	/* Invoke Prov Initiator */
-	add_pending = l_new(struct add_data, 1);
-	memcpy(add_pending->uuid, uuid, 16);
-	add_pending->node = node;
-	add_pending->agent = node_get_agent(node);
+	/* Device Key update/Composition update requires remote server */
+	if (!n && !server)
+		return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Invalid options");
 
-	if (!node_is_provisioner(node) || (add_pending->agent == NULL)) {
+	/* If no server specified, use local */
+	if (!server)
+		server = node_get_primary(node);
+
+	/* AddNode cancels all outstanding Scanning from node */
+	manager_scan_cancel(node);
+
+	/* Invoke Prov Initiator */
+	prov_pending = l_new(struct prov_remote_data, 1);
+
+	if (n)
+		memcpy(prov_pending->uuid, uuid, 16);
+	else
+		uuid = NULL;
+
+	prov_pending->transport = PB_ADV;
+	prov_pending->node = node;
+	prov_pending->agent = node_get_agent(node);
+
+	if (!node_is_provisioner(node) || (prov_pending->agent == NULL)) {
 		l_debug("Provisioner: %d", node_is_provisioner(node));
-		l_debug("Agent: %p", add_pending->agent);
+		l_debug("Agent: %p", prov_pending->agent);
 		reply = dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED,
 							"Missing Interfaces");
 		goto fail;
 	}
 
-	add_pending->msg = l_dbus_message_ref(msg);
-	initiator_start(PB_ADV, uuid, 99, 60, add_pending->agent, add_start,
-				add_data_get, add_cmplt, node, add_pending);
+	prov_pending->msg = l_dbus_message_ref(msg);
+	initiator_start(PB_ADV, server, subidx, uuid, 99, sec,
+					prov_pending->agent, add_start,
+					add_data_get, add_cmplt, node,
+					prov_pending);
 
-	add_pending->disc_watch = l_dbus_add_disconnect_watch(dbus,
+	prov_pending->disc_watch = l_dbus_add_disconnect_watch(dbus,
 						node_get_owner(node),
 						prov_disc_cb, NULL, NULL);
 
 	return NULL;
 fail:
-	l_free(add_pending);
-	add_pending = NULL;
+	l_free(prov_pending);
+	prov_pending = NULL;
 	return reply;
 }
 
@@ -337,38 +565,50 @@ static struct l_dbus_message *delete_node_call(struct l_dbus *dbus,
 	return l_dbus_message_new_method_return(msg);
 }
 
-static void prov_beacon_recv(void *user_data, struct mesh_io_recv_info *info,
+static void manager_scan_result(void *user_data, uint16_t server, bool ext,
 					const uint8_t *data, uint16_t len)
 {
-	struct mesh_node *node = user_data;
+	struct scan_req node_svr = {
+		.node = user_data,
+		.server = server,
+	};
+	struct scan_req *req;
 	struct l_dbus_message_builder *builder;
 	struct l_dbus_message *msg;
 	struct l_dbus *dbus;
 	int16_t rssi;
 
-	if (scan_node != node || len < sizeof(scan_uuid) + 2 || data[1] != 0x00)
+	l_debug("scan_result %4.4x %p", server, user_data);
+	req = l_queue_find(scans, by_node_svr, &node_svr);
+	if (!req) {
+		l_debug("No scan_result req");
 		return;
-
-	if (!memcmp(data + 2, scan_uuid, sizeof(scan_uuid))) {
-		if (info->rssi <= scan_rssi)
-			return;
 	}
 
-	memcpy(scan_uuid, data + 2, sizeof(scan_uuid));
-	scan_rssi = info->rssi;
-	rssi = info->rssi;
+	/* Filter repeats with weaker signal */
+	if (!memcmp(data + 1, req->uuid, sizeof(req->uuid))) {
+		if (!ext && ((int8_t) data[0] <= req->rssi)) {
+			l_debug("Already Seen");
+			return;
+		}
+	}
 
+	if (!ext && ((int8_t) data[0] > req->rssi))
+		req->rssi = (int8_t) data[0];
+
+	rssi = req->rssi;
+	memcpy(req->uuid, data + 1, sizeof(req->uuid));
 	dbus = dbus_get_bus();
-	msg = l_dbus_message_new_method_call(dbus, node_get_owner(node),
-						node_get_app_path(node),
+	msg = l_dbus_message_new_method_call(dbus, node_get_owner(req->node),
+						node_get_app_path(req->node),
 						MESH_PROVISIONER_INTERFACE,
 						"ScanResult");
 
 	builder = l_dbus_message_builder_new(msg);
 	l_dbus_message_builder_append_basic(builder, 'n', &rssi);
-	dbus_append_byte_array(builder, data + 2, len -2);
+	dbus_append_byte_array(builder, data + 1, len - 1);
 	l_dbus_message_builder_enter_array(builder, "{sv}");
-	/* TODO: populate with options when defined */
+	append_dict_entry_basic(builder, "Server", "q", &server);
 	l_dbus_message_builder_leave_array(builder);
 	l_dbus_message_builder_finalize(builder);
 	l_dbus_message_builder_destroy(builder);
@@ -380,27 +620,71 @@ static struct l_dbus_message *start_scan_call(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
 {
-	struct mesh_node *node = user_data;
-	uint16_t duration = 0;
-	struct mesh_io *io;
+	struct scan_req new_req = {
+		.node = user_data,
+		.server = 0,
+		.timeout = NULL,
+		.ext = false,
+	};
+	struct scan_req *req;
 	struct mesh_net *net;
+	uint8_t *uuid, *ext = NULL;
+	uint8_t scan_req[21];
+	int n;
+	uint32_t ext_len;
+	uint32_t flen = 0;
+	uint16_t sec = 60;
 	const char *key;
 	struct l_dbus_message_iter options, var;
 	const char *sender = l_dbus_message_get_sender(msg);
 
-	if (strcmp(sender, node_get_owner(node)))
+	if (strcmp(sender, node_get_owner(new_req.node)))
 		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
 	if (!l_dbus_message_get_arguments(msg, "a{sv}", &options))
 		return dbus_error(msg, MESH_ERROR_INVALID_ARGS, NULL);
 
+	if (!node_is_provisioner(new_req.node))
+		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
+
+	net = node_get_net(new_req.node);
+	new_req.net_idx = mesh_net_get_primary_idx(net);
+	memset(new_req.uuid, 0, sizeof(new_req.uuid));
+
 	while (l_dbus_message_iter_next_entry(&options, &key, &var)) {
 		bool failed = true;
 
 		if (!strcmp(key, "Seconds")) {
-			if (l_dbus_message_iter_get_variant(&var, "q",
-							    &duration)) {
+			if (l_dbus_message_iter_get_variant(&var, "q", &sec))
 				failed = false;
+		} else if (!strcmp(key, "Subnet")) {
+			if (l_dbus_message_iter_get_variant(&var, "q",
+							&new_req.net_idx)) {
+				if (new_req.net_idx <= MAX_KEY_IDX)
+					failed = false;
+			}
+		} else if (!strcmp(key, "Server")) {
+			if (l_dbus_message_iter_get_variant(&var, "q",
+							&new_req.server)) {
+				if (new_req.server < 0x8000)
+					failed = false;
+			}
+		} else if (!strcmp(key, "Filter")) {
+			if (l_dbus_message_iter_get_variant(&var, "ay", &var)) {
+				if (l_dbus_message_iter_get_fixed_array(&var,
+								&uuid, &flen)) {
+					if (flen == 16) {
+						memcpy(new_req.uuid, uuid,
+									flen);
+						failed = false;
+					}
+				}
+			}
+		} else if (!strcmp(key, "Extended")) {
+			if (l_dbus_message_iter_get_variant(&var, "ay", &var)) {
+				if (l_dbus_message_iter_get_fixed_array(&var,
+								&ext, &ext_len))
+					failed = false;
 			}
 		}
 
@@ -409,27 +693,51 @@ static struct l_dbus_message *start_scan_call(struct l_dbus *dbus,
 							"Invalid options");
 	}
 
-	if (scan_node && scan_node != node)
-		return dbus_error(msg, MESH_ERROR_BUSY, NULL);
+	if (!scans)
+		scans = l_queue_new();
 
-	if (!node_is_provisioner(node))
-		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
+	if (new_req.server) {
+		if (!sec || sec > 60)
+			return dbus_error(msg, MESH_ERROR_INVALID_ARGS,
+							"Invalid options");
+	} else {
+		new_req.server = node_get_primary(new_req.node);
+		if (!sec || sec > 60)
+			sec = 60;
+	}
 
-	if (scan_timeout)
-		l_timeout_remove(scan_timeout);
+	req = l_queue_remove_if(scans, by_node_svr, &new_req);
 
-	memset(scan_uuid, 0, sizeof(scan_uuid));
-	scan_rssi = -128;
-	scan_timeout = NULL;
-	net = node_get_net(node);
-	io = mesh_net_get_io(net);
-	scan_node = node;
-	mesh_io_register_recv_cb(io, prvb, sizeof(prvb),
-						prov_beacon_recv, node);
+	if (!req)
+		req = l_malloc(sizeof(new_req));
 
-	if (duration)
-		scan_timeout = l_timeout_create(duration, scan_cancel,
-								node, NULL);
+	if (req->timeout) {
+		l_timeout_remove(req->timeout);
+		req->timeout = NULL;
+	}
+
+	*req = new_req;
+	req->rssi = -128;
+
+	if (sec)
+		req->timeout = l_timeout_create(sec, scan_cancel, req, NULL);
+
+
+	n = mesh_model_opcode_set(OP_REM_PROV_SCAN_START, scan_req);
+	scan_req[n++] = 5;
+	scan_req[n++] = sec;
+	if (flen) {
+		memcpy(scan_req + n, req->uuid, flen);
+		n += flen;
+	}
+
+	mesh_model_send(req->node, 0, req->server, APP_IDX_DEV_REMOTE,
+						req->net_idx, DEFAULT_TTL,
+						true, n, scan_req);
+
+	initiator_scan_reg(manager_scan_result, req->node);
+
+	l_queue_push_tail(scans, req);
 
 	return l_dbus_message_new_method_return(msg);
 }
@@ -444,12 +752,7 @@ static struct l_dbus_message *cancel_scan_call(struct l_dbus *dbus,
 	if (strcmp(sender, node_get_owner(node)) || !node_is_provisioner(node))
 		return dbus_error(msg, MESH_ERROR_NOT_AUTHORIZED, NULL);
 
-	if (scan_node) {
-		if (scan_node != node)
-			return dbus_error(msg, MESH_ERROR_BUSY, NULL);
-
-		scan_cancel(NULL, node);
-	}
+	manager_scan_cancel(node);
 
 	return l_dbus_message_new_method_return(msg);
 }
@@ -814,6 +1117,8 @@ static void setup_management_interface(struct l_dbus_interface *iface)
 						"aya{sv}", "uuid", "options");
 	l_dbus_interface_method(iface, "ImportRemoteNode", 0, import_node_call,
 				"", "qyay", "primary", "count", "dev_key");
+	l_dbus_interface_method(iface, "Reprovision", 0, reprovision_call,
+					"", "qa{sv}", "unicast", "options");
 	l_dbus_interface_method(iface, "DeleteRemoteNode", 0, delete_node_call,
 						"", "qy", "primary", "count");
 	l_dbus_interface_method(iface, "UnprovisionedScan", 0, start_scan_call,
@@ -849,7 +1154,7 @@ bool manager_dbus_init(struct l_dbus *bus)
 	if (!l_dbus_register_interface(bus, MESH_MANAGEMENT_INTERFACE,
 						setup_management_interface,
 						NULL, false)) {
-		l_info("Unable to register %s interface",
+		l_debug("Unable to register %s interface",
 						MESH_MANAGEMENT_INTERFACE);
 		return false;
 	}
@@ -859,8 +1164,8 @@ bool manager_dbus_init(struct l_dbus *bus)
 
 void manager_scan_cancel(struct mesh_node *node)
 {
-	if (scan_node != node)
-		return;
+	struct scan_req *req;
 
-	scan_cancel(NULL, node);
+	while ((req = l_queue_find(scans, by_node, node)))
+		scan_cancel(NULL, req);
 }

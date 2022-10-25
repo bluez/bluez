@@ -30,8 +30,8 @@
 		(SET_ID(SIG_VENDOR, l_get_le16(pkt))))
 
 /* Supported composition pages, sorted high to low */
-/* Only page 0 is currently supported */
 static const uint8_t supported_pages[] = {
+	128,
 	0
 };
 

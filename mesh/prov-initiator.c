@@ -21,10 +21,12 @@
 #include "mesh/crypto.h"
 #include "mesh/net.h"
 #include "mesh/node.h"
+#include "mesh/model.h"
 #include "mesh/keyring.h"
 #include "mesh/prov.h"
 #include "mesh/provision.h"
 #include "mesh/pb-adv.h"
+#include "mesh/remprv.h"
 #include "mesh/mesh.h"
 #include "mesh/agent.h"
 #include "mesh/error.h"
@@ -82,12 +84,16 @@ struct mesh_prov_initiator {
 	struct l_timeout *timeout;
 	uint32_t to_secs;
 	enum int_state	state;
-	enum trans_type transport;
 	uint16_t net_idx;
+	uint16_t svr_idx;
 	uint16_t unicast;
+	uint16_t server;
+	uint8_t transport;
 	uint8_t material;
 	uint8_t expected;
 	int8_t previous;
+	uint8_t out_num;
+	uint8_t rpr_state;
 	struct conf_input conf_inputs;
 	uint8_t calc_key[16];
 	uint8_t salt[16];
@@ -100,14 +106,23 @@ struct mesh_prov_initiator {
 	uint8_t uuid[16];
 };
 
+struct scan_req {
+	mesh_prov_initiator_scan_result_t scan_result;
+	struct mesh_node *node;
+	int count;
+};
+
 static struct mesh_prov_initiator *prov = NULL;
+static struct l_queue *scans;
 
 static void initiator_free(void)
 {
-	if (prov)
+	if (prov) {
 		l_timeout_remove(prov->timeout);
 
-	mesh_send_cancel(&pkt_filter, sizeof(pkt_filter));
+		if (!prov->server)
+			mesh_send_cancel(&pkt_filter, sizeof(pkt_filter));
+	}
 
 	pb_adv_unreg(prov);
 
@@ -119,6 +134,15 @@ static void int_prov_close(void *user_data, uint8_t reason)
 {
 	struct mesh_prov_initiator *prov = user_data;
 	struct mesh_prov_node_info info;
+	uint8_t msg[4];
+	int n;
+
+	if (prov->server) {
+		n = mesh_model_opcode_set(OP_REM_PROV_LINK_CLOSE, msg);
+		msg[n++] = reason == PROV_ERR_SUCCESS ? 0x00 : 0x02;
+		mesh_model_send(prov->node, 0, prov->server, APP_IDX_DEV_REMOTE,
+				prov->svr_idx, DEFAULT_TTL, true, n, msg);
+	}
 
 	if (reason != PROV_ERR_SUCCESS) {
 		prov->complete_cb(prov->caller_data, reason, NULL);
@@ -626,9 +650,10 @@ static void int_prov_start_auth(const struct mesh_agent_prov_caps *prov_caps,
 	}
 }
 
-static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
+static void int_prov_rx(void *user_data, const void *dptr, uint16_t len)
 {
 	struct mesh_prov_initiator *rx_prov = user_data;
+	const uint8_t *data = dptr;
 	uint8_t *out;
 	uint8_t type = *data++;
 	uint8_t fail_code[2];
@@ -651,7 +676,7 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 	if (type >= L_ARRAY_SIZE(expected_pdu_size) ||
 					len != expected_pdu_size[type]) {
 		l_error("Expected PDU size %d, Got %d (type: %2.2x)",
-			len, expected_pdu_size[type], type);
+			expected_pdu_size[type], len, type);
 		fail_code[1] = PROV_ERR_INVALID_FORMAT;
 		goto failure;
 	}
@@ -773,7 +798,12 @@ static void int_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 			goto failure;
 		}
 
-		if (!prov->data_req_cb(prov->caller_data,
+		if (prov->transport == PB_NPPI_00 ||
+						prov->transport == PB_NPPI_02) {
+			/* No App data needed */
+			initiator_prov_data(prov->svr_idx, prov->server,
+							prov->caller_data);
+		} else if (!prov->data_req_cb(prov->caller_data,
 					prov->conf_inputs.caps.num_ele)) {
 			l_error("Provisioning Failed-Data Get");
 			fail_code[1] = PROV_ERR_CANT_ASSIGN_ADDR;
@@ -851,6 +881,8 @@ static void int_prov_ack(void *user_data, uint8_t msg_num)
 
 static void initiator_open_cb(void *user_data, int err)
 {
+	uint8_t msg[20];
+	int n;
 	bool result;
 
 	if (!prov)
@@ -859,17 +891,29 @@ static void initiator_open_cb(void *user_data, int err)
 	if (err != MESH_ERROR_NONE)
 		goto fail;
 
-	/* Always register for PB-ADV */
-	result = pb_adv_reg(true, int_prov_open, int_prov_close, int_prov_rx,
-						int_prov_ack, prov->uuid, prov);
+	if (prov->server) {
+		n = mesh_model_opcode_set(OP_REM_PROV_LINK_OPEN, msg);
+
+		if (prov->transport <= PB_NPPI_02) {
+			msg[n++] = prov->transport;
+		} else {
+			memcpy(msg + n, prov->uuid, 16);
+			n += 16;
+		}
+
+		result = mesh_model_send(prov->node, 0, prov->server,
+					APP_IDX_DEV_REMOTE, prov->svr_idx,
+					DEFAULT_TTL, true, n, msg);
+	} else {
+		/* Always register for PB-ADV */
+		result = pb_adv_reg(true, int_prov_open, int_prov_close,
+				int_prov_rx, int_prov_ack, prov->uuid, prov);
+	}
 
 	if (!result) {
 		err = MESH_ERROR_FAILED;
 		goto fail;
 	}
-
-	if (!prov)
-		return;
 
 	prov->start_cb(prov->caller_data, MESH_ERROR_NONE);
 	return;
@@ -878,10 +922,20 @@ fail:
 	initiator_free();
 }
 
-bool initiator_start(enum trans_type transport,
-		uint8_t uuid[16],
-		uint16_t max_ele,
-		uint32_t timeout, /* in seconds from mesh.conf */
+static void initiate_to(struct l_timeout *timeout, void *user_data)
+{
+	struct mesh_prov_initiator *rx_prov = user_data;
+
+	if (rx_prov != prov) {
+		l_timeout_remove(timeout);
+		return;
+	}
+
+	int_prov_close(user_data, PROV_ERR_TIMEOUT);
+}
+
+bool initiator_start(uint8_t transport, uint16_t server, uint16_t svr_idx,
+		uint8_t uuid[16], uint16_t max_ele, uint32_t timeout,
 		struct mesh_agent *agent,
 		mesh_prov_initiator_start_func_t start_cb,
 		mesh_prov_initiator_data_req_func_t data_req_cb,
@@ -904,6 +958,10 @@ bool initiator_start(enum trans_type transport,
 	prov->data_req_cb = data_req_cb;
 	prov->caller_data = caller_data;
 	prov->previous = -1;
+	prov->server = server;
+	prov->svr_idx = svr_idx;
+	prov->transport = transport;
+	prov->timeout = l_timeout_create(timeout, initiate_to, prov, NULL);
 	memcpy(prov->uuid, uuid, 16);
 
 	mesh_agent_refresh(prov->agent, initiator_open_cb, prov);
@@ -914,4 +972,183 @@ bool initiator_start(enum trans_type transport,
 void initiator_cancel(void *user_data)
 {
 	initiator_free();
+}
+
+static void rpr_tx(void *user_data, const void *data, uint16_t len)
+{
+	struct mesh_prov_initiator *prov = user_data;
+	uint8_t msg[72];
+	int n;
+
+	n = mesh_model_opcode_set(OP_REM_PROV_PDU_SEND, msg);
+	msg[n++] = ++prov->out_num;
+	memcpy(msg + n, data, len);
+	l_debug("Send OB %2.2x, with packet type %d", msg[n], prov->out_num);
+	n += len;
+
+	prov->rpr_state = PB_REMOTE_STATE_OB_PKT_TX;
+	mesh_model_send(prov->node, 0, prov->server, APP_IDX_DEV_REMOTE,
+				prov->svr_idx, DEFAULT_TTL, true, n, msg);
+}
+
+static bool match_req_node(const void *a, const void *b)
+{
+	const struct scan_req *req = a;
+	const struct mesh_node *node = b;
+
+	return req->node == node;
+}
+
+static bool remprv_cli_pkt(uint16_t src, uint16_t unicast, uint16_t app_idx,
+					uint16_t net_idx, const uint8_t *data,
+					uint16_t size, const void *user_data)
+{
+	struct mesh_node *node = (struct mesh_node *) user_data;
+	const uint8_t *pkt = data;
+	struct scan_req *req;
+	uint32_t opcode;
+	uint16_t n;
+
+	if (mesh_model_opcode_get(pkt, size, &opcode, &n)) {
+		size -= n;
+		pkt += n;
+	} else
+		return false;
+
+	if (opcode < OP_REM_PROV_SCAN_CAP_GET ||
+					opcode > OP_REM_PROV_PDU_REPORT)
+		return false;
+
+	if (app_idx != APP_IDX_DEV_REMOTE && app_idx != APP_IDX_DEV_LOCAL)
+		return true;
+
+	/* Local Dev key only allowed for Loop-backs */
+	if (app_idx == APP_IDX_DEV_LOCAL && unicast != src)
+		return true;
+
+	if (prov && (prov->server != src || prov->node != node))
+		return true;
+
+	n = 0;
+
+	switch (opcode) {
+	default:
+		return false;
+
+	/* Provisioning Opcodes */
+	case OP_REM_PROV_LINK_STATUS:
+		if (size != 2 || !prov)
+			break;
+
+		if (pkt[0] == PB_REM_ERR_SUCCESS)
+			prov->rpr_state = pkt[1];
+
+		break;
+
+	case OP_REM_PROV_LINK_REPORT:
+		if (size != 2 || !prov)
+			return true;
+
+		if (pkt[0] != PB_REM_ERR_SUCCESS) {
+			if (pkt[0] == PB_REM_ERR_CLOSED_BY_DEVICE ||
+				pkt[0] == PB_REM_ERR_CLOSED_BY_SERVER)
+				int_prov_close(prov, pkt[1]);
+
+			break;
+		}
+
+
+		if (prov->rpr_state == PB_REMOTE_STATE_LINK_OPENING)
+			int_prov_open(prov, rpr_tx, prov, prov->transport);
+		else if (prov->rpr_state == PB_REMOTE_STATE_LINK_CLOSING) {
+			prov->rpr_state = PB_REMOTE_STATE_IDLE;
+			int_prov_close(prov, pkt[1]);
+			break;
+		}
+
+		prov->rpr_state = pkt[1];
+
+		break;
+
+	case OP_REM_PROV_PDU_REPORT:
+		int_prov_rx(prov, pkt + 1, size - 1);
+		break;
+
+	case OP_REM_PROV_PDU_OB_REPORT:
+		if (size != 1 || !prov)
+			break;
+
+		l_debug("Got Ack for OB %d", pkt[0]);
+		if (prov->rpr_state == PB_REMOTE_STATE_OB_PKT_TX &&
+							pkt[0] == prov->out_num)
+			int_prov_ack(prov, pkt[0]);
+
+		break;
+
+	/* Scan Opcodes */
+	case OP_REM_PROV_SCAN_CAP_STATUS:
+	case OP_REM_PROV_SCAN_STATUS:
+		break;
+
+	case OP_REM_PROV_SCAN_REPORT:
+	case OP_REM_PROV_EXT_SCAN_REPORT:
+		req = l_queue_find(scans, match_req_node, node);
+		if (req) {
+			req->scan_result(node, src,
+				opcode == OP_REM_PROV_EXT_SCAN_REPORT,
+				pkt, size);
+		}
+	}
+
+	return true;
+}
+
+void initiator_scan_reg(mesh_prov_initiator_scan_result_t scan_result,
+								void *user_data)
+{
+	struct scan_req *req;
+
+	if (!scans)
+		scans = l_queue_new();
+
+	req = l_queue_find(scans, match_req_node, user_data);
+	if (!req) {
+		req = l_new(struct scan_req, 1);
+		l_queue_push_head(scans, req);
+	}
+
+	req->scan_result = scan_result;
+	req->node = user_data;
+	req->count++;
+}
+
+void initiator_scan_unreg(void *user_data)
+{
+	struct scan_req *req;
+
+	req = l_queue_find(scans, match_req_node, user_data);
+	if (req) {
+		req->count--;
+		if (!req->count) {
+			l_queue_remove(scans, req);
+			l_free(req);
+		}
+	}
+}
+
+static void remprv_cli_unregister(void *user_data)
+{
+}
+
+static const struct mesh_model_ops ops = {
+	.unregister = remprv_cli_unregister,
+	.recv = remprv_cli_pkt,
+	.bind = NULL,
+	.sub = NULL,
+	.pub = NULL
+};
+
+void remote_prov_client_init(struct mesh_node *node, uint8_t ele_idx)
+{
+	mesh_model_register(node, ele_idx, REM_PROV_CLI_MODEL, &ops, node);
 }

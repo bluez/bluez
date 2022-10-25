@@ -39,5 +39,6 @@ bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 					uint8_t count, uint8_t dev_key[16]);
 bool keyring_del_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 								uint8_t count);
+bool keyring_del_remote_dev_key_all(struct mesh_node *node, uint16_t unicast);
 bool keyring_build_export_keys_reply(struct mesh_node *node,
 					struct l_dbus_message_builder *builder);

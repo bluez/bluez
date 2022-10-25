@@ -27,9 +27,11 @@
 #include "mesh/appkey.h"
 #include "mesh/mesh-config.h"
 #include "mesh/provision.h"
+#include "mesh/prov.h"
 #include "mesh/keyring.h"
 #include "mesh/model.h"
 #include "mesh/cfgmod.h"
+#include "mesh/remprv.h"
 #include "mesh/util.h"
 #include "mesh/error.h"
 #include "mesh/dbus.h"
@@ -347,6 +349,15 @@ static bool add_elements_from_storage(struct mesh_node *node,
 		if (!add_element_from_storage(node, entry->data))
 			return false;
 
+	/* Add configuration server model on the primary element */
+	mesh_model_add(node, PRIMARY_ELE_IDX, CONFIG_SRV_MODEL, NULL);
+
+	/* Add remote provisioning models on the primary element */
+	mesh_model_add(node, PRIMARY_ELE_IDX, REM_PROV_SRV_MODEL, NULL);
+
+	if (node->provisioner)
+		mesh_model_add(node, PRIMARY_ELE_IDX, REM_PROV_CLI_MODEL, NULL);
+
 	return true;
 }
 
@@ -489,6 +500,10 @@ static bool init_from_storage(struct mesh_config_node *db_node,
 	/* Initialize configuration server model */
 	cfgmod_server_init(node, PRIMARY_ELE_IDX);
 
+	/* Initialize remote provisioning models */
+	remote_prov_server_init(node, PRIMARY_ELE_IDX);
+	remote_prov_client_init(node, PRIMARY_ELE_IDX);
+
 	node->cfg = cfg;
 
 	return true;
@@ -550,12 +565,78 @@ uint16_t node_get_primary(struct mesh_node *node)
 		return node->primary;
 }
 
+bool node_refresh(struct mesh_node *node, bool hard, void *prov_info)
+{
+	struct mesh_prov_node_info *info = prov_info;
+	bool res = true;
+
+	if (!node || !info)
+		return false;
+
+	if (!IS_UNICAST(info->unicast))
+		return false;
+
+	/* Changing Unicast addresses requires a hard node reset */
+	if (!hard && info->unicast != node->primary)
+		return false;
+
+	/*
+	 * Hard refresh results in immediate use of new Device Key.
+	 * Soft refresh saves new device key as Candidate until we
+	 * successfully receive new incoming message on that key.
+	 */
+	if (hard) {
+		if (!mesh_config_write_device_key(node->cfg, info->device_key))
+			return false;
+
+		memcpy(node->dev_key, info->device_key, sizeof(node->dev_key));
+
+	} else if (!mesh_config_write_candidate(node->cfg, info->device_key))
+		return false;
+
+	/* Replace Primary Unicast address if it has changed */
+	if (node->primary != info->unicast) {
+		res = mesh_config_write_unicast(node->cfg, info->unicast);
+		if (res) {
+			node->primary = info->unicast;
+			node->num_ele = info->num_ele;
+			mesh_net_register_unicast(node->net, node->primary,
+								node->num_ele);
+		}
+	}
+
+	/* Replace Page 0 with Page 128 if it exists */
+	if (res) {
+		if (node_replace_comp(node, 0, 128))
+			return true;
+	}
+
+	return res;
+}
+
 const uint8_t *node_get_device_key(struct mesh_node *node)
 {
 	if (!node)
 		return NULL;
-	else
-		return node->dev_key;
+
+	return node->dev_key;
+}
+
+bool node_get_device_key_candidate(struct mesh_node *node, uint8_t *key)
+{
+	if (!node)
+		return false;
+
+	return mesh_config_read_candidate(node->cfg, key);
+}
+
+void node_finalize_candidate(struct mesh_node *node)
+{
+	if (!node)
+		return;
+
+	if (mesh_config_read_candidate(node->cfg, node->dev_key))
+		mesh_config_finalize_candidate(node->cfg);
 }
 
 void node_set_token(struct mesh_node *node, uint8_t token[8])
@@ -785,7 +866,7 @@ uint8_t node_friend_mode_get(struct mesh_node *node)
 	return node->friend;
 }
 
-static uint16_t generate_node_comp(struct mesh_node *node, uint8_t *buf,
+static uint16_t node_generate_comp(struct mesh_node *node, uint8_t *buf,
 								uint16_t sz)
 {
 	uint16_t n, features, num_ele = 0;
@@ -895,6 +976,21 @@ static void convert_node_to_storage(struct mesh_node *node,
 
 }
 
+static void free_db_storage(struct mesh_config_node *db_node)
+{
+	const struct l_queue_entry *entry;
+
+	/* Free temporarily allocated resources */
+	entry = l_queue_get_entries(db_node->elements);
+	for (; entry; entry = entry->next) {
+		struct mesh_config_element *db_ele = entry->data;
+
+		l_queue_destroy(db_ele->models, l_free);
+	}
+
+	l_queue_destroy(db_node->elements, l_free);
+}
+
 static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
 {
 	struct mesh_config_node db_node;
@@ -922,7 +1018,22 @@ static bool create_node_config(struct mesh_node *node, const uint8_t uuid[16])
 	return node->cfg != NULL;
 }
 
-static bool set_node_comp(struct mesh_node *node, uint8_t page_num,
+static void node_del_comp(struct mesh_node *node, uint8_t page_num)
+{
+	struct mesh_config_comp_page *page;
+
+	if (!node)
+		return;
+
+	page = l_queue_remove_if(node->pages, match_page,
+						L_UINT_TO_PTR(page_num));
+
+	l_free(page);
+
+	mesh_config_comp_page_del(node->cfg, page_num);
+}
+
+static bool node_set_comp(struct mesh_node *node, uint8_t page_num,
 					const uint8_t *data, uint16_t len)
 {
 	struct mesh_config_comp_page *page;
@@ -942,16 +1053,6 @@ static bool set_node_comp(struct mesh_node *node, uint8_t page_num,
 	l_queue_push_tail(node->pages, page);
 
 	return mesh_config_comp_page_add(node->cfg, page_num, page->data, len);
-}
-
-static bool create_node_comp(struct mesh_node *node)
-{
-	uint16_t len;
-	uint8_t comp[MAX_MSG_LEN - 2];
-
-	len = generate_node_comp(node, comp, sizeof(comp));
-
-	return set_node_comp(node, 0, comp, len);
 }
 
 const uint8_t *node_get_comp(struct mesh_node *node, uint8_t page_num,
@@ -975,6 +1076,7 @@ const uint8_t *node_get_comp(struct mesh_node *node, uint8_t page_num,
 bool node_replace_comp(struct mesh_node *node, uint8_t retire, uint8_t with)
 {
 	struct mesh_config_comp_page *old_page, *keep;
+	bool status;
 
 	if (!node)
 		return false;
@@ -989,9 +1091,13 @@ bool node_replace_comp(struct mesh_node *node, uint8_t retire, uint8_t with)
 
 	l_free(old_page);
 	keep->page_num = retire;
-	mesh_config_comp_page_mv(node->cfg, with, retire);
+	status = mesh_config_comp_page_add(node->cfg, keep->page_num,
+							keep->data, keep->len);
 
-	return true;
+	if (with != retire)
+		mesh_config_comp_page_del(node->cfg, with);
+
+	return status;
 }
 
 static void attach_io(void *a, void *b)
@@ -1170,8 +1276,13 @@ static bool get_element_properties(struct mesh_node *node, const char *path,
 	 * daemon. If the model is present in the application properties,
 	 * the operation below will be a "no-op".
 	 */
-	if (ele->idx == PRIMARY_ELE_IDX)
+	if (ele->idx == PRIMARY_ELE_IDX) {
 		mesh_model_add(node, ele->models, CONFIG_SRV_MODEL, NULL);
+		mesh_model_add(node, ele->models, REM_PROV_SRV_MODEL, NULL);
+		if (node->provisioner)
+			mesh_model_add(node, ele->models, REM_PROV_CLI_MODEL,
+									NULL);
+	}
 
 	return true;
 fail:
@@ -1232,6 +1343,15 @@ static bool get_app_properties(struct mesh_node *node, const char *path,
 	return true;
 }
 
+static void save_pages(void *data, void *user_data)
+{
+	struct mesh_config_comp_page *page = data;
+	struct mesh_node *node = user_data;
+
+	mesh_config_comp_page_add(node->cfg, page->page_num, page->data,
+								page->len);
+}
+
 static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 				bool ivu, uint32_t iv_idx, uint8_t dev_key[16],
 				uint16_t net_key_idx, uint8_t net_key[16])
@@ -1275,10 +1395,14 @@ static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
 			return false;
 	}
 
+	l_queue_foreach(node->pages, save_pages, node);
+
 	update_net_settings(node);
 
-	/* Initialize configuration server model */
+	/* Initialize internal server models */
 	cfgmod_server_init(node, PRIMARY_ELE_IDX);
+	remote_prov_server_init(node, PRIMARY_ELE_IDX);
+	remote_prov_client_init(node, PRIMARY_ELE_IDX);
 
 	node->busy = true;
 
@@ -1326,39 +1450,59 @@ static void update_model_options(struct mesh_node *node,
 
 static bool check_req_node(struct managed_obj_request *req)
 {
+	struct mesh_node *node;
 	const int offset = 8;
 	uint16_t node_len, len;
 	uint8_t comp[MAX_MSG_LEN - 2];
 	const uint8_t *node_comp;
 
-	len = generate_node_comp(req->node, comp, sizeof(comp));
+	if (req->type != REQUEST_TYPE_ATTACH) {
+		node = req->node;
 
-	if (len < MIN_COMP_SIZE)
-		return false;
+		if (!create_node_config(node, node->uuid))
+			return false;
+	} else
+		node = req->attach;
 
-	node_comp = node_get_comp(req->attach, 0, &node_len);
+	node_comp = node_get_comp(node, 0, &node_len);
+	len = node_generate_comp(req->node, comp, sizeof(comp));
 
-	/* If no page 0 exists, create it and accept */
-	if (!node_len || !node_comp)
-		return set_node_comp(req->attach, 0, comp, len);
+	/* If no page 0 exists, then current composition as valid */
+	if (req->type != REQUEST_TYPE_ATTACH || !node_len)
+		goto page_zero_valid;
 
-	/* Test Element/Model part of composition and reject if changed */
+	/*
+	 * If composition has materially changed, save new composition
+	 * in page 128 until next NPPI procedure. But we do allow
+	 * for CID, PID, VID and/or CRPL to freely change without
+	 * requiring a NPPI procedure.
+	 */
 	if (node_len != len || memcmp(&node_comp[offset], &comp[offset],
 							node_len - offset))
-		return false;
+		return node_set_comp(node, 128, comp, len);
 
-	/* If comp has changed, but not Element/Models, resave and accept */
-	else if (memcmp(node_comp, comp, node_len))
-		return set_node_comp(req->attach, 0, comp, len);
+page_zero_valid:
+	/* If page 0 represents current App, ensure page 128 doesn't exist */
+	node_del_comp(node, 128);
 
-	/* Nothing has changed */
-	return true;
+	if (len == node_len && !memcmp(node_comp, comp, len))
+		return true;
+
+	return node_set_comp(node, 0, comp, len);
+}
+
+static bool is_zero(const void *a, const void *b)
+{
+	const struct node_element *element = a;
+
+	return !element->idx;
 }
 
 static bool attach_req_node(struct mesh_node *attach, struct mesh_node *node)
 {
 	const struct l_queue_entry *attach_entry;
 	const struct l_queue_entry *node_entry;
+	bool comp_changed = false;
 
 	attach->obj_path = node->obj_path;
 	node->obj_path = NULL;
@@ -1366,6 +1510,34 @@ static bool attach_req_node(struct mesh_node *attach, struct mesh_node *node)
 	if (!register_node_object(attach)) {
 		free_node_dbus_resources(attach);
 		return false;
+	}
+
+	if (attach->num_ele != node->num_ele) {
+		struct mesh_config_node db_node;
+		struct node_element *old_ele, *new_ele;
+
+		convert_node_to_storage(node, &db_node);
+
+		/*
+		 * If composition has materially changed, we need to discard
+		 * everything we knew about elements in the old application,
+		 * and start from what they are telling us now.
+		 */
+		old_ele = l_queue_remove_if(attach->elements, is_zero, NULL);
+		new_ele = l_queue_remove_if(node->elements, is_zero, NULL);
+		element_free(new_ele);
+
+		l_queue_destroy(attach->elements, element_free);
+		attach->elements = node->elements;
+		attach->num_ele = node->num_ele;
+
+		/* Restore primary elements */
+		l_queue_push_head(attach->elements, old_ele);
+
+		comp_changed = true;
+
+		mesh_config_reset(attach->cfg, &db_node);
+		free_db_storage(&db_node);
 	}
 
 	attach_entry = l_queue_get_entries(attach->elements);
@@ -1384,6 +1556,10 @@ static bool attach_req_node(struct mesh_node *attach, struct mesh_node *node)
 
 		attach_entry = attach_entry->next;
 		node_entry = node_entry->next;
+
+		/* Only need the Primary element during Composition change */
+		if (comp_changed)
+			break;
 	}
 
 	mesh_agent_remove(attach->agent);
@@ -1399,7 +1575,11 @@ static bool attach_req_node(struct mesh_node *attach, struct mesh_node *node)
 	node->owner = NULL;
 
 	update_composition(node, attach);
+
 	update_model_options(node, attach);
+
+	if (comp_changed)
+		node->elements = NULL;
 
 	node_remove(node);
 
@@ -1499,16 +1679,7 @@ static void get_managed_objects_cb(struct l_dbus_message *msg, void *user_data)
 
 	node->num_ele = num_ele;
 
-	if (req->type != REQUEST_TYPE_ATTACH) {
-		/* Generate node configuration for a brand new node */
-		if (!create_node_config(node, node->uuid))
-			goto fail;
-
-		/* Create node composition */
-		if (!create_node_comp(node))
-			goto fail;
-	} else if (!check_req_node(req))
-		/* Check the integrity of the node composition */
+	if (!check_req_node(req))
 		goto fail;
 
 	switch (req->type) {

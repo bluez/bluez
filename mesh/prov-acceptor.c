@@ -22,6 +22,7 @@
 #include "mesh/net.h"
 #include "mesh/prov.h"
 #include "mesh/provision.h"
+#include "mesh/remprv.h"
 #include "mesh/pb-adv.h"
 #include "mesh/mesh.h"
 #include "mesh/agent.h"
@@ -167,9 +168,6 @@ static void acp_prov_open(void *user_data, prov_trans_tx_t trans_tx,
 	/* Only one provisioning session may be open at a time */
 	if (prov->trans_tx && prov->trans_tx != trans_tx &&
 					prov->transport != transport)
-		return;
-
-	if (transport != PB_ADV)
 		return;
 
 	prov->trans_tx = trans_tx;
@@ -425,9 +423,10 @@ static bool prov_start_check(struct prov_start *start,
 	return true;
 }
 
-static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
+static void acp_prov_rx(void *user_data, const void *dptr, uint16_t len)
 {
 	struct mesh_prov_acceptor *rx_prov = user_data;
+	const uint8_t *data = dptr;
 	struct mesh_prov_node_info *info;
 	struct prov_fail_msg fail;
 	uint8_t type = *data++;
@@ -654,14 +653,19 @@ static void acp_prov_rx(void *user_data, const uint8_t *data, uint16_t len)
 		info->flags = prov->rand_auth_workspace[18];
 		info->iv_index = l_get_be32(prov->rand_auth_workspace + 19);
 		info->unicast = l_get_be16(prov->rand_auth_workspace + 23);
+		info->num_ele = prov->conf_inputs.caps.num_ele;
+
+		/* Send prov complete */
+		prov->rand_auth_workspace[0] = PROV_COMPLETE;
+		prov->trans_tx(prov->trans_data,
+				prov->rand_auth_workspace, 1);
 
 		result = prov->cmplt(prov->caller_data, PROV_ERR_SUCCESS, info);
 		prov->cmplt = NULL;
 		l_free(info);
 
 		if (result) {
-			prov->rand_auth_workspace[0] = PROV_COMPLETE;
-			prov_send(prov, prov->rand_auth_workspace, 1);
+			l_debug("PROV_COMPLETE");
 			goto cleanup;
 		} else {
 			fail.reason = PROV_ERR_UNEXPECTED_ERR;
@@ -721,7 +725,7 @@ static void acp_prov_ack(void *user_data, uint8_t msg_num)
 
 
 /* This starts unprovisioned device beacon */
-bool acceptor_start(uint8_t num_ele, uint8_t uuid[16],
+bool acceptor_start(uint8_t num_ele, uint8_t *uuid,
 		uint16_t algorithms, uint32_t timeout,
 		struct mesh_agent *agent,
 		mesh_prov_acceptor_complete_func_t complete_cb,
@@ -733,8 +737,10 @@ bool acceptor_start(uint8_t num_ele, uint8_t uuid[16],
 	uint8_t len = sizeof(beacon) - sizeof(uint32_t);
 	bool result;
 
-	/* Invoked from Join() method in mesh-api.txt, to join a
-	 * remote mesh network.
+	/*
+	 * Invoked from Join() method in mesh-api.txt, to join a
+	 * remote mesh network. May also be invoked with a NULL
+	 * uuid to perform a Device Key Refresh procedure.
 	 */
 
 	if (prov)
@@ -752,37 +758,50 @@ bool acceptor_start(uint8_t num_ele, uint8_t uuid[16],
 
 	caps = mesh_agent_get_caps(agent);
 
-	/* TODO: Should we sanity check values here or elsewhere? */
 	prov->conf_inputs.caps.num_ele = num_ele;
-	prov->conf_inputs.caps.pub_type = caps->pub_type;
-	prov->conf_inputs.caps.static_type = caps->static_type;
-	prov->conf_inputs.caps.output_size = caps->output_size;
-	prov->conf_inputs.caps.input_size = caps->input_size;
-
-	/* Store UINT16 values in Over-the-Air order, in packed structure
-	 * for crypto inputs
-	 */
 	l_put_be16(algorithms, &prov->conf_inputs.caps.algorithms);
-	l_put_be16(caps->output_action, &prov->conf_inputs.caps.output_action);
-	l_put_be16(caps->input_action, &prov->conf_inputs.caps.input_action);
 
-	/* Compose Unprovisioned Beacon */
-	memcpy(beacon + 2, uuid, 16);
-	l_put_be16(caps->oob_info, beacon + 18);
-	if (caps->oob_info & OOB_INFO_URI_HASH){
-		l_put_be32(caps->uri_hash, beacon + 20);
-		len += sizeof(uint32_t);
+	if (caps) {
+		/* TODO: Should we sanity check values here or elsewhere? */
+		prov->conf_inputs.caps.pub_type = caps->pub_type;
+		prov->conf_inputs.caps.static_type = caps->static_type;
+		prov->conf_inputs.caps.output_size = caps->output_size;
+		prov->conf_inputs.caps.input_size = caps->input_size;
+
+		/* Store UINT16 values in Over-the-Air order, in packed
+		 * structure for crypto inputs
+		 */
+		l_put_be16(caps->output_action,
+					&prov->conf_inputs.caps.output_action);
+		l_put_be16(caps->input_action,
+					&prov->conf_inputs.caps.input_action);
+
+		/* Populate Caps fields of beacon */
+		l_put_be16(caps->oob_info, beacon + 18);
+		if (caps->oob_info & OOB_INFO_URI_HASH) {
+			l_put_be32(caps->uri_hash, beacon + 20);
+			len += sizeof(uint32_t);
+		}
 	}
 
-	/* Infinitely Beacon until Canceled, or Provisioning Starts */
-	result = mesh_send_pkt(0, 500, beacon, len);
+	if (uuid) {
+		/* Compose Unprovisioned Beacon */
+		memcpy(beacon + 2, uuid, 16);
 
-	if (!result)
-		goto error_fail;
+		/* Infinitely Beacon until Canceled, or Provisioning Starts */
+		result = mesh_send_pkt(0, 500, beacon, len);
 
-	/* Always register for PB-ADV */
-	result = pb_adv_reg(false, acp_prov_open, acp_prov_close, acp_prov_rx,
-						acp_prov_ack, uuid, prov);
+		if (!result)
+			goto error_fail;
+
+		/* Always register for PB-ADV */
+		result = pb_adv_reg(false, acp_prov_open, acp_prov_close,
+					acp_prov_rx, acp_prov_ack, uuid, prov);
+	} else {
+		/* Run Device Key Refresh Procedure */
+		result = register_nppi_acceptor(acp_prov_open, acp_prov_close,
+					acp_prov_rx, acp_prov_ack, prov);
+	}
 
 	if (result)
 		return true;

@@ -219,7 +219,7 @@ static void tx_timeout(struct l_timeout *timeout, void *user_data)
 	cb(user_data, 1);
 }
 
-static void pb_adv_tx(void *user_data, void *data, uint16_t len)
+static void pb_adv_tx(void *user_data, const void *data, uint16_t len)
 {
 	struct pb_adv_session *session = user_data;
 
@@ -478,7 +478,7 @@ static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len)
 bool pb_adv_reg(bool initiator, mesh_prov_open_func_t open_cb,
 		mesh_prov_close_func_t close_cb,
 		mesh_prov_receive_func_t rx_cb, mesh_prov_ack_func_t ack_cb,
-		uint8_t uuid[16], void *user_data)
+		const uint8_t *uuid, void *user_data)
 {
 	struct pb_adv_session *session, *old_session;
 
