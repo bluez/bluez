@@ -266,14 +266,21 @@ static uint32_t print_mod_id(uint8_t *data, bool vendor, const char *offset)
 	return mod_id;
 }
 
-static void print_composition(uint8_t *data, uint16_t len)
+static uint8_t print_composition(uint8_t *data, uint16_t len)
 {
 	uint16_t features;
 	int i = 0;
+	bool nppi = false;
 
-	bt_shell_printf("Received composion:\n");
+	bt_shell_printf("Received composition:\n");
 
-	/* skip page -- We only support Page Zero */
+	/* We only support Pages 0 && 128 */
+	if (*data == 128) {
+		bt_shell_printf("Dev Key Refresh (NPPI) required\n");
+		nppi = true;
+	} else if (*data != 0)
+		return 0;
+
 	data++;
 	len--;
 
@@ -328,6 +335,11 @@ static void print_composition(uint8_t *data, uint16_t len)
 
 		i++;
 	}
+
+	if (nppi)
+		return (uint8_t) i;
+	else
+		return 0;
 }
 
 static void print_pub(uint16_t ele_addr, uint32_t mod_id,
@@ -402,6 +414,7 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 	const struct cfg_cmd *cmd;
 	uint16_t app_idx, net_idx, addr, ele_addr, features;
 	struct mesh_group *grp;
+	uint8_t page128_cnt;
 	struct model_pub pub;
 	int n;
 	struct pending_req *req;
@@ -431,7 +444,19 @@ static bool msg_recvd(uint16_t src, uint16_t idx, uint8_t *data,
 		if (len < MIN_COMPOSITION_LEN)
 			return true;
 
-		print_composition(data, len);
+		page128_cnt = print_composition(data, len);
+		if (page128_cnt) {
+			if (page128_cnt != remote_ele_cnt(src)) {
+				bt_shell_printf("Ele count was %d, now %d\n",
+					remote_ele_cnt(src), page128_cnt);
+				bt_shell_printf("Reprovision with NPPI-1\n");
+			} else {
+				bt_shell_printf("Models or Features changed\n");
+				bt_shell_printf("Reprovision with NPPI-2\n");
+			}
+
+			break;
+		}
 
 		saved = mesh_db_node_set_composition(src, data, len);
 		if (saved)
@@ -1051,8 +1076,8 @@ static void cmd_composition_get(int argc, char *argv[])
 
 	n = mesh_opcode_set(OP_DEV_COMP_GET, msg);
 
-	/* By default, use page 0 */
-	msg[n++] = (read_input_parameters(argc, argv) == 1) ? parms[0] : 0;
+	/* By default, use page 128 */
+	msg[n++] = (read_input_parameters(argc, argv) == 1) ? parms[0] : 128;
 
 	if (!config_send(msg, n, OP_DEV_COMP_GET))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);

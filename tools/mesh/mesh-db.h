@@ -29,6 +29,7 @@ bool mesh_db_del_app_key(uint16_t app_idx);
 bool mesh_db_get_addr_range(uint16_t *low, uint16_t *high);
 bool mesh_db_add_node(uint8_t uuid[16], uint8_t num_els, uint16_t unicast,
 							uint16_t net_idx);
+bool mesh_db_reset_node(uint16_t original, uint16_t unicast, uint8_t num_els);
 bool mesh_db_del_node(uint16_t unicast);
 bool mesh_db_node_set_composition(uint16_t unicast, uint8_t *data,
 								uint16_t len);

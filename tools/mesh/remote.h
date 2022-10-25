@@ -8,8 +8,13 @@
  *
  */
 
+typedef void (*remote_foreach_t)(void *user_data, uint16_t dst,
+								uint32_t model);
+
 bool remote_add_node(const uint8_t uuid[16], uint16_t unicast,
 					uint8_t ele_cnt, uint16_t net_idx);
+bool remote_reset_node(uint16_t original, uint16_t unicast, uint8_t ele_cnt,
+							uint32_t iv_index);
 uint8_t remote_del_node(uint16_t unicast);
 bool remote_set_model(uint16_t unicast, uint8_t ele_idx, uint32_t mod_id,
 								bool vendor);
@@ -30,3 +35,7 @@ bool remote_has_composition(uint16_t addr);
 uint16_t remote_get_subnet_idx(uint16_t addr);
 void remote_print_node(uint16_t addr);
 void remote_print_all(void);
+void remote_foreach(remote_foreach_t each, void *user_data);
+void remote_foreach_unicast(remote_foreach_t each, void *user_data);
+void remote_foreach_model(remote_foreach_t each, void *user_data);
+uint8_t remote_ele_cnt(uint16_t unicast);

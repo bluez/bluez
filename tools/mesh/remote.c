@@ -30,6 +30,12 @@ struct remote_key {
 	bool updated;
 };
 
+struct foreach_data {
+	remote_foreach_t each;
+	void *user_data;
+	uint16_t dst;
+};
+
 struct remote_node {
 	uint16_t unicast;
 	struct l_queue *net_keys;
@@ -136,6 +142,40 @@ uint8_t remote_del_node(uint16_t unicast)
 	mesh_db_del_node(unicast);
 
 	return num_ele;
+}
+
+bool remote_reset_node(uint16_t original, uint16_t unicast, uint8_t ele_cnt,
+							uint32_t iv_index)
+{
+	struct remote_node *rmt;
+	bool reject = true;
+	int i;
+
+	rmt = l_queue_remove_if(nodes, match_node_addr,
+						L_UINT_TO_PTR(original));
+	if (!rmt)
+		return false;
+
+	if (unicast == rmt->unicast)
+		reject = false;
+
+	for (i = 0; i < rmt->num_ele; ++i) {
+		l_queue_destroy(rmt->els[i], NULL);
+		if (reject)
+			remote_add_rejected_address(rmt->unicast + i,
+								iv_index, true);
+	}
+
+	if (ele_cnt != rmt->num_ele) {
+		l_free(rmt->els);
+		rmt->els = l_new(struct l_queue *, ele_cnt);
+	} else
+		memset(rmt->els, 0, sizeof(struct l_queue *) * ele_cnt);
+
+	rmt->unicast = unicast;
+	rmt->num_ele = ele_cnt;
+	l_queue_insert(nodes, rmt, compare_unicast, NULL);
+	return true;
 }
 
 bool remote_add_node(const uint8_t uuid[16], uint16_t unicast,
@@ -526,6 +566,76 @@ void remote_print_all(void)
 	l_queue_foreach(nodes, print_node, NULL);
 }
 
+static void each_node(void *rmt, void *user_data)
+{
+	struct remote_node *node = rmt;
+	struct foreach_data *data = user_data;
+
+	data->each(data->user_data, node->unicast, (uint32_t) -1);
+}
+
+static void each_addr(void *rmt, void *user_data)
+{
+	struct remote_node *node = rmt;
+	struct foreach_data *data = user_data;
+	uint16_t cnt;
+
+	for (cnt = 0; cnt <= node->num_ele; cnt++)
+		data->each(data->user_data, node->unicast + cnt, (uint32_t) -1);
+}
+
+static void parse_model(void *model, void *user_data)
+{
+	struct foreach_data *data = user_data;
+
+	data->each(data->user_data, data->dst, L_PTR_TO_UINT(model));
+}
+
+static void each_model(void *rmt, void *user_data)
+{
+	struct remote_node *node = rmt;
+	struct foreach_data *data = user_data;
+	uint16_t cnt;
+
+	for (cnt = 0; cnt < node->num_ele; cnt++) {
+		data->dst = node->unicast + cnt;
+		l_queue_foreach(node->els[cnt], parse_model, data);
+	}
+}
+
+void remote_foreach(remote_foreach_t each, void *user_data)
+{
+	struct foreach_data data = {
+		.each = each,
+		.user_data = user_data
+	};
+
+	if (each)
+		l_queue_foreach(nodes, each_node, &data);
+}
+
+void remote_foreach_unicast(remote_foreach_t each, void *user_data)
+{
+	struct foreach_data data = {
+		.each = each,
+		.user_data = user_data
+	};
+
+	if (each)
+		l_queue_foreach(nodes, each_addr, &data);
+}
+
+void remote_foreach_model(remote_foreach_t each, void *user_data)
+{
+	struct foreach_data data = {
+		.each = each,
+		.user_data = user_data
+	};
+
+	if (each)
+		l_queue_foreach(nodes, each_model, &data);
+}
+
 uint16_t remote_get_next_unicast(uint16_t low, uint16_t high, uint8_t ele_cnt)
 {
 	struct remote_node *rmt;
@@ -597,4 +707,16 @@ void remote_clear_rejected_addresses(uint32_t iv_index)
 	}
 
 	mesh_db_clear_rejected(iv_index);
+}
+
+uint8_t remote_ele_cnt(uint16_t unicast)
+{
+	struct remote_node *rmt;
+
+	rmt = l_queue_find(nodes, match_node_addr, L_UINT_TO_PTR(unicast));
+
+	if (rmt)
+		return rmt->num_ele;
+
+	return 0;
 }
