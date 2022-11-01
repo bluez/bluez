@@ -40,6 +40,10 @@
 #define HCI_UART_EXT_CONFIG	4
 #define HCI_UART_VND_DETECT	5
 
+#ifndef FIRMWARE_DIR
+#define FIRMWARE_DIR "/etc/firmware"
+#endif
+
 int read_hci_event(int fd, unsigned char *buf, int size);
 int set_speed(int fd, struct termios *ti, int speed);
 int uart_speed(int speed);

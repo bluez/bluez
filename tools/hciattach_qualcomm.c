@@ -222,7 +222,8 @@ int qualcomm_init(int fd, int speed, struct termios *ti, const char *bdaddr)
 
 	} while (resp[3] != 0 && resp[4] != 2);
 
-	snprintf(fw, sizeof(fw), "/etc/firmware/%c%c%c%c%c%c_%c%c%c%c.bin",
+	snprintf(fw, sizeof(fw), "%s/%c%c%c%c%c%c_%c%c%c%c.bin",
+				FIRMWARE_DIR,
 				resp[18], resp[19], resp[20], resp[21],
 				resp[22], resp[23],
 				resp[32], resp[33], resp[34], resp[35]);

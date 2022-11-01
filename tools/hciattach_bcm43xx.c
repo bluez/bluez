@@ -30,10 +30,6 @@
 
 #include "hciattach.h"
 
-#ifndef FIRMWARE_DIR
-#define FIRMWARE_DIR "/etc/firmware"
-#endif
-
 #define FW_EXT ".hcd"
 
 #define BCM43XX_CLOCK_48 1
