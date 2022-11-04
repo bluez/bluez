@@ -273,6 +273,46 @@ static void att_error_response(const struct l2cap_frame *frame)
 	print_field("Error: %s (0x%2.2x)", str, pdu->error);
 }
 
+static const struct bitfield_data chrc_prop_table[] = {
+	{  0, "Broadcast (0x01)"		},
+	{  1, "Read (0x02)"			},
+	{  2, "Write Without Response (0x04)"	},
+	{  3, "Write (0x08)"			},
+	{  4, "Notify (0x10)"			},
+	{  5, "Indicate (0x20)"			},
+	{  6, "Authorize (0x40)"		},
+	{  6, "Extended Properties (0x80)"	},
+	{ }
+};
+
+static void print_chrc(const struct l2cap_frame *frame)
+{
+	uint8_t prop;
+	uint8_t mask;
+
+	if (!l2cap_frame_get_u8((void *)frame, &prop)) {
+		print_text(COLOR_ERROR, "Property: invalid size");
+		return;
+	}
+
+	print_field("    Properties: 0x%2.2x", prop);
+
+	mask = print_bitfield(6, prop, chrc_prop_table);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+
+	if (!l2cap_frame_print_le16((void *)frame, "    Value Handle"))
+		return;
+
+	print_uuid("    Value UUID", frame->data, frame->size);
+}
+
+static void chrc_read(const struct l2cap_frame *frame)
+{
+	print_chrc(frame);
+}
+
 static const struct bitfield_data ccc_value_table[] = {
 	{  0, "Notification (0x01)"		},
 	{  1, "Indication (0x02)"		},
@@ -2314,6 +2354,7 @@ struct gatt_handler {
 	void (*write)(const struct l2cap_frame *frame);
 	void (*notify)(const struct l2cap_frame *frame);
 } gatt_handlers[] = {
+	GATT_HANDLER(0x2803, chrc_read, NULL, NULL),
 	GATT_HANDLER(0x2902, ccc_read, ccc_write, NULL),
 	GATT_HANDLER(0x2bc4, ase_read, NULL, ase_notify),
 	GATT_HANDLER(0x2bc5, ase_read, NULL, ase_notify),
