@@ -43,6 +43,21 @@
 #include "l2cap.h"
 #include "att.h"
 
+struct att_read {
+	struct gatt_db_attribute *attr;
+	bool in;
+	uint16_t chan;
+	void (*func)(const struct l2cap_frame *frame);
+};
+
+struct att_conn_data {
+	struct gatt_db *ldb;
+	struct timespec ldb_mtim;
+	struct gatt_db *rdb;
+	struct timespec rdb_mtim;
+	struct queue *reads;
+};
+
 static void print_uuid(const char *label, const void *data, uint16_t size)
 {
 	const char *str;
@@ -77,27 +92,66 @@ static void print_handle_range(const char *label, const void *data)
 				get_le16(data), get_le16(data + 2));
 }
 
-static void print_data_list(const char *label, uint8_t length,
-					const void *data, uint16_t size)
+static bool match_read_frame(const void *data, const void *match_data)
 {
+	const struct att_read *read = data;
+	const struct l2cap_frame *frame = match_data;
+
+	/* Read frame and response frame shall be in the opposite direction to
+	 * match.
+	 */
+	if (read->in == frame->in)
+		return false;
+
+	return read->chan == frame->chan;
+}
+
+static void print_data_list(const char *label, uint8_t length,
+					const struct l2cap_frame *frame)
+{
+	struct packet_conn_data *conn;
+	struct att_conn_data *data;
+	struct att_read *read;
 	uint8_t count;
 
 	if (length == 0)
 		return;
 
-	count = size / length;
+	conn = packet_get_conn_data(frame->handle);
+	if (conn) {
+		data = conn->data;
+		if (data)
+			read = queue_remove_if(data->reads, match_read_frame,
+						(void *)frame);
+		else
+			read = NULL;
+	} else
+		read = NULL;
+
+	count = frame->size / length;
 
 	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
-	while (size >= length) {
-		print_field("Handle: 0x%4.4x", get_le16(data));
-		print_hex_field("Value", data + 2, length - 2);
+	while (frame->size >= length) {
+		if (!l2cap_frame_print_le16((void *)frame, "Handle"))
+			break;
 
-		data += length;
-		size -= length;
+		print_hex_field("Value", frame->data, length - 2);
+
+		if (read) {
+			struct l2cap_frame f;
+
+			l2cap_frame_clone_size(&f, frame, length - 2);
+
+			read->func(&f);
+		}
+
+		if (!l2cap_frame_pull((void *)frame, frame, length - 2))
+			break;
 	}
 
-	packet_hexdump(data, size);
+	packet_hexdump(frame->data, frame->size);
+	free(read);
 }
 
 static void print_attribute_info(uint16_t type, const void *data, uint16_t len)
@@ -2292,9 +2346,8 @@ struct gatt_handler {
 	GATT_HANDLER(0x2bba, content_control_id_read, NULL, NULL),
 };
 
-static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
+static struct gatt_handler *get_handler_uuid(const bt_uuid_t *uuid)
 {
-	const bt_uuid_t *uuid = gatt_db_attribute_get_type(attr);
 	size_t i;
 
 	for (i = 0; i < ARRAY_SIZE(gatt_handlers); i++) {
@@ -2305,6 +2358,11 @@ static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
 	}
 
 	return NULL;
+}
+
+static struct gatt_handler *get_handler(struct gatt_db_attribute *attr)
+{
+	return get_handler_uuid(gatt_db_attribute_get_type(attr));
 }
 
 static void att_exchange_mtu_req(const struct l2cap_frame *frame)
@@ -2403,35 +2461,22 @@ static void att_find_by_type_val_rsp(const struct l2cap_frame *frame)
 	packet_hexdump(ptr, len);
 }
 
-static void att_read_type_req(const struct l2cap_frame *frame)
+static int bt_uuid_from_data(bt_uuid_t *uuid, const void *data, uint16_t size)
 {
-	print_handle_range("Handle range", frame->data);
-	print_uuid("Attribute type", frame->data + 4, frame->size - 4);
+	uint128_t u128;
+
+	switch (size) {
+	case 2:
+		return bt_uuid16_create(uuid, get_le16(data));
+	case 4:
+		return bt_uuid32_create(uuid, get_le32(data));
+	case 16:
+		memcpy(u128.data, data, sizeof(u128.data));
+		return bt_uuid128_create(uuid, u128);
+	}
+
+	return -EINVAL;
 }
-
-static void att_read_type_rsp(const struct l2cap_frame *frame)
-{
-	const struct bt_l2cap_att_read_group_type_rsp *pdu = frame->data;
-
-	print_field("Attribute data length: %d", pdu->length);
-	print_data_list("Attribute data list", pdu->length,
-					frame->data + 1, frame->size - 1);
-}
-
-struct att_read {
-	struct gatt_db_attribute *attr;
-	bool in;
-	uint16_t chan;
-	void (*func)(const struct l2cap_frame *frame);
-};
-
-struct att_conn_data {
-	struct gatt_db *ldb;
-	struct timespec ldb_mtim;
-	struct gatt_db *rdb;
-	struct timespec rdb_mtim;
-	struct queue *reads;
-};
 
 static void att_conn_data_free(void *data)
 {
@@ -2441,6 +2486,67 @@ static void att_conn_data_free(void *data)
 	gatt_db_unref(att_data->ldb);
 	queue_destroy(att_data->reads, free);
 	free(att_data);
+}
+
+static struct att_conn_data *att_get_conn_data(struct packet_conn_data *conn)
+{
+	struct att_conn_data *data = conn->data;
+
+	if (data)
+		return data;
+
+	data = new0(struct att_conn_data, 1);
+	data->rdb = gatt_db_new();
+	data->ldb = gatt_db_new();
+	conn->data = data;
+	conn->destroy = att_conn_data_free;
+
+	return data;
+}
+
+static void att_read_type_req(const struct l2cap_frame *frame)
+{
+	bt_uuid_t uuid;
+	struct packet_conn_data *conn;
+	struct att_conn_data *data;
+	struct att_read *read;
+	struct gatt_handler *handler;
+
+	print_handle_range("Handle range", frame->data);
+	print_uuid("Attribute type", frame->data + 4, frame->size - 4);
+
+	if (bt_uuid_from_data(&uuid, frame->data + 4, frame->size - 4))
+		return;
+
+	handler = get_handler_uuid(&uuid);
+	if (!handler || !handler->read)
+		return;
+
+	conn = packet_get_conn_data(frame->handle);
+	data = att_get_conn_data(conn);
+
+	if (!data->reads)
+		data->reads = queue_new();
+
+	read = new0(struct att_read, 1);
+	read->in = frame->in;
+	read->chan = frame->chan;
+	read->func = handler->read;
+
+	queue_push_tail(data->reads, read);
+}
+
+static void att_read_type_rsp(const struct l2cap_frame *frame)
+{
+	uint8_t len;
+
+	if (!l2cap_frame_get_u8((void *)frame, &len)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	print_field("Attribute data length: %d", len);
+	print_data_list("Attribute data list", len, frame);
 }
 
 static void gatt_load_db(struct gatt_db *db, const char *filename,
@@ -2467,18 +2573,10 @@ static void gatt_load_db(struct gatt_db *db, const char *filename,
 
 static void load_gatt_db(struct packet_conn_data *conn)
 {
-	struct att_conn_data *data = conn->data;
+	struct att_conn_data *data = att_get_conn_data(conn);
 	char filename[PATH_MAX];
 	char local[18];
 	char peer[18];
-
-	if (!data) {
-		data = new0(struct att_conn_data, 1);
-		data->rdb = gatt_db_new();
-		data->ldb = gatt_db_new();
-		conn->data = data;
-		conn->destroy = att_conn_data_free;
-	}
 
 	ba2str((bdaddr_t *)conn->src, local);
 	ba2str((bdaddr_t *)conn->dst, peer);
@@ -2603,20 +2701,6 @@ static void att_read_req(const struct l2cap_frame *frame)
 	read->func = handler->read;
 
 	queue_push_tail(data->reads, read);
-}
-
-static bool match_read_frame(const void *data, const void *match_data)
-{
-	const struct att_read *read = data;
-	const struct l2cap_frame *frame = match_data;
-
-	/* Read frame and response frame shall be in the opposite direction to
-	 * match.
-	 */
-	if (read->in == frame->in)
-		return false;
-
-	return read->chan == frame->chan;
 }
 
 static void att_read_rsp(const struct l2cap_frame *frame)
