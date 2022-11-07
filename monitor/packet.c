@@ -2385,6 +2385,12 @@ void packet_print_version(const char *label, uint8_t version,
 	case 0x0a:
 		str = "Bluetooth 5.1";
 		break;
+	case 0x0b:
+		str = "Bluetooth 5.2";
+		break;
+	case 0x0c:
+		str = "Bluetooth 5.3";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -2658,6 +2664,13 @@ static const struct bitfield_data features_le[] = {
 	{ 30, "Isochronous Broadcaster"				},
 	{ 31, "Synchronized Receiver"				},
 	{ 32, "Isochronous Channels (Host Support)"		},
+	{ 33, "LE Power Control Request"			},
+	{ 34, "LE Power Control Request"			},
+	{ 35, "LE Path Loss Monitoring"				},
+	{ 36, "Periodic Advertising ADI support"		},
+	{ 37, "Connection Subrating"				},
+	{ 38, "Connection Subrating (Host Support)"		},
+	{ 39, "Channel Classification"				},
 	{ }
 };
 
