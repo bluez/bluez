@@ -128,7 +128,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 			dbus_message_iter_get_basic(iter, &str);
 
-			DBG("pretty hostname: %s", str);
+			DBG("pretty hostname: '%s'", str);
 
 			g_free(pretty_hostname);
 			pretty_hostname = g_strdup(str);
@@ -146,7 +146,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 			dbus_message_iter_get_basic(iter, &str);
 
-			DBG("static hostname: %s", str);
+			DBG("static hostname: '%s'", str);
 
 			g_free(static_hostname);
 			static_hostname = g_strdup(str);
@@ -165,7 +165,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 			dbus_message_iter_get_basic(iter, &str);
 
-			DBG("chassis: %s", str);
+			DBG("chassis: '%s'", str);
 
 			for (i = 0; chassis_table[i].chassis; i++) {
 				if (strcmp(chassis_table[i].chassis, str))
