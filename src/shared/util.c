@@ -189,6 +189,109 @@ void util_clear_uid(uint64_t *bitmap, uint8_t id)
 	*bitmap &= ~(((uint64_t)1) << (id - 1));
 }
 
+struct iovec *util_iov_dup(const struct iovec *iov, size_t cnt)
+{
+	struct iovec *dup;
+	size_t i;
+
+	if (!iov)
+		return NULL;
+
+	dup = new0(struct iovec, cnt);
+
+	for (i = 0; i < cnt; i++)
+		util_iov_memcpy(&dup[i], iov[i].iov_base, iov[i].iov_len);
+
+	return dup;
+}
+
+int util_iov_memcmp(const struct iovec *iov1, const struct iovec *iov2)
+{
+	if (!iov1)
+		return 1;
+
+	if (!iov2)
+		return -1;
+
+	if (iov1->iov_len != iov2->iov_len)
+		return iov1->iov_len - iov2->iov_len;
+
+	return memcmp(iov1->iov_base, iov2->iov_base, iov1->iov_len);
+}
+
+void util_iov_memcpy(struct iovec *iov, void *src, size_t len)
+{
+	if (!iov)
+		return;
+
+	iov->iov_base = realloc(iov->iov_base, len);
+	iov->iov_len = len;
+	memcpy(iov->iov_base, src, len);
+}
+
+void util_iov_free(struct iovec *iov, size_t cnt)
+{
+	size_t i;
+
+	if (!iov)
+		return;
+
+	for (i = 0; i < cnt; i++)
+		free(iov[i].iov_base);
+
+	free(iov);
+}
+
+void *util_iov_push(struct iovec *iov, size_t len)
+{
+	void *data;
+
+	if (!iov)
+		return NULL;
+
+	data = iov->iov_base + iov->iov_len;
+	iov->iov_len += len;
+
+	return data;
+}
+
+void *util_iov_push_mem(struct iovec *iov, size_t len, const void *data)
+{
+	void *p;
+
+	p = util_iov_push(iov, len);
+	if (!p)
+		return NULL;
+
+	memcpy(p, data, len);
+
+	return p;
+}
+
+void *util_iov_pull(struct iovec *iov, size_t len)
+{
+	if (!iov)
+		return NULL;
+
+	if (iov->iov_len < len)
+		return NULL;
+
+	iov->iov_base += len;
+	iov->iov_len -= len;
+
+	return iov->iov_base;
+}
+
+void *util_iov_pull_mem(struct iovec *iov, size_t len)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, len))
+		return data;
+
+	return NULL;
+}
+
 static const struct {
 	uint16_t uuid;
 	const char *str;

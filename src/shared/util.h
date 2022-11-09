@@ -15,6 +15,7 @@
 #include <byteswap.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define BIT(n)  (1 << (n))
@@ -108,6 +109,15 @@ ssize_t util_getrandom(void *buf, size_t buflen, unsigned int flags);
 
 uint8_t util_get_uid(uint64_t *bitmap, uint8_t max);
 void util_clear_uid(uint64_t *bitmap, uint8_t id);
+
+struct iovec *util_iov_dup(const struct iovec *iov, size_t cnt);
+int util_iov_memcmp(const struct iovec *iov1, const struct iovec *iov2);
+void util_iov_memcpy(struct iovec *iov, void *src, size_t len);
+void *util_iov_push(struct iovec *iov, size_t len);
+void *util_iov_push_mem(struct iovec *iov, size_t len, const void *data);
+void *util_iov_pull(struct iovec *iov, size_t len);
+void *util_iov_pull_mem(struct iovec *iov, size_t len);
+void util_iov_free(struct iovec *iov, size_t cnt);
 
 const char *bt_uuid16_to_str(uint16_t uuid);
 const char *bt_uuid32_to_str(uint32_t uuid);
