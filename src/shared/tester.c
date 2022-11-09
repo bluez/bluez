@@ -89,6 +89,7 @@ struct test_case {
 	tester_data_func_t test_func;
 	tester_data_func_t teardown_func;
 	tester_data_func_t post_teardown_func;
+	tester_data_func_t io_complete_func;
 	gdouble start_time;
 	gdouble end_time;
 	unsigned int timeout;
@@ -913,6 +914,9 @@ static bool test_io_send(struct io *io, void *user_data)
 
 	g_assert_cmpint(len, ==, iov->iov_len);
 
+	if (!test->iovcnt && test->io_complete_func)
+		test->io_complete_func(test->test_data);
+
 	return false;
 }
 
@@ -937,10 +941,15 @@ static bool test_io_recv(struct io *io, void *user_data)
 
 	g_assert_cmpint(len, ==, iov->iov_len);
 
+	if (memcmp(buf, iov->iov_base, len))
+		tester_monitor('!', 0x0004, 0x0000, iov->iov_base, len);
+
 	g_assert(memcmp(buf, iov->iov_base, len) == 0);
 
 	if (test->iovcnt)
 		io_set_write_handler(io, test_io_send, NULL, NULL);
+	else if (test->io_complete_func)
+		test->io_complete_func(test->test_data);
 
 	return true;
 }
@@ -1002,6 +1011,13 @@ void tester_io_send(void)
 
 	if (test->iovcnt)
 		io_set_write_handler(ios[1], test_io_send, NULL, NULL);
+}
+
+void tester_io_set_complete_func(tester_data_func_t func)
+{
+	struct test_case *test = tester_get_test();
+
+	test->io_complete_func = func;
 }
 
 int tester_run(void)
