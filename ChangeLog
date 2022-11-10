@@ -1,3 +1,11 @@
+ver 5.66:
+	Fix issue with A2DP and transport connection collisions.
+	Fix issue with allowing application specific error codes.
+	Fix issue with not setting initiator flag correctly.
+	Fix issue with HoG Report MAP size handling.
+	Add initial support for Basic Audio Profile.
+	Add initial support for Volume Control Profile.
+
 ver 5.65:
 	Fix issue with A2DP cache invalidation handling.
 	Fix issue with A2DP and not initialized SEP codec.
