@@ -106,27 +106,66 @@ static bool match_read_frame(const void *data, const void *match_data)
 	return read->chan == frame->chan;
 }
 
-static void print_data_list(const char *label, uint8_t length,
-					const struct l2cap_frame *frame)
+static struct att_read *att_get_read(const struct l2cap_frame *frame)
 {
 	struct packet_conn_data *conn;
 	struct att_conn_data *data;
+
+	conn = packet_get_conn_data(frame->handle);
+	if (!conn)
+		return NULL;
+
+	data = conn->data;
+	if (!data)
+		return NULL;
+
+	return queue_remove_if(data->reads, match_read_frame, (void *)frame);
+}
+
+static void print_attribute(struct gatt_db_attribute *attr)
+{
+	uint16_t handle;
+	const bt_uuid_t *uuid;
+	char label[21];
+
+	handle = gatt_db_attribute_get_handle(attr);
+	if (!handle)
+		goto done;
+
+	uuid = gatt_db_attribute_get_type(attr);
+	if (!uuid)
+		goto done;
+
+	switch (uuid->type) {
+	case BT_UUID16:
+		sprintf(label, "Handle: 0x%4.4x Type", handle);
+		print_field("%s: %s (0x%4.4x)", label,
+				bt_uuid16_to_str(uuid->value.u16),
+				uuid->value.u16);
+		return;
+	case BT_UUID128:
+		sprintf(label, "Handle: 0x%4.4x Type", handle);
+		print_uuid(label, &uuid->value.u128, 16);
+		return;
+	case BT_UUID_UNSPEC:
+	case BT_UUID32:
+		break;
+	}
+
+done:
+	print_field("Handle: 0x%4.4x", handle);
+}
+
+static void print_data_list(const char *label, uint8_t length,
+					const struct l2cap_frame *frame)
+{
 	struct att_read *read;
 	uint8_t count;
 
 	if (length == 0)
 		return;
 
-	conn = packet_get_conn_data(frame->handle);
-	if (conn) {
-		data = conn->data;
-		if (data)
-			read = queue_remove_if(data->reads, match_read_frame,
-						(void *)frame);
-		else
-			read = NULL;
-	} else
-		read = NULL;
+	read = att_get_read(frame);
 
 	count = frame->size / length;
 
@@ -271,6 +310,12 @@ static void att_error_response(const struct l2cap_frame *frame)
 							pdu->request);
 	print_field("Handle: 0x%4.4x", le16_to_cpu(pdu->handle));
 	print_field("Error: %s (0x%2.2x)", str, pdu->error);
+
+	/* Read/Read By Type may create a read object which needs to be dequeued
+	 * and freed in case the operation fails.
+	 */
+	if (pdu->request == 0x08 || pdu->request == 0x0a)
+		free(att_get_read(frame));
 }
 
 static const struct bitfield_data chrc_prop_table[] = {
@@ -2662,36 +2707,6 @@ static struct gatt_db_attribute *get_attribute(const struct l2cap_frame *frame,
 	return gatt_db_get_attribute(db, handle);
 }
 
-static void print_attribute(struct gatt_db_attribute *attr)
-{
-	uint16_t handle = gatt_db_attribute_get_handle(attr);
-	const bt_uuid_t *uuid;
-	char label[21];
-
-	uuid = gatt_db_attribute_get_type(attr);
-	if (!uuid)
-		goto done;
-
-	switch (uuid->type) {
-	case BT_UUID16:
-		sprintf(label, "Handle: 0x%4.4x Type", handle);
-		print_field("%s: %s (0x%4.4x)", label,
-				bt_uuid16_to_str(uuid->value.u16),
-				uuid->value.u16);
-		return;
-	case BT_UUID128:
-		sprintf(label, "Handle: 0x%4.4x Type", handle);
-		print_uuid(label, &uuid->value.u128, 16);
-		return;
-	case BT_UUID_UNSPEC:
-	case BT_UUID32:
-		break;
-	}
-
-done:
-	print_field("Handle: 0x%4.4x", handle);
-}
-
 static void print_handle(const struct l2cap_frame *frame, uint16_t handle,
 								bool rsp)
 {
@@ -2746,19 +2761,11 @@ static void att_read_req(const struct l2cap_frame *frame)
 
 static void att_read_rsp(const struct l2cap_frame *frame)
 {
-	struct packet_conn_data *conn;
-	struct att_conn_data *data;
 	struct att_read *read;
 
 	print_hex_field("Value", frame->data, frame->size);
 
-	conn = packet_get_conn_data(frame->handle);
-	if (!conn)
-		return;
-
-	data = conn->data;
-
-	read = queue_remove_if(data->reads, match_read_frame, (void *)frame);
+	read = att_get_read(frame);
 	if (!read)
 		return;
 
