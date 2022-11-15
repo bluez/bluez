@@ -2908,10 +2908,12 @@ static void foreach_pacs_char(struct gatt_db_attribute *attr, void *user_data)
 		DBG(bap, "Sink PAC found: handle 0x%04x", value_handle);
 
 		pacs = bap_get_pacs(bap);
-		if (!pacs || pacs->sink)
+		if (!pacs)
 			return;
 
-		pacs->sink = attr;
+		if (!pacs->sink)
+			pacs->sink = attr;
+
 		bap_read_value(bap, value_handle, read_sink_pac, bap);
 	}
 
@@ -2919,10 +2921,12 @@ static void foreach_pacs_char(struct gatt_db_attribute *attr, void *user_data)
 		DBG(bap, "Source PAC found: handle 0x%04x", value_handle);
 
 		pacs = bap_get_pacs(bap);
-		if (!pacs || pacs->source)
+		if (!pacs)
 			return;
 
-		pacs->source = attr;
+		if (!pacs->source)
+			pacs->source = attr;
+
 		bap_read_value(bap, value_handle, read_source_pac, NULL);
 	}
 
