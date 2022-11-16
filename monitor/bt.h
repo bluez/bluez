@@ -1787,6 +1787,12 @@ struct bt_hci_rsp_read_local_pairing_options {
 #define BT_HCI_LOCAL_CODEC_LE_CIS		BIT(2)
 #define BT_HCI_LOCAL_CODEC_LE_BIS		BIT(3)
 
+struct bt_hci_vnd_codec_v2 {
+	uint16_t cid;
+	uint16_t vid;
+	uint8_t  transport;
+} __attribute__ ((packed));
+
 struct bt_hci_vnd_codec {
 	uint8_t  id;
 	uint16_t cid;

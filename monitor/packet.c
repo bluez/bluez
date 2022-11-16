@@ -6384,6 +6384,20 @@ static void print_list(const void *data, uint8_t size, int num_items,
 		print_hex_field("", data, size);
 }
 
+static void print_vnd_codecs_v2(const void *data, int i)
+{
+	const struct bt_hci_vnd_codec_v2 *codec = data;
+	uint8_t mask;
+
+	packet_print_company("  Company ID", le16_to_cpu(codec->cid));
+	print_field("  Vendor Codec ID: 0x%4.4x", le16_to_cpu(codec->vid));
+	print_field("  Logical Transport Type: 0x%02x", codec->transport);
+	mask = print_bitfield(4, codec->transport, codec_transport_table);
+	if (mask)
+		print_text(COLOR_UNKNOWN_SERVICE_CLASS,
+				"  Unknown transport (0x%2.2x)", mask);
+}
+
 static void read_local_codecs_rsp_v2(uint16_t index, const void *data,
 							uint8_t size)
 {
@@ -6417,7 +6431,18 @@ static void read_local_codecs_rsp_v2(uint16_t index, const void *data,
 
 	num_vnd_codecs = rsp->codec[rsp->num_codecs].id;
 
+	size -= 1;
+
 	print_field("Number of vendor codecs: %d", num_vnd_codecs);
+
+	if (size < num_vnd_codecs * sizeof(*rsp->codec)) {
+		print_field("Invalid number of vendor codecs.");
+		return;
+	}
+
+	print_list(&rsp->codec[rsp->num_codecs] + 1, size, num_vnd_codecs,
+			sizeof(struct bt_hci_vnd_codec_v2),
+			print_vnd_codecs_v2);
 }
 
 static void print_path_direction(const char *prefix, uint8_t dir)
