@@ -4166,13 +4166,11 @@ unsigned int bt_bap_stream_qos(struct bt_bap_stream *stream,
 	struct bt_ascs_qos qos;
 	struct bt_bap_req *req;
 
-	if (!bap_stream_valid(stream))
+	/* Table 3.2: ASE state machine transition
+	 * Initiating device - client Only
+	 */
+	if (!bap_stream_valid(stream) || !stream->client)
 		return 0;
-
-	if (!stream->client) {
-		stream_qos(stream, data, NULL);
-		return 0;
-	}
 
 	memset(&qos, 0, sizeof(qos));
 
@@ -4259,13 +4257,11 @@ unsigned int bt_bap_stream_enable(struct bt_bap_stream *stream,
 {
 	int ret;
 
-	if (!bap_stream_valid(stream))
+	/* Table 3.2: ASE state machine transition
+	 * Initiating device - client Only
+	 */
+	if (!bap_stream_valid(stream) || !stream->client)
 		return 0;
-
-	if (!stream->client) {
-		stream_enable(stream, metadata, NULL);
-		return 0;
-	}
 
 	ret = bap_stream_metadata(stream, BT_ASCS_ENABLE, metadata, func,
 								user_data);
