@@ -80,6 +80,7 @@ static const char *supported_options[] = {
 	"MaxControllers"
 	"MultiProfile",
 	"FastConnectable",
+	"SecureConnections",
 	"Privacy",
 	"JustWorksRepairing",
 	"TemporaryTimeout",
@@ -881,6 +882,19 @@ static void parse_config(GKeyFile *config)
 		btd_opts.name_request_retry_delay = val;
 	}
 
+	str = g_key_file_get_string(config, "General",
+						"SecureConnections", &err);
+	if (err)
+		g_clear_error(&err);
+	else {
+		if (!strcmp(str, "off"))
+			btd_opts.secure_conn = SC_OFF;
+		else if (!strcmp(str, "on"))
+			btd_opts.secure_conn = SC_ON;
+		else if (!strcmp(str, "only"))
+			btd_opts.secure_conn = SC_ONLY;
+	}
+
 	str = g_key_file_get_string(config, "GATT", "Cache", &err);
 	if (err) {
 		DBG("%s", err->message);
@@ -993,6 +1007,7 @@ static void init_defaults(void)
 	btd_opts.debug_keys = FALSE;
 	btd_opts.refresh_discovery = TRUE;
 	btd_opts.name_request_retry_delay = DEFAULT_NAME_REQUEST_RETRY_DELAY;
+	btd_opts.secure_conn = SC_ON;
 
 	btd_opts.defaults.num_entries = 0;
 	btd_opts.defaults.br.page_scan_type = 0xFFFF;

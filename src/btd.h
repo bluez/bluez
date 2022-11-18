@@ -36,6 +36,12 @@ enum mps_mode_t {
 	MPS_MULTIPLE,
 };
 
+enum sc_mode_t {
+	SC_OFF,
+	SC_ON,
+	SC_ONLY,
+};
+
 struct btd_br_defaults {
 	uint16_t	page_scan_type;
 	uint16_t	page_scan_interval;
@@ -105,6 +111,7 @@ struct btd_opts {
 	uint8_t		privacy;
 	bool		device_privacy;
 	uint32_t	name_request_retry_delay;
+	uint8_t		secure_conn;
 
 	struct btd_defaults defaults;
 
