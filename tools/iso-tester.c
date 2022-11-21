@@ -154,6 +154,19 @@
 #define QOS_48_4_2 QOS_OUT(10000, 100, 120, 0x02, 13)
 #define QOS_48_5_2 QOS_OUT(7500, 75, 117, 0x02, 13)
 #define QOS_48_6_2 QOS_OUT(10000, 100, 155, 0x02, 13)
+/* QoS configuration support setting requirements for the UGG and UGT */
+#define QOS_16_1_gs QOS(7500, 15, 30, 0x02, 1)
+#define QOS_16_2_gs QOS(10000, 20, 40, 0x02, 1)
+#define QOS_32_1_gs QOS(7500, 15, 60, 0x02, 1)
+#define QOS_32_2_gs QOS(10000, 20, 80, 0x02, 1)
+#define QOS_48_1_gs QOS(7500, 15, 75, 0x02, 1)
+#define QOS_48_2_gs QOS(10000, 20, 100, 0x02, 1)
+#define QOS_32_1_gr QOS(7500, 15, 60, 0x02, 1)
+#define QOS_32_2_gr QOS(10000, 20, 80, 0x02, 1)
+#define QOS_48_1_gr QOS(7500, 15, 75, 0x02, 1)
+#define QOS_48_2_gr QOS(10000, 20, 100, 0x02, 1)
+#define QOS_48_3_gr QOS(7500, 15, 90, 0x02, 1)
+#define QOS_48_4_gr QOS(10000, 20, 120, 0x02, 1)
 
 /* One unidirectional CIS. Unicast Server is Audio Sink */
 #define AC_1_4 QOS_OUT(10000, 10, 40, 0x02, 2)
@@ -807,6 +820,66 @@ static const struct iso_client_data connect_48_5_2 = {
 
 static const struct iso_client_data connect_48_6_2 = {
 	.qos = QOS_48_6_2,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_16_1_gs = {
+	.qos = QOS_16_1_gs,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_16_2_gs = {
+	.qos = QOS_16_2_gs,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_32_1_gs = {
+	.qos = QOS_32_1_gs,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_32_2_gs = {
+	.qos = QOS_32_2_gs,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_48_1_gs = {
+	.qos = QOS_48_1_gs,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_48_2_gs = {
+	.qos = QOS_48_2_gs,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_32_1_gr = {
+	.qos = QOS_32_1_gr,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_32_2_gr = {
+	.qos = QOS_32_2_gr,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_48_1_gr = {
+	.qos = QOS_48_1_gr,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_48_2_gr = {
+	.qos = QOS_48_2_gr,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_48_3_gr = {
+	.qos = QOS_48_3_gr,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_48_4_gr = {
+	.qos = QOS_48_4_gr,
 	.expect_err = 0
 };
 
@@ -2943,6 +3016,42 @@ int main(int argc, char *argv[])
 							test_connect);
 
 	test_iso("ISO QoS 48_6_2 - Success", &connect_48_6_2, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 16_1_gs - Success", &connect_16_1_gs, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 16_2_gs - Success", &connect_16_2_gs, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 32_1_gs - Success", &connect_32_1_gs, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 32_2_gs - Success", &connect_32_2_gs, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 48_1_gs - Success", &connect_48_1_gs, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 48_2_gs - Success", &connect_48_2_gs, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 32_1_gr - Success", &connect_32_1_gr, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 32_2_gr - Success", &connect_32_2_gr, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 48_1_gr - Success", &connect_48_1_gr, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 48_2_gr - Success", &connect_48_2_gr, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 48_3_gr - Success", &connect_48_3_gr, setup_powered,
+							test_connect);
+
+	test_iso("ISO QoS 48_4_gr - Success", &connect_48_4_gr, setup_powered,
 							test_connect);
 
 	test_iso("ISO QoS - Invalid", &connect_invalid, setup_powered,
