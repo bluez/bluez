@@ -1745,6 +1745,9 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	DBusMessageIter iter;
 	struct endpoint_config *cfg;
 
+	if (!preset)
+		return NULL;
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
