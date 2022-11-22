@@ -1733,6 +1733,85 @@ static void pac_context_notify(const struct l2cap_frame *frame)
 	print_pac_context(frame);
 }
 
+static void csip_rank_read(const struct l2cap_frame *frame)
+{
+	uint8_t rank;
+
+	if (!l2cap_frame_get_u8((void *)frame, &rank)) {
+		print_text(COLOR_ERROR, "Rank: invalid size");
+		goto done;
+	}
+
+	print_field("    Rank: 0x%02x", rank);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void csip_lock_read(const struct l2cap_frame *frame)
+{
+	uint8_t lock;
+
+	if (!l2cap_frame_get_u8((void *)frame, &lock)) {
+		print_text(COLOR_ERROR, "Lock: invalid size");
+		goto done;
+	}
+
+	switch (lock) {
+	case 0x01:
+		print_field("    Locked (0x%02x)", lock);
+		break;
+	case 0x02:
+		print_field("    Unlocked (0x%02x)", lock);
+		break;
+	default:
+		print_field("    RFU (0x%02x)", lock);
+		break;
+	}
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void print_csip_size(const struct l2cap_frame *frame)
+{
+	uint8_t size;
+
+	if (!l2cap_frame_get_u8((void *)frame, &size)) {
+		print_text(COLOR_ERROR, "Size: invalid size");
+		goto done;
+	}
+	print_field("    Size: 0x%02x", size);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void csip_size_read(const struct l2cap_frame *frame)
+{
+	print_csip_size(frame);
+}
+
+static void csip_size_notify(const struct l2cap_frame *frame)
+{
+	print_csip_size(frame);
+}
+
+static void csip_sirk_read(const struct l2cap_frame *frame)
+{
+	if (frame->size)
+		print_hex_field("  SIRK", frame->data, frame->size);
+}
+
+static void csip_sirk_notify(const struct l2cap_frame *frame)
+{
+	if (frame->size)
+		print_hex_field("  SIRK", frame->data, frame->size);
+}
+
 static void print_vcs_state(const struct l2cap_frame *frame)
 {
 	uint8_t vol_set, mute, chng_ctr;
@@ -2413,6 +2492,12 @@ struct gatt_handler {
 	GATT_HANDLER(0x2b7d, vol_state_read, NULL, vol_state_notify),
 	GATT_HANDLER(0x2b7e, NULL, vol_cp_write, NULL),
 	GATT_HANDLER(0x2b7f, vol_flag_read, NULL, vol_flag_notify),
+
+	GATT_HANDLER(0x2b84, csip_sirk_read, NULL, csip_sirk_notify),
+	GATT_HANDLER(0x2b85, csip_size_read, NULL, csip_size_notify),
+	GATT_HANDLER(0x2b86, csip_lock_read, NULL, NULL),
+	GATT_HANDLER(0x2b87, csip_rank_read, NULL, NULL),
+
 	GATT_HANDLER(0x2b93, mp_name_read, NULL, mp_name_notify),
 	GATT_HANDLER(0x2b96, NULL, NULL, track_changed_notify),
 	GATT_HANDLER(0x2b97, track_title_read, NULL, track_title_notify),
