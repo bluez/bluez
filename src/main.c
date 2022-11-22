@@ -43,6 +43,7 @@
 #include "shared/mainloop.h"
 #include "shared/timeout.h"
 #include "shared/queue.h"
+#include "shared/crypto.h"
 #include "lib/uuid.h"
 #include "shared/util.h"
 #include "btd.h"
@@ -59,6 +60,9 @@
 #define DEFAULT_DISCOVERABLE_TIMEOUT     180 /* 3 minutes */
 #define DEFAULT_TEMPORARY_TIMEOUT         30 /* 30 seconds */
 #define DEFAULT_NAME_REQUEST_RETRY_DELAY 300 /* 5 minutes */
+
+/*CSIP Profile - Server */
+#define DEFAULT_SIRK "761FAE703ED681F0C50B34155B6434FB"
 
 #define SHUTDOWN_GRACE_SECONDS 10
 
@@ -146,6 +150,13 @@ static const char *gatt_options[] = {
 	NULL
 };
 
+static const char *csip_options[] = {
+	"SIRK",
+	"Size",
+	"Rank",
+	NULL
+};
+
 static const char *avdtp_options[] = {
 	"SessionMode",
 	"StreamMode",
@@ -166,11 +177,55 @@ static const struct group_table {
 	{ "LE",		le_options },
 	{ "Policy",	policy_options },
 	{ "GATT",	gatt_options },
+	{ "CSIP",	csip_options },
 	{ "AVDTP",	avdtp_options },
 	{ "AdvMon",	advmon_options },
 	{ }
 };
 
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+
+static int8_t check_sirk_alpha_numeric(char *str)
+{
+	int8_t val = 0;
+	char *s = str;
+
+	if (strlen(s) != 32) /* 32 Bytes of Alpha numeric string */
+		return 0;
+
+	for ( ; *s; s++) {
+		if (((*s >= '0') & (*s <= '9'))
+			|| ((*s >= 'a') && (*s <= 'z'))
+			|| ((*s >= 'A') && (*s <= 'Z'))) {
+			val = 1;
+		} else {
+			val = 0;
+			break;
+		}
+	}
+
+	return val;
+}
+
+static size_t hex2bin(const char *hexstr, uint8_t *buf, size_t buflen)
+{
+	size_t i, len;
+
+	if (!hexstr)
+		return 0;
+
+	len = MIN((strlen(hexstr) / 2), buflen);
+	memset(buf, 0, len);
+
+	for (i = 0; i < len; i++) {
+		if (sscanf(hexstr + (i * 2), "%02hhX", &buf[i]) != 1)
+			continue;
+	}
+
+	return len;
+}
 
 GKeyFile *btd_get_main_conf(void)
 {
@@ -652,6 +707,27 @@ static void btd_parse_kernel_experimental(char **list)
 	}
 }
 
+static bool gen_sirk(const char *str)
+{
+	struct bt_crypto *crypto;
+	int ret;
+
+	crypto = bt_crypto_new();
+	if (!crypto) {
+		error("Failed to open crypto");
+		return false;
+	}
+
+	ret = bt_crypto_sirk(crypto, str, btd_opts.did_vendor,
+			   btd_opts.did_product, btd_opts.did_version,
+			   btd_opts.did_source, btd_opts.csis.sirk);
+	if (!ret)
+		error("Failed to generate SIRK");
+
+	bt_crypto_unref(crypto);
+	return ret;
+}
+
 static void parse_config(GKeyFile *config)
 {
 	GError *err = NULL;
@@ -937,6 +1013,54 @@ static void parse_config(GKeyFile *config)
 		val = MIN(val, 5);
 		val = MAX(val, 1);
 		btd_opts.gatt_channels = val;
+	}
+
+	str = g_key_file_get_string(config, "CSIP", "SIRK", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("CSIS SIRK: %s", str);
+
+		if (strlen(str) == 32 && check_sirk_alpha_numeric(str)) {
+			hex2bin(str, btd_opts.csis.sirk,
+					sizeof(btd_opts.csis.sirk));
+		} else if (!gen_sirk(str))
+			DBG("Unable to generate SIRK from string");
+
+		g_free(str);
+	}
+
+	boolean = g_key_file_get_boolean(config, "CSIP", "SIRK", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("CSIS Encryption: %s", boolean ? "true" : "false");
+
+		btd_opts.csis.encrypt = boolean;
+	}
+
+	val = g_key_file_get_integer(config, "CSIP", "Size", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		val = MIN(val, 0xFF);
+		val = MAX(val, 0);
+		DBG("CSIS Size: %u", val);
+		btd_opts.csis.size = val;
+	}
+
+	val = g_key_file_get_integer(config, "CSIP", "Rank", &err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		val = MIN(val, 0xFF);
+		val = MAX(val, 0);
+		DBG("CSIS Rank: %u", val);
+		btd_opts.csis.rank = val;
 	}
 
 	str = g_key_file_get_string(config, "AVDTP", "SessionMode", &err);
