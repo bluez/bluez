@@ -186,6 +186,13 @@ extern "C" {
 #define MEDIA_CP_OP_SUPPORTED_CHRC_UUID         0x2ba5
 #define MEDIA_CONTENT_CONTROL_ID_CHRC_UUID      0x2bba
 
+/* Coordinated Set Identification Profile(CSIP) */
+#define CSIS_UUID					0x1846
+#define CS_SIRK						0x2B84
+#define CS_SIZE						0x2B85
+#define CS_LOCK						0x2B86
+#define CS_RANK						0x2B87
+
 typedef struct {
 	enum {
 		BT_UUID_UNSPEC = 0,
