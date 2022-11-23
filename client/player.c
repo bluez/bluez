@@ -1231,21 +1231,13 @@ struct codec_preset {
 	const char *name;
 	const struct iovec data;
 	const struct codec_qos qos;
-	bool is_default;
-	uint8_t latency;
+	uint8_t target_latency;
 };
 
 #define SBC_PRESET(_name, _data) \
 	{ \
 		.name = _name, \
 		.data = _data, \
-	}
-
-#define SBC_DEFAULT_PRESET(_name, _data) \
-	{ \
-		.name = _name, \
-		.data = _data, \
-		.is_default = true, \
 	}
 
 static struct codec_preset sbc_presets[] = {
@@ -1268,7 +1260,7 @@ static struct codec_preset sbc_presets[] = {
 		CODEC_DATA(0x28, 0x15, 2, SBC_BITPOOL_HQ_MONO_44100)),
 	SBC_PRESET("HQ_MONO_48",
 		CODEC_DATA(0x18, 0x15, 2, SBC_BITPOOL_HQ_MONO_48000)),
-	SBC_DEFAULT_PRESET("HQ_STEREO_44_1",
+	SBC_PRESET("HQ_STEREO_44_1",
 		CODEC_DATA(0x21, 0x15, 2, SBC_BITPOOL_HQ_JOINT_STEREO_44100)),
 	SBC_PRESET("HQ_STEREO_48",
 		CODEC_DATA(0x11, 0x15, 2, SBC_BITPOOL_HQ_JOINT_STEREO_48000)),
@@ -1368,7 +1360,7 @@ static struct codec_preset sbc_presets[] = {
 		.name = _name, \
 		.data = _data, \
 		.qos = _qos, \
-		.latency = 0x02, \
+		.target_latency = 0x02, \
 	}
 
 #define LC3_PRESET_HR(_name, _data, _qos) \
@@ -1376,16 +1368,7 @@ static struct codec_preset sbc_presets[] = {
 		.name = _name, \
 		.data = _data, \
 		.qos = _qos, \
-		.latency = 0x03, \
-	}
-
-#define LC3_DEFAULT_PRESET(_name, _data, _qos) \
-	{ \
-		.name = _name, \
-		.data = _data, \
-		.is_default = true, \
-		.qos = _qos, \
-		.latency = 0x02, \
+		.target_latency = 0x03, \
 	}
 
 static struct codec_preset lc3_presets[] = {
@@ -1399,7 +1382,7 @@ static struct codec_preset lc3_presets[] = {
 	LC3_PRESET("16_1_1",
 			LC3_PRESET_16KHZ(LC3_CONFIG_DURATION_7_5, 30u),
 			LC3_7_5_UNFRAMED(30u, 2u, 8u, 40000u)),
-	LC3_DEFAULT_PRESET("16_2_1",
+	LC3_PRESET("16_2_1",
 			LC3_PRESET_16KHZ(LC3_CONFIG_DURATION_10, 40u),
 			LC3_10_UNFRAMED(40u, 2u, 10u, 40000u)),
 	LC3_PRESET("24_1_1",
@@ -1465,22 +1448,26 @@ static struct codec_preset lc3_presets[] = {
 			LC3_10_UNFRAMED(155u, 23u, 60u, 40000u)),
 };
 
-#define PRESET(_uuid, _presets) \
+#define PRESET(_uuid, _presets, _default_index) \
 	{ \
 		.uuid = _uuid, \
+		.custom = { .name = "custom" }, \
+		.default_preset = &_presets[_default_index], \
 		.presets = _presets, \
 		.num_presets = ARRAY_SIZE(_presets), \
 	}
 
-static const struct preset {
+static struct preset {
 	const char *uuid;
+	struct codec_preset custom;
+	struct codec_preset *default_preset;
 	struct codec_preset *presets;
 	size_t num_presets;
 } presets[] = {
-	PRESET(A2DP_SOURCE_UUID, sbc_presets),
-	PRESET(A2DP_SINK_UUID, sbc_presets),
-	PRESET(PAC_SINK_UUID, lc3_presets),
-	PRESET(PAC_SOURCE_UUID, lc3_presets),
+	PRESET(A2DP_SOURCE_UUID, sbc_presets, 6),
+	PRESET(A2DP_SINK_UUID, sbc_presets, 6),
+	PRESET(PAC_SINK_UUID, lc3_presets, 3),
+	PRESET(PAC_SOURCE_UUID, lc3_presets, 3),
 };
 
 static struct codec_preset *find_preset(const char *uuid, const char *name)
@@ -1488,20 +1475,22 @@ static struct codec_preset *find_preset(const char *uuid, const char *name)
 	size_t i;
 
 	for (i = 0; i < ARRAY_SIZE(presets); i++) {
-		const struct preset *preset = &presets[i];
+		struct preset *preset = &presets[i];
 
 		if (!strcasecmp(preset->uuid, uuid)) {
 			size_t j;
+
+			if (!name)
+				return preset->default_preset;
+			else if (!strcmp(name, "custom"))
+				return &preset->custom;
 
 			for (j = 0; j < preset->num_presets; j++) {
 				struct codec_preset *p;
 
 				p = &preset->presets[j];
 
-				if (!name) {
-					if (p->is_default)
-						return p;
-				} else if (!strcmp(p->name, name))
+				if (!strcmp(p->name, name))
 					return p;
 			}
 		}
@@ -1724,10 +1713,11 @@ done:
 static struct iovec *iov_append(struct iovec **iov, const void *data,
 							size_t len)
 {
-	if (!*iov) {
+	if (!*iov)
 		*iov = new0(struct iovec, 1);
+
+	if (!((*iov)->iov_base))
 		(*iov)->iov_base = new0(uint8_t, UINT8_MAX);
-	}
 
 	if (data && len) {
 		memcpy((*iov)->iov_base + (*iov)->iov_len, data, len);
@@ -1757,7 +1747,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 
 	/* Copy capabilities */
 	iov_append(&cfg->caps, preset->data.iov_base, preset->data.iov_len);
-	cfg->target_latency = preset->latency;
+	cfg->target_latency = preset->target_latency;
 
 	if (preset->qos.phy)
 		/* Set QoS parameters */
@@ -2348,6 +2338,325 @@ fail:
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static void custom_delay(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct codec_qos *qos = (void *)&p->qos;
+	char *endptr = NULL;
+
+	qos->delay = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void custom_latency(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct codec_qos *qos = (void *)&p->qos;
+	char *endptr = NULL;
+
+	qos->latency = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_prompt_input("QoS", "Enter Presentation Delay (us):",
+					custom_delay, user_data);
+}
+
+static void custom_rtn(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct codec_qos *qos = (void *)&p->qos;
+	char *endptr = NULL;
+
+	qos->rtn = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_prompt_input("QoS", "Enter Max Transport Latency (ms):",
+					custom_latency, user_data);
+}
+
+static void custom_sdu(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct codec_qos *qos = (void *)&p->qos;
+	char *endptr = NULL;
+
+	qos->sdu = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_prompt_input("QoS", "Enter RTN:", custom_rtn, user_data);
+}
+
+static void custom_phy(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct codec_qos *qos = (void *)&p->qos;
+
+	if (!strcmp(input, "1M"))
+		qos->phy = "1M";
+	else if (!strcmp(input, "2M"))
+		qos->phy = "2M";
+	else {
+		char *endptr = NULL;
+		uint8_t phy = strtol(input, &endptr, 0);
+
+		if (!endptr || *endptr != '\0') {
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		switch (phy) {
+		case 0x01:
+			qos->phy = "1M";
+			break;
+		case 0x02:
+			qos->phy = "2M";
+			break;
+		default:
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	bt_shell_prompt_input("QoS", "Enter Max SDU:", custom_sdu, user_data);
+}
+
+static void custom_framing(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct codec_qos *qos = (void *)&p->qos;
+
+	if (!strcasecmp(input, "Unframed"))
+		qos->framing = 0x00;
+	else if (!strcasecmp(input, "Framed"))
+		qos->framing = 0x01;
+	else {
+		char *endptr = NULL;
+
+		qos->framing = strtol(input, &endptr, 0);
+		if (!endptr || *endptr != '\0') {
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	bt_shell_prompt_input("QoS", "Enter PHY (1M, 2M):", custom_phy,
+							user_data);
+}
+
+static void custom_interval(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct codec_qos *qos = (void *)&p->qos;
+	char *endptr = NULL;
+
+	qos->interval = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_prompt_input("QoS", "Enter Framing (Unframed, Framed):",
+				custom_framing, user_data);
+}
+
+static void custom_target_latency(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+
+	if (!strcasecmp(input, "Low"))
+		p->target_latency = 0x01;
+	else if (!strcasecmp(input, "Balance"))
+		p->target_latency = 0x02;
+	else if (!strcasecmp(input, "High"))
+		p->target_latency = 0x02;
+	else {
+		char *endptr = NULL;
+
+		p->target_latency = strtol(input, &endptr, 0);
+		if (!endptr || *endptr != '\0') {
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	bt_shell_prompt_input("QoS", "Enter SDU Interval (us):",
+					custom_interval, user_data);
+}
+
+static void custom_length(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct iovec *iov = (void *)&p->data;
+	uint8_t ltv[4] = { 0x03, LC3_CONFIG_FRAME_LEN };
+	uint16_t len;
+	char *endptr = NULL;
+
+	len = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	ltv[2] = len;
+	ltv[3] = len >> 8;
+
+	iov_append(&iov, ltv, sizeof(ltv));
+
+	bt_shell_prompt_input("QoS", "Enter Target Latency "
+				"(Low, Balance, High):",
+				custom_target_latency, user_data);
+}
+
+static void custom_location(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct iovec *iov = (void *)&p->data;
+	uint32_t location;
+	char *endptr = NULL;
+
+	location = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	/* Only add Channel Allocation if set */
+	if (location) {
+		uint8_t ltv[6] = { 0x05, LC3_CONFIG_CHAN_ALLOC };
+
+		location = cpu_to_le32(location);
+		memcpy(&ltv[2], &location, sizeof(location));
+		iov_append(&iov, ltv, sizeof(ltv));
+	}
+
+	bt_shell_prompt_input("Codec", "Enter frame length:",
+					custom_length, user_data);
+}
+
+static uint8_t val2duration(uint32_t val)
+{
+	switch (val) {
+	case 7:
+		return 0x00;
+	case 10:
+		return 0x01;
+	default:
+		return 0xff;
+	}
+}
+
+static void custom_duration(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct iovec *iov = (void *)&p->data;
+	uint8_t ltv[3] = { 0x02, LC3_CONFIG_DURATION, 0x00 };
+	char *endptr = NULL;
+	uint32_t val;
+
+	val = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (strncmp(input, "0x", 2))
+		ltv[2] = val2duration(val);
+	else
+		ltv[2] = val;
+
+	if (ltv[2] == 0xff) {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	iov_append(&iov, ltv, sizeof(ltv));
+
+	bt_shell_prompt_input("Codec", "Enter channel allocation:",
+					custom_location, user_data);
+}
+
+static uint8_t val2freq(uint32_t val)
+{
+	switch (val) {
+	case 8:
+		return 0x01;
+	case 11:
+		return 0x02;
+	case 16:
+		return 0x03;
+	case 22:
+		return 0x04;
+	case 24:
+		return 0x05;
+	case 32:
+		return 0x06;
+	case 44:
+		return 0x07;
+	case 48:
+		return 0x08;
+	case 88:
+		return 0x09;
+	case 96:
+		return 0x0a;
+	case 174:
+		return 0x0b;
+	case 192:
+		return 0x0c;
+	case 384:
+		return 0x0d;
+	default:
+		return 0x00;
+	}
+}
+
+static void custom_frequency(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct iovec *iov = (void *)&p->data;
+	uint8_t ltv[3] = { 0x02, LC3_CONFIG_FREQ, 0x00 };
+	uint32_t val;
+	char *endptr = NULL;
+
+	val = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (strncmp(input, "0x", 2))
+		ltv[2] = val2freq(val);
+	else
+		ltv[2] = val;
+
+	if (!ltv[2]) {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	/* Reset iov to start over the codec configuration */
+	free(iov->iov_base);
+	iov->iov_base = NULL;
+	iov->iov_len = 0;
+	iov_append(&iov, ltv, sizeof(ltv));
+
+	bt_shell_prompt_input("Codec", "Enter frame duration (ms):",
+				custom_duration, user_data);
+}
+
 static void cmd_presets_endpoint(int argc, char *argv[])
 {
 	size_t i;
@@ -2359,30 +2668,39 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 			bt_shell_printf("Preset %s not found\n", argv[2]);
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
-
-		default_preset->is_default = true;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(presets); i++) {
-		const struct preset *preset = &presets[i];
+		struct preset *preset = &presets[i];
 
 		if (!strcasecmp(preset->uuid, argv[1])) {
 			size_t j;
+			struct codec_preset *p;
+
+			if (default_preset) {
+				preset->default_preset = default_preset;
+				break;
+			}
+
+			p = &preset->custom;
+
+			bt_shell_printf("%s%s\n", p == preset->default_preset ?
+						"*" : "", p->name);
 
 			for (j = 0; j < preset->num_presets; j++) {
-				struct codec_preset *p;
-
 				p = &preset->presets[j];
 
-				if (default_preset && p != default_preset)
-					p->is_default = false;
-
-				if (p->is_default)
-					bt_shell_printf("*%s\n", p->name);
-				else
-					bt_shell_printf("%s\n", p->name);
+				bt_shell_printf("%s%s\n",
+						p == preset->default_preset ?
+						"*" : "", p->name);
 			}
 		}
+	}
+
+	if (default_preset && !strcmp(default_preset->name, "custom")) {
+		bt_shell_prompt_input("Codec", "Enter frequency (Khz):",
+					custom_frequency, default_preset);
+		return;
 	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
