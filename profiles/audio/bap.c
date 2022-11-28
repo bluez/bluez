@@ -366,6 +366,8 @@ static void qos_cb(struct bt_bap_stream *stream, uint8_t code, uint8_t reason,
 
 	DBG("stream %p code 0x%02x reason 0x%02x", stream, code, reason);
 
+	ep->id = 0;
+
 	if (!ep->msg)
 		return;
 
