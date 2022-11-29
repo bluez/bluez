@@ -1057,6 +1057,8 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 
 		path = media_transport_get_path(transport);
 		bt_bap_stream_set_user_data(stream, (void *)path);
+		endpoint->transports = g_slist_append(endpoint->transports,
+								transport);
 	}
 
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
@@ -1064,7 +1066,7 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 						"SetConfiguration");
 	if (msg == NULL) {
 		error("Couldn't allocate D-Bus message");
-		media_transport_destroy(transport);
+		endpoint_remove_transport(endpoint, transport);
 		return FALSE;
 	}
 
@@ -1072,8 +1074,6 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 	data->stream = stream;
 	data->cb = cb;
 	data->user_data = user_data;
-
-	endpoint->transports = g_slist_append(endpoint->transports, transport);
 
 	dbus_message_iter_init_append(msg, &iter);
 
