@@ -725,24 +725,21 @@ struct pac_select_data {
 	void *user_data;
 };
 
-static int parse_array(DBusMessageIter *iter, struct iovec **iov)
+static int parse_array(DBusMessageIter *iter, struct iovec *iov)
 {
 	DBusMessageIter array;
 
 	if (!iov)
 		return 0;
 
-	if (!(*iov))
-		*iov = new0(struct iovec, 1);
-
 	dbus_message_iter_recurse(iter, &array);
-	dbus_message_iter_get_fixed_array(&array, &(*iov)->iov_base,
-						(int *)&(*iov)->iov_len);
+	dbus_message_iter_get_fixed_array(&array, &iov->iov_base,
+						(int *)&iov->iov_len);
 	return 0;
 }
 
-static int parse_select_properties(DBusMessageIter *props, struct iovec **caps,
-					struct iovec **metadata,
+static int parse_select_properties(DBusMessageIter *props, struct iovec *caps,
+					struct iovec *metadata,
 					struct bt_bap_qos *qos)
 {
 	const char *key;
@@ -845,11 +842,6 @@ static int parse_select_properties(DBusMessageIter *props, struct iovec **caps,
 fail:
 	DBG("Failed parsing %s", key);
 
-	if (*caps) {
-		free(*caps);
-		*caps = NULL;
-	}
-
 	return -EINVAL;
 }
 
@@ -859,7 +851,7 @@ static void pac_select_cb(struct media_endpoint *endpoint, void *ret, int size,
 	struct pac_select_data *data = user_data;
 	DBusMessageIter *iter = ret;
 	int err;
-	struct iovec *caps = NULL, *metadata = NULL;
+	struct iovec caps, meta;
 	struct bt_bap_qos qos;
 
 	if (!ret) {
@@ -881,12 +873,15 @@ static void pac_select_cb(struct media_endpoint *endpoint, void *ret, int size,
 	qos.cig_id = BT_ISO_QOS_CIG_UNSET;
 	qos.cis_id = BT_ISO_QOS_CIS_UNSET;
 
-	err = parse_select_properties(iter, &caps, &metadata, &qos);
+	memset(&caps, 0, sizeof(caps));
+	memset(&meta, 0, sizeof(meta));
+
+	err = parse_select_properties(iter, &caps, &meta, &qos);
 	if (err < 0)
 		DBG("Unable to parse properties");
 
 done:
-	data->cb(data->pac, err, caps, metadata, &qos, data->user_data);
+	data->cb(data->pac, err, &caps, &meta, &qos, data->user_data);
 }
 
 static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,

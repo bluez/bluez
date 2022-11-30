@@ -83,6 +83,7 @@ struct bap_data {
 	struct queue *snks;
 	struct queue *streams;
 	GIOChannel *listen_io;
+	int selecting;
 };
 
 static struct queue *sessions;
@@ -503,7 +504,8 @@ static void ep_free(void *data)
 
 	bap_io_close(ep);
 
-	free(ep->caps);
+	util_iov_free(ep->caps, 1);
+	util_iov_free(ep->metadata, 1);
 	free(ep->path);
 	free(ep);
 }
@@ -566,20 +568,14 @@ static struct bap_ep *ep_register(struct btd_service *service,
 	return ep;
 }
 
-static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
-				struct iovec *metadata, struct bt_bap_qos *qos,
-				void *user_data)
+static void bap_config(void *data, void *user_data)
 {
-	struct bap_ep *ep = user_data;
+	struct bap_ep *ep = data;
 
-	if (err) {
-		error("err %d", err);
+	DBG("ep %p caps %p metadata %p", ep, ep->caps, ep->metadata);
+
+	if (!ep->caps)
 		return;
-	}
-
-	ep->caps = caps;
-	ep->metadata = metadata;
-	ep->qos = *qos;
 
 	/* TODO: Check if stream capabilities match add support for Latency
 	 * and PHY.
@@ -594,11 +590,41 @@ static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
 
 	if (!ep->stream) {
 		DBG("Unable to config stream");
-		free(ep->caps);
+		util_iov_free(ep->caps, 1);
 		ep->caps = NULL;
+		util_iov_free(ep->metadata, 1);
+		ep->metadata = NULL;
 	}
 
 	bt_bap_stream_set_user_data(ep->stream, ep->path);
+}
+
+static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
+				struct iovec *metadata, struct bt_bap_qos *qos,
+				void *user_data)
+{
+	struct bap_ep *ep = user_data;
+
+	if (err) {
+		error("err %d", err);
+		return;
+	}
+
+	ep->caps = util_iov_dup(caps, 1);
+
+	if (metadata && metadata->iov_base && metadata->iov_len)
+		ep->metadata = util_iov_dup(metadata, 1);
+
+	ep->qos = *qos;
+
+	DBG("selecting %d", ep->data->selecting);
+	ep->data->selecting--;
+
+	if (ep->data->selecting)
+		return;
+
+	queue_foreach(ep->data->srcs, bap_config, NULL);
+	queue_foreach(ep->data->snks, bap_config, NULL);
 }
 
 static bool pac_found(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
@@ -616,8 +642,10 @@ static bool pac_found(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	}
 
 	/* TODO: Cache LRU? */
-	if (btd_service_is_initiator(service))
-		bt_bap_select(lpac, rpac, select_cb, ep);
+	if (btd_service_is_initiator(service)) {
+		if (!bt_bap_select(lpac, rpac, select_cb, ep))
+			ep->data->selecting++;
+	}
 
 	return true;
 }
