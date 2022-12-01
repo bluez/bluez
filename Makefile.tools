@@ -3,6 +3,7 @@ if CLIENT
 bin_PROGRAMS += client/bluetoothctl
 
 client_bluetoothctl_SOURCES = client/main.c \
+					client/print.h client/print.c \
 					client/display.h client/display.c \
 					client/agent.h client/agent.c \
 					client/advertising.h \
@@ -494,7 +495,8 @@ tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 tools_obex_server_tool_LDADD = lib/libbluetooth-internal.la \
 			       src/libshared-glib.la $(GLIB_LIBS)
 
-tools_bluetooth_player_SOURCES = tools/bluetooth-player.c client/player.c
+tools_bluetooth_player_SOURCES = tools/bluetooth-player.c client/print.c \
+				client/player.c
 tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
 				src/libshared-glib.la \
 				$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
