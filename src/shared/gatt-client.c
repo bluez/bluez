@@ -1018,6 +1018,20 @@ static bool match_handle_range(const void *data, const void *match_data)
 					(match_range->start <= range->end);
 }
 
+static struct handle_range *range_new(uint16_t start, uint16_t end)
+{
+	struct handle_range *range;
+
+	if (!start || !end || start > end)
+		return NULL;
+
+	range = new0(struct handle_range, 1);
+	range->start = start;
+	range->end = end;
+
+	return range;
+}
+
 static void remove_discov_range(struct discovery_op *op, uint16_t start,
 								uint16_t end)
 {
@@ -1034,16 +1048,18 @@ static void remove_discov_range(struct discovery_op *op, uint16_t start,
 	if ((range->start == start) && (range->end == end)) {
 		queue_remove(op->discov_ranges, range);
 		free(range);
-	} else if (range->start == start)
+	} else if (range->start == start) {
 		range->start = end + 1;
-	else if (range->end == end)
+		if (!range->start || range->start > range->end) {
+			queue_remove(op->discov_ranges, range);
+			free(range);
+		}
+	} else if (range->end == end)
 		range->end = start - 1;
 	else {
-		new_range = new0(struct handle_range, 1);
-		new_range->start = end + 1;
-		new_range->end = range->end;
-
-		queue_push_after(op->discov_ranges, range, new_range);
+		new_range = range_new(end + 1, range->end);
+		if (new_range)
+			queue_push_after(op->discov_ranges, range, new_range);
 
 		range->end = start - 1;
 	}
