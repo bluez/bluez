@@ -890,31 +890,31 @@ static void ase_decode_freq(const uint8_t *data, uint8_t len)
 		print_field("      Sampling Frequency: 22.05 Khz (0x04)");
 		break;
 	case 0x05:
-		print_field("      Sampling Frequency: 24 Khz (0x04)");
+		print_field("      Sampling Frequency: 24 Khz (0x05)");
 		break;
 	case 0x06:
-		print_field("      Sampling Frequency: 32 Khz (0x04)");
+		print_field("      Sampling Frequency: 32 Khz (0x06)");
 		break;
 	case 0x07:
-		print_field("      Sampling Frequency: 44.1 Khz (0x04)");
+		print_field("      Sampling Frequency: 44.1 Khz (0x07)");
 		break;
 	case 0x08:
-		print_field("      Sampling Frequency: 48 Khz (0x04)");
+		print_field("      Sampling Frequency: 48 Khz (0x08)");
 		break;
 	case 0x09:
-		print_field("      Sampling Frequency: 88.2 Khz (0x04)");
+		print_field("      Sampling Frequency: 88.2 Khz (0x09)");
 		break;
 	case 0x0a:
-		print_field("      Sampling Frequency: 96 Khz (0x04)");
+		print_field("      Sampling Frequency: 96 Khz (0x0a)");
 		break;
 	case 0x0b:
-		print_field("      Sampling Frequency: 176.4 Khz (0x04)");
+		print_field("      Sampling Frequency: 176.4 Khz (0x0b)");
 		break;
 	case 0x0c:
-		print_field("      Sampling Frequency: 192 Khz (0x04)");
+		print_field("      Sampling Frequency: 192 Khz (0x0c)");
 		break;
 	case 0x0d:
-		print_field("      Sampling Frequency: 384 Khz (0x04)");
+		print_field("      Sampling Frequency: 384 Khz (0x0d)");
 		break;
 	default:
 		print_field("      Sampling Frequency: RFU (0x%2.2x)", value);
