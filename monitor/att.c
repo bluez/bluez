@@ -2576,7 +2576,12 @@ static void att_conn_data_free(void *data)
 
 static struct att_conn_data *att_get_conn_data(struct packet_conn_data *conn)
 {
-	struct att_conn_data *data = conn->data;
+	struct att_conn_data *data;
+
+	if (!conn)
+		return NULL;
+
+	data = conn->data;
 
 	if (data)
 		return data;
@@ -2610,6 +2615,8 @@ static void att_read_type_req(const struct l2cap_frame *frame)
 
 	conn = packet_get_conn_data(frame->handle);
 	data = att_get_conn_data(conn);
+	if (!data)
+		return;
 
 	if (!data->reads)
 		data->reads = queue_new();
