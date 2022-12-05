@@ -799,8 +799,8 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 
 	chan->pending_req = NULL;
 
-	/* Push operation back to request queue */
-	return queue_push_head(att->req_queue, op);
+	/* Push operation back to channel queue */
+	return queue_push_head(chan->queue, op);
 }
 
 static void handle_rsp(struct bt_att_chan *chan, uint8_t opcode, uint8_t *pdu,
