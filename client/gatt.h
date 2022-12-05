@@ -32,6 +32,10 @@ void gatt_release_write(GDBusProxy *proxy, const char *arg);
 void gatt_acquire_notify(GDBusProxy *proxy, const char *arg);
 void gatt_release_notify(GDBusProxy *proxy, const char *arg);
 
+char *gatt_select_local_attribute(const char *arg);
+void gatt_read_local_attribute(char *data, int argc, char *argv[]);
+void gatt_write_local_attribute(char *data, int argc, char *argv[]);
+
 void gatt_add_manager(GDBusProxy *proxy);
 void gatt_remove_manager(GDBusProxy *proxy);
 

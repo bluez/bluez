@@ -55,6 +55,7 @@ struct adapter {
 
 static struct adapter *default_ctrl;
 static GDBusProxy *default_dev;
+static char *default_local_attr;
 static GDBusProxy *default_attr;
 static GList *ctrl_list;
 static GList *battery_proxies;
@@ -440,6 +441,7 @@ static void set_default_attribute(GDBusProxy *proxy)
 {
 	const char *path;
 
+	default_local_attr = NULL;
 	default_attr = proxy;
 
 	path = g_dbus_proxy_get_path(proxy);
@@ -1982,9 +1984,40 @@ static void cmd_set_alias(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static void set_default_local_attribute(char *attr)
+{
+	char *desc = NULL;
+
+	default_local_attr = attr;
+	default_attr = NULL;
+
+	desc = g_strdup_printf(COLOR_BLUE "[%s]" COLOR_OFF "# ", attr);
+
+	bt_shell_set_prompt(desc);
+	free(desc);
+}
+
 static void cmd_select_attribute(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
+
+	if (!strcasecmp("local", argv[1])) {
+		char *attr;
+
+		if (argc < 2) {
+			bt_shell_printf("attribute/UUID required\n");
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		attr = gatt_select_local_attribute(argv[2]);
+		if (!attr) {
+			bt_shell_printf("Unable to find %s\n", argv[2]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		set_default_local_attribute(attr);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
 
 	if (!default_dev) {
 		bt_shell_printf("No device connected\n");
@@ -2070,6 +2103,11 @@ static void cmd_attribute_info(int argc, char *argv[])
 
 static void cmd_read(int argc, char *argv[])
 {
+	if (default_local_attr) {
+		gatt_read_local_attribute(default_local_attr, argc, argv);
+		return;
+	}
+
 	if (!default_attr) {
 		bt_shell_printf("No attribute selected\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -2080,6 +2118,11 @@ static void cmd_read(int argc, char *argv[])
 
 static void cmd_write(int argc, char *argv[])
 {
+	if (default_local_attr) {
+		gatt_write_local_attribute(default_local_attr, argc, argv);
+		return;
+	}
+
 	if (!default_attr) {
 		bt_shell_printf("No attribute selected\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -2837,8 +2880,9 @@ static const struct bt_shell_menu gatt_menu = {
 	.entries = {
 	{ "list-attributes", "[dev/local]", cmd_list_attributes,
 				"List attributes", dev_generator },
-	{ "select-attribute", "<attribute/UUID>",  cmd_select_attribute,
-				"Select attribute", attribute_generator },
+	{ "select-attribute", "<attribute/UUID/local> [attribute/UUID]",
+				cmd_select_attribute, "Select attribute",
+				attribute_generator },
 	{ "attribute-info", "[attribute/UUID]",  cmd_attribute_info,
 				"Select attribute", attribute_generator },
 	{ "read", "[offset]", cmd_read, "Read attribute value" },
