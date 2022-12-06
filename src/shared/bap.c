@@ -3397,9 +3397,13 @@ static bool bap_send(struct bt_bap *bap, struct bt_bap_req *req)
 	};
 	size_t i;
 
+	DBG(bap, "req %p", req);
+
 	if (!gatt_db_attribute_get_char_data(ascs->ase_cp, NULL, &handle,
-						NULL, NULL, NULL))
+						NULL, NULL, NULL)) {
+		DBG(bap, "Unable to find Control Point");
 		return false;
+	}
 
 	hdr.op = req->op;
 	hdr.num = 1 + queue_length(req->group);
@@ -3416,12 +3420,41 @@ static bool bap_send(struct bt_bap *bap, struct bt_bap_req *req)
 	ret = bt_gatt_client_write_without_response(bap->client, handle,
 							false, iov.iov_base,
 							iov.iov_len);
-	if (!ret)
+	if (!ret) {
+		DBG(bap, "Unable to Write to Control Point");
 		return false;
+	}
 
 	bap->req = req;
 
-	return false;
+	return true;
+}
+
+static void bap_req_complete(struct bt_bap_req *req,
+				const struct bt_ascs_ase_rsp *rsp)
+{
+	struct queue *group;
+
+	if (!req->func)
+		goto done;
+
+	if (rsp)
+		req->func(req->stream, rsp->code, rsp->reason, req->user_data);
+	else
+		req->func(req->stream, BT_ASCS_RSP_UNSPECIFIED, 0x00,
+						req->user_data);
+
+done:
+	/* Detach from request so it can be freed separately */
+	group = req->group;
+	req->group = NULL;
+
+	queue_foreach(group, (queue_foreach_func_t)bap_req_complete,
+							(void *)rsp);
+
+	queue_destroy(group, NULL);
+
+	bap_req_free(req);
 }
 
 static bool bap_process_queue(void *data)
@@ -3429,14 +3462,17 @@ static bool bap_process_queue(void *data)
 	struct bt_bap *bap = data;
 	struct bt_bap_req *req;
 
+	DBG(bap, "");
+
 	if (bap->process_id) {
 		timeout_remove(bap->process_id);
 		bap->process_id = 0;
 	}
 
 	while ((req = queue_pop_head(bap->reqs))) {
-		if (!bap_send(bap, req))
+		if (bap_send(bap, req))
 			break;
+		bap_req_complete(req, NULL);
 	}
 
 	return false;
@@ -3480,33 +3516,6 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
 						bap_process_queue, bap, NULL);
 
 	return true;
-}
-
-static void bap_req_complete(struct bt_bap_req *req,
-				const struct bt_ascs_ase_rsp *rsp)
-{
-	struct queue *group;
-
-	if (!req->func)
-		goto done;
-
-	if (rsp)
-		req->func(req->stream, rsp->code, rsp->reason, req->user_data);
-	else
-		req->func(req->stream, BT_ASCS_RSP_UNSPECIFIED, 0x00,
-						req->user_data);
-
-done:
-	/* Detach from request so it can be freed separately */
-	group = req->group;
-	req->group = NULL;
-
-	queue_foreach(group, (queue_foreach_func_t)bap_req_complete,
-							(void *)rsp);
-
-	queue_destroy(group, NULL);
-
-	bap_req_free(req);
 }
 
 static void bap_cp_notify(struct bt_bap *bap, uint16_t value_handle,
