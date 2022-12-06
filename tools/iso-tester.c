@@ -752,7 +752,7 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 			continue;
 
 		if (isodata->send || isodata->recv || isodata->disconnect)
-			bthost_set_iso_cb(host, iso_new_conn, data);
+			bthost_set_iso_cb(host, NULL, iso_new_conn, data);
 
 		if (isodata->bcast) {
 			bthost_set_pa_params(host);

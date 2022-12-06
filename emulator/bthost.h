@@ -44,13 +44,14 @@ typedef void (*bthost_cmd_complete_cb) (uint16_t opcode, uint8_t status,
 void bthost_set_cmd_complete_cb(struct bthost *bthost,
 				bthost_cmd_complete_cb cb, void *user_data);
 
+typedef uint8_t (*bthost_accept_conn_cb) (uint16_t handle, void *user_data);
 typedef void (*bthost_new_conn_cb) (uint16_t handle, void *user_data);
 
 void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 							void *user_data);
 
-void bthost_set_iso_cb(struct bthost *bthost, bthost_new_conn_cb cb,
-							void *user_data);
+void bthost_set_iso_cb(struct bthost *bthost, bthost_accept_conn_cb accept,
+				bthost_new_conn_cb cb, void *user_data);
 
 void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr,
 							uint8_t addr_type);

@@ -224,6 +224,7 @@ struct bthost {
 	void *cmd_complete_data;
 	bthost_new_conn_cb new_conn_cb;
 	void *new_conn_data;
+	bthost_accept_conn_cb accept_iso_cb;
 	bthost_new_conn_cb new_iso_cb;
 	void *new_iso_data;
 	struct rfcomm_connection_data *rfcomm_conn_data;
@@ -1465,12 +1466,25 @@ static void evt_le_cis_req(struct bthost *bthost, const void *data, uint8_t len)
 {
 	const struct bt_hci_evt_le_cis_req *ev = data;
 	struct bt_hci_cmd_le_accept_cis cmd;
+	struct bt_hci_cmd_le_reject_cis rej;
 
 	if (len < sizeof(*ev))
 		return;
 
-	memset(&cmd, 0, sizeof(cmd));
+	if (bthost->accept_iso_cb) {
+		memset(&rej, 0, sizeof(rej));
 
+		rej.reason = bthost->accept_iso_cb(le16_to_cpu(ev->cis_handle),
+							bthost->new_iso_data);
+		if (rej.reason) {
+			rej.handle = ev->cis_handle;
+			send_command(bthost, BT_HCI_CMD_LE_REJECT_CIS,
+						     &rej, sizeof(rej));
+			return;
+		}
+	}
+
+	memset(&cmd, 0, sizeof(cmd));
 	cmd.handle = ev->cis_handle;
 
 	send_command(bthost, BT_HCI_CMD_LE_ACCEPT_CIS, &cmd, sizeof(cmd));
@@ -2893,9 +2907,10 @@ void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 	bthost->new_conn_data = user_data;
 }
 
-void bthost_set_iso_cb(struct bthost *bthost, bthost_new_conn_cb cb,
-							void *user_data)
+void bthost_set_iso_cb(struct bthost *bthost, bthost_accept_conn_cb accept,
+				bthost_new_conn_cb cb, void *user_data)
 {
+	bthost->accept_iso_cb = accept;
 	bthost->new_iso_cb = cb;
 	bthost->new_iso_data = user_data;
 }
