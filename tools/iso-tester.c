@@ -130,6 +130,7 @@ struct test_data {
 	uint16_t mgmt_index;
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
+	uint8_t accept_reason;
 	uint16_t handle;
 	uint16_t acl_handle;
 	GIOChannel *io;
@@ -342,7 +343,7 @@ static void test_data_free(void *test_data)
 	free(data);
 }
 
-#define test_iso_full(name, data, setup, func, num) \
+#define test_iso_full(name, data, setup, func, num, reason) \
 	do { \
 		struct test_data *user; \
 		user = new0(struct test_data, 1); \
@@ -351,16 +352,20 @@ static void test_data_free(void *test_data)
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->test_data = data; \
 		user->client_num = num; \
+		user->accept_reason = reason; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
 #define test_iso(name, data, setup, func) \
-	test_iso_full(name, data, setup, func, 1)
+	test_iso_full(name, data, setup, func, 1, 0x00)
 
 #define test_iso2(name, data, setup, func) \
-	test_iso_full(name, data, setup, func, 2)
+	test_iso_full(name, data, setup, func, 2, 0x00)
+
+#define test_iso_rej(name, data, setup, func, reason) \
+	test_iso_full(name, data, setup, func, 1, reason)
 
 static const struct iso_client_data connect_8_1_1 = {
 	.qos = QOS_8_1_1,
@@ -535,6 +540,11 @@ static const struct iso_client_data connect_48_6_2 = {
 static const struct iso_client_data connect_invalid = {
 	.qos = QOS(0, 0, 0, 0, 0),
 	.expect_err = -EINVAL
+};
+
+static const struct iso_client_data connect_reject = {
+	.qos = QOS_16_1_2,
+	.expect_err = -ENOSYS
 };
 
 static const uint8_t data_16_2_1[40] = { [0 ... 39] = 0xff };
@@ -714,6 +724,16 @@ static void iso_new_conn(uint16_t handle, void *user_data)
 				bthost_iso_disconnected);
 }
 
+static uint8_t iso_accept_conn(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+
+	tester_print("Accept client connection with handle 0x%04x: 0x%02x",
+		     handle, data->accept_reason);
+
+	return data->accept_reason;
+}
+
 static void acl_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
@@ -751,8 +771,10 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 		if (!isodata)
 			continue;
 
-		if (isodata->send || isodata->recv || isodata->disconnect)
-			bthost_set_iso_cb(host, NULL, iso_new_conn, data);
+		if (isodata->send || isodata->recv || isodata->disconnect ||
+						data->accept_reason)
+			bthost_set_iso_cb(host, iso_accept_conn, iso_new_conn,
+									data);
 
 		if (isodata->bcast) {
 			bthost_set_pa_params(host);
@@ -1249,7 +1271,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 	else
 		tester_print("Successfully connected");
 
-	if (-err != isodata->expect_err) {
+	if (err != isodata->expect_err) {
 		tester_warn("Expect error: %s (%d) != %s (%d)",
 				strerror(-isodata->expect_err),
 				-isodata->expect_err, strerror(-err), -err);
@@ -1772,6 +1794,9 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO QoS - Invalid", &connect_invalid, setup_powered,
 							test_connect);
+
+	test_iso_rej("ISO Connect - Reject", &connect_reject, setup_powered,
+			test_connect, BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH);
 
 	test_iso2("ISO Connect2 CIG 0x01 - Success", &connect_1_16_2_1,
 							setup_powered,
