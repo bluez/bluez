@@ -47,6 +47,7 @@
 #define BAP_PROCESS_TIMEOUT 10
 
 struct bt_bap_pac_changed {
+	unsigned int id;
 	bt_bap_pac_func_t added;
 	bt_bap_pac_func_t removed;
 	bt_bap_destroy_func_t destroy;
@@ -165,6 +166,7 @@ struct bt_bap {
 	struct queue *notify;
 	struct queue *streams;
 
+	struct queue *pac_cbs;
 	struct queue *ready_cbs;
 	struct queue *state_cbs;
 
@@ -250,7 +252,6 @@ struct bt_pacs_context {
 
 /* Contains local bt_bap_db */
 static struct queue *bap_db;
-static struct queue *pac_cbs;
 static struct queue *bap_cbs;
 static struct queue *sessions;
 
@@ -268,24 +269,26 @@ static void *iov_append(struct iovec *iov, size_t len, const void *d)
 	return util_iov_push_mem(iov, len, d);
 }
 
-unsigned int bt_bap_pac_register(bt_bap_pac_func_t added,
+unsigned int bt_bap_pac_register(struct bt_bap *bap, bt_bap_pac_func_t added,
 				bt_bap_pac_func_t removed, void *user_data,
 				bt_bap_destroy_func_t destroy)
 {
 	struct bt_bap_pac_changed *changed;
+	static unsigned int id;
+
+	if (!bap)
+		return 0;
 
 	changed = new0(struct bt_bap_pac_changed, 1);
+	changed->id = ++id ? id : ++id;
 	changed->added = added;
 	changed->removed = removed;
 	changed->destroy = destroy;
 	changed->data = user_data;
 
-	if (!pac_cbs)
-		pac_cbs = queue_new();
+	queue_push_tail(bap->pac_cbs, changed);
 
-	queue_push_tail(pac_cbs, changed);
-
-	return queue_length(pac_cbs);
+	return changed->id;
 }
 
 static void pac_changed_free(void *data)
@@ -298,38 +301,27 @@ static void pac_changed_free(void *data)
 	free(changed);
 }
 
-struct match_pac_id {
-	unsigned int id;
-	unsigned int index;
-};
-
-static bool match_index(const void *data, const void *match_data)
+static bool match_pac_changed_id(const void *data, const void *match_data)
 {
-	struct match_pac_id *match = (void *)match_data;
+	const struct bt_bap_pac_changed *changed = data;
+	unsigned int id = PTR_TO_UINT(match_data);
 
-	match->index++;
-
-	return match->id == match->index;
+	return (changed->id == id);
 }
 
-bool bt_bap_pac_unregister(unsigned int id)
+bool bt_bap_pac_unregister(struct bt_bap *bap, unsigned int id)
 {
 	struct bt_bap_pac_changed *changed;
-	struct match_pac_id match;
 
-	memset(&match, 0, sizeof(match));
-	match.id = id;
+	if (!bap)
+		return false;
 
-	changed = queue_remove_if(pac_cbs, match_index, &match);
+	changed = queue_remove_if(bap->pac_cbs, match_pac_changed_id,
+						UINT_TO_PTR(id));
 	if (!changed)
 		return false;
 
 	pac_changed_free(changed);
-
-	if (queue_isempty(pac_cbs)) {
-		queue_destroy(pac_cbs, NULL);
-		pac_cbs = NULL;
-	}
 
 	return true;
 }
@@ -2366,6 +2358,13 @@ static void notify_pac_added(void *data, void *user_data)
 		changed->added(pac, changed->data);
 }
 
+static void notify_session_pac_added(void *data, void *user_data)
+{
+	struct bt_bap *bap = data;
+
+	queue_foreach(bap->pac_cbs, notify_pac_added, user_data);
+}
+
 struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 					const char *name, uint8_t type,
 					uint8_t id, uint16_t cid, uint16_t vid,
@@ -2402,7 +2401,7 @@ struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 		return NULL;
 	}
 
-	queue_foreach(pac_cbs, notify_pac_added, pac);
+	queue_foreach(sessions, notify_session_pac_added, pac);
 
 	return pac;
 }
@@ -2432,6 +2431,13 @@ static void notify_pac_removed(void *data, void *user_data)
 
 	if (changed->removed)
 		changed->removed(pac, changed->data);
+}
+
+static void notify_session_pac_removed(void *data, void *user_data)
+{
+	struct bt_bap *bap = data;
+
+	queue_foreach(bap->pac_cbs, notify_pac_removed, user_data);
 }
 
 bool bt_bap_pac_set_ops(struct bt_bap_pac *pac, struct bt_bap_pac_ops *ops,
@@ -2480,7 +2486,7 @@ bool bt_bap_remove_pac(struct bt_bap_pac *pac)
 
 found:
 	queue_foreach(sessions, remove_streams, pac);
-	queue_foreach(pac_cbs, notify_pac_removed, pac);
+	queue_foreach(sessions, notify_session_pac_removed, pac);
 	bap_pac_free(pac);
 	return true;
 }
@@ -2552,6 +2558,7 @@ static void bap_free(void *data)
 
 	bap_db_free(bap->rdb);
 
+	queue_destroy(bap->pac_cbs, pac_changed_free);
 	queue_destroy(bap->ready_cbs, bap_ready_free);
 	queue_destroy(bap->state_cbs, bap_state_free);
 
@@ -2632,6 +2639,7 @@ struct bt_bap *bt_bap_new(struct gatt_db *ldb, struct gatt_db *rdb)
 	bap->reqs = queue_new();
 	bap->pending = queue_new();
 	bap->notify = queue_new();
+	bap->pac_cbs = queue_new();
 	bap->ready_cbs = queue_new();
 	bap->streams = queue_new();
 	bap->state_cbs = queue_new();

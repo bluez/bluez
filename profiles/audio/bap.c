@@ -120,7 +120,7 @@ static void bap_data_free(struct bap_data *data)
 	queue_destroy(data->streams, NULL);
 	bt_bap_ready_unregister(data->bap, data->ready_id);
 	bt_bap_state_unregister(data->bap, data->state_id);
-	bt_bap_pac_unregister(data->pac_id);
+	bt_bap_pac_unregister(data->bap, data->pac_id);
 	bt_bap_unref(data->bap);
 	free(data);
 }
@@ -1265,8 +1265,8 @@ static int bap_probe(struct btd_service *service)
 								NULL);
 	data->state_id = bt_bap_state_register(data->bap, bap_state,
 						bap_connecting, data, NULL);
-	data->pac_id = bt_bap_pac_register(pac_added, pac_removed, service,
-								NULL);
+	data->pac_id = bt_bap_pac_register(data->bap, pac_added, pac_removed,
+						service, NULL);
 
 	bt_bap_set_user_data(data->bap, service);
 

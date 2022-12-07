@@ -87,12 +87,6 @@ typedef void (*bt_bap_stream_func_t)(struct bt_bap_stream *stream,
 typedef void (*bt_bap_func_t)(struct bt_bap *bap, void *user_data);
 
 /* Local PAC related functions */
-
-unsigned int bt_bap_pac_register(bt_bap_pac_func_t added,
-				bt_bap_pac_func_t removed, void *user_data,
-				bt_bap_destroy_func_t destroy);
-bool bt_bap_pac_unregister(unsigned int id);
-
 struct bt_bap_pac_qos {
 	uint8_t  framing;
 	uint8_t  phy;
@@ -160,6 +154,11 @@ bool bt_bap_set_debug(struct bt_bap *bap, bt_bap_debug_func_t cb,
 
 bool bap_print_cc(void *data, size_t len, util_debug_func_t func,
 						void *user_data);
+
+unsigned int bt_bap_pac_register(struct bt_bap *bap, bt_bap_pac_func_t added,
+				bt_bap_pac_func_t removed, void *user_data,
+				bt_bap_destroy_func_t destroy);
+bool bt_bap_pac_unregister(struct bt_bap *bap, unsigned int id);
 
 unsigned int bt_bap_ready_register(struct bt_bap *bap,
 				bt_bap_ready_func_t func, void *user_data,
