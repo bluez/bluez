@@ -2095,7 +2095,7 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 {
 	uint8_t err = 0;
 
-	if (!attrib || !func)
+	if (!attrib || (!func && attrib->write_func))
 		return false;
 
 	if (attrib->write_func) {
@@ -2158,7 +2158,8 @@ bool gatt_db_attribute_write(struct gatt_db_attribute *attrib, uint16_t offset,
 	memcpy(&attrib->value[offset], value, len);
 
 done:
-	func(attrib, err, user_data);
+	if (func)
+		func(attrib, err, user_data);
 
 	return true;
 }
