@@ -2837,69 +2837,6 @@ static void read_sink_pac(struct bt_bap *bap, bool success, uint8_t att_ecode,
 	bap_parse_pacs(bap, BT_BAP_SINK, bap->rdb->sinks, value, length);
 }
 
-static void read_source_pac_loc(struct bt_bap *bap, bool success,
-				uint8_t att_ecode, const uint8_t *value,
-				uint16_t length, void *user_data)
-{
-	struct bt_pacs *pacs = bap_get_pacs(bap);
-
-	if (!success) {
-		DBG(bap, "Unable to read Source PAC Location: error 0x%02x",
-								att_ecode);
-		return;
-	}
-
-	gatt_db_attribute_write(pacs->source_loc, 0, value, length, 0, NULL,
-							NULL, NULL);
-}
-
-static void read_sink_pac_loc(struct bt_bap *bap, bool success,
-				uint8_t att_ecode, const uint8_t *value,
-				uint16_t length, void *user_data)
-{
-	struct bt_pacs *pacs = bap_get_pacs(bap);
-
-	if (!success) {
-		DBG(bap, "Unable to read Sink PAC Location: error 0x%02x",
-								att_ecode);
-		return;
-	}
-
-	gatt_db_attribute_write(pacs->sink_loc, 0, value, length, 0, NULL,
-							NULL, NULL);
-}
-
-static void read_pac_context(struct bt_bap *bap, bool success,
-				uint8_t att_ecode, const uint8_t *value,
-				uint16_t length, void *user_data)
-{
-	struct bt_pacs *pacs = bap_get_pacs(bap);
-
-	if (!success) {
-		DBG(bap, "Unable to read PAC Context: error 0x%02x", att_ecode);
-		return;
-	}
-
-	gatt_db_attribute_write(pacs->context, 0, value, length, 0, NULL,
-							NULL, NULL);
-}
-
-static void read_pac_supported_context(struct bt_bap *bap, bool success,
-					uint8_t att_ecode, const uint8_t *value,
-					uint16_t length, void *user_data)
-{
-	struct bt_pacs *pacs = bap_get_pacs(bap);
-
-	if (!success) {
-		DBG(bap, "Unable to read PAC Supproted Context: error 0x%02x",
-								att_ecode);
-		return;
-	}
-
-	gatt_db_attribute_write(pacs->supported_context, 0, value, length, 0,
-							NULL, NULL, NULL);
-}
-
 static void bap_pending_destroy(void *data)
 {
 	struct bt_bap_pending *pending = data;
@@ -2942,6 +2879,89 @@ static void bap_read_value(struct bt_bap *bap, uint16_t value_handle,
 	}
 
 	queue_push_tail(bap->pending, pending);
+}
+
+static void read_source_pac_loc(struct bt_bap *bap, bool success,
+				uint8_t att_ecode, const uint8_t *value,
+				uint16_t length, void *user_data)
+{
+	struct bt_pacs *pacs = bap_get_pacs(bap);
+
+	if (!success) {
+		DBG(bap, "Unable to read Source PAC Location: error 0x%02x",
+								att_ecode);
+		return;
+	}
+
+	gatt_db_attribute_write(pacs->source_loc, 0, value, length, 0, NULL,
+							NULL, NULL);
+
+	/* Resume reading sinks if supported but for some reason is empty */
+	if (pacs->source && queue_isempty(bap->rdb->sources)) {
+		uint16_t value_handle;
+
+		if (gatt_db_attribute_get_char_data(pacs->source,
+						NULL, &value_handle,
+						NULL, NULL, NULL))
+			bap_read_value(bap, value_handle, read_source_pac, bap);
+	}
+}
+
+static void read_sink_pac_loc(struct bt_bap *bap, bool success,
+				uint8_t att_ecode, const uint8_t *value,
+				uint16_t length, void *user_data)
+{
+	struct bt_pacs *pacs = bap_get_pacs(bap);
+
+	if (!success) {
+		DBG(bap, "Unable to read Sink PAC Location: error 0x%02x",
+								att_ecode);
+		return;
+	}
+
+	gatt_db_attribute_write(pacs->sink_loc, 0, value, length, 0, NULL,
+							NULL, NULL);
+
+	/* Resume reading sinks if supported but for some reason is empty */
+	if (pacs->sink && queue_isempty(bap->rdb->sinks)) {
+		uint16_t value_handle;
+
+		if (gatt_db_attribute_get_char_data(pacs->sink,
+						NULL, &value_handle,
+						NULL, NULL, NULL))
+			bap_read_value(bap, value_handle, read_sink_pac, bap);
+	}
+}
+
+static void read_pac_context(struct bt_bap *bap, bool success,
+				uint8_t att_ecode, const uint8_t *value,
+				uint16_t length, void *user_data)
+{
+	struct bt_pacs *pacs = bap_get_pacs(bap);
+
+	if (!success) {
+		DBG(bap, "Unable to read PAC Context: error 0x%02x", att_ecode);
+		return;
+	}
+
+	gatt_db_attribute_write(pacs->context, 0, value, length, 0, NULL,
+							NULL, NULL);
+}
+
+static void read_pac_supported_context(struct bt_bap *bap, bool success,
+					uint8_t att_ecode, const uint8_t *value,
+					uint16_t length, void *user_data)
+{
+	struct bt_pacs *pacs = bap_get_pacs(bap);
+
+	if (!success) {
+		DBG(bap, "Unable to read PAC Supproted Context: error 0x%02x",
+								att_ecode);
+		return;
+	}
+
+	gatt_db_attribute_write(pacs->supported_context, 0, value, length, 0,
+							NULL, NULL, NULL);
 }
 
 static void foreach_pacs_char(struct gatt_db_attribute *attr, void *user_data)
