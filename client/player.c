@@ -3351,6 +3351,10 @@ static void send_wait(struct timespec *t_start, uint32_t us)
 	}
 
 	t_diff.tv_sec = t_now.tv_sec - t_start->tv_sec;
+	if (t_start->tv_nsec > t_now.tv_nsec) {
+		t_diff.tv_sec--;
+		t_now.tv_nsec += 1000000000L;
+	}
 	t_diff.tv_nsec = t_now.tv_nsec - t_start->tv_nsec;
 
 	delta_us = us - TS_USEC(&t_diff);
