@@ -70,6 +70,8 @@ void bt_shell_set_prompt(const char *string);
 
 void bt_shell_printf(const char *fmt,
 				...) __attribute__((format(printf, 1, 2)));
+void bt_shell_echo(const char *fmt,
+				...) __attribute__((format(printf, 1, 2)));
 void bt_shell_hexdump(const unsigned char *buf, size_t len);
 void bt_shell_usage(void);
 
