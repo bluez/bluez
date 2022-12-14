@@ -25,6 +25,7 @@
 #include <sys/uio.h>
 #include <wordexp.h>
 #include <sys/timerfd.h>
+#include <sys/stat.h>
 
 #include <glib.h>
 
@@ -91,6 +92,7 @@ struct transport {
 	uint16_t mtu[2];
 	char *filename;
 	int fd;
+	struct stat stat;
 	struct io *io;
 	uint32_t seq;
 	struct io *timer_io;
@@ -3379,6 +3381,7 @@ static int transport_send_seq(struct transport *transport, int fd, uint32_t num)
 	for (i = 0; i < num; i++, transport->seq++) {
 		ssize_t ret;
 		int secs = 0, nsecs = 0;
+		off_t offset;
 
 		ret = read(fd, buf, transport->mtu[1]);
 		if (ret <= 0) {
@@ -3399,10 +3402,19 @@ static int transport_send_seq(struct transport *transport, int fd, uint32_t num)
 
 		elapsed_time(!transport->seq, &secs, &nsecs);
 
-		bt_shell_echo("[seq %d %d.%03ds] send: %zd bytes ",
+		if (!transport->seq && fstat(fd, &transport->stat) < 0) {
+			bt_shell_printf("fstat failed: %s (%d)",
+							strerror(errno), errno);
+			free(buf);
+			return -errno;
+		}
+
+		offset = lseek(fd, 0, SEEK_CUR);
+
+		bt_shell_echo("[seq %d %d.%03ds] send: %zd/%zd bytes",
 				transport->seq, secs,
 				(nsecs + 500000) / 1000000,
-				ret);
+				offset, transport->stat.st_size);
 	}
 
 	free(buf);
