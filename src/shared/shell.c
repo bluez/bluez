@@ -580,15 +580,15 @@ void bt_shell_echo(const char *fmt, ...)
 {
 	va_list args;
 	char *str;
-	int err;
+	int ret;
 
 	va_start(args, fmt);
-	err = vasprintf(&str, fmt, args);
-	if (!err)
-		err = asprintf(&str, COLOR_HIGHLIGHT "%s#" COLOR_OFF, str);
+	ret = vasprintf(&str, fmt, args);
+	if (ret >= 0)
+		ret = asprintf(&str, COLOR_HIGHLIGHT "%s " COLOR_OFF "#", str);
 	va_end(args);
 
-	if (err)
+	if (ret < 0)
 		return;
 
 	rl_save_prompt();

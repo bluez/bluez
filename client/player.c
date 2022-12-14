@@ -3000,11 +3000,11 @@ static bool transport_recv(struct io *io, void *user_data)
 		return true;
 	}
 
-	bt_shell_printf("[seq %d] recv: %u bytes\n", transport->seq, ret);
+	bt_shell_echo("[seq %d] recv: %u bytes", transport->seq, ret);
 
 	transport->seq++;
 
-	if (transport->fd) {
+	if (transport->fd >= 0) {
 		len = write(transport->fd, buf, ret);
 		if (len < 0)
 			bt_shell_printf("Unable to write: %s (%d)",
@@ -3378,7 +3378,6 @@ static int transport_send_seq(struct transport *transport, int fd, uint32_t num)
 
 	for (i = 0; i < num; i++, transport->seq++) {
 		ssize_t ret;
-		int queued;
 		int secs = 0, nsecs = 0;
 
 		ret = read(fd, buf, transport->mtu[1]);
@@ -3400,13 +3399,10 @@ static int transport_send_seq(struct transport *transport, int fd, uint32_t num)
 
 		elapsed_time(!transport->seq, &secs, &nsecs);
 
-		ioctl(transport->sk, TIOCOUTQ, &queued);
-
-		bt_shell_printf("[seq %d %d.%03ds] send: %zd bytes "
-				"(TIOCOUTQ %d bytes)\n",
+		bt_shell_echo("[seq %d %d.%03ds] send: %zd bytes ",
 				transport->seq, secs,
 				(nsecs + 500000) / 1000000,
-				ret, queued);
+				ret);
 	}
 
 	free(buf);
