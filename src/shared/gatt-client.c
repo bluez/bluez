@@ -500,6 +500,24 @@ static void discovery_req_clear(struct bt_gatt_client *client)
 	client->discovery_req = NULL;
 }
 
+static void discover_remove_pending(struct discovery_op *op,
+					struct gatt_db_attribute *attr)
+{
+	struct gatt_db_attribute *svc;
+
+	svc = gatt_db_attribute_get_service(attr);
+	if (!svc)
+		return;
+
+	if (!queue_remove(op->pending_svcs, svc))
+		return;
+
+	gatt_db_service_set_active(svc, true);
+
+	if (op->cur_svc == svc)
+		op->cur_svc = NULL;
+}
+
 static void discover_chrcs_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data);
@@ -576,12 +594,26 @@ static void discover_incl_cb(bool success, uint8_t att_ecode,
 				gatt_db_attribute_get_handle(attr), handle);
 			goto failed;
 		}
+
+		if (!gatt_db_attribute_get_service_data(attr, NULL, &end,
+							NULL, NULL)) {
+			DBG(client, "Unable to get service data at 0x%04x",
+								handle);
+			goto failed;
+		}
+
+		/* Skip if there are no attributes */
+		if (handle == end)
+			discover_remove_pending(op, attr);
 	}
 
 next:
 	range = queue_pop_head(op->discov_ranges);
-	if (!range)
+	if (!range) {
+		/* Skip if there are no attributes */
+		discover_remove_pending(op, op->cur_svc);
 		goto failed;
+	}
 
 	client->discovery_req = bt_gatt_discover_characteristics(client->att,
 							range->start,
@@ -725,6 +757,9 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 		goto failed;
 	}
 
+	/* Done with the current service */
+	discover_remove_pending(op, op->cur_svc);
+
 done:
 	free(chrc_data);
 	return true;
@@ -797,9 +832,6 @@ static void ext_prop_read_cb(bool success, uint8_t att_ecode,
 
 	if (discovering)
 		return;
-
-	/* Done with the current service */
-	gatt_db_service_set_active(op->cur_svc, true);
 
 	goto done;
 
@@ -887,9 +919,6 @@ next:
 
 	if (discovering)
 		return;
-
-	/* Done with the current service */
-	gatt_db_service_set_active(op->cur_svc, true);
 
 	goto done;
 
@@ -996,9 +1025,6 @@ next:
 
 	if (discovering)
 		return;
-
-	/* Done with the current service */
-	gatt_db_service_set_active(op->cur_svc, true);
 
 	goto done;
 
