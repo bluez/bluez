@@ -1712,6 +1712,15 @@ uint16_t gatt_db_attribute_get_handle(const struct gatt_db_attribute *attrib)
 	return attrib->handle;
 }
 
+struct gatt_db_attribute *
+gatt_db_attribute_get_service(const struct gatt_db_attribute *attrib)
+{
+	if (!attrib)
+		return NULL;
+
+	return attrib->service->attributes[0];
+}
+
 bool gatt_db_attribute_get_service_uuid(const struct gatt_db_attribute *attrib,
 							bt_uuid_t *uuid)
 {
