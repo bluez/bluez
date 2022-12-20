@@ -3952,6 +3952,8 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	device->refresh_discovery = btd_opts.refresh_discovery;
 
+	device->connectable = false;
+
 	return btd_device_ref(device);
 }
 
@@ -5917,6 +5919,16 @@ void device_set_flags(struct btd_device *device, uint8_t flags)
 					DEVICE_INTERFACE, "AdvertisingFlags");
 }
 
+void device_set_connectable(struct btd_device *device, gboolean connectable)
+{
+	if (!device)
+		return;
+
+	DBG("connectable %d", connectable);
+
+	device->connectable = connectable;
+}
+
 bool device_is_connectable(struct btd_device *device)
 {
 	struct bearer_state *state;
@@ -5925,6 +5937,9 @@ bool device_is_connectable(struct btd_device *device)
 		return false;
 
 	if (device->bredr)
+		return true;
+
+	if (device->connectable)
 		return true;
 
 	state = get_state(device, device->bdaddr_type);

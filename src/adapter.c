@@ -7229,6 +7229,8 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 	if (bdaddr_type != BDADDR_BREDR)
 		device_set_flags(dev, eir_data.flags);
 
+	device_set_connectable(dev, !not_connectable);
+
 	eir_data_free(&eir_data);
 
 	/* After the device is updated, notify the matched Adv monitors */

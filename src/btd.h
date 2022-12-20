@@ -120,6 +120,7 @@ struct btd_opts {
 	gboolean	debug_keys;
 	gboolean	fast_conn;
 	gboolean	refresh_discovery;
+	gboolean	connectable;
 	gboolean	experimental;
 	struct queue	*kernel;
 

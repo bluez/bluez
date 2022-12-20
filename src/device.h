@@ -101,6 +101,7 @@ void device_set_rssi_with_delta(struct btd_device *device, int8_t rssi,
 void device_set_rssi(struct btd_device *device, int8_t rssi);
 void device_set_tx_power(struct btd_device *device, int8_t tx_power);
 void device_set_flags(struct btd_device *device, uint8_t flags);
+void device_set_connectable(struct btd_device *device, gboolean connectable);
 bool btd_device_is_connected(struct btd_device *dev);
 uint8_t btd_device_get_bdaddr_type(struct btd_device *dev);
 bool device_is_retrying(struct btd_device *device);
