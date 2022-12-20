@@ -737,3 +737,39 @@ bool bt_crypto_gatt_hash(struct bt_crypto *crypto, struct iovec *iov,
 
 	return true;
 }
+
+/*
+ * Resolvable Set Identifier hash function sih
+ *
+ * The RSI hash function sih is used to generate a hash value that is used in
+ * RSIs.
+ *
+ * The following variables are the inputs to the RSI hash function sih:
+ *
+ *   k is 128 bits
+ *   r is 24 bits
+ *   padding is 104 bits, all set to 0
+ *
+ * r is concatenated with padding to generate r', which is used as the 128-bit
+ * input parameter plaintextData to security function e:
+ *
+ *   r'=padding||r
+ *
+ * The LSO of r becomes the LSO of r', and the MSO of padding becomes the MSO
+ * of r'.
+ *
+ * For example, if the 24-bit value r is 0x3A98B5, then r' is
+ * 0x000000000000000000000000003A98B5.
+ *
+ * The output of the Resolvable Set Identifier function sih is:
+ *
+ *   sih(k, r)=e(k, r') mod 2^24
+ *
+ * The output of the security function e is truncated to 24 bits by taking the
+ * least significant 24 bits of the output of e as the result of sih.
+ */
+bool bt_crypto_sih(struct bt_crypto *crypto, const uint8_t k[16],
+					const uint8_t r[3], uint8_t hash[3])
+{
+	return bt_crypto_ah(crypto, k, r, hash);
+}
