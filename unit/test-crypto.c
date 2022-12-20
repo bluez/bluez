@@ -311,6 +311,40 @@ static void test_verify_sign(gconstpointer data)
 	tester_test_passed();
 }
 
+static void test_sih(const void *data)
+{
+	const uint8_t k[16] = {
+			0xcd, 0xcc, 0x72, 0xdd, 0x86, 0x8c, 0xcd, 0xce,
+			0x22, 0xfd, 0xa1, 0x21, 0x09, 0x7d, 0x7d, 0x45 };
+	const uint8_t r[3] = { 0x63, 0xf5, 0x69 };
+	const uint8_t exp[3] = { 0xda, 0x48, 0x19 };
+	uint8_t hash[3];
+
+	tester_debug("K:");
+	util_hexdump(' ', k, 16, print_debug, NULL);
+
+	tester_debug("R:");
+	util_hexdump(' ', r, 3, print_debug, NULL);
+
+	if (!bt_crypto_sih(crypto, k, r, hash)) {
+		tester_test_failed();
+		return;
+	}
+
+	tester_debug("Expected:");
+	util_hexdump(' ', exp, 3, print_debug, NULL);
+
+	tester_debug("Result:");
+	util_hexdump(' ', hash, 3, print_debug, NULL);
+
+	if (memcmp(hash, exp, 3)) {
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
+}
+
 int main(int argc, char *argv[])
 {
 	int exit_status;
@@ -337,6 +371,7 @@ int main(int argc, char *argv[])
 						NULL, test_verify_sign, NULL);
 	tester_add("/crypto/verify_sign_too_short", &verify_sign_too_short_data,
 						NULL, test_verify_sign, NULL);
+	tester_add("/crypto/sih", NULL, NULL, test_sih, NULL);
 
 	exit_status = tester_run();
 
