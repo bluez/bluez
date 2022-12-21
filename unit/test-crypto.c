@@ -311,6 +311,44 @@ static void test_verify_sign(gconstpointer data)
 	tester_test_passed();
 }
 
+static void test_sef(const void *data)
+{
+	const uint8_t sirk[16] = {
+			0xcd, 0xcc, 0x72, 0xdd, 0x86, 0x8c, 0xcd, 0xce,
+			0x22, 0xfd, 0xa1, 0x21, 0x09, 0x7d, 0x7d, 0x45 };
+	const uint8_t k[16] = {
+			0xd9, 0xce, 0xe5, 0x3c, 0x22, 0xc6, 0x1e, 0x06,
+			0x6f, 0x69, 0x48, 0xd4, 0x9b, 0x1b, 0x6e, 0x67 };
+	const uint8_t exp[16] = {
+			0x46, 0xd3, 0x5f, 0xf2, 0xd5, 0x62, 0x25, 0x7e,
+			0xa0, 0x24, 0x35, 0xe1, 0x35, 0x38, 0x0a, 0x17 };
+	uint8_t res[16];
+
+	tester_debug("SIRK:");
+	util_hexdump(' ', sirk, 16, print_debug, NULL);
+
+	tester_debug("K:");
+	util_hexdump(' ', k, 16, print_debug, NULL);
+
+	if (!bt_crypto_sef(crypto, k, sirk, res)) {
+		tester_test_failed();
+		return;
+	}
+
+	tester_debug("Expected:");
+	util_hexdump(' ', exp, 16, print_debug, NULL);
+
+	tester_debug("Result:");
+	util_hexdump(' ', res, 16, print_debug, NULL);
+
+	if (memcmp(res, exp, 16)) {
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
+}
+
 static void test_sih(const void *data)
 {
 	const uint8_t k[16] = {
@@ -371,6 +409,7 @@ int main(int argc, char *argv[])
 						NULL, test_verify_sign, NULL);
 	tester_add("/crypto/verify_sign_too_short", &verify_sign_too_short_data,
 						NULL, test_verify_sign, NULL);
+	tester_add("/crypto/sef", NULL, NULL, test_sef, NULL);
 	tester_add("/crypto/sih", NULL, NULL, test_sih, NULL);
 
 	exit_status = tester_run();
