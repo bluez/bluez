@@ -53,5 +53,7 @@ bool bt_crypto_verify_att_sign(struct bt_crypto *crypto, const uint8_t key[16],
 				const uint8_t *pdu, uint16_t pdu_len);
 bool bt_crypto_gatt_hash(struct bt_crypto *crypto, struct iovec *iov,
 				size_t iov_len, uint8_t res[16]);
+bool bt_crypto_sef(struct bt_crypto *crypto, const uint8_t k[16],
+			const uint8_t sirk[16], uint8_t out[16]);
 bool bt_crypto_sih(struct bt_crypto *crypto, const uint8_t k[16],
 					const uint8_t r[3], uint8_t hash[3]);
