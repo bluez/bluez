@@ -344,6 +344,8 @@ static void pac_foreach(void *data, void *user_data)
 
 	p = util_iov_push(iov, sizeof(*p));
 	p->codec.id = pac->codec.id;
+	p->codec.cid = pac->codec.cid;
+	p->codec.vid = pac->codec.vid;
 
 	if (pac->data) {
 		p->cc_len = pac->data->iov_len;
@@ -2381,6 +2383,9 @@ struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 
 	bdb = bap_get_db(db);
 	if (!bdb)
+		return NULL;
+
+	if ((id != 0xff) && ((cid != 0U)  || (vid != 0U)))
 		return NULL;
 
 	codec.id = id;

@@ -39,8 +39,8 @@ struct bt_bap_stream;
 
 struct bt_bap_codec {
 	uint8_t  id;
-	uint16_t vid;
 	uint16_t cid;
+	uint16_t vid;
 } __packed;
 
 struct bt_ltv {
