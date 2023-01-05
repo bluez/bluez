@@ -38,7 +38,8 @@
 #define GATT_SVC_UUID	0x1801
 #define SVC_CHNGD_UUID	0x2a05
 #define DBG(_client, _format, arg...) \
-	gatt_log(_client, "%s:%s() " _format, __FILE__, __func__, ## arg)
+	gatt_log(_client, "[%p] %s:%s() " _format, _client, __FILE__, \
+		__func__, ## arg)
 
 struct ready_cb {
 	bt_gatt_client_callback_t callback;
@@ -357,15 +358,28 @@ static void discovery_op_free(struct discovery_op *op)
 
 static bool read_db_hash(struct discovery_op *op);
 
+static void gatt_log_va(struct bt_gatt_client *client, const char *format,
+						va_list va)
+{
+	if (!client || !format)
+		return;
+
+	if (client->debug_callback)
+		util_debug_va(client->debug_callback, client->debug_data,
+							format, va);
+	else
+		gatt_log_va(client->parent, format, va);
+}
+
 static void gatt_log(struct bt_gatt_client *client, const char *format, ...)
 {
 	va_list ap;
 
-	if (!client || !format || !client->debug_callback)
+	if (!client || !format)
 		return;
 
 	va_start(ap, format);
-	util_debug_va(client->debug_callback, client->debug_data, format, ap);
+	gatt_log_va(client, format, ap);
 	va_end(ap);
 }
 
