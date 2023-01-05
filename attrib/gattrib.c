@@ -21,17 +21,23 @@
 #include <glib.h>
 
 #include "lib/bluetooth.h"
+#include "lib/uuid.h"
 
 #include "btio/btio.h"
 #include "src/log.h"
 #include "src/shared/util.h"
 #include "src/shared/att.h"
+#include "src/shared/gatt-helpers.h"
 #include "src/shared/queue.h"
+#include "src/shared/gatt-db.h"
+#include "src/shared/gatt-client.h"
+#include "attrib/att.h"
 #include "attrib/gattrib.h"
 
 struct _GAttrib {
 	int ref_count;
 	struct bt_att *att;
+	struct bt_gatt_client *client;
 	GIOChannel *io;
 	GDestroyNotify destroy;
 	gpointer destroy_user_data;
@@ -145,6 +151,7 @@ void g_attrib_unref(GAttrib *attrib)
 	if (attrib->destroy)
 		attrib->destroy(attrib->destroy_user_data);
 
+	bt_gatt_client_unref(attrib->client);
 	bt_att_unref(attrib->att);
 
 	queue_destroy(attrib->callbacks, attrib_callbacks_destroy);
@@ -338,6 +345,20 @@ gboolean g_attrib_cancel_all(GAttrib *attrib)
 	return TRUE;
 }
 
+static void client_notify_cb(uint16_t value_handle, const uint8_t *value,
+				uint16_t length, void *user_data)
+{
+	uint8_t *buf = newa(uint8_t, length + 2);
+
+	put_le16(value_handle, buf);
+
+	if (length)
+		memcpy(buf + 2, value, length);
+
+	attrib_callback_notify(NULL, ATT_OP_HANDLE_NOTIFY, buf, length + 2,
+							user_data);
+}
+
 guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 				GAttribNotifyFunc func, gpointer user_data,
 				GDestroyNotify notify)
@@ -357,6 +378,16 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 		cb->destroy_func = notify;
 		cb->parent = attrib;
 		queue_push_head(attrib->callbacks, cb);
+	}
+
+	if (opcode == ATT_OP_HANDLE_NOTIFY && attrib->client) {
+		unsigned int id;
+
+		id = bt_gatt_client_register_notify(attrib->client, handle,
+						NULL, client_notify_cb, cb,
+						attrib_callbacks_remove);
+		if (id)
+			return id;
 	}
 
 	if (opcode == GATTRIB_ALL_REQS)
@@ -408,6 +439,21 @@ gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu)
 	attrib->buflen = mtu;
 
 	return bt_att_set_mtu(attrib->att, mtu);
+}
+
+gboolean g_attrib_attach_client(GAttrib *attrib, struct bt_gatt_client *client)
+{
+	if (!attrib || !client)
+		return FALSE;
+
+	if (attrib->client)
+		bt_gatt_client_unref(attrib->client);
+
+	attrib->client = bt_gatt_client_clone(client);
+	if (!attrib->client)
+		return FALSE;
+
+	return TRUE;
 }
 
 gboolean g_attrib_unregister(GAttrib *attrib, guint id)
