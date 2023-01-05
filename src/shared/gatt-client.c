@@ -1711,8 +1711,11 @@ static unsigned int register_notify(struct bt_gatt_client *client,
 		 * descriptor.
 		 */
 		chrc = notify_chrc_create(client, handle);
-		if (!chrc)
+		if (!chrc) {
+			DBG(client, "Unable to locate characteristic at 0x%04x",
+							handle);
 			return 0;
+		}
 	}
 
 	/* Fail if we've hit the maximum allowed notify sessions */
@@ -1750,9 +1753,10 @@ static unsigned int register_notify(struct bt_gatt_client *client,
 	}
 
 	/*
-	 * If the ref count > 1, then notifications are already enabled.
+	 * If the ref count > 1, ccc handle cannot be found or registration
+	 * callback is not set consider notifications are already enabled.
 	 */
-	if (chrc->notify_count > 1 || !chrc->ccc_handle) {
+	if (chrc->notify_count > 1 || !chrc->ccc_handle || !callback) {
 		complete_notify_request(notify_data);
 		return notify_data->id;
 	}
@@ -2175,6 +2179,9 @@ static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
 {
 	struct bt_gatt_client *client = user_data;
 	struct value_data data;
+
+	if (queue_isempty(client->notify_list))
+		return;
 
 	bt_gatt_client_ref(client);
 
@@ -3670,7 +3677,8 @@ unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy)
 {
-	if (!client || !client->db || !chrc_value_handle || !callback)
+	if (!client || !client->db || !chrc_value_handle ||
+				(!callback && !notify))
 		return 0;
 
 	if (client->in_svc_chngd)
