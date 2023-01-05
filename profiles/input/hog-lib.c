@@ -374,6 +374,15 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 		error("bt_uhid_send: %s (%d)", strerror(-err), -err);
 }
 
+static void report_notify_destroy(void *user_data)
+{
+	struct report *report = user_data;
+
+	DBG("");
+
+	report->notifyid = 0;
+}
+
 static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
@@ -393,7 +402,13 @@ static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 	report->notifyid = g_attrib_register(hog->attrib,
 					ATT_OP_HANDLE_NOTIFY,
 					report->value_handle,
-					report_value_cb, report, NULL);
+					report_value_cb, report,
+					report_notify_destroy);
+	if (!report->notifyid) {
+		error("Unable to register report notification: handle 0x%04x",
+					report->value_handle);
+		goto remove;
+	}
 
 	DBG("Report characteristic descriptor written: notifications enabled");
 
@@ -1798,7 +1813,11 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 		r->notifyid = g_attrib_register(hog->attrib,
 					ATT_OP_HANDLE_NOTIFY,
 					r->value_handle,
-					report_value_cb, r, NULL);
+					report_value_cb, r,
+					report_notify_destroy);
+		if (!r->notifyid)
+			error("Unable to register report notification: "
+				"handle 0x%04x", r->value_handle);
 	}
 
 	return true;

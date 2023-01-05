@@ -5152,6 +5152,7 @@ static void gatt_client_init(struct btd_device *device)
 	}
 
 	bt_gatt_client_set_debug(device->client, gatt_debug, NULL, NULL);
+	g_attrib_attach_client(device->attrib, device->client);
 
 	/*
 	 * Notify notify existing service about the new connection so they can
