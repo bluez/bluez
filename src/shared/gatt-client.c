@@ -2761,7 +2761,7 @@ unsigned int bt_gatt_client_read_multiple(struct bt_gatt_client *client,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy)
 {
-	uint8_t pdu[num_handles * 2];
+	uint8_t *pdu = newa(uint8_t, num_handles * 2);
 	struct request *req;
 	struct read_op *op;
 	uint8_t opcode;
@@ -2798,7 +2798,7 @@ unsigned int bt_gatt_client_read_multiple(struct bt_gatt_client *client,
 		BT_GATT_CHRC_CLI_FEAT_EATT ? BT_ATT_OP_READ_MULT_VL_REQ :
 		BT_ATT_OP_READ_MULT_REQ;
 
-	req->att_id = bt_att_send(client->att, opcode, pdu, sizeof(pdu),
+	req->att_id = bt_att_send(client->att, opcode, pdu, num_handles * 2,
 							read_multiple_cb, req,
 							request_unref);
 	if (!req->att_id) {
@@ -2991,7 +2991,7 @@ unsigned int bt_gatt_client_write_without_response(
 					uint16_t value_handle,
 					bool signed_write,
 					const uint8_t *value, uint16_t length) {
-	uint8_t pdu[2 + length];
+	uint8_t *pdu = newa(uint8_t, 2 + length);
 	struct request *req;
 	int security;
 	uint8_t op;
@@ -3014,7 +3014,7 @@ unsigned int bt_gatt_client_write_without_response(
 	put_le16(value_handle, pdu);
 	memcpy(pdu + 2, value, length);
 
-	req->att_id = bt_att_send(client->att, op, pdu, sizeof(pdu), NULL, req,
+	req->att_id = bt_att_send(client->att, op, pdu, 2 + length, NULL, req,
 								request_unref);
 	if (!req->att_id) {
 		request_unref(req);
@@ -3072,7 +3072,7 @@ unsigned int bt_gatt_client_write_value(struct bt_gatt_client *client,
 {
 	struct request *req;
 	struct write_op *op;
-	uint8_t pdu[2 + length];
+	uint8_t *pdu = newa(uint8_t, 2 + length);
 
 	if (!client)
 		return 0;
@@ -3096,7 +3096,7 @@ unsigned int bt_gatt_client_write_value(struct bt_gatt_client *client,
 	memcpy(pdu + 2, value, length);
 
 	req->att_id = bt_att_send(client->att, BT_ATT_OP_WRITE_REQ,
-							pdu, sizeof(pdu),
+							pdu, 2 + length,
 							write_cb, req,
 							request_unref);
 	if (!req->att_id) {
@@ -3511,7 +3511,7 @@ unsigned int bt_gatt_client_prepare_write(struct bt_gatt_client *client,
 {
 	struct request *req;
 	struct prep_write_op *op;
-	uint8_t pdu[4 + length];
+	uint8_t *pdu = newa(uint8_t, 4 + length);
 
 	if (!client)
 		return 0;
@@ -3570,7 +3570,7 @@ unsigned int bt_gatt_client_prepare_write(struct bt_gatt_client *client,
 	 * Note that request_unref will be done on write execute
 	 */
 	req->att_id = bt_att_send(client->att, BT_ATT_OP_PREP_WRITE_REQ, pdu,
-					sizeof(pdu), prep_write_cb, req,
+					length, prep_write_cb, req,
 					NULL);
 	if (!req->att_id) {
 		op->destroy = NULL;
