@@ -2261,6 +2261,12 @@ static void *ltv_merge(struct iovec *data, struct iovec *cont)
 {
 	uint8_t delimiter = 0;
 
+	if (!data)
+		return NULL;
+
+	if (!cont || !cont->iov_len || !cont->iov_base)
+		return data->iov_base;
+
 	iov_append(data, sizeof(delimiter), &delimiter);
 
 	return iov_append(data, cont->iov_len, cont->iov_base);
