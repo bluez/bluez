@@ -344,8 +344,8 @@ static void pac_foreach(void *data, void *user_data)
 
 	p = util_iov_push(iov, sizeof(*p));
 	p->codec.id = pac->codec.id;
-	p->codec.cid = pac->codec.cid;
-	p->codec.vid = pac->codec.vid;
+	p->codec.cid = cpu_to_le16(pac->codec.cid);
+	p->codec.vid = cpu_to_le16(pac->codec.vid);
 
 	if (pac->data) {
 		p->cc_len = pac->data->iov_len;
