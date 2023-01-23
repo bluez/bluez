@@ -226,7 +226,7 @@ int util_iov_memcmp(const struct iovec *iov1, const struct iovec *iov2)
 
 void util_iov_memcpy(struct iovec *iov, void *src, size_t len)
 {
-	if (!iov)
+	if (!iov || !src || !len)
 		return;
 
 	iov->iov_base = realloc(iov->iov_base, len);
