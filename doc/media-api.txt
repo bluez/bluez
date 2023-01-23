@@ -34,7 +34,7 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 					match the profile specification which
 					is indicated by the UUID.
 
-				uint16_t, uint16_t Vendor [Optional]:
+				uint32_t Vendor [Optional]:
 
 					Vendor-specific Company ID, Codec ID
 					tuple that the endpoint implements.
@@ -649,7 +649,7 @@ Properties	string UUID [readonly, optional]:
 			The values should match the profile specification which
 			is indicated by the UUID.
 
-		uint16_t, uint16_t Vendor [readonly, Optional]:
+		uint32_t Vendor [readonly, Optional]:
 
 			Vendor-specific Company ID, Codec ID tuple that the
 			endpoint implements.
