@@ -998,9 +998,10 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_IDLE:
 		/* Release stream if idle */
-		if (ep)
+		if (ep) {
 			bap_io_close(ep);
-		else
+			ep->stream = NULL;
+		} else
 			queue_remove(data->streams, stream);
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
