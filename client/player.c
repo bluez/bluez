@@ -1868,13 +1868,18 @@ static gboolean endpoint_get_capabilities(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+struct vendor {
+	uint16_t cid;
+	uint16_t vid;
+} __packed;
+
 static gboolean endpoint_get_vendor(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct endpoint *ep = data;
+	struct vendor vendor = { ep->cid, ep->vid };
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &ep->cid);
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &ep->vid);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &vendor);
 
 	return TRUE;
 }
@@ -1891,7 +1896,7 @@ static const GDBusPropertyTable endpoint_properties[] = {
 	{ "UUID", "s", endpoint_get_uuid, NULL, NULL },
 	{ "Codec", "y", endpoint_get_codec, NULL, NULL },
 	{ "Capabilities", "ay", endpoint_get_capabilities, NULL, NULL },
-	{ "Vendor", "qq", endpoint_get_vendor, NULL, endpoint_vendor_exists },
+	{ "Vendor", "u", endpoint_get_vendor, NULL, endpoint_vendor_exists },
 	{ }
 };
 
@@ -1909,7 +1914,14 @@ static void register_endpoint_setup(DBusMessageIter *iter, void *user_data)
 
 	g_dbus_dict_append_entry(&dict, "Codec", DBUS_TYPE_BYTE, &ep->codec);
 
-	if (ep->caps->iov_len) {
+	if (ep->cid && ep->vid) {
+		struct vendor vendor = { ep->cid, ep->vid };
+
+		g_dbus_dict_append_entry(&dict, "Vendor", DBUS_TYPE_UINT32,
+						 &vendor);
+	}
+
+	if (ep->caps) {
 		g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING, &key,
 					DBUS_TYPE_BYTE, &ep->caps->iov_base,
 					ep->caps->iov_len);
@@ -2113,9 +2125,7 @@ static void cmd_register_endpoint(int argc, char *argv[])
 					g_list_length(local_endpoints));
 	local_endpoints = g_list_append(local_endpoints, ep);
 
-	if (g_strstr_len(argv[2], -1, ":")) {
-		bt_shell_printf("Found split\r\n");
-
+	if (strrchr(argv[2], ':')) {
 		list = g_strsplit(argv[2], ":", 2);
 
 		ep->codec = 0xff;

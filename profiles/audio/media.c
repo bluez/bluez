@@ -1379,6 +1379,11 @@ media_endpoint_create(struct media_adapter *adapter,
 	return endpoint;
 }
 
+struct vendor {
+	uint16_t cid;
+	uint16_t vid;
+} __packed;
+
 static int parse_properties(DBusMessageIter *props, const char **uuid,
 				gboolean *delay_reporting, uint8_t *codec,
 				uint16_t *cid, uint16_t *vid,
@@ -1388,6 +1393,7 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 {
 	gboolean has_uuid = FALSE;
 	gboolean has_codec = FALSE;
+	struct vendor vendor;
 
 	while (dbus_message_iter_get_arg_type(props) == DBUS_TYPE_DICT_ENTRY) {
 		const char *key;
@@ -1412,14 +1418,11 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 			dbus_message_iter_get_basic(&value, codec);
 			has_codec = TRUE;
 		} else if (strcasecmp(key, "Vendor") == 0) {
-			if (var != DBUS_TYPE_UINT16)
+			if (var != DBUS_TYPE_UINT32)
 				return -EINVAL;
-			dbus_message_iter_get_basic(&value, cid);
-			dbus_message_iter_next(&value);
-			var = dbus_message_iter_get_arg_type(&value);
-			if (var != DBUS_TYPE_UINT16)
-				return -EINVAL;
-			dbus_message_iter_get_basic(&value, vid);
+			dbus_message_iter_get_basic(&value, &vendor);
+			*cid = vendor.cid;
+			*vid = vendor.vid;
 		} else if (strcasecmp(key, "DelayReporting") == 0) {
 			if (var != DBUS_TYPE_BOOLEAN)
 				return -EINVAL;
@@ -2543,8 +2546,7 @@ static void app_register_endpoint(void *data, void *user_data)
 	const char *uuid;
 	gboolean delay_reporting = FALSE;
 	uint8_t codec;
-	uint16_t cid = 0;
-	uint16_t vid = 0;
+	struct vendor vendor;
 	struct bt_bap_pac_qos qos;
 	uint8_t *capabilities = NULL;
 	int size = 0;
@@ -2577,16 +2579,10 @@ static void app_register_endpoint(void *data, void *user_data)
 	dbus_message_iter_get_basic(&iter, &codec);
 
 	if (g_dbus_proxy_get_property(proxy, "Vendor", &iter)) {
-		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT16)
+		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32)
 			goto fail;
 
-		dbus_message_iter_get_basic(&iter, &cid);
-
-		dbus_message_iter_next(&iter);
-		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT16)
-			goto fail;
-
-		dbus_message_iter_get_basic(&iter, &vid);
+		dbus_message_iter_get_basic(&iter, &vendor);
 	}
 
 	/* DelayReporting and Capabilities are considered optional */
@@ -2666,9 +2662,10 @@ static void app_register_endpoint(void *data, void *user_data)
 	}
 
 	endpoint = media_endpoint_create(app->adapter, app->sender, path, uuid,
-						delay_reporting, codec, cid,
-						vid, &qos, capabilities,
-						size, metadata, metadata_size,
+						delay_reporting, codec,
+						vendor.cid, vendor.vid, &qos,
+						capabilities, size,
+						metadata, metadata_size,
 						&app->err);
 	if (!endpoint) {
 		error("Unable to register endpoint %s:%s: %s", app->sender,
