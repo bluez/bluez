@@ -1185,6 +1185,7 @@ static guint resume_bap(struct media_transport *transport,
 				struct media_owner *owner)
 {
 	struct bap_transport *bap = transport->data;
+	struct iovec *meta;
 	guint id;
 
 	if (!bap->stream)
@@ -1202,7 +1203,8 @@ static guint resume_bap(struct media_transport *transport,
 		return g_idle_add(resume_complete, transport);
 	}
 
-	id = bt_bap_stream_enable(bap->stream, bap->linked, NULL,
+	meta = bt_bap_stream_get_metadata(bap->stream);
+	id = bt_bap_stream_enable(bap->stream, bap->linked, meta,
 					bap_enable_complete, owner);
 	if (!id)
 		return 0;

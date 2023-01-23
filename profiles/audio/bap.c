@@ -484,6 +484,9 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	bt_bap_stream_set_user_data(ep->stream, ep->path);
 	ep->msg = dbus_message_ref(msg);
 
+	if (ep->metadata && ep->metadata->iov_len)
+		bt_bap_stream_metadata(ep->stream, ep->metadata, NULL, NULL);
+
 	return NULL;
 }
 
@@ -633,8 +636,10 @@ static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
 
 	ep->caps = util_iov_dup(caps, 1);
 
-	if (metadata && metadata->iov_base && metadata->iov_len)
+	if (metadata && metadata->iov_base && metadata->iov_len) {
 		ep->metadata = util_iov_dup(metadata, 1);
+		bt_bap_stream_metadata(ep->stream, ep->metadata, NULL, NULL);
+	}
 
 	ep->qos = *qos;
 
