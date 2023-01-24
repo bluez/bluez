@@ -94,13 +94,6 @@ bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[13], const uint8_t key[16],
 	result = l_aead_cipher_encrypt(cipher, msg, msg_len, aad, aad_len,
 					nonce, 13, out_msg, msg_len + mic_size);
 
-	if (result && out_mic) {
-		if (mic_size == 4)
-			*(uint32_t *)out_mic = l_get_be32(out_msg + msg_len);
-		else
-			*(uint64_t *)out_mic = l_get_be64(out_msg + msg_len);
-	}
-
 	l_aead_cipher_free(cipher);
 
 	return result;
