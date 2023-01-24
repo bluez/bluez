@@ -1049,12 +1049,12 @@ static void pac_added(struct bt_bap_pac *pac, void *user_data)
 	bt_bap_foreach_pac(data->bap, BT_BAP_SINK, pac_found, service);
 }
 
-static bool ep_match_rpac(const void *data, const void *match_data)
+static bool ep_match_pac(const void *data, const void *match_data)
 {
 	const struct bap_ep *ep = data;
 	const struct bt_bap_pac *pac = match_data;
 
-	return ep->rpac == pac;
+	return ep->rpac == pac || ep->lpac == pac;
 }
 
 static void pac_removed(struct bt_bap_pac *pac, void *user_data)
@@ -1082,7 +1082,7 @@ static void pac_removed(struct bt_bap_pac *pac, void *user_data)
 		return;
 	}
 
-	ep = queue_remove_if(queue, ep_match_rpac, pac);
+	ep = queue_remove_if(queue, ep_match_pac, pac);
 	if (!ep)
 		return;
 
