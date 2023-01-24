@@ -1020,7 +1020,7 @@ static const uint8_t crypto_test_result[] = {
 	0x9a, 0x2a, 0xbf, 0x96
 };
 
-bool mesh_crypto_check_avail()
+bool mesh_crypto_check_avail(void)
 {
 	void *cipher;
 	bool result;
