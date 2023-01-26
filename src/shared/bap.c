@@ -3425,26 +3425,43 @@ static void append_group(void *data, void *user_data)
 					req->iov[i].iov_base);
 }
 
+static uint16_t bap_req_len(struct bt_bap_req *req)
+{
+	uint16_t len = 0;
+	size_t i;
+	const struct queue_entry *e;
+
+	for (i = 0; i < req->len; i++)
+		len += req->iov[i].iov_len;
+
+	e = queue_get_entries(req->group);
+	for (; e; e = e->next)
+		len += bap_req_len(e->data);
+
+	return len;
+}
+
 static bool bap_send(struct bt_bap *bap, struct bt_bap_req *req)
 {
 	struct bt_ascs *ascs = bap_get_ascs(bap);
 	int ret;
 	uint16_t handle;
-	uint8_t buf[64];
 	struct bt_ascs_ase_hdr hdr;
-	struct iovec iov  = {
-		.iov_base = buf,
-		.iov_len = 0,
-	};
+	struct iovec iov;
 	size_t i;
 
-	DBG(bap, "req %p", req);
+	iov.iov_len = sizeof(hdr) + bap_req_len(req);
+
+	DBG(bap, "req %p len %u", req, iov.iov_len);
 
 	if (!gatt_db_attribute_get_char_data(ascs->ase_cp, NULL, &handle,
 						NULL, NULL, NULL)) {
 		DBG(bap, "Unable to find Control Point");
 		return false;
 	}
+
+	iov.iov_base = alloca(iov.iov_len);
+	iov.iov_len = 0;
 
 	hdr.op = req->op;
 	hdr.num = 1 + queue_length(req->group);
@@ -3531,9 +3548,19 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
 {
 	struct bt_bap_req *pend;
 	struct queue *queue;
+	struct bt_att *att = bt_bap_get_att(bap);
+	uint16_t mtu = bt_att_get_mtu(att);
+	uint16_t len = 2 + bap_req_len(req);
+
+	if (len > mtu) {
+		DBG(bap, "Unable to queue request: req len %u > %u mtu", len,
+									mtu);
+		return false;
+	}
 
 	pend = queue_find(bap->reqs, match_req, req);
-	if (pend) {
+	/* Check if req can be grouped together and it fits in the MTU */
+	if (pend && (bap_req_len(pend) + len < mtu)) {
 		if (!pend->group)
 			pend->group = queue_new();
 		/* Group requests with the same opcode */
