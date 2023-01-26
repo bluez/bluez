@@ -510,6 +510,22 @@ static void ep_free(void *data)
 	free(ep);
 }
 
+struct match_ep {
+	struct bt_bap_pac *lpac;
+	struct bt_bap_pac *rpac;
+};
+
+static bool match_ep(const void *data, const void *user_data)
+{
+	const struct bap_ep *ep = data;
+	const struct match_ep *match = user_data;
+
+	if (ep->lpac != match->lpac)
+		return false;
+
+	return ep->rpac == match->rpac;
+}
+
 static struct bap_ep *ep_register(struct btd_service *service,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac)
@@ -520,6 +536,7 @@ static struct bap_ep *ep_register(struct btd_service *service,
 	struct queue *queue;
 	int i, err;
 	const char *suffix;
+	struct match_ep match = { lpac, rpac };
 
 	switch (bt_bap_pac_get_type(rpac)) {
 	case BT_BAP_SINK:
@@ -535,6 +552,10 @@ static struct bap_ep *ep_register(struct btd_service *service,
 	default:
 		return NULL;
 	}
+
+	ep = queue_find(queue, match_ep, &match);
+	if (ep)
+		return ep;
 
 	ep = new0(struct bap_ep, 1);
 	ep->data = data;
