@@ -447,7 +447,11 @@ static const struct {
 	{ 0x1850, "Published Audio Capabilities"		},
 	{ 0x1851, "Basic Audio Announcement"			},
 	{ 0x1852, "Broadcast Audio Announcement"		},
-	/* 0x1853 to 0x27ff undefined */
+	{ 0x1853, "Common Audio"				},
+	{ 0x1854, "Hearing Aid"					},
+	{ 0x1855, "Telephony and Media Audio"			},
+	{ 0x1856, "Public Broadcast Announcement"		},
+	/* 0x1857 to 0x27ff undefined */
 	{ 0x2800, "Primary Service"				},
 	{ 0x2801, "Secondary Service"				},
 	{ 0x2802, "Include"					},
@@ -681,6 +685,7 @@ static const struct {
 	{ 0x2b29, "Client Supported Features"			},
 	{ 0x2b2A, "Database Hash"				},
 	{ 0x2b3a, "Server Supported Features"			},
+	{ 0x2b51, "Telephony and Media Audio Profile Role"	},
 	{ 0x2b77, "Audio Input State"				},
 	{ 0x2b78, "Gain Settings Attribute"			},
 	{ 0x2b79, "Audio Input Type"				},
@@ -751,6 +756,9 @@ static const struct {
 	{ 0x2bcc, "Source Audio Locations"			},
 	{ 0x2bcd, "Available Audio Contexts"			},
 	{ 0x2bce, "Supported Audio Contexts"			},
+	{ 0x2bda, "Hearing Aid Features"			},
+	{ 0x2bdb, "Hearing Aid Preset Control Point"		},
+	{ 0x2bdc, "Active Preset Index"				},
 	/* vendor defined */
 	{ 0xfeff, "GN Netcom"					},
 	{ 0xfefe, "GN ReSound A/S"				},
