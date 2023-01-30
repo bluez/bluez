@@ -1760,10 +1760,10 @@ static void csip_lock_read(const struct l2cap_frame *frame)
 
 	switch (lock) {
 	case 0x01:
-		print_field("    Locked (0x%02x)", lock);
+		print_field("    Unlocked (0x%02x)", lock);
 		break;
 	case 0x02:
-		print_field("    Unlocked (0x%02x)", lock);
+		print_field("    Locked (0x%02x)", lock);
 		break;
 	default:
 		print_field("    RFU (0x%02x)", lock);
