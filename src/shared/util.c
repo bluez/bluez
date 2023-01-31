@@ -28,6 +28,11 @@
 #include <sys/random.h>
 #endif
 
+/* define MAX_INPUT for musl */
+#ifndef MAX_INPUT
+#define MAX_INPUT _POSIX_MAX_INPUT
+#endif
+
 #include "src/shared/util.h"
 
 void *util_malloc(size_t size)
