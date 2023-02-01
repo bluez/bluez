@@ -2578,6 +2578,8 @@ static void app_register_endpoint(void *data, void *user_data)
 
 	dbus_message_iter_get_basic(&iter, &codec);
 
+	memset(&vendor, 0, sizeof(vendor));
+
 	if (g_dbus_proxy_get_property(proxy, "Vendor", &iter)) {
 		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32)
 			goto fail;
