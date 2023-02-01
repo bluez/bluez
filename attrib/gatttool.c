@@ -456,17 +456,17 @@ static gboolean parse_uuid(const char *key, const char *value,
 
 static GOptionEntry primary_char_options[] = {
 	{ "start", 's' , 0, G_OPTION_ARG_INT, &opt_start,
-		"Starting handle(optional)", "0x0001" },
+		"Starting handle (optional)", "0x0001" },
 	{ "end", 'e' , 0, G_OPTION_ARG_INT, &opt_end,
-		"Ending handle(optional)", "0xffff" },
+		"Ending handle (optional)", "0xffff" },
 	{ "uuid", 'u', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK,
-		parse_uuid, "UUID16 or UUID128(optional)", "0x1801"},
+		parse_uuid, "UUID16 or UUID128 (optional)", "0x1801"},
 	{ NULL },
 };
 
 static GOptionEntry char_rw_options[] = {
 	{ "handle", 'a' , 0, G_OPTION_ARG_INT, &opt_handle,
-		"Read/Write characteristic by handle(required)", "0x0001" },
+		"Read/Write characteristic by handle (required)", "0x0001" },
 	{ "value", 'n' , 0, G_OPTION_ARG_STRING, &opt_value,
 		"Write characteristic value (required for write operation)",
 		"0x0001" },
