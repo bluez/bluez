@@ -215,7 +215,7 @@ static void iter_append_iter(DBusMessageIter *base, DBusMessageIter *iter)
 	type = dbus_message_iter_get_arg_type(iter);
 
 	if (dbus_type_is_basic(type)) {
-		const void *value;
+		DBusBasicValue value;
 
 		dbus_message_iter_get_basic(iter, &value);
 		dbus_message_iter_append_basic(base, type, &value);
