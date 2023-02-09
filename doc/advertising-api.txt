@@ -86,7 +86,7 @@ Properties	string Type
 			Note: This property shall not be set when Type is set
 			to broadcast.
 
-		uint16 DiscoverableTimeout [Experimental]
+		uint32 DiscoverableTimeout [Experimental]
 
 			The discoverable timeout in seconds. A value of zero
 			means that the timeout is disabled and it will stay in
