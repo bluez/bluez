@@ -12649,6 +12649,8 @@ static const struct bitfield_data mgmt_settings_table[] = {
 	{ 15, "Static Address"		},
 	{ 16, "PHY Configuration"	},
 	{ 17, "Wideband Speech"		},
+	{ 18, "CIS Central"		},
+	{ 19, "CIS Peripheral"		},
 	{ }
 };
 
