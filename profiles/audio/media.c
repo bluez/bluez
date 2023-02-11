@@ -23,6 +23,7 @@
 #include "lib/bluetooth.h"
 #include "lib/sdp.h"
 #include "lib/uuid.h"
+#include "lib/mgmt.h"
 
 #include "gdbus/gdbus.h"
 
@@ -1282,6 +1283,10 @@ static bool endpoint_supported(struct btd_adapter *adapter)
 static bool experimental_endpoint_supported(struct btd_adapter *adapter)
 {
 	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET))
+		return false;
+
+	if (!btd_adapter_has_settings(adapter, MGMT_SETTING_CIS_CENTRAL |
+					MGMT_SETTING_CIS_PERIPHERAL))
 		return false;
 
 	return g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
