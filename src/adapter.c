@@ -10712,6 +10712,14 @@ bool btd_le_connect_before_pairing(void)
 	return false;
 }
 
+bool btd_adapter_has_settings(struct btd_adapter *adapter, uint32_t settings)
+{
+	if (!adapter)
+		return false;
+
+	return (adapter->current_settings & settings) ? true : false;
+}
+
 bool btd_has_kernel_features(uint32_t features)
 {
 	return (kernel_features & features) ? true : false;
