@@ -332,6 +332,8 @@ Read Controller Information Command
 		15	Static Address
 		16	PHY Configuration
 		17	Wideband Speech
+		18	Connected Isochronous Stream - Central
+		19	Connected Isochronous Stream - Peripheral
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -2924,6 +2926,8 @@ Read Extended Controller Information Command
 		15	Static Address
 		16	PHY Configuration
 		17	Wideband Speech
+		18	Connected Isochronous Stream - Central
+		19	Connected Isochronous Stream - Peripheral
 
 	The EIR_Data field contains information about class of device,
 	local name and other values. Not all of them might be present. For
