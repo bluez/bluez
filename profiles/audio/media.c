@@ -86,7 +86,6 @@ struct endpoint_request {
 struct media_endpoint {
 	struct a2dp_sep		*sep;
 	struct bt_bap_pac	*pac;
-	void			*stream;
 	char			*sender;	/* Endpoint DBus bus id */
 	char			*path;		/* Endpoint object path */
 	char			*uuid;		/* Endpoint property UUID */
@@ -1007,9 +1006,6 @@ static void pac_config_cb(struct media_endpoint *endpoint, void *ret, int size,
 	struct pac_config_data *data = user_data;
 	gboolean *ret_value = ret;
 
-	if (ret_value)
-		endpoint->stream = data->stream;
-
 	data->cb(data->stream, ret_value ? 0 : -EINVAL);
 }
 
@@ -1089,11 +1085,20 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 static void pac_clear(struct bt_bap_stream *stream, void *user_data)
 {
 	struct media_endpoint *endpoint = user_data;
+	struct media_transport *transport;
+	const char *path;
 
-	endpoint->stream = NULL;
+	path = bt_bap_stream_get_user_data(stream);
+	if (!path)
+		return;
 
-	while (endpoint->transports != NULL)
-		clear_configuration(endpoint, endpoint->transports->data);
+	DBG("endpoint %p path %s", endpoint, path);
+
+	transport = find_transport(endpoint, path);
+	if (transport) {
+		clear_configuration(endpoint, transport);
+		bt_bap_stream_set_user_data(stream, NULL);
+	}
 }
 
 static struct bt_bap_pac_ops pac_ops = {
