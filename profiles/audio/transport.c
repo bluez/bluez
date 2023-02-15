@@ -116,6 +116,8 @@ struct media_transport {
 								guint id);
 	void			(*set_state) (struct media_transport *transport,
 						transport_state_t state);
+	void			*(*get_stream)
+					(struct media_transport *transport);
 	GDestroyNotify		destroy;
 	void			*data;
 };
@@ -1380,6 +1382,13 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 	bap_update_links(transport);
 }
 
+static void *get_stream_bap(struct media_transport *transport)
+{
+	struct bap_transport *bap = transport->data;
+
+	return bap->stream;
+}
+
 static void free_bap(void *data)
 {
 	struct bap_transport *bap = data;
@@ -1415,6 +1424,7 @@ static int media_transport_init_bap(struct media_transport *transport,
 	transport->suspend = suspend_bap;
 	transport->cancel = cancel_bap;
 	transport->set_state = set_state_bap;
+	transport->get_stream = get_stream_bap;
 	transport->destroy = free_bap;
 
 	return 0;
@@ -1481,6 +1491,14 @@ fail:
 const char *media_transport_get_path(struct media_transport *transport)
 {
 	return transport->path;
+}
+
+void *media_transport_get_stream(struct media_transport *transport)
+{
+	if (transport->get_stream)
+		return transport->get_stream(transport);
+
+	return NULL;
 }
 
 void media_transport_update_delay(struct media_transport *transport,
