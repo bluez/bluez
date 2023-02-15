@@ -978,23 +978,20 @@ struct pac_config_data {
 static int transport_cmp(gconstpointer data, gconstpointer user_data)
 {
 	const struct media_transport *transport = data;
-	const char *path = user_data;
 
-	if (g_str_has_prefix(media_transport_get_path((void *)transport), path))
+	if (media_transport_get_stream((void *)transport) == user_data)
 		return 0;
 
 	return -1;
 }
 
 static struct media_transport *find_transport(struct media_endpoint *endpoint,
-						const char *path)
+						void *stream)
 {
 	GSList *match;
 
-	if (!path)
-		return NULL;
-
-	match = g_slist_find_custom(endpoint->transports, path, transport_cmp);
+	match = g_slist_find_custom(endpoint->transports, stream,
+								transport_cmp);
 	if (match == NULL)
 		return NULL;
 
@@ -1022,11 +1019,9 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 	DBusMessageIter iter;
 	const char *path;
 
-	path = bt_bap_stream_get_user_data(stream);
+	DBG("endpoint %p stream %p", endpoint, stream);
 
-	DBG("endpoint %p path %s", endpoint, path);
-
-	transport = find_transport(endpoint, path);
+	transport = find_transport(endpoint, stream);
 	if (!transport) {
 		struct bt_bap *bap = bt_bap_stream_get_session(stream);
 		struct btd_service *service = bt_bap_get_user_data(bap);
@@ -1046,14 +1041,14 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 			return -EINVAL;
 		}
 
+		path = bt_bap_stream_get_user_data(stream);
+
 		transport = media_transport_create(device, path, cfg->iov_base,
 							cfg->iov_len, endpoint,
 							stream);
 		if (!transport)
 			return -EINVAL;
 
-		path = media_transport_get_path(transport);
-		bt_bap_stream_set_user_data(stream, (void *)path);
 		endpoint->transports = g_slist_append(endpoint->transports,
 								transport);
 	}
@@ -1087,19 +1082,12 @@ static void pac_clear(struct bt_bap_stream *stream, void *user_data)
 {
 	struct media_endpoint *endpoint = user_data;
 	struct media_transport *transport;
-	const char *path;
 
-	path = bt_bap_stream_get_user_data(stream);
-	if (!path)
-		return;
+	DBG("endpoint %p stream %p", endpoint, stream);
 
-	DBG("endpoint %p path %s", endpoint, path);
-
-	transport = find_transport(endpoint, path);
-	if (transport) {
+	transport = find_transport(endpoint, stream);
+	if (transport)
 		clear_configuration(endpoint, transport);
-		bt_bap_stream_set_user_data(stream, NULL);
-	}
 }
 
 static struct bt_bap_pac_ops pac_ops = {
