@@ -1003,6 +1003,12 @@ static void pac_config_cb(struct media_endpoint *endpoint, void *ret, int size,
 {
 	struct pac_config_data *data = user_data;
 	gboolean *ret_value = ret;
+	struct media_transport *transport;
+
+	/* If transport was cleared, configuration was cancelled */
+	transport = find_transport(endpoint, data->stream);
+	if (!transport)
+		return;
 
 	data->cb(data->stream, ret_value ? 0 : -EINVAL);
 }
