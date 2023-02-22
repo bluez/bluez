@@ -37,6 +37,7 @@
 #define EIR_SVC_DATA32              0x20  /* LE: Service data, 32-bit UUID */
 #define EIR_SVC_DATA128             0x21  /* LE: Service data, 128-bit UUID */
 #define EIR_TRANSPORT_DISCOVERY     0x26  /* Transport Discovery Service */
+#define EIR_CSIP_RSI                0x2e  /* Resolvable Set Identifier */
 #define EIR_MANUFACTURER_DATA       0xFF  /* Manufacturer Specific Data */
 
 /* Flags Descriptions */
@@ -76,6 +77,7 @@ struct eir_data {
 	uint32_t class;
 	uint16_t appearance;
 	bool name_complete;
+	bool rsi;
 	int8_t tx_power;
 	uint8_t *hash;
 	uint8_t *randomizer;

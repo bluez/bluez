@@ -236,6 +236,9 @@ static void eir_parse_data(struct eir_data *eir, uint8_t type,
 	memcpy(ad->data, data, len);
 
 	eir->data_list = g_slist_append(eir->data_list, ad);
+
+	if (type == EIR_CSIP_RSI)
+		eir->rsi = true;
 }
 
 void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
