@@ -5155,10 +5155,11 @@ static void gatt_client_init(struct btd_device *device)
 	g_attrib_attach_client(device->attrib, device->client);
 
 	/*
-	 * Notify notify existing service about the new connection so they can
-	 * react to notifications while discovering services
+	 * If we have cache, notify existing service about the new connection
+	 * so they can react to notifications while discovering services
 	 */
-	device_accept_gatt_profiles(device);
+	if (!gatt_db_isempty(device->db))
+		device_accept_gatt_profiles(device);
 
 	device->gatt_ready_id = bt_gatt_client_ready_register(device->client,
 							gatt_client_ready_cb,
