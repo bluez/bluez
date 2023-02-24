@@ -5422,7 +5422,7 @@ int device_connect_le(struct btd_device *dev)
 	char addr[18];
 
 	/* There is one connection attempt going on */
-	if (dev->att_io)
+	if (dev->att_io || dev->att)
 		return -EALREADY;
 
 	ba2str(&dev->bdaddr, addr);
