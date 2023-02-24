@@ -2479,10 +2479,8 @@ static void remove_streams(void *data, void *user_data)
 	struct bt_bap_stream *stream;
 
 	stream = queue_remove_if(bap->streams, match_stream_lpac, pac);
-	if (stream) {
+	if (stream)
 		bt_bap_stream_release(stream, NULL, NULL);
-		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
-	}
 }
 
 bool bt_bap_remove_pac(struct bt_bap_pac *pac)
@@ -4567,6 +4565,7 @@ unsigned int bt_bap_stream_release(struct bt_bap_stream *stream,
 	struct iovec iov;
 	struct bt_ascs_release rel;
 	struct bt_bap_req *req;
+	struct bt_bap *bap;
 
 	if (!stream)
 		return 0;
@@ -4583,9 +4582,17 @@ unsigned int bt_bap_stream_release(struct bt_bap_stream *stream,
 	iov.iov_base = &rel;
 	iov.iov_len = sizeof(rel);
 
+	bap = stream->bap;
+
+	/* If stream does not belong to a client session, clean it up now */
+	if (!bap_stream_valid(stream)) {
+		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+		stream = NULL;
+	}
+
 	req = bap_req_new(stream, BT_ASCS_RELEASE, &iov, 1, func, user_data);
 
-	if (!bap_queue_req(stream->bap, req)) {
+	if (!bap_queue_req(bap, req)) {
 		bap_req_free(req);
 		return 0;
 	}
