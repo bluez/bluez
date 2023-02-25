@@ -79,7 +79,8 @@ void bthost_send_cid(struct bthost *bthost, uint16_t handle, uint16_t cid,
 					const void *data, uint16_t len);
 void bthost_send_cid_v(struct bthost *bthost, uint16_t handle, uint16_t cid,
 					const struct iovec *iov, int iovcnt);
-void bthost_send_iso(struct bthost *bthost, uint16_t handle,
+void bthost_send_iso(struct bthost *bthost, uint16_t handle, bool ts,
+					uint16_t sn, uint32_t timestamp,
 					const struct iovec *iov, int iovcnt);
 
 typedef void (*bthost_l2cap_rsp_cb) (uint8_t code, const void *data,

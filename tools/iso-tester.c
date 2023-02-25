@@ -1146,6 +1146,7 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 {
 	const struct iso_client_data *isodata = data->test_data;
 	struct bthost *host;
+	static uint16_t sn;
 
 	tester_print("Receive %zu bytes of data", isodata->recv->iov_len);
 
@@ -1156,7 +1157,7 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 	}
 
 	host = hciemu_client_get_host(data->hciemu);
-	bthost_send_iso(host, data->handle, isodata->recv, 1);
+	bthost_send_iso(host, data->handle, false, sn++, 0, isodata->recv, 1);
 
 	data->io_id[0] = g_io_add_watch(io, G_IO_IN, iso_recv_data, data);
 }
