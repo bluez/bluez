@@ -149,6 +149,7 @@ struct iso_client_data {
 	bool bcast;
 	bool defer;
 	bool disconnect;
+	bool ts;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -570,6 +571,14 @@ static const struct iso_client_data listen_16_2_1_recv = {
 	.expect_err = 0,
 	.recv = &send_16_2_1,
 	.server = true,
+};
+
+static const struct iso_client_data listen_16_2_1_recv_ts = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+	.ts = true,
 };
 
 static const struct iso_client_data defer_16_2_1 = {
@@ -1157,7 +1166,8 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 	}
 
 	host = hciemu_client_get_host(data->hciemu);
-	bthost_send_iso(host, data->handle, false, sn++, 0, isodata->recv, 1);
+	bthost_send_iso(host, data->handle, isodata->ts, sn++, 0,
+							isodata->recv, 1);
 
 	data->io_id[0] = g_io_add_watch(io, G_IO_IN, iso_recv_data, data);
 }
@@ -1807,6 +1817,10 @@ int main(int argc, char *argv[])
 							test_connect);
 
 	test_iso("ISO Receive - Success", &listen_16_2_1_recv, setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive Timestamped - Success", &listen_16_2_1_recv_ts,
+							setup_powered,
 							test_listen);
 
 	test_iso("ISO Defer - Success", &defer_16_2_1, setup_powered,
