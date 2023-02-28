@@ -3566,48 +3566,54 @@ static void cmd_send_transport(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	struct transport *transport;
-	int fd, err;
+	int fd = -1, err;
 	struct bt_iso_qos qos;
 	socklen_t len;
+	int i;
 
-	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
+	for (i = 1; i < argc; i++) {
+		proxy = g_dbus_proxy_lookup(transports, NULL, argv[i],
 					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
-	if (!proxy) {
-		bt_shell_printf("Transport %s not found\n", argv[1]);
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
+		if (!proxy) {
+			bt_shell_printf("Transport %s not found\n", argv[i]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
 
-	transport = find_transport(proxy);
-	if (!transport) {
-		bt_shell_printf("Transport %s not acquired\n", argv[1]);
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
+		transport = find_transport(proxy);
+		if (!transport) {
+			bt_shell_printf("Transport %s not acquired\n", argv[i]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
 
-	if (transport->sk < 0) {
-		bt_shell_printf("No Transport Socked found\n");
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
+		if (transport->sk < 0) {
+			bt_shell_printf("No Transport Socked found\n");
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
 
-	fd = open_file(argv[2], O_RDONLY);
-	if (fd < 0)
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		if (i + 1 < argc) {
+			fd = open_file(argv[++i], O_RDONLY);
+			if (fd < 0)
+				return bt_shell_noninteractive_quit(
+								EXIT_FAILURE);
+		}
 
-	bt_shell_printf("Sending ...\n");
+		bt_shell_printf("Sending ...\n");
 
-	/* Read QoS if available */
-	memset(&qos, 0, sizeof(qos));
-	len = sizeof(qos);
-	if (getsockopt(transport->sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos,
+		/* Read QoS if available */
+		memset(&qos, 0, sizeof(qos));
+		len = sizeof(qos);
+		if (getsockopt(transport->sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos,
 							&len) < 0)
-		err = transport_send(transport, fd, NULL);
-	else
-		err = transport_send(transport, fd, &qos);
+			err = transport_send(transport, fd, NULL);
+		else
+			err = transport_send(transport, fd, &qos);
 
-	if (err < 0) {
-		bt_shell_printf("Unable to send: %s (%d)", strerror(-err),
-								-err);
-		close(fd);
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		if (err < 0) {
+			bt_shell_printf("Unable to send: %s (%d)",
+						strerror(-err), -err);
+			close(fd);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
 	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -3710,7 +3716,8 @@ static const struct bt_shell_menu transport_menu = {
 	{ "release",     "<transport> [transport1...]", cmd_release_transport,
 						"Release Transport",
 						transport_generator },
-	{ "send",        "<transport> <filename>", cmd_send_transport,
+	{ "send",        "<transport> <filename> [transport1...]",
+						cmd_send_transport,
 						"Send contents of a file",
 						transport_generator },
 	{ "receive",     "<transport> [filename]", cmd_receive_transport,
