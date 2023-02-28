@@ -3818,12 +3818,28 @@ static void stream_foreach_detach(void *data, void *user_data)
 	stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
 }
 
+static void bap_req_detach(void *data)
+{
+	struct bt_bap_req *req = data;
+
+	bap_req_complete(req, NULL);
+}
+
 void bt_bap_detach(struct bt_bap *bap)
 {
 	DBG(bap, "%p", bap);
 
 	if (!queue_remove(sessions, bap))
 		return;
+
+	/* Cancel ongoing request */
+	if (bap->req) {
+		bap_req_detach(bap->req);
+		bap->req = NULL;
+	}
+
+	/* Cancel queued requests */
+	queue_remove_all(bap->reqs, NULL, NULL, bap_req_detach);
 
 	bt_gatt_client_unref(bap->client);
 	bap->client = NULL;
