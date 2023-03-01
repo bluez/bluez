@@ -26,6 +26,7 @@ struct bt_gatt_client *bt_gatt_client_ref(struct bt_gatt_client *client);
 void bt_gatt_client_unref(struct bt_gatt_client *client);
 
 typedef void (*bt_gatt_client_destroy_func_t)(void *user_data);
+typedef void (*bt_gatt_client_idle_callback_t)(void *user_data);
 typedef void (*bt_gatt_client_callback_t)(bool success, uint8_t att_ecode,
 							void *user_data);
 typedef void (*bt_gatt_client_debug_func_t)(const char *str, void *user_data);
@@ -126,3 +127,10 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 
 bool bt_gatt_client_set_security(struct bt_gatt_client *client, int level);
 int bt_gatt_client_get_security(struct bt_gatt_client *client);
+
+unsigned int bt_gatt_client_idle_register(struct bt_gatt_client *client,
+					bt_gatt_client_idle_callback_t callback,
+					void *user_data,
+					bt_gatt_client_destroy_func_t destroy);
+bool bt_gatt_client_idle_unregister(struct bt_gatt_client *client,
+						unsigned int id);
