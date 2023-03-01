@@ -1269,8 +1269,11 @@ static bool endpoint_properties_get(const char *uuid,
 	return true;
 }
 
-static bool endpoint_supported(struct btd_adapter *adapter)
+static bool a2dp_endpoint_supported(struct btd_adapter *adapter)
 {
+	if (!btd_adapter_has_settings(adapter, MGMT_SETTING_BREDR))
+		return false;
+
 	return true;
 }
 
@@ -1291,8 +1294,10 @@ static struct media_endpoint_init {
 	bool (*func)(struct media_endpoint *endpoint, int *err);
 	bool (*supported)(struct btd_adapter *adapter);
 } init_table[] = {
-	{ A2DP_SOURCE_UUID, endpoint_init_a2dp_source, endpoint_supported },
-	{ A2DP_SINK_UUID, endpoint_init_a2dp_sink, endpoint_supported },
+	{ A2DP_SOURCE_UUID, endpoint_init_a2dp_source,
+				a2dp_endpoint_supported },
+	{ A2DP_SINK_UUID, endpoint_init_a2dp_sink,
+				a2dp_endpoint_supported },
 	{ PAC_SINK_UUID, endpoint_init_pac_sink,
 				experimental_endpoint_supported },
 	{ PAC_SOURCE_UUID, endpoint_init_pac_source,
