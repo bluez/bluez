@@ -190,13 +190,11 @@ void *bt_bap_pac_get_user_data(struct bt_bap_pac *pac);
 int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 			bt_bap_pac_select_t func, void *user_data);
 
-struct bt_bap_stream *bt_bap_config(struct bt_bap *bap,
+struct bt_bap_stream *bt_bap_stream_new(struct bt_bap *bap,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac,
 					struct bt_bap_qos *pqos,
-					struct iovec *data,
-					bt_bap_stream_func_t func,
-					void *user_data);
+					struct iovec *data);
 
 struct bt_bap *bt_bap_stream_get_session(struct bt_bap_stream *stream);
 uint8_t bt_bap_stream_get_state(struct bt_bap_stream *stream);

@@ -466,15 +466,13 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	/* TODO: Check if stream capabilities match add support for Latency
 	 * and PHY.
 	 */
-	if (ep->stream)
-		ep->id = bt_bap_stream_config(ep->stream, &ep->qos, ep->caps,
-						config_cb, ep);
-	else
-		ep->stream = bt_bap_config(ep->data->bap, ep->lpac, ep->rpac,
-						&ep->qos, ep->caps,
-						config_cb, ep);
+	if (!ep->stream)
+		ep->stream = bt_bap_stream_new(ep->data->bap, ep->lpac,
+						ep->rpac, &ep->qos, ep->caps);
 
-	if (!ep->stream) {
+	ep->id = bt_bap_stream_config(ep->stream, &ep->qos, ep->caps,
+						config_cb, ep);
+	if (!ep->id) {
 		DBG("Unable to config stream");
 		free(ep->caps);
 		ep->caps = NULL;
@@ -604,15 +602,13 @@ static void bap_config(void *data, void *user_data)
 	/* TODO: Check if stream capabilities match add support for Latency
 	 * and PHY.
 	 */
-	if (ep->stream)
-		ep->id = bt_bap_stream_config(ep->stream, &ep->qos, ep->caps,
-						config_cb, ep);
-	else
-		ep->stream = bt_bap_config(ep->data->bap, ep->lpac, ep->rpac,
-						&ep->qos, ep->caps,
-						config_cb, ep);
+	if (!ep->stream)
+		ep->stream = bt_bap_stream_new(ep->data->bap, ep->lpac,
+						ep->rpac, &ep->qos, ep->caps);
 
-	if (!ep->stream) {
+	ep->id = bt_bap_stream_config(ep->stream, &ep->qos, ep->caps,
+						config_cb, ep);
+	if (!ep->id) {
 		DBG("Unable to config stream");
 		util_iov_free(ep->caps, 1);
 		ep->caps = NULL;

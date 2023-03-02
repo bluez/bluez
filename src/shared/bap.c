@@ -4176,18 +4176,15 @@ int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	return 0;
 }
 
-struct bt_bap_stream *bt_bap_config(struct bt_bap *bap,
+struct bt_bap_stream *bt_bap_stream_new(struct bt_bap *bap,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac,
 					struct bt_bap_qos *pqos,
-					struct iovec *data,
-					bt_bap_stream_func_t func,
-					void *user_data)
+					struct iovec *data)
 {
 	struct bt_bap_stream *stream;
 	struct bt_bap_endpoint *ep;
 	struct match_pac match;
-	int id;
 
 	if (!bap || !bap->rdb || queue_isempty(bap->remote_eps))
 		return NULL;
@@ -4243,15 +4240,6 @@ struct bt_bap_stream *bt_bap_config(struct bt_bap *bap,
 	stream = ep->stream;
 	if (!stream)
 		stream = bap_stream_new(bap, ep, lpac, rpac, data, true);
-
-	id = bt_bap_stream_config(stream, pqos, data, func, user_data);
-	if (!id) {
-		DBG(bap, "Unable to config stream");
-		queue_remove(bap->streams, stream);
-		ep->stream = NULL;
-		free(stream);
-		return NULL;
-	}
 
 	return stream;
 }
