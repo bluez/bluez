@@ -57,6 +57,7 @@
 #define BT_AD_MESH_PROV			0x29
 #define BT_AD_MESH_DATA			0x2a
 #define BT_AD_MESH_BEACON		0x2b
+#define BT_AD_CSIP_RSI			0x2e
 #define BT_AD_3D_INFO_DATA		0x3d
 #define BT_AD_MANUFACTURER_DATA		0xff
 
