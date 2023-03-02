@@ -926,3 +926,43 @@ bool bt_crypto_sef(struct bt_crypto *crypto, const uint8_t k[16],
 
 	return true;
 }
+
+/* Generates a SIRK from a string using the following steps:
+ *  - Generate a hash (k) using the str as input
+ *  - Generate a hash (sirk) using vendor, product, version and source as input
+ *  - Encrypt sirk using k as LTK with sef function.
+ */
+bool bt_crypto_sirk(struct bt_crypto *crypto, const char *str, uint16_t vendor,
+			uint16_t product, uint16_t version, uint16_t source,
+			uint8_t sirk[16])
+{
+	struct iovec iov[4];
+	uint8_t k[16];
+	uint8_t sirk_plaintext[16];
+
+	if (!crypto)
+		return false;
+
+	iov[0].iov_base = (void *)str;
+	iov[0].iov_len = strlen(str);
+
+	/* Generate a k using the str as input */
+	if (!bt_crypto_gatt_hash(crypto, iov, 1, k))
+		return false;
+
+	iov[0].iov_base = &vendor;
+	iov[0].iov_len = sizeof(vendor);
+	iov[1].iov_base = &product;
+	iov[1].iov_len = sizeof(product);
+	iov[2].iov_base = &version;
+	iov[2].iov_len = sizeof(version);
+	iov[3].iov_base = &source;
+	iov[3].iov_len = sizeof(source);
+
+	/* Generate a sirk using vendor, product, version and source as input */
+	if (!bt_crypto_gatt_hash(crypto, iov, 4, sirk_plaintext))
+		return false;
+
+	/* Encrypt sirk using k as LTK with sef function */
+	return bt_crypto_sef(crypto, k, sirk_plaintext, sirk);
+}

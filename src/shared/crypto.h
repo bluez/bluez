@@ -57,3 +57,6 @@ bool bt_crypto_sef(struct bt_crypto *crypto, const uint8_t k[16],
 			const uint8_t sirk[16], uint8_t out[16]);
 bool bt_crypto_sih(struct bt_crypto *crypto, const uint8_t k[16],
 					const uint8_t r[3], uint8_t hash[3]);
+bool bt_crypto_sirk(struct bt_crypto *crypto, const char *str, uint16_t vendor,
+			uint16_t product, uint16_t version, uint16_t source,
+			uint8_t sirk[16]);
