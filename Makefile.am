@@ -326,7 +326,8 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/eir.h src/eir.c \
 			src/adv_monitor.h src/adv_monitor.c \
 			src/battery.h src/battery.c \
-			src/settings.h src/settings.c
+			src/settings.h src/settings.c \
+			src/set.h src/set.c
 src_bluetoothd_LDADD = lib/libbluetooth-internal.la \
 			gdbus/libgdbus-internal.la \
 			src/libshared-glib.la \
