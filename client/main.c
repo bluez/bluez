@@ -51,6 +51,7 @@ struct adapter {
 	GDBusProxy *ad_proxy;
 	GDBusProxy *adv_monitor_proxy;
 	GList *devices;
+	GList *sets;
 };
 
 static struct adapter *default_ctrl;
@@ -232,7 +233,7 @@ static void print_experimental(GDBusProxy *proxy)
 	}
 }
 
-static gboolean device_is_child(GDBusProxy *device, GDBusProxy *parent)
+static gboolean proxy_is_child(GDBusProxy *device, GDBusProxy *parent)
 {
 	DBusMessageIter iter;
 	const char *adapter, *path;
@@ -269,14 +270,14 @@ static gboolean service_is_child(GDBusProxy *service)
 					"org.bluez.Device1") != NULL;
 }
 
-static struct adapter *find_parent(GDBusProxy *device)
+static struct adapter *find_parent(GDBusProxy *proxy)
 {
 	GList *list;
 
 	for (list = g_list_first(ctrl_list); list; list = g_list_next(list)) {
 		struct adapter *adapter = list->data;
 
-		if (device_is_child(device, adapter->proxy) == TRUE)
+		if (proxy_is_child(proxy, adapter->proxy) == TRUE)
 			return adapter;
 	}
 	return NULL;
@@ -399,6 +400,27 @@ static void admon_manager_added(GDBusProxy *proxy)
 	adv_monitor_register_app(dbus_conn);
 }
 
+static void print_set(GDBusProxy *proxy, const char *description)
+{
+	bt_shell_printf("%s%s%sDeviceSet %s\n",
+				description ? "[" : "",
+				description ? : "",
+				description ? "] " : "",
+				g_dbus_proxy_get_path(proxy));
+}
+
+static void set_added(GDBusProxy *proxy)
+{
+	struct adapter *adapter = find_parent(proxy);
+
+	if (!adapter)
+		return;
+
+	adapter->sets = g_list_append(adapter->sets, proxy);
+	print_set(proxy, COLORED_NEW);
+	bt_shell_set_env(g_dbus_proxy_get_path(proxy), proxy);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -434,6 +456,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	} else if (!strcmp(interface,
 				"org.bluez.AdvertisementMonitorManager1")) {
 		admon_manager_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.DeviceSet1")) {
+		set_added(proxy);
 	}
 }
 
@@ -484,11 +508,25 @@ static void adapter_removed(GDBusProxy *proxy)
 
 			ctrl_list = g_list_remove_link(ctrl_list, ll);
 			g_list_free(adapter->devices);
+			g_list_free(adapter->sets);
 			g_free(adapter);
 			g_list_free(ll);
 			return;
 		}
 	}
+}
+
+static void set_removed(GDBusProxy *proxy)
+{
+	struct adapter *adapter = find_parent(proxy);
+
+	if (!adapter)
+		return;
+
+	adapter->sets = g_list_remove(adapter->sets, proxy);
+
+	print_set(proxy, COLORED_DEL);
+	bt_shell_set_env(g_dbus_proxy_get_path(proxy), NULL);
 }
 
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
@@ -531,6 +569,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	} else if (!strcmp(interface,
 			"org.bluez.AdvertisementMonitorManager1")) {
 		adv_monitor_remove_manager(dbus_conn);
+	} else if (!strcmp(interface, "org.bluez.DeviceSet1")) {
+		set_removed(proxy);
 	}
 }
 
@@ -557,7 +597,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 	interface = g_dbus_proxy_get_interface(proxy);
 
 	if (!strcmp(interface, "org.bluez.Device1")) {
-		if (default_ctrl && device_is_child(proxy,
+		if (default_ctrl && proxy_is_child(proxy,
 					default_ctrl->proxy) == TRUE) {
 			DBusMessageIter addr_iter;
 			char *str;
@@ -1559,6 +1599,39 @@ static struct GDBusProxy *find_device(int argc, char *argv[])
 	return proxy;
 }
 
+static struct GDBusProxy *find_set(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (check_default_ctrl() == FALSE)
+		return NULL;
+
+	proxy = find_proxies_by_path(default_ctrl->sets, argv[1]);
+	if (!proxy) {
+		bt_shell_printf("DeviceSet %s not available\n", argv[1]);
+		return NULL;
+	}
+
+	return proxy;
+}
+
+static void cmd_set_info(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	proxy = find_set(argc, argv);
+	if (!proxy)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	bt_shell_printf("DeviceSet %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(proxy, "AutoConnect");
+	print_property(proxy, "Devices");
+	print_property(proxy, "Size");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
 static void cmd_info(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -1568,7 +1641,7 @@ static void cmd_info(int argc, char *argv[])
 
 	proxy = find_device(argc, argv);
 	if (!proxy)
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		return cmd_set_info(argc, argv);
 
 	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -1605,6 +1678,7 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "TxPower");
 	print_property(proxy, "AdvertisingFlags");
 	print_property(proxy, "AdvertisingData");
+	print_property(proxy, "Sets");
 
 	battery_proxy = find_proxies_by_path(battery_proxies,
 					g_dbus_proxy_get_path(proxy));
@@ -2298,10 +2372,12 @@ static char *generic_generator(const char *text, int state,
 
 		index++;
 
-		if (g_dbus_proxy_get_property(proxy, property, &iter) == FALSE)
+		if (!property)
+			str = g_dbus_proxy_get_path(proxy);
+		else if (g_dbus_proxy_get_property(proxy, property, &iter))
+			dbus_message_iter_get_basic(&iter, &str);
+		else
 			continue;
-
-		dbus_message_iter_get_basic(&iter, &str);
 
 		if (!strncasecmp(str, text, len))
 			return strdup(str);
@@ -2346,6 +2422,23 @@ static char *dev_generator(const char *text, int state)
 {
 	return generic_generator(text, state,
 			default_ctrl ? default_ctrl->devices : NULL, "Address");
+}
+
+static char *set_generator(const char *text, int state)
+{
+	return generic_generator(text, state,
+			default_ctrl ? default_ctrl->sets : NULL, NULL);
+}
+
+static char *dev_set_generator(const char *text, int state)
+{
+	char *str;
+
+	str = dev_generator(text, state);
+	if (str)
+		return str;
+
+	return set_generator(text, state);
 }
 
 static char *attribute_generator(const char *text, int state)
@@ -2965,8 +3058,8 @@ static const struct bt_shell_menu main_menu = {
 	{ "set-alias",    "<alias>",  cmd_set_alias, "Set device alias" },
 	{ "scan",         "<on/off/bredr/le>", cmd_scan,
 				"Scan for devices", scan_generator },
-	{ "info",         "[dev]",    cmd_info, "Device information",
-							dev_generator },
+	{ "info",         "[dev/set]",    cmd_info, "Device/Set information",
+							dev_set_generator },
 	{ "pair",         "[dev]",    cmd_pair, "Pair with device",
 							dev_generator },
 	{ "cancel-pairing",  "[dev]",    cmd_cancel_pairing,
