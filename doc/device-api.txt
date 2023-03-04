@@ -281,3 +281,13 @@ Properties	string Address [readonly]
 			Example:
 				<Transport Discovery> <Organization Flags...>
 				0x26                   0x01         0x01...
+
+		array{object, dict} Sets [readonly, experimental]
+
+			The object paths of the sets the device belongs to
+			followed by a dictionary which can contain the
+			following:
+
+				byte Rank:
+
+					Rank of the device in the Set.
