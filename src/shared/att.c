@@ -1588,6 +1588,14 @@ unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 
 	op->id = att->next_send_id++;
 
+	/* Always use fixed channel for BT_ATT_OP_MTU_REQ */
+	if (opcode == BT_ATT_OP_MTU_REQ) {
+		struct bt_att_chan *chan = queue_peek_tail(att->chans);
+
+		result = queue_push_tail(chan->queue, op);
+		goto done;
+	}
+
 	/* Add the op to the correct queue based on its type */
 	switch (op->type) {
 	case ATT_OP_TYPE_REQ:
@@ -1606,6 +1614,7 @@ unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 		break;
 	}
 
+done:
 	if (!result) {
 		free(op->pdu);
 		free(op);
