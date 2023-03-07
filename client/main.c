@@ -24,6 +24,7 @@
 
 #include "src/shared/shell.h"
 #include "src/shared/util.h"
+#include "src/shared/ad.h"
 #include "gdbus/gdbus.h"
 #include "print.h"
 #include "agent.h"
@@ -143,10 +144,32 @@ static void print_adapter(GDBusProxy *proxy, const char *description)
 
 }
 
+#define	DISTANCE_VAL_INVALID	0x7FFF
+
+static struct set_discovery_filter_args {
+	char *transport;
+	char *pattern;
+	dbus_uint16_t rssi;
+	dbus_int16_t pathloss;
+	char **uuids;
+	size_t uuids_len;
+	dbus_bool_t duplicate;
+	dbus_bool_t discoverable;
+	bool set;
+	bool active;
+	unsigned int timeout;
+} filter = {
+	.rssi = DISTANCE_VAL_INVALID,
+	.pathloss = DISTANCE_VAL_INVALID,
+	.set = true,
+};
+
 static void print_device(GDBusProxy *proxy, const char *description)
 {
 	DBusMessageIter iter;
 	const char *address, *name;
+	uint8_t *flags;
+	int flags_len = 0;
 
 	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
 		return;
@@ -158,11 +181,39 @@ static void print_device(GDBusProxy *proxy, const char *description)
 	else
 		name = "<unknown>";
 
+	if (g_dbus_proxy_get_property(proxy, "AdvertisingFlags", &iter)) {
+		DBusMessageIter array;
+
+		dbus_message_iter_recurse(&iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &flags, &flags_len);
+	}
+
+	if (!flags_len)
+		goto done;
+
+	if (!(flags[0] & (BT_AD_FLAG_LIMITED | BT_AD_FLAG_GENERAL))) {
+		/* Only print hidden/non-discoverable if filter.discoverable is
+		 * not set.
+		 */
+		if (filter.discoverable)
+			return;
+
+		bt_shell_printf("%s%s%s" COLOR_BOLDGRAY "Device %s %s"
+					COLOR_OFF "\n",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					address, name);
+
+		return;
+	}
+
+done:
 	bt_shell_printf("%s%s%sDevice %s %s\n",
-				description ? "[" : "",
-				description ? : "",
-				description ? "] " : "",
-				address, name);
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					address, name);
 }
 
 static void print_uuid(const char *label, const char *uuid)
@@ -1132,26 +1183,6 @@ static void cmd_default_agent(int argc, char *argv[])
 {
 	agent_default(dbus_conn, agent_manager);
 }
-
-#define	DISTANCE_VAL_INVALID	0x7FFF
-
-static struct set_discovery_filter_args {
-	char *transport;
-	char *pattern;
-	dbus_uint16_t rssi;
-	dbus_int16_t pathloss;
-	char **uuids;
-	size_t uuids_len;
-	dbus_bool_t duplicate;
-	dbus_bool_t discoverable;
-	bool set;
-	bool active;
-	unsigned int timeout;
-} filter = {
-	.rssi = DISTANCE_VAL_INVALID,
-	.pathloss = DISTANCE_VAL_INVALID,
-	.set = true,
-};
 
 static void start_discovery_reply(DBusMessage *message, void *user_data)
 {
