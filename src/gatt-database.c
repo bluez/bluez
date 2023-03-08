@@ -632,6 +632,7 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	struct btd_device *device;
 	uint8_t dst_type;
 	bdaddr_t src, dst;
+	uint16_t cid;
 
 	if (gerr) {
 		error("%s", gerr->message);
@@ -641,6 +642,7 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	bt_io_get(io, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src,
 						BT_IO_OPT_DEST_BDADDR, &dst,
 						BT_IO_OPT_DEST_TYPE, &dst_type,
+						BT_IO_OPT_CID, &cid,
 						BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
@@ -655,9 +657,21 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (!adapter)
 		return;
 
-	device = btd_adapter_get_device(adapter, &dst, dst_type);
-	if (!device)
+	/* Check cid before attempting to create device, if the device is using
+	 * an RPA it could be that the MGMT event has not been processed yet
+	 * which would lead to create a second copy of the same device using its
+	 * identity address.
+	 */
+	if (cid == BT_ATT_CID)
+		device = btd_adapter_get_device(adapter, &dst, dst_type);
+	else
+		device = btd_adapter_find_device(adapter, &dst, dst_type);
+
+	if (!device) {
+		error("Unable to find device, dropping connection attempt");
+		g_io_channel_shutdown(io, FALSE, NULL);
 		return;
+	}
 
 	device_attach_att(device, io);
 }
