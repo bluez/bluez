@@ -35,6 +35,11 @@ struct mesh_io_reg {
 	uint8_t filter[];
 } packed;
 
+struct loop_data {
+	uint16_t len;
+	uint8_t data[];
+};
+
 /* List of Supported Mesh-IO Types */
 static const struct mesh_io_table table[] = {
 	{MESH_IO_TYPE_MGMT,	&mesh_io_mgmt},
@@ -42,7 +47,10 @@ static const struct mesh_io_table table[] = {
 	{MESH_IO_TYPE_UNIT_TEST, &mesh_io_unit},
 };
 
+static const uint8_t unprv_filter[] = { MESH_AD_TYPE_BEACON, 0 };
+
 static struct mesh_io *default_io;
+static struct l_timeout *loop_adv_to;
 
 static const struct mesh_io_api *io_api(enum mesh_io_type type)
 {
@@ -183,6 +191,9 @@ bool mesh_io_register_recv_cb(struct mesh_io *io, const uint8_t *filter,
 {
 	struct mesh_io_reg *rx_reg;
 
+	if (io == NULL)
+		io = default_io;
+
 	if (io != default_io)
 		return false;
 
@@ -224,6 +235,38 @@ bool mesh_io_deregister_recv_cb(struct mesh_io *io, const uint8_t *filter,
 	return false;
 }
 
+static void loop_foreach(void *data, void *user_data)
+{
+	struct mesh_io_reg *rx_reg = data;
+	struct loop_data *rx = user_data;
+
+	if (!memcmp(rx_reg->filter, unprv_filter, sizeof(unprv_filter)))
+		rx_reg->cb(rx_reg->user_data, NULL, rx->data, rx->len);
+}
+
+static void loop_rx(struct l_timeout *timeout, void *user_data)
+{
+	struct loop_data *rx = user_data;
+
+	l_queue_foreach(default_io->rx_regs, loop_foreach, rx);
+	l_timeout_modify_ms(loop_adv_to, 500);
+}
+
+static void loop_destroy(void *user_data)
+{
+	l_free(user_data);
+}
+
+static void loop_unprv_beacon(const uint8_t *data, uint16_t len)
+{
+	struct loop_data *pkt = l_malloc(len + sizeof(struct loop_data));
+
+	memcpy(pkt->data, data, len);
+	pkt->len = len;
+	l_timeout_remove(loop_adv_to);
+	loop_adv_to = l_timeout_create_ms(500, loop_rx, pkt, loop_destroy);
+}
+
 bool mesh_io_send(struct mesh_io *io, struct mesh_io_send_info *info,
 					const uint8_t *data, uint16_t len)
 {
@@ -232,6 +275,10 @@ bool mesh_io_send(struct mesh_io *io, struct mesh_io_send_info *info,
 
 	if (!io)
 		io = default_io;
+
+	/* Loop unprovisioned beacons for local clients */
+	if (!memcmp(data, unprv_filter, sizeof(unprv_filter)))
+		loop_unprv_beacon(data, len);
 
 	if (io && io->api && io->api->send)
 		return io->api->send(io, info, data, len);
@@ -247,6 +294,11 @@ bool mesh_io_send_cancel(struct mesh_io *io, const uint8_t *pattern,
 
 	if (!io)
 		io = default_io;
+
+	if (loop_adv_to && len >= 2 && !memcmp(pattern, unprv_filter, 2)) {
+		l_timeout_remove(loop_adv_to);
+		loop_adv_to = NULL;
+	}
 
 	if (io && io->api && io->api->cancel)
 		return io->api->cancel(io, pattern, len);

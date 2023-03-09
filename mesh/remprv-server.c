@@ -292,12 +292,22 @@ static void scan_pkt(void *user_data, struct mesh_io_recv_info *info,
 {
 	struct rem_scan_data *scan = user_data;
 	uint8_t msg[22 + EXT_LIST_SIZE];
+	uint8_t addr[6];
 	uint16_t i, n;
+	int8_t rssi;
 	uint8_t filled = 0;
 	bool report = false;
 
 	if (scan != rpb_scan)
 		return;
+
+	if (info) {
+		rssi = info->rssi;
+		memcpy(addr, info->addr, 6);
+	} else {
+		rssi = 0;
+		memset(addr, 0, 6);
+	}
 
 	if (scan->ext_cnt)
 		goto extended_scan;
@@ -314,16 +324,16 @@ static void scan_pkt(void *user_data, struct mesh_io_recv_info *info,
 		if (!memcmp(&scan->list[n * 17 + 1], data, 16)) {
 
 			/* Repeat UUID, check RSSI */
-			if ((int8_t) scan->list[n * 17] < info->rssi) {
+			if ((int8_t) scan->list[n * 17] < rssi) {
 				report = true;
-				scan->list[n * 17] = (uint8_t) info->rssi;
+				scan->list[n * 17] = (uint8_t) rssi;
 			}
 
 		} else if (!memcmp(&scan->list[n * 17 + 1], zero, 16)) {
 
 			/* Found Empty slot */
 			report = true;
-			scan->list[n * 17] = (uint8_t) info->rssi;
+			scan->list[n * 17] = (uint8_t) rssi;
 			memcpy(&scan->list[n * 17 + 1], data, 16);
 		}
 
@@ -334,7 +344,7 @@ static void scan_pkt(void *user_data, struct mesh_io_recv_info *info,
 		return;
 
 	n = mesh_model_opcode_set(OP_REM_PROV_SCAN_REPORT, msg);
-	msg[n++] = (uint8_t) info->rssi;
+	msg[n++] = (uint8_t) rssi;
 	memcpy(msg + n, data, len);
 	n += len;
 
@@ -356,12 +366,12 @@ extended_scan:
 			return;
 
 		/* Zero AD list if prior data RXed from different bd_addr */
-		if (memcmp(scan->addr, info->addr, 6)) {
+		if (memcmp(scan->addr, addr, 6)) {
 			scan->list[0] = 0;
 			scan->rxed_ads = 0;
 		}
 
-		memcpy(scan->addr, info->addr, 6);
+		memcpy(scan->addr, addr, 6);
 		scan->fltr = true;
 
 		if (len >= 20)
@@ -372,7 +382,7 @@ extended_scan:
 
 
 	} else if (data[0] != BT_AD_MESH_BEACON) {
-		if (!scan->fltr || !memcmp(scan->addr, info->addr, 6)) {
+		if (!scan->fltr || !memcmp(scan->addr, addr, 6)) {
 			i = 0;
 			while (scan->list[i]) {
 				/* check if seen */
