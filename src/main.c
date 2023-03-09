@@ -1024,7 +1024,7 @@ static void init_defaults(void)
 
 	btd_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
 	btd_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
-	btd_opts.gatt_channels = 3;
+	btd_opts.gatt_channels = 1;
 
 	btd_opts.avdtp.session_mode = BT_IO_MODE_BASIC;
 	btd_opts.avdtp.stream_mode = BT_IO_MODE_BASIC;
