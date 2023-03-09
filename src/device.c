@@ -294,7 +294,7 @@ static struct bearer_state *get_state(struct btd_device *dev,
 		return &dev->le_state;
 }
 
-static bool get_initiator(struct btd_device *dev)
+bool btd_device_is_initiator(struct btd_device *dev)
 {
 	if (dev->le_state.connected)
 		return dev->le_state.initiator;
@@ -3711,7 +3711,7 @@ done:
 	}
 
 	/* Notify driver about the new connection */
-	service_accept(service, get_initiator(device));
+	service_accept(service, btd_device_is_initiator(device));
 }
 
 static void device_add_gatt_services(struct btd_device *device)
@@ -3731,7 +3731,7 @@ static void device_add_gatt_services(struct btd_device *device)
 static void device_accept_gatt_profiles(struct btd_device *device)
 {
 	GSList *l;
-	bool initiator = get_initiator(device);
+	bool initiator = btd_device_is_initiator(device);
 
 	DBG("initiator %s", initiator ? "true" : "false");
 

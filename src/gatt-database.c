@@ -632,7 +632,6 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	struct btd_device *device;
 	uint8_t dst_type;
 	bdaddr_t src, dst;
-	uint16_t cid;
 
 	if (gerr) {
 		error("%s", gerr->message);
@@ -642,7 +641,6 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	bt_io_get(io, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src,
 						BT_IO_OPT_DEST_BDADDR, &dst,
 						BT_IO_OPT_DEST_TYPE, &dst_type,
-						BT_IO_OPT_CID, &cid,
 						BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
@@ -657,21 +655,9 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (!adapter)
 		return;
 
-	/* Check cid before attempting to create device, if the device is using
-	 * an RPA it could be that the MGMT event has not been processed yet
-	 * which would lead to create a second copy of the same device using its
-	 * identity address.
-	 */
-	if (cid == BT_ATT_CID)
-		device = btd_adapter_get_device(adapter, &dst, dst_type);
-	else
-		device = btd_adapter_find_device(adapter, &dst, dst_type);
-
-	if (!device) {
-		error("Unable to find device, dropping connection attempt");
-		g_io_channel_shutdown(io, FALSE, NULL);
+	device = btd_adapter_get_device(adapter, &dst, dst_type);
+	if (!device)
 		return;
-	}
 
 	device_attach_att(device, io);
 }
@@ -3802,6 +3788,70 @@ static uint8_t server_authorize(struct bt_att *att, uint8_t opcode,
 	return BT_ATT_ERROR_DB_OUT_OF_SYNC;
 }
 
+static void eatt_confirm_cb(GIOChannel *io, gpointer data)
+{
+	char address[18];
+	uint8_t dst_type;
+	bdaddr_t src, dst;
+	GError *gerr = NULL;
+	struct btd_device *device;
+	struct bt_gatt_server *server;
+	struct bt_att *att;
+
+	bt_io_get(io, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_DEST_BDADDR, &dst,
+				BT_IO_OPT_DEST_TYPE, &dst_type,
+				BT_IO_OPT_DEST, address,
+				BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+	DBG("New incoming EATT connection");
+
+	/* Confirm the device exists before accepting the connection, if the
+	 * device is using an RPA it could be that the MGMT event has not been
+	 * processed yet which would lead to create a second copy of the same
+	 * device using its identity address.
+	 */
+	device = btd_adapter_find_device(adapter_find(&src), &dst, dst_type);
+	if (!device) {
+		error("Unable to find device: %s", address);
+		goto drop;
+	}
+
+	/* Only allow EATT connection from central */
+	if (btd_device_is_initiator(device)) {
+		warn("EATT connection from peripheral may cause collisions");
+		goto drop;
+	}
+
+	server = btd_device_get_gatt_server(device);
+	if (!server) {
+		error("Unable to resolve bt_server");
+		goto drop;
+	}
+
+	att = bt_gatt_server_get_att(server);
+	if (bt_att_get_channels(att) == btd_opts.gatt_channels) {
+		DBG("EATT channel limit reached");
+		goto drop;
+	}
+
+	if (!bt_io_accept(io, connect_cb, NULL, NULL, &gerr)) {
+		error("bt_io_accept: %s", gerr->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+	return;
+
+drop:
+	g_io_channel_shutdown(io, TRUE, NULL);
+}
+
 struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 {
 	struct btd_gatt_database *database;
@@ -3838,14 +3888,14 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 	if (btd_opts.gatt_channels == 1)
 		goto bredr;
 
-	/* EATT socket */
-	database->eatt_io = bt_io_listen(connect_cb, NULL, NULL, NULL,
+	/* EATT socket, encryption is required */
+	database->eatt_io = bt_io_listen(NULL, eatt_confirm_cb, NULL, NULL,
 					&gerr,
 					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_SOURCE_TYPE,
 					btd_adapter_get_address_type(adapter),
 					BT_IO_OPT_PSM, BT_ATT_EATT_PSM,
-					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_MTU, btd_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
 	if (!database->eatt_io) {

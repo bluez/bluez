@@ -2255,7 +2255,8 @@ void btd_gatt_client_eatt_connect(struct btd_gatt_client *client)
 	char addr[18];
 	int i;
 
-	if (!(client->features & BT_GATT_CHRC_CLI_FEAT_EATT))
+	if (!(client->features & BT_GATT_CHRC_CLI_FEAT_EATT) ||
+				!btd_device_is_initiator(dev))
 		return;
 
 	if (bt_att_get_channels(att) == btd_opts.gatt_channels)
