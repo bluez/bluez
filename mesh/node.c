@@ -347,6 +347,7 @@ static bool add_elements_from_storage(struct mesh_node *node,
 					struct mesh_config_node *db_node)
 {
 	const struct l_queue_entry *entry;
+	struct node_element *ele;
 
 	entry = l_queue_get_entries(db_node->elements);
 
@@ -354,14 +355,19 @@ static bool add_elements_from_storage(struct mesh_node *node,
 		if (!add_element_from_storage(node, entry->data))
 			return false;
 
+	ele = l_queue_find(node->elements, match_element_idx,
+						L_UINT_TO_PTR(PRIMARY_ELE_IDX));
+	if (!ele)
+		return false;
+
 	/* Add configuration server model on the primary element */
-	mesh_model_add(node, PRIMARY_ELE_IDX, CONFIG_SRV_MODEL, NULL);
+	mesh_model_add(node, ele->models, CONFIG_SRV_MODEL, NULL);
 
 	/* Add remote provisioning models on the primary element */
-	mesh_model_add(node, PRIMARY_ELE_IDX, REM_PROV_SRV_MODEL, NULL);
+	mesh_model_add(node, ele->models, REM_PROV_SRV_MODEL, NULL);
 
 	if (node->provisioner)
-		mesh_model_add(node, PRIMARY_ELE_IDX, REM_PROV_CLI_MODEL, NULL);
+		mesh_model_add(node, ele->models, REM_PROV_CLI_MODEL, NULL);
 
 	return true;
 }
