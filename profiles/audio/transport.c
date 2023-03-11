@@ -734,15 +734,22 @@ static void set_volume(const GDBusPropertyTable *property,
 	uint16_t arg;
 	int8_t volume;
 	bool notify;
+	int err;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16)
-		goto error;
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16) {
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Expected UINT16");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &arg);
-	if (arg > INT8_MAX)
-		goto error;
-
-	g_dbus_pending_property_success(id);
+	if (arg > INT8_MAX) {
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Volume must not be larger than 127");
+		return;
+	}
 
 	volume = (int8_t)arg;
 	if (a2dp->volume == volume)
@@ -757,12 +764,17 @@ static void set_volume(const GDBusPropertyTable *property,
 						"Volume");
 	}
 
-	avrcp_set_volume(transport->device, volume, notify);
-	return;
+	err = avrcp_set_volume(transport->device, volume, notify);
+	if (err) {
+		error("avrcp_set_volume returned %s (%d)", strerror(-err), err);
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".Failed",
+				"Internal error %s (%d)",
+				strerror(-err), err);
+		return;
+	}
 
-error:
-	g_dbus_pending_property_error(id, ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
+	g_dbus_pending_property_success(id);
 }
 
 static gboolean endpoint_exists(const GDBusPropertyTable *property, void *data)
