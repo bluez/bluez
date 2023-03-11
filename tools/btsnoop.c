@@ -283,7 +283,7 @@ next_packet:
 	if (len < 0 || len != BTSNOOP_PKT_SIZE)
 		goto close_input;
 
-	toread = be32toh(pkt.size);
+	toread = be32toh(pkt.len);
 	flags = be32toh(pkt.flags);
 
 	opcode = flags & 0x00ff;
@@ -356,7 +356,7 @@ next_packet:
 	if (len < 0 || len != BTSNOOP_PKT_SIZE)
 		goto close_input;
 
-	toread = be32toh(pkt.size);
+	toread = be32toh(pkt.len);
 	flags = be32toh(pkt.flags);
 
 	opcode = flags & 0x00ff;
@@ -433,7 +433,7 @@ next_packet:
 	if (len < 0 || len != BTSNOOP_PKT_SIZE)
 		goto close_input;
 
-	toread = be32toh(pkt.size);
+	toread = be32toh(pkt.len);
 
 	len = read(fd, buf, toread);
 	if (len < 0 || len != (ssize_t) toread) {
