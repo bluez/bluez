@@ -122,6 +122,8 @@ void bt_csip_detach(struct bt_csip *csip)
 	if (!queue_remove(sessions, csip))
 		return;
 
+	bt_gatt_client_idle_unregister(csip->client, csip->idle_id);
+
 	bt_gatt_client_unref(csip->client);
 	csip->client = NULL;
 
