@@ -810,6 +810,9 @@ bool bt_csip_get_sirk(struct bt_csip *csip, uint8_t *type,
 	if (!csis)
 		return false;
 
+	if (!csis->sirk_val)
+		return false;
+
 	if (type)
 		*type = csis->sirk_val->type;
 
