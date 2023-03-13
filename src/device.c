@@ -1659,9 +1659,14 @@ static gboolean dev_property_wake_allowed_exist(
 static void append_set(void *data, void *user_data)
 {
 	struct sirk_info *info = data;
-	const char *path = btd_set_get_path(info->set);
+	const char *path;
 	DBusMessageIter *iter = user_data;
 	DBusMessageIter entry, dict;
+
+	if (!info->set)
+		return;
+
+	path = btd_set_get_path(info->set);
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_DICT_ENTRY, NULL,
 								&entry);
