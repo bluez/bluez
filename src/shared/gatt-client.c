@@ -173,9 +173,20 @@ static bool idle_notify(const void *data, const void *user_data)
 	return true;
 }
 
+static struct bt_gatt_client *
+bt_gatt_client_ref_safe(struct bt_gatt_client *client)
+{
+	if (!client || !client->ref_count)
+		return NULL;
+
+	return bt_gatt_client_ref(client);
+}
+
 static void notify_client_idle(struct bt_gatt_client *client)
 {
-	bt_gatt_client_ref(client);
+	client = bt_gatt_client_ref_safe(client);
+	if (!client)
+		return;
 
 	queue_remove_all(client->idle_cbs, idle_notify, NULL, idle_destroy);
 
@@ -1360,10 +1371,13 @@ static void notify_client_ready(struct bt_gatt_client *client, bool success,
 {
 	const struct queue_entry *entry;
 
-	if (client->ready)
+	client = bt_gatt_client_ref_safe(client);
+	if (!client)
 		return;
 
-	bt_gatt_client_ref(client);
+	if (client->ready)
+		goto done;
+
 	client->ready = success;
 
 	if (client->parent)
@@ -1386,6 +1400,7 @@ static void notify_client_ready(struct bt_gatt_client *client, bool success,
 		notify_client_ready(clone, success, att_ecode);
 	}
 
+done:
 	bt_gatt_client_unref(client);
 }
 
