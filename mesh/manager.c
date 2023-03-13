@@ -709,7 +709,7 @@ static struct l_dbus_message *start_scan_call(struct l_dbus *dbus,
 	req = l_queue_remove_if(scans, by_node_svr, &new_req);
 
 	if (!req)
-		req = l_malloc(sizeof(new_req));
+		req = l_new(struct scan_req, 1);
 
 	if (req->timeout) {
 		l_timeout_remove(req->timeout);
