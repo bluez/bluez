@@ -3818,6 +3818,8 @@ void bt_bap_detach(struct bt_bap *bap)
 		bap->req = NULL;
 	}
 
+	bt_gatt_client_idle_unregister(bap->client, bap->idle_id);
+
 	/* Cancel queued requests */
 	queue_remove_all(bap->reqs, NULL, NULL, bap_req_detach);
 
