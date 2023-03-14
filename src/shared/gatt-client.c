@@ -3809,6 +3809,9 @@ bool bt_gatt_client_idle_unregister(struct bt_gatt_client *client,
 {
 	struct idle_cb *idle = UINT_TO_PTR(id);
 
+	if (!client || !id)
+		return false;
+
 	if (queue_remove(client->idle_cbs, idle)) {
 		idle_destroy(idle);
 		return true;
