@@ -227,7 +227,7 @@ static void process_rx(uint16_t index, struct mesh_io_private *pvt, int8_t rssi,
 static void send_cmplt(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
-	print_packet("Mesh Send Complete", param, length);
+	/* print_packet("Mesh Send Complete", param, length); */
 }
 
 static void event_device_found(uint16_t index, uint16_t length,
@@ -506,7 +506,7 @@ static void send_cancel(struct mesh_io_private *pvt)
 
 	if (pvt->handle) {
 		remove.handle = pvt->handle;
-		l_debug("Cancel TX");
+		/* l_debug("Cancel TX"); */
 		mesh_mgmt_send(MGMT_OP_MESH_SEND_CANCEL, pvt->send_idx,
 						sizeof(remove), &remove,
 						NULL, NULL, NULL);
@@ -560,7 +560,7 @@ static void send_pkt(struct mesh_io_private *pvt, struct tx_pkt *tx,
 
 	mesh_mgmt_send(MGMT_OP_MESH_SEND, index,
 			len, send, send_queued, tx, NULL);
-	print_packet("Mesh Send Start", tx->pkt, tx->len);
+	/* print_packet("Mesh Send Start", tx->pkt, tx->len); */
 	pvt->tx = tx;
 }
 
