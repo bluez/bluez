@@ -82,6 +82,8 @@ struct dup_filter {
 	uint8_t addr[6];
 } __packed;
 
+static const uint8_t zero_addr[] = {0, 0, 0, 0, 0, 0};
+
 static struct mesh_io_private *pvt;
 
 static uint32_t get_instant(void)
@@ -108,6 +110,14 @@ static bool find_by_addr(const void *a, const void *b)
 	const struct dup_filter *filter = a;
 
 	return !memcmp(filter->addr, b, 6);
+}
+
+static bool find_by_adv(const void *a, const void *b)
+{
+	const struct dup_filter *filter = a;
+	uint64_t data = l_get_be64(b);
+
+	return !memcmp(filter->addr, zero_addr, 6) && filter->data == data;
 }
 
 static void filter_timeout(struct l_timeout *timeout, void *user_data)
@@ -146,7 +156,22 @@ static bool filter_dups(const uint8_t *addr, const uint8_t *adv,
 	uint32_t instant_delta;
 	uint64_t data = l_get_be64(adv);
 
-	filter = l_queue_remove_if(pvt->dup_filters, find_by_addr, addr);
+	if (!addr)
+		addr = zero_addr;
+
+	if (adv[1] == MESH_AD_TYPE_PROVISION) {
+		filter = l_queue_find(pvt->dup_filters, find_by_adv, adv);
+
+		if (!filter && addr != zero_addr)
+			return false;
+
+		l_queue_remove(pvt->dup_filters, filter);
+
+	} else {
+		filter = l_queue_remove_if(pvt->dup_filters, find_by_addr,
+									addr);
+	}
+
 	if (!filter) {
 		filter = l_new(struct dup_filter, 1);
 		memcpy(filter->addr, addr, 6);
@@ -177,7 +202,7 @@ static void process_rx_callbacks(void *v_reg, void *v_rx)
 		rx_reg->cb(rx_reg->user_data, &rx->info, rx->data, rx->len);
 }
 
-static void process_rx(struct mesh_io_private *pvt, int8_t rssi,
+static void process_rx(uint16_t index, struct mesh_io_private *pvt, int8_t rssi,
 					uint32_t instant, const uint8_t *addr,
 					const uint8_t *data, uint8_t len)
 {
@@ -190,6 +215,10 @@ static void process_rx(struct mesh_io_private *pvt, int8_t rssi,
 		.info.chan = 7,
 		.info.rssi = rssi,
 	};
+
+	/* Accept all traffic except beacons from any controller */
+	if (index != pvt->send_idx && data[0] == MESH_AD_TYPE_BEACON)
+		return;
 
 	print_packet("RX", data, len);
 	l_queue_foreach(pvt->rx_regs, process_rx_callbacks, &rx);
@@ -205,7 +234,7 @@ static void event_device_found(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_ev_mesh_device_found *ev = param;
-	struct mesh_io *io = user_data;
+	struct mesh_io_private *pvt = user_data;
 	const uint8_t *adv;
 	const uint8_t *addr;
 	uint32_t instant;
@@ -236,9 +265,10 @@ static void event_device_found(uint16_t index, uint16_t length,
 		if (len > adv_len)
 			break;
 
-		if (adv[1] >= 0x29 && adv[1] <= 0x2B)
-			process_rx(io->pvt, ev->rssi, instant, addr, adv + 1,
-								adv[0]);
+		if (adv[1] >= MESH_AD_TYPE_PROVISION &&
+					adv[1] <= MESH_AD_TYPE_BEACON)
+			process_rx(index, pvt, ev->rssi, instant, addr,
+							adv + 1, adv[0]);
 
 		adv += field_len + 1;
 	}
@@ -319,6 +349,12 @@ static void ctl_up(uint8_t status, uint16_t length,
 	mesh->period = L_CPU_TO_LE16(0x1000);
 	mesh->num_ad_types = sizeof(mesh_ad_types);
 	memcpy(mesh->ad_types, mesh_ad_types, sizeof(mesh_ad_types));
+
+	pvt->rx_id = mesh_mgmt_register(MGMT_EV_MESH_DEVICE_FOUND,
+				MGMT_INDEX_NONE, event_device_found, pvt,
+				NULL);
+	pvt->tx_id = mesh_mgmt_register(MGMT_EV_MESH_PACKET_CMPLT,
+					index, send_cmplt, pvt, NULL);
 
 	mesh_mgmt_send(MGMT_OP_SET_MESH_RECEIVER, index, len, mesh,
 			mesh_up, L_UINT_TO_PTR(index), NULL);
@@ -406,11 +442,6 @@ static bool dev_init(struct mesh_io *io, void *opts, void *user_data)
 
 	mesh_mgmt_send(MGMT_OP_READ_INFO, index, 0, NULL,
 				read_info_cb, L_UINT_TO_PTR(index), NULL);
-
-	pvt->rx_id = mesh_mgmt_register(MGMT_EV_MESH_DEVICE_FOUND,
-				MGMT_INDEX_NONE, event_device_found, io, NULL);
-	pvt->tx_id = mesh_mgmt_register(MGMT_EV_MESH_PACKET_CMPLT,
-					MGMT_INDEX_NONE, send_cmplt, io, NULL);
 
 	pvt->dup_filters = l_queue_new();
 	pvt->rx_regs = l_queue_new();
@@ -522,6 +553,11 @@ static void send_pkt(struct mesh_io_private *pvt, struct tx_pkt *tx,
 	send->adv_data_len = tx->len + 1;
 	send->adv_data[0] = tx->len;
 	memcpy(send->adv_data + 1, tx->pkt, tx->len);
+
+	/* Filter looped back Provision packets */
+	if (tx->pkt[0] == MESH_AD_TYPE_PROVISION)
+		filter_dups(NULL, send->adv_data, get_instant());
+
 	mesh_mgmt_send(MGMT_OP_MESH_SEND, index,
 			len, send, send_queued, tx, NULL);
 	print_packet("Mesh Send Start", tx->pkt, tx->len);
