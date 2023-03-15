@@ -546,7 +546,7 @@ static bool remprv_srv_pkt(uint16_t src, uint16_t unicast, uint16_t app_idx,
 	bool segmented = false;
 	uint32_t opcode;
 	uint8_t msg[69];
-	uint8_t status;
+	uint8_t old_state, status;
 	uint16_t n;
 
 	if (app_idx != APP_IDX_DEV_LOCAL)
@@ -843,10 +843,12 @@ static bool remprv_srv_pkt(uint16_t src, uint16_t unicast, uint16_t app_idx,
 		if (!prov || prov->node != node || prov->client != src)
 			return true;
 
+		old_state = prov->state;
 		prov->state = PB_REMOTE_STATE_LINK_CLOSING;
 		mesh_io_send_cancel(NULL, &pkt_filter, sizeof(pkt_filter));
 		send_prov_status(prov, PB_REM_ERR_SUCCESS);
-		if (pkt[0] == 0x02) {
+		if (pkt[0] == 0x02 &&
+				old_state >= PB_REMOTE_STATE_LINK_ACTIVE) {
 			msg[0] = PROV_FAILED;
 			msg[1] = PROV_ERR_CANT_ASSIGN_ADDR;
 			if (prov->nppi_proc == RPR_ADV)
