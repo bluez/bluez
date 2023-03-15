@@ -804,3 +804,43 @@ Properties	object Device [readonly]
 
 			Linked transport objects which the transport is
 			associated with.
+
+		byte CIG [ISO only, optional, experimental]
+
+			Indicates configured QoS CIG.
+			Only present when QoS is configured.
+
+		byte CIS [ISO only, optional, experimental]
+
+			Indicates configured QoS CIS.
+			Only present when QoS is configured.
+
+		uint32 Interval [ISO only, optional, experimental]
+
+			Indicates configured QoS interval.
+			Only present when QoS is configured.
+
+		boolean Framing [ISO only, optional, experimental]
+
+			Indicates configured QoS framing.
+			Only present when QoS is configured.
+
+		byte PHY [ISO only, optional, experimental]
+
+			Indicates configured QoS PHY.
+			Only present when QoS is configured.
+
+		uint16 SDU [ISO only, optional, experimental]
+
+			Indicates configured QoS SDU.
+			Only present when QoS is configured.
+
+		byte Retransmissions [ISO only, optional, experimental]
+
+			Indicates configured QoS retransmissions.
+			Only present when QoS is configured.
+
+		uint16 Latency [ISO only, optional, experimental]
+
+			Indicates configured QoS latency.
+			Only present when QoS is configured.
