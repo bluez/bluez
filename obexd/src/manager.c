@@ -38,6 +38,7 @@
 #define TRANSFER_INTERFACE OBEXD_SERVICE ".Transfer1"
 #define SESSION_INTERFACE OBEXD_SERVICE ".Session1"
 #define AGENT_INTERFACE OBEXD_SERVICE ".Agent1"
+#define OBEX_ERROR_REJECT      "org.bluez.obex.Error.Rejected"
 
 #define TIMEOUT 60*1000 /* Timeout for user response (miliseconds) */
 
@@ -45,6 +46,7 @@ struct agent {
 	char *bus_name;
 	char *path;
 	gboolean auth_pending;
+	gboolean auth_reject;
 	char *new_name;
 	char *new_folder;
 	unsigned int watch_id;
@@ -631,6 +633,9 @@ static void agent_reply(DBusPendingCall *call, void *user_data)
 		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY))
 			agent_cancel();
 
+		if (dbus_error_has_name(&derr, OBEX_ERROR_REJECT))
+			agent->auth_reject = TRUE;
+
 		dbus_error_free(&derr);
 		dbus_message_unref(reply);
 		return;
@@ -694,6 +699,7 @@ int manager_request_authorization(struct obex_transfer *transfer,
 	dbus_message_unref(msg);
 
 	agent->auth_pending = TRUE;
+	agent->auth_reject  = FALSE;
 	got_reply = FALSE;
 
 	/* Catches errors before authorization response comes */
@@ -716,7 +722,7 @@ int manager_request_authorization(struct obex_transfer *transfer,
 
 	dbus_pending_call_unref(call);
 
-	if (!agent || !agent->new_name)
+	if (!agent || !agent->new_name || agent->auth_reject)
 		return -EPERM;
 
 	*new_folder = agent->new_folder;
