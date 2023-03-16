@@ -19,4 +19,6 @@ typedef void (*delete_remote_func_t) (uint16_t primary, uint8_t ele_cnt);
 
 struct model_info *cfgcli_init(key_send_func_t key_func,
 				delete_remote_func_t del_node, void *user_data);
+
+bool cfgcli_get_comp(uint16_t unicast, uint8_t page);
 void cfgcli_cleanup(void);

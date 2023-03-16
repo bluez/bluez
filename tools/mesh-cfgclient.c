@@ -43,7 +43,8 @@
 
 #define CFG_SRV_MODEL	0x0000
 #define CFG_CLI_MODEL	0x0001
-#define RPR_SVR_MODEL	0xFFFF0004
+#define RPR_SVR_MODEL	0x0004
+#define RPR_CLI_MODEL	0x0005
 #define PRV_BEACON_SVR	0x0008
 #define PRV_BEACON_CLI	0x0009
 
@@ -775,6 +776,10 @@ static void attach_node_reply(struct l_dbus_proxy *proxy,
 		remote_clear_rejected_addresses(ivi);
 	}
 
+	/* Read own node composition */
+	if (!cfgcli_get_comp(0x0001, 128))
+		l_error("Failed to read own composition");
+
 	return;
 
 fail:
@@ -863,7 +868,7 @@ static void scan_start(void *user_data, uint16_t dst, uint32_t model)
 {
 	struct scan_data *data;
 
-	if (model != RPR_SVR_MODEL)
+	if (model != (0xffff0000 | RPR_SVR_MODEL))
 		return;
 
 	data = l_malloc(sizeof(struct scan_data));

@@ -1081,6 +1081,21 @@ static void cmd_default(uint32_t opcode)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+
+bool cfgcli_get_comp(uint16_t unicast, uint8_t page)
+{
+	uint16_t n;
+	uint8_t msg[32];
+
+	n = mesh_opcode_set(OP_DEV_COMP_GET, msg);
+
+	msg[n++] = page;
+
+	target = unicast;
+
+	return config_send(msg, n, OP_DEV_COMP_GET);
+}
+
 static void cmd_composition_get(int argc, char *argv[])
 {
 	uint16_t n;

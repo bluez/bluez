@@ -138,6 +138,8 @@ const char *sig_model_string(uint16_t sig_model_id)
 	case 0x0001: return "Configuration Client";
 	case 0x0002: return "Health Server";
 	case 0x0003: return "Health Client";
+	case 0x0004: return "Remote Provisioning Server";
+	case 0x0005: return "Remote Provisioning Client";
 	case 0x0008: return "Private Beacon Server";
 	case 0x0009: return "Private Beacon Client";
 	case 0x1000: return "Generic OnOff Server";
