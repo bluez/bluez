@@ -73,6 +73,7 @@ struct endpoint {
 	struct iovec *meta;
 	bool auto_accept;
 	bool acquiring;
+	uint8_t max_transports;
 	uint8_t cig;
 	uint8_t cis;
 	char *transport;
@@ -1056,6 +1057,16 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 	print_iter("\t", "Properties", &props);
 
 	free(ep->transport);
+
+	if (!ep->max_transports) {
+		bt_shell_printf("Maximum transports reached: rejecting\n");
+		return g_dbus_create_error(msg,
+					 "org.bluez.Error.Rejected",
+					 "Maximum transports reached");
+	}
+
+	ep->max_transports--;
+
 	ep->transport = strdup(path);
 
 	if (ep->auto_accept) {
@@ -1555,6 +1566,13 @@ static DBusMessage *endpoint_select_configuration(DBusConnection *conn,
 	bt_shell_printf("Endpoint: SelectConfiguration\n");
 	print_iter("\t", "Capabilities", &args);
 
+	if (!ep->max_transports) {
+		bt_shell_printf("Maximum transports reached: rejecting\n");
+		return g_dbus_create_error(msg,
+					 "org.bluez.Error.Rejected",
+					 "Maximum transports reached");
+	}
+
 	if (!ep->auto_accept) {
 		ep->msg = dbus_message_ref(msg);
 		bt_shell_prompt_input("Endpoint", "Enter preset/configuration:",
@@ -1571,8 +1589,11 @@ static DBusMessage *endpoint_select_configuration(DBusConnection *conn,
 
 	reply = endpoint_select_config_reply(msg, p->data.iov_base,
 						p->data.iov_len);
-	if (!reply)
-		return NULL;
+	if (!reply) {
+		reply = g_dbus_create_error(msg, "org.bluez.Error.Rejected",
+								NULL);
+		return reply;
+	}
 
 	bt_shell_printf("Auto Accepting using %s...\n", p->name);
 
@@ -1762,6 +1783,13 @@ static DBusMessage *endpoint_select_properties(DBusConnection *conn,
 	bt_shell_printf("Endpoint: SelectProperties\n");
 	print_iter("\t", "Properties", &args);
 
+	if (!ep->max_transports) {
+		bt_shell_printf("Maximum transports reached: rejecting\n");
+		return g_dbus_create_error(msg,
+					 "org.bluez.Error.Rejected",
+					 "Maximum transports reached");
+	}
+
 	if (!ep->auto_accept) {
 		ep->msg = dbus_message_ref(msg);
 		bt_shell_prompt_input("Endpoint", "Enter preset/configuration:",
@@ -1786,6 +1814,9 @@ static DBusMessage *endpoint_clear_configuration(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct endpoint *ep = user_data;
+
+	if (ep->max_transports != UINT8_MAX)
+		ep->max_transports++;
 
 	free(ep->transport);
 	ep->transport = NULL;
@@ -2118,12 +2149,37 @@ static void endpoint_cig(const char *input, void *user_data)
 	bt_shell_prompt_input(ep->path, "CIS (auto/value):", endpoint_cis, ep);
 }
 
+static void endpoint_max_transports(const char *input, void *user_data)
+{
+	struct endpoint *ep = user_data;
+	char *endptr = NULL;
+	int value;
+
+	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto")) {
+		ep->max_transports = UINT8_MAX;
+	} else {
+		value = strtol(input, &endptr, 0);
+
+		if (!endptr || *endptr != '\0' || value > UINT8_MAX) {
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		ep->max_transports = value;
+	}
+
+	bt_shell_prompt_input(ep->path, "CIG (auto/value):", endpoint_cig, ep);
+}
+
 static void endpoint_auto_accept(const char *input, void *user_data)
 {
 	struct endpoint *ep = user_data;
 
 	if (!strcasecmp(input, "y") || !strcasecmp(input, "yes")) {
 		ep->auto_accept = true;
+		bt_shell_prompt_input(ep->path, "Max Transports (auto/value):",
+						endpoint_max_transports, ep);
+		return;
 	} else if (!strcasecmp(input, "n") || !strcasecmp(input, "no")) {
 		ep->auto_accept = false;
 	} else {
@@ -2861,6 +2917,7 @@ static void register_endpoints(GDBusProxy *proxy)
 				continue;
 
 			ep = endpoint_new(cap);
+			ep->max_transports = UINT8_MAX;
 			ep->auto_accept = true;
 			ep->cig = BT_ISO_QOS_CIG_UNSET;
 			ep->cis = BT_ISO_QOS_CIS_UNSET;
