@@ -1660,31 +1660,30 @@ static void complete_notify_request(void *data)
 }
 
 static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
-						bt_att_response_func_t callback)
+					bt_gatt_client_callback_t callback)
 {
-	uint8_t pdu[4];
 	unsigned int att_id;
+	uint16_t value;
 	uint16_t properties = notify_data->chrc->properties;
 
 	assert(notify_data->chrc->ccc_handle);
-	memset(pdu, 0, sizeof(pdu));
-	put_le16(notify_data->chrc->ccc_handle, pdu);
 
 	if (enable) {
 		/* Try to enable notifications or indications based on
 		 * whatever the characteristic supports.
 		 */
 		if (properties & BT_GATT_CHRC_PROP_NOTIFY)
-			pdu[2] = 0x01;
+			value = cpu_to_le16(0x0001);
 		else if (properties & BT_GATT_CHRC_PROP_INDICATE)
-			pdu[2] = 0x02;
-
-		if (!pdu[2])
+			value = cpu_to_le16(0x0002);
+		else
 			return false;
 	}
 
-	att_id = bt_att_send(notify_data->client->att, BT_ATT_OP_WRITE_REQ,
-						pdu, sizeof(pdu), callback,
+	att_id = bt_gatt_client_write_value(notify_data->client,
+						notify_data->chrc->ccc_handle,
+						(void *)&value, sizeof(value),
+						callback,
 						notify_data_ref(notify_data),
 						notify_data_unref);
 	notify_data->chrc->ccc_write_id = notify_data->att_id = att_id;
@@ -1714,8 +1713,8 @@ static bool notify_set_ecode(const void *data, const void *match_data)
 	return true;
 }
 
-static void enable_ccc_callback(uint8_t opcode, const void *pdu,
-					uint16_t length, void *user_data)
+static void enable_ccc_callback(bool success, uint8_t att_ecode,
+						void *user_data)
 {
 	struct notify_data *notify_data = user_data;
 
@@ -1723,10 +1722,9 @@ static void enable_ccc_callback(uint8_t opcode, const void *pdu,
 
 	notify_data->chrc->ccc_write_id = 0;
 
-	bt_gatt_client_ref(notify_data->client);
+	bt_gatt_client_ref_safe(notify_data->client);
 
-	if (opcode == BT_ATT_OP_ERROR_RSP)
-		notify_data->att_ecode = process_error(pdu, length);
+	notify_data->att_ecode = att_ecode;
 
 	/* Notify for all remaining requests. */
 	complete_notify_request(notify_data);
@@ -2165,8 +2163,8 @@ struct value_data {
 	const void *data;
 };
 
-static void disable_ccc_callback(uint8_t opcode, const void *pdu,
-					uint16_t length, void *user_data)
+static void disable_ccc_callback(bool success, uint8_t att_ecode,
+						void *user_data)
 {
 	struct notify_data *notify_data = user_data;
 	struct notify_data *next_data;
