@@ -1964,28 +1964,35 @@ bool mesh_db_node_set_composition(uint16_t unicast, uint8_t *data, uint16_t len)
 
 		while (len >= 2 && m--) {
 			mod_id = l_get_le16(data);
+			data += 2;
+			len -= 2;
+
+			jobj = get_model(unicast, unicast + i, mod_id, false);
+			if (jobj)
+				continue;
 
 			jobj = init_model(mod_id);
 			if (!jobj)
 				goto fail;
 
 			json_object_array_add(jmods, jobj);
-			data += 2;
-			len -= 2;
 		}
 
 		while (len >= 4 && v--) {
 			mod_id = l_get_le16(data + 2);
 			mod_id = l_get_le16(data) << 16 | mod_id;
+			data += 4;
+			len -= 4;
+
+			jobj = get_model(unicast, unicast + i, mod_id, true);
+			if (jobj)
+				continue;
 
 			jobj = init_vendor_model(mod_id);
 			if (!jobj)
 				goto fail;
 
 			json_object_array_add(jmods, jobj);
-
-			data += 4;
-			len -= 4;
 		}
 
 		i++;
