@@ -627,7 +627,8 @@ static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
 
 	if (err) {
 		error("err %d", err);
-		return;
+		ep->data->selecting--;
+		goto done;
 	}
 
 	ep->caps = util_iov_dup(caps, 1);
@@ -642,6 +643,7 @@ static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
 	DBG("selecting %d", ep->data->selecting);
 	ep->data->selecting--;
 
+done:
 	if (ep->data->selecting)
 		return;
 
