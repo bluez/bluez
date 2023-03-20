@@ -35,6 +35,7 @@ struct mesh_io_private {
 	struct mesh_io *io;
 	void *user_data;
 	struct l_timeout *tx_timeout;
+	struct l_timeout *dup_timeout;
 	struct l_queue *dup_filters;
 	struct l_queue *rx_regs;
 	struct l_queue *tx_pkts;
@@ -146,6 +147,7 @@ static void filter_timeout(struct l_timeout *timeout, void *user_data)
 
 done:
 	l_timeout_remove(timeout);
+	pvt->dup_timeout = NULL;
 }
 
 /* Ignore consequtive duplicate advertisements within timeout period */
@@ -179,7 +181,8 @@ static bool filter_dups(const uint8_t *addr, const uint8_t *adv,
 
 	/* Start filter expiration timer */
 	if (!l_queue_length(pvt->dup_filters))
-		l_timeout_create(1, filter_timeout, NULL, NULL);
+		pvt->dup_timeout = l_timeout_create(1, filter_timeout, NULL,
+									NULL);
 
 	l_queue_push_head(pvt->dup_filters, filter);
 	instant_delta = instant - filter->instant;
@@ -474,6 +477,7 @@ static bool dev_destroy(struct mesh_io *io)
 	mesh_mgmt_unregister(pvt->rx_id);
 	mesh_mgmt_unregister(pvt->tx_id);
 	l_timeout_remove(pvt->tx_timeout);
+	l_timeout_remove(pvt->dup_timeout);
 	l_queue_destroy(pvt->dup_filters, l_free);
 	l_queue_destroy(pvt->rx_regs, free_rx_reg);
 	l_queue_destroy(pvt->tx_pkts, l_free);
