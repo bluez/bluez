@@ -1,0 +1,5 @@
+gatt.register-service 0x180f
+yes
+gatt.register-characteristic 0x2a19 read,notify
+64
+gatt.register-application
