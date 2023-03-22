@@ -3901,6 +3901,12 @@ static gboolean avrcp_handle_event(struct avctp *conn, uint8_t code,
 	case AVRCP_EVENT_UIDS_CHANGED:
 		avrcp_uids_changed(session, pdu);
 		break;
+	default:
+		if (event > AVRCP_EVENT_LAST) {
+			warn("Unsupported event: %u", event);
+			return FALSE;
+		}
+		break;
 	}
 
 	session->registered_events |= (1 << event);
