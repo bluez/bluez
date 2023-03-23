@@ -2934,12 +2934,13 @@ static void print_write(const struct l2cap_frame *frame, uint16_t handle,
 	struct gatt_handler *handler;
 
 	print_handle(frame, handle, false);
-	print_hex_field("  Data", frame->data, frame->size);
 
 	if (len > frame->size) {
 		print_text(COLOR_ERROR, "invalid size");
 		return;
 	}
+
+	print_hex_field("  Data", frame->data, len);
 
 	attr = get_attribute(frame, handle, false);
 	if (!attr)
@@ -3105,7 +3106,6 @@ static void att_signed_write_command(const struct l2cap_frame *frame)
 	}
 
 	print_write(frame, handle, frame->size - 12);
-	print_hex_field("  Data", frame->data, frame->size - 12);
 	print_hex_field("  Signature", frame->data + frame->size - 12, 12);
 }
 
