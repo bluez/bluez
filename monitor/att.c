@@ -2946,7 +2946,7 @@ static void print_write(const struct l2cap_frame *frame, uint16_t handle,
 		return;
 
 	handler = get_handler(attr);
-	if (!handler)
+	if (!handler || !handler->write)
 		return;
 
 	handler->write(frame);
