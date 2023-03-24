@@ -285,6 +285,8 @@ bool gatt_db_attribute_write_result(struct gatt_db_attribute *attrib,
 						unsigned int id, int err);
 
 struct gatt_db_attribute *
+gatt_db_attribute_get_value(struct gatt_db_attribute *attrib);
+struct gatt_db_attribute *
 gatt_db_attribute_get_ccc(struct gatt_db_attribute *attrib);
 
 bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,

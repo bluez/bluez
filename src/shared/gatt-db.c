@@ -1549,7 +1549,7 @@ static int gatt_db_attribute_get_index(const struct gatt_db_attribute *attrib)
 	return -1;
 }
 
-static struct gatt_db_attribute *
+struct gatt_db_attribute *
 gatt_db_attribute_get_value(struct gatt_db_attribute *attrib)
 {
 	struct gatt_db_service *service;
@@ -1559,18 +1559,18 @@ gatt_db_attribute_get_value(struct gatt_db_attribute *attrib)
 		return NULL;
 
 	index = gatt_db_attribute_get_index(attrib);
-	if (index < 0)
+	if (index <= 0)
 		return NULL;
 
 	service = attrib->service;
 
 	if (!bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
-		index++;
-	else if (bt_uuid_cmp(&characteristic_uuid,
+		return service->attributes[index + 1];
+	else if (!bt_uuid_cmp(&characteristic_uuid,
 				&service->attributes[index - 1]->uuid))
-		return NULL;
+		return service->attributes[index];
 
-	return service->attributes[index];
+	return gatt_db_attribute_get_value(service->attributes[index - 1]);
 }
 
 void gatt_db_service_foreach_desc(struct gatt_db_attribute *attrib,
