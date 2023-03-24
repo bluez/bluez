@@ -42,6 +42,7 @@
 #include "display.h"
 #include "l2cap.h"
 #include "att.h"
+#include "keys.h"
 
 struct att_read {
 	struct gatt_db_attribute *attr;
@@ -2807,9 +2808,14 @@ static void load_gatt_db(struct packet_conn_data *conn)
 	char filename[PATH_MAX];
 	char local[18];
 	char peer[18];
+	uint8_t id[6], id_type;
 
 	ba2str((bdaddr_t *)conn->src, local);
-	ba2str((bdaddr_t *)conn->dst, peer);
+
+	if (keys_resolve_identity(conn->dst, id, &id_type))
+		ba2str((bdaddr_t *)id, peer);
+	else
+		ba2str((bdaddr_t *)conn->dst, peer);
 
 	create_filename(filename, PATH_MAX, "/%s/attributes", local);
 	gatt_load_db(data->ldb, filename, &data->ldb_mtim);
