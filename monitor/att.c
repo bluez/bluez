@@ -122,6 +122,56 @@ static struct att_read *att_get_read(const struct l2cap_frame *frame)
 	return queue_remove_if(data->reads, match_read_frame, (void *)frame);
 }
 
+static void print_value(struct gatt_db_attribute *attr)
+{
+	uint16_t handle;
+	struct gatt_db_attribute *val;
+	const bt_uuid_t *uuid;
+	bt_uuid_t chrc = {
+		.type = BT_UUID16,
+		.value.u16 = 0x2803,
+	};
+	char label[27];
+
+	uuid = gatt_db_attribute_get_type(attr);
+	if (!uuid)
+		return;
+
+	/* Skip in case of characteristic declaration since it already prints
+	 * the value handle and properties.
+	 */
+	if (!bt_uuid_cmp(uuid, &chrc))
+		return;
+
+	val = gatt_db_attribute_get_value(attr);
+	if (!val || val == attr)
+		return;
+
+	uuid = gatt_db_attribute_get_type(val);
+	if (!uuid)
+		return;
+
+	handle = gatt_db_attribute_get_handle(val);
+	if (!handle)
+		return;
+
+	switch (uuid->type) {
+	case BT_UUID16:
+		sprintf(label, "Value Handle: 0x%4.4x Type", handle);
+		print_field("%s: %s (0x%4.4x)", label,
+				bt_uuid16_to_str(uuid->value.u16),
+				uuid->value.u16);
+		return;
+	case BT_UUID128:
+		sprintf(label, "Value Handle: 0x%4.4x Type", handle);
+		print_uuid(label, &uuid->value.u128, 16);
+		return;
+	case BT_UUID_UNSPEC:
+	case BT_UUID32:
+		break;
+	}
+}
+
 static void print_attribute(struct gatt_db_attribute *attr)
 {
 	uint16_t handle;
@@ -142,10 +192,12 @@ static void print_attribute(struct gatt_db_attribute *attr)
 		print_field("%s: %s (0x%4.4x)", label,
 				bt_uuid16_to_str(uuid->value.u16),
 				uuid->value.u16);
+		print_value(attr);
 		return;
 	case BT_UUID128:
 		sprintf(label, "Handle: 0x%4.4x Type", handle);
 		print_uuid(label, &uuid->value.u128, 16);
+		print_value(attr);
 		return;
 	case BT_UUID_UNSPEC:
 	case BT_UUID32:
