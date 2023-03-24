@@ -12870,6 +12870,7 @@ static void mgmt_print_identity_resolving_key(const void *data)
 
 	mgmt_print_address(data, address_type);
 	print_hex_field("Key", data + 7, 16);
+	keys_add_identity(data, address_type, data + 7);
 }
 
 static void mgmt_print_signature_resolving_key(const void *data)

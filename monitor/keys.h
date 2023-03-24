@@ -20,3 +20,5 @@ void keys_update_identity_addr(const uint8_t addr[6], uint8_t addr_type);
 
 bool keys_resolve_identity(const uint8_t addr[6], uint8_t ident[6],
 							uint8_t *ident_type);
+bool keys_add_identity(const uint8_t addr[6], uint8_t addr_type,
+					const uint8_t key[16]);
