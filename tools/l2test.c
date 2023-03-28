@@ -155,6 +155,24 @@ static struct lookup_table bdaddr_types[] = {
 	{ NULL,		0			},
 };
 
+static int bt_mode_to_l2cap_mode(int mode)
+{
+	switch (mode) {
+	case BT_MODE_BASIC:
+		return L2CAP_MODE_BASIC;
+	case BT_MODE_ERTM:
+		return L2CAP_MODE_ERTM;
+	case BT_MODE_STREAMING:
+		return L2CAP_MODE_STREAMING;
+	case BT_MODE_LE_FLOWCTL:
+		return L2CAP_MODE_LE_FLOWCTL;
+	case BT_MODE_EXT_FLOWCTL:
+		return L2CAP_MODE_FLOWCTL;
+	default:
+		return mode;
+	}
+}
+
 static int get_lookup_flag(struct lookup_table *table, char *name)
 {
 	int i;
@@ -287,9 +305,11 @@ static int getopts(int sk, struct l2cap_options *opts, bool connected)
 
 static int setopts(int sk, struct l2cap_options *opts)
 {
-	if (bdaddr_type == BDADDR_BREDR)
+	if (bdaddr_type == BDADDR_BREDR) {
+		opts->mode = bt_mode_to_l2cap_mode(opts->mode);
 		return setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, opts,
 								sizeof(*opts));
+	}
 
 	if (opts->mode) {
 		if (setsockopt(sk, SOL_BLUETOOTH, BT_MODE, &opts->mode,
