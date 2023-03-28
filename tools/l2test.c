@@ -1416,7 +1416,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'P':
-			psm = atoi(optarg);
+			psm = strtoul(optarg, NULL, 0);
 			break;
 
 		case 'I':
