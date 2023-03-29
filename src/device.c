@@ -312,9 +312,16 @@ static struct bearer_state *get_state(struct btd_device *dev,
 
 bool btd_device_is_initiator(struct btd_device *dev)
 {
-	if (dev->le_state.connected)
+	if (dev->le_state.connected) {
+		/* Mark as initiator if not set yet and auto-connect flag is
+		 * set and LTK key is for a peripheral.
+		 */
+		if (!dev->le_state.initiator && dev->auto_connect &&
+					dev->ltk && !dev->ltk->central)
+			dev->le_state.initiator = true;
+
 		return dev->le_state.initiator;
-	if (dev->bredr_state.connected)
+	} else if (dev->bredr_state.connected)
 		return dev->bredr_state.initiator;
 
 	return dev->att_io ? true : false;
