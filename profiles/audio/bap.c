@@ -1352,6 +1352,7 @@ static struct btd_profile bap_profile = {
 	.device_remove	= bap_remove,
 	.accept		= bap_accept,
 	.disconnect	= bap_disconnect,
+	.auto_connect	= true,
 };
 
 static unsigned int bap_id = 0;
