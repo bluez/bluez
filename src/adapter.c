@@ -2192,12 +2192,27 @@ static int merge_discovery_filters(struct btd_adapter *adapter, int *rssi,
 	bool empty_uuid = false;
 	bool has_regular_discovery = false;
 	bool has_filtered_discovery = false;
+	uint8_t adapter_scan_type = get_scan_type(adapter);
 
 	for (l = adapter->discovery_list; l != NULL; l = g_slist_next(l)) {
 		struct discovery_client *client = l->data;
 		struct discovery_filter *item = client->discovery_filter;
 
 		if (!item) {
+			has_regular_discovery = true;
+			continue;
+		}
+
+		/*
+		 * Detect empty filter with only discoverable
+		 * (which does not require a kernel filter) set.
+		 */
+		if (item->uuids == NULL &&
+		    item->pathloss == DISTANCE_VAL_INVALID &&
+		    item->rssi == DISTANCE_VAL_INVALID &&
+		    item->type == adapter_scan_type &&
+		    item->duplicate == false &&
+		    item->pattern == NULL) {
 			has_regular_discovery = true;
 			continue;
 		}
@@ -2251,7 +2266,7 @@ static int merge_discovery_filters(struct btd_adapter *adapter, int *rssi,
 		 * It there is both regular and filtered scan running, then
 		 * clear whole fitler to report all devices.
 		 */
-		*transport = get_scan_type(adapter);
+		*transport = adapter_scan_type;
 		*rssi = HCI_RSSI_INVALID;
 		g_slist_free(*uuids);
 		*uuids = NULL;
