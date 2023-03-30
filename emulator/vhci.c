@@ -22,6 +22,7 @@
 #include <sys/uio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -32,6 +33,7 @@
 #include "vhci.h"
 
 #define DEBUGFS_PATH "/sys/kernel/debug/bluetooth"
+#define DEVCORE_PATH "/sys/class/devcoredump"
 
 struct vhci {
 	enum btdev_type type;
@@ -184,7 +186,7 @@ struct btdev *vhci_get_btdev(struct vhci *vhci)
 	return vhci->btdev;
 }
 
-static int vhci_debugfs_write(struct vhci *vhci, char *option, void *data,
+static int vhci_debugfs_write(struct vhci *vhci, char *option, const void *data,
 			      size_t len)
 {
 	char path[64];
@@ -266,4 +268,61 @@ int vhci_set_force_static_address(struct vhci *vhci, bool enable)
 
 	return vhci_debugfs_write(vhci, "force_static_address", &val,
 							sizeof(val));
+}
+
+int vhci_force_devcd(struct vhci *vhci, const void *data, size_t len)
+{
+	return vhci_debugfs_write(vhci, "force_devcoredump", data, len);
+}
+
+int vhci_read_devcd(struct vhci *vhci, void *buf, size_t size)
+{
+	DIR *dir;
+	struct dirent *entry;
+	char filename[PATH_MAX];
+	int fd;
+	int ret;
+
+	dir = opendir(DEVCORE_PATH);
+	if (dir == NULL)
+		return -errno;
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (strstr(entry->d_name, "devcd"))
+			break;
+	}
+
+	if (entry == NULL) {
+		ret = -ENOENT;
+		goto close_dir;
+	}
+
+	sprintf(filename, DEVCORE_PATH "/%s/data", entry->d_name);
+	fd  = open(filename, O_RDWR);
+	if (fd < 0) {
+		ret = -errno;
+		goto close_dir;
+	}
+
+	ret = read(fd, buf, size);
+	if (ret < 0) {
+		ret = -errno;
+		goto close_file;
+	}
+
+	/* Once the devcoredump is read, write anything to it to mark it for
+	 * cleanup.
+	 */
+	if (write(fd, "0", 1) < 0) {
+		ret = -errno;
+		goto close_file;
+	}
+
+close_file:
+	close(fd);
+
+close_dir:
+	closedir(dir);
+
+	return ret;
 }
