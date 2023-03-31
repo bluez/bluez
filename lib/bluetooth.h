@@ -6,6 +6,7 @@
  *  Copyright (C) 2000-2001  Qualcomm Incorporated
  *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
  *  Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -146,6 +147,9 @@ struct bt_voice {
 #define BT_ISO_QOS_CIG_UNSET	0xff
 #define BT_ISO_QOS_CIS_UNSET	0xff
 
+#define BT_ISO_QOS_BIG_UNSET	0xff
+#define BT_ISO_QOS_BIS_UNSET	0xff
+
 struct bt_iso_io_qos {
 	uint32_t interval;
 	uint16_t latency;
@@ -154,23 +158,39 @@ struct bt_iso_io_qos {
 	uint8_t  rtn;
 };
 
-struct bt_iso_qos {
-	union {
-		uint8_t  cig;
-		uint8_t  big;
-	};
-	union {
-		uint8_t  cis;
-		uint8_t  bis;
-	};
-	union {
-		uint8_t  sca;
-		uint8_t  sync_interval;
-	};
+struct bt_iso_ucast_qos {
+	uint8_t  cig;
+	uint8_t  cis;
+	uint8_t  sca;
 	uint8_t  packing;
 	uint8_t  framing;
 	struct bt_iso_io_qos in;
 	struct bt_iso_io_qos out;
+};
+
+struct bt_iso_bcast_qos {
+	uint8_t  big;
+	uint8_t  bis;
+	uint8_t  sync_interval;
+	uint8_t  packing;
+	uint8_t  framing;
+	struct bt_iso_io_qos in;
+	struct bt_iso_io_qos out;
+	uint8_t  encryption;
+	uint8_t  bcode[16];
+	uint8_t  options;
+	uint16_t skip;
+	uint16_t sync_timeout;
+	uint8_t  sync_cte_type;
+	uint8_t  mse;
+	uint16_t timeout;
+};
+
+struct bt_iso_qos {
+	union {
+		struct bt_iso_ucast_qos ucast;
+		struct bt_iso_bcast_qos bcast;
+	};
 };
 
 #define BT_CODEC		19

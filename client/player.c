@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2020  Intel Corporation. All rights reserved.
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -3534,7 +3535,7 @@ static bool transport_timer_read(struct io *io, void *user_data)
 	}
 
 	/* num of packets = latency (ms) / interval (us) */
-	num = (qos.out.latency * 1000 / qos.out.interval);
+	num = (qos.ucast.out.latency * 1000 / qos.ucast.out.interval);
 
 	ret = transport_send_seq(transport, transport->fd, num);
 	if (ret < 0) {
@@ -3570,8 +3571,8 @@ static int transport_send(struct transport *transport, int fd,
 		return -errno;
 
 	memset(&ts, 0, sizeof(ts));
-	ts.it_value.tv_nsec = qos->out.latency * 1000000;
-	ts.it_interval.tv_nsec = qos->out.latency * 1000000;
+	ts.it_value.tv_nsec = qos->ucast.out.latency * 1000000;
+	ts.it_interval.tv_nsec = qos->ucast.out.latency * 1000000;
 
 	if (timerfd_settime(timer_fd, TFD_TIMER_ABSTIME, &ts, NULL) < 0)
 		return -errno;

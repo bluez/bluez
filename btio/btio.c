@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2009-2010  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2009-2010  Nokia Corporation
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -1608,13 +1609,13 @@ static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 			*(va_arg(args, uint8_t *)) = dst.iso_bdaddr_type;
 			break;
 		case BT_IO_OPT_MTU:
-			*(va_arg(args, uint16_t *)) = qos.out.sdu;
+			*(va_arg(args, uint16_t *)) = qos.ucast.out.sdu;
 			break;
 		case BT_IO_OPT_IMTU:
-			*(va_arg(args, uint16_t *)) = qos.in.sdu;
+			*(va_arg(args, uint16_t *)) = qos.ucast.in.sdu;
 			break;
 		case BT_IO_OPT_OMTU:
-			*(va_arg(args, uint16_t *)) = qos.out.sdu;
+			*(va_arg(args, uint16_t *)) = qos.ucast.out.sdu;
 			break;
 		case BT_IO_OPT_PHY:
 			if (get_phy(sock, &phy) < 0) {

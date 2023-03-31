@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation. All rights reserved.
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -748,10 +749,10 @@ static bool match_stream_qos(const void *data, const void *user_data)
 
 	qos = bt_bap_stream_get_qos((void *)stream);
 
-	if (iso_qos->cig != qos->cig_id)
+	if (iso_qos->ucast.cig != qos->cig_id)
 		return false;
 
-	return iso_qos->cis == qos->cis_id;
+	return iso_qos->ucast.cis == qos->cis_id;
 }
 
 static void iso_confirm_cb(GIOChannel *io, void *user_data)
@@ -773,7 +774,7 @@ static void iso_confirm_cb(GIOChannel *io, void *user_data)
 	}
 
 	DBG("ISO: incoming connect from %s (CIG 0x%02x CIS 0x%02x)",
-					address, qos.cig, qos.cis);
+					address, qos.ucast.cig, qos.ucast.cis);
 
 	stream = queue_remove_if(data->streams, match_stream_qos, &qos);
 	if (!stream) {
@@ -992,11 +993,11 @@ static void bap_create_io(struct bap_data *data, struct bap_ep *ep,
 	}
 
 	memset(&iso_qos, 0, sizeof(iso_qos));
-	iso_qos.cig = qos[0] ? qos[0]->cig_id : qos[1]->cig_id;
-	iso_qos.cis = qos[0] ? qos[0]->cis_id : qos[1]->cis_id;
+	iso_qos.ucast.cig = qos[0] ? qos[0]->cig_id : qos[1]->cig_id;
+	iso_qos.ucast.cis = qos[0] ? qos[0]->cis_id : qos[1]->cis_id;
 
-	bap_iso_qos(qos[0], &iso_qos.in);
-	bap_iso_qos(qos[1], &iso_qos.out);
+	bap_iso_qos(qos[0], &iso_qos.ucast.in);
+	bap_iso_qos(qos[1], &iso_qos.ucast.out);
 
 	if (ep)
 		bap_connect_io(data, ep, stream, &iso_qos, defer);
@@ -1191,8 +1192,8 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 			return;
 		}
 
-		ep->qos.cig_id = qos.cig;
-		ep->qos.cis_id = qos.cis;
+		ep->qos.cig_id = qos.ucast.cig;
+		ep->qos.cis_id = qos.ucast.cis;
 	}
 
 	DBG("stream %p fd %d: CIG 0x%02x CIS 0x%02x", stream, fd,

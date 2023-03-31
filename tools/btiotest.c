@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2009-2010  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2009-2010  Nokia Corporation
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -39,13 +40,15 @@ static int opt_update_sec = 0;
 }
 
 struct bt_iso_qos qos = {
-	.cig = BT_ISO_QOS_CIG_UNSET,
-	.cis = BT_ISO_QOS_CIG_UNSET,
-	.sca = 0x07,
-	.packing = 0x00,
-	.framing = 0x00,
-	.in = DEFAULT_IO_QOS,
-	.out = DEFAULT_IO_QOS,
+	.ucast = {
+		.cig = BT_ISO_QOS_CIG_UNSET,
+		.cis = BT_ISO_QOS_CIG_UNSET,
+		.sca = 0x07,
+		.packing = 0x00,
+		.framing = 0x00,
+		.in = DEFAULT_IO_QOS,
+		.out = DEFAULT_IO_QOS,
+	},
 };
 
 struct io_data {

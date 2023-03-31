@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2011-2012  Intel Corporation
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -3178,22 +3179,24 @@ void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
 	cp = malloc(sizeof(*cp) + sizeof(*cp->cis));
 	memset(cp, 0, sizeof(*cp) + sizeof(*cp->cis));
 	cp->cig_id = cig_id;
-	put_le24(qos->in.interval ? qos->in.interval : qos->out.interval,
-							cp->c_interval);
-	put_le24(qos->out.interval ? qos->out.interval : qos->in.interval,
-							cp->p_interval);
-	cp->c_latency = cpu_to_le16(qos->in.latency ? qos->in.latency :
-							qos->out.latency);
-	cp->p_latency = cpu_to_le16(qos->out.latency ? qos->out.latency :
-							qos->in.latency);
+	put_le24(qos->ucast.in.interval ? qos->ucast.in.interval :
+				qos->ucast.out.interval, cp->c_interval);
+	put_le24(qos->ucast.out.interval ? qos->ucast.out.interval :
+				qos->ucast.in.interval, cp->p_interval);
+	cp->c_latency = cpu_to_le16(qos->ucast.in.latency ?
+				qos->ucast.in.latency : qos->ucast.out.latency);
+	cp->p_latency = cpu_to_le16(qos->ucast.out.latency ?
+				qos->ucast.out.latency : qos->ucast.in.latency);
 	cp->num_cis = 0x01;
 	cp->cis[0].cis_id = cis_id;
-	cp->cis[0].c_sdu = qos->in.sdu;
-	cp->cis[0].p_sdu = qos->out.sdu;
-	cp->cis[0].c_phy = qos->in.phy ? qos->in.phy : qos->out.phy;
-	cp->cis[0].p_phy = qos->out.phy ? qos->out.phy : qos->in.phy;
-	cp->cis[0].c_rtn = qos->in.rtn;
-	cp->cis[0].p_rtn = qos->out.rtn;
+	cp->cis[0].c_sdu = qos->ucast.in.sdu;
+	cp->cis[0].p_sdu = qos->ucast.out.sdu;
+	cp->cis[0].c_phy = qos->ucast.in.phy ? qos->ucast.in.phy :
+							qos->ucast.out.phy;
+	cp->cis[0].p_phy = qos->ucast.out.phy ? qos->ucast.out.phy :
+							qos->ucast.in.phy;
+	cp->cis[0].c_rtn = qos->ucast.in.rtn;
+	cp->cis[0].p_rtn = qos->ucast.out.rtn;
 
 	send_command(bthost, BT_HCI_CMD_LE_SET_CIG_PARAMS, cp,
 				sizeof(*cp) + sizeof(*cp->cis));
