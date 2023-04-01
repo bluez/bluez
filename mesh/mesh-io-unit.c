@@ -485,39 +485,9 @@ static bool tx_cancel(struct mesh_io *io, const uint8_t *data, uint8_t len)
 	return true;
 }
 
-static bool find_by_filter(const void *a, const void *b)
-{
-	const struct pvt_rx_reg *rx_reg_old = a;
-	const struct pvt_rx_reg *rx_reg = b;
-
-	if (rx_reg_old->len != rx_reg->len)
-		return false;
-
-	return !memcmp(rx_reg_old->filter, rx_reg->filter, rx_reg->len);
-}
-
 static bool recv_register(struct mesh_io *io, const uint8_t *filter,
 			uint8_t len, mesh_io_recv_func_t cb, void *user_data)
 {
-	struct mesh_io_private *pvt = io->pvt;
-	struct pvt_rx_reg *rx_reg, *rx_reg_old;
-
-	if (!cb || !filter || !len)
-		return false;
-
-	rx_reg = l_malloc(sizeof(*rx_reg) + len);
-
-	memcpy(rx_reg->filter, filter, len);
-	rx_reg->len = len;
-	rx_reg->cb = cb;
-	rx_reg->user_data = user_data;
-
-	rx_reg_old = l_queue_remove_if(pvt->rx_regs, find_by_filter, rx_reg);
-
-	l_free(rx_reg_old);
-
-	l_queue_push_head(pvt->rx_regs, rx_reg);
-
 	return true;
 }
 

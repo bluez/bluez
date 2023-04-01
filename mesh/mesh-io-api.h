@@ -34,6 +34,13 @@ struct mesh_io_api {
 	mesh_io_tx_cancel_t	cancel;
 };
 
+struct mesh_io_reg {
+	mesh_io_recv_func_t cb;
+	void *user_data;
+	uint8_t len;
+	uint8_t filter[];
+};
+
 struct mesh_io {
 	int				index;
 	int				favored_index;

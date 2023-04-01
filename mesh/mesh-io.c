@@ -28,13 +28,6 @@
 #include "mesh/mesh-io-generic.h"
 #include "mesh/mesh-io-unit.h"
 
-struct mesh_io_reg {
-	mesh_io_recv_func_t cb;
-	void *user_data;
-	uint8_t len;
-	uint8_t filter[];
-} packed;
-
 struct loop_data {
 	uint16_t len;
 	uint8_t data[];
@@ -104,7 +97,6 @@ static void ctl_alert(int index, bool up, bool pwr, bool mesh, void *user_data)
 
 	if (mesh && type != MESH_IO_TYPE_GENERIC)
 		api = io_api(MESH_IO_TYPE_MGMT);
-
 	else if (!pwr)
 		api = io_api(MESH_IO_TYPE_GENERIC);
 
@@ -128,6 +120,23 @@ static void free_io(struct mesh_io *io)
 		l_free(io);
 		l_warn("Destroy %p", io);
 	}
+}
+
+static struct mesh_io_reg *find_by_filter(struct l_queue *rx_regs,
+					const uint8_t *filter, uint8_t len)
+{
+	const struct l_queue_entry *entry;
+
+	entry = l_queue_get_entries(rx_regs);
+
+	for (; entry; entry = entry->next) {
+		struct mesh_io_reg *rx_reg = entry->data;
+
+		if (rx_reg->len == len && !memcmp(rx_reg->filter, filter, len))
+			return rx_reg;
+	}
+
+	return NULL;
 }
 
 struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts,
@@ -194,28 +203,26 @@ bool mesh_io_register_recv_cb(struct mesh_io *io, const uint8_t *filter,
 	if (io == NULL)
 		io = default_io;
 
-	if (io != default_io)
+	if (io != default_io || !cb || !filter || !len)
 		return false;
+
+	rx_reg = find_by_filter(io->rx_regs, filter, len);
+
+	l_free(rx_reg);
+	l_queue_remove(io->rx_regs, rx_reg);
 
 	rx_reg = l_malloc(sizeof(struct mesh_io_reg) + len);
 	rx_reg->cb = cb;
 	rx_reg->len = len;
 	rx_reg->user_data = user_data;
 	memcpy(rx_reg->filter, filter, len);
+
 	l_queue_push_head(io->rx_regs, rx_reg);
 
 	if (io && io->api && io->api->reg)
 		return io->api->reg(io, filter, len, cb, user_data);
 
 	return false;
-}
-
-static bool by_filter(const void *a, const void *b)
-{
-	const struct mesh_io_reg *rx_reg = a;
-	const uint8_t *filter = b;
-
-	return rx_reg->filter[0] == filter[0];
 }
 
 bool mesh_io_deregister_recv_cb(struct mesh_io *io, const uint8_t *filter,
@@ -226,7 +233,9 @@ bool mesh_io_deregister_recv_cb(struct mesh_io *io, const uint8_t *filter,
 	if (io != default_io)
 		return false;
 
-	rx_reg = l_queue_remove_if(io->rx_regs, by_filter, filter);
+	rx_reg = find_by_filter(io->rx_regs,  filter, len);
+
+	l_queue_remove(io->rx_regs, rx_reg);
 	l_free(rx_reg);
 
 	if (io && io->api && io->api->dereg)

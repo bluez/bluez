@@ -37,7 +37,6 @@ struct mesh_io_private {
 	struct l_timeout *tx_timeout;
 	struct l_timeout *dup_timeout;
 	struct l_queue *dup_filters;
-	struct l_queue *rx_regs;
 	struct l_queue *tx_pkts;
 	struct tx_pkt *tx;
 	unsigned int tx_id;
@@ -47,13 +46,6 @@ struct mesh_io_private {
 	uint8_t handle;
 	bool sending;
 	bool active;
-};
-
-struct pvt_rx_reg {
-	mesh_io_recv_func_t cb;
-	void *user_data;
-	uint8_t len;
-	uint8_t filter[0];
 };
 
 struct process_data {
@@ -198,7 +190,7 @@ static bool filter_dups(const uint8_t *addr, const uint8_t *adv,
 
 static void process_rx_callbacks(void *v_reg, void *v_rx)
 {
-	struct pvt_rx_reg *rx_reg = v_reg;
+	struct mesh_io_reg *rx_reg = v_reg;
 	struct process_data *rx = v_rx;
 
 	if (!memcmp(rx->data, rx_reg->filter, rx_reg->len))
@@ -224,7 +216,7 @@ static void process_rx(uint16_t index, struct mesh_io_private *pvt, int8_t rssi,
 		return;
 
 	print_packet("RX", data, len);
-	l_queue_foreach(pvt->rx_regs, process_rx_callbacks, &rx);
+	l_queue_foreach(pvt->io->rx_regs, process_rx_callbacks, &rx);
 }
 
 static void send_cmplt(uint16_t index, uint16_t length,
@@ -303,7 +295,7 @@ static bool find_by_pattern(const void *a, const void *b)
 
 static bool find_active(const void *a, const void *b)
 {
-	const struct pvt_rx_reg *rx_reg = a;
+	const struct mesh_io_reg *rx_reg = a;
 
 	/* Mesh specific AD types do *not* require active scanning,
 	 * so do not turn on Active Scanning on their account.
@@ -447,7 +439,6 @@ static bool dev_init(struct mesh_io *io, void *opts, void *user_data)
 				read_info_cb, L_UINT_TO_PTR(index), NULL);
 
 	pvt->dup_filters = l_queue_new();
-	pvt->rx_regs = l_queue_new();
 	pvt->tx_pkts = l_queue_new();
 
 	pvt->io = io;
@@ -455,14 +446,6 @@ static bool dev_init(struct mesh_io *io, void *opts, void *user_data)
 
 	return true;
 }
-
-static void free_rx_reg(void *user_data)
-{
-	struct pvt_rx_reg *rx_reg = user_data;
-
-	l_free(rx_reg);
-}
-
 
 static bool dev_destroy(struct mesh_io *io)
 {
@@ -479,7 +462,6 @@ static bool dev_destroy(struct mesh_io *io)
 	l_timeout_remove(pvt->tx_timeout);
 	l_timeout_remove(pvt->dup_timeout);
 	l_queue_destroy(pvt->dup_filters, l_free);
-	l_queue_destroy(pvt->rx_regs, free_rx_reg);
 	l_queue_destroy(pvt->tx_pkts, l_free);
 	io->pvt = NULL;
 	l_free(pvt);
@@ -751,37 +733,16 @@ static bool tx_cancel(struct mesh_io *io, const uint8_t *data, uint8_t len)
 	return true;
 }
 
-static bool find_by_filter(const void *a, const void *b)
-{
-	const struct pvt_rx_reg *rx_reg = a;
-	const uint8_t *filter = b;
-
-	return !memcmp(rx_reg->filter, filter, rx_reg->len);
-}
-
 static bool recv_register(struct mesh_io *io, const uint8_t *filter,
 			uint8_t len, mesh_io_recv_func_t cb, void *user_data)
 {
-	struct pvt_rx_reg *rx_reg;
 	bool active = false;
 
-	if (!cb || !filter || !len || io->pvt != pvt)
+	if (io->pvt != pvt)
 		return false;
 
-	rx_reg = l_queue_remove_if(pvt->rx_regs, find_by_filter, filter);
-
-	free_rx_reg(rx_reg);
-	rx_reg = l_malloc(sizeof(*rx_reg) + len);
-
-	memcpy(rx_reg->filter, filter, len);
-	rx_reg->len = len;
-	rx_reg->cb = cb;
-	rx_reg->user_data = user_data;
-
-	l_queue_push_head(pvt->rx_regs, rx_reg);
-
 	/* Look for any AD types requiring Active Scanning */
-	if (l_queue_find(pvt->rx_regs, find_active, NULL))
+	if (l_queue_find(io->rx_regs, find_active, NULL))
 		active = true;
 
 	if (pvt->active != active) {
@@ -795,18 +756,13 @@ static bool recv_register(struct mesh_io *io, const uint8_t *filter,
 static bool recv_deregister(struct mesh_io *io, const uint8_t *filter,
 								uint8_t len)
 {
-	struct pvt_rx_reg *rx_reg;
 	bool active = false;
 
 	if (io->pvt != pvt)
 		return false;
 
-	rx_reg = l_queue_remove_if(pvt->rx_regs, find_by_filter, filter);
-
-	free_rx_reg(rx_reg);
-
 	/* Look for any AD types requiring Active Scanning */
-	if (l_queue_find(pvt->rx_regs, find_active, NULL))
+	if (l_queue_find(io->rx_regs, find_active, NULL))
 		active = true;
 
 	if (active != pvt->active) {

@@ -8,8 +8,6 @@
  *
  */
 
-struct mesh_io;
-
 #define MESH_IO_TX_COUNT_UNLIMITED	0
 
 enum mesh_io_type {
