@@ -317,7 +317,8 @@ struct btd_device_set *btd_set_add_device(struct btd_device *device,
 	set = set_find(device, sirk);
 	if (set) {
 		set_add(set, device);
-		return set;
+		/* Check if there are new devices with RSI found */
+		goto done;
 	}
 
 	set = set_new(device, sirk, size);
@@ -329,6 +330,7 @@ struct btd_device_set *btd_set_add_device(struct btd_device *device,
 
 	queue_push_tail(set_list, set);
 
+done:
 	/* Attempt to add devices which have matching RSI */
 	btd_adapter_for_each_device(device_get_adapter(device), foreach_device,
 									set);
