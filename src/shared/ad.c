@@ -1028,6 +1028,9 @@ static bool data_match(const void *data, const void *user_data)
 	if (d1->type != d2->type)
 		return false;
 
+	if (!d2->len && !d2->data)
+		return true;
+
 	if (d1->len != d2->len)
 		return false;
 
