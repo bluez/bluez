@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2011-2014  Intel Corporation
  *  Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -2514,6 +2515,462 @@ static void content_control_id_read(const struct l2cap_frame *frame)
 	print_content_control_id(frame);
 }
 
+static const struct pa_sync_state_decoder {
+	uint8_t code;
+	char *value;
+} pa_sync_state_decoders[] = {
+	{ 0x00, "Not synchronized to PA" },
+	{ 0x01, "SyncInfo Request" },
+	{ 0x02, "Synchronized to PA" },
+	{ 0x03, "Failed to synchronize to PA" },
+	{ 0x04, "No PAST" },
+};
+
+static const struct cp_pa_sync_state_decoder {
+	uint8_t code;
+	char *value;
+} cp_pa_sync_state_decoders[] = {
+	{ 0x00, "Do not synchronize to PA" },
+	{ 0x01, "Synchronize to PA - PAST available" },
+	{ 0x02, "Synchronize to PA - PAST not available" },
+};
+
+static const struct big_enc_decoder {
+	uint8_t code;
+	char *value;
+} big_enc_decoders[] = {
+	{ 0x00, "Not encrypted" },
+	{ 0x01, "Broadcast_Code required" },
+	{ 0x02, "Decrypting" },
+	{ 0x03, "Bad_Code (incorrect encryption key)" },
+};
+
+static bool print_subgroup_lv(const struct l2cap_frame *frame,
+		const char *label, struct packet_ltv_decoder *decoder,
+		size_t decoder_len)
+{
+	struct bt_hci_lv_data *lv;
+
+	lv = l2cap_frame_pull((void *)frame, frame, sizeof(*lv));
+	if (!lv) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	if (!l2cap_frame_pull((void *)frame, frame, lv->len)) {
+		print_text(COLOR_ERROR, "%s: invalid size", label);
+		return false;
+	}
+
+	packet_print_ltv(label, lv->data, lv->len, decoder, decoder_len);
+
+	return true;
+}
+
+static bool print_subgroup_metadata(const char *label,
+				const struct l2cap_frame *frame)
+{
+	return print_subgroup_lv(frame, label, NULL, 0);
+}
+
+static void print_bcast_recv_state(const struct l2cap_frame *frame)
+{
+	uint8_t i;
+	uint8_t id;
+	uint8_t addr_type;
+	uint8_t *addr;
+	uint8_t sid;
+	uint32_t bid;
+	uint8_t pa_sync_state;
+	uint8_t enc;
+	uint8_t *bad_code;
+	uint8_t num_subgroups = 0;
+	uint32_t bis_sync_state;
+
+	if (frame->size == 0) {
+		print_field("  Empty characteristic");
+		goto done;
+	}
+
+	if (!l2cap_frame_get_u8((void *)frame, &id)) {
+		print_text(COLOR_ERROR, "Source_ID: invalid size");
+		goto done;
+	}
+
+	print_field("  Source_ID: %u", id);
+
+	if (!l2cap_frame_get_u8((void *)frame, &addr_type)) {
+		print_text(COLOR_ERROR, "Source_Address_Type: invalid size");
+		goto done;
+	}
+
+	print_field("  Source_Address_Type: %u", addr_type);
+
+	addr = l2cap_frame_pull((void *)frame, frame, sizeof(bdaddr_t));
+	if (!addr) {
+		print_text(COLOR_ERROR, "Source_Address: invalid size");
+		goto done;
+	}
+
+	print_field("  Source_Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+					addr[5], addr[4],
+					addr[3], addr[2],
+					addr[1], addr[0]);
+
+	if (!l2cap_frame_get_u8((void *)frame, &sid)) {
+		print_text(COLOR_ERROR, "Source_Adv_SID: invalid size");
+		goto done;
+	}
+
+	print_field("  Source_Adv_SID: %u", sid);
+
+	if (!l2cap_frame_get_le24((void *)frame, &bid)) {
+		print_text(COLOR_ERROR, "Broadcast_ID: invalid size");
+		goto done;
+	}
+
+	print_field("  Broadcast_ID: 0x%06x", bid);
+
+	if (!l2cap_frame_get_u8((void *)frame, &pa_sync_state)) {
+		print_text(COLOR_ERROR, "PA_Sync_State: invalid size");
+		goto done;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(pa_sync_state_decoders); i++) {
+		const struct pa_sync_state_decoder *decoder;
+
+		decoder = &pa_sync_state_decoders[i];
+
+		if (decoder->code == pa_sync_state) {
+			print_field("  PA_Sync_State: %s", decoder->value);
+			break;
+		}
+	}
+
+	if (i == ARRAY_SIZE(pa_sync_state_decoders))
+		print_field("  PA_Sync_State: %s", "Invalid value");
+
+	if (!l2cap_frame_get_u8((void *)frame, &enc)) {
+		print_text(COLOR_ERROR, "BIG_Encryption: invalid size");
+		goto done;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(big_enc_decoders); i++) {
+		const struct big_enc_decoder *decoder;
+
+		decoder = &big_enc_decoders[i];
+
+		if (decoder->code == enc) {
+			print_field("  BIG_Encryption: %s", decoder->value);
+			break;
+		}
+	}
+
+	if (i == ARRAY_SIZE(big_enc_decoders))
+		print_field("  BIG_Encryption: %s", "Invalid value");
+
+	if (enc == 0x03) {
+		bad_code = l2cap_frame_pull((void *)frame, frame, 16);
+		if (!bad_code) {
+			print_text(COLOR_ERROR, "Bad_Code: invalid size");
+			goto done;
+		}
+
+		print_hex_field("  Bad_Code", bad_code, 16);
+	}
+
+	if (!l2cap_frame_get_u8((void *)frame, &num_subgroups)) {
+		print_text(COLOR_ERROR, "Num_Subgroups: invalid size");
+		goto done;
+	}
+
+	print_field("  Num_Subgroups: %u", num_subgroups);
+
+	for (i = 0; i < num_subgroups; i++) {
+		print_field("  Subgroup #%u:", i);
+
+		if (!l2cap_frame_get_le32((void *)frame, &bis_sync_state)) {
+			print_text(COLOR_ERROR, "BIS_Sync State: invalid size");
+			goto done;
+		}
+
+		print_field("    BIS_Sync State: 0x%8.8x", bis_sync_state);
+
+		if (!print_subgroup_metadata("    Metadata", frame))
+			goto done;
+	}
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void bcast_recv_state_read(const struct l2cap_frame *frame)
+{
+	print_bcast_recv_state(frame);
+}
+
+static void bcast_recv_state_notify(const struct l2cap_frame *frame)
+{
+	print_bcast_recv_state(frame);
+}
+
+#define BCAST_AUDIO_SCAN_CP_CMD(_op, _desc, _func) \
+[_op] = { \
+	.desc = _desc, \
+	.func = _func, \
+}
+
+static void bcast_audio_scan_cp_add_src_cmd(const struct l2cap_frame *frame)
+{
+	uint8_t i;
+	uint8_t addr_type;
+	uint8_t *addr;
+	uint8_t sid;
+	uint32_t bid;
+	uint8_t pa_sync_state;
+	uint16_t pa_interval;
+	uint8_t num_subgroups = 0;
+	uint32_t bis_sync_state;
+
+	if (!l2cap_frame_get_u8((void *)frame, &addr_type)) {
+		print_text(COLOR_ERROR, "Source_Address_Type: invalid size");
+		return;
+	}
+
+	print_field("    Source_Address_Type: %u", addr_type);
+
+	addr = l2cap_frame_pull((void *)frame, frame, sizeof(bdaddr_t));
+	if (!addr) {
+		print_text(COLOR_ERROR, "Source_Address: invalid size");
+		return;
+	}
+
+	print_field("    Source_Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+					addr[5], addr[4],
+					addr[3], addr[2],
+					addr[1], addr[0]);
+
+	if (!l2cap_frame_get_u8((void *)frame, &sid)) {
+		print_text(COLOR_ERROR, "Source_Adv_SID: invalid size");
+		return;
+	}
+
+	print_field("    Source_Adv_SID: %u", sid);
+
+	if (!l2cap_frame_get_le24((void *)frame, &bid)) {
+		print_text(COLOR_ERROR, "Broadcast_ID: invalid size");
+		return;
+	}
+
+	print_field("    Broadcast_ID: 0x%06x", bid);
+
+	if (!l2cap_frame_get_u8((void *)frame, &pa_sync_state)) {
+		print_text(COLOR_ERROR, "PA_Sync_State: invalid size");
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(cp_pa_sync_state_decoders); i++) {
+		const struct cp_pa_sync_state_decoder *decoder;
+
+		decoder = &cp_pa_sync_state_decoders[i];
+
+		if (decoder->code == pa_sync_state) {
+			print_field("    PA_Sync_State: %s", decoder->value);
+			break;
+		}
+	}
+
+	if (i == ARRAY_SIZE(cp_pa_sync_state_decoders))
+		print_field("    PA_Sync_State: %s", "Invalid value");
+
+	if (!l2cap_frame_get_le16((void *)frame, &pa_interval)) {
+		print_text(COLOR_ERROR, "PA_Interval: invalid size");
+		return;
+	}
+
+	print_field("    PA_Interval: 0x%04x", pa_interval);
+
+	if (!l2cap_frame_get_u8((void *)frame, &num_subgroups)) {
+		print_text(COLOR_ERROR, "Num_Subgroups: invalid size");
+		return;
+	}
+
+	print_field("    Num_Subgroups: %u", num_subgroups);
+
+	for (i = 0; i < num_subgroups; i++) {
+		print_field("    Subgroup #%u:", i);
+
+		if (!l2cap_frame_get_le32((void *)frame, &bis_sync_state)) {
+			print_text(COLOR_ERROR, "BIS_Sync State: invalid size");
+			return;
+		}
+
+		print_field("      BIS_Sync State: 0x%8.8x", bis_sync_state);
+
+		if (!print_subgroup_metadata("      Metadata", frame))
+			return;
+	}
+}
+
+static void bcast_audio_scan_cp_mod_src_cmd(const struct l2cap_frame *frame)
+{
+	uint8_t i;
+	uint8_t id;
+	uint8_t pa_sync_state;
+	uint16_t pa_interval;
+	uint8_t num_subgroups = 0;
+	uint32_t bis_sync_state;
+
+	if (!l2cap_frame_get_u8((void *)frame, &id)) {
+		print_text(COLOR_ERROR, "Source_ID: invalid size");
+		return;
+	}
+
+	print_field("    Source_ID: %u", id);
+
+	if (!l2cap_frame_get_u8((void *)frame, &pa_sync_state)) {
+		print_text(COLOR_ERROR, "PA_Sync_State: invalid size");
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(cp_pa_sync_state_decoders); i++) {
+		const struct cp_pa_sync_state_decoder *decoder;
+
+		decoder = &cp_pa_sync_state_decoders[i];
+
+		if (decoder->code == pa_sync_state) {
+			print_field("    PA_Sync_State: %s", decoder->value);
+			break;
+		}
+	}
+
+	if (i == ARRAY_SIZE(cp_pa_sync_state_decoders))
+		print_field("    PA_Sync_State: %s", "Invalid value");
+
+	if (!l2cap_frame_get_le16((void *)frame, &pa_interval)) {
+		print_text(COLOR_ERROR, "PA_Interval: invalid size");
+		return;
+	}
+
+	print_field("    PA_Interval: 0x%04x", pa_interval);
+
+	if (!l2cap_frame_get_u8((void *)frame, &num_subgroups)) {
+		print_text(COLOR_ERROR, "Num_Subgroups: invalid size");
+		return;
+	}
+
+	print_field("    Num_Subgroups: %u", num_subgroups);
+
+	for (i = 0; i < num_subgroups; i++) {
+		print_field("    Subgroup #%u:", i);
+
+		if (!l2cap_frame_get_le32((void *)frame, &bis_sync_state)) {
+			print_text(COLOR_ERROR, "BIS_Sync State: invalid size");
+			return;
+		}
+
+		print_field("      BIS_Sync State: 0x%8.8x", bis_sync_state);
+
+		if (!print_subgroup_metadata("      Metadata", frame))
+			return;
+	}
+}
+
+static void bcast_audio_scan_cp_set_bcode_cmd(const struct l2cap_frame *frame)
+{
+	uint8_t id;
+	uint8_t *bcast_code;
+
+	if (!l2cap_frame_get_u8((void *)frame, &id)) {
+		print_text(COLOR_ERROR, "Source_ID: invalid size");
+		return;
+	}
+
+	print_field("    Source_ID: %u", id);
+
+	bcast_code = l2cap_frame_pull((void *)frame, frame, 16);
+	if (!bcast_code) {
+		print_text(COLOR_ERROR, "Broadcast_Code: invalid size");
+		return;
+	}
+
+	print_hex_field("    Broadcast_Code", bcast_code, 16);
+
+}
+
+static void bcast_audio_scan_cp_remove_src_cmd(const struct l2cap_frame *frame)
+{
+	uint8_t id;
+
+	if (!l2cap_frame_get_u8((void *)frame, &id)) {
+		print_text(COLOR_ERROR, "Source_ID: invalid size");
+		return;
+	}
+
+	print_field("    Source_ID: %u", id);
+}
+
+struct bcast_audio_scan_cp_cmd {
+	const char *desc;
+	void (*func)(const struct l2cap_frame *frame);
+} bcast_audio_scan_cp_cmd_table[] = {
+	/* Opcode = 0x00 (Remote Scan Stopped) */
+	BCAST_AUDIO_SCAN_CP_CMD(0x00, "Remote Scan Stopped", NULL),
+	/* Opcode = 0x01 (Remote Scan Started) */
+	BCAST_AUDIO_SCAN_CP_CMD(0x01, "Remote Scan Started", NULL),
+	/* Opcode = 0x02 (Add Source) */
+	BCAST_AUDIO_SCAN_CP_CMD(0x02, "Add Source",
+					bcast_audio_scan_cp_add_src_cmd),
+	/* Opcode = 0x03 (Modify Source) */
+	BCAST_AUDIO_SCAN_CP_CMD(0x03, "Modify Source",
+					bcast_audio_scan_cp_mod_src_cmd),
+	/* Opcode = 0x04 (Set Broadcast_Code) */
+	BCAST_AUDIO_SCAN_CP_CMD(0x04, "Set Broadcast_Code",
+					bcast_audio_scan_cp_set_bcode_cmd),
+	/* Opcode = 0x05 (Remove Source) */
+	BCAST_AUDIO_SCAN_CP_CMD(0x05, "Remove Source",
+					bcast_audio_scan_cp_remove_src_cmd),
+};
+
+static struct bcast_audio_scan_cp_cmd *bcast_audio_scan_cp_get_cmd(uint8_t op)
+{
+	if (op > ARRAY_SIZE(bcast_audio_scan_cp_cmd_table))
+		return NULL;
+
+	return &bcast_audio_scan_cp_cmd_table[op];
+}
+
+static void print_bcast_audio_scan_cp_cmd(const struct l2cap_frame *frame)
+{
+	uint8_t op;
+	struct bcast_audio_scan_cp_cmd *cmd;
+
+	if (!l2cap_frame_get_u8((void *)frame, &op)) {
+		print_text(COLOR_ERROR, "Opcode: invalid size");
+		goto done;
+	}
+
+	cmd = bcast_audio_scan_cp_get_cmd(op);
+	if (!cmd) {
+		print_field("    Opcode: Reserved (0x%2.2x)", op);
+		goto done;
+	}
+
+	print_field("    Opcode: %s (0x%2.2x)", cmd->desc, op);
+	if (cmd->func)
+		cmd->func(frame);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void bcast_audio_scan_cp_write(const struct l2cap_frame *frame)
+{
+	print_bcast_audio_scan_cp_cmd(frame);
+}
+
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
 	.uuid = { \
@@ -2568,6 +3025,10 @@ struct gatt_handler {
 	GATT_HANDLER(0x2ba5, media_cp_op_supported_read, NULL,
 					media_cp_op_supported_notify),
 	GATT_HANDLER(0x2bba, content_control_id_read, NULL, NULL),
+
+	GATT_HANDLER(0x2bc7, NULL, bcast_audio_scan_cp_write, NULL),
+	GATT_HANDLER(0x2bc8, bcast_recv_state_read, NULL,
+					bcast_recv_state_notify),
 };
 
 static struct gatt_handler *get_handler_uuid(const bt_uuid_t *uuid)
@@ -2913,13 +3374,12 @@ static void att_read_rsp(const struct l2cap_frame *frame)
 {
 	struct att_read *read;
 
-	print_hex_field("Value", frame->data, frame->size);
-
 	read = att_get_read(frame);
 	if (!read)
 		return;
 
 	print_attribute(read->attr);
+	print_hex_field("Value", frame->data, frame->size);
 
 	read->func(frame);
 
