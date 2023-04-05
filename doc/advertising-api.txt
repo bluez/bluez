@@ -224,6 +224,7 @@ Properties	byte ActiveInstances
 			Possible values: "tx-power"
 					 "appearance"
 					 "local-name"
+					 "rsi"
 
 		array{string} SupportedSecondaryChannels [Experimental]
 
