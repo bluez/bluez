@@ -29,11 +29,13 @@
 #include "error.h"
 #include "log.h"
 #include "eir.h"
+#include "btd.h"
 #include "src/shared/ad.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/queue.h"
 #include "src/shared/timeout.h"
 #include "src/shared/util.h"
+#include "src/shared/crypto.h"
 #include "advertising.h"
 
 #define LE_ADVERTISING_MGR_IFACE "org.bluez.LEAdvertisingManager1"
@@ -459,13 +461,50 @@ fail:
 	return false;
 }
 
+static bool set_rsi(struct btd_adv_client *client)
+{
+	struct bt_crypto *crypto;
+	uint8_t zero[16] = {};
+	struct bt_ad_data rsi = { .type = BT_AD_CSIP_RSI };
+	uint8_t data[6];
+	bool ret;
+
+	/* Check if a valid SIRK has been set */
+	if (!memcmp(btd_opts.csis.sirk, zero, sizeof(zero)))
+		return false;
+
+	/* Check if RSI needs to be set or data already contains RSI data */
+	if (!client || bt_ad_has_data(client->data, &rsi))
+		return true;
+
+	crypto = bt_crypto_new();
+	if (!crypto)
+		return false;
+
+	ret = bt_crypto_random_bytes(crypto, data + 3, sizeof(data) - 3);
+	if (!ret)
+		goto done;
+
+	ret = bt_crypto_sih(crypto, btd_opts.csis.sirk, data + 3, data);
+	if (!ret)
+		goto done;
+
+	ret = bt_ad_add_data(client->data, BT_AD_CSIP_RSI, data, sizeof(data));
+
+done:
+	bt_crypto_unref(crypto);
+	return ret;
+}
+
 static struct adv_include {
 	uint8_t flag;
 	const char *name;
+	bool (*set)(struct btd_adv_client *client);
 } includes[] = {
 	{ MGMT_ADV_FLAG_TX_POWER, "tx-power" },
 	{ MGMT_ADV_FLAG_APPEARANCE, "appearance" },
 	{ MGMT_ADV_FLAG_LOCAL_NAME, "local-name" },
+	{ 0 , "rsi", set_rsi },
 	{ },
 };
 
@@ -496,6 +535,11 @@ static bool parse_includes(DBusMessageIter *iter,
 		for (inc = includes; inc && inc->name; inc++) {
 			if (strcmp(str, inc->name))
 				continue;
+
+			if (inc->set && inc->set(client)) {
+				DBG("Including Feature: %s", str);
+				continue;
+			}
 
 			if (!(client->manager->supported_flags & inc->flag))
 				continue;
@@ -1644,7 +1688,8 @@ static void append_include(struct btd_adv_manager *manager,
 	struct adv_include *inc;
 
 	for (inc = includes; inc && inc->name; inc++) {
-		if (manager->supported_flags & inc->flag)
+		if ((inc->set && inc->set(NULL)) ||
+				(manager->supported_flags & inc->flag))
 			dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
 								&inc->name);
 	}
