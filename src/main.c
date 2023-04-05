@@ -177,7 +177,7 @@ static const struct group_table {
 	{ "LE",		le_options },
 	{ "Policy",	policy_options },
 	{ "GATT",	gatt_options },
-	{ "CSIP",	csip_options },
+	{ "CSIS",	csip_options },
 	{ "AVDTP",	avdtp_options },
 	{ "AdvMon",	advmon_options },
 	{ }
@@ -1015,7 +1015,7 @@ static void parse_config(GKeyFile *config)
 		btd_opts.gatt_channels = val;
 	}
 
-	str = g_key_file_get_string(config, "CSIP", "SIRK", &err);
+	str = g_key_file_get_string(config, "CSIS", "SIRK", &err);
 	if (err) {
 		DBG("%s", err->message);
 		g_clear_error(&err);
@@ -1031,7 +1031,7 @@ static void parse_config(GKeyFile *config)
 		g_free(str);
 	}
 
-	boolean = g_key_file_get_boolean(config, "CSIP", "SIRK", &err);
+	boolean = g_key_file_get_boolean(config, "CSIS", "Encryption", &err);
 	if (err) {
 		DBG("%s", err->message);
 		g_clear_error(&err);
@@ -1041,7 +1041,7 @@ static void parse_config(GKeyFile *config)
 		btd_opts.csis.encrypt = boolean;
 	}
 
-	val = g_key_file_get_integer(config, "CSIP", "Size", &err);
+	val = g_key_file_get_integer(config, "CSIS", "Size", &err);
 	if (err) {
 		DBG("%s", err->message);
 		g_clear_error(&err);
@@ -1052,7 +1052,7 @@ static void parse_config(GKeyFile *config)
 		btd_opts.csis.size = val;
 	}
 
-	val = g_key_file_get_integer(config, "CSIP", "Rank", &err);
+	val = g_key_file_get_integer(config, "CSIS", "Rank", &err);
 	if (err) {
 		DBG("%s", err->message);
 		g_clear_error(&err);
