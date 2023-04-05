@@ -67,9 +67,11 @@ static struct ad {
 	bool tx_power;
 	bool name;
 	bool appearance;
+	bool rsi;
 } ad = {
 	.local_appearance = UINT16_MAX,
 	.discoverable = true,
+	.rsi = true,
 };
 
 static void ad_release(DBusConnection *conn)
@@ -175,7 +177,8 @@ static void print_ad(void)
 		bt_shell_printf("Appearance: %s\n",
 					ad.appearance ? "on" : "off");
 
-	bt_shell_printf("Discoverable: %s\n", ad.discoverable ? "on": "off");
+	bt_shell_printf("Discoverable: %s\n", ad.discoverable ? "on" : "off");
+	bt_shell_printf("RSI: %s\n", ad.rsi ? "on" : "off");
 
 	if (ad.duration)
 		bt_shell_printf("Duration: %u sec\n", ad.duration);
@@ -295,7 +298,7 @@ static gboolean get_manufacturer_data(const GDBusPropertyTable *property,
 
 static gboolean includes_exists(const GDBusPropertyTable *property, void *data)
 {
-	return ad.tx_power || ad.name || ad.appearance;
+	return ad.tx_power || ad.name || ad.appearance || ad.rsi;
 }
 
 static gboolean get_includes(const GDBusPropertyTable *property,
@@ -319,6 +322,12 @@ static gboolean get_includes(const GDBusPropertyTable *property,
 
 	if (ad.appearance) {
 		const char *str = "appearance";
+
+		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &str);
+	}
+
+	if (ad.rsi) {
+		const char *str = "rsi";
 
 		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &str);
 	}
@@ -1020,6 +1029,23 @@ void ad_advertise_interval(DBusConnection *conn, uint32_t *min, uint32_t *max)
 		g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							"MaxInterval");
 	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_advertise_rsi(DBusConnection *conn, dbus_bool_t *value)
+{
+	if (!value) {
+		bt_shell_printf("RSI: %s\n", ad.rsi ? "on" : "off");
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	if (ad.rsi == *value)
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+
+	ad.rsi = *value;
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }

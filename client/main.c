@@ -2733,6 +2733,21 @@ static void cmd_advertise_interval(int argc, char *argv[])
 	ad_advertise_interval(dbus_conn, &min, &max);
 }
 
+static void cmd_advertise_rsi(int argc, char *argv[])
+{
+	dbus_bool_t value;
+
+	if (argc < 2) {
+		ad_advertise_rsi(dbus_conn, NULL);
+		return;
+	}
+
+	if (!parse_argument(argc, argv, NULL, NULL, &value, NULL))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	ad_advertise_rsi(dbus_conn, &value);
+}
+
 static void ad_clear_uuids(void)
 {
 	ad_disable_uuids(dbus_conn);
@@ -2931,6 +2946,8 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set/Get advertise secondary channel" },
 	{ "interval", "[min] [max] ", cmd_advertise_interval,
 			"Set/Get advertise interval range" },
+	{ "rsi", "[on/off]", cmd_advertise_rsi,
+			"Show/Enable/Disable RSI to be advertised", NULL },
 	{ "clear", "[uuids/service/manufacturer/config-name...]", cmd_ad_clear,
 			"Clear advertise config" },
 	{ } },
