@@ -214,7 +214,10 @@
 #define AC_11ii_1 QOS_1(10000, 10, 40, 0x02, 2)
 #define AC_11ii_2 QOS_1(10000, 10, 40, 0x02, 2)
 
-#define QOS_BCAST_FULL(_big, _bis, _in, _out) \
+#define BCODE {0x01, 0x02, 0x68, 0x05, 0x53, 0xf1, 0x41, 0x5a, \
+				0xa2, 0x65, 0xbb, 0xaf, 0xc6, 0xea, 0x03, 0xb8}
+
+#define QOS_BCAST_FULL(_big, _bis, _encryption, _bcode, _in, _out) \
 { \
 	.bcast = { \
 		.big = _big, \
@@ -224,8 +227,8 @@
 		.framing = 0x00, \
 		.in = _in, \
 		.out = _out, \
-		.encryption = 0x00, \
-		.bcode = {0}, \
+		.encryption = _encryption, \
+		.bcode = _bcode, \
 		.options = 0x00, \
 		.skip = 0x0000, \
 		.sync_timeout = 0x4000, \
@@ -237,24 +240,40 @@
 
 #define BCAST_QOS_OUT(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_BCAST_FULL(BT_ISO_QOS_BIG_UNSET, BT_ISO_QOS_BIS_UNSET, \
-		{}, QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
+		0x00, {0x00}, {}, \
+		QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
+
+#define BCAST_QOS_OUT_ENC(_interval, _latency, _sdu, _phy, _rtn) \
+	QOS_BCAST_FULL(BT_ISO_QOS_BIG_UNSET, BT_ISO_QOS_BIS_UNSET, \
+		0x01, BCODE, {}, \
+		QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
 
 #define BCAST_QOS_OUT_1(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_BCAST_FULL(0x01, BT_ISO_QOS_BIS_UNSET, \
-		{}, QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
+		0x00, {0x00}, {}, \
+		QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
 
 #define BCAST_QOS_OUT_1_1(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_BCAST_FULL(0x01, 0x01, \
-		{}, QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
+		0x00, {0x00}, {}, \
+		QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
 
 #define BCAST_QOS_IN(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_BCAST_FULL(BT_ISO_QOS_BIG_UNSET, BT_ISO_QOS_BIS_UNSET, \
+		0x00, {0x00}, \
+		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
+
+#define BCAST_QOS_IN_ENC(_interval, _latency, _sdu, _phy, _rtn) \
+	QOS_BCAST_FULL(BT_ISO_QOS_BIG_UNSET, BT_ISO_QOS_BIS_UNSET, \
+		0x01, BCODE, \
 		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
 
 #define QOS_OUT_16_2_1 BCAST_QOS_OUT(10000, 10, 40, 0x02, 2)
+#define QOS_OUT_ENC_16_2_1 BCAST_QOS_OUT_ENC(10000, 10, 40, 0x02, 2)
 #define QOS_OUT_1_16_2_1 BCAST_QOS_OUT_1(10000, 10, 40, 0x02, 2)
 #define QOS_OUT_1_1_16_2_1 BCAST_QOS_OUT_1_1(10000, 10, 40, 0x02, 2)
 #define QOS_IN_16_2_1 BCAST_QOS_IN(10000, 10, 40, 0x02, 2)
+#define QOS_IN_ENC_16_2_1 BCAST_QOS_IN_ENC(10000, 10, 40, 0x02, 2)
 
 struct test_data {
 	const void *test_data;
@@ -870,6 +889,13 @@ static const struct iso_client_data bcast_16_2_1_send = {
 	.bcast = true,
 };
 
+static const struct iso_client_data bcast_enc_16_2_1_send = {
+	.qos = QOS_OUT_ENC_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+};
+
 static const struct iso_client_data bcast_1_16_2_1_send = {
 	.qos = QOS_OUT_1_16_2_1,
 	.expect_err = 0,
@@ -886,6 +912,14 @@ static const struct iso_client_data bcast_1_1_16_2_1_send = {
 
 static const struct iso_client_data bcast_16_2_1_recv = {
 	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+};
+
+static const struct iso_client_data bcast_enc_16_2_1_recv = {
+	.qos = QOS_IN_ENC_16_2_1,
 	.expect_err = 0,
 	.recv = &send_16_2_1,
 	.bcast = true,
@@ -1008,7 +1042,9 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 		if (isodata->bcast) {
 			bthost_set_pa_params(host);
 			bthost_set_pa_enable(host, 0x01);
-			bthost_create_big(host, 1);
+			bthost_create_big(host, 1,
+					isodata->qos.bcast.encryption,
+					isodata->qos.bcast.bcode);
 		} else if (!isodata->send && isodata->recv) {
 			const uint8_t *bdaddr;
 
@@ -1883,6 +1919,13 @@ static int listen_iso_sock(struct test_data *data)
 		}
 	}
 
+	if (setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &isodata->qos,
+						sizeof(isodata->qos)) < 0) {
+		tester_print("Can't set socket BT_ISO_QOS option: %s (%d)",
+					strerror(errno), errno);
+		goto fail;
+	}
+
 	if (listen(sk, 10)) {
 		err = -errno;
 		tester_warn("Can't listen socket: %s (%d)", strerror(errno),
@@ -2257,6 +2300,9 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO Broadcaster - Success", &bcast_16_2_1_send, setup_powered,
 							test_bcast);
+	test_iso("ISO Broadcaster Encrypted - Success", &bcast_enc_16_2_1_send,
+							setup_powered,
+							test_bcast);
 	test_iso("ISO Broadcaster BIG 0x01 - Success", &bcast_1_16_2_1_send,
 							setup_powered,
 							test_bcast);
@@ -2266,6 +2312,10 @@ int main(int argc, char *argv[])
 							test_bcast);
 
 	test_iso("ISO Broadcaster Receiver - Success", &bcast_16_2_1_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver Encrypted - Success",
+							&bcast_enc_16_2_1_recv,
 							setup_powered,
 							test_bcast_recv);
 

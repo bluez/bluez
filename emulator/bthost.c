@@ -3137,7 +3137,8 @@ void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable)
 	send_command(bthost, BT_HCI_CMD_LE_SET_PA_ENABLE, &cp, sizeof(cp));
 }
 
-void bthost_create_big(struct bthost *bthost, uint8_t num_bis)
+void bthost_create_big(struct bthost *bthost, uint8_t num_bis,
+				uint8_t enc, const uint8_t *bcode)
 {
 	struct bt_hci_cmd_le_create_big cp;
 
@@ -3150,6 +3151,8 @@ void bthost_create_big(struct bthost *bthost, uint8_t num_bis)
 	cp.bis.latency = cpu_to_le16(10);
 	cp.bis.rtn = 0x02;
 	cp.bis.phy = 0x02;
+	cp.bis.encryption = enc;
+	memcpy(cp.bis.bcode, bcode, sizeof(cp.bis.bcode));
 	send_command(bthost, BT_HCI_CMD_LE_CREATE_BIG, &cp, sizeof(cp));
 }
 

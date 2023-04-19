@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2011-2012  Intel Corporation
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -6161,6 +6162,13 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 
 	dev->big_handle = cmd->handle;
 	bis = conn->data;
+
+	if (bis->encryption != cmd->encryption) {
+		pdu.ev.status = BT_HCI_ERR_ENC_MODE_NOT_ACCEPTABLE;
+		le_meta_event(dev, BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED, &pdu,
+					sizeof(pdu.ev));
+		return 0;
+	}
 
 	pdu.ev.handle = cmd->handle;
 	memcpy(pdu.ev.latency, bis->sdu_interval, sizeof(pdu.ev.interval));
