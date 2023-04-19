@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2011-2014  Intel Corporation
  *  Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -8808,7 +8809,7 @@ static void le_big_create_sync_cmd(uint16_t index, const void *data,
 	print_field("BIG Handle: 0x%2.2x", cmd->handle);
 	print_field("BIG Sync Handle: 0x%4.4x", le16_to_cpu(cmd->sync_handle));
 	print_field("Encryption: %s (0x%2.2x)",
-			cmd->encryption ? "Unencrypted" : "Encrypted",
+			cmd->encryption ? "Encrypted" : "Unencrypted",
 			cmd->encryption);
 	print_hex_field("Broadcast Code", cmd->bcode, 16);
 	print_field("Maximum Number Subevents: 0x%2.2x", cmd->mse);
