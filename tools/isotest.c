@@ -285,9 +285,20 @@ static void print_bcast_qos(int sk)
 		return;
 	}
 
-	syslog(LOG_INFO, "QoS BIG 0x%02x BIS 0x%02x Packing 0x%02x "
-		"Framing 0x%02x]", qos.bcast.big, qos.bcast.bis,
-		qos.bcast.packing, qos.bcast.framing);
+	syslog(LOG_INFO, "QoS [BIG 0x%02x BIS 0x%02x Packing 0x%02x "
+		"Framing 0x%02x Encryption 0x%02x]", qos.bcast.big,
+		qos.bcast.bis, qos.bcast.packing, qos.bcast.framing,
+		qos.bcast.encryption);
+
+	if (qos.bcast.encryption == 0x01)
+		syslog(LOG_INFO, "Broadcast Code 0x%02x 0x%02x 0x%02x 0x%02x "
+		"0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x "
+		"0x%02x 0x%02x 0x%02x 0x%02x", qos.bcast.bcode[0],
+		qos.bcast.bcode[1], qos.bcast.bcode[2], qos.bcast.bcode[3],
+		qos.bcast.bcode[4], qos.bcast.bcode[5], qos.bcast.bcode[6],
+		qos.bcast.bcode[7], qos.bcast.bcode[8], qos.bcast.bcode[9],
+		qos.bcast.bcode[10], qos.bcast.bcode[11], qos.bcast.bcode[12],
+		qos.bcast.bcode[13], qos.bcast.bcode[14], qos.bcast.bcode[15]);
 
 	syslog(LOG_INFO, "Input QoS [Interval %u us Latency %u "
 		"ms SDU %u PHY 0x%02x RTN %u]", qos.bcast.in.interval,
@@ -298,20 +309,6 @@ static void print_bcast_qos(int sk)
 		"ms SDU %u PHY 0x%02x RTN %u]", qos.bcast.out.interval,
 		qos.bcast.out.latency, qos.bcast.out.sdu,
 		qos.bcast.out.phy, qos.bcast.out.rtn);
-}
-
-static void convert_ucast_qos_to_bcast(struct bt_iso_qos *qos)
-{
-	iso_qos->bcast.in.phy = 0x00;
-	iso_qos->bcast.in.sdu = 0;
-	qos->bcast.encryption = 0x00;
-	memset(qos->bcast.bcode, 0, sizeof(qos->bcast.bcode));
-	qos->bcast.options = 0x00;
-	qos->bcast.skip = 0x0000;
-	qos->bcast.sync_timeout = 0x4000;
-	qos->bcast.sync_cte_type = 0x00;
-	qos->bcast.mse = 0x00;
-	qos->bcast.timeout = 0x4000;
 }
 
 static int do_connect(char *peer)
@@ -344,13 +341,9 @@ static int do_connect(char *peer)
 
 	/* Set QoS if available */
 	if (iso_qos) {
-		if (!strcmp(peer, "00:00:00:00:00:00")) {
-			convert_ucast_qos_to_bcast(iso_qos);
-		} else {
-			if (!inout) {
-				iso_qos->ucast.in.phy = 0x00;
-				iso_qos->ucast.in.sdu = 0;
-			}
+		if (!inout || !strcmp(peer, "00:00:00:00:00:00")) {
+			iso_qos->ucast.in.phy = 0x00;
+			iso_qos->ucast.in.sdu = 0;
 		}
 
 		if (setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, iso_qos,
@@ -455,6 +448,16 @@ static void do_listen(char *filename, void (*handler)(int fd, int sk),
 		syslog(LOG_ERR, "Can't enable deferred setup : %s (%d)",
 							strerror(errno), errno);
 		goto error;
+	}
+
+	/* Set QoS if available */
+	if (iso_qos) {
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, iso_qos,
+					sizeof(*iso_qos)) < 0) {
+			syslog(LOG_ERR, "Can't set QoS socket option: "
+					"%s (%d)", strerror(errno), errno);
+			goto error;
+		}
 	}
 
 	/* Listen for connections */
@@ -885,13 +888,21 @@ static void multy_connect_mode(char *peer)
 
 #define QOS(_interval, _latency, _sdu, _phy, _rtn) \
 { \
-	.ucast = { \
-		.cig = BT_ISO_QOS_CIG_UNSET, \
-		.cis = BT_ISO_QOS_CIS_UNSET, \
-		.sca = 0x07, \
+	.bcast = { \
+		.big = BT_ISO_QOS_BIG_UNSET, \
+		.bis = BT_ISO_QOS_BIS_UNSET, \
+		.sync_interval = 0x07, \
 		.packing = 0x00, \
 		.framing = 0x00, \
 		.out = QOS_IO(_interval, _latency, _sdu, _phy, _rtn), \
+		.encryption = 0x00, \
+		.bcode = {0}, \
+		.options = 0x00, \
+		.skip = 0x0000, \
+		.sync_timeout = 0x4000, \
+		.sync_cte_type = 0x00, \
+		.mse = 0x00, \
+		.timeout = 0x4000, \
 	}, \
 }
 
@@ -1011,6 +1022,25 @@ static const struct option main_options[] = {
 	{}
 };
 
+static bool str2hex(const char *str, uint16_t in_len, uint8_t *out,
+		uint16_t out_len)
+{
+	uint16_t i;
+
+	if (in_len < out_len * 2)
+		return false;
+
+	if (!strncasecmp(str, "0x", 2))
+		str += 2;
+
+	for (i = 0; i < out_len; i++) {
+		if (sscanf(&str[i * 2], "%02hhx", &out[i]) != 1)
+			return false;
+	}
+
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	struct sigaction sa;
@@ -1028,7 +1058,7 @@ int main(int argc, char *argv[])
 		int opt;
 
 		opt = getopt_long(argc, argv,
-			"d::cmr::s::nb:i:j:hqt:CV:W:M:S:P:F:I:L:Y:R:B:G:T:",
+			"d::cmr::s::nb:i:j:hqt:CV:W:M:S:P:F:I:L:Y:R:B:G:T:e:k:",
 			main_options, NULL);
 		if (opt < 0)
 			break;
@@ -1179,6 +1209,19 @@ int main(int argc, char *argv[])
 		case 'T':
 			if (optarg)
 				iso_qos->ucast.cis = atoi(optarg);
+			break;
+
+		case 'e':
+			if (optarg)
+				iso_qos->bcast.encryption =
+					strtol(optarg, NULL, 16);
+			break;
+
+		case 'k':
+			if (optarg)
+				if (!str2hex(optarg, strlen(optarg),
+						iso_qos->bcast.bcode, 16))
+					exit(1);
 			break;
 
 		/* fall through */

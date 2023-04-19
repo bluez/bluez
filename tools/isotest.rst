@@ -153,6 +153,25 @@ OPTIONS
    * - **le_random**
      - LE Random Address
 
+-e, --enc=<ENCRYPTION>  Socket QoS BIG Encryption
+
+.. list-table::
+   :header-rows: 1
+   :widths: auto
+   :stub-columns: 1
+   :align: left
+
+   * - *ENCRYPTION*
+     - Description
+
+   * - **0x00**
+     - BIG unencrypted
+
+   * - **0x01**
+     - BIG encrypted
+
+-k, --bcode=<BCODE>  Socket QoS Broadcast Code
+
 EXAMPLES
 ========
 
