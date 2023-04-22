@@ -901,6 +901,7 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
 	const char *key = "Capabilities";
+	uint32_t loc;
 
 	bt_bap_pac_get_codec(rpac, NULL, &caps, &metadata);
 	if (!caps)
@@ -931,6 +932,11 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING, &key,
 					DBUS_TYPE_BYTE, &caps->iov_base,
 					caps->iov_len);
+
+	loc = bt_bap_pac_get_locations(rpac);
+	if (loc)
+		g_dbus_dict_append_entry(&dict, "Location", DBUS_TYPE_UINT32,
+									&loc);
 
 	if (metadata) {
 		key = "Metadata";
