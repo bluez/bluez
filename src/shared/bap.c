@@ -2442,6 +2442,20 @@ uint8_t bt_bap_pac_get_type(struct bt_bap_pac *pac)
 	return pac->type;
 }
 
+uint32_t bt_bap_pac_get_locations(struct bt_bap_pac *pac)
+{
+	struct bt_pacs *pacs = pac->bdb->pacs;
+
+	switch (pac->type) {
+	case BT_BAP_SOURCE:
+		return pacs->source_loc_value;
+	case BT_BAP_SINK:
+		return pacs->sink_loc_value;
+	default:
+		return 0;
+	}
+}
+
 static void notify_pac_removed(void *data, void *user_data)
 {
 	struct bt_bap_pac_changed *changed = data;
