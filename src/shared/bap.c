@@ -1168,6 +1168,14 @@ static void bap_stream_set_io(void *data, void *user_data)
 	}
 }
 
+static struct bt_bap *bt_bap_ref_safe(struct bt_bap *bap)
+{
+	if (!bap || !bap->ref_count)
+		return NULL;
+
+	return bt_bap_ref(bap);
+}
+
 static void bap_stream_state_changed(struct bt_bap_stream *stream)
 {
 	struct bt_bap *bap = stream->bap;
@@ -1178,7 +1186,14 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 			bt_bap_stream_statestr(stream->ep->old_state),
 			bt_bap_stream_statestr(stream->ep->state));
 
-	bt_bap_ref(bap);
+	/* Check if ref_count is already 0 which means detaching is in
+	 * progress.
+	 */
+	bap = bt_bap_ref_safe(bap);
+	if (!bap) {
+		bap_stream_detach(stream);
+		return;
+	}
 
 	/* Pre notification updates */
 	switch (stream->ep->state) {
@@ -2728,14 +2743,6 @@ struct bt_bap *bt_bap_ref(struct bt_bap *bap)
 	__sync_fetch_and_add(&bap->ref_count, 1);
 
 	return bap;
-}
-
-static struct bt_bap *bt_bap_ref_safe(struct bt_bap *bap)
-{
-	if (!bap || !bap->ref_count)
-		return NULL;
-
-	return bt_bap_ref(bap);
 }
 
 void bt_bap_unref(struct bt_bap *bap)
