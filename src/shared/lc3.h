@@ -7,11 +7,12 @@
  *
  */
 
-#define LTV(_type, _bytes...) \
+#define data(args...) ((const unsigned char[]) { args })
+
+#define LC3_IOV(args...) \
 	{ \
-		.len = 1 + sizeof((uint8_t []) { _bytes }), \
-		.type = _type, \
-		.data = { _bytes }, \
+		.iov_base = (void *)data(args), \
+		.iov_len = sizeof(data(args)), \
 	}
 
 #define LC3_ID			0x06
@@ -52,13 +53,11 @@
 #define LC3_FRAME_COUNT		(LC3_BASE + 4)
 
 #define LC3_CAPABILITIES(_freq, _duration, _chan_count, _len_min, _len_max) \
-	{ \
-		LTV(LC3_FREQ, _freq), \
-		LTV(LC3_DURATION, _duration), \
-		LTV(LC3_CHAN_COUNT, _chan_count), \
-		LTV(LC3_FRAME_LEN, _len_min, _len_min >> 8, \
-				_len_max, _len_max >> 8), \
-	}
+	LC3_IOV(0x02, LC3_FREQ, _freq, _freq >> 8, \
+		0x02, LC3_DURATION, _duration, \
+		0x02, LC3_CHAN_COUNT, _chan_count, \
+		0x05, LC3_FRAME_LEN, _len_min, _len_min >> 8, \
+		_len_max, _len_max >> 8)
 
 #define LC3_CONFIG_BASE		0x01
 
@@ -81,32 +80,78 @@
 #define LC3_CONFIG_FRAME_LEN	(LC3_CONFIG_BASE + 3)
 
 #define LC3_CONFIG(_freq, _duration, _len) \
-	{ \
-		LTV(LC3_CONFIG_FREQ, _freq), \
-		LTV(LC3_CONFIG_DURATION, _duration), \
-		LTV(LC3_CONFIG_FRAME_LEN, _len, _len >> 8), \
-	}
+	LC3_IOV(0x02, LC3_CONFIG_FREQ, _freq, \
+		0x02, LC3_CONFIG_DURATION, _duration, \
+		0x03, LC3_CONFIG_FRAME_LEN, _len, _len >> 8)
 
-#define LC3_CONFIG_8KHZ(_duration, _len) \
+#define LC3_CONFIG_8(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_8KHZ, _duration, _len)
 
-#define LC3_CONFIG_11KHZ(_duration, _len) \
+#define LC3_CONFIG_11(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_11KHZ, _duration, _len)
 
-#define LC3_CONFIG_16KHZ(_duration, _len) \
+#define LC3_CONFIG_16(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_16KHZ, _duration, _len)
 
-#define LC3_CONFIG_22KHZ(_duration, _len) \
+#define LC3_CONFIG_22(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_22KHZ, _duration, _len)
 
-#define LC3_CONFIG_24KHZ(_duration, _len) \
+#define LC3_CONFIG_24(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_24KHZ, _duration, _len)
 
-#define LC3_CONFIG_32KHZ(_duration, _len) \
+#define LC3_CONFIG_32(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_32KHZ, _duration, _len)
 
-#define LC3_CONFIG_44KHZ(_duration, _len) \
+#define LC3_CONFIG_44(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_44KHZ, _duration, _len)
 
-#define LC3_CONFIG_48KHZ(_duration, _len) \
+#define LC3_CONFIG_48(_duration, _len) \
 	LC3_CONFIG(LC3_CONFIG_FREQ_48KHZ, _duration, _len)
+
+#define LC3_CONFIG_8_1 \
+	LC3_CONFIG_8(LC3_CONFIG_DURATION_7_5, 26u)
+
+#define LC3_CONFIG_8_2 \
+	LC3_CONFIG_8(LC3_CONFIG_DURATION_10, 30u)
+
+#define LC3_CONFIG_16_1 \
+	LC3_CONFIG_16(LC3_CONFIG_DURATION_7_5, 30u)
+
+#define LC3_CONFIG_16_2 \
+	LC3_CONFIG_16(LC3_CONFIG_DURATION_10, 40u)
+
+#define LC3_CONFIG_24_1 \
+	LC3_CONFIG_24(LC3_CONFIG_DURATION_7_5, 45u)
+
+#define LC3_CONFIG_24_2 \
+	LC3_CONFIG_24(LC3_CONFIG_DURATION_10, 60u)
+
+#define LC3_CONFIG_32_1 \
+	LC3_CONFIG_32(LC3_CONFIG_DURATION_7_5, 60u)
+
+#define LC3_CONFIG_32_2 \
+	LC3_CONFIG_32(LC3_CONFIG_DURATION_10, 80u)
+
+#define LC3_CONFIG_44_1 \
+	LC3_CONFIG_44(LC3_CONFIG_DURATION_7_5, 98u)
+
+#define LC3_CONFIG_44_2 \
+	LC3_CONFIG_44(LC3_CONFIG_DURATION_10, 130u)
+
+#define LC3_CONFIG_48_1 \
+	LC3_CONFIG_48(LC3_CONFIG_DURATION_7_5, 75u)
+
+#define LC3_CONFIG_48_2 \
+	LC3_CONFIG_48(LC3_CONFIG_DURATION_10, 100u)
+
+#define LC3_CONFIG_48_3 \
+	LC3_CONFIG_48(LC3_CONFIG_DURATION_7_5, 90u)
+
+#define LC3_CONFIG_48_4 \
+	LC3_CONFIG_48(LC3_CONFIG_DURATION_10, 120u)
+
+#define LC3_CONFIG_48_5 \
+	LC3_CONFIG_48(LC3_CONFIG_DURATION_7_5, 117u)
+
+#define LC3_CONFIG_48_6 \
+	LC3_CONFIG_48(LC3_CONFIG_DURATION_10, 155u)
