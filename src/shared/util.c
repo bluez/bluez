@@ -268,7 +268,8 @@ void *util_iov_push_mem(struct iovec *iov, size_t len, const void *data)
 	if (!p)
 		return NULL;
 
-	memcpy(p, data, len);
+	if (data)
+		memcpy(p, data, len);
 
 	return p;
 }
