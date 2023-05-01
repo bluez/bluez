@@ -612,7 +612,7 @@ void bt_shell_hexdump(const unsigned char *buf, size_t len)
 	util_hexdump(' ', buf, len, print_string, NULL);
 }
 
-void bt_shell_usage()
+void bt_shell_usage(void)
 {
 	if (!data.exec)
 		return;
