@@ -2028,9 +2028,11 @@ static void register_endpoint_reply(DBusMessage *message, void *user_data)
 		bt_shell_printf("Failed to register endpoint: %s\n",
 				error.name);
 		dbus_error_free(&error);
-		local_endpoints = g_list_remove(local_endpoints, ep);
-		g_dbus_unregister_interface(dbus_conn, ep->path,
+		if (g_list_find(local_endpoints, ep)) {
+			local_endpoints = g_list_remove(local_endpoints, ep);
+			g_dbus_unregister_interface(dbus_conn, ep->path,
 						BLUEZ_MEDIA_ENDPOINT_INTERFACE);
+		}
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
