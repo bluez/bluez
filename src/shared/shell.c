@@ -1295,6 +1295,9 @@ static int bt_shell_queue_exec(char *line)
 
 	/* Queue if already executing */
 	if (data.line) {
+		/* Check if prompt is being held then release using the line */
+		if (!bt_shell_release_prompt(line))
+			return 0;
 		queue_push_tail(data.queue, strdup(line));
 		return 0;
 	}
