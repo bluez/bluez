@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2012-2014  Intel Corporation. All rights reserved.
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -115,8 +116,26 @@ int util_iov_memcmp(const struct iovec *iov1, const struct iovec *iov2);
 void util_iov_memcpy(struct iovec *iov, void *src, size_t len);
 void *util_iov_push(struct iovec *iov, size_t len);
 void *util_iov_push_mem(struct iovec *iov, size_t len, const void *data);
+void *util_iov_push_le64(struct iovec *iov, uint64_t val);
+void *util_iov_push_be64(struct iovec *iov, uint64_t val);
+void *util_iov_push_le32(struct iovec *iov, uint32_t val);
+void *util_iov_push_be32(struct iovec *iov, uint32_t val);
+void *util_iov_push_le24(struct iovec *iov, uint32_t val);
+void *util_iov_push_be24(struct iovec *iov, uint32_t val);
+void *util_iov_push_le16(struct iovec *iov, uint16_t val);
+void *util_iov_push_be16(struct iovec *iov, uint16_t val);
+void *util_iov_push_u8(struct iovec *iov, uint8_t val);
 void *util_iov_pull(struct iovec *iov, size_t len);
 void *util_iov_pull_mem(struct iovec *iov, size_t len);
+void *util_iov_pull_le64(struct iovec *iov, uint64_t *val);
+void *util_iov_pull_be64(struct iovec *iov, uint64_t *val);
+void *util_iov_pull_le32(struct iovec *iov, uint32_t *val);
+void *util_iov_pull_be32(struct iovec *iov, uint32_t *val);
+void *util_iov_pull_le24(struct iovec *iov, uint32_t *val);
+void *util_iov_pull_be24(struct iovec *iov, uint32_t *val);
+void *util_iov_pull_le16(struct iovec *iov, uint16_t *val);
+void *util_iov_pull_be16(struct iovec *iov, uint16_t *val);
+void *util_iov_pull_u8(struct iovec *iov, uint8_t *val);
 void util_iov_free(struct iovec *iov, size_t cnt);
 
 const char *bt_uuid16_to_str(uint16_t uuid);
@@ -177,6 +196,11 @@ static inline uint64_t get_le64(const void *ptr)
 static inline uint64_t get_be64(const void *ptr)
 {
 	return be64_to_cpu(get_unaligned((const uint64_t *) ptr));
+}
+
+static inline void put_u8(uint8_t val, void *dst)
+{
+	put_unaligned(val, (uint8_t *) dst);
 }
 
 static inline void put_le16(uint16_t val, void *dst)

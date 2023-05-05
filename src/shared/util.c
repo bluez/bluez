@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2012-2014  Intel Corporation. All rights reserved.
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -27,6 +28,8 @@
 #ifdef HAVE_SYS_RANDOM_H
 #include <sys/random.h>
 #endif
+
+#include <lib/bluetooth.h>
 
 /* define MAX_INPUT for musl */
 #ifndef MAX_INPUT
@@ -274,6 +277,123 @@ void *util_iov_push_mem(struct iovec *iov, size_t len, const void *data)
 	return p;
 }
 
+void *util_iov_push_le64(struct iovec *iov, uint64_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(val));
+	if (!p)
+		return NULL;
+
+	put_le64(val, p);
+
+	return p;
+}
+
+void *util_iov_push_be64(struct iovec *iov, uint64_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(val));
+	if (!p)
+		return NULL;
+
+	put_be64(val, p);
+
+	return p;
+}
+
+void *util_iov_push_le32(struct iovec *iov, uint32_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(val));
+	if (!p)
+		return NULL;
+
+	put_le32(val, p);
+
+	return p;
+}
+
+void *util_iov_push_be32(struct iovec *iov, uint32_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(val));
+	if (!p)
+		return NULL;
+
+	put_be32(val, p);
+
+	return p;
+}
+
+void *util_iov_push_le24(struct iovec *iov, uint32_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(uint24_t));
+	if (!p)
+		return NULL;
+
+	put_le24(val, p);
+
+	return p;
+}
+
+void *util_iov_push_be24(struct iovec *iov, uint32_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(uint24_t));
+	if (!p)
+		return NULL;
+
+	put_le24(val, p);
+
+	return p;
+}
+
+void *util_iov_push_le16(struct iovec *iov, uint16_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(val));
+	if (!p)
+		return NULL;
+
+	put_le16(val, p);
+
+	return p;
+}
+
+void *util_iov_push_be16(struct iovec *iov, uint16_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(val));
+	if (!p)
+		return NULL;
+
+	put_be16(val, p);
+
+	return p;
+}
+
+void *util_iov_push_u8(struct iovec *iov, uint8_t val)
+{
+	void *p;
+
+	p = util_iov_push(iov, sizeof(val));
+	if (!p)
+		return NULL;
+
+	put_u8(val, p);
+
+	return p;
+}
+
 void *util_iov_pull(struct iovec *iov, size_t len)
 {
 	if (!iov)
@@ -294,6 +414,114 @@ void *util_iov_pull_mem(struct iovec *iov, size_t len)
 
 	if (util_iov_pull(iov, len))
 		return data;
+
+	return NULL;
+}
+
+void *util_iov_pull_le64(struct iovec *iov, uint64_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(*val))) {
+		*val = get_le64(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_be64(struct iovec *iov, uint64_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(*val))) {
+		*val = get_be64(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_le32(struct iovec *iov, uint32_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(*val))) {
+		*val = get_le32(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_be32(struct iovec *iov, uint32_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(*val))) {
+		*val = get_be32(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_le24(struct iovec *iov, uint32_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(uint24_t))) {
+		*val = get_le24(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_be24(struct iovec *iov, uint32_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(uint24_t))) {
+		*val = get_be24(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_le16(struct iovec *iov, uint16_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(*val))) {
+		*val = get_le16(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_be16(struct iovec *iov, uint16_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(*val))) {
+		*val = get_be16(data);
+		return data;
+	}
+
+	return NULL;
+}
+
+void *util_iov_pull_u8(struct iovec *iov, uint8_t *val)
+{
+	void *data = iov->iov_base;
+
+	if (util_iov_pull(iov, sizeof(*val))) {
+		*val = get_u8(data);
+		return data;
+	}
 
 	return NULL;
 }
