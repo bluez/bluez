@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2011  Nokia Corporation
  *  Copyright (C) 2011  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -163,6 +164,10 @@ extern "C" {
 #define ASE_SINK_UUID					0x2bc4
 #define ASE_SOURCE_UUID					0x2bc5
 #define ASE_CP_UUID					0x2bc6
+
+#define BASS_UUID					0x184f
+#define BCAST_AUDIO_SCAN_CP_UUID			0x2bc7
+#define BCAST_RECV_STATE_UUID				0x2bc8
 
 #define VCS_UUID					0x1844
 #define VOL_OFFSET_CS_UUID				0x1845
