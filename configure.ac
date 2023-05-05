@@ -199,6 +199,10 @@ AC_ARG_ENABLE(bap, AS_HELP_STRING([--disable-bap],
 		[disable BAP profile]), [enable_bap=${enableval}])
 AM_CONDITIONAL(BAP, test "${enable_bap}" != "no")
 
+AC_ARG_ENABLE(bass, AS_HELP_STRING([--disable-bass],
+		[disable BASS service]), [enable_bass=${enableval}])
+AM_CONDITIONAL(BASS, test "${enable_bass}" != "no")
+
 AC_ARG_ENABLE(mcp, AS_HELP_STRING([--disable-mcp],
         [disable MCP profile]), [enable_mcp=${enableval}])
 AM_CONDITIONAL(MCP, test "${enable_mcp}" != "no")
