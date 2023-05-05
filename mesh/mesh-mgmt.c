@@ -271,3 +271,8 @@ bool mesh_mgmt_unregister(unsigned int id)
 {
 	return mgmt_unregister(mgmt_mesh, id);
 }
+
+void mesh_mgmt_clear(void)
+{
+	l_queue_clear(ctl_list, l_free);
+}

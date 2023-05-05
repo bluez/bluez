@@ -380,6 +380,9 @@ static void hci_init(void *user_data)
 	if (io->pvt->hci)
 		bt_hci_unref(io->pvt->hci);
 
+	/* Clear controller HCI list to suppress mgmt interface warnings */
+	mesh_mgmt_clear();
+
 	io->pvt->hci = bt_hci_new_user_channel(io->index);
 	if (!io->pvt->hci) {
 		l_error("Failed to start mesh io (hci %u): %s", io->index,

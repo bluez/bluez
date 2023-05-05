@@ -22,3 +22,4 @@ unsigned int mesh_mgmt_register(uint16_t event, uint16_t index,
 				void *user_data, mgmt_destroy_func_t destroy);
 bool mesh_mgmt_unregister(unsigned int id);
 void mesh_mgmt_destroy(void);
+void mesh_mgmt_clear(void);

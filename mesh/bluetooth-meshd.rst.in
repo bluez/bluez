@@ -36,14 +36,17 @@ OPTIONS
 -i <type>, --io <type>
     Specifies I/O interface type:
 
-    *hci<index>* - Use generic HCI io on interface hci<index>,
-    or, if no idex is specified, the first available one.
+    *auto* - Use first available controller: via MGMT interface
+    if kernel supports it, otherwise, via raw HCI socket.
+
+    *generic:[hci]<index>* - Use generic HCI io on interface
+    hci<index>.
 
     *unit:<fd_path>*- Specifies open file descriptor for
     daemon testing.
 
-    By default, if no type is specified, uses generic I/O
-    on the first available HCI interface.
+    By default, if no type is specified, uses auto I/O
+    on the first available controller.
 
 -c <file>, --config <file>
     Specifies an explicit config file path instead of relying on the

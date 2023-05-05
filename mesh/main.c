@@ -48,6 +48,12 @@ static const struct option main_options[] = {
 	{ }
 };
 
+static const char *io_usage =
+	       "\t(auto | generic:[hci]<index> | unit:<fd_path>)\n"
+	       "\t\tauto - Use first available controller (MGMT or raw HCI)\n"
+	       "\t\tgeneric - Use raw HCI io on interface hci<index>\n"
+	       "\t\tunit - Use test IO (for automatic testing only)\n";
+
 static void usage(void)
 {
 	fprintf(stderr,
@@ -55,18 +61,14 @@ static void usage(void)
 	       "\tbluetooth-meshd [options]\n");
 	fprintf(stderr,
 		"Options:\n"
-	       "\t--io <io>         Use specified io (default: generic)\n"
+	       "\t--io <io>         Use specified io (default: auto)\n"
 	       "\t--config          Daemon configuration directory\n"
 	       "\t--storage         Mesh node(s) configuration directory\n"
 	       "\t--nodetach        Run in foreground\n"
 	       "\t--debug           Enable debug output\n"
 	       "\t--dbus-debug      Enable D-Bus debugging\n"
 	       "\t--help            Show %s information\n", __func__);
-	fprintf(stderr,
-	       "io:\n"
-	       "\t([hci]<index> | generic[:[hci]<index>] | unit:<fd_path>)\n"
-	       "\t\tUse generic HCI io on interface hci<index>, or the first\n"
-	       "\t\tavailable one\n");
+	fprintf(stderr, "\n\t io: %s", io_usage);
 }
 
 static void do_debug(const char *str, void *user_data)
@@ -157,21 +159,8 @@ static bool parse_io(const char *optarg, enum mesh_io_type *type, void **opts)
 		*opts = index;
 
 		optarg += strlen("auto");
-		if (!*optarg) {
-			*index = MGMT_INDEX_NONE;
-			return true;
-		}
-
-		if (*optarg != ':')
-			return false;
-
-		optarg++;
-
-		if (sscanf(optarg, "hci%d", index) == 1)
-			return true;
-
-		if (sscanf(optarg, "%d", index) == 1)
-			return true;
+		*index = MGMT_INDEX_NONE;
+		return true;
 
 		return false;
 	} else if (strstr(optarg, "generic") == optarg) {
@@ -181,12 +170,7 @@ static bool parse_io(const char *optarg, enum mesh_io_type *type, void **opts)
 		*opts = index;
 
 		optarg += strlen("generic");
-		if (!*optarg) {
-			*index = MGMT_INDEX_NONE;
-			return true;
-		}
-
-		if (*optarg != ':')
+		if (!*optarg || *optarg != ':')
 			return false;
 
 		optarg++;
@@ -291,7 +275,7 @@ int main(int argc, char *argv[])
 		io = l_strdup_printf("auto");
 
 	if (!parse_io(io, &io_type, &io_opts)) {
-		l_error("Invalid io: %s", io);
+		l_error("Invalid io: %s\n%s", io, io_usage);
 		status = EXIT_FAILURE;
 		goto done;
 	}
