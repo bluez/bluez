@@ -11945,7 +11945,7 @@ void packet_system_note(struct timeval *tv, struct ucred *cred,
 struct monitor_l2cap_hdr {
 	uint16_t cid;
 	uint16_t psm;
-};
+} __attribute__((packed));
 
 static void packet_decode(struct timeval *tv, struct ucred *cred, char dir,
 				uint16_t index, const char *color,
@@ -11964,7 +11964,8 @@ static void packet_decode(struct timeval *tv, struct ucred *cred, char dir,
 				NULL);
 
 	/* Discard last byte since it just a filler */
-	l2cap_frame(index, dir == '>', 0, hdr->cid, hdr->psm,
+	l2cap_frame(index, dir == '>', 0,
+			le16_to_cpu(hdr->cid), le16_to_cpu(hdr->psm),
 			data + sizeof(*hdr), size - (sizeof(*hdr) + 1));
 }
 
