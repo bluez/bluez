@@ -1606,7 +1606,8 @@ static const struct intel_tlv *process_ext_subevent(const struct intel_tlv *tlv,
 		print_text(COLOR_UNKNOWN_EXT_EVENT,
 				"Unknown extended subevent 0x%2.2x",
 				tlv->subevent_id);
-		return NULL;
+		packet_hexdump(tlv->value, tlv->length);
+		return next_tlv;
 	}
 
 	if (tlv->length != subevent->length) {
