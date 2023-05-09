@@ -1257,11 +1257,9 @@ static void ext_evt_type(const struct intel_tlv *tlv)
 		str = "Disconnection Event";
 		break;
 	case 0x05:
-		str = "Audio Link Quality Report Type";
+		str = "Performance Stats";
 		break;
-	case 0x06:
-		str = "Stats for BR/EDR Link Type";
-		break;
+
 	default:
 		print_text(COLOR_UNKNOWN_EXT_EVENT,
 			"Unknown extended telemetry event type (0x%2.2x)",
@@ -1287,6 +1285,10 @@ static void ext_acl_evt_hec_errors(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Rx HEC errors (0x%2.2x): %d", tlv->subevent_id, num);
 }
 
@@ -1294,12 +1296,20 @@ static void ext_acl_evt_crc_errors(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Rx CRC errors (0x%2.2x): %d", tlv->subevent_id, num);
 }
 
 static void ext_acl_evt_num_pkt_from_host(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
 
 	print_field("Packets from host (0x%2.2x): %d",
 			tlv->subevent_id, num);
@@ -1309,6 +1319,10 @@ static void ext_acl_evt_num_tx_pkt_to_air(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Tx packets (0x%2.2x): %d", tlv->subevent_id, num);
 }
 
@@ -1316,6 +1330,10 @@ static void ext_acl_evt_num_tx_pkt_retry(const struct intel_tlv *tlv)
 {
 	char *subevent_str;
 	uint32_t num = get_le32(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
 
 	switch (tlv->subevent_id) {
 	case 0x4f:
@@ -1345,6 +1363,10 @@ static void ext_acl_evt_num_tx_pkt_type(const struct intel_tlv *tlv)
 {
 	char *packet_type_str;
 	uint32_t num = get_le32(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
 
 	switch (tlv->subevent_id) {
 	case 0x54:
@@ -1387,6 +1409,10 @@ static void ext_acl_evt_num_rx_pkt_from_air(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Rx packets (0x%2.2x): %d",
 			tlv->subevent_id, num);
 }
@@ -1395,7 +1421,11 @@ static void ext_acl_evt_link_throughput(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
-	print_field("ACL link throughput (KBps) (0x%2.2x): %d",
+	/* Skip if 0 */
+	if (!num)
+		return;
+
+	print_field("ACL link throughput (bps) (0x%2.2x): %d",
 			tlv->subevent_id, num);
 }
 
@@ -1403,7 +1433,11 @@ static void ext_acl_evt_max_packet_latency(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
-	print_field("ACL max packet latency (ms) (0x%2.2x): %d",
+	/* Skip if 0 */
+	if (!num)
+		return;
+
+	print_field("ACL max packet latency (us) (0x%2.2x): %d",
 			tlv->subevent_id, num);
 }
 
@@ -1411,8 +1445,53 @@ static void ext_acl_evt_avg_packet_latency(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
-	print_field("ACL avg packet latency (ms) (0x%2.2x): %d",
+	/* Skip if 0 */
+	if (!num)
+		return;
+
+	print_field("ACL avg packet latency (us) (0x%2.2x): %d",
 			tlv->subevent_id, num);
+}
+
+static void ext_acl_evt_rssi_moving_avg(const struct intel_tlv *tlv)
+{
+	uint32_t num = get_le16(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
+
+	print_field("ACL RX RSSI moving avg (0x%2.2x): %d",
+			tlv->subevent_id, num);
+}
+
+static void ext_acl_evt_bad_cnt(const char *prefix, const struct intel_tlv *tlv)
+{
+	uint32_t c_1m = get_le32(tlv->value);
+	uint32_t c_2m = get_le32(tlv->value + 4);
+	uint32_t c_3m = get_le32(tlv->value + 8);
+
+	/* Skip if all 0 */
+	if (!c_1m && !c_2m && !c_3m)
+		return;
+
+	print_field("%s (0x%2.2x): 1M %d 2M %d 3M %d",
+			prefix, tlv->subevent_id, c_1m, c_2m, c_3m);
+}
+
+static void ext_acl_evt_snr_bad_cnt(const struct intel_tlv *tlv)
+{
+	ext_acl_evt_bad_cnt("ACL RX SNR Bad Margin Counter", tlv);
+}
+
+static void ext_acl_evt_rx_rssi_bad_cnt(const struct intel_tlv *tlv)
+{
+	ext_acl_evt_bad_cnt("ACL RX RSSI Bad Counter", tlv);
+}
+
+static void ext_acl_evt_tx_rssi_bad_cnt(const struct intel_tlv *tlv)
+{
+	ext_acl_evt_bad_cnt("ACL TX RSSI Bad Counter", tlv);
 }
 
 static void ext_sco_evt_conn_handle(const struct intel_tlv *tlv)
@@ -1427,12 +1506,20 @@ static void ext_sco_evt_num_rx_pkt_from_air(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Packets from host (0x%2.2x): %d", tlv->subevent_id, num);
 }
 
 static void ext_sco_evt_num_tx_pkt_to_air(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
 
 	print_field("Tx packets (0x%2.2x): %d", tlv->subevent_id, num);
 }
@@ -1441,6 +1528,10 @@ static void ext_sco_evt_num_rx_payloads_lost(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Rx payload lost (0x%2.2x): %d", tlv->subevent_id, num);
 }
 
@@ -1448,6 +1539,10 @@ static void ext_sco_evt_num_tx_payloads_lost(const struct intel_tlv *tlv)
 {
 
 	uint32_t num = get_le32(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
 
 	print_field("Tx payload lost (0x%2.2x): %d", tlv->subevent_id, num);
 }
@@ -1508,6 +1603,10 @@ static void ext_sco_evt_samples_inserted(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Late samples inserted based on CDC (0x%2.2x): %d",
 			tlv->subevent_id, num);
 }
@@ -1516,12 +1615,20 @@ static void ext_sco_evt_samples_dropped(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
 
+	/* Skip if 0 */
+	if (!num)
+		return;
+
 	print_field("Samples dropped (0x%2.2x): %d", tlv->subevent_id, num);
 }
 
 static void ext_sco_evt_mute_samples(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
 
 	print_field("Mute samples sent at initial connection (0x%2.2x): %d",
 			tlv->subevent_id, num);
@@ -1530,6 +1637,10 @@ static void ext_sco_evt_mute_samples(const struct intel_tlv *tlv)
 static void ext_sco_evt_plc_injection_data(const struct intel_tlv *tlv)
 {
 	uint32_t num = get_le32(tlv->value);
+
+	/* Skip if 0 */
+	if (!num)
+		return;
 
 	print_field("PLC injection data (0x%2.2x): %d", tlv->subevent_id, num);
 }
@@ -1565,6 +1676,10 @@ static const struct intel_ext_subevent {
 	{ 0x5e, 4, ext_acl_evt_link_throughput },
 	{ 0x5f, 4, ext_acl_evt_max_packet_latency },
 	{ 0x60, 4, ext_acl_evt_avg_packet_latency },
+	{ 0x61, 2, ext_acl_evt_rssi_moving_avg },
+	{ 0x62, 12, ext_acl_evt_snr_bad_cnt },
+	{ 0x63, 12, ext_acl_evt_rx_rssi_bad_cnt },
+	{ 0x64, 12, ext_acl_evt_tx_rssi_bad_cnt },
 
 	/* SCO/eSCO audio link quality subevents */
 	{ 0x6a, 2, ext_sco_evt_conn_handle },
