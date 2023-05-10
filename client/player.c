@@ -1605,7 +1605,7 @@ static void append_properties(DBusMessageIter *iter,
 					DBUS_TYPE_BYTE, &cfg->caps->iov_base,
 					cfg->caps->iov_len);
 
-	if (cfg->meta->iov_len) {
+	if (cfg->meta && cfg->meta->iov_len) {
 		g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING, &meta,
 				DBUS_TYPE_BYTE, &cfg->meta->iov_base,
 				cfg->meta->iov_len);
@@ -1712,7 +1712,8 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	cfg->target_latency = preset->target_latency;
 
 	/* Copy metadata */
-	iov_append(&cfg->meta, cfg->ep->meta->iov_base, cfg->ep->meta->iov_len);
+	if (ep->meta)
+		iov_append(&cfg->meta, ep->meta->iov_base, ep->meta->iov_len);
 
 	if (preset->qos.phy)
 		/* Set QoS parameters */
