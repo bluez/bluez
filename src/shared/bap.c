@@ -1115,6 +1115,18 @@ static bool match_stream_io(const void *data, const void *user_data)
 	return stream->io == io;
 }
 
+static void stream_stop_disabling(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+
+	if (stream->io || stream->ep->state != BT_ASCS_ASE_STATE_DISABLING)
+		return;
+
+	DBG(stream->bap, "stream %p", stream);
+
+	bt_bap_stream_stop(stream, NULL, NULL);
+}
+
 static bool bap_stream_io_detach(struct bt_bap_stream *stream)
 {
 	struct bt_bap_stream *link;
@@ -1133,6 +1145,9 @@ static bool bap_stream_io_detach(struct bt_bap_stream *stream)
 		/* Detach link if in QoS state */
 		if (link->ep->state == BT_ASCS_ASE_STATE_QOS)
 			bap_stream_io_detach(link);
+	} else {
+		/* Links without IO on disabling state shall be stopped. */
+		queue_foreach(stream->links, stream_stop_disabling, NULL);
 	}
 
 	stream_io_unref(io);
