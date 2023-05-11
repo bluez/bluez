@@ -2073,9 +2073,32 @@ static void register_endpoint_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static bool media_supports_uuid(GDBusProxy *proxy, const char *uuid)
+{
+	DBusMessageIter iter, array;
+
+	if (!g_dbus_proxy_get_property(proxy, "SupportedUUIDs", &iter))
+		return false;
+
+	dbus_message_iter_recurse(&iter, &array);
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
+		const char *support_uuid;
+
+		dbus_message_iter_get_basic(&array, &support_uuid);
+
+		if (!strcasecmp(uuid, support_uuid))
+			return true;
+
+		dbus_message_iter_next(&array);
+	}
+
+	return false;
+}
+
 static void endpoint_register(struct endpoint *ep)
 {
 	GList *l;
+	int registered = 0;
 
 	if (!g_dbus_register_interface(dbus_conn, ep->path,
 					BLUEZ_MEDIA_ENDPOINT_INTERFACE,
@@ -2086,6 +2109,9 @@ static void endpoint_register(struct endpoint *ep)
 	}
 
 	for (l = medias; l; l = g_list_next(l)) {
+		if (!media_supports_uuid(l->data, ep->uuid))
+			continue;
+
 		if (!g_dbus_proxy_method_call(l->data, "RegisterEndpoint",
 						register_endpoint_setup,
 						register_endpoint_reply,
@@ -2094,7 +2120,12 @@ static void endpoint_register(struct endpoint *ep)
 						BLUEZ_MEDIA_ENDPOINT_INTERFACE);
 			goto fail;
 		}
+
+		registered++;
 	}
+
+	if (!registered)
+		goto fail;
 
 	return;
 
@@ -2898,33 +2929,20 @@ static struct endpoint *endpoint_new(const struct capabilities *cap)
 static void register_endpoints(GDBusProxy *proxy)
 {
 	struct endpoint *ep;
-	DBusMessageIter iter, array;
+	size_t i;
 
-	if (!g_dbus_proxy_get_property(proxy, "SupportedUUIDs", &iter))
-		return;
+	for (i = 0; i < ARRAY_SIZE(caps); i++) {
+		const struct capabilities *cap = &caps[i];
 
-	dbus_message_iter_recurse(&iter, &array);
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
-		const char *uuid;
-		size_t i;
+		if (!media_supports_uuid(proxy, cap->uuid))
+			continue;
 
-		dbus_message_iter_get_basic(&array, &uuid);
-
-		for (i = 0; i < ARRAY_SIZE(caps); i++) {
-			const struct capabilities *cap = &caps[i];
-
-			if (strcasecmp(cap->uuid, uuid))
-				continue;
-
-			ep = endpoint_new(cap);
-			ep->max_transports = UINT8_MAX;
-			ep->auto_accept = true;
-			ep->cig = BT_ISO_QOS_CIG_UNSET;
-			ep->cis = BT_ISO_QOS_CIS_UNSET;
-			endpoint_register(ep);
-		}
-
-		dbus_message_iter_next(&array);
+		ep = endpoint_new(cap);
+		ep->max_transports = UINT8_MAX;
+		ep->auto_accept = true;
+		ep->cig = BT_ISO_QOS_CIG_UNSET;
+		ep->cis = BT_ISO_QOS_CIS_UNSET;
+		endpoint_register(ep);
 	}
 }
 
