@@ -54,7 +54,6 @@ static bool start_monitor = false;
 static int num_devs = 0;
 static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
-static bool audio_support;
 
 static const char *qemu_table[] = {
 	"qemu-system-x86_64",
@@ -252,16 +251,14 @@ static void start_qemu(void)
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
 				"TESTHOME=%s TESTDBUS=%u TESTDAEMON=%u "
 				"TESTDBUSSESSION=%u XDG_RUNTIME_DIR=/run/user/0 "
-				"TESTAUDIO=%u "
 				"TESTMONITOR=%u TESTEMULATOR=%u TESTDEVS=%d "
 				"TESTAUTO=%u TESTARGS=\'%s\'",
 				initcmd, cwd, start_dbus, start_daemon,
-				start_dbus_session, audio_support,
+				start_dbus_session,
 				start_monitor, start_emulator, num_devs,
 				run_auto, testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
-				(audio_support ? 4 : 0) +
 				(sizeof(char *) * (4 + (num_devs * 4))));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
 
@@ -273,24 +270,6 @@ static void start_qemu(void)
 		exit(1);
 	}
 	argv[0] = (char *) qemu_binary;
-
-	if (audio_support) {
-		char *xdg_runtime_dir, *audiodev;
-
-		xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
-		if (!xdg_runtime_dir) {
-			fprintf(stderr, "XDG_RUNTIME_DIR not set\n");
-			exit(1);
-		}
-		audiodev = alloca(40 + strlen(xdg_runtime_dir));
-		sprintf(audiodev, "id=audio,driver=pa,server=%s/pulse/native",
-				xdg_runtime_dir);
-
-		argv[pos++] = "-audiodev";
-		argv[pos++] = audiodev;
-		argv[pos++] = "-device";
-		argv[pos++] = "AC97,audiodev=audio";
-	}
 
 	argv[pos++] = "-kernel";
 	argv[pos++] = (char *) kernel_image;
@@ -744,70 +723,13 @@ static pid_t start_btvirt(const char *home)
 	return pid;
 }
 
-static void trigger_udev(void)
-{
-	char *argv[3], *envp[1];
-	pid_t pid;
-
-	argv[0] = "/bin/udevadm";
-	argv[1] = "trigger";
-	argv[2] = NULL;
-
-	envp[0] = NULL;
-
-	printf("Triggering udev events\n");
-
-	pid = fork();
-	if (pid < 0) {
-		perror("Failed to fork new process");
-		return;
-	}
-
-	if (pid == 0) {
-		execve(argv[0], argv, envp);
-		exit(EXIT_SUCCESS);
-	}
-
-	printf("udev trigger process %d created\n", pid);
-}
-
-static pid_t start_udevd(void)
-{
-	char *argv[2], *envp[1];
-	pid_t pid;
-
-	argv[0] = "/lib/systemd/systemd-udevd";
-	argv[1] = NULL;
-
-	envp[0] = NULL;
-
-	printf("Starting udevd daemon\n");
-
-	pid = fork();
-	if (pid < 0) {
-		perror("Failed to fork new process");
-		return -1;
-	}
-
-	if (pid == 0) {
-		execve(argv[0], argv, envp);
-		exit(EXIT_SUCCESS);
-	}
-
-	printf("udevd daemon process %d created\n", pid);
-
-	trigger_udev();
-
-	return pid;
-}
-
 static void run_command(char *cmdname, char *home)
 {
 	char *argv[9], *envp[3];
 	int pos = 0, idx = 0;
 	int serial_fd;
 	pid_t pid, dbus_pid, daemon_pid, monitor_pid, emulator_pid,
-	      dbus_session_pid, udevd_pid;
+	      dbus_session_pid;
 
 	if (!home) {
 		perror("Invalid parameter: TESTHOME");
@@ -827,11 +749,6 @@ static void run_command(char *cmdname, char *home)
 								extra_flags);
 	} else
 		serial_fd = -1;
-
-	if (audio_support)
-		udevd_pid = start_udevd();
-	else
-		udevd_pid = -1;
 
 	if (start_dbus) {
 		create_dbus_system_conf();
@@ -961,11 +878,6 @@ start_next:
 			monitor_pid = -1;
 		}
 
-		if (corpse == udevd_pid) {
-			printf("udevd terminated\n");
-			udevd_pid = -1;
-		}
-
 		if (corpse == pid)
 			break;
 	}
@@ -989,9 +901,6 @@ start_next:
 
 	if (monitor_pid > 0)
 		kill(monitor_pid, SIGTERM);
-
-	if (udevd_pid > 0)
-		kill(udevd_pid, SIGTERM);
 
 	if (serial_fd >= 0)
 		close(serial_fd);
@@ -1073,12 +982,6 @@ static void run_tests(void)
 		start_emulator = true;
 	}
 
-	ptr = strstr(cmdline, "TESTAUDIO=1");
-	if (ptr) {
-		printf("Audio support requested\n");
-		audio_support = true;
-	}
-
 	ptr = strstr(cmdline, "TESTHOME=");
 	if (ptr) {
 		home = ptr + 4;
@@ -1105,7 +1008,6 @@ static void usage(void)
 		"\t-u, --unix [path]      Provide serial device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
-		"\t-A, --audio            Add audio support\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -1120,7 +1022,6 @@ static const struct option main_options[] = {
 	{ "monitor", no_argument,       NULL, 'm' },
 	{ "qemu",    required_argument, NULL, 'q' },
 	{ "kernel",  required_argument, NULL, 'k' },
-	{ "audio",   no_argument,       NULL, 'A' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -1140,7 +1041,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "aubdslmq:k:Avh", main_options,
+		opt = getopt_long(argc, argv, "aubdslmq:k:vh", main_options,
 								NULL);
 		if (opt < 0)
 			break;
@@ -1173,9 +1074,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'k':
 			kernel_image = optarg;
-			break;
-		case 'A':
-			audio_support = true;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
