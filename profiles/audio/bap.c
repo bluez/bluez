@@ -1354,18 +1354,19 @@ static struct btd_profile bap_profile = {
 	.accept		= bap_accept,
 	.disconnect	= bap_disconnect,
 	.auto_connect	= true,
+	.experimental	= true,
 };
 
 static unsigned int bap_id = 0;
 
 static int bap_init(void)
 {
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		warn("D-Bus experimental not enabled");
-		return -ENOTSUP;
-	}
+	int err;
 
-	btd_profile_register(&bap_profile);
+	err = btd_profile_register(&bap_profile);
+	if (err)
+		return err;
+
 	bap_id = bt_bap_register(bap_attached, bap_detached, NULL);
 
 	return 0;
@@ -1373,10 +1374,8 @@ static int bap_init(void)
 
 static void bap_exit(void)
 {
-	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) {
-		btd_profile_unregister(&bap_profile);
-		bt_bap_unregister(bap_id);
-	}
+	btd_profile_unregister(&bap_profile);
+	bt_bap_unregister(bap_id);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(bap, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
