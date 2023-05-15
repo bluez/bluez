@@ -186,7 +186,7 @@ start:
 
 		err = plugin->desc->init();
 		if (err < 0) {
-			if (err == -ENOSYS)
+			if (err == -ENOSYS || err == -ENOTSUP)
 				warn("System does not support %s plugin",
 							plugin->desc->name);
 			else
