@@ -403,27 +403,18 @@ static struct btd_profile mcp_profile = {
 
 	.adapter_probe	= media_control_server_probe,
 	.adapter_remove = media_control_server_remove,
+
+	.experimental	= true,
 };
 
 static int mcp_init(void)
 {
-	DBG("");
-
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		warn("D-Bus experimental not enabled");
-		return -ENOTSUP;
-	}
-
-	btd_profile_register(&mcp_profile);
-	return 0;
+	return btd_profile_register(&mcp_profile);
 }
 
 static void mcp_exit(void)
 {
-	DBG("");
-
-	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)
-		btd_profile_unregister(&mcp_profile);
+	btd_profile_unregister(&mcp_profile);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(mcp, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
