@@ -334,18 +334,20 @@ static struct btd_profile csip_profile = {
 
 	.adapter_probe	= csip_server_probe,
 	.adapter_remove	= csip_server_remove,
+
+	.experimental	= true,
 };
 
 static unsigned int csip_id;
 
 static int csip_init(void)
 {
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		warn("D-Bus experimental not enabled");
-		return -ENOTSUP;
-	}
+	int err;
 
-	btd_profile_register(&csip_profile);
+	err = btd_profile_register(&csip_profile);
+	if (err)
+		return err;
+
 	csip_id = bt_csip_register(csip_attached, csip_detached, NULL);
 
 	return 0;
@@ -353,10 +355,8 @@ static int csip_init(void)
 
 static void csip_exit(void)
 {
-	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) {
-		btd_profile_unregister(&csip_profile);
-		bt_csip_unregister(csip_id);
-	}
+	btd_profile_unregister(&csip_profile);
+	bt_csip_unregister(csip_id);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(csip, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
