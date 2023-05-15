@@ -276,18 +276,19 @@ static struct btd_profile bass_service = {
 	.device_remove	= bass_remove,
 	.accept		= bass_accept,
 	.disconnect	= bass_disconnect,
+	.experimental	= true,
 };
 
 static unsigned int bass_id;
 
 static int bass_init(void)
 {
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		warn("D-Bus experimental not enabled");
-		return -ENOTSUP;
-	}
+	int err;
 
-	btd_profile_register(&bass_service);
+	err = btd_profile_register(&bass_service);
+	if (err)
+		return err;
+
 	bass_id = bt_bass_register(bass_attached, bass_detached, NULL);
 
 	return 0;
@@ -295,10 +296,8 @@ static int bass_init(void)
 
 static void bass_exit(void)
 {
-	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) {
-		btd_profile_unregister(&bass_service);
-		bt_bass_unregister(bass_id);
-	}
+	btd_profile_unregister(&bass_service);
+	bt_bass_unregister(bass_id);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(bass, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
