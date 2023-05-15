@@ -289,18 +289,20 @@ static struct btd_profile vcp_profile = {
 
 	.adapter_probe = vcp_server_probe,
 	.adapter_remove = vcp_server_remove,
+
+	.experimental	= true,
 };
 
 static unsigned int vcp_id = 0;
 
 static int vcp_init(void)
 {
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		warn("D-Bus experimental not enabled");
-		return -ENOTSUP;
-	}
+	int err;
 
-	btd_profile_register(&vcp_profile);
+	err = btd_profile_register(&vcp_profile);
+	if (err)
+		return err;
+
 	vcp_id = bt_vcp_register(vcp_attached, vcp_detached, NULL);
 
 	return 0;
@@ -308,10 +310,8 @@ static int vcp_init(void)
 
 static void vcp_exit(void)
 {
-	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) {
-		btd_profile_unregister(&vcp_profile);
-		bt_vcp_unregister(vcp_id);
-	}
+	btd_profile_unregister(&vcp_profile);
+	bt_vcp_unregister(vcp_id);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(vcp, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
