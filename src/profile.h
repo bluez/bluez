@@ -28,6 +28,11 @@ struct btd_profile {
 	 */
 	bool external;
 
+	/* Indicates the profile is experimental and shall only be registered
+	 * when experimental has been enabled (see: main.conf:Experimental).
+	 */
+	bool experimental;
+
 	int (*device_probe) (struct btd_service *service);
 	void (*device_remove) (struct btd_service *service);
 
