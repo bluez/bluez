@@ -111,7 +111,7 @@ struct btd_advmon_opts {
 struct btd_opts {
 	char		*name;
 	uint32_t	class;
-	gboolean	pairable;
+	bool		pairable;
 	uint32_t	pairto;
 	uint32_t	discovto;
 	uint32_t	tmpto;
@@ -122,12 +122,12 @@ struct btd_opts {
 
 	struct btd_defaults defaults;
 
-	gboolean	reverse_discovery;
-	gboolean	name_resolv;
-	gboolean	debug_keys;
-	gboolean	fast_conn;
-	gboolean	refresh_discovery;
-	gboolean	experimental;
+	bool		reverse_discovery;
+	bool		name_resolv;
+	bool		debug_keys;
+	bool		fast_conn;
+	bool		refresh_discovery;
+	bool		experimental;
 	struct queue	*kernel;
 
 	uint16_t	did_source;
