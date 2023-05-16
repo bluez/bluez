@@ -127,6 +127,11 @@ struct btd_adapter_driver {
 						struct btd_device *device);
 	void (*device_resolved)(struct btd_adapter *adapter,
 						struct btd_device *device);
+
+	/* Indicates the driver is experimental and shall only be registered
+	 * when experimental has been enabled (see: main.conf:Experimental).
+	 */
+	bool experimental;
 };
 
 void device_resolved_drivers(struct btd_adapter *adapter,

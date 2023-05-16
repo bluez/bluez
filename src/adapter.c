@@ -7447,6 +7447,12 @@ static void adapter_stop(struct btd_adapter *adapter)
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
+	if (driver->experimental && !(g_dbus_get_flags() &
+					G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
+		DBG("D-Bus experimental not enabled");
+		return -ENOTSUP;
+	}
+
 	adapter_drivers = g_slist_append(adapter_drivers, driver);
 
 	if (driver->probe == NULL)
