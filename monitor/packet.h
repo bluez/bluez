@@ -22,6 +22,7 @@
 #define PACKET_FILTER_SHOW_SCO_DATA	(1 << 5)
 #define PACKET_FILTER_SHOW_A2DP_STREAM	(1 << 6)
 #define PACKET_FILTER_SHOW_MGMT_SOCKET	(1 << 7)
+#define PACKET_FILTER_SHOW_ISO_DATA	(1 << 8)
 
 struct packet_conn_data {
 	uint16_t index;
