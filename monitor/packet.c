@@ -10293,14 +10293,31 @@ static void role_change_evt(uint16_t index, const void *data, uint8_t size)
 static void num_completed_packets_evt(uint16_t index, const void *data,
 							uint8_t size)
 {
+	struct iovec iov = { (void *)data, size};
 	const struct bt_hci_evt_num_completed_packets *evt = data;
+	int i;
+
+	iov_pull(&iov, 1);
 
 	print_field("Num handles: %d", evt->num_handles);
-	print_handle(evt->handle);
-	print_field("Count: %d", le16_to_cpu(evt->count));
 
-	if (size > sizeof(*evt))
-		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
+	for (i = 0; i < evt->num_handles; i++) {
+		uint16_t handle;
+		uint16_t count;
+
+		if (!util_iov_pull_le16(&iov, &handle))
+			break;
+
+		print_handle_native(handle);
+
+		if (!util_iov_pull_le16(&iov, &count))
+			break;
+
+		print_field("Count: %d", le16_to_cpu(evt->count));
+	}
+
+	if (iov.iov_len)
+		packet_hexdump(iov.iov_base, iov.iov_len);
 }
 
 static void mode_change_evt(uint16_t index, const void *data, uint8_t size)
