@@ -299,7 +299,8 @@ const struct vendor_ocf *msft_vendor_ocf(void)
 	return &vendor_ocf_entry;
 }
 
-static void msft_evt(uint16_t index, const void *data, uint8_t size)
+static void msft_evt(struct timeval *tv, uint16_t index,
+			const void *data, uint8_t size)
 {
 	packet_hexdump(data, size);
 }

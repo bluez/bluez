@@ -706,7 +706,8 @@ void broadcom_lm_diag(const void *data, uint8_t size)
 	}
 }
 
-static void lm_diag_evt(uint16_t index, const void *data, uint8_t size)
+static void lm_diag_evt(struct timeval *tv, uint16_t index,
+				const void *data, uint8_t size)
 {
 	broadcom_lm_diag(data, 63);
 }
