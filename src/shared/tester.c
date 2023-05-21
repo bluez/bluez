@@ -622,6 +622,9 @@ static void test_result(enum test_result result)
 		test->timeout_id = 0;
 	}
 
+	if (test->result == TEST_RESULT_FAILED)
+		result = TEST_RESULT_FAILED;
+
 	test->result = result;
 	switch (result) {
 	case TEST_RESULT_PASSED:
