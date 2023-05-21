@@ -749,7 +749,9 @@ static int cmd_disconnect_complete(struct btdev *dev, const void *data,
 		return 0;
 	}
 
-	disconnect_complete(dev, conn->handle, BT_HCI_ERR_SUCCESS, cmd->reason);
+	/* Local host has different reason (Core v5.3 Vol 4 Part E Sec 7.1.6) */
+	disconnect_complete(dev, conn->handle, BT_HCI_ERR_SUCCESS,
+						BT_HCI_ERR_LOCAL_HOST_TERM);
 
 	if (conn->link)
 		disconnect_complete(conn->link->dev, conn->link->handle,
