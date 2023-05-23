@@ -101,6 +101,9 @@
 #define QOS_IN_1(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_FULL(0x01, BT_ISO_QOS_CIS_UNSET, \
 		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
+#define QOS_IN_2(_interval, _latency, _sdu, _phy, _rtn) \
+	QOS_FULL(0x02, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
 #define QOS_IN_1_1(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_FULL(0x01, 0x01, \
 		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
@@ -148,8 +151,12 @@
 
 /* One unidirectional CIS. Unicast Server is Audio Sink */
 #define AC_1_4 QOS_OUT(10000, 10, 40, 0x02, 2)
+/* One unidirectional CIS. Unicast Server is Audio Sink CIG 0x01 */
+#define AC_1_4_1 QOS_OUT_1(10000, 10, 40, 0x02, 2)
 /* One unidirectional CIS. Unicast Server is Audio Source. */
 #define AC_2_10 QOS_IN(10000, 10, 40, 0x02, 2)
+/* One unidirectional CIS. Unicast Server is Audio Source CIG 0x02 */
+#define AC_2_10_2 QOS_IN_2(10000, 10, 40, 0x02, 2)
 /* One bidirectional CIS. Unicast Server is Audio Sink and Audio Source. */
 #define AC_3_5 QOS(10000, 10, 40, 0x02, 2)
 /* Two unidirectional CISes. Unicast Server is Audio Sink.
@@ -552,20 +559,6 @@ static const struct iso_client_data connect_1_16_2_1 = {
 	.expect_err = 0
 };
 
-static const struct iso_client_data connect_ac_1_2_cig_1_2 = {
-	.qos = QOS_1_16_2_1,
-	.qos_2 = QOS_2_16_2_1,
-	.expect_err = 0,
-	.mcis = true,
-};
-
-static const struct iso_client_data connect_ac_1_2 = {
-	.qos = QOS_16_2_1,
-	.qos_2 = QOS_16_2_1,
-	.expect_err = 0,
-	.mcis = true,
-};
-
 static const struct iso_client_data connect_1_1_16_2_1 = {
 	.qos = QOS_1_1_16_2_1,
 	.expect_err = 0
@@ -916,6 +909,20 @@ static const struct iso_client_data connect_ac_11ii = {
 	.expect_err = 0,
 	.mcis = true,
 	.defer = true,
+};
+
+static const struct iso_client_data connect_ac_1_2 = {
+	.qos = AC_1_4,
+	.qos_2 = AC_2_10,
+	.expect_err = 0,
+	.mcis = true,
+};
+
+static const struct iso_client_data connect_ac_1_2_cig_1_2 = {
+	.qos = AC_1_4_1,
+	.qos_2 = AC_2_10_2,
+	.expect_err = 0,
+	.mcis = true,
 };
 
 static const struct iso_client_data bcast_16_2_1_send = {
