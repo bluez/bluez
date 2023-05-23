@@ -40,13 +40,13 @@
 #include "ll.h"
 #include "hwdb.h"
 #include "keys.h"
+#include "packet.h"
 #include "l2cap.h"
 #include "control.h"
 #include "vendor.h"
 #include "msft.h"
 #include "intel.h"
 #include "broadcom.h"
-#include "packet.h"
 
 #define COLOR_CHANNEL_LABEL		COLOR_WHITE
 #define COLOR_FRAME_LABEL		COLOR_WHITE
@@ -210,6 +210,7 @@ static void release_handle(uint16_t handle)
 				conn->destroy(conn->data);
 
 			queue_destroy(conn->tx_q, free);
+			queue_destroy(conn->chan_q, free);
 			memset(conn, 0, sizeof(*conn));
 			break;
 		}
@@ -10353,6 +10354,10 @@ static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 	print_field("Latency: %lld msec (%lld-%lld msec ~%lld msec)",
 			TV_MSEC(delta), TV_MSEC(conn->tx_min),
 			TV_MSEC(conn->tx_max), TV_MSEC(conn->tx_med));
+
+	l2cap_dequeue_frame(&delta, conn);
+
+	free(tx);
 }
 
 static void num_completed_packets_evt(struct timeval *tv, uint16_t index,

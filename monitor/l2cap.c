@@ -23,6 +23,7 @@
 #include "lib/uuid.h"
 
 #include "src/shared/util.h"
+#include "src/shared/queue.h"
 #include "bt.h"
 #include "packet.h"
 #include "display.h"
@@ -99,6 +100,9 @@ struct chan_data {
 	uint8_t  ext_ctrl;
 	uint8_t  seq_num;
 	uint16_t sdu;
+	struct timeval tx_min;
+	struct timeval tx_max;
+	struct timeval tx_med;
 };
 
 static struct chan_data chan_list[MAX_CHAN];
@@ -1538,6 +1542,23 @@ static const struct sig_opcode_data le_sig_opcode_table[] = {
 	{ },
 };
 
+static void l2cap_queue_frame(struct l2cap_frame *frame)
+{
+	struct packet_conn_data *conn;
+	struct l2cap_frame *tx;
+
+	conn = packet_get_conn_data(frame->handle);
+	if (!conn)
+		return;
+
+	if (!conn->chan_q)
+		conn->chan_q = queue_new();
+
+	tx = new0(struct l2cap_frame, 1);
+	memcpy(tx, frame, sizeof(*frame));
+	queue_push_tail(conn->chan_q, tx);
+}
+
 void l2cap_frame_init(struct l2cap_frame *frame, uint16_t index, bool in,
 				uint16_t handle, uint8_t ident,
 				uint16_t cid, uint16_t psm,
@@ -1554,6 +1575,9 @@ void l2cap_frame_init(struct l2cap_frame *frame, uint16_t index, bool in,
 	frame->psm     = psm ? psm : get_psm(frame);
 	frame->mode    = get_mode(frame);
 	frame->seq_num = psm ? 1 : get_seq_num(frame);
+
+	if (!in)
+		l2cap_queue_frame(frame);
 }
 
 static void bredr_sig_packet(uint16_t index, bool in, uint16_t handle,
@@ -2772,4 +2796,56 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 		packet_hexdump(data, size);
 		return;
 	}
+}
+
+#define TV_MSEC(_tv) (long long)((_tv)->tv_sec * 1000 + (_tv)->tv_usec / 1000)
+
+void l2cap_dequeue_frame(struct timeval *delta, struct packet_conn_data *conn)
+{
+	struct l2cap_frame *frame;
+	struct chan_data *chan;
+
+	frame = queue_pop_head(conn->chan_q);
+	if (!frame)
+		return;
+
+	chan = get_chan(frame);
+	if (!chan)
+		return;
+
+	if ((!timerisset(&chan->tx_min) || timercmp(delta, &chan->tx_min, <))
+				&& delta->tv_sec >= 0 && delta->tv_usec >= 0)
+		chan->tx_min = *delta;
+
+	if (!timerisset(&chan->tx_max) || timercmp(delta, &chan->tx_max, >))
+		chan->tx_max = *delta;
+
+	if (timerisset(&chan->tx_med)) {
+		struct timeval tmp;
+
+		timeradd(&chan->tx_med, delta, &tmp);
+
+		tmp.tv_sec /= 2;
+		tmp.tv_usec /= 2;
+		if (tmp.tv_sec % 2) {
+			tmp.tv_usec += 500000;
+			if (tmp.tv_usec >= 1000000) {
+				tmp.tv_sec++;
+				tmp.tv_usec -= 1000000;
+			}
+		}
+
+		chan->tx_med = tmp;
+	} else
+		chan->tx_med = *delta;
+
+	print_field("Channel: %d [PSM %d mode %s (0x%02x)] {chan %d}",
+			frame->cid, frame->psm, mode2str(frame->mode),
+			frame->mode, frame->chan);
+
+	print_field("Channel Latency: %lld msec (%lld-%lld msec ~%lld msec)",
+			TV_MSEC(delta), TV_MSEC(&chan->tx_min),
+			TV_MSEC(&chan->tx_max), TV_MSEC(&chan->tx_med));
+
+	free(frame);
 }

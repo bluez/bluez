@@ -32,6 +32,7 @@ struct packet_conn_data {
 	uint8_t  dst[6];
 	uint8_t  dst_type;
 	struct queue *tx_q;
+	struct queue *chan_q;
 	struct timeval tx_min;
 	struct timeval tx_max;
 	struct timeval tx_med;
