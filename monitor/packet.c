@@ -315,13 +315,33 @@ void packet_set_msft_evt_prefix(const uint8_t *prefix, uint8_t len)
 		memcpy(index_list[index_current].msft_evt_prefix, prefix, len);
 }
 
+static void cred_pid(struct ucred *cred, char *str, size_t len)
+{
+	char *path = alloca(24);
+	char line[128];
+	FILE *fp;
+
+	snprintf(path, 23, "/proc/%u/comm", cred->pid);
+
+	fp = fopen(path, "re");
+	if (fp) {
+		if (fgets(line, sizeof(line), fp)) {
+			line[strcspn(line, "\r\n")] = '\0';
+			snprintf(str, len, "%s[%u]", line, cred->pid);
+		} else
+			snprintf(str, len, "[%u]", cred->pid);
+		fclose(fp);
+	} else
+		snprintf(str, len, "[%u]", cred->pid);
+}
+
 static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 					uint16_t index, const char *channel,
 					const char *color, const char *label,
 					const char *text, const char *extra)
 {
 	int col = num_columns();
-	char line[256], ts_str[96];
+	char line[256], ts_str[96], pid_str[140];
 	int n, ts_len = 0, ts_pos = 0, len = 0, pos = 0;
 	static size_t last_frame;
 
@@ -418,7 +438,13 @@ static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 			pos += n;
 	}
 
-	n = sprintf(line + pos, "%c %s", ident, label ? label : "");
+	if (cred) {
+		cred_pid(cred, pid_str, sizeof(pid_str));
+		n = sprintf(line + pos, "%s: %c %s", pid_str, ident,
+						label ? label : "");
+	} else
+		n = sprintf(line + pos, "%c %s", ident, label ? label : "");
+
 	if (n > 0) {
 		pos += n;
 		len += n;
@@ -12091,7 +12117,6 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 					const char *ident, const void *data,
 					uint16_t size)
 {
-	char pid_str[140];
 	const char *label;
 	const char *color;
 
@@ -12117,26 +12142,7 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 	}
 
 	if (cred) {
-		char *path = alloca(24);
-		char line[128];
-		FILE *fp;
-
-		snprintf(path, 23, "/proc/%u/comm", cred->pid);
-
-		fp = fopen(path, "re");
-		if (fp) {
-			if (fgets(line, sizeof(line), fp)) {
-				line[strcspn(line, "\r\n")] = '\0';
-				snprintf(pid_str, sizeof(pid_str), "%s[%u]",
-							line, cred->pid);
-			} else
-				snprintf(pid_str, sizeof(pid_str), "%u",
-								cred->pid);
-			fclose(fp);
-		} else
-			snprintf(pid_str, sizeof(pid_str), "%u", cred->pid);
-
-		label = pid_str;
+		label = NULL;
         } else {
 		if (ident)
 			label = ident;
@@ -12146,8 +12152,8 @@ void packet_user_logging(struct timeval *tv, struct ucred *cred,
 
 	if (ident && (ident[0] == '<' || ident[0] == '>')) {
 		packet_decode(tv, cred, ident[0], index, color,
-				label == ident ? &ident[2] : label,
-				data, size);
+			      label == ident ? &ident[2] : label,
+			      data, size);
 		return;
 	}
 
