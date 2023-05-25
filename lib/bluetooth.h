@@ -150,6 +150,9 @@ struct bt_voice {
 #define BT_ISO_QOS_BIG_UNSET	0xff
 #define BT_ISO_QOS_BIS_UNSET	0xff
 
+#define BT_ISO_QOS_GROUP_UNSET	0xff
+#define BT_ISO_QOS_STREAM_UNSET	0xff
+
 struct bt_iso_io_qos {
 	uint32_t interval;
 	uint16_t latency;
@@ -184,6 +187,13 @@ struct bt_iso_bcast_qos {
 	uint8_t  sync_cte_type;
 	uint8_t  mse;
 	uint16_t timeout;
+};
+
+/* (HCI_MAX_PER_AD_LENGTH - EIR_SERVICE_DATA_LENGTH) */
+#define BASE_MAX_LENGTH 248
+struct bt_iso_base {
+	uint8_t base_len;
+	uint8_t base[BASE_MAX_LENGTH];
 };
 
 struct bt_iso_qos {
