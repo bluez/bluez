@@ -70,6 +70,7 @@ struct set_opts {
 	uint32_t priority;
 	uint16_t voice;
 	struct bt_iso_qos qos;
+	struct bt_iso_base base;
 };
 
 struct connect {
@@ -858,7 +859,7 @@ voice:
 	return TRUE;
 }
 
-static gboolean iso_set(int sock, struct bt_iso_qos *qos, GError **err)
+static gboolean iso_set_qos(int sock, struct bt_iso_qos *qos, GError **err)
 {
 	if (setsockopt(sock, SOL_BLUETOOTH, BT_ISO_QOS, qos,
 				sizeof(*qos)) < 0) {
@@ -869,6 +870,16 @@ static gboolean iso_set(int sock, struct bt_iso_qos *qos, GError **err)
 	return TRUE;
 }
 
+static gboolean iso_set_base(int sock, struct bt_iso_base *base, GError **err)
+{
+	if (setsockopt(sock, SOL_BLUETOOTH, BT_ISO_BASE, base->base,
+			base->base_len) < 0) {
+		ERROR_FAILED(err, "setsockopt(BT_ISO_BASE)", errno);
+		return FALSE;
+	}
+
+	return TRUE;
+}
 static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 						BtIOOption opt1, va_list args)
 {
@@ -965,6 +976,9 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			break;
 		case BT_IO_OPT_QOS:
 			opts->qos = *va_arg(args, struct bt_iso_qos *);
+			break;
+		case BT_IO_OPT_BASE:
+			opts->base = *va_arg(args, struct bt_iso_base *);
 			break;
 		case BT_IO_OPT_INVALID:
 		case BT_IO_OPT_KEY_SIZE:
@@ -1290,6 +1304,7 @@ parse_opts:
 		case BT_IO_OPT_MTU:
 		case BT_IO_OPT_VOICE:
 		case BT_IO_OPT_QOS:
+		case BT_IO_OPT_BASE:
 		default:
 			g_set_error(err, BT_IO_ERROR, EINVAL,
 					"Unknown option %d", opt);
@@ -1444,6 +1459,7 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 		case BT_IO_OPT_PRIORITY:
 		case BT_IO_OPT_VOICE:
 		case BT_IO_OPT_QOS:
+		case BT_IO_OPT_BASE:
 		case BT_IO_OPT_INVALID:
 		default:
 			g_set_error(err, BT_IO_ERROR, EINVAL,
@@ -1554,6 +1570,7 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_PRIORITY:
 		case BT_IO_OPT_VOICE:
 		case BT_IO_OPT_QOS:
+		case BT_IO_OPT_BASE:
 		case BT_IO_OPT_INVALID:
 		default:
 			g_set_error(err, BT_IO_ERROR, EINVAL,
@@ -1627,6 +1644,7 @@ static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_QOS:
 			*(va_arg(args, struct bt_iso_qos *)) = qos;
 			break;
+		case BT_IO_OPT_BASE:
 		case BT_IO_OPT_HANDLE:
 		case BT_IO_OPT_CLASS:
 		case BT_IO_OPT_DEFER_TIMEOUT:
@@ -1740,7 +1758,7 @@ gboolean bt_io_set(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 	case BT_IO_SCO:
 		return sco_set(sock, opts.mtu, opts.voice, err);
 	case BT_IO_ISO:
-		return iso_set(sock, &opts.qos, err);
+		return iso_set_qos(sock, &opts.qos, err);
 	case BT_IO_INVALID:
 	default:
 		g_set_error(err, BT_IO_ERROR, EINVAL,
@@ -1820,7 +1838,9 @@ static GIOChannel *create_io(gboolean server, struct set_opts *opts,
 		}
 		if (iso_bind(sock, &opts->src, opts->src_type, err) < 0)
 			goto failed;
-		if (!iso_set(sock, &opts->qos, err))
+		if (!iso_set_qos(sock, &opts->qos, err))
+			goto failed;
+		if (!iso_set_base(sock, &opts->base, err))
 			goto failed;
 		break;
 	case BT_IO_INVALID:
