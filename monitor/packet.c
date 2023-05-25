@@ -12802,7 +12802,9 @@ static const struct bitfield_data mgmt_settings_table[] = {
 	{ 17, "Wideband Speech"		},
 	{ 18, "CIS Central"		},
 	{ 19, "CIS Peripheral"		},
-	{ }
+	{ 20, "ISO Broadcaster"		},
+	{ 21, "Sync Receiver"		},
+	{}
 };
 
 static void mgmt_print_settings(const char *label, uint32_t settings)
