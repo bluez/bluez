@@ -599,6 +599,17 @@ Methods		void SetConfiguration(object transport, dict properties)
 				uint16 Latency [ISO only]
 				uint32 Delay [ISO only]
 				uint8 TargetLatency [ISO Latency]
+				byte BIG [ISO broadcast only]
+				byte BIS [ISO broadcast only]
+				byte SyncInterval [ISO broadcast only]
+				byte Encryption [ISO broadcast only]
+				byte Options [ISO broadcast only]
+				uint16 Skip [ISO broadcast only]
+				uint16 SyncTimeout [ISO broadcast only]
+				byte SyncCteType [ISO broadcast only]
+				byte MSE [ISO broadcast only]
+				uint16 Timeout [ISO broadcast only]
+				array{byte} BroadcastCode [ISO broadcast only]
 
 		array{byte} SelectConfiguration(array{byte} capabilities)
 
