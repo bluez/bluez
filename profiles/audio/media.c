@@ -2821,9 +2821,6 @@ static void client_ready_cb(GDBusClient *client, void *user_data)
 		goto reply;
 	}
 
-	queue_foreach(app->proxies, app_register_endpoint, app);
-	queue_foreach(app->proxies, app_register_player, app);
-
 	if (app->err) {
 		if (app->err == -EPROTONOSUPPORT)
 			reply = btd_error_not_supported(app->reg);
@@ -2867,6 +2864,10 @@ static void proxy_added_cb(GDBusProxy *proxy, void *user_data)
 	path = g_dbus_proxy_get_path(proxy);
 
 	DBG("Proxy added: %s, iface: %s", path, iface);
+
+	app_register_endpoint(proxy, app);
+	app_register_player(proxy, app);
+
 }
 
 static bool match_endpoint_by_path(const void *a, const void *b)
