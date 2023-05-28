@@ -5903,6 +5903,38 @@ static int cmd_set_cig_params_test(struct btdev *dev, const void *data,
 
 static int cmd_create_cis(struct btdev *dev, const void *data, uint8_t len)
 {
+	const struct bt_hci_cmd_le_create_cis *cmd = data;
+	int i, j;
+
+	for (i = 0; i < cmd->num_cis; i++) {
+		const struct bt_hci_cis *cis = &cmd->cis[i];
+		struct btdev_conn *acl;
+		struct btdev_conn *iso;
+		int cig_idx, cis_idx;
+
+		/* Check for errors (Core v5.3 Vol 4 Part E Sec. 7.8.99) */
+		for (j = 0; j < i; j++)
+			if (cis->cis_handle == cmd->cis[j].cis_handle)
+				return -EINVAL;
+
+		cig_idx = parse_cis_handle(le16_to_cpu(cis->cis_handle),
+								&cis_idx);
+		if (cig_idx < 0)
+			return -ENOENT;
+		if (cis_idx >= dev->le_cig[cig_idx].params.num_cis)
+			return -ENOENT;
+
+		acl = queue_find(dev->conns, match_handle,
+				 UINT_TO_PTR(le16_to_cpu(cis->acl_handle)));
+		if (!acl)
+			return -ENOENT;
+
+		iso = queue_find(dev->conns, match_handle,
+				 UINT_TO_PTR(le16_to_cpu(cis->cis_handle)));
+		if (iso)
+			return -EEXIST;
+	}
+
 	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_CREATE_CIS);
 
 	return 0;
@@ -7141,6 +7173,12 @@ static const struct btdev_cmd *run_cmd(struct btdev *btdev,
 		break;
 	case -EPERM:
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		break;
+	case -EEXIST:
+		status = BT_HCI_ERR_CONN_ALREADY_EXISTS;
+		break;
+	case -ENOENT:
+		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
 		break;
 	default:
 		status = BT_HCI_ERR_UNSPECIFIED_ERROR;
