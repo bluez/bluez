@@ -839,12 +839,30 @@ static const struct iso_client_data connect_ac_6i = {
 	.defer = true,
 };
 
+static const struct iso_client_data reconnect_ac_6i = {
+	.qos = AC_6i_1,
+	.qos_2 = AC_6i_2,
+	.expect_err = 0,
+	.mcis = true,
+	.defer = true,
+	.disconnect = true,
+};
+
 static const struct iso_client_data connect_ac_6ii = {
 	.qos = AC_6ii_1,
 	.qos_2 = AC_6ii_2,
 	.expect_err = 0,
 	.mcis = true,
 	.defer = true,
+};
+
+static const struct iso_client_data reconnect_ac_6ii = {
+	.qos = AC_6ii_1,
+	.qos_2 = AC_6ii_2,
+	.expect_err = 0,
+	.mcis = true,
+	.defer = true,
+	.disconnect = true,
 };
 
 static const struct iso_client_data connect_ac_7i = {
@@ -1626,7 +1644,7 @@ static void iso_send(struct test_data *data, GIOChannel *io)
 		iso_recv(data, io);
 }
 
-static void setup_connect(struct test_data *data, uint8_t num, GIOFunc func);
+static void test_connect(const void *test_data);
 static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data);
 
@@ -1642,7 +1660,7 @@ static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 
 		if (data->reconnect) {
 			data->reconnect = false;
-			setup_connect(data, 0, iso_connect_cb);
+			test_connect(data->test_data);
 			return FALSE;
 		}
 
@@ -1885,17 +1903,12 @@ static void test_connect(const void *test_data)
 	setup_connect_many(data, n, num, func);
 }
 
-static void setup_reconnect(struct test_data *data, uint8_t num, GIOFunc func)
-{
-	data->reconnect = true;
-	setup_connect(data, num, func);
-}
-
 static void test_reconnect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	setup_reconnect(data, 0, iso_connect_cb);
+	data->reconnect = true;
+	test_connect(test_data);
 }
 
 static void test_defer(const void *test_data)
@@ -2409,6 +2422,14 @@ int main(int argc, char *argv[])
 							&connect_ac_1_2_cig_1_2,
 							setup_powered,
 							test_connect2_seq);
+
+	test_iso2("ISO Reconnect AC 6(i) - Success", &reconnect_ac_6i,
+							setup_powered,
+							test_reconnect);
+
+	test_iso2("ISO Reconnect AC 6(ii) - Success", &reconnect_ac_6ii,
+							setup_powered,
+							test_reconnect);
 
 	test_iso("ISO Broadcaster - Success", &bcast_16_2_1_send, setup_powered,
 							test_bcast);
