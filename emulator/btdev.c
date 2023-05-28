@@ -105,6 +105,7 @@ struct le_ext_adv {
 struct le_cig {
 	struct bt_hci_cmd_le_set_cig_params params;
 	struct bt_hci_cis_params cis[CIS_SIZE];
+	bool activated;
 } __attribute__ ((packed));
 
 struct btdev {
@@ -5864,29 +5865,24 @@ static int cmd_set_cig_params(struct btdev *dev, const void *data,
 		goto done;
 	}
 
+	/* BLUETOOTH CORE SPECIFICATION Version 5.3 | Vol 4, Part E
+	 * page 2553
+	 *
+	 * If the Host issues this command when the CIG is not in the
+	 * configurable state, the Controller shall return the error
+	 * code Command Disallowed (0x0C).
+	 */
+	if (dev->le_cig[cig_idx].activated) {
+		rsp.params.status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
+
 	rsp.params.status = BT_HCI_ERR_SUCCESS;
 	rsp.params.cig_id = cmd->cig_id;
 
 	for (i = 0; i < cmd->num_cis; i++) {
-		struct btdev_conn *iso;
-
 		rsp.params.num_handles++;
 		rsp.handle[i] = cpu_to_le16(make_cis_handle(cig_idx, i));
-
-		/* BLUETOOTH CORE SPECIFICATION Version 5.3 | Vol 4, Part E
-		 * page 2553
-		 *
-		 * If the Host issues this command when the CIG is not in the
-		 * configurable state, the Controller shall return the error
-		 * code Command Disallowed (0x0C).
-		 */
-		iso = queue_find(dev->conns, match_handle,
-				UINT_TO_PTR(le16_to_cpu(rsp.handle[i])));
-		if (iso) {
-			rsp.params.status = BT_HCI_ERR_COMMAND_DISALLOWED;
-			i = 0;
-			goto done;
-		}
 	}
 
 	memcpy(&dev->le_cig[cig_idx], data, len);
@@ -6005,6 +6001,8 @@ static int cmd_create_cis_complete(struct btdev *dev, const void *data,
 		evt.cis_handle = cpu_to_le16(iso->handle);
 		evt.cig_id = le_cig->params.cig_id;
 		evt.cis_id = le_cig->cis[cis_idx].cis_id;
+
+		le_cig->activated = true;
 
 		le_meta_event(iso->link->dev, BT_HCI_EVT_LE_CIS_REQ, &evt,
 					sizeof(evt));
