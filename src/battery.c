@@ -288,16 +288,16 @@ static void provided_battery_added_cb(GDBusProxy *proxy, void *user_data)
 	uint8_t percentage;
 	DBusMessageIter iter;
 
+	if (strcmp(g_dbus_proxy_get_interface(proxy),
+		   BATTERY_PROVIDER_INTERFACE) != 0)
+		return;
+
 	if (g_dbus_proxy_get_property(proxy, "Device", &iter) == FALSE) {
 		warn("Battery object %s does not specify device path", path);
 		return;
 	}
 
 	dbus_message_iter_get_basic(&iter, &export_path);
-
-	if (strcmp(g_dbus_proxy_get_interface(proxy),
-		   BATTERY_PROVIDER_INTERFACE) != 0)
-		return;
 
 	device = btd_adapter_find_device_by_path(provider->manager->adapter,
 						 export_path);
@@ -341,14 +341,14 @@ static void provided_battery_removed_cb(GDBusProxy *proxy, void *user_data)
 	const char *export_path;
 	DBusMessageIter iter;
 
+	if (strcmp(g_dbus_proxy_get_interface(proxy),
+		   BATTERY_PROVIDER_INTERFACE) != 0)
+		return;
+
 	if (g_dbus_proxy_get_property(proxy, "Device", &iter) == FALSE)
 		return;
 
 	dbus_message_iter_get_basic(&iter, &export_path);
-
-	if (strcmp(g_dbus_proxy_get_interface(proxy),
-		   BATTERY_PROVIDER_INTERFACE) != 0)
-		return;
 
 	DBG("provided battery removed %s", g_dbus_proxy_get_path(proxy));
 
