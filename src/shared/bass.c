@@ -567,7 +567,8 @@ static void bass_new(struct bt_bass_db *bdb)
 		gatt_db_service_add_characteristic(bdb->service,
 				&uuid,
 				BT_ATT_PERM_WRITE,
-				BT_GATT_CHRC_PROP_WRITE,
+				BT_GATT_CHRC_PROP_WRITE |
+				BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP,
 				NULL, bass_bcast_audio_scan_cp_write,
 				bdb);
 
