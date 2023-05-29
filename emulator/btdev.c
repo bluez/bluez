@@ -6131,35 +6131,49 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 	const struct bt_hci_cmd_le_create_big *cmd = data;
 	const struct bt_hci_bis *bis = &cmd->bis;
 	int i;
+	struct bt_hci_evt_le_big_complete evt;
+	uint16_t *bis_handle;
+	uint8_t *pdu;
+	uint8_t pdu_len;
+
+	pdu_len = sizeof(evt) + cmd->num_bis * sizeof(*bis_handle);
+
+	pdu = malloc(pdu_len);
+	if (!pdu)
+		return -ENOMEM;
+
+	bis_handle = (uint16_t *)(pdu + sizeof(evt));
+
+	memset(&evt, 0, sizeof(evt));
 
 	for (i = 0; i < cmd->num_bis; i++) {
 		struct btdev_conn *conn;
-		struct {
-			struct bt_hci_evt_le_big_complete evt;
-			uint16_t handle;
-		} pdu;
 
-		memset(&pdu, 0, sizeof(pdu));
-
-		conn = conn_add_bis(dev, ISO_HANDLE, bis);
+		conn = conn_add_bis(dev, ISO_HANDLE + i, bis);
 		if (!conn) {
-			pdu.evt.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+			evt.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 			goto done;
 		}
 
-		pdu.evt.handle = cmd->handle;
-		pdu.evt.num_bis++;
-		pdu.evt.phy = bis->phy;
-		pdu.evt.max_pdu = bis->sdu;
-		memcpy(pdu.evt.sync_delay, bis->sdu_interval, 3);
-		memcpy(pdu.evt.latency, bis->sdu_interval, 3);
-		pdu.evt.interval = bis->latency / 1.25;
-		pdu.handle = cpu_to_le16(conn->handle);
+		*bis_handle = cpu_to_le16(conn->handle);
+		bis_handle++;
+	}
+
+	evt.handle = cmd->handle;
+	evt.phy = bis->phy;
+	evt.max_pdu = bis->sdu;
+	memcpy(evt.sync_delay, bis->sdu_interval, 3);
+	memcpy(evt.latency, bis->sdu_interval, 3);
+	evt.interval = bis->latency / 1.25;
+	evt.num_bis = cmd->num_bis;
 
 done:
-		le_meta_event(dev, BT_HCI_EVT_LE_BIG_COMPLETE, &pdu,
-					sizeof(pdu));
-	}
+	memcpy(pdu, &evt, sizeof(evt));
+
+	le_meta_event(dev, BT_HCI_EVT_LE_BIG_COMPLETE, pdu,
+						pdu_len);
+
+	free(pdu);
 
 	return 0;
 }
