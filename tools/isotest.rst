@@ -172,6 +172,10 @@ OPTIONS
 
 -k, --bcode=<BCODE>  Socket QoS Broadcast Code
 
+-N, --nbis=<NBIS>  Number of BISes to create as part of a
+                   BIG (BIS broadcaster) or to synchronize
+                   to (BIS broadcast receiver)
+
 EXAMPLES
 ========
 
