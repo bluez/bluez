@@ -438,7 +438,7 @@ static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 			pos += n;
 	}
 
-	if (cred) {
+	if (cred && cred->pid) {
 		cred_pid(cred, pid_str, sizeof(pid_str));
 		n = sprintf(line + pos, "%s: %c %s", pid_str, ident,
 						label ? label : "");
