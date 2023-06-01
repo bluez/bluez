@@ -2922,9 +2922,6 @@ static void read_source_pac_loc(bool success, uint8_t att_ecode,
 
 	pacs->source_loc_value = get_le32(value);
 
-	gatt_db_attribute_write(pacs->source_loc, 0, value, length, 0, NULL,
-							NULL, NULL);
-
 	/* Resume reading sinks if supported but for some reason is empty */
 	if (pacs->source && queue_isempty(bap->rdb->sources)) {
 		uint16_t value_handle;
@@ -2957,9 +2954,6 @@ static void read_sink_pac_loc(bool success, uint8_t att_ecode,
 	}
 
 	pacs->sink_loc_value = get_le32(value);
-
-	gatt_db_attribute_write(pacs->sink_loc, 0, value, length, 0, NULL,
-							NULL, NULL);
 
 	/* Resume reading sinks if supported but for some reason is empty */
 	if (pacs->sink && queue_isempty(bap->rdb->sinks)) {
@@ -2994,9 +2988,6 @@ static void read_pac_context(bool success, uint8_t att_ecode,
 
 	pacs->sink_context_value = le16_to_cpu(ctx->snk);
 	pacs->source_context_value = le16_to_cpu(ctx->src);
-
-	gatt_db_attribute_write(pacs->context, 0, value, length, 0, NULL,
-							NULL, NULL);
 }
 
 static void read_pac_supported_context(bool success, uint8_t att_ecode,
@@ -3020,9 +3011,6 @@ static void read_pac_supported_context(bool success, uint8_t att_ecode,
 
 	pacs->supported_sink_context_value = le16_to_cpu(ctx->snk);
 	pacs->supported_source_context_value = le16_to_cpu(ctx->src);
-
-	gatt_db_attribute_write(pacs->supported_context, 0, value, length, 0,
-							NULL, NULL, NULL);
 }
 
 static void foreach_pacs_char(struct gatt_db_attribute *attr, void *user_data)
