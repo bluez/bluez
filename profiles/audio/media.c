@@ -1024,6 +1024,54 @@ static void pac_config_cb(struct media_endpoint *endpoint, void *ret, int size,
 	data->cb(data->stream, ret_value ? 0 : -EINVAL);
 }
 
+static struct media_transport *pac_ucast_config(struct bt_bap_stream *stream,
+						struct iovec *cfg,
+						struct media_endpoint *endpoint)
+{
+	struct bt_bap *bap = bt_bap_stream_get_session(stream);
+	struct btd_service *service = bt_bap_get_user_data(bap);
+	struct btd_device *device;
+	const char *path;
+
+	if (service)
+		device = btd_service_get_device(service);
+	else {
+		struct bt_att *att = bt_bap_get_att(bap);
+		int fd = bt_att_get_fd(att);
+
+		device = btd_adapter_find_device_by_fd(fd);
+	}
+
+	if (!device) {
+		error("Unable to find device");
+		return NULL;
+	}
+
+	path = bt_bap_stream_get_user_data(stream);
+
+	return media_transport_create(device, path, cfg->iov_base, cfg->iov_len,
+					endpoint, stream);
+}
+
+static struct media_transport *pac_bcast_config(struct bt_bap_stream *stream,
+						struct iovec *cfg,
+						struct media_endpoint *endpoint)
+{
+	struct bt_bap *bap = bt_bap_stream_get_session(stream);
+	struct btd_adapter *adapter = bt_bap_get_user_data(bap);
+	const char *path;
+
+	if (!adapter) {
+		error("Unable to find adapter");
+		return NULL;
+	}
+
+	path = bt_bap_stream_get_user_data(stream);
+
+	return media_transport_create(NULL, path, cfg->iov_base, cfg->iov_len,
+					endpoint, stream);
+}
+
 static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 			struct bt_bap_qos *qos, bt_bap_pac_config_t cb,
 			void *user_data)
@@ -1040,29 +1088,15 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 
 	transport = find_transport(endpoint, stream);
 	if (!transport) {
-		struct bt_bap *bap = bt_bap_stream_get_session(stream);
-		struct btd_service *service = bt_bap_get_user_data(bap);
-		struct btd_device *device;
-
-		if (service)
-			device = btd_service_get_device(service);
-		else {
-			struct bt_att *att = bt_bap_get_att(bap);
-			int fd = bt_att_get_fd(att);
-
-			device = btd_adapter_find_device_by_fd(fd);
+		switch (bt_bap_stream_get_type(stream)) {
+		case BT_BAP_STREAM_TYPE_UCAST:
+			transport = pac_ucast_config(stream, cfg, endpoint);
+			break;
+		case BT_BAP_STREAM_TYPE_BCAST:
+			transport = pac_bcast_config(stream, cfg, endpoint);
+			break;
 		}
 
-		if (!device) {
-			error("Unable to find device");
-			return -EINVAL;
-		}
-
-		path = bt_bap_stream_get_user_data(stream);
-
-		transport = media_transport_create(device, path, cfg->iov_base,
-							cfg->iov_len, endpoint,
-							stream);
 		if (!transport)
 			return -EINVAL;
 
@@ -1198,6 +1232,12 @@ static bool endpoint_init_pac_source(struct media_endpoint *endpoint, int *err)
 	return endpoint_init_pac(endpoint, BT_BAP_SOURCE, err);
 }
 
+static bool endpoint_init_broadcast_source(struct media_endpoint *endpoint,
+						int *err)
+{
+	return endpoint_init_pac(endpoint, BT_BAP_BCAST_SOURCE, err);
+}
+
 static bool endpoint_properties_exists(const char *uuid,
 						struct btd_device *dev,
 						void *user_data)
@@ -1300,6 +1340,17 @@ static bool experimental_endpoint_supported(struct btd_adapter *adapter)
 	return g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
 }
 
+static bool experimental_broadcaster_ep_supported(struct btd_adapter *adapter)
+{
+	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET))
+		return false;
+
+	if (!btd_adapter_has_settings(adapter, MGMT_SETTING_ISO_BROADCASTER))
+		return false;
+
+	return g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
+}
+
 static struct media_endpoint_init {
 	const char *uuid;
 	bool (*func)(struct media_endpoint *endpoint, int *err);
@@ -1313,6 +1364,8 @@ static struct media_endpoint_init {
 				experimental_endpoint_supported },
 	{ PAC_SOURCE_UUID, endpoint_init_pac_source,
 				experimental_endpoint_supported },
+	{ BAA_SERVICE_UUID, endpoint_init_broadcast_source,
+			experimental_broadcaster_ep_supported },
 };
 
 static struct media_endpoint *
@@ -3185,4 +3238,10 @@ const char *media_endpoint_get_uuid(struct media_endpoint *endpoint)
 uint8_t media_endpoint_get_codec(struct media_endpoint *endpoint)
 {
 	return endpoint->codec;
+}
+
+struct btd_adapter *media_endpoint_get_btd_adapter(
+					struct media_endpoint *endpoint)
+{
+	return endpoint->adapter->btd_adapter;
 }
