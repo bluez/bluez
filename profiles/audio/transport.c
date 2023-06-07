@@ -5,6 +5,7 @@
  *
  *  Copyright (C) 2006-2007  Nokia Corporation
  *  Copyright (C) 2004-2009  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -828,7 +829,7 @@ static gboolean qos_exists(const GDBusPropertyTable *property, void *data)
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	return bap->qos.phy != 0x00;
+	return bap->qos.ucast.io_qos.phy != 0x00;
 }
 
 static gboolean get_cig(const GDBusPropertyTable *property,
@@ -838,7 +839,7 @@ static gboolean get_cig(const GDBusPropertyTable *property,
 	struct bap_transport *bap = transport->data;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-							&bap->qos.cig_id);
+							&bap->qos.ucast.cig_id);
 
 	return TRUE;
 }
@@ -850,7 +851,7 @@ static gboolean get_cis(const GDBusPropertyTable *property,
 	struct bap_transport *bap = transport->data;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-							&bap->qos.cis_id);
+							&bap->qos.ucast.cis_id);
 
 	return TRUE;
 }
@@ -862,7 +863,7 @@ static gboolean get_interval(const GDBusPropertyTable *property,
 	struct bap_transport *bap = transport->data;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
-							&bap->qos.interval);
+					&bap->qos.ucast.io_qos.interval);
 
 	return TRUE;
 }
@@ -872,7 +873,7 @@ static gboolean get_framing(const GDBusPropertyTable *property,
 {
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
-	dbus_bool_t val = bap->qos.framing;
+	dbus_bool_t val = bap->qos.ucast.framing;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
 
@@ -885,7 +886,8 @@ static gboolean get_phy(const GDBusPropertyTable *property,
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &bap->qos.phy);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
+					&bap->qos.ucast.io_qos.phy);
 
 	return TRUE;
 }
@@ -896,7 +898,8 @@ static gboolean get_sdu(const GDBusPropertyTable *property,
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &bap->qos.sdu);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+					&bap->qos.ucast.io_qos.sdu);
 
 	return TRUE;
 }
@@ -907,7 +910,8 @@ static gboolean get_retransmissions(const GDBusPropertyTable *property,
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &bap->qos.rtn);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
+					&bap->qos.ucast.io_qos.rtn);
 
 	return TRUE;
 }
@@ -919,7 +923,7 @@ static gboolean get_latency(const GDBusPropertyTable *property,
 	struct bap_transport *bap = transport->data;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-							&bap->qos.latency);
+					&bap->qos.ucast.io_qos.latency);
 
 	return TRUE;
 }
@@ -930,7 +934,8 @@ static gboolean get_delay(const GDBusPropertyTable *property,
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &bap->qos.delay);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
+						&bap->qos.ucast.delay);
 
 	return TRUE;
 }

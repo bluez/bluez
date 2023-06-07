@@ -712,12 +712,15 @@ static void test_disc(void)
 #define QOS_BALANCED_2M \
 	{ \
 		.target_latency = BT_BAP_CONFIG_LATENCY_BALANCED, \
-		.phy = BT_BAP_CONFIG_PHY_2M, \
+		.io_qos.phy = BT_BAP_CONFIG_PHY_2M, \
 	}
-
+#define QOS_UCAST \
+{\
+	.ucast = QOS_BALANCED_2M, \
+}
 static struct test_config cfg_snk_8_1 = {
 	.cc = LC3_CONFIG_8_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -727,7 +730,7 @@ static struct test_config cfg_snk_8_1 = {
 
 static struct test_config cfg_snk_8_2 = {
 	.cc = LC3_CONFIG_8_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -737,7 +740,7 @@ static struct test_config cfg_snk_8_2 = {
 
 static struct test_config cfg_snk_16_1 = {
 	.cc = LC3_CONFIG_16_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -747,7 +750,7 @@ static struct test_config cfg_snk_16_1 = {
 
 static struct test_config cfg_snk_16_2 = {
 	.cc = LC3_CONFIG_16_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -757,7 +760,7 @@ static struct test_config cfg_snk_16_2 = {
 
 static struct test_config cfg_snk_24_1 = {
 	.cc = LC3_CONFIG_24_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -767,7 +770,7 @@ static struct test_config cfg_snk_24_1 = {
 
 static struct test_config cfg_snk_24_2 = {
 	.cc = LC3_CONFIG_24_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -777,7 +780,7 @@ static struct test_config cfg_snk_24_2 = {
 
 static struct test_config cfg_snk_32_1 = {
 	.cc = LC3_CONFIG_32_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -787,7 +790,7 @@ static struct test_config cfg_snk_32_1 = {
 
 static struct test_config cfg_snk_32_2 = {
 	.cc = LC3_CONFIG_32_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -797,7 +800,7 @@ static struct test_config cfg_snk_32_2 = {
 
 static struct test_config cfg_snk_44_1 = {
 	.cc = LC3_CONFIG_44_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -807,7 +810,7 @@ static struct test_config cfg_snk_44_1 = {
 
 static struct test_config cfg_snk_44_2 = {
 	.cc = LC3_CONFIG_44_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -817,7 +820,7 @@ static struct test_config cfg_snk_44_2 = {
 
 static struct test_config cfg_snk_48_1 = {
 	.cc = LC3_CONFIG_48_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -827,7 +830,7 @@ static struct test_config cfg_snk_48_1 = {
 
 static struct test_config cfg_snk_48_2 = {
 	.cc = LC3_CONFIG_48_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -837,7 +840,7 @@ static struct test_config cfg_snk_48_2 = {
 
 static struct test_config cfg_snk_48_3 = {
 	.cc = LC3_CONFIG_48_3,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -847,7 +850,7 @@ static struct test_config cfg_snk_48_3 = {
 
 static struct test_config cfg_snk_48_4 = {
 	.cc = LC3_CONFIG_48_4,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -857,7 +860,7 @@ static struct test_config cfg_snk_48_4 = {
 
 static struct test_config cfg_snk_48_5 = {
 	.cc = LC3_CONFIG_48_5,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -867,7 +870,7 @@ static struct test_config cfg_snk_48_5 = {
 
 static struct test_config cfg_snk_48_6 = {
 	.cc = LC3_CONFIG_48_6,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 };
 
@@ -899,7 +902,7 @@ static struct test_config cfg_snk_48_6 = {
 
 static struct test_config cfg_src_8_1 = {
 	.cc = LC3_CONFIG_8_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -909,7 +912,7 @@ static struct test_config cfg_src_8_1 = {
 
 static struct test_config cfg_src_8_2 = {
 	.cc = LC3_CONFIG_8_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -919,7 +922,7 @@ static struct test_config cfg_src_8_2 = {
 
 static struct test_config cfg_src_16_1 = {
 	.cc = LC3_CONFIG_16_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -929,7 +932,7 @@ static struct test_config cfg_src_16_1 = {
 
 static struct test_config cfg_src_16_2 = {
 	.cc = LC3_CONFIG_16_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -939,7 +942,7 @@ static struct test_config cfg_src_16_2 = {
 
 static struct test_config cfg_src_24_1 = {
 	.cc = LC3_CONFIG_24_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -949,7 +952,7 @@ static struct test_config cfg_src_24_1 = {
 
 static struct test_config cfg_src_24_2 = {
 	.cc = LC3_CONFIG_24_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -959,7 +962,7 @@ static struct test_config cfg_src_24_2 = {
 
 static struct test_config cfg_src_32_1 = {
 	.cc = LC3_CONFIG_32_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -969,7 +972,7 @@ static struct test_config cfg_src_32_1 = {
 
 static struct test_config cfg_src_32_2 = {
 	.cc = LC3_CONFIG_32_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -979,7 +982,7 @@ static struct test_config cfg_src_32_2 = {
 
 static struct test_config cfg_src_44_1 = {
 	.cc = LC3_CONFIG_44_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -989,7 +992,7 @@ static struct test_config cfg_src_44_1 = {
 
 static struct test_config cfg_src_44_2 = {
 	.cc = LC3_CONFIG_44_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -999,7 +1002,7 @@ static struct test_config cfg_src_44_2 = {
 
 static struct test_config cfg_src_48_1 = {
 	.cc = LC3_CONFIG_48_1,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -1009,7 +1012,7 @@ static struct test_config cfg_src_48_1 = {
 
 static struct test_config cfg_src_48_2 = {
 	.cc = LC3_CONFIG_48_2,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -1019,7 +1022,7 @@ static struct test_config cfg_src_48_2 = {
 
 static struct test_config cfg_src_48_3 = {
 	.cc = LC3_CONFIG_48_3,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -1029,7 +1032,7 @@ static struct test_config cfg_src_48_3 = {
 
 static struct test_config cfg_src_48_4 = {
 	.cc = LC3_CONFIG_48_4,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -1039,7 +1042,7 @@ static struct test_config cfg_src_48_4 = {
 
 static struct test_config cfg_src_48_5 = {
 	.cc = LC3_CONFIG_48_5,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -1049,7 +1052,7 @@ static struct test_config cfg_src_48_5 = {
 
 static struct test_config cfg_src_48_6 = {
 	.cc = LC3_CONFIG_48_6,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 };
 
@@ -1141,7 +1144,7 @@ static void test_scc_cc_lc3(void)
 
 static struct test_config cfg_snk_vs = {
 	.cc = IOV_NULL,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.snk = true,
 	.vs = true,
 };
@@ -1155,7 +1158,7 @@ static struct test_config cfg_snk_vs = {
 
 static struct test_config cfg_src_vs = {
 	.cc = IOV_NULL,
-	.qos = QOS_BALANCED_2M,
+	.qos = QOS_UCAST,
 	.src = true,
 	.vs = true,
 };

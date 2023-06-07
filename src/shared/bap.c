@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation. All rights reserved.
+ *  Copyright 2023 NXP
  *
  */
 
@@ -861,15 +862,15 @@ static void stream_notify_qos(struct bt_bap_stream *stream)
 	status->state = ep->state;
 
 	qos = (void *)status->params;
-	qos->cis_id = stream->qos.cis_id;
-	qos->cig_id = stream->qos.cig_id;
-	put_le24(stream->qos.interval, qos->interval);
-	qos->framing = stream->qos.framing;
-	qos->phy = stream->qos.phy;
-	qos->sdu = cpu_to_le16(stream->qos.sdu);
-	qos->rtn = stream->qos.rtn;
-	qos->latency = cpu_to_le16(stream->qos.latency);
-	put_le24(stream->qos.delay, qos->pd);
+	qos->cis_id = stream->qos.ucast.cis_id;
+	qos->cig_id = stream->qos.ucast.cig_id;
+	put_le24(stream->qos.ucast.io_qos.interval, qos->interval);
+	qos->framing = stream->qos.ucast.framing;
+	qos->phy = stream->qos.ucast.io_qos.phy;
+	qos->sdu = cpu_to_le16(stream->qos.ucast.io_qos.sdu);
+	qos->rtn = stream->qos.ucast.io_qos.rtn;
+	qos->latency = cpu_to_le16(stream->qos.ucast.io_qos.latency);
+	put_le24(stream->qos.ucast.delay, qos->pd);
 
 	gatt_db_attribute_notify(ep->attr, (void *) status, len,
 					bt_bap_get_att(stream->bap));
@@ -898,8 +899,8 @@ static void stream_notify_metadata(struct bt_bap_stream *stream)
 	status->state = ep->state;
 
 	meta = (void *)status->params;
-	meta->cis_id = stream->qos.cis_id;
-	meta->cig_id = stream->qos.cig_id;
+	meta->cis_id = stream->qos.ucast.cis_id;
+	meta->cig_id = stream->qos.ucast.cig_id;
 
 	if (stream->meta) {
 		meta->len = stream->meta->iov_len;
@@ -1575,20 +1576,22 @@ static uint8_t ascs_qos(struct bt_ascs *ascs, struct bt_bap *bap,
 
 	memset(&qos, 0, sizeof(qos));
 
-	qos.cig_id = req->cig;
-	qos.cis_id = req->cis;
-	qos.interval = get_le24(req->interval);
-	qos.framing = req->framing;
-	qos.phy = req->phy;
-	qos.sdu = le16_to_cpu(req->sdu);
-	qos.rtn = req->rtn;
-	qos.latency = le16_to_cpu(req->latency);
-	qos.delay = get_le24(req->pd);
+	qos.ucast.cig_id = req->cig;
+	qos.ucast.cis_id = req->cis;
+	qos.ucast.io_qos.interval = get_le24(req->interval);
+	qos.ucast.framing = req->framing;
+	qos.ucast.io_qos.phy = req->phy;
+	qos.ucast.io_qos.sdu = le16_to_cpu(req->sdu);
+	qos.ucast.io_qos.rtn = req->rtn;
+	qos.ucast.io_qos.latency = le16_to_cpu(req->latency);
+	qos.ucast.delay = get_le24(req->pd);
 
 	DBG(bap, "CIG 0x%02x CIS 0x%02x interval %u framing 0x%02x "
 			"phy 0x%02x SDU %u rtn %u latency %u pd %u",
-			req->cig, req->cis, qos.interval, qos.framing, qos.phy,
-			qos.sdu, qos.rtn, qos.latency, qos.delay);
+			req->cig, req->cis, qos.ucast.io_qos.interval,
+			qos.ucast.framing, qos.ucast.io_qos.phy,
+			qos.ucast.io_qos.sdu, qos.ucast.io_qos.rtn,
+			qos.ucast.io_qos.latency, qos.ucast.delay);
 
 	ep = bap_get_local_endpoint_id(bap, req->ase);
 	if (!ep) {
@@ -3283,13 +3286,13 @@ static void ep_status_qos(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 	if (!ep->stream)
 		return;
 
-	ep->stream->qos.interval = interval;
-	ep->stream->qos.framing = qos->framing;
-	ep->stream->qos.phy = qos->phy;
-	ep->stream->qos.sdu = sdu;
-	ep->stream->qos.rtn = qos->rtn;
-	ep->stream->qos.latency = latency;
-	ep->stream->qos.delay = pd;
+	ep->stream->qos.ucast.io_qos.interval = interval;
+	ep->stream->qos.ucast.framing = qos->framing;
+	ep->stream->qos.ucast.io_qos.phy = qos->phy;
+	ep->stream->qos.ucast.io_qos.sdu = sdu;
+	ep->stream->qos.ucast.io_qos.rtn = qos->rtn;
+	ep->stream->qos.ucast.io_qos.latency = latency;
+	ep->stream->qos.ucast.delay = pd;
 
 	if (ep->old_state == BT_ASCS_ASE_STATE_CONFIG)
 		bap_stream_config_cfm(ep->stream);
@@ -4189,8 +4192,8 @@ unsigned int bt_bap_stream_config(struct bt_bap_stream *stream,
 	memset(&config, 0, sizeof(config));
 
 	config.ase = stream->ep->id;
-	config.latency = qos->target_latency;
-	config.phy = qos->phy;
+	config.latency = qos->ucast.target_latency;
+	config.phy = qos->ucast.io_qos.phy;
 	config.codec = stream->rpac->codec;
 
 	iov[0].iov_base = &config;
@@ -4372,15 +4375,15 @@ unsigned int bt_bap_stream_qos(struct bt_bap_stream *stream,
 
 	/* TODO: Figure out how to pass these values around */
 	qos.ase = stream->ep->id;
-	qos.cig = data->cig_id;
-	qos.cis = data->cis_id;
-	put_le24(data->interval, qos.interval);
-	qos.framing = data->framing;
-	qos.phy = data->phy;
-	qos.sdu = cpu_to_le16(data->sdu);
-	qos.rtn = data->rtn;
-	qos.latency = cpu_to_le16(data->latency);
-	put_le24(data->delay, qos.pd);
+	qos.cig = data->ucast.cig_id;
+	qos.cis = data->ucast.cis_id;
+	put_le24(data->ucast.io_qos.interval, qos.interval);
+	qos.framing = data->ucast.framing;
+	qos.phy = data->ucast.io_qos.phy;
+	qos.sdu = cpu_to_le16(data->ucast.io_qos.sdu);
+	qos.rtn = data->ucast.io_qos.rtn;
+	qos.latency = cpu_to_le16(data->ucast.io_qos.latency);
+	put_le24(data->ucast.delay, qos.pd);
 
 	iov.iov_base = &qos;
 	iov.iov_len = sizeof(qos);
@@ -4784,8 +4787,8 @@ int bt_bap_stream_io_link(struct bt_bap_stream *stream,
 		return -EALREADY;
 
 	if (stream->client != link->client ||
-			stream->qos.cig_id != link->qos.cig_id ||
-			stream->qos.cis_id != link->qos.cis_id)
+			stream->qos.ucast.cig_id != link->qos.ucast.cig_id ||
+			stream->qos.ucast.cis_id != link->qos.ucast.cis_id)
 		return -EINVAL;
 
 	if (!stream->links)
@@ -4822,7 +4825,7 @@ static void bap_stream_get_in_qos(void *data, void *user_data)
 	struct bt_bap_qos **qos = user_data;
 
 	if (!qos || *qos || stream->ep->dir != BT_BAP_SOURCE ||
-						!stream->qos.sdu)
+				!stream->qos.ucast.io_qos.sdu)
 		return;
 
 	*qos = &stream->qos;
@@ -4833,7 +4836,8 @@ static void bap_stream_get_out_qos(void *data, void *user_data)
 	struct bt_bap_stream *stream = data;
 	struct bt_bap_qos **qos = user_data;
 
-	if (!qos || *qos || stream->ep->dir != BT_BAP_SINK || !stream->qos.sdu)
+	if (!qos || *qos || stream->ep->dir != BT_BAP_SINK ||
+				!stream->qos.ucast.io_qos.sdu)
 		return;
 
 	*qos = &stream->qos;
