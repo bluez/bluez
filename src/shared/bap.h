@@ -17,6 +17,11 @@
 
 #define BT_BAP_SINK			0x01
 #define	BT_BAP_SOURCE			0x02
+#define	BT_BAP_BCAST_SOURCE		0x03
+#define	BT_BAP_BCAST_SINK		0x04
+
+#define BT_BAP_STREAM_TYPE_UCAST	0x01
+#define	BT_BAP_STREAM_TYPE_BCAST	0x02
 
 #define BT_BAP_STREAM_STATE_IDLE	0x00
 #define BT_BAP_STREAM_STATE_CONFIG	0x01
@@ -160,6 +165,8 @@ uint8_t bt_bap_pac_get_type(struct bt_bap_pac *pac);
 
 uint32_t bt_bap_pac_get_locations(struct bt_bap_pac *pac);
 
+uint8_t bt_bap_stream_get_type(struct bt_bap_stream *stream);
+
 struct bt_bap_stream *bt_bap_pac_get_stream(struct bt_bap_pac *pac);
 
 /* Session related function */
@@ -179,6 +186,7 @@ struct bt_bap *bt_bap_ref(struct bt_bap *bap);
 void bt_bap_unref(struct bt_bap *bap);
 
 bool bt_bap_attach(struct bt_bap *bap, struct bt_gatt_client *client);
+bool bt_bap_attach_broadcast(struct bt_bap *bap);
 void bt_bap_detach(struct bt_bap *bap);
 
 bool bt_bap_set_debug(struct bt_bap *bap, bt_bap_debug_func_t cb,
