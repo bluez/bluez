@@ -736,7 +736,7 @@ static uint16_t cfg_net_tx_msg(struct mesh_node *node, const uint8_t *pkt,
 static uint16_t get_composition(struct mesh_node *node, uint8_t page,
 								uint8_t *buf)
 {
-	const uint8_t *comp;
+	const uint8_t *comp = NULL;
 	uint16_t len = 0;
 	size_t i;
 
@@ -751,7 +751,7 @@ static uint16_t get_composition(struct mesh_node *node, uint8_t page,
 			break;
 	}
 
-	if (!len)
+	if (!len || !comp)
 		return 0;
 
 	*buf++ = page;
