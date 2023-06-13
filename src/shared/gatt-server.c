@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2014  Google Inc.
+ *  Copyright 2023 NXP
  *
  *
  */
@@ -1785,7 +1786,9 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 		length = MIN(data->len - data->offset, length);
 	}
 
-	memcpy(data->pdu + data->offset, value, length);
+	if (value)
+		memcpy(data->pdu + data->offset, value, length);
+
 	data->offset += length;
 
 	if (multiple) {
