@@ -5944,7 +5944,7 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 						uint8_t status)
 {
 	struct bt_hci_evt_le_cis_established evt;
-	int cig_idx, cis_idx;
+	int cig_idx, cis_idx = -1;
 
 	memset(&evt, 0, sizeof(evt));
 
