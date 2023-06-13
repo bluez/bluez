@@ -82,6 +82,8 @@ static struct queue *bass_db;
 static struct queue *bass_cbs;
 static struct queue *sessions;
 
+static void bass_bcast_src_free(void *data);
+
 static void bass_debug(struct bt_bass *bass, const char *format, ...)
 {
 	va_list ap;
@@ -385,7 +387,7 @@ static bool bass_check_cp_command_subgroup_data_len(uint8_t num_subgroups,
 	return true;
 }
 
-static bool bass_check_cp_command_len(struct iovec *iov)
+static bool bass_check_cp_command_len(const uint8_t *value, size_t len)
 {
 	struct bt_bass_bcast_audio_scan_cp_hdr *hdr;
 	union {
@@ -395,8 +397,13 @@ static bool bass_check_cp_command_len(struct iovec *iov)
 		struct bt_bass_remove_src_params *remove_src_params;
 	} params;
 
+	struct iovec iov = {
+		.iov_base = (void *)value,
+		.iov_len = len,
+	};
+
 	/* Get command header */
-	hdr = util_iov_pull_mem(iov, sizeof(*hdr));
+	hdr = util_iov_pull_mem(&iov, sizeof(*hdr));
 
 	if (!hdr)
 		return false;
@@ -404,38 +411,38 @@ static bool bass_check_cp_command_len(struct iovec *iov)
 	/* Check command parameters */
 	switch (hdr->op) {
 	case BT_BASS_ADD_SRC:
-		params.add_src_params = util_iov_pull_mem(iov,
+		params.add_src_params = util_iov_pull_mem(&iov,
 						sizeof(*params.add_src_params));
 		if (!params.add_src_params)
 			return false;
 
 		if (!bass_check_cp_command_subgroup_data_len(
 					params.add_src_params->num_subgroups,
-					iov))
+					&iov))
 			return false;
 
 		break;
 	case BT_BASS_MOD_SRC:
-		params.mod_src_params = util_iov_pull_mem(iov,
+		params.mod_src_params = util_iov_pull_mem(&iov,
 						sizeof(*params.mod_src_params));
 		if (!params.mod_src_params)
 			return false;
 
 		if (!bass_check_cp_command_subgroup_data_len(
 					params.mod_src_params->num_subgroups,
-					iov))
+					&iov))
 			return false;
 
 		break;
 	case BT_BASS_SET_BCAST_CODE:
-		params.set_bcast_code_params = util_iov_pull_mem(iov,
+		params.set_bcast_code_params = util_iov_pull_mem(&iov,
 					sizeof(*params.set_bcast_code_params));
 		if (!params.set_bcast_code_params)
 			return false;
 
 		break;
 	case BT_BASS_REMOVE_SRC:
-		params.remove_src_params = util_iov_pull_mem(iov,
+		params.remove_src_params = util_iov_pull_mem(&iov,
 					sizeof(*params.remove_src_params));
 		if (!params.remove_src_params)
 			return false;
@@ -448,11 +455,117 @@ static bool bass_check_cp_command_len(struct iovec *iov)
 		return true;
 	}
 
-	if (iov->iov_len > 0)
+	if (iov.iov_len > 0)
 		return false;
 
 	return true;
 }
+
+static void bass_handle_remote_scan_stopped_op(struct bt_bass_db *bdb,
+					struct gatt_db_attribute *attrib,
+					uint8_t opcode,
+					unsigned int id,
+					struct iovec *iov,
+					struct bt_att *att)
+{
+	if (opcode == BT_ATT_OP_WRITE_REQ)
+		gatt_db_attribute_write_result(attrib, id, 0x00);
+}
+
+static void bass_handle_remote_scan_started_op(struct bt_bass_db *bdb,
+					struct gatt_db_attribute *attrib,
+					uint8_t opcode,
+					unsigned int id,
+					struct iovec *iov,
+					struct bt_att *att)
+{
+	if (opcode == BT_ATT_OP_WRITE_REQ)
+		gatt_db_attribute_write_result(attrib, id, 0x00);
+}
+
+static bool bass_src_id_match(const void *data, const void *match_data)
+{
+	const struct bt_bcast_src *bcast_src = data;
+	const uint8_t *id = match_data;
+
+	return (bcast_src->id == *id);
+}
+
+static void bass_handle_remove_src_op(struct bt_bass_db *bdb,
+					struct gatt_db_attribute *attrib,
+					uint8_t opcode,
+					unsigned int id,
+					struct iovec *iov,
+					struct bt_att *att)
+{
+	struct bt_bass_remove_src_params *params;
+	struct bt_bcast_src *bcast_src;
+
+	/* Get Remove Source command parameters */
+	params = util_iov_pull_mem(iov, sizeof(*params));
+
+	bcast_src = queue_find(bdb->bcast_srcs,
+						bass_src_id_match,
+						&params->id);
+
+	if (!bcast_src) {
+		/* No source matches the written source id */
+		if (opcode == BT_ATT_OP_WRITE_REQ)
+			gatt_db_attribute_write_result(attrib, id,
+					BT_BASS_ERROR_INVALID_SOURCE_ID);
+
+		return;
+	}
+
+	/* Ignore if server is synchronized to the PA
+	 * of the source
+	 */
+	if (bcast_src->sync_state == BT_BASS_SYNCHRONIZED_TO_PA)
+		return;
+
+	/* Ignore if server is synchronized to any BIS
+	 * of the source
+	 */
+	for (int i = 0; i < bcast_src->num_subgroups; i++)
+		if (bcast_src->subgroup_data[i].bis_sync)
+			return;
+
+	/* Accept the operation and remove source */
+	queue_remove(bdb->bcast_srcs, bcast_src);
+	gatt_db_attribute_notify(bcast_src->attr, NULL, 0, att);
+	bass_bcast_src_free(bcast_src);
+
+	if (opcode == BT_ATT_OP_WRITE_REQ)
+		gatt_db_attribute_write_result(attrib, id, 0x00);
+}
+
+#define BASS_OP(_str, _op, _size, _func) \
+	{ \
+		.str = _str, \
+		.op = _op, \
+		.size = _size, \
+		.func = _func, \
+	}
+
+struct bass_op_handler {
+	const char	*str;
+	uint8_t		op;
+	size_t		size;
+	void		(*func)(struct bt_bass_db *bdb,
+				struct gatt_db_attribute *attrib,
+				uint8_t opcode,
+				unsigned int id,
+				struct iovec *iov,
+				struct bt_att *att);
+} bass_handlers[] = {
+	BASS_OP("Remote Scan Stopped", BT_BASS_REMOTE_SCAN_STOPPED,
+		0, bass_handle_remote_scan_stopped_op),
+	BASS_OP("Remote Scan Started", BT_BASS_REMOTE_SCAN_STARTED,
+		0, bass_handle_remote_scan_started_op),
+	BASS_OP("Remove Source", BT_BASS_REMOVE_SRC,
+		0, bass_handle_remove_src_op),
+	{}
+};
 
 static void bass_bcast_audio_scan_cp_write(struct gatt_db_attribute *attrib,
 				unsigned int id, uint16_t offset,
@@ -460,13 +573,16 @@ static void bass_bcast_audio_scan_cp_write(struct gatt_db_attribute *attrib,
 				uint8_t opcode, struct bt_att *att,
 				void *user_data)
 {
+	struct bt_bass_db *bdb = user_data;
+	struct bt_bass_bcast_audio_scan_cp_hdr *hdr;
+	struct bass_op_handler *handler;
 	struct iovec iov = {
 		.iov_base = (void *)value,
 		.iov_len = len,
 	};
 
 	/* Validate written command length */
-	if (!bass_check_cp_command_len(&iov)) {
+	if (!bass_check_cp_command_len(value, len)) {
 		if (opcode == BT_ATT_OP_WRITE_REQ) {
 			gatt_db_attribute_write_result(attrib, id,
 					BT_ERROR_WRITE_REQUEST_REJECTED);
@@ -474,9 +590,22 @@ static void bass_bcast_audio_scan_cp_write(struct gatt_db_attribute *attrib,
 		return;
 	}
 
-	/* TODO: Implement handlers for the written opcodes */
-	gatt_db_attribute_write_result(attrib, id,
-			BT_BASS_ERROR_OPCODE_NOT_SUPPORTED);
+	/* Get command header */
+	hdr = util_iov_pull_mem(&iov, sizeof(*hdr));
+
+	/* Call the appropriate opcode handler */
+	for (handler = bass_handlers; handler && handler->str; handler++) {
+		if (handler->op == hdr->op) {
+			handler->func(bdb, attrib, opcode, id, &iov, att);
+			return;
+		}
+	}
+
+	/* Send error response if unsupported opcode was written */
+	if (opcode == BT_ATT_OP_WRITE_REQ) {
+		gatt_db_attribute_write_result(attrib, id,
+				BT_BASS_ERROR_OPCODE_NOT_SUPPORTED);
+	}
 }
 
 static bool bass_src_match_attrib(const void *data, const void *match_data)
