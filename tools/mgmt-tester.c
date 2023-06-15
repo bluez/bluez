@@ -4682,6 +4682,16 @@ static const struct generic_data remove_device_success_6 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
+static const struct generic_data add_remove_device_nowait = {
+	.setup_settings = settings_powered_le,
+	.expect_param = remove_device_param_2,
+	.expect_len = sizeof(remove_device_param_2),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_REMOVED,
+	.expect_alt_ev_param = remove_device_param_2,
+	.expect_alt_ev_len = sizeof(remove_device_param_2),
+};
+
 static const struct generic_data read_adv_features_invalid_param_test = {
 	.send_opcode = MGMT_OP_READ_ADV_FEATURES,
 	.send_param = dummy_data,
@@ -11460,6 +11470,41 @@ static void test_remove_device(const void *test_data)
 	test_add_condition(data);
 }
 
+static bool hook_delay_cmd(const void *data, uint16_t len, void *user_data)
+{
+	tester_print("Delaying emulator response...");
+	g_usleep(250000);
+	tester_print("Delaying emulator response... Done.");
+	return true;
+}
+
+static void test_add_remove_device_nowait(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* Add and remove LE device with autoconnect without waiting for reply,
+	 * while delaying emulator response to better hit a race condition.
+	 * This shall not crash the kernel (but eg Linux 6.4-rc4 crashes).
+	 */
+
+	tester_print("Adding and removing a device");
+
+	test_add_condition(data);
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+					BT_HCI_CMD_LE_ADD_TO_ACCEPT_LIST,
+					hook_delay_cmd, NULL);
+
+	mgmt_send_nowait(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
+				sizeof(add_device_success_param_3),
+				add_device_success_param_3, NULL, NULL, NULL);
+
+	mgmt_send_nowait(data->mgmt, MGMT_OP_REMOVE_DEVICE, data->mgmt_index,
+				sizeof(remove_device_param_2),
+				remove_device_param_2,
+				command_generic_callback, NULL, NULL);
+}
+
 static void trigger_device_found(void *user_data)
 {
 	struct test_data *data = tester_get_data();
@@ -13539,6 +13584,10 @@ int main(int argc, char *argv[])
 	test_bredrle50("Remove Device - Success 6 - All Devices",
 				&remove_device_success_6,
 				setup_add_device, test_remove_device);
+
+	test_le("Add + Remove Device Nowait - Success",
+				&add_remove_device_nowait,
+				NULL, test_add_remove_device_nowait);
 
 	test_bredrle("Read Advertising Features - Invalid parameters",
 				&read_adv_features_invalid_param_test,
