@@ -1740,22 +1740,22 @@ struct endpoint_config {
 				0xa2, 0x65, 0xbb, 0xaf, 0xc6, 0xea, 0x03, 0xb8}
 
 static struct bt_iso_qos bcast_qos = {
-		.bcast = {
-			.big = BT_ISO_QOS_BIG_UNSET,
-			.bis = BT_ISO_QOS_BIS_UNSET,
-			.sync_interval = 0x07,
-			.packing = 0x00,
-			.framing = 0x00,
-			.encryption = 0x00,
-			.bcode = BCODE,
-			.options = 0x00,
-			.skip = 0x0000,
-			.sync_timeout = 0x4000,
-			.sync_cte_type = 0x00,
-			.mse = 0x00,
-			.timeout = 0x4000,
-		}
-	};
+	.bcast = {
+		.big = BT_ISO_QOS_BIG_UNSET,
+		.bis = BT_ISO_QOS_BIS_UNSET,
+		.sync_interval = 24,
+		.packing = 0x00,
+		.framing = 0x00,
+		.encryption = 0x00,
+		.bcode = BCODE,
+		.options = 0x00,
+		.skip = 0x0000,
+		.sync_timeout = 0x4000,
+		.sync_cte_type = 0x00,
+		.mse = 0x00,
+		.timeout = 0x4000,
+	}
+};
 
 static void append_properties(DBusMessageIter *iter,
 						struct endpoint_config *cfg)
@@ -3175,6 +3175,7 @@ static struct endpoint *endpoint_new(const struct capabilities *cap)
 
 	ep = new0(struct endpoint, 1);
 	ep->uuid = g_strdup(cap->uuid);
+	ep->broadcast = strcmp(cap->uuid, BAA_SERVICE_UUID) ? false : true;
 	ep->codec = cap->codec_id;
 	ep->path = g_strdup_printf("%s/ep%u", BLUEZ_MEDIA_ENDPOINT_PATH,
 					g_list_length(local_endpoints));
