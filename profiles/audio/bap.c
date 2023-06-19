@@ -427,12 +427,9 @@ static int parse_properties(DBusMessageIter *props, struct iovec **caps,
 			dbus_message_iter_get_basic(&value,
 							&qos->bcast.timeout);
 		} else if (!strcasecmp(key, "BroadcastCode")) {
-			struct iovec *iov;
-
 			if (var != DBUS_TYPE_ARRAY)
 				goto fail;
-			iov = &qos->bcast.bcode;
-			parse_array(&value, &iov);
+			parse_array(&value, &qos->bcast.bcode);
 		}
 
 		dbus_message_iter_next(props);
@@ -624,7 +621,7 @@ static void ep_free(void *data)
 	util_iov_free(ep->caps, 1);
 	util_iov_free(ep->metadata, 1);
 	if (bt_bap_stream_get_type(ep->stream) == BT_BAP_STREAM_TYPE_BCAST)
-		util_iov_free(&ep->qos.bcast.bcode, 1);
+		util_iov_free(ep->qos.bcast.bcode, 1);
 	free(ep->path);
 	free(ep);
 }
@@ -1268,7 +1265,8 @@ static void bap_create_bcast_io(struct bap_data *data, struct bap_ep *ep,
 	iso_qos.bcast.packing = ep->qos.bcast.packing;
 	iso_qos.bcast.framing = ep->qos.bcast.framing;
 	iso_qos.bcast.encryption = ep->qos.bcast.encryption;
-	memcpy(iso_qos.bcast.bcode, ep->qos.bcast.bcode.iov_base, 16);
+	if (ep->qos.bcast.bcode)
+		memcpy(iso_qos.bcast.bcode, ep->qos.bcast.bcode->iov_base, 16);
 	iso_qos.bcast.options = ep->qos.bcast.options;
 	iso_qos.bcast.skip = ep->qos.bcast.skip;
 	iso_qos.bcast.sync_timeout = ep->qos.bcast.sync_timeout;
@@ -1811,7 +1809,7 @@ static struct btd_profile bap_profile = {
 	.disconnect	= bap_disconnect,
 	.adapter_probe	= bap_adapter_probe,
 	.adapter_remove	= bap_adapter_remove,
-	.auto_connect	= true,
+	.auto_connect	= false,
 	.experimental	= true,
 };
 

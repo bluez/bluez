@@ -79,7 +79,7 @@ struct bt_bap_bcast_qos {
 	uint8_t  packing;
 	uint8_t  framing;
 	uint8_t  encryption;
-	struct iovec bcode;
+	struct iovec *bcode;
 	uint8_t  options;
 	uint16_t skip;
 	uint16_t sync_timeout;
