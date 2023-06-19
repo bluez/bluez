@@ -47,6 +47,14 @@
 
 #define BAP_PROCESS_TIMEOUT 10
 
+#define PACS_SRC_LOCATION 0x00000001
+#define PACS_SNK_LOCATION 0x00000003
+
+#define PACS_SRC_CTXT 0x000f
+#define PACS_SUPPORTED_SRC_CTXT PACS_SRC_CTXT
+#define PACS_SNK_CTXT 0x0fff
+#define PACS_SUPPORTED_SNK_CTXT PACS_SNK_CTXT
+
 struct bt_bap_pac_changed {
 	unsigned int id;
 	bt_bap_pac_func_t added;
@@ -467,12 +475,12 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
 	pacs = new0(struct bt_pacs, 1);
 
 	/* Set default values */
-	pacs->sink_loc_value = 0x00000003;
-	pacs->source_loc_value = 0x00000001;
-	pacs->sink_context_value = 0x0fff;
-	pacs->source_context_value = 0x000e;
-	pacs->supported_sink_context_value = 0x0fff;
-	pacs->supported_source_context_value = 0x000e;
+	pacs->sink_loc_value = PACS_SNK_LOCATION;
+	pacs->source_loc_value = PACS_SRC_LOCATION;
+	pacs->sink_context_value = PACS_SNK_CTXT;
+	pacs->source_context_value = PACS_SRC_CTXT;
+	pacs->supported_sink_context_value = PACS_SUPPORTED_SNK_CTXT;
+	pacs->supported_source_context_value = PACS_SUPPORTED_SRC_CTXT;
 
 	/* Populate DB with PACS attributes */
 	bt_uuid16_create(&uuid, PACS_UUID);
