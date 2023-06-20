@@ -88,14 +88,12 @@ struct btd_device *btd_adapter_find_device_by_path(struct btd_adapter *adapter,
 						   const char *path);
 struct btd_device *btd_adapter_find_device_by_fd(int fd);
 
-void btd_adapter_update_found_device(struct btd_adapter *adapter,
+void btd_adapter_device_found(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
-					bool confirm, bool legacy,
-					bool not_connectable,
-					bool name_resolve_failed,
+					uint32_t flags,
 					const uint8_t *data, uint8_t data_len,
-					bool monitored);
+					bool monitoring);
 
 const char *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *btd_adapter_get_address(struct btd_adapter *adapter);

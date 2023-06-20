@@ -7088,12 +7088,10 @@ static bool device_is_discoverable(struct btd_adapter *adapter,
 	return discoverable;
 }
 
-void btd_adapter_update_found_device(struct btd_adapter *adapter,
+void btd_adapter_device_found(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
-					bool confirm, bool legacy,
-					bool not_connectable,
-					bool name_resolve_failed,
+					uint32_t flags,
 					const uint8_t *data, uint8_t data_len,
 					bool monitoring)
 {
@@ -7102,8 +7100,19 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 	struct eir_data eir_data;
 	bool name_known, discoverable;
 	char addr[18];
+	bool confirm;
+	bool legacy;
+	bool not_connectable;
+	bool name_resolve_failed;
+	bool scan_rsp;
 	bool duplicate = false;
 	struct queue *matched_monitors = NULL;
+
+	confirm = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
+	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
+	not_connectable = (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
+	name_resolve_failed = (flags & MGMT_DEV_FOUND_NAME_REQUEST_FAILED);
+	scan_rsp = (flags & MGMT_DEV_FOUND_SCAN_RSP);
 
 	if (!btd_adv_monitor_offload_enabled(adapter->adv_monitor_manager) ||
 				(MGMT_VERSION(mgmt_version, mgmt_revision) <
@@ -7137,6 +7146,14 @@ void btd_adapter_update_found_device(struct btd_adapter *adapter,
 
 	dev = btd_adapter_find_device(adapter, bdaddr, bdaddr_type);
 	if (!dev) {
+		/* In case of being just a scan response don't attempt to create
+		 * the device.
+		 */
+		if (scan_rsp) {
+			eir_data_free(&eir_data);
+			return;
+		}
+
 		if (!discoverable && !monitoring && !eir_data.rsi) {
 			eir_data_free(&eir_data);
 			return;
@@ -7317,10 +7334,6 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	const uint8_t *eir;
 	uint16_t eir_len;
 	uint32_t flags;
-	bool confirm_name;
-	bool legacy;
-	bool not_connectable;
-	bool name_resolve_failed;
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
@@ -7342,22 +7355,15 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	else
 		eir = ev->eir;
 
-	flags = btohl(ev->flags);
+	flags = le32_to_cpu(ev->flags);
 
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
 			index, addr, ev->rssi, flags, eir_len);
 
-	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
-	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
-	not_connectable = (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
-	name_resolve_failed = (flags & MGMT_DEV_FOUND_NAME_REQUEST_FAILED);
-
-	btd_adapter_update_found_device(adapter, &ev->addr.bdaddr,
-					ev->addr.type, ev->rssi, confirm_name,
-					legacy, not_connectable,
-					name_resolve_failed, eir, eir_len,
-					false);
+	btd_adapter_device_found(adapter, &ev->addr.bdaddr,
+					ev->addr.type, ev->rssi, flags,
+					eir, eir_len, false);
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
