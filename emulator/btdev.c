@@ -5977,7 +5977,7 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 		evt.p_ft = 0x01;
 		evt.c_mtu = le_cig->cis[cis_idx].c_sdu;
 		evt.p_mtu = le_cig->cis[cis_idx].p_sdu;
-		evt.interval = le_cig->params.c_latency;
+		evt.interval = (le_cig->params.c_latency + 1) / 1.25;
 	}
 
 	le_meta_event(dev, BT_HCI_EVT_LE_CIS_ESTABLISHED, &evt, sizeof(evt));
