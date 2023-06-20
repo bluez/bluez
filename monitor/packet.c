@@ -12858,6 +12858,8 @@ static const struct bitfield_data mgmt_device_flags_table[] = {
 	{  1, "Legacy Pairing"			},
 	{  2, "Not Connectable"			},
 	{  3, "Connection Locally Initiated"	},
+	{  4, "Name Request Failed"		},
+	{  5, "Scan Response"			},
 	{ }
 };
 
