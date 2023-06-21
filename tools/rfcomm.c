@@ -245,7 +245,7 @@ static void run_cmdline(struct pollfd *p, sigset_t *sigs, char *devname,
 
 			p->revents = 0;
 			ts.tv_sec  = 0;
-			ts.tv_nsec = 200;
+			ts.tv_nsec = 200000000;
 			if (ppoll(p, 1, &ts, sigs) || __io_canceled) {
 				kill(pid, SIGTERM);
 				waitpid(pid, &status, 0);
