@@ -6587,11 +6587,9 @@ static void config_data_path_cmd(uint16_t index, const void *data, uint8_t size)
 
 static void print_usec_interval(const char *prefix, const uint8_t interval[3])
 {
-	uint32_t u24 = 0;
+	uint32_t value = get_le24(interval);
 
-	memcpy(&u24, interval, 3);
-	print_field("%s: %u us (0x%6.6x)", prefix, le32_to_cpu(u24),
-						le32_to_cpu(u24));
+	print_field("%s: %u us (0x%6.6x)", prefix, value, value);
 }
 
 static void read_local_ctrl_delay_rsp(uint16_t index, const void *data,
