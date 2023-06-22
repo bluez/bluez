@@ -5940,6 +5940,18 @@ static int cmd_create_cis(struct btdev *dev, const void *data, uint8_t len)
 	return 0;
 }
 
+static uint32_t le_cis_transport_latecy(uint8_t ft, uint8_t iso_interval,
+						uint8_t sdu_interval[3])
+{
+	uint32_t latency;
+	uint32_t interval = get_le24(sdu_interval);
+
+	/* Transport_Latency = FT × ISO_Interval - SDU_Interval */
+	latency = ft * (iso_interval * 1250) - interval;
+
+	return latency <= interval ? latency : interval;
+}
+
 static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 						uint8_t status)
 {
@@ -5959,25 +5971,32 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 		struct btdev *remote = conn->link->dev;
 		struct le_cig *le_cig = &remote->le_cig[cig_idx];
 
-		/* TODO: Figure out if these values makes sense */
-		memcpy(evt.cig_sync_delay, le_cig->params.c_interval,
-				sizeof(le_cig->params.c_interval));
-		memcpy(evt.cis_sync_delay, le_cig->params.p_interval,
-				sizeof(le_cig->params.p_interval));
-		memcpy(evt.c_latency, &le_cig->params.c_interval,
-				sizeof(le_cig->params.c_interval));
-		memcpy(evt.p_latency, &le_cig->params.p_interval,
-				sizeof(le_cig->params.p_interval));
+		memset(evt.cig_sync_delay, 0, sizeof(evt.cig_sync_delay));
+		memset(evt.cis_sync_delay, 0, sizeof(evt.cis_sync_delay));
+
 		evt.c_phy = le_cig->cis[cis_idx].c_phy;
 		evt.p_phy = le_cig->cis[cis_idx].p_phy;
 		evt.nse = 0x01;
 		evt.c_bn = 0x01;
 		evt.p_bn = 0x01;
-		evt.c_ft = 0x01;
-		evt.p_ft = 0x01;
+		evt.c_ft = 0x02;
+		evt.p_ft = 0x02;
 		evt.c_mtu = le_cig->cis[cis_idx].c_sdu;
 		evt.p_mtu = le_cig->cis[cis_idx].p_sdu;
-		evt.interval = (le_cig->params.c_latency + 1) / 1.25;
+		evt.interval = (le_cig->params.c_latency + 0.625) / 1.25;
+
+		/* BLUETOOTH CORE SPECIFICATION Version 5.3 | Vol 6, Part G
+		 * page 3050:
+		 *
+		 * Transport_Latency_C_To_P = CIG_Sync_Delay + FT_C_To_P ×
+		 * ISO_Interval - SDU_Interval_C_To_P
+		 * Transport_Latency_P_To_C = CIG_Sync_Delay + FT_P_To_C ×
+		 * ISO_Interval - SDU_Interval_P_To_C
+		 */
+		put_le24(le_cis_transport_latecy(evt.c_ft, evt.interval,
+				le_cig->params.c_interval), evt.c_latency);
+		put_le24(le_cis_transport_latecy(evt.p_ft, evt.interval,
+				le_cig->params.p_interval), evt.p_latency);
 	}
 
 	le_meta_event(dev, BT_HCI_EVT_LE_CIS_ESTABLISHED, &evt, sizeof(evt));
