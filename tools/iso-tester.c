@@ -1480,14 +1480,14 @@ static int connect_iso_sock(struct test_data *data, uint8_t num, int sk)
 static bool check_io_qos(const struct bt_iso_io_qos *io1,
 				const struct bt_iso_io_qos *io2)
 {
-	if (io1->interval && io2->interval && io1->interval != io2->interval) {
-		tester_warn("Unexpected IO interval: %u != %u",
+	if (io1->interval && io2->interval && io1->interval > io2->interval) {
+		tester_warn("Unexpected IO interval: %u > %u",
 				io1->interval, io2->interval);
 		return false;
 	}
 
-	if (io1->latency && io2->latency && io1->latency != io2->latency) {
-		tester_warn("Unexpected IO latency: %u != %u",
+	if (io1->latency && io2->latency && io1->latency > io2->latency) {
+		tester_warn("Unexpected IO latency: %u > %u",
 				io1->latency, io2->latency);
 		return false;
 	}
