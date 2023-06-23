@@ -33,6 +33,7 @@
 #include <time.h>
 #include <inttypes.h>
 #include <sys/wait.h>
+#include <poll.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"
@@ -440,6 +441,9 @@ static void do_listen(char *filename, void (*handler)(int fd, int sk),
 	socklen_t optlen;
 	int sk, nsk, fd = -1;
 	char ba[18];
+	struct pollfd fds;
+	int err, sk_err;
+	socklen_t len;
 
 	if (filename) {
 		fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
@@ -527,6 +531,28 @@ static void do_listen(char *filename, void (*handler)(int fd, int sk),
 			syslog(LOG_ERR, "Accept failed: %s (%d)",
 							strerror(errno), errno);
 			goto error;
+		}
+
+		/* Check if connection was successful */
+		memset(&fds, 0, sizeof(fds));
+		fds.fd = nsk;
+		fds.events = POLLERR;
+
+		if (poll(&fds, 1, 0) > 0 && (fds.revents & POLLERR)) {
+			len = sizeof(sk_err);
+
+			if (getsockopt(nsk, SOL_SOCKET, SO_ERROR,
+						&sk_err, &len) < 0)
+				err = -errno;
+			else
+				err = -sk_err;
+
+			if (err < 0)
+				syslog(LOG_ERR, "Connection failed: %s (%d)",
+						strerror(-err), -err);
+
+			close(nsk);
+			continue;
 		}
 
 		if (fork()) {
