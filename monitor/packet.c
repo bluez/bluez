@@ -6587,11 +6587,9 @@ static void config_data_path_cmd(uint16_t index, const void *data, uint8_t size)
 
 static void print_usec_interval(const char *prefix, const uint8_t interval[3])
 {
-	uint32_t u24 = 0;
+	uint32_t value = get_le24(interval);
 
-	memcpy(&u24, interval, 3);
-	print_field("%s: %u us (0x%6.6x)", prefix, le32_to_cpu(u24),
-						le32_to_cpu(u24));
+	print_field("%s: %u us (0x%6.6x)", prefix, value, value);
 }
 
 static void read_local_ctrl_delay_rsp(uint16_t index, const void *data,
@@ -11557,7 +11555,7 @@ static void le_cis_established_evt(struct timeval *tv, uint16_t index,
 	print_field("Peripheral to Central Flush Timeout: %u", evt->p_ft);
 	print_field("Central to Peripheral MTU: %u", le16_to_cpu(evt->c_mtu));
 	print_field("Peripheral to Central MTU: %u", le16_to_cpu(evt->p_mtu));
-	print_field("ISO Interval: %u", le16_to_cpu(evt->interval));
+	print_slot_125("ISO Interval", evt->interval);
 }
 
 static void le_req_cis_evt(struct timeval *tv, uint16_t index,
@@ -12858,6 +12856,8 @@ static const struct bitfield_data mgmt_device_flags_table[] = {
 	{  1, "Legacy Pairing"			},
 	{  2, "Not Connectable"			},
 	{  3, "Connection Locally Initiated"	},
+	{  4, "Name Request Failed"		},
+	{  5, "Scan Response"			},
 	{ }
 };
 

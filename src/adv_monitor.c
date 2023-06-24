@@ -1583,10 +1583,6 @@ static void adv_monitor_device_found_callback(uint16_t index, uint16_t length,
 	const uint8_t *ad_data = NULL;
 	uint16_t ad_data_len;
 	uint32_t flags;
-	bool confirm_name;
-	bool legacy;
-	bool not_connectable;
-	bool name_resolve_failed;
 	char addr[18];
 
 	if (length < sizeof(*ev)) {
@@ -1605,21 +1601,14 @@ static void adv_monitor_device_found_callback(uint16_t index, uint16_t length,
 	if (ad_data_len > 0)
 		ad_data = ev->ad_data;
 
-	flags = btohl(ev->flags);
+	flags = le32_to_cpu(ev->flags);
 
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u addr %s, rssi %d flags 0x%04x ad_data_len %u",
 			index, addr, ev->rssi, flags, ad_data_len);
 
-	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
-	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
-	not_connectable = (flags & MGMT_DEV_FOUND_NOT_CONNECTABLE);
-	name_resolve_failed = (flags & MGMT_DEV_FOUND_NAME_REQUEST_FAILED);
-
-	btd_adapter_update_found_device(adapter, &ev->addr.bdaddr,
-					ev->addr.type, ev->rssi, confirm_name,
-					legacy, not_connectable,
-					name_resolve_failed, ad_data,
+	btd_adapter_device_found(adapter, &ev->addr.bdaddr,
+					ev->addr.type, ev->rssi, flags, ad_data,
 					ad_data_len, true);
 
 	if (handle) {

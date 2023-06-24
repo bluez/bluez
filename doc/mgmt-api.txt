@@ -4399,6 +4399,7 @@ Device Found Event
 		2	Not Connectable
 		3	Reserved (not in use)
 		4	Name Request Failed
+		5	Scan Response
 
 	For the RSSI field a value of 127 indicates that the RSSI is
 	not available. That can happen with Bluetooth 1.1 and earlier
