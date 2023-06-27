@@ -882,6 +882,12 @@ static void stream_notify_config(struct bt_bap_stream *stream)
 	put_le24(lpac->qos.ppd_min, config->ppd_min);
 	put_le24(lpac->qos.ppd_max, config->ppd_max);
 	config->codec = lpac->codec;
+
+	if (config->codec.id == 0x0ff) {
+		config->codec.vid = cpu_to_le16(config->codec.vid);
+		config->codec.cid = cpu_to_le16(config->codec.cid);
+	}
+
 	config->cc_len = stream->cc->iov_len;
 	memcpy(config->cc, stream->cc->iov_base, stream->cc->iov_len);
 
@@ -4346,6 +4352,11 @@ unsigned int bt_bap_stream_config(struct bt_bap_stream *stream,
 		config.latency = qos->ucast.target_latency;
 		config.phy = qos->ucast.io_qos.phy;
 		config.codec = stream->rpac->codec;
+
+		if (config.codec.id == 0xff) {
+			config.codec.cid = cpu_to_le16(config.codec.cid);
+			config.codec.vid = cpu_to_le16(config.codec.vid);
+		}
 
 		iov[0].iov_base = &config;
 		iov[0].iov_len = sizeof(config);
