@@ -3730,7 +3730,11 @@ static void handle_client_register_for_notification(const void *buf,
 
 	notification = new0(struct notification_data, 1);
 
+_Pragma("GCC diagnostic push")
+_Pragma("GCC diagnostic ignored \"-Warray-bounds\"")
+_Pragma("GCC diagnostic ignored \"-Wstringop-overflow\"")
 	memcpy(&notification->ch, &cmd->char_id, sizeof(notification->ch));
+_Pragma("GCC diagnostic pop")
 	memcpy(&notification->service, &cmd->srvc_id,
 						sizeof(notification->service));
 	notification->conn = conn;
