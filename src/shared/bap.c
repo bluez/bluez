@@ -2953,6 +2953,11 @@ static void bap_parse_pacs(struct bt_bap *bap, uint8_t type,
 			return;
 		}
 
+		if (p->codec.id == 0xff) {
+			p->codec.cid = le16_to_cpu(p->codec.cid);
+			p->codec.vid = le16_to_cpu(p->codec.vid);
+		}
+
 		pac = NULL;
 
 		if (!bap_print_cc(iov.iov_base, p->cc_len, bap->debug_func,
