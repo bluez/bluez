@@ -56,6 +56,8 @@ struct bt_bcast_src {
 	uint8_t bad_code[BT_BASS_BCAST_CODE_SIZE];
 	uint8_t num_subgroups;
 	struct bt_bass_subgroup_data *subgroup_data;
+	GIOChannel *listen_io;
+	struct queue *bises;
 };
 
 /* Broadcast Audio Scan Control Point
@@ -70,6 +72,14 @@ struct bt_bass_bcast_audio_scan_cp_hdr {
 #define BT_BASS_REMOTE_SCAN_STARTED			0x01
 
 #define BT_BASS_ADD_SRC					0x02
+
+/* PA_Sync values */
+#define PA_SYNC_NO_SYNC					0x00
+#define PA_SYNC_PAST					0x01
+#define PA_SYNC_NO_PAST					0x02
+
+/* BIS_Sync no preference bitmask */
+#define BIS_SYNC_NO_PREF				0xFFFFFFFF
 
 struct bt_bass_add_src_params {
 	uint8_t addr_type;
@@ -115,8 +125,10 @@ unsigned int bt_bass_register(bt_bass_func_t attached, bt_bass_func_t detached,
 bool bt_bass_unregister(unsigned int id);
 bool bt_bass_set_debug(struct bt_bass *bass, bt_bass_debug_func_t func,
 			void *user_data, bt_bass_destroy_func_t destroy);
-struct bt_bass *bt_bass_new(struct gatt_db *ldb, struct gatt_db *rdb);
+struct bt_bass *bt_bass_new(struct gatt_db *ldb, struct gatt_db *rdb,
+			const bdaddr_t *adapter_bdaddr);
 bool bt_bass_set_user_data(struct bt_bass *bass, void *user_data);
 void bt_bass_unref(struct bt_bass *bass);
 bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client);
 void bt_bass_detach(struct bt_bass *bass);
+void bt_bass_add_db(struct gatt_db *db, const bdaddr_t *adapter_bdaddr);

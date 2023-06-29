@@ -309,7 +309,7 @@ static void test_server(const void *user_data)
 	gatt_db_ccc_register(data->db, gatt_ccc_read_cb, NULL,
 					NULL, data);
 
-	data->bass = bt_bass_new(data->db, NULL);
+	data->bass = bt_bass_new(data->db, NULL, BDADDR_ANY);
 	g_assert(data->bass);
 
 	data->server = bt_gatt_server_new(data->db, att, 64, 0);

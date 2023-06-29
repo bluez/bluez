@@ -580,7 +580,7 @@ unit_test_bap_LDADD = src/libshared-glib.la \
 
 unit_tests += unit/test-bass
 
-unit_test_bass_SOURCES = unit/test-bass.c
+unit_test_bass_SOURCES = unit/test-bass.c $(btio_sources)
 unit_test_bass_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 

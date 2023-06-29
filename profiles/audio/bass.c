@@ -37,10 +37,10 @@
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
 #include "src/shared/gatt-server.h"
+#include "src/adapter.h"
 #include "src/shared/bass.h"
 
 #include "src/plugin.h"
-#include "src/adapter.h"
 #include "src/gatt-database.h"
 #include "src/device.h"
 #include "src/profile.h"
@@ -197,7 +197,8 @@ static int bass_probe(struct btd_service *service)
 	data->service = service;
 
 	data->bass = bt_bass_new(btd_gatt_database_get_db(database),
-					btd_device_get_gatt_db(device));
+					btd_device_get_gatt_db(device),
+					btd_adapter_get_address(adapter));
 	if (!data->bass) {
 		error("Unable to create BASS instance");
 		free(data);
@@ -268,6 +269,25 @@ static int bass_disconnect(struct btd_service *service)
 	return 0;
 }
 
+static int bass_server_probe(struct btd_profile *p,
+				struct btd_adapter *adapter)
+{
+	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
+
+	DBG("BASS path %s", adapter_get_path(adapter));
+
+	bt_bass_add_db(btd_gatt_database_get_db(database),
+				btd_adapter_get_address(adapter));
+
+	return 0;
+}
+
+static void bass_server_remove(struct btd_profile *p,
+					struct btd_adapter *adapter)
+{
+	DBG("BASS remove Adapter");
+}
+
 static struct btd_profile bass_service = {
 	.name		= "bass",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
@@ -276,6 +296,8 @@ static struct btd_profile bass_service = {
 	.device_remove	= bass_remove,
 	.accept		= bass_accept,
 	.disconnect	= bass_disconnect,
+	.adapter_probe	= bass_server_probe,
+	.adapter_remove	= bass_server_remove,
 	.experimental	= true,
 };
 
