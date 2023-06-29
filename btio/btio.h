@@ -46,7 +46,10 @@ typedef enum {
 	BT_IO_OPT_VOICE,
 	BT_IO_OPT_PHY,
 	BT_IO_OPT_QOS,
-	BT_IO_OPT_BASE
+	BT_IO_OPT_BASE,
+	BT_IO_OPT_ISO_BC_SID,
+	BT_IO_OPT_ISO_BC_NUM_BIS,
+	BT_IO_OPT_ISO_BC_BIS,
 } BtIOOption;
 
 typedef enum {
