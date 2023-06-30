@@ -539,7 +539,7 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 {
 	struct media_transport *transport = data;
 	struct media_owner *owner;
-	struct media_request *req;
+	struct media_request *req = NULL;
 	guint id;
 
 	if (transport->owner != NULL)
@@ -549,20 +549,21 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_not_authorized(msg);
 
 	owner = media_owner_create(msg);
-	if (bt_bap_stream_get_type(get_stream_bap(transport)) ==
-				BT_BAP_STREAM_TYPE_BCAST) {
+
+	if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
+						BAA_SERVICE_UUID)) {
 		req = media_request_create(msg, 0x00);
 		media_owner_add(owner, req);
 		media_transport_set_owner(transport, owner);
 	}
+
 	id = transport->resume(transport, owner);
 	if (id == 0) {
 		media_owner_free(owner);
 		return btd_error_not_authorized(msg);
 	}
 
-	if (bt_bap_stream_get_type(get_stream_bap(transport)) ==
-				BT_BAP_STREAM_TYPE_UCAST) {
+	if (!req) {
 		req = media_request_create(msg, id);
 		media_owner_add(owner, req);
 		media_transport_set_owner(transport, owner);
