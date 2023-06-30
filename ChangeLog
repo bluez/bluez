@@ -1,3 +1,6 @@
+ver 5.68:
+	Fix issue with A2DP and handling of Transport.Acquire.
+
 ver 5.67:
 	Fix issue with BAP and initiating QoS and Enable procedures.
 	Fix issue with BAP and detaching streams when PAC is removed.
