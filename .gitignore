@@ -76,6 +76,7 @@ tools/sdptool
 tools/sdptool.1
 tools/avtest
 tools/bdaddr
+tools/badddr.1
 tools/bluemoon
 tools/seq2bseq
 tools/hex2hcd
@@ -102,8 +103,12 @@ tools/test-runner
 tools/check-selftest
 tools/mcaptest
 tools/bneptest
+tools/isotest
+tools/isotest.1
+tools/iso-tester
 test/sap_client.pyc
 test/bluezutils.pyc
+unit/test-tester
 unit/test-ringbuf
 unit/test-queue
 unit/test-eir
@@ -119,12 +124,15 @@ unit/test-hfp
 unit/test-crypto
 unit/test-ecc
 unit/test-hog
+unit/test-bap
+unit/test-bass
 tools/mgmt-tester
 tools/smp-tester
 tools/gap-tester
 tools/rfcomm-tester
 tools/bnep-tester
 tools/userchan-tester
+tools/ioctl-tester
 tools/btattach
 tools/btattach.1
 tools/btconfig
@@ -144,6 +152,7 @@ client/bluetoothctl
 tools/meshctl
 tools/mesh-cfgclient
 tools/mesh-cfgtest
+tools/mesh-tester
 mesh/bluetooth-meshd
 mesh/bluetooth-meshd.8
 mesh/bluetooth-meshd.rst
