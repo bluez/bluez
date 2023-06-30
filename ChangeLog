@@ -1,3 +1,17 @@
+ver 5.67:
+	Fix issue with BAP and initiating QoS and Enable procedures.
+	Fix issue with BAP and detaching streams when PAC is removed.
+	Fix issue with BAP and reading all instances of PAC.
+	Fix issue with BAP and not being able to reconfigure.
+	Fix issue with BAP and transport configuration changes.
+	Fix issue with BAP and handling unexpected disconnect.
+	Fix issue with GATT and not removing pending services.
+	Fix issue with GATT and client ready handling.
+	Fix issue with handling fallback to transient hostname.
+	Add support for SecureConnections configuration option.
+	Add support for Mesh Remove Provisioning.
+	Add support for Mesh Private Beacons.
+
 ver 5.66:
 	Fix issue with A2DP and transport connection collisions.
 	Fix issue with allowing application specific error codes.
