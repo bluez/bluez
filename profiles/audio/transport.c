@@ -86,6 +86,7 @@ struct bap_transport {
 	unsigned int		state_id;
 	bool			linked;
 	struct bt_bap_qos	qos;
+	guint			resume_id;
 };
 
 struct media_transport {
@@ -1191,17 +1192,27 @@ static void bap_enable_complete(struct bt_bap_stream *stream,
 		media_transport_remove_owner(owner->transport);
 }
 
-static gboolean resume_complete(void *data)
+static void bap_resume_complete(struct media_transport *transport)
 {
-	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
 	struct media_owner *owner = transport->owner;
 
+	DBG("stream %p owner %p resume complete", bap->stream, owner);
+
+	if (bap->resume_id) {
+		g_source_remove(bap->resume_id);
+		bap->resume_id = 0;
+	}
+
 	if (!owner)
-		return FALSE;
+		return;
+
+	if (owner->pending)
+		owner->pending->id = 0;
 
 	if (transport->fd < 0) {
 		media_transport_remove_owner(transport);
-		return FALSE;
+		return;
 	}
 
 	if (owner->pending) {
@@ -1215,15 +1226,13 @@ static gboolean resume_complete(void *data)
 						DBUS_TYPE_INVALID);
 		if (!ret) {
 			media_transport_remove_owner(transport);
-			return FALSE;
+			return;
 		}
 	}
 
 	media_owner_remove(owner);
 
 	transport_set_state(transport, TRANSPORT_STATE_ACTIVE);
-
-	return FALSE;
 }
 
 static void bap_update_links(const struct media_transport *transport);
@@ -1306,6 +1315,32 @@ static void bap_update_qos(const struct media_transport *transport)
 			"Delay");
 }
 
+static gboolean bap_resume_complete_cb(void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	bap->resume_id = 0;
+	bap_resume_complete(transport);
+	return FALSE;
+}
+
+static gboolean bap_resume_wait_cb(void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	struct media_owner *owner = transport->owner;
+
+	/* bap_state_changed will call completion callback when ready */
+	DBG("stream %p owner %p resume wait", bap->stream, owner);
+
+	bap->resume_id = 0;
+	if (owner && owner->pending)
+		owner->pending->id = 0;
+
+	return FALSE;
+}
+
 static guint resume_bap(struct media_transport *transport,
 				struct media_owner *owner)
 {
@@ -1315,17 +1350,19 @@ static guint resume_bap(struct media_transport *transport,
 
 	if (!bap->stream)
 		return 0;
+	if (bap->resume_id)
+		return 0;
 
 	bap_update_links(transport);
 
 	switch (bt_bap_stream_get_state(bap->stream)) {
 	case BT_BAP_STREAM_STATE_ENABLING:
 		bap_enable_complete(bap->stream, 0x00, 0x00, owner);
-		if (owner->pending)
-			return owner->pending->id;
-		return 0;
+		bap->resume_id = g_idle_add(bap_resume_wait_cb, transport);
+		return bap->resume_id;
 	case BT_BAP_STREAM_STATE_STREAMING:
-		return g_idle_add(resume_complete, transport);
+		bap->resume_id = g_idle_add(bap_resume_complete_cb, transport);
+		return bap->resume_id;
 	}
 
 	meta = bt_bap_stream_get_metadata(bap->stream);
@@ -1388,6 +1425,12 @@ static guint suspend_bap(struct media_transport *transport,
 static void cancel_bap(struct media_transport *transport, guint id)
 {
 	struct bap_transport *bap = transport->data;
+
+	if (id == bap->resume_id && bap->resume_id) {
+		g_source_remove(bap->resume_id);
+		bap->resume_id = 0;
+		return;
+	}
 
 	if (!bap->stream)
 		return;
@@ -1491,7 +1534,7 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	transport_update_playing(transport, TRUE);
 
 done:
-	resume_complete(transport);
+	bap_resume_complete(transport);
 }
 
 static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
