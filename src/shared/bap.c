@@ -4306,7 +4306,7 @@ static struct bt_bap_req *bap_req_new(struct bt_bap_stream *stream,
 	static unsigned int id;
 
 	req = new0(struct bt_bap_req, 1);
-	req->id = ++id;
+	req->id = ++id ? id : ++id;
 	req->stream = stream;
 	req->op = op;
 	req->iov = util_iov_dup(iov, len);
