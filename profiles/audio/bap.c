@@ -68,6 +68,7 @@ struct bap_ep {
 	GIOChannel *io;
 	unsigned int io_id;
 	bool recreate;
+	bool cig_active;
 	struct iovec *caps;
 	struct iovec *metadata;
 	struct bt_bap_qos qos;
@@ -525,6 +526,7 @@ static void bap_io_close(struct bap_ep *ep)
 
 	g_io_channel_unref(ep->io);
 	ep->io = NULL;
+	ep->cig_active = false;
 }
 
 static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
@@ -988,7 +990,7 @@ drop:
 	g_io_channel_shutdown(io, TRUE, NULL);
 }
 
-static void bap_accept_io(struct bap_data *data, struct bt_bap_stream *stream,
+static void bap_accept_io(struct bap_ep *ep, struct bt_bap_stream *stream,
 							int fd, int defer)
 {
 	char c;
@@ -1025,10 +1027,50 @@ static void bap_accept_io(struct bap_data *data, struct bt_bap_stream *stream,
 		}
 	}
 
+	ep->cig_active = true;
+
 	return;
 
 fail:
 	close(fd);
+}
+
+struct cig_busy_data {
+	struct btd_adapter *adapter;
+	uint8_t cig;
+};
+
+static bool cig_busy_ep(const void *data, const void *match_data)
+{
+	const struct bap_ep *ep = data;
+	const struct cig_busy_data *info = match_data;
+
+	return (ep->qos.ucast.cig_id == info->cig) && ep->cig_active;
+}
+
+static bool cig_busy_session(const void *data, const void *match_data)
+{
+	const struct bap_data *session = data;
+	const struct cig_busy_data *info = match_data;
+
+	if (device_get_adapter(session->device) != info->adapter)
+		return false;
+
+	return queue_find(session->snks, cig_busy_ep, match_data) ||
+			queue_find(session->srcs, cig_busy_ep, match_data);
+}
+
+static bool is_cig_busy(struct bap_data *data, uint8_t cig)
+{
+	struct cig_busy_data info;
+
+	if (cig == BT_ISO_QOS_CIG_UNSET)
+		return false;
+
+	info.adapter = device_get_adapter(data->device);
+	info.cig = cig;
+
+	return queue_find(sessions, cig_busy_session, &info);
 }
 
 static void bap_create_io(struct bap_data *data, struct bap_ep *ep,
@@ -1047,6 +1089,48 @@ static gboolean bap_io_recreate(void *user_data)
 	return FALSE;
 }
 
+static void recreate_cig_ep(void *data, void *match_data)
+{
+	struct bap_ep *ep = (struct bap_ep *)data;
+	struct cig_busy_data *info = match_data;
+
+	if (ep->qos.ucast.cig_id != info->cig || !ep->recreate || ep->io_id)
+		return;
+
+	ep->recreate = false;
+	ep->io_id = g_idle_add(bap_io_recreate, ep);
+}
+
+static void recreate_cig_session(void *data, void *match_data)
+{
+	struct bap_data *session = data;
+	struct cig_busy_data *info = match_data;
+
+	if (device_get_adapter(session->device) != info->adapter)
+		return;
+
+	queue_foreach(session->snks, recreate_cig_ep, match_data);
+	queue_foreach(session->srcs, recreate_cig_ep, match_data);
+}
+
+static void recreate_cig(struct bap_ep *ep)
+{
+	struct bap_data *data = ep->data;
+	struct cig_busy_data info;
+
+	info.adapter = device_get_adapter(data->device);
+	info.cig = ep->qos.ucast.cig_id;
+
+	DBG("adapter %p ep %p recreate CIG %d", info.adapter, ep, info.cig);
+
+	if (ep->qos.ucast.cig_id == BT_ISO_QOS_CIG_UNSET) {
+		recreate_cig_ep(ep, &info);
+		return;
+	}
+
+	queue_foreach(sessions, recreate_cig_session, &info);
+}
+
 static gboolean bap_io_disconnected(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1059,10 +1143,8 @@ static gboolean bap_io_disconnected(GIOChannel *io, GIOCondition cond,
 	bap_io_close(ep);
 
 	/* Check if connecting recreate IO */
-	if (ep->recreate) {
-		ep->recreate = false;
-		ep->io_id = g_idle_add(bap_io_recreate, ep);
-	}
+	if (!is_cig_busy(ep->data, ep->qos.ucast.cig_id))
+		recreate_cig(ep);
 
 	return FALSE;
 }
@@ -1087,18 +1169,22 @@ static void bap_connect_io(struct bap_data *data, struct bap_ep *ep,
 	int fd;
 
 	/* If IO already set skip creating it again */
-	if (bt_bap_stream_get_io(stream))
-		return;
-
-	if (bt_bap_stream_io_is_connecting(stream, &fd)) {
-		bap_accept_io(data, stream, fd, defer);
+	if (bt_bap_stream_get_io(stream)) {
+		DBG("ep %p stream %p has existing io", ep, stream);
 		return;
 	}
 
-	/* If IO channel still up wait for it to be disconnected and then
-	 * recreate.
+	if (bt_bap_stream_io_is_connecting(stream, &fd)) {
+		bap_accept_io(ep, stream, fd, defer);
+		return;
+	}
+
+	/* If IO channel still up or CIG is busy, wait for it to be
+	 * disconnected and then recreate.
 	 */
-	if (ep->io) {
+	if (ep->io || is_cig_busy(data, ep->qos.ucast.cig_id)) {
+		DBG("ep %p stream %p defer %s wait recreate", ep, stream,
+						defer ? "true" : "false");
 		ep->recreate = true;
 		return;
 	}
@@ -1131,6 +1217,7 @@ static void bap_connect_io(struct bap_data *data, struct bap_ep *ep,
 						bap_io_disconnected, ep);
 
 	ep->io = io;
+	ep->cig_active = !defer;
 
 	bt_bap_stream_io_connecting(stream, g_io_channel_unix_get_fd(io));
 }
