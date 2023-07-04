@@ -3093,6 +3093,11 @@ static const struct bitfield_data events_le_table[] = {
 	{ 27, "LE Terminate BIG Complete"		},
 	{ 28, "LE BIG Sync Estabilished Complete"	},
 	{ 29, "LE BIG Sync Lost"			},
+	{ 30, "LE Request Peer SCA Complete"},
+	{ 31, "LE Path Loss Threshold"		},
+	{ 32, "LE Transmit Power Reporting"	},
+	{ 33, "LE BIG Info Advertising Report"	},
+	{ 34, "LE Subrate Change"			},
 	{ }
 };
 
