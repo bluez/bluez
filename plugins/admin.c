@@ -502,7 +502,6 @@ static int admin_policy_adapter_probe(struct btd_adapter *adapter)
 	if (policy_data) {
 		btd_warn(policy_data->adapter_id,
 						"Policy data already exists");
-		admin_policy_free(policy_data);
 		policy_data = NULL;
 	}
 
