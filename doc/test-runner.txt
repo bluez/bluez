@@ -74,9 +74,12 @@ Lock debuging
 To catch locking related issues the following set of kernel config
 options may be useful:
 
+	CONFIG_DEBUG_KERNEL=y
 	CONFIG_LOCKDEP_SUPPORT=y
 	CONFIG_DEBUG_SPINLOCK=y
 	CONFIG_DEBUG_LOCK_ALLOC=y
+	CONFIG_DEBUG_ATOMIC_SLEEP=y
 	CONFIG_PROVE_LOCKING=y
+	CONFIG_PROVE_RCU=y
 	CONFIG_LOCKDEP=y
 	CONFIG_DEBUG_MUTEXES=y
