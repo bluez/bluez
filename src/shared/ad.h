@@ -98,6 +98,8 @@ struct bt_ad_pattern {
 
 struct bt_ad *bt_ad_new(void);
 
+bool bt_ad_set_max_len(struct bt_ad *ad, uint8_t len);
+
 struct bt_ad *bt_ad_new_with_data(size_t len, const uint8_t *data);
 
 struct bt_ad *bt_ad_ref(struct bt_ad *ad);

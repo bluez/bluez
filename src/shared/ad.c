@@ -22,6 +22,7 @@
 
 struct bt_ad {
 	int ref_count;
+	uint8_t max_len;
 	char *name;
 	uint16_t appearance;
 	struct queue *service_uuids;
@@ -42,6 +43,7 @@ struct bt_ad *bt_ad_new(void)
 	struct bt_ad *ad;
 
 	ad = new0(struct bt_ad, 1);
+	ad->max_len = BT_AD_MAX_DATA_LEN;
 	ad->service_uuids = queue_new();
 	ad->manufacturer_data = queue_new();
 	ad->solicit_uuids = queue_new();
@@ -50,6 +52,16 @@ struct bt_ad *bt_ad_new(void)
 	ad->appearance = UINT16_MAX;
 
 	return bt_ad_ref(ad);
+}
+
+bool bt_ad_set_max_len(struct bt_ad *ad, uint8_t len)
+{
+	if (!ad || len < BT_AD_MAX_DATA_LEN)
+		return false;
+
+	ad->max_len = len;
+
+	return true;
 }
 
 static bool ad_replace_data(struct bt_ad *ad, uint8_t type, const void *data,
@@ -298,17 +310,17 @@ static size_t uuid_data_length(struct queue *uuid_data)
 	return length;
 }
 
-static size_t name_length(const char *name, size_t *pos)
+static size_t name_length(struct bt_ad *ad, size_t *pos)
 {
 	size_t len;
 
-	if (!name)
+	if (!ad->name)
 		return 0;
 
-	len = 2 + strlen(name);
+	len = 2 + strlen(ad->name);
 
-	if (len > BT_AD_MAX_DATA_LEN - *pos)
-		len = BT_AD_MAX_DATA_LEN - *pos;
+	if (len > ad->max_len - (*pos))
+		len = ad->max_len - (*pos);
 
 	return len;
 }
@@ -343,7 +355,7 @@ static size_t calculate_length(struct bt_ad *ad)
 
 	length += uuid_data_length(ad->service_data);
 
-	length += name_length(ad->name, &length);
+	length += name_length(ad, &length);
 
 	length += ad->appearance != UINT16_MAX ? 4 : 0;
 
@@ -467,36 +479,36 @@ static void serialize_service_data(struct queue *service_data, uint8_t *buf,
 	}
 }
 
-static void serialize_name(const char *name, uint8_t *buf, uint8_t *pos)
+static void serialize_name(struct bt_ad *ad, uint8_t *buf, uint8_t *pos)
 {
 	int len;
 	uint8_t type = BT_AD_NAME_COMPLETE;
 
-	if (!name)
+	if (!ad->name)
 		return;
 
-	len = strlen(name);
-	if (len > BT_AD_MAX_DATA_LEN - (*pos + 2)) {
+	len = strlen(ad->name);
+	if (len > ad->max_len - (*pos + 2)) {
 		type = BT_AD_NAME_SHORT;
-		len = BT_AD_MAX_DATA_LEN - (*pos + 2);
+		len = ad->max_len - (*pos + 2);
 	}
 
 	buf[(*pos)++] = len + 1;
 	buf[(*pos)++] = type;
 
-	memcpy(buf + *pos, name, len);
+	memcpy(buf + *pos, ad->name, len);
 	*pos += len;
 }
 
-static void serialize_appearance(uint16_t value, uint8_t *buf, uint8_t *pos)
+static void serialize_appearance(struct bt_ad *ad, uint8_t *buf, uint8_t *pos)
 {
-	if (value == UINT16_MAX)
+	if (ad->appearance == UINT16_MAX)
 		return;
 
-	buf[(*pos)++] = sizeof(value) + 1;
+	buf[(*pos)++] = sizeof(ad->appearance) + 1;
 	buf[(*pos)++] = BT_AD_GAP_APPEARANCE;
 
-	bt_put_le16(value, buf + (*pos));
+	bt_put_le16(ad->appearance, buf + (*pos));
 	*pos += 2;
 }
 
@@ -528,7 +540,7 @@ uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 
 	*length = calculate_length(ad);
 
-	if (*length > BT_AD_MAX_DATA_LEN)
+	if (*length > ad->max_len)
 		return NULL;
 
 	adv_data = malloc0(*length);
@@ -543,9 +555,9 @@ uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 
 	serialize_service_data(ad->service_data, adv_data, &pos);
 
-	serialize_name(ad->name, adv_data, &pos);
+	serialize_name(ad, adv_data, &pos);
 
-	serialize_appearance(ad->appearance, adv_data, &pos);
+	serialize_appearance(ad, adv_data, &pos);
 
 	serialize_data(ad->data, adv_data, &pos);
 
@@ -653,7 +665,7 @@ bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t manufacturer_id,
 	if (!ad)
 		return false;
 
-	if (len > (BT_AD_MAX_DATA_LEN - 2 - sizeof(uint16_t)))
+	if (len > (ad->max_len - 2 - sizeof(uint16_t)))
 		return false;
 
 	new_data = queue_find(ad->manufacturer_data, manufacturer_id_data_match,
@@ -790,7 +802,7 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 	if (!ad)
 		return false;
 
-	if (len > (BT_AD_MAX_DATA_LEN - 2 - (size_t)bt_uuid_len(uuid)))
+	if (len > (ad->max_len - 2 - (size_t)bt_uuid_len(uuid)))
 		return false;
 
 	new_data = queue_find(ad->service_data, service_uuid_match, uuid);
@@ -1009,7 +1021,7 @@ bool bt_ad_add_data(struct bt_ad *ad, uint8_t type, void *data, size_t len)
 	if (!ad)
 		return false;
 
-	if (len > (BT_AD_MAX_DATA_LEN - 2))
+	if (len > (size_t)(ad->max_len - 2))
 		return false;
 
 	for (i = 0; i < sizeof(type_reject_list); i++) {
