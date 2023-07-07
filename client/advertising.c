@@ -28,7 +28,7 @@
 #define AD_IFACE "org.bluez.LEAdvertisement1"
 
 struct ad_data {
-	uint8_t data[25];
+	uint8_t data[245];
 	uint8_t len;
 };
 
