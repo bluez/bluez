@@ -61,9 +61,6 @@
 #define DEFAULT_TEMPORARY_TIMEOUT         30 /* 30 seconds */
 #define DEFAULT_NAME_REQUEST_RETRY_DELAY 300 /* 5 minutes */
 
-/*CSIP Profile - Server */
-#define DEFAULT_SIRK "761FAE703ED681F0C50B34155B6434FB"
-
 #define SHUTDOWN_GRACE_SECONDS 10
 
 struct btd_opts btd_opts;
