@@ -939,7 +939,9 @@ static int refresh_legacy_adv(struct btd_adv_client *client,
 	cp->adv_data_len = adv_data_len;
 	cp->scan_rsp_len = scan_rsp_len;
 	memcpy(cp->data, adv_data, adv_data_len);
-	memcpy(cp->data + adv_data_len, scan_rsp, scan_rsp_len);
+
+	if (scan_rsp)
+		memcpy(cp->data + adv_data_len, scan_rsp, scan_rsp_len);
 
 	free(adv_data);
 	free(scan_rsp);
