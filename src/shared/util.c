@@ -1705,3 +1705,65 @@ int strsuffix(const char *str, const char *suffix)
 
 	return strncmp(str + len - suffix_len, suffix, suffix_len);
 }
+
+char *strstrip(char *str)
+{
+	size_t size;
+	char *end;
+
+	if (!str)
+		return NULL;
+
+	size = strlen(str);
+	if (!size)
+		return str;
+
+	end = str + size - 1;
+	while (end >= str && isspace(*end))
+		end--;
+	*(end + 1) = '\0';
+
+	while (*str && isspace(*str))
+		str++;
+
+	return str;
+}
+
+bool strisutf8(const char *str, size_t len)
+{
+	size_t i = 0;
+
+	while (i < len) {
+		unsigned char c = str[i];
+		size_t size = 0;
+
+		/* Check the first byte to determine the number of bytes in the
+		 * UTF-8 character.
+		 */
+		if ((c & 0x80) == 0x00)
+			size = 1;
+		else if ((c & 0xE0) == 0xC0)
+			size = 2;
+		else if ((c & 0xF0) == 0xE0)
+			size = 3;
+		else if ((c & 0xF8) == 0xF0)
+			size = 4;
+		else
+			/* Invalid UTF-8 sequence */
+			return false;
+
+		/* Check the following bytes to ensure they have the correct
+		 * format.
+		 */
+		for (size_t j = 1; j < size; ++j) {
+			if (i + j > len || (str[i + j] & 0xC0) != 0x80)
+				/* Invalid UTF-8 sequence */
+				return false;
+		}
+
+		/* Move to the next character */
+		i += size;
+	}
+
+	return true;
+}

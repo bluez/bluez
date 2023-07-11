@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <alloca.h>
 #include <byteswap.h>
 #include <string.h>
@@ -88,6 +89,8 @@ do {						\
 
 char *strdelimit(char *str, char *del, char c);
 int strsuffix(const char *str, const char *suffix);
+char *strstrip(char *str);
+bool strisutf8(const char *str, size_t length);
 
 void *util_malloc(size_t size);
 void *util_memdup(const void *src, size_t size);
