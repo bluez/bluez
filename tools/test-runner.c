@@ -277,7 +277,8 @@ static void start_qemu(void)
 				initcmd, cwd, start_dbus, start_daemon,
 				start_dbus_session,
 				start_monitor, start_emulator, num_devs,
-				run_auto, audio_server, testargs);
+				run_auto, audio_server ? audio_server : "",
+				testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
 				(sizeof(char *) * (4 + (num_devs * 4))));
@@ -1132,7 +1133,7 @@ static void run_tests(void)
 		const char *start = ptr + 11;
 		const char *end = strchr(start, '\'');
 
-		if (end) {
+		if (end && end != start) {
 			audio_server = strndup(start, end - start);
 			printf("Audio server %s requested\n", audio_server);
 		}
