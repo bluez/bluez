@@ -136,6 +136,24 @@ static const char *config_table[] = {
 	NULL
 };
 
+static void enable_printk(void)
+{
+	FILE *f;
+
+	f = fopen("/proc/sys/kernel/printk", "w");
+	if (!f) {
+		perror("Failed to set printk");
+		return;
+	}
+
+	/* Restore printk loglevel, undoing 'quiet' in cmdline (suppress early
+	 * on-boot messages), to show WARN_ON etc. Suppress level>=6(INFO), set
+	 * default_msg:4(WARN) & min:1, default:7. See man 2 syslog.
+	 */
+	fprintf(f, "6 4 1 7");
+	fclose(f);
+}
+
 static void prepare_sandbox(void)
 {
 	int i;
@@ -181,6 +199,8 @@ static void prepare_sandbox(void)
 				"mode=0755") < 0)
 			perror("Failed to create filesystem");
 	}
+
+	enable_printk();
 }
 
 static char *const qemu_argv[] = {
