@@ -14,6 +14,11 @@
 
 #define _GNU_SOURCE
 
+#include <ctype.h>
+
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
+
 #include "src/shared/ad.h"
 
 #include "src/eir.h"
@@ -80,7 +85,11 @@ static bool ad_is_type_valid(uint8_t type)
 struct bt_ad *bt_ad_new_with_data(size_t len, const uint8_t *data)
 {
 	struct bt_ad *ad;
-	uint16_t parsed_len = 0;
+	struct iovec iov = {
+		.iov_base = (void *)data,
+		.iov_len = len,
+	};
+	uint8_t elen;
 
 	if (data == NULL || !len)
 		return NULL;
@@ -89,31 +98,29 @@ struct bt_ad *bt_ad_new_with_data(size_t len, const uint8_t *data)
 	if (!ad)
 		return NULL;
 
-	while (parsed_len < len - 1) {
-		uint8_t d_len;
-		uint8_t d_type;
-		const uint8_t *d;
-		uint8_t field_len = data[0];
+	bt_ad_set_max_len(ad, len);
 
-		if (field_len == 0)
+	while (util_iov_pull_u8(&iov, &elen)) {
+		uint8_t type;
+		void *data;
+
+		if (elen == 0 || elen > iov.iov_len)
 			break;
 
-		parsed_len += field_len + 1;
-
-		if (parsed_len > len)
-			break;
-
-		d = &data[2];
-		d_type = data[1];
-		d_len = field_len - 1;
-
-		if (!ad_is_type_valid(d_type))
+		if (!util_iov_pull_u8(&iov, &type))
 			goto failed;
 
-		if (!ad_replace_data(ad, d_type, d, d_len))
+		elen--;
+
+		if (!ad_is_type_valid(type))
 			goto failed;
 
-		data += field_len + 1;
+		data = util_iov_pull_mem(&iov, elen);
+		if (!data)
+			goto failed;
+
+		if (!ad_replace_data(ad, type, data, elen))
+			goto failed;
 	}
 
 	return ad;
@@ -203,10 +210,181 @@ static bool data_type_match(const void *data, const void *user_data)
 	return a->type == type;
 }
 
+static bool ad_replace_uuid16(struct bt_ad *ad, struct iovec *iov)
+{
+	uint16_t value;
+
+	while ((util_iov_pull_le16(iov, &value))) {
+		bt_uuid_t uuid;
+
+		if (bt_uuid16_create(&uuid, value))
+			return false;
+
+		if (bt_ad_has_service_uuid(ad, &uuid))
+			continue;
+
+		if (!bt_ad_add_service_uuid(ad, &uuid))
+			return false;
+	}
+
+	return true;
+}
+
+static bool ad_replace_uuid32(struct bt_ad *ad, struct iovec *iov)
+{
+	uint32_t value;
+
+	while ((util_iov_pull_le32(iov, &value))) {
+		bt_uuid_t uuid;
+
+		if (bt_uuid32_create(&uuid, value))
+			return false;
+
+		if (bt_ad_has_service_uuid(ad, &uuid))
+			continue;
+
+		if (!bt_ad_add_service_uuid(ad, &uuid))
+			return false;
+	}
+
+	return true;
+}
+
+static bool ad_replace_uuid128(struct bt_ad *ad, struct iovec *iov)
+{
+	void *data;
+
+	while ((data = util_iov_pull_mem(iov, 16))) {
+		uint128_t value;
+		bt_uuid_t uuid;
+
+		bswap_128(data, &value);
+
+		if (bt_uuid128_create(&uuid, value))
+			return false;
+
+		if (bt_ad_has_service_uuid(ad, &uuid))
+			continue;
+
+		if (!bt_ad_add_service_uuid(ad, &uuid))
+			return false;
+	}
+
+	return true;
+}
+
+static bool ad_replace_name(struct bt_ad *ad, struct iovec *iov)
+{
+	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
+	int i;
+
+	memset(utf8_name, 0, sizeof(utf8_name));
+	strncpy(utf8_name, (const char *)iov->iov_base, iov->iov_len);
+
+	if (strisutf8(utf8_name, iov->iov_len))
+		goto done;
+
+	/* Assume ASCII, and replace all non-ASCII with spaces */
+	for (i = 0; utf8_name[i] != '\0'; i++) {
+		if (!isascii(utf8_name[i]))
+			utf8_name[i] = ' ';
+	}
+
+	/* Remove leading and trailing whitespace characters */
+	strstrip(utf8_name);
+
+done:
+	return bt_ad_add_name(ad, utf8_name);
+}
+
+static bool ad_replace_uuid16_data(struct bt_ad *ad, struct iovec *iov)
+{
+	uint16_t value;
+	bt_uuid_t uuid;
+
+	if (!util_iov_pull_le16(iov, &value))
+		return false;
+
+	if (bt_uuid16_create(&uuid, value))
+		return false;
+
+	return bt_ad_add_service_data(ad, &uuid, iov->iov_base, iov->iov_len);
+}
+
+static bool ad_replace_uuid32_data(struct bt_ad *ad, struct iovec *iov)
+{
+	uint32_t value;
+	bt_uuid_t uuid;
+
+	if (!util_iov_pull_le32(iov, &value))
+		return false;
+
+	if (bt_uuid32_create(&uuid, value))
+		return false;
+
+	return bt_ad_add_service_data(ad, &uuid, iov->iov_base, iov->iov_len);
+}
+
+static bool ad_replace_uuid128_data(struct bt_ad *ad, struct iovec *iov)
+{
+	void *data;
+	uint128_t value;
+	bt_uuid_t uuid;
+
+	data = util_iov_pull_mem(iov, 16);
+	if (!data)
+		return false;
+
+	bswap_128(data, &value);
+
+	if (bt_uuid128_create(&uuid, value))
+		return false;
+
+	return bt_ad_add_service_data(ad, &uuid, iov->iov_base, iov->iov_len);
+}
+
+static bool ad_replace_manufacturer_data(struct bt_ad *ad, struct iovec *iov)
+{
+	uint16_t value;
+
+	if (!util_iov_pull_le16(iov, &value))
+		return false;
+
+	return bt_ad_add_manufacturer_data(ad, value, iov->iov_base,
+							iov->iov_len);
+}
+
 static bool ad_replace_data(struct bt_ad *ad, uint8_t type, const void *data,
 							size_t len)
 {
 	struct bt_ad_data *new_data;
+	struct iovec iov = {
+		.iov_base = (void *)data,
+		.iov_len = len,
+	};
+
+	switch (type) {
+	case BT_AD_UUID16_SOME:
+	case BT_AD_UUID16_ALL:
+		return ad_replace_uuid16(ad, &iov);
+	case BT_AD_UUID32_SOME:
+	case BT_AD_UUID32_ALL:
+		return ad_replace_uuid32(ad, &iov);
+	case BT_AD_UUID128_SOME:
+	case BT_AD_UUID128_ALL:
+		return ad_replace_uuid128(ad, &iov);
+	case BT_AD_NAME_SHORT:
+	case BT_AD_NAME_COMPLETE:
+		return ad_replace_name(ad, &iov);
+	case BT_AD_SERVICE_DATA16:
+		return ad_replace_uuid16_data(ad, &iov);
+	case BT_AD_SERVICE_DATA32:
+		return ad_replace_uuid32_data(ad, &iov);
+	case BT_AD_SERVICE_DATA128:
+		return ad_replace_uuid128_data(ad, &iov);
+	case BT_AD_MANUFACTURER_DATA:
+		return ad_replace_manufacturer_data(ad, &iov);
+	}
 
 	new_data = queue_find(ad->data, data_type_match, UINT_TO_PTR(type));
 	if (new_data) {
@@ -220,13 +398,12 @@ static bool ad_replace_data(struct bt_ad *ad, uint8_t type, const void *data,
 
 	new_data = new0(struct bt_ad_data, 1);
 	new_data->type = type;
-	new_data->data = malloc(len);
+	new_data->data = util_memdup(data, len);
 	if (!new_data->data) {
 		free(new_data);
 		return false;
 	}
 
-	memcpy(new_data->data, data, len);
 	new_data->len = len;
 
 	if (queue_push_tail(ad->data, new_data))
@@ -590,7 +767,7 @@ static bool uuid_match(const void *data, const void *elem)
 	const bt_uuid_t *match_uuid = data;
 	const bt_uuid_t *uuid = elem;
 
-	return bt_uuid_cmp(match_uuid, uuid);
+	return !bt_uuid_cmp(match_uuid, uuid);
 }
 
 static bool queue_remove_uuid(struct queue *queue, bt_uuid_t *uuid)
@@ -616,6 +793,14 @@ bool bt_ad_add_service_uuid(struct bt_ad *ad, const bt_uuid_t *uuid)
 		return false;
 
 	return queue_add_uuid(ad->service_uuids, uuid);
+}
+
+bool bt_ad_has_service_uuid(struct bt_ad *ad, const bt_uuid_t *uuid)
+{
+	if (!ad)
+		return false;
+
+	return queue_find(ad->service_uuids, uuid_match, uuid);
 }
 
 bool bt_ad_remove_service_uuid(struct bt_ad *ad, bt_uuid_t *uuid)
@@ -894,6 +1079,14 @@ bool bt_ad_add_name(struct bt_ad *ad, const char *name)
 	return true;
 }
 
+const char *bt_ad_get_name(struct bt_ad *ad)
+{
+	if (!ad)
+		return false;
+
+	return ad->name;
+}
+
 void bt_ad_clear_name(struct bt_ad *ad)
 {
 	if (!ad)
@@ -931,6 +1124,20 @@ bool bt_ad_add_flags(struct bt_ad *ad, uint8_t *flags, size_t len)
 		return false;
 
 	return ad_replace_data(ad, BT_AD_FLAGS, flags, len);
+}
+
+uint8_t bt_ad_get_flags(struct bt_ad *ad)
+{
+	struct bt_ad_data *data;
+
+	if (!ad)
+		return 0;
+
+	data = queue_find(ad->data, data_type_match, UINT_TO_PTR(BT_AD_FLAGS));
+	if (!data || data->len != 1)
+		return 0;
+
+	return data->data[0];
 }
 
 bool bt_ad_has_flags(struct bt_ad *ad)
@@ -1075,6 +1282,21 @@ void bt_ad_clear_data(struct bt_ad *ad)
 		return;
 
 	queue_remove_all(ad->data, NULL, NULL, data_destroy);
+}
+
+int8_t bt_ad_get_tx_power(struct bt_ad *ad)
+{
+	struct bt_ad_data *data;
+
+	if (!ad)
+		return 0;
+
+	data = queue_find(ad->data, data_type_match,
+					UINT_TO_PTR(BT_AD_TX_POWER));
+	if (!data || data->len != 1)
+		return 127;
+
+	return data->data[0];
 }
 
 struct bt_ad_pattern *bt_ad_pattern_new(uint8_t type, size_t offset, size_t len,

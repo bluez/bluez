@@ -112,11 +112,13 @@ bool bt_ad_is_empty(struct bt_ad *ad);
 
 bool bt_ad_add_service_uuid(struct bt_ad *ad, const bt_uuid_t *uuid);
 
+bool bt_ad_has_service_uuid(struct bt_ad *ad, const bt_uuid_t *uuid);
+
 bool bt_ad_remove_service_uuid(struct bt_ad *ad, bt_uuid_t *uuid);
 
 void bt_ad_clear_service_uuid(struct bt_ad *ad);
 
-bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t manufacturer_data,
+bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t id,
 						void *data, size_t len);
 
 bool bt_ad_has_manufacturer_data(struct bt_ad *ad,
@@ -150,6 +152,8 @@ void bt_ad_clear_service_data(struct bt_ad *ad);
 
 bool bt_ad_add_name(struct bt_ad *ad, const char *name);
 
+const char *bt_ad_get_name(struct bt_ad *ad);
+
 void bt_ad_clear_name(struct bt_ad *ad);
 
 bool bt_ad_add_appearance(struct bt_ad *ad, uint16_t appearance);
@@ -159,6 +163,8 @@ void bt_ad_clear_appearance(struct bt_ad *ad);
 bool bt_ad_add_flags(struct bt_ad *ad, uint8_t *flags, size_t len);
 
 bool bt_ad_has_flags(struct bt_ad *ad);
+
+uint8_t bt_ad_get_flags(struct bt_ad *ad);
 
 void bt_ad_clear_flags(struct bt_ad *ad);
 
@@ -171,6 +177,8 @@ void bt_ad_foreach_data(struct bt_ad *ad, bt_ad_func_t func, void *user_data);
 bool bt_ad_remove_data(struct bt_ad *ad, uint8_t type);
 
 void bt_ad_clear_data(struct bt_ad *ad);
+
+int8_t bt_ad_get_tx_power(struct bt_ad *ad);
 
 struct bt_ad_pattern *bt_ad_pattern_new(uint8_t type, size_t offset,
 					size_t len, const uint8_t *data);
