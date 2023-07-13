@@ -1715,7 +1715,7 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 
 	host = hciemu_client_get_host(data->hciemu);
 	bthost_send_iso(host, data->handle, isodata->ts, sn++, 0,
-							isodata->recv, 1);
+				0x00, isodata->recv, 1);
 
 	data->io_id[0] = g_io_add_watch(io, G_IO_IN, iso_recv_data, data);
 }

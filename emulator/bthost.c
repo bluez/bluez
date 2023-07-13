@@ -732,8 +732,8 @@ void bthost_send_cid_v(struct bthost *bthost, uint16_t handle, uint16_t cid,
 }
 
 static void send_iso(struct bthost *bthost, uint16_t handle, bool ts,
-					uint16_t sn, uint32_t timestamp,
-					const struct iovec *iov, int iovcnt)
+			uint16_t sn, uint32_t timestamp, uint8_t pkt_status,
+			const struct iovec *iov, int iovcnt)
 {
 	struct bt_hci_iso_hdr iso_hdr;
 	struct bt_hci_iso_data_start data_hdr;
@@ -773,7 +773,7 @@ static void send_iso(struct bthost *bthost, uint16_t handle, bool ts,
 	}
 
 	data_hdr.sn = cpu_to_le16(sn);
-	data_hdr.slen = cpu_to_le16(iso_data_len_pack(len, 0));
+	data_hdr.slen = cpu_to_le16(iso_data_len_pack(len, pkt_status));
 
 	pdu[3].iov_base = &data_hdr;
 	pdu[3].iov_len = sizeof(data_hdr);
@@ -782,8 +782,8 @@ static void send_iso(struct bthost *bthost, uint16_t handle, bool ts,
 }
 
 void bthost_send_iso(struct bthost *bthost, uint16_t handle, bool ts,
-					uint16_t sn, uint32_t timestamp,
-					const struct iovec *iov, int iovcnt)
+			uint16_t sn, uint32_t timestamp, uint8_t pkt_status,
+			const struct iovec *iov, int iovcnt)
 {
 	struct btconn *conn;
 
@@ -791,7 +791,7 @@ void bthost_send_iso(struct bthost *bthost, uint16_t handle, bool ts,
 	if (!conn)
 		return;
 
-	send_iso(bthost, handle, ts, sn, timestamp, iov, iovcnt);
+	send_iso(bthost, handle, ts, sn, timestamp, pkt_status, iov, iovcnt);
 }
 
 bool bthost_l2cap_req(struct bthost *bthost, uint16_t handle, uint8_t code,
