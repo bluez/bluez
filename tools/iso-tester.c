@@ -400,6 +400,7 @@ struct iso_client_data {
 	bool disconnect;
 	bool ts;
 	bool mconn;
+	uint8_t pkt_status;
 	const uint8_t *base;
 	size_t base_len;
 };
@@ -831,6 +832,14 @@ static const struct iso_client_data listen_16_2_1_recv_ts = {
 	.recv = &send_16_2_1,
 	.server = true,
 	.ts = true,
+};
+
+static const struct iso_client_data listen_16_2_1_recv_pkt_status = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+	.pkt_status = 0x02,
 };
 
 static const struct iso_client_data defer_16_2_1 = {
@@ -1322,6 +1331,7 @@ static void test_setsockopt(const void *test_data)
 	int sk, err;
 	socklen_t len;
 	struct bt_iso_qos qos = QOS_16_1_2;
+	int pkt_status = 1;
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_ISO);
 	if (sk < 0) {
@@ -1343,6 +1353,26 @@ static void test_setsockopt(const void *test_data)
 	memset(&qos, 0, len);
 
 	err = getsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos, &len);
+	if (err < 0) {
+		tester_warn("Can't get socket option : %s (%d)",
+							strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+
+	err = setsockopt(sk, SOL_BLUETOOTH, BT_PKT_STATUS, &pkt_status,
+			 sizeof(pkt_status));
+	if (err < 0) {
+		tester_warn("Can't set socket BT_PKT_STATUS option: "
+				"%s (%d)", strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+
+	len = sizeof(pkt_status);
+	memset(&pkt_status, 0, len);
+
+	err = getsockopt(sk, SOL_BLUETOOTH, BT_PKT_STATUS, &pkt_status, &len);
 	if (err < 0) {
 		tester_warn("Can't get socket option : %s (%d)",
 							strerror(errno), errno);
@@ -1678,16 +1708,57 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
 	int sk = g_io_channel_unix_get_fd(io);
+	unsigned char control[64];
 	ssize_t ret;
 	char buf[1024];
+	struct msghdr msg;
+	struct iovec iov;
 
 	data->io_id[0] = 0;
 
-	ret = read(sk, buf, isodata->recv->iov_len);
+	iov.iov_base = buf;
+	iov.iov_len = isodata->recv->iov_len;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = control;
+	msg.msg_controllen = sizeof(control);
+
+	ret = recvmsg(sk, &msg, MSG_DONTWAIT);
 	if (ret < 0 || isodata->recv->iov_len != (size_t) ret) {
 		tester_warn("Failed to read %zu bytes: %s (%d)",
 				isodata->recv->iov_len, strerror(errno), errno);
 		tester_test_failed();
+		return FALSE;
+	}
+
+	if (isodata->pkt_status) {
+		struct cmsghdr *cmsg;
+		uint8_t pkt_status = 0;
+
+		for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+			if (cmsg->cmsg_level != SOL_BLUETOOTH)
+				continue;
+
+			if (cmsg->cmsg_type == BT_SCM_PKT_STATUS) {
+				memcpy(&pkt_status, CMSG_DATA(cmsg),
+						sizeof(pkt_status));
+				tester_debug("BT_SCM_PKT_STATUS = 0x%2.2x",
+							pkt_status);
+				break;
+			}
+		}
+
+		if (isodata->pkt_status != pkt_status) {
+			tester_warn("isodata->pkt_status 0x%2.2x != 0x%2.2x "
+					"pkt_status", isodata->pkt_status,
+					pkt_status);
+			tester_test_failed();
+		} else
+			tester_test_passed();
+
 		return FALSE;
 	}
 
@@ -1715,7 +1786,7 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 
 	host = hciemu_client_get_host(data->hciemu);
 	bthost_send_iso(host, data->handle, isodata->ts, sn++, 0,
-				0x00, isodata->recv, 1);
+				isodata->pkt_status, isodata->recv, 1);
 
 	data->io_id[0] = g_io_add_watch(io, G_IO_IN, iso_recv_data, data);
 }
@@ -2250,6 +2321,18 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 		return false;
 	}
 
+	if (isodata->pkt_status) {
+		int opt = 1;
+
+		if (setsockopt(new_sk, SOL_BLUETOOTH, BT_PKT_STATUS, &opt,
+							sizeof(opt)) < 0) {
+			tester_print("Can't set socket BT_PKT_STATUS option: "
+					"%s (%d)", strerror(errno), errno);
+			tester_test_failed();
+			return false;
+		}
+	}
+
 	return iso_connect(io, cond, user_data);
 }
 
@@ -2447,6 +2530,10 @@ int main(int argc, char *argv[])
 	test_iso("ISO Receive Timestamped - Success", &listen_16_2_1_recv_ts,
 							setup_powered,
 							test_listen);
+
+	test_iso("ISO Receive Packet Status - Success",
+						&listen_16_2_1_recv_pkt_status,
+						setup_powered, test_listen);
 
 	test_iso("ISO Defer - Success", &defer_16_2_1, setup_powered,
 							test_defer);
