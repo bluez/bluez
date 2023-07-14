@@ -12,9 +12,11 @@ client_bluetoothctl_SOURCES = client/main.c \
 					client/adv_monitor.c \
 					client/gatt.h client/gatt.c \
 					client/admin.h client/admin.c \
-					client/player.h client/player.c
-client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
-				$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
+					client/player.h client/player.c \
+					client/mgmt.h client/mgmt.c
+client_bluetoothctl_LDADD = lib/libbluetooth-internal.la \
+			gdbus/libgdbus-internal.la src/libshared-glib.la \
+			$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
 endif
 
 if ZSH_COMPLETIONS
@@ -505,7 +507,8 @@ tools_obexctl_SOURCES = tools/obexctl.c
 tools_obexctl_LDADD = gdbus/libgdbus-internal.la src/libshared-glib.la \
 			$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
 
-tools_btmgmt_SOURCES = tools/btmgmt.c src/uuid-helper.c client/display.c
+tools_btmgmt_SOURCES = tools/btmgmt.c src/uuid-helper.c client/display.c \
+			client/mgmt.c
 tools_btmgmt_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la \
 				-lreadline
 if DEPRECATED
