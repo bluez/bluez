@@ -53,19 +53,20 @@ struct midi {
 	struct midi_write_parser midi_out;
 };
 
+static void foreach_cb(const struct midi_write_parser *parser, void *user_data)
+{
+	struct midi *midi = user_data;
+
+	bt_gatt_client_write_without_response(midi->client,
+						midi->midi_io_handle, false,
+						midi_write_data(parser),
+						midi_write_data_size(parser));
+}
+
 static bool midi_write_cb(struct io *io, void *user_data)
 {
 	struct midi *midi = user_data;
 	int err;
-
-	void foreach_cb(const struct midi_write_parser *parser, void *user_data) {
-		struct midi *midi = user_data;
-		bt_gatt_client_write_without_response(midi->client,
-		                                      midi->midi_io_handle,
-		                                      false,
-		                                      midi_write_data(parser),
-		                                      midi_write_data_size(parser));
-	};
 
 	do {
 		snd_seq_event_t *event = NULL;
@@ -81,10 +82,10 @@ static bool midi_write_cb(struct io *io, void *user_data)
 
 	if (midi_write_has_data(&midi->midi_out))
 		bt_gatt_client_write_without_response(midi->client,
-		                                      midi->midi_io_handle,
-		                                      false,
-		                                      midi_write_data(&midi->midi_out),
-		                                      midi_write_data_size(&midi->midi_out));
+					midi->midi_io_handle,
+					false,
+					midi_write_data(&midi->midi_out),
+					midi_write_data_size(&midi->midi_out));
 
 	midi_write_reset(&midi->midi_out);
 
