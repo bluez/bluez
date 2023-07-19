@@ -348,7 +348,7 @@ profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
 
 if MANPAGES
 man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1 tools/isotest.1 \
-		tools/btmgmt.1
+		tools/btmgmt.1 client/bluetoothctl-mgmt.1
 endif
 
 if MESH
@@ -469,7 +469,8 @@ manual_pages += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \
 			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1 \
 			tools/rctest.1 tools/l2ping.1 tools/btattach.1 \
-			tools/bdaddr.1 tools/isotest.1 tools/btmgmt.1
+			tools/bdaddr.1 tools/isotest.1 tools/btmgmt.1 \
+			client/bluetoothctl-mgmt.1
 
 if HID2HCI
 udevdir = $(UDEV_DIR)
