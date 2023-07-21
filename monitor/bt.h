@@ -2608,7 +2608,7 @@ struct bt_hci_cmd_periodic_sync_trans {
 struct bt_hci_cmd_pa_set_info_trans {
 	uint16_t handle;
 	uint16_t service_data;
-	uint16_t adv_handle;
+	uint8_t adv_handle;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_PA_SYNC_TRANS_PARAMS		0x205c
