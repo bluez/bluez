@@ -2789,7 +2789,7 @@ struct bt_hci_bis_test {
 } __attribute__ ((packed));
 
 struct bt_hci_cmd_le_create_big_test {
-	uint8_t  big_id;
+	uint8_t  big_handle;
 	uint8_t  adv_handle;
 	uint8_t  num_bis;
 	struct bt_hci_bis_test bis[0];
@@ -3676,7 +3676,7 @@ struct bt_hci_evt_le_big_sync_estabilished {
 
 #define BT_HCI_EVT_LE_BIG_SYNC_LOST		0x1e
 struct bt_hci_evt_le_big_sync_lost {
-	uint8_t  big_id;
+	uint8_t  big_handle;
 	uint8_t  reason;
 } __attribute__ ((packed));
 

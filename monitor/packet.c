@@ -8811,7 +8811,7 @@ static void le_create_big_cmd_test_cmd(uint16_t index, const void *data,
 {
 	const struct bt_hci_cmd_le_create_big_test *cmd = data;
 
-	print_field("BIG ID: 0x%2.2x", cmd->big_id);
+	print_field("BIG Handle: 0x%2.2x", cmd->big_handle);
 	print_field("Advertising Handle: 0x%2.2x", cmd->adv_handle);
 	print_field("Number of BIS: %u", cmd->num_bis);
 
@@ -11633,7 +11633,7 @@ static void le_big_sync_lost_evt(struct timeval *tv, uint16_t index,
 {
 	const struct bt_hci_evt_le_big_sync_lost *evt = data;
 
-	print_field("BIG ID: 0x%2.2x", evt->big_id);
+	print_field("BIG Handle: 0x%2.2x", evt->big_handle);
 	print_reason(evt->reason);
 }
 
