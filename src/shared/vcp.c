@@ -973,7 +973,7 @@ static void vocs_voaodec_read(struct gatt_db_attribute *attrib,
 	struct bt_vocs *vocs = user_data;
 	struct iovec iov;
 
-	iov.iov_base = &vocs->vocs_ao_dec;
+	iov.iov_base = vocs->vocs_ao_dec;
 	iov.iov_len = strlen(vocs->vocs_ao_dec);
 
 	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
@@ -1385,11 +1385,12 @@ static void read_vocs_audio_location(struct bt_vcp *vcp, bool success,
 				     const uint8_t *value, uint16_t length,
 				     void *user_data)
 {
-	uint32_t *vocs_audio_loc;
-	struct iovec iov = {
-		.iov_base = (void *) value,
-		.iov_len = length,
-	};
+	uint32_t vocs_audio_loc;
+
+	if (!value) {
+		DBG(vcp, "Unable to get VOCS Audio Location");
+		return;
+	}
 
 	if (!success) {
 		DBG(vcp, "Unable to read VOCS Audio Location: error 0x%02x",
@@ -1397,13 +1398,9 @@ static void read_vocs_audio_location(struct bt_vcp *vcp, bool success,
 		return;
 	}
 
-	vocs_audio_loc = iov_pull_mem(&iov, sizeof(uint32_t));
-	if (!*vocs_audio_loc) {
-		DBG(vcp, "Unable to get VOCS Audio Location");
-		return;
-	}
+	memcpy(&vocs_audio_loc, value, length);
 
-	DBG(vcp, "VOCS Audio Loc:%x", *vocs_audio_loc);
+	DBG(vcp, "VOCS Audio Loc: %x", vocs_audio_loc);
 }
 
 
@@ -1413,10 +1410,11 @@ static void read_vocs_audio_descriptor(struct bt_vcp *vcp, bool success,
 				       void *user_data)
 {
 	char *vocs_ao_dec_r;
-	struct iovec iov = {
-		.iov_base = (void *) value,
-		.iov_len = length,
-	};
+
+	if (!value) {
+		DBG(vcp, "Unable to get VOCS Audio Location");
+		return;
+	}
 
 	if (!success) {
 		DBG(vcp, "Unable to read VOCS Audio Descriptor: error 0x%02x",
@@ -1424,13 +1422,18 @@ static void read_vocs_audio_descriptor(struct bt_vcp *vcp, bool success,
 		return;
 	}
 
-	vocs_ao_dec_r = iov_pull_mem(&iov, length);
-	if (!*vocs_ao_dec_r) {
+	vocs_ao_dec_r = malloc(length+1);
+	memset(vocs_ao_dec_r, 0, length+1);
+	memcpy(vocs_ao_dec_r, value, length);
+
+	if (!vocs_ao_dec_r) {
 		DBG(vcp, "Unable to get VOCS Audio Descriptor");
 		return;
 	}
 
-	DBG(vcp, "VOCS Audio Descriptor:%s", *vocs_ao_dec_r);
+	DBG(vcp, "VOCS Audio Descriptor: %s", vocs_ao_dec_r);
+	free(vocs_ao_dec_r);
+	vocs_ao_dec_r = NULL;
 }
 
 static void vcp_pending_destroy(void *data)
