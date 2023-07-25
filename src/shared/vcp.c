@@ -1719,10 +1719,10 @@ bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client)
 		return false;
 
 	bt_uuid16_create(&uuid, VCS_UUID);
-	gatt_db_foreach_service(vcp->ldb->db, &uuid, foreach_vcs_service, vcp);
+	gatt_db_foreach_service(vcp->rdb->db, &uuid, foreach_vcs_service, vcp);
 
 	bt_uuid16_create(&uuid, VOL_OFFSET_CS_UUID);
-	gatt_db_foreach_service(vcp->ldb->db, &uuid, foreach_vocs_service, vcp);
+	gatt_db_foreach_service(vcp->rdb->db, &uuid, foreach_vocs_service, vcp);
 
 	return true;
 }
