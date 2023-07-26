@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "lib/bluetooth.h"
 
@@ -27,6 +28,9 @@
 #include "monitor/display.h"
 #include "monitor/packet.h"
 #include "monitor/analyze.h"
+
+#define TIMEVAL_MSEC(_tv) \
+	(long long)((_tv)->tv_sec * 1000 + (_tv)->tv_usec / 1000)
 
 struct hci_dev {
 	uint16_t index;
@@ -69,10 +73,16 @@ struct hci_conn {
 	struct timeval tx_lat_min;
 	struct timeval tx_lat_max;
 	struct timeval tx_lat_med;
+	struct queue *plot;
 	uint16_t tx_pkt_min;
 	uint16_t tx_pkt_max;
 	uint16_t tx_pkt_med;
 	struct queue *chan_list;
+};
+
+struct plot {
+	long long x_msec;
+	size_t y_count;
 };
 
 struct l2cap_chan {
@@ -135,6 +145,47 @@ static struct l2cap_chan *chan_lookup(struct hci_conn *conn, uint16_t cid,
 	return chan;
 }
 
+static void tmp_write(void *data, void *user_data)
+{
+	struct plot *plot = data;
+	FILE *tmp = user_data;
+
+	fprintf(tmp, "%lld %zu\n", plot->x_msec, plot->y_count);
+}
+
+static void plot_draw(struct queue *queue)
+{
+	const char *filename = "analyze.tmp";
+	FILE *gplot = popen("gnuplot", "w");
+	FILE *tmp;
+
+	if (!gplot)
+		return;
+
+	if (queue_isempty(queue))
+		goto done;
+
+	tmp = fopen(filename, "w");
+	if (!tmp)
+		goto done;
+
+	queue_foreach(queue, tmp_write, tmp);
+
+	fprintf(gplot, "set terminal dumb enhanced ansi\n");
+	fprintf(gplot, "set xlabel 'Latency (ms)'\n");
+	fprintf(gplot, "set tics out nomirror\n");
+	fprintf(gplot, "set log y\n");
+	fprintf(gplot, "set yrange [0.5:*]\n");
+	fprintf(gplot, "plot './%s' using 1:2 t 'Packets' w impulses\n",
+								filename);
+	fflush(gplot);
+
+	fclose(tmp);
+done:
+	pclose(gplot);
+	unlink(filename);
+}
+
 static void conn_destroy(void *data)
 {
 	struct hci_conn *conn = data;
@@ -172,21 +223,17 @@ static void conn_destroy(void *data)
 	print_field("%lu RX packets", conn->rx_num);
 	print_field("%lu TX packets", conn->tx_num);
 	print_field("%lu TX completed packets", conn->tx_num_comp);
-	print_field("%lld msec min latency",
-			(long long)
-			(conn->tx_lat_min.tv_sec * 1000 +
-			conn->tx_lat_min.tv_usec / 1000));
-	print_field("%lld msec max latency",
-			(long long)
-			(conn->tx_lat_max.tv_sec * 1000 +
-			conn->tx_lat_max.tv_usec / 1000));
+	print_field("%lld msec min latency", TIMEVAL_MSEC(&conn->tx_lat_min));
+	print_field("%lld msec max latency", TIMEVAL_MSEC(&conn->tx_lat_max));
 	print_field("%lld msec median latency",
-			(long long)
-			(conn->tx_lat_med.tv_sec * 1000 +
-			conn->tx_lat_med.tv_usec / 1000));
+			TIMEVAL_MSEC(&conn->tx_lat_med));
 	print_field("%u octets TX min packet size", conn->tx_pkt_min);
 	print_field("%u octets TX max packet size", conn->tx_pkt_max);
 	print_field("%u octets TX median packet size", conn->tx_pkt_med);
+
+	plot_draw(conn->plot);
+
+	queue_destroy(conn->plot, free);
 	queue_destroy(conn->chan_list, chan_destroy);
 
 	queue_destroy(conn->tx_queue, free);
@@ -203,6 +250,7 @@ static struct hci_conn *conn_alloc(struct hci_dev *dev, uint16_t handle,
 	conn->handle = handle;
 	conn->type = type;
 	conn->tx_queue = queue_new();
+	conn->plot = queue_new();
 
 	conn->chan_list = queue_new();
 
@@ -447,6 +495,32 @@ static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 	}
 }
 
+static bool match_plot_latency(const void *data, const void *user_data)
+{
+	const struct plot *plot = data;
+	const struct timeval *latency = user_data;
+
+	return TIMEVAL_MSEC(latency) == plot->x_msec;
+}
+
+static void plot_add(struct queue *queue, struct timeval *latency,
+						uint16_t count)
+{
+	struct plot *plot;
+
+	plot = queue_find(queue, match_plot_latency, latency);
+	if (plot) {
+		plot->y_count += count;
+		return;
+	}
+
+	plot = new0(struct plot, 1);
+	plot->x_msec = TIMEVAL_MSEC(latency);
+	plot->y_count = count;
+
+	queue_push_tail(queue, plot);
+}
+
 static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
@@ -503,6 +577,8 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 				conn->tx_lat_med = tmp;
 			} else
 				conn->tx_lat_med = res;
+
+			plot_add(conn->plot, &res, count);
 
 			free(last_tx);
 		}
