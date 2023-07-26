@@ -134,6 +134,7 @@ static void bap_data_free(struct bap_data *data)
 
 	queue_destroy(data->snks, ep_unregister);
 	queue_destroy(data->srcs, ep_unregister);
+	queue_destroy(data->bcast, ep_unregister);
 	queue_destroy(data->streams, NULL);
 	bt_bap_ready_unregister(data->bap, data->ready_id);
 	bt_bap_state_unregister(data->bap, data->state_id);
