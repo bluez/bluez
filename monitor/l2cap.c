@@ -100,9 +100,7 @@ struct chan_data {
 	uint8_t  ext_ctrl;
 	uint8_t  seq_num;
 	uint16_t sdu;
-	struct timeval tx_min;
-	struct timeval tx_max;
-	struct timeval tx_med;
+	struct packet_latency tx_l;
 };
 
 static struct chan_data chan_list[MAX_CHAN];
@@ -2798,8 +2796,6 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 	}
 }
 
-#define TV_MSEC(_tv) (long long)((_tv)->tv_sec * 1000 + (_tv)->tv_usec / 1000)
-
 void l2cap_dequeue_frame(struct timeval *delta, struct packet_conn_data *conn)
 {
 	struct l2cap_frame *frame;
@@ -2813,39 +2809,15 @@ void l2cap_dequeue_frame(struct timeval *delta, struct packet_conn_data *conn)
 	if (!chan)
 		return;
 
-	if ((!timerisset(&chan->tx_min) || timercmp(delta, &chan->tx_min, <))
-				&& delta->tv_sec >= 0 && delta->tv_usec >= 0)
-		chan->tx_min = *delta;
-
-	if (!timerisset(&chan->tx_max) || timercmp(delta, &chan->tx_max, >))
-		chan->tx_max = *delta;
-
-	if (timerisset(&chan->tx_med)) {
-		struct timeval tmp;
-
-		timeradd(&chan->tx_med, delta, &tmp);
-
-		tmp.tv_sec /= 2;
-		tmp.tv_usec /= 2;
-		if (tmp.tv_sec % 2) {
-			tmp.tv_usec += 500000;
-			if (tmp.tv_usec >= 1000000) {
-				tmp.tv_sec++;
-				tmp.tv_usec -= 1000000;
-			}
-		}
-
-		chan->tx_med = tmp;
-	} else
-		chan->tx_med = *delta;
+	packet_latency_add(&chan->tx_l, delta);
 
 	print_field("Channel: %d [PSM %d mode %s (0x%02x)] {chan %d}",
 			frame->cid, frame->psm, mode2str(frame->mode),
 			frame->mode, frame->chan);
 
 	print_field("Channel Latency: %lld msec (%lld-%lld msec ~%lld msec)",
-			TV_MSEC(delta), TV_MSEC(&chan->tx_min),
-			TV_MSEC(&chan->tx_max), TV_MSEC(&chan->tx_med));
+			TV_MSEC(*delta), TV_MSEC(chan->tx_l.min),
+			TV_MSEC(chan->tx_l.max), TV_MSEC(chan->tx_l.med));
 
 	free(frame);
 }

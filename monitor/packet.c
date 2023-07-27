@@ -10336,7 +10336,34 @@ static void role_change_evt(struct timeval *tv, uint16_t index,
 	print_role(evt->role);
 }
 
-#define TV_MSEC(_tv) (long long)(_tv.tv_sec * 1000 + _tv.tv_usec / 1000)
+void packet_latency_add(struct packet_latency *latency, struct timeval *delta)
+{
+	if ((!timerisset(&latency->min) || timercmp(delta, &latency->min, <))
+				&& delta->tv_sec >= 0 && delta->tv_usec >= 0)
+		latency->min = *delta;
+
+	if (!timerisset(&latency->max) || timercmp(delta, &latency->max, >))
+		latency->max = *delta;
+
+	if (timerisset(&latency->med)) {
+		struct timeval tmp;
+
+		timeradd(&latency->med, delta, &tmp);
+
+		tmp.tv_sec /= 2;
+		tmp.tv_usec /= 2;
+		if (tmp.tv_sec % 2) {
+			tmp.tv_usec += 500000;
+			if (tmp.tv_usec >= 1000000) {
+				tmp.tv_sec++;
+				tmp.tv_usec -= 1000000;
+			}
+		}
+
+		latency->med = tmp;
+	} else
+		latency->med = *delta;
+}
 
 static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 {
@@ -10354,35 +10381,11 @@ static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 
 	timersub(tv, tx, &delta);
 
-	if ((!timerisset(&conn->tx_min) || timercmp(&delta, &conn->tx_min, <))
-				&& delta.tv_sec >= 0 && delta.tv_usec >= 0)
-		conn->tx_min = delta;
-
-	if (!timerisset(&conn->tx_max) || timercmp(&delta, &conn->tx_max, >))
-		conn->tx_max = delta;
-
-	if (timerisset(&conn->tx_med)) {
-		struct timeval tmp;
-
-		timeradd(&conn->tx_med, &delta, &tmp);
-
-		tmp.tv_sec /= 2;
-		tmp.tv_usec /= 2;
-		if (tmp.tv_sec % 2) {
-			tmp.tv_usec += 500000;
-			if (tmp.tv_usec >= 1000000) {
-				tmp.tv_sec++;
-				tmp.tv_usec -= 1000000;
-			}
-		}
-
-		conn->tx_med = tmp;
-	} else
-		conn->tx_med = delta;
+	packet_latency_add(&conn->tx_l, &delta);
 
 	print_field("Latency: %lld msec (%lld-%lld msec ~%lld msec)",
-			TV_MSEC(delta), TV_MSEC(conn->tx_min),
-			TV_MSEC(conn->tx_max), TV_MSEC(conn->tx_med));
+			TV_MSEC(delta), TV_MSEC(conn->tx_l.min),
+			TV_MSEC(conn->tx_l.max), TV_MSEC(conn->tx_l.med));
 
 	l2cap_dequeue_frame(&delta, conn);
 

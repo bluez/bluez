@@ -23,6 +23,13 @@
 #define PACKET_FILTER_SHOW_A2DP_STREAM	(1 << 6)
 #define PACKET_FILTER_SHOW_MGMT_SOCKET	(1 << 7)
 #define PACKET_FILTER_SHOW_ISO_DATA	(1 << 8)
+#define TV_MSEC(_tv) (long long)((_tv).tv_sec * 1000 + (_tv).tv_usec / 1000)
+
+struct packet_latency {
+	struct timeval min;
+	struct timeval max;
+	struct timeval med;
+};
 
 struct packet_conn_data {
 	uint16_t index;
@@ -33,14 +40,13 @@ struct packet_conn_data {
 	uint8_t  dst_type;
 	struct queue *tx_q;
 	struct queue *chan_q;
-	struct timeval tx_min;
-	struct timeval tx_max;
-	struct timeval tx_med;
+	struct packet_latency tx_l;
 	void     *data;
 	void     (*destroy)(void *data);
 };
 
 struct packet_conn_data *packet_get_conn_data(uint16_t handle);
+void packet_latency_add(struct packet_latency *latency, struct timeval *delta);
 
 bool packet_has_filter(unsigned long filter);
 void packet_set_filter(unsigned long filter);

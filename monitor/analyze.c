@@ -70,9 +70,7 @@ struct hci_conn {
 	unsigned long tx_num_comp;
 	size_t tx_bytes;
 	struct queue *tx_queue;
-	struct timeval tx_lat_min;
-	struct timeval tx_lat_max;
-	struct timeval tx_lat_med;
+	struct packet_latency tx_l;
 	struct queue *plot;
 	uint16_t tx_pkt_min;
 	uint16_t tx_pkt_max;
@@ -223,13 +221,11 @@ static void conn_destroy(void *data)
 	print_field("%lu RX packets", conn->rx_num);
 	print_field("%lu TX packets", conn->tx_num);
 	print_field("%lu TX completed packets", conn->tx_num_comp);
-	print_field("%lld msec min latency", TIMEVAL_MSEC(&conn->tx_lat_min));
-	print_field("%lld msec max latency", TIMEVAL_MSEC(&conn->tx_lat_max));
-	print_field("%lld msec median latency",
-			TIMEVAL_MSEC(&conn->tx_lat_med));
-	print_field("%u octets TX min packet size", conn->tx_pkt_min);
-	print_field("%u octets TX max packet size", conn->tx_pkt_max);
-	print_field("%u octets TX median packet size", conn->tx_pkt_med);
+	print_field("%lld-%lld msec (~%lld msec) TX Latency",
+			TV_MSEC(conn->tx_l.min), TV_MSEC(conn->tx_l.max),
+			TV_MSEC(conn->tx_l.med));
+	print_field("%u-%u octets (~%u octets) TX packet size",
+			conn->tx_pkt_min, conn->tx_pkt_max, conn->tx_pkt_med);
 
 	plot_draw(conn->plot);
 
@@ -550,33 +546,7 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 		if (last_tx) {
 			timersub(tv, last_tx, &res);
 
-			if ((!timerisset(&conn->tx_lat_min) ||
-					timercmp(&res, &conn->tx_lat_min, <)) &&
-					res.tv_sec >= 0 && res.tv_usec >= 0)
-				conn->tx_lat_min = res;
-
-			if (!timerisset(&conn->tx_lat_max) ||
-					timercmp(&res, &conn->tx_lat_max, >))
-				conn->tx_lat_max = res;
-
-			if (timerisset(&conn->tx_lat_med)) {
-				struct timeval tmp;
-
-				timeradd(&conn->tx_lat_med, &res, &tmp);
-
-				tmp.tv_sec /= 2;
-				tmp.tv_usec /= 2;
-				if (tmp.tv_sec % 2) {
-					tmp.tv_usec += 500000;
-					if (tmp.tv_usec >= 1000000) {
-						tmp.tv_sec++;
-						tmp.tv_usec -= 1000000;
-					}
-				}
-
-				conn->tx_lat_med = tmp;
-			} else
-				conn->tx_lat_med = res;
+			packet_latency_add(&conn->tx_l, &res);
 
 			plot_add(conn->plot, &res, count);
 
