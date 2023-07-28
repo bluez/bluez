@@ -10406,6 +10406,7 @@ static void num_completed_packets_evt(struct timeval *tv, uint16_t index,
 	for (i = 0; i < evt->num_handles; i++) {
 		uint16_t handle;
 		uint16_t count;
+		int j;
 
 		if (!util_iov_pull_le16(&iov, &handle))
 			break;
@@ -10415,9 +10416,10 @@ static void num_completed_packets_evt(struct timeval *tv, uint16_t index,
 		if (!util_iov_pull_le16(&iov, &count))
 			break;
 
-		print_field("Count: %d", le16_to_cpu(evt->count));
+		print_field("Count: %d", count);
 
-		packet_dequeue_tx(tv, handle);
+		for (j = 0; j < count; j++)
+			packet_dequeue_tx(tv, handle);
 	}
 
 	if (iov.iov_len)
