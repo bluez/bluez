@@ -137,6 +137,17 @@ static bool uuid_cmp(const bt_uuid_t *uuid, uint16_t u16)
 	return bt_uuid_cmp(uuid, &uuid16) == 0;
 }
 
+static gboolean descriptor_get_handle(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct service *desc = data;
+	uint16_t handle = desc->start_handle;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &handle);
+
+	return TRUE;
+}
+
 static gboolean descriptor_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -635,6 +646,7 @@ static DBusMessage *descriptor_write_value(DBusConnection *conn,
 }
 
 static const GDBusPropertyTable descriptor_properties[] = {
+	{ "Handle", "q", descriptor_get_handle },
 	{ "UUID", "s", descriptor_get_uuid },
 	{ "Characteristic", "o", descriptor_get_characteristic, },
 	{ "Value", "ay", descriptor_get_value, NULL, descriptor_value_exists },
@@ -711,6 +723,17 @@ static void unregister_descriptor(void *data)
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(), desc->path,
 							GATT_DESCRIPTOR_IFACE);
+}
+
+static gboolean characteristic_get_handle(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct characteristic *chrc = data;
+	uint16_t handle = chrc->handle;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &handle);
+
+	return TRUE;
 }
 
 static gboolean characteristic_get_uuid(const GDBusPropertyTable *property,
@@ -1660,6 +1683,7 @@ static DBusMessage *characteristic_stop_notify(DBusConnection *conn,
 }
 
 static const GDBusPropertyTable characteristic_properties[] = {
+	{ "Handle", "q", characteristic_get_handle },
 	{ "UUID", "s", characteristic_get_uuid, NULL, NULL },
 	{ "Service", "o", characteristic_get_service, NULL, NULL },
 	{ "Value", "ay", characteristic_get_value, NULL,
@@ -1821,6 +1845,17 @@ static void unregister_characteristic(void *data)
 						GATT_CHARACTERISTIC_IFACE);
 }
 
+static gboolean service_get_handle(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct service *service = data;
+	uint16_t handle = service->start_handle;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &handle);
+
+	return TRUE;
+}
+
 static gboolean service_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -1884,6 +1919,7 @@ static gboolean service_get_includes(const GDBusPropertyTable *property,
 }
 
 static const GDBusPropertyTable service_properties[] = {
+	{ "Handle", "q", service_get_handle },
 	{ "UUID", "s", service_get_uuid },
 	{ "Device", "o", service_get_device },
 	{ "Primary", "b", service_get_primary },

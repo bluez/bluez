@@ -51,6 +51,7 @@ Properties	string UUID [read-only]
 			services of this service.
 
 		uint16 Handle [read-write, optional] (Server Only)
+		              [read-only] (Client Only)
 
 			Service handle. When available in the server it
 			would attempt to use to allocate into the database
@@ -291,6 +292,7 @@ Properties	string UUID [read-only]
 				"authorize"
 
 		uint16 Handle [read-write, optional] (Server Only)
+		              [read-only] (Client Only)
 
 			Characteristic handle. When available in the server it
 			would attempt to use to allocate into the database
@@ -380,6 +382,7 @@ Properties	string UUID [read-only]
 				"authorize"
 
 		uint16 Handle [read-write, optional] (Server Only)
+		              [read-only] (Client Only)
 
 			Characteristic handle. When available in the server it
 			would attempt to use to allocate into the database
