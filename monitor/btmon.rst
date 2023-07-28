@@ -33,7 +33,9 @@ OPTIONS
 -w FILE, --write FILE       Save traces in btsnoop format to *FILE*.
 -a FILE, --analyze FILE     Analyze traces in btsnoop format from *FILE*.
                             It displays the devices found in the *FILE* with
-                            its packets by type.
+			    its packets by type. If gnuplot is installed on
+			    the system it also attempts to plot packet latency
+			    graph.
 -s SOCKET, --server SOCKET  Start monitor server socket.
 -p PRIORITY, --priority PRIORITY  Show only priority or lower for user log.
 
