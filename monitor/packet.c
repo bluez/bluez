@@ -10607,6 +10607,10 @@ static void sync_conn_complete_evt(struct timeval *tv, uint16_t index,
 	print_field("RX packet length: %d", le16_to_cpu(evt->rx_pkt_len));
 	print_field("TX packet length: %d", le16_to_cpu(evt->tx_pkt_len));
 	print_air_mode(evt->air_mode);
+
+	if (evt->status == 0x00)
+		assign_handle(index, le16_to_cpu(evt->handle), evt->link_type,
+					(void *)evt->bdaddr, BDADDR_BREDR);
 }
 
 static void sync_conn_changed_evt(struct timeval *tv, uint16_t index,
@@ -11566,6 +11570,10 @@ static void le_cis_established_evt(struct timeval *tv, uint16_t index,
 	print_field("Central to Peripheral MTU: %u", le16_to_cpu(evt->c_mtu));
 	print_field("Peripheral to Central MTU: %u", le16_to_cpu(evt->p_mtu));
 	print_slot_125("ISO Interval", evt->interval);
+
+	if (!evt->status)
+		assign_handle(index, le16_to_cpu(evt->conn_handle), 0x05,
+					NULL, BDADDR_LE_PUBLIC);
 }
 
 static void le_req_cis_evt(struct timeval *tv, uint16_t index,
@@ -11604,6 +11612,14 @@ static void le_big_complete_evt(struct timeval *tv, uint16_t index,
 	print_slot_125("ISO Interval", evt->interval);
 	print_list(evt->bis_handle, size, evt->num_bis,
 				sizeof(*evt->bis_handle), print_bis_handle);
+
+	if (!evt->status) {
+		int i;
+
+		for (i = 0; i < evt->num_bis; i++)
+			assign_handle(index, le16_to_cpu(evt->bis_handle[i]),
+					0x05, NULL, BDADDR_LE_PUBLIC);
+	}
 }
 
 static void le_big_terminate_evt(struct timeval *tv, uint16_t index,
@@ -11631,6 +11647,14 @@ static void le_big_sync_estabilished_evt(struct timeval *tv, uint16_t index,
 	print_slot_125("ISO Interval", evt->interval);
 	print_list(evt->bis, size, evt->num_bis, sizeof(*evt->bis),
 						print_bis_handle);
+
+	if (!evt->status) {
+		int i;
+
+		for (i = 0; i < evt->num_bis; i++)
+			assign_handle(index, le16_to_cpu(evt->bis[i]),
+					0x05, NULL, BDADDR_LE_PUBLIC);
+	}
 }
 
 static void le_big_sync_lost_evt(struct timeval *tv, uint16_t index,
