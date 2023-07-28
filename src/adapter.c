@@ -4148,6 +4148,7 @@ static int generate_and_write_irk(uint8_t *irk, GKeyFile *key_file,
 
 	g_key_file_set_string(key_file, "General", "IdentityResolvingKey",
 								str_irk_out);
+	create_file(filename, S_IRUSR | S_IWUSR);
 	str = g_key_file_to_data(key_file, &length, NULL);
 	if (!g_file_set_contents(filename, str, length, &gerr)) {
 		error("Unable set contents for %s: (%s)", filename,
