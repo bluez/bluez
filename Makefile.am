@@ -32,7 +32,7 @@ confdir = $(sysconfdir)/bluetooth
 statedir = $(localstatedir)/lib/bluetooth
 
 if DATAFILES
-dbusdir = $(DBUS_CONFDIR)/dbus-1/system.d
+dbusdir = $(datadir)/dbus-1/system.d
 dbus_DATA = src/bluetooth.conf
 
 conf_DATA =
