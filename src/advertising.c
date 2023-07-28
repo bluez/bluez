@@ -727,11 +727,6 @@ fail:
 
 static bool set_flags(struct btd_adv_client *client, uint8_t flags)
 {
-	if (!flags) {
-		bt_ad_clear_flags(client->data);
-		return true;
-	}
-
 	/* Set BR/EDR Not Supported for LE only */
 	if (!btd_adapter_get_bredr(client->manager->adapter))
 		flags |= BT_AD_FLAG_NO_BREDR;
@@ -1447,7 +1442,8 @@ static DBusMessage *parse_advertisement(struct btd_adv_client *client)
 		}
 	}
 
-	if (bt_ad_has_flags(client->data)) {
+	if (bt_ad_get_flags(client->data) &
+			(BT_AD_FLAG_GENERAL | BT_AD_FLAG_LIMITED)) {
 		/* BLUETOOTH SPECIFICATION Version 5.0 | Vol 3, Part C
 		 * page 2042:
 		 * A device in the broadcast mode shall not set the
