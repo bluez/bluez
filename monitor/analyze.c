@@ -652,10 +652,28 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	}
 }
 
-static void sco_pkt(struct timeval *tv, uint16_t index,
+static void conn_pkt_tx(struct hci_conn *conn, struct timeval *tv,
+					uint16_t size)
+{
+	struct timeval *last_tx;
+
+	last_tx = new0(struct timeval, 1);
+	memcpy(last_tx, tv, sizeof(*tv));
+	queue_push_tail(conn->tx_queue, last_tx);
+	conn->tx_bytes += size;
+
+	if (!conn->tx_pkt_min || size < conn->tx_pkt_min)
+		conn->tx_pkt_min = size;
+	if (!conn->tx_pkt_max || size > conn->tx_pkt_max)
+		conn->tx_pkt_max = size;
+}
+
+static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 					const void *data, uint16_t size)
 {
+	const struct bt_hci_acl_hdr *hdr = data;
 	struct hci_dev *dev;
+	struct hci_conn *conn;
 
 	dev = dev_lookup(index);
 	if (!dev)
@@ -663,6 +681,18 @@ static void sco_pkt(struct timeval *tv, uint16_t index,
 
 	dev->num_hci++;
 	dev->num_sco++;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+								CONN_BR_SCO);
+	if (!conn)
+		return;
+
+	if (out) {
+		conn->tx_num++;
+		conn_pkt_tx(conn, tv, size - sizeof(*hdr));
+	} else {
+		conn->rx_num++;
+	}
 }
 
 static void info_index(struct timeval *tv, uint16_t index,
@@ -726,9 +756,11 @@ static void ctrl_msg(struct timeval *tv, uint16_t index,
 	dev->ctrl_msg++;
 }
 
-static void iso_pkt(struct timeval *tv, uint16_t index,
+static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 					const void *data, uint16_t size)
 {
+	const struct bt_hci_iso_hdr *hdr = data;
+	struct hci_conn *conn;
 	struct hci_dev *dev;
 
 	dev = dev_lookup(index);
@@ -737,6 +769,18 @@ static void iso_pkt(struct timeval *tv, uint16_t index,
 
 	dev->num_hci++;
 	dev->num_iso++;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+								CONN_LE_ISO);
+	if (!conn)
+		return;
+
+	if (out) {
+		conn->tx_num++;
+		conn_pkt_tx(conn, tv, size - sizeof(*hdr));
+	} else {
+		conn->rx_num++;
+	}
 }
 
 static void unknown_opcode(struct timeval *tv, uint16_t index,
@@ -804,8 +848,10 @@ void analyze_trace(const char *path)
 			acl_pkt(&tv, index, false, buf, pktlen);
 			break;
 		case BTSNOOP_OPCODE_SCO_TX_PKT:
+			sco_pkt(&tv, index, true, buf, pktlen);
+			break;
 		case BTSNOOP_OPCODE_SCO_RX_PKT:
-			sco_pkt(&tv, index, buf, pktlen);
+			sco_pkt(&tv, index, false, buf, pktlen);
 			break;
 		case BTSNOOP_OPCODE_OPEN_INDEX:
 		case BTSNOOP_OPCODE_CLOSE_INDEX:
@@ -829,8 +875,10 @@ void analyze_trace(const char *path)
 			ctrl_msg(&tv, index, buf, pktlen);
 			break;
 		case BTSNOOP_OPCODE_ISO_TX_PKT:
+			iso_pkt(&tv, index, true, buf, pktlen);
+			break;
 		case BTSNOOP_OPCODE_ISO_RX_PKT:
-			iso_pkt(&tv, index, buf, pktlen);
+			iso_pkt(&tv, index, false, buf, pktlen);
 			break;
 		default:
 			unknown_opcode(&tv, index, buf, pktlen);
