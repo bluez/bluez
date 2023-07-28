@@ -532,6 +532,7 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 		struct hci_conn *conn;
 		struct timeval res;
 		struct timeval *last_tx;
+		int j;
 
 		data += 4;
 		size -= 4;
@@ -542,15 +543,17 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 
 		conn->tx_num_comp += count;
 
-		last_tx = queue_pop_head(conn->tx_queue);
-		if (last_tx) {
-			timersub(tv, last_tx, &res);
+		for (j = 0; j < count; j++) {
+			last_tx = queue_pop_head(conn->tx_queue);
+			if (last_tx) {
+				timersub(tv, last_tx, &res);
 
-			packet_latency_add(&conn->tx_l, &res);
+				packet_latency_add(&conn->tx_l, &res);
 
-			plot_add(conn->plot, &res, count);
+				plot_add(conn->plot, &res, count);
 
-			free(last_tx);
+				free(last_tx);
+			}
 		}
 	}
 }
