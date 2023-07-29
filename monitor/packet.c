@@ -8946,6 +8946,37 @@ static void le_set_host_feature_cmd(uint16_t index, const void *data,
 	print_field("Bit Value: %u", cmd->bit_value);
 }
 
+static void le_read_iso_link_quality_cmd(uint16_t index, const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_iso_link_quality *cmd = data;
+
+	print_field("Handle: %d", le16_to_cpu(cmd->handle));
+}
+
+static void status_le_read_iso_link_quality_rsp(uint16_t index,
+							const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_iso_link_quality *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("Handle: %d", le16_to_cpu(rsp->handle));
+	print_field("TX unacked packets %d", rsp->tx_unacked_packets);
+	print_field("TX flushed packets %d", rsp->tx_flushed_packets);
+	print_field("TX last subevent packets %d",
+					rsp->tx_last_subevent_packets);
+	print_field("TX retransmitted packets %d",
+						rsp->retransmitted_packets);
+	print_field("TX crc error packets %d", rsp->crc_error_packets);
+	print_field("RX unreceived packets %d", rsp->rx_unreceived_packets);
+	print_field("Duplicated packets %d", rsp->duplicated_packets);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -9895,6 +9926,16 @@ static const struct opcode_data opcode_table[] = {
 				"LE Set Host Feature", le_set_host_feature_cmd,
 				sizeof(struct bt_hci_cmd_le_set_host_feature),
 				true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_READ_ISO_LINK_QUALITY,
+				BT_HCI_BIT_LE_READ_ISO_LINK_QUALITY,
+				"LE Read ISO link quality",
+				le_read_iso_link_quality_cmd,
+				sizeof(
+				struct bt_hci_cmd_le_read_iso_link_quality),
+				true, status_le_read_iso_link_quality_rsp,
+				sizeof(
+				struct bt_hci_rsp_le_read_iso_link_quality),
+				true },
 	{ }
 };
 
