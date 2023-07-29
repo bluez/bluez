@@ -3997,6 +3997,18 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			print_service_data(data, data_len);
 			break;
 
+		case BT_EIR_SERVICE_DATA128:
+			if (data_len <= 16)
+				break;
+
+			print_field("Service Data UUID 128: %s ",
+						bt_uuid128_to_str(&data[0]));
+
+			if (data_len > 16)
+				print_hex_field("  Data", &data[16],
+								data_len - 16);
+
+			break;
 		case BT_EIR_RANDOM_ADDRESS:
 			if (data_len < 6)
 				break;
