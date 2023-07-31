@@ -177,12 +177,13 @@ Methods		void StartDiscovery()
 			performing General Discovery. Connection mechanism is
 			similar to Connect method from Device1 interface with
 			exception that this method returns success when physical
-			connection is established. After this method returns,
+			connection is established and you can specify bearer to
+			connect with parameter. After this method returns,
 			services discovery will continue and any supported
 			profile will be connected. There is no need for calling
 			Connect on Device1 after this call. If connection was
 			successful this method returns object path to created
-			device object.
+			device object or device that already exist.
 
 			Parameters that may be set in the filter dictionary
 			include the following:
