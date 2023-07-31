@@ -600,6 +600,24 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 	}
 }
 
+static void conn_pkt_tx(struct hci_conn *conn, struct timeval *tv,
+					uint16_t size)
+{
+	struct timeval *last_tx;
+
+	conn->tx_num++;
+
+	last_tx = new0(struct timeval, 1);
+	memcpy(last_tx, tv, sizeof(*tv));
+	queue_push_tail(conn->tx_queue, last_tx);
+	conn->tx_bytes += size;
+
+	if (!conn->tx_pkt_min || size < conn->tx_pkt_min)
+		conn->tx_pkt_min = size;
+	if (!conn->tx_pkt_max || size > conn->tx_pkt_max)
+		conn->tx_pkt_max = size;
+}
+
 static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 					const void *data, uint16_t size)
 {
@@ -637,37 +655,10 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	}
 
 	if (out) {
-		struct timeval *last_tx;
-
-		conn->tx_num++;
-		last_tx = new0(struct timeval, 1);
-		memcpy(last_tx, tv, sizeof(*tv));
-		queue_push_tail(conn->tx_queue, last_tx);
-		conn->tx_bytes += size;
-
-		if (!conn->tx_pkt_min || size < conn->tx_pkt_min)
-			conn->tx_pkt_min = size;
-		if (!conn->tx_pkt_max || size > conn->tx_pkt_max)
-			conn->tx_pkt_max = size;
+		conn_pkt_tx(conn, tv, size);
 	} else {
 		conn->rx_num++;
 	}
-}
-
-static void conn_pkt_tx(struct hci_conn *conn, struct timeval *tv,
-					uint16_t size)
-{
-	struct timeval *last_tx;
-
-	last_tx = new0(struct timeval, 1);
-	memcpy(last_tx, tv, sizeof(*tv));
-	queue_push_tail(conn->tx_queue, last_tx);
-	conn->tx_bytes += size;
-
-	if (!conn->tx_pkt_min || size < conn->tx_pkt_min)
-		conn->tx_pkt_min = size;
-	if (!conn->tx_pkt_max || size > conn->tx_pkt_max)
-		conn->tx_pkt_max = size;
 }
 
 static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
@@ -690,7 +681,6 @@ static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 		return;
 
 	if (out) {
-		conn->tx_num++;
 		conn_pkt_tx(conn, tv, size - sizeof(*hdr));
 	} else {
 		conn->rx_num++;
@@ -778,7 +768,6 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 		return;
 
 	if (out) {
-		conn->tx_num++;
 		conn_pkt_tx(conn, tv, size - sizeof(*hdr));
 	} else {
 		conn->rx_num++;
