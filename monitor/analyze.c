@@ -78,6 +78,11 @@ struct hci_conn {
 	struct queue *chan_list;
 };
 
+struct hci_conn_tx {
+	struct timeval tv;
+	struct l2cap_chan *chan;
+};
+
 struct plot {
 	long long x_msec;
 	size_t y_count;
@@ -88,60 +93,14 @@ struct l2cap_chan {
 	uint16_t psm;
 	bool out;
 	unsigned long num;
+	size_t tx_bytes;
+	struct packet_latency tx_l;
+	struct queue *plot;
+	uint16_t tx_pkt_min;
+	uint16_t tx_pkt_max;
 };
 
 static struct queue *dev_list;
-
-static void chan_destroy(void *data)
-{
-	struct l2cap_chan *chan = data;
-
-	printf("    Found %s L2CAP channel with CID %u\n",
-					chan->out ? "TX" : "RX", chan->cid);
-	if (chan->psm)
-		printf("      PSM %u\n", chan->psm);
-	printf("      %lu packets\n", chan->num);
-
-	free(chan);
-}
-
-static struct l2cap_chan *chan_alloc(struct hci_conn *conn, uint16_t cid,
-								bool out)
-{
-	struct l2cap_chan *chan;
-
-	chan = new0(struct l2cap_chan, 1);
-
-	chan->cid = cid;
-	chan->out = out;
-
-	return chan;
-}
-
-static bool chan_match_cid(const void *a, const void *b)
-{
-	const struct l2cap_chan *chan = a;
-	uint32_t val = PTR_TO_UINT(b);
-	uint16_t cid = val & 0xffff;
-	bool out = val & 0x10000;
-
-	return chan->cid == cid && chan->out == out;
-}
-
-static struct l2cap_chan *chan_lookup(struct hci_conn *conn, uint16_t cid,
-								bool out)
-{
-	struct l2cap_chan *chan;
-	uint32_t val = cid | (out ? 0x10000 : 0);
-
-	chan = queue_find(conn->chan_list, chan_match_cid, UINT_TO_PTR(val));
-	if (!chan) {
-		chan = chan_alloc(conn, cid, out);
-		queue_push_tail(conn->chan_list, chan);
-	}
-
-	return chan;
-}
 
 static void tmp_write(void *data, void *user_data)
 {
@@ -182,6 +141,74 @@ static void plot_draw(struct queue *queue)
 done:
 	pclose(gplot);
 	unlink(filename);
+}
+
+static void chan_destroy(void *data)
+{
+	struct l2cap_chan *chan = data;
+
+	printf("  Found %s L2CAP channel with CID %u\n",
+					chan->out ? "TX" : "RX", chan->cid);
+	if (chan->psm)
+		print_field("PSM %u", chan->psm);
+
+	print_field("%lu packets", chan->num);
+
+	if (!queue_isempty(chan->plot)) {
+		print_field("%lld-%lld msec (~%lld msec) TX Latency",
+			TV_MSEC(chan->tx_l.min), TV_MSEC(chan->tx_l.max),
+			TV_MSEC(chan->tx_l.med));
+		print_field("%u-%u octets TX packet size",
+				chan->tx_pkt_min, chan->tx_pkt_max);
+	}
+
+	if (TV_MSEC(chan->tx_l.total))
+		print_field("~%lld Kb/s TX transfer speed",
+				chan->tx_bytes * 8 / TV_MSEC(chan->tx_l.total));
+
+	if (chan->num > 1)
+		plot_draw(chan->plot);
+
+	free(chan);
+}
+
+static struct l2cap_chan *chan_alloc(struct hci_conn *conn, uint16_t cid,
+								bool out)
+{
+	struct l2cap_chan *chan;
+
+	chan = new0(struct l2cap_chan, 1);
+
+	chan->cid = cid;
+	chan->out = out;
+	chan->plot = queue_new();
+
+	return chan;
+}
+
+static bool chan_match_cid(const void *a, const void *b)
+{
+	const struct l2cap_chan *chan = a;
+	uint32_t val = PTR_TO_UINT(b);
+	uint16_t cid = val & 0xffff;
+	bool out = val & 0x10000;
+
+	return chan->cid == cid && chan->out == out;
+}
+
+static struct l2cap_chan *chan_lookup(struct hci_conn *conn, uint16_t cid,
+								bool out)
+{
+	struct l2cap_chan *chan;
+	uint32_t val = cid | (out ? 0x10000 : 0);
+
+	chan = queue_find(conn->chan_list, chan_match_cid, UINT_TO_PTR(val));
+	if (!chan) {
+		chan = chan_alloc(conn, cid, out);
+		queue_push_tail(conn->chan_list, chan);
+	}
+
+	return chan;
 }
 
 static void conn_destroy(void *data)
@@ -506,9 +533,11 @@ static void plot_add(struct queue *queue, struct timeval *latency,
 {
 	struct plot *plot;
 
-	plot = queue_find(queue, match_plot_latency, latency);
+	/* Use LRU ordering */
+	plot = queue_remove_if(queue, match_plot_latency, latency);
 	if (plot) {
 		plot->y_count += count;
+		queue_push_head(queue, plot);
 		return;
 	}
 
@@ -533,7 +562,7 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 		uint16_t count = get_le16(data + 2);
 		struct hci_conn *conn;
 		struct timeval res;
-		struct timeval *last_tx;
+		struct hci_conn_tx *last_tx;
 		int j;
 
 		data += 4;
@@ -548,11 +577,17 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 		for (j = 0; j < count; j++) {
 			last_tx = queue_pop_head(conn->tx_queue);
 			if (last_tx) {
-				timersub(tv, last_tx, &res);
+				struct l2cap_chan *chan = last_tx->chan;
+
+				timersub(tv, &last_tx->tv, &res);
 
 				packet_latency_add(&conn->tx_l, &res);
+				plot_add(conn->plot, &res, 1);
 
-				plot_add(conn->plot, &res, count);
+				if (chan) {
+					packet_latency_add(&chan->tx_l, &res);
+					plot_add(chan->plot, &res, 1);
+				}
 
 				free(last_tx);
 			}
@@ -601,14 +636,15 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 }
 
 static void conn_pkt_tx(struct hci_conn *conn, struct timeval *tv,
-					uint16_t size)
+				uint16_t size, struct l2cap_chan *chan)
 {
-	struct timeval *last_tx;
+	struct hci_conn_tx *last_tx;
 
 	conn->tx_num++;
 
-	last_tx = new0(struct timeval, 1);
+	last_tx = new0(struct hci_conn_tx, 1);
 	memcpy(last_tx, tv, sizeof(*tv));
+	last_tx->chan = chan;
 	queue_push_tail(conn->tx_queue, last_tx);
 	conn->tx_bytes += size;
 
@@ -616,6 +652,15 @@ static void conn_pkt_tx(struct hci_conn *conn, struct timeval *tv,
 		conn->tx_pkt_min = size;
 	if (!conn->tx_pkt_max || size > conn->tx_pkt_max)
 		conn->tx_pkt_max = size;
+
+	if (chan) {
+		chan->tx_bytes += size;
+
+		if (!chan->tx_pkt_min || size < chan->tx_pkt_min)
+			chan->tx_pkt_min = size;
+		if (!chan->tx_pkt_max || size > chan->tx_pkt_max)
+			chan->tx_pkt_max = size;
+	}
 }
 
 static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
@@ -624,7 +669,7 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	const struct bt_hci_acl_hdr *hdr = data;
 	struct hci_dev *dev;
 	struct hci_conn *conn;
-	struct l2cap_chan *chan;
+	struct l2cap_chan *chan = NULL;
 	uint16_t cid;
 
 	data += sizeof(*hdr);
@@ -655,7 +700,7 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	}
 
 	if (out) {
-		conn_pkt_tx(conn, tv, size);
+		conn_pkt_tx(conn, tv, size, chan);
 	} else {
 		conn->rx_num++;
 	}
@@ -681,7 +726,7 @@ static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 		return;
 
 	if (out) {
-		conn_pkt_tx(conn, tv, size - sizeof(*hdr));
+		conn_pkt_tx(conn, tv, size - sizeof(*hdr), NULL);
 	} else {
 		conn->rx_num++;
 	}
@@ -768,7 +813,7 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 		return;
 
 	if (out) {
-		conn_pkt_tx(conn, tv, size - sizeof(*hdr));
+		conn_pkt_tx(conn, tv, size - sizeof(*hdr), NULL);
 	} else {
 		conn->rx_num++;
 	}
