@@ -3763,9 +3763,6 @@ static DBusMessage *connect_device(DBusConnection *conn,
 	if (!bacmp(&addr, BDADDR_ANY))
 		return btd_error_invalid_args(msg);
 
-	if (btd_adapter_find_device(adapter, &addr, addr_type))
-		return btd_error_already_exists(msg);
-
 	device_connect(adapter, &addr, addr_type, msg);
 	return NULL;
 }
