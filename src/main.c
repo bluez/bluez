@@ -458,7 +458,7 @@ static bool parse_config_int(GKeyFile *config, const char *group,
 		return false;
 	}
 
-	if (tmp < max) {
+	if (tmp > max) {
 		warn("%s.%s = %d is out of range (> %d)", group, key, tmp, max);
 		return false;
 	}
