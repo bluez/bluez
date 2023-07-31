@@ -26,9 +26,16 @@
 #define TV_MSEC(_tv) (long long)((_tv).tv_sec * 1000 + (_tv).tv_usec / 1000)
 
 struct packet_latency {
+	struct timeval total;
 	struct timeval min;
 	struct timeval max;
 	struct timeval med;
+};
+
+struct packet_frame {
+	struct timeval tv;
+	size_t num;
+	size_t len;
 };
 
 struct packet_conn_data {
