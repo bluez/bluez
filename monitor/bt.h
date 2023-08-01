@@ -590,6 +590,10 @@ struct bt_hci_cmd_add_sco_conn {
 struct bt_hci_cmd_create_conn_cancel {
 	uint8_t  bdaddr[6];
 } __attribute__ ((packed));
+struct bt_hci_rsp_create_conn_cancel {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
 
 #define BT_HCI_CMD_ACCEPT_CONN_REQUEST		0x0409
 struct bt_hci_cmd_accept_conn_request {

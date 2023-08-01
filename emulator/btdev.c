@@ -62,6 +62,7 @@ struct hook {
 
 #define MAX_HOOK_ENTRIES 16
 #define MAX_EXT_ADV_SETS 3
+#define MAX_PENDING_CONN 16
 
 struct btdev_conn {
 	uint16_t handle;
@@ -222,6 +223,8 @@ struct btdev {
 	struct btdev_rl le_rl[RL_SIZE];
 	uint8_t  le_rl_enable;
 	uint16_t le_rl_timeout;
+
+	struct btdev *pending_conn[MAX_PENDING_CONN];
 
 	uint8_t le_local_sk256[32];
 
@@ -1211,10 +1214,36 @@ static struct btdev_conn *conn_link_bis(struct btdev *dev, struct btdev *remote,
 	return conn;
 }
 
+static void pending_conn_add(struct btdev *btdev, struct btdev *remote)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(btdev->pending_conn); ++i) {
+		if (!btdev->pending_conn[i]) {
+			btdev->pending_conn[i] = remote;
+			return;
+		}
+	}
+}
+
+static bool pending_conn_del(struct btdev *btdev, struct btdev *remote)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(btdev->pending_conn); ++i) {
+		if (btdev->pending_conn[i] == remote) {
+			btdev->pending_conn[i] = NULL;
+			return true;
+		}
+	}
+	return false;
+}
+
 static void conn_complete(struct btdev *btdev,
 					const uint8_t *bdaddr, uint8_t status)
 {
 	struct bt_hci_evt_conn_complete cc;
+	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
 
 	if (!status) {
 		struct btdev_conn *conn;
@@ -1222,6 +1251,8 @@ static void conn_complete(struct btdev *btdev,
 		conn = conn_add_acl(btdev, bdaddr, BDADDR_BREDR);
 		if (!conn)
 			return;
+
+		pending_conn_del(conn->link->dev, btdev);
 
 		cc.status = status;
 		memcpy(cc.bdaddr, btdev->bdaddr, 6);
@@ -1239,6 +1270,8 @@ static void conn_complete(struct btdev *btdev,
 		cc.handle = cpu_to_le16(0x0000);
 		cc.link_type = 0x01;
 	}
+
+	pending_conn_del(btdev, remote);
 
 	cc.status = status;
 	memcpy(cc.bdaddr, bdaddr, 6);
@@ -1259,6 +1292,8 @@ static int cmd_create_conn_complete(struct btdev *dev, const void *data,
 		memcpy(cr.bdaddr, dev->bdaddr, 6);
 		memcpy(cr.dev_class, dev->dev_class, 3);
 		cr.link_type = 0x01;
+
+		pending_conn_add(dev, remote);
 
 		send_event(remote, BT_HCI_EVT_CONN_REQUEST, &cr, sizeof(cr));
 	} else {
@@ -1296,16 +1331,24 @@ static int cmd_add_sco_conn(struct btdev *dev, const void *data, uint8_t len)
 	cc.encr_mode = 0x00;
 
 done:
+	pending_conn_del(dev, conn->link->dev);
+
 	send_event(dev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 
 	return 0;
 }
 
+static bool match_bdaddr(const void *data, const void *match_data)
+{
+	const struct btdev_conn *conn = data;
+	const uint8_t *bdaddr = match_data;
+
+	return !memcmp(conn->link->dev->bdaddr, bdaddr, 6);
+}
+
 static int cmd_create_conn_cancel(struct btdev *dev, const void *data,
 							uint8_t len)
 {
-	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_CREATE_CONN_CANCEL);
-
 	return 0;
 }
 
@@ -1313,8 +1356,37 @@ static int cmd_create_conn_cancel_complete(struct btdev *dev, const void *data,
 							uint8_t len)
 {
 	const struct bt_hci_cmd_create_conn_cancel *cmd = data;
+	struct bt_hci_rsp_create_conn_cancel rp;
+	struct btdev *remote = find_btdev_by_bdaddr(cmd->bdaddr);
+	struct btdev_conn *conn;
 
-	conn_complete(dev, cmd->bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
+	/* BLUETOOTH CORE SPECIFICATION Version 5.4 | Vol 4, Part E page 1848
+	 *
+	 * If the connection is already established, and the
+	 * HCI_Connection_Complete event has been sent, then the Controller
+	 * shall return an HCI_Command_Complete event with the error code
+	 * Connection Already Exists (0x0B). If the HCI_Create_Connection_Cancel
+	 * command is sent to the Controller without a preceding
+	 * HCI_Create_Connection command to the same device, the BR/EDR
+	 * Controller shall return an HCI_Command_Complete event with the error
+	 * code Unknown Connection Identifier (0x02).
+	 */
+	if (pending_conn_del(dev, remote)) {
+		rp.status = BT_HCI_ERR_SUCCESS;
+	} else {
+		conn = queue_find(dev->conns, match_bdaddr, cmd->bdaddr);
+		if (conn)
+			rp.status = BT_HCI_ERR_CONN_ALREADY_EXISTS;
+		else
+			rp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+	}
+
+	memcpy(rp.bdaddr, cmd->bdaddr, sizeof(rp.bdaddr));
+
+	cmd_complete(dev, BT_HCI_CMD_CREATE_CONN_CANCEL, &rp, sizeof(rp));
+
+	if (!rp.status)
+		conn_complete(dev, cmd->bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
 
 	return 0;
 }
@@ -1370,14 +1442,6 @@ static int cmd_link_key_reply(struct btdev *dev, const void *data, uint8_t len)
 	cmd_complete(dev, BT_HCI_CMD_LINK_KEY_REQUEST_REPLY, &rsp, sizeof(rsp));
 
 	return 0;
-}
-
-static bool match_bdaddr(const void *data, const void *match_data)
-{
-	const struct btdev_conn *conn = data;
-	const uint8_t *bdaddr = match_data;
-
-	return !memcmp(conn->link->dev->bdaddr, bdaddr, 6);
 }
 
 static void auth_complete(struct btdev_conn *conn, uint8_t status)
