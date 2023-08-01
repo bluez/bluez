@@ -29,6 +29,7 @@
 
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
+#include "src/shared/util.h"
 
 struct test_data {
 	const void *test_data;
@@ -37,6 +38,7 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
+	int sk;
 	bool disable_esco;
 	bool enable_codecs;
 };
@@ -225,6 +227,7 @@ static void test_data_free(void *test_data)
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->io_id = 0; \
+		user->sk = -1; \
 		user->test_data = data; \
 		user->disable_esco = _disable_esco; \
 		user->enable_codecs = _enable_codecs; \
@@ -248,6 +251,10 @@ static const struct sco_client_data connect_success = {
 
 static const struct sco_client_data connect_failure = {
 	.expect_err = EOPNOTSUPP
+};
+
+static const struct sco_client_data connect_failure_reset = {
+	.expect_err = ECONNRESET
 };
 
 const uint8_t data[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -650,6 +657,8 @@ static void test_connect(const void *test_data)
 		return;
 	}
 
+	data->sk = sk;
+
 	io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
@@ -745,6 +754,52 @@ static void test_connect_offload_msbc(const void *test_data)
 end:
 	close(sk);
 }
+
+static bool hook_simult_disc(const void *msg, uint16_t len, void *user_data)
+{
+	const struct bt_hci_evt_sync_conn_complete *ev = msg;
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+
+	tester_print("Simultaneous disconnect");
+
+	if (len != sizeof(struct bt_hci_evt_sync_conn_complete)) {
+		tester_test_failed();
+		return true;
+	}
+
+	/* Disconnect from local and remote sides at the same time */
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_hci_disconnect(bthost, le16_to_cpu(ev->handle), 0x13);
+
+	shutdown(data->sk, SHUT_RDWR);
+
+	return true;
+}
+
+static bool hook_delay_cmd(const void *data, uint16_t len, void *user_data)
+{
+	tester_print("Delaying emulator response...");
+	g_usleep(250000);
+	tester_print("Delaying emulator response... Done.");
+	return true;
+}
+
+static void test_connect_simult_disc(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* Kernel shall not crash, but <= 6.5-rc1 crash */
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_SYNC_CONN_COMPLETE,
+					hook_simult_disc, NULL);
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+					BT_HCI_CMD_CREATE_CONN_CANCEL,
+					hook_delay_cmd, NULL);
+
+	test_connect(test_data);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -766,6 +821,10 @@ int main(int argc, char *argv[])
 
 	test_sco("eSCO mSBC - Success", &connect_success, setup_powered,
 							test_connect_transp);
+
+	test_sco("eSCO Simultaneous Disconnect - Failure",
+					&connect_failure_reset, setup_powered,
+					test_connect_simult_disc);
 
 	test_sco_11("SCO CVSD 1.1 - Success", &connect_success, setup_powered,
 							test_connect);
