@@ -95,6 +95,10 @@
 	QOS_FULL(0x01, 0x02, \
 		{}, QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
 
+#define QOS_OUT_1_EF(_interval, _latency, _sdu, _phy, _rtn) \
+	QOS_FULL(0x01, 0xEF, \
+		{}, QOS_IO(_interval, _latency, _sdu, _phy, _rtn))
+
 #define QOS_IN(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_FULL(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
 		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
@@ -172,6 +176,7 @@
  */
 #define AC_6ii_1 QOS_OUT_1(10000, 10, 40, 0x02, 2)
 #define AC_6ii_2 QOS_OUT_1(10000, 10, 40, 0x02, 2)
+#define AC_6ii_1_EF QOS_OUT_1_EF(10000, 10, 40, 0x02, 2)  /* different CIS ID */
 /* Two unidirectional CISes. Unicast Server is Audio Sink and Audio Source.
  * #1 - CIG 1 CIS 1 (input)
  * #2 - CIG 1 CIS 2 (output)
@@ -801,6 +806,16 @@ static const struct iso_client_data connect_reject = {
 	.expect_err = -ENOSYS
 };
 
+static const struct iso_client_data connect_cig_f0_invalid = {
+	.qos = QOS_FULL(0xF0, 0x00, {}, QOS_IO(10000, 10, 40, 0x02, 2)),
+	.expect_err = -EINVAL
+};
+
+static const struct iso_client_data connect_cis_f0_invalid = {
+	.qos = QOS_FULL(0x00, 0xF0, {}, QOS_IO(10000, 10, 40, 0x02, 2)),
+	.expect_err = -EINVAL
+};
+
 static const uint8_t data_16_2_1[40] = { [0 ... 39] = 0xff };
 static const struct iovec send_16_2_1 = {
 	.iov_base = (void *)data_16_2_1,
@@ -958,6 +973,22 @@ static const struct iso_client_data reconnect_ac_6ii = {
 	.mconn = true,
 	.defer = true,
 	.disconnect = true,
+};
+
+static const struct iso_client_data connect_ac_6ii_cis_ef_auto = {
+	.qos = AC_6ii_1_EF,
+	.qos_2 = AC_6ii_2,
+	.expect_err = 0,
+	.mconn = true,
+	.defer = true,
+};
+
+static const struct iso_client_data connect_ac_6ii_cis_ef_ef = {
+	.qos = AC_6ii_1_EF,
+	.qos_2 = AC_6ii_1_EF,
+	.expect_err = -EINVAL,
+	.mconn = true,
+	.defer = true,
 };
 
 static const struct iso_client_data connect_ac_7i = {
@@ -2371,6 +2402,29 @@ static void test_connect2_seq(const void *test_data)
 	setup_connect(data, 0, iso_connect2_seq_cb);
 }
 
+static void test_connect2_nodefer(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	int sk, err;
+
+	/* Second connect() shall fail, because CIG is then busy,
+	 * but the first connect() shall succeed.
+	 */
+	setup_connect(data, 0, iso_connect_cb);
+
+	sk = create_iso_sock(data);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	err = connect_iso_sock(data, 1, sk);
+	if (err != -EINVAL)
+		tester_test_failed();
+
+	close(sk);
+}
+
 static void test_bcast(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2518,6 +2572,12 @@ int main(int argc, char *argv[])
 	test_iso("ISO QoS - Invalid", &connect_invalid, setup_powered,
 							test_connect);
 
+	test_iso("ISO QoS CIG 0xF0 - Invalid", &connect_cig_f0_invalid,
+			setup_powered, test_connect);
+
+	test_iso("ISO QoS CIS 0xF0 - Invalid", &connect_cis_f0_invalid,
+			setup_powered, test_connect);
+
 	test_iso_rej("ISO Connect - Reject", &connect_reject, setup_powered,
 			test_connect, BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH);
 
@@ -2544,6 +2604,10 @@ int main(int argc, char *argv[])
 	test_iso2("ISO Defer Connect2 CIG 0x01 - Success", &defer_1_16_2_1,
 							setup_powered,
 							test_connect2);
+
+	test_iso2("ISO Connect2 CIG 0x01 - Success/Invalid", &connect_1_16_2_1,
+							setup_powered,
+							test_connect2_nodefer);
 
 	test_iso("ISO Defer Send - Success", &connect_16_2_1_defer_send,
 							setup_powered,
@@ -2629,6 +2693,14 @@ int main(int argc, char *argv[])
 	test_iso2("ISO Reconnect AC 6(ii) - Success", &reconnect_ac_6ii,
 							setup_powered,
 							test_reconnect);
+
+	test_iso2("ISO AC 6(ii) CIS 0xEF/auto - Success",
+						&connect_ac_6ii_cis_ef_auto,
+						setup_powered, test_connect);
+
+	test_iso2("ISO AC 6(ii) CIS 0xEF/0xEF - Invalid",
+						&connect_ac_6ii_cis_ef_ef,
+						setup_powered, test_connect);
 
 	test_iso("ISO Broadcaster - Success", &bcast_16_2_1_send, setup_powered,
 							test_bcast);
