@@ -112,35 +112,28 @@ static void tmp_write(void *data, void *user_data)
 
 static void plot_draw(struct queue *queue)
 {
-	const char *filename = "analyze.tmp";
-	FILE *gplot = popen("gnuplot", "w");
-	FILE *tmp;
+	FILE *gplot;
 
+	if (queue_length(queue) < 2)
+		return;
+
+	gplot = popen("gnuplot", "w");
 	if (!gplot)
 		return;
 
-	if (queue_isempty(queue))
-		goto done;
-
-	tmp = fopen(filename, "w");
-	if (!tmp)
-		goto done;
-
-	queue_foreach(queue, tmp_write, tmp);
+	fprintf(gplot, "$data << EOD\n");
+	queue_foreach(queue, tmp_write, gplot);
+	fprintf(gplot, "EOD\n");
 
 	fprintf(gplot, "set terminal dumb enhanced ansi\n");
 	fprintf(gplot, "set xlabel 'Latency (ms)'\n");
 	fprintf(gplot, "set tics out nomirror\n");
 	fprintf(gplot, "set log y\n");
 	fprintf(gplot, "set yrange [0.5:*]\n");
-	fprintf(gplot, "plot './%s' using 1:2 t 'Packets' w impulses\n",
-								filename);
+	fprintf(gplot, "plot $data using 1:2 t 'Packets' w impulses\n");
 	fflush(gplot);
 
-	fclose(tmp);
-done:
 	pclose(gplot);
-	unlink(filename);
 }
 
 static void chan_destroy(void *data)
@@ -166,8 +159,7 @@ static void chan_destroy(void *data)
 		print_field("~%lld Kb/s TX transfer speed",
 				chan->tx_bytes * 8 / TV_MSEC(chan->tx_l.total));
 
-	if (chan->num > 1)
-		plot_draw(chan->plot);
+	plot_draw(chan->plot);
 
 	free(chan);
 }
