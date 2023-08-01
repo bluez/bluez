@@ -2685,7 +2685,7 @@ static int cmd_enhanced_setup_sync_conn(struct btdev *dev, const void *data,
 	if (cmd->tx_coding_format[0] > 5)
 		status = BT_HCI_ERR_INVALID_PARAMETERS;
 
-	cmd_status(dev, status, BT_HCI_EVT_SYNC_CONN_COMPLETE);
+	cmd_status(dev, status, BT_HCI_CMD_ENHANCED_SETUP_SYNC_CONN);
 
 	return 0;
 }
@@ -2731,7 +2731,7 @@ done:
 
 static int cmd_setup_sync_conn(struct btdev *dev, const void *data, uint8_t len)
 {
-	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_EVT_SYNC_CONN_COMPLETE);
+	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_SETUP_SYNC_CONN);
 
 	return 0;
 }
