@@ -253,7 +253,9 @@ static void conn_destroy(void *data)
 			TV_MSEC(conn->tx_l.med));
 	print_field("%u-%u octets (~%u octets) TX packet size",
 			conn->tx_pkt_min, conn->tx_pkt_max, conn->tx_pkt_med);
-	print_field("~%lld Kb/s TX transfer speed",
+
+	if (TV_MSEC(conn->tx_l.total))
+		print_field("~%lld Kb/s TX transfer speed",
 			conn->tx_bytes * 8 / TV_MSEC(conn->tx_l.total));
 
 	plot_draw(conn->plot);
@@ -595,9 +597,110 @@ static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 	}
 }
 
+static void evt_sync_conn_complete(struct hci_dev *dev, struct timeval *tv,
+					const void *data, uint16_t size)
+{
+	const struct bt_hci_evt_sync_conn_complete *evt = data;
+	struct hci_conn *conn;
+
+	if (evt->status)
+		return;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), evt->link_type);
+	if (!conn)
+		return;
+
+	memcpy(conn->bdaddr, evt->bdaddr, 6);
+	conn->setup_seen = true;
+}
+
+static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
+					struct iovec *iov)
+{
+	const struct bt_hci_evt_le_cis_established *evt;
+	struct hci_conn *conn;
+
+	evt = util_iov_pull_mem(iov, sizeof(*evt));
+	if (!evt || evt->status)
+		return;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->conn_handle),
+						CONN_LE_ISO);
+	if (!conn)
+		return;
+
+	conn->setup_seen = true;
+}
+
+static void evt_le_big_complete(struct hci_dev *dev, struct timeval *tv,
+					struct iovec *iov)
+{
+	const struct bt_hci_evt_le_big_complete *evt;
+	int i;
+
+	evt = util_iov_pull_mem(iov, sizeof(*evt));
+	if (!evt || evt->status)
+		return;
+
+	for (i = 0; i < evt->num_bis; i++) {
+		struct hci_conn *conn;
+		uint16_t handle;
+
+		if (!util_iov_pull_le16(iov, &handle))
+			return;
+
+		conn = conn_lookup_type(dev, handle, CONN_LE_ISO);
+		if (conn)
+			conn->setup_seen = true;
+	}
+}
+
+static void evt_le_big_sync_established(struct hci_dev *dev, struct timeval *tv,
+					struct iovec *iov)
+{
+	const struct bt_hci_evt_le_big_sync_estabilished *evt;
+	int i;
+
+	evt = util_iov_pull_mem(iov, sizeof(*evt));
+	if (!evt || evt->status)
+		return;
+
+	for (i = 0; i < evt->num_bis; i++) {
+		struct hci_conn *conn;
+		uint16_t handle;
+
+		if (!util_iov_pull_le16(iov, &handle))
+			return;
+
+		conn = conn_lookup_type(dev, handle, CONN_LE_ISO);
+		if (conn)
+			conn->setup_seen = true;
+	}
+}
+
 static void evt_le_meta_event(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
+	struct iovec iov = {
+		.iov_base = (void *)data,
+		.iov_len = size,
+	};
+	uint8_t subevt;
+
+	if (!util_iov_pull_u8(&iov, &subevt))
+		return;
+
+	switch (subevt) {
+	case BT_HCI_EVT_LE_CIS_ESTABLISHED:
+		evt_le_cis_established(dev, tv, &iov);
+		break;
+	case BT_HCI_EVT_LE_BIG_COMPLETE:
+		evt_le_big_complete(dev, tv, &iov);
+		break;
+	case BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED:
+		evt_le_big_sync_established(dev, tv, &iov);
+		break;
+	}
 }
 
 static void event_pkt(struct timeval *tv, uint16_t index,
@@ -628,6 +731,9 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 		break;
 	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
 		evt_num_completed_packets(dev, tv, data, size);
+		break;
+	case BT_HCI_EVT_SYNC_CONN_COMPLETE:
+		evt_sync_conn_complete(dev, tv, data, size);
 		break;
 	case BT_HCI_EVT_LE_META_EVENT:
 		evt_le_meta_event(dev, tv, data, size);
