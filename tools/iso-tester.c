@@ -2425,6 +2425,90 @@ static void test_connect2_nodefer(const void *test_data)
 	close(sk);
 }
 
+static gboolean iso_connect_close_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = user_data;
+
+	data->io_id[0] = 0;
+
+	tester_print("Disconnected");
+
+	--data->step;
+	if (!data->step)
+		tester_test_passed();
+
+	return FALSE;
+}
+
+static bool hook_remove_cig(const void *msg, uint16_t len, void *user_data)
+{
+	struct test_data *data = user_data;
+
+	tester_print("Remove CIG");
+
+	--data->step;
+	if (!data->step)
+		tester_test_passed();
+
+	return true;
+}
+
+static void test_connect_close(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	int sk;
+	GIOChannel *io;
+
+	data->step = 2;
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+					BT_HCI_CMD_LE_REMOVE_CIG,
+					hook_remove_cig, data);
+
+	sk = setup_sock(data, 0);
+	if (sk < 0)
+		return;
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_connect_close_cb,
+									data);
+
+	shutdown(sk, SHUT_RDWR);
+}
+
+static gboolean iso_connect_wait_close_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int sk;
+
+	tester_print("Connected");
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_connect_close_cb,
+									data);
+
+	shutdown(sk, SHUT_RDWR);
+
+	return FALSE;
+}
+
+static void test_connect_wait_close(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->step = 1;
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+					BT_HCI_CMD_LE_REMOVE_CIG,
+					hook_remove_cig, data);
+
+	setup_connect(data, 0, iso_connect_wait_close_cb);
+}
+
 static void test_bcast(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2600,6 +2684,18 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO Defer Connect - Success", &defer_16_2_1, setup_powered,
 							test_connect);
+
+	test_iso("ISO Defer Close - Success", &defer_16_2_1, setup_powered,
+							test_connect_close);
+
+	test_iso("ISO Connect Close - Success", &connect_16_2_1, setup_powered,
+							test_connect_close);
+
+	test_iso("ISO Defer Wait Close - Success", &defer_16_2_1,
+					setup_powered, test_connect_wait_close);
+
+	test_iso("ISO Connect Wait Close - Success", &connect_16_2_1,
+					setup_powered, test_connect_wait_close);
 
 	test_iso2("ISO Defer Connect2 CIG 0x01 - Success", &defer_1_16_2_1,
 							setup_powered,
