@@ -2402,29 +2402,6 @@ static void test_connect2_seq(const void *test_data)
 	setup_connect(data, 0, iso_connect2_seq_cb);
 }
 
-static void test_connect2_nodefer(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	int sk, err;
-
-	/* Second connect() shall fail, because CIG is then busy,
-	 * but the first connect() shall succeed.
-	 */
-	setup_connect(data, 0, iso_connect_cb);
-
-	sk = create_iso_sock(data);
-	if (sk < 0) {
-		tester_test_failed();
-		return;
-	}
-
-	err = connect_iso_sock(data, 1, sk);
-	if (err != -EINVAL)
-		tester_test_failed();
-
-	close(sk);
-}
-
 static gboolean iso_connect_close_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -2697,13 +2674,13 @@ int main(int argc, char *argv[])
 	test_iso("ISO Connect Wait Close - Success", &connect_16_2_1,
 					setup_powered, test_connect_wait_close);
 
-	test_iso2("ISO Defer Connect2 CIG 0x01 - Success", &defer_1_16_2_1,
+	test_iso2("ISO Connect2 CIG 0x01 - Success", &connect_1_16_2_1,
 							setup_powered,
 							test_connect2);
 
-	test_iso2("ISO Connect2 CIG 0x01 - Success/Invalid", &connect_1_16_2_1,
+	test_iso2("ISO Defer Connect2 CIG 0x01 - Success", &defer_1_16_2_1,
 							setup_powered,
-							test_connect2_nodefer);
+							test_connect2);
 
 	test_iso("ISO Defer Send - Success", &connect_16_2_1_defer_send,
 							setup_powered,
