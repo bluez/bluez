@@ -5872,6 +5872,8 @@ static int cmd_set_cig_params(struct btdev *dev, const void *data,
 
 	memset(&rsp, 0, sizeof(rsp));
 
+	rsp.params.cig_id = cmd->cig_id;
+
 	if (cmd->num_cis > ARRAY_SIZE(dev->le_cig[0].cis)) {
 		rsp.params.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 		goto done;
@@ -5942,7 +5944,6 @@ static int cmd_set_cig_params(struct btdev *dev, const void *data,
 	}
 
 	rsp.params.status = BT_HCI_ERR_SUCCESS;
-	rsp.params.cig_id = cmd->cig_id;
 
 	for (i = 0; i < cmd->num_cis; i++) {
 		rsp.params.num_handles++;
