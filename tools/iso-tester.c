@@ -2402,6 +2402,87 @@ static void test_connect2_seq(const void *test_data)
 	setup_connect(data, 0, iso_connect2_seq_cb);
 }
 
+static gboolean test_connect2_busy_done(gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	if (data->io_id[0] > 0) {
+		/* First connection still exists */
+		g_source_remove(data->io_id[0]);
+		data->io_id[0] = 0;
+		tester_test_passed();
+	} else {
+		tester_test_failed();
+	}
+
+	return FALSE;
+}
+
+static gboolean iso_connect_cb_busy_disc(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->io_id[0] = 0;
+
+	tester_print("Disconnected 1");
+	tester_test_failed();
+	return FALSE;
+}
+
+static gboolean iso_connect_cb_busy_2(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int err, sk_err, sk;
+	socklen_t len;
+
+	data->io_id[1] = 0;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	len = sizeof(sk_err);
+
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+		err = -errno;
+	else
+		err = -sk_err;
+
+	tester_print("Connected 2: %d", err);
+
+	if (err == -EBUSY && data->io_id[0] > 0) {
+		/* Wait in case first connection still gets disconnected */
+		data->io_id[1] = g_timeout_add(250, test_connect2_busy_done,
+									data);
+	} else {
+		tester_test_failed();
+	}
+
+	return FALSE;
+}
+
+static gboolean iso_connect_cb_busy(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* First connection shall not be disconnected */
+	data->io_id[0] = g_io_add_watch(io, G_IO_ERR | G_IO_HUP,
+						iso_connect_cb_busy_disc, data);
+
+	/* Second connect shall fail since CIG is now busy */
+	setup_connect(data, 1, iso_connect_cb_busy_2);
+
+	return iso_connect(io, cond, user_data);
+}
+
+static void test_connect2_busy(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	setup_connect(data, 0, iso_connect_cb_busy);
+}
+
 static gboolean iso_connect_close_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -2677,6 +2758,10 @@ int main(int argc, char *argv[])
 	test_iso2("ISO Connect2 CIG 0x01 - Success", &connect_1_16_2_1,
 							setup_powered,
 							test_connect2);
+
+	test_iso2("ISO Connect2 Busy CIG 0x01 - Success/Invalid",
+					&connect_1_16_2_1, setup_powered,
+					test_connect2_busy);
 
 	test_iso2("ISO Defer Connect2 CIG 0x01 - Success", &defer_1_16_2_1,
 							setup_powered,
