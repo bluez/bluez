@@ -171,6 +171,8 @@ const char *btd_error_bredr_conn_from_errno(int errno_code)
 		return ERR_BREDR_CONN_ABORT_BY_LOCAL;
 	case EPROTO:
 		return ERR_BREDR_CONN_LMP_PROTO_ERROR;
+	case EBADE:
+		return ERR_BREDR_CONN_KEY_MISSING;
 	default:
 		return ERR_BREDR_CONN_UNKNOWN;
 	}
@@ -209,6 +211,8 @@ const char *btd_error_le_conn_from_errno(int errno_code)
 		return ERR_LE_CONN_ABORT_BY_LOCAL;
 	case EPROTO:
 		return ERR_LE_CONN_LL_PROTO_ERROR;
+	case EBADE:
+		return ERR_LE_CONN_KEY_MISSING;
 	default:
 		return ERR_LE_CONN_UNKNOWN;
 	}

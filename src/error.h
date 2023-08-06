@@ -43,6 +43,7 @@
 #define ERR_BREDR_CONN_LMP_PROTO_ERROR		"br-connection-lmp-protocol-"\
 						"error"
 #define ERR_BREDR_CONN_CANCELED			"br-connection-canceled"
+#define ERR_BREDR_CONN_KEY_MISSING		"br-connection-key-missing"
 #define ERR_BREDR_CONN_UNKNOWN			"br-connection-unknown"
 
 /* LE connection failure reasons */
@@ -63,6 +64,7 @@
 #define ERR_LE_CONN_LL_PROTO_ERROR	"le-connection-link-layer-protocol-"\
 					"error"
 #define ERR_LE_CONN_GATT_BROWSE		"le-connection-gatt-browsing"
+#define ERR_LE_CONN_KEY_MISSING		"le-connection-key-missing"
 #define ERR_LE_CONN_UNKNOWN		"le-connection-unknown"
 
 DBusMessage *btd_error_invalid_args(DBusMessage *msg);
