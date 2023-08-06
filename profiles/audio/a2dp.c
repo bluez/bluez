@@ -307,6 +307,7 @@ static int error_to_errno(struct avdtp_error *err)
 	switch (perr) {
 	case EHOSTDOWN:
 	case ECONNABORTED:
+	case EBADE:
 		return -perr;
 	default:
 		/*
