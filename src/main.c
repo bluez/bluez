@@ -78,7 +78,7 @@ static const char *supported_options[] = {
 	"NameResolving",
 	"DebugKeys",
 	"ControllerMode",
-	"MaxControllers"
+	"MaxControllers",
 	"MultiProfile",
 	"FastConnectable",
 	"SecureConnections",
