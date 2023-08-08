@@ -12,6 +12,7 @@
 #include <glib.h>
 
 #include "lib/sdp.h"
+#include "lib/uuid.h"
 
 #define EIR_FLAGS                   0x01  /* flags */
 #define EIR_UUID16_SOME             0x02  /* 16-bit UUID, more available */
@@ -99,3 +100,4 @@ int eir_create_oob(const bdaddr_t *addr, const char *name, uint32_t cod,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,
 			sdp_list_t *uuids, uint8_t *data);
+struct eir_sd *eir_get_service_data(struct eir_data *eir, const char *uuid);

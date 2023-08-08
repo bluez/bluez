@@ -602,3 +602,25 @@ int eir_create_oob(const bdaddr_t *addr, const char *name, uint32_t cod,
 
 	return eir_total_len;
 }
+
+static int match_sd_uuid(const void *data, const void *user_data)
+{
+	const struct eir_sd *sd = data;
+	const char *uuid = user_data;
+
+	return strcmp(sd->uuid, uuid);
+}
+
+struct eir_sd *eir_get_service_data(struct eir_data *eir, const char *uuid)
+{
+	GSList *l;
+
+	if (!eir || !uuid)
+		return NULL;
+
+	l = g_slist_find_custom(eir->sd_list, uuid, match_sd_uuid);
+	if (!l)
+		return NULL;
+
+	return l->data;
+}
