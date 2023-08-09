@@ -85,8 +85,8 @@ if (test "${enable_threads}" = "yes"); then
 	GLIB_LIBS="$GLIB_LIBS $GTHREAD_LIBS"
 fi
 
-PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.6, dummy=yes,
-				AC_MSG_ERROR(D-Bus >= 1.6 is required))
+PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.10, dummy=yes,
+				AC_MSG_ERROR(D-Bus >= 1.10 is required))
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
