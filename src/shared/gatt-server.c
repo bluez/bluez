@@ -846,7 +846,7 @@ static void write_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
 	DBG(server, "Write %s - handle: 0x%04x",
 		(opcode == BT_ATT_OP_WRITE_REQ) ? "Req" : "Cmd", handle);
 
-	ecode = check_length(length, 0);
+	ecode = check_length(length - 2, 0);
 	if (ecode)
 		goto error;
 
@@ -1333,7 +1333,7 @@ static void prep_write_cb(struct bt_att_chan *chan, uint8_t opcode,
 
 	DBG(server, "Prep Write Req - handle: 0x%04x", handle);
 
-	ecode = check_length(length, offset);
+	ecode = check_length(length - 4, offset);
 	if (ecode)
 		goto error;
 
