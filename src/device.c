@@ -3933,10 +3933,10 @@ static bool device_match_profile(struct btd_device *device,
 	if (profile->remote_uuid == NULL)
 		return false;
 
-	/* Don't match if device was just discovered (not connected) and the
+	/* Don't match if device was just discovered, is temporary, and the
 	 * profile don't have probe_on_discover flag set.
 	 */
-	if (!btd_device_is_connected(device) && !profile->probe_on_discover)
+	if (device->temporary && !profile->probe_on_discover)
 		return false;
 
 	if (g_slist_find_custom(uuids, profile->remote_uuid,
