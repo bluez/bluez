@@ -18,7 +18,7 @@ void input_set_idle_timeout(int timeout);
 void input_enable_userspace_hid(bool state);
 void input_set_classic_bonded_only(bool state);
 bool input_get_classic_bonded_only(void);
-void input_set_auto_sec(bool state);
+bool input_get_auto_sec();
 
 int input_device_register(struct btd_service *service);
 void input_device_unregister(struct btd_service *service);

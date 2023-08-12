@@ -30,6 +30,13 @@
 #include "device.h"
 #include "server.h"
 
+static bool auto_sec_global = true;
+
+bool input_get_auto_sec()
+{
+	return auto_sec_global;
+}
+
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	return server_start(btd_adapter_get_address(adapter));
@@ -117,7 +124,7 @@ static int input_init(void)
 		if (!err) {
 			DBG("input.conf: LEAutoSecurity=%s",
 					auto_sec ? "true" : "false");
-			input_set_auto_sec(auto_sec);
+			auto_sec_global = auto_sec
 		} else
 			g_clear_error(&err);
 
