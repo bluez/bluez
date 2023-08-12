@@ -124,7 +124,7 @@ static int input_init(void)
 		if (!err) {
 			DBG("input.conf: LEAutoSecurity=%s",
 					auto_sec ? "true" : "false");
-			auto_sec_global = auto_sec
+			auto_sec_global = auto_sec;
 		} else
 			g_clear_error(&err);
 
