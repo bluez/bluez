@@ -2,53 +2,29 @@
 test-runner
 ===========
 
-------------------
-Kernel test runner
-------------------
-
-:Authors: - Luiz Augusto Von Dentz <luiz.von.dentz@intel.com>
-:Version: BlueZ
-:Copyright: Free use of this software is granted under ther terms of the GNU
-            Lesser General Public Licenses (LGPL).
-:Date: Jul 6, 2023
-:Manual section: 1
-:Manual group: Linux System Administration
-
-SYNOPSIS
-========
-
 **test-runner** [*OPTIONS*] -- <test-name>
 
 DESCRIPTION
 ===========
 
 **test-runner(1)** is used to test Kernel changes to the Bluetooth subsystem,
-it lunches a virtual machine using the local filesystem.
+it lunches a virtual machine using qemu(1) and mounts the local filesystem
+using virtio (9p).
 
 OPTIONS
 =======
 
--a, --auto             Find tests and run them
-
--b, --dbus             Start D-Bus system daemon
-
--s, --dbus-session     Start D-Bus session daemon
-
--d, --daemon           Start bluetoothd
-
--m, --monitor          Start btmon
-
--l, --emulator         Start btvirt
-
--A, --audio[=path]      Start audio server
-
--u, --unix [path]      Provide serial device
-
--q, --qemu <path>      QEMU binary
-
--k, --kernel <image>   Kernel image (bzImage)
-
--h, --help             Show help options
+:-a:--auto: Find tests and run them
+:-b/--dbus: Start D-Bus system daemon
+:-s/--dbus-session: Start D-Bus session daemon
+:-d/--daemon: Start bluetoothd
+:-m/--monitor: Start btmon
+:-l/--emulator: Start btvirt
+:-A/-audio[=path]: Start audio server
+:-u/--unix[=path]: Provide serial device
+:-q/--qemu=<path>: QEMU binary
+:-k/--kernel=<image>: Kernel image (bzImage)
+:-h/--help: Show help options
 
 Kernel
 ======
@@ -80,7 +56,7 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 
 	CONFIG_SERIAL_8250=y
 	CONFIG_SERIAL_8250_CONSOLE=y
-	CONFIG_SERIAL_8250_PCI=y
+	CONFIG_SERIAL_8250_PCI=yCONFIG_DEBUG_KERNEL=y
 	CONFIG_SERIAL_8250_NR_UARTS=4
 
 	CONFIG_TMPFS=y
@@ -132,6 +108,7 @@ options may be useful:
 	CONFIG_PROVE_RCU=y
 	CONFIG_LOCKDEP=y
 	CONFIG_DEBUG_MUTEXES=y
+	CONFIG_KASAN=y
 
 EXAMPLES
 ========
@@ -198,3 +175,4 @@ Running shell with host controller using btproxy
 
 	$ tools/btproxy -u [1]
 	$ tools/test-runner -u -d -k /pathto/bzImage -- /bin/bash [2]
+
