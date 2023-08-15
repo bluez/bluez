@@ -25,6 +25,7 @@
 #include "lib/mgmt.h"
 
 #include "monitor/bt.h"
+#include "emulator/vhci.h"
 #include "emulator/bthost.h"
 #include "emulator/hciemu.h"
 
@@ -391,6 +392,7 @@ struct test_data {
 	uint8_t client_num;
 	int step;
 	bool reconnect;
+	bool suspending;
 };
 
 struct iso_client_data {
@@ -405,6 +407,7 @@ struct iso_client_data {
 	bool disconnect;
 	bool ts;
 	bool mconn;
+	bool suspend;
 	uint8_t pkt_status;
 	const uint8_t *base;
 	size_t base_len;
@@ -806,6 +809,11 @@ static const struct iso_client_data connect_reject = {
 	.expect_err = -ENOSYS
 };
 
+static const struct iso_client_data connect_suspend = {
+	.qos = QOS_16_2_1,
+	.expect_err = -ECONNRESET
+};
+
 static const struct iso_client_data connect_cig_f0_invalid = {
 	.qos = QOS_FULL(0xF0, 0x00, {}, QOS_IO(10000, 10, 40, 0x02, 2)),
 	.expect_err = -EINVAL
@@ -918,6 +926,11 @@ static const struct iso_client_data disconnect_16_2_1 = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
 	.disconnect = true,
+};
+
+static const struct iso_client_data suspend_16_2_1 = {
+	.qos = QOS_16_2_1,
+	.suspend = true,
 };
 
 static const struct iso_client_data reconnect_16_2_1 = {
@@ -1255,7 +1268,7 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 			continue;
 
 		if (isodata->send || isodata->recv || isodata->disconnect ||
-						data->accept_reason)
+				isodata->suspend || data->accept_reason)
 			bthost_set_iso_cb(host, iso_accept_conn, iso_new_conn,
 									data);
 
@@ -1892,6 +1905,46 @@ static void iso_shutdown(struct test_data *data, GIOChannel *io)
 	tester_print("Disconnecting...");
 }
 
+static bool hook_set_event_mask(const void *msg, uint16_t len, void *user_data)
+{
+	struct test_data *data = user_data;
+
+	tester_print("Set Event Mask");
+
+	--data->step;
+	if (!data->step)
+		tester_test_passed();
+
+	return true;
+}
+
+static void trigger_force_suspend(void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
+	int err;
+
+	/* Make sure suspend is only triggered once */
+	if (data->suspending)
+		return;
+
+	data->suspending = true;
+
+	/* Triggers the suspend */
+	tester_print("Set the system into Suspend via force_suspend");
+	err = vhci_set_force_suspend(vhci, true);
+	if (err) {
+		tester_warn("Unable to enable the force_suspend");
+		return;
+	}
+
+	data->step++;
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+					BT_HCI_CMD_SET_EVENT_MASK,
+					hook_set_event_mask, data);
+}
+
 static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1954,6 +2007,8 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 			iso_recv(data, io);
 		else if (isodata->disconnect)
 			iso_shutdown(data, io);
+		else if (isodata->suspend)
+			trigger_force_suspend(data);
 		else
 			tester_test_passed();
 	}
@@ -2567,6 +2622,12 @@ static void test_connect_wait_close(const void *test_data)
 	setup_connect(data, 0, iso_connect_wait_close_cb);
 }
 
+static void test_connect_suspend(const void *test_data)
+{
+	test_connect(test_data);
+	trigger_force_suspend((void *)test_data);
+}
+
 static void test_bcast(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2588,6 +2649,12 @@ static void test_bcast_recv(const void *test_data)
 	struct test_data *data = tester_get_data();
 
 	setup_listen(data, 0, iso_accept_cb);
+}
+
+static void test_connect2_suspend(const void *test_data)
+{
+	test_connect2(test_data);
+	trigger_force_suspend((void *)test_data);
 }
 
 int main(int argc, char *argv[])
@@ -2755,6 +2822,14 @@ int main(int argc, char *argv[])
 	test_iso("ISO Connect Wait Close - Success", &connect_16_2_1,
 					setup_powered, test_connect_wait_close);
 
+	test_iso("ISO Connect Suspend - Success", &connect_suspend,
+							setup_powered,
+							test_connect_suspend);
+
+	test_iso("ISO Connected Suspend - Success", &suspend_16_2_1,
+							setup_powered,
+							test_connect);
+
 	test_iso2("ISO Connect2 CIG 0x01 - Success", &connect_1_16_2_1,
 							setup_powered,
 							test_connect2);
@@ -2764,6 +2839,14 @@ int main(int argc, char *argv[])
 					test_connect2_busy);
 
 	test_iso2("ISO Defer Connect2 CIG 0x01 - Success", &defer_1_16_2_1,
+							setup_powered,
+							test_connect2);
+
+	test_iso2("ISO Connect2 Suspend - Success", &connect_suspend,
+							setup_powered,
+							test_connect2_suspend);
+
+	test_iso2("ISO Connected2 Suspend - Success", &suspend_16_2_1,
 							setup_powered,
 							test_connect2);
 
