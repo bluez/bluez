@@ -71,6 +71,7 @@ struct hci_stats {
 
 struct hci_conn {
 	uint16_t handle;
+	uint16_t link;
 	uint8_t type;
 	uint8_t bdaddr[6];
 	bool setup_seen;
@@ -290,6 +291,20 @@ static struct hci_conn *conn_lookup(struct hci_dev *dev, uint16_t handle)
 						UINT_TO_PTR(handle));
 }
 
+static bool link_match_handle(const void *a, const void *b)
+{
+	const struct hci_conn *conn = a;
+	uint16_t handle = PTR_TO_UINT(b);
+
+	return (conn->link == handle && !conn->terminated);
+}
+
+static struct hci_conn *link_lookup(struct hci_dev *dev, uint16_t handle)
+{
+	return queue_find(dev->conn_list, link_match_handle,
+						UINT_TO_PTR(handle));
+}
+
 static struct hci_conn *conn_lookup_type(struct hci_dev *dev, uint16_t handle,
 								uint8_t type)
 {
@@ -297,7 +312,7 @@ static struct hci_conn *conn_lookup_type(struct hci_dev *dev, uint16_t handle,
 
 	conn = queue_find(dev->conn_list, conn_match_handle,
 						UINT_TO_PTR(handle));
-	if (!conn || conn->type != type) {
+	if (!conn || (type && conn->type != type)) {
 		conn = conn_alloc(dev, handle, type);
 		queue_push_tail(dev->conn_list, conn);
 	}
@@ -542,6 +557,42 @@ static void plot_add(struct queue *queue, struct timeval *latency,
 	queue_push_tail(queue, plot);
 }
 
+static void evt_le_conn_complete(struct hci_dev *dev, struct timeval *tv,
+					struct iovec *iov)
+{
+	const struct bt_hci_evt_le_conn_complete *evt;
+	struct hci_conn *conn;
+
+	evt = util_iov_pull_mem(iov, sizeof(*evt));
+	if (!evt || evt->status)
+		return;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), CONN_LE_ACL);
+	if (!conn)
+		return;
+
+	memcpy(conn->bdaddr, evt->peer_addr, 6);
+	conn->setup_seen = true;
+}
+
+static void evt_le_enh_conn_complete(struct hci_dev *dev, struct timeval *tv,
+					struct iovec *iov)
+{
+	const struct bt_hci_evt_le_enhanced_conn_complete *evt;
+	struct hci_conn *conn;
+
+	evt = util_iov_pull_mem(iov, sizeof(*evt));
+	if (!evt || evt->status)
+		return;
+
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), CONN_LE_ACL);
+	if (!conn)
+		return;
+
+	memcpy(conn->bdaddr, evt->peer_addr, 6);
+	conn->setup_seen = true;
+}
+
 static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
@@ -612,7 +663,7 @@ static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
 					struct iovec *iov)
 {
 	const struct bt_hci_evt_le_cis_established *evt;
-	struct hci_conn *conn;
+	struct hci_conn *conn, *link;
 
 	evt = util_iov_pull_mem(iov, sizeof(*evt));
 	if (!evt || evt->status)
@@ -624,6 +675,27 @@ static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
 		return;
 
 	conn->setup_seen = true;
+
+	link = link_lookup(dev, conn->handle);
+	if (link)
+		memcpy(conn->bdaddr, link->bdaddr, 6);
+}
+
+static void evt_le_cis_req(struct hci_dev *dev, struct timeval *tv,
+					struct iovec *iov)
+{
+	const struct bt_hci_evt_le_cis_req *evt;
+	struct hci_conn *conn;
+
+	evt = util_iov_pull_mem(iov, sizeof(*evt));
+	if (!evt)
+		return;
+
+	conn = conn_lookup(dev, le16_to_cpu(evt->acl_handle));
+	if (!conn)
+		return;
+
+	conn->link = le16_to_cpu(evt->cis_handle);
 }
 
 static void evt_le_big_complete(struct hci_dev *dev, struct timeval *tv,
@@ -685,8 +757,17 @@ static void evt_le_meta_event(struct hci_dev *dev, struct timeval *tv,
 		return;
 
 	switch (subevt) {
+	case BT_HCI_EVT_LE_CONN_COMPLETE:
+		evt_le_conn_complete(dev, tv, &iov);
+		break;
+	case BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE:
+		evt_le_enh_conn_complete(dev, tv, &iov);
+		break;
 	case BT_HCI_EVT_LE_CIS_ESTABLISHED:
 		evt_le_cis_established(dev, tv, &iov);
+		break;
+	case BT_HCI_EVT_LE_CIS_REQ:
+		evt_le_cis_req(dev, tv, &iov);
 		break;
 	case BT_HCI_EVT_LE_BIG_COMPLETE:
 		evt_le_big_complete(dev, tv, &iov);
@@ -811,8 +892,7 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	dev->num_hci++;
 	dev->num_acl++;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-								CONN_BR_ACL);
+	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff, 0x00);
 	if (!conn)
 		return;
 
