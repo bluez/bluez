@@ -174,6 +174,18 @@ static uint16_t get_format(uint32_t cookie)
 
 static struct packet_conn_data conn_list[MAX_CONN];
 
+static struct packet_conn_data *lookup_parent(uint16_t handle)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONN; i++) {
+		if (conn_list[i].link == handle)
+			return &conn_list[i];
+	}
+
+	return NULL;
+}
+
 static void assign_handle(uint16_t index, uint16_t handle, uint8_t type,
 					uint8_t *dst, uint8_t dst_type)
 {
@@ -181,15 +193,27 @@ static void assign_handle(uint16_t index, uint16_t handle, uint8_t type,
 
 	for (i = 0; i < MAX_CONN; i++) {
 		if (conn_list[i].handle == 0x0000) {
-			if (hci_devba(index, (bdaddr_t *)conn_list[i].src) < 0)
-				return;
+			hci_devba(index, (bdaddr_t *)conn_list[i].src);
 
 			conn_list[i].index = index;
 			conn_list[i].handle = handle;
 			conn_list[i].type = type;
 
-			if (!dst)
+			if (!dst) {
+				struct packet_conn_data *p;
+
+				/* If destination is not set attempt to use the
+				 * parent one if that exists.
+				 */
+				p = lookup_parent(handle);
+				if (p) {
+					memcpy(conn_list[i].dst, p->dst,
+						sizeof(conn_list[i].dst));
+					conn_list[i].dst_type = p->dst_type;
+				}
+
 				break;
+			}
 
 			memcpy(conn_list[i].dst, dst, sizeof(conn_list[i].dst));
 			conn_list[i].dst_type = dst_type;
@@ -8725,9 +8749,14 @@ static void le_set_cig_params_rsp(uint16_t index, const void *data,
 static void print_cis(const void *data, int i)
 {
 	const struct bt_hci_cis *cis = data;
+	struct packet_conn_data *conn;
 
 	print_field("CIS Handle: %d", cis->cis_handle);
 	print_field("ACL Handle: %d", cis->acl_handle);
+
+	conn = packet_get_conn_data(cis->acl_handle);
+	if (conn)
+		conn->link = cis->cis_handle;
 }
 
 static void le_create_cis_cmd(uint16_t index, const void *data, uint8_t size)
@@ -11643,11 +11672,16 @@ static void le_req_cis_evt(struct timeval *tv, uint16_t index,
 					const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_cis_req *evt = data;
+	struct packet_conn_data *conn;
 
 	print_field("ACL Handle: %d", le16_to_cpu(evt->acl_handle));
 	print_field("CIS Handle: %d", le16_to_cpu(evt->cis_handle));
 	print_field("CIG ID: 0x%2.2x", evt->cig_id);
 	print_field("CIS ID: 0x%2.2x", evt->cis_id);
+
+	conn = packet_get_conn_data(evt->acl_handle);
+	if (conn)
+		conn->link = evt->cis_handle;
 }
 
 static void print_bis_handle(const void *data, int i)
