@@ -390,7 +390,7 @@ EXTRA_DIST += $(test_scripts)
 
 EXTRA_DIST += doc/assigned-numbers.txt doc/supported-features.txt \
 				doc/test-coverage.txt \
-				doc/test-runner.txt \
+				doc/test-runner.rst \
 				doc/settings-storage.txt
 
 EXTRA_DIST += doc/mgmt-api.txt \
