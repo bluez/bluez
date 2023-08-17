@@ -2006,7 +2006,7 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 {
 	char addr[18];
 
-	if (!device || !device->le)
+	if (!device || !device->le || device_address_is_private(device))
 		return;
 
 	ba2str(&device->bdaddr, addr);
