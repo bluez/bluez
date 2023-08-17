@@ -1134,6 +1134,15 @@ static const struct iso_client_data bcast_enc_16_2_1_recv = {
 	.server = true,
 };
 
+static const struct iso_client_data bcast_16_2_1_recv_defer = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.defer = true,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+};
+
 static const struct iso_client_data bcast_ac_12 = {
 	.qos = BCAST_AC_12,
 	.expect_err = 0,
@@ -1865,6 +1874,8 @@ static void iso_send(struct test_data *data, GIOChannel *io)
 static void test_connect(const void *test_data);
 static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data);
+static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data);
 
 static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
@@ -2346,6 +2357,7 @@ static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
 	int sk;
 	char c;
 	struct pollfd pfd;
+	const struct iso_client_data *isodata = data->test_data;
 
 	sk = g_io_channel_unix_get_fd(io);
 
@@ -2368,7 +2380,15 @@ static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
 	tester_print("Accept deferred setup");
 
 	data->io = io;
-	data->io_id[0] = g_io_add_watch(io, G_IO_OUT, iso_connect_cb, NULL);
+
+	if (isodata->bcast) {
+		data->io_id[0] = g_io_add_watch(io, G_IO_IN,
+					iso_accept_cb, NULL);
+		data->step++;
+	} else {
+		data->io_id[0] = g_io_add_watch(io, G_IO_OUT,
+					iso_connect_cb, NULL);
+	}
 
 	return true;
 }
@@ -2400,6 +2420,11 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 			return false;
 		}
 
+		if (isodata->bcast && data->step > 1) {
+			data->step--;
+			goto connect;
+		}
+
 		if (!iso_defer_accept(data, io)) {
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
@@ -2419,6 +2444,7 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 		}
 	}
 
+connect:
 	return iso_connect(io, cond, user_data);
 }
 
@@ -2963,6 +2989,10 @@ int main(int argc, char *argv[])
 							&bcast_enc_16_2_1_recv,
 							setup_powered,
 							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver Defer - Success",
+						&bcast_16_2_1_recv_defer,
+						setup_powered,
+						test_bcast_recv);
 
 	test_iso("ISO Broadcaster AC 12 - Success", &bcast_ac_12, setup_powered,
 							test_bcast);
