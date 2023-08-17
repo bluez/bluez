@@ -5754,6 +5754,10 @@ int device_connect_le(struct btd_device *dev)
 	/* Keep this, so we can cancel the connection */
 	dev->att_io = io;
 
+	/* Restart temporary timer to give it time to connect/pair, etc. */
+	if (dev->temporary)
+		set_temporary_timer(dev, btd_opts.tmpto);
+
 	return 0;
 }
 
