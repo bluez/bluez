@@ -1897,7 +1897,7 @@ static struct btd_profile bap_profile = {
 	.disconnect	= bap_disconnect,
 	.adapter_probe	= bap_adapter_probe,
 	.adapter_remove	= bap_adapter_remove,
-	.auto_connect	= false,
+	.auto_connect	= true,
 	.experimental	= true,
 };
 
