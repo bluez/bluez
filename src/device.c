@@ -3930,17 +3930,13 @@ static bool device_match_profile(struct btd_device *device,
 					struct btd_profile *profile,
 					GSList *uuids)
 {
+	GSList *l;
+
 	if (profile->remote_uuid == NULL)
 		return false;
 
-	/* Don't match if device was just discovered, is temporary, and the
-	 * profile don't have probe_on_discover flag set.
-	 */
-	if (device->temporary && !profile->probe_on_discover)
-		return false;
-
-	if (g_slist_find_custom(uuids, profile->remote_uuid,
-							bt_uuid_strcmp) == NULL)
+	l = g_slist_find_custom(uuids, profile->remote_uuid, bt_uuid_strcmp);
+	if (!l)
 		return false;
 
 	return true;
@@ -4831,8 +4827,15 @@ static struct btd_service *probe_service(struct btd_device *device,
 	/* Only set auto connect if profile has set the flag and can really
 	 * accept connections.
 	 */
-	if (profile->auto_connect && profile->accept)
-		device_set_auto_connect(device, TRUE);
+	if (profile->auto_connect && profile->accept) {
+		/* If temporary mark auto_connect as disabled so when the
+		 * device is connected it attempts to enable it.
+		 */
+		if (device->temporary)
+			device->disable_auto_connect = TRUE;
+		else
+			device_set_auto_connect(device, TRUE);
+	}
 
 	return service;
 }
@@ -4902,8 +4905,6 @@ void device_probe_profiles(struct btd_device *device, GSList *uuids)
 		DBG("Skipping profiles for blocked device %s", addr);
 		goto add_uuids;
 	}
-
-	DBG("Probing profiles for device %s", addr);
 
 	btd_profile_foreach(dev_probe, &d);
 
@@ -6932,9 +6933,6 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 	GSList *uuid_list;
 	char *new_uuid;
 
-	if (g_slist_find_custom(device->uuids, uuid, bt_uuid_strcmp))
-		return;
-
 	new_uuid = g_strdup(uuid);
 	uuid_list = g_slist_append(NULL, new_uuid);
 
@@ -6942,11 +6940,6 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 
 	g_free(new_uuid);
 	g_slist_free(uuid_list);
-
-	store_device_info(device);
-
-	g_dbus_emit_property_changed(dbus_conn, device->path,
-						DEVICE_INTERFACE, "UUIDs");
 }
 
 static sdp_list_t *read_device_records(struct btd_device *device)

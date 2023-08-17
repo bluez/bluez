@@ -33,11 +33,6 @@ struct btd_profile {
 	 */
 	bool experimental;
 
-	/* Indicates the profile needs to be probed when the remote_uuid is
-	 * discovered.
-	 */
-	bool probe_on_discover;
-
 	int (*device_probe) (struct btd_service *service);
 	void (*device_remove) (struct btd_service *service);
 
