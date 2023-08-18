@@ -801,8 +801,20 @@ static void config_cb(struct bt_bap_stream *stream,
 
 	setup->id = 0;
 
-	if (!code)
+	if (!code) {
+		/* Check state is already set to config then proceed to qos */
+		if (bt_bap_stream_get_state(stream) ==
+					BT_BAP_STREAM_STATE_CONFIG) {
+			setup->id = bt_bap_stream_qos(stream, &setup->qos,
+							qos_cb, setup);
+			if (!setup->id) {
+				error("Failed to Configure QoS");
+				bt_bap_stream_release(stream, NULL, NULL);
+			}
+		}
+
 		return;
+	}
 
 	if (!setup->msg)
 		return;
