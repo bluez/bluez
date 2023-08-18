@@ -712,6 +712,29 @@ static void read_supported_features_rsp(uint16_t index, const void *data,
 	packet_hexdump(data + 3, size - 3);
 }
 
+static void ppag_enable(uint16_t index, const void *data, uint8_t size)
+{
+	uint32_t enable = get_le32(data);
+	char *ppag_enable_flags;
+
+	switch (enable) {
+	case 0x01:
+		ppag_enable_flags = "EU";
+		break;
+	case 0x02:
+		ppag_enable_flags = "China";
+		break;
+	case 0x03:
+		ppag_enable_flags = "EU and China";
+		break;
+	default:
+		ppag_enable_flags = "Unknown";
+		break;
+	}
+
+	print_field("Enable: %s (0x%8.8x)", ppag_enable_flags, enable);
+}
+
 static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x001, "Reset",
 			reset_cmd, 8, true,
@@ -777,7 +800,9 @@ static const struct vendor_ocf vendor_ocf_table[] = {
 	{ 0x0a6, "Read Supported Features",
 			read_supported_features_cmd, 1, true,
 			read_supported_features_rsp, 19, true },
-
+	{ 0x20b, "PPAG Enable",
+			ppag_enable, 4, true,
+			status_rsp, 1, true },
 	{ }
 };
 
