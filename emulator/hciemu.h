@@ -48,6 +48,9 @@ bool hciemu_set_debug(struct hciemu *hciemu, hciemu_debug_func_t callback,
 struct vhci *hciemu_get_vhci(struct hciemu *hciemu);
 struct bthost *hciemu_client_get_host(struct hciemu *hciemu);
 
+/* Process pending client events before new VHCI events */
+void hciemu_flush_client_events(struct hciemu *hciemu);
+
 const char *hciemu_get_address(struct hciemu *hciemu);
 uint8_t *hciemu_get_features(struct hciemu *hciemu);
 
