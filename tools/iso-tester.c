@@ -2654,6 +2654,40 @@ static void test_connect_suspend(const void *test_data)
 	trigger_force_suspend((void *)test_data);
 }
 
+static bool hook_acl_disc(const void *msg, uint16_t len, void *user_data)
+{
+	const uint8_t *msg_data = msg;
+	const struct bt_hci_evt_le_enhanced_conn_complete *ev;
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+
+	if (msg_data[0] != BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE)
+		return true;
+
+	ev = (void *) &msg_data[1];
+
+	tester_print("Disconnect ACL");
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_hci_disconnect(bthost, le16_to_cpu(ev->handle), 0x13);
+
+	hciemu_flush_client_events(data->hciemu);
+
+	return true;
+}
+
+static void test_connect_acl_disc(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* ACL disconnected before ISO is created */
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_LE_META_EVENT,
+					hook_acl_disc, NULL);
+
+	test_connect(test_data);
+}
+
 static void test_bcast(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2875,6 +2909,10 @@ int main(int argc, char *argv[])
 	test_iso2("ISO Connected2 Suspend - Success", &suspend_16_2_1,
 							setup_powered,
 							test_connect2);
+
+	test_iso("ISO Connect ACL Disconnect - Failure", &connect_suspend,
+							setup_powered,
+							test_connect_acl_disc);
 
 	test_iso("ISO Defer Send - Success", &connect_16_2_1_defer_send,
 							setup_powered,
