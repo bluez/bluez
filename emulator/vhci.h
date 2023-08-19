@@ -31,3 +31,4 @@ int vhci_set_emu_opcode(struct vhci *vhci, uint16_t opcode);
 int vhci_set_force_static_address(struct vhci *vhci, bool enable);
 int vhci_force_devcd(struct vhci *vhci, const void *data, size_t len);
 int vhci_read_devcd(struct vhci *vhci, void *buf, size_t size);
+bool vhci_pause_input(struct vhci *vhci, bool paused);

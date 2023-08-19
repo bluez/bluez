@@ -178,6 +178,15 @@ void vhci_close(struct vhci *vhci)
 	vhci_destroy(vhci);
 }
 
+bool vhci_pause_input(struct vhci *vhci, bool paused)
+{
+	if (paused)
+		return io_set_read_handler(vhci->io, NULL, NULL, NULL);
+	else
+		return io_set_read_handler(vhci->io, vhci_read_callback, vhci,
+									NULL);
+}
+
 struct btdev *vhci_get_btdev(struct vhci *vhci)
 {
 	if (!vhci)
