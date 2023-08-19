@@ -800,6 +800,36 @@ static void test_connect_simult_disc(const void *test_data)
 	test_connect(test_data);
 }
 
+static bool hook_acl_disc(const void *msg, uint16_t len, void *user_data)
+{
+	const struct bt_hci_evt_conn_complete *ev = msg;
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+
+	tester_print("Disconnect ACL");
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_hci_disconnect(bthost, le16_to_cpu(ev->handle), 0x13);
+
+	hciemu_flush_client_events(data->hciemu);
+
+	return true;
+}
+
+static void test_connect_acl_disc(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* ACL disconnected before SCO is established seen.
+	 * Kernel shall not crash, but <= 6.5-rc5 crash.
+	 */
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_CONN_COMPLETE,
+					hook_acl_disc, NULL);
+
+	test_connect(test_data);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -825,6 +855,10 @@ int main(int argc, char *argv[])
 	test_sco("eSCO Simultaneous Disconnect - Failure",
 					&connect_failure_reset, setup_powered,
 					test_connect_simult_disc);
+
+	test_sco("eSCO ACL Disconnect - Failure",
+					&connect_failure_reset, setup_powered,
+					test_connect_acl_disc);
 
 	test_sco_11("SCO CVSD 1.1 - Success", &connect_success, setup_powered,
 							test_connect);
