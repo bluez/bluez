@@ -111,7 +111,7 @@ static const uint8_t base_lc3_16_2_1[] = {
 	0x01, /* Number of Subgroups */
 	0x01, /* Number of BIS */
 	0x06, 0x00, 0x00, 0x00, 0x00, /* Code ID = LC3 (0x06) */
-	0x11, /* Codec Specific Configuration */
+	0x10, /* Codec Specific Configuration */
 	0x02, 0x01, 0x03, /* 16 KHZ */
 	0x02, 0x02, 0x01, /* 10 ms */
 	0x05, 0x03, 0x01, 0x00, 0x00, 0x00,  /* Front Left */
@@ -2296,9 +2296,6 @@ static void register_endpoint_setup(DBusMessageIter *iter, void *user_data)
 		bt_shell_printf("Metadata:\n");
 		bt_shell_hexdump(ep->meta->iov_base, ep->meta->iov_len);
 	}
-
-	g_dbus_dict_append_entry(&dict, "Broadcast", DBUS_TYPE_BOOLEAN,
-				&ep->broadcast);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
