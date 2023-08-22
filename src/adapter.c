@@ -7176,7 +7176,7 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 		/* Monitor Devices advertising Broadcast Announcements if the
 		 * adapter is capable of synchronizing to it.
 		 */
-		if (eir_get_service_data(&eir_data, BAA_SERVICE_UUID) &&
+		if (eir_get_service_data(&eir_data, BCAA_SERVICE_UUID) &&
 				btd_adapter_has_settings(adapter,
 				MGMT_SETTING_ISO_SYNC_RECEIVER))
 			monitoring = true;
