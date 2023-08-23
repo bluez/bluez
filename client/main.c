@@ -66,6 +66,7 @@ static GList *battery_proxies;
 static const char *agent_arguments[] = {
 	"on",
 	"off",
+	"auto",
 	"DisplayOnly",
 	"DisplayYesNo",
 	"KeyboardDisplay",
@@ -3096,7 +3097,7 @@ static const struct bt_shell_menu main_menu = {
 							NULL },
 	{ "discoverable-timeout", "[value]", cmd_discoverable_timeout,
 					"Set discoverable timeout", NULL },
-	{ "agent",        "<on/off/capability>", cmd_agent,
+	{ "agent",        "<on/off/auto/capability>", cmd_agent,
 				"Enable/disable agent with given capability",
 							capability_generator},
 	{ "default-agent",NULL,       cmd_default_agent,
