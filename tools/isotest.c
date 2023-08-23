@@ -434,16 +434,60 @@ error:
 
 }
 
-static void do_listen(char *filename, void (*handler)(int fd, int sk),
-							char *peer)
+static int accept_conn(int sk, struct sockaddr_iso *addr, char *peer)
+{
+	socklen_t optlen;
+	int nsk, err, sk_err;
+	struct pollfd fds;
+	socklen_t len;
+
+	memset(addr, 0, sizeof(*addr) + sizeof(*addr->iso_bc));
+	optlen = sizeof(*addr);
+
+	if (peer)
+		optlen += sizeof(*addr->iso_bc);
+
+	nsk = accept(sk, (struct sockaddr *) addr, &optlen);
+	if (nsk < 0) {
+		syslog(LOG_ERR, "Accept failed: %s (%d)",
+						strerror(errno), errno);
+		return -1;
+	}
+
+	/* Check if connection was successful */
+	memset(&fds, 0, sizeof(fds));
+	fds.fd = nsk;
+	fds.events = POLLERR;
+
+	if (poll(&fds, 1, 0) > 0 && (fds.revents & POLLERR)) {
+		len = sizeof(sk_err);
+
+		if (getsockopt(nsk, SOL_SOCKET, SO_ERROR,
+					&sk_err, &len) < 0)
+			err = -errno;
+		else
+			err = -sk_err;
+
+		if (err < 0)
+			syslog(LOG_ERR, "Connection failed: %s (%d)",
+					strerror(-err), -err);
+
+		close(nsk);
+		return -1;
+	}
+
+	return nsk;
+}
+
+static void do_listen(char *filename,
+		void (*handler)(int fd, int sk, char *peer),
+		char *peer)
 {
 	struct sockaddr_iso *addr = NULL;
 	socklen_t optlen;
 	int sk, nsk, fd = -1;
 	char ba[18];
-	struct pollfd fds;
-	int err, sk_err;
-	socklen_t len;
+	int read_len;
 
 	if (filename) {
 		fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
@@ -519,41 +563,27 @@ static void do_listen(char *filename, void (*handler)(int fd, int sk),
 
 	syslog(LOG_INFO, "Waiting for connection %s...", peer ? peer : "");
 
-	while (1) {
-		memset(addr, 0, sizeof(*addr) + sizeof(*addr->iso_bc));
-		optlen = sizeof(*addr);
-
-		if (peer)
-			optlen += sizeof(*addr->iso_bc);
-
-		nsk = accept(sk, (struct sockaddr *) addr, &optlen);
-		if (nsk < 0) {
-			syslog(LOG_ERR, "Accept failed: %s (%d)",
-							strerror(errno), errno);
+	/* Handle deferred setup */
+	if (defer_setup && peer) {
+		nsk = accept_conn(sk, addr, peer);
+		if (nsk < 0)
 			goto error;
-		}
 
-		/* Check if connection was successful */
-		memset(&fds, 0, sizeof(fds));
-		fds.fd = nsk;
-		fds.events = POLLERR;
+		close(sk);
+		sk = nsk;
 
-		if (poll(&fds, 1, 0) > 0 && (fds.revents & POLLERR)) {
-			len = sizeof(sk_err);
+		read_len = read(sk, buf, data_size);
+		if (read_len < 0)
+			syslog(LOG_ERR, "Initial read error: %s (%d)",
+						strerror(errno), errno);
+		else
+			syslog(LOG_INFO, "Initial bytes %d", read_len);
+	}
 
-			if (getsockopt(nsk, SOL_SOCKET, SO_ERROR,
-						&sk_err, &len) < 0)
-				err = -errno;
-			else
-				err = -sk_err;
-
-			if (err < 0)
-				syslog(LOG_ERR, "Connection failed: %s (%d)",
-						strerror(-err), -err);
-
-			close(nsk);
+	while (1) {
+		nsk = accept_conn(sk, addr, peer);
+		if (nsk < 0)
 			continue;
-		}
 
 		if (fork()) {
 			/* Parent */
@@ -583,7 +613,7 @@ static void do_listen(char *filename, void (*handler)(int fd, int sk),
 			}
 		}
 
-		handler(fd, nsk);
+		handler(fd, nsk, peer);
 
 		syslog(LOG_INFO, "Disconnect");
 		exit(0);
@@ -598,11 +628,11 @@ error:
 	exit(1);
 }
 
-static void dump_mode(int fd, int sk)
+static void dump_mode(int fd, int sk, char *peer)
 {
 	int len;
 
-	if (defer_setup) {
+	if (defer_setup && !peer) {
 		len = read(sk, buf, data_size);
 		if (len < 0)
 			syslog(LOG_ERR, "Initial read error: %s (%d)",
@@ -625,14 +655,14 @@ static void dump_mode(int fd, int sk)
 	}
 }
 
-static void recv_mode(int fd, int sk)
+static void recv_mode(int fd, int sk, char *peer)
 {
 	struct timeval tv_beg, tv_end, tv_diff;
 	long total;
 	int len;
 	uint32_t seq;
 
-	if (defer_setup) {
+	if (defer_setup && !peer) {
 		len = read(sk, buf, data_size);
 		if (len < 0)
 			syslog(LOG_ERR, "Initial read error: %s (%d)",
@@ -1446,7 +1476,11 @@ int main(int argc, char *argv[])
 					}
 
 					/* Child */
-					dump_mode(-1, sk_arr[i]);
+					if (!strcmp(peer, "00:00:00:00:00:00"))
+						dump_mode(-1, sk_arr[i], peer);
+					else
+						dump_mode(-1, sk_arr[i], NULL);
+
 					exit(0);
 				}
 
@@ -1462,7 +1496,11 @@ int main(int argc, char *argv[])
 				sk = do_connect(argv[optind + i]);
 				if (sk < 0)
 					exit(1);
-				dump_mode(-1, sk);
+
+				if (!strcmp(peer, "00:00:00:00:00:00"))
+					dump_mode(-1, sk, peer);
+				else
+					dump_mode(-1, sk, NULL);
 			}
 
 			break;
