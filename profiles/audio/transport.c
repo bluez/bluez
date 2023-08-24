@@ -1199,7 +1199,7 @@ static gboolean get_timeout(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static const GDBusPropertyTable bap_properties[] = {
+static const GDBusPropertyTable bap_ucast_properties[] = {
 	{ "Device", "o", get_device },
 	{ "UUID", "s", get_uuid },
 	{ "Codec", "y", get_codec },
@@ -1218,6 +1218,16 @@ static const GDBusPropertyTable bap_properties[] = {
 	{ "Location", "u", get_location },
 	{ "Metadata", "ay", get_metadata },
 	{ "Links", "ao", get_links, NULL, links_exists },
+	{ }
+};
+
+
+static const GDBusPropertyTable bap_bcast_properties[] = {
+	{ "Device", "o", get_device },
+	{ "UUID", "s", get_uuid },
+	{ "Codec", "y", get_codec },
+	{ "Configuration", "ay", get_configuration },
+	{ "State", "s", get_state },
 	{ "BIG", "y", get_big, NULL, qos_exists },
 	{ "BIS", "y", get_bis, NULL, qos_exists },
 	{ "SyncInterval", "y", get_sync_interval, NULL, qos_exists },
@@ -1229,6 +1239,9 @@ static const GDBusPropertyTable bap_properties[] = {
 	{ "SyncCteType", "y", get_sync_cte_type, NULL, qos_exists },
 	{ "MSE", "y", get_mse, NULL, qos_exists },
 	{ "Timeout", "q", get_timeout, NULL, qos_exists },
+	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
+	{ "Location", "u", get_location },
+	{ "Metadata", "ay", get_metadata },
 	{ }
 };
 
@@ -1876,12 +1889,15 @@ struct media_transport *media_transport_create(struct btd_device *device,
 			goto fail;
 		properties = a2dp_properties;
 	} else if (!strcasecmp(uuid, PAC_SINK_UUID) ||
-				!strcasecmp(uuid, PAC_SOURCE_UUID) ||
-				!strcasecmp(uuid, BCAA_SERVICE_UUID) ||
+				!strcasecmp(uuid, PAC_SOURCE_UUID)) {
+		if (media_transport_init_bap(transport, stream) < 0)
+			goto fail;
+		properties = bap_ucast_properties;
+	} else if (!strcasecmp(uuid, BCAA_SERVICE_UUID) ||
 				!strcasecmp(uuid, BAA_SERVICE_UUID)) {
 		if (media_transport_init_bap(transport, stream) < 0)
 			goto fail;
-		properties = bap_properties;
+		properties = bap_bcast_properties;
 	} else
 		goto fail;
 
