@@ -137,6 +137,7 @@ tools/btattach
 tools/btattach.1
 tools/btconfig
 tools/btmgmt
+tools/btmgmt.1
 tools/btsnoop
 tools/btpclient
 tools/btpclientctl
@@ -149,6 +150,8 @@ emulator/btvirt
 emulator/b1ee
 emulator/hfp
 client/bluetoothctl
+client/bluetoothctl-mgmt.1
+client/bluetoothctl-monitor.1
 tools/meshctl
 tools/mesh-cfgclient
 tools/mesh-cfgtest
