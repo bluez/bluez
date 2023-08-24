@@ -1,3 +1,10 @@
+ver 5.69:
+	Fix issue with BAP enabling state correctly when resuming.
+	Fix issue with detaching source ASEs only after Stop Ready.
+	Fix issue with handling VCP audio location and descriptor.
+	Fix issue with generating IRK for adapter with privacy enabled.
+	Add support for BAP broadcast sink.
+
 ver 5.68:
 	Fix issue with A2DP and handling of Transport.Acquire.
 
