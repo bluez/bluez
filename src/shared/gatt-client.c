@@ -2232,10 +2232,10 @@ static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
 	struct bt_gatt_client *client = user_data;
 	struct value_data data;
 
-	if (queue_isempty(client->notify_list))
-		return;
-
 	bt_gatt_client_ref(client);
+
+	if (queue_isempty(client->notify_list))
+		goto done;
 
 	memset(&data, 0, sizeof(data));
 
@@ -2271,6 +2271,7 @@ static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
 		queue_foreach(client->notify_list, notify_handler, &data);
 	}
 
+done:
 	if (opcode == BT_ATT_OP_HANDLE_IND && !client->parent)
 		bt_att_chan_send(chan, BT_ATT_OP_HANDLE_CONF, NULL, 0,
 							NULL, NULL, NULL);
