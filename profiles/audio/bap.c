@@ -1714,11 +1714,6 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
 		if (ep && !ep->id) {
-			if
-			(bt_bap_pac_get_type(ep->lpac) == BT_BAP_BCAST_SINK) {
-				bap_create_bcast_io(data, ep, stream, true);
-				return;
-			}
 			bap_create_io(data, ep, stream, true);
 			if (!ep->io) {
 				error("Unable to create io");
