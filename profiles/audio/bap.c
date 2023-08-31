@@ -1924,6 +1924,8 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 
 	if (!ep->io) {
 		io = g_io_channel_unix_new(fd);
+		ep->io_id = g_io_add_watch(io, G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+						bap_io_disconnected, ep);
 		ep->io = io;
 	} else
 		io = ep->io;
