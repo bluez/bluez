@@ -10473,11 +10473,14 @@ static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 
 	packet_latency_add(&conn->tx_l, &delta);
 
-	print_field("#%zu: len %zu (%lld Kb/s)", frame->num, frame->len,
-					frame->len * 8 / TV_MSEC(delta));
-	print_field("Latency: %lld msec (%lld-%lld msec ~%lld msec)",
-			TV_MSEC(delta), TV_MSEC(conn->tx_l.min),
-			TV_MSEC(conn->tx_l.max), TV_MSEC(conn->tx_l.med));
+	if (TV_MSEC(delta)) {
+		print_field("#%zu: len %zu (%lld Kb/s)", frame->num, frame->len,
+				frame->len * 8 / TV_MSEC(delta));
+		print_field("Latency: %lld msec (%lld-%lld msec ~%lld msec)",
+				TV_MSEC(delta), TV_MSEC(conn->tx_l.min),
+				TV_MSEC(conn->tx_l.max),
+				TV_MSEC(conn->tx_l.med));
+	}
 
 	l2cap_dequeue_frame(&delta, conn);
 
