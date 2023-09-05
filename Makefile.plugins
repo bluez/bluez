@@ -137,6 +137,11 @@ builtin_modules += vcp
 builtin_sources += profiles/audio/vcp.c
 endif
 
+if MICP
+builtin_modules += micp
+builtin_sources += profiles/audio/micp.c
+endif
+
 if CSIP
 builtin_modules += csip
 builtin_sources += profiles/audio/csip.c
