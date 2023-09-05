@@ -209,6 +209,11 @@ extern "C" {
 #define CS_LOCK						0x2B86
 #define CS_RANK						0x2B87
 
+
+/* Microphone Control Service(MICS) */
+#define MICS_UUID					0x184D
+#define MUTE_CHRC_UUID					0x2BC3
+
 typedef struct {
 	enum {
 		BT_UUID_UNSPEC = 0,
