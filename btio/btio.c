@@ -1649,10 +1649,12 @@ static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		return FALSE;
 	}
 
-	if (getsockopt(sock, SOL_BLUETOOTH, BT_ISO_BASE, &base, &len) < 0) {
+	if (getsockopt(sock, SOL_BLUETOOTH, BT_ISO_BASE,
+			&base.base, &len) < 0) {
 		ERROR_FAILED(err, "getsockopt(BT_ISO_BASE)", errno);
 		return FALSE;
 	}
+	base.base_len = len;
 
 	if (!get_src(sock, &src, sizeof(src), err))
 		return FALSE;
