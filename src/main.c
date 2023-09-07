@@ -85,6 +85,7 @@ static const char *supported_options[] = {
 	"Privacy",
 	"JustWorksRepairing",
 	"TemporaryTimeout",
+	"RefreshDiscovery",
 	"Experimental",
 	"KernelExperimental",
 	"RemoteNameRequestRetryDelay",
@@ -149,6 +150,7 @@ static const char *gatt_options[] = {
 
 static const char *csip_options[] = {
 	"SIRK",
+	"Encryption",
 	"Size",
 	"Rank",
 	NULL
