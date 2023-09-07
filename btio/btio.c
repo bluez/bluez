@@ -1789,6 +1789,37 @@ gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 	return TRUE;
 }
 
+gboolean bt_io_bcast_accept(GIOChannel *io, BtIOConnect connect,
+				gpointer user_data, GDestroyNotify destroy,
+				GError * *err)
+{
+	int sock;
+	char c;
+	struct pollfd pfd;
+
+	sock = g_io_channel_unix_get_fd(io);
+
+	memset(&pfd, 0, sizeof(pfd));
+	pfd.fd = sock;
+	pfd.events = POLLOUT;
+
+	if (poll(&pfd, 1, 0) < 0) {
+		ERROR_FAILED(err, "poll", errno);
+		return FALSE;
+	}
+
+	if (!(pfd.revents & POLLOUT)) {
+		if (read(sock, &c, 1) < 0) {
+			ERROR_FAILED(err, "read", errno);
+			return FALSE;
+		}
+	}
+
+	server_add(io, connect, NULL, user_data, destroy);
+
+	return TRUE;
+}
+
 gboolean bt_io_set(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 {
 	va_list args;
