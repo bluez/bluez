@@ -172,7 +172,9 @@ static uint16_t get_format(uint32_t cookie)
 
 #define MAX_CONN 16
 
-static struct packet_conn_data conn_list[MAX_CONN];
+static struct packet_conn_data conn_list[MAX_CONN] = {
+	 [0 ... MAX_CONN - 1].handle = 0xffff
+};
 
 static struct packet_conn_data *lookup_parent(uint16_t handle)
 {
@@ -192,7 +194,7 @@ static void assign_handle(uint16_t index, uint16_t handle, uint8_t type,
 	int i;
 
 	for (i = 0; i < MAX_CONN; i++) {
-		if (conn_list[i].handle == 0x0000) {
+		if (conn_list[i].handle == 0xffff) {
 			hci_devba(index, (bdaddr_t *)conn_list[i].src);
 
 			conn_list[i].index = index;
@@ -236,6 +238,7 @@ static void release_handle(uint16_t handle)
 			queue_destroy(conn->tx_q, free);
 			queue_destroy(conn->chan_q, free);
 			memset(conn, 0, sizeof(*conn));
+			conn->handle = 0xffff;
 			break;
 		}
 	}
