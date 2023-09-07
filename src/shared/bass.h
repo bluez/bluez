@@ -57,6 +57,7 @@ struct bt_bcast_src {
 	uint8_t num_subgroups;
 	struct bt_bass_subgroup_data *subgroup_data;
 	GIOChannel *listen_io;
+	GIOChannel *pa_sync_io;
 	struct queue *bises;
 };
 

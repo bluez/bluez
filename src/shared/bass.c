@@ -613,9 +613,6 @@ static void connect_cb(GIOChannel *io, GError *gerr,
 	int bis_idx;
 	int i;
 
-	if (bcast_src->sync_state == BT_BASS_NOT_SYNCHRONIZED_TO_PA)
-		bcast_src->sync_state = BT_BASS_SYNCHRONIZED_TO_PA;
-
 	/* Keep io reference */
 	g_io_channel_ref(io);
 	queue_push_tail(bcast_src->bises, io);
@@ -661,12 +658,89 @@ static void connect_cb(GIOChannel *io, GError *gerr,
 		g_io_channel_unref(bcast_src->listen_io);
 		bcast_src->listen_io = NULL;
 
+		/* Close pa sync io */
+		if (bcast_src->pa_sync_io) {
+			g_io_channel_shutdown(bcast_src->pa_sync_io,
+					TRUE, NULL);
+			g_io_channel_unref(bcast_src->pa_sync_io);
+			bcast_src->pa_sync_io = NULL;
+		}
+
 		for (i = 0; i < bcast_src->num_subgroups; i++)
 			bcast_src->subgroup_data[i].bis_sync =
 				BT_BASS_BIG_SYNC_FAILED_BITMASK;
+
+		/* If BIG sync failed because of an incorrect broadcast code,
+		 * inform client
+		 */
+		if (bcast_src->enc == BT_BASS_BIG_ENC_STATE_BCODE_REQ)
+			bcast_src->enc = BT_BASS_BIG_ENC_STATE_BAD_CODE;
+	} else {
+		if (bcast_src->enc == BT_BASS_BIG_ENC_STATE_BCODE_REQ)
+			bcast_src->enc = BT_BASS_BIG_ENC_STATE_DEC;
 	}
 
 	/* Send notification to client */
+	notify_data = bass_build_notif_from_bcast_src(bcast_src,
+						&notify_data_len);
+
+	gatt_db_attribute_notify(bcast_src->attr,
+					(void *)notify_data,
+					notify_data_len,
+					bt_bass_get_att(bcast_src->bass));
+
+	free(notify_data);
+}
+
+static void confirm_cb(GIOChannel *io, gpointer user_data)
+{
+	struct bt_bcast_src *bcast_src = user_data;
+	int sk, err;
+	socklen_t len;
+	struct bt_iso_qos qos;
+	uint8_t *notify_data;
+	size_t notify_data_len;
+	GError *gerr = NULL;
+
+	if (check_io_err(io)) {
+		DBG(bcast_src->bass, "PA sync failed");
+
+		/* Mark PA sync as failed and notify client */
+		bcast_src->sync_state = BT_BASS_FAILED_TO_SYNCHRONIZE_TO_PA;
+		goto notify;
+	}
+
+	bcast_src->sync_state = BT_BASS_SYNCHRONIZED_TO_PA;
+	bcast_src->pa_sync_io = io;
+	g_io_channel_ref(bcast_src->pa_sync_io);
+
+	len = sizeof(qos);
+	memset(&qos, 0, len);
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	err = getsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos, &len);
+	if (err < 0) {
+		DBG(bcast_src->bass, "Failed to get iso qos");
+		return;
+	}
+
+	if (!qos.bcast.encryption) {
+		/* BIG is not encrypted. Try to synchronize */
+		bcast_src->enc = BT_BASS_BIG_ENC_STATE_NO_ENC;
+
+		if (!bt_io_bcast_accept(bcast_src->pa_sync_io,
+			connect_cb, bcast_src, NULL, &gerr)) {
+			DBG(bcast_src->bass, "bt_io_accept: %s", gerr->message);
+			g_error_free(gerr);
+		}
+		return;
+	}
+
+	/* BIG is encrypted. Wait for Client to provide the Broadcast_Code */
+	bcast_src->enc = BT_BASS_BIG_ENC_STATE_BCODE_REQ;
+
+notify:
 	notify_data = bass_build_notif_from_bcast_src(bcast_src,
 						&notify_data_len);
 
@@ -796,11 +870,6 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 	pa_sync = util_iov_pull_mem(iov, sizeof(*pa_sync));
 	bcast_src->sync_state = BT_BASS_NOT_SYNCHRONIZED_TO_PA;
 
-	/* TODO: Set the encryption field based on observed BIGInfo reports,
-	 * after PA sync establishment
-	 */
-	bcast_src->enc = BT_BASS_BIG_ENC_STATE_NO_ENC;
-
 	/* TODO: Use the pa_interval field for the sync transfer procedure */
 	util_iov_pull_mem(iov, sizeof(uint16_t));
 
@@ -852,7 +921,7 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 
 	if (pa_sync != PA_SYNC_NO_SYNC && num_bis > 0) {
 		/* If requested by client, try to synchronize to the source */
-		io = bt_io_listen(connect_cb, NULL, bcast_src, NULL, &err,
+		io = bt_io_listen(NULL, confirm_cb, bcast_src, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR,
 					&bass->ldb->adapter_bdaddr,
 					BT_IO_OPT_DEST_BDADDR,
@@ -906,6 +975,71 @@ err:
 	free(bcast_src);
 }
 
+static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
+					struct gatt_db_attribute *attrib,
+					uint8_t opcode,
+					unsigned int id,
+					struct iovec *iov,
+					struct bt_att *att)
+{
+	struct bt_bass_set_bcast_code_params *params;
+	struct bt_bcast_src *bcast_src;
+	int sk, err;
+	socklen_t len;
+	struct bt_iso_qos qos;
+	GError *gerr = NULL;
+
+	if (opcode == BT_ATT_OP_WRITE_REQ)
+		gatt_db_attribute_write_result(attrib, id, 0x00);
+
+	/* Get Set Broadcast Code command parameters */
+	params = util_iov_pull_mem(iov, sizeof(*params));
+
+	bcast_src = queue_find(bass->ldb->bcast_srcs,
+						bass_src_id_match,
+						&params->id);
+
+	if (!bcast_src) {
+		/* No source matches the written source id */
+		if (opcode == BT_ATT_OP_WRITE_REQ)
+			gatt_db_attribute_write_result(attrib, id,
+					BT_BASS_ERROR_INVALID_SOURCE_ID);
+
+		return;
+	}
+
+	/* Try to sync to the source using the
+	 * received broadcast code
+	 */
+	len = sizeof(qos);
+	memset(&qos, 0, len);
+
+	if (!bcast_src->pa_sync_io)
+		return;
+
+	sk = g_io_channel_unix_get_fd(bcast_src->pa_sync_io);
+
+	err = getsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos, &len);
+	if (err < 0) {
+		DBG(bcast_src->bass, "Failed to get iso qos");
+		return;
+	}
+
+	/* Update socket QoS with Broadcast Code */
+	memcpy(qos.bcast.bcode, params->bcast_code, BT_BASS_BCAST_CODE_SIZE);
+
+	if (setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos,
+				sizeof(qos)) < 0) {
+		DBG(bcast_src->bass, "Failed to set iso qos");
+		return;
+	}
+
+	if (!bt_io_bcast_accept(bcast_src->pa_sync_io, connect_cb,
+		bcast_src, NULL, &gerr)) {
+		DBG(bcast_src->bass, "bt_io_accept: %s", gerr->message);
+		g_error_free(gerr);
+	}
+}
 
 #define BASS_OP(_str, _op, _size, _func) \
 	{ \
@@ -934,6 +1068,8 @@ struct bass_op_handler {
 		0, bass_handle_remove_src_op),
 	BASS_OP("Add Source", BT_BASS_ADD_SRC,
 		0, bass_handle_add_src_op),
+	BASS_OP("Set Broadcast Code", BT_BASS_SET_BCAST_CODE,
+		0, bass_handle_set_bcast_code_op),
 	{}
 };
 
@@ -1090,6 +1226,11 @@ static void bass_bcast_src_free(void *data)
 	if (bcast_src->listen_io) {
 		g_io_channel_shutdown(bcast_src->listen_io, TRUE, NULL);
 		g_io_channel_unref(bcast_src->listen_io);
+	}
+
+	if (bcast_src->pa_sync_io) {
+		g_io_channel_shutdown(bcast_src->pa_sync_io, TRUE, NULL);
+		g_io_channel_unref(bcast_src->pa_sync_io);
 	}
 
 	queue_destroy(bcast_src->bises, bass_bis_unref);
