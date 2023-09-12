@@ -840,6 +840,19 @@ drop:
 
 }
 
+static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
+{
+	GError *err = NULL;
+
+	if (!bt_io_bcast_accept(io, iso_bcast_confirm_cb,
+				user_data, NULL, &err)) {
+		error("bt_io_bcast_accept: %s", err->message);
+		g_error_free(err);
+		g_io_channel_shutdown(io, TRUE, NULL);
+	}
+
+}
+
 static bool match_data_bap_data(const void *data, const void *match_data)
 {
 	const struct bap_data *bdata = data;
@@ -1587,7 +1600,7 @@ static void bap_listen_io_broadcast(struct bap_data *data, struct bap_ep *ep,
 	if (bt_bap_stream_get_io(stream) || data->listen_io)
 		return;
 
-	io = bt_io_listen(iso_bcast_confirm_cb, NULL, ep->data, NULL, &err,
+	io = bt_io_listen(NULL, iso_pa_sync_confirm_cb, ep->data, NULL, &err,
 			BT_IO_OPT_SOURCE_BDADDR,
 			btd_adapter_get_address(ep->data->adapter),
 			BT_IO_OPT_DEST_BDADDR,
