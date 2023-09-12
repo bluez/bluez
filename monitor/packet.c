@@ -2723,7 +2723,7 @@ static const struct bitfield_data features_le[] = {
 	{ 29, "Connected Isochronous Stream - Peripheral"	},
 	{ 30, "Isochronous Broadcaster"				},
 	{ 31, "Synchronized Receiver"				},
-	{ 32, "Isochronous Channels (Host Support)"		},
+	{ 32, "Connected Isochronous Stream (Host Support)"	},
 	{ 33, "LE Power Control Request"			},
 	{ 34, "LE Power Control Request"			},
 	{ 35, "LE Path Loss Monitoring"				},
