@@ -52,6 +52,7 @@ struct l2cap_data {
 	uint16_t cid;
 	uint8_t mode;
 	int expect_err;
+	int timeout;
 
 	uint8_t send_cmd_code;
 	const void *send_cmd;
@@ -275,6 +276,11 @@ static const struct l2cap_data client_connect_close_test = {
 	.client_psm = 0x1001,
 };
 
+static const struct l2cap_data client_connect_timeout_test = {
+	.client_psm = 0x1001,
+	.timeout = 1
+};
+
 static const struct l2cap_data client_connect_ssp_success_test_1 = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
@@ -444,6 +450,11 @@ static const struct l2cap_data le_client_connect_success_test_1 = {
 
 static const struct l2cap_data le_client_connect_close_test_1 = {
 	.client_psm = 0x0080,
+};
+
+static const struct l2cap_data le_client_connect_timeout_test_1 = {
+	.client_psm = 0x0080,
+	.timeout = 1,
 };
 
 static const struct l2cap_data le_client_connect_adv_success_test_1 = {
@@ -691,6 +702,12 @@ static const struct l2cap_data ext_flowctl_client_connect_close_test_1 = {
 	.mode = BT_MODE_EXT_FLOWCTL,
 };
 
+static const struct l2cap_data ext_flowctl_client_connect_timeout_test_1 = {
+	.client_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.timeout = 1,
+};
+
 static const struct l2cap_data ext_flowctl_client_connect_adv_success_test_1 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
@@ -792,6 +809,11 @@ static void setup_powered_client_callback(uint8_t status, uint16_t length,
 	}
 
 	tester_print("Controller powered on");
+
+	if (l2data && l2data->timeout) {
+		tester_setup_complete();
+		return;
+	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, user_data);
@@ -1133,9 +1155,11 @@ static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
 	else
 		err = -sk_err;
 
-	if (-err != l2data->expect_err)
+	if (!l2data->timeout && -err != l2data->expect_err) {
+		tester_print("err %d != %d expected_err", -err,
+						l2data->expect_err);
 		tester_test_failed();
-	else
+	} else
 		tester_test_passed();
 
 	return FALSE;
@@ -1515,6 +1539,50 @@ static void test_connect_close(const void *test_data)
 	g_io_channel_unref(io);
 
 	shutdown(sk, SHUT_RDWR);
+}
+
+static void test_connect_timeout(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	GIOChannel *io;
+	int sk;
+	struct timeval sndto;
+	socklen_t len;
+
+	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level,
+							l2data->mode);
+	if (sk < 0) {
+		if (sk == -ENOPROTOOPT)
+			tester_test_abort();
+		else
+			tester_test_failed();
+		return;
+	}
+
+	memset(&sndto, 0, sizeof(sndto));
+
+	sndto.tv_sec = l2data->timeout;
+	len = sizeof(sndto);
+	if (setsockopt(sk, SOL_SOCKET, SO_SNDTIMEO, &sndto, len) < 0) {
+		tester_print("Can't set SO_SNDTIMEO: %s (%d)", strerror(errno),
+								errno);
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	if (connect_l2cap_sock(data, sk, l2data->client_psm,
+							l2data->cid) < 0) {
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+	data->io_id = g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
+	g_io_channel_unref(io);
 }
 
 static void test_connect_reject(const void *test_data)
@@ -2189,6 +2257,10 @@ int main(int argc, char *argv[])
 					&client_connect_close_test,
 					setup_powered_client,
 					test_connect_close);
+	test_l2cap_bredr("L2CAP BR/EDR Client - Timeout",
+					&client_connect_timeout_test,
+					setup_powered_client,
+					test_connect_timeout);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client SSP - Success 1",
 					&client_connect_ssp_success_test_1,
@@ -2259,6 +2331,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Client - Close",
 				&le_client_connect_close_test_1,
 				setup_powered_client, test_connect_close);
+	test_l2cap_le("L2CAP LE Client - Timeout",
+				&le_client_connect_timeout_test_1,
+				setup_powered_client, test_connect_timeout);
 	test_l2cap_le("L2CAP LE Client, Direct Advertising - Success",
 				&le_client_connect_adv_success_test_1,
 				setup_powered_client, test_connect);
@@ -2307,6 +2382,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP Ext-Flowctl Client - Close",
 				&ext_flowctl_client_connect_close_test_1,
 				setup_powered_client, test_connect_close);
+	test_l2cap_le("L2CAP Ext-Flowctl Client - Timeout",
+				&ext_flowctl_client_connect_timeout_test_1,
+				setup_powered_client, test_connect_timeout);
 	test_l2cap_le("L2CAP Ext-Flowctl Client, Direct Advertising - Success",
 				&ext_flowctl_client_connect_adv_success_test_1,
 				setup_powered_client, test_connect);
