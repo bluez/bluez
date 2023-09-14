@@ -271,6 +271,10 @@ static const struct l2cap_data client_connect_success_test = {
 	.server_psm = 0x1001,
 };
 
+static const struct l2cap_data client_connect_close_test = {
+	.client_psm = 0x1001,
+};
+
 static const struct l2cap_data client_connect_ssp_success_test_1 = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
@@ -436,6 +440,10 @@ static const struct l2cap_data l2cap_server_nval_cid_test2 = {
 static const struct l2cap_data le_client_connect_success_test_1 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
+};
+
+static const struct l2cap_data le_client_connect_close_test_1 = {
+	.client_psm = 0x0080,
 };
 
 static const struct l2cap_data le_client_connect_adv_success_test_1 = {
@@ -675,6 +683,11 @@ static const struct l2cap_data le_eatt_server_reject_test_1 = {
 static const struct l2cap_data ext_flowctl_client_connect_success_test_1 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+};
+
+static const struct l2cap_data ext_flowctl_client_connect_close_test_1 = {
+	.client_psm = 0x0080,
 	.mode = BT_MODE_EXT_FLOWCTL,
 };
 
@@ -1094,6 +1107,10 @@ static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
+	int err, sk_err, sk;
+	socklen_t len = sizeof(sk_err);
+
+	tester_print("Disconnected");
 
 	if (l2data->shut_sock_wr) {
 		/* if socket is closed using SHUT_WR, L2CAP disconnection
@@ -1106,6 +1123,20 @@ static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
 			tester_test_failed();
 		}
 	}
+
+	data->io_id = 0;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+		err = -errno;
+	else
+		err = -sk_err;
+
+	if (-err != l2data->expect_err)
+		tester_test_failed();
+	else
+		tester_test_passed();
 
 	return FALSE;
 }
@@ -1452,6 +1483,38 @@ static void test_connect(const void *test_data)
 	g_io_channel_unref(io);
 
 	tester_print("Connect in progress");
+}
+
+static void test_connect_close(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	GIOChannel *io;
+	int sk;
+
+	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level,
+							l2data->mode);
+	if (sk < 0) {
+		if (sk == -ENOPROTOOPT)
+			tester_test_abort();
+		else
+			tester_test_failed();
+		return;
+	}
+
+	if (connect_l2cap_sock(data, sk, l2data->client_psm,
+							l2data->cid) < 0) {
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+	data->io_id = g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
+	g_io_channel_unref(io);
+
+	shutdown(sk, SHUT_RDWR);
 }
 
 static void test_connect_reject(const void *test_data)
@@ -2122,6 +2185,11 @@ int main(int argc, char *argv[])
 					&client_connect_success_test,
 					setup_powered_client, test_connect);
 
+	test_l2cap_bredr("L2CAP BR/EDR Client - Close",
+					&client_connect_close_test,
+					setup_powered_client,
+					test_connect_close);
+
 	test_l2cap_bredr("L2CAP BR/EDR Client SSP - Success 1",
 					&client_connect_ssp_success_test_1,
 					setup_powered_client, test_connect);
@@ -2188,6 +2256,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Client - Success",
 				&le_client_connect_success_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client - Close",
+				&le_client_connect_close_test_1,
+				setup_powered_client, test_connect_close);
 	test_l2cap_le("L2CAP LE Client, Direct Advertising - Success",
 				&le_client_connect_adv_success_test_1,
 				setup_powered_client, test_connect);
@@ -2233,6 +2304,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP Ext-Flowctl Client - Success",
 				&ext_flowctl_client_connect_success_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP Ext-Flowctl Client - Close",
+				&ext_flowctl_client_connect_close_test_1,
+				setup_powered_client, test_connect_close);
 	test_l2cap_le("L2CAP Ext-Flowctl Client, Direct Advertising - Success",
 				&ext_flowctl_client_connect_adv_success_test_1,
 				setup_powered_client, test_connect);
