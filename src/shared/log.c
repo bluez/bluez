@@ -135,7 +135,7 @@ int bt_log_vprintf(uint16_t index, const char *label, int level,
 	int len;
 
 	len = vasprintf(&str, format, ap);
-	if (len < 0)
+	if (len < 0 || !str)
 		return errno;
 
 	len = strlen(str);
