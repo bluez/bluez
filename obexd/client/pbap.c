@@ -285,7 +285,7 @@ static void read_version(struct pbap_data *pbap, GObexApparam *apparam)
 		data = value;
 	}
 
-	if (memcmp(pbap->primary, data, len)) {
+	if (len == sizeof(pbap->primary) && memcmp(pbap->primary, data, len)) {
 		memcpy(pbap->primary, data, len);
 		g_dbus_emit_property_changed(conn,
 					obc_session_get_path(pbap->session),
@@ -299,7 +299,8 @@ static void read_version(struct pbap_data *pbap, GObexApparam *apparam)
 		data = value;
 	}
 
-	if (memcmp(pbap->secondary, data, len)) {
+	if (len == sizeof(pbap->secondary) &&
+			memcmp(pbap->secondary, data, len)) {
 		memcpy(pbap->secondary, data, len);
 		g_dbus_emit_property_changed(conn,
 					obc_session_get_path(pbap->session),
