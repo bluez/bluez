@@ -7298,16 +7298,17 @@ static const struct btdev_cmd *vnd_cmd(struct btdev *btdev, uint8_t op,
 					const struct btdev_cmd *cmd,
 					const void *data, uint8_t len)
 {
+	uint8_t opcode = ((const uint8_t *)data)[0];
+
 	for (; cmd && cmd->func; cmd++) {
-		if (cmd->opcode != ((uint8_t *)data)[0])
+		if (cmd->opcode != opcode)
 			continue;
 
 		return run_cmd(btdev, cmd, data, len);
 	}
 
 	util_debug(btdev->debug_callback, btdev->debug_data,
-			"Unsupported Vendor subcommand 0x%2.2x\n",
-			((uint8_t *)data)[0]);
+			"Unsupported Vendor subcommand 0x%2.2x", opcode);
 
 	cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, op);
 
@@ -7333,7 +7334,7 @@ static const struct btdev_cmd *default_cmd(struct btdev *btdev, uint16_t opcode,
 	}
 
 	util_debug(btdev->debug_callback, btdev->debug_data,
-			"Unsupported command 0x%4.4x\n", opcode);
+			"Unsupported command 0x%4.4x", opcode);
 
 	cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, opcode);
 
@@ -7521,7 +7522,7 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 	default:
 		util_debug(btdev->debug_callback, btdev->debug_data,
-				"Unsupported packet 0x%2.2x\n", pkt_type);
+				"Unsupported packet 0x%2.2x", pkt_type);
 		break;
 	}
 }
