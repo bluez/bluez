@@ -74,14 +74,7 @@ static bool vhci_read_callback(struct io *io, void *user_data)
 	if (len < 1)
 		return false;
 
-	switch (buf[0]) {
-	case BT_H4_CMD_PKT:
-	case BT_H4_ACL_PKT:
-	case BT_H4_SCO_PKT:
-	case BT_H4_ISO_PKT:
-		btdev_receive_h4(vhci->btdev, buf, len);
-		break;
-	}
+	btdev_receive_h4(vhci->btdev, buf, len);
 
 	return true;
 }
