@@ -397,7 +397,7 @@ EXTRA_DIST += doc/assigned-numbers.txt doc/supported-features.txt \
 EXTRA_DIST += doc/mgmt-api.txt \
 		doc/adapter-api.txt doc/device-api.txt \
 		doc/agent-api.txt doc/profile-api.txt \
-		doc/network-api.txt doc/media-api.txt \
+		doc/network-api.txt doc/media-api.rst \
 		doc/health-api.txt doc/sap-api.txt \
 		doc/input-api.txt
 
