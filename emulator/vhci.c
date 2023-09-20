@@ -122,14 +122,16 @@ struct vhci *vhci_open(uint8_t type)
 		break;
 	}
 
-	if (write(fd, &req, sizeof(req)) < 0) {
+	if (write(fd, &req, sizeof(req)) != sizeof(req)) {
 		close(fd);
 		return NULL;
 	}
 
 	memset(&rsp, 0, sizeof(rsp));
 
-	if (read(fd, &rsp, sizeof(rsp)) < 0) {
+	if (read(fd, &rsp, sizeof(rsp)) != sizeof(rsp) ||
+			rsp.pkt_type != HCI_VENDOR_PKT ||
+			rsp.opcode != req.opcode) {
 		close(fd);
 		return NULL;
 	}
