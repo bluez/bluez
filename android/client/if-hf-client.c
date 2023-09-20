@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 #include "if-main.h"
 #include "../hal-utils.h"
+#include <string.h>
 
 const bthf_client_interface_t *if_hf_client = NULL;
 
