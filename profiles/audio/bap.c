@@ -457,19 +457,10 @@ static int parse_properties(DBusMessageIter *props, struct iovec **caps,
 
 			framing = val;
 		} else if (!strcasecmp(key, "PHY")) {
-			const char *str;
-
-			if (var != DBUS_TYPE_STRING)
+			if (var != DBUS_TYPE_BYTE)
 				goto fail;
 
-			dbus_message_iter_get_basic(&value, &str);
-
-			if (!strcasecmp(str, "1M"))
-				io_qos.phy = 0x01;
-			else if (!strcasecmp(str, "2M"))
-				io_qos.phy = 0x02;
-			else
-				goto fail;
+			dbus_message_iter_get_basic(&value, &io_qos.phy);
 		} else if (!strcasecmp(key, "SDU")) {
 			if (var != DBUS_TYPE_UINT16)
 				goto fail;
@@ -546,7 +537,7 @@ static int parse_properties(DBusMessageIter *props, struct iovec **caps,
 
 			dbus_message_iter_get_basic(&value,
 							&qos->bcast.timeout);
-		} else if (!strcasecmp(key, "BroadcastCode")) {
+		} else if (!strcasecmp(key, "BCode")) {
 			if (var != DBUS_TYPE_ARRAY)
 				goto fail;
 			parse_array(&value, &qos->bcast.bcode);
