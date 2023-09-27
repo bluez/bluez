@@ -357,8 +357,16 @@ CLEANFILES += $(builtin_files) src/bluetooth.service
 
 if MANPAGES
 man_MANS += src/bluetoothd.8
+man_MANS += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
+		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
+		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
+		doc/org.bluez.MediaTransport.5
 endif
 manual_pages += src/bluetoothd.8
+manual_pages += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
+		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
+		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
+		doc/org.bluez.MediaTransport.5
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -397,9 +405,13 @@ EXTRA_DIST += doc/assigned-numbers.txt doc/supported-features.txt \
 EXTRA_DIST += doc/mgmt-api.txt \
 		doc/adapter-api.txt doc/device-api.txt \
 		doc/agent-api.txt doc/profile-api.txt \
-		doc/network-api.txt doc/media-api.rst \
-		doc/health-api.txt doc/sap-api.txt \
-		doc/input-api.txt
+		doc/network-api.txt doc/health-api.txt \
+		doc/sap-api.txt doc/input-api.txt
+
+EXTRA_DIST += doc/org.bluez.Media.rst doc/org.bluez.MediaControl.rst \
+		doc/org.bluez.MediaPlayer.rst doc/org.bluez.MediaFolder.rst \
+		doc/org.bluez.MediaItem.rst doc/org.bluez.MediaEndpoint.rst \
+		doc/org.bluez.MediaTransport.rst
 
 EXTRA_DIST += doc/gatt-api.txt doc/advertising-api.txt
 
@@ -665,6 +677,9 @@ endif
 	$(SED_PROCESS)
 
 %.1: %.rst Makefile
+	$(RST2MAN_PROCESS)
+
+%.5: %.rst Makefile
 	$(RST2MAN_PROCESS)
 
 %.8: %.rst Makefile
