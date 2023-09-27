@@ -710,28 +710,45 @@ void SetConfiguration(object transport, dict properties)
 	properties:
 
 	:array{byte} Capabilities [Mandatory]:
+
+		See Endpoint.Capabilities property.
+
 	:array{byte} Metadata [ISO only]:
-	:byte CIG [ISO only]:
-	:byte CIS [ISO only]:
-	:uint32 Interval [ISO only]:
-	:bool Framing [ISO only]:
-	:string PHY [ISO only]:
-	:uint16 SDU [ISO only]:
-	:byte Retransmissions [ISO only]:
-	:uint16 Latency [ISO only]:
-	:uint32 Delay [ISO only]:
-	:uint8 TargetLatency [ISO Latency]:
-	:byte BIG [ISO broadcast only]:
-	:byte BIS [ISO broadcast only]:
-	:byte SyncInterval [ISO broadcast only]:
-	:byte Encryption [ISO broadcast only]:
-	:byte Options [ISO broadcast only]:
-	:uint16 Skip [ISO broadcast only]:
-	:uint16 SyncTimeout [ISO broadcast only]:
-	:byte SyncCteType [ISO broadcast only]:
-	:byte MSE [ISO broadcast only]:
-	:uint16 Timeout [ISO broadcast only]:
-	:array{byte} BroadcastCode [ISO broadcast only]:
+
+		See Endpoint.Metadata property.
+
+	:uint32 Location [ISO only]:
+
+		See Endpoint.Location property.
+
+	:byte Framing [ISO only]:
+
+		See Endpoint.Framing property.
+
+	:byte PHY [ISO only]:
+
+		See Endpoint.PHY property.
+
+	:uint16 MaximumLatency [ISO only]:
+
+		See Endpoint.MaximumLatency property.
+
+	:uint32 MinimumDelay [ISO only]:
+
+		See Endpoint.MinimumDelay property.
+
+	:uint32 MaximumDelay [ISO only]:
+
+		See Endpoint.MaximumDelay property.
+
+	:uint32 PreferredMinimumDelay [ISO only]:
+
+		See Endpoint.PreferredMinimumDelay property.
+
+	:uint32 PreferredMaximumDelay [ISO only]:
+
+		See Endpoint.PreferredMaximumDelay property.
+
 
 array{byte} SelectConfiguration(array{byte} capabilities)
 `````````````````````````````````````````````````````````
@@ -984,33 +1001,65 @@ dict QoS [readonly, optional, ISO only, experimental]
 
 		Indicates configured CIG.
 
+		Possible values:
+
+		:0x00 - 0xef:
+
+			Valid ID range.
+
+		:0xff:
+
+			Auto allocate.
+
 	:byte CIS:
 
 		Indicates configured CIS.
 
-	:uint32 Interval:
+		Possible values:
 
-		Indicates configured ISO interval.
+		:0x00 - 0xef:
 
-	:boolean Framing:
+			Valid ID range.
+
+		:0xff:
+
+			Auto allocate.
+
+	:byte Framing:
 
 		Indicates configured framing.
 
-	:byte PHY:
+		Possible values:
 
-		Indicates configured PHY.
+		:0x00:
 
-	:uint16 SDU:
+			Unframed.
 
-		Indicates configured SDU.
+		:0x01:
 
-	:byte Retransmissions:
+			Framed.
 
-		Indicates configured retransmissions.
+	:uint32 PresentationDelay:
 
-	:uint16 Latency:
+		Indicates configured transport presentation delay (us).
 
-		Indicates configured transport latency.
+	:byte TargetLatency:
+
+		Indicates the requested target latency.
+
+		Possible values:
+
+		:0x01:
+
+			Low Latency.
+
+		:0x02:
+
+			Balanced Latency/Reliability.
+
+		:0x03:
+
+			High Reliability.
 
 	Possible values for Broadcast:
 
@@ -1022,26 +1071,74 @@ dict QoS [readonly, optional, ISO only, experimental]
 
 		Indicates configured BIS.
 
-	:uint32 SyncFactor:
+	:byte SyncFactor:
 
-		Indicates configured sync factor.
+		Indicates configured broadcast sync factor.
 
-	:uint32 Interval:
+	:byte Packing:
 
-		Indicates configured ISO interval.
+		Indicates configured packing.
 
-	:byte PHY:
+	:byte Framing:
 
-		Indicates configured PHY.
+		Indicates configured framing.
 
-	:uint16 SDU:
+	:byte Options:
 
-		Indicates configured maximum SDU.
+		Indicates configured broadcast options.
+
+	:uint16 Skip:
+
+		Indicates configured broadcast skip.
 
 	:byte SyncTimeout:
 
 		Indicates configured broadcast sync timeout.
 
+	:byte SyncType:
+
+		Indicates configured broadcast sync CTE type.
+
+	:byte MSE:
+
+		Indicates configured broadcast MSE.
+
+	:uint16 Timeout:
+
+		Indicates configured broadcast timeout.
+
+	Possible values for both Unicast and Broadcast:
+
+	:uint32 Interval:
+
+		Indicates configured ISO interval (us).
+
 	:uint16 Latency:
 
-		Indicates configured transport latency.
+		Indicates configured transport latency (ms).
+
+	:uint16 SDU:
+
+		Indicates configured maximum SDU.
+
+	:byte PHY:
+
+		Indicates configured PHY.
+
+		Possible values:
+
+		:bit 0:
+
+			LE 1M
+
+		:bit 1:
+
+			LE 2M
+
+		:bit 2:
+
+			LE Coded
+
+	:byte Retransmissions:
+
+		Indicates configured retransmissions.
