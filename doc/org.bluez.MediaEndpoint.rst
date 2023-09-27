@@ -41,57 +41,31 @@ void SetConfiguration(object transport, dict properties)
 
 		See Metadata property.
 
-	:uint32 Location [ISO only]:
+	:dict QoS [ISO only]:
 
-		See Location property.
-
-	:byte Framing [ISO only]:
-
-		See Framing property.
-
-	:byte PHY [ISO only]:
-
-		See PHY property.
-
-	:uint16 MaximumLatency [ISO only]:
-
-		See MaximumLatency property.
-
-	:uint32 MinimumDelay [ISO only]:
-
-		See MinimumDelay property.
-
-	:uint32 MaximumDelay [ISO only]:
-
-		See MaximumDelay property.
-
-	:uint32 PreferredMinimumDelay [ISO only]:
-
-		See PreferredMinimumDelay property.
-
-	:uint32 PreferredMaximumDelay [ISO only]:
-
-		See PreferredMaximumDelay property.
+		See **org.bluez.MediaTransport(5)** QoS property.
 
 array{byte} SelectConfiguration(array{byte} capabilities)
 `````````````````````````````````````````````````````````
 
 	Select preferable configuration from the supported capabilities.
 
-	Returns a configuration which can be used to setup a transport.
+	Returns a configuration which can be used to setup a transport, see
+	**org.bluez.MediaTransport(5)** for possible values.
 
 	Note: There is no need to cache the selected configuration since on
 	success the configuration is send back as parameter of SetConfiguration.
 
-dict SelectProperties(dict properties)
-``````````````````````````````````````
+dict SelectProperties(dict capabilities)
+````````````````````````````````````````
 
-	Select preferable properties from the supported properties:
+	Select configuration from the supported capabilities:
 
 	:object Endpoint [ISO only]:
 	:Refer to SetConfiguration for the list of other possible properties.:
 
-	Returns propeties which can be used to setup a transport.
+	Returns a configuration which can be used to setup a transport, see
+	**org.bluez.MediaTransport(5)** for possible values.
 
 	Note: There is no need to cache the selected properties since on
 	success the configuration is send back as parameter of SetConfiguration.
@@ -154,71 +128,79 @@ bool DelayReporting [readonly, optional]
 
 	Indicates if endpoint supports Delay Reporting.
 
-byte Framing [ISO only]
-```````````````````````
-
-	Indicates endpoint support framing.
-
-byte PHY [ISO only]
-```````````````````
-
-	Indicates endpoint supported PHY.
-
-	Possible values:
-
-	:bit 0:
-
-		LE 1M
-
-	:bit 1:
-
-		LE 2M
-
-	:bit 2:
-
-		LE Coded
-
-byte Retransmissions [ISO only]
-```````````````````````````````
-
-	Indicates endpoint preferred number of retransmissions.
-
-uint16_t MaximumLatency [ISO only]
-``````````````````````````````````
-
-	Indicates endpoint maximum latency.
-
-uint32_t MinimumDelay [ISO only]
-````````````````````````````````
-
-	Indicates endpoint minimum presentation delay.
-
-uint32_t MaximumDelay [ISO only]
-````````````````````````````````
-
-	Indicates endpoint maximum presentation delay.
-
-uint32_t PreferredMinimumDelay [ISO only]
-`````````````````````````````````````````
-
-	Indicates endpoint preferred minimum presentation delay.
-
-uint32_t PreferredMaximumDelay [ISO only]
-`````````````````````````````````````````
-
-	Indicates endpoint preferred maximum presentation delay.
-
-uint32 Location [ISO only]
-``````````````````````````
+uint32 Locations [readonly, optional, ISO only, experimental]
+`````````````````````````````````````````````````````````````
 
 	Indicates endpoint supported locations.
 
-uint16 SupportedContext [ISO only]
-``````````````````````````````````
+uint16 SupportedContext [readonly, optional, ISO only, experimental]
+````````````````````````````````````````````````````````````````````
 
 	Indicates endpoint supported audio context.
 
-uint16 Context [ISO only]
-`````````````````````````
+uint16 Context [readonly, optional, ISO only, experimental]
+```````````````````````````````````````````````````````````
 
 	Indicates endpoint available audio context.
+
+dict QoS [readonly, optional, ISO only, experimental]
+`````````````````````````````````````````````````````
+
+	Indicates QoS capabilities.
+
+	:byte Framing:
+
+		Indicates endpoint support framing.
+
+
+		Possible Values:
+
+		:0x00:
+
+			Unframed PDUs supported.
+
+		:0x01:
+
+			Unframed PDUs not supported.
+
+	:byte PHY:
+
+		Indicates endpoint preferred PHY.
+
+		Possible values:
+
+		:bit 0:
+
+			LE 1M preferred.
+
+		:bit 1:
+
+			LE 2M preferred.
+
+		:bit 2:
+
+			LE Coded preferred.
+
+	:byte Retransmissions:
+
+		Indicates endpoint preferred number of retransmissions.
+
+	:uint16 MaximumLatency:
+
+		Indicates endpoint maximum latency.
+
+	:uint32 MinimumDelay:
+
+		Indicates endpoint minimum presentation delay.
+
+	:uint32 MaximumDelay:
+
+		Indicates endpoint maximum presentation delay.
+
+	:uint32 PreferredMinimumDelay:
+
+		Indicates endpoint preferred minimum presentation delay.
+
+	:uint32 PreferredMaximumDelay:
+
+		Indicates endpoint preferred maximum presentation delay.
