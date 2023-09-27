@@ -3799,11 +3799,7 @@ static void cmd_show_transport(int argc, char *argv[])
 	print_property(proxy, "Volume");
 	print_property(proxy, "Endpoint");
 
-	print_property(proxy, "Interval");
-	print_property(proxy, "Framing");
-	print_property(proxy, "SDU");
-	print_property(proxy, "Retransmissions");
-	print_property(proxy, "Latency");
+	print_property(proxy, "QoS");
 	print_property(proxy, "Location");
 	print_property(proxy, "Metadata");
 	print_property(proxy, "Links");
