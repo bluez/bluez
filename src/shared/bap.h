@@ -168,6 +168,12 @@ uint8_t bt_bap_pac_get_type(struct bt_bap_pac *pac);
 
 uint32_t bt_bap_pac_get_locations(struct bt_bap_pac *pac);
 
+uint16_t bt_bap_pac_get_supported_context(struct bt_bap_pac *pac);
+
+uint16_t bt_bap_pac_get_context(struct bt_bap_pac *pac);
+
+struct bt_bap_pac_qos *bt_bap_pac_get_qos(struct bt_bap_pac *pac);
+
 uint8_t bt_bap_stream_get_type(struct bt_bap_stream *stream);
 
 struct bt_bap_stream *bt_bap_pac_get_stream(struct bt_bap_pac *pac);

@@ -2740,7 +2740,12 @@ uint8_t bt_bap_pac_get_type(struct bt_bap_pac *pac)
 
 uint32_t bt_bap_pac_get_locations(struct bt_bap_pac *pac)
 {
-	struct bt_pacs *pacs = pac->bdb->pacs;
+	struct bt_pacs *pacs;
+
+	if (!pac)
+		return 0;
+
+	pacs = pac->bdb->pacs;
 
 	switch (pac->type) {
 	case BT_BAP_SOURCE:
@@ -2750,6 +2755,52 @@ uint32_t bt_bap_pac_get_locations(struct bt_bap_pac *pac)
 	default:
 		return 0;
 	}
+}
+
+uint16_t bt_bap_pac_get_supported_context(struct bt_bap_pac *pac)
+{
+	struct bt_pacs *pacs;
+
+	if (!pac)
+		return 0;
+
+	pacs = pac->bdb->pacs;
+
+	switch (pac->type) {
+	case BT_BAP_SOURCE:
+		return pacs->supported_source_context_value;
+	case BT_BAP_SINK:
+		return pacs->supported_sink_context_value;
+	default:
+		return 0;
+	}
+}
+
+uint16_t bt_bap_pac_get_context(struct bt_bap_pac *pac)
+{
+	struct bt_pacs *pacs;
+
+	if (!pac)
+		return 0;
+
+	pacs = pac->bdb->pacs;
+
+	switch (pac->type) {
+	case BT_BAP_SOURCE:
+		return pacs->source_context_value;
+	case BT_BAP_SINK:
+		return pacs->sink_context_value;
+	default:
+		return 0;
+	}
+}
+
+struct bt_bap_pac_qos *bt_bap_pac_get_qos(struct bt_bap_pac *pac)
+{
+	if (!pac || !pac->qos.phy)
+		return NULL;
+
+	return &pac->qos;
 }
 
 uint8_t bt_bap_stream_get_type(struct bt_bap_stream *stream)
