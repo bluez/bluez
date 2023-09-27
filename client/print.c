@@ -165,11 +165,19 @@ void print_iter(const char *label, const char *name, DBusMessageIter *iter)
 		break;
 	case DBUS_TYPE_DICT_ENTRY:
 		dbus_message_iter_recurse(iter, &subiter);
-		entry = g_strconcat(name, " Key", NULL);
-		print_iter(label, entry, &subiter);
-		g_free(entry);
 
-		entry = g_strconcat(name, " Value", NULL);
+		if (dbus_message_iter_get_arg_type(&subiter) ==
+						DBUS_TYPE_STRING) {
+			dbus_message_iter_get_basic(&subiter, &valstr);
+			entry = g_strconcat(name, ".", valstr, NULL);
+		} else {
+			entry = g_strconcat(name, ".Key", NULL);
+			print_iter(label, entry, &subiter);
+			g_free(entry);
+
+			entry = g_strconcat(name, ".Value", NULL);
+		}
+
 		dbus_message_iter_next(&subiter);
 		print_iter(label, entry, &subiter);
 		g_free(entry);
