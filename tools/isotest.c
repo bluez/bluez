@@ -1028,7 +1028,7 @@ static void multy_connect_mode(char *peer)
 	.bcast = { \
 		.big = BT_ISO_QOS_BIG_UNSET, \
 		.bis = BT_ISO_QOS_BIS_UNSET, \
-		.sync_interval = 0x07, \
+		.sync_factor = 0x07, \
 		.packing = 0x00, \
 		.framing = 0x00, \
 		.out = QOS_IO(_interval, _latency, _sdu, _phy, _rtn), \

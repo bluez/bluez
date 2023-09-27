@@ -1756,7 +1756,7 @@ static struct bt_iso_qos bcast_qos = {
 	.bcast = {
 		.big = BT_ISO_QOS_BIG_UNSET,
 		.bis = BT_ISO_QOS_BIS_UNSET,
-		.sync_interval = 24,
+		.sync_factor = 24,
 		.packing = 0x00,
 		.framing = 0x00,
 		.encryption = 0x00,
@@ -1874,10 +1874,10 @@ static void append_properties(DBusMessageIter *iter,
 	if (!cfg->ep->broadcast)
 		goto done;
 
-	bt_shell_printf("SyncInterval %u\n", bcast_qos.bcast.sync_interval);
+	bt_shell_printf("SyncInterval %u\n", bcast_qos.bcast.sync_factor);
 
 	g_dbus_dict_append_entry(&dict, "SyncInterval", DBUS_TYPE_BYTE,
-						&bcast_qos.bcast.sync_interval);
+						&bcast_qos.bcast.sync_factor);
 
 	bt_shell_printf("Encryption %u\n", bcast_qos.bcast.encryption);
 

@@ -241,7 +241,7 @@
 	.bcast = { \
 		.big = _big, \
 		.bis = _bis, \
-		.sync_interval = 0x07, \
+		.sync_factor = 0x07, \
 		.packing = 0x00, \
 		.framing = 0x00, \
 		.in = _in, \
@@ -1676,9 +1676,9 @@ static bool check_bcast_qos(const struct bt_iso_qos *qos1,
 		return false;
 	}
 
-	if (qos1->bcast.sync_interval != qos2->bcast.sync_interval) {
+	if (qos1->bcast.sync_factor != qos2->bcast.sync_factor) {
 		tester_warn("Unexpected QoS sync interval: 0x%02x != 0x%02x",
-			qos1->bcast.sync_interval, qos2->bcast.sync_interval);
+			qos1->bcast.sync_factor, qos2->bcast.sync_factor);
 		return false;
 	}
 

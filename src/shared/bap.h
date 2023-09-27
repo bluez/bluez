@@ -75,7 +75,7 @@ struct bt_bap_ucast_qos {
 struct bt_bap_bcast_qos {
 	uint8_t  big;
 	uint8_t  bis;
-	uint8_t  sync_interval;
+	uint8_t  sync_factor;
 	uint8_t  packing;
 	uint8_t  framing;
 	uint8_t  encryption;

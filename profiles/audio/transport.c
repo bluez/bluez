@@ -850,160 +850,41 @@ static const GDBusPropertyTable a2dp_properties[] = {
 	{ }
 };
 
-static gboolean qos_exists(const GDBusPropertyTable *property, void *data)
+static void append_io_qos(DBusMessageIter *dict, struct bt_bap_io_qos *qos)
 {
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	if (media_endpoint_is_broadcast(transport->endpoint))
-		return bap->qos.bcast.io_qos.sdu != 0x00;
-
-	return bap->qos.ucast.io_qos.phy != 0x00;
+	dict_append_entry(dict, "Interval", DBUS_TYPE_UINT32, &qos->interval);
+	dict_append_entry(dict, "Latency", DBUS_TYPE_UINT16, &qos->latency);
+	dict_append_entry(dict, "SDU", DBUS_TYPE_UINT16, &qos->sdu);
+	dict_append_entry(dict, "PHY", DBUS_TYPE_BYTE, &qos->phy);
+	dict_append_entry(dict, "Retransmissions", DBUS_TYPE_BYTE, &qos->rtn);
 }
 
-static gboolean get_cig(const GDBusPropertyTable *property,
+static gboolean get_ucast_qos(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
+	DBusMessageIter dict;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-							&bap->qos.ucast.cig_id);
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
 
-	return TRUE;
-}
+	dict_append_entry(&dict, "CIG", DBUS_TYPE_BYTE,
+					&bap->qos.ucast.cig_id);
+	dict_append_entry(&dict, "CIS", DBUS_TYPE_BYTE,
+					&bap->qos.ucast.cis_id);
+	dict_append_entry(&dict, "Framing", DBUS_TYPE_BYTE,
+					&bap->qos.ucast.framing);
+	dict_append_entry(&dict, "PresentationDelay", DBUS_TYPE_UINT32,
+					&bap->qos.ucast.delay);
 
-static gboolean get_big(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
+	append_io_qos(&dict, &bap->qos.ucast.io_qos);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-							&bap->qos.bcast.big);
-
-	return TRUE;
-}
-
-static gboolean get_cis(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-							&bap->qos.ucast.cis_id);
-
-	return TRUE;
-}
-
-static gboolean get_bis(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-							&bap->qos.bcast.bis);
-
-	return TRUE;
-}
-
-static gboolean get_interval(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
-					&bap->qos.ucast.io_qos.interval);
-
-	return TRUE;
-}
-
-static gboolean get_framing(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-	dbus_bool_t val = bap->qos.ucast.framing;
-
-	if (media_endpoint_is_broadcast(transport->endpoint))
-		val = bap->qos.bcast.framing;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
-
-	return TRUE;
-}
-
-static gboolean get_phy(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	if (media_endpoint_is_broadcast(transport->endpoint)) {
-		dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-					&bap->qos.bcast.io_qos.phy);
-		return TRUE;
-	}
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-					&bap->qos.ucast.io_qos.phy);
-
-	return TRUE;
-}
-
-static gboolean get_sdu(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	if (media_endpoint_is_broadcast(transport->endpoint)) {
-		dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-					&bap->qos.bcast.io_qos.sdu);
-		return TRUE;
-	}
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-					&bap->qos.ucast.io_qos.sdu);
-
-	return TRUE;
-}
-
-static gboolean get_retransmissions(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-					&bap->qos.ucast.io_qos.rtn);
-
-	return TRUE;
-}
-
-static gboolean get_latency(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-					&bap->qos.ucast.io_qos.latency);
-
-	return TRUE;
-}
-
-static gboolean get_delay(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
-						&bap->qos.ucast.delay);
+	dbus_message_iter_close_container(iter, &dict);
 
 	return TRUE;
 }
@@ -1084,119 +965,12 @@ static gboolean get_links(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean get_sync_interval(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean qos_ucast_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-						&bap->qos.bcast.sync_interval);
-
-	return TRUE;
-}
-
-static gboolean get_packing(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-						&bap->qos.bcast.packing);
-
-	return TRUE;
-}
-
-static gboolean get_bcode(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-	DBusMessageIter array;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_BYTE_AS_STRING, &array);
-
-	if (bap->qos.bcast.bcode && bap->qos.bcast.bcode->iov_len)
-		dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
-						&bap->qos.bcast.bcode->iov_base,
-						bap->qos.bcast.bcode->iov_len);
-
-	dbus_message_iter_close_container(iter, &array);
-	return TRUE;
-}
-
-static gboolean get_options(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-					&bap->qos.bcast.options);
-
-	return TRUE;
-}
-
-static gboolean get_skip(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-					&bap->qos.bcast.skip);
-
-	return TRUE;
-}
-
-static gboolean get_sync_timeout(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-					&bap->qos.bcast.sync_timeout);
-
-	return TRUE;
-}
-
-static gboolean get_sync_cte_type(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-					&bap->qos.bcast.sync_cte_type);
-
-	return TRUE;
-}
-
-static gboolean get_mse(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
-					&bap->qos.bcast.mse);
-
-	return TRUE;
-}
-
-static gboolean get_timeout(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct media_transport *transport = data;
-	struct bap_transport *bap = transport->data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-					&bap->qos.bcast.timeout);
-
-	return TRUE;
+	return bap->qos.ucast.io_qos.phy != 0x00;
 }
 
 static const GDBusPropertyTable bap_ucast_properties[] = {
@@ -1205,15 +979,7 @@ static const GDBusPropertyTable bap_ucast_properties[] = {
 	{ "Codec", "y", get_codec },
 	{ "Configuration", "ay", get_configuration },
 	{ "State", "s", get_state },
-	{ "CIG", "y", get_cig, NULL, qos_exists },
-	{ "CIS", "y", get_cis, NULL, qos_exists },
-	{ "Interval", "u", get_interval, NULL, qos_exists },
-	{ "Framing", "b", get_framing, NULL, qos_exists },
-	{ "PHY", "y", get_phy, NULL, qos_exists },
-	{ "SDU", "q", get_sdu, NULL, qos_exists },
-	{ "Retransmissions", "y", get_retransmissions, NULL, qos_exists },
-	{ "Latency", "q", get_latency, NULL, qos_exists },
-	{ "Delay", "u", get_delay, NULL, qos_exists },
+	{ "QoS", "a{sv}", get_ucast_qos, NULL, qos_ucast_exists },
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
 	{ "Location", "u", get_location },
 	{ "Metadata", "ay", get_metadata },
@@ -1221,6 +987,61 @@ static const GDBusPropertyTable bap_ucast_properties[] = {
 	{ }
 };
 
+static gboolean get_bcast_qos(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dict_append_entry(&dict, "BIG", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.big);
+	dict_append_entry(&dict, "BIS", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.bis);
+	dict_append_entry(&dict, "SyncFactor", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.sync_factor);
+	dict_append_entry(&dict, "Packing", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.packing);
+	dict_append_entry(&dict, "Framing", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.framing);
+	if (bap->qos.bcast.bcode)
+		dict_append_array(&dict, "BCode", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.bcode->iov_base,
+					bap->qos.bcast.bcode->iov_len);
+	dict_append_entry(&dict, "Options", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.options);
+	dict_append_entry(&dict, "Skip", DBUS_TYPE_UINT16,
+					&bap->qos.bcast.skip);
+	dict_append_entry(&dict, "SyncTimeout", DBUS_TYPE_UINT16,
+					&bap->qos.bcast.sync_timeout);
+	dict_append_entry(&dict, "SyncType", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.sync_cte_type);
+	dict_append_entry(&dict, "MSE", DBUS_TYPE_BYTE,
+					&bap->qos.bcast.mse);
+	dict_append_entry(&dict, "Timeout", DBUS_TYPE_UINT16,
+					&bap->qos.bcast.timeout);
+
+	append_io_qos(&dict, &bap->qos.bcast.io_qos);
+
+	dbus_message_iter_close_container(iter, &dict);
+
+	return TRUE;
+}
+
+static gboolean qos_bcast_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+
+	return bap->qos.bcast.io_qos.phy != 0x00;
+}
 
 static const GDBusPropertyTable bap_bcast_properties[] = {
 	{ "Device", "o", get_device },
@@ -1228,17 +1049,7 @@ static const GDBusPropertyTable bap_bcast_properties[] = {
 	{ "Codec", "y", get_codec },
 	{ "Configuration", "ay", get_configuration },
 	{ "State", "s", get_state },
-	{ "BIG", "y", get_big, NULL, qos_exists },
-	{ "BIS", "y", get_bis, NULL, qos_exists },
-	{ "SyncInterval", "y", get_sync_interval, NULL, qos_exists },
-	{ "Packing", "y", get_packing, NULL, qos_exists },
-	{ "BCode", "ay", get_bcode, NULL, qos_exists },
-	{ "Options", "y", get_options, NULL, qos_exists },
-	{ "Skip", "q", get_skip, NULL, qos_exists },
-	{ "SyncTimeout", "q", get_sync_timeout, NULL, qos_exists },
-	{ "SyncCteType", "y", get_sync_cte_type, NULL, qos_exists },
-	{ "MSE", "y", get_mse, NULL, qos_exists },
-	{ "Timeout", "q", get_timeout, NULL, qos_exists },
+	{ "QoS", "a{sv}", get_bcast_qos, NULL, qos_bcast_exists },
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
 	{ "Location", "u", get_location },
 	{ "Metadata", "ay", get_metadata },
@@ -1471,31 +1282,7 @@ static void bap_update_qos(const struct media_transport *transport)
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"CIG");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"CIS");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Interval");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Framing");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"PHY");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"SDU");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Retransmissions");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Latency");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Delay");
+			"QoS");
 }
 
 static gboolean bap_resume_complete_cb(void *data)
@@ -1538,55 +1325,7 @@ static void bap_update_bcast_qos(const struct media_transport *transport)
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"BIG");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"BIS");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"SyncInterval");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Packing");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Framing");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"BCode");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Options");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Skip");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"SyncTimeout");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"SyncCteType");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"MSE");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Timeout");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Interval");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"Latency");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"PHY");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"SDU");
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-			transport->path, MEDIA_TRANSPORT_INTERFACE,
-			"RTN");
+			"QoS");
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 			transport->path, MEDIA_TRANSPORT_INTERFACE,
 			"Codec");

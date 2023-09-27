@@ -533,7 +533,7 @@ static int parse_properties(DBusMessageIter *props, struct iovec **caps,
 				goto fail;
 
 			dbus_message_iter_get_basic(&value,
-						&qos->bcast.sync_interval);
+						&qos->bcast.sync_factor);
 		} else if (!strcasecmp(key, "MSE")) {
 			if (var != DBUS_TYPE_BYTE)
 				goto fail;
@@ -744,7 +744,7 @@ static void update_bcast_qos(struct bt_iso_qos *qos,
 {
 	bap_qos->bcast.big = qos->bcast.big;
 	bap_qos->bcast.bis = qos->bcast.bis;
-	bap_qos->bcast.sync_interval = qos->bcast.sync_interval;
+	bap_qos->bcast.sync_factor = qos->bcast.sync_factor;
 	bap_qos->bcast.packing = qos->bcast.packing;
 	bap_qos->bcast.framing = qos->bcast.framing;
 	bap_qos->bcast.encryption = qos->bcast.encryption;
@@ -1659,7 +1659,7 @@ static void bap_create_bcast_io(struct bap_data *data, struct bap_ep *ep,
 
 	iso_qos.bcast.big = ep->qos.bcast.big;
 	iso_qos.bcast.bis = ep->qos.bcast.bis;
-	iso_qos.bcast.sync_interval = ep->qos.bcast.sync_interval;
+	iso_qos.bcast.sync_factor = ep->qos.bcast.sync_factor;
 	iso_qos.bcast.packing = ep->qos.bcast.packing;
 	iso_qos.bcast.framing = ep->qos.bcast.framing;
 	iso_qos.bcast.encryption = ep->qos.bcast.encryption;

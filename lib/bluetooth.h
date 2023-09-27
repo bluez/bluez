@@ -174,7 +174,7 @@ struct bt_iso_ucast_qos {
 struct bt_iso_bcast_qos {
 	uint8_t  big;
 	uint8_t  bis;
-	uint8_t  sync_interval;
+	uint8_t  sync_factor;
 	uint8_t  packing;
 	uint8_t  framing;
 	struct bt_iso_io_qos in;
