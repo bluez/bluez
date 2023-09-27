@@ -2142,6 +2142,10 @@ static void cmd_show_endpoint(int argc, char *argv[])
 	print_property(proxy, "Capabilities");
 	print_property(proxy, "Device");
 	print_property(proxy, "DelayReporting");
+	print_property(proxy, "Locations");
+	print_property(proxy, "SupportedContext");
+	print_property(proxy, "Context");
+	print_property(proxy, "QoS");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
