@@ -365,19 +365,17 @@ static const GDBusPropertyTable ep_properties[] = {
 	{ }
 };
 
-static int parse_array(DBusMessageIter *iter, struct iovec **iov)
+static int parse_array(DBusMessageIter *iter, struct iovec *iov)
 {
 	DBusMessageIter array;
 
 	if (!iov)
 		return 0;
 
-	if (!(*iov))
-		*iov = new0(struct iovec, 1);
-
 	dbus_message_iter_recurse(iter, &array);
-	dbus_message_iter_get_fixed_array(&array, &(*iov)->iov_base,
-						(int *)&(*iov)->iov_len);
+	dbus_message_iter_get_fixed_array(&array, &iov->iov_base,
+						(int *)&iov->iov_len);
+
 	return 0;
 }
 
@@ -594,10 +592,15 @@ static int parse_bcast_qos(const char *key, int var, DBusMessageIter *iter,
 
 		dbus_message_iter_get_basic(iter, &qos->bcast.timeout);
 	} else if (!strcasecmp(key, "BCode")) {
+		struct iovec iov;
+
 		if (var != DBUS_TYPE_ARRAY)
 			return -EINVAL;
 
-		parse_array(iter, &qos->bcast.bcode);
+		parse_array(iter, &iov);
+
+		util_iov_free(qos->bcast.bcode, 1);
+		qos->bcast.bcode = util_iov_dup(&iov, 1);
 	} else {
 		int err;
 
@@ -653,6 +656,9 @@ static int parse_configuration(DBusMessageIter *props, struct iovec **caps,
 				struct bt_bap_qos *qos)
 {
 	const char *key;
+	struct iovec iov;
+
+	memset(&iov, 0, sizeof(iov));
 
 	while (dbus_message_iter_get_arg_type(props) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter value, entry;
@@ -670,14 +676,20 @@ static int parse_configuration(DBusMessageIter *props, struct iovec **caps,
 			if (var != DBUS_TYPE_ARRAY)
 				goto fail;
 
-			if (parse_array(&value, caps))
+			if (parse_array(&value, &iov))
 				goto fail;
+
+			util_iov_free(*caps, 1);
+			*caps = util_iov_dup(&iov, 1);
 		} else if (!strcasecmp(key, "Metadata")) {
 			if (var != DBUS_TYPE_ARRAY)
 				goto fail;
 
-			if (parse_array(&value, metadata))
+			if (parse_array(&value, &iov))
 				goto fail;
+
+			util_iov_free(*metadata, 1);
+			*metadata = util_iov_dup(&iov, 1);
 		} else if (!strcasecmp(key, "QoS")) {
 			if (var != DBUS_TYPE_ARRAY)
 				goto fail;
@@ -1202,6 +1214,7 @@ static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
 		goto done;
 	}
 
+	util_iov_free(ep->caps, 1);
 	ep->caps = util_iov_dup(caps, 1);
 
 	if (metadata && metadata->iov_base && metadata->iov_len) {
