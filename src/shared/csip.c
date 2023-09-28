@@ -389,11 +389,6 @@ static struct bt_csip_db *csip_get_db(struct gatt_db *db)
 	return csip_db_new(db);
 }
 
-void bt_csip_add_db(struct gatt_db *db)
-{
-	csip_db_new(db);
-}
-
 bool bt_csip_set_debug(struct bt_csip *csip, bt_csip_debug_func_t func,
 			void *user_data, bt_csip_destroy_func_t destroy)
 {

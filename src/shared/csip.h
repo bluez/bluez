@@ -36,8 +36,6 @@ typedef bool (*bt_csip_sirk_func_t)(struct bt_csip *csip, uint8_t type,
 struct bt_csip *bt_csip_ref(struct bt_csip *csip);
 void bt_csip_unref(struct bt_csip *csip);
 
-void bt_csip_add_db(struct gatt_db *db);
-
 bool bt_csip_attach(struct bt_csip *csip, struct bt_gatt_client *client);
 void bt_csip_detach(struct bt_csip *csip);
 
