@@ -1,3 +1,9 @@
+ver 5.70:
+	Fix issue with not sending GATT confirmations.
+	Fix issue with not handling initiator properly.
+	Fix issue with not checking PBAP counter length.
+	Add support for MICP profile and MICS service.
+
 ver 5.69:
 	Fix issue with BAP enabling state correctly when resuming.
 	Fix issue with detaching source ASEs only after Stop Ready.
