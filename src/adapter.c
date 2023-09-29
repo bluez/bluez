@@ -260,6 +260,7 @@ struct btd_adapter {
 
 	bdaddr_t bdaddr;		/* controller Bluetooth address */
 	uint8_t bdaddr_type;		/* address type */
+	uint8_t version;                /* controller core spec version */
 	uint32_t dev_class;		/* controller class of device */
 	char *name;			/* controller device name */
 	char *short_name;		/* controller short name */
@@ -3540,6 +3541,29 @@ static gboolean property_experimental_exists(const GDBusPropertyTable *property,
 	return !queue_isempty(adapter->exps);
 }
 
+static gboolean property_get_manufacturer(const GDBusPropertyTable *property,
+					  DBusMessageIter *iter,
+					  void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	dbus_uint16_t val = adapter->manufacturer;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &val);
+
+	return TRUE;
+}
+
+static gboolean property_get_version(const GDBusPropertyTable *property,
+				     DBusMessageIter *iter, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	uint8_t val = adapter->version;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &val);
+
+	return TRUE;
+}
+
 static DBusMessage *remove_device(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -3898,6 +3922,8 @@ static const GDBusPropertyTable adapter_properties[] = {
 	{ "Roles", "as", property_get_roles },
 	{ "ExperimentalFeatures", "as", property_get_experimental, NULL,
 					property_experimental_exists },
+	{ "Manufacturer", "q", property_get_manufacturer },
+	{ "Version", "y", property_get_version },
 	{ }
 };
 
@@ -10163,6 +10189,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	adapter->supported_settings = btohl(rp->supported_settings);
 	adapter->current_settings = btohl(rp->current_settings);
+
+	adapter->version = rp->version;
 
 	clear_uuids(adapter);
 	clear_devices(adapter);
