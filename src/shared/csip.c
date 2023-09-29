@@ -291,8 +291,8 @@ static void csis_size_read(struct gatt_db_attribute *attrib,
 	struct bt_csis *csis = user_data;
 	struct iovec iov;
 
-	iov.iov_base = &csis->size;
-	iov.iov_len = sizeof(csis->size);
+	iov.iov_base = &csis->size_val;
+	iov.iov_len = sizeof(csis->size_val);
 
 	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
 							iov.iov_len);
