@@ -721,7 +721,8 @@ static struct csis_sirk *sirk_new(struct bt_csis *csis, struct gatt_db *db,
 	bt_uuid16_create(&uuid, CS_SIRK);
 	csis->sirk = gatt_db_service_add_characteristic(csis->service,
 					&uuid,
-					BT_ATT_PERM_READ,
+					BT_ATT_PERM_READ |
+					BT_ATT_PERM_READ_ENCRYPT,
 					BT_GATT_CHRC_PROP_READ,
 					csis_sirk_read, NULL,
 					csis);
@@ -729,7 +730,8 @@ static struct csis_sirk *sirk_new(struct bt_csis *csis, struct gatt_db *db,
 	bt_uuid16_create(&uuid, CS_SIZE);
 	csis->size = gatt_db_service_add_characteristic(csis->service,
 					&uuid,
-					BT_ATT_PERM_READ,
+					BT_ATT_PERM_READ |
+					BT_ATT_PERM_READ_ENCRYPT,
 					BT_GATT_CHRC_PROP_READ,
 					csis_size_read, NULL,
 					csis);
@@ -737,7 +739,10 @@ static struct csis_sirk *sirk_new(struct bt_csis *csis, struct gatt_db *db,
 	/* Lock */
 	bt_uuid16_create(&uuid, CS_LOCK);
 	csis->lock = gatt_db_service_add_characteristic(csis->service, &uuid,
-					BT_ATT_PERM_READ,
+					BT_ATT_PERM_READ |
+					BT_ATT_PERM_READ_ENCRYPT |
+					BT_ATT_PERM_WRITE |
+					BT_ATT_PERM_WRITE_ENCRYPT,
 					BT_GATT_CHRC_PROP_READ |
 					BT_GATT_CHRC_PROP_WRITE |
 					BT_GATT_CHRC_PROP_NOTIFY,
@@ -751,7 +756,8 @@ static struct csis_sirk *sirk_new(struct bt_csis *csis, struct gatt_db *db,
 	/* Rank */
 	bt_uuid16_create(&uuid, CS_RANK);
 	csis->rank = gatt_db_service_add_characteristic(csis->service, &uuid,
-					BT_ATT_PERM_READ,
+					BT_ATT_PERM_READ |
+					BT_ATT_PERM_READ_ENCRYPT,
 					BT_GATT_CHRC_PROP_READ,
 					csis_rank_read_cb,
 					NULL, csis);
