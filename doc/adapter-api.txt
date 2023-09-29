@@ -360,3 +360,14 @@ Properties	string Address [readonly]
 
 			List of 128-bit UUIDs that represents the experimental
 			features currently enabled.
+
+		uint16 Manufacturer [readonly]
+
+			The manufacturer of the device, as a uint16 company
+			identifier defined by the Core Bluetooth Specification.
+
+		byte Version [readonly]
+
+			The Bluetooth version supported by the device, as a
+			core version code defined by the Core Bluetooth
+			Specification.
