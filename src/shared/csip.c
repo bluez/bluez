@@ -66,6 +66,7 @@ struct bt_csis {
 	struct gatt_db_attribute *lock;
 	struct gatt_db_attribute *lock_ccc;
 	struct gatt_db_attribute *rank;
+	bt_csip_encrypt_func_t encrypt;
 };
 
 struct bt_csip_cb {
@@ -95,9 +96,6 @@ struct bt_csip {
 	bt_csip_debug_func_t debug_func;
 	bt_csip_destroy_func_t debug_destroy;
 	void *debug_data;
-
-	bt_csip_ltk_func_t ltk_func;
-	void *ltk_data;
 
 	bt_csip_sirk_func_t sirk_func;
 	void *sirk_data;
@@ -218,46 +216,6 @@ static void csip_debug(struct bt_csip *csip, const char *format, ...)
 	va_end(ap);
 }
 
-static bool csip_match_att(const void *data, const void *match_data)
-{
-	const struct bt_csip *csip = data;
-	const struct bt_att *att = match_data;
-
-	return bt_csip_get_att((void *)csip) == att;
-}
-
-static bool csis_sirk_enc(struct bt_csis *csis, struct bt_att *att,
-						struct csis_sirk *sirk)
-{
-	struct bt_csip *csip;
-	uint8_t k[16];
-	struct bt_crypto *crypto;
-	bool ret;
-
-	csip = queue_find(sessions, csip_match_att, att);
-	if (!csip)
-		return false;
-
-	if (!csip->ltk_func(csip, k, csip->ltk_data)) {
-		DBG(csip, "Unable to read sef key");
-		return false;
-	}
-
-	crypto = bt_crypto_new();
-	if (!crypto) {
-		DBG(csip, "Failed to open crypto");
-		return false;
-	}
-
-	ret = bt_crypto_sef(crypto, k, sirk->val, sirk->val);
-	if (!ret)
-		DBG(csip, "Failed to encrypt SIRK using sef");
-
-	bt_crypto_unref(crypto);
-
-	return ret;
-}
-
 static void csis_sirk_read(struct gatt_db_attribute *attrib,
 				unsigned int id, uint16_t offset,
 				uint8_t opcode, struct bt_att *att,
@@ -270,7 +228,7 @@ static void csis_sirk_read(struct gatt_db_attribute *attrib,
 	memcpy(&sirk, csis->sirk_val, sizeof(sirk));
 
 	if (sirk.type == BT_CSIP_SIRK_ENCRYPT &&
-				!csis_sirk_enc(csis, att, &sirk)) {
+				!csis->encrypt(att, sirk.val)) {
 		gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
 							NULL, 0);
 		return;
@@ -776,7 +734,7 @@ static struct csis_sirk *sirk_new(struct bt_csis *csis, struct gatt_db *db,
 
 bool bt_csip_set_sirk(struct bt_csip *csip, bool encrypt,
 				uint8_t k[16], uint8_t size, uint8_t rank,
-				bt_csip_ltk_func_t func, void *user_data)
+				bt_csip_encrypt_func_t func)
 {
 	uint8_t zero[16] = {};
 	uint8_t type;
@@ -793,8 +751,7 @@ bool bt_csip_set_sirk(struct bt_csip *csip, bool encrypt,
 	if (!sirk_new(csip->ldb->csis, csip->ldb->db, type, k, size, rank))
 		return false;
 
-	csip->ltk_func = func;
-	csip->ltk_data = user_data;
+	csip->ldb->csis->encrypt = func;
 
 	return true;
 }

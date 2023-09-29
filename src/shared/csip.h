@@ -27,8 +27,7 @@ typedef void (*bt_csip_ready_func_t)(struct bt_csip *csip, void *user_data);
 typedef void (*bt_csip_destroy_func_t)(void *user_data);
 typedef void (*bt_csip_debug_func_t)(const char *str, void *user_data);
 typedef void (*bt_csip_func_t)(struct bt_csip *csip, void *user_data);
-typedef bool (*bt_csip_ltk_func_t)(struct bt_csip *csip, uint8_t k[16],
-							void *user_data);
+typedef bool (*bt_csip_encrypt_func_t)(struct bt_att *att, uint8_t k[16]);
 typedef bool (*bt_csip_sirk_func_t)(struct bt_csip *csip, uint8_t type,
 				    uint8_t k[16], uint8_t size, uint8_t rank,
 				    void *user_data);
@@ -54,7 +53,7 @@ struct bt_csip *bt_csip_new(struct gatt_db *ldb, struct gatt_db *rdb);
 
 bool bt_csip_set_sirk(struct bt_csip *csip, bool encrypt,
 				uint8_t k[16], uint8_t size, uint8_t rank,
-				bt_csip_ltk_func_t func, void *user_data);
+				bt_csip_encrypt_func_t func);
 
 bool bt_csip_get_sirk(struct bt_csip *csip, uint8_t *type,
 				uint8_t k[16], uint8_t *size, uint8_t *rank);

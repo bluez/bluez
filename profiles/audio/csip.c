@@ -40,6 +40,7 @@
 #include "src/shared/gatt-client.h"
 #include "src/shared/gatt-server.h"
 #include "src/shared/csip.h"
+#include "src/shared/crypto.h"
 
 #include "btio/btio.h"
 #include "src/plugin.h"
@@ -313,10 +314,37 @@ static struct btd_profile csip_profile = {
 	.experimental	= true,
 };
 
-static bool csis_ltk_read(struct bt_csip *csip, uint8_t k[16], void *user_data)
+static bool csis_encrypt(struct bt_att *att, uint8_t val[16])
 {
-	/* TODO: Retrieve LTK using device object */
-	return false;
+	struct btd_device *device;
+	struct bt_crypto *crypto;
+	uint8_t ltk[16];
+	bool ret;
+
+	device = btd_adapter_find_device_by_fd(bt_att_get_fd(att));
+	if (!device) {
+		error("Unable to find device");
+		return false;
+	}
+
+	if (!btd_device_get_ltk(device, ltk, NULL, NULL)) {
+		error("Unable to get device LTK");
+		return false;
+	}
+
+	crypto = bt_crypto_new();
+	if (!crypto) {
+		error("Failed to open crypto");
+		return false;
+	}
+
+	ret = bt_crypto_sef(crypto, ltk, val, val);
+	if (!ret)
+		error("Failed to encrypt SIRK using LTK");
+
+	bt_crypto_unref(crypto);
+
+	return ret;
 }
 
 static void csis_data_add(struct csis_data *data)
@@ -332,7 +360,7 @@ static void csis_data_add(struct csis_data *data)
 
 	bt_csip_set_sirk(data->csip, btd_opts.csis.encrypt, btd_opts.csis.sirk,
 				btd_opts.csis.size, btd_opts.csis.rank,
-				csis_ltk_read, data);
+				csis_encrypt);
 
 	if (!servers)
 		servers = queue_new();
