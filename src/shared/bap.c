@@ -1331,6 +1331,11 @@ static void stream_set_state_broadcast(struct bt_bap_stream *stream,
 	ep->old_state = ep->state;
 	ep->state = state;
 
+	DBG(bap, "stream %p dir 0x%02x: %s -> %s", stream,
+			bt_bap_stream_get_dir(stream),
+			bt_bap_stream_statestr(stream->ep->old_state),
+			bt_bap_stream_statestr(stream->ep->state));
+
 	bt_bap_ref(bap);
 
 	for (entry = queue_get_entries(bap->state_cbs); entry;
@@ -1346,6 +1351,9 @@ static void stream_set_state_broadcast(struct bt_bap_stream *stream,
 	switch (stream->ep->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
 		bap_stream_detach(stream);
+		break;
+	case BT_ASCS_ASE_STATE_RELEASING:
+		bap_stream_io_detach(stream);
 		break;
 	}
 
@@ -1492,7 +1500,12 @@ static void ep_config_cb(struct bt_bap_stream *stream, int err)
 		return;
 
 	if (bt_bap_stream_get_type(stream) == BT_BAP_STREAM_TYPE_BCAST) {
-		stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_CONFIG);
+		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
+			stream_set_state_broadcast(stream,
+						BT_BAP_STREAM_STATE_QOS);
+		else if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE)
+			stream_set_state_broadcast(stream,
+						BT_BAP_STREAM_STATE_CONFIG);
 		return;
 	}
 
@@ -4914,8 +4927,13 @@ unsigned int bt_bap_stream_enable(struct bt_bap_stream *stream,
 		queue_foreach(stream->links, bap_stream_enable_link, metadata);
 		break;
 	case BT_BAP_STREAM_TYPE_BCAST:
-		stream_set_state_broadcast(stream,
-					BT_BAP_STREAM_STATE_STREAMING);
+		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
+			stream_set_state_broadcast(stream,
+						BT_BAP_STREAM_STATE_CONFIG);
+		else if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE)
+			stream_set_state_broadcast(stream,
+						BT_BAP_STREAM_STATE_STREAMING);
+
 		return 1;
 	}
 
@@ -4933,30 +4951,40 @@ unsigned int bt_bap_stream_start(struct bt_bap_stream *stream,
 	if (!bap_stream_valid(stream))
 		return 0;
 
-	if (!stream->client) {
+	switch (bt_bap_stream_get_type(stream)) {
+	case BT_BAP_STREAM_TYPE_UCAST:
+		if (!stream->client) {
+			if (stream->ep->dir == BT_BAP_SINK)
+				stream_start(stream, NULL);
+			return 0;
+		}
+
 		if (stream->ep->dir == BT_BAP_SINK)
-			stream_start(stream, NULL);
-		return 0;
+			return 0;
+
+		memset(&start, 0, sizeof(start));
+
+		start.ase = stream->ep->id;
+
+		iov.iov_base = &start;
+		iov.iov_len = sizeof(start);
+
+		req = bap_req_new(stream, BT_ASCS_START,
+					&iov, 1, func, user_data);
+
+		if (!bap_queue_req(stream->bap, req)) {
+			bap_req_free(req);
+			return 0;
+		}
+
+		return req->id;
+	case BT_BAP_STREAM_TYPE_BCAST:
+		stream_set_state_broadcast(stream,
+					BT_BAP_STREAM_STATE_STREAMING);
+		return 1;
 	}
 
-	if (stream->ep->dir == BT_BAP_SINK)
-		return 0;
-
-	memset(&start, 0, sizeof(start));
-
-	start.ase = stream->ep->id;
-
-	iov.iov_base = &start;
-	iov.iov_len = sizeof(start);
-
-	req = bap_req_new(stream, BT_ASCS_START, &iov, 1, func, user_data);
-
-	if (!bap_queue_req(stream->bap, req)) {
-		bap_req_free(req);
-		return 0;
-	}
-
-	return req->id;
+	return 0;
 }
 
 static void bap_stream_disable_link(void *data, void *user_data)
@@ -4996,24 +5024,36 @@ unsigned int bt_bap_stream_disable(struct bt_bap_stream *stream,
 		return 0;
 	}
 
-	memset(&disable, 0, sizeof(disable));
+	switch (bt_bap_stream_get_type(stream)) {
+	case BT_BAP_STREAM_TYPE_UCAST:
+		memset(&disable, 0, sizeof(disable));
 
-	disable.ase = stream->ep->id;
+		disable.ase = stream->ep->id;
 
-	iov.iov_base = &disable;
-	iov.iov_len = sizeof(disable);
+		iov.iov_base = &disable;
+		iov.iov_len = sizeof(disable);
 
-	req = bap_req_new(stream, BT_ASCS_DISABLE, &iov, 1, func, user_data);
+		req = bap_req_new(stream, BT_ASCS_DISABLE, &iov, 1, func,
+							user_data);
 
-	if (!bap_queue_req(stream->bap, req)) {
-		bap_req_free(req);
-		return 0;
+		if (!bap_queue_req(stream->bap, req)) {
+			bap_req_free(req);
+			return 0;
+		}
+
+		if (disable_links)
+			queue_foreach(stream->links, bap_stream_disable_link,
+							NULL);
+
+		return req->id;
+
+	case BT_BAP_STREAM_TYPE_BCAST:
+		stream_set_state_broadcast(stream,
+					BT_BAP_STREAM_STATE_RELEASING);
+		return 1;
 	}
 
-	if (disable_links)
-		queue_foreach(stream->links, bap_stream_disable_link, NULL);
-
-	return req->id;
+	return 0;
 }
 
 unsigned int bt_bap_stream_stop(struct bt_bap_stream *stream,
