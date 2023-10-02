@@ -597,7 +597,7 @@ static void foreach_csis_char(struct gatt_db_attribute *attr, void *user_data)
 		DBG(csip, "SIRK found: handle 0x%04x", value_handle);
 
 		csis = csip_get_csis(csip);
-		if (!csis || csis->sirk)
+		if (!csis)
 			return;
 
 		csis->sirk = attr;
