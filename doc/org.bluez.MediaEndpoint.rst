@@ -24,14 +24,24 @@ Interface
 Methods
 -------
 
+.. _SetConfiguration:
+
 void SetConfiguration(object transport, dict properties)
 ````````````````````````````````````````````````````````
 
 	Set configuration for the transport.
 
-	For client role transport must be set with a server endpoint oject which
-	will be configured and the properties must contain the following
-	properties:
+	:object transport:
+
+		Configured transport object.
+
+	:dict properties:
+
+		Configured **org.bluez.MediaTransport(5)** properties.
+
+	For client role transport must be set with a server endpoint
+	object which will be configured and the properties must
+	contain the following properties:
 
 	:array{byte} Capabilities [Mandatory]:
 
@@ -59,13 +69,35 @@ array{byte} SelectConfiguration(array{byte} capabilities)
 dict SelectProperties(dict capabilities)
 ````````````````````````````````````````
 
-	Select configuration from the supported capabilities:
+	Select BAP unicast configuration from the supported capabilities:
 
-	:object Endpoint [ISO only]:
-	:Refer to SetConfiguration for the list of other possible properties.:
+	:object Endpoint:
 
-	Returns a configuration which can be used to setup a transport, see
-	**org.bluez.MediaTransport(5)** for possible values.
+	:array{byte} Capabilities:
+
+	:array{byte} Metadata:
+
+	:uint32 Locations:
+
+	:dict QoS:
+
+		:byte Framing:
+		:byte PHY:
+		:uint16 MaximumLatency:
+		:uint32 MinimumDelay:
+		:uint32 MaximumDelay:
+		:uint32 PreferredMinimumDelay:
+		:uint32 PreferredMaximumDelay:
+
+	See `MediaEndpoint Properties`_ for their possible values.
+
+	Returns a configuration which can be used to setup a transport:
+
+	:array{byte} Capabilities:
+	:array{byte} Metadata [optional]:
+	:dict QoS:
+
+	See `SetConfiguration`_ for their possible values.
 
 	Note: There is no need to cache the selected properties since on
 	success the configuration is send back as parameter of SetConfiguration.
