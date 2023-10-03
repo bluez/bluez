@@ -3056,6 +3056,18 @@ static void pair_rsp(uint8_t status, uint16_t len, const void *param,
 	bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void register_pair_callbacks(struct mgmt *mgmt, uint16_t index)
+{
+	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
+								mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
+								mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_USER_PASSKEY_REQUEST, index,
+						request_passkey, mgmt, NULL);
+	mgmt_register(mgmt, MGMT_EV_PASSKEY_NOTIFY, index,
+						passkey_notify, mgmt, NULL);
+}
+
 static struct option pair_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "capability",	1, 0, 'c' },
@@ -3104,6 +3116,8 @@ static void cmd_pair(int argc, char **argv)
 	index = mgmt_index;
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
+
+	register_pair_callbacks(mgmt, index);
 
 	memset(&cp, 0, sizeof(cp));
 	str2ba(argv[0], &cp.addr.bdaddr);
@@ -5780,14 +5794,6 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 					local_name_changed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
 								mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
-								mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
-								mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_USER_PASSKEY_REQUEST, index,
-						request_passkey, mgmt, NULL);
-	mgmt_register(mgmt, MGMT_EV_PASSKEY_NOTIFY, index,
-						passkey_notify, mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_ADDED, index,
 					unconf_index_added, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_UNCONF_INDEX_REMOVED, index,
