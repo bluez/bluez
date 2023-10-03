@@ -2164,6 +2164,24 @@ typedef struct {
 } __attribute__ ((packed)) le_advertising_info;
 #define LE_ADVERTISING_INFO_SIZE 9
 
+#define EVT_LE_EXTENDED_ADVERTISING_REPORT 0x0D
+typedef struct{
+	uint16_t evt_type;
+	uint8_t bdaddr_type;
+	bdaddr_t bdaddr;
+	uint8_t primary_phy;
+	uint8_t secondary_phy;
+	uint8_t adv_sid;
+	int8_t tx_power;
+	int8_t rssi;
+	uint16_t periodic_adv_interval;
+	uint8_t direct_addr_type;
+	bdaddr_t direct_addr;
+	uint8_t length;
+	uint8_t data[];
+} __attribute__ ((packed)) le_extended_advertising_info;
+#define LE_EXTENDED_ADVERTISING_INFO_SIZE 24
+
 #define EVT_LE_CONN_UPDATE_COMPLETE	0x03
 typedef struct {
 	uint8_t		status;
