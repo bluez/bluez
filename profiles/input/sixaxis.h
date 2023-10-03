@@ -49,6 +49,14 @@ get_pairing(uint16_t vid, uint16_t pid, const char *name)
 			.type = CABLE_PAIRING_SIXAXIS,
 		},
 		{
+			.name = "GUO HUA PS3 GamePad", // compatible with VOYEE - HY-2208
+			.source = 0x0002,
+			.vid = 0x054c,
+			.pid = 0x0268,
+			.version = 0x0000,
+			.type = CABLE_PAIRING_SIXAXIS,
+		},
+		{
 			.name = "Navigation Controller",
 			.source = 0x0002,
 			.vid = 0x054c,
