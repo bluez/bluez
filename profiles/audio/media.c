@@ -965,7 +965,7 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 
 	loc = bt_bap_pac_get_locations(rpac);
 	if (loc)
-		g_dbus_dict_append_entry(&dict, "Location", DBUS_TYPE_UINT32,
+		g_dbus_dict_append_entry(&dict, "Locations", DBUS_TYPE_UINT32,
 									&loc);
 
 	if (metadata) {
@@ -977,26 +977,41 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	}
 
 	if (qos && qos->phy) {
-		g_dbus_dict_append_entry(&dict, "Framing", DBUS_TYPE_BYTE,
+		DBusMessageIter entry, variant, qos_dict;
+
+		key = "QoS";
+		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+		dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+							"a{sv}", &variant);
+		dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+							"{sv}", &qos_dict);
+
+		g_dbus_dict_append_entry(&qos_dict, "Framing", DBUS_TYPE_BYTE,
 							&qos->framing);
 
-		g_dbus_dict_append_entry(&dict, "PHY", DBUS_TYPE_BYTE,
+		g_dbus_dict_append_entry(&qos_dict, "PHY", DBUS_TYPE_BYTE,
 							&qos->phy);
 
-		g_dbus_dict_append_entry(&dict, "Latency", DBUS_TYPE_UINT16,
-							&qos->latency);
+		g_dbus_dict_append_entry(&qos_dict, "MaximumLatency",
+					DBUS_TYPE_UINT16, &qos->latency);
 
-		g_dbus_dict_append_entry(&dict, "MinimumDelay",
+		g_dbus_dict_append_entry(&qos_dict, "MinimumDelay",
 					DBUS_TYPE_UINT32, &qos->pd_min);
 
-		g_dbus_dict_append_entry(&dict, "MaximumDelay",
+		g_dbus_dict_append_entry(&qos_dict, "MaximumDelay",
 					DBUS_TYPE_UINT32, &qos->pd_max);
 
-		g_dbus_dict_append_entry(&dict, "PreferredMinimumDelay",
+		g_dbus_dict_append_entry(&qos_dict, "PreferredMinimumDelay",
 					DBUS_TYPE_UINT32, &qos->ppd_min);
 
-		g_dbus_dict_append_entry(&dict, "PreferredMaximumDelay",
-					DBUS_TYPE_UINT32, &qos->ppd_min);
+		g_dbus_dict_append_entry(&qos_dict, "PreferredMaximumDelay",
+					DBUS_TYPE_UINT32, &qos->ppd_max);
+
+		dbus_message_iter_close_container(&variant, &qos_dict);
+		dbus_message_iter_close_container(&entry, &variant);
+		dbus_message_iter_close_container(&dict, &entry);
 	}
 
 	dbus_message_iter_close_container(&iter, &dict);
@@ -2749,7 +2764,7 @@ static void app_register_endpoint(void *data, void *user_data)
 		dbus_message_iter_get_basic(&iter, &qos.phy);
 	}
 
-	if (g_dbus_proxy_get_property(proxy, "Latency", &iter)) {
+	if (g_dbus_proxy_get_property(proxy, "MaximumLatency", &iter)) {
 		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT16)
 			goto fail;
 
