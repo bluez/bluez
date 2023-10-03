@@ -412,6 +412,7 @@ struct iso_client_data {
 	uint8_t pkt_status;
 	const uint8_t *base;
 	size_t base_len;
+	bool bcast_defer_accept;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -1142,6 +1143,16 @@ static const struct iso_client_data bcast_16_2_1_recv_defer = {
 	.recv = &send_16_2_1,
 	.bcast = true,
 	.server = true,
+	.bcast_defer_accept = true,
+};
+
+static const struct iso_client_data bcast_16_2_1_recv_defer_no_bis = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.defer = true,
+	.bcast = true,
+	.server = true,
+	.bcast_defer_accept = false,
 };
 
 static const struct iso_client_data bcast_ac_12 = {
@@ -2267,8 +2278,11 @@ static int listen_iso_sock(struct test_data *data)
 
 		bacpy(&addr->iso_bc->bc_bdaddr, (void *) dst);
 		addr->iso_bc->bc_bdaddr_type = BDADDR_LE_PUBLIC;
-		addr->iso_bc->bc_num_bis = 1;
-		addr->iso_bc->bc_bis[0] = 1;
+
+		if (!isodata->defer || isodata->bcast_defer_accept) {
+			addr->iso_bc->bc_num_bis = 1;
+			addr->iso_bc->bc_bis[0] = 1;
+		}
 
 		err = bind(sk, (struct sockaddr *) addr, sizeof(*addr) +
 						   sizeof(*addr->iso_bc));
@@ -2430,9 +2444,21 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 			return false;
 		}
 
-		if (isodata->bcast && data->step > 1) {
-			data->step--;
-			goto connect;
+		if (isodata->bcast) {
+			if (data->step > 1)
+				data->step--;
+			else
+				data->step++;
+
+			iso_connect(io, cond, user_data);
+
+			if (!data->step)
+				return false;
+
+			if (!isodata->bcast_defer_accept) {
+				tester_test_passed();
+				return false;
+			}
 		}
 
 		if (!iso_defer_accept(data, io)) {
@@ -2454,7 +2480,6 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 		}
 	}
 
-connect:
 	return iso_connect(io, cond, user_data);
 }
 
@@ -3039,6 +3064,10 @@ int main(int argc, char *argv[])
 							test_bcast_recv);
 	test_iso("ISO Broadcaster Receiver Defer - Success",
 						&bcast_16_2_1_recv_defer,
+						setup_powered,
+						test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver Defer No BIS - Success",
+						&bcast_16_2_1_recv_defer_no_bis,
 						setup_powered,
 						test_bcast_recv);
 
