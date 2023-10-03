@@ -330,7 +330,8 @@ static const uint8_t base_lc3_ac_12[] = {
 };
 
 /* Multiple Audio Channels. Two BISes. */
-#define BCAST_AC_13 BCAST_QOS_OUT_1_1(10000, 10, 40, 0x02, 2)
+#define BCAST_AC_13_1_1 BCAST_QOS_OUT_1_1(10000, 10, 40, 0x02, 2)
+#define BCAST_AC_13_1 BCAST_QOS_OUT_1(10000, 10, 40, 0x02, 2)
 
 static const uint8_t base_lc3_ac_13[] = {
 	0x28, 0x00, 0x00, /* Presentation Delay */
@@ -1151,8 +1152,17 @@ static const struct iso_client_data bcast_ac_12 = {
 	.base_len = sizeof(base_lc3_ac_12),
 };
 
-static const struct iso_client_data bcast_ac_13 = {
-	.qos = BCAST_AC_13,
+static const struct iso_client_data bcast_ac_13_1_1 = {
+	.qos = BCAST_AC_13_1_1,
+	.expect_err = 0,
+	.bcast = true,
+	.mconn = true,
+	.base = base_lc3_ac_13,
+	.base_len = sizeof(base_lc3_ac_13),
+};
+
+static const struct iso_client_data bcast_ac_13_1 = {
+	.qos = BCAST_AC_13_1,
 	.expect_err = 0,
 	.bcast = true,
 	.mconn = true,
@@ -3035,8 +3045,13 @@ int main(int argc, char *argv[])
 	test_iso("ISO Broadcaster AC 12 - Success", &bcast_ac_12, setup_powered,
 							test_bcast);
 
-	test_iso("ISO Broadcaster AC 13 - Success", &bcast_ac_13, setup_powered,
-							test_bcast2);
+	test_iso("ISO Broadcaster AC 13 BIG 0x01 BIS 0x01 - Success",
+						&bcast_ac_13_1_1,
+						setup_powered,
+						test_bcast2);
+
+	test_iso("ISO Broadcaster AC 13 BIG 0x01 - Success", &bcast_ac_13_1,
+						setup_powered, test_bcast2);
 
 	test_iso("ISO Broadcaster AC 14 - Success", &bcast_ac_14, setup_powered,
 							test_bcast);
