@@ -357,14 +357,16 @@ CLEANFILES += $(builtin_files) src/bluetooth.service
 
 if MANPAGES
 man_MANS += src/bluetoothd.8
-man_MANS += doc/org.bluez.Adapter.5 doc/org.bluez.DeviceSet.5
+man_MANS += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
+	    doc/org.bluez.DeviceSet.5
 man_MANS += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
 		doc/org.bluez.MediaTransport.5
 endif
 manual_pages += src/bluetoothd.8
-manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.DeviceSet.5
+manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
+		doc/org.bluez.DeviceSet.5
 manual_pages += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
@@ -405,12 +407,12 @@ EXTRA_DIST += doc/assigned-numbers.txt doc/supported-features.txt \
 				doc/settings-storage.txt
 
 EXTRA_DIST += doc/mgmt-api.txt \
-		doc/device-api.txt \
 		doc/agent-api.txt doc/profile-api.txt \
 		doc/network-api.txt doc/health-api.txt \
 		doc/sap-api.txt doc/input-api.txt
 
-EXTRA_DIST += doc/org.bluez.Adapter.rst doc/org.bluez.DeviceSet.rst
+EXTRA_DIST += doc/org.bluez.Adapter.rst doc/org.bluez.Device.rst \
+	      doc/org.bluez.DeviceSet.rst
 
 EXTRA_DIST += doc/org.bluez.Media.rst doc/org.bluez.MediaControl.rst \
 		doc/org.bluez.MediaPlayer.rst doc/org.bluez.MediaFolder.rst \
