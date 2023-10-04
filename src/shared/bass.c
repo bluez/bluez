@@ -504,8 +504,7 @@ static void bass_handle_remote_scan_stopped_op(struct bt_bass *bass,
 					struct iovec *iov,
 					struct bt_att *att)
 {
-	if (opcode == BT_ATT_OP_WRITE_REQ)
-		gatt_db_attribute_write_result(attrib, id, 0x00);
+	gatt_db_attribute_write_result(attrib, id, 0x00);
 }
 
 static void bass_handle_remote_scan_started_op(struct bt_bass *bass,
@@ -515,8 +514,7 @@ static void bass_handle_remote_scan_started_op(struct bt_bass *bass,
 					struct iovec *iov,
 					struct bt_att *att)
 {
-	if (opcode == BT_ATT_OP_WRITE_REQ)
-		gatt_db_attribute_write_result(attrib, id, 0x00);
+	gatt_db_attribute_write_result(attrib, id, 0x00);
 }
 
 static bool bass_src_id_match(const void *data, const void *match_data)
@@ -536,6 +534,7 @@ static void bass_handle_remove_src_op(struct bt_bass *bass,
 {
 	struct bt_bass_remove_src_params *params;
 	struct bt_bcast_src *bcast_src;
+	int att_err = 0;
 
 	/* Get Remove Source command parameters */
 	params = util_iov_pull_mem(iov, sizeof(*params));
@@ -546,33 +545,31 @@ static void bass_handle_remove_src_op(struct bt_bass *bass,
 
 	if (!bcast_src) {
 		/* No source matches the written source id */
-		if (opcode == BT_ATT_OP_WRITE_REQ)
-			gatt_db_attribute_write_result(attrib, id,
-					BT_BASS_ERROR_INVALID_SOURCE_ID);
-
-		return;
+		att_err = BT_BASS_ERROR_INVALID_SOURCE_ID;
+		goto done;
 	}
 
 	/* Ignore if server is synchronized to the PA
 	 * of the source
 	 */
 	if (bcast_src->sync_state == BT_BASS_SYNCHRONIZED_TO_PA)
-		return;
+		goto done;
 
 	/* Ignore if server is synchronized to any BIS
 	 * of the source
 	 */
 	for (int i = 0; i < bcast_src->num_subgroups; i++)
 		if (bcast_src->subgroup_data[i].bis_sync)
-			return;
+			goto done;
 
 	/* Accept the operation and remove source */
 	queue_remove(bass->ldb->bcast_srcs, bcast_src);
 	gatt_db_attribute_notify(bcast_src->attr, NULL, 0, att);
 	bass_bcast_src_free(bcast_src);
 
-	if (opcode == BT_ATT_OP_WRITE_REQ)
-		gatt_db_attribute_write_result(attrib, id, 0x00);
+done:
+	gatt_db_attribute_write_result(attrib, id,
+			att_err);
 }
 
 static bool bass_src_attr_match(const void *data, const void *match_data)
@@ -692,6 +689,21 @@ static void connect_cb(GIOChannel *io, GError *gerr,
 	free(notify_data);
 }
 
+static bool bass_trigger_big_sync(struct bt_bcast_src *bcast_src)
+{
+	for (int i = 0; i < bcast_src->num_subgroups; i++) {
+		struct bt_bass_subgroup_data *data =
+				&bcast_src->subgroup_data[i];
+
+		if (data->pending_bis_sync &&
+			data->pending_bis_sync != BIS_SYNC_NO_PREF)
+			return true;
+	}
+
+	return false;
+}
+
+
 static void confirm_cb(GIOChannel *io, gpointer user_data)
 {
 	struct bt_bcast_src *bcast_src = user_data;
@@ -729,12 +741,17 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 		/* BIG is not encrypted. Try to synchronize */
 		bcast_src->enc = BT_BASS_BIG_ENC_STATE_NO_ENC;
 
-		if (!bt_io_bcast_accept(bcast_src->pa_sync_io,
-			connect_cb, bcast_src, NULL, &gerr)) {
-			DBG(bcast_src->bass, "bt_io_accept: %s", gerr->message);
-			g_error_free(gerr);
+		if (bass_trigger_big_sync(bcast_src)) {
+			if (!bt_io_bcast_accept(bcast_src->pa_sync_io,
+				connect_cb, bcast_src, NULL, &gerr)) {
+				DBG(bcast_src->bass, "bt_io_accept: %s",
+				gerr->message);
+				g_error_free(gerr);
+			}
+			return;
 		}
-		return;
+
+		goto notify;
 	}
 
 	/* BIG is encrypted. Wait for Client to provide the Broadcast_Code */
@@ -773,6 +790,60 @@ static struct bt_bass *bass_get_session(struct bt_att *att, struct gatt_db *db,
 	return bass;
 }
 
+static bool bass_validate_bis_sync(uint8_t num_subgroups,
+				struct iovec *iov)
+{
+	uint32_t bis_sync_state;
+	uint32_t bitmask = 0U;
+	uint8_t *meta_len;
+
+	for (int i = 0; i < num_subgroups; i++) {
+		util_iov_pull_le32(iov, &bis_sync_state);
+
+		if (bis_sync_state != BIS_SYNC_NO_PREF)
+			for (int bis_idx = 0; bis_idx < 31; bis_idx++) {
+				if (bis_sync_state & (1 << bis_idx)) {
+					if (bitmask & (1 << bis_idx))
+						return false;
+
+					bitmask |= (1 << bis_idx);
+				}
+			}
+
+		meta_len = util_iov_pull_mem(iov,
+					sizeof(*meta_len));
+		util_iov_pull_mem(iov, *meta_len);
+	}
+
+	return true;
+}
+
+static bool bass_validate_add_src_params(uint8_t *value, size_t len)
+{
+	struct bt_bass_add_src_params *params;
+	struct iovec iov = {
+		.iov_base = (void *)value,
+		.iov_len = len,
+	};
+
+	params = util_iov_pull_mem(&iov, sizeof(*params));
+
+	if (params->pa_sync > PA_SYNC_NO_PAST)
+		return false;
+
+	if (params->addr_type > 0x01)
+		return false;
+
+	if (params->sid > 0x0F)
+		return false;
+
+	if (!bass_validate_bis_sync(params->num_subgroups,
+					&iov))
+		return false;
+
+	return true;
+}
+
 static void bass_handle_add_src_op(struct bt_bass *bass,
 					struct gatt_db_attribute *attrib,
 					uint8_t opcode,
@@ -791,9 +862,13 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 	uint8_t bis[ISO_MAX_NUM_BIS];
 	uint8_t *notify_data;
 	size_t notify_data_len;
+	uint8_t addr_type;
 
-	if (opcode == BT_ATT_OP_WRITE_REQ)
-		gatt_db_attribute_write_result(attrib, id, 0x00);
+	gatt_db_attribute_write_result(attrib, id, 0x00);
+
+	/* Ignore operation if parameters are invalid */
+	if (!bass_validate_add_src_params(iov->iov_base, iov->iov_len))
+		return;
 
 	/* Allocate a new broadcast source */
 	bcast_src = malloc(sizeof(*bcast_src));
@@ -856,10 +931,8 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 	bcast_src->id = src_id;
 
 	/* Populate broadcast source fields from command parameters */
-	if (*(uint8_t *)util_iov_pull_mem(iov, sizeof(bcast_src->addr_type)))
-		bcast_src->addr_type = BDADDR_LE_RANDOM;
-	else
-		bcast_src->addr_type = BDADDR_LE_PUBLIC;
+	bcast_src->addr_type = *(uint8_t *)util_iov_pull_mem(iov,
+					sizeof(bcast_src->addr_type));
 
 	bacpy(&bcast_src->addr, (bdaddr_t *)util_iov_pull_mem(iov,
 						sizeof(bdaddr_t)));
@@ -919,7 +992,13 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 					data->meta_len), data->meta_len);
 	}
 
-	if (pa_sync != PA_SYNC_NO_SYNC && num_bis > 0) {
+	if (pa_sync != PA_SYNC_NO_SYNC) {
+		/* Convert to three-value type */
+		if (bcast_src->addr_type)
+			addr_type = BDADDR_LE_RANDOM;
+		else
+			addr_type = BDADDR_LE_PUBLIC;
+
 		/* If requested by client, try to synchronize to the source */
 		io = bt_io_listen(NULL, confirm_cb, bcast_src, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR,
@@ -927,7 +1006,7 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 					BT_IO_OPT_DEST_BDADDR,
 					&bcast_src->addr,
 					BT_IO_OPT_DEST_TYPE,
-					bcast_src->addr_type,
+					addr_type,
 					BT_IO_OPT_MODE, BT_IO_MODE_ISO,
 					BT_IO_OPT_QOS, &iso_qos,
 					BT_IO_OPT_ISO_BC_SID, bcast_src->sid,
@@ -944,7 +1023,7 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 		bcast_src->listen_io = io;
 		g_io_channel_ref(bcast_src->listen_io);
 
-		if (!bcast_src->bises)
+		if (num_bis > 0 && !bcast_src->bises)
 			bcast_src->bises = queue_new();
 	} else {
 		for (int i = 0; i < bcast_src->num_subgroups; i++)
@@ -988,9 +1067,8 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
 	socklen_t len;
 	struct bt_iso_qos qos;
 	GError *gerr = NULL;
-
-	if (opcode == BT_ATT_OP_WRITE_REQ)
-		gatt_db_attribute_write_result(attrib, id, 0x00);
+	uint8_t *notify_data;
+	size_t notify_data_len;
 
 	/* Get Set Broadcast Code command parameters */
 	params = util_iov_pull_mem(iov, sizeof(*params));
@@ -1001,10 +1079,26 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
 
 	if (!bcast_src) {
 		/* No source matches the written source id */
-		if (opcode == BT_ATT_OP_WRITE_REQ)
-			gatt_db_attribute_write_result(attrib, id,
+		gatt_db_attribute_write_result(attrib, id,
 					BT_BASS_ERROR_INVALID_SOURCE_ID);
 
+		return;
+	}
+
+	gatt_db_attribute_write_result(attrib, id, 0x00);
+
+	if (!bass_trigger_big_sync(bcast_src)) {
+		bcast_src->enc = BT_BASS_BIG_ENC_STATE_DEC;
+
+		notify_data = bass_build_notif_from_bcast_src(bcast_src,
+							&notify_data_len);
+
+		gatt_db_attribute_notify(bcast_src->attr,
+					(void *)notify_data,
+					notify_data_len,
+					bt_bass_get_att(bcast_src->bass));
+
+		free(notify_data);
 		return;
 	}
 
@@ -1091,10 +1185,8 @@ static void bass_bcast_audio_scan_cp_write(struct gatt_db_attribute *attrib,
 
 	/* Validate written command length */
 	if (!bass_check_cp_command_len(value, len)) {
-		if (opcode == BT_ATT_OP_WRITE_REQ) {
-			gatt_db_attribute_write_result(attrib, id,
-					BT_ERROR_WRITE_REQUEST_REJECTED);
-		}
+		gatt_db_attribute_write_result(attrib, id,
+				BT_ERROR_WRITE_REQUEST_REJECTED);
 		return;
 	}
 
@@ -1110,10 +1202,8 @@ static void bass_bcast_audio_scan_cp_write(struct gatt_db_attribute *attrib,
 	}
 
 	/* Send error response if unsupported opcode was written */
-	if (opcode == BT_ATT_OP_WRITE_REQ) {
-		gatt_db_attribute_write_result(attrib, id,
-				BT_BASS_ERROR_OPCODE_NOT_SUPPORTED);
-	}
+	gatt_db_attribute_write_result(attrib, id,
+			BT_BASS_ERROR_OPCODE_NOT_SUPPORTED);
 }
 
 static bool bass_src_match_attrib(const void *data, const void *match_data)
@@ -1456,6 +1546,15 @@ bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client)
 	gatt_db_foreach_service(bass->rdb->db, &uuid, foreach_bass_service,
 				bass);
 
+	return true;
+}
+
+bool bt_bass_set_att(struct bt_bass *bass, struct bt_att *att)
+{
+	if (!bass)
+		return false;
+
+	bass->att = att;
 	return true;
 }
 
