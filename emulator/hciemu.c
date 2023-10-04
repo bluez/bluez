@@ -550,6 +550,15 @@ const uint8_t *hciemu_client_bdaddr(struct hciemu_client *client)
 	return btdev_get_bdaddr(client->dev);
 }
 
+bool hciemu_set_client_bdaddr(struct hciemu_client *client,
+				const uint8_t *bdaddr)
+{
+	if (!client)
+		return NULL;
+
+	return btdev_set_bdaddr(client->dev, bdaddr);
+}
+
 const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu)
 {
 	struct hciemu_client *client;
