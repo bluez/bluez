@@ -908,6 +908,8 @@ static void cmd_show(int argc, char *argv[])
 		bt_shell_printf("Controller %s\n", address);
 	}
 
+	print_property(adapter->proxy, "Manufacturer");
+	print_property(adapter->proxy, "Version");
 	print_property(adapter->proxy, "Name");
 	print_property(adapter->proxy, "Alias");
 	print_property(adapter->proxy, "Class");
