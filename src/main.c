@@ -1082,7 +1082,7 @@ static void parse_csis(GKeyFile *config)
 					&btd_opts.csis.encrypt);
 	parse_config_u8(config, "CSIS", "Size", &btd_opts.csis.size,
 					0, UINT8_MAX);
-	parse_config_u8(config, "CSIS", "Rank", &btd_opts.csis.size,
+	parse_config_u8(config, "CSIS", "Rank", &btd_opts.csis.rank,
 					0, UINT8_MAX);
 }
 
