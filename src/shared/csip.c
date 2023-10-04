@@ -280,9 +280,13 @@ static void csis_rank_read_cb(struct gatt_db_attribute *attrib,
 				uint8_t opcode, struct bt_att *att,
 				void *user_data)
 {
-	uint8_t value = CSIS_RANK;
+	struct bt_csis *csis = user_data;
+	struct iovec iov;
 
-	gatt_db_attribute_read_result(attrib, id, 0, &value, sizeof(value));
+	iov.iov_base = &csis->rank_val;
+	iov.iov_len = sizeof(csis->rank_val);
+
+	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base, iov.iov_len);
 }
 
 static struct bt_csis *csis_new(struct gatt_db *db)
