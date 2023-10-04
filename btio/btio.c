@@ -774,16 +774,21 @@ static int sco_bind(int sock, const bdaddr_t *src, GError **err)
 	return 0;
 }
 
-static int iso_bind(int sock, const bdaddr_t *src, uint8_t src_type,
-					const bdaddr_t *dst, uint8_t dst_type,
-					uint8_t bc_sid, uint8_t num_bis,
-					uint8_t *bis, GError **err)
+static int iso_bind(int sock, bool server, const bdaddr_t *src,
+					uint8_t src_type, const bdaddr_t *dst,
+					uint8_t dst_type, uint8_t bc_sid,
+					uint8_t num_bis, uint8_t *bis,
+					GError **err)
 {
 	struct sockaddr_iso *addr = NULL;
 	size_t addr_len;
 	int ret = 0;
 
-	if (num_bis)
+	/* If this is an ISO listener and the destination address
+	 * is not BDADDR_ANY, the listener should be bound to the
+	 * broadcaster address
+	 */
+	if (server && bacmp(dst, BDADDR_ANY))
 		addr_len = sizeof(*addr) + sizeof(*addr->iso_bc);
 	else
 		addr_len = sizeof(*addr);
@@ -798,7 +803,7 @@ static int iso_bind(int sock, const bdaddr_t *src, uint8_t src_type,
 	bacpy(&addr->iso_bdaddr, src);
 	addr->iso_bdaddr_type = src_type;
 
-	if (num_bis) {
+	if (addr_len > sizeof(*addr)) {
 		bacpy(&addr->iso_bc->bc_bdaddr, dst);
 		addr->iso_bc->bc_bdaddr_type = dst_type;
 		addr->iso_bc->bc_sid = bc_sid;
@@ -1930,10 +1935,9 @@ static GIOChannel *create_io(gboolean server, struct set_opts *opts,
 			return NULL;
 		}
 
-		if (iso_bind(sock, &opts->src, opts->src_type,
-				 &opts->dst, opts->dst_type,
-				 opts->bc_sid, opts->bc_num_bis,
-				 opts->bc_bis, err) < 0)
+		if (iso_bind(sock, server, &opts->src, opts->src_type,
+				 &opts->dst, opts->dst_type, opts->bc_sid,
+				 opts->bc_num_bis, opts->bc_bis, err) < 0)
 			goto failed;
 		if (!iso_set_qos(sock, &opts->qos, err))
 			goto failed;
