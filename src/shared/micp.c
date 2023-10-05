@@ -138,6 +138,7 @@ void bt_micp_detach(struct bt_micp *micp)
 	if (!queue_remove(sessions, micp))
 		return;
 
+	bt_gatt_client_idle_unregister(micp->client, micp->idle_id);
 	bt_gatt_client_unref(micp->client);
 	micp->client = NULL;
 
@@ -175,6 +176,7 @@ static void micp_free(void *data)
 
 	micp_db_free(micp->rdb);
 
+	queue_destroy(micp->notify, free);
 	queue_destroy(micp->pending, NULL);
 	queue_destroy(micp->ready_cbs, micp_ready_free);
 
@@ -594,6 +596,7 @@ struct bt_micp *bt_micp_new(struct gatt_db *ldb, struct gatt_db *rdb)
 	micp->ldb = mdb;
 	micp->pending = queue_new();
 	micp->ready_cbs = queue_new();
+	micp->notify = queue_new();
 
 	if (!rdb)
 		goto done;
