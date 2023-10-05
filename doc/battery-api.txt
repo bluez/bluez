@@ -13,7 +13,7 @@ Properties	byte Percentage [readonly]
 
 			The percentage of battery left as an unsigned 8-bit integer.
 
-		string Source [readonly, optional, experimental]
+		string Source [readonly, optional]
 
 			Describes where the battery information comes from
 			This property is informational only and may be useful
@@ -36,7 +36,7 @@ BlueZ will stop monitoring these exposed and removed objects after
 UnregisterBatteryProvider is called for that provider ID.
 
 Service		org.bluez
-Interface	org.bluez.BatteryProviderManager1 [experimental]
+Interface	org.bluez.BatteryProviderManager1
 Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		void RegisterBatteryProvider(object provider)
@@ -56,7 +56,7 @@ Battery Provider hierarchy
 ==========================
 
 Service		<client D-Bus address>
-Interface	org.bluez.BatteryProvider1 [experimental]
+Interface	org.bluez.BatteryProvider1
 Object path	{provider_root}/{unique battery object path}
 
 Properties	Objects provided on this interface contain the same properties
