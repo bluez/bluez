@@ -152,8 +152,7 @@ static gboolean property_source_exists(const GDBusPropertyTable *property,
 static const GDBusPropertyTable battery_properties[] = {
 	{ "Percentage", "y", property_percentage_get, NULL,
 	  property_percentage_exists },
-	{ "Source", "s", property_source_get, NULL, property_source_exists,
-	  G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Source", "s", property_source_get, NULL, property_source_exists },
 	{}
 };
 
@@ -523,10 +522,10 @@ static DBusMessage *unregister_battery_provider(DBusConnection *conn,
 }
 
 static const GDBusMethodTable methods[] = {
-	{ GDBUS_EXPERIMENTAL_METHOD("RegisterBatteryProvider",
+	{ GDBUS_METHOD("RegisterBatteryProvider",
 				    GDBUS_ARGS({ "provider", "o" }), NULL,
 				    register_battery_provider) },
-	{ GDBUS_EXPERIMENTAL_METHOD("UnregisterBatteryProvider",
+	{ GDBUS_METHOD("UnregisterBatteryProvider",
 				    GDBUS_ARGS({ "provider", "o" }), NULL,
 				    unregister_battery_provider) },
 	{}
