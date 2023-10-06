@@ -366,6 +366,8 @@ man_MANS += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
 		doc/org.bluez.MediaTransport.5
+man_MANS += doc/org.bluez.LEAdvertisingManager.5 \
+		doc/org.bluez.LEAdvertisement.5
 endif
 manual_pages += src/bluetoothd.8
 manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
@@ -377,6 +379,8 @@ manual_pages += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
 		doc/org.bluez.MediaTransport.5
+manual_pages += doc/org.bluez.LEAdvertisingManager.5 \
+		doc/org.bluez.LEAdvertisement.5
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -427,7 +431,8 @@ EXTRA_DIST += doc/org.bluez.Media.rst doc/org.bluez.MediaControl.rst \
 		doc/org.bluez.MediaItem.rst doc/org.bluez.MediaEndpoint.rst \
 		doc/org.bluez.MediaTransport.rst
 
-EXTRA_DIST += doc/gatt-api.txt doc/advertising-api.txt
+EXTRA_DIST += doc/gatt-api.txt doc/org.bluez.LEAdvertisingManager.rst \
+		doc/org.bluez.LEAdvertisement.rst
 
 EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
 
