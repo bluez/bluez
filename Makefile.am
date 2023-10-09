@@ -373,7 +373,9 @@ man_MANS += doc/org.bluez.GattManager.5 doc/org.bluez.GattProfile.5 \
 		doc/org.bluez.GattCharacteristic.5 \
 		doc/org.bluez.GattDescriptor.5 \
 		doc/org.bluez.LEAdvertisingManager.5 \
-		doc/org.bluez.LEAdvertisement.5
+		doc/org.bluez.LEAdvertisement.5 \
+		doc/org.bluez.AdvertisementMonitorManager.5 \
+		doc/org.bluez.AdvertisementMonitor.5
 endif
 manual_pages += src/bluetoothd.8
 manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
@@ -392,7 +394,9 @@ manual_pages += doc/org.bluez.GattManager.5 doc/org.bluez.GattProfile.5 \
 		doc/org.bluez.GattCharacteristic.5 \
 		doc/org.bluez.GattDescriptor.5 \
 		doc/org.bluez.LEAdvertisingManager.5 \
-		doc/org.bluez.LEAdvertisement.5
+		doc/org.bluez.LEAdvertisement.5 \
+		doc/org.bluez.AdvertisementMonitorManager.5 \
+		doc/org.bluez.AdvertisementMonitor.5
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -450,7 +454,9 @@ EXTRA_DIST += doc/org.bluez.GattManager.rst doc/org.bluez.GattProfile.rst\
 		doc/org.bluez.GattCharacteristic.rst \
 		doc/org.bluez.GattDescriptor.rst \
 		doc/org.bluez.LEAdvertisingManager.rst \
-		doc/org.bluez.LEAdvertisement.rst
+		doc/org.bluez.LEAdvertisement.rst \
+		doc/org.bluez.AdvertisementMonitorManager.rst \
+		doc/org.bluez.AdvertisementMonitor.rst
 
 EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
 
