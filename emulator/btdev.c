@@ -508,13 +508,19 @@ static void rl_clear(struct btdev *dev)
 /* Set the real time length of AL array */
 void btdev_set_al_len(struct btdev *btdev, uint8_t len)
 {
-	btdev->le_al_len = len;
+	if (len <= AL_SIZE)
+		btdev->le_al_len = len;
+	else
+		btdev->le_al_len = AL_SIZE;
 }
 
 /* Set the real time length of RL array */
 void btdev_set_rl_len(struct btdev *btdev, uint8_t len)
 {
-	btdev->le_rl_len = len;
+	if (len <= RL_SIZE)
+		btdev->le_rl_len = len;
+	else
+		btdev->le_rl_len = RL_SIZE;
 }
 
 static void conn_unlink(struct btdev_conn *conn1, struct btdev_conn *conn2)
