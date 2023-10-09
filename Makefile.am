@@ -361,7 +361,9 @@ man_MANS += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
 		doc/org.bluez.DeviceSet.5 doc/org.bluez.AgentManager.5 \
 		doc/org.bluez.Agent.5 doc/org.bluez.ProfileManager.5 \
 		doc/org.bluez.Profile.5 doc/org.bluez.NetworkServer.5 \
-		doc/org.bluez.Network.5 doc/org.bluez.Input.5
+		doc/org.bluez.Network.5 doc/org.bluez.Input.5 \
+		doc/org.bluez.BatteryProviderManager.5 \
+		doc/org.bluez.BatteryProvider.5 doc/org.bluez.Battery.5
 man_MANS += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
@@ -378,7 +380,9 @@ manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
 		doc/org.bluez.DeviceSet.5 doc/org.bluez.AgentManager.5 \
 		doc/org.bluez.Agent.5 doc/org.bluez.ProfileManager.5 \
 		doc/org.bluez.Profile.5 doc/org.bluez.NetworkServer.5 \
-		doc/org.bluez.Network.5 doc/org.bluez.Input.5
+		doc/org.bluez.Network.5 doc/org.bluez.Input.5\
+		doc/org.bluez.BatteryProviderManager.5 \
+		doc/org.bluez.BatteryProvider.5 doc/org.bluez.Battery.5
 manual_pages += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
@@ -429,10 +433,12 @@ EXTRA_DIST += doc/mgmt-api.txt \
 		doc/sap-api.txt
 
 EXTRA_DIST += doc/org.bluez.Adapter.rst doc/org.bluez.Device.rst \
-	      doc/org.bluez.DeviceSet.rst doc/org.bluez.AgentManager.rst \
-	      doc/org.bluez.Agent.rst doc/org.bluez.ProfileManager.rst \
-	      doc/org.bluez.Profile.rst doc/org.bluez.NetworkServer.rst \
-	      doc/org.bluez.Network.rst doc/org.bluez.Input.rst
+		doc/org.bluez.DeviceSet.rst doc/org.bluez.AgentManager.rst \
+		doc/org.bluez.Agent.rst doc/org.bluez.ProfileManager.rst \
+		doc/org.bluez.Profile.rst doc/org.bluez.NetworkServer.rst \
+		doc/org.bluez.Network.rst doc/org.bluez.Input.rst \
+		doc/org.bluez.BatteryProviderManager.rst \
+		doc/org.bluez.BatteryProvider.rst doc/org.bluez.Battery.rst
 
 EXTRA_DIST += doc/org.bluez.Media.rst doc/org.bluez.MediaControl.rst \
 		doc/org.bluez.MediaPlayer.rst doc/org.bluez.MediaFolder.rst \
