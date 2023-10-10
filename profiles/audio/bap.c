@@ -1312,6 +1312,32 @@ static struct bap_ep *bap_find_ep_by_stream(struct bap_data *data,
 	return NULL;
 }
 
+static void iso_connect_bcast_cb(GIOChannel *chan, GError *err,
+					gpointer user_data)
+{
+	struct bt_bap_stream *stream = user_data;
+	int fd;
+
+	if (err) {
+		error("%s", err->message);
+		bt_bap_stream_set_io(stream, -1);
+		return;
+	}
+
+	DBG("ISO connected");
+
+	fd = g_io_channel_unix_get_fd(chan);
+
+	if (bt_bap_stream_set_io(stream, fd)) {
+		bt_bap_stream_start(stream, NULL, NULL);
+		g_io_channel_set_close_on_unref(chan, FALSE);
+		return;
+	}
+
+	error("Unable to set IO");
+	bt_bap_stream_set_io(stream, -1);
+}
+
 static void iso_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct bt_bap_stream *stream = user_data;
@@ -1560,6 +1586,17 @@ static gboolean bap_io_disconnected(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
+static void bap_connect_bcast_io_cb(GIOChannel *chan, GError *err,
+					gpointer user_data)
+{
+	struct bap_ep *ep = user_data;
+
+	if (!ep->stream)
+		return;
+
+	iso_connect_bcast_cb(chan, err, ep->stream);
+}
+
 static void bap_connect_io_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct bap_ep *ep = user_data;
@@ -1661,7 +1698,7 @@ static void bap_connect_io_broadcast(struct bap_data *data, struct bap_ep *ep,
 	DBG("ep %p stream %p ", ep, stream);
 	ba2str(btd_adapter_get_address(adapter), addr);
 
-	io = bt_io_connect(bap_connect_io_cb, ep, NULL, &err,
+	io = bt_io_connect(bap_connect_bcast_io_cb, ep, NULL, &err,
 			BT_IO_OPT_SOURCE_BDADDR,
 			btd_adapter_get_address(adapter),
 			BT_IO_OPT_DEST_BDADDR,
@@ -1887,18 +1924,16 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 		}
 		break;
 	case BT_BAP_STREAM_STATE_QOS:
-		bap_create_io(data, ep, stream, true);
+		if (bt_bap_stream_get_type(stream) ==
+					BT_BAP_STREAM_TYPE_UCAST) {
+			bap_create_io(data, ep, stream, true);
+		}
 		break;
 	case BT_BAP_STREAM_STATE_ENABLING:
 		if (ep)
 			bap_create_io(data, ep, stream, false);
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
-		if (bt_bap_stream_get_type(stream) ==
-				BT_BAP_STREAM_TYPE_BCAST) {
-			if (ep)
-				bap_create_io(data, ep, stream, false);
-		}
 		break;
 	}
 }
@@ -2116,6 +2151,8 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 
 			ep->qos.bcast.big = qos.bcast.big;
 			ep->qos.bcast.bis = qos.bcast.bis;
+			bt_bap_stream_config(ep->stream, &ep->qos,
+					ep->caps, NULL, NULL);
 		}
 
 		DBG("stream %p fd %d: BIG 0x%02x BIS 0x%02x", stream, fd,
