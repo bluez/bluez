@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/uio.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hidp.h"
@@ -162,32 +163,33 @@ static bool hidp_send_message(GIOChannel *chan, uint8_t hdr,
 {
 	int fd;
 	ssize_t len;
-	uint8_t msg[size + 1];
+	struct iovec iov[2];
 
 	if (!chan) {
 		error("BT socket not connected");
 		return false;
 	}
 
+	iov[0].iov_base = &hdr;
+	iov[0].iov_len = sizeof(hdr);
+
 	if (data == NULL)
 		size = 0;
 
-	msg[0] = hdr;
-	if (size > 0)
-		memcpy(&msg[1], data, size);
-	++size;
+	iov[1].iov_base = (void *)data;
+	iov[1].iov_len = size;
 
 	fd = g_io_channel_unix_get_fd(chan);
 
-	len = write(fd, msg, size);
+	len = writev(fd, iov, 2);
 	if (len < 0) {
 		error("BT socket write error: %s (%d)", strerror(errno), errno);
 		return false;
 	}
 
-	if ((size_t) len < size) {
+	if ((size_t) len < size + 1) {
 		error("BT socket write error: partial write (%zd of %zu bytes)",
-								len, size);
+								len, size + 1);
 		return false;
 	}
 
