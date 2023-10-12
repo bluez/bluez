@@ -378,6 +378,15 @@ man_MANS += doc/org.bluez.GattManager.5 doc/org.bluez.GattProfile.5 \
 		doc/org.bluez.LEAdvertisement.5 \
 		doc/org.bluez.AdvertisementMonitorManager.5 \
 		doc/org.bluez.AdvertisementMonitor.5
+man_MANS += doc/org.bluez.obex.Client.5 doc/org.bluez.obex.Session.5 \
+		doc/org.bluez.obex.Transfer.5 \
+		doc/org.bluez.obex.ObjectPush.5 \
+		doc/org.bluez.obex.FileTransfer.5 \
+		doc/org.bluez.obex.Synchronization.5 \
+		doc/org.bluez.obex.PhonebookAccess.5 \
+		doc/org.bluez.obex.MessageAccess.5 \
+		doc/org.bluez.obex.Message.5 \
+		doc/org.bluez.AgentManager.5 doc/org.bluez.Agent.5
 endif
 manual_pages += src/bluetoothd.8
 manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
@@ -401,6 +410,15 @@ manual_pages += doc/org.bluez.GattManager.5 doc/org.bluez.GattProfile.5 \
 		doc/org.bluez.LEAdvertisement.5 \
 		doc/org.bluez.AdvertisementMonitorManager.5 \
 		doc/org.bluez.AdvertisementMonitor.5
+manual_pages += doc/org.bluez.obex.Client.5 doc/org.bluez.obex.Session.5 \
+		doc/org.bluez.obex.Transfer.5 \
+		doc/org.bluez.obex.ObjectPush.5 \
+		doc/org.bluez.obex.FileTransfer.5 \
+		doc/org.bluez.obex.Synchronization.5 \
+		doc/org.bluez.obex.PhonebookAccess.5 \
+		doc/org.bluez.obex.MessageAccess.5 \
+		doc/org.bluez.obex.Message.5 \
+		doc/org.bluez.AgentManager.5 doc/org.bluez.Agent.5
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -464,7 +482,15 @@ EXTRA_DIST += doc/org.bluez.GattManager.rst doc/org.bluez.GattProfile.rst\
 		doc/org.bluez.AdvertisementMonitorManager.rst \
 		doc/org.bluez.AdvertisementMonitor.rst
 
-EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
+EXTRA_DIST += doc/org.bluez.obex.Client.rst doc/org.bluez.obex.Session.rst \
+		doc/org.bluez.obex.Transfer.rst \
+		doc/org.bluez.obex.ObjectPush.rst \
+		doc/org.bluez.obex.FileTransfer.rst \
+		doc/org.bluez.obex.Synchronization.rst \
+		doc/org.bluez.obex.PhonebookAccess.rst \
+		doc/org.bluez.obex.MessageAccess.rst \
+		doc/org.bluez.obex.Message.rst \
+		doc/org.bluez.AgentManager.rst doc/org.bluez.Agent.rst
 
 EXTRA_DIST += doc/pics-opp.txt doc/pixit-opp.txt \
 		doc/pts-opp.txt
