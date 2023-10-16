@@ -241,7 +241,7 @@ static int brf_send_command_socket(int fd, struct bts_action_send *send_action)
 	rq.rparam = response;
 	rq.rlen   = sizeof(response);
 
-	if (hci_send_req(fd, &rq, 15) < 0) {
+	if (hci_send_req(fd, &rq, 100) < 0) {
 		perror("Cannot send hci command to socket");
 		return -1;
 	}
