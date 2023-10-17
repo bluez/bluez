@@ -781,7 +781,7 @@ static bool recv_register(struct mesh_io *io, const uint8_t *filter,
 	bool already_scanning;
 	bool active = false;
 
-	already_scanning = !l_queue_isempty(io->rx_regs);
+	already_scanning = l_queue_length(io->rx_regs) > 1;
 
 	/* Look for any AD types requiring Active Scanning */
 	if (l_queue_find(io->rx_regs, find_active, NULL))
