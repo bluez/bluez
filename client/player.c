@@ -42,6 +42,7 @@
 #include "src/shared/shell.h"
 #include "src/shared/io.h"
 #include "src/shared/queue.h"
+#include "src/shared/bap-debug.h"
 #include "print.h"
 #include "player.h"
 
@@ -1451,6 +1452,34 @@ static struct codec_preset lc3_presets[] = {
 			LC3_10_UNFRAMED(155u, 13u, 100u, 40000u)),
 };
 
+static void print_ltv(const char *str, void *user_data)
+{
+	const char *label = user_data;
+
+	bt_shell_printf("\t%s.%s\n", label, str);
+}
+
+static void print_lc3_caps(uint8_t *data, int len)
+{
+	const char *label = "Capabilities";
+
+	bt_bap_debug_caps(data, len, print_ltv, (void *)label);
+}
+
+static void print_lc3_cfg(void *data, int len)
+{
+	const char *label = "Configuration";
+
+	bt_bap_debug_config(data, len, print_ltv, (void *)label);
+}
+
+static void print_lc3_meta(void *data, int len)
+{
+	const char *label = "Metadata";
+
+	bt_bap_debug_metadata(data, len, print_ltv, (void *)label);
+}
+
 #define PRESET(_uuid, _codec, _presets, _default_index) \
 	{ \
 		.uuid = _uuid, \
@@ -1941,8 +1970,12 @@ static void append_properties(DBusMessageIter *iter,
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
 
-	bt_shell_printf("Capabilities: ");
-	bt_shell_hexdump(cfg->caps->iov_base, cfg->caps->iov_len);
+	if (cfg->ep->codec == LC3_ID) {
+		print_lc3_cfg(cfg->caps->iov_base, cfg->caps->iov_len);
+	} else {
+		bt_shell_printf("Capabilities: ");
+		bt_shell_hexdump(cfg->caps->iov_base, cfg->caps->iov_len);
+	}
 
 	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING, &key,
 					DBUS_TYPE_BYTE, &cfg->caps->iov_base,
@@ -1955,8 +1988,13 @@ static void append_properties(DBusMessageIter *iter,
 				DBUS_TYPE_BYTE, &cfg->meta->iov_base,
 				cfg->meta->iov_len);
 
-		bt_shell_printf("Metadata:\n");
-		bt_shell_hexdump(cfg->meta->iov_base, cfg->meta->iov_len);
+		if (cfg->ep->codec == LC3_ID) {
+			print_lc3_meta(cfg->meta->iov_base, cfg->meta->iov_len);
+		} else {
+			bt_shell_printf("Metadata:\n");
+			bt_shell_hexdump(cfg->meta->iov_base,
+						cfg->meta->iov_len);
+		}
 	}
 
 	append_qos(&dict, cfg);
@@ -2124,6 +2162,42 @@ static struct endpoint *endpoint_find(const char *pattern)
 	return NULL;
 }
 
+static void print_capabilities(GDBusProxy *proxy)
+{
+	DBusMessageIter iter, subiter;
+	uint8_t codec;
+	uint8_t *data;
+	int len;
+
+	if (!g_dbus_proxy_get_property(proxy, "Codec", &iter))
+		return;
+
+	dbus_message_iter_get_basic(&iter, &codec);
+
+	if (codec != LC3_ID) {
+		print_property(proxy, "Capabilities");
+		return;
+	}
+
+	if (!g_dbus_proxy_get_property(proxy, "Capabilities", &iter))
+		return;
+
+	dbus_message_iter_recurse(&iter, &subiter);
+
+	dbus_message_iter_get_fixed_array(&subiter, &data, &len);
+
+	print_lc3_caps(data, len);
+
+	if (!g_dbus_proxy_get_property(proxy, "Metadata", &iter))
+		return;
+
+	dbus_message_iter_recurse(&iter, &subiter);
+
+	dbus_message_iter_get_fixed_array(&subiter, &data, &len);
+
+	print_lc3_meta(data, len);
+}
+
 static void cmd_show_endpoint(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -2139,7 +2213,7 @@ static void cmd_show_endpoint(int argc, char *argv[])
 
 	print_property(proxy, "UUID");
 	print_property(proxy, "Codec");
-	print_property(proxy, "Capabilities");
+	print_capabilities(proxy);
 	print_property(proxy, "Device");
 	print_property(proxy, "DelayReporting");
 	print_property(proxy, "Locations");
@@ -3817,6 +3891,42 @@ static void cmd_list_transport(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void print_configuration(GDBusProxy *proxy)
+{
+	DBusMessageIter iter, subiter;
+	uint8_t codec;
+	uint8_t *data;
+	int len;
+
+	if (!g_dbus_proxy_get_property(proxy, "Codec", &iter))
+		return;
+
+	dbus_message_iter_get_basic(&iter, &codec);
+
+	if (codec != LC3_ID) {
+		print_property(proxy, "Configuration");
+		return;
+	}
+
+	if (!g_dbus_proxy_get_property(proxy, "Configuration", &iter))
+		return;
+
+	dbus_message_iter_recurse(&iter, &subiter);
+
+	dbus_message_iter_get_fixed_array(&subiter, &data, &len);
+
+	print_lc3_cfg(data, len);
+
+	if (!g_dbus_proxy_get_property(proxy, "Metadata", &iter))
+		return;
+
+	dbus_message_iter_recurse(&iter, &subiter);
+
+	dbus_message_iter_get_fixed_array(&subiter, &data, &len);
+
+	print_lc3_meta(data, len);
+}
+
 static void cmd_show_transport(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -3832,16 +3942,14 @@ static void cmd_show_transport(int argc, char *argv[])
 
 	print_property(proxy, "UUID");
 	print_property(proxy, "Codec");
-	print_property(proxy, "Configuration");
+	print_configuration(proxy);
 	print_property(proxy, "Device");
 	print_property(proxy, "State");
 	print_property(proxy, "Delay");
 	print_property(proxy, "Volume");
 	print_property(proxy, "Endpoint");
-
 	print_property(proxy, "QoS");
 	print_property(proxy, "Location");
-	print_property(proxy, "Metadata");
 	print_property(proxy, "Links");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
