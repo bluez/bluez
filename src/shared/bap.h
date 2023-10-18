@@ -201,9 +201,6 @@ void bt_bap_detach(struct bt_bap *bap);
 bool bt_bap_set_debug(struct bt_bap *bap, bt_bap_debug_func_t cb,
 			void *user_data, bt_bap_destroy_func_t destroy);
 
-bool bap_print_cc(void *data, size_t len, util_debug_func_t func,
-						void *user_data);
-
 unsigned int bt_bap_pac_register(struct bt_bap *bap, bt_bap_pac_func_t added,
 				bt_bap_pac_func_t removed, void *user_data,
 				bt_bap_destroy_func_t destroy);

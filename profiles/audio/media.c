@@ -42,6 +42,7 @@
 #include "src/shared/queue.h"
 #include "src/shared/att.h"
 #include "src/shared/bap.h"
+#include "src/shared/bap-debug.h"
 
 #include "avdtp.h"
 #include "media.h"
@@ -1217,13 +1218,13 @@ static bool endpoint_init_pac(struct media_endpoint *endpoint, uint8_t type,
 		return false;
 	}
 
-	if (!bap_print_cc(endpoint->capabilities, endpoint->size, bap_debug,
-								NULL)) {
+	if (!bt_bap_debug_caps(endpoint->capabilities, endpoint->size,
+				bap_debug, NULL)) {
 		error("Unable to parse endpoint capabilities");
 		return false;
 	}
 
-	if (!bap_print_cc(endpoint->metadata, endpoint->metadata_size,
+	if (!bt_bap_debug_metadata(endpoint->metadata, endpoint->metadata_size,
 					bap_debug, NULL)) {
 		error("Unable to parse endpoint metadata");
 		return false;
