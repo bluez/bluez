@@ -675,8 +675,15 @@ static bool print_ase_codec(const struct l2cap_frame *frame)
 	return true;
 }
 
+static void print_ltv(const char *str, void *user_data)
+{
+	const char *label = user_data;
+
+	print_field("%s: %s", label, str);
+}
+
 static bool print_ase_lv(const struct l2cap_frame *frame, const char *label,
-			struct packet_ltv_decoder *decoder, size_t decoder_len)
+			struct util_ltv_debugger *decoder, size_t decoder_len)
 {
 	struct bt_hci_lv_data *lv;
 
@@ -691,13 +698,14 @@ static bool print_ase_lv(const struct l2cap_frame *frame, const char *label,
 		return false;
 	}
 
-	packet_print_ltv(label, lv->data, lv->len, decoder, decoder_len);
+	util_debug_ltv(lv->data, lv->len, decoder, decoder_len, print_ltv,
+			(void *) label);
 
 	return true;
 }
 
 static bool print_ase_cc(const struct l2cap_frame *frame, const char *label,
-			struct packet_ltv_decoder *decoder, size_t decoder_len)
+			struct util_ltv_debugger *decoder, size_t decoder_len)
 {
 	return print_ase_lv(frame, label, decoder, decoder_len);
 }
@@ -744,7 +752,8 @@ done:
 		print_hex_field("    Data", frame->data, frame->size);
 }
 
-static void ase_decode_preferred_context(const uint8_t *data, uint8_t len)
+static void ase_debug_preferred_context(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 
@@ -753,7 +762,8 @@ static void ase_decode_preferred_context(const uint8_t *data, uint8_t len)
 	print_context(&frame, "      Preferred Context");
 }
 
-static void ase_decode_context(const uint8_t *data, uint8_t len)
+static void ase_debug_context(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 
@@ -762,7 +772,8 @@ static void ase_decode_context(const uint8_t *data, uint8_t len)
 	print_context(&frame, "      Context");
 }
 
-static void ase_decode_program_info(const uint8_t *data, uint8_t len)
+static void ase_debug_program_info(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	const char *str;
@@ -782,7 +793,8 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-static void ase_decode_language(const uint8_t *data, uint8_t len)
+static void ase_debug_language(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint32_t value;
@@ -801,16 +813,17 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-struct packet_ltv_decoder ase_metadata_table[] = {
-	LTV_DEC(0x01, ase_decode_preferred_context),
-	LTV_DEC(0x02, ase_decode_context),
-	LTV_DEC(0x03, ase_decode_program_info),
-	LTV_DEC(0x04, ase_decode_language)
+struct util_ltv_debugger ase_metadata_table[] = {
+	UTIL_LTV_DEBUG(0x01, ase_debug_preferred_context),
+	UTIL_LTV_DEBUG(0x02, ase_debug_context),
+	UTIL_LTV_DEBUG(0x03, ase_debug_program_info),
+	UTIL_LTV_DEBUG(0x04, ase_debug_language)
 };
 
 static bool print_ase_metadata(const struct l2cap_frame *frame)
 {
-	return print_ase_lv(frame, "    Metadata", NULL, 0);
+	return print_ase_lv(frame, "    Metadata", ase_metadata_table,
+					ARRAY_SIZE(ase_metadata_table));
 }
 
 static const struct bitfield_data pac_freq_table[] = {
@@ -833,7 +846,8 @@ static const struct bitfield_data pac_freq_table[] = {
 	{ }
 };
 
-static void pac_decode_freq(const uint8_t *data, uint8_t len)
+static void pac_decode_freq(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint16_t value;
@@ -870,7 +884,8 @@ static const struct bitfield_data pac_duration_table[] = {
 	{ }
 };
 
-static void pac_decode_duration(const uint8_t *data, uint8_t len)
+static void pac_decode_duration(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint8_t value;
@@ -907,7 +922,8 @@ static const struct bitfield_data pac_channel_table[] = {
 	{ }
 };
 
-static void pac_decode_channels(const uint8_t *data, uint8_t len)
+static void pac_decode_channels(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint8_t value;
@@ -932,7 +948,8 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-static void pac_decode_frame_length(const uint8_t *data, uint8_t len)
+static void pac_decode_frame_length(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint16_t min, max;
@@ -957,7 +974,8 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-static void pac_decode_sdu(const uint8_t *data, uint8_t len)
+static void pac_decode_sdu(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint8_t value;
@@ -976,12 +994,12 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-struct packet_ltv_decoder pac_cap_table[] = {
-	LTV_DEC(0x01, pac_decode_freq),
-	LTV_DEC(0x02, pac_decode_duration),
-	LTV_DEC(0x03, pac_decode_channels),
-	LTV_DEC(0x04, pac_decode_frame_length),
-	LTV_DEC(0x05, pac_decode_sdu)
+struct util_ltv_debugger pac_cap_table[] = {
+	UTIL_LTV_DEBUG(0x01, pac_decode_freq),
+	UTIL_LTV_DEBUG(0x02, pac_decode_duration),
+	UTIL_LTV_DEBUG(0x03, pac_decode_channels),
+	UTIL_LTV_DEBUG(0x04, pac_decode_frame_length),
+	UTIL_LTV_DEBUG(0x05, pac_decode_sdu)
 };
 
 static void print_pac(const struct l2cap_frame *frame)
@@ -1117,7 +1135,8 @@ static bool print_ase_pd(const struct l2cap_frame *frame, const char *label)
 	return true;
 }
 
-static void ase_decode_freq(const uint8_t *data, uint8_t len)
+static void ase_debug_freq(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint8_t value;
@@ -1179,7 +1198,8 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-static void ase_decode_duration(const uint8_t *data, uint8_t len)
+static void ase_debug_duration(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint8_t value;
@@ -1266,7 +1286,8 @@ done:
 		print_hex_field("  Data", frame->data, frame->size);
 }
 
-static void ase_decode_location(const uint8_t *data, uint8_t len)
+static void ase_debug_location(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 
@@ -1275,7 +1296,8 @@ static void ase_decode_location(const uint8_t *data, uint8_t len)
 	print_location(&frame);
 }
 
-static void ase_decode_frame_length(const uint8_t *data, uint8_t len)
+static void ase_debug_frame_length(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint16_t value;
@@ -1294,7 +1316,8 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-static void ase_decode_blocks(const uint8_t *data, uint8_t len)
+static void ase_debug_blocks(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
 {
 	struct l2cap_frame frame;
 	uint8_t value;
@@ -1313,12 +1336,12 @@ done:
 		print_hex_field("    Data", frame.data, frame.size);
 }
 
-struct packet_ltv_decoder ase_cc_table[] = {
-	LTV_DEC(0x01, ase_decode_freq),
-	LTV_DEC(0x02, ase_decode_duration),
-	LTV_DEC(0x03, ase_decode_location),
-	LTV_DEC(0x04, ase_decode_frame_length),
-	LTV_DEC(0x05, ase_decode_blocks)
+struct util_ltv_debugger ase_cc_table[] = {
+	UTIL_LTV_DEBUG(0x01, ase_debug_freq),
+	UTIL_LTV_DEBUG(0x02, ase_debug_duration),
+	UTIL_LTV_DEBUG(0x03, ase_debug_location),
+	UTIL_LTV_DEBUG(0x04, ase_debug_frame_length),
+	UTIL_LTV_DEBUG(0x05, ase_debug_blocks)
 };
 
 static void print_ase_config(const struct l2cap_frame *frame)
@@ -2745,8 +2768,9 @@ static const struct big_enc_decoder {
 };
 
 static bool print_subgroup_lv(const struct l2cap_frame *frame,
-		const char *label, struct packet_ltv_decoder *decoder,
-		size_t decoder_len)
+				const char *label,
+				struct util_ltv_debugger *debugger,
+				size_t debugger_len)
 {
 	struct bt_hci_lv_data *lv;
 
@@ -2761,7 +2785,8 @@ static bool print_subgroup_lv(const struct l2cap_frame *frame,
 		return false;
 	}
 
-	packet_print_ltv(label, lv->data, lv->len, decoder, decoder_len);
+	util_debug_ltv(lv->data, lv->len, debugger, debugger_len,
+			       print_ltv, (void *)label);
 
 	return true;
 }

@@ -3419,72 +3419,11 @@ static void *iov_pull(struct iovec *iov, size_t len)
 	return data;
 }
 
-static struct packet_ltv_decoder*
-get_ltv_decoder(struct packet_ltv_decoder *decoder, size_t num, uint8_t type)
+static void print_ltv(const char *str, void *user_data)
 {
-	size_t i;
+	const char *label = user_data;
 
-	if (!decoder || !num)
-		return NULL;
-
-	for (i = 0; i < num; i++) {
-		struct packet_ltv_decoder *dec = &decoder[i];
-
-		if (dec->type == type)
-			return dec;
-	}
-
-	return NULL;
-}
-
-static void print_ltv(const char *label, const uint8_t *data, uint8_t len,
-			struct packet_ltv_decoder *decoder, size_t num)
-{
-	struct iovec iov;
-	int i;
-
-	iov.iov_base = (void *) data;
-	iov.iov_len = len;
-
-	for (i = 0; iov.iov_len; i++) {
-		uint8_t l, t, *v;
-		struct packet_ltv_decoder *dec;
-
-		l = get_u8(iov_pull(&iov, sizeof(l)));
-		if (!l) {
-			print_field("%s #%d: len 0x%02x", label, i, l);
-			break;
-		}
-
-		v = iov_pull(&iov, sizeof(*v));
-		if (!v)
-			break;
-
-		t = get_u8(v);
-
-		print_field("%s #%d: len 0x%02x type 0x%02x", label, i, l, t);
-
-		l -= 1;
-
-		v = iov_pull(&iov, l);
-		if (!v)
-			break;
-
-		dec = get_ltv_decoder(decoder, num, t);
-		if (dec)
-			dec->func(v, l);
-		else
-			print_hex_field(label, v, l);
-	}
-
-	if (iov.iov_len)
-		print_hex_field(label, iov.iov_base, iov.iov_len);
-}
-
-void packet_print_ltv(const char *label, const uint8_t *data, uint8_t len,
-			struct packet_ltv_decoder *decoder, size_t decoder_len)
-{
-	print_ltv(label, data, len, decoder, decoder_len);
+	print_field("%s: %s", label, str);
 }
 
 static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
@@ -3510,6 +3449,7 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 		struct bt_hci_lv_data *codec_cfg;
 		struct bt_hci_lv_data *metadata;
 		uint8_t j;
+		const char *label;
 
 		print_field("    Subgroup #%u:", i);
 
@@ -3537,9 +3477,10 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 		if (!iov_pull(&iov, codec_cfg->len))
 			goto done;
 
-		print_ltv("    Codec Specific Configuration",
-					codec_cfg->data, codec_cfg->len,
-					NULL, 0);
+		label = "    Codec Specific Configuration";
+
+		util_debug_ltv(codec_cfg->data, codec_cfg->len, NULL, 0,
+				print_ltv, (void *)label);
 
 		metadata = iov_pull(&iov, sizeof(*metadata));
 		if (!metadata)
@@ -3548,8 +3489,10 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 		if (!iov_pull(&iov, metadata->len))
 			goto done;
 
-		print_ltv("    Metadata", metadata->data, metadata->len,
-					NULL, 0);
+		label = "    Metadata";
+
+		util_debug_ltv(metadata->data, metadata->len, NULL, 0,
+				print_ltv, (void *)label);
 
 		/* Level 3 - BIS(s)*/
 		for (j = 0; j < subgroup->num_bis; j++) {
