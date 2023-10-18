@@ -107,6 +107,36 @@ void util_debug(util_debug_func_t function, void *user_data,
 void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 				util_debug_func_t function, void *user_data);
 
+#define UTIL_BIT_DEBUG(_bit, _str) \
+{ \
+	.bit = _bit, \
+	.str = _str, \
+}
+
+struct util_bit_debugger {
+	uint64_t bit;
+	const char *str;
+};
+
+uint64_t util_debug_bit(uint64_t val, const struct util_bit_debugger *table,
+				util_debug_func_t func, void *user_data);
+
+#define UTIL_LTV_DEBUG(_type, _func) \
+{ \
+	.type = _type, \
+	.func = _func, \
+}
+
+struct util_ltv_debugger {
+	uint8_t  type;
+	void (*func)(const uint8_t *data, uint8_t len,
+			util_debug_func_t func, void *user_data);
+};
+
+bool util_debug_ltv(const uint8_t *data, uint8_t len,
+			struct util_ltv_debugger *debugger, size_t num,
+			util_debug_func_t function, void *user_data);
+
 unsigned char util_get_dt(const char *parent, const char *name);
 
 ssize_t util_getrandom(void *buf, size_t buflen, unsigned int flags);

@@ -138,6 +138,94 @@ void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 	}
 }
 
+/* Helper to print debug information of bitfields */
+uint64_t util_debug_bit(uint64_t val, const struct util_bit_debugger *table,
+				util_debug_func_t function, void *user_data)
+{
+	uint64_t mask = val;
+	int i;
+
+	for (i = 0; table[i].str; i++) {
+		if (val & (((uint64_t) 1) << table[i].bit)) {
+			util_debug(function, user_data, "%s", table[i].str);
+			mask &= ~(((uint64_t) 1) << table[i].bit);
+		}
+	}
+
+	return mask;
+}
+
+static struct util_ltv_debugger*
+ltv_debugger(struct util_ltv_debugger *debugger, size_t num, uint8_t type)
+{
+	size_t i;
+
+	if (!debugger || !num)
+		return NULL;
+
+	for (i = 0; i < num; i++) {
+		struct util_ltv_debugger *debug = &debugger[i];
+
+		if (debug->type == type)
+			return debug;
+	}
+
+	return NULL;
+}
+
+/* Helper to print debug information of LTV entries */
+bool util_debug_ltv(const uint8_t *data, uint8_t len,
+			struct util_ltv_debugger *debugger, size_t num,
+			util_debug_func_t function, void *user_data)
+{
+	struct iovec iov;
+	int i;
+
+	iov.iov_base = (void *) data;
+	iov.iov_len = len;
+
+	for (i = 0; iov.iov_len; i++) {
+		uint8_t l, t, *v;
+		struct util_ltv_debugger *debug;
+
+		if (!util_iov_pull_u8(&iov, &l)) {
+			util_debug(function, user_data,
+					"Unable to pull length");
+			return false;
+		}
+
+		if (!l) {
+			util_debug(function, user_data, "#%d: len 0x%02x",
+					i, l);
+			continue;
+		}
+
+		if (!util_iov_pull_u8(&iov, &t)) {
+			util_debug(function, user_data, "Unable to pull type");
+			return false;
+		}
+
+		util_debug(function, user_data, "#%d: len 0x%02x type 0x%02x",
+					i, l, t);
+
+		l--;
+
+		v = util_iov_pull_mem(&iov, l);
+		if (!v) {
+			util_debug(function, user_data, "Unable to pull value");
+			return false;
+		}
+
+		debug = ltv_debugger(debugger, num, t);
+		if (debug)
+			debug->func(v, l, function, user_data);
+		else
+			util_hexdump(' ', (void *)v, l, function, user_data);
+	}
+
+	return true;
+}
+
 /* Helper for getting the dirent type in case readdir returns DT_UNKNOWN */
 unsigned char util_get_dt(const char *parent, const char *name)
 {
