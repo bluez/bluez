@@ -3,8 +3,6 @@
 		btd_*;
 		g_dbus_*;
 		info;
-		error;
-		debug;
 		baswap;
 		ba2str;
 		/* Don't break LLVM sanitizers */
