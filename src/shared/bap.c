@@ -2592,7 +2592,7 @@ static void bap_add_source(struct bt_bap_pac *pac)
 	iov.iov_base = value;
 	iov.iov_len = 0;
 
-	queue_foreach(pac->bdb->sinks, pac_foreach, &iov);
+	queue_foreach(pac->bdb->sources, pac_foreach, &iov);
 
 	pacs_add_source_location(pac->bdb->pacs, pac->qos.location);
 	pacs_add_source_supported_context(pac->bdb->pacs,
