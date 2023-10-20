@@ -64,6 +64,14 @@
 #define SEC_USEC(_t)  (_t  * 1000000L)
 #define TS_USEC(_ts)  (SEC_USEC((_ts)->tv_sec) + NSEC_USEC((_ts)->tv_nsec))
 
+#define EP_SRC_LOCATIONS 0x00000001
+#define EP_SNK_LOCATIONS 0x00000003
+
+#define EP_SRC_CTXT 0x000f
+#define EP_SUPPORTED_SRC_CTXT EP_SRC_CTXT
+#define EP_SNK_CTXT 0x0fff
+#define EP_SUPPORTED_SNK_CTXT EP_SNK_CTXT
+
 struct endpoint {
 	char *path;
 	char *uuid;
@@ -72,6 +80,9 @@ struct endpoint {
 	uint16_t vid;
 	struct iovec *caps;
 	struct iovec *meta;
+	uint32_t locations;
+	uint16_t supported_context;
+	uint16_t context;
 	bool auto_accept;
 	uint8_t max_transports;
 	uint8_t iso_group;
@@ -2363,6 +2374,63 @@ static gboolean endpoint_metadata_exists(const GDBusPropertyTable *property,
 	return ep->meta ? TRUE : FALSE;
 }
 
+static gboolean endpoint_get_locations(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct endpoint *ep = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &ep->locations);
+
+	return TRUE;
+}
+
+static gboolean endpoint_locations_exists(const GDBusPropertyTable *property,
+							void *data)
+{
+	struct endpoint *ep = data;
+
+	return ep->supported_context ? TRUE : FALSE;
+}
+
+static gboolean
+endpoint_get_supported_context(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct endpoint *ep = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+					&ep->supported_context);
+
+	return TRUE;
+}
+
+static gboolean
+endpoint_supported_context_exists(const GDBusPropertyTable *property,
+							void *data)
+{
+	struct endpoint *ep = data;
+
+	return ep->supported_context ? TRUE : FALSE;
+}
+
+static gboolean endpoint_get_context(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct endpoint *ep = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &ep->context);
+
+	return TRUE;
+}
+
+static gboolean endpoint_context_exists(const GDBusPropertyTable *property,
+							void *data)
+{
+	struct endpoint *ep = data;
+
+	return ep->context ? TRUE : FALSE;
+}
+
 static const GDBusPropertyTable endpoint_properties[] = {
 	{ "UUID", "s", endpoint_get_uuid, NULL, NULL },
 	{ "Codec", "y", endpoint_get_codec, NULL, NULL },
@@ -2370,6 +2438,11 @@ static const GDBusPropertyTable endpoint_properties[] = {
 	{ "Metadata", "ay", endpoint_get_metadata, NULL,
 				endpoint_metadata_exists },
 	{ "Vendor", "u", endpoint_get_vendor, NULL, endpoint_vendor_exists },
+	{ "Locations", "u", endpoint_get_locations, NULL,
+				endpoint_locations_exists },
+	{ "SupportedContext", "q", endpoint_get_supported_context, NULL,
+				endpoint_supported_context_exists },
+	{ "Context", "q", endpoint_get_context, NULL, endpoint_context_exists },
 	{ }
 };
 
@@ -2412,6 +2485,19 @@ static void register_endpoint_setup(DBusMessageIter *iter, void *user_data)
 		bt_shell_printf("Metadata:\n");
 		bt_shell_hexdump(ep->meta->iov_base, ep->meta->iov_len);
 	}
+
+	if (ep->locations)
+		g_dbus_dict_append_entry(&dict, "Locations", DBUS_TYPE_UINT32,
+						&ep->locations);
+
+	if (ep->supported_context)
+		g_dbus_dict_append_entry(&dict, "SupportedContext",
+						DBUS_TYPE_UINT16,
+						&ep->supported_context);
+
+	if (ep->context)
+		g_dbus_dict_append_entry(&dict, "Context", DBUS_TYPE_UINT16,
+						&ep->context);
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -2552,6 +2638,67 @@ static void endpoint_iso_group(const char *input, void *user_data)
 			endpoint_iso_stream, ep);
 }
 
+static void endpoint_context(const char *input, void *user_data)
+{
+	struct endpoint *ep = user_data;
+	char *endptr = NULL;
+	int value;
+
+	value = strtol(input, &endptr, 0);
+
+	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	ep->context = value;
+
+	if (ep->broadcast)
+		bt_shell_prompt_input(ep->path, "BIG (auto/value):",
+			endpoint_iso_group, ep);
+	else
+		bt_shell_prompt_input(ep->path, "CIG (auto/value):",
+			endpoint_iso_group, ep);
+}
+
+static void endpoint_supported_context(const char *input, void *user_data)
+{
+	struct endpoint *ep = user_data;
+	char *endptr = NULL;
+	int value;
+
+	value = strtol(input, &endptr, 0);
+
+	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	ep->supported_context = value;
+
+	bt_shell_prompt_input(ep->path, "Context (value):", endpoint_context,
+									ep);
+}
+
+static void endpoint_locations(const char *input, void *user_data)
+{
+	struct endpoint *ep = user_data;
+	char *endptr = NULL;
+	int value;
+
+	value = strtol(input, &endptr, 0);
+
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	ep->locations = value;
+
+	bt_shell_prompt_input(ep->path, "Supported Context (value):",
+				endpoint_supported_context, ep);
+}
+
 static void endpoint_max_transports(const char *input, void *user_data)
 {
 	struct endpoint *ep = user_data;
@@ -2571,12 +2718,7 @@ static void endpoint_max_transports(const char *input, void *user_data)
 		ep->max_transports = value;
 	}
 
-	if (ep->broadcast)
-		bt_shell_prompt_input(ep->path, "BIG (auto/value):",
-			endpoint_iso_group, ep);
-	else
-		bt_shell_prompt_input(ep->path, "CIG (auto/value):",
-			endpoint_iso_group, ep);
+	bt_shell_prompt_input(ep->path, "Locations:", endpoint_locations, ep);
 }
 
 static void endpoint_auto_accept(const char *input, void *user_data)
@@ -3338,14 +3480,41 @@ static const struct bt_shell_menu endpoint_menu = {
 	{} },
 };
 
+static void endpoint_init_defaults(struct endpoint *ep)
+{
+	ep->preset = find_presets(ep->uuid, ep->codec, ep->vid, ep->cid);
+	ep->max_transports = UINT8_MAX;
+	ep->auto_accept = true;
+
+	if (!strcmp(ep->uuid, A2DP_SOURCE_UUID) ||
+			!strcmp(ep->uuid, A2DP_SOURCE_UUID))
+		return;
+
+	ep->iso_group = BT_ISO_QOS_GROUP_UNSET;
+	ep->iso_stream = BT_ISO_QOS_STREAM_UNSET;
+
+	ep->broadcast = (strcmp(ep->uuid, BCAA_SERVICE_UUID) &&
+			strcmp(ep->uuid, BAA_SERVICE_UUID)) ? false : true;
+	if (ep->broadcast)
+		return;
+
+	if (!strcmp(ep->uuid, PAC_SINK_UUID)) {
+		ep->locations = EP_SNK_LOCATIONS;
+		ep->supported_context = EP_SUPPORTED_SNK_CTXT;
+		ep->context = EP_SNK_CTXT;
+	} else if (!strcmp(ep->uuid, PAC_SOURCE_UUID)) {
+		ep->locations = EP_SRC_LOCATIONS;
+		ep->supported_context = EP_SUPPORTED_SRC_CTXT;
+		ep->context = EP_SRC_CTXT;
+	}
+}
+
 static struct endpoint *endpoint_new(const struct capabilities *cap)
 {
 	struct endpoint *ep;
 
 	ep = new0(struct endpoint, 1);
 	ep->uuid = g_strdup(cap->uuid);
-	ep->broadcast = (strcmp(cap->uuid, BCAA_SERVICE_UUID) &&
-			strcmp(cap->uuid, BAA_SERVICE_UUID)) ? false : true;
 	ep->codec = cap->codec_id;
 	ep->path = g_strdup_printf("%s/ep%u", BLUEZ_MEDIA_ENDPOINT_PATH,
 					g_list_length(local_endpoints));
@@ -3368,12 +3537,7 @@ static void register_endpoints(GDBusProxy *proxy)
 			continue;
 
 		ep = endpoint_new(cap);
-		ep->preset = find_presets(ep->uuid, ep->codec, ep->vid,
-								ep->cid);
-		ep->max_transports = UINT8_MAX;
-		ep->auto_accept = true;
-		ep->iso_group = BT_ISO_QOS_GROUP_UNSET;
-		ep->iso_stream = BT_ISO_QOS_STREAM_UNSET;
+		endpoint_init_defaults(ep);
 		endpoint_register(ep);
 	}
 }
