@@ -1614,6 +1614,15 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 			if (var != DBUS_TYPE_UINT32)
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value, &qos->location);
+		} else if (strcasecmp(key, "Context") == 0) {
+			if (var != DBUS_TYPE_UINT16)
+				return -EINVAL;
+			dbus_message_iter_get_basic(&value, &qos->context);
+		} else if (strcasecmp(key, "SupportedContext") == 0) {
+			if (var != DBUS_TYPE_UINT16)
+				return -EINVAL;
+			dbus_message_iter_get_basic(&value,
+						    &qos->supported_context);
 		}
 
 		dbus_message_iter_next(props);
@@ -2809,6 +2818,20 @@ static void app_register_endpoint(void *data, void *user_data)
 			goto fail;
 
 		dbus_message_iter_get_basic(&iter, &qos.location);
+	}
+
+	if (g_dbus_proxy_get_property(proxy, "Context", &iter)) {
+		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT16)
+			goto fail;
+
+		dbus_message_iter_get_basic(&iter, &qos.context);
+	}
+
+	if (g_dbus_proxy_get_property(proxy, "SupportedContext", &iter)) {
+		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT16)
+			goto fail;
+
+		dbus_message_iter_get_basic(&iter, &qos.supported_context);
 	}
 
 	endpoint = media_endpoint_create(app->adapter, app->sender, path, uuid,
