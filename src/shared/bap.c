@@ -475,9 +475,8 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
 
 	pacs = new0(struct bt_pacs, 1);
 
-	/* Set default values */
-	pacs->sink_loc_value = PACS_SNK_LOCATION;
-	pacs->source_loc_value = PACS_SRC_LOCATION;
+	pacs->sink_loc_value = 0;
+	pacs->source_loc_value = 0;
 	pacs->sink_context_value = PACS_SNK_CTXT;
 	pacs->source_context_value = PACS_SRC_CTXT;
 	pacs->supported_sink_context_value = PACS_SUPPORTED_SNK_CTXT;
