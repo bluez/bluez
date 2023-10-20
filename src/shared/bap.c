@@ -2449,13 +2449,11 @@ static void pacs_sink_location_changed(struct bt_pacs *pacs)
 
 static void pacs_add_sink_location(struct bt_pacs *pacs, uint32_t location)
 {
-	location |= pacs->sink_loc_value;
-
 	/* Check if location value needs updating */
 	if (location == pacs->sink_loc_value)
 		return;
 
-	pacs->sink_loc_value = location;
+	pacs->sink_loc_value |= location;
 
 	pacs_sink_location_changed(pacs);
 }
