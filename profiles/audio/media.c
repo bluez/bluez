@@ -1610,6 +1610,10 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 			if (var != DBUS_TYPE_UINT16)
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value, &qos->ppd_max);
+		} else if (strcasecmp(key, "Locations") == 0) {
+			if (var != DBUS_TYPE_UINT32)
+				return -EINVAL;
+			dbus_message_iter_get_basic(&value, &qos->location);
 		}
 
 		dbus_message_iter_next(props);
@@ -2798,6 +2802,13 @@ static void app_register_endpoint(void *data, void *user_data)
 			goto fail;
 
 		dbus_message_iter_get_basic(&iter, &qos.ppd_min);
+	}
+
+	if (g_dbus_proxy_get_property(proxy, "Locations", &iter)) {
+		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32)
+			goto fail;
+
+		dbus_message_iter_get_basic(&iter, &qos.location);
 	}
 
 	endpoint = media_endpoint_create(app->adapter, app->sender, path, uuid,
