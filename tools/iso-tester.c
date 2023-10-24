@@ -412,7 +412,8 @@ struct iso_client_data {
 	uint8_t pkt_status;
 	const uint8_t *base;
 	size_t base_len;
-	bool bcast_defer_accept;
+	bool listen_bind;
+	bool pa_bind;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -1143,7 +1144,7 @@ static const struct iso_client_data bcast_16_2_1_recv_defer = {
 	.recv = &send_16_2_1,
 	.bcast = true,
 	.server = true,
-	.bcast_defer_accept = true,
+	.listen_bind = true,
 };
 
 static const struct iso_client_data bcast_16_2_1_recv_defer_no_bis = {
@@ -1152,7 +1153,15 @@ static const struct iso_client_data bcast_16_2_1_recv_defer_no_bis = {
 	.defer = true,
 	.bcast = true,
 	.server = true,
-	.bcast_defer_accept = false,
+};
+
+static const struct iso_client_data bcast_16_2_1_recv_defer_pa_bind = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.defer = true,
+	.bcast = true,
+	.server = true,
+	.pa_bind = true,
 };
 
 static const struct iso_client_data bcast_ac_12 = {
@@ -1996,6 +2005,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 	if (err < 0) {
 		tester_warn("Can't get socket option : %s (%d)",
 							strerror(errno), errno);
+		data->step = 0;
 		tester_test_failed();
 		return FALSE;
 	}
@@ -2008,6 +2018,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 
 	if (!ret) {
 		tester_warn("Unexpected QoS parameter");
+		data->step = 0;
 		tester_test_failed();
 		return FALSE;
 	}
@@ -2028,6 +2039,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 		tester_warn("Expect error: %s (%d) != %s (%d)",
 				strerror(-isodata->expect_err),
 				-isodata->expect_err, strerror(-err), -err);
+		data->step = 0;
 		tester_test_failed();
 	} else {
 		data->step--;
@@ -2279,7 +2291,7 @@ static int listen_iso_sock(struct test_data *data)
 		bacpy(&addr->iso_bc->bc_bdaddr, (void *) dst);
 		addr->iso_bc->bc_bdaddr_type = BDADDR_LE_PUBLIC;
 
-		if (!isodata->defer || isodata->bcast_defer_accept) {
+		if (!isodata->defer || isodata->listen_bind) {
 			addr->iso_bc->bc_num_bis = 1;
 			addr->iso_bc->bc_bis[0] = 1;
 		}
@@ -2382,8 +2394,27 @@ static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
 	char c;
 	struct pollfd pfd;
 	const struct iso_client_data *isodata = data->test_data;
+	struct sockaddr_iso *addr = NULL;
 
 	sk = g_io_channel_unix_get_fd(io);
+
+	if (isodata->pa_bind) {
+		addr = malloc(sizeof(*addr) + sizeof(*addr->iso_bc));
+		memset(addr, 0, sizeof(*addr) + sizeof(*addr->iso_bc));
+		addr->iso_family = AF_BLUETOOTH;
+
+		addr->iso_bc->bc_num_bis = 1;
+		addr->iso_bc->bc_bis[0] = 1;
+
+		if (bind(sk, (struct sockaddr *) addr, sizeof(*addr) +
+						sizeof(*addr->iso_bc)) < 0) {
+			tester_warn("bind: %s (%d)", strerror(errno), errno);
+			free(addr);
+			return false;
+		}
+
+		free(addr);
+	}
 
 	memset(&pfd, 0, sizeof(pfd));
 	pfd.fd = sk;
@@ -2405,14 +2436,12 @@ static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
 
 	data->io = io;
 
-	if (isodata->bcast) {
+	if (isodata->bcast)
 		data->io_id[0] = g_io_add_watch(io, G_IO_IN,
 					iso_accept_cb, NULL);
-		data->step++;
-	} else {
+	else
 		data->io_id[0] = g_io_add_watch(io, G_IO_OUT,
 					iso_connect_cb, NULL);
-	}
 
 	return true;
 }
@@ -2445,20 +2474,10 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 		}
 
 		if (isodata->bcast) {
-			if (data->step > 1)
-				data->step--;
-			else
-				data->step++;
-
 			iso_connect(io, cond, user_data);
 
 			if (!data->step)
 				return false;
-
-			if (!isodata->bcast_defer_accept) {
-				tester_test_passed();
-				return false;
-			}
 		}
 
 		if (!iso_defer_accept(data, io)) {
@@ -2742,6 +2761,15 @@ static void test_bcast2(const void *test_data)
 static void test_bcast_recv(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+
+	setup_listen(data, 0, iso_accept_cb);
+}
+
+static void test_bcast_recv_defer(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->step = 1;
 
 	setup_listen(data, 0, iso_accept_cb);
 }
@@ -3065,11 +3093,15 @@ int main(int argc, char *argv[])
 	test_iso("ISO Broadcaster Receiver Defer - Success",
 						&bcast_16_2_1_recv_defer,
 						setup_powered,
-						test_bcast_recv);
+						test_bcast_recv_defer);
 	test_iso("ISO Broadcaster Receiver Defer No BIS - Success",
 						&bcast_16_2_1_recv_defer_no_bis,
 						setup_powered,
 						test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver Defer PA Bind - Success",
+					&bcast_16_2_1_recv_defer_pa_bind,
+					setup_powered,
+					test_bcast_recv_defer);
 
 	test_iso("ISO Broadcaster AC 12 - Success", &bcast_ac_12, setup_powered,
 							test_bcast);
