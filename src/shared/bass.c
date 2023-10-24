@@ -743,8 +743,9 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 
 		if (bass_trigger_big_sync(bcast_src)) {
 			if (!bt_io_bcast_accept(bcast_src->pa_sync_io,
-				connect_cb, bcast_src, NULL, &gerr)) {
-				DBG(bcast_src->bass, "bt_io_accept: %s",
+				connect_cb, bcast_src, NULL, &gerr,
+				BT_IO_OPT_INVALID)) {
+				DBG(bcast_src->bass, "bt_io_bcast_accept: %s",
 				gerr->message);
 				g_error_free(gerr);
 			}
@@ -1129,8 +1130,8 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
 	}
 
 	if (!bt_io_bcast_accept(bcast_src->pa_sync_io, connect_cb,
-		bcast_src, NULL, &gerr)) {
-		DBG(bcast_src->bass, "bt_io_accept: %s", gerr->message);
+		bcast_src, NULL, &gerr,  BT_IO_OPT_INVALID)) {
+		DBG(bcast_src->bass, "bt_io_bcast_accept: %s", gerr->message);
 		g_error_free(gerr);
 	}
 }
