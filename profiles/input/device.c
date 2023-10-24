@@ -1223,7 +1223,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 {
 	struct input_device *idev = user_data;
 	GIOCondition cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	int err;
+	int err = 0;
 
 	if (conn_err) {
 		err = -EIO;
@@ -1243,7 +1243,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	btd_service_connecting_complete(idev->service, err);
+	btd_service_connecting_complete(idev->service, err ? err : -EIO);
 
 	/* So we guarantee the interrupt channel is closed before the
 	 * control channel (if we only do unref GLib will close it only
@@ -1266,10 +1266,12 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	struct input_device *idev = user_data;
 	GIOCondition cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	GIOChannel *io;
+	int error_code = 0;
 	GError *err = NULL;
 
 	if (conn_err) {
 		error("%s", conn_err->message);
+		error_code = -conn_err->code;
 		goto failed;
 	}
 
@@ -1283,6 +1285,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 				BT_IO_OPT_INVALID);
 	if (!io) {
 		error("%s", err->message);
+		error_code = -err->code;
 		g_error_free(err);
 		goto failed;
 	}
@@ -1298,7 +1301,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	btd_service_connecting_complete(idev->service, -EIO);
+	btd_service_connecting_complete(idev->service, error_code ? error_code : -EIO);
 	g_io_channel_unref(idev->ctrl_io);
 	idev->ctrl_io = NULL;
 }
