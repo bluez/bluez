@@ -25,6 +25,7 @@
 
 struct btd_adapter;
 struct btd_device;
+struct btd_service;
 struct queue;
 
 struct btd_adapter *btd_adapter_get_default(void);
@@ -288,3 +289,7 @@ bool btd_adapter_set_allowed_uuids(struct btd_adapter *adapter,
 							struct queue *uuids);
 bool btd_adapter_is_uuid_allowed(struct btd_adapter *adapter,
 							const char *uuid_str);
+
+void btd_adapter_add_to_try_later_list(struct btd_adapter *adapter, struct btd_service *service);
+
+void btd_adapter_run_try_later_list(struct btd_adapter *adapter);

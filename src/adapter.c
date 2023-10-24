@@ -53,6 +53,7 @@
 #include "sdpd.h"
 #include "adapter.h"
 #include "device.h"
+#include "service.h"
 #include "profile.h"
 #include "dbus-common.h"
 #include "error.h"
@@ -339,6 +340,8 @@ struct btd_adapter {
 
 	struct queue *exp_pending;
 	struct queue *exps;
+
+	GSList *try_later_list;
 };
 
 static char *adapter_power_state_str(uint32_t power_state)
@@ -9578,6 +9581,13 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr,
 								ev->addr.type);
 	if (device) {
+		if (ev->status == MGMT_STATUS_NO_RESOURCES) {
+			/* Occupied all slots of the adapter for connecting,
+			 * we're handling this already with the try_again_list.
+			 */
+			return;
+		}
+
 		conn_fail_notify(device, ev->status);
 
 		/* If the device is in a bonding process cancel any auth request
@@ -10878,4 +10888,24 @@ bool btd_adapter_has_exp_feature(struct btd_adapter *adapter, uint32_t feature)
 	}
 
 	return false;
+}
+
+void btd_adapter_add_to_try_later_list(struct btd_adapter *adapter, struct btd_service *service) {
+	if (g_slist_find(adapter->try_later_list, service))
+		return;
+
+	// FIXME: need to remove from this list again when the service disppears
+	adapter->try_later_list = g_slist_append(adapter->try_later_list, service);
+}
+
+void btd_adapter_run_try_later_list(struct btd_adapter *adapter) {
+	GSList *l;
+
+	for (l = adapter->try_later_list; l; l = l->next) {
+		struct btd_service *service = l->data;
+		btd_service_connect(service);
+	}
+
+	g_slist_free(adapter->try_later_list);
+	adapter->try_later_list = NULL;
 }

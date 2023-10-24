@@ -2084,7 +2084,8 @@ static int connect_next(struct btd_device *dev)
 }
 
 static void device_profile_connected(struct btd_device *dev,
-					struct btd_profile *profile, int err)
+					struct btd_profile *profile,
+					struct btd_service *service, int err)
 {
 	struct btd_service *pending;
 	GSList *l;
@@ -2094,18 +2095,26 @@ static void device_profile_connected(struct btd_device *dev,
 	if (!err)
 		btd_device_set_temporary(dev, false);
 
-	if (dev->pending == NULL)
-		goto done;
-
 	if (!btd_device_is_connected(dev)) {
 		switch (-err) {
 		case EHOSTDOWN: /* page timeout */
+			btd_adapter_run_try_later_list(dev->adapter);
+			goto done;
+
 		case EHOSTUNREACH: /* adapter not powered */
 		case ECONNABORTED: /* adapter powered down */
 			goto done;
+
+		case EAGAIN:
+			btd_adapter_add_to_try_later_list(dev->adapter, service);
+			return;
 		}
+	} else {
+		btd_adapter_run_try_later_list(dev->adapter);
 	}
 
+	if (dev->pending == NULL)
+		goto done;
 
 	pending = dev->pending->data;
 	l = find_service_with_profile(dev->pending, profile);
@@ -7189,7 +7198,7 @@ static void service_state_changed(struct btd_service *service,
 		return;
 
 	if (old_state == BTD_SERVICE_STATE_CONNECTING)
-		device_profile_connected(device, profile, err);
+		device_profile_connected(device, profile, service, err);
 	else if (old_state == BTD_SERVICE_STATE_DISCONNECTING)
 		device_profile_disconnected(device, profile, err);
 }
