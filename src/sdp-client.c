@@ -245,10 +245,13 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond,
 	ctxt->io_id = 0;
 
 	len = sizeof(sk_err);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0) {
 		err = -errno;
-	else
+	} else {
 		err = -sk_err;
+		if (err == -ECONNREFUSED || err == -EIO)
+			err = -EAGAIN;
+	}
 
 	if (err != 0)
 		goto failed;

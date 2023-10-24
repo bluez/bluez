@@ -221,10 +221,13 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 
 	sock = g_io_channel_unix_get_fd(io);
 
-	if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+	if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0) {
 		err = -errno;
-	else
+	} else {
 		err = -sk_err;
+		if (err == -ECONNREFUSED || err == -EIO)
+			err = -EAGAIN;
+	}
 
 	if (err < 0) {
 		ba2str(&conn->dst, addr);
