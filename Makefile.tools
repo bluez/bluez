@@ -229,7 +229,7 @@ endif
 
 if TOOLS
 bin_PROGRAMS += tools/rctest tools/l2test tools/l2ping tools/bluemoon \
-		tools/hex2hcd tools/mpris-proxy tools/btattach tools/isotest
+		tools/hex2hcd tools/mpris-proxy tools/bluedos tools/btattach tools/isotest
 
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/scotest tools/amptest tools/hwdb \
@@ -255,6 +255,9 @@ tools_avtest_LDADD = lib/libbluetooth-internal.la
 tools_scotest_LDADD = lib/libbluetooth-internal.la
 
 tools_amptest_LDADD = lib/libbluetooth-internal.la
+
+tools_bluedos_SOURCES = tools/bluedos.c src/oui.h src/oui.c
+tools_bluedos_LDADD = lib/libbluetooth-internal.la $(UDEV_LIBS)
 
 tools_hwdb_LDADD = lib/libbluetooth-internal.la
 
@@ -351,6 +354,13 @@ man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1 tools/isotest.1 \
 		tools/btmgmt.1 client/bluetoothctl-mgmt.1 \
 		client/bluetoothctl-monitor.1
 endif
+
+if MANPAGES
+man_MANS += tools/rctest.1 tools/bluedos.1 tools/btattach.1 tools/isotest.1 \
+		tools/btmgmt.1 client/bluetoothctl-mgmt.1 \
+		client/bluetoothctl-monitor.1
+endif
+
 
 if MESH
 
@@ -472,7 +482,10 @@ manual_pages += tools/hciattach.1 tools/hciconfig.1 \
 			tools/rctest.1 tools/l2ping.1 tools/btattach.1 \
 			tools/bdaddr.1 tools/isotest.1 tools/btmgmt.1 \
 			client/bluetoothctl-mgmt.1 \
-			client/bluetoothctl-monitor.1
+			client/bluetoothctl-monitor.1 \
+			tools/bluedos.1
+
+
 
 if HID2HCI
 udevdir = $(UDEV_DIR)

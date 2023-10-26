@@ -77,6 +77,8 @@ tools/sdptool.1
 tools/avtest
 tools/bdaddr
 tools/badddr.1
+tools/bluedos
+tools/bluedos.1
 tools/bluemoon
 tools/seq2bseq
 tools/hex2hcd
