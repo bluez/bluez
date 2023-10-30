@@ -1128,7 +1128,7 @@ static void rl_init(void)
 static const struct option main_options[] = {
 	{ "version",	no_argument, 0, 'v' },
 	{ "help",	no_argument, 0, 'h' },
-	{ "init-script", required_argument, 0, 'i' },
+	{ "init-script", required_argument, 0, 's' },
 	{ "timeout",	required_argument, 0, 't' },
 	{ "monitor",	no_argument, 0, 'm' },
 	{ "zsh-complete",	no_argument, 0, 'z' },
@@ -1169,9 +1169,9 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 	if (opt) {
 		memcpy(options + offset, opt->options,
 				sizeof(struct option) * opt->optno);
-		snprintf(optstr, sizeof(optstr), "+mhvi:t:%s", opt->optstr);
+		snprintf(optstr, sizeof(optstr), "+mhvs:t:%s", opt->optstr);
 	} else
-		snprintf(optstr, sizeof(optstr), "+mhvi:t:");
+		snprintf(optstr, sizeof(optstr), "+mhvs:t:");
 
 	data.name = strrchr(argv[0], '/');
 	if (!data.name)
@@ -1193,7 +1193,7 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			data.argv = &cmplt;
 			data.mode = 1;
 			goto done;
-		case 'i':
+		case 's':
 			if (optarg)
 				data.init_fd = open(optarg, O_RDONLY);
 			if (data.init_fd < 0)
