@@ -1505,7 +1505,7 @@ static void *sdp_data_value(sdp_data_t *data, uint32_t *len)
 	case SDP_TEXT_STR32:
 		val = data->val.str;
 		if (len)
-			*len = data->unitSize - 1;
+			*len = data->unitSize - sizeof(uint8_t);
 		break;
 	case SDP_ALT8:
 	case SDP_ALT16:
