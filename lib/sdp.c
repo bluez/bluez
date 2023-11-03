@@ -1527,10 +1527,10 @@ static sdp_data_t *sdp_copy_seq(sdp_data_t *data)
 	for (tmp = data; tmp; tmp = tmp->next) {
 		sdp_data_t *datatmp;
 		void *value;
+		uint32_t len = 0;
 
-		value = sdp_data_value(tmp, NULL);
-		datatmp = sdp_data_alloc_with_length(tmp->dtd, value,
-								tmp->unitSize);
+		value = sdp_data_value(tmp, &len);
+		datatmp = sdp_data_alloc_with_length(tmp->dtd, value, len);
 
 		if (cur)
 			cur->next = datatmp;
