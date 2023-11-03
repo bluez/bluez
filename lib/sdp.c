@@ -2180,16 +2180,21 @@ int sdp_get_int_attr(const sdp_record_t *rec, uint16_t attrid, int *value)
 }
 
 int sdp_get_string_attr(const sdp_record_t *rec, uint16_t attrid, char *value,
-								int valuelen)
+								size_t valuelen)
 {
 	sdp_data_t *sdpdata = sdp_data_get(rec, attrid);
-	if (sdpdata)
-		/* Verify that it is what the caller expects */
-		if (SDP_IS_TEXT_STR(sdpdata->dtd))
-			if ((int) strlen(sdpdata->val.str) < valuelen) {
-				strcpy(value, sdpdata->val.str);
-				return 0;
-			}
+
+	/* Verify that it is what the caller expects */
+	if (!sdpdata || !SDP_IS_TEXT_STR(sdpdata->dtd))
+		goto fail;
+
+	/* Have to copy the NULL terminator too, so check len < valuelen. */
+	if (strlen(sdpdata->val.str) < valuelen) {
+		strcpy(value, sdpdata->val.str);
+		return 0;
+	}
+
+fail:
 	errno = EINVAL;
 	return -1;
 }
