@@ -420,7 +420,7 @@ sdp_data_t *sdp_data_alloc_with_length(uint8_t dtd, const void *value,
 
 		d->unitSize += length;
 		if (length <= USHRT_MAX) {
-			d->val.str = malloc(length);
+			d->val.str = bt_malloc0(length + 1);
 			if (!d->val.str) {
 				free(d);
 				return NULL;
