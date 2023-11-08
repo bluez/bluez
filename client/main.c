@@ -1325,9 +1325,14 @@ static void cmd_scan(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	if (enable == TRUE) {
-		if (strcmp(mode, "")) {
+		if (!g_strcmp0(mode, "")) {
+			g_free(filter.transport);
+			filter.transport = NULL;
+			filter.set = false;
+		} else {
 			g_free(filter.transport);
 			filter.transport = g_strdup(mode);
+			filter.set = false;
 		}
 
 		set_discovery_filter(false);
