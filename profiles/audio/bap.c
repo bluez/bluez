@@ -1887,7 +1887,11 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 			bt_bap_stream_statestr(old_state), old_state,
 			bt_bap_stream_statestr(new_state), new_state);
 
-	if (new_state == old_state)
+	/* Ignore transitions back to same state (ASCS allows some of these).
+	 * Of these we need to handle only the config->config case, which will
+	 * occur when reconfiguring the codec from initial config state.
+	 */
+	if (new_state == old_state && new_state != BT_BAP_STREAM_STATE_CONFIG)
 		return;
 
 	ep = bap_find_ep_by_stream(data, stream);
