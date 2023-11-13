@@ -32,6 +32,7 @@
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/util.h"
+#include "src/shared/queue.h"
 
 #define QOS_IO(_interval, _latency, _sdu, _phy, _rtn) \
 { \
@@ -388,7 +389,7 @@ struct test_data {
 	uint8_t accept_reason;
 	uint16_t handle;
 	uint16_t acl_handle;
-	GIOChannel *io;
+	struct queue *io_queue;
 	unsigned int io_id[2];
 	uint8_t client_num;
 	int step;
@@ -592,12 +593,19 @@ static void test_post_teardown(const void *test_data)
 	data->hciemu = NULL;
 }
 
+static void io_free(void *data)
+{
+	GIOChannel *io = data;
+
+	g_io_channel_unref(io);
+}
+
 static void test_data_free(void *test_data)
 {
 	struct test_data *data = test_data;
 
-	if (data->io)
-		g_io_channel_unref(data->io);
+	if (data->io_queue)
+		queue_destroy(data->io_queue, io_free);
 
 	if (data->io_id[0] > 0)
 		g_source_remove(data->io_id[0]);
@@ -1179,6 +1187,16 @@ static const struct iso_client_data bcast_ac_13_1_1 = {
 	.mconn = true,
 	.base = base_lc3_ac_13,
 	.base_len = sizeof(base_lc3_ac_13),
+};
+
+static const struct iso_client_data bcast_ac_13_1_1_reconn = {
+	.qos = BCAST_AC_13_1_1,
+	.expect_err = 0,
+	.bcast = true,
+	.mconn = true,
+	.base = base_lc3_ac_13,
+	.base_len = sizeof(base_lc3_ac_13),
+	.disconnect = true,
 };
 
 static const struct iso_client_data bcast_ac_13_1 = {
@@ -1911,10 +1929,14 @@ static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct test_data *data = user_data;
+	const struct iso_client_data *isodata = data->test_data;
 
 	data->io_id[0] = 0;
 
-	if ((cond & G_IO_HUP) && !data->handle) {
+	if (cond & G_IO_HUP) {
+		if (!isodata->bcast && data->handle)
+			tester_test_failed();
+
 		tester_print("Successfully disconnected");
 
 		if (data->reconnect) {
@@ -2177,7 +2199,15 @@ static void setup_connect_many(struct test_data *data, uint8_t n, uint8_t *num,
 		data->io_id[num[i]] = g_io_add_watch(io, G_IO_OUT, func[i],
 									NULL);
 
-		g_io_channel_unref(io);
+		if (!isodata->bcast || !data->reconnect)
+			g_io_channel_unref(io);
+		else if (data->io_queue)
+			/* For the broadcast reconnect scenario, do not
+			 * unref channel here, to avoid closing the
+			 * socket. All queued channels will be closed
+			 * by test_data_free.
+			 */
+			queue_push_tail(data->io_queue, io);
 
 		tester_print("Connect %d in progress", num[i]);
 
@@ -2434,7 +2464,9 @@ static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
 
 	tester_print("Accept deferred setup");
 
-	data->io = io;
+	data->io_queue = queue_new();
+	if (data->io_queue)
+		queue_push_tail(data->io_queue, io);
 
 	if (isodata->bcast)
 		data->io_id[0] = g_io_add_watch(io, G_IO_IN,
@@ -2755,6 +2787,18 @@ static void test_bcast2(const void *test_data)
 	uint8_t num[2] = {0, 1};
 	GIOFunc funcs[2] = {iso_connect_cb, iso_connect2_cb};
 
+	setup_connect_many(data, 2, num, funcs);
+}
+
+static void test_bcast2_reconn(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	uint8_t num[2] = {0, 1};
+	GIOFunc funcs[2] = {iso_connect_cb, iso_connect2_cb};
+
+	data->io_queue = queue_new();
+
+	data->reconnect = true;
 	setup_connect_many(data, 2, num, funcs);
 }
 
@@ -3113,6 +3157,10 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO Broadcaster AC 13 BIG 0x01 - Success", &bcast_ac_13_1,
 						setup_powered, test_bcast2);
+
+	test_iso("ISO Broadcaster AC 13 Reconnect - Success",
+					&bcast_ac_13_1_1_reconn, setup_powered,
+					test_bcast2_reconn);
 
 	test_iso("ISO Broadcaster AC 14 - Success", &bcast_ac_14, setup_powered,
 							test_bcast);
