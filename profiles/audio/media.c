@@ -995,6 +995,9 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 		g_dbus_dict_append_entry(&qos_dict, "PHY", DBUS_TYPE_BYTE,
 							&qos->phy);
 
+		g_dbus_dict_append_entry(&qos_dict, "Retransmissions",
+					DBUS_TYPE_BYTE, &qos->rtn);
+
 		g_dbus_dict_append_entry(&qos_dict, "MaximumLatency",
 					DBUS_TYPE_UINT16, &qos->latency);
 
