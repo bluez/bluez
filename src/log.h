@@ -57,8 +57,8 @@ void __btd_enable_debug(struct btd_debug_desc *start,
 } while (0)
 
 #define DBG(fmt, arg...) \
-	DBG_IDX(0xffff, "%s:%s() " fmt, __FILE__, __func__, ## arg)
+	DBG_IDX(0xffff, "%s:%s():%d " fmt, __FILE__, __func__, __LINE__, ## arg)
 #define error(fmt, arg...) \
-	btd_error(0xffff, "%s:%s() " fmt, __FILE__, __func__, ## arg)
+	btd_error(0xffff, "%s:%s():%d " fmt, __FILE__, __func__, __LINE__, ## arg)
 #define warn(fmt, arg...) \
-	btd_warn(0xffff, "%s:%s() " fmt, __FILE__, __func__, ## arg)
+	btd_warn(0xffff, "%s:%s():%d " fmt, __FILE__, __func__, __LINE__, ## arg)
