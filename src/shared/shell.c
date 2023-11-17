@@ -1419,10 +1419,18 @@ bool bt_shell_add_submenu(const struct bt_shell_menu *menu)
 
 void bt_shell_set_prompt(const char *string)
 {
+	char *prompt;
+
 	if (!data.init || data.mode)
 		return;
 
-	rl_set_prompt(string);
+	if (asprintf(&prompt, "\001%s\002", string) < 0)
+		rl_set_prompt(string);
+	else {
+		rl_set_prompt(prompt);
+		free(prompt);
+	}
+
 	rl_redisplay();
 }
 

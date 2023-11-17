@@ -10,14 +10,14 @@
 #include <getopt.h>
 #include <stdbool.h>
 
-#define COLOR_OFF	"\001\x1B[0m\002"
-#define COLOR_RED	"\001\x1B[0;91m\002"
-#define COLOR_GREEN	"\001\x1B[0;92m\002"
-#define COLOR_YELLOW	"\001\x1B[0;93m\002"
-#define COLOR_BLUE	"\001\x1B[0;94m\002"
-#define COLOR_BOLDGRAY	"\001\x1B[1;30m\002"
-#define COLOR_BOLDWHITE	"\001\x1B[1;37m\002"
-#define COLOR_HIGHLIGHT	"\001\x1B[1;39m\002"
+#define COLOR_OFF	"\x1B[0m"
+#define COLOR_RED	"\x1B[0;91m"
+#define COLOR_GREEN	"\x1B[0;92m"
+#define COLOR_YELLOW	"\x1B[0;93m"
+#define COLOR_BLUE	"\x1B[0;94m"
+#define COLOR_BOLDGRAY	"\x1B[1;30m"
+#define COLOR_BOLDWHITE	"\x1B[1;37m"
+#define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
 struct bt_shell_menu;
 
