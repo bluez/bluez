@@ -2166,7 +2166,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	cfg->ep = ep;
 
 	/* Copy capabilities */
-	iov_append(&cfg->caps, preset->data.iov_base, preset->data.iov_len);
+	cfg->caps = util_iov_dup(&preset->data, 1);
 	cfg->target_latency = preset->target_latency;
 
 	dbus_message_iter_init(msg, &iter);
@@ -2182,8 +2182,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	}
 
 	/* Copy metadata */
-	if (ep->meta)
-		iov_append(&cfg->meta, ep->meta->iov_base, ep->meta->iov_len);
+	cfg->meta = util_iov_dup(ep->meta, 1);
 
 	if (preset->qos.phy) {
 		/* Set QoS parameters */
@@ -2887,17 +2886,8 @@ static void endpoint_free(void *data)
 {
 	struct endpoint *ep = data;
 
-	if (ep->caps) {
-		if (ep->caps->iov_base)
-			g_free(ep->caps->iov_base);
-		g_free(ep->caps);
-	}
-
-	if (ep->meta) {
-		if (ep->meta->iov_base)
-			g_free(ep->meta->iov_base);
-		g_free(ep->meta);
-	}
+	util_iov_free(ep->caps, 1);
+	util_iov_free(ep->meta, 1);
 
 	if (ep->msg)
 		dbus_message_unref(ep->msg);
@@ -3380,20 +3370,18 @@ static void endpoint_auto_accept(const char *input, void *user_data)
 static void endpoint_set_metadata(const char *input, void *user_data)
 {
 	struct endpoint *ep = user_data;
+	struct iovec iov;
 
 	if (!strcasecmp(input, "n") || !strcasecmp(input, "no")) {
-		free(ep->meta->iov_base);
+		util_iov_free(ep->meta, 1);
 		ep->meta = NULL;
 		goto done;
 	}
 
-	if (!ep->meta)
-		ep->meta = g_new0(struct iovec, 1);
-
-	ep->meta->iov_base = str2bytearray((char *) input, &ep->meta->iov_len);
-	if (!ep->meta->iov_base) {
-		free(ep->meta);
-		ep->meta = NULL;
+	iov.iov_base = str2bytearray((char *) input, &iov.iov_len);
+	if (iov.iov_base) {
+		util_iov_free(ep->meta, 1);
+		ep->meta = util_iov_dup(&iov, 1);
 	}
 
 done:
@@ -3404,22 +3392,21 @@ done:
 static void endpoint_set_capabilities(const char *input, void *user_data)
 {
 	struct endpoint *ep = user_data;
+	struct iovec iov;
 
-	if (ep->caps && ep->caps->iov_base) {
-		g_free(ep->caps->iov_base);
-		ep->caps = g_new0(struct iovec, 1);
-	} else
-		ep->caps = g_new0(struct iovec, 1);
-
-	ep->caps->iov_base = str2bytearray((char *) input, &ep->caps->iov_len);
-
-	if (ep->caps->iov_len == 0x01 &&
-			(*(uint8_t *)(ep->caps->iov_base)) == 0x00) {
-		g_free(ep->caps->iov_base);
-		ep->caps->iov_base = NULL;
-		ep->caps->iov_len = 0x00;
+	if (!strcasecmp(input, "n") || !strcasecmp(input, "no")) {
+		util_iov_free(ep->caps, 1);
+		ep->caps = NULL;
+		goto done;
 	}
 
+	iov.iov_base = str2bytearray((char *) input, &iov.iov_len);
+	if (iov.iov_base) {
+		util_iov_free(ep->caps, 1);
+		ep->caps = util_iov_dup(&iov, 1);
+	}
+
+done:
 	bt_shell_prompt_input(ep->path, "Enter Metadata (value/no):",
 					endpoint_set_metadata, ep);
 }
@@ -3495,12 +3482,13 @@ static void cmd_register_endpoint(int argc, char *argv[])
 
 		cap = find_capabilities(ep->uuid, ep->codec);
 		if (cap) {
-			if (ep->caps)
-				ep->caps->iov_len = 0;
-
 			/* Copy capabilities */
-			iov_append(&ep->caps, cap->data.iov_base,
-							cap->data.iov_len);
+			util_iov_free(ep->caps, 1);
+			ep->caps = util_iov_dup(&cap->data, 1);
+
+			/* Copy metadata */
+			util_iov_free(ep->meta, 1);
+			ep->meta = util_iov_dup(&cap->meta, 1);
 
 			bt_shell_prompt_input(ep->path, "Auto Accept (yes/no):",
 						endpoint_auto_accept, ep);
@@ -4129,7 +4117,10 @@ static struct endpoint *endpoint_new(const struct capabilities *cap)
 	ep->path = g_strdup_printf("%s/ep%u", BLUEZ_MEDIA_ENDPOINT_PATH,
 					g_list_length(local_endpoints));
 	/* Copy capabilities */
-	iov_append(&ep->caps, cap->data.iov_base, cap->data.iov_len);
+	ep->caps = util_iov_dup(&cap->data, 1);
+	/* Copy metadata */
+	ep->meta = util_iov_dup(&cap->meta, 1);
+
 	local_endpoints = g_list_append(local_endpoints, ep);
 
 	return ep;
