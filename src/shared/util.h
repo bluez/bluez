@@ -118,7 +118,8 @@ struct util_bit_debugger {
 	const char *str;
 };
 
-uint64_t util_debug_bit(uint64_t val, const struct util_bit_debugger *table,
+uint64_t util_debug_bit(const char *label, uint64_t val,
+				const struct util_bit_debugger *table,
 				util_debug_func_t func, void *user_data);
 
 #define UTIL_LTV_DEBUG(_type, _func) \

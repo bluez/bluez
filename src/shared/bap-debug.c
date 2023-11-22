@@ -18,22 +18,22 @@
 #include "src/shared/bap-debug.h"
 
 static const struct util_bit_debugger pac_freq_table[] = {
-	UTIL_BIT_DEBUG(0, "\t8 Khz (0x0001)"),
-	UTIL_BIT_DEBUG(1, "\t11.25 Khz (0x0002)"),
-	UTIL_BIT_DEBUG(2, "\t16 Khz (0x0004)"),
-	UTIL_BIT_DEBUG(3, "\t22.05 Khz (0x0008)"),
-	UTIL_BIT_DEBUG(4, "\t24 Khz (0x0010)"),
-	UTIL_BIT_DEBUG(5, "\t32 Khz (0x0020)"),
-	UTIL_BIT_DEBUG(6, "\t44.1 Khz (0x0040)"),
-	UTIL_BIT_DEBUG(7, "\t48 Khz (0x0080)"),
-	UTIL_BIT_DEBUG(8, "\t88.2 Khz (0x0100)"),
-	UTIL_BIT_DEBUG(9, "\t96 Khz (0x0200)"),
-	UTIL_BIT_DEBUG(10, "\t176.4 Khz (0x0400)"),
-	UTIL_BIT_DEBUG(11, "\t192 Khz (0x0800)"),
-	UTIL_BIT_DEBUG(12, "\t384 Khz (0x1000)"),
-	UTIL_BIT_DEBUG(13, "\tRFU (0x2000)"),
-	UTIL_BIT_DEBUG(14, "\tRFU (0x4000)"),
-	UTIL_BIT_DEBUG(15, "\tRFU (0x8000)"),
+	UTIL_BIT_DEBUG(0, "8 Khz (0x0001)"),
+	UTIL_BIT_DEBUG(1, "11.25 Khz (0x0002)"),
+	UTIL_BIT_DEBUG(2, "16 Khz (0x0004)"),
+	UTIL_BIT_DEBUG(3, "22.05 Khz (0x0008)"),
+	UTIL_BIT_DEBUG(4, "24 Khz (0x0010)"),
+	UTIL_BIT_DEBUG(5, "32 Khz (0x0020)"),
+	UTIL_BIT_DEBUG(6, "44.1 Khz (0x0040)"),
+	UTIL_BIT_DEBUG(7, "48 Khz (0x0080)"),
+	UTIL_BIT_DEBUG(8, "88.2 Khz (0x0100)"),
+	UTIL_BIT_DEBUG(9, "96 Khz (0x0200)"),
+	UTIL_BIT_DEBUG(10, "176.4 Khz (0x0400)"),
+	UTIL_BIT_DEBUG(11, "192 Khz (0x0800)"),
+	UTIL_BIT_DEBUG(12, "384 Khz (0x1000)"),
+	UTIL_BIT_DEBUG(13, "RFU (0x2000)"),
+	UTIL_BIT_DEBUG(14, "RFU (0x4000)"),
+	UTIL_BIT_DEBUG(15, "RFU (0x8000)"),
 	{ }
 };
 
@@ -51,7 +51,8 @@ static void pac_debug_freq(const uint8_t *data, uint8_t len,
 
 	util_debug(func, user_data, "Sampling Frequencies: 0x%4.4x", value);
 
-	mask = util_debug_bit(value, pac_freq_table, func, user_data);
+	mask = util_debug_bit("Sampling Frequency: ", value, pac_freq_table,
+				func, user_data);
 	if (mask)
 		util_debug(func, user_data, "Unknown fields (0x%4.4x)",
 						mask);
@@ -63,14 +64,14 @@ done:
 }
 
 static const struct util_bit_debugger pac_duration_table[] = {
-	UTIL_BIT_DEBUG(0, "\t7.5 ms (0x01)"),
-	UTIL_BIT_DEBUG(1, "\t10 ms (0x02)"),
-	UTIL_BIT_DEBUG(2, "\tRFU (0x04)"),
-	UTIL_BIT_DEBUG(3, "\tRFU (0x08)"),
-	UTIL_BIT_DEBUG(4, "\t7.5 ms preferred (0x10)"),
-	UTIL_BIT_DEBUG(5, "\t10 ms preferred (0x20)"),
-	UTIL_BIT_DEBUG(6, "\tRFU (0x40)"),
-	UTIL_BIT_DEBUG(7, "\tRFU (0x80)"),
+	UTIL_BIT_DEBUG(0, "7.5 ms (0x01)"),
+	UTIL_BIT_DEBUG(1, "10 ms (0x02)"),
+	UTIL_BIT_DEBUG(2, "RFU (0x04)"),
+	UTIL_BIT_DEBUG(3, "RFU (0x08)"),
+	UTIL_BIT_DEBUG(4, "7.5 ms preferred (0x10)"),
+	UTIL_BIT_DEBUG(5, "10 ms preferred (0x20)"),
+	UTIL_BIT_DEBUG(6, "RFU (0x40)"),
+	UTIL_BIT_DEBUG(7, "RFU (0x80)"),
 	{ }
 };
 
@@ -88,7 +89,8 @@ static void pac_debug_duration(const uint8_t *data, uint8_t len,
 
 	util_debug(func, user_data, "Frame Duration: 0x%2.2x", value);
 
-	mask = util_debug_bit(value, pac_duration_table, func, user_data);
+	mask = util_debug_bit("Frame Duration: ", value, pac_duration_table,
+				func, user_data);
 	if (mask)
 		util_debug(func, user_data, "Unknown fields (0x%2.2x)",
 					mask);
@@ -100,14 +102,14 @@ done:
 }
 
 static const struct util_bit_debugger pac_channel_table[] = {
-	UTIL_BIT_DEBUG(0, "\t1 channel (0x01)"),
-	UTIL_BIT_DEBUG(1, "\t2 channel (0x02)"),
-	UTIL_BIT_DEBUG(2, "\t3 channel (0x04)"),
-	UTIL_BIT_DEBUG(3, "\t4 channel (0x08)"),
-	UTIL_BIT_DEBUG(4, "\t5 channel (0x10)"),
-	UTIL_BIT_DEBUG(5, "\t6 channel (0x20)"),
-	UTIL_BIT_DEBUG(6, "\t7 channel (0x40)"),
-	UTIL_BIT_DEBUG(7, "\t8 channel (0x80)"),
+	UTIL_BIT_DEBUG(0, "1 channel (0x01)"),
+	UTIL_BIT_DEBUG(1, "2 channel (0x02)"),
+	UTIL_BIT_DEBUG(2, "3 channel (0x04)"),
+	UTIL_BIT_DEBUG(3, "4 channel (0x08)"),
+	UTIL_BIT_DEBUG(4, "5 channel (0x10)"),
+	UTIL_BIT_DEBUG(5, "6 channel (0x20)"),
+	UTIL_BIT_DEBUG(6, "7 channel (0x40)"),
+	UTIL_BIT_DEBUG(7, "8 channel (0x80)"),
 	{ }
 };
 
@@ -125,7 +127,8 @@ static void pac_debug_channels(const uint8_t *data, uint8_t len,
 
 	util_debug(func, user_data, "Audio Channel Count: 0x%2.2x", value);
 
-	mask = util_debug_bit(value, pac_channel_table, func, user_data);
+	mask = util_debug_bit("Audio Channel Count: ", value,
+				pac_channel_table, func, user_data);
 	if (mask)
 		util_debug(func, user_data, "Unknown fields (0x%2.2x)",
 					mask);
@@ -303,38 +306,38 @@ done:
 }
 
 static const struct util_bit_debugger channel_location_table[] = {
-	UTIL_BIT_DEBUG(0, "\tFront Left (0x00000001)"),
-	UTIL_BIT_DEBUG(1, "\tFront Right (0x00000002)"),
-	UTIL_BIT_DEBUG(2, "\tFront Center (0x00000004)"),
-	UTIL_BIT_DEBUG(3, "\tLow Frequency Effects 1 (0x00000008)"),
-	UTIL_BIT_DEBUG(4, "\tBack Left (0x00000010)"),
-	UTIL_BIT_DEBUG(5, "\tBack Right (0x00000020)"),
-	UTIL_BIT_DEBUG(6, "\tFront Left of Center (0x00000040)"),
-	UTIL_BIT_DEBUG(7, "\tFront Right of Center (0x00000080)"),
-	UTIL_BIT_DEBUG(8, "\tBack Center (0x00000100)"),
-	UTIL_BIT_DEBUG(9, "\tLow Frequency Effects 2 (0x00000200)"),
-	UTIL_BIT_DEBUG(10, "\tSide Left (0x00000400)"),
-	UTIL_BIT_DEBUG(11, "\tSide Right (0x00000800)"),
-	UTIL_BIT_DEBUG(12, "\tTop Front Left (0x00001000)"),
-	UTIL_BIT_DEBUG(13, "\tTop Front Right (0x00002000)"),
-	UTIL_BIT_DEBUG(14, "\tTop Front Center (0x00004000)"),
-	UTIL_BIT_DEBUG(15, "\tTop Center (0x00008000)"),
-	UTIL_BIT_DEBUG(16, "\tTop Back Left (0x00010000)"),
-	UTIL_BIT_DEBUG(17, "\tTop Back Right (0x00020000)"),
-	UTIL_BIT_DEBUG(18, "\tTop Side Left (0x00040000)"),
-	UTIL_BIT_DEBUG(19, "\tTop Side Right (0x00080000)"),
-	UTIL_BIT_DEBUG(20, "\tTop Back Center (0x00100000)"),
-	UTIL_BIT_DEBUG(21, "\tBottom Front Center (0x00200000)"),
-	UTIL_BIT_DEBUG(22, "\tBottom Front Left (0x00400000)"),
-	UTIL_BIT_DEBUG(23, "\tBottom Front Right (0x00800000)"),
-	UTIL_BIT_DEBUG(24, "\tFront Left Wide (0x01000000)"),
-	UTIL_BIT_DEBUG(25, "\tFront Right Wide (0x02000000)"),
-	UTIL_BIT_DEBUG(26, "\tLeft Surround (0x04000000)"),
-	UTIL_BIT_DEBUG(27, "\tRight Surround (0x08000000)"),
-	UTIL_BIT_DEBUG(28, "\tRFU (0x10000000)"),
-	UTIL_BIT_DEBUG(29, "\tRFU (0x20000000)"),
-	UTIL_BIT_DEBUG(30, "\tRFU (0x40000000)"),
-	UTIL_BIT_DEBUG(31, "\tRFU (0x80000000)"),
+	UTIL_BIT_DEBUG(0, "Front Left (0x00000001)"),
+	UTIL_BIT_DEBUG(1, "Front Right (0x00000002)"),
+	UTIL_BIT_DEBUG(2, "Front Center (0x00000004)"),
+	UTIL_BIT_DEBUG(3, "Low Frequency Effects 1 (0x00000008)"),
+	UTIL_BIT_DEBUG(4, "Back Left (0x00000010)"),
+	UTIL_BIT_DEBUG(5, "Back Right (0x00000020)"),
+	UTIL_BIT_DEBUG(6, "Front Left of Center (0x00000040)"),
+	UTIL_BIT_DEBUG(7, "Front Right of Center (0x00000080)"),
+	UTIL_BIT_DEBUG(8, "Back Center (0x00000100)"),
+	UTIL_BIT_DEBUG(9, "Low Frequency Effects 2 (0x00000200)"),
+	UTIL_BIT_DEBUG(10, "Side Left (0x00000400)"),
+	UTIL_BIT_DEBUG(11, "Side Right (0x00000800)"),
+	UTIL_BIT_DEBUG(12, "Top Front Left (0x00001000)"),
+	UTIL_BIT_DEBUG(13, "Top Front Right (0x00002000)"),
+	UTIL_BIT_DEBUG(14, "Top Front Center (0x00004000)"),
+	UTIL_BIT_DEBUG(15, "Top Center (0x00008000)"),
+	UTIL_BIT_DEBUG(16, "Top Back Left (0x00010000)"),
+	UTIL_BIT_DEBUG(17, "Top Back Right (0x00020000)"),
+	UTIL_BIT_DEBUG(18, "Top Side Left (0x00040000)"),
+	UTIL_BIT_DEBUG(19, "Top Side Right (0x00080000)"),
+	UTIL_BIT_DEBUG(20, "Top Back Center (0x00100000)"),
+	UTIL_BIT_DEBUG(21, "Bottom Front Center (0x00200000)"),
+	UTIL_BIT_DEBUG(22, "Bottom Front Left (0x00400000)"),
+	UTIL_BIT_DEBUG(23, "Bottom Front Right (0x00800000)"),
+	UTIL_BIT_DEBUG(24, "Front Left Wide (0x01000000)"),
+	UTIL_BIT_DEBUG(25, "Front Right Wide (0x02000000)"),
+	UTIL_BIT_DEBUG(26, "Left Surround (0x04000000)"),
+	UTIL_BIT_DEBUG(27, "Right Surround (0x08000000)"),
+	UTIL_BIT_DEBUG(28, "RFU (0x10000000)"),
+	UTIL_BIT_DEBUG(29, "RFU (0x20000000)"),
+	UTIL_BIT_DEBUG(30, "RFU (0x40000000)"),
+	UTIL_BIT_DEBUG(31, "RFU (0x80000000)"),
 	{ }
 };
 
@@ -351,7 +354,8 @@ static void debug_location(const struct iovec *frame, util_debug_func_t func,
 
 	util_debug(func, user_data, "Location: 0x%8.8x", value);
 
-	mask = util_debug_bit(value, channel_location_table, func, user_data);
+	mask = util_debug_bit("Location: ", value, channel_location_table,
+				func, user_data);
 	if (mask)
 		util_debug(func, user_data, "Unknown fields (0x%8.8x)", mask);
 
@@ -458,7 +462,7 @@ static void debug_context(const struct iovec *frame, const char *label,
 
 	util_debug(func, user_data, "%s: 0x%4.4x", label, value);
 
-	mask = util_debug_bit(value, pac_context_table, func, user_data);
+	mask = util_debug_bit(label, value, pac_context_table, func, user_data);
 	if (mask)
 		util_debug(func, user_data, "Unknown fields (0x%4.4x)", mask);
 

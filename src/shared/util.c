@@ -139,7 +139,8 @@ void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 }
 
 /* Helper to print debug information of bitfields */
-uint64_t util_debug_bit(uint64_t val, const struct util_bit_debugger *table,
+uint64_t util_debug_bit(const char *label, uint64_t val,
+				const struct util_bit_debugger *table,
 				util_debug_func_t function, void *user_data)
 {
 	uint64_t mask = val;
@@ -147,7 +148,8 @@ uint64_t util_debug_bit(uint64_t val, const struct util_bit_debugger *table,
 
 	for (i = 0; table[i].str; i++) {
 		if (val & (((uint64_t) 1) << table[i].bit)) {
-			util_debug(function, user_data, "%s", table[i].str);
+			util_debug(function, user_data, "%s%s", label,
+							table[i].str);
 			mask &= ~(((uint64_t) 1) << table[i].bit);
 		}
 	}
