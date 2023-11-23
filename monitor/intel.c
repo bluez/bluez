@@ -291,6 +291,7 @@ static const struct intel_version_tlv_desc {
 	{ 47, "SBE Type", print_version_tlv_u8 },
 	{ 48, "OTP BDADDR", print_version_tlv_otp_bdaddr },
 	{ 49, "Unlocked State", print_version_tlv_enabled },
+	{ 50, "Firmware SHA1", print_version_tlv_u32 },
 	{ 0, NULL, NULL },
 };
 
