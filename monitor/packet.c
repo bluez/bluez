@@ -35,6 +35,7 @@
 #include "src/shared/util.h"
 #include "src/shared/btsnoop.h"
 #include "src/shared/queue.h"
+#include "src/shared/bap-debug.h"
 #include "display.h"
 #include "bt.h"
 #include "ll.h"
@@ -3405,20 +3406,6 @@ static void print_uuid128_list(const char *label, const void *data,
 	}
 }
 
-static void *iov_pull(struct iovec *iov, size_t len)
-{
-	void *data;
-
-	if (iov->iov_len < len)
-		return NULL;
-
-	data = iov->iov_base;
-	iov->iov_base += len;
-	iov->iov_len -= len;
-
-	return data;
-}
-
 static void print_ltv(const char *str, void *user_data)
 {
 	const char *label = user_data;
@@ -3435,7 +3422,7 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 	iov.iov_base = (void *) data;
 	iov.iov_len = data_len;
 
-	base_data = iov_pull(&iov, sizeof(*base_data));
+	base_data = util_iov_pull_mem(&iov, sizeof(*base_data));
 	if (!base_data)
 		goto done;
 
@@ -3453,7 +3440,7 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 
 		print_field("    Subgroup #%u:", i);
 
-		subgroup = iov_pull(&iov, sizeof(*subgroup));
+		subgroup = util_iov_pull_mem(&iov, sizeof(*subgroup));
 		if (!subgroup)
 			goto done;
 
@@ -3470,29 +3457,31 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 						subgroup->codec.vid);
 		}
 
-		codec_cfg = iov_pull(&iov, sizeof(*codec_cfg));
+		codec_cfg = util_iov_pull_mem(&iov, sizeof(*codec_cfg));
 		if (!codec_cfg)
 			goto done;
 
-		if (!iov_pull(&iov, codec_cfg->len))
+		if (!util_iov_pull_mem(&iov, codec_cfg->len))
 			goto done;
 
 		label = "    Codec Specific Configuration";
 
-		util_debug_ltv(codec_cfg->data, codec_cfg->len, NULL, 0,
-				print_ltv, (void *)label);
+		bt_bap_debug_config(codec_cfg->data, codec_cfg->len,
+					print_ltv, (void *)label);
 
-		metadata = iov_pull(&iov, sizeof(*metadata));
+		metadata = util_iov_pull_mem(&iov, sizeof(*metadata));
 		if (!metadata)
 			goto done;
 
-		if (!iov_pull(&iov, metadata->len))
+		if (!util_iov_pull(&iov, metadata->len))
 			goto done;
 
 		label = "    Metadata";
 
-		util_debug_ltv(metadata->data, metadata->len, NULL, 0,
-				print_ltv, (void *)label);
+		bt_bap_debug_metadata(metadata->data, metadata->len,
+					print_ltv, (void *)label);
+
+		label = "      Codec Specific Configuration";
 
 		/* Level 3 - BIS(s)*/
 		for (j = 0; j < subgroup->num_bis; j++) {
@@ -3500,21 +3489,21 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 
 			print_field("      BIS #%u:", j);
 
-			bis = iov_pull(&iov, sizeof(*bis));
+			bis = util_iov_pull_mem(&iov, sizeof(*bis));
 			if (!bis)
 				goto done;
 
 			print_field("      Index: %u", bis->index);
 
-			codec_cfg = iov_pull(&iov, sizeof(*codec_cfg));
+			codec_cfg = util_iov_pull_mem(&iov, sizeof(*codec_cfg));
 			if (!codec_cfg)
 				goto done;
 
-			if (!iov_pull(&iov, codec_cfg->len))
+			if (!util_iov_pull(&iov, codec_cfg->len))
 				goto done;
 
-			print_hex_field("      Codec Specific Configuration",
-					codec_cfg->data, codec_cfg->len);
+			bt_bap_debug_config(codec_cfg->data, codec_cfg->len,
+					print_ltv, (void *)label);
 		}
 	}
 
@@ -10443,7 +10432,7 @@ static void num_completed_packets_evt(struct timeval *tv, uint16_t index,
 	const struct bt_hci_evt_num_completed_packets *evt = data;
 	int i;
 
-	iov_pull(&iov, 1);
+	util_iov_pull(&iov, 1);
 
 	print_field("Num handles: %d", evt->num_handles);
 
