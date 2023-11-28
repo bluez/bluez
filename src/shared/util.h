@@ -135,7 +135,7 @@ struct util_ltv_debugger {
 };
 
 bool util_debug_ltv(const uint8_t *data, uint8_t len,
-			struct util_ltv_debugger *debugger, size_t num,
+			const struct util_ltv_debugger *debugger, size_t num,
 			util_debug_func_t function, void *user_data);
 
 unsigned char util_get_dt(const char *parent, const char *name);

@@ -184,7 +184,7 @@ done:
 					user_data);
 }
 
-struct util_ltv_debugger pac_cap_table[] = {
+static const struct util_ltv_debugger pac_cap_table[] = {
 	UTIL_LTV_DEBUG(0x01, pac_debug_freq),
 	UTIL_LTV_DEBUG(0x02, pac_debug_duration),
 	UTIL_LTV_DEBUG(0x03, pac_debug_channels),
@@ -413,7 +413,7 @@ done:
 				user_data);
 }
 
-struct util_ltv_debugger ase_cc_table[] = {
+static const struct util_ltv_debugger ase_cc_table[] = {
 	UTIL_LTV_DEBUG(0x01, ase_debug_freq),
 	UTIL_LTV_DEBUG(0x02, ase_debug_duration),
 	UTIL_LTV_DEBUG(0x03, ase_debug_location),
@@ -527,7 +527,7 @@ done:
 				user_data);
 }
 
-struct util_ltv_debugger ase_metadata_table[] = {
+static const struct util_ltv_debugger ase_metadata_table[] = {
 	UTIL_LTV_DEBUG(0x01, ase_debug_preferred_context),
 	UTIL_LTV_DEBUG(0x02, ase_debug_context),
 	UTIL_LTV_DEBUG(0x03, ase_debug_program_info),

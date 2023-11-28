@@ -157,8 +157,8 @@ uint64_t util_debug_bit(const char *label, uint64_t val,
 	return mask;
 }
 
-static struct util_ltv_debugger*
-ltv_debugger(struct util_ltv_debugger *debugger, size_t num, uint8_t type)
+static const struct util_ltv_debugger*
+ltv_debugger(const struct util_ltv_debugger *debugger, size_t num, uint8_t type)
 {
 	size_t i;
 
@@ -166,7 +166,7 @@ ltv_debugger(struct util_ltv_debugger *debugger, size_t num, uint8_t type)
 		return NULL;
 
 	for (i = 0; i < num; i++) {
-		struct util_ltv_debugger *debug = &debugger[i];
+		const struct util_ltv_debugger *debug = &debugger[i];
 
 		if (debug->type == type)
 			return debug;
@@ -177,7 +177,7 @@ ltv_debugger(struct util_ltv_debugger *debugger, size_t num, uint8_t type)
 
 /* Helper to print debug information of LTV entries */
 bool util_debug_ltv(const uint8_t *data, uint8_t len,
-			struct util_ltv_debugger *debugger, size_t num,
+			const struct util_ltv_debugger *debugger, size_t num,
 			util_debug_func_t function, void *user_data)
 {
 	struct iovec iov;
@@ -188,7 +188,7 @@ bool util_debug_ltv(const uint8_t *data, uint8_t len,
 
 	for (i = 0; iov.iov_len; i++) {
 		uint8_t l, t, *v;
-		struct util_ltv_debugger *debug;
+		const struct util_ltv_debugger *debug;
 
 		if (!util_iov_pull_u8(&iov, &l)) {
 			util_debug(function, user_data,
