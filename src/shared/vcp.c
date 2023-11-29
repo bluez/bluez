@@ -714,7 +714,7 @@ static uint8_t vocs_set_vol_offset(struct bt_vocs *vocs, struct bt_vcp *vcp,
 		DBG(vcp, "error: Value Out of Range");
 		return BT_ATT_ERROR_VALUE_OUT_OF_RANGE;
 	}
-	vstate->vol_offset = req->set_vol_offset;
+	vstate->vol_offset = le16_to_cpu(req->set_vol_offset);
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 
 	gatt_db_attribute_notify(vdb->vocs->vos, (void *)vstate,
@@ -926,13 +926,13 @@ static void vocs_state_read(struct gatt_db_attribute *attrib,
 				void *user_data)
 {
 	struct bt_vocs *vocs = user_data;
-	struct iovec iov;
+	struct vol_offset_state state;
 
-	iov.iov_base = vocs->vostate;
-	iov.iov_len = sizeof(*vocs->vostate);
+	state.vol_offset = cpu_to_le16(vocs->vostate->vol_offset);
+	state.counter = vocs->vostate->counter;
 
-	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
-							iov.iov_len);
+	gatt_db_attribute_read_result(attrib, id, 0, (void *)&state,
+					sizeof(state));
 }
 
 static void vcs_flag_read(struct gatt_db_attribute *attrib,
@@ -958,7 +958,7 @@ static void vocs_voal_read(struct gatt_db_attribute *attrib,
 	struct bt_vocs *vocs = user_data;
 	struct iovec iov;
 
-	iov.iov_base = &vocs->vocs_audio_loc;
+	iov.iov_base = &cpu_to_le32(vocs->vocs_audio_loc);
 	iov.iov_len = sizeof(vocs->vocs_audio_loc);
 
 	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
@@ -1376,8 +1376,8 @@ static void read_vol_offset_state(struct bt_vcp *vcp, bool success,
 		return;
 	}
 
-	DBG(vcp, "Vol Set:%x", vos->vol_offset);
-	DBG(vcp, "Vol Counter:%x", vos->counter);
+	DBG(vcp, "Vol Offset: 0x%04x", le16_to_cpu(vos->vol_offset));
+	DBG(vcp, "Vol Counter: 0x%02x", vos->counter);
 }
 
 static void read_vocs_audio_location(struct bt_vcp *vcp, bool success,
@@ -1386,6 +1386,7 @@ static void read_vocs_audio_location(struct bt_vcp *vcp, bool success,
 				     void *user_data)
 {
 	uint32_t vocs_audio_loc;
+	struct iovec iov;
 
 	if (!value) {
 		DBG(vcp, "Unable to get VOCS Audio Location");
@@ -1398,9 +1399,15 @@ static void read_vocs_audio_location(struct bt_vcp *vcp, bool success,
 		return;
 	}
 
-	memcpy(&vocs_audio_loc, value, length);
+	iov.iov_base = (void *)value;
+	iov.iov_len = length;
 
-	DBG(vcp, "VOCS Audio Loc: %x", vocs_audio_loc);
+	if (!util_iov_pull_le32(&iov, &vocs_audio_loc)) {
+		DBG(vcp, "Invalid size for VOCS Audio Location");
+		return;
+	}
+
+	DBG(vcp, "VOCS Audio Loc: 0x%8x", vocs_audio_loc);
 }
 
 
