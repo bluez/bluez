@@ -147,7 +147,7 @@ static void micp_write_value(struct bt_micp *micp, void *user_data)
 	struct bt_mics *mics = micp_get_mics(micp);
 	uint16_t	value_handle;
 	int ret;
-	const uint16_t value = 0x0001;
+	uint16_t value = cpu_to_le16(0x0001);
 
 	gatt_db_attribute_get_char_data(mics->ms, NULL, &value_handle,
 							NULL, NULL, NULL);
