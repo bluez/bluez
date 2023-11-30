@@ -956,13 +956,12 @@ static void vocs_voal_read(struct gatt_db_attribute *attrib,
 				void *user_data)
 {
 	struct bt_vocs *vocs = user_data;
-	struct iovec iov;
+	uint32_t loc;
 
-	iov.iov_base = &cpu_to_le32(vocs->vocs_audio_loc);
-	iov.iov_len = sizeof(vocs->vocs_audio_loc);
+	loc = cpu_to_le32(vocs->vocs_audio_loc);
 
-	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
-							iov.iov_len);
+	gatt_db_attribute_read_result(attrib, id, 0, (void *)&loc,
+							sizeof(loc));
 }
 
 static void vocs_voaodec_read(struct gatt_db_attribute *attrib,
