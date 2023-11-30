@@ -2146,11 +2146,54 @@ static void test_scc_qos_lc3(void)
 			test_client, &cfg_src_48_6_2, SCC_SRC_48_6_2);
 }
 
+static struct test_config cfg_snk_qos_vs = {
+	.cc = IOV_NULL,
+	.qos = QOS_UCAST,
+	.snk = true,
+	.vs = true,
+	.state = BT_BAP_STREAM_STATE_QOS
+};
+
+#define SCC_SNK_QOS_VS \
+	SCC_SNK_VS, \
+	QOS_SNK(0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, \
+		0x00, 0x00, 0x00)
+
+static struct test_config cfg_src_qos_vs = {
+	.cc = IOV_NULL,
+	.qos = QOS_UCAST,
+	.src = true,
+	.vs = true,
+	.state = BT_BAP_STREAM_STATE_QOS
+};
+
+#define SCC_SRC_QOS_VS \
+	SCC_SRC_VS, \
+	QOS_SRC(0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, \
+		0x00, 0x00, 0x00)
+
+/* Test Purpose:
+ * Verify that a Unicast Client IUT can initiate a Config QoS operation for a
+ * vendor-specific codec.
+ *
+ * Pass verdict:
+ * The IUT successfully writes to the ASE Control Point characteristic with the
+ * opcode set to 0x02 (Config QoS) and the specified parameters.
+ */
+static void test_scc_qos_vs(void)
+{
+	define_test("BAP/UCL/SCC/BV-099-C [UCL SNK Config QoS, VS]",
+			test_client, &cfg_src_qos_vs, SCC_SRC_QOS_VS);
+	define_test("BAP/UCL/SCC/BV-100-C [UCL SRC QoS Codec, VS]",
+			test_client, &cfg_snk_qos_vs, SCC_SNK_QOS_VS);
+}
+
 static void test_scc(void)
 {
 	test_scc_cc_lc3();
 	test_scc_cc_vs();
 	test_scc_qos_lc3();
+	test_scc_qos_vs();
 }
 
 int main(int argc, char *argv[])
