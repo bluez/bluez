@@ -335,12 +335,32 @@ static void test_complete_cb(const void *user_data)
 	tester_test_passed();
 }
 
-static void bap_qos(struct bt_bap_stream *stream,
+static void bap_enable(struct bt_bap_stream *stream,
 					uint8_t code, uint8_t reason,
 					void *user_data)
 {
 	if (code)
 		tester_test_failed();
+}
+
+static void bap_qos(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+
+	if (code) {
+		tester_test_failed();
+		return;
+	}
+
+	if (data->cfg->state > BT_BAP_STREAM_STATE_QOS) {
+		unsigned int qos_id;
+
+		qos_id = bt_bap_stream_enable(data->stream, true, NULL,
+							bap_enable, data);
+		g_assert(qos_id);
+	}
 }
 
 static void bap_config(struct bt_bap_stream *stream,
@@ -2188,12 +2208,82 @@ static void test_scc_qos_vs(void)
 			test_client, &cfg_snk_qos_vs, SCC_SNK_QOS_VS);
 }
 
+static struct test_config cfg_snk_enable = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.state = BT_BAP_STREAM_STATE_ENABLING
+};
+
+/* ATT: Write Command (0x52) len 23
+ *  Handle: 0x0022
+ *    Data: 03010104030201
+ * ATT: Handle Value Notification (0x1b) len 7
+ *  Handle: 0x0022
+ *    Data: 0301010000
+ * ATT: Handle Value Notification (0x1b) len 37
+ *   Handle: 0x0016
+ *     Data: 0101010300403020100
+ */
+#define SCC_SNK_ENABLE \
+	SCC_SNK_16_2_1, \
+	IOV_DATA(0x52, 0x22, 0x00, 0x03, 0x01, 0x01, 0x04, 0x03, 0x02, 0x01, \
+			00), \
+	IOV_DATA(0x1b, 0x22, 0x00, 0x03, 0x01, 0x01, 0x00, 0x00), \
+	IOV_NULL, \
+	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x03, 0x00, 0x00, 0x04, 0x03, 0x02, \
+			0x01, 0x00)
+
+static struct test_config cfg_src_enable = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.src = true,
+	.state = BT_BAP_STREAM_STATE_ENABLING
+};
+
+/* ATT: Write Command (0x52) len 23
+ *  Handle: 0x0022
+ *    Data: 0301030403020100
+ * ATT: Handle Value Notification (0x1b) len 7
+ *  Handle: 0x0022
+ *    Data: 0301030000
+ * ATT: Handle Value Notification (0x1b) len 37
+ *   Handle: 0x001c
+ *     Data: 030300000403020100
+ */
+#define SCC_SRC_ENABLE \
+	SCC_SRC_16_2_1, \
+	IOV_DATA(0x52, 0x22, 0x00, 0x03, 0x01, 0x03, 0x04, 0x03, 0x02, 0x01, \
+			00), \
+	IOV_DATA(0x1b, 0x22, 0x00, 0x03, 0x01, 0x01, 0x00, 0x00), \
+	IOV_NULL, \
+	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x03, 0x00, 0x00, 0x04, 0x03, 0x02, \
+			0x01, 0x00)
+
+/* Test Purpose:
+ * Verify that a Unicast Client IUT can initiate an Enable operation for an ASE
+ * with a Unicast Server that is either in the Audio Sink role or the Audio
+ * Source role.
+ *
+ * Pass verdict:
+ * The IUT successfully writes to the ASE Control Point characteristic with the
+ * opcode set to 0x03 (Enable) and the specified parameters.
+ */
+static void test_scc_enable(void)
+{
+	define_test("BAP/UCL/SCC/BV-101-C [UCL SRC Enable]",
+			test_client, &cfg_snk_enable, SCC_SNK_ENABLE);
+	define_test("BAP/UCL/SCC/BV-102-C [UCL SNK Enable]",
+			test_client, &cfg_src_enable, SCC_SRC_ENABLE);
+}
+
 static void test_scc(void)
 {
 	test_scc_cc_lc3();
 	test_scc_cc_vs();
 	test_scc_qos_lc3();
 	test_scc_qos_vs();
+	test_scc_enable();
 }
 
 int main(int argc, char *argv[])
