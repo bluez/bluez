@@ -40,6 +40,7 @@ struct test_config {
 	bool src;
 	bool vs;
 	uint8_t state;
+	bt_bap_state_func_t state_func;
 };
 
 struct test_data {
@@ -347,17 +348,8 @@ static void bap_start(struct bt_bap_stream *stream,
 					uint8_t code, uint8_t reason,
 					void *user_data)
 {
-	struct test_data *data = user_data;
-	unsigned int id;
-
-	if (code) {
+	if (code)
 		tester_test_failed();
-		return;
-	}
-
-	id = bt_bap_stream_disable(data->stream, true, bap_disable, data);
-
-	g_assert(id);
 }
 
 static void bap_enable(struct bt_bap_stream *stream,
@@ -506,6 +498,10 @@ static void test_client(const void *user_data)
 	bt_bap_set_debug(data->bap, print_debug, "bt_bap:", NULL);
 
 	bt_bap_ready_register(data->bap, bap_ready, data, NULL);
+
+	if (data->cfg && data->cfg->state_func)
+		bt_bap_state_register(data->bap, data->cfg->state_func, NULL,
+						data, NULL);
 
 	bt_bap_attach(data->bap, data->client);
 }
@@ -2371,18 +2367,35 @@ static struct test_config cfg_src_disable = {
 	IOV_DATA(0x52, 0x22, 0x00, 0x05, 0x01, 0x03), \
 	IOV_DATA(0x1b, 0x22, 0x00, 0x05, 0x01, 0x03, 0x00, 0x00), \
 	IOV_NULL, \
-	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x02, 0x00, 0x00, 0x4c, 0x1d, 0x00, \
-			0x00, 0x02, 0x1a, 0x00, 0x02, 0x08, 0x00, 0x40, 0x9c, \
+	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x05, 0x00, 0x00, 0x4c, 0x1d, 0x00, \
+			0x00, 0x02, 0x1a, 0x00, 0x04, 0x08, 0x00, 0x40, 0x9c, \
 			0x00)
 #define SCC_SRC_DISABLE \
 	SCC_SRC_ENABLE, \
 	ASE_SRC_DISABLE
 
+static void state_start_disable(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	uint8_t id;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_STREAMING:
+		id = bt_bap_stream_disable(data->stream, true, bap_disable,
+						data);
+		g_assert(id);
+		break;
+	}
+}
+
 static struct test_config cfg_src_disable_streaming = {
 	.cc = LC3_CONFIG_16_2,
 	.qos = LC3_QOS_16_2_1,
 	.src = true,
-	.state = BT_BAP_STREAM_STATE_STREAMING
+	.state = BT_BAP_STREAM_STATE_STREAMING,
+	.state_func = state_start_disable
 };
 
 /* ATT: Write Command (0x52) len 23
@@ -2427,6 +2440,253 @@ static void test_scc_disable(void)
 			SCC_SRC_DISABLE_STREAMING);
 }
 
+static void bap_release(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	if (code)
+		tester_test_failed();
+}
+
+static void state_cc_release(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	uint8_t id;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_CONFIG:
+		id = bt_bap_stream_release(data->stream, bap_release, data);
+		g_assert(id);
+		break;
+	}
+}
+
+static struct test_config cfg_src_cc_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = QOS_UCAST,
+	.src = true,
+	.state_func = state_cc_release,
+};
+
+/* ATT: Write Command (0x52) len 23
+ *  Handle: 0x0022
+ *    Data: 080103
+ * ATT: Handle Value Notification (0x1b) len 7
+ *  Handle: 0x0022
+ *    Data: 0801030000
+ * ATT: Handle Value Notification (0x1b) len 37
+ *   Handle: 0x001c
+ *     Data: 0300
+ */
+#define ASE_SRC_RELEASE \
+	IOV_DATA(0x52, 0x22, 0x00, 0x08, 0x01, 0x03), \
+	IOV_DATA(0x1b, 0x22, 0x00, 0x08, 0x01, 0x03, 0x00, 0x00), \
+	IOV_NULL, \
+	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x00)
+
+#define SCC_SRC_CC_RELEASE \
+	SCC_SRC_16_2, \
+	ASE_SRC_RELEASE
+
+static struct test_config cfg_snk_cc_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = QOS_UCAST,
+	.snk = true,
+	.state_func = state_cc_release,
+};
+
+/* ATT: Write Command (0x52) len 23
+ *  Handle: 0x0022
+ *    Data: 080101
+ * ATT: Handle Value Notification (0x1b) len 7
+ *  Handle: 0x0022
+ *    Data: 0801010000
+ * ATT: Handle Value Notification (0x1b) len 37
+ *   Handle: 0x0016
+ *     Data: 0300
+ */
+#define ASE_SNK_RELEASE \
+	IOV_DATA(0x52, 0x22, 0x00, 0x08, 0x01, 0x01), \
+	IOV_DATA(0x1b, 0x22, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00), \
+	IOV_NULL, \
+	IOV_DATA(0x1b, 0x16, 0x00, 0x03, 0x00)
+
+#define SCC_SNK_CC_RELEASE \
+	SCC_SNK_16_2, \
+	ASE_SNK_RELEASE
+
+static void state_qos_release(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	uint8_t id;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_QOS:
+		id = bt_bap_stream_release(data->stream, bap_release, data);
+		g_assert(id);
+		break;
+	}
+}
+
+static struct test_config cfg_src_qos_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.src = true,
+	.state = BT_BAP_STREAM_STATE_QOS,
+	.state_func = state_qos_release,
+};
+
+#define SCC_SRC_QOS_RELEASE \
+	SCC_SRC_16_2_1, \
+	ASE_SRC_RELEASE
+
+static struct test_config cfg_snk_qos_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.state = BT_BAP_STREAM_STATE_QOS,
+	.state_func = state_qos_release,
+};
+
+#define SCC_SNK_QOS_RELEASE \
+	SCC_SNK_16_2_1, \
+	ASE_SNK_RELEASE
+
+static void state_enable_release(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	uint8_t id;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+		id = bt_bap_stream_release(data->stream, bap_release, data);
+		g_assert(id);
+		break;
+	}
+}
+
+static struct test_config cfg_src_enable_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.src = true,
+	.state = BT_BAP_STREAM_STATE_ENABLING,
+	.state_func = state_enable_release,
+};
+
+#define SCC_SRC_ENABLE_RELEASE \
+	SCC_SRC_ENABLE, \
+	ASE_SRC_RELEASE
+
+static struct test_config cfg_snk_enable_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.state = BT_BAP_STREAM_STATE_ENABLING,
+	.state_func = state_enable_release,
+};
+
+#define SCC_SNK_ENABLE_RELEASE \
+	SCC_SNK_ENABLE, \
+	ASE_SNK_RELEASE
+
+static void state_start_release(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	uint8_t id;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_STREAMING:
+		id = bt_bap_stream_release(data->stream, bap_release, data);
+		g_assert(id);
+		break;
+	}
+}
+
+static struct test_config cfg_src_start_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.src = true,
+	.state = BT_BAP_STREAM_STATE_STREAMING,
+	.state_func = state_start_release,
+};
+
+#define SCC_SRC_START_RELEASE \
+	SCC_SRC_ENABLE, \
+	ASE_SRC_START, \
+	ASE_SRC_RELEASE
+
+static void state_disable_release(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	uint8_t id;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_DISABLING:
+		id = bt_bap_stream_release(data->stream, bap_release, data);
+		g_assert(id);
+		break;
+	}
+}
+
+static struct test_config cfg_src_disable_release = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.src = true,
+	.state = BT_BAP_STREAM_STATE_DISABLING,
+	.state_func = state_disable_release,
+};
+
+#define SCC_SRC_DISABLE_RELEASE \
+	SCC_SRC_DISABLE, \
+	ASE_SRC_RELEASE
+
+/* Test Purpose:
+ * Verify that a Unicast Client IUT can release an ASE by initiating a Release
+ * operation.
+ *
+ * Pass verdict:
+ * The IUT successfully writes to the ASE Control Point characteristic with the
+ * opcode set to 0x08 (Release) and the specified parameters.
+ */
+static void test_scc_release(void)
+{
+	define_test("BAP/UCL/SCC/BV-106-C [UCL SNK Release in Codec Configured"
+			" state]",
+			test_client, &cfg_src_cc_release, SCC_SRC_CC_RELEASE);
+	define_test("BAP/UCL/SCC/BV-107-C [UCL SRC Release in Codec Configured"
+			" state]",
+			test_client, &cfg_snk_cc_release, SCC_SNK_CC_RELEASE);
+	define_test("BAP/UCL/SCC/BV-108-C [UCL SNK Release in QoS Configured"
+			" state]",
+			test_client, &cfg_src_qos_release, SCC_SRC_QOS_RELEASE);
+	define_test("BAP/UCL/SCC/BV-109-C [UCL SRC Release in QoS Configured"
+			" state]",
+			test_client, &cfg_snk_qos_release, SCC_SNK_QOS_RELEASE);
+	define_test("BAP/UCL/SCC/BV-110-C [UCL SNK Release in Enabling state]",
+			test_client, &cfg_src_enable_release,
+			SCC_SRC_ENABLE_RELEASE);
+	define_test("BAP/UCL/SCC/BV-111-C [UCL SRC Release in Enabling or"
+			" Streaming state]",
+			test_client, &cfg_snk_enable_release,
+			SCC_SNK_ENABLE_RELEASE);
+	define_test("BAP/UCL/SCC/BV-112-C [UCL SNK Release in Streaming state]",
+			test_client, &cfg_src_start_release,
+			SCC_SRC_START_RELEASE);
+	define_test("BAP/UCL/SCC/BV-113-C [UCL SNK Release in Disabling state]",
+			test_client, &cfg_src_disable_release,
+			SCC_SRC_DISABLE_RELEASE);
+}
+
 static void test_scc(void)
 {
 	test_scc_cc_lc3();
@@ -2435,6 +2695,7 @@ static void test_scc(void)
 	test_scc_qos_vs();
 	test_scc_enable();
 	test_scc_disable();
+	test_scc_release();
 }
 
 int main(int argc, char *argv[])
