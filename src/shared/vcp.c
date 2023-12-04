@@ -709,13 +709,16 @@ static uint8_t vocs_set_vol_offset(struct bt_vocs *vocs, struct bt_vcp *vcp,
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
 	}
 
-	if (req->set_vol_offset > VOCS_VOL_OFFSET_UPPER_LIMIT ||
-		req->set_vol_offset < VOCS_VOL_OFFSET_LOWER_LIMIT) {
+	vstate->vol_offset = le16_to_cpu(req->set_vol_offset);
+
+	if (vstate->vol_offset > VOCS_VOL_OFFSET_UPPER_LIMIT ||
+		vstate->vol_offset < VOCS_VOL_OFFSET_LOWER_LIMIT) {
 		DBG(vcp, "error: Value Out of Range");
 		return BT_ATT_ERROR_VALUE_OUT_OF_RANGE;
 	}
-	vstate->vol_offset = le16_to_cpu(req->set_vol_offset);
-	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+
+	/* Increment Change Counter */
+	vstate->counter = -~vstate->counter;
 
 	gatt_db_attribute_notify(vdb->vocs->vos, (void *)vstate,
 				 sizeof(struct vol_offset_state),
