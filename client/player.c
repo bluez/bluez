@@ -2813,17 +2813,13 @@ static void endpoint_auto_accept(const char *input, void *user_data)
 		return;
 	} else if (!strcasecmp(input, "n") || !strcasecmp(input, "no")) {
 		ep->auto_accept = false;
+		bt_shell_prompt_input(ep->path, "Max Transports (auto/value):",
+						endpoint_max_transports, ep);
+		return;
 	} else {
 		bt_shell_printf("Invalid input for Auto Accept\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
-
-	if (ep->broadcast)
-		bt_shell_prompt_input(ep->path, "BIG (auto/value):",
-					endpoint_iso_group, ep);
-	else
-		bt_shell_prompt_input(ep->path, "CIG (auto/value):",
-					endpoint_iso_group, ep);
 }
 
 static void endpoint_set_metadata(const char *input, void *user_data)
