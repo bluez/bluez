@@ -1918,7 +1918,9 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 			bap_create_io(data, ep, stream, true);
 			if (!ep->io) {
 				error("Unable to create io");
-				bt_bap_stream_release(stream, NULL, NULL);
+				if (old_state != BT_BAP_STREAM_STATE_RELEASING)
+					bt_bap_stream_release(stream, NULL,
+								NULL);
 				return;
 			}
 
