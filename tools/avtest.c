@@ -188,7 +188,8 @@ static void dump_buffer(const unsigned char *buf, int len)
 }
 
 static void process_avdtp(int srv_sk, int sk, unsigned char reject,
-								int fragment)
+								int fragment,
+								int reject_code)
 {
 	unsigned char buf[672];
 	ssize_t len;
@@ -284,7 +285,8 @@ static void process_avdtp(int srv_sk, int sk, unsigned char reject,
 			if (reject == AVDTP_SET_CONFIGURATION) {
 				hdr->message_type = AVDTP_MSG_TYPE_REJECT;
 				buf[2] = buf[4];
-				buf[3] = 0x13; /* SEP In Use */
+				buf[3] = reject_code ? reject_code :
+							0x13; /* SEP In Use */
 				printf("Rejecting set configuration command\n");
 				len = write(sk, buf, 4);
 			} else {
@@ -443,7 +445,8 @@ static int set_minimum_mtu(int sk)
 	return 0;
 }
 
-static void do_listen(const bdaddr_t *src, unsigned char reject, int fragment)
+static void do_listen(const bdaddr_t *src, unsigned char reject, int fragment,
+							int reject_code)
 {
 	struct sockaddr_l2 addr;
 	socklen_t optlen;
@@ -483,7 +486,7 @@ static void do_listen(const bdaddr_t *src, unsigned char reject, int fragment)
 			continue;
 		}
 
-		process_avdtp(sk, nsk, reject, fragment);
+		process_avdtp(sk, nsk, reject, fragment, reject_code);
 
 		if (media_sock >= 0) {
 			close(media_sock);
@@ -709,6 +712,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t--device <hcidev>    HCI device\n"
 		"\t--reject <command>   Reject command\n"
+		"\t--reject-code <code> Reject code to use\n"
 		"\t--send <command>     Send command\n"
 		"\t--preconf            Configure stream before actual command\n"
 		"\t--wait <N>           Wait N seconds before exiting\n"
@@ -720,6 +724,7 @@ static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "device",	1, 0, 'i' },
 	{ "reject",	1, 0, 'r' },
+	{ "reject-code",	1, 0, 'R' },
 	{ "send",	1, 0, 's' },
 	{ "invalid",	1, 0, 'f' },
 	{ "preconf",	0, 0, 'c' },
@@ -764,12 +769,12 @@ int main(int argc, char *argv[])
 	unsigned char cmd = 0x00;
 	bdaddr_t src, dst;
 	int opt, mode = MODE_NONE, sk, invalid = 0, preconf = 0, fragment = 0;
-	int avctp = 0, wait_before_exit = 0;
+	int avctp = 0, wait_before_exit = 0, reject_code = 0;
 
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcFCw:",
+	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcFCw:R:",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -809,6 +814,10 @@ int main(int argc, char *argv[])
 			wait_before_exit = atoi(optarg);
 			break;
 
+		case 'R':
+			reject_code = atoi(optarg);
+			break;
+
 		case 'h':
 		default:
 			usage();
@@ -826,7 +835,7 @@ int main(int argc, char *argv[])
 
 	switch (mode) {
 	case MODE_REJECT:
-		do_listen(&src, cmd, fragment);
+		do_listen(&src, cmd, fragment, reject_code);
 		break;
 	case MODE_SEND:
 		sk = do_connect(&src, &dst, avctp, fragment);
