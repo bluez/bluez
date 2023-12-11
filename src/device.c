@@ -4472,6 +4472,9 @@ void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 	device->le = true;
 	device->bdaddr_type = bdaddr_type;
 
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "AddressType");
+
 	store_device_info(device);
 }
 
