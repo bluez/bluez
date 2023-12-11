@@ -683,7 +683,7 @@ static uint8_t vocs_set_vol_offset(struct bt_vocs *vocs, struct bt_vcp *vcp,
 				struct iovec *iov)
 {
 	struct bt_vcp_db *vdb;
-	struct vol_offset_state *vstate;
+	struct vol_offset_state *vstate, state;
 	struct bt_vocs_set_vol_off *req;
 
 	DBG(vcp, "Set Volume Offset");
@@ -720,9 +720,13 @@ static uint8_t vocs_set_vol_offset(struct bt_vocs *vocs, struct bt_vcp *vcp,
 	/* Increment Change Counter */
 	vstate->counter = -~vstate->counter;
 
-	gatt_db_attribute_notify(vdb->vocs->vos, (void *)vstate,
-				 sizeof(struct vol_offset_state),
+	/* Notify change */
+	state.vol_offset = req->set_vol_offset;
+	state.counter = vstate->counter;
+
+	gatt_db_attribute_notify(vdb->vocs->vos, (void *)&state, sizeof(state),
 				 bt_vcp_get_att(vcp));
+
 	return 0;
 }
 
