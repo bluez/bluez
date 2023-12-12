@@ -4286,10 +4286,26 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 				 */
 				index_list[index].msft_opcode = 0xFC1E;
 				break;
+			case 29:
+				/*
+				 * Qualcomm controllers that support the
+				 * Microsoft vendor extensions are using
+				 * 0xFD70 for VsMsftOpCode.
+				 */
+				index_list[index].msft_opcode = 0xFD70;
+				break;
+			case 70:
+				/*
+				 * Mediatek controllers that support the
+				 * Microsoft vendor extensions are using
+				 * 0xFD30 for VsMsftOpCode.
+				 */
+				index_list[index].msft_opcode = 0xFD30;
+				break;
 			case 93:
 				/*
 				 * Realtek controllers that support the
-				 * Microsoft vendor extenions are using
+				 * Microsoft vendor extensions are using
 				 * 0xFCF0 for VsMsftOpCode.
 				 */
 				index_list[index].msft_opcode = 0xFCF0;
@@ -4298,7 +4314,7 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 				/*
 				 * Emulator controllers use Linux Foundation as
 				 * manufacturer and support the
-				 * Microsoft vendor extenions using
+				 * Microsoft vendor extensions using
 				 * 0xFC1E for VsMsftOpCode.
 				 */
 				index_list[index].msft_opcode = 0xFC1E;
