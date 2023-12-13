@@ -1,3 +1,8 @@
+ver 5.71:
+	Fix issue with not registering CSIS service.
+	Fix issue with registering pairing callbacks.
+	Fix issue with corruption during discovery filter parsing.
+
 ver 5.70:
 	Fix issue with not sending GATT confirmations.
 	Fix issue with not handling initiator properly.
