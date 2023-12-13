@@ -4374,7 +4374,7 @@ static int transport_send_seq(struct transport *transport, int fd, uint32_t num)
 		bt_shell_echo("[seq %d %d.%03ds] send: %zd/%zd bytes",
 				transport->seq, secs,
 				(nsecs + 500000) / 1000000,
-				offset, transport->stat.st_size);
+				(size_t) offset, (size_t) transport->stat.st_size);
 	}
 
 	free(buf);
