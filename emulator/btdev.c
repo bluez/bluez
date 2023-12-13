@@ -6223,7 +6223,7 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 	int i;
 	struct bt_hci_evt_le_big_complete evt;
 	uint16_t *bis_handle;
-	uint8_t *pdu;
+	uint16_t *pdu;
 	uint8_t pdu_len;
 
 	pdu_len = sizeof(evt) + cmd->num_bis * sizeof(*bis_handle);
