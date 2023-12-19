@@ -849,10 +849,16 @@ static void prompt_input(const char *input, void *user_data)
 								&prompt.addr);
 		break;
 	case MGMT_EV_USER_CONFIRM_REQUEST:
-		if (input[0] == 'y' || input[0] == 'Y')
-			mgmt_confirm_reply(prompt.index, &prompt.addr);
-		else
+		if (len) {
+			if (input[0] == 'y' || input[0] == 'Y')
+				mgmt_confirm_reply(prompt.index, &prompt.addr);
+			else
+				mgmt_confirm_neg_reply(prompt.index,
+						&prompt.addr);
+		} else {
 			mgmt_confirm_neg_reply(prompt.index, &prompt.addr);
+			bt_shell_set_prompt(PROMPT_ON);
+		}
 		break;
 	}
 }

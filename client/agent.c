@@ -77,14 +77,17 @@ static void confirm_response(const char *input, void *user_data)
 {
 	DBusConnection *conn = user_data;
 
-	if (!strcmp(input, "yes"))
-		g_dbus_send_reply(conn, pending_message, DBUS_TYPE_INVALID);
-	else if (!strcmp(input, "no"))
-		g_dbus_send_error(conn, pending_message,
+	if (pending_message != NULL) {
+		if (!strcmp(input, "yes"))
+			g_dbus_send_reply(conn, pending_message,
+					DBUS_TYPE_INVALID);
+		else if (!strcmp(input, "no"))
+			g_dbus_send_error(conn, pending_message,
 					"org.bluez.Error.Rejected", NULL);
-	else
-		g_dbus_send_error(conn, pending_message,
+		else
+			g_dbus_send_error(conn, pending_message,
 					"org.bluez.Error.Canceled", NULL);
+	}
 }
 
 static void agent_release(DBusConnection *conn)
