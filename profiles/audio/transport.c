@@ -643,7 +643,6 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 {
 	struct media_transport *transport = data;
 	struct media_owner *owner = transport->owner;
-	struct bap_transport *bap = transport->data;
 	const char *sender;
 	struct media_request *req;
 	guint id;
@@ -674,11 +673,6 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 
 	req = media_request_create(msg, id);
 	media_owner_add(owner, req);
-
-	if (bt_bap_stream_get_type(bap->stream) ==
-			BT_BAP_STREAM_TYPE_BCAST) {
-		bap_disable_complete(bap->stream, 0x00, 0x00, owner);
-	}
 
 	return NULL;
 }
@@ -1416,6 +1410,7 @@ static guint suspend_bap(struct media_transport *transport,
 {
 	struct bap_transport *bap = transport->data;
 	bt_bap_stream_func_t func = NULL;
+	guint id;
 
 	if (!bap->stream)
 		return 0;
@@ -1427,7 +1422,14 @@ static guint suspend_bap(struct media_transport *transport,
 
 	bap_update_links(transport);
 
-	return bt_bap_stream_disable(bap->stream, bap->linked, func, owner);
+	id = bt_bap_stream_disable(bap->stream, bap->linked, func, owner);
+
+	if (bt_bap_stream_get_type(bap->stream) == BT_BAP_STREAM_TYPE_BCAST) {
+		bap_disable_complete(bap->stream, 0x00, 0x00, owner);
+		return 0;
+	}
+
+	return id;
 }
 
 static void cancel_bap(struct media_transport *transport, guint id)
