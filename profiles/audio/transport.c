@@ -93,6 +93,10 @@ struct bap_transport {
 struct media_transport_ops {
 	const char *uuid;
 	const GDBusPropertyTable *properties;
+	void (*set_owner)(struct media_transport *transport,
+				struct media_owner *owner);
+	void (*remove_owner)(struct media_transport *transport,
+				struct media_owner *owner);
 	void *(*init)(struct media_transport *transport, void *stream);
 	guint (*resume)(struct media_transport *transport,
 				struct media_owner *owner);
@@ -310,10 +314,22 @@ static guint media_transport_suspend(struct media_transport *transport,
 	return 0;
 }
 
+static void transport_bap_remove_owner(struct media_transport *transport,
+					struct media_owner *owner)
+{
+	struct bap_transport *bap = transport->data;
+
+	if (bap && bap->linked) {
+		struct bt_bap_stream *link;
+
+		link = bt_bap_stream_io_get_link(bap->stream);
+		linked_transport_remove_owner(link, owner);
+	}
+}
+
 static void media_transport_remove_owner(struct media_transport *transport)
 {
 	struct media_owner *owner = transport->owner;
-	struct bap_transport *bap = transport->data;
 
 	if (!transport->owner)
 		return;
@@ -325,12 +341,9 @@ static void media_transport_remove_owner(struct media_transport *transport)
 		media_request_reply(owner->pending, EIO);
 
 	transport->owner = NULL;
-	if (bap && bap->linked) {
-		struct bt_bap_stream *link;
 
-		link = bt_bap_stream_io_get_link(bap->stream);
-		linked_transport_remove_owner(link, owner);
-	}
+	if (transport->ops && transport->ops->remove_owner)
+		transport->ops->remove_owner(transport, owner);
 
 	if (owner->watch)
 		g_dbus_remove_watch(btd_get_dbus_connection(), owner->watch);
@@ -541,20 +554,27 @@ static void linked_transport_set_owner(void *data, void *user_data)
 	transport->owner = owner;
 }
 
-static void media_transport_set_owner(struct media_transport *transport,
+static void transport_bap_set_owner(struct media_transport *transport,
 					struct media_owner *owner)
 {
 	struct bap_transport *bap = transport->data;
 
-	DBG("Transport %s Owner %s", transport->path, owner->name);
-	transport->owner = owner;
-
-	if (bap->linked) {
+	if (bap && bap->linked) {
 		struct bt_bap_stream *link;
 
 		link = bt_bap_stream_io_get_link(bap->stream);
 		linked_transport_set_owner(link, owner);
 	}
+}
+
+static void media_transport_set_owner(struct media_transport *transport,
+					struct media_owner *owner)
+{
+	DBG("Transport %s Owner %s", transport->path, owner->name);
+	transport->owner = owner;
+
+	if (transport->ops && transport->ops->set_owner)
+		transport->ops->set_owner(transport, owner);
 
 	owner->transport = transport;
 	owner->watch = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
@@ -1688,12 +1708,14 @@ static void *transport_bap_init(struct media_transport *transport, void *stream)
 	return bap;
 }
 
-#define TRANSPORT_OPS(_uuid, _props, _init, _resume, _suspend, _cancel, \
-		      _set_state, _get_stream, _get_volume, _set_volume, \
-		      _destroy) \
+#define TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner, _init, \
+		      _resume, _suspend, _cancel, _set_state, _get_stream, \
+		      _get_volume, _set_volume, _destroy) \
 { \
 	.uuid = _uuid, \
 	.properties = _props, \
+	.set_owner = _set_owner, \
+	.remove_owner = _remove_owner, \
 	.init = _init, \
 	.resume = _resume, \
 	.suspend = _suspend, \
@@ -1706,24 +1728,26 @@ static void *transport_bap_init(struct media_transport *transport, void *stream)
 }
 
 #define A2DP_OPS(_uuid, _init, _set_volume, _destroy) \
-	TRANSPORT_OPS(_uuid, transport_a2dp_properties, _init, \
+	TRANSPORT_OPS(_uuid, transport_a2dp_properties, NULL, NULL, _init, \
 			transport_a2dp_resume, transport_a2dp_suspend, \
 			transport_a2dp_cancel, NULL, NULL, \
 			transport_a2dp_get_volume, _set_volume, \
 			_destroy)
 
-#define BAP_OPS(_uuid, _props) \
-	TRANSPORT_OPS(_uuid, _props, transport_bap_init, \
+#define BAP_OPS(_uuid, _props, _set_owner, _remove_owner) \
+	TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner,\
+			transport_bap_init, \
 			transport_bap_resume, transport_bap_suspend, \
 			transport_bap_cancel, transport_bap_set_state, \
 			transport_bap_get_stream, NULL, NULL, \
 			transport_bap_destroy)
 
 #define BAP_UC_OPS(_uuid) \
-	BAP_OPS(_uuid, transport_bap_uc_properties)
+	BAP_OPS(_uuid, transport_bap_uc_properties, \
+			transport_bap_set_owner, transport_bap_remove_owner)
 
 #define BAP_BC_OPS(_uuid) \
-	BAP_OPS(_uuid, transport_bap_bc_properties)
+	BAP_OPS(_uuid, transport_bap_bc_properties, NULL, NULL)
 
 static struct media_transport_ops transport_ops[] = {
 	A2DP_OPS(A2DP_SOURCE_UUID, transport_a2dp_src_init,
