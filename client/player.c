@@ -1860,7 +1860,7 @@ struct endpoint_config {
 	struct iovec *caps;
 	struct iovec *meta;
 	uint8_t target_latency;
-	const struct codec_qos *qos;
+	struct codec_qos qos;
 };
 
 #define BCODE {0x01, 0x02, 0x68, 0x05, 0x53, 0xf1, 0x41, 0x5a, \
@@ -1886,7 +1886,7 @@ static struct bt_iso_qos bcast_qos = {
 
 static void append_io_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 {
-	struct codec_qos *qos = (void *)cfg->qos;
+	struct codec_qos *qos = &cfg->qos;
 
 	bt_shell_printf("Interval %u\n", qos->interval);
 
@@ -1897,7 +1897,7 @@ static void append_io_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 
 	g_dbus_dict_append_entry(iter, "PHY", DBUS_TYPE_BYTE, &qos->phy);
 
-	bt_shell_printf("SDU %u\n", cfg->qos->sdu);
+	bt_shell_printf("SDU %u\n", qos->sdu);
 
 	g_dbus_dict_append_entry(iter, "SDU", DBUS_TYPE_UINT16, &qos->sdu);
 
@@ -1914,7 +1914,7 @@ static void append_io_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 
 static void append_ucast_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 {
-	struct codec_qos *qos = (void *)cfg->qos;
+	struct codec_qos *qos = &cfg->qos;
 
 	if (cfg->ep->iso_group != BT_ISO_QOS_GROUP_UNSET) {
 		bt_shell_printf("CIG 0x%2.2x\n", cfg->ep->iso_group);
@@ -2020,7 +2020,7 @@ static void append_bcast_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 static void append_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 {
 	DBusMessageIter entry, var, dict;
-	struct codec_qos *qos = (void *)cfg->qos;
+	struct codec_qos *qos = &cfg->qos;
 	const char *key = "QoS";
 
 	if (!qos)
@@ -2104,7 +2104,8 @@ static struct iovec *iov_append(struct iovec **iov, const void *data,
 	return *iov;
 }
 
-static int parse_chan_alloc(DBusMessageIter *iter, uint32_t *location)
+static int parse_chan_alloc(DBusMessageIter *iter, uint32_t *location,
+						uint8_t *channels)
 {
 	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
 		const char *key;
@@ -2123,6 +2124,8 @@ static int parse_chan_alloc(DBusMessageIter *iter, uint32_t *location)
 			if (var != DBUS_TYPE_UINT32)
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value, location);
+			if (*channels)
+				*channels = __builtin_popcount(*location);
 			return 0;
 		}
 
@@ -2140,6 +2143,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	DBusMessageIter iter, props;
 	struct endpoint_config *cfg;
 	uint32_t location = 0;
+	uint8_t channels = 1;
 
 	if (!preset)
 		return NULL;
@@ -2158,7 +2162,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &props);
 
-	if (!parse_chan_alloc(&props, &location)) {
+	if (!parse_chan_alloc(&props, &location, &channels)) {
 		uint8_t chan_alloc_ltv[] = {
 			0x05, LC3_CONFIG_CHAN_ALLOC, location & 0xff,
 			location >> 8, location >> 16, location >> 24
@@ -2171,9 +2175,15 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	if (ep->meta)
 		iov_append(&cfg->meta, ep->meta->iov_base, ep->meta->iov_len);
 
-	if (preset->qos.phy)
+	if (preset->qos.phy) {
 		/* Set QoS parameters */
-		cfg->qos = &preset->qos;
+		cfg->qos = preset->qos;
+		/* Adjust the SDU size based on the number of
+		 * locations/channels that is being requested.
+		 */
+		if (channels > 1)
+			cfg->qos.sdu *= channels;
+	}
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -3177,7 +3187,7 @@ static void cmd_config_endpoint(int argc, char *argv[])
 		}
 
 		/* Set QoS parameters */
-		cfg->qos = &preset->qos;
+		cfg->qos = preset->qos;
 
 		endpoint_set_config(cfg);
 		return;
