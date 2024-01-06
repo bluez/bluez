@@ -53,6 +53,7 @@ static GSList *transports = NULL;
 
 static gboolean option_version = FALSE;
 static gboolean option_export = FALSE;
+static gchar *option_target = NULL;
 
 struct tracklist {
 	GDBusProxy *proxy;
@@ -428,6 +429,11 @@ static void add_player(DBusConnection *conn, const char *name,
 	if (!adapter)
 		return;
 
+	if (option_target && strcmp(name, option_target)) {
+		printf("Not the target player, skipped\n");
+		return;
+	}
+
 	player = find_player_by_bus_name(name);
 	if (player == NULL) {
 		reply = get_all(conn, name);
@@ -733,6 +739,8 @@ static GOptionEntry options[] = {
 				"Show version information and exit" },
 	{ "export", 'e', 0, G_OPTION_ARG_NONE, &option_export,
 				"Export remote players" },
+	{ "target", 't', 0, G_OPTION_ARG_STRING, &option_target,
+				"Target a specific player" },
 	{ NULL },
 };
 
