@@ -286,7 +286,6 @@ struct in_buf {
 	gboolean active;
 	int no_of_packets;
 	uint8_t transaction;
-	uint8_t message_type;
 	uint8_t signal_id;
 	uint8_t buf[1024];
 	uint8_t data_size;
@@ -397,7 +396,8 @@ struct avdtp {
 	uint16_t imtu;
 	uint16_t omtu;
 
-	struct in_buf in;
+	struct in_buf in_resp;
+	struct in_buf in_cmd;
 
 	char *buf;
 
@@ -1462,15 +1462,16 @@ static void setconf_cb(struct avdtp *session, struct avdtp_stream *stream,
 	if (err != NULL) {
 		rej.error = AVDTP_UNSUPPORTED_CONFIGURATION;
 		rej.category = err->err.error_code;
-		avdtp_send(session, session->in.transaction,
-				AVDTP_MSG_TYPE_REJECT, AVDTP_SET_CONFIGURATION,
-				&rej, sizeof(rej));
+		avdtp_send(session, session->in_cmd.transaction,
+			   AVDTP_MSG_TYPE_REJECT, AVDTP_SET_CONFIGURATION,
+			   &rej, sizeof(rej));
 		stream_free(stream);
 		return;
 	}
 
-	if (!avdtp_send(session, session->in.transaction, AVDTP_MSG_TYPE_ACCEPT,
-					AVDTP_SET_CONFIGURATION, NULL, 0)) {
+	if (!avdtp_send(session, session->in_cmd.transaction,
+			AVDTP_MSG_TYPE_ACCEPT,
+			AVDTP_SET_CONFIGURATION, NULL, 0)) {
 		stream_free(stream);
 		return;
 	}
@@ -2092,6 +2093,12 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 	struct avdtp_start_header *start = (void *) session->buf;
 	void *payload;
 	gsize payload_size;
+	struct in_buf *in;
+
+	if (header->message_type == AVDTP_MSG_TYPE_COMMAND)
+		in = &session->in_cmd;
+	else
+		in = &session->in_resp;
 
 	switch (header->packet_type) {
 	case AVDTP_PKT_TYPE_SINGLE:
@@ -2099,7 +2106,7 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 			error("Received too small single packet (%zu bytes)", size);
 			return PARSE_ERROR;
 		}
-		if (session->in.active) {
+		if (in->active) {
 			error("SINGLE: Invalid AVDTP packet fragmentation");
 			return PARSE_ERROR;
 		}
@@ -2107,12 +2114,11 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 		payload = session->buf + sizeof(*single);
 		payload_size = size - sizeof(*single);
 
-		session->in.active = TRUE;
-		session->in.data_size = 0;
-		session->in.no_of_packets = 1;
-		session->in.transaction = header->transaction;
-		session->in.message_type = header->message_type;
-		session->in.signal_id = single->signal_id;
+		in->active = TRUE;
+		in->data_size = 0;
+		in->no_of_packets = 1;
+		in->transaction = header->transaction;
+		in->signal_id = single->signal_id;
 
 		break;
 	case AVDTP_PKT_TYPE_START:
@@ -2120,17 +2126,16 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 			error("Received too small start packet (%zu bytes)", size);
 			return PARSE_ERROR;
 		}
-		if (session->in.active) {
+		if (in->active) {
 			error("START: Invalid AVDTP packet fragmentation");
 			return PARSE_ERROR;
 		}
 
-		session->in.active = TRUE;
-		session->in.data_size = 0;
-		session->in.transaction = header->transaction;
-		session->in.message_type = header->message_type;
-		session->in.no_of_packets = start->no_of_packets;
-		session->in.signal_id = start->signal_id;
+		in->active = TRUE;
+		in->data_size = 0;
+		in->transaction = header->transaction;
+		in->no_of_packets = start->no_of_packets;
+		in->signal_id = start->signal_id;
 
 		payload = session->buf + sizeof(*start);
 		payload_size = size - sizeof(*start);
@@ -2142,15 +2147,15 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 									size);
 			return PARSE_ERROR;
 		}
-		if (!session->in.active) {
+		if (!in->active) {
 			error("CONTINUE: Invalid AVDTP packet fragmentation");
 			return PARSE_ERROR;
 		}
-		if (session->in.transaction != header->transaction) {
+		if (in->transaction != header->transaction) {
 			error("Continue transaction id doesn't match");
 			return PARSE_ERROR;
 		}
-		if (session->in.no_of_packets <= 1) {
+		if (in->no_of_packets <= 1) {
 			error("Too few continue packets");
 			return PARSE_ERROR;
 		}
@@ -2164,15 +2169,15 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 			error("Received too small end packet (%zu bytes)", size);
 			return PARSE_ERROR;
 		}
-		if (!session->in.active) {
+		if (!in->active) {
 			error("END: Invalid AVDTP packet fragmentation");
 			return PARSE_ERROR;
 		}
-		if (session->in.transaction != header->transaction) {
+		if (in->transaction != header->transaction) {
 			error("End transaction id doesn't match");
 			return PARSE_ERROR;
 		}
-		if (session->in.no_of_packets > 1) {
+		if (in->no_of_packets > 1) {
 			error("Got an end packet too early");
 			return PARSE_ERROR;
 		}
@@ -2186,23 +2191,23 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 		return PARSE_ERROR;
 	}
 
-	if (session->in.data_size + payload_size >
-					sizeof(session->in.buf)) {
+	if (in->data_size + payload_size >
+					sizeof(in->buf)) {
 		error("Not enough incoming buffer space!");
 		return PARSE_ERROR;
 	}
 
-	memcpy(session->in.buf + session->in.data_size, payload, payload_size);
-	session->in.data_size += payload_size;
+	memcpy(in->buf + in->data_size, payload, payload_size);
+	in->data_size += payload_size;
 
-	if (session->in.no_of_packets > 1) {
-		session->in.no_of_packets--;
+	if (in->no_of_packets > 1) {
+		in->no_of_packets--;
 		DBG("Received AVDTP fragment. %d to go",
-						session->in.no_of_packets);
+						in->no_of_packets);
 		return PARSE_FRAGMENT;
 	}
 
-	session->in.active = FALSE;
+	in->active = FALSE;
 
 	return PARSE_SUCCESS;
 }
@@ -2246,11 +2251,11 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 		break;
 	}
 
-	if (session->in.message_type == AVDTP_MSG_TYPE_COMMAND) {
-		if (!avdtp_parse_cmd(session, session->in.transaction,
-					session->in.signal_id,
-					session->in.buf,
-					session->in.data_size)) {
+	if (header->message_type == AVDTP_MSG_TYPE_COMMAND) {
+		if (!avdtp_parse_cmd(session, session->in_cmd.transaction,
+				     session->in_cmd.signal_id,
+				     session->in_cmd.buf,
+				     session->in_cmd.data_size)) {
 			error("Unable to handle command. Disconnecting");
 			goto failed;
 		}
@@ -2273,7 +2278,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 		return TRUE;
 	}
 
-	if (session->in.signal_id != session->req->signal_id) {
+	if (session->in_resp.signal_id != session->req->signal_id) {
 		error("Response signal doesn't match");
 		return TRUE;
 	}
@@ -2284,20 +2289,20 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	switch (header->message_type) {
 	case AVDTP_MSG_TYPE_ACCEPT:
 		if (!avdtp_parse_resp(session, session->req->stream,
-						session->in.transaction,
-						session->in.signal_id,
-						session->in.buf,
-						session->in.data_size)) {
+						session->in_resp.transaction,
+						session->in_resp.signal_id,
+						session->in_resp.buf,
+						session->in_resp.data_size)) {
 			error("Unable to parse accept response");
 			goto failed;
 		}
 		break;
 	case AVDTP_MSG_TYPE_REJECT:
 		if (!avdtp_parse_rej(session, session->req->stream,
-						session->in.transaction,
-						session->in.signal_id,
-						session->in.buf,
-						session->in.data_size)) {
+						session->in_resp.transaction,
+						session->in_resp.signal_id,
+						session->in_resp.buf,
+						session->in_resp.data_size)) {
 			error("Unable to parse reject response");
 			goto failed;
 		}
