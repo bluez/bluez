@@ -1,3 +1,11 @@
+ver 5.72:
+	Fix issue with BAP and handling stream IO linking.
+	Fix issue with BAP and setup of multiple streams per endpoint.
+	Fix issue with AVDTP and potential incorrect transaction label.
+	Fix issue with A2DP and handling crash on suspend.
+	Fix issue with GATT database and an invalid pointer.
+	Add support for AICS service.
+
 ver 5.71:
 	Fix issue with not registering CSIS service.
 	Fix issue with registering pairing callbacks.
