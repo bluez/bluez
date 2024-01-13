@@ -339,7 +339,7 @@ AUTOMATION
 Two common ways to automate the tool are to use Here Docs or the program expect.
 Using Here Docs to show information about the Bluetooth controller.
 
-.. code:: bash
+.. code::
 
    bluetoothctl <<EOF
    list
