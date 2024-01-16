@@ -32,7 +32,7 @@
 #include "sdp.h"
 #include "rfcomm.h"
 
-static char *cr_str[] = {
+static const char *cr_str[] = {
 	"RSP",
 	"CMD"
 };

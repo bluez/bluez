@@ -718,7 +718,7 @@ static void print_config_result(uint16_t result)
 	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
 }
 
-static struct {
+static const struct {
 	uint8_t type;
 	uint8_t len;
 	const char *str;

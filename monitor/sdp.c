@@ -167,7 +167,7 @@ static struct {
 	{ }
 };
 
-static struct {
+static const struct {
 	uint8_t index;
 	uint8_t bits;
 	uint8_t size;
@@ -322,7 +322,7 @@ static uint32_t get_bytes(const uint8_t *data, uint32_t size)
 	return 0;
 }
 
-static struct {
+static const struct {
 	uint16_t id;
 	const char *str;
 } attribute_table[] = {

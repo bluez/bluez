@@ -1802,7 +1802,7 @@ response:
 }
 
 
-static struct {
+static const struct {
 	const char *str;
 	bool reserved;
 } features_table[] = {
