@@ -427,7 +427,7 @@ static ssize_t synce_write(void *object, const void *buf, size_t count)
 	return -EAGAIN;
 }
 
-static struct obex_mime_type_driver synce_driver = {
+static const struct obex_mime_type_driver synce_driver = {
 	.target = SYNCML_TARGET,
 	.target_size = SYNCML_TARGET_SIZE,
 	.open = synce_open,

@@ -38,7 +38,7 @@ struct obex_session {
 	struct obex_server *server;
 	gboolean checked;
 	GObex *obex;
-	struct obex_mime_type_driver *driver;
+	const struct obex_mime_type_driver *driver;
 	gboolean headers_sent;
 };
 

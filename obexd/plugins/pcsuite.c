@@ -467,7 +467,7 @@ static int backup_flush(void *object)
 	return 0;
 }
 
-static struct obex_mime_type_driver backup = {
+static const struct obex_mime_type_driver backup = {
 	.target = FTP_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "application/vnd.nokia-backup",

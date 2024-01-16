@@ -356,7 +356,7 @@ static struct obex_service_driver mns = {
 	.disconnect = mns_disconnect,
 };
 
-static struct obex_mime_type_driver mime_event_report = {
+static const struct obex_mime_type_driver mime_event_report = {
 	.target = MNS_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/MAP-event-report",

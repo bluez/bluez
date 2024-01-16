@@ -929,7 +929,7 @@ static ssize_t vobject_vcard_read(void *object, void *buf, size_t count)
 	return string_read(obj->buffer, buf, count);
 }
 
-static struct obex_mime_type_driver mime_pull = {
+static const struct obex_mime_type_driver mime_pull = {
 	.target = PBAP_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/phonebook",
@@ -939,7 +939,7 @@ static struct obex_mime_type_driver mime_pull = {
 	.get_next_header = vobject_pull_get_next_header,
 };
 
-static struct obex_mime_type_driver mime_list = {
+static const struct obex_mime_type_driver mime_list = {
 	.target = PBAP_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/vcard-listing",
@@ -949,7 +949,7 @@ static struct obex_mime_type_driver mime_list = {
 	.get_next_header = vobject_list_get_next_header,
 };
 
-static struct obex_mime_type_driver mime_vcard = {
+static const struct obex_mime_type_driver mime_vcard = {
 	.target = PBAP_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/vcard",
