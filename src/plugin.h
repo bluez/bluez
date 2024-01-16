@@ -23,7 +23,8 @@ struct bluetooth_plugin_desc {
 
 #ifdef BLUETOOTH_PLUGIN_BUILTIN
 #define BLUETOOTH_PLUGIN_DEFINE(name, version, priority, init, exit) \
-		struct bluetooth_plugin_desc __bluetooth_builtin_ ## name = { \
+		const struct bluetooth_plugin_desc \
+		__bluetooth_builtin_ ## name = { \
 			#name, version, priority, init, exit \
 		};
 #else
@@ -32,9 +33,10 @@ struct bluetooth_plugin_desc {
 				__attribute__ ((weak, visibility("hidden"))); \
 		extern struct btd_debug_desc __stop___debug[] \
 				__attribute__ ((weak, visibility("hidden"))); \
-		extern struct bluetooth_plugin_desc bluetooth_plugin_desc \
+		extern const struct bluetooth_plugin_desc \
+				bluetooth_plugin_desc \
 				__attribute__ ((visibility("default"))); \
-		struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
+		const struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
 			#name, version, priority, init, exit, \
 			__start___debug, __stop___debug \
 		};

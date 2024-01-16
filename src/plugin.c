@@ -31,7 +31,7 @@ static GSList *plugins = NULL;
 struct bluetooth_plugin {
 	void *handle;
 	gboolean active;
-	struct bluetooth_plugin_desc *desc;
+	const struct bluetooth_plugin_desc *desc;
 };
 
 static int compare_priority(gconstpointer a, gconstpointer b)
@@ -42,7 +42,8 @@ static int compare_priority(gconstpointer a, gconstpointer b)
 	return plugin2->desc->priority - plugin1->desc->priority;
 }
 
-static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
+static gboolean add_plugin(void *handle,
+				const struct bluetooth_plugin_desc *desc)
 {
 	struct bluetooth_plugin *plugin;
 
@@ -141,7 +142,7 @@ gboolean plugin_init(const char *enable, const char *disable)
 		goto start;
 
 	while ((file = g_dir_read_name(dir)) != NULL) {
-		struct bluetooth_plugin_desc *desc;
+		const struct bluetooth_plugin_desc *desc;
 		void *handle;
 		char *filename;
 
