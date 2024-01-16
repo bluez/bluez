@@ -233,7 +233,7 @@ static void parse_event_report_priority(struct map_event *event,
 	event->priority = g_strdup(value);
 }
 
-static struct map_event_report_parser {
+static const struct map_event_report_parser {
 	const char *name;
 	void (*func) (struct map_event *event, const char *value);
 } event_report_parsers[] = {
@@ -262,7 +262,7 @@ static void event_report_element(GMarkupParseContext *ctxt,
 		return;
 
 	for (i = 0, key = names[i]; key; key = names[++i]) {
-		struct map_event_report_parser *parser;
+		const struct map_event_report_parser *parser;
 
 		for (parser = event_report_parsers; parser && parser->name;
 								parser++) {

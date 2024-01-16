@@ -1060,7 +1060,7 @@ static void parse_protected(struct map_msg *msg, const char *value)
 						MAP_MSG_INTERFACE, "Protected");
 }
 
-static struct map_msg_parser {
+static const struct map_msg_parser {
 	const char *name;
 	void (*func) (struct map_msg *msg, const char *value);
 } msg_parsers[] = {
@@ -1120,7 +1120,7 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 								&msg->path);
 
 	for (i = 0, key = names[i]; key; key = names[++i]) {
-		struct map_msg_parser *parser;
+		const struct map_msg_parser *parser;
 
 		for (parser = msg_parsers; parser && parser->name; parser++) {
 			if (strcasecmp(key, parser->name) == 0) {

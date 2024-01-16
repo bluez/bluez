@@ -55,7 +55,7 @@ struct auth_header {
 } __attribute__ ((packed));
 
 /* Possible commands */
-static struct {
+static const struct {
 	int cmd;
 	const char *name;
 } obex_command[] = {

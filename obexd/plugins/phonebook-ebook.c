@@ -55,7 +55,7 @@ struct query_context {
 	gboolean canceled;
 };
 
-static char *attribute_mask[] = {
+static const char *attribute_mask[] = {
 /* 0 */		"VERSION",
 		"FN",
 		"N",

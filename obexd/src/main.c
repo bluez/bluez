@@ -138,7 +138,7 @@ static gboolean parse_debug(const char *key, const char *value,
 	return TRUE;
 }
 
-static GOptionEntry options[] = {
+static const GOptionEntry options[] = {
 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
 				G_OPTION_ARG_CALLBACK, parse_debug,
 				"Enable debug information output", "DEBUG" },

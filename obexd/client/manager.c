@@ -241,7 +241,7 @@ static const GDBusMethodTable client_methods[] = {
 
 static DBusConnection *conn = NULL;
 
-static struct obc_module {
+static const struct obc_module {
 	const char *name;
 	int (*init) (void);
 	void (*exit) (void);
@@ -258,7 +258,7 @@ static struct obc_module {
 int client_manager_init(void)
 {
 	DBusError derr;
-	struct obc_module *module;
+	const struct obc_module *module;
 
 	dbus_error_init(&derr);
 
@@ -289,7 +289,7 @@ int client_manager_init(void)
 
 void client_manager_exit(void)
 {
-	struct obc_module *module;
+	const struct obc_module *module;
 
 	if (conn == NULL)
 		return;
