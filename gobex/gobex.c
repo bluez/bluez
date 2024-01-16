@@ -122,7 +122,7 @@ struct setpath_data {
 	guint8 constants;
 } __attribute__ ((packed));
 
-static struct error_code {
+static const struct error_code {
 	guint8 code;
 	const char *name;
 } obex_errors[] = {
@@ -169,7 +169,7 @@ static struct error_code {
 
 const char *g_obex_strerror(guint8 err_code)
 {
-	struct error_code *error;
+	const struct error_code *error;
 
 	for (error = obex_errors; error->name != NULL; error++) {
 		if (error->code == err_code)
@@ -1423,7 +1423,7 @@ failed:
 	return FALSE;
 }
 
-static GDebugKey keys[] = {
+static const GDebugKey keys[] = {
 	{ "error",	G_OBEX_DEBUG_ERROR },
 	{ "command",	G_OBEX_DEBUG_COMMAND },
 	{ "transfer",	G_OBEX_DEBUG_TRANSFER },
@@ -1443,7 +1443,8 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 		const char *env = g_getenv("GOBEX_DEBUG");
 
 		if (env) {
-			gobex_debug = g_parse_debug_string(env, keys, 7);
+			gobex_debug = g_parse_debug_string(env, keys,
+							G_N_ELEMENTS(keys));
 			g_setenv("G_MESSAGES_DEBUG", "gobex", FALSE);
 		} else
 			gobex_debug = G_OBEX_DEBUG_NONE;
