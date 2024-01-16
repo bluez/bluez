@@ -47,7 +47,7 @@
 #define SDPDBG(fmt...)
 #endif
 
-static uint128_t bluetooth_base_uuid = {
+static const uint128_t bluetooth_base_uuid = {
 	.data = {	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
 			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB }
 };
@@ -65,10 +65,10 @@ static int sdp_gen_buffer(sdp_buf_t *buf, sdp_data_t *d);
 /* Message structure. */
 struct tupla {
 	int index;
-	char *str;
+	const char *str;
 };
 
-static struct tupla Protocol[] = {
+static const struct tupla Protocol[] = {
 	{ SDP_UUID,		"SDP"		},
 	{ UDP_UUID,		"UDP"		},
 	{ RFCOMM_UUID,		"RFCOMM"	},
@@ -97,7 +97,7 @@ static struct tupla Protocol[] = {
 	{ 0 }
 };
 
-static struct tupla ServiceClass[] = {
+static const struct tupla ServiceClass[] = {
 	{ SDP_SERVER_SVCLASS_ID,		"SDP Server"			},
 	{ BROWSE_GRP_DESC_SVCLASS_ID,		"Browse Group Descriptor"	},
 	{ PUBLIC_BROWSE_GROUP,			"Public Browse Group"		},
@@ -176,9 +176,9 @@ static struct tupla ServiceClass[] = {
 
 #define Profile ServiceClass
 
-static char *string_lookup(struct tupla *pt0, int index)
+static const char *string_lookup(const struct tupla *pt0, int index)
 {
-	struct tupla *pt;
+	const struct tupla *pt;
 
 	for (pt = pt0; pt->index; pt++)
 		if (pt->index == index)
@@ -187,7 +187,8 @@ static char *string_lookup(struct tupla *pt0, int index)
 	return "";
 }
 
-static char *string_lookup_uuid(struct tupla *pt0, const uuid_t *uuid)
+static const char *string_lookup_uuid(const struct tupla *pt0,
+					const uuid_t *uuid)
 {
 	uuid_t tmp_uuid;
 
@@ -209,9 +210,10 @@ static char *string_lookup_uuid(struct tupla *pt0, const uuid_t *uuid)
  * Prints into a string the Protocol UUID
  * coping a maximum of n characters.
  */
-static int uuid2str(struct tupla *message, const uuid_t *uuid, char *str, size_t n)
+static int uuid2str(const struct tupla *message, const uuid_t *uuid, char *str,
+			size_t n)
 {
-	char *str2;
+	const char *str2;
 
 	if (!uuid) {
 		snprintf(str, n, "NULL");
@@ -2763,7 +2765,7 @@ uuid_t *sdp_uuid_to_uuid128(const uuid_t *uuid)
  */
 int sdp_uuid128_to_uuid(uuid_t *uuid)
 {
-	uint128_t *b = &bluetooth_base_uuid;
+	const uint128_t *b = &bluetooth_base_uuid;
 	uint128_t *u = &uuid->value.uuid128;
 	uint32_t data;
 	unsigned int i;
