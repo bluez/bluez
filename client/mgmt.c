@@ -1484,7 +1484,7 @@ static void ext_index_rsp(uint8_t status, uint16_t len, const void *param,
 
 	for (i = 0; i < count; i++) {
 		uint16_t index = le16_to_cpu(rp->entry[i].index);
-		char *busstr = hci_bustostr(rp->entry[i].bus);
+		const char *busstr = hci_bustostr(rp->entry[i].bus);
 
 		switch (rp->entry[i].type) {
 		case 0x00:
