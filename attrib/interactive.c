@@ -760,7 +760,7 @@ static void cmd_mtu(int argcp, char **argvp)
 	gatt_exchange_mtu(attrib, opt_mtu, exchange_mtu_cb, NULL);
 }
 
-static struct {
+static const struct {
 	const char *cmd;
 	void (*func)(int argcp, char **argvp);
 	const char *params;
