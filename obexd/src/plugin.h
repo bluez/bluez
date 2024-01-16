@@ -16,14 +16,14 @@ struct obex_plugin_desc {
 
 #ifdef OBEX_PLUGIN_BUILTIN
 #define OBEX_PLUGIN_DEFINE(name, init, exit) \
-		struct obex_plugin_desc __obex_builtin_ ## name = { \
+		const struct obex_plugin_desc __obex_builtin_ ## name = { \
 			#name, init, exit \
 		};
 #else
 #define OBEX_PLUGIN_DEFINE(name,init,exit) \
 		extern struct obex_plugin_desc obex_plugin_desc \
 				__attribute__ ((visibility("default"))); \
-		struct obex_plugin_desc obex_plugin_desc = { \
+		const struct obex_plugin_desc obex_plugin_desc = { \
 			#name, init, exit \
 		};
 #endif

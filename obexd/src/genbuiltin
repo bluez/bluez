@@ -2,11 +2,11 @@
 
 for i in $*
 do
-	echo "extern struct obex_plugin_desc __obex_builtin_$i;"
+	echo "extern const struct obex_plugin_desc __obex_builtin_$i;"
 done
 
 echo
-echo "static struct obex_plugin_desc *__obex_builtin[] = {"
+echo "static const struct obex_plugin_desc *__obex_builtin[] = {"
 
 for i in $*
 do

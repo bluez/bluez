@@ -38,10 +38,10 @@ static GSList *plugins = NULL;
 
 struct obex_plugin {
 	void *handle;
-	struct obex_plugin_desc *desc;
+	const struct obex_plugin_desc *desc;
 };
 
-static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
+static gboolean add_plugin(void *handle, const struct obex_plugin_desc *desc)
 {
 	struct obex_plugin *plugin;
 
@@ -66,7 +66,7 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
 	return TRUE;
 }
 
-static gboolean check_plugin(struct obex_plugin_desc *desc,
+static gboolean check_plugin(const struct obex_plugin_desc *desc,
 				char **patterns, char **excludes)
 {
 	if (excludes) {
@@ -132,7 +132,7 @@ gboolean plugin_init(const char *pattern, const char *exclude)
 	}
 
 	while ((file = g_dir_read_name(dir)) != NULL) {
-		struct obex_plugin_desc *desc;
+		const struct obex_plugin_desc *desc;
 		void *handle;
 		char *filename;
 
