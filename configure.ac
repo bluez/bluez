@@ -223,10 +223,8 @@ AM_CONDITIONAL(MONITOR, test "${enable_monitor}" != "no")
 AC_ARG_ENABLE(udev, AS_HELP_STRING([--disable-udev],
 		[disable udev device support]), [enable_udev=${enableval}])
 if (test "${enable_tools}" != "no" && test "${enable_udev}" != "no"); then
-	PKG_CHECK_MODULES(UDEV, libudev >= 172)
-	AC_CHECK_LIB(udev, udev_hwdb_new,
-		AC_DEFINE(HAVE_UDEV_HWDB_NEW, 1,
-			[Define to 1 if you have the udev_hwdb_new() function.]))
+	PKG_CHECK_MODULES(UDEV, libudev >= 196)
+	AC_DEFINE(HAVE_UDEV, 1, [Define to 1 if udev is required])
 fi
 
 AC_ARG_WITH([udevdir], AS_HELP_STRING([--with-udevdir=DIR],

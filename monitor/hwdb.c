@@ -19,7 +19,7 @@
 
 #include "hwdb.h"
 
-#ifdef HAVE_UDEV_HWDB_NEW
+#ifdef HAVE_UDEV
 #include <libudev.h>
 
 bool hwdb_get_vendor_model(const char *modalias, char **vendor, char **model)
