@@ -17,6 +17,7 @@ struct obex_transport_driver {
 	void (*stop) (void *data);
 };
 
-int obex_transport_driver_register(struct obex_transport_driver *driver);
-void obex_transport_driver_unregister(struct obex_transport_driver *driver);
-GSList *obex_transport_driver_list(void);
+int obex_transport_driver_register(const struct obex_transport_driver *driver);
+void
+obex_transport_driver_unregister(const struct obex_transport_driver *driver);
+const GSList *obex_transport_driver_list(void);

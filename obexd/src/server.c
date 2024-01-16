@@ -34,12 +34,12 @@
 
 static GSList *servers = NULL;
 
-static void init_server(uint16_t service, GSList *transports)
+static void init_server(uint16_t service, const GSList *transports)
 {
-	GSList *l;
+	const GSList *l;
 
 	for (l = transports; l; l = l->next) {
-		struct obex_transport_driver *transport = l->data;
+		const struct obex_transport_driver *transport = l->data;
 		struct obex_server *server;
 		int err;
 
@@ -66,7 +66,7 @@ static void init_server(uint16_t service, GSList *transports)
 int obex_server_init(void)
 {
 	GSList *drivers;
-	GSList *transports;
+	const GSList *transports;
 	GSList *l;
 
 	drivers = obex_service_driver_list(0);

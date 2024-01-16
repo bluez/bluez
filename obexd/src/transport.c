@@ -27,13 +27,13 @@
 
 static GSList *drivers = NULL;
 
-static struct obex_transport_driver *obex_transport_driver_find(
-							const char *name)
+static const struct obex_transport_driver *
+obex_transport_driver_find(const char *name)
 {
-	GSList *l;
+	const GSList *l;
 
 	for (l = drivers; l; l = l->next) {
-		struct obex_transport_driver *driver = l->data;
+		const struct obex_transport_driver *driver = l->data;
 
 		if (g_strcmp0(name, driver->name) == 0)
 			return driver;
@@ -42,12 +42,12 @@ static struct obex_transport_driver *obex_transport_driver_find(
 	return NULL;
 }
 
-GSList *obex_transport_driver_list(void)
+const GSList *obex_transport_driver_list(void)
 {
 	return drivers;
 }
 
-int obex_transport_driver_register(struct obex_transport_driver *driver)
+int obex_transport_driver_register(const struct obex_transport_driver *driver)
 {
 	if (!driver) {
 		error("Invalid driver");
@@ -62,12 +62,13 @@ int obex_transport_driver_register(struct obex_transport_driver *driver)
 
 	DBG("driver %p transport %s registered", driver, driver->name);
 
-	drivers = g_slist_prepend(drivers, driver);
+	drivers = g_slist_prepend(drivers, (gpointer)driver);
 
 	return 0;
 }
 
-void obex_transport_driver_unregister(struct obex_transport_driver *driver)
+void
+obex_transport_driver_unregister(const struct obex_transport_driver *driver)
 {
 	if (!g_slist_find(drivers, driver)) {
 		error("Unable to unregister: No such driver %p", driver);

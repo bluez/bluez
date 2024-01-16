@@ -416,7 +416,7 @@ static int bluetooth_getsockname(GIOChannel *io, char **name)
 	return 0;
 }
 
-static struct obex_transport_driver driver = {
+static const struct obex_transport_driver driver = {
 	.name = "bluetooth",
 	.start = bluetooth_start,
 	.getpeername = bluetooth_getpeername,

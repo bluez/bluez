@@ -1085,7 +1085,7 @@ ssize_t obex_get_non_header_data(struct obex_session *os,
 
 int obex_getpeername(struct obex_session *os, char **name)
 {
-	struct obex_transport_driver *transport = os->server->transport;
+	const struct obex_transport_driver *transport = os->server->transport;
 
 	if (transport == NULL || transport->getpeername == NULL)
 		return -ENOTSUP;
@@ -1095,7 +1095,7 @@ int obex_getpeername(struct obex_session *os, char **name)
 
 int obex_getsockname(struct obex_session *os, char **name)
 {
-	struct obex_transport_driver *transport = os->server->transport;
+	const struct obex_transport_driver *transport = os->server->transport;
 
 	if (transport == NULL || transport->getsockname == NULL)
 		return -ENOTSUP;
