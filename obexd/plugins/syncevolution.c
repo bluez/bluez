@@ -436,7 +436,7 @@ static const struct obex_mime_type_driver synce_driver = {
 	.write = synce_write,
 };
 
-static struct obex_service_driver synce = {
+static const struct obex_service_driver synce = {
 	.name = "OBEX server for SyncML, using SyncEvolution",
 	.service = OBEX_SYNCEVOLUTION,
 	.channel = SYNCEVOLUTION_CHANNEL,

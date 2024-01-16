@@ -82,7 +82,7 @@ int obex_server_init(void)
 	}
 
 	for (l = drivers; l; l = l->next) {
-		struct obex_service_driver *driver = l->data;
+		const struct obex_service_driver *driver = l->data;
 
 		init_server(driver->service, transports);
 	}

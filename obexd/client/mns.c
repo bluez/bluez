@@ -346,7 +346,7 @@ static ssize_t event_report_write(void *obj, const void *buf, size_t count)
 	return count;
 }
 
-static struct obex_service_driver mns = {
+static const struct obex_service_driver mns = {
 	.name = "Message Notification server",
 	.service = OBEX_MNS,
 	.target = MNS_TARGET,

@@ -41,7 +41,7 @@
 
 struct bluetooth_profile {
 	struct obex_server *server;
-	struct obex_service_driver *driver;
+	const struct obex_service_driver *driver;
 	char *uuid;
 	char *path;
 };
@@ -355,7 +355,7 @@ static void *bluetooth_start(struct obex_server *server, int *err)
 	const GSList *l;
 
 	for (l = server->drivers; l; l = l->next) {
-		struct obex_service_driver *driver = l->data;
+		const struct obex_service_driver *driver = l->data;
 		struct bluetooth_profile *profile;
 		const char *uuid;
 

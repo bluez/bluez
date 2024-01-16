@@ -494,7 +494,7 @@ static void ftp_reset(struct obex_session *os, void *user_data)
 	manager_emit_transfer_completed(ftp->transfer);
 }
 
-static struct obex_service_driver ftp = {
+static const struct obex_service_driver ftp = {
 	.name = "File Transfer server",
 	.service = OBEX_FTP,
 	.target = FTP_TARGET,

@@ -634,7 +634,7 @@ static int pbap_chkput(struct obex_session *os, void *user_data)
 	return -EBADR;
 }
 
-static struct obex_service_driver pbap = {
+static const struct obex_service_driver pbap = {
 	.name = "Phonebook Access server",
 	.service = OBEX_PBAP,
 	.target = PBAP_TARGET,

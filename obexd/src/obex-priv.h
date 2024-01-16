@@ -33,7 +33,7 @@ struct obex_session {
 	void *object;
 	gboolean aborted;
 	int err;
-	struct obex_service_driver *service;
+	const struct obex_service_driver *service;
 	void *service_data;
 	struct obex_server *server;
 	gboolean checked;

@@ -32,9 +32,9 @@ struct obex_service_driver {
 	void (*reset) (struct obex_session *os, void *user_data);
 };
 
-int obex_service_driver_register(struct obex_service_driver *driver);
-void obex_service_driver_unregister(struct obex_service_driver *driver);
+int obex_service_driver_register(const struct obex_service_driver *driver);
+void obex_service_driver_unregister(const struct obex_service_driver *driver);
 GSList *obex_service_driver_list(uint16_t services);
-struct obex_service_driver *obex_service_driver_find(GSList *drivers,
+const struct obex_service_driver *obex_service_driver_find(GSList *drivers,
 			const uint8_t *target, unsigned int target_size,
 			const uint8_t *who, unsigned int who_size);

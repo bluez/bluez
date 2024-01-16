@@ -26,14 +26,14 @@
 
 static GSList *drivers = NULL;
 
-struct obex_service_driver *obex_service_driver_find(GSList *drivers,
+const struct obex_service_driver *obex_service_driver_find(GSList *drivers,
 			const uint8_t *target, unsigned int target_size,
 			const uint8_t *who, unsigned int who_size)
 {
 	GSList *l;
 
 	for (l = drivers; l; l = l->next) {
-		struct obex_service_driver *driver = l->data;
+		const struct obex_service_driver *driver = l->data;
 
 		/* who is optional, so only check for it if not NULL */
 		if (who != NULL && memncmp0(who, who_size, driver->who,
@@ -57,10 +57,10 @@ GSList *obex_service_driver_list(uint16_t services)
 		return drivers;
 
 	for (l = drivers; l && services; l = l->next) {
-		struct obex_service_driver *driver = l->data;
+		const struct obex_service_driver *driver = l->data;
 
 		if (driver->service & services) {
-			list = g_slist_append(list, driver);
+			list = g_slist_append(list, (gpointer)driver);
 			services &= ~driver->service;
 		}
 	}
@@ -68,12 +68,12 @@ GSList *obex_service_driver_list(uint16_t services)
 	return list;
 }
 
-static struct obex_service_driver *find_driver(uint16_t service)
+static const struct obex_service_driver *find_driver(uint16_t service)
 {
 	GSList *l;
 
 	for (l = drivers; l; l = l->next) {
-		struct obex_service_driver *driver = l->data;
+		const struct obex_service_driver *driver = l->data;
 
 		if (driver->service == service)
 			return driver;
@@ -82,7 +82,7 @@ static struct obex_service_driver *find_driver(uint16_t service)
 	return NULL;
 }
 
-int obex_service_driver_register(struct obex_service_driver *driver)
+int obex_service_driver_register(const struct obex_service_driver *driver)
 {
 	if (!driver) {
 		error("Invalid driver");
@@ -99,14 +99,14 @@ int obex_service_driver_register(struct obex_service_driver *driver)
 
 	/* Drivers that support who has priority */
 	if (driver->who)
-		drivers = g_slist_prepend(drivers, driver);
+		drivers = g_slist_prepend(drivers, (gpointer)driver);
 	else
-		drivers = g_slist_append(drivers, driver);
+		drivers = g_slist_append(drivers, (gpointer)driver);
 
 	return 0;
 }
 
-void obex_service_driver_unregister(struct obex_service_driver *driver)
+void obex_service_driver_unregister(const struct obex_service_driver *driver)
 {
 	if (!g_slist_find(drivers, driver)) {
 		error("Unable to unregister: No such driver %p", driver);
