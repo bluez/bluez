@@ -42,7 +42,7 @@ typedef gboolean (*parse_item_f)(DBusMessageIter *iter, gpointer user_data,
 								GError **err);
 
 struct dict_entry_func {
-	char		*key;
+	const char	*key;
 	parse_item_f	func;
 };
 
@@ -67,7 +67,7 @@ struct get_dcpsm_data {
 	GDestroyNotify		destroy;
 };
 
-static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
+static gboolean parse_dict_entry(const struct dict_entry_func dict_context[],
 							DBusMessageIter *iter,
 							GError **err,
 							gpointer user_data)
@@ -75,7 +75,6 @@ static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
 	DBusMessageIter entry;
 	char *key;
 	int ctype, i;
-	struct dict_entry_func df;
 
 	dbus_message_iter_recurse(iter, &entry);
 	ctype = dbus_message_iter_get_arg_type(&entry);
@@ -88,9 +87,9 @@ static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
 	dbus_message_iter_get_basic(&entry, &key);
 	dbus_message_iter_next(&entry);
 	/* Find function and call it */
-	for (i = 0, df = dict_context[0]; df.key; i++, df = dict_context[i]) {
-		if (g_ascii_strcasecmp(df.key, key) == 0)
-			return df.func(&entry, user_data, err);
+	for (i = 0; dict_context[i].key; i++) {
+		if (g_ascii_strcasecmp(dict_context[i].key, key) == 0)
+			return dict_context[i].func(&entry, user_data, err);
 	}
 
 	g_set_error(err, HDP_ERROR, HDP_DIC_ENTRY_PARSE_ERROR,
@@ -98,7 +97,7 @@ static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
 	return FALSE;
 }
 
-static gboolean parse_dict(struct dict_entry_func dict_context[],
+static gboolean parse_dict(const struct dict_entry_func dict_context[],
 							DBusMessageIter *iter,
 							GError **err,
 							gpointer user_data)
@@ -273,7 +272,7 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 	return TRUE;
 }
 
-static struct dict_entry_func dict_parser[] = {
+static const struct dict_entry_func dict_parser[] = {
 	{"DataType",		parse_data_type},
 	{"Role",		parse_role},
 	{"Description",		parse_desc},

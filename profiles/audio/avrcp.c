@@ -290,7 +290,7 @@ struct control_pdu_handler {
 							uint8_t transaction);
 };
 
-static struct {
+static const struct {
 	uint8_t feature_bit;
 	uint8_t avc;
 } passthrough_map[] = {
@@ -361,7 +361,7 @@ static unsigned int avctp_id = 0;
 static uint8_t default_features[16];
 
 /* Company IDs supported by this device */
-static uint32_t company_ids[] = {
+static const uint32_t company_ids[] = {
 	IEEEID_BTSIG,
 };
 
@@ -2118,7 +2118,7 @@ failed:
 	pdu->param_len = cpu_to_be16(1);
 }
 
-static struct browsing_pdu_handler {
+static const struct browsing_pdu_handler {
 	uint8_t pdu_id;
 	void (*func) (struct avrcp *session, struct avrcp_browsing_header *pdu,
 							uint8_t transaction);
@@ -2147,7 +2147,7 @@ static size_t handle_browsing_pdu(struct avctp *conn,
 					size_t operand_count, void *user_data)
 {
 	struct avrcp *session = user_data;
-	struct browsing_pdu_handler *handler;
+	const struct browsing_pdu_handler *handler;
 	struct avrcp_browsing_header *pdu = (void *) operands;
 
 	DBG("AVRCP Browsing PDU 0x%02X, len 0x%04X", pdu->pdu_id,

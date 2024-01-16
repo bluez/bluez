@@ -398,7 +398,7 @@ static guint setup_signalfd(void)
 
 static gboolean option_version = FALSE;
 
-static GOptionEntry options[] = {
+static const GOptionEntry options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ NULL },

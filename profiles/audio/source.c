@@ -61,7 +61,7 @@ struct source_state_callback {
 
 static GSList *source_callbacks = NULL;
 
-static char *str_state[] = {
+static const char *str_state[] = {
 	"SOURCE_STATE_DISCONNECTED",
 	"SOURCE_STATE_CONNECTING",
 	"SOURCE_STATE_CONNECTED",

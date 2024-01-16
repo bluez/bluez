@@ -228,7 +228,7 @@ struct avctp_browsing_pdu_handler {
 	GDestroyNotify destroy;
 };
 
-static struct {
+static const struct {
 	const char *name;
 	uint8_t avc;
 	uint16_t uinput;

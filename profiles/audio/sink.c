@@ -62,7 +62,7 @@ struct sink_state_callback {
 
 static GSList *sink_callbacks = NULL;
 
-static char *str_state[] = {
+static const char *str_state[] = {
 	"SINK_STATE_DISCONNECTED",
 	"SINK_STATE_CONNECTING",
 	"SINK_STATE_CONNECTED",
