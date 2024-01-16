@@ -28,8 +28,6 @@ struct obex_mime_type_driver {
 	int (*copy) (const char *name, const char *destname);
 	int (*move) (const char *name, const char *destname);
 	int (*remove) (const char *name);
-	int (*set_io_watch) (void *object, obex_object_io_func func,
-				void *user_data);
 };
 
 int obex_mime_type_driver_register(struct obex_mime_type_driver *driver);
@@ -40,3 +38,7 @@ struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
 				unsigned int who_size);
 
 void obex_object_set_io_flags(void *object, int flags, int err);
+
+void obex_object_reset_io_watch(void *object);
+int obex_object_set_io_watch(void *object, obex_object_io_func func,
+				void *user_data);

@@ -119,7 +119,7 @@ static void os_reset_session(struct obex_session *os)
 	os_session_mark_aborted(os);
 
 	if (os->object) {
-		os->driver->set_io_watch(os->object, NULL, NULL);
+		obex_object_reset_io_watch(os->object);
 		os->driver->close(os->object);
 		if (os->aborted && os->cmd == G_OBEX_OP_PUT && os->path &&
 				os->driver->remove)
@@ -357,7 +357,7 @@ static gssize driver_read(struct obex_session *os, void *buf, gsize size)
 		if (len == -ENOSTR)
 			return 0;
 		if (len == -EAGAIN)
-			os->driver->set_io_watch(os->object, handle_async_io,
+			obex_object_set_io_watch(os->object, handle_async_io,
 									os);
 	}
 
@@ -395,7 +395,7 @@ static void transfer_complete(GObex *obex, GError *err, gpointer user_data)
 	if (os->object && os->driver && os->driver->flush) {
 		if (os->driver->flush(os->object) == -EAGAIN) {
 			g_obex_suspend(os->obex);
-			os->driver->set_io_watch(os->object, handle_async_io,
+			obex_object_set_io_watch(os->object, handle_async_io,
 									os);
 			return;
 		}
@@ -525,7 +525,7 @@ static gboolean recv_data(const void *buf, gsize size, gpointer user_data)
 
 	if (ret == -EAGAIN) {
 		g_obex_suspend(os->obex);
-		os->driver->set_io_watch(os->object, handle_async_io, os);
+		obex_object_set_io_watch(os->object, handle_async_io, os);
 		return TRUE;
 	}
 
@@ -699,7 +699,7 @@ int obex_get_stream_start(struct obex_session *os, const char *filename)
 		return err;
 
 	g_obex_suspend(os->obex);
-	os->driver->set_io_watch(os->object, handle_async_io, os);
+	obex_object_set_io_watch(os->object, handle_async_io, os);
 	return 0;
 }
 
@@ -772,7 +772,7 @@ static gboolean check_put(GObex *obex, GObexPacket *req, void *user_data)
 		break;
 	case -EAGAIN:
 		g_obex_suspend(os->obex);
-		os->driver->set_io_watch(os->object, handle_async_io, os);
+		obex_object_set_io_watch(os->object, handle_async_io, os);
 		return TRUE;
 	default:
 		os_set_response(os, ret);

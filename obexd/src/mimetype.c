@@ -73,7 +73,7 @@ static struct io_watch *find_io_watch(void *object)
 	return NULL;
 }
 
-static void reset_io_watch(void *object)
+void obex_object_reset_io_watch(void *object)
 {
 	struct io_watch *watch;
 
@@ -85,15 +85,10 @@ static void reset_io_watch(void *object)
 	g_free(watch);
 }
 
-static int set_io_watch(void *object, obex_object_io_func func,
+int obex_object_set_io_watch(void *object, obex_object_io_func func,
 				void *user_data)
 {
 	struct io_watch *watch;
-
-	if (func == NULL) {
-		reset_io_watch(object);
-		return 0;
-	}
 
 	watch = find_io_watch(object);
 	if (watch)
@@ -180,9 +175,6 @@ int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
 				driver->mimetype);
 		return -EPERM;
 	}
-
-	if (driver->set_io_watch == NULL)
-		driver->set_io_watch = set_io_watch;
 
 	DBG("driver %p mimetype %s registered", driver, driver->mimetype);
 
