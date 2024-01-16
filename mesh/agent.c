@@ -61,7 +61,7 @@ struct oob_info {
 	uint16_t mask;
 };
 
-static struct prov_action cap_table[] = {
+static const struct prov_action cap_table[] = {
 	{"blink", 0x0001, 0x0000, 1},
 	{"beep", 0x0002, 0x0000, 1},
 	{"vibrate", 0x0004, 0x0000, 1},
@@ -73,7 +73,7 @@ static struct prov_action cap_table[] = {
 	{"in-alpha", 0x0000, 0x0008, 8}
 };
 
-static struct oob_info oob_table[] = {
+static const struct oob_info oob_table[] = {
 	{"other", 0x0001},
 	{"uri", 0x0002},
 	{"machine-code-2d", 0x0004},
