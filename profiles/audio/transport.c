@@ -531,6 +531,8 @@ static void media_owner_exit(DBusConnection *connection, void *user_data)
 {
 	struct media_owner *owner = user_data;
 
+	DBG("Owner %s", owner->name);
+
 	owner->watch = 0;
 
 	media_owner_remove(owner);
@@ -741,6 +743,8 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 
 	if (owner == NULL || g_strcmp0(owner->name, sender) != 0)
 		return btd_error_not_authorized(msg);
+
+	DBG("Owner %s", owner->name);
 
 	if (owner->pending) {
 		const char *member;
