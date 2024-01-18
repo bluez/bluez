@@ -3642,10 +3642,6 @@ static void cmd_config_endpoint(int argc, char *argv[])
 {
 	struct endpoint_config *cfg;
 	const struct codec_preset *preset;
-	const struct capabilities *cap;
-	char *uuid;
-	uint8_t codec_id;
-	bool broadcast = false;
 
 	cfg = new0(struct endpoint_config, 1);
 
@@ -3660,33 +3656,14 @@ static void cmd_config_endpoint(int argc, char *argv[])
 	/* Search for the local endpoint */
 	cfg->ep = endpoint_find(argv[2]);
 	if (!cfg->ep) {
-
-		/* When the local endpoint was not found either we received
-		 * UUID, or the provided local endpoint is not available
-		 */
-		uuid = argv[2];
-		codec_id = strtol(argv[3], NULL, 0);
-		cap = find_capabilities(uuid, codec_id);
-		if (cap) {
-			broadcast = true;
-			cfg->ep = endpoint_new(cap);
-			cfg->ep->preset = find_presets_name(uuid, argv[3]);
-			if (!cfg->ep->preset)
-				bt_shell_printf("Preset not found\n");
-		} else {
-			bt_shell_printf("Local Endpoint %s,"
-				"or capabilities not found\n", uuid);
-			goto fail;
-		}
+		bt_shell_printf("Local Endpoint %s not found\n", argv[2]);
+		goto fail;
 	}
 
-	if (((broadcast == false) && (argc > 3)) ||
-		((broadcast == true) && (argc > 4))) {
-		char *preset_name = (broadcast == false)?argv[3]:argv[4];
-
-		preset = preset_find_name(cfg->ep->preset, preset_name);
+	if (argc > 3) {
+		preset = preset_find_name(cfg->ep->preset, argv[3]);
 		if (!preset) {
-			bt_shell_printf("Preset %s not found\n", preset_name);
+			bt_shell_printf("Preset %s not found\n", argv[3]);
 			goto fail;
 		}
 
@@ -4105,8 +4082,7 @@ static const struct bt_shell_menu endpoint_menu = {
 	{ "unregister",   "<UUID/object>", cmd_unregister_endpoint,
 						"Register Endpoint",
 						local_endpoint_generator },
-	{ "config",
-		"<endpoint> [local endpoint/UUID] [preset/codec id] [preset]",
+	{ "config",       "<endpoint> [local endpoint] [preset]",
 						cmd_config_endpoint,
 						"Configure Endpoint",
 						endpoint_generator },
