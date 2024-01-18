@@ -1798,8 +1798,7 @@ struct media_transport *media_transport_create(struct btd_device *device,
 		transport->adapter = media_endpoint_get_btd_adapter(endpoint);
 
 	transport->endpoint = endpoint;
-	transport->configuration = g_new(uint8_t, size);
-	memcpy(transport->configuration, configuration, size);
+	transport->configuration = util_memdup(configuration, size);
 	transport->size = size;
 	transport->remote_endpoint = remote_endpoint;
 

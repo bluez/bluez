@@ -66,6 +66,8 @@ struct bap_setup {
 	struct bap_ep *ep;
 	struct bt_bap_stream *stream;
 	struct bt_bap_qos qos;
+	int (*qos_parser)(struct bap_setup *setup, const char *key, int var,
+							DBusMessageIter *iter);
 	GIOChannel *io;
 	unsigned int io_id;
 	bool recreate;
@@ -75,6 +77,7 @@ struct bap_setup {
 	unsigned int id;
 	struct iovec *base;
 	DBusMessage *msg;
+	void (*destroy)(struct bap_setup *setup);
 };
 
 struct bap_ep {
@@ -514,9 +517,11 @@ static int parse_io_qos(const char *key, int var, DBusMessageIter *iter,
 	return 0;
 }
 
-static int parse_ucast_qos(const char *key, int var, DBusMessageIter *iter,
-				struct bt_bap_qos *qos)
+static int setup_parse_ucast_qos(struct bap_setup *setup, const char *key,
+					int var, DBusMessageIter *iter)
 {
+	struct bt_bap_qos *qos = &setup->qos;
+
 	if (!strcasecmp(key, "CIG")) {
 		if (var != DBUS_TYPE_BYTE)
 			return -EINVAL;
@@ -553,9 +558,18 @@ static int parse_ucast_qos(const char *key, int var, DBusMessageIter *iter,
 	return 0;
 }
 
-static int parse_bcast_qos(const char *key, int var, DBusMessageIter *iter,
-				struct bt_bap_qos *qos)
+static void setup_bcast_destroy(struct bap_setup *setup)
 {
+	struct bt_bap_qos *qos = &setup->qos;
+
+	util_iov_free(qos->bcast.bcode, 1);
+}
+
+static int setup_parse_bcast_qos(struct bap_setup *setup, const char *key,
+					int var, DBusMessageIter *iter)
+{
+	struct bt_bap_qos *qos = &setup->qos;
+
 	if (!strcasecmp(key, "Encryption")) {
 		if (var != DBUS_TYPE_BYTE)
 			return -EINVAL;
@@ -602,7 +616,14 @@ static int parse_bcast_qos(const char *key, int var, DBusMessageIter *iter,
 		if (var != DBUS_TYPE_ARRAY)
 			return -EINVAL;
 
+		memset(&iov, 0, sizeof(iov));
+
 		parse_array(iter, &iov);
+
+		if (iov.iov_len != 16) {
+			error("Invalid size for BCode: %zu != 16", iov.iov_len);
+			return -EINVAL;
+		}
 
 		util_iov_free(qos->bcast.bcode, 1);
 		qos->bcast.bcode = util_iov_dup(&iov, 1);
@@ -617,18 +638,10 @@ static int parse_bcast_qos(const char *key, int var, DBusMessageIter *iter,
 	return 0;
 }
 
-static int parse_qos(DBusMessageIter *iter, struct bt_bap_qos *qos,
-			struct iovec **base)
+static int setup_parse_qos(struct bap_setup *setup, DBusMessageIter *iter)
 {
 	DBusMessageIter array;
 	const char *key;
-	int (*parser)(const char *key, int var, DBusMessageIter *iter,
-			struct bt_bap_qos *qos);
-
-	if (*base)
-		parser = parse_bcast_qos;
-	else
-		parser = parse_ucast_qos;
 
 	dbus_message_iter_recurse(iter, &array);
 
@@ -644,7 +657,7 @@ static int parse_qos(DBusMessageIter *iter, struct bt_bap_qos *qos,
 
 		var = dbus_message_iter_get_arg_type(&value);
 
-		err = parser(key, var, &value, qos);
+		err = setup->qos_parser(setup, key, var, &value);
 		if (err) {
 			DBG("Failed parsing %s", key);
 			return err;
@@ -653,12 +666,23 @@ static int parse_qos(DBusMessageIter *iter, struct bt_bap_qos *qos,
 		dbus_message_iter_next(&array);
 	}
 
+	if (queue_find(setup->ep->data->bcast, NULL, setup->ep)) {
+		uint32_t presDelay;
+		uint8_t numSubgroups, numBis;
+		struct bt_bap_codec codec;
+
+		util_iov_free(setup->base, 1);
+		setup->base = util_iov_dup(setup->caps, 1);
+		parse_base(setup->base->iov_base, setup->base->iov_len,
+				bap_debug, &presDelay, &numSubgroups, &numBis,
+				&codec, &setup->caps, &setup->metadata);
+	}
+
 	return 0;
 }
 
-static int parse_configuration(DBusMessageIter *props, struct iovec **caps,
-				struct iovec **metadata, struct iovec **base,
-				struct bt_bap_qos *qos)
+static int setup_parse_configuration(struct bap_setup *setup,
+					DBusMessageIter *props)
 {
 	const char *key;
 	struct iovec iov;
@@ -684,8 +708,8 @@ static int parse_configuration(DBusMessageIter *props, struct iovec **caps,
 			if (parse_array(&value, &iov))
 				goto fail;
 
-			util_iov_free(*caps, 1);
-			*caps = util_iov_dup(&iov, 1);
+			util_iov_free(setup->caps, 1);
+			setup->caps = util_iov_dup(&iov, 1);
 		} else if (!strcasecmp(key, "Metadata")) {
 			if (var != DBUS_TYPE_ARRAY)
 				goto fail;
@@ -693,39 +717,23 @@ static int parse_configuration(DBusMessageIter *props, struct iovec **caps,
 			if (parse_array(&value, &iov))
 				goto fail;
 
-			util_iov_free(*metadata, 1);
-			*metadata = util_iov_dup(&iov, 1);
+			util_iov_free(setup->metadata, 1);
+			setup->metadata = util_iov_dup(&iov, 1);
 		} else if (!strcasecmp(key, "QoS")) {
 			if (var != DBUS_TYPE_ARRAY)
 				goto fail;
 
-			if (parse_qos(&value, qos, base))
+			if (setup_parse_qos(setup, &value))
 				goto fail;
 		}
 
 		dbus_message_iter_next(props);
 	}
 
-	if (*base) {
-		uint32_t presDelay;
-		uint8_t numSubgroups, numBis;
-		struct bt_bap_codec codec;
-
-		util_iov_memcpy(*base, (*caps)->iov_base, (*caps)->iov_len);
-		parse_base((*caps)->iov_base, (*caps)->iov_len, bap_debug,
-			&presDelay, &numSubgroups, &numBis, &codec,
-			caps, NULL);
-	}
-
 	return 0;
 
 fail:
 	DBG("Failed parsing %s", key);
-
-	if (*caps) {
-		free(*caps);
-		*caps = NULL;
-	}
 
 	return -EINVAL;
 }
@@ -819,6 +827,19 @@ static struct bap_setup *setup_new(struct bap_ep *ep)
 	setup = new0(struct bap_setup, 1);
 	setup->ep = ep;
 
+	if (queue_find(ep->data->bcast, NULL, ep)) {
+		/* Mark BIG and BIS to be auto assigned */
+		setup->qos.bcast.big = BT_ISO_QOS_BIG_UNSET;
+		setup->qos.bcast.bis = BT_ISO_QOS_BIS_UNSET;
+		setup->qos_parser = setup_parse_bcast_qos;
+		setup->destroy = setup_bcast_destroy;
+	} else {
+		/* Mark CIG and CIS to be auto assigned */
+		setup->qos.ucast.cig_id = BT_ISO_QOS_CIG_UNSET;
+		setup->qos.ucast.cis_id = BT_ISO_QOS_CIS_UNSET;
+		setup->qos_parser = setup_parse_ucast_qos;
+	}
+
 	if (!ep->setups)
 		ep->setups = queue_new();
 
@@ -844,8 +865,8 @@ static void setup_free(void *data)
 	util_iov_free(setup->metadata, 1);
 	util_iov_free(setup->base, 1);
 
-	if (bt_bap_stream_get_type(setup->stream) == BT_BAP_STREAM_TYPE_BCAST)
-		util_iov_free(setup->qos.bcast.bcode, 1);
+	if (setup->destroy)
+		setup->destroy(setup);
 
 	free(setup);
 }
@@ -872,18 +893,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 
 	setup = setup_new(ep);
 
-	if (bt_bap_pac_get_type(ep->lpac) == BT_BAP_BCAST_SOURCE) {
-		/* Mark BIG and BIS to be auto assigned */
-		setup->qos.bcast.big = BT_ISO_QOS_BIG_UNSET;
-		setup->qos.bcast.bis = BT_ISO_QOS_BIS_UNSET;
-	} else {
-		/* Mark CIG and CIS to be auto assigned */
-		setup->qos.ucast.cig_id = BT_ISO_QOS_CIG_UNSET;
-		setup->qos.ucast.cis_id = BT_ISO_QOS_CIS_UNSET;
-	}
-
-	if (parse_configuration(&props, &setup->caps, &setup->metadata,
-				&setup->base, &setup->qos) < 0) {
+	if (setup_parse_configuration(setup, &props) < 0) {
 		DBG("Unable to parse configuration");
 		setup_free(setup);
 		return btd_error_invalid_args(msg);
@@ -943,10 +953,10 @@ static void update_bcast_qos(struct bt_iso_qos *qos,
 	bap_qos->bcast.io_qos.phy = qos->bcast.in.phy;
 	bap_qos->bcast.io_qos.sdu = qos->bcast.in.sdu;
 	bap_qos->bcast.io_qos.rtn = qos->bcast.in.rtn;
-
-	bap_qos->bcast.bcode = new0(struct iovec, 1);
+	if (!bap_qos->bcast.bcode)
+		bap_qos->bcast.bcode = new0(struct iovec, 1);
 	util_iov_memcpy(bap_qos->bcast.bcode, qos->bcast.bcode,
-		sizeof(qos->bcast.bcode));
+						sizeof(qos->bcast.bcode));
 }
 
 static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
@@ -1901,6 +1911,8 @@ static void setup_create_bcast_io(struct bap_data *data,
 					struct bap_setup *setup,
 					struct bt_bap_stream *stream, int defer)
 {
+	struct bt_bap_qos *qos = &setup->qos;
+	struct iovec *bcode = qos->bcast.bcode;
 	struct bt_iso_qos iso_qos;
 
 	memset(&iso_qos, 0, sizeof(iso_qos));
@@ -1914,9 +1926,8 @@ static void setup_create_bcast_io(struct bap_data *data,
 	iso_qos.bcast.packing = setup->qos.bcast.packing;
 	iso_qos.bcast.framing = setup->qos.bcast.framing;
 	iso_qos.bcast.encryption = setup->qos.bcast.encryption;
-	if (setup->qos.bcast.bcode)
-		memcpy(iso_qos.bcast.bcode, setup->qos.bcast.bcode->iov_base,
-									16);
+	if (bcode && bcode->iov_base)
+		memcpy(iso_qos.bcast.bcode, bcode->iov_base, bcode->iov_len);
 	iso_qos.bcast.options = setup->qos.bcast.options;
 	iso_qos.bcast.skip = setup->qos.bcast.skip;
 	iso_qos.bcast.sync_timeout = setup->qos.bcast.sync_timeout;
