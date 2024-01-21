@@ -1285,7 +1285,7 @@ done:
 	queue_foreach(ep->data->bcast, bap_config, NULL);
 }
 
-static bool pac_found(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
+static bool pac_register(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 							void *user_data)
 {
 	struct btd_service *service = user_data;
@@ -1294,8 +1294,35 @@ static bool pac_found(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	DBG("lpac %p rpac %p", lpac, rpac);
 
 	ep = ep_register(service, lpac, rpac);
-	if (!ep) {
+	if (!ep)
 		error("Unable to register endpoint for pac %p", rpac);
+
+	return true;
+}
+
+static bool pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
+							void *user_data)
+{
+	struct btd_service *service = user_data;
+	struct bap_data *data = btd_service_get_user_data(service);
+	struct match_ep match = { lpac, rpac };
+	struct queue *queue;
+	struct bap_ep *ep;
+
+	switch (bt_bap_pac_get_type(rpac)) {
+	case BT_BAP_SINK:
+		queue = data->snks;
+		break;
+	case BT_BAP_SOURCE:
+		queue = data->srcs;
+		break;
+	default:
+		return true;
+	}
+
+	ep = queue_find(queue, match_ep, &match);
+	if (!ep) {
+		error("Unable to find endpoint for pac %p", rpac);
 		return true;
 	}
 
@@ -1328,8 +1355,14 @@ static void bap_ready(struct bt_bap *bap, void *user_data)
 
 	DBG("bap %p", bap);
 
-	bt_bap_foreach_pac(bap, BT_BAP_SOURCE, pac_found, service);
-	bt_bap_foreach_pac(bap, BT_BAP_SINK, pac_found, service);
+	/* Register all ep before selecting, so that sound server
+	 * knows all.
+	 */
+	bt_bap_foreach_pac(bap, BT_BAP_SOURCE, pac_register, service);
+	bt_bap_foreach_pac(bap, BT_BAP_SINK, pac_register, service);
+
+	bt_bap_foreach_pac(bap, BT_BAP_SOURCE, pac_select, service);
+	bt_bap_foreach_pac(bap, BT_BAP_SINK, pac_select, service);
 }
 
 static bool match_setup_stream(const void *data, const void *user_data)
@@ -2044,8 +2077,11 @@ static void pac_added(struct bt_bap_pac *pac, void *user_data)
 
 	data = btd_service_get_user_data(service);
 
-	bt_bap_foreach_pac(data->bap, BT_BAP_SOURCE, pac_found, service);
-	bt_bap_foreach_pac(data->bap, BT_BAP_SINK, pac_found, service);
+	bt_bap_foreach_pac(data->bap, BT_BAP_SOURCE, pac_register, service);
+	bt_bap_foreach_pac(data->bap, BT_BAP_SINK, pac_register, service);
+
+	bt_bap_foreach_pac(data->bap, BT_BAP_SOURCE, pac_select, service);
+	bt_bap_foreach_pac(data->bap, BT_BAP_SINK, pac_select, service);
 }
 
 static void pac_added_broadcast(struct bt_bap_pac *pac, void *user_data)
