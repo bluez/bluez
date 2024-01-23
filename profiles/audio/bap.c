@@ -610,6 +610,11 @@ static int setup_parse_bcast_qos(struct bap_setup *setup, const char *key,
 			return -EINVAL;
 
 		dbus_message_iter_get_basic(iter, &qos->bcast.timeout);
+	} else if (!strcasecmp(key, "PresentationDelay")) {
+		if (var != DBUS_TYPE_UINT32)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(iter, &qos->bcast.delay);
 	} else if (!strcasecmp(key, "BCode")) {
 		struct iovec iov;
 
@@ -664,18 +669,6 @@ static int setup_parse_qos(struct bap_setup *setup, DBusMessageIter *iter)
 		}
 
 		dbus_message_iter_next(&array);
-	}
-
-	if (queue_find(setup->ep->data->bcast, NULL, setup->ep)) {
-		uint32_t presDelay;
-		uint8_t numSubgroups, numBis;
-		struct bt_bap_codec codec;
-
-		util_iov_free(setup->base, 1);
-		setup->base = util_iov_dup(setup->caps, 1);
-		parse_base(setup->base->iov_base, setup->base->iov_len,
-				bap_debug, &presDelay, &numSubgroups, &numBis,
-				&codec, &setup->caps, &setup->metadata);
 	}
 
 	return 0;
@@ -924,8 +917,10 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 		/* No message sent over the air for broadcast */
 		if (bt_bap_pac_get_type(ep->lpac) == BT_BAP_BCAST_SINK)
 			setup->msg = dbus_message_ref(msg);
-		else
+		else {
+			setup->base = bt_bap_stream_get_base(setup->stream);
 			setup->id = 0;
+		}
 
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
