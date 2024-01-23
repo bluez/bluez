@@ -642,7 +642,7 @@ static void dump_mode(int fd, int sk, char *peer)
 	}
 
 	syslog(LOG_INFO, "Receiving ...");
-	while ((len = read(sk, buf, data_size)) > 0) {
+	while ((len = read(sk, buf, data_size)) >= 0) {
 		if (fd >= 0) {
 			len = write(fd, buf, len);
 			if (len < 0) {
@@ -680,7 +680,7 @@ static void recv_mode(int fd, int sk, char *peer)
 			int r;
 
 			r = recv(sk, buf, data_size, 0);
-			if (r <= 0) {
+			if (r < 0) {
 				if (r < 0)
 					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
