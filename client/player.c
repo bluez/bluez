@@ -1130,11 +1130,13 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 	return NULL;
 }
 
-#define CODEC_CAPABILITIES(_uuid, _codec_id, _data, _meta) \
+#define CODEC_CAPABILITIES(_name, _uuid, _codec_id, _data, _meta) \
 	{ \
+		.name = _name, \
 		.uuid = _uuid, \
 		.codec_id = _codec_id, \
 		.data = _data, \
+		.meta = _meta, \
 	}
 
 #define LC3_DATA(_freq, _duration, _chan_count, _len_min, _len_max) \
@@ -1145,6 +1147,7 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 			_len_max, _len_max >> 8)
 
 static const struct capabilities {
+	const char *name;
 	const char *uuid;
 	uint8_t codec_id;
 	struct iovec data;
@@ -1158,9 +1161,10 @@ static const struct capabilities {
 	 * Blocks: 4 8 12 16
 	 * Bitpool Range: 2-64
 	 */
-	CODEC_CAPABILITIES(A2DP_SOURCE_UUID, A2DP_CODEC_SBC,
-					UTIL_IOV_INIT(0xff, 0xff, 2, 64),
-					UTIL_IOV_INIT()),
+	CODEC_CAPABILITIES("a2dp_src/sbc", A2DP_SOURCE_UUID, A2DP_CODEC_SBC,
+				UTIL_IOV_INIT(0xff, 0xff, 2, 64),
+				UTIL_IOV_INIT()),
+
 	/* A2DP SBC Sink:
 	 *
 	 * Channel Modes: Mono DualChannel Stereo JointStereo
@@ -1169,9 +1173,9 @@ static const struct capabilities {
 	 * Blocks: 4 8 12 16
 	 * Bitpool Range: 2-64
 	 */
-	CODEC_CAPABILITIES(A2DP_SINK_UUID, A2DP_CODEC_SBC,
-					UTIL_IOV_INIT(0xff, 0xff, 2, 64),
-					UTIL_IOV_INIT()),
+	CODEC_CAPABILITIES("a2dp_snk/sbc", A2DP_SINK_UUID, A2DP_CODEC_SBC,
+				UTIL_IOV_INIT(0xff, 0xff, 2, 64),
+				UTIL_IOV_INIT()),
 
 	/* PAC LC3 Sink:
 	 *
@@ -1180,10 +1184,10 @@ static const struct capabilities {
 	 * Channel count: 3
 	 * Frame length: 30-240
 	 */
-	CODEC_CAPABILITIES(PAC_SINK_UUID, LC3_ID,
-					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240),
-					UTIL_IOV_INIT()),
+	CODEC_CAPABILITIES("pac_snk/lc3", PAC_SINK_UUID, LC3_ID,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+					240),
+				UTIL_IOV_INIT()),
 
 	/* PAC LC3 Source:
 	 *
@@ -1192,10 +1196,10 @@ static const struct capabilities {
 	 * Channel count: 3
 	 * Frame length: 30-240
 	 */
-	CODEC_CAPABILITIES(PAC_SOURCE_UUID, LC3_ID,
-					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240),
-					UTIL_IOV_INIT()),
+	CODEC_CAPABILITIES("pac_src/lc3", PAC_SOURCE_UUID, LC3_ID,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+					240),
+				UTIL_IOV_INIT()),
 
 	/* Broadcast LC3 Source:
 	 *
@@ -1204,10 +1208,10 @@ static const struct capabilities {
 	 * Channel count: 3
 	 * Frame length: 30-240
 	 */
-	CODEC_CAPABILITIES(BCAA_SERVICE_UUID, LC3_ID,
-					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240),
-					UTIL_IOV_INIT()),
+	CODEC_CAPABILITIES("bcaa/lc3", BCAA_SERVICE_UUID, LC3_ID,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+					240),
+				UTIL_IOV_INIT()),
 
 	/* Broadcast LC3 Sink:
 	 *
@@ -1216,10 +1220,10 @@ static const struct capabilities {
 	 * Channel count: 3
 	 * Frame length: 30-240
 	 */
-	CODEC_CAPABILITIES(BAA_SERVICE_UUID, LC3_ID,
-					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240),
-					UTIL_IOV_INIT()),
+	CODEC_CAPABILITIES("baa/lc3", BAA_SERVICE_UUID, LC3_ID,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+					240),
+				UTIL_IOV_INIT()),
 };
 
 struct codec_qos {
@@ -4114,8 +4118,8 @@ static struct endpoint *endpoint_new(const struct capabilities *cap)
 	ep = new0(struct endpoint, 1);
 	ep->uuid = g_strdup(cap->uuid);
 	ep->codec = cap->codec_id;
-	ep->path = g_strdup_printf("%s/ep%u", BLUEZ_MEDIA_ENDPOINT_PATH,
-					g_list_length(local_endpoints));
+	ep->path = g_strdup_printf("%s/%s", BLUEZ_MEDIA_ENDPOINT_PATH,
+				cap->name);
 	/* Copy capabilities */
 	ep->caps = util_iov_dup(&cap->data, 1);
 	/* Copy metadata */
