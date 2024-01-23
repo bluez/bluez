@@ -88,6 +88,7 @@ struct bt_bap_bcast_qos {
 	uint16_t timeout;
 	uint8_t  pa_sync;
 	struct bt_bap_io_qos io_qos;
+	uint32_t delay;			/* Presentation Delay */
 };
 
 struct bt_bap_qos {
@@ -321,3 +322,4 @@ void bt_bap_update_bcast_source(struct bt_bap_pac *pac,
 
 bool bt_bap_pac_bcast_is_local(struct bt_bap *bap, struct bt_bap_pac *pac);
 
+struct iovec *bt_bap_stream_get_base(struct bt_bap_stream *stream);
