@@ -1002,11 +1002,6 @@ static const struct bt_shell_menu player_menu = {
 	{} },
 };
 
-static char *endpoint_generator(const char *text, int state)
-{
-	return generic_generator(text, state, endpoints);
-}
-
 static char *local_endpoint_generator(const char *text, int state)
 {
 	int len = strlen(text);
@@ -1026,6 +1021,17 @@ static char *local_endpoint_generator(const char *text, int state)
 	}
 
 	return NULL;
+}
+
+static char *endpoint_generator(const char *text, int state)
+{
+	char *ret;
+
+	ret = generic_generator(text, state, endpoints);
+	if (ret)
+		return ret;
+
+	return local_endpoint_generator(text, state);
 }
 
 static void print_endpoint(void *data, void *user_data)
@@ -2793,13 +2799,44 @@ static int print_a2dp_codec(uint8_t codec, void *data, uint8_t size)
 	return 0;
 }
 
+static void print_hexdump(const char *label, struct iovec *iov)
+{
+	if (!iov)
+		return;
+
+	bt_shell_printf("%s:\n", label);
+	bt_shell_hexdump(iov->iov_base, iov->iov_len);
+}
+
+static void print_codec(const char *uuid, uint8_t codec, struct iovec *caps,
+						struct iovec *meta)
+{
+	if (!strcasecmp(uuid, A2DP_SINK_UUID) ||
+			!strcasecmp(uuid, A2DP_SOURCE_UUID)) {
+		print_a2dp_codec(codec, caps->iov_base, caps->iov_len);
+		return;
+	}
+
+	if (codec != LC3_ID) {
+		print_hexdump("Capabilities", caps);
+		print_hexdump("Metadata", meta);
+		return;
+	}
+
+	print_lc3_caps(caps->iov_base, caps->iov_len);
+
+	if (!meta)
+		return;
+
+	print_lc3_meta(meta->iov_base, meta->iov_len);
+}
+
 static void print_capabilities(GDBusProxy *proxy)
 {
 	DBusMessageIter iter, subiter;
 	const char *uuid;
 	uint8_t codec;
-	uint8_t *data;
-	int len;
+	struct iovec caps, meta;
 
 	if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
 		return;
@@ -2816,29 +2853,37 @@ static void print_capabilities(GDBusProxy *proxy)
 
 	dbus_message_iter_recurse(&iter, &subiter);
 
-	dbus_message_iter_get_fixed_array(&subiter, &data, &len);
+	dbus_message_iter_get_fixed_array(&subiter, &caps.iov_base,
+						(int *)&caps.iov_len);
 
-	if (!strcasecmp(uuid, A2DP_SINK_UUID) ||
-			!strcasecmp(uuid, A2DP_SOURCE_UUID)) {
-		print_a2dp_codec(codec, data, len);
-		return;
+	if (g_dbus_proxy_get_property(proxy, "Metadata", &iter)) {
+		dbus_message_iter_recurse(&iter, &subiter);
+		dbus_message_iter_get_fixed_array(&subiter, &meta.iov_base,
+						  (int *)&meta.iov_len);
+	} else {
+		meta.iov_base = NULL;
+		meta.iov_len = 0;
 	}
 
-	if (codec != LC3_ID) {
-		print_property(proxy, "Capabilities");
-		return;
-	}
+	print_codec(uuid, codec, &caps, &meta);
+}
 
-	print_lc3_caps(data, len);
-
-	if (!g_dbus_proxy_get_property(proxy, "Metadata", &iter))
-		return;
-
-	dbus_message_iter_recurse(&iter, &subiter);
-
-	dbus_message_iter_get_fixed_array(&subiter, &data, &len);
-
-	print_lc3_meta(data, len);
+static void print_local_endpoint(struct endpoint *ep)
+{
+	bt_shell_printf("Endpoint %s\n", ep->path);
+	bt_shell_printf("\tUUID %s\n", ep->uuid);
+	bt_shell_printf("\tCodec 0x%02x (%u)\n", ep->codec, ep->codec);
+	if (ep->caps)
+		print_codec(ep->uuid, ep->codec, ep->caps, ep->meta);
+	if (ep->locations)
+		bt_shell_printf("\tLocations 0x%08x (%u)\n", ep->locations,
+				ep->locations);
+	if (ep->supported_context)
+		bt_shell_printf("\tSupportedContext 0x%08x (%u)\n",
+				ep->supported_context, ep->supported_context);
+	if (ep->context)
+		bt_shell_printf("\tContext 0x%08x (%u)\n", ep->context,
+				ep->context);
 }
 
 static void cmd_show_endpoint(int argc, char *argv[])
@@ -2848,6 +2893,12 @@ static void cmd_show_endpoint(int argc, char *argv[])
 	proxy = g_dbus_proxy_lookup(endpoints, NULL, argv[1],
 						BLUEZ_MEDIA_ENDPOINT_INTERFACE);
 	if (!proxy) {
+		struct endpoint *ep;
+
+		ep = endpoint_find(argv[1]);
+		if (ep)
+			return print_local_endpoint(ep);
+
 		bt_shell_printf("Endpoint %s not found\n", argv[1]);
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
