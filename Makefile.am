@@ -83,7 +83,6 @@ lib_LTLIBRARIES += lib/libbluetooth.la
 
 lib_libbluetooth_la_SOURCES = $(lib_headers) $(lib_sources)
 lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 22:12:19
-lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 endif
 
 noinst_LTLIBRARIES += lib/libbluetooth-internal.la
@@ -100,12 +99,10 @@ gdbus_libgdbus_internal_la_SOURCES = gdbus/gdbus.h \
 if EXTERNAL_ELL
 ell_cflags = @ELL_CFLAGS@
 ell_ldadd = @ELL_LIBS@
-ell_dependencies =
 ell_built_sources = ell/shared
 else
 ell_cflags =
 ell_ldadd = ell/libell-internal.la
-ell_dependencies = $(ell_ldadd)
 ell_built_sources = ell/shared ell/internal ell/ell.h
 
 noinst_LTLIBRARIES += ell/libell-internal.la
@@ -338,10 +335,6 @@ src_bluetoothd_LDADD = lib/libbluetooth-internal.la \
 			$(builtin_ldadd)
 src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
-
-src_bluetoothd_DEPENDENCIES = lib/libbluetooth-internal.la \
-				gdbus/libgdbus-internal.la \
-				src/libshared-glib.la
 
 src_bluetoothd_CPPFLAGS = $(AM_CPPFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
 					-DPLUGINDIR=\""$(build_plugindir)"\" \
