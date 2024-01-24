@@ -51,9 +51,6 @@ man_MANS += mesh/bluetooth-meshd.8
 endif
 manual_pages += mesh/bluetooth-meshd.8
 
-CLEANFILES += mesh/bluetooth-mesh.service
-
 endif
 
-EXTRA_DIST += mesh/bluetooth-mesh.conf mesh/bluetooth-mesh.service.in \
-		mesh/org.bluez.mesh.service mesh/mesh-main.conf
+EXTRA_DIST += mesh/bluetooth-mesh.conf mesh/org.bluez.mesh.service mesh/mesh-main.conf

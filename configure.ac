@@ -441,5 +441,14 @@ if (test "${plugin_phonebook}" = "ebook"); then
 fi
 AC_SUBST(PLUGIN_PHONEBOOK, [${plugin_phonebook}])
 
-AC_CONFIG_FILES(Makefile src/bluetoothd.rst lib/bluez.pc mesh/bluetooth-meshd.rst)
+AC_CONFIG_FILES(
+	lib/bluez.pc
+	Makefile
+	mesh/bluetooth-meshd.rst
+	mesh/bluetooth-mesh.service
+	obexd/src/obex.service
+	src/bluetoothd.rst
+	src/bluetooth.service
+	tools/bluetooth-logger.service
+)
 AC_OUTPUT

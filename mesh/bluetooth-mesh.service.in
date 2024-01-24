@@ -5,7 +5,7 @@ ConditionPathIsDirectory=/sys/class/bluetooth
 [Service]
 Type=dbus
 BusName=org.bluez.mesh
-ExecStart=@pkglibexecdir@/bluetooth-meshd
+ExecStart=@exec_prefix@/bluetooth/bluetooth-meshd
 NotifyAccess=main
 LimitNPROC=1
 ProtectHome=true

@@ -77,9 +77,6 @@ systemdsystemunit_DATA += tools/bluetooth-logger.service
 endif
 endif
 
-CLEANFILES += tools/bluetooth-logger.service
-EXTRA_DIST += tools/bluetooth-logger.service.in
-
 if TESTING
 noinst_PROGRAMS += emulator/btvirt emulator/b1ee emulator/hfp \
 					peripheral/btsensor tools/3dsp \

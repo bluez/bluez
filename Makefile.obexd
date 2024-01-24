@@ -7,7 +7,7 @@ dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
 dbussessionbus_DATA = obexd/src/org.bluez.obex.service
 endif
 
-EXTRA_DIST += obexd/src/obex.service.in obexd/src/org.bluez.obex.service
+EXTRA_DIST += obexd/src/org.bluez.obex.service
 
 if OBEX
 
@@ -112,6 +112,6 @@ obexd/src/builtin.h: obexd/src/genbuiltin $(obexd_builtin_sources)
 	$(AM_V_at)$(MKDIR_P) $(dir $@)
 	$(AM_V_GEN)$(srcdir)/obexd/src/genbuiltin $(obexd_builtin_modules) > $@
 
-CLEANFILES += obexd/src/builtin.h $(builtin_files) obexd/src/obex.service
+CLEANFILES += obexd/src/builtin.h
 
 EXTRA_DIST += obexd/src/genbuiltin
