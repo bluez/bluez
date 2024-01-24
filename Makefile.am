@@ -288,7 +288,6 @@ gobex_sources = gobex/gobex.h gobex/gobex.c \
 builtin_modules =
 builtin_sources =
 builtin_cppflags =
-builtin_nodist =
 builtin_ldadd =
 
 include Makefile.plugins
@@ -350,7 +349,7 @@ src_bluetoothd_CPPFLAGS = $(AM_CPPFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
 					$(BACKTRACE_CFLAGS) $(builtin_cppflags)
 src_bluetoothd_SHORTNAME = bluetoothd
 
-builtin_files = src/builtin.h $(builtin_nodist)
+builtin_files = src/builtin.h
 
 nodist_src_bluetoothd_SOURCES = $(builtin_files)
 
