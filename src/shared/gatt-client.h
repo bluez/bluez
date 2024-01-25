@@ -134,3 +134,6 @@ unsigned int bt_gatt_client_idle_register(struct bt_gatt_client *client,
 					bt_gatt_client_destroy_func_t destroy);
 bool bt_gatt_client_idle_unregister(struct bt_gatt_client *client,
 						unsigned int id);
+bool bt_gatt_client_set_retry(struct bt_gatt_client *client,
+					unsigned int id,
+					bool retry);

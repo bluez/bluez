@@ -2042,3 +2042,29 @@ bool bt_att_has_crypto(struct bt_att *att)
 
 	return att->crypto ? true : false;
 }
+
+bool bt_att_set_retry(struct bt_att *att, unsigned int id, bool retry)
+{
+	struct att_send_op *op;
+
+	if (!id)
+		return false;
+
+	op = queue_find(att->req_queue, match_op_id, UINT_TO_PTR(id));
+	if (op)
+		goto done;
+
+	op = queue_find(att->ind_queue, match_op_id, UINT_TO_PTR(id));
+	if (op)
+		goto done;
+
+	op = queue_find(att->write_queue, match_op_id, UINT_TO_PTR(id));
+
+done:
+	if (!op)
+		return false;
+
+	op->retry = !retry;
+
+	return true;
+}

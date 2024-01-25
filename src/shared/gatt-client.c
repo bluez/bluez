@@ -3818,3 +3818,22 @@ bool bt_gatt_client_idle_unregister(struct bt_gatt_client *client,
 
 	return false;
 }
+
+bool bt_gatt_client_set_retry(struct bt_gatt_client *client,
+					unsigned int id,
+					bool retry)
+{
+	struct request *req;
+
+	if (!client || !id)
+		return false;
+
+	req = queue_find(client->pending_requests, match_req_id,
+							UINT_TO_PTR(id));
+	if (!req)
+		return false;
+
+	bt_att_set_retry(client->att, req->att_id, retry);
+
+	return true;
+}
