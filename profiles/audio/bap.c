@@ -1378,6 +1378,7 @@ static bool pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 static bool pac_found_bcast(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 							void *user_data)
 {
+	struct bap_data *data = user_data;
 	struct bap_ep *ep;
 
 	DBG("lpac %p rpac %p", lpac, rpac);
@@ -1387,6 +1388,9 @@ static bool pac_found_bcast(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 		error("Unable to register endpoint for pac %p", rpac);
 		return true;
 	}
+
+	/* Mark the device as connetable if an Endpoint is registered */
+	btd_device_set_connectable(data->device, true);
 
 	return true;
 }
@@ -2456,6 +2460,8 @@ static void bap_bcast_remove(struct btd_service *service)
 		error("BAP service not handled by profile");
 		return;
 	}
+
+	bap_data_remove(data);
 }
 
 static int bap_probe(struct btd_service *service)
