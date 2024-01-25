@@ -562,6 +562,7 @@ static void btdev_reset(struct btdev *btdev)
 	btdev->le_scan_enable		= 0x00;
 	btdev->le_adv_enable		= 0x00;
 	btdev->le_pa_enable		= 0x00;
+	btdev->le_pa_sync_handle	= 0x0000;
 
 	al_clear(btdev);
 	rl_clear(btdev);
