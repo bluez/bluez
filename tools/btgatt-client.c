@@ -33,6 +33,7 @@
 #include "src/shared/queue.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
+#include "src/shared/gatt-helpers.h"
 
 #define ATT_CID 4
 
@@ -1353,6 +1354,72 @@ static void cmd_set_sign_key(struct client *cli, char *cmd_str)
 		set_sign_key_usage();
 }
 
+static void search_service_usage(void)
+{
+	printf("Usage: search-service <uuid>\n"
+		"e.g.:\n"
+		"\tsearch-service 1800\n");
+}
+
+static void search_service_cb(bool success, uint8_t att_ecode,
+					struct bt_gatt_result *result,
+					void *user_data)
+{
+	struct bt_gatt_iter iter;
+	uint16_t start_handle, end_handle;
+	uint128_t u128;
+	bt_uuid_t uuid;
+	char uuid_str[MAX_LEN_UUID_STR];
+
+	if (!success) {
+		PRLOG("\nService discovery failed: %s (0x%02x)\n",
+				ecode_to_string(att_ecode), att_ecode);
+		return;
+	}
+
+	if (!result || !bt_gatt_iter_init(&iter, result))
+		return;
+
+	printf("\n");
+	while (bt_gatt_iter_next_service(&iter, &start_handle, &end_handle,
+						u128.data)) {
+		bt_uuid128_create(&uuid, u128);
+		bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
+		printf("Found start handle: 0x%04x, end handle: 0x%04x, "
+			"UUID: %s\n",
+			start_handle, end_handle, uuid_str);
+	}
+	PRLOG("\n");
+}
+
+static void cmd_search_service(struct client *cli, char *cmd_str)
+{
+	char *argv[2];
+	int argc = 0;
+	bt_uuid_t uuid;
+
+	if (!bt_gatt_client_is_ready(cli->gatt)) {
+		printf("GATT client not initialized\n");
+		return;
+	}
+
+	if (!parse_args(cmd_str, 1, argv, &argc) || argc != 1) {
+		search_service_usage();
+		return;
+	}
+
+	if (bt_string_to_uuid(&uuid, argv[0]) < 0) {
+		printf("Invalid UUID: %s\n", argv[0]);
+		return;
+	}
+
+	bt_gatt_discover_primary_services(bt_gatt_client_get_att(cli->gatt),
+						&uuid, 0x0001, 0xFFFF,
+						search_service_cb,
+						NULL,
+						NULL);
+}
+
 static void cmd_help(struct client *cli, char *cmd_str);
 
 typedef void (*command_func_t)(struct client *cli, char *cmd_str);
@@ -1389,6 +1456,8 @@ static struct {
 			"\tSet retry on security error by elevating security"},
 	{ "set-sign-key", cmd_set_sign_key,
 				"\tSet signing key for signed write command"},
+	{ "search-service", cmd_search_service,
+				"\tSearch service"},
 	{ }
 };
 
