@@ -1420,6 +1420,86 @@ static void cmd_search_service(struct client *cli, char *cmd_str)
 						NULL);
 }
 
+static void search_characteristics_usage(void)
+{
+	printf("Usage: search-characteristics <start_hanlde> <end_handle> "
+		"<uuid>\n"
+		"e.g.:\n"
+		"\tsearch-characteristics 0x0001 0xFFFF 1800\n");
+}
+
+static void search_characteristics_cb(bool success, uint8_t att_ecode,
+					struct bt_gatt_result *result,
+					void *user_data)
+{
+	struct bt_gatt_iter iter;
+	uint16_t handle, length;
+	const uint8_t *value;
+	int i;
+
+	if (!success) {
+		PRLOG("\nCharacteristics discovery failed: %s (0x%02x)\n",
+				ecode_to_string(att_ecode), att_ecode);
+		return;
+	}
+
+	if (!result || !bt_gatt_iter_init(&iter, result))
+		return;
+
+	printf("\n");
+	while (bt_gatt_iter_next_read_by_type(&iter, &handle, &length,
+						&value)) {
+		printf("Found handle: 0x%04x value: ", handle);
+		for (i = 0; i < length; i++)
+			printf("%02x ", value[i]);
+		printf("\n");
+	}
+	PRLOG("\n");
+}
+
+static void cmd_search_characteristics(struct client *cli, char *cmd_str)
+{
+	char *argv[4];
+	int argc = 0;
+	uint16_t start_handle, end_handle;
+	char *endptr = NULL;
+	bt_uuid_t uuid;
+
+	if (!bt_gatt_client_is_ready(cli->gatt)) {
+		printf("GATT client not initialized\n");
+		return;
+	}
+
+	if (!parse_args(cmd_str, 3, argv, &argc) || argc != 3) {
+		search_characteristics_usage();
+		return;
+	}
+
+	start_handle = strtol(argv[0], &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		printf("Invalid start handle: %s\n", argv[0]);
+		return;
+	}
+
+	end_handle = strtol(argv[1], &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		printf("Invalid end handle: %s\n", argv[1]);
+		return;
+	}
+
+	if (bt_string_to_uuid(&uuid, argv[2]) < 0) {
+		printf("Invalid UUID: %s\n", argv[2]);
+		return;
+	}
+
+	bt_gatt_read_by_type(bt_gatt_client_get_att(cli->gatt), start_handle,
+						end_handle,
+						&uuid,
+						search_characteristics_cb,
+						NULL,
+						NULL);
+}
+
 static void cmd_help(struct client *cli, char *cmd_str);
 
 typedef void (*command_func_t)(struct client *cli, char *cmd_str);
@@ -1458,6 +1538,8 @@ static struct {
 				"\tSet signing key for signed write command"},
 	{ "search-service", cmd_search_service,
 				"\tSearch service"},
+	{ "search-characteristics", cmd_search_characteristics,
+				"\tSearch characteristics"},
 	{ }
 };
 
