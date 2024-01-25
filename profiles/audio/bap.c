@@ -1390,7 +1390,8 @@ static bool pac_found_bcast(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	}
 
 	/* Mark the device as connetable if an Endpoint is registered */
-	btd_device_set_connectable(data->device, true);
+	if (data->device)
+		btd_device_set_connectable(data->device, true);
 
 	return true;
 }
