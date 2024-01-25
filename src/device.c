@@ -4495,6 +4495,11 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type,
 	set_temporary_timer(device, btd_opts.tmpto);
 }
 
+void btd_device_set_connectable(struct btd_device *device, bool connectable)
+{
+	device_update_last_seen(device, device->bdaddr_type, connectable);
+}
+
 /* It is possible that we have two device objects for the same device in
  * case it has first been discovered over BR/EDR and has a private
  * address when discovered over LE for the first time. In such a case we
