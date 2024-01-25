@@ -2628,7 +2628,7 @@ static void pacs_add_source_supported_context(struct bt_pacs *pacs,
 
 static void pacs_add_source_context(struct bt_pacs *pacs, uint16_t context)
 {
-	context |= pacs->supported_source_context_value;
+	context |= pacs->source_context_value;
 
 	/* Check if context value needs updating */
 	if (context == pacs->source_context_value)
