@@ -1130,21 +1130,7 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 	return NULL;
 }
 
-struct codec_capabilities {
-	uint8_t len;
-	uint8_t type;
-	uint8_t data[UINT8_MAX];
-};
-
-#define data(args...) ((const unsigned char[]) { args })
-
-#define CODEC_DATA(args...) \
-	{ \
-		.iov_base = (void *)data(args), \
-		.iov_len = sizeof(data(args)), \
-	}
-
-#define CODEC_CAPABILITIES(_uuid, _codec_id, _data) \
+#define CODEC_CAPABILITIES(_uuid, _codec_id, _data, _meta) \
 	{ \
 		.uuid = _uuid, \
 		.codec_id = _codec_id, \
@@ -1152,16 +1138,17 @@ struct codec_capabilities {
 	}
 
 #define LC3_DATA(_freq, _duration, _chan_count, _len_min, _len_max) \
-	CODEC_DATA(0x03, LC3_FREQ, _freq, _freq >> 8, \
-		   0x02, LC3_DURATION, _duration, \
-		   0x02, LC3_CHAN_COUNT, _chan_count, \
-		   0x05, LC3_FRAME_LEN, _len_min, _len_min >> 8, _len_max, \
-		   _len_max >> 8)
+	UTIL_IOV_INIT(0x03, LC3_FREQ, _freq, _freq >> 8, \
+			0x02, LC3_DURATION, _duration, \
+			0x02, LC3_CHAN_COUNT, _chan_count, \
+			0x05, LC3_FRAME_LEN, _len_min, _len_min >> 8, \
+			_len_max, _len_max >> 8)
 
 static const struct capabilities {
 	const char *uuid;
 	uint8_t codec_id;
 	struct iovec data;
+	struct iovec meta;
 } caps[] = {
 	/* A2DP SBC Source:
 	 *
@@ -1172,7 +1159,8 @@ static const struct capabilities {
 	 * Bitpool Range: 2-64
 	 */
 	CODEC_CAPABILITIES(A2DP_SOURCE_UUID, A2DP_CODEC_SBC,
-					CODEC_DATA(0xff, 0xff, 2, 64)),
+					UTIL_IOV_INIT(0xff, 0xff, 2, 64),
+					UTIL_IOV_INIT()),
 	/* A2DP SBC Sink:
 	 *
 	 * Channel Modes: Mono DualChannel Stereo JointStereo
@@ -1182,7 +1170,9 @@ static const struct capabilities {
 	 * Bitpool Range: 2-64
 	 */
 	CODEC_CAPABILITIES(A2DP_SINK_UUID, A2DP_CODEC_SBC,
-					CODEC_DATA(0xff, 0xff, 2, 64)),
+					UTIL_IOV_INIT(0xff, 0xff, 2, 64),
+					UTIL_IOV_INIT()),
+
 	/* PAC LC3 Sink:
 	 *
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
@@ -1192,7 +1182,9 @@ static const struct capabilities {
 	 */
 	CODEC_CAPABILITIES(PAC_SINK_UUID, LC3_ID,
 					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240)),
+						3u, 30, 240),
+					UTIL_IOV_INIT()),
+
 	/* PAC LC3 Source:
 	 *
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
@@ -1202,7 +1194,9 @@ static const struct capabilities {
 	 */
 	CODEC_CAPABILITIES(PAC_SOURCE_UUID, LC3_ID,
 					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240)),
+						3u, 30, 240),
+					UTIL_IOV_INIT()),
+
 	/* Broadcast LC3 Source:
 	 *
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
@@ -1212,7 +1206,8 @@ static const struct capabilities {
 	 */
 	CODEC_CAPABILITIES(BCAA_SERVICE_UUID, LC3_ID,
 					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240)),
+						3u, 30, 240),
+					UTIL_IOV_INIT()),
 
 	/* Broadcast LC3 Sink:
 	 *
@@ -1223,7 +1218,8 @@ static const struct capabilities {
 	 */
 	CODEC_CAPABILITIES(BAA_SERVICE_UUID, LC3_ID,
 					LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY,
-						3u, 30, 240)),
+						3u, 30, 240),
+					UTIL_IOV_INIT()),
 };
 
 struct codec_qos {
@@ -1258,32 +1254,36 @@ static struct codec_preset sbc_presets[] = {
 	 * mono, and 512kb/s for two-channel modes.
 	 */
 	SBC_PRESET("MQ_MONO_44_1",
-		CODEC_DATA(0x28, 0x15, 2, SBC_BITPOOL_MQ_MONO_44100)),
+		UTIL_IOV_INIT(0x28, 0x15, 2, SBC_BITPOOL_MQ_MONO_44100)),
 	SBC_PRESET("MQ_MONO_48",
-		CODEC_DATA(0x18, 0x15, 2, SBC_BITPOOL_MQ_MONO_48000)),
+		UTIL_IOV_INIT(0x18, 0x15, 2, SBC_BITPOOL_MQ_MONO_48000)),
 	SBC_PRESET("MQ_STEREO_44_1",
-		CODEC_DATA(0x21, 0x15, 2, SBC_BITPOOL_MQ_JOINT_STEREO_44100)),
+		UTIL_IOV_INIT(0x21, 0x15, 2,
+				SBC_BITPOOL_MQ_JOINT_STEREO_44100)),
 	SBC_PRESET("MQ_STEREO_48",
-		CODEC_DATA(0x11, 0x15, 2, SBC_BITPOOL_MQ_JOINT_STEREO_48000)),
+		UTIL_IOV_INIT(0x11, 0x15, 2,
+				SBC_BITPOOL_MQ_JOINT_STEREO_48000)),
 	SBC_PRESET("HQ_MONO_44_1",
-		CODEC_DATA(0x28, 0x15, 2, SBC_BITPOOL_HQ_MONO_44100)),
+		UTIL_IOV_INIT(0x28, 0x15, 2, SBC_BITPOOL_HQ_MONO_44100)),
 	SBC_PRESET("HQ_MONO_48",
-		CODEC_DATA(0x18, 0x15, 2, SBC_BITPOOL_HQ_MONO_48000)),
+		UTIL_IOV_INIT(0x18, 0x15, 2, SBC_BITPOOL_HQ_MONO_48000)),
 	SBC_PRESET("HQ_STEREO_44_1",
-		CODEC_DATA(0x21, 0x15, 2, SBC_BITPOOL_HQ_JOINT_STEREO_44100)),
+		UTIL_IOV_INIT(0x21, 0x15, 2,
+				SBC_BITPOOL_HQ_JOINT_STEREO_44100)),
 	SBC_PRESET("HQ_STEREO_48",
-		CODEC_DATA(0x11, 0x15, 2, SBC_BITPOOL_HQ_JOINT_STEREO_48000)),
+		UTIL_IOV_INIT(0x11, 0x15, 2,
+			      SBC_BITPOOL_HQ_JOINT_STEREO_48000)),
 	/* Higher bitrates not recommended by A2DP spec, it dual channel to
 	 * avoid going above 53 bitpool:
 	 *
 	 * https://habr.com/en/post/456476/
 	 * https://gitlab.freedesktop.org/pulseaudio/pulseaudio/-/issues/1092
 	 */
-	SBC_PRESET("XQ_DUAL_44_1", CODEC_DATA(0x24, 0x15, 2, 43)),
-	SBC_PRESET("XQ_DUAL_48", CODEC_DATA(0x14, 0x15, 2, 39)),
+	SBC_PRESET("XQ_DUAL_44_1", UTIL_IOV_INIT(0x24, 0x15, 2, 43)),
+	SBC_PRESET("XQ_DUAL_48", UTIL_IOV_INIT(0x14, 0x15, 2, 39)),
 	/* Ultra high bitpool that fits in 512 kbps mandatory bitrate */
-	SBC_PRESET("UQ_STEREO_44_1", CODEC_DATA(0x21, 0x15, 2, 64)),
-	SBC_PRESET("UQ_STEREO_48", CODEC_DATA(0x11, 0x15, 2, 58)),
+	SBC_PRESET("UQ_STEREO_44_1", UTIL_IOV_INIT(0x21, 0x15, 2, 64)),
+	SBC_PRESET("UQ_STEREO_48", UTIL_IOV_INIT(0x11, 0x15, 2, 58)),
 };
 
 #define QOS_CONFIG(_interval, _framing, _phy, _sdu, _rtn, _latency, _delay) \
@@ -1328,16 +1328,16 @@ static struct codec_preset sbc_presets[] = {
 	QOS_FRAMED_2M(10000u, _sdu, _rtn, _latency, _delay)
 
 #define LC3_PRESET_DATA(_freq, _duration, _len) \
-	CODEC_DATA(0x02, LC3_CONFIG_FREQ, _freq, \
-		   0x02, LC3_CONFIG_DURATION, _duration, \
-		   0x03, LC3_CONFIG_FRAME_LEN, _len, _len >> 8)
+	UTIL_IOV_INIT(0x02, LC3_CONFIG_FREQ, _freq, \
+			0x02, LC3_CONFIG_DURATION, _duration, \
+			0x03, LC3_CONFIG_FRAME_LEN, _len, _len >> 8)
 
 #define LC3_PRESET_DATA_ALL(_freq, _duration, _alloc, _len) \
-	CODEC_DATA(0x02, LC3_CONFIG_FREQ, _freq, \
-		   0x02, LC3_CONFIG_DURATION, _duration, \
-		   0x05, LC3_CONFIG_CHAN_ALLOC, _alloc, _alloc >> 8, \
-		   _alloc >> 16, _alloc >> 24, \
-		   0x03, LC3_CONFIG_FRAME_LEN, _len, _len >> 8)
+	UTIL_IOV_INIT(0x02, LC3_CONFIG_FREQ, _freq, \
+			0x02, LC3_CONFIG_DURATION, _duration, \
+			0x05, LC3_CONFIG_CHAN_ALLOC, _alloc, _alloc >> 8, \
+			_alloc >> 16, _alloc >> 24, \
+			0x03, LC3_CONFIG_FRAME_LEN, _len, _len >> 8)
 
 #define LC3_PRESET_8KHZ(_duration, _len) \
 	LC3_PRESET_DATA(LC3_CONFIG_FREQ_8KHZ, _duration, _len)
