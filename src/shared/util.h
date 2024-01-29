@@ -151,6 +151,14 @@ ssize_t util_getrandom(void *buf, size_t buflen, unsigned int flags);
 uint8_t util_get_uid(uint64_t *bitmap, uint8_t max);
 void util_clear_uid(uint64_t *bitmap, uint8_t id);
 
+#define util_data(args...) ((const unsigned char[]) { args })
+
+#define UTIL_IOV_INIT(args...) \
+{ \
+	.iov_base = (void *)util_data(args), \
+	.iov_len = sizeof(util_data(args)), \
+}
+
 struct iovec *util_iov_dup(const struct iovec *iov, size_t cnt);
 int util_iov_memcmp(const struct iovec *iov1, const struct iovec *iov2);
 void util_iov_memcpy(struct iovec *iov, void *src, size_t len);
