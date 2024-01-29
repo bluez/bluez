@@ -28,6 +28,7 @@ struct bluetooth_plugin_desc {
 			#name, version, priority, init, exit \
 		};
 #else
+#if EXTERNAL_PLUGINS
 #define BLUETOOTH_PLUGIN_DEFINE(name, version, priority, init, exit) \
 		extern struct btd_debug_desc __start___debug[] \
 				__attribute__ ((weak, visibility("hidden"))); \
@@ -40,4 +41,7 @@ struct bluetooth_plugin_desc {
 			#name, version, priority, init, exit, \
 			__start___debug, __stop___debug \
 		};
+#else
+#error "Requested non built-in plugin, while external plugins is disabled"
+#endif
 #endif
