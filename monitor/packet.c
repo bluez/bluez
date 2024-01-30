@@ -189,43 +189,7 @@ static struct packet_conn_data *lookup_parent(uint16_t handle)
 	return NULL;
 }
 
-static void assign_handle(uint16_t index, uint16_t handle, uint8_t type,
-					uint8_t *dst, uint8_t dst_type)
-{
-	int i;
-
-	for (i = 0; i < MAX_CONN; i++) {
-		if (conn_list[i].handle == 0xffff) {
-			hci_devba(index, (bdaddr_t *)conn_list[i].src);
-
-			conn_list[i].index = index;
-			conn_list[i].handle = handle;
-			conn_list[i].type = type;
-
-			if (!dst) {
-				struct packet_conn_data *p;
-
-				/* If destination is not set attempt to use the
-				 * parent one if that exists.
-				 */
-				p = lookup_parent(handle);
-				if (p) {
-					memcpy(conn_list[i].dst, p->dst,
-						sizeof(conn_list[i].dst));
-					conn_list[i].dst_type = p->dst_type;
-				}
-
-				break;
-			}
-
-			memcpy(conn_list[i].dst, dst, sizeof(conn_list[i].dst));
-			conn_list[i].dst_type = dst_type;
-			break;
-		}
-	}
-}
-
-static void release_handle(uint16_t handle)
+static struct packet_conn_data *release_handle(uint16_t handle)
 {
 	int i;
 
@@ -240,8 +204,51 @@ static void release_handle(uint16_t handle)
 			queue_destroy(conn->chan_q, free);
 			memset(conn, 0, sizeof(*conn));
 			conn->handle = 0xffff;
-			break;
+			return conn;
 		}
+	}
+
+	return NULL;
+}
+
+static void assign_handle(uint16_t index, uint16_t handle, uint8_t type,
+					uint8_t *dst, uint8_t dst_type)
+{
+	struct packet_conn_data *conn = release_handle(handle);
+	int i;
+
+	if (!conn) {
+		for (i = 0; i < MAX_CONN; i++) {
+			if (conn_list[i].handle == 0xffff) {
+				conn = &conn_list[i];
+				break;
+			}
+		}
+	}
+
+	if (!conn)
+		return;
+
+	hci_devba(index, (bdaddr_t *)conn->src);
+
+	conn->index = index;
+	conn->handle = handle;
+	conn->type = type;
+
+	if (!dst) {
+		struct packet_conn_data *p;
+
+		/* If destination is not set attempt to use the parent one if
+		 * that exists.
+		 */
+		p = lookup_parent(handle);
+		if (p) {
+			memcpy(conn->dst, p->dst, sizeof(conn->dst));
+			conn->dst_type = p->dst_type;
+		}
+	} else {
+		memcpy(conn->dst, dst, sizeof(conn->dst));
+		conn->dst_type = dst_type;
 	}
 }
 
