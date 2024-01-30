@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2020  Intel Corporation. All rights reserved.
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  *
  */
@@ -3304,12 +3304,8 @@ static void endpoint_iso_group(const char *input, void *user_data)
 		ep->iso_group = value;
 	}
 
-	if (!ep->broadcast)
-		bt_shell_prompt_input(ep->path, "CIS (auto/value):",
-			endpoint_iso_stream, ep);
-	else
-		bt_shell_prompt_input(ep->path, "BIS (auto/value):",
-			endpoint_iso_stream, ep);
+	bt_shell_prompt_input(ep->path, "CIS (auto/value):",
+		endpoint_iso_stream, ep);
 }
 
 static void endpoint_context(const char *input, void *user_data)
@@ -3327,12 +3323,8 @@ static void endpoint_context(const char *input, void *user_data)
 
 	ep->context = value;
 
-	if (ep->broadcast)
-		bt_shell_prompt_input(ep->path, "BIG (auto/value):",
-			endpoint_iso_group, ep);
-	else
-		bt_shell_prompt_input(ep->path, "CIG (auto/value):",
-			endpoint_iso_group, ep);
+	bt_shell_prompt_input(ep->path, "CIG (auto/value):",
+		endpoint_iso_group, ep);
 }
 
 static void endpoint_supported_context(const char *input, void *user_data)
@@ -3349,6 +3341,11 @@ static void endpoint_supported_context(const char *input, void *user_data)
 	}
 
 	ep->supported_context = value;
+
+	if (ep->broadcast) {
+		endpoint_register(ep);
+		return;
+	}
 
 	bt_shell_prompt_input(ep->path, "Context (value):", endpoint_context,
 									ep);
@@ -3398,13 +3395,6 @@ static void endpoint_max_transports(const char *input, void *user_data)
 static void endpoint_auto_accept(const char *input, void *user_data)
 {
 	struct endpoint *ep = user_data;
-
-	if (!strcmp(ep->uuid, BCAA_SERVICE_UUID) ||
-		!strcmp(ep->uuid, BAA_SERVICE_UUID)) {
-		ep->broadcast = true;
-	} else {
-		ep->broadcast = false;
-	}
 
 	if (!strcasecmp(input, "y") || !strcasecmp(input, "yes")) {
 		ep->auto_accept = true;
@@ -3519,6 +3509,13 @@ static void cmd_register_endpoint(int argc, char *argv[])
 	ep->path = g_strdup_printf("%s/ep%u", BLUEZ_MEDIA_ENDPOINT_PATH,
 					g_list_length(local_endpoints));
 	local_endpoints = g_list_append(local_endpoints, ep);
+
+	if (!strcmp(ep->uuid, BCAA_SERVICE_UUID) ||
+		!strcmp(ep->uuid, BAA_SERVICE_UUID)) {
+		ep->broadcast = true;
+	} else {
+		ep->broadcast = false;
+	}
 
 	if (strrchr(argv[2], ':')) {
 		ep->codec = 0xff;
@@ -3669,6 +3666,147 @@ static void endpoint_config(const char *input, void *user_data)
 
 static struct endpoint *endpoint_new(const struct capabilities *cap);
 
+static void endpoint_set_metadata_cfg(const char *input, void *user_data)
+{
+	struct endpoint_config *cfg = user_data;
+
+	if (!strcasecmp(input, "n") || !strcasecmp(input, "no"))
+		goto done;
+
+	if (!cfg->meta)
+		cfg->meta = g_new0(struct iovec, 1);
+
+	cfg->meta->iov_base = str2bytearray((char *) input,
+				&cfg->meta->iov_len);
+	if (!cfg->meta->iov_base) {
+		free(cfg->meta);
+		cfg->meta = NULL;
+	}
+
+done:
+	endpoint_set_config(cfg);
+}
+
+static struct iovec *iov_append_ltv(struct iovec **iov, uint8_t l,
+					uint8_t t, void *v)
+{
+	if (!*iov)
+		*iov = new0(struct iovec, 1);
+
+	if (!((*iov)->iov_base))
+		(*iov)->iov_base = new0(uint8_t, l + 1);
+
+	util_iov_push_u8(*iov, l);
+	util_iov_push_u8(*iov, t);
+	util_iov_push_mem(*iov, l - 1, v);
+
+	return *iov;
+}
+
+static void config_endpoint_channel_location(const char *input, void *user_data)
+{
+	struct endpoint_config *cfg = user_data;
+	char *endptr = NULL;
+	uint32_t location;
+
+	if (!strcasecmp(input, "n") || !strcasecmp(input, "no"))
+		goto add_meta;
+
+	location = strtol(input, &endptr, 0);
+
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	/* Add Channel Allocation LTV in capabilities */
+	location = cpu_to_le32(location);
+	iov_append_ltv(&cfg->caps, LC3_CONFIG_CHAN_ALLOC_LEN,
+			LC3_CONFIG_CHAN_ALLOC, &location);
+
+add_meta:
+	/* Add metadata */
+	bt_shell_prompt_input(cfg->ep->path, "Enter Metadata (value/no):",
+			endpoint_set_metadata_cfg, cfg);
+}
+
+static void ltv_find(size_t i, uint8_t l, uint8_t t, uint8_t *v,
+					void *user_data)
+{
+	bool *found = user_data;
+
+	*found = true;
+}
+
+static void config_endpoint_iso_group(const char *input, void *user_data)
+{
+	struct endpoint_config *cfg = user_data;
+	char *endptr = NULL;
+	int value;
+	uint8_t type = LC3_CONFIG_CHAN_ALLOC;
+	bool found = false;
+
+	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto")) {
+		cfg->ep->iso_group = BT_ISO_QOS_GROUP_UNSET;
+	} else {
+		value = strtol(input, &endptr, 0);
+
+		if (!endptr || *endptr != '\0' || value > UINT8_MAX) {
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		cfg->ep->iso_group = value;
+	}
+
+	/* Check if Channel Allocation is present in caps */
+	util_ltv_foreach(cfg->caps->iov_base,
+			cfg->caps->iov_len, &type,
+			ltv_find, &found);
+
+	/* Add Channel Allocation if it is not present in caps */
+	if (!found) {
+		bt_shell_prompt_input(cfg->ep->path,
+				"Enter channel location (value/no):",
+				config_endpoint_channel_location, cfg);
+	} else {
+		/* Add metadata */
+		bt_shell_prompt_input(cfg->ep->path,
+				"Enter Metadata (value/no):",
+				endpoint_set_metadata_cfg, cfg);
+	}
+}
+
+static void endpoint_set_config_bcast(struct endpoint_config *cfg)
+{
+	cfg->ep->bcode = g_new0(struct iovec, 1);
+	iov_append(&cfg->ep->bcode, bcast_code,
+			sizeof(bcast_code));
+
+	/* Add periodic advertisement parameters */
+	cfg->sync_factor = BCAST_SYNC_FACTOR;
+	cfg->options = BCAST_OPTIONS;
+	cfg->skip = BCAST_SKIP;
+	cfg->sync_timeout = BCAST_SYNC_TIMEOUT;
+	cfg->sync_cte_type = BCAST_SYNC_CTE_TYPE;
+
+	/* Add BIG create sync parameters */
+	cfg->mse = BCAST_MSE;
+	cfg->timeout = BCAST_TIMEOUT;
+
+	if ((strcmp(cfg->ep->uuid, BAA_SERVICE_UUID) == 0)) {
+		/* A broadcast sink endpoint config does not need
+		 * user input.
+		 */
+		endpoint_set_config(cfg);
+		return;
+	}
+
+	bt_shell_prompt_input(cfg->ep->path,
+		"BIG (auto/value):",
+		config_endpoint_iso_group, cfg);
+}
+
 static void cmd_config_endpoint(int argc, char *argv[])
 {
 	struct endpoint_config *cfg;
@@ -3705,24 +3843,11 @@ static void cmd_config_endpoint(int argc, char *argv[])
 		/* Set QoS parameters */
 		cfg->qos = preset->qos;
 
-		if (cfg->ep->broadcast) {
-			cfg->ep->bcode = g_new0(struct iovec, 1);
-			iov_append(&cfg->ep->bcode, bcast_code,
-					sizeof(bcast_code));
-
-			/* Add periodic advertisement parameters */
-			cfg->sync_factor = BCAST_SYNC_FACTOR;
-			cfg->options = BCAST_OPTIONS;
-			cfg->skip = BCAST_SKIP;
-			cfg->sync_timeout = BCAST_SYNC_TIMEOUT;
-			cfg->sync_cte_type = BCAST_SYNC_CTE_TYPE;
-			/* Add BIG create sync parameters */
-			cfg->mse = BCAST_MSE;
-			cfg->timeout = BCAST_TIMEOUT;
-
+		if (cfg->ep->broadcast)
+			endpoint_set_config_bcast(cfg);
+		else
 			endpoint_set_config(cfg);
-		} else
-			endpoint_set_config(cfg);
+
 		return;
 	}
 
@@ -4133,6 +4258,30 @@ static const struct bt_shell_menu endpoint_menu = {
 	{} },
 };
 
+static void endpoint_init_bcast(struct endpoint *ep)
+{
+	if (!strcmp(ep->uuid, BAA_SERVICE_UUID)) {
+		ep->locations = EP_SNK_LOCATIONS;
+		ep->supported_context = EP_SUPPORTED_SNK_CTXT;
+	} else {
+		ep->locations = EP_SRC_LOCATIONS;
+		ep->supported_context = EP_SUPPORTED_SRC_CTXT;
+	}
+}
+
+static void endpoint_init_ucast(struct endpoint *ep)
+{
+	if (!strcmp(ep->uuid, PAC_SINK_UUID)) {
+		ep->locations = EP_SNK_LOCATIONS;
+		ep->supported_context = EP_SUPPORTED_SNK_CTXT;
+		ep->context = EP_SNK_CTXT;
+	} else if (!strcmp(ep->uuid, PAC_SOURCE_UUID)) {
+		ep->locations = EP_SRC_LOCATIONS;
+		ep->supported_context = EP_SUPPORTED_SRC_CTXT;
+		ep->context = EP_SRC_CTXT;
+	}
+}
+
 static void endpoint_init_defaults(struct endpoint *ep)
 {
 	ep->preset = find_presets(ep->uuid, ep->codec, ep->vid, ep->cid);
@@ -4148,18 +4297,11 @@ static void endpoint_init_defaults(struct endpoint *ep)
 
 	ep->broadcast = (strcmp(ep->uuid, BCAA_SERVICE_UUID) &&
 			strcmp(ep->uuid, BAA_SERVICE_UUID)) ? false : true;
-	if (ep->broadcast)
-		return;
 
-	if (!strcmp(ep->uuid, PAC_SINK_UUID)) {
-		ep->locations = EP_SNK_LOCATIONS;
-		ep->supported_context = EP_SUPPORTED_SNK_CTXT;
-		ep->context = EP_SNK_CTXT;
-	} else if (!strcmp(ep->uuid, PAC_SOURCE_UUID)) {
-		ep->locations = EP_SRC_LOCATIONS;
-		ep->supported_context = EP_SUPPORTED_SRC_CTXT;
-		ep->context = EP_SRC_CTXT;
-	}
+	if (ep->broadcast)
+		endpoint_init_bcast(ep);
+	else
+		endpoint_init_ucast(ep);
 }
 
 static struct endpoint *endpoint_new(const struct capabilities *cap)
