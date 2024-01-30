@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation. All rights reserved.
+ *  Copyright 2024 NXP
  *
  */
 
@@ -67,7 +68,8 @@
 #define LC3_CONFIG_DURATION_7_5	0x00
 #define LC3_CONFIG_DURATION_10	0x01
 
-#define LC3_CONFIG_CHAN_ALLOC	(LC3_CONFIG_BASE + 2)
+#define LC3_CONFIG_CHAN_ALLOC		(LC3_CONFIG_BASE + 2)
+#define LC3_CONFIG_CHAN_ALLOC_LEN	0x05
 
 #define LC3_CONFIG_FRAME_LEN	(LC3_CONFIG_BASE + 3)
 
