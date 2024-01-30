@@ -10083,7 +10083,7 @@ static void conn_complete_evt(struct timeval *tv, uint16_t index,
 	const struct bt_hci_evt_conn_complete *evt = data;
 
 	print_status(evt->status);
-	print_handle(evt->handle);
+	print_field("Handle: %d", le16_to_cpu(evt->handle));
 	print_bdaddr(evt->bdaddr);
 	print_link_type(evt->link_type);
 	print_enable("Encryption", evt->encr_mode);
@@ -10655,7 +10655,7 @@ static void sync_conn_complete_evt(struct timeval *tv, uint16_t index,
 	const struct bt_hci_evt_sync_conn_complete *evt = data;
 
 	print_status(evt->status);
-	print_handle(evt->handle);
+	print_field("Handle: %d", le16_to_cpu(evt->handle));
 	print_bdaddr(evt->bdaddr);
 	print_link_type(evt->link_type);
 	print_field("Transmission interval: 0x%2.2x", evt->tx_interval);
@@ -11084,7 +11084,7 @@ static void le_conn_complete_evt(struct timeval *tv, uint16_t index,
 	const struct bt_hci_evt_le_conn_complete *evt = data;
 
 	print_status(evt->status);
-	print_handle(evt->handle);
+	print_field("Handle: %d", le16_to_cpu(evt->handle));
 	print_role(evt->role);
 	print_peer_addr_type("Peer address type", evt->peer_addr_type);
 	print_addr("Peer address", evt->peer_addr, evt->peer_addr_type);
@@ -11213,7 +11213,7 @@ static void le_enhanced_conn_complete_evt(struct timeval *tv, uint16_t index,
 	const struct bt_hci_evt_le_enhanced_conn_complete *evt = data;
 
 	print_status(evt->status);
-	print_handle(evt->handle);
+	print_field("Handle: %d", le16_to_cpu(evt->handle));
 	print_role(evt->role);
 	print_peer_addr_type("Peer address type", evt->peer_addr_type);
 	print_addr("Peer address", evt->peer_addr, evt->peer_addr_type);
