@@ -948,7 +948,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 						&setup->qos, setup->caps);
 
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
-						setup->caps, config_cb, ep);
+						setup->caps, config_cb, setup);
 	if (!setup->id) {
 		DBG("Unable to config stream");
 		setup_free(setup);
