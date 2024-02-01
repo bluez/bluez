@@ -3276,6 +3276,13 @@ static bool device_disappeared(gpointer user_data)
 {
 	struct btd_device *dev = user_data;
 
+	/* If there are services connecting restart the timer to give more time
+	 * for the service to either complete the connection or disconnect.
+	 */
+	if (find_service_with_state(dev->services,
+					BTD_SERVICE_STATE_CONNECTING))
+		return TRUE;
+
 	dev->temporary_timer = 0;
 
 	btd_adapter_remove_device(dev->adapter, dev);
