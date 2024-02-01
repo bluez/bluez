@@ -1379,6 +1379,7 @@ static void stream_set_state_broadcast(struct bt_bap_stream *stream,
 		break;
 	case BT_ASCS_ASE_STATE_RELEASING:
 		bap_stream_io_detach(stream);
+		stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_QOS);
 		break;
 	}
 
