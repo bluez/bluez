@@ -1539,7 +1539,8 @@ static guint transport_bap_suspend(struct media_transport *transport,
 	id = bt_bap_stream_disable(bap->stream, bap->linked, func, owner);
 
 	if (bt_bap_stream_get_type(bap->stream) == BT_BAP_STREAM_TYPE_BCAST) {
-		bap_disable_complete(bap->stream, 0x00, 0x00, owner);
+		if (transport->owner == owner)
+			bap_disable_complete(bap->stream, 0x00, 0x00, owner);
 		return 0;
 	}
 
