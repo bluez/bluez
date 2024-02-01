@@ -974,6 +974,9 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 			setup->id = 0;
 		}
 
+		if (ep->data->service)
+			service_set_connecting(ep->data->service);
+
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
@@ -2437,6 +2440,11 @@ static int bap_bcast_probe(struct btd_service *service)
 		return -EINVAL;
 	}
 
+	if (!bt_bap_attach(data->bap, NULL)) {
+		error("BAP unable to attach");
+		return -EINVAL;
+	}
+
 	bap_data_add(data);
 
 	data->ready_id = bt_bap_ready_register(data->bap, bap_ready, service,
@@ -2644,6 +2652,7 @@ static struct btd_profile bap_bcast_profile = {
 	.remote_uuid	= BCAAS_UUID_STR,
 	.device_probe	= bap_bcast_probe,
 	.device_remove	= bap_bcast_remove,
+	.disconnect	= bap_disconnect,
 	.auto_connect	= false,
 	.experimental	= true,
 };
