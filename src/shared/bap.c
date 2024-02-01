@@ -1377,9 +1377,13 @@ static void stream_set_state_broadcast(struct bt_bap_stream *stream,
 	case BT_ASCS_ASE_STATE_IDLE:
 		bap_stream_detach(stream);
 		break;
-	case BT_ASCS_ASE_STATE_RELEASING:
+	case BT_ASCS_ASE_STATE_DISABLING:
 		bap_stream_io_detach(stream);
 		stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_QOS);
+		break;
+	case BT_ASCS_ASE_STATE_RELEASING:
+		bap_stream_io_detach(stream);
+		stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_IDLE);
 		break;
 	}
 
@@ -5064,7 +5068,7 @@ unsigned int bt_bap_stream_disable(struct bt_bap_stream *stream,
 
 	case BT_BAP_STREAM_TYPE_BCAST:
 		stream_set_state_broadcast(stream,
-					BT_BAP_STREAM_STATE_RELEASING);
+					BT_BAP_STREAM_STATE_DISABLING);
 		return 1;
 	}
 
@@ -5161,11 +5165,8 @@ unsigned int bt_bap_stream_release(struct bt_bap_stream *stream,
 
 	/* If stream is broadcast, no BT_ASCS_RELEASE is required */
 	if (bt_bap_stream_get_type(stream) == BT_BAP_STREAM_TYPE_BCAST) {
-		if (!bap_stream_valid(stream)) {
-			stream_set_state_broadcast(stream,
-					BT_BAP_STREAM_STATE_IDLE);
-			stream = NULL;
-		}
+		stream_set_state_broadcast(stream,
+					BT_BAP_STREAM_STATE_RELEASING);
 		return 0;
 	}
 
