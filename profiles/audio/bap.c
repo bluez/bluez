@@ -1064,7 +1064,6 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 					setup->metadata);
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
 					setup->caps, NULL, NULL);
-	data->listen_io = io;
 
 	bt_bap_stream_set_user_data(setup->stream, ep->path);
 
