@@ -433,7 +433,8 @@ static bool parse_base(void *data, size_t len, util_debug_func_t func,
 	};
 
 	uint8_t capsLen, metaLen;
-	uint8_t *hexstream;
+	struct iovec cc;
+	struct iovec metadata;
 
 	if (presDelay) {
 		if (!util_iov_pull_le24(&iov, presDelay))
@@ -467,15 +468,21 @@ static bool parse_base(void *data, size_t len, util_debug_func_t func,
 
 	if (!capsLen)
 		return false;
+
+	cc.iov_len = capsLen;
+	cc.iov_base = util_iov_pull_mem(&iov, capsLen);
+	if (!cc.iov_base)
+		return false;
+
 	if (caps) {
-		if (!(*caps))
-			*caps = new0(struct iovec, 1);
-		(*caps)->iov_len = capsLen;
-		(*caps)->iov_base = iov.iov_base;
+		if (*caps)
+			util_iov_free(*caps, 1);
+
+		*caps = util_iov_dup(&cc, 1);
 	}
 
 	for (int i = 0; capsLen > 1; i++) {
-		struct bt_ltv *ltv = util_iov_pull_mem(&iov, sizeof(*ltv));
+		struct bt_ltv *ltv = util_iov_pull_mem(&cc, sizeof(*ltv));
 		uint8_t *caps;
 
 		if (!ltv) {
@@ -487,7 +494,7 @@ static bool parse_base(void *data, size_t len, util_debug_func_t func,
 		util_debug(func, NULL, "%s #%u: len %u type %u",
 					"CC", i, ltv->len, ltv->type);
 
-		caps = util_iov_pull_mem(&iov, ltv->len - 1);
+		caps = util_iov_pull_mem(&cc, ltv->len - 1);
 		if (!caps) {
 			util_debug(func, NULL, "Unable to parse %s",
 								"CC");
@@ -504,17 +511,20 @@ static bool parse_base(void *data, size_t len, util_debug_func_t func,
 
 	if (!metaLen)
 		return false;
+
+	metadata.iov_len = metaLen;
+	metadata.iov_base = util_iov_pull_mem(&iov, metaLen);
+	if (!metadata.iov_base)
+		return false;
+
 	if (meta) {
-		if (!(*meta))
-			*meta = new0(struct iovec, 1);
-		(*meta)->iov_len = metaLen;
-		(*meta)->iov_base = iov.iov_base;
+		if (*meta)
+			util_iov_free(*meta, 1);
+
+		*meta = util_iov_dup(&metadata, 1);
 	}
 
-	hexstream = util_iov_pull_mem(&iov, metaLen);
-	if (!hexstream)
-		return false;
-	util_hexdump(' ', hexstream, metaLen, func, NULL);
+	util_hexdump(' ', metadata.iov_base, metaLen, func, NULL);
 
 	return true;
 }
