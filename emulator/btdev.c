@@ -6425,6 +6425,7 @@ static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
 								0x16);
 
 		conn_remove(conn);
+		break;
 	}
 
 done:
