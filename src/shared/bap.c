@@ -2984,6 +2984,16 @@ static void bap_state_free(void *data)
 	free(state);
 }
 
+static void bap_ep_free(void *data)
+{
+	struct bt_bap_endpoint *ep = data;
+
+	if (ep && ep->stream)
+		ep->stream->ep = NULL;
+
+	free(ep);
+}
+
 static void bap_detached(void *data, void *user_data)
 {
 	struct bt_bap_cb *cb = data;
@@ -3006,7 +3016,7 @@ static void bap_free(void *data)
 	queue_destroy(bap->ready_cbs, bap_ready_free);
 	queue_destroy(bap->state_cbs, bap_state_free);
 	queue_destroy(bap->local_eps, free);
-	queue_destroy(bap->remote_eps, free);
+	queue_destroy(bap->remote_eps, bap_ep_free);
 
 	queue_destroy(bap->reqs, bap_req_free);
 	queue_destroy(bap->notify, NULL);
