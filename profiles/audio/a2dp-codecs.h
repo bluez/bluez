@@ -250,6 +250,18 @@
 #define LDAC_CHANNEL_MODE_DUAL		0x02
 #define LDAC_CHANNEL_MODE_STEREO	0x01
 
+#define OPUS_G_VENDOR_ID		0x000000e0
+#define OPUS_G_CODEC_ID			0x0001
+
+#define OPUS_G_FREQUENCY_48000		0x80
+
+#define OPUS_G_DURATION_100		0x08
+#define OPUS_G_DURATION_200		0x10
+
+#define OPUS_G_CHANNELS_MONO		0x01
+#define OPUS_G_CHANNELS_STEREO		0x02
+#define OPUS_G_CHANNELS_DUAL		0x04
+
 typedef struct {
 	uint8_t vendor_id4;
 	uint8_t vendor_id3;
@@ -420,3 +432,8 @@ typedef struct {
 	uint8_t reserved2;
 	uint8_t reserved3;
 } __attribute__ ((packed)) a2dp_aptx_hd_t;
+
+typedef struct {
+	a2dp_vendor_codec_t info;
+	uint8_t data;
+} __attribute__ ((packed)) a2dp_opus_g_t;

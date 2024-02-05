@@ -2471,6 +2471,36 @@ static void print_ldac(a2dp_ldac_t *ldac, uint8_t size)
 	bt_shell_printf("\n");
 }
 
+static void print_opus_g(a2dp_opus_g_t *opus, uint8_t size)
+{
+	bt_shell_printf("\t\tVendor Specific Value (Opus [Google])");
+
+	if (size < sizeof(*opus)) {
+		bt_shell_printf(" (broken)\n");
+		return;
+	}
+
+	bt_shell_printf("\n\t\tFrequencies: ");
+	if (opus->data & OPUS_G_FREQUENCY_48000)
+		bt_shell_printf("48kHz ");
+
+	bt_shell_printf("\n\t\tChannel modes: ");
+	if (opus->data & OPUS_G_CHANNELS_MONO)
+		bt_shell_printf("Mono ");
+	if (opus->data & OPUS_G_CHANNELS_STEREO)
+		bt_shell_printf("Stereo ");
+	if (opus->data & OPUS_G_CHANNELS_DUAL)
+		bt_shell_printf("Dual Mono ");
+
+	bt_shell_printf("\n\t\tFrame durations: ");
+	if (opus->data & OPUS_G_DURATION_100)
+		bt_shell_printf("10 ms ");
+	if (opus->data & OPUS_G_DURATION_200)
+		bt_shell_printf("20 ms ");
+
+	bt_shell_printf("\n");
+}
+
 static void print_vendor(a2dp_vendor_codec_t *vendor, uint8_t size)
 {
 	uint32_t vendor_id;
@@ -2508,6 +2538,8 @@ static void print_vendor(a2dp_vendor_codec_t *vendor, uint8_t size)
 		print_aptx_hd((void *) vendor, size);
 	else if (vendor_id == LDAC_VENDOR_ID && codec_id == LDAC_CODEC_ID)
 		print_ldac((void *) vendor, size);
+	else if (vendor_id == OPUS_G_VENDOR_ID && codec_id == OPUS_G_CODEC_ID)
+		print_opus_g((void *) vendor, size);
 }
 
 static void print_mpeg24(a2dp_aac_t *aac, uint8_t size)
