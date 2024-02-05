@@ -216,6 +216,7 @@ struct bt_bap_stream_io {
 
 struct bt_bap_stream_ops {
 	uint8_t type;
+	void (*set_state)(struct bt_bap_stream *stream, uint8_t state);
 	unsigned int (*config)(struct bt_bap_stream *stream,
 				struct bt_bap_qos *qos, struct iovec *data,
 				bt_bap_stream_func_t func, void *user_data);
@@ -1213,20 +1214,6 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 	struct bt_bap *bap = stream->bap;
 	const struct queue_entry *entry;
 
-	DBG(bap, "stream %p dir 0x%02x: %s -> %s", stream,
-			bt_bap_stream_get_dir(stream),
-			bt_bap_stream_statestr(stream->ep->old_state),
-			bt_bap_stream_statestr(stream->ep->state));
-
-	/* Check if ref_count is already 0 which means detaching is in
-	 * progress.
-	 */
-	bap = bt_bap_ref_safe(bap);
-	if (!bap) {
-		bap_stream_detach(stream);
-		return;
-	}
-
 	/* Pre notification updates */
 	switch (stream->ep->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
@@ -1280,52 +1267,22 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 			bt_bap_stream_stop(stream, stream_stop_complete, NULL);
 		break;
 	}
-
-	bt_bap_unref(bap);
 }
 
 static void stream_set_state(struct bt_bap_stream *stream, uint8_t state)
 {
 	struct bt_bap_endpoint *ep = stream->ep;
+	struct bt_bap *bap = stream->bap;
 
-	ep->old_state = ep->state;
-	ep->state = state;
-
-	if (stream->lpac->type == BT_BAP_BCAST_SINK)
-		goto done;
-
-	if (stream->client)
-		goto done;
-
-	switch (ep->state) {
-	case BT_ASCS_ASE_STATE_IDLE:
-		break;
-	case BT_ASCS_ASE_STATE_CONFIG:
-		stream_notify_config(stream);
-		break;
-	case BT_ASCS_ASE_STATE_QOS:
-		stream_notify_qos(stream);
-		break;
-	case BT_ASCS_ASE_STATE_ENABLING:
-	case BT_ASCS_ASE_STATE_STREAMING:
-	case BT_ASCS_ASE_STATE_DISABLING:
-		stream_notify_metadata(stream);
-		break;
+	/* Check if ref_count is already 0 which means detaching is in
+	 * progress.
+	 */
+	bap = bt_bap_ref_safe(bap);
+	if (!bap) {
+		bap_stream_detach(stream);
+		return;
 	}
 
-done:
-	bap_stream_state_changed(stream);
-}
-
-static void stream_set_state_broadcast(struct bt_bap_stream *stream,
-					uint8_t state)
-{
-	struct bt_bap_endpoint *ep = stream->ep;
-	struct bt_bap *bap = stream->bap;
-	const struct queue_entry *entry;
-
-	if (ep->old_state == state)
-		return;
 	ep->old_state = ep->state;
 	ep->state = state;
 
@@ -1334,31 +1291,8 @@ static void stream_set_state_broadcast(struct bt_bap_stream *stream,
 			bt_bap_stream_statestr(stream->ep->old_state),
 			bt_bap_stream_statestr(stream->ep->state));
 
-	bt_bap_ref(bap);
-
-	for (entry = queue_get_entries(bap->state_cbs); entry;
-							entry = entry->next) {
-		struct bt_bap_state *state = entry->data;
-
-		if (state->func)
-			state->func(stream, stream->ep->old_state,
-					stream->ep->state, state->data);
-	}
-
-	/* Post notification updates */
-	switch (stream->ep->state) {
-	case BT_ASCS_ASE_STATE_IDLE:
-		bap_stream_detach(stream);
-		break;
-	case BT_ASCS_ASE_STATE_DISABLING:
-		bap_stream_io_detach(stream);
-		stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_QOS);
-		break;
-	case BT_ASCS_ASE_STATE_RELEASING:
-		bap_stream_io_detach(stream);
-		stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_IDLE);
-		break;
-	}
+	if (stream->ops && stream->ops->set_state)
+		stream->ops->set_state(stream, state);
 
 	bt_bap_unref(bap);
 }
@@ -1370,11 +1304,9 @@ static void ep_config_cb(struct bt_bap_stream *stream, int err)
 
 	if (bt_bap_stream_get_type(stream) == BT_BAP_STREAM_TYPE_BCAST) {
 		if (!bt_bap_stream_io_dir(stream))
-			stream_set_state_broadcast(stream,
-				BT_BAP_STREAM_STATE_QOS);
+			stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
 		else if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE)
-			stream_set_state_broadcast(stream,
-				BT_BAP_STREAM_STATE_CONFIG);
+			stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
 		return;
 	}
 
@@ -1589,6 +1521,33 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
 						bap_process_queue, bap, NULL);
 
 	return true;
+}
+
+static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
+{
+	struct bt_bap_endpoint *ep = stream->ep;
+
+	if (stream->lpac->type == BT_BAP_BCAST_SINK || stream->client)
+		goto done;
+
+	switch (ep->state) {
+	case BT_ASCS_ASE_STATE_IDLE:
+		break;
+	case BT_ASCS_ASE_STATE_CONFIG:
+		stream_notify_config(stream);
+		break;
+	case BT_ASCS_ASE_STATE_QOS:
+		stream_notify_qos(stream);
+		break;
+	case BT_ASCS_ASE_STATE_ENABLING:
+	case BT_ASCS_ASE_STATE_STREAMING:
+	case BT_ASCS_ASE_STATE_DISABLING:
+		stream_notify_metadata(stream);
+		break;
+	}
+
+done:
+	bap_stream_state_changed(stream);
 }
 
 static unsigned int bap_ucast_config(struct bt_bap_stream *stream,
@@ -1978,16 +1937,50 @@ static unsigned int bap_ucast_release(struct bt_bap_stream *stream,
 	return req->id;
 }
 
+static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
+{
+	struct bt_bap *bap = stream->bap;
+	const struct queue_entry *entry;
+
+	DBG(bap, "stream %p dir 0x%02x: %s -> %s", stream,
+			bt_bap_stream_get_dir(stream),
+			bt_bap_stream_statestr(stream->ep->old_state),
+			bt_bap_stream_statestr(stream->ep->state));
+
+	for (entry = queue_get_entries(bap->state_cbs); entry;
+							entry = entry->next) {
+		struct bt_bap_state *state = entry->data;
+
+		if (state->func)
+			state->func(stream, stream->ep->old_state,
+					stream->ep->state, state->data);
+	}
+
+	/* Post notification updates */
+	switch (stream->ep->state) {
+	case BT_ASCS_ASE_STATE_IDLE:
+		bap_stream_detach(stream);
+		break;
+	case BT_ASCS_ASE_STATE_DISABLING:
+		bap_stream_io_detach(stream);
+		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+		break;
+	case BT_ASCS_ASE_STATE_RELEASING:
+		bap_stream_io_detach(stream);
+		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+		break;
+	}
+}
+
 static unsigned int bap_bcast_enable(struct bt_bap_stream *stream,
 					bool enable_links, struct iovec *data,
 					bt_bap_stream_func_t func,
 					void *user_data)
 {
 	if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE)
-		stream_set_state_broadcast(stream,
-						BT_BAP_STREAM_STATE_STREAMING);
+		stream_set_state(stream, BT_BAP_STREAM_STATE_STREAMING);
 	else
-		stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_CONFIG);
+		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
 
 	return 1;
 }
@@ -1996,7 +1989,7 @@ static unsigned int bap_bcast_start(struct bt_bap_stream *stream,
 					bt_bap_stream_func_t func,
 					void *user_data)
 {
-	stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_STREAMING);
+	stream_set_state(stream, BT_BAP_STREAM_STATE_STREAMING);
 
 	return 1;
 }
@@ -2006,7 +1999,7 @@ static unsigned int bap_bcast_disable(struct bt_bap_stream *stream,
 					bt_bap_stream_func_t func,
 					void *user_data)
 {
-	stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_DISABLING);
+	stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
 
 	return 1;
 }
@@ -2026,15 +2019,16 @@ static unsigned int bap_bcast_release(struct bt_bap_stream *stream,
 					bt_bap_stream_func_t func,
 					void *user_data)
 {
-	stream_set_state_broadcast(stream, BT_BAP_STREAM_STATE_RELEASING);
+	stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
 
 	return 1;
 }
 
-#define STREAM_OPS(_type, _config, _qos, _enable, _start, _disable, _stop, \
-			_metadata, _release) \
+#define STREAM_OPS(_type, _set_state, _config, _qos, _enable, _start, \
+			_disable, _stop, _metadata, _release) \
 { \
 	.type = _type, \
+	.set_state = _set_state, \
 	.config = _config, \
 	.qos = _qos, \
 	.enable = _enable, \
@@ -2046,19 +2040,19 @@ static unsigned int bap_bcast_release(struct bt_bap_stream *stream,
 }
 
 static const struct bt_bap_stream_ops stream_ops[] = {
-	STREAM_OPS(BT_BAP_SINK,
+	STREAM_OPS(BT_BAP_SINK, bap_ucast_set_state,
 			bap_ucast_config, bap_ucast_qos, bap_ucast_enable,
 			bap_ucast_start, bap_ucast_disable, bap_ucast_stop,
 			bap_ucast_metadata, bap_ucast_release),
-	STREAM_OPS(BT_BAP_SOURCE,
+	STREAM_OPS(BT_BAP_SOURCE, bap_ucast_set_state,
 			bap_ucast_config, bap_ucast_qos, bap_ucast_enable,
 			bap_ucast_start, bap_ucast_disable, bap_ucast_stop,
 			bap_ucast_metadata, bap_ucast_release),
-	STREAM_OPS(BT_BAP_BCAST_SINK,
+	STREAM_OPS(BT_BAP_BCAST_SINK, bap_bcast_set_state,
 			bap_bcast_config, NULL, bap_bcast_enable,
 			bap_bcast_start, bap_bcast_disable, NULL,
 			bap_bcast_metadata, bap_bcast_release),
-	STREAM_OPS(BT_BAP_BCAST_SOURCE,
+	STREAM_OPS(BT_BAP_BCAST_SOURCE, bap_bcast_set_state,
 			bap_bcast_config, NULL, bap_bcast_enable,
 			bap_bcast_start, bap_bcast_disable, NULL,
 			bap_bcast_metadata, bap_bcast_release),
