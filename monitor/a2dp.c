@@ -47,6 +47,8 @@
 #define APTX_HD_CODEC_ID	0x0024
 #define LDAC_VENDOR_ID		0x0000012d
 #define LDAC_CODEC_ID		0x00aa
+#define OPUS_G_VENDOR_ID	0x000000e0
+#define OPUS_G_CODEC_ID		0x0001
 
 struct bit_desc {
 	uint8_t bit_num;
@@ -201,6 +203,24 @@ static const struct bit_desc faststream_source_frequency_table[] = {
 	{ }
 };
 
+static const struct bit_desc opus_g_frequency_table[] = {
+	{  7, "48000" },
+	{ }
+};
+
+static const struct bit_desc opus_g_duration_table[] = {
+	{  3, "10 ms" },
+	{  4, "20 ms" },
+	{ }
+};
+
+static const struct bit_desc opus_g_channels_table[] = {
+	{  0, "Mono" },
+	{  1, "Stereo" },
+	{  2, "Dual Mono" },
+	{ }
+};
+
 static void print_value_bits(uint8_t indent, uint32_t value,
 						const struct bit_desc *table)
 {
@@ -244,6 +264,7 @@ static bool codec_vendor_aptx_ll_cfg(uint8_t losc, struct l2cap_frame *frame);
 static bool codec_vendor_aptx_hd_cap(uint8_t losc, struct l2cap_frame *frame);
 static bool codec_vendor_aptx_hd_cfg(uint8_t losc, struct l2cap_frame *frame);
 static bool codec_vendor_ldac(uint8_t losc, struct l2cap_frame *frame);
+static bool codec_vendor_opus_g(uint8_t losc, struct l2cap_frame *frame);
 
 static const struct vndcodec vndcodecs[] = {
 	{ APTX_VENDOR_ID, APTX_CODEC_ID, "aptX",
@@ -256,6 +277,8 @@ static const struct vndcodec vndcodecs[] = {
 	  codec_vendor_aptx_hd_cap, codec_vendor_aptx_hd_cfg },
 	{ LDAC_VENDOR_ID, LDAC_CODEC_ID, "LDAC",
 	  codec_vendor_ldac, codec_vendor_ldac },
+	{ OPUS_G_VENDOR_ID, OPUS_G_CODEC_ID, "Opus (Google)",
+	  codec_vendor_opus_g, codec_vendor_opus_g },
 	{ }
 };
 
@@ -681,6 +704,31 @@ static bool codec_vendor_ldac(uint8_t losc, struct l2cap_frame *frame)
 	l2cap_frame_get_le16(frame, &cap);
 
 	print_field("%*cUnknown: 0x%04x", BASE_INDENT + 2, ' ', cap);
+
+	return true;
+}
+
+static bool codec_vendor_opus_g(uint8_t losc, struct l2cap_frame *frame)
+{
+	uint8_t cap = 0;
+
+	if (losc != 1)
+		return false;
+
+	l2cap_frame_get_u8(frame, &cap);
+
+	print_field("%*cFrequency: 0x%02x", BASE_INDENT + 2, ' ', cap & 0x80);
+	print_value_bits(BASE_INDENT + 2, cap, opus_g_frequency_table);
+
+	print_field("%*cFrame Duration: 0x%02x", BASE_INDENT + 2, ' ',
+								cap & 0x18);
+	print_value_bits(BASE_INDENT + 2, cap, opus_g_duration_table);
+
+	print_field("%*cChannel Mode: 0x%02x", BASE_INDENT + 2, ' ',
+								cap & 0x07);
+	print_value_bits(BASE_INDENT + 2, cap, opus_g_channels_table);
+
+	print_field("%*cReserved: 0x%02x", BASE_INDENT + 2, ' ', cap & 0x60);
 
 	return true;
 }
