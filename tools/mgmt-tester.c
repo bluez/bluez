@@ -3216,7 +3216,7 @@ static const struct generic_data pair_device_power_off_test_1 = {
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
 	.send_func = pair_device_send_param_func,
 	.force_power_off = true,
-	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.expect_status = MGMT_STATUS_DISCONNECTED,
 	.expect_func = pair_device_expect_param_func,
 };
 
