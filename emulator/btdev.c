@@ -1281,6 +1281,27 @@ static void conn_complete(struct btdev *btdev,
 	send_event(btdev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 }
 
+struct page_timeout_data {
+	struct btdev *btdev;
+	uint8_t bdaddr[6];
+	unsigned int timeout_id;
+};
+
+static bool page_timeout(void *user_data)
+{
+	struct page_timeout_data *pt_data = user_data;
+	struct btdev *btdev = pt_data->btdev;
+	const uint8_t *bdaddr = pt_data->bdaddr;
+
+	timeout_remove(pt_data->timeout_id);
+	pt_data->timeout_id = 0;
+
+	conn_complete(btdev, bdaddr, BT_HCI_ERR_PAGE_TIMEOUT);
+
+	free(pt_data);
+	return false;
+}
+
 static int cmd_create_conn_complete(struct btdev *dev, const void *data,
 						uint8_t len)
 {
@@ -1298,7 +1319,18 @@ static int cmd_create_conn_complete(struct btdev *dev, const void *data,
 
 		send_event(remote, BT_HCI_EVT_CONN_REQUEST, &cr, sizeof(cr));
 	} else {
-		conn_complete(dev, cmd->bdaddr, BT_HCI_ERR_PAGE_TIMEOUT);
+		struct page_timeout_data *pt_data =
+			new0(struct page_timeout_data, 1);
+
+		pt_data->btdev = dev;
+		memcpy(pt_data->bdaddr, cmd->bdaddr, 6);
+
+		/* Send page timeout after 5.12 seconds to emulate real
+		 * paging.
+		 */
+		pt_data->timeout_id = timeout_add(5120,
+						  page_timeout,
+						  pt_data, NULL);
 	}
 
 	return 0;
