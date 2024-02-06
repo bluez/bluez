@@ -1033,7 +1033,7 @@ static void stream_notify_metadata(struct bt_bap_stream *stream)
 
 static struct bt_bap *bt_bap_ref_safe(struct bt_bap *bap)
 {
-	if (!bap || !bap->ref_count)
+	if (!bap || !bap->ref_count || !queue_find(sessions, NULL, bap))
 		return NULL;
 
 	return bt_bap_ref(bap);
