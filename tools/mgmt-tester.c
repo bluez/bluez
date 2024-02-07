@@ -1688,53 +1688,6 @@ static const struct generic_data set_sc_only_on_success_test_2 = {
 	.expect_hci_len = sizeof(set_sc_on_write_sc_support_param),
 };
 
-static const char set_hs_on_param[] = { 0x01 };
-static const char set_hs_invalid_param[] = { 0x02 };
-static const char set_hs_garbage_param[] = { 0x01, 0x00 };
-static const char set_hs_settings_param_1[] = { 0xc0, 0x01, 0x00, 0x00 };
-
-static const struct generic_data set_hs_on_success_test = {
-	.setup_settings = settings_ssp,
-	.send_opcode = MGMT_OP_SET_HS,
-	.send_param = set_hs_on_param,
-	.send_len = sizeof(set_hs_on_param),
-	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_hs_settings_param_1,
-	.expect_len = sizeof(set_hs_settings_param_1),
-	.expect_settings_set = MGMT_SETTING_HS,
-};
-
-static const struct generic_data set_hs_on_invalid_param_test_1 = {
-	.setup_settings = settings_ssp,
-	.send_opcode = MGMT_OP_SET_HS,
-	.expect_status = MGMT_STATUS_INVALID_PARAMS,
-};
-
-static const struct generic_data set_hs_on_invalid_param_test_2 = {
-	.setup_settings = settings_ssp,
-	.send_opcode = MGMT_OP_SET_HS,
-	.send_param = set_hs_invalid_param,
-	.send_len = sizeof(set_hs_invalid_param),
-	.expect_status = MGMT_STATUS_INVALID_PARAMS,
-};
-
-static const struct generic_data set_hs_on_invalid_param_test_3 = {
-	.setup_settings = settings_ssp,
-	.send_opcode = MGMT_OP_SET_HS,
-	.send_param = set_hs_garbage_param,
-	.send_len = sizeof(set_hs_garbage_param),
-	.expect_status = MGMT_STATUS_INVALID_PARAMS,
-};
-
-static const struct generic_data set_hs_on_invalid_index_test = {
-	.setup_settings = settings_ssp,
-	.send_index_none = true,
-	.send_opcode = MGMT_OP_SET_HS,
-	.send_param = set_hs_on_param,
-	.send_len = sizeof(set_hs_on_param),
-	.expect_status = MGMT_STATUS_INVALID_INDEX,
-};
-
 static uint16_t settings_le[] = { MGMT_OP_SET_LE, 0 };
 
 static const char set_le_on_param[] = { 0x01 };
@@ -13086,22 +13039,6 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Secure Connections Only on - Success 2",
 				&set_sc_only_on_success_test_2,
-				NULL, test_command_generic);
-
-	test_hs("Set High Speed on - Success",
-				&set_hs_on_success_test,
-				NULL, test_command_generic);
-	test_hs("Set High Speed on - Invalid parameters 1",
-				&set_hs_on_invalid_param_test_1,
-				NULL, test_command_generic);
-	test_hs("Set High Speed on - Invalid parameters 2",
-				&set_hs_on_invalid_param_test_2,
-				NULL, test_command_generic);
-	test_hs("Set High Speed on - Invalid parameters 3",
-				&set_hs_on_invalid_param_test_3,
-				NULL, test_command_generic);
-	test_hs("Set High Speed on - Invalid index",
-				&set_hs_on_invalid_index_test,
 				NULL, test_command_generic);
 
 	test_bredrle("Set Low Energy on - Success 1",
