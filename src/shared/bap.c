@@ -2062,7 +2062,7 @@ static const struct bt_bap_stream_ops *
 bap_stream_new_ops(struct bt_bap_stream *stream)
 {
 	const struct bt_bap_stream_ops *ops;
-	uint8_t type = bt_bap_stream_get_type(stream);
+	uint8_t type = bt_bap_pac_get_type(stream->lpac);
 	size_t i;
 
 	for (i = 0; i < ARRAY_SIZE(stream_ops); i++) {
