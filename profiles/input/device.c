@@ -985,6 +985,10 @@ static int uhid_disconnect(struct input_device *idev)
 	if (!idev->uhid_created)
 		return 0;
 
+	/* Only destroy the node if virtual cable unplug flag has been set */
+	if (!idev->virtual_cable_unplug)
+		return 0;
+
 	bt_uhid_unregister_all(idev->uhid);
 
 	memset(&ev, 0, sizeof(ev));
