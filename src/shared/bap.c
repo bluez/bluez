@@ -5991,7 +5991,7 @@ static void extract_ltv(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 		ltv_len = l + 1;
 		iov_append(ext_data->result, 1, &ltv_len);
 		iov_append(ext_data->result, 1, &t);
-		iov_append(ext_data->result, l, &v);
+		iov_append(ext_data->result, l, v);
 	}
 }
 
