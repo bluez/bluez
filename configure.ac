@@ -457,6 +457,7 @@ AC_CONFIG_FILES(
 	mesh/bluetooth-meshd.rst
 	mesh/bluetooth-mesh.service
 	obexd/src/obex.service
+	obexd/src/org.bluez.obex.service
 	src/bluetoothd.rst
 	src/bluetooth.service
 	tools/bluetooth-logger.service

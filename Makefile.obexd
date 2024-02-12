@@ -8,12 +8,10 @@ install-data-hook:
 
 uninstall-hook:
 	rm -f $(DESTDIR)$(SYSTEMD_USERUNITDIR)/dbus-org.bluez.obex.service
+endif
 
 dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
 dbussessionbus_DATA = obexd/src/org.bluez.obex.service
-endif
-
-EXTRA_DIST += obexd/src/org.bluez.obex.service
 
 if OBEX
 
