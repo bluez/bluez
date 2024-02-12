@@ -74,8 +74,6 @@ builtin_sources += profiles/input/hog.c \
 			profiles/battery/bas.c profiles/battery/bas.h \
 			profiles/scanparam/scpp.c profiles/scanparam/scpp.h \
 			profiles/input/suspend.h profiles/input/suspend-none.c
-
-EXTRA_DIST += profiles/input/suspend-dummy.c
 endif
 
 if HEALTH
