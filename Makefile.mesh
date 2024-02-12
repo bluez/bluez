@@ -3,6 +3,7 @@ if MESH
 
 if DATAFILES
 dbus_DATA += mesh/bluetooth-mesh.conf
+conf_DATA += mesh/mesh-main.conf
 endif
 
 if SYSTEMD
