@@ -1210,6 +1210,10 @@ static GList *player_list_metadata(struct avrcp_player *player)
 					GUINT_TO_POINTER(str_to_metadata(key)));
 	}
 
+	if (attrs == NULL)
+		return g_list_prepend(NULL,
+				GUINT_TO_POINTER(AVRCP_MEDIA_ATTRIBUTE_TITLE));
+
 	return attrs;
 }
 
