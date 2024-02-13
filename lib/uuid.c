@@ -120,6 +120,15 @@ int bt_uuid_cmp(const bt_uuid_t *uuid1, const bt_uuid_t *uuid2)
 	return bt_uuid128_cmp(&u1, &u2);
 }
 
+int bt_uuid16_cmp(const bt_uuid_t *uuid1, uint16_t uuid2)
+{
+
+	if (!uuid1 || (uuid1->type != BT_UUID16))
+		return 0;
+
+	return (uuid1->value.u16 == uuid2);
+}
+
 /*
  * convert the UUID to string, copying a maximum of n characters.
  */
