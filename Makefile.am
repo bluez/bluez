@@ -236,6 +236,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/micp.c src/shared/micp.h \
 			src/shared/csip.c src/shared/csip.h \
 			src/shared/bass.h src/shared/bass.c \
+			src/shared/ccp.h src/shared/ccp.c \
 			src/shared/lc3.h src/shared/tty.h
 
 if READLINE
