@@ -5,7 +5,7 @@
  *
  *  Copyright (C) 2011-2012  Intel Corporation
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  *
  */
@@ -43,6 +43,8 @@
 #define CIS_SIZE		3
 #define BIS_SIZE		3
 #define CIG_SIZE		3
+
+#define MAX_PA_DATA_LEN	252
 
 #define has_bredr(btdev)	(!((btdev)->features[4] & 0x20))
 #define has_le(btdev)		(!!((btdev)->features[4] & 0x40))
@@ -207,7 +209,7 @@ struct btdev {
 	uint16_t le_pa_min_interval;
 	uint16_t le_pa_max_interval;
 	uint8_t  le_pa_data_len;
-	uint8_t  le_pa_data[31];
+	uint8_t  le_pa_data[MAX_PA_DATA_LEN];
 	struct bt_hci_cmd_le_pa_create_sync pa_sync_cmd;
 	uint16_t le_pa_sync_handle;
 	uint8_t  big_handle;
@@ -5210,9 +5212,13 @@ static int cmd_set_pa_data(struct btdev *dev, const void *data,
 {
 	const struct bt_hci_cmd_le_set_pa_data *cmd = data;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
+	uint8_t data_len = cmd->data_len;
 
-	dev->le_pa_data_len = cmd->data_len;
-	memcpy(dev->le_pa_data, cmd->data, 31);
+	if (data_len > MAX_PA_DATA_LEN)
+		data_len = MAX_PA_DATA_LEN;
+
+	dev->le_pa_data_len = data_len;
+	memcpy(dev->le_pa_data, cmd->data, data_len);
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_DATA, &status,
 							sizeof(status));
 
