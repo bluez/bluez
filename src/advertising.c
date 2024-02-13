@@ -1065,7 +1065,9 @@ static bool parse_discoverable_timeout(DBusMessageIter *iter,
 	if (client->disc_to_id)
 		timeout_remove(client->disc_to_id);
 
-	client->disc_to_id = timeout_add_seconds(client->discoverable_to,
+	if (client->discoverable_to > 0)
+		client->disc_to_id = timeout_add_seconds(
+						client->discoverable_to,
 						client_discoverable_timeout,
 						client, NULL);
 
