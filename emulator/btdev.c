@@ -1248,6 +1248,9 @@ static void conn_complete(struct btdev *btdev,
 	struct bt_hci_evt_conn_complete cc;
 	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
 
+	if (!remote)
+		return;
+
 	if (!status) {
 		struct btdev_conn *conn;
 
