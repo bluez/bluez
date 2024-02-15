@@ -212,6 +212,7 @@ static void run_cmdline(struct pollfd *p, sigset_t *sigs, char *devname,
 	int i;
 	pid_t pid;
 	char **cmdargv;
+	struct sigaction sa;
 
 	cmdargv = malloc((argc + 1) * sizeof(char *));
 	if (!cmdargv)
@@ -225,6 +226,11 @@ static void run_cmdline(struct pollfd *p, sigset_t *sigs, char *devname,
 
 	switch (pid) {
 	case 0:
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_handler = SIG_DFL;
+		sigaction(SIGCHLD, &sa, NULL);
+		sigaction(SIGPIPE, &sa, NULL);
+
 		i = execvp(cmdargv[0], cmdargv);
 		fprintf(stderr, "Couldn't execute command %s (errno=%d:%s)\n",
 				cmdargv[0], errno, strerror(errno));
