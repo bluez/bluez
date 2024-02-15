@@ -1207,8 +1207,6 @@ static struct bap_ep *ep_register_bcast(struct bap_data *data,
 	 */
 	if (rpac)
 		bt_bap_pac_set_user_data(rpac, ep->path);
-	else
-		bt_bap_pac_set_user_data(lpac, ep->path);
 
 	DBG("ep %p lpac %p rpac %p path %s", ep, ep->lpac, ep->rpac, ep->path);
 
