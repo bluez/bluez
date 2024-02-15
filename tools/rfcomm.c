@@ -234,7 +234,7 @@ static void run_cmdline(struct pollfd *p, sigset_t *sigs, char *devname,
 		i = execvp(cmdargv[0], cmdargv);
 		fprintf(stderr, "Couldn't execute command %s (errno=%d:%s)\n",
 				cmdargv[0], errno, strerror(errno));
-		break;
+		_exit(EXIT_FAILURE);
 	case -1:
 		fprintf(stderr, "Couldn't fork to execute command %s\n",
 				cmdargv[0]);
