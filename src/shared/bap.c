@@ -6094,11 +6094,16 @@ struct iovec *bt_bap_stream_get_base(struct bt_bap_stream *stream)
 	base.next_bis_index = 1;
 	base.big_id = stream->qos.bcast.big;
 
-	/*
-	 * Create subgroups with each different Metadata and Codec
-	 * Specific Configuration from all streams having the same BIG ID.
+	/* If the BIG ID was explicitly set, create a BASE with information
+	 * from all streams belonging to this BIG. Otherwise, create a BASE
+	 * with only this BIS.
 	 */
-	queue_foreach(stream->bap->streams, set_base_subgroup, &base);
+	if (stream->qos.bcast.big != 0xFF)
+		queue_foreach(stream->bap->streams, set_base_subgroup, &base);
+	else {
+		base.pres_delay = stream->qos.bcast.delay;
+		set_base_subgroup(stream, &base);
+	}
 
 	base_iov = generate_base(&base);
 
