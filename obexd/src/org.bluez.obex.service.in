@@ -1,4 +1,4 @@
 [D-BUS Service]
 Name=org.bluez.obex
-Exec=@exec_prefix@/bluetooth/obexd
+Exec=@PKGLIBEXECDIR@/obexd
 SystemdService=dbus-org.bluez.obex.service
