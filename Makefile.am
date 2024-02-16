@@ -31,7 +31,7 @@ AM_LDFLAGS = $(MISC_LDFLAGS)
 confdir = $(sysconfdir)/bluetooth
 statedir = $(localstatedir)/lib/bluetooth
 
-install-data-hook:
+bluetoothd-fix-permissions:
 	install -dm555 $(DESTDIR)$(confdir)
 	install -dm700 $(DESTDIR)$(statedir)
 
@@ -421,6 +421,9 @@ include Makefile.tools
 include Makefile.obexd
 include android/Makefile.am
 include Makefile.mesh
+
+install-data-hook: bluetoothd-fix-permissions obexd-add-service-symlink
+uninstall-hook: obexd-remove-service-symlink
 
 if HID2HCI
 rulesdir = $(UDEV_DIR)/rules.d
