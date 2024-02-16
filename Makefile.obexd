@@ -102,7 +102,7 @@ obexd_src_obexd_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) \
 				$(ICAL_CFLAGS) -DOBEX_PLUGIN_BUILTIN \
 				-DPLUGINDIR=\""$(obex_plugindir)"\" \
 				-D_FILE_OFFSET_BITS=64 \
-				-I$(builddir)/lib -I$(builddir)/obexd/src
+				-I$(builddir)/obexd/src
 
 else
 obexd-add-service-symlink:
