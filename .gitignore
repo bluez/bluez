@@ -168,6 +168,7 @@ mesh/bluetooth-mesh.service
 obexd/src/builtin.h
 obexd/src/obexd
 obexd/src/obex.service
+obexd/src/org.bluez.obex.service
 tools/obex-client-tool
 tools/obex-server-tool
 unit/test-gobex
