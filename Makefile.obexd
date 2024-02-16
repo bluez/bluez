@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
+if OBEX
+
 if SYSTEMD
 systemduserunitdir = $(SYSTEMD_USERUNITDIR)
 systemduserunit_DATA = obexd/src/obex.service
@@ -16,7 +18,6 @@ endif
 dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
 dbussessionbus_DATA = obexd/src/org.bluez.obex.service
 
-if OBEX
 
 obex_plugindir = $(libdir)/obex/plugins
 
