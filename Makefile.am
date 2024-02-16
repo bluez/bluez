@@ -793,8 +793,8 @@ ell/ell.h: Makefile
 maintainer-clean-local:
 	-rm -rf ell
 
-if COVERAGE
 clean-coverage:
+if COVERAGE
 	@lcov --directory $(top_builddir) --zerocounters
 	$(RM) -r coverage $(top_builddir)/coverage.info
 
@@ -803,15 +803,9 @@ coverage: check
 				--output-file $(top_builddir)/coverage.info
 	$(AM_V_at)$(MKDIR_P) coverage
 	@genhtml -o coverage/ $(top_builddir)/coverage.info
+endif
 
 clean-local: clean-coverage
 	-find $(top_builddir) -name "*.gcno" -delete
 	-find $(top_builddir) -name "*.gcda" -delete
 	$(RM) -r lib/bluetooth
-
-else
-clean-local:
-	-find $(top_builddir) -name "*.gcno" -delete
-	-find $(top_builddir) -name "*.gcda" -delete
-	$(RM) -r lib/bluetooth
-endif
