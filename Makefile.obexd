@@ -104,8 +104,6 @@ obexd_src_obexd_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) \
 				-D_FILE_OFFSET_BITS=64 \
 				-I$(builddir)/lib -I$(builddir)/obexd/src
 
-obexd_src_obexd_CFLAGS = $(AM_CFLAGS) -fPIC
-
 else
 obexd-add-service-symlink:
 obexd-remove-service-symlink:
