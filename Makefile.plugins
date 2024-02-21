@@ -138,6 +138,11 @@ builtin_modules += micp
 builtin_sources += profiles/audio/micp.c
 endif
 
+if CCP
+builtin_modules += ccp
+builtin_sources += profiles/audio/ccp.c
+endif
+
 if CSIP
 builtin_modules += csip
 builtin_sources += profiles/audio/csip.c
