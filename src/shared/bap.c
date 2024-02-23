@@ -5411,16 +5411,17 @@ unsigned int bt_bap_stream_release(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	unsigned int id;
+	struct bt_bap *bap = stream->bap;
 
 	if (!stream || !stream->ops || !stream->ops->release)
 		return 0;
 
-	if (!bt_bap_ref_safe(stream->bap))
+	if (!bt_bap_ref_safe(bap))
 		return 0;
 
 	id = stream->ops->release(stream, func, user_data);
 
-	bt_bap_unref(stream->bap);
+	bt_bap_unref(bap);
 
 	return id;
 }
