@@ -950,8 +950,12 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	if (dbus_message_iter_get_arg_type(&props) != DBUS_TYPE_DICT_ENTRY)
 		return btd_error_invalid_args(msg);
 
-	/* Disconnect IOs if connecting since QoS is going to be reconfigured */
-	ep_close(ep);
+	/* Broadcast source supports multiple setups, each setup will be BIS
+	 * and will be configured with the set_configuration command
+	 * TO DO reconfiguration of a BIS.
+	 */
+	if (bt_bap_pac_get_type(ep->lpac) != BT_BAP_BCAST_SOURCE)
+		ep_close(ep);
 
 	setup = setup_new(ep);
 
@@ -987,7 +991,6 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 		if (bt_bap_pac_get_type(ep->lpac) == BT_BAP_BCAST_SINK)
 			setup->msg = dbus_message_ref(msg);
 		else {
-			setup->base = bt_bap_stream_get_base(setup->stream);
 			setup->id = 0;
 		}
 
@@ -1853,7 +1856,7 @@ static void setup_connect_io(struct bap_data *data, struct bap_setup *setup,
 static void setup_connect_io_broadcast(struct bap_data *data,
 					struct bap_setup *setup,
 					struct bt_bap_stream *stream,
-					struct bt_iso_qos *qos)
+					struct bt_iso_qos *qos, int defer)
 {
 	struct btd_adapter *adapter = data->user_data;
 	GIOChannel *io = NULL;
@@ -1890,7 +1893,7 @@ static void setup_connect_io_broadcast(struct bap_data *data,
 			BT_IO_OPT_MODE, BT_IO_MODE_ISO,
 			BT_IO_OPT_QOS, qos,
 			BT_IO_OPT_BASE, &base,
-			BT_IO_OPT_DEFER_TIMEOUT, false,
+			BT_IO_OPT_DEFER_TIMEOUT, defer,
 			BT_IO_OPT_INVALID);
 
 	if (!io) {
@@ -2019,9 +2022,6 @@ static void setup_create_bcast_io(struct bap_data *data,
 
 	memset(&iso_qos, 0, sizeof(iso_qos));
 
-	if (!defer)
-		goto done;
-
 	iso_qos.bcast.big = setup->qos.bcast.big;
 	iso_qos.bcast.bis = setup->qos.bcast.bis;
 	iso_qos.bcast.sync_factor = setup->qos.bcast.sync_factor;
@@ -2038,9 +2038,10 @@ static void setup_create_bcast_io(struct bap_data *data,
 	iso_qos.bcast.timeout = setup->qos.bcast.timeout;
 	memcpy(&iso_qos.bcast.out, &setup->qos.bcast.io_qos,
 				sizeof(struct bt_iso_io_qos));
-done:
+
 	if (bt_bap_pac_get_type(setup->ep->lpac) == BT_BAP_BCAST_SOURCE)
-		setup_connect_io_broadcast(data, setup, stream, &iso_qos);
+		setup_connect_io_broadcast(data, setup, stream, &iso_qos,
+			defer);
 	else
 		setup_listen_io_broadcast(data, setup, stream, &iso_qos);
 }
@@ -2128,11 +2129,135 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 	}
 }
 
+/* This function will call setup_create_io on all BISes from a BIG.
+ * The defer parameter will be set on true on all but the last one.
+ * This is done to inform the kernel when to when to start the BIG.
+ */
+static bool create_io_bises(struct bap_setup *setup,
+				uint8_t nb_bises, struct bap_data *data)
+{
+	const struct queue_entry *entry;
+	struct bap_setup *ent_setup;
+	bool defer = true;
+	uint8_t active_bis_cnt = 1;
+
+	for (entry = queue_get_entries(setup->ep->setups);
+				entry; entry = entry->next) {
+		ent_setup = entry->data;
+
+		if (bt_bap_stream_get_qos(ent_setup->stream)->bcast.big !=
+				bt_bap_stream_get_qos(setup->stream)->bcast.big)
+			continue;
+
+		if (active_bis_cnt == nb_bises)
+			defer = false;
+
+		setup_create_io(data, ent_setup, ent_setup->stream, defer);
+		if (!ent_setup->io) {
+			error("Unable to create io");
+			goto fail;
+		}
+
+		active_bis_cnt++;
+	}
+
+	return true;
+
+fail:
+	/* Clear the io of the created sockets if one
+	 * socket creation fails.
+	 */
+	for (entry = queue_get_entries(setup->ep->setups);
+				entry; entry = entry->next) {
+		ent_setup = entry->data;
+
+		if (bt_bap_stream_get_qos(ent_setup->stream)->bcast.big !=
+				bt_bap_stream_get_qos(setup->stream)->bcast.big)
+			continue;
+
+		if (setup->io)
+			g_io_channel_unref(setup->io);
+	}
+	return false;
+}
+
+static void iterate_setup_update_base(void *data, void *user_data)
+{
+	struct bap_setup *setup = data;
+	struct bap_setup *data_setup = user_data;
+
+	if ((setup->stream != data_setup->stream) &&
+		(setup->qos.bcast.big == data_setup->qos.bcast.big)) {
+
+		if (setup->base)
+			util_iov_free(setup->base, 1);
+
+		setup->base = util_iov_dup(data_setup->base, 1);
+	}
+}
+
+/* Function checks the state of all streams in the same BIG
+ * as the parameter stream, so it can decide if any sockets need
+ * to be created. Returns he number of streams that need a socket
+ * from that BIG.
+ */
+static uint8_t get_streams_nb_by_state(struct bap_setup *setup)
+{
+	const struct queue_entry *entry;
+	struct bap_setup *ent_setup;
+	uint8_t stream_cnt = 0;
+
+	if (setup->qos.bcast.big == BT_ISO_QOS_BIG_UNSET)
+		/* If BIG ID is unset this is a single BIS BIG.
+		 * return 1 as create one socket only for this BIS
+		 */
+		return 1;
+
+	for (entry = queue_get_entries(setup->ep->setups);
+				entry; entry = entry->next) {
+		ent_setup = entry->data;
+
+		/* Skip the curent stream form testing */
+		if (ent_setup == setup) {
+			stream_cnt++;
+			continue;
+		}
+
+		/* Test only BISes for the same BIG */
+		if (bt_bap_stream_get_qos(ent_setup->stream)->bcast.big !=
+				bt_bap_stream_get_qos(setup->stream)->bcast.big)
+			continue;
+
+		if (bt_bap_stream_get_state(ent_setup->stream) ==
+				BT_BAP_STREAM_STATE_STREAMING)
+			/* If one stream in a multiple BIS BIG is in
+			 * streaming state this means that just the current
+			 * stream must have is socket created so return 1.
+			 */
+			return 1;
+		else if (bt_bap_stream_get_state(ent_setup->stream) !=
+				BT_BAP_STREAM_STATE_CONFIG)
+			/* Not all streams form a BIG have received transport
+			 * acquire, so wait for the other streams to.
+			 */
+			return 0;
+
+		stream_cnt++;
+	}
+
+	/* Return the number of streams for the BIG
+	 * as all are ready to create sockets
+	 */
+	return stream_cnt;
+}
+
 static void bap_state_bcast(struct bt_bap_stream *stream, uint8_t old_state,
 				uint8_t new_state, void *user_data)
 {
 	struct bap_data *data = user_data;
 	struct bap_setup *setup;
+	bool defer = false;
+	uint8_t nb_bises = 0;
 
 	DBG("stream %p: %s(%u) -> %s(%u)", stream,
 			bt_bap_stream_statestr(old_state), old_state,
@@ -2153,14 +2278,69 @@ static void bap_state_bcast(struct bt_bap_stream *stream, uint8_t old_state,
 			queue_remove(data->streams, stream);
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
-		if (setup && !setup->id) {
-			setup_create_io(data, setup, stream, true);
+		if (!setup || setup->id)
+			break;
+		if (bt_bap_stream_io_dir(stream) ==
+				BT_BAP_BCAST_SOURCE) {
+			/* If the stream is attached to a
+			 * broadcast sink endpoint.
+			 */
+			setup_create_io(data, setup, stream, defer);
 			if (!setup->io) {
 				error("Unable to create io");
-				if (old_state != BT_BAP_STREAM_STATE_RELEASING)
-					bt_bap_stream_release(stream, NULL,
-								NULL);
-				return;
+				if (old_state !=
+					BT_BAP_STREAM_STATE_RELEASING)
+					bt_bap_stream_release(stream,
+							NULL, NULL);
+			}
+		} else {
+			/* If the stream attached to a broadcast
+			 * source endpoint generate the base.
+			 */
+			if (setup->base == NULL) {
+				setup->base = bt_bap_stream_get_base(
+						setup->stream);
+				/* Set the generated BASE on all setups
+				 * from the same BIG.
+				 */
+				queue_foreach(setup->ep->setups,
+					iterate_setup_update_base, setup);
+			}
+			/* The kernel has 2 requirements when handling
+			 * multiple BIS connections for the same BIG:
+			 * 1 - setup_create_io for all but the last BIS
+			 * must be with defer true so we can inform the
+			 * kernel when to start the BIG.
+			 * 2 - The order in which the setup_create_io
+			 * are called must be in the order of BIS
+			 * indexes in BASE from first to last.
+			 * To address this requirement we will call
+			 * setup_create_io on all BISes only when all
+			 * transport acquire have been received and will
+			 * send it in the order of the BIS index
+			 * from BASE.
+			 */
+			nb_bises = get_streams_nb_by_state(setup);
+
+			if (nb_bises == 1) {
+				setup_create_io(data, setup,
+				stream, defer);
+				if (!setup->io) {
+					error("Unable to create io");
+					if (old_state !=
+						BT_BAP_STREAM_STATE_RELEASING)
+						bt_bap_stream_release(stream,
+								NULL, NULL);
+				}
+				break;
+			} else if (nb_bises == 0)
+				break;
+
+			if (!create_io_bises(setup, nb_bises, data)) {
+				if (old_state !=
+					BT_BAP_STREAM_STATE_RELEASING)
+					bt_bap_stream_release(stream,
+						NULL, NULL);
 			}
 		}
 		break;
