@@ -68,6 +68,11 @@ struct bap_setup {
 	struct bt_bap_qos qos;
 	int (*qos_parser)(struct bap_setup *setup, const char *key, int var,
 							DBusMessageIter *iter);
+	struct bt_bap_stream* (*stream_new)(struct bt_bap *bap,
+					struct bt_bap_pac *lpac,
+					struct bt_bap_pac *rpac,
+					struct bt_bap_qos *pqos,
+					struct iovec *data);
 	GIOChannel *io;
 	unsigned int io_id;
 	bool recreate;
@@ -888,11 +893,13 @@ static struct bap_setup *setup_new(struct bap_ep *ep)
 		setup->qos.bcast.bis = BT_ISO_QOS_BIS_UNSET;
 		setup->qos_parser = setup_parse_bcast_qos;
 		setup->destroy = setup_bcast_destroy;
+		setup->stream_new = bt_bap_stream_bcast_new;
 	} else {
 		/* Mark CIG and CIS to be auto assigned */
 		setup->qos.ucast.cig_id = BT_ISO_QOS_CIG_UNSET;
 		setup->qos.ucast.cis_id = BT_ISO_QOS_CIS_UNSET;
 		setup->qos_parser = setup_parse_ucast_qos;
+		setup->stream_new = bt_bap_stream_new;
 	}
 
 	if (!ep->setups)
@@ -954,7 +961,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 	}
 
-	setup->stream = bt_bap_stream_new(ep->data->bap, ep->lpac, ep->rpac,
+	setup->stream = setup->stream_new(ep->data->bap, ep->lpac, ep->rpac,
 						&setup->qos, setup->caps);
 
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
@@ -1290,7 +1297,7 @@ static void setup_config(void *data, void *user_data)
 	 * and PHY.
 	 */
 	if (!setup->stream)
-		setup->stream = bt_bap_stream_new(ep->data->bap, ep->lpac,
+		setup->stream = setup->stream_new(ep->data->bap, ep->lpac,
 						ep->rpac, &setup->qos,
 						setup->caps);
 
