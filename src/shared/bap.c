@@ -682,7 +682,7 @@ static struct bt_bap_endpoint *bap_endpoint_new_broadcast(struct bt_bap_db *bdb,
 	if (type == BT_BAP_BCAST_SINK)
 		ep->dir = BT_BAP_BCAST_SOURCE;
 	else
-		ep->dir = 0;
+		ep->dir = BT_BAP_BCAST_SINK;
 
 	return ep;
 }
@@ -1303,7 +1303,7 @@ static void ep_config_cb(struct bt_bap_stream *stream, int err)
 		return;
 
 	if (bt_bap_stream_get_type(stream) == BT_BAP_STREAM_TYPE_BCAST) {
-		if (!bt_bap_stream_io_dir(stream))
+		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
 			stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
 		else if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE)
 			stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
