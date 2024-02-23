@@ -251,6 +251,8 @@ struct bt_bap_stream {
 	struct bt_bap_stream *link;
 	struct bt_bap_stream_io *io;
 	const struct bt_bap_stream_ops *ops;
+	uint8_t old_state;
+	uint8_t state;
 	bool client;
 	void *user_data;
 };
@@ -1271,7 +1273,6 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 
 static void stream_set_state(struct bt_bap_stream *stream, uint8_t state)
 {
-	struct bt_bap_endpoint *ep = stream->ep;
 	struct bt_bap *bap = stream->bap;
 
 	/* Check if ref_count is already 0 which means detaching is in
@@ -1282,14 +1283,6 @@ static void stream_set_state(struct bt_bap_stream *stream, uint8_t state)
 		bap_stream_detach(stream);
 		return;
 	}
-
-	ep->old_state = ep->state;
-	ep->state = state;
-
-	DBG(bap, "stream %p dir 0x%02x: %s -> %s", stream,
-			bt_bap_stream_get_dir(stream),
-			bt_bap_stream_statestr(stream->ep->old_state),
-			bt_bap_stream_statestr(stream->ep->state));
 
 	if (stream->ops && stream->ops->set_state)
 		stream->ops->set_state(stream, state);
@@ -1526,6 +1519,14 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
 static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
 {
 	struct bt_bap_endpoint *ep = stream->ep;
+
+	ep->old_state = ep->state;
+	ep->state = state;
+
+	DBG(stream->bap, "stream %p dir 0x%02x: %s -> %s", stream,
+			bt_bap_stream_get_dir(stream),
+			bt_bap_stream_statestr(stream->ep->old_state),
+			bt_bap_stream_statestr(stream->ep->state));
 
 	if (stream->lpac->type == BT_BAP_BCAST_SINK || stream->client)
 		goto done;
@@ -1942,22 +1943,25 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 	struct bt_bap *bap = stream->bap;
 	const struct queue_entry *entry;
 
+	stream->old_state = stream->state;
+	stream->state = state;
+
 	DBG(bap, "stream %p dir 0x%02x: %s -> %s", stream,
 			bt_bap_stream_get_dir(stream),
-			bt_bap_stream_statestr(stream->ep->old_state),
-			bt_bap_stream_statestr(stream->ep->state));
+			bt_bap_stream_statestr(stream->old_state),
+			bt_bap_stream_statestr(stream->state));
 
 	for (entry = queue_get_entries(bap->state_cbs); entry;
 							entry = entry->next) {
 		struct bt_bap_state *state = entry->data;
 
 		if (state->func)
-			state->func(stream, stream->ep->old_state,
-					stream->ep->state, state->data);
+			state->func(stream, stream->old_state,
+					stream->state, state->data);
 	}
 
 	/* Post notification updates */
-	switch (stream->ep->state) {
+	switch (stream->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
 		bap_stream_detach(stream);
 		break;
@@ -5243,7 +5247,10 @@ uint8_t bt_bap_stream_get_state(struct bt_bap_stream *stream)
 	if (!stream)
 		return BT_BAP_STREAM_STATE_IDLE;
 
-	return stream->ep->state;
+	if (stream->lpac->type != BT_BAP_BCAST_SOURCE)
+		return stream->ep->state;
+	else
+		return stream->state;
 }
 
 bool bt_bap_stream_set_user_data(struct bt_bap_stream *stream, void *user_data)
