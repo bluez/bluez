@@ -319,6 +319,18 @@ static inline int del_btdev(struct btdev *btdev)
 	return index;
 }
 
+static inline bool valid_btdev(struct btdev *btdev)
+{
+	int i;
+
+	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
+		if (btdev_list[i] == btdev)
+			return true;
+	}
+
+	return false;
+}
+
 static inline struct btdev *find_btdev_by_bdaddr(const uint8_t *bdaddr)
 {
 	int i;
@@ -1301,7 +1313,8 @@ static bool page_timeout(void *user_data)
 	timeout_remove(pt_data->timeout_id);
 	pt_data->timeout_id = 0;
 
-	conn_complete(btdev, bdaddr, BT_HCI_ERR_PAGE_TIMEOUT);
+	if (valid_btdev(btdev))
+		conn_complete(btdev, bdaddr, BT_HCI_ERR_PAGE_TIMEOUT);
 
 	free(pt_data);
 	return false;
