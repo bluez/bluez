@@ -3225,7 +3225,11 @@ uint8_t btd_device_get_bdaddr_type(struct btd_device *dev)
 
 bool btd_device_is_connected(struct btd_device *dev)
 {
-	return dev->bredr_state.connected || dev->le_state.connected;
+	if (dev->bredr_state.connected || dev->le_state.connected)
+		return true;
+
+	return find_service_with_state(dev->services,
+						BTD_SERVICE_STATE_CONNECTED);
 }
 
 static void clear_temporary_timer(struct btd_device *dev)
@@ -3275,6 +3279,13 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 static bool device_disappeared(gpointer user_data)
 {
 	struct btd_device *dev = user_data;
+
+	if (btd_device_is_connected(dev)) {
+		char addr[18];
+		ba2str(&dev->bdaddr, addr);
+		DBG("Device %s is marked as connected", dev->path);
+		return TRUE;
+	}
 
 	/* If there are services connecting restart the timer to give more time
 	 * for the service to either complete the connection or disconnect.
