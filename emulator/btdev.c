@@ -577,6 +577,7 @@ static void btdev_reset(struct btdev *btdev)
 	btdev->le_adv_enable		= 0x00;
 	btdev->le_pa_enable		= 0x00;
 	btdev->le_pa_sync_handle	= 0x0000;
+	btdev->big_handle		= 0xff;
 
 	al_clear(btdev);
 	rl_clear(btdev);
@@ -6483,6 +6484,9 @@ static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
 	}
 
 done:
+	if (rsp.status == BT_HCI_ERR_SUCCESS)
+		dev->big_handle = 0xff;
+
 	cmd_complete(dev, BT_HCI_CMD_LE_BIG_TERM_SYNC, &rsp, sizeof(rsp));
 
 	return 0;
