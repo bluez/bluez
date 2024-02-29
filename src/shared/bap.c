@@ -5186,7 +5186,7 @@ int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	return 0;
 }
 
-struct bt_bap_stream *bt_bap_stream_bcast_new(struct bt_bap *bap,
+static struct bt_bap_stream *bap_bcast_stream_new(struct bt_bap *bap,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac,
 					struct bt_bap_qos *pqos,
@@ -5268,66 +5268,20 @@ struct bt_bap_stream *bt_bap_stream_bcast_new(struct bt_bap *bap,
 	return stream;
 }
 
-struct bt_bap_stream *bt_bap_stream_new(struct bt_bap *bap,
+static struct bt_bap_stream *bap_ucast_stream_new(struct bt_bap *bap,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac,
 					struct bt_bap_qos *pqos,
 					struct iovec *data)
 {
-	struct bt_bap_stream *stream;
-	struct bt_bap_endpoint *ep;
+	struct bt_bap_stream *stream = NULL;
+	struct bt_bap_endpoint *ep = NULL;
 	struct match_pac match;
 
-	if (!bap)
+	if (!lpac || !rpac || !bap_codec_equal(&lpac->codec, &rpac->codec))
 		return NULL;
 
-	if (!rpac && (lpac->type != BT_BAP_BCAST_SOURCE)
-		&& queue_isempty(bap->remote_eps))
-		return NULL;
-
-	if (lpac && rpac) {
-		if ((rpac->type != BT_BAP_BCAST_SOURCE)
-			&& (!bap_codec_equal(&lpac->codec, &rpac->codec)))
-			return NULL;
-	} else {
-		uint8_t type;
-
-		match.lpac = lpac;
-		match.rpac = rpac;
-		memset(&match.codec, 0, sizeof(match.codec));
-
-		if (rpac)
-			type = rpac->type;
-		else if (lpac) {
-			switch (lpac->type) {
-			case BT_BAP_SINK:
-				type = BT_BAP_SOURCE;
-				break;
-			case BT_BAP_SOURCE:
-				type = BT_BAP_SINK;
-				break;
-			case BT_BAP_BCAST_SOURCE:
-				type = BT_BAP_BCAST_SINK;
-				break;
-			case BT_BAP_BCAST_SINK:
-				type = BT_BAP_BCAST_SOURCE;
-				break;
-			default:
-				return NULL;
-			}
-		} else
-			return NULL;
-
-		bt_bap_foreach_pac(bap, type, match_pac, &match);
-		if ((!match.lpac) || (!lpac))
-			return NULL;
-		if (!match.rpac && (lpac->type != BT_BAP_BCAST_SOURCE))
-			return NULL;
-
-		lpac = match.lpac;
-		rpac = match.rpac;
-	}
-
+	memset(&match, 0, sizeof(match));
 	match.lpac = lpac;
 	match.rpac = rpac;
 
@@ -5347,6 +5301,22 @@ struct bt_bap_stream *bt_bap_stream_new(struct bt_bap *bap,
 		stream = bap_stream_new(bap, ep, lpac, rpac, data, true);
 
 	return stream;
+}
+
+struct bt_bap_stream *bt_bap_stream_new(struct bt_bap *bap,
+					struct bt_bap_pac *lpac,
+					struct bt_bap_pac *rpac,
+					struct bt_bap_qos *pqos,
+					struct iovec *data)
+{
+	if (!bap)
+		return NULL;
+
+	/* Check if ATT is attached then it must be a unicast stream */
+	if (bt_bap_get_att(bap))
+		return bap_ucast_stream_new(bap, lpac, rpac, pqos, data);
+
+	return bap_bcast_stream_new(bap, lpac, rpac, pqos, data);
 }
 
 struct bt_bap *bt_bap_stream_get_session(struct bt_bap_stream *stream)
