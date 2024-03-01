@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2012-2014  Intel Corporation. All rights reserved.
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  *
  */
@@ -216,6 +216,15 @@ bool util_ltv_foreach(const uint8_t *data, uint8_t len, uint8_t *type,
 	}
 
 	return true;
+}
+
+/* Helper to add l,t,v data in an iovec struct */
+void util_ltv_push(struct iovec *output, uint8_t l, uint8_t t, void *v)
+{
+	output->iov_base = realloc(output->iov_base, output->iov_len + l + 2);
+	util_iov_push_u8(output, l + 1);
+	util_iov_push_u8(output, t);
+	util_iov_push_mem(output, l, v);
 }
 
 /* Helper to print debug information of LTV entries */

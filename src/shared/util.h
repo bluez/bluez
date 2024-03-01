@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2012-2014  Intel Corporation. All rights reserved.
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  *
  */
@@ -133,6 +133,8 @@ struct util_ltv_debugger {
 	void (*func)(const uint8_t *data, uint8_t len,
 			util_debug_func_t func, void *user_data);
 };
+
+void util_ltv_push(struct iovec *output, uint8_t l, uint8_t t, void *v);
 
 bool util_debug_ltv(const uint8_t *data, uint8_t len,
 			const struct util_ltv_debugger *debugger, size_t num,
