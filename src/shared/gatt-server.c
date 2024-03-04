@@ -106,6 +106,7 @@ struct bt_gatt_server {
 	unsigned int read_multiple_vl_id;
 	unsigned int prep_write_id;
 	unsigned int exec_write_id;
+	unsigned int signed_write_cmd_id;
 
 	uint8_t min_enc_size;
 
@@ -155,6 +156,7 @@ static void bt_gatt_server_free(struct bt_gatt_server *server)
 	bt_att_unregister(server->att, server->read_multiple_vl_id);
 	bt_att_unregister(server->att, server->prep_write_id);
 	bt_att_unregister(server->att, server->exec_write_id);
+	bt_att_unregister(server->att, server->signed_write_cmd_id);
 
 	queue_destroy(server->prep_queue, prep_write_data_destroy);
 
@@ -777,7 +779,8 @@ static void write_complete_cb(struct gatt_db_attribute *attr, int err,
 	struct bt_gatt_server *server = op->server;
 	uint16_t handle;
 
-	if (op->opcode == BT_ATT_OP_WRITE_CMD) {
+	if (op->opcode == BT_ATT_OP_WRITE_CMD ||
+			op->opcode == BT_ATT_OP_SIGNED_WRITE_CMD) {
 		async_write_op_destroy(op);
 		return;
 	}
@@ -1627,6 +1630,14 @@ static bool gatt_server_register_att_handlers(struct bt_gatt_server *server)
 						exec_write_cb, server, NULL);
 	if (!server->exec_write_id)
 		return NULL;
+
+	/* Signed Write Command */
+	server->signed_write_cmd_id = bt_att_register(server->att,
+						BT_ATT_OP_SIGNED_WRITE_CMD,
+						write_cb,
+						server, NULL);
+	if (!server->signed_write_cmd_id)
+		return false;
 
 	return true;
 }
