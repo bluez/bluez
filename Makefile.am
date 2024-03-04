@@ -422,7 +422,12 @@ include Makefile.obexd
 include android/Makefile.am
 include Makefile.mesh
 
+if SYSTEMD
+install-data-hook: obexd-add-service-symlink
+else
 install-data-hook: bluetoothd-fix-permissions obexd-add-service-symlink
+endif
+
 uninstall-hook: obexd-remove-service-symlink
 
 if HID2HCI
