@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2017  Intel Corporation. All rights reserved.
- *
+ *  Copyright 2024 NXP
  *
  */
 
@@ -1362,7 +1362,9 @@ void bt_shell_cleanup(void)
 	rl_cleanup();
 
 	queue_destroy(data.inputs, NULL);
+	data.inputs = NULL;
 	queue_destroy(data.queue, free);
+	data.queue = NULL;
 	queue_destroy(data.prompts, prompt_free);
 	data.prompts = NULL;
 
