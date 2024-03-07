@@ -138,7 +138,7 @@ static struct bt_iso_qos bap_sink_pa_qos = {
 	.bcast = {
 		.options		= 0x00,
 		.skip			= 0x0000,
-		.sync_timeout	= 0x4000,
+		.sync_timeout		= BT_ISO_SYNC_TIMEOUT,
 		.sync_cte_type	= 0x00,
 		/* TODO: The following parameters are not needed for PA Sync.
 		 * They will be removed when the kernel checks will be removed.
@@ -148,8 +148,8 @@ static struct bt_iso_qos bap_sink_pa_qos = {
 		.encryption		= 0x00,
 		.bcode			= {0x00},
 		.mse			= 0x00,
-		.timeout		= 0x4000,
-		.sync_factor	= 0x07,
+		.timeout		= BT_ISO_SYNC_TIMEOUT,
+		.sync_factor		= 0x07,
 		.packing		= 0x00,
 		.framing		= 0x00,
 		.in = {
