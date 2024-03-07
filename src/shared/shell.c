@@ -638,7 +638,15 @@ static void bt_shell_dequeue_exec(void)
 	bt_shell_printf("%s\n", data.line);
 
 	if (!bt_shell_release_prompt(data.line)) {
-		bt_shell_dequeue_exec();
+		/* If a prompt was released with this line,
+		 * try to release all the other prompts,
+		 * if any are left. Otherwise, the next
+		 * line will be executed on
+		 * bt_shell_noninteractive_quit.
+		 */
+		if (data.saved_prompt)
+			bt_shell_dequeue_exec();
+
 		return;
 	}
 
@@ -693,6 +701,13 @@ void bt_shell_prompt_input(const char *label, const char *msg,
 	prompt_input(str, func, user_data);
 
 	free(str);
+
+	if (data.line && !queue_isempty(data.queue))
+		/* If a prompt was set to receive input and
+		 * data is already available, try to execute
+		 * the line and release the prompt.
+		 */
+		bt_shell_dequeue_exec();
 }
 
 static void prompt_free(void *data)
