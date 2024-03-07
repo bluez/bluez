@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2014  Intel Corporation. All rights reserved.
+ *  Copyright 2024 NXP
  *
  *
  */
@@ -1685,6 +1686,8 @@ static void service_set_primary(const char *input, void *user_data)
 		g_dbus_unregister_interface(service->conn, service->path,
 						SERVICE_INTERFACE);
 	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static uint16_t parse_handle(const char *arg)
@@ -1737,8 +1740,6 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 
 	bt_shell_prompt_input(service->path, "Primary (yes/no):",
 		 service_set_primary, service);
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static struct service *service_find(const char *pattern)
@@ -2761,6 +2762,8 @@ static void chrc_set_value(const char *input, void *user_data)
 	}
 
 	chrc->max_val_len = chrc->value_len;
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static gboolean attr_authorization_flag_exists(char **flags)
@@ -2817,8 +2820,6 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 	print_chrc(chrc, COLORED_NEW);
 
 	bt_shell_prompt_input(chrc->path, "Enter value:", chrc_set_value, chrc);
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static struct chrc *chrc_find(const char *pattern)
