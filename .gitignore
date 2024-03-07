@@ -167,6 +167,8 @@ unit/test-gatt
 unit/test-midi
 unit/test-gattrib
 unit/test-mesh-crypto
+unit/test-micp
+unit/test-vcp
 unit/test-*.log
 unit/test-*.trs
 
