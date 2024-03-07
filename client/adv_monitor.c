@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2020 Google LLC
+ *  Copyright 2024 NXP
  *
  *
  */
@@ -372,12 +373,11 @@ static void register_reply(DBusMessage *message, void *user_data)
 
 	if (!dbus_set_error_from_message(&error, message)) {
 		bt_shell_printf("AdvertisementMonitor path registered\n");
-		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		return;
 	}
 
 	bt_shell_printf("Failed to register path: %s\n", error.name);
 	dbus_error_free(&error);
-	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
 static void unregister_setup(DBusMessageIter *iter, void *user_data)
@@ -408,13 +408,13 @@ void adv_monitor_register_app(DBusConnection *conn)
 {
 	if (manager.app_registered) {
 		bt_shell_printf("Advertisement Monitor already registered\n");
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		return;
 	} else if (manager.supported_types == NULL ||
 		!g_dbus_proxy_method_call(manager.proxy, "RegisterMonitor",
 					register_setup, register_reply,
 					NULL, NULL)) {
 		bt_shell_printf("Failed to register Advertisement Monitor\n");
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		return;
 	}
 	manager.app_registered = TRUE;
 }
