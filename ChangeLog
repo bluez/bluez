@@ -1,3 +1,11 @@
+ver 5.73:
+	Fix issue with BAP and setting up broadcast source.
+	Fix issue with BAP and register all endpoints.
+	Fix issue with BAP and missing metadata property.
+	Fix issue with BAP and not handling out of order responses.
+	Fix issue with BAP and attempting to set device as connectable.
+	Add support for CCP plugin for call control profile.
+
 ver 5.72:
 	Fix issue with BAP and handling stream IO linking.
 	Fix issue with BAP and setup of multiple streams per endpoint.
