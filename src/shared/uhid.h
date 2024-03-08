@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <linux/uhid.h>
+#include <bluetooth/bluetooth.h>
 
 struct bt_uhid;
 
@@ -29,3 +30,15 @@ bool bt_uhid_unregister(struct bt_uhid *uhid, unsigned int id);
 bool bt_uhid_unregister_all(struct bt_uhid *uhid);
 
 int bt_uhid_send(struct bt_uhid *uhid, const struct uhid_event *ev);
+int bt_uhid_create(struct bt_uhid *uhid, const char *name, bdaddr_t *src,
+			bdaddr_t *dst, uint32_t vendor, uint32_t product,
+			uint32_t version, uint32_t country, void *rd_data,
+			size_t rd_size);
+bool bt_uhid_created(struct bt_uhid *uhid);
+bool bt_uhid_started(struct bt_uhid *uhid);
+int bt_uhid_input(struct bt_uhid *uhid, uint8_t number, const void *data,
+			size_t size);
+int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t status);
+int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t number,
+				uint8_t status, const void *data, size_t size);
+int bt_uhid_destroy(struct bt_uhid *uhid);
