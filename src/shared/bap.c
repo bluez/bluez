@@ -5603,7 +5603,7 @@ bool bt_bap_stream_set_io(struct bt_bap_stream *stream, int fd)
 	bap_stream_set_io(stream, INT_TO_PTR(fd));
 
 	if (stream->link)
-		bap_stream_set_io(stream, INT_TO_PTR(fd));
+		bap_stream_set_io(stream->link, INT_TO_PTR(fd));
 
 	return true;
 }
