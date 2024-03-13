@@ -94,14 +94,6 @@ struct avdtp_media_codec_capability {
 #error "Unknown byte order"
 #endif
 
-/* BAP Broadcast parameters */
-#define BCAST_SYNC_FACTOR	24			/* PA params */
-#define BCAST_OPTIONS		0x00		/* PA Create Sync */
-#define BCAST_SKIP			0x0000		/* PA Create Sync */
-#define BCAST_SYNC_TIMEOUT	0x4000		/* PA Create Sync */
-#define BCAST_SYNC_CTE_TYPE	0x00		/* PA Create Sync */
-#define BCAST_MSE			0x00		/* BIG Create Sync */
-#define BCAST_TIMEOUT		0x4000		/* BIG Create Sync */
 #define BCAST_CODE {0x01, 0x02, 0x68, 0x05, 0x53, 0xf1, 0x41, 0x5a, \
 				0xa2, 0x65, 0xbb, 0xaf, 0xc6, 0xea, 0x03, 0xb8}
 
@@ -1745,13 +1737,6 @@ struct endpoint_config {
 	struct iovec *meta;		/* Metadata LTVs*/
 	uint8_t target_latency;
 	struct bt_bap_qos qos;		/* BAP QOS configuration parameters */
-	uint8_t  sync_factor;		/* PA parameter */
-	uint8_t  options;		/* PA create sync parameter */
-	uint16_t skip;			/* PA create sync parameter */
-	uint16_t sync_timeout;		/* PA create sync parameter */
-	uint8_t  sync_cte_type;		/* PA create sync parameter */
-	uint8_t  mse;			/* BIG create sync parameter */
-	uint16_t timeout;		/* BIG create sync parameter */
 };
 
 static void append_io_qos(DBusMessageIter *iter, struct bt_bap_io_qos *qos)
@@ -1831,40 +1816,47 @@ static void append_bcast_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 							&cfg->ep->iso_stream);
 	}
 
-	bt_shell_printf("SyncFactor %u\n", cfg->sync_factor);
+	if (qos->sync_factor) {
+		bt_shell_printf("SyncFactor %u\n", qos->sync_factor);
+		g_dbus_dict_append_entry(iter, "SyncFactor", DBUS_TYPE_BYTE,
+						&qos->sync_factor);
+	}
 
-	g_dbus_dict_append_entry(iter, "SyncFactor", DBUS_TYPE_BYTE,
-						&cfg->sync_factor);
+	if (qos->options) {
+		bt_shell_printf("Options %u\n", qos->options);
+		g_dbus_dict_append_entry(iter, "Options", DBUS_TYPE_BYTE,
+						&qos->options);
+	}
 
-	bt_shell_printf("Options %u\n", cfg->options);
+	if (qos->skip) {
+		bt_shell_printf("Skip %u\n", qos->skip);
+		g_dbus_dict_append_entry(iter, "Skip", DBUS_TYPE_UINT16,
+						&qos->skip);
+	}
 
-	g_dbus_dict_append_entry(iter, "Options", DBUS_TYPE_BYTE,
-						&cfg->options);
+	if (qos->sync_timeout) {
+		bt_shell_printf("SyncTimeout %u\n", qos->sync_timeout);
+		g_dbus_dict_append_entry(iter, "SyncTimeout", DBUS_TYPE_UINT16,
+						&qos->sync_timeout);
+	}
 
-	bt_shell_printf("Skip %u\n", cfg->skip);
+	if (qos->sync_cte_type) {
+		bt_shell_printf("SyncCteType %u\n", qos->sync_cte_type);
+		g_dbus_dict_append_entry(iter, "SyncCteType", DBUS_TYPE_BYTE,
+					&qos->sync_cte_type);
+	}
 
-	g_dbus_dict_append_entry(iter, "Skip", DBUS_TYPE_UINT16,
-						&cfg->skip);
+	if (qos->sync_cte_type) {
+		bt_shell_printf("MSE %u\n", qos->mse);
+		g_dbus_dict_append_entry(iter, "MSE", DBUS_TYPE_BYTE,
+						&qos->mse);
+	}
 
-	bt_shell_printf("SyncTimeout %u\n", cfg->sync_timeout);
-
-	g_dbus_dict_append_entry(iter, "SyncTimeout", DBUS_TYPE_UINT16,
-						&cfg->sync_timeout);
-
-	bt_shell_printf("SyncCteType %u\n", cfg->sync_cte_type);
-
-	g_dbus_dict_append_entry(iter, "SyncType", DBUS_TYPE_BYTE,
-					&cfg->sync_cte_type);
-
-	bt_shell_printf("MSE %u\n", cfg->mse);
-
-	g_dbus_dict_append_entry(iter, "MSE", DBUS_TYPE_BYTE,
-						&cfg->mse);
-
-	bt_shell_printf("Timeout %u\n", cfg->timeout);
-
-	g_dbus_dict_append_entry(iter, "Timeout", DBUS_TYPE_UINT16,
-						&cfg->timeout);
+	if (qos->timeout) {
+		bt_shell_printf("Timeout %u\n", qos->timeout);
+		g_dbus_dict_append_entry(iter, "Timeout", DBUS_TYPE_UINT16,
+						&qos->timeout);
+	}
 
 	if (cfg->ep->bcode->iov_len != 0) {
 		const char *key = "BCode";
@@ -3672,17 +3664,6 @@ static void endpoint_set_config_bcast(struct endpoint_config *cfg)
 	cfg->ep->bcode = g_new0(struct iovec, 1);
 	iov_append(&cfg->ep->bcode, bcast_code,
 			sizeof(bcast_code));
-
-	/* Add periodic advertisement parameters */
-	cfg->sync_factor = BCAST_SYNC_FACTOR;
-	cfg->options = BCAST_OPTIONS;
-	cfg->skip = BCAST_SKIP;
-	cfg->sync_timeout = BCAST_SYNC_TIMEOUT;
-	cfg->sync_cte_type = BCAST_SYNC_CTE_TYPE;
-
-	/* Add BIG create sync parameters */
-	cfg->mse = BCAST_MSE;
-	cfg->timeout = BCAST_TIMEOUT;
 
 	if ((strcmp(cfg->ep->uuid, BAA_SERVICE_UUID) == 0)) {
 		/* A broadcast sink endpoint config does not need
