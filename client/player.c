@@ -1180,10 +1180,10 @@ static const struct capabilities {
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
 	 * Duration: 7.5 ms 10 ms
 	 * Channel count: 3
-	 * Frame length: 30-240
+	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("pac_snk/lc3", PAC_SINK_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
 					240),
 				UTIL_IOV_INIT()),
 
@@ -1192,10 +1192,10 @@ static const struct capabilities {
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
 	 * Duration: 7.5 ms 10 ms
 	 * Channel count: 3
-	 * Frame length: 30-240
+	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("pac_src/lc3", PAC_SOURCE_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
 					240),
 				UTIL_IOV_INIT()),
 
@@ -1204,10 +1204,10 @@ static const struct capabilities {
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
 	 * Duration: 7.5 ms 10 ms
 	 * Channel count: 3
-	 * Frame length: 30-240
+	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("bcaa/lc3", BCAA_SERVICE_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
 					240),
 				UTIL_IOV_INIT()),
 
@@ -1216,10 +1216,10 @@ static const struct capabilities {
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
 	 * Duration: 7.5 ms 10 ms
 	 * Channel count: 3
-	 * Frame length: 30-240
+	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("baa/lc3", BAA_SERVICE_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 30,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
 					240),
 				UTIL_IOV_INIT()),
 };
