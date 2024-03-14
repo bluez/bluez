@@ -145,6 +145,7 @@ static const char *gatt_options[] = {
 	"KeySize",
 	"ExchangeMTU",
 	"Channels",
+	"Client",
 	NULL
 };
 
@@ -1058,6 +1059,7 @@ static void parse_gatt(GKeyFile *config)
 				BT_ATT_DEFAULT_LE_MTU, BT_ATT_MAX_LE_MTU);
 	parse_config_u8(config, "GATT", "Channels", &btd_opts.gatt_channels,
 				1, 5);
+	parse_config_bool(config, "GATT", "Client", &btd_opts.gatt_client);
 }
 
 static void parse_csis_sirk(GKeyFile *config)
@@ -1190,6 +1192,7 @@ static void init_defaults(void)
 	btd_opts.gatt_cache = BT_GATT_CACHE_ALWAYS;
 	btd_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
 	btd_opts.gatt_channels = 1;
+	btd_opts.gatt_client = true;
 
 	btd_opts.avdtp.session_mode = BT_IO_MODE_BASIC;
 	btd_opts.avdtp.stream_mode = BT_IO_MODE_BASIC;

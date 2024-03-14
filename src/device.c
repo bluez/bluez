@@ -5513,6 +5513,10 @@ static void gatt_client_init(struct btd_device *device)
 		DBG("Reverse service discovery disabled: skipping GATT client");
 		return;
 	}
+	if (!device->connect && !btd_opts.gatt_client) {
+		DBG("GATT client disabled: skipping GATT client");
+		return;
+	}
 
 	device->client = bt_gatt_client_new(device->db, device->att,
 							device->att_mtu, 0);

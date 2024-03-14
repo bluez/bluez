@@ -140,6 +140,7 @@ struct btd_opts {
 	bt_gatt_cache_t gatt_cache;
 	uint16_t	gatt_mtu;
 	uint8_t		gatt_channels;
+	bool		gatt_client;
 	enum mps_mode_t	mps;
 
 	struct btd_avdtp_opts avdtp;
