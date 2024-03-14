@@ -105,7 +105,6 @@ bool input_get_classic_bonded_only(void)
 
 static void input_device_enter_reconnect_mode(struct input_device *idev);
 static int connection_disconnect(struct input_device *idev, uint32_t flags);
-static int uhid_disconnect(struct input_device *idev);
 
 static bool input_device_bonded(struct input_device *idev)
 {
@@ -314,6 +313,28 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 	return true;
 }
 
+static int uhid_disconnect(struct input_device *idev, bool force)
+{
+	int err;
+
+	if (!bt_uhid_created(idev->uhid))
+		return 0;
+
+	/* Only destroy the node if virtual cable unplug flag has been set */
+	if (!idev->virtual_cable_unplug && !force)
+		return 0;
+
+	bt_uhid_unregister_all(idev->uhid);
+
+	err = bt_uhid_destroy(idev->uhid);
+	if (err < 0) {
+		error("bt_uhid_destroy: %s", strerror(-err));
+		return err;
+	}
+
+	return err;
+}
+
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct input_device *idev = data;
@@ -356,8 +377,7 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 		virtual_cable_unplug(idev);
 
 	/* If connection abruptly ended, uhid might be not yet disconnected */
-	if (bt_uhid_created(idev->uhid))
-		uhid_disconnect(idev);
+	uhid_disconnect(idev, false);
 
 	return FALSE;
 }
@@ -610,11 +630,14 @@ static void hidp_send_output(struct uhid_event *ev, void *user_data)
 {
 	struct input_device *idev = user_data;
 	uint8_t hdr = HIDP_TRANS_DATA | HIDP_DATA_RTYPE_OUTPUT;
+	bool sent;
 
 	DBG("");
 
-	hidp_send_intr_message(idev, hdr, ev->u.output.data,
+	sent = hidp_send_intr_message(idev, hdr, ev->u.output.data,
 						ev->u.output.size);
+	if (!sent)
+		uhid_disconnect(idev, true);
 }
 
 static void hidp_send_set_report(struct uhid_event *ev, void *user_data)
@@ -654,8 +677,11 @@ static void hidp_send_set_report(struct uhid_event *ev, void *user_data)
 			timeout_add_seconds(REPORT_REQ_TIMEOUT,
 					hidp_report_req_timeout, idev, NULL);
 		idev->report_rsp_id = ev->u.set_report.id;
-	} else
+	} else {
 		uhid_send_set_report_reply(idev, ev->u.set_report.id, EIO);
+		/* Force UHID_DESTROY on error */
+		uhid_disconnect(idev, true);
+	}
 }
 
 static void hidp_send_get_report(struct uhid_event *ev, void *user_data)
@@ -698,9 +724,12 @@ static void hidp_send_get_report(struct uhid_event *ev, void *user_data)
 						hidp_report_req_timeout, idev,
 						NULL);
 		idev->report_rsp_id = ev->u.get_report.id;
-	} else
+	} else {
 		uhid_send_get_report_reply(idev, NULL, 0, ev->u.get_report.id,
 									EIO);
+		/* Force UHID_DESTROY on error */
+		uhid_disconnect(idev, true);
+	}
 }
 
 static void epox_endian_quirk(unsigned char *data, int size)
@@ -934,28 +963,6 @@ static int uhid_connadd(struct input_device *idev, struct hidp_connadd_req *req)
 	return err;
 }
 
-static int uhid_disconnect(struct input_device *idev)
-{
-	int err;
-
-	if (!bt_uhid_created(idev->uhid))
-		return 0;
-
-	/* Only destroy the node if virtual cable unplug flag has been set */
-	if (!idev->virtual_cable_unplug)
-		return 0;
-
-	bt_uhid_unregister_all(idev->uhid);
-
-	err = bt_uhid_destroy(idev->uhid);
-	if (err < 0) {
-		error("bt_uhid_destroy: %s", strerror(-err));
-		return err;
-	}
-
-	return err;
-}
-
 static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 								gpointer data)
 {
@@ -1087,7 +1094,7 @@ static int connection_disconnect(struct input_device *idev, uint32_t flags)
 		idev->virtual_cable_unplug = true;
 
 	if (idev->uhid)
-		return uhid_disconnect(idev);
+		return uhid_disconnect(idev, false);
 	else
 		return ioctl_disconnect(idev, flags);
 }
