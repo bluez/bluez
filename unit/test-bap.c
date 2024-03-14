@@ -1438,12 +1438,12 @@ static struct test_config cfg_snk_48_6_1 = {
 
 #define SCC_SNK_44_1_1 \
 	SCC_SNK_44_1, \
-	QOS_SNK(0xe3, 0x1f, 0x00, 0x00, 0x02, 0x62, 0x00, 0x05, 0x18, 0x00, \
+	QOS_SNK(0xe3, 0x1f, 0x00, 0x01, 0x02, 0x62, 0x00, 0x05, 0x18, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SNK_44_2_1 \
 	SCC_SNK_44_2, \
-	QOS_SNK(0x84, 0x2a, 0x00, 0x00, 0x02, 0x82, 0x00, 0x05, 0x1f, 0x00, \
+	QOS_SNK(0x84, 0x2a, 0x00, 0x01, 0x02, 0x82, 0x00, 0x05, 0x1f, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SNK_48_1_1 \
@@ -1646,12 +1646,12 @@ static struct test_config cfg_src_48_6_1 = {
 
 #define SCC_SRC_44_1_1 \
 	SCC_SRC_44_1, \
-	QOS_SRC(0xe3, 0x1f, 0x00, 0x00, 0x02, 0x62, 0x00, 0x05, 0x18, 0x00, \
+	QOS_SRC(0xe3, 0x1f, 0x00, 0x01, 0x02, 0x62, 0x00, 0x05, 0x18, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SRC_44_2_1 \
 	SCC_SRC_44_2, \
-	QOS_SRC(0x84, 0x2a, 0x00, 0x00, 0x02, 0x82, 0x00, 0x05, 0x1f, 0x00, \
+	QOS_SRC(0x84, 0x2a, 0x00, 0x01, 0x02, 0x82, 0x00, 0x05, 0x1f, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SRC_48_1_1 \
@@ -1838,12 +1838,12 @@ static struct test_config cfg_snk_48_6_2 = {
 
 #define SCC_SNK_44_1_2 \
 	SCC_SNK_44_1, \
-	QOS_SNK(0xe3, 0x1f, 0x00, 0x00, 0x02, 0x62, 0x00, 0x0d, 0x50, 0x00, \
+	QOS_SNK(0xe3, 0x1f, 0x00, 0x01, 0x02, 0x62, 0x00, 0x0d, 0x50, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SNK_44_2_2 \
 	SCC_SNK_44_2, \
-	QOS_SNK(0x84, 0x2a, 0x00, 0x00, 0x02, 0x82, 0x00, 0x0d, 0x55, 0x00, \
+	QOS_SNK(0x84, 0x2a, 0x00, 0x01, 0x02, 0x82, 0x00, 0x0d, 0x55, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SNK_48_1_2 \
@@ -2030,12 +2030,12 @@ static struct test_config cfg_src_48_6_2 = {
 
 #define SCC_SRC_44_1_2 \
 	SCC_SRC_44_1, \
-	QOS_SRC(0xe3, 0x1f, 0x00, 0x00, 0x02, 0x62, 0x00, 0x0d, 0x50, 0x00, \
+	QOS_SRC(0xe3, 0x1f, 0x00, 0x01, 0x02, 0x62, 0x00, 0x0d, 0x50, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SRC_44_2_2 \
 	SCC_SRC_44_2, \
-	QOS_SRC(0x84, 0x2a, 0x00, 0x00, 0x02, 0x82, 0x00, 0x0d, 0x55, 0x00, \
+	QOS_SRC(0x84, 0x2a, 0x00, 0x01, 0x02, 0x82, 0x00, 0x0d, 0x55, 0x00, \
 		0x40, 0x9c, 0x00)
 
 #define SCC_SRC_48_1_2 \
@@ -2860,14 +2860,14 @@ static struct test_config str_snk_ac2_8_1_1 = {
 #define STR_SNK_8_1(_ac) \
 	STR_SNK_8(_ac, LC3_CONFIG_DURATION_7_5, LC3_CONFIG_FRAME_LEN_8_1)
 
-#define STR_SNK_QOS(_interval, _sdu, _rtn, _latency) \
+#define STR_SNK_QOS(_interval, _frame, _sdu, _rtn, _latency) \
 	QOS_SNK(_interval & 0xff, _interval >> 8 & 0xff, \
-		_interval >> 16 & 0xff, 0x00, 0x02, _sdu & 0xff, \
+		_interval >> 16 & 0xff, _frame, 0x02, _sdu & 0xff, \
 		_sdu >> 8 & 0xff, _rtn, \
 		_latency, _latency >> 8, 0x40, 0x9c, 0x00)
 
 #define STR_SNK_QOS_1(_sdu, _rtn, _latency) \
-	STR_SNK_QOS(7500u, _sdu, _rtn, _latency)
+	STR_SNK_QOS(7500u, LC3_QOS_UNFRAMED, _sdu, _rtn, _latency)
 
 #define STR_SNK_8_1_1(_chans) \
 	STR_SNK_8_1((BIT(_chans) - 1)), \
@@ -2902,7 +2902,7 @@ static struct test_config str_snk_ac2_8_2_1 = {
 	STR_SNK_8(_ac, LC3_CONFIG_DURATION_10, LC3_CONFIG_FRAME_LEN_8_2)
 
 #define STR_SNK_QOS_2(_sdu, _rtn, _latency) \
-	STR_SNK_QOS(10000u, _sdu, _rtn, _latency)
+	STR_SNK_QOS(10000u, LC3_QOS_UNFRAMED, _sdu, _rtn, _latency)
 
 #define STR_SNK_8_2_1(_chans) \
 	STR_SNK_8_2((BIT(_chans) - 1)), \
@@ -3379,7 +3379,8 @@ static struct test_config str_snk_ac2_44_1_1 = {
 	STR_SNK_44(_ac, LC3_CONFIG_DURATION_7_5, LC3_CONFIG_FRAME_LEN_44_1)
 
 #define STR_SNK_QOS_44_1(_sdu, _rtn, _latency) \
-	STR_SNK_QOS(LC3_QOS_44_1_INTERVAL, _sdu, _rtn, _latency)
+	STR_SNK_QOS(LC3_QOS_44_1_INTERVAL, LC3_QOS_FRAMED, _sdu, _rtn, \
+			_latency)
 
 #define STR_SNK_44_1_1(_chans) \
 	STR_SNK_44_1((BIT(_chans) - 1)), \
@@ -3414,7 +3415,8 @@ static struct test_config str_snk_ac2_44_2_1 = {
 	STR_SNK_44(_ac, LC3_CONFIG_DURATION_10, LC3_CONFIG_FRAME_LEN_44_2)
 
 #define STR_SNK_QOS_44_2(_sdu, _rtn, _latency) \
-	STR_SNK_QOS(LC3_QOS_44_2_INTERVAL, _sdu, _rtn, _latency)
+	STR_SNK_QOS(LC3_QOS_44_2_INTERVAL, LC3_QOS_FRAMED, _sdu, _rtn, \
+			_latency)
 
 #define STR_SNK_44_2_1(_chans) \
 	STR_SNK_44_2((BIT(_chans) - 1)), \
@@ -3882,14 +3884,14 @@ static struct test_config str_src_ac1_8_1_1 = {
 #define STR_SRC_8_1(_ac) \
 	STR_SRC_8(_ac, LC3_CONFIG_DURATION_7_5, LC3_CONFIG_FRAME_LEN_8_1)
 
-#define STR_SRC_QOS(_interval, _sdu, _rtn, _latency) \
+#define STR_SRC_QOS(_interval, _frame, _sdu, _rtn, _latency) \
 	QOS_SRC(_interval & 0xff, _interval >> 8 & 0xff, \
-		_interval >> 16 & 0xff, 0x00, 0x02, _sdu & 0xff, \
+		_interval >> 16 & 0xff, _frame, 0x02, _sdu & 0xff, \
 		_sdu >> 8 & 0xff, _rtn, \
 		_latency, _latency >> 8, 0x40, 0x9c, 0x00)
 
 #define STR_SRC_QOS_1(_sdu, _rtn, _latency) \
-	STR_SRC_QOS(7500u, _sdu, _rtn, _latency)
+	STR_SRC_QOS(7500u, LC3_QOS_UNFRAMED, _sdu, _rtn, _latency)
 
 #define STR_SRC_8_1_1(_chans) \
 	STR_SRC_8_1((BIT(_chans) - 1)), \
@@ -3924,7 +3926,7 @@ static struct test_config str_src_ac1_8_2_1 = {
 	STR_SRC_8(_ac, LC3_CONFIG_DURATION_10, LC3_CONFIG_FRAME_LEN_8_2)
 
 #define STR_SRC_QOS_2(_sdu, _rtn, _latency) \
-	STR_SRC_QOS(10000u, _sdu, _rtn, _latency)
+	STR_SRC_QOS(10000u, LC3_QOS_UNFRAMED, _sdu, _rtn, _latency)
 
 #define STR_SRC_8_2_1(_chans) \
 	STR_SRC_8_2((BIT(_chans) - 1)), \
@@ -4163,7 +4165,8 @@ static struct test_config str_src_ac1_44_1_1 = {
 	STR_SRC_44(_ac, LC3_CONFIG_DURATION_7_5, LC3_CONFIG_FRAME_LEN_44_1)
 
 #define STR_SRC_QOS_44_1(_sdu, _rtn, _latency) \
-	STR_SRC_QOS(LC3_QOS_44_1_INTERVAL, _sdu, _rtn, _latency)
+	STR_SRC_QOS(LC3_QOS_44_1_INTERVAL, LC3_QOS_FRAMED, _sdu, _rtn, \
+			_latency)
 
 #define STR_SRC_44_1_1(_chans) \
 	STR_SRC_44_1((BIT(_chans) - 1)), \
@@ -4198,7 +4201,8 @@ static struct test_config str_src_ac1_44_2_1 = {
 	STR_SRC_44(_ac, LC3_CONFIG_DURATION_10, LC3_CONFIG_FRAME_LEN_44_2)
 
 #define STR_SRC_QOS_44_2(_sdu, _rtn, _latency) \
-	STR_SRC_QOS(LC3_QOS_44_2_INTERVAL, _sdu, _rtn, _latency)
+	STR_SRC_QOS(LC3_QOS_44_2_INTERVAL, LC3_QOS_FRAMED, _sdu, _rtn, \
+			_latency)
 
 #define STR_SRC_44_2_1(_chans) \
 	STR_SRC_44_2((BIT(_chans) - 1)), \
