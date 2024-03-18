@@ -3324,22 +3324,24 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 								"Connected");
 }
 
+static bool device_service_connected(struct btd_device *dev)
+{
+	if (find_service_with_state(dev->services,
+					BTD_SERVICE_STATE_CONNECTING))
+		return true;
+
+	return find_service_with_state(dev->services,
+					BTD_SERVICE_STATE_CONNECTED);
+}
+
 static bool device_disappeared(gpointer user_data)
 {
 	struct btd_device *dev = user_data;
 
-	if (btd_device_is_connected(dev)) {
-		char addr[18];
-		ba2str(&dev->bdaddr, addr);
-		DBG("Device %s is marked as connected", dev->path);
-		return TRUE;
-	}
-
-	/* If there are services connecting restart the timer to give more time
+	/* If there are services connected restart the timer to give more time
 	 * for the service to either complete the connection or disconnect.
 	 */
-	if (find_service_with_state(dev->services,
-					BTD_SERVICE_STATE_CONNECTING))
+	if (device_service_connected(dev))
 		return TRUE;
 
 	dev->temporary_timer = 0;
