@@ -1951,23 +1951,6 @@ static void append_properties(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static struct iovec *iov_append(struct iovec **iov, const void *data,
-							size_t len)
-{
-	if (!*iov)
-		*iov = new0(struct iovec, 1);
-
-	if (!((*iov)->iov_base))
-		(*iov)->iov_base = new0(uint8_t, UINT8_MAX);
-
-	if (data && len) {
-		memcpy((*iov)->iov_base + (*iov)->iov_len, data, len);
-		(*iov)->iov_len += len;
-	}
-
-	return *iov;
-}
-
 static int parse_chan_alloc(DBusMessageIter *iter, uint32_t *location,
 						uint8_t *channels)
 {
@@ -2033,7 +2016,8 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 			location >> 8, location >> 16, location >> 24
 		};
 
-		iov_append(&cfg->caps, &chan_alloc_ltv, sizeof(chan_alloc_ltv));
+		util_iov_append(cfg->caps, &chan_alloc_ltv,
+						sizeof(chan_alloc_ltv));
 	}
 
 	/* Copy metadata */
@@ -3540,7 +3524,7 @@ static void endpoint_config(const char *input, void *user_data)
 
 	data = str2bytearray((char *) input, &len);
 
-	iov_append(&cfg->caps, data, len);
+	util_iov_append(cfg->caps, data, len);
 	free(data);
 
 	endpoint_set_config(cfg);
@@ -3662,7 +3646,7 @@ static void config_endpoint_iso_group(const char *input, void *user_data)
 static void endpoint_set_config_bcast(struct endpoint_config *cfg)
 {
 	cfg->ep->bcode = g_new0(struct iovec, 1);
-	iov_append(&cfg->ep->bcode, bcast_code,
+	util_iov_append(cfg->ep->bcode, bcast_code,
 			sizeof(bcast_code));
 
 	if ((strcmp(cfg->ep->uuid, BAA_SERVICE_UUID) == 0)) {
@@ -3707,8 +3691,9 @@ static void cmd_config_endpoint(int argc, char *argv[])
 			goto fail;
 		}
 
+		cfg->caps = g_new0(struct iovec, 1);
 		/* Copy capabilities */
-		iov_append(&cfg->caps, preset->data.iov_base,
+		util_iov_append(cfg->caps, preset->data.iov_base,
 				preset->data.iov_len);
 
 		/* Set QoS parameters */
@@ -3937,7 +3922,7 @@ static void custom_length(const char *input, void *user_data)
 	ltv[2] = len;
 	ltv[3] = len >> 8;
 
-	iov_append(&iov, ltv, sizeof(ltv));
+	util_iov_append(iov, ltv, sizeof(ltv));
 
 	bt_shell_prompt_input("QoS", "Enter Target Latency "
 				"(Low, Balance, High):",
@@ -3963,7 +3948,7 @@ static void custom_location(const char *input, void *user_data)
 
 		location = cpu_to_le32(location);
 		memcpy(&ltv[2], &location, sizeof(location));
-		iov_append(&iov, ltv, sizeof(ltv));
+		util_iov_append(iov, ltv, sizeof(ltv));
 	}
 
 	bt_shell_prompt_input("Codec", "Enter frame length:",
@@ -4006,7 +3991,7 @@ static void custom_duration(const char *input, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	iov_append(&iov, ltv, sizeof(ltv));
+	util_iov_append(iov, ltv, sizeof(ltv));
 
 	bt_shell_prompt_input("Codec", "Enter channel allocation:",
 					custom_location, user_data);
@@ -4074,7 +4059,7 @@ static void custom_frequency(const char *input, void *user_data)
 	free(iov->iov_base);
 	iov->iov_base = NULL;
 	iov->iov_len = 0;
-	iov_append(&iov, ltv, sizeof(ltv));
+	util_iov_append(iov, ltv, sizeof(ltv));
 
 	bt_shell_prompt_input("Codec", "Enter frame duration (ms):",
 				custom_duration, user_data);
