@@ -326,12 +326,6 @@ static bool bap_db_match(const void *data, const void *match_data)
 	return (bdb->db == db);
 }
 
-static void *iov_append(struct iovec *iov, size_t len, const void *d)
-{
-	iov->iov_base = realloc(iov->iov_base, iov->iov_len + len);
-	return util_iov_push_mem(iov, len, d);
-}
-
 unsigned int bt_bap_pac_register(struct bt_bap *bap, bt_bap_pac_func_t added,
 				bt_bap_pac_func_t removed, void *user_data,
 				bt_bap_destroy_func_t destroy)
@@ -3049,9 +3043,9 @@ static void *ltv_merge(struct iovec *data, struct iovec *cont)
 	if (!cont || !cont->iov_len || !cont->iov_base)
 		return data->iov_base;
 
-	iov_append(data, sizeof(delimiter), &delimiter);
+	util_iov_append(data, &delimiter, sizeof(delimiter));
 
-	return iov_append(data, cont->iov_len, cont->iov_base);
+	return util_iov_append(data, cont->iov_base, cont->iov_len);
 }
 
 static void bap_pac_foreach_channel(size_t i, uint8_t l, uint8_t t, uint8_t *v,
@@ -6081,9 +6075,9 @@ static void extract_ltv(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 
 	if (!ltv_match.found) {
 		ltv_len = l + 1;
-		iov_append(ext_data->result, 1, &ltv_len);
-		iov_append(ext_data->result, 1, &t);
-		iov_append(ext_data->result, l, v);
+		util_iov_append(ext_data->result, &ltv_len, 1);
+		util_iov_append(ext_data->result, &t, 1);
+		util_iov_append(ext_data->result, v, l);
 	}
 }
 
