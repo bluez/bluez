@@ -536,6 +536,12 @@ void *util_iov_push_u8(struct iovec *iov, uint8_t val)
 	return p;
 }
 
+void *util_iov_append(struct iovec *iov, const void *data, size_t len)
+{
+	iov->iov_base = realloc(iov->iov_base, iov->iov_len + len);
+	return util_iov_push_mem(iov, len, data);
+}
+
 void *util_iov_pull(struct iovec *iov, size_t len)
 {
 	if (!iov)

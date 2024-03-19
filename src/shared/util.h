@@ -175,6 +175,7 @@ void *util_iov_push_be24(struct iovec *iov, uint32_t val);
 void *util_iov_push_le16(struct iovec *iov, uint16_t val);
 void *util_iov_push_be16(struct iovec *iov, uint16_t val);
 void *util_iov_push_u8(struct iovec *iov, uint8_t val);
+void *util_iov_append(struct iovec *iov, const void *data, size_t len);
 void *util_iov_pull(struct iovec *iov, size_t len);
 void *util_iov_pull_mem(struct iovec *iov, size_t len);
 void *util_iov_pull_le64(struct iovec *iov, uint64_t *val);
