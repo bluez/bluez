@@ -3553,22 +3553,6 @@ done:
 	endpoint_set_config(cfg);
 }
 
-static struct iovec *iov_append_ltv(struct iovec **iov, uint8_t l,
-					uint8_t t, void *v)
-{
-	if (!*iov)
-		*iov = new0(struct iovec, 1);
-
-	if (!((*iov)->iov_base))
-		(*iov)->iov_base = new0(uint8_t, l + 1);
-
-	util_iov_push_u8(*iov, l);
-	util_iov_push_u8(*iov, t);
-	util_iov_push_mem(*iov, l - 1, v);
-
-	return *iov;
-}
-
 static void config_endpoint_channel_location(const char *input, void *user_data)
 {
 	struct endpoint_config *cfg = user_data;
@@ -3587,7 +3571,7 @@ static void config_endpoint_channel_location(const char *input, void *user_data)
 
 	/* Add Channel Allocation LTV in capabilities */
 	location = cpu_to_le32(location);
-	iov_append_ltv(&cfg->caps, LC3_CONFIG_CHAN_ALLOC_LEN,
+	util_ltv_push(cfg->caps, LC3_CONFIG_CHAN_ALLOC_LEN - 1,
 			LC3_CONFIG_CHAN_ALLOC, &location);
 
 add_meta:
