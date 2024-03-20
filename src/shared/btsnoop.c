@@ -305,6 +305,9 @@ static uint32_t get_flags_from_opcode(uint16_t opcode)
 	case BTSNOOP_OPCODE_SCO_TX_PKT:
 	case BTSNOOP_OPCODE_SCO_RX_PKT:
 		break;
+	case BTSNOOP_OPCODE_ISO_TX_PKT:
+	case BTSNOOP_OPCODE_ISO_RX_PKT:
+		break;
 	case BTSNOOP_OPCODE_OPEN_INDEX:
 	case BTSNOOP_OPCODE_CLOSE_INDEX:
 		break;
@@ -428,6 +431,14 @@ static bool pklg_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
 		*index = 0x0000;
 		*opcode = BTSNOOP_OPCODE_SCO_RX_PKT;
 		break;
+	case 0x12:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_ISO_TX_PKT;
+		break;
+	case 0x13:
+		*index = 0x0000;
+		*opcode = BTSNOOP_OPCODE_ISO_RX_PKT;
+		break;
 	case 0x0b:
 		*index = 0x0000;
 		*opcode = BTSNOOP_OPCODE_VENDOR_DIAG;
@@ -470,6 +481,11 @@ static uint16_t get_opcode_from_flags(uint8_t type, uint32_t flags)
 			return BTSNOOP_OPCODE_SCO_TX_PKT;
 	case 0x04:
 		return BTSNOOP_OPCODE_EVENT_PKT;
+	case 0x05:
+		if (flags & 0x01)
+			return BTSNOOP_OPCODE_ISO_RX_PKT;
+		else
+			return BTSNOOP_OPCODE_ISO_TX_PKT;
 	case 0xff:
 		if (flags & 0x02) {
 			if (flags & 0x01)
