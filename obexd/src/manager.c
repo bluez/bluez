@@ -525,7 +525,7 @@ void manager_cleanup(void)
 void manager_emit_transfer_property(struct obex_transfer *transfer,
 								char *name)
 {
-	if (!transfer->path)
+	if (transfer->path == NULL)
 		return;
 
 	g_dbus_emit_property_changed(connection, transfer->path,
@@ -542,9 +542,6 @@ void manager_emit_transfer_started(struct obex_transfer *transfer)
 static void emit_transfer_completed(struct obex_transfer *transfer,
 							gboolean success)
 {
-	if (transfer->path == NULL)
-		return;
-
 	transfer->status = success ? TRANSFER_STATUS_COMPLETE :
 						TRANSFER_STATUS_ERROR;
 
