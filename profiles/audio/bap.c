@@ -1148,10 +1148,14 @@ static const GDBusMethodTable ep_methods[] = {
 	{ },
 };
 
+static void ep_cancel_select(struct bap_ep *ep);
+
 static void ep_free(void *data)
 {
 	struct bap_ep *ep = data;
 	struct queue *setups = ep->setups;
+
+	ep_cancel_select(ep);
 
 	ep->setups = NULL;
 	queue_destroy(setups, setup_free);
@@ -1424,6 +1428,24 @@ static bool pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 		bt_bap_select(lpac, rpac, &ep->data->selecting, select_cb, ep);
 
 	return true;
+}
+
+static bool pac_cancel_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
+							void *user_data)
+{
+	struct bap_ep *ep = user_data;
+
+	bt_bap_cancel_select(lpac, select_cb, ep);
+
+	return true;
+}
+
+static void ep_cancel_select(struct bap_ep *ep)
+{
+	struct bt_bap *bap = ep->data->bap;
+
+	bt_bap_foreach_pac(bap, BT_BAP_SOURCE, pac_cancel_select, ep);
+	bt_bap_foreach_pac(bap, BT_BAP_SINK, pac_cancel_select, ep);
 }
 
 static bool pac_found_bcast(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,

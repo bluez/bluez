@@ -149,6 +149,11 @@ static void media_endpoint_cancel(struct endpoint_request *request)
 {
 	struct media_endpoint *endpoint = request->endpoint;
 
+	DBG("Canceling %s: name = %s path = %s",
+			dbus_message_get_member(request->msg),
+			dbus_message_get_destination(request->msg),
+			dbus_message_get_path(request->msg));
+
 	if (request->call)
 		dbus_pending_call_cancel(request->call);
 
@@ -1028,6 +1033,34 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 								data, free);
 }
 
+static void pac_cancel_select(struct bt_bap_pac *lpac, bt_bap_pac_select_t cb,
+						void *cb_data, void *user_data)
+{
+	struct media_endpoint *endpoint = user_data;
+	GSList *l = endpoint->requests;
+
+	while (l) {
+		struct endpoint_request *req = l->data;
+		struct pac_select_data *data;
+
+		if (req->cb != pac_select_cb) {
+			l = g_slist_next(l);
+			continue;
+		}
+
+		data = req->user_data;
+		if (data->pac != lpac || data->cb != cb ||
+						data->user_data != cb_data) {
+			l = g_slist_next(l);
+			continue;
+		}
+
+		req->cb = NULL;
+		media_endpoint_cancel(req);
+		l = endpoint->requests;
+	}
+}
+
 struct pac_config_data {
 	struct bt_bap_stream *stream;
 	bt_bap_pac_config_t cb;
@@ -1195,6 +1228,7 @@ static void pac_clear(struct bt_bap_stream *stream, void *user_data)
 
 static struct bt_bap_pac_ops pac_ops = {
 	.select = pac_select,
+	.cancel_select = pac_cancel_select,
 	.config = pac_config,
 	.clear = pac_clear,
 };
