@@ -1890,6 +1890,19 @@ static void read_adv_features_callback(uint8_t status, uint16_t length,
 	/* Reset existing instances */
 	if (feat->num_instances)
 		remove_advertising(manager, 0);
+
+	/* Emit property update */
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+		adapter_get_path(manager->adapter),
+		LE_ADVERTISING_MGR_IFACE, "SupportedFeatures");
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+		adapter_get_path(manager->adapter),
+		LE_ADVERTISING_MGR_IFACE, "SupportedIncludes");
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+		adapter_get_path(manager->adapter),
+		LE_ADVERTISING_MGR_IFACE, "SupportedSecondaryChannels");
 }
 
 static void read_controller_cap_complete(uint8_t status, uint16_t length,
