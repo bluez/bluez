@@ -5180,6 +5180,18 @@ int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	return 0;
 }
 
+void bt_bap_cancel_select(struct bt_bap_pac *lpac, bt_bap_pac_select_t func,
+								void *user_data)
+{
+	if (!lpac || !func)
+		return;
+
+	if (!lpac->ops || !lpac->ops->cancel_select)
+		return;
+
+	lpac->ops->cancel_select(lpac, func, user_data, lpac->user_data);
+}
+
 static struct bt_bap_stream *bap_bcast_stream_new(struct bt_bap *bap,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac,

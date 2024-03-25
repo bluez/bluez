@@ -72,6 +72,8 @@ struct bt_bap_pac_ops {
 	int (*select)(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 			uint32_t chan_alloc, struct bt_bap_pac_qos *qos,
 			bt_bap_pac_select_t cb, void *cb_data, void *user_data);
+	void (*cancel_select)(struct bt_bap_pac *lpac,
+			bt_bap_pac_select_t cb, void *cb_data, void *user_data);
 	int (*config)(struct bt_bap_stream *stream, struct iovec *cfg,
 			struct bt_bap_qos *qos, bt_bap_pac_config_t cb,
 			void *user_data);
@@ -158,6 +160,9 @@ void *bt_bap_pac_get_user_data(struct bt_bap_pac *pac);
 /* Stream related functions */
 int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 			int *count, bt_bap_pac_select_t func,
+			void *user_data);
+
+void bt_bap_cancel_select(struct bt_bap_pac *lpac, bt_bap_pac_select_t func,
 			void *user_data);
 
 struct bt_bap_stream *bt_bap_stream_new(struct bt_bap *bap,
