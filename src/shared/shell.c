@@ -863,8 +863,6 @@ int bt_shell_release_prompt(const char *input)
 
 static void rl_handler(char *input)
 {
-	HIST_ENTRY *last;
-
 	if (!input) {
 		rl_insert_text("quit");
 		rl_redisplay();
@@ -878,14 +876,6 @@ static void rl_handler(char *input)
 
 	if (!bt_shell_release_prompt(input))
 		goto done;
-
-	last = history_get(history_length + history_base - 1);
-	/* append only if input is different from previous command */
-	if (!last || strcmp(input, last->line))
-		add_history(input);
-
-	if (data.monitor)
-		bt_log_printf(0xffff, data.name, LOG_INFO, "%s", input);
 
 	bt_shell_exec(input);
 
@@ -1404,11 +1394,20 @@ int bt_shell_run(void)
 
 int bt_shell_exec(const char *input)
 {
+	HIST_ENTRY *last;
 	wordexp_t w;
 	int err;
 
 	if (!input)
 		return 0;
+
+	last = history_get(history_length + history_base - 1);
+	/* append only if input is different from previous command */
+	if (!last || strcmp(input, last->line))
+		add_history(input);
+
+	if (data.monitor)
+		bt_log_printf(0xffff, data.name, LOG_INFO, "%s", input);
 
 	err = wordexp(input, &w, WRDE_NOCMD);
 	switch (err) {
