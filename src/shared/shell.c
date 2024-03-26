@@ -258,6 +258,115 @@ static void cmd_export(int argc, char *argv[])
 	}
 }
 
+static int bt_shell_queue_exec(char *line)
+{
+	int err;
+
+	/* Queue if already executing */
+	if (data.line) {
+		/* Check if prompt is being held then release using the line */
+		if (!bt_shell_release_prompt(line))
+			return 0;
+		queue_push_tail(data.queue, strdup(line));
+		return 0;
+	}
+
+	bt_shell_printf("%s\n", line);
+
+	err = bt_shell_exec(line);
+	if (!err)
+		data.line = strdup(line);
+
+	return err;
+}
+
+static bool input_read(struct io *io, void *user_data)
+{
+	int fd;
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t nread;
+
+	fd = io_get_fd(io);
+
+	if (fd == STDIN_FILENO) {
+		rl_callback_read_char();
+		return true;
+	}
+
+	if (!data.f) {
+		data.f = fdopen(fd, "r");
+		if (!data.f) {
+			printf("fdopen: %s (%d)\n", strerror(errno), errno);
+			return false;
+		}
+	}
+
+	nread = getline(&line, &len, data.f);
+	if (nread > 0) {
+		int err;
+
+		if (line[nread - 1] == '\n')
+			line[nread - 1] = '\0';
+
+		err = bt_shell_queue_exec(line);
+		if (err < 0)
+			printf("%s: %s (%d)\n", line, strerror(-err), -err);
+	} else {
+		fclose(data.f);
+		data.f = NULL;
+	}
+
+	free(line);
+
+	return true;
+}
+
+static bool io_hup(struct io *io, void *user_data)
+{
+	if (queue_remove(data.inputs, io)) {
+		if (!queue_isempty(data.inputs))
+			return false;
+	}
+
+	mainloop_quit();
+
+	return false;
+}
+
+static bool bt_shell_script_attach(int fd)
+{
+	struct io *io;
+
+	io = io_new(fd);
+	if (!io)
+		return false;
+
+	io_set_read_handler(io, input_read, NULL, NULL);
+	io_set_disconnect_handler(io, io_hup, NULL, NULL);
+
+	queue_push_tail(data.inputs, io);
+
+	return true;
+}
+
+static void cmd_script(int argc, char *argv[])
+{
+	int fd;
+
+	fd = open(argv[1], O_RDONLY);
+	if (fd < 0) {
+		printf("Unable to open %s: %s (%d)\n", argv[1],
+						strerror(errno), errno);
+		bt_shell_noninteractive_quit(EXIT_FAILURE);
+		return;
+	}
+
+	printf("Running script %s...\n", argv[1]);
+
+	bt_shell_script_attach(fd);
+}
+
 static const struct bt_shell_menu_entry default_menu[] = {
 	{ "back",         NULL,       cmd_back, "Return to main menu", NULL,
 							NULL, cmd_back_exists },
@@ -271,6 +380,7 @@ static const struct bt_shell_menu_entry default_menu[] = {
 					"Display help about this program" },
 	{ "export",       NULL,       cmd_export,
 						"Print environment variables" },
+	{ "script",       "<filename>", cmd_script, "Run script" },
 	{ }
 };
 
@@ -1033,18 +1143,6 @@ static char **shell_completion(const char *text, int start, int end)
 	return matches;
 }
 
-static bool io_hup(struct io *io, void *user_data)
-{
-	if (queue_remove(data.inputs, io)) {
-		if (!queue_isempty(data.inputs))
-			return false;
-	}
-
-	mainloop_quit();
-
-	return false;
-}
-
 static void signal_callback(int signum, void *user_data)
 {
 	static bool terminated = false;
@@ -1304,28 +1402,6 @@ int bt_shell_run(void)
 	return status;
 }
 
-static int bt_shell_queue_exec(char *line)
-{
-	int err;
-
-	/* Queue if already executing */
-	if (data.line) {
-		/* Check if prompt is being held then release using the line */
-		if (!bt_shell_release_prompt(line))
-			return 0;
-		queue_push_tail(data.queue, strdup(line));
-		return 0;
-	}
-
-	bt_shell_printf("%s\n", line);
-
-	err = bt_shell_exec(line);
-	if (!err)
-		data.line = strdup(line);
-
-	return err;
-}
-
 int bt_shell_exec(const char *input)
 {
 	wordexp_t w;
@@ -1449,48 +1525,6 @@ void bt_shell_set_prompt(const char *string)
 	}
 
 	rl_redisplay();
-}
-
-static bool input_read(struct io *io, void *user_data)
-{
-	int fd;
-	char *line = NULL;
-	size_t len = 0;
-	ssize_t nread;
-
-	fd = io_get_fd(io);
-
-	if (fd == STDIN_FILENO) {
-		rl_callback_read_char();
-		return true;
-	}
-
-	if (!data.f) {
-		data.f = fdopen(fd, "r");
-		if (!data.f) {
-			printf("fdopen: %s (%d)\n", strerror(errno), errno);
-			return false;
-		}
-	}
-
-	nread = getline(&line, &len, data.f);
-	if (nread > 0) {
-		int err;
-
-		if (line[nread - 1] == '\n')
-			line[nread - 1] = '\0';
-
-		err = bt_shell_queue_exec(line);
-		if (err < 0)
-			printf("%s: %s (%d)\n", line, strerror(-err), -err);
-	} else {
-		fclose(data.f);
-		data.f = NULL;
-	}
-
-	free(line);
-
-	return true;
 }
 
 static bool shell_quit(void *data)
