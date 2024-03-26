@@ -87,7 +87,7 @@ static inline void print_hex_field(const char *label, const uint8_t *data,
 	for (i = 0; i < len; i++)
 		sprintf(str + (i * 2), "%2.2x", data[i]);
 
-	print_field("%s: %s", label, str);
+	print_field("%s[%u]: %s", label, len, str);
 }
 
 void set_default_pager_num_columns(int num_columns);

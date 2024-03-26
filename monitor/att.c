@@ -46,10 +46,12 @@
 #include "keys.h"
 
 struct att_read {
+	struct att_conn_data *conn;
 	struct gatt_db_attribute *attr;
 	bool in;
 	uint16_t chan;
 	void (*func)(const struct l2cap_frame *frame);
+	struct iovec *iov;
 };
 
 struct att_conn_data {
@@ -58,6 +60,7 @@ struct att_conn_data {
 	struct gatt_db *rdb;
 	struct timespec rdb_mtim;
 	struct queue *reads;
+	uint16_t mtu;
 };
 
 static void print_uuid(const char *label, const void *data, uint16_t size)
@@ -210,6 +213,15 @@ done:
 	print_field("Handle: 0x%4.4x", handle);
 }
 
+static void att_read_free(struct att_read *read)
+{
+	if (!read)
+		return;
+
+	util_iov_free(read->iov, 1);
+	free(read);
+}
+
 static void print_data_list(const char *label, uint8_t length,
 					const struct l2cap_frame *frame)
 {
@@ -231,7 +243,7 @@ static void print_data_list(const char *label, uint8_t length,
 
 		print_hex_field("Value", frame->data, length - 2);
 
-		if (read) {
+		if (read && read->func) {
 			struct l2cap_frame f;
 
 			l2cap_frame_clone_size(&f, frame, length - 2);
@@ -244,7 +256,7 @@ static void print_data_list(const char *label, uint8_t length,
 	}
 
 	packet_hexdump(frame->data, frame->size);
-	free(read);
+	att_read_free(read);
 }
 
 static void print_attribute_info(uint16_t type, const void *data, uint16_t len)
@@ -370,7 +382,7 @@ static void att_error_response(const struct l2cap_frame *frame)
 	 */
 	if (pdu->request == 0x08 || pdu->request == 0x0a ||
 					pdu->request == 0x10)
-		free(att_get_read(frame));
+		att_read_free(att_get_read(frame));
 }
 
 static const struct bitfield_data chrc_prop_table[] = {
@@ -4095,9 +4107,23 @@ static void att_exchange_mtu_req(const struct l2cap_frame *frame)
 
 static void att_exchange_mtu_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_att_exchange_mtu_rsp *pdu = frame->data;
+	struct packet_conn_data *conn;
+	struct att_conn_data *data;
+	uint16_t mtu;
 
-	print_field("Server RX MTU: %d", le16_to_cpu(pdu->mtu));
+	if (!l2cap_frame_get_le16((void *)frame, &mtu)) {
+		print_text(COLOR_ERROR, "  invalid size");
+		return;
+	}
+
+	print_field("Server RX MTU: %d", mtu);
+
+	conn = packet_get_conn_data(frame->handle);
+	data = att_get_conn_data(conn);
+	if (!data)
+		return;
+
+	data->mtu = mtu;
 }
 
 static void att_find_info_req(const struct l2cap_frame *frame)
@@ -4261,8 +4287,6 @@ static void queue_read(const struct l2cap_frame *frame, bt_uuid_t *uuid,
 	}
 
 	handler = attr ? get_handler(attr) : get_handler_uuid(uuid);
-	if (!handler || !handler->read)
-		return;
 
 	conn = packet_get_conn_data(frame->handle);
 	data = att_get_conn_data(conn);
@@ -4273,10 +4297,11 @@ static void queue_read(const struct l2cap_frame *frame, bt_uuid_t *uuid,
 		data->reads = queue_new();
 
 	read = new0(struct att_read, 1);
+	read->conn = data;
 	read->attr = attr;
 	read->in = frame->in;
 	read->chan = frame->chan;
-	read->func = handler->read;
+	read->func = handler ? handler->read : NULL;
 
 	queue_push_tail(data->reads, read);
 }
@@ -4334,31 +4359,95 @@ static void att_read_req(const struct l2cap_frame *frame)
 	queue_read(frame, NULL, handle);
 }
 
+static void att_read_append(struct att_read *read,
+				const struct l2cap_frame *frame)
+{
+	if (!read->iov)
+		read->iov = new0(struct iovec, 1);
+	util_iov_append(read->iov, frame->data, frame->size);
+}
+
+static void att_read_func(struct att_read *read,
+				const struct l2cap_frame *frame)
+{
+	att_read_append(read, frame);
+
+	print_attribute(read->attr);
+	print_hex_field("Value", read->iov->iov_base, read->iov->iov_len);
+
+	if (read->func) {
+		struct l2cap_frame f = *frame;
+
+		f.data = read->iov->iov_base;
+		f.size = read->iov->iov_len;
+
+		read->func(&f);
+	}
+
+	att_read_free(read);
+}
+
 static void att_read_rsp(const struct l2cap_frame *frame)
 {
 	struct att_read *read;
+
+	print_hex_field("Value", frame->data, frame->size);
 
 	read = att_get_read(frame);
 	if (!read)
 		return;
 
-	print_attribute(read->attr);
-	print_hex_field("Value", frame->data, frame->size);
+	/* Check if the data size is equal to the MTU then read long procedure
+	 * maybe used.
+	 */
+	if (frame->size == read->conn->mtu - 1) {
+		att_read_append(read, frame);
+		print_hex_field("Long Value", read->iov->iov_base,
+					read->iov->iov_len);
+		queue_push_head(read->conn->reads, read);
+		return;
+	}
 
-	read->func(frame);
-
-	free(read);
+	att_read_func(read, frame);
 }
 
 static void att_read_blob_req(const struct l2cap_frame *frame)
 {
-	print_handle(frame, get_le16(frame->data), false);
-	print_field("Offset: 0x%4.4x", get_le16(frame->data + 2));
+	uint16_t handle, offset;
+	struct att_read *read;
+
+	if (!l2cap_frame_get_le16((void *)frame, &handle)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	if (!l2cap_frame_get_le16((void *)frame, &offset)) {
+		print_text(COLOR_ERROR, "invalid size");
+		return;
+	}
+
+	print_handle(frame, handle, false);
+	print_field("Offset: 0x%4.4x", offset);
+
+	read = att_get_read(frame);
+	if (!read)
+		return;
+
+	/* Check if attribute handle and offset match so the read object shall
+	 * be keeped.
+	 */
+	if (gatt_db_attribute_get_handle(read->attr) == handle &&
+				offset == read->iov->iov_len) {
+		queue_push_head(read->conn->reads, read);
+		return;
+	}
+
+	att_read_func(read, frame);
 }
 
 static void att_read_blob_rsp(const struct l2cap_frame *frame)
 {
-	packet_hexdump(frame->data, frame->size);
+	att_read_rsp(frame);
 }
 
 static void att_read_multiple_req(const struct l2cap_frame *frame)
@@ -4403,7 +4492,7 @@ static void print_group_list(const char *label, uint8_t length,
 		print_handle_range("Handle range", frame->data);
 		print_uuid("UUID", frame->data + 4, length - 4);
 
-		if (read) {
+		if (read && read->func) {
 			struct l2cap_frame f;
 
 			l2cap_frame_clone_size(&f, frame, length);
@@ -4416,7 +4505,7 @@ static void print_group_list(const char *label, uint8_t length,
 	}
 
 	packet_hexdump(frame->data, frame->size);
-	free(read);
+	att_read_free(read);
 }
 
 static void att_read_group_type_rsp(const struct l2cap_frame *frame)
