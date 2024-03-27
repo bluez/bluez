@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation.
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  */
 
@@ -488,6 +488,8 @@ struct iso_client_data {
 	bool listen_bind;
 	bool pa_bind;
 };
+
+typedef bool (*iso_defer_accept_t)(struct test_data *data, GIOChannel *io);
 
 static void mgmt_debug(const char *str, void *user_data)
 {
@@ -2582,11 +2584,10 @@ static void setup_listen(struct test_data *data, uint8_t num, GIOFunc func)
 	}
 }
 
-static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
+static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io)
 {
 	int sk;
 	char c;
-	struct pollfd pfd;
 	const struct iso_client_data *isodata = data->test_data;
 	struct sockaddr_iso *addr = NULL;
 
@@ -2610,6 +2611,31 @@ static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
 		free(addr);
 	}
 
+	if (read(sk, &c, 1) < 0) {
+		tester_warn("read: %s (%d)", strerror(errno), errno);
+		return false;
+	}
+
+	tester_print("Accept deferred setup");
+
+	data->io_queue = queue_new();
+	if (data->io_queue)
+		queue_push_tail(data->io_queue, io);
+
+	data->io_id[0] = g_io_add_watch(io, G_IO_IN,
+				iso_accept_cb, NULL);
+
+	return true;
+}
+
+static bool iso_defer_accept_ucast(struct test_data *data, GIOChannel *io)
+{
+	int sk;
+	char c;
+	struct pollfd pfd;
+
+	sk = g_io_channel_unix_get_fd(io);
+
 	memset(&pfd, 0, sizeof(pfd));
 	pfd.fd = sk;
 	pfd.events = POLLOUT;
@@ -2632,12 +2658,8 @@ static bool iso_defer_accept(struct test_data *data, GIOChannel *io)
 	if (data->io_queue)
 		queue_push_tail(data->io_queue, io);
 
-	if (isodata->bcast)
-		data->io_id[0] = g_io_add_watch(io, G_IO_IN,
-					iso_accept_cb, NULL);
-	else
-		data->io_id[0] = g_io_add_watch(io, G_IO_OUT,
-					iso_connect_cb, NULL);
+	data->io_id[0] = g_io_add_watch(io, G_IO_OUT,
+				iso_connect_cb, NULL);
 
 	return true;
 }
@@ -2648,6 +2670,9 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = data->test_data;
 	int sk, new_sk;
+	iso_defer_accept_t iso_accept = isodata->bcast ?
+						iso_defer_accept_bcast :
+						iso_defer_accept_ucast;
 
 	data->io_id[0] = 0;
 
@@ -2676,7 +2701,7 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 				return false;
 		}
 
-		if (!iso_defer_accept(data, io)) {
+		if (!iso_accept(data, io)) {
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
 		}
