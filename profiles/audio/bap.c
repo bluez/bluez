@@ -277,7 +277,13 @@ static gboolean get_codec(const GDBusPropertyTable *property,
 	struct bap_ep *ep = data;
 	uint8_t codec;
 
-	bt_bap_pac_get_codec(ep->rpac, &codec, NULL, NULL);
+	/* For broadcast source, rpac is null so the codec
+	 * is retrieved from the lpac
+	 */
+	if (ep->rpac == NULL)
+		bt_bap_pac_get_codec(ep->lpac, &codec, NULL, NULL);
+	else
+		bt_bap_pac_get_codec(ep->rpac, &codec, NULL, NULL);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &codec);
 
