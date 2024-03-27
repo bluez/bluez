@@ -5,7 +5,7 @@
  *
  *  Copyright (C) 2009-2010  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2009-2010  Nokia Corporation
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  *
  */
@@ -1800,7 +1800,6 @@ gboolean bt_io_bcast_accept(GIOChannel *io, BtIOConnect connect,
 {
 	int sock;
 	char c;
-	struct pollfd pfd;
 	va_list args;
 	struct sockaddr_iso *addr = NULL;
 	uint8_t bc_num_bis = 0;
@@ -1857,20 +1856,9 @@ gboolean bt_io_bcast_accept(GIOChannel *io, BtIOConnect connect,
 			return FALSE;
 	}
 
-	memset(&pfd, 0, sizeof(pfd));
-	pfd.fd = sock;
-	pfd.events = POLLOUT;
-
-	if (poll(&pfd, 1, 0) < 0) {
-		ERROR_FAILED(err, "poll", errno);
+	if (read(sock, &c, 1) < 0) {
+		ERROR_FAILED(err, "read", errno);
 		return FALSE;
-	}
-
-	if (!(pfd.revents & POLLOUT)) {
-		if (read(sock, &c, 1) < 0) {
-			ERROR_FAILED(err, "read", errno);
-			return FALSE;
-		}
 	}
 
 	server_add(io, connect, NULL, user_data, destroy);
