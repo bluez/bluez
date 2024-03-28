@@ -89,7 +89,7 @@ static int input_init(void)
 							"IdleTimeout", &err);
 		if (!err) {
 			DBG("input.conf: IdleTimeout=%d", idle_timeout);
-			input_set_idle_timeout(idle_timeout * 60);
+			input_set_idle_timeout(idle_timeout);
 		} else
 			g_clear_error(&err);
 
