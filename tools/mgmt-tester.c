@@ -9651,8 +9651,8 @@ static const char start_discovery_ext_scan_param[] = {
 	0x12, 0x00,		/* Interval */
 	0x12, 0x00,		/* Window */
 	0x01,			/* Type */
-	0x12, 0x00,		/* Interval */
-	0x12, 0x00,		/* Window */
+	0x36, 0x00,		/* Interval */
+	0x36, 0x00,		/* Window */
 };
 
 static const struct generic_data start_discovery_le_ext_scan_param = {
@@ -9733,8 +9733,8 @@ static const char start_discovery_valid_coded_scan_param[] = {
 	0x12, 0x00,		/* Interval */
 	0x12, 0x00,		/* Window */
 	0x01,			/* Type */
-	0x12, 0x00,		/* Interval */
-	0x12, 0x00,		/* Window */
+	0x36, 0x00,		/* Interval */
+	0x36, 0x00,		/* Window */
 };
 
 static const struct generic_data start_discovery_le_coded_scan_param = {
@@ -9764,8 +9764,8 @@ static const char start_discovery_valid_1m_2m_coded_scan_param[] = {
 	0x12, 0x00,		/* Interval */
 	0x12, 0x00,		/* Window */
 	0x01,			/* Type */
-	0x12, 0x00,		/* Interval */
-	0x12, 0x00,		/* Window */
+	0x36, 0x00,		/* Interval */
+	0x36, 0x00,		/* Window */
 };
 
 static const struct generic_data start_discovery_le_1m_coded_scan_param = {
