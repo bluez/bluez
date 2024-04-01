@@ -81,6 +81,7 @@ struct midi_read_parser {
 	uint8_t rstatus;                 /* running status byte */
 	int64_t rtime;                   /* last reader's real time */
 	int16_t timestamp;               /* last MIDI-BLE timestamp */
+	bool timestamp_set;				 /* Has the current timestamp been set*/
 	int8_t timestamp_low;            /* MIDI-BLE timestampLow from the current packet */
 	int8_t timestamp_high;           /* MIDI-BLE timestampHigh from the current packet */
 	struct midi_buffer sysex_stream; /* SysEx stream */
@@ -100,6 +101,7 @@ static inline void midi_read_reset(struct midi_read_parser *parser)
 	parser->rstatus = 0;
 	parser->timestamp_low = 0;
 	parser->timestamp_high = 0;
+	parser->timestamp_set = false;
 }
 
 /* Parses raw BLE-MIDI messages and populates a sequencer event representing the

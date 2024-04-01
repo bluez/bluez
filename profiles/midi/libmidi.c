@@ -110,6 +110,7 @@ int midi_read_init(struct midi_read_parser *parser)
 	parser->timestamp = 0;
 	parser->timestamp_low = 0;
 	parser->timestamp_high = 0;
+	parser->timestamp_set = false;
 
 	parser->sysex_stream.data = malloc(MIDI_SYSEX_MAX_SIZE);
 	if (!parser->sysex_stream.data)
@@ -355,9 +356,10 @@ size_t midi_read_raw(struct midi_read_parser *parser, const uint8_t *data,
 	size_t i = 0;
 	bool err = false;
 
-	if (parser->timestamp_high == 0)
+	if (!parser->timestamp_set) { /* Has timestamp byte been read */
 		parser->timestamp_high = data[i++] & 0x3F;
-
+		parser->timestamp_set = true;
+	}
 	snd_midi_event_reset_encode(parser->midi_ev);
 
 	/* timestamp byte */
