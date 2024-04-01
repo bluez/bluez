@@ -42,6 +42,8 @@
 #include "src/sdp-client.h"
 #include "src/shared/timeout.h"
 #include "src/shared/uhid.h"
+#include "src/shared/util.h"
+#include "src/shared/queue.h"
 
 #include "device.h"
 #include "hidp_defs.h"
@@ -53,6 +55,19 @@ enum reconnect_mode_t {
 	RECONNECT_DEVICE,
 	RECONNECT_HOST,
 	RECONNECT_ANY
+};
+
+struct hidp_msg {
+	uint8_t hdr;
+	struct iovec *iov;
+};
+
+struct hidp_replay {
+	bool replaying;
+	struct queue *out;
+	struct queue *in;
+	struct queue *re_out;
+	struct queue *re_in;
 };
 
 struct input_device {
@@ -78,6 +93,7 @@ struct input_device {
 	uint32_t		report_rsp_id;
 	bool			virtual_cable_unplug;
 	unsigned int		idle_timer;
+	struct hidp_replay	*replay;
 };
 
 static int idle_timeout = 0;
@@ -113,8 +129,30 @@ static bool input_device_bonded(struct input_device *idev)
 				btd_device_get_bdaddr_type(idev->device));
 }
 
+static void hidp_msg_free(void *data)
+{
+	struct hidp_msg *msg = data;
+
+	util_iov_free(msg->iov, 1);
+	free(msg);
+}
+
+static void hidp_replay_free(struct hidp_replay *replay)
+{
+	if (!replay)
+		return;
+
+	queue_destroy(replay->re_in, NULL);
+	queue_destroy(replay->in, hidp_msg_free);
+	queue_destroy(replay->re_out, NULL);
+	queue_destroy(replay->out, hidp_msg_free);
+	free(replay);
+}
+
 static void input_device_free(struct input_device *idev)
 {
+	hidp_replay_free(idev->replay);
+
 	bt_uhid_unref(idev->uhid);
 	btd_service_unref(idev->service);
 	btd_device_unref(idev->device);
@@ -170,6 +208,10 @@ static int uhid_disconnect(struct input_device *idev, bool force)
 	/* Only destroy the node if virtual cable unplug flag has been set */
 	if (!idev->virtual_cable_unplug && !force)
 		return 0;
+
+	/* Destroy replay messages */
+	hidp_replay_free(idev->replay);
+	idev->replay = NULL;
 
 	bt_uhid_unregister_all(idev->uhid);
 
@@ -246,11 +288,95 @@ static bool hidp_send_message(struct input_device *idev, GIOChannel *chan,
 	return true;
 }
 
+static void hidp_replay_resend(struct input_device *idev)
+{
+	struct hidp_msg *msg;
+
+	if (!idev->replay || !idev->replay->replaying)
+		return;
+
+	msg = queue_pop_head(idev->replay->re_out);
+	if (!msg) {
+		DBG("uhid replay finished");
+		idev->replay->replaying = false;
+		return;
+	}
+
+	if (hidp_send_message(idev, NULL, msg->hdr, msg->iov->iov_base,
+				msg->iov->iov_len))
+		DBG("hdr 0x%02x size %zu", msg->hdr, msg->iov->iov_len);
+	else
+		error("uhid replay resend failed");
+}
+
+static void hidp_replay_recv(struct input_device *idev, uint8_t hdr,
+				const uint8_t *data, size_t size)
+{
+	struct hidp_msg *msg;
+
+	if (!idev->replay || !idev->replay->replaying)
+		return;
+
+	msg = queue_pop_head(idev->replay->re_in);
+
+	if (msg && (msg->hdr != hdr || msg->iov->iov_len != size ||
+			memcmp(msg->iov->iov_base, data, size)))
+		error("uhid replay input error... discarding");
+
+	hidp_replay_resend(idev);
+}
+
+static struct hidp_replay *hidp_replay_new(void)
+{
+	struct hidp_replay *replay = new0(struct hidp_replay, 1);
+
+	replay->out = queue_new();
+	replay->in = queue_new();
+
+	return replay;
+}
+
+static void hidp_record_message(struct input_device *idev, bool out,
+				uint8_t hdr, const uint8_t *data, size_t size)
+{
+	struct hidp_msg *msg;
+	struct iovec iov = { (void *)data, size };
+
+	/* Only record messages if uhid has been created */
+	if (!bt_uhid_created(idev->uhid))
+		return;
+
+	if (idev->replay && idev->replay->replaying) {
+		if (!out)
+			hidp_replay_recv(idev, hdr, data, size);
+		return;
+	}
+
+	if (!idev->replay)
+		idev->replay = hidp_replay_new();
+
+	msg = new0(struct hidp_msg, 1);
+	msg->hdr = hdr;
+	msg->iov = util_iov_dup(&iov, 1);
+
+	if (out) {
+		DBG("output[%u]: hdr 0x%02x size %zu",
+			queue_length(idev->replay->out), hdr, size);
+		queue_push_tail(idev->replay->out, msg);
+	} else {
+		DBG("input[%u]: hdr 0x%02x size %zu",
+			queue_length(idev->replay->in), hdr, size);
+		queue_push_tail(idev->replay->in, msg);
+	}
+}
+
 static bool hidp_send_ctrl_message(struct input_device *idev, uint8_t hdr,
 					const uint8_t *data, size_t size)
 {
 	if (hdr == (HIDP_TRANS_HID_CONTROL | HIDP_CTRL_VIRTUAL_CABLE_UNPLUG))
 		idev->virtual_cable_unplug = true;
+
+	hidp_record_message(idev, true, hdr, data, size);
 
 	return hidp_send_message(idev, idev->ctrl_io, hdr, data, size);
 }
@@ -558,6 +684,12 @@ static bool hidp_recv_ctrl_message(GIOChannel *chan, struct input_device *idev)
 	type = hdr & HIDP_HEADER_TRANS_MASK;
 	param = hdr & HIDP_HEADER_PARAM_MASK;
 
+	/* While replaying don't involve the driver since it will likely get
+	 * confused with messages it already things it has received.
+	 */
+	if (idev->replay && idev->replay->replaying)
+		goto done;
+
 	switch (type) {
 	case HIDP_TRANS_HANDSHAKE:
 		hidp_recv_ctrl_handshake(idev, param);
@@ -574,6 +706,9 @@ static bool hidp_recv_ctrl_message(GIOChannel *chan, struct input_device *idev)
 				HIDP_HSHK_ERR_UNSUPPORTED_REQUEST, NULL, 0);
 		break;
 	}
+
+done:
+	hidp_record_message(idev, false, hdr, data + 1, len - 1);
 
 	return true;
 }
@@ -973,12 +1108,49 @@ static int ioctl_disconnect(struct input_device *idev, uint32_t flags)
 	return err;
 }
 
+static void queue_append(void *data, void *user_data)
+{
+	queue_push_tail(user_data, data);
+}
+
+static struct queue *queue_dup(struct queue *q)
+{
+	struct queue *dup;
+
+	if (!q || queue_isempty(q))
+		return NULL;
+
+	dup = queue_new();
+
+	queue_foreach(q, queue_append, dup);
+
+	return dup;
+}
+
+static void hidp_replay_init(struct input_device *idev)
+{
+	if (!idev->replay || idev->replay->replaying)
+		return;
+
+	idev->replay->replaying = true;
+
+	queue_destroy(idev->replay->re_in, NULL);
+	idev->replay->re_in = queue_dup(idev->replay->in);
+
+	queue_destroy(idev->replay->re_out, NULL);
+	idev->replay->re_out = queue_dup(idev->replay->out);
+
+	hidp_replay_resend(idev);
+}
+
 static int uhid_connadd(struct input_device *idev, struct hidp_connadd_req *req)
 {
 	int err;
 
-	if (bt_uhid_created(idev->uhid))
+	if (bt_uhid_created(idev->uhid)) {
+		hidp_replay_init(idev);
 		return 0;
+	}
 
 	err = bt_uhid_create(idev->uhid, req->name, &idev->src, &idev->dst,
 				req->vendor, req->product, req->version,
