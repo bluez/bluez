@@ -3174,6 +3174,25 @@ void bthost_set_pa_data(struct bthost *bthost, const uint8_t *data,
 	set_pa_data(bthost, data, len, 0);
 }
 
+void bthost_set_base(struct bthost *bthost, const uint8_t *data, uint8_t len)
+{
+	struct bt_ad *ad;
+	bt_uuid_t uuid;
+	uint8_t *pa_data;
+	size_t pa_len;
+
+	bt_uuid16_create(&uuid, BAA_SERVICE);
+
+	ad = bt_ad_new();
+	bt_ad_set_max_len(ad, BT_PA_MAX_DATA_LEN);
+	bt_ad_add_service_data(ad, &uuid, (void *)data, len);
+
+	pa_data = bt_ad_generate(ad, &pa_len);
+	bthost_set_pa_data(bthost, pa_data, pa_len);
+
+	bt_ad_unref(ad);
+}
+
 void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable)
 {
 	struct bt_hci_cmd_le_set_pa_enable cp;
