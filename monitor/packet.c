@@ -11520,7 +11520,7 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 
 	print_field("Data status: %s%s%s", color_on, str, COLOR_OFF);
 	print_field("Data length: 0x%2.2x", evt->data_len);
-	packet_hexdump(evt->data, evt->data_len);
+	print_eir(evt->data, evt->data_len, true);
 }
 
 static void le_pa_sync_lost_evt(struct timeval *tv, uint16_t index,
