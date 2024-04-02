@@ -23,6 +23,7 @@
 #include "lib/bluetooth.h"
 #include "lib/iso.h"
 #include "lib/mgmt.h"
+#include "lib/uuid.h"
 
 #include "monitor/bt.h"
 #include "emulator/vhci.h"
@@ -33,6 +34,8 @@
 #include "src/shared/mgmt.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
+
+#define EIR_SERVICE_DATA_16	0x16
 
 #define QOS_IO(_interval, _latency, _sdu, _phy, _rtn) \
 { \
@@ -487,6 +490,7 @@ struct iso_client_data {
 	size_t base_len;
 	bool listen_bind;
 	bool pa_bind;
+	bool big;
 };
 
 typedef bool (*iso_defer_accept_t)(struct test_data *data, GIOChannel *io);
@@ -1301,6 +1305,7 @@ static const struct iso_client_data bcast_16_2_1_recv = {
 	.recv = &send_16_2_1,
 	.bcast = true,
 	.server = true,
+	.big = true,
 };
 
 static const struct iso_client_data bcast_enc_16_2_1_recv = {
@@ -1309,6 +1314,7 @@ static const struct iso_client_data bcast_enc_16_2_1_recv = {
 	.recv = &send_16_2_1,
 	.bcast = true,
 	.server = true,
+	.big = true,
 };
 
 static const struct iso_client_data bcast_16_2_1_recv_defer = {
@@ -1319,6 +1325,7 @@ static const struct iso_client_data bcast_16_2_1_recv_defer = {
 	.bcast = true,
 	.server = true,
 	.listen_bind = true,
+	.big = true,
 };
 
 static const struct iso_client_data bcast_16_2_1_recv_defer_no_bis = {
@@ -1327,6 +1334,7 @@ static const struct iso_client_data bcast_16_2_1_recv_defer_no_bis = {
 	.defer = true,
 	.bcast = true,
 	.server = true,
+	.big = true,
 };
 
 static const struct iso_client_data bcast_16_2_1_recv_defer_pa_bind = {
@@ -1336,6 +1344,17 @@ static const struct iso_client_data bcast_16_2_1_recv_defer_pa_bind = {
 	.bcast = true,
 	.server = true,
 	.pa_bind = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_16_2_1_recv_defer_get_base = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.defer = true,
+	.bcast = true,
+	.server = true,
+	.base = base_lc3_ac_12,
+	.base_len = sizeof(base_lc3_ac_12),
 };
 
 static const struct iso_client_data bcast_ac_12 = {
@@ -1498,9 +1517,16 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 		if (isodata->bcast) {
 			bthost_set_pa_params(host);
 			bthost_set_pa_enable(host, 0x01);
-			bthost_create_big(host, 1,
-					isodata->qos.bcast.encryption,
-					isodata->qos.bcast.bcode);
+
+			if (isodata->base)
+				bthost_set_base(host, isodata->base,
+							isodata->base_len);
+
+			if (isodata->big)
+				bthost_create_big(host, 1,
+						isodata->qos.bcast.encryption,
+						isodata->qos.bcast.bcode);
+
 		} else if (!isodata->send && isodata->recv) {
 			const uint8_t *bdaddr;
 
@@ -2183,6 +2209,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 	socklen_t len;
 	struct bt_iso_qos qos;
 	bool ret = true;
+	uint8_t base[BASE_MAX_LENGTH] = {0};
 
 	sk = g_io_channel_unix_get_fd(io);
 
@@ -2209,6 +2236,27 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 		data->step = 0;
 		tester_test_failed();
 		return FALSE;
+	}
+
+	if (isodata->bcast && isodata->server && isodata->base) {
+		len = BASE_MAX_LENGTH;
+
+		if (getsockopt(sk, SOL_BLUETOOTH, BT_ISO_BASE,
+				base, &len) < 0) {
+			tester_warn("Can't get socket option : %s (%d)",
+						strerror(errno), errno);
+			data->step = 0;
+			tester_test_failed();
+			return FALSE;
+		}
+
+		if (len != isodata->base_len ||
+				memcmp(base, isodata->base, len)) {
+			tester_warn("Unexpected BASE");
+			data->step = 0;
+			tester_test_failed();
+			return FALSE;
+		}
 	}
 
 	len = sizeof(sk_err);
@@ -3383,6 +3431,10 @@ int main(int argc, char *argv[])
 					&bcast_16_2_1_recv_defer_pa_bind,
 					setup_powered,
 					test_bcast_recv_defer);
+	test_iso("ISO Broadcaster Receiver Defer Get BASE - Success",
+					&bcast_16_2_1_recv_defer_get_base,
+					setup_powered,
+					test_bcast_recv);
 
 	test_iso("ISO Broadcaster AC 12 - Success", &bcast_ac_12, setup_powered,
 							test_bcast);
