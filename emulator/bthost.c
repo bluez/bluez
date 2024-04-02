@@ -5,7 +5,7 @@
  *
  *  Copyright (C) 2011-2012  Intel Corporation
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  *
  */
@@ -27,6 +27,7 @@
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
 #include "src/shared/queue.h"
+#include "src/shared/ad.h"
 #include "monitor/bt.h"
 #include "monitor/rfcomm.h"
 #include "bthost.h"
@@ -3125,6 +3126,52 @@ void bthost_set_pa_params(struct bthost *bthost)
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = 0x01;
 	send_command(bthost, BT_HCI_CMD_LE_SET_PA_PARAMS, &cp, sizeof(cp));
+}
+
+static void set_pa_data(struct bthost *bthost, const uint8_t *data,
+				uint8_t len, uint8_t offset)
+{
+	struct bt_hci_cmd_le_set_pa_data *cp;
+	uint8_t buf[sizeof(*cp) + BT_PA_MAX_DATA_LEN];
+
+	cp = (void *)buf;
+
+	memset(cp, 0, sizeof(*cp));
+	memset(cp->data, 0, BT_PA_MAX_DATA_LEN);
+
+	cp->handle = 1;
+
+	if (len - offset > BT_PA_MAX_DATA_LEN) {
+		cp->data_len = BT_PA_MAX_DATA_LEN;
+
+		if (!offset)
+			cp->operation = 0x01;
+		else
+			cp->operation = 0x00;
+	} else {
+		cp->data_len = len - offset;
+
+		if (!offset)
+			cp->operation = 0x03;
+		else
+			cp->operation = 0x02;
+	}
+
+	memcpy(cp->data, data + offset, cp->data_len);
+
+	send_command(bthost, BT_HCI_CMD_LE_SET_PA_DATA, buf,
+					sizeof(*cp) + cp->data_len);
+
+	if (cp->operation == 0x01 || cp->operation == 0x00) {
+		offset += cp->data_len;
+		set_pa_data(bthost, data, len, offset);
+	}
+}
+
+void bthost_set_pa_data(struct bthost *bthost, const uint8_t *data,
+							uint8_t len)
+{
+	set_pa_data(bthost, data, len, 0);
 }
 
 void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable)
