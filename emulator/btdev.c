@@ -5281,7 +5281,7 @@ static void send_pa(struct btdev *dev, const struct btdev *remote,
 {
 	struct __packed {
 		struct bt_hci_le_pa_report ev;
-		uint8_t data[31];
+		uint8_t data[247];
 	} pdu;
 
 	memset(&pdu.ev, 0, sizeof(pdu.ev));
