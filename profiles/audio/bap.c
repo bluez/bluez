@@ -2490,14 +2490,11 @@ static void pac_removed(struct bt_bap_pac *pac, void *user_data)
 
 static void pac_removed_broadcast(struct bt_bap_pac *pac, void *user_data)
 {
-	struct btd_service *service = user_data;
-	struct bap_data *data;
+	struct bap_data *data = user_data;
 	struct queue *queue;
 	struct bap_ep *ep;
 
 	DBG("pac %p", pac);
-
-	data = btd_service_get_user_data(service);
 
 	switch (bt_bap_pac_get_type(pac)) {
 	case BT_BAP_SINK:
