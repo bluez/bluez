@@ -3273,11 +3273,7 @@ uint8_t btd_device_get_bdaddr_type(struct btd_device *dev)
 
 bool btd_device_is_connected(struct btd_device *dev)
 {
-	if (dev->bredr_state.connected || dev->le_state.connected)
-		return true;
-
-	return find_service_with_state(dev->services,
-						BTD_SERVICE_STATE_CONNECTED);
+	return dev->bredr_state.connected || dev->le_state.connected;
 }
 
 static void clear_temporary_timer(struct btd_device *dev)
