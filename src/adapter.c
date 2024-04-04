@@ -10229,6 +10229,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		set_mode(adapter, MGMT_OP_SET_SECURE_CONN,
 					btd_opts.secure_conn);
 
+	if (missing_settings & MGMT_SETTING_WIDEBAND_SPEECH)
+		set_mode(adapter, MGMT_OP_SET_WIDEBAND_SPEECH, 0x01);
+
 	if (adapter->supported_settings & MGMT_SETTING_PRIVACY)
 		set_privacy(adapter, btd_opts.privacy);
 
