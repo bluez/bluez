@@ -13338,6 +13338,50 @@ static void mgmt_set_low_energy_cmd(const void *data, uint16_t size)
 	print_enable("Low Energy", enable);
 }
 
+static void mgmt_set_blocked_keys_cmd(const void *data, uint16_t size)
+{
+	struct iovec frame = { (void *)data, size };
+	uint16_t num_keys;
+	int i;
+
+	if (!util_iov_pull_le16(&frame, &num_keys)) {
+		print_field("Keys: invalid size");
+		return;
+	}
+
+	print_field("Keys: %u", num_keys);
+
+	for (i = 0; i < num_keys; i++) {
+		uint8_t type;
+		uint8_t *key;
+
+		if (!util_iov_pull_u8(&frame, &type)) {
+			print_field("Key type[%u]: invalid size", i);
+			return;
+		}
+
+		switch (type) {
+		case 0x00:
+			print_field("type: Link Key (0x00)");
+			break;
+		case 0x01:
+			print_field("type: Long Term Key (0x01)");
+			break;
+		case 0x02:
+			print_field("type: Identity Resolving Key (0x02)");
+			break;
+		}
+
+		key = util_iov_pull_mem(&frame, 16);
+		if (!key) {
+			print_field("Key[%u]: invalid size", i);
+			return;
+		}
+
+		print_link_key(key);
+	}
+}
+
 static void mgmt_set_wbs_cmd(const void *data, uint16_t size)
 {
 	uint8_t enable = get_u8(data);
@@ -14800,7 +14844,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0045, "Set PHY Configuration",
 				mgmt_set_phy_cmd, 4, true,
 				mgmt_null_rsp, 0, true },
-	{ 0x0046, "Load Blocked Keys" },
+	{ 0x0046, "Set Blocked Keys",
+				mgmt_set_blocked_keys_cmd, 2, false,
+				mgmt_null_rsp, 0, true },
 	{ 0x0047, "Set Wideband Speech",
 				mgmt_set_wbs_cmd, 1, true,
 				mgmt_new_settings_rsp, 4, true },
