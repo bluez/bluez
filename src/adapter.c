@@ -7486,7 +7486,7 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 		device_cancel_authentication(device, TRUE);
 
 	/* If another bearer is still connected */
-	if (btd_device_is_connected(device))
+	if (btd_device_bearer_is_connected(device))
 		return;
 
 	adapter->connections = g_slist_remove(adapter->connections, device);
