@@ -13338,6 +13338,13 @@ static void mgmt_set_low_energy_cmd(const void *data, uint16_t size)
 	print_enable("Low Energy", enable);
 }
 
+static void mgmt_set_wbs_cmd(const void *data, uint16_t size)
+{
+	uint8_t enable = get_u8(data);
+
+	print_enable("Wideband Speech", enable);
+}
+
 static void mgmt_new_settings_rsp(const void *data, uint16_t size)
 {
 	uint32_t current_settings = get_le32(data);
@@ -14794,7 +14801,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 				mgmt_set_phy_cmd, 4, true,
 				mgmt_null_rsp, 0, true },
 	{ 0x0046, "Load Blocked Keys" },
-	{ 0x0047, "Set Wideband Speech" },
+	{ 0x0047, "Set Wideband Speech",
+				mgmt_set_wbs_cmd, 1, true,
+				mgmt_new_settings_rsp, 4, true },
 	{ 0x0048, "Read Controller Capabilities" },
 	{ 0x0049, "Read Experimental Features Information",
 				mgmt_null_cmd, 0, true,
