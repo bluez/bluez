@@ -240,6 +240,8 @@ enum {
 
 #define BT_ISO_BASE		20
 
+#define BT_POLL_ERRQUEUE	21
+
 /* Byte order conversions */
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define htobs(d)  (d)
