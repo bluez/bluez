@@ -268,6 +268,7 @@ enum experimental_features {
 	EXP_FEAT_RPA_RESOLUTION		= 1 << 3,
 	EXP_FEAT_CODEC_OFFLOAD		= 1 << 4,
 	EXP_FEAT_ISO_SOCKET		= 1 << 5,
+	EXP_FEAT_POLL_ERRQUEUE		= 1 << 6,
 };
 
 bool btd_adapter_has_exp_feature(struct btd_adapter *adapter, uint32_t feature);
