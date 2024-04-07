@@ -89,6 +89,9 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 
 	ret = recvmsg(sk, &msg, MSG_ERRQUEUE);
 	if (ret < 0) {
+		if (ret == EAGAIN || ret == EWOULDBLOCK)
+			return data->count - data->pos;
+
 		tester_warn("Failed to read from errqueue: %s (%d)",
 							strerror(errno), errno);
 		return -EINVAL;
