@@ -1237,6 +1237,7 @@ add_char_with_value(struct gatt_db_attribute *service_att, uint16_t handle,
 
 	if (handle)
 		attrib = gatt_db_service_insert_characteristic(service_att,
+								handle - 1,
 								handle, uuid,
 								att_permissions,
 								char_properties,

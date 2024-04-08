@@ -735,6 +735,7 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 		}
 
 		attr = gatt_db_insert_characteristic(client->db,
+							chrc_data->start_handle,
 							chrc_data->value_handle,
 							&chrc_data->uuid, 0,
 							chrc_data->properties,
@@ -829,6 +830,8 @@ done:
 	return true;
 
 failed:
+	DBG(client, "Failed to discover descriptors");
+
 	free(chrc_data);
 	return false;
 }

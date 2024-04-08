@@ -125,7 +125,8 @@ static int load_chrc(struct gatt_db *db, char *handle, char *value,
 				handle_int, value_handle,
 				properties, val_len ? val_str : "", uuid_str);
 
-	att = gatt_db_service_insert_characteristic(service, value_handle,
+	att = gatt_db_service_insert_characteristic(service, handle_int,
+							value_handle,
 							&uuid, 0, properties,
 							NULL, NULL, NULL);
 	if (!att || gatt_db_attribute_get_handle(att) != value_handle)

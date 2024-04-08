@@ -506,6 +506,7 @@ static struct gatt_db *get_db(const struct l2cap_frame *frame, bool rsp)
 
 static struct gatt_db_attribute *insert_chrc(const struct l2cap_frame *frame,
 						uint16_t handle,
+						uint16_t value_handle,
 						bt_uuid_t *uuid, uint8_t prop,
 						bool rsp)
 {
@@ -515,8 +516,8 @@ static struct gatt_db_attribute *insert_chrc(const struct l2cap_frame *frame,
 	if (!db)
 		return NULL;
 
-	return gatt_db_insert_characteristic(db, handle, uuid, 0, prop, NULL,
-							NULL, NULL);
+	return gatt_db_insert_characteristic(db, handle, value_handle, uuid, 0,
+						prop, NULL, NULL, NULL);
 }
 
 static int bt_uuid_from_data(bt_uuid_t *uuid, const void *data, uint16_t size)
@@ -615,7 +616,7 @@ static void print_chrc(const struct l2cap_frame *frame)
 	print_uuid("    Value UUID", frame->data, frame->size);
 	bt_uuid_from_data(&uuid, frame->data, frame->size);
 
-	insert_chrc(frame, handle, &uuid, prop, true);
+	insert_chrc(frame, handle - 1, handle, &uuid, prop, true);
 }
 
 static void chrc_read(const struct l2cap_frame *frame)

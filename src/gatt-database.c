@@ -3352,9 +3352,10 @@ static bool database_add_chrc(struct external_service *service,
 	}
 
 	chrc->attrib = gatt_db_service_insert_characteristic(service->attrib,
-						handle, &uuid, chrc->perm,
-						chrc->props, chrc_read_cb,
-						chrc_write_cb, chrc);
+						handle - 1, handle, &uuid,
+						chrc->perm, chrc->props,
+						chrc_read_cb, chrc_write_cb,
+						chrc);
 	if (!chrc->attrib) {
 		error("Failed to create characteristic entry in database");
 		return false;
