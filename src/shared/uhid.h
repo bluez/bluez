@@ -42,3 +42,4 @@ int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t status);
 int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t number,
 				uint8_t status, const void *data, size_t size);
 int bt_uhid_destroy(struct bt_uhid *uhid);
+int bt_uhid_replay(struct bt_uhid *uhid);

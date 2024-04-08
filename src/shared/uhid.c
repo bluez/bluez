@@ -30,6 +30,14 @@
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #endif
 
+struct uhid_replay {
+	bool active;
+	struct queue *out;
+	struct queue *in;
+	struct queue *rout;
+	struct queue *rin;
+};
+
 struct bt_uhid {
 	int ref_count;
 	struct io *io;
@@ -38,6 +46,7 @@ struct bt_uhid {
 	struct queue *input;
 	bool created;
 	bool started;
+	struct uhid_replay *replay;
 };
 
 struct uhid_notify {
@@ -46,6 +55,18 @@ struct uhid_notify {
 	bt_uhid_callback_t func;
 	void *user_data;
 };
+
+static void uhid_replay_free(struct uhid_replay *replay)
+{
+	if (!replay)
+		return;
+
+	queue_destroy(replay->rin, NULL);
+	queue_destroy(replay->in, free);
+	queue_destroy(replay->rout, NULL);
+	queue_destroy(replay->out, free);
+	free(replay);
+}
 
 static void uhid_free(struct bt_uhid *uhid)
 {
@@ -57,6 +78,8 @@ static void uhid_free(struct bt_uhid *uhid)
 
 	if (uhid->input)
 		queue_destroy(uhid->input, free);
+
+	uhid_replay_free(uhid->replay);
 
 	free(uhid);
 }
@@ -71,6 +94,42 @@ static void notify_handler(void *data, void *user_data)
 
 	if (notify->func)
 		notify->func(ev, notify->user_data);
+}
+
+static struct uhid_replay *uhid_replay_new(void)
+{
+	struct uhid_replay *replay = new0(struct uhid_replay, 1);
+
+	replay->out = queue_new();
+	replay->in = queue_new();
+
+	return replay;
+}
+
+static int bt_uhid_record(struct bt_uhid *uhid, bool input,
+					struct uhid_event *ev)
+{
+	if (!uhid)
+		return -EINVAL;
+
+	/* Capture input events in replay mode and send the next replay event */
+	if (uhid->replay && uhid->replay->active && input) {
+		queue_pop_head(uhid->replay->rin);
+		bt_uhid_replay(uhid);
+		return -EALREADY;
+	}
+
+	if (!uhid->replay)
+		uhid->replay = uhid_replay_new();
+
+	if (input)
+		queue_push_tail(uhid->replay->in,
+					util_memdup(ev, sizeof(*ev)));
+	else
+		queue_push_tail(uhid->replay->out,
+					util_memdup(ev, sizeof(*ev)));
+
+	return 0;
 }
 
 static bool uhid_read_handler(struct io *io, void *user_data)
@@ -92,6 +151,13 @@ static bool uhid_read_handler(struct io *io, void *user_data)
 
 	if ((size_t) len < sizeof(ev.type))
 		return false;
+
+	switch (ev.type) {
+	case UHID_GET_REPORT:
+	case UHID_SET_REPORT:
+		bt_uhid_record(uhid, false, &ev);
+		break;
+	}
 
 	queue_foreach(uhid->notify_list, notify_handler, &ev);
 
@@ -382,6 +448,9 @@ int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t status)
 	rsp->id = id;
 	rsp->err = status;
 
+	if (bt_uhid_record(uhid, true, &ev) == -EALREADY)
+		return 0;
+
 	return bt_uhid_send(uhid, &ev);
 }
 
@@ -412,6 +481,9 @@ int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t number,
 	memcpy(&rsp->data[len], data, rsp->size - len);
 
 done:
+	if (bt_uhid_record(uhid, true, &ev) == -EALREADY)
+		return 0;
+
 	return bt_uhid_send(uhid, &ev);
 }
 
@@ -436,4 +508,55 @@ int bt_uhid_destroy(struct bt_uhid *uhid)
 	uhid->created = false;
 
 	return err;
+}
+
+static void queue_append(void *data, void *user_data)
+{
+	queue_push_tail(user_data, data);
+}
+
+static struct queue *queue_dup(struct queue *q)
+{
+	struct queue *dup;
+
+	if (!q || queue_isempty(q))
+		return NULL;
+
+	dup = queue_new();
+
+	queue_foreach(q, queue_append, dup);
+
+	return dup;
+}
+
+int bt_uhid_replay(struct bt_uhid *uhid)
+{
+	struct uhid_event *ev;
+
+	if (!uhid || !uhid->started)
+		return -EINVAL;
+
+	if (!uhid->replay)
+		return 0;
+
+	if (uhid->replay->active)
+		goto resend;
+
+	uhid->replay->active = true;
+	queue_destroy(uhid->replay->rin, NULL);
+	uhid->replay->rin = queue_dup(uhid->replay->in);
+
+	queue_destroy(uhid->replay->rout, NULL);
+	uhid->replay->rout = queue_dup(uhid->replay->out);
+
+resend:
+	ev = queue_pop_head(uhid->replay->rout);
+	if (!ev) {
+		uhid->replay->active = false;
+		return 0;
+	}
+
+	queue_foreach(uhid->notify_list, notify_handler, ev);
+
+	return 0;
 }
