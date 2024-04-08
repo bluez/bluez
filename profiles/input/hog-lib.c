@@ -856,11 +856,13 @@ static void set_report(struct uhid_event *ev, void *user_data)
 		--size;
 	}
 
+	if (hog->attrib == NULL) {
+		err = -ENOTCONN;
+		goto fail;
+	}
+
 	DBG("Sending report type %d ID %d to handle 0x%X", report->type,
 				report->id, report->value_handle);
-
-	if (hog->attrib == NULL)
-		return;
 
 	hog->setrep_att = gatt_write_char(hog->attrib,
 						report->value_handle,
@@ -1725,6 +1727,11 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 			error("Unable to register report notification: "
 				"handle 0x%04x", r->value_handle);
 	}
+
+	/* Attempt to replay get/set report messages since the driver might not
+	 * be aware the device has been disconnected in the meantime.
+	 */
+	bt_uhid_replay(hog->uhid);
 
 	return true;
 }
