@@ -825,6 +825,19 @@ static void set_report_cb(guint8 status, const guint8 *pdu,
 		error("bt_uhid_set_report_reply: %s", strerror(-err));
 }
 
+static void uhid_destroy(struct bt_hog *hog)
+{
+	int err;
+
+	bt_uhid_unregister_all(hog->uhid);
+
+	err = bt_uhid_destroy(hog->uhid);
+	if (err < 0) {
+		error("bt_uhid_destroy: %s", strerror(-err));
+		return;
+	}
+}
+
 static void set_report(struct uhid_event *ev, void *user_data)
 {
 	struct bt_hog *hog = user_data;
@@ -832,6 +845,14 @@ static void set_report(struct uhid_event *ev, void *user_data)
 	void *data;
 	int size;
 	int err;
+
+	/* Destroy input device if there is an attempt to communicate with it
+	 * while disconnected.
+	 */
+	if (hog->attrib == NULL) {
+		uhid_destroy(hog);
+		return;
+	}
 
 	/* uhid never sends reqs in parallel; if there's a req, it timed out */
 	if (hog->setrep_att) {
@@ -854,11 +875,6 @@ static void set_report(struct uhid_event *ev, void *user_data)
 	if (report->numbered && size > 0) {
 		data++;
 		--size;
-	}
-
-	if (hog->attrib == NULL) {
-		err = -ENOTCONN;
-		goto fail;
 	}
 
 	DBG("Sending report type %d ID %d to handle 0x%X", report->type,
@@ -927,6 +943,14 @@ static void get_report(struct uhid_event *ev, void *user_data)
 	struct bt_hog *hog = user_data;
 	struct report *report;
 	guint8 err;
+
+	/* Destroy input device if there is an attempt to communicate with it
+	 * while disconnected.
+	 */
+	if (hog->attrib == NULL) {
+		uhid_destroy(hog);
+		return;
+	}
 
 	/* uhid never sends reqs in parallel; if there's a req, it timed out */
 	if (hog->getrep_att) {
@@ -1202,19 +1226,6 @@ static bool cancel_gatt_req(const void *data, const void *user_data)
 	const struct bt_hog *hog = user_data;
 
 	return g_attrib_cancel(hog->attrib, req->id);
-}
-
-static void uhid_destroy(struct bt_hog *hog)
-{
-	int err;
-
-	bt_uhid_unregister_all(hog->uhid);
-
-	err = bt_uhid_destroy(hog->uhid);
-	if (err < 0) {
-		error("bt_uhid_destroy: %s", strerror(-err));
-		return;
-	}
 }
 
 static void hog_free(void *data)
