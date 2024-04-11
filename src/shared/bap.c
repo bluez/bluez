@@ -4703,6 +4703,18 @@ clone:
 			}
 		}
 
+		/* Resume reading sink locations if supported */
+		if (pacs->sink && pacs->sink_loc && !pacs->sink_loc_value) {
+			if (gatt_db_attribute_get_char_data(pacs->sink_loc,
+							NULL, &value_handle,
+							NULL, NULL, NULL)) {
+				bt_gatt_client_read_value(bap->client,
+							value_handle,
+							read_sink_pac_loc,
+							bap, NULL);
+			}
+		}
+
 		/* Resume reading sources if supported */
 		if (pacs->source && queue_isempty(bap->rdb->sources)) {
 			if (gatt_db_attribute_get_char_data(pacs->source,
@@ -4711,6 +4723,48 @@ clone:
 				bt_gatt_client_read_value(bap->client,
 							value_handle,
 							read_source_pac,
+							bap, NULL);
+			}
+		}
+
+		/* Resume reading source locations if supported */
+		if (pacs->source && pacs->source_loc &&
+				!pacs->source_loc_value) {
+			if (gatt_db_attribute_get_char_data(pacs->source_loc,
+							NULL, &value_handle,
+							NULL, NULL, NULL)) {
+				bt_gatt_client_read_value(bap->client,
+							value_handle,
+							read_source_pac_loc,
+							bap, NULL);
+			}
+		}
+
+		/* Resume reading supported contexts if supported */
+		if (pacs->sink && pacs->supported_context &&
+				!pacs->supported_sink_context_value &&
+				!pacs->supported_source_context_value) {
+			if (gatt_db_attribute_get_char_data(
+							pacs->supported_context,
+							NULL, &value_handle,
+							NULL, NULL, NULL)) {
+				bt_gatt_client_read_value(bap->client,
+						value_handle,
+						read_pac_supported_context,
+						bap, NULL);
+			}
+		}
+
+		/* Resume reading contexts if supported */
+		if (pacs->sink && pacs->context &&
+				!pacs->sink_context_value &&
+				!pacs->source_context_value) {
+			if (gatt_db_attribute_get_char_data(pacs->context,
+							NULL, &value_handle,
+							NULL, NULL, NULL)) {
+				bt_gatt_client_read_value(bap->client,
+							value_handle,
+							read_pac_context,
 							bap, NULL);
 			}
 		}
