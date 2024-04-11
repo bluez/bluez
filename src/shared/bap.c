@@ -5163,12 +5163,10 @@ int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 
 			/* Check if there are any channels left to select */
 			map.count &= ~(map.count & rc->count);
-			if (!map.count)
-				break;
-
 			/* Check if there are any locations left to select */
 			map.location &= ~(map.location & rc->location);
-			if (!map.location)
+
+			if (!map.count || !map.location)
 				break;
 
 			/* Check if device require AC*(i) settings */
