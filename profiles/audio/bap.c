@@ -92,6 +92,9 @@ struct bap_ep {
 	struct bap_data *data;
 	struct bt_bap_pac *lpac;
 	struct bt_bap_pac *rpac;
+	uint32_t locations;
+	uint16_t supported_context;
+	uint16_t context;
 	struct queue *setups;
 };
 
@@ -376,9 +379,10 @@ static gboolean get_locations(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct bap_ep *ep = data;
-	uint32_t locations = bt_bap_pac_get_locations(ep->rpac);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &locations);
+	ep->locations = bt_bap_pac_get_locations(ep->rpac);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &ep->locations);
 
 	return TRUE;
 }
@@ -387,9 +391,11 @@ static gboolean get_supported_context(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct bap_ep *ep = data;
-	uint16_t context = bt_bap_pac_get_supported_context(ep->rpac);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &context);
+	ep->supported_context = bt_bap_pac_get_supported_context(ep->rpac);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+					&ep->supported_context);
 
 	return TRUE;
 }
@@ -398,9 +404,10 @@ static gboolean get_context(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct bap_ep *ep = data;
-	uint16_t context = bt_bap_pac_get_context(ep->rpac);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &context);
+	ep->context = bt_bap_pac_get_context(ep->rpac);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &ep->context);
 
 	return TRUE;
 }
@@ -1261,6 +1268,31 @@ static struct bap_ep *ep_register_bcast(struct bap_data *data,
 	return ep;
 }
 
+static void ep_update_properties(struct bap_ep *ep)
+{
+	if (!ep->rpac)
+		return;
+
+	if (ep->locations != bt_bap_pac_get_locations(ep->rpac))
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						ep->path,
+						MEDIA_ENDPOINT_INTERFACE,
+						"Locations");
+
+	if (ep->supported_context !=
+				bt_bap_pac_get_supported_context(ep->rpac))
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						ep->path,
+						MEDIA_ENDPOINT_INTERFACE,
+						"SupportedContext");
+
+	if (ep->context != bt_bap_pac_get_context(ep->rpac))
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						ep->path,
+						MEDIA_ENDPOINT_INTERFACE,
+						"Context");
+}
+
 static struct bap_ep *ep_register(struct btd_service *service,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac)
@@ -1289,8 +1321,10 @@ static struct bap_ep *ep_register(struct btd_service *service,
 	}
 
 	ep = queue_find(queue, match_ep, &match);
-	if (ep)
+	if (ep) {
+		ep_update_properties(ep);
 		return ep;
+	}
 
 	ep = new0(struct bap_ep, 1);
 	ep->data = data;
