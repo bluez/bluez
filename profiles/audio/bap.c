@@ -879,8 +879,21 @@ static struct bap_setup *setup_new(struct bap_ep *ep)
 static void setup_free(void *data)
 {
 	struct bap_setup *setup = data;
+	DBusMessage *reply;
 
 	DBG("%p", setup);
+
+	if (setup->stream && setup->id) {
+		bt_bap_stream_cancel(setup->stream, setup->id);
+		setup->id = 0;
+	}
+
+	if (setup->msg) {
+		reply = btd_error_failed(setup->msg, "Canceled");
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		dbus_message_unref(setup->msg);
+		setup->msg = NULL;
+	}
 
 	if (setup->ep)
 		queue_remove(setup->ep->setups, setup);
