@@ -1259,9 +1259,18 @@ static void add_client_complete(struct btd_adv_client *client, uint8_t status)
 {
 	DBusMessage *reply;
 
-	if (status) {
+	if (status)
 		error("Failed to add advertisement: %s (0x%02x)",
 						mgmt_errstr(status), status);
+
+	/* If the advertising request was not started by a direct call from
+	 * the client, but rather by a refresh due to properties update or
+	 * our internal timer, there is nothing to reply to.
+	 */
+	if (!client->reg)
+		return;
+
+	if (status) {
 		reply = btd_error_failed(client->reg,
 					"Failed to register advertisement");
 		queue_remove(client->manager->clients, client);
