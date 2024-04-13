@@ -171,7 +171,7 @@ static void set_free(void *data)
 }
 
 static struct btd_device_set *set_new(struct btd_device *device,
-					uint8_t sirk[16], uint8_t size)
+					const uint8_t sirk[16], uint8_t size)
 {
 	struct btd_device_set *set;
 
@@ -206,7 +206,7 @@ static struct btd_device_set *set_new(struct btd_device *device,
 }
 
 static struct btd_device_set *set_find(struct btd_device *device,
-						uint8_t sirk[16])
+						const uint8_t sirk[16])
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const struct queue_entry *entry;
@@ -295,10 +295,14 @@ static void foreach_device(struct btd_device *device, void *data)
 }
 
 struct btd_device_set *btd_set_add_device(struct btd_device *device,
-						uint8_t *key, uint8_t sirk[16],
+						const uint8_t *key,
+						const uint8_t sirk_value[16],
 						uint8_t size)
 {
 	struct btd_device_set *set;
+	uint8_t sirk[16];
+
+	memcpy(sirk, sirk_value, sizeof(sirk));
 
 	/* In case key has been set it means SIRK is encrypted */
 	if (key) {

@@ -13,7 +13,8 @@
 struct btd_device_set;
 
 struct btd_device_set *btd_set_add_device(struct btd_device *device,
-						uint8_t *ltk, uint8_t sirk[16],
+						const uint8_t *ltk,
+						const uint8_t sirk[16],
 						uint8_t size);
 bool btd_set_remove_device(struct btd_device_set *set,
 						struct btd_device *device);
