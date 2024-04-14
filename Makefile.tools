@@ -135,7 +135,7 @@ tools_mesh_tester_SOURCES = tools/mesh-tester.c monitor/bt.h \
 tools_mesh_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
 
-tools_l2cap_tester_SOURCES = tools/l2cap-tester.c monitor/bt.h \
+tools_l2cap_tester_SOURCES = tools/l2cap-tester.c tools/tester.h monitor/bt.h \
 				emulator/hciemu.h emulator/hciemu.c \
 				emulator/vhci.h emulator/vhci.c \
 				emulator/btdev.h emulator/btdev.c \
@@ -182,7 +182,7 @@ tools_gap_tester_LDADD =  lib/libbluetooth-internal.la \
 				src/libshared-glib.la \
 				$(GLIB_LIBS) $(DBUS_LIBS)
 
-tools_sco_tester_SOURCES = tools/sco-tester.c monitor/bt.h \
+tools_sco_tester_SOURCES = tools/sco-tester.c tools/tester.h monitor/bt.h \
 				emulator/hciemu.h emulator/hciemu.c \
 				emulator/vhci.h emulator/vhci.c \
 				emulator/btdev.h emulator/btdev.c \
@@ -203,7 +203,7 @@ tools_userchan_tester_SOURCES = tools/userchan-tester.c monitor/bt.h \
 tools_userchan_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
 
-tools_iso_tester_SOURCES = tools/iso-tester.c monitor/bt.h \
+tools_iso_tester_SOURCES = tools/iso-tester.c tools/tester.h monitor/bt.h \
 				emulator/hciemu.h emulator/hciemu.c \
 				emulator/vhci.h emulator/vhci.c \
 				emulator/btdev.h emulator/btdev.c \
