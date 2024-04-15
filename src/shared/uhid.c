@@ -507,6 +507,7 @@ int bt_uhid_destroy(struct bt_uhid *uhid)
 
 	uhid->created = false;
 	uhid_replay_free(uhid->replay);
+	uhid->replay = NULL;
 
 	return err;
 }
