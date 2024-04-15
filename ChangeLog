@@ -1,3 +1,6 @@
+ver 5.75:
+	Fix issue with build system and header inclusion.
+
 ver 5.74:
 	Fix issue with not enabling Wideband Speech when available.
 	Fix issue with UserspaceHID and Bluetooth Classic devices.
