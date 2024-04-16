@@ -3779,7 +3779,7 @@ static void print_transport_data(const uint8_t *data, uint8_t len)
 		print_field("      Provider Only");
 		break;
 	case 0x03:
-		print_field("      Both Seeker an Provider");
+		print_field("      Both Seeker and Provider");
 		break;
 	}
 
