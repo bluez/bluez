@@ -112,6 +112,7 @@ struct external_profile {
 
 struct client_io {
 	struct bt_att *att;
+	struct external_chrc *chrc;
 	unsigned int disconn_id;
 	struct io *io;
 };
@@ -2588,7 +2589,8 @@ static bool sock_hup(struct io *io, void *user_data)
 
 static bool sock_io_read(struct io *io, void *user_data)
 {
-	struct external_chrc *chrc = user_data;
+	struct client_io *client = user_data;
+	struct external_chrc *chrc = client->chrc;
 	uint8_t buf[512];
 	int fd = io_get_fd(io);
 	ssize_t bytes_read;
@@ -2597,12 +2599,8 @@ static bool sock_io_read(struct io *io, void *user_data)
 	if (bytes_read <= 0)
 		return false;
 
-	send_notification_to_devices(chrc->service->app->database,
-				gatt_db_attribute_get_handle(chrc->attrib),
-				buf, bytes_read,
-				gatt_db_attribute_get_handle(chrc->ccc),
-				conf_cb,
-				chrc->proxy);
+	gatt_notify_cb(chrc->attrib, chrc->ccc, buf, bytes_read, client->att,
+				client->chrc->service->app->database);
 
 	return true;
 }
@@ -2652,6 +2650,7 @@ client_io_new(struct external_chrc *chrc, int fd, struct bt_att *att)
 
 	client = new0(struct client_io, 1);
 	client->att = bt_att_ref(att);
+	client->chrc = chrc;
 	client->disconn_id = bt_att_register_disconnect(att, att_disconnect_cb,
 							client, NULL);
 	client->io = sock_io_new(fd, chrc);
@@ -2809,7 +2808,7 @@ client_notify_io_get(struct external_chrc *chrc, int fd, struct bt_att *att)
 
 	client = client_io_new(chrc, fd, att);
 
-	io_set_read_handler(client->io, sock_io_read, chrc, NULL);
+	io_set_read_handler(client->io, sock_io_read, client, NULL);
 
 	if (!chrc->notify_ios)
 		chrc->notify_ios = queue_new();
