@@ -2115,7 +2115,8 @@ static struct bt_bap_stream *bap_stream_new(struct bt_bap *bap,
 	stream = new0(struct bt_bap_stream, 1);
 	stream->bap = bap;
 	stream->ep = ep;
-	ep->stream = stream;
+	if (ep != NULL)
+		ep->stream = stream;
 	stream->lpac = lpac;
 	stream->rpac = rpac;
 	stream->cc = util_iov_dup(data, 1);
@@ -2209,6 +2210,7 @@ static void bap_stream_set_io(void *data, void *user_data)
 	struct bt_bap_stream *stream = data;
 	int fd = PTR_TO_INT(user_data);
 	bool ret;
+	uint8_t state;
 
 	if (fd >= 0)
 		ret = bap_stream_io_attach(stream, fd, false);
@@ -2218,7 +2220,12 @@ static void bap_stream_set_io(void *data, void *user_data)
 	if (!ret)
 		return;
 
-	switch (stream->ep->state) {
+	if (bt_bap_stream_get_type(stream) == BT_BAP_STREAM_TYPE_BCAST)
+		state = stream->state;
+	else
+		state = stream->ep->state;
+
+	switch (state) {
 	case BT_BAP_STREAM_STATE_ENABLING:
 		if (fd < 0)
 			bt_bap_stream_disable(stream, false, NULL, NULL);
@@ -5424,7 +5431,8 @@ uint8_t bt_bap_stream_get_state(struct bt_bap_stream *stream)
 	if (!stream)
 		return BT_BAP_STREAM_STATE_IDLE;
 
-	if (stream->lpac->type != BT_BAP_BCAST_SOURCE)
+	if (stream->lpac->type != BT_BAP_BCAST_SOURCE &&
+			stream->lpac->type != BT_BAP_BCAST_SINK)
 		return stream->ep->state;
 	else
 		return stream->state;
@@ -5611,7 +5619,13 @@ uint8_t bt_bap_stream_get_dir(struct bt_bap_stream *stream)
 	if (!stream)
 		return 0x00;
 
-	return stream->ep->dir;
+	if (stream->ep)
+		return stream->ep->dir;
+
+	if (bt_bap_pac_get_type(stream->lpac) == BT_BAP_BCAST_SINK)
+		return BT_BAP_BCAST_SOURCE;
+	else
+		return BT_BAP_BCAST_SINK;
 }
 
 uint32_t bt_bap_stream_get_location(struct bt_bap_stream *stream)
@@ -5623,15 +5637,17 @@ uint32_t bt_bap_stream_get_location(struct bt_bap_stream *stream)
 
 	pacs = stream->client ? stream->bap->rdb->pacs : stream->bap->ldb->pacs;
 
-	if (stream->ep->dir == BT_BAP_SOURCE)
-		return pacs->source_loc_value;
-	else if (stream->ep->dir == BT_BAP_SINK)
-		return pacs->sink_loc_value;
-	else
-		/* TO DO get the location values from metadata
-		 * for brodcast source and sink
-		 */
-		return stream->bap->ldb->pacs->source_loc_value;
+	if (stream->ep) {
+		if (stream->ep->dir == BT_BAP_SOURCE)
+			return pacs->source_loc_value;
+		else if (stream->ep->dir == BT_BAP_SINK)
+			return pacs->sink_loc_value;
+	}
+
+	/* TO DO get the location values from metadata
+	 * for brodcast source and sink
+	 */
+	return stream->bap->ldb->pacs->source_loc_value;
 }
 
 struct iovec *bt_bap_stream_get_config(struct bt_bap_stream *stream)
@@ -5841,7 +5857,17 @@ uint8_t bt_bap_stream_io_dir(struct bt_bap_stream *stream)
 	if (!stream)
 		return 0x00;
 
-	dir = stream->ep->dir;
+	if (stream->ep)
+		dir = stream->ep->dir;
+	else {
+		uint8_t pac_type = bt_bap_pac_get_type(stream->lpac);
+
+		if (pac_type == BT_BAP_BCAST_SINK)
+			dir = BT_BAP_BCAST_SOURCE;
+		else
+			dir = BT_BAP_BCAST_SINK;
+
+	}
 
 	if (stream->link)
 		dir |= stream->link->ep->dir;
