@@ -34,6 +34,7 @@
 
 #include "lib/bluetooth.h"
 #include "lib/uuid.h"
+#include "lib/iso.h"
 
 #include "profiles/audio/a2dp-codecs.h"
 #include "src/shared/lc3.h"
@@ -143,6 +144,7 @@ struct transport {
 	struct io *io;
 	uint32_t seq;
 	struct io *timer_io;
+	int num;
 };
 
 static void endpoint_unregister(void *data)
@@ -5008,7 +5010,6 @@ static bool transport_timer_read(struct io *io, void *user_data)
 	struct bt_iso_qos qos;
 	socklen_t len;
 	int ret, fd;
-	uint32_t num;
 	uint64_t exp;
 
 	if (transport->fd < 0)
@@ -5032,11 +5033,7 @@ static bool transport_timer_read(struct io *io, void *user_data)
 		return false;
 	}
 
-	/* num of packets = ROUND_CLOSEST(latency (ms) / interval (us)) */
-	num = ROUND_CLOSEST(qos.ucast.out.latency * 1000,
-				qos.ucast.out.interval);
-
-	ret = transport_send_seq(transport, transport->fd, num);
+	ret = transport_send_seq(transport, transport->fd, transport->num);
 	if (ret < 0) {
 		bt_shell_printf("Unable to send: %s (%d)\n",
 					strerror(-ret), ret);
@@ -5052,7 +5049,7 @@ static bool transport_timer_read(struct io *io, void *user_data)
 }
 
 static int transport_send(struct transport *transport, int fd,
-					struct bt_iso_qos *qos)
+					struct bt_iso_io_qos *qos)
 {
 	struct itimerspec ts;
 	int timer_fd;
@@ -5070,14 +5067,15 @@ static int transport_send(struct transport *transport, int fd,
 		return -errno;
 
 	memset(&ts, 0, sizeof(ts));
-	ts.it_value.tv_nsec = qos->ucast.out.latency * 1000000;
-	ts.it_interval.tv_nsec = qos->ucast.out.latency * 1000000;
+	ts.it_value.tv_nsec = qos->latency * 1000000;
+	ts.it_interval.tv_nsec = qos->latency * 1000000;
 
 	if (timerfd_settime(timer_fd, TFD_TIMER_ABSTIME, &ts, NULL) < 0)
 		return -errno;
 
 	transport->fd = fd;
-
+	/* num of packets = ROUND_CLOSEST(latency (ms) / interval (us)) */
+	transport->num = ROUND_CLOSEST(qos->latency * 1000, qos->interval);
 	transport->timer_io = io_new(timer_fd);
 
 	io_set_read_handler(transport->timer_io, transport_timer_read,
@@ -5131,8 +5129,20 @@ static void cmd_send_transport(int argc, char *argv[])
 			bt_shell_printf("Unable to getsockopt(BT_ISO_QOS): %s",
 							strerror(errno));
 			err = transport_send(transport, fd, NULL);
-		} else
-			err = transport_send(transport, fd, &qos);
+		} else {
+			struct sockaddr_iso addr;
+			socklen_t optlen;
+
+			err = getpeername(transport->sk, &addr, &optlen);
+			if (!err) {
+				if (!(bacmp(&addr.iso_bdaddr, BDADDR_ANY)))
+					err = transport_send(transport, fd,
+							     &qos.bcast.out);
+				else
+					err = transport_send(transport, fd,
+							     &qos.ucast.out);
+			}
+		}
 
 		if (err < 0) {
 			bt_shell_printf("Unable to send: %s (%d)",
