@@ -43,6 +43,7 @@ struct manufacturer_data {
 };
 
 struct data {
+	bool valid;
 	uint8_t type;
 	struct ad_data data;
 };
@@ -157,7 +158,7 @@ static void print_ad(void)
 						ad.manufacturer.data.len);
 	}
 
-	if (ad.data.data.len) {
+	if (ad.data.valid) {
 		bt_shell_printf("Data Type: 0x%02x\n", ad.data.type);
 		bt_shell_hexdump(ad.data.data.data, ad.data.data.len);
 	}
@@ -395,7 +396,7 @@ static gboolean get_timeout(const GDBusPropertyTable *property,
 
 static gboolean data_exists(const GDBusPropertyTable *property, void *data)
 {
-	return ad.data.type != 0;
+	return ad.data.valid;
 }
 
 static gboolean get_data(const GDBusPropertyTable *property,
@@ -757,7 +758,7 @@ void ad_disable_manufacturer(DBusConnection *conn)
 
 static void ad_clear_data(void)
 {
-	memset(&ad.manufacturer, 0, sizeof(ad.manufacturer));
+	memset(&ad.data, 0, sizeof(ad.data));
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -787,6 +788,7 @@ void ad_advertise_data(DBusConnection *conn, int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
 	ad_clear_data();
+	ad.data.valid = true;
 	ad.data.type = val;
 	ad.data.data = data;
 
