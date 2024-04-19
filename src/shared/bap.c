@@ -5628,9 +5628,24 @@ uint8_t bt_bap_stream_get_dir(struct bt_bap_stream *stream)
 		return BT_BAP_BCAST_SINK;
 }
 
+static void bap_sink_get_allocation(size_t i, uint8_t l, uint8_t t,
+		uint8_t *v, void *user_data)
+{
+	uint32_t location32;
+
+	if (!v)
+		return;
+
+	memcpy(&location32, v, l);
+	*((uint32_t *)user_data) = le32_to_cpu(location32);
+}
+
 uint32_t bt_bap_stream_get_location(struct bt_bap_stream *stream)
 {
 	struct bt_pacs *pacs;
+	uint8_t type = BAP_CHANNEL_ALLOCATION_LTV_TYPE;
+	uint32_t allocation = 0;
+	struct iovec *caps;
 
 	if (!stream)
 		return 0x00000000;
@@ -5644,10 +5659,13 @@ uint32_t bt_bap_stream_get_location(struct bt_bap_stream *stream)
 			return pacs->sink_loc_value;
 	}
 
-	/* TO DO get the location values from metadata
-	 * for brodcast source and sink
-	 */
-	return stream->bap->ldb->pacs->source_loc_value;
+	caps = bt_bap_stream_get_config(stream);
+
+	/* Get stream allocation from capabilities */
+	util_ltv_foreach(caps->iov_base, caps->iov_len, &type,
+			bap_sink_get_allocation, &allocation);
+
+	return allocation;
 }
 
 struct iovec *bt_bap_stream_get_config(struct bt_bap_stream *stream)
@@ -6320,18 +6338,6 @@ struct iovec *bt_bap_stream_get_base(struct bt_bap_stream *stream)
 	queue_destroy(base.subgroups, destroy_base_subgroup);
 
 	return base_iov;
-}
-
-static void bap_sink_get_allocation(size_t i, uint8_t l, uint8_t t,
-		uint8_t *v, void *user_data)
-{
-	uint32_t location32;
-
-	if (!v)
-		return;
-
-	memcpy(&location32, v, l);
-	*((uint32_t *)user_data) = le32_to_cpu(location32);
 }
 
 /*
