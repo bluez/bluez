@@ -63,6 +63,7 @@
 #define NSEC_USEC(_t) (_t / 1000L)
 #define SEC_USEC(_t)  (_t  * 1000000L)
 #define TS_USEC(_ts)  (SEC_USEC((_ts)->tv_sec) + NSEC_USEC((_ts)->tv_nsec))
+#define ROUND_CLOSEST(_x, _y) (((_x) + (_y / 2)) / (_y))
 
 #define EP_SRC_LOCATIONS 0x00000003
 #define EP_SNK_LOCATIONS 0x00000003
@@ -5031,8 +5032,9 @@ static bool transport_timer_read(struct io *io, void *user_data)
 		return false;
 	}
 
-	/* num of packets = latency (ms) / interval (us) */
-	num = (qos.ucast.out.latency * 1000 / qos.ucast.out.interval);
+	/* num of packets = ROUND_CLOSEST(latency (ms) / interval (us)) */
+	num = ROUND_CLOSEST(qos.ucast.out.latency * 1000,
+				qos.ucast.out.interval);
 
 	ret = transport_send_seq(transport, transport->fd, num);
 	if (ret < 0) {
