@@ -1055,7 +1055,6 @@ static void pac_cancel_select(struct bt_bap_pac *lpac, bt_bap_pac_select_t cb,
 			continue;
 		}
 
-		req->cb = NULL;
 		media_endpoint_cancel(req);
 		l = endpoint->requests;
 	}
