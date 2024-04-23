@@ -1405,7 +1405,7 @@ static bool match_req(const void *data, const void *match_data)
 
 static struct bt_ascs *bap_get_ascs(struct bt_bap *bap)
 {
-	if (!bap)
+	if (!bap || !bap->rdb)
 		return NULL;
 
 	if (bap->rdb->ascs)
