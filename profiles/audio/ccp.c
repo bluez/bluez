@@ -206,19 +206,17 @@ ccp_server_remove(struct btd_profile *p,
 }
 
 static struct btd_profile ccp_profile = {
-	.name			= "ccp",
-	.priority		= BTD_PROFILE_PRIORITY_MEDIUM,
+	.name		= "ccp",
+	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 	.remote_uuid	= GTBS_UUID_STR,
 	.device_probe	= ccp_probe,
 	.device_remove	= ccp_remove,
-	.accept			= ccp_accept,
-	.connect		= ccp_connect,
-	.disconnect		= ccp_disconnect,
-
+	.accept		= ccp_accept,
+	.connect	= ccp_connect,
+	.disconnect	= ccp_disconnect,
 	.adapter_probe	= ccp_server_probe,
 	.adapter_remove = ccp_server_remove,
-
-	.experimental	= true,
+	.testing	= true,
 };
 
 static int ccp_init(void)
