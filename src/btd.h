@@ -128,6 +128,7 @@ struct btd_opts {
 	bool		fast_conn;
 	bool		refresh_discovery;
 	bool		experimental;
+	bool		testing;
 	struct queue	*kernel;
 
 	uint16_t	did_source;

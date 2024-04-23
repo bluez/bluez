@@ -87,6 +87,7 @@ static const char *supported_options[] = {
 	"TemporaryTimeout",
 	"RefreshDiscovery",
 	"Experimental",
+	"Testing",
 	"KernelExperimental",
 	"RemoteNameRequestRetryDelay",
 	NULL
@@ -1034,6 +1035,8 @@ static void parse_general(GKeyFile *config)
 	parse_secure_conns(config);
 	parse_config_bool(config, "General", "Experimental",
 						&btd_opts.experimental);
+	parse_config_bool(config, "General", "Testing",
+						&btd_opts.testing);
 	parse_kernel_exp(config);
 	parse_config_u32(config, "General", "RemoteNameRequestRetryDelay",
 					&btd_opts.name_request_retry_delay,
@@ -1344,6 +1347,8 @@ static GOptionEntry options[] = {
 				"Provide deprecated command line interfaces" },
 	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &btd_opts.experimental,
 				"Enable experimental D-Bus interfaces" },
+	{ "testing", 'T', 0, G_OPTION_ARG_NONE, &btd_opts.testing,
+				"Enable testing D-Bus interfaces" },
 	{ "kernel", 'K', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK,
 				parse_kernel_experimental,
 				"Enable kernel experimental features" },
@@ -1409,6 +1414,9 @@ int main(int argc, char *argv[])
 
 	if (btd_opts.experimental)
 		gdbus_flags = G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
+
+	if (btd_opts.testing)
+		gdbus_flags |= G_DBUS_FLAG_ENABLE_TESTING;
 
 	g_dbus_set_flags(gdbus_flags);
 

@@ -64,8 +64,13 @@ OPTIONS
 
 -C, --compat        Provide deprecated command line interfaces.
 
--E, --experimental  Enable experimental interfaces. Those interfaces are not
-                    guaranteed to be compatible or present in future releases.
+-E, --experimental  Enable D-Bus experimental interfaces.
+    These interfaces are not guaranteed to be compatible or present in future
+    releases.
+
+-T, --testing  Enable D-Bus testing interfaces.
+    These interfaces are only meant for test validation of the internals of
+    bluetoothd and shall not never be used by anything other than that.
 
 -K, --kernel=<uuid1>,<uuid2>,...
     Enable Kernel experimental features. Kernel experimental features are

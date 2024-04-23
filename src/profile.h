@@ -33,6 +33,11 @@ struct btd_profile {
 	 */
 	bool experimental;
 
+	/* Indicates the profile for testing only and shall only be registered
+	 * when testing has been enabled (see: main.conf:Testing).
+	 */
+	bool testing;
+
 	int (*device_probe) (struct btd_service *service);
 	void (*device_remove) (struct btd_service *service);
 
