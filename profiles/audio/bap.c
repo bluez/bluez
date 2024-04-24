@@ -2853,6 +2853,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	iso_bc_addr.bc_num_bis = 1;
 
 	/* Set the user requested QOS */
+	memset(&qos, 0, sizeof(qos));
 	qos.bcast.big = setup->qos.bcast.big;
 	qos.bcast.bis = setup->qos.bcast.bis;
 	qos.bcast.sync_factor = setup->qos.bcast.sync_factor;
