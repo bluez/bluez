@@ -2981,10 +2981,20 @@ static int bap_bcast_probe(struct btd_service *service)
 	return 0;
 }
 
+static bool match_service(const void *data, const void *match_data)
+{
+	struct bap_bcast_pa_req *pa_req = (struct bap_bcast_pa_req *)data;
+
+	if (pa_req->data.service == match_data)
+		return true;
+	return false;
+}
+
 static void bap_bcast_remove(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct bap_data *data;
+	struct bap_bcast_pa_req *pa_req;
 	char addr[18];
 
 	ba2str(device_get_address(device), addr);
@@ -2995,6 +3005,14 @@ static void bap_bcast_remove(struct btd_service *service)
 		error("BAP service not handled by profile");
 		return;
 	}
+	/* Remove the corresponding entry from the pa_req queue. Any pa_req that
+	 * are in progress will be stopped by bap_data_remove which calls
+	 * bap_data_free.
+	 */
+	pa_req = queue_remove_if(data->bap_adapter->bcast_pa_requests,
+						match_service, service);
+	if (pa_req)
+		free(pa_req);
 
 	bap_data_remove(data);
 }
