@@ -2087,6 +2087,14 @@ static gboolean pa_idle_timer(gpointer user_data)
 				pa_and_big_sync(req);
 				break;
 			}
+		else {
+			/* pa_req queue is empty, stop the timer by returning
+			 * FALSE and set the pa_timer_id to 0. This will later
+			 * be used to check if the timer is active.
+			 */
+			bap_adapter->pa_timer_id = 0;
+			return FALSE;
+		}
 	}
 
 	return TRUE;
@@ -2098,9 +2106,17 @@ static void setup_accept_io_broadcast(struct bap_data *data,
 	struct bap_bcast_pa_req *pa_req = new0(struct bap_bcast_pa_req, 1);
 	struct bap_adapter *bap_adapter = data->bap_adapter;
 
+	/* Timer could be stopped if all the short lived requests were treated.
+	 * Check the state of the timer and turn it on so that this requests
+	 * can also be treated.
+	 */
+	if (bap_adapter->pa_timer_id == 0)
+		bap_adapter->pa_timer_id = g_timeout_add_seconds(
+		PA_IDLE_TIMEOUT, pa_idle_timer, bap_adapter);
+
 	/* Add this request to the PA queue.
-	 * We don't need to check the queue here and the timer, as we cannot
-	 * have BAP_PA_BIG_SYNC_REQ before a short PA (BAP_PA_SHORT_REQ)
+	 * We don't need to check the queue here, as we cannot have
+	 * BAP_PA_BIG_SYNC_REQ before a short PA (BAP_PA_SHORT_REQ)
 	 */
 	pa_req->type = BAP_PA_BIG_SYNC_REQ;
 	pa_req->in_progress = FALSE;
