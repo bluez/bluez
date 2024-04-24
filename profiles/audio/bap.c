@@ -2768,43 +2768,13 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
 static int short_lived_pa_sync(struct bap_bcast_pa_req *req)
 {
 	struct btd_service *service = req->data.service;
-	struct btd_device *device = btd_service_get_device(service);
-	struct btd_adapter *adapter = device_get_adapter(device);
-	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
 	struct bap_data *data = btd_service_get_user_data(service);
 	GError *err = NULL;
 
-	if (data) {
+	if (data->listen_io) {
 		DBG("Already probed");
 		return -1;
 	}
-	data = bap_data_new(device);
-	data->service = service;
-	data->adapter = adapter;
-	data->device = device;
-	data->bap = bt_bap_new(btd_gatt_database_get_db(database),
-			btd_gatt_database_get_db(database));
-	if (!data->bap) {
-		error("Unable to create BAP instance");
-		free(data);
-		return -EINVAL;
-	}
-
-	if (!bt_bap_attach(data->bap, NULL)) {
-		error("BAP unable to attach");
-		return -EINVAL;
-	}
-
-	bap_data_add(data);
-
-	data->ready_id = bt_bap_ready_register(data->bap, bap_ready, service,
-								NULL);
-	data->state_id = bt_bap_state_register(data->bap, bap_state_bcast,
-					bap_connecting_bcast, data, NULL);
-	data->pac_id = bt_bap_pac_register(data->bap, pac_added_broadcast,
-				pac_removed_broadcast, data, NULL);
-
-	bt_bap_set_user_data(data->bap, service);
 
 	DBG("Create PA sync with this source");
 	req->in_progress = TRUE;
@@ -2925,13 +2895,43 @@ static int bap_bcast_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct btd_adapter *adapter = device_get_adapter(device);
+	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
 	struct bap_bcast_pa_req *pa_req =
 			new0(struct bap_bcast_pa_req, 1);
+	struct bap_data *data;
 
 	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET)) {
 		error("BAP requires ISO Socket which is not enabled");
 		return -ENOTSUP;
 	}
+
+	data = bap_data_new(device);
+	data->service = service;
+	data->adapter = adapter;
+	data->device = device;
+	data->bap = bt_bap_new(btd_gatt_database_get_db(database),
+			btd_gatt_database_get_db(database));
+	if (!data->bap) {
+		error("Unable to create BAP instance");
+		free(data);
+		return -EINVAL;
+	}
+
+	if (!bt_bap_attach(data->bap, NULL)) {
+		error("BAP unable to attach");
+		return -EINVAL;
+	}
+
+	bap_data_add(data);
+
+	data->ready_id = bt_bap_ready_register(data->bap, bap_ready, service,
+								NULL);
+	data->state_id = bt_bap_state_register(data->bap, bap_state_bcast,
+					bap_connecting_bcast, data, NULL);
+	data->pac_id = bt_bap_pac_register(data->bap, pac_added_broadcast,
+				pac_removed_broadcast, data, NULL);
+
+	bt_bap_set_user_data(data->bap, service);
 
 	/* First time initialize the queue and start the idle timer */
 	if (bcast_pa_requests == NULL) {
