@@ -106,7 +106,7 @@ struct bap_adapter {
 
 struct bap_data {
 	struct btd_device *device;
-	struct bap_adapter *bap_adapter;
+	struct bap_adapter *adapter;
 	struct btd_service *service;
 	struct bt_bap *bap;
 	unsigned int ready_id;
@@ -136,7 +136,7 @@ struct bap_bcast_pa_req {
 };
 
 static struct queue *sessions;
-static struct queue *bap_adapters;
+static struct queue *adapters;
 
 /* Structure holding the parameters for Periodic Advertisement create sync.
  * The full QOS is populated at the time the user selects and endpoint and
@@ -371,7 +371,7 @@ static gboolean get_device(const GDBusPropertyTable *property,
 	const char *path;
 
 	if (bt_bap_pac_get_type(ep->lpac) == BT_BAP_BCAST_SOURCE)
-		path = adapter_get_path(ep->data->bap_adapter->adapter);
+		path = adapter_get_path(ep->data->adapter->adapter);
 	else
 		path = device_get_path(ep->data->device);
 
@@ -998,7 +998,7 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 
 	DBG("BIG Sync completed");
 
-	queue_remove(setup->ep->data->bap_adapter->bcast_pa_requests, req);
+	queue_remove(setup->ep->data->adapter->bcast_pa_requests, req);
 
 	/* This device is no longer needed */
 	btd_service_connecting_complete(setup->ep->data->service, 0);
@@ -1132,8 +1132,8 @@ fail:
 static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
 {
 	GError *err = NULL;
-	struct bap_bcast_pa_req *pa_req = user_data;
-	struct bap_data *data = btd_service_get_user_data(pa_req->data.service);
+	struct bap_bcast_pa_req *req = user_data;
+	struct bap_data *data = btd_service_get_user_data(req->data.service);
 	struct bt_iso_base base;
 	struct bt_iso_qos qos;
 
@@ -1155,8 +1155,8 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
 	g_io_channel_unref(data->listen_io);
 	g_io_channel_shutdown(io, TRUE, NULL);
 	data->listen_io = NULL;
-	queue_remove(data->bap_adapter->bcast_pa_requests, pa_req);
-	free(pa_req);
+	queue_remove(data->adapter->bcast_pa_requests, req);
+	free(req);
 	/* Analyze received BASE data and create remote media endpoints for each
 	 * BIS matching our capabilities
 	 */
@@ -1214,7 +1214,7 @@ static struct bap_ep *ep_register_bcast(struct bap_data *data,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac)
 {
-	struct btd_adapter *adapter = data->bap_adapter->adapter;
+	struct btd_adapter *adapter = data->adapter->adapter;
 	struct btd_device *device = data->device;
 	struct bap_ep *ep;
 	struct queue *queue;
@@ -2067,15 +2067,15 @@ static void pa_and_big_sync(struct bap_bcast_pa_req *req);
 
 static gboolean pa_idle_timer(gpointer user_data)
 {
-	struct bap_adapter *bap_adapter = user_data;
+	struct bap_adapter *adapter = user_data;
 	struct bap_bcast_pa_req *req;
 	bool in_progress = FALSE;
 
 	/* Handle timer if no request is in progress */
-	queue_foreach(bap_adapter->bcast_pa_requests, check_pa_req_in_progress,
+	queue_foreach(adapter->bcast_pa_requests, check_pa_req_in_progress,
 			&in_progress);
 	if (in_progress == FALSE) {
-		req = queue_peek_head(bap_adapter->bcast_pa_requests);
+		req = queue_peek_head(adapter->bcast_pa_requests);
 		if (req != NULL)
 			switch (req->type) {
 			case BAP_PA_SHORT_REQ:
@@ -2092,7 +2092,7 @@ static gboolean pa_idle_timer(gpointer user_data)
 			 * FALSE and set the pa_timer_id to 0. This will later
 			 * be used to check if the timer is active.
 			 */
-			bap_adapter->pa_timer_id = 0;
+			adapter->pa_timer_id = 0;
 			return FALSE;
 		}
 	}
@@ -2103,25 +2103,26 @@ static gboolean pa_idle_timer(gpointer user_data)
 static void setup_accept_io_broadcast(struct bap_data *data,
 					struct bap_setup *setup)
 {
-	struct bap_bcast_pa_req *pa_req = new0(struct bap_bcast_pa_req, 1);
-	struct bap_adapter *bap_adapter = data->bap_adapter;
+	struct bap_bcast_pa_req *req = new0(struct bap_bcast_pa_req, 1);
+	struct bap_adapter *adapter = data->adapter;
 
 	/* Timer could be stopped if all the short lived requests were treated.
 	 * Check the state of the timer and turn it on so that this requests
 	 * can also be treated.
 	 */
-	if (bap_adapter->pa_timer_id == 0)
-		bap_adapter->pa_timer_id = g_timeout_add_seconds(
-		PA_IDLE_TIMEOUT, pa_idle_timer, bap_adapter);
+	if (adapter->pa_timer_id == 0)
+		adapter->pa_timer_id = g_timeout_add_seconds(PA_IDLE_TIMEOUT,
+								pa_idle_timer,
+								adapter);
 
 	/* Add this request to the PA queue.
 	 * We don't need to check the queue here, as we cannot have
 	 * BAP_PA_BIG_SYNC_REQ before a short PA (BAP_PA_SHORT_REQ)
 	 */
-	pa_req->type = BAP_PA_BIG_SYNC_REQ;
-	pa_req->in_progress = FALSE;
-	pa_req->data.setup = setup;
-	queue_push_tail(bap_adapter->bcast_pa_requests, pa_req);
+	req->type = BAP_PA_BIG_SYNC_REQ;
+	req->in_progress = FALSE;
+	req->data.setup = setup;
+	queue_push_tail(adapter->bcast_pa_requests, req);
 }
 
 static void setup_create_ucast_io(struct bap_data *data,
@@ -2804,9 +2805,9 @@ static int short_lived_pa_sync(struct bap_bcast_pa_req *req)
 	data->listen_io = bt_io_listen(NULL, iso_pa_sync_confirm_cb, req,
 		NULL, &err,
 		BT_IO_OPT_SOURCE_BDADDR,
-		btd_adapter_get_address(data->bap_adapter->adapter),
+		btd_adapter_get_address(data->adapter->adapter),
 		BT_IO_OPT_SOURCE_TYPE,
-		btd_adapter_get_address_type(data->bap_adapter->adapter),
+		btd_adapter_get_address_type(data->adapter->adapter),
 		BT_IO_OPT_DEST_BDADDR,
 		device_get_address(data->device),
 		BT_IO_OPT_DEST_TYPE,
@@ -2900,7 +2901,7 @@ static void pa_and_big_sync(struct bap_bcast_pa_req *req)
 	setup->io = bt_io_listen(NULL, iso_do_big_sync, req,
 			NULL, &err,
 			BT_IO_OPT_SOURCE_BDADDR,
-			btd_adapter_get_address(data->bap_adapter->adapter),
+			btd_adapter_get_address(data->adapter->adapter),
 			BT_IO_OPT_DEST_BDADDR,
 			device_get_address(data->device),
 			BT_IO_OPT_DEST_TYPE,
@@ -2916,9 +2917,9 @@ static void pa_and_big_sync(struct bap_bcast_pa_req *req)
 
 static bool match_bap_adapter(const void *data, const void *match_data)
 {
-	struct bap_adapter *bap_adapter = (struct bap_adapter *)data;
+	struct bap_adapter *adapter = (struct bap_adapter *)data;
 
-	return bap_adapter->adapter == match_data;
+	return adapter->adapter == match_data;
 }
 
 static int bap_bcast_probe(struct btd_service *service)
@@ -2926,10 +2927,7 @@ static int bap_bcast_probe(struct btd_service *service)
 	struct btd_device *device = btd_service_get_device(service);
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
-	struct bap_adapter *bap_adapter = queue_find(bap_adapters,
-						match_bap_adapter, adapter);
-	struct bap_bcast_pa_req *pa_req =
-			new0(struct bap_bcast_pa_req, 1);
+	struct bap_bcast_pa_req *req;
 	struct bap_data *data;
 
 	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET)) {
@@ -2939,7 +2937,7 @@ static int bap_bcast_probe(struct btd_service *service)
 
 	data = bap_data_new(device);
 	data->service = service;
-	data->bap_adapter = bap_adapter;
+	data->adapter = queue_find(adapters, match_bap_adapter, adapter);
 	data->device = device;
 	data->bap = bt_bap_new(btd_gatt_database_get_db(database),
 			btd_gatt_database_get_db(database));
@@ -2966,35 +2964,36 @@ static int bap_bcast_probe(struct btd_service *service)
 	bt_bap_set_user_data(data->bap, service);
 
 	/* Start the PA timer if it hasn't been started yet */
-	if (bap_adapter->pa_timer_id == 0)
-		bap_adapter->pa_timer_id = g_timeout_add_seconds(
-		PA_IDLE_TIMEOUT, pa_idle_timer, bap_adapter);
+	if (data->adapter->pa_timer_id == 0)
+		data->adapter->pa_timer_id = g_timeout_add_seconds(
+							PA_IDLE_TIMEOUT,
+							pa_idle_timer,
+							data->adapter);
 
 	/* Enqueue this device advertisement so that we can do short-lived
 	 */
 	DBG("enqueue service: %p", service);
-	pa_req->type = BAP_PA_SHORT_REQ;
-	pa_req->in_progress = FALSE;
-	pa_req->data.service = service;
-	queue_push_tail(bap_adapter->bcast_pa_requests, pa_req);
+	req = new0(struct bap_bcast_pa_req, 1);
+	req->type = BAP_PA_SHORT_REQ;
+	req->in_progress = FALSE;
+	req->data.service = service;
+	queue_push_tail(data->adapter->bcast_pa_requests, req);
 
 	return 0;
 }
 
 static bool match_service(const void *data, const void *match_data)
 {
-	struct bap_bcast_pa_req *pa_req = (struct bap_bcast_pa_req *)data;
+	struct bap_bcast_pa_req *req = (struct bap_bcast_pa_req *)data;
 
-	if (pa_req->data.service == match_data)
-		return true;
-	return false;
+	return req->data.service == match_data;
 }
 
 static void bap_bcast_remove(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct bap_data *data;
-	struct bap_bcast_pa_req *pa_req;
+	struct bap_bcast_pa_req *req;
 	char addr[18];
 
 	ba2str(device_get_address(device), addr);
@@ -3009,10 +3008,9 @@ static void bap_bcast_remove(struct btd_service *service)
 	 * are in progress will be stopped by bap_data_remove which calls
 	 * bap_data_free.
 	 */
-	pa_req = queue_remove_if(data->bap_adapter->bcast_pa_requests,
+	req = queue_remove_if(data->adapter->bcast_pa_requests,
 						match_service, service);
-	if (pa_req)
-		free(pa_req);
+	free(req);
 
 	bap_data_remove(data);
 }
@@ -3110,12 +3108,10 @@ static int bap_disconnect(struct btd_service *service)
 	return 0;
 }
 
-static int bap_adapter_probe(struct btd_profile *p,
-				struct btd_adapter *adapter)
+static int bap_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
 	struct bap_data *data;
-	struct bap_adapter *bap_adapter;
 	char addr[18];
 
 	ba2str(btd_adapter_get_address(adapter), addr);
@@ -3151,14 +3147,14 @@ static int bap_adapter_probe(struct btd_profile *p,
 	bt_bap_set_user_data(data->bap, adapter);
 	bap_data_set_user_data(data, adapter);
 
-	bap_adapter = new0(struct bap_adapter, 1);
-	bap_adapter->adapter = adapter;
-	data->bap_adapter = bap_adapter;
+	data->adapter = new0(struct bap_adapter, 1);
+	data->adapter->adapter = adapter;
 
-	if (bap_adapters == NULL)
-		bap_adapters = queue_new();
-	bap_adapter->bcast_pa_requests = queue_new();
-	queue_push_tail(bap_adapters, bap_adapter);
+	if (adapters == NULL)
+		adapters = queue_new();
+	data->adapter->bcast_pa_requests = queue_new();
+	queue_push_tail(adapters, data->adapter);
+
 	return 0;
 }
 
@@ -3172,13 +3168,13 @@ static void bap_adapter_remove(struct btd_profile *p,
 	ba2str(btd_adapter_get_address(adapter), addr);
 	DBG("%s", addr);
 
-	queue_destroy(data->bap_adapter->bcast_pa_requests, free);
-	queue_remove(bap_adapters, data->bap_adapter);
-	free(data->bap_adapter);
+	queue_destroy(data->adapter->bcast_pa_requests, free);
+	queue_remove(adapters, data->adapter);
+	free(data->adapter);
 
-	if (queue_isempty(bap_adapters)) {
-		queue_destroy(bap_adapters, NULL);
-		bap_adapters = NULL;
+	if (queue_isempty(adapters)) {
+		queue_destroy(adapters, NULL);
+		adapters = NULL;
 	}
 
 	if (!data) {
