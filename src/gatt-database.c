@@ -2248,6 +2248,9 @@ static uint8_t dbus_error_to_att_ecode(const char *name, const char *msg,
 	if (strcmp(name, ERROR_INTERFACE ".InProgress") == 0)
 		return BT_ERROR_ALREADY_IN_PROGRESS;
 
+	if (strcmp(name, ERROR_INTERFACE ".ImproperlyConfigured"))
+		return BT_ERROR_CCC_IMPROPERLY_CONFIGURED;
+
 	if (strcmp(name, ERROR_INTERFACE ".NotPermitted") == 0)
 		return perm_err;
 
