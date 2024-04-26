@@ -133,6 +133,7 @@ void WriteValue(array{byte} value, dict options)
 	:org.bluez.Error.InvalidValueLength:
 	:org.bluez.Error.NotAuthorized:
 	:org.bluez.Error.NotSupported:
+	:org.bluez.Error.ImproperlyConfigured:
 
 fd, uint16 AcquireWrite(dict options) [optional]
 ````````````````````````````````````````````````

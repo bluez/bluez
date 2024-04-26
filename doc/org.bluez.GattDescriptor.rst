@@ -115,6 +115,7 @@ void WriteValue(array{byte} value, dict flags)
 	:org.bluez.Error.InvalidValueLength:
 	:org.bluez.Error.NotAuthorized:
 	:org.bluez.Error.NotSupported:
+	:org.bluez.Error.ImproperlyConfigured:
 
 Properties
 ----------
