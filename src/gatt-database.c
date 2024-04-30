@@ -2723,6 +2723,7 @@ static void acquire_write_reply(DBusMessage *message, void *user_data)
 		if (ecode != BT_ATT_ERROR_UNLIKELY) {
 			gatt_db_attribute_write_result(op->attrib, op->id,
 								ecode);
+			pending_op_free(op);
 			return;
 		}
 
