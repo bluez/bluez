@@ -15,6 +15,7 @@
 #include "lib/uuid.h"
 
 #define BT_AD_MAX_DATA_LEN		31
+#define BT_EA_MAX_DATA_LEN		251
 #define BT_PA_MAX_DATA_LEN		252
 
 #define BT_AD_FLAGS			0x01
