@@ -3334,12 +3334,12 @@ static void database_add_includes(struct external_service *service)
 static bool database_add_chrc(struct external_service *service,
 						struct external_chrc *chrc)
 {
-	uint16_t handle;
+	uint16_t handle = 0, value_handle;
 	bt_uuid_t uuid;
 	char str[MAX_LEN_UUID_STR];
 	const struct queue_entry *entry;
 
-	if (!parse_handle(chrc->proxy, &handle)) {
+	if (!parse_handle(chrc->proxy, &value_handle)) {
 		error("Failed to read \"Handle\" property of characteristic");
 		return false;
 	}
@@ -3354,8 +3354,11 @@ static bool database_add_chrc(struct external_service *service,
 		return false;
 	}
 
+	if (value_handle)
+		handle = value_handle - 1;
+
 	chrc->attrib = gatt_db_service_insert_characteristic(service->attrib,
-						handle - 1, handle, &uuid,
+						handle, value_handle, &uuid,
 						chrc->perm, chrc->props,
 						chrc_read_cb, chrc_write_cb,
 						chrc);
