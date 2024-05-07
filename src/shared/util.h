@@ -85,7 +85,7 @@ do {						\
 	}))
 
 #define newa(t, n) ((t*) alloca(sizeof(t)*(n)))
-#define malloc0(n) (calloc((n), 1))
+#define malloc0(n) (calloc(1, (n)))
 
 char *strdelimit(char *str, char *del, char c);
 int strsuffix(const char *str, const char *suffix);
