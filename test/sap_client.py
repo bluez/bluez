@@ -165,7 +165,7 @@ class SAPParam_ConnectionStatus(SAPParam):
 
     def __validate(self):
         if self.value is not None and self.value not in (0x00,  0x01,  0x02,  0x03,  0x04):
-            print "Warning. ConnectionStatus value in reserved range (0x%x)" % self.value
+            print("Warning. ConnectionStatus value in reserved range (0x%x)" % self.value)
 
     def deserialize(self,  buf):
         ret = SAPParam.deserialize(self, buf)
@@ -183,7 +183,7 @@ class SAPParam_ResultCode(SAPParam):
 
     def __validate(self):
         if self.value is not None and self.value not in (0x00,  0x01,  0x02,  0x03,  0x04,  0x05,  0x06,  0x07):
-            print "Warning. ResultCode value in reserved range (0x%x)" % self.value
+            print("Warning. ResultCode value in reserved range (0x%x)" % self.value)
 
     def deserialize(self,  buf):
         ret = SAPParam.deserialize(self, buf)
@@ -201,7 +201,7 @@ class SAPParam_DisconnectionType(SAPParam):
 
     def __validate(self):
         if self.value is not None and self.value not in (0x00,  0x01):
-            print "Warning. DisconnectionType value in reserved range (0x%x)" % self.value
+            print("Warning. DisconnectionType value in reserved range (0x%x)" % self.value)
 
     def deserialize(self,  buf):
         ret = SAPParam.deserialize(self, buf)
@@ -227,7 +227,7 @@ class SAPParam_StatusChange(SAPParam):
 
     def __validate(self):
         if self.value is not None and self.value not in (0x00,  0x01,  0x02,  0x03,  0x04,  0x05):
-            print "Warning. StatusChange value in reserved range (0x%x)" % self.value
+            print("Warning. StatusChange value in reserved range (0x%x)" % self.value)
 
     def deserialize(self,  buf):
         ret = SAPParam.deserialize(self, buf)
@@ -245,7 +245,7 @@ class SAPParam_TransportProtocol(SAPParam):
 
     def __validate(self):
         if self.value is not None and self.value not in (0x00,  0x01):
-            print "Warning. TransportProtoco value in reserved range (0x%x)" % self.value
+            print("Warning. TransportProtoco value in reserved range (0x%x)" % self.value)
 
     def deserialize(self,  buf):
         ret = SAPParam.deserialize(self, buf)
@@ -728,7 +728,7 @@ class SAPClient:
         self.port = first_match["port"]
         self.host = first_match["host"]
 
-        print "SAP Service found on %s(%s)" % first_match["name"] % self.host
+        print("SAP Service found on %s(%s)" % first_match["name"] % self.host)
 
     def __connectRFCOMM(self):
         self.sock=BluetoothSocket( RFCOMM )
@@ -739,19 +739,19 @@ class SAPClient:
     def __sendMsg(self, msg):
         if isinstance(msg,  SAPMessage):
             s = msg.serialize()
-            print "\tTX: " + msg.getContent()
+            print("\tTX: " + msg.getContent())
             return self.sock.send(s.tostring())
 
     def __rcvMsg(self,  msg):
         if isinstance(msg,  SAPMessage):
-            print "\tRX Wait: %s(id = 0x%.2x)" % (msg.name, msg.id)
+            print("\tRX Wait: %s(id = 0x%.2x)" % (msg.name, msg.id))
             data = self.sock.recv(self.bufsize)
             if data:
                 if msg.deserialize(array('B',data)):
-                    print "\tRX: len(%d) %s" % (len(data), msg.getContent())
+                    print("\tRX: len(%d) %s" % (len(data), msg.getContent()))
                     return msg
                 else:
-                    print "msg: %s" % array('B',data)
+                    print("msg: %s" % array('B',data))
                     raise BluetoothError ("Message deserialization failed.")
             else:
                 raise BluetoothError ("Timeout. No data received.")
@@ -797,8 +797,8 @@ class SAPClient:
                     return False
             else:
                 return False
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_disconnectByClient(self, timeout=0):
@@ -808,8 +808,8 @@ class SAPClient:
             time.sleep(timeout) # let srv to close rfcomm
             self.__disconnectRFCOMM()
             return True
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_disconnectByServer(self, timeout=0):
@@ -823,8 +823,8 @@ class SAPClient:
 
             return self.proc_disconnectByClient(timeout)
 
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_transferAPDU(self,  apdu = "Sample APDU command"):
@@ -832,8 +832,8 @@ class SAPClient:
             self.__sendMsg(SAPMessage_TRANSFER_APDU_REQ(apdu))
             params = self.__rcvMsg(SAPMessage_TRANSFER_APDU_RESP()).getParams()
             return True
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_transferATR(self):
@@ -841,8 +841,8 @@ class SAPClient:
             self.__sendMsg(SAPMessage_TRANSFER_ATR_REQ())
             params = self.__rcvMsg(SAPMessage_TRANSFER_ATR_RESP()).getParams()
             return True
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_powerSimOff(self):
@@ -850,8 +850,8 @@ class SAPClient:
             self.__sendMsg(SAPMessage_POWER_SIM_OFF_REQ())
             params = self.__rcvMsg(SAPMessage_POWER_SIM_OFF_RESP()).getParams()
             return True
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_powerSimOn(self):
@@ -862,8 +862,8 @@ class SAPClient:
                 return self.proc_transferATR()
 
             return True
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_resetSim(self):
@@ -874,23 +874,23 @@ class SAPClient:
                 return self.proc_transferATR()
 
             return True
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_reportStatus(self):
         try:
             params = self.__rcvMsg(SAPMessage_STATUS_IND()).getParams()
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_transferCardReaderStatus(self):
         try:
             self.__sendMsg(SAPMessage_TRANSFER_CARD_READER_STATUS_REQ())
             params = self.__rcvMsg(SAPMessage_TRANSFER_CARD_READER_STATUS_RESP()).getParams()
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_errorResponse(self):
@@ -899,8 +899,8 @@ class SAPClient:
             self.__sendMsg(SAPMessage_CONNECT_REQ())
 
             params = self.__rcvMsg(SAPMessage_ERROR_RESP()).getParams()
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
     def proc_setTransportProtocol(self,  protocol = 0):
@@ -922,8 +922,8 @@ class SAPClient:
             else:
                 return False
 
-        except BluetoothError , e:
-            print "Error. " +str(e)
+        except BluetoothError as e:
+            print("Error. " +str(e))
             return False
 
 if __name__ == "__main__":

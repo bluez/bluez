@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-from __future__ import print_function
+
 
 import os
 import sys
@@ -119,7 +119,7 @@ class InputHandler:
 			return True
 
 		try:
-			exec "self.player.%s" % s
+			exec("self.player.%s" % s)
 		except Exception as e:
 			print(e)
 			pass

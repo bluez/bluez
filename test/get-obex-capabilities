@@ -9,12 +9,12 @@ client = dbus.Interface(bus.get_object("org.bluez.obex", "/org/bluez/obex"),
 					"org.bluez.obex.Client")
 
 if (len(sys.argv) < 3):
-	print "Usage: %s <device> <target>" % (sys.argv[0])
+	print("Usage: %s <device> <target>" % (sys.argv[0]))
 	sys.exit(1)
 
-print "Creating Session"
+print("Creating Session")
 session_path = client.CreateSession(sys.argv[1], { "Target": sys.argv[2] })
 session = dbus.Interface(bus.get_object("org.bluez.obex", session_path),
 					"org.bluez.obex.Session")
 
-print session.GetCapabilities()
+print(session.GetCapabilities())

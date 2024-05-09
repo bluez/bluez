@@ -22,15 +22,15 @@ def list_folder(folder):
 
 	for i in ftp.ListFolder():
 		if i["Type"] == "folder":
-			print "%s/" % (i["Name"])
+			print("%s/" % (i["Name"]))
 		else:
-			print "%s" % (i["Name"])
+			print("%s" % (i["Name"]))
 
 
 if __name__ == '__main__':
 
 	if len(sys.argv) < 2:
-		print "Usage: %s <device> [folder]" % (sys.argv[0])
+		print("Usage: %s <device> [folder]" % (sys.argv[0]))
 		sys.exit(1)
 
 	folder = None
