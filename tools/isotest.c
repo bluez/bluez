@@ -922,7 +922,7 @@ static void send_mode(char *filename, char *peer, int i, bool repeat)
 		if (!err)
 			fd = open_file(altername);
 
-		if (fd <= 0)
+		if (fd < 0)
 			fd = open_file(filename);
 	}
 
