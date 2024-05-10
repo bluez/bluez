@@ -1849,7 +1849,7 @@ static void append_bcast_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 					&qos->sync_cte_type);
 	}
 
-	if (qos->sync_cte_type) {
+	if (qos->mse) {
 		bt_shell_printf("MSE %u\n", qos->mse);
 		g_dbus_dict_append_entry(iter, "MSE", DBUS_TYPE_BYTE,
 						&qos->mse);
