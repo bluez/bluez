@@ -2555,11 +2555,10 @@ static struct media_item *parse_media_element(struct avrcp *session,
 
 	uid = get_be64(&operands[0]);
 
+	memset(name, 0, sizeof(name));
 	namelen = MIN(get_be16(&operands[11]), sizeof(name) - 1);
-	if (namelen > 0) {
+	if (namelen > 0)
 		memcpy(name, &operands[13], namelen);
-		name[namelen] = '\0';
-	}
 
 	player = session->controller->player;
 	mp = player->user_data;
@@ -2592,11 +2591,10 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	type = operands[8];
 	playable = operands[9];
 
+	memset(name, 0, sizeof(name));
 	namelen = MIN(get_be16(&operands[12]), sizeof(name) - 1);
-	if (namelen > 0) {
+	if (namelen > 0)
 		memcpy(name, &operands[14], namelen);
-		name[namelen] = '\0';
-	}
 
 	item = media_player_create_folder(mp, name, type, uid);
 	if (!item)
