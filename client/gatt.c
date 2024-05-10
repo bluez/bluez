@@ -3197,9 +3197,13 @@ static void proxy_property_changed(GDBusProxy *proxy, const char *name,
 			dbus_message_iter_get_fixed_array(&array, &value, &len);
 		}
 
-		write_value(&chrc->value_len, &chrc->value, value, len,
-				0, chrc->max_val_len);
-		bt_shell_hexdump(value, len);
+		if (write_value(&chrc->value_len, &chrc->value, value, len,
+				0, chrc->max_val_len)) {
+			bt_shell_printf("Unable to update property value for "
+					"%s\n", name);
+		} else {
+			bt_shell_hexdump(value, len);
+		}
 	}
 
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE, name);
