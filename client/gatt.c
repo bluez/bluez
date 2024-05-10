@@ -966,11 +966,15 @@ static int sock_send(struct io *io, struct iovec *iov, size_t iovlen)
 	struct msghdr msg;
 	int ret;
 
+	ret = io_get_fd(io);
+	if (ret < 0)
+		return ret;
+
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	ret = sendmsg(io_get_fd(io), &msg, MSG_NOSIGNAL);
+	ret = sendmsg(ret, &msg, MSG_NOSIGNAL);
 	if (ret < 0) {
 		ret = -errno;
 		bt_shell_printf("sendmsg: %s", strerror(-ret));
@@ -1051,6 +1055,11 @@ static bool sock_read(struct io *io, void *user_data)
 
 	if (io != notify_io.io && !chrc)
 		return true;
+
+	if (fd < 0) {
+		bt_shell_printf("recvmsg: %s", strerror(-fd));
+		return false;
+	}
 
 	iov.iov_base = buf;
 	iov.iov_len = sizeof(buf);
