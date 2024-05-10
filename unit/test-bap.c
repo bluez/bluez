@@ -4,6 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation.
+ *  Copyright 2024 NXP
  *
  *
  */
@@ -67,7 +68,7 @@ static struct iovec lc3_caps = LC3_CAPABILITIES(LC3_FREQ_ANY, LC3_DURATION_ANY,
 
 #define iov_data(args...) ((const struct iovec[]) { args })
 
-#define define_test(name, function, _cfg, args...)		\
+#define define_test(name, setup, function, _cfg, args...)		\
 	do {							\
 		const struct iovec iov[] = { args };		\
 		static struct test_data data;			\
@@ -75,7 +76,7 @@ static struct iovec lc3_caps = LC3_CAPABILITIES(LC3_FREQ_ANY, LC3_DURATION_ANY,
 		data.cfg = _cfg;				\
 		data.iovcnt = ARRAY_SIZE(iov_data(args));	\
 		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov_data(args))); \
-		tester_add(name, &data, test_setup, function,	\
+		tester_add(name, &data, setup, function,	\
 				test_teardown);			\
 	} while (0)
 
@@ -740,22 +741,25 @@ static void test_disc(void)
 	 * The IUT reads the values of the characteristics specified in the PAC
 	 * Characteristic and Location Characteristic columns.
 	 */
-	define_test("BAP/UCL/DISC/BV-01-C", test_client, NULL, DISC_SNK_LC3);
-	define_test("BAP/UCL/DISC/BV-02-C", test_client, NULL, DISC_SRC_LC3);
+	define_test("BAP/UCL/DISC/BV-01-C", test_setup, test_client, NULL,
+						DISC_SNK_LC3);
+	define_test("BAP/UCL/DISC/BV-02-C", test_setup, test_client, NULL,
+						DISC_SRC_LC3);
 
 	/* BAP/UCL/DISC/BV-06-C [Discover Available Audio Contexts]
 	 *
 	 * The IUT successfully reads the value of the Available Audio Contexts
 	 * characteristic on the LowerTester.
 	 */
-	define_test("BAP/UCL/DISC/BV-06-C", test_client, NULL, DISC_CTX_LC3);
+	define_test("BAP/UCL/DISC/BV-06-C", test_setup, test_client, NULL,
+						DISC_CTX_LC3);
 
 	/* BAP/UCL/DISC/BV-05-C [Discover Supported Audio Contexts]
 	 *
 	 * The IUT successfully reads the value of the Supported Audio Contexts
 	 * characteristic on the Lower Tester.
 	 */
-	define_test("BAP/UCL/DISC/BV-05-C", test_client, NULL,
+	define_test("BAP/UCL/DISC/BV-05-C", test_setup, test_client, NULL,
 						DISC_SUP_CTX_LC3);
 
 	/* BAP/UCL/DISC/BV-03-C [Discover Sink ASE_ID]
@@ -764,9 +768,9 @@ static void test_disc(void)
 	 * The IUT successfully reads the ASE_ID values of each discovered ASE
 	 * characteristic on the LowerTester.
 	 */
-	define_test("BAP/UCL/DISC/BV-03-C", test_client, NULL,
+	define_test("BAP/UCL/DISC/BV-03-C", test_setup, test_client, NULL,
 						DISC_SNK_ASE_LC3);
-	define_test("BAP/UCL/DISC/BV-04-C", test_client, NULL,
+	define_test("BAP/UCL/DISC/BV-04-C", test_setup, test_client, NULL,
 						DISC_SRC_ASE_LC3);
 }
 
@@ -1160,69 +1164,69 @@ static struct test_config cfg_src_48_6 = {
 static void test_scc_cc_lc3(void)
 {
 	define_test("BAP/UCL/SCC/BV-001-C [UCL SRC Config Codec, LC3 8_1]",
-			test_client, &cfg_snk_8_1, SCC_SNK_8_1);
+			test_setup, test_client, &cfg_snk_8_1, SCC_SNK_8_1);
 	define_test("BAP/UCL/SCC/BV-002-C [UCL SRC Config Codec, LC3 8_2]",
-			test_client, &cfg_snk_8_2, SCC_SNK_8_2);
+			test_setup, test_client, &cfg_snk_8_2, SCC_SNK_8_2);
 	define_test("BAP/UCL/SCC/BV-003-C [UCL SRC Config Codec, LC3 16_1]",
-			test_client, &cfg_snk_16_1, SCC_SNK_16_1);
+			test_setup, test_client, &cfg_snk_16_1, SCC_SNK_16_1);
 	define_test("BAP/UCL/SCC/BV-004-C [UCL SRC Config Codec, LC3 16_2]",
-			test_client, &cfg_snk_16_2, SCC_SNK_16_2);
+			test_setup, test_client, &cfg_snk_16_2, SCC_SNK_16_2);
 	define_test("BAP/UCL/SCC/BV-005-C [UCL SRC Config Codec, LC3 24_1]",
-			test_client, &cfg_snk_24_1, SCC_SNK_24_1);
+			test_setup, test_client, &cfg_snk_24_1, SCC_SNK_24_1);
 	define_test("BAP/UCL/SCC/BV-006-C [UCL SRC Config Codec, LC3 24_2]",
-			test_client, &cfg_snk_24_2, SCC_SNK_24_2);
+			test_setup, test_client, &cfg_snk_24_2, SCC_SNK_24_2);
 	define_test("BAP/UCL/SCC/BV-007-C [UCL SRC Config Codec, LC3 32_1]",
-			test_client, &cfg_snk_32_1, SCC_SNK_32_1);
+			test_setup, test_client, &cfg_snk_32_1, SCC_SNK_32_1);
 	define_test("BAP/UCL/SCC/BV-008-C [UCL SRC Config Codec, LC3 32_2]",
-			test_client, &cfg_snk_32_2, SCC_SNK_32_2);
+			test_setup, test_client, &cfg_snk_32_2, SCC_SNK_32_2);
 	define_test("BAP/UCL/SCC/BV-009-C [UCL SRC Config Codec, LC3 44.1_1]",
-			test_client, &cfg_snk_44_1, SCC_SNK_44_1);
+			test_setup, test_client, &cfg_snk_44_1, SCC_SNK_44_1);
 	define_test("BAP/UCL/SCC/BV-010-C [UCL SRC Config Codec, LC3 44.1_2]",
-			test_client, &cfg_snk_44_2, SCC_SNK_44_2);
+			test_setup, test_client, &cfg_snk_44_2, SCC_SNK_44_2);
 	define_test("BAP/UCL/SCC/BV-011-C [UCL SRC Config Codec, LC3 48_1]",
-			test_client, &cfg_snk_48_1, SCC_SNK_48_1);
+			test_setup, test_client, &cfg_snk_48_1, SCC_SNK_48_1);
 	define_test("BAP/UCL/SCC/BV-012-C [UCL SRC Config Codec, LC3 48_2]",
-			test_client, &cfg_snk_48_2, SCC_SNK_48_2);
+			test_setup, test_client, &cfg_snk_48_2, SCC_SNK_48_2);
 	define_test("BAP/UCL/SCC/BV-013-C [UCL SRC Config Codec, LC3 48_3]",
-			test_client, &cfg_snk_48_3, SCC_SNK_48_3);
+			test_setup, test_client, &cfg_snk_48_3, SCC_SNK_48_3);
 	define_test("BAP/UCL/SCC/BV-014-C [UCL SRC Config Codec, LC3 48_4]",
-			test_client, &cfg_snk_48_4, SCC_SNK_48_4);
+			test_setup, test_client, &cfg_snk_48_4, SCC_SNK_48_4);
 	define_test("BAP/UCL/SCC/BV-015-C [UCL SRC Config Codec, LC3 48_5]",
-			test_client, &cfg_snk_48_5, SCC_SNK_48_5);
+			test_setup, test_client, &cfg_snk_48_5, SCC_SNK_48_5);
 	define_test("BAP/UCL/SCC/BV-016-C [UCL SRC Config Codec, LC3 48_6]",
-			test_client, &cfg_snk_48_6, SCC_SNK_48_6);
+			test_setup, test_client, &cfg_snk_48_6, SCC_SNK_48_6);
 	define_test("BAP/UCL/SCC/BV-017-C [UCL SNK Config Codec, LC3 8_1]",
-			test_client, &cfg_src_8_1, SCC_SRC_8_1);
+			test_setup, test_client, &cfg_src_8_1, SCC_SRC_8_1);
 	define_test("BAP/UCL/SCC/BV-018-C [UCL SNK Config Codec, LC3 8_2]",
-			test_client, &cfg_src_8_2, SCC_SRC_8_2);
+			test_setup, test_client, &cfg_src_8_2, SCC_SRC_8_2);
 	define_test("BAP/UCL/SCC/BV-019-C [UCL SNK Config Codec, LC3 16_1]",
-			test_client, &cfg_src_16_1, SCC_SRC_16_1);
+			test_setup, test_client, &cfg_src_16_1, SCC_SRC_16_1);
 	define_test("BAP/UCL/SCC/BV-020-C [UCL SNK Config Codec, LC3 16_2]",
-			test_client, &cfg_src_16_2, SCC_SRC_16_2);
+			test_setup, test_client, &cfg_src_16_2, SCC_SRC_16_2);
 	define_test("BAP/UCL/SCC/BV-021-C [UCL SNK Config Codec, LC3 24_1]",
-			test_client, &cfg_src_24_1, SCC_SRC_24_1);
+			test_setup, test_client, &cfg_src_24_1, SCC_SRC_24_1);
 	define_test("BAP/UCL/SCC/BV-022-C [UCL SNK Config Codec, LC3 24_2]",
-			test_client, &cfg_src_24_2, SCC_SRC_24_2);
+			test_setup, test_client, &cfg_src_24_2, SCC_SRC_24_2);
 	define_test("BAP/UCL/SCC/BV-023-C [UCL SNK Config Codec, LC3 32_1]",
-			test_client, &cfg_src_32_1, SCC_SRC_32_1);
+			test_setup, test_client, &cfg_src_32_1, SCC_SRC_32_1);
 	define_test("BAP/UCL/SCC/BV-024-C [UCL SNK Config Codec, LC3 32_2]",
-			test_client, &cfg_src_32_2, SCC_SRC_32_2);
+			test_setup, test_client, &cfg_src_32_2, SCC_SRC_32_2);
 	define_test("BAP/UCL/SCC/BV-025-C [UCL SNK Config Codec, LC3 44.1_1]",
-			test_client, &cfg_src_44_1, SCC_SRC_44_1);
+			test_setup, test_client, &cfg_src_44_1, SCC_SRC_44_1);
 	define_test("BAP/UCL/SCC/BV-026-C [UCL SNK Config Codec, LC3 44.1_2]",
-			test_client, &cfg_src_44_2, SCC_SRC_44_2);
+			test_setup, test_client, &cfg_src_44_2, SCC_SRC_44_2);
 	define_test("BAP/UCL/SCC/BV-027-C [UCL SNK Config Codec, LC3 48_1]",
-			test_client, &cfg_src_48_1, SCC_SRC_48_1);
+			test_setup, test_client, &cfg_src_48_1, SCC_SRC_48_1);
 	define_test("BAP/UCL/SCC/BV-028-C [UCL SNK Config Codec, LC3 48_2]",
-			test_client, &cfg_src_48_2, SCC_SRC_48_2);
+			test_setup, test_client, &cfg_src_48_2, SCC_SRC_48_2);
 	define_test("BAP/UCL/SCC/BV-029-C [UCL SNK Config Codec, LC3 48_3]",
-			test_client, &cfg_src_48_3, SCC_SRC_48_3);
+			test_setup, test_client, &cfg_src_48_3, SCC_SRC_48_3);
 	define_test("BAP/UCL/SCC/BV-030-C [UCL SNK Config Codec, LC3 48_4]",
-			test_client, &cfg_src_48_4, SCC_SRC_48_4);
+			test_setup, test_client, &cfg_src_48_4, SCC_SRC_48_4);
 	define_test("BAP/UCL/SCC/BV-031-C [UCL SNK Config Codec, LC3 48_5]",
-			test_client, &cfg_src_48_5, SCC_SRC_48_5);
+			test_setup, test_client, &cfg_src_48_5, SCC_SRC_48_5);
 	define_test("BAP/UCL/SCC/BV-032-C [UCL SNK Config Codec, LC3 48_6]",
-			test_client, &cfg_src_48_6, SCC_SRC_48_6);
+			test_setup, test_client, &cfg_src_48_6, SCC_SRC_48_6);
 }
 
 static struct test_config cfg_snk_vs = {
@@ -1263,9 +1267,9 @@ static struct test_config cfg_src_vs = {
 static void test_scc_cc_vs(void)
 {
 	define_test("BAP/UCL/SCC/BV-033-C [UCL SRC Config Codec, VS]",
-			test_client, &cfg_snk_vs, SCC_SNK_VS);
+			test_setup, test_client, &cfg_snk_vs, SCC_SNK_VS);
 	define_test("BAP/UCL/SCC/BV-034-C [UCL SNK Config Codec, VS]",
-			test_client, &cfg_src_vs, SCC_SRC_VS);
+			test_setup, test_client, &cfg_src_vs, SCC_SRC_VS);
 }
 
 static struct test_config cfg_snk_8_1_1 = {
@@ -2079,133 +2083,197 @@ static struct test_config cfg_src_48_6_2 = {
 static void test_scc_qos_lc3(void)
 {
 	define_test("BAP/UCL/SCC/BV-035-C [UCL SRC Config QoS, LC3 8_1_1]",
-			test_client, &cfg_snk_8_1_1, SCC_SNK_8_1_1);
+			test_setup, test_client, &cfg_snk_8_1_1,
+			SCC_SNK_8_1_1);
 	define_test("BAP/UCL/SCC/BV-036-C [UCL SRC Config QoS, LC3 8_2_1]",
-			test_client, &cfg_snk_8_2_1, SCC_SNK_8_2_1);
+			test_setup, test_client, &cfg_snk_8_2_1,
+			SCC_SNK_8_2_1);
 	define_test("BAP/UCL/SCC/BV-037-C [UCL SRC Config QoS, LC3 16_1_1]",
-			test_client, &cfg_snk_16_1_1, SCC_SNK_16_1_1);
+			test_setup, test_client, &cfg_snk_16_1_1,
+			SCC_SNK_16_1_1);
 	define_test("BAP/UCL/SCC/BV-038-C [UCL SRC Config QoS, LC3 16_2_1]",
-			test_client, &cfg_snk_16_2_1, SCC_SNK_16_2_1);
+			test_setup, test_client, &cfg_snk_16_2_1,
+			SCC_SNK_16_2_1);
 	define_test("BAP/UCL/SCC/BV-039-C [UCL SRC Config QoS, LC3 24_1_1]",
-			test_client, &cfg_snk_24_1_1, SCC_SNK_24_1_1);
+			test_setup, test_client, &cfg_snk_24_1_1,
+			SCC_SNK_24_1_1);
 	define_test("BAP/UCL/SCC/BV-040-C [UCL SRC Config QoS, LC3 24_2_1]",
-			test_client, &cfg_snk_24_2_1, SCC_SNK_24_2_1);
+			test_setup, test_client, &cfg_snk_24_2_1,
+			SCC_SNK_24_2_1);
 	define_test("BAP/UCL/SCC/BV-041-C [UCL SRC Config QoS, LC3 32_1_1]",
-			test_client, &cfg_snk_32_1_1, SCC_SNK_32_1_1);
+			test_setup, test_client, &cfg_snk_32_1_1,
+			SCC_SNK_32_1_1);
 	define_test("BAP/UCL/SCC/BV-042-C [UCL SRC Config QoS, LC3 32_2_1]",
-			test_client, &cfg_snk_32_2_1, SCC_SNK_32_2_1);
+			test_setup, test_client, &cfg_snk_32_2_1,
+			SCC_SNK_32_2_1);
 	define_test("BAP/UCL/SCC/BV-043-C [UCL SRC Config QoS, LC3 44.1_1_1]",
-			test_client, &cfg_snk_44_1_1, SCC_SNK_44_1_1);
+			test_setup, test_client, &cfg_snk_44_1_1,
+			SCC_SNK_44_1_1);
 	define_test("BAP/UCL/SCC/BV-044-C [UCL SRC Config QoS, LC3 44.1_2_1]",
-			test_client, &cfg_snk_44_2_1, SCC_SNK_44_2_1);
+			test_setup, test_client, &cfg_snk_44_2_1,
+			SCC_SNK_44_2_1);
 	define_test("BAP/UCL/SCC/BV-045-C [UCL SRC Config QoS, LC3 48_1_1]",
-			test_client, &cfg_snk_48_1_1, SCC_SNK_48_1_1);
+			test_setup, test_client, &cfg_snk_48_1_1,
+			SCC_SNK_48_1_1);
 	define_test("BAP/UCL/SCC/BV-046-C [UCL SRC Config QoS, LC3 48_2_1]",
-			test_client, &cfg_snk_48_2_1, SCC_SNK_48_2_1);
+			test_setup, test_client, &cfg_snk_48_2_1,
+			SCC_SNK_48_2_1);
 	define_test("BAP/UCL/SCC/BV-047-C [UCL SRC Config QoS, LC3 48_3_1]",
-			test_client, &cfg_snk_48_3_1, SCC_SNK_48_3_1);
+			test_setup, test_client, &cfg_snk_48_3_1,
+			SCC_SNK_48_3_1);
 	define_test("BAP/UCL/SCC/BV-048-C [UCL SRC Config QoS, LC3 48_4_1]",
-			test_client, &cfg_snk_48_4_1, SCC_SNK_48_4_1);
+			test_setup, test_client, &cfg_snk_48_4_1,
+			SCC_SNK_48_4_1);
 	define_test("BAP/UCL/SCC/BV-049-C [UCL SRC Config QoS, LC3 48_5_1]",
-			test_client, &cfg_snk_48_5_1, SCC_SNK_48_5_1);
+			test_setup, test_client, &cfg_snk_48_5_1,
+			SCC_SNK_48_5_1);
 	define_test("BAP/UCL/SCC/BV-050-C [UCL SRC Config QoS, LC3 48_6_1]",
-			test_client, &cfg_snk_48_6_1, SCC_SNK_48_6_1);
+			test_setup, test_client, &cfg_snk_48_6_1,
+			SCC_SNK_48_6_1);
 	define_test("BAP/UCL/SCC/BV-051-C [UCL SNK Config QoS, LC3 8_1_1]",
-			test_client, &cfg_src_8_1_1, SCC_SRC_8_1_1);
+			test_setup, test_client, &cfg_src_8_1_1,
+			SCC_SRC_8_1_1);
 	define_test("BAP/UCL/SCC/BV-052-C [UCL SNK Config QoS, LC3 8_2_1]",
-			test_client, &cfg_src_8_2_1, SCC_SRC_8_2_1);
+			test_setup, test_client, &cfg_src_8_2_1,
+			SCC_SRC_8_2_1);
 	define_test("BAP/UCL/SCC/BV-053-C [UCL SNK Config QoS, LC3 16_1_1]",
-			test_client, &cfg_src_16_1_1, SCC_SRC_16_1_1);
+			test_setup, test_client, &cfg_src_16_1_1,
+			SCC_SRC_16_1_1);
 	define_test("BAP/UCL/SCC/BV-054-C [UCL SNK Config QoS, LC3 16_2_1]",
-			test_client, &cfg_src_16_2_1, SCC_SRC_16_2_1);
+			test_setup, test_client, &cfg_src_16_2_1,
+			SCC_SRC_16_2_1);
 	define_test("BAP/UCL/SCC/BV-055-C [UCL SNK Config QoS, LC3 24_1_1]",
-			test_client, &cfg_src_24_1_1, SCC_SRC_24_1_1);
+			test_setup, test_client, &cfg_src_24_1_1,
+			SCC_SRC_24_1_1);
 	define_test("BAP/UCL/SCC/BV-056-C [UCL SNK Config QoS, LC3 24_2_1]",
-			test_client, &cfg_src_24_2_1, SCC_SRC_24_2_1);
+			test_setup, test_client, &cfg_src_24_2_1,
+			SCC_SRC_24_2_1);
 	define_test("BAP/UCL/SCC/BV-057-C [UCL SNK Config QoS, LC3 32_1_1]",
-			test_client, &cfg_src_32_1_1, SCC_SRC_32_1_1);
+			test_setup, test_client, &cfg_src_32_1_1,
+			SCC_SRC_32_1_1);
 	define_test("BAP/UCL/SCC/BV-058-C [UCL SNK Config QoS, LC3 32_2_1]",
-			test_client, &cfg_src_32_2_1, SCC_SRC_32_2_1);
+			test_setup, test_client, &cfg_src_32_2_1,
+			SCC_SRC_32_2_1);
 	define_test("BAP/UCL/SCC/BV-059-C [UCL SNK Config QoS, LC3 44.1_1_1]",
-			test_client, &cfg_src_44_1_1, SCC_SRC_44_1_1);
+			test_setup, test_client, &cfg_src_44_1_1,
+			SCC_SRC_44_1_1);
 	define_test("BAP/UCL/SCC/BV-060-C [UCL SNK Config QoS, LC3 44.1_2_1]",
-			test_client, &cfg_src_44_2_1, SCC_SRC_44_2_1);
+			test_setup, test_client, &cfg_src_44_2_1,
+			SCC_SRC_44_2_1);
 	define_test("BAP/UCL/SCC/BV-061-C [UCL SNK Config QoS, LC3 48_1_1]",
-			test_client, &cfg_src_48_1_1, SCC_SRC_48_1_1);
+			test_setup, test_client, &cfg_src_48_1_1,
+			SCC_SRC_48_1_1);
 	define_test("BAP/UCL/SCC/BV-062-C [UCL SNK Config QoS, LC3 48_2_1]",
-			test_client, &cfg_src_48_2_1, SCC_SRC_48_2_1);
+			test_setup, test_client, &cfg_src_48_2_1,
+			SCC_SRC_48_2_1);
 	define_test("BAP/UCL/SCC/BV-063-C [UCL SNK Config QoS, LC3 48_3_1]",
-			test_client, &cfg_src_48_3_1, SCC_SRC_48_3_1);
+			test_setup, test_client, &cfg_src_48_3_1,
+			SCC_SRC_48_3_1);
 	define_test("BAP/UCL/SCC/BV-064-C [UCL SNK Config QoS, LC3 48_4_1]",
-			test_client, &cfg_src_48_4_1, SCC_SRC_48_4_1);
+			test_setup, test_client, &cfg_src_48_4_1,
+			SCC_SRC_48_4_1);
 	define_test("BAP/UCL/SCC/BV-065-C [UCL SNK Config QoS, LC3 48_5_1]",
-			test_client, &cfg_src_48_5_1, SCC_SRC_48_5_1);
+			test_setup, test_client, &cfg_src_48_5_1,
+			SCC_SRC_48_5_1);
 	define_test("BAP/UCL/SCC/BV-066-C [UCL SNK Config QoS, LC3 48_6_1]",
-			test_client, &cfg_src_48_6_1, SCC_SRC_48_6_1);
+			test_setup, test_client, &cfg_src_48_6_1,
+			SCC_SRC_48_6_1);
 	define_test("BAP/UCL/SCC/BV-067-C [UCL SRC Config QoS, LC3 8_1_2]",
-			test_client, &cfg_snk_8_1_2, SCC_SNK_8_1_2);
+			test_setup, test_client, &cfg_snk_8_1_2,
+			SCC_SNK_8_1_2);
 	define_test("BAP/UCL/SCC/BV-068-C [UCL SRC Config QoS, LC3 8_2_2]",
-			test_client, &cfg_snk_8_2_2, SCC_SNK_8_2_2);
+			test_setup, test_client, &cfg_snk_8_2_2,
+			SCC_SNK_8_2_2);
 	define_test("BAP/UCL/SCC/BV-069-C [UCL SRC Config QoS, LC3 16_1_2]",
-			test_client, &cfg_snk_16_1_2, SCC_SNK_16_1_2);
+			test_setup, test_client, &cfg_snk_16_1_2,
+			SCC_SNK_16_1_2);
 	define_test("BAP/UCL/SCC/BV-070-C [UCL SRC Config QoS, LC3 16_2_2]",
-			test_client, &cfg_snk_16_2_2, SCC_SNK_16_2_2);
+			test_setup, test_client, &cfg_snk_16_2_2,
+			SCC_SNK_16_2_2);
 	define_test("BAP/UCL/SCC/BV-071-C [UCL SRC Config QoS, LC3 24_1_2]",
-			test_client, &cfg_snk_24_1_2, SCC_SNK_24_1_2);
+			test_setup, test_client, &cfg_snk_24_1_2,
+			SCC_SNK_24_1_2);
 	define_test("BAP/UCL/SCC/BV-072-C [UCL SRC Config QoS, LC3 24_2_2]",
-			test_client, &cfg_snk_24_2_2, SCC_SNK_24_2_2);
+			test_setup, test_client, &cfg_snk_24_2_2,
+			SCC_SNK_24_2_2);
 	define_test("BAP/UCL/SCC/BV-073-C [UCL SRC Config QoS, LC3 32_1_2]",
-			test_client, &cfg_snk_32_1_2, SCC_SNK_32_1_2);
+			test_setup, test_client, &cfg_snk_32_1_2,
+			SCC_SNK_32_1_2);
 	define_test("BAP/UCL/SCC/BV-074-C [UCL SRC Config QoS, LC3 32_2_2]",
-			test_client, &cfg_snk_32_2_2, SCC_SNK_32_2_2);
+			test_setup, test_client, &cfg_snk_32_2_2,
+			SCC_SNK_32_2_2);
 	define_test("BAP/UCL/SCC/BV-075-C [UCL SRC Config QoS, LC3 44.1_1_2]",
-			test_client, &cfg_snk_44_1_2, SCC_SNK_44_1_2);
+			test_setup, test_client, &cfg_snk_44_1_2,
+			SCC_SNK_44_1_2);
 	define_test("BAP/UCL/SCC/BV-076-C [UCL SRC Config QoS, LC3 44.1_2_2]",
-			test_client, &cfg_snk_44_2_2, SCC_SNK_44_2_2);
+			test_setup, test_client, &cfg_snk_44_2_2,
+			SCC_SNK_44_2_2);
 	define_test("BAP/UCL/SCC/BV-077-C [UCL SRC Config QoS, LC3 48_1_2]",
-			test_client, &cfg_snk_48_1_2, SCC_SNK_48_1_2);
+			test_setup, test_client, &cfg_snk_48_1_2,
+			SCC_SNK_48_1_2);
 	define_test("BAP/UCL/SCC/BV-078-C [UCL SRC Config QoS, LC3 48_2_2]",
-			test_client, &cfg_snk_48_2_2, SCC_SNK_48_2_2);
+			test_setup, test_client, &cfg_snk_48_2_2,
+			SCC_SNK_48_2_2);
 	define_test("BAP/UCL/SCC/BV-079-C [UCL SRC Config QoS, LC3 48_3_2]",
-			test_client, &cfg_snk_48_3_2, SCC_SNK_48_3_2);
+			test_setup, test_client, &cfg_snk_48_3_2,
+			SCC_SNK_48_3_2);
 	define_test("BAP/UCL/SCC/BV-080-C [UCL SRC Config QoS, LC3 48_4_2]",
-			test_client, &cfg_snk_48_4_2, SCC_SNK_48_4_2);
+			test_setup, test_client, &cfg_snk_48_4_2,
+			SCC_SNK_48_4_2);
 	define_test("BAP/UCL/SCC/BV-081-C [UCL SRC Config QoS, LC3 48_5_2]",
-			test_client, &cfg_snk_48_5_2, SCC_SNK_48_5_2);
+			test_setup, test_client, &cfg_snk_48_5_2,
+			SCC_SNK_48_5_2);
 	define_test("BAP/UCL/SCC/BV-082-C [UCL SRC Config QoS, LC3 48_6_2]",
-			test_client, &cfg_snk_48_6_2, SCC_SNK_48_6_2);
+			test_setup, test_client, &cfg_snk_48_6_2,
+			SCC_SNK_48_6_2);
 	define_test("BAP/UCL/SCC/BV-083-C [UCL SNK Config QoS, LC3 8_1_2]",
-			test_client, &cfg_src_8_1_2, SCC_SRC_8_1_2);
+			test_setup, test_client, &cfg_src_8_1_2,
+			SCC_SRC_8_1_2);
 	define_test("BAP/UCL/SCC/BV-084-C [UCL SNK Config QoS, LC3 8_2_2]",
-			test_client, &cfg_src_8_2_2, SCC_SRC_8_2_2);
+			test_setup, test_client, &cfg_src_8_2_2,
+			SCC_SRC_8_2_2);
 	define_test("BAP/UCL/SCC/BV-085-C [UCL SNK Config QoS, LC3 16_1_2]",
-			test_client, &cfg_src_16_1_2, SCC_SRC_16_1_2);
+			test_setup, test_client, &cfg_src_16_1_2,
+			SCC_SRC_16_1_2);
 	define_test("BAP/UCL/SCC/BV-086-C [UCL SNK Config QoS, LC3 16_2_2]",
-			test_client, &cfg_src_16_2_2, SCC_SRC_16_2_2);
+			test_setup, test_client, &cfg_src_16_2_2,
+			SCC_SRC_16_2_2);
 	define_test("BAP/UCL/SCC/BV-087-C [UCL SNK Config QoS, LC3 24_1_2]",
-			test_client, &cfg_src_24_1_2, SCC_SRC_24_1_2);
+			test_setup, test_client, &cfg_src_24_1_2,
+			SCC_SRC_24_1_2);
 	define_test("BAP/UCL/SCC/BV-088-C [UCL SNK Config QoS, LC3 24_2_2]",
-			test_client, &cfg_src_24_2_2, SCC_SRC_24_2_2);
+			test_setup, test_client, &cfg_src_24_2_2,
+			SCC_SRC_24_2_2);
 	define_test("BAP/UCL/SCC/BV-089-C [UCL SNK Config QoS, LC3 32_1_2]",
-			test_client, &cfg_src_32_1_2, SCC_SRC_32_1_2);
+			test_setup, test_client, &cfg_src_32_1_2,
+			SCC_SRC_32_1_2);
 	define_test("BAP/UCL/SCC/BV-090-C [UCL SNK Config QoS, LC3 32_2_2]",
-			test_client, &cfg_src_32_2_2, SCC_SRC_32_2_2);
+			test_setup, test_client, &cfg_src_32_2_2,
+			SCC_SRC_32_2_2);
 	define_test("BAP/UCL/SCC/BV-091-C [UCL SNK Config QoS, LC3 44.1_1_2]",
-			test_client, &cfg_src_44_1_2, SCC_SRC_44_1_2);
+			test_setup, test_client, &cfg_src_44_1_2,
+			SCC_SRC_44_1_2);
 	define_test("BAP/UCL/SCC/BV-092-C [UCL SNK Config QoS, LC3 44.1_2_2]",
-			test_client, &cfg_src_44_2_2, SCC_SRC_44_2_2);
+			test_setup, test_client, &cfg_src_44_2_2,
+			SCC_SRC_44_2_2);
 	define_test("BAP/UCL/SCC/BV-093-C [UCL SNK Config QoS, LC3 48_1_2]",
-			test_client, &cfg_src_48_1_2, SCC_SRC_48_1_2);
+			test_setup, test_client, &cfg_src_48_1_2,
+			SCC_SRC_48_1_2);
 	define_test("BAP/UCL/SCC/BV-094-C [UCL SNK Config QoS, LC3 48_2_2]",
-			test_client, &cfg_src_48_2_2, SCC_SRC_48_2_2);
+			test_setup, test_client, &cfg_src_48_2_2,
+			SCC_SRC_48_2_2);
 	define_test("BAP/UCL/SCC/BV-095-C [UCL SNK Config QoS, LC3 48_3_2]",
-			test_client, &cfg_src_48_3_2, SCC_SRC_48_3_2);
+			test_setup, test_client, &cfg_src_48_3_2,
+			SCC_SRC_48_3_2);
 	define_test("BAP/UCL/SCC/BV-096-C [UCL SNK Config QoS, LC3 48_4_2]",
-			test_client, &cfg_src_48_4_2, SCC_SRC_48_4_2);
+			test_setup, test_client, &cfg_src_48_4_2,
+			SCC_SRC_48_4_2);
 	define_test("BAP/UCL/SCC/BV-097-C [UCL SNK Config QoS, LC3 48_5_2]",
-			test_client, &cfg_src_48_5_2, SCC_SRC_48_5_2);
+			test_setup, test_client, &cfg_src_48_5_2,
+			SCC_SRC_48_5_2);
 	define_test("BAP/UCL/SCC/BV-098-C [UCL SNK Config QoS, LC3 48_6_2]",
-			test_client, &cfg_src_48_6_2, SCC_SRC_48_6_2);
+			test_setup, test_client, &cfg_src_48_6_2,
+			SCC_SRC_48_6_2);
 }
 
 static struct test_config cfg_snk_qos_vs = {
@@ -2245,9 +2313,11 @@ static struct test_config cfg_src_qos_vs = {
 static void test_scc_qos_vs(void)
 {
 	define_test("BAP/UCL/SCC/BV-099-C [UCL SNK Config QoS, VS]",
-			test_client, &cfg_src_qos_vs, SCC_SRC_QOS_VS);
+			test_setup, test_client, &cfg_src_qos_vs,
+			SCC_SRC_QOS_VS);
 	define_test("BAP/UCL/SCC/BV-100-C [UCL SRC QoS Codec, VS]",
-			test_client, &cfg_snk_qos_vs, SCC_SNK_QOS_VS);
+			test_setup, test_client, &cfg_snk_qos_vs,
+			SCC_SNK_QOS_VS);
 }
 
 static struct test_config cfg_snk_enable = {
@@ -2317,9 +2387,11 @@ static struct test_config cfg_src_enable = {
 static void test_scc_enable(void)
 {
 	define_test("BAP/UCL/SCC/BV-101-C [UCL SRC Enable]",
-			test_client, &cfg_snk_enable, SCC_SNK_ENABLE);
+			test_setup, test_client, &cfg_snk_enable,
+			SCC_SNK_ENABLE);
 	define_test("BAP/UCL/SCC/BV-102-C [UCL SNK Enable]",
-			test_client, &cfg_src_enable, SCC_SRC_ENABLE);
+			test_setup, test_client, &cfg_src_enable,
+			SCC_SRC_ENABLE);
 }
 
 static struct test_config cfg_snk_disable = {
@@ -2436,12 +2508,14 @@ static struct test_config cfg_src_disable_streaming = {
 static void test_scc_disable(void)
 {
 	define_test("BAP/UCL/SCC/BV-103-C [UCL SNK Disable in Enabling State]",
-			test_client, &cfg_src_disable, SCC_SRC_DISABLE);
+			test_setup, test_client, &cfg_src_disable,
+			SCC_SRC_DISABLE);
 	define_test("BAP/UCL/SCC/BV-104-C [UCL SRC Disable in Enabling or "
 			"Streaming state]",
-			test_client, &cfg_snk_disable, SCC_SNK_DISABLE);
+			test_setup, test_client, &cfg_snk_disable,
+			SCC_SNK_DISABLE);
 	define_test("BAP/UCL/SCC/BV-105-C [UCL SNK Disable in Streaming State]",
-			test_client, &cfg_src_disable_streaming,
+			test_setup, test_client, &cfg_src_disable_streaming,
 			SCC_SRC_DISABLE_STREAMING);
 }
 
@@ -2667,28 +2741,32 @@ static void test_scc_release(void)
 {
 	define_test("BAP/UCL/SCC/BV-106-C [UCL SNK Release in Codec Configured"
 			" state]",
-			test_client, &cfg_src_cc_release, SCC_SRC_CC_RELEASE);
+			test_setup, test_client, &cfg_src_cc_release,
+			SCC_SRC_CC_RELEASE);
 	define_test("BAP/UCL/SCC/BV-107-C [UCL SRC Release in Codec Configured"
 			" state]",
-			test_client, &cfg_snk_cc_release, SCC_SNK_CC_RELEASE);
+			test_setup, test_client, &cfg_snk_cc_release,
+			SCC_SNK_CC_RELEASE);
 	define_test("BAP/UCL/SCC/BV-108-C [UCL SNK Release in QoS Configured"
 			" state]",
-			test_client, &cfg_src_qos_release, SCC_SRC_QOS_RELEASE);
+			test_setup, test_client, &cfg_src_qos_release,
+			SCC_SRC_QOS_RELEASE);
 	define_test("BAP/UCL/SCC/BV-109-C [UCL SRC Release in QoS Configured"
 			" state]",
-			test_client, &cfg_snk_qos_release, SCC_SNK_QOS_RELEASE);
+			test_setup, test_client, &cfg_snk_qos_release,
+			SCC_SNK_QOS_RELEASE);
 	define_test("BAP/UCL/SCC/BV-110-C [UCL SNK Release in Enabling state]",
-			test_client, &cfg_src_enable_release,
+			test_setup, test_client, &cfg_src_enable_release,
 			SCC_SRC_ENABLE_RELEASE);
 	define_test("BAP/UCL/SCC/BV-111-C [UCL SRC Release in Enabling or"
 			" Streaming state]",
-			test_client, &cfg_snk_enable_release,
+			test_setup, test_client, &cfg_snk_enable_release,
 			SCC_SNK_ENABLE_RELEASE);
 	define_test("BAP/UCL/SCC/BV-112-C [UCL SNK Release in Streaming state]",
-			test_client, &cfg_src_start_release,
+			test_setup, test_client, &cfg_src_start_release,
 			SCC_SRC_START_RELEASE);
 	define_test("BAP/UCL/SCC/BV-113-C [UCL SNK Release in Disabling state]",
-			test_client, &cfg_src_disable_release,
+			test_setup, test_client, &cfg_src_disable_release,
 			SCC_SRC_DISABLE_RELEASE);
 }
 
@@ -2820,13 +2898,15 @@ static void test_scc_metadata(void)
 {
 	define_test("BAP/UCL/SCC/BV-115-C [UCL SNK Update Metadata in Enabling "
 			"State]",
-			test_client, &cfg_src_metadata, SCC_SRC_METADATA);
+			test_setup, test_client, &cfg_src_metadata,
+			SCC_SRC_METADATA);
 	define_test("BAP/UCL/SCC/BV-116-C [UCL SRC Update Metadata in Enabling "
 			"or Streaming state]",
-			test_client, &cfg_snk_metadata, SCC_SNK_METADATA);
+			test_setup, test_client, &cfg_snk_metadata,
+			SCC_SNK_METADATA);
 	define_test("BAP/UCL/SCC/BV-117-C [UCL SNK Update Metadata in Streaming"
 			" State]",
-			test_client, &cfg_src_metadata_streaming,
+			test_setup, test_client, &cfg_src_metadata_streaming,
 			SCC_SRC_METADATA_STREAMING);
 }
 
@@ -4903,388 +4983,388 @@ static struct test_config str_src_ac4_48_6_2 = {
 static void test_str_1_1_1_lc3(void)
 {
 	define_test("BAP/UCL/STR/BV-001-C [UCL, AC 2, LC3 8_1_1]",
-			test_client, &str_snk_ac2_8_1_1,
+			test_setup, test_client, &str_snk_ac2_8_1_1,
 			STR_SNK_AC2_8_1_1);
 	define_test("BAP/UCL/STR/BV-002-C [UCL, AC 10, LC3 8_1_1]",
-			test_client, &str_snk_ac10_8_1_1,
+			test_setup, test_client, &str_snk_ac10_8_1_1,
 			STR_SNK_AC10_8_1_1);
 	define_test("BAP/UCL/STR/BV-003-C [UCL, AC 2, LC3 8_2_1]",
-			test_client, &str_snk_ac2_8_2_1,
+			test_setup, test_client, &str_snk_ac2_8_2_1,
 			STR_SNK_AC2_8_2_1);
 	define_test("BAP/UCL/STR/BV-004-C [UCL, AC 10, LC3 8_2_1]",
-			test_client, &str_snk_ac10_8_2_1,
+			test_setup, test_client, &str_snk_ac10_8_2_1,
 			STR_SNK_AC10_8_2_1);
 	define_test("BAP/UCL/STR/BV-005-C [UCL, AC 2, LC3 16_1_1]",
-			test_client, &str_snk_ac2_16_1_1,
+			test_setup, test_client, &str_snk_ac2_16_1_1,
 			STR_SNK_AC2_16_1_1);
 	define_test("BAP/UCL/STR/BV-006-C [UCL, AC 10, LC3 16_1_1]",
-			test_client, &str_snk_ac10_16_1_1,
+			test_setup, test_client, &str_snk_ac10_16_1_1,
 			STR_SNK_AC10_16_1_1);
 	define_test("BAP/UCL/STR/BV-007-C [UCL, AC 2, LC3 16_2_1]",
-			test_client, &str_snk_ac2_16_2_1,
+			test_setup, test_client, &str_snk_ac2_16_2_1,
 			STR_SNK_AC2_16_2_1);
 	define_test("BAP/UCL/STR/BV-008-C [UCL, AC 10, LC3 16_2_1]",
-			test_client, &str_snk_ac10_16_2_1,
+			test_setup, test_client, &str_snk_ac10_16_2_1,
 			STR_SNK_AC10_16_2_1);
 	define_test("BAP/UCL/STR/BV-009-C [UCL, AC 2, LC3 24_1_1]",
-			test_client, &str_snk_ac2_24_1_1,
+			test_setup, test_client, &str_snk_ac2_24_1_1,
 			STR_SNK_AC2_24_1_1);
 	define_test("BAP/UCL/STR/BV-010-C [UCL, AC 10, LC3 24_1_1]",
-			test_client, &str_snk_ac10_24_1_1,
+			test_setup, test_client, &str_snk_ac10_24_1_1,
 			STR_SNK_AC10_24_1_1);
 	define_test("BAP/UCL/STR/BV-011-C [UCL, AC 2, LC3 24_2_1]",
-			test_client, &str_snk_ac2_24_2_1,
+			test_setup, test_client, &str_snk_ac2_24_2_1,
 			STR_SNK_AC2_24_2_1);
 	define_test("BAP/UCL/STR/BV-012-C [UCL, AC 10, LC3 24_2_1]",
-			test_client, &str_snk_ac10_24_2_1,
+			test_setup, test_client, &str_snk_ac10_24_2_1,
 			STR_SNK_AC10_24_2_1);
 	define_test("BAP/UCL/STR/BV-013-C [UCL, AC 2, LC3 32_1_1]",
-			test_client, &str_snk_ac2_32_1_1,
+			test_setup, test_client, &str_snk_ac2_32_1_1,
 			STR_SNK_AC2_32_1_1);
 	define_test("BAP/UCL/STR/BV-014-C [UCL, AC 10, LC3 32_1_1]",
-			test_client, &str_snk_ac10_32_1_1,
+			test_setup, test_client, &str_snk_ac10_32_1_1,
 			STR_SNK_AC10_32_1_1);
 	define_test("BAP/UCL/STR/BV-015-C [UCL, AC 2, LC3 32_2_1]",
-			test_client, &str_snk_ac2_32_2_1,
+			test_setup, test_client, &str_snk_ac2_32_2_1,
 			STR_SNK_AC2_32_2_1);
 	define_test("BAP/UCL/STR/BV-016-C [UCL, AC 10, LC3 32_2_1]",
-			test_client, &str_snk_ac10_32_2_1,
+			test_setup, test_client, &str_snk_ac10_32_2_1,
 			STR_SNK_AC10_32_2_1);
 	define_test("BAP/UCL/STR/BV-017-C [UCL, AC 2, LC3 441_1_1]",
-			test_client, &str_snk_ac2_44_1_1,
+			test_setup, test_client, &str_snk_ac2_44_1_1,
 			STR_SNK_AC2_44_1_1);
 	define_test("BAP/UCL/STR/BV-018-C [UCL, AC 10, LC3 441_1_1]",
-			test_client, &str_snk_ac10_44_1_1,
+			test_setup, test_client, &str_snk_ac10_44_1_1,
 			STR_SNK_AC10_44_1_1);
 	define_test("BAP/UCL/STR/BV-019-C [UCL, AC 2, LC3 44_2_1]",
-			test_client, &str_snk_ac2_44_2_1,
+			test_setup, test_client, &str_snk_ac2_44_2_1,
 			STR_SNK_AC2_44_2_1);
 	define_test("BAP/UCL/STR/BV-020-C [UCL, AC 10, LC3 44_2_1]",
-			test_client, &str_snk_ac10_44_2_1,
+			test_setup, test_client, &str_snk_ac10_44_2_1,
 			STR_SNK_AC10_44_2_1);
 	define_test("BAP/UCL/STR/BV-021-C [UCL, AC 2, LC3 48_1_1]",
-			test_client, &str_snk_ac2_48_1_1,
+			test_setup, test_client, &str_snk_ac2_48_1_1,
 			STR_SNK_AC2_48_1_1);
 	define_test("BAP/UCL/STR/BV-022-C [UCL, AC 10, LC3 48_1_1]",
-			test_client, &str_snk_ac10_48_1_1,
+			test_setup, test_client, &str_snk_ac10_48_1_1,
 			STR_SNK_AC10_48_1_1);
 	define_test("BAP/UCL/STR/BV-023-C [UCL, AC 2, LC3 48_2_1]",
-			test_client, &str_snk_ac2_48_2_1,
+			test_setup, test_client, &str_snk_ac2_48_2_1,
 			STR_SNK_AC2_48_2_1);
 	define_test("BAP/UCL/STR/BV-024-C [UCL, AC 10, LC3 48_2_1]",
-			test_client, &str_snk_ac10_48_2_1,
+			test_setup, test_client, &str_snk_ac10_48_2_1,
 			STR_SNK_AC10_48_2_1);
 	define_test("BAP/UCL/STR/BV-025-C [UCL, AC 2, LC3 48_3_1]",
-			test_client, &str_snk_ac2_48_3_1,
+			test_setup, test_client, &str_snk_ac2_48_3_1,
 			STR_SNK_AC2_48_3_1);
 	define_test("BAP/UCL/STR/BV-026-C [UCL, AC 10, LC3 48_3_1]",
-			test_client, &str_snk_ac10_48_3_1,
+			test_setup, test_client, &str_snk_ac10_48_3_1,
 			STR_SNK_AC10_48_3_1);
 	define_test("BAP/UCL/STR/BV-027-C [UCL, AC 2, LC3 48_4_1]",
-			test_client, &str_snk_ac2_48_4_1,
+			test_setup, test_client, &str_snk_ac2_48_4_1,
 			STR_SNK_AC2_48_4_1);
 	define_test("BAP/UCL/STR/BV-028-C [UCL, AC 10, LC3 48_4_1]",
-			test_client, &str_snk_ac10_48_4_1,
+			test_setup, test_client, &str_snk_ac10_48_4_1,
 			STR_SNK_AC10_48_4_1);
 	define_test("BAP/UCL/STR/BV-029-C [UCL, AC 2, LC3 48_5_1]",
-			test_client, &str_snk_ac2_48_5_1,
+			test_setup, test_client, &str_snk_ac2_48_5_1,
 			STR_SNK_AC2_48_5_1);
 	define_test("BAP/UCL/STR/BV-030-C [UCL, AC 10, LC3 48_5_1]",
-			test_client, &str_snk_ac10_48_5_1,
+			test_setup, test_client, &str_snk_ac10_48_5_1,
 			STR_SNK_AC10_48_5_1);
 	define_test("BAP/UCL/STR/BV-031-C [UCL, AC 2, LC3 48_6_1]",
-			test_client, &str_snk_ac2_48_6_1,
+			test_setup, test_client, &str_snk_ac2_48_6_1,
 			STR_SNK_AC2_48_6_1);
 	define_test("BAP/UCL/STR/BV-032-C [UCL, AC 10, LC3 48_6_1]",
-			test_client, &str_snk_ac10_48_6_1,
+			test_setup, test_client, &str_snk_ac10_48_6_1,
 			STR_SNK_AC10_48_6_1);
 	define_test("BAP/UCL/STR/BV-033-C [UCL, SRC, AC 1, LC3 8_1_1]",
-			test_client, &str_src_ac1_8_1_1,
+			test_setup, test_client, &str_src_ac1_8_1_1,
 			STR_SRC_AC1_8_1_1);
 	define_test("BAP/UCL/STR/BV-034-C [UCL, SRC, AC 4, LC3 8_1_1]",
-			test_client, &str_src_ac4_8_1_1,
+			test_setup, test_client, &str_src_ac4_8_1_1,
 			STR_SRC_AC4_8_1_1);
 	define_test("BAP/UCL/STR/BV-035-C [UCL, SRC, AC 1, LC3 8_2_1]",
-			test_client, &str_src_ac1_8_2_1,
+			test_setup, test_client, &str_src_ac1_8_2_1,
 			STR_SRC_AC1_8_2_1);
 	define_test("BAP/UCL/STR/BV-036-C [UCL, SRC, AC 4, LC3 8_2_1]",
-			test_client, &str_src_ac4_8_2_1,
+			test_setup, test_client, &str_src_ac4_8_2_1,
 			STR_SRC_AC4_8_2_1);
 	define_test("BAP/UCL/STR/BV-037-C [UCL, SRC, AC 1, LC3 16_1_1]",
-			test_client, &str_src_ac1_16_1_1,
+			test_setup, test_client, &str_src_ac1_16_1_1,
 			STR_SRC_AC1_16_1_1);
 	define_test("BAP/UCL/STR/BV-038-C [UCL, SRC, AC 4, LC3 16_1_1]",
-			test_client, &str_src_ac4_16_1_1,
+			test_setup, test_client, &str_src_ac4_16_1_1,
 			STR_SRC_AC4_16_1_1);
 	define_test("BAP/UCL/STR/BV-039-C [UCL, SRC, AC 1, LC3 16_2_1]",
-			test_client, &str_src_ac1_16_2_1,
+			test_setup, test_client, &str_src_ac1_16_2_1,
 			STR_SRC_AC1_16_2_1);
 	define_test("BAP/UCL/STR/BV-040-C [UCL, SRC, AC 4, LC3 16_2_1]",
-			test_client, &str_src_ac4_16_2_1,
+			test_setup, test_client, &str_src_ac4_16_2_1,
 			STR_SRC_AC4_16_2_1);
 	define_test("BAP/UCL/STR/BV-041-C [UCL, SRC, AC 1, LC3 24_1_1]",
-			test_client, &str_src_ac1_24_1_1,
+			test_setup, test_client, &str_src_ac1_24_1_1,
 			STR_SRC_AC1_24_1_1);
 	define_test("BAP/UCL/STR/BV-042-C [UCL, SRC, AC 4, LC3 24_1_1]",
-			test_client, &str_src_ac4_24_1_1,
+			test_setup, test_client, &str_src_ac4_24_1_1,
 			STR_SRC_AC4_24_1_1);
 	define_test("BAP/UCL/STR/BV-043-C [UCL, SRC, AC 1, LC3 24_2_1]",
-			test_client, &str_src_ac1_24_2_1,
+			test_setup, test_client, &str_src_ac1_24_2_1,
 			STR_SRC_AC1_24_2_1);
 	define_test("BAP/UCL/STR/BV-044-C [UCL, SRC, AC 4, LC3 24_2_1]",
-			test_client, &str_src_ac4_24_2_1,
+			test_setup, test_client, &str_src_ac4_24_2_1,
 			STR_SRC_AC4_24_2_1);
 	define_test("BAP/UCL/STR/BV-045-C [UCL, SRC, AC 1, LC3 32_1_1]",
-			test_client, &str_src_ac1_32_1_1,
+			test_setup, test_client, &str_src_ac1_32_1_1,
 			STR_SRC_AC1_32_1_1);
 	define_test("BAP/UCL/STR/BV-046-C [UCL, SRC, AC 4, LC3 32_1_1]",
-			test_client, &str_src_ac4_32_1_1,
+			test_setup, test_client, &str_src_ac4_32_1_1,
 			STR_SRC_AC4_32_1_1);
 	define_test("BAP/UCL/STR/BV-047-C [UCL, SRC, AC 1, LC3 32_2_1]",
-			test_client, &str_src_ac1_32_2_1,
+			test_setup, test_client, &str_src_ac1_32_2_1,
 			STR_SRC_AC1_32_2_1);
 	define_test("BAP/UCL/STR/BV-048-C [UCL, SRC, AC 4, LC3 32_2_1]",
-			test_client, &str_src_ac4_32_2_1,
+			test_setup, test_client, &str_src_ac4_32_2_1,
 			STR_SRC_AC4_32_2_1);
 	define_test("BAP/UCL/STR/BV-049-C [UCL, SRC, AC 1, LC3 44_1_1]",
-			test_client, &str_src_ac1_44_1_1,
+			test_setup, test_client, &str_src_ac1_44_1_1,
 			STR_SRC_AC1_44_1_1);
 	define_test("BAP/UCL/STR/BV-050-C [UCL, SRC, AC 4, LC3 44_1_1]",
-			test_client, &str_src_ac4_44_1_1,
+			test_setup, test_client, &str_src_ac4_44_1_1,
 			STR_SRC_AC4_44_1_1);
 	define_test("BAP/UCL/STR/BV-051-C [UCL, SRC, AC 1, LC3 44_2_1]",
-			test_client, &str_src_ac1_44_2_1,
+			test_setup, test_client, &str_src_ac1_44_2_1,
 			STR_SRC_AC1_44_2_1);
 	define_test("BAP/UCL/STR/BV-052-C [UCL, SRC, AC 4, LC3 44_2_1]",
-			test_client, &str_src_ac4_44_2_1,
+			test_setup, test_client, &str_src_ac4_44_2_1,
 			STR_SRC_AC4_44_2_1);
 	define_test("BAP/UCL/STR/BV-053-C [UCL, SRC, AC 1, LC3 48_1_1]",
-			test_client, &str_src_ac1_48_1_1,
+			test_setup, test_client, &str_src_ac1_48_1_1,
 			STR_SRC_AC1_48_1_1);
 	define_test("BAP/UCL/STR/BV-054-C [UCL, SRC, AC 4, LC3 48_1_1]",
-			test_client, &str_src_ac4_48_1_1,
+			test_setup, test_client, &str_src_ac4_48_1_1,
 			STR_SRC_AC4_48_1_1);
 	define_test("BAP/UCL/STR/BV-055-C [UCL, SRC, AC 1, LC3 48_2_1]",
-			test_client, &str_src_ac1_48_2_1,
+			test_setup, test_client, &str_src_ac1_48_2_1,
 			STR_SRC_AC1_48_2_1);
 	define_test("BAP/UCL/STR/BV-056-C [UCL, SRC, AC 4, LC3 48_2_1]",
-			test_client, &str_src_ac4_48_2_1,
+			test_setup, test_client, &str_src_ac4_48_2_1,
 			STR_SRC_AC4_48_2_1);
 	define_test("BAP/UCL/STR/BV-057-C [UCL, SRC, AC 1, LC3 48_3_1]",
-			test_client, &str_src_ac1_48_3_1,
+			test_setup, test_client, &str_src_ac1_48_3_1,
 			STR_SRC_AC1_48_3_1);
 	define_test("BAP/UCL/STR/BV-058-C [UCL, SRC, AC 4, LC3 48_3_1]",
-			test_client, &str_src_ac4_48_3_1,
+			test_setup, test_client, &str_src_ac4_48_3_1,
 			STR_SRC_AC4_48_3_1);
 	define_test("BAP/UCL/STR/BV-059-C [UCL, SRC, AC 1, LC3 48_4_1]",
-			test_client, &str_src_ac1_48_4_1,
+			test_setup, test_client, &str_src_ac1_48_4_1,
 			STR_SRC_AC1_48_4_1);
 	define_test("BAP/UCL/STR/BV-060-C [UCL, SRC, AC 4, LC3 48_4_1]",
-			test_client, &str_src_ac4_48_4_1,
+			test_setup, test_client, &str_src_ac4_48_4_1,
 			STR_SRC_AC4_48_4_1);
 	define_test("BAP/UCL/STR/BV-061-C [UCL, SRC, AC 1, LC3 48_5_1]",
-			test_client, &str_src_ac1_48_5_1,
+			test_setup, test_client, &str_src_ac1_48_5_1,
 			STR_SRC_AC1_48_5_1);
 	define_test("BAP/UCL/STR/BV-062-C [UCL, SRC, AC 4, LC3 48_5_1]",
-			test_client, &str_src_ac4_48_5_1,
+			test_setup, test_client, &str_src_ac4_48_5_1,
 			STR_SRC_AC4_48_5_1);
 	define_test("BAP/UCL/STR/BV-063-C [UCL, SRC, AC 1, LC3 48_6_1]",
-			test_client, &str_src_ac1_48_6_1,
+			test_setup, test_client, &str_src_ac1_48_6_1,
 			STR_SRC_AC1_48_6_1);
 	define_test("BAP/UCL/STR/BV-064-C [UCL, SRC, AC 4, LC3 48_6_1]",
-			test_client, &str_src_ac4_48_6_1,
+			test_setup, test_client, &str_src_ac4_48_6_1,
 			STR_SRC_AC4_48_6_1);
 	define_test("BAP/UCL/STR/BV-065-C [UCL, AC 2, LC3 8_1_2]",
-			test_client, &str_snk_ac2_8_1_2,
+			test_setup, test_client, &str_snk_ac2_8_1_2,
 			STR_SNK_AC2_8_1_2);
 	define_test("BAP/UCL/STR/BV-066-C [UCL, AC 10, LC3 8_1_2]",
-			test_client, &str_snk_ac10_8_1_2,
+			test_setup, test_client, &str_snk_ac10_8_1_2,
 			STR_SNK_AC10_8_1_2);
 	define_test("BAP/UCL/STR/BV-067-C [UCL, AC 2, LC3 8_2_2]",
-			test_client, &str_snk_ac2_8_2_2,
+			test_setup, test_client, &str_snk_ac2_8_2_2,
 			STR_SNK_AC2_8_2_2);
 	define_test("BAP/UCL/STR/BV-068-C [UCL, AC 10, LC3 8_2_2]",
-			test_client, &str_snk_ac10_8_2_2,
+			test_setup, test_client, &str_snk_ac10_8_2_2,
 			STR_SNK_AC10_8_2_2);
 	define_test("BAP/UCL/STR/BV-069-C [UCL, AC 2, LC3 16_1_2]",
-			test_client, &str_snk_ac2_16_1_2,
+			test_setup, test_client, &str_snk_ac2_16_1_2,
 			STR_SNK_AC2_16_1_2);
 	define_test("BAP/UCL/STR/BV-070-C [UCL, AC 10, LC3 16_1_2]",
-			test_client, &str_snk_ac10_16_1_2,
+			test_setup, test_client, &str_snk_ac10_16_1_2,
 			STR_SNK_AC10_16_1_2);
 	define_test("BAP/UCL/STR/BV-071-C [UCL, AC 2, LC3 16_2_2]",
-			test_client, &str_snk_ac2_16_2_2,
+			test_setup, test_client, &str_snk_ac2_16_2_2,
 			STR_SNK_AC2_16_2_2);
 	define_test("BAP/UCL/STR/BV-072-C [UCL, AC 10, LC3 16_2_2]",
-			test_client, &str_snk_ac10_16_2_2,
+			test_setup, test_client, &str_snk_ac10_16_2_2,
 			STR_SNK_AC10_16_2_2);
 	define_test("BAP/UCL/STR/BV-073-C [UCL, AC 2, LC3 24_1_2]",
-			test_client, &str_snk_ac2_24_1_2,
+			test_setup, test_client, &str_snk_ac2_24_1_2,
 			STR_SNK_AC2_24_1_2);
 	define_test("BAP/UCL/STR/BV-074-C [UCL, AC 10, LC3 24_1_2]",
-			test_client, &str_snk_ac10_24_1_2,
+			test_setup, test_client, &str_snk_ac10_24_1_2,
 			STR_SNK_AC10_24_1_2);
 	define_test("BAP/UCL/STR/BV-075-C [UCL, AC 2, LC3 24_2_2]",
-			test_client, &str_snk_ac2_24_2_2,
+			test_setup, test_client, &str_snk_ac2_24_2_2,
 			STR_SNK_AC2_24_2_2);
 	define_test("BAP/UCL/STR/BV-076-C [UCL, AC 10, LC3 24_2_2]",
-			test_client, &str_snk_ac10_24_2_2,
+			test_setup, test_client, &str_snk_ac10_24_2_2,
 			STR_SNK_AC10_24_2_2);
 	define_test("BAP/UCL/STR/BV-077-C [UCL, AC 2, LC3 32_1_2]",
-			test_client, &str_snk_ac2_32_1_2,
+			test_setup, test_client, &str_snk_ac2_32_1_2,
 			STR_SNK_AC2_32_1_2);
 	define_test("BAP/UCL/STR/BV-078-C [UCL, AC 10, LC3 32_1_2]",
-			test_client, &str_snk_ac10_32_1_2,
+			test_setup, test_client, &str_snk_ac10_32_1_2,
 			STR_SNK_AC10_32_1_2);
 	define_test("BAP/UCL/STR/BV-079-C [UCL, AC 2, LC3 32_2_2]",
-			test_client, &str_snk_ac2_32_2_2,
+			test_setup, test_client, &str_snk_ac2_32_2_2,
 			STR_SNK_AC2_32_2_2);
 	define_test("BAP/UCL/STR/BV-080-C [UCL, AC 10, LC3 32_2_2]",
-			test_client, &str_snk_ac10_32_2_2,
+			test_setup, test_client, &str_snk_ac10_32_2_2,
 			STR_SNK_AC10_32_2_2);
 	define_test("BAP/UCL/STR/BV-081-C [UCL, AC 2, LC3 44_1_2]",
-			test_client, &str_snk_ac2_44_1_2,
+			test_setup, test_client, &str_snk_ac2_44_1_2,
 			STR_SNK_AC2_44_1_2);
 	define_test("BAP/UCL/STR/BV-082-C [UCL, AC 10, LC3 44_1_2]",
-			test_client, &str_snk_ac10_44_1_2,
+			test_setup, test_client, &str_snk_ac10_44_1_2,
 			STR_SNK_AC10_44_1_2);
 	define_test("BAP/UCL/STR/BV-083-C [UCL, AC 2, LC3 44_2_2]",
-			test_client, &str_snk_ac2_44_2_2,
+			test_setup, test_client, &str_snk_ac2_44_2_2,
 			STR_SNK_AC2_44_2_2);
 	define_test("BAP/UCL/STR/BV-084-C [UCL, AC 10, LC3 44_2_2]",
-			test_client, &str_snk_ac10_44_2_2,
+			test_setup, test_client, &str_snk_ac10_44_2_2,
 			STR_SNK_AC10_44_2_2);
 	define_test("BAP/UCL/STR/BV-085-C [UCL, AC 2, LC3 48_1_2]",
-			test_client, &str_snk_ac2_48_1_2,
+			test_setup, test_client, &str_snk_ac2_48_1_2,
 			STR_SNK_AC2_48_1_2);
 	define_test("BAP/UCL/STR/BV-086-C [UCL, AC 10, LC3 48_1_2]",
-			test_client, &str_snk_ac10_48_1_2,
+			test_setup, test_client, &str_snk_ac10_48_1_2,
 			STR_SNK_AC10_48_1_2);
 	define_test("BAP/UCL/STR/BV-087-C [UCL, AC 2, LC3 48_2_2]",
-			test_client, &str_snk_ac2_48_2_2,
+			test_setup, test_client, &str_snk_ac2_48_2_2,
 			STR_SNK_AC2_48_2_2);
 	define_test("BAP/UCL/STR/BV-088-C [UCL, AC 10, LC3 48_2_2]",
-			test_client, &str_snk_ac10_48_2_2,
+			test_setup, test_client, &str_snk_ac10_48_2_2,
 			STR_SNK_AC10_48_2_2);
 	define_test("BAP/UCL/STR/BV-089-C [UCL, AC 2, LC3 48_3_2]",
-			test_client, &str_snk_ac2_48_3_2,
+			test_setup, test_client, &str_snk_ac2_48_3_2,
 			STR_SNK_AC2_48_3_2);
 	define_test("BAP/UCL/STR/BV-090-C [UCL, AC 10, LC3 48_3_2]",
-			test_client, &str_snk_ac10_48_3_2,
+			test_setup, test_client, &str_snk_ac10_48_3_2,
 			STR_SNK_AC10_48_3_2);
 	define_test("BAP/UCL/STR/BV-091-C [UCL, AC 2, LC3 48_4_2]",
-			test_client, &str_snk_ac2_48_4_2,
+			test_setup, test_client, &str_snk_ac2_48_4_2,
 			STR_SNK_AC2_48_4_2);
 	define_test("BAP/UCL/STR/BV-092-C [UCL, AC 10, LC3 48_4_2]",
-			test_client, &str_snk_ac10_48_4_2,
+			test_setup, test_client, &str_snk_ac10_48_4_2,
 			STR_SNK_AC10_48_4_2);
 	define_test("BAP/UCL/STR/BV-093-C [UCL, AC 2, LC3 48_5_2]",
-			test_client, &str_snk_ac2_48_5_2,
+			test_setup, test_client, &str_snk_ac2_48_5_2,
 			STR_SNK_AC2_48_5_2);
 	define_test("BAP/UCL/STR/BV-094-C [UCL, AC 10, LC3 48_5_2]",
-			test_client, &str_snk_ac10_48_5_2,
+			test_setup, test_client, &str_snk_ac10_48_5_2,
 			STR_SNK_AC10_48_5_2);
 	define_test("BAP/UCL/STR/BV-095-C [UCL, AC 2, LC3 48_6_2]",
-			test_client, &str_snk_ac2_48_6_2,
+			test_setup, test_client, &str_snk_ac2_48_6_2,
 			STR_SNK_AC2_48_6_2);
 	define_test("BAP/UCL/STR/BV-096-C [UCL, AC 10, LC3 48_6_2]",
-			test_client, &str_snk_ac10_48_6_2,
+			test_setup, test_client, &str_snk_ac10_48_6_2,
 			STR_SNK_AC10_48_6_2);
 	define_test("BAP/UCL/STR/BV-097-C [UCL, SRC, AC 1, LC3 8_1_2]",
-			test_client, &str_src_ac1_8_1_2,
+			test_setup, test_client, &str_src_ac1_8_1_2,
 			STR_SRC_AC1_8_1_2);
 	define_test("BAP/UCL/STR/BV-098-C [UCL, SRC, AC 4, LC3 8_1_2]",
-			test_client, &str_src_ac4_8_1_2,
+			test_setup, test_client, &str_src_ac4_8_1_2,
 			STR_SRC_AC4_8_1_2);
 	define_test("BAP/UCL/STR/BV-099-C [UCL, SRC, AC 1, LC3 8_2_2]",
-			test_client, &str_src_ac1_8_2_2,
+			test_setup, test_client, &str_src_ac1_8_2_2,
 			STR_SRC_AC1_8_2_2);
 	define_test("BAP/UCL/STR/BV-100-C [UCL, SRC, AC 4, LC3 8_2_2]",
-			test_client, &str_src_ac4_8_2_2,
+			test_setup, test_client, &str_src_ac4_8_2_2,
 			STR_SRC_AC4_8_2_2);
 	define_test("BAP/UCL/STR/BV-101-C [UCL, SRC, AC 1, LC3 16_1_2]",
-			test_client, &str_src_ac1_16_1_2,
+			test_setup, test_client, &str_src_ac1_16_1_2,
 			STR_SRC_AC1_16_1_2);
 	define_test("BAP/UCL/STR/BV-102-C [UCL, SRC, AC 4, LC3 16_1_2]",
-			test_client, &str_src_ac4_16_1_2,
+			test_setup, test_client, &str_src_ac4_16_1_2,
 			STR_SRC_AC4_16_1_2);
 	define_test("BAP/UCL/STR/BV-103-C [UCL, SRC, AC 1, LC3 16_2_2]",
-			test_client, &str_src_ac1_16_2_2,
+			test_setup, test_client, &str_src_ac1_16_2_2,
 			STR_SRC_AC1_16_2_2);
 	define_test("BAP/UCL/STR/BV-104-C [UCL, SRC, AC 4, LC3 16_2_2]",
-			test_client, &str_src_ac4_16_2_2,
+			test_setup, test_client, &str_src_ac4_16_2_2,
 			STR_SRC_AC4_16_2_2);
 	define_test("BAP/UCL/STR/BV-105-C [UCL, SRC, AC 1, LC3 24_1_2]",
-			test_client, &str_src_ac1_24_1_2,
+			test_setup, test_client, &str_src_ac1_24_1_2,
 			STR_SRC_AC1_24_1_2);
 	define_test("BAP/UCL/STR/BV-106-C [UCL, SRC, AC 4, LC3 24_1_2]",
-			test_client, &str_src_ac4_24_1_2,
+			test_setup, test_client, &str_src_ac4_24_1_2,
 			STR_SRC_AC4_24_1_2);
 	define_test("BAP/UCL/STR/BV-107-C [UCL, SRC, AC 1, LC3 24_2_2]",
-			test_client, &str_src_ac1_24_2_2,
+			test_setup, test_client, &str_src_ac1_24_2_2,
 			STR_SRC_AC1_24_2_2);
 	define_test("BAP/UCL/STR/BV-108-C [UCL, SRC, AC 4, LC3 24_2_2]",
-			test_client, &str_src_ac4_24_2_2,
+			test_setup, test_client, &str_src_ac4_24_2_2,
 			STR_SRC_AC4_24_2_2);
 	define_test("BAP/UCL/STR/BV-109-C [UCL, SRC, AC 1, LC3 32_1_2]",
-			test_client, &str_src_ac1_32_1_2,
+			test_setup, test_client, &str_src_ac1_32_1_2,
 			STR_SRC_AC1_32_1_2);
 	define_test("BAP/UCL/STR/BV-110-C [UCL, SRC, AC 4, LC3 32_1_2]",
-			test_client, &str_src_ac4_32_1_2,
+			test_setup, test_client, &str_src_ac4_32_1_2,
 			STR_SRC_AC4_32_1_2);
 	define_test("BAP/UCL/STR/BV-111-C [UCL, SRC, AC 1, LC3 32_2_2]",
-			test_client, &str_src_ac1_32_2_2,
+			test_setup, test_client, &str_src_ac1_32_2_2,
 			STR_SRC_AC1_32_2_2);
 	define_test("BAP/UCL/STR/BV-112-C [UCL, SRC, AC 4, LC3 32_2_2]",
-			test_client, &str_src_ac4_32_2_2,
+			test_setup, test_client, &str_src_ac4_32_2_2,
 			STR_SRC_AC4_32_2_2);
 	define_test("BAP/UCL/STR/BV-113-C [UCL, SRC, AC 1, LC3 44_1_2]",
-			test_client, &str_src_ac1_44_1_2,
+			test_setup, test_client, &str_src_ac1_44_1_2,
 			STR_SRC_AC1_44_1_2);
 	define_test("BAP/UCL/STR/BV-114-C [UCL, SRC, AC 4, LC3 44_1_2]",
-			test_client, &str_src_ac4_44_1_2,
+			test_setup, test_client, &str_src_ac4_44_1_2,
 			STR_SRC_AC4_44_1_2);
 	define_test("BAP/UCL/STR/BV-115-C [UCL, SRC, AC 1, LC3 44_2_2]",
-			test_client, &str_src_ac1_44_2_2,
+			test_setup, test_client, &str_src_ac1_44_2_2,
 			STR_SRC_AC1_44_2_2);
 	define_test("BAP/UCL/STR/BV-116-C [UCL, SRC, AC 4, LC3 44_2_2]",
-			test_client, &str_src_ac4_44_2_2,
+			test_setup, test_client, &str_src_ac4_44_2_2,
 			STR_SRC_AC4_44_2_2);
 	define_test("BAP/UCL/STR/BV-117-C [UCL, SRC, AC 1, LC3 48_1_2]",
-			test_client, &str_src_ac1_48_1_2,
+			test_setup, test_client, &str_src_ac1_48_1_2,
 			STR_SRC_AC1_48_1_2);
 	define_test("BAP/UCL/STR/BV-118-C [UCL, SRC, AC 4, LC3 48_1_2]",
-			test_client, &str_src_ac4_48_1_2,
+			test_setup, test_client, &str_src_ac4_48_1_2,
 			STR_SRC_AC4_48_1_2);
 	define_test("BAP/UCL/STR/BV-119-C [UCL, SRC, AC 1, LC3 48_2_2]",
-			test_client, &str_src_ac1_48_2_2,
+			test_setup, test_client, &str_src_ac1_48_2_2,
 			STR_SRC_AC1_48_2_2);
 	define_test("BAP/UCL/STR/BV-120-C [UCL, SRC, AC 4, LC3 48_2_2]",
-			test_client, &str_src_ac4_48_2_2,
+			test_setup, test_client, &str_src_ac4_48_2_2,
 			STR_SRC_AC4_48_2_2);
 	define_test("BAP/UCL/STR/BV-121-C [UCL, SRC, AC 1, LC3 48_3_2]",
-			test_client, &str_src_ac1_48_3_2,
+			test_setup, test_client, &str_src_ac1_48_3_2,
 			STR_SRC_AC1_48_3_2);
 	define_test("BAP/UCL/STR/BV-122-C [UCL, SRC, AC 4, LC3 48_3_2]",
-			test_client, &str_src_ac4_48_3_2,
+			test_setup, test_client, &str_src_ac4_48_3_2,
 			STR_SRC_AC4_48_3_2);
 	define_test("BAP/UCL/STR/BV-123-C [UCL, SRC, AC 1, LC3 48_4_2]",
-			test_client, &str_src_ac1_48_4_2,
+			test_setup, test_client, &str_src_ac1_48_4_2,
 			STR_SRC_AC1_48_4_2);
 	define_test("BAP/UCL/STR/BV-124-C [UCL, SRC, AC 4, LC3 48_4_2]",
-			test_client, &str_src_ac4_48_4_2,
+			test_setup, test_client, &str_src_ac4_48_4_2,
 			STR_SRC_AC4_48_4_2);
 	define_test("BAP/UCL/STR/BV-121-C [UCL, SRC, AC 1, LC3 48_5_2]",
-			test_client, &str_src_ac1_48_5_2,
+			test_setup, test_client, &str_src_ac1_48_5_2,
 			STR_SRC_AC1_48_5_2);
 	define_test("BAP/UCL/STR/BV-122-C [UCL, SRC, AC 4, LC3 48_5_2]",
-			test_client, &str_src_ac4_48_5_2,
+			test_setup, test_client, &str_src_ac4_48_5_2,
 			STR_SRC_AC4_48_5_2);
 	define_test("BAP/UCL/STR/BV-123-C [UCL, SRC, AC 1, LC3 48_6_2]",
-			test_client, &str_src_ac1_48_6_2,
+			test_setup, test_client, &str_src_ac1_48_6_2,
 			STR_SRC_AC1_48_6_2);
 	define_test("BAP/UCL/STR/BV-124-C [UCL, SRC, AC 4, LC3 48_6_2]",
-			test_client, &str_src_ac4_48_6_2,
+			test_setup, test_client, &str_src_ac4_48_6_2,
 			STR_SRC_AC4_48_6_2);
 }
 
