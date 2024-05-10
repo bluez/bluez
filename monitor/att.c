@@ -2291,6 +2291,8 @@ static void print_mp_name(const struct l2cap_frame *frame)
 	name = name2utf8((uint8_t *)frame->data, frame->size);
 
 	print_field("  Media Player Name: %s", name);
+
+	g_free(name);
 }
 
 static void mp_name_read(const struct l2cap_frame *frame)
@@ -2320,6 +2322,8 @@ static void print_track_title(const struct l2cap_frame *frame)
 	name = name2utf8((uint8_t *)frame->data, frame->size);
 
 	print_field("  Track Title: %s", name);
+
+	g_free(name);
 }
 
 static void track_title_read(const struct l2cap_frame *frame)
@@ -2453,6 +2457,8 @@ static void print_bearer_name(const struct l2cap_frame *frame)
 	name = name2utf8((uint8_t *)frame->data, frame->size);
 
 	print_field("  Bearer Name: %s", name);
+
+	g_free(name);
 }
 
 static void bearer_name_read(const struct l2cap_frame *frame)
@@ -2472,6 +2478,8 @@ static void bearer_uci_read(const struct l2cap_frame *frame)
 	name = name2utf8((uint8_t *)frame->data, frame->size);
 
 	print_field("  Bearer Uci Name: %s", name);
+
+	g_free(name);
 }
 
 static void print_technology_name(const struct l2cap_frame *frame)
@@ -2541,6 +2549,8 @@ static void print_uri_scheme_list(const struct l2cap_frame *frame)
 	name = name2utf8((uint8_t *)frame->data, frame->size);
 
 	print_field("  Uri scheme Name: %s", name);
+
+	g_free(name);
 }
 
 static void bearer_uri_schemes_list_read(const struct l2cap_frame *frame)
@@ -2654,6 +2664,8 @@ static void print_call_list(const struct l2cap_frame *frame)
 
 	print_field("  call_uri: %s", call_uri);
 
+	g_free(call_uri);
+
 done:
 	if (frame->size)
 		print_hex_field("  call_list Data", frame->data, frame->size);
@@ -2741,6 +2753,8 @@ static void print_target_uri(const struct l2cap_frame *frame)
 	name = name2utf8((uint8_t *)frame->data, frame->size);
 
 	print_field("  Uri: %s", name);
+
+	g_free(name);
 
 done:
 	if (frame->size)
@@ -2850,6 +2864,7 @@ static void print_call_cp(const struct l2cap_frame *frame)
 		str = "Originate";
 		name = name2utf8((uint8_t *)frame->data, frame->size);
 		print_field("  Operation: %s  Uri: %s", str, name);
+		g_free(name);
 		break;
 	case 0x05:
 		str = "Join";
@@ -3047,6 +3062,8 @@ static void print_incom_call(const struct l2cap_frame *frame)
 
 	print_field("  call_string: %s", name);
 
+	g_free(name);
+
 done:
 	if (frame->size)
 		print_hex_field(" Data", frame->data, frame->size);
@@ -3077,6 +3094,8 @@ static void print_call_friendly_name(const struct l2cap_frame *frame)
 	name = name2utf8((uint8_t *)frame->data, frame->size);
 
 	print_field("  Friendly Name: %s", name);
+
+	g_free(name);
 
 done:
 	if (frame->size)
