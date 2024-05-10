@@ -1804,6 +1804,7 @@ static int create_iso_sock(struct test_data *data)
 	master_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
+		close(sk);
 		return -ENODEV;
 	}
 
