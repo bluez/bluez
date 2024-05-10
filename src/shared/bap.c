@@ -6321,6 +6321,7 @@ struct iovec *bt_bap_stream_get_base(struct bt_bap_stream *stream)
 	base.subgroups = queue_new();
 	base.next_bis_index = 1;
 	base.big_id = stream->qos.bcast.big;
+	base.pres_delay = stream->qos.bcast.delay;
 
 	/* If the BIG ID was explicitly set, create a BASE with information
 	 * from all streams belonging to this BIG. Otherwise, create a BASE
