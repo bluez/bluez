@@ -2113,7 +2113,7 @@ static void set_default_local_attribute(char *attr)
 	desc = g_strdup_printf(COLOR_BLUE "[%s]" COLOR_OFF "# ", attr);
 
 	bt_shell_set_prompt(desc);
-	free(desc);
+	g_free(desc);
 }
 
 static void cmd_select_attribute(int argc, char *argv[])
