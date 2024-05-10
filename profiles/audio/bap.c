@@ -1028,6 +1028,7 @@ static bool parse_base(struct bt_bap *bap, struct bt_iso_base *base,
 	};
 	uint32_t pres_delay;
 	uint8_t num_subgroups;
+	bool ret = true;
 
 	util_debug(func, NULL, "BASE len: %ld", iov.iov_len);
 
@@ -1043,13 +1044,15 @@ static bool parse_base(struct bt_bap *bap, struct bt_iso_base *base,
 	for (int idx = 0; idx < num_subgroups; idx++) {
 		uint8_t num_bis;
 		struct bt_bap_codec codec;
-		struct iovec *l2_caps;
-		struct iovec *meta;
+		struct iovec *l2_caps = NULL;
+		struct iovec *meta = NULL;
 
 		util_debug(func, NULL, "Subgroup #%d", idx);
 
-		if (!util_iov_pull_u8(&iov, &num_bis))
+		if (!util_iov_pull_u8(&iov, &num_bis)) {
+			ret = false;
 			goto fail;
+		}
 		util_debug(func, NULL, "Number of BISes: %d", num_bis);
 
 		memcpy(&codec,
@@ -1062,8 +1065,10 @@ static bool parse_base(struct bt_bap *bap, struct bt_iso_base *base,
 		/* Level 2 */
 		/* Read Codec Specific Configuration */
 		l2_caps = new0(struct iovec, 1);
-		if (!util_iov_pull_u8(&iov, (void *)&l2_caps->iov_len))
-			goto fail;
+		if (!util_iov_pull_u8(&iov, (void *)&l2_caps->iov_len)) {
+			ret = false;
+			goto group_fail;
+		}
 
 		util_iov_memcpy(l2_caps, util_iov_pull_mem(&iov,
 				l2_caps->iov_len),
@@ -1076,8 +1081,10 @@ static bool parse_base(struct bt_bap *bap, struct bt_iso_base *base,
 
 		/* Read Metadata */
 		meta = new0(struct iovec, 1);
-		if (!util_iov_pull_u8(&iov, (void *)&meta->iov_len))
-			goto fail;
+		if (!util_iov_pull_u8(&iov, (void *)&meta->iov_len)) {
+			ret = false;
+			goto group_fail;
+		}
 
 		util_iov_memcpy(meta,
 				util_iov_pull_mem(&iov, meta->iov_len),
@@ -1093,15 +1100,21 @@ static bool parse_base(struct bt_bap *bap, struct bt_iso_base *base,
 			uint8_t bis_index;
 			struct iovec *l3_caps;
 
-			if (!util_iov_pull_u8(&iov, &bis_index))
-				goto fail;
+			if (!util_iov_pull_u8(&iov, &bis_index)) {
+				ret = false;
+				goto group_fail;
+			}
 
 			util_debug(func, NULL, "BIS #%d", bis_index);
 
 			/* Read Codec Specific Configuration */
 			l3_caps = new0(struct iovec, 1);
-			if (!util_iov_pull_u8(&iov, (void *)&l3_caps->iov_len))
-				goto fail;
+			if (!util_iov_pull_u8(&iov,
+						(void *)&l3_caps->iov_len)) {
+				free(l3_caps);
+				ret = false;
+				goto group_fail;
+			}
 
 			util_iov_memcpy(l3_caps,
 					util_iov_pull_mem(&iov,
@@ -1120,13 +1133,20 @@ static bool parse_base(struct bt_bap *bap, struct bt_iso_base *base,
 					meta);
 		}
 
+group_fail:
+		if (l2_caps != NULL)
+			free(l2_caps);
+		if (meta != NULL)
+			free(meta);
+		if (!ret)
+			break;
 	}
-	return true;
 
 fail:
-	util_debug(func, NULL, "Unable to parse Base");
+	if (!ret)
+		util_debug(func, NULL, "Unable to parse Base");
 
-	return false;
+	return ret;
 }
 
 static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
