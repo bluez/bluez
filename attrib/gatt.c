@@ -1076,10 +1076,12 @@ static void desc_discovered_cb(guint8 status, const guint8 *ipdu,
 	att_data_list_free(list);
 
 	/*
-	 * If last handle is lower from previous start handle then it is smth
-	 * wrong. Let's stop search, otherwise we might enter infinite loop.
+	 * If last handle is lower from previous start handle or if iterating
+	 * to the next handle from the last possible offset would overflow, then
+	 * something is wrong. Let's stop search, otherwise we might enter
+	 * infinite loop.
 	 */
-	if (last < dd->start) {
+	if (last < dd->start || last == G_MAXUINT16) {
 		err = ATT_ECODE_UNLIKELY;
 		goto done;
 	}
