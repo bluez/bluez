@@ -720,7 +720,7 @@ static int open_file(const char *filename)
 	syslog(LOG_INFO, "Opening %s ...", filename);
 
 	fd = open(filename, O_RDONLY);
-	if (fd <= 0) {
+	if (fd < 0) {
 		syslog(LOG_ERR, "Can't open file %s: %s\n",
 						filename, strerror(errno));
 	}
