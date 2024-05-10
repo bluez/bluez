@@ -2299,7 +2299,7 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
 	sdp_list_t *p;
 
 	seqlen = sdp_list_len(proto);
-	seqDTDs = malloc(seqlen * sizeof(void *));
+	seqDTDs = bt_malloc0(seqlen * sizeof(void *));
 	if (!seqDTDs)
 		return NULL;
 
