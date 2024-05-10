@@ -2622,7 +2622,7 @@ static void foreach_aics_char(struct gatt_db_attribute *attr, void *user_data)
 			value_handle);
 
 		aics = vcp_get_aics(vcp);
-		if (!aics || aics->gain_stting_prop)
+		if (!aics || aics->aud_ip_type)
 			return;
 
 		aics->aud_ip_type = attr;
