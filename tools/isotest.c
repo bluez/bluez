@@ -950,6 +950,8 @@ static void send_mode(char *filename, char *peer, int i, bool repeat)
 			close(sk_arr[i]);
 
 		free(sk_arr);
+		if (fd >= 0)
+			close(fd);
 		return;
 	}
 
