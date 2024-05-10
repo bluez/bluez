@@ -47,6 +47,7 @@ struct rtt_desc {
 };
 
 static struct rtt_desc rtt_desc;
+static void *so = NULL;
 
 typedef int (*jlink_emu_selectbyusbsn_func) (unsigned int sn);
 typedef int (*jlink_open_func) (void);
@@ -80,7 +81,6 @@ static struct jlink jlink;
 
 int jlink_init(void)
 {
-	void *so;
 	unsigned int i;
 
 	for (i = 0; i < NELEM(jlink_so_name); i++) {
@@ -109,6 +109,7 @@ int jlink_init(void)
 			!jlink.emu_getproductname ||
 			!jlink.rtterminal_control || !jlink.rtterminal_read) {
 		dlclose(so);
+		so = NULL;
 		return -EIO;
 	}
 
