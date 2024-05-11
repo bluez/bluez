@@ -302,10 +302,10 @@ static void start_qemu(void)
 		const char *path = "/tmp/bt-server-bredr";
 		char *chrdev, *serdev;
 
-		chrdev = alloca(32 + strlen(path));
+		chrdev = alloca(48 + strlen(path));
 		sprintf(chrdev, "socket,path=%s,id=bt%d", path, i);
 
-		serdev = alloca(32);
+		serdev = alloca(48);
 		sprintf(serdev, "pci-serial,chardev=bt%d", i);
 
 		argv[pos++] = "-chardev";
