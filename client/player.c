@@ -5066,21 +5066,30 @@ static int transport_send(struct transport *transport, int fd,
 	if (timer_fd < 0)
 		return -errno;
 
-	memset(&ts, 0, sizeof(ts));
-	ts.it_value.tv_nsec = qos->latency * 1000000;
-	ts.it_interval.tv_nsec = qos->latency * 1000000;
+	/* Send data in bursts of
+	 * num = ROUND_CLOSEST(Transport_Latency (ms) / SDU_Interval (us))
+	 * with average data rate = 1 packet / SDU_Interval
+	 */
+	transport->num = ROUND_CLOSEST(qos->latency * 1000, qos->interval);
+	if (!transport->num)
+		transport->num = 1;
 
-	if (timerfd_settime(timer_fd, TFD_TIMER_ABSTIME, &ts, NULL) < 0)
+	memset(&ts, 0, sizeof(ts));
+	ts.it_value.tv_nsec = 1;
+	ts.it_interval.tv_nsec = transport->num * qos->interval * 1000;
+
+	if (timerfd_settime(timer_fd, TFD_TIMER_ABSTIME, &ts, NULL) < 0) {
+		close(timer_fd);
 		return -errno;
+	}
 
 	transport->fd = fd;
-	/* num of packets = ROUND_CLOSEST(latency (ms) / interval (us)) */
-	transport->num = ROUND_CLOSEST(qos->latency * 1000, qos->interval);
 	transport->timer_io = io_new(timer_fd);
 
 	io_set_read_handler(transport->timer_io, transport_timer_read,
 						transport, NULL);
 
+	/* One extra packet to buffers immediately */
 	return transport_send_seq(transport, fd, 1);
 }
 
