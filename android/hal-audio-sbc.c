@@ -257,7 +257,7 @@ static bool sbc_codec_init(struct audio_preset *preset, uint16_t payload_len,
 		return false;
 	}
 
-	sbc_data = calloc(sizeof(struct sbc_data), 1);
+	sbc_data = calloc(1, sizeof(struct sbc_data));
 	if (!sbc_data)
 		return false;
 
