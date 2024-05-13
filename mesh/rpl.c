@@ -31,7 +31,7 @@
 #include "mesh/util.h"
 #include "mesh/rpl.h"
 
-const char *rpl_dir = "/rpl";
+static const char *rpl_dir = "/rpl";
 
 bool rpl_put_entry(struct mesh_node *node, uint16_t src, uint32_t iv_index,
 								uint32_t seq)
