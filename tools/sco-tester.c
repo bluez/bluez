@@ -197,6 +197,12 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 static void test_pre_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = test_data;
+
+	if (scodata && scodata->so_timestamping) {
+		if (tester_pre_setup_skip_by_default())
+			return;
+	}
 
 	data->mgmt = mgmt_new_default();
 	if (!data->mgmt) {
