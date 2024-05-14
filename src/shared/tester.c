@@ -563,6 +563,38 @@ void tester_pre_setup_failed(void)
 	g_idle_add(done_callback, test);
 }
 
+void tester_pre_setup_abort(void)
+{
+	struct test_case *test;
+
+	if (!test_current)
+		return;
+
+	test = test_current->data;
+
+	if (test->stage != TEST_STAGE_PRE_SETUP)
+		return;
+
+	if (test->timeout_id > 0) {
+		timeout_remove(test->timeout_id);
+		test->timeout_id = 0;
+	}
+
+	print_progress(test->name, COLOR_YELLOW, "not run");
+
+	g_idle_add(done_callback, test);
+}
+
+bool tester_pre_setup_skip_by_default(void)
+{
+	if (!option_prefix && !option_string) {
+		tester_pre_setup_abort();
+		return true;
+	}
+
+	return false;
+}
+
 void tester_setup_complete(void)
 {
 	struct test_case *test;

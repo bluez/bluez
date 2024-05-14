@@ -59,6 +59,8 @@ void *tester_get_data(void);
 
 void tester_pre_setup_complete(void);
 void tester_pre_setup_failed(void);
+void tester_pre_setup_abort(void);
+bool tester_pre_setup_skip_by_default(void);
 
 void tester_setup_complete(void);
 void tester_setup_failed(void);
