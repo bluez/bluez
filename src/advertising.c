@@ -884,6 +884,13 @@ static int get_adv_flags(struct btd_adv_client *client)
 
 	flags |= client->flags;
 
+	/* Detect if the length is bigger that legacy and secondary is not set
+	 * then force it to be set to ensure the kernel uses EA.
+	 */
+	if (bt_ad_length(client->data) > BT_AD_MAX_DATA_LEN &&
+			!(flags & MGMT_ADV_FLAG_SEC_MASK))
+		flags |= MGMT_ADV_FLAG_SEC_1M;
+
 	return flags;
 }
 
