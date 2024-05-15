@@ -108,6 +108,8 @@ struct bt_ad *bt_ad_ref(struct bt_ad *ad);
 
 void bt_ad_unref(struct bt_ad *ad);
 
+size_t bt_ad_length(struct bt_ad *ad);
+
 uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length);
 
 bool bt_ad_is_empty(struct bt_ad *ad);

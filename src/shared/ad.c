@@ -520,9 +520,14 @@ static size_t data_length(struct queue *queue)
 	return length;
 }
 
-static size_t calculate_length(struct bt_ad *ad)
+size_t bt_ad_length(struct bt_ad *ad)
 {
-	size_t length = 0;
+	size_t length;
+
+	if (!ad)
+		return 0;
+
+	length = 0;
 
 	length += uuid_list_length(ad->service_uuids);
 
@@ -698,7 +703,7 @@ uint8_t *bt_ad_generate(struct bt_ad *ad, size_t *length)
 	if (!ad)
 		return NULL;
 
-	*length = calculate_length(ad);
+	*length = bt_ad_length(ad);
 
 	if (*length > ad->max_len)
 		return NULL;
