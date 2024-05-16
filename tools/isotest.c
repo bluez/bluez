@@ -1456,7 +1456,13 @@ int main(int argc, char *argv[])
 
 		switch (mode) {
 		case SEND:
-			send_mode(filename, argv[optind + i], i, repeat);
+			peer = argv[optind + i];
+			if (bachk(peer) < 0) {
+				fprintf(stderr, "Invalid peer address '%s'\n",
+						peer);
+				exit(1);
+			}
+			send_mode(filename, peer, i, repeat);
 			if (filename && strchr(filename, ',')) {
 				char *tmp = filename;
 				filename = strdup(strchr(filename, ',') + 1);
@@ -1474,6 +1480,11 @@ int main(int argc, char *argv[])
 
 		case CONNECT:
 			peer = argv[optind + i];
+			if (bachk(peer) < 0) {
+				fprintf(stderr, "Invalid peer address '%s'\n",
+						peer);
+				exit(1);
+			}
 
 			mgmt_set_experimental();
 
@@ -1511,7 +1522,7 @@ int main(int argc, char *argv[])
 
 				free(sk_arr);
 			} else {
-				sk = do_connect(argv[optind + i]);
+				sk = do_connect(peer);
 				if (sk < 0)
 					exit(1);
 
