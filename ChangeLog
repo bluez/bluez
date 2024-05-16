@@ -1,3 +1,10 @@
+ver 5.76:
+	Fix issue with broadcast channel location and stream capabilities.
+	Fix issue with handling BIS management and synchronization.
+	Fix issue with handling Extended Advertising.
+	Fix issue with UserspaceHID and replay structures.
+	Add support for providing PPCP characteristic.
+
 ver 5.75:
 	Fix issue with build system and header inclusion.
 
