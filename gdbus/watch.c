@@ -123,29 +123,51 @@ static struct filter_data *filter_data_find(DBusConnection *connection)
 	return NULL;
 }
 
-static void format_rule(struct filter_data *data, char *rule, size_t size)
+static gboolean format_rule(struct filter_data *data, char *rule, size_t size)
 {
 	const char *sender;
-	int offset;
+	int offset, ret;
 
 	offset = snprintf(rule, size, "type='signal'");
+	if (offset < 0)
+		return FALSE;
 	sender = data->name ? : data->owner;
 
-	if (sender)
-		offset += snprintf(rule + offset, size - offset,
+	if (sender) {
+		ret = snprintf(rule + offset, size - offset,
 				",sender='%s'", sender);
-	if (data->path)
-		offset += snprintf(rule + offset, size - offset,
+		if (ret < 0)
+			return FALSE;
+		offset += ret;
+	}
+	if (data->path) {
+		ret = snprintf(rule + offset, size - offset,
 				",path='%s'", data->path);
-	if (data->interface)
-		offset += snprintf(rule + offset, size - offset,
+		if (ret < 0)
+			return FALSE;
+		offset += ret;
+	}
+	if (data->interface) {
+		ret = snprintf(rule + offset, size - offset,
 				",interface='%s'", data->interface);
-	if (data->member)
-		offset += snprintf(rule + offset, size - offset,
+		if (ret < 0)
+			return FALSE;
+		offset += ret;
+	}
+	if (data->member) {
+		ret = snprintf(rule + offset, size - offset,
 				",member='%s'", data->member);
-	if (data->argument)
-		snprintf(rule + offset, size - offset,
+		if (ret < 0)
+			return FALSE;
+		offset += ret;
+	}
+	if (data->argument) {
+		ret = snprintf(rule + offset, size - offset,
 				",arg0='%s'", data->argument);
+		if (ret < 0)
+			return FALSE;
+	}
+	return TRUE;
 }
 
 static gboolean add_match(struct filter_data *data,
