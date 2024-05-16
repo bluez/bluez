@@ -1301,7 +1301,8 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 	}
 }
 
-static void stream_set_state(struct bt_bap_stream *stream, uint8_t state)
+/* Return false if the stream is being detached */
+static bool stream_set_state(struct bt_bap_stream *stream, uint8_t state)
 {
 	struct bt_bap *bap = stream->bap;
 
@@ -1311,13 +1312,14 @@ static void stream_set_state(struct bt_bap_stream *stream, uint8_t state)
 	bap = bt_bap_ref_safe(bap);
 	if (!bap) {
 		bap_stream_detach(stream);
-		return;
+		return false;
 	}
 
 	if (stream->ops && stream->ops->set_state)
 		stream->ops->set_state(stream, state);
 
 	bt_bap_unref(bap);
+	return true;
 }
 
 static void ep_config_cb(struct bt_bap_stream *stream, int err)
@@ -2581,7 +2583,8 @@ static uint8_t stream_enable(struct bt_bap_stream *stream, struct iovec *meta,
 	util_iov_free(stream->meta, 1);
 	stream->meta = util_iov_dup(meta, 1);
 
-	stream_set_state(stream, BT_BAP_STREAM_STATE_ENABLING);
+	if (!stream_set_state(stream, BT_BAP_STREAM_STATE_ENABLING))
+		return 1;
 
 	/* Sink can autonomously for to Streaming state if io already exits */
 	if (stream->io && stream->ep->dir == BT_BAP_SINK)
