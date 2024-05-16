@@ -1243,15 +1243,22 @@ static void at_cmd_cind(struct hfp_context *result, enum hfp_gw_cmd_type type,
 		}
 
 		buf = g_malloc(len);
-
-		ptr = buf + sprintf(buf, "+CIND:");
+		if (sprintf(buf, "+CIND:") != strlen("+CIND:")) {
+			g_free(buf);
+			break;
+		}
+		ptr = buf + strlen("+CIND:");
 
 		for (i = 0; i < IND_COUNT; i++) {
-			ptr += sprintf(ptr, "(\"%s\",(%d%c%d)),",
+			int printed;
+			printed = sprintf(ptr, "(\"%s\",(%d%c%d)),",
 					dev->inds[i].name,
 					dev->inds[i].min,
 					dev->inds[i].max == 1 ? ',' : '-',
 					dev->inds[i].max);
+			if (printed < 0)
+				goto fail;
+			ptr += printed;
 		}
 
 		ptr--;
@@ -1273,6 +1280,7 @@ static void at_cmd_cind(struct hfp_context *result, enum hfp_gw_cmd_type type,
 		break;
 	}
 
+fail:
 	hfp_gw_send_result(dev->gw, HFP_RESULT_ERROR);
 
 	if (dev->state != HAL_EV_HANDSFREE_CONN_STATE_SLC_CONNECTED)
