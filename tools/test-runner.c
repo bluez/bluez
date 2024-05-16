@@ -912,6 +912,11 @@ static void run_command(char *cmdname, char *home)
 		audio_pid[0] = audio_pid[1] = -1;
 
 start_next:
+	if (!run_auto && !cmdname) {
+		fprintf(stderr, "Missing command argument\n");
+		return;
+	}
+
 	if (run_auto) {
 		if (chdir(home + 5) < 0) {
 			perror("Failed to change home test directory");
