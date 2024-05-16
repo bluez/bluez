@@ -12656,18 +12656,22 @@ static void verify_devcd(void *user_data)
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
 	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
-	char buf[MAX_COREDUMP_BUF_LEN] = {0};
+	char buf[MAX_COREDUMP_BUF_LEN + 1] = {0};
+	int read;
 	char delim[] = "\n";
 	char *line;
 	char *saveptr;
 	int i = 0;
 
 	/* Read the generated devcoredump file */
-	if (vhci_read_devcd(vhci, buf, sizeof(buf)) <= 0) {
+	read = vhci_read_devcd(vhci, buf, MAX_COREDUMP_BUF_LEN);
+	if (read <= 0) {
 		tester_warn("Unable to read devcoredump");
 		tester_test_failed();
 		return;
 	}
+	/* Make sure buf is nul-terminated */
+	buf[read + 1] = '\0';
 
 	/* Verify if all devcoredump header fields are present */
 	line = strtok_r(buf, delim, &saveptr);
