@@ -1457,8 +1457,11 @@ int main(int argc, char *argv[])
 		switch (mode) {
 		case SEND:
 			send_mode(filename, argv[optind + i], i, repeat);
-			if (filename && strchr(filename, ','))
-				filename = strchr(filename, ',') + 1;
+			if (filename && strchr(filename, ',')) {
+				char *tmp = filename;
+				filename = strdup(strchr(filename, ',') + 1);
+				free(tmp);
+			}
 			break;
 
 		case RECONNECT:
