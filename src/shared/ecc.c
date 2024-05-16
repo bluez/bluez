@@ -870,6 +870,8 @@ bool ecc_make_key(uint8_t public_key[64], uint8_t private_key[32])
 	uint64_t priv[NUM_ECC_DIGITS];
 	unsigned int tries = 0;
 
+	memset(&pk, 0, sizeof(pk));
+
 	do {
 		if (!get_random_number(priv) || (tries++ >= MAX_TRIES))
 			return false;
