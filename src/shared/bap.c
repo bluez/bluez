@@ -6398,9 +6398,11 @@ static void check_local_pac(void *data, void *user_data)
 
 		/* We have a match if all selected LTVs have a match */
 		if ((bis_compare_data.data32 &
-			CODEC_SPECIFIC_CONFIGURATION_MASK) ==
-			CODEC_SPECIFIC_CONFIGURATION_MASK)
+				CODEC_SPECIFIC_CONFIGURATION_MASK) ==
+				CODEC_SPECIFIC_CONFIGURATION_MASK) {
 			compare_data->found = true;
+			compare_data->data = data;
+		}
 	}
 }
 
@@ -6482,6 +6484,7 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 	match_data = bap_check_bis(bap->ldb, merge_data.result);
 	if (match_data.found == true) {
 		*caps = merge_data.result;
+		*lpac = match_data.data;
 		DBG(bap, "Matching BIS %i", bis_index);
 	} else {
 		util_iov_free(merge_data.result, 1);
