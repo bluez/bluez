@@ -952,6 +952,8 @@ start_next:
 	pid = fork();
 	if (pid < 0) {
 		perror("Failed to fork new process");
+		if (serial_fd >= 0)
+			close(serial_fd);
 		return;
 	}
 
