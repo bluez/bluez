@@ -6521,3 +6521,24 @@ void bt_bap_add_bis(struct bt_bap *bap, uint8_t bis_index,
 cleanup:
 	util_iov_free(merge_data.result, 1);
 }
+
+void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+		struct bt_bap_codec *codec,
+		struct iovec *l2_caps,
+		struct iovec *l3_caps,
+		struct bt_bap_pac **lpac,
+		struct iovec **caps)
+{
+	struct bt_ltv_extract merge_data = {0};
+
+	merge_data.src = l3_caps;
+	merge_data.result = new0(struct iovec, 1);
+
+	/* Create a Codec Specific Configuration with LTVs at level 2 (subgroup)
+	 * overwritten by LTVs at level 3 (BIS)
+	 */
+	util_ltv_foreach(l2_caps->iov_base,
+			l2_caps->iov_len,
+			NULL,
+			bap_sink_check_level2_ltv, &merge_data);
+}

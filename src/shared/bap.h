@@ -257,3 +257,10 @@ void bt_bap_add_bis(struct bt_bap *bap, uint8_t bis_index,
 		struct iovec *l3_caps,
 		struct iovec *meta);
 
+void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+		struct bt_bap_codec *codec,
+		struct iovec *l2_caps,
+		struct iovec *l3_caps,
+		struct bt_bap_pac **lpac,
+		struct iovec **caps);
+
