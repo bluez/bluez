@@ -641,7 +641,7 @@ static const char *monitor_table[] = {
 static pid_t start_btmon(const char *home)
 {
 	const char *monitor = NULL;
-	char *argv[3], *envp[2];
+	char *argv[3];
 	pid_t pid;
 	int i;
 
@@ -679,7 +679,7 @@ static pid_t start_btmon(const char *home)
 	}
 
 	if (pid == 0) {
-		execve(argv[0], argv, envp);
+		execv(argv[0], argv);
 		exit(EXIT_SUCCESS);
 	}
 
