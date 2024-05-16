@@ -2021,6 +2021,7 @@ static struct l_dbus_message *scan_result_call(struct l_dbus *dbus,
 	result.server = server;
 	result.rssi = rssi;
 	result.id = 0;
+	result.last_seen = time(NULL);
 
 	if (n > 16 && n <= 18)
 		result.oob_info = l_get_be16(prov_data + 16);
@@ -2042,8 +2043,6 @@ static struct l_dbus_message *scan_result_call(struct l_dbus *dbus,
 
 	} else if (dev->rssi < result.rssi)
 		*dev = result;
-
-	dev->last_seen = time(NULL);
 
 	l_queue_insert(devices, dev, sort_rssi, NULL);
 
