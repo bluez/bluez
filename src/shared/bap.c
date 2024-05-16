@@ -6071,12 +6071,18 @@ static struct iovec *generate_base(struct bt_base *base)
 
 	base_iov->iov_base = util_malloc(BASE_MAX_LENGTH);
 
-	if (!util_iov_push_le24(base_iov, base->pres_delay))
+	if (!util_iov_push_le24(base_iov, base->pres_delay)) {
+		free(base_iov->iov_base);
+		free(base_iov);
 		return NULL;
+	}
 
 	if (!util_iov_push_u8(base_iov,
-			queue_length(base->subgroups)))
+			queue_length(base->subgroups))) {
+		free(base_iov->iov_base);
+		free(base_iov);
 		return NULL;
+	}
 
 	queue_foreach(base->subgroups, generate_subgroup_base,
 				base_iov);
