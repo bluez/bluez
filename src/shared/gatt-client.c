@@ -1666,7 +1666,7 @@ static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
 					bt_gatt_client_callback_t callback)
 {
 	unsigned int att_id;
-	uint16_t value;
+	uint16_t value = 0x0000;
 	uint16_t properties = notify_data->chrc->properties;
 
 	assert(notify_data->chrc->ccc_handle);
