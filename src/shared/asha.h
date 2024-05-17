@@ -32,7 +32,6 @@ struct bt_asha_device {
 	uint16_t acp_handle;
 	uint16_t volume_handle;
 	unsigned int status_notify_id;
-	unsigned int volume_notify_id;
 
 	uint16_t psm;
 	bool right_side;

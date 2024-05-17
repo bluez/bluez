@@ -66,11 +66,6 @@ void bt_asha_device_reset(struct bt_asha_device *asha)
 						asha->status_notify_id);
 	}
 
-	if (asha->volume_notify_id) {
-		bt_gatt_client_unregister_notify(asha->client,
-						asha->volume_notify_id);
-	}
-
 	gatt_db_unref(asha->db);
 	asha->db = NULL;
 
@@ -296,10 +291,10 @@ int8_t bt_asha_device_get_volume(struct bt_asha_device *asha)
 
 bool bt_asha_device_set_volume(struct bt_asha_device *asha, int8_t volume)
 {
-	if (!bt_gatt_client_write_value(asha->client, asha->volume_handle,
-				(const uint8_t *)&volume, 1, NULL, NULL,
-				NULL)) {
-		error("Error writing ACP start");
+	if (!bt_gatt_client_write_without_response(asha->client,
+						asha->volume_handle, false,
+						(const uint8_t *)&volume, 1)) {
+		error("Error writing volume");
 		return false;
 	}
 
@@ -419,39 +414,6 @@ static void audio_status_notify(uint16_t value_handle, const uint8_t *value,
 	}
 }
 
-static void read_volume(bool success,
-			uint8_t att_ecode,
-			const uint8_t *value,
-			uint16_t length,
-			void *user_data)
-{
-	struct bt_asha_device *asha = user_data;
-
-	if (!success) {
-		DBG("Reading volume failed with ATT error: %u", att_ecode);
-		return;
-	}
-
-	if (length != 2) {
-		DBG("Reading volume failed: unexpected length %u", length);
-		return;
-	}
-
-	asha->volume = get_s8(value);
-
-	DBG("Got volume: %d", asha->volume);
-}
-
-static void volume_notify(uint16_t value_handle, const uint8_t *value,
-					uint16_t length, void *user_data)
-{
-	struct bt_asha_device *asha = user_data;
-
-	asha->volume = get_s8(value);
-
-	DBG("Volume changed: %d", asha->volume);
-}
-
 static void handle_characteristic(struct gatt_db_attribute *attr,
 								void *user_data)
 {
@@ -477,17 +439,8 @@ static void handle_characteristic(struct gatt_db_attribute *attr,
 		/* Store this for later writes */
 		asha->acp_handle = value_handle;
 	} else if (uuid_cmp(ASHA_CHRC_VOLUME_UUID, &uuid)) {
-		/* Store this for later reads and writes */
+		/* Store this for later writes */
 		asha->volume_handle = value_handle;
-		asha->volume_notify_id =
-			bt_gatt_client_register_notify(asha->client,
-				value_handle, NULL, volume_notify, asha,
-				NULL);
-		if (!asha->status_notify_id)
-			DBG("Failed to send request to notify volume");
-		if (!bt_gatt_client_read_value(asha->client, value_handle,
-					read_volume, asha, NULL))
-			DBG("Failed to send request to volume");
 	} else if (uuid_cmp(ASHA_CHRC_AUDIO_STATUS_UUID, &uuid)) {
 		asha->status_notify_id =
 			bt_gatt_client_register_notify(asha->client,
