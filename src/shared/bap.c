@@ -250,6 +250,7 @@ struct bt_bap_stream_ops {
 	unsigned int (*get_loc)(struct bt_bap_stream *stream);
 	unsigned int (*release)(struct bt_bap_stream *stream,
 				bt_bap_stream_func_t func, void *user_data);
+	void (*detach)(struct bt_bap_stream *stream);
 };
 
 struct bt_bap_stream {
@@ -1171,7 +1172,7 @@ static void bap_abort_stream_req(struct bt_bap *bap,
 	queue_remove_all(bap->reqs, match_req_stream, stream, bap_req_abort);
 }
 
-static void bap_stream_detach(struct bt_bap_stream *stream)
+static void bap_ucast_detach(struct bt_bap_stream *stream)
 {
 	struct bt_bap_endpoint *ep = stream->ep;
 
@@ -1187,6 +1188,34 @@ static void bap_stream_detach(struct bt_bap_stream *stream)
 
 	stream->ep = NULL;
 	ep->stream = NULL;
+	bap_stream_free(stream);
+}
+
+static void bap_bcast_src_detach(struct bt_bap_stream *stream)
+{
+	struct bt_bap_endpoint *ep = stream->ep;
+
+	if (!ep)
+		return;
+
+	DBG(stream->bap, "stream %p ep %p", stream, ep);
+
+	queue_remove(stream->bap->streams, stream);
+	bap_stream_clear_cfm(stream);
+
+	stream->ep = NULL;
+	ep->stream = NULL;
+
+	bap_stream_free(stream);
+}
+
+static void bap_bcast_sink_detach(struct bt_bap_stream *stream)
+{
+	DBG(stream->bap, "stream %p", stream);
+
+	queue_remove(stream->bap->streams, stream);
+	bap_stream_clear_cfm(stream);
+
 	bap_stream_free(stream);
 }
 
@@ -1285,7 +1314,10 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 			bap_req_complete(bap->req, NULL);
 			bap->req = NULL;
 		}
-		bap_stream_detach(stream);
+
+		if (stream->ops && stream->ops->detach)
+			stream->ops->detach(stream);
+
 		break;
 	case BT_ASCS_ASE_STATE_QOS:
 		break;
@@ -1311,7 +1343,9 @@ static bool stream_set_state(struct bt_bap_stream *stream, uint8_t state)
 	 */
 	bap = bt_bap_ref_safe(bap);
 	if (!bap) {
-		bap_stream_detach(stream);
+		if (stream->ops && stream->ops->detach)
+			stream->ops->detach(stream);
+
 		return false;
 	}
 
@@ -2018,7 +2052,8 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 	/* Post notification updates */
 	switch (stream->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
-		bap_stream_detach(stream);
+		if (stream->ops && stream->ops->detach)
+			stream->ops->detach(stream);
 		break;
 	case BT_ASCS_ASE_STATE_DISABLING:
 		bap_stream_io_detach(stream);
@@ -2134,7 +2169,8 @@ static unsigned int bap_bcast_release(struct bt_bap_stream *stream,
 }
 
 #define STREAM_OPS(_type, _set_state, _get_state, _config, _qos, _enable, \
-	_start, _disable, _stop, _metadata, _get_dir, _get_loc, _release) \
+	_start, _disable, _stop, _metadata, _get_dir, _get_loc, _release, \
+	_detach) \
 { \
 	.type = _type, \
 	.set_state = _set_state, \
@@ -2149,6 +2185,7 @@ static unsigned int bap_bcast_release(struct bt_bap_stream *stream,
 	.get_dir = _get_dir,\
 	.get_loc = _get_loc, \
 	.release = _release, \
+	.detach = _detach, \
 }
 
 static const struct bt_bap_stream_ops stream_ops[] = {
@@ -2158,28 +2195,28 @@ static const struct bt_bap_stream_ops stream_ops[] = {
 			bap_ucast_start, bap_ucast_disable, bap_ucast_stop,
 			bap_ucast_metadata, bap_ucast_get_dir,
 			bap_ucast_get_location,
-			bap_ucast_release),
+			bap_ucast_release, bap_ucast_detach),
 	STREAM_OPS(BT_BAP_SOURCE, bap_ucast_set_state,
 			bap_ucast_get_state,
 			bap_ucast_config, bap_ucast_qos, bap_ucast_enable,
 			bap_ucast_start, bap_ucast_disable, bap_ucast_stop,
 			bap_ucast_metadata, bap_ucast_get_dir,
 			bap_ucast_get_location,
-			bap_ucast_release),
+			bap_ucast_release, bap_ucast_detach),
 	STREAM_OPS(BT_BAP_BCAST_SINK, bap_bcast_set_state,
 			bap_bcast_get_state,
 			bap_bcast_config, NULL, bap_bcast_enable,
 			bap_bcast_start, bap_bcast_sink_disable, NULL,
 			bap_bcast_metadata, bap_bcast_sink_get_dir,
 			bap_bcast_get_location,
-			bap_bcast_release),
+			bap_bcast_release, bap_bcast_sink_detach),
 	STREAM_OPS(BT_BAP_BCAST_SOURCE, bap_bcast_set_state,
 			bap_bcast_get_state,
 			bap_bcast_config, NULL, bap_bcast_enable,
 			bap_bcast_start, bap_bcast_disable, NULL,
 			bap_bcast_metadata, bap_bcast_src_get_dir,
 			bap_bcast_get_location,
-			bap_bcast_release),
+			bap_bcast_release, bap_bcast_src_detach),
 };
 
 static const struct bt_bap_stream_ops *
