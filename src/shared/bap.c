@@ -6531,6 +6531,20 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 	struct bt_ltv_extract merge_data = {0};
 	struct bt_ltv_match match_data;
 
+	if (!l2_caps)
+		/* Codec_Specific_Configuration parameters shall
+		 * be present at Level 2.
+		 */
+		return;
+
+	if (!l3_caps) {
+		/* Codec_Specific_Configuration parameters may
+		 * be present at Level 3.
+		 */
+		merge_data.result = util_iov_dup(l2_caps, 1);
+		goto done;
+	}
+
 	merge_data.src = l3_caps;
 	merge_data.result = new0(struct iovec, 1);
 
@@ -6542,6 +6556,7 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 			NULL,
 			bap_sink_check_level2_ltv, &merge_data);
 
+done:
 	/* Check each BIS Codec Specific Configuration LTVs against our Codec
 	 * Specific Capabilities and if the BIS matches create a PAC with it
 	 */
