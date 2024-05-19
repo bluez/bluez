@@ -1842,6 +1842,30 @@ static guint transport_asha_suspend(struct media_transport *transport,
 	return ret;
 }
 
+static void transport_asha_cancel(struct media_transport *transport, guint id)
+{
+	struct bt_asha_device *asha = transport->data;
+	enum bt_asha_state_t state = bt_asha_device_get_state(asha);
+
+	if (id != asha->resume_id) {
+		/* Not current, ignore */
+		DBG("Ignoring cancel request for id %d", id);
+		return;
+	}
+
+	if (state == ASHA_STARTING || state == ASHA_STARTED) {
+		DBG("Cancel requested, stopping");
+		bt_asha_device_stop(asha, NULL, NULL);
+		/* We won't have a callback to set the final state */
+		transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	} else if (state == ASHA_STOPPING) {
+		DBG("Cancel requested, resetting transport state");
+		/* We already dispatched a stop, just reset our state */
+		bt_asha_state_reset(asha);
+		transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	}
+}
+
 static int8_t transport_asha_get_volume(struct media_transport *transport)
 {
 	struct bt_asha_device *asha = transport->data;
@@ -1919,7 +1943,7 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 	TRANSPORT_OPS(_uuid, transport_asha_properties, NULL, NULL, \
 			transport_asha_init, \
 			transport_asha_resume, transport_asha_suspend, \
-			NULL, NULL, NULL, \
+			transport_asha_cancel, NULL, NULL, \
 			transport_asha_get_volume, transport_asha_set_volume, \
 			NULL)
 
