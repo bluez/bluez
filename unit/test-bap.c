@@ -6343,6 +6343,214 @@ static void test_bsnk_scc(void)
 		NULL, test_bcast, &cfg_bsnk_vs, IOV_NULL);
 }
 
+static void bsnk_state_str(struct bt_bap_stream *stream, uint8_t old_state,
+				uint8_t new_state, void *user_data)
+{
+	struct test_data *data = user_data;
+	struct iovec *cc;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_CONFIG:
+		if (old_state == BT_BAP_STREAM_STATE_IDLE) {
+			/* Check that stream has been configured as expected */
+			cc = bt_bap_stream_get_config(stream);
+
+			g_assert(cc);
+			g_assert(cc->iov_len == data->cfg->cc.iov_len);
+			g_assert(memcmp(cc->iov_base, data->cfg->cc.iov_base,
+					cc->iov_len) == 0);
+
+			/* Enable stream */
+			bt_bap_stream_enable(stream, true, NULL, NULL, NULL);
+		} else if (old_state == BT_BAP_STREAM_STATE_CONFIG) {
+			/* Start stream */
+			bt_bap_stream_start(stream, NULL, NULL);
+		} else {
+			/* Other state transitions are invalid */
+			tester_test_failed();
+		}
+
+		break;
+	case BT_BAP_STREAM_STATE_STREAMING:
+		tester_test_passed();
+		break;
+	}
+}
+
+static struct test_config cfg_bsnk_str_8_1 = {
+	.cc = LC3_CONFIG_8_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_8_2 = {
+	.cc = LC3_CONFIG_8_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_16_1 = {
+	.cc = LC3_CONFIG_16_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_16_2 = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_24_1 = {
+	.cc = LC3_CONFIG_24_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_24_2 = {
+	.cc = LC3_CONFIG_24_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_32_1 = {
+	.cc = LC3_CONFIG_32_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_32_2 = {
+	.cc = LC3_CONFIG_32_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_44_1 = {
+	.cc = LC3_CONFIG_44_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_44_2 = {
+	.cc = LC3_CONFIG_44_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_48_1 = {
+	.cc = LC3_CONFIG_48_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_48_2 = {
+	.cc = LC3_CONFIG_48_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_48_3 = {
+	.cc = LC3_CONFIG_48_3,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_48_4 = {
+	.cc = LC3_CONFIG_48_4,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_48_5 = {
+	.cc = LC3_CONFIG_48_5,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_48_6 = {
+	.cc = LC3_CONFIG_48_6,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+};
+
+static struct test_config cfg_bsnk_str_vs = {
+	.cc = UTIL_IOV_INIT(VS_CC),
+	.qos = QOS_BCAST,
+	.snk = true,
+	.vs = true,
+	.state_func = bsnk_state_str,
+};
+
+static void test_bsnk_str(void)
+{
+	define_test("BAP/BSNK/STR/BV-01-C [BSNK, LC3 8_1]",
+		NULL, test_bcast, &cfg_bsnk_str_8_1, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-02-C [BSNK, LC3 8_2]",
+		NULL, test_bcast, &cfg_bsnk_str_8_2, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-03-C [BSNK, LC3 16_1]",
+		NULL, test_bcast, &cfg_bsnk_str_16_1, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-04-C [BSNK, LC3 16_2]",
+		NULL, test_bcast, &cfg_bsnk_str_16_2, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-05-C [BSNK, LC3 24_1]",
+		NULL, test_bcast, &cfg_bsnk_str_24_1, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-06-C [BSNK, LC3 24_2]",
+		NULL, test_bcast, &cfg_bsnk_str_24_2, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-07-C [BSNK, LC3 32_1]",
+		NULL, test_bcast, &cfg_bsnk_str_32_1, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-08-C [BSNK, LC3 32_2]",
+		NULL, test_bcast, &cfg_bsnk_str_32_2, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-09-C [BSNK, LC3 44.1_1]",
+		NULL, test_bcast, &cfg_bsnk_str_44_1, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-10-C [BSNK, LC3 44.1_2]",
+		NULL, test_bcast, &cfg_bsnk_str_44_2, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-11-C [BSNK, LC3 48_1]",
+		NULL, test_bcast, &cfg_bsnk_str_48_1, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-12-C [BSNK, LC3 48_2]",
+		NULL, test_bcast, &cfg_bsnk_str_48_2, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-13-C [BSNK, LC3 48_3]",
+		NULL, test_bcast, &cfg_bsnk_str_48_3, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-14-C [BSNK, LC3 48_4]",
+		NULL, test_bcast, &cfg_bsnk_str_48_4, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-15-C [BSNK, LC3 48_5]",
+		NULL, test_bcast, &cfg_bsnk_str_48_5, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-16-C [BSNK, LC3 48_6]",
+		NULL, test_bcast, &cfg_bsnk_str_48_6, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-17-C [BSNK, VS]",
+		NULL, test_bcast, &cfg_bsnk_str_vs, IOV_NULL);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -6351,6 +6559,7 @@ int main(int argc, char *argv[])
 	test_scc();
 	test_bsrc_scc();
 	test_bsnk_scc();
+	test_bsnk_str();
 
 	return tester_run();
 }
