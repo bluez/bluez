@@ -420,6 +420,7 @@ static void handle_characteristic(struct gatt_db_attribute *attr,
 	struct bt_asha_device *asha = user_data;
 	uint16_t value_handle;
 	bt_uuid_t uuid;
+	char uuid_str[MAX_LEN_UUID_STR];
 
 	if (!gatt_db_attribute_get_char_data(attr, NULL, &value_handle, NULL,
 								NULL, &uuid)) {
@@ -427,21 +428,29 @@ static void handle_characteristic(struct gatt_db_attribute *attr,
 		return;
 	}
 
+	bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
 	if (uuid_cmp(ASHA_CHRC_LE_PSM_OUT_UUID, &uuid)) {
+		DBG("Got chrc %s/0x%x: LE_PSM_ID", uuid_str, value_handle);
 		if (!bt_gatt_client_read_value(asha->client, value_handle,
 					read_psm, asha, NULL))
-			DBG("Failed to send request to read PSM");
+			DBG("Failed to send request to read battery level");
 	} else if (uuid_cmp(ASHA_CHRC_READ_ONLY_PROPERTIES_UUID, &uuid)) {
+		DBG("Got chrc %s/0x%x: READ_ONLY_PROPERTIES", uuid_str,
+								value_handle);
 		if (!bt_gatt_client_read_value(asha->client, value_handle,
 					read_rops, asha, NULL))
 			DBG("Failed to send request for readonly properties");
 	} else if (uuid_cmp(ASHA_CHRC_AUDIO_CONTROL_POINT_UUID, &uuid)) {
+		DBG("Got chrc %s/0x%x: AUDIO_CONTROL_POINT", uuid_str,
+								value_handle);
 		/* Store this for later writes */
 		asha->acp_handle = value_handle;
 	} else if (uuid_cmp(ASHA_CHRC_VOLUME_UUID, &uuid)) {
+		DBG("Got chrc %s/0x%x: VOLUME", uuid_str, value_handle);
 		/* Store this for later writes */
 		asha->volume_handle = value_handle;
 	} else if (uuid_cmp(ASHA_CHRC_AUDIO_STATUS_UUID, &uuid)) {
+		DBG("Got chrc %s/0x%x: AUDIO_STATUS", uuid_str, value_handle);
 		asha->status_notify_id =
 			bt_gatt_client_register_notify(asha->client,
 				value_handle, audio_status_register,
@@ -449,9 +458,6 @@ static void handle_characteristic(struct gatt_db_attribute *attr,
 		if (!asha->status_notify_id)
 			DBG("Failed to send request to notify AudioStatus");
 	} else {
-		char uuid_str[MAX_LEN_UUID_STR];
-
-		bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
 		DBG("Unsupported characteristic: %s", uuid_str);
 	}
 }
