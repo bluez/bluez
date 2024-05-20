@@ -206,7 +206,7 @@ static int hog_disconnect(struct btd_service *service)
 {
 	struct hog_device *dev = btd_service_get_user_data(service);
 
-	bt_hog_detach(dev->hog);
+	bt_hog_detach(dev->hog, false);
 
 	btd_service_disconnecting_complete(service, 0);
 

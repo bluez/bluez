@@ -1232,7 +1232,7 @@ static void hog_free(void *data)
 {
 	struct bt_hog *hog = data;
 
-	bt_hog_detach(hog);
+	bt_hog_detach(hog, true);
 	uhid_destroy(hog);
 
 	queue_destroy(hog->bas, (void *) bt_bas_unref);
@@ -1747,7 +1747,7 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 	return true;
 }
 
-void bt_hog_detach(struct bt_hog *hog)
+void bt_hog_detach(struct bt_hog *hog, bool force)
 {
 	GSList *l;
 
@@ -1759,7 +1759,7 @@ void bt_hog_detach(struct bt_hog *hog)
 	for (l = hog->instances; l; l = l->next) {
 		struct bt_hog *instance = l->data;
 
-		bt_hog_detach(instance);
+		bt_hog_detach(instance, force);
 	}
 
 	for (l = hog->reports; l; l = l->next) {
@@ -1780,6 +1780,9 @@ void bt_hog_detach(struct bt_hog *hog)
 	queue_remove_all(hog->gatt_op, cancel_gatt_req, hog, destroy_gatt_req);
 	g_attrib_unref(hog->attrib);
 	hog->attrib = NULL;
+
+	if (force)
+		uhid_destroy(hog);
 }
 
 int bt_hog_set_control_point(struct bt_hog *hog, bool suspend)
