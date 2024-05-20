@@ -50,6 +50,7 @@
 struct hog_device {
 	struct btd_device	*device;
 	struct bt_hog		*hog;
+	uint8_t			type;
 };
 
 static gboolean suspend_supported = FALSE;
@@ -64,7 +65,7 @@ void input_set_auto_sec(bool state)
 static void hog_device_accept(struct hog_device *dev, struct gatt_db *db)
 {
 	char name[248];
-	uint16_t vendor, product, version;
+	uint16_t vendor, product, version, type;
 
 	if (dev->hog)
 		return;
@@ -77,11 +78,12 @@ static void hog_device_accept(struct hog_device *dev, struct gatt_db *db)
 	vendor = btd_device_get_vendor(dev->device);
 	product = btd_device_get_product(dev->device);
 	version = btd_device_get_version(dev->device);
+	type = bt_uhid_icon_to_type(btd_device_get_icon(dev->device));
 
 	DBG("name=%s vendor=0x%X, product=0x%X, version=0x%X", name, vendor,
 							product, version);
 
-	dev->hog = bt_hog_new_default(name, vendor, product, version, db);
+	dev->hog = bt_hog_new_default(name, vendor, product, version, type, db);
 }
 
 static struct hog_device *hog_device_new(struct btd_device *device)

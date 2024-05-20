@@ -182,7 +182,7 @@ static struct context *create_context(gconstpointer data)
 	fd = open("/dev/null", O_WRONLY | O_CLOEXEC);
 	g_assert(fd > 0);
 
-	context->hog = bt_hog_new(fd, name, vendor, product, version, NULL);
+	context->hog = bt_hog_new(fd, name, vendor, product, version, 0, NULL);
 	g_assert(context->hog);
 
 	channel = g_io_channel_unix_new(sv[1]);

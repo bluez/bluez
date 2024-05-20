@@ -44,6 +44,7 @@ struct bt_uhid {
 	unsigned int notify_id;
 	struct queue *notify_list;
 	struct queue *input;
+	uint8_t type;
 	bool created;
 	bool started;
 	struct uhid_replay *replay;
@@ -338,8 +339,8 @@ static void uhid_start(struct uhid_event *ev, void *user_data)
 
 int bt_uhid_create(struct bt_uhid *uhid, const char *name, bdaddr_t *src,
 			bdaddr_t *dst, uint32_t vendor, uint32_t product,
-			uint32_t version, uint32_t country, void *rd_data,
-			size_t rd_size)
+			uint32_t version, uint32_t country, uint8_t type,
+			void *rd_data, size_t rd_size)
 {
 	struct uhid_event ev;
 	int err;
@@ -381,6 +382,7 @@ int bt_uhid_create(struct bt_uhid *uhid, const char *name, bdaddr_t *src,
 
 	uhid->created = true;
 	uhid->started = false;
+	uhid->type = type;
 
 	return 0;
 }
@@ -487,7 +489,7 @@ done:
 	return bt_uhid_send(uhid, &ev);
 }
 
-int bt_uhid_destroy(struct bt_uhid *uhid)
+int bt_uhid_destroy(struct bt_uhid *uhid, bool force)
 {
 	struct uhid_event ev;
 	int err;
@@ -495,7 +497,14 @@ int bt_uhid_destroy(struct bt_uhid *uhid)
 	if (!uhid)
 		return -EINVAL;
 
-	if (!uhid->created)
+	/* Force destroy for non-keyboard devices - keyboards are not destroyed
+	 * on disconnect since they can glitch on reconnection losing
+	 * keypresses.
+	 */
+	if (!force && uhid->type != BT_UHID_KEYBOARD)
+		force = true;
+
+	if (!uhid->created || !force)
 		return 0;
 
 	memset(&ev, 0, sizeof(ev));

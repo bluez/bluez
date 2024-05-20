@@ -231,13 +231,13 @@ static void test_client(gconstpointer data)
 	struct context *context = create_context(data);
 	int err;
 
-	err = bt_uhid_create(context->uhid, "", NULL, NULL, 0, 0, 0, 0, NULL,
-				0);
+	err = bt_uhid_create(context->uhid, "", NULL, NULL, 0, 0, 0, 0,
+				BT_UHID_NONE, NULL, 0);
 	if (err < 0)
 		tester_test_failed();
 
 	if (g_str_equal(context->data->test_name, "/uhid/command/destroy")) {
-		err = bt_uhid_destroy(context->uhid);
+		err = bt_uhid_destroy(context->uhid, true);
 		if (err < 0)
 			tester_test_failed();
 	}

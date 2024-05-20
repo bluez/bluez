@@ -84,6 +84,7 @@ struct input_device {
 	unsigned int		report_req_timer;
 	uint32_t		report_rsp_id;
 	bool			virtual_cable_unplug;
+	uint8_t			type;
 	unsigned int		idle_timer;
 };
 
@@ -174,17 +175,18 @@ static int uhid_disconnect(struct input_device *idev, bool force)
 	if (!bt_uhid_created(idev->uhid))
 		return 0;
 
-	/* Only destroy the node if virtual cable unplug flag has been set */
-	if (!idev->virtual_cable_unplug && !force)
-		return 0;
+	/* Force destroy the node if virtual cable unplug flag has been set */
+	if (idev->virtual_cable_unplug && !force)
+		force = true;
 
-	bt_uhid_unregister_all(idev->uhid);
-
-	err = bt_uhid_destroy(idev->uhid);
+	err = bt_uhid_destroy(idev->uhid, force);
 	if (err < 0) {
 		error("bt_uhid_destroy: %s", strerror(-err));
 		return err;
 	}
+
+	if (!bt_uhid_created(idev->uhid))
+		bt_uhid_unregister_all(idev->uhid);
 
 	return err;
 }
@@ -989,7 +991,8 @@ static int uhid_connadd(struct input_device *idev, struct hidp_connadd_req *req)
 
 	err = bt_uhid_create(idev->uhid, req->name, &idev->src, &idev->dst,
 				req->vendor, req->product, req->version,
-				req->country, req->rd_data, req->rd_size);
+				req->country, idev->type,
+				req->rd_data, req->rd_size);
 	if (err < 0) {
 		error("bt_uhid_create: %s", strerror(-err));
 		return err;
@@ -1078,7 +1081,7 @@ static int hidp_add_connection(struct input_device *idev)
 	/* Some platforms may choose to require encryption for all devices */
 	/* Note that this only matters for pre 2.1 devices as otherwise the */
 	/* device is encrypted by default by the lower layers */
-	if (classic_bonded_only || req->subclass & 0x40) {
+	if (classic_bonded_only || idev->type == BT_UHID_KEYBOARD) {
 		if (!bt_io_set(idev->intr_io, &gerr,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID)) {
@@ -1468,6 +1471,7 @@ static struct input_device *input_device_new(struct btd_service *service)
 	idev->service = btd_service_ref(service);
 	idev->device = btd_device_ref(device);
 	idev->path = g_strdup(path);
+	idev->type = bt_uhid_icon_to_type(btd_device_get_icon(device));
 
 	input_device_update_rec(idev);
 

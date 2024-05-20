@@ -15,6 +15,31 @@
 
 struct bt_uhid;
 
+enum {
+	BT_UHID_NONE = 0,
+	BT_UHID_KEYBOARD,
+	BT_UHID_MOUSE,
+	BT_UHID_GAMING,
+	BT_UHID_TABLET
+};
+
+static inline uint8_t bt_uhid_icon_to_type(const char *icon)
+{
+	if (!icon)
+		return BT_UHID_NONE;
+
+	if (!strcmp(icon, "input-keyboard"))
+		return BT_UHID_KEYBOARD;
+	else if (!strcmp(icon, "input-mouse"))
+		return BT_UHID_MOUSE;
+	else if (!strcmp(icon, "input-gaming"))
+		return BT_UHID_GAMING;
+	else if (!strcmp(icon, "input-tablet"))
+		return BT_UHID_TABLET;
+	else
+		return BT_UHID_NONE;
+}
+
 struct bt_uhid *bt_uhid_new_default(void);
 struct bt_uhid *bt_uhid_new(int fd);
 
@@ -32,8 +57,8 @@ bool bt_uhid_unregister_all(struct bt_uhid *uhid);
 int bt_uhid_send(struct bt_uhid *uhid, const struct uhid_event *ev);
 int bt_uhid_create(struct bt_uhid *uhid, const char *name, bdaddr_t *src,
 			bdaddr_t *dst, uint32_t vendor, uint32_t product,
-			uint32_t version, uint32_t country, void *rd_data,
-			size_t rd_size);
+			uint32_t version, uint32_t country, uint8_t type,
+			void *rd_data, size_t rd_size);
 bool bt_uhid_created(struct bt_uhid *uhid);
 bool bt_uhid_started(struct bt_uhid *uhid);
 int bt_uhid_input(struct bt_uhid *uhid, uint8_t number, const void *data,
@@ -41,5 +66,5 @@ int bt_uhid_input(struct bt_uhid *uhid, uint8_t number, const void *data,
 int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t status);
 int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t number,
 				uint8_t status, const void *data, size_t size);
-int bt_uhid_destroy(struct bt_uhid *uhid);
+int bt_uhid_destroy(struct bt_uhid *uhid, bool force);
 int bt_uhid_replay(struct bt_uhid *uhid);

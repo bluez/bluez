@@ -73,6 +73,7 @@ struct bt_hog {
 	uint16_t		vendor;
 	uint16_t		product;
 	uint16_t		version;
+	uint8_t			type;
 	struct gatt_db_attribute *attr;
 	struct gatt_primary	*primary;
 	GAttrib			*attrib;
@@ -825,17 +826,18 @@ static void set_report_cb(guint8 status, const guint8 *pdu,
 		error("bt_uhid_set_report_reply: %s", strerror(-err));
 }
 
-static void uhid_destroy(struct bt_hog *hog)
+static void uhid_destroy(struct bt_hog *hog, bool force)
 {
 	int err;
 
-	bt_uhid_unregister_all(hog->uhid);
-
-	err = bt_uhid_destroy(hog->uhid);
+	err = bt_uhid_destroy(hog->uhid, force);
 	if (err < 0) {
 		error("bt_uhid_destroy: %s", strerror(-err));
 		return;
 	}
+
+	if (bt_uhid_created(hog->uhid))
+		bt_uhid_unregister_all(hog->uhid);
 }
 
 static void set_report(struct uhid_event *ev, void *user_data)
@@ -850,7 +852,7 @@ static void set_report(struct uhid_event *ev, void *user_data)
 	 * while disconnected.
 	 */
 	if (hog->attrib == NULL) {
-		uhid_destroy(hog);
+		uhid_destroy(hog, true);
 		return;
 	}
 
@@ -948,7 +950,7 @@ static void get_report(struct uhid_event *ev, void *user_data)
 	 * while disconnected.
 	 */
 	if (hog->attrib == NULL) {
-		uhid_destroy(hog);
+		uhid_destroy(hog, true);
 		return;
 	}
 
@@ -1003,7 +1005,7 @@ static void uhid_create(struct bt_hog *hog, uint8_t *report_map,
 
 	err = bt_uhid_create(hog->uhid, hog->name, &src, &dst,
 				hog->vendor, hog->product, hog->version,
-				hog->bcountrycode, value, vlen);
+				hog->bcountrycode, hog->type, value, vlen);
 	if (err < 0) {
 		error("bt_uhid_create: %s", strerror(-err));
 		return;
@@ -1233,7 +1235,7 @@ static void hog_free(void *data)
 	struct bt_hog *hog = data;
 
 	bt_hog_detach(hog, true);
-	uhid_destroy(hog);
+	uhid_destroy(hog, true);
 
 	queue_destroy(hog->bas, (void *) bt_bas_unref);
 	g_slist_free_full(hog->instances, hog_free);
@@ -1252,9 +1254,9 @@ static void hog_free(void *data)
 
 struct bt_hog *bt_hog_new_default(const char *name, uint16_t vendor,
 					uint16_t product, uint16_t version,
-					struct gatt_db *db)
+					uint8_t type, struct gatt_db *db)
 {
-	return bt_hog_new(-1, name, vendor, product, version, db);
+	return bt_hog_new(-1, name, vendor, product, version, type, db);
 }
 
 static void foreach_hog_report(struct gatt_db_attribute *attr, void *user_data)
@@ -1414,6 +1416,7 @@ static void foreach_hog_chrc(struct gatt_db_attribute *attr, void *user_data)
 
 static struct bt_hog *hog_new(int fd, const char *name, uint16_t vendor,
 					uint16_t product, uint16_t version,
+					uint8_t type,
 					struct gatt_db_attribute *attr)
 {
 	struct bt_hog *hog;
@@ -1441,6 +1444,7 @@ static struct bt_hog *hog_new(int fd, const char *name, uint16_t vendor,
 	hog->vendor = vendor;
 	hog->product = product;
 	hog->version = version;
+	hog->type = type;
 	hog->attr = attr;
 
 	return hog;
@@ -1456,8 +1460,8 @@ static void hog_attach_instance(struct bt_hog *hog,
 		return;
 	}
 
-	instance = hog_new(hog->uhid_fd, hog->name, hog->vendor,
-					hog->product, hog->version, attr);
+	instance = hog_new(hog->uhid_fd, hog->name, hog->vendor, hog->product,
+				hog->version, hog->type, attr);
 	if (!instance)
 		return;
 
@@ -1493,11 +1497,11 @@ static void dis_notify(uint8_t source, uint16_t vendor, uint16_t product,
 
 struct bt_hog *bt_hog_new(int fd, const char *name, uint16_t vendor,
 					uint16_t product, uint16_t version,
-					struct gatt_db *db)
+					uint8_t type, struct gatt_db *db)
 {
 	struct bt_hog *hog;
 
-	hog = hog_new(fd, name, vendor, product, version, NULL);
+	hog = hog_new(fd, name, vendor, product, version, type, NULL);
 	if (!hog)
 		return NULL;
 
@@ -1620,7 +1624,7 @@ static void hog_attach_hog(struct bt_hog *hog, struct gatt_primary *primary)
 
 	instance = bt_hog_new(hog->uhid_fd, hog->name, hog->vendor,
 					hog->product, hog->version,
-					hog->gatt_db);
+					hog->type, hog->gatt_db);
 	if (!instance)
 		return;
 
@@ -1751,8 +1755,11 @@ void bt_hog_detach(struct bt_hog *hog, bool force)
 {
 	GSList *l;
 
-	if (!hog->attrib)
+	if (!hog)
 		return;
+
+	if (!hog->attrib)
+		goto done;
 
 	queue_foreach(hog->bas, (void *) bt_bas_detach, NULL);
 
@@ -1781,8 +1788,8 @@ void bt_hog_detach(struct bt_hog *hog, bool force)
 	g_attrib_unref(hog->attrib);
 	hog->attrib = NULL;
 
-	if (force)
-		uhid_destroy(hog);
+done:
+	uhid_destroy(hog, force);
 }
 
 int bt_hog_set_control_point(struct bt_hog *hog, bool suspend)
