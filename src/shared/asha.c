@@ -470,6 +470,7 @@ static void foreach_asha_service(struct gatt_db_attribute *attr,
 	DBG("Found ASHA GATT service");
 
 	asha->attr = attr;
+	gatt_db_service_set_claimed(attr, true);
 	gatt_db_service_foreach_char(asha->attr, handle_characteristic, asha);
 }
 
