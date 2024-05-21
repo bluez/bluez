@@ -56,7 +56,7 @@ struct test_data {
 	struct iovec *base;
 	struct iovec *caps;
 	struct test_config *cfg;
-	struct bt_bap_stream *stream;
+	struct queue *streams;
 	size_t iovcnt;
 	struct iovec *iov;
 };
@@ -80,6 +80,7 @@ static struct iovec lc3_caps = LC3_CAPABILITIES(LC3_FREQ_ANY, LC3_DURATION_ANY,
 		data.cfg = _cfg;				\
 		data.iovcnt = ARRAY_SIZE(iov_data(args));	\
 		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov_data(args))); \
+		data.streams = queue_new(); \
 		tester_add(name, &data, setup, function,	\
 				test_teardown);			\
 	} while (0)
@@ -373,13 +374,13 @@ static void bap_enable(struct bt_bap_stream *stream,
 	case BT_BAP_STREAM_STATE_ENABLING:
 		return;
 	case BT_BAP_STREAM_STATE_DISABLING:
-		id = bt_bap_stream_disable(data->stream, true, bap_disable,
+		id = bt_bap_stream_disable(stream, true, bap_disable,
 						data);
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
 		if (data->cfg->snk)
 			return;
-		id = bt_bap_stream_start(data->stream, bap_start, data);
+		id = bt_bap_stream_start(stream, bap_start, data);
 		break;
 	}
 
@@ -400,7 +401,7 @@ static void bap_qos(struct bt_bap_stream *stream,
 	if (data->cfg->state > BT_BAP_STREAM_STATE_QOS) {
 		unsigned int qos_id;
 
-		qos_id = bt_bap_stream_enable(data->stream, true, NULL,
+		qos_id = bt_bap_stream_enable(stream, true, NULL,
 							bap_enable, data);
 		g_assert(qos_id);
 	}
@@ -420,7 +421,7 @@ static void bap_config(struct bt_bap_stream *stream,
 	if (data->cfg->state > BT_BAP_STREAM_STATE_CONFIG) {
 		unsigned int qos_id;
 
-		qos_id = bt_bap_stream_qos(data->stream, &data->cfg->qos,
+		qos_id = bt_bap_stream_qos(stream, &data->cfg->qos,
 					   bap_qos, data);
 		g_assert(qos_id);
 	}
@@ -431,13 +432,16 @@ static bool pac_found(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 {
 	struct test_data *data = user_data;
 	unsigned int config_id;
+	struct bt_bap_stream *stream;
 
-	data->stream = bt_bap_stream_new(data->bap, lpac, rpac,
+	stream = bt_bap_stream_new(data->bap, lpac, rpac,
 						&data->cfg->qos,
 						&data->cfg->cc);
-	g_assert(data->stream);
+	g_assert(stream);
 
-	config_id = bt_bap_stream_config(data->stream, &data->cfg->qos,
+	queue_push_tail(data->streams, stream);
+
+	config_id = bt_bap_stream_config(stream, &data->cfg->qos,
 					&data->cfg->cc, bap_config, data);
 	g_assert(config_id);
 
@@ -529,15 +533,18 @@ static struct bt_bap_pac_ops bcast_pac_ops = {
 static void bsrc_pac_added(struct bt_bap_pac *pac, void *user_data)
 {
 	struct test_data *data = user_data;
+	struct bt_bap_stream *stream;
 
 	bt_bap_pac_set_ops(pac, &bcast_pac_ops, NULL);
 
-	data->stream = bt_bap_stream_new(data->bap, pac, NULL,
+	stream = bt_bap_stream_new(data->bap, pac, NULL,
 						&data->cfg->qos,
 						&data->cfg->cc);
-	g_assert(data->stream);
+	g_assert(stream);
 
-	bt_bap_stream_config(data->stream, &data->cfg->qos,
+	queue_push_tail(data->streams, stream);
+
+	bt_bap_stream_config(stream, &data->cfg->qos,
 					&data->cfg->cc, NULL, data);
 }
 
@@ -572,6 +579,7 @@ static void bsnk_pac_added(struct bt_bap_pac *pac, void *user_data)
 	struct bt_bap_pac *lpac;
 	struct iovec *cc;
 	struct bt_bap_codec codec = {0};
+	struct bt_bap_stream *stream;
 
 	if (data->cfg->vs)
 		codec.id = 0xff;
@@ -587,12 +595,14 @@ static void bsnk_pac_added(struct bt_bap_pac *pac, void *user_data)
 
 	bt_bap_pac_set_ops(pac, &bcast_pac_ops, NULL);
 
-	data->stream = bt_bap_stream_new(data->bap,
+	stream = bt_bap_stream_new(data->bap,
 		pac, NULL, &data->cfg->qos, cc);
 
-	g_assert(data->stream);
+	g_assert(stream);
 
-	bt_bap_stream_config(data->stream, &data->cfg->qos,
+	queue_push_tail(data->streams, stream);
+
+	bt_bap_stream_config(stream, &data->cfg->qos,
 			cc, NULL, NULL);
 
 	util_iov_free(cc, 1);
@@ -703,6 +713,8 @@ static void test_teardown(const void *user_data)
 	bt_bap_remove_pac(data->bsrc);
 	bt_bap_remove_pac(data->bsnk);
 	gatt_db_unref(data->db);
+
+	queue_destroy(data->streams, NULL);
 
 	tester_teardown_complete();
 }
@@ -2643,7 +2655,7 @@ static void state_start_disable(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_STREAMING:
-		id = bt_bap_stream_disable(data->stream, true, bap_disable,
+		id = bt_bap_stream_disable(stream, true, bap_disable,
 						data);
 		g_assert(id);
 		break;
@@ -2719,7 +2731,7 @@ static void state_cc_release(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_CONFIG:
-		id = bt_bap_stream_release(data->stream, bap_release, data);
+		id = bt_bap_stream_release(stream, bap_release, data);
 		g_assert(id);
 		break;
 	}
@@ -2788,7 +2800,7 @@ static void state_qos_release(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_QOS:
-		id = bt_bap_stream_release(data->stream, bap_release, data);
+		id = bt_bap_stream_release(stream, bap_release, data);
 		g_assert(id);
 		break;
 	}
@@ -2827,7 +2839,7 @@ static void state_enable_release(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_ENABLING:
-		id = bt_bap_stream_release(data->stream, bap_release, data);
+		id = bt_bap_stream_release(stream, bap_release, data);
 		g_assert(id);
 		break;
 	}
@@ -2866,7 +2878,7 @@ static void state_start_release(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_STREAMING:
-		id = bt_bap_stream_release(data->stream, bap_release, data);
+		id = bt_bap_stream_release(stream, bap_release, data);
 		g_assert(id);
 		break;
 	}
@@ -2894,7 +2906,7 @@ static void state_disable_release(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_DISABLING:
-		id = bt_bap_stream_release(data->stream, bap_release, data);
+		id = bt_bap_stream_release(stream, bap_release, data);
 		g_assert(id);
 		break;
 	}
@@ -2971,7 +2983,7 @@ static void state_enable_metadata(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_ENABLING:
-		id = bt_bap_stream_metadata(data->stream, &iov, bap_metadata,
+		id = bt_bap_stream_metadata(stream, &iov, bap_metadata,
 						data);
 		g_assert(id);
 		break;
@@ -3047,7 +3059,7 @@ static void state_start_metadata(struct bt_bap_stream *stream,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_STREAMING:
-		id = bt_bap_stream_metadata(data->stream, &iov, bap_metadata,
+		id = bt_bap_stream_metadata(stream, &iov, bap_metadata,
 						data);
 		g_assert(id);
 		break;
