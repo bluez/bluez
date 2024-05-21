@@ -119,12 +119,12 @@ if __name__ == "__main__":
         usage()
         sys.exit(255)
 
-    asha = bus.get_object("org.bluez", device.object_path + "/asha")
-    media = dbus.Interface(
-        bus.get_object("org.bluez", device.object_path + "/asha"),
-        "org.bluez.MediaEndpoint1",
-    )
+    asha_object_path = device.object_path + "/asha"
 
+    print("Looking up ASHA object", asha_object_path)
+    asha = bus.get_object("org.bluez", asha_object_path)
+
+    print("Looking up endpoint properties for", asha.object_path)
     props = asha.GetAll(
         "org.bluez.MediaEndpoint1",
         dbus_interface="org.freedesktop.DBus.Properties",
@@ -132,7 +132,6 @@ if __name__ == "__main__":
     path = props["Transport"]
 
     print("Trying to acquire", path)
-
     transport = dbus.Interface(
         bus.get_object("org.bluez", path),
         "org.bluez.MediaTransport1",
@@ -145,6 +144,7 @@ if __name__ == "__main__":
         if volume < 0 or volume > 127:
             print("Volume must be between 0 (mute) and 127 (max)")
 
+    print("Setting initial volume to", volume)
     transport.Set(
         "org.bluez.MediaTransport1",
         "Volume",
@@ -152,8 +152,10 @@ if __name__ == "__main__":
         dbus_interface="org.freedesktop.DBus.Properties",
     )
 
+    print("Acquiring transport")
     (fd, imtu, omtu) = transport.Acquire()
 
+    print("Starting playback, hit Ctrl-C to stop")
     start_playback(fd.take(), omtu)
 
     mainloop.run()
