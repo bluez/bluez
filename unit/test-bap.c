@@ -6564,6 +6564,143 @@ static struct test_config cfg_bsnk_str_vs = {
 	.num_str = 1,
 };
 
+static struct test_config cfg_bsnk_str_8_1_mbis = {
+	.cc = LC3_CONFIG_8_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_8_2_mbis = {
+	.cc = LC3_CONFIG_8_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_16_1_mbis = {
+	.cc = LC3_CONFIG_16_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_16_2_mbis = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_24_1_mbis = {
+	.cc = LC3_CONFIG_24_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_24_2_mbis = {
+	.cc = LC3_CONFIG_24_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_32_1_mbis = {
+	.cc = LC3_CONFIG_32_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_32_2_mbis = {
+	.cc = LC3_CONFIG_32_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_44_1_mbis = {
+	.cc = LC3_CONFIG_44_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_44_2_mbis = {
+	.cc = LC3_CONFIG_44_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_48_1_mbis = {
+	.cc = LC3_CONFIG_48_1,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_48_2_mbis = {
+	.cc = LC3_CONFIG_48_2,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_48_3_mbis = {
+	.cc = LC3_CONFIG_48_3,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_48_4_mbis = {
+	.cc = LC3_CONFIG_48_4,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_48_5_mbis = {
+	.cc = LC3_CONFIG_48_5,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_48_6_mbis = {
+	.cc = LC3_CONFIG_48_6,
+	.qos = QOS_BCAST,
+	.snk = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
+static struct test_config cfg_bsnk_str_vs_mbis = {
+	.cc = UTIL_IOV_INIT(VS_CC),
+	.qos = QOS_BCAST,
+	.snk = true,
+	.vs = true,
+	.state_func = bsnk_state_str,
+	.num_str = 2,
+};
+
 static void test_bsnk_str(void)
 {
 	define_test("BAP/BSNK/STR/BV-01-C [BSNK, LC3 8_1]",
@@ -6616,6 +6753,57 @@ static void test_bsnk_str(void)
 
 	define_test("BAP/BSNK/STR/BV-17-C [BSNK, VS]",
 		NULL, test_bcast, &cfg_bsnk_str_vs, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-18-C [BSNK, Multiple BISes, LC3 8_1]",
+		NULL, test_bcast, &cfg_bsnk_str_8_1_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-19-C [BSNK, Multiple BISes, LC3 8_2]",
+		NULL, test_bcast, &cfg_bsnk_str_8_2_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-20-C [BSNK, Multiple BISes, LC3 16_1]",
+		NULL, test_bcast, &cfg_bsnk_str_16_1_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-21-C [BSNK, Multiple BISes, LC3 16_2]",
+		NULL, test_bcast, &cfg_bsnk_str_16_2_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-22-C [BSNK, Multiple BISes, LC3 24_1]",
+		NULL, test_bcast, &cfg_bsnk_str_24_1_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-23-C [BSNK, Multiple BISes, LC3 24_2]",
+		NULL, test_bcast, &cfg_bsnk_str_24_2_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-24-C [BSNK, Multiple BISes, LC3 32_1]",
+		NULL, test_bcast, &cfg_bsnk_str_32_1_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-25-C [BSNK, Multiple BISes, LC3 32_2]",
+		NULL, test_bcast, &cfg_bsnk_str_32_2_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-26-C [BSNK, Multiple BISes, LC3 44.1_1]",
+		NULL, test_bcast, &cfg_bsnk_str_44_1_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-27-C [BSNK, Multiple BISes, LC3 44.1_2]",
+		NULL, test_bcast, &cfg_bsnk_str_44_2_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-28-C [BSNK, Multiple BISes, LC3 48_1]",
+		NULL, test_bcast, &cfg_bsnk_str_48_1_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-29-C [BSNK, Multiple BISes, LC3 48_2]",
+		NULL, test_bcast, &cfg_bsnk_str_48_2_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-30-C [BSNK, Multiple BISes, LC3 48_3]",
+		NULL, test_bcast, &cfg_bsnk_str_48_3_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-31-C [BSNK, Multiple BISes, LC3 48_4]",
+		NULL, test_bcast, &cfg_bsnk_str_48_4_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-32-C [BSNK, Multiple BISes, LC3 48_5]",
+		NULL, test_bcast, &cfg_bsnk_str_48_5_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-33-C [BSNK, Multiple BISes, LC3 48_6]",
+		NULL, test_bcast, &cfg_bsnk_str_48_6_mbis, IOV_NULL);
+
+	define_test("BAP/BSNK/STR/BV-34-C [BSNK, Multiple BISes, VS]",
+		NULL, test_bcast, &cfg_bsnk_str_vs_mbis, IOV_NULL);
 }
 
 int main(int argc, char *argv[])
