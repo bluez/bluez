@@ -87,8 +87,6 @@ def start_playback(fd: int, omtu: int):
     sink = pipeline.get_by_name("sink")
     sink.connect("new-sample", on_new_sample)
 
-    pipeline.set_state(Gst.State.PLAYING)
-
     def bus_message(_bus, message, _data) -> bool:
         typ = message.type
 
@@ -100,8 +98,12 @@ def start_playback(fd: int, omtu: int):
             print(f"Pipeline error: {err} ({debug})")
             mainloop.quit()
 
+        return True
+
     bus = pipeline.get_bus()
     bus.add_watch(GLib.PRIORITY_DEFAULT, bus_message, None)
+
+    pipeline.set_state(Gst.State.PLAYING)
 
 
 if __name__ == "__main__":
