@@ -43,7 +43,7 @@ struct test_config {
 	bool vs;
 	uint8_t state;
 	bt_bap_state_func_t state_func;
-	uint8_t num_str;
+	uint8_t streams;
 };
 
 struct test_data {
@@ -590,7 +590,7 @@ static void bsnk_pac_added(struct bt_bap_pac *pac, void *user_data)
 	else
 		codec.id = LC3_ID;
 
-	for (uint8_t i = 0; i < data->cfg->num_str; i++) {
+	for (uint8_t i = 0; i < data->cfg->streams; i++) {
 		bt_bap_verify_bis(data->bap, bis_idx++, &codec,
 				&data->cfg->cc, NULL, &lpac, &cc);
 
@@ -6142,7 +6142,7 @@ static struct test_config cfg_bsnk_8_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_8_2 = {
@@ -6150,7 +6150,7 @@ static struct test_config cfg_bsnk_8_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_16_1 = {
@@ -6158,7 +6158,7 @@ static struct test_config cfg_bsnk_16_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_16_2 = {
@@ -6166,7 +6166,7 @@ static struct test_config cfg_bsnk_16_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_24_1 = {
@@ -6174,7 +6174,7 @@ static struct test_config cfg_bsnk_24_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_24_2 = {
@@ -6182,7 +6182,7 @@ static struct test_config cfg_bsnk_24_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_32_1 = {
@@ -6190,7 +6190,7 @@ static struct test_config cfg_bsnk_32_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_32_2 = {
@@ -6198,7 +6198,7 @@ static struct test_config cfg_bsnk_32_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_44_1 = {
@@ -6206,7 +6206,7 @@ static struct test_config cfg_bsnk_44_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_44_2 = {
@@ -6214,7 +6214,7 @@ static struct test_config cfg_bsnk_44_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_48_1 = {
@@ -6222,7 +6222,7 @@ static struct test_config cfg_bsnk_48_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_48_2 = {
@@ -6230,7 +6230,7 @@ static struct test_config cfg_bsnk_48_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_48_3 = {
@@ -6238,7 +6238,7 @@ static struct test_config cfg_bsnk_48_3 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_48_4 = {
@@ -6246,7 +6246,7 @@ static struct test_config cfg_bsnk_48_4 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_48_5 = {
@@ -6254,7 +6254,7 @@ static struct test_config cfg_bsnk_48_5 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_48_6 = {
@@ -6262,7 +6262,7 @@ static struct test_config cfg_bsnk_48_6 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_vs = {
@@ -6271,7 +6271,7 @@ static struct test_config cfg_bsnk_vs = {
 	.snk = true,
 	.vs = true,
 	.state_func = bsnk_state,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static void test_bsnk_scc(void)
@@ -6417,7 +6417,7 @@ static void bsnk_state_str(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_STREAMING:
 		queue_foreach(data->streams, stream_count_streaming, &num);
 
-		if (num == data->cfg->num_str)
+		if (num == data->cfg->streams)
 			/* Test is completed after all streams have transitioned
 			 * to STREAMING state.
 			 */
@@ -6432,7 +6432,7 @@ static struct test_config cfg_bsnk_str_8_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_8_2 = {
@@ -6440,7 +6440,7 @@ static struct test_config cfg_bsnk_str_8_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_16_1 = {
@@ -6448,7 +6448,7 @@ static struct test_config cfg_bsnk_str_16_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_16_2 = {
@@ -6456,7 +6456,7 @@ static struct test_config cfg_bsnk_str_16_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_24_1 = {
@@ -6464,7 +6464,7 @@ static struct test_config cfg_bsnk_str_24_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_24_2 = {
@@ -6472,7 +6472,7 @@ static struct test_config cfg_bsnk_str_24_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_32_1 = {
@@ -6480,7 +6480,7 @@ static struct test_config cfg_bsnk_str_32_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_32_2 = {
@@ -6488,7 +6488,7 @@ static struct test_config cfg_bsnk_str_32_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_44_1 = {
@@ -6496,7 +6496,7 @@ static struct test_config cfg_bsnk_str_44_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_44_2 = {
@@ -6504,7 +6504,7 @@ static struct test_config cfg_bsnk_str_44_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_48_1 = {
@@ -6512,7 +6512,7 @@ static struct test_config cfg_bsnk_str_48_1 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_48_2 = {
@@ -6520,7 +6520,7 @@ static struct test_config cfg_bsnk_str_48_2 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_48_3 = {
@@ -6528,7 +6528,7 @@ static struct test_config cfg_bsnk_str_48_3 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_48_4 = {
@@ -6536,7 +6536,7 @@ static struct test_config cfg_bsnk_str_48_4 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_48_5 = {
@@ -6544,7 +6544,7 @@ static struct test_config cfg_bsnk_str_48_5 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_48_6 = {
@@ -6552,7 +6552,7 @@ static struct test_config cfg_bsnk_str_48_6 = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_vs = {
@@ -6561,7 +6561,7 @@ static struct test_config cfg_bsnk_str_vs = {
 	.snk = true,
 	.vs = true,
 	.state_func = bsnk_state_str,
-	.num_str = 1,
+	.streams = 1,
 };
 
 static struct test_config cfg_bsnk_str_8_1_mbis = {
@@ -6569,7 +6569,7 @@ static struct test_config cfg_bsnk_str_8_1_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_8_2_mbis = {
@@ -6577,7 +6577,7 @@ static struct test_config cfg_bsnk_str_8_2_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_16_1_mbis = {
@@ -6585,7 +6585,7 @@ static struct test_config cfg_bsnk_str_16_1_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_16_2_mbis = {
@@ -6593,7 +6593,7 @@ static struct test_config cfg_bsnk_str_16_2_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_24_1_mbis = {
@@ -6601,7 +6601,7 @@ static struct test_config cfg_bsnk_str_24_1_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_24_2_mbis = {
@@ -6609,7 +6609,7 @@ static struct test_config cfg_bsnk_str_24_2_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_32_1_mbis = {
@@ -6617,7 +6617,7 @@ static struct test_config cfg_bsnk_str_32_1_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_32_2_mbis = {
@@ -6625,7 +6625,7 @@ static struct test_config cfg_bsnk_str_32_2_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_44_1_mbis = {
@@ -6633,7 +6633,7 @@ static struct test_config cfg_bsnk_str_44_1_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_44_2_mbis = {
@@ -6641,7 +6641,7 @@ static struct test_config cfg_bsnk_str_44_2_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_48_1_mbis = {
@@ -6649,7 +6649,7 @@ static struct test_config cfg_bsnk_str_48_1_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_48_2_mbis = {
@@ -6657,7 +6657,7 @@ static struct test_config cfg_bsnk_str_48_2_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_48_3_mbis = {
@@ -6665,7 +6665,7 @@ static struct test_config cfg_bsnk_str_48_3_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_48_4_mbis = {
@@ -6673,7 +6673,7 @@ static struct test_config cfg_bsnk_str_48_4_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_48_5_mbis = {
@@ -6681,7 +6681,7 @@ static struct test_config cfg_bsnk_str_48_5_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_48_6_mbis = {
@@ -6689,7 +6689,7 @@ static struct test_config cfg_bsnk_str_48_6_mbis = {
 	.qos = QOS_BCAST,
 	.snk = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static struct test_config cfg_bsnk_str_vs_mbis = {
@@ -6698,7 +6698,7 @@ static struct test_config cfg_bsnk_str_vs_mbis = {
 	.snk = true,
 	.vs = true,
 	.state_func = bsnk_state_str,
-	.num_str = 2,
+	.streams = 2,
 };
 
 static void test_bsnk_str(void)
