@@ -1361,14 +1361,6 @@ static void ep_config_cb(struct bt_bap_stream *stream, int err)
 	if (err)
 		return;
 
-	if (bt_bap_stream_get_type(stream) == BT_BAP_STREAM_TYPE_BCAST) {
-		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
-			stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
-		else if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE)
-			stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
-		return;
-	}
-
 	stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
 }
 
@@ -1759,6 +1751,15 @@ static unsigned int bap_stream_metadata(struct bt_bap_stream *stream,
 	return req->id;
 }
 
+static unsigned int bap_bcast_qos(struct bt_bap_stream *stream,
+					struct bt_bap_qos *data,
+					bt_bap_stream_func_t func,
+					void *user_data)
+{
+	stream->qos = *data;
+	return 1;
+}
+
 static unsigned int bap_bcast_config(struct bt_bap_stream *stream,
 				     struct bt_bap_qos *qos, struct iovec *data,
 				     bt_bap_stream_func_t func, void *user_data)
@@ -2071,12 +2072,22 @@ static unsigned int bap_bcast_get_state(struct bt_bap_stream *stream)
 	return stream->state;
 }
 
-static unsigned int bap_bcast_enable(struct bt_bap_stream *stream,
+static unsigned int bap_bcast_sink_enable(struct bt_bap_stream *stream,
 					bool enable_links, struct iovec *data,
 					bt_bap_stream_func_t func,
 					void *user_data)
 {
 	stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
+
+	return 1;
+}
+
+static unsigned int bap_bcast_src_enable(struct bt_bap_stream *stream,
+					bool enable_links, struct iovec *data,
+					bt_bap_stream_func_t func,
+					void *user_data)
+{
+	stream_set_state(stream, BT_BAP_STREAM_STATE_ENABLING);
 
 	return 1;
 }
@@ -2090,23 +2101,13 @@ static unsigned int bap_bcast_start(struct bt_bap_stream *stream,
 	return 1;
 }
 
-static unsigned int bap_bcast_sink_disable(struct bt_bap_stream *stream,
+static unsigned int bap_bcast_disable(struct bt_bap_stream *stream,
 					bool disable_links,
 					bt_bap_stream_func_t func,
 					void *user_data)
 {
 	bap_stream_io_detach(stream);
 	stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
-
-	return 1;
-}
-
-static unsigned int bap_bcast_disable(struct bt_bap_stream *stream,
-					bool disable_links,
-					bt_bap_stream_func_t func,
-					void *user_data)
-{
-	stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
 
 	return 1;
 }
@@ -2205,14 +2206,14 @@ static const struct bt_bap_stream_ops stream_ops[] = {
 			bap_ucast_release, bap_ucast_detach),
 	STREAM_OPS(BT_BAP_BCAST_SINK, bap_bcast_set_state,
 			bap_bcast_get_state,
-			bap_bcast_config, NULL, bap_bcast_enable,
-			bap_bcast_start, bap_bcast_sink_disable, NULL,
+			bap_bcast_config, NULL, bap_bcast_sink_enable,
+			bap_bcast_start, bap_bcast_disable, NULL,
 			bap_bcast_metadata, bap_bcast_sink_get_dir,
 			bap_bcast_get_location,
 			bap_bcast_release, bap_bcast_sink_detach),
 	STREAM_OPS(BT_BAP_BCAST_SOURCE, bap_bcast_set_state,
 			bap_bcast_get_state,
-			bap_bcast_config, NULL, bap_bcast_enable,
+			bap_bcast_config, bap_bcast_qos, bap_bcast_src_enable,
 			bap_bcast_start, bap_bcast_disable, NULL,
 			bap_bcast_metadata, bap_bcast_src_get_dir,
 			bap_bcast_get_location,

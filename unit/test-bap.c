@@ -555,10 +555,10 @@ static void bsrc_state(struct bt_bap_stream *stream, uint8_t old_state,
 	struct test_data *data = user_data;
 
 	switch (new_state) {
-	case BT_BAP_STREAM_STATE_QOS:
+	case BT_BAP_STREAM_STATE_CONFIG:
 		bt_bap_stream_enable(stream, true, NULL, NULL, NULL);
 		break;
-	case BT_BAP_STREAM_STATE_CONFIG:
+	case BT_BAP_STREAM_STATE_ENABLING:
 		data->base = bt_bap_stream_get_base(stream);
 
 		g_assert(data->base);
