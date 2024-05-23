@@ -2474,7 +2474,7 @@ static uint8_t get_streams_nb_by_state(struct bap_setup *setup)
 			 */
 			return 1;
 		else if (bt_bap_stream_get_state(ent_setup->stream) !=
-				BT_BAP_STREAM_STATE_CONFIG)
+				BT_BAP_STREAM_STATE_ENABLING)
 			/* Not all streams form a BIG have received transport
 			 * acquire, so wait for the other streams to.
 			 */
@@ -2516,8 +2516,21 @@ static void bap_state_bcast_src(struct bt_bap_stream *stream, uint8_t old_state,
 			queue_remove(data->streams, stream);
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
-		if (!setup || setup->id)
-			break;
+		// TO DO Reconfiguration
+		break;
+	/* Use the ENABLING state to know when a transport
+	 * linked to a stream has been acquired by a process
+	 * and in the case of a BIG with one BIS stream goes
+	 * in the ENABLING state waiting for the response
+	 * from the kernel that the BIG has been created
+	 * so it can go to the streaming state.
+	 * For the case of a BIG with multiple BISes,
+	 * the BIG is created when all BISes are acquired.
+	 * So we use the ENABLING state to  verify that all
+	 * transports attached to that streams form BIG have
+	 * been acquired so we can create the BIG.
+	 */
+	case BT_BAP_STREAM_STATE_ENABLING:
 		/* If the stream attached to a broadcast
 		 * source endpoint generate the base.
 		 */
@@ -2855,8 +2868,7 @@ static void bap_connecting_bcast(struct bt_bap_stream *stream, bool state,
 
 		setup->qos.bcast.big = iso_qos.bcast.big;
 		setup->qos.bcast.bis = iso_qos.bcast.bis;
-		bt_bap_stream_config(setup->stream, &setup->qos, setup->caps,
-							NULL, NULL);
+		bt_bap_stream_qos(setup->stream, &setup->qos, NULL, NULL);
 	}
 
 	DBG("stream %p fd %d: BIG 0x%02x BIS 0x%02x", stream, fd,
