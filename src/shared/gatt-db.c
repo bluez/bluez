@@ -278,8 +278,8 @@ static void service_clone(void *data, void *user_data)
 	for (i = 0; i < service->num_handles; i++) {
 		struct gatt_db_attribute *attr = service->attributes[i];
 
-		/* Only clone values for characteristics since that is
-		 * cacheable.
+		/* Only clone values for characteristics declaration since that
+		 * is considered when calculating the db hash.
 		 */
 		if (bt_uuid_len(&attr->uuid) == 2 &&
 				attr->uuid.value.u16 == GATT_CHARAC_UUID)

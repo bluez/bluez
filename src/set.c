@@ -28,6 +28,8 @@
 #include "src/shared/queue.h"
 #include "src/shared/ad.h"
 #include "src/shared/crypto.h"
+#include "src/shared/att.h"
+#include "src/shared/gatt-db.h"
 
 #include "log.h"
 #include "error.h"
@@ -277,8 +279,24 @@ static void foreach_rsi(void *data, void *user_data)
 
 	bt_crypto_unref(crypto);
 
-	if (!memcmp(ad->data, res, sizeof(res)))
-		device_connect_le(set->device);
+	if (memcmp(ad->data, res, sizeof(res)))
+		return;
+
+	/* Attempt to use existing gatt_db from set if device has never been
+	 * connected before.
+	 *
+	 * If dbs don't really match bt_gatt_client will attempt to rediscover
+	 * the ranges that don't match.
+	 */
+	if (gatt_db_isempty(btd_device_get_gatt_db(set->device))) {
+		struct btd_device *device;
+
+		device = queue_get_entries(set->devices)->data;
+		btd_device_set_gatt_db(set->device,
+					btd_device_get_gatt_db(device));
+	}
+
+	device_connect_le(set->device);
 }
 
 static void foreach_device(struct btd_device *device, void *data)

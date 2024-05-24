@@ -6994,6 +6994,27 @@ struct gatt_db *btd_device_get_gatt_db(struct btd_device *device)
 	return device->db;
 }
 
+bool btd_device_set_gatt_db(struct btd_device *device, struct gatt_db *db)
+{
+	struct gatt_db *clone;
+
+	if (!device)
+		return false;
+
+	clone = gatt_db_clone(db);
+	if (clone)
+		return false;
+
+	gatt_db_unregister(device->db, device->db_id);
+	gatt_db_unref(device->db);
+
+	device->db = clone;
+	device->db_id = gatt_db_register(device->db, gatt_service_added,
+					gatt_service_removed, device, NULL);
+
+	return true;
+}
+
 struct bt_gatt_client *btd_device_get_gatt_client(struct btd_device *device)
 {
 	if (!device)
