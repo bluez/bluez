@@ -128,6 +128,15 @@ void bt_csip_detach(struct bt_csip *csip)
 	queue_foreach(csip_cbs, csip_detached, csip);
 }
 
+static void csis_free(struct bt_csis *csis)
+{
+	if (!csis)
+		return;
+
+	free(csis->sirk_val);
+	free(csis);
+}
+
 static void csip_db_free(void *data)
 {
 	struct bt_csip_db *cdb = data;
@@ -137,7 +146,7 @@ static void csip_db_free(void *data)
 
 	gatt_db_unref(cdb->db);
 
-	free(cdb->csis);
+	csis_free(cdb->csis);
 	free(cdb);
 }
 
