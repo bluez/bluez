@@ -2056,10 +2056,6 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 		if (stream->ops && stream->ops->detach)
 			stream->ops->detach(stream);
 		break;
-	case BT_ASCS_ASE_STATE_DISABLING:
-		bap_stream_io_detach(stream);
-		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
-		break;
 	case BT_ASCS_ASE_STATE_RELEASING:
 		bap_stream_io_detach(stream);
 		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
