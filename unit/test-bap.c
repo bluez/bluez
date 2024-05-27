@@ -6029,7 +6029,7 @@ static struct test_config cfg_bsrc_vs = {
  * Each value included in the Codec_Specific_Configuration is formatted in
  * an LTV structure with the length, type, and value specified in Table 4.74.
  */
-static void test_bsrc_scc(void)
+static void test_bsrc_scc_config(void)
 {
 	define_test("BAP/BSRC/SCC/BV-01-C [Config Broadcast, LC3 8_1_1]",
 		NULL, test_bcast, &cfg_bsrc_8_1_1, IOV_NULL);
@@ -6129,6 +6129,50 @@ static void test_bsrc_scc(void)
 
 	define_test("BAP/BSRC/SCC/BV-33-C [Config Broadcast, VS]",
 		NULL, test_bcast, &cfg_bsrc_vs, IOV_NULL);
+}
+
+static void bsrc_state_estab(struct bt_bap_stream *stream, uint8_t old_state,
+				uint8_t new_state, void *user_data)
+{
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_CONFIG:
+		bt_bap_stream_enable(stream, true, NULL, NULL, NULL);
+		break;
+	case BT_BAP_STREAM_STATE_ENABLING:
+		bt_bap_stream_start(stream, NULL, NULL);
+		break;
+	case BT_BAP_STREAM_STATE_STREAMING:
+		tester_test_passed();
+		break;
+	}
+}
+
+static struct test_config cfg_bsrc_8_1_1_estab = {
+	.cc = LC3_CONFIG_8_1,
+	.qos = LC3_QOS_8_1_1_B,
+	.src = true,
+	.state_func = bsrc_state_estab,
+};
+
+/* Test Purpose:
+ * Verify that a Broadcast Source IUT can establish a broadcast
+ * Audio Stream.
+ *
+ * Pass verdict:
+ * The IUT sends AUX_SYNC_IND PDUs with an Extended Header
+ * containing BIGInfo in the ACAD field. The IUT sends BIS Data
+ * PDUs over the broadcast Audio Stream.
+ */
+static void test_bsrc_scc_estab(void)
+{
+	define_test("BAP/BSRC/SCC/BV-35-C [Establishes Broadcast]",
+		NULL, test_bcast, &cfg_bsrc_8_1_1_estab, IOV_NULL);
+}
+
+static void test_bsrc_scc(void)
+{
+	test_bsrc_scc_config();
+	test_bsrc_scc_estab();
 }
 
 static struct test_config cfg_bsnk_8_1 = {
