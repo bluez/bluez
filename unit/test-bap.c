@@ -6169,10 +6169,53 @@ static void test_bsrc_scc_estab(void)
 		NULL, test_bcast, &cfg_bsrc_8_1_1_estab, IOV_NULL);
 }
 
+static void bsrc_state_disable(struct bt_bap_stream *stream, uint8_t old_state,
+				uint8_t new_state, void *user_data)
+{
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_CONFIG:
+		if (old_state == BT_BAP_STREAM_STATE_IDLE)
+			bt_bap_stream_enable(stream, true, NULL, NULL, NULL);
+		else if (old_state == BT_BAP_STREAM_STATE_STREAMING)
+			tester_test_passed();
+		else
+			/* Other transitions to CONFIG state are invalid. */
+			tester_test_failed();
+		break;
+	case BT_BAP_STREAM_STATE_ENABLING:
+		bt_bap_stream_start(stream, NULL, NULL);
+		break;
+	case BT_BAP_STREAM_STATE_STREAMING:
+		bt_bap_stream_disable(stream, true, NULL, NULL);
+		break;
+	}
+}
+
+static struct test_config cfg_bsrc_8_1_1_disable = {
+	.cc = LC3_CONFIG_8_1,
+	.qos = LC3_QOS_8_1_1_B,
+	.src = true,
+	.state_func = bsrc_state_disable,
+};
+
+/* Test Purpose:
+ * Verify that a Broadcast Source IUT can disable a broadcast
+ * Audio Stream.
+ *
+ * Pass verdict:
+ * The IUT sends a BIG_TERMINATE_IND PDU in step 1.
+ */
+static void test_bsrc_scc_disable(void)
+{
+	define_test("BAP/BSRC/SCC/BV-36-C [Disables Broadcast]",
+		NULL, test_bcast, &cfg_bsrc_8_1_1_disable, IOV_NULL);
+}
+
 static void test_bsrc_scc(void)
 {
 	test_bsrc_scc_config();
 	test_bsrc_scc_estab();
+	test_bsrc_scc_disable();
 }
 
 static struct test_config cfg_bsnk_8_1 = {
