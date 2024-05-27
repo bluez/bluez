@@ -6211,11 +6211,58 @@ static void test_bsrc_scc_disable(void)
 		NULL, test_bcast, &cfg_bsrc_8_1_1_disable, IOV_NULL);
 }
 
+static void bsrc_state_release(struct bt_bap_stream *stream, uint8_t old_state,
+				uint8_t new_state, void *user_data)
+{
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_CONFIG:
+		if (old_state == BT_BAP_STREAM_STATE_IDLE)
+			bt_bap_stream_enable(stream, true, NULL, NULL, NULL);
+		else if (old_state == BT_BAP_STREAM_STATE_STREAMING)
+			bt_bap_stream_release(stream, NULL, NULL);
+		else
+			/* Other transitions to CONFIG state are invalid. */
+			tester_test_failed();
+		break;
+	case BT_BAP_STREAM_STATE_ENABLING:
+		bt_bap_stream_start(stream, NULL, NULL);
+		break;
+	case BT_BAP_STREAM_STATE_STREAMING:
+		bt_bap_stream_disable(stream, true, NULL, NULL);
+		break;
+	case BT_BAP_STREAM_STATE_IDLE:
+		tester_test_passed();
+		break;
+	}
+}
+
+static struct test_config cfg_bsrc_8_1_1_release = {
+	.cc = LC3_CONFIG_8_1,
+	.qos = LC3_QOS_8_1_1_B,
+	.src = true,
+	.state_func = bsrc_state_release,
+};
+
+/* Test Purpose:
+ * Verify that a Broadcast Source IUT can release a broadcast
+ * Audio Stream and transition from Configured state to Idle
+ * state.
+ *
+ * Pass verdict:
+ * The IUT stops transmitting periodic advertising.
+ */
+static void test_bsrc_scc_release(void)
+{
+	define_test("BAP/BSRC/SCC/BV-37-C [Releases Broadcast]",
+		NULL, test_bcast, &cfg_bsrc_8_1_1_release, IOV_NULL);
+}
+
 static void test_bsrc_scc(void)
 {
 	test_bsrc_scc_config();
 	test_bsrc_scc_estab();
 	test_bsrc_scc_disable();
+	test_bsrc_scc_release();
 }
 
 static struct test_config cfg_bsnk_8_1 = {
