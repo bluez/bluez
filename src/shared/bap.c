@@ -2051,7 +2051,7 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 	}
 
 	/* Post notification updates */
-	switch (stream->state) {
+	switch (state) {
 	case BT_ASCS_ASE_STATE_IDLE:
 		if (stream->ops && stream->ops->detach)
 			stream->ops->detach(stream);
@@ -5293,6 +5293,7 @@ unsigned int bt_bap_stream_config(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	unsigned int id;
+	struct bt_bap *bap;
 
 	if (!bap_stream_valid(stream))
 		return 0;
@@ -5303,9 +5304,11 @@ unsigned int bt_bap_stream_config(struct bt_bap_stream *stream,
 	if (!bt_bap_ref_safe(stream->bap))
 		return 0;
 
+	bap = stream->bap;
+
 	id = stream->ops->config(stream, qos, data, func, user_data);
 
-	bt_bap_unref(stream->bap);
+	bt_bap_unref(bap);
 
 	return id;
 }
@@ -5565,6 +5568,7 @@ unsigned int bt_bap_stream_enable(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	unsigned int id;
+	struct bt_bap *bap;
 
 	if (!bap_stream_valid(stream))
 		return 0;
@@ -5575,10 +5579,12 @@ unsigned int bt_bap_stream_enable(struct bt_bap_stream *stream,
 	if (!bt_bap_ref_safe(stream->bap))
 		return 0;
 
+	bap = stream->bap;
+
 	id = stream->ops->enable(stream, enable_links, metadata, func,
 					user_data);
 
-	bt_bap_unref(stream->bap);
+	bt_bap_unref(bap);
 
 	return id;
 }
@@ -5588,6 +5594,7 @@ unsigned int bt_bap_stream_start(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	unsigned int id;
+	struct bt_bap *bap;
 
 	if (!bap_stream_valid(stream))
 		return 0;
@@ -5598,9 +5605,11 @@ unsigned int bt_bap_stream_start(struct bt_bap_stream *stream,
 	if (!bt_bap_ref_safe(stream->bap))
 		return 0;
 
+	bap = stream->bap;
+
 	id = stream->ops->start(stream, func, user_data);
 
-	bt_bap_unref(stream->bap);
+	bt_bap_unref(bap);
 
 	return id;
 }
@@ -5611,6 +5620,7 @@ unsigned int bt_bap_stream_disable(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	unsigned int id;
+	struct bt_bap *bap;
 
 	if (!bap_stream_valid(stream))
 		return 0;
@@ -5621,9 +5631,11 @@ unsigned int bt_bap_stream_disable(struct bt_bap_stream *stream,
 	if (!bt_bap_ref_safe(stream->bap))
 		return 0;
 
+	bap = stream->bap;
+
 	id = stream->ops->disable(stream, disable_links, func, user_data);
 
-	bt_bap_unref(stream->bap);
+	bt_bap_unref(bap);
 
 	return id;
 }
