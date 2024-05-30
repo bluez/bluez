@@ -1174,6 +1174,7 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
 			if (!util_iov_pull_u8(&iov,
 						(void *)&l3_caps->iov_len)) {
 				free(l3_caps);
+				free(path);
 				ret = false;
 				goto group_fail;
 			}
@@ -1195,8 +1196,10 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
 					l2_caps, l3_caps, &matched_lpac,
 					&merged_caps);
 
-			if (matched_lpac == NULL || merged_caps == NULL)
+			if (matched_lpac == NULL || merged_caps == NULL) {
+				free(path);
 				continue;
+			}
 
 			create_stream_for_bis(bap_data, matched_lpac, qos,
 					merged_caps, meta, path);
