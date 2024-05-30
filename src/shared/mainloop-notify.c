@@ -15,6 +15,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
+#include <limits.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -130,7 +131,7 @@ static bool signal_read(struct io *io, void *user_data)
 	fd = io_get_fd(io);
 
 	result = read(fd, &si, sizeof(si));
-	if (result != sizeof(si))
+	if (result != sizeof(si) || si.ssi_signo > INT_MAX)
 		return false;
 
 	if (data && data->func)
