@@ -975,6 +975,11 @@ static void do_send(int sk)
 			buflen = (size > omtu) ? omtu : size;
 
 			len = send(sk, buf + sent, buflen, 0);
+			if (len < 0) {
+				syslog(LOG_ERR, "Send failed: %s (%d)",
+							strerror(errno), errno);
+				exit(1);
+			}
 
 			sent += len;
 			size -= len;
