@@ -554,7 +554,8 @@ static void do_send(int sk)
 			exit(1);
 		}
 		len = read(fd, buf, data_size);
-		send(sk, buf, len, 0);
+		if (len > 0)
+			send(sk, buf, len, 0);
 		close(fd);
 		return;
 	} else {
