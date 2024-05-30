@@ -1611,7 +1611,7 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 
 	memset(&data, 0, sizeof(data));
 
-	if (path != NULL && strncmp("..", path, 2) == 0) {
+	if (path != NULL && strlen(path) >= 2 && strncmp("..", path, 2) == 0) {
 		data.flags = 0x03;
 		folder = (path[2] == '/') ? &path[3] : NULL;
 	} else {
