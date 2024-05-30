@@ -12671,7 +12671,7 @@ static void verify_devcd(void *user_data)
 		return;
 	}
 	/* Make sure buf is nul-terminated */
-	buf[read + 1] = '\0';
+	buf[read] = '\0';
 
 	/* Verify if all devcoredump header fields are present */
 	line = strtok_r(buf, delim, &saveptr);
