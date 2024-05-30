@@ -3604,7 +3604,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrids,
 		reqtype == SDP_ATTR_REQ_INDIVIDUAL? SDP_UINT16 : SDP_UINT32);
-	if (seqlen == -1) {
+	if (seqlen < 0) {
 		errno = EINVAL;
 		goto end;
 	}
@@ -3959,7 +3959,7 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrid_list,
 			reqtype == SDP_ATTR_REQ_INDIVIDUAL? SDP_UINT16 : SDP_UINT32);
-	if (seqlen == -1) {
+	if (seqlen < 0) {
 		t->err = EINVAL;
 		goto end;
 	}
@@ -4081,7 +4081,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrid_list,
 			reqtype == SDP_ATTR_REQ_INDIVIDUAL ? SDP_UINT16 : SDP_UINT32);
-	if (seqlen == -1) {
+	if (seqlen < 0) {
 		t->err = EINVAL;
 		goto end;
 	}
@@ -4465,7 +4465,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrids,
 		reqtype == SDP_ATTR_REQ_INDIVIDUAL ? SDP_UINT16 : SDP_UINT32);
-	if (seqlen == -1) {
+	if (seqlen < 0) {
 		errno = EINVAL;
 		status = -1;
 		goto end;
