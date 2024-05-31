@@ -2,10 +2,7 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
 import dbus
-try:
-  from gi.repository import GObject
-except ImportError:
-  import gobject as GObject
+from gi.repository import GLib
 import sys
 
 from dbus.mainloop.glib import DBusGMainLoop
@@ -189,7 +186,7 @@ def main():
     global bus
     bus = dbus.SystemBus()
     global mainloop
-    mainloop = GObject.MainLoop()
+    mainloop = GLib.MainLoop()
 
     om = dbus.Interface(bus.get_object(BLUEZ_SERVICE_NAME, '/'), DBUS_OM_IFACE)
     om.connect_to_signal('InterfacesRemoved', interfaces_removed_cb)
