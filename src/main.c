@@ -712,7 +712,6 @@ static const char *valid_uuids[] = {
 	"330859bc-7506-492d-9370-9a6f0614037f",
 	"a6695ace-ee7f-4fb9-881a-5fac66c629af",
 	"6fbaf188-05e0-496a-9885-d6ddfdb4e03e",
-	"69518c4c-b69f-4679-8bc1-c021b47b5733",
 	"*"
 };
 

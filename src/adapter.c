@@ -148,13 +148,6 @@ static const struct mgmt_exp_uuid iso_socket_uuid = {
 	.str = "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
 };
 
-/* 69518c4c-b69f-4679-8bc1-c021b47b5733 */
-static const struct mgmt_exp_uuid poll_errqueue_uuid = {
-	.val = { 0x33, 0x57, 0x7b, 0xb4, 0x21, 0xc0, 0xc1, 0x8b,
-		0x79, 0x46, 0x9f, 0xb6, 0x4c, 0x8c, 0x51, 0x69 },
-	.str = "69518c4c-b69f-4679-8bc1-c021b47b5733"
-};
-
 static DBusConnection *dbus_conn = NULL;
 
 static uint32_t kernel_features = 0;
@@ -10058,44 +10051,6 @@ static void iso_socket_func(struct btd_adapter *adapter, uint8_t action)
 	btd_error(adapter->dev_id, "Failed to set ISO Socket");
 }
 
-static void poll_errqueue_complete(uint8_t status, uint16_t len,
-				const void *param, void *user_data)
-{
-	struct exp_pending *pending = user_data;
-	struct btd_adapter *adapter = pending->adapter;
-	uint8_t action;
-
-	if (status != 0) {
-		error("Set Poll Errqueue failed with status 0x%02x (%s)",
-						status, mgmt_errstr(status));
-		return;
-	}
-
-	action = btd_kernel_experimental_enabled(poll_errqueue_uuid.str);
-
-	DBG("Poll Errqueue successfully %s", action ? "set" : "reset");
-
-	if (action)
-		queue_push_tail(adapter->exps,
-					(void *)poll_errqueue_uuid.val);
-}
-
-static void poll_errqueue_func(struct btd_adapter *adapter, uint8_t action)
-{
-	struct mgmt_cp_set_exp_feature cp;
-
-	memset(&cp, 0, sizeof(cp));
-	memcpy(cp.uuid, poll_errqueue_uuid.val, 16);
-	cp.action = action;
-
-	if (exp_mgmt_send(adapter, MGMT_OP_SET_EXP_FEATURE,
-			MGMT_INDEX_NONE, sizeof(cp), &cp,
-			poll_errqueue_complete))
-		return;
-
-	btd_error(adapter->dev_id, "Failed to set Poll Errqueue");
-}
-
 static const struct exp_feat {
 	uint32_t flag;
 	const struct mgmt_exp_uuid *uuid;
@@ -10110,8 +10065,6 @@ static const struct exp_feat {
 	EXP_FEAT(EXP_FEAT_CODEC_OFFLOAD, &codec_offload_uuid,
 		codec_offload_func),
 	EXP_FEAT(EXP_FEAT_ISO_SOCKET, &iso_socket_uuid, iso_socket_func),
-	EXP_FEAT(EXP_FEAT_POLL_ERRQUEUE, &poll_errqueue_uuid,
-							poll_errqueue_func),
 };
 
 static void read_exp_features_complete(uint8_t status, uint16_t length,
@@ -10122,6 +10075,8 @@ static void read_exp_features_complete(uint8_t status, uint16_t length,
 	const struct mgmt_rp_read_exp_features_info *rp = param;
 	size_t feature_count = 0;
 	size_t i = 0;
+
+	DBG("index %u status 0x%02x", adapter->dev_id, status);
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		btd_error(adapter->dev_id,
@@ -10174,31 +10129,10 @@ static void read_exp_features_complete(uint8_t status, uint16_t length,
 	}
 }
 
-static void read_exp_features_adapter_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	struct exp_pending *pending = user_data;
-	struct btd_adapter *adapter = pending->adapter;
-
-	DBG("index %u status 0x%02x", adapter->dev_id, status);
-	return read_exp_features_complete(status, length, param, user_data);
-}
-
-static void read_exp_features_none_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	DBG("index NONE status 0x%02x", status);
-	return read_exp_features_complete(status, length, param, user_data);
-}
-
 static void read_exp_features(struct btd_adapter *adapter)
 {
 	if (exp_mgmt_send(adapter, MGMT_OP_READ_EXP_FEATURES_INFO,
-			adapter->dev_id, 0, NULL,
-			read_exp_features_adapter_complete) &&
-	    exp_mgmt_send(adapter, MGMT_OP_READ_EXP_FEATURES_INFO,
-			MGMT_INDEX_NONE, 0, NULL,
-			read_exp_features_none_complete))
+			adapter->dev_id, 0, NULL, read_exp_features_complete))
 		return;
 
 	btd_error(adapter->dev_id, "Failed to read exp features info");
