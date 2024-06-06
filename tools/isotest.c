@@ -46,6 +46,7 @@
 #define NSEC_USEC(_t) (_t / 1000L)
 #define SEC_USEC(_t)  (_t  * 1000000L)
 #define TS_USEC(_ts)  (SEC_USEC((_ts)->tv_sec) + NSEC_USEC((_ts)->tv_nsec))
+#define ROUND_CLOSEST(_x, _y) (((_x) + (_y / 2)) / (_y))
 
 #define DEFAULT_BIG_ID 0x01
 #define DEFAULT_BIS_ID 0x01
@@ -834,7 +835,9 @@ static void do_send(int sk, int fd, char *peer, bool repeat)
 	}
 
 	/* num of packets = latency (ms) / interval (us) */
-	num = (out->latency * 1000 / out->interval);
+	num = ROUND_CLOSEST(out->latency * 1000, out->interval);
+	if (!num)
+		num = 1;
 
 	syslog(LOG_INFO, "Number of packets: %d", num);
 
@@ -843,8 +846,7 @@ static void do_send(int sk, int fd, char *peer, bool repeat)
 		 * latency:
 		 * jitter buffer = 2 * (SDU * subevents)
 		 */
-		sndbuf = 2 * ((out->latency * 1000 / out->interval) *
-							out->sdu);
+		sndbuf = 2 * (num * out->sdu);
 
 	len = sizeof(sndbuf);
 	if (setsockopt(sk, SOL_SOCKET, SO_SNDBUF, &sndbuf, len) < 0) {
