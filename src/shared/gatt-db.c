@@ -281,18 +281,35 @@ static void service_clone(void *data, void *user_data)
 		/* Only clone values for characteristics declaration since that
 		 * is considered when calculating the db hash.
 		 */
-		if (bt_uuid_len(&attr->uuid) == 2 &&
-				attr->uuid.value.u16 == GATT_CHARAC_UUID)
+		if (bt_uuid_len(&attr->uuid) != 2) {
+			clone->attributes[i] = new_attribute(clone,
+							attr->handle,
+							&attr->uuid,
+							NULL, 0);
+			continue;
+		}
+
+		/* Attribute values that are used for generating the hash needs
+		 * to be cloned as well.
+		 */
+		switch (attr->uuid.value.u16) {
+		case GATT_PRIM_SVC_UUID:
+		case GATT_SND_SVC_UUID:
+		case GATT_INCLUDE_UUID:
+		case GATT_CHARAC_UUID:
 			clone->attributes[i] = new_attribute(clone,
 							attr->handle,
 							&attr->uuid,
 							attr->value,
 							attr->value_len);
-		else
+			break;
+		default:
 			clone->attributes[i] = new_attribute(clone,
 							attr->handle,
 							&attr->uuid,
 							NULL, 0);
+			break;
+		}
 	}
 
 	queue_push_tail(db->services, clone);
