@@ -58,13 +58,17 @@ static int load_desc(struct gatt_db *db, char *handle, char *value,
 	uint16_t val;
 	bt_uuid_t uuid, ext_uuid;
 
-	if (sscanf(handle, "%04hx", &handle_int) != 1)
+	if (sscanf(handle, "%04hx", &handle_int) != 1) {
+		DBG("Failed to parse handle: %s", handle);
 		return -EIO;
+	}
 
 	/* Check if there is any value stored, otherwise it is just the UUID */
 	if (sscanf(value, "%04hx:%36s", &val, uuid_str) != 2) {
-		if (sscanf(value, "%36s", uuid_str) != 1)
+		if (sscanf(value, "%36s", uuid_str) != 1) {
+			DBG("Failed to parse value: %s", value);
 			return -EIO;
+		}
 		val = 0;
 	}
 
@@ -104,8 +108,10 @@ static int load_chrc(struct gatt_db *db, char *handle, char *value,
 	size_t val_len;
 	bt_uuid_t uuid;
 
-	if (sscanf(handle, "%04hx", &handle_int) != 1)
+	if (sscanf(handle, "%04hx", &handle_int) != 1) {
+		DBG("Failed to parse handle: %s", handle);
 		return -EIO;
+	}
 
 	/* Check if there is any value stored */
 	if (sscanf(value, GATT_CHARAC_UUID_STR ":%04hx:%02hx:%32s:%36s",
@@ -148,12 +154,16 @@ static int load_incl(struct gatt_db *db, char *handle, char *value,
 	struct gatt_db_attribute *att;
 	uint16_t start, end;
 
-	if (sscanf(handle, "%04hx", &start) != 1)
+	if (sscanf(handle, "%04hx", &start) != 1) {
+		DBG("Failed to parse handle: %s", handle);
 		return -EIO;
+	}
 
 	if (sscanf(value, GATT_INCLUDE_UUID_STR ":%04hx:%04hx:%36s", &start,
-							&end, uuid_str) != 3)
+							&end, uuid_str) != 3) {
+		DBG("Failed to parse value: %s", value);
 		return -EIO;
+	}
 
 	/* Log debug message. */
 	DBG("loading included service: 0x%04x, end: 0x%04x, uuid: %s",
@@ -178,11 +188,15 @@ static int load_service(struct gatt_db *db, char *handle, char *value)
 	bt_uuid_t uuid;
 	bool primary;
 
-	if (sscanf(handle, "%04hx", &start) != 1)
+	if (sscanf(handle, "%04hx", &start) != 1) {
+		DBG("Failed to parse handle: %s", handle);
 		return -EIO;
+	}
 
-	if (sscanf(value, "%[^:]:%04hx:%36s", type, &end, uuid_str) != 3)
+	if (sscanf(value, "%[^:]:%04hx:%36s", type, &end, uuid_str) != 3) {
+		DBG("Failed to parse value: %s", value);
 		return -EIO;
+	}
 
 	if (g_str_equal(type, GATT_PRIM_SVC_UUID_STR))
 		primary = true;
