@@ -182,18 +182,18 @@ static void read_ppcp_cb(bool success, uint8_t att_ecode,
 	latency = get_le16(&value[4]);
 	timeout = get_le16(&value[6]);
 
+	/* 0xffff indicates no specific min/max */
+	if (min_interval == 0xffff)
+		min_interval = 0x0018; /* 30.0ms */
+
+	if (max_interval == 0xffff)
+		max_interval = 0x0028; /* 50.0ms */
+
 	DBG("GAP Peripheral Preferred Connection Parameters:");
 	DBG("\tMinimum connection interval: %u", min_interval);
 	DBG("\tMaximum connection interval: %u", max_interval);
 	DBG("\tSlave latency: %u", latency);
 	DBG("\tConnection Supervision timeout multiplier: %u", timeout);
-
-	/* 0xffff indicates no specific min/max */
-	if (min_interval == 0xffff)
-		min_interval = 6;
-
-	if (max_interval == 0xffff)
-		max_interval = 3200;
 
 	/* avoid persisting connection parameters that are not valid */
 	if (min_interval > max_interval ||
