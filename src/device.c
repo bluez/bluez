@@ -7346,10 +7346,10 @@ void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
 					uint16_t max_interval, uint16_t latency,
 					uint16_t timeout)
 {
-	btd_adapter_store_conn_param(device->adapter, &device->bdaddr,
-					device->bdaddr_type, min_interval,
-					max_interval, latency,
-					timeout);
+	/* Attempt to load the new connection parameters, in case it is
+	 * successful the MGMT_EV_NEW_CONN_PARAM will be generated which will
+	 * then trigger btd_adapter_store_conn_param.
+	 */
 	btd_adapter_load_conn_param(device->adapter, &device->bdaddr,
 					device->bdaddr_type, min_interval,
 					max_interval, latency,
