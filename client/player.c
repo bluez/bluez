@@ -5140,7 +5140,7 @@ static void cmd_send_transport(int argc, char *argv[])
 			err = transport_send(transport, fd, NULL);
 		} else {
 			struct sockaddr_iso addr;
-			socklen_t optlen;
+			socklen_t optlen = sizeof(addr);
 
 			err = getpeername(transport->sk, &addr, &optlen);
 			if (!err) {
@@ -5154,7 +5154,7 @@ static void cmd_send_transport(int argc, char *argv[])
 		}
 
 		if (err < 0) {
-			bt_shell_printf("Unable to send: %s (%d)",
+			bt_shell_printf("Unable to send: %s (%d)\n",
 						strerror(-err), -err);
 			close(fd);
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
