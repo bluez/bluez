@@ -1566,9 +1566,23 @@ static const struct {
 	{ 0xfd60, "Sercomm Corporation"				},
 	{ 0xfd5f, "Oculus VR, LLC"				},
 	/* SDO defined */
-	{ 0xfffc, "AirFuel Alliance"				},
-	{ 0xfffe, "Alliance for Wireless Power (A4WP)"		},
-	{ 0xfffd, "Fast IDentity Online Alliance (FIDO)"	},
+	{ 0xfccc, "Wi-Fi Easy Connect Specification"		},
+	{ 0xffef, "Wi-Fi Direct Specification"			},
+	{ 0xfff0, "Public Key Open Credential (PKOC)"		},
+	{ 0xfff1, "ICCE Digital Key"				},
+	{ 0xfff2, "Aliro"					},
+	{ 0xfff3, "FiRa Consortium"				},
+	{ 0xfff4, "FiRa Consortium"				},
+	{ 0xfff5, "Car Connectivity Consortium, LLC"		},
+	{ 0xfff6, "Matter Profile ID"				},
+	{ 0xfff7, "Zigbee Direct"				},
+	{ 0xfff8, "Mopria Alliance BLE"				},
+	{ 0xfff9, "FIDO2 Secure Client-To-Authenticator Transport" },
+	{ 0xfffa, "ASTM Remote ID"				},
+	{ 0xfffb, "Direct Thread Commissioning"			},
+	{ 0xfffc, "Wireless Power Transfer (WPT)"		},
+	{ 0xfffd, "Universal Second Factor Authenticator"	},
+	{ 0xfffe, "Wireless Power Transfer"			},
 	{ }
 };
 
