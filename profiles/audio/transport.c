@@ -220,9 +220,6 @@ void media_transport_destroy(struct media_transport *transport)
 	g_dbus_unregister_interface(btd_get_dbus_connection(), path,
 						MEDIA_TRANSPORT_INTERFACE);
 
-	if (transport->remote_endpoint)
-		g_free(transport->remote_endpoint);
-
 	g_free(path);
 }
 
@@ -1271,6 +1268,7 @@ static void media_transport_free(void *data)
 	if (transport->ops && transport->ops->destroy)
 		transport->ops->destroy(transport->data);
 
+	g_free(transport->remote_endpoint);
 	g_free(transport->configuration);
 	g_free(transport->path);
 	g_free(transport);
