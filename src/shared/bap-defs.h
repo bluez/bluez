@@ -15,10 +15,10 @@
 #define __packed __attribute__((packed))
 #endif
 
-#define BT_BAP_SINK			0x01
-#define	BT_BAP_SOURCE			0x02
-#define	BT_BAP_BCAST_SOURCE		0x03
-#define	BT_BAP_BCAST_SINK		0x04
+#define BT_BAP_SINK			BIT(0)
+#define	BT_BAP_SOURCE			BIT(1)
+#define	BT_BAP_BCAST_SOURCE		BIT(2)
+#define	BT_BAP_BCAST_SINK		BIT(3)
 
 #define BT_BAP_STREAM_TYPE_UCAST	0x01
 #define	BT_BAP_STREAM_TYPE_BCAST	0x02
