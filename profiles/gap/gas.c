@@ -342,6 +342,10 @@ static int gap_accept(struct btd_service *service)
 		goto _finish;
 	}
 
+	/* Check if attribute already has been discovered */
+	if (gas->attr)
+		goto _finish;
+
 	gas->db = gatt_db_ref(db);
 	gas->client = bt_gatt_client_clone(client);
 
@@ -364,10 +368,6 @@ _finish:
 
 static int gap_disconnect(struct btd_service *service)
 {
-	struct gas *gas = btd_service_get_user_data(service);
-
-	gas_reset(gas);
-
 	btd_service_disconnecting_complete(service, 0);
 
 	return 0;
