@@ -600,6 +600,9 @@ static unsigned int mcp_send(struct bt_mcp *mcp, uint8_t operation)
 
 unsigned int bt_mcp_play(struct bt_mcp *mcp)
 {
+	if (!mcp)
+		return 0;
+
 	if (!(mcp->session.cp_op_supported & BT_MCS_CMD_PLAY_SUPPORTED))
 		return -ENOTSUP;
 
@@ -610,6 +613,9 @@ unsigned int bt_mcp_play(struct bt_mcp *mcp)
 
 unsigned int bt_mcp_pause(struct bt_mcp *mcp)
 {
+	if (!mcp)
+		return 0;
+
 	if (!(mcp->session.cp_op_supported & BT_MCS_CMD_PAUSE_SUPPORTED))
 		return -ENOTSUP;
 
@@ -620,6 +626,9 @@ unsigned int bt_mcp_pause(struct bt_mcp *mcp)
 
 unsigned int bt_mcp_stop(struct bt_mcp *mcp)
 {
+	if (!mcp)
+		return 0;
+
 	if (!(mcp->session.cp_op_supported & BT_MCS_CMD_STOP_SUPPORTED))
 		return -ENOTSUP;
 
@@ -630,6 +639,9 @@ unsigned int bt_mcp_stop(struct bt_mcp *mcp)
 
 unsigned int bt_mcp_next_track(struct bt_mcp *mcp)
 {
+	if (!mcp)
+		return 0;
+
 	if (!(mcp->session.cp_op_supported & BT_MCS_CMD_NEXT_TRACK_SUPPORTED))
 		return -ENOTSUP;
 
@@ -640,6 +652,9 @@ unsigned int bt_mcp_next_track(struct bt_mcp *mcp)
 
 unsigned int bt_mcp_previous_track(struct bt_mcp *mcp)
 {
+	if (!mcp)
+		return 0;
+
 	if (!(mcp->session.cp_op_supported & BT_MCS_CMD_PREV_TRACK_SUPPORTED))
 		return -ENOTSUP;
 
@@ -651,7 +666,12 @@ unsigned int bt_mcp_previous_track(struct bt_mcp *mcp)
 static void mcp_mp_set_player_name(struct bt_mcp *mcp, const uint8_t *value,
 					uint16_t length)
 {
-	struct event_callback *cb = mcp->cb;
+	struct event_callback *cb;
+
+	if (!mcp)
+		return;
+
+	cb = mcp->cb;
 
 	if (cb && cb->cbs && cb->cbs->player_name)
 		cb->cbs->player_name(mcp, value, length);
@@ -660,7 +680,12 @@ static void mcp_mp_set_player_name(struct bt_mcp *mcp, const uint8_t *value,
 static void mcp_mp_set_track_title(struct bt_mcp *mcp, const uint8_t *value,
 					uint16_t length)
 {
-	struct event_callback *cb = mcp->cb;
+	struct event_callback *cb;
+
+	if (!mcp)
+		return;
+
+	cb = mcp->cb;
 
 	if (cb && cb->cbs && cb->cbs->track_title)
 		cb->cbs->track_title(mcp, value, length);
@@ -668,7 +693,12 @@ static void mcp_mp_set_track_title(struct bt_mcp *mcp, const uint8_t *value,
 
 static void mcp_mp_set_title_duration(struct bt_mcp *mcp, int32_t duration)
 {
-	struct event_callback *cb = mcp->cb;
+	struct event_callback *cb;
+
+	if (!mcp)
+		return;
+
+	cb = mcp->cb;
 
 	DBG(mcp, "Track Duration 0x%08x", duration);
 
@@ -678,7 +708,12 @@ static void mcp_mp_set_title_duration(struct bt_mcp *mcp, int32_t duration)
 
 static void mcp_mp_set_title_position(struct bt_mcp *mcp, int32_t position)
 {
-	struct event_callback *cb = mcp->cb;
+	struct event_callback *cb;
+
+	if (!mcp)
+		return;
+
+	cb = mcp->cb;
 
 	DBG(mcp, "Track Position 0x%08x", position);
 
@@ -688,7 +723,12 @@ static void mcp_mp_set_title_position(struct bt_mcp *mcp, int32_t position)
 
 static void mcp_mp_set_media_state(struct bt_mcp *mcp, uint8_t state)
 {
-	struct event_callback *cb = mcp->cb;
+	struct event_callback *cb;
+
+	if (!mcp)
+		return;
+
+	cb = mcp->cb;
 
 	DBG(mcp, "Media State 0x%02x", state);
 
@@ -1312,6 +1352,9 @@ void bt_mcp_set_event_callbacks(struct bt_mcp *mcp,
 {
 	struct event_callback *cb;
 
+	if (!mcp)
+		return;
+
 	if (mcp->cb)
 		free(mcp->cb);
 
@@ -1397,12 +1440,18 @@ done:
 
 void bt_mcp_register(struct gatt_db *db)
 {
+	if (!db)
+		return;
+
 	mcp_db_new(db);
 }
 
 bool bt_mcp_attach(struct bt_mcp *mcp, struct bt_gatt_client *client)
 {
 	bt_uuid_t uuid;
+
+	if (!mcp)
+		return false;
 
 	DBG(mcp, "mcp %p", mcp);
 
@@ -1432,6 +1481,9 @@ bool bt_mcp_attach(struct bt_mcp *mcp, struct bt_gatt_client *client)
 
 void bt_mcp_detach(struct bt_mcp *mcp)
 {
+	if (!mcp)
+		return;
+
 	DBG(mcp, "%p", mcp);
 
 	bt_gatt_client_unref(mcp->client);
