@@ -59,3 +59,5 @@ void *bt_mcp_get_user_data(struct bt_mcp *mcp);
 unsigned int bt_mcp_play(struct bt_mcp *mcp);
 unsigned int bt_mcp_pause(struct bt_mcp *mcp);
 unsigned int bt_mcp_stop(struct bt_mcp *mcp);
+unsigned int bt_mcp_next_track(struct bt_mcp *mcp);
+unsigned int bt_mcp_previous_track(struct bt_mcp *mcp);

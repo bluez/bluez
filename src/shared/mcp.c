@@ -628,6 +628,26 @@ unsigned int bt_mcp_stop(struct bt_mcp *mcp)
 	return mcp_send(mcp, BT_MCS_CMD_STOP);
 }
 
+unsigned int bt_mcp_next_track(struct bt_mcp *mcp)
+{
+	if (!(mcp->session.cp_op_supported & BT_MCS_CMD_NEXT_TRACK_SUPPORTED))
+		return -ENOTSUP;
+
+	DBG(mcp, "mcp %p", mcp);
+
+	return mcp_send(mcp, BT_MCS_CMD_NEXT_TRACK);
+}
+
+unsigned int bt_mcp_previous_track(struct bt_mcp *mcp)
+{
+	if (!(mcp->session.cp_op_supported & BT_MCS_CMD_PREV_TRACK_SUPPORTED))
+		return -ENOTSUP;
+
+	DBG(mcp, "mcp %p", mcp);
+
+	return mcp_send(mcp, BT_MCS_CMD_PREV_TRACK);
+}
+
 static void mcp_mp_set_player_name(struct bt_mcp *mcp, const uint8_t *value,
 					uint16_t length)
 {
