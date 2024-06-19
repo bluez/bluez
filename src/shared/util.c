@@ -542,6 +542,16 @@ void *util_iov_append(struct iovec *iov, const void *data, size_t len)
 	return util_iov_push_mem(iov, len, data);
 }
 
+struct iovec *util_iov_new(void *data, size_t len)
+{
+	struct iovec *iov;
+
+	iov = new0(struct iovec, 1);
+	util_iov_append(iov, data, len);
+
+	return iov;
+}
+
 void *util_iov_pull(struct iovec *iov, size_t len)
 {
 	if (!iov)
