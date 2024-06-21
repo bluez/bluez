@@ -182,7 +182,7 @@ bool util_ltv_foreach(const uint8_t *data, uint8_t len, uint8_t *type,
 	struct iovec iov;
 	int i;
 
-	if (!func)
+	if (!func || !data)
 		return false;
 
 	iov.iov_base = (void *) data;
