@@ -904,7 +904,7 @@ static void report_reply(struct bt_hog *hog, uint8_t status, uint8_t id,
 
 	hog->getrep_att = 0;
 
-	err = bt_uhid_get_report_reply(hog->uhid, hog->getrep_id, status, id,
+	err = bt_uhid_get_report_reply(hog->uhid, hog->getrep_id, id, status,
 					data, len);
 	if (err < 0)
 		error("bt_uhid_get_report_reply: %s", strerror(-err));
