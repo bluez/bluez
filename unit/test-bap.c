@@ -5574,29 +5574,6 @@ static void test_scc(void)
 	test_str_1_1_1_lc3();
 }
 
-#define LC3_CFG(_freq, _dur, _len) \
-	0x0a, \
-	0x02, 0x01, _freq, \
-	0x02, 0x02, _dur, \
-	0x03, 0x04, _len, _len >> 8
-
-#define BASE(_pd, _sgrp, _nbis, _cfg...) \
-	_pd & 0xff, _pd >> 8, _pd >> 16, \
-	_sgrp, \
-	_nbis, \
-	_cfg
-
-#define BASE_LC3(_pd, _sgrp, _nbis, _cc...) \
-	BASE(_pd, _sgrp, _nbis, 0x06, 0x00, 0x00, 0x00, 0x00, _cc)
-
-#define LC3_CFG_8_1 \
-	LC3_CFG(LC3_CONFIG_FREQ_8KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_8_1)
-
-#define BASE_LC3_8_1 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_8_1, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_8_1_1 = {
 	.cc = LC3_CONFIG_8_1,
 	.qos = LC3_QOS_8_1_1_B,
@@ -5612,14 +5589,6 @@ static struct test_config cfg_bsrc_8_1_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_8_2 \
-	LC3_CFG(LC3_CONFIG_FREQ_8KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_8_2)
-
-#define BASE_LC3_8_2 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_8_2, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_8_2_1 = {
 	.cc = LC3_CONFIG_8_2,
@@ -5637,14 +5606,6 @@ static struct test_config cfg_bsrc_8_2_2 = {
 	.state_func = bsrc_state_cfg,
 };
 
-#define LC3_CFG_16_1 \
-	LC3_CFG(LC3_CONFIG_FREQ_16KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_16_1)
-
-#define BASE_LC3_16_1 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_16_1, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_16_1_1 = {
 	.cc = LC3_CONFIG_16_1,
 	.qos = LC3_QOS_16_1_1_B,
@@ -5660,14 +5621,6 @@ static struct test_config cfg_bsrc_16_1_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_16_2 \
-	LC3_CFG(LC3_CONFIG_FREQ_16KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_16_2)
-
-#define BASE_LC3_16_2 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_16_2, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_16_2_1 = {
 	.cc = LC3_CONFIG_16_2,
@@ -5685,14 +5638,6 @@ static struct test_config cfg_bsrc_16_2_2 = {
 	.state_func = bsrc_state_cfg,
 };
 
-#define LC3_CFG_24_1 \
-	LC3_CFG(LC3_CONFIG_FREQ_24KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_24_1)
-
-#define BASE_LC3_24_1 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_24_1, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_24_1_1 = {
 	.cc = LC3_CONFIG_24_1,
 	.qos = LC3_QOS_24_1_1_B,
@@ -5708,14 +5653,6 @@ static struct test_config cfg_bsrc_24_1_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_24_2 \
-	LC3_CFG(LC3_CONFIG_FREQ_24KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_24_2)
-
-#define BASE_LC3_24_2 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_24_2, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_24_2_1 = {
 	.cc = LC3_CONFIG_24_2,
@@ -5733,14 +5670,6 @@ static struct test_config cfg_bsrc_24_2_2 = {
 	.state_func = bsrc_state_cfg,
 };
 
-#define LC3_CFG_32_1 \
-	LC3_CFG(LC3_CONFIG_FREQ_32KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_32_1)
-
-#define BASE_LC3_32_1 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_32_1, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_32_1_1 = {
 	.cc = LC3_CONFIG_32_1,
 	.qos = LC3_QOS_32_1_1_B,
@@ -5756,14 +5685,6 @@ static struct test_config cfg_bsrc_32_1_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_32_2 \
-	LC3_CFG(LC3_CONFIG_FREQ_32KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_32_2)
-
-#define BASE_LC3_32_2 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_32_2, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_32_2_1 = {
 	.cc = LC3_CONFIG_32_2,
@@ -5781,14 +5702,6 @@ static struct test_config cfg_bsrc_32_2_2 = {
 	.state_func = bsrc_state_cfg,
 };
 
-#define LC3_CFG_44_1 \
-	LC3_CFG(LC3_CONFIG_FREQ_44KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_44_1)
-
-#define BASE_LC3_44_1 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_44_1, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_44_1_1 = {
 	.cc = LC3_CONFIG_44_1,
 	.qos = LC3_QOS_44_1_1_B,
@@ -5804,14 +5717,6 @@ static struct test_config cfg_bsrc_44_1_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_44_2 \
-	LC3_CFG(LC3_CONFIG_FREQ_44KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_44_2)
-
-#define BASE_LC3_44_2 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_44_2, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_44_2_1 = {
 	.cc = LC3_CONFIG_44_2,
@@ -5829,14 +5734,6 @@ static struct test_config cfg_bsrc_44_2_2 = {
 	.state_func = bsrc_state_cfg,
 };
 
-#define LC3_CFG_48_1 \
-	LC3_CFG(LC3_CONFIG_FREQ_48KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_48_1)
-
-#define BASE_LC3_48_1 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_48_1, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_48_1_1 = {
 	.cc = LC3_CONFIG_48_1,
 	.qos = LC3_QOS_48_1_1_B,
@@ -5852,14 +5749,6 @@ static struct test_config cfg_bsrc_48_1_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_48_2 \
-	LC3_CFG(LC3_CONFIG_FREQ_48KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_48_2)
-
-#define BASE_LC3_48_2 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_48_2, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_48_2_1 = {
 	.cc = LC3_CONFIG_48_2,
@@ -5877,14 +5766,6 @@ static struct test_config cfg_bsrc_48_2_2 = {
 	.state_func = bsrc_state_cfg,
 };
 
-#define LC3_CFG_48_3 \
-	LC3_CFG(LC3_CONFIG_FREQ_48KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_48_3)
-
-#define BASE_LC3_48_3 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_48_3, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_48_3_1 = {
 	.cc = LC3_CONFIG_48_3,
 	.qos = LC3_QOS_48_3_1_B,
@@ -5900,14 +5781,6 @@ static struct test_config cfg_bsrc_48_3_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_48_4 \
-	LC3_CFG(LC3_CONFIG_FREQ_48KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_48_4)
-
-#define BASE_LC3_48_4 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_48_4, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_48_4_1 = {
 	.cc = LC3_CONFIG_48_4,
@@ -5925,14 +5798,6 @@ static struct test_config cfg_bsrc_48_4_2 = {
 	.state_func = bsrc_state_cfg,
 };
 
-#define LC3_CFG_48_5 \
-	LC3_CFG(LC3_CONFIG_FREQ_48KHZ, \
-		LC3_CONFIG_DURATION_7_5, \
-		LC3_CONFIG_FRAME_LEN_48_5)
-
-#define BASE_LC3_48_5 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_48_5, 0x00, 0x01, 0x00)
-
 static struct test_config cfg_bsrc_48_5_1 = {
 	.cc = LC3_CONFIG_48_5,
 	.qos = LC3_QOS_48_5_1_B,
@@ -5948,14 +5813,6 @@ static struct test_config cfg_bsrc_48_5_2 = {
 	.src = true,
 	.state_func = bsrc_state_cfg,
 };
-
-#define LC3_CFG_48_6 \
-	LC3_CFG(LC3_CONFIG_FREQ_48KHZ, \
-		LC3_CONFIG_DURATION_10, \
-		LC3_CONFIG_FRAME_LEN_48_6)
-
-#define BASE_LC3_48_6 \
-	BASE_LC3(40000, 1, 1, LC3_CFG_48_6, 0x00, 0x01, 0x00)
 
 static struct test_config cfg_bsrc_48_6_1 = {
 	.cc = LC3_CONFIG_48_6,
@@ -5983,10 +5840,6 @@ static struct test_config cfg_bsrc_48_6_2 = {
 	0x10, \
 	VS_CC
 
-#define BASE_VS \
-	BASE(40000, 1, 1, 0xFF, 0x00, 0x00, 0x00, 0x00, \
-	VS_CFG, 0x00, 0x01, 0x00)
-
 #define QOS_BCAST \
 { \
 	.bcast.big = 0x00, \
@@ -6003,7 +5856,7 @@ static struct test_config cfg_bsrc_48_6_2 = {
 static struct test_config cfg_bsrc_vs = {
 	.cc = UTIL_IOV_INIT(VS_CC),
 	.qos = QOS_BCAST,
-	.base = UTIL_IOV_INIT(BASE_VS),
+	.base = UTIL_IOV_INIT(BASE_VS(VS_CFG)),
 	.vs = true,
 	.src = true,
 	.state_func = bsrc_state_cfg,
@@ -7106,7 +6959,7 @@ static struct test_config cfg_bsrc_str_48_6 = {
 static struct test_config cfg_bsrc_str_vs = {
 	.cc = UTIL_IOV_INIT(VS_CC),
 	.qos = QOS_BCAST,
-	.base = UTIL_IOV_INIT(BASE_VS),
+	.base = UTIL_IOV_INIT(BASE_VS(VS_CFG)),
 	.src = true,
 	.state_func = bsrc_state_str,
 	.streams = 1,
