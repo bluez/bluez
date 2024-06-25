@@ -12,9 +12,9 @@
 
 #define LC3_ID			0x06
 
-#define LC3_BASE		0x01
+#define LC3_TYPE_BASE		0x01
 
-#define LC3_FREQ		(LC3_BASE)
+#define LC3_FREQ		LC3_TYPE_BASE
 #define LC3_FREQ_8KHZ		BIT(0)
 #define LC3_FREQ_11KHZ		BIT(1)
 #define LC3_FREQ_16KHZ		BIT(2)
@@ -32,7 +32,7 @@
 					LC3_FREQ_44KHZ | \
 					LC3_FREQ_48KHZ)
 
-#define LC3_DURATION		(LC3_BASE + 1)
+#define LC3_DURATION		(LC3_TYPE_BASE + 1)
 #define LC3_DURATION_7_5	BIT(0)
 #define LC3_DURATION_10		BIT(1)
 #define LC3_DURATION_ANY	(LC3_DURATION_7_5 | LC3_DURATION_10)
@@ -40,12 +40,12 @@
 #define LC3_DURATION_PREFER_10	BIT(5)
 
 
-#define LC3_CHAN_COUNT		(LC3_BASE + 2)
+#define LC3_CHAN_COUNT		(LC3_TYPE_BASE + 2)
 #define LC3_CHAN_COUNT_SUPPORT	BIT(0)
 
-#define LC3_FRAME_LEN		(LC3_BASE + 3)
+#define LC3_FRAME_LEN		(LC3_TYPE_BASE + 3)
 
-#define LC3_FRAME_COUNT		(LC3_BASE + 4)
+#define LC3_FRAME_COUNT		(LC3_TYPE_BASE + 4)
 
 #define LC3_CAPABILITIES(_freq, _duration, _chan_count, _len_min, _len_max) \
 	UTIL_IOV_INIT(0x02, LC3_FREQ, _freq, _freq >> 8, \
