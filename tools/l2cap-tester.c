@@ -58,6 +58,9 @@ struct l2cap_data {
 	uint16_t server_psm;
 	uint16_t cid;
 	uint8_t mode;
+	uint16_t mtu;
+	uint16_t mps;
+	uint16_t credits;
 	int expect_err;
 	int timeout;
 
@@ -545,11 +548,43 @@ static const struct l2cap_data le_client_connect_read_success_test = {
 	.data_len = sizeof(l2_data),
 };
 
+static const struct l2cap_data le_client_connect_read_32k_success_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mtu = 672,
+	.mps = 251,
+	/* Given enough credits to complete the transfer without waiting for
+	 * more credits.
+	 * credits = round_up(data size / mtu) * round_up(mtu / mps)
+	 * credits = 49 * 3
+	 * credits = 147
+	 */
+	.credits = 147,
+	.read_data = l2_data_32k,
+	.data_len = sizeof(l2_data_32k),
+};
+
 static const struct l2cap_data le_client_connect_write_success_test = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
 	.write_data = l2_data,
 	.data_len = sizeof(l2_data),
+};
+
+static const struct l2cap_data le_client_connect_write_32k_success_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mtu = 672,
+	.mps = 251,
+	/* Given enough credits to complete the transfer without waiting for
+	 * more credits.
+	 * credits = round_up(data size / mtu) * round_up(mtu / mps)
+	 * credits = 49 * 3
+	 * credits = 147
+	 */
+	.credits = 147,
+	.write_data = l2_data_32k,
+	.data_len = sizeof(l2_data_32k),
 };
 
 static const struct l2cap_data le_client_connect_tx_timestamping_test = {
@@ -1278,6 +1313,10 @@ static bool check_mtu(struct test_data *data, int sk)
 					strerror(errno), errno);
 			return false;
 		}
+
+		/* Take SDU len into account */
+		data->l2o.imtu -= 2;
+		data->l2o.omtu -= 2;
 	} else {
 		/* For non-LE CoC enabled kernels we need to fall back to
 		 * L2CAP_OPTIONS, so test support for it as well */
@@ -1673,9 +1712,20 @@ static void test_connect(const void *test_data)
 		if (l2data->shut_sock_wr)
 			host_disconnect_cb = client_l2cap_disconnect_cb;
 
-		bthost_add_l2cap_server(bthost, l2data->server_psm,
-					host_connect_cb, host_disconnect_cb,
-					data);
+		if (l2data->mtu || l2data->mps || l2data->credits)
+			bthost_add_l2cap_server_custom(bthost,
+							l2data->server_psm,
+							l2data->mtu,
+							l2data->mps,
+							l2data->credits,
+							host_connect_cb,
+							host_disconnect_cb,
+							data);
+		else
+			bthost_add_l2cap_server(bthost, l2data->server_psm,
+							host_connect_cb,
+							host_disconnect_cb,
+							data);
 	}
 
 	if (l2data->direct_advertising)
@@ -2534,10 +2584,16 @@ int main(int argc, char *argv[])
 				&le_client_connect_timeout_test_1,
 				setup_powered_client, test_connect_timeout);
 	test_l2cap_le("L2CAP LE Client - Read Success",
-					&le_client_connect_read_success_test,
-					setup_powered_client, test_connect);
+				&le_client_connect_read_success_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client - Read 32k Success",
+				&le_client_connect_read_32k_success_test,
+				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client - Write Success",
 				&le_client_connect_write_success_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client - Write 32k Success",
+				&le_client_connect_write_32k_success_test,
 				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client - TX Timestamping",
 				&le_client_connect_tx_timestamping_test,
