@@ -136,6 +136,11 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 				bthost_l2cap_connect_cb func,
 				bthost_l2cap_disconnect_cb disconn_func,
 				void *user_data);
+void bthost_add_l2cap_server_custom(struct bthost *bthost, uint16_t psm,
+				uint16_t mtu, uint16_t mps, uint16_t credits,
+				bthost_l2cap_connect_cb func,
+				bthost_l2cap_disconnect_cb disconn_func,
+				void *user_data);
 
 void bthost_set_sc_support(struct bthost *bthost, bool enable);
 

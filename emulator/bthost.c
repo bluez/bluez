@@ -195,6 +195,9 @@ struct l2cap_pending_req {
 
 struct l2cap_conn_cb_data {
 	uint16_t psm;
+	uint16_t mtu;
+	uint16_t mps;
+	uint16_t credits;
 	bthost_l2cap_connect_cb func;
 	bthost_l2cap_disconnect_cb disconn_func;
 	void *user_data;
@@ -2164,14 +2167,13 @@ static bool l2cap_le_conn_req(struct bthost *bthost, struct btconn *conn,
 
 	memset(&rsp, 0, sizeof(rsp));
 
-	rsp.mtu = 23;
-	rsp.mps = 23;
-	rsp.credits = 1;
-
 	cb_data = bthost_find_l2cap_cb_by_psm(bthost, psm);
-	if (cb_data)
+	if (cb_data) {
 		rsp.dcid = cpu_to_le16(conn->next_cid++);
-	else
+		rsp.mtu = cpu_to_le16(cb_data->mtu) ? : cpu_to_le16(23);
+		rsp.mps = cpu_to_le16(cb_data->mps) ? : cpu_to_le16(23);
+		rsp.credits = cpu_to_le16(cb_data->credits) ? : cpu_to_le16(1);
+	} else
 		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
 
 	l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_LE_CONN_RSP, ident, &rsp,
@@ -3511,7 +3513,8 @@ uint64_t bthost_conn_get_fixed_chan(struct bthost *bthost, uint16_t handle)
 	return conn->fixed_chan;
 }
 
-void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
+void bthost_add_l2cap_server_custom(struct bthost *bthost, uint16_t psm,
+				uint16_t mtu, uint16_t mps, uint16_t credits,
 				bthost_l2cap_connect_cb func,
 				bthost_l2cap_disconnect_cb disconn_func,
 				void *user_data)
@@ -3523,12 +3526,24 @@ void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 		return;
 
 	data->psm = psm;
+	data->mtu = mtu;
+	data->mps = mps;
+	data->credits = credits;
 	data->user_data = user_data;
 	data->func = func;
 	data->disconn_func = disconn_func;
 	data->next = bthost->new_l2cap_conn_data;
 
 	bthost->new_l2cap_conn_data = data;
+}
+
+void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
+				bthost_l2cap_connect_cb func,
+				bthost_l2cap_disconnect_cb disconn_func,
+				void *user_data)
+{
+	bthost_add_l2cap_server_custom(bthost, psm, 0, 0, 0, func,
+					disconn_func, user_data);
 }
 
 void bthost_set_sc_support(struct bthost *bthost, bool enable)
