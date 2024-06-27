@@ -1907,6 +1907,7 @@ gboolean mcap_create_mcl(struct mcap_instance *mi,
 		set_default_cb(mcl);
 		if (util_getrandom(&val, sizeof(val), 0) < 0) {
 			mcap_instance_unref(mcl->mi);
+			g_free(mcl->cb);
 			g_free(mcl);
 			return FALSE;
 		}
