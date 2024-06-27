@@ -346,6 +346,11 @@ static bool setup_device(int fd, const char *sysfs_path,
 
 	device = btd_adapter_get_device(adapter, &device_bdaddr, BDADDR_BREDR);
 
+	if (!device) {
+		error("sixaxis: unable to set up a new device");
+		return false;
+	}
+
 	info("sixaxis: setting up new device");
 
 	btd_device_device_set_name(device, cp->name);
