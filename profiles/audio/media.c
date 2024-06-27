@@ -1280,6 +1280,7 @@ static bool endpoint_init_pac(struct media_endpoint *endpoint, uint8_t type,
 	if (asprintf(&name, "%s:%s", endpoint->sender, endpoint->path) < 0) {
 		error("Could not allocate name for pac %s:%s",
 				endpoint->sender, endpoint->path);
+		free(name);
 		return false;
 	}
 
