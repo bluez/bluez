@@ -83,8 +83,8 @@ dict ServiceData
 	Service Data elements to include. The keys are the UUID to associate
 	with the data.
 
-dict Data [Experimental]
-````````````````````````
+dict Data
+`````````
 
 	Advertising Data to include. Key is the advertising type and value is
 	the data as byte array.
@@ -101,8 +101,8 @@ dict Data [Experimental]
 		<Transport Discovery> <Organization Flags...>
 		0x26                   0x01         0x01...
 
-bool Discoverable [Experimental]
-````````````````````````````````
+bool Discoverable
+`````````````````
 
 	Advertise as general discoverable. When present this will override
 	adapter Discoverable property.
@@ -110,8 +110,8 @@ bool Discoverable [Experimental]
 	Note: This property shall not be set when **Type** is set to
 	"broadcast".
 
-uint16 DiscoverableTimeout [Experimental]
-`````````````````````````````````````````
+uint16 DiscoverableTimeout
+``````````````````````````
 
 	The discoverable timeout in seconds. A value of zero means that the
 	timeout is disabled and it will stay in discoverable/limited mode
@@ -158,8 +158,8 @@ uint16_t Timeout
 	Timeout of the advertisement in seconds. This defines the lifetime of
 	the advertisement.
 
-string SecondaryChannel [Experimental]
-``````````````````````````````````````
+string SecondaryChannel
+```````````````````````
 
 	Secondary channel to be used. Primary channel is always set to "1M"
 	except when "Coded" is set.
@@ -170,24 +170,24 @@ string SecondaryChannel [Experimental]
 	:"2M":
 	:"Coded":
 
-uint32 MinInterval [Experimental]
-`````````````````````````````````
+uint32 MinInterval
+``````````````````
 
 	Minimum advertising interval to be used by the advertising set, in
 	milliseconds. Acceptable values are in the range [20ms, 10,485s].
 	If the provided MinInterval is larger than the provided MaxInterval,
 	the registration will return failure.
 
-uint32 MaxInterval [Experimental]
-`````````````````````````````````
+uint32 MaxInterval
+``````````````````
 
 	Maximum advertising interval to be used by the advertising set, in
 	milliseconds. Acceptable values are in the range [20ms, 10,485s]. If the
 	provided MinInterval is larger than the provided MaxInterval, the
 	registration will return failure.
 
-int16 TxPower [Experimental]
-````````````````````````````
+int16 TxPower
+`````````````
 
 	Requested transmission power of this advertising set. The provided value
 	is used only if the "CanSetTxPower" feature is enabled on the
