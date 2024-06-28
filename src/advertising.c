@@ -1129,10 +1129,6 @@ static bool parse_min_interval(DBusMessageIter *iter,
 {
 	uint32_t min_interval_ms;
 
-	/* Only consider this property if experimental setting is applied */
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
-		return true;
-
 	if (!iter) {
 		client->min_interval = 0;
 		return false;
@@ -1162,10 +1158,6 @@ static bool parse_max_interval(DBusMessageIter *iter,
 {
 	uint32_t max_interval_ms;
 
-	/* Only consider this property if experimental setting is applied */
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
-		return true;
-
 	if (!iter) {
 		client->max_interval = 0;
 		return false;
@@ -1194,10 +1186,6 @@ static bool parse_tx_power(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
 	int16_t val;
-
-	/* Only consider this property if experimental setting is applied */
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
-		return true;
 
 	if (!iter) {
 		client->tx_power = ADV_TX_POWER_NO_PREFERENCE;
@@ -1841,10 +1829,8 @@ static const GDBusPropertyTable properties[] = {
 	{ "SupportedIncludes", "as", get_supported_includes, NULL, NULL },
 	{ "SupportedSecondaryChannels", "as", get_supported_secondary, NULL,
 							secondary_exists },
-	{ "SupportedFeatures", "as", get_supported_features, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL},
-	{ "SupportedCapabilities", "a{sv}", get_supported_cap, NULL, NULL,
-					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL},
+	{ "SupportedFeatures", "as", get_supported_features, NULL, NULL },
+	{ "SupportedCapabilities", "a{sv}", get_supported_cap, NULL, NULL },
 	{ }
 };
 
@@ -1998,8 +1984,7 @@ static struct btd_adv_manager *manager_create(struct btd_adapter *adapter,
 	/* Query controller capabilities. This will be used to display valid
 	 * advertising tx power range to the client.
 	 */
-	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL &&
-			btd_has_kernel_features(KERNEL_HAS_CONTROLLER_CAP_CMD))
+	if (btd_has_kernel_features(KERNEL_HAS_CONTROLLER_CAP_CMD))
 		mgmt_send(manager->mgmt, MGMT_OP_READ_CONTROLLER_CAP,
 			manager->mgmt_index, 0, NULL,
 			read_controller_cap_complete, manager, NULL);
