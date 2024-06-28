@@ -1822,8 +1822,10 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 	return result;
 
 error:
-	if (data)
+	if (data) {
+		free(data->pdu);
 		free(data);
+	}
 
 	return false;
 }
