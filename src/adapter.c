@@ -1349,6 +1349,10 @@ int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec)
 void adapter_service_remove(struct btd_adapter *adapter, uint32_t handle)
 {
 	sdp_record_t *rec;
+
+	if (!adapter)
+		return;
+
 	/*
 	 * If the controller does not support BR/EDR operation,
 	 * there is no point in trying to remote SDP records.
