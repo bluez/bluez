@@ -913,7 +913,7 @@ static void recv_mode(int sk)
 					timestamp = 0;
 					memset(ts, 0, sizeof(ts));
 				} else {
-					sprintf(ts, "[%lld.%lld] ",
+					snprintf(ts, sizeof(ts), "[%lld.%lld] ",
 							(long long)tv.tv_sec,
 							(long long)tv.tv_usec);
 				}
