@@ -169,7 +169,7 @@ static void cb_track_duration(struct bt_mcp *mcp, int32_t duration)
 	unsigned char buf[10];
 
 	/* MCP defines duration is int32 but api takes it as uint32 */
-	sprintf((char *)buf, "%d", duration);
+	snprintf((char *)buf, 10, "%d", duration);
 	media_player_set_metadata(mp, NULL, "Duration", buf, sizeof(buf));
 	media_player_metadata_changed(mp);
 }
