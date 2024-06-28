@@ -1272,6 +1272,9 @@ static void bass_bcast_src_free(void *data)
 {
 	struct bt_bcast_src *bcast_src = data;
 
+	if (!bcast_src)
+		return;
+
 	for (int i = 0; i < bcast_src->num_subgroups; i++)
 		free(bcast_src->subgroup_data[i].meta);
 
