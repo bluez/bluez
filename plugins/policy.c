@@ -74,6 +74,7 @@ static GSList *reconnects = NULL;
 static unsigned int service_id = 0;
 static GSList *devices = NULL;
 
+static const bool default_auto_enable = true;
 static bool auto_enable = false;
 
 struct policy_data {
@@ -858,6 +859,7 @@ static int policy_init(void)
 						sizeof(*reconnect_intervals);
 		reconnect_intervals = util_memdup(default_intervals,
 						sizeof(default_intervals));
+		auto_enable = default_auto_enable;
 		goto done;
 	}
 
@@ -895,7 +897,7 @@ static int policy_init(void)
 								&gerr);
 	if (gerr) {
 		g_clear_error(&gerr);
-		auto_enable = true;
+		auto_enable = default_auto_enable;
 	}
 
 	resume_delay = g_key_file_get_integer(
