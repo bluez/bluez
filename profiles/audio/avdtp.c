@@ -3918,6 +3918,9 @@ struct btd_device *avdtp_get_device(struct avdtp *session)
 
 gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
 {
+	if (!session || !stream)
+		return FALSE;
+
 	return g_slist_find(session->streams, stream) ? TRUE : FALSE;
 }
 
