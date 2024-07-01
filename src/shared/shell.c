@@ -1328,13 +1328,15 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 				}
 			}
 
-			if (c != opt->options[index - offset].val) {
-				usage(argc, argv, opt);
-				exit(EXIT_SUCCESS);
-				return;
-			}
+			if (opt) {
+				if (c != opt->options[index - offset].val) {
+					usage(argc, argv, opt);
+					exit(EXIT_SUCCESS);
+					return;
+				}
 
-			*opt->optarg[index - offset] = optarg ? : "";
+				*opt->optarg[index - offset] = optarg ? : "";
+			}
 		}
 
 		index = -1;
