@@ -289,6 +289,11 @@ static bool input_read(struct io *io, void *user_data)
 
 	fd = io_get_fd(io);
 
+	if (fd < 0) {
+		printf("io_get_fd() returned %d\n", fd);
+		return false;
+	}
+
 	if (fd == STDIN_FILENO) {
 		rl_callback_read_char();
 		return true;
