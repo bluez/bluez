@@ -673,8 +673,13 @@ static void int_prov_rx(void *user_data, const void *dptr, uint16_t len)
 		goto failure;
 	}
 
-	if (type >= L_ARRAY_SIZE(expected_pdu_size) ||
-					len != expected_pdu_size[type]) {
+	if (type >= L_ARRAY_SIZE(expected_pdu_size)) {
+		l_error("Invalid PDU type %2.2x", type);
+		fail_code[1] = PROV_ERR_INVALID_FORMAT;
+		goto failure;
+	}
+
+	if (len != expected_pdu_size[type]) {
 		l_error("Expected PDU size %d, Got %d (type: %2.2x)",
 			expected_pdu_size[type], len, type);
 		fail_code[1] = PROV_ERR_INVALID_FORMAT;
