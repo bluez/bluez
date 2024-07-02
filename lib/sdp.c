@@ -513,8 +513,10 @@ sdp_data_t *sdp_seq_alloc_with_length(void **dtds, void **values, int *length,
 		else
 			data = sdp_data_alloc_with_length(dtd, values[i], length[i]);
 
-		if (!data)
+		if (!data) {
+			sdp_data_free(seq);
 			return NULL;
+		}
 
 		if (curr)
 			curr->next = data;
@@ -541,8 +543,10 @@ sdp_data_t *sdp_seq_alloc(void **dtds, void **values, int len)
 		else
 			data = sdp_data_alloc(dtd, values[i]);
 
-		if (!data)
+		if (!data) {
+			sdp_data_free(seq);
 			return NULL;
+		}
 
 		if (curr)
 			curr->next = data;
