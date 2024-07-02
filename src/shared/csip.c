@@ -611,6 +611,9 @@ static void foreach_csis_service(struct gatt_db_attribute *attr,
 	struct bt_csip *csip = user_data;
 	struct bt_csis *csis = csip_get_csis(csip);
 
+	if (!csis)
+		return;
+
 	csis->service = attr;
 
 	gatt_db_service_set_claimed(attr, true);
