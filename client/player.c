@@ -5016,6 +5016,11 @@ static bool transport_timer_read(struct io *io, void *user_data)
 		return false;
 
 	fd = io_get_fd(io);
+	if (fd < 0) {
+		bt_shell_printf("io_get_fd() returned %d\n", fd);
+		return false;
+	}
+
 	ret = read(fd, &exp, sizeof(exp));
 	if (ret < 0) {
 		bt_shell_printf("Failed to read: %s (%d)\n", strerror(errno),
