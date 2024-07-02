@@ -2598,6 +2598,11 @@ static bool sock_io_read(struct io *io, void *user_data)
 	int fd = io_get_fd(io);
 	ssize_t bytes_read;
 
+	if (fd < 0) {
+		error("io_get_fd() returned %d\n", fd);
+		return false;
+	}
+
 	bytes_read = read(fd, buf, sizeof(buf));
 	if (bytes_read <= 0)
 		return false;
