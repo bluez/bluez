@@ -2701,6 +2701,9 @@ static void foreach_vocs_service(struct gatt_db_attribute *attr,
 	struct bt_vcp *vcp = user_data;
 	struct bt_vocs *vocs = vcp_get_vocs(vcp);
 
+	if (!vocs || !attr)
+		return;
+
 	vocs->service = attr;
 
 	gatt_db_service_set_claimed(attr, true);
