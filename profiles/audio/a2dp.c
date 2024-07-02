@@ -1327,6 +1327,9 @@ static struct a2dp_remote_sep *find_remote_sep(struct a2dp_channel *chan,
 {
 	struct avdtp_remote_sep *rsep;
 
+	if (!chan || !sep)
+		return NULL;
+
 	rsep = avdtp_find_remote_sep(chan->session, sep->lsep);
 
 	return queue_find(chan->seps, match_remote_sep, rsep);
