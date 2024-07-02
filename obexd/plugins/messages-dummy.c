@@ -359,36 +359,45 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 
 	for (i = 0 ; names[i]; ++i) {
 		if (g_strcmp0(names[i], "handle") == 0) {
+			g_free(entry->handle);
 			entry->handle = g_strdup(values[i]);
 			mld->size++;
 			continue;
 		}
 		if (g_strcmp0(names[i], "attachment_size") == 0) {
+			g_free(entry->attachment_size);
 			entry->attachment_size = g_strdup(values[i]);
 			continue;
 		}
 		if (g_strcmp0(names[i], "datetime") == 0) {
+			g_free(entry->datetime);
 			entry->datetime = g_strdup(values[i]);
 			continue;
 		}
 		if (g_strcmp0(names[i], "subject") == 0) {
+			g_free(entry->subject);
 			entry->subject = g_strdup(values[i]);
 			continue;
 		}
 		if (g_strcmp0(names[i], "recipient_addressing") == 0) {
+			g_free(entry->recipient_addressing);
 			entry->recipient_addressing = g_strdup(values[i]);
 			continue;
 		}
 		if (g_strcmp0(names[i], "sender_addressing") == 0) {
+			g_free(entry->sender_addressing);
 			entry->sender_addressing = g_strdup(values[i]);
 			continue;
 		}
 		if (g_strcmp0(names[i], "type") == 0) {
+			g_free(entry->type);
 			entry->type = g_strdup(values[i]);
 			continue;
 		}
-		if (g_strcmp0(names[i], "reception_status") == 0)
+		if (g_strcmp0(names[i], "reception_status") == 0) {
+			g_free(entry->reception_status);
 			entry->reception_status = g_strdup(values[i]);
+		}
 	}
 
 	if (mld->size > mld->offset)
