@@ -376,6 +376,7 @@ static void *backup_open(const char *name, int oflag, mode_t mode,
 	obj->error_code = 0;
 
 	if (send_backup_dbus_message("open", obj, size) == FALSE) {
+		g_free(obj->cmd);
 		g_free(obj);
 		obj = NULL;
 	}
