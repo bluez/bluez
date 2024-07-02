@@ -406,6 +406,7 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 	g_free(entry->reception_status);
 	g_free(entry->type);
 	g_free(entry->sender_addressing);
+	g_free(entry->recipient_addressing);
 	g_free(entry->subject);
 	g_free(entry->datetime);
 	g_free(entry->attachment_size);
