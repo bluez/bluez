@@ -2052,6 +2052,7 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 		set_default_cb(mcl);
 		if (util_getrandom(&val, sizeof(val), 0) < 0) {
 			mcap_instance_unref(mcl->mi);
+			g_free(mcl->cb);
 			g_free(mcl);
 			goto drop;
 		}
