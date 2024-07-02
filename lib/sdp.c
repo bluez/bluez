@@ -1538,6 +1538,11 @@ static sdp_data_t *sdp_copy_seq(sdp_data_t *data)
 		value = sdp_data_value(tmp, &len);
 		datatmp = sdp_data_alloc_with_length(tmp->dtd, value, len);
 
+		if (!datatmp) {
+			sdp_data_free(seq);
+			return NULL;
+		}
+
 		if (cur)
 			cur->next = datatmp;
 		else
