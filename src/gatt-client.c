@@ -1127,6 +1127,11 @@ static bool sock_read(struct io *io, void *user_data)
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
+	if (fd < 0) {
+		error("io_get_fd() returned %d\n", fd);
+		return false;
+	}
+
 	bytes_read = recvmsg(fd, &msg, MSG_DONTWAIT);
 	if (bytes_read < 0) {
 		error("recvmsg: %s", strerror(errno));
