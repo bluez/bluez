@@ -805,12 +805,17 @@ static void ascs_ase_read(struct gatt_db_attribute *attrib,
 				void *user_data)
 {
 	struct bt_ase *ase = user_data;
-	struct bt_bap *bap = bap_get_session(att, ase->ascs->bdb->db);
-	struct bt_bap_endpoint *ep = bap_get_endpoint(bap->local_eps,
-							bap->ldb, attrib);
+	struct bt_bap *bap = NULL;
+	struct bt_bap_endpoint *ep = NULL;
 	struct bt_ascs_ase_status rsp;
 
-	if (!ase || !bap || !ep) {
+	if (ase)
+		bap = bap_get_session(att, ase->ascs->bdb->db);
+
+	if (bap)
+		ep = bap_get_endpoint(bap->local_eps, bap->ldb, attrib);
+
+	if (!ep) {
 		gatt_db_attribute_read_result(attrib, id, BT_ATT_ERROR_UNLIKELY,
 								NULL, 0);
 		return;
