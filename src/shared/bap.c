@@ -1870,10 +1870,10 @@ static unsigned int bap_ucast_disable(struct bt_bap_stream *stream,
 
 static uint8_t stream_stop(struct bt_bap_stream *stream, struct iovec *rsp)
 {
-	DBG(stream->bap, "stream %p", stream);
-
 	if (!stream)
 		return 0;
+
+	DBG(stream->bap, "stream %p", stream);
 
 	ascs_ase_rsp_success(rsp, stream->ep->id);
 
@@ -2751,11 +2751,11 @@ static uint8_t ascs_start(struct bt_ascs *ascs, struct bt_bap *bap,
 
 static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
 {
-	DBG(stream->bap, "stream %p", stream);
-
 	if (!stream || stream->ep->state == BT_BAP_STREAM_STATE_QOS ||
 			stream->ep->state == BT_BAP_STREAM_STATE_IDLE)
 		return 0;
+
+	DBG(stream->bap, "stream %p", stream);
 
 	ascs_ase_rsp_success(rsp, stream->ep->id);
 
@@ -5830,10 +5830,12 @@ int bt_bap_stream_cancel(struct bt_bap_stream *stream, unsigned int id)
 int bt_bap_stream_io_link(struct bt_bap_stream *stream,
 				struct bt_bap_stream *link)
 {
-	struct bt_bap *bap = stream->bap;
+	struct bt_bap *bap;
 
 	if (!stream || !link || stream == link)
 		return -EINVAL;
+
+	bap = stream->bap;
 
 	if (stream->link || link->link)
 		return -EALREADY;
