@@ -232,7 +232,7 @@ static int gatt_db_load(struct gatt_db *db, GKeyFile *key_file, char **keys)
 		value = g_key_file_get_string(key_file, "Attributes", *handle,
 									NULL);
 
-		if (sscanf(value, "%[^:]:", type) != 1) {
+		if (!value || sscanf(value, "%[^:]:", type) != 1) {
 			g_free(value);
 			return -EIO;
 		}
@@ -255,7 +255,7 @@ static int gatt_db_load(struct gatt_db *db, GKeyFile *key_file, char **keys)
 		value = g_key_file_get_string(key_file, "Attributes", *handle,
 									NULL);
 
-		if (sscanf(value, "%[^:]:", type) != 1) {
+		if (!value || sscanf(value, "%[^:]:", type) != 1) {
 			g_free(value);
 			return -EIO;
 		}
