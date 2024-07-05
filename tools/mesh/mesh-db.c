@@ -503,7 +503,8 @@ static void load_remotes(json_object *jcfg)
 		uint8_t uuid[16];
 		uint16_t unicast, key_idx;
 		const char *str;
-		int ele_cnt, key_cnt;
+		uint8_t ele_cnt;
+		int key_cnt;
 		int j;
 
 		jnode = json_object_array_get_idx(jnodes, i);
@@ -528,13 +529,12 @@ static void load_remotes(json_object *jcfg)
 			continue;
 
 		json_object_object_get_ex(jnode, "elements", &jarray);
-		if (!jarray || json_object_get_type(jarray) != json_type_array)
+		if (!jarray ||
+			json_object_get_type(jarray) != json_type_array ||
+			json_object_array_length(jarray) > MAX_ELE_COUNT)
 			continue;
 
 		ele_cnt = json_object_array_length(jarray);
-
-		if (ele_cnt > MAX_ELE_COUNT)
-			continue;
 
 		json_object_object_get_ex(jnode, "netKeys", &jarray);
 		if (!jarray || json_object_get_type(jarray) != json_type_array)
