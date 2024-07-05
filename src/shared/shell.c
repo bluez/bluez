@@ -1302,11 +1302,12 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			data.mode = 1;
 			goto done;
 		case 's':
-			if (optarg)
+			if (optarg && data.init_fd < 0) {
 				data.init_fd = open(optarg, O_RDONLY);
-			if (data.init_fd < 0)
-				printf("Unable to open %s: %s (%d)\n", optarg,
-						strerror(errno), errno);
+				if (data.init_fd < 0)
+					printf("Unable to open %s: %s (%d)\n",
+						optarg, strerror(errno), errno);
+			}
 			break;
 		case 't':
 			if (optarg)
