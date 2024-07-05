@@ -113,6 +113,7 @@ static char *file_stat_line(char *filename, struct stat *fstat,
 {
 	char perm[51], atime[18], ctime[18], mtime[18];
 	char *escaped, *ret = NULL;
+	struct tm a_gmtime, c_gmtime, m_gmtime;
 
 	snprintf(perm, 50, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
@@ -126,9 +127,16 @@ static char *file_stat_line(char *filename, struct stat *fstat,
 			(fstat->st_mode & 0002 ? "W" : ""),
 			(dstat->st_mode & 0002 ? "D" : ""));
 
-	strftime(atime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_atime));
-	strftime(ctime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_ctime));
-	strftime(mtime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_mtime));
+	if (!gmtime_r(&fstat->st_atime, &a_gmtime) ||
+			!gmtime_r(&fstat->st_ctime, &c_gmtime) ||
+			!gmtime_r(&fstat->st_mtime, &m_gmtime)) {
+		error("gmtime_r() returned NULL");
+		return ret;
+	}
+
+	strftime(atime, 17, "%Y%m%dT%H%M%SZ", &a_gmtime);
+	strftime(ctime, 17, "%Y%m%dT%H%M%SZ", &c_gmtime);
+	strftime(mtime, 17, "%Y%m%dT%H%M%SZ", &m_gmtime);
 
 	escaped = g_markup_escape_text(filename, -1);
 
