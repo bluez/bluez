@@ -3290,6 +3290,7 @@ static void set_pa_data(struct bthost *bthost, const uint8_t *data,
 {
 	struct bt_hci_cmd_le_set_pa_data *cp;
 	uint8_t buf[sizeof(*cp) + BT_PA_MAX_DATA_LEN];
+	size_t data_len;
 
 	cp = (void *)buf;
 
@@ -3299,14 +3300,14 @@ static void set_pa_data(struct bthost *bthost, const uint8_t *data,
 	cp->handle = 1;
 
 	if (len - offset > BT_PA_MAX_DATA_LEN) {
-		cp->data_len = BT_PA_MAX_DATA_LEN;
+		data_len = BT_PA_MAX_DATA_LEN;
 
 		if (!offset)
 			cp->operation = 0x01;
 		else
 			cp->operation = 0x00;
 	} else {
-		cp->data_len = len - offset;
+		data_len = len - offset;
 
 		if (!offset)
 			cp->operation = 0x03;
@@ -3314,7 +3315,8 @@ static void set_pa_data(struct bthost *bthost, const uint8_t *data,
 			cp->operation = 0x02;
 	}
 
-	memcpy(cp->data, data + offset, cp->data_len);
+	memcpy(cp->data, data + offset, data_len);
+	cp->data_len = data_len;
 
 	send_command(bthost, BT_HCI_CMD_LE_SET_PA_DATA, buf,
 					sizeof(*cp) + cp->data_len);

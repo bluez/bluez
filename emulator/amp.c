@@ -680,7 +680,8 @@ static void cmd_read_local_amp_assoc(struct bt_amp *amp,
 {
 	const struct bt_hci_cmd_read_local_amp_assoc *cmd = data;
 	struct bt_hci_rsp_read_local_amp_assoc rsp;
-	uint16_t len_so_far, remain_assoc_len, fragment_len;
+	uint16_t len_so_far, remain_assoc_len;
+	size_t fragment_len;
 
 	if (cmd->phy_handle != amp->phy_handle) {
 		cmd_status(amp, BT_HCI_ERR_INVALID_PARAMETERS,
