@@ -237,7 +237,7 @@ int ringbuf_vprintf(struct ringbuf *ringbuf, const char *format, va_list ap)
 		ringbuf->in_tracing(ringbuf->buffer + offset, end,
 							ringbuf->in_data);
 
-	if (len - end > 0) {
+	if ((size_t) len > end) {
 		/* Put the remainder of string at the beginning */
 		memcpy(ringbuf->buffer, str + end, len - end);
 
