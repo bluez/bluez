@@ -253,12 +253,12 @@ AM_CONDITIONAL(CUPS, test "${enable_cups}" != "no")
 if (test "${enable_cups}" != "no"); then
 	AC_MSG_CHECKING([cups directory])
 	cups_serverbin=`$PKG_CONFIG cups --variable=cups_serverbin`
-	AM_CONDITIONAL(CUPS_SERVERBIN, test "${cups_serverbin}" != "")
-	if (test "${cups_serverbin}" != ""); then
-		AC_SUBST(CUPS_SERVERBIN, ${cups_serverbin})
-	fi
 	AC_MSG_RESULT([${cups_serverbin}])
 fi
+AM_CONDITIONAL(CUPS_SERVERBIN, test "${cups_serverbin}" != "")
+AS_IF([test "${cups_serverbin}" != ""],[
+	AC_SUBST(CUPS_SERVERBIN, ${cups_serverbin})
+])
 
 AC_ARG_ENABLE(mesh, AS_HELP_STRING([--enable-mesh],
 		[enable Mesh profile support]), [enable_mesh=${enableval}])
