@@ -41,6 +41,8 @@
 #define SIOCGSTAMP_OLD SIOCGSTAMP
 #endif
 
+#define MAX_DATA_SIZE 0x40000000
+
 /* Test modes */
 enum {
 	SEND,
@@ -749,7 +751,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'b':
-			data_size = atoi(optarg);
+			if (optarg && atoi(optarg) < MAX_DATA_SIZE)
+				data_size = atoi(optarg);
 			break;
 
 		case 'i':
