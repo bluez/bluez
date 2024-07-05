@@ -166,7 +166,7 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 	consumed = init_size;
 
 	for (i = 1; i <= max_seg; i++) {
-		uint8_t seg_size; /* Amount of payload data being sent */
+		size_t seg_size; /* Amount of payload data being sent */
 
 		if (size - consumed > PB_ADV_MTU - 1)
 			seg_size = PB_ADV_MTU - 1;
