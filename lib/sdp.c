@@ -582,6 +582,8 @@ int sdp_attr_add(sdp_record_t *rec, uint16_t attr, sdp_data_t *d)
 
 	if (p)
 		return -1;
+	if (!d)
+		return -1;
 
 	d->attrId = attr;
 	rec->attrlist = sdp_list_insert_sorted(rec->attrlist, d, sdp_attrid_comp_func);
@@ -964,6 +966,8 @@ static void data_seq_free(sdp_data_t *seq)
 
 void sdp_data_free(sdp_data_t *d)
 {
+	if (!d)
+		return;
 	switch (d->dtd) {
 	case SDP_SEQ8:
 	case SDP_SEQ16:
