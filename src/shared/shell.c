@@ -1334,7 +1334,7 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 				}
 			}
 
-			if (opt) {
+			if (opt && index >= 0 && (size_t)index >= offset) {
 				if (c != opt->options[index - offset].val) {
 					usage(argc, argv, opt);
 					exit(EXIT_SUCCESS);
