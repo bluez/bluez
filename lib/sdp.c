@@ -506,7 +506,7 @@ sdp_data_t *sdp_seq_alloc_with_length(void **dtds, void **values, int *length,
 
 	for (i = 0; i < len; i++) {
 		sdp_data_t *data;
-		int8_t dtd = *(uint8_t *) dtds[i];
+		uint8_t dtd = *(uint8_t *) dtds[i];
 
 		if (dtd >= SDP_SEQ8 && dtd <= SDP_ALT32)
 			data = (sdp_data_t *) values[i];
