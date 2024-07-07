@@ -34,6 +34,10 @@
 #define PLUGINFLAG (RTLD_NOW)
 #endif
 
+#ifndef EXTERNAL_PLUGINS
+#define EXTERNAL_PLUGINS 0
+#endif
+
 #define IS_ENABLED(x) (x)
 
 static GSList *plugins = NULL;
