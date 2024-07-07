@@ -499,7 +499,7 @@ endif
 endif
 manual_pages += tools/hid2hci.1
 
-if READLINE
+if TOOLS
 noinst_PROGRAMS += tools/btmgmt tools/obex-client-tool tools/obex-server-tool \
 			tools/bluetooth-player tools/obexctl
 
@@ -527,6 +527,8 @@ tools_btmgmt_SOURCES = tools/btmgmt.c src/uuid-helper.c client/display.c \
 			client/mgmt.c
 tools_btmgmt_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la \
 				-lreadline
+endif
+
 if DEPRECATED
 noinst_PROGRAMS += attrib/gatttool
 
@@ -537,17 +539,10 @@ attrib_gatttool_SOURCES = attrib/gatttool.c attrib/att.c attrib/gatt.c \
 				client/display.h
 attrib_gatttool_LDADD = lib/libbluetooth-internal.la \
 			src/libshared-glib.la $(GLIB_LIBS) -lreadline
-
-endif
 endif
 
 if CUPS
-
-if CUPS_SERVERBIN
 cupsdir = $(CUPS_SERVERBIN)/backend
-else
-cupsdir = $(libdir)/cups/backend
-endif
 
 cups_PROGRAMS = profiles/cups/bluetooth
 
