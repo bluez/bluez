@@ -5147,7 +5147,8 @@ static void cmd_send_transport(int argc, char *argv[])
 			struct sockaddr_iso addr;
 			socklen_t optlen = sizeof(addr);
 
-			err = getpeername(transport->sk, &addr, &optlen);
+			err = getpeername(transport->sk,
+					(struct sockaddr *)&addr, &optlen);
 			if (!err) {
 				if (!(bacmp(&addr.iso_bdaddr, BDADDR_ANY)))
 					err = transport_send(transport, fd,
