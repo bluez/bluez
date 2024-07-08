@@ -50,6 +50,7 @@ struct async_read_op {
 	struct bt_gatt_server *server;
 	uint8_t opcode;
 	bool done;
+	uint16_t mtu;
 	uint8_t *pdu;
 	size_t pdu_len;
 	size_t value_len;
@@ -228,7 +229,7 @@ static bool encode_read_by_grp_type_rsp(struct gatt_db *db, struct queue *q,
 		 * value is seen.
 		 */
 		if (iter == 0) {
-			data_val_len = MIN(MIN((unsigned)mtu - 6, 251),
+			data_val_len = MIN(MIN((unsigned int)mtu - 6, 251),
 								value.iov_len);
 			pdu[0] = data_val_len + 4;
 			iter++;
@@ -266,15 +267,14 @@ static void gatt_log(struct bt_gatt_server *server, const char *format, ...)
 	va_end(ap);
 }
 
-static void read_by_grp_type_cb(struct bt_att_chan *chan, uint8_t opcode,
-					const void *pdu, uint16_t length,
-					void *user_data)
+static void read_by_grp_type_cb(struct bt_att_chan *chan, uint16_t mtu,
+					uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	uint16_t start, end;
 	bt_uuid_t type;
 	bt_uuid_t prim, snd;
-	uint16_t mtu = bt_att_get_mtu(server->att);
 	uint8_t rsp_pdu[mtu];
 	uint16_t rsp_len;
 	uint8_t ecode = 0;
@@ -359,11 +359,8 @@ static void read_by_type_read_complete_cb(struct gatt_db_attribute *attr,
 						size_t len, void *user_data)
 {
 	struct async_read_op *op = user_data;
-	struct bt_gatt_server *server = op->server;
-	uint16_t mtu;
 	uint16_t handle;
 
-	mtu = bt_att_get_mtu(server->att);
 	handle = gatt_db_attribute_get_handle(attr);
 
 	/* Terminate the operation if there was an error */
@@ -375,7 +372,7 @@ static void read_by_type_read_complete_cb(struct gatt_db_attribute *attr,
 	}
 
 	if (op->pdu_len == 0) {
-		op->value_len = MIN(MIN((unsigned) mtu - 4, 253), len);
+		op->value_len = MIN(MIN((unsigned int)op->mtu - 4, 253), len);
 		op->pdu[0] = op->value_len + 2;
 		op->pdu_len++;
 	} else if (len != op->value_len) {
@@ -384,7 +381,7 @@ static void read_by_type_read_complete_cb(struct gatt_db_attribute *attr,
 	}
 
 	/* Stop if this would surpass the MTU */
-	if (op->pdu_len + op->value_len + 2 > (unsigned) mtu - 1) {
+	if (op->pdu_len + op->value_len + 2 > (unsigned int) op->mtu - 1) {
 		op->done = true;
 		goto done;
 	}
@@ -395,7 +392,7 @@ static void read_by_type_read_complete_cb(struct gatt_db_attribute *attr,
 
 	op->pdu_len += op->value_len + 2;
 
-	if (op->pdu_len == (unsigned) mtu - 1)
+	if (op->pdu_len == (unsigned int) op->mtu - 1)
 		op->done = true;
 
 done:
@@ -491,9 +488,9 @@ error:
 	async_read_op_destroy(op);
 }
 
-static void read_by_type_cb(struct bt_att_chan *chan, uint8_t opcode,
-					const void *pdu, uint16_t length,
-					void *user_data)
+static void read_by_type_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	uint16_t start, end;
@@ -536,7 +533,8 @@ static void read_by_type_cb(struct bt_att_chan *chan, uint8_t opcode,
 	}
 
 	op = new0(struct async_read_op, 1);
-	op->pdu = malloc(bt_att_get_mtu(server->att));
+	op->mtu = mtu;
+	op->pdu = malloc(mtu);
 	if (!op->pdu) {
 		free(op);
 		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
@@ -611,13 +609,12 @@ static bool encode_find_info_rsp(struct gatt_db *db, struct queue *q,
 	return true;
 }
 
-static void find_info_cb(struct bt_att_chan *chan, uint8_t opcode,
+static void find_info_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
 					const void *pdu, uint16_t length,
 					void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	uint16_t start, end;
-	uint16_t mtu = bt_att_get_mtu(server->att);
 	uint8_t rsp_pdu[mtu];
 	uint16_t rsp_len;
 	uint8_t ecode = 0;
@@ -709,14 +706,13 @@ static void find_by_type_val_att_cb(struct gatt_db_attribute *attrib,
 	data->len += 4;
 }
 
-static void find_by_type_val_cb(struct bt_att_chan *chan, uint8_t opcode,
-					const void *pdu, uint16_t length,
-					void *user_data)
+static void find_by_type_val_cb(struct bt_att_chan *chan, uint16_t mtu,
+					uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	uint16_t start, end, uuid16;
 	struct find_by_type_val_data data;
-	uint16_t mtu = bt_att_get_mtu(server->att);
 	uint8_t rsp_pdu[mtu];
 	uint16_t ehandle = 0;
 	bt_uuid_t uuid;
@@ -821,8 +817,8 @@ static uint8_t check_length(uint16_t length, uint16_t offset)
 	return 0;
 }
 
-static void write_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
-					uint16_t length, void *user_data)
+static void write_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
+			const void *pdu, uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	struct gatt_db_attribute *attr;
@@ -908,12 +904,10 @@ static void read_complete_cb(struct gatt_db_attribute *attr, int err,
 	struct async_read_op *op = user_data;
 	struct bt_gatt_server *server = op->server;
 	uint8_t rsp_opcode;
-	uint16_t mtu;
 	uint16_t handle;
 
 	DBG(server, "Read Complete: err %d", err);
 
-	mtu = bt_att_get_mtu(server->att);
 	handle = gatt_db_attribute_get_handle(attr);
 
 	if (err) {
@@ -925,13 +919,14 @@ static void read_complete_cb(struct gatt_db_attribute *attr, int err,
 	rsp_opcode = get_read_rsp_opcode(op->opcode);
 
 	bt_att_chan_send_rsp(op->chan, rsp_opcode, len ? value : NULL,
-					MIN((unsigned int) mtu - 1, len));
+					MIN((unsigned int) op->mtu - 1, len));
 	async_read_op_destroy(op);
 }
 
 static void handle_read_req(struct bt_att_chan *chan,
-				struct bt_gatt_server *server, uint8_t opcode,
-				uint16_t handle, uint16_t offset)
+				struct bt_gatt_server *server, uint16_t mtu,
+				uint8_t opcode, uint16_t handle,
+				uint16_t offset)
 {
 	struct gatt_db_attribute *attr;
 	uint8_t ecode;
@@ -958,6 +953,7 @@ static void handle_read_req(struct bt_att_chan *chan,
 	op->chan = chan;
 	op->opcode = opcode;
 	op->server = bt_gatt_server_ref(server);
+	op->mtu = mtu;
 
 	if (gatt_db_attribute_read(attr, offset, opcode, server->att,
 							read_complete_cb, op))
@@ -972,8 +968,8 @@ error:
 	bt_att_chan_send_error_rsp(chan, opcode, handle, ecode);
 }
 
-static void read_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
-					uint16_t length, void *user_data)
+static void read_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
+			const void *pdu, uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	uint16_t handle;
@@ -986,10 +982,10 @@ static void read_cb(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,
 
 	handle = get_le16(pdu);
 
-	handle_read_req(chan, server, opcode, handle, 0);
+	handle_read_req(chan, server, mtu, opcode, handle, 0);
 }
 
-static void read_blob_cb(struct bt_att_chan *chan, uint8_t opcode,
+static void read_blob_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
 					const void *pdu, uint16_t length,
 					void *user_data)
 {
@@ -1005,7 +1001,7 @@ static void read_blob_cb(struct bt_att_chan *chan, uint8_t opcode,
 	handle = get_le16(pdu);
 	offset = get_le16(pdu + 2);
 
-	handle_read_req(chan, server, opcode, handle, offset);
+	handle_read_req(chan, server, mtu, opcode, handle, offset);
 }
 
 struct read_mult_data {
@@ -1105,6 +1101,7 @@ error:
 
 static struct read_mult_data *read_mult_data_new(struct bt_gatt_server *server,
 						struct bt_att_chan *chan,
+						uint16_t mtu,
 						uint8_t opcode,
 						uint16_t num_handles)
 {
@@ -1118,16 +1115,16 @@ static struct read_mult_data *read_mult_data_new(struct bt_gatt_server *server,
 	data->server = server;
 	data->num_handles = num_handles;
 	data->cur_handle = 0;
-	data->mtu = bt_att_get_mtu(server->att);
+	data->mtu = mtu;
 	data->length = 0;
 	data->rsp_data = new0(uint8_t, data->mtu - 1);
 
 	return data;
 }
 
-static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
-					const void *pdu, uint16_t length,
-					void *user_data)
+static void read_multiple_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	struct gatt_db_attribute *attr;
@@ -1141,7 +1138,7 @@ static void read_multiple_cb(struct bt_att_chan *chan, uint8_t opcode,
 		goto error;
 	}
 
-	data = read_mult_data_new(server, chan, opcode, length / 2);
+	data = read_mult_data_new(server, chan, mtu, opcode, length / 2);
 
 	for (i = 0; i < data->num_handles; i++)
 		data->handles[i] = get_le16(pdu + i * 2);
@@ -1304,9 +1301,9 @@ static void prep_write_complete_cb(struct gatt_db_attribute *attr, int err,
 	free(pwcd);
 }
 
-static void prep_write_cb(struct bt_att_chan *chan, uint8_t opcode,
-					const void *pdu, uint16_t length,
-					void *user_data)
+static void prep_write_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	uint16_t handle = 0;
@@ -1436,9 +1433,9 @@ static bool find_no_reliable_characteristic(const void *data,
 	return !prep_data->reliable_supported;
 }
 
-static void exec_write_cb(struct bt_att_chan *chan, uint8_t opcode,
-					const void *pdu, uint16_t length,
-					void *user_data)
+static void exec_write_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	struct exec_data *data;
@@ -1499,9 +1496,9 @@ error:
 	bt_att_chan_send_error_rsp(chan, opcode, ehandle, ecode);
 }
 
-static void exchange_mtu_cb(struct bt_att_chan *chan, uint8_t opcode,
-				const void *pdu, uint16_t length,
-				void *user_data)
+static void exchange_mtu_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
 {
 	struct bt_gatt_server *server = user_data;
 	uint16_t client_rx_mtu;

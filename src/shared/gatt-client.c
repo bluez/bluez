@@ -2228,7 +2228,7 @@ static void notify_handler(void *data, void *user_data)
 				value_data->len, notify_data->user_data);
 }
 
-static void notify_cb(struct bt_att_chan *chan, uint8_t opcode,
+static void notify_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
 					const void *pdu, uint16_t length,
 					void *user_data)
 {

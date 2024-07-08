@@ -1009,8 +1009,9 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t *pdu,
 		found = true;
 
 		if (notify->callback)
-			notify->callback(chan, opcode, pdu + 1, pdu_len - 1,
-							notify->user_data);
+			notify->callback(chan, chan->mtu, opcode,
+						pdu + 1, pdu_len - 1,
+						notify->user_data);
 
 		/* callback could remove all entries from notify list */
 		if (queue_isempty(att->notify_list))

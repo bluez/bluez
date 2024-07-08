@@ -237,9 +237,9 @@ static void attrib_callback_result(uint8_t opcode, const void *pdu,
 	free(buf);
 }
 
-static void attrib_callback_notify(struct bt_att_chan *chan, uint8_t opcode,
-					const void *pdu, uint16_t length,
-					void *user_data)
+static void attrib_callback_notify(struct bt_att_chan *chan, uint16_t mtu,
+					uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
 {
 	uint8_t *buf;
 	struct attrib_callbacks *cb = user_data;
@@ -355,7 +355,7 @@ static void client_notify_cb(uint16_t value_handle, const uint8_t *value,
 	if (length)
 		memcpy(buf + 2, value, length);
 
-	attrib_callback_notify(NULL, ATT_OP_HANDLE_NOTIFY, buf, length + 2,
+	attrib_callback_notify(NULL, 0, ATT_OP_HANDLE_NOTIFY, buf, length + 2,
 							user_data);
 }
 

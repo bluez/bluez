@@ -35,7 +35,7 @@ int bt_att_get_channels(struct bt_att *att);
 
 typedef void (*bt_att_response_func_t)(uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data);
-typedef void (*bt_att_notify_func_t)(struct bt_att_chan *chan,
+typedef void (*bt_att_notify_func_t)(struct bt_att_chan *chan, uint16_t mtu,
 					uint8_t opcode, const void *pdu,
 					uint16_t length, void *user_data);
 typedef void (*bt_att_destroy_func_t)(void *user_data);
