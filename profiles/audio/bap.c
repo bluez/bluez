@@ -134,6 +134,7 @@ struct bap_bcast_pa_req {
 		struct btd_service *service;
 		struct bap_setup *setup;
 	} data;
+	unsigned int io_id;	/* io_id for BIG Info watch */
 };
 
 static struct queue *sessions;
@@ -1220,7 +1221,8 @@ fail:
 	return ret;
 }
 
-static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
+static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
 {
 	GError *err = NULL;
 	struct bap_bcast_pa_req *req = user_data;
@@ -1228,7 +1230,7 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
 	struct bt_iso_base base;
 	struct bt_iso_qos qos;
 
-	DBG("PA Sync done");
+	DBG("BIG Info received");
 
 	bt_io_get(io, &err,
 			BT_IO_OPT_BASE, &base,
@@ -1238,7 +1240,8 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
 		error("%s", err->message);
 		g_error_free(err);
 		g_io_channel_shutdown(io, TRUE, NULL);
-		return;
+		req->io_id = 0;
+		return FALSE;
 	}
 
 	/* Close the io and remove the queue request for another PA Sync */
@@ -1255,7 +1258,21 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
 	service_set_connecting(req->data.service);
 
 	queue_remove(data->adapter->bcast_pa_requests, req);
+	req->io_id = 0;
 	free(req);
+
+	return FALSE;
+}
+
+static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
+{
+	struct bap_bcast_pa_req *req = user_data;
+	/* PA Sync was established, wait for BIG Info report so that the
+	 * encryption flag is also available.
+	 */
+	DBG("PA Sync done");
+	req->io_id = g_io_add_watch(io, G_IO_OUT, big_info_report_cb,
+								user_data);
 }
 
 static bool match_data_bap_data(const void *data, const void *match_data)
@@ -3177,6 +3194,10 @@ static void bap_bcast_remove(struct btd_service *service)
 	 */
 	req = queue_remove_if(data->adapter->bcast_pa_requests,
 						match_service, service);
+	if (req->io_id) {
+		g_source_remove(req->io_id);
+		req->io_id = 0;
+	}
 	free(req);
 
 	bap_data_remove(data);
