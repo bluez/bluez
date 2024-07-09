@@ -51,8 +51,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	bt_shell_attach(fileno(stdin));
 	mgmt_set_index(index_option);
+	bt_shell_attach(fileno(stdin));
 	status = bt_shell_run();
 
 	mgmt_remove_submenu();
