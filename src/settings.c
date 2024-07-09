@@ -193,7 +193,7 @@ static int load_service(struct gatt_db *db, char *handle, char *value)
 		return -EIO;
 	}
 
-	if (sscanf(value, "%[^:]:%04hx:%36s", type, &end, uuid_str) != 3) {
+	if (sscanf(value, "%36[^:]:%04hx:%36s", type, &end, uuid_str) != 3) {
 		DBG("Failed to parse value: %s", value);
 		return -EIO;
 	}
