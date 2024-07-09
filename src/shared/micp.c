@@ -398,6 +398,10 @@ static void mics_mute_write(struct gatt_db_attribute *attrib,
 	}
 
 	micp_op = iov_pull_mem(&iov, sizeof(*micp_op));
+	if (!micp_op) {
+		DBG(micp, "iov_pull_mem() returned NULL");
+		goto respond;
+	}
 
 	if ((*micp_op == MICS_DISABLED) || (*micp_op != MICS_NOT_MUTED
 		&& *micp_op != MICS_MUTED)) {

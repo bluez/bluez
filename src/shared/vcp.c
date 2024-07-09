@@ -925,6 +925,10 @@ static void vcs_cp_write(struct gatt_db_attribute *attrib,
 	}
 
 	vcp_op = iov_pull_mem(&iov, sizeof(*vcp_op));
+	if (!vcp_op) {
+		DBG(vcp, "iov_pull_mem() returned NULL");
+		goto respond;
+	}
 
 	for (handler = vcp_handlers; handler && handler->str; handler++) {
 		if (handler->op != *vcp_op)
@@ -985,6 +989,10 @@ static void vocs_cp_write(struct gatt_db_attribute *attrib,
 	}
 
 	vcp_op = iov_pull_mem(&iov, sizeof(*vcp_op));
+	if (!vcp_op) {
+		DBG(vcp, "iov_pull_mem() returned NULL");
+		goto respond;
+	}
 
 	for (handler = vocp_handlers; handler && handler->str; handler++) {
 		if (handler->op != *vcp_op)
@@ -1517,6 +1525,10 @@ static void aics_ip_cp_write(struct gatt_db_attribute *attrib,
 	}
 
 	aics_op = iov_pull_mem(&iov, sizeof(*aics_op));
+	if (!aics_op) {
+		DBG(vcp, "iov_pull_mem() returned NULL");
+		goto respond;
+	}
 
 	for (handler = aics_handlers; handler && handler->str; handler++) {
 		if (handler->op != *aics_op)
