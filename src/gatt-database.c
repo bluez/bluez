@@ -2630,6 +2630,7 @@ static int sock_io_send(struct io *io, const void *data, size_t len)
 {
 	struct msghdr msg;
 	struct iovec iov;
+	int fd;
 
 	iov.iov_base = (void *) data;
 	iov.iov_len = len;
@@ -2638,7 +2639,13 @@ static int sock_io_send(struct io *io, const void *data, size_t len)
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return sendmsg(io_get_fd(io), &msg, MSG_NOSIGNAL);
+	fd = io_get_fd(io);
+	if (fd < 0) {
+		error("io_get_fd() returned %d\n", fd);
+		return fd;
+	}
+
+	return sendmsg(fd, &msg, MSG_NOSIGNAL);
 }
 
 static void att_disconnect_cb(int err, void *user_data)
