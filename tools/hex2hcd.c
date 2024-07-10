@@ -285,6 +285,11 @@ static void ver_parse_file(const char *pathname)
 	prev->next = ver;
 }
 
+static const char *helper_basename(const char *path) {
+  const char *base = strrchr(path, '/');
+  return base ? base + 1 : path;
+}
+
 static void ver_parse_entry(const char *pathname)
 {
 	struct stat st;
@@ -302,7 +307,7 @@ static void ver_parse_entry(const char *pathname)
 	}
 
 	if (S_ISREG(st.st_mode)) {
-		ver_parse_file(basename(pathname));
+		ver_parse_file(helper_basename(pathname));
 		goto done;
 	}
 
