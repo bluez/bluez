@@ -2729,6 +2729,9 @@ static void foreach_aics_service(struct gatt_db_attribute *attr,
 	struct bt_vcp *vcp = user_data;
 	struct bt_aics *aics = vcp_get_aics(vcp);
 
+	if (!aics || !attr)
+		return;
+
 	aics->service = attr;
 
 	gatt_db_service_set_claimed(attr, true);
