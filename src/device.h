@@ -191,6 +191,8 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services);
 
 uint32_t btd_device_get_current_flags(struct btd_device *dev);
 uint32_t btd_device_get_supported_flags(struct btd_device *dev);
+uint32_t btd_device_get_pending_flags(struct btd_device *dev);
+void btd_device_set_pending_flags(struct btd_device *dev, uint32_t flags);
 void btd_device_flags_changed(struct btd_device *dev, uint32_t supported_flags,
 			      uint32_t current_flags);
 
