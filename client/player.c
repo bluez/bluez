@@ -1232,6 +1232,7 @@ struct codec_preset {
 	const struct iovec data;
 	struct bt_bap_qos qos;
 	uint8_t target_latency;
+	bool custom;
 };
 
 #define SBC_PRESET(_name, _data) \
@@ -1448,7 +1449,6 @@ static void print_lc3_meta(void *data, int len)
 	{ \
 		.uuid = _uuid, \
 		.codec = _codec, \
-		.custom = { .name = "custom" }, \
 		.default_preset = &_presets[_default_index], \
 		.presets = _presets, \
 		.num_presets = ARRAY_SIZE(_presets), \
@@ -1459,7 +1459,7 @@ static struct preset {
 	uint8_t codec;
 	uint16_t cid;
 	uint16_t vid;
-	struct codec_preset custom;
+	struct queue *custom;
 	struct codec_preset *default_preset;
 	struct codec_preset *presets;
 	size_t num_presets;
@@ -1557,6 +1557,14 @@ static struct preset *find_presets_name(const char *uuid, const char *codec)
 	return find_presets(uuid, id, 0x0000, 0x0000);
 }
 
+static bool match_custom_name(const void *data, const void *match_data)
+{
+	const struct codec_preset *preset = data;
+	const char *name = match_data;
+
+	return !strcmp(preset->name, name);
+}
+
 static struct codec_preset *preset_find_name(struct preset *preset,
 						const char *name)
 {
@@ -1567,8 +1575,6 @@ static struct codec_preset *preset_find_name(struct preset *preset,
 
 	if (!name)
 		return preset->default_preset;
-	else if (!strcmp(name, "custom"))
-		return &preset->custom;
 
 	for (i = 0; i < preset->num_presets; i++) {
 		struct codec_preset *p;
@@ -1579,19 +1585,7 @@ static struct codec_preset *preset_find_name(struct preset *preset,
 			return p;
 	}
 
-	return NULL;
-}
-
-static struct codec_preset *find_preset(const char *uuid, const char *codec,
-					const char *name)
-{
-	struct preset *preset;
-
-	preset = find_presets_name(uuid, codec);
-	if (!preset)
-		return NULL;
-
-	return preset_find_name(preset, name);
+	return queue_find(preset->custom, match_custom_name, name);
 }
 
 static DBusMessage *endpoint_select_config_reply(DBusMessage *msg,
@@ -2816,10 +2810,11 @@ static void endpoint_free(void *data)
 	if (ep->msg)
 		dbus_message_unref(ep->msg);
 
-	if (ep->codec == 0xff) {
-		free(ep->preset->custom.name);
+	queue_destroy(ep->preset->custom, free);
+	ep->preset->custom = NULL;
+
+	if (ep->codec == 0xff)
 		free(ep->preset);
-	}
 
 	queue_destroy(ep->acquiring, NULL);
 	queue_destroy(ep->transports, free);
@@ -3365,6 +3360,36 @@ static const struct capabilities *find_capabilities(const char *uuid,
 	return NULL;
 }
 
+static struct codec_preset *codec_preset_new(const char *name)
+{
+	struct codec_preset *codec;
+
+	codec = new0(struct codec_preset, 1);
+	codec->name = strdup(name);
+	codec->custom = true;
+
+	return codec;
+}
+
+static struct codec_preset *codec_preset_add(struct preset *preset,
+						const char *name)
+{
+	struct codec_preset *codec;
+
+	codec = preset_find_name(preset, name);
+	if (codec)
+		return codec;
+
+	codec = codec_preset_new(name);
+
+	if (!preset->custom)
+		preset->custom = queue_new();
+
+	queue_push_tail(preset->custom, codec);
+
+	return codec;
+}
+
 static void cmd_register_endpoint(int argc, char *argv[])
 {
 	struct endpoint *ep;
@@ -3390,8 +3415,8 @@ static void cmd_register_endpoint(int argc, char *argv[])
 		ep->codec = 0xff;
 		parse_vendor_codec(argv[2], &ep->vid, &ep->cid);
 		ep->preset = new0(struct preset, 1);
-		ep->preset->custom.name = strdup("custom");
-		ep->preset->default_preset = &ep->preset->custom;
+		ep->preset->default_preset = codec_preset_add(ep->preset,
+								"custom");
 	} else {
 		ep->preset = find_presets_name(ep->uuid, argv[2]);
 	}
@@ -4060,21 +4085,27 @@ static void custom_frequency(const char *input, void *user_data)
 				custom_duration, user_data);
 }
 
+static void foreach_custom_preset_print(void *data, void *user_data)
+{
+	struct codec_preset *p = data;
+	struct preset *preset = user_data;
+
+	bt_shell_printf("%s%s\n", p == preset->default_preset ? "*" : "",
+				p->name);
+}
+
 static void print_presets(struct preset *preset)
 {
 	size_t i;
 	struct codec_preset *p;
-
-	p = &preset->custom;
-
-	bt_shell_printf("%s%s\n", p == preset->default_preset ? "*" : "",
-								p->name);
 
 	for (i = 0; i < preset->num_presets; i++) {
 		p = &preset->presets[i];
 		bt_shell_printf("%s%s\n", p == preset->default_preset ?
 						"*" : "", p->name);
 	}
+
+	queue_foreach(preset->custom, foreach_custom_preset_print, preset);
 }
 
 static void cmd_presets_endpoint(int argc, char *argv[])
@@ -4082,29 +4113,42 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 	struct preset *preset;
 	struct codec_preset *default_preset = NULL;
 
-	if (argc > 3) {
-		default_preset = find_preset(argv[1], argv[2], argv[3]);
-		if (!default_preset) {
-			bt_shell_printf("Preset %s not found\n", argv[3]);
-			return bt_shell_noninteractive_quit(EXIT_FAILURE);
-		}
-	}
-
 	preset = find_presets_name(argv[1], argv[2]);
 	if (!preset) {
 		bt_shell_printf("No preset found\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	if (default_preset) {
+	if (argc > 3) {
+		default_preset = codec_preset_add(preset, argv[3]);
+		if (!default_preset) {
+			bt_shell_printf("Preset %s not found\n", argv[3]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
 		preset->default_preset = default_preset;
-		goto done;
-	}
 
-	print_presets(preset);
+		if (argc > 4) {
+			struct iovec *iov = (void *)&default_preset->data;
 
-done:
-	if (default_preset && !strcmp(default_preset->name, "custom")) {
+			iov->iov_base = str2bytearray(argv[4], &iov->iov_len);
+			if (!iov->iov_base) {
+				bt_shell_printf("Invalid configuration %s\n",
+							argv[4]);
+				return bt_shell_noninteractive_quit(
+								EXIT_FAILURE);
+			}
+
+			bt_shell_prompt_input("QoS", "Enter Target Latency "
+						"(Low, Balance, High):",
+						custom_target_latency,
+						default_preset);
+
+			return;
+		}
+	} else
+		print_presets(preset);
+
+	if (default_preset && default_preset->custom) {
 		bt_shell_prompt_input("Codec", "Enter frequency (Khz):",
 					custom_frequency, default_preset);
 		return;
@@ -4133,9 +4177,9 @@ static const struct bt_shell_menu endpoint_menu = {
 						cmd_config_endpoint,
 						"Configure Endpoint",
 						endpoint_generator },
-	{ "presets",      "<UUID> <codec[:company]> [default]",
+	{ "presets",      "<UUID> <codec[:company]> [preset] [config]",
 						cmd_presets_endpoint,
-						"List available presets",
+						"List or add presets",
 						uuid_generator },
 	{} },
 };
