@@ -169,6 +169,7 @@ struct bt_bap {
 	unsigned int process_id;
 	unsigned int disconn_id;
 	unsigned int idle_id;
+	bool in_cp_write;
 
 	struct queue *reqs;
 	struct queue *notify;
@@ -266,6 +267,7 @@ struct bt_bap_stream {
 	const struct bt_bap_stream_ops *ops;
 	uint8_t old_state;
 	uint8_t state;
+	unsigned int state_id;
 	bool client;
 	void *user_data;
 };
@@ -1102,6 +1104,8 @@ static void bap_stream_free(void *data)
 {
 	struct bt_bap_stream *stream = data;
 
+	timeout_remove(stream->state_id);
+
 	if (stream->ep)
 		stream->ep->stream = NULL;
 
@@ -1579,20 +1583,17 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
 	return true;
 }
 
-static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
+static bool stream_notify_state(void *data)
 {
+	struct bt_bap_stream *stream = data;
 	struct bt_bap_endpoint *ep = stream->ep;
 
-	ep->old_state = ep->state;
-	ep->state = state;
+	DBG(stream->bap, "stream %p", stream);
 
-	DBG(stream->bap, "stream %p dir 0x%02x: %s -> %s", stream,
-			bt_bap_stream_get_dir(stream),
-			bt_bap_stream_statestr(stream->ep->old_state),
-			bt_bap_stream_statestr(stream->ep->state));
-
-	if (stream->lpac->type == BT_BAP_BCAST_SINK || stream->client)
-		goto done;
+	if (stream->state_id) {
+		timeout_remove(stream->state_id);
+		stream->state_id = 0;
+	}
 
 	switch (ep->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
@@ -1609,6 +1610,31 @@ static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
 		stream_notify_metadata(stream);
 		break;
 	}
+
+	return false;
+}
+
+static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
+{
+	struct bt_bap_endpoint *ep = stream->ep;
+
+	ep->old_state = ep->state;
+	ep->state = state;
+
+	DBG(stream->bap, "stream %p dir 0x%02x: %s -> %s", stream,
+			bt_bap_stream_get_dir(stream),
+			bt_bap_stream_statestr(stream->ep->old_state),
+			bt_bap_stream_statestr(stream->ep->state));
+
+	if (stream->client)
+		goto done;
+
+	if (!stream->bap->in_cp_write)
+		stream_notify_state(stream);
+	else if (!stream->state_id)
+		stream->state_id = timeout_add(BAP_PROCESS_TIMEOUT,
+						stream_notify_state,
+						stream, NULL);
 
 done:
 	bap_stream_state_changed(stream);
@@ -3069,8 +3095,15 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
 
 		DBG(bap, "%s", handler->str);
 
+		/* Set in_cp_write so ASE notification are not sent ahead of
+		 * CP notifcation.
+		 */
+		bap->in_cp_write = true;
+
 		for (i = 0; i < hdr->num; i++)
 			ret = handler->func(ascs, bap, &iov, rsp);
+
+		bap->in_cp_write = false;
 	} else {
 		DBG(bap, "Unknown opcode 0x%02x", hdr->op);
 		ascs_ase_rsp_add_errno(rsp, 0x00, -ENOTSUP);
