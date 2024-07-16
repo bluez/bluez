@@ -39,6 +39,7 @@
 #include "src/shared/gatt-server.h"
 #include "src/adapter.h"
 #include "src/shared/bass.h"
+#include "src/shared/bap.h"
 
 #include "src/plugin.h"
 #include "src/gatt-database.h"
@@ -48,7 +49,25 @@
 #include "src/log.h"
 #include "src/error.h"
 
+#include "bass.h"
+#include "bap.h"
+
 #define BASS_UUID_STR "0000184f-0000-1000-8000-00805f9b34fb"
+
+#define MEDIA_ASSISTANT_INTERFACE "org.bluez.MediaAssistant1"
+
+enum assistant_state {
+	ASSISTANT_STATE_IDLE,		/* Assistant object was created for
+					 * the stream
+					 */
+	ASSISTANT_STATE_PENDING,	/* Assistant object was pushed */
+	ASSISTANT_STATE_REQUESTING,	/* Remote device requires
+					 * Broadcast_Code
+					 */
+	ASSISTANT_STATE_ACTIVE,		/* Remote device started receiving
+					 * stream
+					 */
+};
 
 struct bass_data {
 	struct btd_device *device;
@@ -56,11 +75,237 @@ struct bass_data {
 	struct bt_bass *bass;
 };
 
+struct bass_assistant {
+	struct btd_device *device;	/* Broadcast source device */
+	struct bass_data *data;		/* BASS session with peer device */
+	uint8_t sgrp;
+	uint8_t bis;
+	struct bt_iso_qos qos;
+	struct iovec *meta;
+	struct iovec *caps;
+	enum assistant_state state;
+	char *path;
+};
+
 static struct queue *sessions;
+static struct queue *assistants;
 
 static void bass_debug(const char *str, void *user_data)
 {
 	DBG_IDX(0xffff, "%s", str);
+}
+
+static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
+							  void *user_data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static const GDBusMethodTable assistant_methods[] = {
+	{GDBUS_EXPERIMENTAL_ASYNC_METHOD("Push",
+					GDBUS_ARGS({ "Props", "a{sv}" }),
+					NULL, push)},
+	{},
+};
+
+static const char *state2str(enum assistant_state state)
+{
+	switch (state) {
+	case ASSISTANT_STATE_IDLE:
+		return "idle";
+	case ASSISTANT_STATE_PENDING:
+		return "pending";
+	case ASSISTANT_STATE_REQUESTING:
+		return "requesting";
+	case ASSISTANT_STATE_ACTIVE:
+		return "active";
+	}
+
+	return NULL;
+}
+
+static gboolean get_state(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct bass_assistant *assistant = data;
+	const char *state = state2str(assistant->state);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &state);
+
+	return TRUE;
+}
+
+static gboolean get_metadata(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct bass_assistant *assistant = data;
+	DBusMessageIter array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+
+	if (assistant->meta)
+		dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&assistant->meta->iov_base,
+						assistant->meta->iov_len);
+
+	dbus_message_iter_close_container(iter, &array);
+
+	return TRUE;
+}
+
+static gboolean get_qos(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct bass_assistant *assistant = data;
+	DBusMessageIter dict;
+	uint8_t *bcode = assistant->qos.bcast.bcode;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dict_append_entry(&dict, "Encryption", DBUS_TYPE_BYTE,
+				&assistant->qos.bcast.encryption);
+	dict_append_array(&dict, "BCode", DBUS_TYPE_BYTE,
+				&bcode, BT_BASS_BCAST_CODE_SIZE);
+
+	dbus_message_iter_close_container(iter, &dict);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable assistant_properties[] = {
+	{ "State", "s", get_state },
+	{ "Metadata", "ay", get_metadata, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "QoS", "a{sv}", get_qos, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ }
+};
+
+static void assistant_free(void *data)
+{
+	struct bass_assistant *assistant = data;
+
+	g_free(assistant->path);
+	util_iov_free(assistant->meta, 1);
+	util_iov_free(assistant->caps, 1);
+
+	free(assistant);
+}
+
+static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
+		struct btd_device *device, struct bass_data *data,
+		uint8_t sgrp, uint8_t bis, struct bt_iso_qos *qos,
+		struct iovec *meta, struct iovec *caps)
+{
+	struct bass_assistant *assistant;
+	char src_addr[18];
+	char dev_addr[18];
+
+	assistant = new0(struct bass_assistant, 1);
+	if (!assistant)
+		return NULL;
+
+	DBG("assistant %p", assistant);
+
+	assistant->device = device;
+	assistant->data = data;
+	assistant->sgrp = sgrp;
+	assistant->bis = bis;
+	assistant->qos = *qos;
+	assistant->meta = util_iov_dup(meta, 1);
+	assistant->caps = util_iov_dup(caps, 1);
+
+	ba2str(device_get_address(device), src_addr);
+	ba2str(device_get_address(data->device), dev_addr);
+
+	assistant->path = g_strdup_printf("%s/src_%s/dev_%s/bis%d",
+		adapter_get_path(adapter), src_addr, dev_addr, bis);
+
+	g_strdelimit(assistant->path, ":", '_');
+
+	if (!assistants)
+		assistants = queue_new();
+
+	queue_push_tail(assistants, assistant);
+
+	return assistant;
+}
+
+void bass_add_stream(struct btd_device *device, struct iovec *meta,
+			struct iovec *caps, struct bt_iso_qos *qos,
+			uint8_t sgrp, uint8_t bis)
+{
+	const struct queue_entry *entry;
+	struct bt_bap *bap;
+	struct bt_bap_pac *pac;
+	struct bass_assistant *assistant;
+	char addr[18];
+
+	for (entry = queue_get_entries(sessions); entry; entry = entry->next) {
+		struct bass_data *data = entry->data;
+		struct btd_adapter *adapter = device_get_adapter(data->device);
+
+		if (!bt_bass_get_client(data->bass))
+			/* Only client sessions must be handled */
+			continue;
+
+		bap = bap_get_session(data->device);
+		if (!bap)
+			continue;
+
+		/* Check stream capabilities against peer caps. */
+		bt_bap_verify_bis(bap, bis, caps, &pac);
+
+		if (!pac)
+			/* Capabilities did not match. */
+			continue;
+
+		ba2str(device_get_address(device), addr);
+
+		DBG("%s data %p BIS %d", addr, data, bis);
+
+		assistant = assistant_new(adapter, device, data, sgrp,
+							bis, qos, meta, caps);
+
+		if (g_dbus_register_interface(btd_get_dbus_connection(),
+						assistant->path,
+						MEDIA_ASSISTANT_INTERFACE,
+						assistant_methods, NULL,
+						assistant_properties,
+						assistant,
+						assistant_free) == FALSE)
+			DBG("Could not register path %s", assistant->path);
+	}
+}
+
+static bool assistant_match_device(const void *data, const void *match_data)
+{
+	const struct bass_assistant *assistant = data;
+	const struct btd_device *device = match_data;
+
+	return (assistant->device == device);
+}
+
+static void unregister_assistant(void *data)
+{
+	struct bass_assistant *assistant = data;
+
+	DBG("%p", assistant);
+
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+				assistant->path, MEDIA_ASSISTANT_INTERFACE);
+}
+
+void bass_remove_stream(struct btd_device *device)
+{
+	queue_remove_all(assistants, assistant_match_device,
+		device, unregister_assistant);
 }
 
 static struct bass_data *bass_data_new(struct btd_device *device)
@@ -101,6 +346,14 @@ static bool match_data(const void *data, const void *match_data)
 	return bdata->bass == bass;
 }
 
+static bool assistant_match_data(const void *data, const void *match_data)
+{
+	const struct bass_assistant *assistant = data;
+	const struct bass_data *bdata = match_data;
+
+	return (assistant->data == bdata);
+}
+
 static void bass_data_free(struct bass_data *data)
 {
 	if (data->service) {
@@ -109,6 +362,10 @@ static void bass_data_free(struct bass_data *data)
 	}
 
 	bt_bass_unref(data->bass);
+
+	queue_remove_all(assistants, assistant_match_data,
+		data, unregister_assistant);
+
 	free(data);
 }
 
