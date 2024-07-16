@@ -115,7 +115,7 @@ endif
 
 if BAP
 builtin_modules += bap
-builtin_sources += profiles/audio/bap.c
+builtin_sources += profiles/audio/bap.h profiles/audio/bap.c
 endif
 
 if BASS

@@ -56,6 +56,8 @@
 #include "src/log.h"
 #include "src/error.h"
 
+#include "bap.h"
+
 #define ISO_SOCKET_UUID "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
 #define PACS_UUID_STR "00001850-0000-1000-8000-00805f9b34fb"
 #define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
@@ -2749,6 +2751,25 @@ static void pac_removed_broadcast(struct bt_bap_pac *pac, void *user_data)
 		return;
 
 	ep_unregister(ep);
+}
+
+static bool match_device(const void *data, const void *match_data)
+{
+	const struct bap_data *bdata = data;
+	const struct btd_device *device = match_data;
+
+	return bdata->device == device;
+}
+
+struct bt_bap *bap_get_session(struct btd_device *device)
+{
+	struct bap_data *data;
+
+	data = queue_find(sessions, match_device, device);
+	if (!data)
+		return NULL;
+
+	return data->bap;
 }
 
 static struct bap_data *bap_data_new(struct btd_device *device)
