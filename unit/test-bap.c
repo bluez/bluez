@@ -575,22 +575,16 @@ static void bsnk_pac_added(struct bt_bap_pac *pac, void *user_data)
 	struct test_data *data = user_data;
 	struct bt_bap_pac *lpac;
 	struct iovec *cc;
-	struct bt_bap_codec codec = {0};
 	struct bt_bap_stream *stream;
 	uint8_t bis_idx = 1;
 
 	bt_bap_pac_set_ops(pac, &bcast_pac_ops, NULL);
 
-	if (data->cfg->vs)
-		codec.id = 0xff;
-	else
-		codec.id = LC3_ID;
-
 	for (uint8_t i = 0; i < data->cfg->streams; i++) {
 		cc = bt_bap_merge_caps(&data->cfg->cc, NULL);
 		g_assert(cc);
 
-		bt_bap_verify_bis(data->bap, bis_idx++, &codec, cc, &lpac);
+		bt_bap_verify_bis(data->bap, bis_idx++, cc, &lpac);
 
 		g_assert(lpac);
 		g_assert(pac == lpac);

@@ -1198,7 +1198,7 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
 			}
 
 			/* Check if this BIS matches any local PAC */
-			bt_bap_verify_bis(bap_data->bap, bis_index, &codec,
+			bt_bap_verify_bis(bap_data->bap, bis_index,
 					merged_caps, &matched_lpac);
 
 			if (matched_lpac == NULL) {

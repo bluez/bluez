@@ -254,7 +254,6 @@ struct iovec *bt_bap_stream_get_base(struct bt_bap_stream *stream);
 struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps);
 
 void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
-		struct bt_bap_codec *codec,
 		struct iovec *caps,
 		struct bt_bap_pac **lpac);
 
