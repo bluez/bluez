@@ -6577,7 +6577,7 @@ static void bap_sink_match_allocation(size_t i, uint8_t l, uint8_t t,
 		data->found = false;
 }
 
-static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
+static struct bt_ltv_match bap_check_bis(uint32_t sink_loc, struct queue *pacs,
 	struct iovec *bis_data)
 {
 	struct bt_ltv_match compare_data = {};
@@ -6588,10 +6588,10 @@ static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
 	 */
 	compare_data.found = true;
 
-	if (ldb->pacs->sink_loc_value) {
+	if (sink_loc) {
 		uint8_t type = BAP_CHANNEL_ALLOCATION_LTV_TYPE;
 
-		compare_data.data32 = ldb->pacs->sink_loc_value;
+		compare_data.data32 = sink_loc;
 		util_ltv_foreach(bis_data->iov_base, bis_data->iov_len, &type,
 				bap_sink_match_allocation, &compare_data);
 	}
@@ -6600,8 +6600,7 @@ static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
 	if (compare_data.found) {
 		compare_data.data = bis_data;
 		compare_data.found = false;
-		queue_foreach(ldb->broadcast_sinks, check_local_pac,
-				&compare_data);
+		queue_foreach(pacs, check_local_pac, &compare_data);
 	}
 
 	return compare_data;
@@ -6642,14 +6641,29 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 		struct bt_bap_pac **lpac)
 {
 	struct bt_ltv_match match_data;
+	uint32_t sink_loc;
+	struct queue *pacs;
 
 	if (!caps)
 		return;
 
+	/* If the bap session corresponds to a client connection with
+	 * a BAP Server, bis caps should be checked against peer caps.
+	 * If the bap session corresponds to a scanned broadcast source,
+	 * bis caps should be checked against local broadcast sink caps.
+	 */
+	if (bap->client) {
+		sink_loc = bap->rdb->pacs->sink_loc_value;
+		pacs = bap->rdb->sinks;
+	} else {
+		sink_loc = bap->ldb->pacs->sink_loc_value;
+		pacs = bap->ldb->broadcast_sinks;
+	}
+
 	/* Check each BIS Codec Specific Configuration LTVs against our Codec
 	 * Specific Capabilities and if the BIS matches create a PAC with it
 	 */
-	match_data = bap_check_bis(bap->ldb, caps);
+	match_data = bap_check_bis(sink_loc, pacs, caps);
 	if (match_data.found == true) {
 		*lpac = match_data.data;
 		DBG(bap, "Matching BIS %i", bis_index);
