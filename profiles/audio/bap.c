@@ -3194,7 +3194,7 @@ static void bap_bcast_remove(struct btd_service *service)
 	 */
 	req = queue_remove_if(data->adapter->bcast_pa_requests,
 						match_service, service);
-	if (req->io_id) {
+	if (req && req->io_id) {
 		g_source_remove(req->io_id);
 		req->io_id = 0;
 	}
