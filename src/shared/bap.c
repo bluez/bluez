@@ -441,6 +441,7 @@ static void pacs_sink_read(struct gatt_db_attribute *attrib,
 	iov.iov_len = 0;
 
 	queue_foreach(bdb->sinks, pac_foreach, &iov);
+	queue_foreach(bdb->broadcast_sinks, pac_foreach, &iov);
 
 	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
 							iov.iov_len);
