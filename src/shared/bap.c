@@ -6607,29 +6607,21 @@ static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
 	return compare_data;
 }
 
-void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
-		struct bt_bap_codec *codec,
-		struct iovec *l2_caps,
-		struct iovec *l3_caps,
-		struct bt_bap_pac **lpac,
-		struct iovec **caps)
+struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps)
 {
 	struct bt_ltv_extract merge_data = {0};
-	struct bt_ltv_match match_data;
 
 	if (!l2_caps)
 		/* Codec_Specific_Configuration parameters shall
 		 * be present at Level 2.
 		 */
-		return;
+		return NULL;
 
-	if (!l3_caps) {
+	if (!l3_caps)
 		/* Codec_Specific_Configuration parameters may
 		 * be present at Level 3.
 		 */
-		merge_data.result = util_iov_dup(l2_caps, 1);
-		goto done;
-	}
+		return util_iov_dup(l2_caps, 1);
 
 	merge_data.src = l3_caps;
 	merge_data.result = new0(struct iovec, 1);
@@ -6642,17 +6634,33 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 			NULL,
 			bap_sink_check_level2_ltv, &merge_data);
 
-done:
+	return merge_data.result;
+}
+
+void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+		struct bt_bap_codec *codec,
+		struct iovec *l2_caps,
+		struct iovec *l3_caps,
+		struct bt_bap_pac **lpac,
+		struct iovec **caps)
+{
+	struct iovec *merged_caps;
+	struct bt_ltv_match match_data;
+
+	merged_caps = bt_bap_merge_caps(l2_caps, l3_caps);
+	if (!merged_caps)
+		return;
+
 	/* Check each BIS Codec Specific Configuration LTVs against our Codec
 	 * Specific Capabilities and if the BIS matches create a PAC with it
 	 */
-	match_data = bap_check_bis(bap->ldb, merge_data.result);
+	match_data = bap_check_bis(bap->ldb, merged_caps);
 	if (match_data.found == true) {
-		*caps = merge_data.result;
+		*caps = merged_caps;
 		*lpac = match_data.data;
 		DBG(bap, "Matching BIS %i", bis_index);
 	} else {
-		util_iov_free(merge_data.result, 1);
+		util_iov_free(merged_caps, 1);
 		*caps = NULL;
 		*lpac = NULL;
 	}
