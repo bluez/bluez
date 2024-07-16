@@ -121,6 +121,7 @@ typedef void (*bt_bass_destroy_func_t)(void *user_data);
 typedef void (*bt_bass_debug_func_t)(const char *str, void *user_data);
 
 struct bt_att *bt_bass_get_att(struct bt_bass *bass);
+struct bt_gatt_client *bt_bass_get_client(struct bt_bass *bass);
 unsigned int bt_bass_register(bt_bass_func_t attached, bt_bass_func_t detached,
 							void *user_data);
 bool bt_bass_unregister(unsigned int id);

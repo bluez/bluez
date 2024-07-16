@@ -1683,6 +1683,14 @@ struct bt_att *bt_bass_get_att(struct bt_bass *bass)
 	return bt_gatt_client_get_att(bass->client);
 }
 
+struct bt_gatt_client *bt_bass_get_client(struct bt_bass *bass)
+{
+	if (!bass)
+		return NULL;
+
+	return bass->client;
+}
+
 bool bt_bass_set_debug(struct bt_bass *bass, bt_bass_debug_func_t func,
 			void *user_data, bt_bass_destroy_func_t destroy)
 {
