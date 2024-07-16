@@ -57,6 +57,7 @@
 #include "src/error.h"
 
 #include "bap.h"
+#include "bass.h"
 
 #define ISO_SOCKET_UUID "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
 #define PACS_UUID_STR "00001850-0000-1000-8000-00805f9b34fb"
@@ -1198,6 +1199,9 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
 				free(path);
 				continue;
 			}
+
+			bass_add_stream(bap_data->device, meta, merged_caps,
+						qos, idx, bis_index);
 
 			/* Check if this BIS matches any local PAC */
 			bt_bap_verify_bis(bap_data->bap, bis_index,
@@ -3227,6 +3231,8 @@ static void bap_bcast_remove(struct btd_service *service)
 	free(req);
 
 	bap_data_remove(data);
+
+	bass_remove_stream(device);
 }
 
 static int bap_probe(struct btd_service *service)
