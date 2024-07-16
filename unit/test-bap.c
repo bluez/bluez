@@ -587,12 +587,13 @@ static void bsnk_pac_added(struct bt_bap_pac *pac, void *user_data)
 		codec.id = LC3_ID;
 
 	for (uint8_t i = 0; i < data->cfg->streams; i++) {
-		bt_bap_verify_bis(data->bap, bis_idx++, &codec,
-				&data->cfg->cc, NULL, &lpac, &cc);
+		cc = bt_bap_merge_caps(&data->cfg->cc, NULL);
+		g_assert(cc);
+
+		bt_bap_verify_bis(data->bap, bis_idx++, &codec, cc, &lpac);
 
 		g_assert(lpac);
 		g_assert(pac == lpac);
-		g_assert(cc);
 
 		stream = bt_bap_stream_new(data->bap,
 			pac, NULL, &data->cfg->qos, cc);

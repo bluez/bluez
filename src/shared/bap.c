@@ -6639,29 +6639,22 @@ struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps)
 
 void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 		struct bt_bap_codec *codec,
-		struct iovec *l2_caps,
-		struct iovec *l3_caps,
-		struct bt_bap_pac **lpac,
-		struct iovec **caps)
+		struct iovec *caps,
+		struct bt_bap_pac **lpac)
 {
-	struct iovec *merged_caps;
 	struct bt_ltv_match match_data;
 
-	merged_caps = bt_bap_merge_caps(l2_caps, l3_caps);
-	if (!merged_caps)
+	if (!caps)
 		return;
 
 	/* Check each BIS Codec Specific Configuration LTVs against our Codec
 	 * Specific Capabilities and if the BIS matches create a PAC with it
 	 */
-	match_data = bap_check_bis(bap->ldb, merged_caps);
+	match_data = bap_check_bis(bap->ldb, caps);
 	if (match_data.found == true) {
-		*caps = merged_caps;
 		*lpac = match_data.data;
 		DBG(bap, "Matching BIS %i", bis_index);
 	} else {
-		util_iov_free(merged_caps, 1);
-		*caps = NULL;
 		*lpac = NULL;
 	}
 

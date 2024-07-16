@@ -1191,12 +1191,17 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
 					l3_caps->iov_len, NULL, print_ltv,
 					func);
 
+			merged_caps = bt_bap_merge_caps(l2_caps, l3_caps);
+			if (!merged_caps) {
+				free(path);
+				continue;
+			}
+
 			/* Check if this BIS matches any local PAC */
 			bt_bap_verify_bis(bap_data->bap, bis_index, &codec,
-					l2_caps, l3_caps, &matched_lpac,
-					&merged_caps);
+					merged_caps, &matched_lpac);
 
-			if (matched_lpac == NULL || merged_caps == NULL) {
+			if (matched_lpac == NULL) {
 				free(path);
 				continue;
 			}
