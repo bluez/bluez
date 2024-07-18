@@ -4575,10 +4575,10 @@ static bool transport_recv(struct io *io, void *user_data)
 
 	transport->seq++;
 
-	if (transport->fd >= 0) {
+	if (transport->filename) {
 		len = write(transport->fd, buf, ret);
 		if (len < 0)
-			bt_shell_printf("Unable to write: %s (%d)",
+			bt_shell_printf("Unable to write: %s (%d)\n",
 						strerror(errno), -errno);
 	}
 
