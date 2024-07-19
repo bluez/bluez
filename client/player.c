@@ -1230,7 +1230,10 @@ struct codec_preset {
 	const struct iovec data;
 	struct bt_bap_qos qos;
 	uint8_t target_latency;
+	uint32_t chan_alloc;
 	bool custom;
+	bool alt;
+	struct codec_preset *alt_preset;
 };
 
 #define SBC_PRESET(_name, _data) \
@@ -1969,12 +1972,31 @@ static int parse_chan_alloc(DBusMessageIter *iter, uint32_t *location,
 			if (*channels)
 				*channels = __builtin_popcount(*location);
 			return 0;
+		} else if (!strcasecmp(key, "Locations")) {
+			uint32_t tmp;
+
+			if (var != DBUS_TYPE_UINT32)
+				return -EINVAL;
+
+			dbus_message_iter_get_basic(&value, &tmp);
+			*location &= tmp;
+
+			if (*channels)
+				*channels = __builtin_popcount(*location);
 		}
 
 		dbus_message_iter_next(iter);
 	}
 
-	return -EINVAL;
+	return *location ? 0 : -EINVAL;
+}
+
+static void ltv_find(size_t i, uint8_t l, uint8_t t, uint8_t *v,
+					void *user_data)
+{
+	bool *found = user_data;
+
+	*found = true;
 }
 
 static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
@@ -1985,7 +2007,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	DBusMessageIter iter, props;
 	struct endpoint_config *cfg;
 	struct bt_bap_io_qos *qos;
-	uint32_t location = 0;
+	uint32_t location = ep->locations;
 	uint8_t channels = 1;
 
 	if (!preset)
@@ -2006,13 +2028,44 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	dbus_message_iter_recurse(&iter, &props);
 
 	if (!parse_chan_alloc(&props, &location, &channels)) {
-		uint8_t chan_alloc_ltv[] = {
-			0x05, LC3_CONFIG_CHAN_ALLOC, location & 0xff,
-			location >> 8, location >> 16, location >> 24
-		};
+		uint32_t chan_alloc = 0;
+		uint8_t type = LC3_CONFIG_CHAN_ALLOC;
+		bool found = false;
 
-		util_iov_append(cfg->caps, &chan_alloc_ltv,
+		if (preset->chan_alloc & location)
+			chan_alloc = preset->chan_alloc & location;
+		else if (preset->alt_preset &&
+					preset->alt_preset->chan_alloc &
+					location) {
+			chan_alloc = preset->alt_preset->chan_alloc & location;
+			preset = preset->alt_preset;
+
+			/* Copy alternate capabilities */
+			util_iov_free(cfg->caps, 1);
+			cfg->caps = util_iov_dup(&preset->data, 1);
+			cfg->target_latency = preset->target_latency;
+		} else
+			chan_alloc = location;
+
+		/* Check if Channel Allocation is present in caps */
+		util_ltv_foreach(cfg->caps->iov_base, cfg->caps->iov_len,
+					&type, ltv_find, &found);
+
+		/* If Channel Allocation has not been set directly via
+		 * preset->data then attempt to set it if chan_alloc has been
+		 * set.
+		 */
+		if (!found && chan_alloc) {
+			uint8_t chan_alloc_ltv[] = {
+				0x05, LC3_CONFIG_CHAN_ALLOC, chan_alloc & 0xff,
+				chan_alloc >> 8, chan_alloc >> 16,
+				chan_alloc >> 24
+			};
+
+			put_le32(chan_alloc, &chan_alloc_ltv[2]);
+			util_iov_append(cfg->caps, &chan_alloc_ltv,
 						sizeof(chan_alloc_ltv));
+		}
 	}
 
 	/* Copy metadata */
@@ -2034,6 +2087,8 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
+
+	bt_shell_printf("selecting %s...\n", preset->name);
 
 	append_properties(&iter, cfg);
 
@@ -2097,8 +2152,6 @@ static DBusMessage *endpoint_select_properties(DBusConnection *conn,
 	reply = endpoint_select_properties_reply(ep, msg, p);
 	if (!reply)
 		return NULL;
-
-	bt_shell_printf("Auto Accepting using %s...\n", p->name);
 
 	return reply;
 }
@@ -3621,14 +3674,6 @@ add_meta:
 			endpoint_set_metadata_cfg, cfg);
 }
 
-static void ltv_find(size_t i, uint8_t l, uint8_t t, uint8_t *v,
-					void *user_data)
-{
-	bool *found = user_data;
-
-	*found = true;
-}
-
 static void config_endpoint_iso_group(const char *input, void *user_data)
 {
 	struct endpoint_config *cfg = user_data;
@@ -4106,11 +4151,36 @@ static void print_presets(struct preset *preset)
 
 	for (i = 0; i < preset->num_presets; i++) {
 		p = &preset->presets[i];
-		bt_shell_printf("%s%s\n", p == preset->default_preset ?
-						"*" : "", p->name);
+
+		if (p == preset->default_preset)
+			bt_shell_printf("*%s\n", p->name);
+		else if (preset->default_preset &&
+					p == preset->default_preset->alt_preset)
+			bt_shell_printf("**%s\n", p->name);
+		else
+			bt_shell_printf("%s\n", p->name);
 	}
 
 	queue_foreach(preset->custom, foreach_custom_preset_print, preset);
+}
+
+static void custom_chan_alloc(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	char *endptr = NULL;
+
+	p->chan_alloc = strtol(input, &endptr, 0);
+	if (!endptr || *endptr != '\0') {
+		bt_shell_printf("Invalid argument: %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (p->alt_preset)
+		bt_shell_prompt_input(p->alt_preset->name,
+					"Enter Channel Allocation: ",
+					custom_chan_alloc, p->alt_preset);
+	else
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static void cmd_presets_endpoint(int argc, char *argv[])
@@ -4133,7 +4203,19 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 		preset->default_preset = default_preset;
 
 		if (argc > 4) {
+			struct codec_preset *alt_preset;
 			struct iovec *iov = (void *)&default_preset->data;
+
+			/* Check if and alternative preset was given */
+			alt_preset = preset_find_name(preset, argv[4]);
+			if (alt_preset) {
+				default_preset->alt_preset = alt_preset;
+				bt_shell_prompt_input(default_preset->name,
+						"Enter Channel Allocation: ",
+						custom_chan_alloc,
+						default_preset);
+				return;
+			}
 
 			iov->iov_base = str2bytearray(argv[4], &iov->iov_len);
 			if (!iov->iov_base) {
