@@ -6063,6 +6063,10 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 
 	if (device->bredr)
 		adapter_accept_list_add(device->adapter, device);
+	else if (device->le) {
+		device->disable_auto_connect = FALSE;
+		device_set_auto_connect(device, TRUE);
+	}
 
 	store_device_info(device);
 
