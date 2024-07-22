@@ -1140,10 +1140,9 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 		.meta = _meta, \
 	}
 
-#define LC3_DATA(_freq, _duration, _chan_count, _len_min, _len_max) \
+#define LC3_DATA(_freq, _duration, _len_min, _len_max) \
 	UTIL_IOV_INIT(0x03, LC3_FREQ, _freq, _freq >> 8, \
 			0x02, LC3_DURATION, _duration, \
-			0x02, LC3_CHAN_COUNT, _chan_count, \
 			0x05, LC3_FRAME_LEN, _len_min, _len_min >> 8, \
 			_len_max, _len_max >> 8)
 
@@ -1182,11 +1181,10 @@ static const struct capabilities {
 	 *
 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
 	 * Duration: 7.5 ms 10 ms
-	 * Channel count: 3
 	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("pac_snk/lc3", PAC_SINK_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
 					240),
 				UTIL_IOV_INIT()),
 
@@ -1198,7 +1196,7 @@ static const struct capabilities {
 	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("pac_src/lc3", PAC_SOURCE_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
 					240),
 				UTIL_IOV_INIT()),
 
@@ -1210,7 +1208,7 @@ static const struct capabilities {
 	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("bcaa/lc3", BCAA_SERVICE_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
 					240),
 				UTIL_IOV_INIT()),
 
@@ -1222,7 +1220,7 @@ static const struct capabilities {
 	 * Frame length: 26-240
 	 */
 	CODEC_CAPABILITIES("baa/lc3", BAA_SERVICE_UUID, LC3_ID,
-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
+				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
 					240),
 				UTIL_IOV_INIT()),
 };
@@ -3220,6 +3218,7 @@ static void endpoint_locations(const char *input, void *user_data)
 	struct endpoint *ep = user_data;
 	char *endptr = NULL;
 	int value;
+	uint8_t channels;
 
 	value = strtol(input, &endptr, 0);
 
@@ -3229,6 +3228,12 @@ static void endpoint_locations(const char *input, void *user_data)
 	}
 
 	ep->locations = value;
+
+	channels = __builtin_popcount(value);
+	/* Automatically set LC3_CHAN_COUNT if only 1 location is supported */
+	if (channels == 1)
+		util_ltv_push(ep->caps, sizeof(channels), LC3_CHAN_COUNT,
+				&channels);
 
 	bt_shell_prompt_input(ep->path, "Supported Context (value):",
 				endpoint_supported_context, ep);
