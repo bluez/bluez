@@ -3249,23 +3249,30 @@ static void *ltv_merge(struct iovec *data, struct iovec *cont)
 	return util_iov_append(data, cont->iov_base, cont->iov_len);
 }
 
-static void bap_pac_foreach_channel(size_t i, uint8_t l, uint8_t t, uint8_t *v,
-					void *user_data)
+static void bap_pac_chan_add(struct bt_bap_pac *pac, uint8_t count,
+				uint32_t location)
 {
-	struct bt_bap_pac *pac = user_data;
 	struct bt_bap_chan *chan;
-
-	if (!v)
-		return;
 
 	if (!pac->channels)
 		pac->channels = queue_new();
 
 	chan = new0(struct bt_bap_chan, 1);
-	chan->count = *v;
-	chan->location = bt_bap_pac_get_locations(pac) ? : pac->qos.location;
+	chan->count = count;
+	chan->location = location;
 
 	queue_push_tail(pac->channels, chan);
+}
+
+static void bap_pac_foreach_channel(size_t i, uint8_t l, uint8_t t, uint8_t *v,
+					void *user_data)
+{
+	struct bt_bap_pac *pac = user_data;
+
+	if (!v)
+		return;
+
+	bap_pac_chan_add(pac, *v, bt_bap_pac_get_locations(pac));
 }
 
 static void bap_pac_update_channels(struct bt_bap_pac *pac, struct iovec *data)
@@ -3277,6 +3284,13 @@ static void bap_pac_update_channels(struct bt_bap_pac *pac, struct iovec *data)
 
 	util_ltv_foreach(data->iov_base, data->iov_len, &type,
 				bap_pac_foreach_channel, pac);
+
+	/* If record didn't set a channel count but set a location use that as
+	 * channel count.
+	 */
+	if (queue_isempty(pac->channels) && pac->qos.location)
+		bap_pac_chan_add(pac, pac->qos.location, pac->qos.location);
+
 }
 
 static void bap_pac_merge(struct bt_bap_pac *pac, struct iovec *data,
@@ -3606,6 +3620,9 @@ uint32_t bt_bap_pac_get_locations(struct bt_bap_pac *pac)
 
 	if (!pac)
 		return 0;
+
+	if (pac->qos.location)
+		return pac->qos.location;
 
 	pacs = pac->bdb->pacs;
 
@@ -5411,7 +5428,7 @@ int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 
 			/* Try matching the channel location */
 			if (!(map.location & rc->location))
-				break;
+				continue;
 
 			lpac->ops->select(lpac, rpac, map.location &
 						rc->location, &rpac->qos,
