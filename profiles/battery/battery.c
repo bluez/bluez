@@ -94,13 +94,15 @@ static void parse_battery_level(struct batt *batt,
 	uint8_t percentage;
 
 	percentage = value[0];
+	
+	if (!batt->battery) {
+		warn("Trying to update an unregistered battery");
+		return;
+	}
+	
 	if (batt->percentage != percentage) {
 		batt->percentage = percentage;
 		DBG("Battery Level updated: %d%%", percentage);
-		if (!batt->battery) {
-			warn("Trying to update an unregistered battery");
-			return;
-		}
 		btd_battery_update(batt->battery, batt->percentage);
 	}
 }
