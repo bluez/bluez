@@ -2323,6 +2323,25 @@ static struct btd_service *find_connectable_service(struct btd_device *dev,
 	return NULL;
 }
 
+
+static bool device_is_set_auto_connect(struct btd_device *dev)
+{
+	if (dev->services) {
+		GSList *l;
+
+		for (l = dev->services; l != NULL; l = g_slist_next(l)) {
+			struct btd_service *service = l->data;
+			struct btd_profile *p = btd_service_get_profile(service);
+
+			if (p->auto_connect && p->accept)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+
 static int service_prio_cmp(gconstpointer a, gconstpointer b)
 {
 	struct btd_profile *p1 = btd_service_get_profile(a);
@@ -6063,7 +6082,7 @@ void btd_device_set_temporary(struct btd_device *device, bool temporary)
 
 	if (device->bredr)
 		adapter_accept_list_add(device->adapter, device);
-	else if (device->le) {
+	else if (device->le && device_is_set_auto_connect(device)) {
 		device->disable_auto_connect = FALSE;
 		device_set_auto_connect(device, TRUE);
 	}
