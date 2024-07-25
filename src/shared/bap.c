@@ -559,14 +559,14 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
 
 	bt_uuid16_create(&uuid, PAC_SOURCE_CHRC_UUID);
-	pacs->sink = gatt_db_service_add_characteristic(pacs->service, &uuid,
+	pacs->source = gatt_db_service_add_characteristic(pacs->service, &uuid,
 					BT_ATT_PERM_READ,
 					BT_GATT_CHRC_PROP_READ |
 					BT_GATT_CHRC_PROP_NOTIFY,
 					pacs_source_read, NULL,
 					pacs);
 
-	pacs->sink_ccc = gatt_db_service_add_ccc(pacs->service,
+	pacs->source_ccc = gatt_db_service_add_ccc(pacs->service,
 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
 
 	bt_uuid16_create(&uuid, PAC_SOURCE_LOC_CHRC_UUID);
