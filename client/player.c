@@ -1790,9 +1790,9 @@ static void append_ucast_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 					DBUS_TYPE_UINT32, &qos->delay);
 
 	if (cfg->target_latency) {
-		bt_shell_printf("TargetLatency 0x%02x\n", qos->target_latency);
+		bt_shell_printf("TargetLatency 0x%02x\n", cfg->target_latency);
 		g_dbus_dict_append_entry(iter, "TargetLatency", DBUS_TYPE_BYTE,
-					&qos->target_latency);
+					&cfg->target_latency);
 	}
 
 	append_io_qos(iter, &qos->io_qos);
@@ -3765,6 +3765,7 @@ static void cmd_config_endpoint(int argc, char *argv[])
 		/* Copy capabilities */
 		util_iov_append(cfg->caps, preset->data.iov_base,
 				preset->data.iov_len);
+		cfg->target_latency = preset->target_latency;
 
 		/* Set QoS parameters */
 		cfg->qos = preset->qos;
@@ -3960,7 +3961,7 @@ static void custom_target_latency(const char *input, void *user_data)
 	else if (!strcasecmp(input, "Balance"))
 		p->target_latency = 0x02;
 	else if (!strcasecmp(input, "High"))
-		p->target_latency = 0x02;
+		p->target_latency = 0x03;
 	else {
 		char *endptr = NULL;
 
