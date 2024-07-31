@@ -4783,6 +4783,24 @@ static void select_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void unselect_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to unselect: %s\n", error.name);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Select successful");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+
 static void prompt_acquire(const char *input, void *user_data)
 {
 	GDBusProxy *proxy = user_data;
@@ -5013,6 +5031,16 @@ static void transport_select(GDBusProxy *proxy, bool prompt)
 	}
 }
 
+static void transport_unselect(GDBusProxy *proxy, bool prompt)
+{
+	if (!g_dbus_proxy_method_call(proxy, "Unselect", NULL,
+					unselect_reply, proxy, NULL)) {
+		bt_shell_printf("Failed unselect transport\n");
+		return;
+	}
+}
+
+
 static void cmd_select_transport(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -5033,6 +5061,23 @@ static void cmd_select_transport(int argc, char *argv[])
 		}
 
 		transport_select(proxy, false);
+	}
+}
+
+static void cmd_unselect_transport(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	int i;
+
+	for (i = 1; i < argc; i++) {
+		proxy = g_dbus_proxy_lookup(transports, NULL, argv[i],
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+		if (!proxy) {
+			bt_shell_printf("Transport %s not found\n", argv[i]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		transport_unselect(proxy, false);
 	}
 }
 
@@ -5466,6 +5511,9 @@ static const struct bt_shell_menu transport_menu = {
 						transport_generator },
 	{ "select",      "<transport> [transport1...]", cmd_select_transport,
 						"Select Transport",
+						transport_generator },
+	{ "unselect",    "<transport> [transport1...]", cmd_unselect_transport,
+						"Unselect Transport",
 						transport_generator },
 	{} },
 };
