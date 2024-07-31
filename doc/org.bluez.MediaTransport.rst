@@ -57,9 +57,22 @@ void Select()
 	Applicable only for transports created by a broadcast sink. This moves
 	the transport from 'idle' to 'broadcasting'. This allows the user to
 	select which BISes he wishes to sync to via a 2 step process:
-	1) the user calls this method, changing the transport's state to idle
+	1) the user calls the method, changing the transport's state to broadcasting
 	2) the audio server detects that the transport is in the 'broadcasting'
 	state and automatically acquires it
+
+	Possible Errors:
+
+	:org.bluez.Error.NotAuthorized:
+
+void Unselect()
+```````````````
+
+	Applicable only for transports created by a broadcast sink. This moves
+	the transport from 'broadcasting' or 'active' to 'idle'. This allows the
+	user to terminate the sync to a BIS to via a 2 step process:
+	1) the user calls this method, changing the transport's state to idle
+	2) the audio server detects this event and releases the transport
 
 	Possible Errors:
 
