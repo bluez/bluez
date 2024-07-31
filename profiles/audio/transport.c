@@ -975,6 +975,9 @@ static gboolean get_endpoint(const GDBusPropertyTable *property,
 static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
 					void *data);
 
+static DBusMessage *unselect_transport(DBusConnection *conn, DBusMessage *msg,
+					void *data);
+
 static const GDBusMethodTable transport_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Acquire",
 			NULL,
@@ -989,6 +992,8 @@ static const GDBusMethodTable transport_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Release", NULL, NULL, release) },
 	{ GDBUS_ASYNC_METHOD("Select",
 			NULL, NULL, select_transport) },
+	{ GDBUS_ASYNC_METHOD("Unselect",
+			NULL, NULL, unselect_transport) },
 	{ },
 };
 
@@ -1295,13 +1300,22 @@ static void transport_update_playing(struct media_transport *transport,
 					str_state[transport->state], playing);
 
 	if (playing == FALSE) {
-		if ((transport->state == TRANSPORT_STATE_PENDING) ||
-			(transport->state == TRANSPORT_STATE_BROADCASTING))
-			transport_set_state(transport, TRANSPORT_STATE_IDLE);
-		else if (transport->state == TRANSPORT_STATE_ACTIVE) {
-			/* Remove owner */
-			if (transport->owner != NULL)
-				media_transport_remove_owner(transport);
+		if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
+						BCAA_SERVICE_UUID)) {
+			if ((transport->state ==
+				TRANSPORT_STATE_BROADCASTING) ||
+				(transport->state == TRANSPORT_STATE_ACTIVE))
+				transport_set_state(transport,
+						TRANSPORT_STATE_IDLE);
+		} else {
+			if (transport->state == TRANSPORT_STATE_PENDING)
+				transport_set_state(transport,
+						TRANSPORT_STATE_IDLE);
+			else if (transport->state == TRANSPORT_STATE_ACTIVE) {
+				/* Remove owner */
+				if (transport->owner != NULL)
+					media_transport_remove_owner(transport);
+			}
 		}
 	} else if (transport->state == TRANSPORT_STATE_IDLE) {
 		if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
@@ -1327,6 +1341,19 @@ static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
 	if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
 						BAA_SERVICE_UUID)) {
 		transport_update_playing(transport, TRUE);
+	}
+
+	return NULL;
+}
+
+static DBusMessage *unselect_transport(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	struct media_transport *transport = data;
+
+	if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
+						BAA_SERVICE_UUID)) {
+		transport_update_playing(transport, FALSE);
 	}
 
 	return NULL;
