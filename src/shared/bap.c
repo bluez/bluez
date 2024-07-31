@@ -1971,8 +1971,17 @@ static unsigned int bap_ucast_metadata(struct bt_bap_stream *stream,
 		return 0;
 	}
 
-	return bap_stream_metadata(stream, BT_ASCS_METADATA, data, func,
-					user_data);
+	switch (bt_bap_stream_get_state(stream)) {
+	/* Valid only if ASE_State field = 0x03 (Enabling) */
+	case BT_BAP_STREAM_STATE_ENABLING:
+	 /* or 0x04 (Streaming) */
+	case BT_BAP_STREAM_STATE_STREAMING:
+		return bap_stream_metadata(stream, BT_ASCS_METADATA, data, func,
+						user_data);
+	}
+
+	stream_metadata(stream, data, NULL);
+	return 0;
 }
 
 static uint8_t stream_release(struct bt_bap_stream *stream, struct iovec *rsp)
