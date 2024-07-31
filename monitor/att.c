@@ -4646,7 +4646,8 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
 		frame = &clone;
 	}
 
-	handler->notify(frame);
+	if (handler->notify)
+		handler->notify(frame);
 }
 
 static void att_handle_value_notify(const struct l2cap_frame *frame)
