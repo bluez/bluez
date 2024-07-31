@@ -165,6 +165,7 @@ static void print_service_proxy(GDBusProxy *proxy, const char *description)
 	DBusMessageIter iter;
 	const char *uuid;
 	dbus_bool_t primary;
+	uint16_t handle;
 
 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
 		return;
@@ -176,10 +177,16 @@ static void print_service_proxy(GDBusProxy *proxy, const char *description)
 
 	dbus_message_iter_get_basic(&iter, &primary);
 
+	if (g_dbus_proxy_get_property(proxy, "Handle", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &handle);
+
 	memset(&service, 0, sizeof(service));
 	service.path = (char *) g_dbus_proxy_get_path(proxy);
 	service.uuid = (char *) uuid;
 	service.primary = primary;
+	service.handle = handle;
 
 	print_service(&service, description);
 }
@@ -253,15 +260,22 @@ static void print_characteristic(GDBusProxy *proxy, const char *description)
 	struct chrc chrc;
 	DBusMessageIter iter;
 	const char *uuid;
+	uint16_t handle;
 
 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
 		return;
 
 	dbus_message_iter_get_basic(&iter, &uuid);
 
+	if (g_dbus_proxy_get_property(proxy, "Handle", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &handle);
+
 	memset(&chrc, 0, sizeof(chrc));
 	chrc.path = (char *) g_dbus_proxy_get_path(proxy);
 	chrc.uuid = (char *) uuid;
+	chrc.handle = handle;
 
 	print_chrc(&chrc, description);
 }
@@ -347,15 +361,22 @@ static void print_descriptor(GDBusProxy *proxy, const char *description)
 	struct desc desc;
 	DBusMessageIter iter;
 	const char *uuid;
+	uint16_t handle;
 
 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
 		return;
 
 	dbus_message_iter_get_basic(&iter, &uuid);
 
+	if (g_dbus_proxy_get_property(proxy, "Handle", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &handle);
+
 	memset(&desc, 0, sizeof(desc));
 	desc.path = (char *) g_dbus_proxy_get_path(proxy);
 	desc.uuid = (char *) uuid;
+	desc.handle = handle;
 
 	print_desc(&desc, description);
 }
