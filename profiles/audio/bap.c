@@ -1523,6 +1523,10 @@ static void setup_config(void *data, void *user_data)
 		return;
 	}
 
+	if (setup->metadata && setup->metadata->iov_len)
+		bt_bap_stream_metadata(setup->stream, setup->metadata, NULL,
+								NULL);
+
 	bt_bap_stream_set_user_data(setup->stream, ep->path);
 }
 
