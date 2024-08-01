@@ -1228,6 +1228,7 @@ static const struct capabilities {
 struct codec_preset {
 	char *name;
 	const struct iovec data;
+	const struct iovec meta;
 	struct bt_bap_qos qos;
 	uint8_t target_latency;
 	uint32_t chan_alloc;
@@ -2069,7 +2070,10 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	}
 
 	/* Copy metadata */
-	cfg->meta = util_iov_dup(ep->meta, 1);
+	if (preset->meta.iov_len)
+		cfg->meta = util_iov_dup(&preset->meta, 1);
+	else
+		cfg->meta = util_iov_dup(ep->meta, 1);
 
 	if (ep->broadcast)
 		qos = &preset->qos.bcast.io_qos;
@@ -4205,7 +4209,8 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 
 		if (argc > 4) {
 			struct codec_preset *alt_preset;
-			struct iovec *iov = (void *)&default_preset->data;
+			struct iovec *caps = (void *)&default_preset->data;
+			struct iovec *meta = (void *)&default_preset->meta;
 
 			/* Check if and alternative preset was given */
 			alt_preset = preset_find_name(preset, argv[4]);
@@ -4218,13 +4223,36 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 				return;
 			}
 
-			iov->iov_base = str2bytearray(argv[4], &iov->iov_len);
-			if (!iov->iov_base) {
-				bt_shell_printf("Invalid configuration %s\n",
-							argv[4]);
-				return bt_shell_noninteractive_quit(
+			/* Check if Codec Configuration was entered */
+			if (strlen(argv[4])) {
+				caps->iov_base = str2bytearray(argv[4],
+							      &caps->iov_len);
+				if (!caps->iov_base) {
+					bt_shell_printf("Invalid configuration "
+								"%s\n",
+								argv[4]);
+					return bt_shell_noninteractive_quit(
 								EXIT_FAILURE);
+				}
 			}
+
+			/* Check if metadata was entered */
+			if (argc > 5) {
+				meta->iov_base = str2bytearray(argv[5],
+								&meta->iov_len);
+				if (!meta->iov_base) {
+					bt_shell_printf("Invalid metadata %s\n",
+							argv[5]);
+					return bt_shell_noninteractive_quit(
+								EXIT_FAILURE);
+				}
+			}
+
+			/* If configuration was left empty then ask the
+			 * parameters.
+			 */
+			if (!caps->iov_base || !caps->iov_len)
+				goto enter_cc;
 
 			bt_shell_prompt_input("QoS", "Enter Target Latency "
 						"(Low, Balance, High):",
@@ -4236,6 +4264,7 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 	} else
 		print_presets(preset);
 
+enter_cc:
 	if (default_preset && default_preset->custom) {
 		bt_shell_prompt_input("Codec", "Enter frequency (Khz):",
 					custom_frequency, default_preset);
@@ -4265,7 +4294,8 @@ static const struct bt_shell_menu endpoint_menu = {
 						cmd_config_endpoint,
 						"Configure Endpoint",
 						endpoint_generator },
-	{ "presets",      "<UUID> <codec[:company]> [preset] [config]",
+	{ "presets",      "<UUID> <codec[:company]> [preset] [codec config] "
+						"[metadata]",
 						cmd_presets_endpoint,
 						"List or add presets",
 						uuid_generator },
