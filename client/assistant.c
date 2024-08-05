@@ -43,6 +43,14 @@
 
 #define MEDIA_ASSISTANT_INTERFACE "org.bluez.MediaAssistant1"
 
+#define BCODE_LEN		16
+
+struct assistant_config {
+	GDBusProxy *proxy;	/* DBus object reference */
+	struct iovec *meta;	/* Stream metadata LTVs */
+	struct bt_iso_qos qos;	/* Stream QoS parameters */
+};
+
 static DBusConnection *dbus_conn;
 
 static GList *assistants;
@@ -141,10 +149,249 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 	assistants = NULL;
 }
 
+static uint8_t *str2bytearray(char *arg, size_t *val_len)
+{
+	uint8_t value[UINT8_MAX];
+	char *entry;
+	unsigned int i;
+
+	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
+		long val;
+		char *endptr = NULL;
+
+		if (*entry == '\0')
+			continue;
+
+		if (i >= G_N_ELEMENTS(value)) {
+			bt_shell_printf("Too much data\n");
+			return NULL;
+		}
+
+		val = strtol(entry, &endptr, 0);
+		if (!endptr || *endptr != '\0' || val > UINT8_MAX) {
+			bt_shell_printf("Invalid value at index %d\n", i);
+			return NULL;
+		}
+
+		value[i] = val;
+	}
+
+	*val_len = i;
+
+	return util_memdup(value, i);
+}
+
+static void append_qos(DBusMessageIter *iter, struct assistant_config *cfg)
+{
+	DBusMessageIter entry, var, dict;
+	const char *key = "QoS";
+	const char *bcode_key = "BCode";
+	uint8_t *bcode = cfg->qos.bcast.bcode;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_DICT_ENTRY,
+						NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+						"a{sv}", &var);
+
+	dbus_message_iter_open_container(&var, DBUS_TYPE_ARRAY, "{sv}",
+					&dict);
+
+	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING,
+					&bcode_key, DBUS_TYPE_BYTE,
+					&bcode, BCODE_LEN);
+
+	dbus_message_iter_close_container(&var, &dict);
+	dbus_message_iter_close_container(&entry, &var);
+	dbus_message_iter_close_container(iter, &entry);
+}
+
+static void push_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct assistant_config *cfg = user_data;
+	DBusMessageIter dict;
+	const char *meta = "Metadata";
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+	if (cfg->meta)
+		g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_STRING, &meta,
+				DBUS_TYPE_BYTE, &cfg->meta->iov_base,
+				cfg->meta->iov_len);
+
+	if (cfg->qos.bcast.encryption)
+		append_qos(&dict, cfg);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void push_reply(DBusMessage *message, void *user_data)
+{
+	struct assistant_config *cfg = user_data;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message)) {
+		bt_shell_printf("Failed to push assistant: %s\n",
+				error.name);
+
+		dbus_error_free(&error);
+
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Assistant %s pushed\n",
+				g_dbus_proxy_get_path(cfg->proxy));
+
+	free(cfg->meta);
+	g_free(cfg);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void assistant_set_bcode_cfg(const char *input, void *user_data)
+{
+	struct assistant_config *cfg = user_data;
+	char *endptr;
+	uint8_t *bcode = cfg->qos.bcast.bcode;
+
+	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto")) {
+		memset(bcode, 0, BCODE_LEN);
+	} else {
+		bcode[0] = strtol(input, &endptr, 16);
+
+		for (uint8_t i = 1; i < BCODE_LEN; i++)
+			bcode[i] = strtol(endptr, &endptr, 16);
+	}
+
+	if (!g_dbus_proxy_method_call(cfg->proxy, "Push",
+					push_setup, push_reply,
+					cfg, NULL)) {
+		bt_shell_printf("Failed to push assistant\n");
+
+		free(cfg->meta);
+		g_free(cfg);
+
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void assistant_set_metadata_cfg(const char *input, void *user_data)
+{
+	struct assistant_config *cfg = user_data;
+	DBusMessageIter iter, dict, entry, value;
+	const char *key;
+
+	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto"))
+		goto done;
+
+	if (!cfg->meta)
+		cfg->meta = g_new0(struct iovec, 1);
+
+	cfg->meta->iov_base = str2bytearray((char *) input,
+				&cfg->meta->iov_len);
+	if (!cfg->meta->iov_base) {
+		free(cfg->meta);
+		cfg->meta = NULL;
+	}
+
+done:
+	/* Get QoS property to check if the stream is encrypted */
+	if (!g_dbus_proxy_get_property(cfg->proxy, "QoS", &iter))
+		goto fail;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		goto fail;
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	if (dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_DICT_ENTRY)
+		goto fail;
+
+	dbus_message_iter_recurse(&dict, &entry);
+	dbus_message_iter_get_basic(&entry, &key);
+
+	if (strcasecmp(key, "Encryption") != 0)
+		goto fail;
+
+	dbus_message_iter_next(&entry);
+	dbus_message_iter_recurse(&entry, &value);
+
+	if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_BYTE)
+		goto fail;
+
+	dbus_message_iter_get_basic(&value, &cfg->qos.bcast.encryption);
+
+	if (cfg->qos.bcast.encryption)
+		/* Prompt user to enter the Broadcast Code to decrypt
+		 * the stream
+		 */
+		bt_shell_prompt_input("Assistant",
+				"Enter Broadcast Code (auto/value):",
+				assistant_set_bcode_cfg, cfg);
+	else
+		if (!g_dbus_proxy_method_call(cfg->proxy, "Push",
+						push_setup, push_reply,
+						cfg, NULL)) {
+			bt_shell_printf("Failed to push assistant\n");
+			goto fail;
+		}
+
+	return;
+
+fail:
+	free(cfg->meta);
+	g_free(cfg);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void cmd_push_assistant(int argc, char *argv[])
+{
+	struct assistant_config *cfg;
+
+	cfg = new0(struct assistant_config, 1);
+	if (!cfg)
+		goto fail;
+
+	/* Search for DBus object */
+	cfg->proxy = g_dbus_proxy_lookup(assistants, NULL, argv[1],
+						MEDIA_ASSISTANT_INTERFACE);
+	if (!cfg->proxy) {
+		bt_shell_printf("Assistant %s not found\n", argv[1]);
+		goto fail;
+	}
+
+	/* Prompt user to enter metadata */
+	bt_shell_prompt_input("Assistant",
+			"Enter Metadata (auto/value):",
+			assistant_set_metadata_cfg, cfg);
+
+	return;
+
+fail:
+	g_free(cfg);
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static const struct bt_shell_menu assistant_menu = {
+	.name = "assistant",
+	.desc = "Media Assistant Submenu",
+	.entries = {
+	{ "push", "<assistant>", cmd_push_assistant,
+					"Send stream information to peer" },
+	{} },
+};
+
 static GDBusClient * client;
 
 void assistant_add_submenu(void)
 {
+	bt_shell_add_submenu(&assistant_menu);
+
 	dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
 	if (!dbus_conn || client)
 		return;
