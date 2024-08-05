@@ -5,7 +5,7 @@
  *
  *  Copyright (C) 2006-2010  Nokia Corporation
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
- *
+ *  Copyright 2024 NXP
  *
  */
 
@@ -7373,4 +7373,10 @@ void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
 					device->bdaddr_type, min_interval,
 					max_interval, latency,
 					timeout);
+}
+
+void btd_device_foreach_service_data(struct btd_device *dev, bt_ad_func_t func,
+							void *data)
+{
+	bt_ad_foreach_service_data(dev->ad, func, data);
 }
