@@ -74,6 +74,9 @@ struct bt_bass_bcast_audio_scan_cp_hdr {
 
 #define BT_BASS_ADD_SRC					0x02
 
+#define BT_BASS_ADDR_PUBLIC				0x00
+#define BT_BASS_ADDR_RANDOM				0x01
+
 /* PA_Sync values */
 #define PA_SYNC_NO_SYNC					0x00
 #define PA_SYNC_PAST					0x01
@@ -81,6 +84,8 @@ struct bt_bass_bcast_audio_scan_cp_hdr {
 
 /* BIS_Sync no preference bitmask */
 #define BIS_SYNC_NO_PREF				0xFFFFFFFF
+
+#define PA_INTERVAL_UNKNOWN				0xFFFF
 
 struct bt_bass_add_src_params {
 	uint8_t addr_type;
