@@ -119,6 +119,8 @@ struct bt_bass_remove_src_params {
 typedef void (*bt_bass_func_t)(struct bt_bass *bass, void *user_data);
 typedef void (*bt_bass_destroy_func_t)(void *user_data);
 typedef void (*bt_bass_debug_func_t)(const char *str, void *user_data);
+typedef void (*bt_bass_src_func_t)(uint8_t id, uint32_t bid, uint8_t enc,
+					uint32_t bis_sync, void *user_data);
 
 struct bt_att *bt_bass_get_att(struct bt_bass *bass);
 struct bt_gatt_client *bt_bass_get_client(struct bt_bass *bass);
@@ -138,3 +140,6 @@ void bt_bass_add_db(struct gatt_db *db, const bdaddr_t *adapter_bdaddr);
 int bt_bass_send(struct bt_bass *bass,
 		struct bt_bass_bcast_audio_scan_cp_hdr *hdr,
 		struct iovec *params);
+unsigned int bt_bass_src_register(struct bt_bass *bass, bt_bass_src_func_t cb,
+			void *user_data, bt_bass_destroy_func_t destroy);
+bool bt_bass_src_unregister(struct bt_bass *bass, unsigned int id);

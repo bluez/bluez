@@ -71,6 +71,8 @@ struct bt_bass {
 	bt_bass_destroy_func_t debug_destroy;
 	void *debug_data;
 
+	struct queue *src_cbs;
+
 	void *user_data;
 };
 
@@ -118,6 +120,13 @@ static struct bt_iso_qos default_qos = {
 	}
 };
 
+struct bt_bass_src_changed {
+	unsigned int id;
+	bt_bass_src_func_t cb;
+	bt_bass_destroy_func_t destroy;
+	void *data;
+};
+
 static void bass_bcast_src_free(void *data);
 
 static void bass_debug(struct bt_bass *bass, const char *format, ...)
@@ -130,6 +139,64 @@ static void bass_debug(struct bt_bass *bass, const char *format, ...)
 	va_start(ap, format);
 	util_debug_va(bass->debug_func, bass->debug_data, format, ap);
 	va_end(ap);
+}
+
+unsigned int bt_bass_src_register(struct bt_bass *bass, bt_bass_src_func_t cb,
+				void *user_data, bt_bass_destroy_func_t destroy)
+{
+	struct bt_bass_src_changed *changed;
+	static unsigned int id;
+
+	if (!bass)
+		return 0;
+
+	changed = new0(struct bt_bass_src_changed, 1);
+	if (!changed)
+		return 0;
+
+	changed->id = ++id ? id : ++id;
+	changed->cb = cb;
+	changed->destroy = destroy;
+	changed->data = user_data;
+
+	queue_push_tail(bass->src_cbs, changed);
+
+	return changed->id;
+}
+
+static void bass_src_changed_free(void *data)
+{
+	struct bt_bass_src_changed *changed = data;
+
+	if (changed->destroy)
+		changed->destroy(changed->data);
+
+	free(changed);
+}
+
+static bool match_src_changed_id(const void *data, const void *match_data)
+{
+	const struct bt_bass_src_changed *changed = data;
+	unsigned int id = PTR_TO_UINT(match_data);
+
+	return (changed->id == id);
+}
+
+bool bt_bass_src_unregister(struct bt_bass *bass, unsigned int id)
+{
+	struct bt_bass_src_changed *changed;
+
+	if (!bass)
+		return false;
+
+	changed = queue_remove_if(bass->src_cbs, match_src_changed_id,
+						UINT_TO_PTR(id));
+	if (!changed)
+		return false;
+
+	bass_src_changed_free(changed);
+
+	return true;
 }
 
 static int bass_build_bcast_src(struct bt_bcast_src *bcast_src,
@@ -1321,6 +1388,27 @@ static void read_bcast_recv_state(bool success, uint8_t att_ecode,
 	}
 }
 
+static void notify_src_changed(void *data, void *user_data)
+{
+	struct bt_bass_src_changed *changed = data;
+	struct bt_bcast_src *bcast_src = user_data;
+	uint32_t bis_sync = 0;
+
+	for (uint8_t i = 0; i < bcast_src->num_subgroups; i++) {
+		struct bt_bass_subgroup_data *sgrp =
+				&bcast_src->subgroup_data[i];
+
+		/* Create a bitmask of all BIS indices that the peer has
+		 * synchronized with.
+		 */
+		bis_sync |= sgrp->bis_sync;
+	}
+
+	if (changed->cb)
+		changed->cb(bcast_src->id, bcast_src->bid, bcast_src->enc,
+					bis_sync, changed->data);
+}
+
 static void bcast_recv_state_notify(struct bt_bass *bass, uint16_t value_handle,
 				const uint8_t *value, uint16_t length,
 				void *user_data)
@@ -1353,6 +1441,11 @@ static void bcast_recv_state_notify(struct bt_bass *bass, uint16_t value_handle,
 
 	if (new_src)
 		queue_push_tail(bass->rdb->bcast_srcs, bcast_src);
+
+	/* Notify the update in the Broadcast Receive State characteristic
+	 * to all drivers that registered a callback.
+	 */
+	queue_foreach(bass->src_cbs, notify_src_changed, bcast_src);
 }
 
 static void bass_register(uint16_t att_ecode, void *user_data)
@@ -1562,6 +1655,7 @@ static void bass_free(void *data)
 	bt_bass_detach(bass);
 	bass_db_free(bass->rdb);
 	queue_destroy(bass->notify, NULL);
+	queue_destroy(bass->src_cbs, bass_src_changed_free);
 
 	free(bass);
 }
@@ -1656,6 +1750,7 @@ struct bt_bass *bt_bass_new(struct gatt_db *ldb, struct gatt_db *rdb,
 	bass = new0(struct bt_bass, 1);
 	bass->ldb = db;
 	bass->notify = queue_new();
+	bass->src_cbs = queue_new();
 
 	if (!rdb)
 		goto done;
