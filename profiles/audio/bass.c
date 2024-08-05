@@ -70,10 +70,18 @@ enum assistant_state {
 					 */
 };
 
+static const char *const str_state[] = {
+	"ASSISTANT_STATE_IDLE",
+	"ASSISTANT_STATE_PENDING",
+	"ASSISTANT_STATE_REQUESTING",
+	"ASSISTANT_STATE_ACTIVE",
+};
+
 struct bass_data {
 	struct btd_device *device;
 	struct btd_service *service;
 	struct bt_bass *bass;
+	unsigned int src_id;
 };
 
 struct bass_assistant {
@@ -92,14 +100,206 @@ struct bass_assistant {
 static struct queue *sessions;
 static struct queue *assistants;
 
+static const char *state2str(enum assistant_state state);
+
 static void bass_debug(const char *str, void *user_data)
 {
 	DBG_IDX(0xffff, "%s", str);
 }
 
+static void assistant_set_state(struct bass_assistant *assistant,
+					enum assistant_state state)
+{
+	enum assistant_state old_state = assistant->state;
+	const char *str;
+
+	if (old_state == state)
+		return;
+
+	assistant->state = state;
+
+	DBG("State changed %s: %s -> %s", assistant->path, str_state[old_state],
+							str_state[state]);
+
+	str = state2str(state);
+
+	if (g_strcmp0(str, state2str(old_state)) != 0)
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						assistant->path,
+						MEDIA_ASSISTANT_INTERFACE,
+						"State");
+}
+
+static int assistant_parse_qos(struct bass_assistant *assistant,
+						DBusMessageIter *iter)
+{
+	DBusMessageIter dict;
+	const char *key;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter value, entry;
+		int var;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		var = dbus_message_iter_get_arg_type(&value);
+
+		if (!strcasecmp(key, "BCode")) {
+			DBusMessageIter array;
+			struct iovec iov = {0};
+
+			if (var != DBUS_TYPE_ARRAY)
+				return -EINVAL;
+
+			dbus_message_iter_recurse(&value, &array);
+			dbus_message_iter_get_fixed_array(&array,
+							&iov.iov_base,
+							(int *)&iov.iov_len);
+
+			if (iov.iov_len != BT_BASS_BCAST_CODE_SIZE) {
+				error("Invalid size for BCode: %zu != 16",
+								iov.iov_len);
+				return -EINVAL;
+			}
+
+			memcpy(assistant->qos.bcast.bcode, iov.iov_base,
+								iov.iov_len);
+
+			return 0;
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	return 0;
+}
+
+static int assistant_parse_props(struct bass_assistant *assistant,
+					DBusMessageIter *props)
+{
+	DBusMessageIter value, entry, array;
+	const char *key;
+
+	while (dbus_message_iter_get_arg_type(props) == DBUS_TYPE_DICT_ENTRY) {
+		dbus_message_iter_recurse(props, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (!strcasecmp(key, "Metadata")) {
+			struct iovec iov;
+
+			if (dbus_message_iter_get_arg_type(&value) !=
+							DBUS_TYPE_ARRAY)
+				goto fail;
+
+			dbus_message_iter_recurse(&value, &array);
+			dbus_message_iter_get_fixed_array(&array,
+							&iov.iov_base,
+							(int *)&iov.iov_len);
+
+			util_iov_free(assistant->meta, 1);
+			assistant->meta = util_iov_dup(&iov, 1);
+			DBG("Parsed Metadata");
+		} else if (!strcasecmp(key, "QoS")) {
+			if (dbus_message_iter_get_arg_type(&value) !=
+							DBUS_TYPE_ARRAY)
+				goto fail;
+
+			if (assistant_parse_qos(assistant, &value))
+				goto fail;
+
+			DBG("Parsed QoS");
+		}
+
+		dbus_message_iter_next(props);
+	}
+
+	return 0;
+
+fail:
+	DBG("Failed parsing %s", key);
+
+	return -EINVAL;
+}
+
 static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 							  void *user_data)
 {
+	struct bass_assistant *assistant = user_data;
+	struct bt_bass_bcast_audio_scan_cp_hdr hdr;
+	struct bt_bass_add_src_params params;
+	struct iovec iov = {0};
+	uint32_t bis_sync = 0;
+	uint8_t meta_len = 0;
+	int err;
+	DBusMessageIter props, dict;
+
+	DBG("");
+
+	dbus_message_iter_init(msg, &props);
+
+	if (dbus_message_iter_get_arg_type(&props) != DBUS_TYPE_ARRAY) {
+		DBG("Unable to parse properties");
+		return btd_error_invalid_args(msg);
+	}
+
+	dbus_message_iter_recurse(&props, &dict);
+
+	if (assistant_parse_props(assistant, &dict)) {
+		DBG("Unable to parse properties");
+		return btd_error_invalid_args(msg);
+	}
+
+	hdr.op = BT_BASS_ADD_SRC;
+
+	if (device_get_le_address_type(assistant->device) == BDADDR_LE_PUBLIC)
+		params.addr_type = BT_BASS_ADDR_PUBLIC;
+	else
+		params.addr_type = BT_BASS_ADDR_RANDOM;
+
+	bacpy(&params.addr, device_get_address(assistant->device));
+	put_le24(assistant->bid, params.bid);
+	params.pa_sync = PA_SYNC_NO_PAST;
+	params.pa_interval = PA_INTERVAL_UNKNOWN;
+	params.num_subgroups = assistant->sgrp + 1;
+
+	util_iov_append(&iov, &params, sizeof(params));
+
+	/* Metadata and the BIS index associated with the MediaAssistant
+	 * object will be set in the subgroup they belong to. For the other
+	 * subgroups, no metadata and no BIS index will be provided.
+	 */
+	for (uint8_t sgrp = 0; sgrp < assistant->sgrp; sgrp++) {
+		util_iov_append(&iov, &bis_sync, sizeof(bis_sync));
+		util_iov_append(&iov, &meta_len, sizeof(meta_len));
+	}
+
+	bis_sync = (1 << (assistant->bis - 1));
+	meta_len = assistant->meta->iov_len;
+
+	util_iov_append(&iov, &bis_sync, sizeof(bis_sync));
+	util_iov_append(&iov, &meta_len, sizeof(meta_len));
+	util_iov_append(&iov, assistant->meta->iov_base,
+				assistant->meta->iov_len);
+
+	err = bt_bass_send(assistant->data->bass, &hdr, &iov);
+	if (err) {
+		DBG("Unable to send BASS Write Command");
+		return btd_error_failed(msg, strerror(-err));
+	}
+
+	free(iov.iov_base);
+
+	assistant_set_state(assistant, ASSISTANT_STATE_PENDING);
+
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
@@ -381,6 +581,8 @@ static void bass_data_free(struct bass_data *data)
 		bt_bass_set_user_data(data->bass, NULL);
 	}
 
+	bt_bass_src_unregister(data->bass, data->src_id);
+
 	bt_bass_unref(data->bass);
 
 	queue_remove_all(assistants, assistant_match_data,
@@ -453,6 +655,93 @@ static void bass_attached(struct bt_bass *bass, void *user_data)
 	bass_data_add(data);
 }
 
+static void bass_handle_bcode_req(struct bass_assistant *assistant, int id)
+{
+	struct bt_bass_bcast_audio_scan_cp_hdr hdr;
+	struct bt_bass_set_bcast_code_params params;
+	struct iovec iov = {0};
+	int err;
+
+	assistant_set_state(assistant, ASSISTANT_STATE_REQUESTING);
+
+	hdr.op = BT_BASS_SET_BCAST_CODE;
+
+	params.id = id;
+	memcpy(params.bcast_code, assistant->qos.bcast.bcode,
+					BT_BASS_BCAST_CODE_SIZE);
+
+	iov.iov_base = malloc0(sizeof(params));
+	if (!iov.iov_base)
+		return;
+
+	util_iov_push_mem(&iov, sizeof(params), &params);
+
+	err = bt_bass_send(assistant->data->bass, &hdr, &iov);
+	if (err) {
+		DBG("Unable to send BASS Write Command");
+		return;
+	}
+
+	free(iov.iov_base);
+}
+
+static void bass_src_changed(uint8_t id, uint32_t bid, uint8_t enc,
+					uint32_t bis_sync, void *user_data)
+{
+	const struct queue_entry *entry;
+
+	for (entry = queue_get_entries(assistants); entry;
+						entry = entry->next) {
+		struct bass_assistant *assistant = entry->data;
+		uint32_t bis = 1 << (assistant->bis - 1);
+
+		if (assistant->bid != bid)
+			/* Only handle assistant objects
+			 * that match the source
+			 */
+			continue;
+
+		switch (enc) {
+		case BT_BASS_BIG_ENC_STATE_BCODE_REQ:
+			if (assistant->state != ASSISTANT_STATE_PENDING)
+				/* Only handle assistant objects that
+				 * have been pushed by the user
+				 */
+				break;
+
+			/* Provide Broadcast Code to peer */
+			bass_handle_bcode_req(assistant, id);
+			break;
+		case BT_BASS_BIG_ENC_STATE_NO_ENC:
+			if (assistant->state != ASSISTANT_STATE_PENDING)
+				/* Only handle assistant objects that
+				 * have been pushed by the user
+				 */
+				break;
+
+			/* Match BIS index */
+			if (bis & bis_sync)
+				assistant_set_state(assistant,
+						ASSISTANT_STATE_ACTIVE);
+			break;
+		case BT_BASS_BIG_ENC_STATE_DEC:
+			/* Only handle assistant objects that
+			 * have requested a Broadcast Code
+			 */
+			if (assistant->state != ASSISTANT_STATE_REQUESTING)
+				break;
+
+			/* Match BIS index */
+			if (bis & bis_sync)
+				assistant_set_state(assistant,
+						ASSISTANT_STATE_ACTIVE);
+			break;
+		default:
+			continue;
+		}
+	}
+}
+
 static int bass_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -484,6 +773,12 @@ static int bass_probe(struct btd_service *service)
 
 	bass_data_add(data);
 	bt_bass_set_user_data(data->bass, service);
+
+	/* Register callback to be called when notifications for
+	 * Broadcast Receive State characteristics are received.
+	 */
+	data->src_id = bt_bass_src_register(data->bass, bass_src_changed,
+						data, NULL);
 
 	return 0;
 }
