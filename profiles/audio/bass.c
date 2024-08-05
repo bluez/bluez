@@ -3,7 +3,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  */
 
@@ -40,6 +40,7 @@
 #include "src/adapter.h"
 #include "src/shared/bass.h"
 #include "src/shared/bap.h"
+#include "src/shared/ad.h"
 
 #include "src/plugin.h"
 #include "src/gatt-database.h"
@@ -80,6 +81,7 @@ struct bass_assistant {
 	struct bass_data *data;		/* BASS session with peer device */
 	uint8_t sgrp;
 	uint8_t bis;
+	uint32_t bid;
 	struct bt_iso_qos qos;
 	struct iovec *meta;
 	struct iovec *caps;
@@ -198,6 +200,21 @@ static void assistant_free(void *data)
 	free(assistant);
 }
 
+static void src_ad_search_bid(void *data, void *user_data)
+{
+	struct bt_ad_service_data *sd = data;
+	struct bass_assistant *assistant = user_data;
+	struct iovec iov;
+
+	if (sd->uuid.type != BT_UUID16 || sd->uuid.value.u16 != BCAA_SERVICE)
+		return;
+
+	iov.iov_base = sd->data;
+	iov.iov_len = sd->len;
+
+	util_iov_pull_le24(&iov, &assistant->bid);
+}
+
 static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 		struct btd_device *device, struct bass_data *data,
 		uint8_t sgrp, uint8_t bis, struct bt_iso_qos *qos,
@@ -220,6 +237,9 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 	assistant->qos = *qos;
 	assistant->meta = util_iov_dup(meta, 1);
 	assistant->caps = util_iov_dup(caps, 1);
+
+	btd_device_foreach_service_data(assistant->device, src_ad_search_bid,
+							assistant);
 
 	ba2str(device_get_address(device), src_addr);
 	ba2str(device_get_address(data->device), dev_addr);
