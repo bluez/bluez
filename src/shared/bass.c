@@ -3,7 +3,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright 2023 NXP
+ *  Copyright 2023-2024 NXP
  *
  */
 
@@ -1753,4 +1753,40 @@ bool bt_bass_unregister(unsigned int id)
 void bt_bass_add_db(struct gatt_db *db, const bdaddr_t *adapter_bdaddr)
 {
 	bass_db_new(db, adapter_bdaddr);
+}
+
+int bt_bass_send(struct bt_bass *bass,
+		struct bt_bass_bcast_audio_scan_cp_hdr *hdr,
+		struct iovec *params)
+{
+	struct iovec req = {0};
+	uint16_t handle;
+	int err = 0;
+
+	if (!bass || !bass->client || !bass->rdb)
+		return -EINVAL;
+
+	DBG(bass, "bass %p", bass);
+
+	req.iov_base = malloc0(sizeof(*hdr) + params->iov_len);
+	if (!req.iov_base)
+		return -EINVAL;
+
+	util_iov_push_mem(&req, sizeof(*hdr), hdr);
+	util_iov_push_mem(&req, params->iov_len, params->iov_base);
+
+	if (!gatt_db_attribute_get_char_data(bass->rdb->bcast_audio_scan_cp,
+			NULL, &handle, NULL, NULL, NULL)) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	if (!bt_gatt_client_write_without_response(bass->client, handle,
+					false, req.iov_base, req.iov_len))
+		err = -EINVAL;
+
+done:
+	free(req.iov_base);
+
+	return err;
 }
