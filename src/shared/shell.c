@@ -262,6 +262,10 @@ static int bt_shell_queue_exec(char *line)
 {
 	int err;
 
+	/* Ignore comments */
+	if (line[0] == '#')
+		return 0;
+
 	/* Queue if already executing */
 	if (data.line) {
 		/* Check if prompt is being held then release using the line */
@@ -876,7 +880,8 @@ static void rl_handler(char *input)
 		return;
 	}
 
-	if (!strlen(input))
+	/* Ignore empty/comment lines */
+	if (!strlen(input) || input[0] == '#')
 		goto done;
 
 	if (!bt_shell_release_prompt(input))
