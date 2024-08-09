@@ -905,10 +905,8 @@ send:
 failed:
 	DBG("AVCTP Browsing: disconnected");
 
-	if (session->browsing) {
-		avctp_channel_destroy(session->browsing);
-		session->browsing = NULL;
-	}
+	avctp_channel_destroy(session->browsing);
+	session->browsing = NULL;
 
 	return FALSE;
 }
