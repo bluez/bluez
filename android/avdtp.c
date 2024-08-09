@@ -2130,8 +2130,10 @@ struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version,
 		return NULL;
 	}
 
-	if (set_priority(new_fd, 6) < 0)
+	if (set_priority(new_fd, 6) < 0) {
+		close(new_fd);
 		return NULL;
+	}
 
 	session = g_new0(struct avdtp, 1);
 	session->io = g_io_channel_unix_new(new_fd);
