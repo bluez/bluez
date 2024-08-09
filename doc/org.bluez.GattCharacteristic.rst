@@ -62,6 +62,15 @@ array{byte} ReadValue(dict options)
 
 		Device object.
 
+	:string link (server only):
+
+		Link type.
+
+		Possible values:
+
+		:"BR/EDR":
+		:"LE":
+
 	Possible Errors:
 
 	:org.bluez.Error.Failed:
