@@ -504,6 +504,10 @@ int bt_uhid_destroy(struct bt_uhid *uhid, bool force)
 	if (!uhid)
 		return -EINVAL;
 
+	/* Cleanup input queue */
+	queue_destroy(uhid->input, free);
+	uhid->input = NULL;
+
 	/* Force destroy for non-keyboard devices - keyboards are not destroyed
 	 * on disconnect since they can glitch on reconnection losing
 	 * keypresses.
