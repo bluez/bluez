@@ -46,6 +46,7 @@ struct bt_uhid {
 	struct queue *input;
 	uint8_t type;
 	bool created;
+	unsigned int start_id;
 	bool started;
 	struct uhid_replay *replay;
 };
@@ -246,7 +247,7 @@ unsigned int bt_uhid_register(struct bt_uhid *uhid, uint32_t event,
 		return 0;
 
 	notify = new0(struct uhid_notify, 1);
-	notify->id = uhid->notify_id++;
+	notify->id = ++uhid->notify_id ? uhid->notify_id : ++uhid->notify_id;
 	notify->event = event;
 	notify->func = func;
 	notify->user_data = user_data;
@@ -351,6 +352,14 @@ int bt_uhid_create(struct bt_uhid *uhid, const char *name, bdaddr_t *src,
 	if (uhid->created)
 		return 0;
 
+	/* Register callback for UHID_START if not registered yet */
+	if (!uhid->start_id) {
+		uhid->start_id = bt_uhid_register(uhid, UHID_START, uhid_start,
+									uhid);
+		if (!uhid->start_id)
+			return -ENOMEM;
+	}
+
 	memset(&ev, 0, sizeof(ev));
 	ev.type = UHID_CREATE2;
 	strncpy((char *) ev.u.create2.name, name,
@@ -377,8 +386,6 @@ int bt_uhid_create(struct bt_uhid *uhid, const char *name, bdaddr_t *src,
 	err = bt_uhid_send(uhid, &ev);
 	if (err)
 		return err;
-
-	bt_uhid_register(uhid, UHID_START, uhid_start, uhid);
 
 	uhid->created = true;
 	uhid->started = false;

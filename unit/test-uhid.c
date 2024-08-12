@@ -233,8 +233,10 @@ static void test_client(gconstpointer data)
 
 	err = bt_uhid_create(context->uhid, "", NULL, NULL, 0, 0, 0, 0,
 				BT_UHID_NONE, NULL, 0);
-	if (err < 0)
+	if (err < 0) {
+		tester_debug("create failed: %s\n", strerror(-err));
 		tester_test_failed();
+	}
 
 	if (g_str_equal(context->data->test_name, "/uhid/command/destroy")) {
 		err = bt_uhid_destroy(context->uhid, true);
