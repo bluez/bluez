@@ -293,13 +293,13 @@ bool ServicesResolved [readonly]
 
 	Indicate whether or not service discovery has been resolved.
 
-array{byte} AdvertisingFlags [readonly, experimental]
-`````````````````````````````````````````````````````
+array{byte} AdvertisingFlags [readonly]
+```````````````````````````````````````
 
 	The Advertising Data Flags of the remote device.
 
-dict AdvertisingData [readonly, experimental]
-`````````````````````````````````````````````
+dict AdvertisingData [readonly]
+```````````````````````````````
 
 	The Advertising Data of the remote device. Keys are 1 byte AD Type
 	followed by data as byte array.
