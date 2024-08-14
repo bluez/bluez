@@ -33,8 +33,19 @@ struct test_pdu {
 	size_t size;
 };
 
+struct test_device {
+	const char *name;
+	uint32_t vendor;
+	uint32_t product;
+	uint32_t version;
+	uint32_t country;
+	uint8_t type;
+	struct iovec map;
+};
+
 struct test_data {
 	char *test_name;
+	struct test_device *test_device;
 	struct test_pdu *pdu_list;
 };
 
@@ -54,16 +65,20 @@ struct context {
 		.size = sizeof(*args),				\
 	}
 
-#define define_test(name, function, args...)				\
+#define define_test_device(name, function, device, args...)		\
 	do {								\
 		const struct test_pdu pdus[] = {			\
 			args, { }					\
 		};							\
 		static struct test_data data;				\
 		data.test_name = g_strdup(name);			\
+		data.test_device = device;				\
 		data.pdu_list = util_memdup(pdus, sizeof(pdus));	\
 		tester_add(name, &data, NULL, function, NULL);		\
 	} while (0)
+
+#define define_test(name, function, args...)			\
+	define_test_device(name, function, NULL, args)
 
 static void test_debug(const char *str, void *user_data)
 {
@@ -174,8 +189,20 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 static struct context *create_context(gconstpointer data)
 {
 	struct context *context = g_new0(struct context, 1);
+	const struct test_data *test_data = data;
 	GIOChannel *channel;
 	int err, sv[2];
+	uid_t uid = getuid();
+
+	context->data = data;
+
+	/* Device testings requires extra permissions in order to be able to
+	 * create devices.
+	 */
+	if (test_data->test_device && !uid) {
+		context->uhid = bt_uhid_new_default();
+		return context;
+	}
 
 	err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sv);
 	g_assert(err == 0);
@@ -197,7 +224,6 @@ static struct context *create_context(gconstpointer data)
 	g_io_channel_unref(channel);
 
 	context->fd = sv[1];
-	context->data = data;
 
 	return context;
 }
@@ -229,10 +255,20 @@ static const struct uhid_event ev_feature = {
 static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(data);
+	struct test_device *device = context->data->test_device;
 	int err;
 
-	err = bt_uhid_create(context->uhid, "", NULL, NULL, 0, 0, 0, 0,
-				BT_UHID_NONE, NULL, 0);
+	if (device)
+		err = bt_uhid_create(context->uhid, device->name,
+					BDADDR_ANY, BDADDR_ANY,
+					device->vendor, device->product,
+					device->version, device->country,
+					device->type, device->map.iov_base,
+					device->map.iov_len);
+	else
+		err = bt_uhid_create(context->uhid, "", NULL, NULL, 0, 0, 0, 0,
+					BT_UHID_NONE, NULL, 0);
+
 	if (err < 0) {
 		tester_debug("create failed: %s\n", strerror(-err));
 		tester_test_failed();
@@ -284,6 +320,29 @@ static void test_server(gconstpointer data)
 	g_idle_add(send_pdu, context);
 }
 
+
+static struct test_device mx_anywhere_3 = {
+	.name = "MX Anywhere 3",
+	.vendor = 0x46D,
+	.product = 0xB025,
+	.version = 0x14,
+	.country = 0x00,
+	.type = BT_UHID_MOUSE,
+	.map = UTIL_IOV_INIT(0x05, 0x01, 0x09, 0x02, 0xA1, 0x01, 0x85, 0x02,
+				0x09, 0x01, 0xA1, 0x00, 0x95, 0x10, 0x75, 0x01,
+				0x15, 0x00, 0x25, 0x01, 0x05, 0x09, 0x19, 0x01,
+				0x29, 0x10, 0x81, 0x02, 0x05, 0x01, 0x16, 0x01,
+				0xF8, 0x26, 0xFF, 0x07, 0x75, 0x0C, 0x95, 0x02,
+				0x09, 0x30, 0x09, 0x31, 0x81, 0x06, 0x15, 0x81,
+				0x25, 0x7F, 0x75, 0x08, 0x95, 0x01, 0x09, 0x38,
+				0x81, 0x06, 0x95, 0x01, 0x05, 0x0C, 0x0A, 0x38,
+				0x02, 0x81, 0x06, 0xC0, 0xC0, 0x06, 0x43, 0xFF,
+				0x0A, 0x02, 0x02, 0xA1, 0x01, 0x85, 0x11, 0x75,
+				0x08, 0x95, 0x13, 0x15, 0x00, 0x26, 0xFF, 0x00,
+				0x09, 0x02, 0x81, 0x00, 0x09, 0x02, 0x91, 0x00,
+				0xC0),
+};
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -296,6 +355,9 @@ int main(int argc, char *argv[])
 
 	define_test("/uhid/event/output", test_server, event(&ev_output));
 	define_test("/uhid/event/feature", test_server, event(&ev_feature));
+
+	define_test_device("/uhid/device/mx_anywhere_3", test_client,
+					&mx_anywhere_3, event(&ev_create));
 
 	return tester_run();
 }
