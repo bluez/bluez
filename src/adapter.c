@@ -7293,7 +7293,7 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 				MGMT_SETTING_ISO_SYNC_RECEIVER))
 			monitoring = true;
 
-		if (!discoverable && !monitoring && !eir_data.rsi) {
+		if (!discoverable && !monitoring && not_connectable) {
 			eir_data_free(&eir_data);
 			return;
 		}
