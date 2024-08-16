@@ -118,6 +118,7 @@ struct endpoint {
 	struct queue *transports;
 	DBusMessage *msg;
 	struct preset *preset;
+	struct codec_preset *codec_preset;
 	bool broadcast;
 	struct iovec *bcode;
 };
@@ -2101,13 +2102,23 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	return reply;
 }
 
+static struct codec_preset *endpoint_find_codec_preset(struct endpoint *ep,
+							const char *name)
+{
+	if (ep->codec_preset &&
+			(!name || !strcmp(ep->codec_preset->name, name)))
+		return ep->codec_preset;
+
+	return preset_find_name(ep->preset, name);
+}
+
 static void select_properties_response(const char *input, void *user_data)
 {
 	struct endpoint *ep = user_data;
 	struct codec_preset *p;
 	DBusMessage *reply;
 
-	p = preset_find_name(ep->preset, input);
+	p = endpoint_find_codec_preset(ep, input);
 	if (p) {
 		reply = endpoint_select_properties_reply(ep, ep->msg, p);
 		goto done;
@@ -2149,7 +2160,7 @@ static DBusMessage *endpoint_select_properties(DBusConnection *conn,
 		return NULL;
 	}
 
-	p = preset_find_name(ep->preset, NULL);
+	p = endpoint_find_codec_preset(ep, NULL);
 	if (!p)
 		return NULL;
 
@@ -4192,28 +4203,42 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 {
 	struct preset *preset;
 	struct codec_preset *default_preset = NULL;
+	struct endpoint *ep = NULL;
 
 	preset = find_presets_name(argv[1], argv[2]);
 	if (!preset) {
-		bt_shell_printf("No preset found\n");
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
-
-	if (argc > 3) {
-		default_preset = codec_preset_add(preset, argv[3]);
-		if (!default_preset) {
-			bt_shell_printf("Preset %s not found\n", argv[3]);
+		ep = endpoint_find(argv[1]);
+		if (!ep) {
+			bt_shell_printf("No preset found\n");
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
-		preset->default_preset = default_preset;
+		preset = ep->preset;
+		argv++;
+		argc--;
+	} else {
+		argv += 2;
+		argc -= 2;
+	}
 
-		if (argc > 4) {
+	if (argc > 1) {
+		default_preset = codec_preset_add(preset, argv[1]);
+		if (!default_preset) {
+			bt_shell_printf("Preset %s not found\n", argv[1]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		if (ep)
+			ep->codec_preset = default_preset;
+		else
+			preset->default_preset = default_preset;
+
+		if (argc > 2) {
 			struct codec_preset *alt_preset;
 			struct iovec *caps = (void *)&default_preset->data;
 			struct iovec *meta = (void *)&default_preset->meta;
 
 			/* Check if and alternative preset was given */
-			alt_preset = preset_find_name(preset, argv[4]);
+			alt_preset = preset_find_name(preset, argv[2]);
 			if (alt_preset) {
 				default_preset->alt_preset = alt_preset;
 				bt_shell_prompt_input(default_preset->name,
@@ -4224,21 +4249,21 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 			}
 
 			/* Check if Codec Configuration was entered */
-			if (strlen(argv[4])) {
-				caps->iov_base = str2bytearray(argv[4],
+			if (strlen(argv[2])) {
+				caps->iov_base = str2bytearray(argv[2],
 							      &caps->iov_len);
 				if (!caps->iov_base) {
 					bt_shell_printf("Invalid configuration "
 								"%s\n",
-								argv[4]);
+								argv[2]);
 					return bt_shell_noninteractive_quit(
 								EXIT_FAILURE);
 				}
 			}
 
 			/* Check if metadata was entered */
-			if (argc > 5) {
-				meta->iov_base = str2bytearray(argv[5],
+			if (argc > 3) {
+				meta->iov_base = str2bytearray(argv[3],
 								&meta->iov_len);
 				if (!meta->iov_base) {
 					bt_shell_printf("Invalid metadata %s\n",
@@ -4294,8 +4319,8 @@ static const struct bt_shell_menu endpoint_menu = {
 						cmd_config_endpoint,
 						"Configure Endpoint",
 						endpoint_generator },
-	{ "presets",      "<UUID> <codec[:company]> [preset] [codec config] "
-						"[metadata]",
+	{ "presets",      "<endpoint>/<UUID> [codec[:company]] [preset] "
+						"[codec config] [metadata]",
 						cmd_presets_endpoint,
 						"List or add presets",
 						uuid_generator },
