@@ -4845,6 +4845,50 @@ static void flow_spec_modify_cmd(uint16_t index, const void *data, uint8_t size)
 	print_flow_spec("RX", cmd->rx_flow_spec);
 }
 
+static void print_coding_format(const char *label,
+						const uint8_t coding_format[5])
+{
+	print_field("%s:", label);
+	packet_print_codec_id("  Codec", coding_format[0]);
+	if (coding_format[0] == 0xff) {
+		print_field("  Company: %s",
+				bt_compidtostr(get_le16(coding_format + 1)));
+		print_field("  Vendor Specific Codec: 0x%4.4x",
+						get_le16(coding_format + 3));
+	}
+}
+
+static void print_pcm_data_format(const char *label, uint8_t pcm)
+{
+	switch (pcm) {
+	case 0:
+		print_field("%s: NA", label);
+		break;
+	case 1:
+		print_field("%s: 1's complement", label);
+		break;
+	case 2:
+		print_field("%s: 2's complement", label);
+		break;
+	case 3:
+		print_field("%s: Sign-magnitude", label);
+		break;
+	case 4:
+		print_field("%s: Unsigned", label);
+		break;
+	default:
+		print_field("%s: Unknown (0x%2.2x)", label, pcm);
+	}
+}
+
+static void print_data_path(const char *label, uint8_t data_path)
+{
+	if (data_path == 0)
+		print_field("%s: HCI", label);
+	else
+		print_field("%s: Vendor Specific (0x%2.2x)", label, data_path);
+}
+
 static void enhanced_setup_sync_conn_cmd(uint16_t index, const void *data,
 							uint8_t size)
 {
@@ -4853,9 +4897,30 @@ static void enhanced_setup_sync_conn_cmd(uint16_t index, const void *data,
 	print_handle(cmd->handle);
 	print_field("Transmit bandwidth: %d", le32_to_cpu(cmd->tx_bandwidth));
 	print_field("Receive bandwidth: %d", le32_to_cpu(cmd->rx_bandwidth));
-
-	/* TODO */
-
+	print_coding_format("Transmit Coding Format", cmd->tx_coding_format);
+	print_coding_format("Receive Coding Format", cmd->rx_coding_format);
+	print_field("Transmit Codec Frame Size: %d",
+					le16_to_cpu(cmd->tx_codec_frame_size));
+	print_field("Receive Codec Frame Size: %d",
+					le16_to_cpu(cmd->rx_codec_frame_size));
+	print_coding_format("Input Coding Format", cmd->input_coding_format);
+	print_coding_format("Output Coding Format", cmd->output_coding_format);
+	print_field("Input Coded Data Size: %d",
+				le16_to_cpu(cmd->input_coded_data_size));
+	print_field("Output Coded Data Size: %d",
+				le16_to_cpu(cmd->output_coded_data_size));
+	print_pcm_data_format("Input PCM Data Format",
+						cmd->input_pcm_data_format);
+	print_pcm_data_format("Output PCM Data Format",
+						cmd->output_pcm_data_format);
+	print_field("Input PCM Sample Payload MSB Position: %d",
+						cmd->input_pcm_msb_position);
+	print_field("Output PCM Sample Payload MSB Position: %d",
+						cmd->output_pcm_msb_position);
+	print_data_path("Input Data Path", cmd->input_data_path);
+	print_data_path("Output Data Path", cmd->output_data_path);
+	print_field("Input Transport Unit Size: %d", cmd->input_unit_size);
+	print_field("Output Transport Unit Size: %d", cmd->output_unit_size);
 	print_field("Max latency: %d", le16_to_cpu(cmd->max_latency));
 	print_pkt_type_sco(cmd->pkt_type);
 	print_retransmission_effort(cmd->retrans_effort);
@@ -4870,9 +4935,30 @@ static void enhanced_accept_sync_conn_request_cmd(uint16_t index,
 	print_bdaddr(cmd->bdaddr);
 	print_field("Transmit bandwidth: %d", le32_to_cpu(cmd->tx_bandwidth));
 	print_field("Receive bandwidth: %d", le32_to_cpu(cmd->rx_bandwidth));
-
-	/* TODO */
-
+	print_coding_format("Transmit Coding Format", cmd->tx_coding_format);
+	print_coding_format("Receive Coding Format", cmd->rx_coding_format);
+	print_field("Transmit Codec Frame Size: %d",
+					le16_to_cpu(cmd->tx_codec_frame_size));
+	print_field("Receive Codec Frame Size: %d",
+					le16_to_cpu(cmd->rx_codec_frame_size));
+	print_coding_format("Input Coding Format", cmd->input_coding_format);
+	print_coding_format("Output Coding Format", cmd->output_coding_format);
+	print_field("Input Coded Data Size: %d",
+				le16_to_cpu(cmd->input_coded_data_size));
+	print_field("Output Coded Data Size: %d",
+				le16_to_cpu(cmd->output_coded_data_size));
+	print_pcm_data_format("Input PCM Data Format",
+						cmd->input_pcm_data_format);
+	print_pcm_data_format("Output PCM Data Format",
+						cmd->output_pcm_data_format);
+	print_field("Input PCM Sample Payload MSB Position: %d",
+						cmd->input_pcm_msb_position);
+	print_field("Output PCM Sample Payload MSB Position: %d",
+						cmd->output_pcm_msb_position);
+	print_data_path("Input Data Path", cmd->input_data_path);
+	print_data_path("Output Data Path", cmd->output_data_path);
+	print_field("Input Transport Unit Size: %d", cmd->input_unit_size);
+	print_field("Output Transport Unit Size: %d", cmd->output_unit_size);
 	print_field("Max latency: %d", le16_to_cpu(cmd->max_latency));
 	print_pkt_type_sco(cmd->pkt_type);
 	print_retransmission_effort(cmd->retrans_effort);
