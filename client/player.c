@@ -2797,13 +2797,26 @@ static void print_capabilities(GDBusProxy *proxy)
 	print_codec(uuid, codec, &caps, &meta);
 }
 
+static void print_preset(struct codec_preset *codec, uint8_t codec_id)
+{
+	bt_shell_printf("\tPreset %s\n", codec->name);
+
+	if (codec_id == LC3_ID)
+		print_lc3_cfg(codec->data.iov_base, codec->data.iov_len);
+}
+
 static void print_local_endpoint(struct endpoint *ep)
 {
 	bt_shell_printf("Endpoint %s\n", ep->path);
 	bt_shell_printf("\tUUID %s\n", ep->uuid);
 	bt_shell_printf("\tCodec 0x%02x (%u)\n", ep->codec, ep->codec);
+
 	if (ep->caps)
 		print_codec(ep->uuid, ep->codec, ep->caps, ep->meta);
+
+	if (ep->codec_preset)
+		print_preset(ep->codec_preset, ep->codec);
+
 	if (ep->locations)
 		bt_shell_printf("\tLocations 0x%08x (%u)\n", ep->locations,
 				ep->locations);
