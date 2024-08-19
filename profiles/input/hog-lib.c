@@ -830,14 +830,16 @@ static void uhid_destroy(struct bt_hog *hog, bool force)
 {
 	int err;
 
+	if (!hog->uhid)
+		return;
+
+	bt_uhid_unregister_all(hog->uhid);
+
 	err = bt_uhid_destroy(hog->uhid, force);
 	if (err < 0) {
 		error("bt_uhid_destroy: %s", strerror(-err));
 		return;
 	}
-
-	if (bt_uhid_created(hog->uhid))
-		bt_uhid_unregister_all(hog->uhid);
 }
 
 static void set_report(struct uhid_event *ev, void *user_data)
