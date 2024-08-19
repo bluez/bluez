@@ -4299,7 +4299,9 @@ static void cmd_presets_endpoint(int argc, char *argv[])
 
 			return;
 		}
-	} else
+	} else if (ep && (ep->codec_preset))
+		print_preset(ep->codec_preset, ep->codec);
+	else
 		print_presets(preset);
 
 enter_cc:
