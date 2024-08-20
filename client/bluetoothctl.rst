@@ -334,6 +334,11 @@ Management Submenu
 
 See **bluetoothctl-mgmt(1)**
 
+Assistant Submenu
+==================
+
+See **bluetoothctl-assistant(1)**
+
 AUTOMATION
 ==========
 Two common ways to automate the tool are to use Here Docs or the program expect.
