@@ -1556,7 +1556,8 @@ static DBusMessage *characteristic_acquire_notify(DBusConnection *conn,
 	if (!queue_isempty(chrc->notify_clients))
 		return btd_error_in_progress(msg);
 
-	if (!(chrc->props & BT_GATT_CHRC_PROP_NOTIFY))
+	if (!(chrc->props & (BT_GATT_CHRC_PROP_NOTIFY |
+			BT_GATT_CHRC_PROP_INDICATE)))
 		return btd_error_not_supported(msg);
 
 	client = notify_client_create(chrc, sender);
@@ -1601,8 +1602,8 @@ static DBusMessage *characteristic_start_notify(DBusConnection *conn,
 	if (chrc->notify_io)
 		return btd_error_not_permitted(msg, "Notify acquired");
 
-	if (!(chrc->props & BT_GATT_CHRC_PROP_NOTIFY ||
-				chrc->props & BT_GATT_CHRC_PROP_INDICATE))
+	if (!(chrc->props & (BT_GATT_CHRC_PROP_NOTIFY |
+				BT_GATT_CHRC_PROP_INDICATE)))
 		return btd_error_not_supported(msg);
 
 	/* Each client can only have one active notify session. */
