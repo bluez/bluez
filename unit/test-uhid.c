@@ -201,6 +201,11 @@ static struct context *create_context(gconstpointer data)
 	 */
 	if (test_data->test_device && !uid) {
 		context->uhid = bt_uhid_new_default();
+		if (!context->uhid) {
+			tester_test_abort();
+			context_quit(context);
+			return NULL;
+		}
 		return context;
 	}
 
@@ -255,9 +260,13 @@ static const struct uhid_event ev_feature = {
 static void test_client(gconstpointer data)
 {
 	struct context *context = create_context(data);
-	struct test_device *device = context->data->test_device;
+	struct test_device *device;
 	int err;
 
+	if (!context)
+		return;
+
+	device = context->data->test_device;
 	if (device)
 		err = bt_uhid_create(context->uhid, device->name,
 					BDADDR_ANY, BDADDR_ANY,
