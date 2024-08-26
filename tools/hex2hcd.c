@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#include "tools/missing.h"
 
 static ssize_t process_record(int fd, const char *line, uint16_t *upper_addr)
 {
