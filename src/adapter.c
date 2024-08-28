@@ -5017,12 +5017,28 @@ static void load_devices(struct btd_adapter *adapter)
 			goto free;
 		}
 
-		if (key_info)
+		if (key_info) {
+			/* Fix up address type if it was stored with the wrong
+			 * address type since Load Link Keys are only meant to
+			 * work with BR/EDR addresses as per MGMT documentation.
+			 */
+			if (key_info->bdaddr_type != BDADDR_BREDR)
+				key_info->bdaddr_type = BDADDR_BREDR;
+
 			adapter->load_keys = g_slist_append(adapter->load_keys,
 								key_info);
+		}
 
-		if (ltk_info)
+		if (ltk_info) {
+			/* Fix up address type if it was stored with the wrong
+			 * address type since Load Long Term Keys are only meant
+			 * to work with LE addresses as per MGMT documentation.
+			 */
+			if (ltk_info->bdaddr_type == BDADDR_BREDR)
+				ltk_info->bdaddr_type = BDADDR_LE_PUBLIC;
+
 			ltks = g_slist_append(ltks, ltk_info);
+		}
 
 		if (peripheral_ltk_info)
 			ltks = g_slist_append(ltks, peripheral_ltk_info);
