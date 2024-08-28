@@ -284,12 +284,22 @@ bool bt_uhid_unregister(struct bt_uhid *uhid, unsigned int id)
 	return true;
 }
 
+static bool match_not_id(const void *a, const void *b)
+{
+	const struct uhid_notify *notify = a;
+	unsigned int id = PTR_TO_UINT(b);
+
+	return notify->id != id;
+}
+
 bool bt_uhid_unregister_all(struct bt_uhid *uhid)
 {
 	if (!uhid)
 		return false;
 
-	queue_remove_all(uhid->notify_list, NULL, NULL, free);
+	queue_remove_all(uhid->notify_list, match_not_id,
+				UINT_TO_PTR(uhid->start_id), free);
+
 	return true;
 }
 
