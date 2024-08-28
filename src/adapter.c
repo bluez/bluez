@@ -311,7 +311,6 @@ struct btd_adapter {
 	bool pincode_requested;		/* PIN requested during last bonding */
 	GSList *connections;		/* Connected devices */
 	GSList *devices;		/* Devices structure pointers */
-	GSList *load_keys;		/* Devices keys to be loaded */
 	GSList *connect_list;		/* Devices to connect when found */
 	struct btd_device *connect_le;	/* LE device waiting to be connected */
 	sdp_list_t *services;		/* Services associated to adapter */
@@ -4289,9 +4288,6 @@ static int set_privacy(struct btd_adapter *adapter, uint8_t privacy)
 	return -1;
 }
 
-static void load_link_keys(struct btd_adapter *adapter, bool debug_keys,
-							bool retry);
-
 static void load_link_keys_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -4301,31 +4297,18 @@ static void load_link_keys_complete(uint8_t status, uint16_t length,
 		btd_error(adapter->dev_id,
 			"Failed to load link keys for hci%u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
-
-		if (status == MGMT_STATUS_INVALID_PARAMS) {
-			load_link_keys(adapter, btd_opts.debug_keys, true);
-			/* Release keys after retry since we shall only retry
-			 * once.
-			 */
-			goto done;
-		}
-
 		return;
 	}
 
 	DBG("link keys loaded for hci%u", adapter->dev_id);
-
-done:
-	g_slist_free_full(adapter->load_keys, g_free);
-	adapter->load_keys = NULL;
 }
 
-static void load_link_keys(struct btd_adapter *adapter, bool debug_keys,
-							bool retry)
+static void load_link_keys(struct btd_adapter *adapter, GSList *keys,
+							bool debug_keys)
 {
 	struct mgmt_cp_load_link_keys *cp;
 	struct mgmt_link_key_info *key;
-	size_t count, cp_size;
+	size_t key_count, cp_size;
 	unsigned int id;
 	GSList *l;
 
@@ -4339,14 +4322,12 @@ static void load_link_keys(struct btd_adapter *adapter, bool debug_keys,
 	if (!(adapter->supported_settings & MGMT_SETTING_BREDR))
 		return;
 
-	count = g_slist_length(adapter->load_keys);
-	if (!count)
-		return;
+	key_count = g_slist_length(keys);
 
-	DBG("hci%u keys %zu debug_keys %d retry %s", adapter->dev_id, count,
-				debug_keys, retry ? "true" : "false");
+	DBG("hci%u keys %zu debug_keys %d", adapter->dev_id, key_count,
+								debug_keys);
 
-	cp_size = sizeof(*cp) + (count * sizeof(*key));
+	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
 
 	cp = g_try_malloc0(cp_size);
 	if (cp == NULL) {
@@ -4364,18 +4345,13 @@ static void load_link_keys(struct btd_adapter *adapter, bool debug_keys,
 	 * behavior for debug keys.
 	 */
 	cp->debug_keys = debug_keys;
-	cp->key_count = htobs(count);
+	cp->key_count = htobs(key_count);
 
-	for (l = adapter->load_keys, key = cp->keys; l != NULL;
-					l = g_slist_next(l), key++) {
+	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
 		struct link_key_info *info = l->data;
 
 		bacpy(&key->addr.bdaddr, &info->bdaddr);
-		/* Old kernels might only support loading with type set to
-		 * BDADDR_BREDR so on retry set that instead of using the stored
-		 * info.
-		 */
-		key->addr.type = retry ? BDADDR_BREDR : info->bdaddr_type;
+		key->addr.type = info->bdaddr_type;
 		key->type = info->type;
 		memcpy(key->val, info->key, 16);
 		key->pin_len = info->pin_len;
@@ -4387,12 +4363,9 @@ static void load_link_keys(struct btd_adapter *adapter, bool debug_keys,
 
 	g_free(cp);
 
-	if (id == 0) {
+	if (id == 0)
 		btd_error(adapter->dev_id, "Failed to load link keys for hci%u",
 							adapter->dev_id);
-		g_slist_free_full(adapter->load_keys, g_free);
-		adapter->load_keys = NULL;
-	}
 }
 
 static void load_ltks_complete(uint8_t status, uint16_t length,
@@ -4928,6 +4901,7 @@ done:
 static void load_devices(struct btd_adapter *adapter)
 {
 	char dirname[PATH_MAX];
+	GSList *keys = NULL;
 	GSList *ltks = NULL;
 	GSList *irks = NULL;
 	GSList *params = NULL;
@@ -5025,8 +4999,7 @@ static void load_devices(struct btd_adapter *adapter)
 			if (key_info->bdaddr_type != BDADDR_BREDR)
 				key_info->bdaddr_type = BDADDR_BREDR;
 
-			adapter->load_keys = g_slist_append(adapter->load_keys,
-								key_info);
+			keys = g_slist_append(keys, key_info);
 		}
 
 		if (ltk_info) {
@@ -5084,7 +5057,8 @@ free:
 
 	closedir(dir);
 
-	load_link_keys(adapter, btd_opts.debug_keys, false);
+	load_link_keys(adapter, keys, btd_opts.debug_keys);
+	g_slist_free_full(keys, g_free);
 
 	load_ltks(adapter, ltks);
 	g_slist_free_full(ltks, g_free);
@@ -7013,9 +6987,6 @@ static void adapter_remove(struct btd_adapter *adapter)
 
 	g_slist_free(adapter->devices);
 	adapter->devices = NULL;
-
-	g_slist_free(adapter->load_keys);
-	adapter->load_keys = NULL;
 
 	discovery_cleanup(adapter, 0);
 
