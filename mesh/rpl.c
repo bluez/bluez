@@ -24,6 +24,7 @@
 
 #include <ell/ell.h>
 
+#include "mesh/missing.h"
 #include "mesh/mesh-defs.h"
 
 #include "mesh/node.h"
