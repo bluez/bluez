@@ -775,6 +775,9 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 	struct gatt_db_attribute *attr;
 	uint8_t pa_sync;
 	struct iovec *notif;
+	int ret;
+	const struct queue_entry *entry;
+	struct bt_bass_add_src_params *params;
 
 	gatt_db_attribute_write_result(attrib, id, 0x00);
 
@@ -839,22 +842,25 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 
 	bcast_src->id = src_id;
 
+	params = util_iov_pull_mem(iov, sizeof(*params));
+
 	/* Populate broadcast source fields from command parameters */
-	util_iov_pull_u8(iov, &bcast_src->addr_type);
+	bcast_src->addr_type = params->addr_type;
 
-	bacpy(&bcast_src->addr, (bdaddr_t *)util_iov_pull_mem(iov,
-						sizeof(bdaddr_t)));
+	/* Convert to three-value type */
+	if (bcast_src->addr_type)
+		params->addr_type = BDADDR_LE_RANDOM;
+	else
+		params->addr_type = BDADDR_LE_PUBLIC;
 
-	util_iov_pull_u8(iov, &bcast_src->sid);
-	util_iov_pull_le24(iov, &bcast_src->bid);
+	bacpy(&bcast_src->addr, &params->addr);
+	bcast_src->sid = params->sid;
+	memcpy(&bcast_src->bid, params->bid, sizeof(params->bid));
 
-	util_iov_pull_u8(iov, &pa_sync);
+	pa_sync = params->pa_sync;
 	bcast_src->sync_state = BT_BASS_NOT_SYNCHRONIZED_TO_PA;
 
-	/* TODO: Use the pa_interval field for the sync transfer procedure */
-	util_iov_pull_mem(iov, sizeof(uint16_t));
-
-	util_iov_pull_u8(iov, &bcast_src->num_subgroups);
+	bcast_src->num_subgroups = params->num_subgroups;
 
 	if (!bcast_src->num_subgroups)
 		return;
@@ -886,7 +892,18 @@ static void bass_handle_add_src_op(struct bt_bass *bass,
 	}
 
 	if (pa_sync != PA_SYNC_NO_SYNC) {
-		/* TODO: call BASS plugin callback to establish PA/BIG sync */
+		for (entry = queue_get_entries(bass->cp_handlers); entry;
+							entry = entry->next) {
+			struct bt_bass_cp_handler *cb = entry->data;
+
+			if (cb->handler) {
+				ret = cb->handler(bcast_src,
+						BT_BASS_ADD_SRC,
+						params, cb->data);
+				if (ret)
+					goto err;
+			}
+		}
 	} else {
 		for (int i = 0; i < bcast_src->num_subgroups; i++)
 			bcast_src->subgroup_data[i].bis_sync =
