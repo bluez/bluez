@@ -3173,12 +3173,29 @@ static bool match_bap_adapter(const void *data, const void *match_data)
 	return adapter->adapter == match_data;
 }
 
+void bap_scan_delegator_probe(struct btd_device *device)
+{
+	struct bap_data *data;
+
+	/* Create BAP session for the Broadcaster device */
+	data = bap_data_new(device);
+	data->device = device;
+
+	bap_data_add(data);
+
+	/* Add Broadcast Audio Announcement Service UUID
+	 * to device and probe service.
+	 */
+	btd_device_add_uuid(device, BCAAS_UUID_STR);
+}
+
 static int bap_bcast_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
 	struct bap_bcast_pa_req *req;
+	uint8_t type = BAP_PA_LONG_REQ;
 	struct bap_data *data;
 
 	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET)) {
@@ -3186,10 +3203,27 @@ static int bap_bcast_probe(struct btd_service *service)
 		return -ENOTSUP;
 	}
 
-	data = bap_data_new(device);
+	data = queue_find(sessions, match_device, device);
+	if (data && data->service) {
+		error("Profile probed twice for the same device!");
+		return -EINVAL;
+	}
+
+	if (!data) {
+		data = bap_data_new(device);
+		data->device = device;
+		bap_data_add(data);
+
+		/* The Broadcaster was scanned autonomously,
+		 * so it should be probed short-lived.
+		 */
+		type = BAP_PA_SHORT_REQ;
+	}
+
 	data->service = service;
+	btd_service_set_user_data(service, data);
+
 	data->adapter = queue_find(adapters, match_bap_adapter, adapter);
-	data->device = device;
 	data->bap = bt_bap_new(btd_gatt_database_get_db(database),
 			btd_gatt_database_get_db(database));
 	if (!data->bap) {
@@ -3203,8 +3237,6 @@ static int bap_bcast_probe(struct btd_service *service)
 		error("BAP unable to attach");
 		return -EINVAL;
 	}
-
-	bap_data_add(data);
 
 	data->ready_id = bt_bap_ready_register(data->bap, bap_ready, service,
 								NULL);
@@ -3222,11 +3254,10 @@ static int bap_bcast_probe(struct btd_service *service)
 							pa_idle_timer,
 							data->adapter);
 
-	/* Enqueue this device advertisement so that we can do short-lived
-	 */
+	/* Enqueue this device advertisement so that we can create PA sync. */
 	DBG("enqueue service: %p", service);
 	req = new0(struct bap_bcast_pa_req, 1);
-	req->type = BAP_PA_SHORT_REQ;
+	req->type = type;
 	req->in_progress = FALSE;
 	req->data.service = service;
 	queue_push_tail(data->adapter->bcast_pa_requests, req);
