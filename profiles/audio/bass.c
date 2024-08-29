@@ -54,6 +54,7 @@
 #include "bap.h"
 
 #define BASS_UUID_STR "0000184f-0000-1000-8000-00805f9b34fb"
+#define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
 
 #define MEDIA_ASSISTANT_INTERFACE "org.bluez.MediaAssistant1"
 
@@ -82,6 +83,7 @@ struct bass_data {
 	struct btd_service *service;
 	struct bt_bass *bass;
 	unsigned int src_id;
+	unsigned int cp_id;
 };
 
 struct bass_assistant {
@@ -97,8 +99,14 @@ struct bass_assistant {
 	char *path;
 };
 
+struct bass_delegator {
+	struct btd_device *device;	/* Broadcast source device */
+	struct bt_bcast_src *src;
+};
+
 static struct queue *sessions;
 static struct queue *assistants;
+static struct queue *delegators;
 
 static const char *state2str(enum assistant_state state);
 
@@ -582,6 +590,7 @@ static void bass_data_free(struct bass_data *data)
 	}
 
 	bt_bass_src_unregister(data->bass, data->src_id);
+	bt_bass_cp_handler_unregister(data->bass, data->cp_id);
 
 	bt_bass_unref(data->bass);
 
@@ -627,6 +636,70 @@ static void bass_detached(struct bt_bass *bass, void *user_data)
 	bass_data_remove(data);
 }
 
+static int handle_add_src_req(struct bt_bcast_src *bcast_src,
+			struct bt_bass_add_src_params *params,
+			struct bass_data *data)
+{
+	struct btd_adapter *adapter = device_get_adapter(data->device);
+	struct btd_device *device;
+	struct bass_delegator *dg;
+
+	/* Create device for Broadcast Source using the parameters
+	 * provided by Broadcast Assistant.
+	 */
+	device = btd_adapter_get_device(adapter, &params->addr,
+						params->addr_type);
+	if (!device) {
+		DBG("Unable to get device");
+		return -EINVAL;
+	}
+
+	DBG("device %p", device);
+
+	/* Probe Broadcast Source, if it has not already been
+	 * autonomously probed inside BAP.
+	 */
+	if (!btd_device_get_service(device, BCAAS_UUID_STR))
+		goto probe;
+
+	return 0;
+
+probe:
+	dg = new0(struct bass_delegator, 1);
+	if (!dg)
+		return -ENOMEM;
+
+	dg->device = device;
+	dg->src = bcast_src;
+
+	if (!delegators)
+		delegators = queue_new();
+
+	queue_push_tail(delegators, dg);
+
+	DBG("delegator %p", dg);
+
+	/* Probe device with BAP. */
+	bap_scan_delegator_probe(device);
+
+	return 0;
+}
+
+static int cp_handler(struct bt_bcast_src *bcast_src, uint8_t op, void *params,
+		void *user_data)
+{
+	struct bass_data *data = user_data;
+	int err = 0;
+
+	switch (op) {
+	case BT_BASS_ADD_SRC:
+		err = handle_add_src_req(bcast_src, params, data);
+		break;
+	}
+
+	return err;
+}
+
 static void bass_attached(struct bt_bass *bass, void *user_data)
 {
 	struct bass_data *data;
@@ -651,6 +724,9 @@ static void bass_attached(struct bt_bass *bass, void *user_data)
 
 	data = bass_data_new(device);
 	data->bass = bass;
+
+	data->cp_id = bt_bass_cp_handler_register(data->bass,
+			cp_handler, NULL, data);
 
 	bass_data_add(data);
 }
@@ -779,6 +855,9 @@ static int bass_probe(struct btd_service *service)
 	 */
 	data->src_id = bt_bass_src_register(data->bass, bass_src_changed,
 						data, NULL);
+
+	data->cp_id = bt_bass_cp_handler_register(data->bass,
+			cp_handler, NULL, data);
 
 	return 0;
 }
