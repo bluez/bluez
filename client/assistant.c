@@ -255,28 +255,32 @@ static void push_reply(DBusMessage *message, void *user_data)
 static void assistant_set_bcode_cfg(const char *input, void *user_data)
 {
 	struct assistant_config *cfg = user_data;
-	char *endptr;
-	uint8_t *bcode = cfg->qos.bcast.bcode;
 
 	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto")) {
-		memset(bcode, 0, BCODE_LEN);
+		memset(cfg->qos.bcast.bcode, 0, BCODE_LEN);
 	} else {
-		bcode[0] = strtol(input, &endptr, 16);
+		if (strlen(input) > BCODE_LEN) {
+			bt_shell_printf("Input string too long %s\n", input);
+			goto fail;
+		}
 
-		for (uint8_t i = 1; i < BCODE_LEN; i++)
-			bcode[i] = strtol(endptr, &endptr, 16);
+		memcpy(cfg->qos.bcast.bcode, input, strlen(input));
 	}
 
 	if (!g_dbus_proxy_method_call(cfg->proxy, "Push",
 					push_setup, push_reply,
 					cfg, NULL)) {
 		bt_shell_printf("Failed to push assistant\n");
-
-		free(cfg->meta);
-		g_free(cfg);
-
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		goto fail;
 	}
+
+	return;
+
+fail:
+	free(cfg->meta);
+	g_free(cfg);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
 static void assistant_set_metadata_cfg(const char *input, void *user_data)
