@@ -1766,3 +1766,55 @@ int bt_bass_set_pa_sync(struct bt_bcast_src *bcast_src, uint8_t sync_state)
 
 	return 0;
 }
+
+int bt_bass_set_bis_sync(struct bt_bcast_src *bcast_src, uint8_t bis)
+{
+	struct iovec *iov;
+
+	for (uint8_t i = 0; i < bcast_src->num_subgroups; i++) {
+		struct bt_bass_subgroup_data *sgrp =
+				&bcast_src->subgroup_data[i];
+		uint32_t bitmask = 1 << (bis - 1);
+
+		if (sgrp->pending_bis_sync & bitmask) {
+			sgrp->bis_sync |= bitmask;
+
+			iov = bass_parse_bcast_src(bcast_src);
+			if (!iov)
+				return -ENOMEM;
+
+			bt_bass_notify_all(bcast_src->attr, iov);
+
+			free(iov->iov_base);
+			free(iov);
+		}
+	}
+
+	return 0;
+}
+
+int bt_bass_clear_bis_sync(struct bt_bcast_src *bcast_src, uint8_t bis)
+{
+	struct iovec *iov;
+
+	for (uint8_t i = 0; i < bcast_src->num_subgroups; i++) {
+		struct bt_bass_subgroup_data *sgrp =
+				&bcast_src->subgroup_data[i];
+		uint32_t bitmask = 1 << (bis - 1);
+
+		if (sgrp->pending_bis_sync & bitmask) {
+			sgrp->bis_sync &= ~bitmask;
+
+			iov = bass_parse_bcast_src(bcast_src);
+			if (!iov)
+				return -ENOMEM;
+
+			bt_bass_notify_all(bcast_src->attr, iov);
+
+			free(iov->iov_base);
+			free(iov);
+		}
+	}
+
+	return 0;
+}

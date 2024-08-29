@@ -130,3 +130,5 @@ unsigned int bt_bass_cp_handler_register(struct bt_bass *bass,
 bool bt_bass_cp_handler_unregister(struct bt_bass *bass,
 				unsigned int id);
 int bt_bass_set_pa_sync(struct bt_bcast_src *bcast_src, uint8_t sync_state);
+int bt_bass_set_bis_sync(struct bt_bcast_src *bcast_src, uint8_t bis);
+int bt_bass_clear_bis_sync(struct bt_bcast_src *bcast_src, uint8_t bis);
