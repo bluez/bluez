@@ -242,6 +242,14 @@ dict QoS [readonly, optional, ISO only, experimental]
 
 		Indicates configured framing.
 
+	:array{byte} BCode:
+
+		Indicates the string used for encryption/decryption.
+
+	:byte encryption:
+
+		Indicates if the stream is encrypted.
+
 	:byte Options:
 
 		Indicates configured broadcast options.
