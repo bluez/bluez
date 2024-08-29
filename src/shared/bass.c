@@ -66,10 +66,18 @@ struct bt_bass {
 	void *debug_data;
 
 	struct queue *src_cbs;
+	struct queue *cp_handlers;
 
 	unsigned int disconn_id;
 
 	void *user_data;
+};
+
+struct bt_bass_cp_handler {
+	unsigned int id;
+	bt_bass_cp_handler_func_t handler;
+	bt_bass_destroy_func_t destroy;
+	void *data;
 };
 
 /* BASS subgroup field of the Broadcast
@@ -132,6 +140,64 @@ static void bass_debug(struct bt_bass *bass, const char *format, ...)
 	va_start(ap, format);
 	util_debug_va(bass->debug_func, bass->debug_data, format, ap);
 	va_end(ap);
+}
+
+unsigned int bt_bass_cp_handler_register(struct bt_bass *bass,
+				bt_bass_cp_handler_func_t handler,
+				bt_bass_destroy_func_t destroy,
+				void *user_data)
+{
+	struct bt_bass_cp_handler *cb;
+	static unsigned int id;
+
+	if (!bass)
+		return 0;
+
+	cb = new0(struct bt_bass_cp_handler, 1);
+	cb->id = ++id ? id : ++id;
+	cb->handler = handler;
+	cb->destroy = destroy;
+	cb->data = user_data;
+
+	queue_push_tail(bass->cp_handlers, cb);
+
+	return cb->id;
+}
+
+static void bass_cp_handler_free(void *data)
+{
+	struct bt_bass_cp_handler *cb = data;
+
+	if (cb->destroy)
+		cb->destroy(cb->data);
+
+	free(cb);
+}
+
+static bool match_cb_id(const void *data, const void *match_data)
+{
+	const struct bt_bass_cp_handler *cb = data;
+	unsigned int id = PTR_TO_UINT(match_data);
+
+	return (cb->id == id);
+}
+
+bool bt_bass_cp_handler_unregister(struct bt_bass *bass,
+				unsigned int id)
+{
+	struct bt_bass_cp_handler *cb;
+
+	if (!bass)
+		return false;
+
+	cb = queue_remove_if(bass->cp_handlers, match_cb_id,
+						UINT_TO_PTR(id));
+	if (!cb)
+		return false;
+
+	bass_cp_handler_free(cb);
+
+	return true;
 }
 
 unsigned int bt_bass_src_register(struct bt_bass *bass, bt_bass_src_func_t cb,
@@ -1418,6 +1484,7 @@ static void bass_free(void *data)
 	bass_db_free(bass->rdb);
 	queue_destroy(bass->notify, NULL);
 	queue_destroy(bass->src_cbs, bass_src_changed_free);
+	queue_destroy(bass->cp_handlers, bass_cp_handler_free);
 
 	free(bass);
 }
@@ -1513,6 +1580,7 @@ struct bt_bass *bt_bass_new(struct gatt_db *ldb, struct gatt_db *rdb,
 	bass->ldb = db;
 	bass->notify = queue_new();
 	bass->src_cbs = queue_new();
+	bass->cp_handlers = queue_new();
 
 	if (!rdb)
 		goto done;
