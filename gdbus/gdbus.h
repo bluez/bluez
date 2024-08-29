@@ -4,6 +4,7 @@
  *  D-Bus helper library
  *
  *  Copyright (C) 2004-2011  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright 2024 NXP
  *
  *
  */
@@ -361,6 +362,11 @@ gboolean g_dbus_proxy_set_property_basic(GDBusProxy *proxy,
 				const char *name, int type, const void *value,
 				GDBusResultFunction function, void *user_data,
 				GDBusDestroyFunction destroy);
+
+gboolean g_dbus_proxy_set_property_dict(GDBusProxy *proxy,
+				const char *name, GDBusResultFunction function,
+				void *user_data, GDBusDestroyFunction destroy,
+				char *entry, ...);
 
 gboolean g_dbus_proxy_set_property_array(GDBusProxy *proxy,
 				const char *name, int type, const void *value,
