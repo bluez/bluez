@@ -41,16 +41,20 @@ the default metadata will be overwritten by the LTVs
 entered by the user.
 
 If the stream is encrypted, the user will also be prompted
-to enter the Broadcast Code. This is a 16 bytes array which
-will be used by the peer to decrypt the stream. If the auto
-value is chosen, a zero filled array will be sent to the peer.
-Otherwise, the bytes entered by the user will be sent.
+to enter the Broadcast Code. This is the key to decrypt the
+stream. On the UI level, the Broadcast Code shall be represented
+as a string of at least 4 octets, and no more than 16 octets
+when represented in UTF-8. The string will be sent to the peer
+via GATT as an array of 16 octets.
+
+If the auto value is chosen when prompted for the Broadcast
+Code, a zero filled array will be sent to the peer. Otherwise,
+the string entered by the user will be sent as an array of bytes.
 
 :Usage: **# push <assistant>**
 :Example: | **# push /org/bluez/hci0/src_05_1F_EE_F3_F8_7D/dev_00_60_37_31_7E_3F/bis1**
           | **[Assistant] Enter Metadata (auto/value): 0x03 0x02 0x04 0x00**
-          | **[Assistant] Enter Broadcast Code (auto/value): 0x01 0x02 0x68 0x05 0x53
-                          0xf1 0x41 0x5a 0xa2 0x65 0xbb 0xaf 0xc6 0xea 0x03 0xb8**
+          | **[Assistant] Enter Broadcast Code (auto/value): Borne House**
 
 RESOURCES
 =========
