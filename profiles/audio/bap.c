@@ -127,6 +127,7 @@ struct bap_data {
 
 enum {
 	BAP_PA_SHORT_REQ = 0,	/* Request for short PA sync */
+	BAP_PA_LONG_REQ,	/* Request for long PA sync */
 	BAP_PA_BIG_SYNC_REQ,	/* Request for PA Sync and BIG Sync */
 };
 
@@ -1004,9 +1005,11 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 
 	DBG("BIG Sync completed");
 
-	g_io_channel_unref(setup->io);
-	g_io_channel_shutdown(setup->io, TRUE, NULL);
-	setup->io = NULL;
+	if (setup->io) {
+		g_io_channel_unref(setup->io);
+		g_io_channel_shutdown(setup->io, TRUE, NULL);
+		setup->io = NULL;
+	}
 
 	/* This device is no longer needed */
 	btd_service_connecting_complete(bap_data->service, 0);
@@ -1255,11 +1258,23 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	/* Close the io and remove the queue request for another PA Sync */
+	/* Close the listen io */
 	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
 	g_io_channel_unref(data->listen_io);
-	g_io_channel_shutdown(io, TRUE, NULL);
 	data->listen_io = NULL;
+
+	if (req->type == BAP_PA_LONG_REQ) {
+		/* If long-lived PA sync was requested, keep a reference
+		 * to the PA sync io to keep the sync active.
+		 */
+		data->listen_io = io;
+		g_io_channel_ref(io);
+	} else {
+		/* For short-lived PA, the sync is no longer needed at
+		 * this point, so the io can be closed.
+		 */
+		g_io_channel_shutdown(io, TRUE, NULL);
+	}
 
 	/* Analyze received BASE data and create remote media endpoints for each
 	 * BIS matching our capabilities
@@ -2192,7 +2207,7 @@ static void check_pa_req_in_progress(void *data, void *user_data)
 		*((bool *)user_data) = TRUE;
 }
 
-static int short_lived_pa_sync(struct bap_bcast_pa_req *req);
+static int pa_sync(struct bap_bcast_pa_req *req);
 static void pa_and_big_sync(struct bap_bcast_pa_req *req);
 
 static gboolean pa_idle_timer(gpointer user_data)
@@ -2210,7 +2225,11 @@ static gboolean pa_idle_timer(gpointer user_data)
 			switch (req->type) {
 			case BAP_PA_SHORT_REQ:
 				DBG("do short lived PA Sync");
-				short_lived_pa_sync(req);
+				pa_sync(req);
+				break;
+			case BAP_PA_LONG_REQ:
+				DBG("do long lived PA Sync");
+				pa_sync(req);
 				break;
 			case BAP_PA_BIG_SYNC_REQ:
 				DBG("do PA Sync and BIG Sync");
@@ -2236,8 +2255,8 @@ static void setup_accept_io_broadcast(struct bap_data *data,
 	struct bap_bcast_pa_req *req = new0(struct bap_bcast_pa_req, 1);
 	struct bap_adapter *adapter = data->adapter;
 
-	/* Timer could be stopped if all the short lived requests were treated.
-	 * Check the state of the timer and turn it on so that this requests
+	/* Timer could be stopped if all other requests were treated.
+	 * Check the state of the timer and turn it on so that this request
 	 * can also be treated.
 	 */
 	if (adapter->pa_timer_id == 0)
@@ -2980,7 +2999,7 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
 	bap_data_remove(data);
 }
 
-static int short_lived_pa_sync(struct bap_bcast_pa_req *req)
+static int pa_sync(struct bap_bcast_pa_req *req)
 {
 	struct btd_service *service = req->data.service;
 	struct bap_data *data = btd_service_get_user_data(service);
@@ -3030,10 +3049,13 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	const char *strbis = NULL;
 
 	DBG("PA Sync done");
-	g_io_channel_unref(setup->io);
-	g_io_channel_shutdown(setup->io, TRUE, NULL);
-	setup->io = io;
-	g_io_channel_ref(setup->io);
+
+	if (setup->io) {
+		g_io_channel_unref(setup->io);
+		g_io_channel_shutdown(setup->io, TRUE, NULL);
+		setup->io = io;
+		g_io_channel_ref(setup->io);
+	}
 
 	/* TODO
 	 * We can only synchronize with a single BIS to a BIG.
@@ -3088,14 +3110,14 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	memcpy(&qos.bcast.out, &setup->qos.bcast.io_qos,
 			sizeof(struct bt_iso_io_qos));
 
-	if (!bt_io_set(setup->io, &err,
+	if (!bt_io_set(io, &err,
 			BT_IO_OPT_QOS, &qos,
 			BT_IO_OPT_INVALID)) {
 		error("bt_io_set: %s", err->message);
 		g_error_free(err);
 	}
 
-	if (!bt_io_bcast_accept(setup->io,
+	if (!bt_io_bcast_accept(io,
 			iso_bcast_confirm_cb,
 			req, NULL, &err,
 			BT_IO_OPT_ISO_BC_NUM_BIS,
@@ -3115,6 +3137,16 @@ static void pa_and_big_sync(struct bap_bcast_pa_req *req)
 	struct bap_data *bap_data = btd_service_get_user_data(btd_service);
 
 	req->in_progress = TRUE;
+
+	if (bap_data->listen_io) {
+		/* If there is an active listen io for the BAP session
+		 * with the Broadcast Source, it means that PA sync is
+		 * already established. Go straight to establishing BIG
+		 * sync.
+		 */
+		iso_do_big_sync(bap_data->listen_io, req);
+		return;
+	}
 
 	DBG("Create PA sync with this source");
 	setup->io = bt_io_listen(NULL, iso_do_big_sync, req,
