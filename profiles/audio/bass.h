@@ -11,3 +11,6 @@ void bass_add_stream(struct btd_device *device, struct iovec *meta,
 			struct iovec *caps, struct bt_iso_qos *qos,
 			uint8_t sgrp, uint8_t bis);
 void bass_remove_stream(struct btd_device *device);
+
+bool bass_bcast_probe(struct btd_device *device, struct bt_bap *bap);
+bool bass_bcast_remove(struct btd_device *device);

@@ -102,6 +102,7 @@ struct bass_assistant {
 struct bass_delegator {
 	struct btd_device *device;	/* Broadcast source device */
 	struct bt_bcast_src *src;
+	struct bt_bap *bap;
 };
 
 static struct queue *sessions;
@@ -113,6 +114,56 @@ static const char *state2str(enum assistant_state state);
 static void bass_debug(const char *str, void *user_data)
 {
 	DBG_IDX(0xffff, "%s", str);
+}
+
+static bool delegator_match_device(const void *data, const void *match_data)
+{
+	const struct bass_delegator *dg = data;
+	const struct btd_device *device = match_data;
+
+	return dg->device == device;
+}
+
+bool bass_bcast_probe(struct btd_device *device, struct bt_bap *bap)
+{
+	struct bass_delegator *dg;
+
+	dg = queue_find(delegators, delegator_match_device, device);
+	if (!dg)
+		return false;
+
+	DBG("%p", dg);
+
+	dg->bap = bap;
+
+	/* Update Broadcast Receive State characteristic value and notify
+	 * peers.
+	 */
+	if (bt_bass_set_pa_sync(dg->src, BT_BASS_SYNCHRONIZED_TO_PA))
+		DBG("Failed to update Broadcast Receive State characteristic");
+
+	return true;
+}
+
+bool bass_bcast_remove(struct btd_device *device)
+{
+	struct bass_delegator *dg;
+
+	dg = queue_remove_if(delegators, delegator_match_device, device);
+	if (!dg)
+		return false;
+
+	DBG("%p", dg);
+
+	/* Update Broadcast Receive State characteristic value and notify
+	 * peers.
+	 */
+	if (bt_bass_set_pa_sync(dg->src, BT_BASS_NOT_SYNCHRONIZED_TO_PA))
+		DBG("Failed to update Broadcast Receive State characteristic");
+
+	free(dg);
+
+	return true;
 }
 
 static void assistant_set_state(struct bass_assistant *assistant,
