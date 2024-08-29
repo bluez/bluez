@@ -3066,6 +3066,8 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	iso_bc_addr.bc_bis[0] = bis_index;
 	iso_bc_addr.bc_num_bis = 1;
 
+	/* Refresh qos stored in setup */
+	setup->qos = *bt_bap_stream_get_qos(setup->stream);
 	/* Set the user requested QOS */
 	memset(&qos, 0, sizeof(qos));
 	qos.bcast.big = setup->qos.bcast.big;
