@@ -149,8 +149,8 @@ array{object} Links [readonly, optional, ISO only, experimental]
 
 	Linked transport objects which the transport is associated with.
 
-dict QoS [readonly, optional, ISO only, experimental]
-`````````````````````````````````````````````````````
+dict QoS [readwrite, optional, ISO only, experimental]
+``````````````````````````````````````````````````````
 
 	Only present when QoS is configured.
 
