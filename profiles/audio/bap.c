@@ -1276,6 +1276,9 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 		g_io_channel_shutdown(io, TRUE, NULL);
 	}
 
+	/* Notify the BASS plugin about the session. */
+	bass_bcast_probe(data->device, data->bap);
+
 	/* Analyze received BASE data and create remote media endpoints for each
 	 * BIS matching our capabilities
 	 */
@@ -3298,6 +3301,9 @@ static void bap_bcast_remove(struct btd_service *service)
 		req->io_id = 0;
 	}
 	free(req);
+
+	/* Notify the BASS plugin about the removed session. */
+	bass_bcast_remove(device);
 
 	bap_data_remove(data);
 
