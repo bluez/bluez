@@ -103,6 +103,7 @@ struct bass_delegator {
 	struct btd_device *device;	/* Broadcast source device */
 	struct bt_bcast_src *src;
 	struct bt_bap *bap;
+	unsigned int state_id;
 };
 
 static struct queue *sessions;
@@ -124,6 +125,54 @@ static bool delegator_match_device(const void *data, const void *match_data)
 	return dg->device == device;
 }
 
+static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
+				uint8_t new_state, void *user_data)
+{
+	struct bass_delegator *dg = user_data;
+	int bis;
+	char *path = bt_bap_stream_get_user_data(stream);
+	struct bt_bap *bap = bt_bap_stream_get_session(stream);
+	const char *strbis;
+	int err;
+
+	if (dg->bap != bap)
+		return;
+
+	strbis = strstr(path, "/bis");
+	if (strbis == NULL) {
+		DBG("bis index cannot be found");
+		return;
+	}
+
+	err = sscanf(strbis, "/bis%d", &bis);
+	if (err < 0) {
+		DBG("sscanf error");
+		return;
+	}
+
+	DBG("stream %p: %s(%u) -> %s(%u)", stream,
+			bt_bap_stream_statestr(old_state), old_state,
+			bt_bap_stream_statestr(new_state), new_state);
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_STREAMING:
+		/* BAP stream was started. Mark BIS index as synced inside the
+		 * Broadcast Receive State characteristic and notify peers about
+		 * the update.
+		 */
+		bt_bass_set_bis_sync(dg->src, bis);
+		break;
+	case BT_BAP_STREAM_STATE_CONFIG:
+		if (old_state == BT_BAP_STREAM_STATE_STREAMING)
+			/* BAP stream was disabled. Clear BIS index from the
+			 * bitmask inside the Broadcast Receive State
+			 * characteristic and notify peers about the update.
+			 */
+			bt_bass_clear_bis_sync(dg->src, bis);
+		break;
+	}
+}
+
 bool bass_bcast_probe(struct btd_device *device, struct bt_bap *bap)
 {
 	struct bass_delegator *dg;
@@ -141,6 +190,12 @@ bool bass_bcast_probe(struct btd_device *device, struct bt_bap *bap)
 	 */
 	if (bt_bass_set_pa_sync(dg->src, BT_BASS_SYNCHRONIZED_TO_PA))
 		DBG("Failed to update Broadcast Receive State characteristic");
+
+	/* Register BAP stream state changed callback, to keep up to
+	 * date with BIG/PA sync state.
+	 */
+	dg->state_id = bt_bap_state_register(bap, bap_state_changed,
+			NULL, dg, NULL);
 
 	return true;
 }
@@ -160,6 +215,9 @@ bool bass_bcast_remove(struct btd_device *device)
 	 */
 	if (bt_bass_set_pa_sync(dg->src, BT_BASS_NOT_SYNCHRONIZED_TO_PA))
 		DBG("Failed to update Broadcast Receive State characteristic");
+
+	/* Unregister BAP stream state changed callback. */
+	bt_bap_state_unregister(dg->bap, dg->state_id);
 
 	free(dg);
 
