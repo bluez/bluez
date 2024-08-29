@@ -1732,3 +1732,37 @@ done:
 
 	return err;
 }
+
+static void bt_bass_notify_all(struct gatt_db_attribute *attr,
+						struct iovec *iov)
+{
+	const struct queue_entry *entry;
+
+	for (entry = queue_get_entries(sessions); entry; entry = entry->next) {
+		struct bt_bass *bass = entry->data;
+
+		gatt_db_attribute_notify(attr, iov->iov_base,
+			iov->iov_len, bt_bass_get_att(bass));
+	}
+}
+
+int bt_bass_set_pa_sync(struct bt_bcast_src *bcast_src, uint8_t sync_state)
+{
+	struct iovec *iov;
+
+	if (!bcast_src)
+		return -EINVAL;
+
+	bcast_src->sync_state = sync_state;
+
+	iov = bass_parse_bcast_src(bcast_src);
+	if (!iov)
+		return -ENOMEM;
+
+	bt_bass_notify_all(bcast_src->attr, iov);
+
+	free(iov->iov_base);
+	free(iov);
+
+	return 0;
+}
