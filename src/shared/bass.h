@@ -8,6 +8,7 @@
  */
 
 struct bt_bass;
+struct bt_bcast_src;
 
 #define NUM_BCAST_RECV_STATES				2
 #define BT_BASS_BCAST_CODE_SIZE				16
@@ -31,35 +32,6 @@ struct bt_bass;
 #define BT_BASS_BIG_ENC_STATE_BCODE_REQ			0x01
 #define BT_BASS_BIG_ENC_STATE_DEC			0x02
 #define BT_BASS_BIG_ENC_STATE_BAD_CODE			0x03
-
-/* BASS subgroup field of the Broadcast
- * Receive State characteristic
- */
-struct bt_bass_subgroup_data {
-	uint32_t bis_sync;
-	uint32_t pending_bis_sync;
-	uint8_t meta_len;
-	uint8_t *meta;
-};
-
-/* BASS Broadcast Source structure */
-struct bt_bcast_src {
-	struct bt_bass *bass;
-	struct gatt_db_attribute *attr;
-	uint8_t id;
-	uint8_t addr_type;
-	bdaddr_t addr;
-	uint8_t sid;
-	uint32_t bid;
-	uint8_t sync_state;
-	uint8_t enc;
-	uint8_t bad_code[BT_BASS_BCAST_CODE_SIZE];
-	uint8_t num_subgroups;
-	struct bt_bass_subgroup_data *subgroup_data;
-	GIOChannel *listen_io;
-	GIOChannel *pa_sync_io;
-	struct queue *bises;
-};
 
 /* Broadcast Audio Scan Control Point
  * header structure
