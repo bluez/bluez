@@ -3114,6 +3114,11 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	 * this in the ATT connect callback)
 	 */
 	if (bdaddr_type != BDADDR_BREDR) {
+		if (device->disable_auto_connect) {
+			device->disable_auto_connect = FALSE;
+			device_set_auto_connect(device, TRUE);
+		}
+
 		if (!state->connected && btd_le_connect_before_pairing())
 			err = device_connect_le(device);
 		else
