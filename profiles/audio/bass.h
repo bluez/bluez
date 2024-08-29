@@ -14,3 +14,5 @@ void bass_remove_stream(struct btd_device *device);
 
 bool bass_bcast_probe(struct btd_device *device, struct bt_bap *bap);
 bool bass_bcast_remove(struct btd_device *device);
+
+bool bass_check_bis(struct btd_device *device, uint8_t bis);

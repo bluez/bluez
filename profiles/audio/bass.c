@@ -125,6 +125,20 @@ static bool delegator_match_device(const void *data, const void *match_data)
 	return dg->device == device;
 }
 
+bool bass_check_bis(struct btd_device *device, uint8_t bis)
+{
+	struct bass_delegator *dg;
+
+	dg = queue_find(delegators, delegator_match_device, device);
+	if (!dg)
+		return true;
+
+	if (!bt_bass_check_bis(dg->src, bis))
+		return false;
+
+	return true;
+}
+
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 				uint8_t new_state, void *user_data)
 {
