@@ -73,6 +73,8 @@ struct bt_bass {
 
 	struct queue *src_cbs;
 
+	unsigned int disconn_id;
+
 	void *user_data;
 };
 
@@ -1579,6 +1581,32 @@ static void bass_attached(void *data, void *user_data)
 	cb->attached(bass, cb->user_data);
 }
 
+static void bass_disconnected(int err, void *user_data)
+{
+	struct bt_bass *bass = user_data;
+
+	bass->disconn_id = 0;
+
+	DBG(bass, "bass %p disconnected err %d", bass, err);
+
+	bt_bass_detach(bass);
+}
+
+static void bass_attach_att(struct bt_bass *bass, struct bt_att *att)
+{
+	if (bass->disconn_id) {
+		if (att == bt_bass_get_att(bass))
+			return;
+
+		bt_att_unregister_disconnect(bt_bass_get_att(bass),
+							bass->disconn_id);
+	}
+
+	bass->disconn_id = bt_att_register_disconnect(att,
+							bass_disconnected,
+							bass, NULL);
+}
+
 bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client)
 {
 	bt_uuid_t uuid;
@@ -1590,8 +1618,11 @@ bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client)
 
 	queue_foreach(bass_cbs, bass_attached, bass);
 
-	if (!client)
+	if (!client) {
+		if (bass->att)
+			bass_attach_att(bass, bass->att);
 		return true;
+	}
 
 	if (bass->client)
 		return false;
@@ -1599,6 +1630,8 @@ bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client)
 	bass->client = bt_gatt_client_clone(client);
 	if (!bass->client)
 		return false;
+
+	bass_attach_att(bass, bt_gatt_client_get_att(client));
 
 	bt_uuid16_create(&uuid, BASS_UUID);
 	gatt_db_foreach_service(bass->rdb->db, &uuid, foreach_bass_service,
@@ -1626,11 +1659,22 @@ static void bass_detached(void *data, void *user_data)
 
 void bt_bass_detach(struct bt_bass *bass)
 {
+	struct  bt_att *att;
+
 	if (!queue_remove(sessions, bass))
 		return;
 
+	if (bass->client)
+		att = bt_gatt_client_get_att(bass->client);
+	else
+		att = bass->att;
+
+	bt_att_unregister_disconnect(att, bass->disconn_id);
+
 	bt_gatt_client_unref(bass->client);
 	bass->client = NULL;
+
+	bass->att = NULL;
 
 	queue_foreach(bass_cbs, bass_detached, bass);
 }
