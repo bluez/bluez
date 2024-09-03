@@ -428,6 +428,14 @@ fi
 #
 # Otherwise we'll end up with literal references in the final binaries or
 # manuals, which is not something we really want.
+#
+pkgbindir="${bindir}"
+if (test "$bindir" = '${exec_prefix}/bin'); then
+	pkgbindir="${exec_prefix}/bin"
+else
+	pkgbindir="${bindir}"
+fi
+AC_SUBST(PKGBINDIR, "${pkgbindir}")
 
 if (test "$libexecdir" = '${exec_prefix}/libexec'); then
 	pkglibexecdir="${exec_prefix}/libexec/bluetooth"
@@ -496,5 +504,6 @@ AC_CONFIG_FILES(
 	src/bluetoothd.rst
 	src/bluetooth.service
 	tools/bluetooth-logger.service
+	tools/mpris-proxy.service
 )
 AC_OUTPUT

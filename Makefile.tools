@@ -332,6 +332,9 @@ tools_hex2hcd_SOURCES = tools/hex2hcd.c
 
 tools_mpris_proxy_SOURCES = tools/mpris-proxy.c
 tools_mpris_proxy_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
+if SYSTEMD
+systemduserunit_DATA += tools/mpris-proxy.service
+endif
 
 tools_gatt_service_SOURCES = tools/gatt-service.c
 tools_gatt_service_LDADD = gdbus/libgdbus-internal.la \

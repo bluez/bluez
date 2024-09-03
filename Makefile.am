@@ -49,6 +49,9 @@ if SYSTEMD
 systemdsystemunitdir = $(SYSTEMD_SYSTEMUNITDIR)
 systemdsystemunit_DATA = src/bluetooth.service
 
+systemduserunitdir = $(SYSTEMD_USERUNITDIR)
+systemduserunit_DATA =
+
 dbussystembusdir = $(DBUS_SYSTEMBUSDIR)
 dbussystembus_DATA = src/org.bluez.service
 endif

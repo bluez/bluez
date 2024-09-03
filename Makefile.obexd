@@ -2,8 +2,7 @@
 if OBEX
 
 if SYSTEMD
-systemduserunitdir = $(SYSTEMD_USERUNITDIR)
-systemduserunit_DATA = obexd/src/obex.service
+systemduserunit_DATA += obexd/src/obex.service
 
 dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
 dbussessionbus_DATA = obexd/src/org.bluez.obex.service
