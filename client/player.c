@@ -3776,6 +3776,30 @@ static void config_endpoint_sync_factor(const char *input, void *user_data)
 	}
 }
 
+static void config_endpoint_iso_stream(const char *input, void *user_data)
+{
+	struct endpoint_config *cfg = user_data;
+	char *endptr = NULL;
+	int value;
+
+	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto")) {
+		cfg->ep->iso_stream = BT_ISO_QOS_STREAM_UNSET;
+	} else {
+		value = strtol(input, &endptr, 0);
+
+		if (!endptr || *endptr != '\0' || value > UINT8_MAX) {
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		cfg->ep->iso_stream = value;
+	}
+
+	bt_shell_prompt_input(cfg->ep->path,
+			"Enter sync factor (value/auto):",
+			config_endpoint_sync_factor, cfg);
+}
+
 static void config_endpoint_iso_group(const char *input, void *user_data)
 {
 	struct endpoint_config *cfg = user_data;
@@ -3796,8 +3820,8 @@ static void config_endpoint_iso_group(const char *input, void *user_data)
 	}
 
 	bt_shell_prompt_input(cfg->ep->path,
-			"Enter sync factor (value/auto):",
-			config_endpoint_sync_factor, cfg);
+		"BIS (auto/value):",
+		config_endpoint_iso_stream, cfg);
 }
 
 static void endpoint_set_config_bcast(struct endpoint_config *cfg)
