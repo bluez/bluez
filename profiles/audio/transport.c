@@ -1336,7 +1336,7 @@ static void transport_update_playing(struct media_transport *transport,
 
 	if (playing == FALSE) {
 		if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
-						BCAA_SERVICE_UUID)) {
+						BAA_SERVICE_UUID)) {
 			if ((transport->state ==
 				TRANSPORT_STATE_BROADCASTING) ||
 				(transport->state == TRANSPORT_STATE_ACTIVE))
