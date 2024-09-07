@@ -3216,6 +3216,86 @@ static DBusMessage *cancel_pairing(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+static sdp_list_t *read_device_records(struct btd_device *device);
+
+static DBusMessage *get_service_records(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter records_arr, record;
+	struct btd_device *device = data;
+	sdp_list_t *cur;
+
+	if (!btd_adapter_get_powered(device->adapter))
+		return btd_error_not_ready(msg);
+
+	if (!btd_device_is_connected(device))
+		return btd_error_not_connected(msg);
+
+	if (!device->bredr_state.svc_resolved)
+		return btd_error_not_ready(msg);
+
+	if (!device->tmp_records) {
+		device->tmp_records = read_device_records(device);
+		if (!device->tmp_records)
+			return btd_error_does_not_exist(msg);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return btd_error_failed(msg, "Could not create method reply");
+
+	dbus_message_iter_init_append(reply, &records_arr);
+	if (!dbus_message_iter_open_container(&records_arr, DBUS_TYPE_ARRAY,
+					      "ay", &record)) {
+		dbus_message_unref(reply);
+		return btd_error_failed(msg, "Could not initialize iterator");
+	}
+
+	for (cur = device->tmp_records; cur; cur = cur->next) {
+		DBusMessageIter record_bytes;
+		sdp_record_t *rec = cur->data;
+		sdp_buf_t buf;
+		int result;
+
+		result = sdp_gen_record_pdu(rec, &buf);
+		if (result) {
+			dbus_message_iter_abandon_container(&records_arr,
+							    &record);
+			dbus_message_unref(reply);
+			return btd_error_failed(
+				msg, "Could not marshal service record");
+		}
+		if (!dbus_message_iter_open_container(&record, DBUS_TYPE_ARRAY,
+						      "y", &record_bytes)) {
+			bt_free(buf.data);
+			dbus_message_iter_abandon_container(&records_arr,
+							    &record);
+			dbus_message_unref(reply);
+			return btd_error_failed(
+				msg, "Could not initialize iterator");
+		}
+		if (!dbus_message_iter_append_fixed_array(
+			    &record_bytes, DBUS_TYPE_BYTE, &buf.data,
+			    buf.data_size)) {
+			bt_free(buf.data);
+			dbus_message_iter_abandon_container(&record,
+							    &record_bytes);
+			dbus_message_iter_abandon_container(&records_arr,
+							    &record);
+			dbus_message_unref(reply);
+			return btd_error_failed(
+				msg, "Could not append record data to reply");
+		}
+		dbus_message_iter_close_container(&record, &record_bytes);
+		bt_free(buf.data);
+	}
+
+	dbus_message_iter_close_container(&records_arr, &record);
+
+	return reply;
+}
+
 static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, dev_disconnect) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
@@ -3225,6 +3305,9 @@ static const GDBusMethodTable device_methods[] = {
 						NULL, disconnect_profile) },
 	{ GDBUS_ASYNC_METHOD("Pair", NULL, NULL, pair_device) },
 	{ GDBUS_METHOD("CancelPairing", NULL, NULL, cancel_pairing) },
+	{ GDBUS_EXPERIMENTAL_METHOD("GetServiceRecords", NULL,
+				    GDBUS_ARGS({ "Records", "aay" }),
+				    get_service_records) },
 	{ }
 };
 
