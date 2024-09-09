@@ -1,3 +1,13 @@
+ver 5.78:
+	Fix issue with handling notification of scanned BISes to BASS
+	Fix issue with handling checking BIS caps against peer caps.
+	Fix issue with handling MGMT Set Device Flags overwrites.
+	Fix issue with handling ASE notification order.
+	Fix issue with handling BIG Info report events.
+	Fix issue with handling PACS Server role.
+	Fix issue with registering UHID_START multiple times.
+	Fix issue with pairing method not setting auto-connect.
+
 ver 5.77:
 	Fix issue with storing and handling connection parameters.
 	Fix issue with handling device that are marked as temporary.
