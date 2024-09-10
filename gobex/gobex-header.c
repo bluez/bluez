@@ -62,6 +62,34 @@ static glong utf8_to_utf16(gunichar2 **utf16, const char *utf8) {
 	return utf16_len;
 }
 
+static glong utf16_to_utf8(char **utf8, const gunichar2 *utf16, guint16 len,
+				GError **err)
+{
+	glong utf8_len;
+	guint16 utf16_len, i;
+	gunichar2 *buf;
+
+	if (*utf16 == '\0') {
+		*utf8 = NULL;
+		return 0;
+	}
+
+	/* OBEX requires network byteorder (big endian) UTF-16
+	 * but g_utf16_to_utf8 expects host-byteorder UTF-8
+	 */
+	utf16_len = len / sizeof(gunichar2);
+	buf = alloca(sizeof(gunichar2) * (utf16_len + 1));
+	for (i = 0; i < utf16_len; i++)
+		(buf)[i] = g_ntohs(utf16[i]);
+	buf[utf16_len] = '\0';
+
+	*utf8 = g_utf16_to_utf8(buf, -1, NULL, &utf8_len, err);
+	if (*utf8 == NULL)
+		utf8_len = -1;
+
+	return utf8_len;
+}
+
 static guint8 *put_bytes(guint8 *to, const void *from, gsize count)
 {
 	memcpy(to, from, count);
@@ -130,7 +158,7 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 	GObexHeader *header;
 	const guint8 *ptr = data;
 	guint16 hdr_len;
-	gsize str_len;
+	glong str_len;
 	GError *conv_err = NULL;
 
 	if (len < 2) {
@@ -177,13 +205,14 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 			goto failed;
 		}
 
-		header->v.string = g_convert((const char *) ptr, hdr_len - 5,
-						"UTF-8", "UTF-16BE",
-						NULL, &str_len, &conv_err);
-		if (header->v.string == NULL) {
+		str_len = utf16_to_utf8(&header->v.string,
+					(const gunichar2 *) ptr,
+					hdr_len - 5,
+					&conv_err);
+		if (str_len < 0) {
 			g_set_error(err, G_OBEX_ERROR,
 					G_OBEX_ERROR_PARSE_ERROR,
-					"Unicode conversion failed: %s",
+					"UTF16 to UTF8 conversion failed: %s",
 					conv_err->message);
 			g_error_free(conv_err);
 			goto failed;
