@@ -283,6 +283,19 @@ uint32 Class [readonly]
 	This property represents the value that is either automatically
 	configured by DMI/ACPI information or provided as static configuration.
 
+boolean Connectable [readwrite]
+```````````````````````````````
+
+	Set an adapter to connectable or non-connectable. This is a global
+	setting and should only be used by the settings application.
+
+	Setting this property to false will set the Discoverable property
+	of the adapter to false as well, which will not be reverted if
+	if Connectable is set back to true. If required, the application
+	will need to manually set Discoverable to true.
+
+	Note that this property only affects incoming connections.
+
 boolean Powered [readwrite]
 ```````````````````````````
 
