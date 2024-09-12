@@ -1670,3 +1670,8 @@ void *bt_shell_get_env(const char *name)
 
 	return env->value;
 }
+
+int bt_shell_get_timeout(void)
+{
+	return data.timeout;
+}
