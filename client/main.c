@@ -1095,6 +1095,7 @@ static void cmd_pairable(int argc, char *argv[])
 
 static void cmd_discoverable(int argc, char *argv[])
 {
+	DBusMessageIter iter;
 	dbus_bool_t discoverable;
 	char *str;
 
@@ -1103,6 +1104,18 @@ static void cmd_discoverable(int argc, char *argv[])
 
 	if (check_default_ctrl() == FALSE)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (discoverable && g_dbus_proxy_get_property(default_ctrl->proxy,
+					"DiscoverableTimeout", &iter)) {
+		uint32_t value;
+
+		dbus_message_iter_get_basic(&iter, &value);
+
+		if (!value)
+			bt_shell_printf("Warning: setting discoverable while "
+					"discoverable-timeout not set(0) is not"
+					" recommended\n");
+	}
 
 	str = g_strdup_printf("discoverable %s",
 				discoverable == TRUE ? "on" : "off");
