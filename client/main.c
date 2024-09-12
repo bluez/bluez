@@ -22,7 +22,9 @@
 
 #include <glib.h>
 
+#include "src/shared/mainloop.h"
 #include "src/shared/shell.h"
+#include "src/shared/timeout.h"
 #include "src/shared/util.h"
 #include "src/shared/ad.h"
 #include "gdbus/gdbus.h"
@@ -3186,13 +3188,25 @@ static const struct bt_shell_opt opt = {
 
 static void client_ready(GDBusClient *client, void *user_data)
 {
+	unsigned int *timeout_id = user_data;
+
+	if (*timeout_id > 0)
+		timeout_remove(*timeout_id);
 	setup_standard_input();
+}
+
+static bool timeout_quit(void *user_data)
+{
+	mainloop_exit_failure();
+	return true;
 }
 
 int main(int argc, char *argv[])
 {
 	GDBusClient *client;
 	int status;
+	int timeout;
+	unsigned int timeout_id;
 
 	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
@@ -3230,8 +3244,12 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 							property_changed, NULL);
 
-	g_dbus_client_set_ready_watch(client, client_ready, NULL);
-
+	timeout = bt_shell_get_timeout();
+	timeout_id = 0;
+	if (timeout > 0)
+		timeout_id = timeout_add(timeout * 1000, timeout_quit, NULL,
+						NULL);
+	g_dbus_client_set_ready_watch(client, client_ready, &timeout_id);
 	status = bt_shell_run();
 
 	admin_remove_submenu();
