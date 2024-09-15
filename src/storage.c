@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <limits.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 

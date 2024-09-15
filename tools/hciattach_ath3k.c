@@ -16,6 +16,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>

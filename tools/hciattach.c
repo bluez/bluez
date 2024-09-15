@@ -26,6 +26,7 @@
 #include <termios.h>
 #include <time.h>
 #include <poll.h>
+#include <limits.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>

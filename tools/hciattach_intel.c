@@ -19,6 +19,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <time.h>

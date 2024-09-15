@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/mman.h>

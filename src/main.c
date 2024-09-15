@@ -22,6 +22,7 @@
 #include <string.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <sys/signalfd.h>
 #include <sys/types.h>
 #include <sys/stat.h>

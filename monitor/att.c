@@ -22,7 +22,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <errno.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include <glib.h>

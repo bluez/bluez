@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 #include <stdbool.h>
 #include <unistd.h>
+#include <limits.h>
 #include <libgen.h>
 
 #include <sys/un.h>

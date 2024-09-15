@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <limits.h>
 
 #include "lib/bluetooth.h"
 #include "lib/hci.h"

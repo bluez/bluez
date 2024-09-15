@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <time.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include <glib.h>

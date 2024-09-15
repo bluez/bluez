@@ -14,6 +14,7 @@
 #endif
 
 #define _GNU_SOURCE
+#include <limits.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>

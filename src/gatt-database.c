@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "lib/bluetooth.h"
 #include "lib/sdp.h"

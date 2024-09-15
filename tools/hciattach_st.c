@@ -12,6 +12,7 @@
 #include <config.h>
 #endif
 
+#include <limits.h>
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <limits.h>
 #include <libgen.h>
 #include <poll.h>
 #include <sys/wait.h>

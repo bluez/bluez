@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <getopt.h>
 #include <sys/stat.h>
 #include <sys/param.h>

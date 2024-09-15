@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <poll.h>
+#include <limits.h>
 
 #include <sys/socket.h>
 #include <sys/types.h>

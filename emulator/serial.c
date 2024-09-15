@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <sys/param.h>
 #include <sys/epoll.h>
 #include <sys/uio.h>
