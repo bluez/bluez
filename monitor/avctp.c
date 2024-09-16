@@ -156,6 +156,7 @@
 #define AVRCP_MEDIA_ATTRIBUTE_TOTAL	0x05
 #define AVRCP_MEDIA_ATTRIBUTE_GENRE	0x06
 #define AVRCP_MEDIA_ATTRIBUTE_DURATION	0x07
+#define AVRCP_MEDIA_ATTRIBUTE_IMG_HANDLE	0x08
 
 /* play status */
 #define AVRCP_PLAY_STATUS_STOPPED	0x00
@@ -582,6 +583,8 @@ static const char *mediattr2str(uint32_t attr)
 		return "Genre";
 	case AVRCP_MEDIA_ATTRIBUTE_DURATION:
 		return "Track duration";
+	case AVRCP_MEDIA_ATTRIBUTE_IMG_HANDLE:
+		return "Imaging handle";
 	default:
 		return "Reserved";
 	}

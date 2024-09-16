@@ -237,6 +237,11 @@ dict Track [readonly]
 
 		Track duration in milliseconds
 
+	:string ImgHandle: [experimental]
+
+		Track image handle, available and valid only during the lifetime of an
+		OBEX BIP connection to the ObexPort.
+
 object Device [readonly]
 ````````````````````````
 
