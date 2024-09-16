@@ -313,3 +313,9 @@ object Playlist
 ```````````````
 
 	Playlist object path.
+
+uint16 ObexPort [readonly, experimental]
+````````````````````````````````````````
+
+	If present indicates the player can get cover art using BIP over OBEX
+	on this PSM port.

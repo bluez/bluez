@@ -118,8 +118,14 @@
 #define AVRCP_FEATURE_CATEGORY_2	0x0002
 #define AVRCP_FEATURE_CATEGORY_3	0x0004
 #define AVRCP_FEATURE_CATEGORY_4	0x0008
-#define AVRCP_FEATURE_PLAYER_SETTINGS	0x0010
-#define AVRCP_FEATURE_BROWSING			0x0040
+#define AVRCP_FEATURE_TG_PLAYER_SETTINGS	0x0010
+#define AVRCP_FEATURE_TG_GROUP_NAVIGATION	0x0020
+#define AVRCP_FEATURE_BROWSING				0x0040
+#define AVRCP_FEATURE_TG_MULTIPLE_PLAYER	0x0080
+#define AVRCP_FEATURE_TG_COVERT_ART			0x0100
+#define AVRCP_FEATURE_CT_GET_IMAGE_PROP		0x0080
+#define AVRCP_FEATURE_CT_GET_IMAGE			0x0100
+#define AVRCP_FEATURE_CT_GET_THUMBNAIL		0x0200
 
 #define AVRCP_BATTERY_STATUS_NORMAL		0
 #define AVRCP_BATTERY_STATUS_WARNING		1
@@ -254,6 +260,7 @@ struct avrcp_data {
 	struct avrcp_player *player;
 	uint16_t version;
 	int features;
+	uint16_t obex_port;
 	GSList *players;
 };
 
@@ -487,7 +494,7 @@ static sdp_record_t *avrcp_tg_record(bool browsing)
 					AVRCP_FEATURE_CATEGORY_2 |
 					AVRCP_FEATURE_CATEGORY_3 |
 					AVRCP_FEATURE_CATEGORY_4 |
-					AVRCP_FEATURE_PLAYER_SETTINGS );
+					AVRCP_FEATURE_TG_PLAYER_SETTINGS);
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -3522,6 +3529,7 @@ static struct avrcp_player *create_ct_player(struct avrcp *session,
 		return NULL;
 	}
 
+	media_player_set_obex_port(mp, session->controller->obex_port);
 	media_player_set_callbacks(mp, &ct_cbs, player);
 	player->user_data = mp;
 	player->destroy = (GDestroyNotify) media_player_destroy;
@@ -4006,7 +4014,8 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn, uint8_t code,
 	if (events == (1 << AVRCP_EVENT_VOLUME_CHANGED))
 		return FALSE;
 
-	if ((session->controller->features & AVRCP_FEATURE_PLAYER_SETTINGS) &&
+	if ((session->controller->features &
+			AVRCP_FEATURE_TG_PLAYER_SETTINGS) &&
 			!(events & (1 << AVRCP_EVENT_SETTINGS_CHANGED)))
 		avrcp_list_player_attributes(session);
 
@@ -4075,8 +4084,9 @@ static struct avrcp_data *data_init(struct avrcp *session, const char *uuid)
 {
 	struct avrcp_data *data;
 	const sdp_record_t *rec;
-	sdp_list_t *list;
+	sdp_list_t *list, *protos;
 	sdp_profile_desc_t *desc;
+	int port = 0;
 
 	data = g_new0(struct avrcp_data, 1);
 
@@ -4091,6 +4101,35 @@ static struct avrcp_data *data_init(struct avrcp *session, const char *uuid)
 
 	sdp_get_int_attr(rec, SDP_ATTR_SUPPORTED_FEATURES, &data->features);
 	sdp_list_free(list, free);
+
+	if ((g_strcmp0(uuid, AVRCP_TARGET_UUID) != 0) ||
+			!(data->features & AVRCP_FEATURE_TG_COVERT_ART) ||
+			(sdp_get_add_access_protos(rec, &protos) != 0))
+		return data;
+
+	/* Get the PSM port from the Additional Protocol Descriptor list
+	 * entry containing OBEX UUID
+	 */
+	for (list = protos; list; list = list->next) {
+		sdp_list_t *p;
+
+		for (p = list->data; p; p = p->next) {
+			sdp_data_t *seq = p->data;
+
+			if ((sdp_uuid_to_proto(&seq->val.uuid) == OBEX_UUID) &&
+					SDP_IS_UUID(seq->dtd)) {
+				port = sdp_get_proto_port(list, L2CAP_UUID);
+				goto done;
+			}
+		}
+	}
+
+done:
+	if (port > 0)
+		data->obex_port = port;
+
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
 
 	return data;
 }
@@ -4189,6 +4228,8 @@ static void controller_init(struct avrcp *session)
 	session->controller = controller;
 
 	DBG("%p version 0x%04x", controller, controller->version);
+	if (controller->obex_port)
+		DBG("%p OBEX PSM 0x%04x", controller, controller->obex_port);
 
 	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
 	btd_service_connecting_complete(service, 0);
