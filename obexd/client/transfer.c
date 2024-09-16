@@ -57,6 +57,7 @@ struct obc_transfer {
 	GObex *obex;
 	uint8_t status;
 	GObexApparam *apparam;
+	GSList *headers;
 	guint8 op;
 	struct transfer_callback *callback;
 	DBusConnection *conn;
@@ -400,6 +401,11 @@ static const GDBusPropertyTable obc_transfer_properties[] = {
 	{ }
 };
 
+static void header_free(void *data, void *user_data)
+{
+	g_obex_header_free(data);
+}
+
 static void obc_transfer_free(struct obc_transfer *transfer)
 {
 	DBG("%p", transfer);
@@ -441,6 +447,8 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	if (transfer->obex)
 		g_obex_unref(transfer->obex);
 
+	g_slist_foreach(transfer->headers, header_free, NULL);
+	g_slist_free(transfer->headers);
 	g_free(transfer->callback);
 	g_free(transfer->owner);
 	g_free(transfer->filename);
@@ -820,6 +828,12 @@ static gboolean transfer_start_get(struct obc_transfer *transfer, GError **err)
 		g_obex_packet_add_bytes(req, G_OBEX_HDR_TYPE, transfer->type,
 						strlen(transfer->type) + 1);
 
+	while (transfer->headers) {
+		hdr = transfer->headers->data;
+		g_obex_packet_add_header(req, hdr);
+		transfer->headers = g_slist_remove(transfer->headers, hdr);
+	}
+
 	if (transfer->apparam != NULL) {
 		hdr = g_obex_header_new_apparam(transfer->apparam);
 		g_obex_packet_add_header(req, hdr);
@@ -973,4 +987,9 @@ const char *obc_transfer_get_path(struct obc_transfer *transfer)
 gint64 obc_transfer_get_size(struct obc_transfer *transfer)
 {
 	return transfer->size;
+}
+
+void obc_transfer_add_header(struct obc_transfer *transfer, void *data)
+{
+	transfer->headers = g_slist_append(transfer->headers, data);
 }

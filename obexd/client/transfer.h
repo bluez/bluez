@@ -47,3 +47,5 @@ gint64 obc_transfer_get_size(struct obc_transfer *transfer);
 
 DBusMessage *obc_transfer_create_dbus_reply(struct obc_transfer *transfer,
 							DBusMessage *message);
+
+void obc_transfer_add_header(struct obc_transfer *transfer, void *data);
