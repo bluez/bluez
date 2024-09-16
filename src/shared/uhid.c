@@ -42,6 +42,7 @@ struct bt_uhid {
 	int ref_count;
 	struct io *io;
 	unsigned int notify_id;
+	bool notifying;
 	struct queue *notify_list;
 	struct queue *input;
 	uint8_t type;
@@ -56,6 +57,7 @@ struct uhid_notify {
 	uint32_t event;
 	bt_uhid_callback_t func;
 	void *user_data;
+	bool removed;
 };
 
 static void uhid_replay_free(struct uhid_replay *replay)
@@ -134,6 +136,28 @@ static int bt_uhid_record(struct bt_uhid *uhid, bool input,
 	return 0;
 }
 
+static bool match_removed(const void *a, const void *b)
+{
+	const struct uhid_notify *notify = a;
+
+	return notify->removed;
+}
+
+static void uhid_notify(struct bt_uhid *uhid, struct uhid_event *ev)
+{
+	/* Add a reference to the uhid to ensure it doesn't get freed while at
+	 * notify_handler.
+	 */
+	bt_uhid_ref(uhid);
+
+	uhid->notifying = true;
+	queue_foreach(uhid->notify_list, notify_handler, ev);
+	uhid->notifying = false;
+	queue_remove_all(uhid->notify_list, match_removed, NULL, free);
+
+	bt_uhid_unref(uhid);
+}
+
 static bool uhid_read_handler(struct io *io, void *user_data)
 {
 	struct bt_uhid *uhid = user_data;
@@ -161,7 +185,7 @@ static bool uhid_read_handler(struct io *io, void *user_data)
 		break;
 	}
 
-	queue_foreach(uhid->notify_list, notify_handler, &ev);
+	uhid_notify(uhid, &ev);
 
 	return true;
 }
@@ -292,13 +316,30 @@ static bool match_not_id(const void *a, const void *b)
 	return notify->id != id;
 }
 
+static void uhid_notify_removed(void *data, void *user_data)
+{
+	struct uhid_notify *notify = data;
+	struct bt_uhid *uhid = user_data;
+
+	/* Skip marking start_id as removed since that is not removed with
+	 * unregister all.
+	 */
+	if (notify->id == uhid->start_id)
+		return;
+
+	notify->removed = true;
+}
+
 bool bt_uhid_unregister_all(struct bt_uhid *uhid)
 {
 	if (!uhid)
 		return false;
 
-	queue_remove_all(uhid->notify_list, match_not_id,
+	if (!uhid->notifying)
+		queue_remove_all(uhid->notify_list, match_not_id,
 				UINT_TO_PTR(uhid->start_id), free);
+	else
+		queue_foreach(uhid->notify_list, uhid_notify_removed, uhid);
 
 	return true;
 }
@@ -588,7 +629,7 @@ resend:
 		return 0;
 	}
 
-	queue_foreach(uhid->notify_list, notify_handler, ev);
+	uhid_notify(uhid, ev);
 
 	return 0;
 }
