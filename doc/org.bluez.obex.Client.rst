@@ -52,6 +52,10 @@ object CreateSession(string destination, dict args)
 
 		Channel to be used.
 
+	:uint16 PSM:
+
+		L2CAP PSM to be used.
+
 	Possible errors:
 
 	:org.bluez.obex.Error.InvalidArguments:

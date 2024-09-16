@@ -50,6 +50,11 @@ byte Channel [readonly]
 
 	Bluetooth channel
 
+uint16 PSM [readonly]
+```````````````````````
+
+	Bluetooth L2CAP PSM
+
 string Target [readonly]
 ````````````````````````
 

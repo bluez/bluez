@@ -107,7 +107,8 @@ done:
 }
 
 static int parse_device_dict(DBusMessageIter *iter,
-		const char **source, const char **target, uint8_t *channel)
+		const char **source, const char **target, uint8_t *channel,
+		uint16_t *psm)
 {
 	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -129,6 +130,10 @@ static int parse_device_dict(DBusMessageIter *iter,
 		case DBUS_TYPE_BYTE:
 			if (g_str_equal(key, "Channel") == TRUE)
 				dbus_message_iter_get_basic(&value, channel);
+			break;
+		case DBUS_TYPE_UINT16:
+			if (g_str_equal(key, "PSM") == TRUE)
+				dbus_message_iter_get_basic(&value, psm);
 			break;
 		}
 
@@ -160,6 +165,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
 	uint8_t channel = 0;
+	uint16_t psm = 0;
 
 	dbus_message_iter_init(message, &iter);
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
@@ -175,8 +181,8 @@ static DBusMessage *create_session(DBusConnection *connection,
 
 	dbus_message_iter_recurse(&iter, &dict);
 
-	parse_device_dict(&dict, &source, &target, &channel);
-	if (dest == NULL || target == NULL)
+	parse_device_dict(&dict, &source, &target, &channel, &psm);
+	if (dest == NULL || target == NULL || (channel && psm))
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
 
@@ -188,7 +194,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 	data->connection = dbus_connection_ref(connection);
 	data->message = dbus_message_ref(message);
 
-	session = obc_session_create(source, dest, target, channel,
+	session = obc_session_create(source, dest, target, channel, psm,
 					dbus_message_get_sender(message),
 					create_callback, data);
 	if (session != NULL) {

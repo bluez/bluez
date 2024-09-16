@@ -88,6 +88,7 @@ struct obc_session {
 	char *source;
 	char *destination;
 	uint8_t channel;
+	uint16_t psm;
 	struct obc_transport *transport;
 	struct obc_driver *driver;
 	char *path;		/* Session path */
@@ -471,6 +472,7 @@ static struct obc_session *session_find(const char *source,
 						const char *destination,
 						const char *service,
 						uint8_t channel,
+						uint16_t psm,
 						const char *owner)
 {
 	GSList *l;
@@ -488,6 +490,9 @@ static struct obc_session *session_find(const char *source,
 			continue;
 
 		if (channel && session->channel != channel)
+			continue;
+
+		if (psm && session->psm != psm)
 			continue;
 
 		if (g_strcmp0(owner, session->owner))
@@ -541,8 +546,9 @@ static int session_connect(struct obc_session *session,
 	}
 
 	session->id = transport->connect(session->source, session->destination,
-					driver->uuid, session->channel,
-					transport_func, callback);
+			driver->uuid,
+			session->channel ? session->channel : session->psm,
+			transport_func, callback);
 	if (session->id == 0) {
 		obc_session_unref(callback->session);
 		g_free(callback);
@@ -558,6 +564,7 @@ struct obc_session *obc_session_create(const char *source,
 						const char *destination,
 						const char *service,
 						uint8_t channel,
+						uint16_t psm,
 						const char *owner,
 						session_callback_t function,
 						void *user_data)
@@ -570,7 +577,8 @@ struct obc_session *obc_session_create(const char *source,
 	if (destination == NULL)
 		return NULL;
 
-	session = session_find(source, destination, service, channel, owner);
+	session = session_find(source, destination, service, channel, psm,
+				owner);
 	if (session != NULL)
 		goto proceed;
 
@@ -598,6 +606,7 @@ struct obc_session *obc_session_create(const char *source,
 	session->source = g_strdup(source);
 	session->destination = g_strdup(destination);
 	session->channel = channel;
+	session->psm = psm;
 	session->queue = g_queue_new();
 	session->folder = g_strdup("/");
 
@@ -762,6 +771,17 @@ static gboolean get_channel(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean get_psm(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obc_session *session = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+							&session->psm);
+
+	return TRUE;
+}
+
 static const GDBusMethodTable session_methods[] = {
 	{ GDBUS_ASYNC_METHOD("GetCapabilities",
 				NULL, GDBUS_ARGS({ "capabilities", "s" }),
@@ -794,6 +814,7 @@ static const GDBusPropertyTable session_properties[] = {
 	{ "Source", "s", get_source, NULL, source_exists },
 	{ "Destination", "s", get_destination },
 	{ "Channel", "y", get_channel },
+	{ "PSM", "q", get_psm },
 	{ "Target", "s", get_target, NULL, target_exists },
 	{ }
 };
