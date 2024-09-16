@@ -100,6 +100,7 @@ static void destroy_context(struct context *context)
 	if (context->source > 0)
 		g_source_remove(context->source);
 
+	bt_uhid_unregister_all(context->uhid);
 	bt_uhid_unref(context->uhid);
 
 	test_free(context->data);
