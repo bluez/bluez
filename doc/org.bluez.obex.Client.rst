@@ -43,6 +43,7 @@ object CreateSession(string destination, dict args)
 		:"opp":
 		:"pbap":
 		:"sync":
+		:"bip-avrcp":
 
 	:string Source:
 

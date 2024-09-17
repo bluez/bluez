@@ -32,6 +32,7 @@
 #include "pbap.h"
 #include "sync.h"
 #include "map.h"
+#include "bip.h"
 #include "manager.h"
 
 #define CLIENT_INTERFACE	"org.bluez.obex.Client1"
@@ -258,6 +259,7 @@ static const struct obc_module {
 	{ "pbap", pbap_init, pbap_exit },
 	{ "sync", sync_init, sync_exit },
 	{ "map", map_init, map_exit },
+	{ "bip", bip_init, bip_exit },
 	{ }
 };
 
