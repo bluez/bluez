@@ -32,6 +32,14 @@
 #define IMAGE_UUID "0000111A-0000-1000-8000-00805f9b34fb"
 
 #define IMG_HANDLE_TAG  0x30
+#define IMG_DESC_TAG    0x71
+
+#define EOL_CHARS "\n"
+#define IMG_DESC_BEGIN "<image-descriptor version=\"1.0\">" EOL_CHARS
+#define IMG_BEGIN "<image encoding=\"%s\" pixel=\"%s\""
+#define IMG_TRANSFORM " transformation=\"%s\""
+#define IMG_END "/>" EOL_CHARS
+#define IMG_DESC_END "</image-descriptor>" EOL_CHARS
 
 static DBusConnection *conn;
 
@@ -175,11 +183,171 @@ fail:
 	return reply;
 }
 
+static gboolean parse_get_image_dict(DBusMessage *msg, char **path,
+					char **handle, char **pixel,
+					char **encoding, uint64_t *maxsize,
+							char **transform)
+{
+	DBusMessageIter iter, array;
+
+	DBG("");
+
+	*path = NULL;
+	*handle = NULL;
+	*pixel = NULL;
+	*encoding = NULL;
+	*transform = NULL;
+
+	dbus_message_iter_init(msg, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		goto failed;
+	dbus_message_iter_get_basic(&iter, path);
+	*path = g_strdup(*path);
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		goto failed;
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_get_basic(&iter, handle);
+	*handle = g_strdup(*handle);
+	dbus_message_iter_next(&iter);
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		goto failed;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&array, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return FALSE;
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+		switch (dbus_message_iter_get_arg_type(&value)) {
+		case DBUS_TYPE_STRING:
+			dbus_message_iter_get_basic(&value, &val);
+			if (g_str_equal(key, "pixel")) {
+				if (!parse_pixel_range(val, NULL, NULL, NULL))
+					goto failed;
+				*pixel = g_strdup(val);
+			} else if (g_str_equal(key, "encoding")) {
+				if (!verify_encoding(val))
+					goto failed;
+				*encoding = g_strdup(val);
+				if (*encoding == NULL)
+					goto failed;
+			} else if (g_str_equal(key, "transformation")) {
+				*transform = parse_transform(val);
+				if (*transform == NULL)
+					goto failed;
+			}
+			break;
+		case DBUS_TYPE_UINT64:
+			if (g_str_equal(key, "maxsize") == TRUE) {
+				dbus_message_iter_get_basic(&value, maxsize);
+				if (*maxsize == 0)
+					goto failed;
+			}
+			break;
+		}
+		dbus_message_iter_next(&array);
+	}
+
+	if (*pixel == NULL)
+		*pixel = strdup("");
+	if (*encoding == NULL)
+		*encoding = strdup("");
+
+	DBG("pixel: '%s' encoding: '%s' maxsize: '%lu' transform: '%s'",
+			*pixel, *encoding, *maxsize, *transform
+	);
+
+	return TRUE;
+failed:
+	g_free(*path);
+	g_free(*handle);
+	g_free(*pixel);
+	g_free(*encoding);
+	g_free(*transform);
+	return FALSE;
+}
+
+static DBusMessage *get_image(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct bip_avrcp_data *bip_avrcp = user_data;
+	char *handle = NULL, *image_path = NULL, *transform = NULL,
+		*encoding = NULL, *pixel = NULL;
+	uint64_t maxsize;
+	struct obc_transfer *transfer;
+	GObexHeader *header;
+	DBusMessage *reply = NULL;
+	GString *descriptor = NULL;
+	GError *err = NULL;
+
+	DBG("");
+
+	if (!parse_get_image_dict(message, &image_path, &handle, &pixel,
+					&encoding, &maxsize, &transform))
+		return g_dbus_create_error(message,
+				ERROR_INTERFACE ".InvalidArguments", NULL);
+
+	transfer = obc_transfer_get("x-bt/img-img", NULL, image_path, &err);
+	if (transfer == NULL) {
+		reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed",
+						"%s",
+						err->message);
+		g_error_free(err);
+		goto fail;
+	}
+
+	header = g_obex_header_new_unicode(IMG_HANDLE_TAG, handle);
+	obc_transfer_add_header(transfer, header);
+
+	descriptor = g_string_new(IMG_DESC_BEGIN);
+	g_string_append_printf(descriptor, IMG_BEGIN, encoding, pixel);
+	if (transform != NULL)
+		g_string_append_printf(descriptor, IMG_TRANSFORM, transform);
+	g_string_append(descriptor, IMG_END);
+	descriptor = g_string_append(descriptor, IMG_DESC_END);
+	header = g_obex_header_new_bytes(IMG_DESC_TAG, descriptor->str,
+						descriptor->len);
+	obc_transfer_add_header(transfer, header);
+	g_string_free(descriptor, TRUE);
+
+	if (!obc_session_queue(bip_avrcp->session, transfer, NULL, NULL,
+								&err)) {
+		reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed",
+						"%s",
+						err->message);
+		g_error_free(err);
+		goto fail;
+	}
+
+	reply = obc_transfer_create_dbus_reply(transfer, message);
+
+fail:
+	g_free(handle);
+	g_free(image_path);
+	g_free(transform);
+	g_free(encoding);
+	g_free(pixel);
+	return reply;
+}
+
 static const GDBusMethodTable bip_avrcp_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Properties",
 		GDBUS_ARGS({ "handle", "s"}),
 		GDBUS_ARGS({ "properties", "aa{sv}" }),
 		get_image_properties) },
+	{ GDBUS_ASYNC_METHOD("Get",
+		GDBUS_ARGS({ "file", "s" }, { "handle", "s"},
+				{"properties", "a{sv}"}),
+		GDBUS_ARGS({ "transfer", "o" }, { "properties", "a{sv}" }),
+		get_image) },
 	{ GDBUS_ASYNC_METHOD("GetThumbnail",
 		GDBUS_ARGS({ "file", "s" }, { "handle", "s"}),
 		GDBUS_ARGS({ "transfer", "o" }, { "properties", "a{sv}" }),

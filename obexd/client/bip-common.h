@@ -13,6 +13,11 @@
 
 struct prop_object;
 
+gboolean parse_pixel_range(const gchar *dim, unsigned int *lower_ret,
+						unsigned int *upper_ret,
+						gboolean *fixed_ratio_ret);
+gboolean verify_encoding(const char *encoding);
+char *parse_transform(const char *transform);
 struct prop_object *parse_properties(char *data, unsigned int length,
 							int *err);
 gboolean verify_properties(struct prop_object *obj);

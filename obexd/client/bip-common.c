@@ -49,7 +49,7 @@ static const gchar *convBIP2IM(const gchar *encoding)
 	return NULL;
 }
 
-static gboolean parse_pixel_range(const gchar *dim, unsigned int *lower_ret,
+gboolean parse_pixel_range(const gchar *dim, unsigned int *lower_ret,
 						unsigned int *upper_ret,
 						gboolean *fixed_ratio_ret)
 {
@@ -139,6 +139,18 @@ char *transforms[] = {
 	NULL
 };
 
+gboolean verify_encoding(const char *encoding)
+{
+	struct encconv_pair *et = encconv_table;
+
+	while (et->bip) {
+		if (g_strcmp0(encoding, et->bip) == 0)
+			return TRUE;
+		et++;
+	}
+	return FALSE;
+}
+
 static gboolean verify_transform(const char *transform)
 {
 	char **str = transforms;
@@ -149,6 +161,13 @@ static gboolean verify_transform(const char *transform)
 		str++;
 	}
 	return FALSE;
+}
+
+char *parse_transform(const char *transform)
+{
+	if (!verify_transform(transform))
+		return NULL;
+	return g_strdup(transform);
 }
 
 static char *parse_transform_list(const char *transform)
