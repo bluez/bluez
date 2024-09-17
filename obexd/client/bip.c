@@ -20,6 +20,7 @@
 #include "transfer.h"
 #include "session.h"
 #include "driver.h"
+#include "bip-common.h"
 #include "bip.h"
 
 #define OBEX_BIP_AVRCP_UUID \
@@ -37,6 +38,102 @@ static DBusConnection *conn;
 struct bip_avrcp_data {
 	struct obc_session *session;
 };
+
+static void image_properties_complete_cb(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
+{
+	DBusMessage *message = user_data;
+	DBusMessage *reply = NULL;
+	DBusMessageIter iter;
+	char *contents = NULL;
+	size_t size;
+	int perr;
+	struct prop_object *prop = NULL;
+
+	if (err != NULL) {
+		reply = g_dbus_create_error(message,
+					ERROR_INTERFACE ".Failed",
+					"%s", err->message);
+		goto done;
+	}
+
+	perr = obc_transfer_get_contents(transfer, &contents, &size);
+	if (perr < 0) {
+		reply = g_dbus_create_error(message,
+						ERROR_INTERFACE ".Failed",
+						"Error reading contents: %s",
+						strerror(-perr));
+		goto done;
+	}
+
+	prop = parse_properties(contents, size, &perr);
+	if (prop == NULL) {
+		reply = g_dbus_create_error(message,
+						ERROR_INTERFACE ".Failed",
+						"Error parsing contents: %s",
+						strerror(-perr));
+		goto done;
+	}
+
+	if (!verify_properties(prop)) {
+		reply = g_dbus_create_error(message,
+						ERROR_INTERFACE ".Failed",
+						"Error verifying contents");
+		goto done;
+	}
+
+	reply = dbus_message_new_method_return(message);
+	dbus_message_iter_init_append(reply, &iter);
+	append_properties(&iter, prop);
+
+done:
+	g_dbus_send_message(conn, reply);
+	g_free(contents);
+	dbus_message_unref(message);
+}
+
+static DBusMessage *get_image_properties(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct bip_avrcp_data *bip_avrcp = user_data;
+	const char *handle = NULL;
+	struct obc_transfer *transfer;
+	GObexHeader *header;
+	DBusMessage *reply = NULL;
+	GError *err = NULL;
+
+	DBG("");
+
+	if (dbus_message_get_args(message, NULL,
+				DBUS_TYPE_STRING, &handle,
+				DBUS_TYPE_INVALID) == FALSE) {
+		reply = g_dbus_create_error(message,
+				ERROR_INTERFACE ".InvalidArguments", NULL);
+		return reply;
+	}
+
+	transfer = obc_transfer_get("x-bt/img-properties", NULL, NULL, &err);
+	if (transfer == NULL)
+		goto fail;
+
+	header = g_obex_header_new_unicode(IMG_HANDLE_TAG, handle);
+	obc_transfer_add_header(transfer, header);
+
+	if (!obc_session_queue(bip_avrcp->session, transfer,
+			image_properties_complete_cb, message, &err))
+		goto fail;
+
+	dbus_message_ref(message);
+
+	return NULL;
+
+fail:
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
+								err->message);
+	g_error_free(err);
+	return reply;
+}
 
 static DBusMessage *get_thumbnail(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
@@ -79,6 +176,10 @@ fail:
 }
 
 static const GDBusMethodTable bip_avrcp_methods[] = {
+	{ GDBUS_ASYNC_METHOD("Properties",
+		GDBUS_ARGS({ "handle", "s"}),
+		GDBUS_ARGS({ "properties", "aa{sv}" }),
+		get_image_properties) },
 	{ GDBUS_ASYNC_METHOD("GetThumbnail",
 		GDBUS_ARGS({ "file", "s" }, { "handle", "s"}),
 		GDBUS_ARGS({ "transfer", "o" }, { "properties", "a{sv}" }),
