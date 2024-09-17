@@ -16,3 +16,8 @@ void print_packet(const char *label, const void *data, uint16_t size);
 int create_dir(const char *dir_name);
 void del_path(const char *path);
 void enable_debug(void);
+#if !HAVE_DECL_BASENAME
+const char *mesh_basename(const char *path);
+#else
+#define mesh_basename basename
+#endif

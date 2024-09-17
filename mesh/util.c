@@ -161,3 +161,13 @@ void enable_debug(void)
 	debug_enabled = true;
 	l_debug_enable("*");
 }
+
+#if !HAVE_DECL_BASENAME
+#include <string.h>
+const char *mesh_basename(const char *path)
+{
+	const char *base = strrchr(path, '/');
+
+	return base ? base + 1 : path;
+}
+#endif
