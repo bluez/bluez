@@ -16,7 +16,7 @@ L2CAP protocol
 SYNOPSIS
 ========
 
-.. code-block:: c
+.. code-block::
 
     #include <sys/socket.h>
     #include <bluetooth/bluetooth.h>
@@ -40,7 +40,7 @@ connection, allowing for concurrent data transmission using different protocols.
 SOCKET ADDRESS
 ==============
 
-.. code-block:: c
+.. code-block::
 
     struct sockaddr_l2 {
         sa_family_t	l2_family;
@@ -52,7 +52,7 @@ SOCKET ADDRESS
 
 Example:
 
-.. code-block:: c
+.. code-block::
 
     struct sockaddr_l2 addr;
 
@@ -90,7 +90,7 @@ Channel security level, possible values:
 
 Example:
 
-.. code-block:: c
+.. code-block::
 
     int level = BT_SECURITY_HIGH;
     int err = setsockopt(l2cap_socket, SOL_BLUETOOTH, BT_SECURITY, &level,
@@ -116,7 +116,7 @@ authorization at profile level, possible values:
 
 Example:
 
-.. code-block:: c
+.. code-block::
 
     int defer_setup = 1;
     int err = setsockopt(l2cap_socket, SOL_BLUETOOTH, BT_DEFER_SETUP,

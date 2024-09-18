@@ -16,7 +16,7 @@ RFCOMM protocol
 SYNOPSIS
 ========
 
-.. code-block:: c
+.. code-block::
 
     #include <sys/socket.h>
     #include <bluetooth/bluetooth.h>
@@ -36,7 +36,7 @@ the 9 circuits of RS-232 (EIATIA-232-E) serial ports.
 SOCKET ADDRESS
 ==============
 
-.. code-block:: c
+.. code-block::
 
     struct sockaddr_rc {
         sa_family_t rc_family;
@@ -46,7 +46,7 @@ SOCKET ADDRESS
 
 Example:
 
-.. code-block:: c
+.. code-block::
 
     struct sockaddr_rc addr;
 
@@ -78,7 +78,7 @@ Channel security level, possible values:
 
 Example:
 
-.. code-block:: c
+.. code-block::
 
     int level = BT_SECURITY_HIGH;
     int err = setsockopt(rfcomm_socket, SOL_BLUETOOTH, BT_SECURITY, &level,
@@ -104,7 +104,7 @@ authorization at profile level, possible values:
 
 Example:
 
-.. code-block:: c
+.. code-block::
 
     int defer_setup = 1;
     int err = setsockopt(rfcomm_socket, SOL_BLUETOOTH, BT_DEFER_SETUP,
