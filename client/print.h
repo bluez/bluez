@@ -12,3 +12,4 @@ void print_property(GDBusProxy *proxy, const char *name);
 void print_property_with_label(GDBusProxy *proxy, const char *name,
 					const char *label);
 void print_iter(const char *label, const char *name, DBusMessageIter *iter);
+void print_uuid(const char *label, const char *name, const char *uuid);

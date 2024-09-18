@@ -116,6 +116,12 @@ void print_iter(const char *label, const char *name, DBusMessageIter *iter)
 		bt_shell_printf("%s%s is invalid\n", label, name);
 		break;
 	case DBUS_TYPE_STRING:
+		if (!strcasecmp(name, "UUID")) {
+			dbus_message_iter_get_basic(iter, &valstr);
+			print_uuid(label, name, valstr);
+			break;
+		}
+		/* fall through */
 	case DBUS_TYPE_OBJECT_PATH:
 		dbus_message_iter_get_basic(iter, &valstr);
 		bt_shell_printf("%s%s: %s\n", label, name, valstr);
@@ -202,4 +208,31 @@ void print_property_with_label(GDBusProxy *proxy, const char *name,
 void print_property(GDBusProxy *proxy, const char *name)
 {
 	print_property_with_label(proxy, name, NULL);
+}
+
+void print_uuid(const char *label, const char *name, const char *uuid)
+{
+	const char *text;
+
+	text = bt_uuidstr_to_str(uuid);
+	if (text) {
+		char str[26];
+		unsigned int n;
+
+		str[sizeof(str) - 1] = '\0';
+
+		n = snprintf(str, sizeof(str), "%s", text);
+		if (n > sizeof(str) - 1) {
+			str[sizeof(str) - 2] = '.';
+			str[sizeof(str) - 3] = '.';
+			if (str[sizeof(str) - 4] == ' ')
+				str[sizeof(str) - 4] = '.';
+
+			n = sizeof(str) - 1;
+		}
+
+		bt_shell_printf("%s%s: %s%*c(%s)\n", label, name, str, 26 - n,
+								' ', uuid);
+	} else
+		bt_shell_printf("%s%s: %*c(%s)\n", label, name, 26, ' ', uuid);
 }
