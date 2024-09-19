@@ -3243,6 +3243,9 @@ static int bap_bcast_probe(struct btd_service *service)
 		free(data);
 		return -EINVAL;
 	}
+
+	bt_bap_set_debug(data->bap, bap_debug, NULL, NULL);
+
 	data->bcast_snks = queue_new();
 
 	if (!bt_bap_attach(data->bap, NULL)) {
