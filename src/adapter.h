@@ -298,3 +298,5 @@ void btd_adapter_store_conn_param(struct btd_adapter *adapter,
 				const bdaddr_t *peer, uint8_t bdaddr_type,
 				uint16_t min_interval, uint16_t max_interval,
 				uint16_t latency, uint16_t timeout);
+void btd_adapter_cancel_service_auth(struct btd_adapter *adapter,
+				struct btd_device *device);

@@ -7038,6 +7038,9 @@ void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 	struct authentication_req *auth = device->authr;
 	char addr[18];
 
+	if (device->adapter)
+		btd_adapter_cancel_service_auth(device->adapter, device);
+
 	if (!auth)
 		return;
 
