@@ -291,15 +291,14 @@ static int bt_shell_queue_exec(char *line)
 	return err;
 }
 
-static bool input_read(struct io *io, void *user_data)
+static bool bt_shell_input_line(struct input *input)
 {
-	struct input *input = user_data;
 	int fd;
 	char *line = NULL;
 	size_t len = 0;
 	ssize_t nread;
 
-	fd = io_get_fd(io);
+	fd = io_get_fd(input->io);
 
 	if (fd < 0) {
 		printf("io_get_fd() returned %d\n", fd);
@@ -336,7 +335,12 @@ static bool input_read(struct io *io, void *user_data)
 
 	free(line);
 
-	return true;
+	return input->f ? true : false;
+}
+
+static bool input_read(struct io *io, void *user_data)
+{
+	return bt_shell_input_line(user_data);
 }
 
 static bool input_hup(struct io *io, void *user_data)
@@ -371,13 +375,25 @@ static struct input *input_new(int fd)
 static bool bt_shell_input_attach(int fd)
 {
 	struct input *input;
+	struct queue *queue;
 
 	input = input_new(fd);
 	if (!input)
 		return false;
 
-	io_set_read_handler(input->io, input_read, input, NULL);
-	io_set_disconnect_handler(input->io, input_hup, input, NULL);
+	/* Save executing queue so input lines can be placed in the correct
+	 * order.
+	 */
+	queue = data.queue;
+	data.queue = queue_new();
+
+	while (bt_shell_input_line(input));
+
+	/* Push existing input lines back into the executing queue */
+	while (!queue_isempty(queue))
+		queue_push_tail(data.queue, queue_pop_head(queue));
+
+	queue_destroy(queue, free);
 
 	return true;
 }
@@ -396,7 +412,10 @@ static void cmd_script(int argc, char *argv[])
 
 	printf("Running script %s...\n", argv[1]);
 
-	bt_shell_input_attach(fd);
+	if (!bt_shell_input_attach(fd))
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static const struct bt_shell_menu_entry default_menu[] = {
