@@ -5048,17 +5048,8 @@ static void print_configuration(GDBusProxy *proxy)
 	print_lc3_meta(data, len);
 }
 
-static void cmd_show_transport(int argc, char *argv[])
+static void print_transport_properties(GDBusProxy *proxy)
 {
-	GDBusProxy *proxy;
-
-	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
-					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
-	if (!proxy) {
-		bt_shell_printf("Transport %s not found\n", argv[1]);
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
-	}
-
 	bt_shell_printf("Transport %s\n", g_dbus_proxy_get_path(proxy));
 
 	print_property(proxy, "UUID");
@@ -5072,6 +5063,31 @@ static void cmd_show_transport(int argc, char *argv[])
 	print_property(proxy, "QoS");
 	print_property(proxy, "Location");
 	print_property(proxy, "Links");
+}
+
+static void print_transports(void *data, void *user_data)
+{
+	print_transport_properties(data);
+}
+
+static void cmd_show_transport(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	/* Show all transports if no argument is given */
+	if (argc != 2) {
+		g_list_foreach(transports, print_transports, NULL);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Transport %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print_transport_properties(proxy);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -5641,7 +5657,7 @@ static const struct bt_shell_menu transport_menu = {
 	.entries = {
 	{ "list",         NULL,    cmd_list_transport,
 						"List available transports" },
-	{ "show",        "<transport>", cmd_show_transport,
+	{ "show",        "[transport]", cmd_show_transport,
 						"Transport information",
 						transport_generator },
 	{ "acquire",     "<transport> [transport1...]", cmd_acquire_transport,
