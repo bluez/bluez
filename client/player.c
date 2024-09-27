@@ -2828,9 +2828,41 @@ static void print_local_endpoint(struct endpoint *ep)
 				ep->context);
 }
 
+static void print_endpoint_properties(GDBusProxy *proxy)
+{
+	bt_shell_printf("Endpoint %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(proxy, "UUID");
+	print_property(proxy, "Codec");
+	print_capabilities(proxy);
+	print_property(proxy, "Device");
+	print_property(proxy, "DelayReporting");
+	print_property(proxy, "Locations");
+	print_property(proxy, "SupportedContext");
+	print_property(proxy, "Context");
+	print_property(proxy, "QoS");
+}
+
+static void print_endpoints(void *data, void *user_data)
+{
+	print_endpoint_properties(data);
+}
+
+static void print_local_endpoints(void *data, void *user_data)
+{
+	print_local_endpoint(data);
+}
+
 static void cmd_show_endpoint(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
+
+	/* Show all endpoints if no argument is given */
+	if (argc != 2) {
+		g_list_foreach(endpoints, print_endpoints, NULL);
+		g_list_foreach(local_endpoints, print_local_endpoints, NULL);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
 
 	proxy = g_dbus_proxy_lookup(endpoints, NULL, argv[1],
 						BLUEZ_MEDIA_ENDPOINT_INTERFACE);
@@ -2845,17 +2877,7 @@ static void cmd_show_endpoint(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
-	bt_shell_printf("Endpoint %s\n", g_dbus_proxy_get_path(proxy));
-
-	print_property(proxy, "UUID");
-	print_property(proxy, "Codec");
-	print_capabilities(proxy);
-	print_property(proxy, "Device");
-	print_property(proxy, "DelayReporting");
-	print_property(proxy, "Locations");
-	print_property(proxy, "SupportedContext");
-	print_property(proxy, "Context");
-	print_property(proxy, "QoS");
+	print_endpoint_properties(proxy);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -4320,7 +4342,7 @@ static const struct bt_shell_menu endpoint_menu = {
 	.entries = {
 	{ "list",         "[local]",    cmd_list_endpoints,
 						"List available endpoints" },
-	{ "show",         "<endpoint>", cmd_show_endpoint,
+	{ "show",         "[endpoint]", cmd_show_endpoint,
 						"Endpoint information",
 						endpoint_generator },
 	{ "register",     "<UUID> <codec[:company]> [capabilities...]",
