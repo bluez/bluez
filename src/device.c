@@ -3488,18 +3488,6 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 		device->connect = NULL;
 	}
 
-	while (device->disconnects) {
-		DBusMessage *msg = device->disconnects->data;
-
-		if (dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
-								"RemoveDevice"))
-			remove_device = true;
-
-		g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
-		device->disconnects = g_slist_remove(device->disconnects, msg);
-		dbus_message_unref(msg);
-	}
-
 	/* Check paired status of both bearers since it's possible to be
 	 * paired but not connected via link key to LTK conversion.
 	 */
@@ -3538,6 +3526,19 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
+
+	/* remove device only if both bearers are disconnected */
+	while (device->disconnects) {
+		DBusMessage *msg = device->disconnects->data;
+
+		if (dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
+								"RemoveDevice"))
+			remove_device = true;
+
+		g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
+		device->disconnects = g_slist_remove(device->disconnects, msg);
+		dbus_message_unref(msg);
+	}
 
 	if (remove_device)
 		*remove = remove_device;
