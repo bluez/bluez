@@ -41,7 +41,7 @@ register
 Register Endpoint.
 
 :Usage: **# register <UUID> <codec[:company]> [capabilities...]**
-:Example LC3 source:
+:Example LC3 BAP source:
 	 | **#endpoint.register 00002bcb-0000-1000-8000-00805f9b34fb 0x06**
 	 | **#Auto Accept (yes/no):** y
 	 | **#Max Transports (auto/value):** a
@@ -50,7 +50,7 @@ Register Endpoint.
 	 | **#Context (value):** 3
 	 | **#CIG (auto/value):** a
 	 | **#CIS (auto/value):** a
-:Example LC3 since with extra capabilities:
+:Example LC3 BAP sink with extra capabilities:
 	 | **#endpoint.register 00002bc9-0000-1000-8000-00805f9b34fb 0x06 "0x03 0xe5 0x03 0x00 0x02 0xe6 0x07"**
 	 | **#Enter Metadata (value/no):** n
 	 | **#Auto Accept (yes/no):** y
@@ -60,6 +60,25 @@ Register Endpoint.
 	 | **#Context (value):** 3
 	 | **#CIG (auto/value):** a
 	 | **#CIS (auto/value):** a
+:Example LC3 BAP Broadcast source:
+	 | **#endpoint.register 00001852-0000-1000-8000-00805f9b34fb 0x06**
+	 | **#Auto Accept (yes/no):** y
+	 | **#Max Transports (auto/value):** a
+	 | **#Locations:** 3
+	 | **#Supported Context (value):** 1
+:Example LC3 BAP Broadcast sink:
+	 | **#endpoint.register 00001851-0000-1000-8000-00805f9b34fb 0x06**
+	 | **#Auto Accept (yes/no):** y
+	 | **#Max Transports (auto/value):** a
+	 | **#Locations:** 3
+	 | **#Supported Context (value):** 1
+
+Note:
+
+If running the setup with an audio server that has LE Audio support (such as PipeWire) it will
+automatically register endpoints according to the configured roles. For more details
+about configuring a Broadcast Source with PipeWire check:
+https://gitlab.freedesktop.org/pipewire/pipewire/-/blob/master/doc/dox/config/pipewire-props.7.md
 
 unregister
 ----------
@@ -68,12 +87,22 @@ Unregister Endpoint.
 
 :Usage: **# unregister <UUID/object>**
 
+Note:
+
+If the endpoint was registered by an audio server, it can't be unregistered from bluetoothctl.
+This must be done by the audio server as well.
+
 config
 ------
 
 Configure Endpoint.
 
 :Usage: **# config <endpoint> <local endpoint> [preset]**
+
+Note:
+
+If the endpoint was registered by an audio server, it can't be configured from bluetoothctl.
+This must be done by the audio server as well.
 
 presets
 -------

@@ -42,12 +42,47 @@ Acquire transport.
 
 :Usage: **# acquire <transport> [transport1...]**
 
+Note:
+
+If running the setup with an audio server that has LE Audio support (such as PipeWire) it will
+automatically acquire transports according to the configured roles.
+
+select
+-------
+
+Select transport. For transports created on a Broadcast Sink device only. This moves
+the transport to the "broadcasting" state, pending acquire.
+
+:Usage: **# select <transport> [transport1...]**
+
+Note:
+If running the setup with an audio server that has LE Audio support (such as PipeWire), it will
+prompt it to automatically acquire the transport.
+
+unselect
+--------
+
+Unelect transport. For transports created on a Broadcast Sink device only. This moves
+the transport to the "idle" state, pending release by the audio server. If the transport
+was acquired by bluetoothctl it can be released straight away, without having to be
+unselected.
+
+:Usage: **# unselect <transport> [transport1...]**
+
+Note:
+If running the setup with an audio server that has LE Audio support (such as PipeWire), it will
+prompt it to automatically release the transport.
+
 release
 -------
 
 Release transport.
 
 :Usage: **# release <transport> [transport1...]**
+
+Note:
+
+Transports acquired by an audio server, can only be released by said audio server.
 
 send
 ----
