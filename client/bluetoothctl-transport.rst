@@ -33,7 +33,7 @@ show
 
 Show transport information.
 
-:Usage: **# show <transport>**
+:Usage: **# show [transport]**
 
 acquire
 -------

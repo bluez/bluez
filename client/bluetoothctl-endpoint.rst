@@ -33,7 +33,7 @@ show
 
 Endpoint information.
 
-:Usage: **# show <endpoint>**
+:Usage: **# show [endpoint]**
 
 register
 --------
