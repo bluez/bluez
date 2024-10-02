@@ -1,0 +1,28 @@
+power on
+#
+#
+# Register Broadcast Sink endpoint
+#
+endpoint.register 00001851-0000-1000-8000-00805f9b34fb 0x06
+y
+a
+3
+4
+#
+# Start advertising and wait for a Broadcast Assistant
+# to connect.
+#
+advertise on
+#
+#
+# After the connection has been established, transports will
+# be created for streams added by the Bradcast Assistant that
+# match the audio capabilities chosen at endpoint register.
+# Acquire the desired transport to start receiving audio.
+#
+# transport.acquire /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/bis_n/fd_m
+#
+#
+# Check that the transport has transitioned to "active" state
+#
+# [CHG] Transport /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/bis_n/fd_m State: active
