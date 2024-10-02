@@ -6484,8 +6484,8 @@ static void check_pac_caps_ltv(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 
 	switch (t) {
 	case BAP_FREQ_LTV_TYPE:
-		mask = *((uint16_t *)v);
-		mask = le16_to_cpu(mask);
+		mask = get_le16(v);
+
 		if (mask & (1 << (bis_v[0] - 1)))
 			compare_data->data32 |= 1<<t;
 		break;
@@ -6494,12 +6494,10 @@ static void check_pac_caps_ltv(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 			compare_data->data32 |= 1<<t;
 		break;
 	case BAP_FRAME_LEN_LTV_TYPE:
-		min = *((uint16_t *)v);
-		max = *((uint16_t *)(&v[2]));
-		frame_len = *((uint16_t *)bis_v);
-		min = le16_to_cpu(min);
-		max = le16_to_cpu(max);
-		frame_len = le16_to_cpu(frame_len);
+		min = get_le16(v);
+		max = get_le16(v + 2);
+		frame_len = get_le16(bis_v);
+
 		if ((frame_len >= min) &&
 				(frame_len <= max))
 			compare_data->data32 |= 1<<t;
