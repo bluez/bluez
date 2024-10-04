@@ -1438,18 +1438,19 @@ void media_player_set_metadata(struct media_player *mp,
 				void *data, size_t len)
 {
 	char *value, *curval;
+	GHashTable *metadata = item ? item->metadata : mp->track;
 
 	value = g_strndup(data, len);
 
 	DBG("%s: %s", key, value);
 
-	curval = g_hash_table_lookup(mp->track, key);
+	curval = g_hash_table_lookup(metadata, key);
 	if (g_strcmp0(curval, value) == 0) {
 		g_free(value);
 		return;
 	}
 
-	g_hash_table_replace(mp->track, g_strdup(key), value);
+	g_hash_table_replace(metadata, g_strdup(key), value);
 }
 
 void media_player_metadata_changed(struct media_player *mp)
