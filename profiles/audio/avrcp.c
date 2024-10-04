@@ -2414,15 +2414,11 @@ static void avrcp_list_player_attributes(struct avrcp *session)
 }
 
 static void avrcp_parse_attribute_list(struct avrcp_player *player,
+					struct media_item *item,
 					uint8_t *operands, uint8_t count)
 {
 	struct media_player *mp = player->user_data;
-	struct media_item *item;
 	int i;
-
-	media_player_clear_metadata(mp);
-
-	item = media_player_set_playlist_item(mp, player->uid);
 
 	for (i = 0; count > 0; count--) {
 		uint32_t id;
@@ -2448,8 +2444,6 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 
 		i += len;
 	}
-
-	media_player_metadata_changed(mp);
 }
 
 static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
@@ -2462,6 +2456,8 @@ static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->controller->player;
 	struct avrcp_header *pdu = (void *) operands;
+	struct media_player *mp = player->user_data;
+	struct media_item *item;
 	uint8_t count;
 
 	if (code == AVC_CTYPE_REJECTED)
@@ -2474,7 +2470,13 @@ static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 		return FALSE;
 	}
 
-	avrcp_parse_attribute_list(player, &pdu->params[1], count);
+	media_player_clear_metadata(mp);
+
+	item = media_player_set_playlist_item(mp, player->uid);
+
+	avrcp_parse_attribute_list(player, item, &pdu->params[1], count);
+
+	media_player_metadata_changed(mp);
 
 	avrcp_get_play_status(session);
 
@@ -2560,9 +2562,10 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	struct avrcp_player *player;
 	struct media_player *mp;
 	struct media_item *item;
-	uint16_t namelen;
+	uint16_t namelen, namesize;
 	char name[255];
 	uint64_t uid;
+	uint8_t count;
 
 	if (len < 13)
 		return NULL;
@@ -2570,9 +2573,12 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	uid = get_be64(&operands[0]);
 
 	memset(name, 0, sizeof(name));
-	namelen = MIN(get_be16(&operands[11]), sizeof(name) - 1);
+	namesize = get_be16(&operands[11]);
+	namelen = MIN(namesize, sizeof(name) - 1);
 	if (namelen > 0)
 		memcpy(name, &operands[13], namelen);
+
+	count = operands[13 + namesize];
 
 	player = session->controller->player;
 	mp = player->user_data;
@@ -2582,6 +2588,9 @@ static struct media_item *parse_media_element(struct avrcp *session,
 		return NULL;
 
 	media_item_set_playable(item, true);
+
+	avrcp_parse_attribute_list(player, item, &operands[14 + namesize],
+					count);
 
 	return item;
 }
@@ -2717,20 +2726,25 @@ static void avrcp_list_items(struct avrcp *session, uint32_t start,
 	memset(buf, 0, sizeof(buf));
 
 	pdu->pdu_id = AVRCP_GET_FOLDER_ITEMS;
-	pdu->param_len = cpu_to_be16(10 + sizeof(uint32_t));
+	pdu->param_len = cpu_to_be16(10 + (6 * sizeof(uint32_t)));
 
 	pdu->params[0] = player->scope;
 
 	put_be32(start, &pdu->params[1]);
 	put_be32(end, &pdu->params[5]);
 
-	pdu->params[9] = 1;
+	pdu->params[9] = 6;
 
 	/* Only the title (0x01) is mandatory. This can be extended to
 	 * support AVRCP_MEDIA_ATTRIBUTE_* attributes */
 	put_be32(AVRCP_MEDIA_ATTRIBUTE_TITLE, &pdu->params[10]);
+	put_be32(AVRCP_MEDIA_ATTRIBUTE_ARTIST, &pdu->params[14]);
+	put_be32(AVRCP_MEDIA_ATTRIBUTE_ALBUM, &pdu->params[18]);
+	put_be32(AVRCP_MEDIA_ATTRIBUTE_TRACK, &pdu->params[22]);
+	put_be32(AVRCP_MEDIA_ATTRIBUTE_DURATION, &pdu->params[26]);
+	put_be32(AVRCP_MEDIA_ATTRIBUTE_IMG_HANDLE, &pdu->params[30]);
 
-	length += sizeof(uint32_t);
+	length += 6 * sizeof(uint32_t);
 
 	avctp_send_browsing_req(session->conn, buf, length,
 					avrcp_list_items_rsp, session);
@@ -2855,6 +2869,8 @@ static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->controller->player;
 	struct avrcp_browsing_header *pdu = (void *) operands;
+	struct media_player *mp = player->user_data;
+	struct media_item *item;
 	uint8_t count;
 
 	if (pdu == NULL) {
@@ -2874,7 +2890,13 @@ static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
 		return FALSE;
 	}
 
-	avrcp_parse_attribute_list(player, &pdu->params[2], count);
+	media_player_clear_metadata(mp);
+
+	item = media_player_set_playlist_item(mp, player->uid);
+
+	avrcp_parse_attribute_list(player, item, &pdu->params[2], count);
+
+	media_player_metadata_changed(mp);
 
 	avrcp_get_play_status(session);
 
