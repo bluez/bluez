@@ -3819,6 +3819,17 @@ static void avrcp_setting_changed(struct avrcp *session,
 	}
 }
 
+static void avrcp_now_playing_changed(struct avrcp *session,
+						struct avrcp_header *pdu)
+{
+	struct avrcp_player *player = session->controller->player;
+	struct media_player *mp = player->user_data;
+
+	DBG("NowPlaying changed");
+
+	media_player_clear_playlist(mp);
+}
+
 static void avrcp_available_players_changed(struct avrcp *session,
 						struct avrcp_header *pdu)
 {
@@ -3908,6 +3919,9 @@ static gboolean avrcp_handle_event(struct avctp *conn, uint8_t code,
 		break;
 	case AVRCP_EVENT_SETTINGS_CHANGED:
 		avrcp_setting_changed(session, pdu);
+		break;
+	case AVRCP_EVENT_NOW_PLAYING_CHANGED:
+		avrcp_now_playing_changed(session, pdu);
 		break;
 	case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
 		avrcp_available_players_changed(session, pdu);
@@ -4000,6 +4014,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn, uint8_t code,
 		case AVRCP_EVENT_TRACK_CHANGED:
 		case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
 		case AVRCP_EVENT_SETTINGS_CHANGED:
+		case AVRCP_EVENT_NOW_PLAYING_CHANGED:
 		case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		case AVRCP_EVENT_UIDS_CHANGED:
 		case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:

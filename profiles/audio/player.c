@@ -2024,6 +2024,17 @@ struct media_item *media_player_set_playlist_item(struct media_player *mp,
 	return item;
 }
 
+void media_player_clear_playlist(struct media_player *mp)
+{
+	if (mp->playlist) {
+		g_slist_free_full(mp->playlist->items, media_item_destroy);
+		mp->playlist->items = NULL;
+	}
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), mp->path,
+					MEDIA_PLAYER_INTERFACE, "Playlist");
+}
+
 void media_player_set_obex_port(struct media_player *mp, uint16_t port)
 {
 	mp->obex_port = port;

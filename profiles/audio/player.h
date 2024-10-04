@@ -86,6 +86,7 @@ void media_player_set_folder(struct media_player *mp, const char *path,
 void media_player_set_playlist(struct media_player *mp, const char *name);
 struct media_item *media_player_set_playlist_item(struct media_player *mp,
 								uint64_t uid);
+void media_player_clear_playlist(struct media_player *mp);
 void media_player_set_obex_port(struct media_player *mp, uint16_t port);
 
 struct media_item *media_player_create_folder(struct media_player *mp,
