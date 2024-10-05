@@ -1765,6 +1765,19 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
+/* SetAbsoluteVolume requires at least version 1.4 and a category-2 */
+static bool avrcp_volume_supported(struct avrcp_data *data)
+{
+	if (!data || data->version < 0x0104)
+		return false;
+
+	if (btd_opts.avrcp.volume_category &&
+			!(data->features & AVRCP_FEATURE_CATEGORY_2))
+		return false;
+
+	return true;
+}
+
 static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
@@ -1774,6 +1787,11 @@ static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 
 	if (len != 1)
 		goto err;
+
+	if (!avrcp_volume_supported(session->target)) {
+		error("SetAbsoluteVolume not supported");
+		goto err;
+	}
 
 	volume = pdu->params[0] & 0x7F;
 
@@ -3767,6 +3785,11 @@ static void avrcp_volume_changed(struct avrcp *session,
 	struct avrcp_player *player = target_get_player(session);
 	int8_t volume;
 
+	if (!avrcp_volume_supported(session->controller)) {
+		error("EVENT_VOLUME_CHANGED not supported");
+		return;
+	}
+
 	volume = pdu->params[1] & 0x7F;
 
 	/* Always attempt to update the transport volume */
@@ -4041,7 +4064,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn, uint8_t code,
 		case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		case AVRCP_EVENT_UIDS_CHANGED:
 		case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
-			/* These events above requires a player */
+			/* These events above require a player */
 			if (!session->controller ||
 						!session->controller->player)
 				break;
@@ -4245,10 +4268,13 @@ static void target_init(struct avrcp *session)
 	if (target->version < 0x0104)
 		return;
 
+	if (!avrcp_volume_supported(target))
+		session->supported_events |=
+				(1 << AVRCP_EVENT_VOLUME_CHANGED);
+
 	session->supported_events |=
 				(1 << AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED) |
-				(1 << AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED) |
-				(1 << AVRCP_EVENT_VOLUME_CHANGED);
+				(1 << AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED);
 
 	/* Only check capabilities if controller is not supported */
 	if (session->controller == NULL)
@@ -4665,8 +4691,10 @@ int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify)
 		return -ENOTCONN;
 
 	if (notify) {
-		if (!session->target)
+		if (!avrcp_volume_supported(session->target)) {
+			error("EVENT_VOLUME_CHANGED not supported");
 			return -ENOTSUP;
+		}
 		return avrcp_event(session, AVRCP_EVENT_VOLUME_CHANGED,
 								&volume);
 	}
@@ -4679,8 +4707,8 @@ int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify)
 		if (!session->controller && !avrcp_event_registered(session,
 						AVRCP_EVENT_VOLUME_CHANGED))
 			return -ENOTSUP;
-	} else if (!session->controller ||
-				session->controller->version < 0x0104) {
+	} else if (!avrcp_volume_supported(session->controller)) {
+		error("SetAbsoluteVolume not supported");
 		return -ENOTSUP;
 	}
 
