@@ -3769,11 +3769,12 @@ int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 		return -EINVAL;
 
 	if (stream->lsep->state != AVDTP_STATE_CONFIGURED &&
+				stream->lsep->state != AVDTP_STATE_OPEN &&
 				stream->lsep->state != AVDTP_STATE_STREAMING)
 		return -EINVAL;
 
 	if (!stream->delay_reporting || session->version < 0x0103)
-		return -EINVAL;
+		return -ENOTSUP;
 
 	stream->delay = delay;
 
