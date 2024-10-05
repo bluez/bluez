@@ -48,6 +48,7 @@
 #include "src/dbus-common.h"
 #include "src/shared/timeout.h"
 #include "src/shared/util.h"
+#include "src/btd.h"
 
 #include "avctp.h"
 #include "avrcp.h"
@@ -4670,9 +4671,18 @@ int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify)
 								&volume);
 	}
 
-	if (!session->controller && !avrcp_event_registered(session,
-					AVRCP_EVENT_VOLUME_CHANGED))
+	if (btd_opts.avrcp.volume_without_target) {
+		/* If there is no target profile (we didn't create a controller
+		 * for it), allow the call to pass through if the remote
+		 * controller registered for a volume changed event.
+		 */
+		if (!session->controller && !avrcp_event_registered(session,
+						AVRCP_EVENT_VOLUME_CHANGED))
+			return -ENOTSUP;
+	} else if (!session->controller ||
+				session->controller->version < 0x0104) {
 		return -ENOTSUP;
+	}
 
 	memset(buf, 0, sizeof(buf));
 
