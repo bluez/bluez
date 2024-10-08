@@ -944,6 +944,8 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
 	struct bt_bass_set_bcast_code_params *params;
 	struct bt_bcast_src *bcast_src;
 	struct iovec *notif;
+	const struct queue_entry *entry;
+	int ret;
 
 	/* Get Set Broadcast Code command parameters */
 	params = util_iov_pull_mem(iov, sizeof(*params));
@@ -978,7 +980,19 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
 		return;
 	}
 
-	/* TODO: Call BASS plugin callback to sync with required BIS */
+	for (entry = queue_get_entries(bass->cp_handlers); entry;
+						entry = entry->next) {
+		struct bt_bass_cp_handler *cb = entry->data;
+
+		if (cb->handler) {
+			ret = cb->handler(bcast_src,
+					BT_BASS_SET_BCAST_CODE,
+					params, cb->data);
+			if (ret)
+				DBG(bass, "Unable to handle Set "
+						"Broadcast Code operation");
+		}
+	}
 }
 
 #define BASS_OP(_str, _op, _size, _func) \
