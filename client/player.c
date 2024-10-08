@@ -5150,15 +5150,23 @@ static void set_bcode_cb(const DBusError *error, void *user_data)
 static void set_bcode(const char *input, void *user_data)
 {
 	GDBusProxy *proxy = user_data;
-	char *bcode = g_strdup(input);
+	char *bcode;
+
+	if (!strcasecmp(input, "n") || !strcasecmp(input, "no"))
+		bcode = g_new0(char, 16);
+	else
+		bcode = g_strdup(input);
 
 	if (g_dbus_proxy_set_property_dict(proxy, "QoS",
 				set_bcode_cb, user_data,
 				NULL, "BCode", DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
 				strlen(bcode), bcode, NULL) == FALSE) {
 		bt_shell_printf("Setting broadcast code failed\n");
+		g_free(bcode);
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
+
+	g_free(bcode);
 }
 
 static void transport_select(GDBusProxy *proxy, bool prompt)
@@ -5183,7 +5191,8 @@ static void transport_select(GDBusProxy *proxy, bool prompt)
 			dbus_message_iter_get_basic(&value, &encryption);
 			if (encryption == 1) {
 				bt_shell_prompt_input("",
-				"Enter broadcast code:", set_bcode, proxy);
+					"Enter brocast code[value/no]:",
+					set_bcode, proxy);
 				return;
 			}
 			break;
