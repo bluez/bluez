@@ -18,7 +18,22 @@ advertise on
 # After the connection has been established, transports will
 # be created for streams added by the Bradcast Assistant that
 # match the audio capabilities chosen at endpoint register.
-# Acquire the desired transport to start receiving audio.
+# Select the desired transport. If the stream is encrypted,
+# a prompt will be displayed to enter the Broadacast Code for
+# decrypting. If the code is unknown, the "no" option will
+# request the code from the Broadcast Assistant.
+#
+# transport.select /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/bis_n/fd_m
+# [] Enter brocast code[value/no]: no
+#
+#
+# If the Broadcast Assistant provided the Broadcast Code, the
+# transport will transition to "broadcasting" state.
+#
+# [CHG] Transport /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/bis_n/fd_m State: broadcasting
+#
+#
+# Acquire the transport to start receiving audio.
 #
 # transport.acquire /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/bis_n/fd_m
 #

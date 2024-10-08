@@ -25,10 +25,13 @@ scan on
 # using the "push" command from the assistant submenu. When asked
 # to enter stream metadata, the "auto" option will keep the LTV
 # values advertised by the Broadcast Source. By entering new LTV
-# values, the default metadata will be overwritten.
+# values, the default metadata will be overwritten. If the stream
+# is encrypted, a prompt will be displayed to enter the Broadcast
+# Code for decrypting.
 #
 # assistant.push /org/bluez/hci0/src_yy_yy_yy_yy_yy_yy/dev_xx_xx_xx_xx_xx_xx/bis_n
 # [Assistant] Enter Metadata (auto/value): a
+# [Assistant] Enter Broadcast Code (auto/value): Borne House
 #
 #
 # Wait for the MediaAssistant object to transition to "active"
