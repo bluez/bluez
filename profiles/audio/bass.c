@@ -104,6 +104,15 @@ struct bass_delegator {
 	struct bt_bcast_src *src;
 	struct bt_bap *bap;
 	unsigned int state_id;
+	uint8_t *bcode;
+	unsigned int timeout;
+	struct queue *bcode_reqs;
+};
+
+struct bass_bcode_req {
+	struct bt_bap_stream *stream;
+	bt_bass_bcode_func_t cb;
+	void *user_data;
 };
 
 static struct queue *sessions;
@@ -115,6 +124,90 @@ static const char *state2str(enum assistant_state state);
 static void bass_debug(const char *str, void *user_data)
 {
 	DBG_IDX(0xffff, "%s", str);
+}
+
+static gboolean req_timeout(gpointer user_data)
+{
+	struct bass_delegator *dg = user_data;
+	struct bass_bcode_req *req;
+
+	DBG("delegator %p", dg);
+
+	dg->timeout = 0;
+
+	while ((req = queue_pop_head(dg->bcode_reqs))) {
+		if (req->cb)
+			req->cb(req->user_data, -ETIMEDOUT);
+
+		free(req);
+	}
+
+	return FALSE;
+}
+
+static bool delegator_match_bap(const void *data, const void *match_data)
+{
+	const struct bass_delegator *dg = data;
+	const struct bt_bap *bap = match_data;
+
+	return dg->bap == bap;
+}
+
+static void stream_set_bcode(uint8_t *bcode, struct bt_bap_stream *stream,
+				bt_bass_bcode_func_t cb, void *user_data)
+{
+	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
+
+	/* Allocate Broadcast Code inside stream QoS */
+	qos->bcast.bcode = util_iov_new(bcode, BT_BASS_BCAST_CODE_SIZE);
+
+	if (cb)
+		cb(user_data, 0);
+}
+
+void bass_req_bcode(struct bt_bap_stream *stream,
+				bt_bass_bcode_func_t cb,
+				void *user_data)
+{
+	struct bt_bap *bap = bt_bap_stream_get_session(stream);
+	struct bass_delegator *dg;
+	struct bass_bcode_req *req;
+
+	dg = queue_find(delegators, delegator_match_bap, bap);
+	if (!dg) {
+		cb(user_data, -EINVAL);
+		return;
+	}
+
+	if (dg->bcode) {
+		/* Broadcast Code has already been received before. */
+		stream_set_bcode(dg->bcode, stream, cb, user_data);
+		return;
+	}
+
+	/* Create a request for the Broadcast Code. The request
+	 * will be considered handled when the Broadcast Code is
+	 * received from a Broadcast Assistant.
+	 */
+	req = new0(struct bass_bcode_req, 1);
+	if (!req)
+		return;
+
+	req->stream = stream;
+	req->cb = cb;
+	req->user_data = user_data;
+
+	queue_push_tail(dg->bcode_reqs, req);
+
+	/* Mark the encryption status as "Broadcast Code Required"
+	 * in the Broadcast Receive State characteristic and notify
+	 * Broadcast Assistants.
+	 */
+	bt_bass_set_enc(dg->src, BT_BASS_BIG_ENC_STATE_BCODE_REQ);
+
+	/* Add timeout for Broadcast Assistants to provide the Code. */
+	if (!dg->timeout)
+		dg->timeout = g_timeout_add_seconds(10, req_timeout, dg);
 }
 
 static bool delegator_match_device(const void *data, const void *match_data)
@@ -232,6 +325,13 @@ bool bass_bcast_remove(struct btd_device *device)
 
 	/* Unregister BAP stream state changed callback. */
 	bt_bap_state_unregister(dg->bap, dg->state_id);
+
+	if (dg->timeout)
+		g_source_remove(dg->timeout);
+
+	queue_destroy(dg->bcode_reqs, free);
+
+	free(dg->bcode);
 
 	free(dg);
 
@@ -794,6 +894,7 @@ probe:
 
 	dg->device = device;
 	dg->src = bcast_src;
+	dg->bcode_reqs = queue_new();
 
 	if (!delegators)
 		delegators = queue_new();
@@ -808,6 +909,43 @@ probe:
 	return 0;
 }
 
+static bool delegator_match_src(const void *data, const void *match_data)
+{
+	const struct bass_delegator *dg = data;
+	const struct bt_bcast_src *src = match_data;
+
+	return dg->src == src;
+}
+
+static int handle_set_bcode_req(struct bt_bcast_src *bcast_src,
+			struct bt_bass_set_bcast_code_params *params,
+			struct bass_data *data)
+{
+	struct bass_delegator *dg;
+	struct bass_bcode_req *req;
+
+	dg = queue_find(delegators, delegator_match_src, bcast_src);
+	if (!dg)
+		return -EINVAL;
+
+	dg->bcode = new0(uint8_t, BT_BASS_BCAST_CODE_SIZE);
+	memcpy(dg->bcode, params->bcast_code, BT_BASS_BCAST_CODE_SIZE);
+
+	if (dg->timeout) {
+		g_source_remove(dg->timeout);
+		dg->timeout = 0;
+	}
+
+	/* Set the Broadcast Code for each stream that required it. */
+	while ((req = queue_pop_head(dg->bcode_reqs))) {
+		stream_set_bcode(dg->bcode, req->stream, req->cb,
+							req->user_data);
+		free(req);
+	}
+
+	return 0;
+}
+
 static int cp_handler(struct bt_bcast_src *bcast_src, uint8_t op, void *params,
 		void *user_data)
 {
@@ -817,6 +955,9 @@ static int cp_handler(struct bt_bcast_src *bcast_src, uint8_t op, void *params,
 	switch (op) {
 	case BT_BASS_ADD_SRC:
 		err = handle_add_src_req(bcast_src, params, data);
+		break;
+	case BT_BASS_SET_BCAST_CODE:
+		err = handle_set_bcode_req(bcast_src, params, data);
 		break;
 	}
 
