@@ -1832,3 +1832,27 @@ bool bt_bass_check_bis(struct bt_bcast_src *bcast_src, uint8_t bis)
 
 	return false;
 }
+
+int bt_bass_set_enc(struct bt_bcast_src *bcast_src, uint8_t enc)
+{
+	struct iovec *iov;
+
+	if (!bcast_src)
+		return -EINVAL;
+
+	if (bcast_src->enc == enc)
+		return 0;
+
+	bcast_src->enc = enc;
+
+	iov = bass_parse_bcast_src(bcast_src);
+	if (!iov)
+		return -ENOMEM;
+
+	bt_bass_notify_all(bcast_src->attr, iov);
+
+	free(iov->iov_base);
+	free(iov);
+
+	return 0;
+}
