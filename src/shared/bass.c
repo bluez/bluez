@@ -1793,6 +1793,9 @@ int bt_bass_set_bis_sync(struct bt_bcast_src *bcast_src, uint8_t bis)
 		if (sgrp->pending_bis_sync & bitmask) {
 			sgrp->bis_sync |= bitmask;
 
+			if (bcast_src->enc == BT_BASS_BIG_ENC_STATE_BCODE_REQ)
+				bcast_src->enc = BT_BASS_BIG_ENC_STATE_DEC;
+
 			iov = bass_parse_bcast_src(bcast_src);
 			if (!iov)
 				return -ENOMEM;
