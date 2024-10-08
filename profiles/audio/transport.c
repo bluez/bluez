@@ -35,6 +35,7 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/bap.h"
+#include "src/shared/bass.h"
 #include "src/shared/io.h"
 
 #include "asha.h"
@@ -45,6 +46,7 @@
 #include "sink.h"
 #include "source.h"
 #include "avrcp.h"
+#include "bass.h"
 
 #define MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport1"
 
@@ -1208,6 +1210,18 @@ static gboolean qos_bcast_exists(const GDBusPropertyTable *property, void *data)
 	return bap->qos.bcast.io_qos.phy != 0x00;
 }
 
+static void bcast_qos_set(void *user_data, int err)
+{
+	GDBusPendingPropertySet id = GPOINTER_TO_UINT(user_data);
+
+	if (!err)
+		g_dbus_pending_property_success(id);
+	else
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".Failed",
+					"Failed to set Broadcast Code");
+}
+
 static void set_bcast_qos(const GDBusPropertyTable *property,
 			DBusMessageIter *dict, GDBusPendingPropertySet id,
 			void *data)
@@ -1230,9 +1244,27 @@ static void set_bcast_qos(const GDBusPropertyTable *property,
 		uint8_t *val;
 		int len;
 		DBusMessageIter array;
+		uint8_t empty_bcode[BT_BASS_BCAST_CODE_SIZE] = {0};
 
 		dbus_message_iter_recurse(&value, &array);
 		dbus_message_iter_get_fixed_array(&array, &val, &len);
+
+		if (len > BT_BASS_BCAST_CODE_SIZE) {
+			g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Invalid arguments in method call");
+			return;
+		}
+
+		if (!memcmp(val, empty_bcode, len)) {
+			/* If the user did not provide a Broadcast Code
+			 * for the encrypted stream, request the code from
+			 * Broadcast Assistants, if any are available.
+			 */
+			bass_req_bcode(bap->stream, bcast_qos_set,
+						GUINT_TO_POINTER(id));
+			return;
+		}
 
 		bap_qos->bcast.bcode = util_iov_new(val, len);
 	}
