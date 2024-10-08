@@ -252,6 +252,7 @@ struct avdtp_service_capability *avdtp_stream_get_codec(
 						struct avdtp_stream *stream);
 gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 					GSList *caps);
+gboolean avdtp_stream_has_delay_reporting(struct avdtp_stream *stream);
 struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
 						struct avdtp_stream *stream);
 

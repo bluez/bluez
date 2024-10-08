@@ -3203,6 +3203,10 @@ gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 	return TRUE;
 }
 
+gboolean avdtp_stream_has_delay_reporting(struct avdtp_stream *stream) {
+	return stream->delay_reporting;
+}
+
 struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
 						struct avdtp_stream *stream)
 {
