@@ -113,7 +113,7 @@ static void connect_reply(DBusMessage *message, void *user_data)
 struct connect_args {
 	char *dev;
 	char *target;
-	uint8_t channel;
+	uint16_t channel;
 };
 
 static void connect_args_free(void *data)
@@ -143,9 +143,14 @@ static void connect_setup(DBusMessageIter *iter, void *user_data)
 		g_dbus_dict_append_entry(&dict, "Target",
 					DBUS_TYPE_STRING, &args->target);
 
-	if (args->channel)
-		g_dbus_dict_append_entry(&dict, "Channel",
+	if (args->channel) {
+		if (args->channel > 31)
+			g_dbus_dict_append_entry(&dict, "PSM",
+					DBUS_TYPE_UINT16, &args->channel);
+		else
+			g_dbus_dict_append_entry(&dict, "Channel",
 					DBUS_TYPE_BYTE, &args->channel);
+	}
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -168,8 +173,8 @@ static void cmd_connect(int argc, char *argv[])
 		char *endptr = NULL;
 
 		channel = strtol(argv[3], &endptr, 0);
-		if (!endptr || *endptr != '\0' || channel > UINT8_MAX) {
-			bt_shell_printf("Invalid channel\n");
+		if (!endptr || *endptr != '\0' || channel > UINT16_MAX) {
+			bt_shell_printf("Invalid channel or PSM\n");
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 	}
@@ -1845,7 +1850,7 @@ static void cmd_mkdir(int argc, char *argv[])
 static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
-	{ "connect",      "<dev> [uuid] [channel]", cmd_connect,
+	{ "connect",      "<dev> [uuid] [channel|PSM]", cmd_connect,
 						"Connect session" },
 	{ "disconnect",   "[session]", cmd_disconnect, "Disconnect session",
 						session_generator },
