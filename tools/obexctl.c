@@ -33,8 +33,7 @@
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
-#define PROMPT_ON	COLOR_BLUE "[obex]" COLOR_OFF "# "
-#define PROMPT_OFF	"[obex]# "
+#define PROMPT		"[obex]# "
 
 #define OBEX_SESSION_INTERFACE "org.bluez.obex.Session1"
 #define OBEX_TRANSFER_INTERFACE "org.bluez.obex.Transfer1"
@@ -64,13 +63,13 @@ struct transfer_data {
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	bt_shell_attach(fileno(stdin));
-	bt_shell_set_prompt(PROMPT_ON);
+	bt_shell_set_prompt(PROMPT, COLOR_BLUE);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
 	bt_shell_detach();
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT, NULL);
 }
 
 static char *generic_generator(const char *text, int state, GList *source)
@@ -404,15 +403,15 @@ static void set_default_session(GDBusProxy *proxy)
 	default_session = proxy;
 
 	if (!g_dbus_proxy_get_property(proxy, "Destination", &iter)) {
-		desc = g_strdup(PROMPT_ON);
+		desc = g_strdup(PROMPT);
 		goto done;
 	}
 
 	dbus_message_iter_get_basic(&iter, &desc);
-	desc = g_strdup_printf(COLOR_BLUE "[%s]" COLOR_OFF "# ", desc);
+	desc = g_strdup_printf("[%s] #", desc);
 
 done:
-	bt_shell_set_prompt(desc);
+	bt_shell_set_prompt(desc, COLOR_BLUE);
 	g_free(desc);
 }
 
@@ -2152,7 +2151,7 @@ int main(int argc, char *argv[])
 
 	bt_shell_init(argc, argv, NULL);
 	bt_shell_set_menu(&main_menu);
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT, NULL);
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SESSION, NULL, NULL);
 

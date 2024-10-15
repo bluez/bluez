@@ -29,9 +29,9 @@ void set_menu_prompt(const char *name, const char *id)
 {
 	char *prompt;
 
-	prompt = g_strdup_printf(COLOR_BLUE "[%s%s%s]" COLOR_OFF "# ", name,
+	prompt = g_strdup_printf("[%s%s%s]# ", name,
 					id ? ": Target = " : "", id ? id : "");
-	bt_shell_set_prompt(prompt);
+	bt_shell_set_prompt(prompt, COLOR_BLUE);
 	g_free(prompt);
 }
 

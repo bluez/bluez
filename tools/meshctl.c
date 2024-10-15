@@ -54,7 +54,7 @@
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
-#define PROMPT_ON	COLOR_BLUE "[meshctl]" COLOR_OFF "# "
+#define PROMPT_ON	"[meshctl]# "
 #define PROMPT_OFF	"Waiting to connect to bluetoothd..."
 
 #define MESH_PROV_DATA_IN_UUID_STR	"00002adb-0000-1000-8000-00805f9b34fb"
@@ -172,14 +172,14 @@ static void proxy_leak(gpointer data)
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
-	bt_shell_set_prompt(PROMPT_ON);
+	bt_shell_set_prompt(PROMPT_ON, COLOR_BLUE);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
 	bt_shell_detach();
 
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	g_list_free_full(ctrl_list, proxy_leak);
 	ctrl_list = NULL;
@@ -608,7 +608,7 @@ static void set_connected_device(GDBusProxy *proxy)
 				mesh ? buf : "");
 
 done:
-	bt_shell_set_prompt(desc ? desc : PROMPT_ON);
+	bt_shell_set_prompt(desc ? desc : PROMPT_ON, COLOR_BLUE);
 	g_free(desc);
 
 	/* If disconnected, return to main menu */
@@ -1901,7 +1901,7 @@ int main(int argc, char *argv[])
 
 	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	if (!config_dir) {
 		char *home;

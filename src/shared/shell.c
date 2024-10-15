@@ -750,15 +750,13 @@ void bt_shell_echo(const char *fmt, ...)
 
 	va_start(args, fmt);
 	ret = vasprintf(&str, fmt, args);
-	if (ret >= 0)
-		ret = asprintf(&str, COLOR_HIGHLIGHT "%s " COLOR_OFF "#", str);
 	va_end(args);
 
 	if (ret < 0)
 		return;
 
 	rl_save_prompt();
-	bt_shell_set_prompt(str);
+	bt_shell_set_prompt(str, COLOR_HIGHLIGHT);
 	rl_restore_prompt();
 }
 
@@ -823,7 +821,7 @@ static void prompt_input(const char *str, bt_shell_prompt_input_func func,
 	data.saved_user_data = user_data;
 
 	rl_save_prompt();
-	bt_shell_set_prompt(str);
+	bt_shell_set_prompt(str, COLOR_HIGHLIGHT);
 }
 
 void bt_shell_prompt_input(const char *label, const char *msg,
@@ -1574,14 +1572,19 @@ bool bt_shell_add_submenu(const struct bt_shell_menu *menu)
 	return true;
 }
 
-void bt_shell_set_prompt(const char *string)
+void bt_shell_set_prompt(const char *string, const char *color)
 {
 	char *prompt;
 
 	if (!data.init || data.mode)
 		return;
 
-	if (asprintf(&prompt, "\001%s\002", string) < 0) {
+	/* Envelope color within RL_PROMPT_START_IGNORE (\001) and
+	 * RL_PROMPT_END_IGNORE (\002) so readline can properly calculate the
+	 * prompt length.
+	 */
+	if (!color || asprintf(&prompt, "\001%s\002%s\001%s\002", color, string,
+				COLOR_OFF) < 0) {
 		rl_set_prompt(string);
 	} else {
 		rl_set_prompt(prompt);

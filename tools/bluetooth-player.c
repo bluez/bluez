@@ -33,21 +33,20 @@
 #include "src/shared/shell.h"
 #include "client/player.h"
 
-#define PROMPT_ON	COLOR_BLUE "[bluetooth]" COLOR_OFF "# "
-#define PROMPT_OFF	"[bluetooth]# "
+#define PROMPT	"[bluetooth]# "
 
 static DBusConnection *dbus_conn;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	bt_shell_attach(fileno(stdin));
-	bt_shell_set_prompt(PROMPT_ON);
+	bt_shell_set_prompt(PROMPT, COLOR_BLUE);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
 	bt_shell_detach();
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT, NULL);
 }
 
 int main(int argc, char *argv[])
@@ -56,7 +55,7 @@ int main(int argc, char *argv[])
 	int status;
 
 	bt_shell_init(argc, argv, NULL);
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT, NULL);
 
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 

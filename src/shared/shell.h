@@ -66,7 +66,7 @@ bool bt_shell_add_submenu(const struct bt_shell_menu *menu);
 
 bool bt_shell_remove_submenu(const struct bt_shell_menu *menu);
 
-void bt_shell_set_prompt(const char *string);
+void bt_shell_set_prompt(const char *string, const char *color);
 
 void bt_shell_printf(const char *fmt,
 				...) __attribute__((format(printf, 1, 2)));

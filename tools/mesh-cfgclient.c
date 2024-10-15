@@ -38,7 +38,7 @@
 #include "tools/mesh/model.h"
 #include "tools/mesh/remote.h"
 
-#define PROMPT_ON	COLOR_BLUE "[mesh-cfgclient]" COLOR_OFF "# "
+#define PROMPT_ON	"[mesh-cfgclient]# "
 #define PROMPT_OFF	"Waiting to connect to bluetooth-meshd..."
 
 #define CFG_SRV_MODEL	0x0000
@@ -2482,7 +2482,7 @@ static void client_ready(struct l_dbus_client *client, void *user_data)
 static void client_connected(struct l_dbus *dbus, void *user_data)
 {
 	bt_shell_printf("D-Bus client connected\n");
-	bt_shell_set_prompt(PROMPT_ON);
+	bt_shell_set_prompt(PROMPT_ON, COLOR_BLUE);
 }
 
 static void client_disconnected(struct l_dbus *dbus, void *user_data)
@@ -2642,7 +2642,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	dbus = l_dbus_new_default(L_DBUS_SYSTEM_BUS);
 

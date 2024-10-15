@@ -78,13 +78,11 @@ static void update_prompt(uint16_t index)
 	char str[32];
 
 	if (index == MGMT_INDEX_NONE)
-		snprintf(str, sizeof(str), "%s# ",
-					COLOR_BLUE "[mgmt]" COLOR_OFF);
+		snprintf(str, sizeof(str), "[mgmt]# ");
 	else
-		snprintf(str, sizeof(str),
-				COLOR_BLUE "[hci%u]" COLOR_OFF "# ", index);
+		snprintf(str, sizeof(str), "[hci%u]# ", index);
 
-	bt_shell_set_prompt(str);
+	bt_shell_set_prompt(str, COLOR_BLUE);
 }
 
 void mgmt_set_index(const char *arg)
@@ -860,7 +858,7 @@ static void prompt_input(const char *input, void *user_data)
 						&prompt.addr);
 		} else {
 			mgmt_confirm_neg_reply(prompt.index, &prompt.addr);
-			bt_shell_set_prompt(PROMPT_ON);
+			bt_shell_set_prompt(PROMPT_ON, COLOR_BLUE);
 		}
 		break;
 	}

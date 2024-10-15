@@ -43,7 +43,7 @@
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
-#define PROMPT_ON	COLOR_BLUE "[bluetooth]" COLOR_OFF "# "
+#define PROMPT_ON	"[bluetooth]# "
 #define PROMPT_OFF	"Waiting to connect to bluetoothd..."
 
 static DBusConnection *dbus_conn;
@@ -106,14 +106,14 @@ static void setup_standard_input(void)
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
-	bt_shell_set_prompt(PROMPT_ON);
+	bt_shell_set_prompt(PROMPT_ON, COLOR_BLUE);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
 	bt_shell_detach();
 
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	g_list_free_full(ctrl_list, proxy_leak);
 	g_list_free_full(battery_proxies, proxy_leak);
@@ -333,12 +333,12 @@ static void set_default_device(GDBusProxy *proxy, const char *attribute)
 	path = g_dbus_proxy_get_path(proxy);
 
 	dbus_message_iter_get_basic(&iter, &desc);
-	desc = g_strdup_printf(COLOR_BLUE "[%s%s%s]" COLOR_OFF "# ", desc,
+	desc = g_strdup_printf("[%s%s%s]# ", desc,
 				attribute ? ":" : "",
 				attribute ? attribute + strlen(path) : "");
 
 done:
-	bt_shell_set_prompt(desc ? desc : PROMPT_ON);
+	bt_shell_set_prompt(desc ? desc : PROMPT_ON, COLOR_BLUE);
 	g_free(desc);
 }
 
@@ -2099,9 +2099,9 @@ static void set_default_local_attribute(char *attr)
 	default_local_attr = attr;
 	default_attr = NULL;
 
-	desc = g_strdup_printf(COLOR_BLUE "[%s]" COLOR_OFF "# ", attr);
+	desc = g_strdup_printf("[%s]# ", attr);
 
-	bt_shell_set_prompt(desc);
+	bt_shell_set_prompt(desc, COLOR_BLUE);
 	g_free(desc);
 }
 
@@ -3187,7 +3187,7 @@ int main(int argc, char *argv[])
 	bt_shell_add_submenu(&advertise_monitor_menu);
 	bt_shell_add_submenu(&scan_menu);
 	bt_shell_add_submenu(&gatt_menu);
-	bt_shell_set_prompt(PROMPT_OFF);
+	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	if (agent_option)
 		auto_register_agent = g_strdup(agent_option);
