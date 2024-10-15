@@ -2037,6 +2037,14 @@ failed:
 static gboolean avdtp_parse_cmd(struct avdtp *session, uint8_t transaction,
 				uint8_t signal_id, void *buf, int size)
 {
+	/* Reset disconnect timer if command is received */
+	if (session->dc_timer) {
+		timeout_remove(session->dc_timer);
+		session->dc_timer = timeout_add_seconds(session->dc_timeout,
+						disconnect_timeout,
+						session, NULL);
+	}
+
 	switch (signal_id) {
 	case AVDTP_DISCOVER:
 		DBG("Received DISCOVER_CMD");
