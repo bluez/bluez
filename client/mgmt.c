@@ -2338,6 +2338,115 @@ static void cmd_set_flags(int argc, char **argv)
 
 }
 
+static uint8_t *str2bytearray(char *arg, uint8_t *val, long *val_len)
+{
+	char *entry;
+	unsigned int i;
+
+	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
+		long v;
+		char *endptr = NULL;
+
+		if (*entry == '\0')
+			continue;
+
+		if (i >= *val_len) {
+			bt_shell_printf("Too much data\n");
+			return NULL;
+		}
+
+		v = strtol(entry, &endptr, 0);
+		if (!endptr || *endptr != '\0' || v > UINT8_MAX) {
+			bt_shell_printf("Invalid value at index %d\n", i);
+			return NULL;
+		}
+
+		val[i] = v;
+	}
+
+	*val_len = i;
+
+	return val;
+}
+
+static void hci_cmd_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0) {
+		error("HCI command failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+		bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len > 0) {
+		bt_shell_printf("Response: ");
+		bt_shell_hexdump(param, len);
+	}
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_hci_cmd(int argc, char **argv)
+{
+	struct {
+		struct mgmt_cp_hci_cmd_sync cp;
+		uint8_t data[UINT8_MAX];
+	} pkt;
+	char *endptr = NULL;
+	long value;
+	uint16_t index;
+
+	value = strtoul(argv[1], &endptr, 0);
+	if (!endptr || *endptr != '\0' || value > UINT16_MAX) {
+		bt_shell_printf("Invalid opcode: %s", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	memset(&pkt, 0, sizeof(pkt));
+	pkt.cp.opcode = cpu_to_le16(value);
+
+	if (argc > 2) {
+		endptr = NULL;
+		value = strtoul(argv[2], &endptr, 0);
+		if (!endptr || *endptr != '\0' || value > UINT8_MAX) {
+			bt_shell_printf("Invalid event: %s", argv[2]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		pkt.cp.event = value;
+	}
+
+	if (argc > 3) {
+		endptr = NULL;
+		value = strtoul(argv[3], &endptr, 0);
+		if (!endptr || *endptr != '\0' || value > UINT8_MAX) {
+			bt_shell_printf("Invalid timeout: %s", argv[2]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		pkt.cp.timeout = value;
+	}
+
+	if (argc > 4) {
+		value = sizeof(pkt.data);
+		if (!str2bytearray(argv[4], pkt.data, &value))
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+		pkt.cp.params_len = value;
+	}
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send(mgmt, MGMT_OP_HCI_CMD_SYNC, index,
+			sizeof(pkt.cp) + pkt.cp.params_len, &pkt,
+			hci_cmd_rsp, NULL, NULL) == 0) {
+		error("Unable to send HCI command");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 /* Wrapper to get the index and opcode to the response callback */
 struct command_data {
 	uint16_t id;
@@ -6016,6 +6125,8 @@ static const struct bt_shell_menu mgmt_menu = {
 		cmd_get_flags,		"Get device flags"		},
 	{ "set-flags",		"[-f flags] [-t type] <address>",
 		cmd_set_flags,		"Set device flags"		},
+	{ "hci-cmd",		"<opcode> [event] [timeout] [param...]",
+		cmd_hci_cmd,	"Send HCI Command and wait for Event"	},
 	{} },
 };
 
