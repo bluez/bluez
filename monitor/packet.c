@@ -14982,7 +14982,7 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x0059, "Mesh Send",
 				mgmt_mesh_send_cmd, 19, false,
 				mgmt_mesh_send_rsp, 1, true},
-	{ 0x0056, "Mesh Send Cancel",
+	{ 0x005A, "Mesh Send Cancel",
 				mgmt_mesh_send_cancel_cmd, 1, true,
 				mgmt_null_rsp, 0, true},
 	{ }
