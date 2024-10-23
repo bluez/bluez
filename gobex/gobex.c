@@ -317,6 +317,15 @@ static void set_srm(GObex *obex, guint8 op, guint8 srm)
 	struct srm_config *config = obex->srm;
 	gboolean enable;
 
+	switch (srm) {
+	case G_OBEX_SRM_ENABLE:
+	case G_OBEX_SRM_DISABLE:
+	case G_OBEX_SRM_INDICATE:
+		break;
+	default:
+		return;
+	}
+
 	if (config == NULL) {
 		if (srm == G_OBEX_SRM_DISABLE)
 			return;
