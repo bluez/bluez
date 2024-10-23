@@ -14712,6 +14712,55 @@ static void mgmt_mesh_send_cancel_cmd(const void *data, uint16_t size)
 	print_field("Handle: %d", handle);
 }
 
+static void mgmt_hci_cmd_sync_cmd(const void *data, uint16_t size)
+{
+	struct iovec iov = { (void *)data, size };
+	uint16_t opcode, len;
+	uint8_t event;
+	uint8_t timeout;
+
+	if (!util_iov_pull_le16(&iov, &opcode)) {
+		print_text(COLOR_ERROR, "  invalid opcode");
+		return;
+	}
+
+	print_field("Opcode: 0x%4.4x", opcode);
+
+	if (!util_iov_pull_u8(&iov, &event)) {
+		print_text(COLOR_ERROR, "  invalid event");
+		return;
+	}
+
+	print_field("Event: 0x%2.2x", event);
+
+	if (!util_iov_pull_u8(&iov, &timeout)) {
+		print_text(COLOR_ERROR, "  invalid timeout");
+		return;
+	}
+
+	print_field("Timeout: %d seconds", timeout);
+
+	if (!util_iov_pull_le16(&iov, &len)) {
+		print_text(COLOR_ERROR, "  invalid parameters length");
+		return;
+	}
+
+	print_field("Parameters Length: %d", len);
+
+	if (iov.iov_len != len) {
+		print_text(COLOR_ERROR, "  length mismatch (%zu != %d)",
+				iov.iov_len, len);
+		return;
+	}
+
+	print_hex_field("Parameters", iov.iov_base, iov.iov_len);
+}
+
+static void mgmt_hci_cmd_sync_rsp(const void *data, uint16_t size)
+{
+	print_hex_field("Response", data, size);
+}
+
 struct mgmt_data {
 	uint16_t opcode;
 	const char *str;
@@ -14985,6 +15034,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x005A, "Mesh Send Cancel",
 				mgmt_mesh_send_cancel_cmd, 1, true,
 				mgmt_null_rsp, 0, true},
+	{ 0x005B, "Send HCI command and wait for event",
+				mgmt_hci_cmd_sync_cmd, 6, false,
+				mgmt_hci_cmd_sync_rsp, 0, false},
 	{ }
 };
 
