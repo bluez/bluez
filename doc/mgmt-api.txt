@@ -3992,6 +3992,36 @@ Cancel Transmit Mesh Packet Command
 	Possible errors:	Failed
 				Invalid Parameters
 
+Send HCI command and wait for event Command
+===========================================
+
+	Command Code:		0x005B
+	Controller Index:	<controller id>
+	Command Parameters:	Opcode (2 Octets)
+				Event (1 Octet)
+				Timeout (1 Octet)
+				Parameter Length (2 Octets)
+				Parameter (variable)
+	Return Parameters:	Response (1-variable Octets)
+
+	This command may be used to send a HCI command and wait for an
+	(optional) event.
+
+	The HCI command is specified by the Opcode, any arbitrary is supported
+	including vendor commands, but contrary to the like of
+	Raw/User channel it is run as an HCI command send by the kernel
+	since it uses its command synchronization thus it is possible to wait
+	for a specific event as a response.
+
+	Setting event to 0x00 will cause the command to wait for either
+	HCI Command Status or HCI Command Complete.
+
+	Timeout is specified in seconds, setting it to 0 will cause the
+	default timeout to be used.
+
+	Possible errors:	Failed
+				Invalid Parameters
+
 Command Complete Event
 ======================
 
