@@ -1872,6 +1872,27 @@ static unsigned int bap_ucast_start(struct bt_bap_stream *stream,
 	return req->id;
 }
 
+static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
+{
+	if (!stream || stream->ep->state == BT_BAP_STREAM_STATE_QOS ||
+			stream->ep->state == BT_BAP_STREAM_STATE_IDLE)
+		return 0;
+
+	DBG(stream->bap, "stream %p", stream);
+
+	ascs_ase_rsp_success(rsp, stream->ep->id);
+
+	/* Sink can autonomously transit to QOS while source needs to go to
+	 * Disabling until BT_ASCS_STOP is received.
+	 */
+	if (stream->ep->dir == BT_BAP_SINK)
+		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+	else
+		stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
+
+	return 0;
+}
+
 static unsigned int bap_ucast_disable(struct bt_bap_stream *stream,
 					bool disable_links,
 					bt_bap_stream_func_t func,
@@ -1880,6 +1901,9 @@ static unsigned int bap_ucast_disable(struct bt_bap_stream *stream,
 	struct iovec iov;
 	struct bt_ascs_disable disable;
 	struct bt_bap_req *req;
+
+	if (!stream->client)
+		return stream_disable(stream, NULL);
 
 	memset(&disable, 0, sizeof(disable));
 
@@ -2788,27 +2812,6 @@ static uint8_t ascs_start(struct bt_ascs *ascs, struct bt_bap *bap,
 	}
 
 	return ep_start(ep, rsp);
-}
-
-static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
-{
-	if (!stream || stream->ep->state == BT_BAP_STREAM_STATE_QOS ||
-			stream->ep->state == BT_BAP_STREAM_STATE_IDLE)
-		return 0;
-
-	DBG(stream->bap, "stream %p", stream);
-
-	ascs_ase_rsp_success(rsp, stream->ep->id);
-
-	/* Sink can autonomously transit to QOS while source needs to go to
-	 * Disabling until BT_ASCS_STOP is received.
-	 */
-	if (stream->ep->dir == BT_BAP_SINK)
-		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
-	else
-		stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
-
-	return 0;
 }
 
 static uint8_t ep_disable(struct bt_bap_endpoint *ep, struct iovec *rsp)
