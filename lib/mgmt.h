@@ -797,7 +797,16 @@ struct mgmt_cp_mesh_send {
 
 #define MGMT_OP_MESH_SEND_CANCEL	0x005A
 struct mgmt_cp_mesh_send_cancel {
-	uint8_t handle;
+		uint8_t handle;
+} __packed;
+
+#define MGMT_OP_HCI_CMD_SYNC		0x005B
+struct mgmt_cp_hci_cmd_sync {
+	uint16_t opcode;
+	uint8_t  event;
+	uint8_t  timeout;
+	uint16_t params_len;
+	uint8_t  params[];
 } __packed;
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
