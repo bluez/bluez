@@ -1591,7 +1591,7 @@ void bt_shell_set_prompt(const char *string, const char *color)
 		free(prompt);
 	}
 
-	rl_reset_line_state();
+	rl_redisplay();
 }
 
 static bool shell_quit(void *data)
