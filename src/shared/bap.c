@@ -2195,6 +2195,12 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 		bap_stream_io_detach(stream);
 		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
 		break;
+	case BT_ASCS_ASE_STATE_ENABLING:
+		if (bt_bap_stream_get_io(stream))
+			/* Start stream if fd has already been set */
+			bt_bap_stream_start(stream, NULL, NULL);
+
+		break;
 	}
 
 	bt_bap_stream_unref(stream);
@@ -2205,11 +2211,40 @@ static unsigned int bap_bcast_get_state(struct bt_bap_stream *stream)
 	return stream->state;
 }
 
+static bool bcast_sink_stream_enabled(const void *data, const void *match_data)
+{
+	struct bt_bap_stream *stream = (struct bt_bap_stream *)data;
+	struct bt_bap_stream *match = (struct bt_bap_stream *)match_data;
+	uint8_t state = bt_bap_stream_get_state(stream);
+
+	if (stream == match)
+		return false;
+
+	if (queue_find(stream->links, NULL, match))
+		return false;
+
+	/* Ignore streams that are not Broadcast Sink */
+	if (bt_bap_pac_get_type(stream->lpac) != BT_BAP_BCAST_SINK)
+		return false;
+
+	return ((state == BT_BAP_STREAM_STATE_ENABLING) ||
+			bt_bap_stream_get_io(stream));
+}
+
 static unsigned int bap_bcast_sink_enable(struct bt_bap_stream *stream,
 					bool enable_links, struct iovec *data,
 					bt_bap_stream_func_t func,
 					void *user_data)
 {
+	struct bt_bap *bap = stream->bap;
+
+	/* The stream cannot be enabled if there is any other
+	 * unlinked stream for the same source that is in the
+	 * process of enabling or that has already been started.
+	 */
+	if (queue_find(bap->streams, bcast_sink_stream_enabled, stream))
+		return 0;
+
 	stream_set_state(stream, BT_BAP_STREAM_STATE_ENABLING);
 
 	return 1;
