@@ -1483,7 +1483,7 @@ static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
 		transport_update_playing(transport, TRUE);
 	}
 
-	return NULL;
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *unselect_transport(DBusConnection *conn, DBusMessage *msg,
@@ -1496,7 +1496,7 @@ static DBusMessage *unselect_transport(DBusConnection *conn, DBusMessage *msg,
 		transport_update_playing(transport, FALSE);
 	}
 
-	return NULL;
+	return dbus_message_new_method_return(msg);
 }
 
 static void sink_state_changed(struct btd_service *service,
