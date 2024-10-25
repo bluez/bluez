@@ -5173,8 +5173,9 @@ static void set_bcode(const char *input, void *user_data)
 	g_free(bcode);
 }
 
-static void transport_select(GDBusProxy *proxy, bool prompt)
+static void transport_select(void *data, void *user_data)
 {
+	GDBusProxy *proxy = data;
 	DBusMessageIter iter, array, entry, value;
 	unsigned char encryption;
 	const char *key;
@@ -5220,28 +5221,62 @@ static void transport_unselect(GDBusProxy *proxy, bool prompt)
 	}
 }
 
+static void set_links_cb(const DBusError *error, void *user_data)
+{
+	GDBusProxy *link = user_data;
+
+	if (dbus_error_is_set(error)) {
+		bt_shell_printf("Failed to set link %s: %s\n",
+						g_dbus_proxy_get_path(link),
+						error->name);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Successfully linked transport %s\n",
+						g_dbus_proxy_get_path(link));
+}
 
 static void cmd_select_transport(int argc, char *argv[])
 {
-	GDBusProxy *proxy;
+	GDBusProxy *proxy = NULL, *link;
+	struct queue *links = queue_new();
+	const char *path;
 	int i;
 
 	for (i = 1; i < argc; i++) {
-		proxy = g_dbus_proxy_lookup(transports, NULL, argv[i],
+		link = g_dbus_proxy_lookup(transports, NULL, argv[i],
 					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
-		if (!proxy) {
+		if (!link) {
 			bt_shell_printf("Transport %s not found\n", argv[i]);
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 
-		if (find_transport(proxy)) {
+		if (find_transport(link)) {
 			bt_shell_printf("Transport %s already acquired\n",
 					argv[i]);
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 
-		transport_select(proxy, false);
+		queue_push_tail(links, link);
+
+		if (!proxy) {
+			proxy = link;
+			continue;
+		}
+
+		path = g_dbus_proxy_get_path(link);
+
+		if (g_dbus_proxy_set_property_array(proxy, "Links",
+					DBUS_TYPE_OBJECT_PATH,
+					&path, 1, set_links_cb,
+					link, NULL) == FALSE) {
+			bt_shell_printf("Linking transport %s failed\n",
+								argv[i]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
 	}
+
+	queue_foreach(links, transport_select, NULL);
 }
 
 static void cmd_unselect_transport(int argc, char *argv[])
