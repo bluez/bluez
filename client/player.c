@@ -4812,13 +4812,15 @@ static void transport_set_acquiring(GDBusProxy *proxy, bool value)
 
 	ep_set_acquiring(ep, proxy, value);
 
-	link = find_link_by_proxy(proxy);
-	if (link) {
-		ep = find_ep_by_transport(g_dbus_proxy_get_path(link));
-		if (!ep)
-			return;
+	if (!ep->broadcast) {
+		link = find_link_by_proxy(proxy);
+		if (link) {
+			ep = find_ep_by_transport(g_dbus_proxy_get_path(link));
+			if (!ep)
+				return;
 
-		ep_set_acquiring(ep, link, value);
+			ep_set_acquiring(ep, link, value);
+		}
 	}
 }
 
@@ -4919,12 +4921,14 @@ static void transport_acquire(GDBusProxy *proxy, bool prompt)
 	if (!ep || queue_find(ep->acquiring, NULL, proxy))
 		return;
 
-	link = find_link_by_proxy(proxy);
-	if (link) {
-		ep = find_ep_by_transport(g_dbus_proxy_get_path(link));
-		/* if link already acquiring wait it to be complete */
-		if (!ep || queue_find(ep->acquiring, NULL, link))
-			return;
+	if (!ep->broadcast) {
+		link = find_link_by_proxy(proxy);
+		if (link) {
+			ep = find_ep_by_transport(g_dbus_proxy_get_path(link));
+			/* if link already acquiring wait it to be complete */
+			if (!ep || queue_find(ep->acquiring, NULL, link))
+				return;
+		}
 	}
 
 	if (ep->auto_accept || !prompt) {
