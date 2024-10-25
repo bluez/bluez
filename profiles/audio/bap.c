@@ -134,11 +134,13 @@ enum {
 struct bap_bcast_pa_req {
 	uint8_t type;
 	bool in_progress;
+	struct bap_data *bap_data;
 	union {
 		struct btd_service *service;
-		struct bap_setup *setup;
+		struct queue *setups;
 	} data;
 	unsigned int io_id;	/* io_id for BIG Info watch */
+	GIOChannel *io;
 };
 
 static struct queue *sessions;
@@ -997,27 +999,34 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 {
 	struct bap_bcast_pa_req *req = user_data;
-	struct bap_setup *setup = req->data.setup;
+	struct bap_setup *setup;
 	int fd;
-	struct bt_bap *bt_bap = bt_bap_stream_get_session(setup->stream);
-	struct btd_service *btd_service = bt_bap_get_user_data(bt_bap);
-	struct bap_data *bap_data = btd_service_get_user_data(btd_service);
+	struct bap_data *bap_data = req->bap_data;
 
 	DBG("BIG Sync completed");
 
-	if (setup->io) {
-		g_io_channel_unref(setup->io);
-		g_io_channel_shutdown(setup->io, TRUE, NULL);
-		setup->io = NULL;
+	/* The order of the BIS fds notified from kernel corresponds
+	 * to the order of the BISes that were enqueued before
+	 * calling bt_io_bcast_accept.
+	 */
+	setup = queue_pop_head(req->data.setups);
+
+	if (queue_isempty(req->data.setups)) {
+		/* All fds have been notified. Mark service as connected. */
+		btd_service_connecting_complete(bap_data->service, 0);
+
+		if (req->io) {
+			g_io_channel_unref(req->io);
+			g_io_channel_shutdown(req->io, TRUE, NULL);
+			req->io = NULL;
+		}
+
+		queue_remove(bap_data->adapter->bcast_pa_requests, req);
+		queue_destroy(req->data.setups, NULL);
+		free(req);
 	}
 
-	/* This device is no longer needed */
-	btd_service_connecting_complete(bap_data->service, 0);
-
 	fd = g_io_channel_unix_get_fd(io);
-
-	queue_remove(bap_data->adapter->bcast_pa_requests, req);
-	free(req);
 
 	if (bt_bap_stream_set_io(setup->stream, fd)) {
 		g_io_channel_set_close_on_unref(io, FALSE);
@@ -2265,6 +2274,8 @@ static void setup_accept_io_broadcast(struct bap_data *data,
 {
 	struct bap_bcast_pa_req *req = new0(struct bap_bcast_pa_req, 1);
 	struct bap_adapter *adapter = data->adapter;
+	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
+	const struct queue_entry *entry;
 
 	/* Timer could be stopped if all other requests were treated.
 	 * Check the state of the timer and turn it on so that this request
@@ -2281,7 +2292,21 @@ static void setup_accept_io_broadcast(struct bap_data *data,
 	 */
 	req->type = BAP_PA_BIG_SYNC_REQ;
 	req->in_progress = FALSE;
-	req->data.setup = setup;
+	req->bap_data = data;
+
+	req->data.setups = queue_new();
+
+	/* Enqueue all linked setups to the request */
+	queue_push_tail(req->data.setups, setup);
+
+	for (entry = queue_get_entries(links); entry;
+							entry = entry->next) {
+		struct bt_bap_stream *stream = entry->data;
+
+		queue_push_tail(req->data.setups,
+				bap_find_setup_by_stream(data, stream));
+	}
+
 	queue_push_tail(adapter->bcast_pa_requests, req);
 }
 
@@ -2647,6 +2672,15 @@ static void bap_state_bcast_src(struct bt_bap_stream *stream, uint8_t old_state,
 	}
 }
 
+static bool link_enabled(const void *data, const void *match_data)
+{
+	struct bt_bap_stream *stream = (struct bt_bap_stream *)data;
+	uint8_t state = bt_bap_stream_get_state(stream);
+
+	return ((state == BT_BAP_STREAM_STATE_ENABLING) ||
+			bt_bap_stream_get_io(stream));
+}
+
 static void bap_state_bcast_sink(struct bt_bap_stream *stream,
 				uint8_t old_state, uint8_t new_state,
 				void *user_data)
@@ -2684,9 +2718,19 @@ static void bap_state_bcast_sink(struct bt_bap_stream *stream,
 		 * the upper layer process requires the stream to start
 		 * receiving audio. This state is used to differentiate
 		 * between all configured streams and the ones that have
-		 * been enabled by the upper layer. Create stream io.
+		 * been enabled by the upper layer.
+		 *
+		 * Create stream io if not already created and if no
+		 * link has been enabled or started.
+		 *
+		 * The first enabled link will create and set fds for
+		 * all links.
 		 */
-		setup_create_io(data, setup, stream, defer);
+		if (!bt_bap_stream_get_io(stream) &&
+			!queue_find(bt_bap_stream_io_get_links(stream),
+							link_enabled, NULL))
+			setup_create_io(data, setup, stream, defer);
+
 		break;
 	}
 }
@@ -3050,63 +3094,69 @@ static int pa_sync(struct bap_bcast_pa_req *req)
 	return 0;
 }
 
-static void iso_do_big_sync(GIOChannel *io, void *user_data)
+static void append_setup(void *data, void *user_data)
 {
-	GError *err = NULL;
-	struct bap_bcast_pa_req *req = user_data;
-	struct bap_setup *setup = req->data.setup;
-	struct bt_bap *bt_bap = bt_bap_stream_get_session(setup->stream);
-	struct btd_service *btd_service = bt_bap_get_user_data(bt_bap);
-	struct bap_data *data = btd_service_get_user_data(btd_service);
-	struct sockaddr_iso_bc iso_bc_addr;
-	struct bt_iso_qos qos;
-	char *path;
-	int bis_index = 1;
+	struct bap_setup *setup = data;
+	struct sockaddr_iso_bc *addr = user_data;
+	char *path = bt_bap_stream_get_user_data(setup->stream);
+	int bis = 1;
 	int s_err;
 	const char *strbis = NULL;
 
-	DBG("PA Sync done");
-
-	if (setup->io) {
-		g_io_channel_unref(setup->io);
-		g_io_channel_shutdown(setup->io, TRUE, NULL);
-		setup->io = io;
-		g_io_channel_ref(setup->io);
-	}
-
-	/* TODO
-	 * We can only synchronize with a single BIS to a BIG.
-	 * In order to have multiple BISes targeting this BIG we need to have
-	 * all the BISes before doing bt_io_bcast_accept.
-	 * This request comes from a transport "Acquire" call.
-	 * For multiple BISes in the same BIG we need to either wait for all
-	 * transports in the same BIG to be acquired or tell when to do the
-	 * bt_io_bcast_accept by other means
-	 */
-	path = bt_bap_stream_get_user_data(setup->stream);
-
 	strbis = strstr(path, "/bis");
-	if (strbis == NULL) {
+	if (!strbis) {
 		DBG("bis index cannot be found");
 		return;
 	}
 
-	s_err = sscanf(strbis, "/bis%d", &bis_index);
+	s_err = sscanf(strbis, "/bis%d", &bis);
 	if (s_err == -1) {
 		DBG("sscanf error");
 		return;
 	}
 
-	DBG("Do BIG Sync with BIS %d", bis_index);
+	DBG("Do BIG Sync with BIS %d", bis);
+
+	addr->bc_bis[addr->bc_num_bis] = bis;
+	addr->bc_num_bis++;
+}
+
+static void setup_refresh_qos(void *data, void *user_data)
+{
+	struct bap_setup *setup = data;
+
+	setup->qos = *bt_bap_stream_get_qos(setup->stream);
+}
+
+static void iso_do_big_sync(GIOChannel *io, void *user_data)
+{
+	GError *err = NULL;
+	struct bap_bcast_pa_req *req = user_data;
+	struct queue *setups = req->data.setups;
+	struct bap_setup *setup = queue_peek_head(setups);
+	struct bap_data *data = req->bap_data;
+	struct sockaddr_iso_bc iso_bc_addr = {0};
+	struct bt_iso_qos qos;
+
+	DBG("PA Sync done");
+
+	if (req->io) {
+		g_io_channel_unref(req->io);
+		g_io_channel_shutdown(req->io, TRUE, NULL);
+		req->io = io;
+		g_io_channel_ref(req->io);
+	}
 
 	iso_bc_addr.bc_bdaddr_type = btd_device_get_bdaddr_type(data->device);
 	memcpy(&iso_bc_addr.bc_bdaddr, device_get_address(data->device),
 			sizeof(bdaddr_t));
-	iso_bc_addr.bc_bis[0] = bis_index;
-	iso_bc_addr.bc_num_bis = 1;
 
-	/* Refresh qos stored in setup */
-	setup->qos = *bt_bap_stream_get_qos(setup->stream);
+	/* Append each linked BIS to the BIG sync request */
+	queue_foreach(setups, append_setup, &iso_bc_addr);
+
+	/* Refresh qos stored in setups */
+	queue_foreach(setups, setup_refresh_qos, NULL);
+
 	/* Set the user requested QOS */
 	memset(&qos, 0, sizeof(qos));
 	qos.bcast.big = setup->qos.bcast.big;
@@ -3148,10 +3198,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 static void pa_and_big_sync(struct bap_bcast_pa_req *req)
 {
 	GError *err = NULL;
-	struct bap_setup *setup = req->data.setup;
-	struct bt_bap *bt_bap = bt_bap_stream_get_session(setup->stream);
-	struct btd_service *btd_service = bt_bap_get_user_data(bt_bap);
-	struct bap_data *bap_data = btd_service_get_user_data(btd_service);
+	struct bap_data *bap_data = req->bap_data;
 
 	req->in_progress = TRUE;
 
@@ -3166,7 +3213,7 @@ static void pa_and_big_sync(struct bap_bcast_pa_req *req)
 	}
 
 	DBG("Create PA sync with this source");
-	setup->io = bt_io_listen(NULL, iso_do_big_sync, req,
+	req->io = bt_io_listen(NULL, iso_do_big_sync, req,
 			NULL, &err,
 			BT_IO_OPT_SOURCE_BDADDR,
 			btd_adapter_get_address(bap_data->adapter->adapter),
@@ -3177,7 +3224,7 @@ static void pa_and_big_sync(struct bap_bcast_pa_req *req)
 			BT_IO_OPT_MODE, BT_IO_MODE_ISO,
 			BT_IO_OPT_QOS, &bap_sink_pa_qos,
 			BT_IO_OPT_INVALID);
-	if (!setup->io) {
+	if (!req->io) {
 		error("%s", err->message);
 		g_error_free(err);
 	}
