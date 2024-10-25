@@ -183,7 +183,8 @@ find_transport_by_bap_stream(const struct bt_bap_stream *stream)
 		struct bap_transport *bap;
 
 		if (strcasecmp(uuid, PAC_SINK_UUID) &&
-				strcasecmp(uuid, PAC_SOURCE_UUID))
+				strcasecmp(uuid, PAC_SOURCE_UUID) &&
+				strcasecmp(uuid, BAA_SERVICE_UUID))
 			continue;
 
 		bap = transport->data;
@@ -1142,6 +1143,64 @@ static gboolean get_links(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static struct media_transport *find_transport_by_path(const char *path)
+{
+	GSList *l;
+
+	for (l = transports; l; l = g_slist_next(l)) {
+		struct media_transport *transport = l->data;
+
+		if (g_str_equal(path, transport->path))
+			return transport;
+	}
+
+	return NULL;
+}
+
+static void set_links(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
+{
+	struct media_transport *transport = user_data;
+	struct bap_transport *bap = transport->data;
+	DBusMessageIter array;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+		return;
+	}
+
+	dbus_message_iter_recurse(iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) ==
+						DBUS_TYPE_OBJECT_PATH) {
+		struct media_transport *link;
+		struct bap_transport *bap_link;
+		const char *path;
+
+		dbus_message_iter_get_basic(&array, &path);
+
+		link = find_transport_by_path(path);
+		if (!link) {
+			g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Invalid arguments in method call");
+			return;
+		}
+
+		bap_link = link->data;
+
+		/* Link stream */
+		bt_bap_stream_io_link(bap->stream, bap_link->stream);
+
+		dbus_message_iter_next(&array);
+	}
+
+	g_dbus_pending_property_success(id);
+}
+
 static gboolean qos_ucast_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_transport *transport = data;
@@ -1295,6 +1354,7 @@ static const GDBusPropertyTable transport_bap_bc_properties[] = {
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
 	{ "Location", "u", get_location },
 	{ "Metadata", "ay", get_metadata },
+	{ "Links", "ao", get_links, set_links, NULL },
 	{ }
 };
 
