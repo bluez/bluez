@@ -116,6 +116,7 @@ struct media_transport_ops {
 	void *(*get_stream)(struct media_transport *transport);
 	int8_t (*get_volume)(struct media_transport *transport);
 	int (*set_volume)(struct media_transport *transport, int8_t level);
+	void (*update_links)(const struct media_transport *transport);
 	GDestroyNotify destroy;
 };
 
@@ -1628,7 +1629,8 @@ static bool match_link_transport(const void *data, const void *user_data)
 	return true;
 }
 
-static void bap_update_links(const struct media_transport *transport)
+static void transport_bap_update_links_uc(
+	const struct media_transport *transport)
 {
 	struct bap_transport *bap = transport->data;
 	struct queue *links = bt_bap_stream_io_get_links(bap->stream);
@@ -1649,6 +1651,30 @@ static void bap_update_links(const struct media_transport *transport)
 						"Links");
 
 	DBG("stream %p linked %s", bap->stream, bap->linked ? "true" : "false");
+}
+
+static void transport_bap_update_links_bc(
+	const struct media_transport *transport)
+{
+	struct bap_transport *bap = transport->data;
+	struct queue *links = bt_bap_stream_io_get_links(bap->stream);
+
+	if (!queue_isempty(links))
+		bap->linked = true;
+	else
+		bap->linked = false;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), transport->path,
+						MEDIA_TRANSPORT_INTERFACE,
+						"Links");
+
+	DBG("stream %p linked %s", bap->stream, bap->linked ? "true" : "false");
+}
+
+static void bap_update_links(const struct media_transport *transport)
+{
+	if (transport->ops && transport->ops->update_links)
+		transport->ops->update_links(transport);
 }
 
 static void bap_update_qos(const struct media_transport *transport)
@@ -2105,7 +2131,7 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 
 #define TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner, _init, \
 		      _resume, _suspend, _cancel, _set_state, _get_stream, \
-		      _get_volume, _set_volume, _destroy) \
+		      _get_volume, _set_volume, _update_links, _destroy) \
 { \
 	.uuid = _uuid, \
 	.properties = _props, \
@@ -2119,6 +2145,7 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 	.get_stream = _get_stream, \
 	.get_volume = _get_volume, \
 	.set_volume = _set_volume, \
+	.update_links = _update_links, \
 	.destroy = _destroy \
 }
 
@@ -2127,22 +2154,24 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			transport_a2dp_resume, transport_a2dp_suspend, \
 			transport_a2dp_cancel, NULL, \
 			transport_a2dp_get_stream, transport_a2dp_get_volume, \
-			_set_volume, _destroy)
+			_set_volume, NULL, _destroy)
 
-#define BAP_OPS(_uuid, _props, _set_owner, _remove_owner) \
+#define BAP_OPS(_uuid, _props, _set_owner, _remove_owner, _update_links) \
 	TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner,\
 			transport_bap_init, \
 			transport_bap_resume, transport_bap_suspend, \
 			transport_bap_cancel, transport_bap_set_state, \
-			transport_bap_get_stream, NULL, NULL, \
+			transport_bap_get_stream, NULL, NULL, _update_links, \
 			transport_bap_destroy)
 
 #define BAP_UC_OPS(_uuid) \
 	BAP_OPS(_uuid, transport_bap_uc_properties, \
-			transport_bap_set_owner, transport_bap_remove_owner)
+			transport_bap_set_owner, transport_bap_remove_owner, \
+			transport_bap_update_links_uc)
 
 #define BAP_BC_OPS(_uuid) \
-	BAP_OPS(_uuid, transport_bap_bc_properties, NULL, NULL)
+	BAP_OPS(_uuid, transport_bap_bc_properties, NULL, NULL, \
+			transport_bap_update_links_bc)
 
 #define ASHA_OPS(_uuid) \
 	TRANSPORT_OPS(_uuid, transport_asha_properties, NULL, NULL, \
@@ -2150,7 +2179,7 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			transport_asha_resume, transport_asha_suspend, \
 			transport_asha_cancel, NULL, NULL, \
 			transport_asha_get_volume, transport_asha_set_volume, \
-			NULL)
+			NULL, NULL)
 
 static const struct media_transport_ops transport_ops[] = {
 	A2DP_OPS(A2DP_SOURCE_UUID, transport_a2dp_src_init,
