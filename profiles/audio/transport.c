@@ -1779,10 +1779,45 @@ static guint transport_bap_resume(struct media_transport *transport,
 	return id;
 }
 
+static void update_links(void *data, void *user_data)
+{
+	struct bt_bap_stream *link = data;
+	struct media_transport *transport;
+
+	transport = find_transport_by_bap_stream(link);
+	if (!transport) {
+		error("Unable to find transport");
+		return;
+	}
+
+	bap_update_links(transport);
+}
+
+static void transport_unlink(void *data, void *user_data)
+{
+	struct bt_bap_stream *link = data;
+	struct bt_bap_stream *stream = user_data;
+	struct media_transport *transport;
+
+	transport = find_transport_by_bap_stream(link);
+	if (!transport) {
+		error("Unable to find transport");
+		return;
+	}
+
+	bt_bap_stream_io_unlink(link, stream);
+
+	bap_update_links(transport);
+
+	/* Emit property changed for all remaining links */
+	queue_foreach(bt_bap_stream_io_get_links(link), update_links, NULL);
+}
+
 static guint transport_bap_suspend(struct media_transport *transport,
 				struct media_owner *owner)
 {
 	struct bap_transport *bap = transport->data;
+	struct queue *links = bt_bap_stream_io_get_links(bap->stream);
 	bt_bap_stream_func_t func = NULL;
 	guint id;
 
@@ -1793,6 +1828,10 @@ static guint transport_bap_suspend(struct media_transport *transport,
 		func = bap_disable_complete;
 	else
 		transport_set_state(transport, TRANSPORT_STATE_IDLE);
+
+	if (bt_bap_stream_get_type(bap->stream) == BT_BAP_STREAM_TYPE_BCAST)
+		/* Unlink stream from all its links */
+		queue_foreach(links, transport_unlink, bap->stream);
 
 	bap_update_links(transport);
 
