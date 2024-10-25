@@ -4872,7 +4872,7 @@ static void select_reply(DBusMessage *message, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Select successful");
+	bt_shell_printf("Select successful\n");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -4889,7 +4889,7 @@ static void unselect_reply(DBusMessage *message, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Select successful");
+	bt_shell_printf("Unselect successful\n");
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
