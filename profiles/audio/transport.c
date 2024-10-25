@@ -2156,22 +2156,23 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			transport_a2dp_get_stream, transport_a2dp_get_volume, \
 			_set_volume, NULL, _destroy)
 
-#define BAP_OPS(_uuid, _props, _set_owner, _remove_owner, _update_links) \
+#define BAP_OPS(_uuid, _props, _set_owner, _remove_owner, _update_links, \
+		_set_state) \
 	TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner,\
 			transport_bap_init, \
 			transport_bap_resume, transport_bap_suspend, \
-			transport_bap_cancel, transport_bap_set_state, \
+			transport_bap_cancel, _set_state, \
 			transport_bap_get_stream, NULL, NULL, _update_links, \
 			transport_bap_destroy)
 
 #define BAP_UC_OPS(_uuid) \
 	BAP_OPS(_uuid, transport_bap_uc_properties, \
 			transport_bap_set_owner, transport_bap_remove_owner, \
-			transport_bap_update_links_uc)
+			transport_bap_update_links_uc, transport_bap_set_state)
 
 #define BAP_BC_OPS(_uuid) \
 	BAP_OPS(_uuid, transport_bap_bc_properties, NULL, NULL, \
-			transport_bap_update_links_bc)
+			transport_bap_update_links_bc, NULL)
 
 #define ASHA_OPS(_uuid) \
 	TRANSPORT_OPS(_uuid, transport_asha_properties, NULL, NULL, \
