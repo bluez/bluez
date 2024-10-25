@@ -137,6 +137,11 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	case AVDTP_STATE_IDLE:
 		btd_service_disconnecting_complete(sink->service, 0);
 
+		if (sink->connect_id > 0) {
+			a2dp_cancel(sink->connect_id);
+			sink->connect_id = 0;
+		}
+
 		if (sink->disconnect_id > 0) {
 			a2dp_cancel(sink->disconnect_id);
 			sink->disconnect_id = 0;
