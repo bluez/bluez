@@ -262,6 +262,7 @@ struct bt_bap_stream_ops {
 };
 
 struct bt_bap_stream {
+	int ref_count;
 	struct bt_bap *bap;
 	struct bt_bap_endpoint *ep;
 	struct bt_bap_pac *lpac;
@@ -1204,6 +1205,17 @@ static void bap_abort_stream_req(struct bt_bap *bap,
 	queue_remove_all(bap->reqs, match_req_stream, stream, bap_req_abort);
 }
 
+static void bt_bap_stream_unref(struct bt_bap_stream *stream)
+{
+	if (!stream)
+		return;
+
+	if (__sync_sub_and_fetch(&stream->ref_count, 1))
+		return;
+
+	bap_stream_free(stream);
+}
+
 static void bap_ucast_detach(struct bt_bap_stream *stream)
 {
 	struct bt_bap_endpoint *ep = stream->ep;
@@ -1220,7 +1232,7 @@ static void bap_ucast_detach(struct bt_bap_stream *stream)
 
 	stream->ep = NULL;
 	ep->stream = NULL;
-	bap_stream_free(stream);
+	bt_bap_stream_unref(stream);
 }
 
 static void bap_bcast_src_detach(struct bt_bap_stream *stream)
@@ -1238,7 +1250,7 @@ static void bap_bcast_src_detach(struct bt_bap_stream *stream)
 	stream->ep = NULL;
 	ep->stream = NULL;
 
-	bap_stream_free(stream);
+	bt_bap_stream_unref(stream);
 }
 
 static void bap_bcast_sink_detach(struct bt_bap_stream *stream)
@@ -1248,7 +1260,7 @@ static void bap_bcast_sink_detach(struct bt_bap_stream *stream)
 	queue_remove(stream->bap->streams, stream);
 	bap_stream_clear_cfm(stream);
 
-	bap_stream_free(stream);
+	bt_bap_stream_unref(stream);
 }
 
 static bool bap_stream_io_link(const void *data, const void *user_data)
@@ -2139,6 +2151,16 @@ static unsigned int bap_ucast_release(struct bt_bap_stream *stream,
 	return req->id;
 }
 
+static struct bt_bap_stream *bt_bap_stream_ref(struct bt_bap_stream *stream)
+{
+	if (!stream)
+		return NULL;
+
+	__sync_fetch_and_add(&stream->ref_count, 1);
+
+	return stream;
+}
+
 static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 {
 	struct bt_bap *bap = stream->bap;
@@ -2146,6 +2168,8 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 
 	stream->old_state = stream->state;
 	stream->state = state;
+
+	bt_bap_stream_ref(stream);
 
 	DBG(bap, "stream %p dir 0x%02x: %s -> %s", stream,
 			bt_bap_stream_get_dir(stream),
@@ -2162,7 +2186,7 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 	}
 
 	/* Post notification updates */
-	switch (state) {
+	switch (stream->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
 		if (stream->ops && stream->ops->detach)
 			stream->ops->detach(stream);
@@ -2172,6 +2196,8 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
 		break;
 	}
+
+	bt_bap_stream_unref(stream);
 }
 
 static unsigned int bap_bcast_get_state(struct bt_bap_stream *stream)
@@ -2568,7 +2594,7 @@ static struct bt_bap_stream *bap_stream_new(struct bt_bap *bap,
 
 	queue_push_tail(bap->streams, stream);
 
-	return stream;
+	return bt_bap_stream_ref(stream);
 }
 
 static struct bt_bap_stream_io *stream_io_ref(struct bt_bap_stream_io *io)
@@ -4148,6 +4174,13 @@ static void bap_detached(void *data, void *user_data)
 	cb->detached(bap, cb->user_data);
 }
 
+static void bap_stream_unref(void *data)
+{
+	struct bt_bap_stream *stream = data;
+
+	bt_bap_stream_unref(stream);
+}
+
 static void bap_free(void *data)
 {
 	struct bt_bap *bap = data;
@@ -4166,7 +4199,7 @@ static void bap_free(void *data)
 
 	queue_destroy(bap->reqs, bap_req_free);
 	queue_destroy(bap->notify, NULL);
-	queue_destroy(bap->streams, bap_stream_free);
+	queue_destroy(bap->streams, bap_stream_unref);
 
 	free(bap);
 }
