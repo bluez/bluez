@@ -1020,7 +1020,6 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 	free(req);
 
 	if (bt_bap_stream_set_io(setup->stream, fd)) {
-		bt_bap_stream_start(setup->stream, NULL, NULL);
 		g_io_channel_set_close_on_unref(io, FALSE);
 		return;
 	}
@@ -2677,11 +2676,17 @@ static void bap_state_bcast_sink(struct bt_bap_stream *stream,
 		if (!setup)
 			break;
 		if (old_state ==
-				BT_BAP_STREAM_STATE_CONFIG)
-			setup_create_io(data, setup, stream, defer);
-		if (old_state ==
 				BT_BAP_STREAM_STATE_STREAMING)
 			setup_io_close(setup, NULL);
+		break;
+	case BT_BAP_STREAM_STATE_ENABLING:
+		/* For a Broadcast Sink, the ENABLING state suggests that
+		 * the upper layer process requires the stream to start
+		 * receiving audio. This state is used to differentiate
+		 * between all configured streams and the ones that have
+		 * been enabled by the upper layer. Create stream io.
+		 */
+		setup_create_io(data, setup, stream, defer);
 		break;
 	}
 }

@@ -6419,14 +6419,15 @@ static void bsnk_state_str(struct bt_bap_stream *stream, uint8_t old_state,
 
 			/* Enable stream */
 			bt_bap_stream_enable(stream, true, NULL, NULL, NULL);
-		} else if (old_state == BT_BAP_STREAM_STATE_CONFIG) {
-			/* Start stream */
-			bt_bap_stream_start(stream, NULL, NULL);
 		} else {
 			/* Other state transitions are invalid */
 			tester_test_failed();
 		}
 
+		break;
+	case BT_BAP_STREAM_STATE_ENABLING:
+		/* Start stream */
+		bt_bap_stream_start(stream, NULL, NULL);
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
 		queue_foreach(data->streams, stream_count_streaming, &num);
