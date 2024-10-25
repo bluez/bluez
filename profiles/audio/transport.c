@@ -287,9 +287,14 @@ static void media_owner_remove(struct media_owner *owner)
 
 static void media_owner_free(struct media_owner *owner)
 {
+	struct media_transport *transport = owner->transport;
+
 	DBG("Owner %s", owner->name);
 
 	media_owner_remove(owner);
+
+	if (transport)
+		transport->owner = NULL;
 
 	g_free(owner->name);
 	g_free(owner);
