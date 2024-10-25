@@ -89,7 +89,7 @@ struct input_device {
 };
 
 static int idle_timeout = 0;
-static bool uhid_enabled = true;
+static uhid_state_t uhid_state = UHID_ENABLED;
 static bool classic_bonded_only = true;
 
 void input_set_idle_timeout(int timeout)
@@ -97,9 +97,23 @@ void input_set_idle_timeout(int timeout)
 	idle_timeout = timeout;
 }
 
-void input_enable_userspace_hid(bool state)
+void input_set_userspace_hid(char *state)
 {
-	uhid_enabled = state;
+	if (!strcasecmp(state, "false") || !strcasecmp(state, "no") ||
+			!strcasecmp(state, "off"))
+		uhid_state = UHID_DISABLED;
+	else if (!strcasecmp(state, "true") || !strcasecmp(state, "yes") ||
+			!strcasecmp(state, "on"))
+		uhid_state = UHID_ENABLED;
+	else if (!strcasecmp(state, "persist"))
+		uhid_state = UHID_PERSIST;
+	else
+		error("Unknown value '%s'", state);
+}
+
+uint8_t input_get_userspace_hid(void)
+{
+	return uhid_state;
 }
 
 void input_set_classic_bonded_only(bool state)
@@ -177,6 +191,9 @@ static int uhid_disconnect(struct input_device *idev, bool force)
 
 	/* Force destroy the node if virtual cable unplug flag has been set */
 	if (idev->virtual_cable_unplug && !force)
+		force = true;
+
+	if (!force && uhid_state != UHID_PERSIST)
 		force = true;
 
 	err = bt_uhid_destroy(idev->uhid, force);
@@ -1507,7 +1524,7 @@ int input_device_register(struct btd_service *service)
 	if (!idev)
 		return -EINVAL;
 
-	if (uhid_enabled) {
+	if (uhid_state) {
 		idev->uhid = bt_uhid_new_default();
 		if (!idev->uhid) {
 			error("bt_uhid_new_default: failed");
@@ -1605,7 +1622,7 @@ int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 	if (!idev)
 		return -ENOENT;
 
-	if (uhid_enabled)
+	if (uhid_state)
 		cond |= G_IO_IN;
 
 	switch (psm) {

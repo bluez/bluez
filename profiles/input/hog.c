@@ -208,7 +208,10 @@ static int hog_disconnect(struct btd_service *service)
 {
 	struct hog_device *dev = btd_service_get_user_data(service);
 
-	bt_hog_detach(dev->hog, false);
+	if (input_get_userspace_hid() == UHID_PERSIST)
+		bt_hog_detach(dev->hog, false);
+	else
+		bt_hog_detach(dev->hog, true);
 
 	btd_service_disconnecting_complete(service, 0);
 

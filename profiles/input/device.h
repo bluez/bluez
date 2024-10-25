@@ -11,11 +11,18 @@
 #define L2CAP_PSM_HIDP_CTRL	0x11
 #define L2CAP_PSM_HIDP_INTR	0x13
 
+typedef enum {
+	UHID_DISABLED = 0,
+	UHID_ENABLED,
+	UHID_PERSIST
+} uhid_state_t;
+
 struct input_device;
 struct input_conn;
 
 void input_set_idle_timeout(int timeout);
-void input_enable_userspace_hid(bool state);
+void input_set_userspace_hid(char *state);
+uint8_t input_get_userspace_hid(void);
 void input_set_classic_bonded_only(bool state);
 bool input_get_classic_bonded_only(void);
 void input_set_auto_sec(bool state);
