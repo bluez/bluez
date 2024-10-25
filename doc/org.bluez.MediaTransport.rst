@@ -144,10 +144,25 @@ array{byte} Metadata [readwrite, ISO Only, experimental]
 
 	Indicates transport Metadata.
 
-array{object} Links [readonly, optional, ISO only, experimental]
+array{object} Links [readonly, optional, CIS only, experimental]
 ````````````````````````````````````````````````````````````````
 
 	Linked transport objects which the transport is associated with.
+
+array{object} Links [readwrite, BIS only, experimental]
+```````````````````````````````````````````````````````
+
+	For a Broadcast Sink, the BIG sync procedure requires all
+	desired streams to be enumerated from the start and it cannot
+	be later reconfigured by adding or removing BISes. To avoid
+	terminating and recreating the BIG sync everytime a new
+	transport is selected for acquire, all transports selected via
+	Transport.Select need to be linked together. When the first
+	transport is acquired via Transport.Acquire, all links are
+	included in the BIG sync command. An acquired transport will
+	create and set fds for all its links. Then, each link needs
+	to be acquired separately, to get the fd and start receiving
+	audio.
 
 dict QoS [readwrite, optional, ISO only, experimental]
 ``````````````````````````````````````````````````````
