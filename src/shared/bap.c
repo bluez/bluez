@@ -2422,8 +2422,7 @@ static int bap_ucast_io_link(struct bt_bap_stream *stream,
 
 	bap = stream->bap;
 
-	if (queue_find(stream->links, NULL, link) ||
-		queue_find(link->links, NULL, stream))
+	if (!queue_isempty(stream->links) || !queue_isempty(link->links))
 		return -EALREADY;
 
 	if (stream->client != link->client ||
