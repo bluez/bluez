@@ -116,6 +116,7 @@ struct media_transport_ops {
 	void *(*get_stream)(struct media_transport *transport);
 	int8_t (*get_volume)(struct media_transport *transport);
 	int (*set_volume)(struct media_transport *transport, int8_t level);
+	int (*set_delay)(struct media_transport *transport, uint16_t delay);
 	void (*update_links)(const struct media_transport *transport);
 	GDestroyNotify destroy;
 };
@@ -551,6 +552,36 @@ static int transport_a2dp_snk_set_volume(struct media_transport *transport,
 	return avrcp_set_volume(transport->device, level, notify);
 }
 
+static int transport_a2dp_snk_set_delay(struct media_transport *transport,
+					uint16_t delay)
+{
+	struct a2dp_transport *a2dp = transport->data;
+	struct avdtp_stream *stream;
+
+	if (a2dp->delay == delay)
+		return 0;
+
+	if (a2dp->session == NULL) {
+		a2dp->session = a2dp_avdtp_get(transport->device);
+		if (a2dp->session == NULL)
+			return -EIO;
+	}
+
+	stream = media_transport_get_stream(transport);
+	if (stream == NULL)
+		return -EIO;
+
+	if (a2dp->watch) {
+		a2dp->delay = delay;
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						transport->path,
+						MEDIA_TRANSPORT_INTERFACE,
+						"Delay");
+	}
+
+	return avdtp_delay_report(a2dp->session, stream, delay);
+}
+
 static void media_owner_exit(DBusConnection *connection, void *user_data)
 {
 	struct media_owner *owner = user_data;
@@ -873,7 +904,7 @@ static gboolean delay_reporting_exists(const GDBusPropertyTable *property,
 	return avdtp_stream_has_delay_reporting(stream);
 }
 
-static gboolean get_delay_reporting(const GDBusPropertyTable *property,
+static gboolean get_delay_report(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct media_transport *transport = data;
@@ -882,6 +913,63 @@ static gboolean get_delay_reporting(const GDBusPropertyTable *property,
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &a2dp->delay);
 
 	return TRUE;
+}
+
+static int media_transport_set_delay(struct media_transport *transport,
+					uint16_t delay)
+{
+	DBG("Transport %s delay %d", transport->path, delay);
+
+	if (transport->ops && transport->ops->set_delay)
+		return transport->ops->set_delay(transport, delay);
+
+	return 0;
+}
+
+static void set_delay_report(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id,
+				void *data)
+{
+	struct media_transport *transport = data;
+	struct media_owner *owner = transport->owner;
+	const char *sender;
+	uint16_t arg;
+	int err;
+
+	if (owner != NULL) {
+		/* If the transport is acquired, do not allow to modify
+		 * the delay anyone but the owner.
+		 */
+		sender = g_dbus_pending_property_get_sender(id);
+		if (g_strcmp0(owner->name, sender) != 0) {
+			g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".NotAuthorized",
+					"Operation Not Authorized");
+			return;
+		}
+	}
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16) {
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Expected UINT16");
+		return;
+	}
+
+	dbus_message_iter_get_basic(iter, &arg);
+
+	err = media_transport_set_delay(transport, arg);
+	if (err) {
+		error("Unable to set delay: %s (%d)", strerror(-err), err);
+		g_dbus_pending_property_error(id,
+						ERROR_INTERFACE ".Failed",
+						"Internal error %s (%d)",
+						strerror(-err), err);
+		return;
+	}
+
+	g_dbus_pending_property_success(id);
 }
 
 static gboolean volume_exists(const GDBusPropertyTable *property, void *data)
@@ -1019,7 +1107,8 @@ static const GDBusPropertyTable transport_a2dp_properties[] = {
 	{ "Codec", "y", get_codec },
 	{ "Configuration", "ay", get_configuration },
 	{ "State", "s", get_state },
-	{ "Delay", "q", get_delay_reporting, NULL, delay_reporting_exists },
+	{ "Delay", "q", get_delay_report, set_delay_report,
+				delay_reporting_exists },
 	{ "Volume", "q", get_volume, set_volume, volume_exists },
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists,
 				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
@@ -2170,7 +2259,8 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 
 #define TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner, _init, \
 		      _resume, _suspend, _cancel, _set_state, _get_stream, \
-		      _get_volume, _set_volume, _update_links, _destroy) \
+		      _get_volume, _set_volume, _set_delay, _update_links, \
+		      _destroy) \
 { \
 	.uuid = _uuid, \
 	.properties = _props, \
@@ -2184,16 +2274,17 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 	.get_stream = _get_stream, \
 	.get_volume = _get_volume, \
 	.set_volume = _set_volume, \
+	.set_delay = _set_delay, \
 	.update_links = _update_links, \
 	.destroy = _destroy \
 }
 
-#define A2DP_OPS(_uuid, _init, _set_volume, _destroy) \
+#define A2DP_OPS(_uuid, _init, _set_volume, _set_delay, _destroy) \
 	TRANSPORT_OPS(_uuid, transport_a2dp_properties, NULL, NULL, _init, \
 			transport_a2dp_resume, transport_a2dp_suspend, \
 			transport_a2dp_cancel, NULL, \
 			transport_a2dp_get_stream, transport_a2dp_get_volume, \
-			_set_volume, NULL, _destroy)
+			_set_volume, _set_delay, NULL, _destroy)
 
 #define BAP_OPS(_uuid, _props, _set_owner, _remove_owner, _update_links, \
 		_set_state) \
@@ -2201,8 +2292,8 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			transport_bap_init, \
 			transport_bap_resume, transport_bap_suspend, \
 			transport_bap_cancel, _set_state, \
-			transport_bap_get_stream, NULL, NULL, _update_links, \
-			transport_bap_destroy)
+			transport_bap_get_stream, NULL, NULL, NULL, \
+			_update_links, transport_bap_destroy)
 
 #define BAP_UC_OPS(_uuid) \
 	BAP_OPS(_uuid, transport_bap_uc_properties, \
@@ -2219,14 +2310,16 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			transport_asha_resume, transport_asha_suspend, \
 			transport_asha_cancel, NULL, NULL, \
 			transport_asha_get_volume, transport_asha_set_volume, \
-			NULL, NULL)
+			NULL, NULL, NULL)
 
 static const struct media_transport_ops transport_ops[] = {
 	A2DP_OPS(A2DP_SOURCE_UUID, transport_a2dp_src_init,
 			transport_a2dp_src_set_volume,
+			NULL,
 			transport_a2dp_src_destroy),
 	A2DP_OPS(A2DP_SINK_UUID, transport_a2dp_snk_init,
 			transport_a2dp_snk_set_volume,
+			transport_a2dp_snk_set_delay,
 			transport_a2dp_snk_destroy),
 	BAP_UC_OPS(PAC_SOURCE_UUID),
 	BAP_UC_OPS(PAC_SINK_UUID),
