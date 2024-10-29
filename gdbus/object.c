@@ -430,26 +430,43 @@ static gboolean check_privilege(DBusConnection *conn, DBusMessage *msg,
 static GDBusPendingPropertySet next_pending_property = 1;
 static GSList *pending_property_set;
 
+static int pending_property_data_compare_id(const void *data,
+						const void *user_data)
+{
+	const struct property_data *propdata = data;
+	const GDBusPendingPropertySet *id = user_data;
+	return propdata->id - *id;
+}
+
 static struct property_data *remove_pending_property_data(
 						GDBusPendingPropertySet id)
 {
 	struct property_data *propdata;
 	GSList *l;
 
-	for (l = pending_property_set; l != NULL; l = l->next) {
-		propdata = l->data;
-		if (propdata->id != id)
-			continue;
-
-		break;
-	}
-
+	l = g_slist_find_custom(pending_property_set, &id,
+				pending_property_data_compare_id);
 	if (l == NULL)
 		return NULL;
 
+	propdata = l->data;
 	pending_property_set = g_slist_delete_link(pending_property_set, l);
 
 	return propdata;
+}
+
+const char *g_dbus_pending_property_get_sender(GDBusPendingPropertySet id)
+{
+	struct property_data *propdata;
+	GSList *l;
+
+	l = g_slist_find_custom(pending_property_set, &id,
+					pending_property_data_compare_id);
+	if (l == NULL)
+		return NULL;
+
+	propdata = l->data;
+	return dbus_message_get_sender(propdata->message);
 }
 
 void g_dbus_pending_property_success(GDBusPendingPropertySet id)
