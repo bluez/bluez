@@ -119,7 +119,8 @@ uint16 Delay [readwrite, optional]
 ``````````````````````````````````
 
 	Transport delay in 1/10 of millisecond, this property is only writeable
-	when the transport was acquired by the sender.
+	when the transport corresponds to a sink endpoint and it was acquired by
+	the sender.
 
 uint16 Volume [readwrite, optional]
 ```````````````````````````````````
