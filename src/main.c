@@ -1322,6 +1322,11 @@ static void disconnected_dbus(DBusConnection *conn, void *data)
 	mainloop_quit();
 }
 
+static void dbus_debug(const char *str, void *data)
+{
+	DBG_IDX(0xffff, "%s", str);
+}
+
 static int connect_dbus(void)
 {
 	DBusConnection *conn;
@@ -1343,6 +1348,7 @@ static int connect_dbus(void)
 
 	g_dbus_set_disconnect_function(conn, disconnected_dbus, NULL, NULL);
 	g_dbus_attach_object_manager(conn);
+	g_dbus_set_debug(dbus_debug, NULL, NULL);
 
 	return 0;
 }
