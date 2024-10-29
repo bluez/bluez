@@ -3077,12 +3077,25 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	if (device->bonding)
 		return btd_error_in_progress(msg);
 
-	if (device->bredr_state.bonded)
+	/* Only use this selection algorithms when device is combo
+	 * chip. Ohterwise, it will use the wrong bearer to establish
+	 * a connection if the device is already paired, which will
+	 * stall the pairing procedure. For example, for a BLE only
+	 * device, if the device is already paired, and upper layer
+	 * issue the pair device again, it will set bdaddr_type to
+	 * BDADDR_BREDR since LE is bonded, then it goes with BR/EDR
+	 * bearer.
+	 */
+	if (device->bredr && device->le) {
+		if (device->bredr_state.bonded)
+			bdaddr_type = device->bdaddr_type;
+		else if (device->le_state.bonded)
+			bdaddr_type = BDADDR_BREDR;
+		else
+			bdaddr_type = select_conn_bearer(device);
+	} else {
 		bdaddr_type = device->bdaddr_type;
-	else if (device->le_state.bonded)
-		bdaddr_type = BDADDR_BREDR;
-	else
-		bdaddr_type = select_conn_bearer(device);
+	}
 
 	state = get_state(device, bdaddr_type);
 
