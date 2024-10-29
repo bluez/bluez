@@ -234,6 +234,12 @@ struct GDBusSecurityTable {
 void g_dbus_set_flags(int flags);
 int g_dbus_get_flags(void);
 
+typedef void (*g_dbus_destroy_func_t)(void *user_data);
+typedef void (*g_dbus_debug_func_t)(const char *str, void *user_data);
+
+void g_dbus_set_debug(g_dbus_debug_func_t cb, void *user_data,
+				g_dbus_destroy_func_t destroy);
+
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
 					const GDBusMethodTable *methods,

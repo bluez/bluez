@@ -20,6 +20,7 @@
 #include <dbus/dbus.h>
 
 #include "gdbus.h"
+#include "src/shared/util.h"
 
 #define info(fmt...)
 #define error(fmt...)
@@ -72,9 +73,16 @@ struct property_data {
 	DBusMessage *message;
 };
 
+struct debug_data {
+	g_dbus_debug_func_t func;
+	g_dbus_destroy_func_t destroy;
+	void *data;
+};
+
 static int global_flags = 0;
 static struct generic_data *root;
 static GSList *pending = NULL;
+static struct debug_data debug = { NULL, NULL, NULL };
 
 static gboolean process_changes(gpointer user_data);
 static void process_properties_from_interface(struct generic_data *data,
@@ -122,6 +130,20 @@ static bool check_testing(int flags, int flag)
 		return false;
 
 	return !(global_flags & G_DBUS_FLAG_ENABLE_TESTING);
+}
+
+static void g_dbus_debug(const char *format, ...)
+{
+	va_list va;
+	char str[MAX_INPUT];
+
+	if (!format || !debug.func)
+		return;
+
+	va_start(va, format);
+	vsnprintf(str, sizeof(str), format, va);
+	debug.func(str, debug.data);
+	va_end(va);
 }
 
 static void generate_interface_xml(GString *gstr, struct interface_data *iface)
@@ -582,6 +604,22 @@ static void append_interface(gpointer data, gpointer user_data)
 	dbus_message_iter_close_container(array, &entry);
 }
 
+static const char *dbus_message_type_string(DBusMessage *msg)
+{
+	return dbus_message_type_to_string(dbus_message_get_type(msg));
+}
+
+static void g_dbus_send_unref(DBusConnection *conn, DBusMessage *msg)
+{
+	g_dbus_debug("[%s] %s.%s",
+			dbus_message_type_string(msg),
+			dbus_message_get_interface(msg),
+			dbus_message_get_member(msg));
+
+	dbus_connection_send(conn, msg, NULL);
+	dbus_message_unref(msg);
+}
+
 static void emit_interfaces_added(struct generic_data *data)
 {
 	DBusMessage *signal;
@@ -622,9 +660,8 @@ static void emit_interfaces_added(struct generic_data *data)
 
 	dbus_message_iter_close_container(&iter, &array);
 
-	/* Use dbus_connection_send to avoid recursive calls to g_dbus_flush */
-	dbus_connection_send(data->conn, signal, NULL);
-	dbus_message_unref(signal);
+	/* Use g_dbus_send_unref to avoid recursive calls to g_dbus_flush */
+	g_dbus_send_unref(data->conn, signal);
 }
 
 static struct interface_data *find_interface(GSList *interfaces,
@@ -1019,9 +1056,8 @@ static void emit_interfaces_removed(struct generic_data *data)
 
 	dbus_message_iter_close_container(&iter, &array);
 
-	/* Use dbus_connection_send to avoid recursive calls to g_dbus_flush */
-	dbus_connection_send(data->conn, signal, NULL);
-	dbus_message_unref(signal);
+	/* Use g_dbus_send_unref to avoid recursive calls to g_dbus_flush */
+	g_dbus_send_unref(data->conn, signal);
 }
 
 static void remove_pending(struct generic_data *data)
@@ -1085,6 +1121,13 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	struct interface_data *iface;
 	const GDBusMethodTable *method;
 	const char *interface;
+
+	g_dbus_debug("[%s:%s] > %s.%s [#%d]",
+			dbus_message_get_sender(message),
+			dbus_message_type_string(message),
+			dbus_message_get_interface(message),
+			dbus_message_get_member(message),
+			dbus_message_get_serial(message));
 
 	interface = dbus_message_get_interface(message);
 
@@ -1576,6 +1619,35 @@ gboolean g_dbus_send_message(DBusConnection *connection, DBusMessage *message)
 	/* Flush pending signal to guarantee message order */
 	g_dbus_flush(connection);
 
+	switch (dbus_message_get_type(message)) {
+	case DBUS_MESSAGE_TYPE_METHOD_RETURN:
+		g_dbus_debug("[%s:%s] < [#%d]",
+				dbus_message_get_destination(message),
+				dbus_message_type_string(message),
+				dbus_message_get_reply_serial(message));
+		break;
+	case DBUS_MESSAGE_TYPE_ERROR:
+		g_dbus_debug("[%s:%s] < %s [#%d]",
+				dbus_message_get_destination(message),
+				dbus_message_type_string(message),
+				dbus_message_get_error_name(message),
+				dbus_message_get_reply_serial(message));
+		break;
+	case DBUS_MESSAGE_TYPE_SIGNAL:
+		g_dbus_debug("[%s] %s.%s",
+				dbus_message_type_string(message),
+				dbus_message_get_interface(message),
+				dbus_message_get_member(message));
+		break;
+	default:
+		g_dbus_debug("[%s:%s] < %s.%s",
+				dbus_message_get_destination(message),
+				dbus_message_type_string(message),
+				dbus_message_get_interface(message),
+				dbus_message_get_member(message));
+		break;
+	}
+
 	result = dbus_connection_send(connection, message, NULL);
 
 out:
@@ -1600,6 +1672,12 @@ gboolean g_dbus_send_message_with_reply(DBusConnection *connection,
 		error("Unable to send message (passing fd blocked?)");
 		return FALSE;
 	}
+
+	g_dbus_debug("[%s:%s] < %s.%s",
+			dbus_message_get_destination(message),
+			dbus_message_type_string(message),
+			dbus_message_get_interface(message),
+			dbus_message_get_member(message));
 
 	return ret;
 }
@@ -1773,9 +1851,8 @@ static void process_properties_from_interface(struct generic_data *data,
 	g_slist_free(iface->pending_prop);
 	iface->pending_prop = NULL;
 
-	/* Use dbus_connection_send to avoid recursive calls to g_dbus_flush */
-	dbus_connection_send(data->conn, signal, NULL);
-	dbus_message_unref(signal);
+	/* Use g_dbus_send_unref to avoid recursive calls to g_dbus_flush */
+	g_dbus_send_unref(data->conn, signal);
 }
 
 static void process_property_changes(struct generic_data *data)
@@ -1901,4 +1978,15 @@ void g_dbus_set_flags(int flags)
 int g_dbus_get_flags(void)
 {
 	return global_flags;
+}
+
+void g_dbus_set_debug(g_dbus_debug_func_t cb, void *user_data,
+				g_dbus_destroy_func_t destroy)
+{
+	if (debug.destroy)
+		debug.destroy(debug.data);
+
+	debug.func = cb;
+	debug.destroy = destroy;
+	debug.data = user_data;
 }
