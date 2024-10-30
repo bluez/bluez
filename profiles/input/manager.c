@@ -14,6 +14,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "lib/bluetooth.h"
 #include "lib/sdp.h"
