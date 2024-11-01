@@ -2987,6 +2987,7 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = data->test_data;
 	int sk, new_sk;
+	gboolean ret;
 	iso_defer_accept_t iso_accept = isodata->bcast ?
 						iso_defer_accept_bcast :
 						iso_defer_accept_ucast;
@@ -3014,8 +3015,10 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 		if (isodata->bcast) {
 			iso_connect(io, cond, user_data);
 
-			if (!data->step)
+			if (!data->step) {
+				g_io_channel_unref(io);
 				return false;
+			}
 		}
 
 		if (!iso_accept(data, io)) {
@@ -3037,7 +3040,10 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 		}
 	}
 
-	return iso_connect(io, cond, user_data);
+	ret = iso_connect(io, cond, user_data);
+
+	g_io_channel_unref(io);
+	return ret;
 }
 
 static void test_listen(const void *test_data)
