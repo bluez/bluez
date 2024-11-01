@@ -518,7 +518,8 @@ struct iso_client_data {
 	bool no_poll_errqueue;
 };
 
-typedef bool (*iso_defer_accept_t)(struct test_data *data, GIOChannel *io);
+typedef bool (*iso_defer_accept_t)(struct test_data *data, GIOChannel *io,
+						uint8_t num, GIOFunc func);
 
 static void mgmt_debug(const char *str, void *user_data)
 {
@@ -1440,6 +1441,16 @@ static const struct iso_client_data bcast_16_2_1_recv_defer = {
 	.expect_err = 0,
 	.defer = true,
 	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.listen_bind = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_16_2_1_recv2_defer = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.defer = true,
 	.bcast = true,
 	.server = true,
 	.listen_bind = true,
@@ -2923,7 +2934,8 @@ static void setup_listen(struct test_data *data, uint8_t num, GIOFunc func)
 	return setup_listen_many(data, 1, &num, &func);
 }
 
-static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io)
+static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io,
+						uint8_t num, GIOFunc func)
 {
 	int sk;
 	char c;
@@ -2957,17 +2969,20 @@ static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io)
 
 	tester_print("Accept deferred setup");
 
-	data->io_queue = queue_new();
+	if (!data->io_queue)
+		data->io_queue = queue_new();
+
 	if (data->io_queue)
 		queue_push_tail(data->io_queue, io);
 
-	data->io_id[0] = g_io_add_watch(io, G_IO_IN,
-				iso_accept_cb, NULL);
+	data->io_id[num] = g_io_add_watch(io, G_IO_IN,
+				func, NULL);
 
 	return true;
 }
 
-static bool iso_defer_accept_ucast(struct test_data *data, GIOChannel *io)
+static bool iso_defer_accept_ucast(struct test_data *data, GIOChannel *io,
+						uint8_t num, GIOFunc func)
 {
 	int sk;
 	char c;
@@ -2997,19 +3012,20 @@ static bool iso_defer_accept_ucast(struct test_data *data, GIOChannel *io)
 	if (data->io_queue)
 		queue_push_tail(data->io_queue, io);
 
-	data->io_id[0] = g_io_add_watch(io, G_IO_OUT,
-				iso_connect_cb, NULL);
+	data->io_id[num] = g_io_add_watch(io, G_IO_OUT,
+				func, NULL);
 
 	return true;
 }
 
 static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
-				gpointer user_data)
+				gpointer user_data, uint8_t num, GIOFunc func)
 {
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = data->test_data;
 	int sk, new_sk;
 	gboolean ret;
+	GIOChannel *new_io;
 	iso_defer_accept_t iso_defer_accept = isodata->bcast ?
 						iso_defer_accept_bcast :
 						iso_defer_accept_ucast;
@@ -3022,26 +3038,32 @@ static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
 		return false;
 	}
 
-	io = g_io_channel_unix_new(new_sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	new_io = g_io_channel_unix_new(new_sk);
+	g_io_channel_set_close_on_unref(new_io, TRUE);
 
 	if (isodata->defer) {
 		if (isodata->expect_err < 0) {
-			g_io_channel_unref(io);
+			g_io_channel_unref(new_io);
 			tester_test_passed();
 			return false;
 		}
 
 		if (isodata->bcast) {
-			iso_connect(io, cond, user_data);
+			iso_connect(new_io, cond, user_data);
 
 			if (!data->step) {
-				g_io_channel_unref(io);
+				g_io_channel_unref(new_io);
+				return false;
+			}
+
+			/* Return if connection has already been accepted */
+			if (queue_find(data->io_queue, NULL, io)) {
+				g_io_channel_unref(new_io);
 				return false;
 			}
 		}
 
-		if (!iso_defer_accept(data, io)) {
+		if (!iso_defer_accept(data, new_io, num, func)) {
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
 		}
@@ -3060,9 +3082,9 @@ static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
 		}
 	}
 
-	ret = iso_connect(io, cond, user_data);
+	ret = iso_connect(new_io, cond, user_data);
 
-	g_io_channel_unref(io);
+	g_io_channel_unref(new_io);
 	return ret;
 }
 
@@ -3070,10 +3092,14 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct iso_client_data *isodata = data->test_data;
 
 	data->io_id[0] = 0;
 
-	return iso_accept(io, cond, user_data);
+	if (isodata->bcast)
+		return iso_accept(io, cond, user_data, 0, iso_accept_cb);
+	else
+		return iso_accept(io, cond, user_data, 0, iso_connect_cb);
 }
 
 static gboolean iso_accept2_cb(GIOChannel *io, GIOCondition cond,
@@ -3083,7 +3109,7 @@ static gboolean iso_accept2_cb(GIOChannel *io, GIOCondition cond,
 
 	data->io_id[1] = 0;
 
-	return iso_accept(io, cond, user_data);
+	return iso_accept(io, cond, user_data, 1, iso_accept2_cb);
 }
 
 static void test_listen(const void *test_data)
@@ -3377,6 +3403,17 @@ static void test_bcast_recv_defer(const void *test_data)
 	data->step = 1;
 
 	setup_listen(data, 0, iso_accept_cb);
+}
+
+static void test_bcast_recv2_defer(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	uint8_t num[2] = {0, 1};
+	GIOFunc funcs[2] = {iso_accept_cb, iso_accept2_cb};
+
+	data->step = 2;
+
+	setup_listen_many(data, 2, num, funcs);
 }
 
 static void test_connect2_suspend(const void *test_data)
@@ -3770,6 +3807,11 @@ int main(int argc, char *argv[])
 						&bcast_16_2_1_recv_defer,
 						setup_powered,
 						test_bcast_recv_defer);
+	test_iso2("ISO Broadcaster Receiver2 Defer - Success",
+						&bcast_16_2_1_recv2_defer,
+						setup_powered,
+						test_bcast_recv2_defer);
+
 	test_iso("ISO Broadcaster Receiver Defer No BIS - Success",
 						&bcast_16_2_1_recv_defer_no_bis,
 						setup_powered,
