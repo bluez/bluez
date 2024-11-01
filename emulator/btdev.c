@@ -52,7 +52,7 @@
 #define ACL_HANDLE 42
 #define ISO_HANDLE 257
 #define SCO_HANDLE 257
-#define SYC_HANDLE 1
+#define SYNC_HANDLE 1
 #define INV_HANDLE 0xffff
 
 struct hook {
@@ -103,6 +103,13 @@ struct le_ext_adv {
 	uint8_t scan_data[252];
 	uint8_t scan_data_len;
 	unsigned int id;
+};
+
+struct le_per_adv {
+	struct btdev *dev;
+	uint8_t addr_type;
+	uint8_t addr[6];
+	uint16_t sync_handle;
 };
 
 struct le_cig {
@@ -212,8 +219,6 @@ struct btdev {
 	uint16_t le_pa_max_interval;
 	uint8_t  le_pa_data_len;
 	uint8_t  le_pa_data[MAX_PA_DATA_LEN];
-	struct bt_hci_cmd_le_pa_create_sync pa_sync_cmd;
-	uint16_t le_pa_sync_handle;
 	uint8_t  big_handle;
 	uint8_t  le_ltk[16];
 	struct le_cig le_cig[CIG_SIZE];
@@ -239,6 +244,7 @@ struct btdev {
 	uint16_t le_ext_adv_type;
 
 	struct queue *le_ext_adv;
+	struct queue *le_per_adv;
 
 	btdev_debug_func_t debug_callback;
 	btdev_destroy_func_t debug_destroy;
@@ -578,7 +584,6 @@ static void btdev_reset(struct btdev *btdev)
 	btdev->le_scan_enable		= 0x00;
 	btdev->le_adv_enable		= 0x00;
 	btdev->le_pa_enable		= 0x00;
-	btdev->le_pa_sync_handle	= 0x0000;
 	btdev->big_handle		= 0xff;
 
 	al_clear(btdev);
@@ -589,6 +594,7 @@ static void btdev_reset(struct btdev *btdev)
 
 	queue_remove_all(btdev->conns, NULL, NULL, conn_remove);
 	queue_remove_all(btdev->le_ext_adv, NULL, NULL, le_ext_adv_free);
+	queue_remove_all(btdev->le_per_adv, NULL, NULL, free);
 }
 
 static int cmd_reset(struct btdev *dev, const void *data, uint8_t len)
@@ -5246,7 +5252,8 @@ static int cmd_set_pa_data(struct btdev *dev, const void *data,
 	return 0;
 }
 
-static void send_biginfo(struct btdev *dev, const struct btdev *remote)
+static void send_biginfo(struct btdev *dev, const struct btdev *remote,
+							uint16_t sync_handle)
 {
 	struct bt_hci_evt_le_big_info_adv_report ev;
 	const struct btdev_conn *conn;
@@ -5259,7 +5266,7 @@ static void send_biginfo(struct btdev *dev, const struct btdev *remote)
 	bis = conn->data;
 
 	memset(&ev, 0, sizeof(ev));
-	ev.sync_handle = cpu_to_le16(dev->le_pa_sync_handle);
+	ev.sync_handle = cpu_to_le16(sync_handle);
 	ev.num_bis = 1;
 
 	while (find_bis_index(remote, ev.num_bis))
@@ -5281,7 +5288,7 @@ static void send_biginfo(struct btdev *dev, const struct btdev *remote)
 }
 
 static void send_pa(struct btdev *dev, const struct btdev *remote,
-						uint8_t offset)
+				uint8_t offset, uint16_t sync_handle)
 {
 	struct __packed {
 		struct bt_hci_le_pa_report ev;
@@ -5289,7 +5296,7 @@ static void send_pa(struct btdev *dev, const struct btdev *remote,
 	} pdu;
 
 	memset(&pdu.ev, 0, sizeof(pdu.ev));
-	pdu.ev.handle = cpu_to_le16(dev->le_pa_sync_handle);
+	pdu.ev.handle = cpu_to_le16(sync_handle);
 	pdu.ev.tx_power = 127;
 	pdu.ev.rssi = 127;
 	pdu.ev.cte_type = 0x0ff;
@@ -5309,41 +5316,67 @@ static void send_pa(struct btdev *dev, const struct btdev *remote,
 
 	if (pdu.ev.data_status == 0x01) {
 		offset += pdu.ev.data_len;
-		send_pa(dev, remote, offset);
+		send_pa(dev, remote, offset, sync_handle);
 		return;
 	}
 
-	send_biginfo(dev, remote);
+	send_biginfo(dev, remote, sync_handle);
+}
+
+static bool match_sync_handle(const void *data, const void *match_data)
+{
+	const struct le_per_adv *per_adv = data;
+	uint16_t sync_handle = PTR_TO_UINT(match_data);
+
+	return per_adv->sync_handle == sync_handle;
+}
+
+static bool match_dev(const void *data, const void *match_data)
+{
+	const struct le_per_adv *per_adv = data;
+	const struct btdev *dev = match_data;
+
+	return dev == find_btdev_by_bdaddr_type(per_adv->addr,
+						per_adv->addr_type);
 }
 
 static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
 						uint8_t status)
 {
 	struct bt_hci_evt_le_per_sync_established ev;
-	struct bt_hci_cmd_le_pa_create_sync *cmd = &dev->pa_sync_cmd;
+	struct le_per_adv *per_adv;
+	uint16_t sync_handle = SYNC_HANDLE;
+
+	per_adv = queue_find(dev->le_per_adv, match_dev, remote);
+	if (!per_adv)
+		return;
 
 	memset(&ev, 0, sizeof(ev));
 	ev.status = status;
 
 	if (status) {
-		memset(&dev->pa_sync_cmd, 0, sizeof(dev->pa_sync_cmd));
-		dev->le_pa_sync_handle = 0x0000;
+		queue_remove(dev->le_per_adv, per_adv);
+		free(per_adv);
 		le_meta_event(dev, BT_HCI_EVT_LE_PA_SYNC_ESTABLISHED, &ev,
 							sizeof(ev));
 		return;
 	}
 
-	dev->le_pa_sync_handle = SYC_HANDLE;
+	while (queue_find(dev->le_per_adv, match_sync_handle,
+					UINT_TO_PTR(sync_handle)))
+		sync_handle++;
 
-	ev.handle = cpu_to_le16(dev->le_pa_sync_handle);
-	ev.addr_type = cmd->addr_type;
-	memcpy(ev.addr, cmd->addr, sizeof(ev.addr));
+	per_adv->sync_handle = sync_handle;
+
+	ev.handle = cpu_to_le16(per_adv->sync_handle);
+	ev.addr_type = per_adv->addr_type;
+	memcpy(ev.addr, per_adv->addr, sizeof(ev.addr));
 	ev.phy = 0x01;
 	ev.interval = remote->le_pa_min_interval;
 	ev.clock_accuracy = 0x07;
 
 	le_meta_event(dev, BT_HCI_EVT_LE_PA_SYNC_ESTABLISHED, &ev, sizeof(ev));
-	send_pa(dev, remote, 0);
+	send_pa(dev, remote, 0, per_adv->sync_handle);
 }
 
 static int cmd_set_pa_enable(struct btdev *dev, const void *data, uint8_t len)
@@ -5369,7 +5402,8 @@ static int cmd_set_pa_enable(struct btdev *dev, const void *data, uint8_t len)
 			continue;
 
 		if (remote->le_scan_enable &&
-			remote->le_pa_sync_handle == INV_HANDLE)
+			queue_find(remote->le_per_adv, match_sync_handle,
+			UINT_TO_PTR(INV_HANDLE)))
 			le_pa_sync_estabilished(remote, dev,
 							BT_HCI_ERR_SUCCESS);
 	}
@@ -5477,11 +5511,14 @@ static void scan_ext_adv(struct btdev *dev, struct btdev *remote)
 
 static void scan_pa(struct btdev *dev, struct btdev *remote)
 {
-	if (dev->le_pa_sync_handle != INV_HANDLE || !remote->le_pa_enable)
+	struct le_per_adv *per_adv = queue_find(dev->le_per_adv,
+			match_sync_handle, UINT_TO_PTR(INV_HANDLE));
+
+	if (!per_adv || !remote->le_pa_enable)
 		return;
 
-	if (remote != find_btdev_by_bdaddr_type(dev->pa_sync_cmd.addr,
-						dev->pa_sync_cmd.addr_type))
+	if (remote != find_btdev_by_bdaddr_type(per_adv->addr,
+						per_adv->addr_type))
 		return;
 
 	le_pa_sync_estabilished(dev, remote, BT_HCI_ERR_SUCCESS);
@@ -5622,16 +5659,37 @@ static int cmd_ext_create_conn_complete(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static struct le_per_adv *le_per_adv_new(struct btdev *btdev,
+			uint8_t  addr_type, const uint8_t *addr)
+{
+	struct le_per_adv *per_adv;
+
+	per_adv = new0(struct le_per_adv, 1);
+
+	per_adv->dev = btdev;
+	per_adv->addr_type = addr_type;
+	memcpy(per_adv->addr, addr, 6);
+	per_adv->sync_handle = INV_HANDLE;
+
+	/* Add to queue */
+	if (!queue_push_tail(btdev->le_per_adv, per_adv)) {
+		free(per_adv);
+		return NULL;
+	}
+
+	return per_adv;
+}
+
 static int cmd_pa_create_sync(struct btdev *dev, const void *data, uint8_t len)
 {
+	const struct bt_hci_cmd_le_pa_create_sync *cmd = data;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
+	struct le_per_adv *per_adv;
 
-	if (dev->le_pa_sync_handle)
+	/* Create new train */
+	per_adv = le_per_adv_new(dev, cmd->addr_type, cmd->addr);
+	if (!per_adv)
 		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
-	else {
-		dev->le_pa_sync_handle = INV_HANDLE;
-		memcpy(&dev->pa_sync_cmd, data, len);
-	}
 
 	cmd_status(dev, status, BT_HCI_CMD_LE_PA_CREATE_SYNC);
 
@@ -5671,7 +5729,8 @@ static int cmd_pa_create_sync_cancel(struct btdev *dev, const void *data,
 	 * HCI_LE_Periodic_Advertising_Create_Sync command is pending, the
 	 * Controller shall return the error code Command Disallowed (0x0C).
 	 */
-	if (dev->le_pa_sync_handle != INV_HANDLE)
+	if (!queue_find(dev->le_per_adv, match_sync_handle,
+					UINT_TO_PTR(INV_HANDLE)))
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 
 	cmd_complete(dev, BT_HCI_CMD_LE_PA_CREATE_SYNC_CANCEL,
@@ -5690,16 +5749,24 @@ static int cmd_pa_create_sync_cancel(struct btdev *dev, const void *data,
 
 static int cmd_pa_term_sync(struct btdev *dev, const void *data, uint8_t len)
 {
+	const struct bt_hci_cmd_le_pa_term_sync *cmd = data;
+	struct le_per_adv *per_adv;
+	uint16_t sync_handle = le16_to_cpu(cmd->sync_handle);
 	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	per_adv = queue_find(dev->le_per_adv, match_sync_handle,
+				UINT_TO_PTR(sync_handle));
 
 	/* If the periodic advertising train corresponding to the Sync_Handle
 	 * parameter does not exist, then the Controller shall return the error
 	 * code Unknown Advertising Identifier (0x42).
 	 */
-	if (dev->le_pa_sync_handle != SYC_HANDLE)
+	if (!per_adv) {
 		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
-	else
-		dev->le_pa_sync_handle = 0x0000;
+	} else {
+		queue_remove(dev->le_per_adv, per_adv);
+		free(per_adv);
+	}
 
 	cmd_complete(dev, BT_HCI_CMD_LE_PA_TERM_SYNC,
 					&status, sizeof(status));
@@ -6359,11 +6426,13 @@ static int cmd_big_create_sync(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_big_create_sync *cmd = data;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
+	uint16_t sync_handle = le16_to_cpu(cmd->sync_handle);
 
 	/* If the Sync_Handle does not exist, the Controller shall return the
 	 * error code Unknown Advertising Identifier (0x42).
 	 */
-	if (dev->le_pa_sync_handle != le16_to_cpu(cmd->sync_handle)) {
+	if (!queue_find(dev->le_per_adv, match_sync_handle,
+					UINT_TO_PTR(sync_handle))) {
 		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
 		goto done;
 	}
@@ -6402,9 +6471,15 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 	struct btdev_conn *conn = NULL;
 	struct bt_hci_bis *bis;
 	int i;
+	uint16_t sync_handle = le16_to_cpu(cmd->sync_handle);
+	struct le_per_adv *per_adv = queue_find(dev->le_per_adv,
+			match_sync_handle, UINT_TO_PTR(sync_handle));
 
-	remote = find_btdev_by_bdaddr_type(dev->pa_sync_cmd.addr,
-						dev->pa_sync_cmd.addr_type);
+	if  (!per_adv)
+		return 0;
+
+	remote = find_btdev_by_bdaddr_type(per_adv->addr,
+						per_adv->addr_type);
 	if (!remote)
 		return 0;
 
@@ -7200,6 +7275,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	btdev->conns = queue_new();
 	btdev->le_ext_adv = queue_new();
+	btdev->le_per_adv = queue_new();
 
 	btdev->le_al_len = AL_SIZE;
 	btdev->le_rl_len = RL_SIZE;
@@ -7219,6 +7295,7 @@ void btdev_destroy(struct btdev *btdev)
 
 	queue_destroy(btdev->conns, conn_remove);
 	queue_destroy(btdev->le_ext_adv, le_ext_adv_free);
+	queue_destroy(btdev->le_per_adv, free);
 
 	free(btdev);
 }
