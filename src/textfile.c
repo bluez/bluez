@@ -127,10 +127,10 @@ static inline char *find_key(char *map, size_t size, const char *key, size_t len
 	while (ptrlen > len + 1) {
 		int cmp = (icase) ? strncasecmp(ptr, key, len) : strncmp(ptr, key, len);
 		if (cmp == 0) {
-			if (ptr == map && *(ptr + len) == ' ')
-				return ptr;
-
-			if ((*(ptr - 1) == '\r' || *(ptr - 1) == '\n') &&
+			if (ptr == map) {
+				if (*(ptr + len) == ' ')
+					return ptr;
+			} else if ((*(ptr - 1) == '\r' || *(ptr - 1) == '\n') &&
 							*(ptr + len) == ' ')
 				return ptr;
 		}
