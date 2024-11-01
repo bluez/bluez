@@ -1,3 +1,9 @@
+ver 5.79:
+	Fix issue with handling address type while pairing.
+	Add support for allowing to set A2DP transport delay.
+	Add support for persistent userspace HID operation.
+	Add support for handling syncing to multiple BISes.
+
 ver 5.78:
 	Fix issue with handling notification of scanned BISes to BASS
 	Fix issue with handling checking BIS caps against peer caps.
