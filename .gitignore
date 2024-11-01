@@ -133,6 +133,7 @@ tools/btpclient
 tools/btpclientctl
 tools/btmon-logger
 tools/bluetooth-logger.service
+tools/mpris-proxy.service
 peripheral/btsensor
 monitor/btmon
 emulator/btvirt
