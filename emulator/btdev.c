@@ -112,6 +112,12 @@ struct le_per_adv {
 	uint16_t sync_handle;
 };
 
+struct le_big {
+	struct btdev *dev;
+	uint8_t handle;
+	struct queue *bis;
+};
+
 struct le_cig {
 	struct bt_hci_cmd_le_set_cig_params params;
 	struct bt_hci_cis_params cis[CIS_SIZE];
@@ -219,7 +225,6 @@ struct btdev {
 	uint16_t le_pa_max_interval;
 	uint8_t  le_pa_data_len;
 	uint8_t  le_pa_data[MAX_PA_DATA_LEN];
-	uint8_t  big_handle;
 	uint8_t  le_ltk[16];
 	struct le_cig le_cig[CIG_SIZE];
 	uint8_t  le_iso_path[2];
@@ -245,6 +250,7 @@ struct btdev {
 
 	struct queue *le_ext_adv;
 	struct queue *le_per_adv;
+	struct queue *le_big;
 
 	btdev_debug_func_t debug_callback;
 	btdev_destroy_func_t debug_destroy;
@@ -575,6 +581,15 @@ static void le_ext_adv_free(void *data)
 	free(ext_adv);
 }
 
+static void le_big_free(void *data)
+{
+	struct le_big *big = data;
+
+	queue_destroy(big->bis, NULL);
+
+	free(big);
+}
+
 static void btdev_reset(struct btdev *btdev)
 {
 	/* FIXME: include here clearing of all states that should be
@@ -584,7 +599,6 @@ static void btdev_reset(struct btdev *btdev)
 	btdev->le_scan_enable		= 0x00;
 	btdev->le_adv_enable		= 0x00;
 	btdev->le_pa_enable		= 0x00;
-	btdev->big_handle		= 0xff;
 
 	al_clear(btdev);
 	rl_clear(btdev);
@@ -595,6 +609,7 @@ static void btdev_reset(struct btdev *btdev)
 	queue_remove_all(btdev->conns, NULL, NULL, conn_remove);
 	queue_remove_all(btdev->le_ext_adv, NULL, NULL, le_ext_adv_free);
 	queue_remove_all(btdev->le_per_adv, NULL, NULL, free);
+	queue_remove_all(btdev->le_big, NULL, NULL, le_big_free);
 }
 
 static int cmd_reset(struct btdev *dev, const void *data, uint8_t len)
@@ -5331,6 +5346,14 @@ static bool match_sync_handle(const void *data, const void *match_data)
 	return per_adv->sync_handle == sync_handle;
 }
 
+static bool match_big_handle(const void *data, const void *match_data)
+{
+	const struct le_big *big = data;
+	uint8_t handle = PTR_TO_UINT(match_data);
+
+	return big->handle == handle;
+}
+
 static bool match_dev(const void *data, const void *match_data)
 {
 	const struct le_per_adv *per_adv = data;
@@ -6441,7 +6464,8 @@ static int cmd_big_create_sync(struct btdev *dev, const void *data, uint8_t len)
 	 * allocated, the Controller shall return the error code Command
 	 * Disallowed (0x0C).
 	 */
-	if (dev->big_handle == cmd->handle) {
+	if (queue_find(dev->le_big, match_big_handle,
+				UINT_TO_PTR(cmd->handle))) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 		goto done;
 	}
@@ -6459,6 +6483,25 @@ done:
 	return 0;
 }
 
+static struct le_big *le_big_new(struct btdev *btdev, uint8_t handle)
+{
+	struct le_big *big;
+
+	big = new0(struct le_big, 1);
+
+	big->dev = btdev;
+	big->handle = handle;
+	big->bis = queue_new();
+
+	/* Add to queue */
+	if (!queue_push_tail(btdev->le_big, big)) {
+		le_big_free(big);
+		return NULL;
+	}
+
+	return big;
+}
+
 static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 							uint8_t len)
 {
@@ -6474,6 +6517,7 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 	uint16_t sync_handle = le16_to_cpu(cmd->sync_handle);
 	struct le_per_adv *per_adv = queue_find(dev->le_per_adv,
 			match_sync_handle, UINT_TO_PTR(sync_handle));
+	struct le_big *big;
 
 	if  (!per_adv)
 		return 0;
@@ -6483,6 +6527,14 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 	if (!remote)
 		return 0;
 
+	big = le_big_new(dev, cmd->handle);
+	if (!big) {
+		pdu.ev.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+		le_meta_event(dev, BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED, &pdu,
+					sizeof(pdu.ev));
+		return 0;
+	}
+
 	memset(&pdu.ev, 0, sizeof(pdu.ev));
 
 	for (i = 0; i < cmd->num_bis; i++) {
@@ -6491,6 +6543,8 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 			break;
 
 		pdu.bis[i] = cpu_to_le16(conn->handle);
+
+		queue_push_tail(big->bis, conn);
 	}
 
 	if (i != cmd->num_bis || !conn) {
@@ -6500,7 +6554,6 @@ static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
 		return 0;
 	}
 
-	dev->big_handle = cmd->handle;
 	bis = conn->data;
 
 	if (bis->encryption != cmd->encryption) {
@@ -6530,7 +6583,9 @@ static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_big_term_sync *cmd = data;
 	struct bt_hci_rsp_le_big_term_sync rsp;
-	const struct queue_entry *entry;
+	struct btdev_conn *conn;
+	struct le_big *big = queue_find(dev->le_big, match_big_handle,
+			UINT_TO_PTR(cmd->handle));
 
 	memset(&rsp, 0, sizeof(rsp));
 
@@ -6538,7 +6593,7 @@ static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
 	 * exist, the Controller shall return the error code Unknown
 	 * Advertising Identifier (0x42).
 	 */
-	if (dev->big_handle != cmd->handle) {
+	if (!big) {
 		rsp.status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
 		goto done;
 	}
@@ -6547,24 +6602,16 @@ static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
 	rsp.handle = cmd->handle;
 
 	/* Cleanup existing connections */
-	for (entry = queue_get_entries(dev->conns); entry;
-					entry = entry->next) {
-		struct btdev_conn *conn = entry->data;
-
-		if (!conn->data)
-			continue;
-
+	while ((conn = queue_pop_head(big->bis))) {
 		rsp.status = BT_HCI_ERR_SUCCESS;
-		disconnect_complete(dev, conn->handle, BT_HCI_ERR_SUCCESS,
-								0x16);
-
 		conn_remove(conn);
-		break;
 	}
 
 done:
-	if (rsp.status == BT_HCI_ERR_SUCCESS)
-		dev->big_handle = 0xff;
+	if (rsp.status == BT_HCI_ERR_SUCCESS) {
+		queue_remove(dev->le_big, big);
+		le_big_free(big);
+	}
 
 	cmd_complete(dev, BT_HCI_CMD_LE_BIG_TERM_SYNC, &rsp, sizeof(rsp));
 
@@ -7257,7 +7304,6 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	btdev->iso_mtu = 251;
 	btdev->iso_max_pkt = 1;
-	btdev->big_handle = 0xff;
 
 	for (i = 0; i < ARRAY_SIZE(btdev->le_cig); ++i)
 		btdev->le_cig[i].params.cig_id = 0xff;
@@ -7276,6 +7322,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->conns = queue_new();
 	btdev->le_ext_adv = queue_new();
 	btdev->le_per_adv = queue_new();
+	btdev->le_big = queue_new();
 
 	btdev->le_al_len = AL_SIZE;
 	btdev->le_rl_len = RL_SIZE;
@@ -7296,6 +7343,7 @@ void btdev_destroy(struct btdev *btdev)
 	queue_destroy(btdev->conns, conn_remove);
 	queue_destroy(btdev->le_ext_adv, le_ext_adv_free);
 	queue_destroy(btdev->le_per_adv, free);
+	queue_destroy(btdev->le_big, le_big_free);
 
 	free(btdev);
 }
