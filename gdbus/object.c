@@ -20,6 +20,12 @@
 #include <dbus/dbus.h>
 
 #include "gdbus.h"
+
+/* define MAX_INPUT for musl */
+#ifndef MAX_INPUT
+#define MAX_INPUT _POSIX_MAX_INPUT
+#endif
+
 #include "src/shared/util.h"
 
 #define info(fmt...)
