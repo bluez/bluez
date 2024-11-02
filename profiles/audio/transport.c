@@ -88,6 +88,9 @@ struct a2dp_transport {
 	uint16_t		delay;
 	int8_t			volume;
 	guint			watch;
+	guint			resume_id;
+	gboolean		cancel_resume;
+	guint			cancel_id;
 };
 
 struct bap_transport {
@@ -394,21 +397,109 @@ static void *transport_a2dp_get_stream(struct media_transport *transport)
 	return a2dp_sep_get_stream(sep);
 }
 
+static void a2dp_suspend_complete(struct avdtp *session, int err,
+							void *user_data)
+{
+	struct media_owner *owner = user_data;
+	struct media_transport *transport = owner->transport;
+	struct a2dp_transport *a2dp = transport->data;
+	struct a2dp_sep *sep = media_endpoint_get_sep(transport->endpoint);
+
+	/* Release always succeeds */
+	if (owner->pending) {
+		owner->pending->id = 0;
+		media_request_reply(owner->pending, 0);
+		media_owner_remove(owner);
+	}
+
+	a2dp_sep_unlock(sep, a2dp->session);
+	transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	media_transport_remove_owner(transport);
+}
+
+static guint transport_a2dp_suspend(struct media_transport *transport,
+						struct media_owner *owner)
+{
+	struct a2dp_transport *a2dp = transport->data;
+	struct media_endpoint *endpoint = transport->endpoint;
+	struct a2dp_sep *sep = media_endpoint_get_sep(endpoint);
+
+	if (owner != NULL) {
+		if (a2dp->resume_id) {
+			a2dp->cancel_resume = TRUE;
+			return a2dp->resume_id;
+		}
+
+		return a2dp_suspend(a2dp->session, sep, a2dp_suspend_complete,
+									owner);
+	}
+
+	transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	a2dp_sep_unlock(sep, a2dp->session);
+
+	return 0;
+}
+
+static gboolean a2dp_cancel_resume_cb(void *user_data)
+{
+	struct media_owner *owner = user_data;
+	struct media_transport *transport = owner->transport;
+	struct a2dp_transport *a2dp = transport->data;
+	guint id;
+
+	a2dp->cancel_id = 0;
+
+	if (!owner->pending)
+		goto fail;
+
+	owner->pending->id = 0;
+
+	/* The suspend fails e.g. if stream was closed/aborted. This happens if
+	 * SetConfiguration() was called while we were waiting for the START to
+	 * complete.
+	 *
+	 * We bail out from the Release() with error in that case.
+	 */
+	id = transport_a2dp_suspend(transport, owner);
+	if (id)
+		owner->pending->id = id;
+	else
+		goto fail;
+
+	return FALSE;
+
+fail:
+	media_transport_remove_owner(transport);
+	return FALSE;
+}
+
 static void a2dp_resume_complete(struct avdtp *session, int err,
 							void *user_data)
 {
 	struct media_owner *owner = user_data;
 	struct media_request *req = owner->pending;
 	struct media_transport *transport = owner->transport;
+	struct a2dp_transport *a2dp = transport->data;
 	struct avdtp_stream *stream;
 	int fd;
 	uint16_t imtu, omtu;
 	gboolean ret;
 
+	a2dp->resume_id = 0;
+
+	if (!req)
+		goto fail;
+
 	req->id = 0;
 
 	if (err)
 		goto fail;
+
+	if (a2dp->cancel_resume) {
+		DBG("cancel resume");
+		a2dp->cancel_id = g_idle_add(a2dp_cancel_resume_cb, owner);
+		return;
+	}
 
 	stream = transport_a2dp_get_stream(transport);
 	if (stream == NULL)
@@ -446,15 +537,20 @@ static guint transport_a2dp_resume(struct media_transport *transport,
 	struct a2dp_sep *sep = media_endpoint_get_sep(endpoint);
 	guint id;
 
+	if (a2dp->resume_id || a2dp->cancel_id)
+		return 0;
+
 	if (a2dp->session == NULL) {
 		a2dp->session = a2dp_avdtp_get(transport->device);
 		if (a2dp->session == NULL)
 			return 0;
 	}
 
-	if (state_in_use(transport->state))
-		return a2dp_resume(a2dp->session, sep, a2dp_resume_complete,
+	if (state_in_use(transport->state)) {
+		id = a2dp_resume(a2dp->session, sep, a2dp_resume_complete,
 									owner);
+		goto done;
+	}
 
 	if (a2dp_sep_lock(sep, a2dp->session) == FALSE)
 		return 0;
@@ -469,49 +565,45 @@ static guint transport_a2dp_resume(struct media_transport *transport,
 	if (transport->state == TRANSPORT_STATE_IDLE)
 		transport_set_state(transport, TRANSPORT_STATE_REQUESTING);
 
+done:
+	a2dp->resume_id = id;
+	a2dp->cancel_resume = FALSE;
 	return id;
-}
-
-static void a2dp_suspend_complete(struct avdtp *session, int err,
-							void *user_data)
-{
-	struct media_owner *owner = user_data;
-	struct media_transport *transport = owner->transport;
-	struct a2dp_transport *a2dp = transport->data;
-	struct a2dp_sep *sep = media_endpoint_get_sep(transport->endpoint);
-
-	/* Release always succeeds */
-	if (owner->pending) {
-		owner->pending->id = 0;
-		media_request_reply(owner->pending, 0);
-		media_owner_remove(owner);
-	}
-
-	a2dp_sep_unlock(sep, a2dp->session);
-	transport_set_state(transport, TRANSPORT_STATE_IDLE);
-	media_transport_remove_owner(transport);
-}
-
-static guint transport_a2dp_suspend(struct media_transport *transport,
-						struct media_owner *owner)
-{
-	struct a2dp_transport *a2dp = transport->data;
-	struct media_endpoint *endpoint = transport->endpoint;
-	struct a2dp_sep *sep = media_endpoint_get_sep(endpoint);
-
-	if (owner != NULL)
-		return a2dp_suspend(a2dp->session, sep, a2dp_suspend_complete,
-									owner);
-
-	transport_set_state(transport, TRANSPORT_STATE_IDLE);
-	a2dp_sep_unlock(sep, a2dp->session);
-
-	return 0;
 }
 
 static void transport_a2dp_cancel(struct media_transport *transport, guint id)
 {
+	struct a2dp_transport *a2dp = transport->data;
+
+	/* a2dp_cancel() results to ABORT->IDLE->disconnect. For START we
+	 * instead wait the operation out.
+	 */
+	if (id == a2dp->resume_id) {
+		a2dp->cancel_resume = TRUE;
+		return;
+	}
+
 	a2dp_cancel(id);
+}
+
+static void transport_a2dp_remove_owner(struct media_transport *transport,
+					struct media_owner *owner)
+{
+	struct a2dp_transport *a2dp = transport->data;
+
+	/* Cancel any pending operations for the owner */
+
+	if (a2dp->cancel_id) {
+		g_source_remove(a2dp->cancel_id);
+		a2dp->cancel_id = 0;
+	}
+
+	if (a2dp->resume_id) {
+		a2dp_cancel(a2dp->resume_id);
+		a2dp->resume_id = 0;
+	}
+
+	a2dp->cancel_resume = FALSE;
 }
 
 static int8_t transport_a2dp_get_volume(struct media_transport *transport)
@@ -804,10 +896,12 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 
 		member = dbus_message_get_member(owner->pending->msg);
 		/* Cancel Acquire request if that exist */
-		if (g_str_equal(member, "Acquire"))
+		if (g_str_equal(member, "Acquire")) {
+			media_request_reply(owner->pending, ECANCELED);
 			media_owner_remove(owner);
-		else
+		} else {
 			return btd_error_in_progress(msg);
+		}
 	}
 
 	transport_set_state(transport, TRANSPORT_STATE_SUSPENDING);
@@ -2280,7 +2374,8 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 }
 
 #define A2DP_OPS(_uuid, _init, _set_volume, _set_delay, _destroy) \
-	TRANSPORT_OPS(_uuid, transport_a2dp_properties, NULL, NULL, _init, \
+	TRANSPORT_OPS(_uuid, transport_a2dp_properties, NULL, \
+			transport_a2dp_remove_owner, _init,	      \
 			transport_a2dp_resume, transport_a2dp_suspend, \
 			transport_a2dp_cancel, NULL, \
 			transport_a2dp_get_stream, transport_a2dp_get_volume, \
