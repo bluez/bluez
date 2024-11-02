@@ -3132,6 +3132,9 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 	cb_data->resume_cb = cb;
 	cb_data->user_data = user_data;
 
+	if (setup->reconfigure)
+		goto failed;
+
 	setup->sep = sep;
 	setup->stream = sep->stream;
 
@@ -3189,6 +3192,9 @@ unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 	cb_data = setup_cb_add(setup);
 	cb_data->suspend_cb = cb;
 	cb_data->user_data = user_data;
+
+	if (setup->reconfigure)
+		goto failed;
 
 	setup->sep = sep;
 	setup->stream = sep->stream;
