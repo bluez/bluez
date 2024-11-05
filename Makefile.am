@@ -39,6 +39,10 @@ if DATAFILES
 dbusdir = $(DBUS_CONFDIR)/dbus-1/system.d
 dbus_DATA = src/bluetooth.conf
 
+if OBEX
+dbus_DATA += obexd/src/obex.conf
+endif
+
 conf_DATA = src/main.conf
 conf_DATA += profiles/input/input.conf
 conf_DATA += profiles/network/network.conf
@@ -421,7 +425,7 @@ manual_pages += doc/org.bluez.obex.Client.5 doc/org.bluez.obex.Session.5 \
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
-			profiles/input/input.conf
+			profiles/input/input.conf obexd/src/obex.conf
 
 test_scripts =
 unit_tests =

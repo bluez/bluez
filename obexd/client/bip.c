@@ -17,6 +17,8 @@
 #include "gobex/gobex.h"
 
 #include "obexd/src/log.h"
+#include "obexd/src/obexd.h"
+
 #include "transfer.h"
 #include "session.h"
 #include "driver.h"
@@ -413,7 +415,7 @@ int bip_init(void)
 
 	DBG("");
 
-	conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
+	conn = obex_get_dbus_connection();
 	if (!conn)
 		return -EIO;
 

@@ -41,6 +41,8 @@
 #define DEFAULT_CAP_FILE CONFIGDIR "/capability.xml"
 
 static GMainLoop *main_loop = NULL;
+static DBusConnection *connection;
+
 
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
@@ -126,6 +128,7 @@ static char *option_noplugin = NULL;
 
 static gboolean option_autoaccept = FALSE;
 static gboolean option_symlinks = FALSE;
+static gboolean option_system_bus = FALSE;
 
 static gboolean parse_debug(const char *key, const char *value,
 				gpointer user_data, GError **error)
@@ -164,6 +167,8 @@ static const GOptionEntry options[] = {
 				"scripts", "FILE" },
 	{ "auto-accept", 'a', 0, G_OPTION_ARG_NONE, &option_autoaccept,
 				"Automatically accept push requests" },
+	{ "system-bus", 's', 0, G_OPTION_ARG_NONE, &option_system_bus,
+				"Use System bus "},
 	{ NULL },
 };
 
@@ -225,6 +230,27 @@ static gboolean root_folder_setup(char *root, char *root_setup)
 	}
 
 	return is_dir(root);
+}
+
+DBusConnection *obex_get_dbus_connection(void)
+{
+	if (connection)
+		return dbus_connection_ref(connection);
+
+	connection = dbus_bus_get(option_system_bus ?
+				DBUS_BUS_SYSTEM : DBUS_BUS_SESSION, NULL);
+
+	return connection;
+}
+
+DBusConnection *obex_setup_dbus_connection(const char *name,
+					DBusError *error)
+{
+	connection = g_dbus_setup_bus(option_system_bus ?
+				DBUS_BUS_SYSTEM : DBUS_BUS_SESSION,
+				name, error);
+
+	return connection;
 }
 
 int main(int argc, char *argv[])
