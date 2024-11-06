@@ -58,7 +58,6 @@
 /* The duration that streams without users are allowed to stay in
  * STREAMING state. */
 #define SUSPEND_TIMEOUT 5
-#define RECONFIGURE_TIMEOUT 500
 
 #define AVDTP_PSM 25
 
@@ -1398,7 +1397,7 @@ static bool setup_reconfigure(struct a2dp_setup *setup)
 
 	DBG("%p", setup);
 
-	setup->id = g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
+	setup->id = g_idle_add(a2dp_reconfigure, setup);
 
 	setup->reconfigure = FALSE;
 
