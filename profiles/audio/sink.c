@@ -110,6 +110,7 @@ static void avdtp_state_callback(struct btd_device *dev,
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
 		sink_set_state(sink, SINK_STATE_DISCONNECTED);
+		btd_service_disconnecting_complete(sink->service, 0);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
 		sink_set_state(sink, SINK_STATE_CONNECTING);
@@ -135,8 +136,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
-		btd_service_disconnecting_complete(sink->service, 0);
-
 		if (sink->connect_id > 0) {
 			a2dp_cancel(sink->connect_id);
 			sink->connect_id = 0;
