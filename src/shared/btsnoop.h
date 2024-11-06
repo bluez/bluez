@@ -58,6 +58,8 @@
 #define BTSNOOP_BUS_SPI		7
 #define BTSNOOP_BUS_I2C		8
 #define BTSNOOP_BUS_SMD		9
+#define BTSNOOP_BUS_VIRTIO	10
+#define BTSNOOP_BUS_IPC		11
 
 struct btsnoop_opcode_new_index {
 	uint8_t  type;

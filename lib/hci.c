@@ -152,6 +152,8 @@ const char *hci_bustostr(int bus)
 		return "SMD";
 	case HCI_VIRTIO:
 		return "VIRTIO";
+	case HCI_IPC:
+		return "IPC";
 	default:
 		return "Unknown";
 	}

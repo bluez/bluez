@@ -47,6 +47,7 @@ extern "C" {
 #define HCI_I2C		8
 #define HCI_SMD		9
 #define HCI_VIRTIO	10
+#define HCI_IPC		11
 
 /* HCI controller types */
 #define HCI_PRIMARY	0x00

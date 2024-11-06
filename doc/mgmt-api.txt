@@ -2500,6 +2500,7 @@ Read Extended Controller Index List Command
 		0x08	I2C
 		0x09	SMD
 		0x0A	VIRTIO
+		0x0B	IPC
 
 	Controllers marked as RAW only operation are currently not listed
 	by this command.
