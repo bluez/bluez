@@ -99,7 +99,7 @@ uint16 RSSIHighTimeout [read-only, optional]
 ````````````````````````````````````````````
 
 	The time it takes to consider a device as in-range. If this many
-	seconds elapses while we continuouslyreceive signals at least as strong
+	seconds elapses while we continuously receive signals at least as strong
 	as **RSSIHighThreshold**, a currently out-of-range device will be
 	considered as in-range (found). Valid range is 1 to 300 (seconds),
 	while 0 indicates unset.
@@ -139,7 +139,7 @@ array{(uint8, uint8, array{byte})} Patterns [read-only, optional]
 
 	:uint8 start_position:
 
-		The index in an AD data field where the search hould start. The
+		The index in an AD data field where the search should start. The
 		beginning of an AD data field is index 0.
 
 	:uint8 AD_data_type:
