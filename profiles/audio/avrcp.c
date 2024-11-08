@@ -4268,7 +4268,7 @@ static void target_init(struct avrcp *session)
 	if (target->version < 0x0104)
 		return;
 
-	if (!avrcp_volume_supported(target))
+	if (avrcp_volume_supported(target))
 		session->supported_events |=
 				(1 << AVRCP_EVENT_VOLUME_CHANGED);
 
