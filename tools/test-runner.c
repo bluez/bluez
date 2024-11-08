@@ -214,8 +214,6 @@ static char *const qemu_argv[] = {
 	"-m", "192M",
 	"-nographic",
 	"-net", "none",
-	"-no-acpi",
-	"-no-hpet",
 	"-no-reboot",
 	"-fsdev", "local,id=fsdev-root,path=/,readonly,security_model=none,"
 	"multidevs=remap",
