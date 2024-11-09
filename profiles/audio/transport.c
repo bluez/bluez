@@ -2598,10 +2598,9 @@ void media_transport_update_device_volume(struct btd_device *dev,
 		/* Volume is A2DP only */
 		if (media_endpoint_get_sep(transport->endpoint)) {
 			media_transport_update_volume(transport, volume);
-			return;
+			break;
 		}
 	}
 
-	/* If transport volume doesn't exists add to device_volume */
 	btd_device_set_volume(dev, volume);
 }
