@@ -75,13 +75,14 @@ dict ManufacturerData
 array{string} SolicitUUIDs
 ``````````````````````````
 
-	Array of UUIDs to include in "Service Solicitation" Advertisement Data.
+	List of UUIDs to include in the "Service Solicitation" field of the
+	Advertising Data.
 
 dict ServiceData
 ````````````````
 
-	Service Data elements to include. The keys are the UUID to associate
-	with the data.
+	Service Data elements to include in the Advertising Data. The keys
+	are the UUID to associate with the data.
 
 dict Data
 `````````
@@ -100,6 +101,36 @@ dict Data
 	Example:
 		<Transport Discovery> <Organization Flags...>
 		0x26                   0x01         0x01...
+
+array{string} ScanResponseServiceUUIDs
+``````````````````````````````````````
+
+	List of UUIDs to include in the "Service UUID" field of the Scan
+	Response Data.
+
+dict ScanResponseManufacturerData
+`````````````````````````````````
+
+	Manufacturer Data fields to include in the Scan Response Data. Keys
+	are the Manufacturer ID to associate with the data.
+
+array{string} ScanResponseSolicitUUIDs
+``````````````````````````````````````
+
+	List of UUIDs to include in the "Service Solicitation" field of the
+	Scan Response Data.
+
+dict ScanResponseServiceData
+````````````````````````````
+
+	Service Data elements to include in the Scan Response Data. The keys
+	are the UUID to associate with the data.
+
+dict ScanResponseData
+`````````````````````
+
+	Scan Response Data to include. Key is the advertising type and value is
+	the data as byte array.
 
 bool Discoverable
 `````````````````
