@@ -1219,6 +1219,7 @@ static void *pbap_supported_features(struct obc_session *session)
 {
 	const void *data;
 	uint16_t version;
+	uint32_t features;
 
 	/* Version */
 	data = obc_session_get_attribute(session, SDP_ATTR_PFILE_DESC_LIST);
@@ -1233,7 +1234,9 @@ static void *pbap_supported_features(struct obc_session *session)
 	/* Supported Feature Bits */
 	data = obc_session_get_attribute(session,
 					SDP_ATTR_PBAP_SUPPORTED_FEATURES);
-	if (!data)
+
+	features = *(uint32_t *) data;
+	if (!features)
 		return NULL;
 
 	return g_obex_apparam_set_uint32(NULL, SUPPORTED_FEATURES_TAG,
