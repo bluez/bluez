@@ -436,10 +436,6 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 	GObexApparam *apparam;
 	struct apparam_field *param;
 
-	apparam = g_obex_apparam_decode(buffer, hlen);
-	if (apparam == NULL)
-		return NULL;
-
 	param = g_new0(struct apparam_field, 1);
 
 	/*
@@ -447,24 +443,27 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 	 * should be assume as Maximum value in vcardlisting 65535
 	 */
 	param->maxlistcount = UINT16_MAX;
-
-	g_obex_apparam_get_uint8(apparam, ORDER_TAG, &param->order);
-	g_obex_apparam_get_uint8(apparam, SEARCHATTRIB_TAG,
+	apparam = g_obex_apparam_decode(buffer, hlen);
+	if (apparam) {
+		g_obex_apparam_get_uint8(apparam, ORDER_TAG, &param->order);
+		g_obex_apparam_get_uint8(apparam, SEARCHATTRIB_TAG,
 						&param->searchattrib);
-	g_obex_apparam_get_uint8(apparam, FORMAT_TAG, &param->format);
-	g_obex_apparam_get_uint16(apparam, MAXLISTCOUNT_TAG,
+		g_obex_apparam_get_uint8(apparam, FORMAT_TAG, &param->format);
+		g_obex_apparam_get_uint16(apparam, MAXLISTCOUNT_TAG,
 						&param->maxlistcount);
-	g_obex_apparam_get_uint16(apparam, LISTSTARTOFFSET_TAG,
+		g_obex_apparam_get_uint16(apparam, LISTSTARTOFFSET_TAG,
 						&param->liststartoffset);
-	g_obex_apparam_get_uint64(apparam, FILTER_TAG, &param->filter);
-	param->searchval = g_obex_apparam_get_string(apparam, SEARCHVALUE_TAG);
+		g_obex_apparam_get_uint64(apparam, FILTER_TAG, &param->filter);
+		param->searchval = g_obex_apparam_get_string(apparam,
+						SEARCHVALUE_TAG);
+
+		g_obex_apparam_free(apparam);
+	}
 
 	DBG("o %x sa %x sv %s fil %" G_GINT64_MODIFIER "x for %x max %x off %x",
 			param->order, param->searchattrib, param->searchval,
 			param->filter, param->format, param->maxlistcount,
 			param->liststartoffset);
-
-	g_obex_apparam_free(apparam);
 
 	return param;
 }
