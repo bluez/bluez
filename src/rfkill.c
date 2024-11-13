@@ -55,6 +55,7 @@ struct rfkill_event {
 	uint8_t  hard;
 };
 #define RFKILL_EVENT_SIZE_V1    8
+#define RFKILL_DEVICE_PATH      "/dev/rfkill"
 
 static int get_adapter_id_for_rfkill(uint32_t rfkill_id)
 {
@@ -88,7 +89,7 @@ int rfkill_get_blocked(uint16_t index)
 	int fd;
 	int blocked = -1;
 
-	fd = open("/dev/rfkill", O_RDWR);
+	fd = open(RFKILL_DEVICE_PATH, O_RDWR);
 	if (fd < 0) {
 		DBG("Failed to open RFKILL control device");
 		return -1;
@@ -178,9 +179,16 @@ void rfkill_init(void)
 	int fd;
 	GIOChannel *channel;
 
-	fd = open("/dev/rfkill", O_RDWR);
+	errno = 0;
+	fd = open(RFKILL_DEVICE_PATH, O_RDWR);
 	if (fd < 0) {
-		error("Failed to open RFKILL control device");
+		if (errno == ENOENT) {
+			DBG("No RFKILL device available at '%s'",
+				RFKILL_DEVICE_PATH);
+		} else {
+			error("Failed to open RFKILL control device: %s",
+				strerror(errno));
+		}
 		return;
 	}
 
