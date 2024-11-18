@@ -201,8 +201,8 @@ fd, uint16 AcquireNotify(dict options) [optional]
 	negotiated MTU.
 
 	Only works with characteristic that has **NotifyAcquired** property
-	which relies on **"notify"** **Flag** and no other client have called
-	**StartNotify()**.
+	which relies on presence of **"notify" or "indicate"** **Flag** and no
+	other client have called **StartNotify()**.
 
 	Notification are enabled during this procedure so **StartNotify()**
 	shall not be called, any notification will be dispatched via file
