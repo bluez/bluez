@@ -727,6 +727,9 @@ static bool bt_att_chan_set_security(struct bt_att_chan *chan, int level)
 {
 	struct bt_security sec;
 
+	if (level == bt_att_chan_get_security(chan))
+		return true;
+
 	if (chan->type == BT_ATT_LOCAL) {
 		chan->sec_level = level;
 		return true;
