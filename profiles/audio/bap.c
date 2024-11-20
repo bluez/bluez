@@ -1034,13 +1034,6 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 	}
 }
 
-static void print_ltv(size_t i, uint8_t l, uint8_t t, uint8_t *v,
-		void *user_data)
-{
-	util_debug(user_data, NULL, "CC #%zu: l:%u t:%u", i, l, t);
-	util_hexdump(' ', v, l, user_data, NULL);
-}
-
 void bap_qos_to_iso_qos(struct bt_bap_qos *bap_qos,
 				struct bt_iso_qos *iso_qos)
 {
@@ -1093,15 +1086,16 @@ void bap_iso_qos_to_bap_qos(struct bt_iso_qos *iso_qos,
 }
 
 static void create_stream_for_bis(struct bap_data *bap_data,
-		struct bt_bap_pac *lpac, struct bt_iso_qos *qos,
+		struct bt_bap_pac *lpac, struct bt_bap_qos *qos,
 		struct iovec *caps, struct iovec *meta, char *path)
 {
 	struct bap_setup *setup;
 
 	setup = setup_new(NULL);
+	setup->qos = *qos;
 
-	/* Create BAP QoS structure */
-	bap_iso_qos_to_bap_qos(qos, &setup->qos);
+	/* Create an internal copy for bcode */
+	setup->qos.bcast.bcode = util_iov_dup(qos->bcast.bcode, 1);
 
 	queue_push_tail(bap_data->bcast_snks, setup);
 
@@ -1116,170 +1110,37 @@ static void create_stream_for_bis(struct bap_data *bap_data,
 			NULL, NULL);
 }
 
-static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
-		struct bt_iso_qos *qos, util_debug_func_t func)
+static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
+	struct iovec *meta, struct bt_bap_qos *qos, void *user_data)
 {
-	struct iovec iov = {
-		.iov_base = base->base,
-		.iov_len = base->base_len,
-	};
-	uint32_t pres_delay;
-	uint8_t num_subgroups;
-	bool ret = true;
+	struct bap_data *data = user_data;
+	struct bt_bap_pac *lpac;
+	char *path;
 
-	util_debug(func, NULL, "BASE len: %ld", iov.iov_len);
+	bass_add_stream(data->device, meta, caps, qos, sgrp, bis);
 
-	if (!util_iov_pull_le24(&iov, &pres_delay))
-		return false;
-	util_debug(func, NULL, "PresentationDelay: %d", pres_delay);
+	if (!bass_check_bis(data->device, bis))
+		/* If this Broadcast Sink is acting as a Scan
+		 * Delegator, only attempt to create streams
+		 * for the BISes required by the peer Broadcast
+		 * Assistant.
+		 */
+		return;
 
-	if (!util_iov_pull_u8(&iov, &num_subgroups))
-		return false;
-	util_debug(func, NULL, "Number of Subgroups: %d", num_subgroups);
+	/* Check if this BIS matches any local PAC */
+	bt_bap_verify_bis(data->bap, bis,
+			caps, &lpac);
 
-	/* Loop subgroups */
-	for (int idx = 0; idx < num_subgroups; idx++) {
-		uint8_t num_bis;
-		struct bt_bap_codec codec;
-		struct iovec *l2_caps = NULL;
-		struct iovec *meta = NULL;
+	if (!lpac)
+		return;
 
-		util_debug(func, NULL, "Subgroup #%d", idx);
+	if (asprintf(&path, "%s/bis%d",
+			device_get_path(data->device),
+			bis) < 0)
+		return;
 
-		if (!util_iov_pull_u8(&iov, &num_bis)) {
-			ret = false;
-			goto fail;
-		}
-		util_debug(func, NULL, "Number of BISes: %d", num_bis);
-
-		memcpy(&codec,
-				util_iov_pull_mem(&iov,
-						sizeof(struct bt_bap_codec)),
-				sizeof(struct bt_bap_codec));
-		util_debug(func, NULL, "Codec: ID %d CID 0x%2.2x VID 0x%2.2x",
-				codec.id, codec.cid, codec.vid);
-
-		/* Level 2 */
-		/* Read Codec Specific Configuration */
-		l2_caps = new0(struct iovec, 1);
-		if (!util_iov_pull_u8(&iov, (void *)&l2_caps->iov_len)) {
-			ret = false;
-			goto group_fail;
-		}
-
-		util_iov_memcpy(l2_caps, util_iov_pull_mem(&iov,
-				l2_caps->iov_len),
-				l2_caps->iov_len);
-
-		/* Print Codec Specific Configuration */
-		util_debug(func, NULL, "CC len: %ld", l2_caps->iov_len);
-		util_ltv_foreach(l2_caps->iov_base, l2_caps->iov_len, NULL,
-				print_ltv, func);
-
-		/* Read Metadata */
-		meta = new0(struct iovec, 1);
-		if (!util_iov_pull_u8(&iov, (void *)&meta->iov_len)) {
-			ret = false;
-			goto group_fail;
-		}
-
-		util_iov_memcpy(meta,
-				util_iov_pull_mem(&iov, meta->iov_len),
-				meta->iov_len);
-
-		/* Print Metadata */
-		util_debug(func, NULL, "Metadata len: %i",
-				(uint8_t)meta->iov_len);
-		util_hexdump(' ', meta->iov_base, meta->iov_len, func, NULL);
-
-		/* Level 3 */
-		for (; num_bis; num_bis--) {
-			uint8_t bis_index;
-			struct iovec *l3_caps;
-			struct iovec *merged_caps;
-			struct bt_bap_pac *matched_lpac;
-			char *path;
-			int err;
-
-			if (!util_iov_pull_u8(&iov, &bis_index)) {
-				ret = false;
-				goto group_fail;
-			}
-
-			util_debug(func, NULL, "BIS #%d", bis_index);
-			err = asprintf(&path, "%s/bis%d",
-					device_get_path(bap_data->device),
-					bis_index);
-			if (err < 0)
-				continue;
-
-			/* Read Codec Specific Configuration */
-			l3_caps = new0(struct iovec, 1);
-			if (!util_iov_pull_u8(&iov,
-						(void *)&l3_caps->iov_len)) {
-				free(l3_caps);
-				free(path);
-				ret = false;
-				goto group_fail;
-			}
-
-			util_iov_memcpy(l3_caps,
-					util_iov_pull_mem(&iov,
-							l3_caps->iov_len),
-					l3_caps->iov_len);
-
-			/* Print Codec Specific Configuration */
-			util_debug(func, NULL, "CC Len: %d",
-					(uint8_t)l3_caps->iov_len);
-			util_ltv_foreach(l3_caps->iov_base,
-					l3_caps->iov_len, NULL, print_ltv,
-					func);
-
-			merged_caps = bt_bap_merge_caps(l2_caps, l3_caps);
-			if (!merged_caps) {
-				free(path);
-				continue;
-			}
-
-			bass_add_stream(bap_data->device, meta, merged_caps,
-						qos, idx, bis_index);
-
-			if (!bass_check_bis(bap_data->device, bis_index)) {
-				/* If this Broadcast Sink is acting as a Scan
-				 * Delegator, only attempt to create streams
-				 * for the BISes required by the peer Broadcast
-				 * Assistant.
-				 */
-				continue;
-			}
-
-			/* Check if this BIS matches any local PAC */
-			bt_bap_verify_bis(bap_data->bap, bis_index,
-					merged_caps, &matched_lpac);
-
-			if (matched_lpac == NULL) {
-				free(path);
-				continue;
-			}
-
-			create_stream_for_bis(bap_data, matched_lpac, qos,
-					merged_caps, meta, path);
-		}
-
-group_fail:
-		if (l2_caps != NULL)
-			free(l2_caps);
-		if (meta != NULL)
-			free(meta);
-		if (!ret)
-			break;
-	}
-
-fail:
-	if (!ret)
-		util_debug(func, NULL, "Unable to parse Base");
-
-	return ret;
+	create_stream_for_bis(data, lpac, qos,
+			caps, meta, path);
 }
 
 static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
@@ -1290,6 +1151,8 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 	struct bap_data *data = btd_service_get_user_data(req->data.service);
 	struct bt_iso_base base;
 	struct bt_iso_qos qos;
+	struct iovec iov;
+	struct bt_bap_qos bap_qos = {0};
 
 	DBG("BIG Info received");
 
@@ -1329,7 +1192,15 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 	/* Analyze received BASE data and create remote media endpoints for each
 	 * BIS matching our capabilities
 	 */
-	parse_base(data, &base, &qos, bap_debug);
+	iov.iov_base = base.base;
+	iov.iov_len = base.base_len;
+
+	/* Create BAP QoS structure */
+	bap_iso_qos_to_bap_qos(&qos, &bap_qos);
+
+	bt_bap_parse_base(&iov, &bap_qos, bap_debug, bis_handler, data);
+
+	util_iov_free(bap_qos.bcast.bcode, 1);
 
 	service_set_connecting(req->data.service);
 

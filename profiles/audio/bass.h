@@ -8,7 +8,7 @@
  */
 
 void bass_add_stream(struct btd_device *device, struct iovec *meta,
-			struct iovec *caps, struct bt_iso_qos *qos,
+			struct iovec *caps, struct bt_bap_qos *qos,
 			uint8_t sgrp, uint8_t bis);
 void bass_remove_stream(struct btd_device *device);
 

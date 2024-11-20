@@ -92,7 +92,7 @@ struct bass_assistant {
 	uint8_t sgrp;
 	uint8_t bis;
 	uint32_t bid;
-	struct bt_iso_qos qos;
+	struct bt_bap_qos qos;
 	struct iovec *meta;
 	struct iovec *caps;
 	enum assistant_state state;
@@ -399,8 +399,8 @@ static int assistant_parse_qos(struct bass_assistant *assistant,
 				return -EINVAL;
 			}
 
-			memcpy(assistant->qos.bcast.bcode, iov.iov_base,
-								iov.iov_len);
+			util_iov_free(assistant->qos.bcast.bcode, 1);
+			assistant->qos.bcast.bcode = util_iov_dup(&iov, 1);
 
 			return 0;
 		}
@@ -592,7 +592,12 @@ static gboolean get_qos(const GDBusPropertyTable *property,
 {
 	struct bass_assistant *assistant = data;
 	DBusMessageIter dict;
-	uint8_t *bcode = assistant->qos.bcast.bcode;
+	uint8_t arr[BT_BASS_BCAST_CODE_SIZE] = {0};
+	uint8_t *bcode = arr;
+
+	if (assistant->qos.bcast.bcode)
+		memcpy(arr, assistant->qos.bcast.bcode->iov_base,
+						BT_BASS_BCAST_CODE_SIZE);
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -648,7 +653,7 @@ static void src_ad_search_bid(void *data, void *user_data)
 
 static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 		struct btd_device *device, struct bass_data *data,
-		uint8_t sgrp, uint8_t bis, struct bt_iso_qos *qos,
+		uint8_t sgrp, uint8_t bis, struct bt_bap_qos *qos,
 		struct iovec *meta, struct iovec *caps)
 {
 	struct bass_assistant *assistant;
@@ -666,6 +671,10 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 	assistant->sgrp = sgrp;
 	assistant->bis = bis;
 	assistant->qos = *qos;
+
+	/* Create an internal copy for bcode */
+	assistant->qos.bcast.bcode = util_iov_dup(qos->bcast.bcode, 1);
+
 	assistant->meta = util_iov_dup(meta, 1);
 	assistant->caps = util_iov_dup(caps, 1);
 
@@ -689,7 +698,7 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 }
 
 void bass_add_stream(struct btd_device *device, struct iovec *meta,
-			struct iovec *caps, struct bt_iso_qos *qos,
+			struct iovec *caps, struct bt_bap_qos *qos,
 			uint8_t sgrp, uint8_t bis)
 {
 	const struct queue_entry *entry;
@@ -998,7 +1007,7 @@ static void bass_attached(struct bt_bass *bass, void *user_data)
 static void bass_handle_bcode_req(struct bass_assistant *assistant, int id)
 {
 	struct bt_bass_bcast_audio_scan_cp_hdr hdr;
-	struct bt_bass_set_bcast_code_params params;
+	struct bt_bass_set_bcast_code_params params = {0};
 	struct iovec iov = {0};
 	int err;
 
@@ -1007,8 +1016,11 @@ static void bass_handle_bcode_req(struct bass_assistant *assistant, int id)
 	hdr.op = BT_BASS_SET_BCAST_CODE;
 
 	params.id = id;
-	memcpy(params.bcast_code, assistant->qos.bcast.bcode,
-					BT_BASS_BCAST_CODE_SIZE);
+
+	if (assistant->qos.bcast.bcode)
+		memcpy(params.bcast_code,
+			assistant->qos.bcast.bcode->iov_base,
+			BT_BASS_BCAST_CODE_SIZE);
 
 	iov.iov_base = malloc0(sizeof(params));
 	if (!iov.iov_base)
