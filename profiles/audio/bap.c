@@ -150,7 +150,7 @@ static struct queue *adapters;
  * The full QOS is populated at the time the user selects and endpoint and
  * configures it using SetConfiguration.
  */
-static struct bt_iso_qos bap_sink_pa_qos = {
+struct bt_iso_qos bap_sink_pa_qos = {
 	.bcast = {
 		.options		= 0x00,
 		.skip			= 0x0000,

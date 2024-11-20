@@ -7,6 +7,8 @@
  *
  */
 
+extern struct bt_iso_qos bap_sink_pa_qos;
+
 struct bt_bap *bap_get_session(struct btd_device *device);
 void bap_scan_delegator_probe(struct btd_device *device);
 
