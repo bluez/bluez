@@ -1133,7 +1133,7 @@ struct bt_gatt_request *bt_gatt_discover_included_services(struct bt_att *att,
 	uint8_t pdu[6];
 
 	if (!att)
-		return false;
+		return NULL;
 
 	op = new0(struct bt_gatt_request, 1);
 	op->att = att;
@@ -1247,7 +1247,7 @@ struct bt_gatt_request *bt_gatt_discover_characteristics(struct bt_att *att,
 	uint8_t pdu[6];
 
 	if (!att)
-		return false;
+		return NULL;
 
 	op = new0(struct bt_gatt_request, 1);
 	op->att = att;
@@ -1475,7 +1475,7 @@ struct bt_gatt_request *bt_gatt_discover_descriptors(struct bt_att *att,
 	uint8_t pdu[4];
 
 	if (!att)
-		return false;
+		return NULL;
 
 	op = new0(struct bt_gatt_request, 1);
 	op->att = att;
