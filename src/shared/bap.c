@@ -7067,3 +7067,128 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 	}
 
 }
+
+bool bt_bap_parse_base(struct iovec *iov,
+			struct bt_bap_qos *qos,
+			util_debug_func_t func,
+			bt_bap_bis_func_t handler,
+			void *user_data)
+{
+	uint32_t delay;
+	uint8_t sgrps;
+	bool ret = true;
+
+	util_debug(func, NULL, "BASE len: %ld", iov->iov_len);
+
+	if (!util_iov_pull_le24(iov, &delay))
+		return false;
+
+	util_debug(func, NULL, "PresentationDelay: %d", delay);
+
+	if (!util_iov_pull_u8(iov, &sgrps))
+		return false;
+
+	util_debug(func, NULL, "Number of Subgroups: %d", sgrps);
+
+	/* Loop subgroups */
+	for (int idx = 0; idx < sgrps; idx++) {
+		uint8_t num_bis;
+		struct bt_bap_codec *codec;
+		struct iovec l2_cc;
+		uint8_t l2_cc_len;
+		struct iovec meta;
+		uint8_t meta_len;
+
+		util_debug(func, NULL, "Subgroup #%d", idx);
+
+		if (!util_iov_pull_u8(iov, &num_bis)) {
+			ret = false;
+			goto done;
+		}
+
+		util_debug(func, NULL, "Number of BISes: %d", num_bis);
+
+		codec = util_iov_pull_mem(iov, sizeof(*codec));
+
+		util_debug(func, NULL, "Codec: ID %d CID 0x%2.2x VID 0x%2.2x",
+				codec->id, codec->cid, codec->vid);
+
+		/* Level 2 */
+		/* Read Codec Specific Configuration */
+		if (!util_iov_pull_u8(iov, &l2_cc_len)) {
+			ret = false;
+			goto done;
+		}
+
+		l2_cc.iov_base = util_iov_pull_mem(iov, l2_cc_len);
+		l2_cc.iov_len = l2_cc_len;
+
+		/* Print Codec Specific Configuration */
+		util_debug(func, NULL, "CC len: %ld", l2_cc.iov_len);
+		bt_bap_debug_config(l2_cc.iov_base, l2_cc.iov_len,
+								func, NULL);
+
+		/* Read Metadata */
+		if (!util_iov_pull_u8(iov, &meta_len)) {
+			ret = false;
+			goto done;
+		}
+
+		meta.iov_base = util_iov_pull_mem(iov, meta_len);
+		meta.iov_len = meta_len;
+
+		/* Print Metadata */
+		util_debug(func, NULL, "Metadata len: %i",
+				(uint8_t)meta.iov_len);
+		bt_bap_debug_metadata(meta.iov_base, meta.iov_len,
+							func, NULL);
+
+		/* Level 3 */
+		for (; num_bis; num_bis--) {
+			uint8_t bis_index;
+			struct iovec l3_cc;
+			uint8_t l3_cc_len;
+			struct iovec *bis_cc;
+
+			if (!util_iov_pull_u8(iov, &bis_index)) {
+				ret = false;
+				goto done;
+			}
+
+			util_debug(func, NULL, "BIS #%d", bis_index);
+
+			/* Read Codec Specific Configuration */
+			if (!util_iov_pull_u8(iov, &l3_cc_len)) {
+				ret = false;
+				goto done;
+			}
+
+			l3_cc.iov_base = util_iov_pull_mem(iov,
+							l3_cc_len);
+			l3_cc.iov_len = l3_cc_len;
+
+			/* Print Codec Specific Configuration */
+			util_debug(func, NULL, "CC Len: %d",
+					(uint8_t)l3_cc.iov_len);
+
+			bt_bap_debug_config(l3_cc.iov_base,
+						l3_cc.iov_len,
+						func, NULL);
+
+			bis_cc = bt_bap_merge_caps(&l2_cc, &l3_cc);
+			if (!bis_cc)
+				continue;
+
+			handler(bis_index, idx, bis_cc, &meta,
+				qos, user_data);
+
+			util_iov_free(bis_cc, 1);
+		}
+	}
+
+done:
+	if (!ret)
+		util_debug(func, NULL, "Unable to parse Base");
+
+	return ret;
+}

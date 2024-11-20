@@ -40,6 +40,10 @@ typedef void (*bt_bap_stream_func_t)(struct bt_bap_stream *stream,
 					void *user_data);
 typedef void (*bt_bap_func_t)(struct bt_bap *bap, void *user_data);
 
+typedef void (*bt_bap_bis_func_t)(uint8_t bis, uint8_t sgrp,
+		struct iovec *caps, struct iovec *meta,
+		struct bt_bap_qos *qos, void *user_data);
+
 /* Local PAC related functions */
 struct bt_bap_pac_qos {
 	uint8_t  framing;
@@ -258,4 +262,10 @@ struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps);
 void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 		struct iovec *caps,
 		struct bt_bap_pac **lpac);
+
+bool bt_bap_parse_base(struct iovec *base,
+			struct bt_bap_qos *qos,
+			util_debug_func_t func,
+			bt_bap_bis_func_t handler,
+			void *user_data);
 
