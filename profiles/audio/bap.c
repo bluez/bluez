@@ -3112,22 +3112,6 @@ static bool match_bap_adapter(const void *data, const void *match_data)
 	return adapter->adapter == match_data;
 }
 
-void bap_scan_delegator_probe(struct btd_device *device)
-{
-	struct bap_data *data;
-
-	/* Create BAP session for the Broadcaster device */
-	data = bap_data_new(device);
-	data->device = device;
-
-	bap_data_add(data);
-
-	/* Add Broadcast Audio Announcement Service UUID
-	 * to device and probe service.
-	 */
-	btd_device_add_uuid(device, BCAAS_UUID_STR);
-}
-
 static int bap_bcast_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
