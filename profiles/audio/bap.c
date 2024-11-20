@@ -1119,14 +1119,6 @@ static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
 
 	bass_add_stream(data->device, meta, caps, qos, sgrp, bis);
 
-	if (!bass_check_bis(data->device, bis))
-		/* If this Broadcast Sink is acting as a Scan
-		 * Delegator, only attempt to create streams
-		 * for the BISes required by the peer Broadcast
-		 * Assistant.
-		 */
-		return;
-
 	/* Check if this BIS matches any local PAC */
 	bt_bap_verify_bis(data->bap, bis,
 			caps, &lpac);
@@ -1185,9 +1177,6 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 		 */
 		g_io_channel_shutdown(io, TRUE, NULL);
 	}
-
-	/* Notify the BASS plugin about the session. */
-	bass_bcast_probe(data->device, data->bap);
 
 	/* Analyze received BASE data and create remote media endpoints for each
 	 * BIS matching our capabilities
@@ -2598,6 +2587,8 @@ static void bap_state_bcast_sink(struct bt_bap_stream *stream,
 		return;
 
 	setup = bap_find_setup_by_stream(data, stream);
+	if (!setup)
+		return;
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_IDLE:
@@ -3145,6 +3136,7 @@ static int bap_bcast_probe(struct btd_service *service)
 	struct bap_bcast_pa_req *req;
 	uint8_t type = BAP_PA_LONG_REQ;
 	struct bap_data *data;
+	int ret = 0;
 
 	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET)) {
 		error("BAP requires ISO Socket which is not enabled");
@@ -3197,6 +3189,10 @@ static int bap_bcast_probe(struct btd_service *service)
 				pac_removed_broadcast, data, NULL);
 
 	bt_bap_set_user_data(data->bap, service);
+
+	if (bass_bcast_probe(service, &ret))
+		/* Return if probed device was handled inside BASS. */
+		return ret;
 
 	/* Start the PA timer if it hasn't been started yet */
 	if (data->adapter->pa_timer_id == 0)
