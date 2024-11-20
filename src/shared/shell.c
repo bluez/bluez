@@ -362,7 +362,7 @@ static struct input *input_new(int fd)
 
 	io = io_new(fd);
 	if (!io)
-		return false;
+		return NULL;
 
 	input = new0(struct input, 1);
 	input->io = io;
