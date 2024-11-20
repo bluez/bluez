@@ -1087,7 +1087,7 @@ bool bt_ad_add_name(struct bt_ad *ad, const char *name)
 const char *bt_ad_get_name(struct bt_ad *ad)
 {
 	if (!ad)
-		return false;
+		return NULL;
 
 	return ad->name;
 }
