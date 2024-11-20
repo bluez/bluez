@@ -1041,6 +1041,57 @@ static void print_ltv(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 	util_hexdump(' ', v, l, user_data, NULL);
 }
 
+void bap_qos_to_iso_qos(struct bt_bap_qos *bap_qos,
+				struct bt_iso_qos *iso_qos)
+{
+	memset(iso_qos, 0, sizeof(*iso_qos));
+
+	iso_qos->bcast.big = bap_qos->bcast.big;
+	iso_qos->bcast.bis = bap_qos->bcast.bis;
+	iso_qos->bcast.sync_factor = bap_qos->bcast.sync_factor;
+	iso_qos->bcast.packing = bap_qos->bcast.packing;
+	iso_qos->bcast.framing = bap_qos->bcast.framing;
+	iso_qos->bcast.encryption = bap_qos->bcast.encryption;
+	if (bap_qos->bcast.bcode && bap_qos->bcast.bcode->iov_base)
+		memcpy(iso_qos->bcast.bcode, bap_qos->bcast.bcode->iov_base,
+				bap_qos->bcast.bcode->iov_len);
+	iso_qos->bcast.options = bap_qos->bcast.options;
+	iso_qos->bcast.skip = bap_qos->bcast.skip;
+	iso_qos->bcast.sync_timeout = bap_qos->bcast.sync_timeout;
+	iso_qos->bcast.sync_cte_type = bap_qos->bcast.sync_cte_type;
+	iso_qos->bcast.mse = bap_qos->bcast.mse;
+	iso_qos->bcast.timeout = bap_qos->bcast.timeout;
+	memcpy(&iso_qos->bcast.out, &bap_qos->bcast.io_qos,
+			sizeof(struct bt_iso_io_qos));
+}
+
+void bap_iso_qos_to_bap_qos(struct bt_iso_qos *iso_qos,
+				struct bt_bap_qos *bap_qos)
+{
+	bap_qos->bcast.big = iso_qos->bcast.big;
+	bap_qos->bcast.bis = iso_qos->bcast.bis;
+	bap_qos->bcast.sync_factor = iso_qos->bcast.sync_factor;
+	bap_qos->bcast.packing = iso_qos->bcast.packing;
+	bap_qos->bcast.framing = iso_qos->bcast.framing;
+	bap_qos->bcast.encryption = iso_qos->bcast.encryption;
+	if (bap_qos->bcast.encryption)
+		bap_qos->bcast.bcode = util_iov_new(iso_qos->bcast.bcode,
+						sizeof(iso_qos->bcast.bcode));
+	bap_qos->bcast.options = iso_qos->bcast.options;
+	bap_qos->bcast.skip = iso_qos->bcast.skip;
+	bap_qos->bcast.sync_timeout = iso_qos->bcast.sync_timeout;
+	bap_qos->bcast.sync_cte_type =
+			iso_qos->bcast.sync_cte_type;
+	bap_qos->bcast.mse = iso_qos->bcast.mse;
+	bap_qos->bcast.timeout = iso_qos->bcast.timeout;
+	bap_qos->bcast.io_qos.interval =
+			iso_qos->bcast.in.interval;
+	bap_qos->bcast.io_qos.latency = iso_qos->bcast.in.latency;
+	bap_qos->bcast.io_qos.phy = iso_qos->bcast.in.phy;
+	bap_qos->bcast.io_qos.rtn = iso_qos->bcast.in.rtn;
+	bap_qos->bcast.io_qos.sdu = iso_qos->bcast.in.sdu;
+}
+
 static void create_stream_for_bis(struct bap_data *bap_data,
 		struct bt_bap_pac *lpac, struct bt_iso_qos *qos,
 		struct iovec *caps, struct iovec *meta, char *path)
@@ -1050,28 +1101,7 @@ static void create_stream_for_bis(struct bap_data *bap_data,
 	setup = setup_new(NULL);
 
 	/* Create BAP QoS structure */
-	setup->qos.bcast.big = qos->bcast.big;
-	setup->qos.bcast.bis = qos->bcast.bis;
-	setup->qos.bcast.sync_factor = qos->bcast.sync_factor;
-	setup->qos.bcast.packing = qos->bcast.packing;
-	setup->qos.bcast.framing = qos->bcast.framing;
-	setup->qos.bcast.encryption = qos->bcast.encryption;
-	if (setup->qos.bcast.encryption)
-		setup->qos.bcast.bcode = util_iov_new(qos->bcast.bcode,
-						sizeof(qos->bcast.bcode));
-	setup->qos.bcast.options = qos->bcast.options;
-	setup->qos.bcast.skip = qos->bcast.skip;
-	setup->qos.bcast.sync_timeout = qos->bcast.sync_timeout;
-	setup->qos.bcast.sync_cte_type =
-			qos->bcast.sync_cte_type;
-	setup->qos.bcast.mse = qos->bcast.mse;
-	setup->qos.bcast.timeout = qos->bcast.timeout;
-	setup->qos.bcast.io_qos.interval =
-			qos->bcast.in.interval;
-	setup->qos.bcast.io_qos.latency = qos->bcast.in.latency;
-	setup->qos.bcast.io_qos.phy = qos->bcast.in.phy;
-	setup->qos.bcast.io_qos.rtn = qos->bcast.in.rtn;
-	setup->qos.bcast.io_qos.sdu = qos->bcast.in.sdu;
+	bap_iso_qos_to_bap_qos(qos, &setup->qos);
 
 	queue_push_tail(bap_data->bcast_snks, setup);
 
@@ -3158,24 +3188,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	queue_foreach(setups, setup_refresh_qos, NULL);
 
 	/* Set the user requested QOS */
-	memset(&qos, 0, sizeof(qos));
-	qos.bcast.big = setup->qos.bcast.big;
-	qos.bcast.bis = setup->qos.bcast.bis;
-	qos.bcast.sync_factor = setup->qos.bcast.sync_factor;
-	qos.bcast.packing = setup->qos.bcast.packing;
-	qos.bcast.framing = setup->qos.bcast.framing;
-	qos.bcast.encryption = setup->qos.bcast.encryption;
-	if (setup->qos.bcast.bcode && setup->qos.bcast.bcode->iov_base)
-		memcpy(qos.bcast.bcode, setup->qos.bcast.bcode->iov_base,
-				setup->qos.bcast.bcode->iov_len);
-	qos.bcast.options = setup->qos.bcast.options;
-	qos.bcast.skip = setup->qos.bcast.skip;
-	qos.bcast.sync_timeout = setup->qos.bcast.sync_timeout;
-	qos.bcast.sync_cte_type = setup->qos.bcast.sync_cte_type;
-	qos.bcast.mse = setup->qos.bcast.mse;
-	qos.bcast.timeout = setup->qos.bcast.timeout;
-	memcpy(&qos.bcast.out, &setup->qos.bcast.io_qos,
-			sizeof(struct bt_iso_io_qos));
+	bap_qos_to_iso_qos(&setup->qos, &qos);
 
 	if (!bt_io_set(io, &err,
 			BT_IO_OPT_QOS, &qos,
