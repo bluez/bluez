@@ -759,10 +759,15 @@ static bool parse_discoverable(DBusMessageIter *iter,
 
 	dbus_message_iter_get_basic(iter, &discoverable);
 
+	/* For broadcast mode, need not add any flags
+	 * just return true without adding flags.
+	 */
 	if (discoverable)
 		flags = BT_AD_FLAG_GENERAL;
-	else
+	else if (client->type != AD_TYPE_BROADCAST)
 		flags = 0x00;
+	else
+		return true;
 
 	if (!set_flags(client , flags))
 		goto fail;
