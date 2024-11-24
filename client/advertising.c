@@ -59,11 +59,13 @@ static struct ad {
 	uint16_t duration;
 	uint16_t timeout;
 	uint16_t discoverable_to;
-	char **uuids;
-	size_t uuids_len;
-	struct service_data service;
-	struct manufacturer_data manufacturer;
-	struct data data;
+	char **uuids[AD_TYPE_COUNT];
+	size_t uuids_len[AD_TYPE_COUNT];
+	char **solicit[AD_TYPE_COUNT];
+	size_t solicit_len[AD_TYPE_COUNT];
+	struct service_data service[AD_TYPE_COUNT];
+	struct manufacturer_data manufacturer[AD_TYPE_COUNT];
+	struct data data[AD_TYPE_COUNT];
 	bool discoverable;
 	bool tx_power;
 	bool name;
@@ -111,7 +113,7 @@ static void register_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-static void print_uuid(const char *uuid)
+static void print_uuid(const char *prefix, const char *uuid)
 {
 	const char *text;
 
@@ -130,37 +132,70 @@ static void print_uuid(const char *uuid)
 				str[sizeof(str) - 4] = '.';
 		}
 
-		bt_shell_printf("UUID: %s(%s)\n", str, uuid);
+		bt_shell_printf("%s: %s(%s)\n", prefix, str, uuid);
 	} else
-		bt_shell_printf("UUID: (%s)\n", uuid ? uuid : "");
+		bt_shell_printf("%s: (%s)\n", prefix, uuid ? uuid : "");
 }
 
-static void print_ad_uuids(void)
+static const struct {
+    const char* uuid[AD_TYPE_COUNT];
+    const char* solicit[AD_TYPE_COUNT];
+    const char* service[AD_TYPE_COUNT];
+    const char* manufacturer[AD_TYPE_COUNT];
+    const char* data[AD_TYPE_COUNT];
+} ad_names = {
+    .uuid = { "UUID", "Scan Response UUID" },
+    .solicit = { "Solicit UUID", "Scan Response Solicit UUID" },
+    .service = { "UUID", "Scan Response UUID" },
+    .manufacturer = { "Manufacturer", "Scan Response Manufacturer" },
+    .data = { "Data", "Scan Response Data" }
+};
+
+static void print_ad_uuids(int type)
 {
 	char **uuid;
 
-	for (uuid = ad.uuids; uuid && *uuid; uuid++)
-		print_uuid(*uuid);
+	for (uuid = ad.uuids[type]; uuid && *uuid; uuid++)
+		print_uuid(ad_names.uuid[type], *uuid);
+}
+
+static void print_ad_solicit(int type)
+{
+	char **uuid;
+
+	for (uuid = ad.solicit[type]; uuid && *uuid; uuid++)
+		print_uuid(ad_names.solicit[type], *uuid);
 }
 
 static void print_ad(void)
 {
-	print_ad_uuids();
+	int type;
 
-	if (ad.service.uuid) {
-		print_uuid(ad.service.uuid);
-		bt_shell_hexdump(ad.service.data.data, ad.service.data.len);
-	}
+	for (type = AD_TYPE_AD; type <= AD_TYPE_SRD; type++) {
+		print_ad_uuids(type);
+		print_ad_solicit(type);
 
-	if (ad.manufacturer.data.len) {
-		bt_shell_printf("Manufacturer: %u\n", ad.manufacturer.id);
-		bt_shell_hexdump(ad.manufacturer.data.data,
-						ad.manufacturer.data.len);
-	}
+		if (ad.service[type].uuid) {
+			print_uuid(ad_names.service[type], 
+						ad.service[type].uuid);
+			bt_shell_hexdump(ad.service[type].data.data, 
+						ad.service[type].data.len);
+		}
 
-	if (ad.data.valid) {
-		bt_shell_printf("Data Type: 0x%02x\n", ad.data.type);
-		bt_shell_hexdump(ad.data.data.data, ad.data.data.len);
+		if (ad.manufacturer[type].data.len) {
+			bt_shell_printf("%s: %u\n", ad_names.manufacturer[type],
+						ad.manufacturer[type].id);
+			bt_shell_hexdump(ad.manufacturer[type].data.data,
+						ad.manufacturer[type].data.len);
+		}
+
+		if (ad.data[type].valid) {
+			bt_shell_printf("%s Type: 0x%02x\n", 
+						ad_names.data[type], 
+						ad.data[type].type);
+			bt_shell_hexdump(ad.data[type].data.data, 
+						ad.data[type].data.len);
+		}
 	}
 
 	bt_shell_printf("Tx Power: %s\n", ad.tx_power ? "on" : "off");
@@ -228,12 +263,13 @@ static gboolean get_type(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean uuids_exists(const GDBusPropertyTable *property, void *data)
+static gboolean uuids_exists(int type, const GDBusPropertyTable *property,
+								void *data)
 {
-	return ad.uuids_len != 0;
+	return ad.uuids_len[type] != 0;
 }
 
-static gboolean get_uuids(const GDBusPropertyTable *property,
+static gboolean get_uuids(int type, const GDBusPropertyTable *property,
 				DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter array;
@@ -241,60 +277,178 @@ static gboolean get_uuids(const GDBusPropertyTable *property,
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "as", &array);
 
-	for (i = 0; i < ad.uuids_len; i++)
+	for (i = 0; i < ad.uuids_len[type]; i++)
 		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
-							&ad.uuids[i]);
+						&ad.uuids[type][i]);
 
 	dbus_message_iter_close_container(iter, &array);
 
 	return TRUE;
 }
 
-static gboolean service_data_exists(const GDBusPropertyTable *property,
-								void *data)
+static gboolean ad_uuids_exists(const GDBusPropertyTable *property, void *data)
 {
-	return ad.service.uuid != NULL;
+	return uuids_exists(AD_TYPE_AD, property, data);
 }
 
-static gboolean get_service_data(const GDBusPropertyTable *property,
+static gboolean get_ad_uuids(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	return get_uuids(AD_TYPE_AD, property, iter, user_data);
+}
+
+static gboolean sr_uuids_exists(const GDBusPropertyTable *property, void *data)
+{
+	return uuids_exists(AD_TYPE_SRD, property, data);
+}
+
+static gboolean get_sr_uuids(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	return get_uuids(AD_TYPE_SRD, property, iter, user_data);
+}
+
+static gboolean solicit_uuids_exists(int type,
+				const GDBusPropertyTable *property, void *data)
+{
+	return ad.solicit_len[type] != 0;
+}
+
+static gboolean get_solicit_uuids(int type, const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter array;
+	size_t i;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "as", &array);
+
+	for (i = 0; i < ad.solicit_len[type]; i++)
+		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
+						&ad.solicit[type][i]);
+
+	dbus_message_iter_close_container(iter, &array);
+
+	return TRUE;
+}
+
+static gboolean ad_solicit_uuids_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	return solicit_uuids_exists(AD_TYPE_AD, property, data);
+}
+
+static gboolean get_ad_solicit_uuids(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	return get_solicit_uuids(AD_TYPE_AD, property, iter, user_data);
+}
+
+static gboolean sr_solicit_uuids_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	return solicit_uuids_exists(AD_TYPE_SRD, property, data);
+}
+
+static gboolean get_sr_solicit_uuids(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	return get_solicit_uuids(AD_TYPE_SRD, property, iter, user_data);
+}
+
+static gboolean service_data_exists(int type,
+				const GDBusPropertyTable *property, void *data)
+{
+	return ad.service[type].uuid != NULL;
+}
+
+static gboolean get_service_data(int type, const GDBusPropertyTable *property,
 				DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
-	struct ad_data *data = &ad.service.data;
+	struct ad_data *data = &ad.service[type].data;
 	uint8_t *val = data->data;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
 
-	g_dbus_dict_append_array(&dict, ad.service.uuid, DBUS_TYPE_BYTE, &val,
-								data->len);
+	g_dbus_dict_append_array(&dict, ad.service[type].uuid, DBUS_TYPE_BYTE,
+							&val, data->len);
 
 	dbus_message_iter_close_container(iter, &dict);
 
 	return TRUE;
 }
 
-static gboolean manufacturer_data_exists(const GDBusPropertyTable *property,
+static gboolean ad_service_data_exists(const GDBusPropertyTable *property,
 								void *data)
 {
-	return ad.manufacturer.id != 0;
+	return service_data_exists(AD_TYPE_AD, property, data);
 }
 
-static gboolean get_manufacturer_data(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *user_data)
+static gboolean get_ad_service_data(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	return get_service_data(AD_TYPE_AD, property, iter, user_data);
+}
+
+static gboolean sr_service_data_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	return service_data_exists(AD_TYPE_SRD, property, data);
+}
+
+static gboolean get_sr_service_data(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	return get_service_data(AD_TYPE_SRD, property, iter, user_data);
+}
+
+static gboolean manufacturer_data_exists(int type,
+				const GDBusPropertyTable *property, void *data)
+{
+	return ad.manufacturer[type].id != 0;
+}
+
+static gboolean get_manufacturer_data(int type,
+				const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
-	struct ad_data *data = &ad.manufacturer.data;
+	struct ad_data *data = &ad.manufacturer[type].data;
 	uint8_t *val = data->data;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{qv}", &dict);
 
 	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_UINT16,
-					&ad.manufacturer.id,
+					&ad.manufacturer[type].id,
 					DBUS_TYPE_BYTE, &val, data->len);
 
 	dbus_message_iter_close_container(iter, &dict);
 
 	return TRUE;
+}
+
+static gboolean ad_manufacturer_data_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	return manufacturer_data_exists(AD_TYPE_AD, property, data);
+}
+
+static gboolean get_ad_manufacturer_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	return get_manufacturer_data(AD_TYPE_AD, property, iter, user_data);
+}
+
+static gboolean sr_manufacturer_data_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	return manufacturer_data_exists(AD_TYPE_SRD, property, data);
+}
+
+static gboolean get_sr_manufacturer_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	return get_manufacturer_data(AD_TYPE_SRD, property, iter, user_data);
 }
 
 static gboolean includes_exists(const GDBusPropertyTable *property, void *data)
@@ -394,26 +548,49 @@ static gboolean get_timeout(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean data_exists(const GDBusPropertyTable *property, void *data)
+static gboolean data_exists(int type, const GDBusPropertyTable *property,
+								void *data)
 {
-	return ad.data.valid;
+	return ad.data[type].valid;
 }
 
-static gboolean get_data(const GDBusPropertyTable *property,
+static gboolean get_data(int type, const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
-	struct ad_data *data = &ad.data.data;
+	struct ad_data *data = &ad.data[type].data;
 	uint8_t *val = data->data;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{yv}", &dict);
 
-	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_BYTE, &ad.data.type,
-					DBUS_TYPE_BYTE, &val, data->len);
+	g_dbus_dict_append_basic_array(&dict, DBUS_TYPE_BYTE,
+			&ad.data[type].type, DBUS_TYPE_BYTE, &val, data->len);
 
 	dbus_message_iter_close_container(iter, &dict);
 
 	return TRUE;
+}
+
+static gboolean ad_data_exists(const GDBusPropertyTable *property, void *data)
+{
+	return data_exists(AD_TYPE_AD, property, data);
+}
+
+static gboolean get_ad_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	return get_data(AD_TYPE_AD, property, iter, user_data);
+}
+
+static gboolean sr_data_exists(const GDBusPropertyTable *property, void *data)
+{
+	return data_exists(AD_TYPE_SRD, property, data);
+}
+
+static gboolean get_sr_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	return get_data(AD_TYPE_SRD, property, iter, user_data);
 }
 
 static gboolean get_discoverable(const GDBusPropertyTable *property,
@@ -487,11 +664,23 @@ static gboolean get_max_interval(const GDBusPropertyTable *property,
 
 static const GDBusPropertyTable ad_props[] = {
 	{ "Type", "s", get_type },
-	{ "ServiceUUIDs", "as", get_uuids, NULL, uuids_exists },
-	{ "ServiceData", "a{sv}", get_service_data, NULL, service_data_exists },
-	{ "ManufacturerData", "a{qv}", get_manufacturer_data, NULL,
-						manufacturer_data_exists },
-	{ "Data", "a{yv}", get_data, NULL, data_exists },
+	{ "ServiceUUIDs", "as", get_ad_uuids, NULL, ad_uuids_exists },
+	{ "SolicitUUIDs", "as", get_ad_solicit_uuids, NULL,
+						ad_solicit_uuids_exists },
+	{ "ServiceData", "a{sv}", get_ad_service_data, NULL,
+						ad_service_data_exists },
+	{ "ManufacturerData", "a{qv}", get_ad_manufacturer_data, NULL,
+						ad_manufacturer_data_exists },
+	{ "Data", "a{yv}", get_ad_data, NULL, ad_data_exists },
+	{ "ScanResponseServiceUUIDs", "as", get_sr_uuids, NULL,
+						sr_uuids_exists },
+	{ "ScanResponseSolicitUUIDs", "as", get_sr_solicit_uuids, NULL,
+						sr_solicit_uuids_exists },
+	{ "ScanResponseServiceData", "a{sv}", get_sr_service_data, NULL,
+						sr_service_data_exists },
+	{ "ScanResponseManufacturerData", "a{qv}", get_sr_manufacturer_data,
+					NULL, sr_manufacturer_data_exists },
+	{ "ScanResponseData", "a{yv}", get_sr_data, NULL, sr_data_exists },
 	{ "Discoverable", "b", get_discoverable, NULL, NULL },
 	{ "DiscoverableTimeout", "q", get_discoverable_timeout, NULL,
 						discoverable_timeout_exists },
@@ -582,50 +771,109 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 	}
 }
 
-static void ad_clear_uuids(void)
+static const struct {
+    const char* uuid[AD_TYPE_COUNT];
+    const char* solicit[AD_TYPE_COUNT];
+    const char* service[AD_TYPE_COUNT];
+    const char* manufacturer[AD_TYPE_COUNT];
+    const char* data[AD_TYPE_COUNT];
+} prop_names = {
+    .uuid = { "ServiceUUIDs", 	"ScanResponseServiceUUIDs" },
+    .solicit = { "SolicitUUIDs", "ScanResponseSolicitUUIDs" },
+    .service = { "ServiceData", "ScanResponseServiceData" },
+    .manufacturer = { "ManufacturerData", "ScanResponseManufacturerData" },
+    .data = { "Data", "ScanResponseData" }
+};
+
+static void ad_clear_uuids(int type)
 {
-	g_strfreev(ad.uuids);
-	ad.uuids = NULL;
-	ad.uuids_len = 0;
+	g_strfreev(ad.uuids[type]);
+	ad.uuids[type] = NULL;
+	ad.uuids_len[type] = 0;
 }
 
-void ad_advertise_uuids(DBusConnection *conn, int argc, char *argv[])
+void ad_advertise_uuids(DBusConnection *conn, int type, int argc, char *argv[])
 {
 	if (argc < 2 || !strlen(argv[1])) {
-		print_ad_uuids();
+		print_ad_uuids(type);
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 
-	ad_clear_uuids();
+	ad_clear_uuids(type);
 
-	ad.uuids = g_strdupv(&argv[1]);
-	if (!ad.uuids) {
+	ad.uuids[type] = g_strdupv(&argv[1]);
+	if (!ad.uuids[type]) {
 		bt_shell_printf("Failed to parse input\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	ad.uuids_len = g_strv_length(ad.uuids);
+	ad.uuids_len[type] = g_strv_length(ad.uuids[type]);
 
-	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceUUIDs");
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							prop_names.uuid[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-void ad_disable_uuids(DBusConnection *conn)
+void ad_disable_uuids(DBusConnection *conn, int type)
 {
-	if (!ad.uuids)
+	if (!ad.uuids[type])
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
-	ad_clear_uuids();
-	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceUUIDs");
+	ad_clear_uuids(type);
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							prop_names.uuid[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static void ad_clear_service(void)
+static void ad_clear_solicit(int type)
 {
-	g_free(ad.service.uuid);
-	memset(&ad.service, 0, sizeof(ad.service));
+	g_strfreev(ad.solicit[type]);
+	ad.solicit[type] = NULL;
+	ad.solicit_len[type] = 0;
+}
+
+void ad_advertise_solicit(DBusConnection *conn, int type,
+							int argc, char *argv[])
+{
+	if (argc < 2 || !strlen(argv[1])) {
+		print_ad_solicit(type);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	ad_clear_solicit(type);
+
+	ad.solicit[type] = g_strdupv(&argv[1]);
+	if (!ad.solicit[type]) {
+		bt_shell_printf("Failed to parse input\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	ad.solicit_len[type] = g_strv_length(ad.solicit[type]);
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+						prop_names.solicit[type]);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_disable_solicit(DBusConnection *conn, int type)
+{
+	if (!ad.solicit[type])
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+
+	ad_clear_solicit(type);
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+						prop_names.solicit[type]);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void ad_clear_service(int type)
+{
+	g_free(ad.service[type].uuid);
+	memset(&ad.service[type], 0, sizeof(ad.service[type]));
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -658,15 +906,17 @@ static bool ad_add_data(struct ad_data *data, int argc, char *argv[])
 	return true;
 }
 
-void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
+void ad_advertise_service(DBusConnection *conn, int type,
+							int argc, char *argv[])
 {
 	struct ad_data data;
 
 	if (argc < 2 || !strlen(argv[1])) {
-		if (ad.service.uuid) {
-			print_uuid(ad.service.uuid);
-			bt_shell_hexdump(ad.service.data.data,
-						ad.service.data.len);
+		if (ad.service[type].uuid) {
+			print_uuid(ad_names.service[type],
+						ad.service[type].uuid);
+			bt_shell_hexdump(ad.service[type].data.data,
+						ad.service[type].data.len);
 		}
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
@@ -674,46 +924,49 @@ void ad_advertise_service(DBusConnection *conn, int argc, char *argv[])
 	if (!ad_add_data(&data, argc - 2, argv + 2))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	ad_clear_service();
+	ad_clear_service(type);
 
-	ad.service.uuid = g_strdup(argv[1]);
-	ad.service.data = data;
+	ad.service[type].uuid = g_strdup(argv[1]);
+	ad.service[type].data = data;
 
-	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+						prop_names.service[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-void ad_disable_service(DBusConnection *conn)
+void ad_disable_service(DBusConnection *conn, int type)
 {
-	if (!ad.service.uuid)
+	if (!ad.service[type].uuid)
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
-	ad_clear_service();
-	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "ServiceData");
+	ad_clear_service(type);
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+						prop_names.service[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static void ad_clear_manufacturer(void)
+static void ad_clear_manufacturer(int type)
 {
-	memset(&ad.manufacturer, 0, sizeof(ad.manufacturer));
+	memset(&ad.manufacturer[type], 0, sizeof(ad.manufacturer[type]));
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
+void ad_advertise_manufacturer(DBusConnection *conn, int type,
+							int argc, char *argv[])
 {
 	char *endptr = NULL;
 	long int val;
 	struct ad_data data;
 
 	if (argc < 2 || !strlen(argv[1])) {
-		if (ad.manufacturer.data.len) {
-			bt_shell_printf("Manufacturer: %u\n",
-						ad.manufacturer.id);
-			bt_shell_hexdump(ad.manufacturer.data.data,
-						ad.manufacturer.data.len);
+		if (ad.manufacturer[type].data.len) {
+			bt_shell_printf("%s: %u\n", ad_names.manufacturer[type],
+						ad.manufacturer[type].id);
+			bt_shell_hexdump(ad.manufacturer[type].data.data,
+						ad.manufacturer[type].data.len);
 		}
 
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -728,45 +981,48 @@ void ad_advertise_manufacturer(DBusConnection *conn, int argc, char *argv[])
 	if (!ad_add_data(&data, argc - 2, argv + 2))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	ad_clear_manufacturer();
-	ad.manufacturer.id = val;
-	ad.manufacturer.data = data;
+	ad_clear_manufacturer(type);
+	ad.manufacturer[type].id = val;
+	ad.manufacturer[type].data = data;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
-							"ManufacturerData");
+						prop_names.manufacturer[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-void ad_disable_manufacturer(DBusConnection *conn)
+void ad_disable_manufacturer(DBusConnection *conn, int type)
 {
-	if (!ad.manufacturer.id && !ad.manufacturer.data.len)
+	if (!ad.manufacturer[type].id && !ad.manufacturer[type].data.len)
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
-	ad_clear_manufacturer();
+	ad_clear_manufacturer(type);
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
-							"ManufacturerData");
+						prop_names.manufacturer[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static void ad_clear_data(void)
+static void ad_clear_data(int type)
 {
-	memset(&ad.data, 0, sizeof(ad.data));
+	memset(&ad.data[type], 0, sizeof(ad.data[type]));
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-void ad_advertise_data(DBusConnection *conn, int argc, char *argv[])
+void ad_advertise_data(DBusConnection *conn, int type, int argc, char *argv[])
 {
 	char *endptr = NULL;
 	long int val;
 	struct ad_data data;
 
 	if (argc < 2 || !strlen(argv[1])) {
-		if (ad.data.data.len) {
-			bt_shell_printf("Type: 0x%02x\n", ad.data.type);
-			bt_shell_hexdump(ad.data.data.data, ad.data.data.len);
+		if (ad.data[type].data.len) {
+			bt_shell_printf("%s Type: 0x%02x\n",
+							ad_names.data[type],
+							ad.data[type].type);
+			bt_shell_hexdump(ad.data[type].data.data,
+							ad.data[type].data.len);
 		}
 
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -781,23 +1037,25 @@ void ad_advertise_data(DBusConnection *conn, int argc, char *argv[])
 	if (!ad_add_data(&data, argc - 2, argv + 2))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	ad_clear_data();
-	ad.data.valid = true;
-	ad.data.type = val;
-	ad.data.data = data;
+	ad_clear_data(type);
+	ad.data[type].valid = true;
+	ad.data[type].type = val;
+	ad.data[type].data = data;
 
-	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Data");
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							prop_names.data[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-void ad_disable_data(DBusConnection *conn)
+void ad_disable_data(DBusConnection *conn, int type)
 {
-	if (!ad.data.type && !ad.data.data.len)
+	if (!ad.data[type].type && !ad.data[type].data.len)
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
-	ad_clear_data();
-	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Data");
+	ad_clear_data(type);
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							prop_names.data[type]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }

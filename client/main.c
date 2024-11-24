@@ -2538,22 +2538,52 @@ static char *ad_generator(const char *text, int state)
 
 static void cmd_advertise_uuids(int argc, char *argv[])
 {
-	ad_advertise_uuids(dbus_conn, argc, argv);
+	ad_advertise_uuids(dbus_conn, AD_TYPE_AD, argc, argv);
+}
+
+static void cmd_advertise_solicit(int argc, char *argv[])
+{
+	ad_advertise_solicit(dbus_conn, AD_TYPE_AD, argc, argv);
 }
 
 static void cmd_advertise_service(int argc, char *argv[])
 {
-	ad_advertise_service(dbus_conn, argc, argv);
+	ad_advertise_service(dbus_conn, AD_TYPE_AD, argc, argv);
 }
 
 static void cmd_advertise_manufacturer(int argc, char *argv[])
 {
-	ad_advertise_manufacturer(dbus_conn, argc, argv);
+	ad_advertise_manufacturer(dbus_conn, AD_TYPE_AD, argc, argv);
 }
 
 static void cmd_advertise_data(int argc, char *argv[])
 {
-	ad_advertise_data(dbus_conn, argc, argv);
+	ad_advertise_data(dbus_conn, AD_TYPE_AD, argc, argv);
+}
+
+static void cmd_advertise_sr_uuids(int argc, char *argv[])
+{
+	ad_advertise_uuids(dbus_conn, AD_TYPE_SRD, argc, argv);
+}
+
+static void cmd_advertise_sr_solicit(int argc, char *argv[])
+{
+	ad_advertise_solicit(dbus_conn, AD_TYPE_SRD, argc, argv);
+}
+
+static void cmd_advertise_sr_service(int argc, char *argv[])
+{
+	ad_advertise_service(dbus_conn, AD_TYPE_SRD, argc, argv);
+}
+
+static void cmd_advertise_sr_manufacturer(int argc, char *argv[])
+{
+	ad_advertise_manufacturer(dbus_conn, AD_TYPE_SRD, argc, argv);
+}
+
+static void cmd_advertise_sr_data(int argc, char *argv[])
+{
+	ad_advertise_data(dbus_conn, AD_TYPE_SRD, argc, argv);
 }
 
 static void cmd_advertise_discoverable(int argc, char *argv[])
@@ -2753,22 +2783,52 @@ static void cmd_advertise_rsi(int argc, char *argv[])
 
 static void ad_clear_uuids(void)
 {
-	ad_disable_uuids(dbus_conn);
+	ad_disable_uuids(dbus_conn, AD_TYPE_AD);
+}
+
+static void ad_clear_solicit(void)
+{
+	ad_disable_solicit(dbus_conn, AD_TYPE_AD);
 }
 
 static void ad_clear_service(void)
 {
-	ad_disable_service(dbus_conn);
+	ad_disable_service(dbus_conn, AD_TYPE_AD);
 }
 
 static void ad_clear_manufacturer(void)
 {
-	ad_disable_manufacturer(dbus_conn);
+	ad_disable_manufacturer(dbus_conn, AD_TYPE_AD);
 }
 
 static void ad_clear_data(void)
 {
-	ad_disable_data(dbus_conn);
+	ad_disable_data(dbus_conn, AD_TYPE_AD);
+}
+
+static void ad_clear_sr_uuids(void)
+{
+	ad_disable_uuids(dbus_conn, AD_TYPE_SRD);
+}
+
+static void ad_clear_sr_solicit(void)
+{
+	ad_disable_solicit(dbus_conn, AD_TYPE_SRD);
+}
+
+static void ad_clear_sr_service(void)
+{
+	ad_disable_service(dbus_conn, AD_TYPE_SRD);
+}
+
+static void ad_clear_sr_manufacturer(void)
+{
+	ad_disable_manufacturer(dbus_conn, AD_TYPE_SRD);
+}
+
+static void ad_clear_sr_data(void)
+{
+	ad_disable_data(dbus_conn, AD_TYPE_SRD);
 }
 
 static void ad_clear_tx_power(void)
@@ -2819,9 +2879,15 @@ static void ad_clear_interval(void)
 
 static const struct clear_entry ad_clear[] = {
 	{ "uuids",		ad_clear_uuids },
+	{ "solicit",		ad_clear_solicit },
 	{ "service",		ad_clear_service },
 	{ "manufacturer",	ad_clear_manufacturer },
 	{ "data",		ad_clear_data },
+	{ "sr-uuids",		ad_clear_sr_uuids },
+	{ "sr-solicit",		ad_clear_sr_solicit },
+	{ "sr-service",		ad_clear_sr_service },
+	{ "sr-manufacturer",	ad_clear_sr_manufacturer },
+	{ "sr-data",		ad_clear_sr_data },
 	{ "tx-power",		ad_clear_tx_power },
 	{ "name",		ad_clear_name },
 	{ "appearance",		ad_clear_appearance },
@@ -2922,6 +2988,8 @@ static const struct bt_shell_menu advertise_menu = {
 	.entries = {
 	{ "uuids", "[uuid1 uuid2 ...]", cmd_advertise_uuids,
 			"Set/Get advertise uuids" },
+	{ "solicit", "[uuid1 uuid2 ...]", cmd_advertise_solicit,
+			"Set/Get advertise solicit uuids" },
 	{ "service", "[uuid] [data=xx xx ...]", cmd_advertise_service,
 			"Set/Get advertise service data" },
 	{ "manufacturer", "[id] [data=xx xx ...]",
@@ -2929,6 +2997,17 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set/Get advertise manufacturer data" },
 	{ "data", "[type] [data=xx xx ...]", cmd_advertise_data,
 			"Set/Get advertise data" },
+	{ "sr-uuids", "[uuid1 uuid2 ...]", cmd_advertise_sr_uuids,
+			"Set/Get scan response uuids" },
+	{ "sr-solicit", "[uuid1 uuid2 ...]", cmd_advertise_sr_solicit,
+			"Set/Get scan response solicit uuids" },
+	{ "sr-service", "[uuid] [data=xx xx ...]", cmd_advertise_sr_service,
+			"Set/Get scan response service data" },
+	{ "sr-manufacturer", "[id] [data=xx xx ...]",
+			cmd_advertise_sr_manufacturer,
+			"Set/Get scan response manufacturer data" },
+	{ "sr-data", "[type] [data=xx xx ...]", cmd_advertise_sr_data,
+			"Set/Get scan response data" },
 	{ "discoverable", "[on/off]", cmd_advertise_discoverable,
 			"Set/Get advertise discoverable" },
 	{ "discoverable-timeout", "[seconds]",
