@@ -109,6 +109,7 @@ static const char *br_options[] = {
 };
 
 static const char *le_options[] = {
+	"CentralAddressResolution",
 	"MinAdvertisementInterval",
 	"MaxAdvertisementInterval",
 	"MultiAdvertisementRotationInterval",
@@ -582,6 +583,11 @@ static void parse_br_config(GKeyFile *config)
 static void parse_le_config(GKeyFile *config)
 {
 	static const struct config_param params[] = {
+		{ "CentralAddressResolution",
+		  &btd_opts.defaults.le.addr_resolution,
+		  sizeof(btd_opts.defaults.le.addr_resolution),
+		  0,
+		  1},
 		{ "MinAdvertisementInterval",
 		  &btd_opts.defaults.le.min_adv_interval,
 		  sizeof(btd_opts.defaults.le.min_adv_interval),
@@ -709,9 +715,21 @@ static bool match_experimental(const void *data, const void *match_data)
 bool btd_kernel_experimental_enabled(const char *uuid)
 {
 	if (!btd_opts.kernel)
-		false;
+		goto done;
 
-	return queue_find(btd_opts.kernel, match_experimental, uuid);
+	if (queue_find(btd_opts.kernel, match_experimental, uuid))
+		return true;
+
+done:
+	/* For backward compatibility set LL Privacy as enabled if
+	 * CentralAddressResolution has been set so old kernel LL Privacy is
+	 * enabled.
+	 */
+	if (!strcmp(uuid, "15c0a148-c273-11ea-b3de-0242ac130004") &&
+			btd_opts.defaults.le.addr_resolution)
+		return true;
+
+	return false;
 }
 
 static const char *valid_uuids[] = {
@@ -1234,6 +1252,7 @@ static void init_defaults(void)
 	btd_opts.defaults.num_entries = 0;
 	btd_opts.defaults.br.page_scan_type = 0xFFFF;
 	btd_opts.defaults.br.scan_type = 0xFFFF;
+	btd_opts.defaults.le.addr_resolution = 0x01;
 	btd_opts.defaults.le.enable_advmon_interleave_scan = 0xFF;
 
 	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)

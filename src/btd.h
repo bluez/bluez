@@ -65,6 +65,8 @@ struct btd_br_defaults {
 };
 
 struct btd_le_defaults {
+	uint8_t		addr_resolution;
+
 	uint16_t	min_adv_interval;
 	uint16_t	max_adv_interval;
 	uint16_t	adv_rotation_interval;

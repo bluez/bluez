@@ -548,7 +548,7 @@ static gboolean store_device_info_cb(gpointer user_data)
 	return FALSE;
 }
 
-static bool device_address_is_private(struct btd_device *dev)
+bool device_address_is_private(struct btd_device *dev)
 {
 	if (dev->bdaddr_type != BDADDR_LE_RANDOM)
 		return false;
@@ -7336,6 +7336,27 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 						DEVICE_INTERFACE, "Modalias");
 
 	store_device_info(device);
+}
+
+bool btd_device_flags_enabled(struct btd_device *dev, uint32_t flags)
+{
+	const char *ll_privacy = "15c0a148-c273-11ea-b3de-0242ac130004";
+
+	if (!dev)
+		return false;
+
+	if (dev->current_flags & flags)
+		return true;
+
+	/* For backward compatibility check for LL Privacy experimental UUID
+	 * since that shall be equivalent to DEVICE_FLAG_ADDRESS_RESOLUTION on
+	 * older kernels.
+	 */
+	if ((flags & DEVICE_FLAG_ADDRESS_RESOLUTION) &&
+			btd_kernel_experimental_enabled(ll_privacy))
+		return true;
+
+	return false;
 }
 
 uint32_t btd_device_get_current_flags(struct btd_device *dev)

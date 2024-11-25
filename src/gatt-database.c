@@ -22,6 +22,7 @@
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
 #include "lib/uuid.h"
+#include "lib/mgmt.h"
 #include "btio/btio.h"
 #include "gdbus/gdbus.h"
 #include "src/shared/util.h"
@@ -738,9 +739,18 @@ static void gap_car_read_cb(struct gatt_db_attribute *attrib,
 					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
-	uint8_t value = 0x01;
+	uint8_t value = 0x00;
 
 	DBG("GAP Central Address Resolution read request\n");
+
+	if (btd_opts.defaults.le.addr_resolution) {
+		struct btd_device *device;
+
+		device = btd_adapter_find_device_by_fd(bt_att_get_fd(att));
+		if (device)
+			value = btd_device_flags_enabled(device,
+					DEVICE_FLAG_ADDRESS_RESOLUTION);
+	}
 
 	gatt_db_attribute_read_result(attrib, id, 0, &value, sizeof(value));
 }
