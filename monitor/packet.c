@@ -14418,6 +14418,7 @@ static void mgmt_set_exp_feature_rsp(const void *data, uint16_t size)
 static const struct bitfield_data mgmt_added_device_flags_table[] = {
 	{ 0, "Remote Wakeup"		},
 	{ 1, "Device Privacy Mode"	},
+	{ 2, "Address Resolution"	},
 	{ }
 };
 
