@@ -37,6 +37,7 @@
 #include "player.h"
 #include "mgmt.h"
 #include "assistant.h"
+#include "hci.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -3207,6 +3208,7 @@ int main(int argc, char *argv[])
 	player_add_submenu();
 	mgmt_add_submenu();
 	assistant_add_submenu();
+	hci_add_submenu();
 
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
 
@@ -3229,6 +3231,7 @@ int main(int argc, char *argv[])
 	player_remove_submenu();
 	mgmt_remove_submenu();
 	assistant_remove_submenu();
+	hci_remove_submenu();
 
 	g_dbus_client_unref(client);
 
