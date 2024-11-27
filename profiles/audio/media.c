@@ -1249,7 +1249,7 @@ static bool endpoint_init_pac(struct media_endpoint *endpoint, uint8_t type,
 	char *name;
 
 	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		warn("D-Bus experimental not enabled");
+		DBG("D-Bus experimental not enabled");
 		*err = -ENOTSUP;
 		return false;
 	}

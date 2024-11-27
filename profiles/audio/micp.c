@@ -318,7 +318,7 @@ static unsigned int micp_id;
 static int micp_init(void)
 {
 	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		warn("D-Bus experimental not enabled");
+		DBG("D-Bus experimental not enabled");
 		return -ENOTSUP;
 	}
 
