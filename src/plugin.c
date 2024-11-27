@@ -50,7 +50,7 @@ static int init_plugin(const struct bluetooth_plugin_desc *desc)
 	err = desc->init();
 	if (err < 0) {
 		if (err == -ENOSYS || err == -ENOTSUP)
-			warn("System does not support %s plugin",
+			DBG("System does not support %s plugin",
 						desc->name);
 		else
 			error("Failed to init %s plugin",
