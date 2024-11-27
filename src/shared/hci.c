@@ -17,6 +17,11 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <sys/un.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include "monitor/bt.h"
 #include "src/shared/mainloop.h"
@@ -53,6 +58,7 @@ struct bt_hci {
 	struct queue *cmd_queue;
 	struct queue *rsp_queue;
 	struct queue *evt_list;
+	struct queue *data_queue;
 };
 
 struct cmd {
@@ -71,6 +77,13 @@ struct evt {
 	bt_hci_callback_func_t callback;
 	bt_hci_destroy_func_t destroy;
 	void *user_data;
+};
+
+struct data {
+	uint8_t type;
+	uint16_t handle;
+	void *data;
+	uint8_t size;
 };
 
 static void cmd_free(void *data)
@@ -92,6 +105,14 @@ static void evt_free(void *data)
 		evt->destroy(evt->user_data);
 
 	free(evt);
+}
+
+static void data_free(void *data)
+{
+	struct data *d = data;
+
+	free(d->data);
+	free(d);
 }
 
 static void send_command(struct bt_hci *hci, uint16_t opcode,
@@ -126,16 +147,43 @@ static void send_command(struct bt_hci *hci, uint16_t opcode,
 	hci->num_cmds--;
 }
 
+static void send_data(struct bt_hci *hci, uint8_t type, uint16_t handle,
+						void *data, uint16_t size)
+{
+	struct iovec iov[3];
+	struct bt_hci_acl_hdr hdr;
+
+	hdr.handle = cpu_to_le16(handle);
+	hdr.dlen = cpu_to_le16(size);
+
+	iov[0].iov_base = &type;
+	iov[0].iov_len  = 1;
+	iov[1].iov_base = &hdr;
+	iov[1].iov_len  = sizeof(hdr);
+	iov[2].iov_base = data;
+	iov[2].iov_len  = size;
+
+	io_send(hci->io, iov, 3);
+}
+
 static bool io_write_callback(struct io *io, void *user_data)
 {
 	struct bt_hci *hci = user_data;
 	struct cmd *cmd;
+	struct data *data;
 
-	cmd = queue_pop_head(hci->cmd_queue);
-	if (cmd) {
-		send_command(hci, cmd->opcode, cmd->data, cmd->size);
-		queue_push_tail(hci->rsp_queue, cmd);
+	if (hci->num_cmds) {
+		cmd = queue_pop_head(hci->cmd_queue);
+		if (cmd) {
+			send_command(hci, cmd->opcode, cmd->data, cmd->size);
+			queue_push_tail(hci->rsp_queue, cmd);
+		}
 	}
+
+	data = queue_pop_head(hci->data_queue);
+	if (data)
+		send_data(hci, data->type, data->handle,
+					data->data, data->size);
 
 	hci->writer_active = false;
 
@@ -147,10 +195,7 @@ static void wakeup_writer(struct bt_hci *hci)
 	if (hci->writer_active)
 		return;
 
-	if (hci->num_cmds < 1)
-		return;
-
-	if (queue_isempty(hci->cmd_queue))
+	if (queue_isempty(hci->cmd_queue) && queue_isempty(hci->data_queue))
 		return;
 
 	if (!io_set_write_handler(hci->io, io_write_callback, hci, NULL))
@@ -300,11 +345,13 @@ static struct bt_hci *create_hci(int fd)
 	hci->cmd_queue = queue_new();
 	hci->rsp_queue = queue_new();
 	hci->evt_list = queue_new();
+	hci->data_queue = queue_new();
 
 	if (!io_set_read_handler(hci->io, io_read_callback, hci, NULL)) {
 		queue_destroy(hci->evt_list, NULL);
 		queue_destroy(hci->rsp_queue, NULL);
 		queue_destroy(hci->cmd_queue, NULL);
+		queue_destroy(hci->data_queue, NULL);
 		io_destroy(hci->io);
 		free(hci);
 		return NULL;
@@ -353,8 +400,11 @@ struct bt_hci *bt_hci_new_user_channel(uint16_t index)
 	int fd;
 
 	fd = create_socket(index, HCI_CHANNEL_USER);
-	if (fd < 0)
+	if (fd < 0) {
+		printf("Unable to create user channel socket: %s(%d)\n",
+			strerror(errno), -errno);
 		return NULL;
+	}
 
 	hci = create_hci(fd);
 	if (!hci) {
@@ -423,6 +473,7 @@ void bt_hci_unref(struct bt_hci *hci)
 	queue_destroy(hci->evt_list, evt_free);
 	queue_destroy(hci->cmd_queue, cmd_free);
 	queue_destroy(hci->rsp_queue, cmd_free);
+	queue_destroy(hci->data_queue, data_free);
 
 	io_destroy(hci->io);
 
@@ -523,6 +574,7 @@ bool bt_hci_flush(struct bt_hci *hci)
 
 	queue_remove_all(hci->cmd_queue, NULL, NULL, cmd_free);
 	queue_remove_all(hci->rsp_queue, NULL, NULL, cmd_free);
+	queue_remove_all(hci->data_queue, NULL, NULL, data_free);
 
 	return true;
 }
@@ -554,6 +606,48 @@ unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 	}
 
 	return evt->id;
+}
+
+bool bt_hci_send_data(struct bt_hci *hci, uint8_t type, uint16_t handle,
+				const void *data, uint8_t size)
+{
+	struct data *d;
+
+	if (!hci)
+		return false;
+
+	/* Check if type really reflects to a data packet */
+	switch (type) {
+	case BT_H4_ACL_PKT:
+	case BT_H4_SCO_PKT:
+	case BT_H4_EVT_PKT:
+		break;
+	default:
+		return false;
+	}
+
+	d = new0(struct data, 1);
+	d->type = type;
+	d->handle = handle;
+	d->size = size;
+
+	if (d->size > 0) {
+		d->data = util_memdup(data, d->size);
+		if (!d->data) {
+			free(d);
+			return false;
+		}
+	}
+
+	if (!queue_push_tail(hci->data_queue, d)) {
+		free(d->data);
+		free(d);
+		return false;
+	}
+
+	wakeup_writer(hci);
+
+	return true;
 }
 
 static bool match_evt_id(const void *a, const void *b)

@@ -34,6 +34,9 @@ unsigned int bt_hci_send(struct bt_hci *hci, uint16_t opcode,
 bool bt_hci_cancel(struct bt_hci *hci, unsigned int id);
 bool bt_hci_flush(struct bt_hci *hci);
 
+bool bt_hci_send_data(struct bt_hci *hci, uint8_t type, uint16_t handle,
+				const void *data, uint8_t size);
+
 unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 				bt_hci_callback_func_t callback,
 				void *user_data, bt_hci_destroy_func_t destroy);
