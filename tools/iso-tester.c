@@ -1447,6 +1447,17 @@ static const struct iso_client_data bcast_16_2_1_recv_defer = {
 	.big = true,
 };
 
+static const struct iso_client_data bcast_16_2_1_recv_defer_reconnect = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.defer = true,
+	.bcast = true,
+	.server = true,
+	.pa_bind = true,
+	.big = true,
+	.disconnect = true,
+};
+
 static const struct iso_client_data bcast_16_2_1_recv2_defer = {
 	.qos = QOS_IN_16_2_1,
 	.expect_err = 0,
@@ -2404,6 +2415,8 @@ static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data);
 static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data);
+static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io,
+						uint8_t num, GIOFunc func);
 
 static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
@@ -2421,7 +2434,19 @@ static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 
 		if (data->reconnect) {
 			data->reconnect = false;
-			test_connect(data->test_data);
+
+			if (!isodata->server)
+				test_connect(data->test_data);
+			else {
+				GIOChannel *parent =
+					queue_peek_head(data->io_queue);
+
+				data->step++;
+
+				iso_defer_accept_bcast(data,
+					parent, 0, iso_accept_cb);
+			}
+
 			return FALSE;
 		}
 
@@ -3405,6 +3430,16 @@ static void test_bcast_recv_defer(const void *test_data)
 	setup_listen(data, 0, iso_accept_cb);
 }
 
+static void test_bcast_recv_defer_reconnect(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->reconnect = true;
+	data->step = 1;
+
+	setup_listen(data, 0, iso_accept_cb);
+}
+
 static void test_bcast_recv2_defer(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -3807,6 +3842,10 @@ int main(int argc, char *argv[])
 						&bcast_16_2_1_recv_defer,
 						setup_powered,
 						test_bcast_recv_defer);
+	test_iso("ISO Broadcaster Receiver Defer Reconnect - Success",
+					&bcast_16_2_1_recv_defer_reconnect,
+					setup_powered,
+					test_bcast_recv_defer_reconnect);
 	test_iso2("ISO Broadcaster Receiver2 Defer - Success",
 						&bcast_16_2_1_recv2_defer,
 						setup_powered,
