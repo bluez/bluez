@@ -6604,6 +6604,9 @@ static int cmd_big_term_sync(struct btdev *dev, const void *data, uint8_t len)
 	/* Cleanup existing connections */
 	while ((conn = queue_pop_head(big->bis))) {
 		rsp.status = BT_HCI_ERR_SUCCESS;
+
+		/* Unlink conn from remote BIS */
+		conn_unlink(conn, conn->link);
 		conn_remove(conn);
 	}
 
