@@ -27,3 +27,5 @@ void bnep_disconnect(struct bnep *session);
 int bnep_server_add(int sk, char *bridge, char *iface, const bdaddr_t *addr,
 						uint8_t *setup_data, int len);
 void bnep_server_delete(char *bridge, char *iface, const bdaddr_t *addr);
+int bnep_send_unkown_rsp(int sk, uint16_t resp);
+

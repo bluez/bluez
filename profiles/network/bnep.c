@@ -726,3 +726,9 @@ void bnep_server_delete(char *bridge, char *iface, const bdaddr_t *addr)
 	bnep_if_down(iface);
 	bnep_conndel(addr);
 }
+
+int bnep_send_unkown_rsp(int sk, uint16_t resp)
+{
+	return bnep_send_ctrl_rsp(sk, BNEP_CMD_NOT_UNDERSTOOD,
+							  resp);
+}
