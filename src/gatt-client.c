@@ -66,6 +66,7 @@ struct btd_gatt_client {
 struct service {
 	struct btd_gatt_client *client;
 	bool primary;
+	bool claimed;
 	uint16_t start_handle;
 	uint16_t end_handle;
 	bt_uuid_t uuid;
@@ -617,6 +618,14 @@ static DBusMessage *descriptor_write_value(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	/*
+	 * Check if service was previously claimed by a plugin and if we shall
+	 * consider it read-only, in that case return not authorized.
+	 */
+	if (desc->chrc->service->claimed &&
+			btd_opts.gatt_export == BT_GATT_EXPORT_READ_ONLY)
+		return btd_error_not_authorized(msg);
+
+	/*
 	 * Don't allow writing to Client Characteristic Configuration
 	 * descriptors. We achieve this through the StartNotify and StopNotify
 	 * methods on GattCharacteristic1.
@@ -1047,6 +1056,14 @@ static DBusMessage *characteristic_write_value(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	/*
+	 * Check if service was previously claimed by a plugin and if we shall
+	 * consider it read-only, in that case return not authorized.
+	 */
+	if (chrc->service->claimed &&
+			btd_opts.gatt_export == BT_GATT_EXPORT_READ_ONLY)
+		return btd_error_not_authorized(msg);
+
+	/*
 	 * Decide which write to use based on characteristic properties. For now
 	 * we don't perform signed writes since gatt-client doesn't support them
 	 * and the user can always encrypt the through pairing. The procedure to
@@ -1294,6 +1311,14 @@ static DBusMessage *characteristic_acquire_write(DBusConnection *conn,
 
 	if (!gatt)
 		return btd_error_failed(msg, "Not connected");
+
+	/*
+	 * Check if service was previously claimed by a plugin and if we shall
+	 * consider it read-only, in that case return not authorized.
+	 */
+	if (chrc->service->claimed &&
+			btd_opts.gatt_export == BT_GATT_EXPORT_READ_ONLY)
+		return btd_error_not_authorized(msg);
 
 	if (chrc->write_io)
 		return btd_error_not_permitted(msg, "Write acquired");
@@ -1954,6 +1979,7 @@ static struct service *service_create(struct gatt_db_attribute *attr,
 	service->chrcs = queue_new();
 	service->incl_services = queue_new();
 	service->client = client;
+	service->claimed = gatt_db_service_get_claimed(attr);
 
 	gatt_db_attribute_get_service_data(attr, &service->start_handle,
 							&service->end_handle,
@@ -2097,8 +2123,15 @@ static void export_service(struct gatt_db_attribute *attr, void *user_data)
 	struct btd_gatt_client *client = user_data;
 	struct service *service;
 
-	if (gatt_db_service_get_claimed(attr))
-		return;
+	if (gatt_db_service_get_claimed(attr)) {
+		switch (btd_opts.gatt_export) {
+		case BT_GATT_EXPORT_OFF:
+			return;
+		case BT_GATT_EXPORT_READ_ONLY:
+		case BT_GATT_EXPORT_READ_WRITE:
+			break;
+		}
+	}
 
 	service = service_create(attr, client);
 	if (!service)

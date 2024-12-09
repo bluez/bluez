@@ -42,6 +42,12 @@ enum sc_mode_t {
 	SC_ONLY,
 };
 
+enum bt_gatt_export_t {
+	BT_GATT_EXPORT_OFF,
+	BT_GATT_EXPORT_READ_ONLY,
+	BT_GATT_EXPORT_READ_WRITE,
+};
+
 struct btd_br_defaults {
 	uint16_t	page_scan_type;
 	uint16_t	page_scan_interval;
@@ -147,6 +153,7 @@ struct btd_opts {
 	uint16_t	gatt_mtu;
 	uint8_t		gatt_channels;
 	bool		gatt_client;
+	enum bt_gatt_export_t gatt_export;
 	enum mps_mode_t	mps;
 
 	struct btd_avdtp_opts avdtp;
