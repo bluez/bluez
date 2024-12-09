@@ -32,7 +32,7 @@ confdir = $(sysconfdir)/bluetooth
 statedir = $(localstatedir)/lib/bluetooth
 
 bluetoothd-fix-permissions:
-	install -dm555 $(DESTDIR)$(confdir)
+	install -dm755 $(DESTDIR)$(confdir)
 	install -dm700 $(DESTDIR)$(statedir)
 
 if DATAFILES
