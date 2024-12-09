@@ -199,7 +199,7 @@ static struct packet_conn_data *release_handle(uint16_t handle)
 
 		if (conn->handle == handle) {
 			if (conn->destroy)
-				conn->destroy(conn->data);
+				conn->destroy(conn, conn->data);
 
 			queue_destroy(conn->tx_q, free);
 			queue_destroy(conn->chan_q, free);

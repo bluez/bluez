@@ -63,6 +63,13 @@ struct att_conn_data {
 	uint16_t mtu;
 };
 
+struct gatt_cache {
+	bdaddr_t id;
+	struct gatt_db *db;
+};
+
+static struct queue *cache_list;
+
 static void print_uuid(const char *label, const void *data, uint16_t size)
 {
 	const char *str;
@@ -397,9 +404,41 @@ static const struct bitfield_data chrc_prop_table[] = {
 	{ }
 };
 
-static void att_conn_data_free(void *data)
+static bool match_cache_id(const void *data, const void *match_data)
+{
+	const struct gatt_cache *cache = data;
+	const bdaddr_t *id = match_data;
+
+	return !bacmp(&cache->id, id);
+}
+
+static void gatt_cache_add(struct packet_conn_data *conn, struct gatt_db *db)
+{
+	struct gatt_cache *cache;
+	bdaddr_t id;
+	uint8_t id_type;
+
+	if (!keys_resolve_identity(conn->dst, id.b, &id_type))
+		bacpy(&id, (bdaddr_t *)conn->dst);
+
+	if (queue_find(cache_list, match_cache_id, &id))
+		return;
+
+	if (!cache_list)
+		cache_list = queue_new();
+
+	cache = new0(struct gatt_cache, 1);
+	bacpy(&cache->id, &id);
+	cache->db = gatt_db_ref(db);
+	queue_push_tail(cache_list, cache);
+}
+
+static void att_conn_data_free(struct packet_conn_data *conn, void *data)
 {
 	struct att_conn_data *att_data = data;
+
+	if (!gatt_db_isempty(att_data->rdb))
+		gatt_cache_add(conn, att_data->rdb);
 
 	gatt_db_unref(att_data->rdb);
 	gatt_db_unref(att_data->ldb);
@@ -456,20 +495,32 @@ static void load_gatt_db(struct packet_conn_data *conn)
 	char filename[PATH_MAX];
 	char local[18];
 	char peer[18];
-	uint8_t id[6], id_type;
+	bdaddr_t id;
+	uint8_t id_type;
 
 	ba2str((bdaddr_t *)conn->src, local);
 
-	if (keys_resolve_identity(conn->dst, id, &id_type))
-		ba2str((bdaddr_t *)id, peer);
-	else
+	if (keys_resolve_identity(conn->dst, id.b, &id_type)) {
+		ba2str(&id, peer);
+	} else {
+		bacpy(&id, (bdaddr_t *)conn->dst);
 		ba2str((bdaddr_t *)conn->dst, peer);
+	}
 
 	create_filename(filename, PATH_MAX, "/%s/attributes", local);
 	gatt_load_db(data->ldb, filename, &data->ldb_mtim);
 
 	create_filename(filename, PATH_MAX, "/%s/cache/%s", local, peer);
 	gatt_load_db(data->rdb, filename, &data->rdb_mtim);
+
+	/* If rdb cannot be loaded from file try local cache */
+	if (gatt_db_isempty(data->rdb)) {
+		struct gatt_cache *cache;
+
+		cache = queue_find(cache_list, match_cache_id, &id);
+		if (cache)
+			data->rdb = gatt_db_ref(cache->db);
+	}
 }
 
 static struct gatt_db *get_db(const struct l2cap_frame *frame, bool rsp)

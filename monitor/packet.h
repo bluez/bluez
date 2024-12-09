@@ -50,7 +50,7 @@ struct packet_conn_data {
 	struct queue *chan_q;
 	struct packet_latency tx_l;
 	void     *data;
-	void     (*destroy)(void *data);
+	void     (*destroy)(struct packet_conn_data *conn, void *data);
 };
 
 struct packet_conn_data *packet_get_conn_data(uint16_t handle);
