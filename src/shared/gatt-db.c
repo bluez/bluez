@@ -278,6 +278,9 @@ static void service_clone(void *data, void *user_data)
 	for (i = 0; i < service->num_handles; i++) {
 		struct gatt_db_attribute *attr = service->attributes[i];
 
+		if (!attr)
+			continue;
+
 		/* Only clone values for characteristics declaration since that
 		 * is considered when calculating the db hash.
 		 */
