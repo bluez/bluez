@@ -43,7 +43,7 @@
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
-#define PROMPT_ON	"[bluetooth]# "
+#define PROMPT_ON	"[bluetoothctl]> "
 #define PROMPT_OFF	"Waiting to connect to bluetoothd..."
 
 static DBusConnection *dbus_conn;
@@ -333,7 +333,7 @@ static void set_default_device(GDBusProxy *proxy, const char *attribute)
 	path = g_dbus_proxy_get_path(proxy);
 
 	dbus_message_iter_get_basic(&iter, &desc);
-	desc = g_strdup_printf("[%s%s%s]# ", desc,
+	desc = g_strdup_printf("[%s%s%s]> ", desc,
 				attribute ? ":" : "",
 				attribute ? attribute + strlen(path) : "");
 
@@ -2099,7 +2099,7 @@ static void set_default_local_attribute(char *attr)
 	default_local_attr = attr;
 	default_attr = NULL;
 
-	desc = g_strdup_printf("[%s]# ", attr);
+	desc = g_strdup_printf("[%s]> ", attr);
 
 	bt_shell_set_prompt(desc, COLOR_BLUE);
 	g_free(desc);

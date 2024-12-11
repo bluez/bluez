@@ -34,7 +34,7 @@
 
 #define DEFAULT_SOCKET_PATH	"/tmp/bt-stack-tester"
 
-#define PROMPT_ON	COLOR_BLUE "[btpclient]" COLOR_OFF "# "
+#define PROMPT_ON	COLOR_BLUE "[btpclient]" COLOR_OFF "> "
 
 #define EVT_OPCODE_BASE	0x80
 

@@ -71,16 +71,16 @@ static int pending_index = 0;
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #endif
 
-#define PROMPT_ON	COLOR_BLUE "[mgmt]" COLOR_OFF "# "
+#define PROMPT_ON	COLOR_BLUE "[mgmt]" COLOR_OFF "> "
 
 static void update_prompt(uint16_t index)
 {
 	char str[32];
 
 	if (index == MGMT_INDEX_NONE)
-		snprintf(str, sizeof(str), "[mgmt]# ");
+		snprintf(str, sizeof(str), "[mgmt]> ");
 	else
-		snprintf(str, sizeof(str), "[hci%u]# ", index);
+		snprintf(str, sizeof(str), "[hci%u]> ", index);
 
 	bt_shell_set_prompt(str, COLOR_BLUE);
 }

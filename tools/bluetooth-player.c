@@ -33,7 +33,7 @@
 #include "src/shared/shell.h"
 #include "client/player.h"
 
-#define PROMPT	"[bluetooth]# "
+#define PROMPT	"[bluetooth-player]> "
 
 static DBusConnection *dbus_conn;
 

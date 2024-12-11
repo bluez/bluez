@@ -38,7 +38,7 @@
 #include "tools/mesh/model.h"
 #include "tools/mesh/remote.h"
 
-#define PROMPT_ON	"[mesh-cfgclient]# "
+#define PROMPT_ON	"[mesh-cfgclient]> "
 #define PROMPT_OFF	"Waiting to connect to bluetooth-meshd..."
 
 #define CFG_SRV_MODEL	0x0000

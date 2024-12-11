@@ -54,7 +54,7 @@
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
-#define PROMPT_ON	"[meshctl]# "
+#define PROMPT_ON	"[meshctl]> "
 #define PROMPT_OFF	"Waiting to connect to bluetoothd..."
 
 #define MESH_PROV_DATA_IN_UUID_STR	"00002adb-0000-1000-8000-00805f9b34fb"
@@ -603,7 +603,7 @@ static void set_connected_device(GDBusProxy *proxy)
 			goto done;
 
 	dbus_message_iter_get_basic(&iter, &desc);
-	desc = g_strdup_printf(COLOR_BLUE "[%s%s%s]" COLOR_OFF "# ", desc,
+	desc = g_strdup_printf(COLOR_BLUE "[%s%s%s]" COLOR_OFF "> ", desc,
 			       (desc && mesh) ? "-" : "",
 				mesh ? buf : "");
 
