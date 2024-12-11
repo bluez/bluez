@@ -26,17 +26,17 @@ uuids
 
 Set/Get advertise uuids.
 
-:Usage: **# uuids [all/uuid1 uuid2 ...]**
-:Example: **# uuids 0x1234**
-:Example: **# uuids 0x12345678**
-:Example: **# uuids 90f95193-35de-4306-a6e9-699328f15059**
+:Usage: **> uuids [all/uuid1 uuid2 ...]**
+:Example: **> uuids 0x1234**
+:Example: **> uuids 0x12345678**
+:Example: **> uuids 90f95193-35de-4306-a6e9-699328f15059**
 
 service
 -------
 
 Set/Get advertise service data.
 
-:Usage: **# service [uuid] [data=xx xx ...]**
+:Usage: **> service [uuid] [data=xx xx ...]**
 
 manufacturer
 ------------
@@ -50,7 +50,7 @@ maximum has been exceeded so you  may receive an error from bluetoothd that it
 "Failed to register advertisement" which means you need to reduce your
 manufacturer data length.
 
-:Usage: **# manufacturer [id] [data=xx xx ...]**
+:Usage: **> manufacturer [id] [data=xx xx ...]**
 
 data
 ----
@@ -68,8 +68,8 @@ You can modify the advertising data while it is advertising.
 
 To get the currently set data use the command data without any arguments.
 
-:Usage: **# data [type] [data=xx xx ...]**
-:Example: **# data 0x0C 01 0x0F 13**
+:Usage: **> data [type] [data=xx xx ...]**
+:Example: **> data 0x0C 01 0x0F 13**
 
 discoverable
 ------------
@@ -85,7 +85,7 @@ will be ignored.
 
 Entering the command by itself will show the status of the setting
 
-:Usage: **# discoverable [on/off]**
+:Usage: **> discoverable [on/off]**
 
 discoverable-timeout
 --------------------
@@ -101,7 +101,7 @@ discoverable [on] must be set to use this feature.
 
 Entering the command by itself will show the current value set.
 
-:Usage: **# discoverable-timeout [seconds]**
+:Usage: **> discoverable-timeout [seconds]**
 
 tx-power
 --------
@@ -119,7 +119,7 @@ This feature can be modified while advertising.
 
 Entering the command by itself will show the current value set.
 
-:Usage: **# tx-power [on/off] [power]**
+:Usage: **> tx-power [on/off] [power]**
 
 name
 ----
@@ -133,15 +133,15 @@ If the string is too big to fit into the packet it will be truncated.
 It will either advertise as a complete local name or if it has to be truncated
 then a shortened local name.
 
-:Usage: **# name [on/off/name]**
-:Example: **# name "0123456789abcdef0123456789abcdef"**
+:Usage: **> name [on/off/name]**
+:Example: **> name "0123456789abcdef0123456789abcdef"**
 
 appearance
 ----------
 
 Configure custom appearance to be advertised.
 
-:Usage: **# appearance [on/off/value]**
+:Usage: **> appearance [on/off/value]**
 
 duration
 --------
@@ -172,21 +172,21 @@ The advertising interval is determined by the advertising parameters that are
 set for each Instance. The advertising interval is the maximum of the
 advertising intervals set for each Instance.
 
-:Usage: **# duration [seconds]**
+:Usage: **> duration [seconds]**
 
 timeout
 -------
 
 Set/Get advertise timeout.
 
-:Usage: **# timeout [seconds]**
+:Usage: **> timeout [seconds]**
 
 secondary
 ---------
 
 Set/Get advertise secondary channel.
 
-:Usage: **# secondary [1M/2M/Coded]**
+:Usage: **> secondary [1M/2M/Coded]**
 
 interval
 --------
@@ -213,7 +213,7 @@ set for each Instance.
 The advertising interval is the maximum of the advertising intervals set for
 each Instance.
 
-:Usage: **# interval [milliseconds]**
+:Usage: **> interval [milliseconds]**
 
 clear
 -----
@@ -226,7 +226,7 @@ If you want to change the advertise configuration while advertising you must
 first clear the advertise configuration and then set the new advertise
 configuration.
 
-:Usage: **# clear [uuids/service/manufacturer/config-name...]**
+:Usage: **> clear [uuids/service/manufacturer/config-name...]**
 
 RESOURCES
 =========

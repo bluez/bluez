@@ -47,42 +47,42 @@ list
 
 List available controllers.
 
-:Usage: **# list**
+:Usage: **> list**
 
 show
 ----
 
 Controller information.
 
-:Usage: **# show [ctrl]**
+:Usage: **> show [ctrl]**
 
 select
 ------
 
 Select default controller.
 
-:Usage: **# select <ctrl>**
+:Usage: **> select <ctrl>**
 
 devices
 -------
 
 List available devices, with an optional property as the filter.
 
-:Usage: **# devices [Paired/Bonded/Trusted/Connected]**
+:Usage: **> devices [Paired/Bonded/Trusted/Connected]**
 
 system-alias
 ------------
 
 Set controller alias.
 
-:Usage: **# system-alias <name>**
+:Usage: **> system-alias <name>**
 
 reset-alias
 -----------
 
 Reset controller alias.
 
-:Usage: **# reset-alias**
+:Usage: **> reset-alias**
 
 power
 -----
@@ -92,7 +92,7 @@ Set controller power.
 When the controller is powered off, the USB port the controller is attached to
 is put into a suspend state.
 
-:Usage: **# power <on/off>**
+:Usage: **> power <on/off>**
 
 advertise
 ---------
@@ -108,14 +108,14 @@ device).
 A device can advertise if it initiated the connection to another advertising
 device.
 
-:Usage: **# advertise <on/off/type>**
+:Usage: **> advertise <on/off/type>**
 
 set-alias
 ---------
 
 Set device alias.
 
-:Usage: **# set-alias <alias>**
+:Usage: **> set-alias <alias>**
 
 scan
 ----
@@ -140,7 +140,7 @@ Note the following when scanning:
   - Device objects found during a scan session will only be persisted if they
     are connected/paired otherwise they are removed after some time.
 
-:Usage: **# scan <on/off/bredr/le>**
+:Usage: **> scan <on/off/bredr/le>**
 
 pair
 ----
@@ -161,7 +161,7 @@ connection before pairing.
 Before pairing the agent must be selected to choose the authentication
 mechanism.
 
-:Usage: **# pair <dev>**
+:Usage: **> pair <dev>**
 
 pairable
 --------
@@ -171,7 +171,7 @@ Set controller pairable mode.
 This enables/disables pairing. If pairing is disabled then the controller will
 not accept any pairing requests.
 
-:Usage: **# pairable <on/off>**
+:Usage: **> pairable <on/off>**
 
 discoverable
 ------------
@@ -188,7 +188,7 @@ requests.
 It will use a random address if supported by the controller. The length of time
 "discoverable on" is valid is determined by discoverable-timeout command.
 
-:Usage: **# discoverable <on/off>**
+:Usage: **> discoverable <on/off>**
 
 discoverable-timeout
 --------------------
@@ -197,7 +197,7 @@ Set discoverable timeout.
 
 The time in seconds that "discoverable on" is valid.
 
-:Usage: **# discoverable-timeout [value]**
+:Usage: **> discoverable-timeout [value]**
 
 agent
 -----
@@ -210,7 +210,7 @@ for pairing and allows you to choose the IO capabilities of the controller.
 The valid agent capabilities are: DisplayOnly, DisplayYesNo, KeyboardDisplay,
 KeyboardOnly, NoInputNoOutput.
 
-:Usage: **# agent <on/off/capability>**
+:Usage: **> agent <on/off/capability>**
 
 default-agent
 -------------
@@ -219,41 +219,41 @@ Set current agent as the default one.
 
 After selecting the agent this will make it the default agent.
 
-:Usage: **# default-agent**
+:Usage: **> default-agent**
 
 trust
 -----
 
 Trust device.
 
-:Usage: **# trust <dev>**
+:Usage: **> trust <dev>**
 
 untrust
 -------
 
 Untrust device.
 
-:Usage: **# untrust <dev>**
+:Usage: **> untrust <dev>**
 
 block
 -----
 
 Block device.
 
-:Usage: **# block <dev>**
+:Usage: **> block <dev>**
 
 unblock
 -------
 Unblock device
 
-:Usage: **# unblock <dev>**
+:Usage: **> unblock <dev>**
 
 remove
 ------
 
 Remove device.
 
-:Usage: **# remove <dev>**
+:Usage: **> remove <dev>**
 
 connect
 -------
@@ -269,7 +269,7 @@ If no advertising report is received before the timeout a
 le-connection-abort-by-local error will be issued. In that case either try
 again to connect assuming the device is advertising.
 
-:Usage: **# connect <dev>**
+:Usage: **> connect <dev>**
 
 disconnect
 ----------
@@ -279,14 +279,14 @@ Disconnect device.
 For LE when disconnecting from an active connection the device address is not
 needed.
 
-:Usage: **# disconnect <dev>**
+:Usage: **> disconnect <dev>**
 
 info
 ----
 
 Device information.
 
-:Usage: **# info <dev>**
+:Usage: **> info <dev>**
 
 
 Advertise Submenu

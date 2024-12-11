@@ -51,8 +51,8 @@ If the auto value is chosen when prompted for the Broadcast
 Code, a zero filled array will be sent to the peer. Otherwise,
 the string entered by the user will be sent as an array of bytes.
 
-:Usage: **# push <assistant>**
-:Example: | **# push /org/bluez/hci0/src_05_1F_EE_F3_F8_7D/dev_00_60_37_31_7E_3F/bis1**
+:Usage: **> push <assistant>**
+:Example: | **> push /org/bluez/hci0/src_05_1F_EE_F3_F8_7D/dev_00_60_37_31_7E_3F/bis1**
           | **[Assistant] Enter Metadata (auto/value): 0x03 0x02 0x04 0x00**
           | **[Assistant] Enter Broadcast Code (auto/value): Borne House**
 

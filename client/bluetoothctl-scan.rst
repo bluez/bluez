@@ -26,7 +26,7 @@ uuids
 
 Set/Get UUIDs filter.
 
-:Usage: **# uuids [all/uuid1 uuid2 ...]**
+:Usage: **> uuids [all/uuid1 uuid2 ...]**
 
 rssi
 ----
@@ -40,8 +40,8 @@ The value is in dBm.
 If one or more discovery filters have been set, the RSSI delta-threshold imposed
 by starting discovery by default will not be applied.
 
-:Usage: **# rssi [rssi]**
-:Example: **# rssi -60**
+:Usage: **> rssi [rssi]**
+:Example: **> rssi -60**
 
 pathloss
 --------
@@ -54,8 +54,8 @@ The value is in dB.
 If one or more discovery filters have been set, the RSSI delta-threshold
 imposed by starting discovery by default will not be applied.
 
-:Usage: **# pathloss [pathloss]**
-:Example: **# pathloss 4**
+:Usage: **> pathloss [pathloss]**
+:Example: **> pathloss 4**
 
 transport
 ---------
@@ -78,7 +78,7 @@ an org.bluez.Error.Failed error will be returned.
 If "auto" transport is requested, the scan will use LE, BREDR, or both,
 depending on what's currently enabled on the controller.
 
-:Usage: **# transport [auto/bredr/le]**
+:Usage: **> transport [auto/bredr/le]**
 
 duplicate-data
 --------------
@@ -90,7 +90,7 @@ Disables duplicate detection of advertisement data.
 When enabled, PropertiesChanged signals will be generated for ManufacturerData
 and ServiceData every time they are discovered.
 
-:Usage: **# duplicate-data [on/off]**
+:Usage: **> duplicate-data [on/off]**
 
 discoverable
 ------------
@@ -102,7 +102,7 @@ Makes the adapter discoverable while discovering.
 If the adapter is already discoverable, setting this filter won't have any
 effect.
 
-:Usage: **# discoverable [on/off]**
+:Usage: **> discoverable [on/off]**
 
 pattern
 -------
@@ -119,7 +119,7 @@ When set, it disregards device discoverable flags.
        set any pattern, as it works as a logical OR. Also, setting an empty
        string "" pattern will match any device found.
 
-:Usage: **# pattern [value]**
+:Usage: **> pattern [value]**
 
 
 clear
@@ -127,7 +127,7 @@ clear
 
 Clears discovery filter.
 
-:Usage: **# clear [uuids/rssi/pathloss/transport/duplicate-data/discoverable/pattern]**
+:Usage: **> clear [uuids/rssi/pathloss/transport/duplicate-data/discoverable/pattern]**
 
 RESOURCES
 =========

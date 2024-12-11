@@ -26,9 +26,9 @@ allow
 
 Allow service UUIDs and block rest of them.
 
-:Usage: **# allow [clear/uuid1 uuid2 ...]**
-:Example: **# allow 0x1101 0x1102 0x1103**
-:Example: **# allow clear**
+:Usage: **> allow [clear/uuid1 uuid2 ...]**
+:Example: **> allow 0x1101 0x1102 0x1103**
+:Example: **> allow clear**
 
 RESOURCES
 =========

@@ -26,56 +26,56 @@ set-rssi-threshold
 
 Set RSSI threshold parameter
 
-:Usage: **# set-rssi-threshold <low_threshold> <high_threshold>**
+:Usage: **> set-rssi-threshold <low_threshold> <high_threshold>**
 
 set-rssi-timeout
 ----------------
 
 Set RSSI timeout parameter
 
-:Usage: **# set-rssi-timeout <low_timeout> <high_timeout>**
+:Usage: **> set-rssi-timeout <low_timeout> <high_timeout>**
 
 set-rssi-sampling-period
 -------------------------
 
 Set RSSI sampling period parameter
 
-:Usage: **# set-rssi-timeout <low_timeout> <high_timeout>**
+:Usage: **> set-rssi-timeout <low_timeout> <high_timeout>**
 
 add-or-pattern
 --------------
 
 Register 'or pattern' type monitor with the specified RSSI parameters
 
-:Usage: **# add-or-pattern [patterns=pattern1 pattern2 ...]**
+:Usage: **> add-or-pattern [patterns=pattern1 pattern2 ...]**
 
 get-pattern
 -----------
 
 Get advertisement monitor
 
-:Usage: **# get-pattern <monitor-id/all>**
+:Usage: **> get-pattern <monitor-id/all>**
 
 remove-pattern
 --------------
 
 Remove advertisement monitor
 
-:Usage: **# remove-pattern <monitor-id/all>**
+:Usage: **> remove-pattern <monitor-id/all>**
 
 get-supported-info
 ------------------
 
 Get advertisement manager supported features and supported monitor types
 
-:Usage: **# get-supported-info**
+:Usage: **> get-supported-info**
 
 print-usage
 -----------
 
 Print the command usage
 
-:Usage: **# print-usage <add-or-pattern>**
+:Usage: **> print-usage <add-or-pattern>**
 
 RESOURCES
 =========

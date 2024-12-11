@@ -26,133 +26,133 @@ list
 
 List available players.
 
-:Usage: **# list**
+:Usage: **> list**
 
 show
 ----
 
 Show player information.
 
-:Usage: **# show [player]**
+:Usage: **> show [player]**
 
 select
 ------
 
 Select default player.
 
-:Usage: **# select <player>**
+:Usage: **> select <player>**
 
 play
 ----
 
 Start playback.
 
-:Usage: **# play [item]**
+:Usage: **> play [item]**
 
 pause
 -----
 
 Pause playback.
 
-:Usage: **# pause**
+:Usage: **> pause**
 
 stop
 ----
 
 Stop playback.
 
-:Usage: **# stop**
+:Usage: **> stop**
 
 next
 ----
 
 Jump to next item.
 
-:Usage: **# next**
+:Usage: **> next**
 
 previous
 --------
 
 Jump to previous item.
 
-:Usage: **# previous**
+:Usage: **> previous**
 
 fast-forward
 ------------
 
 Fast forward playback.
 
-:Usage: **# fast-forward**
+:Usage: **> fast-forward**
 
 rewind
 ------
 
 Rewind playback.
 
-:Usage: **# rewind**
+:Usage: **> rewind**
 
 equalizer
 ---------
 
 Enable/Disable equalizer.
 
-:Usage: **# equalizer <on/off>**
+:Usage: **> equalizer <on/off>**
 
 repeat
 ------
 
 Set repeat mode.
 
-:Usage: **# repeat <singletrack/alltrack/group/off>**
+:Usage: **> repeat <singletrack/alltrack/group/off>**
 
 shuffle
 -------
 
 Set shuffle mode.
 
-:Usage: **# shuffle <alltracks/group/off>**
+:Usage: **> shuffle <alltracks/group/off>**
 
 scan
 ----
 
 Set scan mode.
 
-:Usage: **# scan <alltracks/group/off>**
+:Usage: **> scan <alltracks/group/off>**
 
 change-folder
 -------------
 
 Change current folder.
 
-:Usage: **# change-folder <item>**
+:Usage: **> change-folder <item>**
 
 list-items
 ----------
 
 List items of current folder.
 
-:Usage: **# list-items [start] [end]**
+:Usage: **> list-items [start] [end]**
 
 search
 ------
 
 Search items containing string.
 
-:Usage: **# search <string>**
+:Usage: **> search <string>**
 
 queue
 -----
 
 Add item to playlist queue.
 
-:Usage: **# queue <item>**
+:Usage: **> queue <item>**
 
 show-item
 ---------
 
 Show item information.
 
-:Usage: **# show-item <item>**
+:Usage: **> show-item <item>**
 
 RESOURCES
 =========
