@@ -354,7 +354,7 @@ man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1 tools/isotest.1 \
 		client/bluetoothctl-advertise.1 client/bluetoothctl-endpoint.1 \
 		client/bluetoothctl-gatt.1 client/bluetoothctl-player.1 \
 		client/bluetoothctl-scan.1 client/bluetoothctl-transport.1 \
-		client/bluetoothctl-assistant.1
+		client/bluetoothctl-assistant.1 client/bluetoothctl-hci.1
 
 endif
 
@@ -487,7 +487,8 @@ manual_pages += tools/hciattach.1 tools/hciconfig.1 \
 			client/bluetoothctl-player.1 \
 			client/bluetoothctl-scan.1 \
 			client/bluetoothctl-transport.1 \
-			client/bluetoothctl-assistant.1
+			client/bluetoothctl-assistant.1 \
+			client/bluetoothctl-hci.1
 
 if HID2HCI
 udevdir = $(UDEV_DIR)
