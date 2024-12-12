@@ -1643,7 +1643,7 @@ int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 	}
 
 	if (idev->intr_io && idev->ctrl_io)
-		input_device_connadd(idev);
+		return input_device_connadd(idev);
 
 	return 0;
 }
