@@ -905,6 +905,83 @@ static void setup_free(void *data)
 	free(setup);
 }
 
+static bool match_io_qos(const struct bt_bap_io_qos *io_qos,
+		const struct bt_bap_io_qos *match)
+{
+	if (io_qos->interval != match->interval)
+		return false;
+
+	if (io_qos->latency != match->latency)
+		return false;
+
+	if (io_qos->sdu != match->sdu)
+		return false;
+
+	if (io_qos->phy != match->phy)
+		return false;
+
+	if (io_qos->rtn != match->rtn)
+		return false;
+
+	return true;
+}
+
+static bool match_bcast_qos(const struct bt_bap_bcast_qos *qos,
+		const struct bt_bap_bcast_qos *match)
+{
+	if (qos->sync_factor != match->sync_factor)
+		return false;
+
+	if (qos->packing != match->packing)
+		return false;
+
+	if (qos->framing != match->framing)
+		return false;
+
+	if (qos->encryption != match->encryption)
+		return false;
+
+	if (qos->encryption && util_iov_memcmp(qos->bcode, match->bcode))
+		return false;
+
+	if (qos->options != match->options)
+		return false;
+
+	if (qos->skip != match->skip)
+		return false;
+
+	if (qos->sync_timeout != match->sync_timeout)
+		return false;
+
+	if (qos->sync_cte_type != match->sync_cte_type)
+		return false;
+
+	if (qos->mse != match->mse)
+		return false;
+
+	if (qos->timeout != match->timeout)
+		return false;
+
+	if (qos->pa_sync != match->pa_sync)
+		return false;
+
+	return match_io_qos(&qos->io_qos, &match->io_qos);
+}
+
+static bool setup_mismatch_qos(const void *data, const void *user_data)
+{
+	const struct bap_setup *setup = data;
+	const struct bap_setup *match = user_data;
+
+	/* Match setups that are part of the same BIG */
+	if (setup == match ||
+		setup->qos.bcast.big == BT_ISO_QOS_BIG_UNSET ||
+		setup->qos.bcast.big != match->qos.bcast.big)
+		return false;
+
+	return !match_bcast_qos(&setup->qos.bcast, &match->qos.bcast);
+}
+
 static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -936,6 +1013,15 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 		setup_free(setup);
 		return btd_error_invalid_args(msg);
 	}
+
+	if (bt_bap_pac_get_type(ep->lpac) == BT_BAP_BCAST_SOURCE)
+		/* All streams in a BIG should have the same QoS.
+		 * Check that the new configuration matches previous ones.
+		 */
+		if (queue_find(setup->ep->setups, setup_mismatch_qos, setup)) {
+			setup_free(setup);
+			return btd_error_invalid_args(msg);
+		}
 
 	setup->stream = bt_bap_stream_new(ep->data->bap, ep->lpac, ep->rpac,
 						&setup->qos, setup->caps);
