@@ -6,6 +6,7 @@ a
 4
 endpoint.config /org/bluez/hci0/pac_bcast0 /local/endpoint/ep0 16_2_1
 1
+a
 3
 0x03 0x02 0x04 0x00
 transport.acquire /org/bluez/hci0/pac_bcast0/fd0

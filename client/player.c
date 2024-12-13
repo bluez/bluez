@@ -3724,7 +3724,7 @@ add_meta:
 			endpoint_set_metadata_cfg, cfg);
 }
 
-static void config_endpoint_iso_group(const char *input, void *user_data)
+static void config_endpoint_sync_factor(const char *input, void *user_data)
 {
 	struct endpoint_config *cfg = user_data;
 	char *endptr = NULL;
@@ -3733,7 +3733,7 @@ static void config_endpoint_iso_group(const char *input, void *user_data)
 	bool found = false;
 
 	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto")) {
-		cfg->ep->iso_group = BT_ISO_QOS_GROUP_UNSET;
+		cfg->qos.bcast.sync_factor = BT_ISO_SYNC_FACTOR;
 	} else {
 		value = strtol(input, &endptr, 0);
 
@@ -3742,7 +3742,7 @@ static void config_endpoint_iso_group(const char *input, void *user_data)
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 
-		cfg->ep->iso_group = value;
+		cfg->qos.bcast.sync_factor = value;
 	}
 
 	/* Check if Channel Allocation is present in caps */
@@ -3761,6 +3761,30 @@ static void config_endpoint_iso_group(const char *input, void *user_data)
 				"Enter Metadata (value/no):",
 				endpoint_set_metadata_cfg, cfg);
 	}
+}
+
+static void config_endpoint_iso_group(const char *input, void *user_data)
+{
+	struct endpoint_config *cfg = user_data;
+	char *endptr = NULL;
+	int value;
+
+	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto")) {
+		cfg->ep->iso_group = BT_ISO_QOS_GROUP_UNSET;
+	} else {
+		value = strtol(input, &endptr, 0);
+
+		if (!endptr || *endptr != '\0' || value > UINT8_MAX) {
+			bt_shell_printf("Invalid argument: %s\n", input);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		cfg->ep->iso_group = value;
+	}
+
+	bt_shell_prompt_input(cfg->ep->path,
+			"Enter sync factor (value/auto):",
+			config_endpoint_sync_factor, cfg);
 }
 
 static void endpoint_set_config_bcast(struct endpoint_config *cfg)
