@@ -528,6 +528,34 @@ static void test_setsockopt(const void *test_data)
 	}
 
 	memset(&voice, 0, sizeof(voice));
+	voice.setting = BT_VOICE_TRANSPARENT_16BIT;
+
+	err = setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &voice, sizeof(voice));
+	if (err < 0) {
+		tester_warn("Can't set socket option : %s (%d)",
+							strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+
+	len = sizeof(voice);
+	memset(&voice, 0, len);
+
+	err = getsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &voice, &len);
+	if (err < 0) {
+		tester_warn("Can't get socket option : %s (%d)",
+							strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+
+	if (voice.setting != BT_VOICE_TRANSPARENT_16BIT) {
+		tester_warn("Invalid voice setting");
+		tester_test_failed();
+		goto end;
+	}
+
+	memset(&voice, 0, sizeof(voice));
 	voice.setting = BT_VOICE_TRANSPARENT;
 
 	err = setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &voice, sizeof(voice));
