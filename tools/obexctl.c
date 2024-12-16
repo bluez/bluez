@@ -1873,7 +1873,7 @@ static const struct bt_shell_menu main_menu = {
 	{ "pull",	  "<file>",   cmd_pull,
 					"Pull Vobject & stores in file" },
 	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
-	{ "ls",           "<options>", cmd_ls, "List current folder" },
+	{ "ls",           "[options]", cmd_ls, "List current folder" },
 	{ "cp",          "<source file> <destination file>",   cmd_cp,
 				"Copy source file to destination file" },
 	{ "mv",          "<source file> <destination file>",   cmd_mv,
