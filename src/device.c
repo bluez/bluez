@@ -1515,13 +1515,21 @@ void device_set_wake_support(struct btd_device *device, bool wake_support)
 
 	device->wake_support = wake_support;
 
-	/* If wake configuration has not been made yet, set the initial
-	 * configuration.
+	if (device->wake_support)
+		device->supported_flags |= DEVICE_FLAG_REMOTE_WAKEUP;
+	else
+		device->supported_flags &= ~DEVICE_FLAG_REMOTE_WAKEUP;
+
+	/* If there is not override set, set the default the same as
+	 * support value.
 	 */
-	if (device->wake_override == WAKE_FLAG_DEFAULT) {
+	if (device->wake_override == WAKE_FLAG_DEFAULT)
 		device_set_wake_override(device, wake_support);
-		device_set_wake_allowed(device, wake_support, -1U);
-	}
+
+	/* Set wake_allowed according to the override value. */
+	device_set_wake_allowed(device,
+				device->wake_override == WAKE_FLAG_ENABLED,
+				-1U);
 }
 
 static bool device_get_wake_allowed(struct btd_device *device)
@@ -1531,13 +1539,10 @@ static bool device_get_wake_allowed(struct btd_device *device)
 
 void device_set_wake_override(struct btd_device *device, bool wake_override)
 {
-	if (wake_override) {
+	if (wake_override)
 		device->wake_override = WAKE_FLAG_ENABLED;
-		device->current_flags |= DEVICE_FLAG_REMOTE_WAKEUP;
-	} else {
+	else
 		device->wake_override = WAKE_FLAG_DISABLED;
-		device->current_flags &= ~DEVICE_FLAG_REMOTE_WAKEUP;
-	}
 }
 
 static void device_set_wake_allowed_complete(struct btd_device *device)
@@ -1563,6 +1568,12 @@ static void set_wake_allowed_complete(uint8_t status, uint16_t length,
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Set device flags return status: %s",
 					mgmt_errstr(status));
+		if (dev->wake_id != -1U) {
+			g_dbus_pending_property_error(dev->wake_id,
+						      ERROR_INTERFACE ".Failed",
+						      mgmt_errstr(status));
+			dev->wake_id = -1U;
+		}
 		return;
 	}
 
@@ -1583,8 +1594,11 @@ void device_set_wake_allowed(struct btd_device *device, bool wake_allowed,
 	 * progress. Only update wake allowed if pending value doesn't match the
 	 * new value.
 	 */
-	if (wake_allowed == device->pending_wake_allowed)
+	if (device->wake_id != -1U && id != -1U) {
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Busy",
+						"Property change in progress");
 		return;
+	}
 
 	device->wake_id = id;
 	device->pending_wake_allowed = wake_allowed;
@@ -4358,6 +4372,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	device->tx_power = 127;
 	device->volume = -1;
+	device->wake_id = -1U;
 
 	device->db = gatt_db_new();
 	if (!device->db) {
