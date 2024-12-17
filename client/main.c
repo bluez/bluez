@@ -2050,6 +2050,42 @@ static void cmd_disconn(int argc, char *argv[])
 						proxy_address(proxy));
 }
 
+static void cmd_wake(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	dbus_bool_t value;
+	char *str;
+
+	proxy = find_device(argc, argv);
+	if (!proxy)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (argc <= 2) {
+		print_property(proxy, "WakeAllowed");
+		return;
+	}
+
+	if (!strcasecmp(argv[2], "on")) {
+		value = TRUE;
+	} else if (!strcasecmp(argv[2], "off")) {
+		value = FALSE;
+	} else {
+		bt_shell_printf("Invalid value %s\n", argv[2]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	str = g_strdup_printf("wake %s", value == TRUE ? "on" : "off");
+
+	if (g_dbus_proxy_set_property_basic(proxy, "WakeAllowed",
+					DBUS_TYPE_BOOLEAN, &value,
+					generic_callback, str, g_free))
+		return;
+
+	g_free(str);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
 static void cmd_list_attributes(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -3129,6 +3165,8 @@ static const struct bt_shell_menu main_menu = {
 	{ "connect",      "<dev>",    cmd_connect, "Connect device",
 							dev_generator },
 	{ "disconnect",   "[dev]",    cmd_disconn, "Disconnect device",
+							dev_generator },
+	{ "wake",         "[dev] [on/off]",    cmd_wake, "Get/Set wake support",
 							dev_generator },
 	{ } },
 };
