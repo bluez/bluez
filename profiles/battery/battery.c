@@ -139,6 +139,8 @@ static void batt_io_ccc_written_cb(uint16_t att_ecode, void *user_data)
 	g_free (batt->initial_value);
 	batt->initial_value = NULL;
 
+	btd_battery_update(batt->battery, batt->percentage);
+
 	DBG("Battery Level: notification enabled");
 }
 
