@@ -6047,7 +6047,7 @@ static uint16_t get_sdp_flags(struct btd_device *device)
 	 * results in SDP response being dropped by kernel. Workaround this by
 	 * forcing SDP code to use bigger MTU while connecting.
 	 */
-	if (vid == 0x054c && pid == 0x05c4)
+	if (vid == 0x054c && (pid == 0x05c4 || pid == 0x09cc))
 		return SDP_LARGE_MTU;
 
 	if (btd_adapter_ssp_enabled(device->adapter))
