@@ -995,6 +995,102 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
 	}
 }
 
+static void bass_handle_mod_src_op(struct bt_bass *bass,
+					struct gatt_db_attribute *attrib,
+					uint8_t opcode,
+					unsigned int id,
+					struct iovec *iov,
+					struct bt_att *att)
+{
+	struct bt_bcast_src *bcast_src;
+	struct bt_bass_mod_src_params *params;
+	const struct queue_entry *entry;
+	struct iovec *notif;
+	bool updated = false;
+	int err = 0;
+
+	/* Get Modify Source command parameters */
+	params = util_iov_pull_mem(iov, sizeof(*params));
+
+	bcast_src = queue_find(bass->ldb->bcast_srcs,
+						bass_src_id_match,
+						&params->id);
+
+	if (!bcast_src) {
+		/* No source matches the written source id */
+		gatt_db_attribute_write_result(attrib, id,
+					BT_BASS_ERROR_INVALID_SOURCE_ID);
+
+		return;
+	}
+
+	gatt_db_attribute_write_result(attrib, id, 0x00);
+
+	for (int i = 0; i < bcast_src->num_subgroups; i++) {
+		struct bt_bass_subgroup_data *data =
+				&bcast_src->subgroup_data[i];
+		uint8_t meta_len;
+		uint8_t *meta;
+
+		if (!util_iov_pull_le32(iov, &data->pending_bis_sync))
+			return;
+
+		if (!util_iov_pull_u8(iov, &meta_len))
+			return;
+
+		/* Check for metadata updates and notify peers */
+		if (meta_len != data->meta_len) {
+			updated = true;
+			data->meta_len = meta_len;
+
+			free(data->meta);
+			data->meta = malloc0(data->meta_len);
+			if (!data->meta)
+				return;
+		}
+
+		if (!data->meta_len)
+			continue;
+
+		meta = (uint8_t *)util_iov_pull_mem(iov, meta_len);
+		if (!meta)
+			return;
+
+		if (memcmp(meta, data->meta, data->meta_len)) {
+			updated = true;
+			memcpy(data->meta, meta, data->meta_len);
+		}
+	}
+
+	for (entry = queue_get_entries(bass->cp_handlers); entry;
+						entry = entry->next) {
+		struct bt_bass_cp_handler *cb = entry->data;
+
+		if (cb->handler) {
+			err = cb->handler(bcast_src,
+					BT_BASS_MOD_SRC,
+					params, cb->data);
+			if (err)
+				DBG(bass, "Unable to handle Modify Source "
+						"operation");
+		}
+	}
+
+	if (!updated)
+		return;
+
+	notif = bass_parse_bcast_src(bcast_src);
+	if (!notif)
+		return;
+
+	gatt_db_attribute_notify(bcast_src->attr,
+			notif->iov_base, notif->iov_len,
+			bt_bass_get_att(bcast_src->bass));
+
+	free(notif->iov_base);
+	free(notif);
+}
+
 #define BASS_OP(_str, _op, _size, _func) \
 	{ \
 		.str = _str, \
@@ -1024,6 +1120,8 @@ struct bass_op_handler {
 		0, bass_handle_add_src_op),
 	BASS_OP("Set Broadcast Code", BT_BASS_SET_BCAST_CODE,
 		0, bass_handle_set_bcast_code_op),
+	BASS_OP("Modify Source", BT_BASS_MOD_SRC,
+		0, bass_handle_mod_src_op),
 	{}
 };
 
