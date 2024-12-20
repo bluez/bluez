@@ -288,13 +288,30 @@ static bool link_io_unset(const void *data, const void *match_data)
 	return !bt_bap_stream_get_io(link);
 }
 
+static bool setup_find_enabling(const void *data, const void *match_data)
+{
+	const struct bass_setup *setup = data;
+
+	return (bt_bap_stream_get_state(setup->stream) ==
+				BT_BAP_STREAM_STATE_ENABLING);
+}
+
 static void connect_cb(GIOChannel *io, GError *err, void *user_data)
 {
-	struct bt_bap_stream *stream = user_data;
-	struct queue *links = bt_bap_stream_io_get_links(stream);
+	struct bass_delegator *dg = user_data;
+	struct bass_setup *setup;
+	struct bt_bap_stream *stream;
+	struct queue *links;
 	int fd;
 
 	DBG("");
+
+	setup = queue_find(dg->setups, setup_find_enabling, NULL);
+	if (!setup || !setup->stream)
+		return;
+
+	stream = setup->stream;
+	links = bt_bap_stream_io_get_links(stream);
 
 	/* Set fds for the stream and all its links. */
 	if (bt_bap_stream_get_io(stream))
@@ -352,7 +369,7 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 		}
 
 		if (!bt_io_bcast_accept(dg->io,
-				connect_cb, stream, NULL, &gerr,
+				connect_cb, dg, NULL, &gerr,
 				BT_IO_OPT_ISO_BC_NUM_BIS,
 				iso_bc_addr.bc_num_bis, BT_IO_OPT_ISO_BC_BIS,
 				iso_bc_addr.bc_bis, BT_IO_OPT_INVALID)) {
