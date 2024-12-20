@@ -1819,7 +1819,7 @@ int bt_bass_clear_bis_sync(struct bt_bcast_src *bcast_src, uint8_t bis)
 				&bcast_src->subgroup_data[i];
 		uint32_t bitmask = 1 << (bis - 1);
 
-		if (sgrp->pending_bis_sync & bitmask) {
+		if (sgrp->bis_sync & bitmask) {
 			sgrp->bis_sync &= ~bitmask;
 
 			iov = bass_parse_bcast_src(bcast_src);
