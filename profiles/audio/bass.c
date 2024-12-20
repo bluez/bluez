@@ -118,9 +118,11 @@ struct bass_delegator {
 struct bass_setup {
 	struct bass_delegator *dg;
 	struct bt_bap_stream *stream;
+	uint8_t bis;
 	struct bt_bap_qos qos;
 	struct iovec *meta;
 	struct iovec *config;
+	struct bt_bap_pac *lpac;
 };
 
 struct bass_bcode_req {
@@ -376,24 +378,38 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	}
 }
 
+static void setup_configure_stream(struct bass_setup *setup)
+{
+	char *path;
+
+	setup->stream = bt_bap_stream_new(setup->dg->bap, setup->lpac, NULL,
+					&setup->qos, setup->config);
+	if (!setup->stream)
+		return;
+
+	if (asprintf(&path, "%s/bis%d",
+			device_get_path(setup->dg->device),
+			setup->bis) < 0)
+		return;
+
+	bt_bap_stream_set_user_data(setup->stream, path);
+
+	bt_bap_stream_config(setup->stream, &setup->qos,
+			setup->config, NULL, NULL);
+	bt_bap_stream_metadata(setup->stream, setup->meta,
+			NULL, NULL);
+}
+
 static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
 	struct iovec *meta, struct bt_bap_qos *qos, void *user_data)
 {
 	struct bass_delegator *dg = user_data;
 	struct bt_bap_pac *lpac;
-	char *path;
 	struct bass_setup *setup;
-
-	/* Only handle streams required by the Brodcast Assistant. */
-	if (!bt_bass_check_bis(dg->src, bis))
-		return;
 
 	/* Check if this stream caps match any local PAC */
 	bt_bap_verify_bis(dg->bap, bis, caps, &lpac);
 	if (!lpac)
-		return;
-
-	if (asprintf(&path, "%s/bis%d", device_get_path(dg->device), bis) < 0)
 		return;
 
 	setup = new0(struct bass_setup, 1);
@@ -401,6 +417,8 @@ static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
 		return;
 
 	setup->dg = dg;
+	setup->bis = bis;
+	setup->lpac = lpac;
 
 	setup->qos = *qos;
 	setup->qos.bcast.bcode = util_iov_dup(qos->bcast.bcode, 1);
@@ -408,18 +426,13 @@ static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
 	setup->meta = util_iov_dup(meta, 1);
 	setup->config = util_iov_dup(caps, 1);
 
-	setup->stream = bt_bap_stream_new(dg->bap, lpac, NULL,
-					&setup->qos, setup->config);
-	if (!setup->stream)
+	queue_push_tail(setup->dg->setups, setup);
+
+	/* Only handle streams required by the Brodcast Assistant. */
+	if (!bt_bass_check_bis(dg->src, bis))
 		return;
 
-	queue_push_tail(dg->setups, setup);
-
-	bt_bap_stream_set_user_data(setup->stream, path);
-	bt_bap_stream_config(setup->stream, &setup->qos,
-			setup->config, NULL, NULL);
-	bt_bap_stream_metadata(setup->stream, setup->meta,
-			NULL, NULL);
+	setup_configure_stream(setup);
 }
 
 static gboolean big_info_cb(GIOChannel *io, GIOCondition cond,
