@@ -1781,6 +1781,16 @@ int bt_bass_set_pa_sync(struct bt_bcast_src *bcast_src, uint8_t sync_state)
 	return 0;
 }
 
+int bt_bass_get_pa_sync(struct bt_bcast_src *bcast_src, uint8_t *sync_state)
+{
+	if (!bcast_src)
+		return -EINVAL;
+
+	*sync_state = bcast_src->sync_state;
+
+	return 0;
+}
+
 int bt_bass_set_bis_sync(struct bt_bcast_src *bcast_src, uint8_t bis)
 {
 	struct iovec *iov;
