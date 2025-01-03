@@ -37,10 +37,10 @@ struct bluetooth_plugin {
 
 static int compare_priority(gconstpointer a, gconstpointer b)
 {
-	const struct bluetooth_plugin *plugin1 = a;
-	const struct bluetooth_plugin *plugin2 = b;
+	const struct bluetooth_plugin_desc *plugin1 = a;
+	const struct bluetooth_plugin_desc *plugin2 = b;
 
-	return plugin2->desc->priority - plugin1->desc->priority;
+	return plugin2->priority - plugin1->priority;
 }
 
 static int init_plugin(const struct bluetooth_plugin_desc *desc)
@@ -86,14 +86,15 @@ static gboolean add_external_plugin(void *handle,
 
 	__btd_enable_debug(desc->debug_start, desc->debug_stop);
 
-	plugins = g_slist_insert_sorted(plugins, plugin, compare_priority);
+	plugins = g_slist_append(plugins, plugin);
 	DBG("Plugin %s loaded", desc->name);
 
 	return TRUE;
 }
 
-static void add_plugin(const struct bluetooth_plugin_desc *desc)
+static void add_plugin(void *data, void *user_data)
 {
+	struct bluetooth_plugin_desc *desc = data;
 	struct bluetooth_plugin *plugin;
 
 	DBG("Loading %s plugin", desc->name);
@@ -109,7 +110,7 @@ static void add_plugin(const struct bluetooth_plugin_desc *desc)
 		return;
 	}
 
-	plugins = g_slist_insert_sorted(plugins, plugin, compare_priority);
+	plugins = g_slist_append(plugins, plugin);
 	DBG("Plugin %s loaded", desc->name);
 }
 
@@ -201,6 +202,7 @@ static void external_plugin_init(char **cli_disabled, char **cli_enabled)
 
 void plugin_init(const char *enable, const char *disable)
 {
+	GSList *builtins = NULL;
 	char **cli_disabled = NULL;
 	char **cli_enabled = NULL;
 	unsigned int i;
@@ -222,12 +224,16 @@ void plugin_init(const char *enable, const char *disable)
 								cli_disabled))
 			continue;
 
-		add_plugin(__bluetooth_builtin[i]);
+		builtins = g_slist_insert_sorted(builtins,
+			(void *) __bluetooth_builtin[i], compare_priority);
 	}
+
+	g_slist_foreach(builtins, add_plugin, NULL);
 
 	if IS_ENABLED(EXTERNAL_PLUGINS)
 		external_plugin_init(cli_enabled, cli_disabled);
 
+	g_slist_free(builtins);
 	g_strfreev(cli_enabled);
 	g_strfreev(cli_disabled);
 }
