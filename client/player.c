@@ -263,7 +263,7 @@ static void cmd_pause(int argc, char *argv[])
 
 	if (g_dbus_proxy_method_call(default_player, "Pause", NULL,
 					pause_reply, NULL, NULL) == FALSE) {
-		bt_shell_printf("Failed to play\n");
+		bt_shell_printf("Failed to pause\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
@@ -951,7 +951,7 @@ static void cmd_queue(int argc, char *argv[])
 	if (g_dbus_proxy_method_call(proxy, "AddtoNowPlaying", NULL,
 					add_to_nowplaying_reply, NULL,
 					NULL) == FALSE) {
-		bt_shell_printf("Failed to play\n");
+		bt_shell_printf("Failed to queue\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
