@@ -1063,6 +1063,28 @@ static void stream_notify_metadata(struct bt_bap_stream *stream)
 	free(status);
 }
 
+static void stream_notify_release(struct bt_bap_stream *stream)
+{
+	struct bt_bap_endpoint *ep = stream->ep;
+	struct bt_ascs_ase_status *status;
+	size_t len;
+
+	DBG(stream->bap, "stream %p", stream);
+
+	len = sizeof(*status);
+	status = malloc(len);
+
+	memset(status, 0, len);
+	status->id = ep->id;
+	ep->state = BT_BAP_STREAM_STATE_RELEASING;
+	status->state = ep->state;
+
+	gatt_db_attribute_notify(ep->attr, (void *) status, len,
+					bt_bap_get_att(stream->bap));
+
+	free(status);
+}
+
 static struct bt_bap *bt_bap_ref_safe(struct bt_bap *bap)
 {
 	if (!bap || !bap->ref_count || !queue_find(sessions, NULL, bap))
@@ -1634,7 +1656,7 @@ static bool stream_notify_state(void *data)
 	struct bt_bap_stream *stream = data;
 	struct bt_bap_endpoint *ep = stream->ep;
 
-	DBG(stream->bap, "stream %p", stream);
+	DBG(stream->bap, "stream %p status %d", stream, ep->state);
 
 	if (stream->state_id) {
 		timeout_remove(stream->state_id);
@@ -1654,6 +1676,9 @@ static bool stream_notify_state(void *data)
 	case BT_ASCS_ASE_STATE_STREAMING:
 	case BT_ASCS_ASE_STATE_DISABLING:
 		stream_notify_metadata(stream);
+		break;
+	case BT_ASCS_ASE_STATE_RELEASING:
+		stream_notify_release(stream);
 		break;
 	}
 
@@ -1936,9 +1961,7 @@ static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
 	/* Sink can autonomously transit to QOS while source needs to go to
 	 * Disabling until BT_ASCS_STOP is received.
 	 */
-	if (stream->ep->dir == BT_BAP_SINK)
-		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
-	else
+	if (stream->ep->dir == BT_BAP_SOURCE)
 		stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
 
 	return 0;
@@ -2068,17 +2091,11 @@ static unsigned int bap_ucast_metadata(struct bt_bap_stream *stream,
 
 static uint8_t stream_release(struct bt_bap_stream *stream, struct iovec *rsp)
 {
-	struct bt_bap_pac *pac;
-
 	DBG(stream->bap, "stream %p", stream);
 
 	ascs_ase_rsp_success(rsp, stream->ep->id);
 
-	pac = stream->lpac;
-	if (pac->ops && pac->ops->clear)
-		pac->ops->clear(stream, pac->user_data);
-
-	stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+	stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
 
 	return 0;
 }
@@ -6172,8 +6189,10 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 
 	DBG(stream->bap, "stream %p io disconnected", stream);
 
-	bt_bap_stream_set_io(stream, -1);
+	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
+		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
 
+	bt_bap_stream_set_io(stream, -1);
 	return false;
 }
 
