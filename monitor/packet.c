@@ -101,7 +101,7 @@
 #define UNKNOWN_MANUFACTURER 0xffff
 
 static time_t time_offset = ((time_t) -1);
-static int priority_level = BTSNOOP_PRIORITY_INFO;
+static int priority_level = BTSNOOP_PRIORITY_DEBUG;
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
 static uint16_t index_current = 0;
