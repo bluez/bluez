@@ -1527,9 +1527,9 @@ int input_device_register(struct btd_service *service)
 	if (uhid_state) {
 		idev->uhid = bt_uhid_new_default();
 		if (!idev->uhid) {
-			error("bt_uhid_new_default: failed");
-			input_device_free(idev);
-			return -EIO;
+			DBG("bt_uhid_new_default failed, switching to kernel "
+			    "mode");
+			uhid_state = UHID_DISABLED;
 		}
 	}
 
