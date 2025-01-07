@@ -477,6 +477,11 @@ static void message_info(GDBusProxy *proxy, int argc, char *argv[])
 	print_property(proxy, "Deleted");
 	print_property(proxy, "Sent");
 	print_property(proxy, "Protected");
+	print_property(proxy, "DeliveryStatus");
+	print_property(proxy, "ConversationId");
+	print_property(proxy, "ConversationName");
+	print_property(proxy, "Direction");
+	print_property(proxy, "AttachmentMimeTypes");
 }
 
 static void cmd_info(int argc, char *argv[])
