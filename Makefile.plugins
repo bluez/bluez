@@ -2,9 +2,6 @@
 builtin_modules += hostname
 builtin_sources += plugins/hostname.c
 
-builtin_modules += wiimote
-builtin_sources += plugins/wiimote.c
-
 builtin_modules += autopair
 builtin_sources += plugins/autopair.c
 
