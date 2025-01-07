@@ -123,6 +123,11 @@ struct map_msg {
 	uint64_t attachment_size;
 	uint8_t flags;
 	char *folder;
+	char *delivery_status;
+	uint64_t conversation_id;
+	char *conversation_name;
+	char *direction;
+	char *attachment_mime_types;
 	GDBusPendingPropertySet pending;
 };
 
@@ -418,6 +423,10 @@ static void map_msg_free(void *data)
 	g_free(msg->recipient_address);
 	g_free(msg->type);
 	g_free(msg->status);
+	g_free(msg->delivery_status);
+	g_free(msg->conversation_name);
+	g_free(msg->direction);
+	g_free(msg->attachment_mime_types);
 	g_free(msg);
 }
 
@@ -778,6 +787,93 @@ static void set_deleted(const GDBusPropertyTable *property,
 	set_status(property, iter, id, STATUS_DELETE, data);
 }
 
+static gboolean delivery_status_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->delivery_status != NULL;
+}
+
+static gboolean get_delivery_status(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct map_msg *msg = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						&msg->delivery_status);
+
+	return TRUE;
+}
+
+static gboolean get_conversation_id(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct map_msg *msg = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT64,
+						&msg->conversation_id);
+
+	return TRUE;
+}
+
+static gboolean conversation_name_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->conversation_name != NULL;
+}
+
+static gboolean get_conversation_name(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct map_msg *msg = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						&msg->conversation_name);
+
+	return TRUE;
+}
+
+static gboolean direction_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->direction != NULL;
+}
+
+static gboolean get_direction(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct map_msg *msg = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&msg->direction);
+
+	return TRUE;
+}
+
+static gboolean attachment_mime_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->attachment_mime_types != NULL;
+}
+
+static gboolean get_attachment_mime_types(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct map_msg *msg = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						&msg->attachment_mime_types);
+
+	return TRUE;
+}
+
 static const GDBusMethodTable map_msg_methods[] = {
 	{ GDBUS_METHOD("Get",
 			GDBUS_ARGS({ "targetfile", "s" },
@@ -809,6 +905,14 @@ static const GDBusPropertyTable map_msg_properties[] = {
 	{ "Sent", "b", get_sent },
 	{ "Protected", "b", get_protected },
 	{ "Deleted", "b", NULL, set_deleted },
+	{ "DeliveryStatus", "s", get_delivery_status, NULL,
+						delivery_status_exists },
+	{ "ConversationId", "t", get_conversation_id },
+	{ "ConversationName", "s", get_conversation_name, NULL,
+						conversation_name_exists },
+	{ "Direction", "s", get_direction, NULL, direction_exists },
+	{ "AttachmentMimeTypes", "s", get_attachment_mime_types, NULL,
+						attachment_mime_exists },
 	{ }
 };
 
@@ -1061,6 +1165,67 @@ static void parse_protected(struct map_msg *msg, const char *value)
 						MAP_MSG_INTERFACE, "Protected");
 }
 
+static void parse_delivery_status(struct map_msg *msg, const char *value)
+{
+	if (g_strcmp0(msg->delivery_status, value) == 0)
+		return;
+
+	g_free(msg->delivery_status);
+	msg->delivery_status = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+					MAP_MSG_INTERFACE, "DeliveryStatus");
+}
+
+static void parse_conversation_id(struct map_msg *msg, const char *value)
+{
+	uint64_t conversation_id = strtoull(value, NULL, 16);
+
+	if (msg->conversation_id == conversation_id)
+		return;
+
+	msg->conversation_id = conversation_id;
+
+	g_dbus_emit_property_changed(conn, msg->path, MAP_MSG_INTERFACE,
+						"ConversationId");
+}
+
+static void parse_conversation_name(struct map_msg *msg, const char *value)
+{
+	if (g_strcmp0(msg->conversation_name, value) == 0)
+		return;
+
+	g_free(msg->conversation_name);
+	msg->conversation_name = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path, MAP_MSG_INTERFACE,
+						"ConversationName");
+}
+
+static void parse_direction(struct map_msg *msg, const char *value)
+{
+	if (g_strcmp0(msg->direction, value) == 0)
+		return;
+
+	g_free(msg->direction);
+	msg->direction = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path, MAP_MSG_INTERFACE,
+						"Direction");
+}
+
+static void parse_mime_types(struct map_msg *msg, const char *value)
+{
+	if (g_strcmp0(msg->attachment_mime_types, value) == 0)
+		return;
+
+	g_free(msg->attachment_mime_types);
+	msg->attachment_mime_types = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path, MAP_MSG_INTERFACE,
+						"AttachmentMimeTypes");
+}
+
 static const struct map_msg_parser {
 	const char *name;
 	void (*func) (struct map_msg *msg, const char *value);
@@ -1081,6 +1246,11 @@ static const struct map_msg_parser {
 		{ "read", parse_read },
 		{ "sent", parse_sent },
 		{ "protected", parse_protected },
+		{ "delivery_status", parse_delivery_status},
+		{ "conversation_id", parse_conversation_id},
+		{ "conversation_name", parse_conversation_name},
+		{ "direction", parse_direction},
+		{ "attachment_mime_types", parse_mime_types},
 		{ }
 };
 

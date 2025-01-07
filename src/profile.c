@@ -563,7 +563,7 @@
 			<text value=\"%s\"/>				\
 		</attribute>						\
 		<attribute id=\"0x0317\">				\
-			<uint32 value=\"0x0000007f\"/>			\
+			<uint32 value=\"0x0000027f\"/>			\
 		</attribute>						\
 		<attribute id=\"0x0200\">				\
 			<uint16 value=\"%u\" name=\"psm\"/>		\
