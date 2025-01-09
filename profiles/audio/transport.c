@@ -612,6 +612,7 @@ static int8_t transport_a2dp_get_volume(struct media_transport *transport)
 	return a2dp->volume;
 }
 
+#ifdef HAVE_AVRCP
 static int transport_a2dp_src_set_volume(struct media_transport *transport,
 					int8_t level)
 {
@@ -643,6 +644,7 @@ static int transport_a2dp_snk_set_volume(struct media_transport *transport,
 
 	return avrcp_set_volume(transport->device, level, notify);
 }
+#endif
 
 static int transport_a2dp_snk_set_delay(struct media_transport *transport,
 					uint16_t delay)
@@ -2409,11 +2411,19 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 
 static const struct media_transport_ops transport_ops[] = {
 	A2DP_OPS(A2DP_SOURCE_UUID, transport_a2dp_src_init,
+#ifdef HAVE_AVRCP
 			transport_a2dp_src_set_volume,
+#else
+			NULL,
+#endif
 			NULL,
 			transport_a2dp_src_destroy),
 	A2DP_OPS(A2DP_SINK_UUID, transport_a2dp_snk_init,
+#ifdef HAVE_AVRCP
 			transport_a2dp_snk_set_volume,
+#else
+			NULL,
+#endif
 			transport_a2dp_snk_set_delay,
 			transport_a2dp_snk_destroy),
 	BAP_UC_OPS(PAC_SOURCE_UUID),

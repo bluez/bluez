@@ -180,6 +180,9 @@ AM_CONDITIONAL(A2DP, test "${enable_a2dp}" != "no")
 AC_ARG_ENABLE(avrcp, AS_HELP_STRING([--disable-avrcp],
 		[disable AVRCP profile]), [enable_avrcp=${enableval}])
 AM_CONDITIONAL(AVRCP, test "${enable_avrcp}" != "no")
+if test "${enable_avrcp}" != "no"; then
+	AC_DEFINE(HAVE_AVRCP, 1, [Define to 1 if you have AVRCP support.])
+fi
 
 AC_ARG_ENABLE(network, AS_HELP_STRING([--disable-network],
 		[disable network profiles]), [enable_network=${enableval}])

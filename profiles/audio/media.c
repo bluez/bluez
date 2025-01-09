@@ -49,7 +49,10 @@
 #include "media.h"
 #include "transport.h"
 #include "a2dp.h"
+
+#ifdef HAVE_AVRCP
 #include "avrcp.h"
+#endif
 
 #define MEDIA_INTERFACE "org.bluez.Media1"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
@@ -65,7 +68,9 @@ struct media_app {
 	char			*path;		/* Application object path */
 	struct queue		*proxies;	/* Application proxies */
 	struct queue		*endpoints;	/* Application endpoints */
+#ifdef HAVE_AVRCP
 	struct queue		*players;	/* Application players */
+#endif
 	int			err;
 };
 
@@ -73,7 +78,9 @@ struct media_adapter {
 	struct btd_adapter	*btd_adapter;
 	struct queue		*apps;		/* Application list */
 	GSList			*endpoints;	/* Endpoints list */
+#ifdef HAVE_AVRCP
 	GSList			*players;	/* Players list */
+#endif
 };
 
 struct endpoint_request {
@@ -482,6 +489,7 @@ struct a2dp_config_data {
 
 int8_t media_player_get_device_volume(struct btd_device *device)
 {
+#ifdef HAVE_AVRCP
 	struct avrcp_player *target_player;
 	struct media_adapter *adapter;
 	GSList *l;
@@ -505,6 +513,7 @@ int8_t media_player_get_device_volume(struct btd_device *device)
 	}
 
 done:
+#endif /* HAVE_AVRCP */
 	/* If media_player doesn't exists use device_volume */
 	return btd_device_get_volume(device);
 }
@@ -1760,6 +1769,7 @@ static DBusMessage *unregister_endpoint(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+#ifdef HAVE_AVRCP
 static struct media_player *media_adapter_find_player(
 						struct media_adapter *adapter,
 						const char *sender,
@@ -2649,10 +2659,12 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 
 	return mp;
 }
+#endif /* HAVE_AVRCP */
 
 static DBusMessage *register_player(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
+#ifdef HAVE_AVRCP
 	struct media_adapter *adapter = data;
 	struct media_player *mp;
 	DBusMessageIter args;
@@ -2683,11 +2695,15 @@ static DBusMessage *register_player(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+#else
+	return btd_error_not_supported(msg);
+#endif
 }
 
 static DBusMessage *unregister_player(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
+#ifdef HAVE_AVRCP
 	struct media_adapter *adapter = data;
 	struct media_player *player;
 	const char *sender, *path;
@@ -2706,6 +2722,9 @@ static DBusMessage *unregister_player(DBusConnection *conn, DBusMessage *msg,
 	media_player_remove(player);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+#else
+	return btd_error_not_supported(msg);
+#endif
 }
 
 static void app_free(void *data)
@@ -2714,7 +2733,9 @@ static void app_free(void *data)
 
 	queue_destroy(app->proxies, NULL);
 	queue_destroy(app->endpoints, media_endpoint_remove);
+#ifdef HAVE_AVRCP
 	queue_destroy(app->players, media_player_remove);
+#endif
 
 	if (app->client) {
 		g_dbus_client_set_disconnect_watch(app->client, NULL, NULL);
@@ -2913,6 +2934,7 @@ fail:
 
 static void app_register_player(void *data, void *user_data)
 {
+#ifdef HAVE_AVRCP
 	struct media_app *app = user_data;
 	GDBusProxy *proxy = data;
 	const char *iface = g_dbus_proxy_get_interface(proxy);
@@ -2994,6 +3016,7 @@ fail:
 	error("Unable to register player %s:%s: %s", app->sender, path,
 							strerror(-app->err));
 	media_player_destroy(player);
+#endif /* HAVE_AVRCP */
 }
 
 static void remove_app(void *data)
@@ -3042,7 +3065,11 @@ static void client_ready_cb(GDBusClient *client, void *user_data)
 		goto reply;
 	}
 
+#ifdef HAVE_AVRCP
 	if ((queue_isempty(app->endpoints) && queue_isempty(app->players))) {
+#else
+	if (queue_isempty(app->endpoints)) {
+#endif
 		error("No valid external Media objects found");
 		fail = true;
 		reply = btd_error_failed(app->reg,
@@ -3091,6 +3118,7 @@ static bool match_endpoint_by_path(const void *a, const void *b)
 	return !strcmp(endpoint->path, path);
 }
 
+#ifdef HAVE_AVRCP
 static bool match_player_by_path(const void *a, const void *b)
 {
 	const struct media_player *player = a;
@@ -3098,12 +3126,12 @@ static bool match_player_by_path(const void *a, const void *b)
 
 	return !strcmp(player->path, path);
 }
+#endif
 
 static void proxy_removed_cb(GDBusProxy *proxy, void *user_data)
 {
 	struct media_app *app = user_data;
 	struct media_endpoint *endpoint;
-	struct media_player *player;
 	const char *iface, *path;
 
 	iface = g_dbus_proxy_get_interface(proxy);
@@ -3122,7 +3150,10 @@ static void proxy_removed_cb(GDBusProxy *proxy, void *user_data)
 		DBG("Proxy removed - removing endpoint: %s", endpoint->path);
 
 		media_endpoint_remove(endpoint);
+#ifdef HAVE_AVRCP
 	} else if (!strcmp(iface, MEDIA_PLAYER_INTERFACE)) {
+		struct media_player *player;
+
 		player = queue_remove_if(app->players, match_player_by_path,
 						(void *) path);
 		if (!player)
@@ -3134,6 +3165,7 @@ static void proxy_removed_cb(GDBusProxy *proxy, void *user_data)
 		DBG("Proxy removed - removing player: %s", player->path);
 
 		media_player_remove(player);
+#endif
 	}
 }
 
@@ -3162,7 +3194,9 @@ static struct media_app *create_app(DBusConnection *conn, DBusMessage *msg,
 
 	app->proxies = queue_new();
 	app->endpoints = queue_new();
+#ifdef HAVE_AVRCP
 	app->players = queue_new();
+#endif
 	app->reg = dbus_message_ref(msg);
 
 	g_dbus_client_set_disconnect_watch(app->client, client_disconnect_cb,
@@ -3326,6 +3360,7 @@ static void path_free(void *data)
 		release_endpoint(endpoint);
 	}
 
+#ifdef HAVE_AVRCP
 	for (l = adapter->players; l;) {
 		struct media_player *mp = l->data;
 
@@ -3333,6 +3368,7 @@ static void path_free(void *data)
 
 		media_player_destroy(mp);
 	}
+#endif
 
 	adapters = g_slist_remove(adapters, adapter);
 
