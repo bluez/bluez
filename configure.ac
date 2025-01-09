@@ -176,6 +176,9 @@ AM_CONDITIONAL(SAP, test "${enable_sap}" = "yes")
 AC_ARG_ENABLE(a2dp, AS_HELP_STRING([--disable-a2dp],
 		[disable A2DP profile]), [enable_a2dp=${enableval}])
 AM_CONDITIONAL(A2DP, test "${enable_a2dp}" != "no")
+if test "${enable_a2dp}" != "no"; then
+	AC_DEFINE(HAVE_A2DP, 1, [Define to 1 if you have A2DP support.])
+fi
 
 AC_ARG_ENABLE(avrcp, AS_HELP_STRING([--disable-avrcp],
 		[disable AVRCP profile]), [enable_avrcp=${enableval}])

@@ -38,13 +38,16 @@
 #include "src/shared/bass.h"
 #include "src/shared/io.h"
 
-#include "asha.h"
+#ifdef HAVE_A2DP
 #include "avdtp.h"
-#include "media.h"
-#include "transport.h"
 #include "a2dp.h"
 #include "sink.h"
 #include "source.h"
+#endif
+
+#include "asha.h"
+#include "media.h"
+#include "transport.h"
 #include "avrcp.h"
 #include "bass.h"
 
@@ -387,6 +390,7 @@ static gboolean media_transport_set_fd(struct media_transport *transport,
 	return TRUE;
 }
 
+#ifdef HAVE_A2DP
 static void *transport_a2dp_get_stream(struct media_transport *transport)
 {
 	struct a2dp_sep *sep = media_endpoint_get_sep(transport->endpoint);
@@ -675,6 +679,7 @@ static int transport_a2dp_snk_set_delay(struct media_transport *transport,
 
 	return avdtp_delay_report(a2dp->session, stream, delay);
 }
+#endif /* HAVE_A2DP */
 
 static void media_owner_exit(DBusConnection *connection, void *user_data)
 {
@@ -987,6 +992,7 @@ static gboolean get_state(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+#ifdef HAVE_A2DP
 static gboolean delay_reporting_exists(const GDBusPropertyTable *property,
 							void *data)
 {
@@ -1067,6 +1073,7 @@ static void set_delay_report(const GDBusPropertyTable *property,
 
 	g_dbus_pending_property_success(id);
 }
+#endif /* HAVE_A2DP */
 
 static gboolean volume_exists(const GDBusPropertyTable *property, void *data)
 {
@@ -1197,6 +1204,7 @@ static const GDBusMethodTable transport_methods[] = {
 	{ },
 };
 
+#ifdef HAVE_A2DP
 static const GDBusPropertyTable transport_a2dp_properties[] = {
 	{ "Device", "o", get_device },
 	{ "UUID", "s", get_uuid },
@@ -1210,6 +1218,7 @@ static const GDBusPropertyTable transport_a2dp_properties[] = {
 				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
+#endif /* HAVE_A2DP */
 
 static void append_io_qos(DBusMessageIter *dict, struct bt_bap_io_qos *qos)
 {
@@ -1570,6 +1579,7 @@ static const GDBusPropertyTable transport_asha_properties[] = {
 	{ }
 };
 
+#ifdef HAVE_A2DP
 static void transport_a2dp_destroy(void *data)
 {
 	struct a2dp_transport *a2dp = data;
@@ -1599,6 +1609,7 @@ static void transport_a2dp_snk_destroy(void *data)
 
 	transport_a2dp_destroy(data);
 }
+#endif /* HAVE_A2DP */
 
 static void media_transport_free(void *data)
 {
@@ -1684,6 +1695,7 @@ static DBusMessage *unselect_transport(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+#ifdef HAVE_A2DP
 static void sink_state_changed(struct btd_service *service,
 						sink_state_t old_state,
 						sink_state_t new_state,
@@ -1744,6 +1756,7 @@ static void *transport_a2dp_snk_init(struct media_transport *transport,
 
 	return a2dp;
 }
+#endif /* HAVE_A2DP */
 
 static void bap_enable_complete(struct bt_bap_stream *stream,
 					uint8_t code, uint8_t reason,
@@ -2410,6 +2423,7 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			NULL, NULL, NULL)
 
 static const struct media_transport_ops transport_ops[] = {
+#ifdef HAVE_A2DP
 	A2DP_OPS(A2DP_SOURCE_UUID, transport_a2dp_src_init,
 #ifdef HAVE_AVRCP
 			transport_a2dp_src_set_volume,
@@ -2426,6 +2440,7 @@ static const struct media_transport_ops transport_ops[] = {
 #endif
 			transport_a2dp_snk_set_delay,
 			transport_a2dp_snk_destroy),
+#endif /* HAVE_A2DP */
 	BAP_UC_OPS(PAC_SOURCE_UUID),
 	BAP_UC_OPS(PAC_SINK_UUID),
 	BAP_BC_OPS(BCAA_SERVICE_UUID),
