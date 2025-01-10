@@ -48,7 +48,10 @@
 #endif
 #endif
 
+#ifdef HAVE_ASHA
 #include "asha.h"
+#endif
+
 #include "media.h"
 #include "transport.h"
 #include "bass.h"
@@ -1555,6 +1558,7 @@ static const GDBusPropertyTable transport_bap_bc_properties[] = {
 	{ }
 };
 
+#ifdef HAVE_ASHA
 static gboolean get_asha_delay(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -1580,6 +1584,7 @@ static const GDBusPropertyTable transport_asha_properties[] = {
 	{ "Volume", "q", get_volume, set_volume, volume_exists },
 	{ }
 };
+#endif /* HAVE_ASHA */
 
 #ifdef HAVE_A2DP
 static void transport_a2dp_destroy(void *data)
@@ -2210,6 +2215,7 @@ static void *transport_bap_init(struct media_transport *transport, void *stream)
 	return bap;
 }
 
+#ifdef HAVE_ASHA
 static void asha_transport_sync_state(struct media_transport *transport,
 						struct bt_asha_device *asha_dev)
 {
@@ -2367,6 +2373,7 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 	/* We just store the struct asha_device on the transport */
 	return data;
 }
+#endif /* HAVE_ASHA */
 
 #define TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner, _init, \
 		      _resume, _suspend, _cancel, _set_state, _get_stream, \
@@ -2447,7 +2454,9 @@ static const struct media_transport_ops transport_ops[] = {
 	BAP_UC_OPS(PAC_SINK_UUID),
 	BAP_BC_OPS(BCAA_SERVICE_UUID),
 	BAP_BC_OPS(BAA_SERVICE_UUID),
+#ifdef HAVE_ASHA
 	ASHA_OPS(ASHA_PROFILE_UUID),
+#endif /* HAVE_ASHA */
 };
 
 static const struct media_transport_ops *
