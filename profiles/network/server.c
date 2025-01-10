@@ -336,7 +336,7 @@ static gboolean bnep_setup(GIOChannel *chan,
 		 * This packet reply to any control message received,
 		 * which contains an unknown BNEP control type value.
 		 */
-		if (req->ctrl == BNEP_CONTROL)
+		if (req->type == BNEP_CONTROL)
 			bnep_send_unkown_rsp(sk, req->ctrl);
 
 		error("To few setup connection request data received");
