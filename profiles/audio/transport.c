@@ -43,12 +43,14 @@
 #include "a2dp.h"
 #include "sink.h"
 #include "source.h"
+#ifdef HAVE_AVRCP
+#include "avrcp.h"
+#endif
 #endif
 
 #include "asha.h"
 #include "media.h"
 #include "transport.h"
-#include "avrcp.h"
 #include "bass.h"
 
 #define MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport1"
