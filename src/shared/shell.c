@@ -1268,7 +1268,6 @@ static void rl_init(void)
 	/* Allow conditional parsing of the ~/.inputrc file. */
 	rl_readline_name = data.name;
 
-	setlinebuf(stdout);
 	rl_attempted_completion_function = shell_completion;
 
 	rl_erase_empty_line = 1;
@@ -1405,6 +1404,8 @@ done:
 
 	mainloop_init();
 
+	/* Always set stdout as line buffered */
+	setlinebuf(stdout);
 	rl_init();
 
 	data.init = true;
