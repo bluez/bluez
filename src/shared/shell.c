@@ -719,6 +719,7 @@ void bt_shell_printf(const char *fmt, ...)
 		saved_line = rl_copy_text(0, rl_end);
 		if (!data.saved_prompt)
 			rl_save_prompt();
+		rl_clear_visible_line();
 		rl_reset_line_state();
 	}
 
