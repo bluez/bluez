@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation. All rights reserved.
- *  Copyright 2023-2024 NXP
+ *  Copyright 2023-2025 NXP
  *
  */
 
@@ -6921,6 +6921,24 @@ static void bap_sink_check_level2_ltv(size_t i, uint8_t l, uint8_t t,
 		util_ltv_push(merge_data->result, l, t, v);
 }
 
+static void bap_sink_append_level3_ltv(size_t i, uint8_t l, uint8_t t,
+		uint8_t *v, void *user_data)
+{
+	struct bt_ltv_extract *merge_data = user_data;
+
+	merge_data->value = NULL;
+	util_ltv_foreach(merge_data->result->iov_base,
+			merge_data->result->iov_len,
+			&t,
+			bap_sink_check_level3_ltv, merge_data);
+
+	/* If the LTV at level 3 was not found in merged configuration,
+	 * append value
+	 */
+	if (!merge_data->value)
+		util_ltv_push(merge_data->result, l, t, v);
+}
+
 static void check_local_pac(void *data, void *user_data)
 {
 	struct bt_ltv_match *compare_data = user_data;
@@ -7027,6 +7045,14 @@ struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps)
 			l2_caps->iov_len,
 			NULL,
 			bap_sink_check_level2_ltv, &merge_data);
+
+	/* Append LTVs at level 3 (BIS) that were not found at
+	 * level 2 (subgroup)
+	 */
+	util_ltv_foreach(l3_caps->iov_base,
+			l3_caps->iov_len,
+			NULL,
+			bap_sink_append_level3_ltv, &merge_data);
 
 	return merge_data.result;
 }
