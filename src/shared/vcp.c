@@ -147,6 +147,12 @@ struct bt_vcs_ab_vol {
 	uint8_t	vol_set;
 } __packed;
 
+struct bt_vcs_client_ab_vol {
+	uint8_t	op;
+	uint8_t	change_counter;
+	uint8_t	vol_set;
+} __packed;
+
 struct bt_vocs_set_vol_off {
 	uint8_t	change_counter;
 	int16_t set_vol_offset;
@@ -192,6 +198,11 @@ struct bt_vcp {
 
 	bt_vcp_debug_func_t debug_func;
 	bt_vcp_destroy_func_t debug_destroy;
+	bt_vcp_volume_func_t volume_changed;
+
+	uint8_t volume;
+	uint8_t volume_counter;
+
 	void *debug_data;
 	void *user_data;
 };
@@ -1874,6 +1885,15 @@ bool bt_vcp_set_debug(struct bt_vcp *vcp, bt_vcp_debug_func_t func,
 	return true;
 }
 
+bool bt_vcp_set_volume_callback(struct bt_vcp *vcp,
+				bt_vcp_volume_func_t volume_changed)
+{
+	if (!vcp)
+		return false;
+
+	vcp->volume_changed = volume_changed;
+	return true;
+}
 unsigned int bt_vcp_register(bt_vcp_func_t attached, bt_vcp_func_t detached,
 							void *user_data)
 {
@@ -1959,6 +1979,65 @@ static void vcp_vstate_notify(struct bt_vcp *vcp, uint16_t value_handle,
 	DBG(vcp, "Vol Settings 0x%x", vstate.vol_set);
 	DBG(vcp, "Mute Status 0x%x", vstate.mute);
 	DBG(vcp, "Vol Counter 0x%x", vstate.counter);
+
+	vcp->volume = vstate.vol_set;
+	vcp->volume_counter = vstate.counter;
+
+	if (vcp->volume_changed)
+		vcp->volume_changed(vcp, vcp->volume);
+}
+
+static void vcp_volume_cp_sent(bool success, uint8_t err, void *user_data)
+{
+	struct bt_vcp *vcp = user_data;
+
+	if (!success) {
+		if (err == BT_ATT_ERROR_INVALID_CHANGE_COUNTER)
+			DBG(vcp, "setting volume failed: invalid counter");
+		else
+			DBG(vcp, "setting volume failed: error 0x%x", err);
+	}
+}
+
+uint8_t bt_vcp_get_volume(struct bt_vcp *vcp)
+{
+	return vcp->volume;
+}
+
+bool bt_vcp_set_volume(struct bt_vcp *vcp, uint8_t volume)
+{
+	struct bt_vcs_client_ab_vol req;
+	uint16_t value_handle;
+	struct bt_vcs *vcs = vcp_get_vcs(vcp);
+
+	if (!vcs) {
+		DBG(vcp, "error: vcs not available");
+		return false;
+	}
+
+	if (!vcs->vol_cp) {
+		DBG(vcp, "error: vol_cp characteristics not available");
+		return false;
+	}
+
+	if (!gatt_db_attribute_get_char_data(vcs->vol_cp, NULL, &value_handle,
+							NULL, NULL, NULL)) {
+		DBG(vcp, "error: vol_cp characteristics not available");
+		return false;
+	}
+
+	vcp->volume = volume;
+	req.op = BT_VCS_SET_ABSOLUTE_VOL;
+	req.vol_set = vcp->volume;
+	req.change_counter = vcp->volume_counter;
+
+	if (!bt_gatt_client_write_value(vcp->client, value_handle, (void *)&req,
+					sizeof(req), vcp_volume_cp_sent, vcp,
+					NULL)) {
+		DBG(vcp, "error writing volume");
+		return false;
+	}
+	return true;
 }
 
 static void vcp_voffset_state_notify(struct bt_vcp *vcp, uint16_t value_handle,
@@ -2061,6 +2140,9 @@ static void read_vol_state(struct bt_vcp *vcp, bool success, uint8_t att_ecode,
 	DBG(vcp, "Vol Set:%x", vs->vol_set);
 	DBG(vcp, "Vol Mute:%x", vs->mute);
 	DBG(vcp, "Vol Counter:%x", vs->counter);
+
+	vcp->volume = vs->vol_set;
+	vcp->volume_counter = vs->counter;
 }
 
 static void read_vol_offset_state(struct bt_vcp *vcp, bool success,
@@ -2757,4 +2839,3 @@ bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client)
 
 	return true;
 }
-

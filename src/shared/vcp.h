@@ -36,6 +36,7 @@ struct bt_vcp;
 typedef void (*bt_vcp_destroy_func_t)(void *user_data);
 typedef void (*bt_vcp_debug_func_t)(const char *str, void *user_data);
 typedef void (*bt_vcp_func_t)(struct bt_vcp *vcp, void *user_data);
+typedef void (*bt_vcp_volume_func_t)(struct bt_vcp *vcp, uint8_t volume);
 
 struct bt_vcp *bt_vcp_ref(struct bt_vcp *vcp);
 void bt_vcp_unref(struct bt_vcp *vcp);
@@ -45,8 +46,14 @@ void bt_vcp_add_db(struct gatt_db *db);
 bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client);
 void bt_vcp_detach(struct bt_vcp *vcp);
 
+uint8_t bt_vcp_get_volume(struct bt_vcp *vcp);
+bool bt_vcp_set_volume(struct bt_vcp *vcp, uint8_t volume);
+
 bool bt_vcp_set_debug(struct bt_vcp *vcp, bt_vcp_debug_func_t cb,
 			void *user_data, bt_vcp_destroy_func_t destroy);
+
+bool bt_vcp_set_volume_callback(struct bt_vcp *vcp,
+				bt_vcp_volume_func_t volume_changed);
 
 struct bt_att *bt_vcp_get_att(struct bt_vcp *vcp);
 
