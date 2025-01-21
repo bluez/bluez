@@ -392,10 +392,10 @@ void bt_vcp_detach(struct bt_vcp *vcp)
 	if (!queue_remove(sessions, vcp))
 		return;
 
-	bt_gatt_client_unref(vcp->client);
-	vcp->client = NULL;
-
-	queue_foreach(vcp_cbs, vcp_detached, vcp);
+	if (vcp->client) {
+		bt_gatt_client_unref(vcp->client);
+		vcp->client = NULL;
+	}
 }
 
 static void vcp_db_free(void *data)
@@ -489,6 +489,7 @@ static void vcp_debug(struct bt_vcp *vcp, const char *format, ...)
 
 static void vcp_disconnected(int err, void *user_data)
 {
+	/* called only when this device is acting a a server */
 	struct bt_vcp *vcp = user_data;
 
 	DBG(vcp, "vcp %p disconnected err %d", vcp, err);
@@ -508,12 +509,15 @@ static struct bt_vcp *vcp_get_session(struct bt_att *att, struct gatt_db *db)
 			return vcp;
 	}
 
+	/* called only when this device is acting a a server */
 	vcp = bt_vcp_new(db, NULL);
 	vcp->att = att;
 
 	bt_att_register_disconnect(att, vcp_disconnected, vcp, NULL);
 
-	bt_vcp_attach(vcp, NULL);
+	if (!sessions)
+		sessions = queue_new();
+	queue_push_tail(sessions, vcp);
 
 	return vcp;
 
@@ -2344,7 +2348,7 @@ static void foreach_vcs_char(struct gatt_db_attribute *attr, void *user_data)
 		DBG(vcp, "VCS Vol state found: handle 0x%04x", value_handle);
 
 		vcs = vcp_get_vcs(vcp);
-		if (!vcs || vcs->vs)
+		if (!vcs)
 			return;
 
 		vcs->vs = attr;
@@ -2361,7 +2365,7 @@ static void foreach_vcs_char(struct gatt_db_attribute *attr, void *user_data)
 		DBG(vcp, "VCS Volume CP found: handle 0x%04x", value_handle);
 
 		vcs = vcp_get_vcs(vcp);
-		if (!vcs || vcs->vol_cp)
+		if (!vcs)
 			return;
 
 		vcs->vol_cp = attr;
@@ -2373,7 +2377,7 @@ static void foreach_vcs_char(struct gatt_db_attribute *attr, void *user_data)
 		DBG(vcp, "VCS Vol Flag found: handle 0x%04x", value_handle);
 
 		vcs = vcp_get_vcs(vcp);
-		if (!vcs || vcs->vf)
+		if (!vcs)
 			return;
 
 		vcs->vf = attr;
