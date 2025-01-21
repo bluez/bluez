@@ -128,7 +128,7 @@ endif
 
 if VCP
 builtin_modules += vcp
-builtin_sources += profiles/audio/vcp.c
+builtin_sources += profiles/audio/vcp.h profiles/audio/vcp.c
 endif
 
 if MICP

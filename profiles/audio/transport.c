@@ -55,6 +55,7 @@
 #include "media.h"
 #include "transport.h"
 #include "bass.h"
+#include "vcp.h"
 
 #define MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport1"
 
@@ -1420,6 +1421,7 @@ static const GDBusPropertyTable transport_bap_uc_properties[] = {
 	{ "Location", "u", get_location },
 	{ "Metadata", "ay", get_metadata },
 	{ "Links", "ao", get_links, NULL, links_exists },
+	{ "Volume", "q", get_volume, set_volume, volume_exists },
 	{ }
 };
 
@@ -2188,6 +2190,17 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 	bap_update_links(transport);
 }
 
+static int8_t transport_bap_get_volume(struct media_transport *transport)
+{
+	return bt_audio_vcp_get_volume(transport->device);
+}
+
+static int transport_bap_set_volume(struct media_transport *transport,
+								int8_t volume)
+{
+	return bt_audio_vcp_set_volume(transport->device, volume) ? 0 : -EIO;
+}
+
 static void transport_bap_destroy(void *data)
 {
 	struct bap_transport *bap = data;
@@ -2411,7 +2424,8 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			transport_bap_init, \
 			transport_bap_resume, transport_bap_suspend, \
 			transport_bap_cancel, _set_state, \
-			transport_bap_get_stream, NULL, NULL, NULL, \
+			transport_bap_get_stream, transport_bap_get_volume, \
+			transport_bap_set_volume, NULL, \
 			_update_links, transport_bap_destroy)
 
 #define BAP_UC_OPS(_uuid) \
@@ -2573,17 +2587,18 @@ struct btd_device *media_transport_get_dev(struct media_transport *transport)
 void media_transport_update_volume(struct media_transport *transport,
 								int8_t volume)
 {
-	struct a2dp_transport *a2dp = transport->data;
-
 	if (volume < 0)
 		return;
 
-	/* Check if volume really changed */
-	if (a2dp->volume == volume)
-		return;
+	if (media_endpoint_get_sep(transport->endpoint)) {
+		struct a2dp_transport *a2dp = transport->data;
 
-	a2dp->volume = volume;
+		/* Check if volume really changed */
+		if (a2dp->volume == volume)
+			return;
 
+		a2dp->volume = volume;
+	}
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 					transport->path,
 					MEDIA_TRANSPORT_INTERFACE, "Volume");
@@ -2628,11 +2643,15 @@ void media_transport_update_device_volume(struct btd_device *dev,
 	/* Attempt to locate the transport to set its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
+		const char *uuid = media_endpoint_get_uuid(transport->endpoint);
 		if (transport->device != dev)
 			continue;
 
-		/* Volume is A2DP only */
-		if (media_endpoint_get_sep(transport->endpoint)) {
+		/* Volume is A2DP and BAP only */
+		if (media_endpoint_get_sep(transport->endpoint) ||
+				strcasecmp(uuid, PAC_SINK_UUID) ||
+				strcasecmp(uuid, PAC_SOURCE_UUID) ||
+				strcasecmp(uuid, BAA_SERVICE_UUID)) {
 			media_transport_update_volume(transport, volume);
 			break;
 		}

@@ -51,6 +51,9 @@
 #include "src/log.h"
 #include "src/error.h"
 
+#include "vcp.h"
+#include "transport.h"
+
 #define VCS_UUID_STR "00001844-0000-1000-8000-00805f9b34fb"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
 
@@ -83,6 +86,35 @@ static struct vcp_data *vcp_data_new(struct btd_device *device)
 	return data;
 }
 
+static bool match_data(const void *data, const void *match_data)
+{
+	const struct vcp_data *vdata = data;
+	const struct bt_vcp *vcp = match_data;
+
+	return vdata->vcp == vcp;
+}
+
+static int8_t scale_volume(uint8_t volume)
+{
+	/* Convert 0-255 to 0-127. */
+	return volume / 2;
+}
+
+static uint8_t unscale_volume(int8_t volume)
+{
+	/* Convert 0-127 to 0-255. */
+	return volume * 2;
+}
+
+static void vcp_volume_changed(struct bt_vcp *vcp, uint8_t volume)
+{
+	struct vcp_data *data = queue_find(sessions, match_data, vcp);
+
+	if (data)
+		media_transport_update_device_volume(data->device,
+						      scale_volume(volume));
+}
+
 static void vcp_data_add(struct vcp_data *data)
 {
 	DBG("data %p", data);
@@ -93,6 +125,7 @@ static void vcp_data_add(struct vcp_data *data)
 	}
 
 	bt_vcp_set_debug(data->vcp, vcp_debug, NULL, NULL);
+	bt_vcp_set_volume_callback(data->vcp, vcp_volume_changed);
 
 	if (!sessions)
 		sessions = queue_new();
@@ -103,12 +136,12 @@ static void vcp_data_add(struct vcp_data *data)
 		btd_service_set_user_data(data->service, data);
 }
 
-static bool match_data(const void *data, const void *match_data)
+static bool match_device(const void *data, const void *match_data)
 {
 	const struct vcp_data *vdata = data;
-	const struct bt_vcp *vcp = match_data;
+	const struct btd_device *device = match_data;
 
-	return vdata->vcp == vcp;
+	return vdata->device == device;
 }
 
 static void vcp_data_free(struct vcp_data *data)
@@ -135,6 +168,26 @@ static void vcp_data_remove(struct vcp_data *data)
 		queue_destroy(sessions, NULL);
 		sessions = NULL;
 	}
+}
+
+int8_t bt_audio_vcp_get_volume(struct btd_device *device)
+{
+	struct vcp_data *data = queue_find(sessions, match_device, device);
+
+	if (data)
+		return scale_volume(bt_vcp_get_volume(data->vcp));
+
+	return 0;
+}
+
+bool bt_audio_vcp_set_volume(struct btd_device *device, int8_t volume)
+{
+	struct vcp_data *data = queue_find(sessions, match_device, device);
+
+	if (data)
+		return bt_vcp_set_volume(data->vcp, unscale_volume(volume));
+
+	return FALSE;
 }
 
 static void vcp_detached(struct bt_vcp *vcp, void *user_data)
