@@ -379,7 +379,15 @@ static struct bt_aics *vcp_get_aics(struct bt_vcp *vcp)
 	return vcp->rdb->aics;
 }
 
-static void vcp_detached(void *data, void *user_data)
+static void vcp_remote_client_attached(void *data, void *user_data)
+{
+	struct bt_vcp_cb *cb = data;
+	struct bt_vcp *vcp = user_data;
+
+	cb->attached(vcp, cb->user_data);
+}
+
+static void vcp_remote_client_detached(void *data, void *user_data)
 {
 	struct bt_vcp_cb *cb = data;
 	struct bt_vcp *vcp = user_data;
@@ -495,6 +503,7 @@ static void vcp_disconnected(int err, void *user_data)
 	DBG(vcp, "vcp %p disconnected err %d", vcp, err);
 
 	bt_vcp_detach(vcp);
+	queue_foreach(vcp_cbs, vcp_remote_client_detached, vcp);
 }
 
 static struct bt_vcp *vcp_get_session(struct bt_att *att, struct gatt_db *db)
@@ -512,6 +521,8 @@ static struct bt_vcp *vcp_get_session(struct bt_att *att, struct gatt_db *db)
 	/* called only when this device is acting a a server */
 	vcp = bt_vcp_new(db, NULL);
 	vcp->att = att;
+
+	queue_foreach(vcp_cbs, vcp_remote_client_attached, vcp);
 
 	bt_att_register_disconnect(att, vcp_disconnected, vcp, NULL);
 
@@ -555,6 +566,10 @@ static uint8_t vcs_rel_vol_down(struct bt_vcs *vcs, struct bt_vcp *vcp,
 
 	vstate->vol_set = MAX((vstate->vol_set - VCP_STEP_SIZE), 0);
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+	vcp->volume = vstate->vol_set;
+
+	if (vcp->volume_changed)
+		vcp->volume_changed(vcp, vcp->volume);
 
 	gatt_db_attribute_notify(vdb->vcs->vs, (void *)vstate,
 				 sizeof(struct vol_state),
@@ -594,6 +609,10 @@ static uint8_t vcs_rel_vol_up(struct bt_vcs *vcs, struct bt_vcp *vcp,
 
 	vstate->vol_set = MIN((vstate->vol_set + VCP_STEP_SIZE), 255);
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+	vcp->volume = vstate->vol_set;
+
+	if (vcp->volume_changed)
+		vcp->volume_changed(vcp, vcp->volume);
 
 	gatt_db_attribute_notify(vdb->vcs->vs, (void *)vstate,
 				 sizeof(struct vol_state),
@@ -634,6 +653,10 @@ static uint8_t vcs_unmute_rel_vol_down(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	vstate->mute = 0x00;
 	vstate->vol_set = MAX((vstate->vol_set - VCP_STEP_SIZE), 0);
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+	vcp->volume = vstate->vol_set;
+
+	if (vcp->volume_changed)
+		vcp->volume_changed(vcp, vcp->volume);
 
 	gatt_db_attribute_notify(vdb->vcs->vs, (void *)vstate,
 				 sizeof(struct vol_state),
@@ -674,6 +697,10 @@ static uint8_t vcs_unmute_rel_vol_up(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	vstate->mute = 0x00;
 	vstate->vol_set = MIN((vstate->vol_set + VCP_STEP_SIZE), 255);
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+	vcp->volume = vstate->vol_set;
+
+	if (vcp->volume_changed)
+		vcp->volume_changed(vcp, vcp->volume);
 
 	gatt_db_attribute_notify(vdb->vcs->vs, (void *)vstate,
 				 sizeof(struct vol_state),
@@ -713,6 +740,10 @@ static uint8_t vcs_set_absolute_vol(struct bt_vcs *vcs, struct bt_vcp *vcp,
 
 	vstate->vol_set = req->vol_set;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+	vcp->volume = vstate->vol_set;
+
+	if (vcp->volume_changed)
+		vcp->volume_changed(vcp, vcp->volume);
 
 	gatt_db_attribute_notify(vdb->vcs->vs, (void *)vstate,
 				 sizeof(struct vol_state),
@@ -2008,7 +2039,7 @@ uint8_t bt_vcp_get_volume(struct bt_vcp *vcp)
 	return vcp->volume;
 }
 
-bool bt_vcp_set_volume(struct bt_vcp *vcp, uint8_t volume)
+static bool vcp_set_volume_client(struct bt_vcp *vcp, uint8_t volume)
 {
 	struct bt_vcs_client_ab_vol req;
 	uint16_t value_handle;
@@ -2042,6 +2073,39 @@ bool bt_vcp_set_volume(struct bt_vcp *vcp, uint8_t volume)
 		return false;
 	}
 	return true;
+}
+
+static bool vcp_set_volume_server(struct bt_vcp *vcp, uint8_t volume)
+{
+	struct bt_vcp_db *vdb = vcp_get_vdb(vcp);
+	struct vol_state *vstate;
+
+	vcp->volume = volume;
+
+	if (!vdb) {
+		DBG(vcp, "error: VDB not available");
+		return false;
+	}
+
+	vstate = vdb_get_vstate(vdb);
+	if (!vstate) {
+		DBG(vcp, "error: VSTATE not available");
+		return false;
+	}
+
+	vstate->vol_set = vcp->volume;
+	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+	gatt_db_attribute_notify(vdb->vcs->vs, (void *) vstate,
+			sizeof(struct vol_state), bt_vcp_get_att(vcp));
+	return true;
+}
+
+bool bt_vcp_set_volume(struct bt_vcp *vcp, uint8_t volume)
+{
+	if (vcp->client)
+		return vcp_set_volume_client(vcp, volume);
+	else
+		return vcp_set_volume_server(vcp, volume);
 }
 
 static void vcp_voffset_state_notify(struct bt_vcp *vcp, uint16_t value_handle,
