@@ -1,34 +1,40 @@
-BlueZ - Bluetooth protocol stack for Linux
-******************************************
+*BlueZ - Bluetooth protocol stack for Linux*
+********************************************
 
 Copyright (C) 2000-2001  Qualcomm Incorporated
-Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
-Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
 
+Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
+
+Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
 
 Compilation and installation
 ============================
 
 In order to compile Bluetooth utilities you need following software packages:
-	- GCC compiler
-	- GLib library
-	- D-Bus library
-	- udev library (optional)
-	- readline (command line clients)
+- GCC compiler
+- GLib library
+- D-Bus library
+- udev library (optional)
+- readline (command line clients)
 
-	On a debian based system, this can be done by running the following command:
-		sudo apt-get build-dep bluez
-		./bootstrap
+On a debian based system, this can be done by running the following command:
+```
+sudo apt-get build-dep bluez
+./bootstrap
+```
 
 To configure run:
-	./configure --prefix=/usr --mandir=/usr/share/man \
-				--sysconfdir=/etc --localstatedir=/var
+```
+./configure --prefix=/usr --mandir=/usr/share/man \
+	--sysconfdir=/etc --localstatedir=/var
+```
 
 Configure automatically searches for all required components and packages.
 
 To compile and install run:
-	make && make install
-
+```
+make && make install
+```
 
 Embedded Linux library
 ======================
@@ -75,6 +81,7 @@ may need to be enabled, and the kernel rebuilt.
 1. A minimum of kernel version 4.9 or later is required
 
 2. The kernel must at a minimum have the following .config options turned on:
+```
 	CONFIG_CRYPTO_USER
 	CONFIG_CRYPTO_USER_API
 	CONFIG_CRYPTO_USER_API_AEAD
@@ -85,6 +92,7 @@ may need to be enabled, and the kernel rebuilt.
 	CONFIG_CRYPTO_CCM
 	CONFIG_CRYPTO_AEAD
 	CONFIG_CRYPTO_CMAC
+```
 
 
 Configuration and options
