@@ -128,7 +128,8 @@ uint16 Volume [readwrite, optional]
 	Indicates volume level of the transport, this property is only writeable
 	when the transport was acquired by the sender.
 
-	Possible Values: 0-127
+	Possible Values: 0-127 (A2DP)
+			 0-255 (BAP)
 
 object Endpoint [readonly, optional, experimental]
 ``````````````````````````````````````````````````
