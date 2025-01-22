@@ -126,8 +126,8 @@ struct media_transport_ops {
 	void (*set_state)(struct media_transport *transport,
 				transport_state_t state);
 	void *(*get_stream)(struct media_transport *transport);
-	int8_t (*get_volume)(struct media_transport *transport);
-	int (*set_volume)(struct media_transport *transport, int8_t level);
+	uint8_t (*get_volume)(struct media_transport *transport);
+	int (*set_volume)(struct media_transport *transport, uint8_t level);
 	int (*set_delay)(struct media_transport *transport, uint16_t delay);
 	void (*update_links)(const struct media_transport *transport);
 	GDestroyNotify destroy;
@@ -616,7 +616,7 @@ static void transport_a2dp_remove_owner(struct media_transport *transport,
 	a2dp->cancel_resume = FALSE;
 }
 
-static int8_t transport_a2dp_get_volume(struct media_transport *transport)
+static uint8_t transport_a2dp_get_volume(struct media_transport *transport)
 {
 	struct a2dp_transport *a2dp = transport->data;
 	return a2dp->volume;
@@ -624,7 +624,7 @@ static int8_t transport_a2dp_get_volume(struct media_transport *transport)
 
 #ifdef HAVE_AVRCP
 static int transport_a2dp_src_set_volume(struct media_transport *transport,
-					int8_t level)
+					uint8_t level)
 {
 	struct a2dp_transport *a2dp = transport->data;
 
@@ -635,7 +635,7 @@ static int transport_a2dp_src_set_volume(struct media_transport *transport,
 }
 
 static int transport_a2dp_snk_set_volume(struct media_transport *transport,
-					int8_t level)
+					uint8_t level)
 {
 	struct a2dp_transport *a2dp = transport->data;
 	bool notify;
@@ -2190,13 +2190,13 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 	bap_update_links(transport);
 }
 
-static int8_t transport_bap_get_volume(struct media_transport *transport)
+static uint8_t transport_bap_get_volume(struct media_transport *transport)
 {
 	return bt_audio_vcp_get_volume(transport->device);
 }
 
 static int transport_bap_set_volume(struct media_transport *transport,
-								int8_t volume)
+								uint8_t volume)
 {
 	return bt_audio_vcp_set_volume(transport->device, volume) ? 0 : -EIO;
 }
@@ -2355,7 +2355,7 @@ static void transport_asha_cancel(struct media_transport *transport, guint id)
 	}
 }
 
-static int8_t transport_asha_get_volume(struct media_transport *transport)
+static uint8_t transport_asha_get_volume(struct media_transport *transport)
 {
 	struct bt_asha_device *asha_dev = transport->data;
 	int8_t volume;
@@ -2370,7 +2370,7 @@ static int8_t transport_asha_get_volume(struct media_transport *transport)
 }
 
 static int transport_asha_set_volume(struct media_transport *transport,
-								int8_t volume)
+							uint8_t volume)
 {
 	struct bt_asha_device *asha_dev = transport->data;
 	int scaled_volume;

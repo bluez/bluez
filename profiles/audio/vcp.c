@@ -103,25 +103,12 @@ static bool match_data(const void *data, const void *match_data)
 	return vdata->vcp == vcp;
 }
 
-static int8_t scale_volume(uint8_t volume)
-{
-	/* Convert 0-255 to 0-127. */
-	return volume / 2;
-}
-
-static uint8_t unscale_volume(int8_t volume)
-{
-	/* Convert 0-127 to 0-255. */
-	return volume * 2;
-}
-
 static void vcp_volume_changed(struct bt_vcp *vcp, uint8_t volume)
 {
 	struct vcp_data *data = queue_find(sessions, match_data, vcp);
 
 	if (data)
-		media_transport_update_device_volume(data->device,
-						      scale_volume(volume));
+		media_transport_update_device_volume(data->device, volume);
 }
 
 static void vcp_data_add(struct vcp_data *data)
@@ -179,22 +166,22 @@ static void vcp_data_remove(struct vcp_data *data)
 	}
 }
 
-int8_t bt_audio_vcp_get_volume(struct btd_device *device)
+uint8_t bt_audio_vcp_get_volume(struct btd_device *device)
 {
 	struct vcp_data *data = queue_find(sessions, match_device, device);
 
 	if (data)
-		return scale_volume(bt_vcp_get_volume(data->vcp));
+		return bt_vcp_get_volume(data->vcp);
 
 	return 0;
 }
 
-bool bt_audio_vcp_set_volume(struct btd_device *device, int8_t volume)
+bool bt_audio_vcp_set_volume(struct btd_device *device, uint8_t volume)
 {
 	struct vcp_data *data = queue_find(sessions, match_device, device);
 
 	if (data)
-		return bt_vcp_set_volume(data->vcp, unscale_volume(volume));
+		return bt_vcp_set_volume(data->vcp, volume);
 
 	return FALSE;
 }
