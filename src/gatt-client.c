@@ -1968,12 +1968,33 @@ static void service_free(void *data)
 	free(service);
 }
 
+static bool match_service_handle(const void *a, const void *b)
+{
+	const struct service *service = a;
+	uint16_t start_handle = PTR_TO_UINT(b);
+
+	return service->start_handle == start_handle;
+}
+
 static struct service *service_create(struct gatt_db_attribute *attr,
 						struct btd_gatt_client *client)
 {
 	struct service *service;
 	const char *device_path = device_get_path(client->device);
 	bt_uuid_t uuid;
+	uint16_t start_handle, end_handle;
+	bool primary;
+
+	gatt_db_attribute_get_service_data(attr, &start_handle,
+							&end_handle,
+							&primary,
+							&uuid);
+
+	/* Check if service is already on list then return NULL to skip it */
+	service = queue_find(client->services, match_service_handle,
+						UINT_TO_PTR(start_handle));
+	if (service)
+		return NULL;
 
 	service = new0(struct service, 1);
 	service->chrcs = queue_new();
@@ -2144,14 +2165,6 @@ static void export_service(struct gatt_db_attribute *attr, void *user_data)
 	}
 
 	queue_push_tail(client->services, service);
-}
-
-static bool match_service_handle(const void *a, const void *b)
-{
-	const struct service *service = a;
-	uint16_t start_handle = PTR_TO_UINT(b);
-
-	return service->start_handle == start_handle;
 }
 
 struct update_incl_data {
