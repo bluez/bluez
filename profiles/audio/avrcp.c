@@ -2661,6 +2661,11 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	size_t i;
 	int err = 0;
 
+	if (player->p == NULL) {
+		media_player_list_complete(player->user_data, NULL, -EINVAL);
+		return FALSE;
+	}
+
 	if (pdu == NULL) {
 		err = -ETIMEDOUT;
 		goto done;
