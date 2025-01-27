@@ -255,13 +255,12 @@ static bool parse_type(DBusMessageIter *iter, struct btd_adv_client *client)
 	return false;
 }
 
-static bool parse_service_uuids(DBusMessageIter *iter,
-					struct btd_adv_client *client)
+static bool parse_service_uuids(DBusMessageIter *iter, struct bt_ad *ad)
 {
 	DBusMessageIter ariter;
 
 	if (!iter) {
-		bt_ad_clear_service_uuid(client->data);
+		bt_ad_clear_service_uuid(ad);
 		return true;
 	}
 
@@ -270,7 +269,7 @@ static bool parse_service_uuids(DBusMessageIter *iter,
 
 	dbus_message_iter_recurse(iter, &ariter);
 
-	bt_ad_clear_service_uuid(client->data);
+	bt_ad_clear_service_uuid(ad);
 
 	while (dbus_message_iter_get_arg_type(&ariter) == DBUS_TYPE_STRING) {
 		const char *uuid_str;
@@ -283,7 +282,7 @@ static bool parse_service_uuids(DBusMessageIter *iter,
 		if (bt_string_to_uuid(&uuid, uuid_str) < 0)
 			goto fail;
 
-		if (!bt_ad_add_service_uuid(client->data, &uuid))
+		if (!bt_ad_add_service_uuid(ad, &uuid))
 			goto fail;
 
 		dbus_message_iter_next(&ariter);
@@ -292,17 +291,28 @@ static bool parse_service_uuids(DBusMessageIter *iter,
 	return true;
 
 fail:
-	bt_ad_clear_service_uuid(client->data);
+	bt_ad_clear_service_uuid(ad);
 	return false;
 }
 
-static bool parse_solicit_uuids(DBusMessageIter *iter,
+static bool parse_service_uuids_ad(DBusMessageIter *iter,
 					struct btd_adv_client *client)
+{
+	return parse_service_uuids(iter, client->data);
+}
+
+static bool parse_service_uuids_sr(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	return parse_service_uuids(iter, client->scan);
+}
+
+static bool parse_solicit_uuids(DBusMessageIter *iter, struct bt_ad *ad)
 {
 	DBusMessageIter ariter;
 
 	if (!iter) {
-		bt_ad_clear_solicit_uuid(client->data);
+		bt_ad_clear_solicit_uuid(ad);
 		return true;
 	}
 
@@ -311,7 +321,7 @@ static bool parse_solicit_uuids(DBusMessageIter *iter,
 
 	dbus_message_iter_recurse(iter, &ariter);
 
-	bt_ad_clear_solicit_uuid(client->data);
+	bt_ad_clear_solicit_uuid(ad);
 
 	while (dbus_message_iter_get_arg_type(&ariter) == DBUS_TYPE_STRING) {
 		const char *uuid_str;
@@ -324,7 +334,7 @@ static bool parse_solicit_uuids(DBusMessageIter *iter,
 		if (bt_string_to_uuid(&uuid, uuid_str) < 0)
 			goto fail;
 
-		if (!bt_ad_add_solicit_uuid(client->data, &uuid))
+		if (!bt_ad_add_solicit_uuid(ad, &uuid))
 			goto fail;
 
 		dbus_message_iter_next(&ariter);
@@ -333,17 +343,28 @@ static bool parse_solicit_uuids(DBusMessageIter *iter,
 	return true;
 
 fail:
-	bt_ad_clear_solicit_uuid(client->data);
+	bt_ad_clear_solicit_uuid(ad);
 	return false;
 }
 
-static bool parse_manufacturer_data(DBusMessageIter *iter,
+static bool parse_solicit_uuids_ad(DBusMessageIter *iter,
 					struct btd_adv_client *client)
+{
+	return parse_solicit_uuids(iter, client->data);
+}
+
+static bool parse_solicit_uuids_sr(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	return parse_solicit_uuids(iter, client->scan);
+}
+
+static bool parse_manufacturer_data(DBusMessageIter *iter, struct bt_ad *ad)
 {
 	DBusMessageIter entries;
 
 	if (!iter) {
-		bt_ad_clear_manufacturer_data(client->data);
+		bt_ad_clear_manufacturer_data(ad);
 		return true;
 	}
 
@@ -352,7 +373,7 @@ static bool parse_manufacturer_data(DBusMessageIter *iter,
 
 	dbus_message_iter_recurse(iter, &entries);
 
-	bt_ad_clear_manufacturer_data(client->data);
+	bt_ad_clear_manufacturer_data(ad);
 
 	while (dbus_message_iter_get_arg_type(&entries)
 						== DBUS_TYPE_DICT_ENTRY) {
@@ -383,7 +404,7 @@ static bool parse_manufacturer_data(DBusMessageIter *iter,
 
 		DBG("Adding ManufacturerData for %04x", manuf_id);
 
-		if (!bt_ad_add_manufacturer_data(client->data, manuf_id,
+		if (!bt_ad_add_manufacturer_data(ad, manuf_id,
 							manuf_data, len))
 			goto fail;
 
@@ -393,17 +414,28 @@ static bool parse_manufacturer_data(DBusMessageIter *iter,
 	return true;
 
 fail:
-	bt_ad_clear_manufacturer_data(client->data);
+	bt_ad_clear_manufacturer_data(ad);
 	return false;
 }
 
-static bool parse_service_data(DBusMessageIter *iter,
+static bool parse_manufacturer_data_ad(DBusMessageIter *iter,
 					struct btd_adv_client *client)
+{
+	return parse_manufacturer_data(iter, client->data);
+}
+
+static bool parse_manufacturer_data_sr(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	return parse_manufacturer_data(iter, client->scan);
+}
+
+static bool parse_service_data(DBusMessageIter *iter, struct bt_ad *ad)
 {
 	DBusMessageIter entries;
 
 	if (!iter) {
-		bt_ad_clear_service_data(client->data);
+		bt_ad_clear_service_data(ad);
 		return true;
 	}
 
@@ -412,7 +444,7 @@ static bool parse_service_data(DBusMessageIter *iter,
 
 	dbus_message_iter_recurse(iter, &entries);
 
-	bt_ad_clear_service_data(client->data);
+	bt_ad_clear_service_data(ad);
 
 	while (dbus_message_iter_get_arg_type(&entries)
 						== DBUS_TYPE_DICT_ENTRY) {
@@ -447,7 +479,7 @@ static bool parse_service_data(DBusMessageIter *iter,
 
 		DBG("Adding ServiceData for %s", uuid_str);
 
-		if (!bt_ad_add_service_data(client->data, &uuid, service_data,
+		if (!bt_ad_add_service_data(ad, &uuid, service_data,
 									len))
 			goto fail;
 
@@ -457,8 +489,20 @@ static bool parse_service_data(DBusMessageIter *iter,
 	return true;
 
 fail:
-	bt_ad_clear_service_data(client->data);
+	bt_ad_clear_service_data(ad);
 	return false;
+}
+
+static bool parse_service_data_ad(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	return parse_service_data(iter, client->data);
+}
+
+static bool parse_service_data_sr(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	return parse_service_data(iter, client->scan);
 }
 
 static bool set_rsi(struct btd_adv_client *client)
@@ -667,12 +711,12 @@ static bool parse_timeout(DBusMessageIter *iter,
 	return true;
 }
 
-static bool parse_data(DBusMessageIter *iter, struct btd_adv_client *client)
+static bool parse_data(DBusMessageIter *iter, struct bt_ad *ad)
 {
 	DBusMessageIter entries;
 
 	if (!iter) {
-		bt_ad_clear_data(client->data);
+		bt_ad_clear_data(ad);
 		return true;
 	}
 
@@ -681,7 +725,7 @@ static bool parse_data(DBusMessageIter *iter, struct btd_adv_client *client)
 
 	dbus_message_iter_recurse(iter, &entries);
 
-	bt_ad_clear_data(client->data);
+	bt_ad_clear_data(ad);
 
 	while (dbus_message_iter_get_arg_type(&entries)
 						== DBUS_TYPE_DICT_ENTRY) {
@@ -712,7 +756,7 @@ static bool parse_data(DBusMessageIter *iter, struct btd_adv_client *client)
 
 		DBG("Adding Data for type 0x%02x len %u", type, len);
 
-		if (!bt_ad_add_data(client->data, type, data, len))
+		if (!bt_ad_add_data(ad, type, data, len))
 			goto fail;
 
 		dbus_message_iter_next(&entries);
@@ -721,8 +765,20 @@ static bool parse_data(DBusMessageIter *iter, struct btd_adv_client *client)
 	return true;
 
 fail:
-	bt_ad_clear_data(client->data);
+	bt_ad_clear_data(ad);
 	return false;
+}
+
+static bool parse_data_ad(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	return parse_data(iter, client->data);
+}
+
+static bool parse_data_sr(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	return parse_data(iter, client->scan);
 }
 
 static bool set_flags(struct btd_adv_client *client, uint8_t flags)
@@ -837,14 +893,13 @@ static uint8_t *generate_adv_data(struct btd_adv_client *client,
 static uint8_t *generate_scan_rsp(struct btd_adv_client *client,
 						uint32_t *flags, size_t *len)
 {
-	if (!client->name) {
+	if (client->name) {
+		*flags &= ~MGMT_ADV_FLAG_LOCAL_NAME;
+		bt_ad_add_name(client->scan, client->name);
+	} else if (bt_ad_is_empty(client->scan)) {
 		*len = 0;
 		return NULL;
 	}
-
-	*flags &= ~MGMT_ADV_FLAG_LOCAL_NAME;
-
-	bt_ad_add_name(client->scan, client->name);
 
 	return bt_ad_generate(client->scan, len);
 }
@@ -1215,18 +1270,24 @@ static bool parse_tx_power(DBusMessageIter *iter,
 static struct adv_parser {
 	const char *name;
 	bool (*func)(DBusMessageIter *iter, struct btd_adv_client *client);
+	bool experimental;
 } parsers[] = {
 	{ "Type", parse_type },
-	{ "ServiceUUIDs", parse_service_uuids },
-	{ "SolicitUUIDs", parse_solicit_uuids },
-	{ "ManufacturerData", parse_manufacturer_data },
-	{ "ServiceData", parse_service_data },
+	{ "ServiceUUIDs", parse_service_uuids_ad },
+	{ "ScanResponseServiceUUIDs", parse_service_uuids_sr, true },
+	{ "SolicitUUIDs", parse_solicit_uuids_ad },
+	{ "ScanResponseSolicitUUIDs", parse_solicit_uuids_sr, true },
+	{ "ManufacturerData", parse_manufacturer_data_ad },
+	{ "ScanResponseManufacturerData", parse_manufacturer_data_sr, true },
+	{ "ServiceData", parse_service_data_ad },
+	{ "ScanResponseServiceData", parse_service_data_sr, true },
 	{ "Includes", parse_includes },
 	{ "LocalName", parse_local_name },
 	{ "Appearance", parse_appearance },
 	{ "Duration", parse_duration },
 	{ "Timeout", parse_timeout },
-	{ "Data", parse_data },
+	{ "Data", parse_data_ad },
+	{ "ScanResponseData", parse_data_sr },
 	{ "Discoverable", parse_discoverable },
 	{ "DiscoverableTimeout", parse_discoverable_timeout },
 	{ "SecondaryChannel", parse_secondary },
@@ -1244,6 +1305,13 @@ static void properties_changed(GDBusProxy *proxy, const char *name,
 
 	for (parser = parsers; parser && parser->name; parser++) {
 		if (strcmp(parser->name, name))
+			continue;
+
+		/* Ignore experimental parsers if the experimental flag is not
+		 * set.
+		 */
+		if (parser->experimental && !(g_dbus_get_flags() &
+					G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
 			continue;
 
 		if (parser->func(iter, client)) {
