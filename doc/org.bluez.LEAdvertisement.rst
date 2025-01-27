@@ -60,31 +60,32 @@ string Type [readonly]
 	:"broadcast":
 	:"peripheral":
 
-array{string} ServiceUUIDs
-``````````````````````````
+array{string} ServiceUUIDs [readonly, optional]
+```````````````````````````````````````````````
 
 	List of UUIDs to include in the "Service UUID" field of the Advertising
 	Data.
 
-dict ManufacturerData
-`````````````````````
+dict ManufacturerData [readonly, optional]
+``````````````````````````````````````````
 
 	Manufacturer Data fields to include in the Advertising Data.  Keys are
 	the Manufacturer ID to associate with the data.
 
-array{string} SolicitUUIDs
-``````````````````````````
+array{string} SolicitUUIDs [readonly, optional]
+```````````````````````````````````````````````
 
-	Array of UUIDs to include in "Service Solicitation" Advertisement Data.
+	List of UUIDs to include in the "Service Solicitation" field of the
+	Advertising Data.
 
-dict ServiceData
-````````````````
+dict ServiceData [readonly, optional]
+`````````````````````````````````````
 
-	Service Data elements to include. The keys are the UUID to associate
-	with the data.
+	Service Data elements to include in the Advertising Data. The keys
+	are the UUID to associate with the data.
 
-dict Data
-`````````
+dict Data [readonly, optional]
+``````````````````````````````
 
 	Advertising Data to include. Key is the advertising type and value is
 	the data as byte array.
@@ -101,8 +102,38 @@ dict Data
 		<Transport Discovery> <Organization Flags...>
 		0x26                   0x01         0x01...
 
-bool Discoverable
-`````````````````
+array{string} ScanResponseServiceUUIDs [readonly, optional, experimental]
+`````````````````````````````````````````````````````````````````````````
+
+	List of UUIDs to include in the "Service UUID" field of the Scan
+	Response Data.
+
+dict ScanResponseManufacturerData [readonly, optional, experimental]
+````````````````````````````````````````````````````````````````````
+
+	Manufacturer Data fields to include in the Scan Response Data. Keys
+	are the Manufacturer ID to associate with the data.
+
+array{string} ScanResponseSolicitUUIDs [readonly, optional, experimental]
+`````````````````````````````````````````````````````````````````````````
+
+	List of UUIDs to include in the "Service Solicitation" field of the
+	Scan Response Data.
+
+dict ScanResponseServiceData [readonly, optional, experimental]
+```````````````````````````````````````````````````````````````
+
+	Service Data elements to include in the Scan Response Data. The keys
+	are the UUID to associate with the data.
+
+dict ScanResponseData [readonly, optional, experimental]
+````````````````````````````````````````````````````````
+
+	Scan Response Data to include. Key is the advertising type and value is
+	the data as byte array.
+
+bool Discoverable [readonly, optional]
+``````````````````````````````````````
 
 	Advertise as general discoverable. When present this will override
 	adapter Discoverable property.
@@ -110,8 +141,8 @@ bool Discoverable
 	Note: This property shall not be set when **Type** is set to
 	"broadcast".
 
-uint16 DiscoverableTimeout
-``````````````````````````
+uint16 DiscoverableTimeout [readonly, optional]
+```````````````````````````````````````````````
 
 	The discoverable timeout in seconds. A value of zero means that the
 	timeout is disabled and it will stay in discoverable/limited mode
@@ -120,8 +151,8 @@ uint16 DiscoverableTimeout
 	Note: This property shall not be set when **Type** is set to
 	"broadcast".
 
-array{string} Includes
-``````````````````````
+array{string} Includes [readonly, optional]
+```````````````````````````````````````````
 
 	List of features to be included in the advertising packet.
 
@@ -130,8 +161,8 @@ array{string} Includes
 	See **org.bluez.LEAdvertisingManager(5)** **SupportedIncludes**
 	property.
 
-string LocalName
-````````````````
+string LocalName [readonly, optional]
+`````````````````````````````````````
 
 	Local name to be used in the advertising report. If the string is too
 	big to fit into the packet it will be truncated.
@@ -139,27 +170,27 @@ string LocalName
 	If this property is available 'local-name' cannot be present in the
 	**Includes**.
 
-uint16 Appearance
-`````````````````
+uint16 Appearance [readonly, optional]
+``````````````````````````````````````
 
 	Appearance to be used in the advertising report.
 
 	Possible values: as found on GAP Service.
 
-uint16_t Duration
-`````````````````
+uint16_t Duration [readonly, optional]
+``````````````````````````````````````
 
 	Rotation duration of the advertisement in seconds. If there are other
 	applications advertising no duration is set the default is 2 seconds.
 
-uint16_t Timeout
-````````````````
+uint16_t Timeout [readonly, optional]
+`````````````````````````````````````
 
 	Timeout of the advertisement in seconds. This defines the lifetime of
 	the advertisement.
 
-string SecondaryChannel
-```````````````````````
+string SecondaryChannel [readonly, optional]
+````````````````````````````````````````````
 
 	Secondary channel to be used. Primary channel is always set to "1M"
 	except when "Coded" is set.
@@ -170,24 +201,24 @@ string SecondaryChannel
 	:"2M":
 	:"Coded":
 
-uint32 MinInterval
-``````````````````
+uint32 MinInterval [readonly, optional]
+```````````````````````````````````````
 
 	Minimum advertising interval to be used by the advertising set, in
 	milliseconds. Acceptable values are in the range [20ms, 10,485s].
 	If the provided MinInterval is larger than the provided MaxInterval,
 	the registration will return failure.
 
-uint32 MaxInterval
-``````````````````
+uint32 MaxInterval [readonly, optional]
+```````````````````````````````````````
 
 	Maximum advertising interval to be used by the advertising set, in
 	milliseconds. Acceptable values are in the range [20ms, 10,485s]. If the
 	provided MinInterval is larger than the provided MaxInterval, the
 	registration will return failure.
 
-int16 TxPower
-`````````````
+int16 TxPower [readonly, optional]
+``````````````````````````````````
 
 	Requested transmission power of this advertising set. The provided value
 	is used only if the "CanSetTxPower" feature is enabled on the
