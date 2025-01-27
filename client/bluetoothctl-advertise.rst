@@ -31,6 +31,12 @@ Set/Get advertise uuids.
 :Example: **> uuids 0x12345678**
 :Example: **> uuids 90f95193-35de-4306-a6e9-699328f15059**
 
+solicit
+-------
+
+Set/Get advertise solicit uuids.
+:Usage: **# solicit [all/uuid1 uuid2 ...]**
+
 service
 -------
 
@@ -70,6 +76,39 @@ To get the currently set data use the command data without any arguments.
 
 :Usage: **> data [type] [data=xx xx ...]**
 :Example: **> data 0x0C 01 0x0F 13**
+
+sr-uuids
+--------
+
+Set/Get scan response uuids.
+
+:Usage: **# sr-uuids [all/uuid1 uuid2 ...]**
+
+sr-solicit
+----------
+
+Set/Get scan response solicit uuids.
+:Usage: **# sr-solicit [all/uuid1 uuid2 ...]**
+
+sr-service
+----------
+
+Set/Get scan response service data.
+
+:Usage: **# sr-service [uuid] [data=xx xx ...]**
+
+sr-manufacturer
+---------------
+
+Set/Get scan response manufacturer data.
+
+:Usage: **# sr-manufacturer [id] [data=xx xx ...]**
+
+sr-data
+-------
+
+Set/Get scan response data.
+:Usage: **# sr-data [type] [data=xx xx ...]**
 
 discoverable
 ------------
