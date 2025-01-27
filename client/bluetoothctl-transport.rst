@@ -56,8 +56,17 @@ the transport to the "broadcasting" state, pending acquire.
 :Usage: **> select <transport> [transport1...]**
 
 Note:
-If running the setup with an audio server that has LE Audio support (such as PipeWire), it will
-prompt it to automatically acquire the transport.
+
+If the select command receives a list of transports, they will first be linked using the
+"Links" MediaTransport property. They will then be selected one by one, by calling
+the "Select" MediaTransport method. After the first transport is acquired, the Broadcast
+Sink will create fds for the associated stream and all its links. Each link can then be
+acquired one by one, setting the fd for the transport and starting to receive audio.
+
+The select command does not require a local endpoint to be registered beforehand. This is
+because if the setup runs with an audio server that has LE Audio support (such as PipeWire),
+the audio server is the one to register endpoints and the transports are created as a result.
+Once a transport is selected, the audio server will automatically acquire.
 
 unselect
 --------
