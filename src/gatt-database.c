@@ -2601,6 +2601,24 @@ static bool sock_hup(struct io *io, void *user_data)
 	return false;
 }
 
+static bool sock_io_write(struct io *io, void *user_data)
+{
+	uint8_t buf[] = { 1 };
+	struct iovec iov = { buf, sizeof(buf) };
+
+	/* Send a 1 to the server as confirmation */
+	io_send(io, &iov, 1);
+
+	return false;
+}
+
+static void sock_io_conf(void *user_data)
+{
+	struct io *io = user_data;
+
+	io_set_write_handler(io, sock_io_write, NULL, NULL);
+}
+
 static bool sock_io_read(struct io *io, void *user_data)
 {
 	struct client_io *client = user_data;
@@ -2608,6 +2626,8 @@ static bool sock_io_read(struct io *io, void *user_data)
 	uint8_t buf[512];
 	int fd = io_get_fd(io);
 	ssize_t bytes_read;
+	struct notify notify;
+	struct device_state *state;
 
 	if (fd < 0) {
 		error("io_get_fd() returned %d\n", fd);
@@ -2618,8 +2638,22 @@ static bool sock_io_read(struct io *io, void *user_data)
 	if (bytes_read <= 0)
 		return false;
 
-	gatt_notify_cb(chrc->attrib, chrc->ccc, buf, bytes_read, client->att,
-				client->chrc->service->app->database);
+	memset(&notify, 0, sizeof(notify));
+
+	notify.database = client->chrc->service->app->database;
+	notify.handle = gatt_db_attribute_get_handle(chrc->attrib);
+	notify.ccc_handle = gatt_db_attribute_get_handle(chrc->ccc);
+	notify.value = (void *) buf;
+	notify.len = bytes_read;
+	notify.conf = sock_io_conf;
+	notify.user_data = io;
+
+
+	state = find_device_state_by_att(notify.database, client->att);
+	if (!state)
+		return false;
+
+	send_notification_to_device(state, &notify);
 
 	return true;
 }
