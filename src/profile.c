@@ -2167,7 +2167,7 @@ static struct default_settings {
 		.mode		= BT_IO_MODE_ERTM,
 		.authorize	= true,
 		.get_record	= get_mns_record,
-		.version	= 0x0102
+		.version	= 0x0104
 	},
 };
 
