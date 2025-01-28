@@ -212,6 +212,11 @@ fd, uint16 AcquireNotify(dict options) [optional]
 	To release the lock the client shall close the file descriptor, a HUP is
 	generated in case the device is disconnected.
 
+	As a client if indication procedure is used the confirmation is
+	generated automatically once received, for a server if the file
+	descriptor is writable (POLLOUT) then upon receiving a confirmation from
+	the client one byte (0x01) is written to the file descriptor.
+
 	Note: the MTU can only be negotiated once and is symmetric therefore
 	this method may be delayed in order to have the exchange MTU completed,
 	because of that the file descriptor is closed during reconnections as
