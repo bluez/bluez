@@ -2592,6 +2592,8 @@ static bool a2dp_server_listen(struct a2dp_server *server)
 				BT_IO_OPT_MODE, mode,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_CENTRAL, true,
+				/* Set Input MTU to 0 for auto-tune attempt */
+				BT_IO_OPT_IMTU, 0,
 				BT_IO_OPT_INVALID);
 	if (server->io)
 		return true;
