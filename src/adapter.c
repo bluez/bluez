@@ -5684,6 +5684,7 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
 				mgmt_request_func_t func, void *user_data)
 {
 	struct mgmt_cp_set_device_flags cp;
+	uint32_t current = btd_device_get_current_flags(device);
 	uint32_t supported = btd_device_get_supported_flags(device);
 	uint32_t pending = btd_device_get_pending_flags(device);
 	const bdaddr_t *bdaddr;
@@ -5694,7 +5695,7 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
 		return;
 
 	/* Check if changing flags are pending */
-	if (flags == (flags & pending))
+	if ((current ^ flags) == (flags & pending))
 		return;
 
 	/* Set Device Privacy Mode if it has not set the flag yet. */
