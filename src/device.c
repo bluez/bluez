@@ -7413,7 +7413,7 @@ void btd_device_flags_changed(struct btd_device *dev, uint32_t supported_flags,
 
 	dev->supported_flags = supported_flags;
 	dev->current_flags = current_flags;
-	dev->pending_flags = 0;
+	dev->pending_flags &= ~current_flags;
 
 	if (!changed_flags)
 		return;
