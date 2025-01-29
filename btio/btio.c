@@ -63,7 +63,7 @@ struct set_opts {
 	uint16_t psm;
 	uint16_t cid;
 	uint16_t mtu;
-	uint16_t imtu;
+	int imtu;
 	uint16_t omtu;
 	int central;
 	uint8_t mode;
@@ -609,8 +609,8 @@ static uint8_t mode_l2mode(uint8_t mode)
 	}
 }
 
-static gboolean set_l2opts(int sock, uint16_t imtu, uint16_t omtu,
-						uint8_t mode, GError **err)
+static gboolean set_l2opts(int sock, int imtu, uint16_t omtu, uint8_t mode,
+			   GError **err)
 {
 	struct l2cap_options l2o;
 	socklen_t len;
@@ -622,7 +622,7 @@ static gboolean set_l2opts(int sock, uint16_t imtu, uint16_t omtu,
 		return FALSE;
 	}
 
-	if (imtu)
+	if (imtu != -1)
 		l2o.imtu = imtu;
 	if (omtu)
 		l2o.omtu = omtu;
@@ -666,17 +666,27 @@ static gboolean set_le_mode(int sock, uint8_t mode, GError **err)
 }
 
 static gboolean l2cap_set(int sock, uint8_t src_type, int sec_level,
-				uint16_t imtu, uint16_t omtu, uint8_t mode,
+				int imtu, uint16_t omtu, uint8_t mode,
 				int central, int flushable, uint32_t priority,
 				GError **err)
 {
-	if (imtu || omtu || mode) {
+	if (imtu != -1 || omtu || mode) {
 		gboolean ret = FALSE;
 
-		if (src_type == BDADDR_BREDR)
+		if (src_type == BDADDR_BREDR) {
 			ret = set_l2opts(sock, imtu, omtu, mode, err);
-		else {
-			if (imtu)
+
+			/* Back to default behavior in case the first call
+			 * fails: it may happen if the used kernel still
+			 * doesn't support auto-tuning the MTU.
+			 */
+			if (!ret && !imtu) {
+				/* Free existing error */
+				g_error_free(*err);
+				ret = set_l2opts(sock, -1, omtu, mode, err);
+			}
+		} else {
+			if (imtu != -1)
 				ret = set_le_imtu(sock, imtu, err);
 
 			if (ret && mode)
@@ -932,6 +942,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	opts->priority = 0;
 	opts->src_type = BDADDR_BREDR;
 	opts->dst_type = BDADDR_BREDR;
+	opts->imtu = -1;
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
