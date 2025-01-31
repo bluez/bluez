@@ -97,7 +97,6 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 				emulator/bthost.h emulator/bthost.c \
 				emulator/smp.c \
 				emulator/phy.h emulator/phy.c \
-				emulator/amp.h emulator/amp.c \
 				emulator/le.h emulator/le.c
 emulator_btvirt_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la
 
@@ -229,7 +228,7 @@ bin_PROGRAMS += tools/rctest tools/l2test tools/l2ping tools/bluemoon \
 		tools/hex2hcd tools/mpris-proxy tools/btattach tools/isotest
 
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
-			tools/scotest tools/amptest tools/hwdb \
+			tools/scotest tools/hwdb \
 			tools/hcieventmask tools/hcisecfilter \
 			tools/btinfo tools/btconfig \
 			tools/btsnoop tools/btproxy \
@@ -250,8 +249,6 @@ tools_avinfo_LDADD = lib/libbluetooth-internal.la
 tools_avtest_LDADD = lib/libbluetooth-internal.la
 
 tools_scotest_LDADD = lib/libbluetooth-internal.la
-
-tools_amptest_LDADD = lib/libbluetooth-internal.la
 
 tools_hwdb_LDADD = lib/libbluetooth-internal.la
 
@@ -436,7 +433,6 @@ tools_hcidump_SOURCES = tools/hcidump.c \
 				tools/parser/lmp.c \
 				tools/parser/hci.c \
 				tools/parser/l2cap.h tools/parser/l2cap.c \
-				tools/parser/amp.c \
 				tools/parser/smp.c \
 				tools/parser/att.c \
 				tools/parser/sdp.h tools/parser/sdp.c \

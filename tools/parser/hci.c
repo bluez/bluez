@@ -24,7 +24,6 @@
 #include "parser.h"
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
-#include "lib/amp.h"
 
 static uint16_t manufacturer = DEFAULT_COMPID;
 
@@ -1658,18 +1657,6 @@ static inline void le_set_scan_enable_dump(int level, struct frame *frm)
 		(cp->filter_dup == 0x00 ? "disabled" : "enabled"));
 }
 
-static inline void write_remote_amp_assoc_cmd_dump(int level,
-							struct frame *frm)
-{
-	write_remote_amp_assoc_cp *cp = frm->ptr;
-
-	p_indent(level, frm);
-	printf("handle 0x%2.2x len_so_far %d remaining_len %d\n", cp->handle,
-				cp->length_so_far, cp->remaining_length);
-
-	amp_assoc_dump(level + 1, cp->fragment, frm->len - 5);
-}
-
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
@@ -1946,9 +1933,6 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_CLOCK:
 			request_clock_dump(level + 1, frm);
-			return;
-		case OCF_WRITE_REMOTE_AMP_ASSOC:
-			write_remote_amp_assoc_cmd_dump(level + 1, frm);
 			return;
 		}
 		break;
@@ -2638,34 +2622,6 @@ static inline void read_local_amp_info_dump(int level, struct frame *frm)
 	}
 }
 
-static inline void read_local_amp_assoc_dump(int level, struct frame *frm)
-{
-	read_local_amp_assoc_rp *rp = frm->ptr;
-	uint16_t len = btohs(rp->length);
-
-	p_indent(level, frm);
-	printf("status 0x%2.2x handle 0x%2.2x remaining len %d\n",
-			rp->status, rp->handle, len);
-	if (rp->status > 0) {
-		p_indent(level, frm);
-		printf("Error: %s\n", status2str(rp->status));
-	} else {
-		amp_assoc_dump(level + 1, rp->fragment, len);
-	}
-}
-
-static inline void write_remote_amp_assoc_dump(int level, struct frame *frm)
-{
-	write_remote_amp_assoc_rp *rp = frm->ptr;
-
-	p_indent(level, frm);
-	printf("status 0x%2.2x handle 0x%2.2x\n", rp->status, rp->handle);
-	if (rp->status > 0) {
-		p_indent(level, frm);
-		printf("Error: %s\n", status2str(rp->status));
-	}
-}
-
 static inline void le_read_buffer_size_response_dump(int level, struct frame *frm)
 {
 	le_read_buffer_size_rp *rp = frm->ptr;
@@ -2933,15 +2889,6 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_CLOCK:
 			read_clock_dump(level, frm);
-			return;
-		case OCF_READ_LOCAL_AMP_INFO:
-			read_local_amp_info_dump(level, frm);
-			return;
-		case OCF_READ_LOCAL_AMP_ASSOC:
-			read_local_amp_assoc_dump(level, frm);
-			return;
-		case OCF_WRITE_REMOTE_AMP_ASSOC:
-			write_remote_amp_assoc_dump(level, frm);
 			return;
 		}
 		break;
