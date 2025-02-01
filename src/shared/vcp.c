@@ -32,6 +32,8 @@
 
 #define VCP_STEP_SIZE 1
 
+#define VCP_CLIENT_OP_TIMEOUT		2000
+
 #define VOCS_VOL_OFFSET_UPPER_LIMIT	 255
 #define VOCS_VOL_OFFSET_LOWER_LIMIT	-255
 
@@ -176,6 +178,14 @@ struct bt_vcp_notify {
 	void *user_data;
 };
 
+struct bt_vcp_client_op {
+	uint8_t volume;
+	bool resend;
+	bool wait_reply;
+	bool wait_notify;
+	unsigned int timeout_id;
+};
+
 struct bt_vcp {
 	int ref_count;
 	struct bt_vcp_db *ldb;
@@ -202,6 +212,8 @@ struct bt_vcp {
 
 	uint8_t volume;
 	uint8_t volume_counter;
+
+	struct bt_vcp_client_op pending_op;
 
 	void *debug_data;
 	void *user_data;
@@ -395,6 +407,14 @@ static void vcp_remote_client_detached(void *data, void *user_data)
 	cb->detached(vcp, cb->user_data);
 }
 
+static void vcp_client_op_clear(struct bt_vcp_client_op *op)
+{
+	if (op->timeout_id)
+		timeout_remove(op->timeout_id);
+
+	memset(op, 0, sizeof(*op));
+}
+
 void bt_vcp_detach(struct bt_vcp *vcp)
 {
 	if (!queue_remove(sessions, vcp))
@@ -404,6 +424,8 @@ void bt_vcp_detach(struct bt_vcp *vcp)
 		bt_gatt_client_unref(vcp->client);
 		vcp->client = NULL;
 	}
+
+	vcp_client_op_clear(&vcp->pending_op);
 }
 
 static void vcp_db_free(void *data)
@@ -2003,6 +2025,22 @@ done:
 	return vcp;
 }
 
+static void vcp_set_volume_complete(struct bt_vcp *vcp)
+{
+	bool resend = vcp->pending_op.resend;
+	uint8_t volume = vcp->pending_op.volume;
+
+	vcp_client_op_clear(&vcp->pending_op);
+
+	/* If there were more volume set ops while waiting for the one that
+	 * completes, send request to set volume to the latest pending value.
+	 */
+	if (resend) {
+		DBG(vcp, "set pending volume 0x%x", volume);
+		bt_vcp_set_volume(vcp, volume);
+	}
+}
+
 static void vcp_vstate_notify(struct bt_vcp *vcp, uint16_t value_handle,
 				const uint8_t *value, uint16_t length,
 				void *user_data)
@@ -2020,6 +2058,10 @@ static void vcp_vstate_notify(struct bt_vcp *vcp, uint16_t value_handle,
 
 	if (vcp->volume_changed)
 		vcp->volume_changed(vcp, vcp->volume);
+
+	vcp->pending_op.wait_notify = false;
+	if (!vcp->pending_op.wait_reply)
+		vcp_set_volume_complete(vcp);
 }
 
 static void vcp_volume_cp_sent(bool success, uint8_t err, void *user_data)
@@ -2031,12 +2073,23 @@ static void vcp_volume_cp_sent(bool success, uint8_t err, void *user_data)
 			DBG(vcp, "setting volume failed: invalid counter");
 		else
 			DBG(vcp, "setting volume failed: error 0x%x", err);
+
+		vcp_set_volume_complete(vcp);
+	} else {
+		vcp->pending_op.wait_reply = false;
+		if (!vcp->pending_op.wait_notify)
+			vcp_set_volume_complete(vcp);
 	}
 }
 
-uint8_t bt_vcp_get_volume(struct bt_vcp *vcp)
+static bool vcp_set_volume_timeout(void *data)
 {
-	return vcp->volume;
+	struct bt_vcp *vcp = data;
+
+	DBG(vcp, "setting volume: timeout");
+	vcp->pending_op.timeout_id = 0;
+	vcp_set_volume_complete(vcp);
+	return false;
 }
 
 static bool vcp_set_volume_client(struct bt_vcp *vcp, uint8_t volume)
@@ -2061,9 +2114,24 @@ static bool vcp_set_volume_client(struct bt_vcp *vcp, uint8_t volume)
 		return false;
 	}
 
-	vcp->volume = volume;
+	/* If there is another set volume op in flight, just update the wanted
+	 * pending volume value. Req with the latest volume value is sent after
+	 * the current one completes. This may skip over some volume changes,
+	 * as it only sends a request for the final value.
+	 */
+	if (vcp->volume == volume) {
+		/* Do not set to current value, as that doesn't generate
+		 * a notification
+		 */
+		return true;
+	} else if (vcp->pending_op.timeout_id) {
+		vcp->pending_op.volume = volume;
+		vcp->pending_op.resend = true;
+		return true;
+	}
+
 	req.op = BT_VCS_SET_ABSOLUTE_VOL;
-	req.vol_set = vcp->volume;
+	req.vol_set = volume;
 	req.change_counter = vcp->volume_counter;
 
 	if (!bt_gatt_client_write_value(vcp->client, value_handle, (void *)&req,
@@ -2072,6 +2140,11 @@ static bool vcp_set_volume_client(struct bt_vcp *vcp, uint8_t volume)
 		DBG(vcp, "error writing volume");
 		return false;
 	}
+
+	vcp->pending_op.timeout_id = timeout_add(VCP_CLIENT_OP_TIMEOUT,
+					vcp_set_volume_timeout, vcp, NULL);
+	vcp->pending_op.wait_notify = true;
+	vcp->pending_op.wait_reply = true;
 	return true;
 }
 
@@ -2106,6 +2179,11 @@ bool bt_vcp_set_volume(struct bt_vcp *vcp, uint8_t volume)
 		return vcp_set_volume_client(vcp, volume);
 	else
 		return vcp_set_volume_server(vcp, volume);
+}
+
+uint8_t bt_vcp_get_volume(struct bt_vcp *vcp)
+{
+	return vcp->volume;
 }
 
 static void vcp_voffset_state_notify(struct bt_vcp *vcp, uint16_t value_handle,
