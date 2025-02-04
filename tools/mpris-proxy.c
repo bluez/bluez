@@ -1980,7 +1980,7 @@ static void register_player(GDBusProxy *proxy)
 	player->conn = g_dbus_setup_private(DBUS_BUS_SESSION, player->bus_name,
 									NULL);
 	if (!player->conn) {
-		fprintf(stderr, "Could not register bus name %s",
+		fprintf(stderr, "Could not register bus name %s\n",
 							player->bus_name);
 		goto fail;
 	}
@@ -1991,7 +1991,7 @@ static void register_player(GDBusProxy *proxy)
 						NULL,
 						mpris_properties,
 						player, NULL)) {
-		fprintf(stderr, "Could not register interface %s",
+		fprintf(stderr, "Could not register interface %s\n",
 						MPRIS_INTERFACE);
 		goto fail;
 	}
@@ -2002,7 +2002,7 @@ static void register_player(GDBusProxy *proxy)
 						player_signals,
 						player_properties,
 						player, player_free)) {
-		fprintf(stderr, "Could not register interface %s",
+		fprintf(stderr, "Could not register interface %s\n",
 						MPRIS_PLAYER_INTERFACE);
 		goto fail;
 	}
@@ -2013,7 +2013,7 @@ static void register_player(GDBusProxy *proxy)
 						tracklist_signals,
 						tracklist_properties,
 						player, NULL)) {
-		fprintf(stderr, "Could not register interface %s",
+		fprintf(stderr, "Could not register interface %s\n",
 						MPRIS_TRACKLIST_INTERFACE);
 		goto fail;
 	}
@@ -2024,7 +2024,7 @@ static void register_player(GDBusProxy *proxy)
 						NULL,
 						playlist_properties,
 						player, NULL)) {
-		fprintf(stderr, "Could not register interface %s",
+		fprintf(stderr, "Could not register interface %s\n",
 						MPRIS_PLAYLISTS_INTERFACE);
 		goto fail;
 	}
