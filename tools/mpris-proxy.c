@@ -1692,6 +1692,7 @@ static const GDBusPropertyTable tracklist_properties[] = {
 static void list_items_setup(DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
+	uint32_t val = 0;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -1699,6 +1700,12 @@ static void list_items_setup(DBusMessageIter *iter, void *user_data)
 					DBUS_TYPE_VARIANT_AS_STRING
 					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					&dict);
+	dict_append_entry(&dict, "Start", DBUS_TYPE_UINT32, &val);
+	/* Samsung Music app on Android phone send play list items in loop if
+	 * highest bit is set to 1, so limit playlist to 0x7FFFFFFF items
+	 */
+	val = 0x7FFFFFFF;
+	dict_append_entry(&dict, "End", DBUS_TYPE_UINT32, &val);
 	dbus_message_iter_close_container(iter, &dict);
 }
 
