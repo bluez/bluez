@@ -75,7 +75,7 @@ static void serial_write_callback(const struct iovec *iov, int iovlen,
 static void serial_read_callback(int fd, uint32_t events, void *user_data)
 {
 	struct serial *serial = user_data;
-	static uint8_t buf[4096];
+	uint8_t buf[4096];
 	uint8_t *ptr = buf;
 	ssize_t len;
 	uint16_t count;
@@ -87,8 +87,7 @@ static void serial_read_callback(int fd, uint32_t events, void *user_data)
 	}
 
 again:
-	len = read(serial->fd, buf + serial->pkt_offset,
-			sizeof(buf) - serial->pkt_offset);
+	len = read(serial->fd, buf, sizeof(buf));
 	if (len < 0) {
 		if (errno == EAGAIN)
 			goto again;
@@ -98,7 +97,7 @@ again:
 	if (!serial->btdev)
 		return;
 
-	count = serial->pkt_offset + len;
+	count = len;
 
 	while (count > 0) {
 		hci_command_hdr *cmd_hdr;
