@@ -30,11 +30,18 @@
 #define BLUEZ_BUS_NAME "org.bluez"
 #define BLUEZ_PATH "/org/bluez"
 #define BLUEZ_ADAPTER_INTERFACE "org.bluez.Adapter1"
+#define BLUEZ_DEVICE_INTERFACE "org.bluez.Device1"
 #define BLUEZ_MEDIA_INTERFACE "org.bluez.Media1"
 #define BLUEZ_MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
 #define BLUEZ_MEDIA_FOLDER_INTERFACE "org.bluez.MediaFolder1"
 #define BLUEZ_MEDIA_ITEM_INTERFACE "org.bluez.MediaItem1"
 #define BLUEZ_MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport1"
+#define BLUEZ_OBEX_BUS_NAME "org.bluez.obex"
+#define BLUEZ_OBEX_PATH "/org/bluez/obex"
+#define BLUEZ_OBEX_CLIENT_PATH BLUEZ_OBEX_PATH "/client"
+#define BLUEZ_OBEX_CLIENT_INTERFACE "org.bluez.obex.Client1"
+#define BLUEZ_OBEX_IMAGE_INTERFACE "org.bluez.obex.Image1"
+#define BLUEZ_OBEX_TRANSFER_INTERFACE "org.bluez.obex.Transfer1"
 #define MPRIS_BUS_NAME "org.mpris.MediaPlayer2."
 #define MPRIS_INTERFACE "org.mpris.MediaPlayer2"
 #define MPRIS_PLAYER_INTERFACE "org.mpris.MediaPlayer2.Player"
@@ -48,8 +55,10 @@ static GDBusProxy *adapter = NULL;
 static DBusConnection *sys = NULL;
 static DBusConnection *session = NULL;
 static GDBusClient *client = NULL;
+static GDBusClient *obex_client;
 static GSList *players = NULL;
 static GSList *transports = NULL;
+static GSList *obex_sessions;
 
 static gboolean option_version = FALSE;
 static gboolean option_export = FALSE;
@@ -57,6 +66,12 @@ static gboolean option_export = FALSE;
 struct tracklist {
 	GDBusProxy *proxy;
 	GSList *items;
+};
+
+struct obex_session {
+	GDBusProxy *device;
+	GDBusProxy *obex;
+	uint16_t port;
 };
 
 struct player {
@@ -67,11 +82,14 @@ struct player {
 	GDBusProxy *device;
 	GDBusProxy *transport;
 	GDBusProxy *playlist;
+	struct obex_session *obex;
 	struct tracklist *tracklist;
+	char *filename;
 };
 
 typedef int (* parse_metadata_func) (DBusMessageIter *iter, const char *key,
-						DBusMessageIter *metadata);
+						DBusMessageIter *metadata,
+						void *userdata);
 
 static void dict_append_entry(DBusMessageIter *dict, const char *key, int type,
 								void *val);
@@ -240,7 +258,8 @@ static void dict_append_iter(DBusMessageIter *dict, const char *key,
 }
 
 static int parse_metadata_entry(DBusMessageIter *entry, const char *key,
-						DBusMessageIter *metadata)
+						DBusMessageIter *metadata,
+						void *userdata)
 {
 	if (dbus_message_iter_get_arg_type(entry) != DBUS_TYPE_VARIANT)
 		return -EINVAL;
@@ -251,7 +270,8 @@ static int parse_metadata_entry(DBusMessageIter *entry, const char *key,
 }
 
 static int parse_metadata(DBusMessageIter *args, DBusMessageIter *metadata,
-						parse_metadata_func func)
+						parse_metadata_func func,
+						void *userdata)
 {
 	DBusMessageIter dict;
 	int ctype;
@@ -277,7 +297,7 @@ static int parse_metadata(DBusMessageIter *args, DBusMessageIter *metadata,
 		dbus_message_iter_get_basic(&entry, &key);
 		dbus_message_iter_next(&entry);
 
-		if (func(&entry, key, metadata) < 0)
+		if (func(&entry, key, metadata, userdata) < 0)
 			return -EINVAL;
 
 		dbus_message_iter_next(&dict);
@@ -299,7 +319,7 @@ static void append_metadata(DBusMessageIter *iter, DBusMessageIter *dict,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &metadata);
 
-	parse_metadata(dict, &metadata, func);
+	parse_metadata(dict, &metadata, func, NULL);
 
 	dbus_message_iter_close_container(&value, &metadata);
 	dbus_message_iter_close_container(iter, &value);
@@ -1223,7 +1243,8 @@ static gboolean parse_path_metadata(DBusMessageIter *iter, const char *key,
 }
 
 static int parse_track_entry(DBusMessageIter *entry, const char *key,
-						DBusMessageIter *metadata)
+						DBusMessageIter *metadata,
+						void *userdata)
 {
 	DBusMessageIter var;
 
@@ -1253,6 +1274,30 @@ static int parse_track_entry(DBusMessageIter *entry, const char *key,
 	} else if (strcasecmp(key, "Item") == 0) {
 		if (!parse_path_metadata(&var, "mpris:trackid", metadata))
 			return -EINVAL;
+	} else if (strcasecmp(key, "ImgHandle") == 0) {
+		struct player *player = userdata;
+		const char *handle, *path;
+		char *filename, *uri;
+
+		if (!player || !player->obex)
+			return -EINVAL;
+
+		path = g_dbus_proxy_get_path(player->obex->obex);
+
+		if (dbus_message_iter_get_arg_type(&var) != DBUS_TYPE_STRING)
+			return -EINVAL;
+		dbus_message_iter_get_basic(&var, &handle);
+
+		filename = g_strconcat(g_get_tmp_dir(), "/",
+				path + strlen(BLUEZ_OBEX_CLIENT_PATH "/"),
+				"-", handle, NULL);
+		if (access(filename, F_OK) == 0) {
+			uri = g_strconcat("file://", filename, NULL);
+			dict_append_entry(metadata, "mpris:artUrl",
+						DBUS_TYPE_STRING, &uri);
+			g_free(uri);
+		}
+		g_free(filename);
 	}
 
 	return 0;
@@ -1272,7 +1317,7 @@ static gboolean get_track(const GDBusPropertyTable *property,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &metadata);
 
-	parse_metadata(&var, &metadata, parse_track_entry);
+	parse_metadata(&var, &metadata, parse_track_entry, player);
 
 	dbus_message_iter_close_container(iter, &metadata);
 
@@ -1443,7 +1488,7 @@ static void append_item_metadata(void *data, void *user_data)
 									&path);
 
 	if (g_dbus_proxy_get_property(item, "Metadata", &var))
-		parse_metadata(&var, &metadata, parse_track_entry);
+		parse_metadata(&var, &metadata, parse_track_entry, NULL);
 
 	dbus_message_iter_close_container(iter, &metadata);
 
@@ -1938,11 +1983,96 @@ static void register_tracklist(GDBusProxy *proxy)
 				player, NULL);
 }
 
+static GDBusProxy *connect_obex_session(const char *address, uint16_t port)
+{
+	static const char *target_str = "bip-avrcp";
+	DBusMessage *msg, *reply;
+	DBusMessageIter iter, array;
+	const char *path;
+	DBusError err;
+
+	msg = dbus_message_new_method_call(BLUEZ_OBEX_BUS_NAME,
+					BLUEZ_OBEX_PATH,
+					BLUEZ_OBEX_CLIENT_INTERFACE,
+					"CreateSession");
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &address);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&array);
+	dict_append_entry(&array, "Target", DBUS_TYPE_STRING, &target_str);
+	dict_append_entry(&array, "PSM", DBUS_TYPE_UINT16, &port);
+	dbus_message_iter_close_container(&iter, &array);
+
+	dbus_error_init(&err);
+	reply = dbus_connection_send_with_reply_and_block(session, msg, -1,
+								&err);
+	dbus_message_unref(msg);
+	if (!reply) {
+		if (dbus_error_is_set(&err)) {
+			fprintf(stderr, "%s\n", err.message);
+			dbus_error_free(&err);
+		}
+		return NULL;
+	}
+
+	if (!dbus_message_get_args(reply, NULL,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID)) {
+		dbus_message_unref(reply);
+		return NULL;
+	}
+
+	dbus_message_unref(reply);
+	return g_dbus_proxy_new(obex_client, path, BLUEZ_OBEX_IMAGE_INTERFACE);
+}
+
+static struct obex_session *find_obex_session_by_device(const char *device)
+{
+	GSList *l;
+
+	for (l = obex_sessions; l; l = l->next) {
+		struct obex_session *session = l->data;
+		const char *path = g_dbus_proxy_get_path(session->device);
+
+		if (g_strcmp0(device, path) == 0)
+			return session;
+	}
+
+	return NULL;
+}
+
+static struct obex_session *create_obex_session(GDBusProxy *device,
+						const char *path,
+						const char *address,
+						uint16_t port)
+{
+	struct obex_session *session;
+
+	session = find_obex_session_by_device(path);
+	if (session == NULL || session->port != port) {
+		printf("Bluetooth Obex Create new session\n");
+		session = g_new0(struct obex_session, 1);
+		session->obex = connect_obex_session(address, port);
+		session->device = g_dbus_proxy_ref(device);
+		session->port = port;
+
+		obex_sessions = g_slist_prepend(obex_sessions, session);
+	} else {
+		printf("Bluetooth Obex reuse existing session\n");
+	}
+
+	return session;
+}
+
 static void register_player(GDBusProxy *proxy)
 {
 	struct player *player;
 	DBusMessageIter iter;
-	const char *path, *alias, *name;
+	const char *path, *alias, *name, *address;
 	char *busname;
 	GDBusProxy *device, *transport;
 
@@ -1960,6 +2090,11 @@ static void register_player(GDBusProxy *proxy)
 
 	dbus_message_iter_get_basic(&iter, &alias);
 
+	if (!g_dbus_proxy_get_property(device, "Address", &iter))
+		return;
+
+	dbus_message_iter_get_basic(&iter, &address);
+
 	if (g_dbus_proxy_get_property(proxy, "Name", &iter)) {
 		dbus_message_iter_get_basic(&iter, &name);
 		busname = g_strconcat(alias, " ", name, NULL);
@@ -1970,6 +2105,16 @@ static void register_player(GDBusProxy *proxy)
 	player->bus_name = mpris_busname(busname);
 	player->proxy = g_dbus_proxy_ref(proxy);
 	player->device = device;
+
+	if (g_dbus_proxy_get_property(proxy, "ObexPort", &iter)) {
+		uint16_t port;
+
+		dbus_message_iter_get_basic(&iter, &port);
+
+		player->obex = create_obex_session(device, path, address, port);
+	} else {
+		player->obex = NULL;
+	}
 
 	g_free(busname);
 
@@ -2177,7 +2322,7 @@ static void register_item(struct player *player, GDBusProxy *proxy)
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &metadata);
 
-	parse_metadata(&iter, &metadata, parse_track_entry);
+	parse_metadata(&iter, &metadata, parse_track_entry, player);
 
 	dbus_message_iter_close_container(&args, &metadata);
 
@@ -2377,6 +2522,122 @@ static const char *property_to_mpris(const char *property)
 	return NULL;
 }
 
+static const char *obex_get_image_handle(DBusMessageIter *args)
+{
+	DBusMessageIter dict, var;
+	int ctype;
+
+	ctype = dbus_message_iter_get_arg_type(args);
+	if (ctype != DBUS_TYPE_ARRAY)
+		return NULL;
+
+	dbus_message_iter_recurse(args, &dict);
+
+	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
+							DBUS_TYPE_INVALID) {
+		DBusMessageIter entry;
+		const char *key;
+
+		if (ctype != DBUS_TYPE_DICT_ENTRY)
+			return NULL;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return NULL;
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
+			return NULL;
+
+		dbus_message_iter_recurse(&entry, &var);
+
+		if (strcasecmp(key, "ImgHandle") == 0) {
+			const char *handle;
+
+			dbus_message_iter_get_basic(&var, &handle);
+			printf("Bluetooth Obex ImgHandle: %s\n", handle);
+			return handle;
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	return NULL;
+}
+
+static void obex_get_image(struct player *player, const char *handle)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter, array;
+	struct obex_session *obex_session = player->obex;
+	const char *path = g_dbus_proxy_get_path(obex_session->obex);
+	char *filename;
+
+	player->filename = g_strconcat(g_get_tmp_dir(), "/",
+				path + strlen(BLUEZ_OBEX_CLIENT_PATH "/"),
+				"-", handle, NULL);
+	filename = g_strconcat(player->filename, ".tmp", NULL);
+
+	msg = dbus_message_new_method_call(BLUEZ_OBEX_BUS_NAME,
+					path,
+					BLUEZ_OBEX_IMAGE_INTERFACE,
+					"Get");
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &filename);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &handle);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&array);
+	dbus_message_iter_close_container(&iter, &array);
+
+	if (!g_dbus_send_message(session, msg)) {
+		g_free(player->filename);
+		player->filename = NULL;
+	}
+	g_free(filename);
+}
+
+static void device_property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	const char *path;
+	struct obex_session *session;
+	gboolean connected;
+	GSList *l;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	if (strcasecmp(name, "Connected") != 0)
+		return;
+
+	dbus_message_iter_get_basic(iter, &connected);
+
+	if (connected)
+		return;
+
+	printf("Bluetooth Device %s disconnected\n", path);
+	session = find_obex_session_by_device(path);
+	if (session == NULL)
+		return;
+
+	for (l = players; l; l = l->next) {
+		struct player *player = l->data;
+
+		if (player->obex == session)
+			player->obex = NULL;
+	}
+
+	g_dbus_proxy_unref(session->obex);
+	g_dbus_proxy_unref(session->device);
+	obex_sessions = g_slist_remove(obex_sessions, session);
+	g_free(session);
+}
+
 static void player_property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -2396,6 +2657,13 @@ static void player_property_changed(GDBusProxy *proxy, const char *name,
 	g_dbus_emit_property_changed(player->conn, MPRIS_PLAYER_PATH,
 						MPRIS_PLAYER_INTERFACE,
 						property);
+
+	if (strcasecmp(name, "Track") == 0 && player->obex) {
+		const char *handle = obex_get_image_handle(iter);
+
+		if (handle)
+			obex_get_image(player, handle);
+	}
 
 	if (strcasecmp(name, "Position") != 0)
 		return;
@@ -2485,6 +2753,9 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
+	if (strcmp(interface, BLUEZ_DEVICE_INTERFACE) == 0)
+		return device_property_changed(proxy, name, iter, user_data);
+
 	if (strcmp(interface, BLUEZ_MEDIA_PLAYER_INTERFACE) == 0)
 		return player_property_changed(proxy, name, iter, user_data);
 
@@ -2494,6 +2765,144 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 	if (strcmp(interface, BLUEZ_MEDIA_ITEM_INTERFACE) == 0)
 		return item_property_changed(proxy, name, iter, user_data);
+}
+
+static struct player *find_player_by_obex(const char *path)
+{
+	GSList *l;
+
+	for (l = players; l; l = l->next) {
+		struct player *player = l->data;
+		struct obex_session *session = player->obex;
+		const char *obex_path = g_dbus_proxy_get_path(session->obex);
+
+		if (g_str_has_prefix(path, obex_path))
+			return player;
+	}
+
+	return NULL;
+}
+
+static void obex_connect_handler(DBusConnection *connection, void *user_data)
+{
+	printf("org.bluez.obex appeared\n");
+}
+
+static void obex_disconnect_handler(DBusConnection *connection,
+					void *user_data)
+{
+	printf("org.bluez.obex disappeared\n");
+}
+
+static void obex_proxy_added(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+	const char *path;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+	path = g_dbus_proxy_get_path(proxy);
+
+	if (!strcmp(interface, BLUEZ_OBEX_CLIENT_INTERFACE)) {
+		GSList *l;
+
+		printf("Bluetooth Obex Client %s found\n", path);
+
+		for (l = players; l; l = l->next) {
+			struct player *player = l->data;
+			DBusMessageIter iter;
+			const char *address;
+			uint16_t port;
+
+			if (!g_dbus_proxy_get_property(player->proxy,
+					"ObexPort", &iter) ||
+					player->obex)
+				continue;
+
+			dbus_message_iter_get_basic(&iter, &port);
+
+			if (!g_dbus_proxy_get_property(player->device,
+					"Address", &iter))
+				continue;
+
+			dbus_message_iter_get_basic(&iter, &address);
+
+			player->obex = create_obex_session(player->device,
+								path,
+								address,
+								port);
+		}
+	}
+}
+
+static void obex_proxy_removed(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+	const char *path;
+
+	if (adapter == NULL)
+		return;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+	path = g_dbus_proxy_get_path(proxy);
+
+	if (strcmp(interface, BLUEZ_OBEX_CLIENT_INTERFACE) == 0) {
+		GSList *l;
+
+		printf("Bluetooth Obex Client %s removed\n", path);
+
+		for (l = players; l; l = l->next) {
+			struct player *player = l->data;
+
+			player->obex = NULL;
+		}
+
+		while (obex_sessions) {
+			struct obex_session *session = obex_sessions->data;
+
+			g_dbus_proxy_unref(session->device);
+			g_dbus_proxy_unref(session->obex);
+			obex_sessions = g_slist_remove(obex_sessions, session);
+		}
+	}
+}
+
+static void obex_property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	const char *interface;
+	const char *path;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+	path = g_dbus_proxy_get_path(proxy);
+
+	if (strcmp(interface, BLUEZ_OBEX_TRANSFER_INTERFACE) == 0) {
+		struct player *player;
+		const char *status;
+
+		if (strcasecmp(name, "Status") != 0)
+			return;
+
+		dbus_message_iter_get_basic(iter, &status);
+
+		player = find_player_by_obex(path);
+		if (player && strcasecmp(status, "complete") == 0) {
+			char *filename;
+
+			printf("Bluetooth Obex cover art available at: %s\n",
+				player->filename);
+
+			filename = g_strconcat(player->filename, ".tmp", NULL);
+			rename(filename, player->filename);
+			g_free(filename);
+			g_free(player->filename);
+			player->filename = NULL;
+
+			g_dbus_emit_property_changed(player->conn,
+							MPRIS_PLAYER_PATH,
+							MPRIS_PLAYER_INTERFACE,
+							"Metadata");
+		}
+	}
 }
 
 int main(int argc, char *argv[])
@@ -2565,6 +2974,19 @@ int main(int argc, char *argv[])
 
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 						property_changed, NULL);
+
+	obex_client = g_dbus_client_new(session, BLUEZ_OBEX_BUS_NAME,
+					BLUEZ_OBEX_PATH);
+
+	g_dbus_client_set_connect_watch(obex_client, obex_connect_handler,
+					NULL);
+	g_dbus_client_set_disconnect_watch(obex_client,
+						obex_disconnect_handler,
+						NULL);
+
+	g_dbus_client_set_proxy_handlers(obex_client, obex_proxy_added,
+						obex_proxy_removed,
+						obex_property_changed, NULL);
 
 	g_main_loop_run(main_loop);
 
