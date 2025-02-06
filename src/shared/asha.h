@@ -47,6 +47,12 @@ struct bt_asha {
 	void *cb_user_data;
 };
 
+struct bt_asha_set {
+	uint8_t hisyncid[8];
+	struct bt_asha *left;
+	struct bt_asha *right;
+};
+
 struct bt_asha *bt_asha_new(void);
 void bt_asha_reset(struct bt_asha *asha);
 void bt_asha_state_reset(struct bt_asha *asha);

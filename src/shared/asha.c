@@ -39,6 +39,119 @@
 #define ASHA_CHRC_VOLUME_UUID "00e4ca9e-ab14-41e4-8823-f9e70c7e91df"
 #define ASHA_CHRC_LE_PSM_OUT_UUID "2d410339-82b6-42aa-b34e-e2e01df8cc1a"
 
+static struct queue *asha_devices;
+
+static unsigned int bt_asha_status(struct bt_asha *asha, bool connected);
+
+static bool match_hisyncid(const void *data, const void *user_data)
+{
+	const struct bt_asha_set *set = data;
+	const struct bt_asha *asha = user_data;
+
+	return (memcmp(set->hisyncid, asha->hisyncid, 8) == 0);
+}
+
+static struct bt_asha_set *find_asha_set(struct bt_asha *asha)
+{
+	return queue_find(asha_devices, match_hisyncid, asha);
+}
+
+static uint8_t is_other_connected(struct bt_asha *asha)
+{
+	struct bt_asha_set *set = find_asha_set(asha);
+
+	if (set) {
+		if (asha->right_side && set->left) {
+			DBG("ASHA right and left side connected");
+			return 1;
+		}
+		if (!asha->right_side && set->right) {
+			DBG("ASHA left and right side connected");
+			return 1;
+		}
+	}
+
+	if (asha->right_side)
+		DBG("ASHA right side connected");
+	else
+		DBG("ASHA left side connected");
+
+	return 0;
+}
+
+static void update_asha_set(struct bt_asha *asha, bool connected)
+{
+	struct bt_asha_set *set;
+
+	set = queue_find(asha_devices, match_hisyncid, asha);
+
+	if (connected) {
+		if (!set) {
+			set = new0(struct bt_asha_set, 1);
+			memcpy(set->hisyncid, asha->hisyncid, 8);
+			queue_push_tail(asha_devices, set);
+			DBG("Created ASHA set");
+		}
+
+		if (asha->right_side) {
+			set->right = asha;
+			DBG("Right side registered for ASHA set");
+		} else {
+			set->left = asha;
+			DBG("Left side registered for ASHA set");
+		}
+	} else {
+		if (!set) {
+			error("Missing ASHA set");
+			return;
+		}
+
+		if (asha->right_side && set->right) {
+			set->right = NULL;
+			DBG("Right side unregistered for ASHA set");
+		} else if (!asha->right_side && set->left) {
+			set->left = NULL;
+			DBG("Left side unregistered for ASHA set");
+		}
+
+		if (!set->right && !set->left) {
+			if (queue_remove(asha_devices, set)) {
+				free(set);
+				DBG("Freeing ASHA set");
+			}
+
+			if (!queue_peek_tail(asha_devices)) {
+				queue_destroy(asha_devices, NULL);
+				asha_devices = NULL;
+			}
+		}
+	}
+}
+
+static int asha_set_send_status(struct bt_asha *asha, bool other_connected)
+{
+	struct bt_asha_set *set;
+	int ret = 0;
+
+	set = queue_find(asha_devices, match_hisyncid, asha);
+
+	if (set) {
+		if (asha->right_side && set->left) {
+			ret = bt_asha_status(set->left, other_connected);
+			DBG("ASHA left side update: %d, ret: %d",
+					other_connected, ret);
+		}
+
+		if (!asha->right_side && set->right) {
+			ret = bt_asha_status(set->right, other_connected);
+			DBG("ASHA right side update: %d, ret: %d",
+					other_connected, ret);
+		}
+	}
+
+	return ret;
+}
+
 struct bt_asha *bt_asha_new(void)
 {
 	struct bt_asha *asha;
@@ -62,6 +175,8 @@ void bt_asha_reset(struct bt_asha *asha)
 	asha->client = NULL;
 
 	asha->psm = 0;
+
+	update_asha_set(asha, false);
 }
 
 void bt_asha_state_reset(struct bt_asha *asha)
@@ -74,6 +189,7 @@ void bt_asha_state_reset(struct bt_asha *asha)
 
 void bt_asha_free(struct bt_asha *asha)
 {
+	update_asha_set(asha, false);
 	gatt_db_unref(asha->db);
 	bt_gatt_client_unref(asha->client);
 	free(asha);
@@ -110,15 +226,28 @@ static int asha_send_acp(struct bt_asha *asha, uint8_t *cmd,
 	return 0;
 }
 
+static int asha_send_acp_without_response(struct bt_asha *asha,
+		uint8_t *cmd, unsigned int len)
+{
+	if (!bt_gatt_client_write_without_response(asha->client,
+			asha->acp_handle, false, cmd, len)) {
+		error("Error writing ACP command");
+		return -1;
+	}
+
+	return 0;
+}
+
 unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
 								void *user_data)
 {
+	uint8_t other_connected = is_other_connected(asha);
 	uint8_t acp_start_cmd[] = {
 		0x01,		/* START */
 		0x01,		/* G.722, 16 kHz */
 		0,			/* Unknown media type */
 		asha->volume,	/* Volume */
-		0,			/* Other disconnected */
+		other_connected,
 	};
 	int ret;
 
@@ -143,14 +272,43 @@ unsigned int bt_asha_stop(struct bt_asha *asha, bt_asha_cb_t cb,
 	uint8_t acp_stop_cmd[] = {
 		0x02, /* STOP */
 	};
+	int ret;
 
 	if (asha->state != ASHA_STARTED)
 		return 0;
 
 	asha->state = ASHA_STOPPING;
 
-	return asha_send_acp(asha, acp_stop_cmd, sizeof(acp_stop_cmd),
-								cb, user_data);
+	ret = asha_send_acp(asha, acp_stop_cmd, sizeof(acp_stop_cmd),
+			cb, user_data);
+	asha_set_send_status(asha, false);
+
+	return ret;
+}
+
+static unsigned int bt_asha_status(struct bt_asha *asha, bool other_connected)
+{
+	uint8_t status = other_connected ? 1 : 0;
+	uint8_t acp_status_cmd[] = {
+		0x03, /* STATUS */
+		status,
+	};
+	int ret;
+
+	if (asha->state != ASHA_STARTED) {
+		const char *side = asha->right_side ? "right" : "left";
+
+		DBG("ASHA %s device not started for status update", side);
+
+		return 0;
+	}
+
+	ret = asha_send_acp_without_response(asha, acp_status_cmd,
+			sizeof(acp_status_cmd));
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 bool bt_asha_set_volume(struct bt_asha *asha, int8_t volume)
@@ -238,6 +396,8 @@ static void read_rops(bool success,
 	DBG("Got ROPS: side %u, binaural %u, csis: %u, delay %u, codecs: %u",
 			asha->right_side, asha->binaural, asha->csis_supported,
 			asha->render_delay, asha->codec_ids);
+
+	update_asha_set(asha, true);
 }
 
 static void audio_status_register(uint16_t att_ecode, void *user_data)
@@ -261,6 +421,7 @@ static void audio_status_notify(uint16_t value_handle, const uint8_t *value,
 		if (status == 0) {
 			asha->state = ASHA_STARTED;
 			DBG("ASHA start complete");
+			asha_set_send_status(asha, true);
 		} else {
 			bt_asha_state_reset(asha);
 			DBG("ASHA start failed");
@@ -354,6 +515,9 @@ bool bt_asha_probe(struct bt_asha *asha, struct gatt_db *db,
 		bt_asha_reset(asha);
 		return false;
 	}
+
+	if (!asha_devices)
+		asha_devices = queue_new();
 
 	return true;
 }
