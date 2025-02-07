@@ -3475,8 +3475,11 @@ static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
 	clear_temporary_timer(dev);
 
 	if (!timeout)
-		return;
-
+	{                 
+		dev->temporary = false;                 
+		return;         
+	}
+	
 	dev->temporary_timer = timeout_add_seconds(timeout, device_disappeared,
 								dev, NULL);
 }
