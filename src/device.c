@@ -5628,6 +5628,8 @@ static void gatt_debug(const char *str, void *user_data)
 
 static void gatt_client_init(struct btd_device *device)
 {
+	uint8_t features;
+
 	gatt_client_cleanup(device);
 
 	if (!device->connect && !btd_opts.reverse_discovery) {
@@ -5639,8 +5641,13 @@ static void gatt_client_init(struct btd_device *device)
 		return;
 	}
 
+	features =  BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING
+				| BT_GATT_CHRC_CLI_FEAT_NFY_MULTI;
+	if (btd_opts.gatt_channels > 1)
+		features |= BT_GATT_CHRC_CLI_FEAT_EATT;
+
 	device->client = bt_gatt_client_new(device->db, device->att,
-							device->att_mtu, 0);
+						device->att_mtu, features);
 	if (!device->client) {
 		DBG("Failed to initialize");
 		return;

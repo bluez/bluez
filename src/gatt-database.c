@@ -1245,7 +1245,8 @@ static void server_feat_read_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
-	value |= BT_GATT_CHRC_SERVER_FEAT_EATT;
+	if (btd_opts.gatt_channels > 1)
+		value |= BT_GATT_CHRC_SERVER_FEAT_EATT;
 
 done:
 	gatt_db_attribute_read_result(attrib, id, ecode, &value, sizeof(value));

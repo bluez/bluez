@@ -2043,7 +2043,7 @@ static void write_client_features(struct bt_gatt_client *client)
 
 	handle = gatt_db_attribute_get_handle(attr);
 
-	client->features = BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
+	client->features |= BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
 
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
 
@@ -2055,9 +2055,11 @@ static void write_client_features(struct bt_gatt_client *client)
 		gatt_db_attribute_read(attr, 0, BT_ATT_OP_READ_REQ,
 						NULL, server_feat_read_value,
 						&feat);
-		if (feat && feat[0] & BT_GATT_CHRC_SERVER_FEAT_EATT)
-			client->features |= BT_GATT_CHRC_CLI_FEAT_EATT;
+		if (!(feat && feat[0] & BT_GATT_CHRC_SERVER_FEAT_EATT)
+			|| !(client->features & BT_GATT_CHRC_CLI_FEAT_EATT))
+			client->features &= ~BT_GATT_CHRC_CLI_FEAT_EATT;
 	}
+
 
 	client->features |= BT_GATT_CHRC_CLI_FEAT_NFY_MULTI;
 
