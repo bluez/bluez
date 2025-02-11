@@ -3,7 +3,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright 2023-2024 NXP
+ *  Copyright 2023-2025 NXP
  *
  */
 
@@ -557,26 +557,27 @@ static void confirm_cb(GIOChannel *io, void *user_data)
 	dg->io_id = g_io_add_watch(io, G_IO_OUT, big_info_cb, dg);
 }
 
-bool bass_bcast_probe(struct btd_service *service, int *ret)
+static void bap_attached(struct bt_bap *bap, void *user_data)
 {
+	struct btd_service *service = bt_bap_get_user_data(bap);
 	struct btd_device *device = btd_service_get_device(service);
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct bass_delegator *dg;
 	GError *err = NULL;
 
+	DBG("%p", bap);
+
 	dg = queue_find(delegators, delegator_match_device, device);
 	if (!dg)
 		/* Only probe devices added via Broadcast Assistants */
-		return false;
+		return;
 
-	if (dg->service) {
+	if (dg->service)
 		/* Service has already been probed */
-		*ret = -EINVAL;
-		return true;
-	}
+		return;
 
 	dg->service = service;
-	dg->bap = bap_get_session(device);
+	dg->bap = bap;
 
 	dg->io = bt_io_listen(NULL, confirm_cb, dg,
 		NULL, &err,
@@ -593,11 +594,12 @@ bool bass_bcast_probe(struct btd_service *service, int *ret)
 		BT_IO_OPT_INVALID);
 	if (!dg->io) {
 		error("%s", err->message);
-		*ret = -err->code;
 		g_error_free(err);
+		return;
 	}
 
-	return true;
+	/* Take ownership for the service by setting the user data. */
+	btd_service_set_user_data(service, dg);
 }
 
 static void setup_free(void *data)
@@ -610,22 +612,23 @@ static void setup_free(void *data)
 	util_iov_free(setup->meta, 1);
 	util_iov_free(setup->config, 1);
 
-	if (setup->stream) {
-		uint8_t state = bt_bap_stream_get_state(setup->stream);
-
-		if (state == BT_BAP_STREAM_STATE_STREAMING)
-			bt_bass_clear_bis_sync(setup->dg->src,
-					stream_get_bis(setup->stream));
-	}
+	/* Clear bis index from the bis sync bitmask, if it
+	 * has been previously set.
+	 */
+	bt_bass_clear_bis_sync(setup->dg->src, setup->bis);
 }
 
-bool bass_bcast_remove(struct btd_device *device)
+static void bap_detached(struct bt_bap *bap, void *user_data)
 {
+	struct btd_service *service = bt_bap_get_user_data(bap);
+	struct btd_device *device = btd_service_get_device(service);
 	struct bass_delegator *dg;
+
+	DBG("%p", bap);
 
 	dg = queue_remove_if(delegators, delegator_match_device, device);
 	if (!dg)
-		return false;
+		return;
 
 	DBG("%p", dg);
 
@@ -657,7 +660,7 @@ bool bass_bcast_remove(struct btd_device *device)
 
 	free(dg);
 
-	return true;
+	btd_service_set_user_data(service, NULL);
 }
 
 static void assistant_set_state(struct bass_assistant *assistant,
@@ -1649,6 +1652,7 @@ static struct btd_profile bass_service = {
 };
 
 static unsigned int bass_id;
+static unsigned int bap_id;
 
 static int bass_init(void)
 {
@@ -1659,6 +1663,7 @@ static int bass_init(void)
 		return err;
 
 	bass_id = bt_bass_register(bass_attached, bass_detached, NULL);
+	bap_id = bt_bap_register(bap_attached, bap_detached, NULL);
 
 	return 0;
 }
@@ -1667,6 +1672,7 @@ static void bass_exit(void)
 {
 	btd_profile_unregister(&bass_service);
 	bt_bass_unregister(bass_id);
+	bt_bap_unregister(bap_id);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(bass, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,

@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation. All rights reserved.
- *  Copyright 2023-2024 NXP
+ *  Copyright 2023-2025 NXP
  *
  *
  */
@@ -192,7 +192,7 @@ static void bap_data_free(struct bap_data *data)
 	if (data->io_id)
 		g_source_remove(data->io_id);
 
-	if (data->service) {
+	if (data->service && btd_service_get_user_data(data->service) == data) {
 		btd_service_set_user_data(data->service, NULL);
 		bt_bap_set_user_data(data->bap, NULL);
 	}
@@ -2751,7 +2751,7 @@ static void bap_data_add(struct bap_data *data)
 
 	queue_push_tail(sessions, data);
 
-	if (data->service)
+	if (data->service && !btd_service_get_user_data(data->service))
 		btd_service_set_user_data(data->service, data);
 }
 
@@ -3064,7 +3064,6 @@ static int bap_bcast_probe(struct btd_service *service)
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
 	struct bap_data *data;
-	int ret = 0;
 
 	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET)) {
 		error("BAP requires ISO Socket which is not enabled");
@@ -3084,6 +3083,8 @@ static int bap_bcast_probe(struct btd_service *service)
 	}
 	data->bcast_snks = queue_new();
 
+	bt_bap_set_user_data(data->bap, service);
+
 	if (!bt_bap_attach(data->bap, NULL)) {
 		error("BAP unable to attach");
 		return -EINVAL;
@@ -3098,13 +3099,18 @@ static int bap_bcast_probe(struct btd_service *service)
 	data->pac_id = bt_bap_pac_register(data->bap, pac_added_broadcast,
 				pac_removed_broadcast, data, NULL);
 
-	bt_bap_set_user_data(data->bap, service);
-
-	if (bass_bcast_probe(service, &ret))
-		/* Return if probed device was handled inside BASS. */
-		return ret;
-
-	pa_sync(data);
+	if (btd_service_get_user_data(service) == data)
+		/* If the reference to the bap session has been set as service
+		 * user data, it means the broadcaster was autonomously probed.
+		 * Thus, the Broadcast Sink needs to create short lived PA sync
+		 * to discover streams.
+		 *
+		 * If the service user data does not match the bap session, it
+		 * means that the broadcaster was probed via a Broadcast
+		 * Assistant from the BASS plugin, where stream discovery and
+		 * configuration will also be handled.
+		 */
+		pa_sync(data);
 
 	return 0;
 }
@@ -3118,14 +3124,11 @@ static void bap_bcast_remove(struct btd_service *service)
 	ba2str(device_get_address(device), addr);
 	DBG("%s", addr);
 
-	data = btd_service_get_user_data(service);
+	data = queue_find(sessions, match_device, device);
 	if (!data) {
 		error("BAP service not handled by profile");
 		return;
 	}
-
-	/* Notify the BASS plugin about the removed session. */
-	bass_bcast_remove(device);
 
 	bap_data_remove(data);
 
@@ -3225,6 +3228,24 @@ static int bap_disconnect(struct btd_service *service)
 	return 0;
 }
 
+static int bap_bcast_disconnect(struct btd_service *service)
+{
+	struct btd_device *device = btd_service_get_device(service);
+	struct bap_data *data;
+
+	data = queue_find(sessions, match_device, device);
+	if (!data) {
+		error("BAP service not handled by profile");
+		return -EINVAL;
+	}
+
+	bt_bap_detach(data->bap);
+
+	btd_service_disconnecting_complete(service, 0);
+
+	return 0;
+}
+
 static int bap_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
@@ -3307,7 +3328,7 @@ static struct btd_profile bap_bcast_profile = {
 	.remote_uuid	= BCAAS_UUID_STR,
 	.device_probe	= bap_bcast_probe,
 	.device_remove	= bap_bcast_remove,
-	.disconnect	= bap_disconnect,
+	.disconnect	= bap_bcast_disconnect,
 	.auto_connect	= false,
 	.experimental	= true,
 };
