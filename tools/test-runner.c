@@ -212,7 +212,6 @@ static char *const qemu_argv[] = {
 	"-display", "none",
 	"-machine", "type=q35,accel=kvm:tcg",
 	"-m", "256M",
-	"-nographic",
 	"-net", "none",
 	"-no-reboot",
 	"-fsdev", "local,id=fsdev-root,path=/,readonly,security_model=none,"
