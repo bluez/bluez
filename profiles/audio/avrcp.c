@@ -138,7 +138,7 @@
 
 #define AVRCP_BROWSING_TIMEOUT		1
 #define AVRCP_CT_VERSION		0x0106
-#define AVRCP_TG_VERSION		0x0105
+#define AVRCP_TG_VERSION		0x0106
 
 #define AVRCP_SCOPE_MEDIA_PLAYER_LIST			0x00
 #define AVRCP_SCOPE_MEDIA_PLAYER_VFS			0x01
@@ -414,7 +414,7 @@ static sdp_record_t *avrcp_ct_record(bool browsing)
 	sdp_record_t *record;
 	sdp_data_t *psm[2], *version, *features;
 	uint16_t lp = AVCTP_CONTROL_PSM;
-	uint16_t avctp_ver = 0x0103;
+	uint16_t avctp_ver = 0x0104;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 					AVRCP_FEATURE_CATEGORY_2 |
 					AVRCP_FEATURE_CATEGORY_3 |
@@ -493,7 +493,7 @@ static sdp_record_t *avrcp_tg_record(bool browsing)
 	sdp_record_t *record;
 	sdp_data_t *psm_control, *version, *features;
 	uint16_t lp = AVCTP_CONTROL_PSM;
-	uint16_t avctp_ver = 0x0103;
+	uint16_t avctp_ver = 0x0104;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 					AVRCP_FEATURE_CATEGORY_2 |
 					AVRCP_FEATURE_CATEGORY_3 |

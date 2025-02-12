@@ -1595,7 +1595,7 @@ static sdp_record_t *a2dp_record(uint8_t type)
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVDTP_UUID;
-	uint16_t a2dp_ver = 0x0103, avdtp_ver = 0x0103, feat = 0x000f;
+	uint16_t a2dp_ver = 0x0104, avdtp_ver = 0x0103, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
