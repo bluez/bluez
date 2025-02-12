@@ -211,6 +211,7 @@ static char *const qemu_argv[] = {
 	"-monitor", "none",
 	"-display", "none",
 	"-machine", "type=q35,accel=kvm:tcg",
+	"-cpu", "host",
 	"-m", "256M",
 	"-net", "none",
 	"-no-reboot",
