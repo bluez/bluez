@@ -3249,11 +3249,14 @@ void bthost_set_scan_enable(struct bthost *bthost, uint8_t enable)
 
 void bthost_set_ext_adv_params(struct bthost *bthost)
 {
+	const uint8_t interval_20ms[] = { 0x20, 0x00, 0x00 };
 	struct bt_hci_cmd_le_set_ext_adv_params cp;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = 0x01;
 	cp.evt_properties = cpu_to_le16(0x0013);
+	memcpy(cp.min_interval, interval_20ms, sizeof(cp.min_interval));
+	memcpy(cp.max_interval, interval_20ms, sizeof(cp.max_interval));
 	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 							&cp, sizeof(cp));
 }

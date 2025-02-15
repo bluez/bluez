@@ -4873,14 +4873,15 @@ static int cmd_set_ext_adv_params(struct btdev *dev, const void *data,
 
 	ext_adv->type = le16_to_cpu(cmd->evt_properties);
 
-	/* In case of direct advertising (type == 0x01) the advertising
-	 * intervals shall be ignored and high duty cycle shall be used.
+	/* In case of high duty cycle directed connectable advertising
+	 * intervals shall be ignored and high duty cycle shall be used
+	 * (advertising interval <= 3.75 ms).
 	 */
-	if (ext_adv->type == 0x01)
-		ext_adv->interval = 10;
+	if ((ext_adv->type & 0x0D) == 0x0D /* 0b1101 */)
+		ext_adv->interval = 3;
 	else {
 		unsigned int min_interval = get_le24(cmd->min_interval);
-		if (min_interval < 0x0020 || min_interval > 0x4000) {
+		if (min_interval < 0x0020 || min_interval > 0xFFFFFF) {
 			rsp.status = BT_HCI_ERR_UNSUPPORTED_FEATURE;
 			cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 						&rsp, sizeof(rsp));
