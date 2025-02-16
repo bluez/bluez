@@ -2119,14 +2119,14 @@ static bool vcp_set_volume_client(struct bt_vcp *vcp, uint8_t volume)
 	 * the current one completes. This may skip over some volume changes,
 	 * as it only sends a request for the final value.
 	 */
-	if (vcp->volume == volume) {
+	if (vcp->pending_op.timeout_id) {
+		vcp->pending_op.volume = volume;
+		vcp->pending_op.resend = true;
+		return true;
+	} else if (vcp->volume == volume) {
 		/* Do not set to current value, as that doesn't generate
 		 * a notification
 		 */
-		return true;
-	} else if (vcp->pending_op.timeout_id) {
-		vcp->pending_op.volume = volume;
-		vcp->pending_op.resend = true;
 		return true;
 	}
 
