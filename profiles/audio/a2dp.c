@@ -880,6 +880,44 @@ static void store_remote_seps(struct a2dp_channel *chan)
 	g_key_file_free(key_file);
 }
 
+static void remove_endpoints_cache(struct btd_service *service)
+{
+	struct btd_device *device = btd_service_get_device(service);
+	char filename[PATH_MAX];
+	char dst_addr[18];
+	GKeyFile *key_file;
+	GError *gerr = NULL;
+	char *data;
+	gsize length = 0;
+
+	ba2str(device_get_address(device), dst_addr);
+
+	create_filename(filename, PATH_MAX, "/%s/cache/%s",
+		btd_adapter_get_storage_dir(device_get_adapter(device)),
+		dst_addr);
+
+	key_file = g_key_file_new();
+	if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+		g_error_free(gerr);
+		g_key_file_free(key_file);
+		return;
+	}
+	g_key_file_remove_group(key_file, "Endpoints", NULL);
+
+	data = g_key_file_to_data(key_file, &length, NULL);
+	if (length > 0) {
+		create_file(filename, 0600);
+		if (!g_file_set_contents(filename, data, length, &gerr)) {
+			error("Unable set contents for %s: (%s)", filename,
+								gerr->message);
+			g_error_free(gerr);
+		}
+	}
+
+	g_free(data);
+	g_key_file_free(key_file);
+}
+
 static void invalidate_remote_cache(struct a2dp_setup *setup,
 						struct avdtp_error *err)
 {
@@ -3352,6 +3390,7 @@ static int a2dp_source_probe(struct btd_service *service)
 static void a2dp_source_remove(struct btd_service *service)
 {
 	source_unregister(service);
+	remove_endpoints_cache(service);
 }
 
 static int a2dp_sink_probe(struct btd_service *service)
@@ -3366,6 +3405,7 @@ static int a2dp_sink_probe(struct btd_service *service)
 static void a2dp_sink_remove(struct btd_service *service)
 {
 	sink_unregister(service);
+	remove_endpoints_cache(service);
 }
 
 static int a2dp_source_connect(struct btd_service *service)
