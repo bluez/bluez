@@ -490,6 +490,14 @@ static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 		int extra_len = extra ? strlen(extra) : 0;
 		int max_len = col - len - extra_len - ts_len - 3;
 
+		/* Check if there is enough space for the text and the label, if
+		 * there isn't then discard extra text since it won't fit.
+		 */
+		if (max_len <= 0) {
+			extra = NULL;
+			max_len = col - len - ts_len - 3;
+		}
+
 		n = snprintf(line + pos, max_len + 1, "%s%s",
 						label ? ": " : "", text);
 		if (n > max_len) {
