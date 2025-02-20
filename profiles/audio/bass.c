@@ -559,13 +559,20 @@ static void confirm_cb(GIOChannel *io, void *user_data)
 
 static void bap_attached(struct bt_bap *bap, void *user_data)
 {
-	struct btd_service *service = bt_bap_get_user_data(bap);
-	struct btd_device *device = btd_service_get_device(service);
-	struct btd_adapter *adapter = device_get_adapter(device);
+	struct btd_service *service;
+	struct btd_device *device;
+	struct btd_adapter *adapter;
 	struct bass_delegator *dg;
 	GError *err = NULL;
 
 	DBG("%p", bap);
+
+	service = bt_bap_get_user_data(bap);
+	if (!service)
+		return;
+
+	device = btd_service_get_device(service);
+	adapter = device_get_adapter(device);
 
 	dg = queue_find(delegators, delegator_match_device, device);
 	if (!dg)
@@ -620,11 +627,17 @@ static void setup_free(void *data)
 
 static void bap_detached(struct bt_bap *bap, void *user_data)
 {
-	struct btd_service *service = bt_bap_get_user_data(bap);
-	struct btd_device *device = btd_service_get_device(service);
+	struct btd_service *service;
+	struct btd_device *device;
 	struct bass_delegator *dg;
 
 	DBG("%p", bap);
+
+	service = bt_bap_get_user_data(bap);
+	if (!service)
+		return;
+
+	device = btd_service_get_device(service);
 
 	dg = queue_remove_if(delegators, delegator_match_device, device);
 	if (!dg)
