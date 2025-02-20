@@ -199,3 +199,33 @@ object, dict PushMessage(string sourcefile, string folder, dict args)
 
 	:org.bluez.obex.Error.InvalidArguments:
 	:org.bluez.obex.Error.Failed:
+
+Properties
+----------
+
+array{string} SupportedTypes [readonly]
+```````````````````````````````````````
+
+	List of supported message types.
+
+	Possible values:
+
+	:"EMAIL":
+
+		Email messages.
+
+	:"SMS_GSM":
+
+		GSM short messages.
+
+	:"SMS_CDMA":
+
+		CDMA short messages.
+
+	:"MMS":
+
+		MMS messages.
+
+	:"IM":
+
+		Instant messaging.
