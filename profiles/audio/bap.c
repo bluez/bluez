@@ -192,10 +192,8 @@ static void bap_data_free(struct bap_data *data)
 	if (data->io_id)
 		g_source_remove(data->io_id);
 
-	if (data->service && btd_service_get_user_data(data->service) == data) {
+	if (data->service && btd_service_get_user_data(data->service) == data)
 		btd_service_set_user_data(data->service, NULL);
-		bt_bap_set_user_data(data->bap, NULL);
-	}
 
 	queue_destroy(data->snks, ep_unregister);
 	queue_destroy(data->srcs, ep_unregister);
