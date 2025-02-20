@@ -151,7 +151,7 @@ struct avctp_header {
 
 #define AVCTP_PACKET_SINGLE	0
 
-static const unsigned char media_transport[] = {
+static const unsigned char media_transport_sbc[] = {
 		0x01,	/* Media transport category */
 		0x00,
 		0x07,	/* Media codec category */
@@ -163,6 +163,24 @@ static const unsigned char media_transport[] = {
 		0x02,
 		0x33,
 };
+
+static const unsigned char media_transport_aac[] = {
+		0x01,	/* Media transport category */
+		0x00,
+		0x07,	/* Media codec category */
+		0x08,
+		0x00,	/* Media type audio */
+		0x02,	/* Codec MPEG2,4 AAC */
+		0x80,	/* Codec MPEG-2 AAC LC */
+		0x01,	/* 44100 */
+		0x8C,	/* 48000, 1 and 2 channels */
+		0x84,	/* VBR supported, Max peak rate 320000 */
+		0xE2,
+		0x00
+};
+
+static const unsigned char *media_transport = media_transport_sbc;
+static size_t media_transport_size = sizeof(media_transport_sbc);
 
 static int media_sock = -1;
 
@@ -254,30 +272,30 @@ static void process_avdtp(int srv_sk, int sk, unsigned char reject,
 				start->signal_id = AVDTP_GET_CAPABILITIES;
 				start->no_of_packets = 3;
 				memcpy(&buf[3], media_transport,
-						sizeof(media_transport));
+						media_transport_size);
 				len = write(sk, buf,
 						3 + sizeof(media_transport));
 
 				/* Continue packet */
 				hdr->packet_type = AVDTP_PKT_TYPE_CONTINUE;
 				memcpy(&buf[1], media_transport,
-						sizeof(media_transport));
+						media_transport_size);
 				len = write(sk, buf,
-						1 + sizeof(media_transport));
+						1 + media_transport_size);
 
 				/* End packet */
 				hdr->packet_type = AVDTP_PKT_TYPE_END;
 				memcpy(&buf[1], media_transport,
-						sizeof(media_transport));
+						media_transport_size);
 				len = write(sk, buf,
-						1 + sizeof(media_transport));
+						1 + media_transport_size);
 			} else {
 				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
 				memcpy(&buf[2], media_transport,
-						sizeof(media_transport));
+						media_transport_size);
 				printf("Accepting get capabilities command\n");
 				len = write(sk, buf,
-						2 + sizeof(media_transport));
+						2 + media_transport_size);
 			}
 			break;
 
@@ -578,10 +596,10 @@ static void do_avdtp_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		hdr->signal_id = AVDTP_SET_CONFIGURATION;
 		buf[2] = 1 << 2; /* ACP SEID */
 		buf[3] = 1 << 2; /* INT SEID */
-		memcpy(&buf[4], media_transport, sizeof(media_transport));
+		memcpy(&buf[4], media_transport, media_transport_size);
 		if (invalid)
 			buf[5] = 0x01; /* LOSC != 0 */
-		len = write(sk, buf, 4 + sizeof(media_transport));
+		len = write(sk, buf, 4 + media_transport_size);
 		break;
 
 	case AVDTP_GET_CONFIGURATION:
@@ -717,7 +735,8 @@ static void usage(void)
 		"\t--preconf            Configure stream before actual command\n"
 		"\t--wait <N>           Wait N seconds before exiting\n"
 		"\t--fragment           Use minimum MTU and fragmented messages\n"
-		"\t--invalid <command>  Send invalid command\n");
+		"\t--invalid <command>  Send invalid command\n"
+		"\t--aac                MPEG2,4 AAC LC\n");
 }
 
 static struct option main_options[] = {
@@ -731,6 +750,7 @@ static struct option main_options[] = {
 	{ "fragment",   0, 0, 'F' },
 	{ "avctp",	0, 0, 'C' },
 	{ "wait",	1, 0, 'w' },
+	{ "aac",	0, 0, 'a' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -774,7 +794,7 @@ int main(int argc, char *argv[])
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcFCw:R:",
+	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcFCw:R:a",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -816,6 +836,11 @@ int main(int argc, char *argv[])
 
 		case 'R':
 			reject_code = atoi(optarg);
+			break;
+
+		case 'a':
+			media_transport = media_transport_aac;
+			media_transport_size = sizeof(media_transport_aac);
 			break;
 
 		case 'h':
