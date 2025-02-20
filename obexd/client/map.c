@@ -51,6 +51,12 @@
 #define CHARSET_NATIVE 0
 #define CHARSET_UTF8 1
 
+#define SDP_MESSAGE_TYPE_EMAIL		0x01
+#define SDP_MESSAGE_TYPE_SMS_GSM	0x02
+#define SDP_MESSAGE_TYPE_SMS_CDMA	0x04
+#define SDP_MESSAGE_TYPE_MMS		0x08
+#define SDP_MESSAGE_TYPE_IM		0x10
+
 static const char * const filter_list[] = {
 	"subject",
 	"timestamp",
@@ -1992,6 +1998,45 @@ static const GDBusMethodTable map_methods[] = {
 	{ }
 };
 
+static gboolean get_supported_types(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct map_data *map = user_data;
+	DBusMessageIter entry;
+	const char *str;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &entry);
+	if (map->supported_message_types & SDP_MESSAGE_TYPE_EMAIL) {
+		str = "EMAIL";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+	if (map->supported_message_types & SDP_MESSAGE_TYPE_SMS_GSM) {
+		str = "SMS_GSM";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+	if (map->supported_message_types & SDP_MESSAGE_TYPE_SMS_CDMA) {
+		str = "SMS_CDMA";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+	if (map->supported_message_types & SDP_MESSAGE_TYPE_MMS) {
+		str = "MMS";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+	if (map->supported_message_types & SDP_MESSAGE_TYPE_IM) {
+		str = "IM";
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &str);
+	}
+	dbus_message_iter_close_container(iter, &entry);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable map_properties[] = {
+	{ "SupportedTypes", "as", get_supported_types },
+	{ }
+};
+
 static void map_msg_remove(void *data)
 {
 	struct map_msg *msg = data;
@@ -2201,7 +2246,7 @@ static int map_probe(struct obc_session *session)
 	set_notification_registration(map, true);
 
 	if (!g_dbus_register_interface(conn, path, MAP_INTERFACE, map_methods,
-					NULL, NULL, map, map_free)) {
+					NULL, map_properties, map, map_free)) {
 		map_free(map);
 
 		return -ENOMEM;
