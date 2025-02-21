@@ -379,6 +379,9 @@ static void gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
 	uint8_t *data;
 	size_t len;
 
+	if (!attr || !attr->value)
+		return;
+
 	if (bt_uuid_len(&attr->uuid) != 2)
 		return;
 
@@ -1005,6 +1008,10 @@ service_insert_characteristic(struct gatt_db_service *service,
 
 	/* Update handle of characteristic value_handle if it has changed */
 	put_le16(value_handle, &value[1]);
+
+	if (!(*chrc) || !(*chrc)->value)
+		return NULL;
+
 	if (memcmp((*chrc)->value, value, len))
 		memcpy((*chrc)->value, value, len);
 
@@ -1229,6 +1236,9 @@ service_insert_included(struct gatt_db_service *service, uint16_t handle,
 	uint16_t included_handle, len = 0;
 	int index;
 
+	if (!include || !include->value || !include->service || !service)
+		return NULL;
+
 	included = include->service;
 
 	/* Adjust include to point to the first attribute */
@@ -1384,6 +1394,9 @@ static void find_by_type(struct gatt_db_attribute *attribute, void *user_data)
 	/* TODO: fix for read-callback based attributes */
 	if (search_data->value) {
 		if (search_data->value_len != attribute->value_len)
+			return;
+
+		if (!attribute || !attribute->value)
 			return;
 
 		if (memcmp(attribute->value, search_data->value,
