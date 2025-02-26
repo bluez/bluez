@@ -303,6 +303,23 @@ Device information.
 
 :Usage: **> info <dev>**
 
+bearer
+------
+
+Get/Set preferred bearer.
+
+:Usage: **> bearer <dev> [last-seen/bredr/le]**
+:Example get preferred bearer:
+	| > bearer <addr>
+        |    PreferredBearer: last-seen
+:Example set preferred bearer to LE:
+	| > bearer <addr> le
+	| [CHG] Device <addr> PreferredBearer: le
+	| Changing le succeeded
+:Example set preferred bearer to BREDR:
+	| > bearer <addr> bredr
+	| [CHG] Device <addr> PreferredBearer: bredr
+	| Changing bredr succeeded
 
 Advertise Submenu
 =================

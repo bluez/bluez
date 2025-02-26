@@ -1726,6 +1726,7 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "AdvertisingFlags");
 	print_property(proxy, "AdvertisingData");
 	print_property(proxy, "Sets");
+	print_property(proxy, "PreferredBearer");
 
 	battery_proxy = find_proxies_by_path(battery_proxies,
 					g_dbus_proxy_get_path(proxy));
@@ -2158,6 +2159,30 @@ static void cmd_wake(int argc, char *argv[])
 		return;
 
 	g_free(str);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void cmd_bearer(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	char *str;
+
+	proxy = find_device(argc, argv);
+	if (!proxy)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (argc <= 2) {
+		print_property(proxy, "PreferredBearer");
+		return;
+	}
+
+	str = strdup(argv[2]);
+
+	if (g_dbus_proxy_set_property_basic(proxy, "PreferredBearer",
+					DBUS_TYPE_STRING, &str,
+					generic_callback, str, free))
+		return;
 
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
@@ -3326,6 +3351,8 @@ static const struct bt_shell_menu main_menu = {
 				"a single profile only", dev_generator },
 	{ "wake",         "[dev] [on/off]",    cmd_wake, "Get/Set wake support",
 							dev_generator },
+	{ "bearer",       "<dev> [last-seen/bredr/le]", cmd_bearer,
+				"Get/Set preferred bearer", dev_generator },
 	{ } },
 };
 
