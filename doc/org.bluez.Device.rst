@@ -40,7 +40,8 @@ void Connect()
 	are skip and check latest seen bearer.
 
 	3. Connect last seen bearer, in case the timestamps are the same BR/EDR
-	takes precedence.
+	takes precedence, or in case **PreferredBearer** has been set to a
+	specific bearer then that is used instead.
 
 	Possible errors:
 
@@ -346,3 +347,29 @@ array{object, dict} Sets [readonly, experimental]
 	:byte Rank:
 
 		Rank of the device in the Set.
+
+string PreferredBearer [readwrite, optional, experimental]
+``````````````````````````````````````````````````````````
+
+	Indicate the preferred bearer when initiating a connection, only
+	available for dual-mode devices.
+
+	When changing from "bredr" to "le" the device will be removed from the
+	'auto-connect' list so it won't automatically be connected when
+	adverting.
+
+	Note: Changes only take effect when the device is disconnected.
+
+	Possible values:
+
+	:"last-seen":
+
+		Connect to last seen bearer first. Default.
+
+	:"bredr":
+
+		Connect to BR/EDR first.
+
+	:"le":
+
+		Connect to LE first.
