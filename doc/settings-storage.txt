@@ -293,6 +293,8 @@ Long term key) related to a remote device.
 			strings		remote in 128-bits UUID format,
 					separated by ";"
 
+  PreferredBearer	String		Preferred bearer for remote device
+
 
 [DeviceID] group contains:
 
