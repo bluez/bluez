@@ -1178,7 +1178,7 @@ static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
 	struct bt_bap_pac *lpac;
 	char *path;
 
-	bass_add_stream(data->device, meta, caps, qos, sgrp, bis);
+	bt_bap_bis_probe(data->bap, bis, sgrp, caps, meta, qos);
 
 	/* Check if this BIS matches any local PAC */
 	bt_bap_verify_bis(data->bap, bis,
@@ -3128,9 +3128,9 @@ static void bap_bcast_remove(struct btd_service *service)
 		return;
 	}
 
-	bap_data_remove(data);
+	bt_bap_bis_remove(data->bap);
 
-	bass_remove_stream(device);
+	bap_data_remove(data);
 }
 
 static int bap_probe(struct btd_service *service)
