@@ -4,7 +4,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2022  Intel Corporation. All rights reserved.
- *  Copyright 2023-2024 NXP
+ *  Copyright 2023-2025 NXP
  *
  */
 
@@ -269,3 +269,13 @@ bool bt_bap_parse_base(struct iovec *base,
 			bt_bap_bis_func_t handler,
 			void *user_data);
 
+unsigned int bt_bap_bis_cb_register(struct bt_bap *bap,
+				bt_bap_bis_func_t probe,
+				bt_bap_func_t remove,
+				void *user_data,
+				bt_bap_destroy_func_t destroy);
+bool bt_bap_bis_cb_unregister(struct bt_bap *bap, unsigned int id);
+
+void bt_bap_bis_probe(struct bt_bap *bap, uint8_t bis, uint8_t sgrp,
+	struct iovec *caps, struct iovec *meta, struct bt_bap_qos *qos);
+void bt_bap_bis_remove(struct bt_bap *bap);

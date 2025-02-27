@@ -80,6 +80,14 @@ struct bt_bap_state {
 	void *data;
 };
 
+struct bt_bap_bis_cb {
+	unsigned int id;
+	bt_bap_bis_func_t probe;
+	bt_bap_func_t remove;
+	bt_bap_destroy_func_t destroy;
+	void *data;
+};
+
 struct bt_bap_cb {
 	unsigned int id;
 	bt_bap_func_t attached;
@@ -180,6 +188,7 @@ struct bt_bap {
 	struct queue *pac_cbs;
 	struct queue *ready_cbs;
 	struct queue *state_cbs;
+	struct queue *bis_cbs;
 
 	bt_bap_debug_func_t debug_func;
 	bt_bap_destroy_func_t debug_destroy;
@@ -4207,6 +4216,16 @@ static void bap_state_free(void *data)
 	free(state);
 }
 
+static void bap_bis_cb_free(void *data)
+{
+	struct bt_bap_bis_cb *bis_cb = data;
+
+	if (bis_cb->destroy)
+		bis_cb->destroy(bis_cb->data);
+
+	free(bis_cb);
+}
+
 static void bap_ep_free(void *data)
 {
 	struct bt_bap_endpoint *ep = data;
@@ -4245,6 +4264,7 @@ static void bap_free(void *data)
 	queue_destroy(bap->pac_cbs, pac_changed_free);
 	queue_destroy(bap->ready_cbs, bap_ready_free);
 	queue_destroy(bap->state_cbs, bap_state_free);
+	queue_destroy(bap->bis_cbs, bap_bis_cb_free);
 	queue_destroy(bap->local_eps, free);
 	queue_destroy(bap->remote_eps, bap_ep_free);
 
@@ -4327,6 +4347,7 @@ struct bt_bap *bt_bap_new(struct gatt_db *ldb, struct gatt_db *rdb)
 	bap->ready_cbs = queue_new();
 	bap->streams = queue_new();
 	bap->state_cbs = queue_new();
+	bap->bis_cbs = queue_new();
 	bap->local_eps = queue_new();
 
 	if (!rdb)
@@ -5534,6 +5555,98 @@ bool bt_bap_state_unregister(struct bt_bap *bap, unsigned int id)
 	bap_state_free(state);
 
 	return false;
+}
+
+unsigned int bt_bap_bis_cb_register(struct bt_bap *bap,
+				bt_bap_bis_func_t probe,
+				bt_bap_func_t remove,
+				void *user_data,
+				bt_bap_destroy_func_t destroy)
+{
+	struct bt_bap_bis_cb *bis_cb;
+	static unsigned int id;
+
+	if (!bap)
+		return 0;
+
+	bis_cb = new0(struct bt_bap_bis_cb, 1);
+	bis_cb->id = ++id ? id : ++id;
+	bis_cb->probe = probe;
+	bis_cb->remove = remove;
+	bis_cb->destroy = destroy;
+	bis_cb->data = user_data;
+
+	queue_push_tail(bap->bis_cbs, bis_cb);
+
+	return bis_cb->id;
+}
+
+static bool match_bis_cb_id(const void *data, const void *match_data)
+{
+	const struct bt_bap_bis_cb *bis_cb = data;
+	unsigned int id = PTR_TO_UINT(match_data);
+
+	return (bis_cb->id == id);
+}
+
+bool bt_bap_bis_cb_unregister(struct bt_bap *bap, unsigned int id)
+{
+	struct bt_bap_bis_cb *bis_cb;
+
+	if (!bap)
+		return false;
+
+	bis_cb = queue_remove_if(bap->bis_cbs, match_bis_cb_id,
+						UINT_TO_PTR(id));
+	if (!bis_cb)
+		return false;
+
+	bap_bis_cb_free(bis_cb);
+
+	return false;
+}
+
+void bt_bap_bis_probe(struct bt_bap *bap, uint8_t bis, uint8_t sgrp,
+	struct iovec *caps, struct iovec *meta, struct bt_bap_qos *qos)
+{
+	const struct queue_entry *entry;
+
+	if (!bt_bap_ref_safe(bap))
+		return;
+
+	entry = queue_get_entries(bap->bis_cbs);
+
+	while (entry) {
+		struct bt_bap_bis_cb *cb = entry->data;
+
+		entry = entry->next;
+
+		if (cb->probe)
+			cb->probe(bis, sgrp, caps, meta, qos, cb->data);
+	}
+
+	bt_bap_unref(bap);
+}
+
+void bt_bap_bis_remove(struct bt_bap *bap)
+{
+	const struct queue_entry *entry;
+
+	if (!bt_bap_ref_safe(bap))
+		return;
+
+	entry = queue_get_entries(bap->bis_cbs);
+
+	while (entry) {
+		struct bt_bap_bis_cb *cb = entry->data;
+
+		entry = entry->next;
+
+		if (cb->remove)
+			cb->remove(bap, cb->data);
+	}
+
+	bt_bap_unref(bap);
 }
 
 const char *bt_bap_stream_statestr(uint8_t state)
