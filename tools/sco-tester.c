@@ -45,6 +45,7 @@ struct test_data {
 	bool disable_esco;
 	bool enable_codecs;
 	int step;
+	uint16_t handle;
 	struct tx_tstamp_data tx_ts;
 };
 
@@ -52,6 +53,9 @@ struct sco_client_data {
 	int expect_err;
 	const uint8_t *send_data;
 	uint16_t data_len;
+
+	/* Shutdown socket after connect */
+	bool shutdown;
 
 	/* Enable SO_TIMESTAMPING with these flags */
 	uint32_t so_timestamping;
@@ -266,6 +270,11 @@ static void test_data_free(void *test_data)
 
 static const struct sco_client_data connect_success = {
 	.expect_err = 0
+};
+
+static const struct sco_client_data disconnect_success = {
+	.expect_err = 0,
+	.shutdown = true,
 };
 
 static const struct sco_client_data connect_failure = {
@@ -751,6 +760,11 @@ static gboolean sco_connect_cb(GIOChannel *io, GIOCondition cond,
 		}
 	}
 
+	if (scodata->shutdown) {
+		tester_print("Disconnecting...");
+		shutdown(sk, SHUT_RDWR);
+	}
+
 	if (-err != scodata->expect_err)
 		tester_test_failed();
 	else if (!data->step)
@@ -875,6 +889,69 @@ end:
 	close(sk);
 }
 
+static bool hook_setup_sync_evt(const void *buf, uint16_t len, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct bt_hci_evt_sync_conn_complete *evt = buf;
+
+	if (len < sizeof(*evt)) {
+		tester_warn("Bad event size");
+		tester_test_failed();
+		return true;
+	}
+
+	data->handle = le16_to_cpu(evt->handle);
+	tester_print("SCO Handle %u", data->handle);
+	return true;
+}
+
+static bool hook_disconnect_evt(const void *buf, uint16_t len, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct bt_hci_evt_disconnect_complete *evt = buf;
+	uint16_t handle;
+
+	if (len < sizeof(*evt)) {
+		tester_warn("Bad event size");
+		tester_test_failed();
+		return true;
+	}
+
+	handle = le16_to_cpu(evt->handle);
+	tester_print("Disconnected Handle %u", handle);
+
+	if (handle != data->handle)
+		return true;
+
+	if (evt->status) {
+		tester_test_failed();
+		return true;
+	}
+
+	data->step--;
+	if (!data->step)
+		tester_test_passed();
+
+	return true;
+}
+
+static void test_disconnect(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->step++;
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_SYNC_CONN_COMPLETE,
+					hook_setup_sync_evt, NULL);
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_DISCONNECT_COMPLETE,
+					hook_disconnect_evt, NULL);
+
+	test_connect(test_data);
+}
+
 static bool hook_simult_disc(const void *msg, uint16_t len, void *user_data)
 {
 	const struct bt_hci_evt_sync_conn_complete *ev = msg;
@@ -971,6 +1048,9 @@ int main(int argc, char *argv[])
 
 	test_sco("eSCO mSBC - Success", &connect_success, setup_powered,
 							test_connect_transp);
+
+	test_sco("SCO Disconnect - Success", &disconnect_success, setup_powered,
+							test_disconnect);
 
 	test_sco("eSCO Simultaneous Disconnect - Failure",
 					&connect_failure_reset, setup_powered,
