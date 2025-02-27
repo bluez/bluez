@@ -125,7 +125,7 @@ void SetDiscoveryFilter(dict filter)
 			LE scan only.
 
 
-	:bool DuplicateData (Default true):
+	:bool DuplicateData (Default false):
 
 		Disables duplicate detection of advertisement data.
 
