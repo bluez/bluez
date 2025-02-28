@@ -57,7 +57,6 @@
 #include "src/error.h"
 
 #include "bap.h"
-#include "bass.h"
 
 #define ISO_SOCKET_UUID "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
 #define PACS_UUID_STR "00001850-0000-1000-8000-00805f9b34fb"

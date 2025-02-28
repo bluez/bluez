@@ -52,7 +52,6 @@
 #include "src/log.h"
 #include "src/error.h"
 
-#include "bass.h"
 #include "bap.h"
 
 #define BASS_UUID_STR "0000184f-0000-1000-8000-00805f9b34fb"

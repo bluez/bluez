@@ -54,7 +54,6 @@
 
 #include "media.h"
 #include "transport.h"
-#include "bass.h"
 #include "vcp.h"
 
 #define MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport1"
