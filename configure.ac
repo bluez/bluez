@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 AC_PREREQ(2.69)
 AC_INIT(bluez, 5.79)
-
+AC_CONFIG_MACRO_DIRS([m4])
 AM_INIT_AUTOMAKE([foreign subdir-objects color-tests silent-rules
 					tar-pax no-dist-gzip dist-xz])
 AC_CONFIG_HEADERS(config.h)
@@ -36,7 +36,7 @@ LT_PREREQ(2.2)
 LT_INIT([disable-static])
 
 AS_IF(
-	[test "$USE_MAINTAINER_MODE" = "yes")],
+	[test "$USE_MAINTAINER_MODE" = "yes"],
 	[
 		AC_CHECK_PROG(enable_coverage, [lcov], [yes], [no])
 		AC_CHECK_PROG(enable_dbus_run_session, [dbus-run-session], [yes])
@@ -192,7 +192,7 @@ AC_ARG_ENABLE(avrcp, AS_HELP_STRING([--disable-avrcp],
 		[disable AVRCP profile]), [enable_avrcp=${enableval}])
 AM_CONDITIONAL(AVRCP, test "${enable_avrcp}" != "no")
 AS_IF(
-	["${enable_avrcp}" != "no"],
+	[test "${enable_avrcp}" != "no"],
 	[
 		AC_DEFINE(
 			[HAVE_AVRCP],
@@ -574,18 +574,16 @@ AS_IF(
 
 AC_SUBST([PLUGIN_PHONEBOOK], [${plugin_phonebook}])
 
-AC_CONFIG_FILES(
-	[
-		lib/bluez.pc
-		Makefile
-		mesh/bluetooth-meshd.rst
-		mesh/bluetooth-mesh.service
-		obexd/src/obex.service
-		obexd/src/org.bluez.obex.service
-		src/bluetoothd.rst
-		src/bluetooth.service
-		tools/bluetooth-logger.service
-		tools/mpris-proxy.service
-	]
-)
-AC_OUTPUT
+AC_CONFIG_FILES([
+	lib/bluez.pc
+	Makefile
+	mesh/bluetooth-meshd.rst
+	mesh/bluetooth-mesh.service
+	obexd/src/obex.service
+	obexd/src/org.bluez.obex.service
+	src/bluetoothd.rst
+	src/bluetooth.service
+	tools/bluetooth-logger.service
+	tools/mpris-proxy.service
+])
+AC_OUTPUT()
