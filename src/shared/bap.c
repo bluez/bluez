@@ -2099,7 +2099,24 @@ static uint8_t stream_release(struct bt_bap_stream *stream, struct iovec *rsp)
 
 	ascs_ase_rsp_success(rsp, stream->ep->id);
 
-	stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
+	/* In case the stream IO is already down the released transition needs
+	 * to take action immeditely.
+	 */
+	if (!stream->io) {
+		switch (bt_bap_stream_get_state(stream)) {
+		case BT_BAP_STREAM_STATE_CONFIG:
+			/* Released (no caching) */
+			stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
+			stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+			break;
+		default:
+			/* Released (caching) */
+			stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
+			stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
+			break;
+		}
+	} else
+		stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
 
 	return 0;
 }
