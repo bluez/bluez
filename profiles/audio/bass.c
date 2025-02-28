@@ -108,6 +108,7 @@ struct bass_delegator {
 	struct bt_bcast_src *src;
 	struct bt_bap *bap;
 	unsigned int state_id;
+	unsigned int bcode_id;
 	uint8_t *bcode;
 	unsigned int timeout;
 	struct queue *bcode_reqs;
@@ -128,7 +129,7 @@ struct bass_setup {
 
 struct bass_bcode_req {
 	struct bass_setup *setup;
-	bt_bass_bcode_func_t cb;
+	bt_bap_bcode_reply_t cb;
 	void *user_data;
 };
 
@@ -180,7 +181,7 @@ static bool delegator_match_bap(const void *data, const void *match_data)
 }
 
 static void setup_set_bcode(uint8_t *bcode, struct bass_setup *setup,
-				bt_bass_bcode_func_t cb, void *user_data)
+				bt_bap_bcode_reply_t cb, void *user_data)
 {
 	struct bt_bap_qos *qos = bt_bap_stream_get_qos(setup->stream);
 
@@ -203,9 +204,9 @@ static bool match_setup_stream(const void *data, const void *user_data)
 	return setup->stream == stream;
 }
 
-void bass_req_bcode(struct bt_bap_stream *stream,
-				bt_bass_bcode_func_t cb,
-				void *user_data)
+static void bass_req_bcode(struct bt_bap_stream *stream,
+	bt_bap_bcode_reply_t reply, void *reply_data,
+	void *user_data)
 {
 	struct bt_bap *bap = bt_bap_stream_get_session(stream);
 	struct bass_delegator *dg;
@@ -214,19 +215,19 @@ void bass_req_bcode(struct bt_bap_stream *stream,
 
 	dg = queue_find(delegators, delegator_match_bap, bap);
 	if (!dg) {
-		cb(user_data, -EINVAL);
+		reply(reply_data, -EINVAL);
 		return;
 	}
 
 	setup = queue_find(dg->setups, match_setup_stream, stream);
 	if (!setup) {
-		cb(user_data, -EINVAL);
+		reply(reply_data, -EINVAL);
 		return;
 	}
 
 	if (dg->bcode) {
 		/* Broadcast Code has already been received before. */
-		setup_set_bcode(dg->bcode, setup, cb, user_data);
+		setup_set_bcode(dg->bcode, setup, reply, reply_data);
 		return;
 	}
 
@@ -239,8 +240,8 @@ void bass_req_bcode(struct bt_bap_stream *stream,
 		return;
 
 	req->setup = setup;
-	req->cb = cb;
-	req->user_data = user_data;
+	req->cb = reply;
+	req->user_data = reply_data;
 
 	queue_push_tail(dg->bcode_reqs, req);
 
@@ -564,6 +565,12 @@ static void confirm_cb(GIOChannel *io, void *user_data)
 	dg->state_id = bt_bap_state_register(dg->bap, bap_state_changed,
 			NULL, dg, NULL);
 
+	/* Register callback to handle Broadcast Code requests from
+	 * upper layers.
+	 */
+	dg->bcode_id = bt_bap_bcode_cb_register(dg->bap, bass_req_bcode,
+							NULL, NULL);
+
 	dg->io_id = g_io_add_watch(io, G_IO_OUT, big_info_cb, dg);
 }
 
@@ -715,6 +722,8 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
 
 	/* Unregister BAP stream state changed callback. */
 	bt_bap_state_unregister(dg->bap, dg->state_id);
+
+	bt_bap_bcode_cb_unregister(dg->bap, dg->bcode_id);
 
 	if (dg->timeout)
 		g_source_remove(dg->timeout);

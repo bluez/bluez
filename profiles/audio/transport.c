@@ -5,7 +5,7 @@
  *
  *  Copyright (C) 2006-2007  Nokia Corporation
  *  Copyright (C) 2004-2009  Marcel Holtmann <marcel@holtmann.org>
- *  Copyright 2023-2024 NXP
+ *  Copyright 2023-2025 NXP
  *
  *
  */
@@ -1537,7 +1537,7 @@ static void set_bcast_qos(const GDBusPropertyTable *property,
 			 * for the encrypted stream, request the code from
 			 * Broadcast Assistants, if any are available.
 			 */
-			bass_req_bcode(bap->stream, bcast_qos_set,
+			bt_bap_req_bcode(bap->stream, bcast_qos_set,
 						GUINT_TO_POINTER(id));
 			return;
 		}
