@@ -1235,6 +1235,9 @@ static void *pbap_supported_features(struct obc_session *session)
 	data = obc_session_get_attribute(session,
 					SDP_ATTR_PBAP_SUPPORTED_FEATURES);
 
+	if (!data)
+		return NULL;
+
 	features = *(uint32_t *) data;
 	if (!features)
 		return NULL;
