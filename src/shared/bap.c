@@ -88,6 +88,13 @@ struct bt_bap_bis_cb {
 	void *data;
 };
 
+struct bt_bap_bcode_cb {
+	unsigned int id;
+	bt_bap_bcode_func_t func;
+	bt_bap_destroy_func_t destroy;
+	void *data;
+};
+
 struct bt_bap_cb {
 	unsigned int id;
 	bt_bap_func_t attached;
@@ -189,6 +196,7 @@ struct bt_bap {
 	struct queue *ready_cbs;
 	struct queue *state_cbs;
 	struct queue *bis_cbs;
+	struct queue *bcode_cbs;
 
 	bt_bap_debug_func_t debug_func;
 	bt_bap_destroy_func_t debug_destroy;
@@ -4241,6 +4249,16 @@ static void bap_bis_cb_free(void *data)
 	free(bis_cb);
 }
 
+static void bap_bcode_cb_free(void *data)
+{
+	struct bt_bap_bcode_cb *cb = data;
+
+	if (cb->destroy)
+		cb->destroy(cb->data);
+
+	free(cb);
+}
+
 static void bap_ep_free(void *data)
 {
 	struct bt_bap_endpoint *ep = data;
@@ -4280,6 +4298,7 @@ static void bap_free(void *data)
 	queue_destroy(bap->ready_cbs, bap_ready_free);
 	queue_destroy(bap->state_cbs, bap_state_free);
 	queue_destroy(bap->bis_cbs, bap_bis_cb_free);
+	queue_destroy(bap->bcode_cbs, bap_bcode_cb_free);
 	queue_destroy(bap->local_eps, free);
 	queue_destroy(bap->remote_eps, bap_ep_free);
 
@@ -4363,6 +4382,7 @@ struct bt_bap *bt_bap_new(struct gatt_db *ldb, struct gatt_db *rdb)
 	bap->streams = queue_new();
 	bap->state_cbs = queue_new();
 	bap->bis_cbs = queue_new();
+	bap->bcode_cbs = queue_new();
 	bap->local_eps = queue_new();
 
 	if (!rdb)
@@ -7364,4 +7384,82 @@ done:
 		util_debug(func, NULL, "Unable to parse Base");
 
 	return ret;
+}
+
+void bt_bap_req_bcode(struct bt_bap_stream *stream,
+				bt_bap_bcode_reply_t reply,
+				void *reply_data)
+{
+	const struct queue_entry *entry;
+
+	if (!bap_stream_valid(stream))
+		return;
+
+	bt_bap_stream_ref(stream);
+
+	if (!bt_bap_ref_safe(stream->bap))
+		goto done;
+
+	entry = queue_get_entries(stream->bap->bcode_cbs);
+
+	while (entry) {
+		struct bt_bap_bcode_cb *cb = entry->data;
+
+		entry = entry->next;
+
+		if (cb->func)
+			cb->func(stream, reply, reply_data, cb->data);
+	}
+
+	bt_bap_unref(stream->bap);
+
+done:
+	bt_bap_stream_unref(stream);
+}
+
+unsigned int bt_bap_bcode_cb_register(struct bt_bap *bap,
+				bt_bap_bcode_func_t func,
+				void *user_data,
+				bt_bap_destroy_func_t destroy)
+{
+	struct bt_bap_bcode_cb *cb;
+	static unsigned int id;
+
+	if (!bap)
+		return 0;
+
+	cb = new0(struct bt_bap_bcode_cb, 1);
+	cb->id = ++id ? id : ++id;
+	cb->func = func;
+	cb->destroy = destroy;
+	cb->data = user_data;
+
+	queue_push_tail(bap->bcode_cbs, cb);
+
+	return cb->id;
+}
+
+static bool match_bcode_cb_id(const void *data, const void *match_data)
+{
+	const struct bt_bap_bcode_cb *cb = data;
+	unsigned int id = PTR_TO_UINT(match_data);
+
+	return (cb->id == id);
+}
+
+bool bt_bap_bcode_cb_unregister(struct bt_bap *bap, unsigned int id)
+{
+	struct bt_bap_bcode_cb *cb;
+
+	if (!bap)
+		return false;
+
+	cb = queue_remove_if(bap->bcode_cbs, match_bcode_cb_id,
+						UINT_TO_PTR(id));
+	if (!cb)
+		return false;
+
+	bap_bcode_cb_free(cb);
+
+	return false;
 }

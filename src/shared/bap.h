@@ -44,6 +44,12 @@ typedef void (*bt_bap_bis_func_t)(uint8_t bis, uint8_t sgrp,
 		struct iovec *caps, struct iovec *meta,
 		struct bt_bap_qos *qos, void *user_data);
 
+typedef void (*bt_bap_bcode_reply_t)(void *user_data, int err);
+
+typedef void (*bt_bap_bcode_func_t)(struct bt_bap_stream *stream,
+				bt_bap_bcode_reply_t reply, void *reply_data,
+				void *user_data);
+
 /* Local PAC related functions */
 struct bt_bap_pac_qos {
 	uint8_t  framing;
@@ -279,3 +285,14 @@ bool bt_bap_bis_cb_unregister(struct bt_bap *bap, unsigned int id);
 void bt_bap_bis_probe(struct bt_bap *bap, uint8_t bis, uint8_t sgrp,
 	struct iovec *caps, struct iovec *meta, struct bt_bap_qos *qos);
 void bt_bap_bis_remove(struct bt_bap *bap);
+
+void bt_bap_req_bcode(struct bt_bap_stream *stream,
+				bt_bap_bcode_reply_t reply,
+				void *reply_data);
+
+unsigned int bt_bap_bcode_cb_register(struct bt_bap *bap,
+				bt_bap_bcode_func_t func,
+				void *user_data,
+				bt_bap_destroy_func_t destroy);
+
+bool bt_bap_bcode_cb_unregister(struct bt_bap *bap, unsigned int id);
