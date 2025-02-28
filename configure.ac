@@ -512,16 +512,16 @@ AS_IF(
 AC_SUBST(PKGBINDIR, "${pkgbindir}")
 
 AS_IF(
-	[test "$libexecdir" = '${exec_prefix}/libexec'],
-	[pkglibexecdir="${exec_prefix}/libexec/bluetooth"]
-	[pkglibexecdir="${libexecdir}/bluetooth"]
+    [test "$libexecdir" = '${exec_prefix}/libexec'],
+    [pkglibexecdir="${exec_prefix}/libexec/bluetooth"]
+    [pkglibexecdir="${libexecdir}/bluetooth"]
 )
 AC_SUBST(PKGLIBEXECDIR, "${pkglibexecdir}")
 
 AS_IF(
-	[test "$localstatedir" = '${prefix}/var'],
-	[storagedir="${prefix}/var/lib/bluetooth"],
-	[storagedir="${localstatedir}/lib/bluetooth"]
+    [test "$localstatedir" = '${prefix}/var'],
+    [storagedir="${prefix}/var/lib/bluetooth"],
+    [storagedir="${localstatedir}/lib/bluetooth"]
 )
 
 AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}",
@@ -546,11 +546,11 @@ AC_ARG_ENABLE(android, AS_HELP_STRING([--enable-android],
 AM_CONDITIONAL([ANDROID], [test "${enable_android}" = "yes"])
 
 AS_IF(
-	[test "${enable_android}" = "yes"],
-	[
-		PKG_CHECK_MODULES([SBC], [sbc >= 1.2])
-		PKG_CHECK_MODULES([SPEEXDSP], [speexdsp >= 1.2])
-	]
+    [test "${enable_android}" = "yes"],
+    [
+        PKG_CHECK_MODULES([SBC], [sbc >= 1.2])
+        PKG_CHECK_MODULES([SPEEXDSP], [speexdsp >= 1.2])
+    ]
 )
 
 AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
