@@ -1965,6 +1965,9 @@ static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
 	/* Sink can autonomously transit to QOS while source needs to go to
 	 * Disabling until BT_ASCS_STOP is received.
 	 */
+	if (stream->ep->dir == BT_BAP_SINK)
+		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+
 	if (stream->ep->dir == BT_BAP_SOURCE)
 		stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
 
