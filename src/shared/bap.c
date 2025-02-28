@@ -1075,23 +1075,18 @@ static void stream_notify_metadata(struct bt_bap_stream *stream)
 static void stream_notify_release(struct bt_bap_stream *stream)
 {
 	struct bt_bap_endpoint *ep = stream->ep;
-	struct bt_ascs_ase_status *status;
-	size_t len;
+	struct bt_ascs_ase_status status;
 
 	DBG(stream->bap, "stream %p", stream);
 
-	len = sizeof(*status);
-	status = malloc(len);
 
-	memset(status, 0, len);
-	status->id = ep->id;
+	memset(&status, 0, sizeof(status));
+	status.id = ep->id;
 	ep->state = BT_BAP_STREAM_STATE_RELEASING;
-	status->state = ep->state;
+	status.state = ep->state;
 
-	gatt_db_attribute_notify(ep->attr, (void *) status, len,
+	gatt_db_attribute_notify(ep->attr, (void *)&status, sizeof(status),
 					bt_bap_get_att(stream->bap));
-
-	free(status);
 }
 
 static struct bt_bap *bt_bap_ref_safe(struct bt_bap *bap)
