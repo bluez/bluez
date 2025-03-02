@@ -2646,6 +2646,10 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	uuid = bt_name2string(pattern);
+	if (uuid == NULL)
+		return btd_error_invalid_args_str(msg,
+					ERR_BREDR_CONN_INVALID_ARGUMENTS);
+
 	reply = connect_profiles(dev, BDADDR_BREDR, msg, uuid);
 	free(uuid);
 

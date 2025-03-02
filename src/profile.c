@@ -2319,6 +2319,8 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 		dbus_message_iter_get_basic(value, &str);
 		free(ext->service);
 		ext->service = bt_name2string(str);
+		if (ext->service == NULL)
+			return -EINVAL;
 	}
 
 	return 0;
