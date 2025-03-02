@@ -169,8 +169,8 @@ static int string2uuid16(uuid_t *uuid, const char *string)
 char *bt_name2string(const char *pattern)
 {
 	uuid_t uuid;
-	uint16_t uuid16;
-	int i;
+	unsigned int uuid16;
+	char *endptr = NULL;
 
 	/* UUID 128 string format */
 	if (is_uuid128(pattern))
@@ -182,11 +182,9 @@ char *bt_name2string(const char *pattern)
 		goto proceed;
 
 	/* HEX format */
-	uuid16 = strtol(pattern, NULL, 16);
-	for (i = 0; bt_services[i].class; i++) {
-		if (bt_services[i].class == uuid16)
-			goto proceed;
-	}
+	uuid16 = strtoul(pattern, &endptr, 16);
+	if (uuid16 <= 0xffff && *endptr == '\0')
+		goto proceed;
 
 	return NULL;
 
