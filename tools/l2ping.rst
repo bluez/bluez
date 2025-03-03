@@ -11,7 +11,7 @@ Send L2CAP echo request and receive answer
           - Nils Faerber <nils@kernelconcepts.de>
           - Adam Laurie <adam@algroup.co.uk>.
 :Version: BlueZ
-:Copyright: Free use of this software is granted under ther terms of the GNU
+:Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
 :Date: Jan 22, 2002
 :Manual section: 1

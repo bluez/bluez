@@ -8,7 +8,7 @@ ISO testing
 
 :Authors: - Luiz Augusto Von Dentz <luiz.von.dentz@intel.com>
 :Version: BlueZ
-:Copyright: Free use of this software is granted under ther terms of the GNU
+:Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
 :Date: May 4, 2022
 :Manual section: 1

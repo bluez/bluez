@@ -8,7 +8,7 @@ RFCOMM configuration utility
 
 :Author: Marcel Holtmann <marcel@holtmann.org>
 :Version: BlueZ
-:Copyright: Free use of this software is granted under ther terms of the GNU
+:Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
 :Date: April 28, 2002
 :Manual section: 1

@@ -7,7 +7,7 @@ Media Transport Submenu
 -----------------------
 
 :Version: BlueZ
-:Copyright: Free use of this software is granted under ther terms of the GNU
+:Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
 :Date: November 2022
 :Manual section: 1
@@ -71,7 +71,7 @@ Once a transport is selected, the audio server will automatically acquire.
 unselect
 --------
 
-Unelect transport. For transports created on a Broadcast Sink device only. This moves
+Unselect transport. For transports created on a Broadcast Sink device only. This moves
 the transport to the "idle" state, pending release by the audio server. If the transport
 was acquired by bluetoothctl it can be released straight away, without having to be
 unselected.

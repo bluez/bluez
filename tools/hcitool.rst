@@ -10,7 +10,7 @@ Configure Bluetooth connections
           - Marcel Holtmann <marcel@holtmann.org>
           - Fabrizio Gennari <fabrizio.gennari@philips.com>
 :Version: BlueZ
-:Copyright: Free use of this software is granted under ther terms of the GNU
+:Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
 :Date: Nov 12, 2002
 :Manual section: 1
