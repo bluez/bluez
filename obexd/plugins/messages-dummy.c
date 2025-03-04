@@ -18,6 +18,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include "obexd/src/log.h"
 
@@ -516,7 +518,53 @@ int messages_get_message(void *session, const char *handle,
 					messages_get_message_cb callback,
 					void *user_data)
 {
-	return -ENOSYS;
+	struct session *s =  session;
+	FILE *fp;
+	char *path;
+	char *msg, *buffer;
+	int file_size, err = 0;
+	struct stat file_info;
+
+	DBG(" ");
+	path = g_build_filename(s->cwd_absolute, handle, NULL);
+	fp = fopen(path, "r");
+	if (!fp) {
+		DBG("fopen() failed");
+		err = -EBADR;
+		goto file_open_err;
+	}
+
+	if (fstat(fileno(fp), &file_info) < 0) {
+		DBG("Error getting file size");
+		err = -EBADR;
+		goto mmap_err;
+	}
+
+	file_size = file_info.st_size;
+
+	msg = mmap(0, file_size, PROT_READ, MAP_PRIVATE, fileno(fp), 0);
+	if (msg == MAP_FAILED) {
+		DBG("Error mapping file");
+		err = -EBADR;
+		goto mmap_err;
+	}
+
+	buffer = strndup(msg, file_size);
+
+	if (callback)
+		callback(session, 0, 0, buffer, user_data);
+
+	if (munmap(msg, file_size) == -1) {
+		DBG("Error unmapping");
+		err = -EBADR;
+	}
+
+	free(buffer);
+mmap_err:
+	fclose(fp);
+file_open_err:
+	g_free(path);
+	return err;
 }
 
 int messages_update_inbox(void *session, messages_status_cb callback,
