@@ -9,7 +9,7 @@ Bluetooth Control Command Line Tool
 :Version: BlueZ
 :Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
-:Date: November 2022
+:Date: March 2024
 :Manual section: 1
 :Manual group: Linux System Administration
 
@@ -262,6 +262,13 @@ Connect device.
 
 This will initiate a connection to a device.
 
+By default this commands tries to connect all the profiles the remote device
+supports and have been flagged as auto-connectable. In case when the UUID of
+the remote service is given only that service will be connected. The UUID can
+be either a short form (16-bit UUID) or a long form (128-bit UUID). There are
+also some special values for well-known profiles like "a2dp-sink",
+"a2dp-source", "hfp-hf", "hfp-ag", "ftp" or "spp".
+
 To connect with an LE device the controller must have an active scan report of
 the device it wants to connect to.
 
@@ -269,17 +276,25 @@ If no advertising report is received before the timeout a
 le-connection-abort-by-local error will be issued. In that case either try
 again to connect assuming the device is advertising.
 
-:Usage: **> connect <dev>**
+:Usage: **> connect <dev> [uuid]**
+:Example: **> connect 1C:48:F9:9D:81:5C**
+:Example: **> connect 1C:48:F9:9D:81:5C hsp-hs**
+:Example: **> connect 1C:48:F9:9D:81:5C 00001108-0000-1000-8000-00805f9b34fb**
+:Example: **> connect 1C:48:F9:9D:81:5C 0x1108**
 
 disconnect
 ----------
 
 Disconnect device.
 
+By default this commands disconnects all profiles and then terminates the
+connection. In case when the UUID of the remote service is given only that
+service will be disconnected.
+
 For LE when disconnecting from an active connection the device address is not
 needed.
 
-:Usage: **> disconnect <dev>**
+:Usage: **> disconnect <dev> [uuid]**
 
 info
 ----
