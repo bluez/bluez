@@ -1981,12 +1981,43 @@ static void cmd_remove(int argc, char *argv[])
 	remove_device(proxy);
 }
 
+struct connection_data {
+	GDBusProxy *proxy;
+	char *uuid;
+};
+
+static void connection_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct connection_data *data = user_data;
+
+	if (!data->uuid)
+		return;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &data->uuid);
+}
+
+static void format_connection_profile(char *output, size_t size,
+							const char *uuid)
+{
+	const char *text;
+
+	text = bt_uuidstr_to_str(uuid);
+	if (!text)
+		text = uuid;
+
+	snprintf(output, size, " profile \"%s\"", text);
+}
+
 static void connect_reply(DBusMessage *message, void *user_data)
 {
-	GDBusProxy *proxy = user_data;
+	struct connection_data *data = user_data;
+	GDBusProxy *proxy = data->proxy;
 	DBusError error;
 
 	dbus_error_init(&error);
+
+	g_free(data->uuid);
+	g_free(data);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to connect: %s %s\n", error.name,
@@ -2003,6 +2034,9 @@ static void connect_reply(DBusMessage *message, void *user_data)
 
 static void cmd_connect(int argc, char *argv[])
 {
+	struct connection_data *data;
+	const char *method = "Connect";
+	char profile[128] = "";
 	GDBusProxy *proxy;
 
 	if (check_default_ctrl() == FALSE)
@@ -2014,21 +2048,35 @@ static void cmd_connect(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	if (g_dbus_proxy_method_call(proxy, "Connect", NULL, connect_reply,
-							proxy, NULL) == FALSE) {
+	data = new0(struct connection_data, 1);
+	data->proxy = proxy;
+
+	if (argc == 3) {
+		method = "ConnectProfile";
+		data->uuid = g_strdup(argv[2]);
+		format_connection_profile(profile, sizeof(profile), argv[2]);
+	}
+
+	if (g_dbus_proxy_method_call(proxy, method, connection_setup,
+					connect_reply, data, NULL) == FALSE) {
 		bt_shell_printf("Failed to connect\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Attempting to connect to %s\n", argv[1]);
+	bt_shell_printf("Attempting to connect%s to %s\n", profile, argv[1]);
 }
 
 static void disconn_reply(DBusMessage *message, void *user_data)
 {
-	GDBusProxy *proxy = user_data;
+	struct connection_data *data = user_data;
+	const bool profile_disconnected = data->uuid != NULL;
+	GDBusProxy *proxy = data->proxy;
 	DBusError error;
 
 	dbus_error_init(&error);
+
+	g_free(data->uuid);
+	g_free(data);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
 		bt_shell_printf("Failed to disconnect: %s\n", error.name);
@@ -2036,9 +2084,13 @@ static void disconn_reply(DBusMessage *message, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Successful disconnected\n");
+	bt_shell_printf("Disconnection successful\n");
 
-	if (proxy == default_dev)
+	/* If only a single profile was disconnected, the device itself might
+	 * still be connected. In that case, let the property change handler
+	 * take care of setting the default device to NULL.
+	 */
+	if (proxy == default_dev && !profile_disconnected)
 		set_default_device(NULL, NULL);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -2046,19 +2098,31 @@ static void disconn_reply(DBusMessage *message, void *user_data)
 
 static void cmd_disconn(int argc, char *argv[])
 {
+	struct connection_data *data;
+	const char *method = "Disconnect";
+	char profile[128] = "";
 	GDBusProxy *proxy;
 
 	proxy = find_device(argc, argv);
 	if (!proxy)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	if (g_dbus_proxy_method_call(proxy, "Disconnect", NULL, disconn_reply,
-							proxy, NULL) == FALSE) {
+	data = new0(struct connection_data, 1);
+	data->proxy = proxy;
+
+	if (argc == 3) {
+		method = "DisconnectProfile";
+		data->uuid = g_strdup(argv[2]);
+		format_connection_profile(profile, sizeof(profile), argv[2]);
+	}
+
+	if (g_dbus_proxy_method_call(proxy, method, connection_setup,
+					disconn_reply, data, NULL) == FALSE) {
 		bt_shell_printf("Failed to disconnect\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	bt_shell_printf("Attempting to disconnect from %s\n",
+	bt_shell_printf("Attempting to disconnect%s from %s\n", profile,
 						proxy_address(proxy));
 }
 
@@ -3253,10 +3317,13 @@ static const struct bt_shell_menu main_menu = {
 								dev_generator },
 	{ "remove",       "<dev>",    cmd_remove, "Remove device",
 							dev_generator },
-	{ "connect",      "<dev>",    cmd_connect, "Connect device",
+	{ "connect",      "<dev> [uuid]", cmd_connect,
+				"Connect a device and all its profiles or "
+				"optionally connect a single profile only",
 							dev_generator },
-	{ "disconnect",   "[dev]",    cmd_disconn, "Disconnect device",
-							dev_generator },
+	{ "disconnect",   "[dev] [uuid]", cmd_disconn,
+				"Disconnect a device or optionally disconnect "
+				"a single profile only", dev_generator },
 	{ "wake",         "[dev] [on/off]",    cmd_wake, "Get/Set wake support",
 							dev_generator },
 	{ } },
