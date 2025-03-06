@@ -1123,8 +1123,7 @@ static struct btdev_conn *conn_new(struct btdev *dev, uint16_t handle,
 {
 	struct btdev_conn *conn;
 
-	while ((conn = queue_find(dev->conns, match_handle,
-					UINT_TO_PTR(handle))))
+	while (queue_find(dev->conns, match_handle, UINT_TO_PTR(handle)))
 		handle++;
 
 	conn = new0(struct btdev_conn, 1);
@@ -1410,8 +1409,6 @@ static int cmd_add_sco_conn(struct btdev *dev, const void *data, uint8_t len)
 	cc.encr_mode = 0x00;
 
 done:
-	pending_conn_del(dev, conn->link->dev);
-
 	send_event(dev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 
 	return 0;
@@ -1527,9 +1524,12 @@ static void auth_complete(struct btdev_conn *conn, uint8_t status)
 {
 	struct bt_hci_evt_auth_complete ev;
 
+	if (!conn)
+		return;
+
 	memset(&ev, 0, sizeof(ev));
 
-	ev.handle = conn ? cpu_to_le16(conn->handle) : 0x0000;
+	ev.handle = cpu_to_le16(conn->handle);
 	ev.status = status;
 
 	send_event(conn->dev, BT_HCI_EVT_AUTH_COMPLETE, &ev, sizeof(ev));
