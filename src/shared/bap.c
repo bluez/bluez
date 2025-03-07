@@ -662,7 +662,7 @@ static void bap_disconnected(int err, void *user_data)
 	bt_bap_detach(bap);
 }
 
-static struct bt_bap *bap_get_session(struct bt_att *att, struct gatt_db *db)
+struct bt_bap *bt_bap_get_session(struct bt_att *att, struct gatt_db *db)
 {
 	const struct queue_entry *entry;
 	struct bt_bap *bap;
@@ -675,6 +675,9 @@ static struct bt_bap *bap_get_session(struct bt_att *att, struct gatt_db *db)
 	}
 
 	bap = bt_bap_new(db, NULL);
+	if (!bap)
+		return NULL;
+
 	bap->att = att;
 
 	bt_bap_attach(bap, NULL);
@@ -845,7 +848,7 @@ static void ascs_ase_read(struct gatt_db_attribute *attrib,
 	struct bt_ascs_ase_status rsp;
 
 	if (ase)
-		bap = bap_get_session(att, ase->ascs->bdb->db);
+		bap = bt_bap_get_session(att, ase->ascs->bdb->db);
 
 	if (bap)
 		ep = bap_get_endpoint(bap->local_eps, bap->ldb, attrib);
@@ -3437,7 +3440,7 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
 				void *user_data)
 {
 	struct bt_ascs *ascs = user_data;
-	struct bt_bap *bap = bap_get_session(att, ascs->bdb->db);
+	struct bt_bap *bap = bt_bap_get_session(att, ascs->bdb->db);
 	struct iovec iov = {
 		.iov_base = (void *) value,
 		.iov_len = len,
