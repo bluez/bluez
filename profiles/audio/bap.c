@@ -56,8 +56,6 @@
 #include "src/log.h"
 #include "src/error.h"
 
-#include "bap.h"
-
 #define ISO_SOCKET_UUID "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
 #define PACS_UUID_STR "00001850-0000-1000-8000-00805f9b34fb"
 #define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
@@ -1053,57 +1051,6 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 	}
 }
 
-void bap_qos_to_iso_qos(struct bt_bap_qos *bap_qos,
-				struct bt_iso_qos *iso_qos)
-{
-	memset(iso_qos, 0, sizeof(*iso_qos));
-
-	iso_qos->bcast.big = bap_qos->bcast.big;
-	iso_qos->bcast.bis = bap_qos->bcast.bis;
-	iso_qos->bcast.sync_factor = bap_qos->bcast.sync_factor;
-	iso_qos->bcast.packing = bap_qos->bcast.packing;
-	iso_qos->bcast.framing = bap_qos->bcast.framing;
-	iso_qos->bcast.encryption = bap_qos->bcast.encryption;
-	if (bap_qos->bcast.bcode && bap_qos->bcast.bcode->iov_base)
-		memcpy(iso_qos->bcast.bcode, bap_qos->bcast.bcode->iov_base,
-				bap_qos->bcast.bcode->iov_len);
-	iso_qos->bcast.options = bap_qos->bcast.options;
-	iso_qos->bcast.skip = bap_qos->bcast.skip;
-	iso_qos->bcast.sync_timeout = bap_qos->bcast.sync_timeout;
-	iso_qos->bcast.sync_cte_type = bap_qos->bcast.sync_cte_type;
-	iso_qos->bcast.mse = bap_qos->bcast.mse;
-	iso_qos->bcast.timeout = bap_qos->bcast.timeout;
-	memcpy(&iso_qos->bcast.out, &bap_qos->bcast.io_qos,
-			sizeof(struct bt_iso_io_qos));
-}
-
-void bap_iso_qos_to_bap_qos(struct bt_iso_qos *iso_qos,
-				struct bt_bap_qos *bap_qos)
-{
-	bap_qos->bcast.big = iso_qos->bcast.big;
-	bap_qos->bcast.bis = iso_qos->bcast.bis;
-	bap_qos->bcast.sync_factor = iso_qos->bcast.sync_factor;
-	bap_qos->bcast.packing = iso_qos->bcast.packing;
-	bap_qos->bcast.framing = iso_qos->bcast.framing;
-	bap_qos->bcast.encryption = iso_qos->bcast.encryption;
-	if (bap_qos->bcast.encryption)
-		bap_qos->bcast.bcode = util_iov_new(iso_qos->bcast.bcode,
-						sizeof(iso_qos->bcast.bcode));
-	bap_qos->bcast.options = iso_qos->bcast.options;
-	bap_qos->bcast.skip = iso_qos->bcast.skip;
-	bap_qos->bcast.sync_timeout = iso_qos->bcast.sync_timeout;
-	bap_qos->bcast.sync_cte_type =
-			iso_qos->bcast.sync_cte_type;
-	bap_qos->bcast.mse = iso_qos->bcast.mse;
-	bap_qos->bcast.timeout = iso_qos->bcast.timeout;
-	bap_qos->bcast.io_qos.interval =
-			iso_qos->bcast.in.interval;
-	bap_qos->bcast.io_qos.latency = iso_qos->bcast.in.latency;
-	bap_qos->bcast.io_qos.phy = iso_qos->bcast.in.phy;
-	bap_qos->bcast.io_qos.rtn = iso_qos->bcast.in.rtn;
-	bap_qos->bcast.io_qos.sdu = iso_qos->bcast.in.sdu;
-}
-
 static void create_stream_for_bis(struct bap_data *bap_data,
 		struct bt_bap_pac *lpac, struct bt_bap_qos *qos,
 		struct iovec *caps, struct iovec *meta, char *path)
@@ -1197,7 +1144,7 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 	iov.iov_len = base.base_len;
 
 	/* Create BAP QoS structure */
-	bap_iso_qos_to_bap_qos(&qos, &bap_qos);
+	bt_bap_iso_qos_to_bap_qos(&qos, &bap_qos);
 
 	bt_bap_parse_base(&iov, &bap_qos, bap_debug, bis_handler, data);
 
@@ -2962,7 +2909,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	queue_foreach(links, setup_refresh_qos, data);
 
 	/* Set the user requested QOS */
-	bap_qos_to_iso_qos(&setup->qos, &qos);
+	bt_bap_qos_to_iso_qos(&setup->qos, &qos);
 
 	if (!bt_io_set(io, &err,
 			BT_IO_OPT_QOS, &qos,

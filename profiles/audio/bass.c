@@ -52,8 +52,6 @@
 #include "src/log.h"
 #include "src/error.h"
 
-#include "bap.h"
-
 #define BASS_UUID_STR "0000184f-0000-1000-8000-00805f9b34fb"
 #define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
 
@@ -370,7 +368,7 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 
 		queue_foreach(links, append_stream, &iso_bc_addr);
 
-		bap_qos_to_iso_qos(bap_qos, &qos);
+		bt_bap_qos_to_iso_qos(bap_qos, &qos);
 
 		if (!bt_io_set(dg->io, &gerr,
 				BT_IO_OPT_QOS, &qos,
@@ -532,7 +530,7 @@ static gboolean big_info_cb(GIOChannel *io, GIOCondition cond,
 	iov.iov_len = base.base_len;
 
 	/* Create BAP QoS structure */
-	bap_iso_qos_to_bap_qos(&qos, &bap_qos);
+	bt_bap_iso_qos_to_bap_qos(&qos, &bap_qos);
 
 	bt_bap_parse_base(&iov, &bap_qos, bass_debug, bis_handler, dg);
 
