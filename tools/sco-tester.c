@@ -44,6 +44,7 @@ struct test_data {
 	int sk;
 	bool disable_esco;
 	bool enable_codecs;
+	bool disable_sco_flowctl;
 	int step;
 	uint16_t handle;
 	struct tx_tstamp_data tx_ts;
@@ -196,6 +197,16 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 		if (features)
 			features[3] &= ~0x80;
 	}
+
+	if (data->disable_sco_flowctl) {
+		uint8_t *commands;
+
+		tester_print("Disabling SCO flow control");
+
+		commands = hciemu_get_commands(data->hciemu);
+		if (commands)
+			commands[10] &= ~(BIT(3) | BIT(4));
+	}
 }
 
 static void test_pre_setup(const void *test_data)
@@ -240,7 +251,8 @@ static void test_data_free(void *test_data)
 	free(data);
 }
 
-#define test_sco_full(name, data, setup, func, _disable_esco, _enable_codecs) \
+#define test_sco_full(name, data, setup, func, _disable_esco, _enable_codecs, \
+							_disable_sco_flowctl) \
 	do { \
 		struct test_data *user; \
 		user = malloc(sizeof(struct test_data)); \
@@ -254,19 +266,26 @@ static void test_data_free(void *test_data)
 		user->step = 0; \
 		user->disable_esco = _disable_esco; \
 		user->enable_codecs = _enable_codecs; \
+		user->disable_sco_flowctl = _disable_sco_flowctl; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
 #define test_sco(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, false, false)
+	test_sco_full(name, data, setup, func, false, false, false)
+
+#define test_sco_no_flowctl(name, data, setup, func) \
+	test_sco_full(name, data, setup, func, false, false, true)
 
 #define test_sco_11(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, true, false)
+	test_sco_full(name, data, setup, func, true, false, false)
+
+#define test_sco_11_no_flowctl(name, data, setup, func) \
+	test_sco_full(name, data, setup, func, true, false, true)
 
 #define test_offload_sco(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, false, true)
+	test_sco_full(name, data, setup, func, false, true, false)
 
 static const struct sco_client_data connect_success = {
 	.expect_err = 0
@@ -290,7 +309,8 @@ const uint8_t data[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 static const struct sco_client_data connect_send_success = {
 	.expect_err = 0,
 	.data_len = sizeof(data),
-	.send_data = data
+	.send_data = data,
+	.repeat_send = 3
 };
 
 static const struct sco_client_data connect_send_tx_timestamping = {
@@ -1112,9 +1132,18 @@ int main(int argc, char *argv[])
 	test_sco("SCO CVSD Send - Success", &connect_send_success,
 					setup_powered, test_connect);
 
+	test_sco_no_flowctl("SCO CVSD Send No Flowctl - Success",
+			&connect_send_success, setup_powered, test_connect);
+
 	test_sco("SCO CVSD Send - TX Timestamping",
 					&connect_send_tx_timestamping,
 					setup_powered, test_connect);
+
+	test_sco_11("SCO CVSD 1.1 Send - Success", &connect_send_success,
+					setup_powered, test_connect);
+
+	test_sco_11_no_flowctl("SCO CVSD 1.1 Send No Flowctl - Success",
+			&connect_send_success, setup_powered, test_connect);
 
 	test_offload_sco("Basic SCO Get Socket Option - Offload - Success",
 				NULL, setup_powered, test_codecs_getsockopt);
