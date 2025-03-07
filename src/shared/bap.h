@@ -300,3 +300,8 @@ unsigned int bt_bap_bcode_cb_register(struct bt_bap *bap,
 bool bt_bap_bcode_cb_unregister(struct bt_bap *bap, unsigned int id);
 
 struct bt_bap *bt_bap_get_session(struct bt_att *att, struct gatt_db *db);
+
+void bt_bap_iso_qos_to_bap_qos(struct bt_iso_qos *iso_qos,
+				struct bt_bap_qos *bap_qos);
+void bt_bap_qos_to_iso_qos(struct bt_bap_qos *bap_qos,
+				struct bt_iso_qos *iso_qos);
