@@ -7406,6 +7406,11 @@ uint8_t *btdev_get_features(struct btdev *btdev)
 	return btdev->features;
 }
 
+uint8_t *btdev_get_commands(struct btdev *btdev)
+{
+	return btdev->commands;
+}
+
 uint8_t btdev_get_scan_enable(struct btdev *btdev)
 {
 	return btdev->scan_enable;

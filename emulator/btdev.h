@@ -76,6 +76,8 @@ bool btdev_set_bdaddr(struct btdev *btdev, const uint8_t *bdaddr);
 
 uint8_t *btdev_get_features(struct btdev *btdev);
 
+uint8_t *btdev_get_commands(struct btdev *btdev);
+
 uint8_t btdev_get_scan_enable(struct btdev *btdev);
 
 uint8_t btdev_get_le_scan_enable(struct btdev *btdev);

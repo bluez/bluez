@@ -528,6 +528,20 @@ uint8_t *hciemu_get_features(struct hciemu *hciemu)
 	return btdev_get_features(dev);
 }
 
+uint8_t *hciemu_get_commands(struct hciemu *hciemu)
+{
+	struct btdev *dev;
+
+	if (!hciemu || !hciemu->vhci)
+		return NULL;
+
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return NULL;
+
+	return btdev_get_commands(dev);
+}
+
 const uint8_t *hciemu_get_central_bdaddr(struct hciemu *hciemu)
 {
 	struct btdev *dev;
