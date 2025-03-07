@@ -2708,17 +2708,6 @@ static bool match_device(const void *data, const void *match_data)
 	return bdata->device == device;
 }
 
-struct bt_bap *bap_get_session(struct btd_device *device)
-{
-	struct bap_data *data;
-
-	data = queue_find(sessions, match_device, device);
-	if (!data)
-		return NULL;
-
-	return data->bap;
-}
-
 static struct bap_data *bap_data_new(struct btd_device *device)
 {
 	struct bap_data *data;

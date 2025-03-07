@@ -1113,7 +1113,7 @@ static void bis_probe(uint8_t bis, uint8_t sgrp, struct iovec *caps,
 			/* Only client sessions must be handled */
 			continue;
 
-		bap = bap_get_session(data->device);
+		bap = bt_bap_get_session(bt_bass_get_att(data->bass), NULL);
 		if (!bap)
 			continue;
 
