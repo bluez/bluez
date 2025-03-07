@@ -116,6 +116,7 @@ struct bass_delegator {
 
 struct bass_setup {
 	struct bass_delegator *dg;
+	char *path;
 	struct bt_bap_stream *stream;
 	uint8_t bis;
 	struct bt_bap_qos qos;
@@ -411,19 +412,17 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 
 static void setup_configure_stream(struct bass_setup *setup)
 {
-	char *path;
-
 	setup->stream = bt_bap_stream_new(setup->dg->bap, setup->lpac, NULL,
 					&setup->qos, setup->config);
 	if (!setup->stream)
 		return;
 
-	if (asprintf(&path, "%s/bis%d",
+	if (asprintf(&setup->path, "%s/bis%d",
 			device_get_path(setup->dg->device),
 			setup->bis) < 0)
 		return;
 
-	bt_bap_stream_set_user_data(setup->stream, path);
+	bt_bap_stream_set_user_data(setup->stream, setup->path);
 
 	bt_bap_stream_config(setup->stream, &setup->qos,
 			setup->config, NULL, NULL);
@@ -649,6 +648,7 @@ static void setup_free(void *data)
 	util_iov_free(setup->qos.bcast.bcode, 1);
 	util_iov_free(setup->meta, 1);
 	util_iov_free(setup->config, 1);
+	free(setup->path);
 
 	/* Clear bis index from the bis sync bitmask, if it
 	 * has been previously set.
