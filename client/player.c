@@ -2096,8 +2096,12 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 		/* Adjust the SDU size based on the number of
 		 * locations/channels that is being requested.
 		 */
-		if (channels > 1)
-			qos->sdu *= channels;
+		if (channels > 1) {
+			if (ep->broadcast)
+				cfg->qos.bcast.io_qos.sdu *= channels;
+			else
+				cfg->qos.ucast.io_qos.sdu *= channels;
+		}
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
