@@ -50,6 +50,8 @@ typedef void (*bt_bap_bcode_func_t)(struct bt_bap_stream *stream,
 				bt_bap_bcode_reply_t reply, void *reply_data,
 				void *user_data);
 
+extern struct bt_iso_qos bap_sink_pa_qos;
+
 /* Local PAC related functions */
 struct bt_bap_pac_qos {
 	uint8_t  framing;
