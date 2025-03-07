@@ -523,6 +523,7 @@ struct bt_hci_acl_hdr {
 struct bt_hci_sco_hdr {
 	uint16_t handle;
 	uint8_t  dlen;
+	uint8_t  data[];
 } __attribute__ ((packed));
 
 struct bt_hci_iso_hdr {

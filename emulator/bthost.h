@@ -51,6 +51,9 @@ typedef void (*bthost_new_conn_cb) (uint16_t handle, void *user_data);
 void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 							void *user_data);
 
+void bthost_set_sco_cb(struct bthost *bthost, bthost_new_conn_cb cb,
+							void *user_data);
+
 void bthost_set_iso_cb(struct bthost *bthost, bthost_accept_conn_cb accept,
 				bthost_new_conn_cb cb, void *user_data);
 
@@ -68,6 +71,13 @@ typedef void (*bthost_cid_hook_func_t)(const void *data, uint16_t len,
 
 void bthost_add_cid_hook(struct bthost *bthost, uint16_t handle, uint16_t cid,
 				bthost_cid_hook_func_t func, void *user_data);
+
+typedef void (*bthost_sco_hook_func_t)(const void *data, uint16_t len,
+					uint8_t status, void *user_data);
+
+void bthost_add_sco_hook(struct bthost *bthost, uint16_t handle,
+				bthost_sco_hook_func_t func, void *user_data,
+				bthost_destroy_func_t destroy);
 
 typedef void (*bthost_iso_hook_func_t)(const void *data, uint16_t len,
 							void *user_data);

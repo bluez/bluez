@@ -39,6 +39,8 @@
 #define acl_handle(h)		(h & 0x0fff)
 #define acl_flags(h)		(h >> 12)
 
+#define sco_flags_status(f)	(f & 0x03)
+
 #define iso_flags_pb(f)		(f & 0x0003)
 #define iso_flags_ts(f)		((f >> 2) & 0x0001)
 #define iso_flags_pack(pb, ts)	(((pb) & 0x03) | (((ts) & 0x01) << 2))
@@ -138,8 +140,14 @@ struct rfcomm_chan_hook {
 	struct rfcomm_chan_hook *next;
 };
 
+struct sco_hook {
+	bthost_sco_hook_func_t func;
+	void *user_data;
+	bthost_destroy_func_t destroy;
+};
+
 struct iso_hook {
-	bthost_cid_hook_func_t func;
+	bthost_iso_hook_func_t func;
 	void *user_data;
 	bthost_destroy_func_t destroy;
 };
@@ -155,6 +163,7 @@ struct btconn {
 	struct rcconn *rcconns;
 	struct cid_hook *cid_hooks;
 	struct rfcomm_chan_hook *rfcomm_chan_hooks;
+	struct sco_hook *sco_hook;
 	struct iso_hook *iso_hook;
 	struct btconn *next;
 	void *smp_data;
@@ -241,6 +250,8 @@ struct bthost {
 	void *cmd_complete_data;
 	bthost_new_conn_cb new_conn_cb;
 	void *new_conn_data;
+	bthost_new_conn_cb new_sco_cb;
+	void *new_sco_data;
 	bthost_accept_conn_cb accept_iso_cb;
 	bthost_new_conn_cb new_iso_cb;
 	void *new_iso_data;
@@ -326,9 +337,13 @@ static void btconn_free(struct btconn *conn)
 		free(hook);
 	}
 
+	if (conn->sco_hook && conn->sco_hook->destroy)
+		conn->sco_hook->destroy(conn->sco_hook->user_data);
+
 	if (conn->iso_hook && conn->iso_hook->destroy)
 		conn->iso_hook->destroy(conn->iso_hook->user_data);
 
+	free(conn->sco_hook);
 	free(conn->iso_hook);
 	free(conn->recv_data);
 	free(conn);
@@ -720,6 +735,30 @@ void bthost_add_cid_hook(struct bthost *bthost, uint16_t handle, uint16_t cid,
 
 	hook->next = conn->cid_hooks;
 	conn->cid_hooks = hook;
+}
+
+void bthost_add_sco_hook(struct bthost *bthost, uint16_t handle,
+				bthost_sco_hook_func_t func, void *user_data,
+				bthost_destroy_func_t destroy)
+{
+	struct sco_hook *hook;
+	struct btconn *conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn || conn->sco_hook)
+		return;
+
+	hook = malloc(sizeof(*hook));
+	if (!hook)
+		return;
+
+	memset(hook, 0, sizeof(*hook));
+
+	hook->func = func;
+	hook->user_data = user_data;
+	hook->destroy = destroy;
+
+	conn->sco_hook = hook;
 }
 
 void bthost_add_iso_hook(struct bthost *bthost, uint16_t handle,
@@ -1184,6 +1223,29 @@ static void init_conn(struct bthost *bthost, uint16_t handle,
 	}
 }
 
+static void init_sco(struct bthost *bthost, uint16_t handle,
+				const uint8_t *bdaddr, uint8_t addr_type)
+{
+	struct btconn *conn;
+
+	bthost_debug(bthost, "SCO handle 0x%4.4x", handle);
+
+	conn = malloc(sizeof(*conn));
+	if (!conn)
+		return;
+
+	memset(conn, 0, sizeof(*conn));
+	conn->handle = handle;
+	memcpy(conn->bdaddr, bdaddr, 6);
+	conn->addr_type = addr_type;
+
+	conn->next = bthost->conns;
+	bthost->conns = conn;
+
+	if (bthost->new_sco_cb)
+		bthost->new_sco_cb(handle, bthost->new_sco_data);
+}
+
 static void evt_conn_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
@@ -1195,7 +1257,13 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 	if (ev->status)
 		return;
 
-	init_conn(bthost, le16_to_cpu(ev->handle), ev->bdaddr, BDADDR_BREDR);
+	if (ev->link_type == 0x00) {
+		init_sco(bthost, le16_to_cpu(ev->handle), ev->bdaddr,
+								BDADDR_BREDR);
+	} else if (ev->link_type == 0x01) {
+		init_conn(bthost, le16_to_cpu(ev->handle), ev->bdaddr,
+								BDADDR_BREDR);
+	}
 }
 
 static void evt_disconn_complete(struct bthost *bthost, const void *data,
@@ -1395,6 +1463,20 @@ static void evt_simple_pairing_complete(struct bthost *bthost, const void *data,
 
 	if (len < sizeof(*ev))
 		return;
+}
+
+static void evt_sync_conn_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_sync_conn_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (ev->status)
+		return;
+
+	init_sco(bthost, le16_to_cpu(ev->handle), ev->bdaddr, BDADDR_BREDR);
 }
 
 static void evt_le_conn_complete(struct bthost *bthost, const void *data,
@@ -1703,6 +1785,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_DISCONNECT_COMPLETE:
 		evt_disconn_complete(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_SYNC_CONN_COMPLETE:
+		evt_sync_conn_complete(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
@@ -2947,6 +3033,36 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 	}
 }
 
+static void process_sco(struct bthost *bthost, const void *data, uint16_t len)
+{
+	const struct bt_hci_sco_hdr *sco_hdr = data;
+	uint16_t handle, sco_len;
+	uint8_t status;
+	struct btconn *conn;
+	struct sco_hook *hook;
+
+	sco_len = le16_to_cpu(sco_hdr->dlen);
+	if (len != sizeof(*sco_hdr) + sco_len)
+		return;
+
+	handle = acl_handle(sco_hdr->handle);
+	status = sco_flags_status(acl_flags(sco_hdr->handle));
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn) {
+		bthost_debug(bthost, "Unknown handle: 0x%4.4x", handle);
+		return;
+	}
+
+	bthost_debug(bthost, "SCO data: %u bytes", sco_len);
+
+	hook = conn->sco_hook;
+	if (!hook)
+		return;
+
+	hook->func(sco_hdr->data, sco_len, status, hook->user_data);
+}
+
 static void process_iso_data(struct bthost *bthost, struct btconn *conn,
 					const void *data, uint16_t len)
 {
@@ -3062,6 +3178,9 @@ void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
 	case BT_H4_ACL_PKT:
 		process_acl(bthost, data + 1, len - 1);
 		break;
+	case BT_H4_SCO_PKT:
+		process_sco(bthost, data + 1, len - 1);
+		break;
 	case BT_H4_ISO_PKT:
 		process_iso(bthost, data + 1, len - 1);
 		break;
@@ -3083,6 +3202,13 @@ void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 {
 	bthost->new_conn_cb = cb;
 	bthost->new_conn_data = user_data;
+}
+
+void bthost_set_sco_cb(struct bthost *bthost, bthost_new_conn_cb cb,
+							void *user_data)
+{
+	bthost->new_sco_cb = cb;
+	bthost->new_sco_data = user_data;
 }
 
 void bthost_set_iso_cb(struct bthost *bthost, bthost_accept_conn_cb accept,
