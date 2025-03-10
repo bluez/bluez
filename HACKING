@@ -116,7 +116,8 @@ The preferred way to send patches is by email, using git send-email:
   # git config sendemail.to linux-bluetooth@vger.kernel.org
 
 BlueZ rules for submitting patches follow most of the rules used by Linux kernel
-(https://www.kernel.org/doc/Documentation/SubmittingPatches) with some remarks:
+(https://www.kernel.org/doc/html/latest/process/submitting-patches.html)
+with some remarks:
 
 1) Do *not* add "Signed-off-by" lines in your commit messages. BlueZ does not
 use them, so including them is actually an error.
