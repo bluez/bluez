@@ -630,7 +630,7 @@ int phonebook_init(void)
 	/* Acquire ESource Registry */
 	registry = e_source_registry_new_sync(NULL, &gerr);
 	if (gerr != NULL) {
-		error("Unable to acquire registery: %s\n", gerr->message);
+		error("Unable to acquire registry: %s\n", gerr->message);
 		g_error_free(gerr);
 		return -1;
 	}
