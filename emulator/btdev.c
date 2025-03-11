@@ -7460,21 +7460,15 @@ void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
 	btdev->send_data = user_data;
 }
 
-static void num_completed_packets(struct btdev *btdev, uint16_t handle)
+static void num_completed_packets(struct btdev *btdev, struct btdev_conn *conn)
 {
-	struct btdev_conn *conn;
+	struct bt_hci_evt_num_completed_packets ncp;
 
-	conn = queue_find(btdev->conns, match_handle, UINT_TO_PTR(handle));
-	if (conn) {
-		struct bt_hci_evt_num_completed_packets ncp;
+	ncp.num_handles = 1;
+	ncp.handle = cpu_to_le16(conn->handle);
+	ncp.count = cpu_to_le16(1);
 
-		ncp.num_handles = 1;
-		ncp.handle = cpu_to_le16(handle);
-		ncp.count = cpu_to_le16(1);
-
-		send_event(btdev, BT_HCI_EVT_NUM_COMPLETED_PACKETS,
-							&ncp, sizeof(ncp));
-	}
+	send_event(btdev, BT_HCI_EVT_NUM_COMPLETED_PACKETS, &ncp, sizeof(ncp));
 }
 
 static const struct btdev_cmd *run_cmd(struct btdev *btdev,
@@ -7672,7 +7666,7 @@ static void send_acl(struct btdev *dev, const void *data, uint16_t len)
 	if (!conn)
 		return;
 
-	num_completed_packets(dev, conn->handle);
+	num_completed_packets(dev, conn);
 
 	/* ACL_START_NO_FLUSH is only allowed from host to controller.
 	 * From controller to host this should be converted to ACL_START.
@@ -7709,7 +7703,7 @@ static void send_sco(struct btdev *dev, const void *data, uint16_t len)
 		return;
 
 	if (dev->sco_flowctl)
-		num_completed_packets(dev, conn->handle);
+		num_completed_packets(dev, conn);
 
 	if (conn->link)
 		send_packet(conn->link->dev, iov, 2);
@@ -7734,7 +7728,7 @@ static void send_iso(struct btdev *dev, const void *data, uint16_t len)
 	if (!conn)
 		return;
 
-	num_completed_packets(dev, conn->handle);
+	num_completed_packets(dev, conn);
 
 	if (conn->link)
 		send_packet(conn->link->dev, iov, 2);
