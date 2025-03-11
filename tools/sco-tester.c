@@ -821,6 +821,9 @@ static gboolean sco_connect_cb(GIOChannel *io, GIOCondition cond,
 					errno);
 			err = -errno;
 		}
+
+		/* Don't close the socket until all data is sent */
+		g_io_channel_set_close_on_unref(io, FALSE);
 	}
 
 	if (scodata->shutdown) {
