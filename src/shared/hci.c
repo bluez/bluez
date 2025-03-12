@@ -620,7 +620,7 @@ bool bt_hci_send_data(struct bt_hci *hci, uint8_t type, uint16_t handle,
 	switch (type) {
 	case BT_H4_ACL_PKT:
 	case BT_H4_SCO_PKT:
-	case BT_H4_EVT_PKT:
+	case BT_H4_ISO_PKT:
 		break;
 	default:
 		return false;
