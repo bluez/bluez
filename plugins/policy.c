@@ -37,10 +37,12 @@
 #define CONTROL_CONNECT_TIMEOUT 2
 #define SOURCE_RETRY_TIMEOUT 2
 #define SINK_RETRY_TIMEOUT SOURCE_RETRY_TIMEOUT
+#define HS_RETRY_TIMEOUT SOURCE_RETRY_TIMEOUT
 #define CT_RETRY_TIMEOUT 1
 #define TG_RETRY_TIMEOUT CT_RETRY_TIMEOUT
 #define SOURCE_RETRIES 1
 #define SINK_RETRIES SOURCE_RETRIES
+#define HS_RETRIES SOURCE_RETRIES
 #define CT_RETRIES 1
 #define TG_RETRIES CT_RETRIES
 
@@ -88,6 +90,8 @@ struct policy_data {
 	uint8_t ct_retries;
 	unsigned int tg_timer;
 	uint8_t tg_retries;
+	unsigned int hs_timer;
+	uint8_t hs_retries;
 };
 
 static struct reconnect_data *reconnect_find(struct btd_device *dev)
@@ -183,6 +187,9 @@ static void policy_remove(void *user_data)
 	if (data->tg_timer > 0)
 		timeout_remove(data->tg_timer);
 
+	if (data->hs_timer > 0)
+		timeout_remove(data->hs_timer);
+
 	g_free(data);
 }
 
@@ -200,6 +207,33 @@ static struct policy_data *policy_get_data(struct btd_device *dev)
 	devices = g_slist_prepend(devices, data);
 
 	return data;
+}
+
+static bool policy_connect_hs(gpointer user_data)
+{
+	struct policy_data *data = user_data;
+	struct btd_service *service;
+
+	data->hs_timer = 0;
+	data->hs_retries++;
+
+	service = btd_device_get_service(data->dev, HFP_HS_UUID);
+	if (service == NULL)
+		service = btd_device_get_service(data->dev, HSP_HS_UUID);
+	if (service != NULL)
+		policy_connect(data, service);
+
+	return FALSE;
+}
+
+static void policy_set_hs_timer(struct policy_data *data)
+{
+	if (data->hs_timer > 0)
+		timeout_remove(data->hs_timer);
+
+	data->hs_timer = timeout_add_seconds(HS_RETRY_TIMEOUT,
+							policy_connect_hs,
+							data, NULL);
 }
 
 static bool policy_connect_sink(gpointer user_data)
@@ -232,11 +266,14 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 {
 	struct btd_device *dev = btd_service_get_device(service);
 	struct policy_data *data;
-	struct btd_service *controller;
+	struct btd_service *controller, *hs;
 
 	controller = btd_device_get_service(dev, AVRCP_REMOTE_UUID);
 	if (controller == NULL)
 		return;
+	hs = btd_device_get_service(dev, HFP_HS_UUID);
+	if (hs == NULL)
+		hs = btd_device_get_service(dev, HSP_HS_UUID);
 
 	data = policy_get_data(dev);
 
@@ -286,6 +323,18 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 		else if (btd_service_get_state(controller) !=
 						BTD_SERVICE_STATE_CONNECTED)
 			policy_set_ct_timer(data, CONTROL_CONNECT_TIMEOUT);
+
+		/* Also try connecting HSP/HFP if it is not connected
+		 */
+		if (hs != NULL) {
+			if (btd_service_is_initiator(service))
+				policy_connect(data, hs);
+			else if (btd_service_get_state(hs) !=
+						BTD_SERVICE_STATE_CONNECTED)
+				policy_set_hs_timer(data);
+		}
+		break;
+
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
@@ -308,8 +357,26 @@ static void hs_cb(struct btd_service *service, btd_service_state_t old_state,
 
 	switch (new_state) {
 	case BTD_SERVICE_STATE_UNAVAILABLE:
+		if (data->hs_timer > 0) {
+			timeout_remove(data->hs_timer);
+			data->hs_timer = 0;
+		}
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTED:
+		if (old_state == BTD_SERVICE_STATE_CONNECTING) {
+			int err = btd_service_get_error(service);
+
+			if (err == -EAGAIN) {
+				if (data->hs_retries < HS_RETRIES)
+					policy_set_hs_timer(data);
+				else
+					data->hs_retries = 0;
+				break;
+			} else if (data->hs_timer > 0) {
+				timeout_remove(data->hs_timer);
+				data->hs_timer = 0;
+			}
+		}
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
 		break;
