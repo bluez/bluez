@@ -141,8 +141,8 @@ static bool uuid_cmp(const bt_uuid_t *uuid, uint16_t u16)
 static gboolean descriptor_get_handle(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
-	struct service *desc = data;
-	uint16_t handle = desc->start_handle;
+	struct descriptor *desc = data;
+	uint16_t handle = desc->handle;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &handle);
 
