@@ -1,3 +1,17 @@
+ver 5.80:
+	Fix issue with handling address type for all types of keys.
+	Fix issue with handling maximum number of GATT channels.
+	Fix issue with handling MTU auto-tuning feature.
+	Fix issue with handling AVRCP volume in reconfigured transports.
+	Fix issue with handling VCP volume setting requests.
+	Fix issue with handling VCP connection management.
+	Fix issue with handling MAP qualification.
+	Fix issue with handling PBAP qualification.
+	Fix issue with handling BNEP qualification.
+	Add support for PreferredBearer device property.
+	Add support for SupportedTypes Message Access property.
+	Add support for HFP, A2DP, AVRCP, AVCTP and MAP latest versions.
+
 ver 5.79:
 	Fix issue with handling address type while pairing.
 	Add support for allowing to set A2DP transport delay.
