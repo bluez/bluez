@@ -678,6 +678,9 @@ static int shell_exec(int argc, char *argv[])
 	if (!data.menu || !argv[0])
 		return -EINVAL;
 
+	if (!argsisutf8(argc, argv))
+		return -EINVAL;
+
 	err  = menu_exec(default_menu, argc, argv);
 	if (err == -ENOENT) {
 		err  = menu_exec(data.menu->entries, argc, argv);
