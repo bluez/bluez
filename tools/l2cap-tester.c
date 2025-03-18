@@ -102,6 +102,9 @@ struct l2cap_data {
 
 	/* Number of additional packets to send. */
 	unsigned int repeat_send;
+
+	/* Socket type (0 means SOCK_SEQPACKET) */
+	int sock_type;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -384,6 +387,19 @@ static const struct l2cap_data client_connect_tx_timestamping_test = {
 					SOF_TIMESTAMPING_TX_SOFTWARE |
 					SOF_TIMESTAMPING_TX_COMPLETION),
 	.repeat_send = 2,
+};
+
+static const struct l2cap_data client_connect_stream_tx_timestamping_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.write_data = l2_data,
+	.data_len = sizeof(l2_data),
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_OPT_ID |
+					SOF_TIMESTAMPING_TX_SOFTWARE |
+					SOF_TIMESTAMPING_TX_COMPLETION),
+	.repeat_send = 2,
+	.sock_type = SOCK_STREAM,
 };
 
 static const struct l2cap_data client_connect_shut_wr_success_test = {
@@ -1371,10 +1387,11 @@ static void l2cap_tx_timestamping(struct test_data *data, GIOChannel *io)
 
 	tester_print("Enabling TX timestamping");
 
-	tx_tstamp_init(&data->tx_ts, l2data->so_timestamping);
+	tx_tstamp_init(&data->tx_ts, l2data->so_timestamping,
+					l2data->sock_type == SOCK_STREAM);
 
 	for (count = 0; count < l2data->repeat_send + 1; ++count)
-		data->step += tx_tstamp_expect(&data->tx_ts);
+		data->step += tx_tstamp_expect(&data->tx_ts, l2data->data_len);
 
 	err = setsockopt(sk, SOL_SOCKET, SO_TIMESTAMPING, &so, sizeof(so));
 	if (err < 0) {
@@ -1523,9 +1540,12 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 	const uint8_t *central_bdaddr;
 	struct sockaddr_l2 addr;
 	int sk, err;
+	int sock_type = SOCK_SEQPACKET;
 
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET | SOCK_NONBLOCK,
-							BTPROTO_L2CAP);
+	if (l2data && l2data->sock_type)
+		sock_type = l2data->sock_type;
+
+	sk = socket(PF_BLUETOOTH, sock_type | SOCK_NONBLOCK, BTPROTO_L2CAP);
 	if (sk < 0) {
 		err = -errno;
 		tester_warn("Can't create socket: %s (%d)", strerror(errno),
@@ -2522,6 +2542,10 @@ int main(int argc, char *argv[])
 	test_l2cap_bredr("L2CAP BR/EDR Client - TX Timestamping",
 					&client_connect_tx_timestamping_test,
 					setup_powered_client, test_connect);
+
+	test_l2cap_bredr("L2CAP BR/EDR Client - Stream TX Timestamping",
+				&client_connect_stream_tx_timestamping_test,
+				setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM 1",
 					&client_connect_nval_psm_test_1,

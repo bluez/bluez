@@ -2285,10 +2285,10 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 
 	tester_print("Enabling TX timestamping");
 
-	tx_tstamp_init(&data->tx_ts, isodata->so_timestamping);
+	tx_tstamp_init(&data->tx_ts, isodata->so_timestamping, false);
 
 	for (count = 0; count < isodata->repeat_send + 1; ++count)
-		data->step += tx_tstamp_expect(&data->tx_ts);
+		data->step += tx_tstamp_expect(&data->tx_ts, 0);
 
 	sk = g_io_channel_unix_get_fd(io);
 

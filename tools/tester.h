@@ -38,21 +38,26 @@ struct tx_tstamp_data {
 	unsigned int count;
 	unsigned int sent;
 	uint32_t so_timestamping;
+	bool stream;
 };
 
 static inline void tx_tstamp_init(struct tx_tstamp_data *data,
-				uint32_t so_timestamping)
+				uint32_t so_timestamping, bool stream)
 {
 	memset(data, 0, sizeof(*data));
 	memset(data->expect, 0xff, sizeof(data->expect));
 
 	data->so_timestamping = so_timestamping;
+	data->stream = stream;
 }
 
-static inline int tx_tstamp_expect(struct tx_tstamp_data *data)
+static inline int tx_tstamp_expect(struct tx_tstamp_data *data, size_t len)
 {
 	unsigned int pos = data->count;
 	int steps;
+
+	if (data->stream && len)
+		data->sent += len - 1;
 
 	if (data->so_timestamping & SOF_TIMESTAMPING_TX_SCHED) {
 		g_assert(pos < ARRAY_SIZE(data->expect));
@@ -75,7 +80,8 @@ static inline int tx_tstamp_expect(struct tx_tstamp_data *data)
 		pos++;
 	}
 
-	data->sent++;
+	if (!data->stream || len)
+		data->sent++;
 
 	steps = pos - data->count;
 	data->count = pos;
