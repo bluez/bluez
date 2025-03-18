@@ -843,18 +843,6 @@ static gboolean parse_argument(int argc, char *argv[], const char **arg_table,
 	return FALSE;
 }
 
-static int validate_input(int argc, char *argv[])
-{
-	for (int i = 0; i < argc; i++) {
-		if (!strisutf8(argv[i], strlen(argv[i]))) {
-			printf("Invalid character in string: %s\n", argv[i]);
-			return -EINVAL;
-		}
-	}
-
-	return 0;
-}
-
 static void cmd_list(int argc, char *argv[])
 {
 	GList *list;
@@ -3405,9 +3393,8 @@ int main(int argc, char *argv[])
 	int timeout;
 	unsigned int timeout_id;
 
-	status = validate_input(argc, argv);
-	if (status)
-		return status;
+	if (!argsisutf8(argc, argv))
+		return -EINVAL;
 
 	bt_shell_init(argc, argv, &opt);
 	bt_shell_set_menu(&main_menu);
