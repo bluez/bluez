@@ -691,7 +691,7 @@ static void test_pre_setup(const void *test_data)
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = test_data;
 
-	if (isodata && isodata->so_timestamping) {
+	if (isodata && isodata->no_poll_errqueue) {
 		if (tester_pre_setup_skip_by_default())
 			return;
 	}
