@@ -1451,8 +1451,9 @@ static void l2cap_write_data(struct test_data *data, GIOChannel *io,
 	const struct l2cap_data *l2data = data->test_data;
 	struct bthost *bthost;
 	ssize_t ret;
-	int sk;
+	int sk, size;
 	unsigned int count;
+	socklen_t len = sizeof(size);
 
 	sk = g_io_channel_unix_get_fd(io);
 
@@ -1463,6 +1464,15 @@ static void l2cap_write_data(struct test_data *data, GIOChannel *io,
 							NULL);
 
 	l2cap_tx_timestamping(data, io);
+
+	/* Socket buffer needs to hold what we send, btdev doesn't flush now */
+	ret = getsockopt(sk, SOL_SOCKET, SO_SNDBUF, &size, &len);
+	if (!ret) {
+		size += l2data->data_len * (l2data->repeat_send + 1);
+		ret = setsockopt(sk, SOL_SOCKET, SO_SNDBUF, &size, len);
+		if (ret)
+			tester_warn("Failed to set SO_SNDBUF = %d", size);
+	}
 
 	for (count = 0; count < l2data->repeat_send + 1; ++count) {
 		ret = l2cap_send(sk, l2data->write_data, l2data->data_len,
