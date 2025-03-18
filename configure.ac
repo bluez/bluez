@@ -389,6 +389,13 @@ AC_ARG_ENABLE(testing, AS_HELP_STRING([--enable-testing],
 					[enable_testing=${enableval}])
 AM_CONDITIONAL(TESTING, test "${enable_testing}" = "yes")
 
+if (test "${enable_testing}" = "yes"); then
+   AC_CHECK_DECLS([SOF_TIMESTAMPING_TX_COMPLETION, SCM_TSTAMP_COMPLETION],
+	[], [], [[#include <time.h>
+		#include <linux/errqueue.h>
+		#include <linux/net_tstamp.h>]])
+fi
+
 AC_ARG_ENABLE(experimental, AS_HELP_STRING([--enable-experimental],
 			[enable experimental tools]),
 					[enable_experimental=${enableval}])

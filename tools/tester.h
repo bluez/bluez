@@ -20,6 +20,15 @@
 #define SEC_NSEC(_t)  ((_t) * 1000000000LL)
 #define TS_NSEC(_ts)  (SEC_NSEC((_ts)->tv_sec) + (_ts)->tv_nsec)
 
+#if !HAVE_DECL_SOF_TIMESTAMPING_TX_COMPLETION
+#define SOF_TIMESTAMPING_TX_COMPLETION	(1 << 18)
+#endif
+#if !HAVE_DECL_SCM_TSTAMP_COMPLETION
+#define SCM_TSTAMP_COMPLETION		(SCM_TSTAMP_ACK + 1)
+#endif
+#define TS_TX_RECORD_MASK		(SOF_TIMESTAMPING_TX_RECORD_MASK | \
+						SOF_TIMESTAMPING_TX_COMPLETION)
+
 struct tx_tstamp_data {
 	struct {
 		uint32_t id;
@@ -59,6 +68,13 @@ static inline int tx_tstamp_expect(struct tx_tstamp_data *data)
 		pos++;
 	}
 
+	if (data->so_timestamping & SOF_TIMESTAMPING_TX_COMPLETION) {
+		g_assert(pos < ARRAY_SIZE(data->expect));
+		data->expect[pos].type = SCM_TSTAMP_COMPLETION;
+		data->expect[pos].id = data->sent;
+		pos++;
+	}
+
 	data->sent++;
 
 	steps = pos - data->count;
@@ -77,6 +93,7 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 	struct scm_timestamping *tss = NULL;
 	struct sock_extended_err *serr = NULL;
 	struct timespec now;
+	unsigned int i;
 
 	iov.iov_base = buf;
 	iov.iov_len = sizeof(buf);
@@ -89,7 +106,7 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 
 	ret = recvmsg(sk, &msg, MSG_ERRQUEUE);
 	if (ret < 0) {
-		if (ret == EAGAIN || ret == EWOULDBLOCK)
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return data->count - data->pos;
 
 		tester_warn("Failed to read from errqueue: %s (%d)",
@@ -147,18 +164,29 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 		return -EINVAL;
 	}
 
-	if ((data->so_timestamping & SOF_TIMESTAMPING_OPT_ID) &&
-				serr->ee_data != data->expect[data->pos].id) {
-		tester_warn("Bad timestamp id %u", serr->ee_data);
-		return -EINVAL;
-	}
+	/* Find first unreceived timestamp of the right type */
+	for (i = 0; i < data->count; ++i) {
+		if (data->expect[i].type >= 0xffff)
+			continue;
 
-	if (serr->ee_info != data->expect[data->pos].type) {
+		if (serr->ee_info == data->expect[i].type) {
+			data->expect[i].type = 0xffff;
+			break;
+		}
+	}
+	if (i == data->count) {
 		tester_warn("Bad timestamp type %u", serr->ee_info);
 		return -EINVAL;
 	}
 
-	tester_print("Got valid TX timestamp %u", data->pos);
+	if ((data->so_timestamping & SOF_TIMESTAMPING_OPT_ID) &&
+				serr->ee_data != data->expect[i].id) {
+		tester_warn("Bad timestamp id %u", serr->ee_data);
+		return -EINVAL;
+	}
+
+	tester_print("Got valid TX timestamp %u (type %u, id %u)", i,
+						serr->ee_info, serr->ee_data);
 
 	++data->pos;
 

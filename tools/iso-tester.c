@@ -1066,20 +1066,10 @@ static const struct iso_client_data connect_send_tx_timestamping = {
 	.send = &send_16_2_1,
 	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
 					SOF_TIMESTAMPING_OPT_ID |
-					SOF_TIMESTAMPING_TX_SOFTWARE),
+					SOF_TIMESTAMPING_TX_SOFTWARE |
+					SOF_TIMESTAMPING_TX_COMPLETION),
 	.repeat_send = 1,
 	.repeat_send_pre_ts = 2,
-};
-
-static const struct iso_client_data connect_send_tx_sched_timestamping = {
-	.qos = QOS_16_2_1,
-	.expect_err = 0,
-	.send = &send_16_2_1,
-	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
-					SOF_TIMESTAMPING_TX_SOFTWARE |
-					SOF_TIMESTAMPING_OPT_TSONLY |
-					SOF_TIMESTAMPING_TX_SCHED),
-	.repeat_send = 1,
 };
 
 static const struct iso_client_data connect_send_tx_cmsg_timestamping = {
@@ -1087,7 +1077,8 @@ static const struct iso_client_data connect_send_tx_cmsg_timestamping = {
 	.expect_err = 0,
 	.send = &send_16_2_1,
 	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
-					SOF_TIMESTAMPING_TX_SOFTWARE),
+					SOF_TIMESTAMPING_OPT_TSONLY |
+					SOF_TIMESTAMPING_TX_COMPLETION),
 	.repeat_send = 1,
 	.cmsg_timestamping = true,
 };
@@ -1097,7 +1088,7 @@ static const struct iso_client_data connect_send_tx_no_poll_timestamping = {
 	.expect_err = 0,
 	.send = &send_16_2_1,
 	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
-					SOF_TIMESTAMPING_TX_SOFTWARE),
+					SOF_TIMESTAMPING_TX_COMPLETION),
 	.repeat_send = 1,
 	.no_poll_errqueue = true,
 };
@@ -2241,10 +2232,10 @@ static gboolean iso_recv_errqueue(GIOChannel *io, GIOCondition cond,
 	err = tx_tstamp_recv(&data->tx_ts, sk, isodata->send->iov_len);
 	if (err > 0)
 		return TRUE;
-	else if (!err && !data->step)
-		tester_test_passed();
-	else
+	else if (err)
 		tester_test_failed();
+	else if (!data->step)
+		tester_test_passed();
 
 	data->io_id[2] = 0;
 	return FALSE;
@@ -2289,7 +2280,7 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 	int err;
 	unsigned int count;
 
-	if (!(isodata->so_timestamping & SOF_TIMESTAMPING_TX_RECORD_MASK))
+	if (!(isodata->so_timestamping & TS_TX_RECORD_MASK))
 		return;
 
 	tester_print("Enabling TX timestamping");
@@ -2336,7 +2327,7 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 	}
 
 	if (isodata->cmsg_timestamping)
-		so &= ~SOF_TIMESTAMPING_TX_RECORD_MASK;
+		so &= ~TS_TX_RECORD_MASK;
 
 	err = setsockopt(sk, SOL_SOCKET, SO_TIMESTAMPING, &so, sizeof(so));
 	if (err < 0) {
@@ -2374,7 +2365,7 @@ static void iso_send_data(struct test_data *data, GIOChannel *io)
 		cmsg->cmsg_len = CMSG_LEN(sizeof(uint32_t));
 
 		*((uint32_t *)CMSG_DATA(cmsg)) = (isodata->so_timestamping &
-					SOF_TIMESTAMPING_TX_RECORD_MASK);
+					TS_TX_RECORD_MASK);
 	}
 
 	ret = sendmsg(sk, &msg, 0);
@@ -3644,11 +3635,6 @@ int main(int argc, char *argv[])
 	/* Test basic TX timestamping */
 	test_iso("ISO Send - TX Timestamping", &connect_send_tx_timestamping,
 						setup_powered, test_connect);
-
-	/* Test schedule-time TX timestamps are emitted */
-	test_iso("ISO Send - TX Sched Timestamping",
-			&connect_send_tx_sched_timestamping, setup_powered,
-			test_connect);
 
 	/* Test TX timestamping with flags set via per-packet CMSG */
 	test_iso("ISO Send - TX CMSG Timestamping",

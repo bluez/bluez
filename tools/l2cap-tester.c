@@ -381,7 +381,8 @@ static const struct l2cap_data client_connect_tx_timestamping_test = {
 	.data_len = sizeof(l2_data),
 	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
 					SOF_TIMESTAMPING_OPT_ID |
-					SOF_TIMESTAMPING_TX_SOFTWARE),
+					SOF_TIMESTAMPING_TX_SOFTWARE |
+					SOF_TIMESTAMPING_TX_COMPLETION),
 	.repeat_send = 2,
 };
 
@@ -594,7 +595,8 @@ static const struct l2cap_data le_client_connect_tx_timestamping_test = {
 	.data_len = sizeof(l2_data),
 	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
 					SOF_TIMESTAMPING_OPT_ID |
-					SOF_TIMESTAMPING_TX_SOFTWARE),
+					SOF_TIMESTAMPING_TX_SOFTWARE |
+					SOF_TIMESTAMPING_TX_COMPLETION),
 };
 
 static const struct l2cap_data le_client_connect_adv_success_test_1 = {
@@ -1345,10 +1347,10 @@ static gboolean recv_errqueue(GIOChannel *io, GIOCondition cond,
 	err = tx_tstamp_recv(&data->tx_ts, sk, l2data->data_len);
 	if (err > 0)
 		return TRUE;
-	else if (!err && !data->step)
-		tester_test_passed();
-	else
+	else if (err)
 		tester_test_failed();
+	else if (!data->step)
+		tester_test_passed();
 
 	data->err_io_id = 0;
 	return FALSE;
@@ -1362,7 +1364,7 @@ static void l2cap_tx_timestamping(struct test_data *data, GIOChannel *io)
 	int err;
 	unsigned int count;
 
-	if (!(l2data->so_timestamping & SOF_TIMESTAMPING_TX_RECORD_MASK))
+	if (!(l2data->so_timestamping & TS_TX_RECORD_MASK))
 		return;
 
 	sk = g_io_channel_unix_get_fd(io);
