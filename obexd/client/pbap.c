@@ -121,6 +121,7 @@ static const char *filter_list[] = {
 
 #define PBAP_INTERFACE "org.bluez.obex.PhonebookAccess1"
 #define ERROR_INTERFACE "org.bluez.obex.Error"
+#define PBAP_CLIENT_UUID "0000112e-0000-1000-8000-00805f9b34fb"
 #define PBAP_UUID "0000112f-0000-1000-8000-00805f9b34fb"
 
 struct pbap_data {
@@ -139,6 +140,10 @@ struct pending_request {
 };
 
 static DBusConnection *conn = NULL;
+static DBusConnection *system_conn;
+
+static unsigned int listener_id;
+static char *client_path;
 
 static struct pending_request *pending_request_new(struct pbap_data *pbap,
 							DBusMessage *message)
@@ -1294,6 +1299,151 @@ static void pbap_remove(struct obc_session *session)
 	g_dbus_unregister_interface(conn, path, PBAP_INTERFACE);
 }
 
+static DBusMessage *pbap_release(DBusConnection *conn,
+	DBusMessage *msg, void *data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *pbap_new_connection(DBusConnection *conn,
+	DBusMessage *msg, void *data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *pbap_request_disconnection(DBusConnection *conn,
+	DBusMessage *msg, void *data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *pbap_cancel(DBusConnection *conn,
+	DBusMessage *msg, void *data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static const GDBusMethodTable profile_methods[] = {
+	{ GDBUS_METHOD("Release",
+			NULL, NULL,
+			pbap_release) },
+	{ GDBUS_METHOD("NewConnection",
+			GDBUS_ARGS({ "device", "o" }, { "fd", "h" },
+			{ "options", "a{sv}" }), NULL,
+			pbap_new_connection) },
+	{ GDBUS_METHOD("RequestDisconnection",
+			GDBUS_ARGS({ "device", "o" }), NULL,
+			pbap_request_disconnection) },
+	{ GDBUS_METHOD("Cancel",
+			NULL, NULL,
+			pbap_cancel) },
+	{ }
+};
+
+static void unregister_profile(void)
+{
+	g_dbus_unregister_interface(system_conn, client_path,
+						"org.bluez.Profile1");
+	g_free(client_path);
+	client_path = NULL;
+}
+
+static void register_profile_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (!dbus_set_error_from_message(&derr, reply)) {
+		DBG("Profile %s registered", client_path);
+		goto done;
+	}
+
+	unregister_profile();
+
+	error("bluetooth: RequestProfile error: %s, %s", derr.name,
+								derr.message);
+	dbus_error_free(&derr);
+done:
+	dbus_message_unref(reply);
+}
+
+static int register_profile(void)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter, opt;
+	DBusPendingCall *call;
+	char *uuid = PBAP_CLIENT_UUID;
+	dbus_bool_t auto_connect = FALSE;
+	int ret = 0;
+
+	client_path = g_strconcat("/org/bluez/obex/", uuid, NULL);
+	g_strdelimit(client_path, "-", '_');
+
+	if (!g_dbus_register_interface(system_conn, client_path,
+					"org.bluez.Profile1", profile_methods,
+					NULL, NULL,
+					NULL, NULL)) {
+		error("D-Bus failed to register %s", client_path);
+		g_free(client_path);
+		client_path = NULL;
+		return -1;
+	}
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.ProfileManager1",
+						"RegisterProfile");
+
+	dbus_message_iter_init_append(msg, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&client_path);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING,
+							&uuid);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&opt);
+	g_dbus_dict_append_entry(&opt, "AutoConnect", DBUS_TYPE_BOOLEAN,
+								&auto_connect);
+	dbus_message_iter_close_container(&iter, &opt);
+
+	if (!g_dbus_send_message_with_reply(system_conn, msg, &call, -1)) {
+		ret = -1;
+		unregister_profile();
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(call, register_profile_reply, NULL,
+									NULL);
+	dbus_pending_call_unref(call);
+
+failed:
+	dbus_message_unref(msg);
+	return ret;
+}
+
+static void name_acquired(DBusConnection *conn, void *user_data)
+{
+	DBG("org.bluez appeared");
+
+	if (register_profile() < 0) {
+		error("bluetooth: Failed to register profile %s",
+			client_path);
+		g_free(client_path);
+		client_path = NULL;
+	}
+}
+
+static void name_released(DBusConnection *conn, void *user_data)
+{
+	DBG("org.bluez disappeared");
+
+	unregister_profile();
+}
+
 static struct obc_driver pbap = {
 	.service = "PBAP",
 	.uuid = PBAP_UUID,
@@ -1314,12 +1464,19 @@ int pbap_init(void)
 	if (!conn)
 		return -EIO;
 
+	system_conn = g_dbus_setup_private(DBUS_BUS_SYSTEM, NULL, NULL);
+	if (system_conn == NULL)
+		return -EIO;
+
 	err = obc_driver_register(&pbap);
 	if (err < 0) {
 		dbus_connection_unref(conn);
 		conn = NULL;
 		return err;
 	}
+
+	listener_id = g_dbus_add_service_watch(system_conn, "org.bluez",
+				name_acquired, name_released, NULL, NULL);
 
 	return 0;
 }
