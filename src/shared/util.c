@@ -1947,3 +1947,15 @@ bool strisutf8(const char *str, size_t len)
 
 	return true;
 }
+
+bool argsisutf8(int argc, char *argv[])
+{
+	for (int i = 0; i < argc; i++) {
+		if (!strisutf8(argv[i], strlen(argv[i]))) {
+			printf("Invalid character in string: %s\n", argv[i]);
+			return false;
+		}
+	}
+
+	return true;
+}
