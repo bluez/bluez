@@ -7313,7 +7313,7 @@ bool bt_bap_parse_base(struct iovec *iov,
 	uint8_t sgrps;
 	bool ret = true;
 
-	util_debug(func, NULL, "BASE len: %ld", iov->iov_len);
+	util_debug(func, NULL, "BASE len: %zd", iov->iov_len);
 
 	if (!util_iov_pull_le24(iov, &delay))
 		return false;
@@ -7359,7 +7359,7 @@ bool bt_bap_parse_base(struct iovec *iov,
 		l2_cc.iov_len = l2_cc_len;
 
 		/* Print Codec Specific Configuration */
-		util_debug(func, NULL, "CC len: %ld", l2_cc.iov_len);
+		util_debug(func, NULL, "CC len: %zd", l2_cc.iov_len);
 		bt_bap_debug_config(l2_cc.iov_base, l2_cc.iov_len,
 								func, NULL);
 
