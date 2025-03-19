@@ -1793,7 +1793,7 @@ static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 		goto err;
 	}
 
-	volume = pdu->params[0] & 0x7F;
+	volume = pdu->params[0] = pdu->params[0] & 0x7F;
 
 	media_transport_update_device_volume(session->dev, volume);
 
