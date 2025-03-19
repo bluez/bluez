@@ -22,6 +22,7 @@
 #endif
 
 #include <sys/time.h>
+#include <time.h>
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"

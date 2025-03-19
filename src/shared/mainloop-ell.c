@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <ell/ell.h>
 

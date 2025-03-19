@@ -15,6 +15,7 @@
 #define _GNU_SOURCE
 
 #include <sys/time.h>
+#include <time.h>
 
 #include <ell/ell.h>
 

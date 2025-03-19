@@ -12,6 +12,8 @@
 #include <config.h>
 #endif
 
+#include <time.h>
+
 #include <ell/ell.h>
 
 #include "src/shared/ecc.h"

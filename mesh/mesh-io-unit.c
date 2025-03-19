@@ -19,6 +19,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <time.h>
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"

@@ -16,6 +16,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <time.h>
 #include <ell/ell.h>
 
 #include "monitor/bt.h"

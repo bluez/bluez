@@ -8,6 +8,8 @@
  *
  */
 
+#include <time.h>
+
 #include <ell/ell.h>
 
 #include "timeout.h"

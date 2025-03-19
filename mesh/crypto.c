@@ -15,6 +15,7 @@
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <ell/ell.h>
 
 #include "mesh/mesh-defs.h"

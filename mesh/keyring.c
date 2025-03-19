@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <sys/stat.h>

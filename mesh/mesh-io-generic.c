@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/time.h>
+#include <time.h>
 #include <ell/ell.h>
 
 #include "monitor/bt.h"

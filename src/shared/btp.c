@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <ell/ell.h>

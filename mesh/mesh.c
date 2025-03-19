@@ -12,6 +12,8 @@
 #include <config.h>
 #endif
 
+#include <time.h>
+
 #define _GNU_SOURCE
 #include <ell/ell.h>
 

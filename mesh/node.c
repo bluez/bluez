@@ -17,6 +17,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include <ell/ell.h>
 

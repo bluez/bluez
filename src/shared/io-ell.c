@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <time.h>
 
 #include <ell/ell.h>
 
