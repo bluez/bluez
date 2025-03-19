@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include <linux/errqueue.h>
 #include <linux/net_tstamp.h>
