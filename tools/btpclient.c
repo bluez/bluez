@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <getopt.h>
 #include <signal.h>
+#include <time.h>
 
 #include <ell/ell.h>
 
