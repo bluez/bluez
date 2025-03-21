@@ -3194,10 +3194,13 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 
 		if (!state->connected && btd_le_connect_before_pairing())
 			err = device_connect_le(device);
-		else
+		else if (!state->connected || !bt_att_set_security(device->att,
+						BT_ATT_SECURITY_MEDIUM))
 			err = adapter_create_bonding(adapter, &device->bdaddr,
 							device->bdaddr_type,
 							io_cap);
+		else
+			err = 0;
 	} else {
 		err = adapter_create_bonding(adapter, &device->bdaddr,
 							BDADDR_BREDR, io_cap);
