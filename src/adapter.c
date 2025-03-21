@@ -5693,6 +5693,8 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
 	uint32_t pending = btd_device_get_pending_flags(device);
 	const bdaddr_t *bdaddr;
 	uint8_t bdaddr_type;
+	bool ll_privacy = btd_adapter_has_settings(adapter,
+						MGMT_SETTING_LL_PRIVACY);
 
 	if (!btd_has_kernel_features(KERNEL_CONN_CONTROL) ||
 				(supported | flags) != supported)
@@ -5707,7 +5709,7 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
 		flags |= DEVICE_FLAG_DEVICE_PRIVACY & supported & ~pending;
 
 	/* Set Address Resolution if it has not been set the flag yet. */
-	if (btd_opts.defaults.le.addr_resolution &&
+	if (ll_privacy && btd_opts.defaults.le.addr_resolution &&
 			device_address_is_private(device) &&
 			!(flags & DEVICE_FLAG_ADDRESS_RESOLUTION))
 		flags |= DEVICE_FLAG_ADDRESS_RESOLUTION & supported & ~pending;
