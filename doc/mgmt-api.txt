@@ -336,6 +336,7 @@ Read Controller Information Command
 		19	Connected Isochronous Stream - Peripheral
 		20	Isochronous Broadcaster
 		21	Synchronized Receiver
+		22	LL Privacy
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
