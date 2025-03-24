@@ -1509,6 +1509,7 @@ static const char set_ssp_invalid_param[] = { 0x02 };
 static const char set_ssp_garbage_param[] = { 0x01, 0x00 };
 static const char set_ssp_settings_param_1[] = { 0xc0, 0x00, 0x00, 0x00 };
 static const char set_ssp_settings_param_2[] = { 0xc1, 0x00, 0x00, 0x00 };
+static const char set_ssp_settings_param_3[] = { 0xc1, 0x00, 0x40, 0x00 };
 static const char set_ssp_on_write_ssp_mode_param[] = { 0x01 };
 
 static const struct generic_data set_ssp_on_success_test_1 = {
@@ -6077,8 +6078,8 @@ static const struct generic_data set_dev_id_power_off_on = {
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_ssp_settings_param_2,
-	.expect_len = sizeof(set_ssp_settings_param_2),
+	.expect_param = set_ssp_settings_param_3,
+	.expect_len = sizeof(set_ssp_settings_param_3),
 	.expect_settings_set = MGMT_SETTING_POWERED,
 	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
 	.expect_hci_param = write_eir_set_dev_id_success_1,
@@ -6094,8 +6095,8 @@ static const struct generic_data set_dev_id_ssp_off_on = {
 	.send_param = set_ssp_on_param,
 	.send_len = sizeof(set_ssp_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_ssp_settings_param_2,
-	.expect_len = sizeof(set_ssp_settings_param_2),
+	.expect_param = set_ssp_settings_param_3,
+	.expect_len = sizeof(set_ssp_settings_param_3),
 	.expect_hci_command = BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE,
 	.expect_hci_param = write_eir_set_dev_id_success_1,
 	.expect_hci_len = sizeof(write_eir_set_dev_id_success_1),
@@ -8214,13 +8215,17 @@ static const uint8_t set_ext_adv_data_test1[] = {
 	0x74, 0x65, 0x73, 0x74, 0x31,	/* "test1" */
 };
 
+static const char set_powered_ext_adv_instance_settings_param[] = {
+	0x81, 0x02, 0x40, 0x00,
+};
+
 static const struct generic_data add_ext_advertising_success_pwron_data = {
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_powered_adv_instance_settings_param,
-	.expect_len = sizeof(set_powered_adv_instance_settings_param),
+	.expect_param = set_powered_ext_adv_instance_settings_param,
+	.expect_len = sizeof(set_powered_ext_adv_instance_settings_param),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_DATA,
 	.expect_hci_param = set_ext_adv_data_test1,
 	.expect_hci_len = sizeof(set_ext_adv_data_test1),
@@ -8239,7 +8244,7 @@ static const struct generic_data add_ext_advertising_success_pwron_enabled = {
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_powered_adv_instance_settings_param,
+	.expect_param = set_powered_ext_adv_instance_settings_param,
 	.expect_len = sizeof(set_powered_adv_instance_settings_param),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE,
 	.expect_hci_param = set_ext_adv_on_set_adv_enable_param,
@@ -8256,13 +8261,15 @@ static const uint8_t set_ext_adv_data_txpwr[] = {
 	0x00,			/* tx power */
 };
 
+static const char set_ext_adv_settings_param[] = { 0x81, 0x06, 0x40, 0x00 };
+
 static const struct generic_data add_ext_advertising_success_4 = {
 	.send_opcode = MGMT_OP_SET_ADVERTISING,
 	.send_param = set_adv_on_param,
 	.send_len = sizeof(set_adv_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_adv_settings_param_2,
-	.expect_len = sizeof(set_adv_settings_param_2),
+	.expect_param = set_ext_adv_settings_param,
+	.expect_len = sizeof(set_ext_adv_settings_param),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_DATA,
 	.expect_hci_param = set_ext_adv_data_txpwr,
 	.expect_hci_len = sizeof(set_ext_adv_data_txpwr),
@@ -8273,8 +8280,8 @@ static const struct generic_data add_ext_advertising_success_5 = {
 	.send_param = set_adv_off_param,
 	.send_len = sizeof(set_adv_off_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_powered_adv_instance_settings_param,
-	.expect_len = sizeof(set_powered_adv_instance_settings_param),
+	.expect_param = set_powered_ext_adv_instance_settings_param,
+	.expect_len = sizeof(set_powered_ext_adv_instance_settings_param),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_DATA,
 	.expect_hci_param = set_ext_adv_data_test1,
 	.expect_hci_len = sizeof(set_ext_adv_data_test1),
@@ -8545,13 +8552,16 @@ static uint8_t preset_connectable_on_ext_adv_param[] = {
 	0x00,					/* Scan req notification */
 };
 
+static const char set_connectable_settings_param_4[] = {
+						0x83, 0x02, 0x40, 0x00 };
+
 static const struct generic_data add_ext_advertising_success_16 = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_on_param,
 	.send_len = sizeof(set_connectable_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_connectable_settings_param_3,
-	.expect_len = sizeof(set_connectable_settings_param_3),
+	.expect_param = set_connectable_settings_param_4,
+	.expect_len = sizeof(set_connectable_settings_param_4),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 	.expect_hci_param = preset_connectable_on_ext_adv_param,
 	.expect_hci_len = sizeof(preset_connectable_on_ext_adv_param),
@@ -8575,25 +8585,29 @@ static uint8_t preset_connectable_off_ext_adv_param[] = {
 	0x00,					/* Scan req notification */
 };
 
+static const char set_le_settings_param_3[] = { 0x81, 0x02, 0x40, 0x00 };
+
 static const struct generic_data add_ext_advertising_success_17 = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_off_param,
 	.send_len = sizeof(set_connectable_off_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_le_settings_param_2,
-	.expect_len = sizeof(set_le_settings_param_2),
+	.expect_param = set_le_settings_param_3,
+	.expect_len = sizeof(set_le_settings_param_3),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 	.expect_hci_param = preset_connectable_off_ext_adv_param,
 	.expect_hci_len = sizeof(preset_connectable_off_ext_adv_param),
 };
+
+static const char set_le_settings_param_off_1[] = { 0x81, 0x00, 0x40, 0x00 };
 
 static const struct generic_data add_ext_advertising_le_off = {
 	.send_opcode = MGMT_OP_SET_LE,
 	.send_param = set_le_off_param,
 	.send_len = sizeof(set_le_off_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_le_settings_param_off,
-	.expect_len = sizeof(set_le_settings_param_off),
+	.expect_param = set_le_settings_param_off_1,
+	.expect_len = sizeof(set_le_settings_param_off_1),
 	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
 	.expect_alt_ev_param = advertising_instance1_param,
 	.expect_alt_ev_len = sizeof(advertising_instance1_param),
@@ -8875,8 +8889,8 @@ static const struct generic_data multi_ext_advertising_add_no_power = {
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_powered_adv_instance_settings_param,
-	.expect_len = sizeof(set_powered_adv_instance_settings_param),
+	.expect_param = set_powered_ext_adv_instance_settings_param,
+	.expect_len = sizeof(set_powered_ext_adv_instance_settings_param),
 	.expect_hci_list = multi_ext_adv_add_2_advs_hci_cmds,
 };
 
@@ -9403,8 +9417,8 @@ static const struct generic_data add_ext_advertising_conn_on_1m = {
 	.send_param = set_connectable_on_param,
 	.send_len = sizeof(set_connectable_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_connectable_settings_param_3,
-	.expect_len = sizeof(set_connectable_settings_param_3),
+	.expect_param = set_connectable_settings_param_4,
+	.expect_len = sizeof(set_connectable_settings_param_4),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 	.expect_hci_param = preset_connectable_on_ext_pdu_adv_param,
 	.expect_hci_len = sizeof(preset_connectable_on_ext_pdu_adv_param),
@@ -9463,8 +9477,8 @@ static const struct generic_data add_ext_advertising_conn_off_1m = {
 	.send_param = set_connectable_off_param,
 	.send_len = sizeof(set_connectable_off_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_le_settings_param_2,
-	.expect_len = sizeof(set_le_settings_param_2),
+	.expect_param = set_le_settings_param_3,
+	.expect_len = sizeof(set_le_settings_param_3),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 	.expect_hci_param = preset_connectable_off_ext_1m_adv_param,
 	.expect_hci_len = sizeof(preset_connectable_off_ext_1m_adv_param),
