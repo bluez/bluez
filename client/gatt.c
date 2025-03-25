@@ -3207,7 +3207,7 @@ static void proxy_property_changed(GDBusProxy *proxy, const char *name,
 			chrc->path, bt_uuidstr_to_str(chrc->uuid), name);
 
 	if (!strcmp(name, "Value")) {
-		uint8_t *value = '\0';  /* don't pass NULL to write_value() */
+		uint8_t *value = NULL;
 		int len = 0;
 
 		if (iter && dbus_message_iter_get_arg_type(iter) ==
