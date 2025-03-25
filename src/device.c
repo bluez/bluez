@@ -1628,6 +1628,10 @@ void device_set_wake_allowed(struct btd_device *device, bool wake_allowed,
 	device->pending_wake_allowed = wake_allowed;
 
 	flags = device->current_flags;
+
+	/* Include the pending flags, or they may get overwritten. */
+	flags |= device->pending_flags;
+
 	if (wake_allowed)
 		flags |= DEVICE_FLAG_REMOTE_WAKEUP;
 	else
