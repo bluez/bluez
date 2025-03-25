@@ -1548,10 +1548,15 @@ void device_set_wake_support(struct btd_device *device, bool wake_support)
 	if (device->wake_override == WAKE_FLAG_DEFAULT)
 		device_set_wake_override(device, wake_support);
 
-	/* Set wake_allowed according to the override value. */
-	device_set_wake_allowed(device,
-				device->wake_override == WAKE_FLAG_ENABLED,
-				-1U);
+	/* Set wake_allowed according to the override value.
+	 * Limit this to bonded device to avoid trying to set it
+	 * to new devices that are simply in range.
+	 */
+	if (device_is_bonded(device, device->bdaddr_type))
+		device_set_wake_allowed(device,
+					device->wake_override ==
+					WAKE_FLAG_ENABLED,
+					-1U);
 }
 
 static bool device_get_wake_allowed(struct btd_device *device)
@@ -6697,6 +6702,10 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	}
 
 	device_auth_req_free(device);
+
+	/* Enable the wake_allowed property if required */
+	if (device->wake_override == WAKE_FLAG_ENABLED)
+		device_set_wake_allowed(device, true, -1U);
 
 	/* If we're already paired nothing more is needed */
 	if (state->paired)
