@@ -715,18 +715,9 @@ static bool match_experimental(const void *data, const void *match_data)
 bool btd_kernel_experimental_enabled(const char *uuid)
 {
 	if (!btd_opts.kernel)
-		goto done;
+		return false;
 
 	if (queue_find(btd_opts.kernel, match_experimental, uuid))
-		return true;
-
-done:
-	/* For backward compatibility set LL Privacy as enabled if
-	 * CentralAddressResolution has been set so old kernel LL Privacy is
-	 * enabled.
-	 */
-	if (!strcmp(uuid, "15c0a148-c273-11ea-b3de-0242ac130004") &&
-			btd_opts.defaults.le.addr_resolution)
 		return true;
 
 	return false;
