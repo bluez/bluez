@@ -297,25 +297,15 @@ static bool link_io_unset(const void *data, const void *match_data)
 	return !bt_bap_stream_get_io(link);
 }
 
-static bool setup_find_enabling(const void *data, const void *match_data)
-{
-	const struct bass_setup *setup = data;
-
-	return (bt_bap_stream_get_state(setup->stream) ==
-				BT_BAP_STREAM_STATE_ENABLING);
-}
-
 static void connect_cb(GIOChannel *io, GError *err, void *user_data)
 {
-	struct bass_delegator *dg = user_data;
-	struct bass_setup *setup;
+	struct bass_setup *setup = user_data;
 	struct bt_bap_stream *stream;
 	struct queue *links;
 	int fd;
 
 	DBG("");
 
-	setup = queue_find(dg->setups, setup_find_enabling, NULL);
 	if (!setup || !setup->stream)
 		return;
 
@@ -331,6 +321,15 @@ static void connect_cb(GIOChannel *io, GError *err, void *user_data)
 	if (bt_bap_stream_set_io(stream, fd)) {
 		g_io_channel_set_close_on_unref(io, FALSE);
 	}
+}
+
+static bool link_enabled(const void *data, const void *match_data)
+{
+	struct bt_bap_stream *stream = (struct bt_bap_stream *)data;
+	uint8_t state = bt_bap_stream_get_state(stream);
+
+	return ((state == BT_BAP_STREAM_STATE_ENABLING) ||
+			bt_bap_stream_get_io(stream));
 }
 
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
@@ -358,14 +357,29 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_ENABLING:
+		links = bt_bap_stream_io_get_links(stream);
+
+		if (bt_bap_stream_get_io(stream) ||
+			queue_find(links, link_enabled, NULL))
+			/* The first enabled link will create and set fds
+			 * for all links.
+			 *
+			 * If the stream io has already been set, the stream
+			 * will automatically be started once all state_changed
+			 * callbacks are notified.
+			 *
+			 * If there is any other linked stream that has already
+			 * been enabled, the stream fd will be set once it is
+			 * notified from kernel and the stream will be started.
+			 */
+			break;
+
 		iso_bc_addr.bc_bdaddr_type =
 				btd_device_get_bdaddr_type(dg->device);
 		memcpy(&iso_bc_addr.bc_bdaddr, device_get_address(dg->device),
 				sizeof(bdaddr_t));
 
 		append_stream(stream, &iso_bc_addr);
-
-		links = bt_bap_stream_io_get_links(stream);
 
 		queue_foreach(links, append_stream, &iso_bc_addr);
 
@@ -380,7 +394,7 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 		}
 
 		if (!bt_io_bcast_accept(dg->io,
-				connect_cb, dg, NULL, &gerr,
+				connect_cb, setup, NULL, &gerr,
 				BT_IO_OPT_ISO_BC_NUM_BIS,
 				iso_bc_addr.bc_num_bis, BT_IO_OPT_ISO_BC_BIS,
 				iso_bc_addr.bc_bis, BT_IO_OPT_INVALID)) {
