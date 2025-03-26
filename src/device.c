@@ -320,6 +320,8 @@ bool btd_device_is_initiator(struct btd_device *dev)
 		return dev->le_state.initiator;
 	else if (dev->bredr_state.connected)
 		return dev->bredr_state.initiator;
+	else if (dev->bonding)
+		return true;
 
 	return dev->att_io ? true : false;
 }
@@ -5780,11 +5782,12 @@ static void gatt_client_init(struct btd_device *device)
 
 	gatt_client_cleanup(device);
 
-	if (!device->connect && !btd_opts.reverse_discovery) {
+	if (!btd_device_is_initiator(device) && !btd_opts.reverse_discovery) {
 		DBG("Reverse service discovery disabled: skipping GATT client");
 		return;
 	}
-	if (!device->connect && !btd_opts.gatt_client) {
+
+	if (!btd_device_is_initiator(device) && !btd_opts.gatt_client) {
 		DBG("GATT client disabled: skipping GATT client");
 		return;
 	}
@@ -5834,7 +5837,7 @@ static void gatt_client_init(struct btd_device *device)
 	 * it shall be triggered only when ready to avoid possible clashes where
 	 * both sides attempt to connection at same time.
 	 */
-	if (device->connect)
+	if (btd_device_is_initiator(device))
 		btd_gatt_client_eatt_connect(device->client_dbus);
 }
 
