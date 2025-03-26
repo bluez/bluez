@@ -5797,6 +5797,11 @@ static void gatt_client_init(struct btd_device *device)
 	if (btd_opts.gatt_channels > 1)
 		features |= BT_GATT_CHRC_CLI_FEAT_EATT;
 
+	if (device->bonding) {
+		DBG("Elevating security level since bonding is in progress");
+		bt_att_set_security(device->att, BT_ATT_SECURITY_MEDIUM);
+	}
+
 	device->client = bt_gatt_client_new(device->db, device->att,
 						device->att_mtu, features);
 	if (!device->client) {
