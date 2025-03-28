@@ -4984,6 +4984,7 @@ static void device_remove_stored(struct btd_device *device)
 	}
 	g_key_file_remove_group(key_file, "ServiceRecords", NULL);
 	g_key_file_remove_group(key_file, "Attributes", NULL);
+	g_key_file_remove_group(key_file, "Endpoints", NULL);
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
