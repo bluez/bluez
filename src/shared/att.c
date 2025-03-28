@@ -727,17 +727,17 @@ static bool bt_att_chan_set_security(struct bt_att_chan *chan, int level)
 {
 	struct bt_security sec;
 
+	if (chan->type == BT_ATT_LOCAL) {
+		chan->sec_level = level;
+		return true;
+	}
+
 	/* Check if security level has already been set, if the security level
 	 * is higher it shall satisfy the request since we never want to
 	 * downgrade security.
 	 */
 	if (level <= bt_att_chan_get_security(chan))
 		return true;
-
-	if (chan->type == BT_ATT_LOCAL) {
-		chan->sec_level = level;
-		return true;
-	}
 
 	memset(&sec, 0, sizeof(sec));
 	sec.level = level;
