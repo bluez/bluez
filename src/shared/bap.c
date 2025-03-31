@@ -293,6 +293,7 @@ struct bt_bap_stream {
 	uint8_t old_state;
 	uint8_t state;
 	unsigned int state_id;
+	struct queue *pending_states;
 	bool client;
 	void *user_data;
 };
@@ -1205,6 +1206,7 @@ static void bap_stream_free(void *data)
 	struct bt_bap_stream *stream = data;
 
 	timeout_remove(stream->state_id);
+	queue_destroy(stream->pending_states, NULL);
 
 	if (stream->ep)
 		stream->ep->stream = NULL;
@@ -1705,19 +1707,11 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
 	return true;
 }
 
-static bool stream_notify_state(void *data)
+static void stream_notify(struct bt_bap_stream *stream, uint8_t state)
 {
-	struct bt_bap_stream *stream = data;
-	struct bt_bap_endpoint *ep = stream->ep;
+	DBG(stream->bap, "stream %p state %d", stream, state);
 
-	DBG(stream->bap, "stream %p status %d", stream, ep->state);
-
-	if (stream->state_id) {
-		timeout_remove(stream->state_id);
-		stream->state_id = 0;
-	}
-
-	switch (ep->state) {
+	switch (state) {
 	case BT_ASCS_ASE_STATE_IDLE:
 		break;
 	case BT_ASCS_ASE_STATE_CONFIG:
@@ -1735,6 +1729,24 @@ static bool stream_notify_state(void *data)
 		stream_notify_release(stream);
 		break;
 	}
+}
+
+static bool stream_notify_state(void *data)
+{
+	struct bt_bap_stream *stream = data;
+	struct bt_bap_endpoint *ep = stream->ep;
+	uint8_t state;
+
+	if (stream->state_id) {
+		timeout_remove(stream->state_id);
+		stream->state_id = 0;
+	}
+
+	/* Notify any pending states before notifying ep->state */
+	while ((state = PTR_TO_UINT(queue_pop_head(stream->pending_states))))
+		stream_notify(stream, state);
+
+	stream_notify(stream, ep->state);
 
 	return false;
 }
@@ -1760,6 +1772,10 @@ static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
 		stream->state_id = timeout_add(BAP_PROCESS_TIMEOUT,
 						stream_notify_state,
 						stream, NULL);
+	else /* If a state_id is already pending then queue the old one */
+		queue_push_tail(stream->pending_states,
+				UINT_TO_PTR(ep->old_state));
+
 
 done:
 	bap_stream_state_changed(stream);
@@ -2716,6 +2732,7 @@ static struct bt_bap_stream *bap_stream_new(struct bt_bap *bap,
 	stream->cc = util_iov_dup(data, 1);
 	stream->client = client;
 	stream->ops = bap_stream_new_ops(stream);
+	stream->pending_states = queue_new();
 
 	queue_push_tail(bap->streams, stream);
 
