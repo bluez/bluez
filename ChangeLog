@@ -1,3 +1,11 @@
+ver 5.81:
+	Fix issue with handling MAP and supported features.
+	Fix issue with handling SDP record for Phonebook Access Client.
+	Fix issue with handling AVRCP PDU parameters length mismatch.
+	Fix issue with handling AVRCP PDU for SetAbsoluteVolume.
+	Fix issue with handling AVDTP bad media transport format.
+	Fix issue with handling support for LL Privacy setting.
+
 ver 5.80:
 	Fix issue with handling address type for all types of keys.
 	Fix issue with handling maximum number of GATT channels.
