@@ -312,6 +312,14 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 			data->sink_timer = 0;
 		}
 
+		/* Try connecting HSP/HFP if it is not connected */
+		hs = btd_device_get_service(dev, HFP_HS_UUID);
+		if (hs == NULL)
+			hs = btd_device_get_service(data->dev, HSP_HS_UUID);
+		if (hs && btd_service_get_state(hs) !=
+						BTD_SERVICE_STATE_CONNECTED)
+			policy_set_hs_timer(data);
+
 		/* Check if service initiate the connection then proceed
 		 * immediatelly otherwise set timer
 		 */
@@ -320,16 +328,6 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 		else if (btd_service_get_state(controller) !=
 						BTD_SERVICE_STATE_CONNECTED)
 			policy_set_ct_timer(data, CONTROL_CONNECT_TIMEOUT);
-
-		/* Also try connecting HSP/HFP if it is not connected */
-		hs = btd_device_get_service(dev, HFP_HS_UUID);
-		if (hs) {
-			if (btd_service_is_initiator(service))
-				policy_connect(data, hs);
-			else if (btd_service_get_state(hs) !=
-						BTD_SERVICE_STATE_CONNECTED)
-				policy_set_hs_timer(data);
-		}
 
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
