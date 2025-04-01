@@ -810,7 +810,7 @@ static struct generic_data *invalidate_parent_data(DBusConnection *conn,
 	if (child == NULL || g_slist_find(data->objects, child) != NULL)
 		goto done;
 
-	if (!g_slist_find(parent->objects, child))
+	if (g_slist_find(parent->objects, child))
 		goto done;
 
 	data->objects = g_slist_prepend(data->objects, child);
