@@ -569,6 +569,9 @@ static void confirm_cb(GIOChannel *io, void *user_data)
 	g_io_channel_ref(io);
 	dg->io = io;
 
+	/* Clear temporary flag*/
+	btd_device_set_temporary(dg->device, false);
+
 	/* Update Broadcast Receive State characteristic value and notify
 	 * peers.
 	 */
