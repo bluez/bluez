@@ -515,16 +515,30 @@ static void test_setup_server(const void *user_data)
 
 	data->ccc_states = queue_new();
 
-	data->snk = bt_bap_add_pac(db, "test-bap-snk", BT_BAP_SINK, LC3_ID,
-							data->qos, data->caps,
+	if (data->cfg && data->cfg->vs)
+		data->snk = bt_bap_add_vendor_pac(db, "test-bap-snk",
+							BT_BAP_SINK, 0x0ff,
+							0x0001, 0x0001,
+							data->qos, NULL,
 							NULL);
+	else
+		data->snk = bt_bap_add_pac(db, "test-bap-snk", BT_BAP_SINK,
+							LC3_ID, data->qos,
+							data->caps, NULL);
 	g_assert(data->snk);
 
 	bt_bap_pac_set_ops(data->snk, &ucast_pac_ops, NULL);
 
-	data->src = bt_bap_add_pac(db, "test-bap-src", BT_BAP_SOURCE, LC3_ID,
-							data->qos, data->caps,
+	if (data->cfg && data->cfg->vs)
+		data->src = bt_bap_add_vendor_pac(db, "test-bap-snk",
+							BT_BAP_SOURCE, 0x0ff,
+							0x0001, 0x0001,
+							data->qos, NULL,
 							NULL);
+	else
+		data->src = bt_bap_add_pac(db, "test-bap-src", BT_BAP_SOURCE,
+							LC3_ID, data->qos,
+							data->caps, NULL);
 	g_assert(data->src);
 
 	bt_bap_pac_set_ops(data->src, &ucast_pac_ops, NULL);
@@ -1756,12 +1770,12 @@ static void test_usr_scc_cc_lc3(void)
 			SCC_SNK_48_6);
 	/* 4.9.2 Unicast Server as Audio Source Performs Config Codec – LC3
 	 *
-	 * Test Purpose
+	 * Test Purpose:
 	 * Verify that a Unicast Server Audio Source IUT can perform a Config
 	 * Codec operation initiated by a Unicast Client for an ASE in the Idle
 	 * state, the Codec Configured state.
 	 *
-	 * Pass verdict
+	 * Pass verdict:
 	 * The IUT sends a Response_Code of 0x00 (Success) in response to each
 	 * Config Codec operation.
 	 *
@@ -1873,12 +1887,53 @@ static struct test_config cfg_src_vs = {
  * parameter is formatted with octet 0 set to 0xFF, octets 1–2 set to
  * TSPX_VS_Company_ID, and octets 3–4 set to TSPX_VS_Codec_ID.
  */
-static void test_scc_cc_vs(void)
+static void test_ucl_scc_cc_vs(void)
 {
 	define_test("BAP/UCL/SCC/BV-033-C [UCL SRC Config Codec, VS]",
 			test_setup, test_client, &cfg_snk_vs, SCC_SNK_VS);
 	define_test("BAP/UCL/SCC/BV-034-C [UCL SNK Config Codec, VS]",
 			test_setup, test_client, &cfg_src_vs, SCC_SRC_VS);
+}
+
+static void test_usr_scc_cc_vs(void)
+{
+	/* BAP/USR/SCC/BV-033-C [USR SNK Config Codec, VS]
+	 *
+	 * Test Purpose:
+	 * Verify that a Unicast Server Audio Sink IUT can perform a Config
+	 * Codec operation initiated by a Unicast Client for a vendor-specific
+	 * codec for an ASE in the Idle state, the Codec Configured state, and
+	 * the QoS Configured state.
+	 *
+	 * Pass verdict:
+	 * The IUT sends a notification of the ASE Control Point characteristic
+	 * with the Response_Code field set to 0x00 (Success) for the requested
+	 * ASE_ID and opcode.
+	 */
+	define_test("BAP/USR/SCC/BV-033-C [USR SNK Config Codec, VS]",
+			test_setup_server, test_server, &cfg_snk_vs,
+			SCC_SNK_VS);
+	/* BAP/USR/SCC/BV-034-C [USR SRC Config Codec, VS]
+	 *
+	 * Test Purpose:
+	 * Verify that a Unicast Server Audio Source IUT can perform a Config
+	 * Codec operation initiated by a Unicast Client for a vendor-specific
+	 * codec for a Source ASE in the Idle state.
+	 *
+	 * Pass verdict:
+	 * The IUT sends a notification of the ASE Control Point characteristic
+	 * with the Response_Code field set to 0x00 (Success) for the requested
+	 * ASE_ID and opcode.
+	 */
+	define_test("BAP/USR/SCC/BV-034-C [USR SRC Config Codec, VS]",
+			test_setup_server, test_server, &cfg_src_vs,
+			SCC_SRC_VS);
+}
+
+static void test_scc_cc_vs(void)
+{
+	test_ucl_scc_cc_vs();
+	test_usr_scc_cc_vs();
 }
 
 static struct test_config cfg_snk_8_1_1 = {
