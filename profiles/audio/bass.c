@@ -322,6 +322,8 @@ static void connect_cb(GIOChannel *io, GError *err, void *user_data)
 	if (bt_bap_stream_set_io(stream, fd)) {
 		g_io_channel_set_close_on_unref(io, FALSE);
 	}
+
+	btd_service_connecting_complete(setup->dg->service, 0);
 }
 
 static bool link_enabled(const void *data, const void *match_data)
