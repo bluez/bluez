@@ -3273,7 +3273,7 @@ static struct test_config cfg_src_enable = {
 #define SRC_ENABLE \
 	IOV_DATA(0x52, 0x22, 0x00, 0x03, 0x01, 0x03, 0x04, 0x03, 0x02, 0x01, \
 			00), \
-	IOV_DATA(0x1b, 0x22, 0x00, 0x03, 0x01, 0x01, 0x00, 0x00), \
+	IOV_DATA(0x1b, 0x22, 0x00, 0x03, 0x01, 0x03, 0x00, 0x00), \
 	IOV_NULL, \
 	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x03, 0x00, 0x00, 0x04, 0x03, 0x02, \
 			0x01, 0x00)
@@ -3291,7 +3291,7 @@ static struct test_config cfg_src_enable = {
  * The IUT successfully writes to the ASE Control Point characteristic with the
  * opcode set to 0x03 (Enable) and the specified parameters.
  */
-static void test_scc_enable(void)
+static void test_ucl_scc_enable(void)
 {
 	define_test("BAP/UCL/SCC/BV-101-C [UCL SRC Enable]",
 			test_setup, test_client, &cfg_snk_enable,
@@ -3299,6 +3299,33 @@ static void test_scc_enable(void)
 	define_test("BAP/UCL/SCC/BV-102-C [UCL SNK Enable]",
 			test_setup, test_client, &cfg_src_enable,
 			SCC_SRC_ENABLE);
+}
+
+/* Unicast Server Performs Client-Initiated Enable Operation
+ *
+ * Test Purpose:
+ * Verify that a Unicast Server IUT can handle a client-initiated Enable
+ * operation for an ASE with a Unicast Client that is either in the Audio Sink
+ * role or the Audio Source role.
+ *
+ * Pass verdict:
+ * The IUT sends a notification of the ASE Control Point characteristic with
+ * Response_Code set to 0x00 (Success) for the requested ASE_ID and opcode.
+ */
+static void test_usr_scc_enable(void)
+{
+	define_test("BAP/USR/SCC/BV-135-C [USR SNK Enable]",
+			test_setup_server, test_server, &cfg_snk_enable,
+			SCC_SNK_ENABLE);
+	define_test("BAP/USR/SCC/BV-136-C [UCL SRC Enable]",
+			test_setup_server, test_server, &cfg_src_enable,
+			SCC_SRC_ENABLE);
+}
+
+static void test_scc_enable(void)
+{
+	test_ucl_scc_enable();
+	test_usr_scc_enable();
 }
 
 static struct test_config cfg_snk_disable = {
