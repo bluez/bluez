@@ -2268,7 +2268,7 @@ static struct test_config cfg_src_48_6_1 = {
  */
 #define QOS_SRC(_qos...) \
 	IOV_DATA(0x52, 0x22, 0x00, 0x02, 0x01, 0x03, 0x00, 0x00, _qos), \
-	IOV_DATA(0x1b, 0x22, 0x00, 0x02, 0x01, 0x01, 0x00, 0x00), \
+	IOV_DATA(0x1b, 0x22, 0x00, 0x02, 0x01, 0x03, 0x00, 0x00), \
 	IOV_NULL, \
 	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x02, 0x00, 0x00, _qos)
 
@@ -2744,7 +2744,7 @@ static struct test_config cfg_src_48_6_2 = {
  * The IUT successfully writes to the ASE Control Point characteristic with the
  * opcode set to 0x02 (Config QoS) and the specified parameters.
  */
-static void test_scc_qos_lc3(void)
+static void test_ucl_scc_qos_lc3(void)
 {
 	define_test("BAP/UCL/SCC/BV-035-C [UCL SRC Config QoS, LC3 8_1_1]",
 			test_setup, test_client, &cfg_snk_8_1_1,
@@ -2938,6 +2938,223 @@ static void test_scc_qos_lc3(void)
 	define_test("BAP/UCL/SCC/BV-098-C [UCL SNK Config QoS, LC3 48_6_2]",
 			test_setup, test_client, &cfg_src_48_6_2,
 			SCC_SRC_48_6_2);
+}
+
+/* 4.9.5 Unicast Server Performs Config QoS – LC3
+ *
+ * Test Purpose:
+ * Verify that a Unicast Server IUT can perform a Config QoS operation
+ * initiated by a Unicast Client for the LC3 codec.
+ *.
+ * Pass verdict:
+ * In step 2, the IUT sends a notification of the ASE Control Point
+ * characteristic with Response_Code set to Success (0x00) for the requested
+ * ASE_ID and opcode.
+ * In step 3, the notified ASE characteristic value is correctly formatted, has
+ * the ASE_ID field set to Test_ASE_ID, the ASE_State field set to 0x02
+ * (QoS Configured), and the Additional_ASE_Parameters field containing the
+ * CIG_ID, CIS_ID, and QoS configuration values requested in step 2.
+ */
+static void test_usr_scc_qos_lc3(void)
+{
+	define_test("BAP/USR/SCC/BV-069-C [USR SNK Config QoS, LC3 8_1_1]",
+			test_setup_server, test_server, &cfg_snk_8_1_1,
+			SCC_SNK_8_1_1);
+	define_test("BAP/USR/SCC/BV-070-C [USR SNK Config QoS, LC3 8_2_1]",
+			test_setup_server, test_server, &cfg_snk_8_2_1,
+			SCC_SNK_8_2_1);
+	define_test("BAP/USR/SCC/BV-071-C [USR SNK Config QoS, LC3 16_1_1]",
+			test_setup_server, test_server, &cfg_snk_16_1_1,
+			SCC_SNK_16_1_1);
+	define_test("BAP/USR/SCC/BV-072-C [USR SNK Config QoS, LC3 16_2_1]",
+			test_setup_server, test_server, &cfg_snk_16_2_1,
+			SCC_SNK_16_2_1);
+	define_test("BAP/USR/SCC/BV-073-C [USR SNK Config QoS, LC3 24_1_1]",
+			test_setup_server, test_server, &cfg_snk_24_1_1,
+			SCC_SNK_24_1_1);
+	define_test("BAP/USR/SCC/BV-074-C [USR SNK Config QoS, LC3 24_2_1]",
+			test_setup_server, test_server, &cfg_snk_24_2_1,
+			SCC_SNK_24_2_1);
+	define_test("BAP/USR/SCC/BV-075-C [USR SNK Config QoS, LC3 32_1_1]",
+			test_setup_server, test_server, &cfg_snk_32_1_1,
+			SCC_SNK_32_1_1);
+	define_test("BAP/USR/SCC/BV-076-C [USR SNK Config QoS, LC3 32_2_1]",
+			test_setup_server, test_server, &cfg_snk_32_2_1,
+			SCC_SNK_32_2_1);
+	define_test("BAP/USR/SCC/BV-077-C [USR SNK Config QoS, LC3 44.1_1_1]",
+			test_setup_server, test_server, &cfg_snk_44_1_1,
+			SCC_SNK_44_1_1);
+	define_test("BAP/USR/SCC/BV-078-C [USR SNK Config QoS, LC3 44.1_2_1]",
+			test_setup_server, test_server, &cfg_snk_44_2_1,
+			SCC_SNK_44_2_1);
+	define_test("BAP/USR/SCC/BV-079-C [USR SNK Config QoS, LC3 48_1_1]",
+			test_setup_server, test_server, &cfg_snk_48_1_1,
+			SCC_SNK_48_1_1);
+	define_test("BAP/USR/SCC/BV-080-C [USR SNK Config QoS, LC3 48_2_1]",
+			test_setup_server, test_server, &cfg_snk_48_2_1,
+			SCC_SNK_48_2_1);
+	define_test("BAP/USR/SCC/BV-081-C [USR SNK Config QoS, LC3 48_3_1]",
+			test_setup_server, test_server, &cfg_snk_48_3_1,
+			SCC_SNK_48_3_1);
+	define_test("BAP/USR/SCC/BV-082-C [USR SNK Config QoS, LC3 48_4_1]",
+			test_setup_server, test_server, &cfg_snk_48_4_1,
+			SCC_SNK_48_4_1);
+	define_test("BAP/USR/SCC/BV-083-C [USR SNK Config QoS, LC3 48_5_1]",
+			test_setup_server, test_server, &cfg_snk_48_5_1,
+			SCC_SNK_48_5_1);
+	define_test("BAP/USR/SCC/BV-084-C [USR SNK Config QoS, LC3 48_6_1]",
+			test_setup_server, test_server, &cfg_snk_48_6_1,
+			SCC_SNK_48_6_1);
+	define_test("BAP/USR/SCC/BV-085-C [USR SRC Config QoS, LC3 8_1_1]",
+			test_setup_server, test_server, &cfg_src_8_1_1,
+			SCC_SRC_8_1_1);
+	define_test("BAP/USR/SCC/BV-086-C [USR SRC Config QoS, LC3 8_2_1]",
+			test_setup_server, test_server, &cfg_src_8_2_1,
+			SCC_SRC_8_2_1);
+	define_test("BAP/USR/SCC/BV-087-C [USR SRC Config QoS, LC3 16_1_1]",
+			test_setup_server, test_server, &cfg_src_16_1_1,
+			SCC_SRC_16_1_1);
+	define_test("BAP/USR/SCC/BV-088-C [USR SRC Config QoS, LC3 16_2_1]",
+			test_setup_server, test_server, &cfg_src_16_2_1,
+			SCC_SRC_16_2_1);
+	define_test("BAP/USR/SCC/BV-089-C [USR SRC Config QoS, LC3 24_1_1]",
+			test_setup_server, test_server, &cfg_src_24_1_1,
+			SCC_SRC_24_1_1);
+	define_test("BAP/USR/SCC/BV-090-C [USR SRC Config QoS, LC3 24_2_1]",
+			test_setup_server, test_server, &cfg_src_24_2_1,
+			SCC_SRC_24_2_1);
+	define_test("BAP/USR/SCC/BV-091-C [USR SRC Config QoS, LC3 32_1_1]",
+			test_setup_server, test_server, &cfg_src_32_1_1,
+			SCC_SRC_32_1_1);
+	define_test("BAP/USR/SCC/BV-092-C [USR SRC Config QoS, LC3 32_2_1]",
+			test_setup_server, test_server, &cfg_src_32_2_1,
+			SCC_SRC_32_2_1);
+	define_test("BAP/USR/SCC/BV-093-C [USR SRC Config QoS, LC3 44.1_1_1]",
+			test_setup_server, test_server, &cfg_src_44_1_1,
+			SCC_SRC_44_1_1);
+	define_test("BAP/USR/SCC/BV-094-C [USR SRC Config QoS, LC3 44.1_2_1]",
+			test_setup_server, test_server, &cfg_src_44_2_1,
+			SCC_SRC_44_2_1);
+	define_test("BAP/USR/SCC/BV-095-C [USR SRC Config QoS, LC3 48_1_1]",
+			test_setup_server, test_server, &cfg_src_48_1_1,
+			SCC_SRC_48_1_1);
+	define_test("BAP/USR/SCC/BV-096-C [USR SRC Config QoS, LC3 48_2_1]",
+			test_setup_server, test_server, &cfg_src_48_2_1,
+			SCC_SRC_48_2_1);
+	define_test("BAP/USR/SCC/BV-097-C [USR SRC Config QoS, LC3 48_3_1]",
+			test_setup_server, test_server, &cfg_src_48_3_1,
+			SCC_SRC_48_3_1);
+	define_test("BAP/USR/SCC/BV-098-C [USR SRC Config QoS, LC3 48_4_1]",
+			test_setup_server, test_server, &cfg_src_48_4_1,
+			SCC_SRC_48_4_1);
+	define_test("BAP/USR/SCC/BV-099-C [USR SRC Config QoS, LC3 48_5_1]",
+			test_setup_server, test_server, &cfg_src_48_5_1,
+			SCC_SRC_48_5_1);
+	define_test("BAP/USR/SCC/BV-100-C [USR SRC Config QoS, LC3 48_6_1]",
+			test_setup_server, test_server, &cfg_src_48_6_1,
+			SCC_SRC_48_6_1);
+	define_test("BAP/USR/SCC/BV-101-C [USR SNK Config QoS, LC3 8_1_2]",
+			test_setup_server, test_server, &cfg_snk_8_1_2,
+			SCC_SNK_8_1_2);
+	define_test("BAP/USR/SCC/BV-102-C [USR SNK Config QoS, LC3 8_2_2]",
+			test_setup_server, test_server, &cfg_snk_8_2_2,
+			SCC_SNK_8_2_2);
+	define_test("BAP/USR/SCC/BV-103-C [USR SNK Config QoS, LC3 16_1_2]",
+			test_setup_server, test_server, &cfg_snk_16_1_2,
+			SCC_SNK_16_1_2);
+	define_test("BAP/USR/SCC/BV-104-C [USR SNK Config QoS, LC3 16_2_2]",
+			test_setup_server, test_server, &cfg_snk_16_2_2,
+			SCC_SNK_16_2_2);
+	define_test("BAP/USR/SCC/BV-105-C [USR SNK Config QoS, LC3 24_1_2]",
+			test_setup_server, test_server, &cfg_snk_24_1_2,
+			SCC_SNK_24_1_2);
+	define_test("BAP/USR/SCC/BV-106-C [USR SNK Config QoS, LC3 24_2_2]",
+			test_setup_server, test_server, &cfg_snk_24_2_2,
+			SCC_SNK_24_2_2);
+	define_test("BAP/USR/SCC/BV-107-C [USR SNK Config QoS, LC3 32_1_2]",
+			test_setup_server, test_server, &cfg_snk_32_1_2,
+			SCC_SNK_32_1_2);
+	define_test("BAP/USR/SCC/BV-108-C [USR SNK Config QoS, LC3 32_2_2]",
+			test_setup_server, test_server, &cfg_snk_32_2_2,
+			SCC_SNK_32_2_2);
+	define_test("BAP/USR/SCC/BV-109-C [USR SNK Config QoS, LC3 44.1_1_2]",
+			test_setup_server, test_server, &cfg_snk_44_1_2,
+			SCC_SNK_44_1_2);
+	define_test("BAP/USR/SCC/BV-110-C [USR SNK Config QoS, LC3 44.1_2_2]",
+			test_setup_server, test_server, &cfg_snk_44_2_2,
+			SCC_SNK_44_2_2);
+	define_test("BAP/USR/SCC/BV-111-C [USR SNK Config QoS, LC3 48_1_2]",
+			test_setup_server, test_server, &cfg_snk_48_1_2,
+			SCC_SNK_48_1_2);
+	define_test("BAP/USR/SCC/BV-112-C [USR SNK Config QoS, LC3 48_2_2]",
+			test_setup_server, test_server, &cfg_snk_48_2_2,
+			SCC_SNK_48_2_2);
+	define_test("BAP/USR/SCC/BV-113-C [USR SNK Config QoS, LC3 48_3_2]",
+			test_setup_server, test_server, &cfg_snk_48_3_2,
+			SCC_SNK_48_3_2);
+	define_test("BAP/USR/SCC/BV-114-C [USR SNK Config QoS, LC3 48_4_2]",
+			test_setup_server, test_server, &cfg_snk_48_4_2,
+			SCC_SNK_48_4_2);
+	define_test("BAP/USR/SCC/BV-115-C [USR SNK Config QoS, LC3 48_5_2]",
+			test_setup_server, test_server, &cfg_snk_48_5_2,
+			SCC_SNK_48_5_2);
+	define_test("BAP/USR/SCC/BV-116-C [USR SNK Config QoS, LC3 48_6_2]",
+			test_setup_server, test_server, &cfg_snk_48_6_2,
+			SCC_SNK_48_6_2);
+	define_test("BAP/USR/SCC/BV-117-C [USR SRC Config QoS, LC3 8_1_2]",
+			test_setup_server, test_server, &cfg_src_8_1_2,
+			SCC_SRC_8_1_2);
+	define_test("BAP/USR/SCC/BV-118-C [USR SRC Config QoS, LC3 8_2_2]",
+			test_setup_server, test_server, &cfg_src_8_2_2,
+			SCC_SRC_8_2_2);
+	define_test("BAP/USR/SCC/BV-119-C [USR SRC Config QoS, LC3 16_1_2]",
+			test_setup_server, test_server, &cfg_src_16_1_2,
+			SCC_SRC_16_1_2);
+	define_test("BAP/USR/SCC/BV-120-C [USR SRC Config QoS, LC3 16_2_2]",
+			test_setup_server, test_server, &cfg_src_16_2_2,
+			SCC_SRC_16_2_2);
+	define_test("BAP/USR/SCC/BV-121-C [USR SRC Config QoS, LC3 24_1_2]",
+			test_setup_server, test_server, &cfg_src_24_1_2,
+			SCC_SRC_24_1_2);
+	define_test("BAP/USR/SCC/BV-122-C [USR SRC Config QoS, LC3 24_2_2]",
+			test_setup_server, test_server, &cfg_src_24_2_2,
+			SCC_SRC_24_2_2);
+	define_test("BAP/USR/SCC/BV-123-C [USR SRC Config QoS, LC3 32_1_2]",
+			test_setup_server, test_server, &cfg_src_32_1_2,
+			SCC_SRC_32_1_2);
+	define_test("BAP/USR/SCC/BV-124-C [USR SRC Config QoS, LC3 32_2_2]",
+			test_setup_server, test_server, &cfg_src_32_2_2,
+			SCC_SRC_32_2_2);
+	define_test("BAP/USR/SCC/BV-125-C [USR SRC Config QoS, LC3 44.1_1_2]",
+			test_setup_server, test_server, &cfg_src_44_1_2,
+			SCC_SRC_44_1_2);
+	define_test("BAP/USR/SCC/BV-126-C [USR SRC Config QoS, LC3 44.1_2_2]",
+			test_setup_server, test_server, &cfg_src_44_2_2,
+			SCC_SRC_44_2_2);
+	define_test("BAP/USR/SCC/BV-127-C [USR SRC Config QoS, LC3 48_1_2]",
+			test_setup_server, test_server, &cfg_src_48_1_2,
+			SCC_SRC_48_1_2);
+	define_test("BAP/USR/SCC/BV-128-C [USR SRC Config QoS, LC3 48_2_2]",
+			test_setup_server, test_server, &cfg_src_48_2_2,
+			SCC_SRC_48_2_2);
+	define_test("BAP/USR/SCC/BV-129-C [USR SRC Config QoS, LC3 48_3_2]",
+			test_setup_server, test_server, &cfg_src_48_3_2,
+			SCC_SRC_48_3_2);
+	define_test("BAP/USR/SCC/BV-130-C [USR SRC Config QoS, LC3 48_4_2]",
+			test_setup_server, test_server, &cfg_src_48_4_2,
+			SCC_SRC_48_4_2);
+	define_test("BAP/USR/SCC/BV-131-C [USR SRC Config QoS, LC3 48_5_2]",
+			test_setup_server, test_server, &cfg_src_48_5_2,
+			SCC_SRC_48_5_2);
+	define_test("BAP/USR/SCC/BV-132-C [USR SRC Config QoS, LC3 48_6_2]",
+			test_setup_server, test_server, &cfg_src_48_6_2,
+			SCC_SRC_48_6_2);
+}
+
+static void test_scc_qos_lc3(void)
+{
+	test_ucl_scc_qos_lc3();
+	test_usr_scc_qos_lc3();
 }
 
 static struct test_config cfg_snk_qos_vs = {
