@@ -3349,8 +3349,8 @@ static struct test_config cfg_snk_disable = {
 	IOV_DATA(0x52, 0x22, 0x00, 0x05, 0x01, 0x01), \
 	IOV_DATA(0x1b, 0x22, 0x00, 0x05, 0x01, 0x01, 0x00, 0x00), \
 	IOV_NULL, \
-	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x02, 0x00, 0x00, 0x4c, 0x1d, 0x00, \
-			0x00, 0x02, 0x1a, 0x00, 0x02, 0x08, 0x00, 0x40, 0x9c, \
+	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x02, 0x00, 0x00, 0x10, 0x27, 0x00, \
+			0x00, 0x02, 0x28, 0x00, 0x02, 0x0a, 0x00, 0x40, 0x9c, \
 			0x00)
 
 #define SCC_SNK_DISABLE \
@@ -3378,9 +3378,8 @@ static struct test_config cfg_src_disable = {
 	IOV_DATA(0x52, 0x22, 0x00, 0x05, 0x01, 0x03), \
 	IOV_DATA(0x1b, 0x22, 0x00, 0x05, 0x01, 0x03, 0x00, 0x00), \
 	IOV_NULL, \
-	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x05, 0x00, 0x00, 0x4c, 0x1d, 0x00, \
-			0x00, 0x02, 0x1a, 0x00, 0x04, 0x08, 0x00, 0x40, 0x9c, \
-			0x00)
+	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x05, 0x00, 0x00, 0x04, 0x03, 0x02, \
+		 0x01, 0x00)
 #define SCC_SRC_DISABLE \
 	SCC_SRC_ENABLE, \
 	ASE_SRC_DISABLE
@@ -3439,7 +3438,7 @@ static struct test_config cfg_src_disable_streaming = {
  * The IUT successfully writes to the ASE Control Point characteristic with the
  * opcode set to 0x05 (Disable) and the specified parameters.
  */
-static void test_scc_disable(void)
+static void test_ucl_scc_disable(void)
 {
 	define_test("BAP/UCL/SCC/BV-103-C [UCL SNK Disable in Enabling State]",
 			test_setup, test_client, &cfg_src_disable,
@@ -3451,6 +3450,35 @@ static void test_scc_disable(void)
 	define_test("BAP/UCL/SCC/BV-105-C [UCL SNK Disable in Streaming State]",
 			test_setup, test_client, &cfg_src_disable_streaming,
 			SCC_SRC_DISABLE_STREAMING);
+}
+
+/* Unicast Server Performs Client-Initiated Disable Operation
+ *
+ * Test Purpose:
+ * Verify that a Unicast Server IUT can perform a client-initiated Disable
+ * operation for an ASE in the Enabling or Streaming state.
+ *
+ * Pass verdict:
+ * The IUT sends a notification of the ASE Control Point characteristic.
+ */
+static void test_usr_scc_disable(void)
+{
+	define_test("BAP/USR/SCC/BV-137-C [USR SRC Disable in Enabling State]",
+			test_setup_server, test_server, &cfg_src_disable,
+			SCC_SRC_DISABLE);
+	define_test("BAP/USR/SCC/BV-138-C [USR SNK Disable in Enabling or "
+			"Streaming state]",
+			test_setup_server, test_server, &cfg_snk_disable,
+			SCC_SNK_DISABLE);
+	define_test("BAP/USR/SCC/BV-139-C [USR SRC Disable in Streaming State]",
+			test_setup, test_client, &cfg_src_disable_streaming,
+			SCC_SRC_DISABLE_STREAMING);
+}
+
+static void test_scc_disable(void)
+{
+	test_ucl_scc_disable();
+	test_usr_scc_disable();
 }
 
 static void bap_release(struct bt_bap_stream *stream,
