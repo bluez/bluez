@@ -1160,10 +1160,6 @@ static void bap_attached(struct bt_bap *bap, void *user_data)
 	data->bap = bap;
 
 	bt_bap_set_debug(data->bap, print_debug, "bt_bap:", NULL);
-
-	if (data->cfg && data->cfg->state_func)
-		bt_bap_state_register(data->bap, data->cfg->state_func, NULL,
-						data, NULL);
 }
 
 static void test_server(const void *user_data)
@@ -3525,7 +3521,7 @@ static struct test_config cfg_src_cc_release = {
 	IOV_DATA(0x52, 0x22, 0x00, 0x08, 0x01, 0x03), \
 	IOV_DATA(0x1b, 0x22, 0x00, 0x08, 0x01, 0x03, 0x00, 0x00), \
 	IOV_NULL, \
-	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x00)
+	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x06)
 
 #define SCC_SRC_CC_RELEASE \
 	SCC_SRC_16_2, \
@@ -3552,7 +3548,7 @@ static struct test_config cfg_snk_cc_release = {
 	IOV_DATA(0x52, 0x22, 0x00, 0x08, 0x01, 0x01), \
 	IOV_DATA(0x1b, 0x22, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00), \
 	IOV_NULL, \
-	IOV_DATA(0x1b, 0x16, 0x00, 0x03, 0x00)
+	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x06)
 
 #define SCC_SNK_CC_RELEASE \
 	SCC_SNK_16_2, \
@@ -3699,7 +3695,7 @@ static struct test_config cfg_src_disable_release = {
  * The IUT successfully writes to the ASE Control Point characteristic with the
  * opcode set to 0x08 (Release) and the specified parameters.
  */
-static void test_scc_release(void)
+static void test_ucl_scc_release(void)
 {
 	define_test("BAP/UCL/SCC/BV-106-C [UCL SNK Release in Codec Configured"
 			" state]",
@@ -3730,6 +3726,52 @@ static void test_scc_release(void)
 	define_test("BAP/UCL/SCC/BV-113-C [UCL SNK Release in Disabling state]",
 			test_setup, test_client, &cfg_src_disable_release,
 			SCC_SRC_DISABLE_RELEASE);
+}
+
+/* Unicast Server Performs Client-Initiated Release Operation
+ *
+ * Test Purpose:
+ * Verify the behavior of a Unicast Server IUT when a Unicast Client initiates
+ * a Release operation.
+ *
+ */
+static void test_usr_scc_release(void)
+{
+	define_test("BAP/USR/SCC/BV-143-C [USR SRC Release in Codec Configured"
+			" state]",
+			test_setup_server, test_server, &cfg_src_cc_release,
+			SCC_SRC_CC_RELEASE);
+	define_test("BAP/USR/SCC/BV-144-C [USR SNK Release in Codec Configured"
+			" state]",
+			test_setup_server, test_server, &cfg_snk_cc_release,
+			SCC_SNK_CC_RELEASE);
+	define_test("BAP/USR/SCC/BV-145-C [USR SRC Release in QoS Configured"
+			" state]",
+			test_setup_server, test_server, &cfg_src_qos_release,
+			SCC_SRC_QOS_RELEASE);
+	define_test("BAP/USR/SCC/BV-146-C [USR SNK Release in QoS Configured"
+			" state]",
+			test_setup_server, test_server, &cfg_snk_qos_release,
+			SCC_SNK_QOS_RELEASE);
+	define_test("BAP/USR/SCC/BV-147-C [USR SRC Release in Enabling state]",
+			test_setup_server, test_server, &cfg_src_enable_release,
+			SCC_SRC_ENABLE_RELEASE);
+	define_test("BAP/USR/SCC/BV-148-C [USR SNK Release in Enabling or"
+			" Streaming state]",
+			test_setup_server, test_server, &cfg_snk_enable_release,
+			SCC_SNK_ENABLE_RELEASE);
+	define_test("BAP/USR/SCC/BV-149-C [USR SRC Release in Streaming state]",
+			test_setup_server, test_server, &cfg_src_start_release,
+			SCC_SRC_START_RELEASE);
+	define_test("BAP/USR/SCC/BV-150-C [USR SRC Release in Disabling state]",
+			test_setup_server, test_server,
+			&cfg_src_disable_release, SCC_SRC_DISABLE_RELEASE);
+}
+
+static void test_scc_release(void)
+{
+	test_ucl_scc_release();
+	test_usr_scc_release();
 }
 
 static void bap_metadata(struct bt_bap_stream *stream,
