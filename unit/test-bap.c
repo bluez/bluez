@@ -3734,6 +3734,9 @@ static void test_ucl_scc_release(void)
  * Verify the behavior of a Unicast Server IUT when a Unicast Client initiates
  * a Release operation.
  *
+ * Pass verdict:
+ * The IUT sends a notification of the ASE Control Point characteristic value.
+ *
  */
 static void test_usr_scc_release(void)
 {
@@ -3815,15 +3818,13 @@ static struct test_config cfg_snk_metadata = {
  *    Data: 0701010000
  * ATT: Handle Value Notification (0x1b) len 37
  *   Handle: 0x0016
- *     Data: 01010102010a00204e00409c00204e00409c00_qos
+ *     Data: 0103000000
  */
 #define ASE_SNK_METADATA \
 	IOV_DATA(0x52, 0x22, 0x00, 0x07, 0x01, 0x01, 0x00), \
 	IOV_DATA(0x1b, 0x22, 0x00, 0x07, 0x01, 0x01, 0x00, 0x00), \
 	IOV_NULL, \
-	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x05, 0x00, 0x00, 0x4c, 0x1d, 0x00, \
-			0x00, 0x02, 0x1a, 0x00, 0x02, 0x08, 0x00, 0x40, 0x9c, \
-			0x00)
+	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00)
 
 #define SCC_SNK_METADATA \
 	SCC_SNK_ENABLE, \
@@ -3845,18 +3846,16 @@ static struct test_config cfg_src_metadata = {
  *    Data: 0701030000
  * ATT: Handle Value Notification (0x1b) len 37
  *   Handle: 0x001c
- *     Data: 030300000403020100
+ *     Data: 0303000000
  */
-#define ASE_SRC_METADATA \
+#define ASE_SRC_METADATA(_state) \
 	IOV_DATA(0x52, 0x22, 0x00, 0x07, 0x01, 0x03, 0x00), \
 	IOV_DATA(0x1b, 0x22, 0x00, 0x07, 0x01, 0x03, 0x00, 0x00), \
 	IOV_NULL, \
-	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x05, 0x00, 0x00, 0x4c, 0x1d, 0x00, \
-			0x00, 0x02, 0x1a, 0x00, 0x04, 0x08, 0x00, 0x40, 0x9c, \
-			0x00)
+	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, _state, 0x00, 0x00, 0x00)
 #define SCC_SRC_METADATA \
 	SCC_SRC_ENABLE, \
-	ASE_SRC_METADATA
+	ASE_SRC_METADATA(0x03)
 
 static void state_start_metadata(struct bt_bap_stream *stream,
 					uint8_t old_state, uint8_t new_state,
@@ -3886,7 +3885,7 @@ static struct test_config cfg_src_metadata_streaming = {
 #define SCC_SRC_METADATA_STREAMING \
 	SCC_SRC_ENABLE, \
 	SRC_START, \
-	ASE_SRC_METADATA
+	ASE_SRC_METADATA(0x04)
 
 /* Unicast Client Initiates Update Metadata Operation
  *
@@ -3898,7 +3897,7 @@ static struct test_config cfg_src_metadata_streaming = {
  * The IUT successfully writes to the ASE Control Point characteristic with the
  * opcode set to 0x07 (Update Metadata) and the specified parameters.
  */
-static void test_scc_metadata(void)
+static void test_ucl_scc_metadata(void)
 {
 	define_test("BAP/UCL/SCC/BV-115-C [UCL SNK Update Metadata in Enabling "
 			"State]",
@@ -3912,6 +3911,39 @@ static void test_scc_metadata(void)
 			" State]",
 			test_setup, test_client, &cfg_src_metadata_streaming,
 			SCC_SRC_METADATA_STREAMING);
+}
+
+/* Unicast Server Performs Update Metadata Operation
+ *
+ * Test Purpose:
+ * Verify that a Unicast Server IUT can perform an Update Metadata operation
+ * initiated by a Unicast Client.
+ *
+ * Pass verdict:
+ * The IUT sends a notification of the ASE Control Point characteristic with
+ * Response_Code set to Success (0x00) for the requested ASE_ID and opcode.
+ */
+static void test_usr_scc_metadata(void)
+{
+	define_test("BAP/USR/SCC/BV-161-C [USR SRC Update Metadata in Enabling "
+			"State]",
+			test_setup_server, test_server, &cfg_src_metadata,
+			SCC_SRC_METADATA);
+	define_test("BAP/USR/SCC/BV-162-C [USR SNK Update Metadata in Enabling "
+			"or Streaming state]",
+			test_setup_server, test_server, &cfg_snk_metadata,
+			SCC_SNK_METADATA);
+	define_test("BAP/USR/SCC/BV-163-C [USR SRC Update Metadata in Streaming"
+			" State]",
+			test_setup_server, test_server,
+			&cfg_src_metadata_streaming,
+			SCC_SRC_METADATA_STREAMING);
+}
+
+static void test_scc_metadata(void)
+{
+	test_ucl_scc_metadata();
+	test_usr_scc_metadata();
 }
 
 #define SNK_ENABLE \
