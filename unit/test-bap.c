@@ -2940,7 +2940,7 @@ static void test_ucl_scc_qos_lc3(void)
 			SCC_SRC_48_6_2);
 }
 
-/* 4.9.5 Unicast Server Performs Config QoS – LC3
+/* Unicast Server Performs Config QoS – LC3
  *
  * Test Purpose:
  * Verify that a Unicast Server IUT can perform a Config QoS operation
@@ -3191,14 +3191,40 @@ static struct test_config cfg_src_qos_vs = {
  * The IUT successfully writes to the ASE Control Point characteristic with the
  * opcode set to 0x02 (Config QoS) and the specified parameters.
  */
-static void test_scc_qos_vs(void)
+static void test_ucl_scc_qos_vs(void)
 {
 	define_test("BAP/UCL/SCC/BV-099-C [UCL SNK Config QoS, VS]",
 			test_setup, test_client, &cfg_src_qos_vs,
 			SCC_SRC_QOS_VS);
-	define_test("BAP/UCL/SCC/BV-100-C [UCL SRC QoS Codec, VS]",
+	define_test("BAP/UCL/SCC/BV-100-C [UCL SRC Config QoS, VS]",
 			test_setup, test_client, &cfg_snk_qos_vs,
 			SCC_SNK_QOS_VS);
+}
+
+/* Unicast Server Performs Config QoS – Vendor-Specific
+ *
+ * Test Purpose:
+ * Verify that a Unicast Server IUT can handle a Config QoS operation for a
+ * vendor-specific codec.
+ *
+ * Pass verdict:
+ * The IUT sends a notification of the ASE Control Point characteristic with
+ * Response_Code set to Success (0x00) for the requested ASE_ID and opcode.
+ */
+static void test_usr_scc_qos_vs(void)
+{
+	define_test("BAP/USR/SCC/BV-133-C [USR SNK Config QoS, VS]",
+			test_setup_server, test_server, &cfg_snk_qos_vs,
+			SCC_SNK_QOS_VS);
+	define_test("BAP/USR/SCC/BV-134-C [USR SRC Config QoS, VS]",
+			test_setup, test_client, &cfg_src_qos_vs,
+			SCC_SRC_QOS_VS);
+}
+
+static void test_scc_qos_vs(void)
+{
+	test_ucl_scc_qos_vs();
+	test_usr_scc_qos_vs();
 }
 
 static struct test_config cfg_snk_enable = {
