@@ -91,8 +91,8 @@ Bluetooth
 
 	CONFIG_UHID=y
 
-Lock debuging
--------------
+Lock debugging
+--------------
 
 To catch locking related issues the following set of kernel config
 options may be useful:
@@ -110,6 +110,21 @@ options may be useful:
 	CONFIG_DEBUG_MUTEXES=y
 	CONFIG_KASAN=y
 
+BPF testing
+-----------
+
+For BPF related tests:
+
+.. code-block::
+
+	CONFIG_BPF=y
+	CONFIG_BPF_SYSCALL=y
+	CONFIG_BPF_JIT=y
+	CONFIG_CGROUPS=y
+	CONFIG_CGROUP_BPF=y
+	CONFIG_DEBUG_INFO_DWARF5=y
+	CONFIG_DEBUG_INFO_BTF=y
+
 EXAMPLES
 ========
 
@@ -126,6 +141,15 @@ Running a specific test of mgmt-tester
 .. code-block::
 
 	$ tools/test-runner -k /pathto/bzImage -- tools/mgmt-tester -s "<name>"
+
+Compiling and running BPF tests
+-------------------------------
+
+.. code-block::
+
+	$ ./configure --enable-testing --enable-testing-bpf=/home/me/linux/vmlinux
+	$ make
+	$ tools/test-runner -k /home/me/linux/arch/x86_64/boot/bzImage -- tools/iso-tester -s BPF
 
 Running bluetoothctl with emulated controller
 ---------------------------------------------

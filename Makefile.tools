@@ -144,6 +144,8 @@ tools_l2cap_tester_SOURCES = tools/l2cap-tester.c tools/tester.h monitor/bt.h \
 				emulator/smp.c
 tools_l2cap_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
+tools_l2cap_tester_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS)
+nodist_tools_l2cap_tester_SOURCES =
 
 tools_rfcomm_tester_SOURCES = tools/rfcomm-tester.c monitor/bt.h \
 				emulator/hciemu.h emulator/hciemu.c \
@@ -191,6 +193,8 @@ tools_sco_tester_SOURCES = tools/sco-tester.c tools/tester.h monitor/bt.h \
 				emulator/smp.c
 tools_sco_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
+tools_sco_tester_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS)
+nodist_tools_sco_tester_SOURCES =
 
 tools_hci_tester_SOURCES = tools/hci-tester.c monitor/bt.h
 tools_hci_tester_LDADD = src/libshared-glib.la $(GLIB_LIBS)
@@ -212,6 +216,8 @@ tools_iso_tester_SOURCES = tools/iso-tester.c tools/tester.h monitor/bt.h \
 				emulator/smp.c
 tools_iso_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
+tools_iso_tester_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS)
+nodist_tools_iso_tester_SOURCES =
 
 tools_ioctl_tester_SOURCES = tools/ioctl-tester.c monitor/bt.h \
 				emulator/hciemu.h emulator/hciemu.c \
@@ -221,6 +227,39 @@ tools_ioctl_tester_SOURCES = tools/ioctl-tester.c monitor/bt.h \
 				emulator/smp.c
 tools_ioctl_tester_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
+
+if TESTING_BPF
+tools/vmlinux.h: $(BPF_VMLINUX)
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
+		bpftool btf dump file $(BPF_VMLINUX) format c > $@.new && \
+		mv -f $@.new $@
+
+tools/tester-bpf.o: $(srcdir)/tools/tester-bpf.c tools/vmlinux.h
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
+		$(CLANG_BPF) -Wall -Werror -Os -g --target=bpf -Itools -c -o $@ $<
+
+tools/tester-skel.h: tools/tester-bpf.o
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
+		bpftool gen skeleton $< > $@.new && \
+		mv -f $@.new $@
+
+BPF_BUILT_SOURCES = $(builddir)/tools/tester-skel.h $(builddir)/tools/vmlinux.h
+
+nodist_tools_sco_tester_SOURCES += $(BPF_BUILT_SOURCES)
+nodist_tools_iso_tester_SOURCES += $(BPF_BUILT_SOURCES)
+nodist_tools_l2cap_tester_SOURCES += $(BPF_BUILT_SOURCES)
+BUILT_SOURCES += $(BPF_BUILT_SOURCES)
+CLEANFILES += $(BPF_BUILT_SOURCES)
+
+tools_sco_tester_CPPFLAGS += -I$(builddir)/tools $(LIBBPF_CFLAGS)
+tools_iso_tester_CPPFLAGS += -I$(builddir)/tools $(LIBBPF_CFLAGS)
+tools_l2cap_tester_CPPFLAGS += -I$(builddir)/tools $(LIBBPF_CFLAGS)
+
+tools_sco_tester_LDADD += $(LIBBPF_LIBS)
+tools_iso_tester_LDADD += $(LIBBPF_LIBS)
+tools_l2cap_tester_LDADD += $(LIBBPF_LIBS)
+endif
+
 endif
 
 if TOOLS

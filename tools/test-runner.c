@@ -127,6 +127,7 @@ static const struct {
 	{ "tmpfs",    "/run",     "mode=0755", MS_NOSUID|MS_NODEV|MS_STRICTATIME },
 	{ "tmpfs",    "/tmp",              NULL, 0 },
 	{ "debugfs",  "/sys/kernel/debug", NULL, 0 },
+	{ "cgroup2",  "/sys/fs/cgroup", NULL, 0 },
 	{ }
 };
 

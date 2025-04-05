@@ -390,10 +390,38 @@ AC_ARG_ENABLE(testing, AS_HELP_STRING([--enable-testing],
 AM_CONDITIONAL(TESTING, test "${enable_testing}" = "yes")
 
 if (test "${enable_testing}" = "yes"); then
-   AC_CHECK_DECLS([SOF_TIMESTAMPING_TX_COMPLETION, SCM_TSTAMP_COMPLETION],
-	[], [], [[#include <time.h>
-		#include <linux/errqueue.h>
-		#include <linux/net_tstamp.h>]])
+	AC_CHECK_DECLS([SOF_TIMESTAMPING_TX_COMPLETION, SCM_TSTAMP_COMPLETION],
+		[], [], [[#include <time.h>
+			#include <linux/errqueue.h>
+			#include <linux/net_tstamp.h>]])
+fi
+
+AC_ARG_ENABLE(testing-bpf, AS_HELP_STRING([--enable-testing-bpf[=PATH/TO/VMLINUX]],
+			[enable BPF testing tools]),
+			[enable_testing_bpf=yes; enable_testing_bpf_arg=${enableval}],
+			[enable_bpf=no])
+AM_CONDITIONAL(TESTING_BPF, test "${enable_testing_bpf}" = "yes")
+
+if (test "${enable_testing_bpf}" = "yes"); then
+	AC_ARG_VAR(CLANG_BPF, [CLANG compiler (for BPF)])
+	AC_ARG_VAR(BPFTOOL, [bpftool])
+	AC_ARG_VAR(BPF_VMLINUX, [vmlinux image to use for BPF testing])
+	AC_PATH_PROG([CLANG_BPF], [clang], "no")
+	if (test "${CLANG_BPF}" == "no"); then
+		AC_MSG_ERROR([clang for BPF missing])
+	fi
+	AC_PATH_PROG([BPFTOOL], [bpftool], "no")
+	if (test "${BPFTOOL}" == "no"); then
+		AC_MSG_ERROR([bpftool missing])
+	fi
+	PKG_CHECK_MODULES(LIBBPF, libbpf >= 1.4, [], [AC_MSG_ERROR([libbpf missing])])
+	if (test "${enable_testing_bpf_arg}" != "yes"); then
+		BPF_VMLINUX=${enable_testing_bpf_arg}
+	elif (test "${BPF_VMLINUX}" = ""); then
+		BPF_VMLINUX=/sys/kernel/btf/vmlinux
+	fi
+	AC_MSG_NOTICE([using BPF_VMLINUX=${BPF_VMLINUX} for BPF testing])
+	AC_DEFINE(HAVE_BPF, 1, [Define to 1 if bpf testing is required])
 fi
 
 AC_ARG_ENABLE(experimental, AS_HELP_STRING([--enable-experimental],

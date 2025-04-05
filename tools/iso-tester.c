@@ -471,12 +471,13 @@ struct test_data {
 	uint16_t handle;
 	uint16_t acl_handle;
 	struct queue *io_queue;
-	unsigned int io_id[4];
+	unsigned int io_id[5];
 	uint8_t client_num;
 	int step;
 	bool reconnect;
 	bool suspending;
 	struct tx_tstamp_data tx_ts;
+	struct tx_tstamp_data bpf_tx_ts;
 };
 
 struct iso_client_data {
@@ -518,6 +519,9 @@ struct iso_client_data {
 
 	/* Disable BT_POLL_ERRQUEUE before enabling TX timestamping */
 	bool no_poll_errqueue;
+
+	/* Enable BPF TX timestamping */
+	bool bpf_ts;
 };
 
 typedef bool (*iso_defer_accept_t)(struct test_data *data, GIOChannel *io,
@@ -698,6 +702,13 @@ static void test_pre_setup(const void *test_data)
 			return;
 	}
 
+#ifndef HAVE_BPF
+	if (isodata && isodata->bpf_ts) {
+		if (tester_pre_setup_skip_by_default())
+			return;
+	}
+#endif
+
 	data->mgmt = mgmt_new_default();
 	if (!data->mgmt) {
 		tester_warn("Failed to setup management interface");
@@ -739,6 +750,9 @@ static void test_post_teardown(const void *test_data)
 			  NULL, NULL, NULL);
 	}
 
+	tx_tstamp_teardown(&data->tx_ts);
+	tx_tstamp_teardown(&data->bpf_tx_ts);
+
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
 }
@@ -777,7 +791,7 @@ static void test_data_free(void *test_data)
 		user->accept_reason = reason; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, 2, user, test_data_free); \
+				test_post_teardown, 3, user, test_data_free); \
 	} while (0)
 
 #define test_iso(name, data, setup, func) \
@@ -1093,6 +1107,29 @@ static const struct iso_client_data connect_send_tx_no_poll_timestamping = {
 					SOF_TIMESTAMPING_TX_COMPLETION),
 	.repeat_send = 1,
 	.no_poll_errqueue = true,
+};
+
+static const struct iso_client_data connect_send_tx_bpf_timestamping = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.so_timestamping = 0,
+	.repeat_send = 1,
+	.repeat_send_pre_ts = 2,
+	.bpf_ts = true,
+};
+
+static const struct iso_client_data connect_send_tx_bpf_sk_timestamping = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_OPT_ID |
+					SOF_TIMESTAMPING_TX_SOFTWARE |
+					SOF_TIMESTAMPING_TX_COMPLETION),
+	.repeat_send = 1,
+	.repeat_send_pre_ts = 2,
+	.bpf_ts = true,
 };
 
 static const struct iso_client_data listen_16_2_1_recv = {
@@ -2265,6 +2302,24 @@ static gboolean iso_fail_errqueue(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
+static gboolean iso_bpf_io(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = user_data;
+	int err;
+
+	err = tx_tstamp_bpf_process(&data->bpf_tx_ts, &data->step);
+	if (err > 0)
+		return TRUE;
+	else if (err)
+		tester_test_failed();
+	else if (!data->step)
+		tester_test_passed();
+
+	data->io_id[4] = 0;
+	return FALSE;
+}
+
 static gboolean iso_timer_errqueue(gpointer user_data)
 {
 	struct test_data *data = user_data;
@@ -2292,17 +2347,39 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 	int err;
 	unsigned int count;
 
-	if (!(isodata->so_timestamping & TS_TX_RECORD_MASK))
+	if (!(isodata->so_timestamping & TS_TX_RECORD_MASK) && !isodata->bpf_ts)
 		return;
 
 	tester_print("Enabling TX timestamping");
 
-	tx_tstamp_init(&data->tx_ts, isodata->so_timestamping, false);
+	tx_tstamp_init(&data->tx_ts, isodata->so_timestamping, false, false);
+	tx_tstamp_init(&data->bpf_tx_ts, isodata->so_timestamping, false, true);
 
-	for (count = 0; count < isodata->repeat_send + 1; ++count)
+	for (count = 0; count < isodata->repeat_send + 1; ++count) {
 		data->step += tx_tstamp_expect(&data->tx_ts, 0);
+		if (isodata->bpf_ts)
+			data->step += tx_tstamp_expect(&data->bpf_tx_ts, 0);
+	}
 
 	sk = g_io_channel_unix_get_fd(io);
+
+	if (isodata->bpf_ts) {
+		GIOChannel *bpf_io;
+
+		err = tx_tstamp_bpf_start(&data->bpf_tx_ts, sk);
+		if (err < 0) {
+			tester_warn("BPF timestamping failed: %s (%d)",
+				strerror(-err), err);
+			tester_test_failed();
+			return;
+		}
+
+		bpf_io = g_io_channel_unix_new(err);
+		data->io_id[4] = g_io_add_watch(bpf_io,
+						G_IO_IN | G_IO_ERR | G_IO_HUP,
+						iso_bpf_io, data);
+		g_io_channel_unref(bpf_io);
+	}
 
 	if (isodata->no_poll_errqueue) {
 		uint32_t flag = 0;
@@ -2403,6 +2480,8 @@ static void iso_send(struct test_data *data, GIOChannel *io)
 
 	for (count = 0; count < isodata->repeat_send + 1; ++count)
 		iso_send_data(data, io);
+
+	g_io_channel_set_close_on_unref(io, FALSE);
 
 	if (isodata->bcast) {
 		tester_test_passed();
@@ -3691,6 +3770,14 @@ int main(int argc, char *argv[])
 	/* Test TX timestamping and disabling POLLERR wakeup */
 	test_iso("ISO Send - TX No Poll Timestamping",
 			&connect_send_tx_no_poll_timestamping, setup_powered,
+			test_connect);
+
+	/* Test TX timestamping using BPF */
+	test_iso("ISO Send - TX BPF Timestamping",
+			&connect_send_tx_bpf_timestamping, setup_powered,
+			test_connect);
+	test_iso("ISO Send - TX BPF + Socket Timestamping",
+			&connect_send_tx_bpf_sk_timestamping, setup_powered,
 			test_connect);
 
 	test_iso("ISO Receive - Success", &listen_16_2_1_recv, setup_powered,
