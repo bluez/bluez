@@ -1088,7 +1088,7 @@ static void stream_notify_qos(struct bt_bap_stream *stream)
 	free(status);
 }
 
-static void stream_notify_metadata(struct bt_bap_stream *stream)
+static void stream_notify_metadata(struct bt_bap_stream *stream, uint8_t state)
 {
 	struct bt_bap_endpoint *ep = stream->ep;
 	struct bt_ascs_ase_status *status;
@@ -1106,7 +1106,7 @@ static void stream_notify_metadata(struct bt_bap_stream *stream)
 
 	memset(status, 0, len);
 	status->id = ep->id;
-	status->state = ep->state;
+	status->state = state;
 
 	meta = (void *)status->params;
 	meta->cis_id = stream->qos.ucast.cis_id;
@@ -1738,7 +1738,7 @@ static void stream_notify(struct bt_bap_stream *stream, uint8_t state)
 	case BT_ASCS_ASE_STATE_ENABLING:
 	case BT_ASCS_ASE_STATE_STREAMING:
 	case BT_ASCS_ASE_STATE_DISABLING:
-		stream_notify_metadata(stream);
+		stream_notify_metadata(stream, state);
 		break;
 	case BT_ASCS_ASE_STATE_RELEASING:
 		stream_notify_release(stream);
