@@ -978,6 +978,9 @@ static bool test_io_recv(struct io *io, void *user_data)
 	if (!iov)
 		return true;
 
+	if (test->iovcnt && !iov->iov_base)
+		iov = test_get_iov(test);
+
 	g_assert_cmpint(len, ==, iov->iov_len);
 
 	if (memcmp(buf, iov->iov_base, len))
