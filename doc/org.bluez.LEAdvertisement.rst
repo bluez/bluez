@@ -177,13 +177,13 @@ uint16 Appearance [readonly, optional]
 
 	Possible values: as found on GAP Service.
 
-uint16_t Duration [readonly, optional]
+uint16 Duration [readonly, optional]
 ``````````````````````````````````````
 
 	Rotation duration of the advertisement in seconds. If there are other
 	applications advertising no duration is set the default is 2 seconds.
 
-uint16_t Timeout [readonly, optional]
+uint16 Timeout [readonly, optional]
 `````````````````````````````````````
 
 	Timeout of the advertisement in seconds. This defines the lifetime of

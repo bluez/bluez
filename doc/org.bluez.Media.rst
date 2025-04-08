@@ -14,9 +14,9 @@ BlueZ D-Bus Media API documentation
 Interface
 =========
 
-:Service: org.bluez
-:Interface: org.bluez.Media1
-:Object path: [variable prefix]/{hci0,hci1,...}
+:Service:	org.bluez
+:Interface:	org.bluez.Media1
+:Object path:	[variable prefix]/{hci0,hci1,...}
 
 Methods
 -------

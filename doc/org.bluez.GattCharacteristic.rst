@@ -50,11 +50,11 @@ array{byte} ReadValue(dict options)
 
 	Possible options:
 
-	:uint16_t offset:
+	:uint16 offset:
 
 		Read start offset in bytes.
 
-	:uint16_t mtu (server only):
+	:uint16 mtu (server only):
 
 		Exchange MTU in bytes.
 

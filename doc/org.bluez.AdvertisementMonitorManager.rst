@@ -14,9 +14,9 @@ BlueZ D-Bus AdvertisementMonitorManager API documentation
 Interface
 =========
 
-Service		org.bluez
-Interface	org.bluez.AdvertisementMonitorManager1 [experimental]
-Object path	/org/bluez/{hci0,hci1,...}
+:Service:	org.bluez
+:Interface:	org.bluez.AdvertisementMonitorManager1 [experimental]
+:Object path:	/org/bluez/{hci0,hci1,...}
 
 Methods
 -------

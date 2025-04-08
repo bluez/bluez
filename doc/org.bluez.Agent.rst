@@ -9,7 +9,7 @@ BlueZ D-Bus Agent API documentation
 :Version: BlueZ
 :Date: October 2023
 :Manual section: 5
-:Manual group: Linux System Administration
+:Manual group: Linux System Administration
 
 Interface
 =========

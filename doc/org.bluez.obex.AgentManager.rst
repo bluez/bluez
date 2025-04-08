@@ -19,7 +19,7 @@ Interface
 :Object path:	/org/bluez/obex
 
 Methods
-```````
+-------
 
 void RegisterAgent(object agent)
 ````````````````````````````````

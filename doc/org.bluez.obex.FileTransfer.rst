@@ -141,7 +141,7 @@ void MoveFile(string sourcefile, string targetfile)
 
 	Possible errors:
 
-	;org.bluez.obex.Error.InvalidArguments:
+	:org.bluez.obex.Error.InvalidArguments:
 	:org.bluez.obex.Error.Failed:
 
 void Delete(string file)

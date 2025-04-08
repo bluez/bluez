@@ -14,7 +14,7 @@ BlueZ D-Bus OBEX Agent API documentation
 Interface
 =========
 
-;Service:	unique name
+:Service:	unique name
 :Interface:	org.bluez.obex.Agent1
 :Object path:	freely definable
 

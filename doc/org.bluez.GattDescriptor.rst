@@ -50,7 +50,7 @@ array{byte} ReadValue(dict flags)
 
 	Possible options:
 
-	:uint16_t offset:
+	:uint16 offset:
 
 		Read start offset in bytes.
 

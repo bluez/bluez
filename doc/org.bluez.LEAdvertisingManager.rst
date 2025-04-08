@@ -117,7 +117,7 @@ dict SupportedCapabilities [readonly]
 
 		Max advertising scan response length
 
-	;int16 MinTxPower:
+	:int16 MinTxPower:
 
 		Min advertising tx power (dBm)
 
