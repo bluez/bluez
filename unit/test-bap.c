@@ -6478,52 +6478,52 @@ static void test_usr_str_1_1_1_lc3(void)
 	define_test("BAP/USR/STR/BV-016-C [USR, AC 10, LC3 32_2_1]",
 			test_setup_server, test_server, &str_snk_ac10_32_2_1,
 			STR_SNK_AC10_32_2_1);
-	define_test("BAP/USR/STR/BV-017-C [USR, AC #1, LC3 441_1_1]",
+	define_test("BAP/USR/STR/BV-017-C [USR, AC 1, LC3 441_1_1]",
 			test_setup_server, test_server, &str_snk_ac2_44_1_1,
 			STR_SNK_AC2_44_1_1);
-	define_test("BAP/USR/STR/BV-018-C [USR, AC #4, LC3 441_1_1]",
+	define_test("BAP/USR/STR/BV-018-C [USR, AC 4, LC3 441_1_1]",
 			test_setup_server, test_server, &str_snk_ac10_44_1_1,
 			STR_SNK_AC10_44_1_1);
-	define_test("BAP/USR/STR/BV-019-C [USR, AC #1, LC3 44_2_1]",
+	define_test("BAP/USR/STR/BV-019-C [USR, AC 1, LC3 44_2_1]",
 			test_setup_server, test_server, &str_snk_ac2_44_2_1,
 			STR_SNK_AC2_44_2_1);
-	define_test("BAP/USR/STR/BV-020-C [USR, AC #4, LC3 44_2_1]",
+	define_test("BAP/USR/STR/BV-020-C [USR, AC 4, LC3 44_2_1]",
 			test_setup_server, test_server, &str_snk_ac10_44_2_1,
 			STR_SNK_AC10_44_2_1);
-	define_test("BAP/USR/STR/BV-021-C [USR, AC #1, LC3 48_1_1]",
+	define_test("BAP/USR/STR/BV-021-C [USR, AC 1, LC3 48_1_1]",
 			test_setup_server, test_server, &str_snk_ac2_48_1_1,
 			STR_SNK_AC2_48_1_1);
-	define_test("BAP/USR/STR/BV-022-C [USR, AC #4, LC3 48_1_1]",
+	define_test("BAP/USR/STR/BV-022-C [USR, AC 4, LC3 48_1_1]",
 			test_setup_server, test_server, &str_snk_ac10_48_1_1,
 			STR_SNK_AC10_48_1_1);
-	define_test("BAP/USR/STR/BV-023-C [USR, AC #1, LC3 48_2_1]",
+	define_test("BAP/USR/STR/BV-023-C [USR, AC 1, LC3 48_2_1]",
 			test_setup_server, test_server, &str_snk_ac2_48_2_1,
 			STR_SNK_AC2_48_2_1);
-	define_test("BAP/USR/STR/BV-024-C [USR, AC #4, LC3 48_2_1]",
+	define_test("BAP/USR/STR/BV-024-C [USR, AC 4, LC3 48_2_1]",
 			test_setup_server, test_server, &str_snk_ac10_48_2_1,
 			STR_SNK_AC10_48_2_1);
-	define_test("BAP/USR/STR/BV-025-C [USR, AC #1, LC3 48_3_1]",
+	define_test("BAP/USR/STR/BV-025-C [USR, AC 1, LC3 48_3_1]",
 			test_setup_server, test_server, &str_snk_ac2_48_3_1,
 			STR_SNK_AC2_48_3_1);
-	define_test("BAP/USR/STR/BV-026-C [USR, AC #4, LC3 48_3_1]",
+	define_test("BAP/USR/STR/BV-026-C [USR, AC 4, LC3 48_3_1]",
 			test_setup_server, test_server, &str_snk_ac10_48_3_1,
 			STR_SNK_AC10_48_3_1);
-	define_test("BAP/USR/STR/BV-027-C [USR, AC #1, LC3 48_4_1]",
+	define_test("BAP/USR/STR/BV-027-C [USR, AC 1, LC3 48_4_1]",
 			test_setup_server, test_server, &str_snk_ac2_48_4_1,
 			STR_SNK_AC2_48_4_1);
-	define_test("BAP/USR/STR/BV-028-C [USR, AC #4, LC3 48_4_1]",
+	define_test("BAP/USR/STR/BV-028-C [USR, AC 4, LC3 48_4_1]",
 			test_setup_server, test_server, &str_snk_ac10_48_4_1,
 			STR_SNK_AC10_48_4_1);
-	define_test("BAP/USR/STR/BV-029-C [USR, AC #1, LC3 48_5_1]",
+	define_test("BAP/USR/STR/BV-029-C [USR, AC 1, LC3 48_5_1]",
 			test_setup_server, test_server, &str_snk_ac2_48_5_1,
 			STR_SNK_AC2_48_5_1);
-	define_test("BAP/USR/STR/BV-030-C [USR, AC #4, LC3 48_5_1]",
+	define_test("BAP/USR/STR/BV-030-C [USR, AC 4, LC3 48_5_1]",
 			test_setup_server, test_server, &str_snk_ac10_48_5_1,
 			STR_SNK_AC10_48_5_1);
-	define_test("BAP/USR/STR/BV-031-C [USR, AC #1, LC3 48_6_1]",
+	define_test("BAP/USR/STR/BV-031-C [USR, AC 1, LC3 48_6_1]",
 			test_setup_server, test_server, &str_snk_ac2_48_6_1,
 			STR_SNK_AC2_48_6_1);
-	define_test("BAP/USR/STR/BV-032-C [USR, AC #4, LC3 48_6_1]",
+	define_test("BAP/USR/STR/BV-032-C [USR, AC 4, LC3 48_6_1]",
 			test_setup_server, test_server, &str_snk_ac10_48_6_1,
 			STR_SNK_AC10_48_6_1);
 	define_test("BAP/USR/STR/BV-033-C [USR AC 2, LC3 8_1_1]",
@@ -6622,100 +6622,100 @@ static void test_usr_str_1_1_1_lc3(void)
 	define_test("BAP/USR/STR/BV-064-C [USR AC 10, LC3 48_6_1]",
 			test_setup_server, test_server, &str_src_ac4_48_6_1,
 			STR_SRC_AC4_48_6_1);
-	define_test("BAP/USR/STR/BV-065-C [USR, AC #1, LC3 8_1_2]",
+	define_test("BAP/USR/STR/BV-065-C [USR, AC 1, LC3 8_1_2]",
 			test_setup_server, test_server, &str_snk_ac2_8_1_2,
 			STR_SNK_AC2_8_1_2);
-	define_test("BAP/USR/STR/BV-066-C [USR, AC #4, LC3 8_1_2]",
+	define_test("BAP/USR/STR/BV-066-C [USR, AC 4, LC3 8_1_2]",
 			test_setup_server, test_server, &str_snk_ac10_8_1_2,
 			STR_SNK_AC10_8_1_2);
-	define_test("BAP/USR/STR/BV-067-C [USR, AC #1, LC3 8_2_2]",
+	define_test("BAP/USR/STR/BV-067-C [USR, AC 1, LC3 8_2_2]",
 			test_setup_server, test_server, &str_snk_ac2_8_2_2,
 			STR_SNK_AC2_8_2_2);
-	define_test("BAP/USR/STR/BV-068-C [USR, AC #4, LC3 8_2_2]",
+	define_test("BAP/USR/STR/BV-068-C [USR, AC 4, LC3 8_2_2]",
 			test_setup_server, test_server, &str_snk_ac10_8_2_2,
 			STR_SNK_AC10_8_2_2);
-	define_test("BAP/USR/STR/BV-069-C [USR, AC #1, LC3 16_1_2]",
+	define_test("BAP/USR/STR/BV-069-C [USR, AC 1, LC3 16_1_2]",
 			test_setup_server, test_server, &str_snk_ac2_16_1_2,
 			STR_SNK_AC2_16_1_2);
-	define_test("BAP/USR/STR/BV-070-C [USR, AC #4, LC3 16_1_2]",
+	define_test("BAP/USR/STR/BV-070-C [USR, AC 4, LC3 16_1_2]",
 			test_setup_server, test_server, &str_snk_ac10_16_1_2,
 			STR_SNK_AC10_16_1_2);
-	define_test("BAP/USR/STR/BV-071-C [USR, AC #1, LC3 16_2_2]",
+	define_test("BAP/USR/STR/BV-071-C [USR, AC 1, LC3 16_2_2]",
 			test_setup_server, test_server, &str_snk_ac2_16_2_2,
 			STR_SNK_AC2_16_2_2);
-	define_test("BAP/USR/STR/BV-072-C [USR, AC #4, LC3 16_2_2]",
+	define_test("BAP/USR/STR/BV-072-C [USR, AC 4, LC3 16_2_2]",
 			test_setup_server, test_server, &str_snk_ac10_16_2_2,
 			STR_SNK_AC10_16_2_2);
-	define_test("BAP/USR/STR/BV-073-C [USR, AC #1, LC3 24_1_2]",
+	define_test("BAP/USR/STR/BV-073-C [USR, AC 1, LC3 24_1_2]",
 			test_setup_server, test_server, &str_snk_ac2_24_1_2,
 			STR_SNK_AC2_24_1_2);
-	define_test("BAP/USR/STR/BV-074-C [USR, AC #4, LC3 24_1_2]",
+	define_test("BAP/USR/STR/BV-074-C [USR, AC 4, LC3 24_1_2]",
 			test_setup_server, test_server, &str_snk_ac10_24_1_2,
 			STR_SNK_AC10_24_1_2);
-	define_test("BAP/USR/STR/BV-075-C [USR, AC #1, LC3 24_2_2]",
+	define_test("BAP/USR/STR/BV-075-C [USR, AC 1, LC3 24_2_2]",
 			test_setup_server, test_server, &str_snk_ac2_24_2_2,
 			STR_SNK_AC2_24_2_2);
-	define_test("BAP/USR/STR/BV-076-C [USR, AC #4, LC3 24_2_2]",
+	define_test("BAP/USR/STR/BV-076-C [USR, AC 4, LC3 24_2_2]",
 			test_setup_server, test_server, &str_snk_ac10_24_2_2,
 			STR_SNK_AC10_24_2_2);
-	define_test("BAP/USR/STR/BV-077-C [USR, AC #1, LC3 32_1_2]",
+	define_test("BAP/USR/STR/BV-077-C [USR, AC 1, LC3 32_1_2]",
 			test_setup_server, test_server, &str_snk_ac2_32_1_2,
 			STR_SNK_AC2_32_1_2);
-	define_test("BAP/USR/STR/BV-078-C [USR, AC #4, LC3 32_1_2]",
+	define_test("BAP/USR/STR/BV-078-C [USR, AC 4, LC3 32_1_2]",
 			test_setup_server, test_server, &str_snk_ac10_32_1_2,
 			STR_SNK_AC10_32_1_2);
-	define_test("BAP/USR/STR/BV-079-C [USR, AC #1, LC3 32_2_2]",
+	define_test("BAP/USR/STR/BV-079-C [USR, AC 1, LC3 32_2_2]",
 			test_setup_server, test_server, &str_snk_ac2_32_2_2,
 			STR_SNK_AC2_32_2_2);
-	define_test("BAP/USR/STR/BV-080-C [USR, AC #4, LC3 32_2_2]",
+	define_test("BAP/USR/STR/BV-080-C [USR, AC 4, LC3 32_2_2]",
 			test_setup_server, test_server, &str_snk_ac10_32_2_2,
 			STR_SNK_AC10_32_2_2);
-	define_test("BAP/USR/STR/BV-081-C [USR, AC #1, LC3 44_1_2]",
+	define_test("BAP/USR/STR/BV-081-C [USR, AC 1, LC3 44_1_2]",
 			test_setup_server, test_server, &str_snk_ac2_44_1_2,
 			STR_SNK_AC2_44_1_2);
-	define_test("BAP/USR/STR/BV-082-C [USR, AC #4, LC3 44_1_2]",
+	define_test("BAP/USR/STR/BV-082-C [USR, AC 4, LC3 44_1_2]",
 			test_setup_server, test_server, &str_snk_ac10_44_1_2,
 			STR_SNK_AC10_44_1_2);
-	define_test("BAP/USR/STR/BV-083-C [USR, AC #1, LC3 44_2_2]",
+	define_test("BAP/USR/STR/BV-083-C [USR, AC 1, LC3 44_2_2]",
 			test_setup_server, test_server, &str_snk_ac2_44_2_2,
 			STR_SNK_AC2_44_2_2);
-	define_test("BAP/USR/STR/BV-084-C [USR, AC #4, LC3 44_2_2]",
+	define_test("BAP/USR/STR/BV-084-C [USR, AC 4, LC3 44_2_2]",
 			test_setup_server, test_server, &str_snk_ac10_44_2_2,
 			STR_SNK_AC10_44_2_2);
-	define_test("BAP/USR/STR/BV-085-C [USR, AC #1, LC3 48_1_2]",
+	define_test("BAP/USR/STR/BV-085-C [USR, AC 1, LC3 48_1_2]",
 			test_setup_server, test_server, &str_snk_ac2_48_1_2,
 			STR_SNK_AC2_48_1_2);
-	define_test("BAP/USR/STR/BV-086-C [USR, AC #4, LC3 48_1_2]",
+	define_test("BAP/USR/STR/BV-086-C [USR, AC 4, LC3 48_1_2]",
 			test_setup_server, test_server, &str_snk_ac10_48_1_2,
 			STR_SNK_AC10_48_1_2);
-	define_test("BAP/USR/STR/BV-087-C [USR, AC #1, LC3 48_2_2]",
+	define_test("BAP/USR/STR/BV-087-C [USR, AC 1, LC3 48_2_2]",
 			test_setup_server, test_server, &str_snk_ac2_48_2_2,
 			STR_SNK_AC2_48_2_2);
-	define_test("BAP/USR/STR/BV-088-C [USR, AC #4, LC3 48_2_2]",
+	define_test("BAP/USR/STR/BV-088-C [USR, AC 4, LC3 48_2_2]",
 			test_setup_server, test_server, &str_snk_ac10_48_2_2,
 			STR_SNK_AC10_48_2_2);
-	define_test("BAP/USR/STR/BV-089-C [USR, AC #1, LC3 48_3_2]",
+	define_test("BAP/USR/STR/BV-089-C [USR, AC 1, LC3 48_3_2]",
 			test_setup_server, test_server, &str_snk_ac2_48_3_2,
 			STR_SNK_AC2_48_3_2);
-	define_test("BAP/USR/STR/BV-090-C [USR, AC #4, LC3 48_3_2]",
+	define_test("BAP/USR/STR/BV-090-C [USR, AC 4, LC3 48_3_2]",
 			test_setup_server, test_server, &str_snk_ac10_48_3_2,
 			STR_SNK_AC10_48_3_2);
-	define_test("BAP/USR/STR/BV-091-C [USR, AC #1, LC3 48_4_2]",
+	define_test("BAP/USR/STR/BV-091-C [USR, AC 1, LC3 48_4_2]",
 			test_setup_server, test_server, &str_snk_ac2_48_4_2,
 			STR_SNK_AC2_48_4_2);
-	define_test("BAP/USR/STR/BV-092-C [USR, AC #4, LC3 48_4_2]",
+	define_test("BAP/USR/STR/BV-092-C [USR, AC 4, LC3 48_4_2]",
 			test_setup_server, test_server, &str_snk_ac10_48_4_2,
 			STR_SNK_AC10_48_4_2);
-	define_test("BAP/USR/STR/BV-093-C [USR, AC #1, LC3 48_5_2]",
+	define_test("BAP/USR/STR/BV-093-C [USR, AC 1, LC3 48_5_2]",
 			test_setup_server, test_server, &str_snk_ac2_48_5_2,
 			STR_SNK_AC2_48_5_2);
-	define_test("BAP/USR/STR/BV-094-C [USR, AC #4, LC3 48_5_2]",
+	define_test("BAP/USR/STR/BV-094-C [USR, AC 4, LC3 48_5_2]",
 			test_setup_server, test_server, &str_snk_ac10_48_5_2,
 			STR_SNK_AC10_48_5_2);
-	define_test("BAP/USR/STR/BV-095-C [USR, AC #1, LC3 48_6_2]",
+	define_test("BAP/USR/STR/BV-095-C [USR, AC 1, LC3 48_6_2]",
 			test_setup_server, test_server, &str_snk_ac2_48_6_2,
 			STR_SNK_AC2_48_6_2);
-	define_test("BAP/USR/STR/BV-096-C [USR, AC #4, LC3 48_6_2]",
+	define_test("BAP/USR/STR/BV-096-C [USR, AC 4, LC3 48_6_2]",
 			test_setup_server, test_server, &str_snk_ac10_48_6_2,
 			STR_SNK_AC10_48_6_2);
 	define_test("BAP/USR/STR/BV-097-C [USR AC 2, LC3 8_1_2]",
@@ -6790,28 +6790,28 @@ static void test_usr_str_1_1_1_lc3(void)
 	define_test("BAP/USR/STR/BV-120-C [USR AC 10, LC3 48_2_2]",
 			test_setup_server, test_server, &str_src_ac4_48_2_2,
 			STR_SRC_AC4_48_2_2);
-	define_test("BAP/USR/STR/BV-121-C [USR AC 1, LC3 48_3_2]",
+	define_test("BAP/USR/STR/BV-121-C [USR AC 2 LC3 48_3_2]",
 			test_setup_server, test_server, &str_src_ac1_48_3_2,
 			STR_SRC_AC1_48_3_2);
-	define_test("BAP/USR/STR/BV-122-C [USR AC 4, LC3 48_3_2]",
+	define_test("BAP/USR/STR/BV-122-C [USR AC 10, LC3 48_3_2]",
 			test_setup_server, test_server, &str_src_ac4_48_3_2,
 			STR_SRC_AC4_48_3_2);
-	define_test("BAP/USR/STR/BV-123-C [USR AC 1, LC3 48_4_2]",
+	define_test("BAP/USR/STR/BV-123-C [USR AC 2 LC3 48_4_2]",
 			test_setup_server, test_server, &str_src_ac1_48_4_2,
 			STR_SRC_AC1_48_4_2);
-	define_test("BAP/USR/STR/BV-124-C [USR AC 4, LC3 48_4_2]",
+	define_test("BAP/USR/STR/BV-124-C [USR AC 10, LC3 48_4_2]",
 			test_setup_server, test_server, &str_src_ac4_48_4_2,
 			STR_SRC_AC4_48_4_2);
-	define_test("BAP/USR/STR/BV-121-C [USR AC 1, LC3 48_5_2]",
+	define_test("BAP/USR/STR/BV-121-C [USR AC 2 LC3 48_5_2]",
 			test_setup_server, test_server, &str_src_ac1_48_5_2,
 			STR_SRC_AC1_48_5_2);
-	define_test("BAP/USR/STR/BV-122-C [USR AC 4, LC3 48_5_2]",
+	define_test("BAP/USR/STR/BV-122-C [USR AC 10, LC3 48_5_2]",
 			test_setup_server, test_server, &str_src_ac4_48_5_2,
 			STR_SRC_AC4_48_5_2);
-	define_test("BAP/USR/STR/BV-123-C [USR AC 1, LC3 48_6_2]",
+	define_test("BAP/USR/STR/BV-123-C [USR AC 2 LC3 48_6_2]",
 			test_setup_server, test_server, &str_src_ac1_48_6_2,
 			STR_SRC_AC1_48_6_2);
-	define_test("BAP/USR/STR/BV-124-C [USR AC 4, LC3 48_6_2]",
+	define_test("BAP/USR/STR/BV-124-C [USR AC 10, LC3 48_6_2]",
 			test_setup_server, test_server, &str_src_ac4_48_6_2,
 			STR_SRC_AC4_48_6_2);
 }
