@@ -20,6 +20,7 @@ void io_destroy(struct io *io);
 
 int io_get_fd(struct io *io);
 bool io_set_close_on_destroy(struct io *io, bool do_close);
+bool io_set_ignore_errqueue(struct io *io, bool do_ignore);
 
 ssize_t io_send(struct io *io, const struct iovec *iov, int iovcnt);
 bool io_shutdown(struct io *io);
@@ -32,3 +33,7 @@ bool io_set_write_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy);
 bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy);
+
+typedef void (*io_glib_err_func_t)(int cond, void *user_data);
+unsigned int io_glib_add_err_watch(void *giochannel, io_glib_err_func_t func,
+							void *user_data);

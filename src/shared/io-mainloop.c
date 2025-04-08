@@ -192,6 +192,12 @@ bool io_set_close_on_destroy(struct io *io, bool do_close)
 	return true;
 }
 
+bool io_set_ignore_errqueue(struct io *io, bool do_ignore)
+{
+	/* TODO: unimplemented */
+	return false;
+}
+
 bool io_set_read_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy)
 {
@@ -308,4 +314,10 @@ bool io_shutdown(struct io *io)
 		return false;
 
 	return shutdown(io->fd, SHUT_RDWR) == 0;
+}
+
+unsigned int io_glib_add_err_watch(void *giochannel, io_glib_err_func_t func,
+							void *user_data)
+{
+	return 0;
 }
