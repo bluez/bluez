@@ -2779,6 +2779,8 @@ static struct bt_bap_stream_io *stream_io_new(struct bt_bap *bap, int fd)
 
 	DBG(bap, "fd %d", fd);
 
+	io_set_ignore_errqueue(io, true);
+
 	sio = new0(struct bt_bap_stream_io, 1);
 	sio->bap = bap;
 	sio->io = io;
