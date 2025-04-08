@@ -31,6 +31,7 @@
 #include "btio/btio.h"
 #include "src/btd.h"
 #include "src/log.h"
+#include "src/shared/io.h"
 #include "src/shared/timeout.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
@@ -749,8 +750,7 @@ static void stream_free(void *data)
 	g_free(stream);
 }
 
-static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
-				gpointer data)
+static void transport_cb(int cond, void *data)
 {
 	struct avdtp_stream *stream = data;
 	struct avdtp_local_sep *sep = stream->lsep;
@@ -766,8 +766,6 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 
 	if (!stream->abort_int)
 		avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
-
-	return FALSE;
 }
 
 static int get_send_buffer_size(int sk)
@@ -866,8 +864,7 @@ proceed:
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 
-	stream->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-					(GIOFunc) transport_cb, stream);
+	stream->io_id = io_glib_add_err_watch(io, transport_cb, stream);
 
 	/* Release pending IO */
 	if (session->pending_open_io) {
