@@ -5750,7 +5750,7 @@ static int cmd_pa_create_sync_complete(struct btdev *dev, const void *data,
 	 * synchronization can only occur when scanning is enabled. While
 	 * scanning is disabled, no attempt to synchronize will take place.
 	 */
-	if (!dev->scan_enable)
+	if (!dev->le_scan_enable)
 		return 0;
 
 	remote = find_btdev_by_bdaddr_type(cmd->addr, cmd->addr_type);
