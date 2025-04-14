@@ -1907,6 +1907,10 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		g_dbus_send_message(dbus_conn, reply);
 		dbus_message_unref(device->connect);
 		device->connect = NULL;
+
+		/* Connection does not exists anymore, so free pending services */
+		g_slist_free(device->pending);
+		device->pending = NULL;
 	}
 
 	if (btd_device_is_connected(device) && msg)
