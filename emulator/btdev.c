@@ -105,12 +105,14 @@ struct le_ext_adv {
 	uint8_t scan_data_len;
 	unsigned int broadcast_id;
 	unsigned int timeout_id;
+	uint8_t sid;
 };
 
 struct le_per_adv {
 	struct btdev *dev;
 	uint8_t addr_type;
 	uint8_t addr[6];
+	uint8_t sid;
 	uint16_t sync_handle;
 };
 
@@ -4923,6 +4925,7 @@ static int cmd_set_ext_adv_params(struct btdev *dev, const void *data,
 	ext_adv->direct_addr_type = cmd->peer_addr_type;
 	memcpy(ext_adv->direct_addr, cmd->peer_addr, 6);
 	ext_adv->filter_policy = cmd->filter_policy;
+	ext_adv->sid = cmd->sid;
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
 	rsp.tx_power = 0;
@@ -5019,6 +5022,7 @@ static void send_ext_adv(struct btdev *btdev, const struct btdev *remote,
 	/* Right now we dont care about phy in adv report */
 	meta_event.lear.primary_phy = 0x01;
 	meta_event.lear.secondary_phy = 0x01;
+	meta_event.lear.sid = ext_adv->sid;
 
 	/* Scan or advertising response */
 	if (is_scan_rsp) {
@@ -5420,15 +5424,30 @@ static bool match_dev(const void *data, const void *match_data)
 						per_adv->addr_type);
 }
 
+static bool match_sid(const void *data, const void *match_data)
+{
+	const struct le_ext_adv *ext_adv = data;
+	uint8_t sid = PTR_TO_UINT(match_data);
+
+	return ext_adv->sid == sid;
+}
+
 static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
 						uint8_t status)
 {
 	struct bt_hci_evt_le_per_sync_established ev;
 	struct le_per_adv *per_adv;
+	struct le_ext_adv *ext_adv;
 	uint16_t sync_handle = SYNC_HANDLE;
 
 	per_adv = queue_find(dev->le_per_adv, match_dev, remote);
 	if (!per_adv)
+		return;
+
+	/* Match SID */
+	ext_adv = queue_find(remote->le_ext_adv, match_sid,
+					UINT_TO_PTR(per_adv->sid));
+	if (!ext_adv)
 		return;
 
 	memset(&ev, 0, sizeof(ev));
@@ -5701,8 +5720,8 @@ static int cmd_ext_create_conn_complete(struct btdev *dev, const void *data,
 	return 0;
 }
 
-static struct le_per_adv *le_per_adv_new(struct btdev *btdev,
-			uint8_t  addr_type, const uint8_t *addr)
+static struct le_per_adv *le_per_adv_new(struct btdev *btdev, uint8_t addr_type,
+					 const uint8_t *addr, uint8_t sid)
 {
 	struct le_per_adv *per_adv;
 
@@ -5711,6 +5730,7 @@ static struct le_per_adv *le_per_adv_new(struct btdev *btdev,
 	per_adv->dev = btdev;
 	per_adv->addr_type = addr_type;
 	memcpy(per_adv->addr, addr, 6);
+	per_adv->sid = sid;
 	per_adv->sync_handle = INV_HANDLE;
 
 	/* Add to queue */
@@ -5735,7 +5755,7 @@ static int cmd_pa_create_sync(struct btdev *dev, const void *data, uint8_t len)
 	}
 
 	/* Create new train */
-	per_adv = le_per_adv_new(dev, cmd->addr_type, cmd->addr);
+	per_adv = le_per_adv_new(dev, cmd->addr_type, cmd->addr, cmd->sid);
 	if (!per_adv)
 		status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 
