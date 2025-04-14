@@ -5728,6 +5728,12 @@ static int cmd_pa_create_sync(struct btdev *dev, const void *data, uint8_t len)
 	uint8_t status = BT_HCI_ERR_SUCCESS;
 	struct le_per_adv *per_adv;
 
+	if (cmd->sid > 0x0f) {
+		cmd_status(dev, BT_HCI_ERR_INVALID_PARAMETERS,
+			   BT_HCI_CMD_LE_PA_CREATE_SYNC);
+		return 0;
+	}
+
 	/* Create new train */
 	per_adv = le_per_adv_new(dev, cmd->addr_type, cmd->addr);
 	if (!per_adv)
