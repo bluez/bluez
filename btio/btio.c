@@ -1649,6 +1649,27 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 	return TRUE;
 }
 
+static bool get_bc_sid(int sock, uint8_t *sid, GError **err)
+{
+	struct {
+		struct sockaddr_iso iso;
+		struct sockaddr_iso_bc bc;
+	} addr;
+	socklen_t olen;
+
+	olen = sizeof(addr);
+	memset(&addr, 0, olen);
+	if (getpeername(sock, (void *)&addr, &olen) < 0 ||
+				olen != sizeof(addr)) {
+		ERROR_FAILED(err, "getpeername", errno);
+		return false;
+	}
+
+	*sid = addr.iso.iso_bc->bc_sid;
+
+	return true;
+}
+
 static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 {
 	BtIOOption opt = opt1;
@@ -1657,6 +1678,7 @@ static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 	struct bt_iso_base base;
 	socklen_t len;
 	uint32_t phy;
+	uint8_t bc_sid;
 
 	len = sizeof(qos);
 	memset(&qos, 0, len);
@@ -1721,6 +1743,12 @@ static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_BASE:
 			*(va_arg(args, struct bt_iso_base *)) = base;
 			break;
+		case BT_IO_OPT_ISO_BC_SID:
+			if (!get_bc_sid(sock, &bc_sid, err))
+				return FALSE;
+
+			*(va_arg(args, uint8_t *)) = bc_sid;
+			break;
 		case BT_IO_OPT_HANDLE:
 		case BT_IO_OPT_CLASS:
 		case BT_IO_OPT_DEFER_TIMEOUT:
@@ -1736,7 +1764,6 @@ static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_FLUSHABLE:
 		case BT_IO_OPT_PRIORITY:
 		case BT_IO_OPT_VOICE:
-		case BT_IO_OPT_ISO_BC_SID:
 		case BT_IO_OPT_ISO_BC_NUM_BIS:
 		case BT_IO_OPT_ISO_BC_BIS:
 		case BT_IO_OPT_INVALID:
