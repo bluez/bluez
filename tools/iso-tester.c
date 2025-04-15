@@ -2575,6 +2575,40 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 		}
 	}
 
+	if (isodata->sid == 0xff) {
+		struct {
+			struct sockaddr_iso iso;
+			struct sockaddr_iso_bc bc;
+		} addr;
+		socklen_t olen;
+
+		olen = sizeof(addr);
+
+		memset(&addr, 0, olen);
+		if (getpeername(sk, (void *)&addr, &olen) < 0) {
+			tester_warn("getpeername: %s (%d)",
+					strerror(errno), errno);
+			data->step = 0;
+			tester_test_failed();
+			return FALSE;
+		}
+
+		if (olen != sizeof(addr)) {
+			tester_warn("getpeername: olen %d != %zu sizeof(addr)",
+					olen, sizeof(addr));
+			data->step = 0;
+			tester_test_failed();
+			return FALSE;
+		}
+
+		if (addr.bc.bc_sid > 0x0f) {
+			tester_warn("Invalid SID: %d", addr.bc.bc_sid);
+			data->step = 0;
+			tester_test_failed();
+			return FALSE;
+		}
+	}
+
 	len = sizeof(sk_err);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
