@@ -495,6 +495,7 @@ struct iso_client_data {
 	uint8_t pkt_status;
 	const uint8_t *base;
 	size_t base_len;
+	uint8_t sid;
 	bool listen_bind;
 	bool pa_bind;
 	bool big;
@@ -1417,6 +1418,16 @@ static const struct iso_client_data bcast_16_2_1_recv2 = {
 	.bcast = true,
 	.server = true,
 	.big = true,
+};
+
+static const struct iso_client_data bcast_16_2_1_recv_sid = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+	.sid = 0xff,
 };
 
 static const struct iso_client_data bcast_enc_16_2_1_recv = {
@@ -2843,6 +2854,7 @@ static int listen_iso_sock(struct test_data *data, uint8_t num)
 
 		bacpy(&addr->iso_bc->bc_bdaddr, (void *) dst);
 		addr->iso_bc->bc_bdaddr_type = BDADDR_LE_PUBLIC;
+		addr->iso_bc->bc_sid = isodata->sid;
 
 		if (!isodata->defer || isodata->listen_bind) {
 			addr->iso_bc->bc_num_bis = 1;
@@ -3815,6 +3827,10 @@ int main(int argc, char *argv[])
 							test_bcast);
 
 	test_iso("ISO Broadcaster Receiver - Success", &bcast_16_2_1_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver SID 0xff - Success",
+							&bcast_16_2_1_recv_sid,
 							setup_powered,
 							test_bcast_recv);
 	test_iso2("ISO Broadcaster Receiver2 - Success", &bcast_16_2_1_recv2,
