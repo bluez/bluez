@@ -40,9 +40,9 @@ typedef void (*bt_bap_stream_func_t)(struct bt_bap_stream *stream,
 					void *user_data);
 typedef void (*bt_bap_func_t)(struct bt_bap *bap, void *user_data);
 
-typedef void (*bt_bap_bis_func_t)(uint8_t bis, uint8_t sgrp,
-		struct iovec *caps, struct iovec *meta,
-		struct bt_bap_qos *qos, void *user_data);
+typedef void (*bt_bap_bis_func_t)(uint8_t sid, uint8_t bis, uint8_t sgrp,
+				struct iovec *caps, struct iovec *meta,
+				struct bt_bap_qos *qos, void *user_data);
 
 typedef void (*bt_bap_bcode_reply_t)(void *user_data, int err);
 
@@ -271,7 +271,7 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 		struct iovec *caps,
 		struct bt_bap_pac **lpac);
 
-bool bt_bap_parse_base(struct iovec *base,
+bool bt_bap_parse_base(uint8_t sid, struct iovec *base,
 			struct bt_bap_qos *qos,
 			util_debug_func_t func,
 			bt_bap_bis_func_t handler,
@@ -284,8 +284,9 @@ unsigned int bt_bap_bis_cb_register(struct bt_bap *bap,
 				bt_bap_destroy_func_t destroy);
 bool bt_bap_bis_cb_unregister(struct bt_bap *bap, unsigned int id);
 
-void bt_bap_bis_probe(struct bt_bap *bap, uint8_t bis, uint8_t sgrp,
-	struct iovec *caps, struct iovec *meta, struct bt_bap_qos *qos);
+void bt_bap_bis_probe(struct bt_bap *bap, uint8_t sid, uint8_t bis,
+			uint8_t sgrp, struct iovec *caps, struct iovec *meta,
+			struct bt_bap_qos *qos);
 void bt_bap_bis_remove(struct bt_bap *bap);
 
 void bt_bap_req_bcode(struct bt_bap_stream *stream,

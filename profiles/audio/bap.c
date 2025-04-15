@@ -74,6 +74,7 @@ struct bap_setup {
 	unsigned int io_id;
 	bool recreate;
 	bool cig_active;
+	uint8_t sid;
 	struct iovec *caps;
 	struct iovec *metadata;
 	unsigned int id;
@@ -1053,8 +1054,9 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 }
 
 static void create_stream_for_bis(struct bap_data *bap_data,
-		struct bt_bap_pac *lpac, struct bt_bap_qos *qos,
-		struct iovec *caps, struct iovec *meta, char *path)
+				struct bt_bap_pac *lpac, uint8_t sid,
+				struct bt_bap_qos *qos, struct iovec *caps,
+				struct iovec *meta, char *path)
 {
 	struct bap_setup *setup;
 
@@ -1072,6 +1074,7 @@ static void create_stream_for_bis(struct bap_data *bap_data,
 	setup->stream = bt_bap_stream_new(bap_data->bap,
 			lpac, NULL, &setup->qos, caps);
 
+	setup->sid = sid;
 	bt_bap_stream_set_user_data(setup->stream, path);
 	bt_bap_stream_config(setup->stream, &setup->qos,
 			caps, NULL, NULL);
@@ -1079,29 +1082,27 @@ static void create_stream_for_bis(struct bap_data *bap_data,
 			NULL, NULL);
 }
 
-static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
-	struct iovec *meta, struct bt_bap_qos *qos, void *user_data)
+static void bis_handler(uint8_t sid, uint8_t bis, uint8_t sgrp,
+			struct iovec *caps, struct iovec *meta,
+			struct bt_bap_qos *qos, void *user_data)
 {
 	struct bap_data *data = user_data;
 	struct bt_bap_pac *lpac;
 	char *path;
 
-	bt_bap_bis_probe(data->bap, bis, sgrp, caps, meta, qos);
+	bt_bap_bis_probe(data->bap, sid, bis, sgrp, caps, meta, qos);
 
 	/* Check if this BIS matches any local PAC */
-	bt_bap_verify_bis(data->bap, bis,
-			caps, &lpac);
+	bt_bap_verify_bis(data->bap, bis, caps, &lpac);
 
 	if (!lpac)
 		return;
 
-	if (asprintf(&path, "%s/bis%d",
-			device_get_path(data->device),
-			bis) < 0)
+	if (asprintf(&path, "%s/sid%d/bis%d", device_get_path(data->device),
+			sid, bis) < 0)
 		return;
 
-	create_stream_for_bis(data, lpac, qos,
-			caps, meta, path);
+	create_stream_for_bis(data, lpac, sid, qos, caps, meta, path);
 }
 
 static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
@@ -1113,12 +1114,14 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 	struct bt_iso_qos qos;
 	struct iovec iov;
 	struct bt_bap_qos bap_qos = {0};
+	uint8_t sid;
 
 	DBG("BIG Info received");
 
 	bt_io_get(io, &err,
 			BT_IO_OPT_BASE, &base,
 			BT_IO_OPT_QOS, &qos,
+			BT_IO_OPT_ISO_BC_SID, &sid,
 			BT_IO_OPT_INVALID);
 	if (err) {
 		error("%s", err->message);
@@ -1147,7 +1150,7 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 	/* Create BAP QoS structure */
 	bt_bap_iso_qos_to_bap_qos(&qos, &bap_qos);
 
-	bt_bap_parse_base(&iov, &bap_qos, bap_debug, bis_handler, data);
+	bt_bap_parse_base(sid, &iov, &bap_qos, bap_debug, bis_handler, data);
 
 	util_iov_free(bap_qos.bcast.bcode, 1);
 
@@ -2941,6 +2944,7 @@ static void pa_and_big_sync(struct bap_setup *setup)
 			btd_device_get_bdaddr_type(bap_data->device),
 			BT_IO_OPT_MODE, BT_IO_MODE_ISO,
 			BT_IO_OPT_QOS, &bap_sink_pa_qos,
+			BT_IO_OPT_ISO_BC_SID, setup->sid,
 			BT_IO_OPT_INVALID);
 	if (!bap_data->listen_io) {
 		error("%s", err->message);

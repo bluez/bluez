@@ -5721,8 +5721,9 @@ bool bt_bap_bis_cb_unregister(struct bt_bap *bap, unsigned int id)
 	return false;
 }
 
-void bt_bap_bis_probe(struct bt_bap *bap, uint8_t bis, uint8_t sgrp,
-	struct iovec *caps, struct iovec *meta, struct bt_bap_qos *qos)
+void bt_bap_bis_probe(struct bt_bap *bap, uint8_t sid, uint8_t bis,
+		      uint8_t sgrp, struct iovec *caps, struct iovec *meta,
+		      struct bt_bap_qos *qos)
 {
 	const struct queue_entry *entry;
 
@@ -5737,7 +5738,7 @@ void bt_bap_bis_probe(struct bt_bap *bap, uint8_t bis, uint8_t sgrp,
 		entry = entry->next;
 
 		if (cb->probe)
-			cb->probe(bis, sgrp, caps, meta, qos, cb->data);
+			cb->probe(sid, bis, sgrp, caps, meta, qos, cb->data);
 	}
 
 	bt_bap_unref(bap);
@@ -7341,7 +7342,7 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
 
 }
 
-bool bt_bap_parse_base(struct iovec *iov,
+bool bt_bap_parse_base(uint8_t sid, struct iovec *iov,
 			struct bt_bap_qos *qos,
 			util_debug_func_t func,
 			bt_bap_bis_func_t handler,
@@ -7452,7 +7453,7 @@ bool bt_bap_parse_base(struct iovec *iov,
 			if (!bis_cc)
 				continue;
 
-			handler(bis_index, idx, bis_cc, &meta,
+			handler(sid, bis_index, idx, bis_cc, &meta,
 				qos, user_data);
 
 			util_iov_free(bis_cc, 1);

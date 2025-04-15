@@ -141,8 +141,9 @@ static struct bass_data *bass_data_new(struct btd_device *device);
 static void bass_data_add(struct bass_data *data);
 static void bass_data_remove(struct bass_data *data);
 
-static void bis_probe(uint8_t bis, uint8_t sgrp, struct iovec *caps,
-	struct iovec *meta, struct bt_bap_qos *qos, void *user_data);
+static void bis_probe(uint8_t sid, uint8_t bis, uint8_t sgrp,
+			struct iovec *caps, struct iovec *meta,
+			struct bt_bap_qos *qos, void *user_data);
 static void bis_remove(struct bt_bap *bap, void *user_data);
 
 
@@ -482,8 +483,9 @@ static void bass_add_bis(struct bass_setup *setup)
 	setup_configure_stream(setup);
 }
 
-static void bis_handler(uint8_t bis, uint8_t sgrp, struct iovec *caps,
-	struct iovec *meta, struct bt_bap_qos *qos, void *user_data)
+static void bis_handler(uint8_t sid, uint8_t bis, uint8_t sgrp,
+			struct iovec *caps, struct iovec *meta,
+			struct bt_bap_qos *qos, void *user_data)
 {
 	struct bass_delegator *dg = user_data;
 	struct bt_bap_pac *lpac;
@@ -526,12 +528,14 @@ static gboolean big_info_cb(GIOChannel *io, GIOCondition cond,
 	struct bt_iso_qos qos;
 	struct iovec iov;
 	struct bt_bap_qos bap_qos = {0};
+	uint8_t sid;
 
 	dg->io_id = 0;
 
 	bt_io_get(io, &err,
 			BT_IO_OPT_BASE, &base,
 			BT_IO_OPT_QOS, &qos,
+			BT_IO_OPT_ISO_BC_SID, &sid,
 			BT_IO_OPT_INVALID);
 	if (err) {
 		error("%s", err->message);
@@ -545,7 +549,7 @@ static gboolean big_info_cb(GIOChannel *io, GIOCondition cond,
 	/* Create BAP QoS structure */
 	bt_bap_iso_qos_to_bap_qos(&qos, &bap_qos);
 
-	bt_bap_parse_base(&iov, &bap_qos, bass_debug, bis_handler, dg);
+	bt_bap_parse_base(sid, &iov, &bap_qos, bass_debug, bis_handler, dg);
 
 	util_iov_free(bap_qos.bcast.bcode, 1);
 
@@ -1107,8 +1111,9 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 	return assistant;
 }
 
-static void bis_probe(uint8_t bis, uint8_t sgrp, struct iovec *caps,
-	struct iovec *meta, struct bt_bap_qos *qos, void *user_data)
+static void bis_probe(uint8_t sid, uint8_t bis, uint8_t sgrp,
+			struct iovec *caps, struct iovec *meta,
+			struct bt_bap_qos *qos, void *user_data)
 {
 	struct btd_device *device = user_data;
 	const struct queue_entry *entry;
