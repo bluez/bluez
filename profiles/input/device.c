@@ -86,6 +86,7 @@ struct input_device {
 	bool			virtual_cable_unplug;
 	uint8_t			type;
 	unsigned int		idle_timer;
+	bool			sdp_rediscover;
 };
 
 static int idle_timeout = 0;
@@ -1062,6 +1063,22 @@ static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 	return FALSE;
 }
 
+static void input_device_update_rec(struct input_device *idev);
+static int hidp_add_connection(struct input_device *idev);
+
+static void hidp_sdp_cb(struct btd_device *dev, int err, void *user_data)
+{
+	struct input_device *idev = user_data;
+
+	DBG("");
+
+	/* Attempt to update SDP record if it had changed */
+	input_device_update_rec(idev);
+
+	if (hidp_add_connection(idev) < 0)
+		btd_service_disconnect(idev->service);
+}
+
 static int hidp_add_connection(struct input_device *idev)
 {
 	struct hidp_connadd_req *req;
@@ -1078,6 +1095,18 @@ static int hidp_add_connection(struct input_device *idev)
 	if (err < 0) {
 		error("Could not parse HID SDP record: %s (%d)", strerror(-err),
 									-err);
+		if (err == -ENOENT && !idev->sdp_rediscover) {
+			err = device_discover_services(idev->device);
+			if (err < 0) {
+				error("Could not discover services: %s (%d)",
+							strerror(-err), -err);
+				goto cleanup;
+			}
+
+			idev->sdp_rediscover = TRUE;
+			device_wait_for_svc_complete(idev->device,
+				hidp_sdp_cb, idev);
+		}
 		goto cleanup;
 	}
 
