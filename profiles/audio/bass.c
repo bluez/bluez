@@ -1426,12 +1426,18 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
 	switch (sync_state) {
 	case BT_BASS_SYNCHRONIZED_TO_PA:
 		if (params->pa_sync == PA_SYNC_NO_SYNC) {
+			struct btd_adapter *adapter =
+					device_get_adapter(dg->device);
+
 			g_io_channel_shutdown(dg->io, TRUE, NULL);
 			g_io_channel_unref(dg->io);
 			dg->io = NULL;
 
 			bt_bass_set_pa_sync(dg->src,
 				BT_BASS_NOT_SYNCHRONIZED_TO_PA);
+
+			/* Remove device of BIS source*/
+			btd_adapter_remove_device(adapter, dg->device);
 		} else {
 			bass_update_bis_sync(dg, bcast_src);
 		}
