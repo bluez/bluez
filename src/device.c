@@ -6271,10 +6271,13 @@ int device_discover_services(struct btd_device *device)
 {
 	int err;
 
-	if (device->bredr)
+	if (device->bredr) {
+		device->bredr_state.svc_resolved = FALSE;
 		err = device_browse_sdp(device, NULL);
-	else
+	} else {
+		device->le_state.svc_resolved = FALSE;
 		err = device_browse_gatt(device, NULL);
+	}
 
 	if (err == 0 && device->discov_timer) {
 		timeout_remove(device->discov_timer);
