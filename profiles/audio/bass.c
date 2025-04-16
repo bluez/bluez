@@ -1432,6 +1432,9 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
 
 			bt_bass_set_pa_sync(dg->src,
 				BT_BASS_NOT_SYNCHRONIZED_TO_PA);
+
+			/* Remove device of BIS source*/
+			btd_adapter_remove_device(device_get_adapter(dg->device), dg->device);
 		} else {
 			bass_update_bis_sync(dg, bcast_src);
 		}
