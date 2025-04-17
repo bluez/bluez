@@ -1426,7 +1426,7 @@ static void rl_cleanup(void)
 	if (data.history[0] != '\0')
 		write_history(data.history);
 
-	rl_message("");
+	rl_message("%s", "");
 	rl_callback_handler_remove();
 }
 
