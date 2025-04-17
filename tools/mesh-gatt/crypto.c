@@ -902,7 +902,7 @@ bool mesh_crypto_session_key(const uint8_t secret[32],
 					const uint8_t salt[16],
 					uint8_t session_key[16])
 {
-	const uint8_t prsk[4] = "prsk";
+	const uint8_t prsk[4] = { 'p', 'r', 's', 'k' };
 
 	if (!aes_cmac_one(salt, secret, 32, session_key))
 		return false;
@@ -914,7 +914,7 @@ bool mesh_crypto_nonce(const uint8_t secret[32],
 					const uint8_t salt[16],
 					uint8_t nonce[13])
 {
-	const uint8_t prsn[4] = "prsn";
+	const uint8_t prsn[4] = { 'p', 'r', 's', 'n' };
 	uint8_t tmp[16];
 	bool result;
 
@@ -955,7 +955,7 @@ bool mesh_crypto_prov_conf_key(const uint8_t secret[32],
 					const uint8_t salt[16],
 					uint8_t conf_key[16])
 {
-	const uint8_t prck[4] = "prck";
+	const uint8_t prck[4] = { 'p', 'r', 'c', 'k' };
 
 	if (!aes_cmac_one(salt, secret, 32, conf_key))
 		return false;
@@ -967,7 +967,7 @@ bool mesh_crypto_device_key(const uint8_t secret[32],
 						const uint8_t salt[16],
 						uint8_t device_key[16])
 {
-	const uint8_t prdk[4] = "prdk";
+	const uint8_t prdk[4] = { 'p', 'r', 'd', 'k' };
 
 	if (!aes_cmac_one(salt, secret, 32, device_key))
 		return false;
