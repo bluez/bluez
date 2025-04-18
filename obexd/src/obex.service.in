@@ -1,10 +1,19 @@
 [Unit]
 Description=Bluetooth OBEX service
+# This is a user-specific service, but bluetooth is a device-specific protocol.
+# Only run one instance at a time, even if multiple users log in at once:
+ConditionPathExists=!/run/lock/bluez/obexd.lock
+ConditionUser=!@system
 
 [Service]
 Type=dbus
 BusName=org.bluez.obex
 ExecStart=@PKGLIBEXECDIR@/obexd
+
+# If the service fails on the following line, please ensure
+# the bluez tmpfile has been installed in /usr/lib/tmpfiles.d/
+ExecStartPre=touch /run/lock/bluez/obexd.lock
+ExecStopPost=rm -f /run/lock/bluez/obexd.lock
 
 [Install]
 Alias=dbus-org.bluez.obex.service
