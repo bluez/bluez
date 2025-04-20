@@ -1980,8 +1980,8 @@ bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 
 		/* Check if Characteristic Value was passed instead */
 		index = gatt_db_attribute_get_index(attrib);
-		if (index < 0)
-			return NULL;
+		if (index <= 0)
+			return false;
 
 		attrib = attrib->service->attributes[index - 1];
 		if (bt_uuid_cmp(&characteristic_uuid, &attrib->uuid))
