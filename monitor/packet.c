@@ -3213,6 +3213,7 @@ static void print_fec(uint8_t fec)
 #define BT_EIR_MESH_DATA		0x2a
 #define BT_EIR_MESH_BEACON		0x2b
 #define BT_EIR_CSIP_RSI			0x2e
+#define BT_EIR_BC_NAME			0x30
 #define BT_EIR_3D_INFO_DATA		0x3d
 #define BT_EIR_MANUFACTURER_DATA	0xff
 
@@ -4056,6 +4057,12 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			print_addr("Resolvable Set Identifier", data, 0xff);
 			print_field("  Hash: 0x%6x", get_le24(data));
 			print_field("  Random: 0x%6x", get_le24(data + 3));
+			break;
+
+		case BT_EIR_BC_NAME:
+			memset(name, 0, sizeof(name));
+			memcpy(name, data, data_len);
+			print_field("Broadcast Name: %s", name);
 			break;
 
 		case BT_EIR_MANUFACTURER_DATA:
