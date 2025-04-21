@@ -39,6 +39,7 @@
 #define EIR_SVC_DATA128             0x21  /* LE: Service data, 128-bit UUID */
 #define EIR_TRANSPORT_DISCOVERY     0x26  /* Transport Discovery Service */
 #define EIR_CSIP_RSI                0x2e  /* Resolvable Set Identifier */
+#define EIR_BC_NAME                 0x30  /* Broadcast Name */
 #define EIR_MANUFACTURER_DATA       0xFF  /* Manufacturer Specific Data */
 
 /* Flags Descriptions */

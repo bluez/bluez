@@ -293,6 +293,7 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 
 		case EIR_NAME_SHORT:
 		case EIR_NAME_COMPLETE:
+		case EIR_BC_NAME:
 			/* Some vendors put a NUL byte terminator into
 			 * the name */
 			while (data_len > 0 && data[data_len - 1] == '\0')
@@ -301,7 +302,7 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 			g_free(eir->name);
 
 			eir->name = name2utf8(data, data_len);
-			eir->name_complete = eir_data[1] == EIR_NAME_COMPLETE;
+			eir->name_complete = eir_data[1] != EIR_NAME_SHORT;
 			break;
 
 		case EIR_TX_POWER:
