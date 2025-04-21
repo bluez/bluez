@@ -15,6 +15,11 @@
 #include <linux/errqueue.h>
 #include <linux/net_tstamp.h>
 
+#include <linux/ethtool.h>
+#include <linux/sockios.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+
 #include <glib.h>
 
 #define SEC_NSEC(_t)  ((_t) * 1000000000LL)
@@ -197,4 +202,56 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 	++data->pos;
 
 	return data->count - data->pos;
+}
+
+static inline void test_ethtool_get_ts_info(unsigned int index, int proto,
+							bool sco_flowctl)
+{
+	struct ifreq ifr = {};
+	struct ethtool_ts_info cmd = {};
+	uint32_t so_timestamping = SOF_TIMESTAMPING_TX_SOFTWARE |
+		SOF_TIMESTAMPING_RX_SOFTWARE |
+		SOF_TIMESTAMPING_SOFTWARE |
+		SOF_TIMESTAMPING_OPT_ID |
+		SOF_TIMESTAMPING_OPT_CMSG |
+		SOF_TIMESTAMPING_OPT_TSONLY |
+		SOF_TIMESTAMPING_TX_COMPLETION;
+	int sk;
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, proto);
+	if (sk < 0) {
+		if (sk == -EPROTONOSUPPORT)
+			tester_test_abort();
+		else
+			tester_test_failed();
+		return;
+	}
+
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "hci%u", index);
+	ifr.ifr_data = (void *)&cmd;
+	cmd.cmd = ETHTOOL_GET_TS_INFO;
+
+	if (ioctl(sk, SIOCETHTOOL, &ifr) == -1) {
+		tester_warn("SIOCETHTOOL failed");
+		tester_test_failed();
+		return;
+	}
+	close(sk);
+
+	if (proto == BTPROTO_SCO && !sco_flowctl)
+		so_timestamping &= ~SOF_TIMESTAMPING_TX_COMPLETION;
+	if (proto == BTPROTO_L2CAP)
+		so_timestamping &= ~SOF_TIMESTAMPING_RX_SOFTWARE;
+
+	if (cmd.cmd != ETHTOOL_GET_TS_INFO ||
+			cmd.so_timestamping != so_timestamping ||
+			cmd.phc_index != -1 ||
+			cmd.tx_types != (1 << HWTSTAMP_TX_OFF) ||
+			cmd.rx_filters != (1 << HWTSTAMP_FILTER_NONE)) {
+		tester_warn("bad ethtool_ts_info");
+		tester_test_failed();
+		return;
+	}
+
+	tester_test_passed();
 }
