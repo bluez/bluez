@@ -106,7 +106,7 @@ struct bap_data {
 	struct queue *snks;
 	struct queue *bcast;
 	struct queue *bcast_snks;
-	struct queue *streams;
+	struct queue *server_streams;
 	GIOChannel *listen_io;
 	unsigned int io_id;
 	int selecting;
@@ -158,7 +158,7 @@ static void bap_data_free(struct bap_data *data)
 	queue_destroy(data->snks, ep_unregister);
 	queue_destroy(data->srcs, ep_unregister);
 	queue_destroy(data->bcast, ep_unregister);
-	queue_destroy(data->streams, NULL);
+	queue_destroy(data->server_streams, NULL);
 	queue_destroy(data->bcast_snks, setup_free);
 	bt_bap_ready_unregister(data->bap, data->ready_id);
 	bt_bap_state_unregister(data->bap, data->state_id);
@@ -1695,7 +1695,7 @@ static void iso_confirm_cb(GIOChannel *io, void *user_data)
 	DBG("ISO: incoming connect from %s (CIG 0x%02x CIS 0x%02x)",
 					address, qos.ucast.cig, qos.ucast.cis);
 
-	stream = queue_remove_if(data->streams, match_stream_qos, &qos);
+	stream = queue_remove_if(data->server_streams, match_stream_qos, &qos);
 	if (!stream) {
 		error("No matching stream found");
 		goto drop;
@@ -2040,6 +2040,12 @@ static void setup_listen_io(struct bap_data *data, struct bt_bap_stream *stream,
 
 	DBG("stream %p", stream);
 
+	if (!data->server_streams)
+		data->server_streams = queue_new();
+
+	if (!queue_find(data->server_streams, NULL, stream))
+		queue_push_tail(data->server_streams, stream);
+
 	/* If IO already set skip creating it again */
 	if (bt_bap_stream_get_io(stream) || data->listen_io)
 		return;
@@ -2143,12 +2149,6 @@ static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
 	DBG("setup %p stream %p defer %s", setup, stream,
 				defer ? "true" : "false");
 
-	if (!data->streams)
-		data->streams = queue_new();
-
-	if (!queue_find(data->streams, NULL, stream))
-		queue_push_tail(data->streams, stream);
-
 	switch (bt_bap_stream_get_type(stream)) {
 	case BT_BAP_STREAM_TYPE_UCAST:
 		setup_create_ucast_io(data, setup, stream, defer);
@@ -2184,7 +2184,7 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 		if (setup)
 			setup_free(setup);
 		else
-			queue_remove(data->streams, stream);
+			queue_remove(data->server_streams, stream);
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
 		if (setup && !setup->id) {
@@ -2365,8 +2365,6 @@ static void bap_state_bcast_src(struct bt_bap_stream *stream, uint8_t old_state,
 		/* Release stream if idle */
 		if (setup)
 			setup_free(setup);
-		else
-			queue_remove(data->streams, stream);
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
 		// TO DO Reconfiguration
@@ -2469,8 +2467,6 @@ static void bap_state_bcast_sink(struct bt_bap_stream *stream,
 		/* Release stream if idle */
 		if (setup)
 			setup_free(setup);
-		else
-			queue_remove(data->streams, stream);
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
 		if (!setup)
