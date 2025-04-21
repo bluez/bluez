@@ -7,7 +7,7 @@ BlueZ D-Bus Media API documentation
 -----------------------------------
 
 :Version: BlueZ
-:Date: September 2023
+:Date: April 2025
 :Manual section: 5
 :Manual group: Linux System Administration
 
@@ -131,3 +131,14 @@ array{string} SupportedUUIDs [readonly]
 
 	List of 128-bit UUIDs that represents the supported Endpoint
 	registration.
+
+array{string} SupportedFeatures [readonly]
+``````````````````````````````````````````
+
+	List of strings that represent supported special features.
+	Possible values:
+
+	:"tx-timestamping":
+
+		Media applications are allowed to enable kernel TX
+		timestamping for acquired fds.
