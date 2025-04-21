@@ -294,6 +294,7 @@ struct bt_bap_stream {
 	uint8_t state;
 	unsigned int state_id;
 	struct queue *pending_states;
+	bool no_cache_config;
 	bool client;
 	void *user_data;
 };
@@ -1000,6 +1001,9 @@ static void stream_notify_config(struct bt_bap_stream *stream)
 
 	DBG(stream->bap, "stream %p", stream);
 
+	if (!lpac)
+		return;
+
 	len = sizeof(*status) + sizeof(*config) + stream->cc->iov_len;
 	status = malloc(len);
 
@@ -1163,7 +1167,7 @@ static struct bt_bap *bt_bap_ref_safe(struct bt_bap *bap)
 
 static void bap_stream_clear_cfm(struct bt_bap_stream *stream)
 {
-	if (!stream->lpac->ops || !stream->lpac->ops->clear)
+	if (!stream->lpac || !stream->lpac->ops || !stream->lpac->ops->clear)
 		return;
 
 	stream->lpac->ops->clear(stream, stream->lpac->user_data);
@@ -1517,6 +1521,12 @@ static uint8_t stream_config(struct bt_bap_stream *stream, struct iovec *cc,
 	struct bt_bap_pac *pac = stream->lpac;
 
 	DBG(stream->bap, "stream %p", stream);
+
+	if (!pac) {
+		ascs_ase_rsp_add(rsp, stream->ep->id, BT_ASCS_RSP_CONF_REJECTED,
+							BT_ASCS_REASON_CODEC);
+		return 0;
+	}
 
 	/* TODO: Wait for pac->ops response */
 	ascs_ase_rsp_success(rsp, stream->ep->id);
@@ -1962,6 +1972,9 @@ static unsigned int bap_bcast_config(struct bt_bap_stream *stream,
 				     struct bt_bap_qos *qos, struct iovec *data,
 				     bt_bap_stream_func_t func, void *user_data)
 {
+	if (!stream->lpac)
+		return 0;
+
 	stream->qos = *qos;
 	stream->lpac->ops->config(stream, stream->cc, &stream->qos,
 			ep_config_cb, stream->lpac->user_data);
@@ -2201,18 +2214,23 @@ static uint8_t stream_release(struct bt_bap_stream *stream, struct iovec *rsp)
 	 * to take action immeditely.
 	 */
 	if (!stream->io) {
+		bool cache_config = !stream->no_cache_config;
+
 		switch (bt_bap_stream_get_state(stream)) {
 		case BT_BAP_STREAM_STATE_CONFIG:
 			/* Released (no caching) */
-			stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
-			stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+			cache_config = false;
 			break;
 		default:
 			/* Released (caching) */
-			stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
-			stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
 			break;
 		}
+
+		stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
+		if (cache_config)
+			stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
+		else
+			stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
 	} else
 		stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
 
@@ -4214,15 +4232,23 @@ static bool match_stream_lpac(const void *data, const void *user_data)
 	return stream->lpac == pac;
 }
 
-static void remove_streams(void *data, void *user_data)
+static void remove_lpac_streams(void *data, void *user_data)
 {
 	struct bt_bap *bap = data;
 	struct bt_bap_pac *pac = user_data;
 	struct bt_bap_stream *stream;
 
-	stream = queue_remove_if(bap->streams, match_stream_lpac, pac);
-	if (stream)
+	while (1) {
+		stream = queue_remove_if(bap->streams, match_stream_lpac, pac);
+		if (!stream)
+			break;
+
+		bt_bap_stream_ref(stream);
+		stream->no_cache_config = true;
 		bt_bap_stream_release(stream, NULL, NULL);
+		stream->lpac = NULL;
+		bt_bap_stream_unref(stream);
+	}
 }
 
 static void bap_pac_sink_removed(void *data, void *user_data)
@@ -4277,7 +4303,7 @@ bool bt_bap_remove_pac(struct bt_bap_pac *pac)
 	return false;
 
 found:
-	queue_foreach(sessions, remove_streams, pac);
+	queue_foreach(sessions, remove_lpac_streams, pac);
 	queue_foreach(sessions, notify_session_pac_removed, pac);
 	bap_pac_free(pac);
 	return true;
@@ -4998,7 +5024,7 @@ static void bap_stream_config_cfm(struct bt_bap_stream *stream)
 {
 	int err;
 
-	if (!stream->lpac->ops || !stream->lpac->ops->config)
+	if (!stream->lpac || !stream->lpac->ops || !stream->lpac->ops->config)
 		return;
 
 	err = stream->lpac->ops->config(stream, stream->cc, &stream->qos,
@@ -6409,6 +6435,9 @@ bool bt_bap_match_bcast_sink_stream(const void *data, const void *user_data)
 {
 	const struct bt_bap_stream *stream = data;
 
+	if (!stream->lpac)
+		return false;
+
 	return stream->lpac->type == BT_BAP_BCAST_SINK;
 }
 
@@ -6844,6 +6873,9 @@ static void add_new_subgroup(struct bt_base *base,
 				struct bt_subgroup, 1);
 	uint16_t cid = 0;
 	uint16_t vid = 0;
+
+	if (!lpac)
+		return;
 
 	bt_bap_pac_get_vendor_codec(lpac, &sgrp->codec.id, &cid,
 			&vid, NULL, NULL);
