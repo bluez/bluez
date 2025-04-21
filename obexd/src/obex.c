@@ -389,6 +389,8 @@ static void transfer_complete(GObex *obex, GError *err, gpointer user_data)
 
 	if (err != NULL) {
 		error("transfer failed: %s\n", err->message);
+		if (strcmp(err->message, "Request was aborted") == 0)
+			os_set_response(os, 0);
 		goto reset;
 	}
 
