@@ -1,0 +1,24 @@
+name: CI
+
+on: [pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    name: CI for Pull Request
+    steps:
+    - name: Checkout the source code
+      uses: actions/checkout@v3
+      with:
+        path: src/src
+
+    - name: CI
+      uses: tedd-an/bzcafe@main
+      with:
+        task: ci
+        base_folder: src
+        space: user
+        github_token: ${{ secrets.ACTION_TOKEN }}
+        email_token: ${{ secrets.EMAIL_TOKEN }}
+        patchwork_token: ${{ secrets.PATCHWORK_TOKEN }}
+        patchwork_user: ${{ secrets.PATCHWORK_USER }}
