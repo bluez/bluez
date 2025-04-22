@@ -1,0 +1,45 @@
+name: Sync Repositories and Patchwork
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  bluez:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: bluez/action-sync-repo@master
+      with:
+        src_repo: 'https://git.kernel.org/pub/scm/bluetooth/bluez.git'
+        src_branch: 'master'
+        dest_repo: 'bluez/bluez'
+        dest_branch: 'master'
+        secret_token: ${{ secrets.ACTION_TOKEN }}
+
+  bluetooth-next:
+    needs: bluez
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: bluez/action-sync-repo@master
+      with:
+        src_repo: 'https://git.kernel.org/pub/scm/linux/kernel/git/bluetooth/bluetooth-next.git'
+        dest_repo: 'bluez/bluetooth-next'
+        for_upstream_branch: 'for-upstream'
+        secret_token: ${{ secrets.ACTION_TOKEN }}
+
+  patchwork:
+    needs: bluez
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Sync Patchwork
+      uses: tedd-an/bzcafe@main
+      with:
+        task: patchwork
+        space: user
+        github_token: ${{ secrets.ACTION_TOKEN }}
+        email_token: ${{ secrets.EMAIL_TOKEN }}
+        patchwork_token: ${{ secrets.PATCHWORK_TOKEN }}
+        patchwork_user: ${{ secrets.PATCHWORK_USER }}
