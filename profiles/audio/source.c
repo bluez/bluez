@@ -306,8 +306,10 @@ static void source_free(struct btd_service *service)
 		avdtp_stream_remove_cb(source->session, source->stream,
 					source->cb_id);
 
-	if (source->session)
+	if (source->session) {
 		avdtp_unref(source->session);
+		source->session = NULL;
+	}
 
 	if (source->connect_id > 0) {
 		btd_service_connecting_complete(source->service, -ECANCELED);
