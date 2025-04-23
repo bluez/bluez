@@ -174,6 +174,8 @@ void bt_asha_reset(struct bt_asha *asha)
 	bt_gatt_client_unref(asha->client);
 	asha->client = NULL;
 
+	bt_asha_state_reset(asha);
+
 	asha->psm = 0;
 
 	update_asha_set(asha, false);
