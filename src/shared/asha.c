@@ -189,8 +189,8 @@ void bt_asha_state_reset(struct bt_asha *asha)
 {
 	asha->state = ASHA_STOPPED;
 
-	asha->cb = NULL;
-	asha->cb_user_data = NULL;
+	asha->state_cb = NULL;
+	asha->state_cb_data = NULL;
 }
 
 void bt_asha_free(struct bt_asha *asha)
@@ -210,8 +210,8 @@ static void asha_acp_sent(bool success, uint8_t err, void *user_data)
 	} else {
 		error("Failed to send AudioControlPoint command: %d", err);
 
-		if (asha->cb)
-			asha->cb(-1, asha->cb_user_data);
+		if (asha->state_cb)
+			asha->state_cb(-1, asha->state_cb_data);
 
 		bt_asha_state_reset(asha);
 	}
@@ -226,8 +226,8 @@ static int asha_send_acp(struct bt_asha *asha, uint8_t *cmd,
 		return -1;
 	}
 
-	asha->cb = cb;
-	asha->cb_user_data = user_data;
+	asha->state_cb = cb;
+	asha->state_cb_data = user_data;
 
 	return 0;
 }
@@ -440,8 +440,8 @@ static void audio_status_notify(uint16_t value_handle, const uint8_t *value,
 	struct bt_asha *asha = user_data;
 	uint8_t status = *value;
 	/* Back these up to survive the reset paths */
-	bt_asha_cb_t cb = asha->cb;
-	bt_asha_cb_t cb_user_data = asha->cb_user_data;
+	bt_asha_cb_t state_cb = asha->state_cb;
+	bt_asha_cb_t state_cb_data = asha->state_cb_data;
 
 	if (asha->state == ASHA_STARTING) {
 		if (status == 0) {
@@ -458,10 +458,10 @@ static void audio_status_notify(uint16_t value_handle, const uint8_t *value,
 		DBG("ASHA stop %s", status == 0 ? "complete" : "failed");
 	}
 
-	if (cb) {
-		cb(status, cb_user_data);
-		asha->cb = NULL;
-		asha->cb_user_data = NULL;
+	if (state_cb) {
+		state_cb(status, state_cb_data);
+		asha->state_cb = NULL;
+		asha->state_cb_data = NULL;
 	}
 }
 

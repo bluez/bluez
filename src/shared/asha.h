@@ -44,8 +44,8 @@ struct bt_asha {
 	int8_t volume;
 
 	enum bt_asha_state_t state;
-	bt_asha_cb_t cb;
-	void *cb_user_data;
+	bt_asha_cb_t state_cb;
+	void *state_cb_data;
 
 	bt_asha_attach_cb_t attach_cb;
 	void *attach_cb_data;
