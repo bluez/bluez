@@ -440,12 +440,38 @@ static int bluetooth_init(void)
 
 static void bluetooth_exit(void)
 {
+	DBusMessage *msg;
+	DBusMessageIter iter;
+	GSList *l;
+
 	g_dbus_remove_watch(connection, listener_id);
 
-	g_slist_free_full(profiles, profile_free);
+	for (l = profiles; l; l = l->next) {
+		struct bluetooth_profile *profile = l->data;
 
-	if (connection)
+		if (profile->path == NULL)
+			continue;
+
+		msg = dbus_message_new_method_call(
+					"org.bluez", "/org/bluez",
+					"org.bluez.ProfileManager1",
+					"UnregisterProfile");
+
+		dbus_message_iter_init_append(msg, &iter);
+
+		dbus_message_iter_append_basic(&iter,
+						DBUS_TYPE_OBJECT_PATH,
+						&profile->path);
+
+		g_dbus_send_message(connection, msg);
+
+		unregister_profile(profile);
+	}
+
+	if (connection) {
 		dbus_connection_unref(connection);
+		connection = NULL;
+	}
 
 	obex_transport_driver_unregister(&driver);
 }
