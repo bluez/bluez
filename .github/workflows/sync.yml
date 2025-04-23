@@ -34,6 +34,19 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Cleanup PR
+      uses: tedd-an/bzcafe@main
+      with:
+        task: cleanup
+        github_token: ${{ secrets.ACTION_TOKEN }}
+
+    - name: Sync Workflow
+      uses: tedd-an/bzcafe@main
+      with:
+        task: sync
+        upstream_repo: 'https://git.kernel.org/pub/scm/bluetooth/bluez.git'
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Sync Patchwork
       uses: tedd-an/bzcafe@main
       with:
