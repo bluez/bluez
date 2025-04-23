@@ -23,6 +23,7 @@ enum bt_asha_state_t {
 };
 
 typedef void (*bt_asha_cb_t)(int status, void *data);
+typedef void (*bt_asha_attach_cb_t)(void *data);
 
 struct bt_asha {
 	struct bt_gatt_client *client;
@@ -45,6 +46,9 @@ struct bt_asha {
 	enum bt_asha_state_t state;
 	bt_asha_cb_t cb;
 	void *cb_user_data;
+
+	bt_asha_attach_cb_t attach_cb;
+	void *attach_cb_data;
 };
 
 struct bt_asha_set {
@@ -65,5 +69,6 @@ unsigned int bt_asha_stop(struct bt_asha *asha, bt_asha_cb_t cb,
 
 bool bt_asha_set_volume(struct bt_asha *asha, int8_t volume);
 
-bool bt_asha_probe(struct bt_asha *asha, struct gatt_db *db,
-						struct bt_gatt_client *client);
+bool bt_asha_attach(struct bt_asha *asha, struct gatt_db *db,
+		struct bt_gatt_client *client, bt_asha_attach_cb_t probe_cb,
+							void *cb_user_data);

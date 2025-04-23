@@ -458,10 +458,11 @@ static int asha_source_accept(struct btd_service *service)
 		return -1;
 	}
 
-	if (!bt_asha_probe(asha_dev->asha, db, client))
+	if (!bt_asha_attach(asha_dev->asha, db, client,
+			(bt_asha_attach_cb_t) asha_source_endpoint_register,
+			asha_dev)) {
 		return -1;
-
-	asha_source_endpoint_register(asha_dev);
+	}
 
 	btd_service_connecting_complete(service, 0);
 

@@ -177,6 +177,10 @@ void bt_asha_reset(struct bt_asha *asha)
 	bt_asha_state_reset(asha);
 
 	asha->psm = 0;
+	memset(asha->hisyncid, 0, sizeof(asha->hisyncid));
+
+	asha->attach_cb = NULL;
+	asha->attach_cb_data = NULL;
 
 	update_asha_set(asha, false);
 }
@@ -335,6 +339,22 @@ static bool uuid_cmp(const char *uuid1, const bt_uuid_t *uuid2)
 	return bt_uuid_cmp(&lhs, uuid2) == 0;
 }
 
+static void check_probe_done(struct bt_asha *asha)
+{
+	uint8_t zeroes[8] = { 0, };
+
+	/* Once we have ROPs & PSM, we should be good to go */
+	if (asha->psm == 0 || memcmp(asha->hisyncid, zeroes,
+					sizeof(zeroes) == 0))
+		return;
+
+	if (asha->attach_cb) {
+		asha->attach_cb(asha->attach_cb_data);
+		asha->attach_cb = NULL;
+		asha->attach_cb_data = NULL;
+	}
+}
+
 static void read_psm(bool success,
 			uint8_t att_ecode,
 			const uint8_t *value,
@@ -356,6 +376,8 @@ static void read_psm(bool success,
 	asha->psm = get_le16(value);
 
 	DBG("Got PSM: %u", asha->psm);
+
+	check_probe_done(asha);
 }
 
 static void read_rops(bool success,
@@ -400,6 +422,8 @@ static void read_rops(bool success,
 			asha->render_delay, asha->codec_ids);
 
 	update_asha_set(asha, true);
+
+	check_probe_done(asha);
 }
 
 static void audio_status_register(uint16_t att_ecode, void *user_data)
@@ -501,13 +525,17 @@ static void foreach_asha_service(struct gatt_db_attribute *attr,
 	gatt_db_service_foreach_char(asha->attr, handle_characteristic, asha);
 }
 
-bool bt_asha_probe(struct bt_asha *asha, struct gatt_db *db,
-						struct bt_gatt_client *client)
+bool bt_asha_attach(struct bt_asha *asha, struct gatt_db *db,
+		struct bt_gatt_client *client, bt_asha_attach_cb_t attach_cb,
+							void *cb_user_data)
 {
 	bt_uuid_t asha_uuid;
 
 	asha->db = gatt_db_ref(db);
 	asha->client = bt_gatt_client_clone(client);
+
+	asha->attach_cb = attach_cb;
+	asha->attach_cb_data = cb_user_data;
 
 	bt_uuid16_create(&asha_uuid, ASHA_SERVICE);
 	gatt_db_foreach_service(db, &asha_uuid, foreach_asha_service, asha);
