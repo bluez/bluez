@@ -41,11 +41,14 @@ jobs:
         github_token: ${{ secrets.ACTION_TOKEN }}
 
     - name: Sync Workflow
-      uses: tedd-an/bzcafe@main
+    - uses: bluez/action-sync-repo@master
       with:
-        task: sync
-        upstream_repo: 'https://git.kernel.org/pub/scm/bluetooth/bluez.git'
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        task: workflow
+        src_repo: 'https://github.com/bluez/bluez.git'
+        src_branch: 'master'
+        dest_repo: 'bluez/bluez'
+        dest_branch: 'workflow'
+        secret_token: ${{ secrets.ACTION_TOKEN }}
 
     - name: Sync Patchwork
       uses: tedd-an/bzcafe@main
