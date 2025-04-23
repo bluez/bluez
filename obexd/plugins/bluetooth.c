@@ -35,6 +35,7 @@
 #include "obexd/src/transport.h"
 #include "obexd/src/service.h"
 #include "obexd/src/log.h"
+#include "obexd/src/logind.h"
 
 #define BT_RX_MTU 32767
 #define BT_TX_MTU 32767
@@ -426,7 +427,7 @@ static const struct obex_transport_driver driver = {
 
 static unsigned int listener_id = 0;
 
-static int bluetooth_init(void)
+static int bluetooth_init_cb(void)
 {
 	connection = g_dbus_setup_private(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (connection == NULL)
@@ -438,7 +439,7 @@ static int bluetooth_init(void)
 	return obex_transport_driver_register(&driver);
 }
 
-static void bluetooth_exit(void)
+static void bluetooth_exit_cb(void)
 {
 	DBusMessage *msg;
 	DBusMessageIter iter;
@@ -474,6 +475,15 @@ static void bluetooth_exit(void)
 	}
 
 	obex_transport_driver_unregister(&driver);
+}
+
+static int bluetooth_init(void)
+{
+	return logind_register(bluetooth_init_cb, bluetooth_exit_cb);
+}
+static void bluetooth_exit(void)
+{
+	return logind_unregister(bluetooth_init_cb, bluetooth_exit_cb);
 }
 
 OBEX_PLUGIN_DEFINE(bluetooth, bluetooth_init, bluetooth_exit)
