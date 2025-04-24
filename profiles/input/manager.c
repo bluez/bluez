@@ -33,7 +33,8 @@
 
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	return server_start(btd_adapter_get_address(adapter));
+	return server_start(btd_adapter_get_address(adapter),
+				btd_adapter_has_cable_pairing_devices(adapter));
 }
 
 static void hid_server_remove(struct btd_profile *p,
