@@ -8,5 +8,6 @@
  *
  */
 
-int server_start(const bdaddr_t *src);
+int server_start(const bdaddr_t *src, bool device_cable_pairing);
+int server_set_cable_pairing(const bdaddr_t *src, bool device_cable_pairing);
 void server_stop(const bdaddr_t *src);
