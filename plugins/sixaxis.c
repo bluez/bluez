@@ -36,6 +36,7 @@
 #include "src/plugin.h"
 #include "src/log.h"
 #include "src/shared/util.h"
+#include "profiles/input/server.h"
 #include "profiles/input/sixaxis.h"
 
 struct authentication_closure {
@@ -301,6 +302,8 @@ static void agent_auth_cb(DBusError *derr, void *user_data)
 						 SIXAXIS_HID_SDP_RECORD);
 
 		device_set_cable_pairing(closure->device, true);
+
+		server_set_cable_pairing(adapter_bdaddr, true);
 	}
 
 	ba2str(&closure->bdaddr, device_addr);
