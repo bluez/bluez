@@ -68,6 +68,7 @@
 #include "adv_monitor.h"
 #include "eir.h"
 #include "battery.h"
+#include "profiles/input/server.h"
 
 #define MODE_OFF		0x00
 #define MODE_CONNECTABLE	0x01
@@ -5088,6 +5089,12 @@ device_exist:
 
 free:
 		g_key_file_free(key_file);
+	}
+
+	if (btd_adapter_has_cable_pairing_devices(adapter)) {
+		DBG("There is at least one known cable paired device, setting the "
+			"listening input server security level accordingly");
+		server_set_cable_pairing(&adapter->bdaddr, true);
 	}
 
 	closedir(dir);
