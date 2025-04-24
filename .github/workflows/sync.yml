@@ -48,13 +48,13 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Cleanup PR
-      uses: tedd-an/bzcafe@main
+      uses: bluez/action-ci@main
       with:
         task: cleanup
         github_token: ${{ secrets.ACTION_TOKEN }}
 
     - name: Sync Patchwork
-      uses: tedd-an/bzcafe@main
+      uses: bluez/action-ci@main
       with:
         task: patchwork
         space: user

@@ -13,7 +13,7 @@ jobs:
         path: src/src
 
     - name: CI
-      uses: tedd-an/bzcafe@main
+      uses: bluez/action-ci@main
       with:
         task: ci
         base_folder: src
