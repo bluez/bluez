@@ -16,19 +16,6 @@ jobs:
         dest_branch: 'master'
         secret_token: ${{ secrets.ACTION_TOKEN }}
 
-  workflow:
-    needs: bluez
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: bluez/action-sync-repo@master
-      with:
-        src_repo: 'https://github.com/bluez/bluez.git'
-        src_branch: 'master'
-        dest_repo: 'bluez/bluez'
-        dest_branch: 'workflow'
-        secret_token: ${{ secrets.ACTION_TOKEN }}
-
   bluetooth-next:
     needs: bluez
     runs-on: ubuntu-latest
@@ -42,7 +29,7 @@ jobs:
         secret_token: ${{ secrets.ACTION_TOKEN }}
 
   patchwork:
-    needs: workflow
+    needs: bluez
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
