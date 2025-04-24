@@ -412,6 +412,23 @@ uint16_t btd_adapter_get_index(struct btd_adapter *adapter)
 	return adapter->dev_id;
 }
 
+bool btd_adapter_has_cable_pairing_devices(struct btd_adapter *adapter)
+{
+	GSList *l;
+
+	if (!adapter)
+		return false;
+
+	for (l = adapter->devices; l; l = l->next) {
+		struct btd_device *device = l->data;
+
+		if (device_is_cable_pairing(device))
+			return true;
+	}
+
+	return false;
+}
+
 static gboolean process_auth_queue(gpointer user_data);
 
 static void dev_class_changed_callback(uint16_t index, uint16_t length,
