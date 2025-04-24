@@ -279,6 +279,13 @@ boolean LegacyPairing [readonly]
 	Bluetooth 2.1 (or newer) devices that have disabled Extended Inquiry
 	Response support.
 
+boolean CablePairing [readonly]
+```````````````````````````````
+
+	Set to true if the device was cable paired and it doesn't support the
+	canonical bonding with encryption, e.g. the Sixaxis gamepad.
+	If true, BlueZ will establish a connection without enforcing encryption.
+
 string Modalias [readonly, optional]
 ````````````````````````````````````
 

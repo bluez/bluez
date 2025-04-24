@@ -239,6 +239,7 @@ struct btd_device {
 	GSList		*watches;		/* List of disconnect_data */
 	bool		temporary;
 	bool		connectable;
+	bool		cable_pairing;
 	unsigned int	disconn_timer;
 	unsigned int	discov_timer;
 	unsigned int	temporary_timer;	/* Temporary/disappear timer */
@@ -506,6 +507,9 @@ static gboolean store_device_info_cb(gpointer user_data)
 
 	g_key_file_set_boolean(key_file, "General", "Blocked",
 							device->blocked);
+
+	g_key_file_set_boolean(key_file, "General", "CablePairing",
+							device->cable_pairing);
 
 	if (device->wake_override != WAKE_FLAG_DEFAULT) {
 		g_key_file_set_boolean(key_file, "General", "WakeAllowed",
@@ -908,6 +912,11 @@ bool btd_device_is_trusted(struct btd_device *device)
 	return device->trusted;
 }
 
+bool device_is_cable_pairing(struct btd_device *device)
+{
+	return device->cable_pairing;
+}
+
 static gboolean dev_property_get_address(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -1147,6 +1156,17 @@ static gboolean dev_property_get_legacy(const GDBusPropertyTable *property,
 {
 	struct btd_device *device = data;
 	dbus_bool_t val = device->legacy;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
+
+	return TRUE;
+}
+
+static gboolean dev_property_get_cable_pairing(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+	dbus_bool_t val = device->cable_pairing;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
 
@@ -3483,6 +3503,7 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "Trusted", "b", dev_property_get_trusted, dev_property_set_trusted },
 	{ "Blocked", "b", dev_property_get_blocked, dev_property_set_blocked },
 	{ "LegacyPairing", "b", dev_property_get_legacy },
+	{ "CablePairing", "b", dev_property_get_cable_pairing },
 	{ "RSSI", "n", dev_property_get_rssi, NULL, dev_property_exists_rssi },
 	{ "Connected", "b", dev_property_get_connected },
 	{ "UUIDs", "as", dev_property_get_uuids },
@@ -4061,6 +4082,9 @@ next:
 	blocked = g_key_file_get_boolean(key_file, "General", "Blocked", NULL);
 	if (blocked)
 		device_block(device, FALSE);
+
+	device->cable_pairing = g_key_file_get_boolean(key_file, "General",
+							"CablePairing", NULL);
 
 	/* Load device profile list */
 	uuids = g_key_file_get_string_list(key_file, "General", "Services",
@@ -6414,6 +6438,22 @@ void device_set_legacy(struct btd_device *device, bool legacy)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "LegacyPairing");
+}
+
+void device_set_cable_pairing(struct btd_device *device, bool cable_pairing)
+{
+	if (!device)
+		return;
+
+	if (device->cable_pairing == cable_pairing)
+		return;
+
+	DBG("setting cable pairing %d", cable_pairing);
+
+	device->cable_pairing = cable_pairing;
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "CablePairing");
 }
 
 void device_store_svc_chng_ccc(struct btd_device *device, uint8_t bdaddr_type,
