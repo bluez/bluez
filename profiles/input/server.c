@@ -266,12 +266,23 @@ drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
-int server_start(const bdaddr_t *src)
+static BtIOSecLevel get_necessary_sec_level(bool device_cable_pairing)
+{
+	/* Use lower security to allow the cable paired devices to connect. */
+	/* Unless classic bonded only mode is disabled, the security level */
+	/* will be bumped again for non cable paired devices in */
+	/* hidp_add_connection() */
+	if (device_cable_pairing)
+		return BT_IO_SEC_LOW;
+
+	return input_get_classic_bonded_only() ? BT_IO_SEC_MEDIUM : BT_IO_SEC_LOW;
+}
+
+int server_start(const bdaddr_t *src, bool device_sixaxis_cable_pairing)
 {
 	struct input_server *server;
 	GError *err = NULL;
-	BtIOSecLevel sec_level = input_get_classic_bonded_only() ?
-					BT_IO_SEC_MEDIUM : BT_IO_SEC_LOW;
+	const BtIOSecLevel sec_level = get_necessary_sec_level(device_sixaxis_cable_pairing);
 
 	server = g_new0(struct input_server, 1);
 	bacpy(&server->src, src);
@@ -304,6 +315,52 @@ int server_start(const bdaddr_t *src)
 	}
 
 	servers = g_slist_append(servers, server);
+
+	return 0;
+}
+
+int server_set_cable_pairing(const bdaddr_t *src, bool device_cable_pairing)
+{
+	struct input_server *server;
+	GSList *l;
+	BtIOSecLevel sec_level;
+	const BtIOSecLevel new_sec_level = get_necessary_sec_level(device_cable_pairing);
+	GError *err = NULL;
+
+	l = g_slist_find_custom(servers, src, server_cmp);
+	if (!l)
+		return -1;
+
+	server = l->data;
+
+	bt_io_get(server->ctrl, &err, BT_IO_OPT_SEC_LEVEL, &sec_level,
+				BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		return -1;
+	}
+
+	if (sec_level == new_sec_level) {
+		DBG("The listening input server is already using the expected security level");
+		return -1;
+	}
+
+	DBG("Applying the new security level to the listening input server");
+
+	if (!bt_io_set(server->ctrl, &err, BT_IO_OPT_SEC_LEVEL, new_sec_level,
+							BT_IO_OPT_INVALID)) {
+		error("bt_io_set(OPT_SEC_LEVEL): %s", err->message);
+		g_error_free(err);
+		return -1;
+	}
+
+	if (!bt_io_set(server->intr, &err, BT_IO_OPT_SEC_LEVEL, new_sec_level,
+						BT_IO_OPT_INVALID)) {
+		error("bt_io_set(OPT_SEC_LEVEL): %s", err->message);
+		g_error_free(err);
+		return -1;
+	}
 
 	return 0;
 }

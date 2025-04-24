@@ -47,6 +47,7 @@
 
 #include "device.h"
 #include "hidp_defs.h"
+#include "server.h"
 
 #define INPUT_INTERFACE "org.bluez.Input1"
 
@@ -1065,6 +1066,7 @@ static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 static int hidp_add_connection(struct input_device *idev)
 {
 	struct hidp_connadd_req *req;
+	bool cable_pairing;
 	GError *gerr = NULL;
 	int err;
 
@@ -1088,8 +1090,10 @@ static int hidp_add_connection(struct input_device *idev)
 	if (device_name_known(idev->device))
 		device_get_name(idev->device, req->name, sizeof(req->name));
 
+	cable_pairing = device_is_cable_pairing(idev->device);
+
 	/* Make sure the device is bonded if required */
-	if (classic_bonded_only && !input_device_bonded(idev)) {
+	if (!cable_pairing && classic_bonded_only && !input_device_bonded(idev)) {
 		error("Rejected connection from !bonded device %s", idev->path);
 		goto cleanup;
 	}
@@ -1098,7 +1102,9 @@ static int hidp_add_connection(struct input_device *idev)
 	/* Some platforms may choose to require encryption for all devices */
 	/* Note that this only matters for pre 2.1 devices as otherwise the */
 	/* device is encrypted by default by the lower layers */
-	if (classic_bonded_only || idev->type == BT_UHID_KEYBOARD) {
+	/* Don't enforce encryption for cable paired devices because they */
+	/* don't support it */
+	if (!cable_pairing && (classic_bonded_only || idev->type == BT_UHID_KEYBOARD)) {
 		if (!bt_io_set(idev->intr_io, &gerr,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID)) {
@@ -1545,6 +1551,16 @@ int input_device_register(struct btd_service *service)
 
 	btd_service_set_user_data(service, idev);
 	device_set_wake_support(device, true);
+
+	if (device_is_cable_pairing(device)) {
+		struct btd_adapter *adapter = device_get_adapter(device);
+		const bdaddr_t *adapter_bdaddr = btd_adapter_get_address(adapter);
+
+		DBG("This is a cable paired device, setting the listening input "
+			"server security level accordingly");
+
+		server_set_cable_pairing(adapter_bdaddr, true);
+	}
 
 	return 0;
 }
