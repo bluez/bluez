@@ -1334,7 +1334,7 @@ static bool match_manufacturer(const void *data, const void *user_data)
 	const struct bt_ad_manufacturer_data *manufacturer_data = data;
 	const struct pattern_match_info *info = user_data;
 	const struct bt_ad_pattern *pattern;
-	uint8_t all_data[BT_AD_MAX_DATA_LEN];
+	uint8_t all_data[BT_EA_MAX_DATA_LEN];
 
 	if (!manufacturer_data || !info)
 		return false;
