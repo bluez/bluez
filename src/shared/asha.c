@@ -421,8 +421,6 @@ static void read_rops(bool success,
 			asha->right_side, asha->binaural, asha->csis_supported,
 			asha->render_delay, asha->codec_ids);
 
-	update_asha_set(asha, true);
-
 	check_probe_done(asha);
 }
 
@@ -447,6 +445,7 @@ static void audio_status_notify(uint16_t value_handle, const uint8_t *value,
 		if (status == 0) {
 			asha->state = ASHA_STARTED;
 			DBG("ASHA start complete");
+			update_asha_set(asha, true);
 			asha_set_send_status(asha, true);
 		} else {
 			bt_asha_state_reset(asha);
