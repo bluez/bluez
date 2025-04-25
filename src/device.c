@@ -4091,10 +4091,37 @@ next:
 	uuids = g_key_file_get_string_list(key_file, "General", "Services",
 						NULL, NULL);
 	if (uuids) {
+		char filename[PATH_MAX];
+		char device_addr[18];
+		struct stat st;
+		GKeyFile *key_file = g_key_file_new();
+		GError *gerr = NULL;
+
 		load_services(device, uuids);
 
-		/* Discovered services restored from storage */
-		device->bredr_state.svc_resolved = true;
+		ba2str(&device->bdaddr, device_addr);
+		create_filename(filename, PATH_MAX, "/%s/cache/%s",
+			btd_adapter_get_storage_dir(device->adapter),
+			device_addr);
+
+		/* Check if ServiceRecords cached group exists */
+		if (stat(filename, &st) < 0) {
+			DBG("Missing cache file for ServiceRecords");
+			device->bredr_state.svc_resolved = false;
+		} else if (!g_key_file_load_from_file(key_file, filename,
+							0, &gerr)) {
+			DBG("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+			g_clear_error(&gerr);
+			device->bredr_state.svc_resolved = false;
+		} else if (!g_key_file_has_group(key_file, "ServiceRecords")) {
+			DBG("Missing ServiceRecords from cache file");
+			device->bredr_state.svc_resolved = false;
+		} else {
+			/* Discovered services restored from storage */
+			device->bredr_state.svc_resolved = true;
+		}
+		g_key_file_free(key_file);
 	}
 
 	/* Load device id */
@@ -6852,8 +6879,10 @@ unsigned int device_wait_for_svc_complete(struct btd_device *dev,
 
 	if (state->svc_resolved || !btd_opts.reverse_discovery)
 		cb->idle_id = g_idle_add(svc_idle_cb, cb);
-	else if (dev->discov_timer > 0) {
-		timeout_remove(dev->discov_timer);
+	else {
+		if (dev->discov_timer > 0)
+			timeout_remove(dev->discov_timer);
+
 		dev->discov_timer = timeout_add_seconds(
 						0,
 						start_discovery,
