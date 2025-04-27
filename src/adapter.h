@@ -262,6 +262,9 @@ bool btd_le_connect_before_pairing(void);
 
 bool btd_adapter_has_settings(struct btd_adapter *adapter, uint32_t settings);
 
+int btd_adapter_get_so_timestamping(struct btd_adapter *adapter, int proto,
+							int *so_timestamping);
+
 enum experimental_features {
 	EXP_FEAT_DEBUG			= 1 << 0,
 	EXP_FEAT_LE_SIMULT_ROLES	= 1 << 1,
