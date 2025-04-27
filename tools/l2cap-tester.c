@@ -994,7 +994,7 @@ static void setup_powered_server_callback(uint8_t status, uint16_t length,
 
 	tester_print("Controller powered on");
 
-	if (!test->enable_ssp) {
+	if (!test || !test->enable_ssp) {
 		tester_setup_complete();
 		return;
 	}
@@ -2494,6 +2494,13 @@ done:
 	close(sk);
 }
 
+static void test_l2cap_ethtool_get_ts_info(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	test_ethtool_get_ts_info(data->mgmt_index, BTPROTO_L2CAP, false);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -2603,6 +2610,9 @@ int main(int argc, char *argv[])
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid Config CID",
 				&l2cap_server_nval_cid_test2,
 				setup_powered_server, test_server);
+
+	test_l2cap_bredr("L2CAP BR/EDR Ethtool Get Ts Info - Success", NULL,
+			setup_powered_server, test_l2cap_ethtool_get_ts_info);
 
 	test_l2cap_le("L2CAP LE Client - Success",
 				&le_client_connect_success_test_1,
@@ -2722,6 +2732,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE EATT Server - Reject",
 				&le_eatt_server_reject_test_1,
 				setup_powered_server, test_server);
+
+	test_l2cap_le("L2CAP LE Ethtool Get Ts Info - Success", NULL,
+			setup_powered_server, test_l2cap_ethtool_get_ts_info);
 
 	return tester_run();
 }
