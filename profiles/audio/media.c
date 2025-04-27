@@ -18,6 +18,17 @@
 #include <errno.h>
 #include <inttypes.h>
 
+#include <time.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <linux/errqueue.h>
+#include <linux/net_tstamp.h>
+#include <linux/ethtool.h>
+#include <linux/sockios.h>
+#include <net/if.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+
 #include <glib.h>
 
 #include "lib/bluetooth.h"
@@ -81,6 +92,7 @@ struct media_adapter {
 #ifdef HAVE_AVRCP
 	GSList			*players;	/* Players list */
 #endif
+	int			so_timestamping;
 };
 
 struct endpoint_request {
@@ -3340,8 +3352,69 @@ static gboolean supported_uuids(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static bool probe_tx_timestamping(struct media_adapter *adapter)
+{
+	struct ifreq ifr = {};
+	struct ethtool_ts_info cmd = {};
+	int sk = -1;
+
+	if (adapter->so_timestamping != -1)
+		goto done;
+
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "hci%u",
+				btd_adapter_get_index(adapter->btd_adapter));
+	ifr.ifr_data = (void *)&cmd;
+	cmd.cmd = ETHTOOL_GET_TS_INFO;
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (sk < 0)
+		goto error;
+	if (ioctl(sk, SIOCETHTOOL, &ifr))
+		goto error;
+	close(sk);
+
+	adapter->so_timestamping = cmd.so_timestamping;
+
+done:
+	return adapter->so_timestamping & SOF_TIMESTAMPING_TX_SOFTWARE;
+
+error:
+	if (sk >= 0)
+		close(sk);
+	adapter->so_timestamping = 0;
+	return false;
+}
+
+static const struct {
+	const char *name;
+	bool (*probe)(struct media_adapter *adapter);
+} features[] = {
+	{ "tx-timestamping", probe_tx_timestamping },
+};
+
+static gboolean supported_features(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_adapter *adapter = data;
+	DBusMessageIter entry;
+	size_t i;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &entry);
+
+	for (i = 0; i < ARRAY_SIZE(features); ++i)
+		if (features[i].probe(adapter))
+			dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+							&features[i].name);
+
+	dbus_message_iter_close_container(iter, &entry);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable media_properties[] = {
 	{ "SupportedUUIDs", "as", supported_uuids },
+	{ "SupportedFeatures", "as", supported_features },
 	{ }
 };
 
@@ -3383,6 +3456,7 @@ int media_register(struct btd_adapter *btd_adapter)
 	adapter = g_new0(struct media_adapter, 1);
 	adapter->btd_adapter = btd_adapter_ref(btd_adapter);
 	adapter->apps = queue_new();
+	adapter->so_timestamping = -1;
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					adapter_get_path(btd_adapter),
