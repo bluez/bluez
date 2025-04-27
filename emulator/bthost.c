@@ -40,6 +40,7 @@
 #define acl_flags(h)		(h >> 12)
 
 #define sco_flags_status(f)	(f & 0x03)
+#define sco_flags_pack(status)	(status & 0x03)
 
 #define iso_flags_pb(f)		(f & 0x0003)
 #define iso_flags_ts(f)		((f >> 2) & 0x0001)
@@ -876,6 +877,37 @@ void bthost_send_cid_v(struct bthost *bthost, uint16_t handle, uint16_t cid,
 		return;
 
 	send_iov(bthost, handle, cid, iov, iovcnt);
+}
+
+void bthost_send_sco(struct bthost *bthost, uint16_t handle, uint8_t pkt_status,
+					const struct iovec *iov, int iovcnt)
+{
+	uint8_t pkt = BT_H4_SCO_PKT;
+	struct iovec pdu[2 + iovcnt];
+	struct bt_hci_sco_hdr sco_hdr;
+	struct btconn *conn;
+	int i, len = 0;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	for (i = 0; i < iovcnt; i++) {
+		pdu[2 + i].iov_base = iov[i].iov_base;
+		pdu[2 + i].iov_len = iov[i].iov_len;
+		len += iov[i].iov_len;
+	}
+
+	pdu[0].iov_base = &pkt;
+	pdu[0].iov_len = sizeof(pkt);
+
+	sco_hdr.handle = acl_handle_pack(handle, sco_flags_pack(pkt_status));
+	sco_hdr.dlen = len;
+
+	pdu[1].iov_base = &sco_hdr;
+	pdu[1].iov_len = sizeof(sco_hdr);
+
+	send_packet(bthost, pdu, 2 + iovcnt);
 }
 
 static void send_iso(struct bthost *bthost, uint16_t handle, bool ts,
