@@ -7460,6 +7460,17 @@ const uint8_t *btdev_get_adv_addr(struct btdev *btdev, uint8_t handle)
 	return ext_adv_addr(btdev, ext_adv);
 }
 
+void btdev_get_mtu(struct btdev *btdev, uint16_t *acl, uint16_t *sco,
+								uint16_t *iso)
+{
+	if (acl)
+		*acl = btdev->acl_mtu;
+	if (sco)
+		*acl = btdev->sco_mtu;
+	if (iso)
+		*iso = btdev->iso_mtu;
+}
+
 void btdev_set_le_states(struct btdev *btdev, const uint8_t *le_states)
 {
 	memcpy(btdev->le_states, le_states, sizeof(btdev->le_states));
