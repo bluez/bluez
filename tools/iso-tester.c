@@ -1118,6 +1118,15 @@ static const struct iso_client_data listen_16_2_1_recv_pkt_status = {
 	.pkt_status = 0x02,
 };
 
+static const struct iso_client_data listen_16_2_1_recv_rx_timestamping = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_RX_SOFTWARE),
+};
+
 static const struct iso_client_data defer_16_2_1 = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
@@ -2148,7 +2157,7 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
 	int sk = g_io_channel_unix_get_fd(io);
-	unsigned char control[64];
+	unsigned char control[256];
 	ssize_t ret;
 	char buf[1024];
 	struct msghdr msg;
@@ -2202,6 +2211,9 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
+	if (isodata->so_timestamping & SOF_TIMESTAMPING_RX_SOFTWARE)
+		rx_timestamp_check(&msg);
+
 	if (memcmp(buf, isodata->recv->iov_base, ret))
 		tester_test_failed();
 	else
@@ -2223,6 +2235,10 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 		tester_test_failed();
 		return;
 	}
+
+	if (rx_timestamping_init(g_io_channel_unix_get_fd(io),
+						isodata->so_timestamping))
+		return;
 
 	host = hciemu_client_get_host(data->hciemu);
 	bthost_send_iso(host, data->handle, isodata->ts, sn++, 0,
@@ -3703,6 +3719,10 @@ int main(int argc, char *argv[])
 	test_iso("ISO Receive Packet Status - Success",
 						&listen_16_2_1_recv_pkt_status,
 						setup_powered, test_listen);
+
+	test_iso("ISO Receive - RX Timestamping",
+					&listen_16_2_1_recv_rx_timestamping,
+					setup_powered, test_listen);
 
 	test_iso("ISO Defer - Success", &defer_16_2_1, setup_powered,
 							test_defer);

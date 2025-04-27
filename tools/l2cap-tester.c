@@ -357,6 +357,24 @@ static const struct l2cap_data client_connect_read_32k_success_test = {
 	.data_len = sizeof(l2_data_32k),
 };
 
+static const struct l2cap_data client_connect_rx_timestamping_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.read_data = l2_data,
+	.data_len = sizeof(l2_data),
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_RX_SOFTWARE),
+};
+
+static const struct l2cap_data client_connect_rx_timestamping_32k_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.read_data = l2_data_32k,
+	.data_len = sizeof(l2_data_32k),
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_RX_SOFTWARE),
+};
+
 static const struct l2cap_data client_connect_write_success_test = {
 	.client_psm = 0x1001,
 	.server_psm = 0x1001,
@@ -573,6 +591,27 @@ static const struct l2cap_data le_client_connect_read_32k_success_test = {
 	.credits = 147,
 	.read_data = l2_data_32k,
 	.data_len = sizeof(l2_data_32k),
+};
+
+static const struct l2cap_data le_client_connect_rx_timestamping_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.read_data = l2_data,
+	.data_len = sizeof(l2_data),
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_RX_SOFTWARE),
+};
+
+static const struct l2cap_data le_client_connect_rx_timestamping_32k_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mtu = 672,
+	.mps = 251,
+	.credits = 147,
+	.read_data = l2_data_32k,
+	.data_len = sizeof(l2_data_32k),
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_RX_SOFTWARE),
 };
 
 static const struct l2cap_data le_client_connect_write_success_test = {
@@ -1227,13 +1266,14 @@ static gboolean sock_received_data(GIOChannel *io, GIOCondition cond,
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
+	bool tstamp = l2data->so_timestamping & SOF_TIMESTAMPING_RX_SOFTWARE;
 	char buf[1024];
 	int sk;
 	ssize_t len;
 
 	sk = g_io_channel_unix_get_fd(io);
 
-	len = read(sk, buf, sizeof(buf));
+	len = recv_tstamp(sk, buf, sizeof(buf), tstamp);
 	if (len < 0) {
 		tester_warn("Unable to read: %s (%d)", strerror(errno), errno);
 		tester_test_failed();
@@ -1429,6 +1469,10 @@ static void l2cap_read_data(struct test_data *data, GIOChannel *io,
 	size_t len;
 
 	data->step = 0;
+
+	if (rx_timestamping_init(g_io_channel_unix_get_fd(io),
+						l2data->so_timestamping))
+		return;
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	g_io_add_watch(io, G_IO_IN, sock_received_data, NULL);
@@ -2535,6 +2579,14 @@ int main(int argc, char *argv[])
 					&client_connect_read_32k_success_test,
 					setup_powered_client, test_connect);
 
+	test_l2cap_bredr("L2CAP BR/EDR Client - RX Timestamping",
+					&client_connect_rx_timestamping_test,
+					setup_powered_client, test_connect);
+
+	test_l2cap_bredr("L2CAP BR/EDR Client - RX Timestamping 32k",
+				&client_connect_rx_timestamping_32k_test,
+				setup_powered_client, test_connect);
+
 	test_l2cap_bredr("L2CAP BR/EDR Client - Write Success",
 					&client_connect_write_success_test,
 					setup_powered_client, test_connect);
@@ -2618,6 +2670,12 @@ int main(int argc, char *argv[])
 				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client - Read 32k Success",
 				&le_client_connect_read_32k_success_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client - RX Timestamping",
+				&le_client_connect_rx_timestamping_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client - RX Timestamping 32k",
+				&le_client_connect_rx_timestamping_32k_test,
 				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client - Write Success",
 				&le_client_connect_write_success_test,
