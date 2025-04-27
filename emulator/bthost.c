@@ -255,6 +255,7 @@ struct bthost {
 	bthost_accept_conn_cb accept_iso_cb;
 	bthost_new_conn_cb new_iso_cb;
 	void *new_iso_data;
+	uint16_t acl_mtu;
 	struct rfcomm_connection_data *rfcomm_conn_data;
 	struct l2cap_conn_cb_data *new_l2cap_conn_data;
 	struct rfcomm_conn_cb_data *new_rfcomm_conn_data;
@@ -294,6 +295,7 @@ struct bthost *bthost_create(void)
 
 	/* Set defaults */
 	bthost->io_capability = 0x03;
+	bthost->acl_mtu = UINT16_MAX;
 
 	return bthost;
 }
@@ -572,6 +574,14 @@ void bthost_set_send_handler(struct bthost *bthost, bthost_send_func handler,
 	bthost->send_data = user_data;
 }
 
+void bthost_set_acl_mtu(struct bthost *bthost, uint16_t mtu)
+{
+	if (!bthost)
+		return;
+
+	bthost->acl_mtu = mtu;
+}
+
 static void queue_command(struct bthost *bthost, const struct iovec *iov,
 								int iovlen)
 {
@@ -619,37 +629,89 @@ static void send_packet(struct bthost *bthost, const struct iovec *iov,
 	bthost->send_handler(iov, iovlen, bthost->send_data);
 }
 
+static void iov_pull_n(struct iovec *src, unsigned int *src_cnt,
+		struct iovec *dst, unsigned int *dst_cnt, unsigned int max_dst,
+		size_t len)
+{
+	unsigned int i;
+	size_t count;
+
+	*dst_cnt = 0;
+
+	while (len && *dst_cnt < max_dst && *src_cnt) {
+		count = len;
+		if (count > src[0].iov_len)
+			count = src[0].iov_len;
+
+		dst[*dst_cnt].iov_base = src[0].iov_base;
+		dst[*dst_cnt].iov_len = count;
+		*dst_cnt += 1;
+
+		util_iov_pull(&src[0], count);
+		len -= count;
+
+		if (!src[0].iov_len) {
+			for (i = 1; i < *src_cnt; ++i)
+				src[i - 1] = src[i];
+			*src_cnt -= 1;
+		}
+	}
+}
+
 static void send_iov(struct bthost *bthost, uint16_t handle, uint16_t cid,
-					const struct iovec *iov, int iovcnt)
+				const struct iovec *iov, unsigned int iovcnt)
 {
 	struct bt_hci_acl_hdr acl_hdr;
 	struct bt_l2cap_hdr l2_hdr;
 	uint8_t pkt = BT_H4_ACL_PKT;
 	struct iovec pdu[3 + iovcnt];
-	int i, len = 0;
+	struct iovec payload[1 + iovcnt];
+	size_t payload_mtu, len;
+	int flag;
+	unsigned int i;
 
+	len = 0;
 	for (i = 0; i < iovcnt; i++) {
-		pdu[3 + i].iov_base = iov[i].iov_base;
-		pdu[3 + i].iov_len = iov[i].iov_len;
+		payload[1 + i].iov_base = iov[i].iov_base;
+		payload[1 + i].iov_len = iov[i].iov_len;
 		len += iov[i].iov_len;
 	}
 
-	pdu[0].iov_base = &pkt;
-	pdu[0].iov_len = sizeof(pkt);
-
-	acl_hdr.handle = acl_handle_pack(handle, 0);
-	acl_hdr.dlen = cpu_to_le16(len + sizeof(l2_hdr));
-
-	pdu[1].iov_base = &acl_hdr;
-	pdu[1].iov_len = sizeof(acl_hdr);
-
 	l2_hdr.cid = cpu_to_le16(cid);
 	l2_hdr.len = cpu_to_le16(len);
+	payload[0].iov_base = &l2_hdr;
+	payload[0].iov_len = sizeof(l2_hdr);
 
-	pdu[2].iov_base = &l2_hdr;
-	pdu[2].iov_len = sizeof(l2_hdr);
+	len += sizeof(l2_hdr);
+	iovcnt++;
 
-	send_packet(bthost, pdu, 3 + iovcnt);
+	/* Fragment to ACL MTU */
+
+	payload_mtu = bthost->acl_mtu - pdu[0].iov_len - pdu[1].iov_len;
+
+	flag = 0x00;
+	do {
+		size_t count = (len > payload_mtu) ? payload_mtu : len;
+		unsigned int pdu_iovcnt;
+
+		pdu[0].iov_base = &pkt;
+		pdu[0].iov_len = sizeof(pkt);
+
+		acl_hdr.dlen = cpu_to_le16(count);
+		acl_hdr.handle = acl_handle_pack(handle, flag);
+
+		pdu[1].iov_base = &acl_hdr;
+		pdu[1].iov_len = sizeof(acl_hdr);
+
+		iov_pull_n(payload, &iovcnt, &pdu[2], &pdu_iovcnt,
+						ARRAY_SIZE(pdu) - 2, count);
+		pdu_iovcnt += 2;
+
+		send_packet(bthost, pdu, pdu_iovcnt);
+
+		len -= count;
+		flag = 0x01;
+	} while (len);
 }
 
 static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
