@@ -198,3 +198,83 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 
 	return data->count - data->pos;
 }
+
+static inline int rx_timestamp_check(struct msghdr *msg)
+{
+	struct cmsghdr *cmsg;
+	struct timespec now;
+	int64_t t = 0;
+
+	for (cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+		struct scm_timestamping *tss;
+
+		if (cmsg->cmsg_level != SOL_SOCKET)
+			continue;
+		if (cmsg->cmsg_type != SCM_TIMESTAMPING)
+			continue;
+
+		tss = (struct scm_timestamping *)CMSG_DATA(cmsg);
+		t = TS_NSEC(&tss->ts[0]);
+		break;
+	}
+	if (!cmsg) {
+		tester_warn("RX timestamp missing");
+		return -EINVAL;
+	}
+
+	clock_gettime(CLOCK_REALTIME, &now);
+
+	if (TS_NSEC(&now) < t || TS_NSEC(&now) > t + SEC_NSEC(10)) {
+		tester_warn("RX timestamp bad time");
+		return -EINVAL;
+	}
+
+	tester_print("Got valid RX timestamp");
+	return 0;
+}
+
+static inline ssize_t recv_tstamp(int sk, void *buf, size_t size, bool tstamp)
+{
+	union {
+		char buf[2 * CMSG_SPACE(sizeof(struct scm_timestamping))];
+		struct cmsghdr align;
+	} control;
+	struct iovec data = {
+		.iov_base = buf,
+		.iov_len = size
+	};
+	struct msghdr msg = {
+		.msg_iov = &data,
+		.msg_iovlen = 1,
+		.msg_control = control.buf,
+		.msg_controllen = sizeof(control.buf),
+	};
+	ssize_t ret;
+
+	ret = recvmsg(sk, &msg, 0);
+	if (ret < 0 || !tstamp)
+		return ret;
+
+	if (rx_timestamp_check(&msg)) {
+		errno = EIO;
+		return -1;
+	}
+
+	return ret;
+}
+
+static inline int rx_timestamping_init(int fd, int flags)
+{
+	socklen_t len = sizeof(flags);
+
+	if (!(flags & SOF_TIMESTAMPING_RX_SOFTWARE))
+		return 0;
+
+	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPING, &flags, len) < 0) {
+		tester_warn("failed to set SO_TIMESTAMPING");
+		tester_test_failed();
+		return -EIO;
+	}
+
+	return 0;
+}
