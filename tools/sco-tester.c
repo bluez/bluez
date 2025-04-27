@@ -1174,6 +1174,14 @@ static void test_connect_acl_disc(const void *test_data)
 	test_connect(test_data);
 }
 
+static void test_sco_ethtool_get_ts_info(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	test_ethtool_get_ts_info(data->mgmt_index, BTPROTO_SCO,
+				!data->disable_sco_flowctl);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -1247,6 +1255,12 @@ int main(int argc, char *argv[])
 
 	test_offload_sco("eSCO mSBC - Offload - Success",
 		&connect_success, setup_powered, test_connect_offload_msbc);
+
+	test_sco("SCO Ethtool Get Ts Info - Success",
+			NULL, setup_powered, test_sco_ethtool_get_ts_info);
+
+	test_sco_no_flowctl("SCO Ethtool Get Ts Info No Flowctl - Success",
+			NULL, setup_powered, test_sco_ethtool_get_ts_info);
 
 	return tester_run();
 }

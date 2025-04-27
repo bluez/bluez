@@ -3511,6 +3511,13 @@ static void test_connect2_suspend(const void *test_data)
 	trigger_force_suspend((void *)test_data);
 }
 
+static void test_iso_ethtool_get_ts_info(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	test_ethtool_get_ts_info(data->mgmt_index, BTPROTO_ISO, false);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -3938,6 +3945,9 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO Broadcaster AC 14 - Success", &bcast_ac_14, setup_powered,
 							test_bcast);
+
+	test_iso("ISO Ethtool Get Ts Info - Success", NULL, setup_powered,
+						test_iso_ethtool_get_ts_info);
 
 	return tester_run();
 }
