@@ -52,6 +52,7 @@ struct test_data {
 
 struct sco_client_data {
 	int expect_err;
+	const uint8_t *recv_data;
 	const uint8_t *send_data;
 	uint16_t data_len;
 
@@ -300,6 +301,20 @@ static const struct sco_client_data connect_failure_reset = {
 
 const uint8_t data[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
+static const struct sco_client_data connect_recv_success = {
+	.expect_err = 0,
+	.data_len = sizeof(data),
+	.recv_data = data,
+};
+
+static const struct sco_client_data connect_recv_rx_ts_success = {
+	.expect_err = 0,
+	.data_len = sizeof(data),
+	.recv_data = data,
+	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_RX_SOFTWARE),
+};
+
 static const struct sco_client_data connect_send_success = {
 	.expect_err = 0,
 	.data_len = sizeof(data),
@@ -401,7 +416,7 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 	bthost_set_cmd_complete_cb(bthost, client_connectable_complete, data);
 	bthost_write_scan_enable(bthost, 0x03);
 
-	if (scodata && scodata->send_data)
+	if (scodata && (scodata->send_data || scodata->recv_data))
 		bthost_set_sco_cb(bthost, sco_new_conn, data);
 }
 
@@ -783,6 +798,64 @@ static void sco_tx_timestamping(struct test_data *data, GIOChannel *io)
 	data->err_io_id = g_io_add_watch(io, G_IO_ERR, recv_errqueue, data);
 }
 
+static gboolean sock_received_data(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+	bool tstamp = scodata->so_timestamping & SOF_TIMESTAMPING_RX_SOFTWARE;
+	char buf[1024];
+	int sk;
+	ssize_t len;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	len = recv_tstamp(sk, buf, sizeof(buf), tstamp);
+	if (len < 0) {
+		tester_warn("Unable to read: %s (%d)", strerror(errno), errno);
+		tester_test_failed();
+		return FALSE;
+	}
+
+	tester_debug("read: %d", (int)len);
+
+	if (len != scodata->data_len) {
+		tester_test_failed();
+		return FALSE;
+	}
+
+	--data->step;
+
+	if (len != scodata->data_len ||
+			memcmp(buf, scodata->recv_data, scodata->data_len))
+		tester_test_failed();
+	else if (!data->step)
+		tester_test_passed();
+	else
+		return TRUE;
+
+	return FALSE;
+}
+
+static void sco_recv_data(struct test_data *data, GIOChannel *io)
+{
+	const struct sco_client_data *scodata = data->test_data;
+	struct iovec iov = { (void *)scodata->recv_data, scodata->data_len };
+	struct bthost *bthost;
+
+	data->step = 0;
+
+	if (rx_timestamping_init(g_io_channel_unix_get_fd(io),
+						scodata->so_timestamping))
+		return;
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	g_io_add_watch(io, G_IO_IN, sock_received_data, NULL);
+
+	bthost_send_sco(bthost, data->handle, 0x00, &iov, 1);
+	++data->step;
+}
+
 static gboolean sco_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -804,6 +877,9 @@ static gboolean sco_connect_cb(GIOChannel *io, GIOCondition cond,
 		tester_warn("Connect failed: %s (%d)", strerror(-err), -err);
 	else
 		tester_print("Successfully connected");
+
+	if (scodata->recv_data)
+		sco_recv_data(data, io);
 
 	if (scodata->send_data) {
 		ssize_t ret = 0;
@@ -1136,6 +1212,12 @@ int main(int argc, char *argv[])
 
 	test_sco_11("SCO mSBC 1.1 - Failure", &connect_failure, setup_powered,
 							test_connect_transp);
+
+	test_sco("SCO CVSD Recv - Success", &connect_recv_success,
+					setup_powered, test_connect);
+
+	test_sco("SCO CVSD Recv - RX Timestamping", &connect_recv_rx_ts_success,
+					setup_powered, test_connect);
 
 	test_sco("SCO CVSD Send - Success", &connect_send_success,
 					setup_powered, test_connect);
