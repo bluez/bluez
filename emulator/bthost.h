@@ -36,6 +36,8 @@ void bthost_debug(struct bthost *bthost, const char *format, ...)
 void bthost_set_send_handler(struct bthost *bthost, bthost_send_func handler,
 							void *user_data);
 
+void bthost_set_acl_mtu(struct bthost *bthost, uint16_t mtu);
+
 void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len);
 
 typedef void (*bthost_cmd_complete_cb) (uint16_t opcode, uint8_t status,
