@@ -101,6 +101,37 @@ static gboolean event_handler(GIOChannel *source, GIOCondition condition,
 	return TRUE;
 }
 
+static gboolean timeout_handler(gpointer user_data)
+{
+	uint64_t timeout_usec;
+	int res;
+
+	if (!event_handler(NULL, 0, NULL))
+		return FALSE;
+
+	res = sd_login_monitor_get_timeout(monitor, &timeout_usec);
+	if (res < 0) {
+		error("sd_login_monitor_get_timeout(): %s", strerror(-res));
+		return FALSE;
+	}
+
+	if (timeout_usec != (uint64_t)-1) {
+		uint64_t time_usec;
+		struct timespec ts;
+
+		res = clock_gettime(CLOCK_MONOTONIC, &ts);
+		if (res < 0)
+			return -errno;
+		time_usec = (uint64_t) ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+		if (time_usec > timeout_usec)
+			return timeout_handler(user_data);
+		g_timeout_add((timeout_usec - time_usec + 999) / 1000,
+				timeout_handler, user_data);
+	}
+
+	return FALSE;
+}
+
 static int logind_init(void)
 {
 	GIOChannel *channel;
@@ -146,7 +177,7 @@ static int logind_init(void)
 
 	g_io_channel_unref(channel);
 
-	event_handler(NULL, 0, NULL);
+	timeout_handler(NULL);
 
 	return 0;
 
