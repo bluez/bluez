@@ -261,7 +261,15 @@ static void start_qemu(void)
 
 	for (i = 1; i < test_argc; i++) {
 		int len = sizeof(testargs) - pos;
-		pos += snprintf(testargs + pos, len, " %s", test_argv[i]);
+		int n = snprintf(testargs + pos, len, " %s", test_argv[i]);
+
+		if (n < 0 || n >= len) {
+			fprintf(stderr, "Buffer overflow detected in "
+					"testargs\n");
+			exit(EXIT_FAILURE);
+		}
+
+		pos += n;
 	}
 
 	snprintf(cmdline, sizeof(cmdline),
