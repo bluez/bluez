@@ -688,7 +688,7 @@ static void send_iov(struct bthost *bthost, uint16_t handle, uint16_t cid,
 
 	/* Fragment to ACL MTU */
 
-	payload_mtu = bthost->acl_mtu - pdu[0].iov_len - pdu[1].iov_len;
+	payload_mtu = bthost->acl_mtu - sizeof(pkt) - sizeof(acl_hdr);
 
 	flag = 0x00;
 	do {
