@@ -7466,7 +7466,7 @@ void btdev_get_mtu(struct btdev *btdev, uint16_t *acl, uint16_t *sco,
 	if (acl)
 		*acl = btdev->acl_mtu;
 	if (sco)
-		*acl = btdev->sco_mtu;
+		*sco = btdev->sco_mtu;
 	if (iso)
 		*iso = btdev->iso_mtu;
 }
