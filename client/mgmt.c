@@ -316,9 +316,17 @@ static const char *options2str(uint32_t options)
 	str[0] = '\0';
 
 	for (i = 0; i < NELEM(options_str); i++) {
-		if ((options & (1 << i)) != 0)
-			off += snprintf(str + off, sizeof(str) - off, "%s ",
+		if ((options & (1 << i)) != 0) {
+			int n = snprintf(str + off, sizeof(str) - off, "%s ",
 							options_str[i]);
+
+			if (n < 0 || n >= (int)(sizeof(str) - off)) {
+				str[off] = '\0';
+				break;
+			}
+
+			off += n;
+		}
 	}
 
 	return str;
@@ -372,9 +380,17 @@ static const char *settings2str(uint32_t settings)
 	str[0] = '\0';
 
 	for (i = 0; i < NELEM(settings_str); i++) {
-		if ((settings & (1 << i)) != 0)
-			off += snprintf(str + off, sizeof(str) - off, "%s ",
+		if ((settings & (1 << i)) != 0) {
+			int n = snprintf(str + off, sizeof(str) - off, "%s ",
 							settings_str[i]);
+
+			if (n < 0 || n >= (int)(sizeof(str) - off)) {
+				str[off] = '\0';
+				break;
+			}
+
+			off += n;
+		}
 	}
 
 	return str;
@@ -4490,9 +4506,17 @@ static const char *adv_flags2str(uint32_t flags)
 	str[0] = '\0';
 
 	for (i = 0; i < NELEM(adv_flags_str); i++) {
-		if ((flags & (1 << i)) != 0)
-			off += snprintf(str + off, sizeof(str) - off, "%s ",
+		if ((flags & (1 << i)) != 0) {
+			int n = snprintf(str + off, sizeof(str) - off, "%s ",
 							adv_flags_str[i]);
+
+			if (n < 0 || n >= (int)(sizeof(str) - off)) {
+				str[off] = '\0';
+				break;
+			}
+
+			off += n;
+		}
 	}
 
 	return str;
@@ -5429,9 +5453,17 @@ static const char *phys2str(uint32_t phys)
 	str[0] = '\0';
 
 	for (i = 0; i < NELEM(phys_str); i++) {
-		if ((phys & (1 << i)) != 0)
-			off += snprintf(str + off, sizeof(str) - off, "%s ",
+		if ((phys & (1 << i)) != 0) {
+			int n = snprintf(str + off, sizeof(str) - off, "%s ",
 							phys_str[i]);
+
+			if (n < 0 || n >= (int)(sizeof(str) - off)) {
+				str[off] = '\0';
+				break;
+			}
+
+			off += n;
+		}
 	}
 
 	return str;
