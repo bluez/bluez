@@ -501,7 +501,7 @@ static void parse_mode_config(GKeyFile *config, const char *group,
 				const struct config_param *params,
 				size_t params_len)
 {
-	uint16_t i;
+	size_t i;
 
 	if (!config)
 		return;
