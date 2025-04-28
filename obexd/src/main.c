@@ -35,6 +35,7 @@
 #include "../client/manager.h"
 
 #include "log.h"
+#include "logind.h"
 #include "obexd.h"
 #include "server.h"
 
@@ -282,6 +283,9 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	__obex_log_init(option_debug, option_detach);
+
+	if (option_system_bus)
+		logind_set(FALSE);
 
 	DBG("Entering main loop");
 

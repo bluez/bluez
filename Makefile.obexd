@@ -67,6 +67,7 @@ obexd_src_obexd_SOURCES = $(btio_sources) $(gobex_sources) \
 			obexd/src/main.c obexd/src/obexd.h \
 			obexd/src/plugin.h obexd/src/plugin.c \
 			obexd/src/log.h obexd/src/log.c \
+			obexd/src/logind.h obexd/src/logind.c \
 			obexd/src/manager.h obexd/src/manager.c \
 			obexd/src/obex.h obexd/src/obex.c obexd/src/obex-priv.h \
 			obexd/src/mimetype.h obexd/src/mimetype.c \
@@ -96,6 +97,8 @@ obexd_src_obexd_LDADD = lib/libbluetooth-internal.la \
 
 if EXTERNAL_PLUGINS
 obexd_src_obexd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic
+else
+obexd_src_obexd_LDFLAGS =
 endif
 
 obexd_src_obexd_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) \
@@ -107,6 +110,13 @@ obexd_src_obexd_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) \
 else
 obexd-add-service-symlink:
 obexd-remove-service-symlink:
+endif
+
+if OBEX
+if SYSTEMD
+obexd_src_obexd_CPPFLAGS += -DSYSTEMD
+obexd_src_obexd_LDFLAGS += -lsystemd
+endif
 endif
 
 obexd_src_obexd_SHORTNAME = obexd
