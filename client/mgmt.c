@@ -571,7 +571,7 @@ static void confirm_name_rsp(uint8_t status, uint16_t len,
 
 static char *eir_get_name(const uint8_t *eir, uint16_t eir_len)
 {
-	uint8_t parsed = 0;
+	uint16_t parsed = 0;
 
 	if (eir_len < 2)
 		return NULL;
@@ -599,7 +599,7 @@ static char *eir_get_name(const uint8_t *eir, uint16_t eir_len)
 
 static unsigned int eir_get_flags(const uint8_t *eir, uint16_t eir_len)
 {
-	uint8_t parsed = 0;
+	uint16_t parsed = 0;
 
 	if (eir_len < 2)
 		return 0;
