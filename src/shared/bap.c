@@ -1630,7 +1630,8 @@ static bool bap_send(struct bt_bap *bap, struct bt_bap_req *req)
 	DBG(bap, "req %p len %u", req, iov.iov_len);
 
 	if (req->stream && !queue_find(bap->streams, NULL, req->stream)) {
-		DBG(bap, "stream %p detached, aborting op 0x%02x", req->op);
+		DBG(bap, "stream %p detached, aborting op 0x%02x", req->stream,
+								req->op);
 		return false;
 	}
 
@@ -3138,7 +3139,7 @@ static uint8_t ascs_qos(struct bt_ascs *ascs, struct bt_bap *bap,
 
 	ep = bap_get_local_endpoint_id(bap, req->ase);
 	if (!ep) {
-		DBG(bap, "%s: Invalid ASE ID 0x%02x", req->ase);
+		DBG(bap, "Invalid ASE ID 0x%02x", req->ase);
 		ascs_ase_rsp_add(rsp, req->ase,
 				BT_ASCS_RSP_INVALID_ASE, BT_ASCS_REASON_NONE);
 		return 0;
