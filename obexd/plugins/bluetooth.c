@@ -440,12 +440,24 @@ static int bluetooth_init(void)
 
 static void bluetooth_exit(void)
 {
+	GSList *l;
+
 	g_dbus_remove_watch(connection, listener_id);
 
-	g_slist_free_full(profiles, profile_free);
+	for (l = profiles; l; l = l->next) {
+		struct bluetooth_profile *profile = l->data;
 
-	if (connection)
+		if (profile->path == NULL)
+			continue;
+
+		unregister_profile(profile);
+	}
+
+	if (connection) {
+		dbus_connection_close(connection);
 		dbus_connection_unref(connection);
+		connection = NULL;
+	}
 
 	obex_transport_driver_unregister(&driver);
 }
