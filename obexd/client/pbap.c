@@ -1485,8 +1485,20 @@ void pbap_exit(void)
 {
 	DBG("");
 
-	dbus_connection_unref(conn);
-	conn = NULL;
+	g_dbus_remove_watch(system_conn, listener_id);
+
+	unregister_profile();
+
+	if (system_conn) {
+		dbus_connection_close(system_conn);
+		dbus_connection_unref(system_conn);
+		system_conn = NULL;
+	}
+
+	if (conn) {
+		dbus_connection_unref(conn);
+		conn = NULL;
+	}
 
 	obc_driver_unregister(&pbap);
 }
