@@ -1552,12 +1552,6 @@ static bool device_get_wake_support(struct btd_device *device)
 
 void device_set_wake_support(struct btd_device *device, bool wake_support)
 {
-	if (device->rpa && !btd_adapter_has_exp_feature(device->adapter,
-						EXP_FEAT_RPA_RESOLUTION)) {
-		warn("Unable to set wake_support without RPA resolution");
-		return;
-	}
-
 	device->wake_support = wake_support;
 
 	if (device->wake_support)
