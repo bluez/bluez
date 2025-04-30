@@ -27,6 +27,7 @@
 #include "gdbus/gdbus.h"
 
 #include "obexd/src/log.h"
+#include "obexd/src/logind.h"
 #include "obexd/src/obexd.h"
 
 #include "transfer.h"
@@ -1454,13 +1455,13 @@ static struct obc_driver pbap = {
 	.remove = pbap_remove
 };
 
-int pbap_init(void)
+static int pbap_init_cb(void)
 {
 	int err;
 
 	DBG("");
 
-	conn = obex_get_dbus_connection();
+	conn = obex_setup_dbus_connection_private(NULL, NULL);
 	if (!conn)
 		return -EIO;
 
@@ -1481,7 +1482,7 @@ int pbap_init(void)
 	return 0;
 }
 
-void pbap_exit(void)
+static void pbap_exit_cb(void)
 {
 	DBG("");
 
@@ -1496,9 +1497,19 @@ void pbap_exit(void)
 	}
 
 	if (conn) {
+		dbus_connection_close(conn);
 		dbus_connection_unref(conn);
 		conn = NULL;
 	}
 
 	obc_driver_unregister(&pbap);
+}
+
+int pbap_init(void)
+{
+	return logind_register(pbap_init_cb, pbap_exit_cb);
+}
+void pbap_exit(void)
+{
+	return logind_unregister(pbap_init_cb, pbap_exit_cb);
 }
