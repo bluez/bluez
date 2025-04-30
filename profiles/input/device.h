@@ -26,6 +26,7 @@ uint8_t input_get_userspace_hid(void);
 void input_set_classic_bonded_only(bool state);
 bool input_get_classic_bonded_only(void);
 void input_set_auto_sec(bool state);
+bool input_get_auto_sec(void);
 
 int input_device_register(struct btd_service *service);
 void input_device_unregister(struct btd_service *service);

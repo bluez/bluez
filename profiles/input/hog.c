@@ -54,13 +54,7 @@ struct hog_device {
 };
 
 static gboolean suspend_supported = FALSE;
-static bool auto_sec = true;
 static struct queue *devices = NULL;
-
-void input_set_auto_sec(bool state)
-{
-	auto_sec = state;
-}
 
 static void hog_device_accept(struct hog_device *dev, struct gatt_db *db)
 {
@@ -187,7 +181,7 @@ static int hog_accept(struct btd_service *service)
 	if (!device_is_bonded(device, btd_device_get_bdaddr_type(device))) {
 		struct bt_gatt_client *client;
 
-		if (!auto_sec)
+		if (!input_get_auto_sec())
 			return -ECONNREFUSED;
 
 		client = btd_device_get_gatt_client(device);

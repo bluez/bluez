@@ -92,6 +92,7 @@ struct input_device {
 static int idle_timeout = 0;
 static uhid_state_t uhid_state = UHID_ENABLED;
 static bool classic_bonded_only = true;
+static bool auto_sec = true;
 
 void input_set_idle_timeout(int timeout)
 {
@@ -125,6 +126,16 @@ void input_set_classic_bonded_only(bool state)
 bool input_get_classic_bonded_only(void)
 {
 	return classic_bonded_only;
+}
+
+void input_set_auto_sec(bool state)
+{
+	auto_sec = state;
+}
+
+bool input_get_auto_sec(void)
+{
+	return auto_sec;
 }
 
 static void input_device_enter_reconnect_mode(struct input_device *idev);
