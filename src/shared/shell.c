@@ -65,13 +65,18 @@ struct input {
 	FILE *f;
 };
 
+typedef enum {
+     MODE_INTERACTIVE     = 0,
+     MODE_NON_INTERACTIVE = 1
+} mode_type_t;
+
 static struct {
 	bool init;
 	char *name;
 	char history[256];
 	int argc;
 	char **argv;
-	bool mode;
+	mode_type_t mode;
 	bool zsh;
 	bool monitor;
 	int timeout;
@@ -708,7 +713,7 @@ void bt_shell_printf(const char *fmt, ...)
 	if (queue_isempty(data.inputs))
 		return;
 
-	if (data.mode) {
+	if (data.mode == MODE_NON_INTERACTIVE) {
 		va_start(args, fmt);
 		vprintf(fmt, args);
 		va_end(args);
@@ -833,7 +838,7 @@ void bt_shell_prompt_input(const char *label, const char *msg,
 {
 	char *str;
 
-	if (!data.init || data.mode)
+	if (!data.init || data.mode == MODE_NON_INTERACTIVE)
 		return;
 
 	if (data.saved_prompt) {
@@ -1192,7 +1197,7 @@ static void signal_callback(int signum, void *user_data)
 
 	switch (signum) {
 	case SIGINT:
-		if (!queue_isempty(data.inputs) && !data.mode) {
+		if (!queue_isempty(data.inputs) && data.mode == MODE_INTERACTIVE) {
 			rl_replace_line("", 0);
 			rl_crlf();
 			rl_on_new_line();
@@ -1210,7 +1215,7 @@ static void signal_callback(int signum, void *user_data)
 		/* fall through */
 	case SIGTERM:
 		if (!terminated) {
-			if (!data.mode) {
+			if (data.mode == MODE_INTERACTIVE) {
 				rl_replace_line("", 0);
 				rl_crlf();
 			}
@@ -1266,7 +1271,7 @@ done:
 
 static void rl_init(void)
 {
-	if (data.mode)
+	if (data.mode == MODE_NON_INTERACTIVE)
 		return;
 
 	/* Allow conditional parsing of the ~/.inputrc file. */
@@ -1346,7 +1351,7 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 			usage(argc, argv, opt);
 			data.argc = 1;
 			data.argv = &cmplt;
-			data.mode = 1;
+			data.mode = MODE_NON_INTERACTIVE;
 			goto done;
 		case 's':
 			if (optarg && data.init_fd < 0) {
@@ -1400,10 +1405,10 @@ void bt_shell_init(int argc, char **argv, const struct bt_shell_opt *opt)
 	data.argc = argc - optind;
 	data.argv = argv + optind;
 	optind = 0;
-	data.mode = (data.argc > 0);
+	data.mode = (data.argc > 0) ? MODE_NON_INTERACTIVE : MODE_INTERACTIVE;
 
 done:
-	if (data.mode)
+	if (data.mode == MODE_NON_INTERACTIVE)
 		bt_shell_set_env("NON_INTERACTIVE", &data.mode);
 
 	mainloop_init();
@@ -1420,7 +1425,7 @@ done:
 
 static void rl_cleanup(void)
 {
-	if (data.mode)
+	if (data.mode == MODE_NON_INTERACTIVE)
 		return;
 
 	if (data.history[0] != '\0')
@@ -1540,7 +1545,7 @@ void bt_shell_quit(int status)
 
 void bt_shell_noninteractive_quit(int status)
 {
-	if (!data.mode || data.timeout) {
+	if (data.mode == MODE_INTERACTIVE || data.timeout) {
 		bt_shell_dequeue_exec();
 		return;
 	}
@@ -1581,7 +1586,7 @@ void bt_shell_set_prompt(const char *string, const char *color)
 {
 	char *prompt;
 
-	if (!data.init || data.mode)
+	if (!data.init || data.mode == MODE_NON_INTERACTIVE)
 		return;
 
 	/* Envelope color within RL_PROMPT_START_IGNORE (\001) and
@@ -1614,12 +1619,12 @@ bool bt_shell_attach(int fd)
 	if (!input)
 		return false;
 
-	if (!data.mode) {
+	if (data.mode == MODE_INTERACTIVE) {
 		io_set_read_handler(input->io, input_read, input, NULL);
 		io_set_disconnect_handler(input->io, input_hup, input, NULL);
 	}
 
-	if (data.mode) {
+	if (data.mode == MODE_NON_INTERACTIVE) {
 		if (shell_exec(data.argc, data.argv) < 0) {
 			bt_shell_noninteractive_quit(EXIT_FAILURE);
 			return true;
