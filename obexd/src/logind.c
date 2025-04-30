@@ -30,6 +30,7 @@ static int uid;
 static gboolean active = FALSE;
 static gboolean monitoring_enabled = TRUE;
 static guint event_source;
+static guint timeout_source;
 
 struct callback_pair {
 	logind_init_cb init_cb;
@@ -82,8 +83,11 @@ static int update(void)
 	return res;
 }
 
+static gboolean timeout_handler(gpointer user_data);
+
 static int check_event(void)
 {
+	uint64_t timeout_usec;
 	int res;
 
 	res = sd_login_monitor_flush(monitor);
@@ -95,6 +99,25 @@ static int check_event(void)
 	if (res < 0)
 		return res;
 
+	res = sd_login_monitor_get_timeout(monitor, &timeout_usec);
+	if (res < 0)
+		return res;
+
+	if (timeout_usec != (uint64_t)-1) {
+		uint64_t time_usec;
+		struct timespec ts;
+		guint interval;
+
+		res = clock_gettime(CLOCK_MONOTONIC, &ts);
+		if (res < 0)
+			return -errno;
+		time_usec = (uint64_t) ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+		if (time_usec > timeout_usec)
+			return check_event();
+		interval = (timeout_usec - time_usec + 999) / 1000;
+		timeout_source = g_timeout_add(interval, timeout_handler, NULL);
+	}
+
 	return 0;
 }
 
@@ -104,6 +127,11 @@ static gboolean event_handler(GIOChannel *source, GIOCondition condition,
 {
 	int res;
 
+	if (timeout_source) {
+		g_source_remove(timeout_source);
+		timeout_source = 0;
+	}
+
 	res = check_event();
 	if (res) {
 		error("%s: %s", __func__, strerror(-res));
@@ -111,6 +139,17 @@ static gboolean event_handler(GIOChannel *source, GIOCondition condition,
 	}
 
 	return TRUE;
+}
+
+static gboolean timeout_handler(gpointer user_data)
+{
+	int res;
+
+	res = check_event();
+	if (res)
+		error("%s: %s", __func__, strerror(-res));
+
+	return FALSE;
 }
 
 static int logind_init(void)
@@ -172,6 +211,10 @@ static void logind_exit(void)
 	if (event_source) {
 		g_source_remove(event_source);
 		event_source = 0;
+	}
+	if (timeout_source) {
+		g_source_remove(timeout_source);
+		timeout_source = 0;
 	}
 	sd_login_monitor_unref(monitor);
 }
