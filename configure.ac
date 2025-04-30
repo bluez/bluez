@@ -194,6 +194,9 @@ AM_CONDITIONAL(NETWORK, test "${enable_network}" != "no")
 AC_ARG_ENABLE(hid, AS_HELP_STRING([--disable-hid],
 		[disable HID profile]), [enable_hid=${enableval}])
 AM_CONDITIONAL(HID, test "${enable_hid}" != "no")
+if test "${enable_hid}" != "no"; then
+	AC_DEFINE(HAVE_HID, 1, [Define to 1 if you have HID support.])
+fi
 
 AC_ARG_ENABLE(hog, AS_HELP_STRING([--disable-hog],
 		[disable HoG profile]), [enable_hog=${enableval}])

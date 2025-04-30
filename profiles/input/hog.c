@@ -40,12 +40,15 @@
 #include "src/shared/gatt-client.h"
 #include "src/plugin.h"
 
-#include "device.h"
 #include "suspend.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
 #include "hog-lib.h"
+
+#ifdef HAVE_HID
+#include "device.h"
+#endif /* HAVE_HID */
 
 struct hog_device {
 	struct btd_device	*device;
@@ -181,8 +184,10 @@ static int hog_accept(struct btd_service *service)
 	if (!device_is_bonded(device, btd_device_get_bdaddr_type(device))) {
 		struct bt_gatt_client *client;
 
+#ifdef HAVE_HID
 		if (!input_get_auto_sec())
 			return -ECONNREFUSED;
+#endif /* HAVE_HID */
 
 		client = btd_device_get_gatt_client(device);
 		if (!bt_gatt_client_set_security(client,
@@ -202,10 +207,14 @@ static int hog_disconnect(struct btd_service *service)
 {
 	struct hog_device *dev = btd_service_get_user_data(service);
 
+#ifdef HAVE_HID
 	if (input_get_userspace_hid() == UHID_PERSIST)
 		bt_hog_detach(dev->hog, false);
 	else
 		bt_hog_detach(dev->hog, true);
+#else
+	bt_hog_detach(dev->hog, false);
+#endif /* HAVE_HID */
 
 	btd_service_disconnecting_complete(service, 0);
 
