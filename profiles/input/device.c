@@ -112,11 +112,6 @@ void input_set_userspace_hid(char *state)
 		error("Unknown value '%s'", state);
 }
 
-uint8_t input_get_userspace_hid(void)
-{
-	return uhid_state;
-}
-
 void input_set_classic_bonded_only(bool state)
 {
 	classic_bonded_only = state;

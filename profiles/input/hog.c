@@ -40,7 +40,6 @@
 #include "src/shared/gatt-client.h"
 #include "src/plugin.h"
 
-#include "device.h"
 #include "suspend.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
@@ -55,6 +54,7 @@ struct hog_device {
 
 static gboolean suspend_supported = FALSE;
 static bool auto_sec = true;
+static bool uhid_state_persist = false;
 static struct queue *devices = NULL;
 
 static void hog_device_accept(struct hog_device *dev, struct gatt_db *db)
@@ -203,7 +203,7 @@ static int hog_disconnect(struct btd_service *service)
 {
 	struct hog_device *dev = btd_service_get_user_data(service);
 
-	if (input_get_userspace_hid() == UHID_PERSIST)
+	if (uhid_state_persist)
 		bt_hog_detach(dev->hog, false);
 	else
 		bt_hog_detach(dev->hog, true);
@@ -229,6 +229,7 @@ static void hog_read_config(void)
 	GKeyFile *config;
 	GError *err = NULL;
 	bool config_auto_sec;
+	char *uhid_enabled;
 
 	config = g_key_file_new();
 	if (!config) {
@@ -250,6 +251,15 @@ static void hog_read_config(void)
 		DBG("input.conf: LEAutoSecurity=%s",
 				config_auto_sec ? "true" : "false");
 		auto_sec = config_auto_sec;
+	} else
+		g_clear_error(&err);
+
+	uhid_enabled = g_key_file_get_string(config, "General",
+					"UserspaceHID", &err);
+	if (!err) {
+		DBG("input.conf: UserspaceHID=%s", uhid_enabled);
+		uhid_state_persist = strcasecmp(uhid_enabled, "persist") == 0;
+		free(uhid_enabled);
 	} else
 		g_clear_error(&err);
 
