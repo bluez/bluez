@@ -111,8 +111,15 @@ int mainloop_sd_notify(const char *state)
 {
 	int err;
 
-	if (notify_fd <= 0)
-		return -ENOTCONN;
+	if (notify_fd <= 0) {
+		if (strcmp(state, "STATUS=Starting up"))
+			return -ENOTCONN;
+
+		/* Auto init only when starting up */
+		mainloop_notify_init();
+		if (notify_fd <= 0)
+			return -ENOTCONN;
+	}
 
 	err = send(notify_fd, state, strlen(state), MSG_NOSIGNAL);
 	if (err < 0)

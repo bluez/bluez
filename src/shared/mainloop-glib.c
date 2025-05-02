@@ -33,7 +33,6 @@ static int exit_status;
 void mainloop_init(void)
 {
 	main_loop = g_main_loop_new(NULL, FALSE);
-	mainloop_notify_init();
 }
 
 void mainloop_quit(void)

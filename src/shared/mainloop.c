@@ -65,8 +65,6 @@ void mainloop_init(void)
 		mainloop_list[i] = NULL;
 
 	epoll_terminate = 0;
-
-	mainloop_notify_init();
 }
 
 void mainloop_quit(void)
