@@ -1154,8 +1154,13 @@ static int connection_disconnect(struct input_device *idev, uint32_t flags)
 		shutdown(sock, SHUT_WR);
 	}
 
-	if (flags & (1 << HIDP_VIRTUAL_CABLE_UNPLUG))
+	if (flags & (1 << HIDP_VIRTUAL_CABLE_UNPLUG)) {
 		idev->virtual_cable_unplug = true;
+		if (idev->uhid)
+			hidp_send_ctrl_message(idev, HIDP_TRANS_HID_CONTROL |
+						HIDP_CTRL_VIRTUAL_CABLE_UNPLUG,
+						NULL, 0);
+	}
 
 	if (idev->uhid)
 		return uhid_disconnect(idev, false);
