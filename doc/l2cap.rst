@@ -186,8 +186,8 @@ mode or not, possible values:
     :header: "Define", "Value", "Description"
     :widths: auto
 
-    **BT_POWER_FORCE_ACTIVE_OFF**, 0x00 (default), Don't force exit of sniff mode
-    **BT_POWER_FORCE_ACTIVE_ON**, 0x01, Force exit of sniff mode
+    **BT_POWER_FORCE_ACTIVE_OFF**, 0x00, Don't force exit of sniff mode
+    **BT_POWER_FORCE_ACTIVE_ON**, 0x01 (default), Force exit of sniff mode
 
 BT_CHANNEL_POLICY (since Linux 3.10)
 ------------------------------------
