@@ -2670,3 +2670,20 @@ void media_transport_update_device_volume(struct btd_device *dev,
 
 	btd_device_set_volume(dev, volume);
 }
+
+const char *media_transport_stream_path(void *stream)
+{
+	GSList *l;
+
+	if (!stream)
+		return NULL;
+
+	for (l = transports; l; l = l->next) {
+		struct media_transport *transport = l->data;
+
+		if (media_transport_get_stream(transport) == stream)
+			return transport->path;
+	}
+
+	return NULL;
+}
