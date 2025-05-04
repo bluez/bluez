@@ -75,6 +75,7 @@ struct bap_setup {
 	bool recreate;
 	bool cig_active;
 	uint8_t sid;
+	bool config_pending;
 	struct iovec *caps;
 	struct iovec *metadata;
 	unsigned int id;
@@ -720,6 +721,46 @@ static void qos_cb(struct bt_bap_stream *stream, uint8_t code, uint8_t reason,
 	setup->msg = NULL;
 }
 
+static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
+				struct bt_bap_stream *stream, int defer);
+
+static int setup_qos(struct bap_setup *setup)
+{
+	struct bap_data *data = setup->ep->data;
+	struct bt_bap_stream *stream = setup->stream;
+
+	if (!stream)
+		return -EINVAL;
+	if (bt_bap_stream_get_state(stream) != BT_BAP_STREAM_STATE_CONFIG)
+		goto error;
+	if (setup->id)
+		goto error;
+
+	setup_create_io(data, setup, stream, true);
+	if (!setup->io) {
+		error("Unable to create io");
+		goto error;
+	}
+
+	/* Wait QoS response to respond */
+	setup->id = bt_bap_stream_qos(stream, &setup->qos, qos_cb, setup);
+	if (!setup->id) {
+		error("Failed to Configure QoS");
+		goto error;
+	}
+
+	/* Bcast does not call the callback */
+	if (bt_bap_stream_get_type(setup->stream) == BT_BAP_STREAM_TYPE_BCAST)
+		setup->id = 0;
+
+	return 0;
+
+error:
+	if (bt_bap_stream_get_state(stream) != BT_BAP_STREAM_STATE_RELEASING)
+		bt_bap_stream_release(stream, NULL, NULL);
+	return -EIO;
+}
+
 static void config_cb(struct bt_bap_stream *stream,
 					uint8_t code, uint8_t reason,
 					void *user_data)
@@ -732,17 +773,8 @@ static void config_cb(struct bt_bap_stream *stream,
 	setup->id = 0;
 
 	if (!code) {
-		/* Check state is already set to config then proceed to qos */
-		if (bt_bap_stream_get_state(stream) ==
-					BT_BAP_STREAM_STATE_CONFIG) {
-			setup->id = bt_bap_stream_qos(stream, &setup->qos,
-							qos_cb, setup);
-			if (!setup->id) {
-				error("Failed to Configure QoS");
-				bt_bap_stream_release(stream, NULL, NULL);
-			}
-		}
-
+		if (!setup->config_pending)
+			setup_qos(setup);
 		return;
 	}
 
@@ -986,6 +1018,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	setup->stream = bt_bap_stream_new(ep->data->bap, ep->lpac, ep->rpac,
 						&setup->qos, setup->caps);
 	bt_bap_stream_set_user_data(setup->stream, ep->path);
+	setup->config_pending = true;
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
 						setup->caps, config_cb, setup);
 	if (!setup->id) {
@@ -1005,6 +1038,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	case BT_BAP_STREAM_TYPE_BCAST:
 		/* No message sent over the air for broadcast */
 		setup->id = 0;
+		setup->config_pending = false;
 
 		if (ep->data->service)
 			service_set_connecting(ep->data->service);
@@ -1403,6 +1437,7 @@ static void setup_config(void *data, void *user_data)
 						ep->rpac, &setup->qos,
 						setup->caps);
 
+	setup->config_pending = true;
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
 						setup->caps, config_cb, setup);
 	if (!setup->id) {
@@ -1807,9 +1842,6 @@ static bool is_cig_busy(struct bap_data *data, uint8_t cig)
 	return queue_find(sessions, cig_busy_session, &info);
 }
 
-static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
-				struct bt_bap_stream *stream, int defer);
-
 static gboolean setup_io_recreate(void *user_data)
 {
 	struct bap_setup *setup = user_data;
@@ -2189,25 +2221,9 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 			queue_remove(data->server_streams, stream);
 		break;
 	case BT_BAP_STREAM_STATE_CONFIG:
-		if (setup && !setup->id) {
-			setup_create_io(data, setup, stream, true);
-			if (!setup->io) {
-				error("Unable to create io");
-				if (old_state != BT_BAP_STREAM_STATE_RELEASING)
-					bt_bap_stream_release(stream, NULL,
-								NULL);
-				return;
-			}
-
-			/* Wait QoS response to respond */
-			setup->id = bt_bap_stream_qos(stream,
-							&setup->qos,
-							qos_cb,	setup);
-			if (!setup->id) {
-				error("Failed to Configure QoS");
-				bt_bap_stream_release(stream,
-							NULL, NULL);
-			}
+		if (setup) {
+			setup->config_pending = false;
+			setup_qos(setup);
 		}
 		break;
 	case BT_BAP_STREAM_STATE_QOS:
