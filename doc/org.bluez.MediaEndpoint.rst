@@ -109,6 +109,12 @@ void ClearConfiguration(object transport)
 
 	Clear transport configuration.
 
+	**Server role:** [ISO only]
+
+	Close the stream associated with the given transport. If the
+	path given is the path of this endpoint, all its streams are
+	closed.
+
 void Release()
 ``````````````
 
