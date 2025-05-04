@@ -86,6 +86,7 @@ struct bap_setup {
 	bool cig_active;
 	uint8_t sid;
 	bool config_pending;
+	bool readying;
 	bool closing;
 	struct iovec *caps;
 	struct iovec *metadata;
@@ -727,15 +728,23 @@ fail:
 	return -EINVAL;
 }
 
+static void setup_recreate_cig(struct bap_setup *setup);
+
 static void setup_ready(struct bap_setup *setup, int code,
 							uint8_t reason)
 {
-	if (!setup->ready_cb)
+	if (!setup->readying)
 		return;
 
-	setup->ready_cb(setup, code, reason, setup->ready_cb_data);
-	setup->ready_cb = NULL;
-	setup->ready_cb_data = NULL;
+	setup->readying = false;
+
+	if (setup->ready_cb) {
+		setup->ready_cb(setup, code, reason, setup->ready_cb_data);
+		setup->ready_cb = NULL;
+		setup->ready_cb_data = NULL;
+	}
+
+	setup_recreate_cig(setup);
 }
 
 static void qos_cb(struct bt_bap_stream *stream, uint8_t code, uint8_t reason,
@@ -770,7 +779,7 @@ static int setup_qos(struct bap_setup *setup)
 
 	setup_create_io(data, setup, stream, true);
 	if (!setup->io) {
-		error("Unable to create io");
+		DBG("io pending");
 		goto error;
 	}
 
@@ -1741,6 +1750,8 @@ static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
 	if (!setup->id)
 		return -EINVAL;
 
+	setup->readying = true;
+
 	switch (bt_bap_stream_get_type(setup->stream)) {
 	case BT_BAP_STREAM_TYPE_UCAST:
 		setup->config_pending = true;
@@ -2215,7 +2226,11 @@ static bool match_cig_active(const void *data, const void *match_data)
 	const struct bap_setup *setup = data;
 	const struct cig_busy_data *info = match_data;
 
-	return (setup->qos.ucast.cig_id == info->cig) && setup->cig_active;
+	if (info->cig != BT_ISO_QOS_CIG_UNSET &&
+					setup->qos.ucast.cig_id != info->cig)
+		return false;
+
+	return setup->cig_active || setup->readying;
 }
 
 static bool cig_busy_ep(const void *data, const void *match_data)
@@ -2242,6 +2257,10 @@ static bool is_cig_busy(struct bap_data *data, uint8_t cig)
 {
 	struct cig_busy_data info;
 
+	/* TODO: this is not quite right --- it may results to allocation of a
+	 * new CIG which won't work if controller supports only one. Instead we
+	 * should be delaying stream QoS until CIG deactivates.
+	 */
 	if (cig == BT_ISO_QOS_CIG_UNSET)
 		return false;
 
@@ -2251,30 +2270,22 @@ static bool is_cig_busy(struct bap_data *data, uint8_t cig)
 	return queue_find(sessions, cig_busy_session, &info);
 }
 
-static gboolean setup_io_recreate(void *user_data)
-{
-	struct bap_setup *setup = user_data;
-
-	DBG("%p", setup);
-
-	setup->io_id = 0;
-
-	setup_create_io(setup->ep->data, setup, setup->stream, true);
-
-	return FALSE;
-}
-
 static void setup_recreate(void *data, void *match_data)
 {
 	struct bap_setup *setup = data;
 	struct cig_busy_data *info = match_data;
 
-	if (setup->qos.ucast.cig_id != info->cig || !setup->recreate ||
-						setup->io_id)
+	if (info->cig != BT_ISO_QOS_CIG_UNSET &&
+			setup->qos.ucast.cig_id != BT_ISO_QOS_CIG_UNSET &&
+			setup->qos.ucast.cig_id != info->cig)
+		return;
+	if (!setup->recreate || !setup->stream)
 		return;
 
+	DBG("%p", setup);
+
 	setup->recreate = false;
-	setup->io_id = g_idle_add(setup_io_recreate, setup);
+	setup_create_io(setup->ep->data, setup, setup->stream, true);
 }
 
 static void recreate_cig_ep(void *data, void *match_data)
@@ -2282,6 +2293,34 @@ static void recreate_cig_ep(void *data, void *match_data)
 	struct bap_ep *ep = data;
 
 	queue_foreach(ep->setups, setup_recreate, match_data);
+}
+
+static void setup_reenable(void *data, void *match_data)
+{
+	struct bap_setup *setup = data;
+	struct cig_busy_data *info = match_data;
+
+	if (info->cig != BT_ISO_QOS_CIG_UNSET &&
+			setup->qos.ucast.cig_id != BT_ISO_QOS_CIG_UNSET &&
+			setup->qos.ucast.cig_id != info->cig)
+		return;
+	if (!setup->recreate || !setup->stream)
+		return;
+
+	DBG("%p", setup);
+
+	switch (bt_bap_stream_get_state(setup->stream)) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+		setup_create_io(setup->ep->data, setup, setup->stream, false);
+		break;
+	}
+}
+
+static void reenable_cig_ep(void *data, void *match_data)
+{
+	struct bap_ep *ep = data;
+
+	queue_foreach(ep->setups, setup_reenable, match_data);
 }
 
 static void recreate_cig_session(void *data, void *match_data)
@@ -2294,12 +2333,18 @@ static void recreate_cig_session(void *data, void *match_data)
 
 	queue_foreach(session->snks, recreate_cig_ep, match_data);
 	queue_foreach(session->srcs, recreate_cig_ep, match_data);
+
+	queue_foreach(session->snks, reenable_cig_ep, match_data);
+	queue_foreach(session->srcs, reenable_cig_ep, match_data);
 }
 
-static void recreate_cig(struct bap_setup *setup)
+static void setup_recreate_cig(struct bap_setup *setup)
 {
 	struct bap_data *data = setup->ep->data;
 	struct cig_busy_data info;
+
+	if (is_cig_busy(setup->ep->data, setup->qos.ucast.cig_id))
+		return;
 
 	info.adapter = device_get_adapter(data->device);
 	info.cig = setup->qos.ucast.cig_id;
@@ -2309,25 +2354,34 @@ static void recreate_cig(struct bap_setup *setup)
 
 	if (setup->qos.ucast.cig_id == BT_ISO_QOS_CIG_UNSET) {
 		recreate_cig_ep(setup->ep, &info);
+		reenable_cig_ep(setup->ep, &info);
 		return;
 	}
 
 	queue_foreach(sessions, recreate_cig_session, &info);
 }
 
+static gboolean recreate_cig_cb(void *user_data)
+{
+	struct bap_setup *setup = user_data;
+
+	setup->io_id = 0;
+	setup_recreate_cig(setup);
+	return FALSE;
+}
+
 static void setup_io_disconnected(int cond, void *user_data)
 {
 	struct bap_setup *setup = user_data;
 
-	DBG("%p recreate %s", setup, setup->recreate ? "true" : "false");
-
 	setup->io_id = 0;
+
+	DBG("%p recreate %s", setup, setup->recreate ? "true" : "false");
 
 	setup_io_close(setup, NULL);
 
 	/* Check if connecting recreate IO */
-	if (!is_cig_busy(setup->ep->data, setup->qos.ucast.cig_id))
-		recreate_cig(setup);
+	setup->io_id = g_idle_add(recreate_cig_cb, setup);
 }
 
 static void bap_connect_bcast_io_cb(GIOChannel *chan, GError *err,
