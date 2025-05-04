@@ -860,6 +860,8 @@ static void setup_free(void *data)
 	if (setup->destroy)
 		setup->destroy(setup);
 
+	bt_bap_stream_discard(setup->stream);
+
 	free(setup);
 }
 
