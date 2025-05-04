@@ -115,6 +115,28 @@ void ClearConfiguration(object transport)
 	path given is the path of this endpoint, all its streams are
 	closed.
 
+void Reconfigure(dict properties)
+`````````````````````````````````
+
+	[ISO only]
+
+	Reconfigure a BAP unicast endpoint. This closes all existing
+	streams of the endpoint, and restarts the configuration
+	selection flow which e.g. triggers calls to *SelectProperties*
+	allowing the sound server to modify the configuration.
+
+	The following arguments are taken in *properties*:
+
+	:boolean Defer [optional]:
+
+		If True, mark endpoint for reconfiguration, but
+		postpone it until a non-deferred *Reconfigure()*
+		operation is made on an endpoint of the same device.
+
+		This is necessary to use when reconfiguring source and
+		sink streams with the intention that they be combined
+		into the same CIG, possibly forming bidirectional CIS.
+
 void Release()
 ``````````````
 
