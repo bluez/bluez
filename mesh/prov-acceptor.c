@@ -408,14 +408,14 @@ static bool prov_start_check(struct prov_start *start,
 		break;
 
 	case 2: /* Output OOB */
-		if (!(caps->output_action & (1 << start->auth_action)) ||
+		if (!(L_BE16_TO_CPU(caps->output_action) & (1 << start->auth_action)) ||
 							start->auth_size == 0)
 			return false;
 
 		break;
 
 	case 3: /* Input OOB */
-		if (!(caps->input_action & (1 << start->auth_action)) ||
+		if (!(L_BE16_TO_CPU(caps->input_action) & (1 << start->auth_action)) ||
 							start->auth_size == 0)
 			return false;
 
