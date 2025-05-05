@@ -3689,7 +3689,6 @@ static void print_mesh_prov(const uint8_t *data, uint8_t len)
 		print_field("  TotalLength: %u", get_be16(data + 1));
 		print_field("  FCS: 0x%2.2x", data[3]);
 		print_hex_field("  Data", data + 4, len - 4);
-		packet_hexdump(data + 5, len - 5);
 		break;
 	case 0x01:
 		print_field("  Transaction Acknowledgment (0x01)");
@@ -3703,7 +3702,6 @@ static void print_mesh_prov(const uint8_t *data, uint8_t len)
 			return;
 		}
 		print_hex_field("  Data", data + 1, len - 1);
-		packet_hexdump(data + 2, len - 2);
 		break;
 	case 0x03:
 		print_field("  Provisioning Bearer Control (0x03)");
