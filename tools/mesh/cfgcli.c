@@ -66,7 +66,7 @@ static uint32_t rsp_timeout = DEFAULT_TIMEOUT;
 static uint16_t target = UNASSIGNED_ADDRESS;
 static uint32_t parms[8];
 
-static struct cfg_cmd cmds[] = {
+static const struct cfg_cmd cmds[] = {
 	{ OP_APPKEY_ADD, OP_APPKEY_STATUS, "AppKeyAdd" },
 	{ OP_APPKEY_DELETE, OP_APPKEY_STATUS, "AppKeyDelete" },
 	{ OP_APPKEY_GET, OP_APPKEY_LIST, "AppKeyGet" },
