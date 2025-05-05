@@ -2975,6 +2975,7 @@ static uint8_t ep_config(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 {
 	struct iovec cc;
 	const struct queue_entry *e;
+	struct bt_bap_codec codec;
 
 	DBG(bap, "ep %p id 0x%02x dir 0x%02x", ep, ep->id, ep->dir);
 
@@ -3019,10 +3020,16 @@ static uint8_t ep_config(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 		e = NULL;
 	}
 
+	/* Convert to native endianness before comparing */
+	memset(&codec, 0, sizeof(codec));
+	codec.id = req->codec.id;
+	codec.cid = le16_to_cpu(req->codec.cid);
+	codec.vid = le16_to_cpu(req->codec.vid);
+
 	for (; e; e = e->next) {
 		struct bt_bap_pac *pac = e->data;
 
-		if (!bap_codec_equal(&req->codec, &pac->codec))
+		if (!bap_codec_equal(&codec, &pac->codec))
 			continue;
 
 		if (!ep->stream)
