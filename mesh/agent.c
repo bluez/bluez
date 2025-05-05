@@ -16,7 +16,9 @@
 
 #include <ell/ell.h>
 
+#include "mesh/crypto.h"
 #include "mesh/mesh.h"
+#include "mesh/provision.h"
 #include "mesh/error.h"
 #include "mesh/dbus.h"
 #include "mesh/agent.h"
@@ -168,10 +170,19 @@ static bool parse_properties(struct mesh_agent *agent,
 			if (!parse_prov_caps(&agent->caps, &variant))
 				return false;
 		} else if (!strcmp(key, "URI")) {
+			uint8_t salt[16];
+
 			if (!l_dbus_message_iter_get_variant(&variant, "s",
 								&uri_string))
 				return false;
-			/* TODO: compute hash */
+
+			mesh_crypto_s1(uri_string, strlen(uri_string), salt);
+			agent->caps.uri_hash =
+				salt[0] << 24 |
+				salt[1] << 16 |
+				salt[2] <<  8 |
+				salt[3] <<  0;
+			agent->caps.oob_info |= OOB_INFO_URI_HASH;
 		} else if (!strcmp(key, "OutOfBandInfo")) {
 			if (!parse_oob_info(&agent->caps, &variant))
 				return false;
