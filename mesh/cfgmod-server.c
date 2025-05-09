@@ -203,7 +203,7 @@ static bool save_cfg_sub(struct mesh_node *node, uint16_t ele_addr,
 
 	id = (vendor) ? id : MODEL_ID(id);
 
-	if (virt)
+	if (virt && label)
 		memcpy(db_sub.addr.label, label, 16);
 
 	if (opcode == OP_CONFIG_MODEL_SUB_VIRT_DELETE ||
