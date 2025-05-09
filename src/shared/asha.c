@@ -345,7 +345,7 @@ static void check_probe_done(struct bt_asha *asha)
 
 	/* Once we have ROPs & PSM, we should be good to go */
 	if (asha->psm == 0 || memcmp(asha->hisyncid, zeroes,
-					sizeof(zeroes) == 0))
+					sizeof(zeroes)) == 0)
 		return;
 
 	if (asha->attach_cb) {
