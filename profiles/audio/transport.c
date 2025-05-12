@@ -924,14 +924,14 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 
 	transport_set_state(transport, TRANSPORT_STATE_SUSPENDING);
 
+	req = media_request_create(msg, id);
+	media_owner_add(owner, req);
+
 	id = media_transport_suspend(transport, owner);
 	if (id == 0) {
 		media_transport_remove_owner(transport);
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
-
-	req = media_request_create(msg, id);
-	media_owner_add(owner, req);
 
 	return NULL;
 }
