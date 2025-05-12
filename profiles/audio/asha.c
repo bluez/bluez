@@ -170,10 +170,9 @@ unsigned int bt_asha_device_start(struct bt_asha_device *asha_dev,
 		return (++asha_dev->resume_id);
 }
 
-unsigned int bt_asha_device_stop(struct bt_asha_device *asha_dev,
-					bt_asha_cb_t cb, void *user_data)
+unsigned int bt_asha_device_stop(struct bt_asha_device *asha_dev)
 {
-	bt_asha_stop(asha_dev->asha, cb, user_data);
+	bt_asha_stop(asha_dev->asha);
 
 	if (asha_dev->io) {
 		g_io_channel_shutdown(asha_dev->io, TRUE, NULL);

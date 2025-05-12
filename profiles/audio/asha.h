@@ -19,8 +19,7 @@ struct bt_asha_device;
 
 unsigned int bt_asha_device_start(struct bt_asha_device *asha_dev,
 					bt_asha_cb_t cb, void *user_data);
-unsigned int bt_asha_device_stop(struct bt_asha_device *asha_dev,
-					bt_asha_cb_t cb, void *user_data);
+unsigned int bt_asha_device_stop(struct bt_asha_device *asha_dev);
 
 void bt_asha_device_state_reset(struct bt_asha_device *asha_dev);
 unsigned int bt_asha_device_device_get_resume_id(
