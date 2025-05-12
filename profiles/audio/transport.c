@@ -2247,9 +2247,6 @@ static void asha_transport_sync_state(struct media_transport *transport,
 	case ASHA_STARTED:
 		transport_set_state(transport, TRANSPORT_STATE_ACTIVE);
 		break;
-	case ASHA_STOPPING:
-		transport_set_state(transport, TRANSPORT_STATE_SUSPENDING);
-		break;
 	}
 }
 
@@ -2324,11 +2321,11 @@ static guint transport_asha_suspend(struct media_transport *transport,
 	guint ret = 0;
 
 	if (owner) {
-		ret = bt_asha_device_stop(asha_dev, asha_transport_state_cb,
-									owner);
+		ret = bt_asha_device_stop(asha_dev);
 		asha_transport_sync_state(transport, asha_dev);
+		asha_transport_state_cb(-1, owner);
 	} else {
-		ret = bt_asha_device_stop(asha_dev, NULL, NULL);
+		ret = bt_asha_device_stop(asha_dev);
 		/* We won't have a callback to set the final state */
 		transport_set_state(transport, TRANSPORT_STATE_IDLE);
 	}
@@ -2349,13 +2346,8 @@ static void transport_asha_cancel(struct media_transport *transport, guint id)
 
 	if (state == ASHA_STARTING || state == ASHA_STARTED) {
 		DBG("Cancel requested, stopping");
-		bt_asha_device_stop(asha_dev, NULL, NULL);
+		bt_asha_device_stop(asha_dev);
 		/* We won't have a callback to set the final state */
-		transport_set_state(transport, TRANSPORT_STATE_IDLE);
-	} else if (state == ASHA_STOPPING) {
-		DBG("Cancel requested, resetting transport state");
-		/* We already dispatched a stop, just reset our state */
-		bt_asha_device_state_reset(asha_dev);
 		transport_set_state(transport, TRANSPORT_STATE_IDLE);
 	}
 }

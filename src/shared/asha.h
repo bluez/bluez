@@ -19,7 +19,6 @@ enum bt_asha_state_t {
 	ASHA_STOPPED = 0,
 	ASHA_STARTING,
 	ASHA_STARTED,
-	ASHA_STOPPING,
 };
 
 typedef void (*bt_asha_cb_t)(int status, void *data);
@@ -64,8 +63,7 @@ void bt_asha_free(struct bt_asha *asha);
 
 unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
 							void *user_data);
-unsigned int bt_asha_stop(struct bt_asha *asha, bt_asha_cb_t cb,
-							void *user_data);
+unsigned int bt_asha_stop(struct bt_asha *asha);
 
 bool bt_asha_set_volume(struct bt_asha *asha, int8_t volume);
 

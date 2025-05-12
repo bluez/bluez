@@ -272,8 +272,7 @@ unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
 	return 0;
 }
 
-unsigned int bt_asha_stop(struct bt_asha *asha, bt_asha_cb_t cb,
-								void *user_data)
+unsigned int bt_asha_stop(struct bt_asha *asha)
 {
 	uint8_t acp_stop_cmd[] = {
 		0x02, /* STOP */
@@ -283,11 +282,15 @@ unsigned int bt_asha_stop(struct bt_asha *asha, bt_asha_cb_t cb,
 	if (asha->state != ASHA_STARTED)
 		return 0;
 
-	asha->state = ASHA_STOPPING;
+	asha->state = ASHA_STOPPED;
 
-	ret = asha_send_acp(asha, acp_stop_cmd, sizeof(acp_stop_cmd),
-			cb, user_data);
+	ret = asha_send_acp(asha, acp_stop_cmd, sizeof(acp_stop_cmd), NULL,
+			NULL);
 	asha_set_send_status(asha, false);
+
+	/* We reset our state without waiting for a response */
+	bt_asha_state_reset(asha);
+	DBG("ASHA stop done");
 
 	return ret;
 }
@@ -441,6 +444,8 @@ static void audio_status_notify(uint16_t value_handle, const uint8_t *value,
 	bt_asha_cb_t state_cb = asha->state_cb;
 	bt_asha_cb_t state_cb_data = asha->state_cb_data;
 
+	DBG("ASHA status %u", status);
+
 	if (asha->state == ASHA_STARTING) {
 		if (status == 0) {
 			asha->state = ASHA_STARTED;
@@ -451,10 +456,6 @@ static void audio_status_notify(uint16_t value_handle, const uint8_t *value,
 			bt_asha_state_reset(asha);
 			DBG("ASHA start failed");
 		}
-	} else if (asha->state == ASHA_STOPPING) {
-		/* We reset our state, regardless */
-		bt_asha_state_reset(asha);
-		DBG("ASHA stop %s", status == 0 ? "complete" : "failed");
 	}
 
 	if (state_cb) {
