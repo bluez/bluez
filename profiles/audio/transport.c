@@ -2302,6 +2302,13 @@ static void asha_transport_state_cb(int status, void *user_data)
 	asha_transport_sync_state(transport, asha_dev);
 }
 
+static gboolean asha_transport_suspend_cb(void *user_data)
+{
+	asha_transport_state_cb(-1, user_data);
+
+	return FALSE;
+}
+
 static guint transport_asha_resume(struct media_transport *transport,
 						struct media_owner *owner)
 {
@@ -2323,7 +2330,7 @@ static guint transport_asha_suspend(struct media_transport *transport,
 	if (owner) {
 		ret = bt_asha_device_stop(asha_dev);
 		asha_transport_sync_state(transport, asha_dev);
-		asha_transport_state_cb(-1, owner);
+		g_idle_add(asha_transport_suspend_cb, owner);
 	} else {
 		ret = bt_asha_device_stop(asha_dev);
 		/* We won't have a callback to set the final state */
