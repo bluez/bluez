@@ -4093,16 +4093,18 @@ struct btd_gatt_database *btd_gatt_database_new(struct btd_adapter *adapter)
 
 bredr:
 	/* BR/EDR socket */
-	database->bredr_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, addr,
+	if (btd_adapter_get_bredr(adapter)) {
+		database->bredr_io = bt_io_listen(connect_cb, NULL, NULL, NULL,
+					&gerr, BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_PSM, BT_ATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_MTU, btd_opts.gatt_mtu,
 					BT_IO_OPT_INVALID);
-	if (database->bredr_io == NULL) {
-		error("Failed to start listening: %s", gerr->message);
-		g_error_free(gerr);
-		goto fail;
+		if (database->bredr_io == NULL) {
+			error("Failed to start listening: %s", gerr->message);
+			g_error_free(gerr);
+			goto fail;
+		}
 	}
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),
