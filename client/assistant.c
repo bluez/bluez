@@ -55,6 +55,8 @@ static DBusConnection *dbus_conn;
 
 static GList *assistants;
 
+static void assistant_menu_pre_run(const struct bt_shell_menu *menu);
+
 static char *proxy_description(GDBusProxy *proxy, const char *title,
 						const char *description)
 {
@@ -384,6 +386,7 @@ fail:
 static const struct bt_shell_menu assistant_menu = {
 	.name = "assistant",
 	.desc = "Media Assistant Submenu",
+	.pre_run = assistant_menu_pre_run,
 	.entries = {
 	{ "push", "<assistant>", cmd_push_assistant,
 					"Send stream information to peer" },
@@ -397,7 +400,7 @@ void assistant_add_submenu(void)
 	bt_shell_add_submenu(&assistant_menu);
 }
 
-void assistant_enable_submenu(void)
+static void assistant_menu_pre_run(const struct bt_shell_menu *menu)
 {
 	dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
 	if (!dbus_conn || client)
