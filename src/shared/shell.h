@@ -27,6 +27,7 @@ typedef void (*bt_shell_menu_disp_t) (char **matches, int num_matches,
 							int max_length);
 typedef void (*bt_shell_prompt_input_func) (const char *input, void *user_data);
 typedef bool (*bt_shell_menu_exists_t) (const struct bt_shell_menu *menu);
+typedef void (*bt_shell_menu_pre_run_t) (const struct bt_shell_menu *menu);
 
 struct bt_shell_menu_entry {
 	const char *cmd;
@@ -41,6 +42,7 @@ struct bt_shell_menu_entry {
 struct bt_shell_menu {
 	const char *name;
 	const char *desc;
+	bt_shell_menu_pre_run_t pre_run;
 	const struct bt_shell_menu_entry entries[];
 };
 

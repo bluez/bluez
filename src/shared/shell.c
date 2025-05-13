@@ -1447,6 +1447,15 @@ static void env_destroy(void *data)
 int bt_shell_run(void)
 {
 	int status;
+	const struct queue_entry *submenu;
+
+	for (submenu = queue_get_entries(data.submenus); submenu;
+	     submenu = submenu->next) {
+		struct bt_shell_menu *menu = submenu->data;
+
+		if (menu->pre_run != NULL)
+			menu->pre_run(menu);
+	}
 
 	status = mainloop_run_with_signal(signal_callback, NULL);
 
