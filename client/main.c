@@ -3426,7 +3426,6 @@ int main(int argc, char *argv[])
 		bt_shell_set_env("AUTO_REGISTER_ENDPOINT",
 					(void *)endpoint_option);
 
-	player_enable_submenu();
 	mgmt_enable_submenu();
 	assistant_enable_submenu();
 

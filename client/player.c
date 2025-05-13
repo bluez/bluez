@@ -154,6 +154,7 @@ struct transport_select_args {
 	struct queue *selecting;
 };
 
+static void player_menu_pre_run(const struct bt_shell_menu *menu);
 static void transport_set_links(struct transport_select_args *args);
 static void transport_select(struct transport_select_args *args);
 
@@ -5838,6 +5839,7 @@ static void cmd_volume_transport(int argc, char *argv[])
 static const struct bt_shell_menu transport_menu = {
 	.name = "transport",
 	.desc = "Media Transport Submenu",
+	.pre_run = player_menu_pre_run,
 	.entries = {
 	{ "list",         NULL,    cmd_list_transport,
 						"List available transports" },
@@ -5878,10 +5880,12 @@ void player_add_submenu(void)
 	bt_shell_add_submenu(&transport_menu);
 }
 
-void player_enable_submenu(void)
+static bool pre_run_done = false;
+
+static void player_menu_pre_run(const struct bt_shell_menu *menu)
 {
 	dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
-	if (!dbus_conn || client)
+	if (pre_run_done || !dbus_conn || client)
 		return;
 
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
@@ -5889,6 +5893,8 @@ void player_enable_submenu(void)
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 							property_changed, NULL);
 	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
+
+	pre_run_done = true;
 }
 
 void player_remove_submenu(void)
