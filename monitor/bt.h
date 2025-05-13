@@ -2937,6 +2937,16 @@ struct bt_hci_rsp_le_read_iso_link_quality {
 	uint32_t duplicated_packets;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_FSU			0x209d
+#define BT_HCI_BIT_LE_FSU			BT_HCI_CMD_BIT(48, 1)
+struct bt_hci_cmd_le_fsu {
+	uint16_t handle;
+	uint16_t frame_space_min;
+	uint16_t frame_space_max;
+	uint8_t  phys;
+	uint8_t  types;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
@@ -3758,6 +3768,16 @@ struct bt_hci_evt_le_big_info_adv_report {
 	uint8_t  phy;
 	uint8_t  framing;
 	uint8_t  encryption;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_FSU_COMPLETE		0x35
+struct bt_hci_evt_le_fsu_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  initiator;
+	uint16_t frame_space;
+	uint8_t  phys;
+	uint8_t  types;
 } __attribute__ ((packed));
 
 #define BT_HCI_ERR_SUCCESS			0x00
