@@ -71,6 +71,8 @@ static int pending_index = 0;
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #endif
 
+static void mgmt_menu_pre_run(const struct bt_shell_menu *menu);
+
 #define PROMPT_ON	COLOR_BLUE "[mgmt]" COLOR_OFF "> "
 
 static void update_prompt(uint16_t index)
@@ -5998,6 +6000,7 @@ static const struct bt_shell_menu monitor_menu = {
 static const struct bt_shell_menu mgmt_menu = {
 	.name = "mgmt",
 	.desc = "Management Submenu",
+	.pre_run = mgmt_menu_pre_run,
 	.entries = {
 	{ "select",		"<index>",
 		cmd_select,		"Select a different index"	},
@@ -6175,20 +6178,18 @@ void mgmt_add_submenu(void)
 	bt_shell_add_submenu(&monitor_menu);
 }
 
-bool mgmt_enable_submenu(void)
+static void mgmt_menu_pre_run(const struct bt_shell_menu *menu)
 {
 	mgmt = mgmt_new_default();
 	if (!mgmt) {
 		fprintf(stderr, "Unable to open mgmt_socket\n");
-		return false;
+		return;
 	}
 
 	if (getenv("MGMT_DEBUG"))
 		mgmt_set_debug(mgmt, mgmt_debug, "mgmt: ", NULL);
 
 	register_mgmt_callbacks(mgmt, mgmt_index);
-
-	return true;
 }
 
 void mgmt_remove_submenu(void)
