@@ -3410,6 +3410,8 @@ int main(int argc, char *argv[])
 	hci_add_submenu();
 	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
+	bt_shell_handle_non_interactive_help();
+
 	if (agent_option)
 		auto_register_agent = g_strdup(agent_option);
 	else
