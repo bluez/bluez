@@ -395,7 +395,10 @@ static GDBusClient * client;
 void assistant_add_submenu(void)
 {
 	bt_shell_add_submenu(&assistant_menu);
+}
 
+void assistant_enable_submenu(void)
+{
 	dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
 	if (!dbus_conn || client)
 		return;

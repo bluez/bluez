@@ -8,6 +8,7 @@
  *
  */
 
-bool mgmt_add_submenu(void);
+void mgmt_add_submenu(void);
+bool mgmt_enable_submenu(void);
 void mgmt_remove_submenu(void);
 void mgmt_set_index(const char *arg);

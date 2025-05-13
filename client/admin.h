@@ -9,4 +9,5 @@
  */
 
 void admin_add_submenu(void);
+void admin_enable_submenu(void);
 void admin_remove_submenu(void);
