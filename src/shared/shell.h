@@ -60,6 +60,8 @@ int bt_shell_exec(const char *input);
 void bt_shell_quit(int status);
 void bt_shell_noninteractive_quit(int status);
 
+void bt_shell_handle_non_interactive_help(void);
+
 bool bt_shell_set_menu(const struct bt_shell_menu *menu);
 
 bool bt_shell_add_submenu(const struct bt_shell_menu *menu);
