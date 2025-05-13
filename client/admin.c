@@ -27,6 +27,8 @@ static GList *admin_proxies;
 static GDBusProxy *set_proxy;
 static GDBusProxy *status_proxy;
 
+static void admin_menu_pre_run(const struct bt_shell_menu *menu);
+
 static void admin_policy_set_set_proxy(GDBusProxy *proxy)
 {
 	set_proxy = proxy;
@@ -140,6 +142,7 @@ static void cmd_admin_allow(int argc, char *argv[])
 static const struct bt_shell_menu admin_menu = {
 	.name = "admin",
 	.desc = "Admin Policy Submenu",
+	.pre_run = admin_menu_pre_run,
 	.entries = {
 	{ "allow", "[clear/uuid1 uuid2 ...]", cmd_admin_allow,
 				"Allow service UUIDs and block rest of them"},
@@ -195,8 +198,13 @@ void admin_add_submenu(void)
 	bt_shell_add_submenu(&admin_menu);
 }
 
-void admin_enable_submenu(void)
+static bool pre_run_done = false;
+
+static void admin_menu_pre_run(const struct bt_shell_menu *menu)
 {
+	if (pre_run_done)
+		return;
+
 	dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
 	if (!dbus_conn || client)
 		return;
@@ -205,6 +213,8 @@ void admin_enable_submenu(void)
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 							NULL, NULL);
 	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
+
+	pre_run_done = true;
 }
 
 void admin_remove_submenu(void)
