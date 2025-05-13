@@ -9,6 +9,5 @@
  */
 
 void assistant_add_submenu(void);
-void assistant_enable_submenu(void);
 void assistant_remove_submenu(void);
 
