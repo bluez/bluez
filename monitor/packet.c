@@ -7632,6 +7632,18 @@ static const struct bitfield_data le_phys[] = {
 	{ }
 };
 
+static void print_le_phy_bitfield(const char *label, uint8_t phys)
+{
+	uint8_t mask;
+
+	print_field("%s: 0x%2.2x", label, phys);
+
+	mask = print_bitfield(2, phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+}
+
 static const struct bitfield_data le_phy_preference[] = {
 	{  0, "No TX PHY preference"	},
 	{  1, "No RX PHY preference"	},
@@ -7650,19 +7662,8 @@ static void print_le_phys_preference(uint8_t all_phys, uint8_t tx_phys,
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
 
-	print_field("TX PHYs preference: 0x%2.2x", tx_phys);
-
-	mask = print_bitfield(2, tx_phys, le_phys);
-	if (mask)
-		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
-							" (0x%2.2x)", mask);
-
-	print_field("RX PHYs preference: 0x%2.2x", rx_phys);
-
-	mask = print_bitfield(2, rx_phys, le_phys);
-	if (mask)
-		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
-							" (0x%2.2x)", mask);
+	print_le_phy_bitfield("TX PHYs preference", tx_phys);
+	print_le_phy_bitfield("RX PHYs preference", rx_phys);
 }
 
 static void le_set_default_phy_cmd(uint16_t index, const void *data,
@@ -9079,6 +9080,42 @@ static void status_le_read_iso_link_quality_rsp(uint16_t index,
 	print_field("Duplicated packets %d", rsp->duplicated_packets);
 }
 
+static const struct bitfield_data fsu_type_table[] = {
+	{  0, "T_IFS_ACL_CP"		},
+	{  1, "T_IFS_ACL_PC"		},
+	{  2, "T_MCES"			},
+	{  3, "T_IFS_CIS"		},
+	{  4, "T_MSS_CIS"		},
+	{ }
+};
+
+static void print_fsu_types(uint8_t types)
+{
+	uint8_t mask;
+
+	print_field("types: 0x%2.2x", types);
+
+	mask = print_bitfield(2, types, fsu_type_table);
+	if (mask)
+		print_text(COLOR_UNKNOWN_ADDRESS_TYPE, "  Unknown type"
+							" (0x%2.2x)", mask);
+}
+
+static void le_fsu_cmd(uint16_t index, const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_fsu *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("Frame Space min: %d us (0x%4.4x)",
+				le16_to_cpu(cmd->frame_space_min),
+				le16_to_cpu(cmd->frame_space_min));
+	print_field("Frame Space max: %d us (0x%4.4x)",
+				le16_to_cpu(cmd->frame_space_max),
+				le16_to_cpu(cmd->frame_space_max));
+	print_le_phy_bitfield("PHYs", cmd->phys);
+	print_fsu_types(cmd->types);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -10038,6 +10075,10 @@ static const struct opcode_data opcode_table[] = {
 				sizeof(
 				struct bt_hci_rsp_le_read_iso_link_quality),
 				true },
+	{ BT_HCI_CMD_LE_FSU, BT_HCI_BIT_LE_FSU,
+				"LE Frame Space Update", le_fsu_cmd,
+				sizeof(struct bt_hci_cmd_le_fsu),
+				true, status_rsp, 1, true },
 	{ }
 };
 
@@ -11857,6 +11898,43 @@ static void le_big_info_evt(struct timeval *tv, uint16_t index,
 	print_field("Encryption: 0x%02x", evt->encryption);
 }
 
+static void print_fsu_initiator(uint8_t initiator)
+{
+	const char *str;
+
+	switch (initiator) {
+	case 0x00:
+		str = "Local Host initiated";
+		break;
+	case 0x01:
+		str = "Local Controller initiated";
+		break;
+	case 0x02:
+		str = "Peer initiated";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("initiator: %s (0x%2.2x)", str, initiator);
+}
+
+static void le_fsu_evt(struct timeval *tv, uint16_t index,
+					const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_fsu_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_fsu_initiator(evt->initiator);
+	print_field("Frame Space: %u us (0x%4.4x)",
+				le16_to_cpu(evt->frame_space),
+				le16_to_cpu(evt->frame_space));
+	print_le_phy_bitfield("PHYs", evt->phys);
+	print_fsu_types(evt->types);
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -11981,6 +12059,9 @@ static const struct subevent_data le_meta_event_table[] = {
 		"LE Broadcast Isochronous Group Info Advertising Report",
 		le_big_info_evt,
 		sizeof(struct bt_hci_evt_le_big_info_adv_report) },
+	{ BT_HCI_EVT_LE_FSU_COMPLETE,
+		"LE Frame Space Update Complete",
+		le_fsu_evt, sizeof(struct bt_hci_evt_le_fsu_complete) },
 	{ }
 };
 
