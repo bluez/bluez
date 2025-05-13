@@ -9,5 +9,4 @@
  */
 
 void player_add_submenu(void);
-void player_enable_submenu(void);
 void player_remove_submenu(void);
