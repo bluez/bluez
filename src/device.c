@@ -246,6 +246,7 @@ struct btd_device {
 	struct browse_req *browse;		/* service discover request */
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
+	uint8_t		bonding_status;
 	GSList		*disconnects;		/* disconnects message */
 	DBusMessage	*connect;		/* connect message */
 	DBusMessage	*disconnect;		/* disconnect message */
@@ -3636,6 +3637,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	DBusMessage *reply;
 	bool remove_device = false;
 	bool paired_status_updated = false;
+	uint8_t bonding_status = device->bonding_status;
 
 	if (!state->connected)
 		return;
@@ -3643,6 +3645,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	state->connected = false;
 	state->initiator = false;
 	device->general_connect = FALSE;
+	device->bonding_status = 0;
 
 	device_set_svc_refreshed(device, false);
 
@@ -3658,6 +3661,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	if (device->connect) {
 		DBG("connection removed while Connect() is waiting reply");
 		reply = btd_error_failed(device->connect,
+				bonding_status ? ERR_BREDR_CONN_KEY_MISSING :
 						ERR_BREDR_CONN_CANCELED);
 		g_dbus_send_message(dbus_conn, reply);
 		dbus_message_unref(device->connect);
@@ -6762,6 +6766,8 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	struct bearer_state *state = get_state(device, bdaddr_type);
 
 	DBG("bonding %p status 0x%02x", bonding, status);
+
+	device->bonding_status = status;
 
 	if (auth && auth->agent)
 		agent_cancel(auth->agent);
