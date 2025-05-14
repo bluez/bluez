@@ -743,6 +743,7 @@ static void stream_free(void *data)
 	g_slist_free_full(stream->callbacks, g_free);
 	g_slist_free_full(stream->caps, g_free);
 
+	queue_remove(streams, stream);
 	g_free(stream);
 }
 
