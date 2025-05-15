@@ -246,6 +246,7 @@ struct btd_device {
 	struct browse_req *browse;		/* service discover request */
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
+	uint8_t		bonding_status;
 	GSList		*disconnects;		/* disconnects message */
 	DBusMessage	*connect;		/* connect message */
 	DBusMessage	*disconnect;		/* disconnect message */
@@ -1917,10 +1918,17 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	}
 
 	if (device->connect) {
-		DBusMessage *reply = btd_error_failed(device->connect,
-						ERR_BREDR_CONN_CANCELED);
+		const char *err_str;
+		DBusMessage *reply;
+
+		if (device->bonding_status == MGMT_STATUS_AUTH_FAILED)
+			err_str = ERR_BREDR_CONN_KEY_MISSING;
+		else
+			err_str = ERR_BREDR_CONN_CANCELED;
+		reply = btd_error_failed(device->connect, err_str);
 		g_dbus_send_message(dbus_conn, reply);
 		dbus_message_unref(device->connect);
+		device->bonding_status = 0;
 		device->connect = NULL;
 	}
 
@@ -6762,6 +6770,10 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	struct bearer_state *state = get_state(device, bdaddr_type);
 
 	DBG("bonding %p status 0x%02x", bonding, status);
+
+	device->bonding_status = status;
+	if (status == MGMT_STATUS_AUTH_FAILED)
+		device_request_disconnect(device, NULL);
 
 	if (auth && auth->agent)
 		agent_cancel(auth->agent);
