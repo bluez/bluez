@@ -398,12 +398,13 @@ static gboolean media_transport_set_fd(struct media_transport *transport,
 #ifdef HAVE_A2DP
 static void *transport_a2dp_get_stream(struct media_transport *transport)
 {
+	struct a2dp_transport *a2dp = transport->data;
 	struct a2dp_sep *sep = media_endpoint_get_sep(transport->endpoint);
 
 	if (!sep)
 		return NULL;
 
-	return a2dp_sep_get_stream(sep);
+	return a2dp_sep_get_stream(sep, a2dp->session);
 }
 
 static void a2dp_suspend_complete(struct avdtp *session, int err,

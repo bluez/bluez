@@ -35,7 +35,9 @@ struct a2dp_endpoint {
 						struct a2dp_setup *setup,
 						a2dp_endpoint_config_t cb,
 						void *user_data);
-	void (*clear_configuration) (struct a2dp_sep *sep, void *user_data);
+	void (*clear_configuration) (struct a2dp_sep *sep,
+						struct btd_device *device,
+						void *user_data);
 	void (*set_delay) (struct a2dp_sep *sep, uint16_t delay,
 							void *user_data);
 };
@@ -76,7 +78,8 @@ gboolean a2dp_cancel(unsigned int id);
 
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session);
 gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session);
-struct avdtp_stream *a2dp_sep_get_stream(struct a2dp_sep *sep);
+struct avdtp_stream *a2dp_sep_get_stream(struct a2dp_sep *sep,
+						struct avdtp *session);
 struct btd_device *a2dp_setup_get_device(struct a2dp_setup *setup);
 const char *a2dp_setup_remote_path(struct a2dp_setup *setup);
 struct avdtp *a2dp_avdtp_get(struct btd_device *device);
