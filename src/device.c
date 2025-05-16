@@ -160,6 +160,7 @@ struct bearer_state {
 	bool initiator;
 	bool connectable;
 	time_t last_seen;
+	time_t last_used;
 };
 
 struct ltk_info {
@@ -186,6 +187,13 @@ enum {
 	WAKE_FLAG_DEFAULT = 0,
 	WAKE_FLAG_ENABLED,
 	WAKE_FLAG_DISABLED,
+};
+
+enum {
+	PREFER_LAST_USED = 0,
+	PREFER_LE,
+	PREFER_BREDR,
+	PREFER_LAST_SEEN,
 };
 
 struct btd_device {
@@ -269,6 +277,7 @@ struct btd_device {
 
 	struct btd_gatt_client *client_dbus;
 
+	uint8_t prefer_bearer;
 	struct bearer_state bredr_state;
 	struct bearer_state le_state;
 
@@ -378,12 +387,61 @@ static const char *device_prefer_bearer_str(struct btd_device *device)
 	if (!device->bredr || !device->le)
 		return NULL;
 
-	if (device->bredr_state.prefer)
-		return "bredr";
-	else if (device->le_state.prefer)
+	switch (device->prefer_bearer) {
+	case PREFER_LAST_USED:
+		return "last-used";
+	case PREFER_LE:
 		return "le";
-	else
+	case PREFER_BREDR:
+		return "bredr";
+	case PREFER_LAST_SEEN:
 		return "last-seen";
+	}
+
+	return NULL;
+}
+
+static bool device_set_prefer_bearer(struct btd_device *device, uint8_t bearer)
+{
+	switch (bearer) {
+	case PREFER_LAST_USED:
+		device->prefer_bearer = PREFER_LAST_USED;
+		return true;
+	case PREFER_LE:
+		device->prefer_bearer = PREFER_LE;
+		device->le_state.prefer = true;
+		device->bredr_state.prefer = false;
+		return true;
+	case PREFER_BREDR:
+		device->prefer_bearer = PREFER_BREDR;
+		device->bredr_state.prefer = true;
+		device->le_state.prefer = false;
+		return true;
+	case PREFER_LAST_SEEN:
+		device->prefer_bearer = PREFER_LAST_SEEN;
+		device->bredr_state.prefer = false;
+		device->le_state.prefer = false;
+		return true;
+	default:
+		error("Unknown preferred bearer: %d", bearer);
+		return false;
+	}
+}
+
+static bool device_set_prefer_bearer_str(struct btd_device *device,
+						const char *str)
+{
+	if (!strcmp(str, "last-used"))
+		return device_set_prefer_bearer(device, PREFER_LAST_USED);
+	else if (!strcmp(str, "le"))
+		return device_set_prefer_bearer(device, PREFER_LE);
+	else if (!strcmp(str, "bredr"))
+		return device_set_prefer_bearer(device, PREFER_BREDR);
+	else if (!strcmp(str, "last-seen"))
+		return device_set_prefer_bearer(device, PREFER_LAST_SEEN);
+
+	error("Unknown preferred bearer: %s", str);
+	return false;
 }
 
 static void update_technologies(GKeyFile *file, struct btd_device *dev)
@@ -413,9 +471,15 @@ static void update_technologies(GKeyFile *file, struct btd_device *dev)
 
 	/* Store the PreferredBearer in case of dual-mode devices */
 	bearer = device_prefer_bearer_str(dev);
-	if (bearer)
+	if (bearer) {
 		g_key_file_set_string(file, "General", "PreferredBearer",
 							bearer);
+		if (dev->prefer_bearer == PREFER_LAST_USED) {
+			g_key_file_set_string(file, "General", "LastUsedBearer",
+						dev->le_state.prefer ?
+						"le" : "bredr");
+		}
+	}
 }
 
 static void store_csrk(struct csrk_info *csrk, GKeyFile *key_file,
@@ -3450,26 +3514,25 @@ dev_property_set_prefer_bearer(const GDBusPropertyTable *property,
 	if (!strcasecmp(device_prefer_bearer_str(device), str))
 		goto done;
 
-	if (!strcasecmp(str, "last-seen")) {
-		device->bredr_state.prefer = false;
-		device->le_state.prefer = false;
-	} else if (!strcasecmp(str, "bredr")) {
-		device->bredr_state.prefer = true;
-		device->le_state.prefer = false;
-		/* Remove device from auto-connect list so the kernel does not
-		 * attempt to auto-connect to it in case it starts advertising.
-		 */
-		device_set_auto_connect(device, FALSE);
-	} else if (!strcasecmp(str, "le")) {
-		device->le_state.prefer = true;
-		device->bredr_state.prefer = false;
-		/* Add device to auto-connect list */
-		device_set_auto_connect(device, TRUE);
-	} else {
+	if (!device_set_prefer_bearer_str(device, str)) {
 		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
 		return;
+	}
+
+	switch (device->prefer_bearer) {
+	case PREFER_BREDR:
+		/* Remove device from auto-connect list so the kernel does not
+		 * attempt to auto-connect to it in case it starts advertising.
+		 */
+		device_set_auto_connect(device, FALSE);
+		break;
+
+	case PREFER_LE:
+		/* Add device to auto-connect list */
+		device_set_auto_connect(device, TRUE);
+		break;
 	}
 
 	store_device_info(device);
@@ -3563,12 +3626,44 @@ static void clear_temporary_timer(struct btd_device *dev)
 	}
 }
 
+static void device_update_last_used(struct btd_device *device,
+					uint8_t bdaddr_type)
+{
+	struct bearer_state *state;
+
+	state = get_state(device, bdaddr_type);
+	state->last_used = time(NULL);
+
+	if (device->prefer_bearer != PREFER_LAST_USED)
+		return;
+
+	/* If current policy is to prefer last used bearer update the state. */
+	state->prefer = true;
+	if (bdaddr_type == BDADDR_BREDR) {
+		if (device->le_state.prefer) {
+			device->le_state.prefer = false;
+			/* Remove device from auto-connect list so the kernel
+			 * does not attempt to auto-connect to it in case it
+			 * starts advertising.
+			 */
+			device_set_auto_connect(device, FALSE);
+		}
+	} else if (device->bredr_state.prefer) {
+		device->bredr_state.prefer = false;
+		/* Add device to auto-connect list */
+		device_set_auto_connect(device, TRUE);
+	}
+
+	store_device_info(device);
+}
+
 void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 							uint32_t flags)
 {
 	struct bearer_state *state = get_state(dev, bdaddr_type);
 
 	device_update_last_seen(dev, bdaddr_type, true);
+	device_update_last_used(dev, bdaddr_type);
 
 	if (state->connected) {
 		char addr[18];
@@ -4062,18 +4157,16 @@ static void load_info(struct btd_device *device, const char *local,
 	str = g_key_file_get_string(key_file, "General", "PreferredBearer",
 								NULL);
 	if (str) {
-		if (!strcasecmp(str, "last-seen")) {
-			device->bredr_state.prefer = false;
-			device->le_state.prefer = false;
-		} else if (!strcasecmp(str, "bredr")) {
-			device->bredr_state.prefer = true;
-			device->le_state.prefer = false;
-		} else if (!strcasecmp(str, "le")) {
-			device->le_state.prefer = true;
-			device->bredr_state.prefer = false;
-		}
-
+		device_set_prefer_bearer_str(device, str);
 		g_free(str);
+
+		/* Load last used bearer */
+		str = g_key_file_get_string(key_file, "General",
+						"LastUsedBearer", NULL);
+		if (str)
+			device_update_last_used(device, !strcmp(str, "le") ?
+						device->bdaddr_type :
+						BDADDR_BREDR);
 	}
 
 next:
@@ -4854,6 +4947,11 @@ void device_set_bredr_support(struct btd_device *device)
 		return;
 
 	device->bredr = true;
+
+	if (device->le)
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "PreferredBearer");
+
 	store_device_info(device);
 }
 
@@ -4867,6 +4965,10 @@ void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "AddressType");
+
+	if (device->bredr)
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "PreferredBearer");
 
 	store_device_info(device);
 }
