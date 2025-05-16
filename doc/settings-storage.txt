@@ -294,7 +294,7 @@ Long term key) related to a remote device.
 					separated by ";"
 
   PreferredBearer	String		Preferred bearer for remote device
-
+  LastUsedBearer	String		Last used bearer for remote device
 
 [DeviceID] group contains:
 
