@@ -369,9 +369,9 @@ string PreferredBearer [readwrite, optional, experimental]
 
 	Possible values:
 
-	:"last-seen":
+	:"last-used":
 
-		Connect to last seen bearer first. Default.
+		Connect to last used bearer first. Default.
 
 	:"bredr":
 
@@ -380,3 +380,7 @@ string PreferredBearer [readwrite, optional, experimental]
 	:"le":
 
 		Connect to LE first.
+
+	:"last-seen":
+
+		Connect to last seen bearer first.
