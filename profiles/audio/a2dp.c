@@ -565,8 +565,10 @@ static void a2dp_stream_starting(struct a2dp_sep *sep, struct avdtp *session)
 	stream->starting = TRUE;
 }
 
-static void a2dp_stream_free(struct a2dp_stream *stream)
+static void a2dp_stream_free(void *data)
 {
+	struct a2dp_stream *stream = data;
+
 	avdtp_unref(stream->session);
 	free(stream);
 }
@@ -2725,6 +2727,7 @@ static void a2dp_unregister_sep(struct a2dp_sep *sep)
 
 	avdtp_unregister_sep(server->seps, &server->seid_pool, sep->lsep);
 
+	queue_destroy(sep->streams, a2dp_stream_free);
 	g_free(sep);
 
 	if (!queue_isempty(server->seps))
