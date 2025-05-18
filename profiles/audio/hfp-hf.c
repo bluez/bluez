@@ -1140,9 +1140,31 @@ failed:
 	return btd_error_failed(msg, "Hang up all command failed");
 }
 
+static DBusMessage *call_answer(DBusConnection *conn, DBusMessage *msg,
+	void *call_data)
+{
+	struct call *call = call_data;
+	struct hfp_device *dev = telephony_get_profile_data(call->device);
+
+	DBG("");
+
+	if (call->state != CALL_STATE_INCOMING)
+		return btd_error_failed(msg, "Invalid state call");
+
+	if (!hfp_hf_send_command(dev->hf, cmd_complete_cb,
+			dbus_message_ref(msg), "ATA"))
+		goto failed;
+
+	return NULL;
+
+failed:
+	return btd_error_failed(msg, "Answer command failed");
+}
+
 struct telephony_callbacks hfp_callbacks = {
 	.dial = hfp_dial,
 	.hangup_all = hfp_hangup_all,
+	.call_answer = call_answer,
 };
 
 static int hfp_connect(struct btd_service *service)
