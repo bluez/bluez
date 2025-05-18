@@ -16,8 +16,12 @@ In order to compile Bluetooth utilities you need following software packages:
 	- udev library (optional)
 	- readline (command line clients)
 
-	On a debian based system, this can be done by running the following command:
+	On a Debian based system, this can be done by running the following commands: 
+		sudo nano /etc/apt/sources.list
+		(un-comment all entries beginning with `deb-src`
+		git clone https://github.com/bluez/bluez.git
 		sudo apt-get build-dep bluez
+		cd bluez
 		./bootstrap
 
 To configure run:
