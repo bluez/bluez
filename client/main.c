@@ -1641,6 +1641,9 @@ static struct GDBusProxy *find_set(int argc, char *argv[])
 	if (check_default_ctrl() == FALSE)
 		return NULL;
 
+	if (argc < 2 || !strlen(argv[1]))
+		return NULL;
+
 	proxy = find_proxies_by_path(default_ctrl->sets, argv[1]);
 	if (!proxy) {
 		bt_shell_printf("DeviceSet %s not available\n", argv[1]);
