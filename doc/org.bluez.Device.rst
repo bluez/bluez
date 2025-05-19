@@ -155,6 +155,23 @@ array{array{byte}} GetServiceRecords() [experimental]
 	:org.bluez.Error.NotConnected:
 	:org.bluez.Error.DoesNotExist:
 
+Signals
+-------
+
+void Disconnected(string reason)
+````````````````````````````````
+
+	This signal is launched when a device is disconnected with the reason of
+	the disconnection.
+
+	Possible reasons:
+
+	:disconnection-unknown:
+	:disconnection-timeout:
+	:disconnection-local-host:
+	:disconnection-remote:
+	:disconnection-local-suspend:
+
 Properties
 ----------
 
