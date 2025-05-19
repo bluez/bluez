@@ -3417,6 +3417,12 @@ static const GDBusMethodTable device_methods[] = {
 	{ }
 };
 
+static const GDBusSignalTable device_signals[] = {
+	{ GDBUS_SIGNAL("Disconnected",
+			GDBUS_ARGS({ "reason", "s" })) },
+	{ }
+};
+
 static gboolean
 dev_property_get_prefer_bearer(const GDBusPropertyTable *property,
 				DBusMessageIter *iter, void *data)
@@ -3637,13 +3643,34 @@ static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
 								dev, NULL);
 }
 
+static const char *disconnect_reason(uint8_t reason)
+{
+	switch (reason) {
+	case MGMT_DEV_DISCONN_UNKNOWN:
+		return "disconnection-unknown";
+	case MGMT_DEV_DISCONN_TIMEOUT:
+		return "disconnection-timeout";
+	case MGMT_DEV_DISCONN_LOCAL_HOST:
+		return "disconnection-local-host";
+	case MGMT_DEV_DISCONN_REMOTE:
+		return "disconnection-remote";
+	case MGMT_DEV_DISCONN_LOCAL_HOST_SUSPEND:
+		return "disconnection-local-suspend";
+	default:
+		warn("Unknown disocnnection value: %u", reason);
+		return "disconnection-unknown";
+	}
+}
+
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
-								bool *remove)
+								bool *remove,
+								uint8_t reason)
 {
 	struct bearer_state *state = get_state(device, bdaddr_type);
 	DBusMessage *reply;
 	bool remove_device = false;
 	bool paired_status_updated = false;
+	const char *str_reason;
 
 	if (!state->connected)
 		return;
@@ -3707,6 +3734,12 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 
 	g_slist_free_full(device->eir_uuids, g_free);
 	device->eir_uuids = NULL;
+
+	str_reason = disconnect_reason(reason);
+	g_dbus_emit_signal(dbus_conn, device->path, DEVICE_INTERFACE,
+						"Disconnected",
+						DBUS_TYPE_STRING, &str_reason,
+						DBUS_TYPE_INVALID);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
@@ -4611,7 +4644,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	if (g_dbus_register_interface(dbus_conn,
 					device->path, DEVICE_INTERFACE,
-					device_methods, NULL,
+					device_methods, device_signals,
 					device_properties, device,
 					device_free) == FALSE) {
 		error("Unable to register device interface for %s", address);
