@@ -705,9 +705,49 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 	}
 }
 
+static const char *disconnect_reason(uint8_t reason)
+{
+	switch (reason) {
+	case 0:
+		return "unknown";
+	case 1:
+		return "timeout";
+	case 2:
+		return "local host";
+	case 3:
+		return "remote";
+	case 4:
+		return "authentication failure";
+	case 5:
+		return "local suspend";
+	default:
+		return "unknown value";
+	}
+}
+
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
+	if (!strcmp(dbus_message_get_member(message), "Disconnected")) {
+		DBusMessageIter iter;
+		u_int8_t reason;
+
+		if (!dbus_message_iter_init(message, &iter))
+			goto failed;
+
+		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_BYTE)
+			goto failed;
+
+		dbus_message_iter_get_basic(&iter, &reason);
+
+		bt_shell_printf("[SIGNAL] %s.%s %u (%s)\n",
+					dbus_message_get_interface(message),
+					dbus_message_get_member(message),
+					reason, disconnect_reason(reason));
+		return;
+	}
+
+failed:
 	bt_shell_printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
 					dbus_message_get_member(message));
 }
