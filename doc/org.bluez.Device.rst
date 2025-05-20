@@ -155,6 +155,53 @@ array{array{byte}} GetServiceRecords() [experimental]
 	:org.bluez.Error.NotConnected:
 	:org.bluez.Error.DoesNotExist:
 
+Signals
+-------
+
+void Disconnected(byte reason)
+````````````````````````````````
+
+	This signal is launched when a device is disconnected, with the reason of
+	the disconnection.
+
+	This could be used by client application, depending on internal policy, to
+	try to reconnect to the device in case of timeout or unknown disconnection,
+	or to try to connect to another device.
+
+	Possible reasons:
+
+	:0:
+		Unknown.
+
+	:1:
+		Timeout.
+
+		The link supervision timeout has expired for a connection or the
+		synchronization timeout has expired for a broadcast.
+
+	:2:
+		Disconnected from local host.
+
+		The local device terminated the connection, terminated synchronization
+		with a broadcaster, or terminated broadcasting packets.
+
+	:3:
+		Disconnected from remote.
+
+		This disconnection can be due to:
+			- the user on the remote device either terminated the connection
+			  or stopped broadcasting packets,
+			- the remote device terminated the connection because of low
+			  resources,
+			- the remote device terminated the connection because the device
+			  is about to power off.
+
+	:4:
+		Authentication failure.
+
+	:5:
+		Local host suspend.
+
 Properties
 ----------
 
