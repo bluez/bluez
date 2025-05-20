@@ -1922,9 +1922,9 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		DBusMessage *reply;
 
 		if (device->bonding_status == MGMT_STATUS_AUTH_FAILED)
-			err_str = ERR_BREDR_CONN_KEY_MISSING;
+			err_str = ":" ERR_BREDR_CONN_KEY_MISSING ":Link key missing";
 		else
-			err_str = ERR_BREDR_CONN_CANCELED;
+			err_str = ":" ERR_BREDR_CONN_CANCELED ":Connection canceled";
 		reply = btd_error_failed(device->connect, err_str);
 		g_dbus_send_message(dbus_conn, reply);
 		dbus_message_unref(device->connect);
@@ -2545,7 +2545,8 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 
 	if (!btd_adapter_get_powered(dev->adapter)) {
 		return btd_error_not_ready_str(msg,
-					ERR_BREDR_CONN_ADAPTER_NOT_POWERED);
+					":" ERR_BREDR_CONN_ADAPTER_NOT_POWERED
+					":Adapter not powered");
 	}
 
 	btd_device_set_temporary(dev, false);
@@ -2564,7 +2565,8 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 				return dbus_message_new_method_return(msg);
 			} else {
 				return btd_error_not_available_str(msg,
-					ERR_BREDR_CONN_PROFILE_UNAVAILABLE);
+					":" ERR_BREDR_CONN_PROFILE_UNAVAILABLE ":"
+					"Exhausted the list of BR/EDR profiles to connect to");
 			}
 		}
 
