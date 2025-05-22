@@ -161,6 +161,7 @@ static struct set_discovery_filter_args {
 	size_t uuids_len;
 	dbus_bool_t duplicate;
 	dbus_bool_t discoverable;
+	dbus_bool_t auto_connect;
 	bool set;
 	bool active;
 	unsigned int timeout;
@@ -1253,9 +1254,14 @@ static void set_discovery_filter_setup(DBusMessageIter *iter, void *user_data)
 						DBUS_TYPE_BOOLEAN,
 						&args->discoverable);
 
-	if (args->pattern != NULL)
+	if (args->pattern != NULL) {
 		g_dbus_dict_append_entry(&dict, "Pattern", DBUS_TYPE_STRING,
 						&args->pattern);
+		if (args->auto_connect)
+			g_dbus_dict_append_entry(&dict, "Pattern",
+						DBUS_TYPE_BOOLEAN,
+						&args->auto_connect);
+	}
 
 	dbus_message_iter_close_container(iter, &dict);
 }
@@ -1492,6 +1498,29 @@ static void cmd_scan_filter_pattern(int argc, char *argv[])
 		set_discovery_filter(false);
 }
 
+static void cmd_scan_filter_auto_connect(int argc, char *argv[])
+{
+	if (argc < 2 || !strlen(argv[1])) {
+		bt_shell_printf("AutoConnect: %s\n",
+				filter.auto_connect ? "on" : "off");
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	if (!strcmp(argv[1], "on"))
+		filter.auto_connect = true;
+	else if (!strcmp(argv[1], "off"))
+		filter.auto_connect = false;
+	else {
+		bt_shell_printf("Invalid option: %s\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	filter.set = false;
+
+	if (filter.active)
+		set_discovery_filter(false);
+}
+
 static void filter_clear_uuids(void)
 {
 	g_strfreev(filter.uuids);
@@ -1531,6 +1560,11 @@ static void filter_clear_pattern(void)
 	filter.pattern = NULL;
 }
 
+static void filter_auto_connect(void)
+{
+	filter.auto_connect = false;
+}
+
 struct clear_entry {
 	const char *name;
 	void (*clear) (void);
@@ -1544,6 +1578,7 @@ static const struct clear_entry filter_clear[] = {
 	{ "duplicate-data", filter_clear_duplicate },
 	{ "discoverable", filter_clear_discoverable },
 	{ "pattern", filter_clear_pattern },
+	{ "auto-connect", filter_auto_connect },
 	{}
 };
 
@@ -3218,6 +3253,9 @@ static const struct bt_shell_menu scan_menu = {
 				NULL },
 	{ "pattern", "[value]", cmd_scan_filter_pattern,
 				"Set/Get pattern filter",
+				NULL },
+	{ "auto-connect", "[on/off]", cmd_scan_filter_auto_connect,
+				"Set/Get auto-connect filter",
 				NULL },
 	{ "clear",
 	"[uuids/rssi/pathloss/transport/duplicate-data/discoverable/pattern]",
