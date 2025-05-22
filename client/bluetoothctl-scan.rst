@@ -122,6 +122,16 @@ When set, it disregards device discoverable flags.
 :Usage: **> pattern [value]**
 
 
+auto-connect
+------------
+
+Set/Get auto-connect filter.
+
+Connect to discovered devices automatically if pattern filter has been set and
+it matches the device address or name and the device is connectable.
+
+:Usage: **> auto-connect [on/off]**
+
 clear
 -----
 
