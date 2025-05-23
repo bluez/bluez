@@ -150,29 +150,35 @@ void SetDiscoveryFilter(dict filter)
 		that don't set any pattern as it work as a logical OR, also
 		setting empty string "" pattern will match any device found.
 
-		When discovery filter is set, Device objects will be created as
-		new devices with matching criteria are discovered regardless of
-		they are connectable or discoverable which enables listening to
-		non-connectable and non-discoverable devices.
+	:bool AutoConnect (Default false):
 
-		When multiple clients call SetDiscoveryFilter, their filters are
-		internally merged, and notifications about new devices are sent
-		to all clients. Therefore, each client must check that device
-		updates actually match its filter.
+		Connect to discovered devices automatically if a Pattern has
+		been set and it matches the device address or name and it is
+		connectable.
 
-		When SetDiscoveryFilter is called multiple times by the same
-		client, last filter passed will be active for given client.
+	When discovery filter is set, Device objects will be created as new
+	devices with matching criteria are discovered regardless of they are
+	connectable or discoverable which enables listening to non-connectable
+	and non-discoverable devices.
 
-		SetDiscoveryFilter can be called before StartDiscovery.
-		It is useful when client will create first discovery session,
-		to ensure that proper scan will be started right after call to
-		StartDiscovery.
+	When multiple clients call SetDiscoveryFilter, their filters are
+	internally merged, and notifications about new devices are sent to all
+	clients. Therefore, each client must check that device updates actually
+	match its filter.
 
-		Possible errors:
+	When SetDiscoveryFilter is called multiple times by the same client,
+	last filter passed will be active for given client.
 
-		:org.bluez.Error.NotReady:
-		:org.bluez.Error.NotSupported:
-		:org.bluez.Error.Failed:
+	SetDiscoveryFilter can be called before StartDiscovery.
+	It is useful when client will create first discovery session,
+	to ensure that proper scan will be started right after call to
+	StartDiscovery.
+
+	Possible errors:
+
+	:org.bluez.Error.NotReady:
+	:org.bluez.Error.NotSupported:
+	:org.bluez.Error.Failed:
 
 array{string} GetDiscoveryFilters()
 ```````````````````````````````````
