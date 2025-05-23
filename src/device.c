@@ -2569,15 +2569,75 @@ static GSList *create_pending_list(struct btd_device *dev, const char *uuid)
 	return dev->pending;
 }
 
+#define NVAL_TIME ((time_t) -1)
+#define SEEN_TRESHHOLD 300
+
+static uint8_t select_conn_bearer(struct btd_device *dev)
+{
+	time_t bredr_last = NVAL_TIME, le_last = NVAL_TIME;
+	time_t current = time(NULL);
+
+	/* Use preferred bearer or bonded bearer in case only one is bonded */
+	if (dev->bredr_state.prefer ||
+			(dev->bredr_state.bonded && !dev->le_state.bonded))
+		return BDADDR_BREDR;
+	else if (dev->le_state.prefer ||
+			(!dev->bredr_state.bonded && dev->le_state.bonded))
+		return dev->bdaddr_type;
+
+	/* If the address is random it can only be connected over LE */
+	if (dev->bdaddr_type == BDADDR_LE_RANDOM)
+		return dev->bdaddr_type;
+
+	if (dev->bredr_state.connectable && dev->bredr_state.last_seen) {
+		bredr_last = current - dev->bredr_state.last_seen;
+		if (bredr_last > SEEN_TRESHHOLD)
+			bredr_last = NVAL_TIME;
+	}
+
+	if (dev->le_state.connectable && dev->le_state.last_seen) {
+		le_last = current - dev->le_state.last_seen;
+		if (le_last > SEEN_TRESHHOLD)
+			le_last = NVAL_TIME;
+	}
+
+	if (le_last == NVAL_TIME && bredr_last == NVAL_TIME)
+		return dev->bdaddr_type;
+
+	if (dev->bredr && (!dev->le || le_last == NVAL_TIME))
+		return BDADDR_BREDR;
+
+	if (dev->le && (!dev->bredr || bredr_last == NVAL_TIME))
+		return dev->bdaddr_type;
+
+	/*
+	 * Prefer BR/EDR if time is the same since it might be from an
+	 * advertisement with BR/EDR flag set.
+	 */
+	if (bredr_last <= le_last && btd_adapter_get_bredr(dev->adapter))
+		return BDADDR_BREDR;
+
+	return dev->bdaddr_type;
+}
+
 int btd_device_connect_services(struct btd_device *dev, GSList *services)
 {
 	GSList *l;
+	uint8_t bdaddr_type;
 
 	if (dev->pending || dev->connect || dev->browse)
 		return -EBUSY;
 
 	if (!btd_adapter_get_powered(dev->adapter))
 		return -ENETDOWN;
+
+	bdaddr_type = select_conn_bearer(dev);
+	if (bdaddr_type != BDADDR_BREDR) {
+		if (dev->le_state.connected)
+			return -EALREADY;
+
+		return device_connect_le(dev);
+	}
 
 	if (!dev->bredr_state.svc_resolved)
 		return -ENOENT;
@@ -2659,57 +2719,6 @@ resolve_services:
 	}
 
 	return NULL;
-}
-
-#define NVAL_TIME ((time_t) -1)
-#define SEEN_TRESHHOLD 300
-
-static uint8_t select_conn_bearer(struct btd_device *dev)
-{
-	time_t bredr_last = NVAL_TIME, le_last = NVAL_TIME;
-	time_t current = time(NULL);
-
-	/* Use preferred bearer or bonded bearer in case only one is bonded */
-	if (dev->bredr_state.prefer ||
-			(dev->bredr_state.bonded && !dev->le_state.bonded))
-		return BDADDR_BREDR;
-	else if (dev->le_state.prefer ||
-			(!dev->bredr_state.bonded && dev->le_state.bonded))
-		return dev->bdaddr_type;
-
-	/* If the address is random it can only be connected over LE */
-	if (dev->bdaddr_type == BDADDR_LE_RANDOM)
-		return dev->bdaddr_type;
-
-	if (dev->bredr_state.connectable && dev->bredr_state.last_seen) {
-		bredr_last = current - dev->bredr_state.last_seen;
-		if (bredr_last > SEEN_TRESHHOLD)
-			bredr_last = NVAL_TIME;
-	}
-
-	if (dev->le_state.connectable && dev->le_state.last_seen) {
-		le_last = current - dev->le_state.last_seen;
-		if (le_last > SEEN_TRESHHOLD)
-			le_last = NVAL_TIME;
-	}
-
-	if (le_last == NVAL_TIME && bredr_last == NVAL_TIME)
-		return dev->bdaddr_type;
-
-	if (dev->bredr && (!dev->le || le_last == NVAL_TIME))
-		return BDADDR_BREDR;
-
-	if (dev->le && (!dev->bredr || bredr_last == NVAL_TIME))
-		return dev->bdaddr_type;
-
-	/*
-	 * Prefer BR/EDR if time is the same since it might be from an
-	 * advertisement with BR/EDR flag set.
-	 */
-	if (bredr_last <= le_last && btd_adapter_get_bredr(dev->adapter))
-		return BDADDR_BREDR;
-
-	return dev->bdaddr_type;
 }
 
 static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
