@@ -3481,6 +3481,12 @@ static const GDBusMethodTable device_methods[] = {
 	{ }
 };
 
+static const GDBusSignalTable device_signals[] = {
+	{ GDBUS_SIGNAL("Disconnected",
+			GDBUS_ARGS({ "name", "s" }, { "message", "s" })) },
+	{ }
+};
+
 static gboolean
 dev_property_get_prefer_bearer(const GDBusPropertyTable *property,
 				DBusMessageIter *iter, void *data)
@@ -3732,8 +3738,52 @@ static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
 								dev, NULL);
 }
 
+static void device_disconnected(struct btd_device *device, uint8_t reason)
+{
+	const char *name;
+	const char *message;
+
+	switch (reason) {
+	case MGMT_DEV_DISCONN_UNKNOWN:
+		name = "org.bluez.Reason.Unknown";
+		message = "Unspecified";
+		break;
+	case MGMT_DEV_DISCONN_TIMEOUT:
+		name = "org.bluez.Reason.Timeout";
+		message = "Connection timeout";
+		break;
+	case MGMT_DEV_DISCONN_LOCAL_HOST:
+		name = "org.bluez.Reason.Local";
+		message = "Connection terminated by local host";
+		break;
+	case MGMT_DEV_DISCONN_REMOTE:
+		name = "org.bluez.Reason.Remote";
+		message = "Connection terminated by remote user";
+		break;
+	case MGMT_DEV_DISCONN_AUTH_FAILURE:
+		name = "org.bluez.Reason.Authentication";
+		message = "Connection terminated due to authentication failure";
+		break;
+	case MGMT_DEV_DISCONN_LOCAL_HOST_SUSPEND:
+		name = "org.bluez.Reason.Suspend";
+		message = "Connection terminated by local host for suspend";
+		break;
+	default:
+		warn("Unknown disconnection value: %u", reason);
+		name = "org.bluez.Reason.Unknown";
+		message = "Unspecified";
+	}
+
+	g_dbus_emit_signal(dbus_conn, device->path, DEVICE_INTERFACE,
+						"Disconnected",
+						DBUS_TYPE_STRING, &name,
+						DBUS_TYPE_STRING, &message,
+						DBUS_TYPE_INVALID);
+}
+
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
-								bool *remove)
+								bool *remove,
+								uint8_t reason)
 {
 	struct bearer_state *state = get_state(device, bdaddr_type);
 	DBusMessage *reply;
@@ -3802,6 +3852,8 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 
 	g_slist_free_full(device->eir_uuids, g_free);
 	device->eir_uuids = NULL;
+
+	device_disconnected(device, reason);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
@@ -4704,7 +4756,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	if (g_dbus_register_interface(dbus_conn,
 					device->path, DEVICE_INTERFACE,
-					device_methods, NULL,
+					device_methods, device_signals,
 					device_properties, device,
 					device_free) == FALSE) {
 		error("Unable to register device interface for %s", address);
