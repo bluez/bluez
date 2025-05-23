@@ -7549,7 +7549,8 @@ struct agent *adapter_get_agent(struct btd_adapter *adapter)
 
 static void adapter_remove_connection(struct btd_adapter *adapter,
 						struct btd_device *device,
-						uint8_t bdaddr_type)
+						uint8_t bdaddr_type,
+						uint8_t reason)
 {
 	bool remove_device = false;
 
@@ -7560,7 +7561,7 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 		return;
 	}
 
-	device_remove_connection(device, bdaddr_type, &remove_device);
+	device_remove_connection(device, bdaddr_type, &remove_device, reason);
 
 	device_cancel_authentication(device, TRUE);
 
@@ -7601,9 +7602,11 @@ static void adapter_stop(struct btd_adapter *adapter)
 		struct btd_device *device = adapter->connections->data;
 		uint8_t addr_type = btd_device_get_bdaddr_type(device);
 
-		adapter_remove_connection(adapter, device, BDADDR_BREDR);
+		adapter_remove_connection(adapter, device, BDADDR_BREDR,
+						MGMT_DEV_DISCONN_UNKNOWN);
 		if (addr_type != BDADDR_BREDR)
-			adapter_remove_connection(adapter, device, addr_type);
+			adapter_remove_connection(adapter, device, addr_type,
+						MGMT_DEV_DISCONN_UNKNOWN);
 	}
 
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
@@ -8551,7 +8554,7 @@ static void dev_disconnected(struct btd_adapter *adapter,
 
 	device = btd_adapter_find_device(adapter, &addr->bdaddr, addr->type);
 	if (device) {
-		adapter_remove_connection(adapter, device, addr->type);
+		adapter_remove_connection(adapter, device, addr->type, reason);
 		disconnect_notify(device, reason);
 	}
 

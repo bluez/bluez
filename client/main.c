@@ -708,6 +708,24 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
+	if (!strcmp(dbus_message_get_member(message), "Disconnected")) {
+		const char *name;
+		const char *msg;
+
+		if (!dbus_message_get_args(message, NULL,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_STRING, &msg,
+					DBUS_TYPE_INVALID))
+			goto failed;
+
+		bt_shell_printf("[SIGNAL] %s.%s %s %s\n",
+					dbus_message_get_interface(message),
+					dbus_message_get_member(message),
+					name, msg);
+		return;
+	}
+
+failed:
 	bt_shell_printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
 					dbus_message_get_member(message));
 }
