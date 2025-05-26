@@ -383,6 +383,7 @@ static void hs_cb(struct btd_service *service, btd_service_state_t old_state,
 		else if (btd_service_get_state(sink) !=
 						BTD_SERVICE_STATE_CONNECTED)
 			policy_set_sink_timer(data);
+		data->hs_retries = 0;
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
@@ -537,8 +538,6 @@ static void controller_cb(struct btd_service *service,
 				timeout_remove(data->ct_timer);
 				data->ct_timer = 0;
 			}
-		} else if (old_state == BTD_SERVICE_STATE_CONNECTED) {
-			data->ct_retries = 0;
 		}
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
@@ -548,6 +547,7 @@ static void controller_cb(struct btd_service *service,
 			timeout_remove(data->ct_timer);
 			data->ct_timer = 0;
 		}
+		data->ct_retries = 0;
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
@@ -587,8 +587,6 @@ static void target_cb(struct btd_service *service,
 				timeout_remove(data->tg_timer);
 				data->tg_timer = 0;
 			}
-		} else if (old_state == BTD_SERVICE_STATE_CONNECTED) {
-			data->tg_retries = 0;
 		}
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
@@ -598,6 +596,7 @@ static void target_cb(struct btd_service *service,
 			timeout_remove(data->tg_timer);
 			data->tg_timer = 0;
 		}
+		data->tg_retries = 0;
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
