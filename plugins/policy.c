@@ -311,6 +311,7 @@ static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 			timeout_remove(data->sink_timer);
 			data->sink_timer = 0;
 		}
+		data->sink_retries = 0;
 
 		/* Try connecting HSP/HFP if it is not connected */
 		hs = btd_device_get_service(dev, HFP_HS_UUID);
@@ -375,6 +376,11 @@ static void hs_cb(struct btd_service *service, btd_service_state_t old_state,
 	case BTD_SERVICE_STATE_CONNECTING:
 		break;
 	case BTD_SERVICE_STATE_CONNECTED:
+		if (data->hs_timer > 0) {
+			timeout_remove(data->hs_timer);
+			data->hs_timer = 0;
+		}
+		data->hs_retries = 0;
 		/* Check if service initiate the connection then proceed
 		 * immediately otherwise set timer
 		 */
@@ -489,6 +495,7 @@ static void source_cb(struct btd_service *service,
 			timeout_remove(data->source_timer);
 			data->source_timer = 0;
 		}
+		data->source_retries = 0;
 
 		/* Check if service initiate the connection then proceed
 		 * immediatelly otherwise set timer
@@ -537,8 +544,6 @@ static void controller_cb(struct btd_service *service,
 				timeout_remove(data->ct_timer);
 				data->ct_timer = 0;
 			}
-		} else if (old_state == BTD_SERVICE_STATE_CONNECTED) {
-			data->ct_retries = 0;
 		}
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
@@ -548,6 +553,7 @@ static void controller_cb(struct btd_service *service,
 			timeout_remove(data->ct_timer);
 			data->ct_timer = 0;
 		}
+		data->ct_retries = 0;
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
@@ -587,8 +593,6 @@ static void target_cb(struct btd_service *service,
 				timeout_remove(data->tg_timer);
 				data->tg_timer = 0;
 			}
-		} else if (old_state == BTD_SERVICE_STATE_CONNECTED) {
-			data->tg_retries = 0;
 		}
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:
@@ -598,6 +602,7 @@ static void target_cb(struct btd_service *service,
 			timeout_remove(data->tg_timer);
 			data->tg_timer = 0;
 		}
+		data->tg_retries = 0;
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
