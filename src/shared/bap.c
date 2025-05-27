@@ -516,8 +516,15 @@ static void pacs_sink_read(struct gatt_db_attribute *attrib,
 	queue_foreach(bdb->sinks, pac_foreach, &iov);
 	queue_foreach(bdb->broadcast_sinks, pac_foreach, &iov);
 
-	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
-							iov.iov_len);
+	if (offset > iov.iov_len) {
+		gatt_db_attribute_read_result(attrib, id,
+						BT_ATT_ERROR_INVALID_OFFSET,
+						NULL, 0);
+		return;
+	}
+
+	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base + offset,
+							iov.iov_len - offset);
 }
 
 static void pacs_sink_loc_read(struct gatt_db_attribute *attrib,
@@ -549,8 +556,15 @@ static void pacs_source_read(struct gatt_db_attribute *attrib,
 
 	queue_foreach(bdb->sources, pac_foreach, &iov);
 
-	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
-							iov.iov_len);
+	if (offset > iov.iov_len) {
+		gatt_db_attribute_read_result(attrib, id,
+						BT_ATT_ERROR_INVALID_OFFSET,
+						NULL, 0);
+		return;
+	}
+
+	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base + offset,
+							iov.iov_len - offset);
 }
 
 static void pacs_source_loc_read(struct gatt_db_attribute *attrib,
@@ -627,6 +641,7 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
 					BT_GATT_CHRC_PROP_NOTIFY,
 					pacs_sink_loc_read, NULL,
 					pacs);
+	gatt_db_attribute_set_fixed_length(pacs->sink_loc, sizeof(uint32_t));
 
 	pacs->sink_loc_ccc = gatt_db_service_add_ccc(pacs->service,
 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
@@ -649,6 +664,7 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
 					BT_GATT_CHRC_PROP_NOTIFY,
 					pacs_source_loc_read, NULL,
 					pacs);
+	gatt_db_attribute_set_fixed_length(pacs->source_loc, sizeof(uint32_t));
 
 	pacs->source_loc_ccc = gatt_db_service_add_ccc(pacs->service,
 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
@@ -659,6 +675,8 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
 					BT_GATT_CHRC_PROP_READ |
 					BT_GATT_CHRC_PROP_NOTIFY,
 					pacs_context_read, NULL, pacs);
+	gatt_db_attribute_set_fixed_length(pacs->context,
+						sizeof(struct bt_pacs_context));
 
 	pacs->context_ccc = gatt_db_service_add_ccc(pacs->service,
 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
@@ -671,6 +689,8 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
 					BT_GATT_CHRC_PROP_NOTIFY,
 					pacs_supported_context_read, NULL,
 					pacs);
+	gatt_db_attribute_set_fixed_length(pacs->supported_context,
+						sizeof(struct bt_pacs_context));
 
 	pacs->supported_context_ccc = gatt_db_service_add_ccc(pacs->service,
 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
