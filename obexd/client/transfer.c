@@ -660,6 +660,9 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 	struct transfer_callback *callback = transfer->callback;
 
 	transfer->xfer = 0;
+	transfer->progress = transfer->transferred;
+	g_dbus_emit_property_changed(transfer->conn, transfer->path,
+			TRANSFER_INTERFACE, "Transferred");
 
 	if (transfer->progress_id != 0) {
 		g_source_remove(transfer->progress_id);
