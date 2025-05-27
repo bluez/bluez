@@ -1320,9 +1320,9 @@ void media_player_set_duration(struct media_player *mp, uint32_t duration)
 	if (g_hash_table_size(mp->track) == 0)
 		return;
 
-	/* Ignore if duration is already set */
+	/* Ignore if duration is already set to value > 0 */
 	curval = g_hash_table_lookup(mp->track, "Duration");
-	if (curval != NULL)
+	if (curval != NULL && atoi(curval) != 0)
 		return;
 
 	value = g_strdup_printf("%u", duration);
