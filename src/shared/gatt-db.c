@@ -109,6 +109,7 @@ struct gatt_db_attribute {
 	uint32_t permissions;
 	uint16_t value_len;
 	uint8_t *value;
+	uint16_t read_offet;
 
 	gatt_db_read_t read_func;
 	gatt_db_write_t write_func;
@@ -151,7 +152,8 @@ static void pending_read_result(struct pending_read *p, int err,
 	if (p->timeout_id > 0)
 		timeout_remove(p->timeout_id);
 
-	p->func(p->attrib, err, data, length, p->user_data);
+	p->func(p->attrib, err, data + p->attrib->read_offset,
+			length - p->attrib->read_offset, p->user_data);
 
 	free(p);
 }
@@ -2125,6 +2127,8 @@ bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
 
 	if (!attrib || !func)
 		return false;
+
+	attrib->read_offset = offset;
 
 	/* Check boundaries if value_len is set */
 	if (attrib->value_len && offset > attrib->value_len) {
