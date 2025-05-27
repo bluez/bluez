@@ -370,15 +370,19 @@ Set Discoverable
 :Return Parameters:	Current_Settings (4 Octets)
 
 This command is used to set the discoverable property of a controller. The
-allowed Discoverable command parameter values are 0x00, 0x01 and 0x02. All other
-values will return Invalid Parameters.
+allowed Discoverable command parameter values are:
+
+.. csv-table::
+    :header: "Value", "Description"
+    :widths: auto
+
+    0x00, Not Discoverable
+    0x01, General Discoverable
+    0x02 (since 1.4), Limited Discoverable
 
 Timeout is the time in seconds and is only meaningful when Discoverable is set
 to 0x01 or 0x02. Providing a timeout with 0x00 return Invalid Parameters. For
 0x02, the timeout value is required.
-
-The value 0x00 disables discoverable, the value 0x01 enables general
-discoverable and the value 0x02 enables limited discoverable.
 
 This command is only available for BR/EDR capable controllers (e.g. not for
 single-mode LE ones). It will return Not Supported otherwise.
@@ -1707,12 +1711,15 @@ Set Advertising (since 1.4)
 :Return Parameters:	Current_Settings (4 Octets)
 
 This command is used to enable LE advertising on a controller that supports it.
-The allowed values for the Advertising command parameter are 0x00, 0x01 and
-0x02. All other values will return Invalid Parameters.
+The allowed values for the Advertising command parameter are:
 
-The value 0x00 disables advertising, the value 0x01 enables advertising with
-considering of connectable setting and the value 0x02 enables advertising in
-connectable mode.
+.. csv-table::
+    :header: "Value", "Description"
+    :widths: auto
+
+    0x00, Disable advertising
+    0x01, Enables advertising
+    0x02 (since 1.9), Enabled advertising in connectable mode
 
 Using value 0x01 means that when connectable setting is disabled, the
 advertising happens with undirected non-connectable advertising packets and a
@@ -1885,8 +1892,15 @@ Set Debug Keys (since 1.5)
 :Return Parameters:	Current_Settings (4 Octets)
 
 This command is used to tell the kernel whether to accept the usage of debug
-keys or not. The allowed values for this parameter are 0x00, 0x01 and 0x02. All
-other values will return an Invalid Parameters response.
+keys or not. The allowed values for this parameter are:
+
+.. csv-table::
+    :header: "Value", "Description"
+    :widths: auto
+
+    0x00, Discard keys on disconnect
+    0x01, Discard keys on reboot
+    0x02 (since 1.7), Discard keys on reboot (SSP debug mode)
 
 With a value of 0x00 any generated debug key will be discarded as soon as the
 connection terminates.
@@ -2643,11 +2657,11 @@ field in Add Advertising command provided:
 	2, Advertise as Limited Discoverable
 	3, Add Flags field to Adv_Data
 	4, Add TX Power field to Adv_Data
-	5, Add Appearance field to Scan_Rsp
-	6, Add Local Name in Scan_Rsp
-	7, Secondary Channel with LE 1M
-	8, Secondary Channel with LE 2M
-	9, Secondary Channel with LE Coded
+	5 (since 1.14), Add Appearance field to Scan_Rsp
+	6 (since 1.14), Add Local Name in Scan_Rsp
+	7 (since 1.15), Secondary Channel with LE 1M
+	8 (since 1.15), Secondary Channel with LE 2M
+	9 (since 1.15), Secondary Channel with LE Coded
 
 The Flags bit 0 indicates support for connectable advertising and for switching
 to connectable advertising independent of the connectable global setting. When
@@ -2760,11 +2774,11 @@ flags are defined:
 	2, Advertise as Limited Discoverable
 	3, Add Flags field to Adv_Data
 	4, Add TX Power field to Adv_Data
-	5, Add Appearance field to Scan_Rsp
-	6, Add Local Name in Scan_Rsp
-	7, Secondary Channel with LE 1M
-	8, Secondary Channel with LE 2M
-	9, Secondary Channel with LE Coded
+	5 (since 1.14), Add Appearance field to Scan_Rsp
+	6 (since 1.14), Add Local Name in Scan_Rsp
+	7 (since 1.15), Secondary Channel with LE 1M
+	8 (since 1.15), Secondary Channel with LE 2M
+	9 (since 1.15), Secondary Channel with LE Coded
 
 When the connectable flag is set, then the controller will use undirected
 connectable advertising. The value of the connectable setting can be overwritten
