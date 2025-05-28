@@ -1191,6 +1191,15 @@ static int hfp_connect(struct btd_service *service)
 	return telephony_register_interface(dev->telephony);
 }
 
+static void remove_calls(gpointer data, gpointer user_data)
+{
+	struct call *call = data;
+	struct hfp_device *dev = user_data;
+
+	dev->calls = g_slist_remove(dev->calls, call);
+	telephony_call_unregister_interface(call);
+}
+
 static int hfp_disconnect(struct btd_service *service)
 {
 	struct hfp_device *dev;
@@ -1198,6 +1207,8 @@ static int hfp_disconnect(struct btd_service *service)
 	DBG("");
 
 	dev = btd_service_get_user_data(service);
+
+	g_slist_foreach(dev->calls, remove_calls, dev);
 
 	if (dev->hf)
 		hfp_hf_disconnect(dev->hf);
