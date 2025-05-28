@@ -538,10 +538,25 @@ static void ciev_call_cb(uint8_t val, void *user_data)
 
 	dev->call = !!val;
 
-	if (dev->call == TRUE)
-		g_slist_foreach(dev->calls, activate_calls, dev);
-	else
+	if (dev->call == TRUE) {
+		if (dev->calls == NULL) {
+			/* Create already active call during SLC */
+			struct call *call;
+
+			call = telephony_new_call(dev->telephony,
+							CALL_STATE_ACTIVE,
+							NULL);
+			if (telephony_call_register_interface(call)) {
+				telephony_free_call(call);
+				return;
+			}
+			dev->calls = g_slist_append(dev->calls, call);
+		} else {
+			g_slist_foreach(dev->calls, activate_calls, dev);
+		}
+	} else {
 		g_slist_foreach(dev->calls, deactivate_active_calls, dev);
+	}
 }
 
 static void callsetup_deactivate(gpointer data, gpointer user_data)
