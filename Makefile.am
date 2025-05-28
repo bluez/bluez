@@ -465,8 +465,7 @@ EXTRA_DIST += doc/assigned-numbers.txt doc/supported-features.txt \
 				doc/test-runner.rst \
 				doc/settings-storage.txt
 
-EXTRA_DIST += doc/mgmt-api.txt \
-		doc/health-api.txt \
+EXTRA_DIST += doc/health-api.txt \
 		doc/sap-api.txt
 
 EXTRA_DIST += doc/hci.rst doc/mgmt.rst doc/l2cap.rst doc/rfcomm.rst doc/sco.rst
