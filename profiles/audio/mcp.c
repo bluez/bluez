@@ -342,7 +342,8 @@ static int mcp_accept(struct btd_service *service)
 
 	bt_mcp_attach(data->mcp, client);
 
-	data->mp = media_player_controller_create(device_get_path(device), 0);
+	data->mp = media_player_controller_create(device_get_path(device),
+							"mcp", 0);
 	if (data->mp == NULL) {
 		DBG("Unable to create Media Player");
 		return -EINVAL;
