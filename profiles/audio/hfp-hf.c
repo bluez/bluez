@@ -1051,8 +1051,65 @@ failed:
 	return btd_error_failed(msg, "Dial command failed");
 }
 
+static DBusMessage *hfp_hangup_all(DBusConnection *conn, DBusMessage *msg,
+				void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	bool found_active = FALSE;
+	bool found_held = FALSE;
+	GSList *l;
+
+	DBG("");
+
+	for (l = dev->calls; l; l = l->next) {
+		struct call *call = l->data;
+
+		switch (call->state) {
+		case CALL_STATE_ACTIVE:
+		case CALL_STATE_DIALING:
+		case CALL_STATE_ALERTING:
+		case CALL_STATE_INCOMING:
+			found_active = TRUE;
+			break;
+		case CALL_STATE_HELD:
+		case CALL_STATE_WAITING:
+			found_held = TRUE;
+			break;
+		case CALL_STATE_DISCONNECTED:
+			break;
+		}
+	}
+
+	if (!found_active && !found_held)
+		return btd_error_failed(msg, "No call to hang up");
+
+	if (found_held) {
+		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb,
+				found_active ? NULL : dbus_message_ref(msg),
+				"AT+CHLD=0")) {
+			warn("Failed to hangup held calls");
+			goto failed;
+		}
+	}
+
+	if (found_active) {
+		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb,
+				dbus_message_ref(msg),
+				"AT+CHUP")) {
+			warn("Failed to hangup active calls");
+			goto failed;
+		}
+	}
+
+	return NULL;
+
+failed:
+	return btd_error_failed(msg, "Hang up all command failed");
+}
+
 struct telephony_callbacks hfp_callbacks = {
 	.dial = hfp_dial,
+	.hangup_all = hfp_hangup_all,
 };
 
 static int hfp_connect(struct btd_service *service)
