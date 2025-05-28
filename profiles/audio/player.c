@@ -1277,13 +1277,14 @@ void media_player_destroy(struct media_player *mp)
 }
 
 struct media_player *media_player_controller_create(const char *path,
-								uint16_t id)
+							const char *type,
+							uint16_t id)
 {
 	struct media_player *mp;
 
 	mp = g_new0(struct media_player, 1);
 	mp->device = g_strdup(path);
-	mp->path = g_strdup_printf("%s/player%u", path, id);
+	mp->path = g_strdup_printf("%s/%s/player%u", path, type, id);
 	mp->settings = g_hash_table_new_full(g_str_hash, g_str_equal,
 							g_free, g_free);
 	mp->track = g_hash_table_new_full(g_str_hash, g_str_equal,

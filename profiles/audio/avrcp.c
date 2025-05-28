@@ -3577,7 +3577,7 @@ static struct avrcp_player *create_ct_player(struct avrcp *session,
 
 	path = device_get_path(session->dev);
 
-	mp = media_player_controller_create(path, id);
+	mp = media_player_controller_create(path, "avrcp", id);
 	if (mp == NULL) {
 		g_free(player);
 		return NULL;

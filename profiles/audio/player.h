@@ -61,7 +61,8 @@ struct media_player_callback {
 };
 
 struct media_player *media_player_controller_create(const char *path,
-								uint16_t id);
+							const char *type,
+							uint16_t id);
 const char *media_player_get_path(struct media_player *mp);
 void media_player_destroy(struct media_player *mp);
 void media_player_set_duration(struct media_player *mp, uint32_t duration);
