@@ -36,6 +36,7 @@
 #include "src/btd.h"
 #include "src/dbus-common.h"
 #include "src/device.h"
+#include "src/error.h"
 #include "src/log.h"
 #include "src/plugin.h"
 #include "src/profile.h"
@@ -980,7 +981,78 @@ failed:
 	device_destroy(dev);
 }
 
+static void hfp_dial_cb(enum hfp_result result, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct call *call = user_data;
+	DBusMessage *msg = call->pending_msg;
+	DBusMessage *reply;
+	struct hfp_device *dev = telephony_get_profile_data(call->device);
+
+	DBG("");
+
+	call->pending_msg = NULL;
+
+	if (result != HFP_RESULT_OK) {
+		error("Dialing error: %d", result);
+		reply = g_dbus_create_error(msg, ERROR_INTERFACE
+					".Failed",
+					"Dial command failed: %d", result);
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		telephony_free_call(call);
+		return;
+	}
+
+	if (telephony_call_register_interface(call)) {
+		telephony_free_call(call);
+		return;
+	}
+
+	dev->calls = g_slist_append(dev->calls, call);
+
+	g_dbus_send_reply(btd_get_dbus_connection(), msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *hfp_dial(DBusConnection *conn, DBusMessage *msg,
+				void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	const char *number;
+	struct call *call;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
+					DBUS_TYPE_INVALID)) {
+		return btd_error_invalid_args(msg);
+	}
+
+	call = telephony_new_call(dev->telephony, CALL_STATE_DIALING, NULL);
+	call->pending_msg = dbus_message_ref(msg);
+
+	if (number != NULL && number[0] != '\0') {
+		DBG("Dialing %s", number);
+
+		call->line_id = g_strdup(number);
+
+		if (!hfp_hf_send_command(dev->hf, hfp_dial_cb, call,
+							"ATD%s;", number))
+			goto failed;
+	} else {
+		DBG("Redialing");
+
+		if (!hfp_hf_send_command(dev->hf, hfp_dial_cb, call,
+							"AT+BLDN"))
+			goto failed;
+	}
+
+	return NULL;
+
+failed:
+	telephony_free_call(call);
+	return btd_error_failed(msg, "Dial command failed");
+}
+
 struct telephony_callbacks hfp_callbacks = {
+	.dial = hfp_dial,
 };
 
 static int hfp_connect(struct btd_service *service)
