@@ -90,6 +90,7 @@ struct bass_assistant {
 	struct btd_device *device;	/* Broadcast source device */
 	struct bass_data *data;		/* BASS session with peer device */
 	uint8_t sgrp;
+	uint8_t sid;
 	uint8_t bis;
 	uint32_t bid;
 	struct bt_bap_qos qos;
@@ -911,6 +912,7 @@ static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 		params.addr_type = BT_BASS_ADDR_RANDOM;
 
 	bacpy(&params.addr, device_get_address(assistant->device));
+	params.sid = assistant->sid;
 	put_le24(assistant->bid, params.bid);
 	params.pa_sync = PA_SYNC_NO_PAST;
 	params.pa_interval = PA_INTERVAL_UNKNOWN;
@@ -1067,7 +1069,7 @@ static void src_ad_search_bid(void *data, void *user_data)
 
 static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 		struct btd_device *device, struct bass_data *data,
-		uint8_t sgrp, uint8_t bis, struct bt_bap_qos *qos,
+		uint8_t sgrp, uint8_t sid, uint8_t bis, struct bt_bap_qos *qos,
 		struct iovec *meta, struct iovec *caps)
 {
 	struct bass_assistant *assistant;
@@ -1083,6 +1085,7 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 	assistant->device = device;
 	assistant->data = data;
 	assistant->sgrp = sgrp;
+	assistant->sid = sid;
 	assistant->bis = bis;
 	assistant->qos = *qos;
 
@@ -1098,8 +1101,8 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 	ba2str(device_get_address(device), src_addr);
 	ba2str(device_get_address(data->device), dev_addr);
 
-	assistant->path = g_strdup_printf("%s/src_%s/dev_%s/bis%d",
-		adapter_get_path(adapter), src_addr, dev_addr, bis);
+	assistant->path = g_strdup_printf("%s/src_%s/dev_%s/sid%d/bis%d",
+		adapter_get_path(adapter), src_addr, dev_addr, sid, bis);
 
 	g_strdelimit(assistant->path, ":", '_');
 
@@ -1146,7 +1149,7 @@ static void bis_probe(uint8_t sid, uint8_t bis, uint8_t sgrp,
 		DBG("%s data %p BIS %d", addr, data, bis);
 
 		assistant = assistant_new(adapter, device, data, sgrp,
-							bis, qos, meta, caps);
+						sid, bis, qos, meta, caps);
 
 		if (g_dbus_register_interface(btd_get_dbus_connection(),
 						assistant->path,
