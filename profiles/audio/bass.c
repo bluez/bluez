@@ -106,6 +106,7 @@ struct bass_delegator {
 	struct bt_bap *bap;
 	unsigned int state_id;
 	unsigned int bcode_id;
+	uint8_t sid;
 	uint8_t *bcode;
 	unsigned int timeout;
 	struct queue *bcode_reqs;
@@ -646,6 +647,7 @@ static void bap_attached(struct bt_bap *bap, void *user_data)
 		btd_device_get_bdaddr_type(device),
 		BT_IO_OPT_MODE, BT_IO_MODE_ISO,
 		BT_IO_OPT_QOS, &bap_sink_pa_qos,
+		BT_IO_OPT_ISO_BC_SID, dg->sid,
 		BT_IO_OPT_INVALID);
 	if (!dg->io) {
 		error("%s", err->message);
@@ -1320,6 +1322,7 @@ probe:
 
 	dg->device = device;
 	dg->src = bcast_src;
+	dg->sid = params->sid;
 	dg->bcode_reqs = queue_new();
 	dg->setups = queue_new();
 
@@ -1460,6 +1463,7 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
 				btd_device_get_bdaddr_type(dg->device),
 				BT_IO_OPT_MODE, BT_IO_MODE_ISO,
 				BT_IO_OPT_QOS, &bap_sink_pa_qos,
+				BT_IO_OPT_ISO_BC_SID, dg->sid,
 				BT_IO_OPT_INVALID);
 			if (!dg->io) {
 				error("%s", err->message);
