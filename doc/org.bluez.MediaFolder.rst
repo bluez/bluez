@@ -18,8 +18,7 @@ Interface
 		org.bluez (Controller role)
 :Interface:	org.bluez.MediaFolder1
 :Object path:	freely definable (Target role)
-		[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
-		(Controller role)
+		[variable prefix]/{hci0,hci1,...}/dev_{BDRADDR}/player# (Controller role)
 
 Methods
 -------
@@ -27,41 +26,41 @@ Methods
 object Search(string value, dict filter)
 ````````````````````````````````````````
 
-	Return a folder object containing the search result.
+Return a folder object containing the search result.
 
-	To list the items found use the folder object returned and pass to
-	ChangeFolder.
+To list the items found use the folder object returned and pass to
+**ChangeFolder**.
 
-	Possible Errors:
+Possible Errors:
 
-	:org.bluez.Error.NotSupported:
-	:org.bluez.Error.Failed:
+:org.bluez.Error.NotSupported:
+:org.bluez.Error.Failed:
 
 array{objects, properties} ListItems(dict filter)
 `````````````````````````````````````````````````
 
-	Return a list of items found
+Return a list of items found
 
-	Possible Errors:
+Possible Errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.NotSupported:
-	:org.bluez.Error.Failed:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.NotSupported:
+:org.bluez.Error.Failed:
 
 void ChangeFolder(object folder)
 ````````````````````````````````
 
-	Change current folder.
+Change current folder.
 
-	Note: By changing folder the items of previous folder might be destroyed
-	and have to be listed again, the exception is NowPlaying folder which
-	should be always present while the player is active.
+Note: By changing folder the items of previous folder might be destroyed and
+have to be listed again, the exception is NowPlaying folder which should be
+always present while the player is active.
 
-	Possible Errors:
+Possible Errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.NotSupported:
-	:org.bluez.Error.Failed:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.NotSupported:
+:org.bluez.Error.Failed:
 
 Properties
 ----------
@@ -69,26 +68,26 @@ Properties
 uint32 NumberOfItems [readonly]
 ```````````````````````````````
 
-	Number of items in the folder
+Number of items in the folder
 
 string Name [readonly]
 ``````````````````````
 
-	Folder name:
+Folder name:
 
-	Possible values:
+Possible values:
 
-	:"/Filesystem/...":
+:"/Filesystem/...":
 
-		Filesystem scope
+	Filesystem scope
 
-	:"/NowPlaying/...":
+:"/NowPlaying/...":
 
-		NowPlaying scope
+	NowPlaying scope
 
-	Note: /NowPlaying folder might not be listed if player is stopped,
-	folders created by Search are virtual so once another Search is perform
-	or the folder is changed using ChangeFolder it will no longer be listed.
+Note: /NowPlaying folder might not be listed if player is stopped, folders
+created by Search are virtual so once another Search is perform or the folder is
+changed using ChangeFolder it will no longer be listed.
 
 Filters
 -------

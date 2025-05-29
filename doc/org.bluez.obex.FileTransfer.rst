@@ -24,132 +24,129 @@ Methods
 void ChangeFolder(string folder)
 ````````````````````````````````
 
-	Changes the current folder of the remote device.
+Changes the current folder of the remote device.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 void CreateFolder(string folder)
 ````````````````````````````````
 
-	Creates a new folder in the remote device.
+Creates a new folder in the remote device.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 array{dict} ListFolder()
 ````````````````````````
 
-	Returns a dictionary containing information about the current folder
-	content.
+Returns a dictionary containing information about the current folder content.
 
-	Possible return values:
+Possible return values:
 
-	:string Name:
+:string Name:
 
-		Object name in UTF-8 format.
+	Object name in UTF-8 format.
 
-	:string Type:
+:string Type:
 
-		Either "folder" or "file".
+	Either "folder" or "file".
 
-	:uint64 Size:
+:uint64 Size:
 
-		Object size or number of items in folder.
+	Object size or number of items in folder.
 
-	:string Permission:
+:string Permission:
 
-		Group, owner and other permission.
+	Group, owner and other permission.
 
-	:uint64 Modified:
+:uint64 Modified:
 
-		Last change.
+	Last change.
 
-	:uint64 Accessed:
+:uint64 Accessed:
 
-		Last access.
+	Last access.
 
-	:uint64 Created:
+:uint64 Created:
 
-		Creation date.
+	Creation date.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.Failed:
 
 object, dict GetFile(string targetfile, string sourcefile)
 ``````````````````````````````````````````````````````````
 
-	Copies the contents of the source file (from remote device) to the
-	target file (on local filesystem).
+Copies the contents of the source file (from remote device) to the target file
+(on local filesystem).
 
-	If an empty target file is given, a name will be automatically generated
-	for the temporary file.
+If an empty target file is given, a name will be automatically generated for the
+temporary file.
 
-	The returned path represents the newly created transfer, which should be
-	used to find out if the content has been successfully transferred or
-	if the operation fails.
+The returned path represents the newly created transfer, which should be used to
+find out if the content has been successfully transferred or if the operation
+fails.
 
-	The properties of this transfer are also returned along with the object
-	path, to avoid a call to GetProperties, see
-	**org.bluez.obex.Transfer(5)** for the possible list of properties.
+The properties of this transfer are also returned along with the object path, to
+avoid a call to GetProperties, see **org.bluez.obex.Transfer(5)** for the
+possible list of properties.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 object, dict PutFile(string sourcefile, string targetfile)
 ``````````````````````````````````````````````````````````
 
-	Copies the contents of the source file (from local filesystem) to the
-	target file (on remote device).
+Copies the contents of the source file (from local filesystem) to the target
+file (on remote device).
 
-	The returned path represents the newly created transfer, which should be
-	used to find out if the content has been successfully transferred or if
-	the operation fails.
+The returned path represents the newly created transfer, which should be used to
+find out if the content has been successfully transferred or if the operation
+fails.
 
-	The properties of this transfer are also returned along with the object
-	path, to avoid a call to GetProperties, see
-	**org.bluez.obex.Transfer(5)** for the possible list of properties.
+The properties of this transfer are also returned along with the object path, to
+avoid a call to GetProperties, see **org.bluez.obex.Transfer(5)** for the
+possible list of properties.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 void CopyFile(string sourcefile, string targetfile)
 ```````````````````````````````````````````````````
 
-	Copies the contents from source file to target file on the remote
-	device.
+Copies the contents from source file to target file on the remote device.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 void MoveFile(string sourcefile, string targetfile)
 ```````````````````````````````````````````````````
 
-	Moves a file within the remote device from source file to the target
-	file.
+Moves a file within the remote device from source file to the target file.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 void Delete(string file)
 ````````````````````````
 
-	Deletes the specified file/folder.
+Deletes the specified file/folder.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:

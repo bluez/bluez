@@ -24,28 +24,28 @@ Methods
 void Release() [noreply]
 ````````````````````````
 
-	This method gets called when the service daemon unregisters the profile.
-	A profile can use it to do cleanup tasks. There is no need to unregister
-	the profile, because when this method gets called it has already been
-	unregistered.
+This method gets called when **bluetoothd(8)** unregisters the profile.
+
+A profile can use it to do cleanup tasks. There is no need to unregister the
+profile, because when this method gets called it has already been unregistered.
 
 void NewConnection(object device, fd, dict fd_properties)
 `````````````````````````````````````````````````````````
 
-	This method gets called when a new service level connection has been
-	made and authorized.
+This method gets called when a new service level connection has been made and
+authorized.
 
-	Possible fd_properties values:
+Possible fd_properties values:
 
-	:uint16 Version [optional]:
+:uint16 Version [optional]:
 
-		Profile version.
+	Profile version.
 
-	:uint16 Features [optional]:
+:uint16 Features [optional]:
 
-		Profile features.
+	Profile features.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.Error.Rejected:
-	:org.bluez.Error.Canceled:
+:org.bluez.Error.Rejected:
+:org.bluez.Error.Canceled:

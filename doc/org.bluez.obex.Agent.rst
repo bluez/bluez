@@ -24,31 +24,30 @@ Methods
 void Release()
 ``````````````
 
-	This method gets called when **obexd(8)** daemon unregisters the agent.
-	An agent can use it to do cleanup tasks. There is no need to unregister
-	the agent, because when this method gets called it has already been
-	unregistered.
+This method gets called when **obexd(8)** daemon unregisters the agent.
+
+An agent can use it to do cleanup tasks. There is no need to unregister the
+agent, because when this method gets called it has already been unregistered.
 
 string AuthorizePush(object transfer)
 `````````````````````````````````````
 
-	This method gets called when the **obexd(8)** needs to accept/reject a
-	Bluetooth object push request.
+This method gets called when the **obexd(8)** needs to accept/reject a Bluetooth
+object push request.
 
-	Returns the full path (including the filename) or the folder name
-	suffixed with '/' where the object shall be stored.
+Returns the full path (including the filename) or the folder name suffixed with
+'/' where the object shall be stored.
 
-	The transfer object, see **org.bluez.obex.Transfer(5)** will contain a
-	Filename property that contains the default location and name that can
-	be returned.
+The transfer object, see **org.bluez.obex.Transfer(5)** will contain a Filename
+property that contains the default location and name that can be returned.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.Rejected:
-	:org.bluez.obex.Error.Canceled:
+:org.bluez.obex.Error.Rejected:
+:org.bluez.obex.Error.Canceled:
 
 void Cancel()
 `````````````
 
-	This method gets called to indicate that the agent request failed before
-	a reply was returned. It cancels the previous request.
+This method gets called to indicate that the agent request failed before a reply
+was returned. It cancels the previous request.

@@ -24,104 +24,102 @@ Methods
 void RegisterEndpoint(object endpoint, dict properties)
 ```````````````````````````````````````````````````````
 
-	Register a local end point to sender, the sender can register as many
-	end points as it likes.
+Register a local end point to sender, the sender can register as many end points
+as it likes.
 
-	Note: If the sender disconnects the end points are automatically
-	unregistered.
+Note: If the sender disconnects the end points are automatically unregistered.
 
-	possible properties:
+possible properties:
 
-	:string UUID:
+:string UUID:
 
-		UUID of the profile which the endpoint is for.
+	UUID of the profile which the endpoint is for.
 
-		UUID must be in the list of SupportedUUIDS.
+	UUID must be in the list of SupportedUUIDS.
 
-	:byte Codec:
+:byte Codec:
 
-		Assigned number of codec that the endpoint implements. The
-		values should match the profile specification which is
-		indicated by the UUID.
+	Assigned number of codec that the endpoint implements. The
+	values should match the profile specification which is
+	indicated by the UUID.
 
-	:uint32_t Vendor [Optional]:
+:uint32_t Vendor [Optional]:
 
-		Vendor-specific Company ID, Codec ID tuple that the endpoint
-		implements.
+	Vendor-specific Company ID, Codec ID tuple that the endpoint implements.
 
-		It shall be set to appropriate value when Vendor Specific Codec
-		(0xff) is used.
+	It shall be set to appropriate value when Vendor Specific Codec (0xff)
+	is used.
 
-	:array{byte} Capabilities:
+:array{byte} Capabilities:
 
-		Capabilities blob, it is used as it is so the size and byte
-		order must match.
+	Capabilities blob, it is used as it is so the size and byte order must
+	match.
 
-	:array{byte} Metadata [Optional]:
+:array{byte} Metadata [Optional]:
 
-		Metadata blob, it is used as it is so the size and byte order
-		must match.
+	Metadata blob, it is used as it is so the size and byte order must
+	match.
 
-	Possible Errors:
+Possible Errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.NotSupported:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.NotSupported:
 
-		emitted when interface for the end-point is disabled
+	emitted when interface for the end-point is disabled
 
 void UnregisterEndpoint(object endpoint)
 ````````````````````````````````````````
-	Unregister sender end point.
+Unregister sender end point.
 
 void RegisterPlayer(object player, dict properties)
 ```````````````````````````````````````````````````
 
-	Register a media player object to sender, the sender can register as
-	many objects as it likes.
+Register a media player object to sender, the sender can register as many
+objects as it likes.
 
-	Object must implement at least org.mpris.MediaPlayer2.Player as defined
-	in MPRIS 2.2 spec:
+Object must implement at least **org.mpris.MediaPlayer2.Player** as defined in
+MPRIS 2.2 spec:
 
-		http://specifications.freedesktop.org/mpris-spec/latest/
+http://specifications.freedesktop.org/mpris-spec/latest/
 
-	Note: If the sender disconnects its objects are automatically
-	unregistered.
+Note: If the sender disconnects its objects are automatically unregistered.
 
-	Possible Errors:
+Possible Errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.NotSupported:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.NotSupported:
 
 void UnregisterPlayer(object player)
 ````````````````````````````````````
 
-	Unregister sender media player.
+Unregister sender media player.
 
 void RegisterApplication(object root, dict options)
 ```````````````````````````````````````````````````
 
-	Register endpoints an player objects within root object which must
-	implement ObjectManager.
+Register endpoints an player objects within root object which must implement
+**org.freedesktop.DBus.ObjectManager**.
 
-	The application object path together with the D-Bus system bus
-	connection ID define the identification of the application.
+The application object path together with the D-Bus system bus connection ID
+define the identification of the application.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.AlreadyExists:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.AlreadyExists:
 
 void UnregisterApplication(object application)
 ``````````````````````````````````````````````
 
-	This unregisters the services that has been previously registered. The
-	object path parameter must match the same value that has been used on
-	registration.
+This unregisters the services that has been previously registered.
 
-	Possible errors:
+The object path parameter must match the same value that has been used on
+registration.
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.DoesNotExist:
+Possible errors:
+
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.DoesNotExist:
 
 Properties
 ----------
@@ -129,18 +127,17 @@ Properties
 array{string} SupportedUUIDs [readonly]
 ```````````````````````````````````````
 
-	List of 128-bit UUIDs that represents the supported Endpoint
-	registration.
+List of 128-bit UUIDs that represents the supported Endpoint registration.
 
 array{string} SupportedFeatures [readonly]
 ``````````````````````````````````````````
 
-	List of strings that represent supported special features.
-	Possible values:
+List of strings that represent supported special features.
 
-	:"tx-timestamping":
+Possible values:
 
-		Bluetooth TX timestamping in media stream sockets is
-		supported by BlueZ and kernel.  Applications may check
-		kernel support for specific timestamp types via
-		SIOCETHTOOL.
+:"tx-timestamping":
+
+	Bluetooth TX timestamping in media stream sockets is supported by BlueZ
+	and kernel.  Applications may check kernel support for specific
+	timestamp types via SIOCETHTOOL.

@@ -29,4 +29,4 @@ provides.
 object Device [readonly]
 ````````````````````````
 
-	The object path of the device that has this battery.
+The object path of the device that has this battery.
