@@ -1076,7 +1076,6 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 {
 	struct bass_assistant *assistant;
 	char src_addr[18];
-	char dev_addr[18];
 
 	assistant = new0(struct bass_assistant, 1);
 	if (!assistant)
@@ -1101,10 +1100,10 @@ static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
 							assistant);
 
 	ba2str(device_get_address(device), src_addr);
-	ba2str(device_get_address(data->device), dev_addr);
 
-	assistant->path = g_strdup_printf("%s/src_%s/dev_%s/sid%d/bis%d",
-		adapter_get_path(adapter), src_addr, dev_addr, sid, bis);
+	assistant->path = g_strdup_printf("%s/src_%s/sid%d/bis%d",
+					device_get_path(data->device), src_addr,
+					sid, bis);
 
 	g_strdelimit(assistant->path, ":", '_');
 

@@ -16,7 +16,7 @@ Interface
 
 :Service:	org.bluez
 :Interface:	org.bluez.MediaAssistant1
-:Object path:	/org/bluez/{hci0,hci1,...}/src_XX_XX_XX_XX_XX_XX/dev_YY_YY_YY_YY_YY_YY/bisZ
+:Object path:	/org/bluez/{hci0,hci1,...}/dev_{BDADDR}/src_{BDADDR}/sid#/bis#
 
 Methods
 -------
