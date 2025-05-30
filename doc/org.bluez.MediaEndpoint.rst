@@ -18,8 +18,7 @@ Interface
 		org.bluez (Client role)
 :Interface:	org.bluez.MediaEndpoint1
 :Object path:	freely definable (Server role)
-		[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/sepX
-		(Client role)
+		[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/sep# (Client role)
 
 Methods
 -------
@@ -29,121 +28,120 @@ Methods
 void SetConfiguration(object transport, dict properties)
 ````````````````````````````````````````````````````````
 
-	Set configuration for the transport.
+Set configuration for the transport.
 
-	:object transport:
 
-		Configured transport object.
+:object transport:
 
-	:dict properties:
+	Configured transport object.
 
-		Configured **org.bluez.MediaTransport(5)** properties.
+:dict properties:
 
-	For client role transport must be set with a server endpoint
-	object which will be configured and the properties must
-	contain the following properties:
+	Configured **org.bluez.MediaTransport(5)** properties.
 
-	:array{byte} Capabilities [Mandatory]:
+For client role transport must be set with a server endpoint object which will
+be configured and the properties must contain the following properties:
 
-		See Capabilities property.
+:array{byte} Capabilities [Mandatory]:
 
-	:array{byte} Metadata [ISO only]:
+	See Capabilities property.
 
-		See Metadata property.
+:array{byte} Metadata [ISO only]:
 
-	:dict QoS [ISO only]:
+	See Metadata property.
 
-		See **org.bluez.MediaTransport(5)** QoS property.
+:dict QoS [ISO only]:
+
+	See **org.bluez.MediaTransport(5)** QoS property.
 
 array{byte} SelectConfiguration(array{byte} capabilities)
 `````````````````````````````````````````````````````````
 
-	Select preferable configuration from the supported capabilities.
+Select preferable configuration from the supported capabilities.
 
-	Returns a configuration which can be used to setup a transport, see
-	**org.bluez.MediaTransport(5)** for possible values.
+Returns a configuration which can be used to setup a transport, see
+**org.bluez.MediaTransport(5)** for possible values.
 
-	Note: There is no need to cache the selected configuration since on
-	success the configuration is send back as parameter of SetConfiguration.
+Note: There is no need to cache the selected configuration since on success the
+configuration is send back as parameter of SetConfiguration.
 
 dict SelectProperties(dict capabilities)
 ````````````````````````````````````````
 
-	Select BAP unicast configuration from the supported capabilities:
+Select BAP unicast configuration from the supported capabilities:
 
-	:object Endpoint:
+:object Endpoint:
 
-	:array{byte} Capabilities:
+:array{byte} Capabilities:
 
-	:array{byte} Metadata:
+:array{byte} Metadata:
 
-	:uint32 Locations:
+:uint32 Locations:
 
-	:uint32_t ChannelAllocation:
+:uint32_t ChannelAllocation:
 
-	:dict QoS:
+:dict QoS:
 
-		:byte Framing:
-		:byte PHY:
-		:uint16 MaximumLatency:
-		:uint32 MinimumDelay:
-		:uint32 MaximumDelay:
-		:uint32 PreferredMinimumDelay:
-		:uint32 PreferredMaximumDelay:
+	:byte Framing:
+	:byte PHY:
+	:uint16 MaximumLatency:
+	:uint32 MinimumDelay:
+	:uint32 MaximumDelay:
+	:uint32 PreferredMinimumDelay:
+	:uint32 PreferredMaximumDelay:
 
-	See `MediaEndpoint Properties`_ for their possible values.
+See `MediaEndpoint Properties`_ for their possible values.
 
-	Returns a configuration which can be used to setup a transport:
+Returns a configuration which can be used to setup a transport:
 
-	:array{byte} Capabilities:
-	:array{byte} Metadata [optional]:
-	:dict QoS:
+:array{byte} Capabilities:
+:array{byte} Metadata [optional]:
+:dict QoS:
 
-	See `SetConfiguration`_ for their possible values.
+See `SetConfiguration`_ for their possible values.
 
-	Note: There is no need to cache the selected properties since on
-	success the configuration is send back as parameter of SetConfiguration.
+Note: There is no need to cache the selected properties since on success the
+configuration is send back as parameter of SetConfiguration.
 
 void ClearConfiguration(object transport)
 `````````````````````````````````````````
 
-	Clear transport configuration.
+Clear transport configuration.
 
-	**Server role:** [ISO only]
+**Server role:** [ISO only]
 
-	Close the stream associated with the given transport. If the
-	path given is the path of this endpoint, all its streams are
-	closed.
+Close the stream associated with the given transport. If the path given is the
+path of this endpoint, all its streams are closed.
 
 void Reconfigure(dict properties)
 `````````````````````````````````
 
-	[ISO only]
+[ISO only]
 
-	Reconfigure a BAP unicast endpoint. This closes all existing
-	streams of the endpoint, and restarts the configuration
-	selection flow which e.g. triggers calls to *SelectProperties*
-	allowing the sound server to modify the configuration.
+Reconfigure a BAP unicast endpoint. This closes all existing streams of the
+endpoint, and restarts the configuration selection flow which e.g. triggers
+calls to *SelectProperties* allowing the sound server to modify the
+configuration.
 
-	The following arguments are taken in *properties*:
+The following arguments are taken in *properties*:
 
-	:boolean Defer [optional]:
+:boolean Defer [optional]:
 
-		If True, mark endpoint for reconfiguration, but
-		postpone it until a non-deferred *Reconfigure()*
-		operation is made on an endpoint of the same device.
+	If True, mark endpoint for reconfiguration, but postpone it until a
+	non-deferred *Reconfigure()* operation is made on an endpoint of the
+	same device.
 
-		This is necessary to use when reconfiguring source and
-		sink streams with the intention that they be combined
-		into the same CIG, possibly forming bidirectional CIS.
+	This is necessary to use when reconfiguring source and sink streams with
+	the intention that they be combined into the same CIG, possibly forming
+	bidirectional CIS.
 
 void Release()
 ``````````````
 
-	This method gets called when the service daemon unregisters the
-	endpoint. An endpoint can use it to do cleanup tasks. There is no need
-	to unregister the endpoint, because when this method gets called it has
-	already been unregistered.
+This method gets called when **bluetoothd(8)** unregisters the endpoint.
+
+An endpoint can use it to do cleanup tasks. There is no need to unregister the
+endpoint, because when this method gets called it has already been unregistered.
 
 MediaEndpoint Properties
 ------------------------
@@ -151,118 +149,116 @@ MediaEndpoint Properties
 string UUID [readonly, optional]
 ````````````````````````````````
 
-	UUID of the profile which the endpoint is for.
+UUID of the profile which the endpoint is for.
 
 byte Codec [readonly, optional]
 ```````````````````````````````
 
-	Assigned number of codec that the endpoint implements.
-	The values should match the profile specification which is indicated by
-	the UUID.
+Assigned number of codec that the endpoint implements.
+
+The values should match the profile specification which is indicated by the
+UUID.
 
 uint32_t Vendor [readonly, Optional]
 ````````````````````````````````````
 
-	Vendor-specific Company ID, Codec ID tuple that the endpoint implements.
+Vendor-specific Company ID, Codec ID tuple that the endpoint implements.
 
-	It shall be set to appropriate value when Vendor Specific Codec (0xff)
-	is used.
+It shall be set to appropriate value when Vendor Specific Codec (0xff) is used.
 
 array{byte} Capabilities [readonly, optional]
 `````````````````````````````````````````````
 
-	Capabilities blob, it is used as it is so the size and byte order must
-	match.
+Capabilities blob, it is used as it is so the size and byte order must match.
 
 array{byte} Metadata [readonly, Optional]
 `````````````````````````````````````````
 
-	Metadata blob, it is used as it is so the size and byte order must
-	match.
+Metadata blob, it is used as it is so the size and byte order must match.
 
 object Device [readonly, optional]
 ``````````````````````````````````
 
-	Device object which the endpoint is belongs to.
+Device object which the endpoint is belongs to.
 
 bool DelayReporting [readonly, optional]
 ````````````````````````````````````````
 
-	Indicates if endpoint supports Delay Reporting.
+Indicates if endpoint supports Delay Reporting.
 
 uint32 Locations [readonly, optional, ISO only, experimental]
 `````````````````````````````````````````````````````````````
 
-	Indicates endpoint supported locations.
+Indicates endpoint supported locations.
 
 uint16 SupportedContext [readonly, optional, ISO only, experimental]
 ````````````````````````````````````````````````````````````````````
 
-	Indicates endpoint supported audio context.
+Indicates endpoint supported audio context.
 
 uint16 Context [readonly, optional, ISO only, experimental]
 ```````````````````````````````````````````````````````````
 
-	Indicates endpoint available audio context.
+Indicates endpoint available audio context.
 
 dict QoS [readonly, optional, ISO only, experimental]
 `````````````````````````````````````````````````````
 
-	Indicates QoS capabilities.
+Indicates QoS capabilities.
 
-	:byte Framing:
+:byte Framing:
 
-		Indicates endpoint support framing.
+	Indicates endpoint support framing.
 
 
-		Possible Values:
+	Possible Values:
 
-		:0x00:
+	:0x00:
 
-			Unframed PDUs supported.
+		Unframed PDUs supported.
 
-		:0x01:
+	:0x01:
 
-			Unframed PDUs not supported.
+		Unframed PDUs not supported.
 
-	:byte PHY:
+:byte PHY:
 
-		Indicates endpoint preferred PHY.
+	Indicates endpoint preferred PHY.
 
-		Possible values:
+	Possible values:
 
-		:bit 0:
+	:bit 0:
 
-			LE 1M preferred.
+		LE 1M preferred.
 
-		:bit 1:
+	:bit 1:
 
-			LE 2M preferred.
+		LE 2M preferred.
 
-		:bit 2:
+	:bit 2:
 
-			LE Coded preferred.
+		LE Coded preferred.
 
-	:byte Retransmissions:
+:byte Retransmissions:
 
-		Indicates endpoint preferred number of retransmissions.
+	Indicates endpoint preferred number of retransmissions.
 
-	:uint16 MaximumLatency:
+:uint16 MaximumLatency:
 
-		Indicates endpoint maximum latency.
+	Indicates endpoint maximum latency.
 
-	:uint32 MinimumDelay:
+:uint32 MinimumDelay:
 
-		Indicates endpoint minimum presentation delay.
+	Indicates endpoint minimum presentation delay.
 
-	:uint32 MaximumDelay:
+:uint32 MaximumDelay:
 
-		Indicates endpoint maximum presentation delay.
+	Indicates endpoint maximum presentation delay.
 
-	:uint32 PreferredMinimumDelay:
+:uint32 PreferredMinimumDelay:
 
-		Indicates endpoint preferred minimum presentation delay.
+	Indicates endpoint preferred minimum presentation delay.
 
-	:uint32 PreferredMaximumDelay:
+:uint32 PreferredMaximumDelay:
 
-		Indicates endpoint preferred maximum presentation delay.
+	Indicates endpoint preferred maximum presentation delay.

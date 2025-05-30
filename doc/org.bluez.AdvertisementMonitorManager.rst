@@ -24,39 +24,40 @@ Methods
 void RegisterMonitor(object application)
 ````````````````````````````````````````
 
-	Registers the root path of a hierarchy of advertisement monitors
-	implementing **org.bluez.AdvertisementMonitor(5)**.
+Registers the root path of a hierarchy of advertisement monitors implementing
+**org.bluez.AdvertisementMonitor(5)**.
 
-	The application object path together with the D-Bus ystem bus
-	connection ID define the identification of the application registering
-	advertisement monitors.
+The application object path together with the D-Bus ystem bus connection ID
+define the identification of the application registering advertisement monitors.
 
-	Once a root path is registered by a client via this method, the client
-	can freely expose/unexpose advertisement monitors without re-registering
-	the root path again. After use, the client should call
-	**UnregisterMonitor()** method to invalidate the advertisement monitors.
+Once a root path is registered by a client via this method, the client can
+freely expose/unexpose advertisement monitors without re-registering the root
+path again.
 
-	Possible errors:
+After use, the client should call **UnregisterMonitor()** method to invalidate
+the advertisement monitors.
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.AlreadyExists:
-	:org.bluez.Error.Failed:
+Possible errors:
+
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.AlreadyExists:
+:org.bluez.Error.Failed:
 
 void UnregisterMonitor(object application)
 ``````````````````````````````````````````
 
-	Unregisters a hierarchy of advertisement monitors that has been
-	previously registered with **RegisterMonitor()**. The object path
-	parameter must match the same value that has been used on registration.
+Unregisters a hierarchy of advertisement monitors that has been previously
+registered with **RegisterMonitor()**. The object path parameter must match the
+same value that has been used on registration.
 
-	Upon unregistration, the advertisement monitor(s) should expect to
-	receive **Release()** method as the signal that the advertisement
-	monitor(s) has been deactivated.
+Upon unregistration, the advertisement monitor(s) should expect to receive
+**Release()** method as the signal that the advertisement monitor(s) has been
+deactivated.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.DoesNotExist:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.DoesNotExist:
 
 Properties
 ----------
@@ -64,27 +65,27 @@ Properties
 array{string} SupportedMonitorTypes [read-only]
 ```````````````````````````````````````````````
 
-	This lists the supported types of advertisement monitors. An application
-	should check this before instantiate and expose an object of
-	**org.bluez.AdvertisementMonitor(5)**.
+This lists the supported types of advertisement monitors. An application
+should check this before instantiate and expose an object of
+**org.bluez.AdvertisementMonitor(5)**.
 
-	Possible values:
+Possible values:
 
-	:"or_patterns":
+:"or_patterns":
 
-		Patterns with logic OR applied. With this type, property
-		**Patterns** must exist and has at least one pattern.
+	Patterns with logic OR applied. With this type, property **Patterns**
+	must exist and has at least one pattern.
 
 array{string} SupportedFeatures [read-only]
 ```````````````````````````````````````````
 
-	This lists the features of advertisement monitoring supported by
-	**bluetoothd(8)**.
+This lists the features of advertisement monitoring supported by
+**bluetoothd(8)**.
 
-	Possible values:
+Possible values:
 
-	:"controller-patterns":
+:"controller-patterns":
 
-		If the controller is capable of performing advertisement
-		monitoring by patterns, **bluetoothd(8)** would offload the
-		patterns to the controller to reduce power consumption.
+	If the controller is capable of performing advertisement monitoring by
+	patterns, **bluetoothd(8)** would offload the patterns to the controller
+	to reduce power consumption.

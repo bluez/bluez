@@ -24,21 +24,21 @@ Methods
 void Push(dict properties)
 ````````````````````````````````````````````````````````
 
-	Send stream information to the remote device.
+Send stream information to the remote device.
 
-	:dict properties:
+:dict properties:
 
-	Indicate stream properties that will be sent to the peer.
+Indicate stream properties that will be sent to the peer.
 
-	Values:
+Values:
 
-		:array{byte} Metadata [ISO only]:
+	:array{byte} Metadata [ISO only]:
 
-			See Metadata property.
+		See Metadata property.
 
-		:dict QoS [ISO only]:
+	:dict QoS [ISO only]:
 
-			See QoS property.
+		See QoS property.
 
 Properties
 ----------
@@ -46,29 +46,29 @@ Properties
 string State [readonly]
 ```````````````````````
 
-	Indicates the state of the assistant object. Possible values are:
+Indicates the state of the assistant object. Possible values are:
 
-	:"idle": assistant object was created for the stream
-	:"pending": assistant object was pushed (stream information was sent to the peer)
-	:"requesting": remote device requires Broadcast_Code
-	:"active": remote device started receiving stream
+:"idle": assistant object was created for the stream
+:"pending": assistant object was pushed (stream information was sent to the peer)
+:"requesting": remote device requires Broadcast_Code
+:"active": remote device started receiving stream
 
 array{byte} Metadata [readwrite, ISO Only, experimental]
 ````````````````````````````````````````````````````````
 
-	Indicates stream Metadata.
+Indicates stream Metadata.
 
 dict QoS [readwrite, ISO only, experimental]
 `````````````````````````````````````````````````````
 
-	Indicates stream QoS capabilities.
+Indicates stream QoS capabilities.
 
-	Values:
+Values:
 
-	:byte Encryption:
+:byte Encryption:
 
-		Indicates whether the stream is encrypted.
+	Indicates whether the stream is encrypted.
 
-	:array{byte} BCode
+:array{byte} BCode
 
-		Indicates Broadcast_Code to decrypt stream.
+	Indicates Broadcast_Code to decrypt stream.

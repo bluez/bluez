@@ -28,41 +28,43 @@ Methods
 void RegisterAdvertisement(object advertisement, dict options)
 ``````````````````````````````````````````````````````````````
 
-	Registers an advertisement object to be sent over the LE Advertising
-	channel.  The service must implement **org.bluez.LEAdvertisement(5)**
-	interface.
+Registers an advertisement object to be sent over the LE Advertising channel.
 
-	Possible errors:
+The service must implement **org.bluez.LEAdvertisement(5)** interface.
 
-	:org.bluez.Error.InvalidArguments:
+Possible errors:
 
-		Indicates that the object has invalid or conflicting properties.
+:org.bluez.Error.InvalidArguments:
 
-	:org.bluez.Error.AlreadyExists:
+	Indicates that the object has invalid or conflicting properties.
 
-		Indicates the object is already registered.
+:org.bluez.Error.AlreadyExists:
 
-	:org.bluez.Error.InvalidLength:
+	Indicates the object is already registered.
 
-		Indicates that the data provided generates a data packet which
-		is too long
+:org.bluez.Error.InvalidLength:
 
-	:org.bluez.Error.NotPermitted:
+	Indicates that the data provided generates a data packet which is too
+	long.
 
-		Indicates the maximum number of advertisement instances has
-		been reached.
+:org.bluez.Error.NotPermitted:
+
+	Indicates the maximum number of advertisement instances has been
+	reached.
 
 void UnregisterAdvertisement(object advertisement)
 ``````````````````````````````````````````````````
 
-	Unregisters an advertisement that has been previously registered using
-	**RegisterAdvertisement()**.  The object path parameter must match the
-	same value that has been used on registration.
+Unregisters an advertisement that has been previously registered using
+**RegisterAdvertisement()**.
 
-	Possible errors:
+The object path parameter must match the same value that has been used on
+registration.
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.DoesNotExist:
+Possible errors:
+
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.DoesNotExist:
 
 Properties
 ----------
@@ -70,75 +72,74 @@ Properties
 byte ActiveInstances [readonly]
 ```````````````````````````````
 
-	Number of active advertising instances.
+Number of active advertising instances.
 
 byte SupportedInstances [readonly]
 ``````````````````````````````````
 
-	Number of available advertising instances.
+Number of available advertising instances.
 
 array{string} SupportedIncludes [readonly]
 ``````````````````````````````````````````
 
-	List of supported system includes.
+List of supported system includes.
 
-	Possible values:
+Possible values:
 
-	:"tx-power":
-	:"appearance":
-	:"local-name":
-	:"rsi":
+:"tx-power":
+:"appearance":
+:"local-name":
+:"rsi":
 
 array{string} SupportedSecondaryChannels [readonly]
 ```````````````````````````````````````````````````
 
-	List of supported Secondary channels. Secondary channels can be used to
-	advertise with the corresponding PHY.
+List of supported Secondary channels. Secondary channels can be used to
+advertise with the corresponding PHY.
 
-	Possible values:
+Possible values:
 
-	:"1M":
-	:"2M":
-	:"Coded":
+:"1M":
+:"2M":
+:"Coded":
 
 dict SupportedCapabilities [readonly]
 `````````````````````````````````````
 
-	Enumerates Advertising-related controller capabilities useful to the
-	client.
+Enumerates Advertising-related controller capabilities useful to the client.
 
-	Possible Values:
+Possible Values:
 
-	:byte MaxAdvLen:
+:byte MaxAdvLen:
 
-		Max advertising data length
+	Max advertising data length
 
-	:byte MaxScnRspLen:
+:byte MaxScnRspLen:
 
-		Max advertising scan response length
+	Max advertising scan response length
 
-	:int16 MinTxPower:
+:int16 MinTxPower:
 
-		Min advertising tx power (dBm)
+	Min advertising tx power (dBm)
 
-	:int16 MaxTxPower:
+:int16 MaxTxPower:
 
-		Max advertising tx power (dBm)
+	Max advertising tx power (dBm)
 
 array{string} SupportedFeatures [readonly,optional]
 ```````````````````````````````````````````````````
 
-	List of supported platform features. If no features are available on
-	the platform, the SupportedFeatures array will be empty.
+List of supported platform features. If no features are available on the
+platform, the SupportedFeatures array will be empty.
 
-	Possible values:
+Possible values:
 
-	:"CanSetTxPower":
+:"CanSetTxPower":
 
-		Indicates whether platform can specify tx power on each
-		advertising instance.
+	Indicates whether platform can specify tx power on each advertising
+	instance.
 
-	:"HardwareOffload":
+:"HardwareOffload":
 
-		Indicates whether multiple advertising will be offloaded to the
-		controller.
+	Indicates whether multiple advertising will be offloaded to the
+	controller.

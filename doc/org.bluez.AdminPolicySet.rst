@@ -35,18 +35,18 @@ Methods
 void SetServiceAllowList(array{string} UUIDs)
 `````````````````````````````````````````````
 
-	Sets the service allowlist by specifying service UUIDs.
+Sets the service allowlist by specifying service UUIDs.
 
-	When called, **bluetoothd(8)** will block incoming and outgoing
-	connections to the service not in UUIDs for all of the clients.
+When called, **bluetoothd(8)** will block incoming and outgoing connections to
+the service not in UUIDs for all of the clients.
 
-	Any subsequent calls to this method will supersede any previously set
-	allowlist values.  Calling this method with an empty array will allow
-	any service UUIDs to be used.
+Any subsequent calls to this method will supersede any previously set allowlist
+values.  Calling this method with an empty array will allow any service UUIDs to
+be used.
 
-	The default value is an empty array.
+The default value is an empty array.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.Failed:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.Failed:

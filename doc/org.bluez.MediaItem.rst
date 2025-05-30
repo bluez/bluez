@@ -19,8 +19,7 @@ Interface
 :Interface:	org.bluez.MediaItem1
 :Object path:	freely definable (Target role)
 		[variable
-		prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX/itemX
-		(Controller role)
+		prefix]/{hci0,hci1,...}/dev_{BDRADDR}/player#/item# (Controller role)
 
 Methods
 -------
@@ -28,22 +27,22 @@ Methods
 void Play()
 ```````````
 
-	Play item
+Play item
 
-	Possible Errors:
+Possible Errors:
 
-	:org.bluez.Error.NotSupported:
-	:org.bluez.Error.Failed:
+:org.bluez.Error.NotSupported:
+:org.bluez.Error.Failed:
 
 void AddtoNowPlaying()
 ``````````````````````
 
-	Add item to now playing list
+Add item to now playing list
 
-	Possible Errors:
+Possible Errors:
 
-	:org.bluez.Error.NotSupported:
-	:org.bluez.Error.Failed:
+:org.bluez.Error.NotSupported:
+:org.bluez.Error.Failed:
 
 Properties
 ----------
@@ -51,81 +50,90 @@ Properties
 object Player [readonly]
 ````````````````````````
 
-	Player object path the item belongs to
+Player object path the item belongs to
 
 string Name [readonly]
 ``````````````````````
 
-	Item displayable name
+Item displayable name
 
 string Type [readonly]
 ``````````````````````
 
-	Item type
+Item type
 
-	Possible values: "video", "audio", "folder"
+Possible values:
+
+:"video":
+:"audio":
+:"folder":
 
 string FolderType [readonly, optional]
 ``````````````````````````````````````
 
-	Folder type.
+Folder type.
 
-	Possible values: "mixed", "titles", "albums", "artists"
+Available if property Type is "Folder"
 
-	Available if property Type is "Folder"
+Possible values:
+
+:"mixed":
+:"titles":
+:"albums":
+:"artists":
 
 boolean Playable [readonly, optional]
 `````````````````````````````````````
 
-	Indicates if the item can be played
+Indicates if the item can be played
 
-	Available if property Type is "folder"
+Available if property Type is "folder"
 
 dict Metadata [readonly]
 ````````````````````````
 
-	Item metadata.
+Item metadata.
 
-	Possible values:
+Possible values:
 
-	:string Title:
+:string Title:
 
-		Item title name
+	Item title name
 
-		Available if property Type is "audio" or "video"
+	Available if property Type is "audio" or "video"
 
-	:string Artist:
+:string Artist:
 
-		Item artist name
+	Item artist name
 
-		Available if property Type is "audio" or "video"
+	Available if property Type is "audio" or "video"
 
-	:string Album:
+:string Album:
 
-		Item album name
+	Item album name
 
-		Available if property Type is "audio" or "video"
+	Available if property Type is "audio" or "video"
 
-	:string Genre:
+:string Genre:
 
-		Item genre name
+	Item genre name
 
-		Available if property Type is "audio" or "video"
+	Available if property Type is "audio" or "video"
 
-	:uint32 NumberOfTracks:
+:uint32 NumberOfTracks:
 
-		Item album number of tracks in total
+	Item album number of tracks in total
 
-		Available if property Type is "audio" or "video"
+	Available if property Type is "audio" or "video"
 
-	:uint32 Number:
+:uint32 Number:
 
-		Item album number
+	Item album number
 
-		Available if property Type is "audio" or "video"
+	Available if property Type is "audio" or "video"
 
-	:uint32 Duration:
+:uint32 Duration:
 
-		Item duration in milliseconds
+	Item duration in milliseconds
 
-		Available if property Type is "audio" or "video"
+	Available if property Type is "audio" or "video"

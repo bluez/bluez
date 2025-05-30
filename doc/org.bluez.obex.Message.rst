@@ -24,23 +24,23 @@ Methods
 object, dict Get(string targetfile, boolean attachment)
 ```````````````````````````````````````````````````````
 
-	Download message and store it in the target file.
+Download message and store it in the target file.
 
-	If an empty target file is given, a temporary file will be automatically
-	generated.
+If an empty target file is given, a temporary file will be automatically
+generated.
 
-	The returned path represents the newly created transfer, which should be
-	used to find out if the content has been successfully transferred or if
-	the operation fails.
+The returned path represents the newly created transfer, which should be used to
+find out if the content has been successfully transferred or if the operation
+fails.
 
-	The properties of this transfer are also returned along with the object
-	path, to avoid a call to GetProperties, see
-	**org.bluez.obex.Transfer(5)** for the possible list of properties.
+The properties of this transfer are also returned along with the object path, to
+avoid a call to GetProperties, see **org.bluez.obex.Transfer(5)** for the
+possible list of properties.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 Properties
 ----------
@@ -48,131 +48,131 @@ Properties
 string Folder [readonly]
 ````````````````````````
 
-	Folder which the message belongs to
+Folder which the message belongs to
 
 string Subject [readonly]
 `````````````````````````
 
-	Message subject
+Message subject
 
 string Timestamp [readonly]
 ```````````````````````````
 
-	Message timestamp
+Message timestamp
 
 string Sender [readonly]
 ````````````````````````
 
-	Message sender name
+Message sender name
 
 string SenderAddress [readonly]
 ```````````````````````````````
 
-	Message sender address
+Message sender address
 
 string ReplyTo [readonly]
 `````````````````````````
 
-	Message Reply-To address
+Message Reply-To address
 
 string Recipient [readonly]
 ```````````````````````````
 
-	Message recipient name
+Message recipient name
 
 string RecipientAddress [readonly]
 ``````````````````````````````````
 
-	Message recipient address
+Message recipient address
 
 string Type [readonly]
 ``````````````````````
 
-	Message type
+Message type
 
-	Possible values:
+Possible values:
 
-	:"email":
-	:"sms-gsm":
-	:"sms-cdma":
-	:"mms":
+:"email":
+:"sms-gsm":
+:"sms-cdma":
+:"mms":
 
 uint64 Size [readonly]
 ``````````````````````
 
-	Message size in bytes
+Message size in bytes
 
 string Status [readonly]
 ````````````````````````
 
-	Message reception status
+Message reception status
 
-	Possible values:
+Possible values:
 
-	:"complete":
-	:"fractioned":
-	:"notification":
+:"complete":
+:"fractioned":
+:"notification":
 
 boolean Priority [readonly]
 ```````````````````````````
 
-	Message priority flag
+Message priority flag
 
 boolean Read [read/write]
 `````````````````````````
 
-	Message read flag
+Message read flag
 
 boolean Deleted [writeonly]
 ```````````````````````````
 
-	Message deleted flag
+Message deleted flag
 
 boolean Sent [readonly]
 ```````````````````````
 
-	Message sent flag
+Message sent flag
 
 boolean Protected [readonly]
 ````````````````````````````
 
-	Message protected flag
+Message protected flag
 
 string DeliveryStatus [readonly] [optional]
 ```````````````````````````````````````````
 
-	Message delivery status
+Message delivery status
 
-	Possible values:
+Possible values:
 
-	:"delivered":
-	:"sent":
-	:"unknown":
+:"delivered":
+:"sent":
+:"unknown":
 
 uint64 ConversationId [readonly] [required]
 ```````````````````````````````````````````
 
-	Message conversation id sent by Server
-	Unique identification of the conversation
+Message conversation id sent by Server which servers as Unique identification of
+the conversation.
 
 string ConversationName [readonly] [optional]
 `````````````````````````````````````````````
 
-	Human readable name of the conversation
+Human readable name of the conversation
 
 string Direction [readonly] [required]
 ``````````````````````````````````````
 
-	Indicate the direction of the message
+Indicate the direction of the message
 
-	Possible values:
+Possible values:
 
-	:"incoming":
-	:"outgoing":
-	:"outgoingdraft":
-	:"outgoingpending":
+:"incoming":
+:"outgoing":
+:"outgoingdraft":
+:"outgoingpending":
 
 string AttachmentMimeTypes [readonly] [optional]
 ````````````````````````````````````````````````
 
-	MIME type of the attachment
+MIME type of the attachment

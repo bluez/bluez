@@ -25,12 +25,12 @@ Methods
 string GetCapabilities()
 ````````````````````````
 
-	Get remote device capabilities.
+Get remote device capabilities.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.NotSupported:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.NotSupported:
+:org.bluez.obex.Error.Failed:
 
 Properties
 ----------
@@ -38,29 +38,29 @@ Properties
 string Source [readonly]
 ````````````````````````
 
-	Bluetooth adapter address
+Bluetooth adapter address
 
 string Destination [readonly]
 `````````````````````````````
 
-	Bluetooth device address
+Bluetooth device address
 
 byte Channel [readonly]
 ```````````````````````
 
-	Bluetooth channel
+Bluetooth channel
 
 uint16 PSM [readonly]
 ```````````````````````
 
-	Bluetooth L2CAP PSM
+Bluetooth L2CAP PSM
 
 string Target [readonly]
 ````````````````````````
 
-	Target UUID
+Target UUID
 
 string Root [readonly]
 ``````````````````````
 
-	Root path
+Root path

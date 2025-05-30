@@ -16,7 +16,7 @@ Interface
 
 :Service:	org.bluez
 :Interface:	org.bluez.Network1
-:Object path:	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+:Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}
 
 Methods
 -------
@@ -24,45 +24,44 @@ Methods
 string Connect(string uuid)
 ```````````````````````````
 
-	Connects to the network device and return the network interface name.
+Connects to the network device and return the network interface name.
 
-	Possible uuid values:
+Possible uuid values:
 
-	:"panu", "00001115-0000-1000-8000-00805f9b34fb":
+:"panu", "00001115-0000-1000-8000-00805f9b34fb":
 
-		Personal Network User role.
+	Personal Network User role.
 
-	:"nap", "00001116-0000-1000-8000-00805f9b34fb":
+:"nap", "00001116-0000-1000-8000-00805f9b34fb":
 
-		Network Access Point role.
+	Network Access Point role.
 
-	:"gn", "00001117-0000-1000-8000-00805f9b34fb":
+:"gn", "00001117-0000-1000-8000-00805f9b34fb":
 
-		Group Network role.
+	Group Network role.
 
-	The connection will be closed and network device released either upon
-	calling **Disconnect()** or when the client disappears from the
-	message bus.
+The connection will be closed and network device released either upon calling
+**Disconnect()** or when the client disappears from the message bus.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.NotSupported:
-	:org.bluez.Error.InProgress:
-	:org.bluez.Error.Failed:
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.NotSupported:
+:org.bluez.Error.InProgress:
+:org.bluez.Error.Failed:
 
 void Disconnect()
 `````````````````
 
-	Disconnects from the network device.
+Disconnects from the network device.
 
-	To abort a connection attempt in case of errors or timeouts in the
-	client it is fine to call this method.
+To abort a connection attempt in case of errors or timeouts in the client it is
+fine to call this method.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.Error.Failed:
-	:org.bluez.Error.NotConnected:
+:org.bluez.Error.Failed:
+:org.bluez.Error.NotConnected:
 
 Properties
 ----------
@@ -70,14 +69,14 @@ Properties
 boolean Connected [readonly]
 ````````````````````````````
 
-	Indicates if the device is connected.
+Indicates if the device is connected.
 
 string Interface [readonly, optional]
 `````````````````````````````````````
 
-	Indicates the network interface name when available.
+Indicates the network interface name when available.
 
 string UUID [readonly, optional]
 ````````````````````````````````
 
-	Indicates the connection role when available.
+Indicates the connection role when available.
