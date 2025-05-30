@@ -38,13 +38,13 @@ Methods
 void RegisterBatteryProvider(object provider)
 `````````````````````````````````````````````
 
-	Registers a battery provider. A registered battery provider can then
-	expose objects with **org.bluez.BatteryProvider(5)** interface.
+Registers a battery provider. A registered battery provider can then expose
+objects with **org.bluez.BatteryProvider(5)** interface.
 
 void UnregisterBatteryProvider(object provider)
 ```````````````````````````````````````````````
 
-	Unregisters a battery provider previously registered with
-	**RegisterBatteryProvider()**. After unregistration, the
-	**org.bluez.BatteryProvider(5)** objects provided by this client are
-	ignored by **bluetoothd(8)**.
+Unregisters a battery provider previously registered with
+**RegisterBatteryProvider()**. After unregistration, the
+**org.bluez.BatteryProvider(5)** objects provided by this client are ignored by
+**bluetoothd(8)**.

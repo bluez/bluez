@@ -24,118 +24,119 @@ Methods
 void RegisterProfile(object profile, string uuid, dict options)
 ```````````````````````````````````````````````````````````````
 
-	Registers profile agent.
+Registers profile agent.
 
-	The object path defines the path of the profile that will be called
-	when there is a connection and must implement **org.bluez.Profile(5)**
-	interface.
+The object path defines the path of the profile that will be called when there
+is a connection and must implement **org.bluez.Profile(5)** interface.
 
-	If an application disconnects from the bus all its registered profiles
-	will be removed.
+If an application disconnects from the bus all its registered profiles will be
+removed.
 
-	Possible uuid values:
+Possible uuid values:
 
-	:"0000111f-0000-1000-8000-00805f9b34fb":
+:"0000111f-0000-1000-8000-00805f9b34fb":
 
-		HFP AG, default profile Version is 1.7, profile Features is
-		0b001001 and RFCOMM channel is 13. Authentication is required.
+	HFP AG, default profile Version is 1.7, profile Features is 0b001001 and
+	RFCOMM channel is 13. Authentication is required.
 
-	:"0000111e-0000-1000-8000-00805f9b34fb":
+:"0000111e-0000-1000-8000-00805f9b34fb":
 
-		HFP HS, default profile Version is 1.7, profile Features is
-		0b000000 and RFCOMM channel is 7. Authentication is required.
+	HFP HS, default profile Version is 1.7, profile Features is 0b000000 and
+	RFCOMM channel is 7. Authentication is required.
 
-	:"00001112-0000-1000-8000-00805f9b34fb":
+:"00001112-0000-1000-8000-00805f9b34fb":
 
-		HSP AG, default profile Version is 1.2, RFCOMM channel is 12 and
-		Authentication is required. Does not support any Features,
-		option is ignored.
+	HSP AG, default profile Version is 1.2, RFCOMM channel is 12 and
+	Authentication is required. Does not support any Features, option is
+	ignored.
 
-	:"00001108-0000-1000-8000-00805f9b34fb":
+:"00001108-0000-1000-8000-00805f9b34fb":
 
-		HSP HS, default profile Version is 1.2, profile Features is 0b0
-		and RFCOMM channel is 6. Authentication is required.
-		Features is one bit value, specify capability of Remote Audio
-		Volume Control (by default turned off).
+	HSP HS, default profile Version is 1.2, profile Features is 0b0 and
+	RFCOMM channel is 6. Authentication is required.
 
-	:"<vendor UUID>":
+	Features is one bit value, specify capability of Remote Audio Volume
+	Control (by default turned off).
 
-		Vendor defined UUID, no defaults, must set options.
+:"<vendor UUID>":
 
-	Possible options values:
+	Vendor defined UUID, no defaults, must set options.
 
-	:string Name:
+Possible options values:
 
-		Human readable name for the profile
+:string Name:
 
-	:string Service:
+	Human readable name for the profile
 
-		The primary service class UUID (if different from the actual
-		profile UUID).
+:string Service:
 
-	:string Role:
+	The primary service class UUID (if different from the actual profile
+	UUID).
 
-		For asymmetric profiles that do not have UUIDs available to
-		uniquely identify each side this parameter allows specifying the
-		precise local role.
+:string Role:
 
-		Possible values:
+	For asymmetric profiles that do not have UUIDs available to uniquely
+	identify each side this parameter allows specifying the precise local
+	role.
 
-		:"client":
-		:"server":
+	Possible values:
 
-	:uint16 Channel:
+	:"client":
+	:"server":
 
-		RFCOMM channel number that is used for client and server UUIDs.
+:uint16 Channel:
 
-		If applicable it will be used in the SDP record as well.
+	RFCOMM channel number that is used for client and server UUIDs.
 
-	:uint16 PSM:
+	If applicable it will be used in the SDP record as well.
 
-		PSM number that is used for client and server UUIDs.
+:uint16 PSM:
 
-		If applicable it will be used in the SDP record as well.
+	PSM number that is used for client and server UUIDs.
 
-	:boolean RequireAuthentication:
+	If applicable it will be used in the SDP record as well.
 
-		Pairing is required before connections will be established.
-		No devices will be connected if not paired.
+:boolean RequireAuthentication:
 
-	:boolean RequireAuthorization:
+	Pairing is required before connections will be established.
 
-		Request authorization before any connection will be established.
+	No devices will be connected if not paired.
 
-	:boolean AutoConnect:
+:boolean RequireAuthorization:
 
-		In case of a client UUID this will force connection of the
-		RFCOMM or L2CAP channels when a remote device is connected.
+	Request authorization before any connection will be established.
 
-	:string ServiceRecord:
+:boolean AutoConnect:
 
-		Provide a manual SDP record.
+	In case of a client UUID this will force connection of the RFCOMM or
+	L2CAP channels when a remote device is connected.
 
-	:uint16 Version:
+:string ServiceRecord:
 
-		Profile version (for SDP record)
+	Provide a manual SDP record.
 
-	:uint16 Features:
+:uint16 Version:
 
-		Profile features (for SDP record)
+	Profile version (for SDP record)
 
-	Possible errors:
+:uint16 Features:
 
-	:org.bluez.Error.InvalidArguments:
-	:org.bluez.Error.AlreadyExists:
+	Profile features (for SDP record)
+
+Possible errors:
+
+:org.bluez.Error.InvalidArguments:
+:org.bluez.Error.AlreadyExists:
 
 void UnregisterProfile(object profile)
 ``````````````````````````````````````
 
-	Unregisters profile object that has been previously registered using
-	**RegisterProfile**.
+Unregisters profile object that has been previously registered using
+**RegisterProfile**.
 
-	The object path parameter must match the same value that has been used
-	on registration.
+The object path parameter must match the same value that has been used on
+registration.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.Error.DoesNotExist:
+:org.bluez.Error.DoesNotExist:

@@ -24,22 +24,24 @@ Methods
 void RegisterAgent(object agent)
 ````````````````````````````````
 
-	Registers an agent, which must implement **org.bluez.obex.Agent(5)**, to
-	request authorization of the user to accept/reject objects.
+Registers an agent, which must implement **org.bluez.obex.Agent(5)**, to request
+authorization of the user to accept/reject objects.
 
-	Object push service needs to authorize each received object.
+Object push service needs to authorize each received object.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.AlreadyExists:
+:org.bluez.obex.Error.AlreadyExists:
 
 void UnregisterAgent(object agent)
 ``````````````````````````````````
 
-	Unregisters the agent that has been previously registered using
-	**RegisterAgent()**. The object path parameter must match the same value
-	that has been used on registration.
+Unregisters the agent that has been previously registered using
+**RegisterAgent()**.
 
-	Possible errors:
+The object path parameter must match the same value that has been used on
+registration.
 
-	:org.bluez.obex.Error.DoesNotExist:
+Possible errors:
+
+:org.bluez.obex.Error.DoesNotExist:

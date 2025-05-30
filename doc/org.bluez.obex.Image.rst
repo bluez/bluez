@@ -24,14 +24,13 @@ Methods
 object, dict Get(string targetfile, string handle, dict description)
 ````````````````````````````````````````````````````````````````````
 
-	Retrieves the image corresponding to the handle and the description, as
-	one of the descriptions retrieved by GetImageProperties, and store it in
-	a local file.
+Retrieves the image corresponding to the handle and the description, as one of
+the descriptions retrieved by GetImageProperties, and store it in a local file.
 
-	If the "transform" property description exists it should be set to one
-	of the value listed by GetImageProperties for this description.
+If the "transform" property description exists it should be set to one of the
+value listed by GetImageProperties for this description.
 
-	If description is an empty dict, the native image will be retrieved.
+If description is an empty dict, the native image will be retrieved.
 
 	Possible errors:
 
@@ -41,78 +40,77 @@ object, dict Get(string targetfile, string handle, dict description)
 array{dict} Properties(string handle)
 `````````````````````````````````````
 
-	Retrieves the image properties corresponding to the handle.
+Retrieves the image properties corresponding to the handle.
 
-	The first dict entry is mandatory and correspond to 'handle' and 'name'
-	of the image.
+The first dict entry is mandatory and correspond to 'handle' and 'name' of the
+image.
 
-	The second dict entry is mandatory and correspond to the native
-	description ('type':'native') of the image.
+The second dict entry is mandatory and correspond to the native description
+('type':'native') of the image.
 
-	The following dict entries are optional and correspond to variant
-	descriptions of the image. If the 'transform' entry exists in the
-	description, it lists the available possible image transformations and
-	should be set to one of them before using the description as parameter
-	to GetImage.
+The following dict entries are optional and correspond to variant descriptions
+of the image. If the 'transform' entry exists in the description, it lists the
+available possible image transformations and should be set to one of them before
+using the description as parameter to **GetImage**.
 
-	Possible property values:
+Possible property values:
 
-	:string type:
+:string type:
 
-		Type of dict properties. Mandatory for each dict.
+	Type of dict properties. Mandatory for each dict.
 
-		Possible values:
+	Possible values:
 
-		:"native":
-		:"variant":
+	:"native":
+	:"variant":
 
-	:string encoding:
+:string encoding:
 
-		File encoding format.
+	File encoding format.
 
-		Possible values:
+	Possible values:
 
-		:"BMP":
-		:"GIF":
-		:"JPEG":
-		:"JPEG2000":
-		:"PNG":
-		:"WBMP":
+	:"BMP":
+	:"GIF":
+	:"JPEG":
+	:"JPEG2000":
+	:"PNG":
+	:"WBMP":
 
-	:string pixel:
+:string pixel:
 
-		File encoding format size of form "<width>*<height>".
+	File encoding format size of form "<width>*<height>".
 
-	:uint64 size:
+:uint64 size:
 
-		File size.
+	File size.
 
-	:uint64 maxsize:
+:uint64 maxsize:
 
-		File maximum size.
+	File maximum size.
 
-	:string transformation:
+:string transformation:
 
-		List of available transformations separated by space.
+	List of available transformations separated by space.
 
-		Possible values:
+	Possible values:
 
-		:"crop":
-		:"fill":
-		:"stretch":
+	:"crop":
+	:"fill":
+	:"stretch":
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 object, dict GetThumbnail(string targetfile, string handle)
 ```````````````````````````````````````````````````````````
 
-	Retrieves the image thumbnail corresponding to the handle and store it
-	in a local file.
+Retrieves the image thumbnail corresponding to the handle and store it in a
+local file.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:

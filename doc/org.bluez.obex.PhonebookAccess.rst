@@ -24,319 +24,321 @@ Methods
 void Select(string location, string phonebook)
 ``````````````````````````````````````````````
 
-	Selects the phonebook object for other operations. Should be call before
-	all the other operations.
+Selects the phonebook object for other operations.
 
-	Possible location values:
+Should be call before all the other operations.
 
-	:"int", "internal" (default):
+Possible location values:
 
-		Store in the Internal memory.
+:"int", "internal" (default):
 
-	:"sim{#}":
+	Store in the Internal memory.
 
-		Store in the sim number.
+:"sim{#}":
 
-	Possible phonebook values:
+	Store in the sim number.
 
-	:"pb":
+Possible phonebook values:
 
-		Store as contact.
+:"pb":
 
-	:"ich":
+	Store as contact.
 
-		Store as incoming call.
+:"ich":
 
-	:"och":
+	Store as incoming call.
 
-		Store as outgoing call.
+:"och":
 
-	:"mch":
+	Store as outgoing call.
 
-		Store as missing call.
+:"mch":
 
-	:"cch":
+	Store as missing call.
 
-		Store as a combination of incoming, outgoing and missing call.
+:"cch":
 
-	"spd":
+	Store as a combination of incoming, outgoing and missing call.
 
-		Store as speed dials entry ( only for "internal" )
+"spd":
 
-	"fav":
+	Store as speed dials entry ( only for "internal" )
 
-		Store as favorites entry ( only for "internal" )
+"fav":
 
-	Possible errors:
+	Store as favorites entry ( only for "internal" )
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Failed:
+Possible errors:
+
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Failed:
 
 object, dict PullAll(string targetfile, dict filters)
 `````````````````````````````````````````````````````
 
-	Returns the entire phonebook object from the PSE server in plain string
-	with vcard format, and store it in a local file.
+Returns the entire phonebook object from the PSE server in plain string with
+vcard format, and store it in a local file.
 
-	If an empty target file is given, a name will be automatically generated
-	for the temporary file.
+If an empty target file is given, a name will be automatically generated for the
+temporary file.
 
-	The returned path represents the newly created transfer, which should
-	be used to find out if the content has been successfully transferred or
-	if the operation fails.
+The returned path represents the newly created transfer, which should be used to
+find out if the content has been successfully transferred or if the operation
+fails.
 
-	The properties of this transfer are also returned along with the object
-	path, to avoid a call to GetProperties, see
-	**org.bluez.obex.Transfer(5)** for the possible list of properties.
+The properties of this transfer are also returned along with the object path, to
+avoid a call to GetProperties, see **org.bluez.obex.Transfer(5)** for the
+possible list of properties.
 
-	Possible filters:
+Possible filters:
 
-	:string Format:
+:string Format:
 
-		Items vcard format.
+	Items vcard format.
 
-		Possible values:
+	Possible values:
 
-		:"vcard21" (default):
-		:"vcard30":
+	:"vcard21" (default):
+	:"vcard30":
 
-	:string Order:
+:string Order:
 
-		Items order.
+	Items order.
 
-		Possible values:
+	Possible values:
 
-		:"":
-		:"indexed":
-		:"alphanumeric":
-		:"phonetic":
+	:"":
+	:"indexed":
+	:"alphanumeric":
+	:"phonetic":
 
-	:uint16 Offset (default 0):
+:uint16 Offset (default 0):
 
-		Offset of the first item.
+	Offset of the first item.
 
-	:uint16 MaxCount (default 65535):
+:uint16 MaxCount (default 65535):
 
-		Maximum number of items.
+	Maximum number of items.
 
-	:array{string} Fields (default all fields):
+:array{string} Fields (default all fields):
 
-		Item vcard fields.
+	Item vcard fields.
 
-		See **ListFilterFields()** for possible values.
+	See **ListFilterFields()** for possible values.
 
-	:array{string} FilterAll:
+:array{string} FilterAll:
 
-		Filter items by fields using AND logic, cannot be used
-		together with **FilterAny**.
+	Filter items by fields using AND logic, cannot be used together with
+	**FilterAny**.
 
-		See **ListFilterFields()** for possible values.
+	See **ListFilterFields()** for possible values.
 
-	:array{string} FilterAny:
+:array{string} FilterAny:
 
-		Filter items by fields using OR logic, cannot be used together
-		with **FilterAll**.
+	Filter items by fields using OR logic, cannot be used together with
+	**FilterAll**.
 
-		See **ListFilterFields()** for possible values.
+	See **ListFilterFields()** for possible values.
 
-	:bool ResetNewMissedCalls:
+:bool ResetNewMissedCalls:
 
-		Reset new the missed calls items, shall only be used for folders
-		mch and cch.
+	Reset new the missed calls items, shall only be used for folders mch and
+	cch.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Forbidden:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Forbidden:
 
 array{string vcard, string name} List(dict filters)
 ```````````````````````````````````````````````````
 
-	Returns array of vcard-listing data where every entry consists of a
-	pair of strings containing the vcard handle and the contact name.
-	For example:
+Returns array of vcard-listing data where every entry consists of a pair of
+strings containing the vcard handle and the contact name.
 
-	:"1.vcf": "John"
+For example:
 
-	Possible filters:
+:"1.vcf": "John"
 
-	:string Order:
+Possible filters:
 
-		Contact order.
+:string Order:
 
-		Possible values:
+	Contact order.
 
-		:"":
-		:"indexed":
-		:"alphanumeric":
-		:"phonetic":
+	Possible values:
 
-	:uint16 Offset:
+	:"":
+	:"indexed":
+	:"alphanumeric":
+	:"phonetic":
 
-		Start offset.
+:uint16 Offset:
 
-	:uint16 MaxCount:
+	Start offset.
 
-		Maximum number of contacts.
+:uint16 MaxCount:
 
-	Possible errors:
+	Maximum number of contacts.
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Forbidden:
+Possible errors:
+
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Forbidden:
 
 object, dict Pull(string vcard, string targetfile, dict filters)
 ````````````````````````````````````````````````````````````````
 
-	Retrieves the vcard in the current phonebook object and store it in a
-	local file.
+Retrieves the vcard in the current phonebook object and store it in a local
+file.
 
-	If an empty target file is given, a name will be automatically generated
-	for the temporary file.
+If an empty target file is given, a name will be automatically generated for the
+temporary file.
 
-	The returned path represents the newly created transfer, which should be
-	used to find out if the content has been successfully transferred or if
-	the operation fails.
+The returned path represents the newly created transfer, which should be used to
+find out if the content has been successfully transferred or if the operation
+fails.
 
-	The properties of this transfer are also returned along with the object
-	path, to avoid a call to GetProperties, see
-	**org.bluez.obex.Transfer(5)** for the possible list of properties.
+The properties of this transfer are also returned along with the object path, to
+avoid a call to GetProperties, see **org.bluez.obex.Transfer(5)** for the
+possible list of properties.
 
-	Possible filters:
+Possible filters:
 
-	:string Format:
+:string Format:
 
-		Contact data format.
+	Contact data format.
 
-		Possible values:
+	Possible values:
 
-		:"":
-		:"vcard21":
-		:"vcard30":
+	:"":
+	:"vcard21":
+	:"vcard30":
 
-	:array{string} Fields:
+:array{string} Fields:
 
-		See **ListFilterFields()** for possible values.
+	See **ListFilterFields()** for possible values.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Forbidden:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Forbidden:
+:org.bluez.obex.Error.Failed:
 
 array{string vcard, string name} Search(string field, string value, dict filters)
 `````````````````````````````````````````````````````````````````````````````````
 
-	Searches for entries matching the given condition and return an array of
-	vcard-listing data where every entry consists of a pair of strings
-	containing the vcard handle and the contact name.
+Searches for entries matching the given condition and return an array of
+vcard-listing data where every entry consists of a pair of strings containing
+the vcard handle and the contact name.
 
-	Possible field values:
+Possible field values:
 
-		:"name" (default):
+	:"name" (default):
 
-			Search by name.
+		Search by name.
 
-		:"number":
+	:"number":
 
-			Search by number.
+		Search by number.
 
-		:"sound":
+	:"sound":
 
-			Search by sound.
+		Search by sound.
 
-	value: the string value to search for
+value: the string value to search for
 
-	Possible filters:
+Possible filters:
 
-	:string Order:
+:string Order:
 
-		Contact order.
+	Contact order.
 
-		Possible values:
+	Possible values:
 
-		:"":
-		:"indexed":
-		:"alphanumeric":
-		:"phonetic":
+	:"":
+	:"indexed":
+	:"alphanumeric":
+	:"phonetic":
 
-	:uint16 Offset:
+:uint16 Offset:
 
-		Start offset.
+	Start offset.
 
-	:uint16 MaxCount:
+:uint16 MaxCount:
 
-		Maximum number of contacts.
+	Maximum number of contacts.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.InvalidArguments:
-	:org.bluez.obex.Error.Forbidden:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.InvalidArguments:
+:org.bluez.obex.Error.Forbidden:
+:org.bluez.obex.Error.Failed:
 
 uint16 GetSize()
 ````````````````
 
-	Returns the number of entries in the selected phonebook object that are
-	actually used (i.e. indexes that correspond to non-NULL entries).
+Returns the number of entries in the selected phonebook object that are actually
+used (i.e. indexes that correspond to non-NULL entries).
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.Forbidden:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.Forbidden:
+:org.bluez.obex.Error.Failed:
 
 void UpdateVersion()
 ````````````````````
 
-	Attempts to update PrimaryCounter and SecondaryCounter.
+Attempts to update PrimaryCounter and SecondaryCounter.
 
-	Possible errors:
+Possible errors:
 
-	:org.bluez.obex.Error.NotSupported:
-	:org.bluez.obex.Error.Forbidden:
-	:org.bluez.obex.Error.Failed:
+:org.bluez.obex.Error.NotSupported:
+:org.bluez.obex.Error.Forbidden:
+:org.bluez.obex.Error.Failed:
 
 array{string} ListFilterFields()
 ````````````````````````````````
 
-	Returns all Available fields that can be used in Fields filter.
+Returns all Available fields that can be used in Fields filter.
 
-	Possible return:
+Possible return:
 
-	:"VERSION":
-	:"FN":
-	:"N":
-	:"PHOTO":
-	:"BDAY":
-	:"ADR":
-	:"LABEL":
-	:"TEL":
-	:"EMAIL":
-	:"MAILER":
-	:"TZ":
-	:"GEO":
-	:"TITLE":
-	:"ROLE":
-	:"LOGO":
-	:"AGENT":
-	:"ORG":
-	:"NOTE":
-	:"REV":
-	:"SOUND":
-	:"URL":
-	:"UID":
-	:"KEY":
-	:"NICKNAME":
-	:"CATEGORIES":
-	:"PROID":
-	:"CLASS":
-	:"SORT-STRING":
-	:"X-IRMC-CALL-DATETIME":
-	:"X-BT-SPEEDDIALKEY":
-	:"X-BT-UCI":
-	:"X-BT-UID":
-	:"BIT-{#}":
+:"VERSION":
+:"FN":
+:"N":
+:"PHOTO":
+:"BDAY":
+:"ADR":
+:"LABEL":
+:"TEL":
+:"EMAIL":
+:"MAILER":
+:"TZ":
+:"GEO":
+:"TITLE":
+:"ROLE":
+:"LOGO":
+:"AGENT":
+:"ORG":
+:"NOTE":
+:"REV":
+:"SOUND":
+:"URL":
+:"UID":
+:"KEY":
+:"NICKNAME":
+:"CATEGORIES":
+:"PROID":
+:"CLASS":
+:"SORT-STRING":
+:"X-IRMC-CALL-DATETIME":
+:"X-BT-SPEEDDIALKEY":
+:"X-BT-UCI":
+:"X-BT-UID":
+:"BIT-{#}":
 
-	Possible errors: None
+Possible errors: None
 
 Properties
 ----------
@@ -344,43 +346,40 @@ Properties
 string Folder [readonly]
 ````````````````````````
 
-	Current folder.
+Current folder.
 
 string DatabaseIdentifier [readonly, optional]
 ``````````````````````````````````````````````
 
-	128 bits persistent database identifier.
+128 bits persistent database identifier.
 
-	Possible values:
+Possible values:
 
-		32-character hexadecimal such as
-		A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
+	32-character hexadecimal such as A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
 
 string PrimaryCounter [readonly, optional]
 ``````````````````````````````````````````
 
-	128 bits primary version counter.
+128 bits primary version counter.
 
-	Possible values:
+Possible values:
 
-		32-character hexadecimal such as
-		A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
+	32-character hexadecimal such as A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
 
 string SecondaryCounter [readonly, optional]
 ````````````````````````````````````````````
 
-	128 bits secondary version counter.
+128 bits secondary version counter.
 
-	Possible values:
+Possible values:
 
-		32-character hexadecimal such as
-		A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
+	32-character hexadecimal such as A1A2A3A4B1B2C1C2D1D2E1E2E3E4E5E6
 
 bool FixedImageSize [readonly, optional]
 ````````````````````````````````````````
 
-	Indicate support for fixed image size.
+Indicate support for fixed image size.
 
-	Possible values:
+Possible values:
 
-		True if image is JPEG 300x300 pixels otherwise False.
+	True if image is JPEG 300x300 pixels otherwise False.

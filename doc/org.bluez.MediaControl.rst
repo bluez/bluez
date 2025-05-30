@@ -16,7 +16,7 @@ Interface
 
 :Service:	org.bluez
 :Interface:	org.bluez.MediaControl1
-:Object path:	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+:Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}
 
 Methods
 -------
@@ -24,49 +24,49 @@ Methods
 void Play() [Deprecated]
 ````````````````````````
 
-	Resume playback.
+Resume playback.
 
 void Pause() [Deprecated]
 `````````````````````````
 
-	Pause playback.
+Pause playback.
 
 void Stop() [Deprecated]
 ````````````````````````
 
-	Stop playback.
+Stop playback.
 
 void Next() [Deprecated]
 ````````````````````````
 
-	Next item.
+Next item.
 
 void Previous() [Deprecated]
 ````````````````````````````
 
-	Previous item.
+Previous item.
 
 void VolumeUp() [Deprecated]
 ````````````````````````````
 
-	Adjust remote volume one step up
+Adjust remote volume one step up
 
 void VolumeDown() [Deprecated]
 ``````````````````````````````
 
-	Adjust remote volume one step down
+Adjust remote volume one step down
 
 void FastForward() [Deprecated]
 ```````````````````````````````
 
-	Fast forward playback, this action is only stopped when another method
-	in this interface is called.
+Fast forward playback, this action is only stopped when another method in this
+interface is called.
 
 void Rewind() [Deprecated]
 ``````````````````````````
 
-	Rewind playback, this action is only stopped when another method in
-	this interface is called.
+Rewind playback, this action is only stopped when another method in this
+interface is called.
 
 Properties
 ----------
@@ -77,4 +77,4 @@ boolean Connected [readonly]
 object Player [readonly, optional]
 ``````````````````````````````````
 
-	Addressed Player object path.
+Addressed Player object path.
