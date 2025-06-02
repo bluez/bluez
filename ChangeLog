@@ -1,3 +1,12 @@
+ver 5.83:
+	Fix issue with handling BAP and removal of PAC.
+	Fix issue with handling SID for broadcast receiver.
+	Fix issue with handling HSP/HFP reconnection policy.
+	Fix issue with handling cable pairing and Sixaxis controllers.
+	Fix issue with handling virtual cable unplug for HID devices.
+	Fix issue with handling service records for HID devices.
+	Add support for AVDTP and TX timestamps.
+
 ver 5.82:
 	Fix issue with handling BAP state transitions.
 	Fix issue with handling D-Bus interface removal.

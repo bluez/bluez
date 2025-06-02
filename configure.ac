@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 AC_PREREQ(2.60)
-AC_INIT(bluez, 5.82)
+AC_INIT(bluez, 5.83)
 
 AM_INIT_AUTOMAKE([foreign subdir-objects color-tests silent-rules
 					tar-pax no-dist-gzip dist-xz])
