@@ -8,8 +8,8 @@
  *
  */
 
-typedef int (*logind_init_cb)(void);
-typedef void (*logind_exit_cb)(void);
+typedef int (*logind_init_cb)(gboolean at_register);
+typedef void (*logind_exit_cb)(gboolean at_unregister);
 
 #ifdef SYSTEMD
 
@@ -22,12 +22,12 @@ int logind_set(gboolean enabled);
 static inline int logind_register(logind_init_cb init_cb,
 					logind_exit_cb exit_cb)
 {
-	return init_cb();
+	return init_cb(TRUE);
 }
 static inline void logind_unregister(logind_init_cb init_cb,
 					logind_exit_cb exit_cb)
 {
-	return exit_cb();
+	return exit_cb(TRUE);
 }
 static inline int logind_set(gboolean enabled)
 {

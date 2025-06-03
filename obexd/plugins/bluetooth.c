@@ -427,8 +427,9 @@ static const struct obex_transport_driver driver = {
 
 static unsigned int listener_id = 0;
 
-static int bluetooth_init_cb(void)
+static int bluetooth_init_cb(gboolean at_register)
 {
+	(void)at_register;
 	connection = g_dbus_setup_private(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (connection == NULL)
 		return -EPERM;
@@ -439,8 +440,9 @@ static int bluetooth_init_cb(void)
 	return obex_transport_driver_register(&driver);
 }
 
-static void bluetooth_exit_cb(void)
+static void bluetooth_exit_cb(gboolean at_unregister)
 {
+	(void)at_unregister;
 	GSList *l;
 
 	g_dbus_remove_watch(connection, listener_id);

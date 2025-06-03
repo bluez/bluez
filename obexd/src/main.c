@@ -254,14 +254,6 @@ DBusConnection *obex_setup_dbus_connection(const char *name,
 	return connection;
 }
 
-DBusConnection *obex_setup_dbus_connection_private(const char *name,
-					DBusError *error)
-{
-	return g_dbus_setup_private(option_system_bus ?
-				DBUS_BUS_SYSTEM : DBUS_BUS_SESSION,
-				name, error);
-}
-
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
