@@ -1462,7 +1462,7 @@ static int pbap_init_cb(gboolean at_register)
 
 	DBG("");
 
-	conn = obex_setup_dbus_connection_private(NULL, NULL);
+	conn = obex_get_dbus_connection();
 	if (!conn)
 		return -EIO;
 
@@ -1485,8 +1485,27 @@ static int pbap_init_cb(gboolean at_register)
 
 static void pbap_exit_cb(gboolean at_unregister)
 {
-	(void)at_unregister;
+	DBusMessage *msg;
+	DBusMessageIter iter;
+	char *uuid = PBAP_CLIENT_UUID;
+
 	DBG("");
+
+	if (!at_unregister) {
+		client_path = g_strconcat("/org/bluez/obex/", uuid, NULL);
+		g_strdelimit(client_path, "-", '_');
+
+		msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+							"org.bluez.ProfileManager1",
+							"UnregisterProfile");
+
+		dbus_message_iter_init_append(msg, &iter);
+
+		dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+								&client_path);
+
+		g_dbus_send_message(system_conn, msg);
+	}
 
 	g_dbus_remove_watch(system_conn, listener_id);
 
@@ -1499,7 +1518,6 @@ static void pbap_exit_cb(gboolean at_unregister)
 	}
 
 	if (conn) {
-		dbus_connection_close(conn);
 		dbus_connection_unref(conn);
 		conn = NULL;
 	}
