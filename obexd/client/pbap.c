@@ -1455,8 +1455,9 @@ static struct obc_driver pbap = {
 	.remove = pbap_remove
 };
 
-static int pbap_init_cb(void)
+static int pbap_init_cb(gboolean at_register)
 {
+	(void)at_register;
 	int err;
 
 	DBG("");
@@ -1482,8 +1483,9 @@ static int pbap_init_cb(void)
 	return 0;
 }
 
-static void pbap_exit_cb(void)
+static void pbap_exit_cb(gboolean at_unregister)
 {
+	(void)at_unregister;
 	DBG("");
 
 	g_dbus_remove_watch(system_conn, listener_id);
