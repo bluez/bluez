@@ -2920,7 +2920,7 @@ struct bt_hci_cmd_le_set_host_feature {
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_READ_ISO_LINK_QUALITY	0x2075
-#define BT_HCI_BIT_LE_READ_ISO_LINK_QUALITY	BT_HCI_CMD_BIT(45, 1)
+#define BT_HCI_BIT_LE_READ_ISO_LINK_QUALITY	BT_HCI_CMD_BIT(44, 2)
 struct bt_hci_cmd_le_read_iso_link_quality {
 	uint16_t handle;
 } __attribute__ ((packed));
