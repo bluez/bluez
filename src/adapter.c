@@ -7356,11 +7356,12 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 				MGMT_SETTING_ISO_SYNC_RECEIVER))
 			monitoring = true;
 
-		/* Monitor Devices advertising RSI since those can be
-		 * coordinated sets not marked as visible but their object are
-		 * needed.
+		/* If ISO  Socket is enabled, monitor Devices advertising RSI
+		 * since those can be coordinated sets not marked as visible but
+		 * their object are needed.
 		 */
-		if (eir_data.rsi)
+		if (btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET) &&
+						eir_data.rsi)
 			monitoring = true;
 
 		if (!discoverable && !monitoring) {
