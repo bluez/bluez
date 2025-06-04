@@ -383,11 +383,25 @@ fail:
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static void cmd_list_assistant(int argc, char *argv[])
+{
+	GList *l;
+
+	for (l = assistants; l; l = g_list_next(l)) {
+		GDBusProxy *proxy = l->data;
+		print_assistant(proxy, NULL);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
 static const struct bt_shell_menu assistant_menu = {
 	.name = "assistant",
 	.desc = "Media Assistant Submenu",
 	.pre_run = assistant_menu_pre_run,
 	.entries = {
+	{ "list",         NULL,    cmd_list_assistant,
+						"List available assistants" },
 	{ "push", "<assistant>", cmd_push_assistant,
 					"Send stream information to peer" },
 	{} },
