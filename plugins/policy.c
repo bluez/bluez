@@ -389,6 +389,7 @@ static void hs_cb(struct btd_service *service, btd_service_state_t old_state,
 		else if (btd_service_get_state(sink) !=
 						BTD_SERVICE_STATE_CONNECTED)
 			policy_set_sink_timer(data);
+		data->hs_retries = 0;
 		break;
 	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
