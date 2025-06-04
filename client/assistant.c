@@ -395,15 +395,72 @@ static void cmd_list_assistant(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void print_assistant_properties(GDBusProxy *proxy)
+{
+	bt_shell_printf("Transport %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(proxy, "State");
+	print_property(proxy, "Metadata");
+	print_property(proxy, "QoS");
+}
+
+static void print_assistants(void *data, void *user_data)
+{
+	print_assistant_properties(data);
+}
+
+static char *generic_generator(const char *text, int state, GList *source)
+{
+	static int index = 0;
+
+	if (!source)
+		return NULL;
+
+	if (!state)
+		index = 0;
+
+	return g_dbus_proxy_path_lookup(source, &index, text);
+}
+
+static char *assistant_generator(const char *text, int state)
+{
+	return generic_generator(text, state, assistants);
+}
+
+static void cmd_show_assistant(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	/* Show all transports if no argument is given */
+	if (argc != 2) {
+		g_list_foreach(assistants, print_assistants, NULL);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	proxy = g_dbus_proxy_lookup(assistants, NULL, argv[1],
+					MEDIA_ASSISTANT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Assistant %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print_assistant_properties(proxy);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
 static const struct bt_shell_menu assistant_menu = {
 	.name = "assistant",
 	.desc = "Media Assistant Submenu",
 	.pre_run = assistant_menu_pre_run,
 	.entries = {
-	{ "list",         NULL,    cmd_list_assistant,
-						"List available assistants" },
+	{ "list", NULL, cmd_list_assistant, "List available assistants" },
+	{ "show", "[assistant]", cmd_show_assistant,
+					"Assistant information",
+					assistant_generator },
 	{ "push", "<assistant>", cmd_push_assistant,
-					"Send stream information to peer" },
+					"Send stream information to peer",
+					assistant_generator },
 	{} },
 };
 
