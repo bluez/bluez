@@ -1219,7 +1219,8 @@ static void start_discovery_reply(DBusMessage *message, void *user_data)
 	bt_shell_printf("Discovery %s\n", enable ? "started" : "stopped");
 
 	filter.active = enable;
-	/* Leave the discovery running even on noninteractive mode */
+
+	return bt_shell_noninteractive_quit(-EINPROGRESS);
 }
 
 static void clear_discovery_filter(DBusMessageIter *iter, void *user_data)

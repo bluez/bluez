@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <errno.h>
 
 #include "gdbus/gdbus.h"
 #include "src/shared/util.h"
@@ -238,7 +239,7 @@ static void register_reply(DBusMessage *message, void *user_data)
 		ad.registered = true;
 		bt_shell_printf("Advertising object registered\n");
 		print_ad();
-		/* Leave advertise running even on noninteractive mode */
+		return bt_shell_noninteractive_quit(-EINPROGRESS);
 	} else {
 		bt_shell_printf("Failed to register advertisement: %s\n", error.name);
 		dbus_error_free(&error);
@@ -874,8 +875,6 @@ static void ad_clear_service(int type)
 {
 	g_free(ad.service[type].uuid);
 	memset(&ad.service[type], 0, sizeof(ad.service[type]));
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static bool ad_add_data(struct ad_data *data, int argc, char *argv[])
@@ -950,8 +949,6 @@ void ad_disable_service(DBusConnection *conn, int type)
 static void ad_clear_manufacturer(int type)
 {
 	memset(&ad.manufacturer[type], 0, sizeof(ad.manufacturer[type]));
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_manufacturer(DBusConnection *conn, int type,
@@ -1006,8 +1003,6 @@ void ad_disable_manufacturer(DBusConnection *conn, int type)
 static void ad_clear_data(int type)
 {
 	memset(&ad.data[type], 0, sizeof(ad.data[type]));
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 void ad_advertise_data(DBusConnection *conn, int type, int argc, char *argv[])
