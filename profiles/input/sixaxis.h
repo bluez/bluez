@@ -17,6 +17,7 @@ typedef enum {
 	CABLE_PAIRING_UNSUPPORTED = 0,
 	CABLE_PAIRING_SIXAXIS,
 	CABLE_PAIRING_DS4,
+	CABLE_PAIRING_DUALSENSE,
 } CablePairingType;
 
 struct cable_pairing {
@@ -71,6 +72,30 @@ get_pairing(uint16_t vid, uint16_t pid, const char *name)
 			.pid = 0x09cc,
 			.version = 0x0001,
 			.type = CABLE_PAIRING_DS4,
+		},
+		{
+			.name = "Sony Interactive Entertainment Wireless Controller",
+			.source = 0x0002,
+			.vid = 0x054c,
+			.pid = 0x0ce6,
+			.version = 0x0001,
+			.type = CABLE_PAIRING_DUALSENSE,
+		},
+		{
+			.name = "Sony Interactive Entertainment DualSense Wireless Controller",
+			.source = 0x0002,
+			.vid = 0x054c,
+			.pid = 0x0ce6,
+			.version = 0x0001,
+			.type = CABLE_PAIRING_DUALSENSE,
+		},
+		{
+			.name = "Sony Interactive Entertainment DualSense Edge Wireless Controller",
+			.source = 0x0002,
+			.vid = 0x054c,
+			.pid = 0x0df2,
+			.version = 0x0001,
+			.type = CABLE_PAIRING_DUALSENSE,
 		},
 	};
 	guint i;
