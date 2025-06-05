@@ -1560,6 +1560,12 @@ void bt_shell_noninteractive_quit(int status)
 		return;
 	}
 
+	/* Ignore EINPROGRESS as it is meant for commands that need to stay
+	 * running.
+	 */
+	if (status == -EINPROGRESS)
+		return;
+
 	bt_shell_quit(status);
 }
 
