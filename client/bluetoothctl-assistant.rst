@@ -21,6 +21,13 @@ SYNOPSIS
 Assistant Commands
 ==================
 
+list
+----
+
+List available assistants.
+
+:Usage: **> list**
+
 push
 ----
 
