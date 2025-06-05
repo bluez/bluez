@@ -238,7 +238,7 @@ static void register_reply(DBusMessage *message, void *user_data)
 		ad.registered = true;
 		bt_shell_printf("Advertising object registered\n");
 		print_ad();
-		/* Leave advertise running even on noninteractive mode */
+		return bt_shell_noninteractive_quit(-EINPROGRESS);
 	} else {
 		bt_shell_printf("Failed to register advertisement: %s\n", error.name);
 		dbus_error_free(&error);
@@ -874,8 +874,6 @@ static void ad_clear_service(int type)
 {
 	g_free(ad.service[type].uuid);
 	memset(&ad.service[type], 0, sizeof(ad.service[type]));
-
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
 static bool ad_add_data(struct ad_data *data, int argc, char *argv[])
