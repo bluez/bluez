@@ -367,6 +367,58 @@ static void cmd_hangupheld(int argc, char *argv[])
 	bt_shell_printf("Attempting to hangup held calls\n");
 }
 
+static void send_tones_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to send tones: %s\n", error.name);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Send tones successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void send_tones_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *tones = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &tones);
+}
+
+static void cmd_send_tones(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 3) {
+		if (check_default_ag() == FALSE)
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+		proxy = default_ag;
+	} else {
+		proxy = g_dbus_proxy_lookup(ags, NULL, argv[2],
+						BLUEZ_TELEPHONY_AG_INTERFACE);
+		if (!proxy) {
+			bt_shell_printf("Audio gateway %s not available\n",
+							argv[2]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "SendTones", send_tones_setup,
+				send_tones_reply, argv[1], NULL) == FALSE) {
+		bt_shell_printf("Failed to send tones\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Attempting to send tones\n");
+}
+
 static void cmd_list_calls(int argc, char *arg[])
 {
 	g_list_foreach(calls, print_call, NULL);
@@ -601,6 +653,8 @@ static const struct bt_shell_menu telephony_menu = {
 						"Hangup active calls",
 						ag_generator},
 	{ "hangup-held",  "[audiogw]", cmd_hangupheld, "Hangup held calls",
+						ag_generator},
+	{ "send-tones",   "<tones> [audiogw]", cmd_send_tones, "Send tones",
 						ag_generator},
 	{ "list-calls",   NULL, cmd_list_calls, "List calls" },
 	{ "show-call",    "<call>", cmd_show_call, "Show call information",
