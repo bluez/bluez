@@ -43,6 +43,10 @@ struct telephony_callbacks {
 					void *profile_data);
 	DBusMessage *(*hangup_all)(DBusConnection *conn, DBusMessage *msg,
 					void *profile_data);
+	DBusMessage *(*hangup_active)(DBusConnection *conn, DBusMessage *msg,
+					void *profile_data);
+	DBusMessage *(*hangup_held)(DBusConnection *conn, DBusMessage *msg,
+					void *profile_data);
 	DBusMessage *(*create_multiparty)(DBusConnection *conn,
 					DBusMessage *msg,
 					void *profile_data);
