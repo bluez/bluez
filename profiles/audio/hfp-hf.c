@@ -1156,6 +1156,91 @@ failed:
 	return btd_error_failed(msg, "Hang up all command failed");
 }
 
+static DBusMessage *hfp_hangup_active(DBusConnection *conn, DBusMessage *msg,
+				void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	bool found_active = FALSE;
+	GSList *l;
+
+	DBG("");
+
+	for (l = dev->calls; l; l = l->next) {
+		struct call *call = l->data;
+
+		switch (call->state) {
+		case CALL_STATE_ACTIVE:
+		case CALL_STATE_DIALING:
+		case CALL_STATE_ALERTING:
+		case CALL_STATE_INCOMING:
+			found_active = TRUE;
+			break;
+		case CALL_STATE_HELD:
+		case CALL_STATE_WAITING:
+		case CALL_STATE_DISCONNECTED:
+			break;
+		}
+	}
+
+	if (!found_active)
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+					".InvalidState",
+					"No active call to hang up");
+
+	if (!hfp_hf_send_command(dev->hf, cmd_complete_cb,
+			dbus_message_ref(msg),
+			"AT+CHUP")) {
+		warn("Failed to hangup active calls");
+		return btd_error_failed(msg, "Hang up active command failed");
+	}
+
+	return NULL;
+}
+
+static DBusMessage *hfp_hangup_held(DBusConnection *conn, DBusMessage *msg,
+				void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	bool found_held = FALSE;
+	GSList *l;
+
+	DBG("");
+
+	if (!(dev->chld_features & CHLD_FEAT_REL))
+		return btd_error_not_supported(msg);
+
+	for (l = dev->calls; l; l = l->next) {
+		struct call *call = l->data;
+
+		switch (call->state) {
+		case CALL_STATE_HELD:
+		case CALL_STATE_WAITING:
+			found_held = TRUE;
+			break;
+		case CALL_STATE_ACTIVE:
+		case CALL_STATE_DIALING:
+		case CALL_STATE_ALERTING:
+		case CALL_STATE_INCOMING:
+		case CALL_STATE_DISCONNECTED:
+			break;
+		}
+	}
+
+	if (!found_held)
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+					".InvalidState",
+					"No held call to hang up");
+
+	if (!hfp_hf_send_command(dev->hf, cmd_complete_cb,
+			dbus_message_ref(msg),
+			"AT+CHLD=0")) {
+		warn("Failed to hangup held calls");
+		return btd_error_failed(msg, "Hang up held command failed");
+	}
+
+	return NULL;
+}
+
 static DBusMessage *call_answer(DBusConnection *conn, DBusMessage *msg,
 	void *call_data)
 {
@@ -1180,6 +1265,8 @@ failed:
 struct telephony_callbacks hfp_callbacks = {
 	.dial = hfp_dial,
 	.hangup_all = hfp_hangup_all,
+	.hangup_active = hfp_hangup_active,
+	.hangup_held = hfp_hangup_held,
 	.call_answer = call_answer,
 };
 
