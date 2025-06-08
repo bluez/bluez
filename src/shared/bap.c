@@ -296,6 +296,8 @@ struct bt_bap_stream {
 	struct queue *pending_states;
 	bool no_cache_config;
 	bool client;
+	bool locked;
+	bool need_reconfig;
 	void *user_data;
 };
 
@@ -1925,6 +1927,9 @@ static unsigned int bap_ucast_qos(struct bt_bap_stream *stream,
 	if (!stream->client)
 		return 0;
 
+	if (stream->need_reconfig)
+		return 0;
+
 	memset(&qos, 0, sizeof(qos));
 
 	/* TODO: Figure out how to pass these values around */
@@ -2327,7 +2332,6 @@ static unsigned int bap_ucast_release(struct bt_bap_stream *stream,
 	/* If stream does not belong to a client session, clean it up now */
 	if (!bap_stream_valid(stream)) {
 		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
-		stream = NULL;
 		return 0;
 	}
 
@@ -2608,6 +2612,9 @@ static int bap_ucast_io_link(struct bt_bap_stream *stream,
 			stream->qos.ucast.cig_id != link->qos.ucast.cig_id ||
 			stream->qos.ucast.cis_id != link->qos.ucast.cis_id ||
 			stream->ep->dir == link->ep->dir)
+		return -EINVAL;
+
+	if (stream->client && !(stream->locked && link->locked))
 		return -EINVAL;
 
 	if (!stream->links)
@@ -5073,6 +5080,8 @@ static void ep_status_config(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 		ep->stream->cc = new0(struct iovec, 1);
 
 	util_iov_memcpy(ep->stream->cc, cfg->cc, cfg->cc_len);
+
+	ep->stream->need_reconfig = false;
 }
 
 static void bap_stream_config_cfm_cb(struct bt_bap_stream *stream, int err)
@@ -5980,43 +5989,6 @@ bool bt_bap_pac_bcast_is_local(struct bt_bap *bap, struct bt_bap_pac *pac)
 	return false;
 }
 
-static bool find_ep_unused(const void *data, const void *user_data)
-{
-	const struct bt_bap_endpoint *ep = data;
-	const struct match_pac *match = user_data;
-
-	if (ep->stream)
-		return false;
-
-	if (match->rpac)
-		return ep->dir == match->rpac->type;
-	else
-		return true;
-}
-
-static bool find_ep_pacs(const void *data, const void *user_data)
-{
-	const struct bt_bap_endpoint *ep = data;
-	const struct match_pac *match = user_data;
-
-	if (!ep->stream)
-		return false;
-
-	if (ep->stream->lpac != match->lpac)
-		return false;
-
-	if (ep->stream->rpac != match->rpac)
-		return false;
-
-	switch (ep->state) {
-	case BT_BAP_STREAM_STATE_CONFIG:
-	case BT_BAP_STREAM_STATE_QOS:
-		return true;
-	}
-
-	return false;
-}
-
 static bool find_ep_source(const void *data, const void *user_data)
 {
 	const struct bt_bap_endpoint *ep = data;
@@ -6194,6 +6166,48 @@ static struct bt_bap_stream *bap_bcast_stream_new(struct bt_bap *bap,
 	return stream;
 }
 
+static bool find_ep_ucast(const void *data, const void *user_data)
+{
+	const struct bt_bap_endpoint *ep = data;
+	const struct match_pac *match = user_data;
+
+	if (ep->stream) {
+		if (!ep->stream->client)
+			return false;
+		if (ep->stream->locked)
+			return false;
+		if (!queue_isempty(ep->stream->pending_states))
+			return false;
+
+		switch (ep->stream->state) {
+		case BT_BAP_STREAM_STATE_IDLE:
+		case BT_BAP_STREAM_STATE_CONFIG:
+		case BT_BAP_STREAM_STATE_QOS:
+			break;
+		default:
+			return false;
+		}
+	}
+
+	if (ep->dir != match->rpac->type)
+		return false;
+
+	switch (match->lpac->type) {
+	case BT_BAP_SOURCE:
+		if (ep->dir != BT_BAP_SINK)
+			return false;
+		break;
+	case BT_BAP_SINK:
+		if (ep->dir != BT_BAP_SOURCE)
+			return false;
+		break;
+	default:
+		return false;
+	}
+
+	return true;
+}
+
 static struct bt_bap_stream *bap_ucast_stream_new(struct bt_bap *bap,
 					struct bt_bap_pac *lpac,
 					struct bt_bap_pac *rpac,
@@ -6211,20 +6225,26 @@ static struct bt_bap_stream *bap_ucast_stream_new(struct bt_bap *bap,
 	match.lpac = lpac;
 	match.rpac = rpac;
 
-	/* Check for existing stream */
-	ep = queue_find(bap->remote_eps, find_ep_pacs, &match);
+	/* Get free ASE */
+	ep = queue_find(bap->remote_eps, find_ep_ucast, &match);
 	if (!ep) {
-		/* Check for unused ASE */
-		ep = queue_find(bap->remote_eps, find_ep_unused, &match);
-		if (!ep) {
-			DBG(bap, "Unable to find unused ASE");
-			return NULL;
-		}
+		DBG(bap, "Unable to find usable ASE");
+		return NULL;
 	}
 
 	stream = ep->stream;
-	if (!stream)
+	if (stream) {
+		/* Replace lpac: the stream generally needs to be reconfigured
+		 * after this, otherwise things like codec config not match.
+		 */
+		bap_stream_clear_cfm(stream);
+		stream->lpac = lpac;
+		util_iov_free(stream->cc, 1);
+		stream->cc = util_iov_dup(data, 1);
+		stream->need_reconfig = true;
+	} else {
 		stream = bap_stream_new(bap, ep, lpac, rpac, data, true);
+	}
 
 	return stream;
 }
@@ -6243,6 +6263,25 @@ struct bt_bap_stream *bt_bap_stream_new(struct bt_bap *bap,
 		return bap_ucast_stream_new(bap, lpac, rpac, pqos, data);
 
 	return bap_bcast_stream_new(bap, lpac, pqos, data);
+}
+
+void bt_bap_stream_lock(struct bt_bap_stream *stream)
+{
+	if (!stream || !stream->client)
+		return;
+
+	/* Reserve stream ASE for use by upper level, so it won't get
+	 * reallocated
+	 */
+	stream->locked = true;
+}
+
+void bt_bap_stream_unlock(struct bt_bap_stream *stream)
+{
+	if (!stream || !stream->client)
+		return;
+
+	stream->locked = false;
 }
 
 struct bt_bap *bt_bap_stream_get_session(struct bt_bap_stream *stream)
