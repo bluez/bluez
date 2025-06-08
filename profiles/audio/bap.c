@@ -81,8 +81,10 @@ struct bap_setup {
 							DBusMessageIter *iter);
 	GIOChannel *io;
 	unsigned int io_id;
-	bool recreate;
-	bool cig_active;
+	bool want_qos;
+	bool want_io;
+	bool want_cis;
+	bool cis_active;
 	uint8_t sid;
 	bool config_pending;
 	bool readying;
@@ -136,6 +138,7 @@ struct bap_data {
 	struct queue *server_streams;
 	GIOChannel *listen_io;
 	unsigned int io_id;
+	unsigned int cig_update_id;
 	void *user_data;
 };
 
@@ -145,6 +148,9 @@ static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
 							void *user_data);
 static int bap_select_all(struct bap_data *data, bool reconfigure,
 					bap_select_done_t cb, void *user_data);
+static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
+				struct bt_bap_stream *stream, int defer);
+static void bap_update_cigs(struct bap_data *data);
 
 static bool bap_data_set_user_data(struct bap_data *data, void *user_data)
 {
@@ -182,6 +188,9 @@ static void bap_data_free(struct bap_data *data)
 
 	if (data->io_id)
 		g_source_remove(data->io_id);
+
+	if (data->cig_update_id)
+		g_source_remove(data->cig_update_id);
 
 	if (data->service && btd_service_get_user_data(data->service) == data)
 		btd_service_set_user_data(data->service, NULL);
@@ -740,6 +749,8 @@ static void setup_ready(struct bap_setup *setup, int code,
 		setup->ready_cb = NULL;
 		setup->ready_cb_data = NULL;
 	}
+
+	bap_update_cigs(setup->ep->data);
 }
 
 static void qos_cb(struct bt_bap_stream *stream, uint8_t code, uint8_t reason,
@@ -753,10 +764,9 @@ static void qos_cb(struct bt_bap_stream *stream, uint8_t code, uint8_t reason,
 
 	if (code)
 		setup_ready(setup, code, reason);
-}
 
-static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
-				struct bt_bap_stream *stream, int defer);
+	bap_update_cigs(setup->ep->data);
+}
 
 static int setup_qos(struct bap_setup *setup)
 {
@@ -802,19 +812,15 @@ static void config_cb(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	struct bap_setup *setup = user_data;
-	int err = 0;
 
 	DBG("stream %p code 0x%02x reason 0x%02x", stream, code, reason);
 
 	setup->id = 0;
 
 	if (code)
-		err = code;
-	else if (!setup->config_pending)
-		err = setup_qos(setup);
+		setup_ready(setup, code, reason);
 
-	if (err)
-		setup_ready(setup, err, reason);
+	bap_update_cigs(setup->ep->data);
 }
 
 static void setup_io_close(void *data, void *user_data)
@@ -838,7 +844,7 @@ static void setup_io_close(void *data, void *user_data)
 
 	g_io_channel_unref(setup->io);
 	setup->io = NULL;
-	setup->cig_active = false;
+	setup->cis_active = false;
 
 	bt_bap_stream_io_connecting(setup->stream, -1);
 }
@@ -987,6 +993,8 @@ static void setup_free(void *data)
 
 	DBG("%p", setup);
 
+	setup->closing = true;
+
 	setup_ready(setup, -ECANCELED, 0);
 
 	if (setup->closing && setup->close_cb)
@@ -1012,6 +1020,8 @@ static void setup_free(void *data)
 	bt_bap_stream_unlock(setup->stream);
 
 	release_stream(setup->stream);
+
+	bap_update_cigs(setup->ep->data);
 
 	free(setup);
 }
@@ -2219,7 +2229,7 @@ static void setup_accept_io(struct bap_setup *setup,
 		}
 	}
 
-	setup->cig_active = true;
+	setup->cis_active = true;
 
 	return;
 
@@ -2227,129 +2237,299 @@ fail:
 	close(fd);
 }
 
-struct cig_busy_data {
-	struct btd_adapter *adapter;
+struct find_cig_data {
+	const struct btd_adapter *adapter;
+	bool (*func)(const void *data, const void *match_data);
+	struct bap_setup *found;
+	struct queue *cigs;
 	uint8_t cig;
 };
 
-static bool match_cig_active(const void *data, const void *match_data)
+static bool find_cig_readying_setup(const void *data, const void *match_data)
+{
+	struct bap_setup *setup = (void *)data;
+	struct find_cig_data *info = (void *)match_data;
+	struct bt_bap_stream *stream = setup->stream;
+	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
+
+	/* Streams with automatically assigned CIG are considered to potentially
+	 * belong to any CIG.
+	 */
+	if (qos && qos->ucast.cig_id != info->cig &&
+				info->cig != BT_ISO_QOS_CIG_UNSET &&
+				qos->ucast.cig_id != BT_ISO_QOS_CIG_UNSET)
+		return false;
+
+	return setup->readying || setup->closing ||
+		setup->config_pending || setup->id;
+}
+
+static bool find_cig_busy_setup(const void *data, const void *match_data)
 {
 	const struct bap_setup *setup = data;
-	const struct cig_busy_data *info = match_data;
+	struct find_cig_data *info = (void *)match_data;
+	struct bt_bap_stream *stream = setup->stream;
+	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
 
-	return (setup->qos.ucast.cig_id == info->cig) && setup->cig_active;
+	if (qos && qos->ucast.cig_id != info->cig &&
+				info->cig != BT_ISO_QOS_CIG_UNSET &&
+				qos->ucast.cig_id != BT_ISO_QOS_CIG_UNSET)
+		return false;
+
+	return setup->cis_active || setup->closing ||
+		setup->config_pending || setup->id;
 }
 
-static bool cig_busy_ep(const void *data, const void *match_data)
+static bool find_cig_enumerate_setup(const void *data, const void *match_data)
+{
+	const struct bap_setup *setup = data;
+	struct find_cig_data *info = (void *)match_data;
+	struct bt_bap_stream *stream = setup->stream;
+	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
+
+	if (qos && info->cigs) {
+		queue_remove(info->cigs, UINT_TO_PTR(qos->ucast.cig_id));
+		queue_push_tail(info->cigs, UINT_TO_PTR(qos->ucast.cig_id));
+	}
+
+	return false;
+}
+
+static bool find_cig_ep(const void *data, const void *match_data)
 {
 	const struct bap_ep *ep = data;
-	const struct cig_busy_data *info = match_data;
+	struct find_cig_data *info = (void *)match_data;
 
-	return queue_find(ep->setups, match_cig_active, info);
+	info->found = queue_find(ep->setups, info->func, match_data);
+	return info->found;
 }
 
-static bool cig_busy_session(const void *data, const void *match_data)
+static bool find_cig_session(const void *data, const void *match_data)
 {
 	const struct bap_data *session = data;
-	const struct cig_busy_data *info = match_data;
+	const struct find_cig_data *info = match_data;
 
 	if (device_get_adapter(session->device) != info->adapter)
 		return false;
 
-	return queue_find(session->snks, cig_busy_ep, match_data) ||
-			queue_find(session->srcs, cig_busy_ep, match_data);
+	return queue_find(session->snks, find_cig_ep, match_data) ||
+			queue_find(session->srcs, find_cig_ep, match_data);
 }
 
-static bool is_cig_busy(struct bap_data *data, uint8_t cig)
+static struct bap_setup *find_cig_busy(struct bap_data *data, uint8_t cig)
 {
-	struct cig_busy_data info;
+	struct find_cig_data info = {
+		.adapter = device_get_adapter(data->device),
+		.cig = cig,
+		.func = find_cig_busy_setup,
+	};
 
-	if (cig == BT_ISO_QOS_CIG_UNSET)
-		return false;
-
-	info.adapter = device_get_adapter(data->device);
-	info.cig = cig;
-
-	return queue_find(sessions, cig_busy_session, &info);
+	queue_find(sessions, find_cig_session, &info);
+	return info.found;
 }
 
-static gboolean setup_io_recreate(void *user_data)
+static struct bap_setup *find_cig_readying(struct bap_data *data, uint8_t cig)
 {
-	struct bap_setup *setup = user_data;
+	struct find_cig_data info = {
+		.adapter = device_get_adapter(data->device),
+		.cig = cig,
+		.func = find_cig_readying_setup,
+	};
+
+	queue_find(sessions, find_cig_session, &info);
+	return info.found;
+}
+
+static struct queue *find_cig_enumerate(struct bap_data *data)
+{
+	struct find_cig_data info = {
+		.adapter = device_get_adapter(data->device),
+		.func = find_cig_enumerate_setup,
+		.cigs = queue_new(),
+	};
+
+	queue_find(sessions, find_cig_session, &info);
+	return info.cigs;
+}
+
+struct update_cig_data {
+	struct btd_adapter *adapter;
+	void (*func)(void *data, void *match_data);
+	uint8_t cig;
+	unsigned int count;
+};
+
+static void update_cig_setup_enable(void *data, void *match_data)
+{
+	struct bap_setup *setup = data;
+	struct update_cig_data *info = match_data;
+	struct bt_bap_stream *stream = setup->stream;
+	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
+
+	if (qos && qos->ucast.cig_id != info->cig)
+		return;
+	if (!stream || !setup->io || setup->closing || setup->cis_active)
+		return;
+	if (!setup->want_cis)
+		return;
+	if (bt_bap_stream_get_state(stream) != BT_BAP_STREAM_STATE_ENABLING)
+		return;
 
 	DBG("%p", setup);
 
-	setup->io_id = 0;
+	setup->want_cis = false;
+	setup_create_io(setup->ep->data, setup, setup->stream, false);
+	info->count++;
+}
 
+static void update_cig_setup_io(void *data, void *match_data)
+{
+	struct bap_setup *setup = data;
+	struct update_cig_data *info = match_data;
+	struct bt_bap_stream *stream = setup->stream;
+	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
+
+	if (qos && qos->ucast.cig_id != info->cig)
+		return;
+	if (!setup->want_io || !stream || setup->io || setup->closing)
+		return;
+	if (bt_bap_stream_get_state(stream) != BT_BAP_STREAM_STATE_QOS)
+		return;
+
+	DBG("%p", setup);
+
+	setup->want_io = false;
 	setup_create_io(setup->ep->data, setup, setup->stream, true);
+	info->count++;
+}
+
+static void update_cig_setup_qos(void *data, void *match_data)
+{
+	struct bap_setup *setup = data;
+	struct update_cig_data *info = match_data;
+	struct bt_bap_stream *stream = setup->stream;
+	int err;
+	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
+
+	if (qos && qos->ucast.cig_id != info->cig)
+		return;
+	if (!setup->want_qos || !stream || setup->closing)
+		return;
+	if (bt_bap_stream_get_state(stream) != BT_BAP_STREAM_STATE_CONFIG)
+		return;
+
+	DBG("%p", setup);
+
+	setup->want_qos = false;
+	err = setup_qos(setup);
+	if (err)
+		setup_ready(setup, err, 0);
+	else
+		info->count++;
+}
+
+static void update_cig_check_ep(void *data, void *match_data)
+{
+	struct bap_ep *ep = data;
+	struct update_cig_data *info = match_data;
+
+	queue_foreach(ep->setups, info->func, match_data);
+}
+
+static void update_cig_check_session(void *data, void *match_data)
+{
+	struct bap_data *session = data;
+	struct update_cig_data *info = match_data;
+
+	if (device_get_adapter(session->device) != info->adapter)
+		return;
+
+	queue_foreach(session->snks, update_cig_check_ep, match_data);
+	queue_foreach(session->srcs, update_cig_check_ep, match_data);
+}
+
+static void bap_update_cig(void *item, void *user_data)
+{
+	unsigned int cig = PTR_TO_UINT(item);
+	struct bap_data *data = user_data;
+	struct update_cig_data info;
+	struct bap_setup *setup;
+
+	info.adapter = device_get_adapter(data->device);
+	info.count = 0;
+	info.cig = cig;
+
+	DBG("adapter %p CIG 0x%x", info.adapter, info.cig);
+
+	/* Do stream QoS & IO re-creation only when CIG is no longer
+	 * busy and all pending Config/QoS requests have completed.
+	 */
+	setup = find_cig_busy(data, cig);
+	if (!setup) {
+		/* Recreate IO before QoS of new streams, so that we reserve
+		 * their CIS IDs in kernel before allocating new streams.
+		 */
+		info.func = update_cig_setup_io;
+		queue_foreach(sessions, update_cig_check_session, &info);
+
+		info.func = update_cig_setup_qos;
+		queue_foreach(sessions, update_cig_check_session, &info);
+	} else {
+		DBG("setup %p stream %p busy", setup, setup->stream);
+	}
+
+	/* Do CIS creation only after all setups have finished readying.
+	 */
+	setup = find_cig_readying(data, cig);
+	if (!setup) {
+		info.func = update_cig_setup_enable;
+		queue_foreach(sessions, update_cig_check_session, &info);
+	} else {
+		DBG("setup %p stream %p readying", setup, setup->stream);
+	}
+}
+
+static gboolean bap_update_cigs_cb(void *user_data)
+{
+	struct bap_data *data = user_data;
+	struct queue *cigs;
+	bool unset;
+
+	data->cig_update_id = 0;
+
+	cigs = find_cig_enumerate(data);
+	unset = queue_remove(cigs, UINT_TO_PTR(BT_ISO_QOS_CIG_UNSET));
+	queue_foreach(cigs, bap_update_cig, data);
+	queue_destroy(cigs, NULL);
+
+	/* Handle streams with unset CIG last, so that kernel CIG allocation
+	 * knows which IDs are reserved.
+	 */
+	if (unset)
+		bap_update_cig(UINT_TO_PTR(BT_ISO_QOS_CIG_UNSET), data);
 
 	return FALSE;
 }
 
-static void setup_recreate(void *data, void *match_data)
+static void bap_update_cigs(struct bap_data *data)
 {
-	struct bap_setup *setup = data;
-	struct cig_busy_data *info = match_data;
-
-	if (setup->qos.ucast.cig_id != info->cig || !setup->recreate ||
-						setup->io_id)
+	if (data->cig_update_id)
 		return;
 
-	setup->recreate = false;
-	setup->io_id = g_idle_add(setup_io_recreate, setup);
-}
-
-static void recreate_cig_ep(void *data, void *match_data)
-{
-	struct bap_ep *ep = data;
-
-	queue_foreach(ep->setups, setup_recreate, match_data);
-}
-
-static void recreate_cig_session(void *data, void *match_data)
-{
-	struct bap_data *session = data;
-	struct cig_busy_data *info = match_data;
-
-	if (device_get_adapter(session->device) != info->adapter)
-		return;
-
-	queue_foreach(session->snks, recreate_cig_ep, match_data);
-	queue_foreach(session->srcs, recreate_cig_ep, match_data);
-}
-
-static void recreate_cig(struct bap_setup *setup)
-{
-	struct bap_data *data = setup->ep->data;
-	struct cig_busy_data info;
-
-	info.adapter = device_get_adapter(data->device);
-	info.cig = setup->qos.ucast.cig_id;
-
-	DBG("adapter %p setup %p recreate CIG %d", info.adapter, setup,
-							info.cig);
-
-	if (setup->qos.ucast.cig_id == BT_ISO_QOS_CIG_UNSET) {
-		recreate_cig_ep(setup->ep, &info);
-		return;
-	}
-
-	queue_foreach(sessions, recreate_cig_session, &info);
+	data->cig_update_id = g_idle_add(bap_update_cigs_cb, data);
 }
 
 static void setup_io_disconnected(int cond, void *user_data)
 {
 	struct bap_setup *setup = user_data;
 
-	DBG("%p recreate %s", setup, setup->recreate ? "true" : "false");
-
 	setup->io_id = 0;
+
+	DBG("%p", setup);
 
 	setup_io_close(setup, NULL);
 
-	/* Check if connecting recreate IO */
-	if (!is_cig_busy(setup->ep->data, setup->qos.ucast.cig_id))
-		recreate_cig(setup);
+	bap_update_cigs(setup->ep->data);
 }
 
 static void bap_connect_bcast_io_cb(GIOChannel *chan, GError *err,
@@ -2393,13 +2573,9 @@ static void setup_connect_io(struct bap_data *data, struct bap_setup *setup,
 		return;
 	}
 
-	/* If IO channel still up or CIG is busy, wait for it to be
-	 * disconnected and then recreate.
-	 */
-	if (setup->io || is_cig_busy(data, setup->qos.ucast.cig_id)) {
-		DBG("setup %p stream %p defer %s wait recreate", setup, stream,
-						defer ? "true" : "false");
-		setup->recreate = true;
+	/* If IO channel still up */
+	if (setup->io) {
+		DBG("setup %p stream %p io already up", setup, stream);
 		return;
 	}
 
@@ -2433,7 +2609,7 @@ static void setup_connect_io(struct bap_data *data, struct bap_setup *setup,
 	setup->io_id = io_glib_add_err_watch(io, setup_io_disconnected, setup);
 
 	setup->io = io;
-	setup->cig_active = !defer;
+	setup->cis_active = !defer;
 
 	bt_bap_stream_io_connecting(stream, g_io_channel_unix_get_fd(io));
 }
@@ -2664,22 +2840,25 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_CONFIG:
 		if (setup) {
 			setup->config_pending = false;
-			if (!setup->id) {
-				int err = setup_qos(setup);
-
-				if (err)
-					setup_ready(setup, err, 0);
-			}
+			setup->want_qos = true;
+			bap_update_cigs(setup->ep->data);
 		}
 		break;
 	case BT_BAP_STREAM_STATE_QOS:
-		setup_create_io(data, setup, stream, true);
-		if (setup)
+		if (setup) {
+			setup->want_qos = false;
+			setup->want_io = true;
 			setup_ready(setup, 0, 0);
+			bap_update_cigs(setup->ep->data);
+		} else {
+			setup_create_io(data, setup, stream, true);
+		}
 		break;
 	case BT_BAP_STREAM_STATE_ENABLING:
-		if (setup)
-			setup_create_io(data, setup, stream, false);
+		if (setup) {
+			setup->want_cis = true;
+			bap_update_cigs(setup->ep->data);
+		}
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
 		break;
@@ -3146,7 +3325,6 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 	if (!setup)
 		return;
 
-	setup->recreate = false;
 	qos = &setup->qos;
 
 	if (!setup->io) {
@@ -3190,8 +3368,6 @@ static void bap_connecting_bcast(struct bt_bap_stream *stream, bool state,
 	setup = bap_find_setup_by_stream(data, stream);
 	if (!setup)
 		return;
-
-	setup->recreate = false;
 
 	if (!setup->io) {
 		io = g_io_channel_unix_new(fd);
