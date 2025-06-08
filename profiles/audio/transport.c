@@ -2147,7 +2147,8 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_RELEASING:
 		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
 			return;
-		break;
+		transport_update_playing(transport, FALSE);
+		goto done;
 	}
 
 	io = bt_bap_stream_get_io(stream);
