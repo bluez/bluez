@@ -6155,6 +6155,8 @@ static struct bt_bap_stream *bap_bcast_stream_new(struct bt_bap *bap,
 		ep = queue_find(bap->remote_eps, find_ep_source, NULL);
 		if (!ep)
 			return NULL;
+	} else if (lpac->type != BT_BAP_BCAST_SINK) {
+		return NULL;
 	}
 
 	if (!stream)
