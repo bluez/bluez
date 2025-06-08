@@ -33,3 +33,4 @@ void transport_get_properties(struct media_transport *transport,
 int media_transport_get_device_volume(struct btd_device *dev);
 void media_transport_update_device_volume(struct btd_device *dev,
 								int volume);
+const char *media_transport_stream_path(void *stream);

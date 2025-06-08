@@ -2147,7 +2147,8 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_RELEASING:
 		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
 			return;
-		break;
+		transport_update_playing(transport, FALSE);
+		goto done;
 	}
 
 	io = bt_bap_stream_get_io(stream);
@@ -2669,4 +2670,21 @@ void media_transport_update_device_volume(struct btd_device *dev,
 	}
 
 	btd_device_set_volume(dev, volume);
+}
+
+const char *media_transport_stream_path(void *stream)
+{
+	GSList *l;
+
+	if (!stream)
+		return NULL;
+
+	for (l = transports; l; l = l->next) {
+		struct media_transport *transport = l->data;
+
+		if (media_transport_get_stream(transport) == stream)
+			return transport->path;
+	}
+
+	return NULL;
 }
