@@ -1508,6 +1508,13 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 		if (stream->client)
 			bt_bap_stream_stop(stream, stream_stop_complete, NULL);
 		break;
+	case BT_ASCS_ASE_STATE_RELEASING:
+		if (stream->client) {
+			bap_stream_clear_cfm(stream);
+			bap_stream_io_detach(stream);
+			bt_bap_stream_io_unlink(stream, NULL);
+		}
+		break;
 	}
 }
 
@@ -2623,6 +2630,30 @@ static int bap_ucast_io_link(struct bt_bap_stream *stream,
 	return 0;
 }
 
+static void stream_unlink_ucast(void *data)
+{
+	struct bt_bap_stream *link = data;
+
+	DBG(link->bap, "stream %p unlink", link);
+
+	queue_destroy(link->links, NULL);
+	link->links = NULL;
+}
+
+static int bap_ucast_io_unlink(struct bt_bap_stream *stream,
+						struct bt_bap_stream *link)
+{
+	if (!stream)
+		return -EINVAL;
+
+	queue_destroy(stream->links, stream_unlink_ucast);
+	stream->links = NULL;
+
+	DBG(stream->bap, "stream %p unlink", stream);
+	return 0;
+
+}
+
 static void stream_link(void *data, void *user_data)
 {
 	struct bt_bap_stream *stream = (void *)data;
@@ -2728,7 +2759,7 @@ static const struct bt_bap_stream_ops stream_ops[] = {
 			bap_ucast_release, bap_ucast_detach,
 			bap_ucast_set_io, bap_ucast_get_io,
 			bap_ucast_io_dir, bap_ucast_io_link,
-			NULL),
+			bap_ucast_io_unlink),
 	STREAM_OPS(BT_BAP_SOURCE, bap_ucast_set_state,
 			bap_ucast_get_state,
 			bap_ucast_config, bap_ucast_qos, bap_ucast_enable,
@@ -2738,7 +2769,7 @@ static const struct bt_bap_stream_ops stream_ops[] = {
 			bap_ucast_release, bap_ucast_detach,
 			bap_ucast_set_io, bap_ucast_get_io,
 			bap_ucast_io_dir, bap_ucast_io_link,
-			NULL),
+			bap_ucast_io_unlink),
 	STREAM_OPS(BT_BAP_BCAST_SINK, bap_bcast_set_state,
 			bap_bcast_get_state,
 			bap_bcast_config, bap_bcast_qos, bap_bcast_sink_enable,
