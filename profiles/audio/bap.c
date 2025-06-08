@@ -63,6 +63,11 @@
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
 #define MEDIA_INTERFACE "org.bluez.Media1"
 
+struct bap_setup;
+
+typedef void (*bap_setup_ready_func_t)(struct bap_setup *setup, int code,
+						uint8_t reason, void *data);
+
 struct bap_setup {
 	struct bap_ep *ep;
 	struct bap_data *data;
@@ -76,11 +81,13 @@ struct bap_setup {
 	bool cig_active;
 	uint8_t sid;
 	bool config_pending;
+	bool readying;
 	struct iovec *caps;
 	struct iovec *metadata;
 	unsigned int id;
 	struct iovec *base;
-	DBusMessage *msg;
+	bap_setup_ready_func_t ready_cb;
+	void *ready_cb_data;
 	void (*destroy)(struct bap_setup *setup);
 };
 
@@ -115,6 +122,10 @@ struct bap_data {
 };
 
 static struct queue *sessions;
+
+static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
+							void *user_data);
+
 
 static bool bap_data_set_user_data(struct bap_data *data, void *user_data)
 {
@@ -697,28 +708,32 @@ fail:
 	return -EINVAL;
 }
 
+static void setup_ready(struct bap_setup *setup, int code,
+							uint8_t reason)
+{
+	if (!setup->readying)
+		return;
+
+	setup->readying = false;
+
+	if (setup->ready_cb) {
+		setup->ready_cb(setup, code, reason, setup->ready_cb_data);
+		setup->ready_cb = NULL;
+		setup->ready_cb_data = NULL;
+	}
+}
+
 static void qos_cb(struct bt_bap_stream *stream, uint8_t code, uint8_t reason,
 					void *user_data)
 {
 	struct bap_setup *setup = user_data;
-	DBusMessage *reply;
 
 	DBG("stream %p code 0x%02x reason 0x%02x", stream, code, reason);
 
 	setup->id = 0;
 
-	if (!setup->msg)
-		return;
-
-	if (!code)
-		reply = dbus_message_new_method_return(setup->msg);
-	else
-		reply = btd_error_failed(setup->msg, "Unable to configure");
-
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
-
-	dbus_message_unref(setup->msg);
-	setup->msg = NULL;
+	if (code)
+		setup_ready(setup, code, reason);
 }
 
 static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
@@ -766,26 +781,19 @@ static void config_cb(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	struct bap_setup *setup = user_data;
-	DBusMessage *reply;
+	int err = 0;
 
 	DBG("stream %p code 0x%02x reason 0x%02x", stream, code, reason);
 
 	setup->id = 0;
 
-	if (!code) {
-		if (!setup->config_pending)
-			setup_qos(setup);
-		return;
-	}
+	if (code)
+		err = code;
+	else if (!setup->config_pending)
+		err = setup_qos(setup);
 
-	if (!setup->msg)
-		return;
-
-	reply = btd_error_failed(setup->msg, "Unable to configure");
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
-
-	dbus_message_unref(setup->msg);
-	setup->msg = NULL;
+	if (err)
+		setup_ready(setup, err, reason);
 }
 
 static void setup_io_close(void *data, void *user_data)
@@ -875,20 +883,14 @@ static void release_stream(struct bt_bap_stream *stream)
 static void setup_free(void *data)
 {
 	struct bap_setup *setup = data;
-	DBusMessage *reply;
 
 	DBG("%p", setup);
+
+	setup_ready(setup, -ECANCELED, 0);
 
 	if (setup->stream && setup->id) {
 		bt_bap_stream_cancel(setup->stream, setup->id);
 		setup->id = 0;
-	}
-
-	if (setup->msg) {
-		reply = btd_error_failed(setup->msg, "Canceled");
-		g_dbus_send_message(btd_get_dbus_connection(), reply);
-		dbus_message_unref(setup->msg);
-		setup->msg = NULL;
 	}
 
 	if (setup->ep)
@@ -987,6 +989,29 @@ static bool setup_mismatch_qos(const void *data, const void *user_data)
 	return !match_bcast_qos(&setup->qos.bcast, &match->qos.bcast);
 }
 
+struct set_configuration_data {
+	struct bap_setup *setup;
+	DBusMessage *msg;
+};
+
+static void set_configuration_ready(struct bap_setup *setup, int code,
+						uint8_t reason, void *user_data)
+{
+	struct set_configuration_data *data = user_data;
+	DBusMessage *reply;
+
+	if (!code)
+		reply = dbus_message_new_method_return(data->msg);
+	else if (code == -ECANCELED)
+		reply = btd_error_failed(data->msg, "Canceled");
+	else
+		reply = btd_error_failed(data->msg, "Unable to configure");
+
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(data->msg);
+	free(data);
+}
+
 static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -994,6 +1019,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	struct bap_setup *setup;
 	const char *path;
 	DBusMessageIter args, props;
+	struct set_configuration_data *cbdata;
 
 	dbus_message_iter_init(msg, &args);
 
@@ -1028,36 +1054,23 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 			return btd_error_invalid_args(msg);
 		}
 
-	setup->stream = bt_bap_stream_new(ep->data->bap, ep->lpac, ep->rpac,
-						&setup->qos, setup->caps);
-	bt_bap_stream_lock(setup->stream);
-	bt_bap_stream_set_user_data(setup->stream, ep->path);
-	setup->config_pending = true;
-	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
-						setup->caps, config_cb, setup);
-	if (!setup->id) {
+	cbdata = new0(struct set_configuration_data, 1);
+	cbdata->setup = setup;
+
+	if (setup_config(setup, set_configuration_ready, cbdata)) {
 		DBG("Unable to config stream");
 		setup_free(setup);
+		free(cbdata);
 		return btd_error_invalid_args(msg);
 	}
 
-	if (setup->metadata && setup->metadata->iov_len)
-		bt_bap_stream_metadata(setup->stream, setup->metadata, NULL,
-								NULL);
+	cbdata->msg = dbus_message_ref(msg);
 
 	switch (bt_bap_stream_get_type(setup->stream)) {
-	case BT_BAP_STREAM_TYPE_UCAST:
-		setup->msg = dbus_message_ref(msg);
-		break;
 	case BT_BAP_STREAM_TYPE_BCAST:
-		/* No message sent over the air for broadcast */
-		setup->id = 0;
-		setup->config_pending = false;
-
 		if (ep->data->service)
 			service_set_connecting(ep->data->service);
-
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		break;
 	}
 
 	return NULL;
@@ -1436,10 +1449,13 @@ static struct bap_ep *ep_register(struct btd_service *service,
 	return ep;
 }
 
-static void setup_config(void *data, void *user_data)
+static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
+								void *user_data)
 {
-	struct bap_setup *setup = data;
 	struct bap_ep *ep = setup->ep;
+
+	if (setup->readying)
+		return -EBUSY;
 
 	DBG("setup %p caps %p metadata %p", setup, setup->caps,
 						setup->metadata);
@@ -1454,27 +1470,49 @@ static void setup_config(void *data, void *user_data)
 		bt_bap_stream_lock(setup->stream);
 	}
 
-	setup->config_pending = true;
+	bt_bap_stream_set_user_data(setup->stream, ep->path);
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
 						setup->caps, config_cb, setup);
-	if (!setup->id) {
-		DBG("Unable to config stream");
-		setup_free(setup);
-		return;
+	if (!setup->id)
+		return -EINVAL;
+
+	switch (bt_bap_stream_get_type(setup->stream)) {
+	case BT_BAP_STREAM_TYPE_UCAST:
+		setup->config_pending = true;
+		break;
+	case BT_BAP_STREAM_TYPE_BCAST:
+		/* Broadcast does not call the callback */
+		setup->id = 0;
+		break;
 	}
 
 	if (setup->metadata && setup->metadata->iov_len)
 		bt_bap_stream_metadata(setup->stream, setup->metadata, NULL,
 								NULL);
 
-	bt_bap_stream_set_user_data(setup->stream, ep->path);
+	setup->readying = true;
+	setup->ready_cb = cb;
+	setup->ready_cb_data = user_data;
+
+	return 0;
+}
+
+static void bap_config_setup(void *data, void *user_data)
+{
+	struct bap_setup *setup = data;
+
+	if (setup_config(setup, NULL, NULL)) {
+		DBG("Unable to config stream");
+		setup_free(setup);
+		return;
+	}
 }
 
 static void bap_config(void *data, void *user_data)
 {
 	struct bap_ep *ep = data;
 
-	queue_foreach(ep->setups, setup_config, NULL);
+	queue_foreach(ep->setups, bap_config_setup, NULL);
 }
 
 static void select_cb(struct bt_bap_pac *pac, int err, struct iovec *caps,
@@ -2240,11 +2278,18 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_CONFIG:
 		if (setup) {
 			setup->config_pending = false;
-			setup_qos(setup);
+			if (!setup->id) {
+				int err = setup_qos(setup);
+
+				if (err)
+					setup_ready(setup, err, 0);
+			}
 		}
 		break;
 	case BT_BAP_STREAM_STATE_QOS:
-			setup_create_io(data, setup, stream, true);
+		setup_create_io(data, setup, stream, true);
+		if (setup)
+			setup_ready(setup, 0, 0);
 		break;
 	case BT_BAP_STREAM_STATE_ENABLING:
 		if (setup)
