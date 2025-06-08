@@ -861,6 +861,17 @@ static struct bap_setup *setup_new(struct bap_ep *ep)
 	return setup;
 }
 
+static void release_stream(struct bt_bap_stream *stream)
+{
+	switch (bt_bap_stream_get_state(stream)) {
+	case BT_BAP_STREAM_STATE_IDLE:
+	case BT_BAP_STREAM_STATE_RELEASING:
+		break;
+	default:
+		bt_bap_stream_release(stream, NULL, NULL);
+	}
+}
+
 static void setup_free(void *data)
 {
 	struct bap_setup *setup = data;
@@ -891,6 +902,10 @@ static void setup_free(void *data)
 
 	if (setup->destroy)
 		setup->destroy(setup);
+
+	bt_bap_stream_unlock(setup->stream);
+
+	release_stream(setup->stream);
 
 	free(setup);
 }
@@ -1015,6 +1030,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 
 	setup->stream = bt_bap_stream_new(ep->data->bap, ep->lpac, ep->rpac,
 						&setup->qos, setup->caps);
+	bt_bap_stream_lock(setup->stream);
 	bt_bap_stream_set_user_data(setup->stream, ep->path);
 	setup->config_pending = true;
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
@@ -1107,6 +1123,7 @@ static void create_stream_for_bis(struct bap_data *bap_data,
 	/* Create and configure stream */
 	setup->stream = bt_bap_stream_new(bap_data->bap,
 			lpac, NULL, &setup->qos, caps);
+	bt_bap_stream_lock(setup->stream);
 
 	setup->sid = sid;
 	bt_bap_stream_set_user_data(setup->stream, path);
@@ -1430,10 +1447,12 @@ static void setup_config(void *data, void *user_data)
 	/* TODO: Check if stream capabilities match add support for Latency
 	 * and PHY.
 	 */
-	if (!setup->stream)
+	if (!setup->stream) {
 		setup->stream = bt_bap_stream_new(ep->data->bap, ep->lpac,
 						ep->rpac, &setup->qos,
 						setup->caps);
+		bt_bap_stream_lock(setup->stream);
+	}
 
 	setup->config_pending = true;
 	setup->id = bt_bap_stream_config(setup->stream, &setup->qos,
