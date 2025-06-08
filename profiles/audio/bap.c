@@ -57,6 +57,8 @@
 #include "src/log.h"
 #include "src/error.h"
 
+#include "transport.h"
+
 #define ISO_SOCKET_UUID "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
 #define PACS_UUID_STR "00001850-0000-1000-8000-00805f9b34fb"
 #define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
@@ -67,6 +69,7 @@ struct bap_setup;
 
 typedef void (*bap_setup_ready_func_t)(struct bap_setup *setup, int code,
 						uint8_t reason, void *data);
+typedef void (*bap_setup_close_func_t)(struct bap_setup *setup, void *data);
 
 struct bap_setup {
 	struct bap_ep *ep;
@@ -82,12 +85,15 @@ struct bap_setup {
 	uint8_t sid;
 	bool config_pending;
 	bool readying;
+	bool closing;
 	struct iovec *caps;
 	struct iovec *metadata;
 	unsigned int id;
 	struct iovec *base;
 	bap_setup_ready_func_t ready_cb;
 	void *ready_cb_data;
+	bap_setup_close_func_t close_cb;
+	void *close_cb_data;
 	void (*destroy)(struct bap_setup *setup);
 };
 
@@ -746,6 +752,8 @@ static int setup_qos(struct bap_setup *setup)
 
 	if (!stream)
 		return -EINVAL;
+	if (setup->closing)
+		return -EINVAL;
 	if (bt_bap_stream_get_state(stream) != BT_BAP_STREAM_STATE_CONFIG)
 		goto error;
 	if (setup->id)
@@ -822,12 +830,103 @@ static void setup_io_close(void *data, void *user_data)
 	bt_bap_stream_io_connecting(setup->stream, -1);
 }
 
-static void ep_close(struct bap_ep *ep)
+static bool release_stream(struct bt_bap_stream *stream)
 {
-	if (!ep)
+	if (!stream)
+		return true;
+
+	switch (bt_bap_stream_get_state(stream)) {
+	case BT_BAP_STREAM_STATE_IDLE:
+	case BT_BAP_STREAM_STATE_RELEASING:
+		return true;
+	default:
+		bt_bap_stream_release(stream, NULL, NULL);
+		return false;
+	}
+}
+
+static int setup_close(struct bap_setup *setup, bap_setup_close_func_t cb,
+								void *user_data)
+{
+	if (setup->closing)
+		return -EBUSY;
+
+	DBG("%p", setup);
+
+	setup->close_cb = cb;
+	setup->close_cb_data = user_data;
+	setup->closing = true;
+
+	bt_bap_stream_unlock(setup->stream);
+
+	if (release_stream(setup->stream)) {
+		setup_free(setup);
+		return 0;
+	}
+
+	return 0;
+}
+
+struct ep_close_data {
+	int remaining;
+	int count;
+	const char *path;
+	void (*cb)(int count, void *user_data);
+	void *user_data;
+};
+
+static void ep_close_setup_cb(struct bap_setup *setup, void *user_data)
+{
+	struct ep_close_data *epdata = user_data;
+
+	epdata->remaining--;
+
+	DBG("closed setup %p remain %d", setup, epdata->remaining);
+
+	if (epdata->remaining)
 		return;
 
-	queue_foreach(ep->setups, setup_io_close, NULL);
+	if (epdata->cb)
+		epdata->cb(epdata->count, epdata->user_data);
+
+	free(epdata);
+}
+
+static void ep_close_setup(void *data, void *user_data)
+{
+	struct bap_setup *setup = data;
+	struct ep_close_data *epdata = user_data;
+	struct bt_bap_stream *stream = setup->stream;
+	const char *path = media_transport_stream_path(stream);
+
+	if (epdata->path && (!path || strcmp(epdata->path, path)))
+		return;
+
+	epdata->remaining++;
+	if (setup_close(setup, ep_close_setup_cb, epdata))
+		epdata->remaining--;
+	else
+		epdata->count++;
+}
+
+static void ep_close(struct bap_ep *ep, const char *transport_path,
+			void (*cb)(int count, void *user_data), void *user_data)
+{
+	struct ep_close_data *epdata;
+
+	DBG("close ep %p path %s", ep, transport_path ? transport_path : "-");
+
+	epdata = new0(struct ep_close_data, 1);
+	epdata->cb = cb;
+	epdata->path = transport_path;
+	epdata->user_data = user_data;
+	epdata->remaining = 1;
+
+	if (ep)
+		queue_foreach(ep->setups, ep_close_setup, epdata);
+
+	epdata->path = NULL;
+	ep_close_setup_cb(NULL, epdata);
 }
 
 static struct bap_setup *setup_new(struct bap_ep *ep)
@@ -869,17 +968,6 @@ static struct bap_setup *setup_new(struct bap_ep *ep)
 	return setup;
 }
 
-static void release_stream(struct bt_bap_stream *stream)
-{
-	switch (bt_bap_stream_get_state(stream)) {
-	case BT_BAP_STREAM_STATE_IDLE:
-	case BT_BAP_STREAM_STATE_RELEASING:
-		break;
-	default:
-		bt_bap_stream_release(stream, NULL, NULL);
-	}
-}
-
 static void setup_free(void *data)
 {
 	struct bap_setup *setup = data;
@@ -887,6 +975,9 @@ static void setup_free(void *data)
 	DBG("%p", setup);
 
 	setup_ready(setup, -ECANCELED, 0);
+
+	if (setup->closing && setup->close_cb)
+		setup->close_cb(setup, setup->close_cb_data);
 
 	if (setup->stream && setup->id) {
 		bt_bap_stream_cancel(setup->stream, setup->id);
@@ -1035,7 +1126,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	 * TO DO reconfiguration of a BIS.
 	 */
 	if (bt_bap_pac_get_type(ep->lpac) != BT_BAP_BCAST_SOURCE)
-		ep_close(ep);
+		ep_close(ep, NULL, NULL, NULL);
 
 	setup = setup_new(ep);
 
@@ -1073,6 +1164,51 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 		break;
 	}
 
+	return NULL;
+}
+
+struct clear_configuration_data {
+	DBusMessage *msg;
+	bool all;
+};
+
+static void clear_configuration_cb(int count, void *user_data)
+{
+	struct clear_configuration_data *data = user_data;
+	DBusMessage *reply;
+
+	DBG("%p", data);
+
+	if (!data->all && count == 0)
+		reply = btd_error_invalid_args(data->msg);
+	else
+		reply = dbus_message_new_method_return(data->msg);
+
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(data->msg);
+	free(data);
+}
+
+static DBusMessage *clear_configuration(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct bap_ep *ep = data;
+	const char *path;
+	struct clear_configuration_data *cbdata;
+	DBusMessageIter args;
+
+	dbus_message_iter_init(msg, &args);
+	dbus_message_iter_get_basic(&args, &path);
+
+	if (strcmp(path, ep->path) == 0)
+		path = NULL;
+
+	cbdata = new0(struct clear_configuration_data, 1);
+	cbdata->msg = dbus_message_ref(msg);
+	cbdata->all = (path == NULL);
+
+	DBG("%p %s %s", cbdata, ep->path, path ? path : "NULL");
+	ep_close(ep, path, clear_configuration_cb, cbdata);
 	return NULL;
 }
 
@@ -1249,6 +1385,9 @@ static const GDBusMethodTable ep_methods[] = {
 					GDBUS_ARGS({ "endpoint", "o" },
 						{ "Configuration", "a{sv}" } ),
 					NULL, set_configuration) },
+	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("ClearConfiguration",
+					GDBUS_ARGS({ "transport", "o" }),
+					NULL, clear_configuration) },
 	{ },
 };
 
@@ -1259,10 +1398,9 @@ static void ep_free(void *data)
 	struct bap_ep *ep = data;
 	struct queue *setups = ep->setups;
 
-	ep_cancel_select(ep);
-
 	ep->setups = NULL;
 	queue_destroy(setups, setup_free);
+	ep_cancel_select(ep);
 	free(ep->path);
 	free(ep);
 }
@@ -1456,6 +1594,8 @@ static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
 
 	if (setup->readying)
 		return -EBUSY;
+	if (setup->closing)
+		return -EINVAL;
 
 	DBG("setup %p caps %p metadata %p", setup, setup->caps,
 						setup->metadata);
@@ -2235,6 +2375,9 @@ static void setup_create_bcast_io(struct bap_data *data,
 static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
 				struct bt_bap_stream *stream, int defer)
 {
+	if (setup && setup->closing)
+		return;
+
 	DBG("setup %p stream %p defer %s", setup, stream,
 				defer ? "true" : "false");
 
@@ -2266,6 +2409,13 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 		return;
 
 	setup = bap_find_setup_by_stream(data, stream);
+
+	if (setup && setup->closing) {
+		if (old_state == BT_BAP_STREAM_STATE_RELEASING) {
+			setup_free(setup);
+			return;
+		}
+	}
 
 	switch (new_state) {
 	case BT_BAP_STREAM_STATE_IDLE:
