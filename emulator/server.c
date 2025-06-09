@@ -118,6 +118,7 @@ again:
 	while (count > 0) {
 		hci_command_hdr *cmd_hdr;
 		hci_acl_hdr *acl_hdr;
+		hci_iso_hdr *iso_hdr;
 
 		if (!client->pkt_data) {
 			client->pkt_type = ptr[0];
@@ -140,8 +141,16 @@ again:
 				client->pkt_data = malloc(client->pkt_expect);
 				client->pkt_len = 0;
 				break;
+			case HCI_ISODATA_PKT:
+				iso_hdr = (hci_iso_hdr *)(ptr + 1);
+				client->pkt_expect = HCI_ISO_HDR_SIZE +
+							iso_hdr->dlen + 1;
+				client->pkt_data = malloc(client->pkt_expect);
+				client->pkt_len = 0;
+				break;
 			default:
-				printf("packet error\n");
+				printf("packet error, unknown type: %d\n",
+					client->pkt_type);
 				return;
 			}
 
@@ -218,7 +227,7 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 
 	switch (server->type) {
 	case SERVER_TYPE_BREDRLE:
-		type = BTDEV_TYPE_BREDRLE;
+		type = BTDEV_TYPE_BREDRLE52;
 		break;
 	case SERVER_TYPE_BREDR:
 		type = BTDEV_TYPE_BREDR;

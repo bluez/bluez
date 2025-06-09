@@ -2311,6 +2311,12 @@ typedef struct {
 } __attribute__ ((packed))	hci_msg_hdr;
 #define HCI_MSG_HDR_SIZE	6
 
+typedef struct {
+	uint16_t	handle;
+	uint16_t	dlen;
+} __attribute__ ((packed))	hci_iso_hdr;
+#define HCI_ISO_HDR_SIZE	4
+
 /* Command opcode pack/unpack */
 #define cmd_opcode_pack(ogf, ocf)	(uint16_t)((ocf & 0x03ff)|(ogf << 10))
 #define cmd_opcode_ogf(op)		(op >> 10)
