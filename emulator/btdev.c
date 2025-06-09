@@ -6726,30 +6726,34 @@ done:
 static int cmd_remove_iso_path(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_remove_iso_path *cmd = data;
-	uint8_t status = BT_HCI_ERR_SUCCESS;
+	struct bt_hci_rsp_le_remove_iso_path rsp;
 	struct btdev_conn *conn;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.handle = cmd->handle;
 
 	conn = queue_find(dev->conns, match_handle,
 				UINT_TO_PTR(cpu_to_le16(cmd->handle)));
 	if (!conn) {
-		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		rsp.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
 		goto done;
 	}
 
-	switch (cmd->direction) {
-	case 0x00:
-		dev->le_iso_path[0] = 0x00;
-		break;
-	case 0x01:
-		dev->le_iso_path[1] = 0x00;
-		break;
-	default:
-		status = BT_HCI_ERR_INVALID_PARAMETERS;
+	if (cmd->direction > 0x3) {
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
 	}
 
+	if (cmd->direction & 0x1)
+		dev->le_iso_path[0] = 0x00;
+
+	if (cmd->direction & 0x2)
+		dev->le_iso_path[1] = 0x00;
+
 done:
-	cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_ISO_PATH, &status,
-							sizeof(status));
+	cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_ISO_PATH, &rsp,
+							sizeof(rsp));
 
 	return 0;
 }
