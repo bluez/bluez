@@ -3467,7 +3467,7 @@ void bthost_set_scan_enable(struct bthost *bthost, uint8_t enable)
 							&cp, sizeof(cp));
 }
 
-void bthost_set_ext_adv_params(struct bthost *bthost)
+void bthost_set_ext_adv_params(struct bthost *bthost, uint8_t sid)
 {
 	const uint8_t interval_20ms[] = { 0x20, 0x00, 0x00 };
 	struct bt_hci_cmd_le_set_ext_adv_params cp;
@@ -3477,6 +3477,7 @@ void bthost_set_ext_adv_params(struct bthost *bthost)
 	cp.evt_properties = cpu_to_le16(0x0013);
 	memcpy(cp.min_interval, interval_20ms, sizeof(cp.min_interval));
 	memcpy(cp.max_interval, interval_20ms, sizeof(cp.max_interval));
+	cp.sid = sid;
 	send_command(bthost, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 							&cp, sizeof(cp));
 }
