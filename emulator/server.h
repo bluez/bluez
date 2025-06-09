@@ -22,5 +22,5 @@ enum server_type {
 struct server;
 
 struct server *server_open_unix(enum server_type type, const char *path);
-struct server *server_open_tcp(enum server_type type);
+struct server *server_open_tcp(enum server_type type, uint16_t port);
 void server_close(struct server *server);
