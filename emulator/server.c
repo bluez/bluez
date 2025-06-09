@@ -311,7 +311,7 @@ struct server *server_open_unix(enum server_type type, const char *path)
 	return server;
 }
 
-static int open_tcp(void)
+static int open_tcp(uint16_t port)
 {
 	struct sockaddr_in addr;
 	int fd, opt = 1;
@@ -332,7 +332,7 @@ static int open_tcp(void)
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
 	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	addr.sin_port = htons(45550);
+	addr.sin_port = htons(port);
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("Failed to bind server socket");
@@ -349,7 +349,7 @@ static int open_tcp(void)
 	return fd;
 }
 
-struct server *server_open_tcp(enum server_type type)
+struct server *server_open_tcp(enum server_type type, uint16_t port)
 {
 	struct server *server;
 
@@ -361,7 +361,7 @@ struct server *server_open_tcp(enum server_type type)
 	server->type = type;
 	server->id = 0x43;
 
-	server->fd = open_tcp();
+	server->fd = open_tcp(port);
 	if (server->fd < 0) {
 		free(server);
 		return NULL;

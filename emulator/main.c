@@ -47,6 +47,7 @@ static void usage(void)
 		"\t-d                    Enable debug\n"
 		"\t-S                    Create local serial port\n"
 		"\t-s                    Create local server sockets\n"
+		"\t-t[port=45550]        Create a TCP server\n"
 		"\t-l[num]               Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
 		"\t-U[num]               Number of test LE controllers\n"
@@ -60,6 +61,7 @@ static const struct option main_options[] = {
 	{ "debug",   no_argument,       NULL, 'd' },
 	{ "serial",  no_argument,       NULL, 'S' },
 	{ "server",  no_argument,       NULL, 's' },
+	{ "tcp",     optional_argument, NULL, 't' },
 	{ "local",   optional_argument, NULL, 'l' },
 	{ "le",      no_argument,       NULL, 'L' },
 	{ "bredr",   no_argument,       NULL, 'B' },
@@ -86,6 +88,7 @@ int main(int argc, char *argv[])
 	struct server *server5;
 	bool debug_enabled = false;
 	bool server_enabled = false;
+	uint16_t tcp_port = 0;
 	bool serial_enabled = false;
 	int letest_count = 0;
 	int vhci_count = 0;
@@ -97,7 +100,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "dSsl::LBAU::T::vh",
+		opt = getopt_long(argc, argv, "dSst::l::LBAU::T::vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -111,6 +114,12 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			server_enabled = true;
+			break;
+		case 't':
+			if (optarg)
+				tcp_port = atoi(optarg);
+			else
+				tcp_port = 45550;
 			break;
 		case 'l':
 			if (optarg)
@@ -145,7 +154,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (letest_count < 1 && vhci_count < 1 && !server_enabled &&
-						!serial_enabled) {
+						!tcp_port && !serial_enabled) {
 		fprintf(stderr, "No emulator specified\n");
 		return EXIT_FAILURE;
 	}
@@ -211,6 +220,15 @@ int main(int argc, char *argv[])
 						"/tmp/bt-server-mon");
 		if (!server5)
 			fprintf(stderr, "Failed to open monitor server\n");
+	}
+
+	if (tcp_port) {
+		struct server *tcp_server;
+
+		tcp_server = server_open_tcp(SERVER_TYPE_BREDRLE, tcp_port);
+		if (!tcp_server)
+			fprintf(stderr, "Failed to open TCP port\n");
+		fprintf(stderr, "Listening TCP on 127.0.0.1:%d\n", tcp_port);
 	}
 
 	return mainloop_run_with_signal(signal_callback, NULL);
