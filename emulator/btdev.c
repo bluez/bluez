@@ -5479,6 +5479,7 @@ static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
 	per_adv->sync_handle = sync_handle;
 
 	ev.handle = cpu_to_le16(per_adv->sync_handle);
+	ev.sid = per_adv->sid;
 	ev.addr_type = per_adv->addr_type;
 	memcpy(ev.addr, per_adv->addr, sizeof(ev.addr));
 	ev.phy = 0x01;
