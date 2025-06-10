@@ -1170,6 +1170,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 
 	cbdata = new0(struct set_configuration_data, 1);
 	cbdata->setup = setup;
+	cbdata->msg = dbus_message_ref(msg);
 
 	if (setup_config(setup, set_configuration_ready, cbdata)) {
 		DBG("Unable to config stream");
@@ -1177,8 +1178,6 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 		free(cbdata);
 		return btd_error_invalid_args(msg);
 	}
-
-	cbdata->msg = dbus_message_ref(msg);
 
 	switch (bt_bap_stream_get_type(setup->stream)) {
 	case BT_BAP_STREAM_TYPE_BCAST:
@@ -1776,6 +1775,7 @@ static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
 	case BT_BAP_STREAM_TYPE_BCAST:
 		/* Broadcast does not call the callback */
 		setup->id = 0;
+		cb(setup, 0, 0, user_data);
 		break;
 	}
 
