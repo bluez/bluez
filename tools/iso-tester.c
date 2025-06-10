@@ -1412,6 +1412,26 @@ static const struct iso_client_data bcast_1_1_16_2_1_send = {
 	.base_len = sizeof(base_lc3_16_2_1),
 };
 
+static const struct iso_client_data bcast_16_2_1_send_sid = {
+	.qos = QOS_OUT_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+	.sid = 0xff,
+};
+
+static const struct iso_client_data bcast_16_2_1_send_sid1 = {
+	.qos = QOS_OUT_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+	.sid = 0x01,
+};
+
 static const struct iso_client_data bcast_16_2_1_recv = {
 	.qos = QOS_IN_16_2_1,
 	.expect_err = 0,
@@ -1437,6 +1457,16 @@ static const struct iso_client_data bcast_16_2_1_recv_sid = {
 	.server = true,
 	.big = true,
 	.sid = 0xff,
+};
+
+static const struct iso_client_data bcast_16_2_1_recv_sid1 = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+	.sid = 0x01,
 };
 
 static const struct iso_client_data bcast_enc_16_2_1_recv = {
@@ -1658,7 +1688,8 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 		host = hciemu_client_host(client);
 		bthost_set_cmd_complete_cb(host, client_connectable_complete,
 									data);
-		bthost_set_ext_adv_params(host);
+		bthost_set_ext_adv_params(host, isodata->sid != 0xff ?
+						isodata->sid : 0x00);
 		bthost_set_ext_adv_enable(host, 0x01);
 
 		if (!isodata)
@@ -1836,8 +1867,9 @@ end:
 
 static int create_iso_sock(struct test_data *data)
 {
+	const struct iso_client_data *isodata = data->test_data;
 	const uint8_t *master_bdaddr;
-	struct sockaddr_iso addr;
+	struct sockaddr_iso *addr;
 	int sk, err;
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET | SOCK_NONBLOCK, BTPROTO_ISO);
@@ -1855,12 +1887,26 @@ static int create_iso_sock(struct test_data *data)
 		return -ENODEV;
 	}
 
-	memset(&addr, 0, sizeof(addr));
-	addr.iso_family = AF_BLUETOOTH;
-	bacpy(&addr.iso_bdaddr, (void *) master_bdaddr);
-	addr.iso_bdaddr_type = BDADDR_LE_PUBLIC;
+	if (isodata->bcast && isodata->sid) {
+		addr = malloc(sizeof(*addr) + sizeof(*addr->iso_bc));
+		memset(addr, 0, sizeof(*addr) + sizeof(*addr->iso_bc));
+		addr->iso_family = AF_BLUETOOTH;
+		bacpy(&addr->iso_bdaddr, (void *) master_bdaddr);
+		addr->iso_bdaddr_type = BDADDR_LE_PUBLIC;
+		addr->iso_bc->bc_bdaddr_type = BDADDR_LE_PUBLIC;
+		addr->iso_bc->bc_sid = isodata->sid;
+		err = bind(sk, (struct sockaddr *) addr, sizeof(*addr) +
+						sizeof(*addr->iso_bc));
+	} else {
+		addr = malloc(sizeof(*addr));
+		memset(addr, 0, sizeof(*addr));
+		addr->iso_family = AF_BLUETOOTH;
+		bacpy(&addr->iso_bdaddr, (void *) master_bdaddr);
+		addr->iso_bdaddr_type = BDADDR_LE_PUBLIC;
+		err = bind(sk, (struct sockaddr *) addr, sizeof(addr));
+	}
 
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (err < 0) {
 		err = -errno;
 		tester_warn("Can't bind socket: %s (%d)", strerror(errno),
 									errno);
@@ -2623,6 +2669,8 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 			tester_test_failed();
 			return FALSE;
 		}
+
+		tester_print("SID: 0x%02x", addr.bc.bc_sid);
 	}
 
 	len = sizeof(sk_err);
@@ -3886,12 +3934,22 @@ int main(int argc, char *argv[])
 							&bcast_1_1_16_2_1_send,
 							setup_powered,
 							test_bcast);
+	test_iso("ISO Broadcaster SID auto - Success", &bcast_16_2_1_send_sid,
+							setup_powered,
+							test_bcast);
+	test_iso("ISO Broadcaster SID 0x01 - Success", &bcast_16_2_1_send_sid1,
+							setup_powered,
+							test_bcast);
 
 	test_iso("ISO Broadcaster Receiver - Success", &bcast_16_2_1_recv,
 							setup_powered,
 							test_bcast_recv);
-	test_iso("ISO Broadcaster Receiver SID 0xff - Success",
+	test_iso("ISO Broadcaster Receiver SID auto - Success",
 							&bcast_16_2_1_recv_sid,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver SID 0x01 - Success",
+							&bcast_16_2_1_recv_sid1,
 							setup_powered,
 							test_bcast_recv);
 	test_iso2("ISO Broadcaster Receiver2 - Success", &bcast_16_2_1_recv2,
