@@ -43,13 +43,13 @@ static void call_init_cb(gpointer data, gpointer user_data)
 {
 	int res;
 
-	res = ((struct callback_pair *)data)->init_cb();
+	res = ((struct callback_pair *)data)->init_cb(FALSE);
 	if (res)
 		*(int *)user_data = res;
 }
 static void call_exit_cb(gpointer data, gpointer user_data)
 {
-	((struct callback_pair *)data)->exit_cb();
+	((struct callback_pair *)data)->exit_cb(FALSE);
 }
 
 static int update(void)
@@ -229,7 +229,7 @@ int logind_register(logind_init_cb init_cb, logind_exit_cb exit_cb)
 	struct callback_pair *cbs;
 
 	if (!monitoring_enabled)
-		return init_cb();
+		return init_cb(TRUE);
 	if (callbacks == NULL) {
 		int res;
 
@@ -237,23 +237,23 @@ int logind_register(logind_init_cb init_cb, logind_exit_cb exit_cb)
 		if (res) {
 			error("logind_init(): %s - login detection disabled",
 				strerror(-res));
-			return init_cb();
+			return init_cb(TRUE);
 		}
 	}
 	cbs = g_new(struct callback_pair, 1);
 	cbs->init_cb = init_cb;
 	cbs->exit_cb = exit_cb;
 	callbacks = g_slist_prepend(callbacks, cbs);
-	return active ? init_cb() : 0;
+	return active ? init_cb(TRUE) : 0;
 }
 void logind_unregister(logind_init_cb init_cb, logind_exit_cb exit_cb)
 {
 	GSList *cb_node;
 
 	if (!monitoring_enabled)
-		return exit_cb();
+		return exit_cb(TRUE);
 	if (active)
-		exit_cb();
+		exit_cb(TRUE);
 	cb_node = g_slist_find_custom(callbacks, init_cb, find_cb);
 	if (cb_node != NULL)
 		callbacks = g_slist_delete_link(callbacks, cb_node);
