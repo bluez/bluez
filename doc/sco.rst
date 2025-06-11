@@ -188,7 +188,7 @@ Example:
 BT_PHY (since Linux 5.10)
 -------------------------
 
-Transport supported PHY(s), possible values:
+Transport supported PHY(s), read-only (no setsockopt support). Possible values:
 
 .. csv-table::
     :header: "Define", "Value", "Description"
