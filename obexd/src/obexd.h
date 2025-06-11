@@ -33,5 +33,3 @@ const char *obex_option_capability(void);
 DBusConnection *obex_get_dbus_connection(void);
 DBusConnection *obex_setup_dbus_connection(const char *name,
 					DBusError *error);
-DBusConnection *obex_setup_dbus_connection_private(const char *name,
-					DBusError *error);
