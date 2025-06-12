@@ -122,7 +122,8 @@ static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 
 	cp = get_pairing(vid, pid, NULL);
 	if (cp && (cp->type == CABLE_PAIRING_SIXAXIS ||
-					cp->type == CABLE_PAIRING_DS4))
+					cp->type == CABLE_PAIRING_DS4 ||
+					cp->type == CABLE_PAIRING_DUALSENSE))
 		return true;
 
 	return false;

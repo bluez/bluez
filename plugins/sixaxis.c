@@ -131,12 +131,36 @@ static int ds4_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int dualsense_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
+{
+	uint8_t buf[20];
+	int ret;
+
+	memset(buf, 0, sizeof(buf));
+
+	buf[0] = 0x09;
+
+	ret = ioctl(fd, HIDIOCGFEATURE(sizeof(buf)), buf);
+	if (ret < 0) {
+		error("sixaxis: failed to read DualSense device address (%s)",
+		      strerror(errno));
+		return ret;
+	}
+
+	/* address is little-endian on DualSense */
+	bacpy(bdaddr, (bdaddr_t*) (buf + 1));
+
+	return 0;
+}
+
 static int get_device_bdaddr(int fd, bdaddr_t *bdaddr, CablePairingType type)
 {
 	if (type == CABLE_PAIRING_SIXAXIS)
 		return sixaxis_get_device_bdaddr(fd, bdaddr);
 	else if (type == CABLE_PAIRING_DS4)
 		return ds4_get_device_bdaddr(fd, bdaddr);
+	else if (type == CABLE_PAIRING_DUALSENSE)
+		return dualsense_get_device_bdaddr(fd, bdaddr);
 	return -1;
 }
 
@@ -183,12 +207,36 @@ static int ds4_get_central_bdaddr(int fd, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int dualsense_get_central_bdaddr(int fd, bdaddr_t *bdaddr)
+{
+	uint8_t buf[20];
+	int ret;
+
+	memset(buf, 0, sizeof(buf));
+
+	buf[0] = 0x09;
+
+	ret = ioctl(fd, HIDIOCGFEATURE(sizeof(buf)), buf);
+	if (ret < 0) {
+		error("sixaxis: failed to read DualSense central address (%s)",
+		      strerror(errno));
+		return ret;
+	}
+
+	/* address is little-endian on DualSense */
+	bacpy(bdaddr, (bdaddr_t*) (buf + 10));
+
+	return 0;
+}
+
 static int get_central_bdaddr(int fd, bdaddr_t *bdaddr, CablePairingType type)
 {
 	if (type == CABLE_PAIRING_SIXAXIS)
 		return sixaxis_get_central_bdaddr(fd, bdaddr);
 	else if (type == CABLE_PAIRING_DS4)
 		return ds4_get_central_bdaddr(fd, bdaddr);
+	else if (type == CABLE_PAIRING_DUALSENSE)
+		return dualsense_get_central_bdaddr(fd, bdaddr);
 	return -1;
 }
 
@@ -230,6 +278,26 @@ static int ds4_set_central_bdaddr(int fd, const bdaddr_t *bdaddr)
 	return ret;
 }
 
+static int dualsense_set_central_bdaddr(int fd, const bdaddr_t *bdaddr)
+{
+	uint8_t buf[27];
+	int ret;
+
+	buf[0] = 0x0A;
+	bacpy((bdaddr_t*) (buf + 1), bdaddr);
+	/* TODO: we could put the key here but
+	   there is no way to force a re-loading
+	   of link keys to the kernel from here. */
+	memset(buf + 7, 0, 16);
+
+	ret = ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
+	if (ret < 0)
+		error("sixaxis: failed to write DualSense central address (%s)",
+		      strerror(errno));
+
+	return ret;
+}
+
 static int set_central_bdaddr(int fd, const bdaddr_t *bdaddr,
 					CablePairingType type)
 {
@@ -237,6 +305,32 @@ static int set_central_bdaddr(int fd, const bdaddr_t *bdaddr,
 		return sixaxis_set_central_bdaddr(fd, bdaddr);
 	else if (type == CABLE_PAIRING_DS4)
 		return ds4_set_central_bdaddr(fd, bdaddr);
+	else if (type == CABLE_PAIRING_DUALSENSE)
+		return dualsense_set_central_bdaddr(fd, bdaddr);
+	return -1;
+}
+
+static int dualsense_set_bluetooth_state(int fd, bool state)
+{
+	uint8_t buf[48];
+	int ret;
+
+	buf[0] = 0x08;
+	buf[1] = state?1:2;
+
+	ret = ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
+	if (ret < 0)
+		error("sixaxis: failed to set DualSense Bluetooth state (%s)",
+		      strerror(errno));
+
+	return ret;
+}
+
+static int set_bluetooth_state(int fd, CablePairingType type,
+					bool state)
+{
+	if (type == CABLE_PAIRING_DUALSENSE)
+		return dualsense_set_bluetooth_state(fd, state);
 	return -1;
 }
 
@@ -297,12 +391,13 @@ static void agent_auth_cb(DBusError *derr, void *user_data)
 	remove_device = false;
 	btd_device_set_temporary(closure->device, false);
 
-	if (closure->type == CABLE_PAIRING_SIXAXIS) {
+	if (closure->type == CABLE_PAIRING_SIXAXIS)
 		btd_device_set_record(closure->device, HID_UUID,
 						 SIXAXIS_HID_SDP_RECORD);
 
+	if (closure->type == CABLE_PAIRING_SIXAXIS ||
+				closure->type == CABLE_PAIRING_DUALSENSE) {
 		device_set_cable_pairing(closure->device, true);
-
 		server_set_cable_pairing(adapter_bdaddr, true);
 	}
 
@@ -311,6 +406,11 @@ static void agent_auth_cb(DBusError *derr, void *user_data)
 	ba2str(adapter_bdaddr, adapter_addr);
 	DBG("remote %s old_central %s new_central %s",
 				device_addr, central_addr, adapter_addr);
+
+	if (closure->type == CABLE_PAIRING_DUALSENSE) {
+		DBG("Enabling Bluetooth connection on the device");
+		set_bluetooth_state(closure->fd, closure->type, true);
+	}
 
 out:
 	g_hash_table_steal(pending_auths, closure->sysfs_path);
@@ -432,7 +532,8 @@ static void device_added(struct udev_device *udevice)
 
 	cp = get_pairing_type_for_device(udevice, &bus, &sysfs_path);
 	if (!cp || (cp->type != CABLE_PAIRING_SIXAXIS &&
-				cp->type != CABLE_PAIRING_DS4)) {
+				cp->type != CABLE_PAIRING_DS4 &&
+				cp->type != CABLE_PAIRING_DUALSENSE)) {
 		g_free(sysfs_path);
 		return;
 	}
