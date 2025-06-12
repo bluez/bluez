@@ -4784,7 +4784,8 @@ static void read_source_pac_loc(bool success, uint8_t att_ecode,
 		if (gatt_db_attribute_get_char_data(pacs->source,
 						NULL, &value_handle,
 						NULL, NULL, NULL))
-			bt_gatt_client_read_value(bap->client, value_handle,
+			bt_gatt_client_read_long_value(bap->client,
+							value_handle, 0,
 							read_source_pac, bap,
 							NULL);
 	}
@@ -4817,7 +4818,8 @@ static void read_sink_pac_loc(bool success, uint8_t att_ecode,
 		if (gatt_db_attribute_get_char_data(pacs->sink,
 						NULL, &value_handle,
 						NULL, NULL, NULL))
-			bt_gatt_client_read_value(bap->client, value_handle,
+			bt_gatt_client_read_long_value(bap->client,
+							value_handle, 0,
 							read_sink_pac, bap,
 							NULL);
 	}
@@ -4897,7 +4899,7 @@ static void foreach_pacs_char(struct gatt_db_attribute *attr, void *user_data)
 		if (!pacs->sink)
 			pacs->sink = attr;
 
-		bt_gatt_client_read_value(bap->client, value_handle,
+		bt_gatt_client_read_long_value(bap->client, value_handle, 0,
 						read_sink_pac, bap, NULL);
 	}
 
@@ -4911,7 +4913,7 @@ static void foreach_pacs_char(struct gatt_db_attribute *attr, void *user_data)
 		if (!pacs->source)
 			pacs->source = attr;
 
-		bt_gatt_client_read_value(bap->client, value_handle,
+		bt_gatt_client_read_long_value(bap->client, value_handle, 0,
 						read_source_pac, bap, NULL);
 	}
 
@@ -5515,8 +5517,8 @@ clone:
 			if (gatt_db_attribute_get_char_data(pacs->sink,
 							NULL, &value_handle,
 							NULL, NULL, NULL)) {
-				bt_gatt_client_read_value(bap->client,
-							value_handle,
+				bt_gatt_client_read_long_value(bap->client,
+							value_handle, 0,
 							read_sink_pac,
 							bap, NULL);
 			}
@@ -5539,8 +5541,8 @@ clone:
 			if (gatt_db_attribute_get_char_data(pacs->source,
 							NULL, &value_handle,
 							NULL, NULL, NULL)) {
-				bt_gatt_client_read_value(bap->client,
-							value_handle,
+				bt_gatt_client_read_long_value(bap->client,
+							value_handle, 0,
 							read_source_pac,
 							bap, NULL);
 			}
