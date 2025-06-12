@@ -427,12 +427,44 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	}
 }
 
+static void bass_req_bcode_cb(void *user_data, int err)
+{
+	struct bass_setup *setup = user_data;
+
+	if (!err) {
+		if (asprintf(&setup->path, "%s/bis%d",
+			device_get_path(setup->dg->device),
+			setup->bis) < 0)
+			return;
+
+		bt_bap_stream_set_user_data(setup->stream, setup->path);
+
+		bt_bap_stream_config(setup->stream, &setup->qos,
+				setup->config, NULL, NULL);
+		bt_bap_stream_metadata(setup->stream, setup->meta,
+				NULL, NULL);
+	}
+}
+
 static void setup_configure_stream(struct bass_setup *setup)
 {
+	uint8_t empty_bcode[BT_BASS_BCAST_CODE_SIZE] = {0};
+
 	setup->stream = bt_bap_stream_new(setup->dg->bap, setup->lpac, NULL,
 					&setup->qos, setup->config);
 	if (!setup->stream)
 		return;
+
+	/* Before configuring the stream, check whether it is encrypted.
+	 * If so, request the broadcast code from the client.
+	 */
+	if ((setup->qos.bcast.encryption) &&
+	    (!memcmp(setup->qos.bcast.bcode->iov_base,
+		     empty_bcode,
+		     sizeof(empty_bcode)))) {
+		bass_req_bcode(setup->stream, bass_req_bcode_cb, setup, NULL);
+		return;
+	}
 
 	if (asprintf(&setup->path, "%s/bis%d",
 			device_get_path(setup->dg->device),
