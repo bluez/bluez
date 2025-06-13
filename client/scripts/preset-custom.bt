@@ -1,4 +1,4 @@
-endpoint.presets 00002bc9-0000-1000-8000-00805f9b34fb custom
+endpoint.presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 custom
 48
 10
 3
@@ -11,7 +11,8 @@ Unframed
 3
 10
 20000
-endpoint.presets 00002bcb-0000-1000-8000-00805f9b34fb custom
+n
+endpoint.presets 00002bcb-0000-1000-8000-00805f9b34fb 0x06 custom
 48
 10
 3
@@ -24,3 +25,4 @@ Unframed
 3
 10
 20000
+n

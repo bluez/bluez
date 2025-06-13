@@ -3900,6 +3900,24 @@ fail:
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static void custom_metadata(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct iovec *meta = (void *)&p->meta;
+
+	if (!strcasecmp(input, "n") || !strcasecmp(input, "no"))
+		goto done;
+
+	meta->iov_base = str2bytearray((void *)input, &meta->iov_len);
+	if (!meta->iov_base) {
+		bt_shell_printf("Invalid metadata %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+done:
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
 static void custom_delay(const char *input, void *user_data)
 {
 	struct codec_preset *p = user_data;
@@ -3916,7 +3934,8 @@ static void custom_delay(const char *input, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	bt_shell_prompt_input("Metadata", "Enter Metadata (value/no):",
+				custom_metadata, user_data);
 }
 
 static void custom_latency(const char *input, void *user_data)
