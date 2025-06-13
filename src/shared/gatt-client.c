@@ -2686,78 +2686,14 @@ static void destroy_read_op(void *data)
 	free(op);
 }
 
-static void read_cb(uint8_t opcode, const void *pdu, uint16_t length,
-								void *user_data)
-{
-	struct request *req = user_data;
-	struct read_op *op = req->data;
-	bool success;
-	uint8_t att_ecode = 0;
-	const uint8_t *value = NULL;
-	uint16_t value_len = 0;
-
-	if (opcode == BT_ATT_OP_ERROR_RSP) {
-		success = false;
-		att_ecode = process_error(pdu, length);
-		goto done;
-	}
-
-	if (opcode != BT_ATT_OP_READ_RSP || (!pdu && length)) {
-		success = false;
-		goto done;
-	}
-
-	success = true;
-	value_len = length;
-	if (value_len)
-		value = pdu;
-
-done:
-	if (op->callback)
-		op->callback(success, att_ecode, value, length, op->user_data);
-}
-
 unsigned int bt_gatt_client_read_value(struct bt_gatt_client *client,
 					uint16_t value_handle,
 					bt_gatt_client_read_callback_t callback,
 					void *user_data,
 					bt_gatt_client_destroy_func_t destroy)
 {
-	struct request *req;
-	struct read_op *op;
-	uint8_t pdu[2];
-
-	if (!client)
-		return 0;
-
-	op = new0(struct read_op, 1);
-
-	req = request_create(client);
-	if (!req) {
-		free(op);
-		return 0;
-	}
-
-	op->callback = callback;
-	op->user_data = user_data;
-	op->destroy = destroy;
-
-	req->data = op;
-	req->destroy = destroy_read_op;
-
-	put_le16(value_handle, pdu);
-
-	req->att_id = bt_att_send(client->att, BT_ATT_OP_READ_REQ,
-							pdu, sizeof(pdu),
-							read_cb, req,
-							request_unref);
-	if (!req->att_id) {
-		op->destroy = NULL;
-		request_unref(req);
-		return 0;
-	}
-
-	return req->id;
+	return bt_gatt_client_read_long_value(client, value_handle, 0, callback,
+						user_data, destroy);
 }
 
 static void read_multiple_cb(uint8_t opcode, const void *pdu, uint16_t length,
