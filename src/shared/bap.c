@@ -1959,6 +1959,17 @@ static unsigned int bap_ucast_qos(struct bt_bap_stream *stream,
 	return req->id;
 }
 
+static void bap_stream_get_context(size_t i, uint8_t l, uint8_t t, uint8_t *v,
+					void *user_data)
+{
+	bool *found = user_data;
+
+	if (!v)
+		return;
+
+	*found = true;
+}
+
 static unsigned int bap_stream_metadata(struct bt_bap_stream *stream,
 					uint8_t op, struct iovec *data,
 					bt_bap_stream_func_t func,
@@ -1967,11 +1978,7 @@ static unsigned int bap_stream_metadata(struct bt_bap_stream *stream,
 	struct iovec iov[2];
 	struct bt_ascs_metadata meta;
 	struct bt_bap_req *req;
-	struct metadata {
-		uint8_t len;
-		uint8_t type;
-		uint8_t data[2];
-	} ctx = LTV(0x02, 0x01, 0x00); /* Context = Unspecified */
+	uint16_t value = cpu_to_le16(0x0001); /* Context = Unspecified */
 
 	memset(&meta, 0, sizeof(meta));
 
@@ -1980,12 +1987,32 @@ static unsigned int bap_stream_metadata(struct bt_bap_stream *stream,
 	iov[0].iov_base = &meta;
 	iov[0].iov_len = sizeof(meta);
 
-	if (data)
-		iov[1] = *data;
-	else {
-		iov[1].iov_base = &ctx;
-		iov[1].iov_len = sizeof(ctx);
+	if (data) {
+		util_iov_free(stream->meta, 1);
+		stream->meta = util_iov_dup(data, 1);
 	}
+
+	/* Check if metadata contains an Audio Context */
+	if (stream->meta) {
+		uint8_t type = 0x02;
+		bool found = false;
+
+		util_ltv_foreach(stream->meta->iov_base,
+				stream->meta->iov_len, &type,
+				bap_stream_get_context, &found);
+		if (!found)
+			util_ltv_push(stream->meta, sizeof(value), type,
+				      &value);
+	}
+
+	/* If metadata doesn't contain an Audio Context, add one */
+	if (!stream->meta) {
+		stream->meta = new0(struct iovec, 1);
+		util_ltv_push(stream->meta, sizeof(value), 0x02, &value);
+	}
+
+	iov[1].iov_base = stream->meta->iov_base;
+	iov[1].iov_len = stream->meta->iov_len;
 
 	meta.len = iov[1].iov_len;
 
