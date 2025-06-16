@@ -1683,13 +1683,17 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 	for (i = 0; i < data->client_num; i++) {
 		struct hciemu_client *client;
 		struct bthost *host;
+		uint8_t sid = 0;
 
 		client = hciemu_get_client(data->hciemu, i);
 		host = hciemu_client_host(client);
 		bthost_set_cmd_complete_cb(host, client_connectable_complete,
 									data);
-		bthost_set_ext_adv_params(host, isodata->sid != 0xff ?
-						isodata->sid : 0x00);
+
+		if (isodata)
+			sid = isodata->sid;
+
+		bthost_set_ext_adv_params(host, sid != 0xff ? sid : 0x00);
 		bthost_set_ext_adv_enable(host, 0x01);
 
 		if (!isodata)
@@ -1903,7 +1907,7 @@ static int create_iso_sock(struct test_data *data)
 		addr->iso_family = AF_BLUETOOTH;
 		bacpy(&addr->iso_bdaddr, (void *) master_bdaddr);
 		addr->iso_bdaddr_type = BDADDR_LE_PUBLIC;
-		err = bind(sk, (struct sockaddr *) addr, sizeof(addr));
+		err = bind(sk, (struct sockaddr *) addr, sizeof(*addr));
 	}
 
 	if (err < 0) {
