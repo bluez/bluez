@@ -157,7 +157,26 @@ Possible errors:
 Signals
 -------
 
-void Disconnected(string reason, string message)
+void Connected(string bearer)
+````````````````````````````````````````````````
+
+This signal is emitted when a device establishes a connection, indicating the
+bearer (transport type) over which the connection occurred.
+
+Client applications may use this signal to take actions such as stopping discovery
+or advertising, depending on their internal policy.
+
+Possible bearer:
+
+:"le":
+
+	LE transport is cconnected.
+
+:"bredr":
+
+	BR/EDR transport is connected.
+
+void Disconnected(string reason, string message, string bearer)
 ````````````````````````````````````````````````
 
 This signal is launched when a device is disconnected, with the reason of the
@@ -207,6 +226,18 @@ Possible reasons:
 :org.bluez.Reason.Suspend:
 
 	Connection terminated by local host for suspend.
+
+The additional 'bearer' field indicates which transport was disconnected.
+
+Possible bearer:
+
+:"le":
+
+	LE transport is disconnected.
+
+:"bredr":
+
+	BR/EDR transport is disconnected.
 
 Properties
 ----------

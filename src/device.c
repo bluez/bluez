@@ -3491,8 +3491,10 @@ static const GDBusMethodTable device_methods[] = {
 };
 
 static const GDBusSignalTable device_signals[] = {
+	{ GDBUS_SIGNAL("Connected",
+			GDBUS_ARGS({ "bearer", "s" })) },
 	{ GDBUS_SIGNAL("Disconnected",
-			GDBUS_ARGS({ "name", "s" }, { "message", "s" })) },
+			GDBUS_ARGS({ "name", "s" }, { "message", "s" }, { "bearer", "s" })) },
 	{ }
 };
 
@@ -3676,6 +3678,7 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 							uint32_t flags)
 {
 	struct bearer_state *state = get_state(dev, bdaddr_type);
+	const char *bearer;
 
 	device_update_last_seen(dev, bdaddr_type, true);
 	device_update_last_used(dev, bdaddr_type);
@@ -3691,13 +3694,21 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 	dev->conn_bdaddr_type = dev->bdaddr_type;
 
 	/* If this is the first connection over this bearer */
-	if (bdaddr_type == BDADDR_BREDR)
+	if (bdaddr_type == BDADDR_BREDR) {
 		device_set_bredr_support(dev);
-	else
+		bearer = "bredr";
+	} else {
 		device_set_le_support(dev, bdaddr_type);
+		bearer = "le";
+	}
 
 	state->connected = true;
 	state->initiator = flags & BIT(3);
+
+	g_dbus_emit_signal(dbus_conn, dev->path, DEVICE_INTERFACE,
+				"Connected",
+				DBUS_TYPE_STRING, &bearer,
+				DBUS_TYPE_INVALID);
 
 	if (dev->le_state.connected && dev->bredr_state.connected)
 		return;
@@ -3747,7 +3758,7 @@ static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
 								dev, NULL);
 }
 
-static void device_disconnected(struct btd_device *device, uint8_t reason)
+static void device_disconnected(struct btd_device *device, uint8_t reason, const char *bearer)
 {
 	const char *name;
 	const char *message;
@@ -3787,6 +3798,7 @@ static void device_disconnected(struct btd_device *device, uint8_t reason)
 						"Disconnected",
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_STRING, &message,
+						DBUS_TYPE_STRING, &bearer,
 						DBUS_TYPE_INVALID);
 }
 
@@ -3798,9 +3810,15 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	DBusMessage *reply;
 	bool remove_device = false;
 	bool paired_status_updated = false;
+	const char *bearer;
 
 	if (!state->connected)
 		return;
+
+	if (bdaddr_type == BDADDR_BREDR)
+		bearer = "bredr";
+	else
+		bearer = "le";
 
 	state->connected = false;
 	state->initiator = false;
@@ -3854,15 +3872,15 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 						DEVICE_INTERFACE,
 						"Paired");
 
-	if (device->bredr_state.connected || device->le_state.connected)
-		return;
-
 	device_update_last_seen(device, bdaddr_type, true);
 
 	g_slist_free_full(device->eir_uuids, g_free);
 	device->eir_uuids = NULL;
 
-	device_disconnected(device, reason);
+	device_disconnected(device, reason, bearer);
+
+	if (device->bredr_state.connected || device->le_state.connected)
+		return;
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
