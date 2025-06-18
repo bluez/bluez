@@ -22,6 +22,7 @@ OPTIONS
 :-l/--emulator: Start btvirt
 :-A/-audio[=path]: Start audio server
 :-u/--unix[=path]: Provide serial device
+:-U/--usb=<qemu_args>: Provide USB device
 :-q/--qemu=<path>: QEMU binary
 :-k/--kernel=<image>: Kernel image (bzImage)
 :-h/--help: Show help options
@@ -176,3 +177,18 @@ Running shell with host controller using btproxy
 	$ tools/btproxy -u [1]
 	$ tools/test-runner -u -d -k /pathto/bzImage -- /bin/bash [2]
 
+Running shell with host controller USB-passthrough
+--------------------------------------------------
+
+In addition the above kernel config option the following is required:
+
+.. code-block::
+
+	CONFIG_USB=y
+	CONFIG_USB_XHCI_HCD=y
+	CONFIG_USB_XHCI_PLATFORM=y
+
+.. code-block::
+
+	$ tools/test-runner -U "usb-host,vendorid=<0xxxxx>,productid=<0xxxxx>" \
+	-d -k /pathto/bzImage -- /bin/bash
