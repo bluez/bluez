@@ -4224,10 +4224,12 @@ static void load_info(struct btd_device *device, const char *local,
 		/* Load last used bearer */
 		str = g_key_file_get_string(key_file, "General",
 						"LastUsedBearer", NULL);
-		if (str)
+		if (str) {
 			device_update_last_used(device, !strcmp(str, "le") ?
 						device->bdaddr_type :
 						BDADDR_BREDR);
+			g_free(str);
+		}
 	}
 
 next:
