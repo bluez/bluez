@@ -81,5 +81,6 @@ void tester_wait(unsigned int seconds, tester_wait_func_t func,
 							void *user_data);
 
 struct io *tester_setup_io(const struct iovec *iov, int iovcnt);
+void tester_shutdown_io(void);
 void tester_io_send(void);
 void tester_io_set_complete_func(tester_data_func_t func);

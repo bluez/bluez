@@ -1047,6 +1047,12 @@ struct io *tester_setup_io(const struct iovec *iov, int iovcnt)
 	return ios[0];
 }
 
+void tester_shutdown_io(void)
+{
+	io_shutdown(ios[0]);
+	io_shutdown(ios[1]);
+}
+
 void tester_io_send(void)
 {
 	struct test_case *test = tester_get_test();
