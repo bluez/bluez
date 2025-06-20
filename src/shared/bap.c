@@ -4480,6 +4480,9 @@ static void bap_detached(void *data, void *user_data)
 	struct bt_bap_cb *cb = data;
 	struct bt_bap *bap = user_data;
 
+	if (!cb->detached)
+		return;
+
 	cb->detached(bap, cb->user_data);
 }
 
@@ -4563,6 +4566,9 @@ static void bap_attached(void *data, void *user_data)
 {
 	struct bt_bap_cb *cb = data;
 	struct bt_bap *bap = user_data;
+
+	if (!cb->attached)
+		return;
 
 	cb->attached(bap, cb->user_data);
 }
