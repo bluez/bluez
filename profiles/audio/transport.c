@@ -1957,7 +1957,6 @@ static guint transport_bap_resume(struct media_transport *transport,
 				struct media_owner *owner)
 {
 	struct bap_transport *bap = transport->data;
-	struct iovec *meta;
 	guint id;
 
 	if (!bap->stream)
@@ -1977,8 +1976,7 @@ static guint transport_bap_resume(struct media_transport *transport,
 		return bap->resume_id;
 	}
 
-	meta = bt_bap_stream_get_metadata(bap->stream);
-	id = bt_bap_stream_enable(bap->stream, bap->linked, meta,
+	id = bt_bap_stream_enable(bap->stream, bap->linked, NULL,
 					bap_enable_complete, owner);
 	if (!id)
 		return 0;
