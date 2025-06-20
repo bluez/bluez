@@ -115,3 +115,4 @@ void telephony_call_unregister_interface(struct call *call);
 
 void telephony_call_set_state(struct call *call, enum call_state state);
 void telephony_call_set_line_id(struct call *call, const char *line_id);
+void telephony_call_set_multiparty(struct call *call, bool multiparty);
