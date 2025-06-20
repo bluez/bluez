@@ -33,11 +33,11 @@
 
 struct test_data {
 	struct gatt_db *db;
-	struct bt_vcp *vcp;
 	struct bt_gatt_server *server;
 	struct queue *ccc_states;
 	size_t iovcnt;
 	struct iovec *iov;
+	unsigned int vcp_id;
 };
 
 struct notify {
@@ -82,7 +82,6 @@ static void test_teardown(const void *user_data)
 {
 	struct test_data *data = (void *)user_data;
 
-	bt_vcp_unref(data->vcp);
 	bt_gatt_server_unref(data->server);
 	util_iov_free(data->iov, data->iovcnt);
 
@@ -90,6 +89,7 @@ static void test_teardown(const void *user_data)
 
 	queue_destroy(data->ccc_states, free);
 
+	bt_vcp_unregister(data->vcp_id);
 	tester_teardown_complete();
 }
 
@@ -163,6 +163,15 @@ done:
 							sizeof(value));
 }
 
+static void vcp_client_attached(struct bt_vcp *vcp, void *user_data)
+{
+}
+
+static void vcp_client_detached(struct bt_vcp *vcp, void *user_data)
+{
+	bt_vcp_unref(vcp);
+}
+
 static void test_server(const void *user_data)
 {
 	struct test_data *data = (void *)user_data;
@@ -185,8 +194,10 @@ static void test_server(const void *user_data)
 	gatt_db_ccc_register(data->db, gatt_ccc_read_cb, NULL,
 					gatt_notify_cb, data);
 
-	data->vcp = bt_vcp_new(data->db, NULL);
-	g_assert(data->vcp);
+	bt_vcp_add_db(data->db);
+
+	data->vcp_id = bt_vcp_register(vcp_client_attached,
+						vcp_client_detached, NULL);
 
 	data->server = bt_gatt_server_new(data->db, att, 64, 0);
 	g_assert(data->server);
