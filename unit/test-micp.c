@@ -33,12 +33,12 @@
 
 struct test_data_mics {
 	struct gatt_db *db;
-	struct bt_micp *micp;
 	struct bt_gatt_server *server;
 	struct bt_gatt_client *client;
 	struct queue *ccc_states;
 	size_t iovcnt;
 	struct iovec *iov;
+	unsigned int micp_id;
 };
 
 struct test_data_micp {
@@ -98,10 +98,10 @@ static void test_teardown_mics(const void *user_data)
 {
 	struct test_data_mics *data = (void *)user_data;
 
-	bt_micp_unref(data->micp);
 	bt_gatt_server_unref(data->server);
 	util_iov_free(data->iov, data->iovcnt);
 	gatt_db_unref(data->db);
+	bt_micp_unregister(data->micp_id);
 
 	queue_destroy(data->ccc_states, free);
 
@@ -269,6 +269,15 @@ done:
 	gatt_db_attribute_read_result(attrib, id, ecode, value, len);
 }
 
+static void micp_attached(struct bt_micp *micp, void *user_data)
+{
+}
+
+static void micp_detached(struct bt_micp *micp, void *user_data)
+{
+	bt_micp_unref(micp);
+}
+
 static void test_server(const void *user_data)
 {
 	struct test_data_mics *data = (void *)user_data;
@@ -291,8 +300,9 @@ static void test_server(const void *user_data)
 	gatt_db_ccc_register(data->db, gatt_ccc_read_cb, NULL,
 					gatt_notify_cb, data);
 
-	data->micp = bt_micp_new(data->db, NULL);
-	g_assert(data->micp);
+	bt_micp_add_db(data->db);
+
+	data->micp_id = bt_micp_register(micp_attached, micp_detached, NULL);
 
 	data->server = bt_gatt_server_new(data->db, att, 64, 0);
 	g_assert(data->server);
