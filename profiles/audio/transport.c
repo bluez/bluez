@@ -1977,9 +1977,10 @@ static guint transport_bap_resume(struct media_transport *transport,
 		return bap->resume_id;
 	}
 
-	meta = bt_bap_stream_get_metadata(bap->stream);
+	meta = util_iov_dup(bt_bap_stream_get_metadata(bap->stream), 1);
 	id = bt_bap_stream_enable(bap->stream, bap->linked, meta,
 					bap_enable_complete, owner);
+	util_iov_free(meta, 1);
 	if (!id)
 		return 0;
 
