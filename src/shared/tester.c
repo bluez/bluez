@@ -654,6 +654,8 @@ static void test_result(enum test_result result)
 		test->timeout_id = 0;
 	}
 
+	tester_shutdown_io();
+
 	if (test->result == TEST_RESULT_FAILED)
 		result = TEST_RESULT_FAILED;
 
@@ -1045,6 +1047,12 @@ struct io *tester_setup_io(const struct iovec *iov, int iovcnt)
 	test->iovcnt = iovcnt;
 
 	return ios[0];
+}
+
+void tester_shutdown_io(void)
+{
+	io_shutdown(ios[0]);
+	io_shutdown(ios[1]);
 }
 
 void tester_io_send(void)
