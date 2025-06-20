@@ -27,66 +27,48 @@
 
 static sd_login_monitor * monitor;
 static int uid;
-static gboolean active = FALSE;
 static gboolean monitoring_enabled = TRUE;
 static guint event_source;
 static guint timeout_source;
 
-struct callback_pair {
-	logind_init_cb init_cb;
-	logind_exit_cb exit_cb;
-};
-
 GSList *callbacks;
 
-static void call_init_cb(gpointer data, gpointer user_data)
+static void call_cb(gpointer data, gpointer user_data)
 {
-	int res;
-
-	res = ((struct callback_pair *)data)->init_cb(FALSE);
-	if (res)
-		*(int *)user_data = res;
-}
-static void call_exit_cb(gpointer data, gpointer user_data)
-{
-	((struct callback_pair *)data)->exit_cb(FALSE);
+	(*((logind_cb *)data))(user_data);
 }
 
-static int update(void)
+static void logind_cb_context_init(struct logind_cb_context *ctxt)
 {
-	char *state = NULL;
-	gboolean state_is_active;
-	int res;
+	ctxt->res = sd_login_monitor_flush(monitor);
+	if (ctxt->res < 0)
+		return;
 
-	res = sd_login_monitor_flush(monitor);
-	if (res < 0)
-		return res;
-	res = sd_uid_get_state(uid, &state);
-	state_is_active = g_strcmp0(state, "active");
-	free(state);
-	if (res < 0)
-		return res;
+	ctxt->res = ctxt->seats = sd_uid_get_seats(uid, 1, NULL);
+	if (ctxt->res < 0)
+		return;
 
-	if (state_is_active) {
-		if (!active)
-			return 0;
-	} else {
-		res = sd_uid_get_seats(uid, 1, NULL);
-		if (res < 0)
-			return res;
-		if (active == !!res)
-			return 0;
+	/*
+	 * the documentation for sd_uid_get_state() isn't clear about
+	 * what to do with the state on error.  The following should
+	 * be safe even if the behaviour changes in future
+	 */
+	ctxt->state = 0;
+	ctxt->res = sd_uid_get_state(uid, (char **)&ctxt->state);
+	if (ctxt->res <= 0) {
+		free((char *)ctxt->state);
+		return;
 	}
-	active ^= TRUE;
-	res = 0;
-	g_slist_foreach(callbacks, active ? call_init_cb : call_exit_cb, &res);
-	return res;
+
+	ctxt->res = 0;
+	return;
 }
 
 static gboolean timeout_handler(gpointer user_data);
 
 static int check_event(void)
 {
+	struct logind_cb_context ctxt;
 	uint64_t timeout_usec;
 	int res;
 
@@ -95,9 +77,14 @@ static int check_event(void)
 		return res;
 	if (!monitoring_enabled)
 		return 0;
-	res = update();
-	if (res < 0)
-		return res;
+
+	logind_cb_context_init(&ctxt);
+	if (ctxt.res)
+		return ctxt.res;
+	g_slist_foreach(callbacks, call_cb, &ctxt);
+	free((char *)ctxt.state);
+	if (ctxt.res)
+		return ctxt.res;
 
 	res = sd_login_monitor_get_timeout(monitor, &timeout_usec);
 	if (res < 0)
@@ -154,6 +141,7 @@ static gboolean timeout_handler(gpointer user_data)
 
 static int logind_init(void)
 {
+	struct logind_cb_context ctxt;
 	GIOChannel *channel;
 	int events;
 	int fd;
@@ -173,11 +161,6 @@ static int logind_init(void)
 		monitor = NULL;
 		goto FAIL;
 	}
-
-	// Check this after creating the monitor, in case of race conditions:
-	res = update();
-	if (res < 0)
-		goto FAIL;
 
 	events = res = sd_login_monitor_get_events(monitor);
 	if (res < 0)
@@ -202,7 +185,10 @@ static int logind_init(void)
 FAIL:
 	sd_login_monitor_unref(monitor);
 	monitoring_enabled = FALSE;
-	active = TRUE;
+	ctxt.state = "active";
+	ctxt.seats = 1;
+	ctxt.res = 0;
+	g_slist_foreach(callbacks, call_cb, &ctxt);
 	return res;
 }
 
@@ -219,17 +205,18 @@ static void logind_exit(void)
 	sd_login_monitor_unref(monitor);
 }
 
-static gint find_cb(gconstpointer a, gconstpointer b)
+int logind_register(logind_cb cb)
 {
-	return ((struct callback_pair *)a)->init_cb - (logind_init_cb)b;
-}
+	struct logind_cb_context ctxt;
 
-int logind_register(logind_init_cb init_cb, logind_exit_cb exit_cb)
-{
-	struct callback_pair *cbs;
+	logind_cb_context_init(&ctxt);
+	if (ctxt.res) {
+		free((char *)ctxt.state);
+		return ctxt.res;
+	}
 
 	if (!monitoring_enabled)
-		return init_cb(TRUE);
+		goto CALL_CB;
 	if (callbacks == NULL) {
 		int res;
 
@@ -237,24 +224,23 @@ int logind_register(logind_init_cb init_cb, logind_exit_cb exit_cb)
 		if (res) {
 			error("logind_init(): %s - login detection disabled",
 				strerror(-res));
-			return init_cb(TRUE);
+			goto CALL_CB;
 		}
 	}
-	cbs = g_new(struct callback_pair, 1);
-	cbs->init_cb = init_cb;
-	cbs->exit_cb = exit_cb;
-	callbacks = g_slist_prepend(callbacks, cbs);
-	return active ? init_cb(TRUE) : 0;
+	callbacks = g_slist_prepend(callbacks, cb);
+
+CALL_CB:
+	cb(&ctxt);
+	free((char *)ctxt.state);
+	return ctxt.res;
 }
-void logind_unregister(logind_init_cb init_cb, logind_exit_cb exit_cb)
+void logind_unregister(logind_cb cb)
 {
 	GSList *cb_node;
 
 	if (!monitoring_enabled)
-		return exit_cb(TRUE);
-	if (active)
-		exit_cb(TRUE);
-	cb_node = g_slist_find_custom(callbacks, init_cb, find_cb);
+		return;
+	cb_node = g_slist_find(callbacks, cb);
 	if (cb_node != NULL)
 		callbacks = g_slist_delete_link(callbacks, cb_node);
 	if (callbacks == NULL)
@@ -263,20 +249,26 @@ void logind_unregister(logind_init_cb init_cb, logind_exit_cb exit_cb)
 
 int logind_set(gboolean enabled)
 {
-	int res = 0;
-
-	if (monitoring_enabled == enabled)
-		return 0;
-
 	monitoring_enabled = enabled;
 	if (enabled) {
-		active = FALSE;
-		return update();
+		struct logind_cb_context ctxt;
+
+		logind_cb_context_init(&ctxt);
+		if (ctxt.res)
+			return ctxt.res;
+		g_slist_foreach(callbacks, call_cb, &ctxt);
+		free((char *)ctxt.state);
+		return ctxt.res;
 	}
 
-	active = TRUE;
-	g_slist_foreach(callbacks, call_exit_cb, &res);
-	return res;
+	struct logind_cb_context ctxt = {
+		.state = "active",
+		.seats = 1,
+		.res = 0
+	};
+
+	g_slist_foreach(callbacks, call_cb, &ctxt);
+	return ctxt.res;
 }
 
 #endif

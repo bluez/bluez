@@ -34,6 +34,9 @@
 
 #include "../client/manager.h"
 
+#include "../client/driver.h"
+#include "transport.h"
+
 #include "log.h"
 #include "logind.h"
 #include "obexd.h"
@@ -278,6 +281,15 @@ int main(int argc, char *argv[])
 
 	if (option_system_bus)
 		logind_set(FALSE);
+
+	if (obc_driver_init() == FALSE) {
+		error("manager_init failed");
+		exit(EXIT_FAILURE);
+	}
+	if (obex_transport_driver_init() == FALSE) {
+		error("manager_init failed");
+		exit(EXIT_FAILURE);
+	}
 
 	DBG("Entering main loop");
 

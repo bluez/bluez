@@ -74,3 +74,21 @@ void obc_driver_unregister(struct obc_driver *driver)
 
 	drivers = g_slist_remove(drivers, driver);
 }
+
+static void call_cb(gpointer data, gpointer ctxt)
+{
+	struct obc_driver *driver = (struct obc_driver *)data;
+
+	if (driver->uid_state)
+		driver->uid_state(((struct logind_cb_context *)ctxt));
+}
+
+static void call_uid_state_cb(gpointer ctxt)
+{
+	g_slist_foreach(drivers, call_cb, ctxt);
+}
+
+gboolean obc_driver_init(void)
+{
+	return logind_register(call_uid_state_cb) >= 0;
+}
