@@ -107,6 +107,9 @@
 				HFP_HF_FEAT_ENHANCED_CALL_STATUS |\
 				HFP_HF_FEAT_ESCO_S4_T2)
 
+#define CHLD_3WAY_FEATURES	(CHLD_FEAT_REL | CHLD_FEAT_REL_ACC |\
+				CHLD_FEAT_HOLD_ACC | CHLD_FEAT_MERGE)
+
 #define MAX_NUMBER_LEN 33
 #define MAX_OPERATOR_NAME_LEN 17
 
@@ -331,6 +334,46 @@ static uint8_t next_index(struct hfp_device *dev)
 	return 0;
 }
 
+static void ccwa_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_device *dev = user_data;
+	char number[MAX_NUMBER_LEN];
+	GSList *l;
+	bool found = false;
+
+	DBG("");
+
+	if (!hfp_context_get_string(context, number, MAX_NUMBER_LEN)) {
+		error("hf-client: incorrect +CCWA event");
+		return;
+	}
+
+	for (l = dev->calls; l; l = l->next) {
+		struct call *call = l->data;
+
+		if (call->state == CALL_STATE_WAITING) {
+			info("hf-client: waiting call in progress (id: %d)",
+				call->idx);
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		struct call *call;
+		uint8_t idx = next_index(dev);
+
+		call = telephony_new_call(dev->telephony, idx,
+						CALL_STATE_WAITING, NULL);
+		call->line_id = g_strdup(number);
+		if (telephony_call_register_interface(call)) {
+			telephony_free_call(call);
+			return;
+		}
+		dev->calls = g_slist_append(dev->calls, call);
+	}
+}
+
 static void ciev_cb(struct hfp_context *context, void *user_data)
 {
 	struct hfp_device *dev = user_data;
@@ -407,6 +450,25 @@ static void cops_cb(struct hfp_context *context, void *user_data)
 	telephony_set_operator_name(dev->telephony, name);
 }
 
+static void nrec_resp(enum hfp_result result, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	DBG("");
+
+	if (result != HFP_RESULT_OK) {
+		error("hf-client: CLIP error: %d", result);
+		return;
+	}
+
+	if ((dev->chld_features & CHLD_3WAY_FEATURES) == CHLD_3WAY_FEATURES) {
+		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
+								"AT+CCWA=1"))
+			info("hf-client: Could not send AT+CCWA=1");
+	}
+}
+
 static void clip_resp(enum hfp_result result, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -421,9 +483,13 @@ static void clip_resp(enum hfp_result result, enum hfp_error cme_err,
 
 	if ((dev->hfp_hf_features & HFP_HF_FEAT_ECNR) &&
 			(dev->features & HFP_AG_FEAT_ECNR)) {
-		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
-								"AT+NREC=0"))
+		if (!hfp_hf_send_command(dev->hf, nrec_resp, dev, "AT+NREC=0"))
 			info("hf-client: Could not send AT+NREC=0");
+	} else if ((dev->chld_features & CHLD_3WAY_FEATURES) ==
+			CHLD_3WAY_FEATURES) {
+		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
+								"AT+CCWA=1"))
+			info("hf-client: Could not send AT+CCWA=1");
 	}
 }
 
@@ -480,6 +546,7 @@ static void slc_completed(struct hfp_device *dev)
 
 	/* TODO: register unsolicited results handlers */
 
+	hfp_hf_register(dev->hf, ccwa_cb, "+CCWA", dev, NULL);
 	hfp_hf_register(dev->hf, ciev_cb, "+CIEV", dev, NULL);
 	hfp_hf_register(dev->hf, clip_cb, "+CLIP", dev, NULL);
 	hfp_hf_register(dev->hf, cops_cb, "+COPS", dev, NULL);
