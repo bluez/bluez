@@ -70,7 +70,6 @@ struct call {
 	uint8_t			idx;
 
 	char			*line_id;
-	char			*incoming_line;
 	char			*name;
 	bool			multiparty;
 	enum call_state		state;
