@@ -147,6 +147,15 @@ struct indicator {
 	ciev_func_t cb;
 };
 
+struct clcc_entry {
+	uint8_t idx;
+	uint8_t direction;
+	uint8_t status;
+	uint8_t mode;
+	uint8_t multiparty;
+	char *number;
+};
+
 struct hfp_device {
 	struct telephony	*telephony;
 	uint16_t		version;
@@ -161,6 +170,7 @@ struct hfp_device {
 	enum call_setup		call_setup;
 	enum call_held		call_held;
 	GSList			*calls;
+	GSList			*clcc_entries;
 };
 
 struct hfp_server {
@@ -388,6 +398,58 @@ static void ciev_cb(struct hfp_context *context, void *user_data)
 	}
 }
 
+static void clcc_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_device *dev = user_data;
+	struct clcc_entry *entry;
+	unsigned int val;
+	char number[MAX_NUMBER_LEN];
+
+	DBG("");
+
+	entry = g_new0(struct clcc_entry, 1);
+
+	if (!hfp_context_get_number(context, &val)) {
+		error("hf-client: Could not get index");
+		goto failed;
+	}
+	entry->idx = val;
+
+	if (!hfp_context_get_number(context, &val) || val > 1) {
+		error("hf-client: Could not get direction");
+		goto failed;
+	}
+	entry->direction = val;
+
+	if (!hfp_context_get_number(context, &val) ||
+			val > CALL_STATE_DISCONNECTED) {
+		error("hf-client: Could not get callstate");
+		goto failed;
+	}
+	entry->status = val;
+
+	if (!hfp_context_get_number(context, &val)) {
+		error("hf-client: Could not get mode");
+		goto failed;
+	}
+	entry->mode = val;
+
+	if (!hfp_context_get_number(context, &val)) {
+		error("hf-client: Could not get multiparty");
+		goto failed;
+	}
+	entry->multiparty = val;
+
+	if (hfp_context_get_string(context, number, MAX_NUMBER_LEN))
+		entry->number = g_strdup(number);
+
+	dev->clcc_entries = g_slist_append(dev->clcc_entries, entry);
+	return;
+
+failed:
+	g_free(entry);
+}
+
 static void clip_cb(struct hfp_context *context, void *user_data)
 {
 	struct hfp_device *dev = user_data;
@@ -438,6 +500,86 @@ static void cops_cb(struct hfp_context *context, void *user_data)
 	telephony_set_operator_name(dev->telephony, name);
 }
 
+static void clcc_update_call(gpointer data, gpointer user_data)
+{
+	struct call *call = data;
+	struct hfp_device *dev = user_data;
+	GSList *l;
+
+	for (l = dev->clcc_entries; l; l = l->next) {
+		struct clcc_entry *entry = l->data;
+
+		if (call->idx == entry->idx) {
+			telephony_call_set_state(call, entry->status);
+			telephony_call_set_multiparty(call,
+					entry->multiparty);
+			telephony_call_set_line_id(call, entry->number);
+			dev->clcc_entries = g_slist_remove(dev->clcc_entries,
+					entry);
+			g_free(entry);
+			return;
+		}
+	}
+
+	telephony_call_set_state(call, CALL_STATE_DISCONNECTED);
+	dev->calls = g_slist_remove(dev->calls, call);
+	telephony_call_unregister_interface(call);
+}
+
+
+static void clcc_resp(enum hfp_result result, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+	GSList *l;
+
+	DBG("");
+
+	if (result != HFP_RESULT_OK) {
+		error("hf-client: CLCC error: %d", result);
+		return;
+	}
+
+	g_slist_foreach(dev->calls, clcc_update_call, dev);
+
+	/* Remaining calls should be added */
+	for (l = dev->clcc_entries; l; l = l->next) {
+		struct clcc_entry *entry = l->data;
+		struct call *call;
+		uint8_t idx = next_index(dev);
+
+		call = telephony_new_call(dev->telephony, idx, entry->status,
+						NULL);
+		call->multiparty = entry->multiparty;
+		if (entry->number)
+			call->line_id = g_strdup(entry->number);
+		if (telephony_call_register_interface(call)) {
+			telephony_free_call(call);
+			return;
+		}
+		dev->calls = g_slist_append(dev->calls, call);
+
+	}
+}
+
+static void cmee_resp(enum hfp_result result, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	DBG("");
+
+	if (result != HFP_RESULT_OK) {
+		error("hf-client: CMEE error: %d", result);
+		return;
+	}
+
+	if (dev->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		if (!hfp_hf_send_command(dev->hf, clcc_resp, dev, "AT+CLCC"))
+			info("hf-client: Could not send AT+CLCC");
+	}
+}
+
 static void ccwa_resp(enum hfp_result result, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -451,9 +593,11 @@ static void ccwa_resp(enum hfp_result result, enum hfp_error cme_err,
 	}
 
 	if (dev->features & HFP_AG_FEAT_EXTENDED_RES_CODE) {
-		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
-								"AT+CMEE=1"))
+		if (!hfp_hf_send_command(dev->hf, cmee_resp, dev, "AT+CMEE=1"))
 			info("hf-client: Could not send AT+CMEE=1");
+	} else if (dev->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		if (!hfp_hf_send_command(dev->hf, clcc_resp, dev, "AT+CLCC"))
+			info("hf-client: Could not send AT+CLCC");
 	}
 }
 
@@ -473,9 +617,11 @@ static void nrec_resp(enum hfp_result result, enum hfp_error cme_err,
 		if (!hfp_hf_send_command(dev->hf, ccwa_resp, dev, "AT+CCWA=1"))
 			info("hf-client: Could not send AT+CCWA=1");
 	} else if (dev->features & HFP_AG_FEAT_EXTENDED_RES_CODE) {
-		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
-								"AT+CMEE=1"))
+		if (!hfp_hf_send_command(dev->hf, cmee_resp, dev, "AT+CMEE=1"))
 			info("hf-client: Could not send AT+CMEE=1");
+	} else if (dev->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		if (!hfp_hf_send_command(dev->hf, clcc_resp, dev, "AT+CLCC"))
+			info("hf-client: Could not send AT+CLCC");
 	}
 }
 
@@ -500,9 +646,14 @@ static void clip_resp(enum hfp_result result, enum hfp_error cme_err,
 		if (!hfp_hf_send_command(dev->hf, ccwa_resp, dev, "AT+CCWA=1"))
 			info("hf-client: Could not send AT+CCWA=1");
 	} else if (dev->features & HFP_AG_FEAT_EXTENDED_RES_CODE) {
-		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
-								"AT+CMEE=1"))
+		if (!hfp_hf_send_command(dev->hf, cmee_resp, dev, "AT+CMEE=1"))
 			info("hf-client: Could not send AT+CMEE=1");
+	} else if (dev->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		if (!hfp_hf_send_command(dev->hf, clcc_resp, dev, "AT+CLCC"))
+			info("hf-client: Could not send AT+CLCC");
+	}
+}
+
 static void cops_status_resp(enum hfp_result result, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -558,6 +709,7 @@ static void slc_completed(struct hfp_device *dev)
 
 	hfp_hf_register(dev->hf, ccwa_cb, "+CCWA", dev, NULL);
 	hfp_hf_register(dev->hf, ciev_cb, "+CIEV", dev, NULL);
+	hfp_hf_register(dev->hf, clcc_cb, "+CLCC", dev, NULL);
 	hfp_hf_register(dev->hf, clip_cb, "+CLIP", dev, NULL);
 	hfp_hf_register(dev->hf, cops_cb, "+COPS", dev, NULL);
 
