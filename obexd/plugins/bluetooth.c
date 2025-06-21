@@ -57,6 +57,9 @@ static DBusMessage *profile_release(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static int bluetooth_init_cb(void);
+static void bluetooth_exit_cb(void);
+
 static void connect_event(GIOChannel *io, GError *err, void *user_data)
 {
 	int sk = g_io_channel_unix_get_fd(io);
@@ -381,6 +384,20 @@ static void bluetooth_stop(void *data)
 	profiles = NULL;
 }
 
+static gboolean user_was_active = FALSE;
+static void bluetooth_uid_state(struct logind_cb_context *ctxt)
+{
+	gboolean user_is_active = LOGIND_USER_IS_ACTIVE(ctxt);
+
+	if (user_was_active == user_is_active)
+		return;
+	user_was_active = user_is_active;
+	if (user_is_active)
+		bluetooth_init_cb();
+	else
+		bluetooth_exit_cb();
+}
+
 static int bluetooth_getpeername(GIOChannel *io, char **name)
 {
 	GError *gerr = NULL;
@@ -422,14 +439,14 @@ static const struct obex_transport_driver driver = {
 	.start = bluetooth_start,
 	.getpeername = bluetooth_getpeername,
 	.getsockname = bluetooth_getsockname,
-	.stop = bluetooth_stop
+	.stop = bluetooth_stop,
+	.uid_state = bluetooth_uid_state
 };
 
 static unsigned int listener_id = 0;
 
-static int bluetooth_init_cb(gboolean at_register)
+static int bluetooth_init_cb(void)
 {
-	(void)at_register;
 	connection = g_dbus_setup_private(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (connection == NULL)
 		return -EPERM;
@@ -440,10 +457,9 @@ static int bluetooth_init_cb(gboolean at_register)
 	return obex_transport_driver_register(&driver);
 }
 
-static void bluetooth_exit_cb(gboolean at_unregister)
+static void bluetooth_exit_cb(void)
 {
 	GSList *l;
-	(void)at_unregister;
 
 	g_dbus_remove_watch(connection, listener_id);
 
@@ -467,11 +483,11 @@ static void bluetooth_exit_cb(gboolean at_unregister)
 
 static int bluetooth_init(void)
 {
-	return logind_register(bluetooth_init_cb, bluetooth_exit_cb);
 }
 static void bluetooth_exit(void)
 {
-	return logind_unregister(bluetooth_init_cb, bluetooth_exit_cb);
+	if (user_was_active)
+		bluetooth_exit_cb();
 }
 
 OBEX_PLUGIN_DEFINE(bluetooth, bluetooth_init, bluetooth_exit)
