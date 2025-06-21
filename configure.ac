@@ -70,7 +70,8 @@ AC_CHECK_LIB(pthread, pthread_create, dummy=yes,
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
-AC_CHECK_HEADERS(stdio.h string.h linux/types.h linux/if_alg.h linux/uinput.h linux/uhid.h sys/random.h)
+AC_CHECK_HEADERS(stdarg.h stdio.h string.h linux/types.h linux/if_alg.h \
+			linux/uinput.h linux/uhid.h sys/random.h)
 
 # basename may be only available in libgen.h with the POSIX behavior,
 # not desired here
