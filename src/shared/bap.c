@@ -1441,15 +1441,6 @@ static bool bap_stream_io_detach(struct bt_bap_stream *stream)
 	return true;
 }
 
-static void stream_stop_complete(struct bt_bap_stream *stream, uint8_t code,
-					uint8_t reason,	void *user_data)
-{
-	DBG(stream->bap, "stream %p stop 0x%02x 0x%02x", stream, code, reason);
-
-	if (stream->ep->state == BT_ASCS_ASE_STATE_DISABLING)
-		bap_stream_io_detach(stream);
-}
-
 static void bap_stream_state_changed(struct bt_bap_stream *stream)
 {
 	struct bt_bap *bap = stream->bap;
@@ -1506,9 +1497,15 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 			bt_bap_stream_start(stream, NULL, NULL);
 		break;
 	case BT_ASCS_ASE_STATE_DISABLING:
-		/* Send Stop Ready, and detach IO after remote replies */
-		if (stream->client)
-			bt_bap_stream_stop(stream, stream_stop_complete, NULL);
+		/* Client may terminate CIS after Receiver Stop Ready completes
+		 * successfully (BAP v1.0.2, 5.6.5.1). Do it when back to QOS.
+		 * Ensure IO is detached also if CIS was not yet established.
+		 */
+		if (stream->client) {
+			bt_bap_stream_stop(stream, NULL, NULL);
+			if (stream->io)
+				stream->io->connecting = false;
+		}
 		break;
 	case BT_ASCS_ASE_STATE_RELEASING:
 		if (stream->client) {
