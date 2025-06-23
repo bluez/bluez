@@ -1987,7 +1987,7 @@ static unsigned int bap_stream_metadata(struct bt_bap_stream *stream,
 	iov[0].iov_base = &meta;
 	iov[0].iov_len = sizeof(meta);
 
-	if (data) {
+	if (data && util_iov_memcmp(stream->meta, data)) {
 		util_iov_free(stream->meta, 1);
 		stream->meta = util_iov_dup(data, 1);
 	}
