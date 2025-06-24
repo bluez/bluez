@@ -68,7 +68,7 @@ static int update(void)
 		return res;
 
 	if (state_is_active) {
-		if (!active)
+		if (active)
 			return 0;
 	} else {
 		res = sd_uid_get_seats(uid, 1, NULL);
