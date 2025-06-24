@@ -1726,6 +1726,10 @@ int bt_shell_get_timeout(void)
 
 void bt_shell_handle_non_interactive_help(void)
 {
+	if (data.zsh) {
+		shell_print_menu_zsh_complete();
+		exit(EXIT_SUCCESS);
+	}
 	if (!data.mode)
 		return;
 	if (data.argv[0] != cmplt)
