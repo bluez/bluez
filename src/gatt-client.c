@@ -1539,8 +1539,7 @@ static void register_notify_io_cb(uint16_t att_ecode, void *user_data)
 	struct bt_gatt_client *gatt = chrc->service->client->gatt;
 
 	if (att_ecode) {
-		queue_remove(chrc->notify_clients, client);
-		notify_client_free(client);
+		destroy_sock(chrc, chrc->notify_io->io);
 		return;
 	}
 
