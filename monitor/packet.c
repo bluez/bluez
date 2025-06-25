@@ -122,6 +122,29 @@ struct ctrl_data {
 
 static struct ctrl_data ctrl_list[MAX_CTRL];
 
+#define MAX_INDEX 16
+
+struct index_buf_pool {
+	uint8_t total;
+	uint8_t tx;
+};
+
+struct index_data {
+	uint8_t  type;
+	uint8_t  bdaddr[6];
+	uint16_t manufacturer;
+	uint16_t msft_opcode;
+	uint8_t  msft_evt_prefix[8];
+	uint8_t  msft_evt_len;
+	size_t   frame;
+	struct index_buf_pool acl;
+	struct index_buf_pool sco;
+	struct index_buf_pool le;
+	struct index_buf_pool iso;
+};
+
+static struct index_data index_list[MAX_INDEX];
+
 static void assign_ctrl(uint32_t cookie, uint16_t format, const char *name)
 {
 	int i;
@@ -190,6 +213,33 @@ static struct packet_conn_data *lookup_parent(uint16_t handle)
 	return NULL;
 }
 
+static struct index_buf_pool *get_pool(uint16_t index, uint8_t type)
+{
+	if (index >= MAX_INDEX)
+		return NULL;
+
+	switch (type) {
+	case 0x00:
+		if (index_list[index].acl.total)
+			return &index_list[index].acl;
+		break;
+	case 0x01:
+		if (index_list[index].le.total)
+			return &index_list[index].le;
+		break;
+	case 0x05:
+		if (index_list[index].iso.total)
+			return &index_list[index].iso;
+		break;
+	default:
+		if (index_list[index].sco.total)
+			return &index_list[index].sco;
+		break;
+	}
+
+	return NULL;
+}
+
 static struct packet_conn_data *release_handle(uint16_t handle)
 {
 	int i;
@@ -198,8 +248,14 @@ static struct packet_conn_data *release_handle(uint16_t handle)
 		struct packet_conn_data *conn = &conn_list[i];
 
 		if (conn->handle == handle) {
+			struct index_buf_pool *pool;
+
 			if (conn->destroy)
 				conn->destroy(conn, conn->data);
+
+			pool = get_pool(conn->index, conn->type);
+			if (pool)
+				pool->tx -= queue_length(conn->tx_q);
 
 			queue_destroy(conn->tx_q, free);
 			queue_destroy(conn->chan_q, free);
@@ -320,20 +376,6 @@ void packet_select_index(uint16_t index)
 }
 
 #define print_space(x) printf("%*c", (x), ' ');
-
-#define MAX_INDEX 16
-
-struct index_data {
-	uint8_t  type;
-	uint8_t  bdaddr[6];
-	uint16_t manufacturer;
-	uint16_t msft_opcode;
-	uint8_t  msft_evt_prefix[8];
-	uint8_t  msft_evt_len;
-	size_t   frame;
-};
-
-static struct index_data index_list[MAX_INDEX];
 
 void packet_set_fallback_manufacturer(uint16_t manufacturer)
 {
@@ -6426,6 +6468,7 @@ static void read_local_ext_features_rsp(uint16_t index, const void *data,
 static void read_buffer_size_rsp(uint16_t index, const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_buffer_size *rsp = data;
+	struct index_data *ctrl;
 
 	print_status(rsp->status);
 	print_field("ACL MTU: %-4d ACL max packet: %d",
@@ -6434,6 +6477,15 @@ static void read_buffer_size_rsp(uint16_t index, const void *data, uint8_t size)
 	print_field("SCO MTU: %-4d SCO max packet: %d",
 					rsp->sco_mtu,
 					le16_to_cpu(rsp->sco_max_pkt));
+
+	if (index >= MAX_INDEX)
+		return;
+
+	ctrl = &index_list[index];
+	ctrl->acl.total = le16_to_cpu(rsp->acl_max_pkt);
+	ctrl->acl.tx = 0;
+	ctrl->sco.total = le16_to_cpu(rsp->sco_max_pkt);
+	ctrl->sco.tx = 0;
 }
 
 static void read_country_code_rsp(uint16_t index, const void *data,
@@ -7028,10 +7080,18 @@ static void le_read_buffer_size_rsp(uint16_t index, const void *data,
 							uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_buffer_size *rsp = data;
+	struct index_data *ctrl;
 
 	print_status(rsp->status);
 	print_field("Data packet length: %d", le16_to_cpu(rsp->le_mtu));
 	print_field("Num data packets: %d", rsp->le_max_pkt);
+
+	if (index >= MAX_INDEX)
+		return;
+
+	ctrl = &index_list[index];
+	ctrl->le.total = rsp->le_max_pkt;
+	ctrl->le.tx = 0;
 }
 
 static void le_read_local_features_rsp(uint16_t index, const void *data,
@@ -8654,6 +8714,7 @@ static void le_read_buffer_size_v2_rsp(uint16_t index, const void *data,
 							uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_buffer_size_v2 *rsp = data;
+	struct index_data *ctrl;
 
 	print_status(rsp->status);
 
@@ -8664,6 +8725,15 @@ static void le_read_buffer_size_v2_rsp(uint16_t index, const void *data,
 	print_field("ACL max packet: %d", rsp->acl_max_pkt);
 	print_field("ISO MTU: %d", le16_to_cpu(rsp->iso_mtu));
 	print_field("ISO max packet: %d", rsp->iso_max_pkt);
+
+	if (index >= MAX_INDEX)
+		return;
+
+	ctrl = &index_list[index];
+	ctrl->le.total = rsp->acl_max_pkt;
+	ctrl->le.tx = 0;
+	ctrl->iso.total = rsp->iso_max_pkt;
+	ctrl->iso.tx = 0;
 }
 
 static void le_read_iso_tx_sync_cmd(uint16_t index, const void *data,
@@ -11123,11 +11193,22 @@ static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 {
 	struct packet_conn_data *conn;
 	struct packet_frame *frame;
+	struct index_buf_pool *pool;
 	struct timeval delta;
 
 	conn = packet_get_conn_data(handle);
 	if (!conn)
 		return;
+
+	pool = get_pool(conn->index, conn->type);
+	if (pool) {
+		if (!pool->tx)
+			print_field("Buffers: underflow/%u", pool->total);
+		else {
+			pool->tx--;
+			print_field("Buffers: %u/%u", pool->tx, pool->total);
+		}
+	}
 
 	frame = queue_pop_head(conn->tx_q);
 	if (!frame)
@@ -13853,7 +13934,9 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint16_t dlen = le16_to_cpu(hdr->dlen);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[16], extra_str[32];
+	char handle_str[22], extra_str[32];
+	struct packet_conn_data *conn;
+	struct index_buf_pool *pool = &index_list[index].acl;
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
@@ -13876,7 +13959,16 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	data += HCI_ACL_HDR_SIZE;
 	size -= HCI_ACL_HDR_SIZE;
 
-	sprintf(handle_str, "Handle %d", acl_handle(handle));
+	conn = packet_get_conn_data(handle);
+	if (conn && conn->type == 0x01 && index_list[index].le.total)
+		pool = &index_list[index].le;
+
+	if (!in && pool && pool->total)
+		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
+				++pool->tx, pool->total);
+	else
+		sprintf(handle_str, "Handle %d", acl_handle(handle));
+
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, dlen);
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ACLDATA,
@@ -13906,7 +13998,7 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	const hci_sco_hdr *hdr = data;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[16], extra_str[32];
+	char handle_str[22], extra_str[32];
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
@@ -13929,7 +14021,12 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	data += HCI_SCO_HDR_SIZE;
 	size -= HCI_SCO_HDR_SIZE;
 
-	sprintf(handle_str, "Handle %d", acl_handle(handle));
+	if (index_list[index].sco.total && !in)
+		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
+			index_list[index].sco.total, index_list[index].sco.tx);
+	else
+		sprintf(handle_str, "Handle %d", acl_handle(handle));
+
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_SCODATA,
@@ -13957,7 +14054,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	const struct bt_hci_iso_hdr *hdr = data;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[16], extra_str[32];
+	char handle_str[22], extra_str[32];
+	struct index_buf_pool *pool = &index_list[index].iso;
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
@@ -13980,7 +14078,12 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	data += sizeof(*hdr);
 	size -= sizeof(*hdr);
 
-	sprintf(handle_str, "Handle %d", acl_handle(handle));
+	if (!in && pool->total)
+		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
+			++pool->tx, pool->total);
+	else
+		sprintf(handle_str, "Handle %d", acl_handle(handle));
+
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ISODATA,
