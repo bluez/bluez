@@ -275,6 +275,98 @@ static void cmd_hangupall(int argc, char *argv[])
 	bt_shell_printf("Attempting to hangup all calls\n");
 }
 
+static void hangupactive_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to hangup active calls: %s\n",
+							error.name);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Hangup active successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void cmd_hangupactive(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		if (check_default_ag() == FALSE)
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+		proxy = default_ag;
+	} else {
+		proxy = g_dbus_proxy_lookup(ags, NULL, argv[1],
+						BLUEZ_TELEPHONY_AG_INTERFACE);
+		if (!proxy) {
+			bt_shell_printf("Audio gateway %s not available\n",
+							argv[1]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "HangupActive", NULL,
+				hangupactive_reply, NULL, NULL) == FALSE) {
+		bt_shell_printf("Failed to hangup active calls\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Attempting to hangup active calls\n");
+}
+
+static void hangupheld_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to hangup held calls: %s\n",
+							error.name);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Hangup held successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void cmd_hangupheld(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		if (check_default_ag() == FALSE)
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+		proxy = default_ag;
+	} else {
+		proxy = g_dbus_proxy_lookup(ags, NULL, argv[1],
+						BLUEZ_TELEPHONY_AG_INTERFACE);
+		if (!proxy) {
+			bt_shell_printf("Audio gateway %s not available\n",
+							argv[1]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "HangupHeld", NULL,
+				hangupheld_reply, NULL, NULL) == FALSE) {
+		bt_shell_printf("Failed to hangup held calls\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Attempting to hangup held calls\n");
+}
+
 static void cmd_list_calls(int argc, char *arg[])
 {
 	g_list_foreach(calls, print_call, NULL);
@@ -504,6 +596,11 @@ static const struct bt_shell_menu telephony_menu = {
 	{ "dial",         "<number> [audiogw]", cmd_dial, "Dial number",
 						ag_generator},
 	{ "hangup-all",   "[audiogw]", cmd_hangupall, "Hangup all calls",
+						ag_generator},
+	{ "hangup-active", "[audiogw]", cmd_hangupactive,
+						"Hangup active calls",
+						ag_generator},
+	{ "hangup-held",  "[audiogw]", cmd_hangupheld, "Hangup held calls",
 						ag_generator},
 	{ "list-calls",   NULL, cmd_list_calls, "List calls" },
 	{ "show-call",    "<call>", cmd_show_call, "Show call information",
