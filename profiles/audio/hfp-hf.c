@@ -107,6 +107,7 @@
 				HFP_HF_FEAT_ENHANCED_CALL_STATUS |\
 				HFP_HF_FEAT_ESCO_S4_T2)
 
+#define MAX_NUMBER_LEN 33
 #define MAX_OPERATOR_NAME_LEN 17
 
 enum hfp_indicator {
@@ -356,6 +357,29 @@ static void ciev_cb(struct hfp_context *context, void *user_data)
 	}
 }
 
+static void clip_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_device *dev = user_data;
+	char number[MAX_NUMBER_LEN];
+	GSList *l;
+
+	DBG("");
+
+	if (!hfp_context_get_string(context, number, MAX_NUMBER_LEN)) {
+		error("hf-client: incorrect +CLIP event");
+		return;
+	}
+
+	for (l = dev->calls; l; l = l->next) {
+		struct call *call = l->data;
+
+		if (call->state == CALL_STATE_INCOMING) {
+			telephony_call_set_line_id(call, number);
+			break;
+		}
+	}
+}
+
 static void cops_cb(struct hfp_context *context, void *user_data)
 {
 	struct hfp_device *dev = user_data;
@@ -383,6 +407,22 @@ static void cops_cb(struct hfp_context *context, void *user_data)
 	telephony_set_operator_name(dev->telephony, name);
 }
 
+static void cops_status_resp(enum hfp_result result, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	DBG("");
+
+	if (result != HFP_RESULT_OK) {
+		error("hf-client: COPS? error: %d", result);
+		return;
+	}
+
+	if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev, "AT+CLIP=1"))
+		info("hf-client: Could not send AT+CLIP=1");
+}
+
 static void cops_resp(enum hfp_result result, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -395,7 +435,7 @@ static void cops_resp(enum hfp_result result, enum hfp_error cme_err,
 		return;
 	}
 
-	if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev, "AT+COPS?"))
+	if (!hfp_hf_send_command(dev->hf, cops_status_resp, dev, "AT+COPS?"))
 		info("hf-client: Could not send AT+COPS?");
 }
 
@@ -421,6 +461,7 @@ static void slc_completed(struct hfp_device *dev)
 	/* TODO: register unsolicited results handlers */
 
 	hfp_hf_register(dev->hf, ciev_cb, "+CIEV", dev, NULL);
+	hfp_hf_register(dev->hf, clip_cb, "+CLIP", dev, NULL);
 	hfp_hf_register(dev->hf, cops_cb, "+COPS", dev, NULL);
 
 	if (!hfp_hf_send_command(dev->hf, cops_resp, dev, "AT+COPS=3,0"))
