@@ -791,3 +791,18 @@ void telephony_call_set_line_id(struct call *call, const char *line_id)
 			call->path, TELEPHONY_CALL_INTERFACE,
 			"LineIdentification");
 }
+
+void telephony_call_set_multiparty(struct call *call, bool multiparty)
+{
+	if (call->multiparty == multiparty)
+		return;
+
+	DBG("device %s multiparty %u -> %u", call->path, call->multiparty,
+		multiparty);
+
+	call->multiparty = multiparty;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+			call->path, TELEPHONY_CALL_INTERFACE,
+			"Multiparty");
+}
