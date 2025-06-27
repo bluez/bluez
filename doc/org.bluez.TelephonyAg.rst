@@ -24,11 +24,10 @@ Methods
 object Dial(string number)
 ``````````````````````````
 
-Call number, if number is void try to call last dialed number.
 Initiates a new outgoing call. Returns the object path to the newly created
 call.
 
-The number must be a string containing the following characters:
+For HFP, the number must be a string containing the following characters:
 `[0-9+*#,ABCD]{1,80}` The character set can contain numbers, `+`, `*`, `#`,
 `,` and the letters `A` to `D`. Besides this sanity checking no further number
 validation is performed. It is assumed that the gateway and/or the network
