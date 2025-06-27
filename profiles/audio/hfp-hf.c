@@ -450,6 +450,25 @@ static void cops_cb(struct hfp_context *context, void *user_data)
 	telephony_set_operator_name(dev->telephony, name);
 }
 
+static void ccwa_resp(enum hfp_result result, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	DBG("");
+
+	if (result != HFP_RESULT_OK) {
+		error("hf-client: CCWA error: %d", result);
+		return;
+	}
+
+	if (dev->features & HFP_AG_FEAT_EXTENDED_RES_CODE) {
+		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
+								"AT+CMEE=1"))
+			info("hf-client: Could not send AT+CMEE=1");
+	}
+}
+
 static void nrec_resp(enum hfp_result result, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -463,9 +482,12 @@ static void nrec_resp(enum hfp_result result, enum hfp_error cme_err,
 	}
 
 	if ((dev->chld_features & CHLD_3WAY_FEATURES) == CHLD_3WAY_FEATURES) {
-		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
-								"AT+CCWA=1"))
+		if (!hfp_hf_send_command(dev->hf, ccwa_resp, dev, "AT+CCWA=1"))
 			info("hf-client: Could not send AT+CCWA=1");
+	} else if (dev->features & HFP_AG_FEAT_EXTENDED_RES_CODE) {
+		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
+								"AT+CMEE=1"))
+			info("hf-client: Could not send AT+CMEE=1");
 	}
 }
 
@@ -487,12 +509,12 @@ static void clip_resp(enum hfp_result result, enum hfp_error cme_err,
 			info("hf-client: Could not send AT+NREC=0");
 	} else if ((dev->chld_features & CHLD_3WAY_FEATURES) ==
 			CHLD_3WAY_FEATURES) {
-		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
-								"AT+CCWA=1"))
+		if (!hfp_hf_send_command(dev->hf, ccwa_resp, dev, "AT+CCWA=1"))
 			info("hf-client: Could not send AT+CCWA=1");
-	}
-}
-
+	} else if (dev->features & HFP_AG_FEAT_EXTENDED_RES_CODE) {
+		if (!hfp_hf_send_command(dev->hf, cmd_complete_cb, dev,
+								"AT+CMEE=1"))
+			info("hf-client: Could not send AT+CMEE=1");
 static void cops_status_resp(enum hfp_result result, enum hfp_error cme_err,
 							void *user_data)
 {
