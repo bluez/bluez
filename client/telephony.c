@@ -443,7 +443,6 @@ static void cmd_show_call(int argc, char *argv[])
 	bt_shell_printf("Call %s\n", g_dbus_proxy_get_path(proxy));
 
 	print_property(proxy, "LineIdentification");
-	print_property(proxy, "IncomingLine");
 	print_property(proxy, "Name");
 	print_property(proxy, "Multiparty");
 	print_property(proxy, "State");
