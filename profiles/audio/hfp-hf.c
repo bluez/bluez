@@ -1241,6 +1241,45 @@ static DBusMessage *hfp_hangup_held(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static DBusMessage *hfp_send_tones(DBusConnection *conn, DBusMessage *msg,
+				void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	const char *tones;
+	bool found_active = FALSE;
+	GSList *l;
+
+	DBG("");
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &tones,
+					DBUS_TYPE_INVALID)) {
+		return btd_error_invalid_args(msg);
+	}
+
+	for (l = dev->calls; l; l = l->next) {
+		struct call *call = l->data;
+
+		if (call->state == CALL_STATE_ACTIVE) {
+			found_active = TRUE;
+			break;
+		}
+	}
+
+	if (!found_active)
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+					".InvalidState",
+					"No active call to send tones");
+
+	if (!hfp_hf_send_command(dev->hf, cmd_complete_cb,
+			dbus_message_ref(msg),
+			"AT+VTS=%s", tones)) {
+		warn("Failed to send tones: %s", tones);
+		return btd_error_failed(msg, "Failed to send tones");
+	}
+
+	return NULL;
+}
+
 static DBusMessage *call_answer(DBusConnection *conn, DBusMessage *msg,
 	void *call_data)
 {
@@ -1267,6 +1306,7 @@ struct telephony_callbacks hfp_callbacks = {
 	.hangup_all = hfp_hangup_all,
 	.hangup_active = hfp_hangup_active,
 	.hangup_held = hfp_hangup_held,
+	.send_tones = hfp_send_tones,
 	.call_answer = call_answer,
 };
 
