@@ -67,7 +67,7 @@ static int open_key_file(struct mesh_node *node, const char *key_dir,
 }
 
 bool keyring_put_net_key(struct mesh_node *node, uint16_t net_idx,
-						struct keyring_net_key *key)
+					const struct keyring_net_key *key)
 {
 	bool result = false;
 	int fd;
@@ -191,7 +191,7 @@ bool keyring_finalize_app_keys(struct mesh_node *node, uint16_t net_idx)
 }
 
 bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
-					uint8_t count, uint8_t dev_key[16])
+				uint8_t count, const uint8_t dev_key[16])
 {
 	const char *node_path;
 	char key_file[PATH_MAX];
