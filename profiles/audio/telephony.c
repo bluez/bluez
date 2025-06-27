@@ -204,6 +204,30 @@ static DBusMessage *hangup_all(DBusConnection *conn, DBusMessage *msg,
 	return btd_error_not_supported(msg);
 }
 
+static DBusMessage *hangup_active(DBusConnection *conn, DBusMessage *msg,
+	void *user_data)
+{
+	struct telephony *telephony = user_data;
+
+	if (telephony->cbs && telephony->cbs->hangup_active)
+		return telephony->cbs->hangup_active(conn, msg,
+					telephony->profile_data);
+
+	return btd_error_not_supported(msg);
+}
+
+static DBusMessage *hangup_held(DBusConnection *conn, DBusMessage *msg,
+	void *user_data)
+{
+	struct telephony *telephony = user_data;
+
+	if (telephony->cbs && telephony->cbs->hangup_held)
+		return telephony->cbs->hangup_held(conn, msg,
+					telephony->profile_data);
+
+	return btd_error_not_supported(msg);
+}
+
 static DBusMessage *create_multiparty(DBusConnection *conn, DBusMessage *msg,
 	void *user_data)
 {
@@ -340,6 +364,8 @@ static const GDBusMethodTable telephony_methods[] = {
 	{ GDBUS_ASYNC_METHOD("HoldAndAnswer", NULL, NULL,
 						hold_and_answer) },
 	{ GDBUS_ASYNC_METHOD("HangupAll", NULL, NULL, hangup_all) },
+	{ GDBUS_ASYNC_METHOD("HangupActive", NULL, NULL, hangup_active) },
+	{ GDBUS_ASYNC_METHOD("HangupHeld", NULL, NULL, hangup_held) },
 	{ GDBUS_ASYNC_METHOD("CreateMultiparty", NULL,
 						GDBUS_ARGS({ "calls", "ao" }),
 						create_multiparty) },
