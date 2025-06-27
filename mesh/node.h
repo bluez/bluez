@@ -14,6 +14,7 @@ struct mesh_io;
 struct mesh_agent;
 struct mesh_config;
 struct mesh_config_node;
+struct mesh_prov_node_info;
 
 typedef void (*node_ready_func_t) (void *user_data, int status,
 							struct mesh_node *node);
@@ -71,7 +72,8 @@ uint8_t node_friend_mode_get(struct mesh_node *node);
 const char *node_get_element_path(struct mesh_node *node, uint8_t ele_idx);
 const char *node_get_owner(struct mesh_node *node);
 const char *node_get_app_path(struct mesh_node *node);
-bool node_add_pending_local(struct mesh_node *node, void *info);
+bool node_add_pending_local(struct mesh_node *node,
+					const struct mesh_prov_node_info *info);
 void node_attach_io_all(struct mesh_io *io);
 void node_attach_io(struct mesh_node *node, struct mesh_io *io);
 void node_attach(const char *app_root, const char *sender, uint64_t token,

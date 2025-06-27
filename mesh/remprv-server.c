@@ -514,7 +514,7 @@ bool register_nppi_acceptor(mesh_prov_open_func_t open_cb,
 }
 
 static bool nppi_cmplt(void *user_data, uint8_t status,
-					struct mesh_prov_node_info *info)
+					const struct mesh_prov_node_info *info)
 {
 	struct rem_prov_data *prov = user_data;
 

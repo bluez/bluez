@@ -455,7 +455,7 @@ static void prov_join_complete_reply_cb(struct l_dbus_message *msg,
 }
 
 static bool prov_complete_cb(void *user_data, uint8_t status,
-					struct mesh_prov_node_info *info)
+					const struct mesh_prov_node_info *info)
 {
 	struct l_dbus *dbus = dbus_get_bus();
 	struct l_dbus_message *msg;

@@ -2324,25 +2324,21 @@ static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 	l_idle_oneshot(send_msg_pkt_oneshot, tx, NULL);
 }
 
-static enum _relay_advice packet_received(void *user_data,
+static enum _relay_advice packet_received(struct mesh_net *net,
 				uint32_t net_key_id, uint16_t net_idx,
 				bool frnd, uint32_t iv_index,
-				const void *data, uint8_t size, int8_t rssi)
+				const uint8_t *data, uint8_t size, int8_t rssi)
 {
-	struct mesh_net *net = user_data;
-	const uint8_t *msg = data;
+	const uint8_t *msg;
 	uint8_t app_msg_len;
 	uint8_t net_ttl, key_aid, net_segO, net_segN, net_opcode;
 	uint32_t net_seq, cache_cookie;
 	uint16_t net_src, net_dst, net_seqZero;
-	uint8_t packet[31];
 	bool net_ctl, net_segmented, net_szmic, net_relay;
 
-	memcpy(packet + 2, data, size);
+	print_packet("RX: Network [clr] :", data, size);
 
-	print_packet("RX: Network [clr] :", packet + 2, size);
-
-	if (!mesh_crypto_packet_parse(packet + 2, size, &net_ctl, &net_ttl,
+	if (!mesh_crypto_packet_parse(data, size, &net_ctl, &net_ttl,
 					&net_seq, &net_src, &net_dst,
 					&cache_cookie, &net_opcode,
 					&net_segmented, &key_aid, &net_szmic,
@@ -2418,7 +2414,7 @@ static enum _relay_advice packet_received(void *user_data,
 				if (net_ttl >= 2) {
 					friend_seg_rxed(net, iv_index, net_ttl,
 						net_seq, net_src, net_dst,
-						l_get_be32(packet + 2 + 9),
+						l_get_be32(data + 9),
 						msg, app_msg_len);
 				}
 			} else {
@@ -3411,7 +3407,6 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 				uint16_t dst, const uint8_t *msg,
 				uint16_t msg_len)
 {
-	uint32_t use_seq = seq;
 	uint8_t pkt_len;
 	uint8_t pkt[30];
 	bool result = false;
@@ -3463,13 +3458,13 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 			return;
 
 		net_key_id = subnet->net_key_tx;
-		use_seq = mesh_net_next_seq_num(net);
+		seq = mesh_net_next_seq_num(net);
 
 		if (result || (dst >= net->src_addr && dst <= net->last_addr))
 			return;
 	}
 
-	if (!mesh_crypto_packet_build(true, ttl, use_seq, src, dst, msg[0],
+	if (!mesh_crypto_packet_build(true, ttl, seq, src, dst, msg[0],
 				false, 0, false, false, 0, 0, 0, msg + 1,
 				msg_len - 1, pkt + 1, &pkt_len))
 		return;

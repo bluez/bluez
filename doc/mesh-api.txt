@@ -1018,7 +1018,7 @@ Properties:
 		Element index. It is required that the application follows
 		sequential numbering scheme for the elements, starting with 0.
 
-	array{(uint16 id, dict caps)} Models [read-only]
+	array{(uint16 id, dict options)} Models [read-only]
 
 		An array of SIG Models:
 

@@ -177,7 +177,7 @@ static void send_add_failed(const char *owner, const char *path,
 }
 
 static bool add_cmplt(void *user_data, uint8_t status,
-					struct mesh_prov_node_info *info)
+					const struct mesh_prov_node_info *info)
 {
 	struct prov_remote_data *pending = user_data;
 	struct mesh_node *node = pending->node;

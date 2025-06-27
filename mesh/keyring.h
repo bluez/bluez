@@ -23,7 +23,7 @@ struct keyring_app_key {
 };
 
 bool keyring_put_net_key(struct mesh_node *node, uint16_t net_idx,
-						struct keyring_net_key *key);
+					const struct keyring_net_key *key);
 bool keyring_get_net_key(struct mesh_node *node, uint16_t net_idx,
 						struct keyring_net_key *key);
 bool keyring_del_net_key(struct mesh_node *node, uint16_t net_idx);
@@ -36,7 +36,7 @@ bool keyring_del_app_key(struct mesh_node *node, uint16_t app_idx);
 bool keyring_get_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 							uint8_t dev_key[16]);
 bool keyring_put_remote_dev_key(struct mesh_node *node, uint16_t unicast,
-					uint8_t count, uint8_t dev_key[16]);
+				uint8_t count, const uint8_t dev_key[16]);
 bool keyring_del_remote_dev_key(struct mesh_node *node, uint16_t unicast,
 								uint8_t count);
 bool keyring_del_remote_dev_key_all(struct mesh_node *node, uint16_t unicast);
