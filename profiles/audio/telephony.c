@@ -616,7 +616,6 @@ void telephony_free_call(struct call *call)
 		dbus_message_unref(call->pending_msg);
 
 	g_free(call->name);
-	g_free(call->incoming_line);
 	g_free(call->line_id);
 	g_free(call->path);
 	g_free(call);
@@ -658,29 +657,6 @@ static gboolean call_property_get_line_id(
 		return FALSE;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &call->line_id);
-
-	return TRUE;
-}
-
-static gboolean call_incoming_line_exists(const GDBusPropertyTable *property,
-	void *data)
-{
-	struct call *call = data;
-
-	return call->incoming_line != NULL;
-}
-
-static gboolean call_property_get_incoming_line(
-	const GDBusPropertyTable *property,
-	DBusMessageIter *iter, void *data)
-{
-	struct call *call = data;
-
-	if (call->incoming_line == NULL)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-		&call->incoming_line);
 
 	return TRUE;
 }
@@ -742,8 +718,6 @@ static const GDBusMethodTable telephony_call_methods[] = {
 static const GDBusPropertyTable telephony_call_properties[] = {
 	{ "LineIdentification", "s", call_property_get_line_id, NULL,
 			call_line_id_exists },
-	{ "IncomingLine", "s", call_property_get_incoming_line, NULL,
-			call_incoming_line_exists },
 	{ "Name", "s", call_property_get_name, NULL, call_name_exists },
 	{ "Multiparty", "b", call_property_get_multiparty },
 	{ "State", "s", call_property_get_state },
