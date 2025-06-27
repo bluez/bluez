@@ -775,3 +775,19 @@ void telephony_call_set_state(struct call *call, enum call_state state)
 			call->path, TELEPHONY_CALL_INTERFACE,
 			"State");
 }
+
+void telephony_call_set_line_id(struct call *call, const char *line_id)
+{
+	if (call->line_id && g_str_equal(call->line_id, line_id))
+		return;
+
+	DBG("device %s call id %s -> %s", call->path, call->line_id, line_id);
+
+	if (call->line_id)
+		g_free(call->line_id);
+	call->line_id = g_strdup(line_id);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+			call->path, TELEPHONY_CALL_INTERFACE,
+			"LineIdentification");
+}
