@@ -66,11 +66,6 @@ typedef void (*mesh_io_recv_func_t)(void *user_data,
 					struct mesh_io_recv_info *info,
 					const uint8_t *data, uint16_t len);
 
-typedef void (*mesh_io_recv_ext_func_t)(void *user_data,
-					struct mesh_io_recv_info *info,
-					const uint8_t *data, uint16_t len,
-					const uint8_t *addr);
-
 typedef void (*mesh_io_ready_func_t)(void *user_data, bool result);
 
 struct mesh_io *mesh_io_new(enum mesh_io_type type, void *opts,
