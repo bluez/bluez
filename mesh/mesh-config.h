@@ -128,15 +128,11 @@ struct mesh_config *mesh_config_create(const char *cfgdir_name,
 
 bool mesh_config_write_net_transmit(struct mesh_config *cfg, uint8_t cnt,
 							uint16_t interval);
-bool mesh_config_write_device_key(struct mesh_config *cfg, uint8_t *key);
-bool mesh_config_write_candidate(struct mesh_config *cfg, uint8_t *key);
+bool mesh_config_write_device_key(struct mesh_config *cfg, const uint8_t *key);
+bool mesh_config_write_candidate(struct mesh_config *cfg, const uint8_t *key);
 bool mesh_config_read_candidate(struct mesh_config *cfg, uint8_t *key);
 bool mesh_config_finalize_candidate(struct mesh_config *cfg);
-bool mesh_config_write_token(struct mesh_config *cfg, uint8_t *token);
-bool mesh_config_write_network_key(struct mesh_config *cfg, uint16_t idx,
-				uint8_t *key, uint8_t *new_key, int phase);
-bool mesh_config_write_app_key(struct mesh_config *cfg, uint16_t net_idx,
-			uint16_t app_idx, uint8_t *key, uint8_t *new_key);
+bool mesh_config_write_token(struct mesh_config *cfg, const uint8_t *token);
 bool mesh_config_write_seq_number(struct mesh_config *cfg, uint32_t seq,
 								bool cache);
 bool mesh_config_write_unicast(struct mesh_config *cfg, uint16_t unicast);
@@ -150,7 +146,7 @@ bool mesh_config_write_mode(struct mesh_config *cfg, const char *keyword,
 bool mesh_config_write_mode_ex(struct mesh_config *cfg, const char *keyword,
 							int value, bool save);
 bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
-						uint8_t *data, uint16_t size);
+					const uint8_t *data, uint16_t size);
 void mesh_config_comp_page_del(struct mesh_config *cfg, uint8_t page);
 bool mesh_config_model_binding_add(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
@@ -159,16 +155,16 @@ bool mesh_config_model_binding_del(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
 							uint16_t app_idx);
 bool mesh_config_model_pub_add(struct mesh_config *cfg, uint16_t ele_addr,
-						uint32_t mod_id, bool vendor,
-						struct mesh_config_pub *pub);
+					uint32_t mod_id, bool vendor,
+					const struct mesh_config_pub *pub);
 bool mesh_config_model_pub_del(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor);
 bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
-						struct mesh_config_sub *sub);
+					const struct mesh_config_sub *sub);
 bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
-						struct mesh_config_sub *sub);
+					const struct mesh_config_sub *sub);
 bool mesh_config_model_sub_del_all(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor);
 bool mesh_config_model_pub_enable(struct mesh_config *cfg, uint16_t ele_addr,
