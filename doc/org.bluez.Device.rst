@@ -157,56 +157,106 @@ Possible errors:
 Signals
 -------
 
-void Disconnected(string reason, string message)
-````````````````````````````````````````````````
+void Connected(dict info)
+`````````````````````````
 
-This signal is launched when a device is disconnected, with the reason of the
-disconnection.
+This signal is emitted when a device is connected, with a dictionary
+containing connection metadata such as the bearer type.
+
+This signal can be used by client applications to react to bearer-specific
+connections — for example, to disable discovery or advertising when
+connected over a specific transport.
+
+Possible info values:
+
+:string bearer:
+
+	The bearer type of the connection.
+
+	Possible values:
+
+		:"le":
+
+			LE transport is connected.
+
+		:"bredr":
+
+			BR/EDR transport is connected.
+
+void Disconnected(dict info)
+````````````````````````````
+
+This signal is emitted when a device is disconnected, with a dictionary
+providing disconnection details, including the reason and bearer type.
 
 This could be used by client application, depending on internal policy, to try
 to reconnect to the device in case of timeout or unknown disconnection, or to
 try to connect to another device.
 
-Possible reasons:
+Possible info values:
 
-:org.bluez.Reason.Unknown:
+:string bearer:
 
-:org.bluez.Reason.Timeout:
+	The bearer type that was disconnected.
 
-	Connection timeout.
+	Possible bearer:
 
-	The link supervision timeout has expired for a connection or the
-	synchronization timeout has expired for a broadcast.
+	:"le":
 
-:org.bluez.Reason.Local:
+		LE transport is disconnected.
 
-	Connection terminated by local host.
+	:"bredr":
 
-	The local device terminated the connection, terminated synchronization
-	with a broadcaster, or terminated broadcasting packets.
+		BR/EDR transport is disconnected.
 
-:org.bluez.Reason.Remote:
+:string reason:
 
-	Connection terminated by remote host.
+	The reason for disconnection.
 
-	This disconnection can be due to:
+	Possible reasons:
 
-	- the user on the remote device either terminated the connection or
-	  stopped broadcasting packets,
+	:org.bluez.Reason.Unknown:
 
-	- the remote device terminated the connection because of low
-	  resources,
+	:org.bluez.Reason.Timeout:
 
-	- the remote device terminated the connection because the device is
-	  about to power off.
+		Connection timeout.
 
-:org.bluez.Reason.Authentication:
+		The link supervision timeout has expired for a connection or the
+		synchronization timeout has expired for a broadcast.
 
-	Connection terminated due to an authentication failure.
+	:org.bluez.Reason.Local:
 
-:org.bluez.Reason.Suspend:
+		Connection terminated by local host.
 
-	Connection terminated by local host for suspend.
+		The local device terminated the connection, terminated synchronization
+		with a broadcaster, or terminated broadcasting packets.
+
+	:org.bluez.Reason.Remote:
+
+		Connection terminated by remote host.
+
+		This disconnection can be due to:
+
+		- the user on the remote device either terminated the connection or
+		stopped broadcasting packets,
+
+		- the remote device terminated the connection because of low
+		resources,
+
+		- the remote device terminated the connection because the device is
+		about to power off.
+
+	:org.bluez.Reason.Authentication:
+
+		Connection terminated due to an authentication failure.
+
+	:org.bluez.Reason.Suspend:
+
+		Connection terminated by local host for suspend.
+
+:string message:
+
+	A human-readable message providing further context for the disconnection.
 
 Properties
 ----------

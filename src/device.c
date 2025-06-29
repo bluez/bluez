@@ -80,6 +80,15 @@
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
 
+struct btd_conn_params {
+	const char *bearer;
+};
+
+struct btd_disconn_params {
+	const char *bearer;
+	uint8_t reason;
+};
+
 struct btd_disconnect_data {
 	guint id;
 	disconnect_watch watch;
@@ -3491,8 +3500,10 @@ static const GDBusMethodTable device_methods[] = {
 };
 
 static const GDBusSignalTable device_signals[] = {
+	{ GDBUS_SIGNAL("Connected",
+			GDBUS_ARGS({ "info", "a{sv}" })) },
 	{ GDBUS_SIGNAL("Disconnected",
-			GDBUS_ARGS({ "name", "s" }, { "message", "s" })) },
+			GDBUS_ARGS({ "info", "a{sv}" })) },
 	{ }
 };
 
@@ -3672,10 +3683,42 @@ static void device_update_last_used(struct btd_device *device,
 	store_device_info(device);
 }
 
+static void device_emit_connected(struct btd_device *dev,
+                                  struct btd_conn_params *params)
+{
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	DBusMessageIter entry, variant;
+	const char *key = "bearer";
+
+	DBusMessage *signal = dbus_message_new_signal(dev->path,
+	                                              DEVICE_INTERFACE,
+	                                              "Connected");
+	if (!signal) {
+		error("Failed to create Connected signal for %s", dev->path);
+		return;
+	}
+
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "s", &variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &params->bearer);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(&dict, &entry);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	g_dbus_send_message(dbus_conn, signal);
+}
+
 void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 							uint32_t flags)
 {
 	struct bearer_state *state = get_state(dev, bdaddr_type);
+	struct btd_conn_params params;
 
 	device_update_last_seen(dev, bdaddr_type, true);
 	device_update_last_used(dev, bdaddr_type);
@@ -3691,13 +3734,18 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 	dev->conn_bdaddr_type = dev->bdaddr_type;
 
 	/* If this is the first connection over this bearer */
-	if (bdaddr_type == BDADDR_BREDR)
+	if (bdaddr_type == BDADDR_BREDR) {
 		device_set_bredr_support(dev);
-	else
+		params.bearer = "bredr";
+	} else {
 		device_set_le_support(dev, bdaddr_type);
+		params.bearer = "le";
+	}
 
 	state->connected = true;
 	state->initiator = flags & BIT(3);
+
+	device_emit_connected(dev, &params);
 
 	if (dev->le_state.connected && dev->bredr_state.connected)
 		return;
@@ -3747,12 +3795,16 @@ static void set_temporary_timer(struct btd_device *dev, unsigned int timeout)
 								dev, NULL);
 }
 
-static void device_disconnected(struct btd_device *device, uint8_t reason)
+static void device_emit_disconnected(struct btd_device *dev,
+                                     struct btd_disconn_params *params)
 {
+	const char *key;
 	const char *name;
 	const char *message;
+	DBusMessage *signal;
+	DBusMessageIter iter, dict, entry, variant;
 
-	switch (reason) {
+	switch (params->reason) {
 	case MGMT_DEV_DISCONN_UNKNOWN:
 		name = "org.bluez.Reason.Unknown";
 		message = "Unspecified";
@@ -3778,16 +3830,48 @@ static void device_disconnected(struct btd_device *device, uint8_t reason)
 		message = "Connection terminated by local host for suspend";
 		break;
 	default:
-		warn("Unknown disconnection value: %u", reason);
+		warn("Unknown disconnection value: %u", params->reason);
 		name = "org.bluez.Reason.Unknown";
 		message = "Unspecified";
+		break;
 	}
 
-	g_dbus_emit_signal(dbus_conn, device->path, DEVICE_INTERFACE,
-						"Disconnected",
-						DBUS_TYPE_STRING, &name,
-						DBUS_TYPE_STRING, &message,
-						DBUS_TYPE_INVALID);
+	signal = dbus_message_new_signal(dev->path,
+	                                 DEVICE_INTERFACE,
+	                                 "Disconnected");
+	if (!signal)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+	key = "bearer";
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "s", &variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &params->bearer);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(&dict, &entry);
+
+	key = "reason";
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "s", &variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &name);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(&dict, &entry);
+
+	key = "message";
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "s", &variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &message);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(&dict, &entry);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	g_dbus_send_message(dbus_conn, signal);
 }
 
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
@@ -3798,13 +3882,20 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	DBusMessage *reply;
 	bool remove_device = false;
 	bool paired_status_updated = false;
+	struct btd_disconn_params params;
 
 	if (!state->connected)
 		return;
 
+	if (bdaddr_type == BDADDR_BREDR)
+		params.bearer = "bredr";
+	else
+		params.bearer = "le";
+
 	state->connected = false;
 	state->initiator = false;
 	device->general_connect = FALSE;
+	params.reason = reason;
 
 	device_set_svc_refreshed(device, false);
 
@@ -3854,15 +3945,15 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 						DEVICE_INTERFACE,
 						"Paired");
 
-	if (device->bredr_state.connected || device->le_state.connected)
-		return;
-
 	device_update_last_seen(device, bdaddr_type, true);
 
 	g_slist_free_full(device->eir_uuids, g_free);
 	device->eir_uuids = NULL;
 
-	device_disconnected(device, reason);
+	device_emit_disconnected(device, &params);
+
+	if (device->bredr_state.connected || device->le_state.connected)
+		return;
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
