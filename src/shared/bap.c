@@ -6584,6 +6584,11 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 
 	DBG(stream->bap, "stream %p io disconnected", stream);
 
+	if (stream->lpac->type == BT_BAP_BCAST_SINK) {
+		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+		return false;
+	}
+
 	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
 		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
 
