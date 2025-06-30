@@ -2134,10 +2134,14 @@ static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
 	/* Sink can autonomously transit to QOS while source needs to go to
 	 * Disabling until BT_ASCS_STOP is received.
 	 */
-	if (stream->ep->dir == BT_BAP_SINK)
+	if (stream->ep->dir == BT_BAP_SINK &&
+	   (stream->ep->state == BT_ASCS_ASE_STATE_ENABLING ||
+	    stream->ep->state == BT_ASCS_ASE_STATE_STREAMING))
 		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
 
-	if (stream->ep->dir == BT_BAP_SOURCE)
+	if (stream->ep->dir == BT_BAP_SOURCE &&
+	   (stream->ep->state == BT_ASCS_ASE_STATE_ENABLING ||
+	    stream->ep->state == BT_ASCS_ASE_STATE_STREAMING))
 		stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
 
 	return 0;
@@ -6583,6 +6587,11 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 	struct bt_bap_stream *stream = user_data;
 
 	DBG(stream->bap, "stream %p io disconnected", stream);
+
+	if (stream->lpac->type == BT_BAP_BCAST_SINK) {
+		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+		return false;
+	}
 
 	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
 		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
