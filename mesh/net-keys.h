@@ -23,6 +23,9 @@ uint32_t net_key_frnd_add(uint32_t flooding_id, uint16_t lpn, uint16_t frnd,
 void net_key_unref(uint32_t id);
 uint32_t net_key_decrypt(uint32_t iv_index, const uint8_t *pkt, size_t len,
 					uint8_t **plain, size_t *plain_len);
+uint32_t net_key_decrypt_proxy_cfg_msg(uint32_t iv_index,
+					const uint8_t *pkt, size_t len,
+					uint8_t *plain, size_t *plain_len);
 bool net_key_encrypt(uint32_t id, uint32_t iv_index, uint8_t *pkt, size_t len);
 uint32_t net_key_network_id(const uint8_t network[8]);
 uint32_t net_key_beacon(const uint8_t *data, uint16_t len, uint32_t *ivi,
@@ -37,3 +40,7 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 void net_key_beacon_enable(uint32_t id, bool mpb, uint8_t refresh_count);
 void net_key_beacon_disable(uint32_t id, bool mpb);
 uint32_t net_key_beacon_last_seen(uint32_t id);
+
+bool net_key_fill_adv_service_data(uint32_t id,
+					struct l_dbus_message_builder *builder);
+uint32_t net_key_get_next_id(uint32_t id);

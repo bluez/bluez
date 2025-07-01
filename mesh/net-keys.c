@@ -20,6 +20,7 @@
 #include "mesh/util.h"
 #include "mesh/crypto.h"
 #include "mesh/mesh-io.h"
+#include "mesh/gatt-proxy-svc.h"
 #include "mesh/net.h"
 #include "mesh/net-keys.h"
 
@@ -28,6 +29,12 @@
 
 /* This allows daemon to skip decryption on recently seen beacons */
 #define BEACON_CACHE_MAX	10
+
+/* MshPRT_v1.1, section 7.2.2.2.1 */
+#define IDENTIFICATION_TYPE_NETWORK_ID     0x00
+#define IDENTIFICATION_TYPE_NODE_ID        0x01
+#define IDENTIFICATION_TYPE_PRV_NETWORK_ID 0x02
+#define IDENTIFICATION_TYPE_PRV_NODE_ID    0x03
 
 struct beacon_rx {
 	uint8_t data[28];
@@ -67,6 +74,15 @@ struct net_key {
 	uint8_t net_id[8];
 	bool kr;
 	bool ivu;
+};
+
+struct proxy_cfg_msg {
+	const uint8_t *data;
+	uint8_t len;
+	uint8_t *plain;
+	uint8_t plain_len;
+	uint32_t iv_index;
+	uint32_t key_id;
 };
 
 static struct l_queue *beacons;
@@ -144,6 +160,9 @@ uint32_t net_key_add(const uint8_t flooding[16])
 		goto fail;
 
 	key->id = ++last_flooding_id;
+	if (l_queue_isempty(keys))
+		gatt_proxy_service_start();
+
 	l_queue_push_tail(keys, key);
 	return key->id;
 
@@ -196,6 +215,9 @@ void net_key_unref(uint32_t id)
 			l_timeout_remove(key->observe.timeout);
 			l_queue_remove(keys, key);
 			l_free(key);
+
+			if (l_queue_isempty(keys))
+				gatt_proxy_service_stop();
 		}
 	}
 }
@@ -236,10 +258,33 @@ static void decrypt_net_pkt(void *a, void *b)
 
 	if (result) {
 		cache_id = key->id;
-		if (cache_plain[1] & 0x80)
+		if (cache_plain[1] & CTL)
 			cache_plainlen = cache_len - 8;
 		else
 			cache_plainlen = cache_len - 4;
+	}
+}
+
+static void decrypt_proxy_cfg_msg(void *a, void *b)
+{
+	const struct net_key *key = a;
+	struct proxy_cfg_msg *proxy_cfg = b;
+	bool result;
+
+	if (proxy_cfg->key_id || !key->ref_cnt ||
+					(proxy_cfg->data[0] & 0x7f) != key->nid)
+		return;
+
+	result = mesh_crypto_packet_decode(proxy_cfg->data, proxy_cfg->len,
+							true,
+							proxy_cfg->plain,
+							proxy_cfg->iv_index,
+							key->enc_key,
+							key->prv_key);
+
+	if (result) {
+		proxy_cfg->key_id = key->id;
+		proxy_cfg->plain_len = proxy_cfg->len - 8;
 	}
 }
 
@@ -270,6 +315,30 @@ done:
 	}
 
 	return cache_id;
+}
+
+uint32_t net_key_decrypt_proxy_cfg_msg(uint32_t iv_index,
+					const uint8_t *pkt, size_t len,
+					uint8_t *plain, size_t *plain_len)
+{
+	struct proxy_cfg_msg proxy_cfg = {
+		.data = pkt,
+		.len = len,
+		.plain = plain,
+		.iv_index = iv_index,
+	};
+
+	/* MshPRT_v1.1, section 6.6: Proxy configuration messages have CTL=1 */
+	if (!(pkt[1] & CTL))
+		return 0;
+
+	/* Try all network keys known to us */
+	l_queue_foreach(keys, decrypt_proxy_cfg_msg, &proxy_cfg);
+
+	if (proxy_cfg.key_id)
+		*plain_len = proxy_cfg.plain_len;
+
+	return proxy_cfg.key_id;
 }
 
 bool net_key_encrypt(uint32_t id, uint32_t iv_index, uint8_t *pkt, size_t len)
@@ -663,6 +732,7 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t ivi, bool kr, bool ivu,
 			return false;
 
 		print_packet("Set SNB to", key->snb, 23);
+		gatt_proxy_service_set_current_adv_key(key->id);
 	}
 
 	l_debug("Set Beacon: IVI: %8.8x, IVU: %d, KR: %d", ivi, ivu, kr);
@@ -797,4 +867,51 @@ void net_key_cleanup(void)
 	keys = NULL;
 	l_queue_destroy(beacons, l_free);
 	beacons = NULL;
+}
+
+bool net_key_fill_adv_service_data(uint32_t id,
+					struct l_dbus_message_builder *builder)
+{
+	uint8_t identification_type = IDENTIFICATION_TYPE_NETWORK_ID;
+	struct net_key *key;
+	int i;
+
+	key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
+	if (!key)
+		return false;
+
+	l_dbus_message_builder_enter_array(builder, "y");
+	l_dbus_message_builder_append_basic(builder, 'y', &identification_type);
+
+	for (i = 0; i < sizeof(key->net_id); i++)
+		l_dbus_message_builder_append_basic(builder, 'y',
+							&(key->net_id[i]));
+	l_dbus_message_builder_leave_array(builder);
+
+	return true;
+}
+
+uint32_t net_key_get_next_id(uint32_t id)
+{
+	const struct l_queue_entry *entry;
+	struct net_key *key;
+	bool found = false;
+
+	/* Try to find next key (after the given key id) */
+	for (entry = l_queue_get_entries(keys); entry; entry = entry->next) {
+		key = entry->data;
+
+		if (!found)
+			if (key->id == id)
+				found = true;
+		else
+			return key->id;
+	}
+
+	/* If not found, return id of first key */
+	key = l_queue_peek_head(keys);
+	if (key)
+		return key->id;
+
+	return 0;
 }
