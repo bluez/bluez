@@ -217,3 +217,13 @@ const char *btd_error_le_str(int err)
 		return ERR_LE_CONN_UNKNOWN;
 	}
 }
+
+DBusMessage *btd_error_bredr_errno(DBusMessage *msg, int err)
+{
+	return btd_error_failed(msg, btd_error_bredr_str(err));
+}
+
+DBusMessage *btd_error_le_errno(DBusMessage *msg, int err)
+{
+	return btd_error_failed(msg, btd_error_le_str(err));
+}
