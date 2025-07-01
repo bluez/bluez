@@ -2341,7 +2341,7 @@ done:
 
 		g_dbus_send_message(dbus_conn,
 			btd_error_failed(dev->connect,
-					btd_error_bredr_conn_from_errno(err)));
+						btd_error_bredr_str(err)));
 	} else {
 		/* Start passive SDP discovery to update known services */
 		if (dev->bredr && !dev->svc_refreshed && dev->refresh_discovery)
@@ -2698,8 +2698,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 	if (err < 0) {
 		if (err == -EALREADY)
 			return dbus_message_new_method_return(msg);
-		return btd_error_failed(msg,
-					btd_error_bredr_conn_from_errno(err));
+		return btd_error_failed(msg, btd_error_bredr_str(err));
 	}
 
 	dev->connect = dbus_message_ref(msg);
@@ -3004,8 +3003,8 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
 		}
 		reply = btd_error_failed(req->msg,
 				bdaddr_type == BDADDR_BREDR ?
-				btd_error_bredr_conn_from_errno(err) :
-				btd_error_le_conn_from_errno(err));
+				btd_error_bredr_str(err) :
+				btd_error_le_str(err));
 		goto done;
 	}
 
@@ -6283,7 +6282,7 @@ done:
 	if (device->connect) {
 		if (err < 0)
 			reply = btd_error_failed(device->connect,
-					btd_error_le_conn_from_errno(err));
+						btd_error_le_str(err));
 		else
 			reply = dbus_message_new_method_return(device->connect);
 

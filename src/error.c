@@ -134,9 +134,9 @@ DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
 					".Failed", "%s", str);
 }
 
-const char *btd_error_bredr_conn_from_errno(int errno_code)
+const char *btd_error_bredr_str(int err)
 {
-	switch (-errno_code) {
+	switch (-err) {
 	case EALREADY:
 	case EISCONN:
 		return ERR_BREDR_CONN_ALREADY_CONNECTED;
@@ -178,9 +178,9 @@ const char *btd_error_bredr_conn_from_errno(int errno_code)
 	}
 }
 
-const char *btd_error_le_conn_from_errno(int errno_code)
+const char *btd_error_le_str(int err)
 {
-	switch (-errno_code) {
+	switch (-err) {
 	case EINVAL:
 		return ERR_LE_CONN_INVALID_ARGUMENTS;
 	case EHOSTUNREACH:
