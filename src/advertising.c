@@ -195,9 +195,8 @@ static void remove_advertising(struct btd_adv_manager *manager,
 			manager->mgmt_index, sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
-static void client_remove(void *data)
+static void client_remove(struct btd_adv_client *client)
 {
-	struct btd_adv_client *client = data;
 	struct mgmt_cp_remove_advertising cp;
 
 	g_dbus_client_set_proxy_handlers(client->client, NULL, NULL, NULL,
@@ -225,9 +224,11 @@ static void client_remove(void *data)
 
 static void client_disconnect_cb(DBusConnection *conn, void *user_data)
 {
+	struct btd_adv_client *client = user_data;
+
 	DBG("Client disconnected");
 
-	client_remove(user_data);
+	client_remove(client);
 }
 
 static bool parse_type(DBusMessageIter *iter, struct btd_adv_client *client)
