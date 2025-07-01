@@ -40,7 +40,8 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/rpl.h mesh/rpl.c \
 				mesh/prv-beacon.h mesh/prvbeac-server.c \
 				mesh/mesh-defs.h \
-				mesh/gatt-service.h mesh/gatt-service.c
+				mesh/gatt-service.h mesh/gatt-service.c \
+				mesh/gatt-proxy-svc.h mesh/gatt-proxy-svc.c
 pkglibexec_PROGRAMS += mesh/bluetooth-meshd
 
 mesh/mesh.$(OBJEXT): ell/internal

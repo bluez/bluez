@@ -27,6 +27,8 @@
 #include "mesh/net.h"
 #include "mesh/mesh-io.h"
 #include "mesh/friend.h"
+#include "mesh/gatt-service.h"		// PROXY_MSG_TYPE_NETWORK_PDU
+#include "mesh/gatt-proxy-svc.h"	// gatt_proxy_service_send()
 #include "mesh/mesh-config.h"
 #include "mesh/model.h"
 #include "mesh/appkey.h"
@@ -2306,7 +2308,9 @@ static void send_msg_pkt_oneshot(void *user_data)
 	/* No extra randomization when sending regular mesh messages */
 	info.u.gen.max_delay = DEFAULT_MIN_DELAY;
 
-	mesh_io_send(net->io, &info, tx->packet, tx->size);
+//	mesh_io_send(net->io, &info, tx->packet, tx->size);
+	gatt_proxy_service_send(PROXY_MSG_TYPE_NETWORK_PDU,
+						tx->packet + 1, tx->size - 1);
 	l_free(tx);
 }
 
@@ -3063,6 +3067,21 @@ struct mesh_io *mesh_net_detach(struct mesh_net *net)
 	l_queue_remove(nets, net);
 
 	return io;
+}
+
+void mesh_net_attach_gatt(struct gatt_proxy_service *gatt_proxy)
+{
+	gatt_proxy_service_register_recv_cb(gatt_proxy,
+						PROXY_MSG_TYPE_NETWORK_PDU,
+						net_msg_recv, NULL);
+}
+
+void mesh_net_detach_gatt(struct gatt_proxy_service *gatt_proxy)
+{
+//	mesh_io_send_cancel(net->io, &type, 1);
+
+	gatt_proxy_service_deregister_recv_cb(gatt_proxy,
+						PROXY_MSG_TYPE_NETWORK_PDU);
 }
 
 bool mesh_net_iv_index_update(struct mesh_net *net)
