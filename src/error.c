@@ -134,7 +134,7 @@ DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
 					".Failed", "%s", str);
 }
 
-const char *btd_error_bredr_str(int err)
+static const char *btd_error_bredr_str(int err)
 {
 	switch (-err) {
 	case EALREADY:
@@ -178,7 +178,7 @@ const char *btd_error_bredr_str(int err)
 	}
 }
 
-const char *btd_error_le_str(int err)
+static const char *btd_error_le_str(int err)
 {
 	switch (-err) {
 	case EINVAL:
