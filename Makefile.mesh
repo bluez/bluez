@@ -35,10 +35,12 @@ mesh_sources = mesh/mesh.h mesh/mesh.c \
 				mesh/prov-acceptor.c mesh/prov-initiator.c \
 				mesh/manager.h mesh/manager.c \
 				mesh/pb-adv.h mesh/pb-adv.c \
+				mesh/pb-gatt.h mesh/pb-gatt.c \
 				mesh/keyring.h mesh/keyring.c \
 				mesh/rpl.h mesh/rpl.c \
 				mesh/prv-beacon.h mesh/prvbeac-server.c \
-				mesh/mesh-defs.h
+				mesh/mesh-defs.h \
+				mesh/gatt-service.h mesh/gatt-service.c
 pkglibexec_PROGRAMS += mesh/bluetooth-meshd
 
 mesh/mesh.$(OBJEXT): ell/internal
