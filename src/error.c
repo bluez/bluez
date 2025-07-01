@@ -150,6 +150,13 @@ static DBusMessage *btd_error_le_connection_key_missing(DBusMessage *msg)
 					"LE Link Key missing");
 }
 
+DBusMessage *btd_error_adapter_not_powered(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".AdapterNotPowered",
+					"Adapter not powered");
+}
+
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -168,8 +175,6 @@ static const char *btd_error_str_bredr_conn_from_errno(int errno_code)
 		return ERR_BREDR_CONN_CREATE_SOCKET;
 	case EINVAL:
 		return ERR_BREDR_CONN_INVALID_ARGUMENTS;
-	case EHOSTUNREACH:
-		return ERR_BREDR_CONN_ADAPTER_NOT_POWERED;
 	case EOPNOTSUPP:
 	case EPROTONOSUPPORT:
 		return ERR_BREDR_CONN_NOT_SUPPORTED;
@@ -201,8 +206,6 @@ static const char *btd_error_str_le_conn_from_errno(int errno_code)
 	switch (-errno_code) {
 	case EINVAL:
 		return ERR_LE_CONN_INVALID_ARGUMENTS;
-	case EHOSTUNREACH:
-		return ERR_LE_CONN_ADAPTER_NOT_POWERED;
 	case EOPNOTSUPP:
 	case EPROTONOSUPPORT:
 		return ERR_LE_CONN_NOT_SUPPORTED;
@@ -239,6 +242,8 @@ DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code)
 	switch (-errno_code) {
 	case EBADE:
 		return btd_error_br_connection_key_missing(msg);
+	case EHOSTUNREACH:
+		return btd_error_adapter_not_powered(msg);
 	case ENOPROTOOPT:
 		return btd_error_profile_unavailable(msg);
 	default:
@@ -252,6 +257,8 @@ DBusMessage *btd_error_le_conn_from_errno(DBusMessage *msg, int errno_code)
 	switch (-errno_code) {
 	case EBADE:
 		return btd_error_le_connection_key_missing(msg);
+	case EHOSTUNREACH:
+		return btd_error_adapter_not_powered(msg);
 	default:
 		return btd_error_failed(msg,
 				btd_error_str_le_conn_from_errno(errno_code));

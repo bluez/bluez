@@ -52,6 +52,7 @@ Possible errors:
 :org.bluez.Error.ProfileUnavailable:
 :org.bluez.Error.BrConnectionKeyMissing:
 :org.bluez.Error.LeConnectionKeyMissing:
+:org.bluez.Error.AdapterNotPowered:
 
 void Disconnect()
 `````````````````

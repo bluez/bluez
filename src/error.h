@@ -83,6 +83,7 @@ DBusMessage *btd_error_not_ready(DBusMessage *msg);
 DBusMessage *btd_error_not_ready_str(DBusMessage *msg, const char *str);
 DBusMessage *btd_error_profile_unavailable(DBusMessage *msg);
 DBusMessage *btd_error_br_connection_key_missing(DBusMessage *msg);
+DBusMessage *btd_error_adapter_not_powered(DBusMessage *msg);
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str);
 DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code);
 DBusMessage *btd_error_le_conn_from_errno(DBusMessage *msg, int errno_code);

@@ -2666,10 +2666,8 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 	if (dev->pending || dev->connect || dev->browse)
 		return btd_error_in_progress_str(msg, ERR_BREDR_CONN_BUSY);
 
-	if (!btd_adapter_get_powered(dev->adapter)) {
-		return btd_error_not_ready_str(msg,
-					ERR_BREDR_CONN_ADAPTER_NOT_POWERED);
-	}
+	if (!btd_adapter_get_powered(dev->adapter))
+		return btd_error_adapter_not_powered(msg);
 
 	btd_device_set_temporary(dev, false);
 
