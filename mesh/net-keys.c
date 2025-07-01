@@ -76,6 +76,15 @@ struct net_key {
 	bool ivu;
 };
 
+struct proxy_cfg_msg {
+	const uint8_t *data;
+	uint8_t len;
+	uint8_t *plain;
+	uint8_t plain_len;
+	uint32_t iv_index;
+	uint32_t key_id;
+};
+
 static struct l_queue *beacons;
 static struct l_queue *keys;
 static uint32_t last_flooding_id;
@@ -249,10 +258,33 @@ static void decrypt_net_pkt(void *a, void *b)
 
 	if (result) {
 		cache_id = key->id;
-		if (cache_plain[1] & 0x80)
+		if (cache_plain[1] & CTL)
 			cache_plainlen = cache_len - 8;
 		else
 			cache_plainlen = cache_len - 4;
+	}
+}
+
+static void decrypt_proxy_cfg_msg(void *a, void *b)
+{
+	const struct net_key *key = a;
+	struct proxy_cfg_msg *proxy_cfg = b;
+	bool result;
+
+	if (proxy_cfg->key_id || !key->ref_cnt ||
+					(proxy_cfg->data[0] & 0x7f) != key->nid)
+		return;
+
+	result = mesh_crypto_packet_decode(proxy_cfg->data, proxy_cfg->len,
+							true,
+							proxy_cfg->plain,
+							proxy_cfg->iv_index,
+							key->enc_key,
+							key->prv_key);
+
+	if (result) {
+		proxy_cfg->key_id = key->id;
+		proxy_cfg->plain_len = proxy_cfg->len - 8;
 	}
 }
 
@@ -283,6 +315,30 @@ done:
 	}
 
 	return cache_id;
+}
+
+uint32_t net_key_decrypt_proxy_cfg_msg(uint32_t iv_index,
+					const uint8_t *pkt, size_t len,
+					uint8_t *plain, size_t *plain_len)
+{
+	struct proxy_cfg_msg proxy_cfg = {
+		.data = pkt,
+		.len = len,
+		.plain = plain,
+		.iv_index = iv_index,
+	};
+
+	/* MshPRT_v1.1, section 6.6: Proxy configuration messages have CTL=1 */
+	if (!(pkt[1] & CTL))
+		return 0;
+
+	/* Try all network keys known to us */
+	l_queue_foreach(keys, decrypt_proxy_cfg_msg, &proxy_cfg);
+
+	if (proxy_cfg.key_id)
+		*plain_len = proxy_cfg.plain_len;
+
+	return proxy_cfg.key_id;
 }
 
 bool net_key_encrypt(uint32_t id, uint32_t iv_index, uint8_t *pkt, size_t len)

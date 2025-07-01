@@ -25,6 +25,7 @@
 #include "mesh/net-keys.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
+#include "mesh/proxy-cfg.h"
 #include "mesh/mesh-io.h"
 #include "mesh/friend.h"
 #include "mesh/gatt-service.h"		// PROXY_MSG_TYPE_NETWORK_PDU
@@ -2352,7 +2353,7 @@ static enum _relay_advice packet_received(struct mesh_net *net,
 		return RELAY_NONE;
 	}
 
-	if (net_dst == 0) {
+	if (net_dst == UNASSIGNED_ADDRESS) {
 		l_error("illegal parms: DST: %4.4x Ctl: %d TTL: %2.2x",
 						net_dst, net_ctl, net_ttl);
 		return RELAY_NONE;
@@ -2523,6 +2524,34 @@ static void net_rx(void *net_ptr, void *user_data)
 	}
 }
 
+static void net_proxy_cfg_msg_rx(void *net_ptr, void *user_data)
+{
+	struct net_queue_data *data = user_data;
+	struct mesh_net *net = net_ptr;
+	uint8_t out[29];
+	size_t out_size;
+	uint32_t net_key_id;
+	bool ivi_net = !!(net->iv_index & 1);
+	bool ivi_pkt = !!(data->data[0] & 0x80);
+
+	/* if IVI flag differs, use previous IV Index */
+	uint32_t iv_index = net->iv_index - (ivi_pkt ^ ivi_net);
+
+	net_key_id = net_key_decrypt_proxy_cfg_msg(iv_index,
+							data->data, data->len,
+							out, &out_size);
+
+	if (!net_key_id)
+		return;
+
+	if (!data->seen) {
+		data->seen = true;
+		print_packet("RX: ProxyCfg [enc] :", data->data, data->len);
+	}
+
+	proxy_cfg_msg_received(net, net_key_id, iv_index, out, out_size);
+}
+
 static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 					const uint8_t *data, uint16_t len)
 {
@@ -2558,6 +2587,26 @@ static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 					net_data.out, net_data.out_size);
 		send_relay_pkt(net_data.net, net_data.out, net_data.out_size);
 	}
+}
+
+static void
+net_proxy_cfg_msg_recv(void *user_data, struct mesh_io_recv_info *info,
+					const uint8_t *data, uint16_t len)
+{
+	struct net_queue_data net_data = {
+		.info = info,
+		.data = data + 1,
+		.len = len - 1,
+		.relay_advice = RELAY_NONE,
+		.seen = false,
+	};
+
+	if (len < 9)
+		return;
+
+	l_queue_foreach(nets, net_proxy_cfg_msg_rx, &net_data);
+
+	/* Proxy configuration messages are not relayed */
 }
 
 static void iv_upd_to(struct l_timeout *upd_timeout, void *user_data)
@@ -3074,6 +3123,9 @@ void mesh_net_attach_gatt(struct gatt_proxy_service *gatt_proxy)
 	gatt_proxy_service_register_recv_cb(gatt_proxy,
 						PROXY_MSG_TYPE_NETWORK_PDU,
 						net_msg_recv, NULL);
+	gatt_proxy_service_register_recv_cb(gatt_proxy,
+						PROXY_MSG_TYPE_PROXY_CFG,
+						net_proxy_cfg_msg_recv, NULL);
 }
 
 void mesh_net_detach_gatt(struct gatt_proxy_service *gatt_proxy)
@@ -3082,6 +3134,8 @@ void mesh_net_detach_gatt(struct gatt_proxy_service *gatt_proxy)
 
 	gatt_proxy_service_deregister_recv_cb(gatt_proxy,
 						PROXY_MSG_TYPE_NETWORK_PDU);
+	gatt_proxy_service_deregister_recv_cb(gatt_proxy,
+						PROXY_MSG_TYPE_PROXY_CFG);
 }
 
 bool mesh_net_iv_index_update(struct mesh_net *net)
