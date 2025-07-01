@@ -2685,8 +2685,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 						BTD_SERVICE_STATE_CONNECTED)) {
 				return dbus_message_new_method_return(msg);
 			} else {
-				return btd_error_not_available_str(msg,
-					ERR_BREDR_CONN_PROFILE_UNAVAILABLE);
+				return btd_error_profile_unavailable(msg);
 			}
 		}
 

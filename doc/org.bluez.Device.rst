@@ -49,6 +49,7 @@ Possible errors:
 :org.bluez.Error.Failed:
 :org.bluez.Error.InProgress:
 :org.bluez.Error.AlreadyConnected:
+:org.bluez.Error.ProfileUnavailable:
 
 void Disconnect()
 `````````````````
@@ -80,6 +81,7 @@ Possible errors:
 :org.bluez.Error.InProgress:
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.NotAvailable:
+:org.bluez.Error.ProfileUnavailable:
 :org.bluez.Error.NotReady:
 
 void DisconnectProfile(string uuid)

@@ -128,6 +128,14 @@ DBusMessage *btd_error_not_ready_str(DBusMessage *msg, const char *str)
 					"%s", str);
 }
 
+DBusMessage *btd_error_profile_unavailable(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".ProfileUnavailable",
+					"Exhausted the list of BR/EDR "
+					"profiles to connect to");
+}
+
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -142,8 +150,6 @@ static const char *btd_error_str_bredr_conn_from_errno(int errno_code)
 		return ERR_BREDR_CONN_ALREADY_CONNECTED;
 	case EHOSTDOWN:
 		return ERR_BREDR_CONN_PAGE_TIMEOUT;
-	case ENOPROTOOPT:
-		return ERR_BREDR_CONN_PROFILE_UNAVAILABLE;
 	case EIO:
 		return ERR_BREDR_CONN_CREATE_SOCKET;
 	case EINVAL:
@@ -220,8 +226,13 @@ static const char *btd_error_str_le_conn_from_errno(int errno_code)
 
 DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code)
 {
-	return btd_error_failed(msg,
-				btd_error_str_bredr_conn_from_errno(errno_code));
+	switch (-errno_code) {
+	case ENOPROTOOPT:
+		return btd_error_profile_unavailable(msg);
+	default:
+		return btd_error_failed(msg,
+					btd_error_str_bredr_conn_from_errno(errno_code));
+	}
 }
 
 DBusMessage *btd_error_le_conn_from_errno(DBusMessage *msg, int errno_code)
