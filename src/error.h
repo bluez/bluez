@@ -88,6 +88,3 @@ DBusMessage *btd_error_not_ready_str(DBusMessage *msg, const char *str);
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str);
 DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code);
 DBusMessage *btd_error_le_conn_from_errno(DBusMessage *msg, int errno_code);
-
-const char *btd_error_str_bredr_conn_from_errno(int errno_code);
-const char *btd_error_str_le_conn_from_errno(int errno_code);
