@@ -217,3 +217,15 @@ const char *btd_error_str_le_conn_from_errno(int errno_code)
 		return ERR_LE_CONN_UNKNOWN;
 	}
 }
+
+DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code)
+{
+	return btd_error_failed(msg,
+				btd_error_str_bredr_conn_from_errno(errno_code));
+}
+
+DBusMessage *btd_error_le_conn_from_errno(DBusMessage *msg, int errno_code)
+{
+	return btd_error_failed(msg,
+				btd_error_str_le_conn_from_errno(errno_code));
+}
