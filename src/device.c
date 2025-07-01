@@ -1982,14 +1982,14 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	}
 
 	if (device->connect) {
-		const char *err_str;
 		DBusMessage *reply;
 
-		if (device->bonding_status == MGMT_STATUS_AUTH_FAILED)
-			err_str = ERR_BREDR_CONN_KEY_MISSING;
-		else
-			err_str = ERR_BREDR_CONN_CANCELED;
-		reply = btd_error_failed(device->connect, err_str);
+		if (device->bonding_status == MGMT_STATUS_AUTH_FAILED) {
+			reply = btd_error_br_connection_key_missing(device->connect);
+		} else {
+			reply = btd_error_failed(device->connect,
+						ERR_BREDR_CONN_CANCELED);
+		}
 		g_dbus_send_message(dbus_conn, reply);
 		dbus_message_unref(device->connect);
 		device->bonding_status = 0;

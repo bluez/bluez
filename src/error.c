@@ -136,6 +136,20 @@ DBusMessage *btd_error_profile_unavailable(DBusMessage *msg)
 					"profiles to connect to");
 }
 
+DBusMessage *btd_error_br_connection_key_missing(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".BrConnectionKeyMissing",
+					"BR/EDR Link Key missing");
+}
+
+static DBusMessage *btd_error_le_connection_key_missing(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".LeConnectionKeyMissing",
+					"LE Link Key missing");
+}
+
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -177,8 +191,6 @@ static const char *btd_error_str_bredr_conn_from_errno(int errno_code)
 		return ERR_BREDR_CONN_ABORT_BY_LOCAL;
 	case EPROTO:
 		return ERR_BREDR_CONN_LMP_PROTO_ERROR;
-	case EBADE:
-		return ERR_BREDR_CONN_KEY_MISSING;
 	default:
 		return ERR_BREDR_CONN_UNKNOWN;
 	}
@@ -217,8 +229,6 @@ static const char *btd_error_str_le_conn_from_errno(int errno_code)
 		return ERR_LE_CONN_ABORT_BY_LOCAL;
 	case EPROTO:
 		return ERR_LE_CONN_LL_PROTO_ERROR;
-	case EBADE:
-		return ERR_LE_CONN_KEY_MISSING;
 	default:
 		return ERR_LE_CONN_UNKNOWN;
 	}
@@ -227,6 +237,8 @@ static const char *btd_error_str_le_conn_from_errno(int errno_code)
 DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code)
 {
 	switch (-errno_code) {
+	case EBADE:
+		return btd_error_br_connection_key_missing(msg);
 	case ENOPROTOOPT:
 		return btd_error_profile_unavailable(msg);
 	default:
@@ -237,6 +249,11 @@ DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code)
 
 DBusMessage *btd_error_le_conn_from_errno(DBusMessage *msg, int errno_code)
 {
-	return btd_error_failed(msg,
+	switch (-errno_code) {
+	case EBADE:
+		return btd_error_le_connection_key_missing(msg);
+	default:
+		return btd_error_failed(msg,
 				btd_error_str_le_conn_from_errno(errno_code));
+	}
 }

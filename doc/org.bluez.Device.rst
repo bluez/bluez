@@ -50,6 +50,8 @@ Possible errors:
 :org.bluez.Error.InProgress:
 :org.bluez.Error.AlreadyConnected:
 :org.bluez.Error.ProfileUnavailable:
+:org.bluez.Error.BrConnectionKeyMissing:
+:org.bluez.Error.LeConnectionKeyMissing:
 
 void Disconnect()
 `````````````````

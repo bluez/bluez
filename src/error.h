@@ -41,7 +41,6 @@
 #define ERR_BREDR_CONN_LMP_PROTO_ERROR		"br-connection-lmp-protocol-"\
 						"error"
 #define ERR_BREDR_CONN_CANCELED			"br-connection-canceled"
-#define ERR_BREDR_CONN_KEY_MISSING		"br-connection-key-missing"
 #define ERR_BREDR_CONN_UNKNOWN			"br-connection-unknown"
 
 /* LE connection failure reasons */
@@ -62,7 +61,6 @@
 #define ERR_LE_CONN_LL_PROTO_ERROR	"le-connection-link-layer-protocol-"\
 					"error"
 #define ERR_LE_CONN_GATT_BROWSE		"le-connection-gatt-browsing"
-#define ERR_LE_CONN_KEY_MISSING		"le-connection-key-missing"
 #define ERR_LE_CONN_UNKNOWN		"le-connection-unknown"
 
 DBusMessage *btd_error_invalid_args(DBusMessage *msg);
@@ -84,6 +82,7 @@ DBusMessage *btd_error_agent_not_available(DBusMessage *msg);
 DBusMessage *btd_error_not_ready(DBusMessage *msg);
 DBusMessage *btd_error_not_ready_str(DBusMessage *msg, const char *str);
 DBusMessage *btd_error_profile_unavailable(DBusMessage *msg);
+DBusMessage *btd_error_br_connection_key_missing(DBusMessage *msg);
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str);
 DBusMessage *btd_error_bredr_conn_from_errno(DBusMessage *msg, int errno_code);
 DBusMessage *btd_error_le_conn_from_errno(DBusMessage *msg, int errno_code);
