@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #define ERROR_INTERFACE "org.bluez.Error"
+#define ERROR_INTERFACE_BREDR "org.bluez.Error.BREDR"
 
 /* BR/EDR connection failure reasons */
 #define ERR_BREDR_CONN_ALREADY_CONNECTED	"br-connection-already-"\

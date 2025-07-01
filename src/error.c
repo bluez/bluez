@@ -130,10 +130,9 @@ DBusMessage *btd_error_not_ready_str(DBusMessage *msg, const char *str)
 
 DBusMessage *btd_error_profile_unavailable(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
+	return g_dbus_create_error(msg, ERROR_INTERFACE_BREDR
 					".ProfileUnavailable",
-					"Exhausted the list of BR/EDR "
-					"profiles to connect to");
+					"No more profiles to connect to");
 }
 
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
