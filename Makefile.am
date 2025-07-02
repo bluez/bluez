@@ -432,7 +432,6 @@ unit_tests =
 
 include Makefile.tools
 include Makefile.obexd
-include android/Makefile.am
 include Makefile.mesh
 
 if SYSTEMD
@@ -745,7 +744,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-health \
 						--enable-midi \
 						--enable-manpages \
-						--enable-android \
 						--enable-mesh \
 						--enable-btpclient \
 						--disable-systemd \
