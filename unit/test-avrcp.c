@@ -28,8 +28,8 @@
 #include "src/log.h"
 #include "lib/bluetooth.h"
 
-#include "android/avctp.h"
-#include "android/avrcp-lib.h"
+#include "unit/avctp.h"
+#include "unit/avrcp-lib.h"
 
 struct test_pdu {
 	bool valid;

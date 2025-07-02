@@ -432,7 +432,6 @@ unit_tests =
 
 include Makefile.tools
 include Makefile.obexd
-include android/Makefile.am
 include Makefile.mesh
 
 if SYSTEMD
@@ -583,22 +582,22 @@ unit_tests += unit/test-avdtp
 
 unit_test_avdtp_SOURCES = unit/test-avdtp.c \
 				src/log.h src/log.c \
-				android/avdtp.c android/avdtp.h
+				unit/avdtp.c unit/avdtp.h
 unit_test_avdtp_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
 unit_tests += unit/test-avctp
 
 unit_test_avctp_SOURCES = unit/test-avctp.c \
 				src/log.h src/log.c \
-				android/avctp.c android/avctp.h
+				unit/avctp.c unit/avctp.h
 unit_test_avctp_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
 unit_tests += unit/test-avrcp
 
 unit_test_avrcp_SOURCES = unit/test-avrcp.c \
 				src/log.h src/log.c \
-				android/avctp.c android/avctp.h \
-				android/avrcp-lib.c android/avrcp-lib.h
+				unit/avctp.c unit/avctp.h \
+				unit/avrcp-lib.c unit/avrcp-lib.h
 unit_test_avrcp_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
 
@@ -745,7 +744,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-health \
 						--enable-midi \
 						--enable-manpages \
-						--enable-android \
 						--enable-mesh \
 						--enable-btpclient \
 						--disable-systemd \

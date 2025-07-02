@@ -491,22 +491,6 @@ AC_DEFINE_UNQUOTED(MESH_STORAGEDIR, "${storagedir}/mesh",
 			[Directory for the mesh daemon storage files])
 AC_SUBST(MESH_STORAGEDIR, "${storagedir}/mesh")
 
-AC_ARG_ENABLE(android, AS_HELP_STRING([--enable-android],
-			[enable BlueZ for Android]),
-					[enable_android=${enableval}])
-AM_CONDITIONAL(ANDROID, test "${enable_android}" = "yes")
-
-if (test "${enable_android}" = "yes"); then
-	PKG_CHECK_MODULES(SBC, sbc >= 1.2)
-fi
-
-if (test "${enable_android}" = "yes"); then
-	PKG_CHECK_MODULES(SPEEXDSP, speexdsp >= 1.2)
-fi
-
-AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
-			[Directory for the Android daemon storage files])
-
 AC_ARG_WITH([phonebook], AS_HELP_STRING([--with-phonebook=PLUGIN],
 			[obexd phonebook plugin (default=dummy)]),
 			[plugin_phonebook=${withval}])

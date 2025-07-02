@@ -26,7 +26,7 @@
 #include "src/shared/tester.h"
 #include "src/log.h"
 
-#include "android/avctp.h"
+#include "unit/avctp.h"
 
 struct test_pdu {
 	bool valid;
