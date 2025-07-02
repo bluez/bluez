@@ -2131,14 +2131,20 @@ static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
 
 	ascs_ase_rsp_success(rsp, stream->ep->id);
 
-	/* Sink can autonomously transit to QOS while source needs to go to
-	 * Disabling until BT_ASCS_STOP is received.
-	 */
-	if (stream->ep->dir == BT_BAP_SINK)
-		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
-
-	if (stream->ep->dir == BT_BAP_SOURCE)
-		stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
+	switch (stream->ep->state) {
+		case BT_ASCS_ASE_STATE_ENABLING:
+		case BT_ASCS_ASE_STATE_STREAMING:
+			if (stream->ep->dir == BT_BAP_SINK)
+				stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+			else if (stream->ep->dir == BT_BAP_SOURCE)
+				/* Sink can autonomously transit to QOS while source needs to go to
+				* Disabling until BT_ASCS_STOP is received.
+				*/
+				stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
+			break;
+		default:
+			break;
+	}
 
 	return 0;
 }
