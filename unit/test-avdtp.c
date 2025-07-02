@@ -27,7 +27,7 @@
 #include "src/shared/tester.h"
 #include "src/log.h"
 
-#include "android/avdtp.h"
+#include "unit/avdtp.h"
 
 #define MAX_SEID 0x3E
 
