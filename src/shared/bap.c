@@ -1033,7 +1033,7 @@ static void stream_notify_config(struct bt_bap_stream *stream)
 	status->id = ep->id;
 	status->state = ep->state;
 
-	/* Initialize preffered settings if not set */
+	/* Initialize preferred settings if not set */
 	if (!lpac->qos.phy)
 		lpac->qos.phy = 0x02;
 
@@ -1055,7 +1055,7 @@ static void stream_notify_config(struct bt_bap_stream *stream)
 	if (!lpac->qos.ppd_max)
 		lpac->qos.ppd_max = lpac->qos.pd_max;
 
-	/* TODO:Add support for setting preffered settings on bt_bap_pac */
+	/* TODO:Add support for setting preferred settings on bt_bap_pac */
 	config = (void *)status->params;
 	config->framing = lpac->qos.framing;
 	config->phy = lpac->qos.phy;
@@ -3681,7 +3681,7 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
 		DBG(bap, "%s", handler->str);
 
 		/* Set in_cp_write so ASE notification are not sent ahead of
-		 * CP notifcation.
+		 * CP notification.
 		 */
 		bap->in_cp_write = true;
 
@@ -4884,7 +4884,7 @@ static void read_pac_supported_context(bool success, uint8_t att_ecode,
 	const struct bt_pacs_context *ctx = (void *)value;
 
 	if (!success) {
-		DBG(bap, "Unable to read PAC Supproted Context: error 0x%02x",
+		DBG(bap, "Unable to read PAC Supported Context: error 0x%02x",
 								att_ecode);
 		return;
 	}
