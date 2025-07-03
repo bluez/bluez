@@ -500,7 +500,7 @@ static bool open_endpoint(struct audio_endpoint **epp,
 		}
 
 	if (!ep) {
-		error("Cound not find opened endpoint");
+		error("Could not find opened endpoint");
 		goto failed;
 	}
 

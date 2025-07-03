@@ -925,7 +925,7 @@ TC_GAW_SR_BV_01_C	PASS	haltest:
 TC_GAW_SR_BV_02_C	PASS	haltest:
 				gatts add service
 				gatts add_characteristics:
-					<properties> 66 <permisions> 145
+					<properties> 66 <permissions> 145
 				gatts start_service
 				gattc listen
 				gatts send_response: (twice)

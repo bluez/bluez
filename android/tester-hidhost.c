@@ -241,7 +241,7 @@ static void hid_ctrl_cid_hook_cb(const void *data, uint16_t len,
 		hid_prepare_reply_report(cid_data);
 		break;
 	/*
-	 * HID device doesnot reply for this commads, so reaching pdu's
+	 * HID device doesn't reply for this commands, so reaching pdu's
 	 * to hid device means assuming test passed
 	 */
 	case HID_SET_INPUT_REPORT:

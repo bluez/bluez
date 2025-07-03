@@ -65,7 +65,7 @@ static void dump_properties(int num_properties, bt_property_t *properties)
 
 	for (i = 0; i < num_properties; i++) {
 		/*
-		 * properities sometimes come unaligned hence memcp to
+		 * properties sometimes come unaligned hence memcp to
 		 * aligned buffer
 		 */
 		bt_property_t prop;
@@ -152,7 +152,7 @@ static void add_remote_device_from_props(int num_properties,
 
 	for (i = 0; i < num_properties; i++) {
 		/*
-		 * properities sometimes come unaligned hence memcp to
+		 * properties sometimes come unaligned hence memcp to
 		 * aligned buffer
 		 */
 		bt_property_t property;
@@ -216,7 +216,7 @@ static void discovery_state_changed_cb(bt_discovery_state_t state)
 }
 
 /*
- * Buffer for remote addres that came from one of bind request.
+ * Buffer for remote address that came from one of bind request.
  * It's stored for command completion.
  */
 static char last_remote_addr[MAX_ADDR_STR_LEN];
@@ -595,7 +595,7 @@ static void complete_addr_c(int argc, const char **argv, enum_func *enum_func,
 	}
 }
 
-/* Just addres to complete, use complete_addr_c */
+/* Just address to complete, use complete_addr_c */
 #define get_remote_device_properties_c complete_addr_c
 
 static void get_remote_device_properties_p(int argc, const char **argv)
@@ -696,7 +696,7 @@ static void get_remote_service_record_p(int argc, const char **argv)
 	EXEC(if_bluetooth->get_remote_service_record, &addr, &uuid);
 }
 
-/* Just addres to complete, use complete_addr_c */
+/* Just address to complete, use complete_addr_c */
 #define get_remote_services_c complete_addr_c
 
 static void get_remote_services_p(int argc, const char **argv)
@@ -723,7 +723,7 @@ static void cancel_discovery_p(int argc, const char **argv)
 	EXEC(if_bluetooth->cancel_discovery);
 }
 
-/* Just addres to complete, use complete_addr_c */
+/* Just address to complete, use complete_addr_c */
 #define create_bond_c complete_addr_c
 
 static void create_bond_p(int argc, const char **argv)
@@ -748,7 +748,7 @@ static void create_bond_p(int argc, const char **argv)
 #endif
 }
 
-/* Just addres to complete, use complete_addr_c */
+/* Just address to complete, use complete_addr_c */
 #define remove_bond_c complete_addr_c
 
 static void remove_bond_p(int argc, const char **argv)
@@ -761,7 +761,7 @@ static void remove_bond_p(int argc, const char **argv)
 	EXEC(if_bluetooth->remove_bond, &addr);
 }
 
-/* Just addres to complete, use complete_addr_c */
+/* Just address to complete, use complete_addr_c */
 #define cancel_bond_c complete_addr_c
 
 static void cancel_bond_p(int argc, const char **argv)

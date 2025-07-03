@@ -44,7 +44,7 @@ __BEGIN_DECLS
 #define HARDWARE_HAL_API_VERSION HARDWARE_MAKE_API_VERSION(1, 0)
 
 /*
- * Helper macros for module implementors.
+ * Helper macros for module implementers.
  *
  * The derived modules should provide convenience macros for supported
  * versions so that implementations can explicitly specify module/device
@@ -122,7 +122,7 @@ typedef struct hw_module_t {
     /** Name of this module */
     const char *name;
 
-    /** Author/owner/implementor of the module */
+    /** Author/owner/implementer of the module */
     const char *author;
 
     /** Modules methods */

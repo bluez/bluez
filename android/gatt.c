@@ -3500,7 +3500,7 @@ static void handle_client_write_descriptor(const void *buf, uint16_t len)
 	DBG("");
 
 	if (len != sizeof(*cmd) + cmd->len) {
-		error("Invalid write desriptor command (%u bytes), terminating",
+		error("Invalid write descriptor command (%u bytes), terminating",
 									len);
 		raise(SIGTERM);
 		return;
@@ -4742,7 +4742,7 @@ static void read_cb(struct gatt_db_attribute *attrib, unsigned int id,
 
 	app = find_app_by_id(app_id);
 	if (!app) {
-		error("gatt: read_cb, cound not found app id");
+		error("gatt: read_cb, could not found app id");
 		goto failed;
 	}
 
@@ -4753,7 +4753,7 @@ static void read_cb(struct gatt_db_attribute *attrib, unsigned int id,
 
 	conn = find_conn(&bdaddr, app->id);
 	if (!conn) {
-		error("gatt: read_cb, cound not found connection");
+		error("gatt: read_cb, could not found connection");
 		goto failed;
 	}
 
@@ -6433,7 +6433,7 @@ static void write_confirm(struct gatt_db_attribute *attrib,
 	if (!err)
 		return;
 
-	error("Error writting attribute %p", attrib);
+	error("Error writing attribute %p", attrib);
 }
 
 static void write_cmd_request(const uint8_t *cmd, uint16_t cmd_len,

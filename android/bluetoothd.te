@@ -12,7 +12,7 @@ allow bluetoothd bluetooth_data_file:notdevfile_class_set create_file_perms;
 allow bluetoothd self:capability { setuid net_admin net_bind_service net_raw };
 allow bluetoothd kernel:system module_request;
 
-# TODO: this may be romoved for userbuild where we don't use bluetoothd_wrapper
+# TODO: this may be removed for userbuild where we don't use bluetoothd_wrapper
 allow bluetoothd bluetoothd_main_exec:file { execute execute_no_trans read open };
 
 # IPC socket communication

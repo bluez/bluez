@@ -46,7 +46,7 @@ Audio Service (ID 0)
 
 		Response parameters: Status (1 octet)
 
-	Opcode 0x01 - Open Audio Endpoint commmand
+	Opcode 0x01 - Open Audio Endpoint command
 
 		Command parameters: Service UUID (16 octets)
 				    Codec ID (1 octet)

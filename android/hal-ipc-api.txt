@@ -1162,7 +1162,7 @@ Commands and responses:
 		                    Data type (2 octets)
 		                    Channel type (1 octet)
 		                    MDEP description length (2 octets)
-		                    MDEP description (MDEP desciption length)
+		                    MDEP description (MDEP description length)
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.
@@ -1827,7 +1827,7 @@ Commands and responses:
 		                    Transaction ID (4 octets)
 		                    Handle (2 octets)
 		                    Offset (2 octets)
-		                    Auth Request (1 octect)
+		                    Auth Request (1 octet)
 		                    Status (4 octets)
 		                    GATT Response (4 octets)
 		Response parameters: <none>
@@ -2352,14 +2352,14 @@ Commands and response:
 
 	Opcode 0x00 - Error response
 
-	Opcode 0x01 - Connect command/respose
+	Opcode 0x01 - Connect command/response
 
-		Command parameters: Remote address (6 octects)
+		Command parameters: Remote address (6 octets)
 		Response parameters: <none>
 
 		 In case of an error, the error response will be returned.
 
-	Opcode 0x02 - Disonnect command/response
+	Opcode 0x02 - Disconnect command/response
 
 		Command parameters: Remote address (6 octetcs)
 		Response parameters: <none>
@@ -2440,7 +2440,7 @@ Commands and response:
 
 		In case of an error, the error response will be returned.
 
-	Opcode 0x11 - Query Current Calls commad/response
+	Opcode 0x11 - Query Current Calls command/response
 
 		Command parameters: <none>
 		Response parameters: <none>
@@ -2512,7 +2512,7 @@ Notifications:
 			1	Release active calls and accept other call
 			2	Release specified active call only
 			3	Place all active calls on hold and accept other call
-			4	Request private mode with secified call
+			4	Request private mode with specified call
 			5	Add a held call to the multiparty
 			6	Connect two calls and leave multiparty
 			7-31	Reserved for future use
@@ -2563,7 +2563,7 @@ Notifications:
 
 		Notification parameters: Name (string)
 
-	Opcode 0x89 - Call Indicatior notification
+	Opcode 0x89 - Call Indicator notification
 
 		Notification parameters: Call (1 octet)
 
@@ -2587,7 +2587,7 @@ Notifications:
 		                        0x01 = Hold and Active
 					0x02 = Hold
 
-	Opcode 0x8c - Resposne and Hold Status notification
+	Opcode 0x8c - Response and Hold Status notification
 
 		Notification parameters: Status (1 octet)
 
@@ -2617,13 +2617,13 @@ Notifications:
 		Valid Direction values: 0x00 = Outgoing
 		                        0x01 = Incoming
 
-		Valid Call Sate values: 0x00 = Active
-		                        0x01 = Held
-		                        0x02 = Dialing
-		                        0x03 = Alerting
-		                        0x04 = Incoming
-		                        0x05 = Waiting
-		                        0x06 = Call held by Response and Hold
+		Valid Call State values: 0x00 = Active
+		                         0x01 = Held
+		                         0x02 = Dialing
+		                         0x03 = Alerting
+		                         0x04 = Incoming
+		                         0x05 = Waiting
+		                         0x06 = Call held by Response and Hold
 
 		Valid Multiparty values: 0x00 = Single Call
 		                         0x01 = Multiparty (conference) Call

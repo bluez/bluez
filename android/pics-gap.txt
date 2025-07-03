@@ -101,7 +101,7 @@ C.2: Excluded if TSPC_GAP_2_7 is supported, otherwise Optional.
 C.5: Mandatory If (TSPC_GAP_2_5 or TSPC_GAP_2_6 or TSPC_GAP_2_7) is supported,
 	otherwise Optional.
 C.4: Mandatory if (Core Spec 2.1 or later) is supported, otherwise Excluded.
-Note 2. If a Core 2.0 and earlier design claims to support secure communcation
+Note 2. If a Core 2.0 and earlier design claims to support secure communication
 	it should support either Security mode 2 or 3.
 Note 3. A Core 2.1 or later device shall always support secure communication
 	in Security Mode 4, and shall use that mode to connect with another

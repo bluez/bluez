@@ -948,7 +948,7 @@ static void bt_health_mdep_cfg_data(const void *buf, uint16_t len)
 	 * register with different role and different configurations.
 	 * 1) Does device supports SOURCE and SINK at the same time ?
 	 * 2) Does it require different SDP records or one record with
-	 *    multile MDEP configurations ?
+	 *    multiple MDEP configurations ?
 	 */
 	if (update_sdp_record(app) < 0) {
 		error("health: HDP SDP record preparation failed");
@@ -1221,7 +1221,7 @@ static void mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 
 static void mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 {
-	DBG("Not Implemeneted");
+	DBG("Not Implemented");
 }
 
 static struct health_device *create_device(struct health_app *app,

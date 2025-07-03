@@ -137,7 +137,7 @@ static void snoop_start(void)
 
 static void snoop_stop(void)
 {
-	printf("Stoping %s/%s\n", exec_dir, "bluetoothd-snoop");
+	printf("Stopping %s/%s\n", exec_dir, "bluetoothd-snoop");
 
 	kill(snoop_pid, SIGTERM);
 }
