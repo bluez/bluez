@@ -303,7 +303,7 @@ boolean WriteAcquired [read-only, optional]
 
 True, if this characteristic has been acquired by any client using AcquireWrite.
 
-For client properties is ommited in case 'write-without-response' flag is not
+For client properties is omitted in case 'write-without-response' flag is not
 set.
 
 For server the presence of this property indicates that AcquireWrite is
@@ -315,7 +315,7 @@ boolean NotifyAcquired [read-only, optional]
 True, if this characteristic has been acquired by any client using
 AcquireNotify.
 
-For client this properties is ommited in case 'notify' flag is not set.
+For client this properties is omitted in case 'notify' flag is not set.
 
 For server the presence of this property indicates that AcquireNotify is
 supported.

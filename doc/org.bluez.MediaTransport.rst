@@ -166,7 +166,7 @@ For a Broadcast Sink, the BIG sync procedure requires all desired streams to be
 enumerated from the start and it cannot be later reconfigured by adding or
 removing BISes.
 
-To avoid terminating and recreating the BIG sync everytime a new transport is
+To avoid terminating and recreating the BIG sync every time a new transport is
 selected for acquire, all transports selected via **Select** need to be linked
 together.
 
