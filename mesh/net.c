@@ -846,7 +846,7 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	/* Delete associated app keys */
 	appkey_delete_bound_keys(net, idx);
 
-	/* Disable hearbeat publication on this subnet */
+	/* Disable heartbeat publication on this subnet */
 	if (idx == net->hb_pub.net_idx)
 		net->hb_pub.dst = UNASSIGNED_ADDRESS;
 
@@ -1059,7 +1059,7 @@ static bool msg_in_cache(struct mesh_net *net, uint16_t src, uint32_t seq,
 	msg = l_queue_find(net->msg_cache, match_cache, &tst);
 
 	if (msg) {
-		l_debug("Supressing duplicate %4.4x + %6.6x + %8.8x",
+		l_debug("Suppressing duplicate %4.4x + %6.6x + %8.8x",
 							src, seq, mic);
 		return true;
 	}
