@@ -546,7 +546,7 @@ static void acp_prov_rx(void *user_data, const void *dptr, uint16_t len)
 
 			if (prov->conf_inputs.start.auth_action ==
 							PROV_ACTION_OUT_ALPHA) {
-				/* TODO: Construst NUL-term string to pass */
+				/* TODO: Construct NUL-term string to pass */
 				fail.reason = mesh_agent_display_string(
 					prov->agent, NULL, NULL, prov);
 			} else {
