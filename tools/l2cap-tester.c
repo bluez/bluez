@@ -2010,7 +2010,7 @@ static gboolean test_close_socket_1_part_2(gpointer args)
 
 	tester_print("Will close socket during scan phase...");
 
-	/* We tried to conect to LE device that is not advertising. It
+	/* We tried to connect to LE device that is not advertising. It
 	 * was added to kernel accept list, and scan was started. We
 	 * should be still scanning.
 	 */
@@ -2526,7 +2526,7 @@ static void test_getpeername_not_connected(const void *test_data)
 	}
 
 	if (errno != ENOTCONN) {
-		tester_warn("Unexpexted getpeername error: %s (%d)",
+		tester_warn("Unexpected getpeername error: %s (%d)",
 						strerror(errno), errno);
 		tester_test_failed();
 		goto done;

@@ -412,7 +412,7 @@ bool node_parse_composition(struct mesh_node *node, uint8_t *data, uint16_t len)
 
 		while (len >= 2 && m--) {
 			mod_id = get_le16(data);
-			/* initialize uppper 16 bits to 0xffff for SIG models */
+			/* initialize upper 16 bits to 0xffff for SIG models */
 			mod_id |= 0xffff0000;
 			if (!node_set_model(node, ele->index, mod_id)) {
 				g_free(comp);

@@ -465,7 +465,7 @@ static void unreg_advertising_reply(struct l_dbus_proxy *proxy,
 		l_info("Unable to remove ad instance");
 	if (!l_dbus_object_remove_interface(dbus, AD_PATH,
 						L_DBUS_INTERFACE_PROPERTIES))
-		l_info("Unable to remove propety instance");
+		l_info("Unable to remove property instance");
 	if (!l_dbus_unregister_interface(dbus, AD_IFACE))
 		l_info("Unable to unregister ad interface");
 
@@ -500,7 +500,7 @@ static void reset_unreg_agent_reply(struct l_dbus_proxy *proxy,
 
 	if (!l_dbus_object_remove_interface(dbus, AG_PATH,
 						L_DBUS_INTERFACE_PROPERTIES))
-		l_info("Unable to remove propety instance");
+		l_info("Unable to remove property instance");
 	if (!l_dbus_object_remove_interface(dbus, AG_PATH, AG_IFACE))
 		l_info("Unable to remove agent instance");
 	if (!l_dbus_unregister_interface(dbus, AG_IFACE))
@@ -1074,7 +1074,7 @@ static void create_advertising_data(uint8_t adv_data_len, const uint8_t *data)
 		case AD_TYPE_TX_POWER:
 			ad.tx_power = true;
 
-			/* XXX Value is ommited cause, stack fills it */
+			/* XXX Value is omitted cause, stack fills it */
 
 			break;
 		case AD_TYPE_SERVICE_DATA_UUID16:
@@ -1254,7 +1254,7 @@ static void stop_advertising_reply(struct l_dbus_proxy *proxy,
 		l_info("Unable to remove ad instance");
 	if (!l_dbus_object_remove_interface(dbus, AD_PATH,
 						L_DBUS_INTERFACE_PROPERTIES))
-		l_info("Unable to remove propety instance");
+		l_info("Unable to remove property instance");
 	if (!l_dbus_unregister_interface(dbus, AD_IFACE))
 		l_info("Unable to unregister ad interface");
 
@@ -2179,7 +2179,7 @@ static void rereg_unreg_agent_reply(struct l_dbus_proxy *proxy,
 
 	if (!l_dbus_object_remove_interface(dbus, AG_PATH,
 						L_DBUS_INTERFACE_PROPERTIES))
-		l_info("Unable to remove propety instance");
+		l_info("Unable to remove property instance");
 	if (!l_dbus_object_remove_interface(dbus, AG_PATH, AG_IFACE))
 		l_info("Unable to remove agent instance");
 	if (!l_dbus_unregister_interface(dbus, AG_IFACE))
@@ -2298,7 +2298,7 @@ static void btp_gap_pair(uint8_t index, const void *param, uint16_t length,
 	if (!device)
 		goto failed;
 
-	/* This command is asynchronous, send reply immediatelly to not block
+	/* This command is asynchronous, send reply immediately to not block
 	 * pairing process eg. passkey request.
 	 */
 	btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_PAIR, adapter->index, 0,
@@ -2494,7 +2494,7 @@ static void btp_gap_confirm_entry_rsp(uint8_t index, const void *param,
 	} else {
 		reply = l_dbus_message_new_error(ag.pending_req,
 						"org.bluez.Error.Rejected",
-						"Passkey missmatch");
+						"Passkey mismatch");
 	}
 
 	l_dbus_send_with_reply(dbus, ag.pending_req, passkey_confirm_rsp_reply,
@@ -2864,8 +2864,8 @@ static void extract_settings(struct l_dbus_proxy *proxy, uint32_t *current,
 	*supported |=  BTP_GAP_SETTING_PRIVACY;
 	/* *supported |=  BTP_GAP_SETTING_STATIC_ADDRESS; */
 
-	/* TODO not all info is availbe via D-Bus API so some are assumed to be
-	 * enabled by bluetoothd or simply hardcoded until API is extended
+	/* TODO not all info is available via D-Bus API so some are assumed to
+	 * be enabled by bluetoothd or simply hardcoded until API is extended
 	 */
 	*current |=  BTP_GAP_SETTING_CONNECTABLE;
 	*current |=  BTP_GAP_SETTING_SSP;
@@ -3075,7 +3075,7 @@ static void property_changed(struct l_dbus_proxy *proxy, const char *name,
 
 			btp_gap_device_connection_ev(proxy, prop);
 		} else if (!strcmp(name, "AddressType")) {
-			/* Addres property change came first along with address
+			/* Address property change came first along with address
 			 * type.
 			 */
 			btp_identity_resolved_ev(proxy);

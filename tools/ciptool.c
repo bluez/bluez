@@ -300,7 +300,8 @@ static void cmd_release(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 			return;
 
 		if (cl.cnum != 1) {
-			fprintf(stderr, "You have to specifiy the device address.\n");
+			fprintf(stderr,
+				"You have to specify the device address.\n");
 			exit(1);
 		}
 
