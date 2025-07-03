@@ -238,7 +238,7 @@ struct service_auth {
 
 struct btd_adapter_pin_cb_iter {
 	GSList *it;			/* current callback function */
-	unsigned int attempt;		/* numer of times it() was called */
+	unsigned int attempt;		/* number of times it() was called */
 	/* When the iterator reaches the end, it is NULL and attempt is 0 */
 };
 
@@ -1655,7 +1655,8 @@ static void stop_passive_scanning(struct btd_adapter *adapter)
 	DBG("");
 
 	/* If there are any normal discovery clients passive scanning
-	 * wont be running */
+	 * won't be running
+	 */
 	if (adapter->discovery_list)
 		return;
 
@@ -2267,7 +2268,7 @@ static int merge_discovery_filters(struct btd_adapter *adapter, int *rssi,
 		*rssi = HCI_RSSI_INVALID;
 
 	/*
-	 * Empty_uuid variable determines wether there was any filter with no
+	 * Empty_uuid variable determines whether there was any filter with no
 	 * uuids. In this case someone might be looking for all devices in
 	 * certain proximity, and we need to have empty uuids in kernel filter.
 	 */
@@ -2282,7 +2283,7 @@ static int merge_discovery_filters(struct btd_adapter *adapter, int *rssi,
 
 		/*
 		 * It there is both regular and filtered scan running, then
-		 * clear whole fitler to report all devices.
+		 * clear whole filter to report all devices.
 		 */
 		*transport = adapter_scan_type;
 		*rssi = HCI_RSSI_INVALID;
@@ -2314,7 +2315,7 @@ static void populate_mgmt_filter_uuids(uint8_t (*mgmt_uuids)[16], GSList *uuids)
 /*
  * This method merges all adapter filters into one that will be send to kernel.
  * cp_ptr is set to null when regular non-filtered discovery is needed,
- * otherwise it's pointing to filter. Returns 0 on succes, -1 on error
+ * otherwise it's pointing to filter. Returns 0 on success, -1 on error
  */
 static int discovery_filter_to_mgmt_cp(struct btd_adapter *adapter,
 		       struct mgmt_cp_start_service_discovery **cp_ptr)
@@ -4325,7 +4326,7 @@ static void set_privacy_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	DBG("Successfuly set privacy for index %u", adapter->dev_id);
+	DBG("Successfully set privacy for index %u", adapter->dev_id);
 }
 
 static int set_privacy(struct btd_adapter *adapter, uint8_t privacy)
@@ -5706,7 +5707,7 @@ void adapter_auto_connect_add(struct btd_adapter *adapter,
 	bdaddr_type = btd_device_get_bdaddr_type(device);
 
 	if (bdaddr_type == BDADDR_BREDR) {
-		DBG("auto-connection feature is not avaiable for BR/EDR");
+		DBG("auto-connection feature is not available for BR/EDR");
 		return;
 	}
 
@@ -5838,7 +5839,7 @@ void adapter_auto_connect_remove(struct btd_adapter *adapter,
 	bdaddr_type = btd_device_get_bdaddr_type(device);
 
 	if (bdaddr_type == BDADDR_BREDR) {
-		DBG("auto-connection feature is not avaiable for BR/EDR");
+		DBG("auto-connection feature is not available for BR/EDR");
 		return;
 	}
 
@@ -8457,7 +8458,7 @@ static void bonding_attempt_complete(struct btd_adapter *adapter,
 		device = btd_adapter_find_device(adapter, bdaddr, addr_type);
 
 	if (status == MGMT_STATUS_AUTH_FAILED && adapter->pincode_requested) {
-		/* On faliure, issue a bonding_retry if possible. */
+		/* On failure, issue a bonding_retry if possible. */
 		if (device != NULL) {
 			if (device_bonding_attempt_retry(device) == 0)
 				return;
@@ -10322,7 +10323,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	case BT_MODE_BREDR:
 		if (!(adapter->supported_settings & MGMT_SETTING_BREDR)) {
 			btd_error(adapter->dev_id,
-				"Ignoring adapter withouth BR/EDR support");
+				"Ignoring adapter without BR/EDR support");
 			goto failed;
 		}
 
@@ -10336,7 +10337,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	case BT_MODE_LE:
 		if (!(adapter->supported_settings & MGMT_SETTING_LE)) {
 			btd_error(adapter->dev_id,
-				"Ignoring adapter withouth LE support");
+				"Ignoring adapter without LE support");
 			goto failed;
 		}
 
@@ -10514,7 +10515,7 @@ failed:
 	 * Remove adapter from list in case of a failure.
 	 *
 	 * Leaving an adapter structure around for a controller that can
-	 * not be initilized makes no sense at the moment.
+	 * not be initialized makes no sense at the moment.
 	 *
 	 * This is a simplification to avoid constant checks if the
 	 * adapter is ready to do anything.
