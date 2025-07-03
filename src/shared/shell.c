@@ -1449,6 +1449,9 @@ int bt_shell_run(void)
 	int status;
 	const struct queue_entry *submenu;
 
+	if (data.menu && data.menu->pre_run)
+		data.menu->pre_run(data.menu);
+
 	for (submenu = queue_get_entries(data.submenus); submenu;
 	     submenu = submenu->next) {
 		struct bt_shell_menu *menu = submenu->data;
