@@ -87,7 +87,7 @@ static void micp_data_add(struct micp_data *data)
 	DBG("data %p", data);
 
 	if (queue_find(sessions, NULL, data)) {
-		error("data %p allready added", data);
+		error("data %p already added", data);
 		return;
 	}
 
@@ -145,7 +145,7 @@ static void micp_detached(struct bt_micp *micp, void *user_data)
 
 	data = queue_find(sessions, match_data, micp);
 	if (!data) {
-		error("unable to find sessio");
+		error("unable to find session");
 		return;
 	}
 
@@ -197,7 +197,7 @@ static int micp_probe(struct btd_service *service)
 	ba2str(device_get_address(device), addr);
 	DBG("%s", addr);
 
-	/*Ignore, if we probed for this device allready */
+	/*Ignore, if we probed for this device already */
 	if (data) {
 		error("Profile probed twice for this device");
 		return -EINVAL;

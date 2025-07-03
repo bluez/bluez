@@ -333,8 +333,8 @@ static int error_to_errno(struct avdtp_error *err)
 	case ECONNREFUSED:
 		return -perr;
 	default:
-		/*
-		 * An unexpect error has occurred setup may be attempted again.
+		/* An unexpected error has occurred setup may be attempted
+		 * again.
 		 */
 		return -EAGAIN;
 	}
