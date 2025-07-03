@@ -3240,7 +3240,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_in_progress(msg);
 
 	/* Only use this selection algorithms when device is combo
-	 * chip. Ohterwise, it will use the wrong bearer to establish
+	 * chip. Otherwise, it will use the wrong bearer to establish
 	 * a connection if the device is already paired, which will
 	 * stall the pairing procedure. For example, for a BLE only
 	 * device, if the device is already paired, and upper layer
@@ -4692,7 +4692,7 @@ static void gatt_service_removed(struct gatt_db_attribute *attr,
 	if (l && !g_slist_find_custom(device->primaries, prim->uuid,
 							prim_uuid_cmp)) {
 		/*
-		 * If this happend since the db was cleared for a non-bonded
+		 * If this happened since the db was cleared for a non-bonded
 		 * device, then don't remove the btd_service just yet. We do
 		 * this so that we can avoid re-probing the profile if the same
 		 * GATT service is found on the device on re-connection.
@@ -5061,7 +5061,7 @@ void btd_device_set_connectable(struct btd_device *device, bool connectable)
  * case it has first been discovered over BR/EDR and has a private
  * address when discovered over LE for the first time. In such a case we
  * need to inherit critical values from the duplicate so that we don't
- * ovewrite them when writing to storage. The next time bluetoothd
+ * overwrite them when writing to storage. The next time bluetoothd
  * starts the device will show up as a single instance.
  */
 void device_merge_duplicate(struct btd_device *dev, struct btd_device *dup)
@@ -6972,7 +6972,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	 * request
 	 */
 	if (state->svc_resolved && bonding) {
-		/* Attept to store services for this device failed because it
+		/* Attempt to store services for this device failed because it
 		 * was not paired. Now that we're paired retry. */
 		store_gatt_db(device);
 
@@ -7111,7 +7111,7 @@ static gboolean device_bonding_retry(gpointer data)
 	DBG("retrying bonding");
 	bonding->retry_timer = 0;
 
-	/* Restart the bonding timer to the begining of the pairing. If not
+	/* Restart the bonding timer to the beginning of the pairing. If not
 	 * pincode request/reply occurs during this retry,
 	 * device_bonding_last_duration() will return a consistent value from
 	 * this point. */
