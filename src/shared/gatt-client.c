@@ -79,7 +79,7 @@ struct bt_gatt_client {
 	/*
 	 * Queue of long write requests. An error during "prepare write"
 	 * requests can result in a cancel through "execute write". To prevent
-	 * cancelation of prepared writes to the wrong attribute and multiple
+	 * cancellation of prepared writes to the wrong attribute and multiple
 	 * requests to the same attribute that may result in a corrupted final
 	 * value, we avoid interleaving prepared writes.
 	 */

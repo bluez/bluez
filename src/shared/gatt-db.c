@@ -493,7 +493,7 @@ static void notify_service_changed(struct gatt_db *db,
 
 	queue_foreach(db->notify_list, handle_notify, &data);
 
-	/* Tigger hash update */
+	/* Trigger hash update */
 	if (!db->hash_id && db->crypto)
 		db->hash_id = timeout_add(HASH_UPDATE_TIMEOUT, db_hash_update,
 								db, NULL);
@@ -2099,7 +2099,7 @@ bool gatt_db_attribute_set_fixed_length(struct gatt_db_attribute *attrib,
 	if (attrib->service->attributes[0] == attrib)
 		return false;
 
-	/* If attribute is a characteristic declaration ajust to its value */
+	/* If attribute is a characteristic declaration adjust to its value */
 	if (!bt_uuid_cmp(&characteristic_uuid, &attrib->uuid)) {
 		int i;
 
