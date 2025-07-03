@@ -546,7 +546,7 @@ static void bis_handler(uint8_t sid, uint8_t bis, uint8_t sgrp,
 
 	queue_push_tail(setup->dg->setups, setup);
 
-	/* Only handle streams required by the Brodcast Assistant. */
+	/* Only handle streams required by the Broadcast Assistant. */
 	if (!bt_bass_check_bis(dg->src, bis))
 		return;
 

@@ -2953,7 +2953,7 @@ static uint8_t get_streams_nb_by_state(struct bap_setup *setup)
 				entry; entry = entry->next) {
 		ent_setup = entry->data;
 
-		/* Skip the curent stream form testing */
+		/* Skip the current stream form testing */
 		if (ent_setup == setup) {
 			stream_cnt++;
 			continue;

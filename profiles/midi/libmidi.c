@@ -423,7 +423,7 @@ size_t midi_read_raw(struct midi_read_parser *parser, const uint8_t *data,
 		snd_seq_ev_set_sysex(ev, parser->sysex_stream.len,
 		                     parser->sysex_stream.data);
 
-		midi_size = 1; /* timestampLow was alredy processed */
+		midi_size = 1; /* timestampLow was already processed */
 		goto _finish;
 
 	case 0x80 ... 0xEF:
