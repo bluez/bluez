@@ -3184,7 +3184,7 @@ static const struct bitfield_data events_le_table[] = {
 	{ 25, "LE CIS Request"				},
 	{ 26, "LE Create BIG Complete"			},
 	{ 27, "LE Terminate BIG Complete"		},
-	{ 28, "LE BIG Sync Estabilished Complete"	},
+	{ 28, "LE BIG Sync Established Complete"	},
 	{ 29, "LE BIG Sync Lost"			},
 	{ 30, "LE Request Peer SCA Complete"},
 	{ 31, "LE Path Loss Threshold"		},
@@ -3486,7 +3486,7 @@ static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
 		goto done;
 
 	/* Level 1 - BASE */
-	print_field("  Presetation Delay: %u", get_le24(base_data->pd));
+	print_field("  Presentation Delay: %u", get_le24(base_data->pd));
 	print_field("  Number of Subgroups: %u", base_data->num_subgroups);
 
 	/* Level 2 - Subgroups*/
@@ -9776,7 +9776,7 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x043b, 174, "Logical Link Cancel",
 				logic_link_cancel_cmd, 2, true,
 				logic_link_cancel_rsp, 3, true },
-	{ 0x043c, 175, "Flow Specifcation Modify",
+	{ 0x043c, 175, "Flow Specification Modify",
 				flow_spec_modify_cmd, 34, true },
 	{ 0x043d, 235, "Enhanced Setup Synchronous Connection",
 				enhanced_setup_sync_conn_cmd, 59, true },
@@ -11599,7 +11599,7 @@ static void keypress_notify_evt(struct timeval *tv, uint16_t index,
 		str = "Passkey digit erased";
 		break;
 	case 0x03:
-		str = "Passkey clared";
+		str = "Passkey cleared";
 		break;
 	case 0x04:
 		str = "Passkey entry completed";
@@ -13290,7 +13290,7 @@ static const struct subevent_data le_meta_event_table[] = {
 				sizeof(struct bt_hci_evt_le_big_terminate) },
 	{ BT_HCI_EVT_LE_BIG_SYNC_ESTABILISHED,
 				"LE Broadcast Isochronous Group Sync "
-				"Estabilished", le_big_sync_estabilished_evt,
+				"Established", le_big_sync_estabilished_evt,
 				sizeof(struct bt_hci_evt_le_big_sync_lost) },
 	{ BT_HCI_EVT_LE_BIG_SYNC_LOST,
 				"LE Broadcast Isochronous Group Sync Lost",
