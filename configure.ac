@@ -330,8 +330,7 @@ AC_ARG_ENABLE(client, AS_HELP_STRING([--disable-client],
 AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
 
 if (test "${enable_client}" != "no" || test "${enable_mesh}" = "yes"); then
-        AC_CHECK_HEADERS(readline/readline.h, enable_readline=yes,
-                AC_MSG_ERROR(readline header files are required))
+        PKG_CHECK_MODULES([READLINE], [readline], enable_readline=yes)
 fi
 AM_CONDITIONAL(READLINE, test "${enable_readline}" = "yes")
 
