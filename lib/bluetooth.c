@@ -1106,7 +1106,7 @@ const char *bt_compidtostr(int compid)
 	case 421:
 		return "Icon Health and Fitness";
 	case 422:
-		return "Wille Engineering (formely as Asandoo GmbH)";
+		return "Wille Engineering (formerly as Asandoo GmbH)";
 	case 423:
 		return "ENERGOUS CORPORATION";
 	case 424:
@@ -1402,7 +1402,7 @@ const char *bt_compidtostr(int compid)
 	case 569:
 		return "JIN CO, Ltd";
 	case 570:
-		return "Alatech Tehnology";
+		return "Alatech Technology";
 	case 571:
 		return "Beijing CarePulse Electronic Technology Co, Ltd";
 	case 572:
@@ -3056,7 +3056,7 @@ const char *bt_compidtostr(int compid)
 	case 1396:
 		return "AFFORDABLE ELECTRONICS INC";
 	case 1397:
-		return "Integral Memroy Plc";
+		return "Integral Memory Plc";
 	case 1398:
 		return "Globalstar, Inc.";
 	case 1399:
@@ -4562,7 +4562,7 @@ const char *bt_compidtostr(int compid)
 	case 2150:
 		return "LAONZ Co.,Ltd";
 	case 2151:
-		return "Western Digital Techologies, Inc.";
+		return "Western Digital Technologies, Inc.";
 	case 2152:
 		return "WIOsense GmbH & Co. KG";
 	case 2153:
@@ -4634,7 +4634,7 @@ const char *bt_compidtostr(int compid)
 	case 2186:
 		return "sclak s.r.l.";
 	case 2187:
-		return "Tricorder Arraay Technologies LLC";
+		return "Tricorder Array Technologies LLC";
 	case 2188:
 		return "GB Solution co.,Ltd";
 	case 2189:
