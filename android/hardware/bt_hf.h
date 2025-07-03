@@ -282,7 +282,7 @@ typedef struct {
     /** Closes the interface. */
     void  (*cleanup)( void );
 
-    /** configureation for the SCO codec */
+    /** configuration for the SCO codec */
     bt_status_t (*configure_wbs)( bt_bdaddr_t *bd_addr ,bthf_wbs_config_t config );
 } bthf_interface_t;
 

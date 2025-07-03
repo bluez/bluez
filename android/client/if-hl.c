@@ -173,7 +173,7 @@ static void register_application_p(int argc, const char **argv)
 	memset(&reg, 0, sizeof(reg));
 
 	if (argc != ((atoi(argv[6]) * 4) + 7)) {
-		haltest_error("mdep cfg argumetns are not proper\n");
+		haltest_error("mdep cfg arguments are not proper\n");
 		return;
 	}
 

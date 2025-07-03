@@ -15,7 +15,7 @@ Bluetooth monitor
 :Manual section: 1
 :Manual group: Linux System Administration
 
-SYNOPSYS
+SYNOPSIS
 ========
 
 **btmon** [*OPTIONS* ...]
@@ -91,7 +91,7 @@ OPTIONS
 -P, --no-pager              Disable pager usage while reading the log file.
 
 -J OPTIONS, --jlink OPTIONS     Read data from RTT.  Each options are comma(,)
-                                seprated without spaces.
+                                separated without spaces.
 
 .. list-table::
    :header-rows: 1
@@ -114,7 +114,7 @@ OPTIONS
      - (Optional) Set target interface speed in kHz. Default is **1000**.
 
 -R OPTIONS, --rtt OPTIONS   RTT control block parameters. Each options are
-                            comma(,) seprated without spaces.
+                            comma(,) separated without spaces.
 
 .. list-table::
    :header-rows: 1

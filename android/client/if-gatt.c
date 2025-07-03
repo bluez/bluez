@@ -89,7 +89,7 @@ const btgatt_interface_t *if_gatt = NULL;
 						"No min interval specified\n")
 #define VERIFY_MAX_INTERVAL(n, v) VERIFY_INT_ARG(n, v, \
 						"No max interval specified\n")
-#define VERIFY_APPEARANCE(n, v) VERIFY_INT_ARG(n, v, "No apperance specified\n")
+#define VERIFY_APPEARANCE(n, v) VERIFY_INT_ARG(n, v, "No appearance specified\n")
 #define VERIFY_MANUFACTURER_LEN(n, v) VERIFY_INT_ARG(n, v, \
 					"No manufacturer len specified\n")
 #define VERIFY_SERVICE_DATA_LEN(n, v) VERIFY_INT_ARG(n, v, \
@@ -311,7 +311,7 @@ static void gatt_str2bt_uuid_t(const char *str, int len, bt_uuid_t *uuid)
 	}
 }
 
-/* char_id formating function */
+/* char_id formatting function */
 static char *btgatt_gatt_id_t2str(const btgatt_gatt_id_t *char_id, char *buf)
 {
 	char uuid_buf[MAX_UUID_STR_LEN];
@@ -346,7 +346,7 @@ static void str2btgatt_gatt_id_t(const char *buf, btgatt_gatt_id_t *char_id)
 	}
 }
 
-/* service_id formating function */
+/* service_id formatting function */
 static char *btgatt_srvc_id_t2str(const btgatt_srvc_id_t *srvc_id, char *buf)
 {
 	char uuid_buf[MAX_UUID_STR_LEN];
@@ -653,7 +653,7 @@ static void gattc_read_remote_rssi_cb(int client_if, bt_bdaddr_t *bda, int rssi,
 {
 	char buf[MAX_ADDR_STR_LEN];
 
-	haltest_info("%s: client_if=%d bda=%s rssi=%d satus=%d\n", __func__,
+	haltest_info("%s: client_if=%d bda=%s rssi=%d status=%d\n", __func__,
 			client_if, bt_bdaddr_t2str(bda, buf), rssi, status);
 }
 
@@ -1413,7 +1413,7 @@ static void write_characteristic_c(int argc, const char **argv,
 					enum_func *enum_func, void **user)
 {
 	/*
-	 * This should be from tGATT_WRITE_TYPE but it's burried
+	 * This should be from tGATT_WRITE_TYPE but it's buried
 	 * inside bluedroid guts
 	 */
 	static const char *wrtypes[] = { "1", "2", "3", NULL };
@@ -1492,7 +1492,7 @@ static void write_descriptor_c(int argc, const char **argv,
 					enum_func *enum_func, void **user)
 {
 	/*
-	 * This should be from tGATT_WRITE_TYPE but it's burried
+	 * This should be from tGATT_WRITE_TYPE but it's buried
 	 * inside bluedroid guts
 	 */
 	static const char *wrtypes[] = { "1", "2", "3", NULL };
@@ -2646,7 +2646,7 @@ static struct method server_methods[] = {
 	GATTS_METHODCH(add_included_service,
 			"<server_if> <service_handle> <included_handle>"),
 	GATTS_METHODCH(add_characteristic,
-		"<server_if> <service_handle> <uuid> <properites> <permissions>"),
+		"<server_if> <service_handle> <uuid> <properties> <permissions>"),
 	GATTS_METHODCH(add_descriptor,
 			"<server_if> <service_handle> <uuid> <permissions>"),
 	GATTS_METHODCH(start_service,

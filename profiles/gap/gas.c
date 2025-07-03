@@ -99,7 +99,7 @@ static void read_device_name_cb(bool success, uint8_t att_ecode,
 	char *name;
 
 	if (!success) {
-		DBG("Reading device name failed with ATT errror: %u",
+		DBG("Reading device name failed with ATT error: %u",
 								att_ecode);
 		return;
 	}

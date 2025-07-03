@@ -271,7 +271,7 @@ int messages_update_inbox(void *session, messages_status_cb callback,
  * handle: Unique identifier to the message.
  * value: Indicates the new value of the read status for a given message.
  * Callback shall be called for every read status update request
- *	recieved from MCE.
+ *	received from MCE.
  * user_data: User data if any to be sent.
  */
 int messages_set_read(void *session, const char *handle, uint8_t value,
@@ -283,7 +283,7 @@ int messages_set_read(void *session, const char *handle, uint8_t value,
  * handle: Unique identifier to the message.
  * value: Indicates the new value of the delete status for a given message.
  * Callback shall be called for every delete status update request
- *	recieved from MCE.
+ *	received from MCE.
  * user_data: User data if any to be sent.
  */
 int messages_set_delete(void *session, const char *handle, uint8_t value,

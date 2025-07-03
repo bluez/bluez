@@ -805,7 +805,7 @@ static void *message_notification_filter_open(const char *name, int oflag,
 
 	DBG("");
 
-	/* TODO notifcation filter add */
+	/* TODO notification filter add */
 	mas->finished = TRUE;
 	*err = 0;
 

@@ -16,7 +16,7 @@ advertise on
 #
 #
 # After the connection has been established, transports will
-# be created for streams added by the Bradcast Assistant that
+# be created for streams added by the Broadcast Assistant that
 # match the audio capabilities chosen at endpoint register.
 # Select the desired transport. If the stream is encrypted,
 # a prompt will be displayed to enter the Broadacast Code for

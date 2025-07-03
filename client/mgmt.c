@@ -4243,7 +4243,7 @@ static void clock_info_rsp(uint8_t status, uint16_t len, const void *param,
 
 	print("Local Clock:   %u", le32_to_cpu(rp->local_clock));
 	print("Piconet Clock: %u", le32_to_cpu(rp->piconet_clock));
-	print("Accurary:      %u", le16_to_cpu(rp->accuracy));
+	print("Accuracy:      %u", le16_to_cpu(rp->accuracy));
 
 	bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -6033,7 +6033,7 @@ static const struct bt_shell_menu mgmt_menu = {
 	{ "ssp",		"<on/off>",
 		cmd_ssp,		"Toggle SSP mode"		},
 	{ "sc",			"<on/off/only>",
-		cmd_sc,			"Toogle SC support"		},
+		cmd_sc,			"Toggle SC support"		},
 	{ "hs",			"<on/off>",
 		cmd_hs,			"Toggle HS support"		},
 	{ "le",			"<on/off>",
@@ -6095,7 +6095,7 @@ static const struct bt_shell_menu mgmt_menu = {
 	{ "ext-config",		"<on/off>",
 		cmd_ext_config,		"External configuration"	},
 	{ "debug-keys",		"<on/off>",
-		cmd_debug_keys,		"Toogle debug keys"		},
+		cmd_debug_keys,		"Toggle debug keys"		},
 	{ "conn-info",		"[-t type] <remote address>",
 		cmd_conn_info,		"Get connection information"	},
 	{ "io-cap",		"<cap>",

@@ -149,7 +149,7 @@ static inline void p_ba2str(const bdaddr_t *ba, char *str)
 		ba2str(ba, str);
 }
 
-/* get_uXX functions do byte swaping */
+/* get_uXX functions do byte swapping */
 
 static inline uint8_t p_get_u8(struct frame *frm)
 {

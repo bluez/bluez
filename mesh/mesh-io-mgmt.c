@@ -143,7 +143,7 @@ done:
 	pvt->dup_timeout = NULL;
 }
 
-/* Ignore consequtive duplicate advertisements within timeout period */
+/* Ignore consecutive duplicate advertisements within timeout period */
 static bool filter_dups(const uint8_t *addr, const uint8_t *adv,
 							uint32_t instant)
 {

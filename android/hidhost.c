@@ -357,7 +357,7 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 	}
 
 	/*
-	 * Report porotocol mode reply contains id after hdr, in boot
+	 * Report protocol mode reply contains id after hdr, in boot
 	 * protocol mode id doesn't exist
 	 */
 	ev_len += (dev->boot_dev) ? (len - 1) : (len - 2);
@@ -366,7 +366,7 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 	bdaddr2android(&dev->dst, ev->bdaddr);
 
 	/*
-	 * Report porotocol mode reply contains id after hdr, in boot
+	 * Report protocol mode reply contains id after hdr, in boot
 	 * protocol mode id doesn't exist
 	 */
 	if (dev->boot_dev) {
@@ -1043,7 +1043,7 @@ static void bt_hid_info(const void *buf, uint16_t len)
 	}
 
 	/*
-	 * Data from hal_cmd_hidhost_set_info is usefull only when we create
+	 * Data from hal_cmd_hidhost_set_info is useful only when we create
 	 * UHID device. Once device is created all the transactions will be
 	 * done through the fd. There is no way to use this information
 	 * once device is created with HID internals.

@@ -1262,7 +1262,7 @@ static void ext_confirm(GIOChannel *io, gpointer user_data)
 	DBG("incoming connect from %s", addr);
 
 	if (!btd_adapter_is_uuid_allowed(adapter_find(&src), uuid)) {
-		info("UUID %s is not allowed. Igoring the connection", uuid);
+		info("UUID %s is not allowed. Ignoring the connection", uuid);
 		return;
 	}
 
@@ -1304,7 +1304,7 @@ static void ext_direct_connect(GIOChannel *io, GError *err, gpointer user_data)
 	}
 
 	if (!btd_adapter_is_uuid_allowed(adapter_find(&src), uuid)) {
-		info("UUID %s is not allowed. Igoring the connection", uuid);
+		info("UUID %s is not allowed. Ignoring the connection", uuid);
 		return;
 	}
 

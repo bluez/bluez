@@ -419,7 +419,7 @@ static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 }
 
 static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
-					unsigned int id, uint16_t offest,
+					unsigned int id, uint16_t offset,
 					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {

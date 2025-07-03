@@ -70,7 +70,7 @@
 #define PROV_ERR_UNEXPECTED_ERR		0x07
 #define PROV_ERR_CANT_ASSIGN_ADDR	0x08
 
-/* For Deployment, Security levels below HIGH are *not* recomended */
+/* For Deployment, Security levels below HIGH are *not* recommended */
 static uint8_t prov_sec_level = MESH_PROV_SEC_MED;
 
 /* Expected Provisioning PDU sizes */
@@ -618,7 +618,7 @@ bool prov_data_ready(struct mesh_node *node, uint8_t *buf, uint8_t len)
 
 	/* Compose appropriate reply for the prov state message */
 	/* Send reply via mesh_gatt_write() */
-	/* If done, call prov_done calllback and free prov housekeeping data */
+	/* If done, call prov_done callback and free prov housekeeping data */
 	bt_shell_printf("Got provisioning data (%d bytes)\n", len);
 	print_byte_array("\t", buf, len);
 

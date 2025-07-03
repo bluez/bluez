@@ -60,7 +60,7 @@ OPTIONS
 
    * - qca
 
--S baudrate, --speed baudrate       Specify wich baudrate to use
+-S baudrate, --speed baudrate       Specify which baudrate to use
 
 -N, --noflowctl            Disable flow control
 

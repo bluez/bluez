@@ -201,7 +201,7 @@ def main():
             continue
         chrcs.append(path)
 
-    # List sevices found
+    # List services found
     for path, interfaces in objects.items():
         if GATT_SERVICE_IFACE not in interfaces.keys():
             continue

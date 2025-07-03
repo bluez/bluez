@@ -142,7 +142,7 @@ The structure of a pattern contains the following:
 
 :uint8 start_position:
 
-	The index in an AD data field where the search hould start. The
+	The index in an AD data field where the search should start. The
 	beginning of an AD data field is index 0.
 
 :uint8 AD_data_type:

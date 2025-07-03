@@ -74,7 +74,7 @@ const char *att_ecode2str(uint8_t status)
 	case ATT_ECODE_IO:
 		return "Internal application error: I/O";
 	case ATT_ECODE_TIMEOUT:
-		return "A timeout occured";
+		return "A timeout occurred";
 	case ATT_ECODE_ABORTED:
 		return "The operation was aborted";
 	default:

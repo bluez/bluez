@@ -144,7 +144,7 @@ static void advertising_packet(const void *data, uint8_t size)
 		}
 
 		packet_print_addr("Advertiser address", data + 2, tx_add);
-		packet_print_addr("Inititator address", data + 8, rx_add);
+		packet_print_addr("Initiator address", data + 8, rx_add);
 		break;
 
 	case 0x03:	/* SCAN_REQ */
@@ -165,7 +165,7 @@ static void advertising_packet(const void *data, uint8_t size)
 			return;
 		}
 
-		packet_print_addr("Inititator address", data + 2, tx_add);
+		packet_print_addr("Initiator address", data + 2, tx_add);
 		packet_print_addr("Advertiser address", data + 8, rx_add);
 
 		access_addr = ptr[14] | ptr[15] << 8 |
@@ -256,7 +256,7 @@ static void data_packet(const void *data, uint8_t size, bool padded)
 	switch (llid) {
 	case 0x01:
 		if (length > 0)
-			str = "Continuation fragement of L2CAP message";
+			str = "Continuation fragment of L2CAP message";
 		else
 			str = "Empty message";
 		break;
@@ -469,7 +469,7 @@ static void conn_param_req(const void *data, uint8_t size)
 	print_field("Latency: %d (0x%4.4x)", pdu->latency, pdu->latency);
 	print_field("Timeout: %d msec (0x%4.4x)", pdu->timeout * 10,
 								pdu->timeout);
-	print_field("Preffered periodicity: %.2f (0x%2.2x)",
+	print_field("Preferred periodicity: %.2f (0x%2.2x)",
 				pdu->pref_period * 1.25, pdu->pref_period);
 	print_field("Reference connection event count: %d (0x%2.2x)",
 			pdu->pref_conn_evt_count, pdu->pref_conn_evt_count);
@@ -498,7 +498,7 @@ static void conn_param_rsp(const void *data, uint8_t size)
 	print_field("Latency: %d (0x%4.4x)", pdu->latency, pdu->latency);
 	print_field("Timeout: %d msec (0x%4.4x)", pdu->timeout * 10,
 								pdu->timeout);
-	print_field("Preffered periodicity: %.2f (0x%2.2x)",
+	print_field("Preferred periodicity: %.2f (0x%2.2x)",
 				pdu->pref_period * 1.25, pdu->pref_period);
 	print_field("Reference connection event count: %d (0x%2.2x)",
 			pdu->pref_conn_evt_count, pdu->pref_conn_evt_count);

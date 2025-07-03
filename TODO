@@ -107,7 +107,7 @@ ATT/GATT (new shared stack)
 
 - Add complete GATT test coverage in unit/test-gatt following the GATT test
   spec. This could use shared/gatt-client and shared/gatt-server at the same
-  time to test both against eachother. We should definitely have tests for
+  time to test both against each other. We should definitely have tests for
   gatt-server and gatt-client simultaneously on one side of the connection.
 
   Priority: High
@@ -212,7 +212,7 @@ Mesh
   Complexity: C4
 
 - Merge common functionality from tools/mesh. Ideally, source code from the
-  tools/mesh directory should completely dissapear.
+  tools/mesh directory should completely disappear.
 
   Priority: Low
   Complexity: C2

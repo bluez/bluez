@@ -328,7 +328,7 @@ static void null_evt(const void *data, uint16_t size)
 }
 
 static const struct indexstr_data error_table[] = {
-	{ 0x01, "Faile" },
+	{ 0x01, "Failed" },
 	{ 0x02, "Unknown Command" },
 	{ 0x03, "Not Ready" },
 	{ 0x04, "Invalid Index" },

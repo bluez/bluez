@@ -709,7 +709,7 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 	else {
 		/*
 		 * If transmitter is idle, send packets at least twice to
-		 * guard against in-line cancelation of HCI command chain.
+		 * guard against in-line cancellation of HCI command chain.
 		 */
 		if (info->type == MESH_IO_TIMING_TYPE_GENERAL &&
 					!pvt->tx &&

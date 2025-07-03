@@ -295,13 +295,13 @@ static int sbc_check_config(void *caps, uint8_t caps_len, void *conf,
 	}
 
 	if (config->max_bitpool < cap->min_bitpool) {
-		error("SBC: Invalid maximun bitpool (%u < %u)",
+		error("SBC: Invalid maximum bitpool (%u < %u)",
 					config->max_bitpool, cap->min_bitpool);
 		return -EINVAL;
 	}
 
 	if (config->min_bitpool > cap->max_bitpool) {
-		error("SBC: Invalid minimun bitpool (%u > %u)",
+		error("SBC: Invalid minimum bitpool (%u > %u)",
 					config->min_bitpool, cap->min_bitpool);
 		return -EINVAL;
 	}
@@ -375,7 +375,7 @@ static int aptx_check_config(void *caps, uint8_t caps_len, void *conf,
 	config = conf;
 
 	if (!(cap->frequency & config->frequency)) {
-		error("APTX: Unsupported frequenct (%u) by endpoint",
+		error("APTX: Unsupported frequency (%u) by endpoint",
 							config->frequency);
 		return -EINVAL;
 	}

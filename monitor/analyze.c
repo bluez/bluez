@@ -112,7 +112,7 @@ static void tmp_write(void *data, void *user_data)
 	fprintf(tmp, "%lld %zu\n", plot->x_msec, plot->y_count);
 }
 
-static void plot_draw(struct queue *queue, const char *tittle)
+static void plot_draw(struct queue *queue, const char *title)
 {
 	FILE *gplot;
 
@@ -132,7 +132,7 @@ static void plot_draw(struct queue *queue, const char *tittle)
 	fprintf(gplot, "set tics out nomirror\n");
 	fprintf(gplot, "set log y\n");
 	fprintf(gplot, "set yrange [0.5:*]\n");
-	fprintf(gplot, "plot $data using 1:2 t '%s' w impulses\n", tittle);
+	fprintf(gplot, "plot $data using 1:2 t '%s' w impulses\n", title);
 	fflush(gplot);
 
 	pclose(gplot);

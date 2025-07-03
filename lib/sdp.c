@@ -2429,7 +2429,7 @@ int sdp_set_add_access_protos(sdp_record_t *rec, const sdp_list_t *ap)
  * Using a value of NULL for langAttrList has
  * effect of removing this attribute (if previously set)
  *
- * This function replaces the exisiting sdp_lang_attr_t
+ * This function replaces the existing sdp_lang_attr_t
  * structure (if any) with the new one specified.
  *
  * returns 0 if successful or -1 if there is a failure.
@@ -2539,7 +2539,7 @@ void sdp_set_group_id(sdp_record_t *rec, uuid_t uuid)
  * Using a value of NULL for profileDesc has
  * effect of removing this attribute (if previously set)
  *
- * This function replaces the exisiting ProfileDescriptorList
+ * This function replaces the existing ProfileDescriptorList
  * structure (if any) with the new one specified.
  *
  * returns 0 if successful or -1 if there is a failure.
@@ -3177,7 +3177,7 @@ int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp
 	p = rspbuf + sizeof(sdp_pdu_hdr_t);
 
 	if (rsphdr->pdu_id == SDP_ERROR_RSP) {
-		/* The status can be invalid sintax or invalid record handle */
+		/* The status can be invalid syntax or invalid record handle */
 		errno = EINVAL;
 		status = -1;
 	} else if (rsphdr->pdu_id != SDP_SVC_UPDATE_RSP) {

@@ -63,7 +63,7 @@ typedef struct effect_descriptor_s {
     uint16_t cpuLoad;       // CPU load indication (see below)
     uint16_t memoryUsage;   // Data Memory usage (see below)
     char    name[EFFECT_STRING_LEN_MAX];   // human readable effect name
-    char    implementor[EFFECT_STRING_LEN_MAX];    // human readable effect implementor name
+    char    implementor[EFFECT_STRING_LEN_MAX];    // human readable effect implementer name
 } effect_descriptor_t;
 
 // CPU load and memory usage indication: each effect implementation must provide an indication of
@@ -911,7 +911,7 @@ typedef struct audio_effect_library_s {
     uint32_t version;
     // Name of this library
     const char *name;
-    // Author/owner/implementor of the library
+    // Author/owner/implementer of the library
     const char *implementor;
 
     ////////////////////////////////////////////////////////////////////////////////

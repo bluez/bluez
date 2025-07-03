@@ -522,7 +522,7 @@ static void att_exec_write_req_dump(int level, struct frame *frm)
 	if (flags == 0x00)
 		printf("cancel all prepared writes ");
 	else
-		printf("immediatelly write all pending prepared values ");
+		printf("immediately write all pending prepared values ");
 
 	printf("(0x%2.2x)\n", flags);
 }

@@ -1,4 +1,4 @@
-Intel Hardware Varaints
+Intel Hardware Variants
 =======================
 
 These are the list of Intel Bluetooth devices and its information.

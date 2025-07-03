@@ -496,7 +496,7 @@ static inline void u128_xor(const uint8_t p[16], const uint8_t q[16],
  *
  * ra is concatenated with ia and padding to generate p2 which is XORed
  * with the result of the security function e using p1 as the input
- * paremter plaintextData and is then used as the 128-bit input
+ * parameter plaintextData and is then used as the 128-bit input
  * parameter plaintextData to security function e:
  *
  *   p2 = padding || ia || ra

@@ -425,7 +425,7 @@ void sdp_record_free(sdp_record_t *rec);
 /*
  * Register a service record.
  *
- * Note: It is the responsbility of the Service Provider to create the
+ * Note: It is the responsibility of the Service Provider to create the
  * record first and set its attributes using setXXX() methods.
  *
  * The service provider must then call sdp_record_register() to make

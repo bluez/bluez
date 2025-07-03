@@ -258,7 +258,7 @@ static void process_avdtp(int srv_sk, int sk, unsigned char reject,
 			if (reject == AVDTP_GET_CAPABILITIES) {
 				hdr->message_type = AVDTP_MSG_TYPE_REJECT;
 				buf[2] = 0x29; /* Unsupported configuration */
-				printf("Rejecting get capabilties command\n");
+				printf("Rejecting get capabilities command\n");
 				len = write(sk, buf, 3);
 			} else if (fragment) {
 				struct avdtp_start_header *start = (void *) buf;

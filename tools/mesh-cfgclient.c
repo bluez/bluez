@@ -766,7 +766,7 @@ static void attach_node_reply(struct l_dbus_proxy *proxy,
 	if (local->mgmt_proxy)
 		l_queue_remove(node_proxies, local->mgmt_proxy);
 
-	/* Inititalize config client model */
+	/* Initialize config client model */
 	client_init();
 
 	if (l_dbus_proxy_get_property(local->proxy, "IvIndex", "u", &ivi) &&

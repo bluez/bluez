@@ -107,7 +107,7 @@ static const char *smpio2str(uint8_t cap)
 	case SMP_IO_KEYBOARD_DISPLAY:
 		return "KeyboardDisplay";
 	default:
-		return "Unkown";
+		return "Unknown";
 	}
 }
 
@@ -133,7 +133,7 @@ static const char *smpreason2str(uint8_t reason)
 	case SMP_REASON_REPEATED_ATTEMPTS:
 		return "Repeated Attempts";
 	default:
-		return "Unkown";
+		return "Unknown";
 	}
 }
 

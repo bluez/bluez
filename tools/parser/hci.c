@@ -1174,7 +1174,7 @@ static inline void qos_setup_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("Token rate: %d\n", btohl(cp->qos.token_rate));
 	p_indent(level, frm);
-	printf("Peak bandwith: %d\n", btohl(cp->qos.peak_bandwidth));
+	printf("Peak bandwidth: %d\n", btohl(cp->qos.peak_bandwidth));
 	p_indent(level, frm);
 	printf("Latency: %d\n", btohl(cp->qos.latency));
 	p_indent(level, frm);
@@ -3155,7 +3155,7 @@ static inline void qos_setup_complete_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("Token rate: %d\n", btohl(evt->qos.token_rate));
 		p_indent(level, frm);
-		printf("Peak bandwith: %d\n", btohl(evt->qos.peak_bandwidth));
+		printf("Peak bandwidth: %d\n", btohl(evt->qos.peak_bandwidth));
 		p_indent(level, frm);
 		printf("Latency: %d\n", btohl(evt->qos.latency));
 		p_indent(level, frm);
@@ -3310,7 +3310,7 @@ static inline void flow_spec_complete_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("Token rate: %d\n", btohl(evt->qos.token_rate));
 		p_indent(level, frm);
-		printf("Peak bandwith: %d\n", btohl(evt->qos.peak_bandwidth));
+		printf("Peak bandwidth: %d\n", btohl(evt->qos.peak_bandwidth));
 		p_indent(level, frm);
 		printf("Latency: %d\n", btohl(evt->qos.latency));
 		p_indent(level, frm);

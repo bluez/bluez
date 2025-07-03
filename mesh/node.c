@@ -1329,7 +1329,7 @@ static bool get_element_properties(struct mesh_node *node, const char *path,
 
 	/*
 	 * Add configuration server model on the primary element.
-	 * We allow the application not to specify the presense of
+	 * We allow the application not to specify the presence of
 	 * the Configuration Server model, since it's implemented by the
 	 * daemon. If the model is present in the application properties,
 	 * the operation below will be a "no-op".

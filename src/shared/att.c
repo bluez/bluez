@@ -669,7 +669,7 @@ static bool disconnect_cb(struct io *io, void *user_data)
 
 	DBG(att, "Channel %p disconnected: %s", chan, strerror(err));
 
-	/* Dettach channel */
+	/* Detach channel */
 	queue_remove(att->chans, chan);
 
 	if (chan->pending_req) {

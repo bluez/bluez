@@ -151,7 +151,7 @@ static void read_initial_battery_level_cb(bool success,
 	struct batt *batt = user_data;
 
 	if (!success) {
-		DBG("Reading battery level failed with ATT errror: %u",
+		DBG("Reading battery level failed with ATT error: %u",
 								att_ecode);
 		return;
 	}

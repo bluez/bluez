@@ -92,8 +92,8 @@ Bluetooth
 
 	CONFIG_UHID=y
 
-Lock debuging
--------------
+Lock debugging
+--------------
 
 To catch locking related issues the following set of kernel config
 options may be useful:

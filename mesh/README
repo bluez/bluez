@@ -40,7 +40,7 @@ Each subdirectory contains the following files:
 		File containing next sequence number to use
 	- seq_num.bak:
 		Backup of the sequence number. This may be larger than the
-		actual sequence number being used at runtime, to prevent re-use
+		actual sequence number being used at runtime, to prevent reuse
 		of sequence numbers in the event of an unexpected restart.
 	- ./rpl/:
 		Directory to store the sequence numbers of remote nodes, as

@@ -100,7 +100,7 @@
 #define PROXY_FILTER_ACCEPT_LIST	0x00
 #define PROXY_FILTER_REJECT_LIST	0x01
 
-/* Network Tranport Opcodes */
+/* Network Transport Opcodes */
 #define NET_OP_SEG_ACKNOWLEDGE		0x00
 #define NET_OP_FRND_POLL		0x01
 #define NET_OP_FRND_UPDATE		0x02

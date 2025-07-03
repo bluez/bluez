@@ -138,7 +138,7 @@ static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 }
 
 static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
-					unsigned int id, uint16_t offest,
+					unsigned int id, uint16_t offset,
 					uint8_t opcode, struct bt_att *att,
 					void *user_data)
 {
@@ -1825,7 +1825,7 @@ static void test_server(const void *user_data)
 	VOCS_READ_CHAR_AUD_LOC
  /*
   * VOCS/SR/CP/BV-01-C [Set Volume Offset]
-  * Do Initial Condition Proedures
+  * Do Initial Condition Procedures
   * 1. The Lower Tester executes the GATT Read Characteristic
   *    Value sub-procedure for the Volume Offset State characteristic.
   * Repeat steps 2-4 for (255 - Change_Counter value) + 1 times.

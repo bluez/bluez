@@ -145,7 +145,7 @@ static void help_p(int argc, const char **argv)
 		}
 
 		terminal_print("\nTo get help on methods for each interface type:\n");
-		terminal_print("\n\thelp <inerface>\n");
+		terminal_print("\n\thelp <interface>\n");
 		terminal_print("\nBasic scenario:\n\tbluetooth init\n");
 		terminal_print("\tbluetooth enable\n\tbluetooth start_discovery\n");
 		terminal_print("\tbluetooth get_profile_interface handsfree\n");
@@ -217,7 +217,7 @@ static struct method commands[] = {
 	END_METHOD
 };
 
-/* Gets comman by name */
+/* Gets command by name */
 struct method *get_command(const char *name)
 {
 	return get_method(commands, name);

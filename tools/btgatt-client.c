@@ -93,7 +93,7 @@ static const char *ecode_to_string(uint8_t ecode)
 	case BT_ATT_ERROR_ATTRIBUTE_NOT_LONG:
 		return "Attribute Not Long";
 	case BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE:
-		return "Insuficient Encryption Key Size";
+		return "Insufficient Encryption Key Size";
 	case BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN:
 		return "Invalid Attribute value len";
 	case BT_ATT_ERROR_UNLIKELY:
@@ -178,7 +178,7 @@ static struct client *client_create(int fd, uint16_t mtu)
 
 	cli->att = bt_att_new(fd, false);
 	if (!cli->att) {
-		fprintf(stderr, "Failed to initialze ATT transport layer\n");
+		fprintf(stderr, "Failed to initialize ATT transport layer\n");
 		bt_att_unref(cli->att);
 		free(cli);
 		return NULL;

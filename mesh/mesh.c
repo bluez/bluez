@@ -97,7 +97,7 @@ static struct l_queue *pending_queue;
 
 static const char *storage_dir;
 
-/* Forward static decalrations */
+/* Forward static declarations */
 static void def_attach(struct l_timeout *timeout, void *user_data);
 static void def_leave(struct l_timeout *timeout, void *user_data);
 

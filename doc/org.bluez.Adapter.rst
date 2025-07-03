@@ -59,7 +59,7 @@ Possible errors:
 void RemoveDevice(object device)
 ````````````````````````````````
 
-Removes the remote device object at the given path including cahed information
+Removes the remote device object at the given path including cached information
 such as bonding information.
 
 Possible errors:
@@ -129,7 +129,7 @@ Possible filter values:
 	Disables duplicate detection of advertisement data.
 
 	When enabled PropertiesChanged signals will be generated for either
-	ManufacturerData and ServiceData everytime they are discovered.
+	ManufacturerData and ServiceData every time they are discovered.
 
 :bool Discoverable (Default false):
 

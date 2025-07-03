@@ -294,7 +294,7 @@ static int irmc_open_cc(struct irmc_session *irmc)
 
 static int irmc_open_cal(struct irmc_session *irmc)
 {
-	/* no suport yet. Just return an empty buffer. cal.vcs */
+	/* no support yet. Just return an empty buffer. cal.vcs */
 	DBG("unsupported, returning empty buffer");
 
 	if (!irmc->buffer)
@@ -305,7 +305,7 @@ static int irmc_open_cal(struct irmc_session *irmc)
 
 static int irmc_open_nt(struct irmc_session *irmc)
 {
-	/* no suport yet. Just return an empty buffer. nt.vnt */
+	/* no support yet. Just return an empty buffer. nt.vnt */
 	DBG("unsupported, returning empty buffer");
 
 	if (!irmc->buffer)

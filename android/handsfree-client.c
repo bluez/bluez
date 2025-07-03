@@ -1308,7 +1308,7 @@ static void slc_cind_status_resp(enum hfp_result result,
 	/* Continue with SLC creation */
 	if (!hfp_hf_send_command(dev->hf, slc_cmer_resp, dev,
 							"AT+CMER=3,0,0,1")) {
-		error("hf-client: Counld not send AT+CMER");
+		error("hf-client: Could not send AT+CMER");
 		goto failed;
 	}
 
@@ -1335,13 +1335,13 @@ static void slc_cind_resp(enum hfp_result result, enum hfp_error cme_err,
 	/* Continue with SLC creation */
 	if (!hfp_hf_register(dev->hf, slc_cind_status_cb, "+CIND", dev,
 								NULL)) {
-		error("hf-client: Counld not register +CIND");
+		error("hf-client: Could not register +CIND");
 		goto failed;
 	}
 
 	if (!hfp_hf_send_command(dev->hf, slc_cind_status_resp, dev,
 								"AT+CIND?")) {
-		error("hf-client: Counld not send AT+CIND?");
+		error("hf-client: Could not send AT+CIND?");
 		goto failed;
 	}
 
@@ -1886,7 +1886,7 @@ static void confirm_cb(GIOChannel *chan, gpointer data)
 	}
 
 	if (dev->state != HAL_HF_CLIENT_CONN_STATE_DISCONNECTED) {
-		/* TODO: Handle colision */
+		/* TODO: Handle collision */
 		error("hf-client: Connections is up or ongoing ?");
 		goto drop;
 	}

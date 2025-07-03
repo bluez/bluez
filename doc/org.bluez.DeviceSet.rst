@@ -25,7 +25,7 @@ void Connect() [experimental]
 `````````````````````````````
 
 Connects all **devices** members of the set, each member is connected in
-sequence as they were added/loaded following the same proceedure as described in
+sequence as they were added/loaded following the same procedure as described in
 **Device1.Connect**.
 
 Possible errors:
@@ -39,7 +39,7 @@ void Disconnect() [experimental]
 ````````````````````````````````
 
 Disconnects all **devices** members of the set, each member is disconnected in
-sequence as they were connected following the same proceedure as described in
+sequence as they were connected following the same procedure as described in
 **Device1.Disconnect**.
 
 Possible errors:

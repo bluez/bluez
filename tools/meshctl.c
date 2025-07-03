@@ -777,7 +777,7 @@ static void disconnect_device(GDBusReturnFunction cb, void *user_data)
 
 	net_session_close(connection.data_in);
 
-	/* Stop notificiation on prov_out or proxy out characteristics */
+	/* Stop notification on prov_out or proxy out characteristics */
 	if (connection.data_out) {
 		if (g_dbus_proxy_get_property(connection.data_out, "Notifying",
 							&iter) == TRUE) {

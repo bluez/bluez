@@ -107,7 +107,7 @@ Sample:
 Identity file format
 ====================
 Identity file contains one [General] group that holds identity information
-such as keys and adresses:
+such as keys and addresses:
 
 	IdentityResolvingKey	String	128-bit value of the IRK
 
