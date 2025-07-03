@@ -5359,7 +5359,7 @@ static void set_links_cb(const DBusError *error, void *user_data)
 	/* Enqueue link to mark that it is ready to be selected */
 	queue_push_tail(args->selecting, link);
 
-	/* Continue setting the remanining links */
+	/* Continue setting the remaining links */
 	transport_set_links(args);
 }
 

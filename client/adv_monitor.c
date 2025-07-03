@@ -758,7 +758,7 @@ void adv_monitor_get_supported_info(void)
 	print_supported_list(manager.supported_features);
 	bt_shell_printf("\n");
 
-	bt_shell_printf("Supported Moniter Types:");
+	bt_shell_printf("Supported Monitor Types:");
 	print_supported_list(manager.supported_types);
 	bt_shell_printf("\n");
 }
