@@ -96,7 +96,7 @@ Rule 4: Pay extra attention to adding new files to the tree
 New files that are added to the tree require several things to be
 verified first:
 
-	- Check that the names are acceptible with other maintainers
+	- Check that the names are acceptable with other maintainers
 	- Ensure that the file modes are correct
 	- Verify that the license & copyright headers are correct
 	- If the file is supposed to be part of the release tarball,
