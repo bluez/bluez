@@ -806,7 +806,7 @@ static int ath_ps_download(int fd)
 	FILE *stream;
 
 	/*
-	 * Verfiy firmware version. depending on it select the PS
+	 * Verify firmware version. depending on it select the PS
 	 * config file to download.
 	 */
 	if (get_device_type(fd, &dev_type) < 0) {
