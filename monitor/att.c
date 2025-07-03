@@ -1133,9 +1133,9 @@ static bool print_prefer_framing(const struct l2cap_frame *frame)
 }
 
 static const struct bitfield_data prefer_phy_table[] = {
-	{  0, "LE 1M PHY preffered (0x01)"		},
-	{  1, "LE 2M PHY preffered (0x02)"		},
-	{  2, "LE Codec PHY preffered (0x04)"		},
+	{  0, "LE 1M PHY preferred (0x01)"		},
+	{  1, "LE 2M PHY preferred (0x02)"		},
+	{  2, "LE Codec PHY preferred (0x04)"		},
 	{ }
 };
 
@@ -2293,7 +2293,7 @@ static void print_vcs_flag(const struct l2cap_frame *frame)
 		print_text(COLOR_ERROR, "Volume Flag: invalid size");
 		goto done;
 	}
-	print_field("    Volume Falg: %u", vol_flag);
+	print_field("    Volume Flag: %u", vol_flag);
 
 done:
 	if (frame->size)

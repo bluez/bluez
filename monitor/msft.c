@@ -147,7 +147,7 @@ static void le_monitor_advertisement_cmd(const void *data, uint16_t size)
 		packet_hexdump(irk->irk, size - sizeof(*cmd));
 		break;
 	case MSFT_LE_MONITOR_ADV_ADDR:
-		print_field("Type: Adderss (0x%2.2x)", cmd->type);
+		print_field("Type: Address (0x%2.2x)", cmd->type);
 		addr = (void *)cmd->data;
 		packet_print_addr(NULL, addr->addr, addr->type);
 		break;
