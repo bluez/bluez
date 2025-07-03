@@ -105,7 +105,7 @@ static struct gatt_conn *gatt_conn_new(int fd)
 
 	conn->att = bt_att_new(fd, false);
 	if (!conn->att) {
-		fprintf(stderr, "Failed to initialze ATT transport layer\n");
+		fprintf(stderr, "Failed to initialize ATT transport layer\n");
 		free(conn);
 		return NULL;
 	}
