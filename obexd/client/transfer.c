@@ -971,6 +971,7 @@ int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 	if (ret < 0) {
 		error("read(): %s(%d)", strerror(errno), errno);
 		g_free(*contents);
+		*contents = NULL;
 		return -errno;
 	}
 
