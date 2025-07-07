@@ -2598,6 +2598,19 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	if (namelen > 0)
 		memcpy(name, &operands[13], namelen);
 
+	/* Truncate name to the last valid UTF-8 character */
+	while (!g_utf8_validate(name, namelen, NULL)) {
+		char *end = g_utf8_find_prev_char(name, name + namelen);
+
+		if (end == NULL) {
+			name[0] = '\0';
+			break;
+		}
+
+		namelen = end - name;
+		name[namelen] = '\0';
+	}
+
 	count = operands[13 + namesize];
 
 	player = session->controller->player;
