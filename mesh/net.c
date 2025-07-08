@@ -74,14 +74,6 @@ enum _iv_upd_state {
 	IV_UPD_NORMAL_HOLD,
 };
 
-struct net_key {
-	struct mesh_key_set key_set;
-	unsigned int beacon_id;
-	uint8_t key[16];
-	uint8_t beacon_key[16];
-	uint8_t network_id[8];
-};
-
 struct mesh_subnet {
 	struct mesh_net *net;
 	uint16_t idx;
