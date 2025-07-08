@@ -1391,12 +1391,15 @@ static void find_by_type(struct gatt_db_attribute *attribute, void *user_data)
 {
 	struct find_by_type_value_data *search_data = user_data;
 
+	if (!attribute)
+		return;
+
 	/* TODO: fix for read-callback based attributes */
 	if (search_data->value) {
 		if (search_data->value_len != attribute->value_len)
 			return;
 
-		if (!attribute || !attribute->value)
+		if (!attribute->value)
 			return;
 
 		if (memcmp(attribute->value, search_data->value,
