@@ -65,9 +65,9 @@ struct mesh_node;
 
 /* Mask of Hdr bits which must be constant over entire incoming SAR message */
 /* (SEG || AKF || AID || SZMIC || SeqZero || SegN) */
-#define HDR_KEY_MASK		((true << SEG_HDR_SHIFT) |		\
+#define HDR_KEY_MASK		((0x1 << SEG_HDR_SHIFT) |		\
 				(KEY_ID_MASK << KEY_HDR_SHIFT) |	\
-				(true << SZMIC_HDR_SHIFT) |		\
+				(0x1 << SZMIC_HDR_SHIFT) |		\
 				(SEQ_ZERO_MASK << SEQ_ZERO_HDR_SHIFT) |	\
 				(SEG_MASK << SEGN_HDR_SHIFT))
 

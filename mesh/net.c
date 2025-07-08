@@ -3195,9 +3195,9 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 {
 	uint8_t packet[30];
 	uint8_t packet_len;
-	bool segmented = !!((hdr >> SEG_HDR_SHIFT) & true);
+	bool segmented = !!((hdr >> SEG_HDR_SHIFT) & 0x1);
 	uint8_t key_aid = (hdr >> KEY_HDR_SHIFT) & KEY_ID_MASK;
-	bool szmic = !!((hdr >> SZMIC_HDR_SHIFT) & true);
+	bool szmic = !!((hdr >> SZMIC_HDR_SHIFT) & 0x1);
 	uint16_t seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) & SEQ_ZERO_MASK;
 	uint8_t segO = (hdr >> SEGO_HDR_SHIFT) & SEG_MASK;
 	uint8_t segN = (hdr >> SEGN_HDR_SHIFT) & SEG_MASK;

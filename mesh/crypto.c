@@ -640,7 +640,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 	hdr = l_get_be32(packet + 9);
 
-	is_segmented = !!((hdr >> SEG_HDR_SHIFT) & true);
+	is_segmented = !!((hdr >> SEG_HDR_SHIFT) & 0x1);
 	if (segmented)
 		*segmented = is_segmented;
 
@@ -655,7 +655,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 		if (this_dst && this_opcode == NET_OP_SEG_ACKNOWLEDGE) {
 			if (relay)
-				*relay = !!((hdr >> RELAY_HDR_SHIFT) & true);
+				*relay = !!((hdr >> RELAY_HDR_SHIFT) & 0x1);
 
 			if (seqZero)
 				*seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) &
@@ -682,7 +682,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 		if (is_segmented) {
 			if (szmic)
-				*szmic = !!((hdr >> SZMIC_HDR_SHIFT) & true);
+				*szmic = !!((hdr >> SZMIC_HDR_SHIFT) & 0x1);
 
 			if (seqZero)
 				*seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) &
