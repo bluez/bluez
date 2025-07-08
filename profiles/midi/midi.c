@@ -322,8 +322,8 @@ static int midi_accept(struct btd_service *service)
 
 	err = snd_seq_client_id(midi->seq_handle);
 	if (err < 0) {
-		error("Could retrieve ALSA client: %s (%d)", snd_strerror(err),
-			err);
+		error("Could not retrieve ALSA client: %s (%d)",
+			snd_strerror(err), err);
 		goto _err_handle;
 	}
 	midi->seq_client_id = err;
