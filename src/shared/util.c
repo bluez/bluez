@@ -1909,58 +1909,7 @@ char *strstrip(char *str)
 	return str;
 }
 
-bool strisutf8(const char *str, size_t len)
-{
-	size_t i = 0;
-
-	while (i < len) {
-		unsigned char c = str[i];
-		size_t size = 0;
-
-		/* Check the first byte to determine the number of bytes in the
-		 * UTF-8 character.
-		 */
-		if ((c & 0x80) == 0x00)
-			size = 1;
-		else if ((c & 0xE0) == 0xC0)
-			size = 2;
-		else if ((c & 0xF0) == 0xE0)
-			size = 3;
-		else if ((c & 0xF8) == 0xF0)
-			size = 4;
-		else
-			/* Invalid UTF-8 sequence */
-			return false;
-
-		/* Check the following bytes to ensure they have the correct
-		 * format.
-		 */
-		for (size_t j = 1; j < size; ++j) {
-			if (i + j > len || (str[i + j] & 0xC0) != 0x80)
-				/* Invalid UTF-8 sequence */
-				return false;
-		}
-
-		/* Move to the next character */
-		i += size;
-	}
-
-	return true;
-}
-
-bool argsisutf8(int argc, char *argv[])
-{
-	for (int i = 0; i < argc; i++) {
-		if (!strisutf8(argv[i], strlen(argv[i]))) {
-			printf("Invalid character in string: %s\n", argv[i]);
-			return false;
-		}
-	}
-
-	return true;
-}
-
-char *strtoutf8(char *str, size_t len)
+size_t strnlenutf8(const char *str, size_t len)
 {
 	size_t i = 0;
 
@@ -1997,6 +1946,34 @@ char *strtoutf8(char *str, size_t len)
 	}
 
 done:
+	return i;
+}
+
+bool strisutf8(const char *str, size_t len)
+{
+	return strnlenutf8(str, len) == len;
+}
+
+bool argsisutf8(int argc, char *argv[])
+{
+	for (int i = 0; i < argc; i++) {
+		if (!strisutf8(argv[i], strlen(argv[i]))) {
+			printf("Invalid character in string: %s\n", argv[i]);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+char *strtoutf8(char *str, size_t len)
+{
+	size_t i = 0;
+
+	i = strnlenutf8(str, len);
+	if (i == len)
+		return str;
+
 	/* Truncate to the longest valid UTF-8 string */
 	memset(str + i, 0, len - i);
 	return str;
