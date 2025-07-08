@@ -276,7 +276,6 @@ static bool ad_replace_uuid128(struct bt_ad *ad, struct iovec *iov)
 static bool ad_replace_name(struct bt_ad *ad, struct iovec *iov)
 {
 	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
-	int i;
 
 	memset(utf8_name, 0, sizeof(utf8_name));
 	strncpy(utf8_name, (const char *)iov->iov_base, iov->iov_len);
@@ -284,11 +283,7 @@ static bool ad_replace_name(struct bt_ad *ad, struct iovec *iov)
 	if (strisutf8(utf8_name, iov->iov_len))
 		goto done;
 
-	/* Assume ASCII, and replace all non-ASCII with spaces */
-	for (i = 0; utf8_name[i] != '\0'; i++) {
-		if (!isascii(utf8_name[i]))
-			utf8_name[i] = ' ';
-	}
+	strtoutf8(utf8_name, iov->iov_len);
 
 	/* Remove leading and trailing whitespace characters */
 	strstrip(utf8_name);
