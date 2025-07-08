@@ -101,7 +101,6 @@ int mesh_model_virt_sub_ovrt(struct mesh_node *node, uint16_t ele_addr,
 					uint16_t *addr);
 int mesh_model_sub_get(struct mesh_node *node, uint16_t ele_addr, uint32_t id,
 			uint8_t *buf, uint16_t buf_size, uint16_t *size);
-uint16_t mesh_model_cfg_blk(uint8_t *pkt);
 bool mesh_model_send(struct mesh_node *node, uint16_t src, uint16_t dst,
 			uint16_t app_idx, uint16_t net_idx, uint8_t ttl,
 			bool segmented, uint16_t len, const void *data);
