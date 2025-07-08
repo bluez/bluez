@@ -341,7 +341,7 @@ static void tx_to(struct l_timeout *timeout, void *user_data)
 		count = 1;
 	}
 
-	tx->delete = !!(count == 1);
+	tx->delete = (count == 1);
 
 	send_pkt(pvt, tx, ms);
 

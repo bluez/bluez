@@ -67,7 +67,7 @@ static bool aes_cmac_one(const uint8_t key[16], const void *msg,
 
 	if (result) {
 		ssize_t len = l_checksum_get_digest(checksum, res, 16);
-		result = !!(len == 16);
+		result = (len == 16);
 	}
 
 	l_checksum_free(checksum);

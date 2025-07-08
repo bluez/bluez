@@ -617,7 +617,7 @@ static void refresh_beacon(void *a, void *b)
 	struct mesh_net *net = b;
 
 	net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
-		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update,
+		subnet->kr_phase == KEY_REFRESH_PHASE_TWO, net->iv_update,
 									false);
 }
 
@@ -2820,7 +2820,7 @@ static void process_beacon(void *net_ptr, void *user_data)
 	/* Get IVU and KR boolean bits from beacon */
 	ivu = beacon_data->ivu;
 	kr = beacon_data->kr;
-	local_kr = !!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO);
+	local_kr = (subnet->kr_phase == KEY_REFRESH_PHASE_TWO);
 
 	/* We have officially *seen* this beacon now */
 	beacon_data->processed = true;
@@ -2842,7 +2842,7 @@ static void process_beacon(void *net_ptr, void *user_data)
 		if (updated)
 			net_key_beacon_refresh(beacon_data->net_key_id,
 				net->iv_index,
-				!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO),
+				subnet->kr_phase == KEY_REFRESH_PHASE_TWO,
 				net->iv_update, false);
 	}
 }
@@ -2985,7 +2985,7 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 	subnet->kr_phase = phase;
 
 	net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
-		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update,
+		subnet->kr_phase == KEY_REFRESH_PHASE_TWO, net->iv_update,
 									false);
 
 
