@@ -2013,7 +2013,7 @@ static void transport_unlink(void *data, void *user_data)
 		return;
 	}
 
-	bt_bap_stream_io_unlink(link, stream);
+	bt_bap_stream_io_unlink(stream, link);
 
 	bap_update_links(transport);
 
