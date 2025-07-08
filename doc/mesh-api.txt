@@ -759,7 +759,7 @@ Methods:
 		assigned to this remote node.
 
 		The device_key parameter is the access layer key that will be
-		will used to decrypt privileged messages from this remote node.
+		used to decrypt privileged messages from this remote node.
 
 		This call affects the local bluetooth-meshd key database only.
 
