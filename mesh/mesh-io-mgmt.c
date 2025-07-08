@@ -138,9 +138,10 @@ static void filter_timeout(struct l_timeout *timeout, void *user_data)
 		filter = l_queue_peek_tail(pvt->dup_filters);
 	}
 
+	pvt->dup_timeout = NULL;
+
 done:
 	l_timeout_remove(timeout);
-	pvt->dup_timeout = NULL;
 }
 
 /* Ignore consecutive duplicate advertisements within timeout period */
