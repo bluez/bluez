@@ -646,6 +646,24 @@ static gboolean auto_config(gpointer data)
 	struct btd_service *service;
 	struct a2dp_stream *stream;
 
+	dev = avdtp_get_device(setup->session);
+
+	if (setup->sep->type == AVDTP_SEP_TYPE_SOURCE) {
+		service = btd_device_get_service(dev, A2DP_SINK_UUID);
+
+		if (service == NULL) {
+			error("a2dp sink service not found");
+			return FALSE;
+		}
+	} else {
+		service = btd_device_get_service(dev, A2DP_SOURCE_UUID);
+
+		if (service == NULL) {
+			error("a2dp source service not found");
+			return FALSE;
+		}
+	}
+
 	/* Check if configuration was aborted */
 	stream = queue_find(setup->sep->streams, match_stream, setup->stream);
 	if (!stream)
@@ -654,16 +672,12 @@ static gboolean auto_config(gpointer data)
 	if (setup->err != NULL)
 		goto done;
 
-	dev = avdtp_get_device(setup->session);
-
 	avdtp_stream_add_cb(setup->session, setup->stream,
 				stream_state_changed, setup->sep);
 
 	if (setup->sep->type == AVDTP_SEP_TYPE_SOURCE) {
-		service = btd_device_get_service(dev, A2DP_SINK_UUID);
 		sink_new_stream(service, setup->session, setup->stream);
 	} else {
-		service = btd_device_get_service(dev, A2DP_SOURCE_UUID);
 		source_new_stream(service, setup->session, setup->stream);
 	}
 
@@ -995,10 +1009,25 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct btd_service *service;
 	int ret;
 
-	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
+	dev = avdtp_get_device(session);
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK) {
 		DBG("Sink %p: Set_Configuration_Cfm", sep);
-	else
+		service = btd_device_get_service(dev, A2DP_SOURCE_UUID);
+
+		if (service == NULL) {
+			error("a2dp source service not found");
+			return;
+		}
+	} else {
 		DBG("Source %p: Set_Configuration_Cfm", sep);
+		service = btd_device_get_service(dev, A2DP_SINK_UUID);
+
+		if (service == NULL) {
+			error("a2dp sink service not found");
+			return;
+		}
+	}
 
 	setup = find_setup_by_session(session);
 
@@ -1024,14 +1053,10 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
-	dev = avdtp_get_device(session);
-
 	/* Notify D-Bus interface of the new stream */
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE) {
-		service = btd_device_get_service(dev, A2DP_SINK_UUID);
 		sink_new_stream(service, session, setup->stream);
 	} else {
-		service = btd_device_get_service(dev, A2DP_SOURCE_UUID);
 		source_new_stream(service, session, setup->stream);
 	}
 
