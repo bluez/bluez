@@ -489,7 +489,7 @@ static void stream_unlink(void *data, void *user_data)
 	struct bt_bap_stream *link = data;
 	struct bt_bap_stream *stream = user_data;
 
-	bt_bap_stream_io_unlink(link, stream);
+	bt_bap_stream_io_unlink(stream, link);
 }
 
 static void bass_remove_bis(struct bass_setup *setup)
