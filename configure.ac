@@ -159,7 +159,7 @@ AC_ARG_ENABLE(test, AS_HELP_STRING([--enable-test],
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
 
 AC_ARG_ENABLE(nfc, AS_HELP_STRING([--enable-nfc],
-		[enable NFC paring]), [enable_nfc=${enableval}])
+		[enable NFC pairing]), [enable_nfc=${enableval}])
 AM_CONDITIONAL(NFC, test "${enable_nfc}" = "yes")
 
 AC_ARG_ENABLE(sap, AS_HELP_STRING([--enable-sap],
