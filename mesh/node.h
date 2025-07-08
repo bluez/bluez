@@ -51,8 +51,6 @@ int node_get_element_idx(struct mesh_node *node, uint16_t ele_addr);
 struct l_queue *node_get_element_models(struct mesh_node *node,
 							uint8_t ele_idx);
 uint16_t node_get_crpl(struct mesh_node *node);
-bool node_init_from_storage(struct mesh_node *node, const uint8_t uuid[16],
-					struct mesh_config_node *db_node);
 const uint8_t *node_get_comp(struct mesh_node *node, uint8_t page_num,
 								uint16_t *len);
 bool node_replace_comp(struct mesh_node *node, uint8_t retire, uint8_t with);
