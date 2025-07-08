@@ -396,6 +396,50 @@ static const struct test_data fuelband_test = {
 	.uuid = fuelband_uuid,
 };
 
+static const unsigned char invalid_utf8_name_data[] = {
+		0x22, 0x09, 0x74, 0x65, 0x73, 0x74, 0x20, 0xe0,
+		0xa4, 0xaa, 0xe0, 0xa4, 0xb0, 0xe0, 0xa5, 0x80,
+		0xe0, 0xa4, /*0x95,*/ 0xe0, 0xa5, 0x8d, 0xe0, 0xa4,
+		0xb7, 0xe0, 0xa4, 0xbe, 0x20, 0x69, 0x6e, 0x76,
+		0x61, 0x6c, 0x69, 0x64,
+};
+
+static const struct test_data invalid_utf8_name_test = {
+	.eir_data = invalid_utf8_name_data,
+	.eir_size = sizeof(invalid_utf8_name_data),
+	.name = "test परी",
+	.name_complete = true,
+	.tx_power = 127,
+};
+
+static const unsigned char utf16_name_data[] = {
+		0x17, 0x09, 0x00, 0x55, 0x00, 0x54, 0x00, 0x46,
+		0x00, 0x2d, 0x00, 0x31, 0x00, 0x36, 0x00, 0x20,
+		0x00, 0x74, 0x00, 0x65, 0x00, 0x73, 0x00, 0x74,
+};
+
+static const struct test_data utf16_name_test = {
+	.eir_data = utf16_name_data,
+	.eir_size = sizeof(utf16_name_data),
+	.name = "",
+	.name_complete = true,
+	.tx_power = 127,
+};
+
+static const unsigned char iso_2022_jp_name_data[] = {
+		0x13, 0x09, 0x74, 0x65, 0x73, 0x74, 0x20, 0x1B,
+		0x24, 0x42, 0xbb, 0xfa, 0xb8, 0xb5, 0x1b, 0x28,
+		0x42, 0x20, 0x4f, 0x4b,
+};
+
+static const struct test_data iso_2022_jp_name_test = {
+	.eir_data = iso_2022_jp_name_data,
+	.eir_size = sizeof(iso_2022_jp_name_data),
+	.name = "test \033$B",
+	.name_complete = true,
+	.tx_power = 127,
+};
+
 static const unsigned char bluesc_data[] = {
 		0x02, 0x01, 0x06, 0x03, 0x02, 0x16, 0x18, 0x12,
 		0x09, 0x57, 0x61, 0x68, 0x6f, 0x6f, 0x20, 0x42,
@@ -707,6 +751,12 @@ int main(int argc, char *argv[])
 	tester_add("/eir/sl910", &gigaset_sl910_test, NULL, test_parsing, NULL);
 	tester_add("/eir/bh907", &nokia_bh907_test, NULL, test_parsing, NULL);
 	tester_add("/eir/fuelband", &fuelband_test, NULL, test_parsing, NULL);
+	tester_add("/eir/invalid-utf8-name", &invalid_utf8_name_test, NULL,
+							test_parsing, NULL);
+	tester_add("/eir/utf16-name", &utf16_name_test, NULL, test_parsing,
+									NULL);
+	tester_add("/eir/iso-2022-jp-name", &iso_2022_jp_name_test, NULL,
+							test_parsing, NULL);
 	tester_add("/ad/bluesc", &bluesc_test, NULL, test_parsing, NULL);
 	tester_add("/ad/wahooscale", &wahoo_scale_test, NULL, test_parsing,
 									NULL);
