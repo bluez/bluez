@@ -527,7 +527,7 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 				uint16_t src, uint16_t dst,
 				uint8_t opcode,
 				bool segmented, uint8_t key_aid,
-				bool szmic, bool relay, uint16_t seqZero,
+				bool szmic, uint16_t seqZero,
 				uint8_t segO, uint8_t segN,
 				const uint8_t *payload, uint8_t payload_len,
 				uint8_t *packet, uint8_t *packet_len)

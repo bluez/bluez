@@ -3168,7 +3168,7 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 	/* TODO: Are we RXing on an LPN's behalf? Then set RLY bit */
 	if (!mesh_crypto_packet_build(false, msg->ttl, seq_num, msg->src,
 					msg->remote, 0, msg->segmented,
-					msg->key_aid, msg->szmic, false,
+					msg->key_aid, msg->szmic,
 					msg->seqZero, segO, segN,
 					msg->buf + seg_off, seg_len,
 					packet + 1, &packet_len)) {
@@ -3224,7 +3224,7 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 	l_debug("segO: %d", segO);
 
 	if (!mesh_crypto_packet_build(false, ttl, seq, src, dst, 0,
-					segmented, key_aid, szmic, false,
+					segmented, key_aid, szmic,
 					seqZero, segO, segN, seg, seg_len,
 					packet + 1, &packet_len)) {
 		l_error("Failed to build packet");
@@ -3379,7 +3379,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 	/* Not Segmented, no Key ID associated, no segO or segN */
 	if (!mesh_crypto_packet_build(true, ttl, seq, src, dst,
 					NET_OP_SEG_ACKNOWLEDGE, false, 0, false,
-					rly, seqZero, 0, 0, data + 1, 6,
+					seqZero, 0, 0, data + 1, 6,
 					pkt + 1, &pkt_len))
 		return;
 
@@ -3465,8 +3465,8 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 	}
 
 	if (!mesh_crypto_packet_build(true, ttl, seq, src, dst, msg[0],
-				false, 0, false, false, 0, 0, 0, msg + 1,
-				msg_len - 1, pkt + 1, &pkt_len))
+				false, 0, false, 0, 0, 0, msg + 1, msg_len - 1,
+				pkt + 1, &pkt_len))
 		return;
 
 	if (!net_key_encrypt(net_key_id, iv_index, pkt + 1, pkt_len)) {
