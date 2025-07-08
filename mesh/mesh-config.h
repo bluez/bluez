@@ -186,7 +186,6 @@ bool mesh_config_net_key_update(struct mesh_config *cfg, uint16_t idx,
 bool mesh_config_net_key_del(struct mesh_config *cfg, uint16_t net_idx);
 bool mesh_config_net_key_set_phase(struct mesh_config *cfg, uint16_t idx,
 								uint8_t phase);
-bool mesh_config_write_address(struct mesh_config *cfg, uint16_t address);
 bool mesh_config_write_iv_index(struct mesh_config *cfg, uint32_t idx,
 								bool update);
 bool mesh_config_update_company_id(struct mesh_config *cfg, uint16_t cid);
