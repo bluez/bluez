@@ -2607,10 +2607,12 @@ static uint8_t bap_ucast_io_dir(struct bt_bap_stream *stream)
 static uint8_t bap_bcast_io_dir(struct bt_bap_stream *stream)
 {
 	uint8_t dir;
-	uint8_t pac_type = bt_bap_pac_get_type(stream->lpac);
+	uint8_t pac_type;
 
 	if (!stream)
 		return 0x00;
+
+	pac_type = bt_bap_pac_get_type(stream->lpac);
 
 	if (pac_type == BT_BAP_BCAST_SINK)
 		dir = BT_BAP_BCAST_SOURCE;
@@ -6172,7 +6174,7 @@ static struct bt_bap_stream *bap_bcast_stream_new(struct bt_bap *bap,
 	struct bt_bap_endpoint *ep = NULL;
 	struct match_pac match;
 
-	if (!bap)
+	if (!bap || !lpac)
 		return NULL;
 
 	if (lpac->type == BT_BAP_BCAST_SOURCE) {
@@ -6181,7 +6183,7 @@ static struct bt_bap_stream *bap_bcast_stream_new(struct bt_bap *bap,
 		memset(&match.codec, 0, sizeof(match.codec));
 
 		bt_bap_foreach_pac(bap, BT_BAP_BCAST_SINK, match_pac, &match);
-		if ((!match.lpac) || (!lpac))
+		if (!match.lpac)
 			return NULL;
 
 		lpac = match.lpac;
@@ -6503,10 +6505,12 @@ unsigned int bt_bap_stream_release(struct bt_bap_stream *stream,
 					void *user_data)
 {
 	unsigned int id;
-	struct bt_bap *bap = stream->bap;
+	struct bt_bap *bap;
 
 	if (!stream || !stream->ops || !stream->ops->release)
 		return 0;
+
+	bap = stream->bap;
 
 	if (!bt_bap_ref_safe(bap))
 		return 0;
