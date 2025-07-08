@@ -92,6 +92,7 @@ int strsuffix(const char *str, const char *suffix);
 char *strstrip(char *str);
 bool strisutf8(const char *str, size_t length);
 bool argsisutf8(int argc, char *argv[]);
+char *strtoutf8(char *str, size_t len);
 
 void *util_malloc(size_t size);
 void *util_memdup(const void *src, size_t size);
