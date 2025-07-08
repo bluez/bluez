@@ -7016,13 +7016,14 @@ static void add_new_subgroup(struct bt_base *base,
 			struct bt_bap_stream *stream)
 {
 	struct bt_bap_pac *lpac = stream->lpac;
-	struct bt_subgroup *sgrp = new0(
-				struct bt_subgroup, 1);
+	struct bt_subgroup *sgrp;
 	uint16_t cid = 0;
 	uint16_t vid = 0;
 
 	if (!lpac)
 		return;
+
+	sgrp = new0(struct bt_subgroup, 1);
 
 	bt_bap_pac_get_vendor_codec(lpac, &sgrp->codec.id, &cid,
 			&vid, NULL, NULL);
