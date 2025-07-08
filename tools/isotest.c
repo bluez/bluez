@@ -973,6 +973,8 @@ static void send_mode(char *filename, char *peer, int i, bool repeat)
 	}
 
 	do_send(sk, fd, peer, repeat);
+	if (fd >= 0)
+		close(fd);
 }
 
 static void reconnect_mode(char *peer)
