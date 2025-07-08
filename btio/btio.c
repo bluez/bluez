@@ -455,7 +455,7 @@ static gboolean set_sec_level(int sock, BtIOType type, int level, GError **err)
 	struct bt_security sec;
 	int ret;
 
-	if (level < BT_SECURITY_LOW || level > BT_SECURITY_FIPS) {
+	if (level < BT_SECURITY_LOW || level > BT_SECURITY_HIGH) {
 		g_set_error(err, BT_IO_ERROR, EINVAL,
 				"Valid security level range is %d-%d",
 				BT_SECURITY_LOW, BT_SECURITY_HIGH);
