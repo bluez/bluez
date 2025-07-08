@@ -30,7 +30,7 @@
 #define BEACON_CACHE_MAX	10
 
 struct beacon_rx {
-	uint8_t data[28];
+	uint8_t data[BEACON_LEN_MAX];
 	uint32_t id;
 	uint32_t ivi;
 	bool kr;
@@ -458,10 +458,10 @@ uint32_t net_key_beacon(const uint8_t *data, uint16_t len, uint32_t *ivi,
 	uint32_t b_id, b_ivi;
 	bool b_ivu, b_kr;
 
-	if (data[1] == BEACON_TYPE_SNB && len != 23)
+	if (data[1] == BEACON_TYPE_SNB && len != BEACON_LEN_SNB)
 		return 0;
 
-	if (data[1] == BEACON_TYPE_MPB && len != 28)
+	if (data[1] == BEACON_TYPE_MPB && len != BEACON_LEN_MPB)
 		return 0;
 
 	beacon = l_queue_remove_if(beacons, match_beacon, data + 1);
@@ -527,7 +527,7 @@ static void send_network_beacon(struct net_key *key)
 			net_key_beacon_refresh(key->id, key->ivi, key->kr,
 								key->ivu, true);
 
-		mesh_io_send(NULL, &info, key->mpb, 28);
+		mesh_io_send(NULL, &info, key->mpb, BEACON_LEN_MPB);
 	}
 
 	if (key->snb_enables) {
@@ -536,7 +536,7 @@ static void send_network_beacon(struct net_key *key)
 								key->ivu, true);
 		}
 
-		mesh_io_send(NULL, &info, key->snb, 23);
+		mesh_io_send(NULL, &info, key->snb, BEACON_LEN_SNB);
 	}
 }
 
@@ -636,12 +636,12 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t ivi, bool kr, bool ivu,
 		return false;
 
 	if (key->snb_enables && !key->snb) {
-		key->snb = l_new(uint8_t, 23);
+		key->snb = l_new(uint8_t, BEACON_LEN_SNB);
 		refresh = true;
 	}
 
 	if (key->mpb_enables && !key->mpb) {
-		key->mpb = l_new(uint8_t, 28);
+		key->mpb = l_new(uint8_t, BEACON_LEN_MPB);
 		refresh = true;
 	}
 
@@ -655,14 +655,14 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t ivi, bool kr, bool ivu,
 		if (!mpb_compose(key, ivi, kr, ivu))
 			return false;
 
-		print_packet("Set MPB to", key->mpb, 28);
+		print_packet("Set MPB to", key->mpb, BEACON_LEN_MPB);
 	}
 
 	if (key->snb) {
 		if (!snb_compose(key, ivi, kr, ivu))
 			return false;
 
-		print_packet("Set SNB to", key->snb, 23);
+		print_packet("Set SNB to", key->snb, BEACON_LEN_SNB);
 	}
 
 	l_debug("Set Beacon: IVI: %8.8x, IVU: %d, KR: %d", ivi, ivu, kr);
