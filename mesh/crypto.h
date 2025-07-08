@@ -22,8 +22,6 @@ bool mesh_crypto_aes_ccm_decrypt(const uint8_t nonce[13], const uint8_t key[16],
 				const void *enc_msg, uint16_t enc_msg_len,
 				void *out_msg,
 				void *out_mic, size_t mic_size);
-bool mesh_aes_ecb_one(const uint8_t key[16],
-			const uint8_t plaintext[16], uint8_t encrypted[16]);
 bool mesh_crypto_nkik(const uint8_t network_key[16], uint8_t identity_key[16]);
 bool mesh_crypto_nkbk(const uint8_t network_key[16], uint8_t beacon_key[16]);
 bool mesh_crypto_nkpk(const uint8_t network_key[16], uint8_t private_key[16]);
