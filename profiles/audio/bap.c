@@ -3595,31 +3595,35 @@ static int bap_bcast_probe(struct btd_service *service)
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
 	struct bap_data *data;
+	struct bt_bap *bap;
 
 	if (!btd_adapter_has_exp_feature(adapter, EXP_FEAT_ISO_SOCKET)) {
 		error("BAP requires ISO Socket which is not enabled");
 		return -ENOTSUP;
 	}
 
+	bap = bt_bap_new(btd_gatt_database_get_db(database),
+			btd_gatt_database_get_db(database));
+
+	if (!bap) {
+		error("Unable to create BAP instance");
+		return -EINVAL;
+	}
+
+	bt_bap_set_user_data(bap, service);
+
+	if (!bt_bap_attach(bap, NULL)) {
+		error("BAP unable to attach");
+		bt_bap_unref(bap);
+		return -EINVAL;
+	}
+
 	data = bap_data_new(device);
 	data->service = service;
 	data->adapter = adapter;
 	data->device = device;
-	data->bap = bt_bap_new(btd_gatt_database_get_db(database),
-			btd_gatt_database_get_db(database));
-	if (!data->bap) {
-		error("Unable to create BAP instance");
-		free(data);
-		return -EINVAL;
-	}
+	data->bap = bap;
 	data->bcast_snks = queue_new();
-
-	bt_bap_set_user_data(data->bap, service);
-
-	if (!bt_bap_attach(data->bap, NULL)) {
-		error("BAP unable to attach");
-		return -EINVAL;
-	}
 
 	bap_data_add(data);
 
