@@ -2595,8 +2595,10 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	memset(name, 0, sizeof(name));
 	namesize = get_be16(&operands[11]);
 	namelen = MIN(namesize, sizeof(name) - 1);
-	if (namelen > 0)
+	if (namelen > 0) {
 		memcpy(name, &operands[13], namelen);
+		strtoutf8(name, namelen);
+	}
 
 	count = operands[13 + namesize];
 
