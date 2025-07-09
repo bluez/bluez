@@ -658,6 +658,8 @@ static void agent_reply(DBusPendingCall *call, void *user_data)
 				agent->new_name = g_strdup(slash + 1);
 			agent->new_folder = g_strndup(name, slash - name);
 		}
+
+		agent->auth_reject = FALSE;
 	}
 
 	dbus_message_unref(reply);
@@ -703,7 +705,7 @@ int manager_request_authorization(struct obex_transfer *transfer,
 	dbus_message_unref(msg);
 
 	agent->auth_pending = TRUE;
-	agent->auth_reject  = FALSE;
+	agent->auth_reject  = TRUE;
 	got_reply = FALSE;
 
 	/* Catches errors before authorization response comes */
