@@ -90,6 +90,8 @@ do {						\
 char *strdelimit(char *str, char *del, char c);
 int strsuffix(const char *str, const char *suffix);
 char *strstrip(char *str);
+
+size_t strnlenutf8(const char *str, size_t len);
 bool strisutf8(const char *str, size_t length);
 bool argsisutf8(int argc, char *argv[]);
 char *strtoutf8(char *str, size_t len);
