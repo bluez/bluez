@@ -285,13 +285,6 @@ int main(int argc, char *argv[])
 
 	signal = setup_signalfd();
 
-#ifdef NEED_THREADS
-	if (dbus_threads_init_default() == FALSE) {
-		fprintf(stderr, "Can't init usage of threads\n");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
 	if (manager_init() == FALSE) {
 		error("manager_init failed");
 		exit(EXIT_FAILURE);
