@@ -1909,7 +1909,7 @@ char *strstrip(char *str)
 	return str;
 }
 
-bool strisutf8(const char *str, size_t len)
+static bool validateutf8(const char *str, size_t len, size_t *invalid_index)
 {
 	size_t i = 0;
 
@@ -1928,17 +1928,23 @@ bool strisutf8(const char *str, size_t len)
 			size = 3;
 		else if ((c & 0xF8) == 0xF0)
 			size = 4;
-		else
+		else {
 			/* Invalid UTF-8 sequence */
+			if (invalid_index)
+				*invalid_index = i;
 			return false;
+		}
 
 		/* Check the following bytes to ensure they have the correct
 		 * format.
 		 */
 		for (size_t j = 1; j < size; ++j) {
-			if (i + j > len || (str[i + j] & 0xC0) != 0x80)
+			if (i + j >= len || (str[i + j] & 0xC0) != 0x80) {
 				/* Invalid UTF-8 sequence */
+				if (invalid_index)
+					*invalid_index = i;
 				return false;
+			}
 		}
 
 		/* Move to the next character */
@@ -1946,6 +1952,11 @@ bool strisutf8(const char *str, size_t len)
 	}
 
 	return true;
+}
+
+bool strisutf8(const char *str, size_t len)
+{
+	return validateutf8(str, len, NULL);
 }
 
 bool argsisutf8(int argc, char *argv[])
@@ -1962,42 +1973,11 @@ bool argsisutf8(int argc, char *argv[])
 
 char *strtoutf8(char *str, size_t len)
 {
-	size_t i = 0;
+	size_t invalid_index = 0;
 
-	while (i < len) {
-		unsigned char c = str[i];
-		size_t size = 0;
+	if (!validateutf8(str, len, &invalid_index))
+		/* Truncate to the longest valid UTF-8 string */
+		memset(str + invalid_index, 0, len - invalid_index);
 
-		/* Check the first byte to determine the number of bytes in the
-		 * UTF-8 character.
-		 */
-		if ((c & 0x80) == 0x00)
-			size = 1;
-		else if ((c & 0xE0) == 0xC0)
-			size = 2;
-		else if ((c & 0xF0) == 0xE0)
-			size = 3;
-		else if ((c & 0xF8) == 0xF0)
-			size = 4;
-		else
-			/* Invalid UTF-8 sequence */
-			goto done;
-
-		/* Check the following bytes to ensure they have the correct
-		 * format.
-		 */
-		for (size_t j = 1; j < size; ++j) {
-			if (i + j > len || (str[i + j] & 0xC0) != 0x80)
-				/* Invalid UTF-8 sequence */
-				goto done;
-		}
-
-		/* Move to the next character */
-		i += size;
-	}
-
-done:
-	/* Truncate to the longest valid UTF-8 string */
-	memset(str + i, 0, len - i);
 	return str;
 }
