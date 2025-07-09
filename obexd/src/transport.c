@@ -79,3 +79,20 @@ obex_transport_driver_unregister(const struct obex_transport_driver *driver)
 
 	drivers = g_slist_remove(drivers, driver);
 }
+
+static void call_cb(gpointer data, gpointer ctxt)
+{
+	struct obex_transport_driver *driver =
+		(struct obex_transport_driver *)data;
+	if (driver->uid_state)
+		driver->uid_state(((struct logind_cb_context *)ctxt));
+}
+
+static int call_uid_state_cb(gpointer ctxt)
+{
+	g_slist_foreach(drivers, call_cb, ctxt);
+}
+
+gboolean obex_transport_driver_init(void)
+{
+}
