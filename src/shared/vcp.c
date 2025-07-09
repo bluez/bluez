@@ -2934,6 +2934,9 @@ static void foreach_vcs_service(struct gatt_db_attribute *attr,
 	struct bt_vcp *vcp = user_data;
 	struct bt_vcs *vcs = vcp_get_vcs(vcp);
 
+	if (!vcs)
+		return;
+
 	vcs->service = attr;
 
 	gatt_db_service_set_claimed(attr, true);
