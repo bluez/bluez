@@ -349,6 +349,9 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	struct bass_setup *setup = queue_find(dg->setups,
 				match_setup_stream, stream);
 
+	if (setup == NULL)
+		return;
+
 	if (dg->bap != bap)
 		return;
 
