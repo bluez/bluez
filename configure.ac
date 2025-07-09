@@ -83,14 +83,6 @@ AC_CHECK_DECLS([basename], [],
 
 
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.36)
-
-if (test "${enable_threads}" = "yes"); then
-	AC_DEFINE(NEED_THREADS, 1, [Define if threading support is required])
-	PKG_CHECK_MODULES(GTHREAD, gthread-2.0 >= 2.16)
-	GLIB_CFLAGS="$GLIB_CFLAGS $GTHREAD_CFLAGS"
-	GLIB_LIBS="$GLIB_LIBS $GTHREAD_LIBS"
-fi
-
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.10)
 
 AC_ARG_WITH([dbusconfdir], AS_HELP_STRING([--with-dbusconfdir=DIR],
