@@ -10,17 +10,21 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>			// memcpy()
+#include <string.h>			// memcpy(), memmove()
 
 #include <ell/dbus.h>
 #include <ell/log.h>			// l_warn()
 #include <ell/queue.h>
 #include <ell/timeout.h>
-#include <ell/util.h>			// ell_new(), l_free(), l_malloc()
+#include <ell/util.h>			// ell_new(), l_free(), l_malloc(),
+					// L_ARRAY_SIZE
 
+#include "mesh/mesh-defs.h"		// UNASSIGNED_ADDRESS
 #include "mesh/gatt-service.h"
 #include "mesh/mesh-io.h"		// mesh_io_recv_func_t
-#include "mesh/net.h"			// mesh_net_attach_gatt(),
+#include "mesh/net.h"			// PROXY_FILTER_ACCEPT_LIST,
+					// PROXY_FILTER_REJECT_LIST
+					// mesh_net_attach_gatt(),
 					// mesh_net_detach_gatt()
 #include "mesh/net-keys.h"		// net_key_fill_adv_service_data(),
 					// net_key_get_next_id()
@@ -47,6 +51,9 @@ struct gatt_proxy_svc {
 	bool txing;
 	struct l_queue *tx_deferred;
 	struct l_queue *rx_regs;
+	uint8_t filter_type;
+	uint16_t filter_addrs[32];
+	unsigned filter_count;
 };
 
 struct process_data {
@@ -117,6 +124,136 @@ void gatt_proxy_svc_deregister_recv_cb(struct gatt_proxy_svc *gatt_proxy,
 	l_free(rx_reg);
 }
 
+void gatt_proxy_svc_filter_set_type(struct gatt_proxy_svc *gatt_proxy,
+							uint8_t filter_type)
+{
+	if (!gatt_proxy || gatt_proxy != gatt_proxy_svc)
+		return;
+
+	/* Behavior not specified in MshPRT, section 6.7 */
+	if (filter_type != PROXY_FILTER_ACCEPT_LIST &&
+					filter_type != PROXY_FILTER_REJECT_LIST)
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * If a Proxy Server receives a Set Filter Type message, it shall set
+	 * the proxy filter type as requested in the message parameter, and it
+	 * shall clear the proxy filter list.
+	 */
+	gatt_proxy->filter_type = filter_type;
+	gatt_proxy->filter_count = 0;
+}
+
+void gatt_proxy_svc_filter_add(struct gatt_proxy_svc *gatt_proxy,
+								uint16_t addr)
+{
+	int i;
+
+	if (!gatt_proxy || gatt_proxy != gatt_proxy_svc)
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * If the AddressArray field contains the unassigned address, the Proxy
+	 * Server shall ignore that address.
+	 */
+	if (addr == UNASSIGNED_ADDRESS)
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * If the Proxy Server runs out of space in the proxy filter list,
+	 * the Proxy Server shall not add these addresses.
+	 */
+	if (gatt_proxy->filter_count == L_ARRAY_SIZE(gatt_proxy->filter_addrs))
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * If one or more addresses contained in the message are already in the
+	 * list, the Proxy Server shall not add these addresses.
+	 */
+	for (i = 0; i < gatt_proxy->filter_count; i++)
+		if (gatt_proxy->filter_addrs[i] == addr)
+			return;
+
+	gatt_proxy->filter_addrs[gatt_proxy->filter_count++] = addr;
+}
+
+void gatt_proxy_svc_filter_remove(struct gatt_proxy_svc *gatt_proxy,
+								uint16_t addr)
+{
+	int i;
+
+	if (!gatt_proxy || gatt_proxy != gatt_proxy_svc)
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * If the AddressArray field contains the unassigned address, the Proxy
+	 * Server shall ignore that address.
+	 */
+	if (addr == UNASSIGNED_ADDRESS)
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * If one or more addresses contained in the message were not in the
+	 * list, the Proxy Server shall ignore these addresses.
+	 */
+	for (i = 0; i < gatt_proxy->filter_count; i++)
+		if (gatt_proxy->filter_addrs[i] == addr)
+			break;
+
+	if (i == gatt_proxy->filter_count)
+		return;
+
+	memmove(gatt_proxy->filter_addrs + i, gatt_proxy->filter_addrs + i + 1,
+			gatt_proxy->filter_count - i - 1);
+	gatt_proxy->filter_count--;
+}
+
+unsigned gatt_proxy_svc_filter_count(struct gatt_proxy_svc *gatt_proxy,
+							uint8_t *filter_type)
+{
+	if (!gatt_proxy || gatt_proxy != gatt_proxy_svc)
+		return 0;
+
+	*filter_type = gatt_proxy->filter_type;
+
+	return gatt_proxy->filter_count;
+}
+
+void gatt_proxy_svc_filter_pdu_rcvd(struct gatt_proxy_svc *gatt_proxy,
+								uint16_t src)
+{
+	if (!gatt_proxy || gatt_proxy != gatt_proxy_svc)
+		return;
+
+	if (gatt_proxy->filter_type == PROXY_FILTER_ACCEPT_LIST) {
+		/*
+		 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+		 * If the proxy filter is an accept list filter, upon receiving
+		 * a Proxy PDU containing a valid Network PDU from the Proxy
+		 * Client, the Proxy Server shall add the unicast address
+		 * contained in the SRC field of the Network PDU to the accept
+		 * list.
+		 */
+		gatt_proxy_svc_filter_add(gatt_proxy, src);
+	} else {
+		/*
+		 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+		 * If the proxy filter is a reject list filter, upon receiving a
+		 * Proxy PDU containing a valid Network PDU from the Proxy
+		 * Client, the Proxy Server shall remove the unicast address
+		 * contained in the SRC field of the Network PDU from the reject
+		 * list.
+		 */
+		gatt_proxy_svc_filter_remove(gatt_proxy, src);
+	}
+}
+
 static void gatt_proxy_svc_send(enum proxy_msg_type msg_type, const void *data,
 								uint8_t len)
 {
@@ -144,9 +281,38 @@ static void gatt_proxy_svc_send(enum proxy_msg_type msg_type, const void *data,
 	}
 }
 
-void gatt_proxy_svc_send_net(const void *data, uint8_t len)
+void gatt_proxy_svc_send_net(uint16_t dst, const void *data, uint8_t len)
 {
+	int i;
+
+	if (!gatt_proxy_svc)
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 6.4 - Proxy filtering
+	 * The output filter of the network interface (see Section 3.4.5) [...]
+	 * can be configured by the Proxy Client. This allows the Proxy Client
+	 * to explicitly request to receive only mesh messages with certain
+	 * *destination* addresses.
+	 */
+	for (i = 0; i < gatt_proxy_svc->filter_count; i++)
+		if (gatt_proxy_svc->filter_addrs[i] == dst)
+			break;
+
+	if (gatt_proxy_svc->filter_type == PROXY_FILTER_ACCEPT_LIST) {
+		if (i == gatt_proxy_svc->filter_count)  // not found
+			return;
+	} else {  /* PROXY_FILTER_REJECT_LIST */
+		if (i != gatt_proxy_svc->filter_count)  // found
+			return;
+	}
+
 	gatt_proxy_svc_send(PROXY_MSG_TYPE_NETWORK_PDU, data, len);
+}
+
+void gatt_proxy_svc_send_proxy_cfg(const void *data, uint8_t len)
+{
+	gatt_proxy_svc_send(PROXY_MSG_TYPE_PROXY_CFG, data, len);
 }
 
 static void gatt_service_notify_acquired(void *user_data)
@@ -157,6 +323,14 @@ static void gatt_service_notify_acquired(void *user_data)
 		return;
 
 	gatt_proxy->connected = true;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * Upon connection, the Proxy Server shall initialize the proxy filter
+	 * as an accept list filter and the accept list shall be empty.
+	 */
+	gatt_proxy->filter_type = PROXY_FILTER_ACCEPT_LIST;
+	gatt_proxy->filter_count = 0;
 }
 
 static void gatt_service_notify_stopped(void *user_data)

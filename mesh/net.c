@@ -27,6 +27,7 @@
 #include "mesh/net-keys.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
+#include "mesh/proxy-cfg.h"
 #include "mesh/mesh-io.h"
 #include "mesh/friend.h"
 #include "mesh/gatt-service.h"		// PROXY_MSG_TYPE_NETWORK_PDU
@@ -192,8 +193,20 @@ struct net_queue_data {
 	bool seen;
 };
 
+struct net_queue_data_proxy_cfg {
+	struct gatt_proxy_svc *gatt_proxy;
+	struct mesh_net *net;
+	const uint8_t *data;
+	uint8_t *out;
+	size_t out_size;
+	uint32_t net_key_id;
+	uint32_t iv_index;
+	uint16_t len;
+};
+
 struct oneshot_tx {
 	struct mesh_net *net;
+	uint16_t net_dst;
 	uint16_t interval;
 	bool frnd;
 	uint8_t cnt;
@@ -2303,17 +2316,20 @@ static void send_msg_pkt_oneshot(void *user_data)
 	 */
 	mesh_io_send(net->io, &info, tx->packet, tx->size);
 	if (!tx->frnd)
-		gatt_proxy_svc_send_net(tx->packet + 1, tx->size - 1);
+		gatt_proxy_svc_send_net(tx->net_dst, tx->packet + 1,
+								tx->size - 1);
 	l_free(tx);
 }
 
-static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
+static void send_msg_pkt(struct mesh_net *net, uint16_t dst, uint8_t cnt,
+					uint16_t interval,
 					const uint8_t *packet, uint8_t size,
 								bool frnd)
 {
 	struct oneshot_tx *tx = l_new(struct oneshot_tx, 1);
 
 	tx->net = net;
+	tx->net_dst = dst;
 	tx->interval = interval;
 	tx->frnd = frnd;
 	tx->cnt = cnt;
@@ -2324,6 +2340,7 @@ static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 }
 
 static enum _relay_advice packet_received(struct mesh_net *net,
+				struct gatt_proxy_svc *gatt_proxy,
 				uint32_t net_key_id, uint16_t net_idx,
 				bool frnd, uint32_t iv_index,
 				const uint8_t *data, uint8_t size, int8_t rssi)
@@ -2347,7 +2364,9 @@ static enum _relay_advice packet_received(struct mesh_net *net,
 		return RELAY_NONE;
 	}
 
-	if (net_dst == 0) {
+	gatt_proxy_svc_filter_pdu_rcvd(gatt_proxy, net_src);
+
+	if (net_dst == UNASSIGNED_ADDRESS) {
 		l_error("illegal parms: DST: %4.4x Ctl: %d TTL: %2.2x",
 						net_dst, net_ctl, net_ttl);
 		return RELAY_NONE;
@@ -2508,7 +2527,8 @@ static void net_rx(void *net_ptr, void *user_data)
 	if (data->gatt_proxy && frnd)
 		return;
 
-	relay_advice = packet_received(net, net_key_id, net_idx, frnd,
+	relay_advice = packet_received(net, data->gatt_proxy, net_key_id,
+						net_idx, frnd,
 						iv_index, out, out_size, rssi);
 	if (relay_advice > data->relay_advice) {
 		/*
@@ -2525,6 +2545,48 @@ static void net_rx(void *net_ptr, void *user_data)
 		data->out = out;
 		data->out_size = out_size;
 	}
+}
+
+static void net_proxy_cfg_msg_rx(void *net_ptr, void *user_data)
+{
+	struct net_queue_data_proxy_cfg *data = user_data;
+	struct mesh_net *net = net_ptr;
+	uint8_t out[MESH_NET_MAX_PDU_LEN];
+	size_t out_size;
+	uint32_t net_key_id;
+	uint16_t net_idx;
+	bool frnd;
+	bool ivi_net = !!(net->iv_index & 1);
+	bool ivi_pkt = !!(data->data[0] & 0x80);
+
+	/* if IVI flag differs, use previous IV Index */
+	uint32_t iv_index = net->iv_index - (ivi_pkt ^ ivi_net);
+
+	net_key_id = net_key_decrypt_proxy_cfg_msg(iv_index,
+							data->data, data->len,
+							out, &out_size);
+
+	if (!net_key_id)
+		return;
+
+	net_idx = key_id_to_net_idx(net, net_key_id, &frnd);
+
+	if (net_idx == NET_IDX_INVALID)
+		return;
+
+	/*
+	 * MshPRT_v1.1, section 3.4.5.1 - Interface input filter
+	 * The input filter of the interface connected to the GATT bearer shall
+	 * drop all Network PDUs that have been secured using the friendship
+	 * security credentials.
+	 */
+	if (frnd)
+		return;
+
+	print_packet("RX: ProxyCfg [enc] :", data->data, data->len);
+
+	proxy_cfg_msg_received(data->gatt_proxy, net, net_key_id, iv_index, out,
+								out_size);
 }
 
 static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
@@ -2564,6 +2626,25 @@ static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 					net_data.out, net_data.out_size);
 		send_relay_pkt(net_data.net, net_data.out, net_data.out_size);
 	}
+}
+
+static void
+net_proxy_cfg_msg_recv(void *user_data, struct mesh_io_recv_info *info,
+					const uint8_t *data, uint16_t len)
+{
+	struct gatt_proxy_svc *gatt_proxy = user_data;
+	struct net_queue_data_proxy_cfg net_data = {
+		.gatt_proxy = gatt_proxy,
+		.data = data + 1,
+		.len = len - 1,
+	};
+
+	if (len < 9)
+		return;
+
+	l_queue_foreach(nets, net_proxy_cfg_msg_rx, &net_data);
+
+	/* Proxy configuration messages are not relayed */
 }
 
 static void iv_upd_to(struct l_timeout *upd_timeout, void *user_data)
@@ -3080,6 +3161,9 @@ void mesh_net_attach_gatt(struct gatt_proxy_svc *gatt_proxy)
 	gatt_proxy_svc_register_recv_cb(gatt_proxy, PROXY_MSG_TYPE_NETWORK_PDU,
 							net_msg_recv,
 							gatt_proxy);
+	gatt_proxy_svc_register_recv_cb(gatt_proxy, PROXY_MSG_TYPE_PROXY_CFG,
+							net_proxy_cfg_msg_recv,
+							gatt_proxy);
 }
 
 void mesh_net_detach_gatt(struct gatt_proxy_svc *gatt_proxy)
@@ -3088,6 +3172,8 @@ void mesh_net_detach_gatt(struct gatt_proxy_svc *gatt_proxy)
 
 	gatt_proxy_svc_deregister_recv_cb(gatt_proxy,
 						PROXY_MSG_TYPE_NETWORK_PDU);
+	gatt_proxy_svc_deregister_recv_cb(gatt_proxy,
+						PROXY_MSG_TYPE_PROXY_CFG);
 }
 
 bool mesh_net_iv_index_update(struct mesh_net *net)
@@ -3214,8 +3300,8 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 		return false;
 	}
 
-	send_msg_pkt(net, cnt, interval, packet, packet_len + 1, false);
-
+	send_msg_pkt(net, msg->remote, cnt, interval, packet, packet_len + 1,
+									false);
 	msg->last_seg = segO;
 
 	return true;
@@ -3268,7 +3354,7 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 		return;
 	}
 
-	send_msg_pkt(net, net->tx_cnt, net->tx_interval, packet,
+	send_msg_pkt(net, dst, net->tx_cnt, net->tx_interval, packet,
 							packet_len + 1, frnd);
 
 	l_debug("TX: Friend Seg-%d %04x -> %04x : len %u) : TTL %d : SEQ %06x",
@@ -3433,7 +3519,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 		return;
 	}
 
-	send_msg_pkt(net, net->tx_cnt, net->tx_interval, pkt, pkt_len + 1,
+	send_msg_pkt(net, dst, net->tx_cnt, net->tx_interval, pkt, pkt_len + 1,
 									frnd);
 
 	l_debug("TX: Friend ACK %04x -> %04x : len %u : TTL %d : SEQ %06x",
@@ -3522,7 +3608,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 	}
 
 	if (!(IS_UNASSIGNED(dst)))
-		send_msg_pkt(net, net->tx_cnt, net->tx_interval, pkt,
+		send_msg_pkt(net, dst, net->tx_cnt, net->tx_interval, pkt,
 							pkt_len + 1, frnd);
 }
 

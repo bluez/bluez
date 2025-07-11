@@ -74,6 +74,9 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 				bool *szmic, bool *relay, uint16_t *seqZero,
 				uint8_t *segO, uint8_t *segN,
 				const uint8_t **payload, uint8_t *payload_len);
+bool mesh_crypto_network_header_parse(const uint8_t *packet, uint8_t packet_len,
+				bool *ctl, uint8_t *ttl, uint32_t *seq,
+				uint16_t *src, uint16_t *dst);
 bool mesh_crypto_payload_encrypt(uint8_t *aad, const uint8_t *payload,
 				uint8_t *out, uint16_t payload_len,
 				uint16_t src, uint16_t dst, uint8_t key_aid,

@@ -590,7 +590,7 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 	return true;
 }
 
-static bool network_header_parse(const uint8_t *packet, uint8_t packet_len,
+bool mesh_crypto_network_header_parse(const uint8_t *packet, uint8_t packet_len,
 				bool *ctl, uint8_t *ttl, uint32_t *seq,
 				uint16_t *src, uint16_t *dst)
 {
@@ -630,7 +630,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 	uint16_t this_dst;
 	bool is_segmented;
 
-	if (!network_header_parse(packet, packet_len,
+	if (!mesh_crypto_network_header_parse(packet, packet_len,
 					ctl, ttl, seq, src, &this_dst))
 		return false;
 
@@ -843,7 +843,7 @@ bool mesh_crypto_packet_encode(uint8_t *packet, uint8_t packet_len,
 	uint16_t src;
 	uint16_t dst;
 
-	if (!network_header_parse(packet, packet_len,
+	if (!mesh_crypto_network_header_parse(packet, packet_len,
 						&ctl, &ttl, &seq, &src, &dst))
 		return false;
 

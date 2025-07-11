@@ -24,5 +24,17 @@ void gatt_proxy_svc_register_recv_cb(struct gatt_proxy_svc *gatt_proxy,
 					void *user_data);
 void gatt_proxy_svc_deregister_recv_cb(struct gatt_proxy_svc *gatt_proxy,
 						enum proxy_msg_type msg_type);
-void gatt_proxy_svc_send_net(const void *data, uint8_t len);
-								
+
+void gatt_proxy_svc_filter_set_type(struct gatt_proxy_svc *gatt_proxy,
+							uint8_t filter_type);
+void gatt_proxy_svc_filter_add(struct gatt_proxy_svc *gatt_proxy,
+								uint16_t addr);
+void gatt_proxy_svc_filter_remove(struct gatt_proxy_svc *gatt_proxy,
+								uint16_t addr);
+unsigned gatt_proxy_svc_filter_count(struct gatt_proxy_svc *gatt_proxy,
+							uint8_t *filter_type);
+void gatt_proxy_svc_filter_pdu_rcvd(struct gatt_proxy_svc *gatt_proxy,
+								uint16_t src);
+
+void gatt_proxy_svc_send_net(uint16_t dst, const void *data, uint8_t len);
+void gatt_proxy_svc_send_proxy_cfg(const void *data, uint8_t len);
