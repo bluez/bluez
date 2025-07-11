@@ -2292,7 +2292,6 @@ static void send_msg_pkt_oneshot(void *user_data)
 		return;
 	}
 
-	tx->packet[0] = BT_AD_MESH_DATA;
 	info.type = MESH_IO_TIMING_TYPE_GENERAL;
 	info.u.gen.interval = tx->interval;
 	info.u.gen.cnt = tx->cnt;
@@ -2305,7 +2304,7 @@ static void send_msg_pkt_oneshot(void *user_data)
 }
 
 static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
-						uint8_t *packet, uint8_t size)
+					const uint8_t *packet, uint8_t size)
 {
 	struct oneshot_tx *tx = l_new(struct oneshot_tx, 1);
 
@@ -3159,6 +3158,7 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 	l_debug("segN %d segment %d seg_off %d", segN, segO, seg_off);
 
 	/* TODO: Are we RXing on an LPN's behalf? Then set RLY bit */
+	packet[0] = BT_AD_MESH_DATA;
 	if (!mesh_crypto_packet_build(false, msg->ttl, seq_num, msg->src,
 					msg->remote, 0, msg->segmented,
 					msg->key_aid, msg->szmic,
@@ -3216,6 +3216,7 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 	l_debug("SEQ0: %6.6x", seq);
 	l_debug("segO: %d", segO);
 
+	packet[0] = BT_AD_MESH_DATA;
 	if (!mesh_crypto_packet_build(false, ttl, seq, src, dst, 0,
 					segmented, key_aid, szmic,
 					seqZero, segO, segN, seg, seg_len,
@@ -3370,6 +3371,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 	l_put_be32(ack_flags, data + 3);
 
 	/* Not Segmented, no Key ID associated, no segO or segN */
+	pkt[0] = BT_AD_MESH_DATA;
 	if (!mesh_crypto_packet_build(true, ttl, seq, src, dst,
 					NET_OP_SEG_ACKNOWLEDGE, false, 0, false,
 					seqZero, 0, 0, data + 1, 6,
@@ -3457,6 +3459,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 			return;
 	}
 
+	pkt[0] = BT_AD_MESH_DATA;
 	if (!mesh_crypto_packet_build(true, ttl, seq, src, dst, msg[0],
 				false, 0, false, 0, 0, 0, msg + 1, msg_len - 1,
 				pkt + 1, &pkt_len))
