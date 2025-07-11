@@ -2258,7 +2258,7 @@ static void send_relay_pkt(struct mesh_net *net, uint8_t *data, uint8_t size)
 		.u.gen.max_delay = DEFAULT_MAX_DELAY
 	};
 
-	packet[0] = MESH_AD_TYPE_NETWORK;
+	packet[0] = BT_AD_MESH_DATA;
 	memcpy(packet + 1, data, size);
 
 	mesh_io_send(io, &info, packet, size + 1);
@@ -2292,7 +2292,7 @@ static void send_msg_pkt_oneshot(void *user_data)
 		return;
 	}
 
-	tx->packet[0] = MESH_AD_TYPE_NETWORK;
+	tx->packet[0] = BT_AD_MESH_DATA;
 	info.type = MESH_IO_TIMING_TYPE_GENERAL;
 	info.u.gen.interval = tx->interval;
 	info.u.gen.cnt = tx->cnt;
@@ -3003,9 +3003,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 	first = l_queue_isempty(nets);
 	if (first) {
-		const uint8_t snb[] = {MESH_AD_TYPE_BEACON, 1};
-		const uint8_t mpb[] = {MESH_AD_TYPE_BEACON, 2};
-		const uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
+		const uint8_t snb[] = {BT_AD_MESH_BEACON, 1};
+		const uint8_t mpb[] = {BT_AD_MESH_BEACON, 2};
+		const uint8_t pkt[] = {BT_AD_MESH_DATA};
 
 		if (!nets)
 			nets = l_queue_new();
@@ -3033,9 +3033,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 struct mesh_io *mesh_net_detach(struct mesh_net *net)
 {
-	const uint8_t snb[] = {MESH_AD_TYPE_BEACON, 1};
-	const uint8_t mpb[] = {MESH_AD_TYPE_BEACON, 2};
-	const uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
+	const uint8_t snb[] = {BT_AD_MESH_BEACON, 1};
+	const uint8_t mpb[] = {BT_AD_MESH_BEACON, 2};
+	const uint8_t pkt[] = {BT_AD_MESH_DATA};
 	struct mesh_io *io;
 	uint8_t type = 0;
 

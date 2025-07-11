@@ -16,6 +16,7 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
 #include "src/shared/ecc.h"
 
 #include "mesh/mesh-defs.h"
@@ -51,7 +52,7 @@ static const uint16_t expected_pdu_size[] = {
 
 #define BEACON_TYPE_UNPROVISIONED		0x00
 
-static const uint8_t pkt_filter = MESH_AD_TYPE_PROVISION;
+static const uint8_t pkt_filter = BT_AD_MESH_PROV;
 
 enum int_state {
 	INT_PROV_IDLE = 0,
