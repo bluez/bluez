@@ -40,6 +40,7 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 								bool force);
 void net_key_beacon_enable(uint32_t id, bool mpb, uint8_t refresh_count);
 void net_key_beacon_disable(uint32_t id, bool mpb);
+void net_key_beacon_send_gatt(uint32_t id);
 uint32_t net_key_beacon_last_seen(uint32_t id);
 
 bool net_key_fill_adv_service_data(uint32_t id,

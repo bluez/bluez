@@ -732,6 +732,18 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t ivi, bool kr, bool ivu,
 
 		print_packet("Set SNB to", key->snb, BEACON_LEN_SNB);
 		gatt_proxy_svc_set_current_adv_key(key->id);
+
+		/*
+		 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+		 * Upon successfully processing a Secure Network Beacon or
+		 * a Mesh Private beacon with a new value for the IV Index
+		 * field or the Flags field, the Proxy Server shall send a
+		 * mesh beacon to the Proxy Client, ...
+		 * When the Proxy Server is added to a new subnet, the server
+		 * shall send a mesh beacon for that subnet to the Proxy Client,
+		 * ...
+		 */
+		gatt_proxy_svc_send_beacon(key->snb + 1, BEACON_LEN_SNB - 1);
 	}
 
 	l_debug("Set Beacon: IVI: %8.8x, IVU: %d, KR: %d", ivi, ivu, kr);
@@ -848,6 +860,19 @@ void net_key_beacon_disable(uint32_t id, bool mpb)
 	/* Disable periodic Beaconing on this key */
 	l_timeout_remove(key->observe.timeout);
 	key->observe.timeout = NULL;
+}
+
+void net_key_beacon_send_gatt(uint32_t id)
+{
+	struct net_key *key = l_queue_find(keys, match_id, L_UINT_TO_PTR(id));
+
+	if (!key)
+		return;
+
+	/* FIXME: How to determine that key actually contains a valid SNB? */
+	if (key->snb && key->snb[0] == BT_AD_MESH_BEACON &&
+			key->snb[1] == BEACON_TYPE_SNB && key->snb[2] == 0)
+		gatt_proxy_svc_send_beacon(key->snb + 1, BEACON_LEN_SNB - 1);
 }
 
 static void free_key(void *data)

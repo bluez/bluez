@@ -36,5 +36,6 @@ unsigned gatt_proxy_svc_filter_count(struct gatt_proxy_svc *gatt_proxy,
 void gatt_proxy_svc_filter_pdu_rcvd(struct gatt_proxy_svc *gatt_proxy,
 								uint16_t src);
 
+void gatt_proxy_svc_send_beacon(const void *data, uint8_t len);
 void gatt_proxy_svc_send_net(uint16_t dst, const void *data, uint8_t len);
 void gatt_proxy_svc_send_proxy_cfg(const void *data, uint8_t len);

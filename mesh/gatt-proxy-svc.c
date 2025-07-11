@@ -25,7 +25,8 @@
 #include "mesh/net.h"			// PROXY_FILTER_ACCEPT_LIST,
 					// PROXY_FILTER_REJECT_LIST
 					// mesh_net_attach_gatt(),
-					// mesh_net_detach_gatt()
+					// mesh_net_detach_gatt(),
+					// mesh_net_send_all_beacons_gatt()
 #include "mesh/net-keys.h"		// net_key_fill_adv_service_data(),
 					// net_key_get_next_id()
 #include "mesh/util.h"			// print_packet()
@@ -281,6 +282,11 @@ static void gatt_proxy_svc_send(enum proxy_msg_type msg_type, const void *data,
 	}
 }
 
+void gatt_proxy_svc_send_beacon(const void *data, uint8_t len)
+{
+	gatt_proxy_svc_send(PROXY_MSG_TYPE_MESH_BEACON, data, len);
+}
+
 void gatt_proxy_svc_send_net(uint16_t dst, const void *data, uint8_t len)
 {
 	int i;
@@ -331,6 +337,18 @@ static void gatt_service_notify_acquired(void *user_data)
 	 */
 	gatt_proxy->filter_type = PROXY_FILTER_ACCEPT_LIST;
 	gatt_proxy->filter_count = 0;
+
+	/*
+	 * MshPRT_v1.1, section 6.7 - Proxy Server behavior
+	 * Upon connection, [...] The Proxy Server shall send a mesh
+	 * beacon for each known subnet to the Proxy Client, [...]
+	 *
+	 * MshPRT_v1.1, section 7.2.3.2.1 - Characteristic behavior
+	 * [...] the client will enable notifications [...] to the
+	 * Mesh Proxy Data Out Client Characteristic Configuration
+	 * Descriptor after a connection is established.
+	 */
+	mesh_net_send_all_beacons_gatt();
 }
 
 static void gatt_service_notify_stopped(void *user_data)

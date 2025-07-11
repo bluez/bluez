@@ -2997,6 +2997,29 @@ void net_local_beacon(uint32_t net_key_id, uint32_t ivi, bool ivu, bool kr)
 	l_queue_foreach(nets, process_beacon, &beacon_data);
 }
 
+static void send_beacon_gatt(void *a, void *b)
+{
+	struct mesh_subnet *subnet = a;
+
+	net_key_beacon_send_gatt(subnet->net_key_tx);
+}
+
+static void send_all_beacons_gatt(void *a, void *b)
+{
+	struct mesh_net *net = a;
+
+	l_queue_foreach(net->subnets, send_beacon_gatt, NULL);
+}
+
+void mesh_net_send_all_beacons_gatt(void)
+{
+	/*
+	 * Upon connection, [...] The Proxy Server shall send a mesh beacon
+	 * for each known subnet to the Proxy Client, [...]
+	 */
+	l_queue_foreach(nets, send_all_beacons_gatt, NULL);
+}
+
 bool mesh_net_set_snb_mode(struct mesh_net *net, bool enable)
 {
 	if (!net)

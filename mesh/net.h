@@ -229,6 +229,7 @@ uint16_t mesh_net_get_address(struct mesh_net *net);
 bool mesh_net_register_unicast(struct mesh_net *net,
 					uint16_t unicast, uint8_t num_ele);
 void net_local_beacon(uint32_t key_id, uint32_t ivi, bool ivu, bool kr);
+void mesh_net_send_all_beacons_gatt(void);
 bool mesh_net_set_snb_mode(struct mesh_net *net, bool enable);
 bool mesh_net_set_mpb_mode(struct mesh_net *net, bool enabla, uint8_t period,
 								bool init);
