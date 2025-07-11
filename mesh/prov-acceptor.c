@@ -27,6 +27,7 @@
 #include "mesh/provision.h"
 #include "mesh/remprv.h"
 #include "mesh/pb-adv.h"
+#include "mesh/pb-gatt.h"
 #include "mesh/mesh.h"
 #include "mesh/agent.h"
 
@@ -100,6 +101,7 @@ static void acceptor_free(void)
 	mesh_send_cancel(&pkt_filter, sizeof(pkt_filter));
 
 	pb_adv_unreg(prov);
+	pb_gatt_unreg(prov, NULL, NULL);
 
 	l_free(prov);
 	prov = NULL;
@@ -801,6 +803,10 @@ bool acceptor_start(uint8_t num_ele, uint8_t *uuid,
 		/* Always register for PB-ADV */
 		result = pb_adv_reg(false, acp_prov_open, acp_prov_close,
 					acp_prov_rx, acp_prov_ack, uuid, prov);
+
+		result = pb_gatt_reg(acp_prov_open, acp_prov_close,
+					acp_prov_rx, acp_prov_ack, uuid,
+					caps->oob_info, prov);
 	} else {
 		/* Run Device Key Refresh Procedure */
 		result = register_nppi_acceptor(acp_prov_open, acp_prov_close,
