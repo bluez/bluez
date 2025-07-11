@@ -793,7 +793,7 @@ bool acceptor_start(uint8_t num_ele, uint8_t *uuid,
 		memcpy(beacon + 2, uuid, 16);
 
 		/* Infinitely Beacon until Canceled, or Provisioning Starts */
-		result = mesh_send_pkt(0, 500, beacon, len);
+		result = mesh_send_pkt(0, 1000, beacon, len);
 
 		if (!result)
 			goto error_fail;
