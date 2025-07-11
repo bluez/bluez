@@ -15,8 +15,7 @@
 bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[13], const uint8_t key[16],
 					const uint8_t *aad, uint16_t aad_len,
 					const void *msg, uint16_t msg_len,
-					void *out_msg,
-					void *out_mic, size_t mic_size);
+					void *out_msg, size_t mic_size);
 bool mesh_crypto_aes_ccm_decrypt(const uint8_t nonce[13], const uint8_t key[16],
 				const uint8_t *aad, uint16_t aad_len,
 				const void *enc_msg, uint16_t enc_msg_len,

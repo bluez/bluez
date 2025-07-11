@@ -1864,7 +1864,7 @@ static void check_beacon(const struct mesh_crypto_test *keys)
 		l_put_be32(keys->iv_index, beacon + 15);
 		mesh_crypto_aes_ccm_encrypt(random, enc_key, NULL, 0,
 							beacon + 14, 5,
-							beacon + 14, NULL, 8);
+							beacon + 14, 8);
 		verify_data("BeaconMIC", 0, keys->beacon_cmac, beacon + 19, 8);
 		verify_data("PrivBeacon", 0, keys->beacon, beacon, 27);
 	}

@@ -466,7 +466,7 @@ void initiator_prov_data(uint16_t net_idx, uint16_t primary, void *caller_data)
 			&prov_data.data,
 			sizeof(prov_data.data),
 			&prov_data.data,
-			NULL, sizeof(prov_data.mic));
+			sizeof(prov_data.mic));
 	print_packet("EncdData", &prov_data.data, sizeof(prov_data) - 1);
 	prov->trans_tx(prov->trans_data, &prov_data, sizeof(prov_data));
 	prov->state = INT_PROV_DATA_SENT;

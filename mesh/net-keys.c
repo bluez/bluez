@@ -396,7 +396,7 @@ static bool mpb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 
 	l_getrandom(random, sizeof(random));
 	if (!mesh_crypto_aes_ccm_encrypt(random, key->pvt_key, NULL, 0,
-						b_data, 5, b_data, NULL, 8))
+						b_data, 5, b_data, 8))
 		return false;
 
 	key->mpb[0] = BT_AD_MESH_BEACON;
