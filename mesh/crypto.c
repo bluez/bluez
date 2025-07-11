@@ -637,6 +637,9 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 	if (dst)
 		*dst = this_dst;
 
+	if (packet_len < 9 + 4)
+		return false;
+
 	hdr = l_get_be32(packet + 9);
 
 	is_segmented = !!((hdr >> SEG_HDR_SHIFT) & 0x1);
@@ -645,6 +648,9 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 	if (*ctl) {
 		uint8_t this_opcode = packet[9] & OPCODE_MASK;
+
+		/* NetMIC */
+		packet_len -= 8;
 
 		if (cookie)
 			*cookie = l_get_be32(packet + 2) ^ packet[6];
@@ -660,13 +666,22 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 				*seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) &
 								SEQ_ZERO_MASK;
 
+			if (packet_len < 9)
+				return false;
+
 			*payload = packet + 9;
 			*payload_len = packet_len - 9;
 		} else {
+			if (packet_len < 10)
+				return false;
+
 			*payload = packet + 10;
 			*payload_len = packet_len - 10;
 		}
 	} else {
+		/* NetMIC */
+		packet_len -= 4;
+
 		if (cookie)
 			*cookie = l_get_be32(packet + packet_len - 8);
 
@@ -687,9 +702,15 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 			if (segN)
 				*segN = (hdr >> SEGN_HDR_SHIFT) & SEG_MASK;
 
+			if (packet_len < 13)
+				return false;
+
 			*payload = packet + 13;
 			*payload_len = packet_len - 13;
 		} else {
+			if (packet_len < 10)
+				return false;
+
 			*payload = packet + 10;
 			*payload_len = packet_len - 10;
 		}

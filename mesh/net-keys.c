@@ -238,10 +238,7 @@ static void decrypt_net_pkt(void *a, void *b)
 
 	if (result) {
 		cache_id = key->id;
-		if (cache_plain[1] & 0x80)
-			cache_plainlen = cache_len - 8;
-		else
-			cache_plainlen = cache_len - 4;
+		cache_plainlen = cache_len;
 	}
 }
 
