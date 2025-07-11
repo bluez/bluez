@@ -16,6 +16,8 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
 #include "mesh/crypto.h"
@@ -74,8 +76,8 @@ static struct l_queue *keys;
 static uint32_t last_flooding_id;
 
 /* To avoid re-decrypting same packet for multiple nodes, cache and check */
-static uint8_t cache_pkt[29];
-static uint8_t cache_plain[29];
+static uint8_t cache_pkt[MESH_NET_MAX_PDU_LEN];
+static uint8_t cache_plain[MESH_NET_MAX_PDU_LEN];
 static size_t cache_len;
 static size_t cache_plainlen;
 static uint32_t cache_id;
