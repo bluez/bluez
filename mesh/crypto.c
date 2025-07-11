@@ -84,8 +84,7 @@ bool mesh_crypto_aes_cmac(const uint8_t key[16], const uint8_t *msg,
 bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[13], const uint8_t key[16],
 					const uint8_t *aad, uint16_t aad_len,
 					const void *msg, uint16_t msg_len,
-					void *out_msg,
-					void *out_mic, size_t mic_size)
+					void *out_msg, size_t mic_size)
 {
 	void *cipher;
 	bool result;
@@ -733,8 +732,7 @@ bool mesh_crypto_payload_encrypt(uint8_t *aad, const uint8_t *payload,
 	if (!mesh_crypto_aes_ccm_encrypt(nonce, app_key,
 							aad, aad ? 16 : 0,
 							payload, payload_len,
-							out, NULL,
-							aszmic ? 8 : 4))
+							out, aszmic ? 8 : 4))
 		return false;
 
 	return true;
@@ -812,13 +810,13 @@ static bool mesh_crypto_packet_encrypt(uint8_t *packet, uint8_t packet_len,
 		if (!mesh_crypto_aes_ccm_encrypt(nonce, network_key,
 					NULL, 0,
 					packet + 7, packet_len - 7 - 8,
-					packet + 7, NULL, 8))
+					packet + 7, 8))
 			return false;
 	} else {
 		if (!mesh_crypto_aes_ccm_encrypt(nonce, network_key,
 					NULL, 0,
 					packet + 7, packet_len - 7 - 4,
-					packet + 7, NULL, 4))
+					packet + 7, 4))
 			return false;
 	}
 
