@@ -442,10 +442,10 @@ static bool match_beacon(const void *a, const void *b)
 	const uint8_t *incoming = b;
 
 	if (incoming[0] == BEACON_TYPE_MPB)
-		return !memcmp(cached->data, incoming, 27);
+		return !memcmp(cached->data, incoming, BEACON_LEN_MPB - 1);
 
 	if (incoming[0] == BEACON_TYPE_SNB)
-		return !memcmp(cached->data, incoming, 22);
+		return !memcmp(cached->data, incoming, BEACON_LEN_SNB - 1);
 
 	return false;
 }
