@@ -16,6 +16,8 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
 #include "mesh/crypto.h"
@@ -74,8 +76,8 @@ static struct l_queue *keys;
 static uint32_t last_flooding_id;
 
 /* To avoid re-decrypting same packet for multiple nodes, cache and check */
-static uint8_t cache_pkt[29];
-static uint8_t cache_plain[29];
+static uint8_t cache_pkt[MESH_NET_MAX_PDU_LEN];
+static uint8_t cache_plain[MESH_NET_MAX_PDU_LEN];
 static size_t cache_len;
 static size_t cache_plainlen;
 static uint32_t cache_id;
@@ -236,10 +238,7 @@ static void decrypt_net_pkt(void *a, void *b)
 
 	if (result) {
 		cache_id = key->id;
-		if (cache_plain[1] & 0x80)
-			cache_plainlen = cache_len - 8;
-		else
-			cache_plainlen = cache_len - 4;
+		cache_plainlen = cache_len;
 	}
 }
 
@@ -394,10 +393,10 @@ static bool mpb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 
 	l_getrandom(random, sizeof(random));
 	if (!mesh_crypto_aes_ccm_encrypt(random, key->pvt_key, NULL, 0,
-						b_data, 5, b_data, NULL, 8))
+						b_data, 5, b_data, 8))
 		return false;
 
-	key->mpb[0] = MESH_AD_TYPE_BEACON;
+	key->mpb[0] = BT_AD_MESH_BEACON;
 	key->mpb[1] = BEACON_TYPE_MPB;
 	memcpy(key->mpb + 2, random, 13);
 	memcpy(key->mpb + 15, b_data, 13);
@@ -419,7 +418,7 @@ static bool snb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 		return false;
 	}
 
-	key->snb[0] = MESH_AD_TYPE_BEACON;
+	key->snb[0] = BT_AD_MESH_BEACON;
 	key->snb[1] = BEACON_TYPE_SNB;
 	key->snb[2] = 0;
 
@@ -442,10 +441,10 @@ static bool match_beacon(const void *a, const void *b)
 	const uint8_t *incoming = b;
 
 	if (incoming[0] == BEACON_TYPE_MPB)
-		return !memcmp(cached->data, incoming, 27);
+		return !memcmp(cached->data, incoming, BEACON_LEN_MPB - 1);
 
 	if (incoming[0] == BEACON_TYPE_SNB)
-		return !memcmp(cached->data, incoming, 22);
+		return !memcmp(cached->data, incoming, BEACON_LEN_SNB - 1);
 
 	return false;
 }

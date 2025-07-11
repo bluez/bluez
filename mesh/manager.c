@@ -17,6 +17,8 @@
 #define _GNU_SOURCE
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-defs.h"
 #include "mesh/dbus.h"
 #include "mesh/error.h"
@@ -57,7 +59,7 @@ struct scan_req {
 
 static struct l_queue *scans;
 static struct prov_remote_data *prov_pending;
-static const uint8_t prvb[2] = {MESH_AD_TYPE_BEACON, 0x00};
+static const uint8_t prvb[2] = {BT_AD_MESH_BEACON, 0x00};
 
 static bool by_scan(const void *a, const void *b)
 {

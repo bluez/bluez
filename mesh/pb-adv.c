@@ -16,6 +16,8 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-defs.h"
 #include "mesh/crypto.h"
 #include "mesh/net.h"
@@ -97,7 +99,7 @@ struct idle_rx {
 
 static struct l_queue *pb_sessions = NULL;
 
-static const uint8_t filter[1] = { MESH_AD_TYPE_PROVISION };
+static const uint8_t filter[1] = { BT_AD_MESH_PROV };
 
 static void pb_adv_packet(void *user_data, const uint8_t *pkt, uint16_t len);
 
@@ -130,7 +132,7 @@ static void send_adv_segs(struct pb_adv_session *session, const uint8_t *data,
 							uint16_t size)
 {
 	uint16_t init_size;
-	uint8_t buf[PB_ADV_MTU + 6] = { MESH_AD_TYPE_PROVISION };
+	uint8_t buf[PB_ADV_MTU + 6] = { BT_AD_MESH_PROV };
 	uint8_t max_seg;
 	uint8_t consumed;
 	int i;
@@ -236,7 +238,7 @@ static void pb_adv_tx(void *user_data, const void *data, uint16_t len)
 
 static void send_open_req(struct pb_adv_session *session)
 {
-	struct pb_open_req open_req = { MESH_AD_TYPE_PROVISION };
+	struct pb_open_req open_req = { BT_AD_MESH_PROV };
 
 	l_put_be32(session->link_id, &open_req.link_id);
 	open_req.trans_num = 0;
@@ -251,7 +253,7 @@ static void send_open_req(struct pb_adv_session *session)
 
 static void send_open_cfm(struct pb_adv_session *session)
 {
-	struct pb_open_cfm open_cfm = { MESH_AD_TYPE_PROVISION };
+	struct pb_open_cfm open_cfm = { BT_AD_MESH_PROV };
 
 	l_put_be32(session->link_id, &open_cfm.link_id);
 	open_cfm.trans_num = 0;
@@ -265,7 +267,7 @@ static void send_open_cfm(struct pb_adv_session *session)
 
 static void send_ack(struct pb_adv_session *session, uint8_t trans_num)
 {
-	struct pb_ack ack = { MESH_AD_TYPE_PROVISION };
+	struct pb_ack ack = { BT_AD_MESH_PROV };
 
 	if (!l_queue_find(pb_sessions, session_match, session))
 		return;
@@ -280,7 +282,7 @@ static void send_ack(struct pb_adv_session *session, uint8_t trans_num)
 
 static void send_close_ind(struct pb_adv_session *session, uint8_t reason)
 {
-	struct pb_close_ind close_ind = { MESH_AD_TYPE_PROVISION };
+	struct pb_close_ind close_ind = { BT_AD_MESH_PROV };
 
 	if (!l_queue_find(pb_sessions, session_match, session))
 		return;

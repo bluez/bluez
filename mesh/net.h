@@ -143,13 +143,6 @@ struct mesh_net_heartbeat_pub {
 	uint8_t ttl;
 };
 
-struct mesh_key_set {
-	bool frnd;
-	uint8_t nid;
-	uint8_t enc_key[16];
-	uint8_t privacy_key[16];
-};
-
 struct friend_neg {
 	int8_t rssi;
 	bool clearing;
@@ -218,8 +211,6 @@ struct mesh_friend_msg {
 		struct mesh_friend_seg_12 s12[0]; /* Array of segments */
 	} u;
 };
-
-typedef void (*mesh_status_func_t)(void *user_data, bool result);
 
 struct mesh_net *mesh_net_new(struct mesh_node *node);
 void mesh_net_free(void *net);
