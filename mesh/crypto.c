@@ -643,7 +643,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 	if (segmented)
 		*segmented = is_segmented;
 
-	if (packet[1] & CTL) {
+	if (*ctl) {
 		uint8_t this_opcode = packet[9] & OPCODE_MASK;
 
 		if (cookie)
@@ -660,17 +660,11 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 				*seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) &
 								SEQ_ZERO_MASK;
 
-			if (payload)
-				*payload = packet + 9;
-
-			if (payload_len)
-				*payload_len = packet_len - 9;
+			*payload = packet + 9;
+			*payload_len = packet_len - 9;
 		} else {
-			if (payload)
-				*payload = packet + 10;
-
-			if (payload_len)
-				*payload_len = packet_len - 10;
+			*payload = packet + 10;
+			*payload_len = packet_len - 10;
 		}
 	} else {
 		if (cookie)
@@ -693,17 +687,11 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 			if (segN)
 				*segN = (hdr >> SEGN_HDR_SHIFT) & SEG_MASK;
 
-			if (payload)
-				*payload = packet + 13;
-
-			if (payload_len)
-				*payload_len = packet_len - 13;
+			*payload = packet + 13;
+			*payload_len = packet_len - 13;
 		} else {
-			if (payload)
-				*payload = packet + 10;
-
-			if (payload_len)
-				*payload_len = packet_len - 10;
+			*payload = packet + 10;
+			*payload_len = packet_len - 10;
 		}
 	}
 
