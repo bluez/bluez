@@ -91,16 +91,19 @@ static void batt_reset(struct batt *batt)
 static void parse_battery_level(struct batt *batt,
 				const uint8_t *value)
 {
-	uint8_t percentage;
+	uint8_t percentage = value[0];
 
-	percentage = value[0];
+	DBG("Battery Level updated: %d%%", percentage);
+
+	if (!batt->battery) {
+		free(batt->initial_value);
+		batt->initial_value = util_memdup(value, 1);
+		DBG("Battery not yet registered");
+		return;
+	}
+
 	if (batt->percentage != percentage) {
 		batt->percentage = percentage;
-		DBG("Battery Level updated: %d%%", percentage);
-		if (!batt->battery) {
-			warn("Trying to update an unregistered battery");
-			return;
-		}
 		btd_battery_update(batt->battery, batt->percentage);
 	}
 }
@@ -111,6 +114,8 @@ static void batt_io_value_cb(uint16_t value_handle, const uint8_t *value,
 	struct batt *batt = user_data;
 
 	if (value_handle == batt->batt_level_io_handle) {
+		if (!length)
+			return;
 		parse_battery_level(batt, value);
 	} else {
 		g_assert_not_reached();
