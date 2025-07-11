@@ -85,7 +85,7 @@ static struct bt_mesh mesh = {
 	.friend_support = true,
 	.relay_support = true,
 	.lpn_support = false,
-	.proxy_support = false,
+	.proxy_support = true,
 	.crpl = DEFAULT_CRPL,
 	.friend_queue_sz = DEFAULT_FRIEND_QUEUE_SZ,
 	.initialized = false
@@ -192,6 +192,11 @@ bool mesh_relay_supported(void)
 	return mesh.relay_support;
 }
 
+bool mesh_proxy_supported(void)
+{
+	return mesh.proxy_support;
+}
+
 bool mesh_friendship_supported(void)
 {
 	return mesh.friend_support;
@@ -228,6 +233,13 @@ static void parse_settings(const char *mesh_conf_fname)
 	if (str) {
 		if (!strcasecmp(str, "false"))
 			mesh.relay_support = false;
+		l_free(str);
+	}
+
+	str = l_settings_get_string(settings, "General", "Proxy");
+	if (str) {
+		if (!strcasecmp(str, "false"))
+			mesh.proxy_support = false;
 		l_free(str);
 	}
 
