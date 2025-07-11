@@ -176,17 +176,6 @@ struct mesh_destination {
 	uint16_t ref_cnt;
 };
 
-struct net_decode {
-	struct mesh_net *net;
-	struct mesh_friend *frnd;
-	struct mesh_key_set *key_set;
-	uint8_t *packet;
-	uint32_t iv_index;
-	uint8_t size;
-	uint8_t nid;
-	bool proxy;
-};
-
 struct net_queue_data {
 	struct mesh_io_recv_info *info;
 	struct mesh_net *net;
