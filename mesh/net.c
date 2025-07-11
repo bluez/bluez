@@ -183,10 +183,12 @@ struct net_queue_data {
 	struct gatt_proxy_svc *gatt_proxy;
 	struct mesh_io_recv_info *info;
 	struct mesh_net *net;
+	uint16_t net_dst;
 	const uint8_t *data;
 	uint8_t *out;
 	size_t out_size;
 	enum _relay_advice relay_advice;
+	bool proxy_enable;
 	uint32_t net_key_id;
 	uint32_t iv_index;
 	uint16_t len;
@@ -761,12 +763,7 @@ bool mesh_net_set_proxy_mode(struct mesh_net *net, bool enable)
 	if (!net)
 		return false;
 
-	/* No support for proxy yet */
-	if (enable) {
-		l_error("Proxy not supported!");
-		return false;
-	}
-
+	net->proxy_enable = enable;
 	trigger_heartbeat(net, FEATURE_PROXY, enable);
 	return true;
 }
@@ -2343,7 +2340,8 @@ static enum _relay_advice packet_received(struct mesh_net *net,
 				struct gatt_proxy_svc *gatt_proxy,
 				uint32_t net_key_id, uint16_t net_idx,
 				bool frnd, uint32_t iv_index,
-				const uint8_t *data, uint8_t size, int8_t rssi)
+				const uint8_t *data, uint8_t size, int8_t rssi,
+				uint16_t *dst)
 {
 	const uint8_t *msg;
 	uint8_t app_msg_len;
@@ -2364,6 +2362,7 @@ static enum _relay_advice packet_received(struct mesh_net *net,
 		return RELAY_NONE;
 	}
 
+	*dst = net_dst;
 	gatt_proxy_svc_filter_pdu_rcvd(gatt_proxy, net_src);
 
 	if (net_dst == UNASSIGNED_ADDRESS) {
@@ -2487,7 +2486,7 @@ static void net_rx(void *net_ptr, void *user_data)
 	uint8_t *out;
 	size_t out_size;
 	uint32_t net_key_id;
-	uint16_t net_idx;
+	uint16_t net_idx, net_dst;
 	int8_t rssi = 0;
 	bool frnd;
 	bool ivi_net = !!(net->iv_index & 1);
@@ -2528,8 +2527,8 @@ static void net_rx(void *net_ptr, void *user_data)
 		return;
 
 	relay_advice = packet_received(net, data->gatt_proxy, net_key_id,
-						net_idx, frnd,
-						iv_index, out, out_size, rssi);
+						net_idx, frnd, iv_index,
+						out, out_size, rssi, &net_dst);
 	if (relay_advice > data->relay_advice) {
 		/*
 		 * If packet was encrypted with friendship credentials,
@@ -2538,8 +2537,11 @@ static void net_rx(void *net_ptr, void *user_data)
 		if (frnd && !mesh_net_get_key(net, false, net_idx, &net_key_id))
 			return;
 
+		data->net_dst = net_dst;
 		data->iv_index = iv_index;
 		data->relay_advice = relay_advice;
+		if (net->proxy_enable)
+			data->proxy_enable = true;
 		data->net_key_id = net_key_id;
 		data->net = net;
 		data->out = out;
@@ -2601,8 +2603,10 @@ static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 		.data = data + 1,
 		.len = len - 1,
 		.relay_advice = RELAY_NONE,
+		.proxy_enable = false,
 		.seen = false,
 	};
+	uint8_t ttl;
 
 	if (len < 9)
 		return;
@@ -2616,16 +2620,28 @@ static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 
 	l_queue_foreach(nets, net_rx, &net_data);
 
-	if (net_data.relay_advice == RELAY_ALWAYS ||
-			net_data.relay_advice == RELAY_ALLOWED) {
-		uint8_t ttl = net_data.out[1] & TTL_MASK;
+	if (net_data.relay_advice != RELAY_ALWAYS &&
+					net_data.relay_advice != RELAY_ALLOWED)
+		return;
 
-		net_data.out[1] &=  ~TTL_MASK;
-		net_data.out[1] |= ttl - 1;
-		net_key_encrypt(net_data.net_key_id, net_data.iv_index,
-					net_data.out, net_data.out_size);
+	ttl = net_data.out[1] & TTL_MASK;
+	net_data.out[1] &=  ~TTL_MASK;
+	net_data.out[1] |= ttl - 1;
+	net_key_encrypt(net_data.net_key_id, net_data.iv_index,
+				net_data.out, net_data.out_size);
+	/*
+	 * Table 3.13 in MshPRT_v1.1, sec. 3.4.6.3 states that (if proxy is on):
+	 * - Inbound messages from ADV shall be retransmitted to GATT.
+	 * - Inbound messages from GATT shall be retransmitted to all bearers.
+	 * For me it seems not to make much sense relaying incoming messages
+	 * from GATT back to GATT.
+	 */
+	if ((gatt_proxy && net_data.proxy_enable) || !gatt_proxy)
 		send_relay_pkt(net_data.net, net_data.out, net_data.out_size);
-	}
+
+	if (!gatt_proxy && net_data.proxy_enable)
+		gatt_proxy_svc_send_net(net_data.net_dst, net_data.out,
+							net_data.out_size);
 }
 
 static void
