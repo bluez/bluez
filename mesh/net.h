@@ -14,6 +14,7 @@
 
 struct mesh_io;
 struct mesh_node;
+struct gatt_proxy_svc;
 
 #define DEV_ID	0
 
@@ -249,6 +250,8 @@ bool mesh_net_get_key(struct mesh_net *net, bool new_key, uint16_t idx,
 							uint32_t *net_key_id);
 bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io);
 struct mesh_io *mesh_net_detach(struct mesh_net *net);
+void mesh_net_attach_gatt(struct gatt_proxy_svc *gatt_proxy);
+void mesh_net_detach_gatt(struct gatt_proxy_svc *gatt_proxy);
 struct l_queue *mesh_net_get_app_keys(struct mesh_net *net);
 
 void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,

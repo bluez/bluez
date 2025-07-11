@@ -29,6 +29,8 @@
 #include "mesh/net.h"
 #include "mesh/mesh-io.h"
 #include "mesh/friend.h"
+#include "mesh/gatt-service.h"		// PROXY_MSG_TYPE_NETWORK_PDU
+#include "mesh/gatt-proxy-svc.h"	// gatt_proxy_svc_send_net()
 #include "mesh/mesh-config.h"
 #include "mesh/model.h"
 #include "mesh/appkey.h"
@@ -177,6 +179,7 @@ struct mesh_destination {
 };
 
 struct net_queue_data {
+	struct gatt_proxy_svc *gatt_proxy;
 	struct mesh_io_recv_info *info;
 	struct mesh_net *net;
 	const uint8_t *data;
@@ -192,6 +195,7 @@ struct net_queue_data {
 struct oneshot_tx {
 	struct mesh_net *net;
 	uint16_t interval;
+	bool frnd;
 	uint8_t cnt;
 	uint8_t size;
 	uint8_t packet[MESH_AD_MAX_LEN];
@@ -2288,17 +2292,30 @@ static void send_msg_pkt_oneshot(void *user_data)
 	/* No extra randomization when sending regular mesh messages */
 	info.u.gen.max_delay = DEFAULT_MIN_DELAY;
 
+	/*
+	 * MshPrt_v1.1, section 3.4.6.4 - Transmitting a network PDU
+	 * If [...], and the Network PDU is secured using the friendship
+	 * security credentials, the Network PDU shall be delivered to the
+	 * advertising bearer network interface.
+	 * If [...], and the Network PDU is not secured using the friendship
+	 * security credentials, the Network PDU shall be delivered to all
+	 * network interfaces.
+	 */
 	mesh_io_send(net->io, &info, tx->packet, tx->size);
+	if (!tx->frnd)
+		gatt_proxy_svc_send_net(tx->packet + 1, tx->size - 1);
 	l_free(tx);
 }
 
 static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
-					const uint8_t *packet, uint8_t size)
+					const uint8_t *packet, uint8_t size,
+								bool frnd)
 {
 	struct oneshot_tx *tx = l_new(struct oneshot_tx, 1);
 
 	tx->net = net;
 	tx->interval = interval;
+	tx->frnd = frnd;
 	tx->cnt = cnt;
 	tx->size = size;
 	memcpy(tx->packet, packet, size);
@@ -2482,6 +2499,15 @@ static void net_rx(void *net_ptr, void *user_data)
 	if (net_idx == NET_IDX_INVALID)
 		return;
 
+	/*
+	 * MshPRT_v1.1, section 3.4.5.1 - Interface input filter
+	 * The input filter of the interface connected to the GATT bearer shall
+	 * drop all Network PDUs that have been secured using the friendship
+	 * security credentials.
+	 */
+	if (data->gatt_proxy && frnd)
+		return;
+
 	relay_advice = packet_received(net, net_key_id, net_idx, frnd,
 						iv_index, out, out_size, rssi);
 	if (relay_advice > data->relay_advice) {
@@ -2506,7 +2532,9 @@ static void net_msg_recv(void *user_data, struct mesh_io_recv_info *info,
 {
 	uint64_t hash;
 	bool isNew;
+	struct gatt_proxy_svc *gatt_proxy = user_data;
 	struct net_queue_data net_data = {
+		.gatt_proxy = gatt_proxy,
 		.info = info,
 		.data = data + 1,
 		.len = len - 1,
@@ -3047,6 +3075,21 @@ struct mesh_io *mesh_net_detach(struct mesh_net *net)
 	return io;
 }
 
+void mesh_net_attach_gatt(struct gatt_proxy_svc *gatt_proxy)
+{
+	gatt_proxy_svc_register_recv_cb(gatt_proxy, PROXY_MSG_TYPE_NETWORK_PDU,
+							net_msg_recv,
+							gatt_proxy);
+}
+
+void mesh_net_detach_gatt(struct gatt_proxy_svc *gatt_proxy)
+{
+//	mesh_io_send_cancel(net->io, &type, 1);
+
+	gatt_proxy_svc_deregister_recv_cb(gatt_proxy,
+						PROXY_MSG_TYPE_NETWORK_PDU);
+}
+
 bool mesh_net_iv_index_update(struct mesh_net *net)
 {
 	if (net->iv_upd_state != IV_UPD_NORMAL)
@@ -3171,7 +3214,7 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 		return false;
 	}
 
-	send_msg_pkt(net, cnt, interval, packet, packet_len + 1);
+	send_msg_pkt(net, cnt, interval, packet, packet_len + 1, false);
 
 	msg->last_seg = segO;
 
@@ -3191,6 +3234,7 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 	uint16_t seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) & SEQ_ZERO_MASK;
 	uint8_t segO = (hdr >> SEGO_HDR_SHIFT) & SEG_MASK;
 	uint8_t segN = (hdr >> SEGN_HDR_SHIFT) & SEG_MASK;
+	bool frnd;
 
 	/*
 	 * MshPRFv1.0.1 section 3.4.5.2, Interface output filter:
@@ -3219,8 +3263,13 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 		return;
 	}
 
+	if (key_id_to_net_idx(net, net_key_id, &frnd) == NET_IDX_INVALID) {
+		l_error("Failed to determine friend security material");
+		return;
+	}
+
 	send_msg_pkt(net, net->tx_cnt, net->tx_interval, packet,
-								packet_len + 1);
+							packet_len + 1, frnd);
 
 	l_debug("TX: Friend Seg-%d %04x -> %04x : len %u) : TTL %d : SEQ %06x",
 					segO, src, dst, packet_len, ttl, seq);
@@ -3345,6 +3394,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 	uint8_t data[7];
 	uint8_t pkt_len;
 	uint8_t pkt[MESH_AD_MAX_LEN];
+	bool frnd;
 
 	/*
 	 * MshPRFv1.0.1 section 3.4.5.2, Interface output filter:
@@ -3378,7 +3428,13 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 		return;
 	}
 
-	send_msg_pkt(net, net->tx_cnt, net->tx_interval, pkt, pkt_len + 1);
+	if (key_id_to_net_idx(net, net_key_id, &frnd) == NET_IDX_INVALID) {
+		l_error("Failed to determine friend security material");
+		return;
+	}
+
+	send_msg_pkt(net, net->tx_cnt, net->tx_interval, pkt, pkt_len + 1,
+									frnd);
 
 	l_debug("TX: Friend ACK %04x -> %04x : len %u : TTL %d : SEQ %06x",
 					src, dst, pkt_len, ttl, seq);
@@ -3394,6 +3450,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 	uint8_t pkt_len;
 	uint8_t pkt[MESH_AD_MAX_LEN];
 	bool result = false;
+	bool frnd;
 
 	if (!net->src_addr)
 		return;
@@ -3459,9 +3516,14 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 		return;
 	}
 
+	if (key_id_to_net_idx(net, net_key_id, &frnd) == NET_IDX_INVALID) {
+		l_error("Failed to determine friend security material");
+		return;
+	}
+
 	if (!(IS_UNASSIGNED(dst)))
 		send_msg_pkt(net, net->tx_cnt, net->tx_interval, pkt,
-								pkt_len + 1);
+							pkt_len + 1, frnd);
 }
 
 int mesh_net_key_refresh_phase_set(struct mesh_net *net, uint16_t idx,

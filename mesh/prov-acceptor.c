@@ -22,6 +22,8 @@
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
 #include "mesh/crypto.h"
+#include "mesh/mesh-io.h"
+#include "mesh/gatt-proxy-svc.h"
 #include "mesh/net.h"
 #include "mesh/prov.h"
 #include "mesh/provision.h"
@@ -89,6 +91,11 @@ struct mesh_prov_acceptor {
 
 static struct mesh_prov_acceptor *prov = NULL;
 
+static void gatt_unreg_finished(void *user_data)
+{
+	gatt_proxy_svc_create();
+}
+
 static void acceptor_free(void)
 {
 	if (!prov)
@@ -101,7 +108,7 @@ static void acceptor_free(void)
 	mesh_send_cancel(&pkt_filter, sizeof(pkt_filter));
 
 	pb_adv_unreg(prov);
-	pb_gatt_unreg(prov, NULL, NULL);
+	pb_gatt_unreg(prov, gatt_unreg_finished, NULL);
 
 	l_free(prov);
 	prov = NULL;
@@ -705,8 +712,13 @@ failure:
 cleanup:
 	l_timeout_remove(prov->timeout);
 
-	/* Give PB Link 5 seconds to end session */
-	prov->timeout = l_timeout_create(5, prov_to, prov, NULL);
+	if (prov->transport == PB_ADV) {
+		/* Give PB Link 5 seconds to end session */
+		prov->timeout = l_timeout_create(5, prov_to, prov, NULL);
+	} else {
+		prov->timeout = NULL;
+		prov_to(NULL, prov);
+	}
 }
 
 static void acp_prov_ack(void *user_data, uint8_t msg_num)
@@ -803,6 +815,14 @@ bool acceptor_start(uint8_t num_ele, uint8_t *uuid,
 		/* Always register for PB-ADV */
 		result = pb_adv_reg(false, acp_prov_open, acp_prov_close,
 					acp_prov_rx, acp_prov_ack, uuid, prov);
+
+		/*
+		 * MeshPRT_v1.1, chapter 7: "A device may support the Mesh
+		 * Provisioning Service or the Mesh Proxy Service or both. If
+		 * both are supported, only one of these services shall be
+		 * exposed in the GATT database at a time."
+		 */
+		gatt_proxy_svc_destroy();
 
 		result = pb_gatt_reg(acp_prov_open, acp_prov_close,
 					acp_prov_rx, acp_prov_ack, uuid,
