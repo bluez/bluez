@@ -3632,6 +3632,14 @@ bool btd_device_bearer_is_connected(struct btd_device *dev)
 	return dev->bredr_state.connected || dev->le_state.connected;
 }
 
+bool btd_device_bdaddr_type_connected(struct btd_device *dev, uint8_t type)
+{
+	if (type == BDADDR_BREDR)
+		return dev->bredr_state.connected;
+
+	return dev->le_state.connected;
+}
+
 static void clear_temporary_timer(struct btd_device *dev)
 {
 	if (dev->temporary_timer) {
