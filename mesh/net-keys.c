@@ -399,7 +399,7 @@ static bool mpb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 						b_data, 5, b_data, NULL, 8))
 		return false;
 
-	key->mpb[0] = MESH_AD_TYPE_BEACON;
+	key->mpb[0] = BT_AD_MESH_BEACON;
 	key->mpb[1] = BEACON_TYPE_MPB;
 	memcpy(key->mpb + 2, random, 13);
 	memcpy(key->mpb + 15, b_data, 13);
@@ -421,7 +421,7 @@ static bool snb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 		return false;
 	}
 
-	key->snb[0] = MESH_AD_TYPE_BEACON;
+	key->snb[0] = BT_AD_MESH_BEACON;
 	key->snb[1] = BEACON_TYPE_SNB;
 	key->snb[2] = 0;
 

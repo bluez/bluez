@@ -8,10 +8,6 @@
  *
  */
 
-#define MESH_AD_TYPE_PROVISION	0x29
-#define MESH_AD_TYPE_NETWORK	0x2A
-#define MESH_AD_TYPE_BEACON	0x2B
-
 /*
  * MshPRT_v1.1, section 3.3.1 / Core_v5.3, section 2.3.1.3
  * Maximum length of AdvData without 'Length' field (30)

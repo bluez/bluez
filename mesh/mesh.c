@@ -17,6 +17,8 @@
 #define _GNU_SOURCE
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-io.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
@@ -139,7 +141,7 @@ static void prov_rx(void *user_data, struct mesh_io_recv_info *info,
 
 bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data)
 {
-	uint8_t prov_filter[] = {MESH_AD_TYPE_PROVISION};
+	uint8_t prov_filter[] = {BT_AD_MESH_PROV};
 
 	if (mesh.prov_rx && mesh.prov_rx != cb)
 		return false;
@@ -153,7 +155,7 @@ bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data)
 
 void mesh_unreg_prov_rx(prov_rx_cb_t cb)
 {
-	uint8_t prov_filter[] = {MESH_AD_TYPE_PROVISION};
+	uint8_t prov_filter[] = {BT_AD_MESH_PROV};
 
 	if (mesh.prov_rx != cb)
 		return;
