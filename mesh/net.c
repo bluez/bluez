@@ -19,6 +19,8 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
 #include "mesh/crypto.h"
@@ -203,7 +205,7 @@ struct oneshot_tx {
 	uint16_t interval;
 	uint8_t cnt;
 	uint8_t size;
-	uint8_t packet[30];
+	uint8_t packet[MESH_AD_MAX_LEN];
 };
 
 struct net_beacon_data {
@@ -2246,7 +2248,7 @@ static bool match_by_dst(const void *a, const void *b)
 
 static void send_relay_pkt(struct mesh_net *net, uint8_t *data, uint8_t size)
 {
-	uint8_t packet[30];
+	uint8_t packet[MESH_AD_MAX_LEN];
 	struct mesh_io *io = net->io;
 	struct mesh_io_send_info info = {
 		.type = MESH_IO_TIMING_TYPE_GENERAL,
@@ -3130,8 +3132,7 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 {
 	struct mesh_subnet *subnet;
 	uint8_t seg_len;
-	uint8_t gatt_data[30];
-	uint8_t *packet = gatt_data;
+	uint8_t packet[MESH_AD_MAX_LEN];
 	uint8_t packet_len;
 	uint8_t segN = SEG_MAX(msg->segmented, msg->len);
 	uint16_t seg_off = SEG_OFF(segO);
@@ -3193,7 +3194,7 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 			uint16_t src, uint16_t dst, uint32_t hdr,
 			const void *seg, uint16_t seg_len)
 {
-	uint8_t packet[30];
+	uint8_t packet[MESH_AD_MAX_LEN];
 	uint8_t packet_len;
 	bool segmented = !!((hdr >> SEG_HDR_SHIFT) & 0x1);
 	uint8_t key_aid = (hdr >> KEY_HDR_SHIFT) & KEY_ID_MASK;
@@ -3353,7 +3354,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 	uint32_t hdr;
 	uint8_t data[7];
 	uint8_t pkt_len;
-	uint8_t pkt[30];
+	uint8_t pkt[MESH_AD_MAX_LEN];
 
 	/*
 	 * MshPRFv1.0.1 section 3.4.5.2, Interface output filter:
@@ -3400,7 +3401,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 				uint16_t msg_len)
 {
 	uint8_t pkt_len;
-	uint8_t pkt[30];
+	uint8_t pkt[MESH_AD_MAX_LEN];
 	bool result = false;
 
 	if (!net->src_addr)
@@ -3416,7 +3417,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 		ttl = net->default_ttl;
 
 	/* Range check the Opcode and msg length*/
-	if (*msg & 0xc0 || (9 + msg_len + 8 > 29))
+	if (*msg & 0xc0 || (9 + msg_len + 8 > MESH_NET_MAX_PDU_LEN))
 		return;
 
 	/*
