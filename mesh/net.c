@@ -2487,7 +2487,7 @@ static void net_rx(void *net_ptr, void *user_data)
 	if (relay_advice > data->relay_advice) {
 		/*
 		 * If packet was encrypted with friendship credentials,
-		 * relay it using master credentials
+		 * relay it using flooding credentials
 		 */
 		if (frnd && !mesh_net_get_key(net, false, net_idx, &net_key_id))
 			return;
