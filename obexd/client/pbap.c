@@ -146,6 +146,9 @@ static DBusConnection *system_conn;
 static unsigned int listener_id;
 static char *client_path;
 
+static int pbap_init_cb(void);
+static void pbap_exit_cb(void);
+
 static struct pending_request *pending_request_new(struct pbap_data *pbap,
 							DBusMessage *message)
 {
@@ -1300,6 +1303,20 @@ static void pbap_remove(struct obc_session *session)
 	g_dbus_unregister_interface(conn, path, PBAP_INTERFACE);
 }
 
+static gboolean user_was_active = FALSE;
+static void pbap_uid_state(struct logind_cb_context *ctxt)
+{
+	gboolean user_is_active = LOGIND_USER_IS_ACTIVE(ctxt);
+
+	if (user_was_active == user_is_active)
+		return;
+	user_was_active = user_is_active;
+	if (user_is_active)
+		pbap_init_cb();
+	else
+		pbap_exit_cb();
+}
+
 static DBusMessage *pbap_release(DBusConnection *conn,
 	DBusMessage *msg, void *data)
 {
@@ -1452,13 +1469,13 @@ static struct obc_driver pbap = {
 	.target_len = OBEX_PBAP_UUID_LEN,
 	.supported_features = pbap_supported_features,
 	.probe = pbap_probe,
-	.remove = pbap_remove
+	.remove = pbap_remove,
+	.uid_state = pbap_uid_state
 };
 
-static int pbap_init_cb(gboolean at_register)
+static int pbap_init_cb(void)
 {
 	int err;
-	(void)at_register;
 
 	DBG("");
 
@@ -1483,7 +1500,7 @@ static int pbap_init_cb(gboolean at_register)
 	return 0;
 }
 
-static void pbap_exit_cb(gboolean at_unregister)
+static void pbap_exit_cb(void)
 {
 	DBusMessage *msg;
 	DBusMessageIter iter;
@@ -1491,22 +1508,28 @@ static void pbap_exit_cb(gboolean at_unregister)
 
 	DBG("");
 
-	if (!at_unregister) {
-		client_path = g_strconcat("/org/bluez/obex/", uuid, NULL);
-		g_strdelimit(client_path, "-", '_');
+	client_path = g_strconcat("/org/bluez/obex/", uuid, NULL);
+	g_strdelimit(client_path, "-", '_');
 
-		msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-							"org.bluez.ProfileManager1",
-							"UnregisterProfile");
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
+						"org.bluez.ProfileManager1",
+						"UnregisterProfile");
 
-		dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_init_append(msg, &iter);
 
-		dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
-								&client_path);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&client_path);
 
-		g_dbus_send_message(system_conn, msg);
-	}
+	g_dbus_send_message(system_conn, msg);
 
+	pbap_exit();
+}
+
+int pbap_init(void)
+{
+}
+void pbap_exit(void)
+{
 	g_dbus_remove_watch(system_conn, listener_id);
 
 	unregister_profile();
@@ -1523,13 +1546,4 @@ static void pbap_exit_cb(gboolean at_unregister)
 	}
 
 	obc_driver_unregister(&pbap);
-}
-
-int pbap_init(void)
-{
-	return logind_register(pbap_init_cb, pbap_exit_cb);
-}
-void pbap_exit(void)
-{
-	return logind_unregister(pbap_init_cb, pbap_exit_cb);
 }
