@@ -14050,9 +14050,10 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 				bool in, const void *data, uint16_t size)
 {
 	const struct bt_hci_iso_hdr *hdr = data;
+	const struct bt_hci_iso_data_start *start;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[22], extra_str[32];
+	char handle_str[36], extra_str[33];
 	struct index_buf_pool *pool = &index_list[index].iso;
 
 	if (index >= MAX_INDEX) {
@@ -14062,27 +14063,32 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	index_list[index].frame++;
 
-	if (size < sizeof(*hdr)) {
-		if (in)
-			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
-				"Malformed ISO Data RX packet", NULL, NULL);
-		else
-			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
-				"Malformed ISO Data TX packet", NULL, NULL);
-		packet_hexdump(data, size);
-		return;
-	}
+	if (size < sizeof(*hdr))
+		goto malformed;
 
 	data += sizeof(*hdr);
 	size -= sizeof(*hdr);
 
-	if (!in && pool->total)
-		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
-			++pool->tx, pool->total);
-	else
-		sprintf(handle_str, "Handle %d", acl_handle(handle));
+	/* Detect if timestamp field is preset */
+	if (iso_flags_ts(flags)) {
+		if (size < sizeof(uint32_t))
+			goto malformed;
 
-	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
+		data += sizeof(uint32_t);
+		size -= sizeof(uint32_t);
+	}
+
+	start = data;
+
+	if (!in && pool->total)
+		sprintf(handle_str, "Handle %d [%u/%u] SN %u",
+			acl_handle(handle), ++pool->tx, pool->total, start->sn);
+	else
+		sprintf(handle_str, "Handle %u SN %u", acl_handle(handle),
+			start->sn);
+
+	sprintf(extra_str, "flags 0x%2.2x dlen %u slen %u", flags, hdr->dlen,
+		start->slen);
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ISODATA,
 				in ? "ISO Data RX" : "ISO Data TX",
@@ -14101,6 +14107,17 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	if (filter_mask & PACKET_FILTER_SHOW_ISO_DATA)
 		packet_hexdump(data, size);
+
+	return;
+
+malformed:
+	if (in)
+		print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
+				"Malformed ISO Data RX packet", NULL, NULL);
+	else
+		print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
+				"Malformed ISO Data TX packet", NULL, NULL);
+	packet_hexdump(data, size);
 }
 
 void packet_ctrl_open(struct timeval *tv, struct ucred *cred, uint16_t index,
