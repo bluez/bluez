@@ -806,7 +806,11 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	if (!strcmp(dbus_message_get_member(message), "Disconnected")) {
+	const char *iface = dbus_message_get_interface(message);
+	const char *member = dbus_message_get_member(message);
+
+	if (!strcmp(member, "Disconnected")) {
+		const char *label;
 		const char *name;
 		const char *msg;
 
@@ -816,16 +820,22 @@ static void message_handler(DBusConnection *connection,
 					DBUS_TYPE_INVALID))
 			goto failed;
 
-		bt_shell_printf("[SIGNAL] %s.%s %s %s\n",
-					dbus_message_get_interface(message),
-					dbus_message_get_member(message),
-					name, msg);
+		if (!strcmp(iface, "org.bluez.Bearer.BREDR1"))
+			label = "BREDR.Disconnected";
+		else if (!strcmp(iface, "org.bluez.Bearer.LE1"))
+			label = "LE.Disconnected";
+		else
+			label = "Disconnected";
+
+		bt_shell_printf("[" COLOR_YELLOW "SIGNAL" COLOR_OFF"] "
+					"%s - %s, %s\n",
+					label, name, msg);
 		return;
 	}
 
 failed:
-	bt_shell_printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
-					dbus_message_get_member(message));
+	bt_shell_printf("[" COLOR_YELLOW "SIGNAL" COLOR_OFF"] %s.%s\n",
+					iface, member);
 }
 
 static struct adapter *find_ctrl_by_address(GList *source, const char *address)
