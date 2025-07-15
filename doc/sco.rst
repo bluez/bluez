@@ -185,6 +185,38 @@ Example:
         return 1;
     }
 
+BT_PKT_STATUS (since Linux 5.9)
+-------------------------------
+
+Enable reporting packet status via `BT_SCM_PKT_STATUS` CMSG on
+received packets.  Possible values:
+
+.. csv-table::
+    :header: "Value", "Description"
+    :widths: auto
+
+    **0**, Disable (default)
+    **1**, Enable
+
+
+:BT_SCM_PKT_STATUS:
+
+    Level ``SOL_BLUETOOTH`` CMSG with data::
+
+        uint8_t pkt_status;
+
+    The values are equal to the "Packet_Status_Flag" defined in
+    Core Specification v6.0 Sec. 5.4.3 pp. 1877:
+
+    .. csv-table::
+        :header: "pkt_status", "Description"
+        :widths: auto
+
+        **0x0**, Correctly received data
+        **0x1**, Possibly invalid data
+        **0x2**, No data received
+        **0x3**, Data partially lost
+
 BT_PHY (since Linux 5.10)
 -------------------------
 
