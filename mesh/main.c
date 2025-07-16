@@ -31,6 +31,7 @@
 #include "mesh/crypto.h"
 #include "mesh/dbus.h"
 #include "mesh/mesh-io.h"
+#include "mesh/gatt-proxy-svc.h"
 #include "mesh/util.h"
 
 static const char *storage_dir;
@@ -94,6 +95,8 @@ static void mesh_ready_callback(void *user_data, bool success)
 		l_error("Failed to initialize mesh D-Bus resources");
 		l_main_quit();
 	}
+
+	gatt_proxy_svc_create();
 }
 
 static void request_name_callback(struct l_dbus *dbus, bool success,
