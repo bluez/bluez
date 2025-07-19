@@ -1699,7 +1699,10 @@ static void exp_info_rsp(uint8_t status, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_rp_read_exp_features_info *rp = param;
-	uint16_t index = PTR_TO_UINT(user_data);
+	uint16_t index = PTR_TO_UINT(user_data), i;
+	uint128_t uuid_be;
+	char uuidstr[40];
+	bt_uuid_t uuid;
 
 	if (status != 0) {
 		error("Reading hci%u exp features failed with status 0x%02x (%s)",
@@ -1720,6 +1723,14 @@ static void exp_info_rsp(uint8_t status, uint16_t len, const void *param,
 	print("\tNumber of experimental features: %u",
 					le16_to_cpu(rp->feature_count));
 
+	uuid.type = BT_UUID128;
+	for (i = 0; i < le16_to_cpu(rp->feature_count); i++) {
+		memcpy(&uuid_be, &rp->features[i].uuid, sizeof(uint128_t));
+		ntoh128(&uuid_be, &uuid.value.u128);
+		bt_uuid_to_string(&uuid, uuidstr, sizeof(uuidstr));
+
+		print("\t%s (flags 0x%04x)", uuidstr, rp->features[i].flags);
+	}
 done:
 	pending_index--;
 
