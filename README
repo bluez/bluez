@@ -107,6 +107,20 @@ For a working system, certain configuration options need to be enabled:
 		idea to use a separate bluez-library or libbluetooth
 		package for it.
 
+	--enable-bluetoothd
+
+		Enable installation of `bluetoothd` daemon
+
+		By default the `bluetoothd` daemon is not installed.
+
+		The `bluetoothd` daemon can be excluded from build.
+		This covers cases where standard BlueZ distribution
+		and tools or libraries are to be provided separately.
+
+		When the daemon installation is enabled, it is a good
+		idea to use a separate bluez-bluetoothd or bluetoothd
+		package for it.
+
 	--disable-tools
 
 		Disable support for Bluetooth utilities
