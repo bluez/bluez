@@ -31,9 +31,11 @@ AM_LDFLAGS = $(MISC_LDFLAGS)
 confdir = $(sysconfdir)/bluetooth
 statedir = $(localstatedir)/lib/bluetooth
 
+if BLUETOOTHD
 bluetoothd-fix-permissions:
 	install -dm755 $(DESTDIR)$(confdir)
 	install -dm700 $(DESTDIR)$(statedir)
+endif
 
 if DATAFILES
 dbusdir = $(DBUS_CONFDIR)/dbus-1/system.d
@@ -301,7 +303,9 @@ builtin_ldadd =
 
 include Makefile.plugins
 
+if BLUETOOTHD
 pkglibexec_PROGRAMS += src/bluetoothd
+endif
 
 src_bluetoothd_SOURCES = $(builtin_sources) \
 			$(attrib_sources) $(btio_sources) \
@@ -441,7 +445,11 @@ include Makefile.mesh
 if SYSTEMD
 install-data-hook: obexd-add-service-symlink
 else
+if BLUETOOTHD
 install-data-hook: bluetoothd-fix-permissions obexd-add-service-symlink
+else
+install-data-hook: obexd-add-service-symlink
+endif
 endif
 
 uninstall-hook: obexd-remove-service-symlink
