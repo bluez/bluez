@@ -1301,6 +1301,49 @@ static gboolean get_metadata(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static void bap_metadata_complete(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	GDBusPendingPropertySet id = PTR_TO_UINT(user_data);
+
+	if (code)
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".Failed",
+				"Unable to set metadata");
+	else
+		g_dbus_pending_property_success(id);
+}
+
+static void set_metadata(const GDBusPropertyTable *property,
+			DBusMessageIter *iter, GDBusPendingPropertySet id,
+			void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	DBusMessageIter array;
+	struct iovec iov;
+	int ret;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Expected ARRAY");
+		return;
+	}
+
+	dbus_message_iter_recurse(iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &iov.iov_base,
+					(int *)&iov.iov_len);
+
+	ret = bt_bap_stream_metadata(bap->stream, &iov, bap_metadata_complete,
+				     UINT_TO_PTR(id));
+	if (!ret)
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Invalid metadata");
+}
+
 static gboolean links_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_transport *transport = data;
@@ -1422,7 +1465,7 @@ static const GDBusPropertyTable transport_bap_uc_properties[] = {
 	{ "QoS", "a{sv}", get_ucast_qos, NULL, qos_ucast_exists },
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
 	{ "Location", "u", get_location },
-	{ "Metadata", "ay", get_metadata },
+	{ "Metadata", "ay", get_metadata, set_metadata },
 	{ "Links", "ao", get_links, NULL, links_exists },
 	{ "Volume", "q", get_volume, set_volume, volume_exists },
 	{ }
