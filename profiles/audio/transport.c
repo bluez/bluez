@@ -107,6 +107,7 @@ struct bap_transport {
 	bool			linked;
 	struct bt_bap_qos	qos;
 	guint			resume_id;
+	struct iovec		*meta;
 };
 
 struct media_transport_ops {
@@ -2141,6 +2142,26 @@ static void transport_bap_set_state(struct media_transport *transport,
 							UINT_TO_PTR(state));
 }
 
+static void bap_metadata_changed(struct media_transport *transport)
+{
+	struct bap_transport *bap = transport->data;
+	struct iovec *meta;
+
+	/* Update metadata if it has changed */
+	meta = bt_bap_stream_get_metadata(bap->stream);
+
+	DBG("stream %p: metadata %p old %p", bap->stream, meta, bap->meta);
+
+	if (util_iov_memcmp(meta, bap->meta)) {
+		util_iov_free(bap->meta, 1);
+		bap->meta = util_iov_dup(meta, 1);
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						transport->path,
+						MEDIA_TRANSPORT_INTERFACE,
+						"Metadata");
+	}
+}
+
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 				uint8_t new_state, void *user_data)
 {
@@ -2179,11 +2200,16 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_ENABLING:
 		if (!bt_bap_stream_get_io(stream))
 			return;
+
+		bap_metadata_changed(transport);
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
 		if ((bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE) ||
 			(bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK))
 			bap_update_bcast_qos(transport);
+
+		bap_metadata_changed(transport);
+		transport_update_playing(transport, TRUE);
 		break;
 	case BT_BAP_STREAM_STATE_RELEASING:
 		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
@@ -2253,6 +2279,7 @@ static void transport_bap_destroy(void *data)
 {
 	struct bap_transport *bap = data;
 
+	util_iov_free(bap->meta, 1);
 	bt_bap_state_unregister(bt_bap_stream_get_session(bap->stream),
 							bap->state_id);
 	free(bap);
