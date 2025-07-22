@@ -1370,11 +1370,16 @@ static bool stream_io_unset(const void *data, const void *user_data)
 static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 {
 	struct bap_setup *setup = user_data;
-	struct bt_bap_stream *stream = setup->stream;
+	struct bt_bap_stream *stream;
 	int fd;
 	struct bap_data *bap_data = setup->data;
 
+	if (!setup && !setup->stream)
+		return;
+
 	DBG("BIG Sync completed");
+
+	stream = setup->stream;
 
 	/* The order of the BIS fds notified from kernel corresponds
 	 * to the order of the BISes that were enqueued before
