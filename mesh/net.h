@@ -14,6 +14,7 @@
 
 struct mesh_io;
 struct mesh_node;
+struct gatt_proxy_svc;
 
 #define DEV_ID	0
 
@@ -228,6 +229,7 @@ uint16_t mesh_net_get_address(struct mesh_net *net);
 bool mesh_net_register_unicast(struct mesh_net *net,
 					uint16_t unicast, uint8_t num_ele);
 void net_local_beacon(uint32_t key_id, uint32_t ivi, bool ivu, bool kr);
+void mesh_net_send_all_beacons_gatt(void);
 bool mesh_net_set_snb_mode(struct mesh_net *net, bool enable);
 bool mesh_net_set_mpb_mode(struct mesh_net *net, bool enabla, uint8_t period,
 								bool init);
@@ -249,6 +251,8 @@ bool mesh_net_get_key(struct mesh_net *net, bool new_key, uint16_t idx,
 							uint32_t *net_key_id);
 bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io);
 struct mesh_io *mesh_net_detach(struct mesh_net *net);
+void mesh_net_attach_gatt(struct gatt_proxy_svc *gatt_proxy);
+void mesh_net_detach_gatt(struct gatt_proxy_svc *gatt_proxy);
 struct l_queue *mesh_net_get_app_keys(struct mesh_net *net);
 
 void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,

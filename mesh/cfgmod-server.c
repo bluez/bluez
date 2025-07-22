@@ -405,7 +405,8 @@ static uint16_t cfg_relay_msg(struct mesh_node *node, const uint8_t *pkt,
 	if (opcode == OP_CONFIG_RELAY_SET) {
 		count = (pkt[1] & 0x7) + 1;
 		interval = ((pkt[1] >> 3) + 1) * 10;
-		node_relay_mode_set(node, !!pkt[0], count, interval);
+		node_relay_mode_set(node, pkt[0] == MESH_MODE_ENABLED, count,
+								interval);
 	}
 
 	n = mesh_model_opcode_set(OP_CONFIG_RELAY_STATUS, msg);
@@ -879,7 +880,7 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_CONFIG_RELAY_SET:
-		if (size != 2 || pkt[0] > 0x01)
+		if (size != 2 || pkt[0] > MESH_MODE_ENABLED)
 			return true;
 		/* Fall Through */
 
@@ -903,10 +904,10 @@ static bool cfg_srv_pkt(uint16_t src, uint16_t dst, uint16_t app_idx,
 		break;
 
 	case OP_CONFIG_PROXY_SET:
-		if (size != 1 || pkt[0] > 0x01)
+		if (size != 1 || pkt[0] > MESH_MODE_ENABLED)
 			return true;
 
-		node_proxy_mode_set(node, !!pkt[0]);
+		node_proxy_mode_set(node, pkt[0] == MESH_MODE_ENABLED);
 		/* Fall Through */
 
 	case OP_CONFIG_PROXY_GET:

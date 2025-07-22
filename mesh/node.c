@@ -209,7 +209,8 @@ uint8_t *node_uuid_get(struct mesh_node *node)
 static void set_defaults(struct mesh_node *node)
 {
 	node->lpn = MESH_MODE_UNSUPPORTED;
-	node->proxy = MESH_MODE_UNSUPPORTED;
+	node->proxy = (mesh_proxy_supported()) ? MESH_MODE_DISABLED :
+							MESH_MODE_UNSUPPORTED;
 	node->mpb = MESH_MODE_DISABLED;
 	node->mpb_period = NET_MPB_REFRESH_DEFAULT;
 	node->friend = (mesh_friendship_supported()) ? MESH_MODE_DISABLED :
