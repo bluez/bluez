@@ -37,6 +37,7 @@ void bthost_set_send_handler(struct bthost *bthost, bthost_send_func handler,
 							void *user_data);
 
 void bthost_set_acl_mtu(struct bthost *bthost, uint16_t mtu);
+void bthost_set_iso_mtu(struct bthost *bthost, uint16_t mtu);
 
 void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len);
 

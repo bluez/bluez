@@ -257,6 +257,7 @@ struct bthost {
 	bthost_new_conn_cb new_iso_cb;
 	void *new_iso_data;
 	uint16_t acl_mtu;
+	uint16_t iso_mtu;
 	struct rfcomm_connection_data *rfcomm_conn_data;
 	struct l2cap_conn_cb_data *new_l2cap_conn_data;
 	struct rfcomm_conn_cb_data *new_rfcomm_conn_data;
@@ -297,6 +298,7 @@ struct bthost *bthost_create(void)
 	/* Set defaults */
 	bthost->io_capability = 0x03;
 	bthost->acl_mtu = UINT16_MAX;
+	bthost->iso_mtu = UINT16_MAX;
 
 	return bthost;
 }
@@ -581,6 +583,14 @@ void bthost_set_acl_mtu(struct bthost *bthost, uint16_t mtu)
 		return;
 
 	bthost->acl_mtu = mtu;
+}
+
+void bthost_set_iso_mtu(struct bthost *bthost, uint16_t mtu)
+{
+	if (!bthost)
+		return;
+
+	bthost->iso_mtu = mtu;
 }
 
 static void queue_command(struct bthost *bthost, const struct iovec *iov,
@@ -912,52 +922,80 @@ void bthost_send_sco(struct bthost *bthost, uint16_t handle, uint8_t pkt_status,
 
 static void send_iso(struct bthost *bthost, uint16_t handle, bool ts,
 			uint16_t sn, uint32_t timestamp, uint8_t pkt_status,
-			const struct iovec *iov, int iovcnt)
+			const struct iovec *iov, unsigned int iovcnt)
 {
 	struct bt_hci_iso_hdr iso_hdr;
 	struct bt_hci_iso_data_start data_hdr;
 	uint8_t pkt = BT_H4_ISO_PKT;
 	struct iovec pdu[4 + iovcnt];
-	uint16_t flags, dlen;
-	int i, len = 0;
+	struct iovec payload[2 + iovcnt];
+	uint16_t payload_mtu = bthost->iso_mtu - sizeof(iso_hdr);
+	int len = 0, packet = 0;
+	unsigned int i;
 
 	for (i = 0; i < iovcnt; i++) {
-		pdu[4 + i].iov_base = iov[i].iov_base;
-		pdu[4 + i].iov_len = iov[i].iov_len;
+		payload[2 + i].iov_base = iov[i].iov_base;
+		payload[2 + i].iov_len = iov[i].iov_len;
 		len += iov[i].iov_len;
-	}
-
-	pdu[0].iov_base = &pkt;
-	pdu[0].iov_len = sizeof(pkt);
-
-	flags = iso_flags_pack(0x02, ts);
-	dlen = len + sizeof(data_hdr);
-	if (ts)
-		dlen += sizeof(timestamp);
-
-	iso_hdr.handle = acl_handle_pack(handle, flags);
-	iso_hdr.dlen = cpu_to_le16(dlen);
-
-	pdu[1].iov_base = &iso_hdr;
-	pdu[1].iov_len = sizeof(iso_hdr);
-
-	if (ts) {
-		timestamp = cpu_to_le32(timestamp);
-
-		pdu[2].iov_base = &timestamp;
-		pdu[2].iov_len = sizeof(timestamp);
-	} else {
-		pdu[2].iov_base = NULL;
-		pdu[2].iov_len = 0;
 	}
 
 	data_hdr.sn = cpu_to_le16(sn);
 	data_hdr.slen = cpu_to_le16(iso_data_len_pack(len, pkt_status));
 
-	pdu[3].iov_base = &data_hdr;
-	pdu[3].iov_len = sizeof(data_hdr);
+	if (ts) {
+		timestamp = cpu_to_le32(timestamp);
 
-	send_packet(bthost, pdu, 4 + iovcnt);
+		payload[0].iov_base = &timestamp;
+		payload[0].iov_len = sizeof(timestamp);
+		len += sizeof(timestamp);
+	} else {
+		payload[0].iov_base = NULL;
+		payload[0].iov_len = 0;
+	}
+	iovcnt++;
+
+	payload[1].iov_base = &data_hdr;
+	payload[1].iov_len = sizeof(data_hdr);
+	len += sizeof(data_hdr);
+	iovcnt++;
+
+	/* ISO fragmentation */
+
+	do {
+		unsigned int pdu_iovcnt;
+		uint16_t iso_len, pb, flags;
+
+		if (packet == 0 && len <= payload_mtu)
+			pb = 0x02;
+		else if (packet == 0)
+			pb = 0x00;
+		else if (len <= payload_mtu)
+			pb = 0x03;
+		else
+			pb = 0x01;
+
+		flags = iso_flags_pack(pb, ts);
+		iso_len = len <= payload_mtu ? len : payload_mtu;
+
+		iso_hdr.handle = acl_handle_pack(handle, flags);
+		iso_hdr.dlen = cpu_to_le16(iso_len);
+
+		pdu[0].iov_base = &pkt;
+		pdu[0].iov_len = sizeof(pkt);
+
+		pdu[1].iov_base = &iso_hdr;
+		pdu[1].iov_len = sizeof(iso_hdr);
+
+		iov_pull_n(payload, &iovcnt, &pdu[2], &pdu_iovcnt,
+						ARRAY_SIZE(pdu) - 2, iso_len);
+		pdu_iovcnt += 2;
+
+		send_packet(bthost, pdu, pdu_iovcnt);
+
+		packet++;
+		ts = false;
+		len -= iso_len;
+	} while (len);
 }
 
 void bthost_send_iso(struct bthost *bthost, uint16_t handle, bool ts,
