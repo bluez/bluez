@@ -265,6 +265,19 @@ static int xradio_post(int fd, struct uart_t *u, struct termios *ti)
 	return xr_post(fd, u, ti);
 }
 
+// add sprd Bluetooth init and post function.
+static int sprd_init(int fd, struct uart_t *u, struct termios *ti)
+{
+	fprintf(stderr, "SPRD Bluetooth init uart with init speed:%d, final_speed:%d, type:HCI UART %s\n", u->init_speed, u->speed, (u->proto == HCI_UART_H4)? "H4":"H5" );
+	return sprd_config_init(fd, u, ti);
+}
+
+static int sprd_post(int fd, struct uart_t *u, struct termios *ti)
+{
+	fprintf(stderr, "SPRD Bluetooth post process\n");
+	return sprd_config_post(fd, u, ti);
+}
+
 static int read_check(int fd, void *buf, int count)
 {
 	int res;
@@ -1098,6 +1111,10 @@ struct uart_t uart[] = {
 
 	/* XRadio controller UART */
 	{ "xradio",     0x0000, 0x0000, HCI_UART_H4, 115200, 1500000, 0, DISABLE_PM, NULL, xradio_init, xradio_post},
+
+	/* SPRD controller UART */
+	{  "sprd",      0x0000, 0x0000, 0, 115200, 1500000, FLOW_CTL, DISABLE_PM, NULL, sprd_init, sprd_post},
+
 
 	{ NULL, 0 }
 };

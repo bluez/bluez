@@ -80,3 +80,6 @@ int bcm43xx_init(int fd, int def_speed, int speed, struct termios *ti,
 int xr_init(int fd, struct uart_t *u, struct termios *ti);
 int xr_post(int fd, struct uart_t *u, struct termios *ti);
 
+// add sprd init and post process for sprd Bluetooth chip (UWE5622)
+int sprd_config_init(int fd, struct uart_t *u, struct termios *ti);
+int sprd_config_post(int fd, struct uart_t *u, struct termios *ti);
