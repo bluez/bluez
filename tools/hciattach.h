@@ -40,6 +40,21 @@
 #define HCI_UART_EXT_CONFIG	4
 #define HCI_UART_VND_DETECT	5
 
+
+struct uart_t {
+	char *type;
+	int  m_id;
+	int  p_id;
+	int  proto;
+	int  init_speed;
+	int  speed;
+	int  flags;
+	int  pm;
+	char *bdaddr;
+	int  (*init) (int fd, struct uart_t *u, struct termios *ti);
+	int  (*post) (int fd, struct uart_t *u, struct termios *ti);
+};
+
 #ifndef FIRMWARE_DIR
 #define FIRMWARE_DIR "/etc/firmware"
 #endif

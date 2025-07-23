@@ -39,20 +39,6 @@
 
 #include "hciattach.h"
 
-struct uart_t {
-	char *type;
-	int  m_id;
-	int  p_id;
-	int  proto;
-	int  init_speed;
-	int  speed;
-	int  flags;
-	int  pm;
-	char *bdaddr;
-	int  (*init) (int fd, struct uart_t *u, struct termios *ti);
-	int  (*post) (int fd, struct uart_t *u, struct termios *ti);
-};
-
 #define FLOW_CTL	0x0001
 #define AMP_DEV		0x0002
 #define ENABLE_PM	1
