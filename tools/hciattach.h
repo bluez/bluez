@@ -9,6 +9,7 @@
  */
 
 #include <termios.h>
+#include <lib/bluetooth.h>
 
 #ifndef N_HCI
 #define N_HCI	15
