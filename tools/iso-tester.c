@@ -1013,6 +1013,12 @@ static const struct iovec send_48_2_1 = {
 	.iov_len = sizeof(data_48_2_1),
 };
 
+static const uint8_t data_large[512] = { [0 ... 511] = 0xff };
+static const struct iovec send_large = {
+	.iov_base = (void *)data_large,
+	.iov_len = sizeof(data_large),
+};
+
 static const struct iso_client_data connect_16_2_1_send = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
@@ -1049,6 +1055,13 @@ static const struct iso_client_data listen_16_2_1_recv = {
 	.server = true,
 };
 
+static const struct iso_client_data listen_16_2_1_recv_frag = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.recv = &send_large,
+	.server = true,
+};
+
 static const struct iso_client_data listen_16_2_1_recv_ts = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
@@ -1080,6 +1093,26 @@ static const struct iso_client_data listen_16_2_1_recv_rx_timestamping = {
 	.server = true,
 	.so_timestamping = (SOF_TIMESTAMPING_SOFTWARE |
 					SOF_TIMESTAMPING_RX_SOFTWARE),
+};
+
+static const struct iso_client_data listen_16_2_1_recv_hw_timestamping = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+	.ts = true,
+	.so_timestamping = (SOF_TIMESTAMPING_RAW_HARDWARE |
+					SOF_TIMESTAMPING_RX_HARDWARE),
+};
+
+static const struct iso_client_data listen_16_2_1_recv_frag_hw_timestamping = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.recv = &send_large,
+	.server = true,
+	.ts = true,
+	.so_timestamping = (SOF_TIMESTAMPING_RAW_HARDWARE |
+					SOF_TIMESTAMPING_RX_HARDWARE),
 };
 
 static const struct iso_client_data defer_16_2_1 = {
@@ -2247,8 +2280,10 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 		}
 	}
 
-	if (isodata->so_timestamping & SOF_TIMESTAMPING_RX_SOFTWARE)
-		rx_timestamp_check(&msg);
+	if (rx_timestamp_check(&msg, isodata->so_timestamping, 1000) < 0) {
+		tester_test_failed();
+		return FALSE;
+	}
 
 	if (data->step) {
 		data->step--;
@@ -2290,7 +2325,7 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 
 	count = isodata->pkt_seqnum ? 2 : 1;
 	for (j = 0; j < count; ++j) {
-		bthost_send_iso(host, data->handle, isodata->ts, sn++, 0,
+		bthost_send_iso(host, data->handle, isodata->ts, sn++, j + 1,
 					isodata->pkt_status, isodata->recv, 1);
 		data->step++;
 	}
@@ -3718,6 +3753,10 @@ int main(int argc, char *argv[])
 	test_iso("ISO Receive - Success", &listen_16_2_1_recv, setup_powered,
 							test_listen);
 
+	test_iso("ISO Receive Fragmented - Success", &listen_16_2_1_recv_frag,
+							setup_powered,
+							test_listen);
+
 	test_iso("ISO Receive Timestamped - Success", &listen_16_2_1_recv_ts,
 							setup_powered,
 							test_listen);
@@ -3733,6 +3772,14 @@ int main(int argc, char *argv[])
 	test_iso("ISO Receive - RX Timestamping",
 					&listen_16_2_1_recv_rx_timestamping,
 					setup_powered, test_listen);
+
+	test_iso("ISO Receive - HW Timestamping",
+					&listen_16_2_1_recv_hw_timestamping,
+					setup_powered, test_listen);
+
+	test_iso("ISO Receive Fragmented - HW Timestamping",
+				&listen_16_2_1_recv_frag_hw_timestamping,
+				setup_powered, test_listen);
 
 	test_iso("ISO Defer - Success", &defer_16_2_1, setup_powered,
 							test_defer);

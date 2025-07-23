@@ -308,7 +308,7 @@ static struct hciemu_client *hciemu_client_new(struct hciemu *hciemu,
 {
 	struct hciemu_client *client;
 	int sv[2];
-	uint16_t mtu;
+	uint16_t acl_mtu, iso_mtu;
 
 	client = new0(struct hciemu_client, 1);
 	if (!client)
@@ -343,8 +343,9 @@ static struct hciemu_client *hciemu_client_new(struct hciemu *hciemu,
 	client->host_source = create_source_bthost(sv[1], client->host);
 	client->start_source = g_idle_add(start_host, client);
 
-	btdev_get_mtu(client->dev, &mtu, NULL, NULL);
-	bthost_set_acl_mtu(client->host, mtu);
+	btdev_get_mtu(client->dev, &acl_mtu, NULL, &iso_mtu);
+	bthost_set_acl_mtu(client->host, acl_mtu);
+	bthost_set_iso_mtu(client->host, iso_mtu);
 
 	return client;
 }

@@ -204,11 +204,14 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 	return data->count - data->pos;
 }
 
-static inline int rx_timestamp_check(struct msghdr *msg)
+static inline int rx_timestamp_check(struct msghdr *msg, uint32_t flags,
+							int64_t expect_t_hw)
 {
+	bool soft_tstamp = flags & SOF_TIMESTAMPING_RX_SOFTWARE;
+	bool hw_tstamp = flags & SOF_TIMESTAMPING_RX_HARDWARE;
 	struct cmsghdr *cmsg;
 	struct timespec now;
-	int64_t t = 0;
+	int64_t t = 0, t_hw = 0;
 
 	for (cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
 		struct scm_timestamping *tss;
@@ -220,21 +223,40 @@ static inline int rx_timestamp_check(struct msghdr *msg)
 
 		tss = (struct scm_timestamping *)CMSG_DATA(cmsg);
 		t = TS_NSEC(&tss->ts[0]);
+		t_hw = TS_NSEC(&tss->ts[2]);
 		break;
 	}
+
 	if (!cmsg) {
+		if (!soft_tstamp && !hw_tstamp)
+			return 0;
 		tester_warn("RX timestamp missing");
 		return -EINVAL;
-	}
-
-	clock_gettime(CLOCK_REALTIME, &now);
-
-	if (TS_NSEC(&now) < t || TS_NSEC(&now) > t + SEC_NSEC(10)) {
-		tester_warn("RX timestamp bad time");
+	} else if (!soft_tstamp && !hw_tstamp) {
+		tester_warn("Spurious RX timestamp");
 		return -EINVAL;
 	}
 
-	tester_print("Got valid RX timestamp");
+	if (soft_tstamp) {
+		clock_gettime(CLOCK_REALTIME, &now);
+
+		if (TS_NSEC(&now) < t || TS_NSEC(&now) > t + SEC_NSEC(10)) {
+			tester_warn("Software RX timestamp bad time");
+			return -EINVAL;
+		}
+
+		tester_print("Got valid RX software timestamp");
+	}
+
+	if (hw_tstamp) {
+		if (t_hw != expect_t_hw) {
+			tester_warn("Bad hardware RX timestamp: %d != %d",
+						(int)t_hw, (int)expect_t_hw);
+			return -EINVAL;
+		}
+		tester_print("Got valid hardware RX timestamp");
+	}
+
 	return 0;
 }
 
@@ -260,7 +282,7 @@ static inline ssize_t recv_tstamp(int sk, void *buf, size_t size, bool tstamp)
 	if (ret < 0 || !tstamp)
 		return ret;
 
-	if (rx_timestamp_check(&msg)) {
+	if (rx_timestamp_check(&msg, SOF_TIMESTAMPING_RX_SOFTWARE, 0)) {
 		errno = EIO;
 		return -1;
 	}
@@ -272,7 +294,8 @@ static inline int rx_timestamping_init(int fd, int flags)
 {
 	socklen_t len = sizeof(flags);
 
-	if (!(flags & SOF_TIMESTAMPING_RX_SOFTWARE))
+	if (!(flags & (SOF_TIMESTAMPING_RX_SOFTWARE |
+						SOF_TIMESTAMPING_RX_HARDWARE)))
 		return 0;
 
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPING, &flags, len) < 0) {
