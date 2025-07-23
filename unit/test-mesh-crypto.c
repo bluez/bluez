@@ -846,8 +846,7 @@ static void check_encrypt_segment(const struct mesh_crypto_test *keys,
 				keys->net_src, keys->net_dst,
 				keys->opcode,
 				keys->segmented, key_aid,
-				keys->szmic, keys->relay, keys->seqZero,
-				seg, seg_max,
+				keys->szmic, keys->seqZero, seg, seg_max,
 				enc_msg, len,
 				packet, &packet_len);
 	} else {
@@ -856,8 +855,7 @@ static void check_encrypt_segment(const struct mesh_crypto_test *keys,
 				keys->net_src, keys->net_dst,
 				keys->opcode,
 				keys->segmented, key_aid,
-				keys->szmic, keys->relay, keys->seqZero,
-				seg, seg_max,
+				keys->szmic, keys->seqZero, seg, seg_max,
 				enc_msg, len,
 				packet, &packet_len);
 	}
@@ -1163,8 +1161,7 @@ static void check_encrypt(const struct mesh_crypto_test *keys)
 					keys->net_src, keys->net_dst,
 					keys->opcode,
 					keys->segmented, key_aid,
-					keys->szmic, keys->relay, keys->seqZero,
-					i, seg_max,
+					keys->szmic, keys->seqZero, i, seg_max,
 					enc_msg + 1, seg_len,
 					packet, &packet_len);
 		} else {
@@ -1174,8 +1171,7 @@ static void check_encrypt(const struct mesh_crypto_test *keys)
 					keys->net_src, keys->net_dst,
 					keys->opcode,
 					keys->segmented, key_aid,
-					keys->szmic, keys->relay, seqZero,
-					i, seg_max,
+					keys->szmic, seqZero, i, seg_max,
 					enc_msg + (i * 12), seg_len,
 					packet, &packet_len);
 		}
@@ -1732,8 +1728,7 @@ static void check_decrypt(const struct mesh_crypto_test *keys)
 				keys->net_dst, net_op,
 				keys->segmented,
 				keys->key_aid | (keys->akf ? KEY_ID_AKF : 0),
-				keys->szmic, keys->relay, seqZero,
-				i, seg_max,
+				keys->szmic, seqZero, i, seg_max,
 				payload + hdr_len, payload_len - hdr_len,
 				packet, &pkt_len);
 		verify_data("TransportData", 9, keys->trans_pkt[i], packet + 9,
@@ -1869,7 +1864,7 @@ static void check_beacon(const struct mesh_crypto_test *keys)
 		l_put_be32(keys->iv_index, beacon + 15);
 		mesh_crypto_aes_ccm_encrypt(random, enc_key, NULL, 0,
 							beacon + 14, 5,
-							beacon + 14, NULL, 8);
+							beacon + 14, 8);
 		verify_data("BeaconMIC", 0, keys->beacon_cmac, beacon + 19, 8);
 		verify_data("PrivBeacon", 0, keys->beacon, beacon, 27);
 	}

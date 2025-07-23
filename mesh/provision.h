@@ -91,7 +91,7 @@ struct mesh_prov_node_info {
 
 typedef bool (*mesh_prov_acceptor_complete_func_t)(void *user_data,
 					uint8_t status,
-					struct mesh_prov_node_info *info);
+					const struct mesh_prov_node_info *info);
 
 typedef void (*mesh_prov_initiator_start_func_t)(void *user_data, int err);
 
@@ -100,7 +100,7 @@ typedef bool (*mesh_prov_initiator_data_req_func_t)(void *user_data,
 
 typedef bool (*mesh_prov_initiator_complete_func_t)(void *user_data,
 					uint8_t status,
-					struct mesh_prov_node_info *info);
+					const struct mesh_prov_node_info *info);
 
 typedef void (*mesh_prov_initiator_scan_result_t)(void *user_data,
 					uint16_t server, bool extended,

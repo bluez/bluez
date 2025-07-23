@@ -447,7 +447,7 @@ static ssize_t backup_write(void *object, const void *buf, size_t count)
 	if (obj->fd != -1) {
 		ret = write(obj->fd, buf, count);
 
-		DBG("cmd = %s, WRITTING", obj->cmd);
+		DBG("cmd = %s, WRITING", obj->cmd);
 
 		if (ret < 0) {
 			error("backup: cmd = %s", obj->cmd);

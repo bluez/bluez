@@ -2327,6 +2327,11 @@ typedef struct {
 #define acl_handle(h)		(h & 0x0fff)
 #define acl_flags(h)		(h >> 12)
 
+/* ISO handle and flags pack/unpack */
+#define iso_flags_pb(f)		(f & 0x0003)
+#define iso_flags_ts(f)		((f >> 2) & 0x0001)
+#define iso_flags_pack(pb, ts)	((pb & 0x03) | ((ts & 0x01) << 2))
+
 #endif /* _NO_HCI_DEFS */
 
 /* HCI Socket options */

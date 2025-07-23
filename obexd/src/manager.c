@@ -40,7 +40,7 @@
 #define AGENT_INTERFACE OBEXD_SERVICE ".Agent1"
 #define OBEX_ERROR_REJECT      "org.bluez.obex.Error.Rejected"
 
-#define TIMEOUT 60*1000 /* Timeout for user response (miliseconds) */
+#define TIMEOUT 60*1000 /* Timeout for user response (milliseconds) */
 
 struct agent {
 	char *bus_name;

@@ -50,7 +50,7 @@
 
 /* FIXME: Should this one be defined here? */
 #define SHORT_PAYLOAD_SIZE 127
-/* Used for setting the EA field in different packets, really neccessary? */
+/* Used for setting the EA field in different packets, really necessary? */
 #define EA 1
 /* Yes the FCS size is only one byte */
 #define FCS_SIZE 1
@@ -183,7 +183,7 @@ typedef struct rpn_values {
 #error "Unknown byte order"
 #endif
 
-/* Typedefinitions of stuctures used for creating and parsing packets, for a
+/* Typedefinitions of structures used for creating and parsing packets, for a
  * further description of the structures please se the bluetooth core
  * specification part F:1 and the ETSI TS 07.10 specification  */
 

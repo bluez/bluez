@@ -23,6 +23,7 @@
 #include "lib/bluetooth.h"
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
+#include "src/shared/ad.h"
 #include "src/shared/mgmt.h"
 
 #include "mesh/mesh-defs.h"
@@ -60,7 +61,7 @@ struct tx_pkt {
 	struct mesh_io_send_info	info;
 	bool				delete;
 	uint8_t				len;
-	uint8_t				pkt[30];
+	uint8_t				pkt[MESH_AD_MAX_LEN];
 };
 
 struct tx_pattern {
@@ -138,12 +139,13 @@ static void filter_timeout(struct l_timeout *timeout, void *user_data)
 		filter = l_queue_peek_tail(pvt->dup_filters);
 	}
 
+	pvt->dup_timeout = NULL;
+
 done:
 	l_timeout_remove(timeout);
-	pvt->dup_timeout = NULL;
 }
 
-/* Ignore consequtive duplicate advertisements within timeout period */
+/* Ignore consecutive duplicate advertisements within timeout period */
 static bool filter_dups(const uint8_t *addr, const uint8_t *adv,
 							uint32_t instant)
 {
@@ -154,7 +156,7 @@ static bool filter_dups(const uint8_t *addr, const uint8_t *adv,
 	if (!addr)
 		addr = zero_addr;
 
-	if (adv[1] == MESH_AD_TYPE_PROVISION) {
+	if (adv[1] == BT_AD_MESH_PROV) {
 		filter = l_queue_find(pvt->dup_filters, find_by_adv, adv);
 
 		if (!filter && addr != zero_addr)
@@ -213,7 +215,7 @@ static void process_rx(uint16_t index, struct mesh_io_private *pvt, int8_t rssi,
 	};
 
 	/* Accept all traffic except beacons from any controller */
-	if (index != pvt->send_idx && data[0] == MESH_AD_TYPE_BEACON)
+	if (index != pvt->send_idx && data[0] == BT_AD_MESH_BEACON)
 		return;
 
 	print_packet("RX", data, len);
@@ -261,8 +263,7 @@ static void event_device_found(uint16_t index, uint16_t length,
 		if (len > adv_len)
 			break;
 
-		if (adv[1] >= MESH_AD_TYPE_PROVISION &&
-					adv[1] <= MESH_AD_TYPE_BEACON)
+		if (adv[1] >= BT_AD_MESH_PROV && adv[1] <= BT_AD_MESH_BEACON)
 			process_rx(index, pvt, ev->rssi, instant, addr,
 							adv + 1, adv[0]);
 
@@ -301,8 +302,8 @@ static bool find_active(const void *a, const void *b)
 	/* Mesh specific AD types do *not* require active scanning,
 	 * so do not turn on Active Scanning on their account.
 	 */
-	if (rx_reg->filter[0] < MESH_AD_TYPE_PROVISION ||
-			rx_reg->filter[0] > MESH_AD_TYPE_BEACON)
+	if (rx_reg->filter[0] < BT_AD_MESH_PROV ||
+					rx_reg->filter[0] > BT_AD_MESH_BEACON)
 		return true;
 
 	return false;
@@ -330,8 +331,8 @@ static void ctl_up(uint8_t status, uint16_t length,
 	int index = L_PTR_TO_UINT(user_data);
 	uint16_t len;
 	struct mgmt_cp_set_mesh *mesh;
-	uint8_t mesh_ad_types[] = { MESH_AD_TYPE_NETWORK,
-				MESH_AD_TYPE_BEACON, MESH_AD_TYPE_PROVISION };
+	uint8_t mesh_ad_types[] = { BT_AD_MESH_DATA, BT_AD_MESH_BEACON,
+							BT_AD_MESH_PROV };
 
 	l_debug("HCI%d is up status: %d", index, status);
 	if (status)
@@ -542,7 +543,7 @@ static void send_pkt(struct mesh_io_private *pvt, struct tx_pkt *tx,
 	memcpy(send->adv_data + 1, tx->pkt, tx->len);
 
 	/* Filter looped back Provision packets */
-	if (tx->pkt[0] == MESH_AD_TYPE_PROVISION)
+	if (tx->pkt[0] == BT_AD_MESH_PROV)
 		filter_dups(NULL, send->adv_data, get_instant());
 
 	mesh_mgmt_send(MGMT_OP_MESH_SEND, index,
@@ -580,7 +581,7 @@ static void tx_to(struct l_timeout *timeout, void *user_data)
 		count = 1;
 	}
 
-	tx->delete = !!(count == 1);
+	tx->delete = (count == 1);
 
 	send_pkt(pvt, tx, ms);
 

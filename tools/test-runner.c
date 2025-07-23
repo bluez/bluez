@@ -57,6 +57,7 @@ static int num_devs = 0;
 static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
 static char *audio_server;
+static char *usb_dev;
 
 static const char *qemu_table[] = {
 	"qemu-system-x86_64",
@@ -288,7 +289,8 @@ static void start_qemu(void)
 				testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
-				(sizeof(char *) * (6 + (num_devs * 4))));
+			(sizeof(char *) * (6 + (num_devs * 4))) +
+			(sizeof(char *) * (usb_dev ? 4 : 0)));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
 
 	pos = (sizeof(qemu_argv) / sizeof(char *)) - 1;
@@ -324,6 +326,13 @@ static void start_qemu(void)
 		argv[pos++] = chrdev;
 		argv[pos++] = "-device";
 		argv[pos++] = serdev;
+	}
+
+	if (usb_dev) {
+		argv[pos++] = "-device";
+		argv[pos++] = "qemu-xhci";
+		argv[pos++] = "-device";
+		argv[pos++] = usb_dev;
 	}
 
 	argv[pos] = NULL;
@@ -1183,6 +1192,7 @@ static void usage(void)
 		"\t-l, --emulator         Start btvirt\n"
 		"\t-A, --audio[=path]     Start audio server\n"
 		"\t-u, --unix [path]      Provide serial device\n"
+		"\t-U, --usb [qemu_args]  Provide USB device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-H, --qemu-host-cpu    Use host CPU (requires KVM support)\n"
 		"\t-k, --kernel <image>   Kernel image (bzImage)\n"
@@ -1202,6 +1212,7 @@ static const struct option main_options[] = {
 	{ "qemu-host-cpu", no_argument, NULL, 'H' },
 	{ "kernel",  required_argument, NULL, 'k' },
 	{ "audio",   optional_argument, NULL, 'A' },
+	{ "usb",     required_argument, NULL, 'U' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -1221,8 +1232,8 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "aubdslmq:Hk:A::vh", main_options,
-								NULL);
+		opt = getopt_long(argc, argv, "aubdslmq:Hk:A::U:vh",
+						main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -1260,6 +1271,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'A':
 			audio_server = optarg ? optarg : "/usr/bin/pipewire";
+			break;
+		case 'U':
+			usb_dev = optarg;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);

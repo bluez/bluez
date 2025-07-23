@@ -242,7 +242,7 @@ For a working system, certain configuration options need to be enabled:
 
 		Enable deprecated tools
 
-		By defauld all tools that are no longer maintained are
+		By default all tools that are no longer maintained are
 		disabled. This option can be used to enable them.
 
 		It is not recommended to enable this option for production

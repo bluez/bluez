@@ -3900,6 +3900,24 @@ fail:
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static void custom_metadata(const char *input, void *user_data)
+{
+	struct codec_preset *p = user_data;
+	struct iovec *meta = (void *)&p->meta;
+
+	if (!strcasecmp(input, "n") || !strcasecmp(input, "no"))
+		goto done;
+
+	meta->iov_base = str2bytearray((void *)input, &meta->iov_len);
+	if (!meta->iov_base) {
+		bt_shell_printf("Invalid metadata %s\n", input);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+done:
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
 static void custom_delay(const char *input, void *user_data)
 {
 	struct codec_preset *p = user_data;
@@ -3916,7 +3934,8 @@ static void custom_delay(const char *input, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	bt_shell_prompt_input("Metadata", "Enter Metadata (value/no):",
+				custom_metadata, user_data);
 }
 
 static void custom_latency(const char *input, void *user_data)
@@ -5340,7 +5359,7 @@ static void set_links_cb(const DBusError *error, void *user_data)
 	/* Enqueue link to mark that it is ready to be selected */
 	queue_push_tail(args->selecting, link);
 
-	/* Continue setting the remanining links */
+	/* Continue setting the remaining links */
 	transport_set_links(args);
 }
 
@@ -5836,6 +5855,51 @@ static void cmd_volume_transport(int argc, char *argv[])
 	}
 }
 
+static void set_metadata_cb(const DBusError *error, void *user_data)
+{
+	if (dbus_error_is_set(error)) {
+		bt_shell_printf("Failed to set Metadata: %s\n", error->name);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Changing Metadata succeeded\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_metadata_transport(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	struct iovec iov;
+
+	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Transport %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+
+	if (argc == 2) {
+		print_property(proxy, "Metadata");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	iov.iov_base = str2bytearray((char *) argv[2], &iov.iov_len);
+	if (!iov.iov_base) {
+		bt_shell_printf("Invalid argument: %s\n", argv[2]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!g_dbus_proxy_set_property_array(proxy, "Metadata", DBUS_TYPE_BYTE,
+						iov.iov_base, iov.iov_len,
+						set_metadata_cb,
+						NULL, NULL)) {
+		bt_shell_printf("Failed release transport\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static const struct bt_shell_menu transport_menu = {
 	.name = "transport",
 	.desc = "Media Transport Submenu",
@@ -5867,6 +5931,9 @@ static const struct bt_shell_menu transport_menu = {
 						transport_generator },
 	{ "unselect",    "<transport> [transport1...]", cmd_unselect_transport,
 						"Unselect Transport",
+						transport_generator },
+	{ "metadata",    "<transport> [value...]", cmd_metadata_transport,
+						"Get/Set Transport Metadata",
 						transport_generator },
 	{} },
 };

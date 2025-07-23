@@ -10,6 +10,9 @@
 
 #define BEACON_TYPE_SNB		0x01
 #define BEACON_TYPE_MPB		0x02
+#define BEACON_LEN_SNB		23
+#define BEACON_LEN_MPB		28
+#define BEACON_LEN_MAX		BEACON_LEN_MPB
 #define KEY_REFRESH		0x01
 #define IV_INDEX_UPDATE		0x02
 #define NET_MPB_REFRESH_DEFAULT	60
@@ -29,8 +32,6 @@ uint32_t net_key_beacon(const uint8_t *data, uint16_t len, uint32_t *ivi,
 							bool *ivu, bool *kr);
 bool net_key_snb_check(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 								uint64_t cmac);
-bool net_key_snb_compose(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
-								uint8_t *snb);
 void net_key_beacon_seen(uint32_t id);
 bool net_key_beacon_refresh(uint32_t id, uint32_t iv_index, bool kr, bool ivu,
 								bool force);

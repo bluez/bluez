@@ -259,7 +259,7 @@ Methods:
 				message as one-segment payload. If not present,
 				the default setting is "false".
 
-		The data parameter is an outgoing message to be encypted by the
+		The data parameter is an outgoing message to be encrypted by the
 		bluetooth-meshd daemon and sent on.
 
 		Possible errors:
@@ -298,7 +298,7 @@ Methods:
 				message as one-segment payload. If not present,
 				the default setting is "false".
 
-		The data parameter is an outgoing message to be encypted by the
+		The data parameter is an outgoing message to be encrypted by the
 		meshd daemon and sent on.
 
 		Possible errors:
@@ -392,7 +392,7 @@ Methods:
 				Bluetooth SIG. This key should only exist when
 				publishing on a Vendor defined model.
 
-		The data parameter is an outgoing message to be encypted by the
+		The data parameter is an outgoing message to be encrypted by the
 		meshd daemon and sent on.
 
 		Since only one Publish record may exist per element-model, the
@@ -759,7 +759,7 @@ Methods:
 		assigned to this remote node.
 
 		The device_key parameter is the access layer key that will be
-		will used to decrypt privledged messages from this remote node.
+		used to decrypt privileged messages from this remote node.
 
 		This call affects the local bluetooth-meshd key database only.
 
@@ -1018,7 +1018,7 @@ Properties:
 		Element index. It is required that the application follows
 		sequential numbering scheme for the elements, starting with 0.
 
-	array{(uint16 id, dict caps)} Models [read-only]
+	array{(uint16 id, dict options)} Models [read-only]
 
 		An array of SIG Models:
 
@@ -1109,7 +1109,7 @@ Object path	freely definable
 		unprovsioned devices.
 
 		The rssi parameter is a signed, normalized measurement of the
-		signal strength of the recieved unprovisioned beacon.
+		signal strength of the received unprovisioned beacon.
 
 		The data parameter is a variable length byte array, that may
 		have 1, 2 or 3 distinct fields contained in it including the 16
@@ -1131,8 +1131,8 @@ Object path	freely definable
 			received data will be returned here.
 
 		If a beacon with a UUID that has already been reported is
-		recieved by the daemon, it will be silently discarded unless it
-		was recieved at a higher rssi power level.
+		received by the daemon, it will be silently discarded unless it
+		was received at a higher rssi power level.
 
 
 	uint16 net_index, uint16 unicast RequestProvData(uint8 count)

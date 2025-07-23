@@ -107,6 +107,7 @@ struct bap_transport {
 	bool			linked;
 	struct bt_bap_qos	qos;
 	guint			resume_id;
+	struct iovec		*meta;
 };
 
 struct media_transport_ops {
@@ -1301,6 +1302,49 @@ static gboolean get_metadata(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static void bap_metadata_complete(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	GDBusPendingPropertySet id = PTR_TO_UINT(user_data);
+
+	if (code)
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".Failed",
+				"Unable to set metadata");
+	else
+		g_dbus_pending_property_success(id);
+}
+
+static void set_metadata(const GDBusPropertyTable *property,
+			DBusMessageIter *iter, GDBusPendingPropertySet id,
+			void *data)
+{
+	struct media_transport *transport = data;
+	struct bap_transport *bap = transport->data;
+	DBusMessageIter array;
+	struct iovec iov;
+	int ret;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Expected ARRAY");
+		return;
+	}
+
+	dbus_message_iter_recurse(iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &iov.iov_base,
+					(int *)&iov.iov_len);
+
+	ret = bt_bap_stream_metadata(bap->stream, &iov, bap_metadata_complete,
+				     UINT_TO_PTR(id));
+	if (!ret)
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Invalid metadata");
+}
+
 static gboolean links_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_transport *transport = data;
@@ -1422,7 +1466,7 @@ static const GDBusPropertyTable transport_bap_uc_properties[] = {
 	{ "QoS", "a{sv}", get_ucast_qos, NULL, qos_ucast_exists },
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
 	{ "Location", "u", get_location },
-	{ "Metadata", "ay", get_metadata },
+	{ "Metadata", "ay", get_metadata, set_metadata },
 	{ "Links", "ao", get_links, NULL, links_exists },
 	{ "Volume", "q", get_volume, set_volume, volume_exists },
 	{ }
@@ -1957,7 +2001,6 @@ static guint transport_bap_resume(struct media_transport *transport,
 				struct media_owner *owner)
 {
 	struct bap_transport *bap = transport->data;
-	struct iovec *meta;
 	guint id;
 
 	if (!bap->stream)
@@ -1977,8 +2020,7 @@ static guint transport_bap_resume(struct media_transport *transport,
 		return bap->resume_id;
 	}
 
-	meta = bt_bap_stream_get_metadata(bap->stream);
-	id = bt_bap_stream_enable(bap->stream, bap->linked, meta,
+	id = bt_bap_stream_enable(bap->stream, bap->linked, NULL,
 					bap_enable_complete, owner);
 	if (!id)
 		return 0;
@@ -2100,6 +2142,26 @@ static void transport_bap_set_state(struct media_transport *transport,
 							UINT_TO_PTR(state));
 }
 
+static void bap_metadata_changed(struct media_transport *transport)
+{
+	struct bap_transport *bap = transport->data;
+	struct iovec *meta;
+
+	/* Update metadata if it has changed */
+	meta = bt_bap_stream_get_metadata(bap->stream);
+
+	DBG("stream %p: metadata %p old %p", bap->stream, meta, bap->meta);
+
+	if (util_iov_memcmp(meta, bap->meta)) {
+		util_iov_free(bap->meta, 1);
+		bap->meta = util_iov_dup(meta, 1);
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						transport->path,
+						MEDIA_TRANSPORT_INTERFACE,
+						"Metadata");
+	}
+}
+
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 				uint8_t new_state, void *user_data)
 {
@@ -2138,11 +2200,16 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_ENABLING:
 		if (!bt_bap_stream_get_io(stream))
 			return;
+
+		bap_metadata_changed(transport);
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
 		if ((bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE) ||
 			(bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK))
 			bap_update_bcast_qos(transport);
+
+		bap_metadata_changed(transport);
+		transport_update_playing(transport, TRUE);
 		break;
 	case BT_BAP_STREAM_STATE_RELEASING:
 		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
@@ -2212,6 +2279,7 @@ static void transport_bap_destroy(void *data)
 {
 	struct bap_transport *bap = data;
 
+	util_iov_free(bap->meta, 1);
 	bt_bap_state_unregister(bt_bap_stream_get_session(bap->stream),
 							bap->state_id);
 	free(bap);

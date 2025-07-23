@@ -16,6 +16,7 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
 #include "src/shared/ecc.h"
 
 #include "mesh/mesh-defs.h"
@@ -50,8 +51,8 @@ struct deferred_cmd {
 	uint8_t cmd[];
 };
 
-static const uint8_t pkt_filter = MESH_AD_TYPE_PROVISION;
-static const uint8_t bec_filter[] = {MESH_AD_TYPE_BEACON,
+static const uint8_t pkt_filter = BT_AD_MESH_PROV;
+static const uint8_t bec_filter[] = {BT_AD_MESH_BEACON,
 						BEACON_TYPE_UNPROVISIONED};
 
 #define MAT_REMOTE_PUBLIC	0x01
@@ -546,7 +547,7 @@ static void acp_prov_rx(void *user_data, const void *dptr, uint16_t len)
 
 			if (prov->conf_inputs.start.auth_action ==
 							PROV_ACTION_OUT_ALPHA) {
-				/* TODO: Construst NUL-term string to pass */
+				/* TODO: Construct NUL-term string to pass */
 				fail.reason = mesh_agent_display_string(
 					prov->agent, NULL, NULL, prov);
 			} else {
@@ -736,8 +737,7 @@ bool acceptor_start(uint8_t num_ele, uint8_t *uuid,
 		void *caller_data)
 {
 	struct mesh_agent_prov_caps *caps;
-	uint8_t beacon[24] = {MESH_AD_TYPE_BEACON,
-						BEACON_TYPE_UNPROVISIONED};
+	uint8_t beacon[24] = {BT_AD_MESH_BEACON, BEACON_TYPE_UNPROVISIONED};
 	uint8_t len = sizeof(beacon) - sizeof(uint32_t);
 	bool result;
 

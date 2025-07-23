@@ -141,7 +141,7 @@ backtraces, compiler errors, etc.
 
   # git config format.subjectprefix "PATCH BlueZ"
 
-7) Add a cover letter when introducing a new feature explaning what problem
+7) Add a cover letter when introducing a new feature explaining what problem
 you're trying to solve:
 
   # git format-patch --cover-letter -M origin/master -o outgoing/

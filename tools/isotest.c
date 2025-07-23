@@ -684,9 +684,9 @@ static void recv_mode(int fd, int sk, char *peer)
 
 			r = recv(sk, buf, data_size, 0);
 			if (r < 0) {
-				if (r < 0)
-					syslog(LOG_ERR, "Read failed: %s (%d)",
-							strerror(errno), errno);
+				syslog(LOG_ERR, "Read failed: %s (%d)",
+						strerror(errno), errno);
+
 				if (errno != ENOTCONN)
 					return;
 

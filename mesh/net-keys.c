@@ -16,6 +16,8 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
 #include "mesh/crypto.h"
@@ -30,7 +32,7 @@
 #define BEACON_CACHE_MAX	10
 
 struct beacon_rx {
-	uint8_t data[28];
+	uint8_t data[BEACON_LEN_MAX];
 	uint32_t id;
 	uint32_t ivi;
 	bool kr;
@@ -74,8 +76,8 @@ static struct l_queue *keys;
 static uint32_t last_flooding_id;
 
 /* To avoid re-decrypting same packet for multiple nodes, cache and check */
-static uint8_t cache_pkt[29];
-static uint8_t cache_plain[29];
+static uint8_t cache_pkt[MESH_NET_MAX_PDU_LEN];
+static uint8_t cache_plain[MESH_NET_MAX_PDU_LEN];
 static size_t cache_len;
 static size_t cache_plainlen;
 static uint32_t cache_id;
@@ -236,10 +238,7 @@ static void decrypt_net_pkt(void *a, void *b)
 
 	if (result) {
 		cache_id = key->id;
-		if (cache_plain[1] & 0x80)
-			cache_plainlen = cache_len - 8;
-		else
-			cache_plainlen = cache_len - 4;
+		cache_plainlen = cache_len;
 	}
 }
 
@@ -394,10 +393,10 @@ static bool mpb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 
 	l_getrandom(random, sizeof(random));
 	if (!mesh_crypto_aes_ccm_encrypt(random, key->pvt_key, NULL, 0,
-						b_data, 5, b_data, NULL, 8))
+						b_data, 5, b_data, 8))
 		return false;
 
-	key->mpb[0] = MESH_AD_TYPE_BEACON;
+	key->mpb[0] = BT_AD_MESH_BEACON;
 	key->mpb[1] = BEACON_TYPE_MPB;
 	memcpy(key->mpb + 2, random, 13);
 	memcpy(key->mpb + 15, b_data, 13);
@@ -419,7 +418,7 @@ static bool snb_compose(struct net_key *key, uint32_t ivi, bool kr, bool ivu)
 		return false;
 	}
 
-	key->snb[0] = MESH_AD_TYPE_BEACON;
+	key->snb[0] = BT_AD_MESH_BEACON;
 	key->snb[1] = BEACON_TYPE_SNB;
 	key->snb[2] = 0;
 
@@ -442,10 +441,10 @@ static bool match_beacon(const void *a, const void *b)
 	const uint8_t *incoming = b;
 
 	if (incoming[0] == BEACON_TYPE_MPB)
-		return !memcmp(cached->data, incoming, 27);
+		return !memcmp(cached->data, incoming, BEACON_LEN_MPB - 1);
 
 	if (incoming[0] == BEACON_TYPE_SNB)
-		return !memcmp(cached->data, incoming, 22);
+		return !memcmp(cached->data, incoming, BEACON_LEN_SNB - 1);
 
 	return false;
 }
@@ -458,10 +457,10 @@ uint32_t net_key_beacon(const uint8_t *data, uint16_t len, uint32_t *ivi,
 	uint32_t b_id, b_ivi;
 	bool b_ivu, b_kr;
 
-	if (data[1] == BEACON_TYPE_SNB && len != 23)
+	if (data[1] == BEACON_TYPE_SNB && len != BEACON_LEN_SNB)
 		return 0;
 
-	if (data[1] == BEACON_TYPE_MPB && len != 28)
+	if (data[1] == BEACON_TYPE_MPB && len != BEACON_LEN_MPB)
 		return 0;
 
 	beacon = l_queue_remove_if(beacons, match_beacon, data + 1);
@@ -527,7 +526,7 @@ static void send_network_beacon(struct net_key *key)
 			net_key_beacon_refresh(key->id, key->ivi, key->kr,
 								key->ivu, true);
 
-		mesh_io_send(NULL, &info, key->mpb, 28);
+		mesh_io_send(NULL, &info, key->mpb, BEACON_LEN_MPB);
 	}
 
 	if (key->snb_enables) {
@@ -536,7 +535,7 @@ static void send_network_beacon(struct net_key *key)
 								key->ivu, true);
 		}
 
-		mesh_io_send(NULL, &info, key->snb, 23);
+		mesh_io_send(NULL, &info, key->snb, BEACON_LEN_SNB);
 	}
 }
 
@@ -636,12 +635,12 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t ivi, bool kr, bool ivu,
 		return false;
 
 	if (key->snb_enables && !key->snb) {
-		key->snb = l_new(uint8_t, 23);
+		key->snb = l_new(uint8_t, BEACON_LEN_SNB);
 		refresh = true;
 	}
 
 	if (key->mpb_enables && !key->mpb) {
-		key->mpb = l_new(uint8_t, 28);
+		key->mpb = l_new(uint8_t, BEACON_LEN_MPB);
 		refresh = true;
 	}
 
@@ -655,14 +654,14 @@ bool net_key_beacon_refresh(uint32_t id, uint32_t ivi, bool kr, bool ivu,
 		if (!mpb_compose(key, ivi, kr, ivu))
 			return false;
 
-		print_packet("Set MPB to", key->mpb, 28);
+		print_packet("Set MPB to", key->mpb, BEACON_LEN_MPB);
 	}
 
 	if (key->snb) {
 		if (!snb_compose(key, ivi, kr, ivu))
 			return false;
 
-		print_packet("Set SNB to", key->snb, 23);
+		print_packet("Set SNB to", key->snb, BEACON_LEN_SNB);
 	}
 
 	l_debug("Set Beacon: IVI: %8.8x, IVU: %d, KR: %d", ivi, ivu, kr);

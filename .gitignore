@@ -174,17 +174,6 @@ unit/test-vcp
 unit/test-*.log
 unit/test-*.trs
 
-android/system-emulator
-android/bluetoothd
-android/avdtptest
-android/haltest
-android/android-tester
-android/ipc-tester
-android/bluetoothd-snoop
-android/test-ipc
-android/test-*.log
-android/test-*.trs
-
 compile_commands.json
 cscope.in.out
 cscope.out

@@ -301,25 +301,29 @@ static int midi_accept(struct btd_service *service)
 	/* ALSA Sequencer Client and Port Setup */
 	err = snd_seq_open(&midi->seq_handle, "default", SND_SEQ_OPEN_DUPLEX, 0);
 	if (err < 0) {
-		error("Could not open ALSA Sequencer: %s (%d)", snd_strerror(err), err);
+		error("Could not open ALSA Sequencer: %s (%d)",
+			snd_strerror(err), err);
 		return err;
 	}
 
 	err = snd_seq_nonblock(midi->seq_handle, SND_SEQ_NONBLOCK);
 	if (err < 0) {
-		error("Could not set nonblock mode: %s (%d)", snd_strerror(err), err);
+		error("Could not set nonblock mode: %s (%d)",
+			snd_strerror(err), err);
 		goto _err_handle;
 	}
 
 	err = snd_seq_set_client_name(midi->seq_handle, device_name);
 	if (err < 0) {
-		error("Could not configure ALSA client: %s (%d)", snd_strerror(err), err);
+		error("Could not configure ALSA client: %s (%d)",
+			snd_strerror(err), err);
 		goto _err_handle;
 	}
 
 	err = snd_seq_client_id(midi->seq_handle);
 	if (err < 0) {
-		error("Could retreive ALSA client: %s (%d)", snd_strerror(err), err);
+		error("Could not retrieve ALSA client: %s (%d)",
+			snd_strerror(err), err);
 		goto _err_handle;
 	}
 	midi->seq_client_id = err;
@@ -332,7 +336,8 @@ static int midi_accept(struct btd_service *service)
 	                                 SND_SEQ_PORT_TYPE_MIDI_GENERIC |
 	                                 SND_SEQ_PORT_TYPE_HARDWARE);
 	if (err < 0) {
-		error("Could not create ALSA port: %s (%d)", snd_strerror(err), err);
+		error("Could not create ALSA port: %s (%d)", snd_strerror(err),
+			err);
 		goto _err_handle;
 	}
 	midi->seq_port_id = err;

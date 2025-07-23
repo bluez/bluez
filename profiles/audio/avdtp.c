@@ -3575,10 +3575,7 @@ int avdtp_set_configuration(struct avdtp *session,
 	DBG("%p: int_seid=%u, acp_seid=%u", session,
 			lsep->info.seid, rsep->seid);
 
-	new_stream = g_new0(struct avdtp_stream, 1);
-	new_stream->session = session;
-	new_stream->lsep = lsep;
-	new_stream->rseid = rsep->seid;
+	new_stream = stream_new(session, lsep, rsep->seid);
 
 	if (rsep->delay_reporting && lsep->delay_reporting) {
 		struct avdtp_service_capability *delay_reporting;

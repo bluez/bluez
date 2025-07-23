@@ -452,7 +452,7 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 	char *filename, *folder;
 
 	/*
-	 * Main phonebook objects will be created dinamically based on the
+	 * Main phonebook objects will be created dynamically based on the
 	 * folder content. All vcards inside the given folder will be appended
 	 * in the "virtual" main phonebook object.
 	 */

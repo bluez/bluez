@@ -423,7 +423,8 @@ static void cmd_script(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static const struct bt_shell_menu_entry default_menu[] = {
+static const struct bt_shell_menu default_menu = {
+	.entries = {
 	{ "back",         NULL,       cmd_back, "Return to main menu", NULL,
 							NULL, cmd_back_exists },
 	{ "menu",         "<name>",   cmd_menu, "Select submenu",
@@ -437,7 +438,7 @@ static const struct bt_shell_menu_entry default_menu[] = {
 	{ "export",       NULL,       cmd_export,
 						"Print environment variables" },
 	{ "script",       "<filename>", cmd_script, "Run script" },
-	{ }
+	{} },
 };
 
 static void shell_print_help(void)
@@ -480,7 +481,7 @@ static void shell_print_menu(void)
 		print_menu(entry->cmd, entry->arg ? : "", entry->desc ? : "");
 	}
 
-	for (entry = default_menu; entry->cmd; entry++) {
+	for (entry = default_menu.entries; entry->cmd; entry++) {
 		if (entry->exists && !entry->exists(data.menu))
 			continue;
 
@@ -495,7 +496,7 @@ static void shell_print_menu_zsh_complete(void)
 	for (entry = data.menu->entries; entry->cmd; entry++)
 		printf("%s:%s\n", entry->cmd, entry->desc ? : "");
 
-	for (entry = default_menu; entry->cmd; entry++) {
+	for (entry = default_menu.entries; entry->cmd; entry++) {
 		if (entry->exists && !entry->exists(data.menu))
 			continue;
 
@@ -627,9 +628,11 @@ fail:
 	return -EINVAL;
 }
 
-static int menu_exec(const struct bt_shell_menu_entry *entry,
+static int menu_exec(const struct bt_shell_menu *menu,
 					int argc, char *argv[])
 {
+	const struct bt_shell_menu_entry *entry = menu->entries;
+
 	for (; entry->cmd; entry++) {
 		if (strcmp(argv[0], entry->cmd))
 			continue;
@@ -641,6 +644,9 @@ static int menu_exec(const struct bt_shell_menu_entry *entry,
 		/* Skip back command if on main menu */
 		if (data.menu == data.main && !strcmp(entry->cmd, "back"))
 			continue;
+
+		if (data.mode == MODE_NON_INTERACTIVE && menu->pre_run)
+			menu->pre_run(menu);
 
 		return cmd_exec(entry, argc, argv);
 	}
@@ -673,7 +679,7 @@ static int submenu_exec(int argc, char *argv[])
 	memmove(argv[0], argv[0] + len + 1, tlen - len - 1);
 	memset(argv[0] + tlen - len - 1, 0, len + 1);
 
-	return menu_exec(submenu->entries, argc, argv);
+	return menu_exec(submenu, argc, argv);
 }
 
 static int shell_exec(int argc, char *argv[])
@@ -686,9 +692,9 @@ static int shell_exec(int argc, char *argv[])
 	if (!argsisutf8(argc, argv))
 		return -EINVAL;
 
-	err  = menu_exec(default_menu, argc, argv);
+	err  = menu_exec(&default_menu, argc, argv);
 	if (err == -ENOENT) {
-		err  = menu_exec(data.menu->entries, argc, argv);
+		err  = menu_exec(data.menu, argc, argv);
 		if (err == -ENOENT) {
 			err = submenu_exec(argc, argv);
 			if (err == -ENOENT) {
@@ -980,7 +986,7 @@ static char *cmd_generator(const char *text, int state)
 	}
 
 	if (default_menu_enabled) {
-		cmd = find_cmd(text, default_menu, &index);
+		cmd = find_cmd(text, default_menu.entries, &index);
 		if (cmd) {
 			return cmd;
 		} else {
@@ -1171,8 +1177,8 @@ static char **shell_completion(const char *text, int start, int end)
 		if (wordexp(rl_line_buffer, &w, WRDE_NOCMD))
 			return NULL;
 
-		matches = menu_completion(default_menu, text, w.we_wordc,
-							w.we_wordv[0]);
+		matches = menu_completion(default_menu.entries, text,
+						w.we_wordc, w.we_wordv[0]);
 		if (!matches) {
 			matches = menu_completion(data.menu->entries, text,
 							w.we_wordc,
@@ -1449,6 +1455,15 @@ int bt_shell_run(void)
 	int status;
 	const struct queue_entry *submenu;
 
+	/* Check if on non-interactive mode skip pre-run since that is on-demand
+	 * by shell_exec() only for the menu in use.
+	 */
+	if (data.mode == MODE_NON_INTERACTIVE)
+		goto done;
+
+	if (data.menu && data.menu->pre_run)
+		data.menu->pre_run(data.menu);
+
 	for (submenu = queue_get_entries(data.submenus); submenu;
 	     submenu = submenu->next) {
 		struct bt_shell_menu *menu = submenu->data;
@@ -1457,6 +1472,7 @@ int bt_shell_run(void)
 			menu->pre_run(menu);
 	}
 
+done:
 	status = mainloop_run_with_signal(signal_callback, NULL);
 
 	bt_shell_cleanup();

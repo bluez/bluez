@@ -19,6 +19,8 @@
 
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
 #include "mesh/crypto.h"
@@ -72,14 +74,6 @@ enum _iv_upd_state {
 	IV_UPD_UPDATING,
 	/* Normal, can *not* transition, accept current or old iv_index */
 	IV_UPD_NORMAL_HOLD,
-};
-
-struct net_key {
-	struct mesh_key_set key_set;
-	unsigned int beacon_id;
-	uint8_t key[16];
-	uint8_t beacon_key[16];
-	uint8_t network_id[8];
 };
 
 struct mesh_subnet {
@@ -182,17 +176,6 @@ struct mesh_destination {
 	uint16_t ref_cnt;
 };
 
-struct net_decode {
-	struct mesh_net *net;
-	struct mesh_friend *frnd;
-	struct mesh_key_set *key_set;
-	uint8_t *packet;
-	uint32_t iv_index;
-	uint8_t size;
-	uint8_t nid;
-	bool proxy;
-};
-
 struct net_queue_data {
 	struct mesh_io_recv_info *info;
 	struct mesh_net *net;
@@ -211,7 +194,7 @@ struct oneshot_tx {
 	uint16_t interval;
 	uint8_t cnt;
 	uint8_t size;
-	uint8_t packet[30];
+	uint8_t packet[MESH_AD_MAX_LEN];
 };
 
 struct net_beacon_data {
@@ -625,7 +608,7 @@ static void refresh_beacon(void *a, void *b)
 	struct mesh_net *net = b;
 
 	net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
-		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update,
+		subnet->kr_phase == KEY_REFRESH_PHASE_TWO, net->iv_update,
 									false);
 }
 
@@ -846,7 +829,7 @@ int mesh_net_del_key(struct mesh_net *net, uint16_t idx)
 	/* Delete associated app keys */
 	appkey_delete_bound_keys(net, idx);
 
-	/* Disable hearbeat publication on this subnet */
+	/* Disable heartbeat publication on this subnet */
 	if (idx == net->hb_pub.net_idx)
 		net->hb_pub.dst = UNASSIGNED_ADDRESS;
 
@@ -1059,7 +1042,7 @@ static bool msg_in_cache(struct mesh_net *net, uint16_t src, uint32_t seq,
 	msg = l_queue_find(net->msg_cache, match_cache, &tst);
 
 	if (msg) {
-		l_debug("Supressing duplicate %4.4x + %6.6x + %8.8x",
+		l_debug("Suppressing duplicate %4.4x + %6.6x + %8.8x",
 							src, seq, mic);
 		return true;
 	}
@@ -2254,7 +2237,7 @@ static bool match_by_dst(const void *a, const void *b)
 
 static void send_relay_pkt(struct mesh_net *net, uint8_t *data, uint8_t size)
 {
-	uint8_t packet[30];
+	uint8_t packet[MESH_AD_MAX_LEN];
 	struct mesh_io *io = net->io;
 	struct mesh_io_send_info info = {
 		.type = MESH_IO_TIMING_TYPE_GENERAL,
@@ -2264,7 +2247,7 @@ static void send_relay_pkt(struct mesh_net *net, uint8_t *data, uint8_t size)
 		.u.gen.max_delay = DEFAULT_MAX_DELAY
 	};
 
-	packet[0] = MESH_AD_TYPE_NETWORK;
+	packet[0] = BT_AD_MESH_DATA;
 	memcpy(packet + 1, data, size);
 
 	mesh_io_send(io, &info, packet, size + 1);
@@ -2298,7 +2281,6 @@ static void send_msg_pkt_oneshot(void *user_data)
 		return;
 	}
 
-	tx->packet[0] = MESH_AD_TYPE_NETWORK;
 	info.type = MESH_IO_TIMING_TYPE_GENERAL;
 	info.u.gen.interval = tx->interval;
 	info.u.gen.cnt = tx->cnt;
@@ -2311,7 +2293,7 @@ static void send_msg_pkt_oneshot(void *user_data)
 }
 
 static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
-						uint8_t *packet, uint8_t size)
+					const uint8_t *packet, uint8_t size)
 {
 	struct oneshot_tx *tx = l_new(struct oneshot_tx, 1);
 
@@ -2324,25 +2306,21 @@ static void send_msg_pkt(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 	l_idle_oneshot(send_msg_pkt_oneshot, tx, NULL);
 }
 
-static enum _relay_advice packet_received(void *user_data,
+static enum _relay_advice packet_received(struct mesh_net *net,
 				uint32_t net_key_id, uint16_t net_idx,
 				bool frnd, uint32_t iv_index,
-				const void *data, uint8_t size, int8_t rssi)
+				const uint8_t *data, uint8_t size, int8_t rssi)
 {
-	struct mesh_net *net = user_data;
-	const uint8_t *msg = data;
+	const uint8_t *msg;
 	uint8_t app_msg_len;
 	uint8_t net_ttl, key_aid, net_segO, net_segN, net_opcode;
 	uint32_t net_seq, cache_cookie;
 	uint16_t net_src, net_dst, net_seqZero;
-	uint8_t packet[31];
 	bool net_ctl, net_segmented, net_szmic, net_relay;
 
-	memcpy(packet + 2, data, size);
+	print_packet("RX: Network [clr] :", data, size);
 
-	print_packet("RX: Network [clr] :", packet + 2, size);
-
-	if (!mesh_crypto_packet_parse(packet + 2, size, &net_ctl, &net_ttl,
+	if (!mesh_crypto_packet_parse(data, size, &net_ctl, &net_ttl,
 					&net_seq, &net_src, &net_dst,
 					&cache_cookie, &net_opcode,
 					&net_segmented, &key_aid, &net_szmic,
@@ -2418,7 +2396,7 @@ static enum _relay_advice packet_received(void *user_data,
 				if (net_ttl >= 2) {
 					friend_seg_rxed(net, iv_index, net_ttl,
 						net_seq, net_src, net_dst,
-						l_get_be32(packet + 2 + 9),
+						l_get_be32(data + 9),
 						msg, app_msg_len);
 				}
 			} else {
@@ -2509,7 +2487,7 @@ static void net_rx(void *net_ptr, void *user_data)
 	if (relay_advice > data->relay_advice) {
 		/*
 		 * If packet was encrypted with friendship credentials,
-		 * relay it using master credentials
+		 * relay it using flooding credentials
 		 */
 		if (frnd && !mesh_net_get_key(net, false, net_idx, &net_key_id))
 			return;
@@ -2832,7 +2810,7 @@ static void process_beacon(void *net_ptr, void *user_data)
 	/* Get IVU and KR boolean bits from beacon */
 	ivu = beacon_data->ivu;
 	kr = beacon_data->kr;
-	local_kr = !!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO);
+	local_kr = (subnet->kr_phase == KEY_REFRESH_PHASE_TWO);
 
 	/* We have officially *seen* this beacon now */
 	beacon_data->processed = true;
@@ -2854,7 +2832,7 @@ static void process_beacon(void *net_ptr, void *user_data)
 		if (updated)
 			net_key_beacon_refresh(beacon_data->net_key_id,
 				net->iv_index,
-				!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO),
+				subnet->kr_phase == KEY_REFRESH_PHASE_TWO,
 				net->iv_update, false);
 	}
 }
@@ -2997,7 +2975,7 @@ bool mesh_net_set_key(struct mesh_net *net, uint16_t idx, const uint8_t *key,
 	subnet->kr_phase = phase;
 
 	net_key_beacon_refresh(subnet->net_key_tx, net->iv_index,
-		!!(subnet->kr_phase == KEY_REFRESH_PHASE_TWO), net->iv_update,
+		subnet->kr_phase == KEY_REFRESH_PHASE_TWO, net->iv_update,
 									false);
 
 
@@ -3013,9 +2991,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 	first = l_queue_isempty(nets);
 	if (first) {
-		const uint8_t snb[] = {MESH_AD_TYPE_BEACON, 1};
-		const uint8_t mpb[] = {MESH_AD_TYPE_BEACON, 2};
-		const uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
+		const uint8_t snb[] = {BT_AD_MESH_BEACON, 1};
+		const uint8_t mpb[] = {BT_AD_MESH_BEACON, 2};
+		const uint8_t pkt[] = {BT_AD_MESH_DATA};
 
 		if (!nets)
 			nets = l_queue_new();
@@ -3043,9 +3021,9 @@ bool mesh_net_attach(struct mesh_net *net, struct mesh_io *io)
 
 struct mesh_io *mesh_net_detach(struct mesh_net *net)
 {
-	const uint8_t snb[] = {MESH_AD_TYPE_BEACON, 1};
-	const uint8_t mpb[] = {MESH_AD_TYPE_BEACON, 2};
-	const uint8_t pkt[] = {MESH_AD_TYPE_NETWORK};
+	const uint8_t snb[] = {BT_AD_MESH_BEACON, 1};
+	const uint8_t mpb[] = {BT_AD_MESH_BEACON, 2};
+	const uint8_t pkt[] = {BT_AD_MESH_DATA};
 	struct mesh_io *io;
 	uint8_t type = 0;
 
@@ -3142,8 +3120,7 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 {
 	struct mesh_subnet *subnet;
 	uint8_t seg_len;
-	uint8_t gatt_data[30];
-	uint8_t *packet = gatt_data;
+	uint8_t packet[MESH_AD_MAX_LEN];
 	uint8_t packet_len;
 	uint8_t segN = SEG_MAX(msg->segmented, msg->len);
 	uint16_t seg_off = SEG_OFF(segO);
@@ -3170,9 +3147,10 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
 	l_debug("segN %d segment %d seg_off %d", segN, segO, seg_off);
 
 	/* TODO: Are we RXing on an LPN's behalf? Then set RLY bit */
+	packet[0] = BT_AD_MESH_DATA;
 	if (!mesh_crypto_packet_build(false, msg->ttl, seq_num, msg->src,
 					msg->remote, 0, msg->segmented,
-					msg->key_aid, msg->szmic, false,
+					msg->key_aid, msg->szmic,
 					msg->seqZero, segO, segN,
 					msg->buf + seg_off, seg_len,
 					packet + 1, &packet_len)) {
@@ -3205,11 +3183,11 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 			uint16_t src, uint16_t dst, uint32_t hdr,
 			const void *seg, uint16_t seg_len)
 {
-	uint8_t packet[30];
+	uint8_t packet[MESH_AD_MAX_LEN];
 	uint8_t packet_len;
-	bool segmented = !!((hdr >> SEG_HDR_SHIFT) & true);
+	bool segmented = !!((hdr >> SEG_HDR_SHIFT) & 0x1);
 	uint8_t key_aid = (hdr >> KEY_HDR_SHIFT) & KEY_ID_MASK;
-	bool szmic = !!((hdr >> SZMIC_HDR_SHIFT) & true);
+	bool szmic = !!((hdr >> SZMIC_HDR_SHIFT) & 0x1);
 	uint16_t seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) & SEQ_ZERO_MASK;
 	uint8_t segO = (hdr >> SEGO_HDR_SHIFT) & SEG_MASK;
 	uint8_t segN = (hdr >> SEGN_HDR_SHIFT) & SEG_MASK;
@@ -3227,8 +3205,9 @@ void mesh_net_send_seg(struct mesh_net *net, uint32_t net_key_id,
 	l_debug("SEQ0: %6.6x", seq);
 	l_debug("segO: %d", segO);
 
+	packet[0] = BT_AD_MESH_DATA;
 	if (!mesh_crypto_packet_build(false, ttl, seq, src, dst, 0,
-					segmented, key_aid, szmic, false,
+					segmented, key_aid, szmic,
 					seqZero, segO, segN, seg, seg_len,
 					packet + 1, &packet_len)) {
 		l_error("Failed to build packet");
@@ -3365,7 +3344,7 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 	uint32_t hdr;
 	uint8_t data[7];
 	uint8_t pkt_len;
-	uint8_t pkt[30];
+	uint8_t pkt[MESH_AD_MAX_LEN];
 
 	/*
 	 * MshPRFv1.0.1 section 3.4.5.2, Interface output filter:
@@ -3381,9 +3360,10 @@ void mesh_net_ack_send(struct mesh_net *net, uint32_t net_key_id,
 	l_put_be32(ack_flags, data + 3);
 
 	/* Not Segmented, no Key ID associated, no segO or segN */
+	pkt[0] = BT_AD_MESH_DATA;
 	if (!mesh_crypto_packet_build(true, ttl, seq, src, dst,
 					NET_OP_SEG_ACKNOWLEDGE, false, 0, false,
-					rly, seqZero, 0, 0, data + 1, 6,
+					seqZero, 0, 0, data + 1, 6,
 					pkt + 1, &pkt_len))
 		return;
 
@@ -3411,9 +3391,8 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 				uint16_t dst, const uint8_t *msg,
 				uint16_t msg_len)
 {
-	uint32_t use_seq = seq;
 	uint8_t pkt_len;
-	uint8_t pkt[30];
+	uint8_t pkt[MESH_AD_MAX_LEN];
 	bool result = false;
 
 	if (!net->src_addr)
@@ -3429,7 +3408,7 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 		ttl = net->default_ttl;
 
 	/* Range check the Opcode and msg length*/
-	if (*msg & 0xc0 || (9 + msg_len + 8 > 29))
+	if (*msg & 0xc0 || (9 + msg_len + 8 > MESH_NET_MAX_PDU_LEN))
 		return;
 
 	/*
@@ -3463,15 +3442,16 @@ void mesh_net_transport_send(struct mesh_net *net, uint32_t net_key_id,
 			return;
 
 		net_key_id = subnet->net_key_tx;
-		use_seq = mesh_net_next_seq_num(net);
+		seq = mesh_net_next_seq_num(net);
 
 		if (result || (dst >= net->src_addr && dst <= net->last_addr))
 			return;
 	}
 
-	if (!mesh_crypto_packet_build(true, ttl, use_seq, src, dst, msg[0],
-				false, 0, false, false, 0, 0, 0, msg + 1,
-				msg_len - 1, pkt + 1, &pkt_len))
+	pkt[0] = BT_AD_MESH_DATA;
+	if (!mesh_crypto_packet_build(true, ttl, seq, src, dst, msg[0],
+				false, 0, false, 0, 0, 0, msg + 1, msg_len - 1,
+				pkt + 1, &pkt_len))
 		return;
 
 	if (!net_key_encrypt(net_key_id, iv_index, pkt + 1, pkt_len)) {

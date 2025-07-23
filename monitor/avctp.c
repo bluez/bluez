@@ -1317,13 +1317,13 @@ static bool avrcp_get_play_status(struct avctp_frame *avctp_frame,
 	if (!l2cap_frame_get_be32(frame, &interval))
 		return false;
 
-	print_field("%*cSongLength: 0x%08x (%u miliseconds)",
+	print_field("%*cSongLength: 0x%08x (%u milliseconds)",
 					(indent - 8), ' ', interval, interval);
 
 	if (!l2cap_frame_get_be32(frame, &interval))
 		return false;
 
-	print_field("%*cSongPosition: 0x%08x (%u miliseconds)",
+	print_field("%*cSongPosition: 0x%08x (%u milliseconds)",
 					(indent - 8), ' ', interval, interval);
 
 	if (!l2cap_frame_get_u8(frame, &status))
@@ -1388,7 +1388,7 @@ response:
 		if (!l2cap_frame_get_be32(frame, &interval))
 			return false;
 
-		print_field("%*cPosition: 0x%08x (%u miliseconds)",
+		print_field("%*cPosition: 0x%08x (%u milliseconds)",
 					(indent - 8), ' ', interval, interval);
 		break;
 	case AVRCP_EVENT_BATT_STATUS_CHANGED:

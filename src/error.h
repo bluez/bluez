@@ -14,13 +14,12 @@
 #include <stdint.h>
 
 #define ERROR_INTERFACE "org.bluez.Error"
+#define ERROR_INTERFACE_BREDR "org.bluez.Error.BREDR"
 
 /* BR/EDR connection failure reasons */
 #define ERR_BREDR_CONN_ALREADY_CONNECTED	"br-connection-already-"\
 						"connected"
 #define ERR_BREDR_CONN_PAGE_TIMEOUT		"br-connection-page-timeout"
-#define ERR_BREDR_CONN_PROFILE_UNAVAILABLE	"br-connection-profile-"\
-						"unavailable"
 #define ERR_BREDR_CONN_SDP_SEARCH		"br-connection-sdp-search"
 #define ERR_BREDR_CONN_CREATE_SOCKET		"br-connection-create-socket"
 #define ERR_BREDR_CONN_INVALID_ARGUMENTS	"br-connection-invalid-"\
@@ -85,7 +84,7 @@ DBusMessage *btd_error_no_such_adapter(DBusMessage *msg);
 DBusMessage *btd_error_agent_not_available(DBusMessage *msg);
 DBusMessage *btd_error_not_ready(DBusMessage *msg);
 DBusMessage *btd_error_not_ready_str(DBusMessage *msg, const char *str);
+DBusMessage *btd_error_profile_unavailable(DBusMessage *msg);
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str);
-
-const char *btd_error_bredr_conn_from_errno(int errno_code);
-const char *btd_error_le_conn_from_errno(int errno_code);
+DBusMessage *btd_error_bredr_errno(DBusMessage *msg, int err);
+DBusMessage *btd_error_le_errno(DBusMessage *msg, int err);

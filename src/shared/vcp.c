@@ -37,7 +37,7 @@
 #define VOCS_VOL_OFFSET_UPPER_LIMIT	 255
 #define VOCS_VOL_OFFSET_LOWER_LIMIT	-255
 
-/* Apllication Error Code */
+/* Application Error Code */
 #define BT_ATT_ERROR_INVALID_CHANGE_COUNTER	0x80
 #define BT_ATT_ERROR_OPCODE_NOT_SUPPORTED	0x81
 #define BT_ATT_ERROR_VALUE_OUT_OF_RANGE		0x82
@@ -2933,6 +2933,9 @@ static void foreach_vcs_service(struct gatt_db_attribute *attr,
 {
 	struct bt_vcp *vcp = user_data;
 	struct bt_vcs *vcs = vcp_get_vcs(vcp);
+
+	if (!vcs)
+		return;
 
 	vcs->service = attr;
 

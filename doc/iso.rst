@@ -1,59 +1,129 @@
 ===
-sco
+iso
 ===
 -------------
-SCO transport
+ISO transport
 -------------
 
 :Version: BlueZ
 :Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
-:Date: March 2025
+:Date: July 2025
 :Manual section: 7
 :Manual group: Linux System Administration
 
-SYNOPSIS
-========
+SYNOPSIS (since Linux 6.0 [experimental])
+=========================================
 
 .. code-block::
 
     #include <sys/socket.h>
     #include <bluetooth/bluetooth.h>
-    #include <bluetooth/sco.h>
+    #include <bluetooth/iso.h>
 
-    sco_socket = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+    iso_socket = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_ISO);
 
 DESCRIPTION
 ===========
 
-The SCO logical transport, is a symmetric, point-to-point transport between the
-Central and a specific Peripheral. The SCO logical transport reserves slots and
-can therefore be considered as a circuit-switched connection between the Central
-and the Peripheral.
+Bluetooth Isochronous Channels is a feature introduced in Bluetooth 5.2 that
+allow for the transmission of multiple, synchronized audio streams between
+devices.
 
-In addition to the reserved slots, when eSCO is supported, a retransmission
-window follows immediately after. Together, the reserved slots and the
-retransmission window form the complete eSCO window.
+For unicast/multi-stream audio, connected isochronous group (CIG), and
+connected isochronous stream (CIS) are used. A CIG is created by the central and
+it can include one or more CISs. A CIS is a point-to-point data transportation
+stream between a central and a certain peripheral, and is a bidirectional
+communication protocol with acknowledgment.
+
+For broadcast audio, broadcast isochronous group (BIG) and broadcast isochronous
+stream (BIS) are used. There are two types of devices: isochronous broadcaster
+and synchronized receiver. A BIG is created by an isochronous broadcaster, and
+it can include one or more BISs. A BIS is a one-to-many data transportation
+stream.
 
 SOCKET ADDRESS
 ==============
 
 .. code-block::
 
-    struct sockaddr_sco {
-        sa_family_t     sco_family;
-        bdaddr_t        sco_bdaddr;
+    struct sockaddr_iso_bc {
+        bdaddr_t	bc_bdaddr;
+        uint8_t		bc_bdaddr_type;
+        uint8_t		bc_sid;
+        uint8_t		bc_num_bis;
+        uint8_t		bc_bis[ISO_MAX_NUM_BIS];
     };
 
-Example:
+    struct sockaddr_iso {
+        sa_family_t     iso_family;
+        bdaddr_t        iso_bdaddr;
+        uint8_t		iso_bdaddr_type;
+        struct sockaddr_iso_bc iso_bc[];
+    };
+
+Unicast example:
 
 .. code-block::
 
-    struct sockaddr_sco addr;
+    struct sockaddr_iso addr;
 
     memset(&addr, 0, sizeof(addr));
-    addr.sco_family = AF_BLUETOOTH;
-    bacpy(&addr.sco_bdaddr, bdaddr);
+    addr.iso_family = AF_BLUETOOTH;
+    bacpy(&addr.iso_bdaddr, bdaddr);
+    addr.iso_bdaddr_type = BDADDR_LE_PUBLIC;
+
+Broadcast example:
+
+.. code-block::
+
+    struct sockaddr_iso *addr;
+    size_t addr_len;
+
+    addr_len = sizeof(*addr) + sizeof(*addr->iso_bc);
+
+    memset(addr, 0, addr_len);
+    addr->iso_family = AF_BLUETOOTH;
+    bacpy(&addr->iso_bdaddr, bdaddr);
+    addr->iso_bdaddr_type = BDADDR_LE_PUBLIC;
+
+Broadcast Source (Broadcaster) example:
+
+.. code-block::
+
+    struct sockaddr_iso *addr;
+    size_t addr_len;
+
+    addr_len = sizeof(*addr) + sizeof(*addr->iso_bc);
+
+    memset(addr, 0, addr_len);
+    addr->iso_family = AF_BLUETOOTH;
+
+    /* Set address to BDADR_ANY(00:00:00:00:00:00) */
+    bacpy(&addr->iso_bdaddr, BADDR_ANY);
+    addr->iso_bdaddr_type = BDADDR_LE_PUBLIC;
+
+    /* Connect to Broadcast address */
+    connect(iso_socket, (struct sockaddr *)addr, addr_len);
+
+Broadcast Sink (Receiver) example:
+
+.. code-block::
+
+    struct sockaddr_iso *addr;
+    size_t addr_len;
+
+    addr_len = sizeof(*addr) + sizeof(*addr->iso_bc);
+
+    memset(addr, 0, addr_len);
+    addr->iso_family = AF_BLUETOOTH;
+
+    /* Set destination to Broadcaster address */
+    bacpy(&addr->iso_bdaddr, bdaddr);
+    addr->iso_bdaddr_type = BDADDR_LE_PUBLIC;
+
+    /* Bind to Broadcaster address */
+    bind(iso_socket, (struct sockaddr *)addr, addr_len);
 
 SOCKET OPTIONS (SOL_BLUETOOTH)
 ==============================
@@ -61,8 +131,8 @@ SOCKET OPTIONS (SOL_BLUETOOTH)
 The socket options listed below can be set by using **setsockopt(2)** and read
 with **getsockopt(2)** with the socket level set to SOL_BLUETOOTH.
 
-BT_SECURITY (since Linux 2.6.30)
---------------------------------
+BT_SECURITY
+-----------
 
 Channel security level, possible values:
 
@@ -81,15 +151,15 @@ Example:
 .. code-block::
 
     int level = BT_SECURITY_HIGH;
-    int err = setsockopt(sco_socket, SOL_BLUETOOTH, BT_SECURITY, &level,
+    int err = setsockopt(iso_socket, SOL_BLUETOOTH, BT_SECURITY, &level,
                          sizeof(level));
     if (err == -1) {
         perror("setsockopt");
         return 1;
     }
 
-BT_DEFER_SETUP (since Linux 2.6.30)
------------------------------------
+BT_DEFER_SETUP
+--------------
 
 Channel defer connection setup, this control if the connection procedure
 needs to be authorized by userspace before responding which allows
@@ -107,22 +177,22 @@ Example:
 .. code-block::
 
     int defer_setup = 1;
-    int err = setsockopt(sco_socket, SOL_BLUETOOTH, BT_DEFER_SETUP,
+    int err = setsockopt(iso_socket, SOL_BLUETOOTH, BT_DEFER_SETUP,
                          &defer_setup, sizeof(defer_setup));
     if (err == -1) {
         perror("setsockopt");
         return err;
     }
 
-    err = listen(sco_socket, 5);
+    err = listen(iso_socket, 5);
     if (err) {
         perror("listen");
         return err;
     }
 
-    struct sockaddr_sco remote_addr = {0};
+    struct sockaddr_iso remote_addr = {0};
     socklen_t addr_len = sizeof(remote_addr);
-    int new_socket = accept(sco_socket, (struct sockaddr*)&remote_addr,
+    int new_socket = accept(iso_socket, (struct sockaddr*)&remote_addr,
                             &addr_len);
     if (new_socket < 0) {
         perror("accept");
@@ -151,42 +221,8 @@ Example:
         }
     }
 
-BT_VOICE (since Linux 3.11)
------------------------------
-
-Transport voice settings, possible values:
-
-.. code-block::
-
-    struct bt_voice {
-        uint16_t setting;
-    };
-
-.. csv-table::
-    :header: "Define", "Value", "Description"
-    :widths: auto
-
-    **BT_VOICE_TRANSPARENT**, 0x0003, Transparent output
-    **BT_VOICE_CVSD_16BIT**, 0x0060, C-VSD output PCM 16-bit input
-    **BT_VOICE_TRANSPARENT_16BIT**, 0x0063, Transparent output PCM 16-bit input
-
-Example:
-
-.. code-block::
-
-    struct bt_voice voice;
-
-    memset(&voice, 0, sizeof(voice));
-    voice.setting = BT_VOICE_TRANSPARENT;
-    int err = setsockopt(sco_socket, SOL_BLUETOOTH, BT_VOICE, &voice,
-                         sizeof(voice));
-    if (err == -1) {
-        perror("setsockopt");
-        return 1;
-    }
-
-BT_PKT_STATUS (since Linux 5.9)
--------------------------------
+BT_PKT_STATUS
+-------------
 
 Enable reporting packet status via `BT_SCM_PKT_STATUS` CMSG on
 received packets.  Possible values:
@@ -206,76 +242,20 @@ received packets.  Possible values:
         uint8_t pkt_status;
 
     The values are equal to the "Packet_Status_Flag" defined in
-    Core Specification v6.0 Sec. 5.4.3 pp. 1877:
+    Core Specification v6.1, 5.4.5. HCI ISO Data packets:
+
+    https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/Core-61/out/en/host-controller-interface/host-controller-interface-functional-specification.html#UUID-9b5fb085-278b-5084-ac33-bee2839abe6b
 
     .. csv-table::
         :header: "pkt_status", "Description"
         :widths: auto
 
-        **0x0**, Correctly received data
-        **0x1**, Possibly invalid data
-        **0x2**, No data received
-        **0x3**, Data partially lost
-
-BT_PHY (since Linux 5.10)
--------------------------
-
-Transport supported PHY(s), read-only (no setsockopt support). Possible values:
-
-.. csv-table::
-    :header: "Define", "Value", "Description"
-    :widths: auto
-
-    **BT_PHY_BR_1M_1SLOT**, BIT 0, BR 1Mbps 1SLOT
-    **BT_PHY_BR_1M_3SLOT**, BIT 1, BR 1Mbps 3SLOT
-    **BT_PHY_BR_2M_1SLOT**, BIT 3, EDR 2Mbps 1SLOT
-    **BT_PHY_BR_2M_3SLOT**, BIT 4, EDR 2Mbps 3SLOT
-    **BT_PHY_BR_3M_1SLOT**, BIT 6, EDR 3Mbps 1SLOT
-    **BT_PHY_BR_3M_3SLOT**, BIT 7, EDR 3Mbps 3SLOT
-
-BT_CODEC (since Linux 5.14)
----------------------------
-
-Transport codec offload, possible values:
-
-.. code-block::
-
-    struct bt_codec {
-        uint8_t id;
-        uint16_t cid;
-        uint16_t vid;
-        uint8_t data_path_id;
-        uint8_t num_caps;
-        struct codec_caps {
-            uint8_t len;
-            uint8_t data[];
-        } caps[];
-    } __attribute__((packed));
-
-    struct bt_codecs {
-        uint8_t num_codecs;
-        struct bt_codec codecs[];
-    } __attribute__((packed));
-
-Example:
-
-.. code-block::
-
-    char buffer[sizeof(struct bt_codecs) + sizeof(struct bt_codec)];
-    struct bt_codec *codecs = (void *)buffer;
-
-    memset(codecs, 0, sizeof(codecs));
-    codec->num_codecs = 1;
-    codecs->codecs[0].id = 0x05;
-    codecs->codecs[0].data_path_id = 1;
-
-    int err = setsockopt(sco_socket, SOL_BLUETOOTH, BT_CODEC, codecs,
-                         sizeof(buffer));
-    if (err == -1) {
-        perror("setsockopt");
-        return 1;
-    }
-
+        **0x0**, Valid data. The complete SDU was received correctly.
+        **0x1**, Possibly invalid data. The contents of the ISO_SDU_Fragment
+	, may contain errors or part of the SDU may be missing.
+	, This is reported as "data with possible errors".
+        **0x2**, Part(s) of the SDU were not received correctly.
+	, This is reported as "lost data".
 
 SOCKET OPTIONS (SOL_SOCKET)
 ===========================
@@ -284,7 +264,7 @@ SOCKET OPTIONS (SOL_SOCKET)
 features (``SO_SNDBUF``, ``SO_RCVBUF``, etc.) have their usual
 meaning, see **socket(7)**.
 
-The ``SOL_SOCKET`` level SCO socket options that have
+The ``SOL_SOCKET`` level ISO socket options that have
 Bluetooth-specific handling in kernel are listed below.
 
 SO_TIMESTAMPING, SO_TIMESTAMP, SO_TIMESTAMPNS
@@ -292,7 +272,7 @@ SO_TIMESTAMPING, SO_TIMESTAMP, SO_TIMESTAMPNS
 
 See https://docs.kernel.org/networking/timestamping.html
 
-For SCO sockets, software RX timestamps are supported.  Software TX
+For ISO sockets, software RX timestamps are supported.  Software TX
 timestamps (SOF_TIMESTAMPING_TX_SOFTWARE) are supported since
 Linux 6.15.
 
@@ -304,7 +284,7 @@ controller driver.
 
 The ``SCM_TSTAMP_COMPLETION`` timestamp is emitted when controller
 reports the packet completed.  Completion timestamps are only
-supported on controllers that have SCO flow control.  Other TX
+supported on controllers that have ISO flow control.  Other TX
 timestamp types are not supported.
 
 You can use ``SIOCETHTOOL`` to query supported flags.
@@ -402,7 +382,7 @@ Example (Read TX timestamps):
 IOCTLS
 ======
 
-The following ioctls with operation specific for SCO sockets are
+The following ioctls with operation specific for ISO sockets are
 available.
 
 SIOCETHTOOL (since Linux 6.16-rc1)
@@ -432,7 +412,7 @@ Example:
    ifr.ifr_data = (void *)&cmd;
    cmd.cmd = ETHTOOL_GET_TS_INFO;
 
-   sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+   sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_ISO);
    if (sk < 0)
        goto error;
    if (ioctl(sk, SIOCETHTOOL, &ifr))
@@ -453,4 +433,4 @@ linux-bluetooth@vger.kernel.org
 SEE ALSO
 ========
 
-socket(7), scotest(1)
+socket(7), isotest(1)

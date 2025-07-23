@@ -49,6 +49,7 @@ Possible errors:
 :org.bluez.Error.Failed:
 :org.bluez.Error.InProgress:
 :org.bluez.Error.AlreadyConnected:
+:org.bluez.Error.BREDR.ProfileUnavailable:
 
 void Disconnect()
 `````````````````

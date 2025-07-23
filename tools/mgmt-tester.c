@@ -6192,7 +6192,7 @@ static void setup_pairing_acceptor(const void *test_data)
 	setup_bthost();
 }
 
-/* Generic callback for checking the mgmt evnet status
+/* Generic callback for checking the mgmt event status
  */
 static void generic_mgmt_status_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
@@ -10045,8 +10045,8 @@ static void setup_set_exp_feature_alt(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	/* Send the Read Experiemental Features Information command to receive
-	 * the Experiemental Feature Changed event
+	/* Send the Read Experimental Features Information command to receive
+	 * the Experimental Feature Changed event
 	 */
 	mgmt_send(data->mgmt_alt, MGMT_OP_READ_EXP_FEATURES_INFO,
 			data->mgmt_index, 0, NULL,
@@ -14396,7 +14396,7 @@ int main(int argc, char *argv[])
 	test_bredrle50("Set PHY 2m Success", &set_phy_2m_success,
 					NULL, test_command_generic);
 
-	test_bredrle50("Set PHY coded Succcess", &set_phy_coded_success,
+	test_bredrle50("Set PHY coded Success", &set_phy_coded_success,
 					NULL, test_command_generic);
 
 	test_bredrle50("Set PHY 2m tx success", &set_phy_2m_tx_success,
@@ -15001,7 +15001,7 @@ int main(int argc, char *argv[])
 	 * Setup: Enable Privacy, LL Privacy
 	 * Run: Pair device, disconnect, add device, add 2nd device, and
 	 *      remove the client, then unpair.
-	 * Expect: Expect the clinet is removed from the Accept List.
+	 * Expect: Expect the client is removed from the Accept List.
 	 */
 	test_bredrle50_full("LL Privacy - Unpair 2 (Remove from AL)",
 				&ll_privacy_unpair_2,

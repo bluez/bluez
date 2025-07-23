@@ -739,7 +739,7 @@ bool mesh_config_net_key_del(struct mesh_config *cfg, uint16_t idx)
 	return save_config(jnode, cfg->node_dir_path);
 }
 
-bool mesh_config_write_device_key(struct mesh_config *cfg, uint8_t *key)
+bool mesh_config_write_device_key(struct mesh_config *cfg, const uint8_t *key)
 {
 	if (!cfg || !add_key_value(cfg->jnode, deviceKey, key))
 		return false;
@@ -747,7 +747,7 @@ bool mesh_config_write_device_key(struct mesh_config *cfg, uint8_t *key)
 	return save_config(cfg->jnode, cfg->node_dir_path);
 }
 
-bool mesh_config_write_candidate(struct mesh_config *cfg, uint8_t *key)
+bool mesh_config_write_candidate(struct mesh_config *cfg, const uint8_t *key)
 {
 	if (!cfg || !add_key_value(cfg->jnode, deviceCan, key))
 		return false;
@@ -782,7 +782,7 @@ bool mesh_config_finalize_candidate(struct mesh_config *cfg)
 	return save_config(cfg->jnode, cfg->node_dir_path);
 }
 
-bool mesh_config_write_token(struct mesh_config *cfg, uint8_t *token)
+bool mesh_config_write_token(struct mesh_config *cfg, const uint8_t *token)
 {
 	if (!cfg || !add_u64_value(cfg->jnode, "token", token))
 		return false;
@@ -2005,7 +2005,7 @@ bool mesh_config_net_key_set_phase(struct mesh_config *cfg, uint16_t idx,
 
 bool mesh_config_model_pub_add(struct mesh_config *cfg, uint16_t ele_addr,
 					uint32_t mod_id, bool vendor,
-					struct mesh_config_pub *pub)
+					const struct mesh_config_pub *pub)
 {
 	json_object *jnode, *jmodel, *jpub, *jrtx;
 	bool res;
@@ -2146,7 +2146,7 @@ void mesh_config_comp_page_del(struct mesh_config *cfg, uint8_t page)
 }
 
 bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
-						uint8_t *data, uint16_t size)
+					const uint8_t *data, uint16_t size)
 {
 	json_object *jnode, *jstring, *jarray = NULL;
 	char *buf;
@@ -2167,7 +2167,7 @@ bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
 		return false;
 	}
 
-	hex2str(data, size, buf + 2, len - 2);
+	hex2str((uint8_t *)data, size, buf + 2, len - 2);
 
 	if (jarray && jarray_has_string(jarray, buf, len)) {
 		l_free(buf);
@@ -2187,7 +2187,7 @@ bool mesh_config_comp_page_add(struct mesh_config *cfg, uint8_t page,
 
 bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
-						struct mesh_config_sub *sub)
+					const struct mesh_config_sub *sub)
 {
 	json_object *jnode, *jmodel, *jstring, *jarray = NULL;
 	int ele_idx, len;
@@ -2211,7 +2211,7 @@ bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 		if (len < 0)
 			return false;
 	} else {
-		hex2str(sub->addr.label, 16, buf, 33);
+		hex2str((uint8_t *)sub->addr.label, 16, buf, 33);
 		len = 32;
 	}
 
@@ -2239,7 +2239,7 @@ bool mesh_config_model_sub_add(struct mesh_config *cfg, uint16_t ele_addr,
 
 bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t ele_addr,
 						uint32_t mod_id, bool vendor,
-						struct mesh_config_sub *sub)
+					const struct mesh_config_sub *sub)
 {
 	json_object *jnode, *jmodel, *jarray;
 	char buf[33];
@@ -2266,7 +2266,7 @@ bool mesh_config_model_sub_del(struct mesh_config *cfg, uint16_t ele_addr,
 		if (len < 0)
 			return false;
 	} else {
-		hex2str(sub->addr.label, 16, buf, 33);
+		hex2str((uint8_t *)sub->addr.label, 16, buf, 33);
 		len = 32;
 	}
 

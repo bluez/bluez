@@ -58,6 +58,7 @@ struct adapter {
 	GDBusProxy *adv_monitor_proxy;
 	GList *devices;
 	GList *sets;
+	GList *bearers;
 };
 
 static struct adapter *default_ctrl;
@@ -452,6 +453,36 @@ static void set_added(GDBusProxy *proxy)
 	bt_shell_set_env(g_dbus_proxy_get_path(proxy), proxy);
 }
 
+static void print_bearer(GDBusProxy *proxy, const char *label,
+					const char *description)
+{
+	bt_shell_printf("%s%s%s%s %s\n",
+				description ? "[" : "",
+				description ? : "",
+				description ? "] " : "",
+				label,
+				g_dbus_proxy_get_path(proxy));
+}
+
+static void bearer_added(GDBusProxy *proxy)
+{
+	struct adapter *adapter = find_parent(proxy);
+
+	if (!adapter)
+		return;
+
+	adapter->bearers = g_list_append(adapter->bearers, proxy);
+
+	if (!strcmp(g_dbus_proxy_get_interface(proxy),
+			"org.bluez.Bearer.BREDR1"))
+		print_bearer(proxy, "BREDR", COLORED_NEW);
+	else if (!strcmp(g_dbus_proxy_get_interface(proxy),
+			"org.bluez.Bearer.LE1"))
+		print_bearer(proxy, "LE", COLORED_NEW);
+
+	bt_shell_set_env(g_dbus_proxy_get_path(proxy), proxy);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -489,6 +520,10 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		admon_manager_added(proxy);
 	} else if (!strcmp(interface, "org.bluez.DeviceSet1")) {
 		set_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.Bearer.BREDR1")) {
+		bearer_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.Bearer.LE1")) {
+		bearer_added(proxy);
 	}
 }
 
@@ -540,6 +575,7 @@ static void adapter_removed(GDBusProxy *proxy)
 			ctrl_list = g_list_remove_link(ctrl_list, ll);
 			g_list_free(adapter->devices);
 			g_list_free(adapter->sets);
+			g_list_free(adapter->bearers);
 			g_free(adapter);
 			g_list_free(ll);
 			return;
@@ -555,6 +591,19 @@ static void set_removed(GDBusProxy *proxy)
 		return;
 
 	adapter->sets = g_list_remove(adapter->sets, proxy);
+
+	print_set(proxy, COLORED_DEL);
+	bt_shell_set_env(g_dbus_proxy_get_path(proxy), NULL);
+}
+
+static void bearer_removed(GDBusProxy *proxy)
+{
+	struct adapter *adapter = find_parent(proxy);
+
+	if (!adapter)
+		return;
+
+	adapter->bearers = g_list_remove(adapter->bearers, proxy);
 
 	print_set(proxy, COLORED_DEL);
 	bt_shell_set_env(g_dbus_proxy_get_path(proxy), NULL);
@@ -602,6 +651,10 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		adv_monitor_remove_manager(dbus_conn);
 	} else if (!strcmp(interface, "org.bluez.DeviceSet1")) {
 		set_removed(proxy);
+	} else if (!strcmp(interface, "org.bluez.Bearer.BREDR1")) {
+		bearer_removed(proxy);
+	} else if (!strcmp(interface, "org.bluez.Bearer.LE1")) {
+		bearer_removed(proxy);
 	}
 }
 
@@ -614,6 +667,20 @@ static struct adapter *find_ctrl(GList *source, const char *path)
 
 		if (!strcasecmp(g_dbus_proxy_get_path(adapter->proxy), path))
 			return adapter;
+	}
+
+	return NULL;
+}
+
+static GDBusProxy *find_proxies_by_path(GList *source, const char *path)
+{
+	GList *list;
+
+	for (list = g_list_first(source); list; list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+
+		if (strcmp(g_dbus_proxy_get_path(proxy), path) == 0)
+			return proxy;
 	}
 
 	return NULL;
@@ -703,13 +770,47 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 		print_iter(str, name, iter);
 		g_free(str);
+	} else if (!strcmp(interface, "org.bluez.Bearer.BREDR1") ||
+			!strcmp(interface, "org.bluez.Bearer.LE1")) {
+		if (default_ctrl &&
+				proxy_is_child(proxy, default_ctrl->proxy)) {
+			DBusMessageIter addr_iter;
+			GDBusProxy *dev;
+			char *str;
+			bool le = !strcmp(interface, "org.bluez.Bearer.LE1");
+
+			dev = find_proxies_by_path(default_ctrl->devices,
+						g_dbus_proxy_get_path(proxy));
+			if (!dev)
+				return;
+
+			if (g_dbus_proxy_get_property(dev, "Address",
+							&addr_iter)) {
+				const char *address;
+
+				dbus_message_iter_get_basic(&addr_iter,
+								&address);
+				str = g_strdup_printf("[" COLORED_CHG
+							"] %s %s ",
+							le ? "LE" : "BREDR",
+							address);
+			} else
+				str = g_strdup("");
+
+			print_iter(str, name, iter);
+			g_free(str);
+		}
 	}
 }
 
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	if (!strcmp(dbus_message_get_member(message), "Disconnected")) {
+	const char *iface = dbus_message_get_interface(message);
+	const char *member = dbus_message_get_member(message);
+
+	if (!strcmp(member, "Disconnected")) {
+		const char *label;
 		const char *name;
 		const char *msg;
 
@@ -719,16 +820,22 @@ static void message_handler(DBusConnection *connection,
 					DBUS_TYPE_INVALID))
 			goto failed;
 
-		bt_shell_printf("[SIGNAL] %s.%s %s %s\n",
-					dbus_message_get_interface(message),
-					dbus_message_get_member(message),
-					name, msg);
+		if (!strcmp(iface, "org.bluez.Bearer.BREDR1"))
+			label = "BREDR.Disconnected";
+		else if (!strcmp(iface, "org.bluez.Bearer.LE1"))
+			label = "LE.Disconnected";
+		else
+			label = "Disconnected";
+
+		bt_shell_printf("[" COLOR_YELLOW "SIGNAL" COLOR_OFF"] "
+					"%s - %s, %s\n",
+					label, name, msg);
 		return;
 	}
 
 failed:
-	bt_shell_printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
-					dbus_message_get_member(message));
+	bt_shell_printf("[" COLOR_YELLOW "SIGNAL" COLOR_OFF"] %s.%s\n",
+					iface, member);
 }
 
 static struct adapter *find_ctrl_by_address(GList *source, const char *address)
@@ -753,14 +860,17 @@ static struct adapter *find_ctrl_by_address(GList *source, const char *address)
 	return NULL;
 }
 
-static GDBusProxy *find_proxies_by_path(GList *source, const char *path)
+static GDBusProxy *find_proxies_by_iface(GList *source, const char *path,
+							const char *iface)
 {
 	GList *list;
 
 	for (list = g_list_first(source); list; list = g_list_next(list)) {
 		GDBusProxy *proxy = list->data;
 
-		if (strcmp(g_dbus_proxy_get_path(proxy), path) == 0)
+		if (!strcmp(g_dbus_proxy_get_path(proxy), path) &&
+				!strcmp(g_dbus_proxy_get_interface(proxy),
+					iface))
 			return proxy;
 	}
 
@@ -1728,6 +1838,7 @@ static void cmd_info(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	GDBusProxy *battery_proxy;
+	GDBusProxy *bearer;
 	DBusMessageIter iter;
 	const char *address;
 
@@ -1778,6 +1889,25 @@ static void cmd_info(int argc, char *argv[])
 					g_dbus_proxy_get_path(proxy));
 	print_property_with_label(battery_proxy, "Percentage",
 					"Battery Percentage");
+
+	bearer = find_proxies_by_iface(default_ctrl->bearers,
+				      g_dbus_proxy_get_path(proxy),
+				      "org.bluez.Bearer.BREDR1");
+	if (bearer) {
+		print_property_with_label(proxy, "Paired", "BREDR.Paired");
+		print_property_with_label(proxy, "Bonded", "BREDR.Bonded");
+		print_property_with_label(proxy, "Connected",
+							"BREDR.Connected");
+	}
+
+	bearer = find_proxies_by_iface(default_ctrl->bearers,
+				      g_dbus_proxy_get_path(proxy),
+				      "org.bluez.Bearer.LE1");
+	if (bearer) {
+		print_property_with_label(proxy, "Paired", "LE.Paired");
+		print_property_with_label(proxy, "Bonded", "LE.Bonded");
+		print_property_with_label(proxy, "Connected", "LE.Connected");
+	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }

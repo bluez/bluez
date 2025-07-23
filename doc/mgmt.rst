@@ -4026,7 +4026,7 @@ The Window/Period values are used to set the Scan Parameters when no other
 scanning is being done.
 
 Num AD Types and AD Types parameter, filter Advertising and Scan responses by AD
-type. Reponses that do not contain at least one of the requested AD types will
+type. Responses that do not contain at least one of the requested AD types will
 be ignored. Otherwise they will be delivered with the Mesh Device Found event.
 
 Possible errors:
@@ -4080,7 +4080,7 @@ Transmit Mesh Packet (since 1.21)
 
 This command sends a Mesh Packet as a NONCONN LE Advertisement.
 
-The Addr + Addr Type parameters specifify the address to use in the outbound
+The Addr + Addr Type parameters specify the address to use in the outbound
 advertising packet. If BD_ADDR_ANY and LE_RANDOM is set, the kernel will create
 a single use non-resolvable address.
 
@@ -5367,7 +5367,7 @@ The RSSI field is a signed octet, and is the RSSI reported by the receiving
 controller.
 
 The Instant field is 64 bit value that represents the instant in time the packet
-was received. It's value is not intended to be interpretted by the host, and is
+was received. It's value is not intended to be interpreted by the host, and is
 only useful if the host wants to make a timed response to the received packet
 (i.e. a Poll/Response).
 

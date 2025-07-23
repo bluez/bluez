@@ -32,8 +32,8 @@
 #define TRACKER_RESOURCES_INTERFACE "org.freedesktop.Tracker1.Resources"
 
 #define TRACKER_DEFAULT_CONTACT_ME "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#default-contact-me"
-#define AFFILATION_HOME "Home"
-#define AFFILATION_WORK "Work"
+#define AFFILIATION_HOME "Home"
+#define AFFILIATION_WORK "Work"
 #define ADDR_FIELD_AMOUNT 7
 #define PULL_QUERY_COL_AMOUNT 23
 #define COUNT_QUERY_COL_AMOUNT 1
@@ -45,7 +45,7 @@
 #define COL_ADDITIONAL_NAME 4
 #define COL_NAME_PREFIX 5
 #define COL_NAME_SUFFIX 6
-#define COL_ADDR_AFF 7 /* addresses from affilation */
+#define COL_ADDR_AFF 7 /* addresses from affiliation */
 #define COL_BIRTH_DATE 8
 #define COL_NICKNAME 9
 #define COL_URL 10
@@ -56,7 +56,7 @@
 #define COL_AFF_TYPE 15
 #define COL_ORG_NAME 16
 #define COL_ORG_DEPARTMENT 17
-#define COL_EMAIL_AFF 18 /* email's from affilation (work/home) */
+#define COL_EMAIL_AFF 18 /* email's from affiliation (work/home) */
 #define COL_DATE 19
 #define COL_SENT 20
 #define COL_ANSWERED 21
@@ -1046,11 +1046,11 @@ static void contact_init(struct phonebook_contact *contact,
 							reply[COL_ANSWERED]);
 }
 
-static enum phonebook_number_type get_phone_type(const char *affilation)
+static enum phonebook_number_type get_phone_type(const char *affiliation)
 {
-	if (g_strcmp0(AFFILATION_HOME, affilation) == 0)
+	if (g_strcmp0(AFFILIATION_HOME, affiliation) == 0)
 		return TEL_TYPE_HOME;
-	else if (g_strcmp0(AFFILATION_WORK, affilation) == 0)
+	else if (g_strcmp0(AFFILIATION_WORK, affiliation) == 0)
 		return TEL_TYPE_WORK;
 
 	return TEL_TYPE_OTHER;
@@ -1086,7 +1086,8 @@ static void add_aff_number(struct phonebook_contact *contact,
 		add_phone_number(contact, number, TEL_TYPE_MOBILE);
 	else
 		/* if this is no fax/mobile phone, then adding phone number
-		 * type based on type of the affilation field */
+		 * type based on type of the affiliation field
+		 */
 		add_phone_number(contact, number, get_phone_type(aff_type));
 
 failed:
@@ -1099,7 +1100,7 @@ static void contact_add_numbers(struct phonebook_contact *contact,
 	char **aff_numbers;
 	int i;
 
-	/* Filling phone numbers from contact's affilation */
+	/* Filling phone numbers from contact's affiliation */
 	aff_numbers = g_strsplit(reply[COL_PHONE_AFF], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_numbers)
@@ -1110,11 +1111,11 @@ static void contact_add_numbers(struct phonebook_contact *contact,
 	g_strfreev(aff_numbers);
 }
 
-static enum phonebook_field_type get_field_type(const char *affilation)
+static enum phonebook_field_type get_field_type(const char *affiliation)
 {
-	if (g_strcmp0(AFFILATION_HOME, affilation) == 0)
+	if (g_strcmp0(AFFILIATION_HOME, affiliation) == 0)
 		return FIELD_TYPE_HOME;
-	else if (g_strcmp0(AFFILATION_WORK, affilation) == 0)
+	else if (g_strcmp0(AFFILIATION_WORK, affiliation) == 0)
 		return FIELD_TYPE_WORK;
 
 	return FIELD_TYPE_OTHER;
@@ -1126,8 +1127,8 @@ static void add_aff_field(struct phonebook_contact *contact,
 	char **email_parts;
 	char *type, *email;
 
-	/* Emails from affilation data, are represented as real email
-	 * string and affilation type - those strings are separated by
+	/* Emails from affiliation data, are represented as real email
+	 * string and affiliation type - those strings are separated by
 	 * SUB_DELIM string */
 	email_parts = g_strsplit(aff_email, SUB_DELIM, 2);
 
@@ -1156,7 +1157,7 @@ static void contact_add_emails(struct phonebook_contact *contact,
 	char **aff_emails;
 	int i;
 
-	/* Emails from affilation */
+	/* Emails from affiliation */
 	aff_emails = g_strsplit(reply[COL_EMAIL_AFF], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_emails)
@@ -1172,7 +1173,7 @@ static void contact_add_addresses(struct phonebook_contact *contact,
 	char **aff_addr;
 	int i;
 
-	/* Addresses from affilation */
+	/* Addresses from affiliation */
 	aff_addr = g_strsplit(reply[COL_ADDR_AFF], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_addr)
@@ -1188,7 +1189,7 @@ static void contact_add_urls(struct phonebook_contact *contact,
 	char **aff_url;
 	int i;
 
-	/* Addresses from affilation */
+	/* Addresses from affiliation */
 	aff_url = g_strsplit(reply[COL_URL], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_url)

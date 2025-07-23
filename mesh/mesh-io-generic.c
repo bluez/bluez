@@ -19,6 +19,7 @@
 #include <ell/ell.h>
 
 #include "monitor/bt.h"
+#include "src/shared/ad.h"
 #include "src/shared/hci.h"
 #include "src/shared/mgmt.h"
 #include "lib/bluetooth.h"
@@ -52,7 +53,7 @@ struct tx_pkt {
 	struct mesh_io_send_info	info;
 	bool				delete;
 	uint8_t				len;
-	uint8_t				pkt[30];
+	uint8_t				pkt[MESH_AD_MAX_LEN];
 };
 
 struct tx_pattern {
@@ -352,8 +353,8 @@ static bool find_active(const void *a, const void *b)
 	/* Mesh specific AD types do *not* require active scanning,
 	 * so do not turn on Active Scanning on their account.
 	 */
-	if (rx_reg->filter[0] < MESH_AD_TYPE_PROVISION ||
-			rx_reg->filter[0] > MESH_AD_TYPE_BEACON)
+	if (rx_reg->filter[0] < BT_AD_MESH_PROV ||
+			rx_reg->filter[0] > BT_AD_MESH_BEACON)
 		return true;
 
 	return false;
@@ -709,7 +710,7 @@ static bool send_tx(struct mesh_io *io, struct mesh_io_send_info *info,
 	else {
 		/*
 		 * If transmitter is idle, send packets at least twice to
-		 * guard against in-line cancelation of HCI command chain.
+		 * guard against in-line cancellation of HCI command chain.
 		 */
 		if (info->type == MESH_IO_TIMING_TYPE_GENERAL &&
 					!pvt->tx &&

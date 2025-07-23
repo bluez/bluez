@@ -102,7 +102,8 @@ struct rssi_parameters {
 	int8_t low_rssi;		/* Low RSSI threshold */
 	uint16_t low_rssi_timeout;	/* Low RSSI threshold timeout */
 	uint16_t sampling_period;	/* Merge packets in the same timeslot.
-					 * Currenly unimplemented in user space.
+					 * Currently unimplemented in user
+					 * space.
 					 * Used only to pass data to kernel.
 					 */
 };
@@ -406,7 +407,7 @@ static void merged_pattern_replace(
 	/* If the RSSI are the same then nothing needs to be done, except on
 	 * the case where pattern is being removed. In that case, we need to
 	 * re-add the pattern.
-	 * high_rssi_timeout is purposedly left out in the comparison since
+	 * high_rssi_timeout is purposely left out in the comparison since
 	 * the value is ignored upon submission to kernel.
 	 */
 	if (merged_pattern->rssi.high_rssi == rssi->high_rssi &&

@@ -521,7 +521,7 @@ void friend_poll(struct mesh_net *net, uint16_t src, bool seq,
 
 	frnd->u.active.seq = seq;
 	frnd->u.active.last = !seq;
-	md = !!(l_queue_length(frnd->pkt_cache) > 1);
+	md = (l_queue_length(frnd->pkt_cache) > 1);
 
 	if (pkt->ctl) {
 		/* Make sure we don't change the bit-sense of MD,

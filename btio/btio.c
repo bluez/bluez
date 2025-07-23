@@ -474,6 +474,12 @@ static gboolean set_sec_level(int sock, BtIOType type, int level, GError **err)
 		return FALSE;
 	}
 
+	if (level == BT_SECURITY_FIPS) {
+		g_set_error(err, BT_IO_ERROR, EINVAL, "setsockopt(LM): "
+				"FIPS security level is not supported");
+		return FALSE;
+	}
+
 	if (type == BT_IO_L2CAP)
 		ret = l2cap_set_lm(sock, level);
 	else

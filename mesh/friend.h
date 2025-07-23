@@ -31,19 +31,3 @@ void friend_sub_add(struct mesh_net *net, struct mesh_friend *frnd,
 					const uint8_t *pkt, uint8_t len);
 void friend_sub_del(struct mesh_net *net, struct mesh_friend *frnd,
 					const uint8_t *pkt, uint8_t len);
-void mesh_friend_relay_init(struct mesh_net *net, uint16_t addr);
-
-/* Low-Power-Node role */
-void frnd_sub_add(struct mesh_net *net, uint32_t parms[7]);
-void frnd_sub_del(struct mesh_net *net, uint32_t parms[7]);
-void frnd_poll(struct mesh_net *net, bool retry);
-void frnd_clear(struct mesh_net *net);
-void frnd_ack_poll(struct mesh_net *net);
-void frnd_poll_cancel(struct mesh_net *net);
-void frnd_request_friend(struct mesh_net *net, uint8_t cache,
-			uint8_t offer_delay, uint8_t delay, uint32_t timeout);
-void frnd_offer(struct mesh_net *net, uint16_t src, uint8_t window,
-			uint8_t cache, uint8_t sub_list_size,
-			int8_t r_rssi, int8_t l_rssi, uint16_t fn_cnt);
-void frnd_key_refresh(struct mesh_net *net, uint8_t phase);
-uint32_t frnd_get_key(struct mesh_net *net);

@@ -67,7 +67,7 @@ static bool aes_cmac_one(const uint8_t key[16], const void *msg,
 
 	if (result) {
 		ssize_t len = l_checksum_get_digest(checksum, res, 16);
-		result = !!(len == 16);
+		result = (len == 16);
 	}
 
 	l_checksum_free(checksum);
@@ -84,8 +84,7 @@ bool mesh_crypto_aes_cmac(const uint8_t key[16], const uint8_t *msg,
 bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[13], const uint8_t key[16],
 					const uint8_t *aad, uint16_t aad_len,
 					const void *msg, uint16_t msg_len,
-					void *out_msg,
-					void *out_mic, size_t mic_size)
+					void *out_msg, size_t mic_size)
 {
 	void *cipher;
 	bool result;
@@ -527,7 +526,7 @@ bool mesh_crypto_packet_build(bool ctl, uint8_t ttl,
 				uint16_t src, uint16_t dst,
 				uint8_t opcode,
 				bool segmented, uint8_t key_aid,
-				bool szmic, bool relay, uint16_t seqZero,
+				bool szmic, uint16_t seqZero,
 				uint8_t segO, uint8_t segN,
 				const uint8_t *payload, uint8_t payload_len,
 				uint8_t *packet, uint8_t *packet_len)
@@ -638,14 +637,20 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 	if (dst)
 		*dst = this_dst;
 
+	if (packet_len < 9 + 4)
+		return false;
+
 	hdr = l_get_be32(packet + 9);
 
-	is_segmented = !!((hdr >> SEG_HDR_SHIFT) & true);
+	is_segmented = !!((hdr >> SEG_HDR_SHIFT) & 0x1);
 	if (segmented)
 		*segmented = is_segmented;
 
-	if (packet[1] & CTL) {
+	if (*ctl) {
 		uint8_t this_opcode = packet[9] & OPCODE_MASK;
+
+		/* NetMIC */
+		packet_len -= 8;
 
 		if (cookie)
 			*cookie = l_get_be32(packet + 2) ^ packet[6];
@@ -655,25 +660,28 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 		if (this_dst && this_opcode == NET_OP_SEG_ACKNOWLEDGE) {
 			if (relay)
-				*relay = !!((hdr >> RELAY_HDR_SHIFT) & true);
+				*relay = !!((hdr >> RELAY_HDR_SHIFT) & 0x1);
 
 			if (seqZero)
 				*seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) &
 								SEQ_ZERO_MASK;
 
-			if (payload)
-				*payload = packet + 9;
+			if (packet_len < 9)
+				return false;
 
-			if (payload_len)
-				*payload_len = packet_len - 9;
+			*payload = packet + 9;
+			*payload_len = packet_len - 9;
 		} else {
-			if (payload)
-				*payload = packet + 10;
+			if (packet_len < 10)
+				return false;
 
-			if (payload_len)
-				*payload_len = packet_len - 10;
+			*payload = packet + 10;
+			*payload_len = packet_len - 10;
 		}
 	} else {
+		/* NetMIC */
+		packet_len -= 4;
+
 		if (cookie)
 			*cookie = l_get_be32(packet + packet_len - 8);
 
@@ -682,7 +690,7 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 
 		if (is_segmented) {
 			if (szmic)
-				*szmic = !!((hdr >> SZMIC_HDR_SHIFT) & true);
+				*szmic = !!((hdr >> SZMIC_HDR_SHIFT) & 0x1);
 
 			if (seqZero)
 				*seqZero = (hdr >> SEQ_ZERO_HDR_SHIFT) &
@@ -694,17 +702,17 @@ bool mesh_crypto_packet_parse(const uint8_t *packet, uint8_t packet_len,
 			if (segN)
 				*segN = (hdr >> SEGN_HDR_SHIFT) & SEG_MASK;
 
-			if (payload)
-				*payload = packet + 13;
+			if (packet_len < 13)
+				return false;
 
-			if (payload_len)
-				*payload_len = packet_len - 13;
+			*payload = packet + 13;
+			*payload_len = packet_len - 13;
 		} else {
-			if (payload)
-				*payload = packet + 10;
+			if (packet_len < 10)
+				return false;
 
-			if (payload_len)
-				*payload_len = packet_len - 10;
+			*payload = packet + 10;
+			*payload_len = packet_len - 10;
 		}
 	}
 
@@ -733,8 +741,7 @@ bool mesh_crypto_payload_encrypt(uint8_t *aad, const uint8_t *payload,
 	if (!mesh_crypto_aes_ccm_encrypt(nonce, app_key,
 							aad, aad ? 16 : 0,
 							payload, payload_len,
-							out, NULL,
-							aszmic ? 8 : 4))
+							out, aszmic ? 8 : 4))
 		return false;
 
 	return true;
@@ -812,13 +819,13 @@ static bool mesh_crypto_packet_encrypt(uint8_t *packet, uint8_t packet_len,
 		if (!mesh_crypto_aes_ccm_encrypt(nonce, network_key,
 					NULL, 0,
 					packet + 7, packet_len - 7 - 8,
-					packet + 7, NULL, 8))
+					packet + 7, 8))
 			return false;
 	} else {
 		if (!mesh_crypto_aes_ccm_encrypt(nonce, network_key,
 					NULL, 0,
 					packet + 7, packet_len - 7 - 4,
-					packet + 7, NULL, 4))
+					packet + 7, 4))
 			return false;
 	}
 

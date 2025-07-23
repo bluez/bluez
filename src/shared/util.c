@@ -741,7 +741,7 @@ static const struct {
 	{ 0x111d, "Imaging Referenced Objects"			},
 	{ 0x111e, "Handsfree"					},
 	{ 0x111f, "Handsfree Audio Gateway"			},
-	{ 0x1120, "Direct Printing Refrence Objects Service"	},
+	{ 0x1120, "Direct Printing Reference Objects Service"	},
 	{ 0x1121, "Reflected UI"				},
 	{ 0x1122, "Basic Printing"				},
 	{ 0x1123, "Printing Status"				},
@@ -855,7 +855,7 @@ static const struct {
 	{ 0x2902, "Client Characteristic Configuration"		},
 	{ 0x2903, "Server Characteristic Configuration"		},
 	{ 0x2904, "Characteristic Format"			},
-	{ 0x2905, "Characteristic Aggregate Formate"		},
+	{ 0x2905, "Characteristic Aggregate Format"		},
 	{ 0x2906, "Valid Range"					},
 	{ 0x2907, "External Report Reference"			},
 	{ 0x2908, "Report Reference"				},
@@ -1677,8 +1677,6 @@ static const struct {
 	{ "a6695ace-ee7f-4fb9-881a-5fac66c629af", "BlueZ Offload Codecs"},
 	{ "6fbaf188-05e0-496a-9885-d6ddfdb4e03e",
 		"BlueZ Experimental ISO Socket"},
-	{ "69518c4c-b69f-4679-8bc1-c021b47b5733",
-		"BlueZ Experimental Poll Errqueue"},
 	{ }
 };
 
@@ -1909,7 +1907,8 @@ char *strstrip(char *str)
 	return str;
 }
 
-bool strisutf8(const char *str, size_t len)
+size_t strnlenutf8(const char *str, size_t len)
+
 {
 	size_t i = 0;
 
@@ -1930,22 +1929,28 @@ bool strisutf8(const char *str, size_t len)
 			size = 4;
 		else
 			/* Invalid UTF-8 sequence */
-			return false;
+			goto done;
 
 		/* Check the following bytes to ensure they have the correct
 		 * format.
 		 */
 		for (size_t j = 1; j < size; ++j) {
-			if (i + j > len || (str[i + j] & 0xC0) != 0x80)
+			if (i + j >= len || (str[i + j] & 0xC0) != 0x80)
 				/* Invalid UTF-8 sequence */
-				return false;
+				goto done;
 		}
 
 		/* Move to the next character */
 		i += size;
 	}
 
-	return true;
+done:
+	return i;
+}
+
+bool strisutf8(const char *str, size_t len)
+{
+	return strnlenutf8(str, len) == len;
 }
 
 bool argsisutf8(int argc, char *argv[])
@@ -1958,4 +1963,17 @@ bool argsisutf8(int argc, char *argv[])
 	}
 
 	return true;
+}
+
+char *strtoutf8(char *str, size_t len)
+{
+	size_t i = 0;
+
+	i = strnlenutf8(str, len);
+	if (i == len)
+		return str;
+
+	/* Truncate to the longest valid UTF-8 string */
+	memset(str + i, 0, len - i);
+	return str;
 }

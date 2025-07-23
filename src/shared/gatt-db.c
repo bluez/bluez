@@ -493,7 +493,7 @@ static void notify_service_changed(struct gatt_db *db,
 
 	queue_foreach(db->notify_list, handle_notify, &data);
 
-	/* Tigger hash update */
+	/* Trigger hash update */
 	if (!db->hash_id && db->crypto)
 		db->hash_id = timeout_add(HASH_UPDATE_TIMEOUT, db_hash_update,
 								db, NULL);
@@ -1391,12 +1391,15 @@ static void find_by_type(struct gatt_db_attribute *attribute, void *user_data)
 {
 	struct find_by_type_value_data *search_data = user_data;
 
+	if (!attribute)
+		return;
+
 	/* TODO: fix for read-callback based attributes */
 	if (search_data->value) {
 		if (search_data->value_len != attribute->value_len)
 			return;
 
-		if (!attribute || !attribute->value)
+		if (!attribute->value)
 			return;
 
 		if (memcmp(attribute->value, search_data->value,
@@ -2099,7 +2102,7 @@ bool gatt_db_attribute_set_fixed_length(struct gatt_db_attribute *attrib,
 	if (attrib->service->attributes[0] == attrib)
 		return false;
 
-	/* If attribute is a characteristic declaration ajust to its value */
+	/* If attribute is a characteristic declaration adjust to its value */
 	if (!bt_uuid_cmp(&characteristic_uuid, &attrib->uuid)) {
 		int i;
 

@@ -66,6 +66,7 @@
 #include "eir.h"
 #include "settings.h"
 #include "set.h"
+#include "bearer.h"
 
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		1
@@ -205,8 +206,8 @@ struct btd_device {
 	uint8_t		bdaddr_type;
 	bool		rpa;
 	char		*path;
-	bool		bredr;
-	bool		le;
+	struct btd_bearer *bredr;
+	struct btd_bearer *le;
 	bool		pending_paired;		/* "Paired" waiting for SDP */
 	bool		svc_refreshed;
 	bool		refresh_discovery;
@@ -948,6 +949,9 @@ static void device_free(gpointer user_data)
 		g_slist_free_full(device->eir_uuids, g_free);
 
 	queue_destroy(device->sirks, free);
+
+	btd_bearer_destroy(device->bredr);
+	btd_bearer_destroy(device->le);
 
 	g_free(device->local_csrk);
 	g_free(device->remote_csrk);
@@ -2340,8 +2344,7 @@ done:
 		}
 
 		g_dbus_send_message(dbus_conn,
-			btd_error_failed(dev->connect,
-					btd_error_bredr_conn_from_errno(err)));
+				btd_error_bredr_errno(dev->connect, err));
 	} else {
 		/* Start passive SDP discovery to update known services */
 		if (dev->bredr && !dev->svc_refreshed && dev->refresh_discovery)
@@ -2686,8 +2689,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 						BTD_SERVICE_STATE_CONNECTED)) {
 				return dbus_message_new_method_return(msg);
 			} else {
-				return btd_error_not_available_str(msg,
-					ERR_BREDR_CONN_PROFILE_UNAVAILABLE);
+				return btd_error_profile_unavailable(msg);
 			}
 		}
 
@@ -2698,8 +2700,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type
 	if (err < 0) {
 		if (err == -EALREADY)
 			return dbus_message_new_method_return(msg);
-		return btd_error_failed(msg,
-					btd_error_bredr_conn_from_errno(err));
+		return btd_error_bredr_errno(msg, err);
 	}
 
 	dev->connect = dbus_message_ref(msg);
@@ -2984,6 +2985,11 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
 		}
 
 		if (dev->pending_paired) {
+			if (bdaddr_type == BDADDR_BREDR)
+				btd_bearer_paired(dev->bredr);
+			else
+				btd_bearer_paired(dev->le);
+
 			g_dbus_emit_property_changed(dbus_conn, dev->path,
 						DEVICE_INTERFACE, "Paired");
 			dev->pending_paired = false;
@@ -3002,10 +3008,12 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
 			if (err == 0)
 				goto done;
 		}
-		reply = btd_error_failed(req->msg,
-				bdaddr_type == BDADDR_BREDR ?
-				btd_error_bredr_conn_from_errno(err) :
-				btd_error_le_conn_from_errno(err));
+
+		if (bdaddr_type == BDADDR_BREDR)
+			reply = btd_error_bredr_errno(req->msg, err);
+		else
+			reply = btd_error_le_errno(req->msg, err);
+
 		goto done;
 	}
 
@@ -3073,6 +3081,11 @@ static void device_svc_resolved(struct btd_device *dev, uint8_t browse_type,
 	dev->eir_uuids = NULL;
 
 	if (dev->pending_paired) {
+		if (bdaddr_type == BDADDR_BREDR)
+			btd_bearer_paired(dev->bredr);
+		else
+			btd_bearer_paired(dev->le);
+
 		g_dbus_emit_property_changed(dbus_conn, dev->path,
 						DEVICE_INTERFACE, "Paired");
 		dev->pending_paired = false;
@@ -3241,7 +3254,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_in_progress(msg);
 
 	/* Only use this selection algorithms when device is combo
-	 * chip. Ohterwise, it will use the wrong bearer to establish
+	 * chip. Otherwise, it will use the wrong bearer to establish
 	 * a connection if the device is already paired, which will
 	 * stall the pairing procedure. For example, for a BLE only
 	 * device, if the device is already paired, and upper layer
@@ -3633,6 +3646,14 @@ bool btd_device_bearer_is_connected(struct btd_device *dev)
 	return dev->bredr_state.connected || dev->le_state.connected;
 }
 
+bool btd_device_bdaddr_type_connected(struct btd_device *dev, uint8_t type)
+{
+	if (type == BDADDR_BREDR)
+		return dev->bredr_state.connected;
+
+	return dev->le_state.connected;
+}
+
 static void clear_temporary_timer(struct btd_device *dev)
 {
 	if (dev->temporary_timer) {
@@ -3691,10 +3712,13 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 	dev->conn_bdaddr_type = dev->bdaddr_type;
 
 	/* If this is the first connection over this bearer */
-	if (bdaddr_type == BDADDR_BREDR)
+	if (bdaddr_type == BDADDR_BREDR) {
 		device_set_bredr_support(dev);
-	else
+		btd_bearer_connected(dev->bredr);
+	} else {
 		device_set_le_support(dev, bdaddr_type);
+		btd_bearer_connected(dev->le);
+	}
 
 	state->connected = true;
 	state->initiator = flags & BIT(3);
@@ -3826,6 +3850,12 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 		device->connect = NULL;
 	}
 
+	/* Update bearer interface */
+	if (bdaddr_type == BDADDR_BREDR)
+		btd_bearer_disconnected(device->bredr, reason);
+	else
+		btd_bearer_disconnected(device->le, reason);
+
 	/* Check paired status of both bearers since it's possible to be
 	 * paired but not connected via link key to LTK conversion.
 	 */
@@ -3836,6 +3866,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 						BDADDR_BREDR);
 		device->bredr_state.paired = false;
 		paired_status_updated = true;
+		btd_bearer_paired(device->bredr);
 	}
 
 	if (!device->le_state.connected && device->le_state.paired &&
@@ -3845,6 +3876,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 						device->bdaddr_type);
 		device->le_state.paired = false;
 		paired_status_updated = true;
+		btd_bearer_paired(device->le);
 	}
 
 	/* report change only if both bearers are unpaired */
@@ -4184,9 +4216,9 @@ static void load_info(struct btd_device *device, const char *local,
 
 	for (t = techno; *t; t++) {
 		if (g_str_equal(*t, "BR/EDR"))
-			device->bredr = true;
+			device->bredr = btd_bearer_new(device, BDADDR_BREDR);
 		else if (g_str_equal(*t, "LE"))
-			device->le = true;
+			device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
 		else
 			error("Unknown device technology");
 	}
@@ -4224,10 +4256,12 @@ static void load_info(struct btd_device *device, const char *local,
 		/* Load last used bearer */
 		str = g_key_file_get_string(key_file, "General",
 						"LastUsedBearer", NULL);
-		if (str)
+		if (str) {
 			device_update_last_used(device, !strcmp(str, "le") ?
 						device->bdaddr_type :
 						BDADDR_BREDR);
+			g_free(str);
+		}
 	}
 
 next:
@@ -4691,7 +4725,7 @@ static void gatt_service_removed(struct gatt_db_attribute *attr,
 	if (l && !g_slist_find_custom(device->primaries, prim->uuid,
 							prim_uuid_cmp)) {
 		/*
-		 * If this happend since the db was cleared for a non-bonded
+		 * If this happened since the db was cleared for a non-bonded
 		 * device, then don't remove the btd_service just yet. We do
 		 * this so that we can avoid re-probing the profile if the same
 		 * GATT service is found on the device on re-connection.
@@ -4825,9 +4859,9 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 	device->bdaddr_type = bdaddr_type;
 
 	if (bdaddr_type == BDADDR_BREDR)
-		device->bredr = true;
+		device->bredr = btd_bearer_new(device, BDADDR_BREDR);
 	else
-		device->le = true;
+		device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
 
 	storage_dir = btd_adapter_get_storage_dir(adapter);
 	str = load_cached_name(device, storage_dir, dst);
@@ -4977,7 +5011,8 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 	/* Since this function is only used for LE SMP Identity
 	 * Resolving purposes we can now assume LE is supported.
 	 */
-	device->le = true;
+	if (!device->le)
+		device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
 
 	/* Remove old address from accept/auto-connect list since its address
 	 * will be changed.
@@ -5007,7 +5042,8 @@ void device_set_bredr_support(struct btd_device *device)
 	if (btd_opts.mode == BT_MODE_LE || device->bredr)
 		return;
 
-	device->bredr = true;
+	if (!device->bredr)
+		device->bredr = btd_bearer_new(device, BDADDR_BREDR);
 
 	if (device->le)
 		g_dbus_emit_property_changed(dbus_conn, device->path,
@@ -5021,7 +5057,9 @@ void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 	if (btd_opts.mode == BT_MODE_BREDR || device->le)
 		return;
 
-	device->le = true;
+	if (!device->le)
+		device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
+
 	device->bdaddr_type = bdaddr_type;
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
@@ -5060,7 +5098,7 @@ void btd_device_set_connectable(struct btd_device *device, bool connectable)
  * case it has first been discovered over BR/EDR and has a private
  * address when discovered over LE for the first time. In such a case we
  * need to inherit critical values from the duplicate so that we don't
- * ovewrite them when writing to storage. The next time bluetoothd
+ * overwrite them when writing to storage. The next time bluetoothd
  * starts the device will show up as a single instance.
  */
 void device_merge_duplicate(struct btd_device *dev, struct btd_device *dup)
@@ -6280,8 +6318,7 @@ done:
 
 	if (device->connect) {
 		if (err < 0)
-			reply = btd_error_failed(device->connect,
-					btd_error_le_conn_from_errno(err));
+			reply = btd_error_le_errno(device->connect, err);
 		else
 			reply = dbus_message_new_method_return(device->connect);
 
@@ -6605,6 +6642,11 @@ void device_set_bonded(struct btd_device *device, uint8_t bdaddr_type)
 
 	state->bonded = true;
 
+	if (bdaddr_type == BDADDR_BREDR)
+		btd_bearer_bonded(device->bredr);
+	else
+		btd_bearer_bonded(device->le);
+
 	btd_device_set_temporary(device, false);
 
 	/* If the other bearer state was already true we don't need to
@@ -6855,6 +6897,11 @@ void device_set_paired(struct btd_device *dev, uint8_t bdaddr_type)
 
 	state->paired = true;
 
+	if (bdaddr_type == BDADDR_BREDR)
+		btd_bearer_paired(dev->bredr);
+	else
+		btd_bearer_paired(dev->le);
+
 	/* If the other bearer state was already true we don't need to
 	 * send any property signals.
 	 */
@@ -6878,6 +6925,11 @@ void device_set_unpaired(struct btd_device *dev, uint8_t bdaddr_type)
 		return;
 
 	state->paired = false;
+
+	if (bdaddr_type == BDADDR_BREDR)
+		btd_bearer_paired(dev->bredr);
+	else
+		btd_bearer_paired(dev->le);
 
 	/*
 	 * If the other bearer state is still true we don't need to
@@ -6972,7 +7024,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	 * request
 	 */
 	if (state->svc_resolved && bonding) {
-		/* Attept to store services for this device failed because it
+		/* Attempt to store services for this device failed because it
 		 * was not paired. Now that we're paired retry. */
 		store_gatt_db(device);
 
@@ -7111,7 +7163,7 @@ static gboolean device_bonding_retry(gpointer data)
 	DBG("retrying bonding");
 	bonding->retry_timer = 0;
 
-	/* Restart the bonding timer to the begining of the pairing. If not
+	/* Restart the bonding timer to the beginning of the pairing. If not
 	 * pincode request/reply occurs during this retry,
 	 * device_bonding_last_duration() will return a consistent value from
 	 * this point. */

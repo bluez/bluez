@@ -70,7 +70,8 @@ AC_CHECK_LIB(pthread, pthread_create, dummy=yes,
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
-AC_CHECK_HEADERS(stdio.h string.h linux/types.h linux/if_alg.h linux/uinput.h linux/uhid.h sys/random.h)
+AC_CHECK_HEADERS(stdarg.h stdio.h string.h linux/types.h linux/if_alg.h \
+			linux/uinput.h linux/uhid.h sys/random.h)
 
 # basename may be only available in libgen.h with the POSIX behavior,
 # not desired here
@@ -82,14 +83,6 @@ AC_CHECK_DECLS([basename], [],
 
 
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.36)
-
-if (test "${enable_threads}" = "yes"); then
-	AC_DEFINE(NEED_THREADS, 1, [Define if threading support is required])
-	PKG_CHECK_MODULES(GTHREAD, gthread-2.0 >= 2.16)
-	GLIB_CFLAGS="$GLIB_CFLAGS $GTHREAD_CFLAGS"
-	GLIB_LIBS="$GLIB_LIBS $GTHREAD_LIBS"
-fi
-
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.10)
 
 AC_ARG_WITH([dbusconfdir], AS_HELP_STRING([--with-dbusconfdir=DIR],
@@ -166,7 +159,7 @@ AC_ARG_ENABLE(test, AS_HELP_STRING([--enable-test],
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
 
 AC_ARG_ENABLE(nfc, AS_HELP_STRING([--enable-nfc],
-		[enable NFC paring]), [enable_nfc=${enableval}])
+		[enable NFC pairing]), [enable_nfc=${enableval}])
 AM_CONDITIONAL(NFC, test "${enable_nfc}" = "yes")
 
 AC_ARG_ENABLE(sap, AS_HELP_STRING([--enable-sap],
@@ -489,22 +482,6 @@ AC_SUBST(CONFIGDIR, "${configdir}")
 AC_DEFINE_UNQUOTED(MESH_STORAGEDIR, "${storagedir}/mesh",
 			[Directory for the mesh daemon storage files])
 AC_SUBST(MESH_STORAGEDIR, "${storagedir}/mesh")
-
-AC_ARG_ENABLE(android, AS_HELP_STRING([--enable-android],
-			[enable BlueZ for Android]),
-					[enable_android=${enableval}])
-AM_CONDITIONAL(ANDROID, test "${enable_android}" = "yes")
-
-if (test "${enable_android}" = "yes"); then
-	PKG_CHECK_MODULES(SBC, sbc >= 1.2)
-fi
-
-if (test "${enable_android}" = "yes"); then
-	PKG_CHECK_MODULES(SPEEXDSP, speexdsp >= 1.2)
-fi
-
-AC_DEFINE_UNQUOTED(ANDROID_STORAGEDIR, "${storagedir}/android",
-			[Directory for the Android daemon storage files])
 
 AC_ARG_WITH([phonebook], AS_HELP_STRING([--with-phonebook=PLUGIN],
 			[obexd phonebook plugin (default=dummy)]),

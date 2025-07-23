@@ -17,6 +17,8 @@
 #define _GNU_SOURCE
 #include <ell/ell.h>
 
+#include "src/shared/ad.h"
+
 #include "mesh/mesh-io.h"
 #include "mesh/node.h"
 #include "mesh/net.h"
@@ -97,7 +99,7 @@ static struct l_queue *pending_queue;
 
 static const char *storage_dir;
 
-/* Forward static decalrations */
+/* Forward static declarations */
 static void def_attach(struct l_timeout *timeout, void *user_data);
 static void def_leave(struct l_timeout *timeout, void *user_data);
 
@@ -139,7 +141,7 @@ static void prov_rx(void *user_data, struct mesh_io_recv_info *info,
 
 bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data)
 {
-	uint8_t prov_filter[] = {MESH_AD_TYPE_PROVISION};
+	uint8_t prov_filter[] = {BT_AD_MESH_PROV};
 
 	if (mesh.prov_rx && mesh.prov_rx != cb)
 		return false;
@@ -153,7 +155,7 @@ bool mesh_reg_prov_rx(prov_rx_cb_t cb, void *user_data)
 
 void mesh_unreg_prov_rx(prov_rx_cb_t cb)
 {
-	uint8_t prov_filter[] = {MESH_AD_TYPE_PROVISION};
+	uint8_t prov_filter[] = {BT_AD_MESH_PROV};
 
 	if (mesh.prov_rx != cb)
 		return;
@@ -455,7 +457,7 @@ static void prov_join_complete_reply_cb(struct l_dbus_message *msg,
 }
 
 static bool prov_complete_cb(void *user_data, uint8_t status,
-					struct mesh_prov_node_info *info)
+					const struct mesh_prov_node_info *info)
 {
 	struct l_dbus *dbus = dbus_get_bus();
 	struct l_dbus_message *msg;

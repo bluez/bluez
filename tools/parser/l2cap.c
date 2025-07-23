@@ -279,7 +279,7 @@ static char *status2str(uint16_t status)
 {
 	switch (status) {
 	case 0x0000:
-		return "No futher information available";
+		return "No further information available";
 	case 0x0001:
 		return "Authentication pending";
 	case 0x0002:

@@ -512,7 +512,8 @@ static void recv_mode(int sk)
 			/* Check sequence */
 			sq = btohl(*(uint32_t *) buf);
 			if (seq != sq) {
-				syslog(LOG_INFO, "seq missmatch: %d -> %d", seq, sq);
+				syslog(LOG_INFO, "seq mismatch: %d -> %d", seq,
+					sq);
 				seq = sq;
 			}
 			seq++;
@@ -520,14 +521,17 @@ static void recv_mode(int sk)
 			/* Check length */
 			l = btohs(*(uint16_t *) (buf + 4));
 			if (r != l) {
-				syslog(LOG_INFO, "size missmatch: %d -> %d", r, l);
+				syslog(LOG_INFO, "size mismatch: %d -> %d", r,
+					l);
 				continue;
 			}
 
 			/* Verify data */
 			for (i = 6; i < r; i++) {
 				if (buf[i] != 0x7f)
-					syslog(LOG_INFO, "data missmatch: byte %d 0x%2.2x", i, buf[i]);
+					syslog(LOG_INFO,
+					"data mismatch: byte %d 0x%2.2x", i,
+					buf[i]);
 			}
 #endif
 			total += r;

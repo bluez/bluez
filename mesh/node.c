@@ -1329,7 +1329,7 @@ static bool get_element_properties(struct mesh_node *node, const char *path,
 
 	/*
 	 * Add configuration server model on the primary element.
-	 * We allow the application not to specify the presense of
+	 * We allow the application not to specify the presence of
 	 * the Configuration Server model, since it's implemented by the
 	 * daemon. If the model is present in the application properties,
 	 * the operation below will be a "no-op".
@@ -1412,8 +1412,9 @@ static void save_pages(void *data, void *user_data)
 }
 
 static bool add_local_node(struct mesh_node *node, uint16_t unicast, bool kr,
-				bool ivu, uint32_t iv_idx, uint8_t dev_key[16],
-				uint16_t net_key_idx, uint8_t net_key[16])
+				bool ivu, uint32_t iv_idx,
+				const uint8_t dev_key[16],
+				uint16_t net_key_idx, const uint8_t net_key[16])
 {
 	if (!nodes)
 		nodes = l_queue_new();
@@ -2493,9 +2494,9 @@ const char *node_get_element_path(struct mesh_node *node, uint8_t ele_idx)
 	return ele->path;
 }
 
-bool node_add_pending_local(struct mesh_node *node, void *prov_node_info)
+bool node_add_pending_local(struct mesh_node *node,
+					const struct mesh_prov_node_info *info)
 {
-	struct mesh_prov_node_info *info = prov_node_info;
 	bool kr = !!(info->flags & PROV_FLAG_KR);
 	bool ivu = !!(info->flags & PROV_FLAG_IVU);
 

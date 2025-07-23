@@ -1539,8 +1539,13 @@ static void register_notify_io_cb(uint16_t att_ecode, void *user_data)
 	struct bt_gatt_client *gatt = chrc->service->client->gatt;
 
 	if (att_ecode) {
-		queue_remove(chrc->notify_clients, client);
-		notify_client_free(client);
+		DBusMessage *reply =
+			create_gatt_dbus_error(chrc->notify_io->msg, att_ecode);
+
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		dbus_message_unref(chrc->notify_io->msg);
+		chrc->notify_io->msg = NULL;
+		destroy_sock(chrc, chrc->notify_io->io);
 		return;
 	}
 

@@ -253,7 +253,9 @@ enum {
 
 #define BT_ISO_BASE		20
 
-#define BT_POLL_ERRQUEUE	21
+#define BT_PKT_SEQNUM		22
+
+#define BT_SCM_PKT_SEQNUM	0x05
 
 /* Byte order conversions */
 #if __BYTE_ORDER == __LITTLE_ENDIAN

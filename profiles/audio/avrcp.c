@@ -1324,7 +1324,7 @@ static uint8_t avrcp_handle_get_current_player_value(struct avrcp *session,
 	len = 0;
 
 	/*
-	 * From sec. 5.7 of AVRCP 1.3 spec, we should igore non-existent IDs
+	 * From sec. 5.7 of AVRCP 1.3 spec, we should ignore non-existent IDs
 	 * and send a response with the existent ones. Only if all IDs are
 	 * non-existent we should send an error.
 	 */
@@ -1376,7 +1376,7 @@ static uint8_t avrcp_handle_set_player_value(struct avrcp *session,
 		goto err;
 
 	/*
-	 * From sec. 5.7 of AVRCP 1.3 spec, we should igore non-existent IDs
+	 * From sec. 5.7 of AVRCP 1.3 spec, we should ignore non-existent IDs
 	 * and set the existent ones. Sec. 5.2.4 is not clear however how to
 	 * indicate that a certain ID was not accepted. If at least one
 	 * attribute is valid, we respond with no parameters. Otherwise an
@@ -2595,8 +2595,10 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	memset(name, 0, sizeof(name));
 	namesize = get_be16(&operands[11]);
 	namelen = MIN(namesize, sizeof(name) - 1);
-	if (namelen > 0)
+	if (namelen > 0) {
 		memcpy(name, &operands[13], namelen);
+		strtoutf8(name, namelen);
+	}
 
 	count = operands[13 + namesize];
 
@@ -3060,8 +3062,14 @@ static void set_ct_player(struct avrcp *session, struct avrcp_player *player)
 	if (session->controller->player == player)
 		goto done;
 
-	session->controller->player = player;
 	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
+
+	if (service == NULL) {
+		error("Unable to find btd service");
+		return;
+	}
+
+	session->controller->player = player;
 	control_set_player(service, player ?
 			media_player_get_path(player->user_data) : NULL);
 
@@ -4256,12 +4264,18 @@ static void target_init(struct avrcp *session)
 	if (session->target != NULL)
 		return;
 
+	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
+
+	if (service == NULL) {
+		error("Unable to find btd service");
+		return;
+	}
+
 	target = data_init(session, AVRCP_REMOTE_UUID);
 	session->target = target;
 
 	DBG("%p version 0x%04x", target, target->version);
 
-	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
 	btd_service_connecting_complete(service, 0);
 
 	player = g_slist_nth_data(server->players, 0);
@@ -4310,6 +4324,13 @@ static void controller_init(struct avrcp *session)
 	if (session->controller != NULL)
 		return;
 
+	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
+
+	if (service == NULL) {
+		error("Unable to find btd service");
+		return;
+	}
+
 	controller = data_init(session, AVRCP_TARGET_UUID);
 	session->controller = controller;
 
@@ -4317,7 +4338,6 @@ static void controller_init(struct avrcp *session)
 	if (controller->obex_port)
 		DBG("%p OBEX PSM 0x%04x", controller, controller->obex_port);
 
-	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
 	btd_service_connecting_complete(service, 0);
 
 	/* Only create player if category 1 is supported */

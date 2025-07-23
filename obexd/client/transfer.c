@@ -556,7 +556,7 @@ struct obc_transfer *obc_transfer_get(const char *type, const char *name,
 	transfer = obc_transfer_create(G_OBEX_OP_GET, filename, name, type);
 
 	perr = transfer_open(transfer, O_WRONLY | O_CREAT | O_TRUNC, 0600, err);
-	if (perr < 0) {
+	if (!perr) {
 		obc_transfer_free(transfer);
 		return NULL;
 	}
@@ -971,6 +971,7 @@ int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 	if (ret < 0) {
 		error("read(): %s(%d)", strerror(errno), errno);
 		g_free(*contents);
+		*contents = NULL;
 		return -errno;
 	}
 

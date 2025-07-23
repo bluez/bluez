@@ -141,7 +141,7 @@ static gboolean enable_plugin(const char *name, char **cli_enable,
 }
 
 
-static void external_plugin_init(char **cli_disabled, char **cli_enabled)
+static void external_plugin_init(char **cli_enabled, char **cli_disabled)
 {
 	GDir *dir;
 	const char *file;

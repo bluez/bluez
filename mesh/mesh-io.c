@@ -18,6 +18,7 @@
 
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
+#include "src/shared/ad.h"
 #include "src/shared/mgmt.h"
 
 #include "mesh/mesh-defs.h"
@@ -42,7 +43,7 @@ static const struct mesh_io_table table[] = {
 	{MESH_IO_TYPE_UNIT_TEST, &mesh_io_unit},
 };
 
-static const uint8_t unprv_filter[] = { MESH_AD_TYPE_BEACON, 0 };
+static const uint8_t unprv_filter[] = { BT_AD_MESH_BEACON, 0 };
 
 static struct mesh_io *default_io;
 static struct l_timeout *loop_adv_to;
