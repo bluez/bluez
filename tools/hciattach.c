@@ -253,6 +253,18 @@ static int bcm43xx(int fd, struct uart_t *u, struct termios *ti)
 	return bcm43xx_init(fd, u->init_speed, u->speed, ti, u->bdaddr);
 }
 
+static int xradio_init(int fd, struct uart_t *u, struct termios *ti)
+{
+	fprintf(stderr, "XRADIO Bluetooth init uart with init speed:%d, final_speed:%d, type:HCI UART %s\n", u->init_speed, u->speed, (u->proto == HCI_UART_H4)? "H4":"H5" );
+	return xr_init(fd, u, ti);
+}
+
+static int xradio_post(int fd, struct uart_t *u, struct termios *ti)
+{
+	fprintf(stderr, "XRADIO Bluetooth post process\n");
+	return xr_post(fd, u, ti);
+}
+
 static int read_check(int fd, void *buf, int count)
 {
 	int res;
@@ -1083,6 +1095,9 @@ struct uart_t uart[] = {
 	/* AMP controller UART */
 	{ "amp",	0x0000, 0x0000, HCI_UART_H4, 115200, 115200,
 			AMP_DEV, DISABLE_PM, NULL, NULL, NULL },
+
+	/* XRadio controller UART */
+	{ "xradio",     0x0000, 0x0000, HCI_UART_H4, 115200, 1500000, 0, DISABLE_PM, NULL, xradio_init, xradio_post},
 
 	{ NULL, 0 }
 };
