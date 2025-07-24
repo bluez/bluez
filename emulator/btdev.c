@@ -6417,9 +6417,51 @@ static int cmd_reject_cis(struct btdev *dev, const void *data, uint8_t len)
 
 static int cmd_create_big(struct btdev *dev, const void *data, uint8_t len)
 {
-	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_CREATE_BIG);
+	const struct bt_hci_cmd_le_big_create_sync *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	/* If the Advertising_Handle does not identify a periodic advertising
+	 * train,, the Controller shall return the error code Unknown
+	 * Advertising Identifier (0x42).
+	 */
+	if (!dev->le_pa_enable) {
+		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
+		goto done;
+	}
+
+	/* If the Host sends this command with a BIG_Handle that is already
+	 * allocated, the Controller shall return the error code Command
+	 * Disallowed (0x0C).
+	 */
+	if (queue_find(dev->le_big, match_big_handle,
+				UINT_TO_PTR(cmd->handle))) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
+
+done:
+	cmd_status(dev, status, BT_HCI_CMD_LE_CREATE_BIG);
 
 	return 0;
+}
+
+static struct le_big *le_big_new(struct btdev *btdev, uint8_t handle)
+{
+	struct le_big *big;
+
+	big = new0(struct le_big, 1);
+
+	big->dev = btdev;
+	big->handle = handle;
+	big->bis = queue_new();
+
+	/* Add to queue */
+	if (!queue_push_tail(btdev->le_big, big)) {
+		le_big_free(big);
+		return NULL;
+	}
+
+	return big;
 }
 
 static int cmd_create_big_complete(struct btdev *dev, const void *data,
@@ -6427,6 +6469,7 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 {
 	const struct bt_hci_cmd_le_create_big *cmd = data;
 	const struct bt_hci_bis *bis = &cmd->bis;
+	struct le_big *big;
 	int i;
 	struct bt_hci_evt_le_big_complete evt;
 	uint16_t *bis_handle;
@@ -6439,6 +6482,16 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 	if (!pdu)
 		return -ENOMEM;
 
+	/* If the Controller cannot create all BISes of the BIG or if Num_BIS
+	 * exceeds the maximum value supported by the Controller, then it shall
+	 * return the error code Rejected due to Limited Resources (0x0D).
+	 */
+	big = le_big_new(dev, cmd->handle);
+	if (!big) {
+		evt.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+		goto done;
+	}
+
 	bis_handle = (uint16_t *)(pdu + sizeof(evt));
 
 	memset(&evt, 0, sizeof(evt));
@@ -6448,10 +6501,13 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 
 		conn = conn_add_bis(dev, ISO_HANDLE + i, bis);
 		if (!conn) {
+			queue_remove(dev->le_big, big);
+			le_big_free(big);
 			evt.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 			goto done;
 		}
 
+		queue_push_tail(big->bis, conn);
 		*bis_handle = cpu_to_le16(conn->handle);
 		bis_handle++;
 	}
@@ -6538,25 +6594,6 @@ done:
 	cmd_status(dev, status, BT_HCI_CMD_LE_BIG_CREATE_SYNC);
 
 	return 0;
-}
-
-static struct le_big *le_big_new(struct btdev *btdev, uint8_t handle)
-{
-	struct le_big *big;
-
-	big = new0(struct le_big, 1);
-
-	big->dev = btdev;
-	big->handle = handle;
-	big->bis = queue_new();
-
-	/* Add to queue */
-	if (!queue_push_tail(btdev->le_big, big)) {
-		le_big_free(big);
-		return NULL;
-	}
-
-	return big;
 }
 
 static int cmd_big_create_sync_complete(struct btdev *dev, const void *data,
