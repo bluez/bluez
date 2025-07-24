@@ -1665,9 +1665,13 @@ static bool get_bc_sid(int sock, uint8_t *sid, GError **err)
 
 	olen = sizeof(addr);
 	memset(&addr, 0, olen);
-	if (getpeername(sock, (void *)&addr, &olen) < 0 ||
-				olen != sizeof(addr)) {
+	if (getpeername(sock, (void *)&addr, &olen) < 0) {
 		ERROR_FAILED(err, "getpeername", errno);
+		return false;
+	}
+
+	if (olen != sizeof(addr)) {
+		ERROR_FAILED(err, "getpeername: size mismatch", EINVAL);
 		return false;
 	}
 
