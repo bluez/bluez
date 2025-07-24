@@ -10,6 +10,34 @@
 
 #include <stdbool.h>
 
+#define HFP_HF_FEAT_ECNR				0x00000001
+#define HFP_HF_FEAT_3WAY				0x00000002
+#define HFP_HF_FEAT_CLIP				0x00000004
+#define HFP_HF_FEAT_VOICE_RECOGNITION			0x00000008
+#define HFP_HF_FEAT_REMOTE_VOLUME_CONTROL		0x00000010
+#define HFP_HF_FEAT_ENHANCED_CALL_STATUS		0x00000020
+#define HFP_HF_FEAT_ENHANCED_CALL_CONTROL		0x00000040
+#define HFP_HF_FEAT_CODEC_NEGOTIATION			0x00000080
+#define HFP_HF_FEAT_HF_INDICATORS			0x00000100
+#define HFP_HF_FEAT_ESCO_S4_T2				0x00000200
+#define HFP_HF_FEAT_ENHANCED_VOICE_RECOGNITION_STATUS	0x00000400
+#define HFP_HF_FEAT_VOICE_RECOGNITION_TEXT		0x00000800
+
+#define HFP_AG_FEAT_3WAY				0x00000001
+#define HFP_AG_FEAT_ECNR				0x00000002
+#define HFP_AG_FEAT_VOICE_RECOGNITION			0x00000004
+#define HFP_AG_FEAT_IN_BAND_RING_TONE			0x00000008
+#define HFP_AG_FEAT_ATTACH_VOICE_TAG			0x00000010
+#define HFP_AG_FEAT_REJECT_CALL				0x00000020
+#define HFP_AG_FEAT_ENHANCED_CALL_STATUS		0x00000040
+#define HFP_AG_FEAT_ENHANCED_CALL_CONTROL		0x00000080
+#define HFP_AG_FEAT_EXTENDED_RES_CODE			0x00000100
+#define HFP_AG_FEAT_CODEC_NEGOTIATION			0x00000200
+#define HFP_AG_FEAT_HF_INDICATORS			0x00000400
+#define HFP_AG_FEAT_ESCO_S4_T2				0x00000800
+#define HFP_AG_FEAT_ENHANCED_VOICE_RECOGNITION_STATUS	0x00001000
+#define HFP_AG_FEAT_VOICE_RECOGNITION_TEXT		0x00001000
+
 enum hfp_result {
 	HFP_RESULT_OK		= 0,
 	HFP_RESULT_CONNECT	= 1,
@@ -55,6 +83,35 @@ enum hfp_gw_cmd_type {
 	HFP_GW_CMD_TYPE_SET,
 	HFP_GW_CMD_TYPE_TEST,
 	HFP_GW_CMD_TYPE_COMMAND
+};
+
+enum hfp_indicator {
+	HFP_INDICATOR_SERVICE = 0,
+	HFP_INDICATOR_CALL,
+	HFP_INDICATOR_CALLSETUP,
+	HFP_INDICATOR_CALLHELD,
+	HFP_INDICATOR_SIGNAL,
+	HFP_INDICATOR_ROAM,
+	HFP_INDICATOR_BATTCHG,
+	HFP_INDICATOR_LAST
+};
+
+enum hfp_call {
+	CIND_CALL_NONE = 0,
+	CIND_CALL_IN_PROGRESS
+};
+
+enum hfp_call_setup {
+	CIND_CALLSETUP_NONE = 0,
+	CIND_CALLSETUP_INCOMING,
+	CIND_CALLSETUP_DIALING,
+	CIND_CALLSETUP_ALERTING
+};
+
+enum hfp_call_held {
+	CIND_CALLHELD_NONE = 0,
+	CIND_CALLHELD_HOLD_AND_ACTIVE,
+	CIND_CALLHELD_HOLD
 };
 
 struct hfp_context;
@@ -128,6 +185,13 @@ typedef void (*hfp_response_func_t)(enum hfp_result result,
 
 struct hfp_hf;
 
+struct hfp_hf_callbacks {
+	void (*session_ready)(enum hfp_result result, enum hfp_error cme_err,
+							void *user_data);
+	void (*update_indicator)(enum hfp_indicator indicator, uint32_t val,
+							void *user_data);
+};
+
 struct hfp_hf *hfp_hf_new(int fd);
 
 struct hfp_hf *hfp_hf_ref(struct hfp_hf *hfp);
@@ -146,3 +210,8 @@ bool hfp_hf_register(struct hfp_hf *hfp, hfp_hf_result_func_t callback,
 bool hfp_hf_unregister(struct hfp_hf *hfp, const char *prefix);
 bool hfp_hf_send_command(struct hfp_hf *hfp, hfp_response_func_t resp_cb,
 				void *user_data, const char *format, ...);
+
+bool hfp_hf_session_register(struct hfp_hf *hfp,
+				struct hfp_hf_callbacks *callbacks,
+				void *callbacks_data);
+bool hfp_hf_session(struct hfp_hf *hfp);
