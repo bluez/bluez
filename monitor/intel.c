@@ -196,6 +196,50 @@ static void print_version_tlv_enabled(const struct intel_version_tlv *tlv,
 					tlv->val[0]);
 }
 
+static void print_version_tlv_cnvi_bt(const struct intel_version_tlv *tlv,
+				      const char *type_str)
+{
+	const char *str;
+	uint32_t cnvibt = get_le32(tlv->val);
+	uint8_t variant = (cnvibt >> 16) & 0x3f;
+
+	switch (variant) {
+	case 0x17:
+		str = "Typhoon Peak2";
+		break;
+	case 0x18:
+		str = "Solar";
+		break;
+	case 0x19:
+		str = "Solar F";
+		break;
+	case 0x1b:
+		str = "Magnetor";
+		break;
+	case 0x1c:
+		str = "Gale Peak2";
+		break;
+	case 0x1d:
+		str = "BlazarU";
+		break;
+	case 0x1e:
+		str = "BlazarI";
+		break;
+	case 0x1f:
+		str = "Scorpious Peak";
+		break;
+	case 0x22:
+		str = "BlazarIW";
+		break;
+	default:
+		str = "Unknown";
+		break;
+	}
+
+	print_field("%s(%u): 0x%8.8x - %s(0x%2.2x)", type_str, tlv->type,
+			cnvibt, str, variant);
+}
+
 static void print_version_tlv_img_type(const struct intel_version_tlv *tlv,
 				       const char *type_str)
 {
@@ -259,7 +303,7 @@ static const struct intel_version_tlv_desc {
 } intel_version_tlv_table[] = {
 	{ 16, "CNVi TOP", print_version_tlv_u32 },
 	{ 17, "CNVr TOP", print_version_tlv_u32 },
-	{ 18, "CNVi BT", print_version_tlv_u32 },
+	{ 18, "CNVi BT", print_version_tlv_cnvi_bt},
 	{ 19, "CNVr BT", print_version_tlv_u32 },
 	{ 20, "CNVi OTP", print_version_tlv_u16 },
 	{ 21, "CNVr OTP", print_version_tlv_u16 },
