@@ -15,7 +15,8 @@ client_bluetoothctl_SOURCES = client/main.c \
 					client/player.h client/player.c \
 					client/mgmt.h client/mgmt.c \
 					client/assistant.h client/assistant.c \
-					client/hci.h client/hci.c
+					client/hci.h client/hci.c \
+					client/telephony.h client/telephony.c
 client_bluetoothctl_LDADD = lib/libbluetooth-internal.la \
 			gdbus/libgdbus-internal.la src/libshared-glib.la \
 			$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
@@ -351,7 +352,8 @@ man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1 tools/isotest.1 \
 		client/bluetoothctl-advertise.1 client/bluetoothctl-endpoint.1 \
 		client/bluetoothctl-gatt.1 client/bluetoothctl-player.1 \
 		client/bluetoothctl-scan.1 client/bluetoothctl-transport.1 \
-		client/bluetoothctl-assistant.1 client/bluetoothctl-hci.1
+		client/bluetoothctl-assistant.1 client/bluetoothctl-hci.1 \
+		client/bluetoothctl-telephony.1
 
 endif
 
@@ -484,7 +486,8 @@ manual_pages += tools/hciattach.1 tools/hciconfig.1 \
 			client/bluetoothctl-scan.1 \
 			client/bluetoothctl-transport.1 \
 			client/bluetoothctl-assistant.1 \
-			client/bluetoothctl-hci.1
+			client/bluetoothctl-hci.1 \
+			client/bluetoothctl-telephony.1
 
 if HID2HCI
 udevdir = $(UDEV_DIR)

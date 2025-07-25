@@ -150,3 +150,8 @@ if ASHA
 builtin_modules += asha
 builtin_sources += profiles/audio/asha.h profiles/audio/asha.c
 endif
+
+if HFP
+builtin_modules += hfp
+builtin_sources += profiles/audio/telephony.c profiles/audio/hfp-hf.c
+endif
