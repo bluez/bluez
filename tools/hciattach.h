@@ -9,6 +9,7 @@
  */
 
 #include <termios.h>
+#include <lib/bluetooth.h>
 
 #ifndef N_HCI
 #define N_HCI	15
@@ -40,6 +41,21 @@
 #define HCI_UART_EXT_CONFIG	4
 #define HCI_UART_VND_DETECT	5
 
+
+struct uart_t {
+	char *type;
+	int  m_id;
+	int  p_id;
+	int  proto;
+	int  init_speed;
+	int  speed;
+	int  flags;
+	int  pm;
+	char *bdaddr;
+	int  (*init) (int fd, struct uart_t *u, struct termios *ti);
+	int  (*post) (int fd, struct uart_t *u, struct termios *ti);
+};
+
 #ifndef FIRMWARE_DIR
 #define FIRMWARE_DIR "/etc/firmware"
 #endif
@@ -60,3 +76,11 @@ int qualcomm_init(int fd, int speed, struct termios *ti, const char *bdaddr);
 int intel_init(int fd, int init_speed, int *speed, struct termios *ti);
 int bcm43xx_init(int fd, int def_speed, int speed, struct termios *ti,
 		const char *bdaddr);
+
+// add xradio init and post process for xradio Bluetooth chip (xr829)
+int xr_init(int fd, struct uart_t *u, struct termios *ti);
+int xr_post(int fd, struct uart_t *u, struct termios *ti);
+
+// add sprd init and post process for sprd Bluetooth chip (UWE5622)
+int sprd_config_init(int fd, struct uart_t *u, struct termios *ti);
+int sprd_config_post(int fd, struct uart_t *u, struct termios *ti);

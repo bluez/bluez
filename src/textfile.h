@@ -7,6 +7,8 @@
  *
  *
  */
+#ifndef __TEXTFILE_H
+#define __TEXTFILE_H
 
 int create_filename(char *str, size_t size, const char *fmt, ...)
 					__attribute__((format(printf, 3, 4)));
@@ -20,3 +22,5 @@ char *textfile_get(const char *pathname, const char *key);
 typedef void (*textfile_cb) (char *key, char *value, void *data);
 
 int textfile_foreach(const char *pathname, textfile_cb func, void *data);
+
+#endif /* __TEXTFILE_H */
