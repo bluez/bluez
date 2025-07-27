@@ -661,7 +661,7 @@ int phonebook_init(void)
 
 void phonebook_exit(void)
 {
-	g_object_unref(book_client);
-	g_object_unref(address_book);
-	g_object_unref(registry);
+	g_clear_object(&book_client);
+	g_clear_object(&address_book);
+	g_clear_object(&registry);
 }
