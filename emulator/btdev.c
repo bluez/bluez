@@ -6542,14 +6542,6 @@ static int cmd_term_big(struct btdev *dev, const void *data, uint8_t len)
 	struct le_big *big;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
 
-	/* Check that PA advertising is enabled othewise it is not possible to
-	 * have a BIG.
-	 */
-	if (!dev->le_pa_enable) {
-		status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
-		goto done;
-	}
-
 	/* If the BIG_Handle does not identify a BIG, the Controller shall
 	 * return the error code Unknown Advertising Identifier (0x42).
 	 */
