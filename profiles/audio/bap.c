@@ -1021,7 +1021,8 @@ static void setup_free(void *data)
 
 	release_stream(setup->stream);
 
-	bap_update_cigs(setup->ep->data);
+	if (setup->ep)
+		bap_update_cigs(setup->ep->data);
 
 	free(setup);
 }
