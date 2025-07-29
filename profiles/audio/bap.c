@@ -1783,6 +1783,10 @@ static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
 		bt_bap_stream_metadata(setup->stream, setup->metadata, NULL,
 								NULL);
 
+	/* Don't set ready* field if there is no callback pending */
+	if (!setup->id)
+		return 0;
+
 	setup->readying = true;
 	setup->ready_cb = cb;
 	setup->ready_cb_data = user_data;
