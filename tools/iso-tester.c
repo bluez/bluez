@@ -1420,6 +1420,15 @@ static const struct iso_client_data bcast_16_2_1_send_sid1 = {
 	.sid = 0x01,
 };
 
+static const struct iso_client_data bcast_16_2_1_reconnect = {
+	.qos = QOS_OUT_16_2_1,
+	.expect_err = 0,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+	.disconnect = true,
+};
+
 static const struct iso_client_data bcast_16_2_1_recv = {
 	.qos = QOS_IN_16_2_1,
 	.expect_err = 0,
@@ -3477,6 +3486,14 @@ static void test_bcast(const void *test_data)
 	setup_connect(data, 0, iso_connect_cb);
 }
 
+static void test_bcast_reconnect(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->reconnect = true;
+	setup_connect(data, 0, iso_connect_cb);
+}
+
 static void test_bcast2(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -3942,6 +3959,9 @@ int main(int argc, char *argv[])
 	test_iso("ISO Broadcaster SID 0x01 - Success", &bcast_16_2_1_send_sid1,
 							setup_powered,
 							test_bcast);
+	test_iso("ISO Broadcaster Reconnect - Success", &bcast_16_2_1_reconnect,
+							setup_powered,
+							test_bcast_reconnect);
 
 	test_iso("ISO Broadcaster Receiver - Success", &bcast_16_2_1_recv,
 							setup_powered,
