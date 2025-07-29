@@ -6561,6 +6561,14 @@ done:
 	return 0;
 }
 
+static bool match_bis(const void *data, const void *match_data)
+{
+	const struct le_big *big = data;
+	const struct btdev_conn *conn = match_data;
+
+	return queue_find(big->bis, NULL, conn);
+}
+
 static int cmd_term_big_complete(struct btdev *dev, const void *data,
 							uint8_t len)
 {
@@ -6593,13 +6601,17 @@ static int cmd_term_big_complete(struct btdev *dev, const void *data,
 		if (conn->link->dev != remote) {
 			struct bt_hci_evt_le_big_sync_lost evt;
 
-			memset(&evt, 0, sizeof(evt));
-			evt.big_handle = cmd->handle;
-			evt.reason = cmd->reason;
-
 			remote = conn->link->dev;
-			le_meta_event(remote, BT_HCI_EVT_LE_BIG_SYNC_LOST,
-				      &evt, sizeof(evt));
+
+			big = queue_find(remote->le_big, match_bis, conn->link);
+			if (big) {
+				memset(&evt, 0, sizeof(evt));
+				evt.big_handle = big->handle;
+				evt.reason = cmd->reason;
+				le_meta_event(remote,
+						BT_HCI_EVT_LE_BIG_SYNC_LOST,
+						&evt, sizeof(evt));
+			}
 		}
 
 		/* Unlink conn from remote BIS */
