@@ -154,6 +154,10 @@ AC_ARG_ENABLE(library, AS_HELP_STRING([--enable-library],
 		[install Bluetooth library]), [enable_library=${enableval}])
 AM_CONDITIONAL(LIBRARY, test "${enable_library}" = "yes")
 
+AC_ARG_ENABLE(bluetoothd, AS_HELP_STRING([--enable-bluetoothd],
+		[install bluetoothd daemon]), [enable_bluetoothd=${enableval}])
+AM_CONDITIONAL(BLUETOOTHD, test "${enable_bluetoothd}" = "yes")
+
 AC_ARG_ENABLE(test, AS_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
