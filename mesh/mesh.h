@@ -40,6 +40,7 @@ const char *mesh_prov_status_str(uint8_t status);
 const char *mesh_get_storage_dir(void);
 bool mesh_beacon_enabled(void);
 bool mesh_relay_supported(void);
+bool mesh_proxy_supported(void);
 bool mesh_friendship_supported(void);
 uint16_t mesh_get_crpl(void);
 uint8_t mesh_get_friend_queue_size(void);
