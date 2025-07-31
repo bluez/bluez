@@ -89,6 +89,11 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	struct bt_asha_device *asha_dev = conn_data->asha_dev;
 	GError *gerr = NULL;
 
+	if (err) {
+		error("%s", err->message);
+		return;
+	}
+
 	if (!bt_io_get(io, &gerr,
 				BT_IO_OPT_IMTU, &asha_dev->imtu,
 				BT_IO_OPT_OMTU, &asha_dev->omtu,
@@ -96,7 +101,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		/* Let this be non-fatal? */
 		asha_dev->omtu = ASHA_MIN_MTU;
 		asha_dev->imtu = ASHA_CONNECTION_MTU;
-		error("Could not get L2CAP CoC socket MTU: %s", err->message);
+		error("Could not get L2CAP CoC socket MTU: %s", gerr->message);
 		g_error_free(gerr);
 	}
 
@@ -362,7 +367,7 @@ static void asha_source_device_remove(struct btd_service *service)
 	asha_dev = btd_service_get_user_data(service);
 	if (!asha_dev) {
 		/* Can this actually happen? */
-		DBG("Not handlihng ASHA profile");
+		DBG("Not handling ASHA profile");
 		return;
 	}
 
@@ -479,7 +484,7 @@ static int asha_source_disconnect(struct btd_service *service)
 
 	if (!asha_dev) {
 		/* Can this actually happen? */
-		DBG("Not handlihng ASHA profile");
+		DBG("Not handling ASHA profile");
 		return -1;
 	}
 
