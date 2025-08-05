@@ -70,6 +70,7 @@
 #define COLOR_HCI_ACLDATA		COLOR_CYAN
 #define COLOR_HCI_SCODATA		COLOR_YELLOW
 #define COLOR_HCI_ISODATA		COLOR_YELLOW
+#define COLOR_HOSTDATA			COLOR_GRAY_BOLD
 
 #define COLOR_UNKNOWN_ERROR		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
@@ -4315,6 +4316,12 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		break;
 	case BTSNOOP_OPCODE_ISO_RX_PKT:
 		packet_hci_isodata(tv, cred, index, true, data, size);
+		break;
+	case BTSNOOP_OPCODE_HOST_TX_PKT:
+		packet_host_data(tv, cred, index, false, data, size);
+		break;
+	case BTSNOOP_OPCODE_HOST_RX_PKT:
+		packet_host_data(tv, cred, index, true, data, size);
 		break;
 	case BTSNOOP_OPCODE_OPEN_INDEX:
 		if (index < MAX_INDEX)
@@ -14118,6 +14125,28 @@ malformed:
 		print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
 				"Malformed ISO Data TX packet", NULL, NULL);
 	packet_hexdump(data, size);
+}
+
+void packet_host_data(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size)
+{
+	char str[10];
+
+	if (index >= MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
+
+	sprintf(str, "len %u", size);
+
+	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HOSTDATA,
+				in ? "HOST Data RX" : "HOST Data TX",
+				str, NULL);
+
+	if (filter_mask & PACKET_FILTER_SHOW_HOST_DATA)
+		packet_hexdump(data, size);
+
+	return;
 }
 
 void packet_ctrl_open(struct timeval *tv, struct ucred *cred, uint16_t index,
