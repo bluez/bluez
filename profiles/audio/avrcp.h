@@ -83,8 +83,6 @@ struct avrcp_player_cb {
 	uint32_t (*get_position)(void *user_data);
 	uint32_t (*get_duration)(void *user_data);
 	const char *(*get_name)(void *user_data);
-	void (*set_volume)(int8_t volume, struct btd_device *dev,
-							void *user_data);
 	bool (*play)(void *user_data);
 	bool (*stop)(void *user_data);
 	bool (*pause)(void *user_data);
