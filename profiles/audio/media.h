@@ -23,6 +23,5 @@ uint8_t media_endpoint_get_codec(struct media_endpoint *endpoint);
 struct btd_adapter *media_endpoint_get_btd_adapter(
 					struct media_endpoint *endpoint);
 bool media_endpoint_is_broadcast(struct media_endpoint *endpoint);
-int8_t media_player_get_device_volume(struct btd_device *device);
 
 const struct media_endpoint *media_endpoint_get_asha(void);
