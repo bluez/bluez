@@ -13,8 +13,8 @@
 #include <dbus/dbus.h>
 #include <glib.h>
 
-#include <lib/bluetooth.h>
-#include <lib/sdp.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter1"
 

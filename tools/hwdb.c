@@ -14,7 +14,7 @@
 
 #include <stdio.h>
 
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 
 static const struct {
 	uint16_t vendor;

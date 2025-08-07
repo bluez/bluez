@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <sys/uio.h>
 
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 
 typedef void (*bthost_send_func) (const struct iovec *iov, int iovlen,
 							void *user_data);

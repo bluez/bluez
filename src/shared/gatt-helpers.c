@@ -15,8 +15,8 @@
 
 #include "src/shared/queue.h"
 #include "src/shared/att.h"
-#include "lib/bluetooth.h"
-#include "lib/uuid.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
 #include "src/shared/gatt-helpers.h"
 #include "src/shared/util.h"
 

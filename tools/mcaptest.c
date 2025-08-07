@@ -20,12 +20,12 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/hci.h"
-#include "lib/hci_lib.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/hci_lib.h"
 
 #include "btio/btio.h"
-#include "lib/l2cap.h"
+#include "bluetooth/l2cap.h"
 #include "profiles/health/mcap.h"
 
 enum {

@@ -38,7 +38,6 @@ coverage
 ell
 
 lib/bluez.pc
-lib/bluetooth
 src/builtin.h
 src/bluetoothd
 tools/97-hid2hci.rules

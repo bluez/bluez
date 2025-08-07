@@ -22,8 +22,8 @@
 #include <string.h>
 
 #include "parser.h"
-#include "lib/hci.h"
-#include "lib/hci_lib.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/hci_lib.h"
 
 static uint16_t manufacturer = DEFAULT_COMPID;
 

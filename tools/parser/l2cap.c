@@ -24,7 +24,7 @@
 #include "parser.h"
 #include "sdp.h"
 #include "l2cap.h"
-#include "lib/hci.h"
+#include "bluetooth/hci.h"
 
 typedef struct {
 	uint16_t handle;

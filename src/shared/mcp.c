@@ -15,9 +15,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "lib/bluetooth.h"
-#include "lib/uuid.h"
-#include "lib/hci.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
+#include "bluetooth/hci.h"
 
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
