@@ -16,9 +16,9 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include "lib/bluetooth.h"
-#include "lib/hci.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/sdp.h"
 
 #include "gdbus/gdbus.h"
 

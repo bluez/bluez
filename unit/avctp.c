@@ -30,7 +30,7 @@
 
 #include <glib.h>
 
-#include "lib/sdp.h"
+#include "bluetooth/sdp.h"
 #include "src/shared/util.h"
 #include "src/log.h"
 #include "avctp.h"

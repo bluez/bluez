@@ -13,7 +13,7 @@
 #endif
 
 #define _GNU_SOURCE
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 #include "oui.h"
 
 #ifdef HAVE_UDEV

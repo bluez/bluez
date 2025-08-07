@@ -27,9 +27,9 @@
 
 #include "btio/btio.h"
 #include "gdbus/gdbus.h"
-#include "lib/bluetooth.h"
-#include "lib/l2cap.h"
-#include "lib/uuid.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/l2cap.h"
+#include "bluetooth/uuid.h"
 
 #include "src/dbus-common.h"
 #include "src/adapter.h"

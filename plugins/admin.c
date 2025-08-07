@@ -19,8 +19,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "lib/bluetooth.h"
-#include "lib/uuid.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
 
 #include "src/adapter.h"
 #include "src/dbus-common.h"

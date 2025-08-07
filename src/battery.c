@@ -18,7 +18,7 @@
 #include <glib.h>
 
 #include "gdbus/gdbus.h"
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 #include "battery.h"

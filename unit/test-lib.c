@@ -21,8 +21,8 @@
 #include "src/shared/util.h"
 #include "src/shared/tester.h"
 
-#include "lib/sdp.h"
-#include "lib/sdp_lib.h"
+#include "bluetooth/sdp.h"
+#include "bluetooth/sdp_lib.h"
 
 static void test_ntoh64(const void *data)
 {
