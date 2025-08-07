@@ -12,8 +12,8 @@
 
 #include <stdbool.h>
 
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sdp.h"
 
 #include "src/log.h"
 #include "src/adapter.h"

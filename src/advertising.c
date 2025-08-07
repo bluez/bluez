@@ -20,9 +20,9 @@
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
+#include "bluetooth/sdp.h"
 
 #include "adapter.h"
 #include "dbus-common.h"

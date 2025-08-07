@@ -22,7 +22,7 @@
 #include <fcntl.h>
 #include <poll.h>
 
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 
 #include "src/shared/ad.h"
 #include "src/shared/btp.h"

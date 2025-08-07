@@ -22,8 +22,8 @@
 
 #include <getopt.h>
 
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
 
 #include "monitor/bt.h"
 #include "src/shared/mainloop.h"

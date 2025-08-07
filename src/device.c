@@ -28,10 +28,10 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
-#include "lib/sdp_lib.h"
-#include "lib/uuid.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sdp.h"
+#include "bluetooth/sdp_lib.h"
+#include "bluetooth/uuid.h"
 
 #include "gdbus/gdbus.h"
 
@@ -45,7 +45,7 @@
 #include "src/shared/ad.h"
 #include "src/shared/timeout.h"
 #include "btio/btio.h"
-#include "lib/mgmt.h"
+#include "bluetooth/mgmt.h"
 #include "attrib/att.h"
 #include "btd.h"
 #include "adapter.h"

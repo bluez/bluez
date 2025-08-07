@@ -23,8 +23,8 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sdp.h"
 
 #include "log.h"
 #include "backtrace.h"

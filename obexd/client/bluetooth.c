@@ -18,10 +18,10 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/rfcomm.h"
-#include "lib/sdp.h"
-#include "lib/sdp_lib.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/rfcomm.h"
+#include "bluetooth/sdp.h"
+#include "bluetooth/sdp_lib.h"
 
 #include "gdbus/gdbus.h"
 #include "btio/btio.h"

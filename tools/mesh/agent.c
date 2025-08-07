@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include <lib/bluetooth.h>
+#include <bluetooth/bluetooth.h>
 
 #include "src/shared/shell.h"
 #include "tools/mesh/agent.h"

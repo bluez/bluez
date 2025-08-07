@@ -27,9 +27,9 @@
 
 #include "gdbus/gdbus.h"
 
-#include "lib/bluetooth.h"
-#include "lib/uuid.h"
-#include "lib/iso.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
+#include "bluetooth/iso.h"
 
 #include "src/dbus-common.h"
 #include "src/shared/util.h"

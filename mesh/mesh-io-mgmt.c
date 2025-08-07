@@ -20,9 +20,9 @@
 #include <ell/ell.h>
 
 #include "monitor/bt.h"
-#include "lib/bluetooth.h"
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
 #include "src/shared/ad.h"
 #include "src/shared/mgmt.h"
 

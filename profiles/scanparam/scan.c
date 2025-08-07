@@ -16,9 +16,9 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
-#include "lib/uuid.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sdp.h"
+#include "bluetooth/uuid.h"
 
 #include "src/log.h"
 #include "src/plugin.h"

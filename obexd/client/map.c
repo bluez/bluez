@@ -21,7 +21,7 @@
 
 #include <glib.h>
 
-#include "lib/sdp.h"
+#include "bluetooth/sdp.h"
 
 #include "gobex/gobex-apparam.h"
 #include "gdbus/gdbus.h"
