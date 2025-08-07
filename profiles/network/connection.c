@@ -21,9 +21,9 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/bnep.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/bnep.h"
+#include "bluetooth/sdp.h"
 
 #include "gdbus/gdbus.h"
 
@@ -35,7 +35,7 @@
 #include "src/profile.h"
 #include "src/service.h"
 #include "src/error.h"
-#include "lib/uuid.h"
+#include "bluetooth/uuid.h"
 
 #include "bnep.h"
 #include "connection.h"

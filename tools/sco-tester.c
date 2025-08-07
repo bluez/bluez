@@ -19,9 +19,9 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/sco.h"
-#include "lib/mgmt.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sco.h"
+#include "bluetooth/mgmt.h"
 
 #include "monitor/bt.h"
 #include "emulator/bthost.h"

@@ -19,8 +19,8 @@
 #include <fcntl.h>
 #include <sys/utsname.h>
 
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sdp.h"
 
 #include "gdbus/gdbus.h"
 

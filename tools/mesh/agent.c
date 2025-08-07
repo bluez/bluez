@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include <lib/bluetooth.h>
+#include <bluetooth/bluetooth.h>
 
 #include "src/shared/shell.h"
 #include "tools/mesh/agent.h"
@@ -85,7 +85,7 @@ static void response_hexadecimal(const char *input, void *user_data)
 
 static void response_decimal(const char *input, void *user_data)
 {
-	uint8_t buf[DECIMAL_OOB_LEN];
+	uint8_t buf[DECIMAL_OOB_LEN] = {0};
 	uint16_t len = DECIMAL_OOB_LEN;
 
 	if (strlen(input) > pending_request.len)

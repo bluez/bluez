@@ -23,8 +23,8 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
 
 #include "gdbus/gdbus.h"
 #include "src/shared/util.h"

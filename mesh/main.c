@@ -24,8 +24,8 @@
 #include <sys/stat.h>
 #include <ell/ell.h>
 
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
 
 #include "mesh/mesh.h"
 #include "mesh/crypto.h"

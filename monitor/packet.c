@@ -28,10 +28,10 @@
 #include <sys/socket.h>
 #include <limits.h>
 
-#include "lib/bluetooth.h"
-#include "lib/uuid.h"
-#include "lib/hci.h"
-#include "lib/hci_lib.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/hci_lib.h"
 
 #include "src/shared/util.h"
 #include "src/shared/btsnoop.h"

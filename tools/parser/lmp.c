@@ -19,8 +19,8 @@
 #include <sys/socket.h>
 
 #include "parser.h"
-#include "lib/hci.h"
-#include "lib/hci_lib.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/hci_lib.h"
 
 #define LMP_U8(frm)  (p_get_u8(frm))
 #define LMP_U16(frm) (btohs(htons(p_get_u16(frm))))

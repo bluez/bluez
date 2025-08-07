@@ -31,8 +31,8 @@
 
 #include <dbus/dbus.h>
 
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sdp.h"
 
 #include "gdbus/gdbus.h"
 #include "btio/btio.h"
@@ -45,7 +45,7 @@
 #include "shared/timeout.h"
 #include "shared/queue.h"
 #include "shared/crypto.h"
-#include "lib/uuid.h"
+#include "bluetooth/uuid.h"
 #include "shared/util.h"
 #include "btd.h"
 #include "sdpd.h"

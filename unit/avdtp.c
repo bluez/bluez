@@ -26,7 +26,7 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 #include "src/log.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"

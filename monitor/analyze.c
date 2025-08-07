@@ -19,7 +19,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 
 #include "src/shared/util.h"
 #include "src/shared/queue.h"

@@ -11,8 +11,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#include "lib/bluetooth.h"
-#include "lib/uuid.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
 
 #define BT_AD_MAX_DATA_LEN		31
 #define BT_EA_MAX_DATA_LEN		251

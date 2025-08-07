@@ -16,9 +16,9 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/hci.h"
-#include "lib/sdp.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/sdp.h"
 #include "src/shared/tester.h"
 #include "src/shared/util.h"
 #include "src/shared/ad.h"

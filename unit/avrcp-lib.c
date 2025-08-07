@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include "lib/bluetooth.h"
+#include "bluetooth/bluetooth.h"
 
 #include "src/shared/util.h"
 #include "src/log.h"

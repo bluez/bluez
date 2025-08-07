@@ -22,8 +22,8 @@
 #include "src/shared/ad.h"
 #include "src/shared/hci.h"
 #include "src/shared/mgmt.h"
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
 
 #include "mesh/mesh-defs.h"
 #include "mesh/mesh-mgmt.h"

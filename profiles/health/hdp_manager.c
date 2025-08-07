@@ -13,9 +13,9 @@
 
 #include <stdbool.h>
 
-#include "lib/sdp.h"
-#include "lib/sdp_lib.h"
-#include "lib/uuid.h"
+#include "bluetooth/sdp.h"
+#include "bluetooth/sdp_lib.h"
+#include "bluetooth/uuid.h"
 
 #include "btio/btio.h"
 #include "src/adapter.h"

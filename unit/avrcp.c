@@ -18,9 +18,9 @@
 #include <glib.h>
 
 #include "btio/btio.h"
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
-#include "lib/sdp_lib.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/sdp.h"
+#include "bluetooth/sdp_lib.h"
 #include "src/sdp-client.h"
 #include "src/shared/util.h"
 #include "src/log.h"

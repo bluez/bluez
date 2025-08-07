@@ -22,10 +22,10 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/mgmt.h"
-#include "lib/hci.h"
-#include "lib/hci_lib.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
+#include "bluetooth/hci.h"
+#include "bluetooth/hci_lib.h"
 
 #include "monitor/bt.h"
 #include "emulator/bthost.h"

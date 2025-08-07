@@ -29,7 +29,7 @@
 #include <sys/random.h>
 #endif
 
-#include <lib/bluetooth.h>
+#include <bluetooth/bluetooth.h>
 
 /* define MAX_INPUT for musl */
 #ifndef MAX_INPUT

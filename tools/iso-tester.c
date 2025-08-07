@@ -24,10 +24,10 @@
 
 #include <glib.h>
 
-#include "lib/bluetooth.h"
-#include "lib/iso.h"
-#include "lib/mgmt.h"
-#include "lib/uuid.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/iso.h"
+#include "bluetooth/mgmt.h"
+#include "bluetooth/uuid.h"
 
 #include "monitor/bt.h"
 #include "emulator/vhci.h"
