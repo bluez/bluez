@@ -6224,6 +6224,15 @@ static bool find_ep_ucast(const void *data, const void *user_data)
 		}
 	}
 
+	switch (ep->state) {
+	case BT_ASCS_ASE_STATE_IDLE:
+	case BT_ASCS_ASE_STATE_CONFIG:
+	case BT_ASCS_ASE_STATE_QOS:
+		break;
+	default:
+		return false;
+	}
+
 	if (ep->dir != match->rpac->type)
 		return false;
 
