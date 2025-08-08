@@ -856,8 +856,9 @@ static bool release_stream(struct bt_bap_stream *stream)
 
 	switch (bt_bap_stream_get_state(stream)) {
 	case BT_BAP_STREAM_STATE_IDLE:
-	case BT_BAP_STREAM_STATE_RELEASING:
 		return true;
+	case BT_BAP_STREAM_STATE_RELEASING:
+		return false;
 	default:
 		bt_bap_stream_release(stream, NULL, NULL);
 		return false;
@@ -990,6 +991,7 @@ static struct bap_setup *setup_new(struct bap_ep *ep)
 static void setup_free(void *data)
 {
 	struct bap_setup *setup = data;
+	bool closing = setup->closing;
 
 	DBG("%p", setup);
 
@@ -997,7 +999,7 @@ static void setup_free(void *data)
 
 	setup_ready(setup, -ECANCELED, 0);
 
-	if (setup->closing && setup->close_cb)
+	if (closing && setup->close_cb)
 		setup->close_cb(setup, setup->close_cb_data);
 
 	if (setup->stream && setup->id) {
@@ -1019,7 +1021,10 @@ static void setup_free(void *data)
 
 	bt_bap_stream_unlock(setup->stream);
 
-	release_stream(setup->stream);
+	if (!closing) {
+		/* Release if not already done */
+		release_stream(setup->stream);
+	}
 
 	if (setup->ep)
 		bap_update_cigs(setup->ep->data);
