@@ -2750,6 +2750,8 @@ static void setup_create_ucast_io(struct bap_data *data,
 						qos[1]->ucast.cig_id;
 	iso_qos.ucast.cis = qos[0] ? qos[0]->ucast.cis_id :
 						qos[1]->ucast.cis_id;
+	iso_qos.ucast.framing = qos[0] ? qos[0]->ucast.framing :
+						qos[1]->ucast.framing;
 
 	bap_iso_qos(qos[0], &iso_qos.ucast.in);
 	bap_iso_qos(qos[1], &iso_qos.ucast.out);
