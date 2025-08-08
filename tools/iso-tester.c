@@ -474,7 +474,7 @@ struct test_data {
 	unsigned int io_id[4];
 	uint8_t client_num;
 	int step;
-	bool reconnect;
+	uint8_t reconnect;
 	bool suspending;
 	struct tx_tstamp_data tx_ts;
 	int seqnum;
@@ -1189,6 +1189,14 @@ static const struct iso_client_data reconnect_16_2_1 = {
 	.disconnect = true,
 };
 
+static const struct iso_client_data reconnect_16_2_1_send_recv = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.recv = &send_16_2_1,
+	.disconnect = true,
+};
+
 static const struct iso_client_data connect_ac_1_4 = {
 	.qos = AC_1_4,
 	.expect_err = 0
@@ -1616,9 +1624,8 @@ static void bthost_recv_data(const void *buf, uint16_t len, void *user_data)
 			memcmp(isodata->send->iov_base, buf, len))) {
 		if (!isodata->recv->iov_base)
 			tester_test_failed();
-	} else if (!data->step) {
+	} else if (!data->step)
 		tester_test_passed();
-	}
 }
 
 static void bthost_iso_disconnected(void *user_data)
@@ -2198,6 +2205,71 @@ static bool check_bcast_qos(const struct bt_iso_qos *qos1,
 	return true;
 }
 
+static void test_connect(const void *test_data);
+static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data);
+static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data);
+static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io,
+						uint8_t num, GIOFunc func);
+
+static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = user_data;
+	const struct iso_client_data *isodata = data->test_data;
+
+	data->io_id[0] = 0;
+
+	if (cond & G_IO_HUP) {
+		if (!isodata->bcast && data->handle)
+			tester_test_failed();
+
+		tester_print("Successfully disconnected");
+
+		if (data->reconnect) {
+			tester_print("Reconnecting #%u...", data->reconnect);
+
+			data->reconnect--;
+
+			if (!isodata->server)
+				test_connect(data->test_data);
+			else {
+				GIOChannel *parent =
+					queue_peek_head(data->io_queue);
+
+				data->step++;
+
+				iso_defer_accept_bcast(data,
+					parent, 0, iso_accept_cb);
+			}
+
+			return FALSE;
+		}
+
+		tester_test_passed();
+	} else
+		tester_test_failed();
+
+	return FALSE;
+}
+
+static void iso_shutdown(struct test_data *data, GIOChannel *io)
+{
+	int sk;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_disconnected, data);
+
+	/* Shutdown using SHUT_WR as SHUT_RDWR cause the socket to HUP
+	 * immediately instead of waiting for Disconnect Complete event.
+	 */
+	shutdown(sk, SHUT_WR);
+
+	tester_print("Disconnecting...");
+}
+
 static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -2305,6 +2377,8 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 		tester_test_failed();
 	else if (data->step)
 		return TRUE;
+	else if (isodata->disconnect)
+		iso_shutdown(data, io);
 	else
 		tester_test_passed();
 
@@ -2439,10 +2513,16 @@ static void iso_send_data(struct test_data *data, GIOChannel *io)
 	data->step++;
 }
 
-static void iso_send(struct test_data *data, GIOChannel *io)
+static gboolean iso_pollout(GIOChannel *io, GIOCondition cond,
+				gpointer user_data)
 {
+	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
 	unsigned int count;
+
+	data->io_id[0] = 0;
+
+	tester_print("POLLOUT event received");
 
 	for (count = 0; count < isodata->repeat_send_pre_ts; ++count)
 		iso_send_data(data, io);
@@ -2454,74 +2534,18 @@ static void iso_send(struct test_data *data, GIOChannel *io)
 
 	if (isodata->bcast) {
 		tester_test_passed();
-		return;
+		return FALSE;
 	}
 
 	if (isodata->recv)
 		iso_recv(data, io);
-}
-
-static void test_connect(const void *test_data);
-static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data);
-static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data);
-static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io,
-						uint8_t num, GIOFunc func);
-
-static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	struct test_data *data = user_data;
-	const struct iso_client_data *isodata = data->test_data;
-
-	data->io_id[0] = 0;
-
-	if (cond & G_IO_HUP) {
-		if (!isodata->bcast && data->handle)
-			tester_test_failed();
-
-		tester_print("Successfully disconnected");
-
-		if (data->reconnect) {
-			data->reconnect = false;
-
-			if (!isodata->server)
-				test_connect(data->test_data);
-			else {
-				GIOChannel *parent =
-					queue_peek_head(data->io_queue);
-
-				data->step++;
-
-				iso_defer_accept_bcast(data,
-					parent, 0, iso_accept_cb);
-			}
-
-			return FALSE;
-		}
-
-		tester_test_passed();
-	} else
-		tester_test_failed();
 
 	return FALSE;
 }
 
-static void iso_shutdown(struct test_data *data, GIOChannel *io)
+static void iso_send(struct test_data *data, GIOChannel *io)
 {
-	int sk;
-
-	sk = g_io_channel_unix_get_fd(io);
-
-	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_disconnected, data);
-
-	/* Shutdown using SHUT_WR as SHUT_RDWR cause the socket to HUP
-	 * immediately instead of waiting for Disconnect Complete event.
-	 */
-	shutdown(sk, SHUT_WR);
-
-	tester_print("Disconnecting...");
+	data->io_id[0] = g_io_add_watch(io, G_IO_OUT, iso_pollout, data);
 }
 
 static bool hook_set_event_mask(const void *msg, uint16_t len, void *user_data)
@@ -2855,7 +2879,15 @@ static void test_reconnect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	data->reconnect = true;
+	data->reconnect = 1;
+	test_connect(test_data);
+}
+
+static void test_reconnect_16(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->reconnect = 16;
 	test_connect(test_data);
 }
 
@@ -3490,7 +3522,7 @@ static void test_bcast_reconnect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	data->reconnect = true;
+	data->reconnect = 1;
 	setup_connect(data, 0, iso_connect_cb);
 }
 
@@ -3511,7 +3543,7 @@ static void test_bcast2_reconn(const void *test_data)
 
 	data->io_queue = queue_new();
 
-	data->reconnect = true;
+	data->reconnect = 1;
 	setup_connect_many(data, 2, num, funcs);
 }
 
@@ -3544,7 +3576,7 @@ static void test_bcast_recv_defer_reconnect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	data->reconnect = true;
+	data->reconnect = 1;
 	data->step = 1;
 
 	setup_listen(data, 0, iso_accept_cb);
@@ -3877,6 +3909,11 @@ int main(int argc, char *argv[])
 	test_iso("ISO Reconnect - Success", &reconnect_16_2_1,
 							setup_powered,
 							test_reconnect);
+
+	test_iso("ISO Reconnect Send and Receive #16 - Success",
+						&reconnect_16_2_1_send_recv,
+						setup_powered,
+						test_reconnect_16);
 
 	test_iso("ISO AC 1 & 4 - Success", &connect_ac_1_4, setup_powered,
 							test_connect);
