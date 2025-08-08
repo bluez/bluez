@@ -3768,6 +3768,9 @@ static int bap_disconnect(struct btd_service *service)
 	queue_remove_all(data->snks, ep_remove, NULL, NULL);
 	queue_remove_all(data->srcs, ep_remove, NULL, NULL);
 
+	queue_destroy(data->server_streams, NULL);
+	data->server_streams = NULL;
+
 	bt_bap_detach(data->bap);
 
 	btd_service_disconnecting_complete(service, 0);
