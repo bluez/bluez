@@ -856,8 +856,9 @@ static bool release_stream(struct bt_bap_stream *stream)
 
 	switch (bt_bap_stream_get_state(stream)) {
 	case BT_BAP_STREAM_STATE_IDLE:
-	case BT_BAP_STREAM_STATE_RELEASING:
 		return true;
+	case BT_BAP_STREAM_STATE_RELEASING:
+		return false;
 	default:
 		bt_bap_stream_release(stream, NULL, NULL);
 		return false;
@@ -990,6 +991,7 @@ static struct bap_setup *setup_new(struct bap_ep *ep)
 static void setup_free(void *data)
 {
 	struct bap_setup *setup = data;
+	bool closing = setup->closing;
 
 	DBG("%p", setup);
 
@@ -997,7 +999,7 @@ static void setup_free(void *data)
 
 	setup_ready(setup, -ECANCELED, 0);
 
-	if (setup->closing && setup->close_cb)
+	if (closing && setup->close_cb)
 		setup->close_cb(setup, setup->close_cb_data);
 
 	if (setup->stream && setup->id) {
@@ -1019,7 +1021,10 @@ static void setup_free(void *data)
 
 	bt_bap_stream_unlock(setup->stream);
 
-	release_stream(setup->stream);
+	if (!closing) {
+		/* Release if not already done */
+		release_stream(setup->stream);
+	}
 
 	if (setup->ep)
 		bap_update_cigs(setup->ep->data);
@@ -2745,6 +2750,8 @@ static void setup_create_ucast_io(struct bap_data *data,
 						qos[1]->ucast.cig_id;
 	iso_qos.ucast.cis = qos[0] ? qos[0]->ucast.cis_id :
 						qos[1]->ucast.cis_id;
+	iso_qos.ucast.framing = qos[0] ? qos[0]->ucast.framing :
+						qos[1]->ucast.framing;
 
 	bap_iso_qos(qos[0], &iso_qos.ucast.in);
 	bap_iso_qos(qos[1], &iso_qos.ucast.out);
@@ -3760,6 +3767,9 @@ static int bap_disconnect(struct btd_service *service)
 
 	queue_remove_all(data->snks, ep_remove, NULL, NULL);
 	queue_remove_all(data->srcs, ep_remove, NULL, NULL);
+
+	queue_destroy(data->server_streams, NULL);
+	data->server_streams = NULL;
 
 	bt_bap_detach(data->bap);
 

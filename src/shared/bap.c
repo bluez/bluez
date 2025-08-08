@@ -3093,7 +3093,7 @@ static uint8_t ep_config(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 	cc.iov_base = util_iov_pull_mem(iov, req->cc_len);
 	cc.iov_len = req->cc_len;
 
-	if (!bt_bap_debug_caps(cc.iov_base, cc.iov_len, bap->debug_func,
+	if (!bt_bap_debug_config(cc.iov_base, cc.iov_len, bap->debug_func,
 						bap->debug_data)) {
 		ascs_ase_rsp_add(rsp, req->ase,
 				BT_ASCS_RSP_CONF_INVALID,
@@ -6222,6 +6222,15 @@ static bool find_ep_ucast(const void *data, const void *user_data)
 		default:
 			return false;
 		}
+	}
+
+	switch (ep->state) {
+	case BT_ASCS_ASE_STATE_IDLE:
+	case BT_ASCS_ASE_STATE_CONFIG:
+	case BT_ASCS_ASE_STATE_QOS:
+		break;
+	default:
+		return false;
 	}
 
 	if (ep->dir != match->rpac->type)

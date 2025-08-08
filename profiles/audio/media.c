@@ -1063,8 +1063,11 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return media_endpoint_async_call(msg, endpoint, NULL, pac_select_cb,
-								data, free);
+	if (!media_endpoint_async_call(msg, endpoint, NULL, pac_select_cb,
+								data, free))
+		return -EIO;
+
+	return 0;
 }
 
 static void pac_cancel_select(struct bt_bap_pac *lpac, bt_bap_pac_select_t cb,
@@ -1205,22 +1208,25 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 	DBG("endpoint %p stream %p", endpoint, stream);
 
 	transport = find_transport(endpoint, stream);
-	if (!transport) {
-		switch (bt_bap_stream_get_type(stream)) {
-		case BT_BAP_STREAM_TYPE_UCAST:
-			transport = pac_ucast_config(stream, cfg, endpoint);
-			break;
-		case BT_BAP_STREAM_TYPE_BCAST:
-			transport = pac_bcast_config(stream, cfg, endpoint);
-			break;
-		}
+	if (transport)
+		clear_configuration(endpoint, transport);
 
-		if (!transport)
-			return -EINVAL;
-
-		endpoint->transports = g_slist_append(endpoint->transports,
-								transport);
+	switch (bt_bap_stream_get_type(stream)) {
+	case BT_BAP_STREAM_TYPE_UCAST:
+		transport = pac_ucast_config(stream, cfg, endpoint);
+		break;
+	case BT_BAP_STREAM_TYPE_BCAST:
+		transport = pac_bcast_config(stream, cfg, endpoint);
+		break;
+	default:
+		transport = NULL;
+		break;
 	}
+
+	if (!transport)
+		return -EINVAL;
+
+	endpoint->transports = g_slist_append(endpoint->transports, transport);
 
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
 						MEDIA_ENDPOINT_INTERFACE,
@@ -1228,7 +1234,7 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 	if (msg == NULL) {
 		error("Couldn't allocate D-Bus message");
 		endpoint_remove_transport(endpoint, transport);
-		return FALSE;
+		return -ENOMEM;
 	}
 
 	data = new0(struct pac_config_data, 1);
@@ -1243,8 +1249,11 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 
 	g_dbus_get_properties(conn, path, "org.bluez.MediaTransport1", &iter);
 
-	return media_endpoint_async_call(msg, endpoint, transport,
-					pac_config_cb, data, free);
+	if (!media_endpoint_async_call(msg, endpoint, transport,
+						pac_config_cb, data, free))
+		return -EIO;
+
+	return 0;
 }
 
 static void pac_clear(struct bt_bap_stream *stream, void *user_data)
