@@ -1063,8 +1063,11 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return media_endpoint_async_call(msg, endpoint, NULL, pac_select_cb,
-								data, free);
+	if (!media_endpoint_async_call(msg, endpoint, NULL, pac_select_cb,
+								data, free))
+		return -EIO;
+
+	return 0;
 }
 
 static void pac_cancel_select(struct bt_bap_pac *lpac, bt_bap_pac_select_t cb,
@@ -1228,7 +1231,7 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 	if (msg == NULL) {
 		error("Couldn't allocate D-Bus message");
 		endpoint_remove_transport(endpoint, transport);
-		return FALSE;
+		return -ENOMEM;
 	}
 
 	data = new0(struct pac_config_data, 1);
@@ -1243,8 +1246,11 @@ static int pac_config(struct bt_bap_stream *stream, struct iovec *cfg,
 
 	g_dbus_get_properties(conn, path, "org.bluez.MediaTransport1", &iter);
 
-	return media_endpoint_async_call(msg, endpoint, transport,
-					pac_config_cb, data, free);
+	if (!media_endpoint_async_call(msg, endpoint, transport,
+						pac_config_cb, data, free))
+		return -EIO;
+
+	return 0;
 }
 
 static void pac_clear(struct bt_bap_stream *stream, void *user_data)
