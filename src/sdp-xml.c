@@ -125,9 +125,15 @@ static sdp_data_t *sdp_xml_parse_uuid128(const char *data)
 		buf[0] = data[i];
 		buf[1] = data[i + 1];
 
+		if (j >= sizeof(val.data))
+			return NULL;
+
 		val.data[j++] = strtoul(buf, 0, 16);
 		i += 2;
 	}
+
+	if (j != sizeof(val.data))
+		return NULL;
 
 	return sdp_data_alloc(SDP_UUID128, &val);
 }
