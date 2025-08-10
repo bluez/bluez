@@ -189,9 +189,6 @@ static void bap_data_free(struct bap_data *data)
 	if (data->io_id)
 		g_source_remove(data->io_id);
 
-	if (data->cig_update_id)
-		g_source_remove(data->cig_update_id);
-
 	if (data->service && btd_service_get_user_data(data->service) == data)
 		btd_service_set_user_data(data->service, NULL);
 
@@ -204,6 +201,10 @@ static void bap_data_free(struct bap_data *data)
 	bt_bap_state_unregister(data->bap, data->state_id);
 	bt_bap_pac_unregister(data->bap, data->pac_id);
 	bt_bap_unref(data->bap);
+
+	if (data->cig_update_id)
+		g_source_remove(data->cig_update_id);
+
 	free(data);
 }
 
