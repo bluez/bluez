@@ -5664,6 +5664,14 @@ static void stream_foreach_detach(void *data, void *user_data)
 	stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
 }
 
+static void ep_foreach_detach(void *data, void *user_data)
+{
+	struct bt_bap_endpoint *ep = data;
+
+	ep->state = BT_ASCS_ASE_STATE_IDLE;
+	ep->old_state = BT_ASCS_ASE_STATE_IDLE;
+}
+
 static void bap_req_detach(void *data)
 {
 	struct bt_bap_req *req = data;
@@ -5696,6 +5704,7 @@ void bt_bap_detach(struct bt_bap *bap)
 	bap->att = NULL;
 
 	queue_foreach(bap->streams, stream_foreach_detach, bap);
+	queue_foreach(bap->local_eps, ep_foreach_detach, bap);
 	queue_foreach(bap_cbs, bap_detached, bap);
 }
 
