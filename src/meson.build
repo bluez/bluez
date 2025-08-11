@@ -1,6 +1,6 @@
 subdir('shared')
 
-if get_option('datafiles')
+if get_option('datafiles').enabled()
   install_data('bluetooth.conf',
     install_dir: dbusconfdir / 'dbus-1/system.d'
   )
@@ -9,7 +9,7 @@ if get_option('datafiles')
   )
 endif
 
-if get_option('systemd')
+if systemd_dep.found()
   configure_file(
     input: 'bluetooth.service.in',
     output: 'bluetooth.service',
@@ -86,7 +86,7 @@ executable('bluetoothd',
   install_dir: pkglibexecdir
 )
 
-if get_option('manpages').enabled()
+if rst2man.found()
   bluetoothd_rst = configure_file(
     input: 'bluetoothd.rst.in',
     output: 'bluetoothd.rst',

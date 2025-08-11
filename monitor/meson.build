@@ -36,7 +36,7 @@ executable('btmon',
   install: true
 )
 
-if get_option('manpages').enabled()
+if rst2man.found()
   custom_target(
     input: 'btmon.rst',
     output: 'btmon.1',

@@ -1,11 +1,11 @@
-if get_option('datafiles')
+if get_option('datafiles').enabled()
   install_data('bluetooth-mesh.conf',
     install_dir: dbusdir)
   install_data('mesh-main.conf',
     install_dir: configdir)
 endif
 
-if get_option('systemd')
+if systemd_dep.found()
   configure_file(
     input: 'bluetooth-mesh.service.in',
     output: 'bluetooth-mesh.service',
@@ -59,7 +59,7 @@ executable('bluetooth-meshd',
   install_dir: pkglibexecdir
 )
 
-if get_option('manpages').enabled()
+if rst2man.found()
   bluetooth_meshd_rst = configure_file(
     input: 'bluetooth-meshd.rst.in',
     output: 'bluetooth-meshd.rst',
