@@ -1357,6 +1357,12 @@ static void bap_ucast_detach(struct bt_bap_stream *stream)
 	bap_stream_clear_cfm(stream);
 
 	ep->stream = NULL;
+
+	if (!stream->client) {
+		ep->state = BT_ASCS_ASE_STATE_IDLE;
+		ep->old_state = BT_ASCS_ASE_STATE_IDLE;
+	}
+
 	bt_bap_stream_unref(stream);
 }
 
