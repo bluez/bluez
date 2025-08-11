@@ -1,0 +1,3 @@
+[submodule "subprojects/ell"]
+	path = subprojects/ell
+	url = https://github.com/hadess/ell.git
