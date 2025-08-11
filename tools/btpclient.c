@@ -2510,12 +2510,23 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 {
 	struct btp_device *device = find_device_by_proxy(proxy);
 	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct l_dbus_message_iter dict_iter;
+	struct l_dbus_message_iter variant_iter;
+	struct l_dbus_message_iter array_iter;
+	struct btp_device_found_ev *p_ev = NULL;
+	struct btp_device_found_ev *p_ev_temp = NULL;
 	struct btp_device_found_ev ev;
 	struct btp_gap_device_connected_ev ev_conn;
 	const char *str, *addr_str;
 	int16_t rssi;
 	uint8_t address_type;
 	bool connected;
+	uint8_t key = 0U; /* AD Type will be stored here */
+	const uint8_t *data = NULL; /* AD Data will be stored here */
+	uint32_t len = 0U; /* Length of the AD Data buffer */
+	uint32_t eir_counter = 0U; /* Count of AD Type, AD Length, AD Data */
+
+	ev.eir_len = 0U;
 
 	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &addr_str) ||
 					str2ba(addr_str, &ev.address) < 0)
@@ -2538,11 +2549,90 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 					BTP_EV_GAP_DEVICE_FOUND_FLAG_AD |
 					BTP_EV_GAP_DEVICE_FOUND_FLAG_SR);
 
-	/* TODO Add eir to device found event */
-	ev.eir_len = 0;
+	/* dict_iter will contain the variant for AdvertisingData */
+	if (l_dbus_proxy_get_property(proxy,
+					"AdvertisingData",
+					"a{yv}",
+					&dict_iter)) {
+		/* key will contain the AD Type,
+		 * variant_iter will contain the variant
+		 * for the current elem
+		 */
+		while (l_dbus_message_iter_next_entry(&dict_iter,
+							&key,
+							&variant_iter)) {
+			/* Unpack the variant to get the byte array */
+			if (!l_dbus_message_iter_get_variant(&variant_iter,
+								"ay",
+								&array_iter))
+				continue;
 
-	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND, adapter->index,
-						sizeof(ev) + ev.eir_len, &ev);
+			/* data contains AD Data,
+			 * len is the length excluding the AD Type
+			 */
+			if (!l_dbus_message_iter_get_fixed_array(&array_iter,
+									&data,
+									&len))
+				continue;
+
+			if (len <= 0U)
+				continue;
+
+			p_ev_temp = p_ev;
+
+			/* Allocate new buffer, recalculated to sustain new data
+			 * eir_counter length from previous data,
+			 * len is size for new data,
+			 * 2U (1Byte AD Type, 1Byte AD Length)
+			 */
+			p_ev = (struct btp_device_found_ev *)
+				l_malloc(sizeof(*p_ev) +
+				eir_counter + len + 2U);
+
+			if (!p_ev) {
+				p_ev = p_ev_temp;
+				break;
+			}
+
+			/* There is AD data elemets to be moved after resize */
+			if (p_ev_temp && eir_counter != 0U) {
+				memcpy(p_ev, p_ev_temp,
+					sizeof(*p_ev) +
+					eir_counter);
+				l_free(p_ev_temp);
+			} else {
+				memcpy(p_ev, &ev,
+					sizeof(ev));
+			}
+
+			/* Populate buffer with length */
+			p_ev->eir[eir_counter++] = len + 1U;
+			/* Populate buffer with AD Type */
+			p_ev->eir[eir_counter++] = key;
+
+			/* Move the data in the p_ev->eir
+			 * that will be sent via btp
+			 */
+			for (uint32_t i = 0U; i < len; i++)
+				p_ev->eir[eir_counter + i] = data[i];
+
+			eir_counter += len;
+		}
+	}
+
+	if (p_ev) {
+		p_ev->eir_len = eir_counter;
+
+		btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND,
+				adapter->index, sizeof(*p_ev) + eir_counter,
+				p_ev);
+
+		l_free(p_ev);
+	} else {
+		btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND,
+				adapter->index, sizeof(ev) + ev.eir_len,
+				&ev);
+	}
 
 	if (l_dbus_proxy_get_property(proxy, "Connected", "b", &connected) &&
 								connected) {
