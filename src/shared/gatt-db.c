@@ -969,6 +969,10 @@ service_insert_characteristic(struct gatt_db_service *service,
 	if (handle == UINT16_MAX)
 		return NULL;
 
+	/* Value handle can't be the same or less than Characteristic handle per reasons above */
+	if(value_handle <= handle)
+		return NULL;
+
 	i = service_get_attribute_index(service, &handle, 1);
 	if (!i)
 		return NULL;
@@ -1009,8 +1013,11 @@ service_insert_characteristic(struct gatt_db_service *service,
 	/* Update handle of characteristic value_handle if it has changed */
 	put_le16(value_handle, &value[1]);
 
-	if (!(*chrc) || !(*chrc)->value)
+	if (!(*chrc)->value) {
+		free(*chrc);
+		*chrc = NULL;
 		return NULL;
+	}
 
 	if (memcmp((*chrc)->value, value, len))
 		memcpy((*chrc)->value, value, len);
