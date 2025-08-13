@@ -78,6 +78,8 @@
 
 #define RSSI_THRESHOLD		8
 
+#define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
+
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
 
@@ -2356,7 +2358,7 @@ done:
 	dev->connect = NULL;
 }
 
-void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
+void device_add_eir_uuids(struct btd_device *dev, GSList *uuids, bool probe)
 {
 	GSList *l;
 	GSList *added = NULL;
@@ -2372,7 +2374,8 @@ void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
 		dev->eir_uuids = g_slist_append(dev->eir_uuids, g_strdup(str));
 	}
 
-	device_probe_profiles(dev, added);
+	if (probe)
+		device_probe_profiles(dev, added);
 }
 
 static void add_manufacturer_data(void *data, void *user_data)
@@ -2411,7 +2414,7 @@ static void add_service_data(void *data, void *user_data)
 		return;
 
 	l = g_slist_append(NULL, sd->uuid);
-	device_add_eir_uuids(dev, l);
+	device_add_eir_uuids(dev, l, false);
 	g_slist_free(l);
 
 	g_dbus_emit_property_changed(dbus_conn, dev->path,
@@ -3488,6 +3491,21 @@ static DBusMessage *get_service_records(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
+static DBusMessage *sync_broadcast_device(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct btd_device *dev = user_data;
+
+	DBG("Sync with broadcast device %s", batostr(&dev->bdaddr));
+
+	if (!btd_device_is_bcast_syncable(dev))
+		return btd_error_not_supported(msg);
+
+	btd_device_add_uuid(dev, BCAAS_UUID_STR);
+
+	return dbus_message_new_method_return(msg);
+}
+
 static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, dev_disconnect) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
@@ -3500,6 +3518,7 @@ static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_EXPERIMENTAL_METHOD("GetServiceRecords", NULL,
 				    GDBUS_ARGS({ "Records", "aay" }),
 				    get_service_records) },
+	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("SyncBroadcast", NULL, NULL, sync_broadcast_device) },
 	{ }
 };
 
@@ -3652,6 +3671,20 @@ bool btd_device_bdaddr_type_connected(struct btd_device *dev, uint8_t type)
 		return dev->bredr_state.connected;
 
 	return dev->le_state.connected;
+}
+
+bool btd_device_is_bcast_syncable(struct btd_device *dev)
+{
+	if (dev->bredr_state.connected || dev->le_state.connected)
+		return false;
+
+	for (GSList *l = dev->eir_uuids; l != NULL; l = l->next) {
+		const char *str = l->data;
+		if (bt_uuid_strcmp(str, BCAAS_UUID_STR) == 0)
+			return true;
+	}
+
+	return false;
 }
 
 static void clear_temporary_timer(struct btd_device *dev)
