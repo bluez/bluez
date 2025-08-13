@@ -1740,7 +1740,7 @@ static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 		next = g_slist_next(l);
 
 		if (device_is_temporary(dev) && !device_is_connectable(dev)
-			&& !btd_device_is_connected(dev))
+			&& !btd_device_is_connected(dev) && !btd_device_is_bcast_syncable(dev))
 			btd_adapter_remove_device(adapter, dev);
 	}
 }
@@ -7452,7 +7452,7 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 							eir_data.did_product,
 							eir_data.did_version);
 
-	device_add_eir_uuids(dev, eir_data.services);
+	device_add_eir_uuids(dev, eir_data.services, false);
 
 	if (adapter->discovery_list)
 		g_slist_foreach(adapter->discovery_list, filter_duplicate_data,
