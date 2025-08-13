@@ -633,7 +633,7 @@ static void store_params(struct btd_adapter *adapter, struct btd_device *device,
 	}
 
 	if (params->services)
-		device_add_eir_uuids(device, params->services);
+		device_add_eir_uuids(device, params->services, true);
 
 	if (params->hash) {
 		btd_adapter_add_remote_oob_data(adapter, &params->address,
