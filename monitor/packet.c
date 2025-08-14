@@ -240,6 +240,14 @@ static struct index_buf_pool *get_pool(uint16_t index, uint8_t type)
 	return NULL;
 }
 
+static void print_unacked_frame(void *data, void *user_data)
+{
+	struct packet_frame *frame = data;
+	int *i = user_data;
+
+	print_field("[%d]#%zu unacked", (*i)++, frame->num);
+}
+
 static struct packet_conn_data *release_handle(uint16_t handle)
 {
 	int i;
@@ -254,8 +262,13 @@ static struct packet_conn_data *release_handle(uint16_t handle)
 				conn->destroy(conn, conn->data);
 
 			pool = get_pool(conn->index, conn->type);
-			if (pool)
+			if (pool) {
+				int i = 0;
+
+				queue_foreach(conn->tx_q, print_unacked_frame,
+						&i);
 				pool->tx -= queue_length(conn->tx_q);
+			}
 
 			queue_destroy(conn->tx_q, free);
 			queue_destroy(conn->chan_q, free);
