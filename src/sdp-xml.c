@@ -545,8 +545,15 @@ static void element_end(GMarkupParseContext *context,
 		return;
 	}
 
-	if (!ctx_data->stack_head || !ctx_data->stack_head->data) {
+	if (!ctx_data->stack_head)
+		return;
+
+	if (!ctx_data->stack_head->data) {
 		DBG("No data for %s", element_name);
+
+		elem = ctx_data->stack_head;
+		ctx_data->stack_head = ctx_data->stack_head->next;
+		sdp_xml_data_free(elem);
 		return;
 	}
 
