@@ -155,6 +155,21 @@ Possible errors:
 :org.bluez.Error.NotConnected:
 :org.bluez.Error.DoesNotExist:
 
+void SyncBroadcast() [experimental]
+```````````````````````````````````
+
+Initiates synchronization with a broadcast source device that contains Broadcast
+Announcements UUID. This method can be used on devices that are capable of
+broadcast synchronization.
+
+If the device is not capable of broadcast synchronization, this method will
+fail with `org.bluez.Error.NotSupported`.
+
+Possible errors:
+
+:org.bluez.Error.Failed:
+:org.bluez.Error.NotSupported:
+
 Signals
 -------
 
