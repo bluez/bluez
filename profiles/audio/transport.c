@@ -2649,6 +2649,9 @@ void media_transport_update_delay(struct media_transport *transport,
 	if (a2dp->delay == delay)
 		return;
 
+	if (a2dp->session == NULL)
+		a2dp->session = a2dp_avdtp_get(transport->device);
+
 	a2dp->delay = delay;
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
