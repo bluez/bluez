@@ -1010,6 +1010,8 @@ static void setup_free(void *data)
 
 	if (setup->ep)
 		queue_remove(setup->ep->setups, setup);
+	else if (setup->data->bcast_snks)
+		queue_remove(setup->data->bcast_snks, setup);
 
 	setup_io_close(setup, NULL);
 
