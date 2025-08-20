@@ -19,6 +19,11 @@
 #include "src/shared/tester.h"
 #include "src/shared/util.h"
 
+struct session {
+	bool completed;
+	guint step;
+};
+
 struct context {
 	guint watch_id;
 	int fd_server;
@@ -27,6 +32,7 @@ struct context {
 	struct hfp_hf *hfp_hf;
 	const struct test_data *data;
 	unsigned int pdu_offset;
+	struct session session;
 };
 
 struct test_pdu {
@@ -720,40 +726,75 @@ static void hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
 							void *user_data)
 {
 	struct context *context = user_data;
+	const char *test_name = context->data->test_name;
 
 	g_assert_cmpint(res, ==, HFP_RESULT_OK);
+	context->session.completed = true;
 
-	context->data->response_func(res, cme_err, context);
+	if (g_str_equal(test_name, "/hfp_hf/test_session_minimal"))
+		context->data->response_func(res, cme_err, context);
 }
 
 static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 							void *user_data)
 {
-	switch (indicator) {
-	case HFP_INDICATOR_SERVICE:
-		g_assert_cmpint(val, ==, 0);
-		break;
-	case HFP_INDICATOR_CALL:
-		g_assert_cmpint(val, ==, 0);
-		break;
-	case HFP_INDICATOR_CALLSETUP:
-		g_assert_cmpint(val, ==, 0);
-		break;
-	case HFP_INDICATOR_CALLHELD:
-		g_assert_cmpint(val, ==, 0);
-		break;
-	case HFP_INDICATOR_SIGNAL:
-		g_assert_cmpint(val, ==, 5);
-		break;
-	case HFP_INDICATOR_ROAM:
-		g_assert_cmpint(val, ==, 0);
-		break;
-	case HFP_INDICATOR_BATTCHG:
-		g_assert_cmpint(val, ==, 5);
-		break;
-	case HFP_INDICATOR_LAST:
-	default:
-		tester_test_failed();
+	struct context *context = user_data;
+	const char *test_name = context->data->test_name;
+
+	if (!context->session.completed) {
+		switch (indicator) {
+		case HFP_INDICATOR_SERVICE:
+			g_assert_cmpint(val, ==, 0);
+			break;
+		case HFP_INDICATOR_CALL:
+			g_assert_cmpint(val, ==, 0);
+			break;
+		case HFP_INDICATOR_CALLSETUP:
+			g_assert_cmpint(val, ==, 0);
+			break;
+		case HFP_INDICATOR_CALLHELD:
+			g_assert_cmpint(val, ==, 0);
+			break;
+		case HFP_INDICATOR_SIGNAL:
+			g_assert_cmpint(val, ==, 5);
+			break;
+		case HFP_INDICATOR_ROAM:
+			g_assert_cmpint(val, ==, 0);
+			break;
+		case HFP_INDICATOR_BATTCHG:
+			g_assert_cmpint(val, ==, 5);
+			break;
+		case HFP_INDICATOR_LAST:
+		default:
+			tester_test_failed();
+		}
+		return;
+	}
+
+	if (g_str_equal(test_name, "/HFP/HF/TRS/BV-01-C")) {
+		context->session.step++;
+		g_assert_cmpint(indicator, ==, HFP_INDICATOR_SERVICE);
+		g_assert_cmpint(val, ==, context->session.step % 2);
+
+		if (context->session.step == 3)
+			context->data->response_func(HFP_RESULT_OK, 0,
+								context);
+	} else if (g_str_equal(test_name, "/HFP/HF/PSI/BV-01-C")) {
+		g_assert_cmpint(indicator, ==, HFP_INDICATOR_SIGNAL);
+		g_assert_cmpint(val, ==, 3);
+		context->data->response_func(HFP_RESULT_OK, 0, context);
+	} else if (g_str_equal(test_name, "/HFP/HF/PSI/BV-02-C")) {
+		context->session.step++;
+		g_assert_cmpint(indicator, ==, HFP_INDICATOR_ROAM);
+		g_assert_cmpint(val, ==, context->session.step % 2);
+
+		if (context->session.step == 2)
+			context->data->response_func(HFP_RESULT_OK, 0,
+								context);
+	} else if (g_str_equal(test_name, "/HFP/HF/PSI/BV-03-C")) {
+		g_assert_cmpint(indicator, ==, HFP_INDICATOR_BATTCHG);
+		g_assert_cmpint(val, ==, 3);
+		context->data->response_func(HFP_RESULT_OK, 0, context);
 	}
 }
 
@@ -965,6 +1006,44 @@ int main(int argc, char *argv[])
 	define_hf_test("/hfp_hf/test_session_minimal", test_hf_session,
 			NULL, test_hf_session_done,
 			MINIMAL_SLC_SESSION,
+			data_end());
+
+	/* Transfer Registration Status - HF */
+	define_hf_test("/HFP/HF/TRS/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION,
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '1', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
+			data_end());
+
+	/* Transfer Signal Strength Indication - HF */
+	define_hf_test("/HFP/HF/PSI/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION,
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '5', ',', '3', '\r', '\n'),
+			data_end());
+
+	/* Transfer Roaming Status Indication - HF */
+	define_hf_test("/HFP/HF/PSI/BV-02-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION,
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '6', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '6', ',', '0', '\r', '\n'),
+			data_end());
+
+	/* Transfer Battery Level Indication - HF */
+	define_hf_test("/HFP/HF/PSI/BV-03-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION,
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '7', ',', '3', '\r', '\n'),
 			data_end());
 
 	return tester_run();
