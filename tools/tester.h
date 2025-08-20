@@ -334,6 +334,7 @@ static inline void test_ethtool_get_ts_info(unsigned int index, int proto,
 	if (ioctl(sk, SIOCETHTOOL, &ifr) == -1) {
 		tester_warn("SIOCETHTOOL failed");
 		tester_test_failed();
+		close(sk);
 		return;
 	}
 	close(sk);
