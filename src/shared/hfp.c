@@ -1694,6 +1694,22 @@ static void set_indicator_value(uint8_t index, unsigned int val,
 	}
 }
 
+static void ciev_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	unsigned int index, val;
+
+	DBG(hfp, "");
+
+	if (!hfp_context_get_number(context, &index))
+		return;
+
+	if (!hfp_context_get_number(context, &val))
+		return;
+
+	set_indicator_value(index, val, hfp->ag_ind, hfp);
+}
+
 static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 	void *user_data)
 {
@@ -1709,6 +1725,10 @@ static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 	if (hfp->callbacks->session_ready)
 		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
 						hfp->callbacks_data);
+
+	/* Register unsolicited results handlers */
+	hfp_hf_register(hfp, ciev_cb, "+CIEV", hfp, NULL);
+
 	return;
 
 failed:
