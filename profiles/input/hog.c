@@ -259,7 +259,7 @@ static void hog_read_config(void)
 	if (!err) {
 		DBG("input.conf: UserspaceHID=%s", uhid_enabled);
 		uhid_state_persist = strcasecmp(uhid_enabled, "persist") == 0;
-		free(uhid_enabled);
+		g_free(uhid_enabled);
 	} else
 		g_clear_error(&err);
 

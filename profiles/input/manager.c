@@ -101,7 +101,7 @@ static int input_init(void)
 		if (!err) {
 			DBG("input.conf: UserspaceHID=%s", uhid_enabled);
 			input_set_userspace_hid(uhid_enabled);
-			free(uhid_enabled);
+			g_free(uhid_enabled);
 		} else
 			g_clear_error(&err);
 
