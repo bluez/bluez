@@ -918,7 +918,7 @@ static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 {
 	struct bass_assistant *assistant = user_data;
 	struct bt_bass_bcast_audio_scan_cp_hdr hdr;
-	struct bt_bass_add_src_params params;
+	struct bt_bass_add_src_params params = {0};
 	struct iovec iov = {0};
 	uint32_t bis_sync = 0;
 	uint8_t meta_len = 0;
