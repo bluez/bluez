@@ -1081,6 +1081,62 @@ static int open_channel(uint16_t channel)
 	return 0;
 }
 
+static void kmsg_callback(int fd, uint32_t events, void *user_data)
+{
+	char buf[1024], *msg;
+	ssize_t len;
+	struct timeval tv;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(fd);
+		return;
+	}
+
+	memset(buf, 0, sizeof(buf));
+
+	len = read(fd, buf, sizeof(buf));
+	if (len < 0)
+		return;
+
+	/* Check if the kernel message is from Bluetooth */
+	msg = strcasestr(buf, "Bluetooth:");
+	if (!msg)
+		return;
+
+	/* Replace Bluetooth with Kernel to avoid possible confusions */
+	msg += 3;
+	memcpy(msg, "Kernel", 6);
+
+	/* Adjust the actual length since part of the message is skipped and
+	 * replace the \n with \0 at the end.
+	 */
+	len = len - (msg - buf);
+	msg[len - 1] = '\0';
+
+	gettimeofday(&tv, NULL);
+
+	btsnoop_write_hci(btsnoop_file, &tv, HCI_DEV_NONE,
+				BTSNOOP_OPCODE_SYSTEM_NOTE, 0, msg, len);
+	packet_monitor(&tv, NULL, HCI_DEV_NONE,
+				BTSNOOP_OPCODE_SYSTEM_NOTE, msg, len);
+}
+
+static int open_kmsg(void)
+{
+	int fd;
+
+	fd = open("/dev/kmsg", O_RDONLY);
+	if (fd < 0)
+		return -1;
+
+	if (mainloop_add_fd(fd, EPOLLIN, kmsg_callback, NULL, NULL) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	return 0;
+}
+
 static void client_callback(int fd, uint32_t events, void *user_data)
 {
 	struct control_data *data = user_data;
@@ -1555,6 +1611,9 @@ int control_tracing(void)
 
 	if (packet_has_filter(PACKET_FILTER_SHOW_MGMT_SOCKET))
 		open_channel(HCI_CHANNEL_CONTROL);
+
+	if (packet_has_filter(PACKET_FILTER_SHOW_KMSG))
+		open_kmsg();
 
 	return 0;
 }

@@ -61,6 +61,7 @@ static void usage(void)
 		"\t-B, --tty-speed <rate> Set TTY speed (default 115200)\n"
 		"\t-V, --vendor <compid>  Set default company identifier\n"
 		"\t-M, --mgmt             Open channel for mgmt events\n"
+		"\t-K, --kernel           Open kmsg for kernel messages\n"
 		"\t-t, --time             Show time instead of time offset\n"
 		"\t-T, --date             Show time and date information\n"
 		"\t-S, --sco              Dump SCO traffic\n"
@@ -88,6 +89,7 @@ static const struct option main_options[] = {
 	{ "tty-speed", required_argument, NULL, 'B' },
 	{ "vendor",    required_argument, NULL, 'V' },
 	{ "mgmt",      no_argument,       NULL, 'M' },
+	{ "kernel",    no_argument,       NULL, 'K' },
 	{ "no-time",   no_argument,       NULL, 'N' },
 	{ "time",      no_argument,       NULL, 't' },
 	{ "date",      no_argument,       NULL, 'T' },
@@ -131,7 +133,7 @@ int main(int argc, char *argv[])
 		struct sockaddr_un addr;
 
 		opt = getopt_long(argc, argv,
-				"r:w:a:s:p:i:d:B:V:MNtTSAIE:PJ:R:C:c:vh",
+				"r:w:a:s:p:i:d:B:V:MKNtTSAIE:PJ:R:C:c:vh",
 				main_options, NULL);
 		if (opt < 0)
 			break;
@@ -183,6 +185,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'M':
 			filter_mask |= PACKET_FILTER_SHOW_MGMT_SOCKET;
+			break;
+		case 'K':
+			filter_mask |= PACKET_FILTER_SHOW_KMSG;
 			break;
 		case 'N':
 			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
