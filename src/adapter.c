@@ -10019,7 +10019,7 @@ static void exp_debug_func(struct btd_adapter *adapter, uint8_t action)
 	cp.action = action;
 
 	if (exp_mgmt_send(adapter, MGMT_OP_SET_EXP_FEATURE,
-			adapter->dev_id, sizeof(cp), &cp,
+			MGMT_INDEX_NONE, sizeof(cp), &cp,
 			set_exp_debug_complete))
 		return;
 
