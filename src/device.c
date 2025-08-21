@@ -6271,8 +6271,12 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (gerr) {
 		DBG("%s", gerr->message);
 
-		if (g_error_matches(gerr, BT_IO_ERROR, ECONNABORTED))
+		if (g_error_matches(gerr, BT_IO_ERROR, ECONNABORTED)) {
+			/* Restart temporary timer to prevent device removal */
+			if (device->temporary)
+				set_temporary_timer(device, btd_opts.tmpto);
 			goto done;
+		}
 
 		if (device_get_auto_connect(device)) {
 			DBG("Enabling automatic connections");
