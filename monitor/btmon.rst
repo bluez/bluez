@@ -77,6 +77,8 @@ OPTIONS
 
 -M, --mgmt                  Open channel for mgmt events.
 
+-K, --kernel                Open kmsg for kernel messages.
+
 -t, --time                  Show a time instead of time offset.
 
 -T, --date                  Show a time and date information instead of
