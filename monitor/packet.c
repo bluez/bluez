@@ -11222,8 +11222,10 @@ static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 	}
 
 	frame = queue_pop_head(conn->tx_q);
-	if (!frame)
+	if (!frame) {
+		print_field("#(frame not found)");
 		return;
+	}
 
 	timersub(tv, &frame->tv, &delta);
 
