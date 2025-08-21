@@ -81,7 +81,7 @@ get_pairing(uint16_t vid, uint16_t pid, const char *name)
 		if (devices[i].pid != pid)
 			continue;
 
-		if (name && strcmp(name, devices[i].name))
+		if (name && !g_str_has_suffix(name, devices[i].name))
 			continue;
 
 		return &devices[i];
