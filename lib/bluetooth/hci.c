@@ -662,6 +662,8 @@ static const hci_map ver_map[] = {
 	{ "5.2",	0x0b },
 	{ "5.3",	0x0c },
 	{ "5.4",	0x0d },
+	{ "6.0",	0x0e },
+	{ "6.1",	0x0f },
 	{ NULL }
 };
 
