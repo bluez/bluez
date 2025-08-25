@@ -604,18 +604,26 @@ char *hci_cmdtostr(unsigned int cmd)
 	return hci_uint2str(commands_map, cmd);
 }
 
-char *hci_commandstostr(uint8_t *commands, char *pref, int width)
+char *hci_commandstostr(const uint8_t *commands, const char *pref, int width)
 {
 	unsigned int maxwidth = width - 3;
 	const hci_map *m;
 	char *off, *ptr, *str;
-	int size = 10;
+	int size = 1;
+	int pref_len;
+
+	if (pref) {
+		pref_len = strlen(pref);
+	} else {
+		pref_len = 0;
+		pref = "";
+	}
 
 	m = commands_map;
 
 	while (m->str) {
 		if (commands[m->val / 8] & (1 << (m->val % 8)))
-			size += strlen(m->str) + (pref ? strlen(pref) : 0) + 3;
+			size += pref_len + strlen(m->str) + 3;
 		m++;
 	}
 
@@ -625,23 +633,27 @@ char *hci_commandstostr(uint8_t *commands, char *pref, int width)
 
 	ptr = str; *ptr = '\0';
 
-	if (pref)
-		ptr += sprintf(ptr, "%s", pref);
-
+	ptr += sprintf(ptr, "%s", pref);
 	off = ptr;
 
 	m = commands_map;
 
 	while (m->str) {
 		if (commands[m->val / 8] & (1 << (m->val % 8))) {
-			if (strlen(off) + strlen(m->str) > maxwidth) {
-				ptr += sprintf(ptr, "\n%s", pref ? pref : "");
+			if (ptr != str &&
+				strlen(off) + strlen(m->str) > maxwidth) {
+				ptr = ptr - 1;
+				ptr += sprintf(ptr, "\n%s", pref);
 				off = ptr;
 			}
 			ptr += sprintf(ptr, "'%s' ", m->str);
 		}
 		m++;
 	}
+
+	if (ptr != str)
+		/* Trim trailing space. */
+		ptr[-1] = '\0';
 
 	return str;
 }
