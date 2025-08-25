@@ -152,7 +152,7 @@ char *hci_lmtostr(unsigned int ptype);
 int hci_strtolm(char *str, unsigned int *val);
 
 char *hci_cmdtostr(unsigned int cmd);
-char *hci_commandstostr(uint8_t *commands, char *pref, int width);
+char *hci_commandstostr(const uint8_t *commands, const char *pref, int width);
 
 char *hci_vertostr(unsigned int ver);
 int hci_strtover(char *str, unsigned int *ver);
