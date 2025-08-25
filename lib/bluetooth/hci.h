@@ -17,7 +17,10 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
 #include <sys/socket.h>
+
+#include <bluetooth/bluetooth.h>
 
 #define HCI_MAX_DEV	16
 
