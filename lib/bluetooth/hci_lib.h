@@ -17,6 +17,12 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <string.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+
 struct hci_request {
 	uint16_t ogf;
 	uint16_t ocf;
