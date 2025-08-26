@@ -2661,6 +2661,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	struct pending_list_items *p = player->p;
 	uint16_t count;
 	uint64_t items;
+	uint64_t new_items = 0;
 	size_t i;
 	int err = 0;
 
@@ -2715,8 +2716,10 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 		else
 			item = parse_media_folder(session, &operands[i], len);
 
-		if (item)
+		if (item) {
 			p->items = g_slist_append(p->items, item);
+			new_items++;
+		}
 
 		i += len;
 	}
@@ -2726,7 +2729,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	DBG("start %u end %u items %" PRIu64 " total %" PRIu64 "", p->start,
 						p->end, items, p->total);
 
-	if (items < p->total) {
+	if (new_items > 0 && items < p->total) {
 		avrcp_list_items(session, p->start + items, p->end);
 		return FALSE;
 	}
