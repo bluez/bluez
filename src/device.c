@@ -2205,7 +2205,7 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 	char addr[18];
 	const char *bearer;
 
-	if (!device || !device->le || device_address_is_private(device))
+	if (!device || !device->le)
 		return;
 
 	ba2str(&device->bdaddr, addr);
@@ -2223,6 +2223,9 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 		adapter_auto_connect_remove(device->adapter, device);
 		return;
 	}
+
+	if (device_address_is_private(device))
+		return;
 
 	/* Inhibit auto connect if BR/EDR bearer is preferred */
 	bearer = device_prefer_bearer_str(device);
