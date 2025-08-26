@@ -373,7 +373,7 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 	else
 		type = G_OBEX_TRANSPORT_STREAM;
 
-	obex = g_obex_new(io, type, tx_mtu, rx_mtu);
+	obex = g_obex_new(io, type, rx_mtu, tx_mtu);
 	if (obex == NULL)
 		goto done;
 
