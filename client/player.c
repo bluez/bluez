@@ -5017,8 +5017,15 @@ static void transport_acquire(GDBusProxy *proxy, bool prompt)
 	 * endpoint.
 	 */
 	ep = find_ep_by_transport(g_dbus_proxy_get_path(proxy));
-	if (!ep || queue_find(ep->acquiring, NULL, proxy))
+	if (!ep) {
+		bt_shell_printf("transport endpoint not found\n");
 		return;
+	}
+
+	if (queue_find(ep->acquiring, NULL, proxy)) {
+		bt_shell_printf("acquire already in progress\n");
+		return;
+	}
 
 	if (!ep->broadcast) {
 		link = find_link_by_proxy(proxy);
