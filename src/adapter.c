@@ -342,6 +342,8 @@ struct btd_adapter {
 
 	struct queue *exp_pending;
 	struct queue *exps;
+
+	GSList *restore_dev_addrs;
 };
 
 static char *adapter_power_state_str(uint32_t power_state)
@@ -1400,17 +1402,7 @@ static void adapter_add_device(struct btd_adapter *adapter,
 
 static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
 						const bdaddr_t *bdaddr,
-						uint8_t bdaddr_type)
-{
-	struct btd_device *device;
-
-	device = device_create(adapter, bdaddr, bdaddr_type);
-	if (!device)
-		return NULL;
-
-	adapter_add_device(adapter, device);
-	return device;
-}
+						uint8_t bdaddr_type);
 
 static void service_auth_cancel(struct service_auth *auth)
 {
@@ -4969,6 +4961,93 @@ done:
 	mgmt_tlv_list_free(list);
 }
 
+static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
+						const bdaddr_t *bdaddr,
+						uint8_t bdaddr_type)
+{
+	struct btd_device *device;
+	char addr[18];
+	GSList *match = NULL;
+	char *match_addr = NULL;
+	GKeyFile *key_file = NULL;
+
+	ba2str(bdaddr, addr);
+
+	match = g_slist_find_custom(adapter->restore_dev_addrs, addr,
+					(GCompareFunc)strcasecmp);
+	if (match) {
+		char filename[PATH_MAX];
+		GError *gerr = NULL;
+		struct link_key_info *key_info;
+		struct smp_ltk_info *ltk_info;
+		struct smp_ltk_info *peripheral_ltk_info;
+		struct irk_info *irk_info;
+
+		create_filename(filename, PATH_MAX, "/%s/%s/info",
+					btd_adapter_get_storage_dir(adapter),
+					addr);
+
+		key_file = g_key_file_new();
+		if (!g_key_file_load_from_file(key_file, filename, 0, &gerr)) {
+			error("Unable to load key file from %s: (%s)", filename,
+								gerr->message);
+			g_clear_error(&gerr);
+		}
+
+		DBG("Found device %s but restoring from storage", addr);
+		device = device_create_from_storage(adapter, addr, key_file);
+		if (!device) {
+			g_key_file_free(key_file);
+			return NULL;
+		}
+		match_addr = match->data;
+		adapter->restore_dev_addrs =
+			g_slist_delete_link(adapter->restore_dev_addrs, match);
+		g_free(match_addr);
+
+		if (bdaddr_type == BDADDR_BREDR)
+			device_set_bredr_support(device);
+		else
+			device_set_le_support(device, bdaddr_type);
+
+		key_info = get_key_info(key_file, addr, bdaddr_type);
+		ltk_info = get_ltk_info(key_file, addr, bdaddr_type);
+		peripheral_ltk_info =
+			get_peripheral_ltk_info(key_file, addr, bdaddr_type);
+		irk_info = get_irk_info(key_file, addr, bdaddr_type);
+		if (key_info) {
+			device_set_paired(device, BDADDR_BREDR);
+			device_set_bonded(device, BDADDR_BREDR);
+		}
+		if (ltk_info || peripheral_ltk_info) {
+			struct smp_ltk_info *info;
+
+			info = ltk_info ? ltk_info : peripheral_ltk_info;
+			device_set_paired(device, info->bdaddr_type);
+			device_set_bonded(device, info->bdaddr_type);
+
+			device_set_ltk(device, info->val, info->central,
+					info->enc_size);
+		}
+		if (irk_info)
+			device_set_rpa(device, true);
+
+		btd_device_set_temporary(device, false);
+		g_free(key_info);
+		g_free(ltk_info);
+		g_free(peripheral_ltk_info);
+		g_free(irk_info);
+		g_key_file_free(key_file);
+	} else {
+		device = device_create(adapter, bdaddr, bdaddr_type);
+		if (!device)
+			return NULL;
+	}
+
+	adapter_add_device(adapter, device);
+	return device;
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
 	char dirname[PATH_MAX];
@@ -5087,8 +5166,15 @@ static void load_devices(struct btd_adapter *adapter)
 
 		device = device_create_from_storage(adapter, entry->d_name,
 							key_file);
-		if (!device)
+		if (!device) {
+			char *addr_copy;
+
+			addr_copy = g_strdup(entry->d_name);
+			adapter->restore_dev_addrs =
+				g_slist_append(adapter->restore_dev_addrs,
+						addr_copy);
 			goto free;
+		}
 
 		if (irk_info)
 			device_set_rpa(device, true);
@@ -7085,6 +7171,9 @@ static void adapter_remove(struct btd_adapter *adapter)
 	adapter->msd_callbacks = NULL;
 
 	queue_remove_all(adapter->exp_pending, NULL, NULL, cancel_exp_pending);
+
+	g_slist_free_full(adapter->restore_dev_addrs, g_free);
+	adapter->restore_dev_addrs = NULL;
 }
 
 const char *adapter_get_path(struct btd_adapter *adapter)
