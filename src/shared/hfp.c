@@ -1576,7 +1576,7 @@ static void ciev_service_cb(uint8_t val, void *user_data)
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_SERVICE].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_SERVICE].max) {
-		DBG(hfp, "hf: Incorrect state %u:", val);
+		DBG(hfp, "hf: Incorrect state: %u", val);
 		return;
 	}
 
@@ -1594,7 +1594,7 @@ static void ciev_call_cb(uint8_t val, void *user_data)
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_CALL].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_CALL].max) {
-		DBG(hfp, "hf: Incorrect call state %u:", val);
+		DBG(hfp, "hf: Incorrect call state: %u", val);
 		return;
 	}
 }
@@ -1607,7 +1607,7 @@ static void ciev_callsetup_cb(uint8_t val, void *user_data)
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_CALLSETUP].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_CALLSETUP].max) {
-		DBG(hfp, "hf: Incorrect call setup state %u:", val);
+		DBG(hfp, "hf: Incorrect call setup state: %u", val);
 		return;
 	}
 }
@@ -1620,7 +1620,7 @@ static void ciev_callheld_cb(uint8_t val, void *user_data)
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_CALLHELD].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_CALLHELD].max) {
-		DBG(hfp, "hf: Incorrect call held state %u:", val);
+		DBG(hfp, "hf: Incorrect call held state: %u", val);
 		return;
 	}
 }
@@ -1633,7 +1633,7 @@ static void ciev_signal_cb(uint8_t val, void *user_data)
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_SIGNAL].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_SIGNAL].max) {
-		DBG(hfp, "hf: Incorrect signal value %u:", val);
+		DBG(hfp, "hf: Incorrect signal value: %u", val);
 		return;
 	}
 
@@ -1651,7 +1651,7 @@ static void ciev_roam_cb(uint8_t val, void *user_data)
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_ROAM].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_ROAM].max) {
-		DBG(hfp, "hf: Incorrect roaming state %u:", val);
+		DBG(hfp, "hf: Incorrect roaming state: %u", val);
 		return;
 	}
 
@@ -1669,7 +1669,7 @@ static void ciev_battchg_cb(uint8_t val, void *user_data)
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_BATTCHG].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_BATTCHG].max) {
-		DBG(hfp, "hf: Incorrect battery charge value %u:", val);
+		DBG(hfp, "hf: Incorrect battery charge value: %u", val);
 		return;
 	}
 
