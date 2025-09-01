@@ -771,15 +771,7 @@ static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 		return;
 	}
 
-	if (g_str_equal(test_name, "/HFP/HF/TRS/BV-01-C")) {
-		context->session.step++;
-		g_assert_cmpint(indicator, ==, HFP_INDICATOR_SERVICE);
-		g_assert_cmpint(val, ==, context->session.step % 2);
-
-		if (context->session.step == 3)
-			context->data->response_func(HFP_RESULT_OK, 0,
-								context);
-	} else if (g_str_equal(test_name, "/HFP/HF/PSI/BV-01-C")) {
+	if (g_str_equal(test_name, "/HFP/HF/PSI/BV-01-C")) {
 		g_assert_cmpint(indicator, ==, HFP_INDICATOR_SIGNAL);
 		g_assert_cmpint(val, ==, 3);
 		context->data->response_func(HFP_RESULT_OK, 0, context);
@@ -795,6 +787,14 @@ static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 		g_assert_cmpint(indicator, ==, HFP_INDICATOR_BATTCHG);
 		g_assert_cmpint(val, ==, 3);
 		context->data->response_func(HFP_RESULT_OK, 0, context);
+	} else if (g_str_equal(test_name, "/HFP/HF/TRS/BV-01-C")) {
+		context->session.step++;
+		g_assert_cmpint(indicator, ==, HFP_INDICATOR_SERVICE);
+		g_assert_cmpint(val, ==, context->session.step % 2);
+
+		if (context->session.step == 3)
+			context->data->response_func(HFP_RESULT_OK, 0,
+								context);
 	}
 }
 
@@ -1008,18 +1008,6 @@ int main(int argc, char *argv[])
 			MINIMAL_SLC_SESSION,
 			data_end());
 
-	/* Transfer Registration Status - HF */
-	define_hf_test("/HFP/HF/TRS/BV-01-C", test_hf_session,
-			NULL, test_hf_session_done,
-			MINIMAL_SLC_SESSION,
-			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
-			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
-			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
-			frg_pdu(' ', '1', ',', '0', '\r', '\n'),
-			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
-			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
-			data_end());
-
 	/* Transfer Signal Strength Indication - HF */
 	define_hf_test("/HFP/HF/PSI/BV-01-C", test_hf_session,
 			NULL, test_hf_session_done,
@@ -1044,6 +1032,18 @@ int main(int argc, char *argv[])
 			MINIMAL_SLC_SESSION,
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
 			frg_pdu(' ', '7', ',', '3', '\r', '\n'),
+			data_end());
+
+	/* Transfer Registration Status - HF */
+	define_hf_test("/HFP/HF/TRS/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION,
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '1', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
+			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
 			data_end());
 
 	return tester_run();
