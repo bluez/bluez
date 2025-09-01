@@ -136,13 +136,13 @@ static void destroy_context(struct context *context)
 	if (context->watch_id)
 		g_source_remove(context->watch_id);
 
-	test_free(context->data);
-
 	if (context->hfp)
 		hfp_gw_unref(context->hfp);
 
 	if (context->hfp_hf)
 		hfp_hf_unref(context->hfp_hf);
+
+	test_free(context->data);
 
 	g_free(context);
 }
@@ -182,14 +182,19 @@ static gboolean send_pdu(gpointer user_data)
 	ssize_t len;
 
 	pdu = &context->data->pdu_list[context->pdu_offset++];
-	if (!pdu || !pdu->valid)
+	if (!pdu)
 		return FALSE;
+
+	if (!pdu->valid) {
+		context->data->response_func(HFP_RESULT_OK, 0, context);
+		return FALSE;
+	}
 
 	len = write(context->fd_server, pdu->data, pdu->size);
 	g_assert_cmpint(len, ==, pdu->size);
 
 	pdu = &context->data->pdu_list[context->pdu_offset];
-	if (pdu->fragmented)
+	if (pdu->fragmented || (!pdu->valid && context->data->response_func))
 		g_idle_add(send_pdu, context);
 
 	return FALSE;
@@ -726,13 +731,9 @@ static void hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
 							void *user_data)
 {
 	struct context *context = user_data;
-	const char *test_name = context->data->test_name;
 
 	g_assert_cmpint(res, ==, HFP_RESULT_OK);
 	context->session.completed = true;
-
-	if (g_str_equal(test_name, "/hfp_hf/test_session_minimal"))
-		context->data->response_func(res, cme_err, context);
 }
 
 static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
@@ -774,27 +775,17 @@ static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 	if (g_str_equal(test_name, "/HFP/HF/PSI/BV-01-C")) {
 		g_assert_cmpint(indicator, ==, HFP_INDICATOR_SIGNAL);
 		g_assert_cmpint(val, ==, 3);
-		context->data->response_func(HFP_RESULT_OK, 0, context);
 	} else if (g_str_equal(test_name, "/HFP/HF/PSI/BV-02-C")) {
 		context->session.step++;
 		g_assert_cmpint(indicator, ==, HFP_INDICATOR_ROAM);
 		g_assert_cmpint(val, ==, context->session.step % 2);
-
-		if (context->session.step == 2)
-			context->data->response_func(HFP_RESULT_OK, 0,
-								context);
 	} else if (g_str_equal(test_name, "/HFP/HF/PSI/BV-03-C")) {
 		g_assert_cmpint(indicator, ==, HFP_INDICATOR_BATTCHG);
 		g_assert_cmpint(val, ==, 3);
-		context->data->response_func(HFP_RESULT_OK, 0, context);
 	} else if (g_str_equal(test_name, "/HFP/HF/TRS/BV-01-C")) {
 		context->session.step++;
 		g_assert_cmpint(indicator, ==, HFP_INDICATOR_SERVICE);
 		g_assert_cmpint(val, ==, context->session.step % 2);
-
-		if (context->session.step == 3)
-			context->data->response_func(HFP_RESULT_OK, 0,
-								context);
 	}
 }
 
