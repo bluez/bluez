@@ -142,6 +142,7 @@ struct btd_opts {
 	bool		refresh_discovery;
 	bool		experimental;
 	bool		testing;
+	bool		filter_discoverable;
 	struct queue	*kernel;
 
 	uint16_t	did_source;
