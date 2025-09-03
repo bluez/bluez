@@ -14424,6 +14424,8 @@ static const struct bitfield_data mgmt_settings_table[] = {
 	{ 20, "ISO Broadcaster"		},
 	{ 21, "Sync Receiver"		},
 	{ 22, "LL Privacy"		},
+	{ 23, "PAST Sender"		},
+	{ 24, "PAST Receiver"		},
 	{}
 };
 
@@ -15852,6 +15854,7 @@ static const struct bitfield_data mgmt_added_device_flags_table[] = {
 	{ 0, "Remote Wakeup"		},
 	{ 1, "Device Privacy Mode"	},
 	{ 2, "Address Resolution"	},
+	{ 3, "PAST"			},
 	{ }
 };
 
