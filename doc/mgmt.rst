@@ -319,6 +319,8 @@ following available bits:
     20, Isochronous Broadcaster
     21, Synchronized Receiver
     22, LL Privacy
+    23, PAST Sender
+    24, PAST Receiver
 
 This command generates a Command Complete event on success or a Command Status
 event on failure.
@@ -3581,6 +3583,7 @@ available bits:
 	0, Remote Wakeup enabled
 	1, Device Privacy Mode enabled
 	2, Address Resolution enabled
+	3, PAST enabled
 
 This command generates a Command Complete event on success or a Command Status
 event on failure.
