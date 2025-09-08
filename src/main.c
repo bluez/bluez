@@ -91,6 +91,7 @@ static const char *supported_options[] = {
 	"Testing",
 	"KernelExperimental",
 	"RemoteNameRequestRetryDelay",
+	"FilterDiscoverable",
 	NULL
 };
 
@@ -1062,6 +1063,8 @@ static void parse_general(GKeyFile *config)
 	parse_config_u32(config, "General", "RemoteNameRequestRetryDelay",
 					&btd_opts.name_request_retry_delay,
 					0, UINT32_MAX);
+	parse_config_bool(config, "General", "FilterDiscoverable",
+						&btd_opts.filter_discoverable);
 }
 
 static void parse_gatt_cache(GKeyFile *config)
@@ -1239,6 +1242,7 @@ static void init_defaults(void)
 	btd_opts.refresh_discovery = TRUE;
 	btd_opts.name_request_retry_delay = DEFAULT_NAME_REQUEST_RETRY_DELAY;
 	btd_opts.secure_conn = SC_ON;
+	btd_opts.filter_discoverable = true;
 
 	btd_opts.defaults.num_entries = 0;
 	btd_opts.defaults.br.page_scan_type = 0xFFFF;

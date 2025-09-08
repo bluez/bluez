@@ -7239,8 +7239,10 @@ static bool device_is_discoverable(struct btd_adapter *adapter,
 
 	if (bdaddr_type == BDADDR_BREDR || adapter->filtered_discovery)
 		discoverable = true;
-	else
+	else if (btd_opts.filter_discoverable)
 		discoverable = eir->flags & (EIR_LIM_DISC | EIR_GEN_DISC);
+	else
+		discoverable = true;
 
 	/*
 	 * Mark as not discoverable if no client has requested discovery and
