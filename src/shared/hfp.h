@@ -190,6 +190,7 @@ struct hfp_hf_callbacks {
 							void *user_data);
 	void (*update_indicator)(enum hfp_indicator indicator, uint32_t val,
 							void *user_data);
+	void (*update_operator)(const char *operator_name, void *user_data);
 };
 
 struct hfp_hf *hfp_hf_new(int fd);
