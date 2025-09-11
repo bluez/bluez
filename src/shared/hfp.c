@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include "src/shared/util.h"
 #include "src/shared/ringbuf.h"
@@ -29,7 +30,7 @@
 	hfp_debug(_hfp->debug_callback, _hfp->debug_data, "%s:%s() " fmt, \
 						__FILE__, __func__, ## arg)
 
-#define HFP_HF_FEATURES	(HFP_HF_FEAT_ESCO_S4_T2)
+#define HFP_HF_FEATURES	(HFP_HF_FEAT_CLIP | HFP_HF_FEAT_ESCO_S4_T2)
 
 struct hfp_gw {
 	int ref_count;
@@ -100,6 +101,7 @@ struct hfp_hf {
 	bool roaming;
 	uint8_t battchg;
 
+	struct queue *calls;
 };
 
 struct cmd_handler {
@@ -126,6 +128,15 @@ struct event_handler {
 	void *user_data;
 	hfp_destroy_func_t destroy;
 	hfp_hf_result_func_t callback;
+};
+
+struct hf_call {
+	uint id;
+	enum hfp_call_status status;
+	char *line_id;
+	uint type;
+
+	struct hfp_hf *hfp;
 };
 
 static void hfp_debug(hfp_debug_func_t debug_func, void *debug_data,
@@ -1303,6 +1314,7 @@ struct hfp_hf *hfp_hf_new(int fd)
 
 	hfp->event_handlers = queue_new();
 	hfp->cmd_queue = queue_new();
+	hfp->calls = queue_new();
 	hfp->writer_active = false;
 
 	if (!io_set_read_handler(hfp->io, hf_can_read_data, hfp,
@@ -1327,6 +1339,18 @@ struct hfp_hf *hfp_hf_ref(struct hfp_hf *hfp)
 	__sync_fetch_and_add(&hfp->ref_count, 1);
 
 	return hfp;
+}
+
+static void remove_call_cb(void *user_data)
+{
+	struct hf_call *call = user_data;
+	struct hfp_hf *hfp = call->hfp;
+
+	if (hfp->callbacks && hfp->callbacks->call_removed)
+		hfp->callbacks->call_removed(call->id, hfp->callbacks_data);
+
+	free(call->line_id);
+	free(call);
 }
 
 void hfp_hf_unref(struct hfp_hf *hfp)
@@ -1360,6 +1384,9 @@ void hfp_hf_unref(struct hfp_hf *hfp)
 
 	queue_destroy(hfp->cmd_queue, free);
 	hfp->cmd_queue = NULL;
+
+	queue_destroy(hfp->calls, remove_call_cb);
+	hfp->calls = NULL;
 
 	if (!hfp->in_disconnect) {
 		free(hfp);
@@ -1568,6 +1595,44 @@ bool hfp_hf_disconnect(struct hfp_hf *hfp)
 	return io_shutdown(hfp->io);
 }
 
+static bool call_id_match(const void *data, const void *match_data)
+{
+	const struct hf_call *call = data;
+	uint id = PTR_TO_UINT(match_data);
+
+	return (call->id == id);
+}
+
+static uint next_call_index(struct hfp_hf *hfp)
+{
+	for (uint i = 1; i < UINT_MAX; i++) {
+		if (!queue_find(hfp->calls, call_id_match, UINT_TO_PTR(i)))
+			return i;
+	}
+
+	return 0;
+}
+
+static struct hf_call *call_new(struct hfp_hf *hfp, unsigned int id,
+						enum hfp_call_status status,
+						char *number)
+{
+	struct hf_call *call;
+
+	call = new0(struct hf_call, 1);
+	call->id = id;
+	call->status = status;
+	call->line_id = number;
+	call->hfp = hfp;
+	queue_push_tail(hfp->calls, call);
+
+	if (hfp->callbacks && hfp->callbacks->call_added)
+		hfp->callbacks->call_added(call->id, call->status,
+						hfp->callbacks_data);
+
+	return call;
+}
+
 static void ciev_service_cb(uint8_t val, void *user_data)
 {
 	struct hfp_hf *hfp = user_data;
@@ -1599,9 +1664,40 @@ static void ciev_call_cb(uint8_t val, void *user_data)
 	}
 }
 
+static bool call_outgoing_match(const void *data, const void *match_data)
+{
+	const struct hf_call *call = data;
+
+	return (call->status == CALL_STATUS_DIALING ||
+				    call->status == CALL_STATUS_ALERTING);
+}
+
+static bool call_incoming_match(const void *data, const void *match_data)
+{
+	const struct hf_call *call = data;
+
+	return (call->status == CALL_STATUS_INCOMING);
+}
+
+static bool call_setup_match(const void *data, const void *match_data)
+{
+	return (call_outgoing_match(data, match_data) ||
+				    call_incoming_match(data, match_data));
+}
+
+static bool call_active_match(const void *data, const void *match_data)
+{
+	const struct hf_call *call = data;
+
+	return (call->status == CALL_STATUS_ACTIVE);
+}
+
 static void ciev_callsetup_cb(uint8_t val, void *user_data)
 {
 	struct hfp_hf *hfp = user_data;
+	struct hf_call *call;
+	uint id;
+	enum hfp_call_status status;
 
 	DBG(hfp, "%u", val);
 
@@ -1609,6 +1705,57 @@ static void ciev_callsetup_cb(uint8_t val, void *user_data)
 			val > hfp->ag_ind[HFP_INDICATOR_CALLSETUP].max) {
 		DBG(hfp, "hf: Incorrect call setup state: %u", val);
 		return;
+	}
+
+	switch (val) {
+	case CIND_CALLSETUP_NONE:
+		/* remove call in setup phase */
+		queue_remove_all(hfp->calls, call_setup_match, hfp,
+							remove_call_cb);
+		break;
+	case CIND_CALLSETUP_INCOMING:
+		if (queue_length(hfp->calls) != 0) {
+			DBG(hfp, "hf: Call already exists");
+			return;
+		}
+
+		id = next_call_index(hfp);
+		if (id == 0) {
+			DBG(hfp, "hf: No new call index available");
+			return;
+		}
+		call_new(hfp, id, CALL_STATUS_INCOMING, NULL);
+		break;
+	case CIND_CALLSETUP_DIALING:
+	case CIND_CALLSETUP_ALERTING:
+		if (val == CIND_CALLSETUP_DIALING)
+			status = CALL_STATUS_DIALING;
+		else
+			status = CALL_STATUS_ALERTING;
+
+		if (queue_find(hfp->calls, call_active_match, NULL)) {
+			DBG(hfp, "hf: Error: active call");
+			return;
+		}
+
+		call = queue_find(hfp->calls, call_outgoing_match, NULL);
+		if (call && call->status != status) {
+			call->status = status;
+			if (hfp->callbacks &&
+				hfp->callbacks->call_status_updated)
+				hfp->callbacks->call_status_updated(call->id,
+							call->status,
+							hfp->callbacks_data);
+			return;
+		}
+
+		id = next_call_index(hfp);
+		if (id == 0) {
+			DBG(hfp, "hf: No new call index available");
+			return;
+		}
+		call_new(hfp, id, status, NULL);
+		break;
 	}
 }
 
@@ -1733,6 +1880,68 @@ static void cops_cb(struct hfp_context *context, void *user_data)
 		hfp->callbacks->update_operator(name, hfp->callbacks_data);
 }
 
+static void clip_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	char number[255];
+	unsigned int type;
+	struct hf_call *call;
+
+	DBG(hfp, "");
+
+	if (!hfp_context_get_string(context, number, sizeof(number))) {
+		DBG(hfp, "hf: Could not get string");
+		return;
+	}
+
+	if (!hfp_context_get_number(context, &type))
+		return;
+
+	call = queue_find(hfp->calls, call_incoming_match, NULL);
+	if (!call) {
+		DBG(hfp, "hf: no incoming call");
+		return;
+	}
+
+	if (call->line_id && strcmp(call->line_id, number) == 0 &&
+		call->type == type)
+		return;
+
+	if (call->line_id)
+		free(call->line_id);
+	call->line_id = strdup(number);
+	call->type = type;
+
+	if (hfp->callbacks && hfp->callbacks->call_line_id_updated)
+		hfp->callbacks->call_line_id_updated(call->id, call->line_id,
+							call->type,
+							hfp->callbacks_data);
+}
+
+static void clip_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	DBG(hfp, "");
+
+	if (result != HFP_RESULT_OK) {
+		DBG(hfp, "hf: CLIP error: %d", result);
+		goto failed;
+	}
+
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
+						hfp->callbacks_data);
+
+	return;
+
+failed:
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(result, cme_err,
+						hfp->callbacks_data);
+}
+
 static void cops_resp(enum hfp_result result, enum hfp_error cme_err,
 	void *user_data)
 {
@@ -1745,9 +1954,13 @@ static void cops_resp(enum hfp_result result, enum hfp_error cme_err,
 		goto failed;
 	}
 
-	if (hfp->callbacks->session_ready)
-		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
-						hfp->callbacks_data);
+	/* SLC creation done, continue with default setup */
+	if (!hfp_hf_send_command(hfp, clip_resp, hfp,
+		"AT+CLIP=1")) {
+		DBG(hfp, "hf: Could not send AT+CLIP=1");
+		result = HFP_RESULT_ERROR;
+		goto failed;
+	}
 
 	return;
 
@@ -1807,6 +2020,7 @@ static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 
 	/* Register unsolicited results handlers */
 	hfp_hf_register(hfp, ciev_cb, "+CIEV", hfp, NULL);
+	hfp_hf_register(hfp, clip_cb, "+CLIP", hfp, NULL);
 	hfp_hf_register(hfp, cops_cb, "+COPS", hfp, NULL);
 
 	return;
@@ -2134,4 +2348,22 @@ bool hfp_hf_session(struct hfp_hf *hfp)
 
 	return hfp_hf_send_command(hfp, slc_brsf_resp, hfp,
 					"AT+BRSF=%u", HFP_HF_FEATURES);
+}
+
+const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id)
+{
+	struct hf_call *call;
+
+	DBG(hfp, "");
+
+	if (!hfp)
+		return false;
+
+	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
+	if (!call) {
+		DBG(hfp, "hf: no call with id: %u", id);
+		return false;
+	}
+
+	return call->line_id;
 }

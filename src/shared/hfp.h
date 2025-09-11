@@ -114,6 +114,16 @@ enum hfp_call_held {
 	CIND_CALLHELD_HOLD
 };
 
+enum hfp_call_status {
+	CALL_STATUS_ACTIVE = 0,
+	CALL_STATUS_HELD,
+	CALL_STATUS_DIALING,
+	CALL_STATUS_ALERTING,
+	CALL_STATUS_INCOMING,
+	CALL_STATUS_WAITING,
+	CALL_STATUS_RESPONSE_AND_HOLD
+};
+
 struct hfp_context;
 
 typedef void (*hfp_result_func_t)(struct hfp_context *context,
@@ -191,6 +201,14 @@ struct hfp_hf_callbacks {
 	void (*update_indicator)(enum hfp_indicator indicator, uint32_t val,
 							void *user_data);
 	void (*update_operator)(const char *operator_name, void *user_data);
+
+	void (*call_added)(uint id, enum hfp_call_status status,
+							void *user_data);
+	void (*call_removed)(uint id, void *user_data);
+	void (*call_status_updated)(uint id, enum hfp_call_status status,
+							void *user_data);
+	void (*call_line_id_updated)(uint id, const char *number, uint type,
+							void *user_data);
 };
 
 struct hfp_hf *hfp_hf_new(int fd);
@@ -216,3 +234,5 @@ bool hfp_hf_session_register(struct hfp_hf *hfp,
 				struct hfp_hf_callbacks *callbacks,
 				void *callbacks_data);
 bool hfp_hf_session(struct hfp_hf *hfp);
+
+const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id);
