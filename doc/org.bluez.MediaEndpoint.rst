@@ -54,6 +54,43 @@ be configured and the properties must contain the following properties:
 
 	See **org.bluez.MediaTransport(5)** QoS property.
 
+Possible errors for A2DP endpoints:
+	:org.bluez.Error.A2DP.InvalidCodecType:
+	:org.bluez.Error.A2DP.NotSupportedCodecType:
+	:org.bluez.Error.A2DP.InvalidSamplingFrequency:
+	:org.bluez.Error.A2DP.NotSupportedSamplingFrequency:
+	:org.bluez.Error.A2DP.InvalidChannelMode:
+	:org.bluez.Error.A2DP.NotSupportedChannelMode:
+	:org.bluez.Error.A2DP.InvalidSubbands:
+	:org.bluez.Error.A2DP.NotSupportedSubbands:
+	:org.bluez.Error.A2DP.InvalidAllocationMethod:
+	:org.bluez.Error.A2DP.NotSupportedAllocationMethod:
+	:org.bluez.Error.A2DP.InvalidMinimumBitpoolValue:
+	:org.bluez.Error.A2DP.NotSupportedMinimumBitpoolValue:
+	:org.bluez.Error.A2DP.InvalidMaximumBitpoolValue:
+	:org.bluez.Error.A2DP.NotSupportedMaximumBitpoolValue:
+	:org.bluez.Error.A2DP.InvalidInvalidLayer:
+	:org.bluez.Error.A2DP.NotSupportedLayer:
+	:org.bluez.Error.A2DP.NotSupporterdCRC:
+	:org.bluez.Error.A2DP.NotSupporterdMPF:
+	:org.bluez.Error.A2DP.NotSupporterdVBR:
+	:org.bluez.Error.A2DP.InvalidBitRate:
+	:org.bluez.Error.A2DP.NotSupportedBitRate:
+	:org.bluez.Error.A2DP.InvalidObjectType:
+	:org.bluez.Error.A2DP.NotSupportedObjectType:
+	:org.bluez.Error.A2DP.InvalidChannels:
+	:org.bluez.Error.A2DP.NotSupportedChannels:
+	:org.bluez.Error.A2DP.InvalidVersion:
+	:org.bluez.Error.A2DP.NotSupportedVersion:
+	:org.bluez.Error.A2DP.NotSupportedMaximumSUL:
+	:org.bluez.Error.A2DP.InvalidBlockLength:
+	:org.bluez.Error.A2DP.InvalidCPType:
+	:org.bluez.Error.A2DP.InvalidCPFormat:
+	:org.bluez.Error.A2DP.InvalidCodecParameter:
+	:org.bluez.Error.A2DP.NotSupportedCodecParameter:
+	:org.bluez.Error.A2DP.InvalidDRC:
+	:org.bluez.Error.A2DP.NotSupportedDRC:
+
 array{byte} SelectConfiguration(array{byte} capabilities)
 `````````````````````````````````````````````````````````
 
