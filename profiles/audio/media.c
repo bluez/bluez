@@ -333,7 +333,7 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusMessageIter args, props;
 	DBusError err;
-	gboolean value;
+	uint8_t error_code;
 	void *ret = NULL;
 	int size = -1;
 
@@ -356,8 +356,12 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 
 		if (dbus_message_is_method_call(request->msg,
 					MEDIA_ENDPOINT_INTERFACE,
-					"SetConfiguration"))
+					"SetConfiguration")) {
 			endpoint_remove_transport(endpoint, request->transport);
+			error_code = a2dp_parse_config_error(err.name);
+			ret = &error_code;
+			size = 1;
+		}
 
 		dbus_error_free(&err);
 		goto done;
@@ -390,8 +394,8 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	size = 1;
-	value = TRUE;
-	ret = &value;
+	error_code = 0;
+	ret = &error_code;
 
 done:
 	dbus_message_unref(reply);
@@ -634,9 +638,9 @@ static void config_cb(struct media_endpoint *endpoint, void *ret, int size,
 							void *user_data)
 {
 	struct a2dp_config_data *data = user_data;
-	gboolean *ret_value = ret;
+	uint8_t *ret_value = ret;
 
-	data->cb(data->setup, ret_value ? *ret_value : FALSE);
+	data->cb(data->setup, ret_value ? *ret_value : 1);
 }
 
 static int set_config(struct a2dp_sep *sep, uint8_t *configuration,
@@ -1098,7 +1102,7 @@ static void pac_config_cb(struct media_endpoint *endpoint, void *ret, int size,
 							void *user_data)
 {
 	struct pac_config_data *data = user_data;
-	gboolean *ret_value = ret;
+	uint8_t *error_code = ret;
 	struct media_transport *transport;
 
 	/* If transport was cleared, configuration was cancelled */
@@ -1106,7 +1110,7 @@ static void pac_config_cb(struct media_endpoint *endpoint, void *ret, int size,
 	if (!transport)
 		return;
 
-	data->cb(data->stream, ret_value ? 0 : -EINVAL);
+	data->cb(data->stream, error_code == 0 ? 0 : -EINVAL);
 }
 
 static struct media_transport *pac_ucast_config(struct bt_bap_stream *stream,
