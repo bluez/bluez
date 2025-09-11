@@ -157,6 +157,73 @@ static GSList *servers = NULL;
 static GSList *setups = NULL;
 static unsigned int cb_id = 0;
 
+struct a2dp_error {
+	const char *error_name;
+	uint8_t error_code;
+};
+
+#define A2DP_ERROR_PREFIX ERROR_INTERFACE ".A2DP."
+
+static struct a2dp_error config_errors[] = {
+	{"InvalidCodecType", A2DP_INVALID_CODEC_TYPE},
+	{"NotSupportedCodecType", A2DP_NOT_SUPPORTED_CODEC_TYPE},
+	{"InvalidSamplingFrequency", A2DP_INVALID_SAMPLING_FREQUENCY},
+	{"NotSupportedSamplingFrequency",
+				A2DP_NOT_SUPPORTED_SAMPLING_FREQUENCY},
+	{"InvalidChannelMode", A2DP_INVALID_CHANNEL_MODE},
+	{"NotSupportedChannelMode", A2DP_NOT_SUPPORTED_CHANNEL_MODE},
+	{"InvalidSubbands", A2DP_INVALID_SUBBANDS},
+	{"NotSupportedSubbands", A2DP_NOT_SUPPORTED_SUBBANDS},
+	{"InvalidAllocationMethod", A2DP_INVALID_ALLOCATION_METHOD},
+	{"NotSupportedAllocationMethod", A2DP_NOT_SUPPORTED_ALLOCATION_METHOD},
+	{"InvalidMinimumBitpoolValue",
+				A2DP_INVALID_MINIMUM_BITPOOL_VALUE},
+	{"NotSupportedMinimumBitpoolValue",
+				A2DP_NOT_SUPPORTED_MINIMUM_BITPOOL_VALUE},
+	{"InvalidMaximumBitpoolValue", A2DP_INVALID_MAXIMUM_BITPOOL_VALUE},
+	{"NotSupportedMaximumBitpoolValue",
+				A2DP_NOT_SUPPORTED_MAXIMUM_BITPOOL_VALUE},
+	{"InvalidInvalidLayer", A2DP_INVALID_INVALID_LAYER},
+	{"NotSupportedLayer", A2DP_NOT_SUPPORTED_LAYER},
+	{"NotSupporterdCRC", A2DP_NOT_SUPPORTERD_CRC},
+	{"NotSupporterdMPF", A2DP_NOT_SUPPORTERD_MPF},
+	{"NotSupporterdVBR", A2DP_NOT_SUPPORTERD_VBR},
+	{"InvalidBitRate", A2DP_INVALID_BIT_RATE},
+	{"NotSupportedBitRate", A2DP_NOT_SUPPORTED_BIT_RATE},
+	{"InvalidObjectType", A2DP_INVALID_OBJECT_TYPE},
+	{"NotSupportedObjectType", A2DP_NOT_SUPPORTED_OBJECT_TYPE},
+	{"InvalidChannels", A2DP_INVALID_CHANNELS},
+	{"NotSupportedChannels", A2DP_NOT_SUPPORTED_CHANNELS},
+	{"InvalidVersion", A2DP_INVALID_VERSION},
+	{"NotSupportedVersion", A2DP_NOT_SUPPORTED_VERSION},
+	{"NotSupportedMaximumSUL", A2DP_NOT_SUPPORTED_MAXIMUM_SUL},
+	{"InvalidBlockLength", A2DP_INVALID_BLOCK_LENGTH},
+	{"InvalidCPType", A2DP_INVALID_CP_TYPE},
+	{"InvalidCPFormat", A2DP_INVALID_CP_FORMAT},
+	{"InvalidCodecParameter", A2DP_INVALID_CODEC_PARAMETER},
+	{"NotSupportedCodecParameter", A2DP_NOT_SUPPORTED_CODEC_PARAMETER},
+	{"InvalidDRC", A2DP_INVALID_DRC},
+	{"NotSupportedDRC", A2DP_NOT_SUPPORTED_DRC}
+};
+
+uint8_t a2dp_parse_config_error(const char *error_name)
+{
+	size_t prefix_length;
+	size_t i;
+
+	prefix_length = strlen(A2DP_ERROR_PREFIX);
+	if (strncmp(A2DP_ERROR_PREFIX, error_name, prefix_length))
+		return AVDTP_UNSUPPORTED_CONFIGURATION;
+
+	error_name += prefix_length;
+	for (i = 0; i < ARRAY_SIZE(config_errors); i++) {
+		if (strcmp(config_errors[i].error_name, error_name) == 0)
+			return config_errors[i].error_code;
+	}
+
+	return AVDTP_UNSUPPORTED_CONFIGURATION;
+}
+
 static struct a2dp_setup *setup_ref(struct a2dp_setup *setup)
 {
 	setup->ref++;
@@ -688,11 +755,10 @@ done:
 	return FALSE;
 }
 
-static void endpoint_setconf_cb(struct a2dp_setup *setup, gboolean ret)
+static void endpoint_setconf_cb(struct a2dp_setup *setup, uint8_t error_code)
 {
-	if (ret == FALSE)
-		setup_error_init(setup, AVDTP_MEDIA_CODEC,
-					AVDTP_UNSUPPORTED_CONFIGURATION);
+	if (error_code != 0)
+		setup_error_init(setup, AVDTP_MEDIA_CODEC, error_code);
 
 	auto_config(setup);
 	setup_unref(setup);
@@ -865,11 +931,11 @@ static gboolean endpoint_getcap_ind(struct avdtp *session,
 	return TRUE;
 }
 
-static void endpoint_open_cb(struct a2dp_setup *setup, gboolean ret)
+static void endpoint_open_cb(struct a2dp_setup *setup, uint8_t error_code)
 {
 	int err = error_to_errno(setup->err);
 
-	if (ret == FALSE) {
+	if (error_code != 0) {
 		setup->stream = NULL;
 		finalize_setup_errno(setup, -EPERM, finalize_config, NULL);
 		goto done;

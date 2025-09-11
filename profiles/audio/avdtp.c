@@ -1494,8 +1494,8 @@ static void setconf_cb(struct avdtp *session, struct avdtp_stream *stream,
 	struct conf_rej rej;
 
 	if (err != NULL) {
-		rej.error = AVDTP_UNSUPPORTED_CONFIGURATION;
-		rej.category = err->err.error_code;
+		rej.error = err->err.error_code;
+		rej.category = AVDTP_UNSUPPORTED_CONFIGURATION;
 		avdtp_send(session, session->in_cmd.transaction,
 			   AVDTP_MSG_TYPE_REJECT, AVDTP_SET_CONFIGURATION,
 			   &rej, sizeof(rej));

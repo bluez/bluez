@@ -15,7 +15,8 @@ struct a2dp_setup;
 
 typedef void (*a2dp_endpoint_select_t) (struct a2dp_setup *setup, void *ret,
 					int size);
-typedef void (*a2dp_endpoint_config_t) (struct a2dp_setup *setup, gboolean ret);
+typedef void (*a2dp_endpoint_config_t) (struct a2dp_setup *setup,
+					uint8_t error_code);
 
 struct a2dp_endpoint {
 	const char *(*get_name) (struct a2dp_sep *sep, void *user_data);
@@ -70,6 +71,8 @@ unsigned int a2dp_select_capabilities(struct avdtp *session,
 unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_config_cb_t cb, GSList *caps,
 				void *user_data);
+uint8_t a2dp_parse_config_error(const char *error_name);
+
 unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_stream_cb_t cb, void *user_data);
 unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
