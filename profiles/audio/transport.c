@@ -2643,6 +2643,7 @@ void *media_transport_get_stream(struct media_transport *transport)
 void media_transport_update_delay(struct media_transport *transport,
 							uint16_t delay)
 {
+#ifdef HAVE_A2DP
 	struct a2dp_transport *a2dp = transport->data;
 
 	/* Check if delay really changed */
@@ -2657,6 +2658,7 @@ void media_transport_update_delay(struct media_transport *transport,
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 					transport->path,
 					MEDIA_TRANSPORT_INTERFACE, "Delay");
+#endif /* HAVE_A2DP */
 }
 
 struct btd_device *media_transport_get_dev(struct media_transport *transport)
