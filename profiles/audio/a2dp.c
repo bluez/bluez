@@ -636,6 +636,11 @@ static void a2dp_stream_free(void *data)
 {
 	struct a2dp_stream *stream = data;
 
+	if (stream->suspend_timer) {
+		timeout_remove(stream->suspend_timer);
+		stream->suspend_timer = 0;
+	}
+
 	avdtp_unref(stream->session);
 	free(stream);
 }
