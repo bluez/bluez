@@ -342,6 +342,7 @@ struct btd_adapter {
 
 	struct queue *exp_pending;
 	struct queue *exps;
+	unsigned int last_discovery_timeout_id;		/* Timeout for discovery stop if no cb is coming */
 };
 
 static char *adapter_power_state_str(uint32_t power_state)
@@ -1727,6 +1728,11 @@ static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
 		adapter->discovery_idle_timeout = 0;
 	}
 
+	if (adapter->last_discovery_timeout_id > 0) {
+		timeout_remove(adapter->last_discovery_timeout_id);
+		adapter->last_discovery_timeout_id = 0;
+	}
+
 	g_slist_free_full(adapter->discovery_found,
 						invalidate_rssi_and_tx_power);
 	adapter->discovery_found = NULL;
@@ -1833,6 +1839,8 @@ static struct discovery_client *discovery_complete(struct btd_adapter *adapter,
 	return client;
 }
 
+static bool time_since_last_discovery_cb(gpointer user_data);
+
 static void start_discovery_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -1900,6 +1908,20 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 	trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT * 2);
 }
 
+static bool time_since_last_discovery_cb(gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	struct mgmt_cp_start_discovery cp;
+	DBG("");
+	cp.type =  get_scan_type(adapter);
+	
+	mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
+		adapter->dev_id, sizeof(cp), &cp,
+		NULL, NULL, NULL);
+
+	return FALSE;
+}
+
 static bool start_discovery_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -1909,6 +1931,9 @@ static bool start_discovery_timeout(gpointer user_data)
 	DBG("");
 
 	adapter->discovery_idle_timeout = 0;
+	adapter->last_discovery_timeout_id = timeout_add_seconds(
+		IDLE_DISCOV_TIMEOUT * 3, time_since_last_discovery_cb,
+		adapter, NULL);
 
 	/* If we're doing filtered discovery, it must be quickly restarted */
 	adapter->no_scan_restart_delay = !!adapter->current_discovery_filter;
@@ -2009,6 +2034,11 @@ static void trigger_start_discovery(struct btd_adapter *adapter, guint delay)
 	if (!btd_adapter_get_powered(adapter))
 		return;
 
+	if (adapter->last_discovery_timeout_id > 0) {
+		timeout_remove(adapter->last_discovery_timeout_id);
+		adapter->last_discovery_timeout_id = 0;
+	}
+
 	adapter->discovery_idle_timeout = timeout_add_seconds(delay,
 					start_discovery_timeout, adapter, NULL);
 }
@@ -2051,6 +2081,11 @@ static void suspend_discovery(struct btd_adapter *adapter)
 	if (adapter->discovery_idle_timeout > 0) {
 		timeout_remove(adapter->discovery_idle_timeout);
 		adapter->discovery_idle_timeout = 0;
+	}
+
+	if (adapter->last_discovery_timeout_id > 0) {
+		timeout_remove(adapter->last_discovery_timeout_id);
+		adapter->last_discovery_timeout_id = 0;
 	}
 
 	if (adapter->discovery_enable == 0x00)
