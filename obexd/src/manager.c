@@ -46,7 +46,7 @@ struct agent {
 	char *bus_name;
 	char *path;
 	gboolean auth_pending;
-	gboolean auth_reject;
+	int auth_reply;
 	char *new_name;
 	char *new_folder;
 	unsigned int watch_id;
@@ -632,11 +632,14 @@ static void agent_reply(DBusPendingCall *call, void *user_data)
 		error("Agent replied with an error: %s, %s",
 				derr.name, derr.message);
 
-		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY))
-			agent_cancel();
+		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) 
+			agent->auth_reply = -ETIMEDOUT;
 		else if (dbus_error_has_name(&derr, OBEX_ERROR_REJECT))
-			agent->auth_reject = TRUE;
-
+			agent->auth_reply = -EPERM;
+		else
+			agent->auth_reply = -EBADR;
+		
+		agent_cancel();	
 		dbus_error_free(&derr);
 		dbus_message_unref(reply);
 		return;
@@ -703,7 +706,7 @@ int manager_request_authorization(struct obex_transfer *transfer,
 	dbus_message_unref(msg);
 
 	agent->auth_pending = TRUE;
-	agent->auth_reject  = FALSE;
+	agent->auth_reply  = 0;
 	got_reply = FALSE;
 
 	/* Catches errors before authorization response comes */
@@ -726,8 +729,8 @@ int manager_request_authorization(struct obex_transfer *transfer,
 
 	dbus_pending_call_unref(call);
 
-	if (!agent || agent->auth_reject)
-		return -EPERM;
+	if (!agent || agent->auth_reply != 0)
+		return agent->auth_reply;
 
 	*new_folder = agent->new_folder;
 	*new_name = agent->new_name;
