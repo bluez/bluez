@@ -79,6 +79,7 @@
 #define ABORT_TIMEOUT 2
 #define DISCONNECT_TIMEOUT 1
 #define START_TIMEOUT 1
+#define TRANSPORT_L2CAP_CLOSE_TIMEOUT 2
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
@@ -752,6 +753,8 @@ static void transport_cb(int cond, void *data)
 	struct avdtp_stream *stream = data;
 	struct avdtp_local_sep *sep = stream->lsep;
 
+	DBG("");
+
 	if (stream->close_int && sep->cfm && sep->cfm->close)
 		sep->cfm->close(stream->session, sep, stream, NULL,
 				sep->user_data);
@@ -763,6 +766,26 @@ static void transport_cb(int cond, void *data)
 
 	if (!stream->abort_int)
 		avdtp_stream_set_state(stream, AVDTP_STATE_IDLE);
+}
+
+static void close_stream_linger_finish(void *data)
+{
+	DBG("");
+
+	transport_cb(G_IO_HUP, data);
+}
+
+static void close_stream_linger(struct avdtp_stream *stream)
+{
+	/* Close and wait for L2CAP Disconnection Rsp via socket linger */
+	if (stream->io_id)
+		g_source_remove(stream->io_id);
+
+	stream->io_id = io_glib_shutdown_linger(stream->io, SHUT_RDWR,
+					TRANSPORT_L2CAP_CLOSE_TIMEOUT,
+					close_stream_linger_finish, stream);
+	if (!stream->io_id)
+		transport_cb(G_IO_HUP, stream);
 }
 
 static int get_send_buffer_size(int sk)
@@ -2922,7 +2945,13 @@ static gboolean avdtp_close_resp(struct avdtp *session,
 {
 	avdtp_stream_set_state(stream, AVDTP_STATE_CLOSING);
 
-	close_stream(stream);
+	/* Delay CLOSING->IDLE until remote acknowledges L2CAP channel closure.
+	 *
+	 * It is not explicitly stated in AVDTP v1.3 Sec. 6.13, but some devices
+	 * refuse commands sent immediately after L2CAP Disconnect Req, so wait
+	 * until Rsp.
+	 */
+	close_stream_linger(stream);
 
 	return TRUE;
 }

@@ -461,3 +461,92 @@ unsigned int io_glib_add_err_watch(void *giochannel,
 					G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					err_watch_callback, data, g_free);
 }
+
+/*
+ * shutdown() socket, enabling SO_LINGER to wait for close ACK, with
+ * asynchronous callback.
+ */
+
+struct shutdown_linger {
+	GSource			source;
+	io_destroy_func_t	func;
+	void			*user_data;
+	int			how;
+	GIOChannel		*io;
+	GThread			*thread;
+};
+
+static gpointer shutdown_linger_thread(gpointer data)
+{
+	struct shutdown_linger *source = data;
+
+	shutdown(g_io_channel_unix_get_fd(source->io), source->how);
+	g_source_set_ready_time(&source->source, 0);
+	g_source_unref(&source->source);
+	return NULL;
+}
+
+static gboolean shutdown_linger_dispatch(GSource *gsource, GSourceFunc callback,
+							gpointer user_data)
+{
+	struct shutdown_linger *source = (void *)gsource;
+
+	if (source->func)
+		source->func(source->user_data);
+	return FALSE;
+}
+
+static void shutdown_linger_finalize(GSource *gsource)
+{
+	struct shutdown_linger *source = (void *)gsource;
+
+	if (source->thread == g_thread_self())
+		g_thread_unref(source->thread);
+	else
+		g_thread_join(source->thread);
+
+	g_io_channel_unref(source->io);
+}
+
+unsigned int io_glib_shutdown_linger(void *giochannel, int how, int timeout,
+				io_destroy_func_t func, void *user_data)
+{
+	static GSourceFuncs source_funcs = {
+		.dispatch = shutdown_linger_dispatch,
+		.finalize = shutdown_linger_finalize,
+	};
+	struct linger linger = {
+		.l_onoff = 1,
+		.l_linger = timeout,
+	};
+	GIOChannel *io = giochannel;
+	struct shutdown_linger *source;
+	guint id;
+	int fd;
+
+	if (!io)
+		return 0;
+
+	fd = g_io_channel_unix_get_fd(io);
+	if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger))) {
+		shutdown(fd, how);
+		return 0;
+	}
+
+	source = (void *)g_source_new(&source_funcs, sizeof(*source));
+
+	g_source_set_name(&source->source, "shutdown_linger");
+	source->func = func;
+	source->user_data = user_data;
+	source->how = how;
+	source->io = g_io_channel_ref(io);
+
+	g_source_ref(&source->source);  /* unref in thread */
+	source->thread = g_thread_new("shutdown_linger", shutdown_linger_thread,
+								source);
+
+	id = g_source_attach(&source->source, NULL);
+	g_source_unref(&source->source);
+
+	return id;
+}
