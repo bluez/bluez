@@ -37,3 +37,6 @@ bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
 typedef void (*io_glib_err_func_t)(int cond, void *user_data);
 unsigned int io_glib_add_err_watch(void *giochannel, io_glib_err_func_t func,
 							void *user_data);
+
+unsigned int io_glib_shutdown_linger(void *giochannel, int how, int timeout,
+				io_destroy_func_t func, void *user_data);
