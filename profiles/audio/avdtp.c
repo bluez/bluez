@@ -752,6 +752,8 @@ static void transport_cb(int cond, void *data)
 	struct avdtp_stream *stream = data;
 	struct avdtp_local_sep *sep = stream->lsep;
 
+	DBG("");
+
 	if (stream->close_int && sep->cfm && sep->cfm->close)
 		sep->cfm->close(stream->session, sep, stream, NULL,
 				sep->user_data);
@@ -2922,7 +2924,14 @@ static gboolean avdtp_close_resp(struct avdtp *session,
 {
 	avdtp_stream_set_state(stream, AVDTP_STATE_CLOSING);
 
-	close_stream(stream);
+	/* Delay CLOSING->IDLE until remote acknowledges L2CAP channel closure.
+	 *
+	 * It is not explicitly stated in AVDTP v1.3 Sec. 6.13, but some devices
+	 * refuse commands sent immediately after L2CAP Disconnect Req, so wait
+	 * until Rsp.
+	 */
+	if (stream->io)
+		shutdown(g_io_channel_unix_get_fd(stream->io), SHUT_WR);
 
 	return TRUE;
 }
