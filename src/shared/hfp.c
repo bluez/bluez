@@ -1710,6 +1710,81 @@ static void ciev_cb(struct hfp_context *context, void *user_data)
 	set_indicator_value(index, val, hfp->ag_ind, hfp);
 }
 
+static void cops_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	unsigned int mode, val;
+	char name[255];
+
+	DBG(hfp, "");
+
+	if (!hfp_context_get_number(context, &mode))
+		return;
+
+	if (!hfp_context_get_number(context, &val))
+		return;
+
+	if (!hfp_context_get_string(context, name, sizeof(name))) {
+		DBG(hfp, "hf: Could not get string");
+		return;
+	}
+
+	if (hfp->callbacks && hfp->callbacks->update_operator)
+		hfp->callbacks->update_operator(name, hfp->callbacks_data);
+}
+
+static void cops_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	DBG(hfp, "");
+
+	if (result != HFP_RESULT_OK) {
+		DBG(hfp, "hf: COPS? error: %d", result);
+		goto failed;
+	}
+
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
+						hfp->callbacks_data);
+
+	return;
+
+failed:
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(result, cme_err,
+						hfp->callbacks_data);
+}
+
+static void cops_conf_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	DBG(hfp, "");
+
+	if (result != HFP_RESULT_OK) {
+		DBG(hfp, "hf: COPS= error: %d", result);
+		goto failed;
+	}
+
+	/* SLC creation done, continue with default setup */
+	if (!hfp_hf_send_command(hfp, cops_resp, hfp,
+		"AT+COPS?")) {
+		DBG(hfp, "hf: Could not send AT+COPS?");
+		result = HFP_RESULT_ERROR;
+		goto failed;
+	}
+
+	return;
+
+failed:
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(result, cme_err,
+						hfp->callbacks_data);
+}
+
 static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 	void *user_data)
 {
@@ -1722,12 +1797,17 @@ static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 		goto failed;
 	}
 
-	if (hfp->callbacks->session_ready)
-		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
-						hfp->callbacks_data);
+	/* SLC creation done, continue with default setup */
+	if (!hfp_hf_send_command(hfp, cops_conf_resp, hfp,
+		"AT+COPS=3,0")) {
+		DBG(hfp, "hf: Could not send AT+COPS=3,0");
+		result = HFP_RESULT_ERROR;
+		goto failed;
+	}
 
 	/* Register unsolicited results handlers */
 	hfp_hf_register(hfp, ciev_cb, "+CIEV", hfp, NULL);
+	hfp_hf_register(hfp, cops_cb, "+COPS", hfp, NULL);
 
 	return;
 
