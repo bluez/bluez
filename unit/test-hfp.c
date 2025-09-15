@@ -699,7 +699,7 @@ static void test_hf_robustness(gconstpointer data)
 	context_quit(context);
 }
 
-#define MINIMAL_SLC_SESSION \
+#define MINIMAL_SLC_SESSION(service, call, callsetup, callheld) \
 	raw_pdu('\r', '\n', '+', 'B', 'R', 'S', 'F', ':', \
 		' ', '0', '\r', '\n'), \
 	frg_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
@@ -722,8 +722,8 @@ static void test_hf_robustness(gconstpointer data)
 	frg_pdu('\r', '\n'), \
 	frg_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
 	raw_pdu('\r', '\n', '+', 'C', 'I', 'N', 'D', ':', ' '), \
-	frg_pdu('0', ',', '0', ',', '0', ',', '0', ',', '5'), \
-	frg_pdu(',', '0', ',', '5', '\r', '\n'), \
+	frg_pdu(service, ',', call, ',', callsetup, ',', callheld, ','), \
+	frg_pdu('5', ',', '0', ',', '5', '\r', '\n'), \
 	frg_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
 	raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
 	raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
@@ -750,7 +750,13 @@ static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 	if (!context->session.completed) {
 		switch (indicator) {
 		case HFP_INDICATOR_SERVICE:
-			g_assert_cmpint(val, ==, 0);
+			if (g_str_equal(test_name, "/HFP/HF/PSI/BV-03-C") ||
+				g_str_equal(test_name, "/HFP/HF/TRS/BV-01-C") ||
+				g_str_equal(test_name,
+						"/hfp_hf/test_session_minimal"))
+				g_assert_cmpint(val, ==, 0);
+			else
+				g_assert_cmpint(val, ==, 1);
 			break;
 		case HFP_INDICATOR_CALL:
 			g_assert_cmpint(val, ==, 0);
@@ -794,9 +800,22 @@ static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 	}
 }
 
+static void hf_update_operator(const char *operator_name, void *user_data)
+{
+	struct context *context = user_data;
+	const char *test_name = context->data->test_name;
+
+	if (tester_use_debug())
+		tester_debug("operator updated: %s", operator_name);
+
+	if (g_str_equal(test_name, "/HFP/HF/PSI/BV-04-C"))
+		g_assert_cmpstr(operator_name, ==, "TEST");
+}
+
 static struct hfp_hf_callbacks hf_session_callbacks = {
 	.session_ready = hf_session_ready_cb,
 	.update_indicator = hf_update_indicator,
+	.update_operator = hf_update_operator,
 };
 
 static void test_hf_session_done(enum hfp_result res, enum hfp_error cme_err,
@@ -1001,13 +1020,13 @@ int main(int argc, char *argv[])
 
 	define_hf_test("/hfp_hf/test_session_minimal", test_hf_session,
 			NULL, test_hf_session_done,
-			MINIMAL_SLC_SESSION,
+			MINIMAL_SLC_SESSION('0', '0', '0', '0'),
 			data_end());
 
 	/* Transfer Signal Strength Indication - HF */
 	define_hf_test("/HFP/HF/PSI/BV-01-C", test_hf_session,
 			NULL, test_hf_session_done,
-			MINIMAL_SLC_SESSION,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
 			frg_pdu(' ', '5', ',', '3', '\r', '\n'),
 			data_end());
@@ -1015,7 +1034,7 @@ int main(int argc, char *argv[])
 	/* Transfer Roaming Status Indication - HF */
 	define_hf_test("/HFP/HF/PSI/BV-02-C", test_hf_session,
 			NULL, test_hf_session_done,
-			MINIMAL_SLC_SESSION,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
 			frg_pdu(' ', '6', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
@@ -1025,15 +1044,21 @@ int main(int argc, char *argv[])
 	/* Transfer Battery Level Indication - HF */
 	define_hf_test("/HFP/HF/PSI/BV-03-C", test_hf_session,
 			NULL, test_hf_session_done,
-			MINIMAL_SLC_SESSION,
+			MINIMAL_SLC_SESSION('0', '0', '0', '0'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
 			frg_pdu(' ', '7', ',', '3', '\r', '\n'),
+			data_end());
+
+	/* Transfer Operator name - HF */
+	define_hf_test("/HFP/HF/PSI/BV-04-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
 			data_end());
 
 	/* Transfer Registration Status - HF */
 	define_hf_test("/HFP/HF/TRS/BV-01-C", test_hf_session,
 			NULL, test_hf_session_done,
-			MINIMAL_SLC_SESSION,
+			MINIMAL_SLC_SESSION('0', '0', '0', '0'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
 			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
