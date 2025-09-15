@@ -69,11 +69,11 @@ Possible errors for A2DP endpoints:
 	:org.bluez.Error.A2DP.NotSupportedMinimumBitpoolValue:
 	:org.bluez.Error.A2DP.InvalidMaximumBitpoolValue:
 	:org.bluez.Error.A2DP.NotSupportedMaximumBitpoolValue:
-	:org.bluez.Error.A2DP.InvalidInvalidLayer:
+	:org.bluez.Error.A2DP.InvalidLayer:
 	:org.bluez.Error.A2DP.NotSupportedLayer:
-	:org.bluez.Error.A2DP.NotSupporterdCRC:
-	:org.bluez.Error.A2DP.NotSupporterdMPF:
-	:org.bluez.Error.A2DP.NotSupporterdVBR:
+	:org.bluez.Error.A2DP.NotSupportedCRC:
+	:org.bluez.Error.A2DP.NotSupportedMPF:
+	:org.bluez.Error.A2DP.NotSupportedVBR:
 	:org.bluez.Error.A2DP.InvalidBitRate:
 	:org.bluez.Error.A2DP.NotSupportedBitRate:
 	:org.bluez.Error.A2DP.InvalidObjectType:
