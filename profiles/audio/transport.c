@@ -2263,16 +2263,24 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 
 static int transport_bap_get_volume(struct media_transport *transport)
 {
+#ifdef HAVE_VCP
 	return bt_audio_vcp_get_volume(transport->device);
+#else
+	return -ENODEV;
+#endif /* HAVE_VCP */
 }
 
 static int transport_bap_set_volume(struct media_transport *transport,
 								int volume)
 {
+#ifdef HAVE_VCP
 	if (volume < 0 || volume > 255)
 		return -EINVAL;
 
 	return bt_audio_vcp_set_volume(transport->device, volume) ? 0 : -EIO;
+#else
+	return -ENODEV;
+#endif /* HAVE_VCP */
 }
 
 static void transport_bap_destroy(void *data)

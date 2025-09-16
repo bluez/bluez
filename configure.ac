@@ -215,6 +215,9 @@ AM_CONDITIONAL(CCP, test "${enable_ccp}" != "no")
 AC_ARG_ENABLE(vcp, AS_HELP_STRING([--disable-vcp],
 		[disable VCP profile]), [enable_vcp=${enableval}])
 AM_CONDITIONAL(VCP, test "${enable_vcp}" != "no")
+if test "${enable_vcp}" != "no"; then
+	AC_DEFINE(HAVE_VCP, 1, [Define to 1 if you have VCP support.])
+fi
 
 AC_ARG_ENABLE(micp, AS_HELP_STRING([--disable-micp],
 		[disable MICP profile]), [enable_micp=${enableval}])
