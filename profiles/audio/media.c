@@ -1110,7 +1110,7 @@ static void pac_config_cb(struct media_endpoint *endpoint, void *ret, int size,
 	if (!transport)
 		return;
 
-	data->cb(data->stream, error_code == 0 ? 0 : -EINVAL);
+	data->cb(data->stream, (error_code && *error_code == 0) ? 0 : -EINVAL);
 }
 
 static struct media_transport *pac_ucast_config(struct bt_bap_stream *stream,
