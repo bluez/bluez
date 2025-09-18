@@ -1,3 +1,11 @@
+ver 5.84:
+	Fix issue with AVRCP and handling invalid UTF-8 item name.
+	Fix issue with exposing coordinate sets if LE Audio is disabled.
+	Fix issue with BAP and not responding to SetConfiguration.
+	Add support for BAP unicast endpoint reconfiguration.
+	Add support for BASS and encrypted broadcast source.
+	Add support for HFP and Call Line Identification.
+
 ver 5.83:
 	Fix issue with handling BAP and removal of PAC.
 	Fix issue with handling SID for broadcast receiver.
