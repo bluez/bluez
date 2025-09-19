@@ -830,7 +830,8 @@ static void hf_call_added(uint id, enum hfp_call_status status,
 
 	if (g_str_equal(test_name, "/HFP/HF/CLI/BV-01-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-06-C")) {
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-06-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICR/BV-01-C")) {
 		g_assert_cmpint(id, ==, 1);
 		g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
 	}
@@ -861,6 +862,14 @@ static void hf_call_line_id_updated(uint id, const char *number,
 		ret = hfp_hf_call_answer(context->hfp_hf, id, hf_cmd_complete,
 								context);
 		g_assert(ret);
+	} else if (g_str_equal(test_name, "/HFP/HF/ICR/BV-01-C")) {
+		bool ret;
+
+		if (tester_use_debug())
+			tester_debug("call %d: rejecting call", id);
+		ret = hfp_hf_call_hangup(context->hfp_hf, id, hf_cmd_complete,
+							context);
+		g_assert(ret);
 	}
 }
 
@@ -888,6 +897,10 @@ static void hf_call_status_updated(uint id, enum hfp_call_status status,
 		g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
 		number = hfp_hf_call_get_number(context->hfp_hf, id);
 		g_assert_cmpstr(number, ==, "1234567");
+	} else if (g_str_equal(test_name, "/HFP/HF/ICR/BV-01-C")) {
+		if (tester_use_debug())
+			tester_debug("Error: unexpected update");
+		tester_test_failed();
 	}
 }
 
@@ -1157,6 +1170,35 @@ int main(int argc, char *argv[])
 				'3', ',', '0', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'2', ',', '0', '\r', '\n'),
+			data_end());
+
+	/* Initiate rejection of incoming call - HF */
+	define_hf_test("/HFP/HF/ICR/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			data_end());
+
+	/* Accept AG rejection of incoming call - HF */
+	define_hf_test("/HFP/HF/ICR/BV-02-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
 			data_end());
 
 	/* Transfer Signal Strength Indication - HF */
