@@ -1651,9 +1651,36 @@ static void ciev_service_cb(uint8_t val, void *user_data)
 							hfp->callbacks_data);
 }
 
+static bool update_call_to_active(struct hfp_hf *hfp)
+{
+	const struct queue_entry *entry;
+	struct hf_call *call;
+
+	for (entry = queue_get_entries(hfp->calls); entry;
+					entry = entry->next) {
+		call = entry->data;
+
+		if (call->status == CALL_STATUS_DIALING ||
+			call->status == CALL_STATUS_ALERTING ||
+			call->status == CALL_STATUS_INCOMING) {
+			call->status = CALL_STATUS_ACTIVE;
+			if (hfp->callbacks &&
+				hfp->callbacks->call_status_updated)
+				hfp->callbacks->call_status_updated(
+					call->id,
+					call->status,
+					hfp->callbacks_data);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static void ciev_call_cb(uint8_t val, void *user_data)
 {
 	struct hfp_hf *hfp = user_data;
+	uint id;
 
 	DBG(hfp, "%u", val);
 
@@ -1661,6 +1688,32 @@ static void ciev_call_cb(uint8_t val, void *user_data)
 			val > hfp->ag_ind[HFP_INDICATOR_CALL].max) {
 		DBG(hfp, "hf: Incorrect call state: %u", val);
 		return;
+	}
+
+	switch (val) {
+	case CIND_CALL_NONE:
+		/* Remove all calls */
+		queue_remove_all(hfp->calls, NULL, hfp, remove_call_cb);
+		break;
+	case CIND_CALL_IN_PROGRESS:
+		{
+			/* Find incoming, dialing or alerting call to change
+			 * it to active
+			 */
+			if (update_call_to_active(hfp))
+				return;
+
+			/* else create new already active call */
+			id = next_call_index(hfp);
+			if (id == 0) {
+				DBG(hfp, "hf: No new call index available");
+				return;
+			}
+			call_new(hfp, id, CALL_STATUS_ACTIVE, NULL);
+		}
+		break;
+	default:
+		DBG(hfp, "hf: Unsupported call state: %u", val);
 	}
 }
 
@@ -2366,4 +2419,30 @@ const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id)
 	}
 
 	return call->line_id;
+}
+
+bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
+				hfp_response_func_t resp_cb,
+				void *user_data)
+{
+	struct hf_call *call;
+
+	DBG(hfp, "");
+
+	if (!hfp)
+		return false;
+
+	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
+	if (!call) {
+		DBG(hfp, "hf: no call with id: %u", id);
+		return false;
+	}
+
+	if (call->status != CALL_STATUS_INCOMING) {
+		DBG(hfp, "hf: %d not in incoming call state: %u",
+							call->status);
+		return false;
+	}
+
+	return hfp_hf_send_command(hfp, resp_cb, user_data, "ATA");
 }
