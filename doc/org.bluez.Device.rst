@@ -418,7 +418,7 @@ Indicate the preferred bearer when initiating a connection, only available for
 dual-mode devices.
 
 When changing from "bredr" to "le" the device will be removed from the
-'auto-connect' list so it won't automatically be connected when adverting.
+'auto-connect' list so it won't automatically be connected when advertising.
 
 Note: Changes only take effect when the device is disconnected.
 
