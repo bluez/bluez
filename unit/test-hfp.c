@@ -733,6 +733,12 @@ static void test_hf_robustness(gconstpointer data)
 	frg_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
 	raw_pdu('\r', '\n', 'O', 'K', '\r', '\n')
 
+static void hf_cmd_complete(enum hfp_result res, enum hfp_error cme_err,
+							void *user_data)
+{
+	g_assert_cmpint(res, ==, HFP_RESULT_OK);
+}
+
 static void hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -822,7 +828,9 @@ static void hf_call_added(uint id, enum hfp_call_status status,
 	if (tester_use_debug())
 		tester_debug("call %d added: status %u", id, status);
 
-	if (g_str_equal(test_name, "/HFP/HF/CLI/BV-01-C")) {
+	if (g_str_equal(test_name, "/HFP/HF/CLI/BV-01-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-06-C")) {
 		g_assert_cmpint(id, ==, 1);
 		g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
 	}
@@ -833,6 +841,7 @@ static void hf_call_line_id_updated(uint id, const char *number,
 							void *user_data)
 {
 	struct context *context = user_data;
+	const char *test_name = context->data->test_name;
 	const char *str;
 
 	if (tester_use_debug())
@@ -843,6 +852,43 @@ static void hf_call_line_id_updated(uint id, const char *number,
 	g_assert_cmpint(type, ==, 129);
 	str = hfp_hf_call_get_number(context->hfp_hf, id);
 	g_assert_cmpstr(number, ==, str);
+
+	if (g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C")) {
+		bool ret;
+
+		if (tester_use_debug())
+			tester_debug("call %d: answering call", id);
+		ret = hfp_hf_call_answer(context->hfp_hf, id, hf_cmd_complete,
+								context);
+		g_assert(ret);
+	}
+}
+
+static void hf_call_removed(uint id, void *user_data)
+{
+	if (tester_use_debug())
+		tester_debug("call %d removed", id);
+	g_assert_cmpint(id, ==, 1);
+}
+
+static void hf_call_status_updated(uint id, enum hfp_call_status status,
+							void *user_data)
+{
+	struct context *context = user_data;
+	const char *test_name = context->data->test_name;
+
+	if (tester_use_debug())
+		tester_debug("call %d updated: status %u", id, status);
+
+	if (g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-06-C")) {
+		const char *number;
+
+		g_assert_cmpint(id, ==, 1);
+		g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
+		number = hfp_hf_call_get_number(context->hfp_hf, id);
+		g_assert_cmpstr(number, ==, "1234567");
+	}
 }
 
 static struct hfp_hf_callbacks hf_session_callbacks = {
@@ -850,6 +896,8 @@ static struct hfp_hf_callbacks hf_session_callbacks = {
 	.update_indicator = hf_update_indicator,
 	.update_operator = hf_update_operator,
 	.call_added = hf_call_added,
+	.call_removed = hf_call_removed,
+	.call_status_updated = hf_call_status_updated,
 	.call_line_id_updated = hf_call_line_id_updated,
 };
 
@@ -1068,6 +1116,47 @@ int main(int argc, char *argv[])
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
 				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			data_end());
+
+	/* Answer Incoming call on HF, no in-band ring - HF */
+	define_hf_test("/HFP/HF/ICA/BV-04-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '0', '\r', '\n'),
+			data_end());
+
+	/* Answer Incoming call on AG, no in-band ring - HF */
+	define_hf_test("/HFP/HF/ICA/BV-06-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '0', '\r', '\n'),
 			data_end());
 
 	/* Transfer Signal Strength Indication - HF */
