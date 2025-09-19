@@ -2446,3 +2446,28 @@ bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 
 	return hfp_hf_send_command(hfp, resp_cb, user_data, "ATA");
 }
+
+bool hfp_hf_call_hangup(struct hfp_hf *hfp, uint id,
+				hfp_response_func_t resp_cb,
+				void *user_data)
+{
+	struct hf_call *call;
+
+	DBG(hfp, "");
+
+	if (!hfp)
+		return false;
+
+	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
+	if (!call) {
+		DBG(hfp, "hf: no call with id: %u", id);
+		return false;
+	}
+
+	if (call_setup_match(call, NULL) || call_active_match(call, NULL)) {
+		return hfp_hf_send_command(hfp, resp_cb, user_data,
+								"AT+CHUP");
+	}
+
+	return false;
+}

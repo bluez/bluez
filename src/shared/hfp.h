@@ -240,3 +240,6 @@ const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id);
 bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 				hfp_response_func_t resp_cb,
 				void *user_data);
+bool hfp_hf_call_hangup(struct hfp_hf *hfp, uint id,
+				hfp_response_func_t resp_cb,
+				void *user_data);
