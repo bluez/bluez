@@ -236,3 +236,7 @@ bool hfp_hf_session_register(struct hfp_hf *hfp,
 bool hfp_hf_session(struct hfp_hf *hfp);
 
 const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id);
+
+bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
+				hfp_response_func_t resp_cb,
+				void *user_data);
