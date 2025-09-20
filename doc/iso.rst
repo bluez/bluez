@@ -250,12 +250,76 @@ received packets.  Possible values:
         :header: "pkt_status", "Description"
         :widths: auto
 
-        **0x0**, Valid data. The complete SDU was received correctly.
-        **0x1**, Possibly invalid data. The contents of the ISO_SDU_Fragment
-	, may contain errors or part of the SDU may be missing.
-	, This is reported as "data with possible errors".
-        **0x2**, Part(s) of the SDU were not received correctly.
-	, This is reported as "lost data".
+        **0x0**, "Valid data. The complete SDU was received correctly."
+        **0x1**, "Possibly invalid data. The contents of the ISO_SDU_Fragment,
+        may contain errors or part of the SDU may be missing.
+        This is reported as 'data with possible errors'."
+        **0x2**, "Part(s) of the SDU were not received correctly.
+        This is reported as 'lost data'."
+
+BT_PKT_SEQNUM (since Linux 6.17-rc1)
+------------------------------------
+
+Enable reporting packet ISO sequence number via `BT_SCM_PKT_SEQNUM`
+CMSG on received packets.  Possible values:
+
+.. csv-table::
+    :header: "Value", "Description"
+    :widths: auto
+
+    **0**, Disable (default)
+    **1**, Enable
+
+
+:BT_SCM_PKT_SEQNUM:
+
+    Level ``SOL_BLUETOOTH`` CMSG with data::
+
+        uint16_t pkt_seqnum;
+
+    The values are equal to the "Packet_Sequence_Number" defined in
+    Core Specification v6.1, 5.4.5. HCI ISO Data packets:
+
+    https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/Core-61/out/en/host-controller-interface/host-controller-interface-functional-specification.html#UUID-9b5fb085-278b-5084-ac33-bee2839abe6b
+
+Example (Enable sequence numbers):
+
+.. code-block::
+
+    uint32_t opt = 1;
+    if (setsockopt(fd, SOL_BLUETOOTH, BT_PKT_SEQNUM, &opt, sizeof(opt)) < 0)
+        goto error;
+
+Example (Read packet and its sequence number):
+
+.. code-block::
+
+   char data_buf[256];
+   uint16_t seqnum;
+   union {
+       char buf[CMSG_SPACE(sizeof(uint16_t))];
+       struct cmsghdr align;
+   } control;
+   struct iovec data = {
+       .iov_base = data_buf,
+       .iov_len = sizeof(data_buf),
+   };
+   struct msghdr msg = {
+       .msg_iov = &data,
+       .msg_iovlen = 1,
+       .msg_control = control.buf,
+       .msg_controllen = sizeof(control.buf),
+   };
+   struct scm_timestamping tss;
+
+   res = recvmsg(fd, &msg, 0);
+   if (res < 0)
+       goto error;
+
+   for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+       if (cmsg->cmsg_level == SOL_BLUETOOTH && cmsg->cmsg_type == BT_PKT_SEQNUM)
+           memcpy(&seqnum, CMSG_DATA(cmsg), sizeof(seqnum));
+   }
 
 SOCKET OPTIONS (SOL_SOCKET)
 ===========================
