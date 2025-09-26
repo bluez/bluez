@@ -4789,9 +4789,17 @@ static bool match_ext_adv_handle(const void *data, const void *match_data)
 	return ext_adv->handle == handle;
 }
 
+static bool match_ext_adv_enable(const void *data, const void *match_data)
+{
+	const struct le_ext_adv *ext_adv = data;
+
+	return ext_adv->enable;
+}
+
 static void ext_adv_disable(void *data, void *user_data)
 {
 	struct le_ext_adv *ext_adv = data;
+	struct btdev *btdev = ext_adv->dev;
 	uint8_t handle = PTR_TO_UINT(user_data);
 
 	if (handle && ext_adv->handle != handle)
@@ -4807,6 +4815,13 @@ static void ext_adv_disable(void *data, void *user_data)
 	}
 
 	ext_adv->enable = 0x00;
+
+	/* Consider le_adv_enable disabled if all advertising sets are
+	 * disabled.
+	 */
+	ext_adv = queue_find(btdev->le_ext_adv, match_ext_adv_enable, NULL);
+	if (!ext_adv)
+		btdev->le_adv_enable = 0x00;
 }
 
 static bool ext_adv_is_connectable(struct le_ext_adv *ext_adv)
