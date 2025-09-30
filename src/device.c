@@ -204,7 +204,7 @@ struct btd_device {
 	uint8_t		conn_bdaddr_type;
 	bdaddr_t	bdaddr;
 	uint8_t		bdaddr_type;
-	bool		rpa;
+	bool		privacy;
 	char		*path;
 	struct btd_bearer *bredr;
 	struct btd_bearer *le;
@@ -4995,9 +4995,17 @@ void device_set_class(struct btd_device *device, uint32_t class)
 						DEVICE_INTERFACE, "Icon");
 }
 
-void device_set_rpa(struct btd_device *device, bool value)
+void device_set_privacy(struct btd_device *device, bool value)
 {
-	device->rpa = value;
+	device->privacy = value;
+}
+
+bool device_get_privacy(struct btd_device *device)
+{
+	if (device->privacy)
+		return true;
+
+	return device_address_is_private(device);
 }
 
 void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
@@ -5005,7 +5013,7 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 {
 	bool auto_connect = device->auto_connect;
 
-	device_set_rpa(device, true);
+	device_set_privacy(device, true);
 
 	if (!bacmp(bdaddr, &device->bdaddr) &&
 					bdaddr_type == device->bdaddr_type)
