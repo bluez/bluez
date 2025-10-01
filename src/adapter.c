@@ -5091,7 +5091,7 @@ static void load_devices(struct btd_adapter *adapter)
 			goto free;
 
 		if (irk_info)
-			device_set_rpa(device, true);
+			device_set_privacy(device, true);
 
 		btd_device_set_temporary(device, false);
 		adapter_add_device(adapter, device);
@@ -5752,7 +5752,7 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
 
 	/* Set Address Resolution if it has not been set the flag yet. */
 	if (ll_privacy && btd_opts.defaults.le.addr_resolution &&
-			device_address_is_private(device) &&
+			device_get_privacy(device) &&
 			!(flags & DEVICE_FLAG_ADDRESS_RESOLUTION))
 		flags |= DEVICE_FLAG_ADDRESS_RESOLUTION & supported & ~pending;
 
