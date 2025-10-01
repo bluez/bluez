@@ -29,10 +29,11 @@ bool device_is_name_resolve_allowed(struct btd_device *device);
 void device_name_resolve_fail(struct btd_device *device);
 void device_set_class(struct btd_device *device, uint32_t class);
 bool device_address_is_private(struct btd_device *dev);
-void device_set_privacy(struct btd_device *device, bool value);
+void device_set_privacy(struct btd_device *device, bool value,
+					const uint8_t *irk);
 bool device_get_privacy(struct btd_device *device);
 void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
-							uint8_t bdaddr_type);
+				uint8_t bdaddr_type, const uint8_t *irk);
 void device_set_bredr_support(struct btd_device *device);
 void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type);
 void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type,

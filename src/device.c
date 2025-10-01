@@ -205,6 +205,7 @@ struct btd_device {
 	bdaddr_t	bdaddr;
 	uint8_t		bdaddr_type;
 	bool		privacy;
+	uint8_t		*irk;
 	char		*path;
 	struct btd_bearer *bredr;
 	struct btd_bearer *le;
@@ -4995,9 +4996,17 @@ void device_set_class(struct btd_device *device, uint32_t class)
 						DEVICE_INTERFACE, "Icon");
 }
 
-void device_set_privacy(struct btd_device *device, bool value)
+void device_set_privacy(struct btd_device *device, bool value,
+					const uint8_t *irk)
 {
 	device->privacy = value;
+
+	free(device->irk);
+
+	if (irk)
+		device->irk = util_memdup(irk, 16);
+	else
+		device->irk = NULL;
 }
 
 bool device_get_privacy(struct btd_device *device)
@@ -5009,11 +5018,11 @@ bool device_get_privacy(struct btd_device *device)
 }
 
 void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
-							uint8_t bdaddr_type)
+				uint8_t bdaddr_type, const uint8_t *irk)
 {
 	bool auto_connect = device->auto_connect;
 
-	device_set_privacy(device, true);
+	device_set_privacy(device, true, irk);
 
 	if (!bacmp(bdaddr, &device->bdaddr) &&
 					bdaddr_type == device->bdaddr_type)
@@ -5347,6 +5356,39 @@ static bool addr_is_public(uint8_t addr_type)
 	return false;
 }
 
+static bool addr_is_resolvable(const bdaddr_t *bdaddr, uint8_t addr_type)
+{
+	if (addr_type != BDADDR_LE_RANDOM)
+		return false;
+
+	switch (bdaddr->b[5] >> 6) {
+	case 0x01:	/* Private resolvable */
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool device_irk_cmp(const struct btd_device *device,
+				const struct device_addr_type *addr)
+{
+	struct bt_crypto *crypto;
+	uint8_t hash[3];
+
+	if (!device->irk)
+		return false;
+
+	crypto = bt_crypto_new();
+	if (!crypto)
+		return false;
+
+	bt_crypto_ah(crypto, device->irk, addr->bdaddr.b + 3, hash);
+
+	bt_crypto_unref(crypto);
+
+	return !memcmp(addr, hash, 3);
+}
+
 int device_addr_type_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct btd_device *dev = a;
@@ -5375,8 +5417,13 @@ int device_addr_type_cmp(gconstpointer a, gconstpointer b)
 		return -1;
 
 	if (addr->bdaddr_type != dev->bdaddr_type) {
+		if (dev->privacy && addr_is_resolvable(&addr->bdaddr,
+							addr->bdaddr_type))
+			return device_irk_cmp(dev, addr);
+
 		if (addr->bdaddr_type == dev->conn_bdaddr_type)
 			return bacmp(&dev->conn_bdaddr, &addr->bdaddr);
+
 		return -1;
 	}
 
