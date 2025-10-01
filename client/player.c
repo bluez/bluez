@@ -1870,6 +1870,10 @@ static void append_bcast_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
 
 	if (cfg->ep->bcode->iov_len != 0) {
 		const char *key = "BCode";
+		uint8_t encryption = 0x01;
+
+		g_dbus_dict_append_entry(iter, "Encryption", DBUS_TYPE_BYTE,
+						&encryption);
 
 		bt_shell_printf("BCode:\n");
 		bt_shell_hexdump(cfg->ep->bcode->iov_base,
