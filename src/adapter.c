@@ -5091,7 +5091,7 @@ static void load_devices(struct btd_adapter *adapter)
 			goto free;
 
 		if (irk_info)
-			device_set_privacy(device, true);
+			device_set_privacy(device, true, irk_info->val);
 
 		btd_device_set_temporary(device, false);
 		adapter_add_device(adapter, device);
@@ -9024,7 +9024,7 @@ static void new_irk_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	device_update_addr(device, &addr->bdaddr, addr->type);
+	device_update_addr(device, &addr->bdaddr, addr->type, irk->val);
 
 	if (duplicate)
 		device_merge_duplicate(device, duplicate);
