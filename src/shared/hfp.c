@@ -2391,10 +2391,10 @@ bool hfp_hf_session_register(struct hfp_hf *hfp,
 
 bool hfp_hf_session(struct hfp_hf *hfp)
 {
-	DBG(hfp, "");
-
 	if (!hfp)
 		return false;
+
+	DBG(hfp, "");
 
 	if (!hfp_hf_register(hfp, slc_brsf_cb, "+BRSF", hfp, NULL))
 		return false;
@@ -2407,15 +2407,15 @@ const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id)
 {
 	struct hf_call *call;
 
-	DBG(hfp, "");
-
 	if (!hfp)
-		return false;
+		return NULL;
+
+	DBG(hfp, "");
 
 	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
 	if (!call) {
 		DBG(hfp, "hf: no call with id: %u", id);
-		return false;
+		return NULL;
 	}
 
 	return call->line_id;
@@ -2427,10 +2427,10 @@ bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 {
 	struct hf_call *call;
 
-	DBG(hfp, "");
-
 	if (!hfp)
 		return false;
+
+	DBG(hfp, "");
 
 	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
 	if (!call) {
@@ -2440,7 +2440,7 @@ bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 
 	if (call->status != CALL_STATUS_INCOMING) {
 		DBG(hfp, "hf: %d not in incoming call state: %u",
-							call->status);
+							id, call->status);
 		return false;
 	}
 
@@ -2453,10 +2453,10 @@ bool hfp_hf_call_hangup(struct hfp_hf *hfp, uint id,
 {
 	struct hf_call *call;
 
-	DBG(hfp, "");
-
 	if (!hfp)
 		return false;
+
+	DBG(hfp, "");
 
 	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
 	if (!call) {
