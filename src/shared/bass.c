@@ -1223,7 +1223,7 @@ static void bcast_recv_new(struct bt_bass_db *bdb, int i)
 	bt_uuid16_create(&uuid, BCAST_RECV_STATE_UUID);
 	bcast_recv_state->attr =
 		gatt_db_service_add_characteristic(bdb->service, &uuid,
-				BT_ATT_PERM_READ,
+				BT_ATT_PERM_READ | BT_ATT_PERM_READ_ENCRYPT,
 				BT_GATT_CHRC_PROP_READ |
 				BT_GATT_CHRC_PROP_NOTIFY,
 				bass_bcast_recv_state_read, NULL,
@@ -1252,7 +1252,7 @@ static void bass_new(struct bt_bass_db *bdb)
 	bdb->bcast_audio_scan_cp =
 		gatt_db_service_add_characteristic(bdb->service,
 				&uuid,
-				BT_ATT_PERM_WRITE,
+				BT_ATT_PERM_WRITE | BT_ATT_PERM_WRITE_ENCRYPT,
 				BT_GATT_CHRC_PROP_WRITE |
 				BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP,
 				NULL, bass_bcast_audio_scan_cp_write,

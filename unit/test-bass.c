@@ -653,6 +653,7 @@ static void test_server(const void *user_data)
 	att = bt_att_new(io_get_fd(io), false);
 	g_assert(att);
 
+	bt_att_set_security(att, BT_ATT_SECURITY_MEDIUM);
 	bt_att_set_debug(att, BT_ATT_DEBUG, print_debug, "bt_att:", NULL);
 
 	data->db = gatt_db_new();
