@@ -3192,7 +3192,7 @@ static const struct bitfield_data events_le_table[] = {
 	{ 20, "LE Connectionless IQ Report"		},
 	{ 21, "LE Connection IQ Report"			},
 	{ 22, "LE CTE Request Failed"			},
-	{ 23, "LE Periodic Advertising Sync Transfer Rvc"},
+	{ 23, "LE PAST Received"			},
 	{ 24, "LE CIS Established"			},
 	{ 25, "LE CIS Request"				},
 	{ 26, "LE Create BIG Complete"			},
@@ -8596,18 +8596,18 @@ static void le_pa_rec_enable(uint16_t index, const void *data, uint8_t size)
 	print_enable("Reporting", cmd->enable);
 }
 
-static void le_pa_sync_trans(uint16_t index, const void *data, uint8_t size)
+static void le_past(uint16_t index, const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_periodic_sync_trans *cmd = data;
+	const struct bt_hci_cmd_le_past *cmd = data;
 
 	print_field("Connection handle: %d", cmd->handle);
 	print_field("Service data: 0x%4.4x", cmd->service_data);
 	print_field("Sync handle: %d", cmd->sync_handle);
 }
 
-static void le_pa_set_info_trans(uint16_t index, const void *data, uint8_t size)
+static void le_past_set_info(uint16_t index, const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_pa_set_info_trans *cmd = data;
+	const struct bt_hci_cmd_le_past_set_info *cmd = data;
 
 	print_field("Connection handle: %d", cmd->handle);
 	print_field("Service data: 0x%4.4x", cmd->service_data);
@@ -8628,6 +8628,10 @@ static void print_sync_mode(uint8_t mode)
 	case 0x02:
 		str = "Enabled with report events enabled";
 		break;
+	case 0x03:
+		str = "Enabled with report events enabled with duplicate "
+			"filtering";
+		break;
 	default:
 		str = "RFU";
 		break;
@@ -8636,10 +8640,10 @@ static void print_sync_mode(uint8_t mode)
 	print_field("Mode: %s (0x%2.2x)", str, mode);
 }
 
-static void le_pa_sync_trans_params(uint16_t index, const void *data,
+static void le_past_params(uint16_t index, const void *data,
 							uint8_t size)
 {
-	const struct bt_hci_cmd_pa_sync_trans_params *cmd = data;
+	const struct bt_hci_cmd_le_past_params *cmd = data;
 
 	print_field("Connection handle: %d", cmd->handle);
 	print_sync_mode(cmd->mode);
@@ -8650,10 +8654,10 @@ static void le_pa_sync_trans_params(uint16_t index, const void *data,
 	print_create_sync_cte_type(cmd->cte_type);
 }
 
-static void le_set_default_pa_sync_trans_params(uint16_t index,
+static void le_set_default_past_params(uint16_t index,
 						const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_default_pa_sync_trans_params *cmd = data;
+	const struct bt_hci_cmd_le_default_past_params *cmd = data;
 
 	print_sync_mode(cmd->mode);
 	print_field("Skip: 0x%2.2x", cmd->skip);
@@ -10492,17 +10496,17 @@ static const struct opcode_data opcode_table[] = {
 				le_pa_rec_enable, 3, true,
 				status_rsp, 1, true },
 	{ 0x205a, 326, "LE Periodic Advertising Sync Transfer",
-				le_pa_sync_trans, 6, true,
+				le_past, 6, true,
 				status_handle_rsp, 3, true },
 	{ 0x205b, 327, "LE Periodic Advertising Set Info Transfer",
-				le_pa_set_info_trans, 5, true,
+				le_past_set_info, 5, true,
 				status_handle_rsp, 3, true },
 	{ 0x205c, 328, "LE Periodic Advertising Sync Transfer Parameters",
-				le_pa_sync_trans_params, 8, true,
+				le_past_params, 8, true,
 				status_handle_rsp, 3, true},
 	{ 0x205d, 329, "LE Set Default Periodic Advertisng Sync Transfer "
 				"Parameters",
-				le_set_default_pa_sync_trans_params,
+				le_set_default_past_params,
 				6, true, status_rsp, 1, true},
 	{ BT_HCI_CMD_LE_READ_BUFFER_SIZE_V2,
 				BT_HCI_BIT_LE_READ_BUFFER_SIZE_V2,
@@ -12383,10 +12387,10 @@ static void le_cte_request_failed_evt(struct timeval *tv, uint16_t index,
 	print_field("Connection handle: %d", evt->handle);
 }
 
-static void le_pa_sync_trans_rec_evt(struct timeval *tv, uint16_t index,
+static void le_past_received_evt(struct timeval *tv, uint16_t index,
 					const void *data, uint8_t size)
 {
-	const struct bt_hci_evt_le_pa_sync_trans_rec *evt = data;
+	const struct bt_hci_evt_le_past_recv *evt = data;
 
 	print_status(evt->status);
 	print_field("Handle: %d", evt->handle);
@@ -13283,9 +13287,10 @@ static const struct subevent_data le_meta_event_table[] = {
 				le_chan_select_alg_evt, 3, true},
 	{ 0x17, "LE CTE Request Failed",
 				le_cte_request_failed_evt, 3, true},
-	{ 0x18, "LE Periodic Advertising Sync Transfer Received",
-					le_pa_sync_trans_rec_evt, 19,
-					true},
+	{ BT_HCI_EVT_LE_PAST_RECEIVED,
+			"LE Periodic Advertising Sync Transfer Received",
+			le_past_received_evt, 19,
+			true},
 	{ BT_HCI_EVT_LE_CIS_ESTABLISHED,
 				"LE Connected Isochronous Stream Established",
 				le_cis_established_evt,
