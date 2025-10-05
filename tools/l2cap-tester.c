@@ -1726,7 +1726,8 @@ static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
 	data->handle = handle;
 }
 
-static void client_l2cap_disconnect_cb(void *user_data)
+static void client_l2cap_disconnect_cb(uint16_t handle, uint16_t cid,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 

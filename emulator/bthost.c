@@ -403,6 +403,25 @@ static struct l2conn *bthost_add_l2cap_conn(struct bthost *bthost,
 	return l2conn;
 }
 
+static void btconn_detach_l2cap_conn(struct btconn *conn, struct l2conn *l2conn)
+{
+	struct l2conn *c;
+
+	if (conn->l2conns == l2conn) {
+		conn->l2conns = l2conn->next;
+		l2conn->next = NULL;
+		return;
+	}
+
+	for (c = conn->l2conns; c != NULL; c = c->next) {
+		if (c->next == l2conn) {
+			c->next = l2conn->next;
+			l2conn->next = NULL;
+			return;
+		}
+	}
+}
+
 static struct rcconn *bthost_add_rfcomm_conn(struct bthost *bthost,
 						struct btconn *conn,
 						struct l2conn *l2conn,
@@ -2142,11 +2161,41 @@ static bool l2cap_disconn_req(struct bthost *bthost, struct btconn *conn,
 	if (!l2conn)
 		return true;
 
+	btconn_detach_l2cap_conn(conn, l2conn);
+
 	cb_data = bthost_find_l2cap_cb_by_psm(bthost, l2conn->psm);
 
 	if (cb_data && cb_data->disconn_func)
-		cb_data->disconn_func(cb_data->user_data);
+		cb_data->disconn_func(conn->handle, l2conn->dcid,
+							cb_data->user_data);
 
+	l2conn_free(l2conn);
+	return true;
+}
+
+static bool l2cap_disconn_rsp(struct bthost *bthost, struct btconn *conn,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_disconn_rsp *rsp = data;
+	struct l2cap_conn_cb_data *cb_data;
+	struct l2conn *l2conn;
+
+	if (len < sizeof(*rsp))
+		return false;
+
+	l2conn = btconn_find_l2cap_conn_by_scid(conn, rsp->dcid);
+	if (!l2conn)
+		return true;
+
+	btconn_detach_l2cap_conn(conn, l2conn);
+
+	cb_data = bthost_find_l2cap_cb_by_psm(bthost, l2conn->psm);
+
+	if (cb_data && cb_data->disconn_func)
+		cb_data->disconn_func(conn->handle, l2conn->dcid,
+							cb_data->user_data);
+
+	l2conn_free(l2conn);
 	return true;
 }
 
@@ -2299,6 +2348,11 @@ static void l2cap_sig(struct bthost *bthost, struct btconn *conn,
 
 	case BT_L2CAP_PDU_DISCONN_REQ:
 		ret = l2cap_disconn_req(bthost, conn, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_DISCONN_RSP:
+		ret = l2cap_disconn_rsp(bthost, conn, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
 		break;
 
@@ -2533,6 +2587,11 @@ static void l2cap_le_sig(struct bthost *bthost, struct btconn *conn,
 
 	case BT_L2CAP_PDU_DISCONN_REQ:
 		ret = l2cap_disconn_req(bthost, conn, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_DISCONN_RSP:
+		ret = l2cap_disconn_rsp(bthost, conn, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
 		break;
 
