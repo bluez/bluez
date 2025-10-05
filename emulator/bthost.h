@@ -99,6 +99,9 @@ void bthost_send_iso(struct bthost *bthost, uint16_t handle, bool ts,
 			uint16_t sn, uint32_t timestamp, uint8_t pkt_status,
 			const struct iovec *iov, int iovcnt);
 
+void bthost_disconnect_cid(struct bthost *bthost, uint16_t handle,
+								uint16_t cid);
+
 typedef void (*bthost_l2cap_rsp_cb) (uint8_t code, const void *data,
 						uint16_t len, void *user_data);
 
@@ -145,7 +148,8 @@ void bthost_le_start_encrypt(struct bthost *bthost, uint16_t handle,
 							const uint8_t ltk[16]);
 typedef void (*bthost_l2cap_connect_cb) (uint16_t handle, uint16_t cid,
 							void *user_data);
-typedef void (*bthost_l2cap_disconnect_cb) (void *user_data);
+typedef void (*bthost_l2cap_disconnect_cb) (uint16_t handle, uint16_t cid,
+							void *user_data);
 
 void bthost_add_l2cap_server(struct bthost *bthost, uint16_t psm,
 				bthost_l2cap_connect_cb func,

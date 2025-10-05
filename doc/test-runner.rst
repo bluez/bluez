@@ -92,6 +92,16 @@ Bluetooth
 
 	CONFIG_UHID=y
 
+For 6lowpan-tester, the following are required:
+
+.. code-block::
+
+   CONFIG_6LOWPAN=y
+   CONFIG_6LOWPAN_DEBUGFS=y
+   CONFIG_BT_6LOWPAN=y
+   CONFIG_PACKET=y
+
+
 Lock debugging
 --------------
 
