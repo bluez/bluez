@@ -1,6 +1,6 @@
 tools_man_pages = []
 
-if get_option('logger')
+if get_option('logger').enabled()
   executable('btmon-logger',
     [ 'btmon-logger.c' ],
     dependencies: libshared_mainloop_dep,
@@ -8,7 +8,7 @@ if get_option('logger')
     install_dir: pkglibexecdir
   )
 
-  if get_option('systemd')
+  if systemd_dep.found()
     configure_file(
       input: 'bluetooth-logger.service.in',
       output: 'bluetooth-logger.service',
@@ -39,7 +39,7 @@ tester_tools = [
   'hci'
 ]
 
-if get_option('tests')
+if get_option('tests').enabled()
   foreach tool: tester_tools
     executable(tool + '-tester',
       sources: [ tool + '-tester.c', emulator_sources ],
@@ -48,7 +48,7 @@ if get_option('tests')
   endforeach
 endif
 
-if get_option('btpclient')
+if get_option('btpclient').enabled()
   executable('btpclient',
     sources: [ 'btpclient.c', '../src/shared/btp.c' ],
     include_directories: '..',
@@ -65,7 +65,7 @@ if get_option('btpclient')
   )
 endif
 
-if get_option('hid2hci')
+if get_option('hid2hci').enabled()
   executable('hid2hci',
     sources: 'hid2hci.c',
     dependencies: udevlib_dep,
@@ -76,7 +76,7 @@ if get_option('hid2hci')
     install_dir: udevdir / 'rules.d',
     rename: '97-hid2hci.rules'
   )
-  if get_option('manpages').enabled()
+  if rst2man.found()
     tools_man_pages += 'hid2hci.1'
   endif
 endif
@@ -113,7 +113,7 @@ inst_tools_names = [
   'isotest'
 ]
 
-if get_option('tools')
+if get_option('tools').enabled()
   foreach tool: tools_names
     executable(tool,
       sources: tool + '.c',
@@ -129,7 +129,7 @@ if get_option('tools')
     )
   endforeach
 
-  if get_option('manpages').enabled()
+  if rst2man.found()
     tools_man_pages += [
       'rctest.1',
       'l2ping.1',
@@ -196,7 +196,7 @@ if get_option('tools')
         include_directories: '..',
         install: true
       )
-      if get_option('deprecated')
+      if get_option('deprecated').enabled()
         executable('meshctl',
           sources: [
             'meshctl.c',
@@ -227,7 +227,7 @@ if get_option('tools')
     endif
   endif
 
-  if get_option('deprecated')
+  if get_option('deprecated').enabled()
     executable('gatttool',
       sources: gatttool_sources,
       dependencies: [ libbluetooth_internal_dep, libshared_glib_dep, readline_dep ],
@@ -299,7 +299,7 @@ if get_option('tools')
       )
     endforeach
 
-    if get_option('manpages').enabled()
+    if rst2man.found()
       tools_man_pages += [
         'hciattach.1',
         'hciconfig.1',
@@ -312,7 +312,7 @@ if get_option('tools')
     endif
   endif
 
-  if get_option('systemd')
+  if systemd_dep.found()
     configure_file(
       input: 'mpris-proxy.service.in',
       output: 'mpris-proxy.service',

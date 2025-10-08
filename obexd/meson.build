@@ -1,10 +1,10 @@
-if get_option('datafiles')
+if get_option('datafiles').enabled()
   install_data('src/obex.conf',
     install_dir: dbusconfdir / 'dbus-1/system.d'
   )
 endif
 
-if get_option('systemd')
+if systemd_dep.found()
   configure_file(
     input: 'src/obex.service.in',
     output: 'obex.service',
@@ -50,7 +50,7 @@ obexd_builtin_sources = [
   'client/mns.c',
 ]
 
-if get_option('experimental')
+if get_option('experimental').enabled()
   obexd_builtin_modules += 'pcsuite'
   obexd_builtin_sources += 'plugins/pcsuite.c'
 endif
@@ -111,7 +111,7 @@ executable('obexd',
     '-DPLUGINDIR="@0@"'.format(obex_plugindir),
     '-D_FILE_OFFSET_BITS=64',
     '-DCONFIGDIR="@0@"'.format(configdir),
-    get_option('systemd') ? '-DSYSTEMD' : ''
+    libsystemd_dep.found() ? '-DSYSTEMD' : ''
   ],
   link_args: external_plugins_link_args,
   install: true,

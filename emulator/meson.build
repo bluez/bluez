@@ -6,7 +6,7 @@ emulator_sources = files(
   'smp.c',
 )
 
-if get_option('tests')
+if get_option('tests').enabled()
   executable('btvirt',
     sources: [ 'main.c',
       'serial.c',
