@@ -47,7 +47,7 @@ tests2 = [
   [ 'test-avctp.c', '../src/log.c', 'avctp.c' ],
 ]
 
-if get_option('obex').enabled()
+if ical_dep.found()
   tests2 += [
     [ 'test-gobex.c', 'util.c', gobex_sources ],
     [ 'test-gobex-packet.c', 'util.c', gobex_sources ],
@@ -82,7 +82,7 @@ exe = executable('test-gattrib',
 )
 test('test-gattrib', exe)
 
-if get_option('midi').enabled()
+if alsa_dep.found()
   exe = executable('test-midi',
     sources: [ 'test-midi.c', '../profiles/midi/libmidi.c' ],
     c_args: [ '-DMIDI_TEST' ],

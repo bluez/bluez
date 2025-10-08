@@ -40,7 +40,7 @@ client_man_pages = [
   'bluetoothctl-hci.1'
 ]
 
-if get_option('manpages').enabled()
+if rst2man.found()
   foreach man_page: client_man_pages
     man_page_name = man_page.substring(0, -2)
     custom_target(man_page,

@@ -95,10 +95,8 @@ if get_option('buildtype').contains('debug')
 
   add_project_arguments(common_flags, language: 'c')
 
-  if get_option('valgrind')
-    config_h.set('HAVE_VALGRIND_MEMCHECK_H',
-      cc.has_header('valgrind/memcheck.h', required: false))
-  endif
+  config_h.set('HAVE_VALGRIND_MEMCHECK_H',
+    cc.has_header('valgrind/memcheck.h', required: get_option('valgrind').enabled()))
 endif
 
 test_cflags = [
@@ -124,8 +122,8 @@ config_h.set10('HAVE_DECL_SOF_TIMESTAMPING_TX_COMPLETION',
 config_h.set10('HAVE_DECL_SCM_TSTAMP_COMPLETION',
   cc.has_header_symbol('linux/errqueue.h', 'SCM_TSTAMP_COMPLETION', prefix: '#include <time.h>'))
 
-udev_required = get_option('udev').enabled() or get_option('sixaxis') or
-    get_option('hid2hci')
+udev_required = get_option('udev').enabled() or get_option('sixaxis').enabled() or
+    get_option('hid2hci').enabled()
 udev_dep = dependency('udev', version:'>= 196', required: udev_required)
 udevlib_dep = dependency('libudev', required: udev_required)
 
@@ -140,7 +138,7 @@ systemd_dep = dependency('systemd', required: get_option('systemd'))
 libsystemd_dep = dependency('libsystemd', required: get_option('systemd'))
 ell_dep = dependency('ell',
   version: '>= 0.39',
-  required: get_option('btpclient') or get_option('mesh').enabled(),
+  required: get_option('btpclient').enabled() or get_option('mesh').enabled(),
   fallback : ['ell', 'libell_dep'],
   default_options: [
     'default_library=static',
@@ -229,18 +227,18 @@ if cups_dep.found()
 endif
 
 external_plugins_link_args = ''
-if get_option('external-plugins')
+if get_option('external-plugins').enabled()
   external_plugins_link_args = [
     '-Wl,--export-dynamic',
     '-Wl,--version-script=' + meson.project_source_root() / 'src/bluetooth.ver'
   ]
 endif
 
-config_h.set('HAVE_A2DP', get_option('a2dp'))
-config_h.set('HAVE_AVRCP', get_option('avrcp'))
-config_h.set('HAVE_ASHA', get_option('asha'))
-config_h.set('HAVE_VCP', get_option('vcp'))
-config_h.set10('EXTERNAL_PLUGINS', get_option('external-plugins'))
+config_h.set('HAVE_A2DP', get_option('a2dp').enabled())
+config_h.set('HAVE_AVRCP', get_option('avrcp').enabled())
+config_h.set('HAVE_ASHA', get_option('asha').enabled())
+config_h.set('HAVE_VCP', get_option('vcp').enabled())
+config_h.set10('EXTERNAL_PLUGINS', get_option('external-plugins').enabled())
 config_h.set_quoted('VERSION', meson.project_version())
 
 configure_file(
@@ -258,7 +256,7 @@ subdir('src')
 if get_option('client').enabled()
   subdir('client')
 endif
-if get_option('monitor')
+if get_option('monitor').enabled()
   subdir('monitor')
 endif
 subdir('emulator')
@@ -274,10 +272,10 @@ endif
 if get_option('mesh').enabled()
   subdir('mesh')
 endif
-if get_option('manpages').enabled()
+if rst2man.found()
   subdir('doc')
 endif
-if get_option('tests')
+if not get_option('tests').disabled()
   subdir('test')
   subdir('unit')
 endif
