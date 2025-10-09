@@ -293,7 +293,7 @@ fail:
 
 static bool assistant_get_qos(struct assistant_config *cfg)
 {
-	DBusMessageIter iter, dict, entry, value;
+	DBusMessageIter iter, dict;
 	const char *key;
 
 	/* Get QoS property to check if the stream is encrypted */
@@ -305,22 +305,45 @@ static bool assistant_get_qos(struct assistant_config *cfg)
 
 	dbus_message_iter_recurse(&iter, &dict);
 
-	if (dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_DICT_ENTRY)
-		return false;
+	while (dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		int var;
 
-	dbus_message_iter_recurse(&dict, &entry);
-	dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
 
-	if (strcasecmp(key, "Encryption") != 0)
-		return false;
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
 
-	dbus_message_iter_next(&entry);
-	dbus_message_iter_recurse(&entry, &value);
+		var = dbus_message_iter_get_arg_type(&value);
 
-	if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_BYTE)
-		return false;
+		if (!strcasecmp(key, "Encryption")) {
+			if (var != DBUS_TYPE_BYTE)
+				return false;
 
-	dbus_message_iter_get_basic(&value, &cfg->qos.bcast.encryption);
+			dbus_message_iter_get_basic(&value,
+						&cfg->qos.bcast.encryption);
+		} else if (!strcasecmp(key, "BCode")) {
+			DBusMessageIter array;
+			struct iovec iov = {0};
+
+			if (var != DBUS_TYPE_ARRAY)
+				return false;
+
+			dbus_message_iter_recurse(&value, &array);
+			dbus_message_iter_get_fixed_array(&array,
+							&iov.iov_base,
+							(int *)&iov.iov_len);
+
+			if (iov.iov_len != 16) {
+				bt_shell_printf("Invalid size for BCode: "
+						"%zu != 16\n", iov.iov_len);
+				return false;
+			}
+
+			memcpy(cfg->qos.bcast.bcode, iov.iov_base, iov.iov_len);
+		}
+	}
 
 	return true;
 }
@@ -328,6 +351,7 @@ static bool assistant_get_qos(struct assistant_config *cfg)
 static void assistant_set_metadata_cfg(const char *input, void *user_data)
 {
 	struct assistant_config *cfg = user_data;
+	uint8_t no_bcode[16] = {};
 
 	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto"))
 		goto done;
@@ -346,7 +370,8 @@ done:
 	if (!assistant_get_qos(cfg))
 		goto fail;
 
-	if (cfg->qos.bcast.encryption)
+	if (cfg->qos.bcast.encryption &&
+			!memcmp(cfg->qos.bcast.bcode, no_bcode, 16))
 		/* Prompt user to enter the Broadcast Code to decrypt
 		 * the stream
 		 */
@@ -373,13 +398,15 @@ fail:
 static void assistant_set_device_cfg(const char *input, void *user_data)
 {
 	struct assistant_config *cfg = user_data;
+	uint8_t no_bcode[16] = {};
 
 	cfg->device = strdup(input);
 
 	if (!assistant_get_qos(cfg))
 		goto fail;
 
-	if (cfg->qos.bcast.encryption) {
+	if (cfg->qos.bcast.encryption &&
+			!memcmp(cfg->qos.bcast.bcode, no_bcode, 16)) {
 		/* Prompt user to enter the Broadcast Code to decrypt
 		 * the stream
 		 */
