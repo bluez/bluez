@@ -5263,17 +5263,26 @@ static void set_bcode_cb(const DBusError *error, void *user_data)
 static void set_bcode(const char *input, void *user_data)
 {
 	struct transport_select_args *args = user_data;
-	char *bcode;
+	uint8_t *bcode = NULL;
+	size_t len = 0;
 
 	if (!strcasecmp(input, "n") || !strcasecmp(input, "no"))
-		bcode = g_new0(char, 16);
-	else
-		bcode = g_strdup(input);
+		bcode = g_new0(uint8_t, 16);
+	else {
+		bcode = str2bytearray((char *) input, &len);
+		/* If the input is not 16 bytes, perhaps it was entered as
+		 * string so just use it instead.
+		 */
+		if (len != 16) {
+			bcode = (uint8_t *)strdup(input);
+			len = strlen(input);
+		}
+	}
 
 	if (g_dbus_proxy_set_property_dict(args->proxy, "QoS",
 				set_bcode_cb, user_data,
 				NULL, "BCode", DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-				strlen(bcode), bcode, NULL) == FALSE) {
+				len, bcode, NULL) == FALSE) {
 		bt_shell_printf("Setting broadcast code failed\n");
 		g_free(bcode);
 		free_transport_select_args(args);
@@ -5295,9 +5304,11 @@ static void transport_select(struct transport_select_args *args)
 
 static void transport_set_bcode(struct transport_select_args *args)
 {
-	DBusMessageIter iter, array, entry, value;
-	unsigned char encryption;
+	DBusMessageIter iter, array;
+	unsigned char encryption = 0;
 	const char *key;
+	uint8_t *bcode, zeroed_bcode[16] = {};
+	int bcode_len = 0;
 
 	if (g_dbus_proxy_get_property(args->proxy, "QoS", &iter) == FALSE) {
 		free_transport_select_args(args);
@@ -5308,22 +5319,46 @@ static void transport_set_bcode(struct transport_select_args *args)
 
 	while (dbus_message_iter_get_arg_type(&array) !=
 						DBUS_TYPE_INVALID) {
+		DBusMessageIter entry, value, array_value;
+		int var;
+
 		dbus_message_iter_recurse(&array, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		var = dbus_message_iter_get_arg_type(&value);
+
 		if (!strcasecmp(key, "Encryption")) {
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &value);
+			if (var != DBUS_TYPE_BYTE)
+				break;
+
 			dbus_message_iter_get_basic(&value, &encryption);
-			if (encryption == 1) {
-				bt_shell_prompt_input("",
-					"Enter brocast code[value/no]:",
-					set_bcode, args);
-				return;
-			}
-			break;
+		} else if (!strcasecmp(key, "BCode")) {
+			if (var != DBUS_TYPE_ARRAY)
+				break;
+
+			dbus_message_iter_recurse(&value, &array_value);
+			dbus_message_iter_get_fixed_array(&array_value, &bcode,
+								&bcode_len);
+
+			if (bcode_len != 16 || !memcmp(bcode, zeroed_bcode, 16))
+				bcode_len = 0;
 		}
+
 		dbus_message_iter_next(&array);
+	}
+
+	/* Only attempt to set bcode if encryption is enabled and
+	 * bcode is not already set.
+	 */
+	if (encryption == 1 && !bcode_len) {
+		const char *path = g_dbus_proxy_get_path(args->proxy);
+
+		bt_shell_prompt_input(path, "Enter bcode[value/no]:",
+					set_bcode, args);
+		return;
 	}
 
 	/* Go straight to selecting transport, if Broadcast Code
