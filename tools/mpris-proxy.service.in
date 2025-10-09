@@ -8,7 +8,7 @@ ConditionUser=!@system
 
 [Service]
 Type=simple
-ExecStart=@PKGBINDIR@/mpris-proxy
+ExecStart=@PKGLIBEXECDIR@/mpris-proxy
 
 [Install]
 WantedBy=default.target
