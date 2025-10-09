@@ -102,6 +102,7 @@ struct hfp_hf {
 	uint8_t battchg;
 
 	struct queue *calls;
+	char *dialing_number;
 };
 
 struct cmd_handler {
@@ -1388,6 +1389,11 @@ void hfp_hf_unref(struct hfp_hf *hfp)
 	queue_destroy(hfp->calls, remove_call_cb);
 	hfp->calls = NULL;
 
+	if (hfp->dialing_number) {
+		free(hfp->dialing_number);
+		hfp->dialing_number = NULL;
+	}
+
 	if (!hfp->in_disconnect) {
 		free(hfp);
 		return;
@@ -1622,7 +1628,8 @@ static struct hf_call *call_new(struct hfp_hf *hfp, unsigned int id,
 	call = new0(struct hf_call, 1);
 	call->id = id;
 	call->status = status;
-	call->line_id = number;
+	if (number)
+		call->line_id = strdup(number);
 	call->hfp = hfp;
 	queue_push_tail(hfp->calls, call);
 
@@ -1745,6 +1752,20 @@ static bool call_active_match(const void *data, const void *match_data)
 	return (call->status == CALL_STATUS_ACTIVE);
 }
 
+static void bsir_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	unsigned int val;
+
+	DBG(hfp, "");
+
+	if (!hfp_context_get_number(context, &val))
+		return;
+
+	if (hfp->callbacks && hfp->callbacks->update_inband_ring)
+		hfp->callbacks->update_inband_ring(!!val, hfp->callbacks_data);
+}
+
 static void ciev_callsetup_cb(uint8_t val, void *user_data)
 {
 	struct hfp_hf *hfp = user_data;
@@ -1807,7 +1828,11 @@ static void ciev_callsetup_cb(uint8_t val, void *user_data)
 			DBG(hfp, "hf: No new call index available");
 			return;
 		}
-		call_new(hfp, id, status, NULL);
+		call_new(hfp, id, status, hfp->dialing_number);
+		if (hfp->dialing_number) {
+			free(hfp->dialing_number);
+			hfp->dialing_number = NULL;
+		}
 		break;
 	}
 }
@@ -2072,6 +2097,8 @@ static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 	}
 
 	/* Register unsolicited results handlers */
+	if (hfp->features & HFP_AG_FEAT_IN_BAND_RING_TONE)
+		hfp_hf_register(hfp, bsir_cb, "+BSIR", hfp, NULL);
 	hfp_hf_register(hfp, ciev_cb, "+CIEV", hfp, NULL);
 	hfp_hf_register(hfp, clip_cb, "+CLIP", hfp, NULL);
 	hfp_hf_register(hfp, cops_cb, "+COPS", hfp, NULL);
@@ -2419,6 +2446,50 @@ const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id)
 	}
 
 	return call->line_id;
+}
+
+bool hfp_hf_dial(struct hfp_hf *hfp, const char *number,
+				hfp_response_func_t resp_cb,
+				void *user_data)
+{
+	const char *c;
+	int count = 0;
+
+	if (!hfp)
+		return false;
+
+	DBG(hfp, "");
+
+	if (number == NULL || strlen(number) == 0)
+		return hfp_hf_send_command(hfp, resp_cb, user_data,
+								"AT+BLDN");
+
+	if (number[0] == '>') {
+		for (c = number + 1; *c != '\0'; c++) {
+			if (!(*c >= '0' && *c <= '9'))
+				return false;
+			count++;
+		}
+		if (count < 1 || count > 10)
+			return false;
+	} else {
+		for (c = number; *c != '\0'; c++) {
+			if (!(*c >= '0' && *c <= '9') &&
+				!(*c >= 'A' && *c <= 'D') &&
+				*c != '#' && *c != '*' &&
+				*c != '+' && *c != ',')
+				return false;
+			count++;
+		}
+		if (count < 1 || count > 80)
+			return false;
+	}
+
+	if (hfp->dialing_number)
+		free(hfp->dialing_number);
+	hfp->dialing_number = strdup(number);
+
+	return hfp_hf_send_command(hfp, resp_cb, user_data, "ATD%s;", number);
 }
 
 bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,

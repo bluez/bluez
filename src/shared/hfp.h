@@ -201,6 +201,7 @@ struct hfp_hf_callbacks {
 	void (*update_indicator)(enum hfp_indicator indicator, uint32_t val,
 							void *user_data);
 	void (*update_operator)(const char *operator_name, void *user_data);
+	void (*update_inband_ring)(bool enabled, void *user_data);
 
 	void (*call_added)(uint id, enum hfp_call_status status,
 							void *user_data);
@@ -237,6 +238,9 @@ bool hfp_hf_session(struct hfp_hf *hfp);
 
 const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id);
 
+bool hfp_hf_dial(struct hfp_hf *hfp, const char *number,
+				hfp_response_func_t resp_cb,
+				void *user_data);
 bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 				hfp_response_func_t resp_cb,
 				void *user_data);
