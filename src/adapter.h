@@ -237,7 +237,7 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 typedef void (*adapter_set_device_flags_func_t)(uint8_t status, uint16_t length,
 						const void *param,
 						void *user_data);
-void adapter_set_device_flags(struct btd_adapter *adapter,
+int adapter_set_device_flags(struct btd_adapter *adapter,
 				struct btd_device *device, uint32_t flags,
 				adapter_set_device_flags_func_t func,
 				void *user_data);
