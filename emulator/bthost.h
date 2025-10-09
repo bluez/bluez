@@ -119,8 +119,10 @@ void bthost_set_ext_adv_enable(struct bthost *bthost, uint8_t enable);
 void bthost_set_pa_params(struct bthost *bthost);
 void bthost_set_pa_data(struct bthost *bthost, const uint8_t *data,
 								uint8_t len);
+void bthost_set_past_mode(struct bthost *bthost, uint16_t handle, uint8_t mode);
 void bthost_set_base(struct bthost *bthost, const uint8_t *data, uint8_t len);
 void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable);
+void bthost_past_set_info(struct bthost *bthost, uint16_t handle);
 void bthost_create_big(struct bthost *bthost, uint8_t num_bis, uint8_t enc,
 				const uint8_t *bcode);
 bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr);
@@ -129,7 +131,6 @@ void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
 				uint8_t cis_id, const struct bt_iso_qos *qos);
 void bthost_create_cis(struct bthost *bthost, uint16_t cis_handle,
 						uint16_t acl_handle);
-
 
 void bthost_set_scan_params(struct bthost *bthost, uint8_t scan_type,
 				uint8_t addr_type, uint8_t filter_policy);
