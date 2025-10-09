@@ -39,6 +39,7 @@ if get_option('library').enabled()
     description: 'Bluetooth protocol stack for Linux',
     version: meson.project_version(),
     libraries: lib_bluetooth,
+    license: 'GPL-2.0-or-later'
   )
 endif
 

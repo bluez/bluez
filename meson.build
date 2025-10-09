@@ -3,7 +3,7 @@ project(
   'bluez', 'c',
   version: '5.84',
   license: 'LGPL-2.1-or-later AND GPL-2.0-or-later',
-  meson_version: '>= 1.3.0'
+  meson_version: '>= 1.9.0'
 )
 
 datadir = get_option('datadir')
