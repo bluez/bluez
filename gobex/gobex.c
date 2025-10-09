@@ -382,7 +382,7 @@ static void check_srm_final(GObex *obex, guint8 op)
 	case G_OBEX_OP_CONNECT:
 		return;
 	default:
-		if (op <= G_OBEX_RSP_CONTINUE)
+		if (op <= G_OBEX_RSP_CONTINUE || op == G_OBEX_OP_ABORT)
 			return;
 	}
 
