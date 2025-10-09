@@ -12499,7 +12499,7 @@ static void le_big_sync_estabilished_evt(struct timeval *tv, uint16_t index,
 	print_usec_interval("Transport Latency", evt->latency);
 	print_field("NSE: %u", evt->nse);
 	print_field("BN: %u", evt->bn);
-	print_field("PTO: %u", evt->bn);
+	print_field("PTO: %u", evt->pto);
 	print_field("IRC: %u", evt->irc);
 	print_field("Maximum PDU: %u", evt->max_pdu);
 	print_slot_125("ISO Interval", evt->interval);
@@ -12544,7 +12544,7 @@ static void le_big_info_evt(struct timeval *tv, uint16_t index,
 	print_field("NSE: %u", evt->nse);
 	print_slot_125("ISO Interval", evt->iso_interval);
 	print_field("BN: %u", evt->bn);
-	print_field("PTO: %u", evt->bn);
+	print_field("PTO: %u", evt->pto);
 	print_field("IRC: %u", evt->irc);
 	print_field("Maximum PDU: %u", evt->max_pdu);
 	print_usec_interval("SDU Interval", evt->sdu_interval);
