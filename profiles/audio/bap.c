@@ -3897,7 +3897,7 @@ static int bap_init(void)
 	if (err)
 		return err;
 
-	bap_id = bt_bap_register(bap_attached, bap_detached, NULL);
+	bap_id = bt_bap_register(bap_attached, NULL, bap_detached, NULL);
 
 	return 0;
 }

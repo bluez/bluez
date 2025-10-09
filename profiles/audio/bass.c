@@ -1815,7 +1815,7 @@ static int bass_init(void)
 		return err;
 
 	bass_id = bt_bass_register(bass_attached, bass_detached, NULL);
-	bap_id = bt_bap_register(bap_attached, bap_detached, NULL);
+	bap_id = bt_bap_register(bap_attached, NULL, bap_detached, NULL);
 
 	return 0;
 }

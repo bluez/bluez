@@ -98,6 +98,7 @@ struct bt_bap_bcode_cb {
 struct bt_bap_cb {
 	unsigned int id;
 	bt_bap_func_t attached;
+	bt_bap_func_t bc_attached;
 	bt_bap_func_t detached;
 	void *user_data;
 };
@@ -4524,13 +4525,13 @@ static void bap_free(void *data)
 	free(bap);
 }
 
-unsigned int bt_bap_register(bt_bap_func_t attached, bt_bap_func_t detached,
-							void *user_data)
+unsigned int bt_bap_register(bt_bap_func_t attached, bt_bap_func_t bc_attached,
+				bt_bap_func_t detached, void *user_data)
 {
 	struct bt_bap_cb *cb;
 	static unsigned int id;
 
-	if (!attached && !detached)
+	if (!attached && !bc_attached && !detached)
 		return 0;
 
 	if (!bap_cbs)
@@ -4539,6 +4540,7 @@ unsigned int bt_bap_register(bt_bap_func_t attached, bt_bap_func_t detached,
 	cb = new0(struct bt_bap_cb, 1);
 	cb->id = ++id ? id : ++id;
 	cb->attached = attached;
+	cb->bc_attached = bc_attached;
 	cb->detached = detached;
 	cb->user_data = user_data;
 
@@ -5643,6 +5645,17 @@ clone:
 	return true;
 }
 
+static void bap_bc_attached(void *data, void *user_data)
+{
+	struct bt_bap_cb *cb = data;
+	struct bt_bap *bap = user_data;
+
+	if (!cb->bc_attached)
+		return;
+
+	cb->bc_attached(bap, cb->user_data);
+}
+
 bool bt_bap_attach_broadcast(struct bt_bap *bap)
 {
 	struct bt_bap_endpoint *ep;
@@ -5654,6 +5667,8 @@ bool bt_bap_attach_broadcast(struct bt_bap *bap)
 		sessions = queue_new();
 
 	queue_push_tail(sessions, bap);
+
+	queue_foreach(bap_cbs, bap_bc_attached, bap);
 
 	ep = bap_get_endpoint_bcast(bap->remote_eps, bap->ldb,
 				BT_BAP_BCAST_SOURCE);
@@ -6769,6 +6784,36 @@ static void bap_stream_get_out_qos(void *data, void *user_data)
 	*qos = &stream->qos;
 }
 
+static void bap_stream_bcast_get_out_qos(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+	struct bt_bap_qos **qos = user_data;
+
+	if (!stream)
+		return;
+
+	if (!qos || *qos || stream->ep->dir != BT_BAP_BCAST_SINK ||
+				!stream->qos.bcast.io_qos.sdu)
+		return;
+
+	*qos = &stream->qos;
+}
+
+static void bap_stream_bcast_get_in_qos(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+	struct bt_bap_qos **qos = user_data;
+
+	if (!stream)
+		return;
+
+	if (!qos || *qos || stream->ep->dir != BT_BAP_BCAST_SOURCE ||
+				!stream->qos.bcast.io_qos.sdu)
+		return;
+
+	*qos = &stream->qos;
+}
+
 bool bt_bap_stream_io_get_qos(struct bt_bap_stream *stream,
 					struct bt_bap_qos **in,
 					struct bt_bap_qos **out)
@@ -6785,13 +6830,19 @@ bool bt_bap_stream_io_get_qos(struct bt_bap_stream *stream,
 		bap_stream_get_out_qos(stream, out);
 		queue_foreach(stream->links, bap_stream_get_in_qos, in);
 		break;
+	case BT_BAP_BCAST_SOURCE:
+		bap_stream_bcast_get_in_qos(stream, in);
+		break;
+	case BT_BAP_BCAST_SINK:
+		bap_stream_bcast_get_out_qos(stream, out);
+		break;
 	default:
 		return false;
 	}
 
 	DBG(stream->bap, "in %p out %p", in ? *in : NULL, out ? *out : NULL);
 
-	return in && out;
+	return (in && *in) || (out && *out);
 }
 
 static void bap_stream_get_dir(void *data, void *user_data)
