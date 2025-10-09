@@ -739,13 +739,62 @@ static void hf_cmd_complete(enum hfp_result res, enum hfp_error cme_err,
 	g_assert_cmpint(res, ==, HFP_RESULT_OK);
 }
 
+static void hf_cmd_error(enum hfp_result res, enum hfp_error cme_err,
+							void *user_data)
+{
+	g_assert_cmpint(res, ==, HFP_RESULT_ERROR);
+}
+
 static void hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
 							void *user_data)
 {
 	struct context *context = user_data;
+	const char *test_name = context->data->test_name;
 
 	g_assert_cmpint(res, ==, HFP_RESULT_OK);
 	context->session.completed = true;
+
+	if (g_str_equal(test_name, "/HFP/HF/OCL/BV-01-C")) {
+		bool ret;
+
+		if (tester_use_debug())
+			tester_debug("calling last dialed number");
+		ret = hfp_hf_dial(context->hfp_hf, "", hf_cmd_complete,
+							context);
+		g_assert(ret);
+	} else if (g_str_equal(test_name, "/HFP/HF/OCL/BV-02-C")) {
+		bool ret;
+
+		if (tester_use_debug())
+			tester_debug("calling last dialed number");
+		ret = hfp_hf_dial(context->hfp_hf, "", hf_cmd_error,
+							context);
+		g_assert(ret);
+	} else if (g_str_equal(test_name, "/HFP/HF/OCM/BV-01-C")) {
+		bool ret;
+
+		if (tester_use_debug())
+			tester_debug("calling memory 1");
+		ret = hfp_hf_dial(context->hfp_hf, ">1", hf_cmd_complete,
+							context);
+		g_assert(ret);
+	} else if (g_str_equal(test_name, "/HFP/HF/OCM/BV-02-C")) {
+		bool ret;
+
+		if (tester_use_debug())
+			tester_debug("calling memory 1");
+		ret = hfp_hf_dial(context->hfp_hf, ">1", hf_cmd_error,
+							context);
+		g_assert(ret);
+	} else if (g_str_equal(test_name, "/HFP/HF/OCN/BV-01-C")) {
+		bool ret;
+
+		if (tester_use_debug())
+			tester_debug("calling number");
+		ret = hfp_hf_dial(context->hfp_hf, "1234567", hf_cmd_complete,
+							context);
+		g_assert(ret);
+	}
 }
 
 static void hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
@@ -836,6 +885,27 @@ static void hf_call_added(uint id, enum hfp_call_status status,
 		g_str_equal(test_name, "/HFP/HF/TCA/BV-02-C")) {
 		g_assert_cmpint(id, ==, 1);
 		g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
+	} else if (g_str_equal(test_name, "/HFP/HF/OCL/BV-01-C")) {
+		const char *number;
+
+		g_assert_cmpint(id, ==, 1);
+		g_assert_cmpint(status, ==, CALL_STATUS_DIALING);
+		number = hfp_hf_call_get_number(context->hfp_hf, id);
+		g_assert_null(number);
+	} else if (g_str_equal(test_name, "/HFP/HF/OCM/BV-01-C")) {
+		const char *number;
+
+		g_assert_cmpint(id, ==, 1);
+		g_assert_cmpint(status, ==, CALL_STATUS_DIALING);
+		number = hfp_hf_call_get_number(context->hfp_hf, id);
+		g_assert_cmpstr(number, ==, ">1");
+	} else if (g_str_equal(test_name, "/HFP/HF/OCN/BV-01-C")) {
+		const char *number;
+
+		g_assert_cmpint(id, ==, 1);
+		g_assert_cmpint(status, ==, CALL_STATUS_DIALING);
+		number = hfp_hf_call_get_number(context->hfp_hf, id);
+		g_assert_cmpstr(number, ==, "1234567");
 	} else if (g_str_equal(test_name, "/HFP/HF/TCA/BV-04-C")) {
 		bool ret;
 
@@ -917,6 +987,39 @@ static void hf_call_status_updated(uint id, enum hfp_call_status status,
 		if (tester_use_debug())
 			tester_debug("Error: unexpected update");
 		tester_test_failed();
+	} else if (g_str_equal(test_name, "/HFP/HF/OCL/BV-01-C")) {
+		const char *number;
+
+		g_assert_cmpint(id, ==, 1);
+		if (context->session.step == 0)
+			g_assert_cmpint(status, ==, CALL_STATUS_ALERTING);
+		else
+			g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
+		number = hfp_hf_call_get_number(context->hfp_hf, id);
+		g_assert_null(number);
+		context->session.step++;
+	} else if (g_str_equal(test_name, "/HFP/HF/OCM/BV-01-C")) {
+		const char *number;
+
+		g_assert_cmpint(id, ==, 1);
+		if (context->session.step == 0)
+			g_assert_cmpint(status, ==, CALL_STATUS_ALERTING);
+		else
+			g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
+		number = hfp_hf_call_get_number(context->hfp_hf, id);
+		g_assert_cmpstr(number, ==, ">1");
+		context->session.step++;
+	} else if (g_str_equal(test_name, "/HFP/HF/OCN/BV-01-C")) {
+		const char *number;
+
+		g_assert_cmpint(id, ==, 1);
+		if (context->session.step == 0)
+			g_assert_cmpint(status, ==, CALL_STATUS_ALERTING);
+		else
+			g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
+		number = hfp_hf_call_get_number(context->hfp_hf, id);
+		g_assert_cmpstr(number, ==, "1234567");
+		context->session.step++;
 	} else if (g_str_equal(test_name, "/HFP/HF/TCA/BV-01-C")) {
 		const char *number;
 		bool ret;
@@ -1227,6 +1330,69 @@ int main(int argc, char *argv[])
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
 				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			data_end());
+
+	/* Initiate a call placed to the last number - HF */
+	define_hf_test("/HFP/HF/OCL/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '2', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '3', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			data_end());
+
+	/* Handling ERROR response to a call placed to last number - HF */
+	define_hf_test("/HFP/HF/OCL/BV-02-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'E', 'R', 'R', 'O', 'R'),
+			frg_pdu('\r', '\n'),
+			data_end());
+
+	/* Initiate a request to place a call with a memory location - HF */
+	define_hf_test("/HFP/HF/OCM/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '2', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '3', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			data_end());
+
+	/* Handling ERROR response to a call placed to an empty memory
+	 * location - HF
+	 */
+	define_hf_test("/HFP/HF/OCM/BV-02-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'E', 'R', 'R', 'O', 'R'),
+			frg_pdu('\r', '\n'),
+			data_end());
+
+	/* HF places a call with a phone number - HF */
+	define_hf_test("/HFP/HF/OCN/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			MINIMAL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '2', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '3', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '0', '\r', '\n'),
 			data_end());
