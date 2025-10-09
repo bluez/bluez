@@ -22,7 +22,7 @@ lib_headers = [
   'bluetooth/hidp.h'
   ]
 
-if get_option('library')
+if get_option('library').enabled()
   lib_bluetooth = shared_library('bluetooth',
     sources: lib_headers + lib_sources,
     version: '3.19.15',
