@@ -1184,7 +1184,7 @@ static void test_server(const void *user_data)
 
 	tester_io_set_complete_func(test_complete_cb);
 
-	data->id = bt_bap_register(bap_attached, NULL, data);
+	data->id = bt_bap_register(bap_attached, NULL, NULL, data);
 	g_assert(data->id);
 
 	tester_io_send();

@@ -125,6 +125,26 @@ Broadcast Sink (Receiver) example:
     /* Bind to Broadcaster address */
     bind(iso_socket, (struct sockaddr *)addr, addr_len);
 
+Broadcast Source (Broadcaster) or Broadcast Sink (Receiver) Periodic
+Advertising Sync Transfer (PAST):
+
+.. code-block::
+
+    struct sockaddr_iso *addr;
+    size_t addr_len;
+
+    addr_len = sizeof(*addr) + sizeof(*addr->iso_bc);
+
+    memset(addr, 0, addr_len);
+    addr->iso_family = AF_BLUETOOTH;
+
+    /* Set destination address to PAST destination address */
+    bacpy(&addr->iso_bc->bc_bdaddr, (void *) bdaddr);
+    addr->iso_bc->bc_bdaddr_type = bdaddr_type;
+
+    /* Rebind already connected socket to PAST address */
+    bind(iso_socket, (struct sockaddr *)addr, addr_len);
+
 SOCKET OPTIONS (SOL_BLUETOOTH)
 ==============================
 

@@ -116,8 +116,8 @@ uint8_t bt_bap_stream_get_type(struct bt_bap_stream *stream);
 struct bt_bap_stream *bt_bap_pac_get_stream(struct bt_bap_pac *pac);
 
 /* Session related function */
-unsigned int bt_bap_register(bt_bap_func_t added, bt_bap_func_t removed,
-							void *user_data);
+unsigned int bt_bap_register(bt_bap_func_t attached, bt_bap_func_t bc_attached,
+				bt_bap_func_t detached, void *user_data);
 bool bt_bap_unregister(unsigned int id);
 
 struct bt_bap *bt_bap_new(struct gatt_db *ldb, struct gatt_db *rdb);

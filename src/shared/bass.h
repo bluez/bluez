@@ -97,7 +97,8 @@ typedef void (*bt_bass_func_t)(struct bt_bass *bass, void *user_data);
 typedef void (*bt_bass_destroy_func_t)(void *user_data);
 typedef void (*bt_bass_debug_func_t)(const char *str, void *user_data);
 typedef void (*bt_bass_src_func_t)(uint8_t id, uint32_t bid, uint8_t enc,
-					uint32_t bis_sync, void *user_data);
+				   uint8_t state, uint32_t bis_sync,
+				   void *user_data);
 
 typedef int (*bt_bass_cp_handler_func_t)(struct bt_bcast_src *bcast_src,
 		uint8_t op, void *params, void *user_data);
@@ -112,6 +113,7 @@ bool bt_bass_set_debug(struct bt_bass *bass, bt_bass_debug_func_t func,
 struct bt_bass *bt_bass_new(struct gatt_db *ldb, struct gatt_db *rdb,
 			const bdaddr_t *adapter_bdaddr);
 bool bt_bass_set_user_data(struct bt_bass *bass, void *user_data);
+struct bt_bass *bt_bass_ref(struct bt_bass *bass);
 void bt_bass_unref(struct bt_bass *bass);
 bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client);
 bool bt_bass_set_att(struct bt_bass *bass, struct bt_att *att);
