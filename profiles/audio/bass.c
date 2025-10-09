@@ -966,7 +966,10 @@ static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 		util_iov_append(&iov, &meta_len, sizeof(meta_len));
 	}
 
-	bis_sync = (1 << (assistant->bis - 1));
+	/* Use 0xFFFFFFFF to indicate no preference (any BIS index) to allow
+	 * delegators to sync with BIG with multiple BIS
+	 */
+	bis_sync = 0xFFFFFFFF;
 	meta_len = assistant->meta->iov_len;
 
 	util_iov_append(&iov, &bis_sync, sizeof(bis_sync));
