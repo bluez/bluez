@@ -1319,8 +1319,9 @@ static void notify_src_changed(void *data, void *user_data)
 	}
 
 	if (changed->cb)
-		changed->cb(bcast_src->id, bcast_src->bid, bcast_src->enc,
-					bis_sync, changed->data);
+		changed->cb(bcast_src->id, bcast_src->bid,
+			    bcast_src->sync_state, bcast_src->enc,
+			    bis_sync, changed->data);
 }
 
 static void bcast_recv_state_notify(struct bt_bass *bass, uint16_t value_handle,
@@ -1681,7 +1682,7 @@ static struct bt_bass_db *bass_get_db(struct gatt_db *db,
 	return bass_db_new(db, adapter_bdaddr);
 }
 
-static struct bt_bass *bt_bass_ref(struct bt_bass *bass)
+struct bt_bass *bt_bass_ref(struct bt_bass *bass)
 {
 	if (!bass)
 		return NULL;

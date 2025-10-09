@@ -3821,6 +3821,7 @@ static int bap_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 		return -EINVAL;
 	}
 
+	bt_bap_set_user_data(data->bap, adapter);
 	bap_data_add(data);
 
 	if (!bt_bap_attach_broadcast(data->bap)) {
