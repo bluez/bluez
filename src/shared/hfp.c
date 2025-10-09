@@ -1752,6 +1752,20 @@ static bool call_active_match(const void *data, const void *match_data)
 	return (call->status == CALL_STATUS_ACTIVE);
 }
 
+static void bsir_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	unsigned int val;
+
+	DBG(hfp, "");
+
+	if (!hfp_context_get_number(context, &val))
+		return;
+
+	if (hfp->callbacks && hfp->callbacks->update_inband_ring)
+		hfp->callbacks->update_inband_ring(!!val, hfp->callbacks_data);
+}
+
 static void ciev_callsetup_cb(uint8_t val, void *user_data)
 {
 	struct hfp_hf *hfp = user_data;
@@ -2083,6 +2097,8 @@ static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 	}
 
 	/* Register unsolicited results handlers */
+	if (hfp->features & HFP_AG_FEAT_IN_BAND_RING_TONE)
+		hfp_hf_register(hfp, bsir_cb, "+BSIR", hfp, NULL);
 	hfp_hf_register(hfp, ciev_cb, "+CIEV", hfp, NULL);
 	hfp_hf_register(hfp, clip_cb, "+CLIP", hfp, NULL);
 	hfp_hf_register(hfp, cops_cb, "+COPS", hfp, NULL);
