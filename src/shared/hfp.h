@@ -201,6 +201,7 @@ struct hfp_hf_callbacks {
 	void (*update_indicator)(enum hfp_indicator indicator, uint32_t val,
 							void *user_data);
 	void (*update_operator)(const char *operator_name, void *user_data);
+	void (*update_inband_ring)(bool enabled, void *user_data);
 
 	void (*call_added)(uint id, enum hfp_call_status status,
 							void *user_data);
