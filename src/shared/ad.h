@@ -176,6 +176,14 @@ bool bt_ad_add_data(struct bt_ad *ad, uint8_t type, void *data, size_t len);
 
 bool bt_ad_has_data(struct bt_ad *ad, const struct bt_ad_data *data);
 
+void bt_ad_set_raw_data(struct bt_ad *ad, const uint8_t *data, size_t len);
+
+void bt_ad_clear_raw_data(struct bt_ad *ad);
+
+bool bt_ad_has_raw_data(struct bt_ad *ad);
+
+bool bt_ad_get_raw_data(struct bt_ad *ad, uint8_t **data, size_t *data_len);
+
 void bt_ad_foreach_data(struct bt_ad *ad, bt_ad_func_t func, void *user_data);
 
 bool bt_ad_remove_data(struct bt_ad *ad, uint8_t type);

@@ -1615,6 +1615,47 @@ dev_property_advertising_data_exist(const GDBusPropertyTable *property,
 	return bt_ad_has_data(device->ad, NULL);
 }
 
+static gboolean
+dev_property_get_raw_advertising_data(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+	uint8_t *raw_data = NULL;
+	size_t raw_data_len = 0;
+	DBusMessageIter array;
+
+	if (!device)
+		return FALSE;
+
+	bt_ad_get_raw_data(device->ad, &raw_data, &raw_data_len);
+
+	if (!raw_data || raw_data_len == 0)
+		return FALSE;
+
+	dbus_message_iter_open_container(iter,
+					DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING,
+					&array);
+
+	dbus_message_iter_append_fixed_array(&array,
+					DBUS_TYPE_BYTE,
+					&raw_data,
+					raw_data_len);
+
+	dbus_message_iter_close_container(iter, &array);
+
+	return TRUE;
+}
+
+static gboolean
+dev_property_raw_advertising_data_exist(const GDBusPropertyTable *property,
+					void *data)
+{
+	struct btd_device *device = data;
+
+	return bt_ad_has_raw_data(device->ad);
+}
+
 static bool device_get_wake_support(struct btd_device *device)
 {
 	return device->wake_support;
@@ -2399,6 +2440,19 @@ void device_set_manufacturer_data(struct btd_device *dev, GSList *list,
 		bt_ad_clear_manufacturer_data(dev->ad);
 
 	g_slist_foreach(list, add_manufacturer_data, dev);
+}
+
+void device_set_raw_adv_data(struct btd_device *dev,
+			const uint8_t *data, size_t len,
+			bool duplicate)
+{
+	if (!dev)
+		return;
+
+	if (duplicate)
+		bt_ad_clear_raw_data(dev->ad);
+
+	bt_ad_set_raw_data(dev->ad, data, len);
 }
 
 static void add_service_data(void *data, void *user_data)
@@ -3619,6 +3673,9 @@ static const GDBusPropertyTable device_properties[] = {
 					dev_property_flags_exist },
 	{ "AdvertisingData", "a{yv}", dev_property_get_advertising_data,
 				NULL, dev_property_advertising_data_exist },
+	{ "RawAdvertisingData", "ay", dev_property_get_raw_advertising_data,
+				NULL, dev_property_raw_advertising_data_exist,
+				G_DBUS_PROPERTY_FLAG_TESTING },
 	{ "WakeAllowed", "b", dev_property_get_wake_allowed,
 				dev_property_set_wake_allowed,
 				dev_property_wake_allowed_exist },
