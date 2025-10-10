@@ -81,6 +81,8 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid);
 void device_add_eir_uuids(struct btd_device *dev, GSList *uuids);
 void device_set_manufacturer_data(struct btd_device *dev, GSList *list,
 							bool duplicate);
+void device_set_raw_adv_data(struct btd_device *device, const uint8_t *data,
+				size_t len, bool duplicate);
 void device_set_service_data(struct btd_device *dev, GSList *list,
 							bool duplicate);
 void device_set_data(struct btd_device *dev, GSList *list,

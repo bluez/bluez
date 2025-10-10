@@ -243,6 +243,13 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 	if (eir_data == NULL)
 		return;
 
+	if (eir_len > 0 && eir_len <= EIR_MAX_LEN) {
+		memcpy(eir->raw_data, eir_data, eir_len);
+		eir->raw_data_len = eir_len;
+	} else {
+		eir->raw_data_len = 0;
+	}
+
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
 		const uint8_t *data;

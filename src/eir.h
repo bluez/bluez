@@ -53,6 +53,7 @@
 
 #define EIR_SD_MAX_LEN              238  /* 240 (EIR) - 2 (len) */
 #define EIR_MSD_MAX_LEN             236  /* 240 (EIR) - 2 (len & type) - 2 */
+#define EIR_MAX_LEN                 240
 
 struct eir_msd {
 	uint16_t company;
@@ -91,6 +92,8 @@ struct eir_data {
 	GSList *msd_list;
 	GSList *sd_list;
 	GSList *data_list;
+	uint8_t raw_data[EIR_MAX_LEN];
+	size_t raw_data_len;
 };
 
 void eir_data_free(struct eir_data *eir);
