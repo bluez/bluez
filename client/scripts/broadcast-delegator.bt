@@ -1,0 +1,9 @@
+power on
+endpoint.register 00001851-0000-1000-8000-00805f9b34fb 0x06
+y
+a
+3
+4
+transport.select auto
+transport.acquire auto
+advertise on
