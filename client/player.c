@@ -43,6 +43,7 @@
 #include "src/shared/shell.h"
 #include "src/shared/io.h"
 #include "src/shared/queue.h"
+#include "src/shared/timeout.h"
 #include "src/shared/bap-debug.h"
 #include "print.h"
 #include "player.h"
@@ -115,6 +116,8 @@ struct endpoint {
 	uint8_t iso_group;
 	uint8_t iso_stream;
 	struct queue *acquiring;
+	struct queue *selecting;
+	unsigned int selecting_id;
 	struct queue *transports;
 	DBusMessage *msg;
 	struct preset *preset;
@@ -135,6 +138,7 @@ static GList *transports = NULL;
 static struct queue *ios = NULL;
 static uint8_t bcast_code[] = BCAST_CODE;
 static bool auto_acquire = false;
+static bool auto_select = false;
 
 struct transport {
 	GDBusProxy *proxy;
@@ -1096,6 +1100,76 @@ static void confirm_response(const char *input, void *user_data)
 									NULL);
 }
 
+static bool match_proxy(const void *data, const void *user_data)
+{
+	const struct transport *transport = data;
+	const GDBusProxy *proxy = user_data;
+
+	return transport->proxy == proxy;
+}
+
+static struct transport *find_transport(GDBusProxy *proxy)
+{
+	return queue_find(ios, match_proxy, proxy);
+}
+
+static bool ep_selecting_process(void *user_data)
+{
+	struct endpoint *ep = user_data;
+	struct transport_select_args *args;
+	const struct queue_entry *entry;
+
+	if (queue_isempty(ep->selecting))
+		return true;
+
+	args = g_new0(struct transport_select_args, 1);
+
+	for (entry = queue_get_entries(ep->selecting); entry;
+					entry = entry->next) {
+		GDBusProxy *link;
+
+		link = g_dbus_proxy_lookup(transports, NULL, entry->data,
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+		if (!link)
+			continue;
+
+		if (find_transport(link))
+			continue;
+
+		if (!args->proxy) {
+			args->proxy = link;
+			continue;
+		}
+
+		if (!args->links)
+			args->links = queue_new();
+
+		/* Enqueue all links */
+		queue_push_tail(args->links, link);
+	}
+
+	queue_destroy(ep->selecting, NULL);
+	ep->selecting = NULL;
+
+	transport_set_links(args);
+
+	return true;
+}
+
+static void ep_set_selecting(struct endpoint *ep, const char *path)
+{
+	bt_shell_printf("Transport %s selecting\n", path);
+
+	if (!ep->selecting)
+		ep->selecting = queue_new();
+
+	queue_push_tail(ep->selecting, strdup(path));
+
+	if (!ep->selecting_id)
+		ep->selecting_id = timeout_add(1000, ep_selecting_process, ep,
+						NULL);
+}
+
 static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -1133,6 +1207,9 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 	queue_push_tail(ep->transports, strdup(path));
 
 	if (ep->auto_accept) {
+		if (auto_select && ep->broadcast)
+			ep_set_selecting(ep, path);
+
 		bt_shell_printf("Auto Accepting...\n");
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
@@ -2936,7 +3013,10 @@ static void endpoint_free(void *data)
 	if (ep->codec == 0xff)
 		free(ep->preset);
 
+	timeout_remove(ep->selecting_id);
+
 	queue_destroy(ep->acquiring, NULL);
+	queue_destroy(ep->selecting, free);
 	queue_destroy(ep->transports, free);
 
 	g_free(ep->path);
@@ -5205,19 +5285,6 @@ static void cmd_show_transport(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
-static bool match_proxy(const void *data, const void *user_data)
-{
-	const struct transport *transport = data;
-	const GDBusProxy *proxy = user_data;
-
-	return transport->proxy == proxy;
-}
-
-static struct transport *find_transport(GDBusProxy *proxy)
-{
-	return queue_find(ios, match_proxy, proxy);
-}
-
 static void cmd_acquire_transport(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -5445,6 +5512,11 @@ static void cmd_select_transport(int argc, char *argv[])
 	GDBusProxy *link = NULL;
 	struct transport_select_args *args;
 	int i;
+
+	if (argc == 2 && !strcmp(argv[1], "auto")) {
+		auto_select = true;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
 
 	args = g_new0(struct transport_select_args, 1);
 
