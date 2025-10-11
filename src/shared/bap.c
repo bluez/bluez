@@ -4708,7 +4708,7 @@ static void bap_parse_pacs(struct bt_bap *bap, uint8_t type,
 	for (i = 0; i < rsp->num_pac; i++) {
 		struct bt_bap_pac *pac;
 		struct bt_pac *p;
-		struct bt_ltv *cc;
+		struct bt_ltv *cc, *m;
 		struct bt_pac_metadata *meta;
 		struct iovec data, metadata;
 
@@ -4725,13 +4725,15 @@ static void bap_parse_pacs(struct bt_bap *bap, uint8_t type,
 
 		pac = NULL;
 
-		if (!bt_bap_debug_caps(iov.iov_base, p->cc_len, bap->debug_func,
-					bap->debug_data))
-			return;
-
 		cc = util_iov_pull_mem(&iov, p->cc_len);
 		if (!cc) {
 			DBG(bap, "Unable to parse PAC codec capabilities");
+			return;
+		}
+
+		if (!bt_bap_debug_caps(cc, p->cc_len, bap->debug_func,
+					bap->debug_data)) {
+			DBG(bap, "Invalid PAC codec capabilities LTV");
 			return;
 		}
 
@@ -4741,13 +4743,23 @@ static void bap_parse_pacs(struct bt_bap *bap, uint8_t type,
 			return;
 		}
 
+		m = util_iov_pull_mem(&iov, meta->len);
+		if (!m) {
+			DBG(bap, "Unable to parse PAC metadata");
+			return;
+		}
+
+		if (!bt_bap_debug_metadata(meta->data, meta->len,
+					bap->debug_func, bap->debug_data)) {
+			DBG(bap, "Invalid PAC metadata LTV");
+			return;
+		}
+
 		data.iov_len = p->cc_len;
 		data.iov_base = cc;
 
 		metadata.iov_len = meta->len;
-		metadata.iov_base = meta->data;
-
-		util_iov_pull_mem(&iov, meta->len);
+		metadata.iov_base = m;
 
 		DBG(bap, "PAC #%u: type %u codec 0x%02x cc_len %u meta_len %u",
 			i, type, p->codec.id, p->cc_len, meta->len);
