@@ -1,4 +1,4 @@
-if get_option('tests')
+if get_option('tests').enabled()
   executable('btsensor',
     sources: [
       'main.c',

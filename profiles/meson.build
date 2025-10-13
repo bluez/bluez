@@ -15,7 +15,7 @@ builtin_sources += files(
   'battery/battery.c'
 )
 
-if get_option('sap')
+if get_option('sap').enabled()
   builtin_modules += 'sap'
   builtin_sources += files(
     'sap/main.c',
@@ -25,7 +25,7 @@ if get_option('sap')
   )
 endif
 
-if get_option('a2dp')
+if get_option('a2dp').enabled()
   builtin_modules += 'a2dp'
   builtin_sources += files(
     'audio/source.c',
@@ -35,7 +35,7 @@ if get_option('a2dp')
   )
 endif
 
-if get_option('avrcp')
+if get_option('avrcp').enabled()
   builtin_modules += 'avrcp'
   builtin_sources += files(
     'audio/control.c',
@@ -45,7 +45,7 @@ if get_option('avrcp')
   )
 endif
 
-if get_option('network')
+if get_option('network').enabled()
   builtin_modules += 'network'
   builtin_sources += files(
     'network/manager.c',
@@ -58,7 +58,7 @@ if get_option('network')
   )
 endif
 
-if get_option('hid')
+if get_option('hid').enabled()
   builtin_modules += 'input'
   builtin_sources += files(
     'input/manager.c',
@@ -71,7 +71,7 @@ if get_option('hid')
   )
 endif
 
-if get_option('hog')
+if get_option('hog').enabled()
   builtin_modules += 'hog'
   builtin_sources += files(
     'input/hog.c',
@@ -83,7 +83,7 @@ if get_option('hog')
   )
 endif
 
-if get_option('health')
+if get_option('health').enabled()
   builtin_modules += 'health'
   builtin_sources += files(
     'health/mcap.c',
@@ -94,7 +94,7 @@ if get_option('health')
   )
 endif
 
-if get_option('midi').enabled()
+if alsa_dep.found()
   builtin_modules += 'midi'
   builtin_sources += files(
     'midi/midi.c',
@@ -103,54 +103,54 @@ if get_option('midi').enabled()
   builtin_deps += alsa_dep
 endif
 
-if get_option('bap')
+if get_option('bap').enabled()
   builtin_modules += 'bap'
   builtin_sources += files('audio/bap.c')
 endif
 
-if get_option('bass')
+if get_option('bass').enabled()
   builtin_modules += 'bass'
   builtin_sources += files('audio/bass.c')
 endif
 
-if get_option('mcp')
+if get_option('mcp').enabled()
   builtin_modules += 'mcp'
   builtin_sources += files('audio/mcp.c')
 endif
 
-if get_option('vcp')
+if get_option('vcp').enabled()
   builtin_modules += 'vcp'
   builtin_sources += files('audio/vcp.c')
 endif
 
-if get_option('micp')
+if get_option('micp').enabled()
   builtin_modules += 'micp'
   builtin_sources += files('audio/micp.c')
 endif
 
-if get_option('ccp')
+if get_option('ccp').enabled()
   builtin_modules += 'ccp'
   builtin_sources += files('audio/ccp.c')
 endif
 
-if get_option('csip')
+if get_option('csip').enabled()
   builtin_modules += 'csip'
   builtin_sources += files('audio/csip.c')
 endif
 
-if get_option('asha')
+if get_option('asha').enabled()
   builtin_modules += 'asha'
   builtin_sources += files('audio/asha.c')
 endif
 
-if get_option('tools')
+if get_option('tools').enabled()
   executable('iapd',
     sources: 'iap/main.c',
     dependencies: [ libgdbus_internal_dep, glib_dep, dbus_dep ]
   )
 endif
 
-if get_option('cups').enabled()
+if cups_dep.found()
   executable('bluetooth',
     sources: [
       'cups/main.c',

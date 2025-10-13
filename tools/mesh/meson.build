@@ -1,4 +1,4 @@
-if get_option('tools') and readline_dep.found()
+if get_option('tools').enabled() and readline_dep.found()
   executable('mesh-cfgclient',
     sources: [ '../mesh-cfgclient.c',
       'cfgcli.c',
