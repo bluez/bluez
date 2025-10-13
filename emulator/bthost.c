@@ -2535,7 +2535,7 @@ static bool l2cap_ecred_conn_rsp(struct bthost *bthost, struct btconn *conn,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	const struct  {
-		const struct bt_l2cap_pdu_ecred_conn_rsp *pdu;
+		const struct bt_l2cap_pdu_ecred_conn_rsp pdu;
 		uint16_t scid[5];
 	} __attribute__ ((packed)) *rsp = data;
 	int num_scid, i;
@@ -2551,7 +2551,7 @@ static bool l2cap_ecred_conn_rsp(struct bthost *bthost, struct btconn *conn,
 		l2conn = bthost_add_l2cap_conn(bthost, conn, 0,
 				      le16_to_cpu(rsp->scid[i]), 0);
 		l2conn->mode = L2CAP_MODE_LE_ENH_CRED;
-		l2conn->tx_credits = rsp->pdu->credits;
+		l2conn->tx_credits = rsp->pdu.credits;
 		l2conn->rx_credits = 1;
 	}
 
