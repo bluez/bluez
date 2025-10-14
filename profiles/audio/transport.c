@@ -2582,7 +2582,7 @@ struct media_transport *media_transport_create(struct btd_device *device,
 	struct media_endpoint *endpoint = data;
 	struct media_transport *transport;
 	const struct media_transport_ops *ops;
-	static int fd = 0;
+	int fd;
 
 	transport = g_new0(struct media_transport, 1);
 	if (device)
@@ -2595,15 +2595,34 @@ struct media_transport *media_transport_create(struct btd_device *device,
 	transport->size = size;
 	transport->remote_endpoint = g_strdup(remote_endpoint);
 
-	if (device)
-		transport->path = g_strdup_printf("%s/fd%d",
+	for (fd = g_slist_length(transports); fd < UINT8_MAX; fd++) {
+		char *path;
+
+		if (device)
+			path = g_strdup_printf("%s/fd%d",
 					remote_endpoint ? remote_endpoint :
-					device_get_path(device), fd++);
-	else
-		transport->path = g_strdup_printf("%s/fd%d",
+					device_get_path(device),
+					fd);
+		else
+			path = g_strdup_printf("%s/fd%d",
 					remote_endpoint ? remote_endpoint :
 					adapter_get_path(transport->adapter),
-					fd++);
+					fd);
+
+		/* Check if transport already exists */
+		if (!find_transport_by_path(path)) {
+			transport->path = path;
+			break;
+		}
+
+		g_free(path);
+	}
+
+	if (!transport->path) {
+		error("Unable to allocate transport path");
+		goto fail;
+	}
+
 	transport->fd = -1;
 
 	ops = media_transport_find_ops(media_endpoint_get_uuid(endpoint));
