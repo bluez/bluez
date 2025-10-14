@@ -134,6 +134,7 @@ static GList *local_endpoints = NULL;
 static GList *transports = NULL;
 static struct queue *ios = NULL;
 static uint8_t bcast_code[] = BCAST_CODE;
+static bool auto_acquire = false;
 
 struct transport {
 	GDBusProxy *proxy;
@@ -5072,10 +5073,8 @@ static void transport_property_changed(GDBusProxy *proxy, const char *name,
 
 	dbus_message_iter_get_basic(iter, &str);
 
-	if (strcmp(str, "pending"))
-		return;
-
-	transport_acquire(proxy, true);
+	if (!strcmp(str, "pending") || !strcmp(str, "broadcasting"))
+		transport_acquire(proxy, !auto_acquire);
 }
 
 static void property_changed(GDBusProxy *proxy, const char *name,
@@ -5223,6 +5222,11 @@ static void cmd_acquire_transport(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	int i;
+
+	if (argc == 2 && !strcmp(argv[1], "auto")) {
+		auto_acquire = true;
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
 
 	for (i = 1; i < argc; i++) {
 		proxy = g_dbus_proxy_lookup(transports, NULL, argv[i],
