@@ -3106,7 +3106,7 @@ static const void *pair_device_expect_param_func(uint16_t *len)
 
 static uint16_t settings_powered_bondable[] = { MGMT_OP_SET_BONDABLE,
 						MGMT_OP_SET_POWERED, 0 };
-static uint8_t auth_req_param[] = { 0x2a, 0x00 };
+static uint8_t auth_req_param[] = { 0x01, 0x00 };
 static uint8_t pair_device_pin[] = { 0x30, 0x30, 0x30, 0x30 }; /* "0000" */
 
 static const struct generic_data pair_device_success_test_1 = {
