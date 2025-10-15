@@ -2874,6 +2874,27 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 		}
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
+		/* Order of STREAMING and iso_connect_cb() is nondeterministic.
+		 *
+		 * If iso_connect_cb() did not complete yet, mark IO as
+		 * connected regardless, otherwise transport fails acquiring it.
+		 * If the connect doesn't actually succeed, it is handled via
+		 * normal disconnect flow.
+		 */
+		if (setup) {
+			int fd;
+
+			if (!setup->io || !setup->cis_active)
+				break;
+			if (!bt_bap_stream_io_is_connecting(stream, &fd))
+				break;
+			if (fd != g_io_channel_unix_get_fd(setup->io))
+				break;
+
+			DBG("setup %p stream %p io not yet ready",
+								setup, stream);
+			bt_bap_stream_set_io(stream, fd);
+		}
 		break;
 	}
 }
