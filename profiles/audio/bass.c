@@ -1760,7 +1760,11 @@ static int bass_accept(struct btd_service *service)
 		return -EINVAL;
 	}
 
-	if (!bt_bass_attach(data->bass, client)) {
+	/* Only attach client if initiator of the connection otherwise act as
+	 * delegator.
+	 */
+	if (btd_service_is_initiator(service) &&
+			!bt_bass_attach(data->bass, client)) {
 		error("BASS unable to attach");
 		return -EINVAL;
 	}
