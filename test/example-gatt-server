@@ -41,7 +41,7 @@ class FailedException(dbus.exceptions.DBusException):
 
 class Application(dbus.service.Object):
     """
-    org.bluez.GattApplication1 interface implementation
+    org.freedesktop.DBus.ObjectManager interface implementation
     """
     def __init__(self, bus):
         self.path = '/'
