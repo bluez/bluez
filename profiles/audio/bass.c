@@ -30,6 +30,7 @@
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/uuid.h"
 #include "bluetooth/iso.h"
+#include "bluetooth/mgmt.h"
 
 #include "src/dbus-common.h"
 #include "src/shared/util.h"
@@ -1253,8 +1254,17 @@ static void bass_data_add(struct bass_data *data)
 
 	queue_push_tail(sessions, data);
 
-	if (data->service)
+	if (data->service) {
+		struct btd_adapter *adapter = device_get_adapter(data->device);
+		bool initiator = btd_service_is_initiator(data->service);
+
 		btd_service_set_user_data(data->service, data);
+		if ((!initiator && btd_adapter_has_settings(adapter,
+				MGMT_SETTING_PAST_RECEIVER)) || (initiator &&
+				btd_adapter_has_settings(adapter,
+				MGMT_SETTING_PAST_SENDER)))
+			device_set_past_support(data->device, true);
+	}
 }
 
 static bool match_data(const void *data, const void *match_data)
