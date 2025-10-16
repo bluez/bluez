@@ -1,0 +1,19 @@
+power on
+endpoint.register 00001852-0000-1000-8000-00805f9b34fb 0x06
+y
+a
+3
+4
+endpoint.config /org/bluez/hci0/pac_bcast0 /local/endpoint/ep0 16_2_1
+1
+a
+a
+1
+0x03 0x02 0x04 0x00
+endpoint.config /org/bluez/hci0/pac_bcast0 /local/endpoint/ep0 16_2_1
+1
+a
+a
+2
+0x03 0x02 0x04 0x00
+transport.acquire /org/bluez/hci0/pac_bcast0/fd0 /org/bluez/hci0/pac_bcast0/fd1

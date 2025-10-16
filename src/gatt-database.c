@@ -209,6 +209,8 @@ struct device_info {
 	uint8_t bdaddr_type;
 };
 
+static struct queue *dbs = NULL;
+
 static void ccc_cb_free(void *data)
 {
 	struct ccc_cb_data *ccc_cb = data;
@@ -4123,6 +4125,11 @@ bredr:
 	if (!database->db_id)
 		goto fail;
 
+	if (!dbs)
+		dbs = queue_new();
+
+	queue_push_tail(dbs, database);
+
 	return database;
 
 fail:
@@ -4141,6 +4148,34 @@ void btd_gatt_database_destroy(struct btd_gatt_database *database)
 					GATT_MANAGER_IFACE);
 
 	gatt_database_free(database);
+}
+
+static bool match_db(const void *data, const void *user_data)
+{
+	const struct btd_gatt_database *database = data;
+	const struct gatt_db *db = user_data;
+
+	return database->db == db;
+}
+
+struct btd_gatt_database *btd_gatt_database_get(struct gatt_db *db)
+{
+	struct btd_gatt_database *database;
+
+	database = queue_find(dbs, match_db, db);
+	if (!database)
+		return NULL;
+
+	return database;
+}
+
+struct btd_adapter *
+btd_gatt_database_get_adapter(struct btd_gatt_database *database)
+{
+	if (!database)
+		return NULL;
+
+	return database->adapter;
 }
 
 struct gatt_db *btd_gatt_database_get_db(struct btd_gatt_database *database)

@@ -139,7 +139,6 @@ struct bap_data {
 	GIOChannel *listen_io;
 	unsigned int io_id;
 	unsigned int cig_update_id;
-	void *user_data;
 };
 
 static struct queue *sessions;
@@ -151,16 +150,6 @@ static int bap_select_all(struct bap_data *data, bool reconfigure,
 static void setup_create_io(struct bap_data *data, struct bap_setup *setup,
 				struct bt_bap_stream *stream, int defer);
 static void bap_update_cigs(struct bap_data *data);
-
-static bool bap_data_set_user_data(struct bap_data *data, void *user_data)
-{
-	if (!data)
-		return false;
-
-	data->user_data = user_data;
-
-	return true;
-}
 
 static void bap_debug(const char *str, void *user_data)
 {
@@ -1527,12 +1516,12 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
 								user_data);
 }
 
-static bool match_data_bap_data(const void *data, const void *match_data)
+static bool match_adapter(const void *data, const void *match_data)
 {
 	const struct bap_data *bdata = data;
 	const struct btd_adapter *adapter = match_data;
 
-	return bdata->user_data == adapter;
+	return bdata->adapter == adapter;
 }
 
 static const GDBusMethodTable ep_methods[] = {
@@ -2630,7 +2619,7 @@ static void setup_connect_io_broadcast(struct bap_data *data,
 					struct bt_bap_stream *stream,
 					struct bt_iso_qos *qos, int defer)
 {
-	struct btd_adapter *adapter = data->user_data;
+	struct btd_adapter *adapter = data->adapter;
 	GIOChannel *io = NULL;
 	GError *err = NULL;
 	bdaddr_t dst_addr = {0};
@@ -3828,14 +3817,11 @@ static int bap_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 		return -EINVAL;
 	}
 
+	data->adapter = adapter;
 	data->state_id = bt_bap_state_register(data->bap, bap_state_bcast_src,
 					bap_connecting_bcast, data, NULL);
 	data->pac_id = bt_bap_pac_register(data->bap, pac_added_broadcast,
 					pac_removed_broadcast, data, NULL);
-
-	bap_data_set_user_data(data, adapter);
-
-	data->adapter = adapter;
 
 	return 0;
 }
@@ -3843,8 +3829,7 @@ static int bap_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 static void bap_adapter_remove(struct btd_profile *p,
 					struct btd_adapter *adapter)
 {
-	struct bap_data *data = queue_find(sessions, match_data_bap_data,
-						adapter);
+	struct bap_data *data = queue_find(sessions, match_adapter, adapter);
 	char addr[18];
 
 	ba2str(btd_adapter_get_address(adapter), addr);

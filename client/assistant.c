@@ -47,6 +47,8 @@
 
 struct assistant_config {
 	GDBusProxy *proxy;	/* DBus object reference */
+	char *state;		/* Assistant state */
+	char *device;		/* Device address */
 	struct iovec *meta;	/* Stream metadata LTVs */
 	struct bt_iso_qos qos;	/* Stream QoS parameters */
 };
@@ -223,6 +225,10 @@ static void push_setup(DBusMessageIter *iter, void *user_data)
 				DBUS_TYPE_BYTE, &cfg->meta->iov_base,
 				cfg->meta->iov_len);
 
+	if (cfg->device)
+		g_dbus_dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH,
+						&cfg->device);
+
 	if (cfg->qos.bcast.encryption)
 		append_qos(&dict, cfg);
 
@@ -285,11 +291,67 @@ fail:
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static bool assistant_get_qos(struct assistant_config *cfg)
+{
+	DBusMessageIter iter, dict;
+	const char *key;
+
+	/* Get QoS property to check if the stream is encrypted */
+	if (!g_dbus_proxy_get_property(cfg->proxy, "QoS", &iter))
+		return false;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return false;
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		int var;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		var = dbus_message_iter_get_arg_type(&value);
+
+		if (!strcasecmp(key, "Encryption")) {
+			if (var != DBUS_TYPE_BYTE)
+				return false;
+
+			dbus_message_iter_get_basic(&value,
+						&cfg->qos.bcast.encryption);
+		} else if (!strcasecmp(key, "BCode")) {
+			DBusMessageIter array;
+			struct iovec iov = {0};
+
+			if (var != DBUS_TYPE_ARRAY)
+				return false;
+
+			dbus_message_iter_recurse(&value, &array);
+			dbus_message_iter_get_fixed_array(&array,
+							&iov.iov_base,
+							(int *)&iov.iov_len);
+
+			if (iov.iov_len != 16) {
+				bt_shell_printf("Invalid size for BCode: "
+						"%zu != 16\n", iov.iov_len);
+				return false;
+			}
+
+			memcpy(cfg->qos.bcast.bcode, iov.iov_base, iov.iov_len);
+		}
+	}
+
+	return true;
+}
+
 static void assistant_set_metadata_cfg(const char *input, void *user_data)
 {
 	struct assistant_config *cfg = user_data;
-	DBusMessageIter iter, dict, entry, value;
-	const char *key;
+	uint8_t no_bcode[16] = {};
 
 	if (!strcasecmp(input, "a") || !strcasecmp(input, "auto"))
 		goto done;
@@ -305,33 +367,11 @@ static void assistant_set_metadata_cfg(const char *input, void *user_data)
 	}
 
 done:
-	/* Get QoS property to check if the stream is encrypted */
-	if (!g_dbus_proxy_get_property(cfg->proxy, "QoS", &iter))
+	if (!assistant_get_qos(cfg))
 		goto fail;
 
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
-		goto fail;
-
-	dbus_message_iter_recurse(&iter, &dict);
-
-	if (dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_DICT_ENTRY)
-		goto fail;
-
-	dbus_message_iter_recurse(&dict, &entry);
-	dbus_message_iter_get_basic(&entry, &key);
-
-	if (strcasecmp(key, "Encryption") != 0)
-		goto fail;
-
-	dbus_message_iter_next(&entry);
-	dbus_message_iter_recurse(&entry, &value);
-
-	if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_BYTE)
-		goto fail;
-
-	dbus_message_iter_get_basic(&value, &cfg->qos.bcast.encryption);
-
-	if (cfg->qos.bcast.encryption)
+	if (cfg->qos.bcast.encryption &&
+			!memcmp(cfg->qos.bcast.bcode, no_bcode, 16))
 		/* Prompt user to enter the Broadcast Code to decrypt
 		 * the stream
 		 */
@@ -355,9 +395,47 @@ fail:
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
+static void assistant_set_device_cfg(const char *input, void *user_data)
+{
+	struct assistant_config *cfg = user_data;
+	uint8_t no_bcode[16] = {};
+
+	cfg->device = strdup(input);
+
+	if (!assistant_get_qos(cfg))
+		goto fail;
+
+	if (cfg->qos.bcast.encryption &&
+			!memcmp(cfg->qos.bcast.bcode, no_bcode, 16)) {
+		/* Prompt user to enter the Broadcast Code to decrypt
+		 * the stream
+		 */
+		bt_shell_prompt_input("Assistant",
+				"Enter Broadcast Code (auto/value):",
+				assistant_set_bcode_cfg, cfg);
+	} else {
+		if (!g_dbus_proxy_method_call(cfg->proxy, "Push",
+						push_setup, push_reply,
+						cfg, NULL)) {
+			bt_shell_printf("Failed to push assistant\n");
+			goto fail;
+		}
+	}
+
+	return;
+
+fail:
+	free(cfg->device);
+	free(cfg->meta);
+	g_free(cfg);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
 static void cmd_push_assistant(int argc, char *argv[])
 {
 	struct assistant_config *cfg;
+	DBusMessageIter iter;
 
 	cfg = new0(struct assistant_config, 1);
 	if (!cfg)
@@ -371,6 +449,17 @@ static void cmd_push_assistant(int argc, char *argv[])
 		goto fail;
 	}
 
+	if (g_dbus_proxy_get_property(cfg->proxy, "State", &iter)) {
+		dbus_message_iter_get_basic(&iter, &cfg->state);
+
+		if (!strcmp(cfg->state, "local")) {
+			/* Prompt user to enter metadata */
+			bt_shell_prompt_input("Assistant",
+					"Enter Device (path):",
+					assistant_set_device_cfg, cfg);
+			return;
+		}
+	}
 	/* Prompt user to enter metadata */
 	bt_shell_prompt_input("Assistant",
 			"Enter Metadata (auto/value):",

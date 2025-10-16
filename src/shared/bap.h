@@ -128,6 +128,8 @@ void *bt_bap_get_user_data(struct bt_bap *bap);
 
 struct bt_att *bt_bap_get_att(struct bt_bap *bap);
 
+struct gatt_db *bt_bap_get_db(struct bt_bap *bap, bool remote);
+
 struct bt_bap *bt_bap_ref(struct bt_bap *bap);
 void bt_bap_unref(struct bt_bap *bap);
 
