@@ -7471,6 +7471,11 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 	if (eir_data.data_list)
 		device_set_data(dev, eir_data.data_list, duplicate);
 
+	if (eir_data.raw_data_len > 0)
+		device_set_raw_adv_data(dev, eir_data.raw_data,
+					eir_data.raw_data_len,
+					duplicate);
+
 	if (bdaddr_type != BDADDR_BREDR)
 		device_set_flags(dev, eir_data.flags);
 

@@ -35,6 +35,8 @@ struct bt_ad {
 	struct queue *solicit_uuids;
 	struct queue *service_data;
 	struct queue *data;
+	uint8_t *raw_data;
+	size_t raw_data_len;
 };
 
 struct pattern_match_info {
@@ -55,6 +57,8 @@ struct bt_ad *bt_ad_new(void)
 	ad->service_data = queue_new();
 	ad->data = queue_new();
 	ad->appearance = UINT16_MAX;
+	ad->raw_data = NULL;
+	ad->raw_data_len = 0;
 
 	return bt_ad_ref(ad);
 }
@@ -198,6 +202,8 @@ void bt_ad_unref(struct bt_ad *ad)
 	queue_destroy(ad->data, data_destroy);
 
 	free(ad->name);
+
+	free(ad->raw_data);
 
 	free(ad);
 }
@@ -1250,6 +1256,50 @@ bool bt_ad_has_data(struct bt_ad *ad, const struct bt_ad_data *data)
 		return !queue_isempty(ad->data);
 
 	return queue_find(ad->data, data_match, data);
+}
+
+void bt_ad_set_raw_data(struct bt_ad *ad, const uint8_t *data, size_t len)
+{
+	if (!ad)
+		return;
+
+	bt_ad_clear_raw_data(ad);
+
+	ad->raw_data = malloc(len);
+	if (!ad->raw_data)
+		return;
+
+	memcpy(ad->raw_data, data, len);
+	ad->raw_data_len = len;
+}
+
+void bt_ad_clear_raw_data(struct bt_ad *ad)
+{
+	if (!ad)
+		return;
+
+	free(ad->raw_data);
+	ad->raw_data = NULL;
+	ad->raw_data_len = 0;
+}
+
+bool bt_ad_has_raw_data(struct bt_ad *ad)
+{
+	if (!ad)
+		return false;
+
+	return (ad->raw_data && ad->raw_data_len > 0);
+}
+
+bool bt_ad_get_raw_data(struct bt_ad *ad, uint8_t **data, size_t *data_len)
+{
+	if (!ad || !data || !data_len)
+		return false;
+
+	*data_len = ad->raw_data_len;
+	*data = ad->raw_data;
+
+	return (ad->raw_data && ad->raw_data_len > 0);
 }
 
 void bt_ad_foreach_data(struct bt_ad *ad, bt_ad_func_t func, void *user_data)

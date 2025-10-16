@@ -2510,12 +2510,18 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 {
 	struct btp_device *device = find_device_by_proxy(proxy);
 	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct l_dbus_message_iter dict_iter;
+	struct btp_device_found_ev *p_ev = NULL;
 	struct btp_device_found_ev ev;
 	struct btp_gap_device_connected_ev ev_conn;
 	const char *str, *addr_str;
 	int16_t rssi;
 	uint8_t address_type;
 	bool connected;
+	const uint8_t *raw_data = NULL; /* Buffer for Raw Advertising Data */
+	uint32_t data_len = 0U; /* Length of the raw_data buffer*/
+
+	ev.eir_len = 0U;
 
 	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &addr_str) ||
 					str2ba(addr_str, &ev.address) < 0)
@@ -2538,11 +2544,53 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 					BTP_EV_GAP_DEVICE_FOUND_FLAG_AD |
 					BTP_EV_GAP_DEVICE_FOUND_FLAG_SR);
 
-	/* TODO Add eir to device found event */
-	ev.eir_len = 0;
+	do {
+		/* dict_iter will contain the item for RawAdvertisingData */
+		if (!l_dbus_proxy_get_property(proxy,
+						"RawAdvertisingData",
+						"ay",
+						&dict_iter))
+			break;
 
-	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND, adapter->index,
-						sizeof(ev) + ev.eir_len, &ev);
+		/* raw_data contains the Advertising Data, in raw format
+		 * data_len contains the length read in the data buffer
+		 */
+		if (!l_dbus_message_iter_get_fixed_array(&dict_iter,
+								&raw_data,
+								&data_len))
+			break;
+
+		if (data_len <= 0U)
+			break;
+
+		/* Allocate new buffer, recalculated to sustain new data
+		 * size of previous struct + new length
+		 */
+		p_ev = (struct btp_device_found_ev *)
+			l_malloc(sizeof(*p_ev) + data_len);
+
+		if (!p_ev)
+			break;
+
+		/* Populate structure that will contain the raw adv data */
+		memcpy(p_ev, &ev, sizeof(ev));
+		memcpy(p_ev->eir, raw_data, data_len);
+
+	} while (false);
+
+	if (p_ev) {
+		p_ev->eir_len = data_len;
+
+		btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND,
+				adapter->index, sizeof(*p_ev) + data_len,
+				p_ev);
+
+		l_free(p_ev);
+	} else {
+		btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND,
+				adapter->index, sizeof(ev) + ev.eir_len,
+				&ev);
+	}
 
 	if (l_dbus_proxy_get_property(proxy, "Connected", "b", &connected) &&
 								connected) {
