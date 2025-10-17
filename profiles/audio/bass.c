@@ -335,6 +335,25 @@ static bool link_enabled(const void *data, const void *match_data)
 			bt_bap_stream_get_io(stream));
 }
 
+static void setup_free(void *data)
+{
+	struct bass_setup *setup = data;
+
+	DBG("setup %p", setup);
+
+	util_iov_free(setup->qos.bcast.bcode, 1);
+	util_iov_free(setup->meta, 1);
+	util_iov_free(setup->config, 1);
+	free(setup->path);
+
+	/* Clear bis index from the bis sync bitmask, if it
+	 * has been previously set.
+	 */
+	bt_bass_clear_bis_sync(setup->dg->src, setup->bis);
+
+	free(setup);
+}
+
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 				uint8_t new_state, void *user_data)
 {
@@ -426,6 +445,8 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_IDLE:
 		bt_bass_clear_bis_sync(dg->src, bis);
 		setup->stream = NULL;
+		queue_remove(setup->dg->setups, setup);
+		setup_free(setup);
 		break;
 	}
 }
@@ -695,29 +716,47 @@ static void bap_attached(struct bt_bap *bap, void *user_data)
 	btd_service_set_user_data(service, dg);
 }
 
-static void setup_free(void *data)
-{
-	struct bass_setup *setup = data;
-
-	DBG("setup %p", setup);
-
-	util_iov_free(setup->qos.bcast.bcode, 1);
-	util_iov_free(setup->meta, 1);
-	util_iov_free(setup->config, 1);
-	free(setup->path);
-
-	/* Clear bis index from the bis sync bitmask, if it
-	 * has been previously set.
-	 */
-	bt_bass_clear_bis_sync(setup->dg->src, setup->bis);
-}
-
 static bool match_device(const void *data, const void *match_data)
 {
 	const struct bass_data *bdata = data;
 	const struct btd_device *device = match_data;
 
 	return bdata->device == device;
+}
+
+static void delegator_free(struct bass_delegator *dg)
+{
+	DBG("%p", dg);
+
+	if (dg->io_id)
+		g_source_remove(dg->io_id);
+
+	if (dg->io) {
+		g_io_channel_shutdown(dg->io, TRUE, NULL);
+		g_io_channel_unref(dg->io);
+	}
+
+	queue_destroy(dg->setups, setup_free);
+
+	/* Update Broadcast Receive State characteristic value and notify
+	 * peers.
+	 */
+	if (bt_bass_set_pa_sync(dg->src, BT_BASS_NOT_SYNCHRONIZED_TO_PA))
+		DBG("Failed to update Broadcast Receive State characteristic");
+
+	/* Unregister BAP stream state changed callback. */
+	bt_bap_state_unregister(dg->bap, dg->state_id);
+
+	bt_bap_bcode_cb_unregister(dg->bap, dg->bcode_id);
+
+	if (dg->timeout)
+		g_source_remove(dg->timeout);
+
+	queue_destroy(dg->bcode_reqs, free);
+
+	free(dg->bcode);
+
+	free(dg);
 }
 
 static void bap_detached(struct bt_bap *bap, void *user_data)
@@ -755,37 +794,7 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
 	if (!dg)
 		return;
 
-	DBG("%p", dg);
-
-	if (dg->io_id)
-		g_source_remove(dg->io_id);
-
-	if (dg->io) {
-		g_io_channel_shutdown(dg->io, TRUE, NULL);
-		g_io_channel_unref(dg->io);
-	}
-
-	queue_destroy(dg->setups, setup_free);
-
-	/* Update Broadcast Receive State characteristic value and notify
-	 * peers.
-	 */
-	if (bt_bass_set_pa_sync(dg->src, BT_BASS_NOT_SYNCHRONIZED_TO_PA))
-		DBG("Failed to update Broadcast Receive State characteristic");
-
-	/* Unregister BAP stream state changed callback. */
-	bt_bap_state_unregister(dg->bap, dg->state_id);
-
-	bt_bap_bcode_cb_unregister(dg->bap, dg->bcode_id);
-
-	if (dg->timeout)
-		g_source_remove(dg->timeout);
-
-	queue_destroy(dg->bcode_reqs, free);
-
-	free(dg->bcode);
-
-	free(dg);
+	delegator_free(dg);
 
 	btd_service_set_user_data(service, NULL);
 }
@@ -1468,22 +1477,37 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
 
 	switch (sync_state) {
 	case BT_BASS_SYNCHRONIZED_TO_PA:
-		if (params->pa_sync == PA_SYNC_NO_SYNC) {
-			struct btd_adapter *adapter =
-					device_get_adapter(dg->device);
+		bass_update_bis_sync(dg, bcast_src);
 
+		/* Check if there are any setups left since it means the PA
+		 * should be no longer synchronized.
+		 */
+		if (queue_isempty(dg->setups)) {
+			/* IO is no longer needed since there are no setups */
 			g_io_channel_shutdown(dg->io, TRUE, NULL);
 			g_io_channel_unref(dg->io);
 			dg->io = NULL;
 
-			bt_bass_set_pa_sync(dg->src,
-				BT_BASS_NOT_SYNCHRONIZED_TO_PA);
+			if (!dg->service)
+				return 0;
 
-			/* Remove device of BIS source*/
-			btd_adapter_remove_device(adapter, dg->device);
-		} else {
-			bass_update_bis_sync(dg, bcast_src);
+			/* Disconnect service so BAP driver is cleanup
+			 * properly.
+			 */
+			btd_service_disconnect(dg->service);
+
+			/* If the device is no longer consider connected
+			 * it means no other service was connected so it
+			 * has no longer any use and can be safely removed.
+			 */
+			if (!btd_device_is_connected(dg->device)) {
+				struct btd_adapter *adapter;
+
+				adapter = device_get_adapter(dg->device);
+				btd_adapter_remove_device(adapter, dg->device);
+			}
 		}
+
 		break;
 	case BT_BASS_NOT_SYNCHRONIZED_TO_PA:
 		if (params->pa_sync == PA_SYNC_NO_PAST) {
@@ -1720,6 +1744,7 @@ static void bass_remove(struct btd_service *service)
 
 	bass_data_remove(data);
 }
+
 static int bass_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
