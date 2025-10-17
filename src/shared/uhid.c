@@ -495,7 +495,7 @@ int bt_uhid_input(struct bt_uhid *uhid, uint8_t number, const void *data,
 	return bt_uhid_send(uhid, &ev);
 }
 
-int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t status)
+int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint32_t id, uint8_t status)
 {
 	struct uhid_event ev;
 	struct uhid_set_report_reply_req *rsp = &ev.u.set_report_reply;
@@ -514,7 +514,7 @@ int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t status)
 	return bt_uhid_send(uhid, &ev);
 }
 
-int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t number,
+int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint32_t id, uint8_t number,
 				uint8_t status, const void *data, size_t size)
 {
 	struct uhid_event ev;
