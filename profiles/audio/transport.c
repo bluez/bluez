@@ -1010,7 +1010,12 @@ static gboolean delay_reporting_exists(const GDBusPropertyTable *property,
 							void *data)
 {
 	struct media_transport *transport = data;
+	struct media_endpoint *endpoint = transport->endpoint;
 	struct avdtp_stream *stream;
+
+	/* Local A2DP sink decides itself if it has delay reporting */
+	if (!strcmp(media_endpoint_get_uuid(endpoint), A2DP_SINK_UUID))
+		return media_endpoint_get_delay_reporting(endpoint);
 
 	stream = media_transport_get_stream(transport);
 	if (stream == NULL)

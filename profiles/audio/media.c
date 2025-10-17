@@ -3488,6 +3488,11 @@ const char *media_endpoint_get_uuid(struct media_endpoint *endpoint)
 	return endpoint->uuid;
 }
 
+bool media_endpoint_get_delay_reporting(struct media_endpoint *endpoint)
+{
+	return endpoint->delay_reporting;
+}
+
 uint8_t media_endpoint_get_codec(struct media_endpoint *endpoint)
 {
 	return endpoint->codec;
