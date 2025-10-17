@@ -63,8 +63,8 @@ bool bt_uhid_created(struct bt_uhid *uhid);
 bool bt_uhid_started(struct bt_uhid *uhid);
 int bt_uhid_input(struct bt_uhid *uhid, uint8_t number, const void *data,
 			size_t size);
-int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t status);
-int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint8_t id, uint8_t number,
+int bt_uhid_set_report_reply(struct bt_uhid *uhid, uint32_t id, uint8_t status);
+int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint32_t id, uint8_t number,
 				uint8_t status, const void *data, size_t size);
 int bt_uhid_destroy(struct bt_uhid *uhid, bool force);
 int bt_uhid_replay(struct bt_uhid *uhid);
