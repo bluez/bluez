@@ -4133,7 +4133,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		eir += field_len + 1;
 	}
 
-	if (len < eir_len && eir[0] != 0)
+	if (len < eir_len)
 		packet_hexdump(eir, eir_len - len);
 }
 
