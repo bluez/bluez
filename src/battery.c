@@ -33,10 +33,13 @@
 #define BATTERY_PROVIDER_MANAGER_INTERFACE "org.bluez.BatteryProviderManager1"
 
 #define BATTERY_MAX_PERCENTAGE 100
+#define LAST_CHARGES_SIZE 4
 
 struct btd_battery {
 	char *path; /* D-Bus object path */
 	uint8_t percentage; /* valid between 0 to 100 inclusively */
+	uint8_t *last_charges; /* last received charge percentages */
+	uint8_t lru_charge_id; /* oldest received charge id */
 	char *source; /* Descriptive source of the battery info */
 	char *provider_path; /* The provider root path, if any */
 };
@@ -92,6 +95,12 @@ static struct btd_battery *battery_new(const char *path, const char *source,
 	battery = new0(struct btd_battery, 1);
 	battery->path = g_strdup(path);
 	battery->percentage = UINT8_MAX;
+	battery->last_charges = new0(uint8_t, LAST_CHARGES_SIZE);
+	battery->lru_charge_id = 0;
+
+	for (uint8_t id = 0; id < LAST_CHARGES_SIZE; id++)
+		battery->last_charges[id] = UINT8_MAX;
+
 	if (source)
 		battery->source = g_strdup(source);
 	if (provider_path)
@@ -104,6 +113,9 @@ static void battery_free(struct btd_battery *battery)
 {
 	if (battery->path)
 		g_free(battery->path);
+
+	if (battery->last_charges)
+		g_free(battery->last_charges);
 
 	if (battery->source)
 		g_free(battery->source);
@@ -219,6 +231,8 @@ bool btd_battery_unregister(struct btd_battery *battery)
 
 bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 {
+	uint8_t min_charge = BATTERY_MAX_PERCENTAGE;
+
 	DBG("path = %s", battery->path);
 
 	if (!queue_find(batteries, NULL, battery)) {
@@ -231,10 +245,18 @@ bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 		return false;
 	}
 
-	if (battery->percentage == percentage)
+	battery->last_charges[battery->lru_charge_id] = percentage;
+	battery->lru_charge_id = (battery->lru_charge_id + 1) % LAST_CHARGES_SIZE;
+
+	for (uint8_t id = 0; id < LAST_CHARGES_SIZE; id++) {
+		if (battery->last_charges[id] < min_charge)
+			min_charge = battery->last_charges[id];
+	}
+
+	if (battery->percentage == min_charge)
 		return true;
 
-	battery->percentage = percentage;
+	battery->percentage = min_charge;
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), battery->path,
 				     BATTERY_INTERFACE, "Percentage");
 
