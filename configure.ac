@@ -264,7 +264,9 @@ AC_SUBST(UDEV_DIR, [${path_udevdir}])
 AC_ARG_ENABLE(cups, AS_HELP_STRING([--disable-cups],
                 [disable CUPS printer support]), [enable_cups=${enableval}])
 AM_CONDITIONAL(CUPS, test "${enable_cups}" != "no")
-if (test "${enable_cups}" != "no"); then
+AC_ARG_WITH([cups_serverbin], AS_HELP_STRING([--with-cups_serverbin=DIR],
+			[path to cups server binary directory]), [cups_serverbin=${withval}])
+if (test "${enable_cups}" != "no" && test -z "${cups_serverbin}"); then
 	AC_MSG_CHECKING([cups directory])
 	cups_serverbin=`$PKG_CONFIG cups --variable=cups_serverbin`
 	AC_MSG_RESULT([${cups_serverbin}])
