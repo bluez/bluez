@@ -2,6 +2,14 @@
 AM_MAKEFLAGS = --no-print-directory
 AM_CPPFLAGS =
 
+# pkg-config gives absolute paths that do not work with distcheck that wants to use its own $(prefix)
+AM_DISTCHECK_CONFIGURE_FLAGS = --with-dbusconfdir=$${dc_install_base}/usr/share \
+			       --with-dbussystembusdir=$${dc_install_base}/usr/share/dbus-1/system-services \
+			       --with-dbussessionbusdir=$${dc_install_base}/usr/share/dbus-1/services \
+			       --with-systemdsystemunitdir=$${dc_install_base}/usr/lib/systemd/system \
+			       --with-systemduserunitdir=$${dc_install_base}/usr/lib/systemd/user \
+			       --with-cups_serverbin=$${dc_install_base}/usr/libexec/cups
+
 lib_LTLIBRARIES =
 
 noinst_LIBRARIES =
