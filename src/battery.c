@@ -33,10 +33,16 @@
 #define BATTERY_PROVIDER_MANAGER_INTERFACE "org.bluez.BatteryProviderManager1"
 
 #define BATTERY_MAX_PERCENTAGE 100
+#define LAST_CHARGES_SIZE 8
+#define MAX_CHARGE_STEP 5
 
 struct btd_battery {
 	char *path; /* D-Bus object path */
 	uint8_t percentage; /* valid between 0 to 100 inclusively */
+	uint8_t *last_charges; /* last charges received */
+	uint8_t lru_charge_id; /* oldest battery charge */
+	float avg_charge; /* average battery charge */
+	bool is_fluctuating; /* true, if the battery sensor fluctuates */
 	char *source; /* Descriptive source of the battery info */
 	char *provider_path; /* The provider root path, if any */
 };
@@ -92,6 +98,11 @@ static struct btd_battery *battery_new(const char *path, const char *source,
 	battery = new0(struct btd_battery, 1);
 	battery->path = g_strdup(path);
 	battery->percentage = UINT8_MAX;
+	battery->last_charges = new0(uint8_t, LAST_CHARGES_SIZE);
+	battery->lru_charge_id = 0;
+	battery->avg_charge = 0;
+	battery->is_fluctuating = false;
+
 	if (source)
 		battery->source = g_strdup(source);
 	if (provider_path)
@@ -104,6 +115,9 @@ static void battery_free(struct btd_battery *battery)
 {
 	if (battery->path)
 		g_free(battery->path);
+
+	if (battery->last_charges)
+		g_free(battery->last_charges);
 
 	if (battery->source)
 		g_free(battery->source);
@@ -217,6 +231,39 @@ bool btd_battery_unregister(struct btd_battery *battery)
 	return true;
 }
 
+static void check_fluctuations(struct btd_battery *battery)
+{
+	uint8_t spikes = 0;
+	int8_t step = 0;
+	int8_t direction = 0;
+	int8_t prev_direction;
+
+	for (uint8_t id = 0; id < LAST_CHARGES_SIZE - 1; id++) {
+		prev_direction = direction;
+		step = battery->last_charges[id] - battery->last_charges[id + 1];
+
+		/*
+		 * The battery charge fluctuates too much,
+		 * which may indicate a battery problem, so
+		 * the actual value should be displayed.
+		 */
+		if (step > MAX_CHARGE_STEP) {
+			battery->is_fluctuating = false;
+			return;
+		}
+
+		if (step > 0)
+			direction = 1;
+		else if (step < 0)
+			direction = -1;
+
+		if (direction != prev_direction && !prev_direction)
+			spikes++;
+	}
+
+	battery->is_fluctuating = (spikes > 1) ? true : false;
+}
+
 bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 {
 	DBG("path = %s", battery->path);
@@ -230,6 +277,21 @@ bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 		error("error updating battery: percentage is not valid");
 		return false;
 	}
+
+	if (!battery->avg_charge)
+		battery->avg_charge = percentage;
+
+	/* exponential smoothing */
+	battery->avg_charge = battery->avg_charge * 0.7 + percentage * 0.3;
+	battery->last_charges[battery->lru_charge_id] = percentage;
+
+	if (battery->lru_charge_id == LAST_CHARGES_SIZE - 1)
+		check_fluctuations(battery);
+
+	battery->lru_charge_id = (battery->lru_charge_id + 1) % LAST_CHARGES_SIZE;
+
+	if (battery->is_fluctuating)
+		percentage = battery->avg_charge;
 
 	if (battery->percentage == percentage)
 		return true;
