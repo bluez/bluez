@@ -2952,6 +2952,21 @@ struct bt_hci_rsp_le_read_iso_link_quality {
 	uint32_t duplicated_packets;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_READ_ALL_LOCAL_FEATURES	0x2087
+#define BT_HCI_BIT_LE_READ_ALL_LOCAL_FEATURES	BT_HCI_CMD_BIT(47, 2)
+struct bt_hci_rsp_le_read_all_local_features {
+	uint8_t  status;
+	uint8_t  page;
+	uint8_t  features[248];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_ALL_REMOTE_FEATURES	0x2088
+#define BT_HCI_BIT_LE_READ_ALL_REMOTE_FEATURES	BT_HCI_CMD_BIT(47, 3)
+struct bt_hci_cmd_le_read_all_remote_features {
+	uint16_t handle;
+	uint8_t  pages;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_CS_RD_LOC_SUPP_CAP	0x2089
 #define BT_HCI_BIT_LE_CS_RD_LOC_SUPP_CAP	BT_HCI_CMD_BIT(20, 5)
 struct bt_hci_rsp_le_cs_rd_loc_supp_cap {
@@ -3988,6 +4003,15 @@ struct bt_hci_evt_le_big_info_adv_report {
 	uint8_t  phy;
 	uint8_t  framing;
 	uint8_t  encryption;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_READ_ALL_REMOTE_FEATURES_COMPLETE	0x2B
+struct bt_hci_evt_le_read_all_remote_features_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  max_pages;
+	uint8_t  valid_pages;
+	uint8_t  features[248];
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_CS_RD_REM_SUPP_CAP_COMPLETE	(0x2C)
