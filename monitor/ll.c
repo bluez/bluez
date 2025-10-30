@@ -741,6 +741,24 @@ static void cis_term_ind(const void *data, uint8_t size)
 	packet_print_error("Reason", ind->reason);
 }
 
+static void feature_ext_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_ext_req *req = data;
+
+	print_field("Max page: %u", req->max_page);
+	print_field("Page: %u", req->page);
+	packet_print_features_ext_ll(req->page, req->features);
+}
+
+static void feature_ext_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_ext_req *rsp = data;
+
+	print_field("Max page: %u", rsp->max_page);
+	print_field("Page: %u", rsp->page);
+	packet_print_features_ext_ll(rsp->page, rsp->features);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -789,6 +807,12 @@ static const struct llcp_data llcp_table[] = {
 					sizeof(struct bt_ll_cis_ind), true },
 	{ BT_LL_CIS_TERMINATE_IND, "LL_CIS_TERMINATE_IND", cis_term_ind,
 					sizeof(struct bt_ll_cis_term_ind),
+					true },
+	{ BT_LL_FEATURE_REQ, "LL_FEATURE_EXT_REQ", feature_ext_req,
+					sizeof(struct bt_ll_feature_ext_req),
+					true },
+	{ BT_LL_CIS_RSP, "LL_FEATURE_EXT_RSP", feature_ext_rsp,
+					sizeof(struct bt_ll_feature_ext_rsp),
 					true },
 	{ }
 };

@@ -2918,6 +2918,11 @@ void packet_print_features_ll(const uint8_t *features)
 	print_features(0, features, 0x01);
 }
 
+void packet_print_features_ext_ll(uint8_t page, const uint8_t *features)
+{
+	print_features(page, features, 0x01);
+}
+
 void packet_print_features_msft(const uint8_t *features)
 {
 	print_features(0, features, 0xf0);

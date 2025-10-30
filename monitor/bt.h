@@ -239,6 +239,20 @@ struct bt_ll_cis_term_ind {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_LL_FEATURE_EXT_REQ	0x2b
+struct bt_ll_feature_ext_req {
+	uint8_t  max_page;
+	uint8_t  page;
+	uint8_t  features[24];
+} __attribute__ ((packed));
+
+#define BT_LL_FEATURE_EXT_RSP	0x2c
+struct bt_ll_feature_ext_rsp {
+	uint8_t  max_page;
+	uint8_t  page;
+	uint8_t  features[24];
+} __attribute__ ((packed));
+
 #define LMP_ESC4(x) ((127 << 8) | (x))
 
 #define BT_LMP_NAME_REQ			1

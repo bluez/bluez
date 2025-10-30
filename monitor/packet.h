@@ -78,6 +78,7 @@ void packet_print_rssi(const char *label, int8_t rssi);
 void packet_print_ad(const void *data, uint8_t size);
 void packet_print_features_lmp(const uint8_t *features, uint8_t page);
 void packet_print_features_ll(const uint8_t *features);
+void packet_print_features_ext_ll(uint8_t page, const uint8_t *features);
 void packet_print_features_msft(const uint8_t *features);
 void packet_print_channel_map_lmp(const uint8_t *map);
 void packet_print_channel_map_ll(const uint8_t *map);
