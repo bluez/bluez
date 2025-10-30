@@ -3751,6 +3751,9 @@ void bthost_past_set_info(struct bthost *bthost, uint16_t handle)
 {
 	struct bt_hci_cmd_le_past_set_info cp;
 
+	if (!bthost)
+		return;
+
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = cpu_to_le16(handle);
 	cp.adv_handle = 0x01;
