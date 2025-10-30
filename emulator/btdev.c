@@ -6863,7 +6863,7 @@ static int cmd_term_big_complete(struct btdev *dev, const void *data,
 {
 	const struct bt_hci_cmd_le_term_big *cmd = data;
 	struct bt_hci_evt_le_big_terminate rsp;
-	struct le_big *big;
+	struct le_big *big, *rbig;
 	struct btdev_conn *conn;
 	struct btdev *remote = NULL;
 
@@ -6875,7 +6875,6 @@ static int cmd_term_big_complete(struct btdev *dev, const void *data,
 
 	big = queue_find(dev->le_big, match_big_handle,
 			UINT_TO_PTR(cmd->handle));
-
 	if (!big)
 		return 0;
 
@@ -6892,14 +6891,17 @@ static int cmd_term_big_complete(struct btdev *dev, const void *data,
 
 			remote = conn->link->dev;
 
-			big = queue_find(remote->le_big, match_bis, conn->link);
-			if (big) {
+			rbig = queue_find(remote->le_big, match_bis,
+							conn->link);
+			if (rbig) {
 				memset(&evt, 0, sizeof(evt));
-				evt.big_handle = big->handle;
+				evt.big_handle = rbig->handle;
 				evt.reason = cmd->reason;
 				le_meta_event(remote,
 						BT_HCI_EVT_LE_BIG_SYNC_LOST,
 						&evt, sizeof(evt));
+				queue_remove(remote->le_big, rbig);
+				le_big_free(rbig);
 			}
 		}
 
