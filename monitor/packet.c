@@ -2765,7 +2765,7 @@ static const struct bitfield_data features_page2[] = {
 	{ }
 };
 
-static const struct bitfield_data features_le[] = {
+static const struct bitfield_data features_le_0[] = {
 	{  0, "LE Encryption"					},
 	{  1, "Connection Parameter Request Procedure"		},
 	{  2, "Extended Reject Indication"			},
@@ -2806,7 +2806,22 @@ static const struct bitfield_data features_le[] = {
 	{ 37, "Connection Subrating"				},
 	{ 38, "Connection Subrating (Host Support)"		},
 	{ 39, "Channel Classification"				},
+	{ 40, "Advertising Coding Selection"			},
+	{ 41, "Advertising Coding Selection (Host Support)"	},
+	{ 42, "Decision-Based Advertising Filtering"		},
+	{ 43, "Periodic Advertising with Responses - Advertiser"},
+	{ 44, "Periodic Advertising with Responses - Scanner"	},
+	{ 45, "Unsegmented Framed Mode"				},
+	{ 46, "Channel Sounding"				},
+	{ 47, "Channel Sounding (Host Support)"			},
+	{ 48, "Channel Sounding Tone Quality Indication"	},
+	{ 63, "LL Extended Feature Set"				},
 	{ }
+};
+
+static const struct bitfield_data features_le_1[] = {
+	{ 0, "Monitoring Advertisers"				},
+	{ 1, "Frame Space Update"				},
 };
 
 static const struct bitfield_data features_msft[] = {
@@ -2819,20 +2834,35 @@ static const struct bitfield_data features_msft[] = {
 	{ }
 };
 
+static void print_features_subpage(uint8_t subpages,
+					const uint8_t *features_array,
+					uint64_t *features)
+{
+	int i, j;
+	char str[16];
+
+	for (i = 0; i < subpages; i++) {
+		for (j = 0; j < 8; j++)
+			features[i] |= ((uint64_t) features_array[i * 8 + j])
+					<< (j * 8);
+		sprintf(str, "Features[%u]", i);
+		print_hex_field(str, &features_array[i * 8], 8);
+	}
+}
+
 static void print_features(uint8_t page, const uint8_t *features_array,
 								uint8_t type)
 {
 	const struct bitfield_data *features_table = NULL;
-	uint64_t mask, features = 0;
-	char str[41];
+	uint64_t mask, features[3] = {};
+	uint8_t subpages = 1;
 	int i;
 
-	for (i = 0; i < 8; i++) {
-		sprintf(str + (i * 5), " 0x%2.2x", features_array[i]);
-		features |= ((uint64_t) features_array[i]) << (i * 8);
-	}
+	/* LE pages 1-10 are 192 bits (24 octets) each */
+	if (type == 0x01 && page)
+		subpages = 3;
 
-	print_field("Features:%s", str);
+	print_features_subpage(subpages, features_array, features);
 
 	switch (type) {
 	case 0x00:
@@ -2851,8 +2881,10 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 	case 0x01:
 		switch (page) {
 		case 0:
-			features_table = features_le;
+			features_table = features_le_0;
 			break;
+		case 1:
+			features_table = features_le_1;
 		}
 		break;
 	case 0xf0:
@@ -2867,10 +2899,13 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 	if (!features_table)
 		return;
 
-	mask = print_bitfield(2, features, features_table);
-	if (mask)
-		print_text(COLOR_UNKNOWN_FEATURE_BIT, "  Unknown features "
-						"(0x%16.16" PRIx64 ")", mask);
+	for (i = 0; i < subpages; i++) {
+		mask = print_bitfield(2, features[i], features_table);
+		if (mask)
+			print_text(COLOR_UNKNOWN_FEATURE_BIT,
+				"  Unknown features (0x%16.16" PRIx64 ")",
+				mask);
+	}
 }
 
 void packet_print_features_lmp(const uint8_t *features, uint8_t page)
@@ -3199,11 +3234,29 @@ static const struct bitfield_data events_le_table[] = {
 	{ 27, "LE Terminate BIG Complete"		},
 	{ 28, "LE BIG Sync Established Complete"	},
 	{ 29, "LE BIG Sync Lost"			},
-	{ 30, "LE Request Peer SCA Complete"},
-	{ 31, "LE Path Loss Threshold"		},
-	{ 32, "LE Transmit Power Reporting"	},
-	{ 33, "LE BIG Info Advertising Report"	},
+	{ 30, "LE Request Peer SCA Complete"		},
+	{ 31, "LE Path Loss Threshold"			},
+	{ 32, "LE Transmit Power Reporting"		},
+	{ 33, "LE BIG Info Advertising Report"		},
 	{ 34, "LE Subrate Change"			},
+	{ 35, "LE Periodic Advertising Sync Established v2"},
+	{ 36, "LE Periodic Advertising Report v2"	},
+	{ 37, "LE Periodic Advertising Sync Transfer Received" },
+	{ 38, "LE Periodic Advertising Subevent Data Request" },
+	{ 39, "LE Periodic Advertising Response Report" },
+	{ 40, "LE Enhanced Connection Complete v2"	},
+	{ 41, "LE CIS Established v2"			},
+	{ 42, "LE Read All Remote Features Complete"	},
+	{ 43, "LE CS Read Remote Supported Capabilities Complete" },
+	{ 44, "LE CS Read Remote FAE Table Complete"	},
+	{ 45, "LE CS Security Enable Complete"		},
+	{ 46, "LE CS Config Complete"			},
+	{ 47, "LE CS Procedure Enable Complete"		},
+	{ 48, "LE CS Subevent Result"			},
+	{ 49, "LE CS Subevent Result Continue"		},
+	{ 50, "LE CS Test End Complete"			},
+	{ 51, "LE Monitored Advertisers Report"		},
+	{ 52, "LE Frame Space Update Complete"		},
 	{ }
 };
 
@@ -9128,7 +9181,7 @@ static void le_set_host_feature_cmd(uint16_t index, const void *data,
 	print_field("Bit Number: %u", cmd->bit_number);
 
 	mask = print_bitfield(2, (((uint64_t) 1) << cmd->bit_number),
-							features_le);
+							features_le_0);
 	if (mask)
 		print_text(COLOR_UNKNOWN_FEATURE_BIT, "  Unknown features "
 						"(0x%16.16" PRIx64 ")", mask);
@@ -9165,6 +9218,41 @@ static void status_le_read_iso_link_quality_rsp(uint16_t index,
 	print_field("TX crc error packets %d", rsp->crc_error_packets);
 	print_field("RX unreceived packets %d", rsp->rx_unreceived_packets);
 	print_field("Duplicated packets %d", rsp->duplicated_packets);
+}
+
+static void print_le_ext_features(const uint8_t features[248], uint8_t pages)
+{
+	int i;
+
+	/* Page 0 containing bits 0 to 63 (octets 0 to 7) */
+	print_features(0, features, 0x01);
+
+	/* 10 pages of 192 bits (24 octets) each */
+	for (i = 0; i < pages && i < 10; i++)
+		print_features(i + 1, &features[i * 24 + 8], 0x01);
+}
+
+static void le_read_all_local_features_rsp(uint16_t index, const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_all_local_features *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("Page: %d", rsp->page);
+	print_le_ext_features(rsp->features, rsp->page);
+}
+
+static void le_read_all_remote_features(uint16_t index, const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_all_remote_features *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("Pages: %d", cmd->pages);
 }
 
 static const struct bitfield_data cs_roles_supp_table[] = {
@@ -10629,6 +10717,19 @@ static const struct opcode_data opcode_table[] = {
 				sizeof(
 				struct bt_hci_rsp_le_read_iso_link_quality),
 				true },
+	{ BT_HCI_CMD_LE_READ_ALL_LOCAL_FEATURES,
+			BT_HCI_BIT_LE_READ_ALL_LOCAL_FEATURES,
+			"LE Read All Local Features",
+			null_cmd, 0, true,
+			le_read_all_local_features_rsp,
+			sizeof(struct bt_hci_rsp_le_read_all_local_features),
+			true },
+	{ BT_HCI_CMD_LE_READ_ALL_REMOTE_FEATURES,
+			BT_HCI_BIT_LE_READ_ALL_REMOTE_FEATURES,
+			"LE Read All Remote Features",
+			le_read_all_remote_features,
+			sizeof(struct bt_hci_cmd_le_read_all_remote_features),
+			true, status_rsp, 1, true },
 	{ BT_HCI_CMD_LE_CS_RD_LOC_SUPP_CAP, BT_HCI_BIT_LE_CS_RD_LOC_SUPP_CAP,
 				"LE CS Read Local Supported Capabilities",
 				NULL, 0, false,
@@ -12558,6 +12659,24 @@ static void le_big_info_evt(struct timeval *tv, uint16_t index,
 	print_field("Encryption: 0x%02x", evt->encryption);
 }
 
+static void le_read_all_remote_features_complete_evt(struct timeval *tv,
+					uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_evt_le_read_all_remote_features_complete *evt =
+									data;
+
+	print_status(evt->status);
+
+	if (size == 1)
+		return;
+
+	print_handle(evt->handle);
+	print_field("Max Pages: 0x%2.2x", evt->max_pages);
+	print_field("Valid Pages: 0x%2.2x", evt->valid_pages);
+	print_le_ext_features(evt->features, evt->valid_pages);
+}
+
 static void le_cs_rd_rem_supp_cap_complete_evt(struct timeval *tv,
 				uint16_t index, const void *data, uint8_t size)
 {
@@ -13325,6 +13444,11 @@ static const struct subevent_data le_meta_event_table[] = {
 		"LE Broadcast Isochronous Group Info Advertising Report",
 		le_big_info_evt,
 		sizeof(struct bt_hci_evt_le_big_info_adv_report) },
+	{ BT_HCI_EVT_LE_READ_ALL_REMOTE_FEATURES_COMPLETE,
+		"LE CS Read All Remote Features Complete",
+		le_read_all_remote_features_complete_evt,
+		sizeof(struct bt_hci_evt_le_read_all_remote_features_complete),
+		true },
 	{ BT_HCI_EVT_LE_CS_RD_REM_SUPP_CAP_COMPLETE,
 		"LE CS Read Remote Supported Capabilities Complete",
 		le_cs_rd_rem_supp_cap_complete_evt,
