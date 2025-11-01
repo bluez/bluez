@@ -70,6 +70,10 @@ struct client_data {
 	const void *send_data;
 	uint16_t send_data_len;
 
+	/* Data to expect to be received as kernel client */
+	const void *send_expect_data;
+	uint16_t send_expect_data_len;
+
 	/* Interface listener socket type, SOCK_RAW / DGRAM */
 	int sk_type;
 };
@@ -320,6 +324,8 @@ static const uint8_t dgram_data[64+1] = {
 static const struct client_data client_recv_dgram = {
 	.send_data = dgram_data,
 	.send_data_len = sizeof(dgram_data),
+	.send_expect_data = dgram_data + 1,
+	.send_expect_data_len = sizeof(dgram_data) - 1,
 	.sk_type = SOCK_DGRAM,
 	.disconnect = true,
 };
@@ -327,9 +333,47 @@ static const struct client_data client_recv_dgram = {
 static const struct client_data client_recv_raw = {
 	.send_data = dgram_data,
 	.send_data_len = sizeof(dgram_data),
+	.send_expect_data = dgram_data + 1,
+	.send_expect_data_len = sizeof(dgram_data) - 1,
 	.sk_type = SOCK_RAW,
 	.disconnect = true,
 	.skip_by_default_reason = "kernel BUG at net/core/skbuff.c:212"
+};
+
+static const uint8_t iphc_dgram_data[64+2] = {
+	/* IPHC dispatch: TF=11, NH=0, HLIM=00; see draft-ietf-6lowpan-hc-11 */
+	0x78,
+	/* CID=0, SAC=0, SAM=00, M=0, DAC=0, DAM=00 */
+	0x00,
+	/* rest of ipv6 fields (nh, hlim, src, dst) + data */
+	0xde, 0xad, 0xbe, 0xef
+};
+
+static const uint8_t iphc_uncompressed_dgram_data[70] = {
+	/* IPv6 (version, tc, fl) */
+	0x60, 0x00, 0x00, 0x00,
+	/* payload size */
+	0x00, sizeof(iphc_dgram_data) - 2 - (2 + 2*16),
+	/* rest of ipv6 fields + data */
+	0xde, 0xad, 0xbe, 0xef
+};
+
+static const struct client_data client_recv_iphc_dgram = {
+	.send_data = iphc_dgram_data,
+	.send_data_len = sizeof(iphc_dgram_data),
+	.send_expect_data = iphc_uncompressed_dgram_data,
+	.send_expect_data_len = sizeof(iphc_uncompressed_dgram_data),
+	.sk_type = SOCK_DGRAM,
+	.disconnect = true,
+};
+
+static const struct client_data client_recv_iphc_raw = {
+	.send_data = iphc_dgram_data,
+	.send_data_len = sizeof(iphc_dgram_data),
+	.send_expect_data = iphc_uncompressed_dgram_data,
+	.send_expect_data_len = sizeof(iphc_uncompressed_dgram_data),
+	.sk_type = SOCK_RAW,
+	.disconnect = true,
 };
 
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
@@ -501,7 +545,6 @@ static gboolean recv_iface_packet(GIOChannel *io, GIOCondition cond,
 	uint8_t buf[256];
 	int fd;
 	ssize_t ret;
-	int phy_hdr_size = (cdata->sk_type == SOCK_DGRAM) ? 1 : 0;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
 		goto done;
@@ -516,9 +559,9 @@ static gboolean recv_iface_packet(GIOChannel *io, GIOCondition cond,
 
 	tester_print("Recv %d bytes", (int)ret);
 
-	if (ret != cdata->send_data_len - phy_hdr_size)
+	if (ret != cdata->send_expect_data_len)
 		return TRUE;
-	if (memcmp(buf, cdata->send_data + phy_hdr_size, ret))
+	if (memcmp(buf, cdata->send_expect_data, ret))
 		return TRUE;
 
 	tester_print("Received sent packet");
@@ -559,7 +602,7 @@ static gboolean client_open_iface(gpointer user_data)
 				recv_iface_packet, data);
 		g_io_channel_unref(io);
 
-		tester_debug("Send %u+1 bytes", cdata->send_data_len - 1);
+		tester_debug("Send %u bytes", cdata->send_data_len);
 		bthost_send_cid(bthost, data->handle, data->dcid,
 				cdata->send_data, cdata->send_data_len);
 	} else if (cdata->disconnect) {
@@ -669,6 +712,16 @@ int main(int argc, char *argv[])
 	test_6lowpan("Client Recv Raw - Success", &client_recv_raw,
 							setup_powered_client,
 							test_connect);
+
+	test_6lowpan("Client Recv IPHC Dgram - Success",
+						&client_recv_iphc_dgram,
+						setup_powered_client,
+						test_connect);
+
+	test_6lowpan("Client Recv IPHC Raw - Success",
+						&client_recv_iphc_raw,
+						setup_powered_client,
+						test_connect);
 
 	return tester_run();
 }
