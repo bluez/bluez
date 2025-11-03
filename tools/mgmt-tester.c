@@ -576,6 +576,20 @@ static void test_condition_complete(struct test_data *data)
 #define test_bredrle50(name, data, setup, func) \
 	test_bredrle50_full(name, data, setup, func, 2)
 
+#define test_bredrle52_full(name, data, setup, func, timeout) \
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE52, \
+					0x0b, 0x0001beff, 0x00000080)
+
+#define test_bredrle52(name, data, setup, func) \
+	test_bredrle52_full(name, data, setup, func, 2)
+
+#define test_bredrle60_full(name, data, setup, func, timeout) \
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE60, \
+					0x0e, 0x0001beff, 0x00000080)
+
+#define test_bredrle60(name, data, setup, func) \
+	test_bredrle60_full(name, data, setup, func, 2)
+
 #define test_hs_full(name, data, setup, func, timeout) \
 	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE, \
 					0x09, 0x0001bfff, 0x00000080)
@@ -1696,6 +1710,7 @@ static const char set_le_invalid_param[] = { 0x02 };
 static const char set_le_garbage_param[] = { 0x01, 0x00 };
 static const char set_le_settings_param_1[] = { 0x80, 0x02, 0x00, 0x00 };
 static const char set_le_settings_param_2[] = { 0x81, 0x02, 0x00, 0x00 };
+static const char set_le_settings_param_4[] = { 0x81, 0x02, 0xfc, 0x01 };
 static const char set_le_on_write_le_host_param[] = { 0x01, 0x00 };
 
 static const struct generic_data set_le_on_success_test_1 = {
@@ -1730,6 +1745,20 @@ static const struct generic_data set_le_on_success_test_3 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_le_settings_param_2,
 	.expect_len = sizeof(set_le_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_LE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
+	.expect_hci_param = set_le_on_write_le_host_param,
+	.expect_hci_len = sizeof(set_le_on_write_le_host_param),
+};
+
+static const struct generic_data set_le_on_success_test_4 = {
+	.setup_settings = settings_le,
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_le_settings_param_4,
+	.expect_len = sizeof(set_le_settings_param_4),
 	.expect_settings_set = MGMT_SETTING_LE,
 	.expect_hci_command = BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
 	.expect_hci_param = set_le_on_write_le_host_param,
@@ -13230,6 +13259,12 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Success 3",
 				&set_le_on_success_test_3,
+				NULL, test_command_generic);
+	test_bredrle52("Set Low Energy on 5.2 - Success 4",
+				&set_le_on_success_test_4,
+				NULL, test_command_generic);
+	test_bredrle60("Set Low Energy on 6.0 - Success 5",
+				&set_le_on_success_test_4,
 				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid parameters 1",
 				&set_le_on_invalid_param_test_1,
