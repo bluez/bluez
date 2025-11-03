@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 	bool serial_enabled = false;
 	int letest_count = 0;
 	int vhci_count = 0;
-	enum btdev_type type = BTDEV_TYPE_BREDRLE52;
+	enum btdev_type type = BTDEV_TYPE_BREDRLE60;
 	int i;
 
 	mainloop_init();
