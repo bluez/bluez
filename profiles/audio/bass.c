@@ -1817,6 +1817,9 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
 			g_io_channel_unref(dg->io);
 			dg->io = NULL;
 
+			bt_bass_set_pa_sync(dg->src,
+						BT_BASS_NOT_SYNCHRONIZED_TO_PA);
+
 			if (!dg->service)
 				return 0;
 
