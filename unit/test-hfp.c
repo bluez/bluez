@@ -762,6 +762,7 @@ static void test_hf_robustness(gconstpointer data)
 	raw_pdu('\r', '\n', '+', 'C', 'O', 'P', 'S', ':', ' ', '0', ',', \
 		'0', ',', '\"', 'T', 'E', 'S', 'T', '\"', '\r', '\n'), \
 	frg_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
+	raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'), \
 	raw_pdu('\r', '\n', 'O', 'K', '\r', '\n')
 
 static void hf_cmd_complete(enum hfp_result res, enum hfp_error cme_err,

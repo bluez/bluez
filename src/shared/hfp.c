@@ -1996,6 +1996,30 @@ static void clip_cb(struct hfp_context *context, void *user_data)
 							hfp->callbacks_data);
 }
 
+static void cmee_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	DBG(hfp, "");
+
+	if (result != HFP_RESULT_OK) {
+		DBG(hfp, "hf: CMEE error: %d", result);
+		goto failed;
+	}
+
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
+						hfp->callbacks_data);
+
+	return;
+
+failed:
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(result, cme_err,
+						hfp->callbacks_data);
+}
+
 static void clip_resp(enum hfp_result result, enum hfp_error cme_err,
 	void *user_data)
 {
@@ -2008,9 +2032,17 @@ static void clip_resp(enum hfp_result result, enum hfp_error cme_err,
 		goto failed;
 	}
 
-	if (hfp->callbacks->session_ready)
-		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
-						hfp->callbacks_data);
+	if (!(hfp->features & HFP_AG_FEAT_EXTENDED_RES_CODE)) {
+		/* Jump to next setup state */
+		cmee_resp(HFP_RESULT_OK, cme_err, user_data);
+		return;
+	}
+
+	if (!hfp_hf_send_command(hfp, cmee_resp, hfp, "AT+CMEE=1")) {
+		DBG(hfp, "hf: Could not send AT+CMEE=1");
+		result = HFP_RESULT_ERROR;
+		goto failed;
+	}
 
 	return;
 
