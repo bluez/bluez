@@ -787,6 +787,9 @@ static void hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
 	g_assert_cmpint(res, ==, HFP_RESULT_OK);
 	context->session.completed = true;
 
+	if (tester_use_debug())
+		tester_debug("HF session ready");
+
 	if (g_str_equal(test_name, "/HFP/HF/OCL/BV-01-C")) {
 		bool ret;
 
@@ -998,7 +1001,8 @@ static void hf_call_line_id_updated(uint id, const char *number,
 	str = hfp_hf_call_get_number(context->hfp_hf, id);
 	g_assert_cmpstr(number, ==, str);
 
-	if (g_str_equal(test_name, "/HFP/HF/ICA/BV-01-C") ||
+	if (g_str_equal(test_name, "/HFP/HF/ENO/BV-01-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-01-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-02-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-03-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C") ||
@@ -1366,6 +1370,23 @@ int main(int argc, char *argv[])
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
 				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			data_end());
+
+	/* Disable EC/NR on the AG - HF */
+	define_hf_test("/HFP/HF/ENO/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			FULL_SLC_SESSION('1', '0', '0', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
 			data_end());
 
 	/* Incoming call, in-band ring - HF */
