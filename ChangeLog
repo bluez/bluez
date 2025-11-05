@@ -252,9 +252,9 @@ ver 5.54:
 	Add support for Enhanced ATT bearer (EATT).
 
 ver 5.53:
-	Fix issue with handling unregistration for advertisment.
+	Fix issue with handling unregistration for advertisement.
 	Fix issue with A2DP and handling recovering process.
-	Fix issue with udpating input device information.
+	Fix issue with updating input device information.
 	Add support for loading blocked keys.
 
 ver 5.52:
@@ -646,7 +646,7 @@ ver 5.16:
 	Fix issue with HID over GATT physical location.
 	Fix issue with HID over GATT unique identifier.
 	Fix issue with missing paired property notification.
-	Fix issue with endianess of long term key storage.
+	Fix issue with endianness of long term key storage.
 	Add support for storing signature resolving keys.
 	Add support for Android Bluetooth AVRCP interface.
 
@@ -1592,7 +1592,7 @@ ver 4.20:
 
 ver 4.19:
 	Fix installation of manual pages for old daemons.
-	Fix D-Bus signal emmissions for CreateDevice.
+	Fix D-Bus signal emissions for CreateDevice.
 	Fix issues with UUID probing.
 	Fix +BSRF syntax issue.
 	Add Pairable adapter property.
@@ -1738,7 +1738,7 @@ ver 3.35:
 	Add two additional company identifiers.
 	Add UUID-128 support for service discovery.
 	Fix usage of friendly names for service discovery.
-	Fix authorization when experiemental is disabled.
+	Fix authorization when experimental is disabled.
 	Fix uninitialized variable in passkey request handling.
 	Enable output of timestamps for l2test and rctest.
 
@@ -1778,7 +1778,7 @@ ver 3.31:
 	Convert authorization to internal function calls.
 	Add initial support for Headset Audio Gateway role.
 	Add generic Bluetooth helper functions for GLib.
-	Fix endiannes handling of connection handles.
+	Fix endianness handling of connection handles.
 	Don't optimize when debug is enabled.
 
 ver 3.30:
@@ -1904,7 +1904,7 @@ ver 3.18:
 	Fix various A2DP SEP locking issues.
 	Fix and cleanup audio stream handling.
 	Fix stream starting if suspend request is pending.
-	Fix A2DP and AVDTP endianess problems.
+	Fix A2DP and AVDTP endianness problems.
 	Add network timeout and retransmission support.
 	Add more detailed decoding of EIR elements.
 

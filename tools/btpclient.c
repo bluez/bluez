@@ -1802,7 +1802,7 @@ static struct l_dbus_message *ag_display_passkey_call(struct l_dbus *dbus,
 							BTP_GAP_ADDR_RANDOM :
 							BTP_GAP_ADDR_PUBLIC;
 	if (str2ba(str_addr, &ev.address) < 0) {
-		l_info("Incorrect device addres");
+		l_info("Incorrect device address");
 
 		return reply;
 	}
