@@ -116,10 +116,12 @@ struct le_ext_adv {
 
 struct le_per_adv {
 	struct btdev *dev;
+	struct btdev *remote;
 	uint8_t addr_type;
 	uint8_t addr[6];
 	uint8_t sid;
 	uint16_t sync_handle;
+	struct queue *syncs;
 };
 
 struct le_big {
@@ -5514,6 +5516,7 @@ static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
 		sync_handle++;
 
 	per_adv->sync_handle = sync_handle;
+	per_adv->remote = remote;
 
 	ev.handle = cpu_to_le16(per_adv->sync_handle);
 	ev.sid = per_adv->sid;
@@ -5525,6 +5528,24 @@ static void le_pa_sync_estabilished(struct btdev *dev, struct btdev *remote,
 
 	le_meta_event(dev, BT_HCI_EVT_LE_PA_SYNC_ESTABLISHED, &ev, sizeof(ev));
 	send_pa(dev, remote, 0, per_adv->sync_handle);
+}
+
+static void le_pa_sync_lost(struct le_per_adv *pa)
+{
+	struct bt_hci_evt_le_per_sync_lost ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.handle = cpu_to_le16(pa->sync_handle);
+	le_meta_event(pa->dev, BT_HCI_EVT_LE_PA_SYNC_LOST, &ev, sizeof(ev));
+	free(pa);
+}
+
+static bool match_remote(const void *data, const void *match_data)
+{
+	const struct le_per_adv *pa = data;
+	const struct btdev *remote = match_data;
+
+	return pa->remote == remote;
 }
 
 static int cmd_set_pa_enable(struct btdev *dev, const void *data, uint8_t len)
@@ -5549,11 +5570,19 @@ static int cmd_set_pa_enable(struct btdev *dev, const void *data, uint8_t len)
 		if (!remote || remote == dev)
 			continue;
 
-		if (remote->le_scan_enable &&
+		if (dev->le_scan_enable &&
 			queue_find(remote->le_per_adv, match_sync_handle,
 			UINT_TO_PTR(INV_HANDLE)))
 			le_pa_sync_estabilished(remote, dev,
 							BT_HCI_ERR_SUCCESS);
+		else if (!dev->le_pa_enable) {
+			struct le_per_adv *pa;
+
+			pa = queue_remove_if(remote->le_per_adv, match_remote,
+						dev);
+			if (pa)
+				le_pa_sync_lost(pa);
+		}
 	}
 
 	return 0;
