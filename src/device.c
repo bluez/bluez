@@ -4818,7 +4818,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 		return NULL;
 
 	device->tx_power = 127;
-	device->volume = -1;
+	device->volume = 0;
 	device->wake_id = -1U;
 
 	device->db = gatt_db_new();
