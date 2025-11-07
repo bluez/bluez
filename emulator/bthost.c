@@ -3780,6 +3780,17 @@ void bthost_create_big(struct bthost *bthost, uint8_t num_bis,
 	send_command(bthost, BT_HCI_CMD_LE_CREATE_BIG, &cp, sizeof(cp));
 }
 
+void bthost_terminate_big(struct bthost *bthost, uint8_t reason)
+{
+	struct bt_hci_cmd_le_term_big cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = 0x01;
+	cp.reason = reason;
+
+	send_command(bthost, BT_HCI_CMD_LE_TERM_BIG, &cp, sizeof(cp));
+}
+
 bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr)
 {
 	const struct queue_entry *entry;
