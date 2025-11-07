@@ -128,6 +128,7 @@ void bthost_set_pa_enable(struct bthost *bthost, uint8_t enable);
 void bthost_past_set_info(struct bthost *bthost, uint16_t handle);
 void bthost_create_big(struct bthost *bthost, uint8_t num_bis, uint8_t enc,
 				const uint8_t *bcode);
+void bthost_terminate_big(struct bthost *bthost, uint8_t reason);
 bool bthost_search_ext_adv_addr(struct bthost *bthost, const uint8_t *addr);
 
 void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
