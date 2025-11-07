@@ -253,8 +253,11 @@ static gboolean server_cb(GIOChannel *io, GIOCondition cond,
 	srv_sock = g_io_channel_unix_get_fd(io);
 
 	cli_sock = accept(srv_sock, NULL, NULL);
-	if (cli_sock < 0)
+	if (cli_sock < 0) {
+		if (errno == EBADFD)
+			return FALSE;
 		return TRUE;
+	}
 
 	cli_io = g_io_channel_unix_new(cli_sock);
 
