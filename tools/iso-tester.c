@@ -502,6 +502,7 @@ struct iso_client_data {
 	bool listen_bind;
 	bool pa_bind;
 	bool big;
+	bool terminate;
 
 	/* Enable BT_PKT_SEQNUM for RX packet sequence numbers */
 	bool pkt_seqnum;
@@ -1578,6 +1579,27 @@ static const struct iso_client_data bcast_16_2_1_recv_defer_get_base = {
 	.base_len = sizeof(base_lc3_ac_12),
 };
 
+static const struct iso_client_data bcast_16_2_1_recv_terminate = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+	.terminate = true,
+};
+
+static const struct iso_client_data past_16_2_1_recv_terminate = {
+	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.past = true,
+	.server = true,
+	.big = true,
+	.terminate = true,
+};
+
 static const struct iso_client_data bcast_ac_12 = {
 	.qos = BCAST_AC_12,
 	.expect_err = 0,
@@ -2389,6 +2411,21 @@ static void iso_shutdown(struct test_data *data, GIOChannel *io)
 	tester_print("Disconnecting...");
 }
 
+static void iso_terminate(struct test_data *data, GIOChannel *io)
+{
+	struct bthost *host;
+
+	/* Setup watcher to check if fd is closed properly after termination */
+	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_disconnected, data);
+
+	tester_print("Terminating...");
+
+	host = hciemu_client_get_host(data->hciemu);
+
+	bthost_set_pa_enable(host, 0x00);
+	bthost_terminate_big(host, BT_HCI_ERR_LOCAL_HOST_TERM);
+}
+
 static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -2498,6 +2535,8 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 		return TRUE;
 	else if (isodata->disconnect)
 		iso_shutdown(data, io);
+	else if (isodata->terminate)
+		iso_terminate(data, io);
 	else
 		tester_test_passed();
 
@@ -4308,6 +4347,16 @@ int main(int argc, char *argv[])
 					test_bcast_recv_defer);
 	test_iso("ISO Broadcaster Receiver Defer Get BASE - Success",
 					&bcast_16_2_1_recv_defer_get_base,
+					setup_powered,
+					test_bcast_recv);
+
+	test_iso("ISO Broadcaster Receiver Sync Lost - Success",
+					&bcast_16_2_1_recv_terminate,
+					setup_powered,
+					test_bcast_recv);
+
+	test_iso("ISO Broadcaster PAST Receiver Sync Lost - Success",
+					&past_16_2_1_recv_terminate,
 					setup_powered,
 					test_bcast_recv);
 
