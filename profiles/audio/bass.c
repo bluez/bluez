@@ -269,14 +269,6 @@ static void bass_req_bcode(struct bt_bap_stream *stream,
 		dg->timeout = g_timeout_add_seconds(10, req_timeout, dg);
 }
 
-static bool delegator_match_device(const void *data, const void *match_data)
-{
-	const struct bass_delegator *dg = data;
-	const struct btd_device *device = match_data;
-
-	return dg->device == device;
-}
-
 static int stream_get_bis(struct bt_bap_stream *stream)
 {
 	char *path = bt_bap_stream_get_user_data(stream);
@@ -364,6 +356,33 @@ static void setup_free(void *data)
 	bt_bass_clear_bis_sync(setup->dg->src, setup->bis);
 
 	free(setup);
+}
+
+static void delegator_disconnect(struct bass_delegator *dg)
+{
+	struct btd_device *device = dg->device;
+	struct btd_service *service = dg->service;
+
+	DBG("%p", dg);
+
+	/* Disconnect service so BAP driver is cleanup properly and bt_bap is
+	 * detached from the device.
+	 */
+	btd_service_disconnect(service);
+
+	/* Remove service since delegator shold have been freed at this point */
+	device_remove_profile(device, btd_service_get_profile(service));
+
+	/* If the device is no longer consider connected  it means no other
+	 * service was connected so it has no longer any use and can be safely
+	 * removed.
+	 */
+	if (!btd_device_is_connected(device)) {
+		struct btd_adapter *adapter;
+
+		adapter = device_get_adapter(device);
+		btd_adapter_remove_device(adapter, device);
+	}
 }
 
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
@@ -459,6 +478,8 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 		setup->stream = NULL;
 		queue_remove(setup->dg->setups, setup);
 		setup_free(setup);
+		if (queue_isempty(dg->setups))
+			delegator_disconnect(dg);
 		break;
 	}
 }
@@ -1296,15 +1317,65 @@ static void bap_bc_attached(struct bt_bap *bap, void *user_data)
 	bass_data_add(data);
 }
 
+static bool delegator_match_device(const void *data, const void *match_data)
+{
+	const struct bass_delegator *dg = data;
+	const struct btd_device *device = match_data;
+
+	return dg->device == device;
+}
+
+static void delegator_attach(struct bt_bap *bap, struct btd_device *device,
+				struct btd_service *service)
+{
+	struct bass_delegator *dg;
+	GError *err = NULL;
+
+	dg = queue_find(delegators, delegator_match_device, device);
+	if (!dg)
+		/* Only probe devices added via Broadcast Assistants */
+		return;
+
+	DBG("delegator %p", dg);
+
+	if (dg->service)
+		/* Service has already been probed */
+		return;
+
+	dg->service = service;
+	dg->bap = bap;
+
+	dg->io = bt_io_listen(NULL, confirm_cb, dg,
+		NULL, &err,
+		BT_IO_OPT_SOURCE_BDADDR,
+		btd_adapter_get_address(device_get_adapter(device)),
+		BT_IO_OPT_SOURCE_TYPE,
+		btd_adapter_get_address_type(device_get_adapter(device)),
+		BT_IO_OPT_DEST_BDADDR,
+		device_get_address(device),
+		BT_IO_OPT_DEST_TYPE,
+		btd_device_get_bdaddr_type(device),
+		BT_IO_OPT_MODE, BT_IO_MODE_ISO,
+		BT_IO_OPT_QOS, &bap_sink_pa_qos,
+		BT_IO_OPT_ISO_BC_SID, dg->sid,
+		BT_IO_OPT_INVALID);
+	if (!dg->io) {
+		error("%s", err->message);
+		g_error_free(err);
+		return;
+	}
+
+	/* Take ownership for the service by setting the user data. */
+	btd_service_set_user_data(service, dg);
+}
+
 static void bap_attached(struct bt_bap *bap, void *user_data)
 {
 	struct btd_service *service;
 	struct btd_profile *p;
 	struct btd_device *device;
 	struct btd_adapter *adapter;
-	struct bass_delegator *dg;
 	struct bass_data *data;
-	GError *err = NULL;
 
 	service = bt_bap_get_user_data(bap);
 	if (!service)
@@ -1330,40 +1401,7 @@ static void bap_attached(struct bt_bap *bap, void *user_data)
 
 	bass_data_add(data);
 
-	dg = queue_find(delegators, delegator_match_device, device);
-	if (!dg)
-		/* Only probe devices added via Broadcast Assistants */
-		return;
-
-	if (dg->service)
-		/* Service has already been probed */
-		return;
-
-	dg->service = service;
-	dg->bap = bap;
-
-	dg->io = bt_io_listen(NULL, confirm_cb, dg,
-		NULL, &err,
-		BT_IO_OPT_SOURCE_BDADDR,
-		btd_adapter_get_address(adapter),
-		BT_IO_OPT_SOURCE_TYPE,
-		btd_adapter_get_address_type(adapter),
-		BT_IO_OPT_DEST_BDADDR,
-		device_get_address(device),
-		BT_IO_OPT_DEST_TYPE,
-		btd_device_get_bdaddr_type(device),
-		BT_IO_OPT_MODE, BT_IO_MODE_ISO,
-		BT_IO_OPT_QOS, &bap_sink_pa_qos,
-		BT_IO_OPT_ISO_BC_SID, dg->sid,
-		BT_IO_OPT_INVALID);
-	if (!dg->io) {
-		error("%s", err->message);
-		g_error_free(err);
-		return;
-	}
-
-	/* Take ownership for the service by setting the user data. */
-	btd_service_set_user_data(service, dg);
+	delegator_attach(bap, device, service);
 }
 
 static bool match_bap(const void *data, const void *match_data)
@@ -1417,12 +1455,35 @@ static void delegator_free(struct bass_delegator *dg)
 	free(dg);
 }
 
+static bool match_service(const void *data, const void *match_data)
+{
+	const struct bass_data *bdata = data;
+	const struct btd_service *service = match_data;
+
+	return bdata->service == service;
+}
+
+static void delegator_detach(struct btd_service *service)
+{
+	struct bass_delegator *dg;
+
+	dg = btd_service_get_user_data(service);
+	if (!dg)
+		return;
+
+	if (!queue_remove(delegators, dg))
+		return;
+
+	DBG("%p", dg);
+
+	delegator_free(dg);
+
+	btd_service_set_user_data(service, NULL);
+}
+
 static void bap_detached(struct bt_bap *bap, void *user_data)
 {
 	struct btd_service *service;
-	struct btd_profile *p;
-	struct btd_device *device;
-	struct bass_delegator *dg;
 	struct bass_data *data;
 
 	data = queue_find(sessions, match_bap, bap);
@@ -1435,31 +1496,15 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
 	if (!service)
 		return;
 
-	p = btd_service_get_profile(service);
-	if (!p)
-		return;
-
-	/* Only handle sessions with Broadcast Sources */
-	if (!g_str_equal(p->remote_uuid, BCAAS_UUID_STR))
-		return;
-
-	device = btd_service_get_device(service);
-
 	/* Remove BASS session with the Broadcast Source device */
-	data = queue_find(sessions, match_device, device);
+	data = queue_find(sessions, match_service, service);
 	if (data) {
 		bt_bap_bis_cb_unregister(bap, data->bis_id);
 		bt_bap_state_unregister(bap, data->state_id);
 		bass_data_remove(data);
 	}
 
-	dg = queue_remove_if(delegators, delegator_match_device, device);
-	if (!dg)
-		return;
-
-	delegator_free(dg);
-
-	btd_service_set_user_data(service, NULL);
+	delegator_detach(service);
 }
 
 static void bis_probe(uint8_t sid, uint8_t bis, uint8_t sgrp,
@@ -1807,39 +1852,6 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
 	switch (sync_state) {
 	case BT_BASS_SYNCHRONIZED_TO_PA:
 		bass_update_bis_sync(dg, bcast_src);
-
-		/* Check if there are any setups left since it means the PA
-		 * should be no longer synchronized.
-		 */
-		if (queue_isempty(dg->setups)) {
-			/* IO is no longer needed since there are no setups */
-			g_io_channel_shutdown(dg->io, TRUE, NULL);
-			g_io_channel_unref(dg->io);
-			dg->io = NULL;
-
-			bt_bass_set_pa_sync(dg->src,
-						BT_BASS_NOT_SYNCHRONIZED_TO_PA);
-
-			if (!dg->service)
-				return 0;
-
-			/* Disconnect service so BAP driver is cleanup
-			 * properly.
-			 */
-			btd_service_disconnect(dg->service);
-
-			/* If the device is no longer consider connected
-			 * it means no other service was connected so it
-			 * has no longer any use and can be safely removed.
-			 */
-			if (!btd_device_is_connected(dg->device)) {
-				struct btd_adapter *adapter;
-
-				adapter = device_get_adapter(dg->device);
-				btd_adapter_remove_device(adapter, dg->device);
-			}
-		}
-
 		break;
 	case BT_BASS_NOT_SYNCHRONIZED_TO_PA:
 		if (params->pa_sync == PA_SYNC_NO_PAST) {

@@ -3270,14 +3270,6 @@ static void pac_removed_broadcast(struct bt_bap_pac *pac, void *user_data)
 	ep_unregister(ep);
 }
 
-static bool match_device(const void *data, const void *match_data)
-{
-	const struct bap_data *bdata = data;
-	const struct btd_device *device = match_data;
-
-	return bdata->device == device;
-}
-
 static struct bap_data *bap_data_new(struct btd_device *device)
 {
 	struct bap_data *data;
@@ -3673,6 +3665,14 @@ static int bap_bcast_probe(struct btd_service *service)
 	return 0;
 }
 
+static bool match_service(const void *data, const void *match_data)
+{
+	const struct bap_data *bdata = data;
+	const struct btd_service *service = match_data;
+
+	return bdata->service == service;
+}
+
 static void bap_bcast_remove(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -3682,7 +3682,10 @@ static void bap_bcast_remove(struct btd_service *service)
 	ba2str(device_get_address(device), addr);
 	DBG("%s", addr);
 
-	data = queue_find(sessions, match_device, device);
+	/* Lookup the bap session for this service since in case of
+	 * bass_delegator its user data is set by bass plugin.
+	 */
+	data = queue_find(sessions, match_service, service);
 	if (!data) {
 		error("BAP service not handled by profile");
 		return;
@@ -3791,10 +3794,12 @@ static int bap_disconnect(struct btd_service *service)
 
 static int bap_bcast_disconnect(struct btd_service *service)
 {
-	struct btd_device *device = btd_service_get_device(service);
 	struct bap_data *data;
 
-	data = queue_find(sessions, match_device, device);
+	/* Lookup the bap session for this service since in case of
+	 * bass_delegator its user data is set by bass plugin.
+	 */
+	data = queue_find(sessions, match_service, service);
 	if (!data) {
 		error("BAP service not handled by profile");
 		return -EINVAL;
