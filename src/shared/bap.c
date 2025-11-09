@@ -3840,10 +3840,10 @@ static void *ltv_merge(struct iovec *data, struct iovec *cont)
 	if (!data)
 		return NULL;
 
+	util_iov_append(data, &delimiter, sizeof(delimiter));
+
 	if (!cont || !cont->iov_len || !cont->iov_base)
 		return data->iov_base;
-
-	util_iov_append(data, &delimiter, sizeof(delimiter));
 
 	return util_iov_append(data, cont->iov_base, cont->iov_len);
 }
