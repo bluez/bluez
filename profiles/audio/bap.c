@@ -1140,13 +1140,6 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	if (dbus_message_iter_get_arg_type(&props) != DBUS_TYPE_DICT_ENTRY)
 		return btd_error_invalid_args(msg);
 
-	/* Broadcast source supports multiple setups, each setup will be BIS
-	 * and will be configured with the set_configuration command
-	 * TO DO reconfiguration of a BIS.
-	 */
-	if (bt_bap_pac_get_type(ep->lpac) != BT_BAP_BCAST_SOURCE)
-		ep_close(ep, NULL, NULL, NULL);
-
 	setup = setup_new(ep);
 
 	if (setup_parse_configuration(setup, &props) < 0) {
