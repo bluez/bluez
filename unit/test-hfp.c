@@ -948,7 +948,8 @@ static void hf_call_added(uint id, enum hfp_call_status status,
 	} else if (g_str_equal(test_name, "/HFP/HF/ICA/BV-01-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-02-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-03-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C-full")) {
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C-full") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-07-C-full")) {
 		bool ret;
 
 		g_assert_cmpint(id, ==, 1);
@@ -1055,6 +1056,7 @@ static void hf_call_status_updated(uint id, enum hfp_call_status status,
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C-full") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-06-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-07-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-07-C-full") ||
 		g_str_equal(test_name, "/HFP/HF/TCA/BV-02-C")) {
 		const char *number;
 
@@ -1377,6 +1379,38 @@ int main(int argc, char *argv[])
 				',', '1', '2', '9', ',', ',', '\r', '\n'),
 			data_end());
 
+	/* Query list of current calls - HF */
+	define_hf_test("/HFP/HF/ECS/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			FULL_SLC_SESSION('1', '0', '0', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'A', 'n', 'A',
+				'c', 't', 'i', 'v', 'e', 'c', 'a', 'l', 'l',
+				'\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			data_end());
+
+	/* Receiving call status on SLC initialization - HF */
+	define_hf_test("/HFP/HF/ECS/BV-02-C", test_hf_session,
+			NULL, test_hf_session_done,
+			FULL_SLC_SESSION('1', '1', '0', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'A', 'n', 'A',
+				'c', 't', 'i', 'v', 'e', 'c', 'a', 'l', 'l',
+				'\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			data_end());
+
 	/* Disable EC/NR on the AG - HF */
 	define_hf_test("/HFP/HF/ENO/BV-01-C", test_hf_session,
 			NULL, test_hf_session_done,
@@ -1620,6 +1654,39 @@ int main(int argc, char *argv[])
 				'3', ',', '0', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'2', ',', '0', '\r', '\n'),
+			data_end());
+
+	define_hf_test("/HFP/HF/ICA/BV-07-C-full", test_hf_session,
+			NULL, test_hf_session_done,
+			FULL_SLC_SESSION('1', '0', '1', '0'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'A', 'i', 'n',
+				'c', 'o', 'm', 'i', 'n', 'g', 'c', 'a', 'l',
+				'l', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', ',', '\"', 'A',
+				'i', 'n', 'c', 'o', 'm', 'i', 'n', 'g', 'c',
+				'a', 'l', 'l', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'A', 'i', 'n',
+				'c', 'o', 'm', 'i', 'n', 'g', 'c', 'a', 'l',
+				'l', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			data_end());
 
 	/* Initiate rejection of incoming call - HF */
