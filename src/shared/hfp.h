@@ -210,6 +210,7 @@ struct hfp_hf_callbacks {
 							void *user_data);
 	void (*call_line_id_updated)(uint id, const char *number, uint type,
 							void *user_data);
+	void (*call_mpty_updated)(uint id, bool mpty, void *user_data);
 };
 
 struct hfp_hf *hfp_hf_new(int fd);
