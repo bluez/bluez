@@ -937,11 +937,7 @@ static void hf_call_added(uint id, enum hfp_call_status status,
 
 	if (g_str_equal(test_name, "/HFP/HF/CIT/BV-01-C") ||
 		g_str_equal(test_name, "/HFP/HF/CLI/BV-01-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-01-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-02-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-03-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C-full") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-06-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-07-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICR/BV-01-C") ||
@@ -949,6 +945,19 @@ static void hf_call_added(uint id, enum hfp_call_status status,
 		g_str_equal(test_name, "/HFP/HF/TCA/BV-02-C")) {
 		g_assert_cmpint(id, ==, 1);
 		g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
+	} else if (g_str_equal(test_name, "/HFP/HF/ICA/BV-01-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-02-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-03-C") ||
+		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C-full")) {
+		bool ret;
+
+		g_assert_cmpint(id, ==, 1);
+		g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
+		if (tester_use_debug())
+			tester_debug("call %d: answering call", id);
+		ret = hfp_hf_call_answer(context->hfp_hf, id, hf_cmd_complete,
+								context);
+		g_assert(ret);
 	} else if (g_str_equal(test_name, "/HFP/HF/OCL/BV-01-C")) {
 		const char *number;
 
@@ -1002,11 +1011,7 @@ static void hf_call_line_id_updated(uint id, const char *number,
 	g_assert_cmpstr(number, ==, str);
 
 	if (g_str_equal(test_name, "/HFP/HF/ENO/BV-01-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-01-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-02-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-03-C") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C") ||
-		g_str_equal(test_name, "/HFP/HF/ICA/BV-04-C-full") ||
 		g_str_equal(test_name, "/HFP/HF/ICA/BV-07-C") ||
 		g_str_equal(test_name, "/HFP/HF/TCA/BV-01-C") ||
 		g_str_equal(test_name, "/HFP/HF/TCA/BV-02-C")) {
@@ -1376,6 +1381,7 @@ int main(int argc, char *argv[])
 	define_hf_test("/HFP/HF/ENO/BV-01-C", test_hf_session,
 			NULL, test_hf_session_done,
 			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
@@ -1387,16 +1393,23 @@ int main(int argc, char *argv[])
 				'2', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			data_end());
 
 	/* Incoming call, in-band ring - HF */
 	define_hf_test("/HFP/HF/ICA/BV-01-C", test_hf_session,
 			NULL, test_hf_session_done,
 			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'B', 'S', 'I', 'R', ':', ' ',
 				'1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
@@ -1406,18 +1419,30 @@ int main(int argc, char *argv[])
 				'2', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			data_end());
 
 	/* Answer incoming call and accept in-band setting change - HF */
 	define_hf_test("/HFP/HF/ICA/BV-02-C", test_hf_session,
 			NULL, test_hf_session_done,
 			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'B', 'S', 'I', 'R', ':', ' ',
 				'0', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
@@ -1427,13 +1452,24 @@ int main(int argc, char *argv[])
 				'2', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'B', 'S', 'I', 'R', ':', ' ',
 				'1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
@@ -1443,20 +1479,32 @@ int main(int argc, char *argv[])
 				'2', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			data_end());
 
 	/* Answer incoming call on HF with ring muting - HF */
 	define_hf_test("/HFP/HF/ICA/BV-03-C", test_hf_session,
 			NULL, test_hf_session_done,
 			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'B', 'S', 'I', 'R', ':', ' ',
 				'0', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'B', 'S', 'I', 'R', ':', ' ',
 				'1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
@@ -1466,8 +1514,14 @@ int main(int argc, char *argv[])
 				'2', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			data_end());
 
 	/* Answer Incoming call on HF, no in-band ring - HF */
@@ -1496,10 +1550,16 @@ int main(int argc, char *argv[])
 	define_hf_test("/HFP/HF/ICA/BV-04-C-full", test_hf_session,
 			NULL, test_hf_session_done,
 			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'B', 'S', 'I', 'R', ':', ' ',
 				'0', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
 				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
@@ -1509,8 +1569,14 @@ int main(int argc, char *argv[])
 				'2', ',', '1', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9',  '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
 				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			data_end());
 
 	/* Answer Incoming call on AG, no in-band ring - HF */

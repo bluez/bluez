@@ -33,6 +33,7 @@
 #define HFP_HF_FEATURES	( \
 	HFP_HF_FEAT_ECNR | \
 	HFP_HF_FEAT_CLIP | \
+	HFP_HF_FEAT_ENHANCED_CALL_STATUS | \
 	HFP_HF_FEAT_ESCO_S4_T2 \
 )
 
@@ -105,7 +106,11 @@ struct hfp_hf {
 	bool roaming;
 	uint8_t battchg;
 
+	bool session;
+	bool clcc_in_progress;
+
 	struct queue *calls;
+	struct queue *updated_calls;
 	char *dialing_number;
 };
 
@@ -140,6 +145,7 @@ struct hf_call {
 	enum hfp_call_status status;
 	char *line_id;
 	uint type;
+	bool mpty;
 
 	struct hfp_hf *hfp;
 };
@@ -1320,6 +1326,7 @@ struct hfp_hf *hfp_hf_new(int fd)
 	hfp->event_handlers = queue_new();
 	hfp->cmd_queue = queue_new();
 	hfp->calls = queue_new();
+	hfp->updated_calls = queue_new();
 	hfp->writer_active = false;
 
 	if (!io_set_read_handler(hfp->io, hf_can_read_data, hfp,
@@ -1392,6 +1399,9 @@ void hfp_hf_unref(struct hfp_hf *hfp)
 
 	queue_destroy(hfp->calls, remove_call_cb);
 	hfp->calls = NULL;
+
+	queue_destroy(hfp->updated_calls, NULL);
+	hfp->updated_calls = NULL;
 
 	if (hfp->dialing_number) {
 		free(hfp->dialing_number);
@@ -1625,7 +1635,8 @@ static uint next_call_index(struct hfp_hf *hfp)
 
 static struct hf_call *call_new(struct hfp_hf *hfp, unsigned int id,
 						enum hfp_call_status status,
-						char *number)
+						char *number, unsigned int type,
+						bool mpty)
 {
 	struct hf_call *call;
 
@@ -1634,6 +1645,8 @@ static struct hf_call *call_new(struct hfp_hf *hfp, unsigned int id,
 	call->status = status;
 	if (number)
 		call->line_id = strdup(number);
+	call->type = type;
+	call->mpty = mpty;
 	call->hfp = hfp;
 	queue_push_tail(hfp->calls, call);
 
@@ -1660,6 +1673,84 @@ static void ciev_service_cb(uint8_t val, void *user_data)
 	if (hfp->callbacks && hfp->callbacks->update_indicator)
 		hfp->callbacks->update_indicator(HFP_INDICATOR_SERVICE, val,
 							hfp->callbacks_data);
+}
+
+static void clcc_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	const struct queue_entry *call_entry, *id_entry;
+	struct hf_call *call;
+	uint id;
+	bool found;
+	struct queue *to_remove;
+
+	DBG(hfp, "");
+
+	hfp->clcc_in_progress = false;
+
+	if (result != HFP_RESULT_OK) {
+		DBG(hfp, "hf: CLCC error: %d", result);
+		goto failed;
+	}
+
+	/* Removed disconnected calls */
+	to_remove = queue_new();
+	for (call_entry = queue_get_entries(hfp->calls); call_entry;
+		call_entry = call_entry->next) {
+		call = call_entry->data;
+		found = false;
+
+		for (id_entry = queue_get_entries(hfp->updated_calls);
+			id_entry; id_entry = id_entry->next) {
+			id = PTR_TO_UINT(id_entry->data);
+			if (call->id == id) {
+				found = true;
+				break;
+			}
+		}
+		DBG(hfp, "hf: call %d -> %s", call->id,
+			found ? "updated" : "disconnected");
+
+		if (!found)
+			queue_push_tail(to_remove, UINT_TO_PTR(call->id));
+	}
+
+	for (id_entry = queue_get_entries(to_remove);
+		id_entry; id_entry = id_entry->next) {
+		id = PTR_TO_UINT(id_entry->data);
+		call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
+		if (!call) {
+			DBG(hfp, "hf: Unknown call to remove: %u", id);
+			continue;
+		}
+		queue_remove(hfp->calls, call);
+		remove_call_cb(call);
+	}
+
+	queue_remove_all(hfp->updated_calls, NULL, NULL, NULL);
+	queue_destroy(to_remove, NULL);
+	return;
+
+failed:
+	if (!hfp->session && hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(result, cme_err,
+						hfp->callbacks_data);
+}
+
+static bool send_clcc(struct hfp_hf *hfp)
+{
+	if (!hfp->session || hfp->clcc_in_progress)
+		return true;
+
+	if (!hfp_hf_send_command(hfp, clcc_resp, hfp, "AT+CLCC")) {
+		DBG(hfp, "hf: Could not send AT+CLCC");
+		return false;
+	}
+
+	hfp->clcc_in_progress = true;
+
+	return true;
 }
 
 static bool update_call_to_active(struct hfp_hf *hfp)
@@ -1695,6 +1786,11 @@ static void ciev_call_cb(uint8_t val, void *user_data)
 
 	DBG(hfp, "%u", val);
 
+	if (hfp->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		send_clcc(hfp);
+		return;
+	}
+
 	if (val < hfp->ag_ind[HFP_INDICATOR_CALL].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_CALL].max) {
 		DBG(hfp, "hf: Incorrect call state: %u", val);
@@ -1720,7 +1816,7 @@ static void ciev_call_cb(uint8_t val, void *user_data)
 				DBG(hfp, "hf: No new call index available");
 				return;
 			}
-			call_new(hfp, id, CALL_STATUS_ACTIVE, NULL);
+			call_new(hfp, id, CALL_STATUS_ACTIVE, NULL, 0, false);
 		}
 		break;
 	default:
@@ -1779,6 +1875,11 @@ static void ciev_callsetup_cb(uint8_t val, void *user_data)
 
 	DBG(hfp, "%u", val);
 
+	if (hfp->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		send_clcc(hfp);
+		return;
+	}
+
 	if (val < hfp->ag_ind[HFP_INDICATOR_CALLSETUP].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_CALLSETUP].max) {
 		DBG(hfp, "hf: Incorrect call setup state: %u", val);
@@ -1802,7 +1903,7 @@ static void ciev_callsetup_cb(uint8_t val, void *user_data)
 			DBG(hfp, "hf: No new call index available");
 			return;
 		}
-		call_new(hfp, id, CALL_STATUS_INCOMING, NULL);
+		call_new(hfp, id, CALL_STATUS_INCOMING, NULL, 0, false);
 		break;
 	case CIND_CALLSETUP_DIALING:
 	case CIND_CALLSETUP_ALERTING:
@@ -1832,7 +1933,7 @@ static void ciev_callsetup_cb(uint8_t val, void *user_data)
 			DBG(hfp, "hf: No new call index available");
 			return;
 		}
-		call_new(hfp, id, status, hfp->dialing_number);
+		call_new(hfp, id, status, hfp->dialing_number, 0, false);
 		if (hfp->dialing_number) {
 			free(hfp->dialing_number);
 			hfp->dialing_number = NULL;
@@ -1846,6 +1947,11 @@ static void ciev_callheld_cb(uint8_t val, void *user_data)
 	struct hfp_hf *hfp = user_data;
 
 	DBG(hfp, "%u", val);
+
+	if (hfp->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		send_clcc(hfp);
+		return;
+	}
 
 	if (val < hfp->ag_ind[HFP_INDICATOR_CALLHELD].min ||
 			val > hfp->ag_ind[HFP_INDICATOR_CALLHELD].max) {
@@ -1962,6 +2068,76 @@ static void cops_cb(struct hfp_context *context, void *user_data)
 		hfp->callbacks->update_operator(name, hfp->callbacks_data);
 }
 
+static void clcc_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	unsigned int id, status, mpty, type;
+	char number[255];
+	struct hf_call *call;
+
+	DBG(hfp, "");
+
+	if (!hfp_context_get_number(context, &id))
+		return;
+
+	/* Skip direction */
+	hfp_context_skip_field(context);
+
+	if (!hfp_context_get_number(context, &status))
+		return;
+
+	/* Skip mode */
+	hfp_context_skip_field(context);
+
+	if (!hfp_context_get_number(context, &mpty))
+		return;
+
+	if (!hfp_context_get_string(context, number, sizeof(number))) {
+		DBG(hfp, "hf: Could not get string");
+		return;
+	}
+
+	if (!hfp_context_get_number(context, &type))
+		return;
+
+	queue_push_tail(hfp->updated_calls, UINT_TO_PTR(id));
+
+	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
+	if (!call) {
+		call_new(hfp, id, status, number, type, !!mpty);
+		return;
+	}
+
+	if (call->status != status) {
+		call->status = status;
+		if (hfp->callbacks && hfp->callbacks->call_status_updated)
+			hfp->callbacks->call_status_updated(call->id,
+					call->status, hfp->callbacks_data);
+	}
+
+	if (call->mpty != mpty) {
+		call->mpty = mpty;
+		if (hfp->callbacks && hfp->callbacks->call_mpty_updated)
+			hfp->callbacks->call_mpty_updated(call->id,
+					call->mpty, hfp->callbacks_data);
+	}
+
+	if (call->line_id && strcmp(call->line_id, number) == 0 &&
+		call->type == type)
+		return;
+
+	if (call->line_id)
+		free(call->line_id);
+	call->line_id = strdup(number);
+	call->type = type;
+
+	if (hfp->callbacks && hfp->callbacks->call_line_id_updated)
+		hfp->callbacks->call_line_id_updated(call->id,
+						call->line_id,
+						call->type,
+						hfp->callbacks_data);
+}
+
 static void clip_cb(struct hfp_context *context, void *user_data)
 {
 	struct hfp_hf *hfp = user_data;
@@ -2012,9 +2188,17 @@ static void nrec_resp(enum hfp_result result, enum hfp_error cme_err,
 		goto failed;
 	}
 
+	hfp->session = true;
 	if (hfp->callbacks->session_ready)
 		hfp->callbacks->session_ready(HFP_RESULT_OK, 0,
 						hfp->callbacks_data);
+
+	if (hfp->features & HFP_AG_FEAT_ENHANCED_CALL_STATUS) {
+		if (!send_clcc(hfp)) {
+			result = HFP_RESULT_ERROR;
+			goto failed;
+		}
+	}
 
 	return;
 
@@ -2168,6 +2352,7 @@ static void slc_cmer_resp(enum hfp_result result, enum hfp_error cme_err,
 	if (hfp->features & HFP_AG_FEAT_IN_BAND_RING_TONE)
 		hfp_hf_register(hfp, bsir_cb, "+BSIR", hfp, NULL);
 	hfp_hf_register(hfp, ciev_cb, "+CIEV", hfp, NULL);
+	hfp_hf_register(hfp, clcc_cb, "+CLCC", hfp, NULL);
 	hfp_hf_register(hfp, clip_cb, "+CLIP", hfp, NULL);
 	hfp_hf_register(hfp, cops_cb, "+COPS", hfp, NULL);
 
