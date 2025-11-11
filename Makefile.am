@@ -744,6 +744,7 @@ endif
 EXTRA_DIST += $(manual_pages) $(patsubst %.1,%.rst, \
 				$(patsubst %.8,%.rst,$(manual_pages)))
 
+# pkg-config gives absolute paths that do not work with distcheck that wants to use its own $(prefix)
 AM_DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-health \
 						--enable-midi \
@@ -751,7 +752,13 @@ AM_DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
 						--enable-mesh \
 						--enable-btpclient \
 						--disable-systemd \
-						--disable-udev
+						--disable-udev \
+						--disable-cups \
+						--with-dbusconfdir=$${dc_install_base}/$(DBUS_CONFDIR) \
+						--with-dbussystembusdir=$${dc_install_base}/$(DBUS_SYSTEMBUSDIR) \
+						--with-dbussessionbusdir=$${dc_install_base}/$(DBUS_SESSIONBUSDIR)
+
+
 
 DISTCLEANFILES = $(pkgconfig_DATA) $(unit_tests) $(manual_pages)
 
