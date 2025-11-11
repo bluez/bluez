@@ -77,6 +77,7 @@
 #endif
 
 #define RSSI_THRESHOLD		8
+#define AUTH_FAILURES_THRESHOLD	5
 
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
@@ -306,6 +307,8 @@ struct btd_device {
 	time_t		name_resolve_failed_time;
 
 	int8_t		volume;
+
+	uint32_t	auth_failures;
 };
 
 static const uint16_t uuid_list[] = {
@@ -7113,8 +7116,14 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 			btd_device_set_temporary(device, true);
 
 		device_bonding_failed(device, status);
+
+		if (device->auth_failures > AUTH_FAILURES_THRESHOLD)
+			device_set_auto_connect(device, FALSE);
+
 		return;
 	}
+
+	device->auth_failures = 0;
 
 	device_auth_req_free(device);
 
@@ -7319,6 +7328,8 @@ void device_bonding_failed(struct btd_device *device, uint8_t status)
 {
 	struct bonding_req *bonding = device->bonding;
 	DBusMessage *reply;
+
+	device->auth_failures++;
 
 	DBG("status %u", status);
 
