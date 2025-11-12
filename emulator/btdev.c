@@ -3267,6 +3267,103 @@ static int cmd_get_mws_transport_config(struct btdev *dev, const void *data,
 	CMD(BT_HCI_CMD_ENHANCED_SETUP_SYNC_CONN, cmd_enhanced_setup_sync_conn, \
 					cmd_enhanced_setup_sync_conn_complete)
 
+static int cmd_set_event_mask_2(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	memcpy(dev->event_mask_page2, cmd->mask, 8);
+	cmd_complete(dev, BT_HCI_CMD_SET_EVENT_MASK_PAGE2, &status,
+						sizeof(status));
+
+	return 0;
+}
+
+static int cmd_read_sync_train_params(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	struct bt_hci_rsp_read_sync_train_params rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	rsp.interval = cpu_to_le16(dev->sync_train_interval);
+	rsp.timeout = cpu_to_le32(dev->sync_train_timeout);
+	rsp.service_data = dev->sync_train_service_data;
+	cmd_complete(dev, BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS, &rsp, sizeof(rsp));
+
+	return 0;
+}
+
+static int cmd_read_sc_support(struct btdev *dev, const void *data, uint8_t len)
+{
+	struct bt_hci_rsp_read_secure_conn_support rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	rsp.support = dev->secure_conn_support;
+	cmd_complete(dev, BT_HCI_CMD_READ_SECURE_CONN_SUPPORT, &rsp,
+							sizeof(rsp));
+
+	return 0;
+}
+
+static int cmd_write_sc_support(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_write_secure_conn_support *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	dev->secure_conn_support = cmd->support;
+	cmd_complete(dev, BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT, &status,
+							sizeof(status));
+
+	return 0;
+}
+
+static int cmd_read_auth_payload_timeout(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	/* TODO */
+	return -ENOTSUP;
+}
+
+static int cmd_write_auth_payload_timeout(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	/* TODO */
+	return -ENOTSUP;
+}
+
+static int cmd_read_local_oob_ext_data(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	struct bt_hci_rsp_read_local_oob_ext_data rsp;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.status = BT_HCI_ERR_SUCCESS;
+	cmd_complete(dev, BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA, &rsp,
+							sizeof(rsp));
+
+	return 0;
+}
+
+#define CMD_COMMON_BREDR_LE_40 \
+	CMD(BT_HCI_CMD_SET_EVENT_MASK_PAGE2, cmd_set_event_mask_2, NULL), \
+	CMD(BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS, cmd_read_sync_train_params, \
+					NULL), \
+	CMD(BT_HCI_CMD_READ_SECURE_CONN_SUPPORT, cmd_read_sc_support, NULL), \
+	CMD(BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT, cmd_write_sc_support, NULL), \
+	CMD(BT_HCI_CMD_READ_AUTH_PAYLOAD_TIMEOUT, \
+					cmd_read_auth_payload_timeout, NULL), \
+	CMD(BT_HCI_CMD_WRITE_AUTH_PAYLOAD_TIMEOUT, \
+					cmd_write_auth_payload_timeout, NULL), \
+	CMD(BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA, \
+					cmd_read_local_oob_ext_data, NULL)
+
 static const struct btdev_cmd cmd_bredr[] = {
 	CMD_COMMON_ALL,
 	CMD_COMMON_BREDR_LE,
@@ -4732,6 +4829,31 @@ static int cmd_gen_dhkey(struct btdev *dev, const void *data, uint8_t len)
 	CMD(BT_HCI_CMD_LE_SET_RESOLV_ENABLE, cmd_set_rl_enable, NULL), \
 	CMD(BT_HCI_CMD_LE_SET_RESOLV_TIMEOUT, cmd_set_rl_timeout, NULL)
 
+static const struct btdev_cmd cmd_bredr_le[] = {
+	CMD_COMMON_ALL,
+	CMD_COMMON_BREDR_LE,
+	CMD_COMMON_BREDR_20,
+	CMD_COMMON_BREDR_LE_40,
+	CMD_BREDR,
+	CMD_LE,
+	{}
+};
+
+static void set_bredrle_40_commands(struct btdev *btdev)
+{
+	/* Extra BR/EDR commands we want to only support for >= 4.0
+	 * adapters.
+	 */
+	btdev->commands[22] |= 0x04;	/* Set Event Mask Page 2 */
+	btdev->commands[31] |= 0x80;	/* Read Sync Train Parameters */
+	btdev->commands[32] |= 0x04;	/* Read Secure Connections Support */
+	btdev->commands[32] |= 0x08;	/* Write Secure Connections Support */
+	btdev->commands[32] |= 0x10;	/* Read Auth Payload Timeout */
+	btdev->commands[32] |= 0x20;	/* Write Auth Payload Timeout */
+	btdev->commands[32] |= 0x40;	/* Read Local OOB Extended Data */
+	btdev->cmds = cmd_bredr_le;
+}
+
 static int cmd_set_default_phy(struct btdev *dev, const void *data,
 							uint8_t len)
 {
@@ -6041,6 +6163,9 @@ done:
 static const struct btdev_cmd cmd_le_5_0[] = {
 	CMD_COMMON_ALL,
 	CMD_COMMON_BREDR_LE,
+	CMD_COMMON_BREDR_20,
+	CMD_COMMON_BREDR_LE_40,
+	CMD_BREDR,
 	CMD_LE,
 	CMD_LE_50,
 	{}
@@ -7345,6 +7470,9 @@ static int cmd_config_data_path(struct btdev *dev, const void *data,
 static const struct btdev_cmd cmd_le_5_2[] = {
 	CMD_COMMON_ALL,
 	CMD_COMMON_BREDR_LE,
+	CMD_COMMON_BREDR_20,
+	CMD_COMMON_BREDR_LE_40,
+	CMD_BREDR,
 	CMD_LE,
 	CMD_LE_50,
 	CMD_LE_52,
@@ -7398,6 +7526,7 @@ static int cmd_le_read_all_local_features(struct btdev *dev, const void *data,
 
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.status = BT_HCI_ERR_SUCCESS;
+	rsp.page = 10;
 	memcpy(rsp.features, dev->le_features, 248);
 
 	cmd_complete(dev, BT_HCI_CMD_LE_READ_ALL_LOCAL_FEATURES, &rsp,
@@ -7446,6 +7575,9 @@ static int cmd_le_read_all_remote_features(struct btdev *dev, const void *data,
 static const struct btdev_cmd cmd_le_6_0[] = {
 	CMD_COMMON_ALL,
 	CMD_COMMON_BREDR_LE,
+	CMD_COMMON_BREDR_20,
+	CMD_COMMON_BREDR_LE_40,
+	CMD_BREDR,
 	CMD_LE,
 	CMD_LE_50,
 	CMD_LE_52,
@@ -7514,6 +7646,9 @@ static void set_le_commands(struct btdev *btdev)
 
 	btdev->cmds = cmd_le;
 
+	if (btdev->type >= BTDEV_TYPE_BREDRLE)
+		set_bredrle_40_commands(btdev);
+
 	/* Extra LE commands for >= 5.0 adapters */
 	if (btdev->type >= BTDEV_TYPE_BREDRLE50) {
 		set_le_50_commands(btdev);
@@ -7527,137 +7662,16 @@ static void set_le_commands(struct btdev *btdev)
 	}
 
 	/* Extra LE commands for >= 6.0 adapters */
-	if (btdev->type >= BTDEV_TYPE_BREDRLE52) {
+	if (btdev->type >= BTDEV_TYPE_BREDRLE60) {
 		set_le_60_commands(btdev);
 		btdev->cmds = cmd_le_6_0;
 	}
 }
 
-static int cmd_set_event_mask_2(struct btdev *dev, const void *data,
-							uint8_t len)
-{
-	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
-	uint8_t status = BT_HCI_ERR_SUCCESS;
-
-	memcpy(dev->event_mask_page2, cmd->mask, 8);
-	cmd_complete(dev, BT_HCI_CMD_SET_EVENT_MASK_PAGE2, &status,
-						sizeof(status));
-
-	return 0;
-}
-
-static int cmd_read_sync_train_params(struct btdev *dev, const void *data,
-							uint8_t len)
-{
-	struct bt_hci_rsp_read_sync_train_params rsp;
-
-	memset(&rsp, 0, sizeof(rsp));
-
-	rsp.status = BT_HCI_ERR_SUCCESS;
-	rsp.interval = cpu_to_le16(dev->sync_train_interval);
-	rsp.timeout = cpu_to_le32(dev->sync_train_timeout);
-	rsp.service_data = dev->sync_train_service_data;
-	cmd_complete(dev, BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS, &rsp, sizeof(rsp));
-
-	return 0;
-}
-
-static int cmd_read_sc_support(struct btdev *dev, const void *data, uint8_t len)
-{
-	struct bt_hci_rsp_read_secure_conn_support rsp;
-
-	memset(&rsp, 0, sizeof(rsp));
-
-	rsp.status = BT_HCI_ERR_SUCCESS;
-	rsp.support = dev->secure_conn_support;
-	cmd_complete(dev, BT_HCI_CMD_READ_SECURE_CONN_SUPPORT, &rsp,
-							sizeof(rsp));
-
-	return 0;
-}
-
-static int cmd_write_sc_support(struct btdev *dev, const void *data,
-							uint8_t len)
-{
-	const struct bt_hci_cmd_write_secure_conn_support *cmd = data;
-	uint8_t status = BT_HCI_ERR_SUCCESS;
-
-	dev->secure_conn_support = cmd->support;
-	cmd_complete(dev, BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT, &status,
-							sizeof(status));
-
-	return 0;
-}
-
-static int cmd_read_auth_payload_timeout(struct btdev *dev, const void *data,
-							uint8_t len)
-{
-	/* TODO */
-	return -ENOTSUP;
-}
-
-static int cmd_write_auth_payload_timeout(struct btdev *dev, const void *data,
-							uint8_t len)
-{
-	/* TODO */
-	return -ENOTSUP;
-}
-
-static int cmd_read_local_oob_ext_data(struct btdev *dev, const void *data,
-							uint8_t len)
-{
-	struct bt_hci_rsp_read_local_oob_ext_data rsp;
-
-	memset(&rsp, 0, sizeof(rsp));
-
-	rsp.status = BT_HCI_ERR_SUCCESS;
-	cmd_complete(dev, BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA, &rsp,
-							sizeof(rsp));
-
-	return 0;
-}
-
-#define BT_BREDR_LE \
-	CMD(BT_HCI_CMD_SET_EVENT_MASK_PAGE2, cmd_set_event_mask_2, NULL), \
-	CMD(BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS, cmd_read_sync_train_params, \
-					NULL), \
-	CMD(BT_HCI_CMD_READ_SECURE_CONN_SUPPORT, cmd_read_sc_support, NULL), \
-	CMD(BT_HCI_CMD_WRITE_SECURE_CONN_SUPPORT, cmd_write_sc_support, NULL), \
-	CMD(BT_HCI_CMD_READ_AUTH_PAYLOAD_TIMEOUT, \
-					cmd_read_auth_payload_timeout, NULL), \
-	CMD(BT_HCI_CMD_WRITE_AUTH_PAYLOAD_TIMEOUT, \
-					cmd_write_auth_payload_timeout, NULL), \
-	CMD(BT_HCI_CMD_READ_LOCAL_OOB_EXT_DATA, \
-					cmd_read_local_oob_ext_data, NULL)
-
-static const struct btdev_cmd cmd_bredr_le[] = {
-	CMD_COMMON_ALL,
-	CMD_COMMON_BREDR_LE,
-	CMD_COMMON_BREDR_20,
-	CMD_BREDR,
-	CMD_LE,
-	CMD_LE_50,
-	CMD_LE_52,
-	BT_BREDR_LE,
-	{}
-};
-
 static void set_bredrle_commands(struct btdev *btdev)
 {
 	set_bredr_commands(btdev);
 	set_le_commands(btdev);
-
-	/* Extra BR/EDR commands we want to only support for >= 4.0
-	 * adapters.
-	 */
-	btdev->commands[22] |= 0x04;	/* Set Event Mask Page 2 */
-	btdev->commands[31] |= 0x80;	/* Read Sync Train Parameters */
-	btdev->commands[32] |= 0x04;	/* Read Secure Connections Support */
-	btdev->commands[32] |= 0x08;	/* Write Secure Connections Support */
-	btdev->commands[32] |= 0x10;	/* Read Auth Payload Timeout */
-	btdev->commands[32] |= 0x20;	/* Write Auth Payload Timeout */
-	btdev->commands[32] |= 0x40;	/* Read Local OOB Extended Data */
-	btdev->cmds = cmd_bredr_le;
 }
 
 static void set_amp_commands(struct btdev *btdev)
