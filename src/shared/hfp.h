@@ -38,6 +38,14 @@
 #define HFP_AG_FEAT_ENHANCED_VOICE_RECOGNITION_STATUS	0x00001000
 #define HFP_AG_FEAT_VOICE_RECOGNITION_TEXT		0x00002000
 
+#define HFP_CHLD_0	1 << 0
+#define HFP_CHLD_1	1 << 1
+#define HFP_CHLD_2	1 << 2
+#define HFP_CHLD_3	1 << 3
+#define HFP_CHLD_4	1 << 4
+#define HFP_CHLD_1x	1 << 5
+#define HFP_CHLD_2x	1 << 6
+
 enum hfp_result {
 	HFP_RESULT_OK		= 0,
 	HFP_RESULT_CONNECT	= 1,
@@ -177,6 +185,7 @@ bool hfp_context_get_number_default(struct hfp_context *context,
 						unsigned int default_val);
 bool hfp_context_open_container(struct hfp_context *context);
 bool hfp_context_close_container(struct hfp_context *context);
+bool hfp_context_is_container_close(struct hfp_context *context);
 bool hfp_context_get_string(struct hfp_context *context, char *buf,
 								uint8_t len);
 bool hfp_context_get_unquoted_string(struct hfp_context *context,
@@ -240,6 +249,12 @@ bool hfp_hf_session(struct hfp_hf *hfp);
 const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id);
 
 bool hfp_hf_dial(struct hfp_hf *hfp, const char *number,
+				hfp_response_func_t resp_cb,
+				void *user_data);
+bool hfp_hf_release_and_accept(struct hfp_hf *hfp,
+				hfp_response_func_t resp_cb,
+				void *user_data);
+bool hfp_hf_swap_calls(struct hfp_hf *hfp,
 				hfp_response_func_t resp_cb,
 				void *user_data);
 bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
