@@ -996,6 +996,95 @@ static void hf_call_added(uint id, enum hfp_call_status status,
 		ret = hfp_hf_call_hangup(context->hfp_hf, id, hf_cmd_complete,
 							context);
 		g_assert(ret);
+	} else if (g_str_equal(test_name, "/HFP/HF/TWC/BV-01-C")) {
+		bool ret;
+
+		switch (context->session.step) {
+		case 0:
+			g_assert_cmpint(id, ==, 1);
+			g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
+			if (tester_use_debug())
+				tester_debug("call %d: answering call", id);
+			ret = hfp_hf_call_answer(context->hfp_hf, id,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		case 1:
+			g_assert_cmpint(id, ==, 2);
+			g_assert_cmpint(status, ==, CALL_STATUS_HELD);
+			if (tester_use_debug())
+				tester_debug("call %d: ending held call", id);
+			ret = hfp_hf_call_hangup(context->hfp_hf, id,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		default:
+			tester_debug("Unexpected session.step");
+			tester_test_failed();
+		}
+		context->session.step++;
+	} else if (g_str_equal(test_name, "/HFP/HF/TWC/BV-02-C")) {
+		bool ret;
+
+		switch (context->session.step) {
+		case 0:
+			g_assert_cmpint(id, ==, 1);
+			g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
+			if (tester_use_debug())
+				tester_debug("call %d: answering call", id);
+			ret = hfp_hf_call_answer(context->hfp_hf, id,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		case 1:
+			g_assert_cmpint(id, ==, 2);
+			g_assert_cmpint(status, ==, CALL_STATUS_HELD);
+			if (tester_use_debug())
+				tester_debug("call %d: "
+						"release and answer calls",
+						id);
+			ret = hfp_hf_release_and_accept(context->hfp_hf,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		default:
+			tester_debug("Unexpected session.step");
+			tester_test_failed();
+		}
+		context->session.step++;
+	} else if (g_str_equal(test_name, "/HFP/HF/TWC/BV-03-C")) {
+		bool ret;
+
+		switch (context->session.step) {
+		case 0:
+			g_assert_cmpint(id, ==, 1);
+			g_assert_cmpint(status, ==, CALL_STATUS_INCOMING);
+			if (tester_use_debug())
+				tester_debug("call %d: answering call", id);
+			ret = hfp_hf_call_answer(context->hfp_hf, id,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		case 2:
+			g_assert_cmpint(id, ==, 2);
+			g_assert_cmpint(status, ==, CALL_STATUS_HELD);
+			if (tester_use_debug())
+				tester_debug("call %d: swap calls", id);
+			ret = hfp_hf_swap_calls(context->hfp_hf,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		default:
+			tester_debug("Unexpected session.step");
+			tester_test_failed();
+		}
+		context->session.step++;
 	}
 }
 
@@ -1041,9 +1130,52 @@ static void hf_call_line_id_updated(uint id, const char *number,
 
 static void hf_call_removed(uint id, void *user_data)
 {
+	struct context *context = user_data;
+	const char *test_name = context->data->test_name;
+
 	if (tester_use_debug())
 		tester_debug("call %d removed", id);
-	g_assert_cmpint(id, ==, 1);
+	if (g_str_equal(test_name, "/HFP/HF/TWC/BV-01-C")) {
+		switch (context->session.step) {
+		case 2:
+			g_assert_cmpint(id, ==, 2);
+			break;
+		case 3:
+			g_assert_cmpint(id, ==, 1);
+			break;
+		default:
+			tester_debug("Unexpected session.step");
+			tester_test_failed();
+		}
+		context->session.step++;
+	} else if (g_str_equal(test_name, "/HFP/HF/TWC/BV-02-C")) {
+		switch (context->session.step) {
+		case 2:
+			g_assert_cmpint(id, ==, 1);
+			break;
+		case 3:
+			g_assert_cmpint(id, ==, 2);
+			break;
+		default:
+			tester_debug("Unexpected session.step");
+			tester_test_failed();
+		}
+		context->session.step++;
+	} else if (g_str_equal(test_name, "/HFP/HF/TWC/BV-03-C")) {
+		switch (context->session.step) {
+		case 8:
+			g_assert_cmpint(id, ==, 1);
+			break;
+		case 9:
+			g_assert_cmpint(id, ==, 2);
+			break;
+		default:
+			tester_debug("Unexpected session.step");
+			tester_test_failed();
+		}
+		context->session.step++;
+	} else
+		g_assert_cmpint(id, ==, 1);
 }
 
 static void hf_call_status_updated(uint id, enum hfp_call_status status,
@@ -1139,6 +1271,48 @@ static void hf_call_status_updated(uint id, enum hfp_call_status status,
 		ret = hfp_hf_call_hangup(context->hfp_hf, id, hf_cmd_complete,
 							context);
 		g_assert(ret);
+	} else if (g_str_equal(test_name, "/HFP/HF/TWC/BV-03-C")) {
+		bool ret;
+
+		switch (context->session.step) {
+		case 1:
+		case 5:
+			g_assert_cmpint(id, ==, 1);
+			g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
+			break;
+		case 3:
+			g_assert_cmpint(id, ==, 1);
+			g_assert_cmpint(status, ==, CALL_STATUS_HELD);
+			break;
+		case 4:
+			g_assert_cmpint(id, ==, 2);
+			g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
+			if (tester_use_debug())
+				tester_debug("call %d: swap calls", id);
+			ret = hfp_hf_swap_calls(context->hfp_hf,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		case 6:
+			g_assert_cmpint(id, ==, 2);
+			g_assert_cmpint(status, ==, CALL_STATUS_HELD);
+			if (tester_use_debug())
+				tester_debug("call %d: swap calls", id);
+			ret = hfp_hf_release_and_accept(context->hfp_hf,
+							hf_cmd_complete,
+							context);
+			g_assert(ret);
+			break;
+		case 7:
+			g_assert_cmpint(id, ==, 2);
+			g_assert_cmpint(status, ==, CALL_STATUS_ACTIVE);
+			break;
+		default:
+			tester_debug("Unexpected session.step");
+			tester_test_failed();
+		}
+		context->session.step++;
 	}
 }
 
@@ -1880,6 +2054,232 @@ int main(int argc, char *argv[])
 			frg_pdu(' ', '1', ',', '0', '\r', '\n'),
 			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':'),
 			frg_pdu(' ', '1', ',', '1', '\r', '\n'),
+			data_end());
+
+	/* Call waiting – handling user busy by HF (AT+CHLD=0) - HF */
+	define_hf_test("/HFP/HF/TWC/BV-01-C", test_hf_session,
+			NULL, test_hf_session_done,
+			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', ',', '\"', 'b',
+				'l', 'u', 'e', 'm', 'a', 'n', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'C', 'W', 'A', ':', ' ',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '2',
+				',', '1', ',', '1', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'a', 's', 'e',
+				'c', 'o', 'n', 'd', 'c', 'a', 'l', 'l', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'4', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			data_end());
+
+	/* Initiate request to drop the active and retrieve the waiting call
+	 * (AT+CHLD=1) - HF
+	 */
+	define_hf_test("/HFP/HF/TWC/BV-02-C", test_hf_session,
+			NULL, test_hf_session_done,
+			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', ',', '\"', 'b',
+				'l', 'u', 'e', 'm', 'a', 'n', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'C', 'W', 'A', ':', ' ',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '2',
+				',', '1', ',', '1', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'a', 's', 'e',
+				'c', 'o', 'n', 'd', 'c', 'a', 'l', 'l', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'4', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '2',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'a', 's', 'e',
+				'c', 'o', 'n', 'd', 'c', 'a', 'l', 'l', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '0', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			data_end());
+
+	/* Request the AG to hold the active and retrieve the waiting call
+	 * (AT+CHLD=2) - HF
+	 */
+	define_hf_test("/HFP/HF/TWC/BV-03-C", test_hf_session,
+			NULL, test_hf_session_done,
+			FULL_SLC_SESSION('1', '0', '0', '0'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '4', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', 'R', 'I', 'N', 'G', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'I', 'P', ':',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', ',', ',', '\"', 'b',
+				'l', 'u', 'e', 'm', 'a', 'n', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'2', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'C', 'W', 'A', ':', ' ',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '2',
+				',', '1', ',', '1', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'a', 's', 'e',
+				'c', 'o', 'n', 'd', 'c', 'a', 'l', 'l', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'4', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '1', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '2',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'a', 's', 'e',
+				'c', 'o', 'n', 'd', 'c', 'a', 'l', 'l', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'4', ',', '1', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '1',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '1', '2', '3', '4', '5', '6', '7', '\"',
+				',', '1', '2', '9', ',', '\"', 'b', 'l', 'u',
+				'e', 'm', 'a', 'n', '\"', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '2',
+				',', '1', ',', '1', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'a', 's', 'e',
+				'c', 'o', 'n', 'd', 'c', 'a', 'l', 'l', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'3', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'I', 'E', 'V', ':', ' ',
+				'4', ',', '0', '\r', '\n'),
+			frg_pdu('\r', '\n', '+', 'C', 'L', 'C', 'C', ':', '2',
+				',', '1', ',', '0', ',', '0', ',', '0', ',',
+				'\"', '7', '6', '5', '4', '3', '2', '1', '\"',
+				',', '1', '2', '9', ',', '\"', 'a', 's', 'e',
+				'c', 'o', 'n', 'd', 'c', 'a', 'l', 'l', '\"',
+				'\r', '\n'),
+			raw_pdu('\r', '\n', 'O', 'K', '\r', '\n'),
 			data_end());
 
 	return tester_run();
