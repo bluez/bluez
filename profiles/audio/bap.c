@@ -1919,7 +1919,7 @@ static bool pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 		queue_push_tail(select->eps, ep);
 	}
 
-	bt_bap_select(lpac, rpac, &select->remaining, select_cb, ep);
+	bt_bap_select(lpac, rpac, 0, &select->remaining, select_cb, ep);
 
 	return true;
 }
