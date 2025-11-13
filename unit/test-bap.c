@@ -35,7 +35,6 @@
 #include "src/shared/lc3.h"
 
 struct test_config {
-	struct bt_bap_pac_qos pqos;
 	struct iovec cc;
 	struct iovec base;
 	struct bt_bap_qos qos;
@@ -933,16 +932,26 @@ static void test_teardown(const void *user_data)
  *       Front Left (0x00000001)
  *       Front Right (0x00000002)
  */
-#define DISC_SNK_PAC(_caps...) \
+
+#define IOV_CONTENT(data...) data
+
+#define DISC_SNK_PAC(_caps) \
 	IOV_DATA(0x0a, 0x03, 0x00), \
-	IOV_DATA(0x0b, 0x01, _caps), \
+	IOV_DATA(0x0b, 0x01, _caps)
+
+#define DISC_SNK_LOC(locations) \
 	IOV_DATA(0x0a, 0x06, 0x00), \
-	IOV_DATA(0x0b, 0x03, 0x00, 0x00, 0x00)
+	IOV_DATA(0x0b, locations & 0xff, (locations >> 8)  & 0xff, \
+		(locations >> 16) & 0xff, (locations >> 24) & 0xff)
+
+#define LC3_PAC_CAPS(ch_counts) \
+	0x06, 0x00, 0x00, 0x00, 0x00, 0x10, 0x03, 0x01, \
+	0xff, 0x00, 0x02, 0x02, 0x03, 0x02, 0x03, ch_counts, 0x05, 0x04, \
+	0x1a, 0x00, 0xf0, 0x00, 0x00
 
 #define DISC_SNK_LC3 \
-	DISC_SNK_PAC(0x06, 0x00, 0x00, 0x00, 0x00, 0x10, 0x03, 0x01, \
-		0xff, 0x00, 0x02, 0x02, 0x03, 0x02, 0x03, 0x03, 0x05, 0x04, \
-		0x1a, 0x00, 0xf0, 0x00, 0x00)
+	DISC_SNK_PAC(LC3_PAC_CAPS(0x03)), \
+	DISC_SNK_LOC(0x00000003)
 
 /* ATT: Read Request (0x0a) len 2
  *   Handle: 0x0009 Type: Source PAC (0x2bcb)
@@ -981,17 +990,28 @@ static void test_teardown(const void *user_data)
  *       Front Left (0x00000001)
  *       Front Right (0x00000002)
  */
-#define DISC_SRC_PAC(_caps...) \
-	DISC_SNK_PAC(_caps), \
+#define DISC_SRC_PAC(_caps) \
 	IOV_DATA(0x0a, 0x09, 0x00), \
-	IOV_DATA(0x0b, 0x01, _caps), \
+	IOV_DATA(0x0b, 0x01, _caps)
+
+#define DISC_SRC_LOC(locations) \
 	IOV_DATA(0x0a, 0x0c, 0x00), \
-	IOV_DATA(0x0b, 0x03, 0x00, 0x00, 0x00)
+	IOV_DATA(0x0b, locations & 0xff, (locations >> 8) & 0xff, \
+		(locations >> 16) & 0xff, (locations >> 24) & 0xff)
+
+#define DISC_PACS(snk_locations, src_locations, snk_caps, src_caps) \
+	DISC_SNK_PAC(IOV_CONTENT(snk_caps)), \
+	DISC_SNK_LOC(snk_locations), \
+	DISC_SRC_PAC(IOV_CONTENT(src_caps)),	\
+	DISC_SRC_LOC(src_locations)
+
+#define DISC_PACS_NO_LOCATION(snk_caps, src_caps) \
+	DISC_SNK_PAC(IOV_CONTENT(snk_caps)), \
+	DISC_SRC_PAC(IOV_CONTENT(src_caps))
 
 #define DISC_SRC_LC3 \
-	DISC_SRC_PAC(0x06, 0x00, 0x00, 0x00, 0x00, 0x10, 0x03, 0x01, \
-		0xff, 0x00, 0x02, 0x02, 0x03, 0x02, 0x03, 0x03, 0x05, 0x04, \
-		0x1a, 0x00, 0xf0, 0x00, 0x00)
+	DISC_PACS(0x00000003, 0x00000003, \
+			LC3_PAC_CAPS(0x03), LC3_PAC_CAPS(0x03))
 
 /* ATT: Read Request (0x0a) len 2
  *   Handle: 0x000f Type: Available Audio Contexts (0x2bcd)
@@ -999,15 +1019,21 @@ static void test_teardown(const void *user_data)
  *   Value: ff0fff0f
  *   Handle: 0x000f Type: Available Audio Contexts (0x2bcd)
  */
-#define DISC_CTX(_caps...) \
-	DISC_SRC_PAC(_caps), \
+#define DISC_CTX(snk_locations, src_locations, snk_caps, src_caps) \
+	DISC_PACS(snk_locations, src_locations, \
+			IOV_CONTENT(snk_caps), IOV_CONTENT(src_caps)), \
+	IOV_DATA(0x0a, 0x0f, 0x00), \
+	IOV_DATA(0x0b, 0xff, 0x0f, 0xff, 0x0f)
+
+#define DISC_CTX_NO_LOCATION(snk_caps, src_caps) \
+	DISC_PACS_NO_LOCATION(IOV_CONTENT(snk_caps), \
+				IOV_CONTENT(src_caps)), \
 	IOV_DATA(0x0a, 0x0f, 0x00), \
 	IOV_DATA(0x0b, 0xff, 0x0f, 0xff, 0x0f)
 
 #define DISC_CTX_LC3 \
-	DISC_CTX(0x06, 0x00, 0x00, 0x00, 0x00, 0x10, 0x03, 0x01, \
-		0xff, 0x00, 0x02, 0x02, 0x03, 0x02, 0x03, 0x03, 0x05, 0x04, \
-		0x1a, 0x00, 0xf0, 0x00, 0x00)
+	DISC_CTX(0x00000003, 0x00000003, \
+		LC3_PAC_CAPS(0x03), LC3_PAC_CAPS(0x03))
 
 /* ATT: Read Request (0x0a) len 2
  *   Handle: 0x0012 Type: Supported Audio Contexts (0x2bce)
@@ -1015,15 +1041,20 @@ static void test_teardown(const void *user_data)
  *   Value: ff0fff0f
  *   Handle: 0x0012 Type: Supported Audio Contexts (0x2bce)
  */
-#define DISC_SUP_CTX(_caps...) \
-	DISC_CTX(_caps), \
+#define DISC_SUP_CTX(snk_locations, src_locations, snk_caps, src_caps) \
+	DISC_CTX(snk_locations, src_locations, \
+			IOV_CONTENT(snk_caps), IOV_CONTENT(src_caps)), \
+	IOV_DATA(0x0a, 0x12, 0x00), \
+	IOV_DATA(0x0b, 0xff, 0x0f, 0xff, 0x0f)
+
+#define DISC_SUP_CTX_NO_LOCATION(snk_caps, src_caps) \
+	DISC_CTX_NO_LOCATION(IOV_CONTENT(snk_caps), IOV_CONTENT(src_caps)), \
 	IOV_DATA(0x0a, 0x12, 0x00), \
 	IOV_DATA(0x0b, 0xff, 0x0f, 0xff, 0x0f)
 
 #define DISC_SUP_CTX_LC3 \
-	DISC_SUP_CTX(0x06, 0x00, 0x00, 0x00, 0x00, 0x10, 0x03, 0x01, \
-		0xff, 0x00, 0x02, 0x02, 0x03, 0x02, 0x03, 0x03, 0x05, 0x04, \
-		0x1a, 0x00, 0xf0, 0x00, 0x00)
+	DISC_SUP_CTX(0x00000003, 0x00000003, \
+			LC3_PAC_CAPS(0x03), LC3_PAC_CAPS(0x03))
 
 /* ATT: Read Request (0x0a) len 2
  *   Handle: 0x0016 Type: Sink ASE (0x2bc4)
@@ -1046,8 +1077,9 @@ static void test_teardown(const void *user_data)
  *       Notification (0x01)
  * ATT: Write Response (0x13) len 0
  */
-#define DISC_SNK_ASE(_caps...) \
-	DISC_SUP_CTX(_caps), \
+#define DISC_SNK_ASE(snk_locations, src_locations, snk_caps, src_caps)	\
+	DISC_SUP_CTX(snk_locations, src_locations, \
+			IOV_CONTENT(snk_caps), IOV_CONTENT(src_caps)), \
 	IOV_DATA(0x0a, 0x16, 0x00), \
 	IOV_DATA(0x0b, 0x01, 0x00), \
 	IOV_DATA(0x12, 0x17, 0x00, 0x01, 0x00), \
@@ -1057,10 +1089,15 @@ static void test_teardown(const void *user_data)
 	IOV_DATA(0x12, 0x1a, 0x00, 0x01, 0x00), \
 	IOV_DATA(0x13)
 
+#define DISC_SNK_ASE_NO_LOCATION(snk_caps, src_caps) \
+	DISC_SUP_CTX_NO_LOCATION(IOV_CONTENT(snk_caps), \
+				IOV_CONTENT(src_caps)), \
+	IOV_DATA(0x0a, 0x16, 0x00), \
+	IOV_DATA(0x0b, 0x01, 0x00)
+
 #define DISC_SNK_ASE_LC3 \
-	DISC_SNK_ASE(0x06, 0x00, 0x00, 0x00, 0x00, 0x10, 0x03, 0x01, \
-		0xff, 0x00, 0x02, 0x02, 0x03, 0x02, 0x03, 0x03, 0x05, 0x04, \
-		0x1a, 0x00, 0xf0, 0x00, 0x00)
+	DISC_SNK_ASE(0x00000003, 0x00000003, \
+			LC3_PAC_CAPS(0x03), LC3_PAC_CAPS(0x03))
 
 /* ATT: Read Request (0x0a) len 2
  *   Handle: 0x001c Type: Source ASE (0x2bc5)
@@ -1088,8 +1125,9 @@ static void test_teardown(const void *user_data)
  *       Notification (0x01)
  * ATT: Write Response (0x13) len 0
  */
-#define DISC_SRC_ASE(_cfg...) \
-	DISC_SNK_ASE(_cfg), \
+#define DISC_SRC_ASE(snk_locations, src_locations, snk_pacs, src_pacs) \
+	DISC_SNK_ASE(snk_locations, src_locations, \
+			IOV_CONTENT(snk_pacs), IOV_CONTENT(src_pacs)), \
 	IOV_DATA(0x0a, 0x1c, 0x00), \
 	IOV_DATA(0x0b, 0x03, 0x00), \
 	IOV_DATA(0x12, 0x1d, 0x00, 0x01, 0x00), \
@@ -1101,10 +1139,17 @@ static void test_teardown(const void *user_data)
 	IOV_DATA(0x12, 0x23, 0x00, 0x01, 0x00), \
 	IOV_DATA(0x13)
 
+#define DISC_SRC_ASE_NO_LOCATION(snk_pacs, src_pacs) \
+	DISC_SNK_ASE_NO_LOCATION(IOV_CONTENT(snk_pacs), \
+				IOV_CONTENT(src_pacs)), \
+	IOV_DATA(0x0a, 0x1c, 0x00), \
+	IOV_DATA(0x0b, 0x03, 0x00), \
+	IOV_DATA(0x12, 0x23, 0x00, 0x01, 0x00), \
+	IOV_DATA(0x13)
+
 #define DISC_SRC_ASE_LC3 \
-	DISC_SRC_ASE(0x06, 0x00, 0x00, 0x00, 0x00, 0x10, 0x03, 0x01, \
-		0xff, 0x00, 0x02, 0x02, 0x03, 0x02, 0x03, 0x03, 0x05, 0x04, \
-		0x1a, 0x00, 0xf0, 0x00, 0x00)
+	DISC_SRC_ASE(0x00000003, 0x00000003, \
+			LC3_PAC_CAPS(0x03), LC3_PAC_CAPS(0x03))
 
 #define DISC_ASE_LC3 \
 	DISC_SNK_ASE_LC3, \
@@ -1867,8 +1912,16 @@ static struct test_config cfg_snk_vs = {
 	.vs = true,
 };
 
+#define VS_PAC_CAPS(ch_count) \
+	0xff, 0x01, 0x00, 0x01, 0x00, 0x03, 0x02, 0x03, ch_count, \
+	0x00
+
+#define VS_PAC_CAPS_NO_COUNT				\
+	0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00
+
 #define DISC_SRC_ASE_VS \
-	DISC_SRC_ASE(0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00)
+	DISC_SRC_ASE(0x00000003, 0x00000003, \
+			VS_PAC_CAPS_NO_COUNT, VS_PAC_CAPS_NO_COUNT)
 
 #define SCC_SNK_VS \
 	DISC_SRC_ASE_VS,  \
