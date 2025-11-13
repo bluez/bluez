@@ -250,7 +250,8 @@ struct btd_device {
 	bool		temporary;
 	bool		connectable;
 	bool		cable_pairing;
-	unsigned int	disconn_timer;
+	unsigned int	disconn_bredr_timer;
+	unsigned int	disconn_le_timer;
 	unsigned int	discov_timer;
 	unsigned int	temporary_timer;	/* Temporary/disappear timer */
 	struct browse_req *browse;		/* service discover request */
@@ -315,8 +316,13 @@ static const uint16_t uuid_list[] = {
 	0
 };
 
+static bool disconnect_le(gpointer user_data);
+static bool disconnect_bredr(gpointer user_data);
 static int device_browse_gatt(struct btd_device *device, DBusMessage *msg);
 static int device_browse_sdp(struct btd_device *device, DBusMessage *msg);
+static void device_set_auto_connect(struct btd_device *device, gboolean enable);
+static DBusMessage *connect_profiles(struct btd_device *dev,
+			uint8_t bdaddr_type, DBusMessage *msg, const char *uuid);
 
 static struct bearer_state *get_state(struct btd_device *dev,
 							uint8_t bdaddr_type)
@@ -922,8 +928,11 @@ static void device_free(gpointer user_data)
 		sdp_list_free(device->tmp_records,
 					(sdp_free_func_t) sdp_record_free);
 
-	if (device->disconn_timer)
-		timeout_remove(device->disconn_timer);
+	if (device->disconn_bredr_timer)
+		timeout_remove(device->disconn_bredr_timer);
+
+	if (device->disconn_le_timer)
+		timeout_remove(device->disconn_le_timer);
 
 	if (device->discov_timer)
 		timeout_remove(device->discov_timer);
@@ -1903,23 +1912,6 @@ static gboolean dev_property_set_exists(const GDBusPropertyTable *property,
 	return !queue_isempty(device->sirks);
 }
 
-static bool disconnect_all(gpointer user_data)
-{
-	struct btd_device *device = user_data;
-
-	device->disconn_timer = 0;
-
-	if (device->bredr_state.connected)
-		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
-								BDADDR_BREDR);
-
-	if (device->le_state.connected)
-		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
-							device->bdaddr_type);
-
-	return FALSE;
-}
-
 int device_block(struct btd_device *device, gboolean update_only)
 {
 	int err = 0;
@@ -1927,10 +1919,15 @@ int device_block(struct btd_device *device, gboolean update_only)
 	if (device->blocked)
 		return 0;
 
-	if (device->disconn_timer > 0)
-		timeout_remove(device->disconn_timer);
+	if (device->disconn_le_timer > 0)
+		timeout_remove(device->disconn_le_timer);
 
-	disconnect_all(device);
+	if (device->disconn_bredr_timer > 0)
+		timeout_remove(device->disconn_bredr_timer);
+
+	disconnect_bredr(device);
+
+	disconnect_le(device);
 
 	while (device->services != NULL) {
 		struct btd_service *service = device->services->data;
@@ -2022,6 +2019,28 @@ static void dev_disconn_service(gpointer a, gpointer b)
 	btd_service_disconnect(a);
 }
 
+static void dev_disconnect_watches_notify(struct btd_device *device)
+{
+	if (!device || !device->watches)
+		return;
+
+	while (device->watches) {
+		struct btd_disconnect_data *data = device->watches->data;
+
+		if (data->watch)
+			/* temporary is set if device is going to be removed */
+			data->watch(device, device->temporary,
+							data->user_data);
+
+		/* Check if the watch has been removed by callback function */
+		if (!g_slist_find(device->watches, data))
+			continue;
+
+		device->watches = g_slist_remove(device->watches, data);
+		g_free(data);
+	}
+}
+
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 {
 	if (device->bonding)
@@ -2055,7 +2074,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		device->disconnects = g_slist_append(device->disconnects,
 						dbus_message_ref(msg));
 
-	if (device->disconn_timer)
+	if (device->disconn_bredr_timer && device->disconn_le_timer)
 		return;
 
 	g_slist_foreach(device->services, dev_disconn_service, NULL);
@@ -2063,21 +2082,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	g_slist_free(device->pending);
 	device->pending = NULL;
 
-	while (device->watches) {
-		struct btd_disconnect_data *data = device->watches->data;
-
-		if (data->watch)
-			/* temporary is set if device is going to be removed */
-			data->watch(device, device->temporary,
-							data->user_data);
-
-		/* Check if the watch has been removed by callback function */
-		if (!g_slist_find(device->watches, data))
-			continue;
-
-		device->watches = g_slist_remove(device->watches, data);
-		g_free(data);
-	}
+	dev_disconnect_watches_notify(device);
 
 	if (!btd_device_is_connected(device)) {
 		if (msg)
@@ -2085,14 +2090,166 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		return;
 	}
 
-	device->disconn_timer = timeout_add_seconds(DISCONNECT_TIMER,
-							disconnect_all,
+	if (!device->disconn_bredr_timer)
+		device->disconn_bredr_timer = timeout_add_seconds(
+							DISCONNECT_TIMER,
+							disconnect_bredr,
+							device, NULL);
+
+	if (!device->disconn_le_timer)
+		device->disconn_le_timer = timeout_add_seconds(
+							DISCONNECT_TIMER,
+							disconnect_le,
 							device, NULL);
 }
 
 bool device_is_disconnecting(struct btd_device *device)
 {
-	return device->disconn_timer > 0;
+	return (device->disconn_le_timer > 0) ||
+				(device->disconn_bredr_timer > 0);
+}
+
+static void dev_disconn_bearer_service(gpointer a, gpointer b)
+{
+	struct btd_service *service = a;
+	uint8_t type = *(uint8_t *)b;
+	struct btd_profile *profile;
+	bt_uuid_t uuid;
+
+	profile = btd_service_get_profile(service);
+	if (!profile)
+		return;
+
+	if (!profile->remote_uuid)
+		return;
+
+	if (bt_string_to_uuid(&uuid, profile->remote_uuid) != 0)
+		return;
+
+	switch (type) {
+	case BDADDR_BREDR:
+		if (uuid.value.u16 < 0x1100 || uuid.value.u16 > 0x11FF)
+			return;
+		break;
+	case BDADDR_LE_PUBLIC:
+	case BDADDR_LE_RANDOM:
+		if (uuid.value.u16 < 0x1800 || uuid.value.u16 > 0x18FF)
+			return;
+		break;
+	default:
+		DBG("Unsupported bearer addr type: %u", type);
+		return;
+	}
+
+	DBG("Disconnecting profile %s (UUID 0x%04x) for bearer addr type %u",
+	    profile->name ?: "(unknown)", uuid.value.u16, type);
+
+	btd_service_disconnect(service);
+}
+
+static bool disconnect_bredr(gpointer user_data)
+{
+	struct btd_device *device = user_data;
+
+	device->disconn_bredr_timer = 0;
+
+	if (device->bredr_state.connected)
+		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
+								BDADDR_BREDR);
+
+	return FALSE;
+}
+
+static bool disconnect_le(gpointer user_data)
+{
+	struct btd_device *device = user_data;
+
+	device->disconn_le_timer = 0;
+
+	if (device->le_state.connected)
+		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
+							device->bdaddr_type);
+
+	return FALSE;
+}
+
+void device_request_disconnect_bearer(struct btd_device *device,
+				uint8_t bdaddr_type, DBusMessage *msg)
+{
+	if (device->bonding)
+		bonding_request_cancel(device->bonding);
+
+	if (device->browse) {
+		if ((device->browse->type == BROWSE_SDP &&
+			bdaddr_type == BDADDR_BREDR) ||
+			(device->browse->type == BROWSE_GATT &&
+			bdaddr_type != BDADDR_BREDR))
+			browse_request_cancel(device->browse);
+	}
+
+	g_slist_foreach(device->services, dev_disconn_bearer_service,
+					&bdaddr_type);
+
+	dev_disconnect_watches_notify(device);
+
+	if (bdaddr_type == BDADDR_BREDR) {
+		g_slist_free(device->pending);
+		device->pending = NULL;
+
+		if (device->disconn_bredr_timer)
+			return;
+
+		device->disconn_bredr_timer = timeout_add_seconds(
+							DISCONNECT_TIMER,
+							disconnect_bredr,
+							device, NULL);
+	} else {
+		if (device->att_io) {
+			g_io_channel_shutdown(device->att_io, FALSE, NULL);
+			g_io_channel_unref(device->att_io);
+			device->att_io = NULL;
+		}
+
+		if (device->disconn_le_timer)
+			return;
+
+		device->disconn_le_timer = timeout_add_seconds(
+							DISCONNECT_TIMER,
+							disconnect_le,
+							device, NULL);
+	}
+}
+
+void device_request_connect_bearer(struct btd_device *device,
+				uint8_t bdaddr_type, DBusMessage *msg)
+{
+	int err;
+
+	if (device->bonding) {
+		g_dbus_send_message(dbus_conn, btd_error_in_progress(msg));
+		return;
+	}
+
+	if (bdaddr_type == BDADDR_BREDR)
+		connect_profiles(device, bdaddr_type, msg, NULL);
+	else {
+		if (device->le_state.connected) {
+			dbus_message_new_method_return(msg);
+			return;
+		}
+
+		btd_device_set_temporary(device, false);
+
+		if (device->disable_auto_connect) {
+			device->disable_auto_connect = FALSE;
+			device_set_auto_connect(device, TRUE);
+		}
+
+		err = device_connect_le(device);
+		if (err < 0)
+			g_dbus_send_message(dbus_conn,
+				btd_error_failed(msg, strerror(-err)));
+	}
 }
 
 static void add_set(void *data, void *user_data)
@@ -3880,16 +4037,23 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	if (!state->connected)
 		return;
 
+	if (bdaddr_type == BDADDR_BREDR) {
+		if (device->disconn_bredr_timer > 0) {
+			timeout_remove(device->disconn_bredr_timer);
+			device->disconn_bredr_timer = 0;
+		}
+	} else {
+		if (device->disconn_le_timer > 0) {
+			timeout_remove(device->disconn_le_timer);
+			device->disconn_le_timer = 0;
+		}
+	}
+
 	state->connected = false;
 	state->initiator = false;
 	device->general_connect = FALSE;
 
 	device_set_svc_refreshed(device, false);
-
-	if (device->disconn_timer > 0) {
-		timeout_remove(device->disconn_timer);
-		device->disconn_timer = 0;
-	}
 
 	/* This could be executed while the client is waiting for Connect() but
 	 * att_connect_cb has not been invoked.
@@ -5359,9 +5523,16 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	device->pending = NULL;
 
 	if (btd_device_is_connected(device)) {
-		if (device->disconn_timer > 0)
-			timeout_remove(device->disconn_timer);
-		disconnect_all(device);
+		if (device->disconn_bredr_timer > 0) {
+			timeout_remove(device->disconn_bredr_timer);
+			device->disconn_bredr_timer = 0;
+		}
+		if (device->disconn_le_timer > 0) {
+			timeout_remove(device->disconn_le_timer);
+			device->disconn_le_timer = 0;
+		}
+		disconnect_bredr(device);
+		disconnect_le(device);
 	}
 
 	clear_temporary_timer(device);

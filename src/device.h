@@ -141,6 +141,10 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 							uint8_t reason);
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
 bool device_is_disconnecting(struct btd_device *device);
+void device_request_disconnect_bearer(struct btd_device *device,
+					uint8_t bdaddr_type, DBusMessage *msg);
+void device_request_connect_bearer(struct btd_device *device,
+					uint8_t bdaddr_type, DBusMessage *msg);
 void device_set_ltk(struct btd_device *device, const uint8_t val[16],
 				bool central, uint8_t enc_size);
 bool btd_device_get_ltk(struct btd_device *device, uint8_t val[16],
