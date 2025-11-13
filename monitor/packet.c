@@ -2837,18 +2837,18 @@ static const struct bitfield_data features_msft[] = {
 	{ }
 };
 
-static void print_features_subpage(uint8_t subpages,
+static void print_features_subpage(uint8_t page, uint8_t subpages,
 					const uint8_t *features_array,
 					uint64_t *features)
 {
 	int i, j;
-	char str[16];
+	char str[18];
 
 	for (i = 0; i < subpages; i++) {
 		for (j = 0; j < 8; j++)
 			features[i] |= ((uint64_t) features_array[i * 8 + j])
 					<< (j * 8);
-		sprintf(str, "Features[%u]", i);
+		sprintf(str, "Features[%u/%u]", page, i);
 		print_hex_field(str, &features_array[i * 8], 8);
 	}
 }
@@ -2865,7 +2865,7 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 	if (type == 0x01 && page)
 		subpages = 3;
 
-	print_features_subpage(subpages, features_array, features);
+	print_features_subpage(page, subpages, features_array, features);
 
 	switch (type) {
 	case 0x00:
