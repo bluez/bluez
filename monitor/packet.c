@@ -13453,7 +13453,7 @@ static const struct subevent_data le_meta_event_table[] = {
 		le_big_info_evt,
 		sizeof(struct bt_hci_evt_le_big_info_adv_report) },
 	{ BT_HCI_EVT_LE_READ_ALL_REMOTE_FEATURES_COMPLETE,
-		"LE CS Read All Remote Features Complete",
+		"LE Read All Remote Features Complete",
 		le_read_all_remote_features_complete_evt,
 		sizeof(struct bt_hci_evt_le_read_all_remote_features_complete),
 		true },
