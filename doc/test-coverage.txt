@@ -30,8 +30,9 @@ test-gobex-transfer	  36	OBEX transfer handling
 test-gdbus-client	  13	D-Bus client handling
 test-gatt		 180	GATT qualification test cases
 test-hog		   6	HID Over GATT qualification test cases
+test-battery		  10	Battery charge test cases
 			-----
-			 761
+			 771
 
 
 Automated end-to-end testing
