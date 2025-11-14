@@ -244,7 +244,8 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/ccp.h src/shared/ccp.c \
 			src/shared/lc3.h src/shared/tty.h \
 			src/shared/bap-defs.h \
-			src/shared/asha.h src/shared/asha.c
+			src/shared/asha.h src/shared/asha.c \
+			src/shared/battery.h src/shared/battery.c
 
 if READLINE
 shared_sources += src/shared/shell.c src/shared/shell.h
