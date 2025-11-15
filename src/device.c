@@ -5419,24 +5419,24 @@ static bool addr_is_resolvable(const bdaddr_t *bdaddr, uint8_t addr_type)
 	}
 }
 
-static bool device_irk_cmp(const struct btd_device *device,
+static int device_irk_cmp(const struct btd_device *device,
 				const struct device_addr_type *addr)
 {
 	struct bt_crypto *crypto;
 	uint8_t hash[3];
 
 	if (!device->irk)
-		return false;
+		return -1;
 
 	crypto = bt_crypto_new();
 	if (!crypto)
-		return false;
+		return -1;
 
 	bt_crypto_ah(crypto, device->irk, addr->bdaddr.b + 3, hash);
 
 	bt_crypto_unref(crypto);
 
-	return !memcmp(addr, hash, 3);
+	return memcmp(addr, hash, 3);
 }
 
 int device_addr_type_cmp(gconstpointer a, gconstpointer b)
