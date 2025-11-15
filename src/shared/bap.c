@@ -1730,7 +1730,7 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
 	struct queue *queue;
 	struct bt_att *att = bt_bap_get_att(bap);
 	uint16_t mtu = bt_att_get_mtu(att);
-	uint16_t len = 2 + bap_req_len(req);
+	uint16_t len = 3 + 2 + bap_req_len(req);
 
 	if (len > mtu) {
 		DBG(bap, "Unable to queue request: req len %u > %u mtu", len,
