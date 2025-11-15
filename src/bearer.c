@@ -40,6 +40,8 @@ struct btd_bearer {
 	struct btd_device *device;
 	uint8_t type;
 	const char *path;
+	GSList *disconnects; /* disconnects message */
+	GSList *connects; /* connects message */
 };
 
 static void bearer_free(void *data)
@@ -52,14 +54,46 @@ static void bearer_free(void *data)
 static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
-	/* TODO */
+	struct btd_bearer *bearer = user_data;
+
+	if (btd_device_bdaddr_type_connected(bearer->device, bearer->type)) {
+		if (msg)
+			return btd_error_already_connected(msg);
+		return NULL;
+	}
+
+	if (bearer->connects) {
+		if (msg)
+			return btd_error_in_progress(msg);
+		return NULL;
+	}
+
+	if (msg)
+		bearer->connects = g_slist_append(bearer->connects,
+						dbus_message_ref(msg));
+
+	device_request_connect_bearer(bearer->device, bearer->type, msg);
+
 	return NULL;
 }
 
 static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
-	/* TODO */
+	struct btd_bearer *bearer = user_data;
+
+	if (!btd_device_bdaddr_type_connected(bearer->device, bearer->type)) {
+		if (msg)
+			return btd_error_not_connected(msg);
+		return NULL;
+	}
+
+	if (msg)
+		bearer->disconnects = g_slist_append(bearer->disconnects,
+						dbus_message_ref(msg));
+
+	device_request_disconnect_bearer(bearer->device, bearer->type, msg);
+
 	return NULL;
 }
 
@@ -200,8 +234,18 @@ void btd_bearer_bonded(struct btd_bearer *bearer)
 
 void btd_bearer_connected(struct btd_bearer *bearer)
 {
+	DBusMessage *msg;
+
 	if (!bearer || !bearer->path)
 		return;
+
+	while (bearer->connects) {
+		msg = bearer->connects->data;
+		g_dbus_send_reply(btd_get_dbus_connection(), msg,
+						DBUS_TYPE_INVALID);
+		bearer->connects = g_slist_remove(bearer->connects, msg);
+		dbus_message_unref(msg);
+	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
 					bearer_interface(bearer->type),
@@ -212,9 +256,18 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
 {
 	const char *name;
 	const char *message;
+	DBusMessage *msg;
 
 	if (!bearer || !bearer->path)
 		return;
+
+	while (bearer->disconnects) {
+		msg = bearer->disconnects->data;
+		g_dbus_send_reply(btd_get_dbus_connection(), msg,
+						DBUS_TYPE_INVALID);
+		bearer->disconnects = g_slist_remove(bearer->disconnects, msg);
+		dbus_message_unref(msg);
+	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
 					bearer_interface(bearer->type),
