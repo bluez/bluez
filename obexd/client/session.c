@@ -32,6 +32,7 @@
 #include "session.h"
 #include "driver.h"
 #include "transport.h"
+#include "tools/parser/opcodes.h"
 
 #define SESSION_INTERFACE "org.bluez.obex.Session1"
 #define ERROR_INTERFACE "org.bluez.obex.Error"
@@ -328,7 +329,7 @@ static void connect_cb(GObex *obex, GError *err, GObexPacket *rsp,
 	rsp_code = g_obex_packet_get_operation(rsp, NULL);
 	if (rsp_code != G_OBEX_RSP_SUCCESS)
 		gerr = g_error_new(OBEX_IO_ERROR, -EIO,
-				"OBEX Connect failed with 0x%02x", rsp_code);
+				"OBEX Connect failed: %s", opcode2str(rsp_code));
 
 done:
 	callback_destroy(callback, gerr);
