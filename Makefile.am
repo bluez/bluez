@@ -244,7 +244,8 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/ccp.h src/shared/ccp.c \
 			src/shared/lc3.h src/shared/tty.h \
 			src/shared/bap-defs.h \
-			src/shared/asha.h src/shared/asha.c
+			src/shared/asha.h src/shared/asha.c \
+			src/shared/battery.h src/shared/battery.c
 
 if READLINE
 shared_sources += src/shared/shell.c src/shared/shell.h
@@ -698,6 +699,12 @@ unit_tests += unit/test-vcp
 
 unit_test_vcp_SOURCES = unit/test-vcp.c $(btio_sources)
 unit_test_vcp_LDADD = src/libshared-glib.la \
+				lib/libbluetooth-internal.la $(GLIB_LIBS)
+
+unit_tests += unit/test-battery
+
+unit_test_battery_SOURCES = unit/test-battery.c
+unit_test_battery_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 
 if MIDI

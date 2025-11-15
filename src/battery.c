@@ -19,6 +19,7 @@
 
 #include "gdbus/gdbus.h"
 #include "bluetooth/bluetooth.h"
+#include "src/shared/battery.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
 #include "battery.h"
@@ -39,6 +40,7 @@ struct btd_battery {
 	uint8_t percentage; /* valid between 0 to 100 inclusively */
 	char *source; /* Descriptive source of the battery info */
 	char *provider_path; /* The provider root path, if any */
+	struct bt_battery *filter;
 };
 
 struct btd_battery_provider_manager {
@@ -96,6 +98,7 @@ static struct btd_battery *battery_new(const char *path, const char *source,
 		battery->source = g_strdup(source);
 	if (provider_path)
 		battery->provider_path = g_strdup(provider_path);
+	battery->filter = bt_battery_new();
 
 	return battery;
 }
@@ -107,6 +110,11 @@ static void battery_free(struct btd_battery *battery)
 
 	if (battery->source)
 		g_free(battery->source);
+
+	if (battery->filter) {
+		bt_battery_free(battery->filter);
+		free(battery->filter);
+	}
 
 	free(battery);
 }
@@ -234,7 +242,7 @@ bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 	if (battery->percentage == percentage)
 		return true;
 
-	battery->percentage = percentage;
+	battery->percentage = bt_battery_charge(battery->filter, percentage);
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), battery->path,
 				     BATTERY_INTERFACE, "Percentage");
 
