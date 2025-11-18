@@ -25,22 +25,37 @@
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/mgmt.h"
+#include "bluetooth/uuid.h"
 
 #include "gdbus/gdbus.h"
 #include "src/shared/util.h"
+#include "src/shared/queue.h"
+#include "src/shared/timeout.h"
 
 #include "log.h"
 #include "error.h"
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
+#include "service.h"
 #include "dbus-common.h"
 #include "bearer.h"
+
+#define DISCONNECT_TIMER	2
 
 struct btd_bearer {
 	struct btd_device *device;
 	uint8_t type;
 	const char *path;
+	unsigned int disconn_timer;
+	struct queue *disconnects; /* disconnects message */
+	DBusMessage *connect; /* connect message */
 };
+
+static void bearer_free_dbus_message(void *data)
+{
+    dbus_message_unref((DBusMessage *)data);
+}
 
 static void bearer_free(void *data)
 {
@@ -49,17 +64,126 @@ static void bearer_free(void *data)
 	free(bearer);
 }
 
+static void bearer_disconnect_service(struct btd_service *service, void *user_data)
+{
+	uint8_t bdaddr_type = *(uint8_t *)user_data;
+	struct btd_profile *profile;
+	bt_uuid_t uuid;
+
+	profile = btd_service_get_profile(service);
+	if (!profile || !profile->remote_uuid)
+		return;
+
+	if (bt_string_to_uuid(&uuid, profile->remote_uuid) != 0)
+		return;
+
+	if (bdaddr_type == BDADDR_BREDR) {
+		if (uuid.value.u16 < 0x1100 || uuid.value.u16 > 0x11FF)
+			return;
+	} else {
+		if (uuid.value.u16 < 0x1800 || uuid.value.u16 > 0x18FF)
+			return;
+	}
+
+	DBG("Disconnecting profile %s (UUID 0x%04x) for bearer addr type %u",
+	profile->name ?: "(unknown)", uuid.value.u16, bdaddr_type);
+
+	btd_service_disconnect(service);
+}
+
+static bool bearer_disconnect_link(gpointer user_data)
+{
+	struct btd_bearer *bearer = user_data;
+	struct btd_device *device = bearer->device;
+
+	bearer->disconn_timer = 0;
+
+	if (btd_device_bdaddr_type_connected(device, bearer->type))
+		btd_adapter_disconnect_device(device_get_adapter(device),
+						device_get_address(device),
+						bearer->type);
+	return FALSE;
+}
+
 static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
-	/* TODO */
+	struct btd_bearer *bearer = user_data;
+	struct btd_device *device = bearer->device;
+	int err;
+
+	if (btd_device_bdaddr_type_connected(device, bearer->type)) {
+		if (msg)
+			return btd_error_already_connected(msg);
+		return NULL;
+	}
+
+	if (device_is_bonding(device, NULL)) {
+		if (msg)
+			return btd_error_in_progress(msg);
+		return NULL;
+	}
+
+	if (device_is_connecting(device) ||
+		bearer->connect) {
+		if (msg)
+			return btd_error_in_progress(msg);
+		return NULL;
+	}
+
+	if (msg)
+		bearer->connect = dbus_message_ref(msg);
+
+	if (bearer->type == BDADDR_BREDR)
+		return device_connect_profiles(device, BDADDR_BREDR,
+								msg, NULL);
+	else {
+		btd_device_set_temporary(device, false);
+		err = device_connect_le(device);
+		if (err < 0)
+			return btd_error_failed(msg, strerror(-err));
+	}
+
 	return NULL;
 }
 
 static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
-	/* TODO */
+	struct btd_bearer *bearer = user_data;
+	struct btd_device *device = bearer->device;
+
+	if (!btd_device_bdaddr_type_connected(device, bearer->type)) {
+		if (msg)
+			return btd_error_not_connected(msg);
+		return NULL;
+	}
+
+	if (device_is_disconnecting(device)) {
+		if (msg)
+			return btd_error_in_progress(msg);
+		return NULL;
+	}
+
+	if (msg)
+		queue_push_tail(bearer->disconnects, dbus_message_ref(msg));
+
+	device_cancel_bonding(device, MGMT_STATUS_DISCONNECTED);
+
+	device_cancel_browse(device, bearer->type);
+
+	btd_device_foreach_service(device, bearer_disconnect_service,
+							&bearer->type);
+
+	device_remove_pending_services(device, bearer->type);
+
+	if (bearer->disconn_timer)
+		return NULL;
+
+	bearer->disconn_timer = timeout_add_seconds(DISCONNECT_TIMER,
+							bearer_disconnect_link,
+							bearer, NULL);
+
 	return NULL;
 }
 
@@ -151,6 +275,7 @@ struct btd_bearer *btd_bearer_new(struct btd_device *device, uint8_t type)
 	bearer->device = device;
 	bearer->type = type;
 	bearer->path = device_get_path(device);
+	bearer->disconnects = queue_new();
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					bearer->path, bearer_interface(type),
@@ -172,6 +297,16 @@ void btd_bearer_destroy(struct btd_bearer *bearer)
 	if (!bearer->path) {
 		bearer_free(bearer);
 		return;
+	}
+
+	if (bearer->disconnects) {
+		queue_destroy(bearer->disconnects, bearer_free_dbus_message);
+		bearer->disconnects = NULL;
+	}
+
+	if (bearer->connect) {
+		dbus_message_unref(bearer->connect);
+		bearer->connect = NULL;
 	}
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(), bearer->path,
@@ -203,6 +338,13 @@ void btd_bearer_connected(struct btd_bearer *bearer)
 	if (!bearer || !bearer->path)
 		return;
 
+	if (bearer->connect) {
+		g_dbus_send_reply(btd_get_dbus_connection(), bearer->connect,
+						DBUS_TYPE_INVALID);
+		dbus_message_unref(bearer->connect);
+		bearer->connect = NULL;
+	}
+
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
 					bearer_interface(bearer->type),
 					"Connected");
@@ -212,9 +354,23 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
 {
 	const char *name;
 	const char *message;
+	DBusMessage *msg;
+	const struct queue_entry *entry;
 
 	if (!bearer || !bearer->path)
 		return;
+
+	if (!btd_device_is_connected(bearer->device))
+		device_disconnect_watches_callback(bearer->device);
+
+	while (!queue_isempty(bearer->disconnects)) {
+		entry = queue_get_entries(bearer->disconnects);
+		msg = entry->data;
+		g_dbus_send_reply(btd_get_dbus_connection(), msg,
+						DBUS_TYPE_INVALID);
+		queue_remove(bearer->disconnects, msg);
+		dbus_message_unref(msg);
+	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
 					bearer_interface(bearer->type),
