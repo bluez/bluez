@@ -123,6 +123,7 @@ tools/smp-tester
 tools/gap-tester
 tools/rfcomm-tester
 tools/bnep-tester
+tools/6lowpan-tester
 tools/userchan-tester
 tools/ioctl-tester
 tools/btattach
