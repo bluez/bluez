@@ -12,11 +12,21 @@
 #define BTD_PROFILE_PRIORITY_MEDIUM	1
 #define BTD_PROFILE_PRIORITY_HIGH	2
 
+#define BTD_PROFILE_BEARER_ANY		0
+#define BTD_PROFILE_BEARER_LE		1
+#define BTD_PROFILE_BEARER_BREDR	2
+
 struct btd_service;
 
 struct btd_profile {
 	const char *name;
 	int priority;
+
+	/* Indicates which bearer type this profile belongs to. Some profiles
+	 * may exist in both BR/EDR and LE. So we need to declare them as
+	 * BTD_PROFILE_BEARER_ANY when registering profiles.
+	 */
+	int bearer;
 
 	const char *local_uuid;
 	const char *remote_uuid;
