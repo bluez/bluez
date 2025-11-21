@@ -1,3 +1,11 @@
+ver 5.85:
+	Fix issue with handling display of battery charge level.
+	Fix issue with BASS permissions not requiring encryption.
+	Fix issue with handling abort for OBEX SRM operation.
+	Fix issue with handling device privacy.
+	Add support for HFP call answer support.
+	Add support for HFP simple 3-way call support.
+
 ver 5.84:
 	Fix issue with AVRCP and handling invalid UTF-8 item name.
 	Fix issue with exposing coordinate sets if LE Audio is disabled.
