@@ -2745,6 +2745,7 @@ void media_transport_update_volume(struct media_transport *transport,
 	if (volume < 0)
 		return;
 
+#ifdef HAVE_A2DP
 	if (media_endpoint_get_sep(transport->endpoint)) {
 		struct a2dp_transport *a2dp = transport->data;
 
@@ -2757,6 +2758,7 @@ void media_transport_update_volume(struct media_transport *transport,
 
 		a2dp->volume = volume;
 	}
+#endif
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 					transport->path,
 					MEDIA_TRANSPORT_INTERFACE, "Volume");
@@ -2769,6 +2771,7 @@ int media_transport_get_device_volume(struct btd_device *dev)
 	if (dev == NULL)
 		return -1;
 
+#ifdef HAVE_A2DP
 	/* Attempt to locate the transport to get its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
@@ -2785,6 +2788,7 @@ int media_transport_get_device_volume(struct btd_device *dev)
 			return -1;
 		}
 	}
+#endif
 
 	/* If transport volume doesn't exists use device_volume */
 	return btd_device_get_volume(dev);
@@ -2798,6 +2802,7 @@ void media_transport_update_device_volume(struct btd_device *dev,
 	if (dev == NULL || volume < 0)
 		return;
 
+#ifdef HAVE_A2DP
 	/* Attempt to locate the transport to set its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
@@ -2814,6 +2819,7 @@ void media_transport_update_device_volume(struct btd_device *dev,
 			break;
 		}
 	}
+#endif
 
 	btd_device_set_volume(dev, volume);
 }
