@@ -1894,9 +1894,9 @@ static void cmd_info(int argc, char *argv[])
 				      g_dbus_proxy_get_path(proxy),
 				      "org.bluez.Bearer.BREDR1");
 	if (bearer) {
-		print_property_with_label(proxy, "Paired", "BREDR.Paired");
-		print_property_with_label(proxy, "Bonded", "BREDR.Bonded");
-		print_property_with_label(proxy, "Connected",
+		print_property_with_label(bearer, "Paired", "BREDR.Paired");
+		print_property_with_label(bearer, "Bonded", "BREDR.Bonded");
+		print_property_with_label(bearer, "Connected",
 							"BREDR.Connected");
 	}
 
@@ -1904,9 +1904,9 @@ static void cmd_info(int argc, char *argv[])
 				      g_dbus_proxy_get_path(proxy),
 				      "org.bluez.Bearer.LE1");
 	if (bearer) {
-		print_property_with_label(proxy, "Paired", "LE.Paired");
-		print_property_with_label(proxy, "Bonded", "LE.Bonded");
-		print_property_with_label(proxy, "Connected", "LE.Connected");
+		print_property_with_label(bearer, "Paired", "LE.Paired");
+		print_property_with_label(bearer, "Bonded", "LE.Bonded");
+		print_property_with_label(bearer, "Connected", "LE.Connected");
 	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
