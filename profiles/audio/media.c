@@ -56,13 +56,17 @@
 #include "src/shared/bap.h"
 #include "src/shared/bap-debug.h"
 
+#ifdef HAVE_A2DP
 #include "avdtp.h"
+#endif
 #include "media.h"
 #include "transport.h"
+#ifdef HAVE_A2DP
 #include "a2dp.h"
 
 #ifdef HAVE_AVRCP
 #include "avrcp.h"
+#endif
 #endif
 
 #define MEDIA_INTERFACE "org.bluez.Media1"
@@ -106,7 +110,9 @@ struct endpoint_request {
 };
 
 struct media_endpoint {
+#ifdef HAVE_A2DP
 	struct a2dp_sep		*sep;
+#endif
 	struct bt_bap_pac	*pac;
 	struct bt_asha_device	*asha;
 	char			*sender;	/* Endpoint DBus bus id */
@@ -246,10 +252,12 @@ static void media_endpoint_remove(void *data)
 	struct media_endpoint *endpoint = data;
 	struct media_adapter *adapter = endpoint->adapter;
 
+#ifdef HAVE_A2DP
 	if (endpoint->sep) {
 		a2dp_remove_sep(endpoint->sep);
 		return;
 	}
+#endif
 
 	info("Endpoint unregistered: sender=%s path=%s", endpoint->sender,
 			endpoint->path);
@@ -354,6 +362,7 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 			return;
 		}
 
+#ifdef HAVE_A2DP
 		if (dbus_message_is_method_call(request->msg,
 					MEDIA_ENDPOINT_INTERFACE,
 					"SetConfiguration")) {
@@ -362,7 +371,7 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 			ret = &error_code;
 			size = 1;
 		}
-
+#endif
 		dbus_error_free(&err);
 		goto done;
 	}
@@ -497,6 +506,7 @@ static struct media_transport *find_device_transport(
 	return match->data;
 }
 
+#ifdef HAVE_A2DP
 struct a2dp_config_data {
 	struct a2dp_setup *setup;
 	a2dp_endpoint_config_t cb;
@@ -552,6 +562,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	return media_endpoint_async_call(msg, endpoint, transport,
 						cb, user_data, destroy);
 }
+#endif
 
 static void release_endpoint(struct media_endpoint *endpoint)
 {
@@ -602,6 +613,7 @@ static size_t get_capabilities(struct a2dp_sep *sep, uint8_t **capabilities,
 	return endpoint->size;
 }
 
+#ifdef HAVE_A2DP
 struct a2dp_select_data {
 	struct a2dp_setup *setup;
 	a2dp_endpoint_select_t cb;
@@ -735,6 +747,7 @@ static bool endpoint_init_a2dp_sink(struct media_endpoint *endpoint, int *err)
 
 	return true;
 }
+#endif
 
 struct pac_select_data {
 	struct bt_bap_pac *pac;
@@ -1486,10 +1499,12 @@ static const struct media_endpoint_init {
 	bool (*func)(struct media_endpoint *endpoint, int *err);
 	bool (*supported)(struct btd_adapter *adapter);
 } init_table[] = {
+#ifdef HAVE_A2DP
 	{ A2DP_SOURCE_UUID, endpoint_init_a2dp_source,
 				a2dp_endpoint_supported },
 	{ A2DP_SINK_UUID, endpoint_init_a2dp_sink,
 				a2dp_endpoint_supported },
+#endif
 	{ PAC_SINK_UUID, endpoint_init_pac_sink,
 				experimental_endpoint_supported },
 	{ PAC_SOURCE_UUID, endpoint_init_pac_source,
@@ -3478,10 +3493,12 @@ void media_unregister(struct btd_adapter *btd_adapter)
 	}
 }
 
+#ifdef HAVE_A2DP
 struct a2dp_sep *media_endpoint_get_sep(struct media_endpoint *endpoint)
 {
 	return endpoint->sep;
 }
+#endif
 
 const char *media_endpoint_get_uuid(struct media_endpoint *endpoint)
 {
