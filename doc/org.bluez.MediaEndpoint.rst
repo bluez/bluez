@@ -299,3 +299,102 @@ Indicates QoS capabilities.
 :uint32 PreferredMaximumDelay:
 
 	Indicates endpoint preferred maximum presentation delay.
+
+array{string} SupportedFeatures [readonly, ISO only, experimental]
+``````````````````````````````````````````````````````````````````
+
+List of strings that represent supported features.
+
+Possible values:
+
+:"tmap-cg":
+
+	TMAP Call Gateway
+
+:"tmap-ct":
+
+	TMAP Call Terminal
+
+:"tmap-ums":
+
+	TMAP Unicast Media Sender
+
+:"tmap-umr":
+
+	TMAP Unicast Media Receiver
+
+:"tmap-bms":
+
+	TMAP Broadcast Media Sender
+
+:"tmap-bmr":
+
+	TMAP Broadcast Media Receiver
+
+:"gmap-ugg":
+
+	GMAP Unicast Game Gateway
+
+:"gmap-ugt":
+
+	GMAP Unicast Game Terminal
+
+:"gmap-bgs":
+
+	GMAP Broadcast Game Sender
+
+:"gmap-bgr":
+
+	GMAP Broadcast Game Receiver
+
+:"gmap-ugg-multiplex":
+
+	GMAP UGG Multiplex feature support
+
+:"gmap-ugg-96kbps-source":
+
+	GMAP UGG 96 kbps Source feature support
+
+:"gmap-ugg-multisink":
+
+	GMAP UGG Multisink feature support
+
+:"gmap-ugt-source":
+
+	GMAP UGT Source feature support
+
+:"gmap-ugt-80kbps-souce":
+
+	GMAP UGT 80 kbps Source feature support
+
+:"gmap-ugt-sink":
+
+	GMAP UGT Sink feature support
+
+:"gmap-ugt-64kbps-sink":
+
+	GMAP UGT 64 kbps Sink feature support
+
+:"gmap-ugt-multiplex":
+
+	GMAP UGT Multiplex feature support
+
+:"gmap-ugt-multisink":
+
+	GMAP UGT Multisink feature support
+
+:"gmap-ugt-multisource":
+
+	GMAP UGT Multisource feature support
+
+:"gmap-bgs-96kbps":
+
+	GMAP BGS 96 kbps feature support
+
+:"gmap-bgr-multisink":
+
+	GMAP BGR Multisink feature support
+
+:"gmap-bgr-multiplex":
+
+	GMAP BGR Multiplex feature support
