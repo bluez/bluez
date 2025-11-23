@@ -227,6 +227,13 @@ AC_ARG_ENABLE(csip, AS_HELP_STRING([--disable-csip],
 		[disable CSIP profile]), [enable_csip=${enableval}])
 AM_CONDITIONAL(CSIP, test "${enable_csip}" != "no")
 
+AC_ARG_ENABLE(tmap, AS_HELP_STRING([--disable-tmap],
+		[disable TMAP profile]), [enable_tmap=${enableval}])
+AM_CONDITIONAL(TMAP, test "${enable_tmap}" != "no")
+if test "${enable_tmap}" != "no"; then
+	AC_DEFINE(HAVE_TMAP, 1, [Define to 1 if you have TMAP support.])
+fi
+
 AC_ARG_ENABLE(asha, AS_HELP_STRING([--disable-asha],
 		[disable ASHA support]), [enable_asha=${enableval}])
 AM_CONDITIONAL(ASHA, test "${enable_asha}" != "no")
