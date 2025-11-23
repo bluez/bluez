@@ -46,6 +46,8 @@
 #include "src/shared/gatt-client.h"
 #include "src/shared/gatt-server.h"
 #include "src/shared/bap.h"
+#include "src/shared/tmap.h"
+#include "src/shared/gmap.h"
 
 #include "btio/btio.h"
 #include "src/plugin.h"
@@ -444,6 +446,78 @@ static gboolean get_qos(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static bool probe_tmap_role(struct bap_ep *ep, uint32_t data)
+{
+	struct gatt_db *db = bt_bap_get_db(ep->data->bap, true);
+
+	return bt_tmap_get_role(bt_tmap_find(db)) & data;
+}
+
+static bool probe_gmap_role(struct bap_ep *ep, uint32_t data)
+{
+	struct gatt_db *db = bt_bap_get_db(ep->data->bap, true);
+
+	return bt_gmap_get_role(bt_gmap_find(db)) & data;
+}
+
+static bool probe_gmap_feature(struct bap_ep *ep, uint32_t data)
+{
+	struct gatt_db *db = bt_bap_get_db(ep->data->bap, true);
+
+	return bt_gmap_get_features(bt_gmap_find(db)) & data;
+}
+
+static const struct {
+	const char *name;
+	bool (*probe)(struct bap_ep *ep, uint32_t data);
+	uint32_t data;
+} features[] = {
+	{ "tmap-cg", probe_tmap_role, BT_TMAP_ROLE_CG },
+	{ "tmap-ct", probe_tmap_role, BT_TMAP_ROLE_CT },
+	{ "tmap-ums", probe_tmap_role, BT_TMAP_ROLE_UMS },
+	{ "tmap-umr", probe_tmap_role, BT_TMAP_ROLE_UMR },
+	{ "tmap-bms", probe_tmap_role, BT_TMAP_ROLE_BMS },
+	{ "tmap-bmr", probe_tmap_role, BT_TMAP_ROLE_BMR },
+	{ "gmap-ugg", probe_gmap_role, BT_GMAP_ROLE_UGG },
+	{ "gmap-ugt", probe_gmap_role, BT_GMAP_ROLE_UGT },
+	{ "gmap-bgs", probe_gmap_role, BT_GMAP_ROLE_BGS },
+	{ "gmap-bgr", probe_gmap_role, BT_GMAP_ROLE_BGR },
+	{ "gmap-ugg-multiplex", probe_gmap_feature, BT_GMAP_UGG_MULTIPLEX },
+	{ "gmap-ugg-96kbps-source", probe_gmap_feature, BT_GMAP_UGG_96KBPS },
+	{ "gmap-ugg-multisink", probe_gmap_feature, BT_GMAP_UGG_MULTISINK },
+	{ "gmap-ugt-source", probe_gmap_feature, BT_GMAP_UGT_SOURCE },
+	{ "gmap-ugt-80kbps-source", probe_gmap_feature,
+						BT_GMAP_UGT_80KBPS_SOURCE },
+	{ "gmap-ugt-sink", probe_gmap_feature, BT_GMAP_UGT_SINK },
+	{ "gmap-ugt-64kbps-sink", probe_gmap_feature, BT_GMAP_UGT_64KBPS_SINK },
+	{ "gmap-ugt-multiplex", probe_gmap_feature, BT_GMAP_UGT_MULTIPLEX },
+	{ "gmap-ugt-multisink", probe_gmap_feature, BT_GMAP_UGT_MULTISINK },
+	{ "gmap-ugt-multisource", probe_gmap_feature, BT_GMAP_UGT_MULTISOURCE },
+	{ "gmap-bgs-96kbps", probe_gmap_feature, BT_GMAP_BGS_96KBPS },
+	{ "gmap-bgr-multisink", probe_gmap_feature, BT_GMAP_BGR_MULTISINK },
+	{ "gmap-bgr-multiplex", probe_gmap_feature, BT_GMAP_BGR_MULTIPLEX },
+};
+
+static gboolean supported_features(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct bap_ep *ep = data;
+	DBusMessageIter entry;
+	size_t i;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING_AS_STRING, &entry);
+
+	for (i = 0; i < ARRAY_SIZE(features); ++i)
+		if (features[i].probe(ep, features[i].data))
+			dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+							&features[i].name);
+
+	dbus_message_iter_close_container(iter, &entry);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable ep_properties[] = {
 	{ "UUID", "s", get_uuid, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
@@ -462,6 +536,8 @@ static const GDBusPropertyTable ep_properties[] = {
 	{ "Context", "q", get_context, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "QoS", "a{sv}", get_qos, NULL, qos_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "SupportedFeatures", "as", supported_features, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
