@@ -118,6 +118,7 @@ unit/test-hog
 unit/test-bap
 unit/test-bass
 unit/test-battery
+unit/test-tmap
 tools/mgmt-tester
 tools/smp-tester
 tools/gap-tester
