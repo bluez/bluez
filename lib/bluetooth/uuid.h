@@ -216,6 +216,14 @@ extern "C" {
 #define TMAS_UUID				0x1855
 #define TMAP_ROLE_CHRC_UUID			0x2b51
 
+/* Gaming Audio Service */
+#define GMAS_UUID				0x1858
+#define GMAP_ROLE_CHRC_UUID			0x2c00
+#define GMAP_UGG_CHRC_UUID			0x2c01
+#define GMAP_UGT_CHRC_UUID			0x2c02
+#define GMAP_BGS_CHRC_UUID			0x2c03
+#define GMAP_BGR_CHRC_UUID			0x2c04
+
 /* Coordinated Set Identification Profile(CSIP) */
 #define CSIS_UUID					0x1846
 #define CS_SIRK						0x2B84
