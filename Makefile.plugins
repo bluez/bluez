@@ -146,6 +146,11 @@ builtin_modules += csip
 builtin_sources += profiles/audio/csip.c
 endif
 
+if TMAP
+builtin_modules += tmap
+builtin_sources += profiles/audio/tmap.c
+endif
+
 if ASHA
 builtin_modules += asha
 builtin_sources += profiles/audio/asha.h profiles/audio/asha.c
