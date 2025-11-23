@@ -127,6 +127,7 @@ struct bap_data {
 	struct btd_device *device;
 	struct btd_adapter *adapter;
 	struct btd_service *service;
+	struct queue *wait_services;
 	struct bt_bap *bap;
 	unsigned int ready_id;
 	unsigned int state_id;
@@ -139,6 +140,7 @@ struct bap_data {
 	GIOChannel *listen_io;
 	unsigned int io_id;
 	unsigned int cig_update_id;
+	unsigned int service_state_id;
 };
 
 static struct queue *sessions;
@@ -186,10 +188,14 @@ static void bap_data_free(struct bap_data *data)
 	queue_destroy(data->bcast, ep_unregister);
 	queue_destroy(data->server_streams, NULL);
 	queue_destroy(data->bcast_snks, setup_free);
+	queue_destroy(data->wait_services, NULL);
 	bt_bap_ready_unregister(data->bap, data->ready_id);
 	bt_bap_state_unregister(data->bap, data->state_id);
 	bt_bap_pac_unregister(data->bap, data->pac_id);
 	bt_bap_unref(data->bap);
+
+	if (data->service_state_id)
+		btd_service_remove_state_cb(data->service_state_id);
 
 	if (data->cig_update_id)
 		g_source_remove(data->cig_update_id);
@@ -2015,12 +2021,15 @@ static bool pac_found_bcast(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	return true;
 }
 
-static void bap_ready(struct bt_bap *bap, void *user_data)
+static void bap_service_ready(struct bap_data *data)
 {
-	struct btd_service *service = user_data;
-	struct bap_data *data = btd_service_get_user_data(service);
+	struct bt_bap *bap = data->bap;
+	struct btd_service *service = data->service;
 
 	DBG("bap %p", bap);
+
+	if (!queue_isempty(data->wait_services))
+		return;
 
 	/* Register all ep before selecting, so that sound server
 	 * knows all.
@@ -2029,6 +2038,15 @@ static void bap_ready(struct bt_bap *bap, void *user_data)
 	bt_bap_foreach_pac(bap, BT_BAP_SINK, pac_register, service);
 
 	bap_select_all(data, false, NULL, NULL);
+}
+
+static void bap_ready(struct bt_bap *bap, void *user_data)
+{
+	struct btd_service *service = user_data;
+	struct bap_data *data = btd_service_get_user_data(service);
+
+	queue_remove(data->wait_services, NULL);
+	bap_service_ready(data);
 }
 
 static bool match_setup_stream(const void *data, const void *user_data)
@@ -3740,6 +3758,44 @@ static int bap_probe(struct btd_service *service)
 	return 0;
 }
 
+static void wait_service_cb(struct btd_service *service,
+						btd_service_state_t old_state,
+						btd_service_state_t new_state,
+						void *user_data)
+{
+	struct bap_data *data = user_data;
+
+	if (new_state == BTD_SERVICE_STATE_CONNECTING)
+		return;
+	if (!queue_remove(data->wait_services, service))
+		return;
+
+	DBG("%s", btd_service_get_profile(service)->name);
+	bap_service_ready(data);
+}
+
+static void wait_service_add(struct bap_data *data, uint16_t remote_uuid)
+{
+	struct btd_service *service;
+	bt_uuid_t uuid;
+	char uuid_str[64];
+
+	bt_uuid16_create(&uuid, remote_uuid);
+	bt_uuid_to_string(&uuid, uuid_str, sizeof(uuid_str));
+
+	service = btd_device_get_service(data->device, uuid_str);
+	if (!service)
+		return;
+	if (btd_service_get_state(service) != BTD_SERVICE_STATE_CONNECTING)
+		return;
+
+	queue_push_tail(data->wait_services, service);
+
+	if (!data->service_state_id)
+		data->service_state_id = btd_service_add_state_cb(
+						wait_service_cb, data);
+}
+
 static int bap_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -3759,6 +3815,13 @@ static int bap_accept(struct btd_service *service)
 		error("BAP unable to attach");
 		return -EINVAL;
 	}
+
+	queue_destroy(data->wait_services, NULL);
+	data->wait_services = queue_new();
+
+	queue_push_tail(data->wait_services, NULL);
+	wait_service_add(data, TMAS_UUID);
+	wait_service_add(data, VCS_UUID);
 
 	btd_service_connecting_complete(service, 0);
 
