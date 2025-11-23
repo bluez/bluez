@@ -3821,6 +3821,7 @@ static int bap_accept(struct btd_service *service)
 
 	queue_push_tail(data->wait_services, NULL);
 	wait_service_add(data, TMAS_UUID);
+	wait_service_add(data, GMAS_UUID);
 	wait_service_add(data, VCS_UUID);
 
 	btd_service_connecting_complete(service, 0);
