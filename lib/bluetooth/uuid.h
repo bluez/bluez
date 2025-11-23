@@ -212,6 +212,10 @@ extern "C" {
 #define MEDIA_CP_OP_SUPPORTED_CHRC_UUID         0x2ba5
 #define MEDIA_CONTENT_CONTROL_ID_CHRC_UUID      0x2bba
 
+/* Telephony and Media Audio Service */
+#define TMAS_UUID				0x1855
+#define TMAP_ROLE_CHRC_UUID			0x2b51
+
 /* Coordinated Set Identification Profile(CSIP) */
 #define CSIS_UUID					0x1846
 #define CS_SIRK						0x2B84
