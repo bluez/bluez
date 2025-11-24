@@ -458,6 +458,7 @@ static int midi_disconnect(struct btd_service *service)
 
 static struct btd_profile midi_profile = {
 	.name = "MIDI GATT Driver",
+	.bearer	= BTD_PROFILE_BEARER_LE,
 	.remote_uuid = MIDI_UUID,
 	.priority = BTD_PROFILE_PRIORITY_HIGH,
 	.auto_connect = true,
