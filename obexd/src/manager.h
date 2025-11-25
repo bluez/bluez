@@ -22,6 +22,7 @@ struct obex_transfer *manager_register_transfer(struct obex_session *os);
 void manager_unregister_transfer(struct obex_transfer *transfer);
 void manager_emit_transfer_property(struct obex_transfer *transfer,
 								char *name);
+void manager_emit_transfer_queued(struct obex_transfer *transfer);
 void manager_emit_transfer_started(struct obex_transfer *transfer);
 void manager_emit_transfer_progress(struct obex_transfer *transfer);
 void manager_emit_transfer_completed(struct obex_transfer *transfer);
