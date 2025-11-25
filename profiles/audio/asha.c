@@ -499,6 +499,7 @@ static int asha_source_disconnect(struct btd_service *service)
 static struct btd_profile asha_source_profile = {
 	.name		= "asha-source",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= ASHA_PROFILE_UUID,
 	.experimental	= true,
 
