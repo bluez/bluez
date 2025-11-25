@@ -2308,16 +2308,32 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 static int transport_bap_get_volume(struct media_transport *transport)
 {
 #ifdef HAVE_VCP
-	return bt_audio_vcp_get_volume(transport->device);
-#else
-	return -ENODEV;
+	const char *uuid = media_endpoint_get_uuid(transport->endpoint);
+
+	/* TODO: PAC_SINK_UUID needs AICS */
+	/* TODO: VOCS */
+
+	if (strcasecmp(uuid, PAC_SOURCE_UUID) == 0 ||
+				strcasecmp(uuid, BAA_SERVICE_UUID) == 0)
+		return bt_audio_vcp_get_volume(transport->device);
 #endif /* HAVE_VCP */
+
+	return -ENODEV;
 }
 
 static int transport_bap_set_volume(struct media_transport *transport,
 								int volume)
 {
 #ifdef HAVE_VCP
+	const char *uuid = media_endpoint_get_uuid(transport->endpoint);
+
+	/* TODO: PAC_SINK_UUID needs AICS */
+	/* TODO: VOCS */
+
+	if (strcasecmp(uuid, PAC_SOURCE_UUID) &&
+				strcasecmp(uuid, BAA_SERVICE_UUID))
+		return -ENODEV;
+
 	if (volume < 0 || volume > 255)
 		return -EINVAL;
 
@@ -2802,7 +2818,6 @@ void media_transport_update_device_volume(struct btd_device *dev,
 	if (dev == NULL || volume < 0)
 		return;
 
-#ifdef HAVE_A2DP
 	/* Attempt to locate the transport to set its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
@@ -2811,15 +2826,18 @@ void media_transport_update_device_volume(struct btd_device *dev,
 			continue;
 
 		/* Volume is A2DP and BAP only */
-		if (media_endpoint_get_sep(transport->endpoint) ||
-				strcasecmp(uuid, PAC_SINK_UUID) ||
-				strcasecmp(uuid, PAC_SOURCE_UUID) ||
-				strcasecmp(uuid, BAA_SERVICE_UUID)) {
+#ifdef HAVE_A2DP
+		if (media_endpoint_get_sep(transport->endpoint)) {
 			media_transport_update_volume(transport, volume);
 			break;
 		}
-	}
 #endif
+
+		/* This is sink volume */
+		if (strcasecmp(uuid, PAC_SOURCE_UUID) == 0 ||
+				strcasecmp(uuid, BAA_SERVICE_UUID) == 0)
+			media_transport_update_volume(transport, volume);
+	}
 
 	btd_device_set_volume(dev, volume);
 }
