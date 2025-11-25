@@ -528,13 +528,20 @@ void manager_emit_transfer_property(struct obex_transfer *transfer,
 	if (transfer->path == NULL)
 		return;
 
-	if (strcasecmp("Size", name) == 0)
+	if (strcasecmp("Size", name) == 0 || strcasecmp("Status", name) == 0)
 		g_dbus_emit_property_changed_full(connection, transfer->path,
 					TRANSFER_INTERFACE, name,
 					G_DBUS_PROPERTY_CHANGED_FLAG_FLUSH);
 	else
 		g_dbus_emit_property_changed(connection, transfer->path,
 						TRANSFER_INTERFACE, name);
+}
+
+void manager_emit_transfer_queued(struct obex_transfer *transfer)
+{
+	transfer->status = TRANSFER_STATUS_QUEUED;
+
+	manager_emit_transfer_property(transfer, "Status");
 }
 
 void manager_emit_transfer_started(struct obex_transfer *transfer)

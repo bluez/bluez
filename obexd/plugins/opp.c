@@ -58,6 +58,8 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 	if (t != NULL && !is_filename(t))
 		return -EBADR;
 
+	manager_emit_transfer_queued(user_data);
+
 	if (obex_option_auto_accept()) {
 		folder = g_strdup(obex_option_root_folder());
 		name = g_strdup(obex_get_name(os));
