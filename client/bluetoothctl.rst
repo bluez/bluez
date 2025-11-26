@@ -296,6 +296,40 @@ needed.
 
 :Usage: **> disconnect <dev> [uuid]**
 
+connect-bearer
+--------------
+
+Connect device with specified bearer.
+
+This command initiates a bearer-level connection to a remote device.
+
+By default this command connects the specified bearer (LE or BREDR)
+and all profiles that are associated with that bearer and marked as
+auto-connectable. Only the profiles bound to the selected bearer
+will be considered, profiles on the other bearer are not affected.
+
+For LE connections an active scan report is required before the connection
+can be established. If no advertising report is received before the timeout,
+a le-connection-abort-by-local error will be issued.
+
+:Usage: > connect-bearer <dev> <le/bredr>
+:Example: > connect-bearer 1C:48:F9:9D:81:5C le
+:Example: > connect-bearer 1C:48:F9:9D:81:5C bredr
+
+disconnect-bearer
+-----------------
+
+Disconnect device with specified bearer.
+
+By default this command disconnects all profiles associated with the specified
+bearer (LE or BREDR) and then terminates that bearer's link. Only profiles
+bound to the selected bearer are affected, profiles on the other bearer remain
+connected.
+
+:Usage: > disconnect-bearer <dev> <le/bredr>
+:Example: > disconnect-bearer 1C:48:F9:9D:81:5C le
+:Example: > disconnect-bearer 1C:48:F9:9D:81:5C bredr
+
 info
 ----
 
