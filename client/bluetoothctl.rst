@@ -296,6 +296,55 @@ needed.
 
 :Usage: **> disconnect <dev> [uuid]**
 
+le-connect
+----------
+
+Connect device over le.
+
+This command initiates a le connection to a remote device.
+
+An active scan report is required before the connection can be
+established. If no advertising report is received before the timeout,
+a le-connection-abort-by-local error will be issued.
+
+:Usage: > le-connect <dev>
+:Example: > le-connect 1C:48:F9:9D:81:5C
+
+le-disconnect
+-------------
+
+Disconnect device over le.
+
+By default this command disconnects all profiles/services associated with the le
+connection, and then terminates the le link.
+
+:Usage: > le-disconnect <dev>
+:Example: > le-disconnect 1C:48:F9:9D:81:5C
+
+bredr-connect
+-------------
+
+Connect device over bredr.
+
+This command initiates a bredr connection to a remote device.
+
+By default, it establishes the bredr connection and then connects all profiles
+that marked as auto-connectable.
+
+:Usage: > bredr-connect <dev>
+:Example: > bredr-connect 1C:48:F9:9D:81:5C
+
+bredr-disconnect
+----------------
+
+Disconnect device over bredr.
+
+By default this command disconnects all profiles associated with the bredr
+connection, and then terminates the bredr link.
+
+:Usage: > bredr-disconnect <dev>
+:Example: > bredr-disconnect 1C:48:F9:9D:81:5C
+
 info
 ----
 
