@@ -2022,6 +2022,28 @@ static void dev_disconn_service(gpointer a, gpointer b)
 	btd_service_disconnect(a);
 }
 
+void device_disconnect_watches_callback(struct btd_device *device)
+{
+	if (!device || !device->watches)
+		return;
+
+	while (device->watches) {
+		struct btd_disconnect_data *data = device->watches->data;
+
+		if (data->watch)
+			/* temporary is set if device is going to be removed */
+			data->watch(device, device->temporary,
+							data->user_data);
+
+		/* Check if the watch has been removed by callback function */
+		if (!g_slist_find(device->watches, data))
+			continue;
+
+		device->watches = g_slist_remove(device->watches, data);
+		g_free(data);
+	}
+}
+
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 {
 	if (device->bonding)
@@ -2063,21 +2085,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	g_slist_free(device->pending);
 	device->pending = NULL;
 
-	while (device->watches) {
-		struct btd_disconnect_data *data = device->watches->data;
-
-		if (data->watch)
-			/* temporary is set if device is going to be removed */
-			data->watch(device, device->temporary,
-							data->user_data);
-
-		/* Check if the watch has been removed by callback function */
-		if (!g_slist_find(device->watches, data))
-			continue;
-
-		device->watches = g_slist_remove(device->watches, data);
-		g_free(data);
-	}
+	device_disconnect_watches_callback(device);
 
 	if (!btd_device_is_connected(device)) {
 		if (msg)
@@ -2093,6 +2101,11 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 bool device_is_disconnecting(struct btd_device *device)
 {
 	return device->disconn_timer > 0;
+}
+
+bool device_is_connecting(struct btd_device *device)
+{
+	return device->connect != NULL;
 }
 
 static void add_set(void *data, void *user_data)
@@ -2712,8 +2725,8 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services)
 	return connect_next(dev);
 }
 
-static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type,
-					DBusMessage *msg, const char *uuid)
+DBusMessage *device_connect_profiles(struct btd_device *dev,
+		uint8_t bdaddr_type, DBusMessage *msg, const char *uuid)
 {
 	struct bearer_state *state = get_state(dev, bdaddr_type);
 	int err;
@@ -2826,7 +2839,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 	}
 
-	return connect_profiles(dev, bdaddr_type, msg, NULL);
+	return device_connect_profiles(dev, bdaddr_type, msg, NULL);
 }
 
 static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
@@ -2848,7 +2861,7 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args_str(msg,
 					ERR_BREDR_CONN_INVALID_ARGUMENTS);
 
-	reply = connect_profiles(dev, BDADDR_BREDR, msg, uuid);
+	reply = device_connect_profiles(dev, BDADDR_BREDR, msg, uuid);
 	free(uuid);
 
 	return reply;
@@ -3421,7 +3434,7 @@ static DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	}
 }
 
-static void device_cancel_bonding(struct btd_device *device, uint8_t status)
+void device_cancel_bonding(struct btd_device *device, uint8_t status)
 {
 	struct bonding_req *bonding = device->bonding;
 	DBusMessage *reply;
@@ -6629,6 +6642,39 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	return err;
 }
 
+static gboolean device_is_browsing(struct btd_device *device,
+					uint8_t bdaddr_type)
+{
+	if (!device->browse)
+		return FALSE;
+
+	if (bdaddr_type == BDADDR_BREDR && device->browse->type == BROWSE_SDP)
+		return TRUE;
+
+	if (bdaddr_type != BDADDR_BREDR && device->browse->type == BROWSE_GATT)
+		return TRUE;
+
+	return FALSE;
+}
+
+void device_cancel_browse(struct btd_device *device, uint8_t bdaddr_type)
+{
+	struct btd_adapter *adapter = device->adapter;
+
+	DBG("");
+
+	if (!device_is_browsing(device, bdaddr_type))
+		return;
+
+	if (bdaddr_type == BDADDR_BREDR)
+		bt_cancel_discovery(btd_adapter_get_address(adapter),
+							&device->bdaddr);
+	else
+		attio_cleanup(device);
+
+	browse_request_free(device->browse);
+}
+
 int device_discover_services(struct btd_device *device)
 {
 	int err;
@@ -8087,4 +8133,47 @@ void btd_device_foreach_service_data(struct btd_device *dev, bt_ad_func_t func,
 							void *data)
 {
 	bt_ad_foreach_service_data(dev->ad, func, data);
+}
+
+
+void btd_device_foreach_service(struct btd_device *dev,
+				btd_device_service_func_t func,
+				void *user_data)
+{
+	GSList *l;
+
+	for (l = dev->services; l; l = l->next)
+		func(l->data, user_data);
+}
+
+void device_remove_pending_services(struct btd_device *dev,
+					uint8_t bdaddr_type)
+{
+	GSList *l = dev->pending;
+	GSList *next;
+	struct btd_service *service;
+	struct btd_profile *profile;
+
+	while (l) {
+		next = l->next;
+		service = l->data;
+
+		profile = btd_service_get_profile(service);
+		if (!profile)
+			goto next;
+
+		if (bdaddr_type == BDADDR_BREDR) {
+			if (profile->bearer == BTD_PROFILE_BEARER_LE)
+				goto next;
+		} else {
+			if (profile->bearer == BTD_PROFILE_BEARER_BREDR)
+				goto next;
+		}
+
+		/* Matched: remove from pending list */
+		dev->pending = g_slist_remove(dev->pending, service);
+
+next:
+		l = next;
+	}
 }
