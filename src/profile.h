@@ -38,6 +38,12 @@ struct btd_profile {
 	 */
 	bool testing;
 
+	/* Indicates the profile should be ordered after profiles providing
+	 * these remote uuids when connecting. A NULL-terminated array of
+	 * strings.
+	 */
+	const char **after_uuids;
+
 	int (*device_probe) (struct btd_service *service);
 	void (*device_remove) (struct btd_service *service);
 
@@ -76,3 +82,10 @@ bool btd_profile_remove_custom_prop(const char *uuid, const char *name);
 
 void btd_profile_init(void);
 void btd_profile_cleanup(void);
+
+struct btd_profile *btd_profile_find_remote_uuid(const char *uuid);
+
+typedef const struct btd_profile *(*btd_profile_list_get)(void *item,
+							void *user_data);
+GSList *btd_profile_sort_list(GSList *list, btd_profile_list_get get,
+							void *user_data);
