@@ -151,6 +151,11 @@ builtin_modules += tmap
 builtin_sources += profiles/audio/tmap.c
 endif
 
+if GMAP
+builtin_modules += gmap
+builtin_sources += profiles/audio/gmap.c
+endif
+
 if ASHA
 builtin_modules += asha
 builtin_sources += profiles/audio/asha.h profiles/audio/asha.c

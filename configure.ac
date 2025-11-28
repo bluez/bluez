@@ -234,6 +234,13 @@ if test "${enable_tmap}" != "no"; then
 	AC_DEFINE(HAVE_TMAP, 1, [Define to 1 if you have TMAP support.])
 fi
 
+AC_ARG_ENABLE(gmap, AS_HELP_STRING([--disable-gmap],
+		[disable GMAP profile]), [enable_gmap=${enableval}])
+AM_CONDITIONAL(GMAP, test "${enable_gmap}" != "no")
+if test "${enable_gmap}" != "no"; then
+	AC_DEFINE(HAVE_GMAP, 1, [Define to 1 if you have GMAP support.])
+fi
+
 AC_ARG_ENABLE(asha, AS_HELP_STRING([--disable-asha],
 		[disable ASHA support]), [enable_asha=${enableval}])
 AM_CONDITIONAL(ASHA, test "${enable_asha}" != "no")
