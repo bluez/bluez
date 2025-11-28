@@ -52,6 +52,9 @@ struct btd_profile {
 
 	int (*accept) (struct btd_service *service);
 
+	/* Emitted when services in after_uuids are no longer connecting */
+	void (*ready)(struct btd_service *service);
+
 	int (*adapter_probe) (struct btd_profile *p,
 						struct btd_adapter *adapter);
 	void (*adapter_remove) (struct btd_profile *p,
