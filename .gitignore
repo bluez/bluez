@@ -119,6 +119,7 @@ unit/test-bap
 unit/test-bass
 unit/test-battery
 unit/test-tmap
+unit/test-gmap
 tools/mgmt-tester
 tools/smp-tester
 tools/gap-tester
