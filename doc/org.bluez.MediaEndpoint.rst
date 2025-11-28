@@ -299,3 +299,111 @@ Indicates QoS capabilities.
 :uint32 PreferredMaximumDelay:
 
 	Indicates endpoint preferred maximum presentation delay.
+
+dict SupportedFeatures [readonly, ISO only, experimental]
+`````````````````````````````````````````````````````````
+
+Dictionary representing supported features for different
+services. Keys are service UUIDs, values arrays of strings.
+
+Services:
+
+:array{string} 00001855-0000-1000-8000-00805f9b34fb:
+
+	TMAP Features. Possible items:
+
+	:"cg":
+
+		Call Gateway
+
+	:"ct":
+
+		Call Terminal
+
+	:"ums":
+
+		Unicast Media Sender
+
+	:"umr":
+
+		Unicast Media Receiver
+
+	:"bms":
+
+		Broadcast Media Sender
+
+	:"bmr":
+
+		Broadcast Media Receiver
+
+:array{string} 00001858-0000-1000-8000-00805f9b34fb:
+
+	GMAP Features. Possible items:
+
+	:"ugg":
+
+		Unicast Game Gateway
+
+	:"ugt":
+
+		Unicast Game Terminal
+
+	:"bgs":
+
+		Broadcast Game Sender
+
+	:"bgr":
+
+		Broadcast Game Receiver
+
+	:"ugg-multiplex":
+
+		UGG Multiplex feature support
+
+	:"ugg-96kbps-source":
+
+		UGG 96 kbps Source feature support
+
+	:"ugg-multisink":
+
+		UGG Multisink feature support
+
+	:"ugt-source":
+
+		UGT Source feature support
+
+	:"ugt-80kbps-source":
+
+		UGT 80 kbps Source feature support
+
+	:"ugt-sink":
+
+		UGT Sink feature support
+
+	:"ugt-64kbps-sink":
+
+		UGT 64 kbps Sink feature support
+
+	:"ugt-multiplex":
+
+		UGT Multiplex feature support
+
+	:"ugt-multisink":
+
+		UGT Multisink feature support
+
+	:"ugt-multisource":
+
+		UGT Multisource feature support
+
+	:"bgs-96kbps":
+
+		BGS 96 kbps feature support
+
+	:"bgr-multisink":
+
+		BGR Multisink feature support
+
+	:"bgr-multiplex":
+
+		BGR Multiplex feature support
