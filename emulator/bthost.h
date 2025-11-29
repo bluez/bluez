@@ -69,6 +69,9 @@ void bthost_hci_ext_connect(struct bthost *bthost, const uint8_t *bdaddr,
 void bthost_hci_disconnect(struct bthost *bthost, uint16_t handle,
 								uint8_t reason);
 
+int bthost_setup_sco(struct bthost *bthost, uint16_t acl_handle,
+							uint16_t setting);
+
 typedef void (*bthost_cid_hook_func_t)(const void *data, uint16_t len,
 							void *user_data);
 

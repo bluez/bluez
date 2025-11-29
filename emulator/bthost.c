@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <endian.h>
+#include <errno.h>
 #include <stdbool.h>
 
 #include "bluetooth/bluetooth.h"
@@ -1317,11 +1318,29 @@ static void evt_conn_request(struct bthost *bthost, const void *data,
 	if (len < sizeof(*ev))
 		return;
 
-	memset(&cmd, 0, sizeof(cmd));
-	memcpy(cmd.bdaddr, ev->bdaddr, sizeof(ev->bdaddr));
+	if (ev->link_type == 0x01 || ev->link_type == 0x00) {
+		memset(&cmd, 0, sizeof(cmd));
+		memcpy(cmd.bdaddr, ev->bdaddr, sizeof(ev->bdaddr));
 
-	send_command(bthost, BT_HCI_CMD_ACCEPT_CONN_REQUEST, &cmd,
+		send_command(bthost, BT_HCI_CMD_ACCEPT_CONN_REQUEST, &cmd,
 								sizeof(cmd));
+	} else if (ev->link_type == 0x02) {
+		struct bt_hci_cmd_accept_sync_conn_request cmd;
+
+		memset(&cmd, 0, sizeof(cmd));
+		memcpy(cmd.bdaddr, ev->bdaddr, sizeof(ev->bdaddr));
+
+		/* TODO: emulate these properly? */
+		cmd.tx_bandwidth = cpu_to_le32(0x00001f40);
+		cmd.rx_bandwidth = cpu_to_le32(0x00001f40);
+		cmd.max_latency = cpu_to_le16(0xffff);
+		cmd.voice_setting = 0x00;
+		cmd.retrans_effort = 0x02;
+		cmd.pkt_type = 0xff;
+
+		send_command(bthost, BT_HCI_CMD_ACCEPT_SYNC_CONN_REQUEST, &cmd,
+								sizeof(cmd));
+	}
 }
 
 static void init_conn(struct bthost *bthost, uint16_t handle,
@@ -3536,6 +3555,44 @@ void bthost_hci_disconnect(struct bthost *bthost, uint16_t handle,
 	disc.reason = reason;
 
 	send_command(bthost, BT_HCI_CMD_DISCONNECT, &disc, sizeof(disc));
+}
+
+int bthost_setup_sco(struct bthost *bthost, uint16_t acl_handle,
+							uint16_t setting)
+{
+	static const struct bt_hci_cmd_setup_sync_conn settings[] = {
+		{
+			.tx_bandwidth = cpu_to_le32(0x00001f40),
+			.rx_bandwidth = cpu_to_le32(0x00001f40),
+			.max_latency = cpu_to_le16(0x000a),
+			.retrans_effort = 0x01,
+			.voice_setting = cpu_to_le16(BT_VOICE_CVSD_16BIT),
+		},
+		{
+			.tx_bandwidth = cpu_to_le32(0x00001f40),
+			.rx_bandwidth = cpu_to_le32(0x00001f40),
+			.max_latency = cpu_to_le16(0x000d),
+			.retrans_effort = 0x02,
+			.voice_setting = cpu_to_le16(BT_VOICE_TRANSPARENT),
+		}
+	};
+	struct bt_hci_cmd_setup_sync_conn cmd;
+	unsigned int i;
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	for (i = 0; i < ARRAY_SIZE(settings); ++i) {
+		if (settings[i].voice_setting == cpu_to_le16(setting)) {
+			memcpy(&cmd, &settings[i], sizeof(cmd));
+			break;
+		}
+	}
+	if (!cmd.voice_setting)
+		return -EINVAL;
+
+	cmd.handle = cpu_to_le16(acl_handle);
+	send_command(bthost, BT_HCI_CMD_SETUP_SYNC_CONN, &cmd, sizeof(cmd));
+	return 0;
 }
 
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
