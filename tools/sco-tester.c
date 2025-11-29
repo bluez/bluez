@@ -56,8 +56,14 @@ struct sco_client_data {
 	const uint8_t *send_data;
 	uint16_t data_len;
 
+	/* Connect timeout */
+	unsigned int connect_timeout_us;
+
 	/* Shutdown socket after connect */
 	bool shutdown;
+
+	/* Close socket after connect */
+	bool close_after_connect;
 
 	/* Enable SO_TIMESTAMPING with these flags */
 	uint32_t so_timestamping;
@@ -247,7 +253,7 @@ static void test_data_free(void *test_data)
 }
 
 #define test_sco_full(name, data, setup, func, _disable_esco, _enable_codecs, \
-							_disable_sco_flowctl) \
+					_disable_sco_flowctl, _timeout) \
 	do { \
 		struct test_data *user; \
 		user = malloc(sizeof(struct test_data)); \
@@ -264,26 +270,37 @@ static void test_data_free(void *test_data)
 		user->disable_sco_flowctl = _disable_sco_flowctl; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, 2, user, test_data_free); \
+				test_post_teardown, _timeout, user, \
+				test_data_free); \
 	} while (0)
 
 #define test_sco(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, false, false, false)
+	test_sco_full(name, data, setup, func, false, false, false, 2)
 
 #define test_sco_no_flowctl(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, false, false, true)
+	test_sco_full(name, data, setup, func, false, false, true, 2)
 
 #define test_sco_11(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, true, false, false)
+	test_sco_full(name, data, setup, func, true, false, false, 2)
 
 #define test_sco_11_no_flowctl(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, true, false, true)
+	test_sco_full(name, data, setup, func, true, false, true, 2)
 
 #define test_offload_sco(name, data, setup, func) \
-	test_sco_full(name, data, setup, func, false, true, false)
+	test_sco_full(name, data, setup, func, false, true, false, 2)
 
 static const struct sco_client_data connect_success = {
 	.expect_err = 0
+};
+
+static const struct sco_client_data connect_timeout = {
+	.expect_err = ETIMEDOUT,
+	.connect_timeout_us = 1,
+};
+
+/* Check timeout handling if closed before connect finishes */
+static const struct sco_client_data connect_close = {
+	.close_after_connect = true,
 };
 
 static const struct sco_client_data disconnect_success = {
@@ -684,6 +701,7 @@ end:
 
 static int create_sco_sock(struct test_data *data)
 {
+	const struct sco_client_data *scodata = data->test_data;
 	const uint8_t *central_bdaddr;
 	struct sockaddr_sco addr;
 	int sk, err;
@@ -695,6 +713,19 @@ static int create_sco_sock(struct test_data *data)
 		tester_warn("Can't create socket: %s (%d)", strerror(errno),
 									errno);
 		return err;
+	}
+
+	if (scodata->connect_timeout_us) {
+		struct timeval timeout = {
+			.tv_sec = scodata->connect_timeout_us / 1000000,
+			.tv_usec = scodata->connect_timeout_us % 1000000
+		};
+
+		if (setsockopt(sk, SOL_SOCKET, SO_SNDTIMEO,
+					(void *)&timeout, sizeof(timeout))) {
+			tester_warn("failed to set timeout: %m");
+			return -EINVAL;
+		}
 	}
 
 	central_bdaddr = hciemu_get_central_bdaddr(data->hciemu);
@@ -923,6 +954,7 @@ static gboolean sco_connect_cb(GIOChannel *io, GIOCondition cond,
 static void test_connect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
 	GIOChannel *io;
 	int sk;
 
@@ -935,6 +967,12 @@ static void test_connect(const void *test_data)
 	if (connect_sco_sock(data, sk) < 0) {
 		close(sk);
 		tester_test_failed();
+		return;
+	}
+
+	if (scodata->close_after_connect) {
+		close(sk);
+		tester_test_passed();
 		return;
 	}
 
@@ -1034,6 +1072,25 @@ static void test_connect_offload_msbc(const void *test_data)
 
 end:
 	close(sk);
+}
+
+static bool hook_delay_evt(const void *msg, uint16_t len, void *user_data)
+{
+	tester_print("Delaying emulator response...");
+	g_usleep(500000);
+	tester_print("Delaying emulator response... Done.");
+	return true;
+}
+
+static void test_connect_delayed(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_SYNC_CONN_COMPLETE,
+					hook_delay_evt, NULL);
+
+	test_connect(test_data);
 }
 
 static bool hook_setup_sync_evt(const void *buf, uint16_t len, void *user_data)
@@ -1200,6 +1257,12 @@ int main(int argc, char *argv[])
 
 	test_sco("eSCO CVSD - Success", &connect_success, setup_powered,
 							test_connect);
+
+	test_sco_full("eSCO CVSD - Timeout", &connect_timeout, setup_powered,
+				test_connect_delayed, false, false, false, 8);
+
+	test_sco("eSCO CVSD - Close", &connect_close, setup_powered,
+						test_connect_delayed);
 
 	test_sco("eSCO mSBC - Success", &connect_success, setup_powered,
 							test_connect_transp);
