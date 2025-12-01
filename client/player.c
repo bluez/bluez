@@ -2937,6 +2937,7 @@ static void print_endpoint_properties(GDBusProxy *proxy)
 	print_property(proxy, "SupportedContext");
 	print_property(proxy, "Context");
 	print_property(proxy, "QoS");
+	print_property(proxy, "SupportedFeatures");
 }
 
 static void print_endpoints(void *data, void *user_data)
