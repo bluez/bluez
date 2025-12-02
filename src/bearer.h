@@ -18,5 +18,5 @@ void btd_bearer_destroy(struct btd_bearer *bearer);
 
 void btd_bearer_paired(struct btd_bearer *bearer);
 void btd_bearer_bonded(struct btd_bearer *bearer);
-void btd_bearer_connected(struct btd_bearer *bearer);
+void btd_bearer_connected(struct btd_bearer *bearer, int err);
 void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason);
