@@ -371,6 +371,16 @@ Assistant Submenu
 
 See **bluetoothctl-assistant(1)**
 
+LE Submenu
+==================
+
+See **bluetoothctl-le(1)**
+
+BREDR Submenu
+==================
+
+See **bluetoothctl-bredr(1)**
+
 AUTOMATION
 ==========
 Two common ways to automate the tool are to use Here Docs or the program expect.
