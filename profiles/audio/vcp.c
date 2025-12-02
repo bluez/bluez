@@ -282,6 +282,13 @@ static void vcp_remove(struct btd_service *service)
 	vcp_data_remove(data);
 }
 
+static void vcp_ready(struct bt_vcp *vcp, void *user_data)
+{
+	struct btd_service *service = user_data;
+
+	btd_service_connecting_complete(service, 0);
+}
+
 static int vcp_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -297,12 +304,10 @@ static int vcp_accept(struct btd_service *service)
 		return -EINVAL;
 	}
 
-	if (!bt_vcp_attach(data->vcp, client, NULL, NULL)) {
+	if (!bt_vcp_attach(data->vcp, client, vcp_ready, service)) {
 		error("VCP unable to attach");
 		return -EINVAL;
 	}
-
-	btd_service_connecting_complete(service, 0);
 
 	return 0;
 }
