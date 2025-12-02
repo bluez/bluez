@@ -304,9 +304,9 @@ include Makefile.plugins
 
 pkglibexec_PROGRAMS += src/bluetoothd
 
-src_bluetoothd_SOURCES = $(builtin_sources) \
+bluetoothd_internal_sources = \
 			$(attrib_sources) $(btio_sources) \
-			src/main.c src/log.h src/log.c \
+			src/log.h src/log.c \
 			src/backtrace.h src/backtrace.c \
 			src/rfkill.c src/btd.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
@@ -316,7 +316,6 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/sdp-client.h src/sdp-client.c \
 			src/textfile.h src/textfile.c \
 			src/uuid-helper.h src/uuid-helper.c \
-			src/plugin.h src/plugin.c \
 			src/storage.h src/storage.c \
 			src/advertising.h src/advertising.c \
 			src/agent.h src/agent.c \
@@ -333,10 +332,17 @@ src_bluetoothd_SOURCES = $(builtin_sources) \
 			src/settings.h src/settings.c \
 			src/set.h src/set.c \
 			src/bearer.h src/bearer.c
-src_bluetoothd_LDADD = lib/libbluetooth-internal.la \
+
+bluetoothd_internal_ldadd = lib/libbluetooth-internal.la \
 			gdbus/libgdbus-internal.la \
 			src/libshared-glib.la \
-			$(BACKTRACE_LIBS) $(GLIB_LIBS) $(DBUS_LIBS) -ldl -lrt \
+			$(BACKTRACE_LIBS) $(GLIB_LIBS) $(DBUS_LIBS) -ldl -lrt
+
+src_bluetoothd_SOURCES = $(builtin_sources) \
+			$(bluetoothd_internal_sources) \
+			src/plugin.h src/plugin.c \
+			src/main.c
+src_bluetoothd_LDADD = $(bluetoothd_internal_ldadd) \
 			$(builtin_ldadd)
 
 if EXTERNAL_PLUGINS
@@ -575,6 +581,12 @@ unit_tests += unit/test-uhid
 
 unit_test_uhid_SOURCES = unit/test-uhid.c
 unit_test_uhid_LDADD = src/libshared-glib.la $(GLIB_LIBS)
+
+unit_tests += unit/test-profile
+
+unit_test_profile_SOURCES = unit/test-profile.c \
+			unit/btd.c $(bluetoothd_internal_sources)
+unit_test_profile_LDADD = $(bluetoothd_internal_ldadd)
 
 unit_tests += unit/test-sdp
 
