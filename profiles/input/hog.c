@@ -215,6 +215,7 @@ static int hog_disconnect(struct btd_service *service)
 
 static struct btd_profile hog_profile = {
 	.name		= "input-hog",
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= HOG_UUID,
 	.device_probe	= hog_probe,
 	.device_remove	= hog_remove,

@@ -460,6 +460,7 @@ static struct btd_profile midi_profile = {
 	.name = "MIDI GATT Driver",
 	.remote_uuid = MIDI_UUID,
 	.priority = BTD_PROFILE_PRIORITY_HIGH,
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.auto_connect = true,
 
 	.device_probe = midi_device_probe,

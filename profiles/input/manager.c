@@ -45,8 +45,10 @@ static void hid_server_remove(struct btd_profile *p,
 
 static struct btd_profile input_profile = {
 	.name		= "input-hid",
+	.bearer		= BTD_PROFILE_BEARER_BREDR,
 	.local_uuid	= HID_UUID,
 	.remote_uuid	= HID_UUID,
+
 
 	.auto_connect	= true,
 	.connect	= input_device_connect,

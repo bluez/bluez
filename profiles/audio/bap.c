@@ -3991,6 +3991,7 @@ static void bap_adapter_remove(struct btd_profile *p,
 static struct btd_profile bap_profile = {
 	.name		= "bap",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= PACS_UUID_STR,
 	.device_probe	= bap_probe,
 	.device_remove	= bap_remove,
@@ -4005,6 +4006,7 @@ static struct btd_profile bap_profile = {
 static struct btd_profile bap_bcast_profile = {
 	.name		= "bcaa",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= BCAAS_UUID_STR,
 	.device_probe	= bap_bcast_probe,
 	.device_remove	= bap_bcast_remove,
