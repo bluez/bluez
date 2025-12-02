@@ -11,4 +11,4 @@ Type=simple
 ExecStart=@PKGBINDIR@/mpris-proxy
 
 [Install]
-WantedBy=default.target
+WantedBy=pipewire.service
