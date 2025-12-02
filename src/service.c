@@ -26,6 +26,8 @@
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/sdp.h"
 
+#include "src/shared/queue.h"
+
 #include "log.h"
 #include "backtrace.h"
 
@@ -43,6 +45,8 @@ struct btd_service {
 	int			err;
 	bool			is_allowed;
 	bool			initiator;
+	struct queue		*depends;
+	struct queue		*dependents;
 };
 
 struct service_state_callback {
@@ -69,6 +73,50 @@ static const char *state2str(btd_service_state_t state)
 	}
 
 	return NULL;
+}
+
+static void depends_ready(void *item, void *user_data)
+{
+	struct btd_service *service = item;
+	struct btd_service *dep = user_data;
+	struct btd_profile_uuid_cb *after = &service->profile->after_services;
+	char addr[18];
+
+	if (dep && !queue_remove(service->depends, dep))
+		return;
+	if (!service->depends || !queue_isempty(service->depends))
+		return;
+
+	queue_destroy(service->depends, NULL);
+	service->depends = NULL;
+
+	if (!after->count && !after->func)
+		return;
+
+	ba2str(device_get_address(service->device), addr);
+	DBG("%p: device %s profile %s dependencies ready", service,
+						addr, service->profile->name);
+
+	switch (service->state) {
+	case BTD_SERVICE_STATE_CONNECTING:
+	case BTD_SERVICE_STATE_CONNECTED:
+		if (after->func)
+			after->func(service);
+		break;
+	case BTD_SERVICE_STATE_UNAVAILABLE:
+	case BTD_SERVICE_STATE_DISCONNECTING:
+	case BTD_SERVICE_STATE_DISCONNECTED:
+		break;
+	}
+}
+
+static void service_ready(struct btd_service *service)
+{
+	queue_foreach(service->dependents, depends_ready, service);
+	queue_destroy(service->dependents, NULL);
+	service->dependents = NULL;
+
+	depends_ready(service, NULL);
 }
 
 static void change_state(struct btd_service *service, btd_service_state_t state,
@@ -98,6 +146,9 @@ static void change_state(struct btd_service *service, btd_service_state_t state,
 		cb->cb(service, old, state, cb->user_data);
 	}
 
+	if (state != BTD_SERVICE_STATE_CONNECTING)
+		service_ready(service);
+
 	if (state == BTD_SERVICE_STATE_DISCONNECTED)
 		service->initiator = false;
 }
@@ -111,6 +162,20 @@ struct btd_service *btd_service_ref(struct btd_service *service)
 	return service;
 }
 
+static void depends_remove(void *item, void *user_data)
+{
+	struct btd_service *service = item;
+
+	queue_remove(service->dependents, user_data);
+}
+
+static void dependents_remove(void *item, void *user_data)
+{
+	struct btd_service *service = item;
+
+	queue_remove(service->depends, user_data);
+}
+
 void btd_service_unref(struct btd_service *service)
 {
 	service->ref--;
@@ -119,6 +184,11 @@ void btd_service_unref(struct btd_service *service)
 
 	if (service->ref > 0)
 		return;
+
+	queue_foreach(service->depends, depends_remove, service);
+	queue_foreach(service->dependents, dependents_remove, service);
+	queue_destroy(service->depends, NULL);
+	queue_destroy(service->dependents, NULL);
 
 	g_free(service);
 }
@@ -172,6 +242,39 @@ void service_remove(struct btd_service *service)
 	btd_service_unref(service);
 }
 
+static void add_depends(struct btd_service *service)
+{
+	struct btd_profile_uuid_cb *after = &service->profile->after_services;
+	unsigned int i;
+
+	queue_foreach(service->depends, depends_remove, service);
+	queue_destroy(service->depends, NULL);
+	service->depends = queue_new();
+
+	for (i = 0; i < after->count; ++i) {
+		const char *uuid = after->uuids[i];
+		struct btd_service *dep;
+
+		dep = btd_device_get_service(service->device, uuid);
+		if (!dep)
+			continue;
+
+		/* Profiles are sorted vs after_uuids, so the dependency will
+		 * have started connecting before us if it is going to connect.
+		 */
+		if (dep->state != BTD_SERVICE_STATE_CONNECTING)
+			continue;
+		if (queue_find(service->depends, NULL, dep))
+			continue;
+
+		queue_push_tail(service->depends, dep);
+
+		if (!dep->dependents)
+			dep->dependents = queue_new();
+		queue_push_tail(dep->dependents, service);
+	}
+}
+
 int service_accept(struct btd_service *service, bool initiator)
 {
 	char addr[18];
@@ -199,6 +302,7 @@ int service_accept(struct btd_service *service, bool initiator)
 	}
 
 	service->initiator = initiator;
+	add_depends(service);
 
 	err = service->profile->accept(service);
 	if (!err)
@@ -264,6 +368,8 @@ int btd_service_connect(struct btd_service *service)
 						service->profile->remote_uuid);
 		return -ECONNABORTED;
 	}
+
+	add_depends(service);
 
 	err = profile->connect(service);
 	if (err == 0) {
