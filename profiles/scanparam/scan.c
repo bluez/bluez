@@ -259,6 +259,7 @@ static int scan_param_probe(struct btd_service *service)
 
 static struct btd_profile scan_profile = {
 	.name = "Scan Parameters Client Driver",
+	.bearer	= BTD_PROFILE_BEARER_LE,
 	.remote_uuid = SCAN_PARAMETERS_UUID,
 	.device_probe = scan_param_probe,
 	.device_remove = scan_param_remove,
