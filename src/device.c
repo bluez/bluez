@@ -2545,14 +2545,6 @@ static struct btd_service *find_connectable_service(struct btd_device *dev,
 	return NULL;
 }
 
-static int service_prio_cmp(gconstpointer a, gconstpointer b)
-{
-	struct btd_profile *p1 = btd_service_get_profile(a);
-	struct btd_profile *p2 = btd_service_get_profile(b);
-
-	return p2->priority - p1->priority;
-}
-
 bool btd_device_all_services_allowed(struct btd_device *dev)
 {
 	GSList *l;
@@ -2603,6 +2595,12 @@ void btd_device_update_allowed_services(struct btd_device *dev)
 	}
 }
 
+static const struct btd_profile *get_service_profile(void *data,
+								void *user_data)
+{
+	return btd_service_get_profile(data);
+}
+
 static GSList *create_pending_list(struct btd_device *dev, const char *uuid)
 {
 	struct btd_service *service;
@@ -2641,9 +2639,12 @@ static GSList *create_pending_list(struct btd_device *dev, const char *uuid)
 						BTD_SERVICE_STATE_DISCONNECTED)
 			continue;
 
-		dev->pending = g_slist_insert_sorted(dev->pending, service,
-							service_prio_cmp);
+		dev->pending = g_slist_append(dev->pending, service);
 	}
+
+	/* Connect in priority order */
+	dev->pending = btd_profile_sort_list(dev->pending, get_service_profile,
+									NULL);
 
 	return dev->pending;
 }
@@ -4659,9 +4660,42 @@ done:
 	service_accept(service, btd_device_is_initiator(device));
 }
 
+
+static const struct btd_profile *get_gatt_profile(void *data, void *user_data)
+{
+	struct gatt_db_attribute *attr = data;
+	struct btd_profile *profile;
+	bt_uuid_t uuid;
+	struct btd_profile *dummy_profile = user_data;
+	char *uuid_str = (char *)dummy_profile->remote_uuid;
+
+	gatt_db_attribute_get_service_uuid(attr, &uuid);
+	bt_uuid_to_string(&uuid, uuid_str, MAX_LEN_UUID_STR);
+
+	profile = btd_profile_find_remote_uuid(uuid_str);
+	if (!profile)
+		profile = dummy_profile;
+
+	return profile;
+}
+
+static void get_gatt_attrs(struct gatt_db_attribute *attr,
+							void *user_data)
+{
+	GSList **list = user_data;
+
+	*list = g_slist_append(*list, attr);
+}
+
 static void device_add_gatt_services(struct btd_device *device)
 {
 	char addr[18];
+	GSList *attrs = NULL;
+	GSList *entry;
+	char uuid_str[MAX_LEN_UUID_STR];
+	struct btd_profile dummy_profile = {
+		.remote_uuid = uuid_str,
+	};
 
 	ba2str(&device->bdaddr, addr);
 
@@ -4670,18 +4704,34 @@ static void device_add_gatt_services(struct btd_device *device)
 		return;
 	}
 
-	gatt_db_foreach_service(device->db, NULL, add_gatt_service, device);
+	/* Probe and accept in profile priority order */
+	gatt_db_foreach_service(device->db, NULL, get_gatt_attrs, &attrs);
+
+	attrs = btd_profile_sort_list(attrs, get_gatt_profile,
+							&dummy_profile);
+
+	for (entry = attrs; entry; entry = g_slist_next(entry))
+		add_gatt_service(entry->data, device);
+
+	g_slist_free(attrs);
 }
 
 static void device_accept_gatt_profiles(struct btd_device *device)
 {
 	GSList *l;
 	bool initiator = btd_device_is_initiator(device);
+	GSList *services;
 
 	DBG("initiator %s", initiator ? "true" : "false");
 
-	for (l = device->services; l != NULL; l = g_slist_next(l))
+	/* Accept in profile priority order */
+	services = g_slist_copy(device->services);
+	services = btd_profile_sort_list(services, get_service_profile, NULL);
+
+	for (l = services; l != NULL; l = g_slist_next(l))
 		service_accept(l->data, initiator);
+
+	g_slist_free(services);
 }
 
 static void device_remove_gatt_service(struct btd_device *device,
