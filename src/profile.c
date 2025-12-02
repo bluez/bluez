@@ -773,6 +773,30 @@ static struct btd_profile *btd_profile_find_uuid(const char *uuid)
 	return NULL;
 }
 
+struct btd_profile *btd_profile_find_remote_uuid(const char *uuid)
+{
+	GSList *l, *next;
+
+	for (l = profiles; l != NULL; l = next) {
+		struct btd_profile *p = l->data;
+
+		if (!g_strcmp0(p->remote_uuid, uuid))
+			return p;
+		next = g_slist_next(l);
+	}
+
+	for (l = ext_profiles; l != NULL; l = next) {
+		struct ext_profile *ext = l->data;
+		struct btd_profile *p = &ext->p;
+
+		if (!g_strcmp0(p->remote_uuid, uuid))
+			return p;
+		next = g_slist_next(l);
+	}
+
+	return NULL;
+}
+
 int btd_profile_register(struct btd_profile *profile)
 {
 	if (profile->experimental && !(g_dbus_get_flags() &
@@ -2649,4 +2673,70 @@ void btd_profile_cleanup(void)
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 				"/org/bluez", "org.bluez.ProfileManager1");
+}
+
+/* Stable sort of a list according to profile priority & after_services */
+GSList *btd_profile_sort_list(GSList *list, btd_profile_list_get get,
+							void *user_data)
+{
+	GSList *result = NULL;
+	GSList *remain = list;
+	GHashTable *uuids;
+	GSList *entry;
+	const struct btd_profile *p;
+
+	uuids = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+
+	/* Unsatisfied remote uuids */
+	for (entry = remain; entry; entry = g_slist_next(entry)) {
+		p = get(entry->data, user_data);
+		if (p->remote_uuid)
+			g_hash_table_add(uuids, g_strdup(p->remote_uuid));
+	}
+
+	/* Sort */
+	while (remain) {
+		GSList *first_entry = remain;
+		int max_priority = INT_MIN;
+
+		/* Find max priority */
+		for (entry = remain; entry; entry = g_slist_next(entry)) {
+			p = get(entry->data, user_data);
+			if (p->priority > max_priority) {
+				first_entry = entry;
+				max_priority = p->priority;
+			}
+		}
+
+		/* Find max priority entry with no unsatisfied dependencies */
+		for (entry = remain; entry; entry = g_slist_next(entry)) {
+			unsigned int i;
+
+			p = get(entry->data, user_data);
+			if (p->priority < max_priority)
+				continue;
+
+			for (i = 0; i < p->after_services.count; ++i)
+				if (g_hash_table_contains(uuids,
+						p->after_services.uuids[i]))
+					break;
+			if (i == p->after_services.count)
+				break;
+		}
+
+		/* If cyclic dependencies: break preserving priority & order */
+		if (!entry)
+			entry = first_entry;
+
+		p = get(entry->data, user_data);
+		if (p->remote_uuid)
+			g_hash_table_remove(uuids, p->remote_uuid);
+
+		remain = g_slist_remove_link(remain, entry);
+		result = g_slist_concat(result, entry);
+	}
+
+	g_hash_table_destroy(uuids);
+
+	return result;
 }

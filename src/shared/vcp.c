@@ -203,6 +203,10 @@ struct bt_vcp {
 	unsigned int aics_ip_status_id;
 	unsigned int aics_ip_descr_id;
 
+	unsigned int idle_id;
+	bt_vcp_func_t ready_func;
+	void *ready_data;
+
 	struct queue *notify;
 	struct queue *pending;
 
@@ -426,6 +430,11 @@ void bt_vcp_detach(struct bt_vcp *vcp)
 {
 	if (!queue_remove(sessions, vcp))
 		return;
+
+	if (vcp->idle_id) {
+		bt_gatt_client_idle_unregister(vcp->client, vcp->idle_id);
+		vcp->idle_id = 0;
+	}
 
 	if (vcp->client) {
 		bt_gatt_client_unref(vcp->client);
@@ -2976,7 +2985,18 @@ static void foreach_aics_service(struct gatt_db_attribute *attr,
 	gatt_db_service_foreach_char(attr, foreach_aics_char, vcp);
 }
 
-bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client)
+static void vcp_idle(void *data)
+{
+	struct bt_vcp *vcp = data;
+
+	vcp->idle_id = 0;
+
+	if (vcp->ready_func)
+		vcp->ready_func(vcp, vcp->ready_data);
+}
+
+bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client,
+				bt_vcp_func_t ready, void *ready_user_data)
 {
 	bt_uuid_t uuid;
 
@@ -3003,6 +3023,13 @@ bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client)
 
 	bt_uuid16_create(&uuid, AUDIO_INPUT_CS_UUID);
 	gatt_db_foreach_service(vcp->rdb->db, &uuid, foreach_aics_service, vcp);
+
+	vcp->ready_func = ready;
+	vcp->ready_data = ready_user_data;
+
+	if (!vcp->idle_id)
+		vcp->idle_id = bt_gatt_client_idle_register(vcp->client,
+							vcp_idle, vcp, NULL);
 
 	return true;
 }

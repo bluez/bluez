@@ -145,6 +145,8 @@ struct bap_data {
 	GIOChannel *listen_io;
 	unsigned int io_id;
 	unsigned int cig_update_id;
+	bool services_ready;
+	bool bap_ready;
 };
 
 static struct queue *sessions;
@@ -2137,10 +2139,10 @@ static bool pac_found_bcast(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 	return true;
 }
 
-static void bap_ready(struct bt_bap *bap, void *user_data)
+static void bap_ucast_start(struct bap_data *data)
 {
-	struct btd_service *service = user_data;
-	struct bap_data *data = btd_service_get_user_data(service);
+	struct btd_service *service = data->service;
+	struct bt_bap *bap = data->bap;
 
 	DBG("bap %p", bap);
 
@@ -3723,6 +3725,29 @@ static void pa_and_big_sync(struct bap_setup *setup)
 	}
 }
 
+static void bap_ready(struct bt_bap *bap, void *user_data)
+{
+	struct btd_service *service = user_data;
+	struct bap_data *data = btd_service_get_user_data(service);
+
+	DBG("bap %p", bap);
+
+	data->bap_ready = true;
+	if (data->services_ready)
+		bap_ucast_start(data);
+}
+
+static void bap_services_ready(struct btd_service *service)
+{
+	struct bap_data *data = btd_service_get_user_data(service);
+
+	DBG("%p", data);
+
+	data->services_ready = true;
+	if (data->bap_ready)
+		bap_ucast_start(data);
+}
+
 static int bap_bcast_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -3877,6 +3902,9 @@ static int bap_accept(struct btd_service *service)
 		return -EINVAL;
 	}
 
+	data->bap_ready = false;
+	data->services_ready = false;
+
 	if (!bt_bap_attach(data->bap, client)) {
 		error("BAP unable to attach");
 		return -EINVAL;
@@ -4000,6 +4028,8 @@ static struct btd_profile bap_profile = {
 	.adapter_remove	= bap_adapter_remove,
 	.auto_connect	= true,
 	.experimental	= true,
+	.after_services	= BTD_PROFILE_UUID_CB(bap_services_ready,
+				VCS_UUID_STR, TMAS_UUID_STR, GMAS_UUID_STR),
 };
 
 static struct btd_profile bap_bcast_profile = {
