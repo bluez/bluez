@@ -112,10 +112,13 @@ struct endpoint {
 	uint16_t supported_context;
 	uint16_t context;
 	bool auto_accept;
+	bool auto_acquire;
 	uint8_t max_transports;
 	uint8_t iso_group;
 	uint8_t iso_stream;
 	struct queue *acquiring;
+	struct queue *auto_acquiring;
+	unsigned int auto_acquiring_id;
 	struct queue *selecting;
 	unsigned int selecting_id;
 	struct queue *transports;
@@ -1170,6 +1173,51 @@ static void ep_set_selecting(struct endpoint *ep, const char *path)
 						NULL);
 }
 
+static void transport_acquire(GDBusProxy *proxy, bool prompt);
+
+static bool ep_auto_acquiring_process(void *user_data)
+{
+	struct endpoint *ep = user_data;
+	const struct queue_entry *entry;
+
+	ep->auto_acquiring_id = 0;
+
+	if (queue_isempty(ep->auto_acquiring))
+		return true;
+
+	for (entry = queue_get_entries(ep->auto_acquiring); entry;
+					entry = entry->next) {
+		GDBusProxy *proxy;
+
+		proxy = g_dbus_proxy_lookup(transports, NULL, entry->data,
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+		if (!proxy)
+			continue;
+
+		transport_acquire(proxy, false);
+	}
+
+	queue_destroy(ep->auto_acquiring, NULL);
+	ep->auto_acquiring = NULL;
+
+	return true;
+}
+
+static void ep_set_auto_acquiring(struct endpoint *ep, const char *path)
+{
+	bt_shell_printf("Transport %s auto acquiring\n", path);
+
+	if (!ep->auto_acquiring)
+		ep->auto_acquiring = queue_new();
+
+	queue_push_tail(ep->auto_acquiring, strdup(path));
+
+	if (!ep->auto_acquiring_id)
+		ep->auto_acquiring_id = timeout_add(1000,
+						ep_auto_acquiring_process,
+						ep, NULL);
+}
+
 static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -1209,6 +1257,8 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
 	if (ep->auto_accept) {
 		if (auto_select && ep->broadcast)
 			ep_set_selecting(ep, path);
+		else if (ep->auto_acquire && !ep->broadcast)
+			ep_set_auto_acquiring(ep, path);
 
 		bt_shell_printf("Auto Accepting...\n");
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -1815,6 +1865,11 @@ static DBusMessage *endpoint_select_configuration(DBusConnection *conn,
 
 	bt_shell_printf("Auto Accepting using %s...\n", p->name);
 
+	/* Mark auto_acquire if set so the transport is acquired upon
+	 * SetConfiguration.
+	 */
+	ep->auto_acquire = auto_acquire;
+
 	return reply;
 }
 
@@ -2263,6 +2318,11 @@ static DBusMessage *endpoint_select_properties(DBusConnection *conn,
 	reply = endpoint_select_properties_reply(ep, msg, p);
 	if (!reply)
 		return NULL;
+
+	/* Mark auto_acquire if set so the transport is acquired upon
+	 * SetConfiguration.
+	 */
+	ep->auto_acquire = auto_acquire;
 
 	return reply;
 }
@@ -3015,8 +3075,10 @@ static void endpoint_free(void *data)
 		free(ep->preset);
 
 	timeout_remove(ep->selecting_id);
+	timeout_remove(ep->auto_acquiring_id);
 
 	queue_destroy(ep->acquiring, NULL);
+	queue_destroy(ep->auto_acquiring, free);
 	queue_destroy(ep->selecting, free);
 	queue_destroy(ep->transports, free);
 
