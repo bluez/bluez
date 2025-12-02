@@ -2789,6 +2789,47 @@ static char *dev_set_generator(const char *text, int state)
 	return set_generator(text, state);
 }
 
+static char *bearer_dev_generator(const char *text, int state,
+					const char *iface)
+{
+	char *addr;
+	GDBusProxy *device;
+	GDBusProxy *bearer;
+
+	if (!iface)
+		return NULL;
+
+	addr = dev_generator(text, state);
+	if (!addr)
+		return NULL;
+
+	device = find_proxy_by_address(default_ctrl->devices, addr);
+	if (!device)
+		goto failed;
+
+	bearer = find_proxies_by_iface(default_ctrl->bearers,
+					g_dbus_proxy_get_path(device),
+					iface);
+	if (!bearer)
+		goto failed;
+
+	return addr;
+
+failed:
+	g_free(addr);
+	return NULL;
+}
+
+static char *le_dev_generator(const char *text, int state)
+{
+	return bearer_dev_generator(text, state, "org.bluez.Bearer.LE1");
+}
+
+static char *bredr_dev_generator(const char *text, int state)
+{
+	return bearer_dev_generator(text, state, "org.bluez.Bearer.BREDR1");
+}
+
 static char *attribute_generator(const char *text, int state)
 {
 	return gatt_attribute_generator(text, state);
@@ -3296,6 +3337,253 @@ static void cmd_adv_monitor_get_supported_info(int argc, char *argv[])
 	adv_monitor_get_supported_info();
 }
 
+static void print_le_properties(GDBusProxy *proxy)
+{
+	GDBusProxy *device;
+
+	device = find_proxies_by_path(default_ctrl->devices,
+					g_dbus_proxy_get_path(proxy));
+
+	if (!device)
+		return;
+
+	bt_shell_printf("Device %s\n", proxy_address(device));
+
+	/* New properties may add to org.bluez.Bearer.LE1. */
+	print_property(proxy, "Paired");
+	print_property(proxy, "Bonded");
+	print_property(proxy, "Connected");
+}
+
+static void print_le_bearers(void *data, void *user_data)
+{
+	GDBusProxy *proxy = data;
+
+	if (!strcmp(g_dbus_proxy_get_interface(proxy),
+				      "org.bluez.Bearer.LE1"))
+		print_le_properties(data);
+}
+
+static void print_bredr_properties(GDBusProxy *proxy)
+{
+	GDBusProxy *device;
+
+	device = find_proxies_by_path(default_ctrl->devices,
+					g_dbus_proxy_get_path(proxy));
+
+	if (!device)
+		return;
+
+	bt_shell_printf("Device %s\n", proxy_address(device));
+
+	/* New properties may add to org.bluez.Bearer.BREDR1. */
+	print_property(proxy, "Paired");
+	print_property(proxy, "Bonded");
+	print_property(proxy, "Connected");
+}
+
+static void print_bredr_bearers(void *data, void *user_data)
+{
+	GDBusProxy *proxy = data;
+
+	if (!strcmp(g_dbus_proxy_get_interface(proxy),
+				      "org.bluez.Bearer.BREDR1"))
+		print_bredr_properties(data);
+}
+
+static void cmd_list_le(int argc, char *argv[])
+{
+	GList *l;
+	GDBusProxy *device;
+
+	for (l = default_ctrl->devices; l; l = g_list_next(l)) {
+		device = l->data;
+		if (find_proxies_by_iface(default_ctrl->bearers,
+				      g_dbus_proxy_get_path(device),
+				      "org.bluez.Bearer.LE1"))
+			print_device(device, NULL);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_list_bredr(int argc, char *argv[])
+{
+	GList *l;
+	GDBusProxy *device;
+
+	for (l = default_ctrl->devices; l; l = g_list_next(l)) {
+		device = l->data;
+		if (find_proxies_by_iface(default_ctrl->bearers,
+				      g_dbus_proxy_get_path(device),
+				      "org.bluez.Bearer.BREDR1"))
+			print_device(device, NULL);
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_show_le(int argc, char *argv[])
+{
+	GDBusProxy *device;
+	GDBusProxy *bearer;
+
+	/* Show all le bearers if no argument is given */
+	if (argc != 2) {
+		g_list_foreach(default_ctrl->bearers, print_le_bearers, NULL);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	device = find_proxy_by_address(default_ctrl->devices, argv[1]);
+	if (!device) {
+		bt_shell_printf("Device %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bearer = find_proxies_by_iface(default_ctrl->bearers,
+				      g_dbus_proxy_get_path(device),
+				      "org.bluez.Bearer.LE1");
+	if (!bearer) {
+		bt_shell_printf("LE bearer not found on %s\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print_le_properties(bearer);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_show_bredr(int argc, char *argv[])
+{
+	GDBusProxy *device;
+	GDBusProxy *bearer;
+
+	/* Show all bredr bearers if no argument is given */
+	if (argc != 2) {
+		g_list_foreach(default_ctrl->bearers, print_bredr_bearers,
+									NULL);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	device = find_proxy_by_address(default_ctrl->devices, argv[1]);
+	if (!device) {
+		bt_shell_printf("Device %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bearer = find_proxies_by_iface(default_ctrl->bearers,
+				      g_dbus_proxy_get_path(device),
+				      "org.bluez.Bearer.BREDR1");
+	if (!bearer) {
+		bt_shell_printf("BREDR bearer not found on %s\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print_bredr_properties(bearer);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void bearer_connect_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to connect: %s %s\n", error.name,
+				error.message);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Connection successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void bearer_disconn_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to disconnect: %s %s\n", error.name,
+				error.message);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Disconnection successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_bearer_method_handler(int argc, char *argv[],
+					const char *iface,
+					const char *method)
+{
+	GDBusProxy *device;
+	GDBusProxy *bearer;
+
+	if (!check_default_ctrl())
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	device = find_proxy_by_address(default_ctrl->devices, argv[1]);
+	if (!device) {
+		bt_shell_printf("Device %s not available\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bearer = find_proxies_by_iface(default_ctrl->bearers,
+					g_dbus_proxy_get_path(device),
+					iface);
+	if (!bearer) {
+		bt_shell_printf("%s is not available on %s\n",
+				iface, argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!g_dbus_proxy_method_call(bearer, method, NULL,
+				      strcmp(method, "Connect") == 0 ?
+					bearer_connect_reply :
+					bearer_disconn_reply,
+				      NULL, NULL)) {
+		bt_shell_printf("Failed to call %s\n", method);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Attempting to %s %s with %s\n",
+					method,
+					argv[1],
+					iface);
+}
+
+static void cmd_connect_le(int argc, char *argv[])
+{
+	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.LE1",
+								"Connect");
+}
+
+static void cmd_disconnect_le(int argc, char *argv[])
+{
+	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.LE1",
+								"Disconnect");
+}
+
+static void cmd_connect_bredr(int argc, char *argv[])
+{
+	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.BREDR1",
+								"Connect");
+}
+
+static void cmd_disconnect_bredr(int argc, char *argv[])
+{
+	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.BREDR1",
+								"Disconnect");
+}
+
 static const struct bt_shell_menu advertise_menu = {
 	.name = "advertise",
 	.desc = "Advertise Options Submenu",
@@ -3469,6 +3757,40 @@ static const struct bt_shell_menu gatt_menu = {
 	{ } },
 };
 
+static const struct bt_shell_menu le_menu = {
+	.name = "le",
+	.desc = "LE Bearer Submenu",
+	.entries = {
+	{ "list", NULL, cmd_list_le, "List available le devices" },
+	{ "show", "[dev]", cmd_show_le,
+					"LE bearer information",
+					le_dev_generator },
+	{ "connect", "<dev>", cmd_connect_le,
+					"Connect le on a device",
+					le_dev_generator },
+	{ "disconnect", "<dev>", cmd_disconnect_le,
+					"Disconnect le on a device",
+					le_dev_generator },
+	{} },
+};
+
+static const struct bt_shell_menu bredr_menu = {
+	.name = "bredr",
+	.desc = "BREDR Bearer Submenu",
+	.entries = {
+	{ "list", NULL, cmd_list_bredr, "List available bredr devices" },
+	{ "show", "[dev]", cmd_show_bredr,
+					"BREDR bearer information",
+					bredr_dev_generator },
+	{ "connect", "<dev>", cmd_connect_bredr,
+					"Connect bredr on a device",
+					bredr_dev_generator },
+	{ "disconnect", "<dev>", cmd_disconnect_bredr,
+					"Disconnect bredr on a device",
+					bredr_dev_generator },
+	{} },
+};
+
 static const struct bt_shell_menu main_menu = {
 	.name = "main",
 	.entries = {
@@ -3593,6 +3915,8 @@ int main(int argc, char *argv[])
 	bt_shell_add_submenu(&advertise_monitor_menu);
 	bt_shell_add_submenu(&scan_menu);
 	bt_shell_add_submenu(&gatt_menu);
+	bt_shell_add_submenu(&le_menu);
+	bt_shell_add_submenu(&bredr_menu);
 	admin_add_submenu();
 	player_add_submenu();
 	mgmt_add_submenu();
