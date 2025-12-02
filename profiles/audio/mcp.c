@@ -383,6 +383,7 @@ static void media_control_server_remove(struct btd_profile *p,
 static struct btd_profile mcp_profile = {
 	.name			= "mcp",
 	.priority		= BTD_PROFILE_PRIORITY_MEDIUM,
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= GMCS_UUID_STR,
 	.device_probe	= mcp_probe,
 	.device_remove	= mcp_remove,

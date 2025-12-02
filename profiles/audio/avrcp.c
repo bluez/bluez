@@ -4868,6 +4868,7 @@ done:
 
 static struct btd_profile avrcp_target_profile = {
 	.name		= "audio-avrcp-target",
+	.bearer		= BTD_PROFILE_BEARER_BREDR,
 
 	.remote_uuid	= AVRCP_TARGET_UUID,
 	.device_probe	= avrcp_target_probe,
@@ -4951,6 +4952,7 @@ done:
 
 static struct btd_profile avrcp_controller_profile = {
 	.name		= "avrcp-controller",
+	.bearer		= BTD_PROFILE_BEARER_BREDR,
 
 	.remote_uuid	= AVRCP_REMOTE_UUID,
 	.device_probe	= avrcp_controller_probe,
