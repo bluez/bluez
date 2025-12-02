@@ -300,6 +300,7 @@ static void micp_server_remove(struct btd_profile *p,
 static struct btd_profile micp_profile = {
 	.name		= "micp",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= MICS_UUID_STR,
 
 	.device_probe	= micp_probe,

@@ -2303,6 +2303,141 @@ static void cmd_disconn(int argc, char *argv[])
 						proxy_address(proxy));
 }
 
+static void bearer_connect_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to connect: %s %s\n", error.name,
+				error.message);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Connection successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void bearer_disconn_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to disconnect: %s %s\n", error.name,
+				error.message);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Disconnection successful\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_connect_bearer(int argc, char *argv[])
+{
+	const char *type;
+	GDBusProxy *device;
+	GDBusProxy *bearer;
+
+	if (argc < 3) {
+		bt_shell_printf("Usage: connect-bearer <dev> <le/bredr>\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	device = find_device(argc, argv);
+	if (!device) {
+		bt_shell_printf("Device %s not available\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	type = argv[2];
+
+	if (strcmp(type, "le") != 0 && strcmp(type, "bredr") != 0) {
+		bt_shell_printf("Invalid bearer type: %s, "
+			"Usage: connect-bearer <dev> <le/bredr>\n", type);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!strcmp(type, "bredr"))
+		bearer = find_proxies_by_iface(default_ctrl->bearers,
+					g_dbus_proxy_get_path(device),
+					"org.bluez.Bearer.BREDR1");
+	else if (!strcmp(type, "le"))
+		bearer = find_proxies_by_iface(default_ctrl->bearers,
+					g_dbus_proxy_get_path(device),
+					"org.bluez.Bearer.LE1");
+
+	if (!bearer) {
+		bt_shell_printf("No bearer(%s) on device %s\n", type, argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (g_dbus_proxy_method_call(bearer, "Connect", NULL,
+				bearer_connect_reply, NULL, NULL) == FALSE) {
+		bt_shell_printf("Failed to call bearer Connect\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Attempting to connect bearer(%s) to %s\n",
+			type, argv[1]);
+}
+
+static void cmd_disconnect_bearer(int argc, char *argv[])
+{
+	const char *type;
+	GDBusProxy *device;
+	GDBusProxy *bearer;
+
+	if (argc < 3) {
+		bt_shell_printf("Usage: disconnect-bearer <dev> <le/bredr>\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	device = find_device(argc, argv);
+	if (!device) {
+		bt_shell_printf("Device %s not available\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	type = argv[2];
+
+	if (strcmp(type, "le") != 0 && strcmp(type, "bredr") != 0) {
+		bt_shell_printf("Invalid bearer type: %s, "
+			"Usage: disconnect-bearer <dev> <le/bredr>\n", type);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!strcmp(type, "bredr"))
+		bearer = find_proxies_by_iface(default_ctrl->bearers,
+					g_dbus_proxy_get_path(device),
+					"org.bluez.Bearer.BREDR1");
+	else if (!strcmp(type, "le"))
+		bearer = find_proxies_by_iface(default_ctrl->bearers,
+					g_dbus_proxy_get_path(device),
+					"org.bluez.Bearer.LE1");
+
+	if (!bearer) {
+		bt_shell_printf("No bearer(%s) on device %s\n", type, argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (g_dbus_proxy_method_call(bearer, "Disconnect",NULL,
+				bearer_disconn_reply, NULL, NULL) == FALSE) {
+		bt_shell_printf("Failed to call bearer Disconnect\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Attempting to disconnect bearer(%s) from %s\n",
+			type,
+			argv[1]);
+}
+
 static void cmd_wake(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -3528,6 +3663,12 @@ static const struct bt_shell_menu main_menu = {
 	{ "disconnect",   "[dev] [uuid]", cmd_disconn,
 				"Disconnect a device or optionally disconnect "
 				"a single profile only", dev_generator },
+	{ "connect-bearer", "<dev> <le/bredr>", cmd_connect_bearer,
+				"Connect a specific bearer on a device",
+							dev_generator },
+	{ "disconnect-bearer", "<dev> <le/bredr>", cmd_disconnect_bearer,
+				"Disconnect a specific bearer on a device",
+							dev_generator },
 	{ "wake",         "[dev] [on/off]",    cmd_wake, "Get/Set wake support",
 							dev_generator },
 	{ "bearer",       "<dev> [last-seen/bredr/le]", cmd_bearer,

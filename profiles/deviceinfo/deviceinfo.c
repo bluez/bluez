@@ -137,6 +137,7 @@ static int deviceinfo_disconnect(struct btd_service *service)
 
 static struct btd_profile deviceinfo_profile = {
 	.name		= "deviceinfo",
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= DEVICE_INFORMATION_UUID,
 	.device_probe	= deviceinfo_probe,
 	.device_remove	= deviceinfo_remove,

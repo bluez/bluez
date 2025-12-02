@@ -327,6 +327,7 @@ static int batt_disconnect(struct btd_service *service)
 
 static struct btd_profile batt_profile = {
 	.name		= "batt-profile",
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= BATTERY_UUID,
 	.device_probe	= batt_probe,
 	.device_remove	= batt_remove,
