@@ -43,7 +43,8 @@ void bt_vcp_unref(struct bt_vcp *vcp);
 
 void bt_vcp_add_db(struct gatt_db *db);
 
-bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client);
+bool bt_vcp_attach(struct bt_vcp *vcp, struct bt_gatt_client *client,
+				bt_vcp_func_t ready, void *ready_user_data);
 void bt_vcp_detach(struct bt_vcp *vcp);
 
 uint8_t bt_vcp_get_volume(struct bt_vcp *vcp);

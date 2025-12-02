@@ -297,7 +297,7 @@ static int vcp_accept(struct btd_service *service)
 		return -EINVAL;
 	}
 
-	if (!bt_vcp_attach(data->vcp, client)) {
+	if (!bt_vcp_attach(data->vcp, client, NULL, NULL)) {
 		error("VCP unable to attach");
 		return -EINVAL;
 	}
