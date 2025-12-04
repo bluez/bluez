@@ -1298,6 +1298,10 @@ static void bap_bc_attached(struct bt_bap *bap, void *user_data)
 	struct btd_adapter *adapter;
 	struct bass_data *data;
 
+	/* Only handle broadcast session */
+	if (bt_bap_get_att(bap))
+		return;
+
 	DBG("%p", bap);
 
 	db = btd_gatt_database_get(bt_bap_get_db(bap, false));
