@@ -1330,6 +1330,8 @@ static char *option_noplugin = NULL;
 static char *option_configfile = NULL;
 static gboolean option_compat = FALSE;
 static gboolean option_detach = TRUE;
+static gboolean option_experimental = FALSE;
+static gboolean option_testing = FALSE;
 static gboolean option_version = FALSE;
 
 static void free_options(void)
@@ -1420,9 +1422,9 @@ static GOptionEntry options[] = {
 			"Specify an explicit path to the config file", "FILE"},
 	{ "compat", 'C', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Provide deprecated command line interfaces" },
-	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &btd_opts.experimental,
+	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &option_experimental,
 				"Enable experimental D-Bus interfaces" },
-	{ "testing", 'T', 0, G_OPTION_ARG_NONE, &btd_opts.testing,
+	{ "testing", 'T', 0, G_OPTION_ARG_NONE, &option_testing,
 				"Enable testing D-Bus interfaces" },
 	{ "kernel", 'K', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK,
 				parse_kernel_experimental,
@@ -1463,6 +1465,9 @@ int main(int argc, char *argv[])
 		printf("%s\n", VERSION);
 		exit(0);
 	}
+
+	btd_opts.experimental = option_experimental;
+	btd_opts.testing = option_testing;
 
 	umask(0077);
 
