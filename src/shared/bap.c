@@ -3508,10 +3508,12 @@ static uint8_t ascs_stop(struct bt_ascs *ascs, struct bt_bap *bap,
 	return ep_stop(ep, rsp);
 }
 
-static uint8_t ep_metadata(struct bt_bap_endpoint *ep, struct iovec *meta,
-						struct iovec *rsp)
+static uint8_t ep_metadata(struct bt_bap_endpoint *ep,
+				struct bt_ascs_metadata *req,
+				struct iovec *iov, struct iovec *rsp)
 {
 	struct bt_bap_stream *stream = ep->stream;
+	struct iovec meta;
 
 	DBG(stream->bap, "ep %p id 0x%02x dir 0x%02x", ep, ep->id, ep->dir);
 
@@ -3530,7 +3532,13 @@ static uint8_t ep_metadata(struct bt_bap_endpoint *ep, struct iovec *meta,
 		return 0;
 	}
 
-	return stream_metadata(ep->stream, meta, rsp);
+	if (iov->iov_len < req->len)
+		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+
+	meta.iov_base = util_iov_pull_mem(iov, req->len);
+	meta.iov_len = req->len;
+
+	return stream_metadata(ep->stream, &meta, rsp);
 }
 
 static uint8_t ascs_metadata(struct bt_ascs *ascs, struct bt_bap *bap,
@@ -3557,7 +3565,7 @@ static uint8_t ascs_metadata(struct bt_ascs *ascs, struct bt_bap *bap,
 		return 0;
 	}
 
-	return ep_metadata(ep, iov, rsp);
+	return ep_metadata(ep, req, iov, rsp);
 }
 
 static uint8_t ascs_release(struct bt_ascs *ascs, struct bt_bap *bap,
