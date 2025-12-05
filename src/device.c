@@ -77,6 +77,7 @@
 #endif
 
 #define RSSI_THRESHOLD		8
+#define AUTH_FAILURES_THRESHOLD	3
 
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
@@ -306,6 +307,9 @@ struct btd_device {
 	time_t		name_resolve_failed_time;
 
 	int8_t		volume;
+
+	uint32_t	auth_failures;
+        guint           auth_retry_timer;
 };
 
 static const uint16_t uuid_list[] = {
@@ -2824,6 +2828,8 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	else
 		bdaddr_type = select_conn_bearer(dev);
 
+	dev->auth_failures = 0;
+
 	if (bdaddr_type != BDADDR_BREDR) {
 		int err;
 
@@ -3898,6 +3904,13 @@ static void device_disconnected(struct btd_device *device, uint8_t reason)
 						DBUS_TYPE_INVALID);
 }
 
+static bool device_auth_failure_retry(gpointer user_data)
+{
+	struct btd_device *device = user_data;
+	device_set_auto_connect(device, TRUE);
+	return false;
+}
+
 void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 								bool *remove,
 								uint8_t reason)
@@ -3977,6 +3990,27 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 
 	g_slist_free_full(device->eir_uuids, g_free);
 	device->eir_uuids = NULL;
+
+	if (reason == MGMT_DEV_DISCONN_AUTH_FAILURE) {
+		/*
+		 * In case of an auth failure, implement an
+		 * exponential backoff retry logic. We disable auto
+		 * connect immediately to prevent us from retrying to
+		 * connect to this device again and start an 1, 2, 4
+		 * second timers to re-enable that knob in hopes that
+		 * subsequent retires will be more succesful
+		 */
+	        device_set_auto_connect(device, FALSE);
+		if (device->auth_failures < AUTH_FAILURES_THRESHOLD) {
+			device->auth_retry_timer = timeout_add_seconds(1 << device->auth_failures,
+								       device_auth_failure_retry,
+								       device, NULL);
+			DBG("Auth failure, retrying in %d seconds", 1 << device->auth_failures);
+			device->auth_failures++;
+		} else {
+			DBG("Disabling auto connect due to too many auth failures");
+		}
+	}
 
 	device_disconnected(device, reason);
 
@@ -5407,6 +5441,11 @@ static void device_remove_stored(struct btd_device *device)
 void device_remove(struct btd_device *device, gboolean remove_stored)
 {
 	DBG("Removing device %s", device->path);
+
+	if (device->auth_retry_timer) {
+		device->auth_retry_timer = 0;
+		timeout_remove(device->auth_retry_timer);
+	}
 
 	if (device->auto_connect) {
 		device->disable_auto_connect = TRUE;
