@@ -1274,6 +1274,10 @@ static void bap_state_src_changed(struct bt_bap_stream *stream,
 		data->stream = NULL;
 		break;
 	case BT_BAP_STREAM_STATE_STREAMING:
+		/* If already streaming don't attempt to parse it again */
+		if (old_state == new_state)
+			break;
+
 		base = bt_bap_stream_get_base(stream);
 		if (!base) {
 			error("Unable to read BASE of stream %p", stream);
