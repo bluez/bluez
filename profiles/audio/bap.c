@@ -484,7 +484,7 @@ static const struct feature gmap_features[] = {
 	{ "bgs", probe_gmap_role, BT_GMAP_ROLE_BGS },
 	{ "bgr", probe_gmap_role, BT_GMAP_ROLE_BGR },
 	{ "ugg-multiplex", probe_gmap_feature, BT_GMAP_UGG_MULTIPLEX },
-	{ "ugg-96kbps-source", probe_gmap_feature, BT_GMAP_UGG_96KBPS },
+	{ "ugg-96kbps-source", probe_gmap_feature, BT_GMAP_UGG_96KBPS_SOURCE },
 	{ "ugg-multisink", probe_gmap_feature, BT_GMAP_UGG_MULTISINK },
 	{ "ugt-source", probe_gmap_feature, BT_GMAP_UGT_SOURCE },
 	{ "ugt-80kbps-source", probe_gmap_feature,
