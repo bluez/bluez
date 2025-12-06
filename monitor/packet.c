@@ -14205,8 +14205,9 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	const struct bt_hci_iso_data_start *start;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[36], extra_str[33];
+	char handle_str[36], extra_str[50], ts_str[16] = { 0 };
 	struct index_buf_pool *pool = &index_list[index].iso;
+	size_t ts_size = 0;
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
@@ -14223,11 +14224,15 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	/* Detect if timestamp field is preset */
 	if (iso_flags_ts(flags)) {
-		if (size < sizeof(uint32_t))
+		ts_size = sizeof(uint32_t);
+
+		if (size < ts_size)
 			goto malformed;
 
-		data += sizeof(uint32_t);
-		size -= sizeof(uint32_t);
+		snprintf(ts_str, sizeof(ts_str), " ts %u", get_le32(data));
+
+		data += ts_size;
+		size -= ts_size;
 	}
 
 	start = data;
@@ -14239,8 +14244,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		sprintf(handle_str, "Handle %u SN %u", acl_handle(handle),
 			start->sn);
 
-	sprintf(extra_str, "flags 0x%2.2x dlen %u slen %u", flags, hdr->dlen,
-		start->slen);
+	sprintf(extra_str, "flags 0x%2.2x dlen %u slen %u%s", flags, hdr->dlen,
+							start->slen, ts_str);
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ISODATA,
 				in ? "ISO Data RX" : "ISO Data TX",
@@ -14250,9 +14255,16 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		packet_enqueue_tx(tv, acl_handle(handle),
 					index_list[index].frame, hdr->dlen);
 
-	if (size != hdr->dlen) {
+	if (size + ts_size != hdr->dlen) {
 		print_text(COLOR_ERROR, "invalid packet size (%d != %d)",
-							size, hdr->dlen);
+						size + (int)ts_size, hdr->dlen);
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (size != start->slen + 4) {
+		print_text(COLOR_ERROR, "invalid packet slen (%d+4 != %d)",
+							start->slen, size);
 		packet_hexdump(data, size);
 		return;
 	}
