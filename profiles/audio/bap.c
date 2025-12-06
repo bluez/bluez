@@ -67,10 +67,6 @@
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
 #define MEDIA_INTERFACE "org.bluez.Media1"
 
-#define VCS_UUID_STR "00001844-0000-1000-8000-00805f9b34fb"
-#define TMAS_UUID_STR "00001855-0000-1000-8000-00805f9b34fb"
-#define GMAS_UUID_STR "00001858-0000-1000-8000-00805f9b34fb"
-
 struct bap_setup;
 
 typedef void (*bap_setup_ready_func_t)(struct bap_setup *setup, int code,
