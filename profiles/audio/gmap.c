@@ -138,6 +138,8 @@ static void gmap_remove(struct btd_service *service)
 
 	ba2str(device_get_address(device), addr);
 	DBG("%s", addr);
+
+	remove_service(service);
 }
 
 static int gmap_adapter_probe(struct btd_profile *p,
