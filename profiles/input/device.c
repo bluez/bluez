@@ -863,10 +863,17 @@ static int extract_hid_desc_data(const sdp_record_t *rec,
 	if (!d || !SDP_IS_TEXT_STR(d->dtd))
 		goto invalid_desc;
 
-	req->rd_data = g_try_malloc0(d->unitSize);
+	/*
+	 * Report descriptor data is parsed by extract_str() which
+	 * will allocate N + 1 bytes for the incoming string to
+	 * include a zero delimiter. Since that zero delimiter isn't a
+	 * part of a report descriptor we adjust the size here to
+	 * account for that.
+	 */
+	req->rd_size = d->unitSize - 1;
+	req->rd_data = g_try_malloc0(req->rd_size);
 	if (req->rd_data) {
-		memcpy(req->rd_data, d->val.str, d->unitSize);
-		req->rd_size = d->unitSize;
+		memcpy(req->rd_data, d->val.str, req->rd_size);
 		epox_endian_quirk(req->rd_data, req->rd_size);
 	}
 
