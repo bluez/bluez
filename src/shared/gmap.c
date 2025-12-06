@@ -345,10 +345,27 @@ static void gmap_update_chrc(struct bt_gmap *gmap)
 	}
 }
 
+static void gmap_init_service(struct bt_gmas_db *db)
+{
+	bt_uuid_t uuid;
+
+	if (db->service) {
+		gatt_db_remove_service(db->db, db->service);
+		db->service = NULL;
+		db->role.attr = NULL;
+		db->ugg.attr = NULL;
+		db->ugt.attr = NULL;
+		db->bgs.attr = NULL;
+		db->bgr.attr = NULL;
+	}
+
+	bt_uuid16_create(&uuid, GMAS_UUID);
+	db->service = gatt_db_add_service(db->db, &uuid, true, 5*2 + 1);
+}
+
 struct bt_gmap *bt_gmap_add_db(struct gatt_db *db)
 {
 	struct bt_gmap *gmap;
-	bt_uuid_t uuid;
 
 	if (!db || queue_find(instances, match_db, db))
 		return NULL;
@@ -356,8 +373,7 @@ struct bt_gmap *bt_gmap_add_db(struct gatt_db *db)
 	gmap = new0(struct bt_gmap, 1);
 	gmap->db.db = gatt_db_ref(db);
 
-	bt_uuid16_create(&uuid, GMAS_UUID);
-	gmap->db.service = gatt_db_add_service(db, &uuid, true, 5*3);
+	gmap_init_service(&gmap->db);
 
 	if (!instances)
 		instances = queue_new();
@@ -368,22 +384,40 @@ struct bt_gmap *bt_gmap_add_db(struct gatt_db *db)
 
 void bt_gmap_set_role(struct bt_gmap *gmap, uint8_t role)
 {
-	if (gmap->client)
+	if (!gmap || gmap->client)
 		return;
 
-	gmap->db.role.value = role & BT_GMAP_ROLE_MASK;
+	role &= BT_GMAP_ROLE_MASK;
+	if (role == gmap->db.role.value)
+		return;
+
+	DBG(gmap, "set role 0x%02x", role);
+
+	gmap->db.role.value = role;
+
+	/* Removing role must remove feature chrc too; reset svc if needed */
+	if (role && ((!(role & BT_GMAP_ROLE_UGG) && gmap->db.ugg.attr) ||
+			(!(role & BT_GMAP_ROLE_UGT) && gmap->db.ugt.attr) ||
+			(!(role & BT_GMAP_ROLE_BGS) && gmap->db.bgs.attr) ||
+			(!(role & BT_GMAP_ROLE_BGR) && gmap->db.bgr.attr)))
+		gmap_init_service(&gmap->db);
 
 	gmap_update_chrc(gmap);
 
-	/* Expose values only when first set */
-	gatt_db_service_set_active(gmap->db.service, true);
+	/* Expose values only when first set and active */
+	gatt_db_service_set_active(gmap->db.service, role != 0);
 }
-
 
 void bt_gmap_set_features(struct bt_gmap *gmap, uint32_t features)
 {
-	if (gmap->client)
+	if (!gmap || gmap->client)
 		return;
+
+	features &= BT_GMAP_FEATURE_MASK;
+	if (features == bt_gmap_get_features(gmap))
+		return;
+
+	DBG(gmap, "set features 0x%08x", features);
 
 	gmap->db.ugg.value = (features & BT_GMAP_UGG_FEATURE_MASK)
 						>> BT_GMAP_UGG_FEATURE_SHIFT;
@@ -393,9 +427,4 @@ void bt_gmap_set_features(struct bt_gmap *gmap, uint32_t features)
 						>> BT_GMAP_BGS_FEATURE_SHIFT;
 	gmap->db.bgr.value = (features & BT_GMAP_BGR_FEATURE_MASK)
 						>> BT_GMAP_BGR_FEATURE_SHIFT;
-
-	gmap_update_chrc(gmap);
-
-	/* Expose values only when first set */
-	gatt_db_service_set_active(gmap->db.service, true);
 }
