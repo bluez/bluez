@@ -32,6 +32,7 @@
 
 struct test_config {
 	uint8_t role;
+	uint8_t old_role;
 	uint32_t features;
 	const struct iovec *setup_data;
 	const size_t setup_data_len;
@@ -107,22 +108,22 @@ static void test_teardown(const void *user_data)
  * ATT: Read By Group Type Response (0x11) len 37
  *   Attribute data length: 6
  *   Attribute group list: 1 entries
- *   Handle range: 0x0001-0x000f
+ *   Handle range: 0x0001-0x000b
  *   UUID: Gaming Audio Service (0x1858)
  * ATT: Read By Group Type Request (0x10) len 6
- *   Handle range: 0x0006-0xffff
+ *   Handle range: 0x000c-0xffff
  *   Attribute group type: Primary Service (0x2800)
  * ATT: Error Response (0x01) len 4
  *   Read By Group Type Request (0x10)
  *   Handle: 0x0004
  *   Error: Attribute Not Found (0x0a)
  */
-#define GMAS_PRIMARY_SERVICE \
+#define GMAS_PRIMARY_SERVICE(base) \
 	IOV_DATA(0x10, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28), \
 	IOV_DATA(0x11, 0x06, \
-		0x01, 0x00, 0x0f, 0x00, 0x58, 0x18), \
-	IOV_DATA(0x10, 0x10, 0x00, 0xff, 0xff, 0x00, 0x28), \
-	IOV_DATA(0x01, 0x10, 0x10, 0x00, 0x0a)
+		0x01 + base, 0x00, 0x0b + base, 0x00, 0x58, 0x18), \
+	IOV_DATA(0x10, 0x0c + base, 0x00, 0xff, 0xff, 0x00, 0x28), \
+	IOV_DATA(0x01, 0x10, 0x0c + base, 0x00, 0x0a)
 
 
 /* ATT: Read By Group Type Request (0x10) len 6
@@ -145,9 +146,9 @@ static void test_teardown(const void *user_data)
  *   Handle: 0x0001
  *   Error: Attribute Not Found (0x0a)
  */
-#define GMAS_INCLUDE \
-	IOV_DATA(0x08, 0x01, 0x00, 0x0f, 0x00, 0x02, 0x28), \
-	IOV_DATA(0x01, 0x08, 0x01, 0x00, 0x0a)
+#define GMAS_INCLUDE(base) \
+	IOV_DATA(0x08, 0x01 + base, 0x00, 0x0b + base, 0x00, 0x02, 0x28), \
+	IOV_DATA(0x01, 0x08, 0x01 + base, 0x00, 0x0a)
 
 /* ATT: Read By Type Request (0x08) len 6
  *   Handle range: 0x0001-0x0003
@@ -182,15 +183,15 @@ static void test_teardown(const void *user_data)
  */
 #define IOV_CONTENT(data...)	data
 
-#define GMAS_FIND_CHRC(uuid) \
-	IOV_DATA(0x08, 0x01, 0x00, 0x0f, 0x00, 0x03, 0x28), \
+#define GMAS_FIND_CHRC(uuid, base) \
+	IOV_DATA(0x08, 0x01 + base, 0x00, 0x0b + base, 0x00, 0x03, 0x28), \
 	IOV_DATA(0x09, 0x07, \
-		0x02, 0x00, 0x02, 0x03, 0x00, 0x00, 0x2c, \
-		0x04, 0x00, 0x02, 0x05, 0x00, uuid), \
-	IOV_DATA(0x08, 0x05, 0x00, 0x0f, 0x00, 0x03, 0x28), \
-	IOV_DATA(0x01, 0x08, 0x05, 0x00, 0x0a), \
-	IOV_DATA(0x04, 0x06, 0x00, 0x0f, 0x00), \
-	IOV_DATA(0x01, 0x04, 0x06, 0x00, 0x0a)
+		0x02 + base, 0x00, 0x02, 0x03 + base, 0x00, 0x00, 0x2c, \
+		0x04 + base, 0x00, 0x02, 0x05 + base, 0x00, uuid), \
+	IOV_DATA(0x08, 0x05 + base, 0x00, 0x0b + base, 0x00, 0x03, 0x28), \
+	IOV_DATA(0x01, 0x08, 0x05 + base, 0x00, 0x0a), \
+	IOV_DATA(0x04, 0x06 + base, 0x00, 0x0b + base, 0x00), \
+	IOV_DATA(0x01, 0x04, 0x06 + base, 0x00, 0x0a)
 
 #define UGG_UUID	0x01, 0x2c
 #define UGT_UUID	0x02, 0x2c
@@ -214,19 +215,19 @@ static void test_teardown(const void *user_data)
 	IOV_DATA(0x01, 0x08, 0x01, 0x00, 0x0a)
 
 
-#define GMAS_SETUP(uuid) \
+#define GMAS_SETUP(uuid, base) \
 	GMAS_MTU_FEAT, \
-	GMAS_PRIMARY_SERVICE, \
+	GMAS_PRIMARY_SERVICE(base), \
 	GMAS_SECONDARY_SERVICE, \
-	GMAS_INCLUDE, \
-	GMAS_FIND_CHRC(IOV_CONTENT(uuid)), \
+	GMAS_INCLUDE(base), \
+	GMAS_FIND_CHRC(IOV_CONTENT(uuid), base), \
 	GMAS_DATABASE_HASH
 
 /* GATT Discover All procedure */
-static const struct iovec setup_data_ugg[] = { GMAS_SETUP(UGG_UUID) };
-static const struct iovec setup_data_ugt[] = { GMAS_SETUP(UGT_UUID) };
-static const struct iovec setup_data_bgs[] = { GMAS_SETUP(BGS_UUID) };
-static const struct iovec setup_data_bgr[] = { GMAS_SETUP(BGR_UUID) };
+static const struct iovec setup_data_ugg[] = { GMAS_SETUP(UGG_UUID, 0) };
+static const struct iovec setup_data_ugt[] = { GMAS_SETUP(UGT_UUID, 0) };
+static const struct iovec setup_data_bgs[] = { GMAS_SETUP(BGS_UUID, 0) };
+static const struct iovec setup_data_bgr[] = { GMAS_SETUP(BGR_UUID, 0) };
 
 static void setup_complete_cb(const void *user_data)
 {
@@ -251,6 +252,13 @@ static void test_setup_server(const void *user_data)
 
 	data->gmap = bt_gmap_add_db(db);
 	bt_gmap_set_debug(data->gmap, print_debug, "gmap:", NULL);
+
+	if (data->cfg->old_role) {
+		bt_gmap_set_role(data->gmap, data->cfg->old_role);
+		bt_gmap_set_features(data->gmap, 0xffffffff);
+		bt_gmap_set_role(data->gmap, data->cfg->role);
+		bt_gmap_set_role(data->gmap, 0);
+	}
 
 	bt_gmap_set_role(data->gmap, data->cfg->role);
 	bt_gmap_set_features(data->gmap, data->cfg->features);
@@ -466,6 +474,29 @@ static void test_gmap_cl(void)
 #define SGGIT_CHA_ROLE	READ_ROLE(0x01)
 #define SGGIT_CHA_FEAT	READ_FEAT(0x01)
 
+const struct test_config cfg_read_ugg_re_add = {
+	.old_role = BT_GMAP_ROLE_UGG,
+	.role = BT_GMAP_ROLE_UGG,
+	.features = BT_GMAP_UGG_MULTIPLEX,
+	.setup_data = setup_data_ugg,
+	.setup_data_len = ARRAY_SIZE(setup_data_ugg),
+};
+
+#define SGGIT_CHA_FEAT_CHANGE \
+	READ_CHRC(IOV_CONTENT(0x0b + FEAT_HND), 0x01)
+
+static const struct iovec setup_data_ugg_change[] = {
+	GMAS_SETUP(UGG_UUID, 0x0b)
+};
+
+const struct test_config cfg_read_ugg_change = {
+	.old_role = BT_GMAP_ROLE_UGT,
+	.role = BT_GMAP_ROLE_UGG,
+	.features = BT_GMAP_UGG_MULTIPLEX,
+	.setup_data = setup_data_ugg_change,
+	.setup_data_len = ARRAY_SIZE(setup_data_ugg_change),
+};
+
 static void test_gmap_sr(void)
 {
 	/* Sec. 4.6.2 GMA Server */
@@ -484,6 +515,14 @@ static void test_gmap_sr(void)
 	define_test("GMAP/SR/SGGIT/CHA/BV-05-C [Characteristic GGIT - BGR "
 						"Features]",
 		test_setup_server, test_server, &cfg_read_bgr, SGGIT_CHA_FEAT);
+
+	define_test("GMAP/SR/SGGIT/CHA/BLUEZ-01-C [Re-add UGG Features]",
+		test_setup_server, test_server, &cfg_read_ugg_re_add,
+		SGGIT_CHA_FEAT);
+
+	define_test("GMAP/SR/SGGIT/CHA/BLUEZ-02-C [Change UGT -> UGG]",
+		test_setup_server, test_server, &cfg_read_ugg_change,
+		SGGIT_CHA_FEAT_CHANGE);
 }
 
 int main(int argc, char *argv[])
