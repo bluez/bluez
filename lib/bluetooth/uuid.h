@@ -178,6 +178,7 @@ extern "C" {
 #define BCAST_AUDIO_SCAN_CP_UUID			0x2bc7
 #define BCAST_RECV_STATE_UUID				0x2bc8
 
+#define VCS_UUID_STR		"00001844-0000-1000-8000-00805f9b34fb"
 #define VCS_UUID					0x1844
 #define VOL_OFFSET_CS_UUID				0x1845
 #define AUDIO_INPUT_CS_UUID				0x1843
@@ -213,10 +214,12 @@ extern "C" {
 #define MEDIA_CONTENT_CONTROL_ID_CHRC_UUID      0x2bba
 
 /* Telephony and Media Audio Service */
+#define TMAS_UUID_STR		"00001855-0000-1000-8000-00805f9b34fb"
 #define TMAS_UUID				0x1855
 #define TMAP_ROLE_CHRC_UUID			0x2b51
 
 /* Gaming Audio Service */
+#define GMAS_UUID_STR		"00001858-0000-1000-8000-00805f9b34fb"
 #define GMAS_UUID				0x1858
 #define GMAP_ROLE_CHRC_UUID			0x2c00
 #define GMAP_UGG_CHRC_UUID			0x2c01

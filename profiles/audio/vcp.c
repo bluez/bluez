@@ -54,7 +54,6 @@
 #include "vcp.h"
 #include "transport.h"
 
-#define VCS_UUID_STR "00001844-0000-1000-8000-00805f9b34fb"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
 
 struct vcp_data {
