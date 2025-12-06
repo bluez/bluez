@@ -292,11 +292,17 @@ struct bt_tmap *bt_tmap_add_db(struct gatt_db *db)
 
 void bt_tmap_set_role(struct bt_tmap *tmap, uint16_t role)
 {
-	if (tmap->client)
+	if (!tmap || tmap->client)
 		return;
 
-	tmap->db.role_value = role & BT_TMAP_ROLE_MASK;
+	role &= BT_TMAP_ROLE_MASK;
+	if (role == tmap->db.role_value)
+		return;
 
-	/* Expose value only when first set. Role does not have Notify. */
-	gatt_db_service_set_active(tmap->db.service, true);
+	DBG(tmap, "set role 0x%02x", role);
+
+	tmap->db.role_value = role;
+
+	/* Expose when first set and present. Role does not have Notify. */
+	gatt_db_service_set_active(tmap->db.service, role != 0);
 }
