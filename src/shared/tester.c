@@ -983,7 +983,7 @@ static bool test_io_recv(struct io *io, void *user_data)
 	if (test->iovcnt && !iov->iov_base)
 		iov = test_get_iov(test);
 
-	if (memcmp(buf, iov->iov_base, len) || (size_t)len != iov->iov_len)
+	if ((size_t)len != iov->iov_len || memcmp(buf, iov->iov_base, len))
 		tester_monitor('!', 0x0004, 0x0000, iov->iov_base,
 							iov->iov_len);
 
