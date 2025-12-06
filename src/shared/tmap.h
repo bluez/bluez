@@ -18,6 +18,21 @@
 #define BT_TMAP_ROLE_BMR		BIT(5)
 #define BT_TMAP_ROLE_MASK		(BIT(6) - 1)
 
+#define BT_TMAP_ROLE_CG_STR		"cg"
+#define BT_TMAP_ROLE_CT_STR		"ct"
+#define BT_TMAP_ROLE_UMS_STR		"ums"
+#define BT_TMAP_ROLE_UMR_STR		"umr"
+#define BT_TMAP_ROLE_BMS_STR		"bms"
+#define BT_TMAP_ROLE_BMR_STR		"bmr"
+
+#define BT_TMAP_ROLE_LIST(role) \
+	role(BT_TMAP_ROLE_CG) \
+	role(BT_TMAP_ROLE_CT) \
+	role(BT_TMAP_ROLE_UMS) \
+	role(BT_TMAP_ROLE_UMR) \
+	role(BT_TMAP_ROLE_BMS) \
+	role(BT_TMAP_ROLE_BMR)
+
 struct bt_tmap;
 
 typedef void (*bt_tmap_ready_func_t)(struct bt_tmap *tmap, void *user_data);

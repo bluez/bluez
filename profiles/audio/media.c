@@ -55,6 +55,8 @@
 #include "src/shared/att.h"
 #include "src/shared/bap.h"
 #include "src/shared/bap-debug.h"
+#include "src/shared/tmap.h"
+#include "src/shared/gmap.h"
 
 #ifdef HAVE_A2DP
 #include "avdtp.h"
@@ -109,6 +111,12 @@ struct endpoint_request {
 	void			*user_data;
 };
 
+struct endpoint_features {
+	uint8_t			tmap_role;
+	uint8_t			gmap_role;
+	uint32_t		gmap_features;
+};
+
 struct media_endpoint {
 #ifdef HAVE_A2DP
 	struct a2dp_sep		*sep;
@@ -133,6 +141,7 @@ struct media_endpoint {
 	GSList			*requests;
 	struct media_adapter	*adapter;
 	GSList			*transports;
+	struct endpoint_features	features;
 };
 
 struct media_player {
@@ -247,6 +256,33 @@ static struct media_endpoint *media_adapter_find_endpoint(
 	return NULL;
 }
 
+static void update_features(struct media_adapter *adapter)
+{
+	struct endpoint_features all = { 0 };
+	GSList *list;
+	struct btd_gatt_database *database;
+	struct gatt_db *db;
+	struct bt_tmap *tmap;
+	struct bt_gmap *gmap;
+
+	for (list = adapter->endpoints; list; list = list->next) {
+		struct media_endpoint *endpoint = list->data;
+
+		all.tmap_role |= endpoint->features.tmap_role;
+		all.gmap_role |= endpoint->features.gmap_role;
+		all.gmap_features |= endpoint->features.gmap_features;
+	}
+
+	database = btd_adapter_get_database(adapter->btd_adapter);
+	db = btd_gatt_database_get_db(database);
+	tmap = bt_tmap_find(db);
+	gmap = bt_gmap_find(db);
+
+	bt_tmap_set_role(tmap, all.tmap_role);
+	bt_gmap_set_role(gmap, all.gmap_role);
+	bt_gmap_set_features(gmap, all.gmap_features);
+}
+
 static void media_endpoint_remove(void *data)
 {
 	struct media_endpoint *endpoint = data;
@@ -270,6 +306,8 @@ static void media_endpoint_remove(void *data)
 							"MediaEndpoints");
 
 	media_endpoint_destroy(endpoint);
+
+	update_features(adapter);
 }
 
 static void media_endpoint_exit(DBusConnection *connection, void *user_data)
@@ -1531,6 +1569,7 @@ media_endpoint_create(struct media_adapter *adapter,
 						int size,
 						uint8_t *metadata,
 						int metadata_size,
+						struct endpoint_features *feat,
 						int *err)
 {
 	struct media_endpoint *endpoint;
@@ -1549,6 +1588,9 @@ media_endpoint_create(struct media_adapter *adapter,
 
 	if (qos)
 		endpoint->qos = *qos;
+
+	if (feat)
+		endpoint->features = *feat;
 
 	if (size > 0) {
 		endpoint->capabilities = g_new(uint8_t, size);
@@ -1596,9 +1638,96 @@ media_endpoint_create(struct media_adapter *adapter,
 	adapter->endpoints = g_slist_append(adapter->endpoints, endpoint);
 	info("Endpoint registered: sender=%s path=%s", sender, path);
 
+	update_features(adapter);
+
 	if (err)
 		*err = 0;
 	return endpoint;
+}
+
+static void parse_tmap_role(struct endpoint_features *features, uint32_t data)
+{
+	features->tmap_role |= data;
+}
+
+static void parse_gmap_role(struct endpoint_features *features, uint32_t data)
+{
+	features->gmap_role |= data;
+}
+
+static void parse_gmap_feature(struct endpoint_features *features,
+								uint32_t data)
+{
+	features->gmap_features |= data;
+}
+
+#define TMAP_ROLE(key) \
+	{ .uuid = TMAS_UUID_STR, .name = key ## _STR, .data = key, \
+	  .func = parse_tmap_role },
+#define GMAP_ROLE(key) \
+	{ .uuid = GMAS_UUID_STR, .name = key ## _STR, .data = key, \
+	  .func = parse_gmap_role },
+#define GMAP_FEATURE(key) \
+	{ .uuid = GMAS_UUID_STR, .name = key ## _STR, .data = key, \
+	  .func = parse_gmap_feature },
+
+static const struct endpoint_feature_dbus {
+	const char *uuid;
+	const char *name;
+	uint32_t data;
+	void (*func)(struct endpoint_features *features, uint32_t data);
+} endpoint_features[] = {
+	BT_TMAP_ROLE_LIST(TMAP_ROLE)
+	BT_GMAP_ROLE_LIST(GMAP_ROLE)
+	BT_GMAP_FEATURE_LIST(GMAP_FEATURE)
+};
+
+static void parse_endpoint_feature(const char *uuid, const char *value,
+					struct endpoint_features *features)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(endpoint_features); ++i) {
+		const struct endpoint_feature_dbus *f = &endpoint_features[i];
+
+		if (strcmp(uuid, f->uuid) == 0 && strcmp(value, f->name) == 0) {
+			f->func(features, f->data);
+			break;
+		}
+	}
+}
+
+static int parse_endpoint_features(DBusMessageIter *iter,
+					struct endpoint_features *features)
+{
+	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
+		const char *uuid, *name;
+		DBusMessageIter value, entry, array;
+		int var;
+
+		dbus_message_iter_recurse(iter, &entry);
+		dbus_message_iter_get_basic(&entry, &uuid);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		var = dbus_message_iter_get_arg_type(&value);
+		if (var != DBUS_TYPE_ARRAY)
+			return -EINVAL;
+
+		dbus_message_iter_recurse(&value, &array);
+
+		while (dbus_message_iter_get_arg_type(&array)
+							== DBUS_TYPE_STRING) {
+			dbus_message_iter_get_basic(&array, &name);
+			parse_endpoint_feature(uuid, name, features);
+			dbus_message_iter_next(&array);
+		}
+
+		dbus_message_iter_next(iter);
+	}
+
+	return 0;
 }
 
 struct vendor {
@@ -1611,7 +1740,8 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 				uint16_t *cid, uint16_t *vid,
 				struct bt_bap_pac_qos *qos,
 				uint8_t **capabilities, int *size,
-				uint8_t **metadata, int *metadata_size)
+				uint8_t **metadata, int *metadata_size,
+				struct endpoint_features *features)
 {
 	gboolean has_uuid = FALSE;
 	gboolean has_codec = FALSE;
@@ -1708,6 +1838,15 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value,
 						    &qos->supported_context);
+		} else if (strcasecmp(key, "SupportedFeatures") == 0) {
+			DBusMessageIter array;
+
+			if (var != DBUS_TYPE_ARRAY)
+				return -EINVAL;
+
+			dbus_message_iter_recurse(&value, &array);
+			if (parse_endpoint_features(&array, features) < 0)
+				return -EINVAL;
 		}
 
 		dbus_message_iter_next(props);
@@ -1727,6 +1866,7 @@ static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
 	uint16_t cid = 0;
 	uint16_t vid = 0;
 	struct bt_bap_pac_qos qos = {};
+	struct endpoint_features features = { 0 };
 	uint8_t *capabilities = NULL;
 	uint8_t *metadata = NULL;
 	int size = 0;
@@ -1749,13 +1889,13 @@ static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
 
 	if (parse_properties(&props, &uuid, &delay_reporting, &codec, &cid,
 			&vid, &qos, &capabilities, &size, &metadata,
-			&metadata_size) < 0)
+			&metadata_size, &features) < 0)
 		return btd_error_invalid_args(msg);
 
 	if (media_endpoint_create(adapter, sender, path, uuid, delay_reporting,
 					codec, cid, vid, &qos, capabilities,
 					size, metadata, metadata_size,
-					&err) == NULL) {
+					&features, &err) == NULL) {
 		if (err == -EPROTONOSUPPORT)
 			return btd_error_not_supported(msg);
 		else
@@ -2786,6 +2926,7 @@ static void app_register_endpoint(void *data, void *user_data)
 	int size = 0;
 	uint8_t *metadata = NULL;
 	int metadata_size = 0;
+	struct endpoint_features features = { 0 };
 	DBusMessageIter iter, array;
 	struct media_endpoint *endpoint;
 
@@ -2918,12 +3059,23 @@ static void app_register_endpoint(void *data, void *user_data)
 		dbus_message_iter_get_basic(&iter, &qos.supported_context);
 	}
 
+	if (g_dbus_proxy_get_property(proxy, "SupportedFeatures", &iter)) {
+		DBusMessageIter array;
+
+		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+			goto fail;
+
+		dbus_message_iter_recurse(&iter, &array);
+		if (parse_endpoint_features(&array, &features) < 0)
+			goto fail;
+	}
+
 	endpoint = media_endpoint_create(app->adapter, app->sender, path, uuid,
 						delay_reporting, codec,
 						vendor.cid, vendor.vid, &qos,
 						capabilities, size,
 						metadata, metadata_size,
-						&app->err);
+						&features, &app->err);
 	if (!endpoint) {
 		error("Unable to register endpoint %s:%s: %s", app->sender,
 						path, strerror(-app->err));

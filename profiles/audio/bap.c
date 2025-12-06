@@ -67,10 +67,6 @@
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
 #define MEDIA_INTERFACE "org.bluez.Media1"
 
-#define VCS_UUID_STR "00001844-0000-1000-8000-00805f9b34fb"
-#define TMAS_UUID_STR "00001855-0000-1000-8000-00805f9b34fb"
-#define GMAS_UUID_STR "00001858-0000-1000-8000-00805f9b34fb"
-
 struct bap_setup;
 
 typedef void (*bap_setup_ready_func_t)(struct bap_setup *setup, int code,
@@ -473,34 +469,18 @@ struct feature {
 	uint32_t data;
 };
 
+#define TMAP_ROLE(key)		{ key ## _STR, probe_tmap_role, key },
+
 static const struct feature tmap_features[] = {
-	{ "cg", probe_tmap_role, BT_TMAP_ROLE_CG },
-	{ "ct", probe_tmap_role, BT_TMAP_ROLE_CT },
-	{ "ums", probe_tmap_role, BT_TMAP_ROLE_UMS },
-	{ "umr", probe_tmap_role, BT_TMAP_ROLE_UMR },
-	{ "bms", probe_tmap_role, BT_TMAP_ROLE_BMS },
-	{ "bmr", probe_tmap_role, BT_TMAP_ROLE_BMR },
+	BT_TMAP_ROLE_LIST(TMAP_ROLE)
 };
 
+#define GMAP_ROLE(key)		{ key ## _STR, probe_gmap_role, key },
+#define GMAP_FEATURE(key)	{ key ## _STR, probe_gmap_feature, key },
+
 static const struct feature gmap_features[] = {
-	{ "ugg", probe_gmap_role, BT_GMAP_ROLE_UGG },
-	{ "ugt", probe_gmap_role, BT_GMAP_ROLE_UGT },
-	{ "bgs", probe_gmap_role, BT_GMAP_ROLE_BGS },
-	{ "bgr", probe_gmap_role, BT_GMAP_ROLE_BGR },
-	{ "ugg-multiplex", probe_gmap_feature, BT_GMAP_UGG_MULTIPLEX },
-	{ "ugg-96kbps-source", probe_gmap_feature, BT_GMAP_UGG_96KBPS },
-	{ "ugg-multisink", probe_gmap_feature, BT_GMAP_UGG_MULTISINK },
-	{ "ugt-source", probe_gmap_feature, BT_GMAP_UGT_SOURCE },
-	{ "ugt-80kbps-source", probe_gmap_feature,
-						BT_GMAP_UGT_80KBPS_SOURCE },
-	{ "ugt-sink", probe_gmap_feature, BT_GMAP_UGT_SINK },
-	{ "ugt-64kbps-sink", probe_gmap_feature, BT_GMAP_UGT_64KBPS_SINK },
-	{ "ugt-multiplex", probe_gmap_feature, BT_GMAP_UGT_MULTIPLEX },
-	{ "ugt-multisink", probe_gmap_feature, BT_GMAP_UGT_MULTISINK },
-	{ "ugt-multisource", probe_gmap_feature, BT_GMAP_UGT_MULTISOURCE },
-	{ "bgs-96kbps", probe_gmap_feature, BT_GMAP_BGS_96KBPS },
-	{ "bgr-multisink", probe_gmap_feature, BT_GMAP_BGR_MULTISINK },
-	{ "bgr-multiplex", probe_gmap_feature, BT_GMAP_BGR_MULTIPLEX },
+	BT_GMAP_ROLE_LIST(GMAP_ROLE)
+	BT_GMAP_FEATURE_LIST(GMAP_FEATURE)
 };
 
 static const struct {

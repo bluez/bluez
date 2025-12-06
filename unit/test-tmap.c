@@ -32,6 +32,7 @@
 
 struct test_config {
 	uint16_t role;
+	uint16_t old_role;
 };
 
 struct test_data {
@@ -221,6 +222,11 @@ static void test_setup_server(const void *user_data)
 	data->tmap = bt_tmap_add_db(db);
 	bt_tmap_set_debug(data->tmap, print_debug, "tmap:", NULL);
 
+	if (data->cfg->old_role) {
+		bt_tmap_set_role(data->tmap, data->cfg->old_role);
+		bt_tmap_set_role(data->tmap, 0);
+	}
+
 	bt_tmap_set_role(data->tmap, data->cfg->role);
 
 	att = bt_att_new(io_get_fd(io), false);
@@ -344,6 +350,11 @@ const struct test_config cfg_read_role = {
 	.role = BT_TMAP_ROLE_UMS | BT_TMAP_ROLE_BMR,
 };
 
+const struct test_config cfg_read_role_re_add = {
+	.role = BT_TMAP_ROLE_UMS | BT_TMAP_ROLE_BMR,
+	.old_role = BT_TMAP_ROLE_CT,
+};
+
 static void test_tmap_cl(void)
 {
 	/* Sec. 4.5.1 TMA Client */
@@ -365,6 +376,10 @@ static void test_tmap_sr(void)
 	define_test("TMAP/SR/SGGIT/CHA/BV-01-C [Characteristic GGIT - "
 								"TMAP Role]",
 		test_setup_server, test_server, &cfg_read_role,
+		SGGIT_CHA);
+
+	define_test("TMAP/SR/SGGIT/CHA/BLUEZ-01-C [Re-add Role]",
+		test_setup_server, test_server, &cfg_read_role_re_add,
 		SGGIT_CHA);
 }
 
