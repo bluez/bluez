@@ -352,29 +352,38 @@ AC_ARG_WITH([systemdsystemunitdir],
 			AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
 			[path to systemd system unit directory]),
 					[path_systemunitdir=${withval}])
-if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
+if (test "${enable_systemd}" != "no" -o -z "${path_systemunitdir}"); then
 	AC_MSG_CHECKING([systemd system unit dir])
-	path_systemunitdir="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
 	if (test -z "${path_systemunitdir}"); then
-		AC_MSG_ERROR([systemd system unit directory is required])
+		path_systemunitdir="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
+		if (test -z "${path_systemunitdir}"); then
+			AC_MSG_ERROR([systemd system unit directory is required])
+		fi
 	fi
 	AC_MSG_RESULT([${path_systemunitdir}])
 fi
 AC_SUBST(SYSTEMD_SYSTEMUNITDIR, [${path_systemunitdir}])
+AM_CONDITIONAL(SYSTEMD_SYSTEMUNITS, test "${path_systemunitdir}" != "")
 
 AC_ARG_WITH([systemduserunitdir],
 			AS_HELP_STRING([--with-systemduserunitdir=DIR],
 			[path to systemd user unit directory]),
 					[path_userunitdir=${withval}])
-if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
+if (test "${enable_systemd}" != "no" -o -z "${path_userunitdir}"); then
 	AC_MSG_CHECKING([systemd user unit dir])
-	path_userunitdir="`$PKG_CONFIG --variable=systemduserunitdir systemd`"
 	if (test -z "${path_userunitdir}"); then
-		AC_MSG_ERROR([systemd user unit directory is required])
+		path_userunitdir="`$PKG_CONFIG --variable=systemduserunitdir systemd`"
+		if (test -z "${path_userunitdir}"); then
+			AC_MSG_ERROR([systemd user unit directory is required])
+		fi
 	fi
 	AC_MSG_RESULT([${path_userunitdir}])
 fi
 AC_SUBST(SYSTEMD_USERUNITDIR, [${path_userunitdir}])
+AM_CONDITIONAL(SYSTEMD_USERUNITS, test "${path_userunitdir}" != "")
+
+AM_CONDITIONAL(SYSTEMD_UNITS, (test "${path_systemunitdir}" != "" || test "${path_userunitdir}" != ""))
+
 
 AC_ARG_ENABLE(datafiles, AS_HELP_STRING([--disable-datafiles],
 			[do not install configuration and data files]),

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 if OBEX
 
-if SYSTEMD
+if SYSTEMD_USERUNITS
 systemduserunit_DATA += obexd/src/obex.service
 
 obexd-add-service-symlink:
