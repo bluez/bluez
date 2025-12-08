@@ -2124,10 +2124,16 @@ static unsigned int bap_ucast_start(struct bt_bap_stream *stream,
 
 static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
 {
-	if (!stream || stream->ep->state == BT_BAP_STREAM_STATE_QOS ||
-			stream->ep->state == BT_BAP_STREAM_STATE_CONFIG ||
-			stream->ep->state == BT_BAP_STREAM_STATE_IDLE)
+	if (!stream)
 		return 0;
+
+	switch (stream->ep->state) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+	case BT_BAP_STREAM_STATE_STREAMING:
+		break;
+	default:
+		return 0;
+	}
 
 	DBG(stream->bap, "stream %p", stream);
 
