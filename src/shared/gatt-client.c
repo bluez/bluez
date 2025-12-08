@@ -1965,6 +1965,29 @@ fail:
 		"Failed to initiate service discovery after Service Changed");
 }
 
+static void process_db_out_of_sync(struct bt_gatt_client *client,
+				   uint8_t att_ecode)
+{
+	struct service_changed_op *op;
+
+	if (att_ecode != BT_ATT_ERROR_DB_OUT_OF_SYNC)
+		return;
+
+	DBG(client, "Database Out of Sync - triggering full re-discovery");
+
+	if (!client->in_svc_chngd) {
+		process_service_changed(client, 0x0001, 0xffff);
+		return;
+	}
+
+	op = new0(struct service_changed_op, 1);
+
+	op->start_handle = 0x0001;
+	op->end_handle = 0xffff;
+
+	queue_push_tail(client->svc_chngd_queue, op);
+}
+
 static void service_changed_cb(uint16_t value_handle, const uint8_t *value,
 					uint16_t length, void *user_data)
 {
@@ -2709,10 +2732,12 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu, uint16_t length,
 			(!pdu && length)) {
 		success = false;
 
-		if (opcode == BT_ATT_OP_ERROR_RSP)
+		if (opcode == BT_ATT_OP_ERROR_RSP) {
 			att_ecode = process_error(pdu, length);
-		else
+			process_db_out_of_sync(req->client, att_ecode);
+		} else {
 			att_ecode = 0;
+		}
 
 		pdu = NULL;
 		length = 0;
@@ -2864,6 +2889,7 @@ static void read_long_cb(uint8_t opcode, const void *pdu,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
+		process_db_out_of_sync(req->client, att_ecode);
 		goto done;
 	}
 
@@ -3050,6 +3076,7 @@ static void write_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
+		process_db_out_of_sync(req->client, att_ecode);
 		goto done;
 	}
 
@@ -3213,6 +3240,7 @@ static void execute_write_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
+		process_db_out_of_sync(req->client, att_ecode);
 	} else if (opcode != BT_ATT_OP_EXEC_WRITE_RSP || pdu || length)
 		success = false;
 
@@ -3278,6 +3306,7 @@ static void prepare_write_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
+		process_db_out_of_sync(req->client, att_ecode);
 		goto done;
 	}
 
@@ -3447,6 +3476,7 @@ static void prep_write_cb(uint8_t opcode, const void *pdu, uint16_t length,
 		success = false;
 		reliable_error = false;
 		att_ecode = process_error(pdu, length);
+		process_db_out_of_sync(req->client, att_ecode);
 		goto done;
 	}
 
@@ -3597,6 +3627,7 @@ static void exec_write_cb(uint8_t opcode, const void *pdu, uint16_t length,
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		success = false;
 		att_ecode = process_error(pdu, length);
+		process_db_out_of_sync(req->client, att_ecode);
 		goto done;
 	}
 
