@@ -70,8 +70,8 @@ struct notify {
 	do {							\
 		const struct iovec iov[] = { args };		\
 		static struct test_data_mics data;			\
-		data.iovcnt = ARRAY_SIZE(iov_data(args));	\
-		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov_data(args))); \
+		data.iovcnt = ARRAY_SIZE(iov);			\
+		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov));	\
 		tester_add(name, &data, NULL, function,	\
 				test_teardown_mics);			\
 	} while (0)
@@ -80,8 +80,8 @@ struct notify {
 	do {							\
 		const struct iovec iov[] = { args };		\
 		static struct test_data_micp data;			\
-		data.iovcnt = ARRAY_SIZE(iov_data(args));	\
-		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov_data(args))); \
+		data.iovcnt = ARRAY_SIZE(iov);			\
+		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov));	\
 		tester_add(name, &data, test_setup, function,	\
 				test_teardown_micp);			\
 	} while (0)
