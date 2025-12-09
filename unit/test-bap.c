@@ -121,8 +121,8 @@ static struct bt_bap_pac_qos lc3_qos = {
 			data.caps = data.cfg->pac_caps;		\
 		if (data.cfg && data.cfg->pac_qos)		\
 			data.qos = data.cfg->pac_qos;		\
-		data.iovcnt = ARRAY_SIZE(iov_data(args));	\
-		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov_data(args))); \
+		data.iovcnt = ARRAY_SIZE(iov);			\
+		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov));	\
 		data.streams = queue_new(); \
 		tester_add(name, &data, setup, function,	\
 				test_teardown);			\

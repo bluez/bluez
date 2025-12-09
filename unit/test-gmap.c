@@ -54,8 +54,8 @@ struct test_data {
 	do {							\
 		const struct iovec iov[] = { args };		\
 		static struct test_data data;			\
-		data.iovcnt = ARRAY_SIZE(iov_data(args));	\
-		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov_data(args))); \
+		data.iovcnt = ARRAY_SIZE(iov);			\
+		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov));	\
 		data.cfg = _cfg;				\
 		tester_add(name, &data, setup, function,	\
 				test_teardown);			\

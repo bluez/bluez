@@ -59,8 +59,8 @@ struct ccc_state {
 	do {							\
 		const struct iovec iov[] = { args };		\
 		static struct test_data data;			\
-		data.iovcnt = ARRAY_SIZE(iov_data(args));	\
-		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov_data(args))); \
+		data.iovcnt = ARRAY_SIZE(iov);			\
+		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov));	\
 		tester_add(name, &data, NULL, function,	\
 				test_teardown);			\
 	} while (0)
