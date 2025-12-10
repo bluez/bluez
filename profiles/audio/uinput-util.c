@@ -93,6 +93,8 @@ int uinput_create(struct btd_adapter *adapter, struct btd_device *device,
 		if (len + slen < UINPUT_MAX_NAME_SIZE - 1) {
 			strcpy(dev.name + len, suffix);
 		} else {
+			if (slen >= UINPUT_MAX_NAME_SIZE)
+				slen = UINPUT_MAX_NAME_SIZE - 1;
 			len = UINPUT_MAX_NAME_SIZE - slen - 1;
 			strncpy(dev.name + len, suffix, slen);
 			dev.name[UINPUT_MAX_NAME_SIZE - 1] = '\0';
