@@ -120,6 +120,7 @@ unit/test-bass
 unit/test-battery
 unit/test-tmap
 unit/test-gmap
+unit/test-mcp
 unit/test-profile
 tools/mgmt-tester
 tools/smp-tester
