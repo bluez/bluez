@@ -46,6 +46,7 @@ struct test_data {
 	uint16_t scid;
 	uint16_t dcid;
 	struct l2cap_options l2o;
+	uint32_t phys;
 	int sk;
 	int sk2;
 	bool host_disconnected;
@@ -105,6 +106,9 @@ struct l2cap_data {
 
 	/* Socket type (0 means SOCK_SEQPACKET) */
 	int sock_type;
+
+	/* Expected supported PHYs */
+	uint32_t phys;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -420,6 +424,14 @@ static const struct l2cap_data client_connect_shut_wr_success_test = {
 	.shut_sock_wr = true,
 };
 
+static const struct l2cap_data client_connect_phy_test_1 = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+};
+
 static const struct l2cap_data client_connect_nval_psm_test_1 = {
 	.client_psm = 0x1001,
 	.expect_err = ECONNREFUSED,
@@ -556,6 +568,17 @@ static const struct l2cap_data l2cap_server_nval_cid_test2 = {
 	.expect_cmd_len = sizeof(l2cap_nval_cfg_rsp),
 };
 
+static const struct l2cap_data l2cap_server_phy_test = {
+	.server_psm = 0x1001,
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_CONN_RSP,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+};
+
 static const struct l2cap_data le_client_connect_success_test_1 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
@@ -675,6 +698,12 @@ static const struct l2cap_data le_client_connect_reject_test_2 = {
 	.addr_type = BDADDR_LE_PUBLIC,
 };
 
+static const struct l2cap_data le_client_connect_phy_test_1 = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
+};
+
 static uint8_t nonexisting_bdaddr[] = {0x00, 0xAA, 0x01, 0x02, 0x03, 0x00};
 static const struct l2cap_data le_client_close_socket_test_1 = {
 	.client_psm = 0x0080,
@@ -752,6 +781,17 @@ static const struct l2cap_data le_server_nval_scid_test = {
 	.expect_cmd_len = sizeof(nval_le_connect_rsp),
 };
 
+static const struct l2cap_data le_server_phy_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
+};
+
 static const uint8_t ecred_connect_req[] = {	0x80, 0x00, /* PSM */
 						0x40, 0x00, /* MTU */
 						0x40, 0x00, /* MPS */
@@ -808,6 +848,17 @@ static const struct l2cap_data ext_flowctl_server_nval_scid_test = {
 	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
 	.expect_cmd = nval_ecred_connect_rsp,
 	.expect_cmd_len = sizeof(nval_ecred_connect_rsp),
+};
+
+static const struct l2cap_data ext_flowctl_server_phy_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
 };
 
 static const struct l2cap_data le_att_client_connect_success_test_1 = {
@@ -934,6 +985,13 @@ static const struct l2cap_data ext_flowctl_client_2_close_1 = {
 	.mode = BT_MODE_EXT_FLOWCTL,
 	.server_not_advertising = true,
 	.close_1 = true,
+};
+
+static const struct l2cap_data ext_flowctl_client_connect_phy_test_1 = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
 };
 
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
@@ -1384,6 +1442,28 @@ static bool check_mtu(struct test_data *data, int sk)
 	return true;
 }
 
+static bool check_phys(struct test_data *data,int sk)
+{
+	const struct l2cap_data *l2data = data->test_data;
+	socklen_t len;
+
+	len = sizeof(data->phys);
+	data->phys = 0;
+
+	if (getsockopt(sk, SOL_BLUETOOTH, BT_PHY, &data->phys, &len) < 0) {
+		tester_warn("getsockopt(BT_PHY): %s (%d)",
+				strerror(errno), errno);
+		return false;
+	}
+
+	if (l2data->phys && l2data->phys != data->phys) {
+		tester_warn("phys 0x%08x != 0x%08x", l2data->phys, data->phys);
+		return false;
+	}
+
+	return true;
+}
+
 static gboolean recv_errqueue(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1555,6 +1635,11 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 	tester_print("Successfully connected to CID 0x%04x", data->dcid);
 
 	if (!check_mtu(data, sk)) {
+		tester_test_failed();
+		return FALSE;
+	}
+
+	if (!check_phys(data, sk)) {
 		tester_test_failed();
 		return FALSE;
 	}
@@ -2279,6 +2364,11 @@ static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
+	if (!check_phys(data, sk)) {
+		tester_test_failed();
+		return FALSE;
+	}
+
 	if (l2data->read_data) {
 		l2cap_read_data(data, io, data->dcid);
 		return FALSE;
@@ -2628,6 +2718,10 @@ int main(int argc, char *argv[])
 					&client_connect_shut_wr_success_test,
 					setup_powered_client, test_connect);
 
+	test_l2cap_bredr("L2CAP BR/EDR Client - PHY",
+					&client_connect_phy_test_1,
+					setup_powered_client, test_connect);
+
 	test_l2cap_bredr("L2CAP BR/EDR Server - Success",
 					&l2cap_server_success_test,
 					setup_powered_server, test_server);
@@ -2663,6 +2757,9 @@ int main(int argc, char *argv[])
 				setup_powered_server, test_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid Config CID",
 				&l2cap_server_nval_cid_test2,
+				setup_powered_server, test_server);
+	test_l2cap_bredr("L2CAP BR/EDR Server - PHY",
+				&l2cap_server_phy_test,
 				setup_powered_server, test_server);
 
 	test_l2cap_bredr("L2CAP BR/EDR Ethtool Get Ts Info - Success", NULL,
@@ -2710,6 +2807,9 @@ int main(int argc, char *argv[])
 	test_l2cap_bredr("L2CAP LE Client - Connection Reject",
 				&le_client_connect_reject_test_2,
 				setup_powered_client, test_connect_reject);
+	test_l2cap_le("L2CAP LE Client - PHY",
+				&le_client_connect_phy_test_1,
+				setup_powered_client, test_connect);
 
 	test_l2cap_le("L2CAP LE Client - Close socket 1",
 				&le_client_close_socket_test_1,
@@ -2738,7 +2838,8 @@ int main(int argc, char *argv[])
 					setup_powered_server, test_server);
 	test_l2cap_le("L2CAP LE Server - Nval SCID", &le_server_nval_scid_test,
 					setup_powered_server, test_server);
-
+	test_l2cap_le("L2CAP LE Server - PHY", &le_server_phy_test,
+					setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Client - Success",
 				&ext_flowctl_client_connect_success_test_1,
@@ -2769,11 +2870,18 @@ int main(int argc, char *argv[])
 				setup_powered_client,
 				test_connect_2);
 
+	test_l2cap_le("L2CAP Ext-Flowctl Client - PHY",
+				&ext_flowctl_client_connect_phy_test_1,
+				setup_powered_client, test_connect);
+
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Success",
 				&ext_flowctl_server_success_test,
 				setup_powered_server, test_server);
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Nval SCID",
 				&ext_flowctl_server_nval_scid_test,
+				setup_powered_server, test_server);
+	test_l2cap_le("L2CAP Ext-Flowctl Server - PHY",
+				&ext_flowctl_server_phy_test,
 				setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP LE ATT Client - Success",
