@@ -265,13 +265,13 @@ static void test_data_free(void *test_data)
 	free(data);
 }
 
-#define test_l2cap_bredr(name, data, setup, func) \
+#define test_l2cap(name, type, data, setup, func) \
 	do { \
 		struct test_data *user; \
 		user = malloc(sizeof(struct test_data)); \
 		if (!user) \
 			break; \
-		user->hciemu_type = HCIEMU_TYPE_BREDR; \
+		user->hciemu_type = type; \
 		user->io_id = 0; \
 		user->err_io_id = 0; \
 		user->test_data = data; \
@@ -280,20 +280,14 @@ static void test_data_free(void *test_data)
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
+#define test_l2cap_bredr(name, data, setup, func) \
+	test_l2cap(name, HCIEMU_TYPE_BREDR, data, setup, func)
+
 #define test_l2cap_le(name, data, setup, func) \
-	do { \
-		struct test_data *user; \
-		user = malloc(sizeof(struct test_data)); \
-		if (!user) \
-			break; \
-		user->hciemu_type = HCIEMU_TYPE_LE; \
-		user->io_id = 0; \
-		user->err_io_id = 0; \
-		user->test_data = data; \
-		tester_add_full(name, data, \
-				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, 2, user, test_data_free); \
-	} while (0)
+	test_l2cap(name, HCIEMU_TYPE_LE, data, setup, func)
+
+#define test_l2cap_le_52(name, data, setup, func) \
+	test_l2cap(name, HCIEMU_TYPE_BREDRLE52, data, setup, func)
 
 static uint8_t pair_device_pin[] = { 0x30, 0x30, 0x30, 0x30 }; /* "0000" */
 
@@ -704,6 +698,14 @@ static const struct l2cap_data le_client_connect_phy_test_1 = {
 	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
 };
 
+static const struct l2cap_data le_client_connect_phy_2m_coded_test_1 = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+};
+
 static uint8_t nonexisting_bdaddr[] = {0x00, 0xAA, 0x01, 0x02, 0x03, 0x00};
 static const struct l2cap_data le_client_close_socket_test_1 = {
 	.client_psm = 0x0080,
@@ -792,6 +794,19 @@ static const struct l2cap_data le_server_phy_test = {
 	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
 };
 
+static const struct l2cap_data le_server_phy_2m_coded_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+};
+
 static const uint8_t ecred_connect_req[] = {	0x80, 0x00, /* PSM */
 						0x40, 0x00, /* MTU */
 						0x40, 0x00, /* MPS */
@@ -859,6 +874,19 @@ static const struct l2cap_data ext_flowctl_server_phy_test = {
 	.expect_cmd = ecred_connect_rsp,
 	.expect_cmd_len = sizeof(ecred_connect_rsp),
 	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
+};
+
+static const struct l2cap_data ext_flowctl_server_phy_2m_coded_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 };
 
 static const struct l2cap_data le_att_client_connect_success_test_1 = {
@@ -994,6 +1022,15 @@ static const struct l2cap_data ext_flowctl_client_connect_phy_test_1 = {
 	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX),
 };
 
+static const struct l2cap_data ext_flowctl_client_phy_2m_coded_test_1 = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -1007,6 +1044,7 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 	switch (opcode) {
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+	case BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE:
 		tester_print("Client set connectable status 0x%02x", status);
 		if (!status && test && test->enable_ssp) {
 			bthost_write_ssp_mode(bthost, 0x01);
@@ -1067,10 +1105,14 @@ static void setup_powered_client_callback(uint8_t status, uint16_t length,
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, user_data);
 
-	if (data->hciemu_type == HCIEMU_TYPE_LE) {
-		if (!l2data || !l2data->server_not_advertising)
-			bthost_set_adv_enable(bthost, 0x01);
-		else
+	if (data->hciemu_type >= HCIEMU_TYPE_LE) {
+		if (!l2data || !l2data->server_not_advertising) {
+			if (data->hciemu_type > HCIEMU_TYPE_LE) {
+				bthost_set_ext_adv_params(bthost, 0x00);
+				bthost_set_ext_adv_enable(bthost, 0x01);
+			} else
+				bthost_set_adv_enable(bthost, 0x01);
+		} else
 			tester_setup_complete();
 	} else {
 		bthost_write_scan_enable(bthost, 0x03);
@@ -1182,7 +1224,7 @@ static void send_rsp_new_conn(uint16_t handle, void *user_data)
 
 	data->handle = handle;
 
-	if (data->hciemu_type == HCIEMU_TYPE_LE)
+	if (data->hciemu_type >= HCIEMU_TYPE_LE)
 		data->dcid = 0x0005;
 	else
 		data->dcid = 0x0001;
@@ -1217,7 +1259,7 @@ static void setup_powered_common(void)
 	if (test && test->reject_ssp)
 		bthost_set_reject_user_confirm(bthost, true);
 
-	if (data->hciemu_type == HCIEMU_TYPE_LE)
+	if (data->hciemu_type >= HCIEMU_TYPE_LE)
 		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
@@ -1249,6 +1291,10 @@ static void setup_powered_client(const void *test_data)
 				data->mgmt_index, sizeof(param), param,
 				NULL, NULL, NULL);
 
+	if (data->hciemu_type > HCIEMU_TYPE_LE)
+		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_client_callback,
 			NULL, NULL);
@@ -1264,6 +1310,10 @@ static void setup_powered_server(const void *test_data)
 	tester_print("Powering on controller");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	if (data->hciemu_type > HCIEMU_TYPE_LE)
+		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
 	if (data->hciemu_type != HCIEMU_TYPE_BREDR)
@@ -1403,7 +1453,7 @@ static bool check_mtu(struct test_data *data, int sk)
 
 	memset(&data->l2o, 0, sizeof(data->l2o));
 
-	if (data->hciemu_type == HCIEMU_TYPE_LE &&
+	if (data->hciemu_type >= HCIEMU_TYPE_LE &&
 				(l2data->client_psm || l2data->server_psm)) {
 		/* LE CoC enabled kernels should support BT_RCVMTU and
 		 * BT_SNDMTU.
@@ -1701,7 +1751,7 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 
 	if (l2data && l2data->addr_type_avail)
 		addr.l2_bdaddr_type = l2data->addr_type;
-	else if (data->hciemu_type == HCIEMU_TYPE_LE)
+	else if (data->hciemu_type >= HCIEMU_TYPE_LE )
 		addr.l2_bdaddr_type = BDADDR_LE_PUBLIC;
 	else
 		addr.l2_bdaddr_type = BDADDR_BREDR;
@@ -1792,7 +1842,7 @@ static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm,
 
 	if (l2data && l2data->addr_type_avail)
 		bdaddr_type = l2data->addr_type;
-	else if (data->hciemu_type == HCIEMU_TYPE_LE)
+	else if (data->hciemu_type >= HCIEMU_TYPE_LE)
 		bdaddr_type = BDADDR_LE_PUBLIC;
 	else
 		bdaddr_type = BDADDR_BREDR;
@@ -2810,6 +2860,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Client - PHY",
 				&le_client_connect_phy_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP LE Client - PHY 2M/Coded",
+				&le_client_connect_phy_2m_coded_test_1,
+				setup_powered_client, test_connect);
 
 	test_l2cap_le("L2CAP LE Client - Close socket 1",
 				&le_client_close_socket_test_1,
@@ -2839,6 +2892,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Server - Nval SCID", &le_server_nval_scid_test,
 					setup_powered_server, test_server);
 	test_l2cap_le("L2CAP LE Server - PHY", &le_server_phy_test,
+					setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP LE Server - PHY 2M/Coded",
+					&le_server_phy_2m_coded_test,
 					setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Client - Success",
@@ -2873,6 +2929,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP Ext-Flowctl Client - PHY",
 				&ext_flowctl_client_connect_phy_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Client - PHY 2M/Coded",
+				&ext_flowctl_client_phy_2m_coded_test_1,
+				setup_powered_client, test_connect);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Success",
 				&ext_flowctl_server_success_test,
@@ -2882,6 +2941,9 @@ int main(int argc, char *argv[])
 				setup_powered_server, test_server);
 	test_l2cap_le("L2CAP Ext-Flowctl Server - PHY",
 				&ext_flowctl_server_phy_test,
+				setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Server - PHY 2M/Coded",
+				&ext_flowctl_server_phy_2m_coded_test,
 				setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP LE ATT Client - Success",
