@@ -40,6 +40,7 @@
 #include "src/plugin.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/shared/hfp.h"
 
 #include "telephony.h"
 
@@ -50,11 +51,24 @@ struct hfp_device {
 	struct telephony	*telephony;
 	uint16_t		version;
 	GIOChannel		*io;
+	struct hfp_hf		*hf;
 };
+
+static void hfp_hf_debug(const char *str, void *user_data)
+{
+	DBG_IDX(0xffff, "%s", str);
+}
 
 static void device_destroy(struct hfp_device *dev)
 {
 	DBG("%s", telephony_get_path(dev->telephony));
+
+	telephony_set_state(dev->telephony, DISCONNECTING);
+
+	if (dev->hf) {
+		hfp_hf_unref(dev->hf);
+		dev->hf = NULL;
+	}
 
 	if (dev->io) {
 		g_io_channel_unref(dev->io);
@@ -62,6 +76,62 @@ static void device_destroy(struct hfp_device *dev)
 	}
 
 	telephony_unregister_interface(dev->telephony);
+}
+
+static void hfp_hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	switch (indicator) {
+	case HFP_INDICATOR_SERVICE:
+		telephony_set_network_service(dev->telephony, val);
+		break;
+	case HFP_INDICATOR_CALL:
+		break;
+	case HFP_INDICATOR_CALLSETUP:
+		break;
+	case HFP_INDICATOR_CALLHELD:
+		break;
+	case HFP_INDICATOR_SIGNAL:
+		telephony_set_signal(dev->telephony, val);
+		break;
+	case HFP_INDICATOR_ROAM:
+		telephony_set_roaming(dev->telephony, val);
+		break;
+	case HFP_INDICATOR_BATTCHG:
+		telephony_set_battchg(dev->telephony, val);
+		break;
+	case HFP_INDICATOR_LAST:
+	default:
+		DBG("Unknown signal indicator: %u", indicator);
+	}
+}
+
+static void hfp_hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	if (res != HFP_RESULT_OK) {
+		error("Session setup error: %d, dropping connection", res);
+		hfp_hf_disconnect(dev->hf);
+		return;
+	}
+
+	telephony_set_state(dev->telephony, CONNECTED);
+}
+
+static struct hfp_hf_callbacks hf_session_callbacks = {
+	.session_ready = hfp_hf_session_ready_cb,
+	.update_indicator = hfp_hf_update_indicator,
+};
+
+static void hfp_disconnect_watch(void *user_data)
+{
+	DBG("");
+
+	device_destroy(user_data);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
@@ -76,8 +146,27 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		goto failed;
 	}
 
+	dev->hf = hfp_hf_new(g_io_channel_unix_get_fd(chan));
+	if (!dev->hf) {
+		error("Could not create hfp io");
+		goto failed;
+	}
+
+	hfp_hf_set_debug(dev->hf, hfp_hf_debug, NULL, NULL);
 	g_io_channel_set_close_on_unref(chan, FALSE);
 
+	hfp_hf_set_close_on_unref(dev->hf, true);
+	hfp_hf_set_disconnect_handler(dev->hf, hfp_disconnect_watch,
+					dev, NULL);
+	hfp_hf_session_register(dev->hf, &hf_session_callbacks, dev);
+
+	if (!hfp_hf_session(dev->hf)) {
+		error("Could not start SLC creation");
+		hfp_hf_disconnect(dev->hf);
+		goto failed;
+	}
+
+	telephony_set_state(dev->telephony, SESSION_CONNECTING);
 	btd_service_connecting_complete(service, 0);
 
 	return;
@@ -149,7 +238,14 @@ static int hfp_connect(struct btd_service *service)
 
 static int hfp_disconnect(struct btd_service *service)
 {
+	struct hfp_device *dev;
+
 	DBG("");
+
+	dev = btd_service_get_user_data(service);
+
+	if (dev->hf)
+		hfp_hf_disconnect(dev->hf);
 
 	btd_service_disconnecting_complete(service, 0);
 
