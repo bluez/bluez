@@ -38,6 +38,7 @@
 #include "mgmt.h"
 #include "assistant.h"
 #include "hci.h"
+#include "telephony.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -3922,6 +3923,7 @@ int main(int argc, char *argv[])
 	mgmt_add_submenu();
 	assistant_add_submenu();
 	hci_add_submenu();
+	telephony_add_submenu();
 	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	bt_shell_handle_non_interactive_help();
@@ -3962,6 +3964,7 @@ int main(int argc, char *argv[])
 	mgmt_remove_submenu();
 	assistant_remove_submenu();
 	hci_remove_submenu();
+	telephony_remove_submenu();
 
 	g_dbus_client_unref(client);
 
