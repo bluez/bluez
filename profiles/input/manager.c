@@ -27,6 +27,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/conf_d.h"
 
 #include "device.h"
 #include "server.h"
@@ -74,6 +75,8 @@ static GKeyFile *load_config_file(const char *file)
 		g_key_file_free(keyfile);
 		return NULL;
 	}
+
+	confd_process_config(keyfile, file, FALSE, TRUE);
 
 	return keyfile;
 }
