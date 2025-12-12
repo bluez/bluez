@@ -39,6 +39,7 @@
 #include "src/shared/att.h"
 #include "src/shared/gatt-client.h"
 #include "src/plugin.h"
+#include "src/conf_d.h"
 
 #include "suspend.h"
 #include "attrib/att.h"
@@ -245,6 +246,8 @@ static void hog_read_config(void)
 		g_key_file_free(config);
 		return;
 	}
+
+	confd_process_config(config, filename, FALSE, TRUE);
 
 	config_auto_sec = g_key_file_get_boolean(config, "General",
 					"LEAutoSecurity", &err);
