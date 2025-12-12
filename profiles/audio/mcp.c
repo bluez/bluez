@@ -185,6 +185,47 @@ static void remote_track_position(void *data, int32_t position_centisec)
 	media_player_set_position(remote->mp, position_centisec * 10);
 }
 
+static const struct {
+	uint16_t basic;
+	uint16_t repeat;
+	bool shuffle;
+	bool single;
+} playing_orders[] = {
+	{ BT_MCS_ORDER_SINGLE_ONCE, BT_MCS_ORDER_SINGLE_REPEAT,
+	  .single = true },
+	{ BT_MCS_ORDER_IN_ORDER_ONCE, BT_MCS_ORDER_IN_ORDER_REPEAT },
+	{ BT_MCS_ORDER_OLDEST_ONCE, BT_MCS_ORDER_OLDEST_REPEAT },
+	{ BT_MCS_ORDER_NEWEST_ONCE, BT_MCS_ORDER_NEWEST_REPEAT },
+	{ BT_MCS_ORDER_SHUFFLE_ONCE, BT_MCS_ORDER_SHUFFLE_REPEAT,
+	  .shuffle = true },
+};
+
+static void remote_playing_order(void *data, uint8_t order)
+{
+	struct remote_player *remote = data;
+	const char *repeat = "off";
+	unsigned int i;
+	bool shuffle;
+
+	remote->playing_order = order;
+
+	for (i = 0; i < ARRAY_SIZE(playing_orders); ++i) {
+		shuffle = playing_orders[i].shuffle;
+		if (order == playing_orders[i].basic) {
+			break;
+		} else if (order == playing_orders[i].repeat) {
+			repeat = playing_orders[i].single ? "singletrack" :
+				"alltracks";
+			break;
+		}
+	}
+	if (i == ARRAY_SIZE(playing_orders))
+		return;
+
+	media_player_set_setting(remote->mp, "Repeat", repeat);
+	media_player_set_setting(remote->mp, "Shuffle", shuffle ? "on" : "off");
+}
+
 static void remote_media_state(void *data, uint8_t status)
 {
 	struct remote_player *remote = data;
@@ -206,6 +247,7 @@ static const struct bt_mcp_listener_callback remote_cb = {
 	.track_title = remote_track_title,
 	.track_duration = remote_track_duration,
 	.track_position = remote_track_position,
+	.playing_order = remote_playing_order,
 	.media_state = remote_media_state,
 	.destroy = remote_destroy,
 };
@@ -245,12 +287,88 @@ static int remote_mp_previous(struct media_player *mp, void *user_data)
 	return bt_mcp_previous_track(remote->mcp, remote->ccid);
 }
 
+static bool remote_mp_set_setting(struct media_player *mp, const char *key,
+					const char *value, void *user_data)
+{
+	struct remote_player *remote = user_data;
+	unsigned int i;
+
+	if (strcmp(key, "Repeat") == 0) {
+		bool repeat = (strcmp(value, "alltracks") == 0);
+		uint8_t order = remote->playing_order;
+
+		/* Some sensible mapping, 1-to-1 not possible */
+		for (i = 0; i < ARRAY_SIZE(playing_orders); ++i) {
+			if (order == playing_orders[i].basic) {
+				if (repeat)
+					order = playing_orders[i].repeat;
+				break;
+			} else if (order == playing_orders[i].repeat) {
+				if (!repeat)
+					order = playing_orders[i].basic;
+				break;
+			}
+		}
+
+		if (strcmp(value, "singletrack") == 0)
+			order = BT_MCS_ORDER_SINGLE_REPEAT;
+
+		DBG("Set Repeat %s -> 0x%02x", value, order);
+
+		if (order == remote->playing_order)
+			return true;
+		return bt_mcp_set_playing_order(remote->mcp, remote->ccid,
+									order);
+	}
+
+	if (strcmp(key, "Shuffle") == 0) {
+		bool shuffle = (strcmp(value, "off") != 0);
+		uint8_t order = remote->playing_order;
+
+		/* Some sensible mapping, 1-to-1 not possible */
+		switch (order) {
+		case BT_MCS_ORDER_SHUFFLE_ONCE:
+			if (!shuffle)
+				order = BT_MCS_ORDER_IN_ORDER_ONCE;
+			break;
+		case BT_MCS_ORDER_SHUFFLE_REPEAT:
+			if (!shuffle)
+				order = BT_MCS_ORDER_IN_ORDER_REPEAT;
+			break;
+		case BT_MCS_ORDER_SINGLE_ONCE:
+		case BT_MCS_ORDER_IN_ORDER_ONCE:
+		case BT_MCS_ORDER_OLDEST_ONCE:
+		case BT_MCS_ORDER_NEWEST_ONCE:
+			if (shuffle)
+				order = BT_MCS_ORDER_SHUFFLE_ONCE;
+			break;
+		case BT_MCS_ORDER_SINGLE_REPEAT:
+		case BT_MCS_ORDER_IN_ORDER_REPEAT:
+		case BT_MCS_ORDER_OLDEST_REPEAT:
+		case BT_MCS_ORDER_NEWEST_REPEAT:
+			if (shuffle)
+				order = BT_MCS_ORDER_SHUFFLE_REPEAT;
+			break;
+		}
+
+		DBG("Set Shuffle %s -> 0x%02x", value, order);
+
+		if (order == remote->playing_order)
+			return true;
+		return bt_mcp_set_playing_order(remote->mcp, remote->ccid,
+									order);
+	}
+
+	return false;
+}
+
 static const struct media_player_callback remote_mp_cb = {
 	.play		= remote_mp_play,
 	.pause		= remote_mp_pause,
 	.stop		= remote_mp_stop,
 	.next		= remote_mp_next,
 	.previous	= remote_mp_previous,
+	.set_setting	= remote_mp_set_setting,
 };
 
 static void mcp_ccid(void *data, uint8_t ccid, bool gmcs)
