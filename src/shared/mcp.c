@@ -981,6 +981,7 @@ void bt_mcs_unregister_all(struct gatt_db *db)
 static void mcp_service_reread(struct bt_mcp_service *service,
 					struct gatt_db_attribute *attrib,
 					bool skip_notify);
+static void foreach_mcs_char(struct gatt_db_attribute *attr, void *user_data);
 
 static void mcp_debug_func(const char *str, void *user_data)
 {
@@ -1631,6 +1632,9 @@ static void update_ccid(bool success, uint8_t att_ecode,
 
 	service->rdb.ccid_value = v;
 
+	gatt_db_service_foreach_char(service->rdb.service, foreach_mcs_char,
+								service);
+
 	update_add_service(service, service->mcp);
 }
 
@@ -1916,8 +1920,6 @@ static void foreach_mcs_service(struct gatt_db_attribute *attr, void *user_data)
 
 	/* Find CCID first */
 	gatt_db_service_foreach_char(attr, foreach_mcs_ccid, service);
-
-	gatt_db_service_foreach_char(attr, foreach_mcs_char, service);
 
 	queue_push_tail(mcp->services, service);
 }
