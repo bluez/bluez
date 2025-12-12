@@ -1325,6 +1325,57 @@ static void testgroup_cl_mccp(void)
 		test_setup, test_client, &cfg_mccp_bv_21_c, MCCP_BV_21_C);
 }
 
+#define CL_BLUEZ_1_REREAD \
+	NOTIFY_CHRC(TRACK_CHG), \
+	READ_CHRC(TRACK_TITLE, 'N', 'e', 'w'), \
+	READ_CHRC(TRACK_DUR, 0xff, 0xff, 0xff, 0xff), \
+	READ_CHRC(TRACK_POS, 0xff, 0xff, 0xff, 0xff), \
+	READ_CHRC(PLAY_SPEED, 0x00), \
+	READ_CHRC(SEEK_SPEED, 0x00), \
+	READ_CHRC(PLAY_ORDER, 0x04), \
+	READ_CHRC(PLAY_ORDER_SUPP, 0x18, 0x00), \
+	READ_CHRC(CP_SUPP, SPLIT_INT32(0x01))
+
+static void cl_reread_complete_cb(const void *user_data)
+{
+	struct test_data *data = (void *)user_data;
+
+	if (data->step == 2)
+		tester_test_passed();
+}
+
+static void cl_reread_track_title(void *user_data, const uint8_t *value,
+								uint16_t length)
+{
+	struct test_data *data = user_data;
+
+	if (strncmp((void *)value, "Title", length) == 0 && data->step == 0) {
+		data->step++;
+	} else if (strncmp((void *)value, "New", length) == 0 &&
+							data->step == 1) {
+		data->step++;
+		tester_io_set_complete_func(cl_reread_complete_cb);
+	} else {
+		FAIL_TEST();
+	}
+}
+
+const struct test_config cfg_cl_bluez_1_reread = {
+	.listener_cb = &(struct bt_mcp_listener_callback) {
+		.track_title = cl_reread_track_title,
+	},
+	.setup_data = setup_data_mcs,
+	.setup_data_len = ARRAY_SIZE(setup_data_mcs),
+	.gmcs = false,
+};
+
+static void testgroup_cl_extra(void)
+{
+	define_test("MCP/CL/BLUEZ-1 [Reread On Track Change, No Notify]",
+		test_setup, test_client,
+		&cfg_cl_bluez_1_reread, CL_BLUEZ_1_REREAD);
+}
+
 /*
  * Server tests
  */
@@ -1800,6 +1851,7 @@ int main(int argc, char *argv[])
 	tester_init(&argc, &argv);
 	testgroup_cl_cggit();
 	testgroup_cl_mccp();
+	testgroup_cl_extra();
 	testgroup_sr_sggit();
 	testgroup_sr_mcp();
 
