@@ -247,7 +247,8 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/lc3.h src/shared/tty.h \
 			src/shared/bap-defs.h \
 			src/shared/asha.h src/shared/asha.c \
-			src/shared/battery.h src/shared/battery.c
+			src/shared/battery.h src/shared/battery.c \
+			src/shared/uinput.h src/shared/uinput.c
 
 if READLINE
 shared_sources += src/shared/shell.c src/shared/shell.h
@@ -729,6 +730,12 @@ unit_tests += unit/test-gmap
 
 unit_test_gmap_SOURCES = unit/test-gmap.c $(btio_sources)
 unit_test_gmap_LDADD = src/libshared-glib.la \
+				lib/libbluetooth-internal.la $(GLIB_LIBS)
+
+unit_tests += unit/test-mcp
+
+unit_test_mcp_SOURCES = unit/test-mcp.c $(btio_sources)
+unit_test_mcp_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 
 unit_tests += unit/test-battery
