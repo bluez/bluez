@@ -731,6 +731,12 @@ unit_test_gmap_SOURCES = unit/test-gmap.c $(btio_sources)
 unit_test_gmap_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 
+unit_tests += unit/test-mcp
+
+unit_test_mcp_SOURCES = unit/test-mcp.c $(btio_sources)
+unit_test_mcp_LDADD = src/libshared-glib.la \
+				lib/libbluetooth-internal.la $(GLIB_LIBS)
+
 unit_tests += unit/test-battery
 
 unit_test_battery_SOURCES = unit/test-battery.c
