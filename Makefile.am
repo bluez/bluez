@@ -49,13 +49,17 @@ conf_DATA += profiles/network/network.conf
 state_DATA =
 endif
 
-if SYSTEMD
+if SYSTEMD_SYSTEMUNITS
 systemdsystemunitdir = $(SYSTEMD_SYSTEMUNITDIR)
 systemdsystemunit_DATA = src/bluetooth.service
+endif
 
+if SYSTEMD_USERUNITS
 systemduserunitdir = $(SYSTEMD_USERUNITDIR)
 systemduserunit_DATA =
+endif
 
+if SYSTEMD_UNITS
 dbussystembusdir = $(DBUS_SYSTEMBUSDIR)
 dbussystembus_DATA = src/org.bluez.service
 endif
