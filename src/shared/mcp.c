@@ -979,7 +979,8 @@ void bt_mcs_unregister_all(struct gatt_db *db)
  */
 
 static void mcp_service_reread(struct bt_mcp_service *service,
-					struct gatt_db_attribute *attrib);
+					struct gatt_db_attribute *attrib,
+					bool skip_notify);
 
 static void mcp_debug_func(const char *str, void *user_data)
 {
@@ -1074,7 +1075,6 @@ static void mcp_pending_write_cb(bool success, uint8_t att_ecode,
 								void *user_data)
 {
 	struct bt_mcp_pending *pending = user_data;
-	uint8_t props;
 
 	if (!success) {
 		pending->write.result = BT_MCS_RESULT_COMMAND_CANNOT_COMPLETE;
@@ -1083,14 +1083,8 @@ static void mcp_pending_write_cb(bool success, uint8_t att_ecode,
 
 	pending->write.result = BT_MCS_RESULT_SUCCESS;
 
-	if (!gatt_db_attribute_get_char_data(pending->write.attrib, NULL,
-						NULL, &props, NULL, NULL))
-		return;
-	if (props & BT_GATT_CHRC_PROP_NOTIFY)
-		return;
-
 	/* If the attribute doesn't have notify, reread to get the new value */
-	mcp_service_reread(pending->service, pending->write.attrib);
+	mcp_service_reread(pending->service, pending->write.attrib, true);
 }
 
 static void mcp_pending_write_done(void *user_data)
@@ -1389,6 +1383,8 @@ static void update_track_changed(bool success, uint8_t att_ecode,
 		return;
 	}
 
+	mcp_service_reread(service, NULL, true);
+
 	DBG_SVC(service, "Track Changed");
 
 	LISTENER_CB(service, track_changed);
@@ -1626,7 +1622,7 @@ static void update_ccid(bool success, uint8_t att_ecode,
 	uint8_t v;
 
 	if (!success || !util_iov_pull_u8(&iov, &v)) {
-		DBG_SVC(service, "Unable to read Media State: error 0x%02x",
+		DBG_SVC(service, "Unable to read CCID: error 0x%02x",
 								att_ecode);
 		return;
 	}
@@ -1639,7 +1635,8 @@ static void update_ccid(bool success, uint8_t att_ecode,
 }
 
 static void mcp_service_reread(struct bt_mcp_service *service,
-					struct gatt_db_attribute *attrib)
+					struct gatt_db_attribute *attrib,
+					bool skip_notify)
 {
 	const struct {
 		struct gatt_db_attribute *attr;
@@ -1659,6 +1656,7 @@ static void mcp_service_reread(struct bt_mcp_service *service,
 	};
 	struct bt_gatt_client *client = service->mcp->client;
 	uint16_t value_handle;
+	uint8_t props;
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(attrs); ++i) {
@@ -1668,8 +1666,10 @@ static void mcp_service_reread(struct bt_mcp_service *service,
 			continue;
 
 		if (!gatt_db_attribute_get_char_data(attrs[i].attr, NULL,
-					&value_handle, NULL, NULL, NULL))
-			return;
+					&value_handle, &props, NULL, NULL))
+			continue;
+		if (skip_notify && (props & BT_GATT_CHRC_PROP_NOTIFY))
+			continue;
 
 		DBG_SVC(service, "re-read handle 0x%04x", value_handle);
 
@@ -1681,7 +1681,7 @@ static void mcp_service_reread(struct bt_mcp_service *service,
 static void notify_media_player_name(struct bt_mcp_service *service)
 {
 	/* On player name change, re-read all attributes */
-	mcp_service_reread(service, NULL);
+	mcp_service_reread(service, NULL, false);
 }
 
 static void mcp_idle(void *data)
