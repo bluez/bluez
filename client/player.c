@@ -127,6 +127,7 @@ struct endpoint {
 	struct codec_preset *codec_preset;
 	bool broadcast;
 	struct iovec *bcode;
+	unsigned int refcount;
 };
 
 static DBusConnection *dbus_conn;
@@ -3323,6 +3324,7 @@ static void register_endpoint_reply(DBusMessage *message, void *user_data)
 	}
 
 	bt_shell_printf("Endpoint %s registered\n", ep->path);
+	ep->refcount++;
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -3737,9 +3739,13 @@ static void unregister_endpoint_reply(DBusMessage *message, void *user_data)
 
 	bt_shell_printf("Endpoint %s unregistered\n", ep->path);
 
-	local_endpoints = g_list_remove(local_endpoints, ep);
-	g_dbus_unregister_interface(dbus_conn, ep->path,
-					BLUEZ_MEDIA_ENDPOINT_INTERFACE);
+	ep->refcount--;
+
+	if (ep->refcount == 0) {
+		local_endpoints = g_list_remove(local_endpoints, ep);
+		g_dbus_unregister_interface(dbus_conn, ep->path,
+					    BLUEZ_MEDIA_ENDPOINT_INTERFACE);
+	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
