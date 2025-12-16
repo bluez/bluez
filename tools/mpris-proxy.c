@@ -62,6 +62,7 @@ static GSList *obex_sessions;
 
 static gboolean option_version = FALSE;
 static gboolean option_export = FALSE;
+static gchar *option_adapter;
 
 struct tracklist {
 	GDBusProxy *proxy;
@@ -753,6 +754,8 @@ static GOptionEntry options[] = {
 				"Show version information and exit" },
 	{ "export", 'e', 0, G_OPTION_ARG_NONE, &option_export,
 				"Export remote players" },
+	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &option_adapter,
+				"DBus path of the adapter to use" },
 	{ NULL },
 };
 
@@ -2349,8 +2352,11 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	path = g_dbus_proxy_get_path(proxy);
 
 	if (!strcmp(interface, BLUEZ_ADAPTER_INTERFACE)) {
-		if (adapter != NULL)
+		if ((option_adapter && strcmp(path, option_adapter)) ||
+							adapter != NULL) {
+			printf("Bluetooth Adapter %s ignored\n", path);
 			return;
+		}
 
 		printf("Bluetooth Adapter %s found\n", path);
 		adapter = proxy;
