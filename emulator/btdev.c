@@ -1928,6 +1928,45 @@ static int cmd_pin_code_neg_reply_complete(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_change_conn_pkt_type(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_change_conn_pkt_type *cmd = data;
+	struct btdev_conn *conn;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	conn = queue_find(dev->conns, match_handle,
+				UINT_TO_PTR(cpu_to_le16(cmd->handle)));
+	if (!conn)
+		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+
+	cmd_status(dev, status, BT_HCI_CMD_CHANGE_CONN_PKT_TYPE);
+
+	return 0;
+}
+
+static int cmd_change_conn_pkt_type_complete(struct btdev *dev,
+						const void *data, uint8_t len)
+{
+	const struct bt_hci_cmd_change_conn_pkt_type *cmd = data;
+	struct bt_hci_evt_conn_pkt_type_changed ev;
+	struct btdev_conn *conn;
+
+	conn = queue_find(dev->conns, match_handle,
+				UINT_TO_PTR(cpu_to_le16(cmd->handle)));
+	if (!conn)
+		return 0;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.status = BT_HCI_ERR_SUCCESS;
+	ev.handle = cmd->handle;
+	ev.pkt_type = cmd->pkt_type;
+
+	send_event(dev, BT_HCI_EVT_CONN_PKT_TYPE_CHANGED, &ev, sizeof(ev));
+
+	return 0;
+}
+
 static int cmd_auth_requested(struct btdev *dev, const void *data, uint8_t len)
 {
 	cmd_status(dev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_AUTH_REQUESTED);
@@ -2789,6 +2828,9 @@ static int cmd_enable_dut_mode(struct btdev *dev, const void *data,
 	CMD(BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY, \
 					cmd_pin_code_neg_reply, \
 					cmd_pin_code_neg_reply_complete), \
+	CMD(BT_HCI_CMD_CHANGE_CONN_PKT_TYPE, \
+					cmd_change_conn_pkt_type, \
+					cmd_change_conn_pkt_type_complete), \
 	CMD(BT_HCI_CMD_AUTH_REQUESTED, cmd_auth_requested, \
 					cmd_auth_requested_complete), \
 	CMD(BT_HCI_CMD_SET_CONN_ENCRYPT, cmd_set_conn_encrypt, \
