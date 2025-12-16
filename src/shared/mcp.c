@@ -2118,3 +2118,8 @@ bool bt_mcp_add_listener(struct bt_mcp *mcp, uint8_t ccid,
 	queue_push_tail(service->listeners, listener);
 	return true;
 }
+
+struct bt_gatt_client *bt_mcp_test_util_get_client(struct bt_mcp *mcp)
+{
+	return mcp->client;
+}
