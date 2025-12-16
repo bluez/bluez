@@ -29,7 +29,7 @@ as it likes.
 
 Note: If the sender disconnects the end points are automatically unregistered.
 
-possible properties:
+Possible properties:
 
 :string UUID:
 
@@ -43,7 +43,7 @@ possible properties:
 	values should match the profile specification which is
 	indicated by the UUID.
 
-:uint32_t Vendor [Optional]:
+:uint32 Vendor [Optional]:
 
 	Vendor-specific Company ID, Codec ID tuple that the endpoint implements.
 

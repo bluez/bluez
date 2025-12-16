@@ -115,7 +115,7 @@ Select BAP unicast configuration from the supported capabilities:
 
 :uint32 Locations:
 
-:uint32_t ChannelAllocation:
+:uint32 ChannelAllocation:
 
 :dict QoS:
 
@@ -127,7 +127,7 @@ Select BAP unicast configuration from the supported capabilities:
 	:uint32 PreferredMinimumDelay:
 	:uint32 PreferredMaximumDelay:
 
-See `MediaEndpoint Properties`_ for their possible values.
+See `Properties`_ for their possible values.
 
 Returns a configuration which can be used to setup a transport:
 
@@ -180,8 +180,8 @@ This method gets called when **bluetoothd(8)** unregisters the endpoint.
 An endpoint can use it to do cleanup tasks. There is no need to unregister the
 endpoint, because when this method gets called it has already been unregistered.
 
-MediaEndpoint Properties
-------------------------
+Properties
+----------
 
 string UUID [readonly, optional]
 ````````````````````````````````
@@ -196,7 +196,7 @@ Assigned number of codec that the endpoint implements.
 The values should match the profile specification which is indicated by the
 UUID.
 
-uint32_t Vendor [readonly, Optional]
+uint32 Vendor [readonly, optional]
 ````````````````````````````````````
 
 Vendor-specific Company ID, Codec ID tuple that the endpoint implements.
@@ -208,7 +208,7 @@ array{byte} Capabilities [readonly, optional]
 
 Capabilities blob, it is used as it is so the size and byte order must match.
 
-array{byte} Metadata [readonly, Optional]
+array{byte} Metadata [readonly, optional]
 `````````````````````````````````````````
 
 Metadata blob, it is used as it is so the size and byte order must match.
