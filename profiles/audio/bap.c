@@ -48,6 +48,7 @@
 #include "src/shared/bap.h"
 #include "src/shared/tmap.h"
 #include "src/shared/gmap.h"
+#include "src/shared/timeout.h"
 
 #include "btio/btio.h"
 #include "src/plugin.h"
@@ -139,6 +140,7 @@ struct bap_data {
 	struct queue *bcast_snks;
 	struct queue *server_streams;
 	GIOChannel *listen_io;
+	unsigned int listen_timer;
 	unsigned int io_id;
 	unsigned int cig_update_id;
 	bool services_ready;
@@ -174,6 +176,9 @@ static void setup_free(void *data);
 
 static void bap_data_free(struct bap_data *data)
 {
+	if (data->listen_timer)
+		timeout_remove(data->listen_timer);
+
 	if (data->listen_io) {
 		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
 		g_io_channel_unref(data->listen_io);
@@ -1558,6 +1563,11 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 	uint8_t sid;
 
 	DBG("BIG Info received");
+
+	if (data->listen_timer) {
+		timeout_remove(data->listen_timer);
+		data->listen_timer = 0;
+	}
 
 	bt_io_get(io, &err,
 			BT_IO_OPT_BASE, &base,
@@ -3566,6 +3576,21 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
 	bap_data_remove(data);
 }
 
+static bool pa_sync_timeout_callback(gpointer user_data)
+{
+	struct bap_data *data = user_data;
+
+	error("PA sync timeout, remove broadcast source device %s",
+				device_get_path(data->device));
+
+	data->listen_timer = 0;
+
+	/* remove device to force exit from pending bcast probe */
+	btd_adapter_remove_device(data->adapter, data->device);
+
+	return FALSE;
+}
+
 static int pa_sync(struct bap_data *data)
 {
 	GError *err = NULL;
@@ -3595,8 +3620,14 @@ static int pa_sync(struct bap_data *data)
 	if (!data->listen_io) {
 		error("%s", err->message);
 		g_error_free(err);
+		return -1;
 	}
 
+	data->listen_timer = timeout_add(
+				/* unit: 10ms */
+				bap_sink_pa_qos.bcast.sync_timeout * 10,
+				pa_sync_timeout_callback,
+				data, NULL);
 	return 0;
 }
 
@@ -3646,6 +3677,11 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
 
 	DBG("PA Sync done");
+
+	if (data->listen_timer) {
+		timeout_remove(data->listen_timer);
+		data->listen_timer = 0;
+	}
 
 	g_io_channel_unref(data->listen_io);
 	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
@@ -3702,7 +3738,15 @@ static void pa_and_big_sync(struct bap_setup *setup)
 	if (!bap_data->listen_io) {
 		error("%s", err->message);
 		g_error_free(err);
+		return;
 	}
+
+	bap_data->listen_timer = timeout_add(
+				/* unit: 10ms */
+				bap_sink_pa_qos.bcast.sync_timeout * 10,
+				pa_sync_timeout_callback,
+				bap_data, NULL);
+
 }
 
 static void bap_ready(struct bt_bap *bap, void *user_data)
