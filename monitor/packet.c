@@ -32,11 +32,13 @@
 #include "bluetooth/uuid.h"
 #include "bluetooth/hci.h"
 #include "bluetooth/hci_lib.h"
+#include "bluetooth/mgmt.h"
 
 #include "src/shared/util.h"
 #include "src/shared/btsnoop.h"
 #include "src/shared/queue.h"
 #include "src/shared/bap-debug.h"
+#include "src/shared/mgmt.h"
 #include "display.h"
 #include "bt.h"
 #include "ll.h"
@@ -14683,10 +14685,6 @@ static const struct bitfield_data mgmt_adv_flags_table[] = {
 	{  16, "Contain Scan Response Data"		},
 	{ }
 };
-#define MGMT_ADV_PARAM_DURATION		(1 << 12)
-#define MGMT_ADV_PARAM_TIMEOUT		(1 << 13)
-#define MGMT_ADV_PARAM_INTERVALS	(1 << 14)
-#define MGMT_ADV_PARAM_TX_POWER		(1 << 15)
 
 static void mgmt_print_adv_flags(uint32_t flags)
 {
@@ -15994,6 +15992,110 @@ static void mgmt_set_exp_feature_rsp(const void *data, uint16_t size)
 	mgmt_print_exp_feature(data);
 }
 
+static const struct {
+	uint16_t val;
+	const char *str;
+} default_system_config_table[] = {
+	{0x0000, "BR/EDR Page Scan Type"                              },
+	{0x0001, "BR/EDR Page Scan Interval"                          },
+	{0x0002, "BR/EDR Page Scan Window"                            },
+	{0x0003, "BR/EDR Inquiry Scan Type"                           },
+	{0x0004, "BR/EDR Inquiry Scan Interval"                       },
+	{0x0005, "BR/EDR Inquiry Scan Window"                         },
+	{0x0006, "BR/EDR Link Supervision Timeout"                    },
+	{0x0007, "BR/EDR Page Timeout"                                },
+	{0x0008, "BR/EDR Min Sniff Interval"                          },
+	{0x0009, "BR/EDR Max Sniff Interval"                          },
+	{0x000a, "LE Advertisement Min Interval"                      },
+	{0x000b, "LE Advertisement Max Interval"                      },
+	{0x000c, "LE Multi Advertisement Rotation Interval"           },
+	{0x000d, "LE Scanning Interval for auto connect"              },
+	{0x000e, "LE Scanning Window for auto connect"                },
+	{0x000f, "LE Scanning Interval for wake scenarios"            },
+	{0x0010, "LE Scanning Window for wake scenarios"              },
+	{0x0011, "LE Scanning Interval for discovery"                 },
+	{0x0012, "LE Scanning Window for discovery"                   },
+	{0x0013, "LE Scanning Interval for adv monitoring"            },
+	{0x0014, "LE Scanning Window for adv monitoring"              },
+	{0x0015, "LE Scanning Interval for connect"                   },
+	{0x0016, "LE Scanning Window for connect"                     },
+	{0x0017, "LE Min Connection Interval"                         },
+	{0x0018, "LE Max Connection Interval"                         },
+	{0x0019, "LE Connection Latency"                              },
+	{0x001a, "LE Connection Supervision Timeout"                  },
+	{0x001b, "LE Autoconnect Timeout"                             },
+	{0x001d, "LE Allow List Scanning Duration for adv monitoring" },
+	{0x001e, "LE No Filter Scanning Duration for adv monitoring"  },
+	{0x001f, "LE Enable Interleave Scan for adv monitoring"       },
+	{ }
+};
+
+static const char *default_system_config(uint16_t val)
+{
+	int i;
+
+	for (i = 0; default_system_config_table[i].str; i++) {
+		if (default_system_config_table[i].val == val)
+			return default_system_config_table[i].str;
+	}
+
+	return NULL;
+}
+
+static void mgmt_print_system_config_tlv(void *data, void *user_data)
+{
+	const struct mgmt_tlv *entry = data;
+	uint16_t type = get_le16(&entry->type);
+	const char *desc = default_system_config(type);
+	uint32_t value;
+	char buf[8];
+
+	if (!desc) {
+		snprintf(buf, sizeof(buf), "0x%4.4x", entry->type);
+		desc = buf;
+	}
+
+	if (entry->length == 1 || entry->length == 2 || entry->length == 4) {
+		if (entry->length == 1)
+			value = get_u8(entry->value);
+		else if (entry->length == 2)
+			value = get_le16(entry->value);
+		else if (entry->length == 4)
+			value = get_le32(entry->value);
+		print_field("%s: %u", desc, value);
+	} else {
+		print_hex_field(desc, entry->value, entry->length);
+	}
+}
+
+static void mgmt_read_default_system_config_rsp(const void *data, uint16_t size)
+{
+	struct mgmt_tlv_list *tlv_list;
+
+	tlv_list = mgmt_tlv_list_load_from_buf(data, size);
+	if (!tlv_list) {
+		print_text(COLOR_ERROR, "  Unable to parse response of read "
+					"system configuration");
+		return;
+	}
+	mgmt_tlv_list_foreach(tlv_list, mgmt_print_system_config_tlv, NULL);
+	mgmt_tlv_list_free(tlv_list);
+}
+
+static void mgmt_set_default_system_config_cmd(const void *data, uint16_t size)
+{
+	struct mgmt_tlv_list *tlv_list;
+
+	tlv_list = mgmt_tlv_list_load_from_buf(data, size);
+	if (!tlv_list) {
+		print_text(COLOR_ERROR, "  Unable to parse command of set "
+					"system configuration");
+		return;
+	}
+	mgmt_tlv_list_foreach(tlv_list, mgmt_print_system_config_tlv, NULL);
+	mgmt_tlv_list_free(tlv_list);
+}
+
 static const struct bitfield_data mgmt_added_device_flags_table[] = {
 	{ 0, "Remote Wakeup"		},
 	{ 1, "Device Privacy Mode"	},
@@ -16574,8 +16676,12 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x004a, "Set Experimental Feature",
 				mgmt_set_exp_feature_cmd, 17, true,
 				mgmt_set_exp_feature_rsp, 20, true },
-	{ 0x004b, "Read Default System Configuration" },
-	{ 0x004c, "Set Default System Configuration" },
+	{ 0x004b, "Read Default System Configuration",
+				mgmt_null_cmd, 0, true,
+				mgmt_read_default_system_config_rsp, 4, false},
+	{ 0x004c, "Set Default System Configuration",
+				mgmt_set_default_system_config_cmd, 4, false,
+				mgmt_null_rsp, 0, true},
 	{ 0x004d, "Read Default Runtime Configuration" },
 	{ 0x004e, "Set Default Runtime Configuration" },
 	{ 0x004f, "Get Device Flags",
