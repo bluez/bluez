@@ -108,6 +108,13 @@ static void hfp_hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 	}
 }
 
+static void hfp_hf_update_operator(const char *operator_name, void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	telephony_set_operator_name(dev->telephony, operator_name);
+}
+
 static void hfp_hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
 							void *user_data)
 {
@@ -125,6 +132,7 @@ static void hfp_hf_session_ready_cb(enum hfp_result res, enum hfp_error cme_err,
 static struct hfp_hf_callbacks hf_session_callbacks = {
 	.session_ready = hfp_hf_session_ready_cb,
 	.update_indicator = hfp_hf_update_indicator,
+	.update_operator = hfp_hf_update_operator,
 };
 
 static void hfp_disconnect_watch(void *user_data)
