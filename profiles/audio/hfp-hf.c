@@ -137,6 +137,13 @@ static void hfp_hf_update_indicator(enum hfp_indicator indicator, uint32_t val,
 	}
 }
 
+static void hfp_hf_update_inband_ring(bool enabled, void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	telephony_set_inband_ringtone(dev->telephony, enabled);
+}
+
 static void hfp_hf_update_operator(const char *operator_name, void *user_data)
 {
 	struct hfp_device *dev = user_data;
@@ -235,6 +242,7 @@ static struct hfp_hf_callbacks hf_session_callbacks = {
 	.session_ready = hfp_hf_session_ready_cb,
 	.update_indicator = hfp_hf_update_indicator,
 	.update_operator = hfp_hf_update_operator,
+	.update_inband_ring = hfp_hf_update_inband_ring,
 	.call_added = hfp_hf_call_added,
 	.call_removed = hfp_hf_call_removed,
 	.call_status_updated = hfp_hf_call_status_updated,
