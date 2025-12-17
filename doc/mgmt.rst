@@ -3444,6 +3444,9 @@ Currently defined Parameter_Type values are:
 	0x0019, LE Connection Latency
 	0x001a, LE Connection Supervision Timeout
 	0x001b, LE Autoconnect Timeout
+	0x001d, LE Allow List Scanning Duration for adv monitoring
+	0x001e, LE No Filter Scanning Duration for adv monitoring
+	0x001f, LE Enable Interleave Scan for adv monitoring
 
 This command can be used at any time and will return a list of supported default
 parameters as well as their current value.
