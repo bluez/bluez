@@ -16027,6 +16027,7 @@ static const struct {
 	{0x001d, "LE Allow List Scanning Duration for adv monitoring" },
 	{0x001e, "LE No Filter Scanning Duration for adv monitoring"  },
 	{0x001f, "LE Enable Interleave Scan for adv monitoring"       },
+	{0x0020, "BR/EDR Connection Idle Timeout"                     },
 	{ }
 };
 

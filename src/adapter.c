@@ -4801,6 +4801,12 @@ static bool load_bredr_defaults(struct btd_adapter *adapter,
 			return false;
 	}
 
+	if (defaults->idle_timeout) {
+		if (!mgmt_tlv_add_fixed(list, 0x0020,
+					&defaults->idle_timeout))
+			return false;
+	}
+
 	return true;
 }
 

@@ -104,6 +104,7 @@ static const char *br_options[] = {
 	"InquiryScanWindow",
 	"LinkSupervisionTimeout",
 	"PageTimeout",
+	"IdleTimeout",
 	"MinSniffInterval",
 	"MaxSniffInterval",
 	NULL
@@ -494,8 +495,8 @@ struct config_param {
 	const char * const val_name;
 	void * const val;
 	const size_t size;
-	const uint16_t min;
-	const uint16_t max;
+	const uint32_t min;
+	const uint32_t max;
 };
 
 static void parse_mode_config(GKeyFile *config, const char *group,
@@ -573,6 +574,11 @@ static void parse_br_config(GKeyFile *config)
 		  sizeof(btd_opts.defaults.br.max_sniff_interval),
 		  0x0001,
 		  0xFFFE},
+		{ "IdleTimeout",
+		  &btd_opts.defaults.br.idle_timeout,
+		  sizeof(btd_opts.defaults.br.idle_timeout),
+		  500,
+		  3600000},
 	};
 
 	if (btd_opts.mode == BT_MODE_LE)

@@ -62,6 +62,7 @@ struct btd_br_defaults {
 
 	uint16_t	min_sniff_interval;
 	uint16_t	max_sniff_interval;
+	uint32_t	idle_timeout;
 };
 
 struct btd_le_defaults {
