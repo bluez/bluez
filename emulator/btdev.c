@@ -5082,6 +5082,79 @@ static int cmd_set_default_phy(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_le_set_phy(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_set_phy *cmd = data;
+	struct btdev_conn *conn;
+	uint8_t status;
+
+	conn = queue_find(dev->conns, match_handle,
+				UINT_TO_PTR(cpu_to_le16(cmd->handle)));
+	if (!conn) {
+		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+		goto done;
+	}
+
+	if (cmd->all_phys > 0x03 || (!(cmd->all_phys & 0x01) &&
+			(!cmd->tx_phys || cmd->tx_phys > 0x07)) ||
+			(!(cmd->all_phys & 0x02) &&
+			(!cmd->rx_phys || cmd->rx_phys > 0x07)))
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+	else
+		status = BT_HCI_ERR_SUCCESS;
+
+done:
+	cmd_status(dev, status, BT_HCI_CMD_LE_SET_PHY);
+
+	return 0;
+}
+
+static int cmd_le_set_phy_complete(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_set_phy *cmd = data;
+	struct bt_hci_evt_le_phy_update_complete ev;
+	struct btdev_conn *conn;
+
+	conn = queue_find(dev->conns, match_handle,
+				UINT_TO_PTR(cpu_to_le16(cmd->handle)));
+	if (!conn)
+		return 0;
+
+	if (cmd->all_phys > 0x03 || (!(cmd->all_phys & 0x01) &&
+			(!cmd->tx_phys || cmd->tx_phys > 0x07)) ||
+			(!(cmd->all_phys & 0x02) &&
+			(!cmd->rx_phys || cmd->rx_phys > 0x07)))
+		return 0;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.handle = cmd->handle;
+
+	/* Use the highest PHY possible */
+	if (cmd->tx_phys & BIT(0))
+		ev.tx_phy = 0x01; /* LE 1M PHY */
+
+	if (cmd->rx_phys & BIT(0))
+		ev.rx_phy = 0x01; /* LE 1M PHY */
+
+	if (cmd->tx_phys & BIT(1))
+		ev.tx_phy |= 0x02; /* LE 2M PHY */
+
+	if (cmd->rx_phys & BIT(1))
+		ev.rx_phy |= 0x02; /* LE 2M PHY */
+
+	if (cmd->tx_phys & BIT(2))
+		ev.tx_phy |= 0x03; /* LE CODED PHY */
+
+	if (cmd->rx_phys & BIT(2))
+		ev.rx_phy |= 0x03; /* LE CODED PHY */
+
+	le_meta_event(dev, BT_HCI_EVT_LE_PHY_UPDATE_COMPLETE, &ev, sizeof(ev));
+
+	return 0;
+}
+
 static const uint8_t *ext_adv_gen_rpa(const struct btdev *dev,
 						struct le_ext_adv *adv)
 {
@@ -6335,6 +6408,7 @@ done:
 
 #define CMD_LE_50 \
 	CMD(BT_HCI_CMD_LE_SET_DEFAULT_PHY, cmd_set_default_phy,	NULL), \
+	CMD(BT_HCI_CMD_LE_SET_PHY, cmd_le_set_phy, cmd_le_set_phy_complete), \
 	CMD(BT_HCI_CMD_LE_SET_ADV_SET_RAND_ADDR, cmd_set_adv_rand_addr, NULL), \
 	CMD(BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS, cmd_set_ext_adv_params, NULL), \
 	CMD(BT_HCI_CMD_LE_SET_EXT_ADV_DATA, cmd_set_ext_adv_data, NULL), \
