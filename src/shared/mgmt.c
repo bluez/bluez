@@ -686,6 +686,11 @@ void mgmt_tlv_list_free(struct mgmt_tlv_list *tlv_list)
 	free(tlv_list);
 }
 
+uint16_t mgmt_tlv_list_size(struct mgmt_tlv_list *tlv_list)
+{
+	return tlv_list->size;
+}
+
 bool mgmt_tlv_add(struct mgmt_tlv_list *tlv_list, uint16_t type, uint8_t length,
 								void *value)
 {
