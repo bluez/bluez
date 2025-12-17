@@ -109,6 +109,9 @@ struct l2cap_data {
 
 	/* Expected supported PHYs */
 	uint32_t phys;
+
+	/* Set PHY */
+	uint32_t phy;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -426,6 +429,35 @@ static const struct l2cap_data client_connect_phy_test_1 = {
 	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
 };
 
+static const struct l2cap_data client_connect_phy_1m_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+	.phy = BT_PHY_BR_1M_1SLOT,
+};
+
+static const struct l2cap_data client_connect_phy_2m_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+	.phy = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT),
+};
+
+static const struct l2cap_data client_connect_phy_3m_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+	.phy = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+};
+
 static const struct l2cap_data client_connect_nval_psm_test_1 = {
 	.client_psm = 0x1001,
 	.expect_err = ECONNREFUSED,
@@ -573,6 +605,44 @@ static const struct l2cap_data l2cap_server_phy_test = {
 	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
 };
 
+static const struct l2cap_data l2cap_server_phy_1m_test = {
+	.server_psm = 0x1001,
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_CONN_RSP,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+	.phy = BT_PHY_BR_1M_1SLOT,
+};
+
+static const struct l2cap_data l2cap_server_phy_2m_test = {
+	.server_psm = 0x1001,
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_CONN_RSP,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+	.phy = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT),
+};
+
+static const struct l2cap_data l2cap_server_phy_3m_test = {
+	.server_psm = 0x1001,
+	.send_cmd_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_cmd = l2cap_connect_req,
+	.send_cmd_len = sizeof(l2cap_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_CONN_RSP,
+	.phys = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_2M_1SLOT | BT_PHY_EDR_2M_3SLOT | BT_PHY_EDR_2M_5SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+	.phy = (BT_PHY_BR_1M_1SLOT |
+	BT_PHY_EDR_3M_1SLOT | BT_PHY_EDR_3M_3SLOT | BT_PHY_EDR_3M_5SLOT),
+};
+
 static const struct l2cap_data le_client_connect_success_test_1 = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
@@ -706,6 +776,33 @@ static const struct l2cap_data le_client_connect_phy_2m_coded_test_1 = {
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 };
 
+static const struct l2cap_data le_client_set_phy_1m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX,
+};
+
+static const struct l2cap_data le_client_set_phy_2m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX,
+};
+
+static const struct l2cap_data le_client_set_phy_coded_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
+};
+
 static uint8_t nonexisting_bdaddr[] = {0x00, 0xAA, 0x01, 0x02, 0x03, 0x00};
 static const struct l2cap_data le_client_close_socket_test_1 = {
 	.client_psm = 0x0080,
@@ -807,6 +904,48 @@ static const struct l2cap_data le_server_phy_2m_coded_test = {
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 };
 
+static const struct l2cap_data le_server_set_phy_1m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX,
+};
+
+static const struct l2cap_data le_server_set_phy_2m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX,
+};
+
+static const struct l2cap_data le_server_set_phy_coded_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
+};
+
 static const uint8_t ecred_connect_req[] = {	0x80, 0x00, /* PSM */
 						0x40, 0x00, /* MTU */
 						0x40, 0x00, /* MPS */
@@ -887,6 +1026,48 @@ static const struct l2cap_data ext_flowctl_server_phy_2m_coded_test = {
 	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
 		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+};
+
+static const struct l2cap_data ext_flowctl_server_set_phy_1m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_server_set_phy_2m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_server_set_phy_coded_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
 };
 
 static const struct l2cap_data le_att_client_connect_success_test_1 = {
@@ -1029,6 +1210,36 @@ static const struct l2cap_data ext_flowctl_client_phy_2m_coded_test_1 = {
 	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
 		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+};
+
+static const struct l2cap_data ext_flowctl_client_set_phy_1m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_client_set_phy_2m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_client_set_phy_coded_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
+	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
 };
 
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
@@ -1492,7 +1703,40 @@ static bool check_mtu(struct test_data *data, int sk)
 	return true;
 }
 
-static bool check_phys(struct test_data *data,int sk)
+static gboolean check_phy(gpointer args)
+{
+	int sk = PTR_TO_INT(args);
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	socklen_t len;
+
+	len = sizeof(data->phys);
+	data->phys = 0;
+
+	tester_print("Checking PHY...");
+
+	if (getsockopt(sk, SOL_BLUETOOTH, BT_PHY, &data->phys, &len) < 0) {
+		tester_warn("getsockopt(BT_PHY): %s (%d)",
+				strerror(errno), errno);
+		tester_test_failed();
+		goto done;
+	}
+
+	if (l2data->phy && l2data->phy != data->phys) {
+		tester_warn("phy 0x%08x != 0x%08x", l2data->phy, data->phys);
+		tester_test_failed();
+		goto done;
+	}
+
+	tester_test_passed();
+
+done:
+	shutdown(sk, SHUT_WR);
+
+	return FALSE;
+}
+
+static int check_phys(struct test_data *data, int sk)
 {
 	const struct l2cap_data *l2data = data->test_data;
 	socklen_t len;
@@ -1503,15 +1747,29 @@ static bool check_phys(struct test_data *data,int sk)
 	if (getsockopt(sk, SOL_BLUETOOTH, BT_PHY, &data->phys, &len) < 0) {
 		tester_warn("getsockopt(BT_PHY): %s (%d)",
 				strerror(errno), errno);
-		return false;
+		return -errno;
 	}
 
 	if (l2data->phys && l2data->phys != data->phys) {
 		tester_warn("phys 0x%08x != 0x%08x", l2data->phys, data->phys);
-		return false;
+		return -EINVAL;
 	}
 
-	return true;
+	if (l2data->phy) {
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_PHY, &l2data->phy,
+						sizeof(l2data->phy)) < 0) {
+			tester_warn("setsockopt(BT_PHY): %s (%d)",
+					strerror(errno), errno);
+			return -errno;
+		}
+
+		/* Wait for the PHY to change */
+		g_idle_add(check_phy, INT_TO_PTR(sk));
+
+		return -EINPROGRESS;
+	}
+
+	return 0;
 }
 
 static gboolean recv_errqueue(GIOChannel *io, GIOCondition cond,
@@ -1689,7 +1947,12 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	if (!check_phys(data, sk)) {
+	err = check_phys(data, sk);
+	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
+			return FALSE;
+		}
 		tester_test_failed();
 		return FALSE;
 	}
@@ -2405,7 +2668,7 @@ static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
-	int sk;
+	int sk, err;
 
 	sk = g_io_channel_unix_get_fd(io);
 
@@ -2414,7 +2677,12 @@ static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	if (!check_phys(data, sk)) {
+	err = check_phys(data, sk);
+	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
+			return FALSE;
+		}
 		tester_test_failed();
 		return FALSE;
 	}
@@ -2532,7 +2800,8 @@ static void client_l2cap_rsp(uint8_t code, const void *data, uint16_t len,
 	}
 
 	if (!l2data->expect_cmd) {
-		tester_test_passed();
+		if (!l2data->phy)
+			tester_test_passed();
 		return;
 	}
 
@@ -2546,6 +2815,9 @@ static void client_l2cap_rsp(uint8_t code, const void *data, uint16_t len,
 		tester_warn("Unexpected L2CAP response");
 		goto failed;
 	}
+
+	if (l2data->phy)
+		return;
 
 	tester_test_passed();
 	return;
@@ -2771,6 +3043,15 @@ int main(int argc, char *argv[])
 	test_l2cap_bredr("L2CAP BR/EDR Client - PHY",
 					&client_connect_phy_test_1,
 					setup_powered_client, test_connect);
+	test_l2cap_bredr("L2CAP BR/EDR Client - Set PHY 1M",
+					&client_connect_phy_1m_test,
+					setup_powered_client, test_connect);
+	test_l2cap_bredr("L2CAP BR/EDR Client - Set PHY 2M",
+					&client_connect_phy_2m_test,
+					setup_powered_client, test_connect);
+	test_l2cap_bredr("L2CAP BR/EDR Client - Set PHY 3M",
+					&client_connect_phy_3m_test,
+					setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Server - Success",
 					&l2cap_server_success_test,
@@ -2810,6 +3091,15 @@ int main(int argc, char *argv[])
 				setup_powered_server, test_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - PHY",
 				&l2cap_server_phy_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredr("L2CAP BR/EDR Server - Set PHY 1M",
+				&l2cap_server_phy_1m_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredr("L2CAP BR/EDR Server - Set PHY 2M",
+				&l2cap_server_phy_2m_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredr("L2CAP BR/EDR Server - Set PHY 3M",
+				&l2cap_server_phy_3m_test,
 				setup_powered_server, test_server);
 
 	test_l2cap_bredr("L2CAP BR/EDR Ethtool Get Ts Info - Success", NULL,
@@ -2863,6 +3153,15 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP LE Client - PHY 2M/Coded",
 				&le_client_connect_phy_2m_coded_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP LE Client - Set PHY 1M",
+				&le_client_set_phy_1m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP LE Client - Set PHY 2M",
+				&le_client_set_phy_2m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP LE Client - Set PHY Coded",
+				&le_client_set_phy_coded_test,
+				setup_powered_client, test_connect);
 
 	test_l2cap_le("L2CAP LE Client - Close socket 1",
 				&le_client_close_socket_test_1,
@@ -2895,6 +3194,15 @@ int main(int argc, char *argv[])
 					setup_powered_server, test_server);
 	test_l2cap_le_52("L2CAP LE Server - PHY 2M/Coded",
 					&le_server_phy_2m_coded_test,
+					setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP LE Server - Set PHY 1M",
+					&le_server_set_phy_1m_test,
+					setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP LE Server - Set PHY 2M",
+					&le_server_set_phy_2m_test,
+					setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP LE Server - Set PHY Coded",
+					&le_server_set_phy_coded_test,
 					setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Client - Success",
@@ -2932,6 +3240,15 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP Ext-Flowctl Client - PHY 2M/Coded",
 				&ext_flowctl_client_phy_2m_coded_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Client - Set PHY 1M",
+				&ext_flowctl_client_set_phy_1m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Client - Set PHY 2M",
+				&ext_flowctl_client_set_phy_2m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Client - Set PHY Coded",
+				&ext_flowctl_client_set_phy_coded_test,
+				setup_powered_client, test_connect);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Success",
 				&ext_flowctl_server_success_test,
@@ -2944,6 +3261,15 @@ int main(int argc, char *argv[])
 				setup_powered_server, test_server);
 	test_l2cap_le_52("L2CAP Ext-Flowctl Server - PHY 2M/Coded",
 				&ext_flowctl_server_phy_2m_coded_test,
+				setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Set PHY 1M",
+				&ext_flowctl_server_set_phy_1m_test,
+				setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Set PHY 2M",
+				&ext_flowctl_server_set_phy_2m_test,
+				setup_powered_server, test_server);
+	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Set PHY Coded",
+				&ext_flowctl_server_set_phy_coded_test,
 				setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP LE ATT Client - Success",
