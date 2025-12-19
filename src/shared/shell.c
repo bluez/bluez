@@ -1645,13 +1645,13 @@ static bool shell_quit(void *data)
 
 bool bt_shell_attach(int fd)
 {
-	struct input *input;
-
-	input = input_new(fd);
-	if (!input)
-		return false;
-
 	if (data.mode == MODE_INTERACTIVE) {
+		struct input *input;
+
+		input = input_new(fd);
+		if (!input)
+			return false;
+
 		io_set_read_handler(input->io, input_read, input, NULL);
 		io_set_disconnect_handler(input->io, input_hup, input, NULL);
 	}
