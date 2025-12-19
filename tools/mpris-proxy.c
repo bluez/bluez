@@ -62,6 +62,7 @@ static GSList *obex_sessions;
 
 static gboolean option_version = FALSE;
 static gboolean option_export = FALSE;
+static gint option_index = -1;
 
 struct tracklist {
 	GDBusProxy *proxy;
@@ -748,11 +749,37 @@ static void usage(void)
 	printf("Usage:\n");
 }
 
+static gboolean parse_option_index(const char *key, const char *value,
+					gpointer user_data, GError **error)
+{
+	long i;
+	char *end;
+
+	if (!value)
+		goto fail;
+	if (!strncmp(value, "hci", 3))
+		value += 3;
+
+	i = strtol(value, &end, 10);
+	if (end == value || *end != '\0' || i < 0)
+		goto fail;
+
+	option_index = i;
+	return TRUE;
+
+fail:
+	g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+						"Invalid value for --index/-i");
+	return FALSE;
+}
+
 static GOptionEntry options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ "export", 'e', 0, G_OPTION_ARG_NONE, &option_export,
 				"Export remote players" },
+	{ "index", 'i', 0, G_OPTION_ARG_CALLBACK, parse_option_index,
+				"Use the specified controller" },
 	{ NULL },
 };
 
@@ -2349,8 +2376,16 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	path = g_dbus_proxy_get_path(proxy);
 
 	if (!strcmp(interface, BLUEZ_ADAPTER_INTERFACE)) {
-		if (adapter != NULL)
+		char buf[32] = { 0 };
+
+		if (option_index >= 0)
+			snprintf(buf, sizeof(buf), BLUEZ_PATH "/hci%d",
+								option_index);
+
+		if ((buf[0] && strcmp(path, buf)) || adapter != NULL) {
+			printf("Bluetooth Adapter %s ignored\n", path);
 			return;
+		}
 
 		printf("Bluetooth Adapter %s found\n", path);
 		adapter = proxy;
