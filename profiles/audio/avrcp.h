@@ -105,3 +105,6 @@ size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands);
 size_t avrcp_browsing_general_reject(uint8_t *operands);
 
 struct avrcp_player *avrcp_get_target_player_by_device(struct btd_device *dev);
+
+void avrcp_player_init(void);
+void avrcp_player_exit(void);
