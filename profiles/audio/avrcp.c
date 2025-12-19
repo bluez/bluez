@@ -4972,11 +4972,15 @@ static int avrcp_init(void)
 
 	populate_default_features();
 
+	avrcp_player_init();
+
 	return 0;
 }
 
 static void avrcp_exit(void)
 {
+	avrcp_player_exit();
+
 	btd_profile_unregister(&avrcp_controller_profile);
 	btd_profile_unregister(&avrcp_target_profile);
 }
