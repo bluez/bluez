@@ -1654,9 +1654,15 @@ bool bt_shell_attach(int fd)
 
 		io_set_read_handler(input->io, input_read, input, NULL);
 		io_set_disconnect_handler(input->io, input_hup, input, NULL);
-	}
 
-	if (data.mode == MODE_NON_INTERACTIVE) {
+		if (data.init_fd >= 0) {
+			int fd = data.init_fd;
+
+			data.init_fd = -1;
+			if (!bt_shell_attach(fd))
+				return false;
+		}
+	} else {
 		if (shell_exec(data.argc, data.argv) < 0) {
 			bt_shell_noninteractive_quit(EXIT_FAILURE);
 			return true;
@@ -1665,12 +1671,6 @@ bool bt_shell_attach(int fd)
 		if (data.timeout)
 			timeout_add(data.timeout * 1000, shell_quit, NULL,
 								NULL);
-	} else if (data.init_fd >= 0) {
-		int fd = data.init_fd;
-
-		data.init_fd = -1;
-		if (!bt_shell_attach(fd))
-			return false;
 	}
 
 	return true;
