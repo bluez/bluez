@@ -6955,6 +6955,23 @@ static uint32_t le_cis_latecy(uint8_t ft, uint8_t iso_interval,
 	return latency >= interval ? latency : interval;
 }
 
+static uint8_t bits_to_phy(uint8_t bits)
+{
+	uint8_t phy = 0x00;
+
+	/* Convert PHY bits to PHY values on a ascending order. */
+	if (bits & BIT(0))
+		phy = 0x01; /* LE 1M */
+
+	if (bits & BIT(1))
+		phy = 0x02; /* LE 2M */
+
+	if (bits & BIT(2))
+		phy = 0x03; /* LE Coded */
+
+	return phy;
+}
+
 static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 						uint8_t status)
 {
@@ -6977,8 +6994,8 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 		memset(evt.cig_sync_delay, 0, sizeof(evt.cig_sync_delay));
 		memset(evt.cis_sync_delay, 0, sizeof(evt.cis_sync_delay));
 
-		evt.c_phy = le_cig->cis[cis_idx].c_phys;
-		evt.p_phy = le_cig->cis[cis_idx].p_phys;
+		evt.c_phy = bits_to_phy(le_cig->cis[cis_idx].c_phys);
+		evt.p_phy = bits_to_phy(le_cig->cis[cis_idx].p_phys);
 		evt.nse = 0x01;
 		evt.c_bn = 0x01;
 		evt.p_bn = 0x01;
