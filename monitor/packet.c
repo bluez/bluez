@@ -9025,7 +9025,7 @@ static void print_bis(const struct bt_hci_bis *bis)
 	print_field("Maximum Latency: %u ms (0x%4.4x)",
 			le16_to_cpu(bis->latency), le16_to_cpu(bis->latency));
 	print_field("RTN: 0x%2.2x", bis->rtn);
-	print_le_phy("PHY", bis->phy);
+	print_le_phys("PHYs", bis->phys);
 	print_packing(bis->packing);
 	print_framing(bis->framing);
 	print_field("Encryption: 0x%2.2x", bis->encryption);
@@ -9055,7 +9055,7 @@ static void print_bis_test(const void *data, int i)
 	print_field("Maximum PDU: %u", bis->pdu);
 	print_packing(bis->packing);
 	print_framing(bis->framing);
-	print_le_phy("PHY", bis->phy);
+	print_le_phys("PHYs", bis->phys);
 	print_field("Burst Number: %u", bis->bn);
 	print_field("Immediate Repetition Count: %u", bis->irc);
 	print_field("Pre Transmission Offset: 0x%2.2x", bis->pto);
