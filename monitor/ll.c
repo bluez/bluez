@@ -656,16 +656,16 @@ static void cis_req(const void *data, uint8_t size)
 
 	print_field("CIG ID: 0x%2.2x", cmd->cig);
 	print_field("CIS ID: 0x%2.2x", cmd->cis);
-	print_field("Central to Peripheral PHY: 0x%2.2x", cmd->c_phy);
+	print_field("Central to Peripheral PHYs: 0x%2.2x", cmd->c_phys);
 
-	mask = print_bitfield(2, cmd->c_phy, le_phys);
+	mask = print_bitfield(2, cmd->c_phys, le_phys);
 	if (mask)
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
 
-	print_field("Peripheral To Central PHY: 0x%2.2x", cmd->p_phy);
+	print_field("Peripheral To Central PHYs: 0x%2.2x", cmd->p_phys);
 
-	mask = print_bitfield(2, cmd->p_phy, le_phys);
+	mask = print_bitfield(2, cmd->p_phys, le_phys);
 	if (mask)
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
