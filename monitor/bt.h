@@ -2818,7 +2818,7 @@ struct bt_hci_bis {
 	uint16_t sdu;
 	uint16_t latency;
 	uint8_t  rtn;
-	uint8_t  phy;
+	uint8_t  phys;
 	uint8_t  packing;
 	uint8_t  framing;
 	uint8_t  encryption;
@@ -2840,7 +2840,7 @@ struct bt_hci_bis_test {
 	uint8_t  nse;
 	uint16_t sdu;
 	uint16_t  pdu;
-	uint8_t  phy;
+	uint8_t  phys;
 	uint8_t  packing;
 	uint8_t  framing;
 	uint8_t  bn;

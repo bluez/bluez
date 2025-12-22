@@ -5778,6 +5778,23 @@ static int cmd_set_pa_data(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static uint8_t bits_to_phy(uint8_t bits)
+{
+	uint8_t phy = 0x00;
+
+	/* Convert PHY bits to PHY values on a ascending order. */
+	if (bits & BIT(0))
+		phy = 0x01; /* LE 1M */
+
+	if (bits & BIT(1))
+		phy = 0x02; /* LE 2M */
+
+	if (bits & BIT(2))
+		phy = 0x03; /* LE Coded */
+
+	return phy;
+}
+
 static void send_biginfo(struct btdev *dev, const struct btdev *remote,
 							uint16_t sync_handle)
 {
@@ -5806,7 +5823,7 @@ static void send_biginfo(struct btdev *dev, const struct btdev *remote,
 	ev.max_pdu = bis->sdu;
 	memcpy(ev.sdu_interval, bis->sdu_interval, sizeof(ev.sdu_interval));
 	ev.max_sdu = bis->sdu;
-	ev.phy = bis->phy;
+	ev.phy = bits_to_phy(bis->phys);
 	ev.framing = bis->framing;
 	ev.encryption = bis->encryption;
 
@@ -6955,23 +6972,6 @@ static uint32_t le_cis_latecy(uint8_t ft, uint8_t iso_interval,
 	return latency >= interval ? latency : interval;
 }
 
-static uint8_t bits_to_phy(uint8_t bits)
-{
-	uint8_t phy = 0x00;
-
-	/* Convert PHY bits to PHY values on a ascending order. */
-	if (bits & BIT(0))
-		phy = 0x01; /* LE 1M */
-
-	if (bits & BIT(1))
-		phy = 0x02; /* LE 2M */
-
-	if (bits & BIT(2))
-		phy = 0x03; /* LE Coded */
-
-	return phy;
-}
-
 static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 						uint8_t status)
 {
@@ -7255,7 +7255,7 @@ static int cmd_create_big_complete(struct btdev *dev, const void *data,
 	}
 
 	evt.handle = cmd->handle;
-	evt.phy = bis->phy;
+	evt.phy = bits_to_phy(bis->phys);
 	evt.max_pdu = bis->sdu;
 	memcpy(evt.sync_delay, bis->sdu_interval, 3);
 	memcpy(evt.latency, bis->sdu_interval, 3);
