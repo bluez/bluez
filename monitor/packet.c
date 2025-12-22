@@ -7768,7 +7768,7 @@ static const struct bitfield_data le_phys[] = {
 	{ }
 };
 
-static void print_le_phy_bitfield(const char *label, uint8_t phys)
+static void print_le_phys(const char *label, uint8_t phys)
 {
 	uint8_t mask;
 
@@ -7798,8 +7798,8 @@ static void print_le_phys_preference(uint8_t all_phys, uint8_t tx_phys,
 		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
 							" (0x%2.2x)", mask);
 
-	print_le_phy_bitfield("TX PHYs preference", tx_phys);
-	print_le_phy_bitfield("RX PHYs preference", rx_phys);
+	print_le_phys("TX PHYs preference", tx_phys);
+	print_le_phys("RX PHYs preference", rx_phys);
 }
 
 static void le_set_default_phy_cmd(uint16_t index, const void *data,
@@ -8853,8 +8853,8 @@ static void print_cis_params(const void *data, int i)
 						le16_to_cpu(cis->c_sdu));
 	print_field("Peripheral to Central Maximum SDU Size: %u",
 						le16_to_cpu(cis->p_sdu));
-	print_le_phy("Central to Peripheral PHY", cis->c_phy);
-	print_le_phy("Peripheral to Central PHY", cis->p_phy);
+	print_le_phys("Central to Peripheral PHYs", cis->c_phys);
+	print_le_phys("Peripheral to Central PHYs", cis->p_phys);
 	print_field("Central to Peripheral Retransmission attempts: 0x%2.2x",
 							cis->c_rtn);
 	print_field("Peripheral to Central Retransmission attempts: 0x%2.2x",
@@ -8900,8 +8900,8 @@ static void print_cis_params_test(const void *data, int i)
 						le16_to_cpu(cis->c_pdu));
 	print_field("Peripheral to Central Maximum PDU: 0x%4.4x",
 						le16_to_cpu(cis->p_pdu));
-	print_le_phy("Central to Peripheral PHY", cis->c_phy);
-	print_le_phy("Peripheral to Central PHY", cis->p_phy);
+	print_le_phys("Central to Peripheral PHYs", cis->c_phys);
+	print_le_phys("Peripheral to Central PHYs", cis->p_phys);
 	print_field("Central to Peripheral Burst Number: 0x%2.2x", cis->c_bn);
 	print_field("Peripheral to Central Burst Number: 0x%2.2x", cis->p_bn);
 }
@@ -9764,7 +9764,7 @@ static void le_fsu_cmd(uint16_t index, const void *data, uint8_t size)
 	print_field("Frame Space max: %d us (0x%4.4x)",
 				le16_to_cpu(cmd->frame_space_max),
 				le16_to_cpu(cmd->frame_space_max));
-	print_le_phy_bitfield("PHYs", cmd->phys);
+	print_le_phys("PHYs", cmd->phys);
 	print_fsu_types(cmd->types);
 }
 
@@ -13325,7 +13325,7 @@ static void le_fsu_evt(struct timeval *tv, uint16_t index,
 	print_field("Frame Space: %u us (0x%4.4x)",
 				le16_to_cpu(evt->frame_space),
 				le16_to_cpu(evt->frame_space));
-	print_le_phy_bitfield("PHYs", evt->phys);
+	print_le_phys("PHYs", evt->phys);
 	print_fsu_types(evt->types);
 }
 

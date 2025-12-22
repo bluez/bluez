@@ -6977,8 +6977,8 @@ static void le_cis_estabilished(struct btdev *dev, struct btdev_conn *conn,
 		memset(evt.cig_sync_delay, 0, sizeof(evt.cig_sync_delay));
 		memset(evt.cis_sync_delay, 0, sizeof(evt.cis_sync_delay));
 
-		evt.c_phy = le_cig->cis[cis_idx].c_phy;
-		evt.p_phy = le_cig->cis[cis_idx].p_phy;
+		evt.c_phy = le_cig->cis[cis_idx].c_phys;
+		evt.p_phy = le_cig->cis[cis_idx].p_phys;
 		evt.nse = 0x01;
 		evt.c_bn = 0x01;
 		evt.p_bn = 0x01;

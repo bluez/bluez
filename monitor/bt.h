@@ -197,8 +197,8 @@ struct bt_ll_clock_acc {
 struct bt_ll_cis_req {
 	uint8_t  cig;
 	uint8_t  cis;
-	uint8_t  c_phy;
-	uint8_t  p_phy;
+	uint8_t  c_phys;
+	uint8_t  p_phys;
 	uint16_t c_sdu;
 	uint16_t p_sdu;
 	uint8_t  c_interval[3];
@@ -2720,8 +2720,8 @@ struct bt_hci_cis_params {
 	uint8_t  cis_id;
 	uint16_t c_sdu;
 	uint16_t p_sdu;
-	uint8_t  c_phy;
-	uint8_t  p_phy;
+	uint8_t  c_phys;
+	uint8_t  p_phys;
 	uint8_t  c_rtn;
 	uint8_t  p_rtn;
 } __attribute__ ((packed));
@@ -2755,8 +2755,8 @@ struct bt_hci_cis_params_test {
 	uint16_t p_sdu;
 	uint16_t c_pdu;
 	uint16_t p_pdu;
-	uint8_t  c_phy;
-	uint8_t  p_phy;
+	uint8_t  c_phys;
+	uint8_t  p_phys;
 	uint8_t  c_bn;
 	uint8_t  p_bn;
 } __attribute__ ((packed));
