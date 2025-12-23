@@ -1113,12 +1113,7 @@ static void setup_free(void *data)
 	if (setup->destroy)
 		setup->destroy(setup);
 
-	bt_bap_stream_unlock(setup->stream);
-
-	if (!closing) {
-		/* Release if not already done */
-		release_stream(setup->stream);
-	}
+	setup->stream = NULL;
 
 	if (setup->ep)
 		bap_update_cigs(setup->ep->data);
