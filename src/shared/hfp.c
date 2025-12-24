@@ -2874,6 +2874,26 @@ const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id)
 	return call->line_id;
 }
 
+bool hfp_hf_call_get_multiparty(struct hfp_hf *hfp, uint id, bool *mpty)
+{
+	struct hf_call *call;
+
+	if (!hfp)
+		return false;
+
+	DBG(hfp, "");
+
+	call = queue_find(hfp->calls, call_id_match, UINT_TO_PTR(id));
+	if (!call) {
+		DBG(hfp, "hf: no call with id: %u", id);
+		return false;
+	}
+
+	*mpty = call->mpty;
+
+	return true;
+}
+
 bool hfp_hf_dial(struct hfp_hf *hfp, const char *number,
 				hfp_response_func_t resp_cb,
 				void *user_data)
