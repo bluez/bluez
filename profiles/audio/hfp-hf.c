@@ -158,12 +158,15 @@ static void hfp_hf_call_added(uint id, enum hfp_call_status status,
 	struct hfp_device *dev = user_data;
 	struct call *call;
 	const char *number;
+	bool mpty;
 
 	call = telephony_new_call(dev->telephony, id,
 					hfp_call_status_to_call_state(status),
 					NULL);
 	if ((number = hfp_hf_call_get_number(dev->hf, id)) != NULL)
 		call->line_id = g_strdup(number);
+	if (hfp_hf_call_get_multiparty(dev->hf, id, &mpty))
+		call->multiparty = mpty;
 	if (telephony_call_register_interface(call)) {
 		telephony_free_call(call);
 		return;
