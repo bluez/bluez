@@ -3434,6 +3434,64 @@ static int cmd_get_mws_transport_config(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_enhanced_accept_sync_conn_req(struct btdev *dev,
+				const void *data, uint8_t len)
+{
+	const struct bt_hci_cmd_enhanced_accept_sync_conn_request *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	if (cmd->tx_coding_format[0] > 5)
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+
+	cmd_status(dev, status, BT_HCI_CMD_ENHANCED_ACCEPT_SYNC_CONN_REQUEST);
+
+	return 0;
+}
+
+static int cmd_enhanced_accept_sync_conn_req_complete(struct btdev *dev,
+					const void *data, uint8_t len)
+{
+	const struct bt_hci_cmd_enhanced_accept_sync_conn_request *cmd = data;
+	struct bt_hci_evt_sync_conn_complete cc;
+	struct btdev_conn *conn;
+
+	memset(&cc, 0, sizeof(cc));
+
+	conn = queue_find(dev->conns, match_bdaddr, cmd->bdaddr);
+	if (!conn) {
+		cc.status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	conn = conn_add_sco(conn);
+	if (!conn) {
+		cc.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
+		goto done;
+	}
+
+
+	cc.status = BT_HCI_ERR_SUCCESS;
+	memcpy(cc.bdaddr, conn->link->dev->bdaddr, 6);
+
+	cc.handle = cpu_to_le16(conn->handle);
+	cc.link_type = 0x02;
+	cc.tx_interval = 0x000c;
+	cc.retrans_window = 0x06;
+	cc.rx_pkt_len = 60;
+	cc.tx_pkt_len = 60;
+	cc.air_mode = cmd->tx_coding_format[0];
+
+done:
+	send_event(dev, BT_HCI_EVT_SYNC_CONN_COMPLETE, &cc, sizeof(cc));
+
+	if (conn)
+		send_event(conn->link->dev, BT_HCI_EVT_SYNC_CONN_COMPLETE,
+							&cc, sizeof(cc));
+
+	return 0;
+
+}
+
 #define CMD_BREDR \
 	CMD(BT_HCI_CMD_SETUP_SYNC_CONN, cmd_setup_sync_conn, \
 					cmd_setup_sync_conn_complete), \
@@ -3471,7 +3529,10 @@ static int cmd_get_mws_transport_config(struct btdev *dev, const void *data,
 	CMD(BT_HCI_CMD_GET_MWS_TRANSPORT_CONFIG, cmd_get_mws_transport_config, \
 					NULL), \
 	CMD(BT_HCI_CMD_ENHANCED_SETUP_SYNC_CONN, cmd_enhanced_setup_sync_conn, \
-					cmd_enhanced_setup_sync_conn_complete)
+			cmd_enhanced_setup_sync_conn_complete), \
+	CMD(BT_HCI_CMD_ENHANCED_ACCEPT_SYNC_CONN_REQUEST, \
+			cmd_enhanced_accept_sync_conn_req, \
+			cmd_enhanced_accept_sync_conn_req_complete)
 
 static int cmd_set_event_mask_2(struct btdev *dev, const void *data,
 							uint8_t len)
@@ -3604,6 +3665,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
 	btdev->commands[29] |= 0x20;	/* Read Local Supported Codecs */
 	btdev->commands[29] |= 0x08;	/* Enhanced Setup Synchronous Conn */
+	btdev->commands[29] |= 0x10;	/* Enhanced Accept Sync Connection */
 	btdev->commands[30] |= 0x08;	/* Get MWS Transport Layer Config */
 	btdev->cmds = cmd_bredr;
 }
