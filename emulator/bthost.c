@@ -3831,7 +3831,7 @@ void bthost_create_big(struct bthost *bthost, uint8_t num_bis,
 	cp.bis.sdu = 40;
 	cp.bis.latency = cpu_to_le16(10);
 	cp.bis.rtn = 0x02;
-	cp.bis.phy = 0x02;
+	cp.bis.phys = BIT(2);
 	cp.bis.encryption = enc;
 	memcpy(cp.bis.bcode, bcode, sizeof(cp.bis.bcode));
 	send_command(bthost, BT_HCI_CMD_LE_CREATE_BIG, &cp, sizeof(cp));
@@ -3886,9 +3886,9 @@ void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
 	cp->cis[0].cis_id = cis_id;
 	cp->cis[0].c_sdu = qos->ucast.in.sdu;
 	cp->cis[0].p_sdu = qos->ucast.out.sdu;
-	cp->cis[0].c_phy = qos->ucast.in.phy ? qos->ucast.in.phy :
+	cp->cis[0].c_phys = qos->ucast.in.phy ? qos->ucast.in.phy :
 							qos->ucast.out.phy;
-	cp->cis[0].p_phy = qos->ucast.out.phy ? qos->ucast.out.phy :
+	cp->cis[0].p_phys = qos->ucast.out.phy ? qos->ucast.out.phy :
 							qos->ucast.in.phy;
 	cp->cis[0].c_rtn = qos->ucast.in.rtn;
 	cp->cis[0].p_rtn = qos->ucast.out.rtn;
