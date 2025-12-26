@@ -28,6 +28,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/conf_d.h"
 
 #include "bnep.h"
 #include "connection.h"
@@ -46,6 +47,8 @@ static void read_config(const char *file)
 		g_clear_error(&err);
 		goto done;
 	}
+
+	confd_process_config(keyfile, file, FALSE, TRUE);
 
 	conf_security = !g_key_file_get_boolean(keyfile, "General",
 						"DisableSecurity", &err);

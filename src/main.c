@@ -54,6 +54,7 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "profile.h"
+#include "conf_d.h"
 
 #define BLUEZ_NAME "org.bluez"
 
@@ -284,6 +285,8 @@ static GKeyFile *load_config(const char *name)
 		g_key_file_free(keyfile);
 		return NULL;
 	}
+
+	confd_process_config(keyfile, main_conf_file_path, FALSE, TRUE);
 
 	return keyfile;
 }
