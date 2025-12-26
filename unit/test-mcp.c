@@ -586,6 +586,31 @@ static void test_client(const void *user_data)
 	IOV_DATA(0x0a, HND(hnd)), \
 	IOV_DATA(0x0b, value)
 
+/* ATT: Read Blob Request (0x0c)
+ * ATT: Read Blob Response (0x0d)
+ */
+
+#define READ_BLOB_CHRC(hnd, off, value...) \
+	IOV_DATA(0x0c, HND(hnd), (off) & 0xff, (off) >> 8), \
+	IOV_DATA(0x0d, value)
+
+#define READ_BLOB_ERR_CHRC(hnd, off, err) \
+	IOV_DATA(0x0c, HND(hnd), (off) & 0xff, (off) >> 8), \
+	IOV_DATA(0x01, 0x0c, HND(hnd), err)
+
+#define BLOB_DATA_MTU_1(v) \
+	v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, \
+	v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, \
+	v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, \
+	v, v, v, v, v, v, v, v, v, v, v, v, v, v, v
+
+#define BLOB_DATA_MTU_3(v) \
+	v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, \
+	v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, \
+	v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, \
+	v, v, v, v, v, v, v, v, v, v, v, v, v
+
+
 /* ATT: Write Command (0x52) len 2
  */
 
@@ -1369,11 +1394,100 @@ const struct test_config cfg_cl_bluez_1_reread = {
 	.gmcs = false,
 };
 
+#define CL_BLUEZ_2_REREAD \
+	NOTIFY_CHRC(TRACK_CHG), \
+	READ_CHRC(TRACK_TITLE, BLOB_DATA_MTU_1('y')), \
+	/* Value change during long read */ \
+	READ_BLOB_ERR_CHRC(TRACK_TITLE, 0x40 - 1, 0x80), \
+	READ_CHRC(TRACK_DUR, 0xff, 0xff, 0xff, 0xff), \
+	READ_CHRC(TRACK_POS, 0xff, 0xff, 0xff, 0xff), \
+	READ_CHRC(PLAY_SPEED, 0x00), \
+	READ_CHRC(SEEK_SPEED, 0x00), \
+	READ_CHRC(PLAY_ORDER, 0x04), \
+	READ_CHRC(PLAY_ORDER_SUPP, 0x18, 0x00), \
+	READ_CHRC(CP_SUPP, SPLIT_INT32(0x01)), \
+	/* Track change notification -> reread */ \
+	NOTIFY_CHRC(TRACK_CHG), \
+	READ_CHRC(TRACK_TITLE, BLOB_DATA_MTU_1('x')), \
+	READ_BLOB_CHRC(TRACK_TITLE, 0x40 - 1, 'x', 'x', 'x'), \
+	READ_CHRC(TRACK_DUR, 0xff, 0xff, 0xff, 0xff), \
+	READ_CHRC(TRACK_POS, 0xff, 0xff, 0xff, 0xff), \
+	READ_CHRC(PLAY_SPEED, 0x00), \
+	READ_CHRC(SEEK_SPEED, 0x00), \
+	READ_CHRC(PLAY_ORDER, 0x04), \
+	READ_CHRC(PLAY_ORDER_SUPP, 0x18, 0x00), \
+	READ_CHRC(CP_SUPP, SPLIT_INT32(0x01)), \
+	IOV_NULL
+
+#define CL_BLUEZ_3_REREAD \
+	NOTIFY_CHRC(TRACK_TITLE, BLOB_DATA_MTU_3('y')), \
+	READ_CHRC(TRACK_TITLE, BLOB_DATA_MTU_1('y')), \
+	/* Changed during read -> notification -> reread */ \
+	READ_BLOB_ERR_CHRC(TRACK_TITLE, 0x40 - 1, 0x80), \
+	NOTIFY_CHRC(TRACK_TITLE, BLOB_DATA_MTU_3('x')), \
+	READ_CHRC(TRACK_TITLE, BLOB_DATA_MTU_1('x')), \
+	READ_BLOB_CHRC(TRACK_TITLE, 0x40 - 1, 'x', 'x', 'x'), \
+	IOV_NULL
+
+static void cl_reread_long_idle(void *user_data)
+{
+	struct test_data *data = user_data;
+
+	if (data->step == 2)
+		tester_test_passed();
+}
+
+static void cl_reread_long_track_title(void *user_data, const uint8_t *value,
+								uint16_t length)
+{
+	struct test_data *data = user_data;
+	const char new_value[0x42] = { [0 ... 0x41] = 'x' };
+
+	if (strncmp((void *)value, "Title", length) == 0 && data->step == 0) {
+		data->step++;
+	} else if (data->step == 1 && length == 0x42 &&
+				!memcmp((void *)value, new_value, length)) {
+		data->step++;
+
+		/* Wait for all reads, to make sure there are no extra */
+		bt_gatt_client_idle_register(
+			bt_mcp_test_util_get_client(data->mcp),
+			cl_reread_long_idle, data, NULL);
+	} else {
+		FAIL_TEST();
+	}
+}
+
+const struct test_config cfg_cl_bluez_2_reread = {
+	.listener_cb = &(struct bt_mcp_listener_callback) {
+		.track_title = cl_reread_long_track_title,
+	},
+	.setup_data = setup_data_mcs,
+	.setup_data_len = ARRAY_SIZE(setup_data_mcs),
+	.gmcs = false,
+};
+
+const struct test_config cfg_cl_bluez_3_reread = {
+	.listener_cb = &(struct bt_mcp_listener_callback) {
+		.track_title = cl_reread_long_track_title,
+	},
+	.setup_data = setup_data_gmcs,
+	.setup_data_len = ARRAY_SIZE(setup_data_gmcs),
+	.gmcs = true,
+};
+
+
 static void testgroup_cl_extra(void)
 {
 	define_test("MCP/CL/BLUEZ-1 [Reread On Track Change, No Notify]",
 		test_setup, test_client,
 		&cfg_cl_bluez_1_reread, CL_BLUEZ_1_REREAD);
+	define_test("MCP/CL/BLUEZ-2 [Long Value Reread, Track Changed]",
+		test_setup, test_client,
+		&cfg_cl_bluez_2_reread, CL_BLUEZ_2_REREAD);
+	define_test("MCP/CL/BLUEZ-3 [Long Value Reread, Notify]",
+		test_setup, test_client,
+		&cfg_cl_bluez_3_reread, CL_BLUEZ_3_REREAD);
 }
 
 /*
@@ -1846,6 +1960,74 @@ static void testgroup_sr_mcp(void)
 	 */
 }
 
+
+static void sr_spn_value(struct test_data *data, struct iovec *buf, size_t size,
+								uint16_t uuid)
+{
+	/* Longer than MTU */
+	memset(buf->iov_base, 'x' + data->step, 0x42);
+	buf->iov_len = 0x42;
+
+	/* Long value changed during read */
+	if (data->step == 1) {
+		data->step--;
+		bt_mcs_changed(data->mcs, uuid);
+	}
+}
+
+static void sr_spn_media_player_name(void *data, struct iovec *buf, size_t size)
+{
+	sr_spn_value(data, buf, size, MCS_MEDIA_PLAYER_NAME_CHRC_UUID);
+}
+
+static void sr_spn_track_title(void *data, struct iovec *buf, size_t size)
+{
+	sr_spn_value(data, buf, size, MCS_TRACK_TITLE_CHRC_UUID);
+}
+
+const struct test_config cfg_mcs_sr_spn = {
+	.mcs_cb = &(struct bt_mcs_callback) {
+		.media_player_name = sr_spn_media_player_name,
+		.track_title = sr_spn_track_title,
+		.debug = mcs_debug,
+	},
+	.setup_data = setup_data_server_mcs,
+	.setup_data_len = ARRAY_SIZE(setup_data_server_mcs),
+	.gmcs = false,
+};
+
+#define MCS_SR_SPN_PROCEDURE(chrc) \
+	READ_CHRC(chrc, BLOB_DATA_MTU_1('y')), \
+	NOTIFY_CHRC(chrc, BLOB_DATA_MTU_3('x')), \
+	READ_BLOB_ERR_CHRC(chrc, 0x40 - 1, 0x80), \
+	READ_CHRC(chrc, BLOB_DATA_MTU_1('x')), \
+	READ_BLOB_CHRC(chrc, 0x40 - 1, 'x', 'x', 'x')
+
+#define MCS_SR_SPN_BV_01_C	MCS_SR_SPN_PROCEDURE(NAME)
+#define MCS_SR_SPN_BV_02_C	MCS_SR_SPN_PROCEDURE(TRACK_TITLE)
+
+static void test_sr_spn(const void *user_data)
+{
+	struct test_data *data = (void *)user_data;
+
+	data->step = 1;
+	test_server(data);
+}
+
+static void testgroup_sr_spn(void)
+{
+	/* Only the MCS tests. No point in GMCS as only svc uuid changes */
+
+	/* MCS.TS Sec 4.5 Update Characteristic - Oversized values */
+	define_test("MCS/SR/SPN/BV-01-C [Update Media Player Name - Oversized "
+								"Value]",
+		test_setup_server, test_sr_spn,
+		&cfg_mcs_sr_spn, MCS_SR_SPN_BV_01_C);
+	define_test("MCS/SR/SPN/BV-02-C [Update Track Title - Oversized Value]",
+		test_setup_server, test_sr_spn,
+		&cfg_mcs_sr_spn, MCS_SR_SPN_BV_02_C);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -1854,6 +2036,7 @@ int main(int argc, char *argv[])
 	testgroup_cl_extra();
 	testgroup_sr_sggit();
 	testgroup_sr_mcp();
+	testgroup_sr_spn();
 
 	return tester_run();
 }
