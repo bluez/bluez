@@ -174,6 +174,8 @@ static void setup_free(void *data);
 
 static void bap_data_free(struct bap_data *data)
 {
+	struct queue *bcast_snks = data->bcast_snks;
+
 	if (data->listen_io) {
 		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
 		g_io_channel_unref(data->listen_io);
@@ -189,7 +191,9 @@ static void bap_data_free(struct bap_data *data)
 	queue_destroy(data->srcs, ep_unregister);
 	queue_destroy(data->bcast, ep_unregister);
 	queue_destroy(data->server_streams, NULL);
-	queue_destroy(data->bcast_snks, setup_free);
+	data->bcast_snks = NULL;
+	queue_destroy(bcast_snks, setup_free);
+
 	bt_bap_ready_unregister(data->bap, data->ready_id);
 	bt_bap_state_unregister(data->bap, data->state_id);
 	bt_bap_pac_unregister(data->bap, data->pac_id);
@@ -1103,6 +1107,9 @@ static void setup_free(void *data)
 
 	if (setup->ep)
 		queue_remove(setup->ep->setups, setup);
+
+	if (setup->data)
+		queue_remove(setup->data->bcast_snks, setup);
 
 	setup_io_close(setup, NULL);
 
