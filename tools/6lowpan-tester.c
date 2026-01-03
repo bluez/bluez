@@ -337,7 +337,6 @@ static const struct client_data client_recv_raw = {
 	.send_expect_data_len = sizeof(dgram_data) - 1,
 	.sk_type = SOCK_RAW,
 	.disconnect = true,
-	.skip_by_default_reason = "kernel BUG at net/core/skbuff.c:212"
 };
 
 static const uint8_t iphc_dgram_data[64+2] = {
