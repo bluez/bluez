@@ -4270,6 +4270,12 @@ uint8_t bt_bap_stream_get_type(struct bt_bap_stream *stream)
 	return 0x00;
 }
 
+bool bt_bap_stream_is_server(struct bt_bap_stream *stream)
+{
+	/* Stream is a BAP Server stream (not Broadcast or BAP Client) */
+	return !stream->client;
+}
+
 static void notify_pac_removed(void *data, void *user_data)
 {
 	struct bt_bap_pac_changed *changed = data;
