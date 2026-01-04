@@ -107,7 +107,7 @@ static void vcp_volume_changed(struct bt_vcp *vcp, uint8_t volume)
 	struct vcp_data *data = queue_find(sessions, match_data, vcp);
 
 	if (data)
-		media_transport_update_device_volume(data->device, volume);
+		media_transport_volume_changed(data->device);
 }
 
 static void vcp_data_add(struct vcp_data *data)
@@ -165,24 +165,24 @@ static void vcp_data_remove(struct vcp_data *data)
 	}
 }
 
-uint8_t bt_audio_vcp_get_volume(struct btd_device *device)
+int bt_audio_vcp_get_volume(struct btd_device *device)
 {
 	struct vcp_data *data = queue_find(sessions, match_device, device);
 
 	if (data)
 		return bt_vcp_get_volume(data->vcp);
 
-	return 0;
+	return -ENODEV;
 }
 
-bool bt_audio_vcp_set_volume(struct btd_device *device, uint8_t volume)
+int bt_audio_vcp_set_volume(struct btd_device *device, uint8_t volume)
 {
 	struct vcp_data *data = queue_find(sessions, match_device, device);
 
 	if (data)
-		return bt_vcp_set_volume(data->vcp, volume);
+		return bt_vcp_set_volume(data->vcp, volume) ? 0 : -EIO;
 
-	return FALSE;
+	return -ENODEV;
 }
 
 static void vcp_remote_client_detached(struct bt_vcp *vcp, void *user_data)

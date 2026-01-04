@@ -1094,6 +1094,22 @@ static void set_delay_report(const GDBusPropertyTable *property,
 }
 #endif /* HAVE_A2DP */
 
+static int media_transport_get_volume(struct media_transport *transport,
+								int *volume)
+{
+	if (transport->ops && transport->ops->get_volume) {
+		int ret = transport->ops->get_volume(transport);
+
+		if (ret < 0)
+			return ret;
+
+		*volume = ret;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static gboolean volume_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_transport *transport = data;
@@ -1103,16 +1119,6 @@ static gboolean volume_exists(const GDBusPropertyTable *property, void *data)
 		return FALSE;
 
 	return volume >= 0;
-}
-
-int media_transport_get_volume(struct media_transport *transport, int *volume)
-{
-	if (transport->ops && transport->ops->get_volume) {
-		*volume = transport->ops->get_volume(transport);
-		return 0;
-	}
-
-	return -EINVAL;
 }
 
 static gboolean get_volume(const GDBusPropertyTable *property,
@@ -2307,24 +2313,16 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 
 static int transport_bap_get_volume(struct media_transport *transport)
 {
-#ifdef HAVE_VCP
 	return bt_audio_vcp_get_volume(transport->device);
-#else
-	return -ENODEV;
-#endif /* HAVE_VCP */
 }
 
 static int transport_bap_set_volume(struct media_transport *transport,
 								int volume)
 {
-#ifdef HAVE_VCP
 	if (volume < 0 || volume > 255)
 		return -EINVAL;
 
-	return bt_audio_vcp_set_volume(transport->device, volume) ? 0 : -EIO;
-#else
-	return -ENODEV;
-#endif /* HAVE_VCP */
+	return bt_audio_vcp_set_volume(transport->device, volume);
 }
 
 static void transport_bap_destroy(void *data)
@@ -2739,46 +2737,33 @@ struct btd_device *media_transport_get_dev(struct media_transport *transport)
 	return transport->device;
 }
 
-void media_transport_update_volume(struct media_transport *transport,
-								int volume)
+static void media_transport_emit_volume(struct media_transport *transport)
 {
-	if (volume < 0)
+	int volume;
+
+	if (media_transport_get_volume(transport, &volume))
 		return;
 
-#ifdef HAVE_A2DP
-	if (media_endpoint_get_sep(transport->endpoint)) {
-		struct a2dp_transport *a2dp = transport->data;
-
-		if (volume > 127)
-			return;
-
-		/* Check if volume really changed */
-		if (a2dp->volume == volume)
-			return;
-
-		a2dp->volume = volume;
-	}
-#endif
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 					transport->path,
 					MEDIA_TRANSPORT_INTERFACE, "Volume");
 }
 
-int media_transport_get_device_volume(struct btd_device *dev)
+int media_transport_get_a2dp_volume(struct btd_device *dev)
 {
 	GSList *l;
 
 	if (dev == NULL)
 		return -1;
 
-#ifdef HAVE_A2DP
 	/* Attempt to locate the transport to get its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
+
 		if (transport->device != dev)
 			continue;
 
-		/* Volume is A2DP only */
+		/* A2DP only */
 		if (media_endpoint_get_sep(transport->endpoint)) {
 			int volume;
 
@@ -2788,40 +2773,57 @@ int media_transport_get_device_volume(struct btd_device *dev)
 			return -1;
 		}
 	}
-#endif
 
-	/* If transport volume doesn't exists use device_volume */
+	/* If no transport, use device volume. This is a workaround for the lack
+	 * of ordering between AVRCP and A2DP session start. (Note BAP+VCP do
+	 * not have this issue.)
+	 */
 	return btd_device_get_volume(dev);
 }
 
-void media_transport_update_device_volume(struct btd_device *dev,
-								int volume)
+void media_transport_set_a2dp_volume(struct btd_device *dev, int volume)
 {
 	GSList *l;
 
-	if (dev == NULL || volume < 0)
+	if (dev == NULL || volume < 0 || volume > 127)
 		return;
 
-#ifdef HAVE_A2DP
 	/* Attempt to locate the transport to set its volume */
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
-		const char *uuid = media_endpoint_get_uuid(transport->endpoint);
+		struct a2dp_transport *a2dp;
+
+		if (transport->device != dev)
+			continue;
+		if (!media_endpoint_get_sep(transport->endpoint))
+			continue;
+
+		a2dp = transport->data;
+		if (a2dp->volume != volume) {
+			a2dp->volume = volume;
+			media_transport_emit_volume(transport);
+		}
+		break;
+	}
+
+	btd_device_set_volume(dev, volume);
+}
+
+void media_transport_volume_changed(struct btd_device *dev)
+{
+	GSList *l;
+
+	if (dev == NULL)
+		return;
+
+	for (l = transports; l; l = l->next) {
+		struct media_transport *transport = l->data;
+
 		if (transport->device != dev)
 			continue;
 
-		/* Volume is A2DP and BAP only */
-		if (media_endpoint_get_sep(transport->endpoint) ||
-				strcasecmp(uuid, PAC_SINK_UUID) ||
-				strcasecmp(uuid, PAC_SOURCE_UUID) ||
-				strcasecmp(uuid, BAA_SERVICE_UUID)) {
-			media_transport_update_volume(transport, volume);
-			break;
-		}
+		media_transport_emit_volume(transport);
 	}
-#endif
-
-	btd_device_set_volume(dev, volume);
 }
 
 const char *media_transport_stream_path(void *stream)
