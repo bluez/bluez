@@ -2311,9 +2311,25 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 	bap_update_links(transport);
 }
 
+static bool transport_bap_is_playback(struct media_transport *transport)
+{
+	struct bap_transport *bap = transport->data;
+	const char *uuid = media_endpoint_get_uuid(transport->endpoint);
+
+	/* BAP Server: local ucast source = "mic" */
+	if (bt_bap_stream_is_server(bap->stream))
+		return strcasecmp(uuid, PAC_SOURCE_UUID) != 0;
+
+	/* BAP Client / Broadcast: local ucast sink = "mic" */
+	return strcasecmp(uuid, PAC_SINK_UUID) != 0;
+}
+
 static int transport_bap_get_volume(struct media_transport *transport)
 {
-	return bt_audio_vcp_get_volume(transport->device);
+	if (transport_bap_is_playback(transport))
+		return bt_audio_vcp_get_volume(transport->device);
+	else
+		return -ENOTSUP; /* TODO: MICP */
 }
 
 static int transport_bap_set_volume(struct media_transport *transport,
@@ -2322,7 +2338,10 @@ static int transport_bap_set_volume(struct media_transport *transport,
 	if (volume < 0 || volume > 255)
 		return -EINVAL;
 
-	return bt_audio_vcp_set_volume(transport->device, volume);
+	if (transport_bap_is_playback(transport))
+		return bt_audio_vcp_set_volume(transport->device, volume);
+	else
+		return -ENOTSUP; /* TODO: MICP */
 }
 
 static void transport_bap_destroy(void *data)
