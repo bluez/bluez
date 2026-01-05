@@ -18,7 +18,17 @@ typedef void (*media_endpoint_cb_t) (struct media_endpoint *endpoint,
 int media_register(struct btd_adapter *btd_adapter);
 void media_unregister(struct btd_adapter *btd_adapter);
 
+#ifdef HAVE_A2DP
 struct a2dp_sep *media_endpoint_get_sep(struct media_endpoint *endpoint);
+#else
+struct a2dp_sep;
+static inline struct a2dp_sep *media_endpoint_get_sep(
+						struct media_endpoint *endpoint)
+{
+	return NULL;
+}
+#endif
+
 const char *media_endpoint_get_uuid(struct media_endpoint *endpoint);
 bool media_endpoint_get_delay_reporting(struct media_endpoint *endpoint);
 uint8_t media_endpoint_get_codec(struct media_endpoint *endpoint);
