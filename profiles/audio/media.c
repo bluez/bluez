@@ -583,7 +583,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 		return FALSE;
 
 	init_volume = btd_device_get_volume(device);
-	media_transport_update_volume(transport, init_volume);
+	media_transport_set_a2dp_volume(device, init_volume);
 
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
 						MEDIA_ENDPOINT_INTERFACE,

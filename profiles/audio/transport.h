@@ -21,8 +21,6 @@ void media_transport_destroy(struct media_transport *transport);
 const char *media_transport_get_path(struct media_transport *transport);
 void *media_transport_get_stream(struct media_transport *transport);
 struct btd_device *media_transport_get_dev(struct media_transport *transport);
-int media_transport_get_volume(struct media_transport *transport,
-					int *volume);
 void media_transport_update_delay(struct media_transport *transport,
 							uint16_t delay);
 void media_transport_update_volume(struct media_transport *transport,
@@ -30,7 +28,9 @@ void media_transport_update_volume(struct media_transport *transport,
 void transport_get_properties(struct media_transport *transport,
 							DBusMessageIter *iter);
 
-int media_transport_get_device_volume(struct btd_device *dev);
-void media_transport_update_device_volume(struct btd_device *dev,
-								int volume);
+int media_transport_get_a2dp_volume(struct btd_device *dev);
+void media_transport_set_a2dp_volume(struct btd_device *dev, int volume);
+
+void media_transport_volume_changed(struct btd_device *dev);
+
 const char *media_transport_stream_path(void *stream);
