@@ -75,7 +75,7 @@ struct bt_ascs_ase_status {
 /* ASE_State = 0x01 (Codec Configured), defined in Table 4.7. */
 struct bt_ascs_ase_status_config {
 	uint8_t  framing;
-	uint8_t  phy;
+	uint8_t  phys;
 	uint8_t  rtn;
 	uint16_t latency;
 	uint8_t  pd_min[3];
@@ -94,7 +94,7 @@ struct bt_ascs_ase_status_qos {
 	uint8_t  cis_id;
 	uint8_t  interval[3];
 	uint8_t  framing;
-	uint8_t  phy;
+	uint8_t  phys;
 	uint16_t sdu;
 	uint8_t  rtn;
 	uint16_t latency;
@@ -150,7 +150,7 @@ struct bt_ascs_qos {
 	uint8_t  cis;			/* CIG ID*/
 	uint8_t  interval[3];		/* Frame interval */
 	uint8_t  framing;		/* Frame framing */
-	uint8_t  phy;			/* PHY */
+	uint8_t  phys;			/* PHY */
 	uint16_t sdu;			/* Maximum SDU Size */
 	uint8_t  rtn;			/* Retransmission Effort */
 	uint16_t latency;		/* Transport Latency */

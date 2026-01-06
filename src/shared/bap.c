@@ -1053,7 +1053,7 @@ static void stream_notify_config(struct bt_bap_stream *stream)
 	/* TODO:Add support for setting preferred settings on bt_bap_pac */
 	config = (void *)status->params;
 	config->framing = lpac->qos.framing;
-	config->phy = lpac->qos.phys;
+	config->phys = lpac->qos.phys;
 	config->rtn = lpac->qos.rtn;
 	config->latency = cpu_to_le16(lpac->qos.latency);
 	put_le24(lpac->qos.pd_min, config->pd_min);
@@ -1097,7 +1097,7 @@ static void stream_notify_qos(struct bt_bap_stream *stream)
 	qos->cig_id = stream->qos.ucast.cig_id;
 	put_le24(stream->qos.ucast.io_qos.interval, qos->interval);
 	qos->framing = stream->qos.ucast.framing;
-	qos->phy = stream->qos.ucast.io_qos.phy;
+	qos->phys = stream->qos.ucast.io_qos.phys;
 	qos->sdu = cpu_to_le16(stream->qos.ucast.io_qos.sdu);
 	qos->rtn = stream->qos.ucast.io_qos.rtn;
 	qos->latency = cpu_to_le16(stream->qos.ucast.io_qos.latency);
@@ -1857,6 +1857,23 @@ static unsigned int bap_ucast_get_state(struct bt_bap_stream *stream)
 	return stream->ep->state;
 }
 
+static uint8_t bits_to_phy(uint8_t bits)
+{
+	uint8_t phy = 0x00;
+
+	/* Convert PHY bits to PHY values on a ascending order. */
+	if (bits & BIT(0))
+		phy = 0x01; /* LE 1M */
+
+	if (bits & BIT(1))
+		phy = 0x02; /* LE 2M */
+
+	if (bits & BIT(2))
+		phy = 0x03; /* LE Coded */
+
+	return phy;
+}
+
 static unsigned int bap_ucast_config(struct bt_bap_stream *stream,
 					struct bt_bap_qos *qos,
 					struct iovec *data,
@@ -1877,7 +1894,7 @@ static unsigned int bap_ucast_config(struct bt_bap_stream *stream,
 
 	config.ase = stream->ep->id;
 	config.latency = qos->ucast.target_latency;
-	config.phy = qos->ucast.io_qos.phy;
+	config.phy = bits_to_phy(qos->ucast.io_qos.phys);
 	config.codec = stream->rpac->codec;
 
 	if (config.codec.id == 0xff) {
@@ -1936,7 +1953,7 @@ static unsigned int bap_ucast_qos(struct bt_bap_stream *stream,
 	qos.cis = data->ucast.cis_id;
 	put_le24(data->ucast.io_qos.interval, qos.interval);
 	qos.framing = data->ucast.framing;
-	qos.phy = data->ucast.io_qos.phy;
+	qos.phys = data->ucast.io_qos.phys;
 	qos.sdu = cpu_to_le16(data->ucast.io_qos.sdu);
 	qos.rtn = data->ucast.io_qos.rtn;
 	qos.latency = cpu_to_le16(data->ucast.io_qos.latency);
@@ -3162,8 +3179,8 @@ static uint8_t ascs_config(struct bt_ascs *ascs, struct bt_bap *bap,
 
 	req = util_iov_pull_mem(iov, sizeof(*req));
 
-	DBG(bap, "codec 0x%02x phy 0x%02x latency %u", req->codec.id, req->phy,
-							req->latency);
+	DBG(bap, "codec 0x%02x phy 0x%02x latency %u", req->codec.id,
+						req->phy, req->latency);
 
 	ep = bap_get_local_endpoint_id(bap, req->ase);
 	if (!ep) {
@@ -3236,16 +3253,16 @@ static uint8_t ascs_qos(struct bt_ascs *ascs, struct bt_bap *bap,
 	qos.ucast.cis_id = req->cis;
 	qos.ucast.io_qos.interval = get_le24(req->interval);
 	qos.ucast.framing = req->framing;
-	qos.ucast.io_qos.phy = req->phy;
+	qos.ucast.io_qos.phys = req->phys;
 	qos.ucast.io_qos.sdu = le16_to_cpu(req->sdu);
 	qos.ucast.io_qos.rtn = req->rtn;
 	qos.ucast.io_qos.latency = le16_to_cpu(req->latency);
 	qos.ucast.delay = get_le24(req->pd);
 
 	DBG(bap, "CIG 0x%02x CIS 0x%02x interval %u framing 0x%02x "
-			"phy 0x%02x SDU %u rtn %u latency %u pd %u",
+			"phys 0x%02x SDU %u rtn %u latency %u pd %u",
 			req->cig, req->cis, qos.ucast.io_qos.interval,
-			qos.ucast.framing, qos.ucast.io_qos.phy,
+			qos.ucast.framing, qos.ucast.io_qos.phys,
 			qos.ucast.io_qos.sdu, qos.ucast.io_qos.rtn,
 			qos.ucast.io_qos.latency, qos.ucast.delay);
 
@@ -5061,9 +5078,9 @@ static void ep_status_config(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 	ppd_min = get_le24(cfg->ppd_min);
 	ppd_max = get_le24(cfg->ppd_max);
 
-	DBG(bap, "codec 0x%02x framing 0x%02x phy 0x%02x rtn %u "
+	DBG(bap, "codec 0x%02x framing 0x%02x.phys 0x%02x rtn %u "
 			"latency %u pd %u - %u ppd %u - %u", cfg->codec.id,
-			cfg->framing, cfg->phy, cfg->rtn,
+			cfg->framing, cfg->phys, cfg->rtn,
 			le16_to_cpu(cfg->latency),
 			pd_min, pd_max, ppd_min, ppd_max);
 
@@ -5109,7 +5126,7 @@ static void ep_status_config(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 	/* Set preferred settings */
 	if (ep->stream->rpac) {
 		ep->stream->rpac->qos.framing = cfg->framing;
-		ep->stream->rpac->qos.phys = cfg->phy;
+		ep->stream->rpac->qos.phys = cfg->phys;
 		ep->stream->rpac->qos.rtn = cfg->rtn;
 		ep->stream->rpac->qos.latency = le16_to_cpu(cfg->latency);
 		ep->stream->rpac->qos.pd_min = pd_min;
@@ -5175,8 +5192,8 @@ static void ep_status_qos(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 	latency = le16_to_cpu(qos->latency);
 
 	DBG(bap, "CIG 0x%02x CIS 0x%02x interval %u framing 0x%02x "
-			"phy 0x%02x rtn %u latency %u pd %u", qos->cig_id,
-			qos->cis_id, interval, qos->framing, qos->phy,
+			"phys 0x%02x rtn %u latency %u pd %u", qos->cig_id,
+			qos->cis_id, interval, qos->framing, qos->phys,
 			qos->rtn, latency, pd);
 
 	if (!ep->stream)
@@ -5184,7 +5201,7 @@ static void ep_status_qos(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 
 	ep->stream->qos.ucast.io_qos.interval = interval;
 	ep->stream->qos.ucast.framing = qos->framing;
-	ep->stream->qos.ucast.io_qos.phy = qos->phy;
+	ep->stream->qos.ucast.io_qos.phys = qos->phys;
 	ep->stream->qos.ucast.io_qos.sdu = sdu;
 	ep->stream->qos.ucast.io_qos.rtn = qos->rtn;
 	ep->stream->qos.ucast.io_qos.latency = latency;
@@ -7861,7 +7878,7 @@ void bt_bap_iso_qos_to_bap_qos(struct bt_iso_qos *iso_qos,
 	bap_qos->bcast.io_qos.interval =
 			iso_qos->bcast.in.interval;
 	bap_qos->bcast.io_qos.latency = iso_qos->bcast.in.latency;
-	bap_qos->bcast.io_qos.phy = iso_qos->bcast.in.phys;
+	bap_qos->bcast.io_qos.phys = iso_qos->bcast.in.phys;
 	bap_qos->bcast.io_qos.rtn = iso_qos->bcast.in.rtn;
 	bap_qos->bcast.io_qos.sdu = iso_qos->bcast.in.sdu;
 }

@@ -1890,9 +1890,9 @@ static void append_io_qos(DBusMessageIter *iter, struct bt_bap_io_qos *qos)
 	g_dbus_dict_append_entry(iter, "Interval", DBUS_TYPE_UINT32,
 						&qos->interval);
 
-	bt_shell_printf("PHY 0x%02x\n", qos->phy);
+	bt_shell_printf("PHYs 0x%02x\n", qos->phys);
 
-	g_dbus_dict_append_entry(iter, "PHY", DBUS_TYPE_BYTE, &qos->phy);
+	g_dbus_dict_append_entry(iter, "PHY", DBUS_TYPE_BYTE, &qos->phys);
 
 	bt_shell_printf("SDU %u\n", qos->sdu);
 
@@ -2229,7 +2229,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
 	else
 		qos = &preset->qos.ucast.io_qos;
 
-	if (qos->phy) {
+	if (qos->phys) {
 		/* Set QoS parameters */
 		cfg->qos = preset->qos;
 		/* Adjust the SDU size based on the number of
@@ -4162,9 +4162,9 @@ static void custom_phy(const char *input, void *user_data)
 		qos = &p->qos.ucast.io_qos;
 
 	if (!strcmp(input, "1M"))
-		qos->phy = 0x01;
+		qos->phys = BIT(0);
 	else if (!strcmp(input, "2M"))
-		qos->phy = 0x02;
+		qos->phys = BIT(1);
 	else {
 		char *endptr = NULL;
 		uint8_t phy = strtol(input, &endptr, 0);
@@ -4177,7 +4177,7 @@ static void custom_phy(const char *input, void *user_data)
 		switch (phy) {
 		case 0x01:
 		case 0x02:
-			qos->phy = phy;
+			qos->phys = phy;
 			break;
 		default:
 			bt_shell_printf("Invalid argument: %s\n", input);

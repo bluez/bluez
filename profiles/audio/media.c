@@ -858,7 +858,7 @@ static int parse_ucast_qos(DBusMessageIter *iter, struct bt_bap_qos *qos)
 			if (var != DBUS_TYPE_BYTE)
 				goto fail;
 
-			dbus_message_iter_get_basic(&value, &io_qos.phy);
+			dbus_message_iter_get_basic(&value, &io_qos.phys);
 		} else if (!strcasecmp(key, "SDU")) {
 			if (var != DBUS_TYPE_UINT16)
 				goto fail;

@@ -491,7 +491,7 @@
 	.ucast.io_qos.interval = _interval, \
 	.ucast.io_qos.latency = _lat, \
 	.ucast.io_qos.sdu = _sdu, \
-	.ucast.io_qos.phy = BT_BAP_CONFIG_PHY_2M, \
+	.ucast.io_qos.phys = BT_BAP_CONFIG_PHY_2M, \
 	.ucast.io_qos.rtn = _rtn, \
 }
 
@@ -947,7 +947,7 @@
 	.bcast.io_qos.interval = _interval, \
 	.bcast.io_qos.latency = _lat, \
 	.bcast.io_qos.sdu = _sdu, \
-	.bcast.io_qos.phy = BT_BAP_CONFIG_PHY_2M, \
+	.bcast.io_qos.phys = BT_BAP_CONFIG_PHY_2M, \
 	.bcast.io_qos.rtn = _rtn, \
 }
 

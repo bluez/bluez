@@ -35,9 +35,9 @@
 #define BT_BAP_CONFIG_LATENCY_BALANCED	0x02
 #define BT_BAP_CONFIG_LATENCY_HIGH	0x03
 
-#define BT_BAP_CONFIG_PHY_1M		0x01
-#define BT_BAP_CONFIG_PHY_2M		0x02
-#define BT_BAP_CONFIG_PHY_CODEC		0x03
+#define BT_BAP_CONFIG_PHY_1M		BIT(0)
+#define BT_BAP_CONFIG_PHY_2M		BIT(1)
+#define BT_BAP_CONFIG_PHY_CODEC		BIT(2)
 
 struct bt_bap_codec {
 	uint8_t  id;
@@ -55,7 +55,7 @@ struct bt_bap_io_qos {
 	uint32_t interval;	/* Frame interval */
 	uint16_t latency;	/* Transport Latency */
 	uint16_t sdu;		/* Maximum SDU Size */
-	uint8_t  phy;		/* PHY */
+	uint8_t  phys;		/* PHY */
 	uint8_t  rtn;		/* Retransmission Effort */
 };
 
