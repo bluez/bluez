@@ -3886,10 +3886,10 @@ void bthost_set_cig_params(struct bthost *bthost, uint8_t cig_id,
 	cp->cis[0].cis_id = cis_id;
 	cp->cis[0].c_sdu = qos->ucast.in.sdu;
 	cp->cis[0].p_sdu = qos->ucast.out.sdu;
-	cp->cis[0].c_phys = qos->ucast.in.phy ? qos->ucast.in.phy :
-							qos->ucast.out.phy;
-	cp->cis[0].p_phys = qos->ucast.out.phy ? qos->ucast.out.phy :
-							qos->ucast.in.phy;
+	cp->cis[0].c_phys = qos->ucast.in.phys ? qos->ucast.in.phys :
+							qos->ucast.out.phys;
+	cp->cis[0].p_phys = qos->ucast.out.phys ? qos->ucast.out.phys :
+							qos->ucast.in.phys;
 	cp->cis[0].c_rtn = qos->ucast.in.rtn;
 	cp->cis[0].p_rtn = qos->ucast.out.rtn;
 

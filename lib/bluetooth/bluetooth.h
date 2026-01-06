@@ -173,7 +173,7 @@ struct bt_iso_io_qos {
 	uint32_t interval;
 	uint16_t latency;
 	uint16_t sdu;
-	uint8_t  phy;
+	uint8_t  phys;
 	uint8_t  rtn;
 };
 

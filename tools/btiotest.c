@@ -35,7 +35,7 @@ static int opt_update_sec = 0;
 	.interval = 10000, \
 	.latency = 10, \
 	.sdu = 40, \
-	.phy = 0x02, \
+	.phys = 0x02, \
 	.rtn = 2, \
 }
 

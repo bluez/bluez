@@ -43,12 +43,12 @@
 
 #define EIR_SERVICE_DATA_16	0x16
 
-#define QOS_IO(_interval, _latency, _sdu, _phy, _rtn) \
+#define QOS_IO(_interval, _latency, _sdu, _phys, _rtn) \
 { \
 	.interval = _interval, \
 	.latency = _latency, \
 	.sdu = _sdu, \
-	.phy = _phy, \
+	.phys = _phys, \
 	.rtn = _rtn, \
 }
 
@@ -2171,9 +2171,9 @@ static bool check_io_qos(const struct bt_iso_io_qos *io1,
 		return false;
 	}
 
-	if (io1->phy && io2->phy && io1->phy != io2->phy) {
+	if (io1->phys && io2->phys && io1->phys != io2->phys) {
 		tester_warn("Unexpected IO PHY: 0x%02x != 0x%02x",
-				io1->phy, io2->phy);
+				io1->phys, io2->phys);
 		return false;
 	}
 
