@@ -374,14 +374,14 @@ struct bt_iso_qos bap_sink_pa_qos = {
 			.interval	= 10000,
 			.latency	= 10,
 			.sdu		= 40,
-			.phy		= 0x02,
+			.phys		= BIT(1),
 			.rtn		= 2,
 		},
 		.out = {
 			.interval	= 10000,
 			.latency	= 10,
 			.sdu		= 40,
-			.phy		= 0x02,
+			.phys		= BIT(1),
 			.rtn		= 2,
 		}
 	}
@@ -1029,8 +1029,8 @@ static void stream_notify_config(struct bt_bap_stream *stream)
 	status->state = ep->state;
 
 	/* Initialize preferred settings if not set */
-	if (!lpac->qos.phy)
-		lpac->qos.phy = 0x02;
+	if (!lpac->qos.phys)
+		lpac->qos.phys = BIT(1);
 
 	if (!lpac->qos.rtn)
 		lpac->qos.rtn = 0x05;
@@ -1053,7 +1053,7 @@ static void stream_notify_config(struct bt_bap_stream *stream)
 	/* TODO:Add support for setting preferred settings on bt_bap_pac */
 	config = (void *)status->params;
 	config->framing = lpac->qos.framing;
-	config->phy = lpac->qos.phy;
+	config->phy = lpac->qos.phys;
 	config->rtn = lpac->qos.rtn;
 	config->latency = cpu_to_le16(lpac->qos.latency);
 	put_le24(lpac->qos.pd_min, config->pd_min);
@@ -4237,7 +4237,7 @@ uint16_t bt_bap_pac_get_context(struct bt_bap_pac *pac)
 
 struct bt_bap_pac_qos *bt_bap_pac_get_qos(struct bt_bap_pac *pac)
 {
-	if (!pac || !pac->qos.phy)
+	if (!pac || !pac->qos.phys)
 		return NULL;
 
 	return &pac->qos;
@@ -5109,7 +5109,7 @@ static void ep_status_config(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 	/* Set preferred settings */
 	if (ep->stream->rpac) {
 		ep->stream->rpac->qos.framing = cfg->framing;
-		ep->stream->rpac->qos.phy = cfg->phy;
+		ep->stream->rpac->qos.phys = cfg->phy;
 		ep->stream->rpac->qos.rtn = cfg->rtn;
 		ep->stream->rpac->qos.latency = le16_to_cpu(cfg->latency);
 		ep->stream->rpac->qos.pd_min = pd_min;
@@ -7861,7 +7861,7 @@ void bt_bap_iso_qos_to_bap_qos(struct bt_iso_qos *iso_qos,
 	bap_qos->bcast.io_qos.interval =
 			iso_qos->bcast.in.interval;
 	bap_qos->bcast.io_qos.latency = iso_qos->bcast.in.latency;
-	bap_qos->bcast.io_qos.phy = iso_qos->bcast.in.phy;
+	bap_qos->bcast.io_qos.phy = iso_qos->bcast.in.phys;
 	bap_qos->bcast.io_qos.rtn = iso_qos->bcast.in.rtn;
 	bap_qos->bcast.io_qos.sdu = iso_qos->bcast.in.sdu;
 }

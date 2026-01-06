@@ -1049,7 +1049,7 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 						metadata->iov_len);
 	}
 
-	if (qos && qos->phy) {
+	if (qos && qos->phys) {
 		DBusMessageIter entry, variant, qos_dict;
 
 		key = "QoS";
@@ -1065,7 +1065,7 @@ static int pac_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
 							&qos->framing);
 
 		g_dbus_dict_append_entry(&qos_dict, "PHY", DBUS_TYPE_BYTE,
-							&qos->phy);
+							&qos->phys);
 
 		g_dbus_dict_append_entry(&qos_dict, "Retransmissions",
 					DBUS_TYPE_BYTE, &qos->rtn);
@@ -1810,7 +1810,7 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 		} else if (strcasecmp(key, "PHY") == 0) {
 			if (var != DBUS_TYPE_BYTE)
 				return -EINVAL;
-			dbus_message_iter_get_basic(&value, &qos->phy);
+			dbus_message_iter_get_basic(&value, &qos->phys);
 		} else if (strcasecmp(key, "Retransmissions") == 0) {
 			if (var != DBUS_TYPE_BYTE)
 				return -EINVAL;
@@ -3073,7 +3073,7 @@ static void app_register_endpoint(void *data, void *user_data)
 		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_BYTE)
 			goto fail;
 
-		dbus_message_iter_get_basic(&iter, &qos.phy);
+		dbus_message_iter_get_basic(&iter, &qos.phys);
 	}
 
 	if (g_dbus_proxy_get_property(proxy, "MaximumLatency", &iter)) {

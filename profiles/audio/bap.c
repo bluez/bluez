@@ -428,7 +428,7 @@ static gboolean get_qos(const GDBusPropertyTable *property,
 		return FALSE;
 
 	dict_append_entry(&dict, "Framing", DBUS_TYPE_BYTE, &qos->framing);
-	dict_append_entry(&dict, "PHY", DBUS_TYPE_BYTE, &qos->phy);
+	dict_append_entry(&dict, "PHY", DBUS_TYPE_BYTE, &qos->phys);
 	dict_append_entry(&dict, "Retransmissions", DBUS_TYPE_BYTE, &qos->rtn);
 	dict_append_entry(&dict, "MaximumLatency", DBUS_TYPE_UINT16,
 					&qos->latency);
@@ -2242,7 +2242,7 @@ static void bap_iso_qos(struct bt_bap_qos *qos, struct bt_iso_io_qos *io)
 	io->interval = qos->ucast.io_qos.interval;
 	io->latency = qos->ucast.io_qos.latency;
 	io->sdu = qos->ucast.io_qos.sdu;
-	io->phy = qos->ucast.io_qos.phy;
+	io->phys = qos->ucast.io_qos.phy;
 	io->rtn = qos->ucast.io_qos.rtn;
 }
 

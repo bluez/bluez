@@ -55,7 +55,7 @@ extern struct bt_iso_qos bap_sink_pa_qos;
 /* Local PAC related functions */
 struct bt_bap_pac_qos {
 	uint8_t  framing;
-	uint8_t  phy;
+	uint8_t  phys;
 	uint8_t  rtn;
 	uint16_t latency;
 	uint32_t pd_min;

@@ -270,13 +270,13 @@ static void print_ucast_qos(int sk)
 		qos.ucast.packing, qos.ucast.framing);
 
 	syslog(LOG_INFO, "Input QoS [Interval %u us Latency %u "
-		"ms SDU %u PHY 0x%02x RTN %u]", qos.ucast.in.interval,
-		qos.ucast.in.latency, qos.ucast.in.sdu, qos.ucast.in.phy,
+		"ms SDU %u PHYs 0x%02x RTN %u]", qos.ucast.in.interval,
+		qos.ucast.in.latency, qos.ucast.in.sdu, qos.ucast.in.phys,
 		qos.ucast.in.rtn);
 
 	syslog(LOG_INFO, "Output QoS [Interval %u us Latency %u "
-		"ms SDU %u PHY 0x%02x RTN %u]", qos.ucast.out.interval,
-		qos.ucast.out.latency, qos.ucast.out.sdu, qos.ucast.out.phy,
+		"ms SDU %u PHYs 0x%02x RTN %u]", qos.ucast.out.interval,
+		qos.ucast.out.latency, qos.ucast.out.sdu, qos.ucast.out.phys,
 		qos.ucast.out.rtn);
 }
 
@@ -311,14 +311,14 @@ static void print_bcast_qos(int sk)
 		qos.bcast.bcode[13], qos.bcast.bcode[14], qos.bcast.bcode[15]);
 
 	syslog(LOG_INFO, "Input QoS [Interval %u us Latency %u "
-		"ms SDU %u PHY 0x%02x RTN %u]", qos.bcast.in.interval,
+		"ms SDU %u PHYs 0x%02x RTN %u]", qos.bcast.in.interval,
 		qos.bcast.in.latency, qos.bcast.in.sdu,
-		qos.bcast.in.phy, qos.bcast.in.rtn);
+		qos.bcast.in.phys, qos.bcast.in.rtn);
 
 	syslog(LOG_INFO, "Output QoS [Interval %u us Latency %u "
-		"ms SDU %u PHY 0x%02x RTN %u]", qos.bcast.out.interval,
+		"ms SDU %u PHYs 0x%02x RTN %u]", qos.bcast.out.interval,
 		qos.bcast.out.latency, qos.bcast.out.sdu,
-		qos.bcast.out.phy, qos.bcast.out.rtn);
+		qos.bcast.out.phys, qos.bcast.out.rtn);
 }
 
 static int do_connect(char *peer)
@@ -350,7 +350,7 @@ static int do_connect(char *peer)
 	/* Set QoS if available */
 	if (iso_qos) {
 		if (!inout || !strcmp(peer, "00:00:00:00:00:00")) {
-			iso_qos->ucast.in.phy = 0x00;
+			iso_qos->ucast.in.phys = 0x00;
 			iso_qos->ucast.in.sdu = 0;
 		}
 
@@ -1020,12 +1020,12 @@ static void multy_connect_mode(char *peer)
 	}
 }
 
-#define QOS_IO(_interval, _latency, _sdu, _phy, _rtn) \
+#define QOS_IO(_interval, _latency, _sdu, _phys, _rtn) \
 { \
 	.interval = _interval, \
 	.latency = _latency, \
 	.sdu = _sdu, \
-	.phy = _phy, \
+	.phys = _phys, \
 	.rtn = _rtn, \
 }
 
@@ -1339,7 +1339,7 @@ int main(int argc, char *argv[])
 
 		case 'Y':
 			if (optarg)
-				iso_qos->ucast.out.phy = atoi(optarg);
+				iso_qos->ucast.out.phys = atoi(optarg);
 			break;
 
 		case 'R':

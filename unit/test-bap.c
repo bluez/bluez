@@ -101,7 +101,7 @@ static struct iovec lc3_caps = LC3_CAPABILITIES(LC3_FREQ_ANY, LC3_DURATION_ANY,
 								3u, 26, 240);
 
 static struct bt_bap_pac_qos lc3_qos = {
-	.phy = 0x02,
+	.phys = BIT(1),
 	.rtn = 0x01,
 	.location = 0x00000003,
 	.supported_context = 0x0fff,
