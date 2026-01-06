@@ -594,7 +594,7 @@ static int parse_io_qos(const char *key, int var, DBusMessageIter *iter,
 		if (var != DBUS_TYPE_BYTE)
 			return -EINVAL;
 
-		dbus_message_iter_get_basic(iter, &qos->phy);
+		dbus_message_iter_get_basic(iter, &qos->phys);
 	} else if (!strcasecmp(key, "SDU")) {
 		if (var != DBUS_TYPE_UINT16)
 			return -EINVAL;
@@ -1145,7 +1145,7 @@ static bool match_io_qos(const struct bt_bap_io_qos *io_qos,
 	if (io_qos->sdu != match->sdu)
 		return false;
 
-	if (io_qos->phy != match->phy)
+	if (io_qos->phys != match->phys)
 		return false;
 
 	if (io_qos->rtn != match->rtn)
@@ -2242,7 +2242,7 @@ static void bap_iso_qos(struct bt_bap_qos *qos, struct bt_iso_io_qos *io)
 	io->interval = qos->ucast.io_qos.interval;
 	io->latency = qos->ucast.io_qos.latency;
 	io->sdu = qos->ucast.io_qos.sdu;
-	io->phys = qos->ucast.io_qos.phy;
+	io->phys = qos->ucast.io_qos.phys;
 	io->rtn = qos->ucast.io_qos.rtn;
 }
 

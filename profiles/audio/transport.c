@@ -1241,7 +1241,7 @@ static void append_io_qos(DBusMessageIter *dict, struct bt_bap_io_qos *qos)
 	dict_append_entry(dict, "Interval", DBUS_TYPE_UINT32, &qos->interval);
 	dict_append_entry(dict, "Latency", DBUS_TYPE_UINT16, &qos->latency);
 	dict_append_entry(dict, "SDU", DBUS_TYPE_UINT16, &qos->sdu);
-	dict_append_entry(dict, "PHY", DBUS_TYPE_BYTE, &qos->phy);
+	dict_append_entry(dict, "PHY", DBUS_TYPE_BYTE, &qos->phys);
 	dict_append_entry(dict, "Retransmissions", DBUS_TYPE_BYTE, &qos->rtn);
 }
 
@@ -1460,7 +1460,7 @@ static gboolean qos_ucast_exists(const GDBusPropertyTable *property, void *data)
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	return bap->qos.ucast.io_qos.phy != 0x00;
+	return bap->qos.ucast.io_qos.phys != 0x00;
 }
 
 static const GDBusPropertyTable transport_bap_uc_properties[] = {
@@ -1533,7 +1533,7 @@ static gboolean qos_bcast_exists(const GDBusPropertyTable *property, void *data)
 	struct media_transport *transport = data;
 	struct bap_transport *bap = transport->data;
 
-	return bap->qos.bcast.io_qos.phy != 0x00;
+	return bap->qos.bcast.io_qos.phys != 0x00;
 }
 
 static void bcast_qos_set(void *user_data, int err)

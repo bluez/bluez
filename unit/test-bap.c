@@ -1576,7 +1576,7 @@ static void test_disc(void)
 #define QOS_BALANCED_2M \
 	{ \
 		.target_latency = BT_BAP_CONFIG_LATENCY_BALANCED, \
-		.io_qos.phy = BT_BAP_CONFIG_PHY_2M, \
+		.io_qos.phys = BT_BAP_CONFIG_PHY_2M, \
 	}
 #define QOS_UCAST \
 {\
@@ -7533,7 +7533,7 @@ static struct test_config cfg_bsrc_48_6_2 = {
 	.bcast.io_qos.interval = 7500, \
 	.bcast.io_qos.latency = 10, \
 	.bcast.io_qos.sdu = 40, \
-	.bcast.io_qos.phy = BT_BAP_CONFIG_PHY_2M, \
+	.bcast.io_qos.phys = BT_BAP_CONFIG_PHY_2M, \
 	.bcast.io_qos.rtn = 2, \
 }
 
