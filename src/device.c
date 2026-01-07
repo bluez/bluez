@@ -298,6 +298,7 @@ struct btd_device {
 	gboolean	general_connect;
 
 	bool		legacy;
+	uint8_t		sid;
 	int8_t		rssi;
 	int8_t		tx_power;
 
@@ -7104,6 +7105,27 @@ void device_set_rssi_with_delta(struct btd_device *device, int8_t rssi,
 void device_set_rssi(struct btd_device *device, int8_t rssi)
 {
 	device_set_rssi_with_delta(device, rssi, RSSI_THRESHOLD);
+}
+
+void device_set_sid(struct btd_device *device, uint8_t sid)
+{
+	if (!device)
+		return;
+
+	if (device->sid == sid)
+		return;
+
+	DBG("sid %d", sid);
+
+	device->sid = sid;
+}
+
+uint8_t device_get_sid(struct btd_device *device)
+{
+	if (!device)
+		return 0xFF;
+
+	return device->sid;
 }
 
 void device_set_tx_power(struct btd_device *device, int8_t tx_power)
