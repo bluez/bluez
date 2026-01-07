@@ -48,6 +48,7 @@
 #include "src/shared/bap.h"
 #include "src/shared/tmap.h"
 #include "src/shared/gmap.h"
+#include "src/shared/timeout.h"
 
 #include "btio/btio.h"
 #include "src/plugin.h"
@@ -140,6 +141,8 @@ struct bap_data {
 	struct queue *server_streams;
 	GIOChannel *listen_io;
 	unsigned int io_id;
+	unsigned int listen_retry_id;
+	int listen_retry_tries;
 	unsigned int cig_update_id;
 	bool services_ready;
 	bool bap_ready;
@@ -175,6 +178,9 @@ static void setup_free(void *data);
 static void bap_data_free(struct bap_data *data)
 {
 	struct queue *bcast_snks = data->bcast_snks;
+
+	if (data->listen_retry_id)
+		timeout_remove(data->listen_retry_id);
 
 	if (data->listen_io) {
 		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
@@ -3573,13 +3579,52 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
 	bap_data_remove(data);
 }
 
+static bool pa_sync_retry_cb(gpointer user_data)
+{
+	struct bap_data *data = user_data;
+	uint8_t sid = device_get_sid(data->device);
+
+	if (!data)
+		return FALSE;
+
+	data->listen_retry_tries++;
+	if (data->listen_retry_tries >= 2) {
+		data->listen_retry_id = 0;
+		data->listen_retry_tries = 0;
+		btd_adapter_remove_device(data->adapter, data->device);
+		return FALSE;
+	}
+
+	if (sid != 0xFF) {
+		data->listen_retry_id = 0;
+		data->listen_retry_tries = 0;
+		pa_sync(data);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static int pa_sync(struct bap_data *data)
 {
 	GError *err = NULL;
-	uint8_t sid = 0xff;
+	uint8_t sid = device_get_sid(data->device);
 
 	if (data->listen_io) {
 		DBG("Already probed");
+		return -1;
+	}
+
+	/*
+	 * If SID is not yet available, wait MGMT_EV_EXT_ADV_SID_CHANGED event
+	 * to update it and retry PA sync creation.
+	 */
+	if (sid == 0xFF) {
+		DBG("SID not available, scheduling retry for PA sync");
+		if (data->listen_retry_id == 0)
+			data->listen_retry_id =
+						timeout_add(5, pa_sync_retry_cb, data, NULL);
+
 		return -1;
 	}
 
