@@ -2453,6 +2453,7 @@ void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
 	}
 
 	device_probe_profiles(dev, added);
+	g_slist_free(added);
 }
 
 static void add_manufacturer_data(void *data, void *user_data)
