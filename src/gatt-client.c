@@ -1566,6 +1566,7 @@ static void notify_io_destroy(void *data)
 
 	if (queue_remove(client->chrc->notify_clients, client))
 		notify_client_unref(client);
+	notify_client_unref(client);
 }
 
 static DBusMessage *characteristic_acquire_notify(DBusConnection *conn,
@@ -1607,7 +1608,7 @@ static DBusMessage *characteristic_acquire_notify(DBusConnection *conn,
 	queue_push_tail(chrc->notify_clients, client);
 
 	chrc->notify_io = new0(struct sock_io, 1);
-	chrc->notify_io->data = client;
+	chrc->notify_io->data = notify_client_ref(client);
 	chrc->notify_io->msg = dbus_message_ref(msg);
 	chrc->notify_io->destroy = notify_io_destroy;
 
