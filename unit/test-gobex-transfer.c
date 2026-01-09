@@ -1123,7 +1123,7 @@ static gssize provide_seq_delay(void *buf, gsize len, gpointer user_data)
 
 	if (d->provide_delay > 0) {
 		g_obex_suspend(d->obex);
-		g_timeout_add_seconds(d->provide_delay, resume_obex, d);
+		g_timeout_add(d->provide_delay * 100, resume_obex, d);
 		d->provide_delay = 0;
 	}
 
