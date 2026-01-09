@@ -57,9 +57,6 @@ static void test_power2(const void *data)
 		while (size3 < i && size3 < SIZE_MAX)
 			size3 <<= 1;
 
-		tester_debug("%zu -> size1=%zu size2=%zu size3=%zu\n",
-						i, size1, size2, size3);
-
 		g_assert(size1 == size2);
 		g_assert(size2 == size3);
 		g_assert(size3 == size1);
