@@ -84,6 +84,7 @@
 #define SCAN_TYPE_DUAL (SCAN_TYPE_BREDR | SCAN_TYPE_LE)
 
 #define HCI_RSSI_INVALID	127
+#define HCI_SID_INVALID		0xff
 #define DISTANCE_VAL_INVALID	0x7FFF
 #define PATHLOSS_MAX		137
 
@@ -7446,6 +7447,7 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 	}
 
 	device_set_legacy(dev, legacy);
+	device_set_sid(dev, HCI_SID_INVALID);
 
 	if (name_resolve_failed)
 		device_name_resolve_fail(dev);
@@ -7601,12 +7603,40 @@ static void device_found_callback(uint16_t index, uint16_t length,
 	flags = le32_to_cpu(ev->flags);
 
 	ba2str(&ev->addr.bdaddr, addr);
-	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
-			index, addr, ev->rssi, flags, eir_len);
+	DBG("hci%u addr %s type %u, rssi %d flags 0x%04x eir_len %u",
+			index, addr, ev->addr.type, ev->rssi, flags, eir_len);
 
 	btd_adapter_device_found(adapter, &ev->addr.bdaddr,
 					ev->addr.type, ev->rssi, flags,
 					eir, eir_len, false);
+}
+
+static void device_ext_adv_sid_changed_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_ext_adv_sid_changed *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *dev;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		btd_error(adapter->dev_id,
+			"Too short ext adv sid changed event (%u bytes)",
+			length);
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u addr %s type %u, sid %u", index, addr, ev->addr.type, ev->sid);
+
+	dev = btd_adapter_find_device(adapter, &ev->addr.bdaddr,
+							ev->addr.type);
+	if (!dev) {
+		DBG("No device found for ext adv sid change event");
+		return;
+	}
+
+	device_set_sid(dev, ev->sid);
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
@@ -10422,6 +10452,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_FOUND,
 						adapter->dev_id,
 						device_found_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_EXT_ADV_SID_CHANGED,
+						adapter->dev_id,
+						device_ext_adv_sid_changed_callback,
 						adapter, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_DISCONNECTED,

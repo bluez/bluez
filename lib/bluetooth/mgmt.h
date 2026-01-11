@@ -1107,6 +1107,12 @@ struct mgmt_ev_mesh_pkt_cmplt {
 	uint8_t	handle;
 } __packed;
 
+#define MGMT_EV_EXT_ADV_SID_CHANGED		0x0033
+struct mgmt_ev_ext_adv_sid_changed {
+	struct mgmt_addr_info addr;
+	uint8_t	sid;
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -1253,6 +1259,7 @@ static const char *mgmt_ev[] = {
 	"Advertisement Monitor Device Lost",
 	"Mesh Packet Found",
 	"Mesh Packet Complete",
+	"Extended Advertising SID Changed",
 	"PA Sync Established",
 	"BIG Sync Established",
 	"BIG Sync Lost",

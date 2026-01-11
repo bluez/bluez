@@ -108,6 +108,8 @@ void device_set_cable_pairing(struct btd_device *device, bool cable_pairing);
 void device_set_rssi_with_delta(struct btd_device *device, int8_t rssi,
 							int8_t delta_threshold);
 void device_set_rssi(struct btd_device *device, int8_t rssi);
+void device_set_sid(struct btd_device *device, uint8_t sid);
+uint8_t device_get_sid(struct btd_device *device);
 void device_set_tx_power(struct btd_device *device, int8_t tx_power);
 void device_set_flags(struct btd_device *device, uint8_t flags);
 bool btd_device_is_connected(struct btd_device *dev);
