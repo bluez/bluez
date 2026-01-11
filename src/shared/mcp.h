@@ -167,3 +167,4 @@ void bt_mcs_unregister_all(struct gatt_db *db);
 
 /* For tests: */
 void bt_mcs_test_util_reset_ccid(void);
+struct bt_gatt_client *bt_mcp_test_util_get_client(struct bt_mcp *mcp);
