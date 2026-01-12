@@ -152,7 +152,7 @@ struct bt_voice {
 #define BT_ISO_QOS_BIG_UNSET	0xff
 #define BT_ISO_QOS_BIS_UNSET	0xff
 
-#define BT_ISO_SYNC_TIMEOUT	0x07d0 /* 20 secs */
+#define BT_ISO_SYNC_TIMEOUT	0x00c8 /* 2 secs */
 
 /* For an ISO Broadcaster, this value is used to compute
  * the desired Periodic Advertising Interval as a function
