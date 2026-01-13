@@ -249,6 +249,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/asha.h src/shared/asha.c \
 			src/shared/battery.h src/shared/battery.c \
 			src/shared/uinput.h src/shared/uinput.c
+			src/shared/rap.h src/shared/rap.c
 
 if READLINE
 shared_sources += src/shared/shell.c src/shared/shell.h
@@ -742,6 +743,12 @@ unit_tests += unit/test-battery
 
 unit_test_battery_SOURCES = unit/test-battery.c
 unit_test_battery_LDADD = src/libshared-glib.la \
+				lib/libbluetooth-internal.la $(GLIB_LIBS)
+
+unit_tests += unit/test-rap
+
+unit_test_rap_SOURCES = unit/test-rap.c $(btio_sources)
+unit_test_rap_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 
 if MIDI
