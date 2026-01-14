@@ -1229,6 +1229,9 @@ static bool data_match(const void *data, const void *user_data)
 	const struct bt_ad_data *d1 = data;
 	const struct bt_ad_data *d2 = user_data;
 
+	if (!d2)
+		return true;
+
 	if (d1->type != d2->type)
 		return false;
 
@@ -1241,13 +1244,11 @@ static bool data_match(const void *data, const void *user_data)
 	return !memcmp(d1->data, d2->data, d1->len);
 }
 
-bool bt_ad_has_data(struct bt_ad *ad, const struct bt_ad_data *data)
+struct bt_ad_data *bt_ad_has_data(struct bt_ad *ad,
+					const struct bt_ad_data *data)
 {
 	if (!ad)
 		return false;
-
-	if (!data)
-		return !queue_isempty(ad->data);
 
 	return queue_find(ad->data, data_match, data);
 }
