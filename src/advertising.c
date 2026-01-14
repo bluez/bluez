@@ -506,11 +506,52 @@ static bool parse_service_data_sr(DBusMessageIter *iter,
 	return parse_service_data(iter, client->scan);
 }
 
+static bool validate_rsi(const uint8_t *data, uint8_t len)
+{
+	struct bt_crypto *crypto;
+	uint8_t zero[16] = {};
+	uint8_t hash[3];
+	bool ret;
+
+	if (!data || len != 6)
+		return false;
+
+	/* Check if a valid SIRK has been set */
+	if (!memcmp(btd_opts.csis.sirk, zero, sizeof(zero)))
+		return false;
+
+	crypto = bt_crypto_new();
+	if (!crypto)
+		return false;
+
+	/* Generate a hash using SIRK and prand as input */
+	ret = bt_crypto_sih(crypto, btd_opts.csis.sirk, data + 3, hash);
+	if (!ret)
+		goto done;
+
+	/* Check if hash matches  */
+	ret = !(memcmp(hash, data, 3));
+	if (!ret) {
+		error("RSI set invalid: hash mismatch");
+		printf("Random: %02x%02x%02x\n", data[3], data[4], data[5]);
+		printf("Hash:   %02x%02x%02x\n", data[0], data[1], data[2]);
+		printf("Match:   %02x%02x%02x\n", hash[0], hash[1], hash[2]);
+		goto done;
+	}
+
+	DBG("RSI validated");
+
+done:
+	bt_crypto_unref(crypto);
+	return ret;
+}
+
 static bool set_rsi(struct btd_adv_client *client)
 {
 	struct bt_crypto *crypto;
 	uint8_t zero[16] = {};
 	struct bt_ad_data rsi = { .type = BT_AD_CSIP_RSI };
+	struct bt_ad_data *ad;
 	uint8_t data[6];
 	bool ret;
 
@@ -518,23 +559,28 @@ static bool set_rsi(struct btd_adv_client *client)
 	if (!memcmp(btd_opts.csis.sirk, zero, sizeof(zero)))
 		return false;
 
-	/* Check if RSI needs to be set or data already contains RSI data */
-	if (!client || bt_ad_has_data(client->data, &rsi))
+	if (!client)
 		return true;
+
+	/* Check if RSI needs to be set or data already contains RSI data */
+	ad = bt_ad_has_data(client->data, &rsi);
+	if (ad) {
+		ret = validate_rsi(ad->data, ad->len);
+		return ret;
+	}
 
 	crypto = bt_crypto_new();
 	if (!crypto)
 		return false;
 
 	ret = bt_crypto_rsi(crypto, btd_opts.csis.sirk, data);
-	if (!ret)
-		goto done;
 
-	ret = bt_ad_add_data(client->data, BT_AD_CSIP_RSI, data, sizeof(data));
-
-done:
 	bt_crypto_unref(crypto);
-	return ret;
+
+	if (!ret)
+		return ret;
+
+	return bt_ad_add_data(client->data, BT_AD_CSIP_RSI, data, sizeof(data));
 }
 
 static struct adv_include {
@@ -752,6 +798,13 @@ static bool parse_data(DBusMessageIter *iter, struct bt_ad *ad)
 		dbus_message_iter_get_fixed_array(&array, &data, &len);
 
 		DBG("Adding Data for type 0x%02x len %u", type, len);
+
+		switch (type) {
+		case BT_AD_CSIP_RSI:
+			if (!validate_rsi(data, len))
+				goto fail;
+			break;
+		}
 
 		if (!bt_ad_add_data(ad, type, data, len))
 			goto fail;
