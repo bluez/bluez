@@ -75,36 +75,12 @@ static size_t hex2bin(const char *hexstr, uint8_t *buf, size_t buflen)
 	return len;
 }
 
-static bool get_random_bytes(void *buf, size_t num_bytes)
-{
-	ssize_t len;
-	int fd;
-
-	fd = open("/dev/urandom", O_RDONLY);
-	if (fd < 0)
-		return false;
-
-	len = read(fd, buf, num_bytes);
-
-	close(fd);
-
-	if (len < 0)
-		return false;
-
-	return true;
-}
-
 static void generate_rsi(char *val)
 {
-	uint8_t sirk[16], hash[3];
+	uint8_t sirk[16];
 	uint8_t  rsi[6] = {0};
 
 	hex2bin(val, sirk, sizeof(sirk));
-
-	get_random_bytes(&rsi[3], 3);
-
-	rsi[5] &= 0x3f; /* Clear 2 msb */
-	rsi[5] |= 0x40; /* Set 2nd msb */
 
 	crypto = bt_crypto_new();
 	if (!crypto) {
@@ -113,8 +89,7 @@ static void generate_rsi(char *val)
 		return;
 	}
 
-	bt_crypto_ah(crypto, sirk, rsi + 3, hash);
-	memcpy(rsi, hash, 3);
+	bt_crypto_rsi(crypto, sirk, rsi);
 
 	print_rpa(rsi);
 }
