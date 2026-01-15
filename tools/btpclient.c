@@ -29,7 +29,7 @@
 #define AD_IFACE "org.bluez.LEAdvertisement1"
 #define AG_IFACE "org.bluez.Agent1"
 
-/* List of assigned numbers for advetising data and scan response */
+/* List of assigned numbers for advertising data and scan response */
 #define AD_TYPE_FLAGS				0x01
 #define AD_TYPE_INCOMPLETE_UUID16_SERVICE_LIST	0x02
 #define AD_TYPE_SHORT_NAME			0x08
@@ -2510,15 +2510,18 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 {
 	struct btp_device *device = find_device_by_proxy(proxy);
 	struct btp_adapter *adapter = find_adapter_by_device(device);
-	struct btp_device_found_ev ev;
+	struct btp_device_found_ev *ev;
 	struct btp_gap_device_connected_ev ev_conn;
 	const char *str, *addr_str;
 	int16_t rssi;
 	uint8_t address_type;
 	bool connected;
+	struct l_dbus_message_iter iter, var;
+
+	ev = l_malloc(sizeof(struct btp_device_found_ev));
 
 	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &addr_str) ||
-					str2ba(addr_str, &ev.address) < 0)
+					str2ba(addr_str, &ev->address) < 0)
 		return;
 
 	if (!l_dbus_proxy_get_property(proxy, "AddressType", "s", &str))
@@ -2526,23 +2529,91 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 
 	address_type = strcmp(str, "public") ? BTP_GAP_ADDR_RANDOM :
 							BTP_GAP_ADDR_PUBLIC;
-	ev.address_type = address_type;
+	ev->address_type = address_type;
 
 	if (!l_dbus_proxy_get_property(proxy, "RSSI", "n", &rssi))
-		ev.rssi = 0x81;
+		ev->rssi = 0x81;
 	else
-		ev.rssi = rssi;
+		ev->rssi = rssi;
 
 	/* TODO Temporary set all flags */
-	ev.flags = (BTP_EV_GAP_DEVICE_FOUND_FLAG_RSSI |
+	ev->flags = (BTP_EV_GAP_DEVICE_FOUND_FLAG_RSSI |
 					BTP_EV_GAP_DEVICE_FOUND_FLAG_AD |
 					BTP_EV_GAP_DEVICE_FOUND_FLAG_SR);
 
-	/* TODO Add eir to device found event */
-	ev.eir_len = 0;
+	ev->eir_len = 0;
+	if (l_dbus_proxy_get_property(proxy, "ManufacturerData", "a{qv}",
+				&iter)) {
+		uint16_t key;
+
+		while (l_dbus_message_iter_next_entry(&iter, &key, &var)) {
+			struct l_dbus_message_iter var_2;
+			uint8_t *data;
+			uint32_t n;
+			uint8_t *eir;
+
+			if (!l_dbus_message_iter_get_variant(&var, "ay",
+								&var_2)) {
+				l_debug("Failed to get data variant");
+				continue;
+			}
+
+			if (!l_dbus_message_iter_get_fixed_array(&var_2,
+								&data,
+								&n)) {
+				l_debug("Cannot get ManufacturerData");
+				continue;
+			}
+
+			ev->eir_len += n + 4;
+			ev = l_realloc(ev,
+				sizeof(struct btp_device_found_ev) +
+				ev->eir_len);
+			eir = &ev->eir[ev->eir_len - n - 4];
+			eir[0] = n + 3;
+			eir[1] = AD_TYPE_MANUFACTURER_DATA;
+			eir[2] = key >> 8;
+			eir[3] = key & 0xFF;
+			l_memcpy(&eir[4], data, n);
+		}
+	}
+
+	if (l_dbus_proxy_get_property(proxy, "AdvertisingData", "a{yv}",
+					&iter)) {
+		uint8_t key;
+
+		while (l_dbus_message_iter_next_entry(&iter, &key, &var)) {
+			struct l_dbus_message_iter var_2;
+			uint8_t *data;
+			uint32_t n;
+			uint8_t *eir;
+
+			if (!l_dbus_message_iter_get_variant(&var, "ay",
+								&var_2)) {
+				l_debug("Failed to get data variant");
+				continue;
+			}
+
+			if (!l_dbus_message_iter_get_fixed_array(&var_2,
+								&data,
+								&n)) {
+				l_debug("Cannot get AdvertisingData");
+				continue;
+			}
+
+			ev->eir_len += n + 2;
+			ev = l_realloc(ev,
+				sizeof(struct btp_device_found_ev) +
+				ev->eir_len);
+			eir = &ev->eir[ev->eir_len - n - 2];
+			eir[0] = n + 1;
+			eir[1] = key;
+			l_memcpy(&eir[2], data, n);
+		}
+	}
 
 	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND, adapter->index,
-						sizeof(ev) + ev.eir_len, &ev);
+						sizeof(*ev) + ev->eir_len, ev);
 
 	if (l_dbus_proxy_get_property(proxy, "Connected", "b", &connected) &&
 								connected) {
