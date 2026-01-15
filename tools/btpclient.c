@@ -33,6 +33,7 @@
 #define AD_TYPE_FLAGS				0x01
 #define AD_TYPE_INCOMPLETE_UUID16_SERVICE_LIST	0x02
 #define AD_TYPE_SHORT_NAME			0x08
+#define AD_TYPE_COMPLETE_NAME			0x09
 #define AD_TYPE_TX_POWER			0x0a
 #define AD_TYPE_SOLICIT_UUID16_SERVICE_LIST	0x14
 #define AD_TYPE_SERVICE_DATA_UUID16		0x16
@@ -1066,6 +1067,7 @@ static void create_advertising_data(uint8_t adv_data_len, const uint8_t *data)
 			break;
 		}
 		case AD_TYPE_SHORT_NAME:
+		case AD_TYPE_COMPLETE_NAME:
 			ad.local_name = malloc(ad_len + 1);
 			memcpy(ad.local_name, ad_data, ad_len);
 			ad.local_name[ad_len] = '\0';
