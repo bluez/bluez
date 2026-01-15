@@ -533,9 +533,6 @@ static bool validate_rsi(const uint8_t *data, uint8_t len)
 	ret = !(memcmp(hash, data, 3));
 	if (!ret) {
 		error("RSI set invalid: hash mismatch");
-		printf("Random: %02x%02x%02x\n", data[3], data[4], data[5]);
-		printf("Hash:   %02x%02x%02x\n", data[0], data[1], data[2]);
-		printf("Match:   %02x%02x%02x\n", hash[0], hash[1], hash[2]);
 		goto done;
 	}
 
