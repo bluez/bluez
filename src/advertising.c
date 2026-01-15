@@ -526,11 +526,7 @@ static bool set_rsi(struct btd_adv_client *client)
 	if (!crypto)
 		return false;
 
-	ret = bt_crypto_random_bytes(crypto, data + 3, sizeof(data) - 3);
-	if (!ret)
-		goto done;
-
-	ret = bt_crypto_sih(crypto, btd_opts.csis.sirk, data + 3, data);
+	ret = bt_crypto_rsi(crypto, btd_opts.csis.sirk, data);
 	if (!ret)
 		goto done;
 
