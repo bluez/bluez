@@ -287,7 +287,7 @@ static void btp_gap_read_commands(uint8_t index, const void *param,
 
 	commands |= (1 << BTP_OP_GAP_READ_SUPPORTED_COMMANDS);
 	commands |= (1 << BTP_OP_GAP_READ_CONTROLLER_INDEX_LIST);
-	commands |= (1 << BTP_OP_GAP_READ_COTROLLER_INFO);
+	commands |= (1 << BTP_OP_GAP_READ_CONTROLLER_INFO);
 	commands |= (1 << BTP_OP_GAP_RESET);
 	commands |= (1 << BTP_OP_GAP_SET_POWERED);
 	commands |= (1 << BTP_OP_GAP_SET_CONNECTABLE);
@@ -370,7 +370,7 @@ static void btp_gap_read_info(uint8_t index, const void *param, uint16_t length,
 	rp.supported_settings = L_CPU_TO_LE32(adapter->supported_settings);
 	rp.current_settings = L_CPU_TO_LE32(adapter->current_settings);
 
-	btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_READ_COTROLLER_INFO, index,
+	btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_READ_CONTROLLER_INFO, index,
 							sizeof(rp), &rp);
 
 	return;
@@ -2634,7 +2634,7 @@ static void register_gap_service(void)
 				BTP_OP_GAP_READ_CONTROLLER_INDEX_LIST,
 				btp_gap_read_controller_index, NULL, NULL);
 
-	btp_register(btp, BTP_GAP_SERVICE, BTP_OP_GAP_READ_COTROLLER_INFO,
+	btp_register(btp, BTP_GAP_SERVICE, BTP_OP_GAP_READ_CONTROLLER_INFO,
 						btp_gap_read_info, NULL, NULL);
 
 	btp_register(btp, BTP_GAP_SERVICE, BTP_OP_GAP_RESET,
