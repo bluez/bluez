@@ -1340,15 +1340,17 @@ static void set_discovery_filter_setup(struct l_dbus_message *message,
 	builder = l_dbus_message_builder_new(message);
 
 	l_dbus_message_builder_enter_array(builder, "{sv}");
-	l_dbus_message_builder_enter_dict(builder, "sv");
 
 	/* Be in observer mode or in general mode (default in Bluez) */
 	if (flags & BTP_GAP_DISCOVERY_FLAG_OBSERVATION) {
+		l_dbus_message_builder_enter_dict(builder, "sv");
 		l_dbus_message_builder_append_basic(builder, 's', "Transport");
 		l_dbus_message_builder_enter_variant(builder, "s");
 
-		if (flags & (BTP_GAP_DISCOVERY_FLAG_LE |
-						BTP_GAP_DISCOVERY_FLAG_BREDR))
+		if ((flags & (BTP_GAP_DISCOVERY_FLAG_LE |
+					BTP_GAP_DISCOVERY_FLAG_BREDR)) ==
+				(BTP_GAP_DISCOVERY_FLAG_LE |
+					BTP_GAP_DISCOVERY_FLAG_BREDR))
 			l_dbus_message_builder_append_basic(builder, 's',
 									"auto");
 		else if (flags & BTP_GAP_DISCOVERY_FLAG_LE)
@@ -1358,9 +1360,17 @@ static void set_discovery_filter_setup(struct l_dbus_message *message,
 								"bredr");
 
 		l_dbus_message_builder_leave_variant(builder);
+		l_dbus_message_builder_leave_dict(builder);
+
+		/* Add empty pattern to discover all devices */
+		l_dbus_message_builder_enter_dict(builder, "sv");
+		l_dbus_message_builder_append_basic(builder, 's', "Pattern");
+		l_dbus_message_builder_enter_variant(builder, "s");
+		l_dbus_message_builder_append_basic(builder, 's', "");
+		l_dbus_message_builder_leave_variant(builder);
+		l_dbus_message_builder_leave_dict(builder);
 	}
 
-	l_dbus_message_builder_leave_dict(builder);
 	l_dbus_message_builder_leave_array(builder);
 
 	/* TODO add passive, limited discovery */
