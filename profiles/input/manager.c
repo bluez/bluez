@@ -27,6 +27,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/conf_d.h"
 
 #include "device.h"
 #include "server.h"
@@ -70,6 +71,14 @@ static GKeyFile *load_config_file(const char *file)
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
 		if (!g_error_matches(err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
 			error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
+		g_key_file_free(keyfile);
+		return NULL;
+	}
+
+	confd_process_config(keyfile, file, FALSE, TRUE, &err);
+	if (err) {
+		error("Parsing conf.d failed: %s", err->message);
 		g_error_free(err);
 		g_key_file_free(keyfile);
 		return NULL;
