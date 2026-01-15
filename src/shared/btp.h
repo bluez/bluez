@@ -82,7 +82,7 @@ struct btp_gap_read_index_rp {
 #define BTP_GAP_SETTING_CONTROLLER_CONF		0x00004000
 #define BTP_GAP_SETTING_STATIC_ADDRESS		0x00008000
 
-#define BTP_OP_GAP_READ_COTROLLER_INFO		0x03
+#define BTP_OP_GAP_READ_CONTROLLER_INFO		0x03
 struct btp_gap_read_info_rp {
 	bdaddr_t address;
 	uint32_t supported_settings;

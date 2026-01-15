@@ -1488,7 +1488,7 @@ static void cmd_gap_read_info(int argc, char **argv)
 
 	index = atoi(argv[1]);
 
-	if (!send_cmd(BTP_GAP_SERVICE, BTP_OP_GAP_READ_COTROLLER_INFO,
+	if (!send_cmd(BTP_GAP_SERVICE, BTP_OP_GAP_READ_CONTROLLER_INFO,
 						index, 0, NULL))
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
