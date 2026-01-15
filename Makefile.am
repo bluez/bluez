@@ -308,6 +308,7 @@ pkglibexec_PROGRAMS += src/bluetoothd
 bluetoothd_internal_sources = \
 			$(attrib_sources) $(btio_sources) \
 			src/log.h src/log.c \
+			src/conf_d.h src/conf_d.c \
 			src/backtrace.h src/backtrace.c \
 			src/rfkill.c src/btd.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \

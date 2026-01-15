@@ -28,6 +28,7 @@
 #include "src/device.h"
 #include "src/profile.h"
 #include "src/service.h"
+#include "src/conf_d.h"
 
 #include "bnep.h"
 #include "connection.h"
@@ -43,6 +44,14 @@ static void read_config(const char *file)
 	keyfile = g_key_file_new();
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		DBG("Parsing file %s failed: %s", file, err->message);
+		g_clear_error(&err);
+		goto done;
+	}
+
+	confd_process_config(keyfile, file, FALSE, TRUE, &err);
+	if (err) {
+		DBG("Parsing conf.d file failed: %s", err->message);
 		g_clear_error(&err);
 		goto done;
 	}
