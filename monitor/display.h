@@ -11,6 +11,7 @@
 
 #include <stdbool.h>
 #include <inttypes.h>
+#include <ctype.h>
 
 bool use_color(void);
 
@@ -76,18 +77,50 @@ static inline uint64_t print_bitfield(int indent, uint64_t val,
 	return mask;
 }
 
+static inline void print_hexdump(const unsigned char *buf, uint16_t len)
+{
+	static const char hexdigits[] = "0123456789abcdef";
+	char str[68];
+	uint16_t i;
+
+	if (!len)
+		return;
+
+	for (i = 0; i < len; i++) {
+		str[((i % 16) * 3) + 0] = hexdigits[buf[i] >> 4];
+		str[((i % 16) * 3) + 1] = hexdigits[buf[i] & 0xf];
+		str[((i % 16) * 3) + 2] = ' ';
+		str[(i % 16) + 49] = isprint(buf[i]) ? buf[i] : '.';
+
+		if ((i + 1) % 16 == 0) {
+			str[47] = ' ';
+			str[48] = ' ';
+			str[65] = '\0';
+			print_text(COLOR_WHITE, "%s", str);
+			str[0] = ' ';
+		}
+	}
+
+	if (i % 16 > 0) {
+		uint16_t j;
+		for (j = (i % 16); j < 16; j++) {
+			str[(j * 3) + 0] = ' ';
+			str[(j * 3) + 1] = ' ';
+			str[(j * 3) + 2] = ' ';
+			str[j + 49] = ' ';
+		}
+		str[47] = ' ';
+		str[48] = ' ';
+		str[65] = '\0';
+		print_text(COLOR_WHITE, "%s", str);
+	}
+}
+
 static inline void print_hex_field(const char *label, const uint8_t *data,
 								uint8_t len)
 {
-	char str[len * 2 + 1];
-	uint8_t i;
-
-	str[0] = '\0';
-
-	for (i = 0; i < len; i++)
-		sprintf(str + (i * 2), "%2.2x", data[i]);
-
-	print_field("%s[%u]: %s", label, len, str);
+	print_field("%s[%u]:", label, len);
+	print_hexdump(data, len);
 }
 
 void set_default_pager_num_columns(int num_columns);
