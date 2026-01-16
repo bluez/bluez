@@ -3933,12 +3933,15 @@ static void print_transport_data(const uint8_t *data, uint8_t len)
 	print_hex_field("  Data", data + 3, len - 3);
 }
 
-static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
+static void print_eir(const char *label, const uint8_t *eir, uint8_t eir_len,
+			bool le)
 {
 	uint16_t len = 0;
 
 	if (eir_len == 0)
 		return;
+
+	print_hex_field(label, eir, eir_len);
 
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir[0];
@@ -4221,7 +4224,7 @@ void packet_print_rssi(const char *label, int8_t rssi)
 
 void packet_print_ad(const void *data, uint8_t size)
 {
-	print_eir(data, size, true);
+	print_eir("Advertising Data", data, size, true);
 }
 
 struct broadcast_message {
@@ -4273,41 +4276,7 @@ static void print_3d_broadcast(const void *data, uint8_t size)
 
 void packet_hexdump(const unsigned char *buf, uint16_t len)
 {
-	static const char hexdigits[] = "0123456789abcdef";
-	char str[68];
-	uint16_t i;
-
-	if (!len)
-		return;
-
-	for (i = 0; i < len; i++) {
-		str[((i % 16) * 3) + 0] = hexdigits[buf[i] >> 4];
-		str[((i % 16) * 3) + 1] = hexdigits[buf[i] & 0xf];
-		str[((i % 16) * 3) + 2] = ' ';
-		str[(i % 16) + 49] = isprint(buf[i]) ? buf[i] : '.';
-
-		if ((i + 1) % 16 == 0) {
-			str[47] = ' ';
-			str[48] = ' ';
-			str[65] = '\0';
-			print_text(COLOR_WHITE, "%s", str);
-			str[0] = ' ';
-		}
-	}
-
-	if (i % 16 > 0) {
-		uint16_t j;
-		for (j = (i % 16); j < 16; j++) {
-			str[(j * 3) + 0] = ' ';
-			str[(j * 3) + 1] = ' ';
-			str[(j * 3) + 2] = ' ';
-			str[j + 49] = ' ';
-		}
-		str[47] = ' ';
-		str[48] = ' ';
-		str[65] = '\0';
-		print_text(COLOR_WHITE, "%s", str);
-	}
+	print_hexdump(buf, len);
 }
 
 void packet_control(struct timeval *tv, struct ucred *cred,
@@ -6042,7 +6011,7 @@ static void read_ext_inquiry_response_rsp(uint16_t index, const void *data,
 
 	print_status(rsp->status);
 	print_fec(rsp->fec);
-	print_eir(rsp->data, sizeof(rsp->data), false);
+	print_eir("EIR", rsp->data, sizeof(rsp->data), false);
 }
 
 static void write_ext_inquiry_response_cmd(uint16_t index, const void *data,
@@ -6051,7 +6020,7 @@ static void write_ext_inquiry_response_cmd(uint16_t index, const void *data,
 	const struct bt_hci_cmd_write_ext_inquiry_response *cmd = data;
 
 	print_fec(cmd->fec);
-	print_eir(cmd->data, sizeof(cmd->data), false);
+	print_eir("EIR", cmd->data, sizeof(cmd->data), false);
 }
 
 static void refresh_encrypt_key_cmd(uint16_t index, const void *data,
@@ -7240,7 +7209,7 @@ static void le_set_adv_data_cmd(uint16_t index, const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_set_adv_data *cmd = data;
 
 	print_field("Length: %d", cmd->len);
-	print_eir(cmd->data, cmd->len, true);
+	packet_print_ad(cmd->data, cmd->len);
 }
 
 static void le_set_scan_rsp_data_cmd(uint16_t index, const void *data,
@@ -7249,7 +7218,7 @@ static void le_set_scan_rsp_data_cmd(uint16_t index, const void *data,
 	const struct bt_hci_cmd_le_set_scan_rsp_data *cmd = data;
 
 	print_field("Length: %d", cmd->len);
-	print_eir(cmd->data, cmd->len, true);
+	print_eir("Scan Response", cmd->data, cmd->len, true);
 }
 
 static void le_set_adv_enable_cmd(uint16_t index, const void *data,
@@ -8071,7 +8040,7 @@ static void le_set_ext_adv_data_cmd(uint16_t index, const void *data,
 
 	print_field("Fragment preference: %s (0x%2.2x)", str,
 						cmd->fragment_preference);
-	print_field("Data length: 0x%2.2x", cmd->data_len);
+	print_field("Data length: %u", cmd->data_len);
 	packet_print_ad(cmd->data, size - sizeof(*cmd));
 }
 
@@ -8120,7 +8089,7 @@ static void le_set_ext_scan_rsp_data_cmd(uint16_t index, const void *data,
 
 	print_field("Fragment preference: %s (0x%2.2x)", str,
 						cmd->fragment_preference);
-	print_field("Data length: 0x%2.2x", cmd->data_len);
+	print_field("Data length: %u", cmd->data_len);
 	packet_print_ad(cmd->data, size - sizeof(*cmd));
 }
 
@@ -8233,8 +8202,8 @@ static void le_set_pa_data_cmd(uint16_t index, const void *data, uint8_t size)
 	}
 
 	print_field("Operation: %s (0x%2.2x)", str, cmd->operation);
-	print_field("Data length: 0x%2.2x", cmd->data_len);
-	print_eir(cmd->data, cmd->data_len, true);
+	print_field("Data length: %u", cmd->data_len);
+	print_eir("Data", cmd->data, size - sizeof(*cmd), true);
 }
 
 static void le_set_pa_enable_cmd(uint16_t index, const void *data, uint8_t size)
@@ -11619,7 +11588,7 @@ static void ext_inquiry_result_evt(struct timeval *tv, uint16_t index,
 	print_dev_class(evt->dev_class);
 	print_clock_offset(evt->clock_offset);
 	print_rssi(evt->rssi);
-	print_eir(evt->data, sizeof(evt->data), false);
+	print_eir("EIR", evt->data, sizeof(evt->data), false);
 }
 
 static void encrypt_key_refresh_complete_evt(struct timeval *tv, uint16_t index,
@@ -12025,8 +11994,8 @@ report:
 	print_adv_event_type("Event type", evt->event_type);
 	print_peer_addr_type("Address type", evt->addr_type);
 	print_addr("Address", evt->addr, evt->addr_type);
-	print_field("Data length: %d", evt->data_len);
-	print_eir(evt->data, evt->data_len, true);
+	print_field("Data length: %u", evt->data_len);
+	packet_print_ad(evt->data, evt->data_len);
 
 	rssi = (int8_t *) (evt->data + evt->data_len);
 	print_rssi(*rssi);
@@ -12345,10 +12314,9 @@ static void le_ext_adv_report_evt(struct timeval *tv, uint16_t index,
 						report->direct_addr_type);
 		print_addr("  Direct address", report->direct_addr,
 						report->direct_addr_type);
-		print_field("  Data length: 0x%2.2x", report->data_len);
+		print_field("  Data length: %u", report->data_len);
 		data += sizeof(struct bt_hci_le_ext_adv_report);
-		packet_hexdump(data, report->data_len);
-		print_eir(data, report->data_len, true);
+		packet_print_ad(data, report->data_len);
 		data += report->data_len;
 	}
 }
@@ -12431,8 +12399,8 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 	}
 
 	print_field("Data status: %s%s%s", color_on, str, COLOR_OFF);
-	print_field("Data length: 0x%2.2x", evt->data_len);
-	print_eir(evt->data, evt->data_len, true);
+	print_field("Data length: %u", evt->data_len);
+	print_eir("Data", evt->data, evt->data_len, true);
 }
 
 static void le_pa_sync_lost_evt(struct timeval *tv, uint16_t index,
@@ -15784,7 +15752,7 @@ static void mgmt_read_local_oob_ext_data_rsp(const void *data, uint16_t size)
 
 	mgmt_print_address_type(type);
 	print_field("Data length: %u", data_len);
-	print_eir(data + 3, size - 3, true);
+	print_eir("Data", data + 3, size - 3, true);
 }
 
 static void mgmt_read_advertising_features_rsp(const void *data, uint16_t size)
@@ -15828,9 +15796,10 @@ static void mgmt_add_advertising_cmd(const void *data, uint16_t size)
 	print_field("Duration: %u", duration);
 	print_field("Timeout: %u", timeout);
 	print_field("Advertising data length: %u", adv_data_len);
-	print_eir(data + 11, adv_data_len, false);
+	packet_print_ad(data + 11, adv_data_len);
 	print_field("Scan response length: %u", scan_rsp_len);
-	print_eir(data + 11 + adv_data_len, scan_rsp_len, false);
+	print_eir("Scan response", data + 11 + adv_data_len, scan_rsp_len,
+			false);
 }
 
 static void mgmt_add_advertising_rsp(const void *data, uint16_t size)
@@ -15904,7 +15873,7 @@ static void mgmt_read_ext_controller_info_rsp(const void *data, uint16_t size)
 	mgmt_print_settings("Supported settings", supported_settings);
 	mgmt_print_settings("Current settings", current_settings);
 	print_field("Data length: %u", data_len);
-	print_eir(data + 19, size - 19, false);
+	print_eir("Data", data + 19, size - 19, false);
 }
 
 static void mgmt_set_apperance_cmd(const void *data, uint16_t size)
@@ -16189,9 +16158,10 @@ static void mgmt_add_ext_adv_data_cmd(const void *data, uint16_t size)
 
 	print_field("Instance: %u", instance);
 	print_field("Advertising data length: %u", adv_data_len);
-	print_eir(data + 3, adv_data_len, false);
+	packet_print_ad(data + 3, adv_data_len);
 	print_field("Scan response length: %u", scan_rsp_len);
-	print_eir(data + 3 + adv_data_len, scan_rsp_len, false);
+	print_eir("Scan Response", data + 3 + adv_data_len, scan_rsp_len,
+			false);
 }
 
 static void mgmt_add_ext_adv_data_rsp(const void *data, uint16_t size)
@@ -16872,7 +16842,7 @@ static void mgmt_device_connected_evt(const void *data, uint16_t size)
 	mgmt_print_address(data, address_type);
 	mgmt_print_device_flags(flags);
 	print_field("Data length: %u", data_len);
-	print_eir(data + 13, size - 13, false);
+	print_eir("Data", data + 13, size - 13, false);
 }
 
 static void mgmt_device_disconnected_evt(const void *data, uint16_t size)
@@ -16966,7 +16936,7 @@ static void mgmt_device_found_evt(const void *data, uint16_t size)
 	print_rssi(rssi);
 	mgmt_print_device_flags(flags);
 	print_field("Data length: %u", data_len);
-	print_eir(data + 14, size - 14, false);
+	print_eir("Data", data + 14, size - 14, false);
 }
 
 static void mgmt_discovering_evt(const void *data, uint16_t size)
@@ -17081,7 +17051,7 @@ static void mgmt_local_oob_ext_data_updated_evt(const void *data, uint16_t size)
 
 	mgmt_print_address_type(type);
 	print_field("Data length: %u", data_len);
-	print_eir(data + 3, size - 3, true);
+	print_eir("Data", data + 3, size - 3, true);
 }
 
 static void mgmt_advertising_added_evt(const void *data, uint16_t size)
@@ -17103,7 +17073,7 @@ static void mgmt_ext_controller_info_changed_evt(const void *data, uint16_t size
 	uint16_t data_len = get_le16(data);
 
 	print_field("Data length: %u", data_len);
-	print_eir(data + 2, size - 2, false);
+	print_eir("Data", data + 2, size - 2, false);
 }
 
 static void mgmt_phy_changed_evt(const void *data, uint16_t size)
