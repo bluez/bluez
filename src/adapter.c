@@ -7696,7 +7696,7 @@ static void adapter_stop(struct btd_adapter *adapter)
 	DBG("adapter %s has been disabled", adapter->path);
 }
 
-int btd_register_adapter_driver(struct btd_adapter_driver *driver)
+int btd_register_adapter_driver(const struct btd_adapter_driver *driver)
 {
 	if (driver->experimental && !(g_dbus_get_flags() &
 					G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
@@ -7704,12 +7704,12 @@ int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 		return -ENOTSUP;
 	}
 
-	adapter_drivers = g_slist_append(adapter_drivers, driver);
+	adapter_drivers = g_slist_append(adapter_drivers, (void *) driver);
 
 	if (driver->probe == NULL)
 		return 0;
 
-	adapter_foreach(probe_driver, driver);
+	adapter_foreach(probe_driver, (void *) driver);
 
 	return 0;
 }
@@ -7724,11 +7724,11 @@ static void unload_driver(struct btd_adapter *adapter, gpointer data)
 	adapter->drivers = g_slist_remove(adapter->drivers, data);
 }
 
-void btd_unregister_adapter_driver(struct btd_adapter_driver *driver)
+void btd_unregister_adapter_driver(const struct btd_adapter_driver *driver)
 {
-	adapter_drivers = g_slist_remove(adapter_drivers, driver);
+	adapter_drivers = g_slist_remove(adapter_drivers, (void *) driver);
 
-	adapter_foreach(unload_driver, driver);
+	adapter_foreach(unload_driver, (void *) driver);
 }
 
 static void agent_auth_cb(struct agent *agent, DBusError *derr,
