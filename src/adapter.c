@@ -998,7 +998,7 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 	return -EIO;
 }
 
-int adapter_set_name(struct btd_adapter *adapter, const char *name)
+int btd_adapter_set_name(struct btd_adapter *adapter, const char *name)
 {
 	if (g_strcmp0(adapter->system_name, name) == 0)
 		return 0;

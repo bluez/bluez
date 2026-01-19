@@ -82,7 +82,7 @@ static void update_name(struct btd_adapter *adapter, gpointer user_data)
 	if (btd_adapter_is_default(adapter)) {
 		DBG("name: %s", hostname);
 
-		adapter_set_name(adapter, hostname);
+		btd_adapter_set_name(adapter, hostname);
 	} else {
 		uint16_t index = btd_adapter_get_index(adapter);
 		char *str;
@@ -92,7 +92,7 @@ static void update_name(struct btd_adapter *adapter, gpointer user_data)
 
 		DBG("name: %s", str);
 
-		adapter_set_name(adapter, str);
+		btd_adapter_set_name(adapter, str);
 
 		g_free(str);
 	}
