@@ -7,9 +7,12 @@
  *
  *
  */
-#define BLUETOOTH_PLUGIN_PRIORITY_LOW      -100
-#define BLUETOOTH_PLUGIN_PRIORITY_DEFAULT     0
-#define BLUETOOTH_PLUGIN_PRIORITY_HIGH      100
+
+enum bluetooth_plugin_priority {
+	BLUETOOTH_PLUGIN_PRIORITY_LOW     = -100,
+	BLUETOOTH_PLUGIN_PRIORITY_DEFAULT = 0,
+	BLUETOOTH_PLUGIN_PRIORITY_HIGH    = 100
+};
 
 struct bluetooth_plugin_desc {
 	const char *name;
