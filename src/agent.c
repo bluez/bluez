@@ -148,7 +148,7 @@ static bool add_default_agent(struct agent *agent)
 
 	DBG("Default agent set to %s %s", agent->owner, agent->path);
 
-	adapter_foreach(set_io_cap, agent);
+	btd_adapter_foreach(set_io_cap, agent);
 
 	return true;
 }
@@ -168,7 +168,7 @@ static void remove_default_agent(struct agent *agent)
 	else
 		DBG("Default agent cleared");
 
-	adapter_foreach(set_io_cap, agent);
+	btd_adapter_foreach(set_io_cap, agent);
 }
 
 static void agent_disconnect(DBusConnection *conn, void *user_data)

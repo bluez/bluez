@@ -548,7 +548,7 @@ static void profile_remove(void *data)
 
 	DBG("Removed \"%s\"", p->name);
 
-	adapter_foreach(adapter_remove_profile, p);
+	btd_adapter_foreach(adapter_remove_profile, p);
 	btd_profile_unregister(p);
 
 	g_free((void *) p->name);

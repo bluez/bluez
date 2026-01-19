@@ -2452,14 +2452,14 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	ext_profiles = g_slist_append(ext_profiles, ext);
 
-	adapter_foreach(adapter_add_profile, &ext->p);
+	btd_adapter_foreach(adapter_add_profile, &ext->p);
 
 	return ext;
 }
 
 static void remove_ext(struct ext_profile *ext)
 {
-	adapter_foreach(adapter_remove_profile, &ext->p);
+	btd_adapter_foreach(adapter_remove_profile, &ext->p);
 
 	ext_profiles = g_slist_remove(ext_profiles, ext);
 

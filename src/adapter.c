@@ -7709,7 +7709,7 @@ int btd_register_adapter_driver(const struct btd_adapter_driver *driver)
 	if (driver->probe == NULL)
 		return 0;
 
-	adapter_foreach(probe_driver, (void *) driver);
+	btd_adapter_foreach(probe_driver, (void *) driver);
 
 	return 0;
 }
@@ -7728,7 +7728,7 @@ void btd_unregister_adapter_driver(const struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_remove(adapter_drivers, (void *) driver);
 
-	adapter_foreach(unload_driver, (void *) driver);
+	btd_adapter_foreach(unload_driver, (void *) driver);
 }
 
 static void agent_auth_cb(struct agent *agent, DBusError *derr,
@@ -9332,7 +9332,7 @@ struct btd_adapter *adapter_find_by_id(int id)
 	return match->data;
 }
 
-void adapter_foreach(adapter_cb func, gpointer user_data)
+void btd_adapter_foreach(adapter_cb func, gpointer user_data)
 {
 	g_slist_foreach(adapters, (GFunc) func, user_data);
 }

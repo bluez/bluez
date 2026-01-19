@@ -140,7 +140,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 			g_free(pretty_hostname);
 			pretty_hostname = g_strdup(str);
 
-			adapter_foreach(update_name, NULL);
+			btd_adapter_foreach(update_name, NULL);
 		}
 	} else if (g_str_equal(name, "StaticHostname") == TRUE) {
 		if (iter == NULL) {
@@ -158,7 +158,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 			g_free(static_hostname);
 			static_hostname = g_strdup(str);
 
-			adapter_foreach(update_name, NULL);
+			btd_adapter_foreach(update_name, NULL);
 		}
 	} else if (g_str_equal(name, "Chassis") == TRUE) {
 		if (iter == NULL) {
@@ -181,7 +181,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 				major_class = chassis_table[i].major_class;
 				minor_class = chassis_table[i].minor_class;
 
-				adapter_foreach(update_class, NULL);
+				btd_adapter_foreach(update_class, NULL);
 				break;
 			}
 		}
@@ -210,7 +210,7 @@ static gboolean hostname_cb(GIOChannel *io, GIOCondition cond,
 {
 	DBG("transient hostname changed");
 	read_transient_hostname();
-	adapter_foreach(update_class, NULL);
+	btd_adapter_foreach(update_class, NULL);
 	return TRUE;
 }
 
