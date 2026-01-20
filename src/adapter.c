@@ -3879,14 +3879,15 @@ static void add_uuid_to_uuid_set(void *data, void *user_data)
 static guint bt_uuid_hash(gconstpointer key)
 {
 	const bt_uuid_t *uuid = key;
-	uint64_t uuid_128[2];
+	bt_uuid_t my_uuid;
 
 	if (!uuid)
 		return 0;
 
-	bt_uuid_to_uuid128(uuid, (bt_uuid_t *)uuid_128);
+	bt_uuid_to_uuid128(uuid, &my_uuid);
 
-	return g_int64_hash(uuid_128) ^ g_int64_hash(uuid_128+1);
+	return g_int64_hash(&my_uuid.value.u128.data[0]) ^
+		g_int64_hash(&my_uuid.value.u128.data[8]);
 }
 
 static gboolean bt_uuid_equal(gconstpointer v1, gconstpointer v2)
