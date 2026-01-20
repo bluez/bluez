@@ -403,6 +403,9 @@ man_MANS += doc/org.bluez.ThermometerManager.5 \
 		doc/org.bluez.Thermometer.5 \
 		doc/org.bluez.ThermometerWatcher.5
 man_MANS += doc/org.bluez.SimAccess.5
+man_MANS += doc/org.bluez.HealthChannel.5 \
+	    doc/org.bluez.HealthDevice.5 \
+	    doc/org.bluez.HealthManager.5
 
 endif
 manual_pages += src/bluetoothd.8
@@ -445,6 +448,9 @@ manual_pages += doc/org.bluez.ThermometerManager.5 \
 		doc/org.bluez.Thermometer.5 \
 		doc/org.bluez.ThermometerWatcher.5
 manual_pages += doc/org.bluez.SimAccess.5
+manual_pages += doc/org.bluez.HealthChannel.5 \
+		doc/org.bluez.HealthDevice.5 \
+		doc/org.bluez.HealthManager.5
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -486,8 +492,6 @@ EXTRA_DIST += doc/assigned-numbers.rst doc/supported-features.txt \
 				doc/test-coverage.txt \
 				doc/test-runner.rst \
 				doc/settings-storage.txt
-
-EXTRA_DIST += doc/health-api.txt
 
 EXTRA_DIST += doc/hci.rst doc/mgmt.rst doc/l2cap.rst doc/rfcomm.rst \
 	      doc/sco.rst doc/iso.rst
@@ -535,6 +539,10 @@ EXTRA_DIST += doc/org.bluez.ThermometerManager.rst \
 	      doc/org.bluez.ThermometerWatcher.rst
 
 EXTRA_DIST += doc/org.bluez.SimAccess.rst
+
+EXTRA_DIST += doc/org.bluez.HealthChannel.rst \
+	      doc/org.bluez.HealthDevice.rst \
+	      doc/org.bluez.HealthManager.rst
 
 EXTRA_DIST += doc/pics-opp.txt doc/pixit-opp.txt \
 		doc/pts-opp.txt
