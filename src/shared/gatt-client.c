@@ -114,6 +114,10 @@ struct bt_gatt_client {
 
 	struct bt_gatt_request *discovery_req;
 	unsigned int mtu_req_id;
+
+	/* Pending retry operation for DB out of sync handling */
+	unsigned int pending_retry_att_id;
+	uint16_t pending_error_handle;
 };
 
 struct request {
@@ -2342,6 +2346,167 @@ static void att_disconnect_cb(int err, void *user_data)
 		notify_client_ready(client, false, 0);
 }
 
+static bool is_handle_out_of_range(uint16_t handle, struct bt_gatt_client *client)
+{
+	bool handle_out_of_range = false;
+	uint16_t start_handle, end_handle;
+
+	if (handle) {
+		start_handle = bt_gatt_req_get_start_handle(
+				client->discovery_req);
+		end_handle = bt_gatt_req_get_end_handle(
+				client->discovery_req);
+
+		if (start_handle != 0 && end_handle != 0 &&
+			(handle < start_handle || handle > end_handle))
+			handle_out_of_range = true;
+	}
+
+	return handle_out_of_range;
+}
+
+static void db_hash_check_cb(bool success, uint8_t att_ecode,
+			      struct bt_gatt_result *result,
+			      void *user_data)
+{
+	struct bt_gatt_client *client = user_data;
+	struct gatt_db_attribute *hash_attr = NULL;
+	const uint8_t *local_hash = NULL;
+	const uint8_t *remote_hash;
+	uint16_t length, handle;
+	struct bt_gatt_iter iter;
+	bt_uuid_t uuid;
+	unsigned int att_id = client->pending_retry_att_id;
+	uint16_t pending_error_handle = client->pending_error_handle;
+	bool handle_out_of_range;
+
+	client->pending_retry_att_id = 0;
+	client->pending_error_handle = 0;
+
+	/* If a Service Changed indication is received at this stage, the
+	 * pending request may be retried once we have verified that the
+	 * affected attribute handle is not within the range impacted by
+	 * the service change.
+	 */
+	if (client->in_svc_chngd) {
+		handle_out_of_range =
+			is_handle_out_of_range(pending_error_handle, client);
+
+		if (handle_out_of_range) {
+			DBG(client, "Error handle not effected, approving retry");
+			bt_att_retry_request(client->att, att_id);
+		} else {
+			DBG(client, "Error handle is in range of svc chngd");
+			bt_att_cancel_retry(client->att, att_id);
+		}
+		return;
+	}
+
+	if (!att_id) {
+		DBG(client, "No pending retry operation");
+		return;
+	}
+
+	if (!success) {
+		DBG(client,
+		"Failed to read remote DB Hash, triggering full discovery");
+		goto trigger_discovery;
+	}
+
+	/* Extract hash value from result */
+	if (!result || !bt_gatt_iter_init(&iter, result))
+		goto trigger_discovery;
+
+	if (!bt_gatt_iter_next_read_by_type(&iter, &handle, &length,
+					     &remote_hash))
+		goto trigger_discovery;
+
+	if (length != 16) {
+		DBG(client, "Invalid DB Hash length: %u", length);
+		goto trigger_discovery;
+	}
+
+	/* Get local hash from database */
+	bt_uuid16_create(&uuid, GATT_CHARAC_DB_HASH);
+	gatt_db_find_by_type(client->db, 0x0001, 0xffff, &uuid,
+			     get_first_attribute, &hash_attr);
+
+	if (hash_attr) {
+		gatt_db_attribute_read(hash_attr, 0, BT_ATT_OP_READ_REQ, NULL,
+				       db_hash_read_value_cb, &local_hash);
+	}
+
+	/* Compare hashes */
+	if (local_hash && !memcmp(local_hash, remote_hash, 16)) {
+		/* Hashes match - safe to retry */
+		DBG(client, "DB Hash matches, approving retry");
+		bt_att_retry_request(client->att, att_id);
+		return;
+	}
+
+	/* Hashes differ - need service discovery */
+	DBG(client, "DB Hash differs, canceling retry and triggering discovery");
+
+trigger_discovery:
+	bt_att_cancel_retry(client->att, att_id);
+
+	if (!client->in_svc_chngd)
+		process_service_changed(client, 0x0001, 0xffff);
+}
+
+static int gatt_client_retry_cb(uint8_t opcode, uint8_t error_code,
+				 const void *pdu, uint16_t length,
+				 unsigned int att_id, void *user_data)
+{
+	struct bt_gatt_client *client = user_data;
+	bt_uuid_t uuid;
+	uint16_t error_handle = 0;
+	const struct bt_att_pdu_error_rsp *error_pdu;
+	bool handle_out_of_range = false;
+
+	assert(client);
+
+	/* Only handle DB_OUT_OF_SYNC errors */
+	if (error_code != BT_ATT_ERROR_DB_OUT_OF_SYNC)
+		return BT_ATT_RETRY_NO;
+
+	if (pdu && length >= sizeof(struct bt_att_pdu_error_rsp)) {
+		error_pdu = (void *)pdu;
+		error_handle = get_le16(&error_pdu->handle);
+		client->pending_error_handle = error_handle;
+	}
+
+	/* If a Service Changed indication is received at this stage, the
+	 * pending request may be retried once we have verified that the
+	 * affected attribute handle is not within the range impacted by
+	 * the service change.
+	 */
+	if (client->in_svc_chngd) {
+		handle_out_of_range =
+			is_handle_out_of_range(error_handle, client);
+
+		if (handle_out_of_range)
+			return BT_ATT_RETRY_YES;
+		else
+			return BT_ATT_RETRY_NO;
+	}
+
+	/* Store the att_id for later use */
+	client->pending_retry_att_id = att_id;
+
+	/* Read remote DB Hash to compare */
+	bt_uuid16_create(&uuid, GATT_CHARAC_DB_HASH);
+	if (!bt_gatt_read_by_type(client->att, 0x0001, 0xffff, &uuid,
+				   db_hash_check_cb, client, NULL)) {
+		DBG(client, "Failed to read DB Hash, canceling retry");
+		client->pending_retry_att_id = 0;
+		client->pending_error_handle = 0;
+		return BT_ATT_RETRY_NO;
+	}
+
+	return BT_ATT_RETRY_PENDING;
+}
+
 static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
 							struct bt_att *att,
 							uint8_t features)
@@ -2381,6 +2546,9 @@ static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
 	client->att = bt_att_ref(att);
 	client->db = gatt_db_ref(db);
 	client->features = features;
+
+	/* Register retry callback for DB out of sync handling */
+	bt_att_set_retry_cb(att, gatt_client_retry_cb, client, NULL);
 
 	return client;
 
