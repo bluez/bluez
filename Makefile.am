@@ -481,8 +481,9 @@ EXTRA_DIST += doc/assigned-numbers.txt doc/supported-features.txt \
 EXTRA_DIST += doc/health-api.txt \
 		doc/sap-api.txt
 
-EXTRA_DIST += doc/hci.rst doc/mgmt.rst doc/l2cap.rst doc/rfcomm.rst \
-	      doc/sco.rst doc/iso.rst
+EXTRA_DIST += doc/hci-protocol.rst doc/mgmt-protocol.rst \
+	      doc/l2cap-protocol.rst doc/rfcomm-protocol.rst \
+	      doc/sco-protocol.rst doc/iso-protocol.rst
 
 EXTRA_DIST += doc/org.bluez.Adapter.rst doc/org.bluez.Device.rst \
 		doc/org.bluez.Bearer.LE.rst doc/org.bluez.Bearer.BREDR.rst \
@@ -825,7 +826,7 @@ endif
 %.5: %.rst Makefile
 	$(RST2MAN_PROCESS)
 
-%.7: %.rst Makefile
+%.7: %-protocol.rst Makefile
 	$(RST2MAN_PROCESS)
 
 %.8: %.rst Makefile
