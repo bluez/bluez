@@ -48,9 +48,9 @@ mesh_bluetooth_meshd_SOURCES = $(mesh_sources) mesh/main.c
 mesh_bluetooth_meshd_LDADD = src/libshared-ell.la $(ell_ldadd) -ljson-c
 
 if MANPAGES
-man_MANS += mesh/bluetooth-meshd.8
+man_MANS += doc/bluetooth-meshd.8
 endif
-manual_pages += mesh/bluetooth-meshd.8
+manual_pages += doc/bluetooth-meshd.8
 
 endif
 
