@@ -150,9 +150,9 @@ tools/mesh-cfgclient
 tools/mesh-cfgtest
 tools/mesh-tester
 mesh/bluetooth-meshd
-mesh/bluetooth-meshd.rst
+doc/bluetooth-meshd.rst
 
-src/bluetoothd.rst
+doc/bluetoothd.rst
 src/bluetooth.service
 mesh/bluetooth-mesh.service
 
