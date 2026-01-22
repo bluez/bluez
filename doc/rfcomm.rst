@@ -2,199 +2,92 @@
 rfcomm
 ======
 
----------------
-RFCOMM protocol
----------------
+----------------------------
+RFCOMM configuration utility
+----------------------------
 
+:Author: Marcel Holtmann <marcel@holtmann.org>
 :Version: BlueZ
 :Copyright: Free use of this software is granted under the terms of the GNU
             Lesser General Public Licenses (LGPL).
-:Date: May 2024
-:Manual section: 7
+:Date: April 28, 2002
+:Manual section: 1
 :Manual group: Linux System Administration
 
 SYNOPSIS
 ========
 
-.. code-block::
-
-    #include <sys/socket.h>
-    #include <bluetooth/bluetooth.h>
-    #include <bluetooth/rfcomm.h>
-
-    rfcomm_socket = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+**rfcomm** [*OPTIONS*] <*COMMAND*> <*dev*>
 
 DESCRIPTION
 ===========
 
-The RFCOMM protocol provides emulation of serial ports over the L2CAP(7)
-protocol. The protocol is based on the ETSI standard TS 07.10.
+**rfcomm(1)** is used to set up, maintain, and inspect the RFCOMM configuration
+of the Bluetooth subsystem in the Linux kernel. If no **command** is given,
+or if the option **-a** is used, **rfcomm** prints information about the
+configured RFCOMM devices.
 
-RFCOMM is a simple transport protocol, with additional provisions for emulating
-the 9 circuits of RS-232 (EIATIA-232-E) serial ports.
+OPTIONS
+=======
 
-SOCKET ADDRESS
-==============
+-h      Gives a list of possible commands.
 
-.. code-block::
+-a      Prints information about all configured RFCOMM devices.
 
-    struct sockaddr_rc {
-        sa_family_t rc_family;
-        unsigned short rc_bdaddr;
-        unsigned char rc_channel;
-    };
+-r      Switch TTY into raw mode (doesn't work with "bind").
 
-Example:
+-i <*hciX*> | <*bdaddr*>
+    The command is applied to device *hciX*, which must be the name or the
+    address of an installed Bluetooth device. If not specified, the command
+    will be use the first available Bluetooth device.
 
-.. code-block::
+-A     Enable authentication
 
-    struct sockaddr_rc addr;
+-E     Enable encryption
 
-    memset(&addr, 0, sizeof(addr));
-    addr.rc_family = AF_BLUETOOTH;
-    bacpy(&addr.rc_bdaddr, bdaddr);
-    addr.rc_channel = channel;
+-S     Secure connection
 
-SOCKET OPTIONS
-==============
+-C     Become the central of a piconet
 
-The socket options listed below can be set by using **setsockopt(2)** and read
-with **getsockopt(2)** with the socket level set to SOL_BLUETOOTH.
+-L <seconds>    Set linger timeout
 
-BT_SECURITY (since Linux 2.6.30)
---------------------------------
+COMMANDS
+========
 
-Channel security level, possible values:
+show <*dev*>
+    Display the information about the specified device.
 
-.. csv-table::
-    :header: "Value", "Security Level", "Link Key Type", "Encryption"
-    :widths: auto
+connect <*dev*> [*bdaddr*] [*channel*]
+    Connect the RFCOMM device to the remote Bluetooth device on the specified
+    channel. If no  channel  is  specified, it will use the channel
+    number **1**. This command can be terminated with the key sequence CTRL-C.
 
-    **BT_SECURITY_SDP**, 0 (SDP Only), None, Not required
-    **BT_SECURITY_LOW**, 1 (Low), Unauthenticated, Not required
-    **BT_SECURITY_MEDIUM**, 2 (Medium - default), Unauthenticated, Desired
-    **BT_SECURITY_HIGH**, 3 (High), Authenticated, Required
-    **BT_SECURITY_FIPS** (since Linux 3.15), 4 (Secure Only), Authenticated (P-256 based Secure Simple Pairing and Secure Authentication), Required
+listen <*dev*> [*channel*] [*cmd*]
+    Listen  on  a specified RFCOMM channel for incoming connections.  If no
+    channel is specified, it will use the channel number **1**, but a channel
+    must be specified before cmd. If cmd is given, it will be executed as soon
+    as a  client  connects.  When the child process terminates or the client
+    disconnect, the command will terminate. Occurrences of {} in cmd will be
+    replaced by the name of the device used by the connection. This command
+    can be terminated with the key sequence CTRL-C.
 
-Example:
+watch <*dev*> [*channel*] [*cmd*]
+    Watch is identical to listen except that when the child process
+    terminates or the client disconnect, the command will restart listening
+    with the same parameters.
 
-.. code-block::
+bind <*dev*> [*bdaddr*] [*channel*]
+    This binds the RFCOMM device to a remote Bluetooth device. The command
+    does not establish a connection to the remote  device, it only creates
+    the binding. The connection will be established right after an application
+    tries to open the RFCOMM device. If no channel number is specified, it
+    uses the channel number **1**.
 
-    int level = BT_SECURITY_HIGH;
-    int err = setsockopt(rfcomm_socket, SOL_BLUETOOTH, BT_SECURITY, &level,
-                         sizeof(level));
-    if (err == -1) {
-        perror("setsockopt");
-        return 1;
-    }
+release <*dev*>
+    This command releases a defined RFCOMM binding.
 
-BT_DEFER_SETUP (since Linux 2.6.30)
------------------------------------
-
-Channel defer connection setup, this control if the connection procedure
-needs to be authorized by userspace before responding which allows
-authorization at profile level, possible values:
-
-.. csv-table::
-    :header: "Value", "Description", "Authorization"
-    :widths: auto
-
-    **0**, Disable (default), Not required
-    **1**, Enable, Required
-
-Example:
-
-.. code-block::
-
-    int defer_setup = 1;
-    int err = setsockopt(rfcomm_socket, SOL_BLUETOOTH, BT_DEFER_SETUP,
-                         &defer_setup, sizeof(defer_setup));
-    if (err == -1) {
-        perror("setsockopt");
-        return err;
-    }
-
-    err = listen(rfcomm_socket, 5);
-    if (err) {
-        perror("listen");
-        return err;
-    }
-
-    struct sockaddr_rc remote_addr = {0};
-    socklen_t addr_len = sizeof(remote_addr);
-    int new_socket = accept(rfcomm_socket, (struct sockaddr*)&remote_addr,
-                            &addr_len);
-    if (new_socket < 0) {
-        perror("accept");
-        return new_socket;
-    }
-
-    /* To complete the connection setup of new_socket read 1 byte */
-    char c;
-    struct pollfd pfd;
-
-    memset(&pfd, 0, sizeof(pfd));
-    pfd.fd = new_socket;
-    pfd.events = POLLOUT;
-
-    err = poll(&pfd, 1, 0);
-    if (err) {
-        perror("poll");
-        return err;
-    }
-
-    if (!(pfd.revents & POLLOUT)) {
-        err = read(sk, &c, 1);
-        if (err < 0) {
-            perror("read");
-            return err;
-        }
-    }
-
-BT_FLUSHABLE (since Linux 2.6.39)
----------------------------------
-
-Channel flushable flag, this control if the channel data can be flushed or
-not, possible values:
-
-.. csv-table::
-    :header: "Define", "Value", "Description"
-    :widths: auto
-
-    **BT_FLUSHABLE_OFF**, 0x00 (default), Do not flush data
-    **BT_FLUSHABLE_ON**, 0x01, Flush data
-
-BT_CHANNEL_POLICY (since Linux 3.10)
-------------------------------------
-
-High-speed (AMP) channel policy, possible values:
-
-.. csv-table::
-    :header: "Define", "Value", "Description"
-    :widths: auto
-
-    **BT_CHANNEL_POLICY_BREDR_ONLY**, 0 (default), BR/EDR only
-    **BT_CHANNEL_POLICY_BREDR_PREFERRED**, 1, BR/EDR Preferred
-    **BT_CHANNEL_POLICY_BREDR_PREFERRED**, 2, AMP Preferred
-
-BT_PHY (since Linux 5.10)
--------------------------
-
-Channel supported PHY(s), possible values:
-
-.. csv-table::
-    :header: "Define", "Value", "Description"
-    :widths: auto
-
-    **BT_PHY_BR_1M_1SLOT**, BIT 0, BR 1Mbps 1SLOT
-    **BT_PHY_BR_1M_3SLOT**, BIT 1, BR 1Mbps 3SLOT
-    **BT_PHY_BR_1M_5SLOT**, BIT 2, BR 1Mbps 5SLOT
-    **BT_PHY_BR_2M_1SLOT**, BIT 3, EDR 2Mbps 1SLOT
-    **BT_PHY_BR_2M_3SLOT**, BIT 4, EDR 2Mbps 3SLOT
-    **BT_PHY_BR_2M_5SLOT**, BIT 5, EDR 2Mbps 5SLOT
-    **BT_PHY_BR_3M_1SLOT**, BIT 6, EDR 3Mbps 1SLOT
-    **BT_PHY_BR_3M_3SLOT**, BIT 7, EDR 3Mbps 3SLOT
-    **BT_PHY_BR_3M_5SLOT**, BIT 8, EDR 3Mbps 5SLOT
+    If **all** is specified for the RFCOMM device, then all bindings will be
+    removed.
 
 RESOURCES
 =========
@@ -205,8 +98,3 @@ REPORTING BUGS
 ==============
 
 linux-bluetooth@vger.kernel.org
-
-SEE ALSO
-========
-
-socket(7), rctest(1)

@@ -523,11 +523,11 @@ AC_SUBST(PLUGIN_PHONEBOOK, [${plugin_phonebook}])
 AC_CONFIG_FILES(
 	lib/bluez.pc
 	Makefile
-	mesh/bluetooth-meshd.rst
+	doc/bluetooth-meshd.rst
 	mesh/bluetooth-mesh.service
 	obexd/src/obex.service
 	obexd/src/org.bluez.obex.service
-	src/bluetoothd.rst
+	doc/bluetoothd.rst
 	src/bluetooth.service
 	tools/bluetooth-logger.service
 	tools/mpris-proxy.service

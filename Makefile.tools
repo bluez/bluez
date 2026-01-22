@@ -64,10 +64,10 @@ monitor_btmon_LDADD = lib/libbluetooth-internal.la \
 				$(GLIB_LIBS) $(UDEV_LIBS) -ldl
 
 if MANPAGES
-man_MANS += monitor/btmon.1
+man_MANS += doc/btmon.1
 endif
 endif
-manual_pages += monitor/btmon.1
+manual_pages += doc/btmon.1
 
 if LOGGER
 pkglibexec_PROGRAMS += tools/btmon-logger
@@ -355,15 +355,15 @@ profiles_iap_iapd_SOURCES = profiles/iap/main.c
 profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
 
 if MANPAGES
-man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1 tools/isotest.1 \
-		tools/btmgmt.1 client/bluetoothctl.1 \
-		client/bluetoothctl-mgmt.1 \
-		client/bluetoothctl-monitor.1 client/bluetoothctl-admin.1 \
-		client/bluetoothctl-advertise.1 client/bluetoothctl-endpoint.1 \
-		client/bluetoothctl-gatt.1 client/bluetoothctl-player.1 \
-		client/bluetoothctl-scan.1 client/bluetoothctl-transport.1 \
-		client/bluetoothctl-assistant.1 client/bluetoothctl-hci.1 \
-		client/bluetoothctl-telephony.1
+man_MANS += doc/rctest.1 doc/l2ping.1 doc/btattach.1 doc/isotest.1 \
+		doc/btmgmt.1 doc/bluetoothctl.1 \
+		doc/bluetoothctl-mgmt.1 \
+		doc/bluetoothctl-monitor.1 doc/bluetoothctl-admin.1 \
+		doc/bluetoothctl-advertise.1 doc/bluetoothctl-endpoint.1 \
+		doc/bluetoothctl-gatt.1 doc/bluetoothctl-player.1 \
+		doc/bluetoothctl-scan.1 doc/bluetoothctl-transport.1 \
+		doc/bluetoothctl-assistant.1 doc/bluetoothctl-hci.1 \
+		doc/bluetoothctl-telephony.1
 
 endif
 
@@ -474,30 +474,30 @@ tools_hcidump_LDADD = lib/libbluetooth-internal.la
 tools_rfcomm_LDADD = lib/libbluetooth-internal.la
 
 if MANPAGES
-man_MANS += tools/hciattach.1 tools/hciconfig.1 \
-			tools/hcitool.1 tools/hcidump.1 \
-			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1
+man_MANS += doc/hciattach.1 doc/hciconfig.1 \
+			doc/hcitool.1 doc/hcidump.1 \
+			doc/rfcomm.1 doc/sdptool.1 doc/ciptool.1
 endif
 endif
 endif
-manual_pages += tools/hciattach.1 tools/hciconfig.1 \
-			tools/hcitool.1 tools/hcidump.1 \
-			tools/rfcomm.1 tools/sdptool.1 tools/ciptool.1 \
-			tools/rctest.1 tools/l2ping.1 tools/btattach.1 \
-			tools/bdaddr.1 tools/isotest.1 tools/btmgmt.1 \
-			client/bluetoothctl.1 \
-			client/bluetoothctl-mgmt.1 \
-			client/bluetoothctl-monitor.1 \
-			client/bluetoothctl-admin.1 \
-			client/bluetoothctl-advertise.1 \
-			client/bluetoothctl-endpoint.1 \
-			client/bluetoothctl-gatt.1 \
-			client/bluetoothctl-player.1 \
-			client/bluetoothctl-scan.1 \
-			client/bluetoothctl-transport.1 \
-			client/bluetoothctl-assistant.1 \
-			client/bluetoothctl-hci.1 \
-			client/bluetoothctl-telephony.1
+manual_pages += doc/hciattach.1 doc/hciconfig.1 \
+			doc/hcitool.1 doc/hcidump.1 \
+			doc/rfcomm.1 doc/sdptool.1 doc/ciptool.1 \
+			doc/rctest.1 doc/l2ping.1 doc/btattach.1 \
+			doc/bdaddr.1 doc/isotest.1 doc/btmgmt.1 \
+			doc/bluetoothctl.1 \
+			doc/bluetoothctl-mgmt.1 \
+			doc/bluetoothctl-monitor.1 \
+			doc/bluetoothctl-admin.1 \
+			doc/bluetoothctl-advertise.1 \
+			doc/bluetoothctl-endpoint.1 \
+			doc/bluetoothctl-gatt.1 \
+			doc/bluetoothctl-player.1 \
+			doc/bluetoothctl-scan.1 \
+			doc/bluetoothctl-transport.1 \
+			doc/bluetoothctl-assistant.1 \
+			doc/bluetoothctl-hci.1 \
+			doc/bluetoothctl-telephony.1
 
 if HID2HCI
 udevdir = $(UDEV_DIR)
@@ -507,10 +507,10 @@ udev_PROGRAMS = tools/hid2hci
 tools_hid2hci_LDADD = $(UDEV_LIBS)
 
 if MANPAGES
-man_MANS += tools/hid2hci.1
+man_MANS += doc/hid2hci.1
 endif
 endif
-manual_pages += tools/hid2hci.1
+manual_pages += doc/hid2hci.1
 
 if READLINE
 noinst_PROGRAMS += tools/btmgmt tools/obex-client-tool tools/obex-server-tool \
