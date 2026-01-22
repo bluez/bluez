@@ -30,14 +30,14 @@ not preceded by an expression or variable declaration.
 Example:
 1)
 
-.. code-block::
+.. code-block:: C
 
         a = 1;
         if (b) {  // wrong
 
 2)
 
-.. code-block::
+.. code-block:: C
 
         a = 1
 
@@ -47,14 +47,14 @@ Example:
 
 3)
 
-.. code-block::
+.. code-block:: C
 
         if (a) {
 	        if (b)  // correct
 
 4)
 
-.. code-block::
+.. code-block:: C
 
         b = 2;
 
@@ -67,7 +67,7 @@ Example:
 The only exception to this rule applies when a variable is being checked for
 errors as such:
 
-.. code-block::
+.. code-block:: C
 
         err = stat(filename, &st);
         if (err || !S_ISDIR(st.st_mode))
@@ -80,7 +80,7 @@ If your comment has more than one line, please start it from the second line.
 
 Example:
 
-.. code-block::
+.. code-block:: C
 
         /*
          * first line comment	// correct
@@ -95,7 +95,7 @@ There should be a space before and after each operator.
 
 Example:
 
-.. code-block::
+.. code-block:: C
 
         a + b;  // correct
 
@@ -110,28 +110,28 @@ body.
 Example:
 1)
 
-.. code-block::
+.. code-block:: C
 
         if ((adapter->supported_settings & MGMT_SETTING_SSP) &&
         	!(adapter->current_settings & MGMT_SETTING_SSP)) // wrong
 
 2)
 
-.. code-block::
+.. code-block:: C
 
         if ((adapter->supported_settings & MGMT_SETTING_SSP) &&
 	        			!(adapter->current_settings & MGMT_SETTING_SSP))
 
 3)
 
-.. code-block::
+.. code-block:: C
 
         void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
 	        			 btd_adapter_pin_cb_t cb) // wrong
 
 4)
 
-.. code-block::
+.. code-block:: C
 
         void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
 	        						btd_adapter_pin_cb_t cb)
@@ -147,13 +147,13 @@ There should be a space between new type and variable.
 Example:
 1)
 
-.. code-block::
+.. code-block:: C
 
         a = (int *)b;  // wrong
 
 2)
 
-.. code-block::
+.. code-block:: C
 
         a = (int *) b;  // correct
 
@@ -165,7 +165,7 @@ When declaring a variable, try not to initialize it unless necessary.
 
 Example:
 
-.. code-block::
+.. code-block:: C
 
         int i = 1;  // wrong
 
@@ -200,7 +200,7 @@ prefixed by the ``enum`` type name.
 
 Example:
 
-.. code-block::
+.. code-block:: C
 
         enum animal_type {
         	ANIMAL_TYPE_FOUR_LEGS,
@@ -211,7 +211,7 @@ Example:
 If the enum contents have values (e.g. from specification) the formatting
 should be as follows:
 
-.. code-block::
+.. code-block:: C
 
         enum animal_type {
         	ANIMAL_TYPE_FOUR_LEGS =		4,
@@ -230,7 +230,7 @@ compiler will complain the new added type hasn't been handled.
 
 Example:
 
-.. code-block::
+.. code-block:: C
 
         enum animal_type {
         	ANIMAL_TYPE_FOUR_LEGS =		4,
@@ -278,13 +278,13 @@ parenthesis, too.
 Example:
 1)
 
-.. code-block::
+.. code-block:: C
 
         memset(stuff, 0, sizeof(*stuff));
 
 2)
 
-.. code-block::
+.. code-block:: C
 
         memset(stuff, 0, sizeof *stuff); // Wrong
 
@@ -296,7 +296,7 @@ A function with no parameters must use ``void`` in the parameter list.
 Example:
 1)
 
-.. code-block::
+.. code-block:: C
 
         void foo(void)
         {
@@ -304,7 +304,7 @@ Example:
 
 2)
 
-.. code-block::
+.. code-block:: C
 
         void foo()	// Wrong
         {
@@ -321,7 +321,7 @@ Example:
 
 1)
 
-.. code-block::
+.. code-block:: C
 
         if (device) {  // worse
         	memset(&eir_data, 0, sizeof(eir_data));
@@ -335,7 +335,7 @@ Example:
 
 2)
 
-.. code-block::
+.. code-block:: C
 
         if (!device) {
         	error("Unable to get device object for %s", addr);
