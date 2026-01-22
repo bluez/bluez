@@ -364,7 +364,7 @@ nodist_src_bluetoothd_SOURCES = $(builtin_files)
 CLEANFILES += $(builtin_files)
 
 if MANPAGES
-man_MANS += src/bluetoothd.8
+man_MANS += doc/bluetoothd.8
 man_MANS += doc/hci.7 doc/mgmt.7 doc/l2cap.7 doc/rfcomm.7 doc/sco.7 doc/iso.7
 man_MANS += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
 		doc/org.bluez.Bearer.LE.5 doc/org.bluez.Bearer.BREDR.5 \
@@ -400,7 +400,7 @@ man_MANS += doc/org.bluez.obex.Client.5 doc/org.bluez.obex.Session.5 \
 		doc/org.bluez.obex.Image.5
 man_MANS += doc/org.bluez.Telephony.5 doc/org.bluez.Call.5
 endif
-manual_pages += src/bluetoothd.8
+manual_pages += doc/bluetoothd.8
 manual_pages += doc/hci.7 doc/mgmt.7 doc/l2cap.7 doc/rfcomm.7 doc/sco.7 \
 		doc/iso.7
 manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
