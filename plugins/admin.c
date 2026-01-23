@@ -34,7 +34,6 @@
 
 #define ADMIN_POLICY_SET_INTERFACE	"org.bluez.AdminPolicySet1"
 #define ADMIN_POLICY_STATUS_INTERFACE	"org.bluez.AdminPolicyStatus1"
-#define ADMIN_POLICY_STORAGE		STORAGEDIR "/admin_policy_settings"
 
 #define DBUS_BLUEZ_SERVICE		"org.bluez"
 #define BTD_DEVICE_INTERFACE		"org.bluez.Device1"
@@ -248,7 +247,7 @@ static void store_policy_settings(struct btd_admin_policy *admin_policy)
 {
 	GKeyFile *key_file = NULL;
 	GError *gerr = NULL;
-	char *filename = ADMIN_POLICY_STORAGE;
+	char filename[PATH_MAX];
 	char *key_file_data = NULL;
 	char **uuid_strs = NULL;
 	gsize length, num_uuids;
@@ -268,16 +267,14 @@ static void store_policy_settings(struct btd_admin_policy *admin_policy)
 					(const gchar * const *)uuid_strs,
 					num_uuids);
 
-	if (create_file(ADMIN_POLICY_STORAGE, 0600) < 0) {
-		btd_error(admin_policy->adapter_id, "create %s failed, %s",
-						filename, strerror(errno));
-		goto failed;
-	}
+	create_filename(filename, PATH_MAX, "/%s/admin_policy_settings",
+			btd_adapter_get_storage_dir(admin_policy->adapter));
+	create_file(filename, 0600);
 
 	key_file_data = g_key_file_to_data(key_file, &length, NULL);
-	if (!g_file_set_contents(ADMIN_POLICY_STORAGE, key_file_data, length,
+	if (!g_file_set_contents(filename, key_file_data, length,
 								&gerr)) {
-		error("Unable set contents for %s: (%s)", ADMIN_POLICY_STORAGE,
+		error("Unable set contents for %s: (%s)", filename,
 								gerr->message);
 		g_error_free(gerr);
 	}
@@ -342,8 +339,11 @@ static void load_policy_settings(struct btd_admin_policy *admin_policy)
 {
 	GKeyFile *key_file;
 	GError *gerr = NULL;
-	char *filename = ADMIN_POLICY_STORAGE;
+	char filename[PATH_MAX];
 	struct stat st;
+
+	create_filename(filename, PATH_MAX, "/%s/admin_policy_settings",
+			btd_adapter_get_storage_dir(admin_policy->adapter));
 
 	if (stat(filename, &st) < 0)
 		store_policy_settings(policy_data);

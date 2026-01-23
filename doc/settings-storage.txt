@@ -56,7 +56,7 @@ So the directory structure is:
     /var/lib/bluetooth/<adapter address>/
         ./settings
         ./attributes
-	./admin_policy_settings
+        ./admin_policy_settings
         ./cache/
             ./<remote device address>
             ./<remote device address>
