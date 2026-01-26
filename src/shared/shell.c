@@ -269,8 +269,6 @@ static void cmd_export(int argc, char *argv[])
 
 static int bt_shell_queue_exec(char *line)
 {
-	int err;
-
 	/* Ignore comments */
 	if (line[0] == '#')
 		return 0;
@@ -288,12 +286,9 @@ static int bt_shell_queue_exec(char *line)
 	}
 
 	bt_shell_printf("%s\n", line);
+	data.line = strdup(line);
 
-	err = bt_shell_exec(line);
-	if (!err)
-		data.line = strdup(line);
-
-	return err;
+	return bt_shell_exec(line);
 }
 
 static bool bt_shell_input_line(struct input *input)
