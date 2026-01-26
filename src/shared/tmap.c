@@ -239,13 +239,12 @@ static void tmas_role_read(struct gatt_db_attribute *attrib,
 					void *user_data)
 {
 	struct bt_tmas_db *db = user_data;
-	struct iovec iov = {
-		.iov_base = &db->role_value,
-		.iov_len = sizeof(db->role_value)
-	};
+	uint16_t role;
 
-	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
-							iov.iov_len);
+	role = cpu_to_le16(db->role_value);
+
+	gatt_db_attribute_read_result(attrib, id, 0, (void *)&role,
+					sizeof(role));
 }
 
 static bool match_db(const void *data, const void *match_data)
