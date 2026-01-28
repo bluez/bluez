@@ -1069,7 +1069,7 @@ AND NOT (SUM ICS 31/17 "Core v4.2" OR SUM ICS 31/18 "Core v4.2+HS" OR SUM ICS
 +------------------+----------+----------------------------------------------+
 | TSPC_GAP_27a_3   |          | Periodic Advertising Synchronization         |
 |                  |          | Establishment procedure over an LE connection|
-|                  |          |  with listening for periodic advertising     |
+|                  |          | with listening for periodic advertising      |
 |                  |          | (C.3)                                        |
 +------------------+----------+----------------------------------------------+
 
@@ -1548,7 +1548,7 @@ Prerequisite: GAP 5/4 "Central (LE)" OR GAP 38/4 "Central (BR/EDR/LE)"
   not defined.
 
 BR/EDR/LE Capability Statement
-=======================
+==============================
 **Table 38: BR/EDR/LE Roles**
 
 Prerequisite: GAP 0/3 "BR/EDR/LE"
@@ -1568,7 +1568,7 @@ Prerequisite: GAP 0/3 "BR/EDR/LE"
 - C.1: Mandatory to support at least one.
 
 BR/EDR/LE Capability Statement
-=======================
+==============================
 **Table 41: Central BR/EDR/LE Security Aspects**
 
 Prerequisite: GAP 38/4 "Central (BR/EDR/LE)"
@@ -1587,7 +1587,7 @@ Prerequisite: GAP 38/4 "Central (BR/EDR/LE)"
 - O: Optional
 
 BR/EDR/LE Capability Statement
-=======================
+==============================
 **Table 44: Central Simultaneous BR/EDR and LE Transports**
 
 Prerequisite: GAP 38/4 "Central (BR/EDR/LE)"
@@ -1605,7 +1605,7 @@ Prerequisite: GAP 38/4 "Central (BR/EDR/LE)"
 - O: Optional
 
 BR/EDR/LE Capability Statement
-=======================
+==============================
 **Table 43: Peripheral BR/EDR/LE Security Aspects**
 
 Prerequisite: GAP 38/3 "Peripheral (BR/EDR/LE)"
@@ -1624,7 +1624,7 @@ Prerequisite: GAP 38/3 "Peripheral (BR/EDR/LE)"
 - O: Optional
 
 BR/EDR/LE Capability Statement
-=======================
+==============================
 **Table 45: Peripheral Simultaneous BR/EDR and LE Transports**
 
 Prerequisite: GAP 38/3 "Peripheral (BR/EDR/LE)"
