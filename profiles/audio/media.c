@@ -3752,7 +3752,7 @@ const struct media_endpoint *media_endpoint_get_asha(void)
 	 */
 	static struct media_endpoint asha_endpoint =  {
 		.uuid = ASHA_PROFILE_UUID,
-		.codec = 0x2, /* Currently on G.722 is defined by the spec */
+		.codec = 0x1, /* Currently on G.722 is defined by the spec */
 	};
 
 	return &asha_endpoint;
