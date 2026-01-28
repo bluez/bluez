@@ -22,14 +22,6 @@ builtin_modules += neard
 builtin_sources += plugins/neard.c
 endif
 
-if SAP
-builtin_modules += sap
-builtin_sources += profiles/sap/main.c profiles/sap/manager.h \
-			profiles/sap/manager.c profiles/sap/server.h \
-			profiles/sap/server.c profiles/sap/sap.h \
-			profiles/sap/sap-dummy.c
-endif
-
 if A2DP
 builtin_modules += a2dp
 builtin_sources += profiles/audio/source.h profiles/audio/source.c \
