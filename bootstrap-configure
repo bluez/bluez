@@ -18,7 +18,6 @@ fi
 		--enable-experimental \
 		--enable-deprecated \
 		--enable-nfc \
-		--enable-sap \
 		--enable-health \
 		--enable-sixaxis \
 		--enable-hid2hci \

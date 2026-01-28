@@ -272,16 +272,6 @@ For a working system, certain configuration options need to be enabled:
 		The plugin is built into bluetoothd therefore it does not need
 		to be package separately.
 
-	--enable-sap
-
-		This option enable SAP profile using sap plugin.
-
-		By default sap plugin is disabled since it requires tight
-		integration with systems and is very rarely required.
-
-		The plugin is built into bluetoothd therefore it does not need
-		to be package separately.
-
 	--enable-health
 
 		This option enable health profiles.

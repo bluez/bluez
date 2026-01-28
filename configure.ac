@@ -162,10 +162,6 @@ AC_ARG_ENABLE(nfc, AS_HELP_STRING([--enable-nfc],
 		[enable NFC pairing]), [enable_nfc=${enableval}])
 AM_CONDITIONAL(NFC, test "${enable_nfc}" = "yes")
 
-AC_ARG_ENABLE(sap, AS_HELP_STRING([--enable-sap],
-		[enable SAP profile]), [enable_sap=${enableval}])
-AM_CONDITIONAL(SAP, test "${enable_sap}" = "yes")
-
 AC_ARG_ENABLE(a2dp, AS_HELP_STRING([--disable-a2dp],
 		[disable A2DP profile]), [enable_a2dp=${enableval}])
 AM_CONDITIONAL(A2DP, test "${enable_a2dp}" != "no")

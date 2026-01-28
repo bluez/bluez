@@ -97,7 +97,6 @@ tools/mcaptest
 tools/bneptest
 tools/isotest
 tools/iso-tester
-test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-tester
 unit/test-ringbuf
