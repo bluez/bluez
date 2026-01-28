@@ -188,10 +188,6 @@ AC_ARG_ENABLE(hog, AS_HELP_STRING([--disable-hog],
 		[disable HoG profile]), [enable_hog=${enableval}])
 AM_CONDITIONAL(HOG, test "${enable_hog}" != "no")
 
-AC_ARG_ENABLE(health, AS_HELP_STRING([--enable-health],
-		[enable health profiles]), [enable_health=${enableval}])
-AM_CONDITIONAL(HEALTH, test "${enable_health}" = "yes")
-
 AC_ARG_ENABLE(bap, AS_HELP_STRING([--disable-bap],
 		[disable BAP profile]), [enable_bap=${enableval}])
 AM_CONDITIONAL(BAP, test "${enable_bap}" != "no")

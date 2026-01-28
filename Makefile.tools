@@ -243,7 +243,7 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
 			tools/hcieventmask tools/hcisecfilter \
 			tools/btinfo tools/btconfig \
 			tools/btsnoop tools/btproxy \
-			tools/btiotest tools/bneptest tools/mcaptest \
+			tools/btiotest tools/bneptest \
 			tools/cltest tools/oobtest tools/advtest \
 			tools/seq2bseq tools/nokfw tools/rtlfw \
 			tools/bcmfw tools/create-image \
@@ -282,13 +282,6 @@ tools_btproxy_LDADD = src/libshared-mainloop.la
 
 tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
 tools_btiotest_LDADD = lib/libbluetooth-internal.la $(GLIB_LIBS)
-
-tools_mcaptest_SOURCES = tools/mcaptest.c \
-				btio/btio.h btio/btio.c \
-				src/log.c src/log.h \
-				profiles/health/mcap.h profiles/health/mcap.c
-tools_mcaptest_LDADD = lib/libbluetooth-internal.la $(GLIB_LIBS) \
-				src/libshared-mainloop.la -lrt
 
 tools_bneptest_SOURCES = tools/bneptest.c \
 				btio/btio.h btio/btio.c \
@@ -580,8 +573,8 @@ test_scripts += test/bluezutils.py \
 		test/test-discovery test/test-manager test/test-adapter \
 		test/test-device test/simple-agent \
 		test/simple-endpoint \
-		test/test-network test/test-profile test/test-health \
-		test/test-health-sink test/service-record.dtd \
+		test/test-network test/test-profile \
+		test/service-record.dtd \
 		test/service-did.xml test/service-spp.xml test/service-opp.xml \
 		test/service-ftp.xml test/simple-player test/test-nap \
 		test/test-hfp test/opp-client test/ftp-client \

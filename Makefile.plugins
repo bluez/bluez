@@ -67,16 +67,6 @@ builtin_sources += profiles/input/hog.c \
 			profiles/input/suspend.h profiles/input/suspend-none.c
 endif
 
-if HEALTH
-builtin_modules += health
-builtin_sources += profiles/health/mcap.h profiles/health/mcap.c \
-			profiles/health/hdp_main.c profiles/health/hdp_types.h \
-			profiles/health/hdp_manager.h \
-			profiles/health/hdp_manager.c \
-			profiles/health/hdp.h profiles/health/hdp.c \
-			profiles/health/hdp_util.h profiles/health/hdp_util.c
-endif
-
 builtin_modules += gap
 builtin_sources += profiles/gap/gas.c
 
