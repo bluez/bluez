@@ -272,16 +272,6 @@ For a working system, certain configuration options need to be enabled:
 		The plugin is built into bluetoothd therefore it does not need
 		to be package separately.
 
-	--enable-health
-
-		This option enable health profiles.
-
-		By default health plugin is disabled since its profiles are
-		target for the health industry.
-
-		The plugin is built into bluetoothd therefore it does not need
-		to be package separately.
-
 	--enable-midi
 
 		This option enable MIDI support via ALSA Sequencer.

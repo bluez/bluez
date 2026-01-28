@@ -93,7 +93,6 @@ tools/btgatt-server
 tools/create-image
 tools/test-runner
 tools/check-selftest
-tools/mcaptest
 tools/bneptest
 tools/isotest
 tools/iso-tester
