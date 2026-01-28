@@ -871,8 +871,10 @@ static int cmd_setattr(int argc, char **argv)
 
 	/* Do it */
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-	if (!sess)
+	if (!sess) {
+		printf("No local SDP server!\n");
 		return -1;
+	}
 
 	status = set_attrib(sess, handle, attrib, argv[2]);
 	sdp_close(sess);
@@ -1033,8 +1035,10 @@ static int cmd_setseq(int argc, char **argv)
 
 	/* Do it */
 	sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-	if (!sess)
+	if (!sess) {
+		printf("No local SDP server!\n");
 		return -1;
+	}
 
 	status = set_attribseq(sess, handle, attrib, argc, argv);
 	sdp_close(sess);
@@ -3692,8 +3696,10 @@ static int add_service(bdaddr_t *bdaddr, svc_info_t *si)
 		return -1;
 
 	sess = sdp_connect(&interface, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
-	if (!sess)
+	if (!sess) {
+		printf("No local SDP server!\n");
 		return -1;
+	}
 
 	for (i = 0; service[i].name; i++)
 		if (!strcasecmp(service[i].name, si->name)) {
