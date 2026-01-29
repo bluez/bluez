@@ -27,6 +27,11 @@ list
 List available endpoints.
 
 :Usage: **> list [local]**
+:[local]: Only show locally registered endpoints (optional, shows all if omitted)
+:Example List all available endpoints (local and remote):
+	| **> list**
+:Example List only locally registered endpoints:
+	| **> list local**
 
 show
 ----
@@ -34,6 +39,15 @@ show
 Endpoint information.
 
 :Usage: **> show [endpoint]**
+:[endpoint]: Path to specific endpoint to display (optional, shows current selection if omitted)
+:Example Show information for currently selected endpoint:
+	| **> show**
+:Example Show local endpoint information:
+	| **> show /local/endpoint/ep0**
+:Example Show remote endpoint information:
+	| **> show /org/bluez/hci0/dev_00_11_22_33_44_55/ep1**
+:Example Show another local endpoint:
+	| **> show /local/endpoint/ep1**
 
 register
 --------
@@ -41,37 +55,40 @@ register
 Register Endpoint.
 
 :Usage: **> register <UUID> <codec[:company]> [capabilities...]**
+:<UUID>: Bluetooth service UUID for the endpoint type (required)
+:<codec[:company]>: Codec ID in hex format, optionally with company ID (required)
+:[capabilities...]: Optional codec-specific capability data in hex format
 :Example LC3 BAP source:
-	 | **>endpoint.register 00002bcb-0000-1000-8000-00805f9b34fb 0x06**
-	 | **>Auto Accept (yes/no):** y
-	 | **>Max Transports (auto/value):** a
-	 | **>Locations:** a
-	 | **>Supported Context (value):** 3
-	 | **>Context (value):** 3
-	 | **>CIG (auto/value):** a
-	 | **>CIS (auto/value):** a
+	| **>endpoint.register 00002bcb-0000-1000-8000-00805f9b34fb 0x06**
+	| **>Auto Accept (yes/no):** y
+	| **>Max Transports (auto/value):** a
+	| **>Locations:** a
+	| **>Supported Context (value):** 3
+	| **>Context (value):** 3
+	| **>CIG (auto/value):** a
+	| **>CIS (auto/value):** a
 :Example LC3 BAP sink with extra capabilities:
-	 | **>endpoint.register 00002bc9-0000-1000-8000-00805f9b34fb 0x06 "0x03 0xe5 0x03 0x00 0x02 0xe6 0x07"**
-	 | **>Enter Metadata (value/no):** n
-	 | **>Auto Accept (yes/no):** y
-	 | **>Max Transports (auto/value):** a
-	 | **>Locations:** a
-	 | **>Supported Context (value):** 3
-	 | **>Context (value):** 3
-	 | **>CIG (auto/value):** a
-	 | **>CIS (auto/value):** a
+	| **>endpoint.register 00002bc9-0000-1000-8000-00805f9b34fb 0x06 "0x03 0xe5 0x03 0x00 0x02 0xe6 0x07"**
+	| **>Enter Metadata (value/no):** n
+	| **>Auto Accept (yes/no):** y
+	| **>Max Transports (auto/value):** a
+	| **>Locations:** a
+	| **>Supported Context (value):** 3
+	| **>Context (value):** 3
+	| **>CIG (auto/value):** a
+	| **>CIS (auto/value):** a
 :Example LC3 BAP Broadcast source:
-	 | **>endpoint.register 00001852-0000-1000-8000-00805f9b34fb 0x06**
-	 | **>Auto Accept (yes/no):** y
-	 | **>Max Transports (auto/value):** a
-	 | **>Locations:** 3
-	 | **>Supported Context (value):** 1
+	| **>endpoint.register 00001852-0000-1000-8000-00805f9b34fb 0x06**
+	| **>Auto Accept (yes/no):** y
+	| **>Max Transports (auto/value):** a
+	| **>Locations:** 3
+	| **>Supported Context (value):** 1
 :Example LC3 BAP Broadcast sink:
-	 | **>endpoint.register 00001851-0000-1000-8000-00805f9b34fb 0x06**
-	 | **>Auto Accept (yes/no):** y
-	 | **>Max Transports (auto/value):** a
-	 | **>Locations:** 3
-	 | **>Supported Context (value):** 1
+	| **>endpoint.register 00001851-0000-1000-8000-00805f9b34fb 0x06**
+	| **>Auto Accept (yes/no):** y
+	| **>Max Transports (auto/value):** a
+	| **>Locations:** 3
+	| **>Supported Context (value):** 1
 
 Note:
 
@@ -86,6 +103,23 @@ unregister
 Unregister Endpoint.
 
 :Usage: **> unregister <UUID/object>**
+:<UUID/object>: Either the service UUID or the object path of the endpoint to unregister
+:Example Unregister LC3 source endpoint by UUID:
+	| **> unregister 00002bcb-0000-1000-8000-00805f9b34fb**
+:Example Unregister LC3 sink endpoint by UUID:
+	| **> unregister 00002bc9-0000-1000-8000-00805f9b34fb**
+:Example Unregister broadcast source endpoint by UUID:
+	| **> unregister 00001852-0000-1000-8000-00805f9b34fb**
+:Example Unregister broadcast sink endpoint by UUID:
+	| **> unregister 00001851-0000-1000-8000-00805f9b34fb**
+:Example Unregister endpoint by object path:
+	| **> unregister /local/endpoint/ep0**
+:Example Unregister another endpoint by object path:
+	| **> unregister /local/endpoint/ep1**
+:Example Unregister source endpoint by path:
+	| **> unregister /local/endpoint/source0**
+:Example Unregister sink endpoint by path:
+	| **> unregister /local/endpoint/sink0**
 
 Note:
 
@@ -98,6 +132,15 @@ config
 Configure Endpoint.
 
 :Usage: **> config <endpoint> <local endpoint> [preset]**
+:<endpoint>: Path to the remote endpoint to configure
+:<local endpoint>: Path to the local endpoint to use for the configuration
+:[preset]: Audio quality preset name (optional, auto-detected if omitted)
+:Example Configure remote endpoint with local endpoint (auto preset):
+	| **> config /org/bluez/hci0/dev_00_11_22_33_44_55/ep0 /local/endpoint/ep0**
+:Example Configure LE Audio Unicast with BAP setting 32_1_1:
+	| **> config /org/bluez/hci0/dev_00_11_22_33_44_55/ep0 /local/endpoint/ep0 32_1_1**
+:Example Configure LE Audio Broadcast Source:
+	| **> config /org/bluez/hci0/dev_00_11_22_33_44_55/bis0 /local/endpoint/broadcast0**
 
 Note:
 
@@ -110,55 +153,78 @@ presets
 List available presets.
 
 :Usage: **> presets <endpoint>/<UUID> [codec[:company]] [preset] [codec config] [metadata]**
+:<endpoint>/<UUID>: Either endpoint path or service UUID to work with presets
+:[codec[:company]]: Codec ID with optional company identifier
+:[preset]: Preset name to display details or create custom preset
+:[codec config]: Custom codec configuration data in hex format
+:[metadata]: Additional metadata for the preset
 :Example using endpoint:
-	  | **>presets /local/endpoint/ep0 32_1_1**
-	  | **>presets /local/endpoint/ep0**
-	  | Preset 32_1_1
-	  | Configuration.**>0: len 0x02 type 0x01
-          | Configuration.Sampling Frequency: 32 Khz (0x06)
-          | Configuration.**>1: len 0x02 type 0x02
-          | Configuration.Frame Duration: 7.5 ms (0x00)
-          | Configuration.**>2: len 0x03 type 0x04
-          | Configuration.Frame Length: 60 (0x003c)
+	| **>presets /local/endpoint/ep0 32_1_1**
+	| **>presets /local/endpoint/ep0**
+	| Preset 32_1_1
+	| Configuration.**>0: len 0x02 type 0x01
+	| Configuration.Sampling Frequency: 32 Khz (0x06)
+	| Configuration.**>1: len 0x02 type 0x02
+	| Configuration.Frame Duration: 7.5 ms (0x00)
+	| Configuration.**>2: len 0x03 type 0x04
+	| Configuration.Frame Length: 60 (0x003c)
+:Example List all available presets for local endpoint:
+	| **>presets /local/endpoint/ep0**
+:Example List all presets for another endpoint:
+	| **>presets /local/endpoint/ep1**
 :Example using UUID:
-	  | **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 32_1_1**
-	  | **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06**
-	  | ...
-	  | ***32_1_1**
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 32_1_1**
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06**
+	| ...
+	| ***32_1_1**
+:Example List all LC3 sink presets:
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06**
+:Example List all LC3 source presets:
+	| **>presets 00002bcb-0000-1000-8000-00805f9b34fb 0x06**
+:Example List all broadcast source presets:
+	| **>presets 00001852-0000-1000-8000-00805f9b34fb 0x06**
+:Example List all broadcast sink presets:
+	| **>presets 00001851-0000-1000-8000-00805f9b34fb 0x06**
+:Example Show details for 48kHz stereo preset:
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 48_2_1**
+:Example Show details for 24kHz mono high-quality preset:
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 24_1_2**
+:Example Show details for 16kHz mono preset:
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 16_1_1**
 :Example setting up LC3 custom preset:
-	  | **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 custom**
-	  | **>[Codec] Enter frequency (Khz):** 48
-	  | **>[Codec] Enter frame duration (ms):** 10
-	  | **>[Codec] Enter channel allocation:** 3
-	  | **>[Codec] Enter frame length:** 100
-	  | **>[QoS] Enter Target Latency (Low, Balance, High):** Low
-	  | **>[QoS] Enter SDU Interval (us):** 1000
-	  | **>[QoS] Enter Framing (Unframed, Framed):** Unframed
-	  | **>[QoS] Enter PHY (1M, 2M):** 2M
-	  | **>[QoS] Enter Max SDU:** 200
-	  | **>[QoS] Enter RTN:** 3
-	  | **>[QoS] Enter Max Transport Latency (ms):** 10
-	  | **>[QoS] Enter Presentation Delay (us):** 20000
-	  | **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06**
-	  | ...
-	  | ***custom**
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 custom**
+	| **>[Codec] Enter frequency (Khz):** 48
+	| **>[Codec] Enter frame duration (ms):** 10
+	| **>[Codec] Enter channel allocation:** 3
+	| **>[Codec] Enter frame length:** 100
+	| **>[QoS] Enter Target Latency (Low, Balance, High):** Low
+	| **>[QoS] Enter SDU Interval (us):** 1000
+	| **>[QoS] Enter Framing (Unframed, Framed):** Unframed
+	| **>[QoS] Enter PHY (1M, 2M):** 2M
+	| **>[QoS] Enter Max SDU:** 200
+	| **>[QoS] Enter RTN:** 3
+	| **>[QoS] Enter Max Transport Latency (ms):** 10
+	| **>[QoS] Enter Presentation Delay (us):** 20000
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06**
+	| ...
+	| ***custom**
 :Example setting up LC3 custom preset with extra configuration:
-	  | **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 custom "0x03 0xe8 0x00 0x00 0x02 0xe9 0x00"**
-	  | **>[Codec] Enter frequency (Khz):** 48
-	  | **>[Codec] Enter frame duration (ms):** 10
-	  | **>[Codec] Enter channel allocation:** 3
-	  | **>[Codec] Enter frame length:** 100
-	  | **>[QoS] Enter Target Latency (Low, Balance, High):** Low
-	  | **>[QoS] Enter SDU Interval (us):** 1000
-	  | **>[QoS] Enter Framing (Unframed, Framed):** Unframed
-	  | **>[QoS] Enter PHY (1M, 2M):** 2M
-	  | **>[QoS] Enter Max SDU:** 200
-	  | **>[QoS] Enter RTN:** 3
-	  | **>[QoS] Enter Max Transport Latency (ms):** 10
-	  | **>[QoS] Enter Presentation Delay (us):** 20000
-	  | **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06**
-	  | ...
-	  | ***custom**
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06 custom "0x03 0xe8 0x00 0x00 0x02 0xe9 0x00"**
+	| **>[Codec] Enter frequency (Khz):** 48
+	| **>[Codec] Enter frame duration (ms):** 10
+	| **>[Codec] Enter channel allocation:** 3
+	| **>[Codec] Enter frame length:** 100
+	| **>[QoS] Enter Target Latency (Low, Balance, High):** Low
+	| **>[QoS] Enter SDU Interval (us):** 1000
+	| **>[QoS] Enter Framing (Unframed, Framed):** Unframed
+	| **>[QoS] Enter PHY (1M, 2M):** 2M
+	| **>[QoS] Enter Max SDU:** 200
+	| **>[QoS] Enter RTN:** 3
+	| **>[QoS] Enter Max Transport Latency (ms):** 10
+	| **>[QoS] Enter Presentation Delay (us):** 20000
+	| **>presets 00002bc9-0000-1000-8000-00805f9b34fb 0x06**
+	| ...
+	| ***custom**
 
 RESOURCES
 =========
