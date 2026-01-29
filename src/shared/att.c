@@ -1795,7 +1795,7 @@ bool bt_att_cancel(struct bt_att *att, unsigned int id)
 	if (!att || !id)
 		return false;
 
-	/* Lookuo request on each channel first */
+	/* Lookup request on each channel first */
 	for (entry = queue_get_entries(att->chans); entry;
 						entry = entry->next) {
 		struct bt_att_chan *chan = entry->data;
