@@ -28,12 +28,22 @@ List available transports.
 
 :Usage: **> list**
 
+:Example Display all available media transports (A2DP, LE Audio, etc.):
+	| **> list**
+
 show
 ----
 
 Show transport information.
 
 :Usage: **> show [transport]**
+:[transport]: Specific transport object path (optional, shows current if omitted)
+:Example Show information for currently selected transport:
+	| **> show**
+:Example Show transport information:
+	| **> show /org/bluez/hci0/dev_00_11_22_33_44_55/fd0**
+:Example Show Broadcast Isochronous Stream transport:
+	| **> show /org/bluez/hci0/dev_11_22_33_44_55_66/bis1**
 
 acquire
 -------
@@ -41,6 +51,12 @@ acquire
 Acquire transport.
 
 :Usage: **> acquire <transport> [transport1...]**
+:<transport>: Media transport object path to acquire for audio streaming
+:[transport1...]: Additional transport paths for multi-stream acquisition (optional)
+:Example Acquire transport:
+	| **> acquire /org/bluez/hci0/dev_00_11_22_33_44_55/fd0**
+:Example Acquire multiple transports:
+	| **> acquire /org/bluez/hci0/dev_00_11_22_33_44_55/fd0 /org/bluez/hci0/dev_00_11_22_33_44_55/fd1**
 
 Note:
 
@@ -54,6 +70,12 @@ Select transport. For transports created on a Broadcast Sink device only. This m
 the transport to the "broadcasting" state, pending acquire.
 
 :Usage: **> select <transport> [transport1...]**
+:<transport>: Broadcast sink transport path to move to broadcasting state
+:[transport1...]: Additional transport paths for multi-stream selection (optional)
+:Example Select single Broadcast Isochronous Stream:
+	| **> select /org/bluez/hci0/dev_00_11_22_33_44_55/bis1**
+:Example Select stereo broadcast streams:
+	| **> select /org/bluez/hci0/dev_00_11_22_33_44_55/bis1 /org/bluez/hci0/dev_00_11_22_33_44_55/bis2**
 
 Note:
 
@@ -77,6 +99,12 @@ was acquired by bluetoothctl it can be released straight away, without having to
 unselected.
 
 :Usage: **> unselect <transport> [transport1...]**
+:<transport>: Broadcast sink transport path to move to idle state
+:[transport1...]: Additional transport paths for multi-stream unselection (optional)
+:Example Unselect broadcast stream transport:
+	| **> unselect /org/bluez/hci0/dev_00_11_22_33_44_55/bis1**
+:Example Unselect multiple broadcast streams:
+	| **> unselect /org/bluez/hci0/dev_00_11_22_33_44_55/bis1 /org/bluez/hci0/dev_00_11_22_33_44_55/bis2**
 
 Note:
 If running the setup with an audio server that has LE Audio support (such as PipeWire), it will
@@ -88,6 +116,12 @@ release
 Release transport.
 
 :Usage: **> release <transport> [transport1...]**
+:<transport>: Media transport object path to release from audio streaming
+:[transport1...]: Additional transport paths for multi-stream release (optional)
+:Example Release transport:
+	| **> release /org/bluez/hci0/dev_00_11_22_33_44_55/fd0**
+:Example Release multiple transports:
+	| **> release /org/bluez/hci0/dev_00_11_22_33_44_55/fd0 /org/bluez/hci0/dev_00_11_22_33_44_55/fd1**
 
 Note:
 
@@ -98,7 +132,14 @@ send
 
 Send contents of a file.
 
-:Usage: **> send <transport> <filename>**
+:Usage: **> send <transport> <filename> [transport1...]**
+:<transport>: Media transport object path to send audio data through
+:<filename>: Path to audio file to transmit (supports WAV, MP3, PCM formats)
+:[transport1...]: Additional transport paths for multi-stream sending (optional)
+:Example Send encoded audio file via transport:
+	| **> send /org/bluez/hci0/dev_00_11_22_33_44_55/fd0 /home/user/music.<format>**
+:Example Send to multiple transports simultaneously:
+	| **> send /org/bluez/hci0/dev_00_11_22_33_44_55/fd0 /home/user/stereo-left.<format> /org/bluez/hci0/dev_00_11_22_33_44_55/fd1 /home/user/stereo-rigth.<format>**
 
 receive
 -------
@@ -106,6 +147,14 @@ receive
 Get/Set file to receive.
 
 :Usage: **> receive <transport> [filename]**
+:<transport>: Media transport object path to receive audio data from
+:[filename]: Path to save received audio data (optional, shows current if omitted)
+:Example Show current receive file for transport:
+	| **> receive /org/bluez/hci0/dev_00_11_22_33_44_55/fd0**
+:Example Set file to receive audio data:
+	| **> receive /org/bluez/hci0/dev_00_11_22_33_44_55/fd0 /tmp/recorded_audio.wav**
+:Example Set file for broadcast audio capture (note quotes):
+	| **> receive /org/bluez/hci0/dev_11_22_33_44_55_66/bis1 "/home/user/My Recordings/broadcast.wav"**
 
 volume
 ------
@@ -113,6 +162,25 @@ volume
 Get/Set transport volume.
 
 :Usage: **> volume <transport> [value]**
+:<transport>: Media transport object path to control volume for
+:[value]: Volume level (0-127, optional, shows current if omitted)
+:Example Show current volume level:
+	| **> volume /org/bluez/hci0/dev_00_11_22_33_44_55/fd0**
+:Example Set volume to 100:
+	| **> volume /org/bluez/hci0/dev_00_11_22_33_44_55/fd0 100**
+
+metadata
+--------
+
+Get/Set Transport Metadata.
+
+:Usage: **> metadata <transport> [value...]**
+:<transport>: Media transport object path
+:[value...]: Metadata value as hex string (optional, shows current if omitted)
+:Example Show current metadata for transport:
+	| **> metadata /org/bluez/hci0/dev_00_11_22_33_44_55/fd0**
+:Example Set metadata value:
+	| **> metadata /org/bluez/hci0/dev_00_11_22_33_44_55/fd0 0x03020100**
 
 RESOURCES
 =========
