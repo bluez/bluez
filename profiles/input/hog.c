@@ -39,6 +39,7 @@
 #include "src/shared/att.h"
 #include "src/shared/gatt-client.h"
 #include "src/plugin.h"
+#include "src/conf_d.h"
 
 #include "suspend.h"
 #include "attrib/att.h"
@@ -241,6 +242,14 @@ static void hog_read_config(void)
 	if (!g_key_file_load_from_file(config, filename, 0, &err)) {
 		if (!g_error_matches(err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
 			error("Parsing %s failed: %s", filename, err->message);
+		g_error_free(err);
+		g_key_file_free(config);
+		return;
+	}
+
+	confd_process_config(config, filename, FALSE, TRUE, &err);
+	if (err) {
+		error("Parsing conf.d file failed: %s", err->message);
 		g_error_free(err);
 		g_key_file_free(config);
 		return;

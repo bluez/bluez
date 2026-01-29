@@ -54,6 +54,7 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "profile.h"
+#include "conf_d.h"
 
 #define BLUEZ_NAME "org.bluez"
 
@@ -280,6 +281,14 @@ static GKeyFile *load_config(const char *name)
 		if (!g_error_matches(err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
 			error("Parsing %s failed: %s", main_conf_file_path,
 				err->message);
+		g_error_free(err);
+		g_key_file_free(keyfile);
+		return NULL;
+	}
+
+	confd_process_config(keyfile, main_conf_file_path, FALSE, TRUE, &err);
+	if (err) {
+		error("Parsing conf.d file failed: %s", err->message);
 		g_error_free(err);
 		g_key_file_free(keyfile);
 		return NULL;
