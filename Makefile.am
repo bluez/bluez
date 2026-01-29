@@ -806,7 +806,6 @@ EXTRA_DIST += $(manual_pages) $(patsubst %.1,%.rst, \
 
 # pkg-config gives absolute paths that do not work with distcheck that wants to use its own $(prefix)
 AM_DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
-						--enable-health \
 						--enable-midi \
 						--enable-manpages \
 						--enable-mesh \
