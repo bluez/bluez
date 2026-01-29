@@ -349,7 +349,7 @@ profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
 
 if MANPAGES
 man_MANS += doc/rctest.1 doc/l2ping.1 doc/btattach.1 doc/isotest.1 \
-		doc/btmgmt.1 doc/bluetoothctl.1 \
+		doc/bluetoothctl.1 \
 		doc/bluetoothctl-mgmt.1 \
 		doc/bluetoothctl-monitor.1 doc/bluetoothctl-admin.1 \
 		doc/bluetoothctl-advertise.1 doc/bluetoothctl-endpoint.1 \
