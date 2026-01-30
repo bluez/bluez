@@ -31,6 +31,7 @@ Client
 :Service:	org.bluez
 :Interface:	org.bluez.GattDescriptor1
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/service#/char#/descriptor#
+:Used by:	**bluetoothctl-gatt(1)**
 
 Server
 ------
@@ -75,6 +76,10 @@ Possible Errors:
 :org.bluez.Error.NotAuthorized:
 :org.bluez.Error.NotSupported:
 
+Examples:
+
+:bluetoothctl: [gatt] > read [offset]
+
 void WriteValue(array{byte} value, dict flags)
 ``````````````````````````````````````````````
 
@@ -116,6 +121,10 @@ Possible Errors:
 :org.bluez.Error.NotAuthorized:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.ImproperlyConfigured:
+
+Examples:
+
+:bluetoothctl: [gatt] > write <data=xx ...> [offset] [type]
 
 Properties
 ----------
