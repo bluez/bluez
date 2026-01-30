@@ -4506,6 +4506,87 @@ static void ras_data_overwritten_notify(const struct l2cap_frame *frame)
 	GATT_HANDLER(0x2c19, ras_data_overwritten_read, NULL, \
 					ras_data_overwritten_notify)
 
+static const struct bitfield_data hog_info_flags[] = {
+	{  0, "RemoteWake (0x01)"		},
+	{  1, "NormallyConnectable (0x02)"	},
+	{ }
+};
+
+static void hog_info_read(const struct l2cap_frame *frame)
+{
+	uint16_t bcdhid;
+	uint8_t bcc, flags, mask;
+
+	if (!l2cap_frame_get_le16((void *)frame, &bcdhid)) {
+		print_text(COLOR_ERROR, "    bcdHID: invalid size");
+		goto done;
+	}
+
+	print_field("    bcdHID: 0x%4.4x", bcdhid);
+
+	if (!l2cap_frame_get_u8((void *)frame, &bcc)) {
+		print_text(COLOR_ERROR, "    bCountryCode: invalid size");
+		goto done;
+	}
+
+	print_field("    bCountryCode: 0x%2.2x", bcc);
+
+	if (!l2cap_frame_get_u8((void *)frame, &flags)) {
+		print_text(COLOR_ERROR, "    Flags: invalid size");
+		goto done;
+	}
+
+	print_field("    Flags: 0x%2.2x", flags);
+
+	mask = print_bitfield(4, flags, hog_info_flags);
+	if (mask)
+		print_text(COLOR_WHITE_BG, "    Unknown fields (0x%2.2x)",
+								mask);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static const char *hog_cmd_str(uint8_t opcode)
+{
+	switch (opcode) {
+	case 0x00:
+		return "Suspend";
+	case 0x01:
+		return "Exit Suspend";
+	default:
+		return NULL;
+	}
+}
+
+static void hog_cp_write(const struct l2cap_frame *frame)
+{
+	uint8_t opcode;
+	const char *str;
+
+	if (!l2cap_frame_get_u8((void *)frame, &opcode)) {
+		print_text(COLOR_ERROR, "    Opcode: invalid size");
+		goto done;
+	}
+
+	str = hog_cmd_str(opcode);
+	if (!str) {
+		print_field("    Opcode: Reserved (0x%2.2x)", opcode);
+		goto done;
+	}
+
+	print_field("    Opcode: %s (0x%2.2x)", str, opcode);
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+#define HIDS \
+	GATT_HANDLER(0x2a4a, hog_info_read, NULL, NULL), \
+	GATT_HANDLER(0x2a4c, NULL, hog_cp_write, NULL)
+
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
 	.uuid = { \
@@ -4588,6 +4669,7 @@ static const struct gatt_handler {
 	GATT_HANDLER(0x2bc1, incoming_call_read, NULL, incoming_call_notify),
 	GATT_HANDLER(0x2bc2, call_friendly_name_read, NULL,
 					call_friendly_name_notify),
+	HIDS,
 	GMAS,
 	RAS
 };
