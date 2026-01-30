@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.Device1
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}
+:Used by:	**bluetoothctl(1)**
 
 Methods
 -------
@@ -51,6 +52,10 @@ Possible errors:
 :org.bluez.Error.AlreadyConnected:
 :org.bluez.Error.BREDR.ProfileUnavailable:
 
+Examples:
+
+:bluetoothctl: > connect <dev> [uuid]
+
 void Disconnect()
 `````````````````
 
@@ -68,6 +73,10 @@ disable incoming connections until Connect method is called again.
 Possible errors:
 
 :org.bluez.Error.NotConnected:
+
+Examples:
+
+:bluetoothctl: > disconnect [dev] [uuid]
 
 void ConnectProfile(string uuid)
 ````````````````````````````````
@@ -124,6 +133,10 @@ Possible errors:
 :org.bluez.Error.AuthenticationRejected:
 :org.bluez.Error.AuthenticationTimeout:
 :org.bluez.Error.ConnectionAttemptFailed:
+
+Examples:
+
+:bluetoothctl: > pair [dev]
 
 void CancelPairing()
 ````````````````````
