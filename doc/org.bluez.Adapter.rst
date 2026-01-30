@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.Adapter1
 :Object path:	[variable prefix]/{hci0,hci1,...}
+:Used by:	**bluetoothctl(1)**, **bluetoothctl-scan(1)**
 
 Methods
 -------
@@ -40,6 +41,10 @@ Possible errors:
 :org.bluez.Error.NotReady:
 :org.bluez.Error.Failed:
 :org.bluez.Error.InProgress:
+
+Examples:
+
+:bluetoothctl: > scan <on/off/bredr/le>
 
 void StopDiscovery()
 ````````````````````
@@ -66,6 +71,10 @@ Possible errors:
 
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > remove <dev>
 
 void SetDiscoveryFilter(dict filter)
 ````````````````````````````````````
@@ -176,6 +185,17 @@ Possible errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: [scan] > uuids [all/uuid1 uuid2 ...]
+:bluetoothctl: [scan] > rssi [rssi]
+:bluetoothctl: [scan] > pathloss [pathloss]
+:bluetoothctl: [scan] > transport [auto/bredr/le]
+:bluetoothctl: [scan] > duplicate-data [on/off]
+:bluetoothctl: [scan] > discoverable [on/off]
+:bluetoothctl: [scan] > pattern [value]
+:bluetoothctl: [scan] > clear [filter]
+
 array{string} GetDiscoveryFilters()
 ```````````````````````````````````
 
@@ -278,6 +298,11 @@ defaults to the system name and provides the pretty hostname.
 Only if the local name needs to be different from the pretty hostname, this
 property should be used as last resort.
 
+Examples:
+
+:bluetoothctl: > system-alias <name>
+:bluetoothctl: > reset-alias
+
 uint32 Class [readonly]
 ```````````````````````
 
@@ -307,6 +332,10 @@ state of the controller.
 
 The value of this property is not persistent. After restart or unplugging of the
 adapter it will reset back to false.
+
+Examples:
+
+:bluetoothctl: > power <on/off>
 
 string PowerState [readonly, experimental]
 ``````````````````````````````````````````
@@ -353,6 +382,10 @@ In case the adapter is switched off, setting this value will fail.
 When changing the Powered property the new state of this property will be
 updated via a PropertiesChanged signal.
 
+Examples:
+
+:bluetoothctl: > discoverable <on/off>
+
 boolean Pairable [readwrite] (Default: true)
 ````````````````````````````````````````````
 
@@ -360,6 +393,10 @@ Switch an adapter to pairable or non-pairable. This is a global setting and
 should only be used by the settings application.
 
 Note that this property only affects incoming pairing requests.
+
+Examples:
+
+:bluetoothctl: > pairable <on/off>
 
 uint32 PairableTimeout [readwrite] (Default: 0)
 ```````````````````````````````````````````````
@@ -372,6 +409,10 @@ uint32 DiscoverableTimeout [readwrite] (Default: 180)
 
 The discoverable timeout in seconds. A value of zero means that the timeout is
 disabled and it will stay in discoverable/limited mode forever.
+
+Examples:
+
+:bluetoothctl: > discoverable-timeout [value]
 
 boolean Discovering [readonly]
 ``````````````````````````````
