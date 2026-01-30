@@ -19,6 +19,7 @@ Interface
 :Interface:	org.bluez.MediaEndpoint1
 :Object path:	freely definable (Server role)
 		[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/sep# (Client role)
+:Used by:	**bluetoothctl-endpoint(1)**
 
 Methods
 -------
@@ -90,6 +91,10 @@ Possible errors for A2DP endpoints:
 	:org.bluez.Error.A2DP.NotSupportedCodecParameter:
 	:org.bluez.Error.A2DP.InvalidDRC:
 	:org.bluez.Error.A2DP.NotSupportedDRC:
+
+Examples:
+
+:bluetoothctl: > endpoint.config <endpoint> <local endpoint> [preset]
 
 array{byte} SelectConfiguration(array{byte} capabilities)
 `````````````````````````````````````````````````````````
