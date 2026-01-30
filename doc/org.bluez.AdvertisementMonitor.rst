@@ -29,6 +29,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.AdvertisementMonitor1 [experimental]
 :Object path:	freely definable
+:Used by:	**bluetoothctl-monitor(1)**
 
 Methods
 -------
