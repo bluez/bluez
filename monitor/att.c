@@ -4989,11 +4989,11 @@ static void att_read_rsp(const struct l2cap_frame *frame)
 {
 	struct att_read *read;
 
-	print_hex_field("Value", frame->data, frame->size);
-
 	read = att_get_read(frame);
-	if (!read)
+	if (!read) {
+		print_hex_field("Value", frame->data, frame->size);
 		return;
+	}
 
 	/* Check if the data size is equal to the MTU then read long procedure
 	 * maybe used.
