@@ -26,6 +26,7 @@ Adapter
 :Service:	org.bluez
 :Interface:	org.bluez.AdminPolicyStatus1 [experimental]
 :Object path:	[variable prefix]/{hci0,hci1,...}
+:Used by:	**bluetoothctl-admin(1)**
 
 Device
 ------
