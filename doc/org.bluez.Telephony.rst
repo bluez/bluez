@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.Telephony1 [experimental]
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/telephony#
+:Used by:	**bluetoothctl-telephony(1)**
 
 Methods
 -------
@@ -53,6 +54,10 @@ Possible Errors:
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > telephony.dial <number> [telephony]
 
 void SwapCalls()
 ````````````````
@@ -112,6 +117,10 @@ Releases all calls except waiting calls. This includes multiparty calls.
 Possible Errors:
 :org.bluez.Error.InvalidState
 :org.bluez.Error.Failed
+
+Examples:
+
+:bluetoothctl: > telephony.hangup-all [telephony]
 
 void HangupActive()
 ```````````````````
