@@ -20,6 +20,7 @@ Interface
 :Object path:	freely definable (Target role)
 		[variable
 		prefix]/{hci0,hci1,...}/dev_{BDRADDR}/player#/item# (Controller role)
+:Used by:	**bluetoothctl-player(1)**
 
 Methods
 -------
@@ -34,6 +35,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: [player] > play [item]
+
 void AddtoNowPlaying()
 ``````````````````````
 
@@ -43,6 +48,10 @@ Possible Errors:
 
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: [player] > queue <item>
 
 Properties
 ----------
