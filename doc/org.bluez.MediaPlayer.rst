@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez (Controller role)
 :Interface:	org.bluez.MediaPlayer1
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/player#
+:Used by:	**bluetoothctl-player(1)**
 
 Methods
 -------
@@ -31,6 +32,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: > player.play [item]
+
 void Pause()
 ````````````
 
@@ -40,6 +45,10 @@ Possible Errors:
 
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > player.pause
 
 void Stop()
 ```````````
@@ -51,6 +60,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: > player.stop
+
 void Next()
 ```````````
 
@@ -61,6 +74,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: > player.next
+
 void Previous()
 ```````````````
 
@@ -70,6 +87,10 @@ Possible Errors:
 
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > player.previous
 
 void FastForward()
 ``````````````````
@@ -82,6 +103,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: > player.fast-forward
+
 void Rewind()
 `````````````
 
@@ -92,6 +117,10 @@ Possible Errors:
 
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > player.rewind
 
 void Press(byte avc_key)
 ````````````````````````
@@ -146,6 +175,10 @@ Possible values:
 :"off":
 :"on":
 
+Examples:
+
+:bluetoothctl: [player] > equalizer <on/off>
+
 string Repeat [readwrite]
 `````````````````````````
 
@@ -158,6 +191,10 @@ Possible values:
 :"alltracks":
 :"group":
 
+Examples:
+
+:bluetoothctl: [player] > repeat <singletrack/alltracks/group/off>
+
 string Shuffle [readwrite]
 ``````````````````````````
 
@@ -169,6 +206,10 @@ Possible values:
 :"alltracks":
 :"group":
 
+Examples:
+
+:bluetoothctl: [player] > shuffle <alltracks/group/off>
+
 string Scan [readwrite]
 ```````````````````````
 
@@ -179,6 +220,10 @@ Possible values:
 :"off":
 :"alltracks":
 :"group":
+
+Examples:
+
+:bluetoothctl: [player] > scan <alltracks/group/off>
 
 string Status [readonly]
 ````````````````````````
