@@ -35,6 +35,7 @@ versions of the same UUID will be used in the advertising data as appropriate.
 :Service:	org.bluez
 :Interface:	org.bluez.LEAdvertisement1
 :Object path:	freely definable
+:Used by:	**bluetoothctl-advertise(1)**
 
 Methods
 -------
