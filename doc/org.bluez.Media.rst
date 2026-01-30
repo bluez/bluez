@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.Media1
 :Object path:	[variable prefix]/{hci0,hci1,...}
+:Used by:	**bluetoothctl-endpoint(1)**
 
 Methods
 -------
@@ -67,9 +68,17 @@ Possible Errors:
 
 	emitted when interface for the end-point is disabled
 
+Examples:
+
+:bluetoothctl: > endpoint.register <UUID> <codec[:company]> [capabilities...]
+
 void UnregisterEndpoint(object endpoint)
 ````````````````````````````````````````
 Unregister sender end point.
+
+Examples:
+
+:bluetoothctl: > endpoint.unregister <UUID/object>
 
 void RegisterPlayer(object player, dict properties)
 ```````````````````````````````````````````````````
