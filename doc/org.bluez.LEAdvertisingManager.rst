@@ -21,6 +21,7 @@ follow the API for LE Advertisement Data described above.
 :Service:	org.bluez
 :Interface:	org.bluez.LEAdvertisingManager1
 :Object path:	/org/bluez/{hci0,hci1,...}
+:Used by:	**bluetoothctl(1)**
 
 Methods
 -------
@@ -51,6 +52,10 @@ Possible errors:
 
 	Indicates the maximum number of advertisement instances has been
 	reached.
+
+Examples:
+
+:bluetoothctl: > advertise <on/off/type>
 
 void UnregisterAdvertisement(object advertisement)
 ``````````````````````````````````````````````````

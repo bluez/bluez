@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.AgentManager1
 :Object path:	/org/bluez
+:Used by:	**bluetoothctl(1)**
 
 Methods
 -------
@@ -57,6 +58,10 @@ Possible errors:
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.AlreadyExists:
 
+Examples:
+
+:bluetoothctl: > agent <on/off/auto/capability>
+
 void UnregisterAgent(object agent)
 ``````````````````````````````````
 
@@ -79,3 +84,7 @@ Special permission might be required to become the default agent.
 Possible errors:
 
 :org.bluez.Error.DoesNotExist:
+
+Examples:
+
+:bluetoothctl: > default-agent

@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.MediaTransport1
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/fd#
+:Used by:	**bluetoothctl-transport(1)**
 
 Methods
 -------
@@ -30,6 +31,10 @@ Possible Errors:
 
 :org.bluez.Error.NotAuthorized:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > transport.acquire <transport> [transport1...]
 
 fd, uint16, uint16 TryAcquire()
 ```````````````````````````````
@@ -50,6 +55,10 @@ void Release()
 
 Releases file descriptor.
 
+Examples:
+
+:bluetoothctl: > transport.release <transport> [transport1...]
+
 void Select()
 `````````````
 
@@ -68,6 +77,10 @@ Possible Errors:
 
 :org.bluez.Error.NotAuthorized:
 
+Examples:
+
+:bluetoothctl: > transport.select <transport> [transport1...]
+
 void Unselect()
 ```````````````
 
@@ -83,6 +96,10 @@ This allows callers to terminate the sync to a BIS to via a 2 step process:
 Possible Errors:
 
 :org.bluez.Error.NotAuthorized:
+
+Examples:
+
+:bluetoothctl: > transport.unselect <transport> [transport1...]
 
 Properties
 ----------

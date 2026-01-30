@@ -81,6 +81,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.GattManager1
 :Object path:	[variable prefix]/{hci0,hci1,...}
+:Used by:	**bluetoothctl-gatt(1)**
 
 Methods
 -------
@@ -100,6 +101,10 @@ Possible errors:
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.AlreadyExists:
 
+Examples:
+
+:bluetoothctl: > gatt.register-application [UUID ...]
+
 void UnregisterApplication(object application)
 ``````````````````````````````````````````````
 
@@ -111,3 +116,7 @@ Possible errors:
 
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.DoesNotExist:
+
+Examples:
+
+:bluetoothctl: > gatt.unregister-application

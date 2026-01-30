@@ -18,6 +18,9 @@ SYNOPSIS
 
 **bluetoothctl** [--options] [assistant.commands]
 
+This submenu manages BAP Broadcast Assistants using the
+**org.bluez.MediaAssistant(5)** interface.
+
 Assistant Commands
 ==================
 
@@ -27,6 +30,8 @@ list
 List available assistants.
 
 :Usage: **> list**
+:Example Display all available BAP Broadcast Assistants:
+	| **> list**
 
 show
 ----
@@ -34,6 +39,12 @@ show
 Show assistant information.
 
 :Usage: **> show [assistant]**
+:Uses: **org.bluez.MediaAssistant(5)** properties
+:[assistant]: BAP Broadcast Assistant path (optional, shows current if omitted)
+:Example Show information for currently selected assistant:
+	| **> show**
+:Example Show specific BAP Broadcast Assistant information:
+	| **> show /org/bluez/hci0/src_05_1F_EE_F3_F8_7D/dev_00_60_37_31_7E_3F/bis1**
 
 push
 ----
@@ -66,9 +77,16 @@ Code, a zero filled array will be sent to the peer. Otherwise,
 the string entered by the user will be sent as an array of bytes.
 
 :Usage: **> push <assistant>**
-:Example: | **> push /org/bluez/hci0/src_05_1F_EE_F3_F8_7D/dev_00_60_37_31_7E_3F/bis1**
-          | **[Assistant] Enter Metadata (auto/value): 0x03 0x02 0x04 0x00**
-          | **[Assistant] Enter Broadcast Code (auto/value): Borne House**
+:Uses: **org.bluez.MediaAssistant(5)** method **Push**
+:<assistant>: BAP Broadcast Assistant path to send stream information to
+:Example Push stream info with automatic metadata and broadcast code:
+	| **> push /org/bluez/hci0/src_05_1F_EE_F3_F8_7D/dev_00_60_37_31_7E_3F/bis1**
+	| **[Assistant] Enter Metadata (auto/value): auto**
+	| **[Assistant] Enter Broadcast Code (auto/value): auto**
+:Example Push stream info with custom metadata and broadcast code:
+	| **> push /org/bluez/hci0/src_05_1F_EE_F3_F8_7D/dev_00_60_37_31_7E_3F/bis1**
+	| **[Assistant] Enter Metadata (auto/value): 0x03 0x02 0x04 0x00**
+	| **[Assistant] Enter Broadcast Code (auto/value): Borne House**
 
 RESOURCES
 =========

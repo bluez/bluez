@@ -31,6 +31,7 @@ Client
 :Service:	org.bluez
 :Interface:	org.bluez.GattDescriptor1
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/service#/char#/descriptor#
+:Used by:	**bluetoothctl-gatt(1)**
 
 Server
 ------

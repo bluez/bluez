@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.MediaAssistant1
 :Object path:	/org/bluez/{hci0,hci1,...}/dev_{BDADDR}/src_{BDADDR}/sid#/bis#
+:Used by:	**bluetoothctl-assistant(1)**
 
 Methods
 -------
@@ -44,6 +45,10 @@ Values:
 
 		Push to a specific device. Device must be connected and with
 		an active BASS session.
+
+Examples:
+
+:bluetoothctl: > assistant.push <assistant>
 
 Properties
 ----------
