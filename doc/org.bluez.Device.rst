@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.Device1
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}
+:Used by:	**bluetoothctl(1)**
 
 Methods
 -------
@@ -51,6 +52,10 @@ Possible errors:
 :org.bluez.Error.AlreadyConnected:
 :org.bluez.Error.BREDR.ProfileUnavailable:
 
+Examples:
+
+:bluetoothctl: > connect <dev> [uuid]
+
 void Disconnect()
 `````````````````
 
@@ -68,6 +73,10 @@ disable incoming connections until Connect method is called again.
 Possible errors:
 
 :org.bluez.Error.NotConnected:
+
+Examples:
+
+:bluetoothctl: > disconnect [dev] [uuid]
 
 void ConnectProfile(string uuid)
 ````````````````````````````````
@@ -125,6 +134,10 @@ Possible errors:
 :org.bluez.Error.AuthenticationTimeout:
 :org.bluez.Error.ConnectionAttemptFailed:
 
+Examples:
+
+:bluetoothctl: > pair [dev]
+
 void CancelPairing()
 ````````````````````
 
@@ -134,6 +147,10 @@ Possible errors:
 
 :org.bluez.Error.DoesNotExist:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > cancel-pairing [dev]
 
 array{array{byte}} GetServiceRecords() [experimental]
 `````````````````````````````````````````````````````
@@ -294,6 +311,11 @@ Indicates if the remote is seen as trusted.
 
 This setting can be changed by the application.
 
+Examples:
+
+:bluetoothctl: > trust [dev]
+:bluetoothctl: > untrust [dev]
+
 boolean Blocked [readwrite]
 ```````````````````````````
 
@@ -303,10 +325,19 @@ rejected.
 Any device drivers will also be removed and no new ones will be probed as long
 as the device is blocked.
 
+Examples:
+
+:bluetoothctl: > block [dev]
+:bluetoothctl: > unblock [dev]
+
 boolean WakeAllowed [readwrite]
 ```````````````````````````````
 
 If set to true this device will be allowed to wake the host from system suspend.
+
+Examples:
+
+:bluetoothctl: > wake [dev] [on/off]
 
 string Alias [readwrite]
 ````````````````````````
@@ -319,6 +350,10 @@ string as alias will convert it back to the remote device name.
 
 When resetting the alias with an empty string, the property will default back to
 the remote name.
+
+Examples:
+
+:bluetoothctl: > set-alias <alias>
 
 object Adapter [readonly]
 `````````````````````````
@@ -439,3 +474,7 @@ Possible values:
 :"last-seen":
 
 	Connect to last seen bearer first.
+
+Examples:
+
+:bluetoothctl: > bearer <dev> [last-seen/bredr/le]
