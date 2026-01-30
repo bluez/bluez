@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.Adapter1
 :Object path:	[variable prefix]/{hci0,hci1,...}
+:Used by:	**bluetoothctl(1)**
 
 Methods
 -------
@@ -40,6 +41,10 @@ Possible errors:
 :org.bluez.Error.NotReady:
 :org.bluez.Error.Failed:
 :org.bluez.Error.InProgress:
+
+Examples:
+
+:bluetoothctl: > scan <on/off/bredr/le>
 
 void StopDiscovery()
 ````````````````````
@@ -66,6 +71,10 @@ Possible errors:
 
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > remove <dev>
 
 void SetDiscoveryFilter(dict filter)
 ````````````````````````````````````
