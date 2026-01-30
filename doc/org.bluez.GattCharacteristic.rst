@@ -31,6 +31,7 @@ Client
 :Service:	org.bluez
 :Interface:	org.bluez.GattCharacteristic1
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/service#/char#
+:Used by:	**bluetoothctl-gatt(1)**
 
 Server
 ------
@@ -82,6 +83,10 @@ Possible Errors:
 :org.bluez.Error.NotAuthorized:
 :org.bluez.Error.InvalidOffset:
 :org.bluez.Error.NotSupported:
+
+Examples:
+
+:bluetoothctl: > gatt.read [offset]
 
 void WriteValue(array{byte} value, dict options)
 ````````````````````````````````````````````````
@@ -144,6 +149,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.ImproperlyConfigured:
 
+Examples:
+
+:bluetoothctl: > gatt.write <data=xx xx ...> [offset] [type]
+
 fd, uint16 AcquireWrite(dict options) [optional]
 ````````````````````````````````````````````````
 
@@ -186,6 +195,10 @@ Possible Errors:
 
 :org.bluez.Error.Failed:
 :org.bluez.Error.NotSupported:
+
+Examples:
+
+:bluetoothctl: > gatt.acquire-write
 
 fd, uint16 AcquireNotify(dict options) [optional]
 `````````````````````````````````````````````````
@@ -243,6 +256,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.NotPermitted:
 
+Examples:
+
+:bluetoothctl: > gatt.acquire-notify
+
 void StartNotify()
 ``````````````````
 
@@ -256,6 +273,10 @@ Possible Errors:
 :org.bluez.Error.InProgress:
 :org.bluez.Error.NotConnected:
 :org.bluez.Error.NotSupported:
+
+Examples:
+
+:bluetoothctl: > gatt.notify <on/off>
 
 void StopNotify()
 `````````````````
