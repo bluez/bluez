@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.AdvertisementMonitorManager1 [experimental]
 :Object path:	/org/bluez/{hci0,hci1,...}
+:Used by:	**bluetoothctl-monitor(1)**
 
 Methods
 -------
@@ -43,6 +44,10 @@ Possible errors:
 :org.bluez.Error.AlreadyExists:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: [monitor] > add-or-pattern <start_pos> <ad_type> <content>
+
 void UnregisterMonitor(object application)
 ``````````````````````````````````````````
 
@@ -58,6 +63,10 @@ Possible errors:
 
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.DoesNotExist:
+
+Examples:
+
+:bluetoothctl: [monitor] > remove-pattern <monitor-id/all>
 
 Properties
 ----------
