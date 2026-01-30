@@ -19,6 +19,7 @@ Interface
 :Interface:	org.bluez.MediaFolder1
 :Object path:	freely definable (Target role)
 		[variable prefix]/{hci0,hci1,...}/dev_{BDRADDR}/player# (Controller role)
+:Used by:	**bluetoothctl-player(1)**
 
 Methods
 -------
@@ -36,6 +37,10 @@ Possible Errors:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
 
+Examples:
+
+:bluetoothctl: [player] > search <string>
+
 array{objects, properties} ListItems(dict filter)
 `````````````````````````````````````````````````
 
@@ -46,6 +51,10 @@ Possible Errors:
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: [player] > list-items [start] [end]
 
 void ChangeFolder(object folder)
 ````````````````````````````````
@@ -61,6 +70,10 @@ Possible Errors:
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.NotSupported:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: [player] > change-folder <item>
 
 Properties
 ----------
