@@ -17,6 +17,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.Call1 [experimental]
 :Object path:	[variable prefix]/{hci0,hci1,...}/dev_{BDADDR}/telephony#/call#
+:Used by:	**bluetoothctl-telephony(1)**
 
 Methods
 -------
@@ -29,6 +30,10 @@ Answers an incoming call. Only valid if the state of the call is "incoming".
 Possible Errors:
 :org.bluez.Error.InvalidState
 :org.bluez.Error.Failed
+
+Examples:
+
+:bluetoothctl: > telephony.answer <call>
 
 void Hangup()
 `````````````
@@ -61,6 +66,10 @@ will result in the waiting call transitioning to the 'incoming' state.
 Possible Errors:
 :org.bluez.Error.InvalidState
 :org.bluez.Error.Failed
+
+Examples:
+
+:bluetoothctl: > telephony.hangup <call>
 
 Properties
 ----------
