@@ -28,6 +28,7 @@ Interface
 :Service:	org.bluez
 :Interface:	org.bluez.AdminPolicySet1 [experimental]
 :Object path:	[variable prefix]/{hci0,hci1,...}
+:Used by:	**bluetoothctl-admin(1)**
 
 Methods
 -------
@@ -50,3 +51,7 @@ Possible errors:
 
 :org.bluez.Error.InvalidArguments:
 :org.bluez.Error.Failed:
+
+Examples:
+
+:bluetoothctl: > admin.allow [clear/uuid1 uuid2 ...]
