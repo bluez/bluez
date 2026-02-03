@@ -1193,6 +1193,23 @@ static uint8_t io_get_type(int fd)
 	return BT_ATT_LE;
 }
 
+static int io_get_security(int fd)
+{
+	struct bt_security sec;
+	socklen_t len;
+
+	if (!is_io_l2cap_based(fd))
+		return BT_ATT_SECURITY_LOW;
+
+	memset(&sec, 0, sizeof(sec));
+	len = sizeof(sec);
+
+	if (getsockopt(fd, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) < 0)
+		return BT_ATT_SECURITY_AUTO;
+
+	return sec.level;
+}
+
 static struct bt_att_chan *bt_att_chan_new(int fd, uint8_t type)
 {
 	struct bt_att_chan *chan;
@@ -1219,6 +1236,10 @@ static struct bt_att_chan *bt_att_chan_new(int fd, uint8_t type)
 		chan->sec_level = BT_ATT_SECURITY_LOW;
 		/* fall through */
 	case BT_ATT_LE:
+		/* respect the current L2CAP socket security level */
+		if (chan->type == BT_ATT_LE)
+			chan->sec_level = io_get_security(fd);
+
 		chan->mtu = BT_ATT_DEFAULT_LE_MTU;
 		break;
 	default:
