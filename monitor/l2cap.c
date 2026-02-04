@@ -1471,6 +1471,13 @@ static void print_ecred_reconf_result(uint16_t result)
 		str = "Reconfiguration failed - reduction in size of MPS not "
 			"allowed for more than one channel at a time";
 		break;
+	case 0x0003:
+		str = "Reconfiguration failed - one or more Destination CIDs "
+			"invalid ";
+		break;
+	case 0x0004:
+		str = "Reconfiguration failed - other unacceptable parameters";
+		break;
 	default:
 		str = "Reserved";
 	}
