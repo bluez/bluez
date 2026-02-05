@@ -19,7 +19,7 @@ OPTIONS
 :-s/--dbus-session: Start D-Bus session daemon
 :-d/--daemon: Start bluetoothd
 :-m/--monitor: Start btmon
-:-l/--emulator: Start btvirt
+:-l/--emulator[=num]: Start btvirt
 :-A/-audio[=path]: Start audio server
 :-u/--unix[=path]: Provide serial device
 :-U/--usb=<qemu_args>: Provide USB device
@@ -144,6 +144,16 @@ Running bluetoothctl with emulated controller
 .. code-block::
 
 	$ tools/test-runner -l -d -k /pathto/bzImage -- client/bluetoothctl
+	[CHG] Controller 00:AA:01:00:00:00 Pairable: yes
+	[bluetooth]#
+
+Running bluetoothctl with 2 emulated controller
+------------------------------------------------
+
+.. code-block::
+
+	$ tools/test-runner -l2 -d -k /pathto/bzImage -- client/bluetoothctl
+	[CHG] Controller 00:AA:01:01:00:01 Pairable: yes
 	[CHG] Controller 00:AA:01:00:00:00 Pairable: yes
 	[bluetooth]#
 
