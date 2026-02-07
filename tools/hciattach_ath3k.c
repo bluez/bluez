@@ -303,7 +303,7 @@ struct tag_info {
 
 static inline int update_char_count(const char *buf)
 {
-	char *end_ptr;
+	const char *end_ptr;
 
 	if (strstr(buf, "[") == buf) {
 		end_ptr = strstr(buf, "]");
