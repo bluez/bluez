@@ -68,7 +68,8 @@ int create_filename(char *str, size_t size, const char *fmt, ...)
 static int create_dirs(const char *filename, const mode_t mode)
 {
 	struct stat st;
-	char dir[PATH_MAX + 1], *prev, *next;
+	char dir[PATH_MAX + 1];
+	const char *prev, *next;
 	int err;
 
 	err = stat(filename, &st);
