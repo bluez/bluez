@@ -525,6 +525,7 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	wordexp_t w;
 	size_t len;
 	char *man, *opt;
+	const char *man2, *opt2;
 	int flags = WRDE_NOCMD;
 	bool optargs = false;
 
@@ -547,24 +548,24 @@ static int cmd_exec(const struct bt_shell_menu_entry *entry,
 	}
 
 	/* Find last mandatory arguments */
-	man = strrchr(entry->arg, '>');
-	if (!man) {
+	man2 = strrchr(entry->arg, '>');
+	if (!man2) {
 		opt = strdup(entry->arg);
 		goto optional;
 	}
 
-	len = man - entry->arg;
+	len = man2 - entry->arg;
 	if (entry->arg[0] == '<')
 		man = strndup(entry->arg, len + 1);
 	else {
 		/* Find where mandatory arguments start */
-		opt = strrchr(entry->arg, '<');
+		opt2 = strrchr(entry->arg, '<');
 		/* Skip if mandatory arguments are not in the right format */
-		if (!opt || opt > man) {
+		if (!opt2 || opt2 > man2) {
 			opt = strdup(entry->arg);
 			goto optional;
 		}
-		man = strndup(opt, man - opt + 1);
+		man = strndup(opt2, man2 - opt2 + 1);
 		optargs = true;
 	}
 
@@ -972,6 +973,7 @@ static char *cmd_generator(const char *text, int state)
 	static bool default_menu_enabled, menu_enabled, submenu_enabled;
 	static const struct bt_shell_menu *menu;
 	char *cmd;
+	const char *cmd2;
 
 	if (!state) {
 		index = 0;
@@ -1009,11 +1011,11 @@ static char *cmd_generator(const char *text, int state)
 		if (cmd || menu != data.main)
 			return cmd;
 
-		cmd = strrchr(text, '.');
-		if (!cmd)
+		cmd2 = strrchr(text, '.');
+		if (!cmd2)
 			return NULL;
 
-		menu = find_menu(text, cmd - text, NULL);
+		menu = find_menu(text, cmd2 - text, NULL);
 		if (!menu)
 			return NULL;
 
