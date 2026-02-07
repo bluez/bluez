@@ -380,6 +380,9 @@ static GSList *find_service_with_uuid(GSList *list, char *uuid)
 		struct btd_service *service = l->data;
 		struct btd_profile *profile = btd_service_get_profile(service);
 
+		if (!profile || !profile->remote_uuid)
+			continue;
+
 		if (bt_uuid_strcmp(profile->remote_uuid, uuid) == 0)
 			return l;
 	}
@@ -2540,7 +2543,7 @@ static struct btd_service *find_connectable_service(struct btd_device *dev,
 		struct btd_service *service = l->data;
 		struct btd_profile *p = btd_service_get_profile(service);
 
-		if (!p->connect || !p->remote_uuid)
+		if (!p || !p->connect || !p->remote_uuid)
 			continue;
 
 		if (strcasecmp(uuid, p->remote_uuid) == 0)
@@ -2594,6 +2597,9 @@ void btd_device_update_allowed_services(struct btd_device *dev)
 		service = l->data;
 		profile = btd_service_get_profile(service);
 
+		if (!profile || !profile->remote_uuid)
+			continue;
+
 		is_allowed = btd_adapter_is_uuid_allowed(adapter,
 							profile->remote_uuid);
 		btd_service_set_allowed(service, is_allowed);
@@ -2629,11 +2635,12 @@ static GSList *create_pending_list(struct btd_device *dev, const char *uuid)
 		service = l->data;
 		p = btd_service_get_profile(service);
 
-		if (!p->auto_connect)
+		if (!p || !p->auto_connect)
 			continue;
 
 		if (!btd_service_is_allowed(service)) {
-			info("service %s is blocked", p->remote_uuid);
+			if (p->remote_uuid)
+				info("service %s is blocked", p->remote_uuid);
 			continue;
 		}
 
@@ -6173,8 +6180,8 @@ static void disconnect_gatt_service(gpointer data, gpointer user_data)
 	struct btd_service *service = data;
 	struct btd_profile *profile = btd_service_get_profile(service);
 
-	/* Ignore if profile cannot accept connections */
-	if (!profile->accept)
+	/* Ignore if profile is NULL or cannot accept connections */
+	if (!profile || !profile->accept)
 		return;
 
 	btd_service_disconnect(service);
