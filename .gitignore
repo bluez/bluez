@@ -119,6 +119,7 @@ unit/test-battery
 unit/test-tmap
 unit/test-gmap
 unit/test-mcp
+unit/test-rap
 unit/test-profile
 tools/mgmt-tester
 tools/smp-tester
