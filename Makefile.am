@@ -89,7 +89,7 @@ pkginclude_HEADERS += $(lib_headers)
 lib_LTLIBRARIES += lib/libbluetooth.la
 
 lib_libbluetooth_la_SOURCES = $(lib_headers) $(lib_sources)
-lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 22:15:19
+lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 22:16:19
 endif
 
 noinst_LTLIBRARIES += lib/libbluetooth-internal.la
