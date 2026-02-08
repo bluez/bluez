@@ -1,3 +1,11 @@
+ver 5.86:
+	Fix issue with number of retries on authentication failures.
+	Fix issue with G.722 @ 16 kHz codec ID value reported by transport.
+	Add support for Telephony interface.
+	Add support for Ranging profile.
+	Add support for GMAP service.
+	Add support for TMAP service.
+
 ver 5.85:
 	Fix issue with handling display of battery charge level.
 	Fix issue with BASS permissions not requiring encryption.
