@@ -1,0 +1,63 @@
+BlueZ Release Notes Summary
+Period: November 21, 2025 - January 8, 2026
+
+OVERVIEW
+========
+68 pull requests merged containing:
+- Bug fixes
+- New features  
+- Performance improvements
+- Documentation updates
+
+KEY HIGHLIGHTS
+==============
+
+1. LE Audio Support (30+ changes)
+   - Enhanced BAP (Basic Audio Profile)
+   - VCP (Volume Control Profile) improvements
+   - MCP (Media Control Profile) with GMCS support
+   - BASS (Broadcast Audio Scan Service) fixes
+
+2. New Services
+   - TMAP (Telephony and Media Audio Profile)
+   - GMAP (Gaming Audio Profile)
+   - Local TMAS & GMAS servers
+
+3. Bearer Management
+   - Complete Connect/Disconnect implementation
+   - Bearer information display fixes
+   - Profile integration
+
+4. Device Management
+   - Authentication retry limits
+   - Battery display improvements
+   - GATT caching error handling
+   - HID report descriptor fixes
+
+5. Build System
+   - systemd unit build without libsystemd
+   - Config fragments support (conf.d style)
+   - Distribution check fixes
+
+6. Testing Improvements
+   - 6LoWPAN header compression tests
+   - SCO connection timeout tests
+   - L2CAP PHY tests
+   - Unit test optimizations
+
+7. Bug Fixes
+   - OBEX transfer status
+   - AVRCP parameter validation
+   - Configuration option validation
+   - Type mismatches
+
+COMPONENT BREAKDOWN
+===================
+- Audio Profiles: 30+ changes
+- Device Management: 8 changes
+- Testing: 7 changes
+- Build System: 3 changes
+- Documentation: 2 changes
+- Other: 18 changes
+
+For detailed information, see RELEASE_NOTES.md
