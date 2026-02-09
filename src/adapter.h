@@ -302,3 +302,16 @@ void btd_adapter_store_conn_param(struct btd_adapter *adapter,
 				uint16_t latency, uint16_t timeout);
 void btd_adapter_cancel_service_auth(struct btd_adapter *adapter,
 				struct btd_device *device);
+
+typedef void (*btd_adapter_reply_event_t)(uint8_t status, uint16_t length,
+					const void *param, void *user_data);
+typedef void (*btd_adapter_destroy_func_t)(void *user_data);
+
+unsigned int btd_adapter_send_cmd_event_sync(struct btd_adapter *adapter,
+					uint16_t opcode,
+					uint16_t length, const void *param,
+					uint8_t event,
+					btd_adapter_reply_event_t callback,
+					void *user_data,
+					btd_adapter_destroy_func_t destroy,
+					uint8_t timeout);
