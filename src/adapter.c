@@ -11022,3 +11022,31 @@ void btd_adapter_cancel_service_auth(struct btd_adapter *adapter,
 		service_auth_cancel(auth);
 	}
 }
+
+unsigned int btd_adapter_send_cmd_event_sync(struct btd_adapter *adapter,
+					uint16_t opcode,
+					uint16_t length, const void *param,
+					uint8_t event,
+					btd_adapter_reply_event_t callback,
+					void *user_data,
+					btd_adapter_destroy_func_t destroy,
+					uint8_t timeout)
+{
+	struct {
+		struct mgmt_cp_hci_cmd_sync cp;
+		uint8_t data[UINT8_MAX];
+	} pkt;
+
+	memset(&pkt, 0, sizeof(pkt));
+	pkt.cp.opcode = cpu_to_le16(opcode);
+	pkt.cp.event = event;
+	pkt.cp.timeout = timeout;
+	pkt.cp.params_len = cpu_to_le16(length);
+
+	if (length)
+		memcpy(pkt.data, param, length);
+
+	return mgmt_send(adapter->mgmt, MGMT_OP_HCI_CMD_SYNC,
+				adapter->dev_id, sizeof(pkt.cp) + length,
+				&pkt, callback, user_data, destroy);
+}
