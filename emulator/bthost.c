@@ -3560,7 +3560,7 @@ void bthost_hci_disconnect(struct bthost *bthost, uint16_t handle,
 int bthost_setup_sco(struct bthost *bthost, uint16_t acl_handle,
 							uint16_t setting)
 {
-	static const struct bt_hci_cmd_setup_sync_conn settings[] = {
+	const struct bt_hci_cmd_setup_sync_conn settings[] = {
 		{
 			.tx_bandwidth = cpu_to_le32(0x00001f40),
 			.rx_bandwidth = cpu_to_le32(0x00001f40),
