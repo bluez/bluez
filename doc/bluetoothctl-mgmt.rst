@@ -1189,6 +1189,18 @@ Toggle codec support
 :Example Disable experimental codec offload support:
 	| **> exp-offload off**
 
+exp-iso
+-------
+
+Toggle ISO Socket support
+
+:Usage: **> exp-iso <on/off>**
+:<on/off>: Experimental ISO Socket support - "on" to enable ISO Socket support, "off" to disable
+:Example Enable experimental ISO Socket support:
+	| **> exp-offload on**
+:Example Disable experimental ISO Socket support:
+	| **> exp-offload off**
+
 read-sysconfig
 --------------
 
