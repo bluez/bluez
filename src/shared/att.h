@@ -46,6 +46,15 @@ typedef void (*bt_att_disconnect_func_t)(int err, void *user_data);
 typedef void (*bt_att_exchange_func_t)(uint16_t mtu, void *user_data);
 typedef bool (*bt_att_counter_func_t)(uint32_t *sign_cnt, void *user_data);
 
+/* Return values for bt_att_retry_func_t */
+#define BT_ATT_RETRY_NO	0	/* Don't retry */
+#define BT_ATT_RETRY_YES	1	/* Retry immediately */
+#define BT_ATT_RETRY_PENDING	2	/* Defer retry decision */
+
+typedef int (*bt_att_retry_func_t)(uint8_t opcode, uint8_t error_code,
+					const void *pdu, uint16_t length,
+					unsigned int att_id, void *user_data);
+
 bool bt_att_set_debug(struct bt_att *att, uint8_t level,
 			bt_att_debug_func_t callback, void *user_data,
 			bt_att_destroy_func_t destroy);
@@ -57,6 +66,13 @@ uint8_t bt_att_get_link_type(struct bt_att *att);
 bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 						void *user_data,
 						bt_att_destroy_func_t destroy);
+
+bool bt_att_set_retry_cb(struct bt_att *att, bt_att_retry_func_t callback,
+						void *user_data,
+						bt_att_destroy_func_t destroy);
+
+bool bt_att_retry_request(struct bt_att *att, unsigned int id);
+bool bt_att_cancel_retry(struct bt_att *att, unsigned int id);
 
 unsigned int bt_att_send(struct bt_att *att, uint8_t opcode,
 					const void *pdu, uint16_t length,

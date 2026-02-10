@@ -47,6 +47,7 @@ struct bt_att_chan {
 
 	struct att_send_op *pending_req;
 	struct att_send_op *pending_ind;
+	struct att_send_op *pending_retry;
 	bool writer_active;
 
 	bool in_req;			/* There's a pending incoming request */
@@ -77,6 +78,10 @@ struct bt_att {
 	bt_att_timeout_func_t timeout_callback;
 	bt_att_destroy_func_t timeout_destroy;
 	void *timeout_data;
+
+	bt_att_retry_func_t retry_callback;
+	bt_att_destroy_func_t retry_destroy;
+	void *retry_data;
 
 	uint8_t debug_level;
 	bt_att_debug_func_t debug_callback;
@@ -194,6 +199,9 @@ struct att_send_op {
 	void *pdu;
 	uint16_t len;
 	bool retry;
+	bool retry_pending;  /* Waiting for approval to retry */
+	uint8_t *error_pdu;  /* Stored error PDU for retry_pending */
+	uint16_t error_pdu_len;
 	bt_att_response_func_t callback;
 	bt_att_destroy_func_t destroy;
 	void *user_data;
@@ -210,6 +218,7 @@ static void destroy_att_send_op(void *data)
 		op->destroy(op->user_data);
 
 	free(op->pdu);
+	free(op->error_pdu);
 	free(op);
 }
 
@@ -644,6 +653,9 @@ static void bt_att_chan_free(void *data)
 	if (chan->pending_ind)
 		destroy_att_send_op(chan->pending_ind);
 
+	if (chan->pending_retry)
+		destroy_att_send_op(chan->pending_retry);
+
 	queue_destroy(chan->queue, destroy_att_send_op);
 
 	io_destroy(chan->io);
@@ -680,6 +692,11 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	if (chan->pending_ind) {
 		disc_att_send_op(chan->pending_ind);
 		chan->pending_ind = NULL;
+	}
+
+	if (chan->pending_retry) {
+		disc_att_send_op(chan->pending_retry);
+		chan->pending_retry = NULL;
 	}
 
 	bt_att_chan_free(chan);
@@ -777,16 +794,17 @@ static bool change_security(struct bt_att_chan *chan, uint8_t ecode)
 	return bt_att_chan_set_security(chan, security);
 }
 
-static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
+static int handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 					ssize_t pdu_len, uint8_t *opcode)
 {
 	struct bt_att *att = chan->att;
 	const struct bt_att_pdu_error_rsp *rsp;
 	struct att_send_op *op = chan->pending_req;
+	int should_retry = BT_ATT_RETRY_NO;
 
 	if (pdu_len != sizeof(*rsp)) {
 		*opcode = 0;
-		return false;
+		return should_retry;
 	}
 
 	rsp = (void *) pdu;
@@ -797,11 +815,43 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 	 * the security again.
 	 */
 	if (op->retry)
-		return false;
+		return should_retry;
 
 	/* Attempt to change security */
-	if (!change_security(chan, rsp->ecode))
-		return false;
+	if (change_security(chan, rsp->ecode)) {
+		should_retry = BT_ATT_RETRY_YES;
+	} else if (att->retry_callback) {
+		should_retry = att->retry_callback(op->opcode, rsp->ecode,
+						   op->pdu + 1, op->len - 1,
+						   op->id, att->retry_data);
+
+		/* Check if callback wants to defer the retry decision */
+		if (should_retry == BT_ATT_RETRY_PENDING) {
+			op->retry_pending = true;
+
+			/* Store error PDU for later use */
+			op->error_pdu = malloc(pdu_len);
+			if (op->error_pdu) {
+				memcpy(op->error_pdu, pdu, pdu_len);
+				op->error_pdu_len = pdu_len;
+			}
+
+			/* Remove timeout since we're waiting for approval */
+			if (op->timeout_id) {
+				timeout_remove(op->timeout_id);
+				op->timeout_id = 0;
+			}
+
+			/* Move from pending_req to pending_retry */
+			chan->pending_retry = op;
+
+			DBG(att, "(chan %p) Retry pending for operation %p",
+			    chan, op);
+		}
+	}
+
+	if (should_retry != BT_ATT_RETRY_YES)
+		return should_retry;
 
 	/* Remove timeout_id if outstanding */
 	if (op->timeout_id) {
@@ -815,7 +865,8 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 	op->retry = true;
 
 	/* Push operation back to channel queue */
-	return queue_push_head(chan->queue, op);
+	return queue_push_head(chan->queue, op) ?
+		BT_ATT_RETRY_YES : BT_ATT_RETRY_NO;
 }
 
 static void handle_rsp(struct bt_att_chan *chan, uint8_t opcode, uint8_t *pdu,
@@ -845,9 +896,15 @@ static void handle_rsp(struct bt_att_chan *chan, uint8_t opcode, uint8_t *pdu,
 	 */
 	if (opcode == BT_ATT_OP_ERROR_RSP) {
 		/* Return if error response cause a retry */
-		if (handle_error_rsp(chan, pdu, pdu_len, &req_opcode)) {
+		switch (handle_error_rsp(chan, pdu, pdu_len, &req_opcode)) {
+		case BT_ATT_RETRY_PENDING:
+			/* Operation moved to pending_retry, clear pending_req */
+			chan->pending_req = NULL;
+		case BT_ATT_RETRY_YES:
 			wakeup_chan_writer(chan, NULL);
 			return;
+		default:
+			break;
 		}
 	} else if (!(req_opcode = get_req_opcode(opcode)))
 		goto fail;
@@ -1141,6 +1198,9 @@ static void bt_att_free(struct bt_att *att)
 
 	if (att->timeout_destroy)
 		att->timeout_destroy(att->timeout_data);
+
+	if (att->retry_destroy)
+		att->retry_destroy(att->retry_data);
 
 	if (att->debug_destroy)
 		att->debug_destroy(att->debug_data);
@@ -1469,6 +1529,23 @@ bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 	att->timeout_callback = callback;
 	att->timeout_destroy = destroy;
 	att->timeout_data = user_data;
+
+	return true;
+}
+
+bool bt_att_set_retry_cb(struct bt_att *att, bt_att_retry_func_t callback,
+						void *user_data,
+						bt_att_destroy_func_t destroy)
+{
+	if (!att)
+		return false;
+
+	if (att->retry_destroy)
+		att->retry_destroy(att->retry_data);
+
+	att->retry_callback = callback;
+	att->retry_destroy = destroy;
+	att->retry_data = user_data;
 
 	return true;
 }
@@ -2049,6 +2126,97 @@ bool bt_att_has_crypto(struct bt_att *att)
 		return false;
 
 	return att->crypto ? true : false;
+}
+
+bool bt_att_retry_request(struct bt_att *att, unsigned int id)
+{
+	const struct queue_entry *entry;
+	struct bt_att_chan *chan = NULL;
+	struct att_send_op *op;
+
+	if (!att || !id)
+		return false;
+
+	/* Find the channel with the pending retry operation */
+	for (entry = queue_get_entries(att->chans); entry;
+						entry = entry->next) {
+		struct bt_att_chan *c = entry->data;
+
+		if (c->pending_retry && c->pending_retry->id == id &&
+		    c->pending_retry->retry_pending) {
+			chan = c;
+			op = c->pending_retry;
+			break;
+		}
+	}
+
+	if (!chan || !op)
+		return false;
+
+	DBG(att, "(chan %p) Approving retry for operation %p", chan, op);
+
+	/* Clear pending retry state and mark for retry */
+	op->retry_pending = false;
+	op->retry = true;
+	chan->pending_retry = NULL;
+
+	/* Free stored error PDU as we're retrying */
+	free(op->error_pdu);
+	op->error_pdu = NULL;
+	op->error_pdu_len = 0;
+
+	/* Push operation back to channel queue for retry */
+	if (!queue_push_head(chan->queue, op))
+		return false;
+
+	/* Wake up writer to send the retry */
+	wakeup_chan_writer(chan, NULL);
+
+	return true;
+}
+
+bool bt_att_cancel_retry(struct bt_att *att, unsigned int id)
+{
+	const struct queue_entry *entry;
+	struct bt_att_chan *chan = NULL;
+	struct att_send_op *op;
+
+	if (!att || !id)
+		return false;
+
+	/* Find the channel with the pending retry operation */
+	for (entry = queue_get_entries(att->chans); entry;
+						entry = entry->next) {
+		struct bt_att_chan *c = entry->data;
+
+		if (c->pending_retry && c->pending_retry->id == id &&
+		    c->pending_retry->retry_pending) {
+			chan = c;
+			op = c->pending_retry;
+			break;
+		}
+	}
+
+	if (!chan || !op)
+		return false;
+
+	DBG(att, "(chan %p) Canceling retry for operation %p", chan, op);
+
+	/* Clear pending retry state */
+	op->retry_pending = false;
+	chan->pending_retry = NULL;
+
+	/* Call the callback with stored error PDU to notify upper layer */
+	if (op->callback)
+		op->callback(BT_ATT_OP_ERROR_RSP, op->error_pdu,
+			     op->error_pdu_len, op->user_data);
+
+	destroy_att_send_op(op);
+
+	/* Wake up writer in case there are other operations */
+	wakeup_chan_writer(chan, NULL);
+
+	return true;
 }
 
 bool bt_att_set_retry(struct bt_att *att, unsigned int id, bool retry)
