@@ -2751,6 +2751,42 @@ static void cmd_exp_offload_codecs(int argc, char **argv)
 	}
 }
 
+static void exp_iso_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		error("Set ISO Socket failed with status 0x%02x (%s)", status,
+					mgmt_errstr(status));
+	else
+		print("ISO Socket successfully set");
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_exp_iso(int argc, char **argv)
+{
+	/* 6fbaf188-05e0-496a-9885-d6ddfdb4e03e */
+	static const uint8_t uuid[16] = {
+		0x3e, 0xe0, 0xb4, 0xfd, 0xdd, 0xd6, 0x85, 0x98,
+		0x6a, 0x49, 0xe0, 0x05, 0x88, 0xf1, 0xba, 0x6f
+	};
+	struct mgmt_cp_set_exp_feature cp;
+	uint8_t val;
+
+	if (parse_setting(argc, argv, &val) == false)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.uuid, uuid, 16);
+	cp.action = val;
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_EXP_FEATURE, MGMT_INDEX_NONE,
+			sizeof(cp), &cp, exp_iso_rsp, NULL, NULL) == 0) {
+		error("Unable to set ISO Socket experimental feature");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void class_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 							const void *param)
 {
@@ -6166,6 +6202,8 @@ static const struct bt_shell_menu mgmt_menu = {
 		"Set bluetooth quality report feature"			},
 	{ "exp-offload",		"<on/off>",
 		cmd_exp_offload_codecs,	"Toggle codec support"		},
+	{ "exp-iso",		"<on/off>",
+		cmd_exp_iso,	"Toggle ISO support"		},
 	{ "read-sysconfig",	NULL,
 		cmd_read_sysconfig,	"Read System Configuration"	},
 	{ "set-sysconfig",	"<-v|-h> [options...]",
