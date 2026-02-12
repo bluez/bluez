@@ -385,6 +385,41 @@ static void delegator_disconnect(struct bass_delegator *dg)
 	}
 }
 
+static bool match_bcode_setup(const void *data, const void *user_data)
+{
+	const struct bass_bcode_req *req = data;
+	const struct bass_setup *setup = user_data;
+
+	return req->setup == setup;
+}
+
+static void setup_clear(struct bass_setup *setup, int bis)
+{
+	struct bass_delegator *dg = setup->dg;
+	struct bass_bcode_req *req;
+
+	DBG("%p", setup);
+
+	bt_bass_clear_bis_sync(dg->src, bis);
+	setup->stream = NULL;
+	queue_remove(setup->dg->setups, setup);
+
+	/* Remove any pending bcode request associated with setup */
+	req = queue_remove_if(dg->bcode_reqs, match_bcode_setup, setup);
+	if (req) {
+		free(req);
+		if (dg->timeout) {
+			g_source_remove(dg->timeout);
+			dg->timeout = 0;
+		}
+	}
+
+	setup_free(setup);
+
+	if (queue_isempty(dg->setups))
+		delegator_disconnect(dg);
+}
+
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 				uint8_t new_state, void *user_data)
 {
@@ -474,12 +509,7 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 			bt_bass_clear_bis_sync(dg->src, bis);
 		break;
 	case BT_BAP_STREAM_STATE_IDLE:
-		bt_bass_clear_bis_sync(dg->src, bis);
-		setup->stream = NULL;
-		queue_remove(setup->dg->setups, setup);
-		setup_free(setup);
-		if (queue_isempty(dg->setups))
-			delegator_disconnect(dg);
+		setup_clear(setup, bis);
 		break;
 	}
 }
