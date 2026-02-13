@@ -87,7 +87,7 @@ struct input_device {
 	bool			virtual_cable_unplug;
 	uint8_t			type;
 	unsigned int		idle_timer;
-	uint32_t		intr_datc_count; /* HIDP continuation frames received */
+	uint32_t		intr_datc_count; /* Continuation frames seen (not processed) */
 };
 
 static int idle_timeout = 0;
@@ -401,8 +401,8 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 		idev->intr_datc_count++;
 
 		if (idev->intr_datc_count == 1) {
-			warn("received HIDP continuation frame (length=%zd)", len);
-			warn("device may require multi-frame report support");
+			warn("received HIDP continuation frame (length=%zd) - device may require multi-frame report support",
+			     len);
 		} else {
 			DBG("received HIDP continuation frame #%u (length=%zd)",
 			    idev->intr_datc_count, len);
