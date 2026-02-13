@@ -355,7 +355,7 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 {
 	int fd;
 	ssize_t len;
-	uint8_t hdr;
+	uint8_t hdr, type;
 	uint8_t data[UHID_DATA_MAX + 1];
 
 	fd = g_io_channel_unix_get_fd(chan);
@@ -374,17 +374,33 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 	input_device_idle_reset(idev);
 
 	hdr = data[0];
-	if (hdr != (HIDP_TRANS_DATA | HIDP_DATA_RTYPE_INPUT)) {
+	type = hdr & HIDP_HEADER_TRANS_MASK;
+
+	/* Handle both DATA (0xa0) and DATC (0xb0) frames */
+	if (type == HIDP_TRANS_DATA) {
+		if ((hdr & HIDP_DATA_RTYPE_MASK) != HIDP_DATA_RTYPE_INPUT) {
+			DBG("unsupported HIDP data report type 0x%02x", hdr);
+			return true;
+		}
+
+		if (len < 2) {
+			DBG("received empty HID report");
+			return true;
+		}
+
+		/* Send directly without buffering for most devices */
+		uhid_send_input_report(idev, data + 1, len - 1);
+	} else if (type == HIDP_TRANS_DATC) {
+		/* DATC (continuation frame) - rarely used by modern devices */
+		DBG("received HIDP continuation frame, length=%zd", len);
+		
+		/* Continuation frames are not commonly used. Log and ignore them
+		 * to prevent connection issues. Proper multi-frame support would
+		 * require buffering and reassembly logic.
+		 */
+	} else {
 		DBG("unsupported HIDP protocol header 0x%02x", hdr);
-		return true;
 	}
-
-	if (len < 2) {
-		DBG("received empty HID report");
-		return true;
-	}
-
-	uhid_send_input_report(idev, data + 1, len - 1);
 
 	return true;
 }
