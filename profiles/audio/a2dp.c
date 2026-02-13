@@ -811,6 +811,136 @@ static void reverse_discover(struct avdtp *session, GSList *seps, int err,
 	DBG("err %d", err);
 }
 
+/*
+ * Normalize codec IE fields in a remote-initiated Set Configuration.
+ *
+ * Per A2DP v1.3.2 Section 8.21.5, Set Configuration should carry single
+ * selected values (one bit set per field), not capability bitmasks.
+ * Some devices (e.g. Sony SRS-XB100) erroneously send capability bitmasks
+ * with multiple bits set.  Rather than rejecting the configuration outright,
+ * normalize each field to a single "best" value to maintain compatibility.
+ *
+ * For fields where the lowest bit corresponds to the highest quality
+ * (frequency, channels, block length, subbands, allocation), keep the
+ * lowest set bit.  For AAC object type, keep the highest set bit
+ * (MPEG-2 AAC LC = 0x80 is preferred over MPEG-4 variants).
+ */
+
+/* Keep only the lowest set bit: isolates the highest-quality option for
+ * fields where lower bit positions represent higher quality. */
+static inline uint16_t pick_lowest_bit(uint16_t val)
+{
+	return val & (-val);
+}
+
+/* Keep only the highest set bit within a given width. */
+static inline uint8_t pick_highest_bit8(uint8_t val)
+{
+	uint8_t bit;
+
+	if (!val)
+		return 0;
+
+	for (bit = 0x80; bit; bit >>= 1) {
+		if (val & bit)
+			return bit;
+	}
+
+	return 0;
+}
+
+static void normalize_aac_config(uint8_t *data, size_t len)
+{
+	a2dp_aac_t *aac = (a2dp_aac_t *) data;
+	uint16_t freq;
+	uint8_t obj, ch;
+
+	if (len < sizeof(*aac))
+		return;
+
+	obj = aac->object_type;
+	freq = AAC_GET_FREQUENCY(*aac);
+	ch = aac->channels;
+
+	/* Normalize object type: prefer highest bit (MPEG-2 AAC LC) */
+	if (obj & (obj - 1)) {
+		obj = pick_highest_bit8(obj);
+		DBG("AAC: normalized object_type to 0x%02x", obj);
+		aac->object_type = obj;
+	}
+
+	/* Normalize frequency: prefer lowest bit (highest sample rate) */
+	if (freq & (freq - 1)) {
+		freq = pick_lowest_bit(freq);
+		DBG("AAC: normalized frequency to 0x%04x", freq);
+		AAC_SET_FREQUENCY(*aac, freq);
+	}
+
+	/* Normalize channels: prefer lowest bit (stereo) */
+	if (ch & (ch - 1)) {
+		ch = ch & (-ch);
+		DBG("AAC: normalized channels to 0x%02x", ch);
+		aac->channels = ch;
+	}
+}
+
+static void normalize_sbc_config(uint8_t *data, size_t len)
+{
+	a2dp_sbc_t *sbc = (a2dp_sbc_t *) data;
+
+	if (len < sizeof(*sbc))
+		return;
+
+	/* Normalize frequency: prefer lowest bit (48 kHz) */
+	if (sbc->frequency & (sbc->frequency - 1)) {
+		DBG("SBC: normalized frequency from 0x%x", sbc->frequency);
+		sbc->frequency = sbc->frequency & (-sbc->frequency);
+	}
+
+	/* Normalize channel mode: prefer lowest bit (joint stereo) */
+	if (sbc->channel_mode & (sbc->channel_mode - 1)) {
+		DBG("SBC: normalized channel_mode from 0x%x",
+							sbc->channel_mode);
+		sbc->channel_mode = sbc->channel_mode & (-sbc->channel_mode);
+	}
+
+	/* Normalize block length: prefer lowest bit (16 blocks) */
+	if (sbc->block_length & (sbc->block_length - 1)) {
+		DBG("SBC: normalized block_length from 0x%x",
+							sbc->block_length);
+		sbc->block_length = sbc->block_length & (-sbc->block_length);
+	}
+
+	/* Normalize subbands: prefer lowest bit (8 subbands) */
+	if (sbc->subbands & (sbc->subbands - 1)) {
+		DBG("SBC: normalized subbands from 0x%x", sbc->subbands);
+		sbc->subbands = sbc->subbands & (-sbc->subbands);
+	}
+
+	/* Normalize allocation method: prefer lowest bit (loudness) */
+	if (sbc->allocation_method & (sbc->allocation_method - 1)) {
+		DBG("SBC: normalized allocation_method from 0x%x",
+						sbc->allocation_method);
+		sbc->allocation_method = sbc->allocation_method &
+						(-sbc->allocation_method);
+	}
+}
+
+/* Normalize codec IE bitmask fields to single values if the remote device
+ * erroneously sent capability bitmasks instead of a selected configuration. */
+static void normalize_codec_config(uint8_t codec_type, uint8_t *data,
+								size_t len)
+{
+	switch (codec_type) {
+	case A2DP_CODEC_MPEG24:
+		normalize_aac_config(data, len);
+		break;
+	case A2DP_CODEC_SBC:
+		normalize_sbc_config(data, len);
+		break;
+	}
+}
+
 static gboolean endpoint_setconf_ind(struct avdtp *session,
 						struct avdtp_local_sep *sep,
 						struct avdtp_stream *stream,
@@ -862,6 +992,12 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 					AVDTP_UNSUPPORTED_CONFIGURATION);
 			goto done;
 		}
+
+		/* Normalize multi-bit bitmask fields to single values.
+		 * Some devices send capabilities instead of a selected
+		 * configuration; fix up before forwarding to endpoint. */
+		normalize_codec_config(codec->media_codec_type, codec->data,
+					cap->length - sizeof(*codec));
 
 		ret = a2dp_sep->endpoint->set_configuration(a2dp_sep,
 						codec->data,
