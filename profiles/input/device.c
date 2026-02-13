@@ -393,7 +393,7 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 	} else if (type == HIDP_TRANS_DATC) {
 		/* DATC (continuation frame) - rarely used by modern devices */
 		DBG("received HIDP continuation frame, length=%zd", len);
-		
+
 		/* Continuation frames are not commonly used. Log and ignore them
 		 * to prevent connection issues. Proper multi-frame support would
 		 * require buffering and reassembly logic.
