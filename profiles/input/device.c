@@ -87,6 +87,7 @@ struct input_device {
 	bool			virtual_cable_unplug;
 	uint8_t			type;
 	unsigned int		idle_timer;
+	uint32_t		intr_datc_count;
 };
 
 static int idle_timeout = 0;
@@ -392,7 +393,15 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 		uhid_send_input_report(idev, data + 1, len - 1);
 	} else if (type == HIDP_TRANS_DATC) {
 		/* DATC (continuation frame) - rarely used by modern devices */
-		DBG("received HIDP continuation frame, length=%zd", len);
+		idev->intr_datc_count++;
+
+		if (idev->intr_datc_count == 1) {
+			warn("received HIDP continuation frame (length=%zd)", len);
+			warn("device may require multi-frame report support");
+		} else {
+			DBG("received HIDP continuation frame #%u (length=%zd)",
+			    idev->intr_datc_count, len);
+		}
 
 		/* Continuation frames are not commonly used. Log and ignore them
 		 * to prevent connection issues. Proper multi-frame support would
