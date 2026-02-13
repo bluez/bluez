@@ -3822,6 +3822,12 @@ static void bap_bcast_remove(struct btd_service *service)
 		return;
 	}
 
+	/* Clean up before bis_remove and data_remove */
+	if (data->bcast_snks) {
+		queue_destroy(data->bcast_snks, setup_free);
+		data->bcast_snks = NULL;
+	}
+
 	bt_bap_bis_remove(data->bap);
 
 	bap_data_remove(data);
@@ -3937,6 +3943,11 @@ static int bap_bcast_disconnect(struct btd_service *service)
 	if (!data) {
 		error("BAP service not handled by profile");
 		return -EINVAL;
+	}
+	/* Clean up broadcast sinks before detach (like unicast does) */
+	if (data->bcast_snks) {
+		queue_destroy(data->bcast_snks, setup_free);
+		data->bcast_snks = NULL;
 	}
 
 	bt_bap_detach(data->bap);
