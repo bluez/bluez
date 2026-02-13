@@ -87,7 +87,7 @@ struct input_device {
 	bool			virtual_cable_unplug;
 	uint8_t			type;
 	unsigned int		idle_timer;
-	uint32_t		intr_datc_count;
+	uint32_t		intr_datc_count; /* HIDP continuation frames received */
 };
 
 static int idle_timeout = 0;
@@ -377,7 +377,10 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 	hdr = data[0];
 	type = hdr & HIDP_HEADER_TRANS_MASK;
 
-	/* Handle both DATA (0xa0) and DATC (0xb0) frames */
+	/* Handle DATA (0xa0) frames by processing and sending them.
+	 * Handle DATC (0xb0) continuation frames by logging them.
+	 * Full multi-frame reassembly is not implemented as it's rarely needed.
+	 */
 	if (type == HIDP_TRANS_DATA) {
 		if ((hdr & HIDP_DATA_RTYPE_MASK) != HIDP_DATA_RTYPE_INPUT) {
 			DBG("unsupported HIDP data report type 0x%02x", hdr);
@@ -392,7 +395,9 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 		/* Send directly without buffering for most devices */
 		uhid_send_input_report(idev, data + 1, len - 1);
 	} else if (type == HIDP_TRANS_DATC) {
-		/* DATC (continuation frame) - rarely used by modern devices */
+		/* Continuation frames indicate multi-frame reports.
+		 * Log and ignore them to prevent connection issues.
+		 */
 		idev->intr_datc_count++;
 
 		if (idev->intr_datc_count == 1) {
@@ -402,11 +407,6 @@ static bool hidp_recv_intr_data(GIOChannel *chan, struct input_device *idev)
 			DBG("received HIDP continuation frame #%u (length=%zd)",
 			    idev->intr_datc_count, len);
 		}
-
-		/* Continuation frames are not commonly used. Log and ignore them
-		 * to prevent connection issues. Proper multi-frame support would
-		 * require buffering and reassembly logic.
-		 */
 	} else {
 		DBG("unsupported HIDP protocol header 0x%02x", hdr);
 	}
