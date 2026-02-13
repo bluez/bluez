@@ -214,3 +214,110 @@ Based on the codebase structure:
 ## Additional Evidence
 
 The provided workaround script (`duet3-bt-wake.zip`) likely performs a similar write operation via D-Bus or direct GATT commands to wake the keyboard, confirming that a specific write command is needed to initialize the device.
+# Code Analysis: BlueZ HoG Implementation
+
+## Current Behavior in hog-lib.c
+
+### Report Discovery and Initialization
+
+From `profiles/input/hog-lib.c`:
+
+```c
+// Line 450-453: Enable notifications only for Input Reports
+if (report->type == HOG_REPORT_TYPE_INPUT)
+    read_char(report->hog, report->hog->attrib, report->ccc_handle,
+                        ccc_read_cb, report);
+```
+
+**Key Finding**: BlueZ only enables notifications for INPUT reports. It does NOT initialize OUTPUT or FEATURE reports during connection setup.
+
+### Output Report Handling
+
+```c
+// Line 746-778: forward_report() function
+static void forward_report(struct uhid_event *ev, void *user_data)
+{
+    struct bt_hog *hog = user_data;
+    struct report *report;
+    
+    report = find_report_by_rtype(hog, ev->u.output.rtype,
+                        ev->u.output.data[0]);
+    
+    // ... writes output report when UHID event received
+    if (report->properties & GATT_CHR_PROP_WRITE)
+        write_char(hog, hog->attrib, report->value_handle,
+                data, size, output_written_cb, hog);
+}
+```
+
+This function is called when the kernel/userspace sends an OUTPUT event (like LED changes via UHID). This is why CapsLock state matters:
+- **CapsLock ON**: Kernel sends UHID_OUTPUT event for LED → forward_report() writes to the device
+- **CapsLock OFF**: No UHID_OUTPUT event → No writes to output reports
+
+## The Problem
+
+The Lenovo keyboards require a **Feature Report write** during initialization to enable input notifications, but BlueZ:
+1. Only reads Feature Reports (for descriptor discovery)
+2. Never writes to Feature Reports during connection setup
+3. Only writes Output Reports when UHID events occur (LED changes)
+
+When CapsLock is ON, the LED state triggers an Output Report write, which apparently also wakes up the keyboard firmware. When CapsLock is OFF, no writes occur, and the keyboard stays idle.
+
+## Where the Fix Should Go
+
+The fix should be added after report discovery completes, in the initialization sequence. Likely locations:
+
+1. **After `uhid_create()` completes** (line 989-1022)
+   - This is where the UHID device is created
+   - Good place to add device initialization
+
+2. **In `report_map_read_cb()` after successful read** (line 1031-1066)
+   - After report map is read and before uhid_create
+   - Ensures all reports are discovered
+
+3. **As a new function called from connection complete**
+   - Create `initialize_hog_device()` function
+   - Called after all descriptors are read
+   - Writes initialization commands to Feature Reports
+
+## Proposed Fix Strategy
+
+Add initialization after UHID device creation:
+
+```c
+static void initialize_device(struct bt_hog *hog)
+{
+    struct report *report;
+    uint8_t init_value = 0x02; // Wake/enable command
+    
+    // Find Feature Report with ID 0x01
+    report = find_report_by_rtype(hog, HOG_REPORT_TYPE_FEATURE, 0x01);
+    
+    if (report && (report->properties & GATT_CHR_PROP_WRITE)) {
+        DBG("Initializing HoG device with Feature Report write");
+        write_char(hog, hog->attrib, report->value_handle,
+                   &init_value, sizeof(init_value),
+                   output_written_cb, hog);
+    }
+}
+```
+
+Call this from `uhid_create()` or `report_map_read_cb()`.
+
+## Device-Specific Quirk Option
+
+Alternatively, add a quirk for Lenovo keyboards:
+
+```c
+static bool needs_feature_init(struct bt_hog *hog)
+{
+    // Lenovo IdeaPad Duet keyboards
+    if (hog->vendor == 0x17ef && 
+        (hog->product == 0x60fa || hog->product == 0x60fb)) {
+        return true;
+    }
+    return false;
+}
+```
+
+This would prevent potential issues with other HID devices that might not expect Feature Report writes during initialization.
