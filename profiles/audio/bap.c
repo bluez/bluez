@@ -3808,6 +3808,7 @@ static void bap_bcast_remove(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct bap_data *data;
+	struct queue *bcast_snks;
 	char addr[18];
 
 	ba2str(device_get_address(device), addr);
@@ -3820,6 +3821,13 @@ static void bap_bcast_remove(struct btd_service *service)
 	if (!data) {
 		error("BAP service not handled by profile");
 		return;
+	}
+
+	/* Clean up before bis_remove and data_remove */
+	if (data->bcast_snks) {
+		bcast_snks = data->bcast_snks;
+		data->bcast_snks = NULL;
+		queue_destroy(bcast_snks, setup_free);
 	}
 
 	bt_bap_bis_remove(data->bap);
@@ -3929,6 +3937,7 @@ static int bap_disconnect(struct btd_service *service)
 static int bap_bcast_disconnect(struct btd_service *service)
 {
 	struct bap_data *data;
+	struct queue *bcast_snks;
 
 	/* Lookup the bap session for this service since in case of
 	 * bass_delegator its user data is set by bass plugin.
@@ -3937,6 +3946,12 @@ static int bap_bcast_disconnect(struct btd_service *service)
 	if (!data) {
 		error("BAP service not handled by profile");
 		return -EINVAL;
+	}
+	/* Clean up broadcast sinks before detach (like unicast does) */
+	if (data->bcast_snks) {
+		bcast_snks = data->bcast_snks;
+		data->bcast_snks = NULL;
+		queue_destroy(bcast_snks, setup_free);
 	}
 
 	bt_bap_detach(data->bap);
