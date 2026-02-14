@@ -22,6 +22,7 @@
 #include <ell/ell.h>
 
 #include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
 #include "src/shared/btp.h"
 
 #define AD_PATH "/org/bluez/advertising"
@@ -41,6 +42,7 @@
 #define AD_TYPE_MANUFACTURER_DATA		0xff
 
 static void register_gap_service(void);
+static void register_gatt_service(void);
 
 static struct l_dbus *dbus;
 
@@ -65,6 +67,9 @@ static char *socket_path;
 static struct btp *btp;
 
 static bool gap_service_registered;
+static bool gatt_service_registered;
+
+static bool gatt_uuid_name_in_progress;
 
 struct ad_data {
 	uint8_t data[25];
@@ -2769,6 +2774,72 @@ static void register_gap_service(void)
 					btp_gap_confirm_entry_rsp, NULL, NULL);
 }
 
+static void btp_gatt_read_commands(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	uint16_t commands = 0;
+
+	if (index != BTP_INDEX_NON_CONTROLLER) {
+		btp_send_error(btp, BTP_GATT_SERVICE, index,
+						BTP_ERROR_INVALID_INDEX);
+		return;
+	}
+
+	commands |= (1 << BTP_OP_GATT_READ_SUPPORTED_COMMANDS);
+	commands |= (1 << BTP_OP_GATT_READ_UUID);
+
+	commands = L_CPU_TO_LE16(commands);
+
+	btp_send(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ_SUPPORTED_COMMANDS,
+			BTP_INDEX_NON_CONTROLLER, sizeof(commands), &commands);
+}
+
+static void btp_gatt_read_uuid(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	const struct btp_gatt_read_uuid_cp *cp = param;
+	uint8_t status = BTP_ERROR_FAIL;
+	bool prop;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	/* Adapter needs to be powered to be able to read UUID */
+	if (!l_dbus_proxy_get_property(adapter->proxy, "Powered", "b",
+					&prop) || !prop) {
+		goto failed;
+	}
+
+	if (cp->uuid_len == 2) {
+		uint16_t uuid = cp->uuid[0] | (cp->uuid[1] << 8);
+
+		/* Name UUID is automatically retrieved during connection */
+		if (uuid == GATT_CHARAC_DEVICE_NAME) {
+			gatt_uuid_name_in_progress = true;
+			return;
+		}
+	}
+
+	/* TODO: Process other UUIDs */
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_GATT_SERVICE, index, status);
+}
+
+static void register_gatt_service(void)
+{
+	btp_register(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ_SUPPORTED_COMMANDS,
+					btp_gatt_read_commands, NULL, NULL);
+
+	btp_register(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ_UUID,
+					btp_gatt_read_uuid, NULL, NULL);
+}
+
 static void btp_core_read_commands(uint8_t index, const void *param,
 					uint16_t length, void *user_data)
 {
@@ -2833,6 +2904,16 @@ static void btp_core_register(uint8_t index, const void *param,
 
 		return;
 	case BTP_GATT_SERVICE:
+		if (gatt_service_registered)
+			goto failed;
+
+		register_gatt_service();
+		gatt_service_registered = true;
+
+		btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_REGISTER,
+					BTP_INDEX_NON_CONTROLLER, 0, NULL);
+
+		return;
 	case BTP_L2CAP_SERVICE:
 	case BTP_MESH_NODE_SERVICE:
 	case BTP_CORE_SERVICE:
@@ -2871,6 +2952,12 @@ static void btp_core_unregister(uint8_t index, const void *param,
 		gap_service_registered = false;
 		break;
 	case BTP_GATT_SERVICE:
+		if (!gatt_service_registered)
+			goto failed;
+
+		btp_unregister_service(btp, BTP_GATT_SERVICE);
+		gatt_service_registered = false;
+		break;
 	case BTP_L2CAP_SERVICE:
 	case BTP_MESH_NODE_SERVICE:
 	case BTP_CORE_SERVICE:
@@ -3162,6 +3249,40 @@ static void property_changed(struct l_dbus_proxy *proxy, const char *name,
 			 * type.
 			 */
 			btp_identity_resolved_ev(proxy);
+		} else if (!strcmp(name, "Name")) {
+			struct btp_device *device;
+			struct btp_adapter *adapter;
+			const char *pts_name;
+			uint8_t pts_name_len;
+			struct btp_gatt_read_uuid_rp *rp;
+
+			if (!gatt_uuid_name_in_progress)
+				return;
+
+			device = find_device_by_proxy(proxy);
+			adapter = find_adapter_by_device(device);
+
+			if (!l_dbus_message_get_arguments(msg, "s", &pts_name))
+				return;
+
+			pts_name_len = strlen(pts_name);
+			rp = malloc(sizeof(struct btp_gatt_read_uuid_rp) + 3 +
+								pts_name_len);
+
+			rp->status = 0;
+			rp->count = 1;
+			bt_put_le16(GATT_CHARAC_DEVICE_NAME, rp->data);
+			rp->data[2] = pts_name_len;
+			memcpy(rp->data+3, pts_name, pts_name_len);
+
+			btp_send(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ_UUID,
+					adapter->index,
+					sizeof(struct btp_gatt_read_uuid_rp) +
+					3 + pts_name_len, rp);
+
+			gatt_uuid_name_in_progress = false;
+
+			free(rp);
 		}
 	}
 }
