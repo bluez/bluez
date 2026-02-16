@@ -7,4 +7,5 @@
  *
  */
 
-void core_register_service(struct btp *btp);
+void core_register_service(struct btp *btp, struct l_dbus *dbus,
+						struct l_dbus_client *client);

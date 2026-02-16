@@ -588,7 +588,8 @@ noinst_PROGRAMS += client/btpclient/btpclient client/btpclient/btpclientctl
 client_btpclient_btpclient_SOURCES = client/btpclient/btpclient.c \
 				client/btpclient/btpclient.h \
 				src/shared/btp.c src/shared/btp.h \
-				client/btpclient/core.c client/btpclient/core.h
+				client/btpclient/core.c client/btpclient/core.h \
+				client/btpclient/gap.c client/btpclient/gap.h
 client_btpclient_btpclient_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-ell.la $(ell_ldadd)
 client/btpclient/btpclient.$(OBJEXT): src/libshared-ell.la ell/internal
