@@ -133,8 +133,8 @@ tools/btattach
 tools/btconfig
 tools/btmgmt
 tools/btsnoop
-tools/btpclient
-tools/btpclientctl
+client/btpclient/btpclient
+client/btpclient/btpclientctl
 tools/btmon-logger
 tools/bluetooth-logger.service
 tools/mpris-proxy.service
