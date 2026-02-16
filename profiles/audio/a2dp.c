@@ -3769,6 +3769,9 @@ static struct btd_profile a2dp_source_profile = {
 
 	.adapter_probe	= a2dp_sink_server_probe,
 	.adapter_remove	= a2dp_sink_server_remove,
+
+	/* Connect source after sink, to prefer sink when conflicting */
+	.after_services = BTD_PROFILE_UUID_CB(NULL, A2DP_SINK_UUID),
 };
 
 static struct btd_profile a2dp_sink_profile = {
