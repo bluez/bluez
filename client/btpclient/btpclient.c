@@ -23,6 +23,8 @@
 
 #include "bluetooth/bluetooth.h"
 #include "src/shared/btp.h"
+#include "btpclient.h"
+#include "core.h"
 
 #define AD_PATH "/org/bluez/advertising"
 #define AG_PATH "/org/bluez/agent"
@@ -2769,138 +2771,25 @@ static void register_gap_service(void)
 					btp_gap_confirm_entry_rsp, NULL, NULL);
 }
 
-static void btp_core_read_commands(uint8_t index, const void *param,
-					uint16_t length, void *user_data)
+bool gap_register_service(void)
 {
-	uint8_t commands = 0;
+	if (!register_default_agent(NULL,
+				BTP_GAP_IOCAPA_NO_INPUT_NO_OUTPUT,
+				register_default_agent_reply))
+		return false;
 
-	if (index != BTP_INDEX_NON_CONTROLLER) {
-		btp_send_error(btp, BTP_CORE_SERVICE, index,
-						BTP_ERROR_INVALID_INDEX);
-		return;
-	}
-
-	commands |= (1 << BTP_OP_CORE_READ_SUPPORTED_COMMANDS);
-	commands |= (1 << BTP_OP_CORE_READ_SUPPORTED_SERVICES);
-	commands |= (1 << BTP_OP_CORE_REGISTER);
-	commands |= (1 << BTP_OP_CORE_UNREGISTER);
-
-	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
-			BTP_INDEX_NON_CONTROLLER, sizeof(commands), &commands);
+	return true;
 }
 
-static void btp_core_read_services(uint8_t index, const void *param,
-					uint16_t length, void *user_data)
+void gap_unregister_service(void)
 {
-	uint8_t services = 0;
-
-	if (index != BTP_INDEX_NON_CONTROLLER) {
-		btp_send_error(btp, BTP_CORE_SERVICE, index,
-						BTP_ERROR_INVALID_INDEX);
-		return;
-	}
-
-	services |= (1 << BTP_CORE_SERVICE);
-	services |= (1 << BTP_GAP_SERVICE);
-
-	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_READ_SUPPORTED_SERVICES,
-			BTP_INDEX_NON_CONTROLLER, sizeof(services), &services);
+	btp_unregister_service(btp, BTP_GAP_SERVICE);
+	gap_service_registered = false;
 }
 
-static void btp_core_register(uint8_t index, const void *param,
-					uint16_t length, void *user_data)
+bool gap_is_service_registered(void)
 {
-	const struct btp_core_register_cp  *cp = param;
-
-	if (length < sizeof(*cp))
-		goto failed;
-
-	if (index != BTP_INDEX_NON_CONTROLLER) {
-		btp_send_error(btp, BTP_CORE_SERVICE, index,
-						BTP_ERROR_INVALID_INDEX);
-		return;
-	}
-
-	switch (cp->service_id) {
-	case BTP_GAP_SERVICE:
-		if (gap_service_registered)
-			goto failed;
-
-		if (!register_default_agent(NULL,
-					BTP_GAP_IOCAPA_NO_INPUT_NO_OUTPUT,
-					register_default_agent_reply))
-			goto failed;
-
-		return;
-	case BTP_GATT_SERVICE:
-	case BTP_L2CAP_SERVICE:
-	case BTP_MESH_NODE_SERVICE:
-	case BTP_CORE_SERVICE:
-	default:
-		goto failed;
-	}
-
-	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_REGISTER,
-					BTP_INDEX_NON_CONTROLLER, 0, NULL);
-	return;
-
-failed:
-	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
-}
-
-static void btp_core_unregister(uint8_t index, const void *param,
-					uint16_t length, void *user_data)
-{
-	const struct btp_core_unregister_cp  *cp = param;
-
-	if (length < sizeof(*cp))
-		goto failed;
-
-	if (index != BTP_INDEX_NON_CONTROLLER) {
-		btp_send_error(btp, BTP_CORE_SERVICE, index,
-						BTP_ERROR_INVALID_INDEX);
-		return;
-	}
-
-	switch (cp->service_id) {
-	case BTP_GAP_SERVICE:
-		if (!gap_service_registered)
-			goto failed;
-
-		btp_unregister_service(btp, BTP_GAP_SERVICE);
-		gap_service_registered = false;
-		break;
-	case BTP_GATT_SERVICE:
-	case BTP_L2CAP_SERVICE:
-	case BTP_MESH_NODE_SERVICE:
-	case BTP_CORE_SERVICE:
-	default:
-		goto failed;
-	}
-
-	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_UNREGISTER,
-					BTP_INDEX_NON_CONTROLLER, 0, NULL);
-	return;
-
-failed:
-	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
-}
-
-static void register_core_service(void)
-{
-	btp_register(btp, BTP_CORE_SERVICE,
-					BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
-					btp_core_read_commands, NULL, NULL);
-
-	btp_register(btp, BTP_CORE_SERVICE,
-					BTP_OP_CORE_READ_SUPPORTED_SERVICES,
-					btp_core_read_services, NULL, NULL);
-
-	btp_register(btp, BTP_CORE_SERVICE, BTP_OP_CORE_REGISTER,
-						btp_core_register, NULL, NULL);
-
-	btp_register(btp, BTP_CORE_SERVICE, BTP_OP_CORE_UNREGISTER,
-					btp_core_unregister, NULL, NULL);
+	return gap_service_registered;
 }
 
 static void signal_handler(uint32_t signo, void *user_data)
@@ -3196,7 +3085,7 @@ static void client_ready(struct l_dbus_client *client, void *user_data)
 
 	btp_set_disconnect_handler(btp, btp_disconnect_handler, NULL, NULL);
 
-	register_core_service();
+	core_register_service(btp);
 
 	btp_send(btp, BTP_CORE_SERVICE, BTP_EV_CORE_READY,
 					BTP_INDEX_NON_CONTROLLER, 0, NULL);
