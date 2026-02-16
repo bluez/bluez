@@ -13,8 +13,10 @@
 #include "src/shared/btp.h"
 #include "btpclient.h"
 #include "core.h"
+#include "gap.h"
 
 static struct btp *btp;
+static struct l_dbus *dbus;
 
 static void btp_core_read_commands(uint8_t index, const void *param,
 					uint16_t length, void *user_data)
@@ -57,6 +59,7 @@ static void btp_core_read_services(uint8_t index, const void *param,
 static void btp_core_register(uint8_t index, const void *param,
 					uint16_t length, void *user_data)
 {
+	struct l_dbus_client *client = user_data;
 	const struct btp_core_register_cp  *cp = param;
 
 	if (length < sizeof(*cp))
@@ -73,7 +76,7 @@ static void btp_core_register(uint8_t index, const void *param,
 		if (gap_is_service_registered())
 			goto failed;
 
-		if (!gap_register_service())
+		if (!gap_register_service(btp, dbus, client))
 			goto failed;
 
 		return;
@@ -130,9 +133,11 @@ failed:
 	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
 }
 
-void core_register_service(struct btp *btp_)
+void core_register_service(struct btp *btp_, struct l_dbus *dbus_,
+						struct l_dbus_client *client)
 {
 	btp = btp_;
+	dbus = dbus_;
 
 	btp_register(btp, BTP_CORE_SERVICE,
 					BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
@@ -143,7 +148,7 @@ void core_register_service(struct btp *btp_)
 					btp_core_read_services, NULL, NULL);
 
 	btp_register(btp, BTP_CORE_SERVICE, BTP_OP_CORE_REGISTER,
-					btp_core_register, NULL, NULL);
+					btp_core_register, client, NULL);
 
 	btp_register(btp, BTP_CORE_SERVICE, BTP_OP_CORE_UNREGISTER,
 					btp_core_unregister, NULL, NULL);
