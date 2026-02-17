@@ -1434,6 +1434,12 @@ static void bap_attached(struct bt_bap *bap, void *user_data)
 
 	/* Create BASS session with the Broadcast Source */
 	data = bass_data_new(adapter, device);
+
+	/*
+	 * Store BAP reference so match_bap() can find this session
+	 * when bap_detached() is called during device removal.
+	 */
+	data->bap = bap;
 	data->bis_id = bt_bap_bis_cb_register(bap, bis_probe,
 					bis_remove, device, NULL);
 
@@ -1453,6 +1459,15 @@ static bool match_bap(const void *data, const void *match_data)
 static void bap_bc_detached(struct bt_bap *bap, struct bass_data *data)
 {
 	DBG("%p", bap);
+
+	/*
+	 * Unregister BIS callback before removing session to ensure
+	 * no stale device pointers remain in the BAP callback queue.
+	 */
+	if (data->bis_id) {
+		bt_bap_bis_cb_unregister(bap, data->bis_id);
+		data->bis_id = 0;
+	}
 
 	bt_bap_state_unregister(bap, data->state_id);
 	bass_data_remove(data);
