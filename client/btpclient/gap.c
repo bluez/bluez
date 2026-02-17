@@ -2359,9 +2359,11 @@ static void btp_gap_confirm_entry_rsp(uint8_t index, const void *param,
 		reply = l_dbus_message_new_error(ag->pending_req,
 						"org.bluez.Error.Rejected",
 						"Passkey mismatch");
+		l_dbus_send(dbus, reply);
+		return;
 	}
 
-	l_dbus_send_with_reply(dbus, ag->pending_req, passkey_confirm_rsp_reply,
+	l_dbus_send_with_reply(dbus, reply, passkey_confirm_rsp_reply,
 								adapter, NULL);
 
 	return;
