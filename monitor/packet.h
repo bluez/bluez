@@ -39,6 +39,15 @@ struct packet_frame {
 	size_t len;
 };
 
+enum {
+	BTMON_CONN_ACL = 0x00,
+	BTMON_CONN_LE,
+	BTMON_CONN_SCO,
+	BTMON_CONN_ESCO,
+	BTMON_CONN_CIS,
+	BTMON_CONN_BIS
+};
+
 struct packet_conn_data {
 	uint16_t index;
 	uint8_t  src[6];
