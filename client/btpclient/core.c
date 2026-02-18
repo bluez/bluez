@@ -10,10 +10,12 @@
 #include <ell/ell.h>
 
 #include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
 #include "core.h"
 #include "gap.h"
+#include "gatt.h"
 
 static struct btp *btp;
 static struct l_dbus *dbus;
@@ -81,6 +83,13 @@ static void btp_core_register(uint8_t index, const void *param,
 
 		return;
 	case BTP_GATT_SERVICE:
+		if (gatt_is_service_registered())
+			goto failed;
+
+		if (!gatt_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
 	case BTP_L2CAP_SERVICE:
 	case BTP_MESH_NODE_SERVICE:
 	case BTP_CORE_SERVICE:
@@ -118,6 +127,11 @@ static void btp_core_unregister(uint8_t index, const void *param,
 		gap_unregister_service();
 		break;
 	case BTP_GATT_SERVICE:
+		if (!gatt_is_service_registered())
+			goto failed;
+
+		gatt_unregister_service(btp);
+		break;
 	case BTP_L2CAP_SERVICE:
 	case BTP_MESH_NODE_SERVICE:
 	case BTP_CORE_SERVICE:

@@ -285,6 +285,30 @@ struct btp_gap_identity_resolved_ev {
 	bdaddr_t identity_address;
 } __packed;
 
+struct btp_gatt_char_value {
+	uint16_t handle;
+	uint8_t data_len;
+	uint8_t data[];
+} __packed;
+
+#define BTP_OP_GATT_READ_SUPPORTED_COMMANDS	0x01
+
+#define BTP_OP_GATT_READ_UUID			0x12
+struct btp_gatt_read_uuid_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint16_t start_handle;
+	uint16_t end_handle;
+	uint8_t uuid_len;
+	uint8_t uuid[];
+} __packed;
+
+struct btp_gatt_read_uuid_rp {
+	uint8_t att_response;
+	uint8_t values_count;
+	struct btp_gatt_char_value values[];
+} __packed;
+
 struct btp;
 
 typedef void (*btp_destroy_func_t)(void *user_data);

@@ -21,12 +21,21 @@ struct btp_device {
 	struct l_dbus_proxy *proxy;
 	uint8_t address_type;
 	bdaddr_t address;
+	struct l_queue *services;
+	struct l_queue *characteristics;
+	struct l_queue *descriptors;
 };
 
 struct btp_agent {
 	bool registered;
 	struct l_dbus_proxy *proxy;
 	struct l_dbus_message *pending_req;
+};
+
+struct gatt_attribute {
+	struct l_dbus_proxy *proxy;
+	uint16_t handle;
+	bt_uuid_t uuid;
 };
 
 struct l_queue *get_adapters_list(void);
