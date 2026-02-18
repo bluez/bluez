@@ -16,6 +16,7 @@
 #include <ell/ell.h>
 
 #include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
 #include "core.h"
@@ -2381,7 +2382,7 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 	const char *str, *addr_str;
 	int16_t rssi;
 	uint8_t address_type;
-	bool connected;
+	bool connected, resolved;
 	struct l_dbus_message_iter iter, var;
 
 	ev = l_malloc(sizeof(struct btp_device_found_ev));
@@ -2481,8 +2482,11 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_FOUND, adapter->index,
 						sizeof(*ev) + ev->eir_len, ev);
 
+	/* Postponed BTP_EV_GAP_DEVICE_CONNECTED up to services are resolved */
 	if (l_dbus_proxy_get_property(proxy, "Connected", "b", &connected) &&
-								connected) {
+			l_dbus_proxy_get_property(proxy, "ServicesResolved",
+							 "b", &resolved) &&
+			connected && resolved) {
 		ev_conn.address_type = address_type;
 		str2ba(addr_str, &ev_conn.address);
 
@@ -2700,12 +2704,24 @@ void gap_property_changed(struct l_dbus_proxy *proxy, const char *name,
 			if (!l_dbus_message_get_arguments(msg, "b", &prop))
 				return;
 
-			btp_gap_device_connection_ev(proxy, prop);
+			/* Send disconnection event and postponed connection
+			 * event up to services are resolved.
+			 */
+			if (!prop)
+				btp_gap_device_connection_ev(proxy, prop);
 		} else if (!strcmp(name, "AddressType")) {
 			/* Address property change came first along with address
 			 * type.
 			 */
 			btp_identity_resolved_ev(proxy);
+		} else if (!strcmp(name, "ServicesResolved")) {
+			bool prop;
+
+			if (!l_dbus_message_get_arguments(msg, "b", &prop))
+				return;
+
+			if (prop)
+				btp_gap_device_connection_ev(proxy, prop);
 		}
 	}
 }
