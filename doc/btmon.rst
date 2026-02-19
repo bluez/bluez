@@ -84,9 +84,14 @@ OPTIONS
 -T, --date                  Show a time and date information instead of
                             time offset.
 
+-N, --no-time               Suppress the time offset display entirely.
+
 -S, --sco                   Dump SCO traffic in raw hex format.
 
 -A, --a2dp                  Dump A2DP stream traffic in a raw hex format.
+
+-I, --iso                   Dump ISO stream traffic in raw hex format. Required
+                            to see LE Audio isochronous data in the output.
 
 -E IP, --ellisys IP         Send Ellisys HCI Injection.
 
