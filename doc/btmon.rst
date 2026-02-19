@@ -740,6 +740,81 @@ Open the trace file with full date and time
 
    $ btmon -T -r hcidump.log
 
+AUTOMATED TRACE ANALYSIS
+=========================
+
+This section provides guidance for analyzing btmon traces
+programmatically or with AI assistance.
+
+Recommended Workflow
+--------------------
+
+1. **Get an overview**: Start with ``btmon -a <file>`` to see packet
+   counts, connection handles, device addresses, and traffic volumes.
+
+2. **Decode with timestamps**: Use ``btmon -t -r <file> > output.txt``
+   to produce a text file with wall-clock timestamps for analysis.
+
+3. **Identify connections**: Search for connection establishment events
+   to build a handle-to-address mapping::
+
+       grep -n "Connection Complete\|Enhanced Connection Complete\|CIS Established" output.txt
+
+4. **Track disconnections**: Search for disconnect events and their
+   reasons::
+
+       grep -n "Disconnect Complete" output.txt
+
+   Then examine the lines following each match for the ``Reason:``
+   field.
+
+5. **Identify LE Audio**: Search for ASCS and CIS activity::
+
+       grep -n "ASE Control Point\|CIG Parameters\|Create Connected Isochronous\|CIS Established\|Setup ISO Data Path" output.txt
+
+6. **Check for errors**: Search for non-success status codes::
+
+       grep -n "Status:" output.txt | grep -v "Success"
+
+Key Patterns for Connection Lifecycle
+-------------------------------------
+
+A complete connection lifecycle for an LE ACL connection follows this
+pattern in the trace:
+
+1. ``LE Enhanced Connection Complete`` -- connection established,
+   note the Handle and Peer address
+2. ``LE Connection Update Complete`` -- connection parameters changed
+   (may occur zero or more times)
+3. ``Encryption Change`` -- link encrypted (may show encryption
+   algorithm)
+4. ACL Data with ATT/SMP/L2CAP -- service discovery and data exchange
+5. ``Disconnect Complete`` -- connection ended, check Reason field
+
+For LE Audio connections, additional steps appear between 3 and 5:
+
+- ATT operations on PACS/ASCS characteristics (codec negotiation)
+- ``LE Set CIG Parameters`` command and response
+- ``LE Create CIS`` command
+- ``LE CIS Established`` event (note the CIS handle)
+- ``LE Setup ISO Data Path`` command
+- ISO Data TX/RX (audio streaming)
+- ``Disconnect Complete`` on CIS handle (stream ended)
+- ``LE Remove CIG`` (group removed)
+
+Vendor-Specific Events
+----------------------
+
+Vendor-specific HCI events (event code 0xFF) contain
+controller-manufacturer diagnostic data. btmon decodes some vendor
+events for known manufacturers (Intel, Broadcom, etc.) but many
+sub-events show as ``Unknown`` with raw hex data. These are expected
+and generally not actionable without vendor documentation.
+
+Intel controllers emit extended telemetry events (subevent 0x8780)
+that include connection quality metrics, error counters, and firmware
+state. Partial decoding is available in ``monitor/intel.c``.
+
 RESOURCES
 =========
 
