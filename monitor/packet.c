@@ -221,21 +221,23 @@ static struct index_buf_pool *get_pool(uint16_t index, uint8_t type)
 		return NULL;
 
 	switch (type) {
-	case 0x00:
+	case BTMON_CONN_ACL:
 		if (index_list[index].acl.total)
 			return &index_list[index].acl;
 		break;
-	case 0x01:
+	case BTMON_CONN_LE:
 		if (index_list[index].le.total)
 			return &index_list[index].le;
 		break;
-	case 0x05:
-		if (index_list[index].iso.total)
-			return &index_list[index].iso;
-		break;
-	default:
+	case BTMON_CONN_SCO:
+	case BTMON_CONN_ESCO:
 		if (index_list[index].sco.total)
 			return &index_list[index].sco;
+		break;
+	case BTMON_CONN_CIS:
+	case BTMON_CONN_BIS:
+		if (index_list[index].iso.total)
+			return &index_list[index].iso;
 		break;
 	}
 
@@ -922,10 +924,30 @@ static void print_lt_addr(uint8_t lt_addr)
 	print_field("LT address: %d", lt_addr);
 }
 
+static const char *conn_type_str(uint8_t type)
+{
+	switch (type) {
+	case BTMON_CONN_ACL:
+		return "BR-ACL";
+	case BTMON_CONN_LE:
+		return "LE-ACL";
+	case BTMON_CONN_SCO:
+		return "BR-ESCO";
+	case BTMON_CONN_ESCO:
+		return "LE-ESCO";
+	case BTMON_CONN_CIS:
+		return "LE-CIS";
+	case BTMON_CONN_BIS:
+		return "LE-BIS";
+	default:
+		return "unknown";
+	}
+}
+
 static void print_handle_native(uint16_t handle)
 {
 	struct packet_conn_data *conn;
-	char label[25];
+	char label[32];
 
 	conn = packet_get_conn_data(handle);
 	if (!conn) {
@@ -933,7 +955,8 @@ static void print_handle_native(uint16_t handle)
 		return;
 	}
 
-	sprintf(label, "Handle: %d Address", handle);
+	sprintf(label, "Handle: %d (%s) Address", handle,
+				conn_type_str(conn->type));
 	print_addr(label, conn->dst, conn->dst_type);
 }
 
@@ -10996,7 +11019,7 @@ static void conn_complete_evt(struct timeval *tv, uint16_t index,
 	print_enable("Encryption", evt->encr_mode);
 
 	if (evt->status == 0x00)
-		assign_handle(index, le16_to_cpu(evt->handle), 0x00,
+		assign_handle(index, le16_to_cpu(evt->handle), BTMON_CONN_ACL,
 					(void *)evt->bdaddr, BDADDR_BREDR);
 }
 
@@ -11583,7 +11606,9 @@ static void sync_conn_complete_evt(struct timeval *tv, uint16_t index,
 	print_air_mode(evt->air_mode);
 
 	if (evt->status == 0x00)
-		assign_handle(index, le16_to_cpu(evt->handle), evt->link_type,
+		assign_handle(index, le16_to_cpu(evt->handle),
+					evt->link_type ? BTMON_CONN_ESCO :
+					BTMON_CONN_SCO,
 					(void *)evt->bdaddr, BDADDR_BREDR);
 }
 
@@ -12014,7 +12039,7 @@ static void le_conn_complete_evt(struct timeval *tv, uint16_t index,
 	print_field("Central clock accuracy: 0x%2.2x", evt->clock_accuracy);
 
 	if (evt->status == 0x00)
-		assign_handle(index, le16_to_cpu(evt->handle), 0x01,
+		assign_handle(index, le16_to_cpu(evt->handle), BTMON_CONN_LE,
 				(void *)evt->peer_addr, evt->peer_addr_type);
 }
 
@@ -12145,7 +12170,7 @@ static void le_enhanced_conn_complete_evt(struct timeval *tv, uint16_t index,
 	print_field("Central clock accuracy: 0x%2.2x", evt->clock_accuracy);
 
 	if (evt->status == 0x00)
-		assign_handle(index, le16_to_cpu(evt->handle), 0x01,
+		assign_handle(index, le16_to_cpu(evt->handle), BTMON_CONN_LE,
 				(void *)evt->peer_addr, evt->peer_addr_type);
 }
 
@@ -12545,7 +12570,8 @@ static void le_cis_established_evt(struct timeval *tv, uint16_t index,
 	print_slot_125("ISO Interval", evt->interval);
 
 	if (!evt->status)
-		assign_handle(index, le16_to_cpu(evt->conn_handle), 0x05,
+		assign_handle(index, le16_to_cpu(evt->conn_handle),
+					BTMON_CONN_CIS,
 					NULL, BDADDR_LE_PUBLIC);
 }
 
@@ -12596,7 +12622,8 @@ static void le_big_complete_evt(struct timeval *tv, uint16_t index,
 
 		for (i = 0; i < evt->num_bis; i++)
 			assign_handle(index, le16_to_cpu(evt->bis_handle[i]),
-					0x05, NULL, BDADDR_LE_PUBLIC);
+					BTMON_CONN_BIS, NULL,
+					BDADDR_LE_PUBLIC);
 	}
 }
 
@@ -12631,7 +12658,7 @@ static void le_big_sync_estabilished_evt(struct timeval *tv, uint16_t index,
 
 		for (i = 0; i < evt->num_bis; i++)
 			assign_handle(index, le16_to_cpu(evt->bis[i]),
-					0x05, NULL, BDADDR_LE_PUBLIC);
+					BTMON_CONN_BIS, NULL, BDADDR_LE_PUBLIC);
 	}
 }
 
