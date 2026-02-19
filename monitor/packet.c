@@ -322,6 +322,43 @@ static void assign_handle(uint16_t index, uint16_t handle, uint8_t type,
 		memcpy(conn->dst, dst, sizeof(conn->dst));
 		conn->dst_type = dst_type;
 	}
+
+	switch (conn->dst_type) {
+	case 0x00:
+	case 0x02:
+		/* If address public set dst_oui */
+		hwdb_get_company(conn->dst, &conn->dst_oui);
+		break;
+	case 0x01:
+	case 0x03:
+		/* Attempt to resolve the identity if resolvable */
+		if ((conn->dst[5] & 0xc0) == 0x40) {
+			keys_resolve_identity(conn->dst, conn->dst,
+						&conn->dst_type);
+			/* If identity address is public set dst_out */
+			if (conn->dst_type == 0x00 || conn->dst_type == 0x02) {
+				hwdb_get_company(conn->dst, &conn->dst_oui);
+				break;
+			}
+		}
+
+		/* Set the random type */
+		switch ((conn->dst[5] & 0xc0) >> 6) {
+		case 0x00:
+			conn->dst_rtype = strdup("Non-Resolvable");
+			break;
+		case 0x01:
+			conn->dst_rtype = strdup("Resolvable");
+			break;
+		case 0x03:
+			conn->dst_rtype = strdup("Static");
+			break;
+		default:
+			conn->dst_rtype = strdup("Reserved");
+			break;
+		}
+		break;
+	}
 }
 
 struct packet_conn_data *packet_get_conn_data(uint16_t handle)
@@ -329,7 +366,7 @@ struct packet_conn_data *packet_get_conn_data(uint16_t handle)
 	int i;
 
 	for (i = 0; i < MAX_CONN; i++) {
-		if (conn_list[i].handle == handle)
+		if (conn_list[i].handle == acl_handle(handle))
 			return &conn_list[i];
 	}
 
@@ -14047,6 +14084,43 @@ static void packet_enqueue_tx(struct timeval *tv, uint16_t handle,
 	queue_push_tail(conn->tx_q, frame);
 }
 
+static void handle_str_append_addr(char *handle_str,
+					struct packet_conn_data *conn)
+{
+	if (!conn)
+		return;
+
+	switch (conn->dst_type) {
+	case 0x00:
+	case 0x02:
+		if (conn->dst_oui) {
+			sprintf(handle_str + strlen(handle_str),
+				" [%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X (%.16s)]",
+				conn->dst[5], conn->dst[4], conn->dst[3],
+				conn->dst[2], conn->dst[1], conn->dst[0],
+				conn->dst_oui);
+			return;
+		}
+		break;
+	case 0x01:
+	case 0x03:
+		if (conn->dst_rtype) {
+			sprintf(handle_str + strlen(handle_str),
+				" [%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X (%.16s)]",
+				conn->dst[5], conn->dst[4], conn->dst[3],
+				conn->dst[2], conn->dst[1], conn->dst[0],
+				conn->dst_rtype);
+			return;
+		}
+		break;
+	}
+
+	sprintf(handle_str + strlen(handle_str),
+			" [%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X]",
+			conn->dst[5], conn->dst[4], conn->dst[3],
+			conn->dst[2], conn->dst[1], conn->dst[0]);
+}
+
 void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 				bool in, const void *data, uint16_t size)
 {
@@ -14054,7 +14128,7 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint16_t dlen = le16_to_cpu(hdr->dlen);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[22], extra_str[32];
+	char handle_str[58], extra_str[32];
 	struct packet_conn_data *conn;
 	struct index_buf_pool *pool = &index_list[index].acl;
 
@@ -14089,6 +14163,8 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	else
 		sprintf(handle_str, "Handle %d", acl_handle(handle));
 
+	handle_str_append_addr(handle_str, conn);
+
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, dlen);
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ACLDATA,
@@ -14118,7 +14194,8 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	const hci_sco_hdr *hdr = data;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[22], extra_str[32];
+	char handle_str[42], extra_str[32];
+	struct packet_conn_data *conn;
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
@@ -14140,12 +14217,15 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	data += HCI_SCO_HDR_SIZE;
 	size -= HCI_SCO_HDR_SIZE;
+	conn = packet_get_conn_data(handle);
 
 	if (index_list[index].sco.total && !in)
 		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
 			index_list[index].sco.total, index_list[index].sco.tx);
 	else
 		sprintf(handle_str, "Handle %d", acl_handle(handle));
+
+	handle_str_append_addr(handle_str, conn);
 
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
 
@@ -14175,8 +14255,9 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	const struct bt_hci_iso_data_start *start;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
-	char handle_str[36], extra_str[50], ts_str[16] = { 0 };
+	char handle_str[56], extra_str[50], ts_str[16] = { 0 };
 	struct index_buf_pool *pool = &index_list[index].iso;
+	struct packet_conn_data *conn;
 	size_t ts_size = 0;
 
 	if (index >= MAX_INDEX) {
@@ -14206,6 +14287,7 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	}
 
 	start = data;
+	conn = packet_get_conn_data(handle);
 
 	if (!in && pool->total)
 		sprintf(handle_str, "Handle %d [%u/%u] SN %u",
@@ -14213,6 +14295,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	else
 		sprintf(handle_str, "Handle %u SN %u", acl_handle(handle),
 			start->sn);
+
+	handle_str_append_addr(handle_str, conn);
 
 	sprintf(extra_str, "flags 0x%2.2x dlen %u slen %u%s", flags, hdr->dlen,
 							start->slen, ts_str);
