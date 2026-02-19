@@ -672,6 +672,43 @@ Bluetooth Core Specification, Volume 1, Part F. btmon decodes all
 of them automatically in ``Status:`` and ``Reason:`` fields. The
 source mapping is in ``monitor/packet.c`` (``error2str_table``).
 
+ANALYZE MODE
+============
+
+The ``-a`` (``--analyze``) option reads a btsnoop file and produces a
+statistical summary instead of the full decoded trace.
+
+Usage
+-----
+
+.. code-block::
+
+   $ btmon -a hcidump.log
+
+Output Contents
+---------------
+
+Analyze mode reports, for each controller found in the trace:
+
+- **Packet counts**: Total HCI packets broken down by type (commands,
+  events, ACL, SCO, ISO, vendor diagnostics, system notes, user
+  logs, control messages).
+
+- **Per-connection statistics**: For each connection handle found:
+
+  - Connection type (BR-ACL, LE-ACL, BR-SCO, BR-ESCO, LE-ISO)
+  - Device address
+  - TX and RX packet counts and completion counts
+  - Latency statistics (min, max, median) in milliseconds
+  - Packet size statistics (min, max, average) in octets
+  - Throughput estimate in Kb/s
+
+- **Per-channel statistics**: For each L2CAP channel within a
+  connection, the same packet/latency/size statistics.
+
+- **Latency plots**: If ``gnuplot`` is installed, ASCII-art latency
+  distribution plots are rendered in the terminal.
+
 EXAMPLES
 ========
 
