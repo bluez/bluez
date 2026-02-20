@@ -53,12 +53,6 @@ struct hci_dev {
 	struct queue *conn_list;
 };
 
-#define CONN_BR_ACL	0x01
-#define CONN_BR_SCO	0x02
-#define CONN_BR_ESCO	0x03
-#define CONN_LE_ACL	0x04
-#define CONN_LE_ISO	0x05
-
 struct hci_stats {
 	size_t bytes;
 	size_t num;
@@ -223,20 +217,23 @@ static void conn_destroy(void *data)
 	const char *str;
 
 	switch (conn->type) {
-	case CONN_BR_ACL:
+	case BTMON_CONN_ACL:
 		str = "BR-ACL";
 		break;
-	case CONN_BR_SCO:
+	case BTMON_CONN_LE:
 		str = "BR-SCO";
 		break;
-	case CONN_BR_ESCO:
+	case BTMON_CONN_SCO:
 		str = "BR-ESCO";
 		break;
-	case CONN_LE_ACL:
+	case BTMON_CONN_ESCO:
 		str = "LE-ACL";
 		break;
-	case CONN_LE_ISO:
-		str = "LE-ISO";
+	case BTMON_CONN_CIS:
+		str = "LE-CIS";
+		break;
+	case BTMON_CONN_BIS:
+		str = "LE-BIS";
 		break;
 	default:
 		str = "unknown";
@@ -476,7 +473,7 @@ static void evt_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	if (evt->status)
 		return;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), CONN_BR_ACL);
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), BTMON_CONN_ACL);
 	if (!conn)
 		return;
 
@@ -567,7 +564,7 @@ static void evt_le_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	if (!evt || evt->status)
 		return;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), CONN_LE_ACL);
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), BTMON_CONN_LE);
 	if (!conn)
 		return;
 
@@ -585,7 +582,7 @@ static void evt_le_enh_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	if (!evt || evt->status)
 		return;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), CONN_LE_ACL);
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), BTMON_CONN_LE);
 	if (!conn)
 		return;
 
@@ -670,7 +667,7 @@ static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
 		return;
 
 	conn = conn_lookup_type(dev, le16_to_cpu(evt->conn_handle),
-						CONN_LE_ISO);
+						BTMON_CONN_CIS);
 	if (!conn)
 		return;
 
@@ -715,7 +712,7 @@ static void evt_le_big_complete(struct hci_dev *dev, struct timeval *tv,
 		if (!util_iov_pull_le16(iov, &handle))
 			return;
 
-		conn = conn_lookup_type(dev, handle, CONN_LE_ISO);
+		conn = conn_lookup_type(dev, handle, BTMON_CONN_BIS);
 		if (conn)
 			conn->setup_seen = true;
 	}
@@ -738,7 +735,7 @@ static void evt_le_big_sync_established(struct hci_dev *dev, struct timeval *tv,
 		if (!util_iov_pull_le16(iov, &handle))
 			return;
 
-		conn = conn_lookup_type(dev, handle, CONN_LE_ISO);
+		conn = conn_lookup_type(dev, handle, BTMON_CONN_BIS);
 		if (conn)
 			conn->setup_seen = true;
 	}
@@ -928,9 +925,13 @@ static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 	dev->num_sco++;
 
 	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-								CONN_BR_SCO);
-	if (!conn)
-		return;
+							BTMON_CONN_SCO);
+	if (!conn) {
+		conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+							BTMON_CONN_ESCO);
+		if (!conn)
+			return;
+	}
 
 	if (out) {
 		conn_pkt_tx(conn, tv, size - sizeof(*hdr), NULL);
@@ -1015,9 +1016,13 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 	dev->num_iso++;
 
 	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-								CONN_LE_ISO);
-	if (!conn)
-		return;
+							BTMON_CONN_CIS);
+	if (!conn) {
+		conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+							BTMON_CONN_BIS);
+		if (!conn)
+			return;
+	}
 
 	if (out) {
 		conn_pkt_tx(conn, tv, size - sizeof(*hdr), NULL);
