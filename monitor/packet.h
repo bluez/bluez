@@ -47,6 +47,10 @@ struct packet_conn_data {
 	uint8_t  type;
 	uint8_t  dst[6];
 	uint8_t  dst_type;
+	union {
+		char *dst_oui;
+		char *dst_rtype;
+	};
 	struct queue *tx_q;
 	struct queue *chan_q;
 	struct packet_latency tx_l;
