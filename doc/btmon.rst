@@ -442,6 +442,41 @@ Example of protocol layering in ACL data::
             Authentication requirement: Bonding, MITM, SC (0x2d)
             Max encryption key size: 16
 
+Timestamp Notes
+---------------
+
+When reading btsnoop files with ``-t`` or ``-T``, timestamps reflect the
+wall-clock time recorded in the btsnoop file. The precision depends on
+the source:
+
+- **Live capture** (``btmon`` monitor channel): Microsecond precision
+  from the kernel.
+- **btsnoop files**: The btsnoop format stores timestamps as
+  microseconds since epoch, so full microsecond precision is
+  preserved. Trailing zeros in the display (e.g., ``14:38:46.589000``)
+  indicate the original capture source had millisecond granularity.
+
+The default timestamp mode shows seconds elapsed since the first
+packet in the trace, which is useful for measuring intervals between
+events without needing to know the absolute time.
+
+Frame Numbers vs Line Numbers
+-----------------------------
+
+btmon assigns sequential **frame numbers** (``#N``) to HCI packets.
+These are stable identifiers for specific packets regardless of output
+formatting. However, when processing btmon text output with tools like
+``grep`` or ``sed``, the relevant unit is **line numbers** in the output
+file. The two are unrelated:
+
+- A single frame may produce many output lines (header + decoded
+  fields).
+- Frame numbers only apply to HCI traffic (``<`` and ``>``). MGMT
+  (``@``) and system notes (``=``) do not have frame numbers.
+- When referencing specific packets, prefer frame numbers (``#487``)
+  over line numbers, as frame numbers are stable across different
+  terminal widths and formatting options.
+
 Practical Reading Guide
 -----------------------
 
