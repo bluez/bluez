@@ -712,15 +712,15 @@ void bt_shell_printf(const char *fmt, ...)
 	char *saved_line;
 	int saved_point;
 
-	if (queue_isempty(data.inputs))
-		return;
-
 	if (data.mode == MODE_NON_INTERACTIVE) {
 		va_start(args, fmt);
 		vprintf(fmt, args);
 		va_end(args);
 		return;
 	}
+
+	if (queue_isempty(data.inputs))
+		return;
 
 	save_input = !RL_ISSTATE(RL_STATE_DONE);
 
