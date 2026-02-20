@@ -255,23 +255,26 @@ completes and the result status.
 
 **ACL Data** shows data plane traffic with handle and protocol decoding::
 
-    < ACL Data TX: Handle 2048 [1.. flags 0x00 dlen 16  #493 [hci0] 12:36:18.977915
-    │              │              │            │          │    │       │
-    │              │              │            │          │    │       └─ Timestamp
-    │              │              │            │          │    └─ Controller
-    │              │              │            │          └─ Frame number
-    │              │              │            └─ Data length
-    │              │              └─ Fragment info / flags
-    │              └─ Connection handle
-    └─ Direction: TX = outgoing, RX = incoming
+    < LE-ACL: Handle 2048 [66:B0:26:F1:D3:BC] [1/6] flags 0x00 dlen 16  #493 [hci0] 12:36:18.977915
+    │   │            │     │                   │          │         │    │    │     │
+    │   │            │     │                   │          │         │    │    │     └─ Timestamp
+    │   │            │     │                   │          │         │    │    └─ Controller
+    │   │            │     │                   │          │         │    └─ Frame number
+    │   │            │     │                   │          │         └─ Data length
+    │   │            │     │                   │          └─ flags
+    │   │            │     │                   └─ Buffer tracking (optional)
+    │   │            │     └─ Peer address (optional)
+    │   │            └─ Handle number
+    │   └─ Connection-type-aware label (e.g. BR-ACL, LE-ACL, BR-SCO, LE-ISO)
+    └─ Direction marker: '<' = host->controller (TX), '>' = controller->host (RX)
 
 ACL data is automatically decoded into higher-layer protocols::
 
-    < ACL Data TX: Handle 2048 [2/6] flags 0x00 dlen 7  #494 [hci0] 12:36:18.978488
+    < LE-ACL: Handle 2048 [2/6] flags 0x00 dlen 7  #494 [hci0] 12:36:18.978488
           ATT: Exchange MTU Request (0x02) len 2
             Client RX MTU: 517
 
-    > ACL Data RX: Handle 2048 flags 0x02 dlen 11       #497 [hci0] 12:36:19.000048
+    > LE-ACL: Handle 2048 flags 0x02 dlen 11       #497 [hci0] 12:36:19.000048
           SMP: Pairing Request (0x01) len 6
             IO capability: NoInputNoOutput (0x03)
             OOB data: Authentication data not present (0x00)
@@ -435,7 +438,7 @@ frame. The indentation level indicates the protocol layer:
 
 Example of protocol layering in ACL data::
 
-    > ACL Data RX: Handle 2048 flags 0x02 dlen 11       #497 [hci0] 12:36:19.000048
+    > ACL: Handle 2048 flags 0x02 dlen 11       #497 [hci0] 12:36:19.000048
           SMP: Pairing Request (0x01) len 6                          ← L2CAP/SMP layer
             IO capability: NoInputNoOutput (0x03)                    ← SMP fields
             OOB data: Authentication data not present (0x00)
@@ -520,9 +523,9 @@ MGMT Command Complete event back to bluetoothd.
             Peer address: AA:BB:CC:DD:EE:FF (OUI Company)
     @ MGMT Event: Device Connec.. (0x000b) plen 13  {0x0001} [hci0] 12:36:18.974319
     = bluetoothd: src/adapter.c:connected_callback() hci0 devic..   12:36:18.975307
-    < ACL Data TX: Handle 2048 [1.. flags 0x00 dlen 16  #493 [hci0] 12:36:18.977915
+    < ACL: Handle 2048 [1.. flags 0x00 dlen 16  #493 [hci0] 12:36:18.977915
           LE L2CAP: Connection Parameter Update Request (0x12) ident 1 len 8
-    < ACL Data TX: Handle 2048 [2/6] flags 0x00 dlen 7  #494 [hci0] 12:36:18.978488
+    < ACL: Handle 2048 [2/6] flags 0x00 dlen 7  #494 [hci0] 12:36:18.978488
           ATT: Exchange MTU Request (0x02) len 2
             Client RX MTU: 517
 
@@ -579,7 +582,7 @@ Controller Buffer Tracking
 
 Buffer tracking may show a indicator in square brackets::
 
-    < ACL Data TX: Handle 2048 [1/6] flags 0x00 dlen 16
+    < ACL: Handle 2048 [1/6] flags 0x00 dlen 16
 
 The ``[1/6]`` means this is buffer slot 1 of 6 available controller
 ACL buffers. This reflects the host-side HCI flow control: the host
