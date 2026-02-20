@@ -4129,7 +4129,9 @@ struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 					uint8_t id, uint16_t cid, uint16_t vid,
 					struct bt_bap_pac_qos *qos,
 					struct iovec *data,
-					struct iovec *metadata)
+					struct iovec *metadata,
+					struct bt_bap_pac_ops *ops,
+					void *ops_user_data)
 {
 	struct bt_bap_db *bdb;
 	struct bt_bap_pac *pac;
@@ -4150,6 +4152,7 @@ struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 	codec.vid = vid;
 
 	pac = bap_pac_new(bdb, name, type, &codec, qos, data, metadata);
+	bt_bap_pac_set_ops(pac, ops, ops_user_data);
 
 	switch (type) {
 	case BT_BAP_SINK:
@@ -4178,10 +4181,12 @@ struct bt_bap_pac *bt_bap_add_pac(struct gatt_db *db, const char *name,
 					uint8_t type, uint8_t id,
 					struct bt_bap_pac_qos *qos,
 					struct iovec *data,
-					struct iovec *metadata)
+					struct iovec *metadata,
+					struct bt_bap_pac_ops *ops,
+					void *ops_user_data)
 {
 	return bt_bap_add_vendor_pac(db, name, type, id, 0x0000, 0x0000, qos,
-							data, metadata);
+					data, metadata, ops, ops_user_data);
 }
 
 uint8_t bt_bap_pac_get_type(struct bt_bap_pac *pac)
