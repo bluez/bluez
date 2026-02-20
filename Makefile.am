@@ -367,7 +367,8 @@ CLEANFILES += $(builtin_files)
 
 if MANPAGES
 man_MANS += doc/bluetoothd.8
-man_MANS += doc/hci.7 doc/mgmt.7 doc/l2cap.7 doc/rfcomm.7 doc/sco.7 doc/iso.7
+man_MANS += doc/hci.7 doc/mgmt.7 doc/l2cap.7 doc/rfcomm.7 doc/sco.7 doc/iso.7 \
+		doc/btsnoop.7
 man_MANS += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
 		doc/org.bluez.Bearer.LE.5 doc/org.bluez.Bearer.BREDR.5 \
 		doc/org.bluez.DeviceSet.5 doc/org.bluez.AgentManager.5 \
@@ -407,7 +408,7 @@ man_MANS += doc/org.bluez.ThermometerManager.5 \
 endif
 manual_pages += doc/bluetoothd.8
 manual_pages += doc/hci.7 doc/mgmt.7 doc/l2cap.7 doc/rfcomm.7 doc/sco.7 \
-		doc/iso.7
+		doc/iso.7 doc/btsnoop.7
 manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
 		doc/org.bluez.Bearer.LE.5 doc/org.bluez.Bearer.BREDR.5 \
 		doc/org.bluez.DeviceSet.5 doc/org.bluez.AgentManager.5 \
@@ -535,7 +536,7 @@ EXTRA_DIST += doc/org.bluez.ThermometerManager.rst \
 EXTRA_DIST += doc/pics-opp.txt doc/pixit-opp.txt \
 		doc/pts-opp.txt
 
-EXTRA_DIST += doc/btsnoop.txt
+EXTRA_DIST += doc/btsnoop-protocol.rst
 
 EXTRA_DIST += tools/magic.btsnoop
 
