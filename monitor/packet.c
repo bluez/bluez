@@ -14155,6 +14155,7 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint16_t dlen = le16_to_cpu(hdr->dlen);
 	uint8_t flags = acl_flags(handle);
+	char label[8];
 	char handle_str[58], extra_str[32];
 	struct packet_conn_data *conn;
 	struct index_buf_pool *pool = &index_list[index].acl;
@@ -14194,9 +14195,13 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, dlen);
 
+	if (conn)
+		sprintf(label, "%s", conn_type_str(conn->type));
+	else
+		sprintf(label, "ACL");
+
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ACLDATA,
-				in ? "ACL Data RX" : "ACL Data TX",
-						handle_str, extra_str);
+				label, handle_str, extra_str);
 
 	if (!in)
 		packet_enqueue_tx(tv, acl_handle(handle),
@@ -14221,6 +14226,7 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	const hci_sco_hdr *hdr = data;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
+	char label[8];
 	char handle_str[42], extra_str[32];
 	struct packet_conn_data *conn;
 
@@ -14256,9 +14262,13 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
 
+	if (conn)
+		sprintf(label, "%s", conn_type_str(conn->type));
+	else
+		sprintf(label, "SCO");
+
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_SCODATA,
-				in ? "SCO Data RX" : "SCO Data TX",
-						handle_str, extra_str);
+				label, handle_str, extra_str);
 
 	if (!in)
 		packet_enqueue_tx(tv, acl_handle(handle),
@@ -14282,6 +14292,7 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	const struct bt_hci_iso_data_start *start;
 	uint16_t handle = le16_to_cpu(hdr->handle);
 	uint8_t flags = acl_flags(handle);
+	char label[8];
 	char handle_str[56], extra_str[50], ts_str[16] = { 0 };
 	struct index_buf_pool *pool = &index_list[index].iso;
 	struct packet_conn_data *conn;
@@ -14328,9 +14339,13 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	sprintf(extra_str, "flags 0x%2.2x dlen %u slen %u%s", flags, hdr->dlen,
 							start->slen, ts_str);
 
+	if (conn)
+		sprintf(label, "%s", conn_type_str(conn->type));
+	else
+		sprintf(label, "ISO");
+
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ISODATA,
-				in ? "ISO Data RX" : "ISO Data TX",
-						handle_str, extra_str);
+				label, handle_str, extra_str);
 
 	if (!in)
 		packet_enqueue_tx(tv, acl_handle(handle),
