@@ -318,6 +318,13 @@ static int setopts(int sk, struct l2cap_options *opts)
 		}
 	}
 
+	/* Older kernel versions may not support BT_SNDMTU so don't check its
+	 * return.
+	 */
+	if (opts->omtu)
+		setsockopt(sk, SOL_BLUETOOTH, BT_SNDMTU, &opts->omtu,
+				sizeof(opts->omtu));
+
 	return setsockopt(sk, SOL_BLUETOOTH, BT_RCVMTU, &opts->imtu,
 							sizeof(opts->imtu));
 }
