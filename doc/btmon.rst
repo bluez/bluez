@@ -824,3 +824,8 @@ REPORTING BUGS
 ==============
 
 linux-bluetooth@vger.kernel.org
+
+SEE ALSO
+========
+
+btsnoop(7)
