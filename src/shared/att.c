@@ -35,6 +35,7 @@
 #define BT_ATT_SIGNATURE_LEN		12
 
 struct att_send_op;
+struct pending_db_sync;
 
 struct bt_att_chan {
 	struct bt_att *att;
@@ -47,6 +48,7 @@ struct bt_att_chan {
 
 	struct att_send_op *pending_req;
 	struct att_send_op *pending_ind;
+	struct pending_db_sync *pending_db_sync;
 	bool writer_active;
 
 	bool in_req;			/* There's a pending incoming request */
@@ -77,6 +79,10 @@ struct bt_att {
 	bt_att_timeout_func_t timeout_callback;
 	bt_att_destroy_func_t timeout_destroy;
 	void *timeout_data;
+
+	bt_att_db_sync_func_t db_sync_callback;
+	bt_att_destroy_func_t db_sync_destroy;
+	void *db_sync_data;
 
 	uint8_t debug_level;
 	bt_att_debug_func_t debug_callback;
@@ -197,6 +203,11 @@ struct att_send_op {
 	bt_att_response_func_t callback;
 	bt_att_destroy_func_t destroy;
 	void *user_data;
+};
+
+struct pending_db_sync {
+	struct att_send_op *op;
+	struct bt_att_pdu_error_rsp error;
 };
 
 static void destroy_att_send_op(void *data)
@@ -644,6 +655,11 @@ static void bt_att_chan_free(void *data)
 	if (chan->pending_ind)
 		destroy_att_send_op(chan->pending_ind);
 
+	if (chan->pending_db_sync) {
+		destroy_att_send_op(chan->pending_db_sync->op);
+		free(chan->pending_db_sync);
+	}
+
 	queue_destroy(chan->queue, destroy_att_send_op);
 
 	io_destroy(chan->io);
@@ -680,6 +696,12 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	if (chan->pending_ind) {
 		disc_att_send_op(chan->pending_ind);
 		chan->pending_ind = NULL;
+	}
+
+	if (chan->pending_db_sync) {
+		disc_att_send_op(chan->pending_db_sync->op);
+		free(chan->pending_db_sync);
+		chan->pending_db_sync = NULL;
 	}
 
 	bt_att_chan_free(chan);
@@ -800,9 +822,42 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 		return false;
 
 	/* Attempt to change security */
-	if (!change_security(chan, rsp->ecode))
-		return false;
+	if (change_security(chan, rsp->ecode))
+		goto retry;
 
+	/* Check if this is DB_OUT_OF_SYNC and we have a callback */
+	if (rsp->ecode == BT_ATT_ERROR_DB_OUT_OF_SYNC && att->db_sync_callback) {
+		struct pending_db_sync *pending;
+
+		pending = new0(struct pending_db_sync, 1);
+		if (!pending)
+			return false;
+
+		pending->op = op;
+		pending->error = *rsp;
+
+		/* Remove timeout since we're waiting for approval */
+		if (op->timeout_id) {
+			timeout_remove(op->timeout_id);
+			op->timeout_id = 0;
+		}
+
+		/* Move to pending_db_sync */
+		chan->pending_db_sync = pending;
+		chan->pending_req = NULL;
+
+		DBG(att, "(chan %p) DB sync pending for operation %p", chan, op);
+
+		/* Notify upper layer */
+		att->db_sync_callback(&pending->error, op->pdu + 1, op->len - 1,
+				      op->id, att->db_sync_data);
+
+		return true;
+	}
+
+	return false;
+
+retry:
 	/* Remove timeout_id if outstanding */
 	if (op->timeout_id) {
 		timeout_remove(op->timeout_id);
@@ -1142,6 +1197,9 @@ static void bt_att_free(struct bt_att *att)
 	if (att->timeout_destroy)
 		att->timeout_destroy(att->timeout_data);
 
+	if (att->db_sync_destroy)
+		att->db_sync_destroy(att->db_sync_data);
+
 	if (att->debug_destroy)
 		att->debug_destroy(att->debug_data);
 
@@ -1473,6 +1531,23 @@ bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
 	return true;
 }
 
+bool bt_att_set_db_sync_cb(struct bt_att *att, bt_att_db_sync_func_t callback,
+						void *user_data,
+						bt_att_destroy_func_t destroy)
+{
+	if (!att)
+		return false;
+
+	if (att->db_sync_destroy)
+		att->db_sync_destroy(att->db_sync_data);
+
+	att->db_sync_callback = callback;
+	att->db_sync_destroy = destroy;
+	att->db_sync_data = user_data;
+
+	return true;
+}
+
 unsigned int bt_att_register_disconnect(struct bt_att *att,
 					bt_att_disconnect_func_t callback,
 					void *user_data,
@@ -1650,6 +1725,7 @@ int bt_att_resend(struct bt_att *att, unsigned int id, uint8_t opcode,
 {
 	const struct queue_entry *entry;
 	struct att_send_op *op;
+	bool from_db_sync = false;
 	bool result;
 
 	if (!att || !id)
@@ -1662,10 +1738,40 @@ int bt_att_resend(struct bt_att *att, unsigned int id, uint8_t opcode,
 
 		if (chan->pending_req && chan->pending_req->id == id)
 			break;
+
+		/* Also check pending_db_sync */
+		if (chan->pending_db_sync && chan->pending_db_sync->op->id == id) {
+			from_db_sync = true;
+			break;
+		}
 	}
 
 	if (!entry)
 		return -ENOENT;
+
+	/* If from pending_db_sync, extract operation details if not provided */
+	if (from_db_sync) {
+		struct bt_att_chan *chan = entry->data;
+		struct pending_db_sync *pending = chan->pending_db_sync;
+		struct att_send_op *stored_op = pending->op;
+
+		/* Auto-extract from stored operation if pdu is NULL */
+		if (!pdu) {
+			opcode = stored_op->opcode;
+			pdu = stored_op->pdu + 1;
+			length = stored_op->len - 1;
+			callback = stored_op->callback;
+			user_data = stored_op->user_data;
+			destroy = stored_op->destroy;
+		}
+
+		DBG(att, "(chan %p) Resending DB sync operation %p",
+		    chan, stored_op);
+
+		/* Clear pending_db_sync state */
+		chan->pending_db_sync = NULL;
+		free(pending);
+	}
 
 	/* Only allow requests to be resend */
 	if (get_op_type(opcode) != ATT_OP_TYPE_REQ)
@@ -1763,6 +1869,34 @@ bool bt_att_chan_cancel(struct bt_att_chan *chan, unsigned int id)
 	return true;
 }
 
+bool bt_att_db_sync_cancel(struct bt_att_chan *chan, unsigned int id)
+{
+	if (chan->pending_db_sync && chan->pending_db_sync->op->id == id) {
+		struct pending_db_sync *pending = chan->pending_db_sync;
+		struct att_send_op *op = pending->op;
+		uint8_t error_pdu[sizeof(struct bt_att_pdu_error_rsp)];
+
+		/* Build error response PDU */
+		memcpy(error_pdu, &pending->error, sizeof(pending->error));
+
+		/* Clear pending state */
+		chan->pending_db_sync = NULL;
+		free(pending);
+
+		/* Notify callback with error */
+		if (op->callback)
+			op->callback(BT_ATT_OP_ERROR_RSP, error_pdu,
+				     sizeof(error_pdu), op->user_data);
+
+		destroy_att_send_op(op);
+		wakeup_chan_writer(chan, NULL);
+
+		return true;
+	}
+
+	return false;
+}
+
 static bool bt_att_disc_cancel(struct bt_att *att, unsigned int id)
 {
 	struct att_send_op *op;
@@ -1795,10 +1929,14 @@ bool bt_att_cancel(struct bt_att *att, unsigned int id)
 	if (!att || !id)
 		return false;
 
-	/* Lookuo request on each channel first */
+	/* Lookup request on each channel first */
 	for (entry = queue_get_entries(att->chans); entry;
 						entry = entry->next) {
 		struct bt_att_chan *chan = entry->data;
+
+		/* Check pending_db_sync first on each channel */
+		if (bt_att_db_sync_cancel(chan, id))
+			return true;
 
 		if (bt_att_chan_cancel(chan, id))
 			return true;

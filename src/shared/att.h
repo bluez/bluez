@@ -46,6 +46,11 @@ typedef void (*bt_att_disconnect_func_t)(int err, void *user_data);
 typedef void (*bt_att_exchange_func_t)(uint16_t mtu, void *user_data);
 typedef bool (*bt_att_counter_func_t)(uint32_t *sign_cnt, void *user_data);
 
+/* DB sync callback - notifies upper layer of DB_OUT_OF_SYNC error */
+typedef void (*bt_att_db_sync_func_t)(const struct bt_att_pdu_error_rsp *error,
+					const void *req_pdu, uint16_t req_len,
+					unsigned int att_id, void *user_data);
+
 bool bt_att_set_debug(struct bt_att *att, uint8_t level,
 			bt_att_debug_func_t callback, void *user_data,
 			bt_att_destroy_func_t destroy);
@@ -55,6 +60,10 @@ bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu);
 uint8_t bt_att_get_link_type(struct bt_att *att);
 
 bool bt_att_set_timeout_cb(struct bt_att *att, bt_att_timeout_func_t callback,
+						void *user_data,
+						bt_att_destroy_func_t destroy);
+
+bool bt_att_set_db_sync_cb(struct bt_att *att, bt_att_db_sync_func_t callback,
 						void *user_data,
 						bt_att_destroy_func_t destroy);
 

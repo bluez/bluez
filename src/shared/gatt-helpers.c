@@ -790,6 +790,22 @@ done:
 	discovery_op_complete(op, success, att_ecode);
 }
 
+uint16_t bt_gatt_req_get_start_handle(struct bt_gatt_request *req)
+{
+	if (!req)
+		return 0;
+
+	return req->start_handle;
+}
+
+uint16_t bt_gatt_req_get_end_handle(struct bt_gatt_request *req)
+{
+	if (!req)
+		return 0;
+
+	return req->end_handle;
+}
+
 static struct bt_gatt_request *discover_services(struct bt_att *att,
 					bt_uuid_t *uuid,
 					uint16_t start, uint16_t end,
