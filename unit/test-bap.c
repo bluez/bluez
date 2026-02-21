@@ -686,12 +686,12 @@ static void test_setup_pacs(struct test_data *data)
 							BT_BAP_SINK, 0x0ff,
 							0x0001, 0x0001,
 							data->qos, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 		else
 			data->snk = bt_bap_add_pac(data->db, "test-bap-snk",
 							BT_BAP_SINK, LC3_ID,
 							data->qos, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 		g_assert(data->snk);
 	}
 
@@ -702,12 +702,12 @@ static void test_setup_pacs(struct test_data *data)
 							BT_BAP_SOURCE, 0x0ff,
 							0x0001, 0x0001,
 							data->qos, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 		else
 			data->src = bt_bap_add_pac(data->db, "test-bap-src",
 							BT_BAP_SOURCE, LC3_ID,
 							data->qos, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 		g_assert(data->src);
 	}
 }
@@ -753,29 +753,27 @@ static void test_setup_server(const void *user_data)
 		data->snk = bt_bap_add_vendor_pac(db, "test-bap-snk",
 							BT_BAP_SINK, 0x0ff,
 							0x0001, 0x0001,
-							data->qos, NULL,
-							NULL);
+							data->qos, NULL, NULL,
+							&ucast_pac_ops, NULL);
 	else
 		data->snk = bt_bap_add_pac(db, "test-bap-snk", BT_BAP_SINK,
 							LC3_ID, data->qos,
-							data->caps, NULL);
+							data->caps, NULL,
+							&ucast_pac_ops, NULL);
 	g_assert(data->snk);
-
-	bt_bap_pac_set_ops(data->snk, &ucast_pac_ops, NULL);
 
 	if (data->cfg && data->cfg->vs)
 		data->src = bt_bap_add_vendor_pac(db, "test-bap-snk",
 							BT_BAP_SOURCE, 0x0ff,
 							0x0001, 0x0001,
-							data->qos, NULL,
-							NULL);
+							data->qos, NULL, NULL,
+							&ucast_pac_ops, NULL);
 	else
 		data->src = bt_bap_add_pac(db, "test-bap-src", BT_BAP_SOURCE,
 							LC3_ID, data->qos,
-							data->caps, NULL);
+							data->caps, NULL,
+							&ucast_pac_ops, NULL);
 	g_assert(data->src);
-
-	bt_bap_pac_set_ops(data->src, &ucast_pac_ops, NULL);
 
 	att = bt_att_new(io_get_fd(io), false);
 	g_assert(att);
@@ -1052,13 +1050,13 @@ static void test_bcast_config(struct test_data *data)
 							BT_BAP_BCAST_SOURCE,
 							0x0ff, 0x0000, 0x0000,
 							NULL, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 		else
 			data->bsrc = bt_bap_add_pac(data->db, "test-bap-bsrc",
 							BT_BAP_BCAST_SOURCE,
 							LC3_ID,
 							NULL, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 
 		g_assert(data->bsrc);
 	}
@@ -1073,13 +1071,13 @@ static void test_bcast_config(struct test_data *data)
 							BT_BAP_BCAST_SINK,
 							0xff, 0x0000, 0x0000,
 							NULL, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 		else
 			data->bsnk = bt_bap_add_pac(data->db, "test-bap-bsnk",
 							BT_BAP_BCAST_SINK,
 							LC3_ID,
 							NULL, data->caps,
-							NULL);
+							NULL, NULL, NULL);
 
 		g_assert(data->bsnk);
 	}
