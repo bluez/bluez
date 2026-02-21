@@ -3562,18 +3562,18 @@ int bthost_setup_sco(struct bthost *bthost, uint16_t acl_handle,
 {
 	const struct bt_hci_cmd_setup_sync_conn settings[] = {
 		{
-			.tx_bandwidth = cpu_to_le32(0x00001f40),
-			.rx_bandwidth = cpu_to_le32(0x00001f40),
-			.max_latency = cpu_to_le16(0x000a),
+			.tx_bandwidth = cpu_constant_to_le32(0x00001f40),
+			.rx_bandwidth = cpu_constant_to_le32(0x00001f40),
+			.max_latency = cpu_constant_to_le16(0x000a),
 			.retrans_effort = 0x01,
-			.voice_setting = cpu_to_le16(BT_VOICE_CVSD_16BIT),
+			.voice_setting = cpu_constant_to_le16(BT_VOICE_CVSD_16BIT),
 		},
 		{
-			.tx_bandwidth = cpu_to_le32(0x00001f40),
-			.rx_bandwidth = cpu_to_le32(0x00001f40),
-			.max_latency = cpu_to_le16(0x000d),
+			.tx_bandwidth = cpu_constant_to_le32(0x00001f40),
+			.rx_bandwidth = cpu_constant_to_le32(0x00001f40),
+			.max_latency = cpu_constant_to_le16(0x000d),
 			.retrans_effort = 0x02,
-			.voice_setting = cpu_to_le16(BT_VOICE_TRANSPARENT),
+			.voice_setting = cpu_constant_to_le16(BT_VOICE_TRANSPARENT),
 		}
 	};
 	struct bt_hci_cmd_setup_sync_conn cmd;
