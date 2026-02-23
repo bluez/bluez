@@ -67,6 +67,27 @@ struct bt_bap_pac_qos {
 	uint16_t context;
 };
 
+struct bt_bap_pac_ops {
+	int (*select)(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
+			uint32_t chan_alloc, struct bt_bap_pac_qos *qos,
+			bt_bap_pac_select_t cb, void *cb_data, void *user_data);
+	void (*cancel_select)(struct bt_bap_pac *lpac,
+			bt_bap_pac_select_t cb, void *cb_data, void *user_data);
+	int (*config)(struct bt_bap_stream *stream, struct iovec *cfg,
+			struct bt_bap_qos *qos, bt_bap_pac_config_t cb,
+			void *user_data);
+	void (*clear)(struct bt_bap_stream *stream, void *user_data);
+};
+
+struct bt_bap_pac *bt_bap_add_vendor_pac_full(struct gatt_db *db,
+					const char *name, uint8_t type,
+					uint8_t id, uint16_t cid, uint16_t vid,
+					struct bt_bap_pac_qos *qos,
+					struct iovec *data,
+					struct iovec *metadata,
+					struct bt_bap_pac_ops *ops,
+					void *ops_user_data);
+
 struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 					const char *name, uint8_t type,
 					uint8_t id, uint16_t cid, uint16_t vid,
@@ -79,18 +100,6 @@ struct bt_bap_pac *bt_bap_add_pac(struct gatt_db *db, const char *name,
 					struct bt_bap_pac_qos *qos,
 					struct iovec *data,
 					struct iovec *metadata);
-
-struct bt_bap_pac_ops {
-	int (*select)(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
-			uint32_t chan_alloc, struct bt_bap_pac_qos *qos,
-			bt_bap_pac_select_t cb, void *cb_data, void *user_data);
-	void (*cancel_select)(struct bt_bap_pac *lpac,
-			bt_bap_pac_select_t cb, void *cb_data, void *user_data);
-	int (*config)(struct bt_bap_stream *stream, struct iovec *cfg,
-			struct bt_bap_qos *qos, bt_bap_pac_config_t cb,
-			void *user_data);
-	void (*clear)(struct bt_bap_stream *stream, void *user_data);
-};
 
 bool bt_bap_pac_set_ops(struct bt_bap_pac *pac, struct bt_bap_pac_ops *ops,
 					void *user_data);

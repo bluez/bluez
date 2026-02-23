@@ -1361,17 +1361,16 @@ static bool endpoint_init_pac(struct media_endpoint *endpoint, uint8_t type,
 		metadata->iov_len = endpoint->metadata_size;
 	}
 
-	endpoint->pac = bt_bap_add_vendor_pac(db, name, type, endpoint->codec,
-				endpoint->cid, endpoint->vid, &endpoint->qos,
-				&data, metadata);
+	endpoint->pac = bt_bap_add_vendor_pac_full(db, name, type,
+				endpoint->codec, endpoint->cid, endpoint->vid,
+				&endpoint->qos, &data, metadata,
+				&pac_ops, endpoint);
 	if (!endpoint->pac) {
 		error("Unable to create PAC");
 		free(name);
 		free(metadata);
 		return false;
 	}
-
-	bt_bap_pac_set_ops(endpoint->pac, &pac_ops, endpoint);
 
 	DBG("PAC %s registered", name);
 

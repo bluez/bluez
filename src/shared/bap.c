@@ -4124,12 +4124,14 @@ static void notify_session_pac_added(void *data, void *user_data)
 	queue_foreach(bap->pac_cbs, notify_pac_added, user_data);
 }
 
-struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
+struct bt_bap_pac *bt_bap_add_vendor_pac_full(struct gatt_db *db,
 					const char *name, uint8_t type,
 					uint8_t id, uint16_t cid, uint16_t vid,
 					struct bt_bap_pac_qos *qos,
 					struct iovec *data,
-					struct iovec *metadata)
+					struct iovec *metadata,
+					struct bt_bap_pac_ops *ops,
+					void *ops_user_data)
 {
 	struct bt_bap_db *bdb;
 	struct bt_bap_pac *pac;
@@ -4150,6 +4152,8 @@ struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 	codec.vid = vid;
 
 	pac = bap_pac_new(bdb, name, type, &codec, qos, data, metadata);
+	if (ops)
+		bt_bap_pac_set_ops(pac, ops, ops_user_data);
 
 	switch (type) {
 	case BT_BAP_SINK:
@@ -4172,6 +4176,18 @@ struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
 	queue_foreach(sessions, notify_session_pac_added, pac);
 
 	return pac;
+}
+
+struct bt_bap_pac *bt_bap_add_vendor_pac(struct gatt_db *db,
+					const char *name, uint8_t type,
+					uint8_t id, uint16_t cid, uint16_t vid,
+					struct bt_bap_pac_qos *qos,
+					struct iovec *data,
+					struct iovec *metadata)
+{
+	return bt_bap_add_vendor_pac_full(db, name, type, id, cid, vid, qos,
+							data, metadata,
+							NULL, NULL);
 }
 
 struct bt_bap_pac *bt_bap_add_pac(struct gatt_db *db, const char *name,
