@@ -18,8 +18,8 @@
 #include "bluetooth/bluetooth.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
-#include "core.h"
 #include "gap.h"
+#include "services.h"
 
 #define AD_PATH "/org/bluez/advertising"
 #define AG_PATH "/org/bluez/agent"

@@ -26,6 +26,7 @@
 #include "btpclient.h"
 #include "core.h"
 #include "gap.h"
+#include "services.h"
 
 static struct l_dbus *dbus;
 
