@@ -35,7 +35,6 @@
 #define BT_ATT_SIGNATURE_LEN		12
 
 struct att_send_op;
-struct pending_db_sync;
 
 struct bt_att_chan {
 	struct bt_att *att;
@@ -48,7 +47,7 @@ struct bt_att_chan {
 
 	struct att_send_op *pending_req;
 	struct att_send_op *pending_ind;
-	struct pending_db_sync *pending_db_sync;
+	struct att_send_op *pending_db_sync;
 	bool writer_active;
 
 	bool in_req;			/* There's a pending incoming request */
@@ -203,11 +202,6 @@ struct att_send_op {
 	bt_att_response_func_t callback;
 	bt_att_destroy_func_t destroy;
 	void *user_data;
-};
-
-struct pending_db_sync {
-	struct att_send_op *op;
-	struct bt_att_pdu_error_rsp error;
 };
 
 static void destroy_att_send_op(void *data)
@@ -655,10 +649,8 @@ static void bt_att_chan_free(void *data)
 	if (chan->pending_ind)
 		destroy_att_send_op(chan->pending_ind);
 
-	if (chan->pending_db_sync) {
-		destroy_att_send_op(chan->pending_db_sync->op);
-		free(chan->pending_db_sync);
-	}
+	if (chan->pending_db_sync)
+		destroy_att_send_op(chan->pending_db_sync);
 
 	queue_destroy(chan->queue, destroy_att_send_op);
 
@@ -699,8 +691,7 @@ static bool disconnect_cb(struct io *io, void *user_data)
 	}
 
 	if (chan->pending_db_sync) {
-		disc_att_send_op(chan->pending_db_sync->op);
-		free(chan->pending_db_sync);
+		disc_att_send_op(chan->pending_db_sync);
 		chan->pending_db_sync = NULL;
 	}
 
@@ -828,15 +819,6 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 	/* Check if this is DB_OUT_OF_SYNC and we have a callback */
 	if (rsp->ecode == BT_ATT_ERROR_DB_OUT_OF_SYNC &&
 				att->db_sync_callback) {
-		struct pending_db_sync *pending;
-
-		pending = new0(struct pending_db_sync, 1);
-		if (!pending)
-			return false;
-
-		pending->op = op;
-		pending->error = *rsp;
-
 		/* Remove timeout since we're waiting for approval */
 		if (op->timeout_id) {
 			timeout_remove(op->timeout_id);
@@ -844,13 +826,13 @@ static bool handle_error_rsp(struct bt_att_chan *chan, uint8_t *pdu,
 		}
 
 		/* Move to pending_db_sync */
-		chan->pending_db_sync = pending;
+		chan->pending_db_sync = op;
 		chan->pending_req = NULL;
 
 		DBG(att, "(chan %p) DB out of sync for operation %p", chan, op);
 
 		/* Notify upper layer */
-		att->db_sync_callback(&pending->error, op->pdu + 1, op->len - 1,
+		att->db_sync_callback(rsp, op->pdu + 1, op->len - 1,
 				      op->id, att->db_sync_data);
 
 		return true;
@@ -1726,7 +1708,6 @@ int bt_att_resend(struct bt_att *att, unsigned int id, uint8_t opcode,
 {
 	const struct queue_entry *entry;
 	struct att_send_op *op;
-	bool from_db_sync = false;
 	bool result;
 
 	if (!att || !id)
@@ -1741,39 +1722,17 @@ int bt_att_resend(struct bt_att *att, unsigned int id, uint8_t opcode,
 			break;
 
 		/* Also check pending_db_sync */
-		if (chan->pending_db_sync &&
-				chan->pending_db_sync->op->id == id) {
-			from_db_sync = true;
-			break;
+		if (chan->pending_db_sync && chan->pending_db_sync->id == id) {
+			op = chan->pending_db_sync;
+			chan->pending_db_sync = NULL;
+			DBG(att, "(chan %p) Resending DB out of sync operation"
+				" %p", chan, op);
+			goto done;
 		}
 	}
 
 	if (!entry)
 		return -ENOENT;
-
-	/* If from pending_db_sync, extract operation details if not provided */
-	if (from_db_sync) {
-		struct bt_att_chan *chan = entry->data;
-		struct pending_db_sync *pending = chan->pending_db_sync;
-		struct att_send_op *stored_op = pending->op;
-
-		/* Auto-extract from stored operation if pdu is NULL */
-		if (!pdu) {
-			opcode = stored_op->opcode;
-			pdu = stored_op->pdu + 1;
-			length = stored_op->len - 1;
-			callback = stored_op->callback;
-			user_data = stored_op->user_data;
-			destroy = stored_op->destroy;
-		}
-
-		DBG(att, "(chan %p) Resending DB out of sync operation %p",
-			chan, stored_op);
-
-		/* Clear pending_db_sync state */
-		chan->pending_db_sync = NULL;
-		free(pending);
-	}
 
 	/* Only allow requests to be resend */
 	if (get_op_type(opcode) != ATT_OP_TYPE_REQ)
@@ -1786,6 +1745,7 @@ int bt_att_resend(struct bt_att *att, unsigned int id, uint8_t opcode,
 
 	op->id = id;
 
+done:
 	switch (opcode) {
 	/* Only prepend requests that could be a continuation */
 	case BT_ATT_OP_READ_BLOB_REQ:
@@ -1873,30 +1833,29 @@ bool bt_att_chan_cancel(struct bt_att_chan *chan, unsigned int id)
 
 static bool bt_att_db_sync_cancel(struct bt_att_chan *chan, unsigned int id)
 {
-	if (chan->pending_db_sync && chan->pending_db_sync->op->id == id) {
-		struct pending_db_sync *pending = chan->pending_db_sync;
-		struct att_send_op *op = pending->op;
-		uint8_t error_pdu[sizeof(struct bt_att_pdu_error_rsp)];
+	struct att_send_op *op = chan->pending_db_sync;
+	struct bt_att_pdu_error_rsp rsp;
 
-		/* Build error response PDU */
-		memcpy(error_pdu, &pending->error, sizeof(pending->error));
+	if (!op || op->id != id)
+		return false;
 
-		/* Clear pending state */
-		chan->pending_db_sync = NULL;
-		free(pending);
+	/* Build error response PDU */
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.opcode = op->opcode;
+	rsp.ecode = BT_ATT_ERROR_DB_OUT_OF_SYNC;
 
-		/* Notify callback with error */
-		if (op->callback)
-			op->callback(BT_ATT_OP_ERROR_RSP, error_pdu,
-				     sizeof(error_pdu), op->user_data);
+	/* Clear pending state */
+	chan->pending_db_sync = NULL;
 
-		destroy_att_send_op(op);
-		wakeup_chan_writer(chan, NULL);
+	/* Notify callback with error */
+	if (op->callback)
+		op->callback(BT_ATT_OP_ERROR_RSP, &rsp, sizeof(rsp),
+						op->user_data);
 
-		return true;
-	}
+	destroy_att_send_op(op);
+	wakeup_chan_writer(chan, NULL);
 
-	return false;
+	return true;
 }
 
 static bool bt_att_disc_cancel(struct bt_att *att, unsigned int id)
