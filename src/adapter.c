@@ -3768,7 +3768,7 @@ static void device_connect(struct btd_adapter *adapter, const bdaddr_t *dst,
 				BT_IO_OPT_SOURCE_TYPE, adapter->bdaddr_type,
 				BT_IO_OPT_DEST_BDADDR, dst,
 				BT_IO_OPT_DEST_TYPE, dst_type,
-				BT_IO_OPT_CID, ATT_CID,
+				BT_IO_OPT_CID, BT_ATT_CID,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 

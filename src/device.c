@@ -6453,7 +6453,7 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 
 	dev->att_mtu = MIN(mtu, btd_opts.gatt_mtu);
 	attrib = g_attrib_new(io,
-			cid == ATT_CID ? BT_ATT_DEFAULT_LE_MTU : dev->att_mtu,
+			cid == BT_ATT_CID ? BT_ATT_DEFAULT_LE_MTU : dev->att_mtu,
 			false);
 	if (!attrib) {
 		error("Unable to create new GAttrib instance");
@@ -6610,7 +6610,7 @@ int device_connect_le(struct btd_device *dev)
 			btd_adapter_get_address_type(adapter),
 			BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
 			BT_IO_OPT_DEST_TYPE, dev->bdaddr_type,
-			BT_IO_OPT_CID, ATT_CID,
+			BT_IO_OPT_CID, BT_ATT_CID,
 			BT_IO_OPT_SEC_LEVEL, sec_level,
 			BT_IO_OPT_INVALID);
 
@@ -6705,7 +6705,7 @@ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 				btd_adapter_get_address_type(adapter),
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
 				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
-				BT_IO_OPT_CID, ATT_CID,
+				BT_IO_OPT_CID, BT_ATT_CID,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 
