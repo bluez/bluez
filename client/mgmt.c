@@ -2373,7 +2373,7 @@ static void cmd_set_flags(int argc, char **argv)
 static uint8_t *str2bytearray(char *arg, uint8_t *val, long *val_len)
 {
 	char *entry;
-	unsigned int i;
+	long i;
 
 	for (i = 0; (entry = strsep(&arg, " \t")) != NULL; i++) {
 		long v;
@@ -2389,7 +2389,7 @@ static uint8_t *str2bytearray(char *arg, uint8_t *val, long *val_len)
 
 		v = strtol(entry, &endptr, 0);
 		if (!endptr || *endptr != '\0' || v > UINT8_MAX) {
-			bt_shell_printf("Invalid value at index %d\n", i);
+			bt_shell_printf("Invalid value at index %ld\n", i);
 			return NULL;
 		}
 
