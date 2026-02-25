@@ -658,7 +658,7 @@ static void do_listen(void (*handler)(int sk))
 	}
 
 	/* Enable deferred setup */
-	opt = defer_setup;
+	opt = !!defer_setup;
 
 	if (opt && setsockopt(sk, SOL_BLUETOOTH, BT_DEFER_SETUP,
 						&opt, sizeof(opt)) < 0) {
@@ -768,6 +768,8 @@ static void do_listen(void (*handler)(int sk))
 
 		/* Handle deferred setup */
 		if (defer_setup) {
+			int len;
+
 			syslog(LOG_INFO, "Waiting for %d seconds",
 							abs(defer_setup) - 1);
 			sleep(abs(defer_setup) - 1);
@@ -776,6 +778,13 @@ static void do_listen(void (*handler)(int sk))
 				close(nsk);
 				goto error;
 			}
+
+			len = read(sk, buf, buffer_size);
+			if (len < 0)
+				syslog(LOG_ERR, "Initial read error: %s (%d)",
+							strerror(errno), errno);
+			else
+				syslog(LOG_INFO, "Initial bytes %d", len);
 		}
 
 		handler(nsk);
@@ -797,15 +806,6 @@ static void dump_mode(int sk)
 
 	if (data_size < 0)
 		data_size = imtu;
-
-	if (defer_setup) {
-		len = read(sk, buf, data_size);
-		if (len < 0)
-			syslog(LOG_ERR, "Initial read error: %s (%d)",
-						strerror(errno), errno);
-		else
-			syslog(LOG_INFO, "Initial bytes %d", len);
-	}
 
 	syslog(LOG_INFO, "Receiving ...");
 	while (1) {
@@ -857,15 +857,6 @@ static void recv_mode(int sk)
 
 	if (data_size < 0)
 		data_size = imtu;
-
-	if (defer_setup) {
-		len = read(sk, buf, data_size);
-		if (len < 0)
-			syslog(LOG_ERR, "Initial read error: %s (%d)",
-						strerror(errno), errno);
-		else
-			syslog(LOG_INFO, "Initial bytes %d", len);
-	}
 
 	if (recv_delay)
 		usleep(recv_delay);
@@ -1342,6 +1333,9 @@ static void usage(void)
 		"\t[-O omtu] (affects BR/EDR sockets only)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-W seconds] enable deferred setup\n"
+		"\t   0: don't enable (default)\n"
+		"\t  >0: authorize after <seconds>\n"
+		"\t  <0: deny after abs(<seconds>)\n"
 		"\t[-B filename] use data packets from file\n"
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
