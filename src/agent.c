@@ -35,6 +35,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "agent.h"
+#include "shared/mgmt.h"
 #include "shared/queue.h"
 
 #define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
@@ -131,7 +132,7 @@ static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
 	if (agent)
 		io_cap = agent->capability;
 	else
-		io_cap = IO_CAPABILITY_INVALID;
+		io_cap = MGMT_IO_CAPABILITY_INVALID;
 
 	adapter_set_io_capability(adapter, io_cap);
 }
@@ -944,23 +945,6 @@ static void agent_destroy(gpointer data)
 	agent_unref(agent);
 }
 
-static uint8_t parse_io_capability(const char *capability)
-{
-	if (g_str_equal(capability, ""))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
-	if (g_str_equal(capability, "DisplayOnly"))
-		return IO_CAPABILITY_DISPLAYONLY;
-	if (g_str_equal(capability, "DisplayYesNo"))
-		return IO_CAPABILITY_DISPLAYYESNO;
-	if (g_str_equal(capability, "KeyboardOnly"))
-		return IO_CAPABILITY_KEYBOARDONLY;
-	if (g_str_equal(capability, "NoInputNoOutput"))
-		return IO_CAPABILITY_NOINPUTNOOUTPUT;
-	if (g_str_equal(capability, "KeyboardDisplay"))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
-	return IO_CAPABILITY_INVALID;
-}
-
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -979,8 +963,8 @@ static DBusMessage *register_agent(DBusConnection *conn,
 						DBUS_TYPE_INVALID) == FALSE)
 		return btd_error_invalid_args(msg);
 
-	cap = parse_io_capability(capability);
-	if (cap == IO_CAPABILITY_INVALID)
+	cap = mgmt_parse_io_capability(capability);
+	if (cap == MGMT_IO_CAPABILITY_INVALID)
 		return btd_error_invalid_args(msg);
 
 	agent = agent_create(sender, path, cap);

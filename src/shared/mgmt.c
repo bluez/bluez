@@ -81,6 +81,20 @@ struct mgmt_tlv_list {
 	uint16_t size;
 };
 
+struct arg_table {
+	const char *name;
+	unsigned value;
+};
+
+static const struct arg_table iocap_arguments[] = {
+	{ "DisplayOnly", MGMT_IO_CAPABILITY_DISPLAYONLY },
+	{ "DisplayYesNo", MGMT_IO_CAPABILITY_DISPLAYYESNO },
+	{ "KeyboardOnly", MGMT_IO_CAPABILITY_KEYBOARDONLY },
+	{ "NoInputNoOutput", MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT },
+	{ "KeyboardDisplay", MGMT_IO_CAPABILITY_KEYBOARDDISPLAY },
+	{ NULL, 0}
+};
+
 static void destroy_request(void *data)
 {
 	struct mgmt_request *request = data;
@@ -1038,4 +1052,42 @@ uint16_t mgmt_get_mtu(struct mgmt *mgmt)
 		return 0;
 
 	return mgmt->mtu;
+}
+
+char *mgmt_iocap_generator(const char *text, int state)
+{
+	static int index, len;
+	const char *arg;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	while ((arg = iocap_arguments[index].name)) {
+		index++;
+
+		if (!strncmp(arg, text, len))
+			return strdup(arg);
+	}
+
+	return NULL;
+}
+
+uint8_t mgmt_parse_io_capability(const char *capability)
+{
+	const char *arg;
+	int index = 0;
+
+	if (!strcmp(capability, ""))
+		return MGMT_IO_CAPABILITY_KEYBOARDDISPLAY;
+
+	while ((arg = iocap_arguments[index].name)) {
+		if (!strncmp(arg, capability, strlen(capability)))
+			return iocap_arguments[index].value;
+
+		index++;
+	}
+
+	return MGMT_IO_CAPABILITY_INVALID;
 }

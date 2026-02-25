@@ -42,8 +42,6 @@
 #define UUID_HEART_RATE_BODY		0x2a38
 #define UUID_HEART_RATE_CTRL		0x2a39
 
-#define ATT_CID 4
-
 #define PRLOG(...) \
 	do { \
 		printf(__VA_ARGS__); \
@@ -68,7 +66,6 @@ static const char test_device_name[] = "Very Long Test Device Name For Testing "
 static bool verbose = false;
 
 struct server {
-	int fd;
 	struct bt_att *att;
 	struct gatt_db *db;
 	struct bt_gatt_server *gatt;
@@ -572,7 +569,6 @@ static struct server *server_create(int fd, uint16_t mtu, bool hr_visible)
 	memcpy(server->device_name, test_device_name, name_len);
 	server->device_name[name_len] = '\0';
 
-	server->fd = fd;
 	server->db = gatt_db_new();
 	if (!server->db) {
 		fprintf(stderr, "Failed to create GATT database\n");
@@ -663,7 +659,7 @@ static int l2cap_le_att_listen_and_accept(bdaddr_t *src, int sec,
 	/* Set up source address */
 	memset(&srcaddr, 0, sizeof(srcaddr));
 	srcaddr.l2_family = AF_BLUETOOTH;
-	srcaddr.l2_cid = htobs(ATT_CID);
+	srcaddr.l2_cid = htobs(BT_ATT_CID);
 	srcaddr.l2_bdaddr_type = src_type;
 	bacpy(&srcaddr.l2_bdaddr, src);
 

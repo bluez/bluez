@@ -43,6 +43,7 @@
 #include "src/shared/gatt-client.h"
 #include "src/shared/gatt-server.h"
 #include "src/shared/ad.h"
+#include "src/shared/mgmt.h"
 #include "src/shared/timeout.h"
 #include "btio/btio.h"
 #include "bluetooth/mgmt.h"
@@ -3375,7 +3376,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	if (agent)
 		io_cap = agent_get_io_capability(agent);
 	else
-		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+		io_cap = MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	bonding = bonding_request_new(msg, device, bdaddr_type, agent);
 
@@ -6097,7 +6098,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	primaries = device_services_from_record(device, req->profiles_added);
 	if (primaries)
-		device_register_primaries(device, primaries, ATT_PSM);
+		device_register_primaries(device, primaries, BT_ATT_PSM);
 
 	/*
 	 * TODO: The btd_service instances for GATT services need to be
@@ -6453,7 +6454,7 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 
 	dev->att_mtu = MIN(mtu, btd_opts.gatt_mtu);
 	attrib = g_attrib_new(io,
-			cid == ATT_CID ? BT_ATT_DEFAULT_LE_MTU : dev->att_mtu,
+			cid == BT_ATT_CID ? BT_ATT_DEFAULT_LE_MTU : dev->att_mtu,
 			false);
 	if (!attrib) {
 		error("Unable to create new GAttrib instance");
@@ -6544,7 +6545,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (device->bonding->agent)
 		io_cap = agent_get_io_capability(device->bonding->agent);
 	else
-		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+		io_cap = MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	err = adapter_create_bonding(device->adapter, &device->bdaddr,
 					device->bdaddr_type, io_cap);
@@ -6610,7 +6611,7 @@ int device_connect_le(struct btd_device *dev)
 			btd_adapter_get_address_type(adapter),
 			BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
 			BT_IO_OPT_DEST_TYPE, dev->bdaddr_type,
-			BT_IO_OPT_CID, ATT_CID,
+			BT_IO_OPT_CID, BT_ATT_CID,
 			BT_IO_OPT_SEC_LEVEL, sec_level,
 			BT_IO_OPT_INVALID);
 
@@ -6705,7 +6706,7 @@ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 				btd_adapter_get_address_type(adapter),
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
 				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
-				BT_IO_OPT_CID, ATT_CID,
+				BT_IO_OPT_CID, BT_ATT_CID,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 
@@ -7452,7 +7453,7 @@ static gboolean device_bonding_retry(gpointer data)
 	if (bonding->agent)
 		io_cap = agent_get_io_capability(bonding->agent);
 	else
-		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+		io_cap = MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	err = adapter_bonding_attempt(adapter, &device->bdaddr,
 				device->bdaddr_type, io_cap);

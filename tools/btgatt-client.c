@@ -35,8 +35,6 @@
 #include "src/shared/gatt-client.h"
 #include "src/shared/gatt-helpers.h"
 
-#define ATT_CID 4
-
 #define PRLOG(...) \
 	printf(__VA_ARGS__); print_prompt();
 
@@ -1660,7 +1658,7 @@ static int l2cap_le_att_connect(bdaddr_t *src, bdaddr_t *dst, uint8_t dst_type,
 	/* Set up source address */
 	memset(&srcaddr, 0, sizeof(srcaddr));
 	srcaddr.l2_family = AF_BLUETOOTH;
-	srcaddr.l2_cid = htobs(ATT_CID);
+	srcaddr.l2_cid = htobs(BT_ATT_CID);
 	srcaddr.l2_bdaddr_type = 0;
 	bacpy(&srcaddr.l2_bdaddr, src);
 
@@ -1683,7 +1681,7 @@ static int l2cap_le_att_connect(bdaddr_t *src, bdaddr_t *dst, uint8_t dst_type,
 	/* Set up destination address */
 	memset(&dstaddr, 0, sizeof(dstaddr));
 	dstaddr.l2_family = AF_BLUETOOTH;
-	dstaddr.l2_cid = htobs(ATT_CID);
+	dstaddr.l2_cid = htobs(BT_ATT_CID);
 	dstaddr.l2_bdaddr_type = dst_type;
 	bacpy(&dstaddr.l2_bdaddr, dst);
 

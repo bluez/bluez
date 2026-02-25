@@ -30,8 +30,6 @@
 #include "src/shared/gatt-client.h"
 #include "peripheral/gatt.h"
 
-#define ATT_CID 4
-
 #define UUID_GAP 0x1800
 
 struct gatt_conn {
@@ -243,7 +241,7 @@ void gatt_server_start(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
-	addr.l2_cid = htobs(ATT_CID);
+	addr.l2_cid = htobs(BT_ATT_CID);
 	memcpy(&addr.l2_bdaddr, static_addr, 6);
 	addr.l2_bdaddr_type = BDADDR_LE_RANDOM;
 
