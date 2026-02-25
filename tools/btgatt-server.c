@@ -42,8 +42,6 @@
 #define UUID_HEART_RATE_BODY		0x2a38
 #define UUID_HEART_RATE_CTRL		0x2a39
 
-#define ATT_CID 4
-
 #define PRLOG(...) \
 	do { \
 		printf(__VA_ARGS__); \
@@ -663,7 +661,7 @@ static int l2cap_le_att_listen_and_accept(bdaddr_t *src, int sec,
 	/* Set up source address */
 	memset(&srcaddr, 0, sizeof(srcaddr));
 	srcaddr.l2_family = AF_BLUETOOTH;
-	srcaddr.l2_cid = htobs(ATT_CID);
+	srcaddr.l2_cid = htobs(BT_ATT_CID);
 	srcaddr.l2_bdaddr_type = src_type;
 	bacpy(&srcaddr.l2_bdaddr, src);
 
