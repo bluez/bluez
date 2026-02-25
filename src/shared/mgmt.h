@@ -98,4 +98,5 @@ bool mgmt_unregister_all(struct mgmt *mgmt);
 
 uint16_t mgmt_get_mtu(struct mgmt *mgmt);
 
+char *mgmt_iocap_generator(const char *text, int state);
 uint8_t mgmt_parse_io_capability(const char *capability);
