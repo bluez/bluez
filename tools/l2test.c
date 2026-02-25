@@ -72,7 +72,7 @@ static int imtu = 672;
 static int omtu = 0;
 
 /* Default FCS option */
-static int fcs = 0x01;
+static int fcs = L2CAP_FCS_CRC16;
 
 /* Default Transmission Window */
 static int txwin_size = 63;
@@ -1349,7 +1349,7 @@ static void usage(void)
 		"\t[-g milliseconds] delay before disconnecting (default = 0)\n"
 		"\t[-X mode] l2cap mode (help for list, default = basic)\n"
 		"\t[-a policy] chan policy (help for list, default = bredr)\n"
-		"\t[-F fcs] use CRC16 check (default = 1)\n"
+		"\t[-F fcs] use CRC16 check (default = 1, affects BR/EDR only)\n"
 		"\t[-Q num] Max Transmit value (default = 3)\n"
 		"\t[-Z size] Transmission Window size (default = 63)\n"
 		"\t[-Y priority] socket priority\n"
