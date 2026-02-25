@@ -13,6 +13,14 @@
 
 #define MGMT_VERSION(v, r) (((v) << 16) + (r))
 
+#define MGMT_IO_CAPABILITY_DISPLAYONLY		0x00
+#define MGMT_IO_CAPABILITY_DISPLAYYESNO		0x01
+#define MGMT_IO_CAPABILITY_KEYBOARDONLY		0x02
+#define MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
+#define MGMT_IO_CAPABILITY_KEYBOARDDISPLAY	0x04
+#define MGMT_IO_CAPABILITY_INVALID		0xFF
+
+
 typedef void (*mgmt_destroy_func_t)(void *user_data);
 
 struct mgmt;
@@ -89,3 +97,5 @@ bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index);
 bool mgmt_unregister_all(struct mgmt *mgmt);
 
 uint16_t mgmt_get_mtu(struct mgmt *mgmt);
+
+uint8_t mgmt_parse_io_capability(const char *capability);
