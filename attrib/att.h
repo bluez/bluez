@@ -71,8 +71,6 @@
 #define ATT_DEFAULT_L2CAP_MTU			48
 #define ATT_DEFAULT_LE_MTU			23
 
-#define ATT_PSM					31
-
 /* Flags for Execute Write Request Operation */
 #define ATT_CANCEL_ALL_PREP_WRITES		0x00
 #define ATT_WRITE_ALL_PREP_WRITES		0x01

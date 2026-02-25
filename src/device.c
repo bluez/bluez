@@ -6097,7 +6097,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	primaries = device_services_from_record(device, req->profiles_added);
 	if (primaries)
-		device_register_primaries(device, primaries, ATT_PSM);
+		device_register_primaries(device, primaries, BT_ATT_PSM);
 
 	/*
 	 * TODO: The btd_service instances for GATT services need to be
