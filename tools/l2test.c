@@ -1338,7 +1338,8 @@ static void usage(void)
 
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm] [-J cid]\n"
-		"\t[-I imtu] [-O omtu]\n"
+		"\t[-I imtu]\n"
+		"\t[-O omtu] (affects BR/EDR sockets only)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-W seconds] enable deferred setup\n"
 		"\t[-B filename] use data packets from file\n"
