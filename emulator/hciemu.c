@@ -118,8 +118,35 @@ static void writev_callback(const struct iovec *iov, int iovlen,
 	fd = g_io_channel_unix_get_fd(channel);
 
 	written = writev(fd, iov, iovlen);
-	if (written < 0)
-		return;
+	if (written < 0) {
+		ssize_t ret;
+		int size, data_len;
+		socklen_t len = sizeof(size);
+		int i;
+
+		if (errno != EAGAIN)
+			return;
+
+		data_len = 0;
+
+		for (i = 0; i < iovlen; i++)
+			data_len += iov[i].iov_len;
+
+		/* Automatically bump the send buffer size if the data to be
+		 * sent is larger than the current buffer size. This is needed
+		 * for btdev which doesn't flush the socket buffer until all
+		 * data has been sent.
+		 */
+		ret = getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &len);
+		if (!ret) {
+			size += data_len;
+			setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, len);
+		}
+
+		written = writev(fd, iov, iovlen);
+		if (written < 0)
+			return;
+	}
 }
 
 static gboolean receive_bthost(GIOChannel *channel, GIOCondition condition,
