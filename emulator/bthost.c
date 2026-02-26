@@ -22,6 +22,7 @@
 #include <endian.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <sys/param.h>
 
 #include "bluetooth/bluetooth.h"
 
@@ -185,6 +186,8 @@ struct l2conn {
 	uint16_t scid;
 	uint16_t dcid;
 	uint16_t psm;
+	uint16_t rx_mps;
+	uint16_t tx_mps;
 	uint16_t rx_credits;
 	uint16_t tx_credits;
 	enum l2cap_mode mode;
@@ -748,14 +751,14 @@ static void send_iov(struct bthost *bthost, uint16_t handle, uint16_t cid,
 }
 
 static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
-				bool sdu_hdr, const void *data, uint16_t len)
+			uint16_t sdu_len, const void *data, uint16_t len)
 {
 	struct iovec iov[2];
 	uint16_t sdu;
 	int num = 0;
 
-	if (sdu_hdr) {
-		sdu = cpu_to_le16(len);
+	if (sdu_len) {
+		sdu = cpu_to_le16(sdu_len);
 		iov[num].iov_base = &sdu;
 		iov[num].iov_len = sizeof(sdu);
 		num++;
@@ -885,18 +888,42 @@ void bthost_send_cid(struct bthost *bthost, uint16_t handle, uint16_t cid,
 {
 	struct btconn *conn;
 	struct l2conn *l2conn;
-	bool sdu_hdr = false;
+	struct iovec iov = {
+		.iov_base = (void *) data,
+		.iov_len = len,
+	};
 
 	conn = bthost_find_conn(bthost, handle);
 	if (!conn)
 		return;
 
 	l2conn = btconn_find_l2cap_conn_by_dcid(conn, cid);
-	if (l2conn && (l2conn->mode == L2CAP_MODE_LE_CRED ||
-			l2conn->mode == L2CAP_MODE_LE_ENH_CRED))
-		sdu_hdr = true;
 
-	send_acl(bthost, handle, cid, sdu_hdr, data, len);
+	/* Segment SDU in case of LE (Enhanced) Credit Based Flow Control */
+	if (l2conn && (l2conn->mode == L2CAP_MODE_LE_CRED ||
+			l2conn->mode == L2CAP_MODE_LE_ENH_CRED)) {
+		uint16_t sdu_len = len;
+		uint16_t slen;
+		int i;
+
+		for (i = 0; iov.iov_len; i++) {
+			if (sdu_len)
+				slen = MIN(iov.iov_len,
+					l2conn->tx_mps - sizeof(sdu_len));
+			else
+				slen = MIN(iov.iov_len, l2conn->tx_mps);
+
+			send_acl(bthost, handle, cid, sdu_len,
+					util_iov_pull_mem(&iov, slen), slen);
+
+			if (sdu_len)
+				sdu_len = 0;
+		}
+
+		return;
+	}
+
+	send_acl(bthost, handle, cid, 0, data, len);
 }
 
 void bthost_send_cid_v(struct bthost *bthost, uint16_t handle, uint16_t cid,
@@ -2104,7 +2131,7 @@ static void rfcomm_sabm_send(struct bthost *bthost, struct btconn *conn,
 	cmd.length = RFCOMM_LEN8(0);
 	cmd.fcs = rfcomm_fcs2((uint8_t *)&cmd);
 
-	send_acl(bthost, conn->handle, l2conn->dcid, false, &cmd, sizeof(cmd));
+	send_acl(bthost, conn->handle, l2conn->dcid, 0, &cmd, sizeof(cmd));
 }
 
 static bool l2cap_conn_rsp(struct bthost *bthost, struct btconn *conn,
@@ -2501,6 +2528,8 @@ static bool l2cap_le_conn_req(struct bthost *bthost, struct btconn *conn,
 							le16_to_cpu(req->scid),
 							le16_to_cpu(psm));
 		l2conn->mode = L2CAP_MODE_LE_CRED;
+		l2conn->rx_mps = le16_to_cpu(rsp.mps);
+		l2conn->tx_mps = le16_to_cpu(req->mps);
 		l2conn->rx_credits = le16_to_cpu(rsp.credits);
 		l2conn->tx_credits = le16_to_cpu(req->credits);
 
@@ -2749,7 +2778,7 @@ static void rfcomm_ua_send(struct bthost *bthost, struct btconn *conn,
 	cmd.length = RFCOMM_LEN8(0);
 	cmd.fcs = rfcomm_fcs2((uint8_t *)&cmd);
 
-	send_acl(bthost, conn->handle, l2conn->dcid, false, &cmd, sizeof(cmd));
+	send_acl(bthost, conn->handle, l2conn->dcid, 0, &cmd, sizeof(cmd));
 }
 
 static void rfcomm_dm_send(struct bthost *bthost, struct btconn *conn,
@@ -2763,7 +2792,7 @@ static void rfcomm_dm_send(struct bthost *bthost, struct btconn *conn,
 	cmd.length = RFCOMM_LEN8(0);
 	cmd.fcs = rfcomm_fcs2((uint8_t *)&cmd);
 
-	send_acl(bthost, conn->handle, l2conn->dcid, false, &cmd, sizeof(cmd));
+	send_acl(bthost, conn->handle, l2conn->dcid, 0, &cmd, sizeof(cmd));
 }
 
 static void rfcomm_sabm_recv(struct bthost *bthost, struct btconn *conn,
@@ -4199,7 +4228,7 @@ void bthost_send_rfcomm_data(struct bthost *bthost, uint16_t handle,
 	}
 
 	uih_frame[uih_len - 1] = rfcomm_fcs((void *)hdr);
-	send_acl(bthost, handle, rcconn->scid, false, uih_frame, uih_len);
+	send_acl(bthost, handle, rcconn->scid, 0, uih_frame, uih_len);
 
 	free(uih_frame);
 }
