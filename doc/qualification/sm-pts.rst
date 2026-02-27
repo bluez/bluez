@@ -630,6 +630,22 @@ for which we know the test passed.
 |                      |          |         |       |                                                                         |
 |                      |          |         |       |   - bluetoothctl advertise off                                          |
 +----------------------+----------+---------+-------+-------------------------------------------------------------------------+
+| SM/PER/KDU/BI-04-C   | PASS     |     6.1 | 5.69  | Pre-condition:                                                          |
+|                      |          |         |       |                                                                         |
+|                      |          |         |       | - Run:                                                                  |
+|                      |          |         |       |                                                                         |
+|                      |          |         |       |   - bluetoothctl advertise.discoverable on                              |
+|                      |          |         |       |                                                                         |
+|                      |          |         |       |   - bluetoothctl advertise on                                           |
+|                      |          |         |       +-------------------------------------------------------------------------+
+|                      |          |         |       | Post-condition:                                                         |
+|                      |          |         |       |                                                                         |
+|                      |          |         |       | - Run:                                                                  |
+|                      |          |         |       |                                                                         |
+|                      |          |         |       |   - bluetoothctl advertise.discoverable off                             |
+|                      |          |         |       |                                                                         |
+|                      |          |         |       |   - bluetoothctl advertise off                                          |
++----------------------+----------+---------+-------+-------------------------------------------------------------------------+
 | SM/PER/PIS/BV-01-C   | PASS     |     6.1 | 5.69  | Pre-condition:                                                          |
 |                      |          |         |       |                                                                         |
 |                      |          |         |       | - Run:                                                                  |
