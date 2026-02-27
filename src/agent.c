@@ -56,7 +56,7 @@ struct agent {
 	int ref;
 	char *owner;
 	char *path;
-	uint8_t capability;
+	enum mgmt_io_capability capability;
 	struct agent_request *request;
 	guint watch;
 };
@@ -126,12 +126,12 @@ static void agent_request_free(struct agent_request *req, gboolean destroy)
 static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
 {
 	struct agent *agent = user_data;
-	uint8_t io_cap;
+	enum mgmt_io_capability io_cap;
 
 	if (agent)
 		io_cap = agent->capability;
 	else
-		io_cap = IO_CAPABILITY_INVALID;
+		io_cap = MGMT_IO_CAPABILITY_INVALID;
 
 	adapter_set_io_capability(adapter, io_cap);
 }
@@ -261,7 +261,7 @@ struct agent *agent_get(const char *owner)
 }
 
 static struct agent *agent_create( const char *name, const char *path,
-							uint8_t capability)
+					enum mgmt_io_capability capability)
 {
 	struct agent *agent;
 
@@ -922,7 +922,7 @@ failed:
 	return err;
 }
 
-uint8_t agent_get_io_capability(struct agent *agent)
+enum mgmt_io_capability agent_get_io_capability(struct agent *agent)
 {
 	return agent->capability;
 }
@@ -944,29 +944,12 @@ static void agent_destroy(gpointer data)
 	agent_unref(agent);
 }
 
-static uint8_t parse_io_capability(const char *capability)
-{
-	if (g_str_equal(capability, ""))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
-	if (g_str_equal(capability, "DisplayOnly"))
-		return IO_CAPABILITY_DISPLAYONLY;
-	if (g_str_equal(capability, "DisplayYesNo"))
-		return IO_CAPABILITY_DISPLAYYESNO;
-	if (g_str_equal(capability, "KeyboardOnly"))
-		return IO_CAPABILITY_KEYBOARDONLY;
-	if (g_str_equal(capability, "NoInputNoOutput"))
-		return IO_CAPABILITY_NOINPUTNOOUTPUT;
-	if (g_str_equal(capability, "KeyboardDisplay"))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
-	return IO_CAPABILITY_INVALID;
-}
-
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct agent *agent;
 	const char *sender, *path, *capability;
-	uint8_t cap;
+	enum mgmt_io_capability cap;
 
 	sender = dbus_message_get_sender(msg);
 
@@ -979,8 +962,8 @@ static DBusMessage *register_agent(DBusConnection *conn,
 						DBUS_TYPE_INVALID) == FALSE)
 		return btd_error_invalid_args(msg);
 
-	cap = parse_io_capability(capability);
-	if (cap == IO_CAPABILITY_INVALID)
+	cap = mgmt_parse_io_capability(capability);
+	if (cap == MGMT_IO_CAPABILITY_INVALID)
 		return btd_error_invalid_args(msg);
 
 	agent = agent_create(sender, path, cap);

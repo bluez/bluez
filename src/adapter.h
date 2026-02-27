@@ -16,6 +16,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
+#include "shared/mgmt.h"
+
 #define ADAPTER_INTERFACE	"org.bluez.Adapter1"
 
 #define MAX_NAME_LENGTH		248
@@ -207,15 +209,18 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 				uint32_t passkey);
 
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
-					uint8_t addr_type, uint8_t io_cap);
+						uint8_t addr_type,
+						enum mgmt_io_capability io_cap);
 
 int adapter_bonding_attempt(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
-					uint8_t addr_type, uint8_t io_cap);
+						uint8_t addr_type,
+						enum mgmt_io_capability io_cap);
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 							uint8_t addr_type);
 
-int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap);
+int adapter_set_io_capability(struct btd_adapter *adapter,
+						enum mgmt_io_capability io_cap);
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter);
 

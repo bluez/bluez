@@ -9,12 +9,7 @@
  *
  */
 
-#define IO_CAPABILITY_DISPLAYONLY	0x00
-#define IO_CAPABILITY_DISPLAYYESNO	0x01
-#define IO_CAPABILITY_KEYBOARDONLY	0x02
-#define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
-#define IO_CAPABILITY_KEYBOARDDISPLAY	0x04
-#define IO_CAPABILITY_INVALID		0xFF
+#include "shared/mgmt.h"
 
 struct agent;
 
@@ -61,7 +56,7 @@ int agent_display_pincode(struct agent *agent, struct btd_device *device,
 
 int agent_cancel(struct agent *agent);
 
-uint8_t agent_get_io_capability(struct agent *agent);
+enum mgmt_io_capability agent_get_io_capability(struct agent *agent);
 
 void btd_agent_init(void);
 void btd_agent_cleanup(void);

@@ -3333,7 +3333,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	const char *sender;
 	struct agent *agent;
 	struct bonding_req *bonding;
-	uint8_t io_cap;
+	enum mgmt_io_capability io_cap;
 	int err;
 
 	btd_device_set_temporary(device, false);
@@ -3375,7 +3375,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	if (agent)
 		io_cap = agent_get_io_capability(agent);
 	else
-		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+		io_cap = MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	bonding = bonding_request_new(msg, device, bdaddr_type, agent);
 
@@ -6504,7 +6504,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	DBusMessage *reply;
-	uint8_t io_cap;
+	enum mgmt_io_capability io_cap;
 	int err = 0;
 
 	g_io_channel_unref(device->att_io);
@@ -6543,7 +6543,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (device->bonding->agent)
 		io_cap = agent_get_io_capability(device->bonding->agent);
 	else
-		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+		io_cap = MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	err = adapter_create_bonding(device->adapter, &device->bdaddr,
 					device->bdaddr_type, io_cap);
@@ -7433,7 +7433,7 @@ static gboolean device_bonding_retry(gpointer data)
 	struct btd_device *device = data;
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct bonding_req *bonding = device->bonding;
-	uint8_t io_cap;
+	enum mgmt_io_capability io_cap;
 	int err;
 
 	if (!bonding)
@@ -7451,7 +7451,7 @@ static gboolean device_bonding_retry(gpointer data)
 	if (bonding->agent)
 		io_cap = agent_get_io_capability(bonding->agent);
 	else
-		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+		io_cap = MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT;
 
 	err = adapter_bonding_attempt(adapter, &device->bdaddr,
 				device->bdaddr_type, io_cap);
