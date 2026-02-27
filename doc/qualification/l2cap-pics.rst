@@ -46,7 +46,7 @@ Capability Statement
 +------------------+----------+----------------------------------------------+
 | TSPC_L2CAP_1_5   |          | LE Data Channel Initiator (C.4)              |
 +------------------+----------+----------------------------------------------+
-| TSPC_L2CAP_1_6   |          | LE Data Channel Acceptor (C.5)               |
+| TSPC_L2CAP_1_6   | x        | LE Data Channel Acceptor (C.5)               |
 +------------------+----------+----------------------------------------------+
 
 - C.1: Mandatory IF L2CAP 0/1 "BR/EDR (includes possible support of GAP LE
@@ -167,11 +167,11 @@ Capability Statement
 +------------------+----------+----------------------------------------------+
 | TSPC_L2CAP_2_45  | x        | Send Disconnect Request Command (C.21)       |
 +------------------+----------+----------------------------------------------+
-| TSPC_L2CAP_2_45a |          | Send Disconnect Request Command - LE (C.22)  |
+| TSPC_L2CAP_2_45a | x        | Send Disconnect Request Command - LE (C.22)  |
 +------------------+----------+----------------------------------------------+
-| TSPC_L2CAP_2_46  |          | LE Credit Based Flow Control Mode (C.19)     |
+| TSPC_L2CAP_2_46  | x        | LE Credit Based Flow Control Mode (C.19)     |
 +------------------+----------+----------------------------------------------+
-| TSPC_L2CAP_2_47  |          | LE Data Channel (C.20)                       |
+| TSPC_L2CAP_2_47  | x        | LE Data Channel (C.20)                       |
 +------------------+----------+----------------------------------------------+
 | TSPC_L2CAP_2_48  |          | Enhanced Credit Based Flow Control Mode      |
 |                  |          | (C.23)                                       |
@@ -282,7 +282,7 @@ Capability Statement
 |                  |          | 'Guaranteed' for Extended Flow Specification.|
 |                  |          | (C.7)                                        |
 +------------------+----------+----------------------------------------------+
-| TSPC_L2CAP_3_16  |          | Support Multiple Simultaneous LE Data        |
+| TSPC_L2CAP_3_16  | x        | Support Multiple Simultaneous LE Data        |
 |                  |          | Channels (C.10)                              |
 +------------------+----------+----------------------------------------------+
 
