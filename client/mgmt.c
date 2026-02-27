@@ -3262,7 +3262,7 @@ static const struct option pair_options[] = {
 static void cmd_pair(int argc, char **argv)
 {
 	struct mgmt_cp_pair_device cp;
-	uint8_t cap = 0x01;
+	long cap = 0x01;
 	uint8_t type = BDADDR_BREDR;
 	char addr[18];
 	int opt;
@@ -3271,9 +3271,22 @@ static void cmd_pair(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "+c:t:h", pair_options,
 								NULL)) != -1) {
 		switch (opt) {
-		case 'c':
-			cap = strtol(optarg, NULL, 0);
-			break;
+		case 'c': {
+			char *endptr;
+
+			cap = mgmt_parse_io_capability(optarg);
+			if (cap != MGMT_IO_CAPABILITY_INVALID)
+				break;
+
+			errno = 0;
+			cap = strtol(optarg, &endptr, 0);
+			if (!errno && cap >= 0 && cap <= UINT8_MAX
+							&& *endptr == '\0')
+				break;
+
+			bt_shell_printf("Invalid argument %s\n", argv[1]);
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
 		case 't':
 			type = strtol(optarg, NULL, 0);
 			break;
