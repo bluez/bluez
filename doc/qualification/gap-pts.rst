@@ -955,7 +955,7 @@ for which we know the test passed.
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - *yes* when asked if primary service                                 |
 |                        |          |         |       |                                                                         |
-|                        |          |         |       | - [bluetooth]# gatt.register-characteristic 0xAAAA read,write           |
+|                        |          |         |       | - [bluetooth]# gatt.register-characteristic 0xAAAA read,secure-write    |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - enter '1' when prompted                                             |
 |                        |          |         |       |                                                                         |
@@ -1917,11 +1917,13 @@ for which we know the test passed.
 |                        |          |         |       +-------------------------------------------------------------------------+
 |                        |          |         |       | On demand run in a first terminal:                                      |
 |                        |          |         |       |                                                                         |
-|                        |          |         |       | - btgatt-client -d <bdaddr>                                             |
+|                        |          |         |       | - btgatt-client -d <pts_bdaddr>                                         |
 |                        |          |         |       |                                                                         |
-|                        |          |         |       | Pair to PTS on demand                                                   |
+|                        |          |         |       | On pairing request by PTS, run 'bluetoothctl' on 2nd terminal:          |
 |                        |          |         |       |                                                                         |
-|                        |          |         |       | On demand run in a first terminal:                                      |
+|                        |          |         |       |   - [bluetooth]# pair <pts_bdaddr>                                      |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | After PTS requested a disconnect, run in a first terminal:              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | - 'sudo grep -A 1 LocalSignatureKey \                                   |
 |                        |          |         |       |   /var/lib/bluetooth/<iut_bdaddr>/<pts_bdaddr>/info | grep -v \         |
