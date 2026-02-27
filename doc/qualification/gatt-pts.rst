@@ -1158,6 +1158,8 @@ for which we know the test passed.
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
 | GATT/SR/GAI/BV-01-C    | PASS     |     6.1 | 5.69  | Run 'bluetoothctl':                                                     |
 |                        |          |         |       |                                                                         |
+|                        |          |         |       | - [bluetooth]# advertise on                                             |
+|                        |          |         |       |                                                                         |
 |                        |          |         |       | - [bluetooth]# gatt.register-service 0xFFFF                             |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - *yes* when asked if primary service                                 |
@@ -1165,6 +1167,8 @@ for which we know the test passed.
 |                        |          |         |       | - [bluetooth]# gatt.register-characteristic 0xAAAA read,write           |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - enter '1' when prompted                                             |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | - Wait until PTS prompts for sending an indication                      |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | - [bluetooth]# gatt.register-application                                |
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
