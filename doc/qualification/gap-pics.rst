@@ -832,7 +832,7 @@ Prerequisite: GAP 5/3 "Peripheral (LE)" OR GAP 38/3 "Peripheral (BR/EDR/LE)"
 | TSPC_GAP_21_8    | x        | Peripheral-initiated Feature Exchange        |
 |                  |          | procedure (C.1)                              |
 +------------------+----------+----------------------------------------------+
-| TSPC_GAP_21_9    | x        | Connection Parameter Request procedure (O)   |
+| TSPC_GAP_21_9    | x(1)     | Connection Parameter Request procedure (O)   |
 +------------------+----------+----------------------------------------------+
 | TSPC_GAP_21_10   |          | Data Length Update procedure (O)             |
 +------------------+----------+----------------------------------------------+
@@ -848,6 +848,15 @@ Prerequisite: GAP 5/3 "Peripheral (LE)" OR GAP 38/3 "Peripheral (BR/EDR/LE)"
   otherwise Optional.
 - C.2: Excluded IF SUM ICS 31/17 "Core v4.2" OR SUM ICS 31/18 "Core v4.2+HS",
   otherwise Optional.
+- (1) Only set of Bluetooth controller supports the HCI_LE_CONN_PARAM_REQ_PROC
+  LE feature, otherwise, GAP/CONN/CPUP/BV-08-C will fail.
+  # cat /sys/kernel/debug/bluetooth/hci0/features
+   0: ff ff ff fe db fd 7b 87
+   1: 02 00 00 00 00 00 00 00
+   2: 5f 02 00 00 00 00 00 00
+  LE: bd 5f 66 00 00 00 00 00
+      ^^
+      ++- This byte must have the 2nd bit (0x02) set.
 
 LE Capability Statement
 =======================
