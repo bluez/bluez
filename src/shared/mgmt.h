@@ -101,4 +101,5 @@ enum mgmt_io_capability {
 	MGMT_IO_CAPABILITY_INVALID		= 0xFF,
 };
 
+char *mgmt_iocap_generator(const char *text, int state);
 enum mgmt_io_capability mgmt_parse_io_capability(const char *capability);

@@ -1054,6 +1054,26 @@ uint16_t mgmt_get_mtu(struct mgmt *mgmt)
 	return mgmt->mtu;
 }
 
+char *mgmt_iocap_generator(const char *text, int state)
+{
+	static int index, len;
+	const char *arg;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	while ((arg = iocap_arguments[index].name)) {
+		index++;
+
+		if (!strncmp(arg, text, len))
+			return strdup(arg);
+	}
+
+	return NULL;
+}
+
 enum mgmt_io_capability mgmt_parse_io_capability(const char *capability)
 {
 	const char *arg;
