@@ -767,10 +767,6 @@ for which we know the test passed.
 |                      |          |         |       |   - bluetoothctl advertise.discoverable on                              |
 |                      |          |         |       |                                                                         |
 |                      |          |         |       |   - bluetoothctl advertise on                                           |
-|                      |          |         |       |                                                                         |
-|                      |          |         |       | - In a second terminal run to be able to see the requested passkey:     |
-|                      |          |         |       |                                                                         |
-|                      |          |         |       |   - sudo btmgmt                                                         |
 |                      |          |         |       +-------------------------------------------------------------------------+
 |                      |          |         |       | Post-condition:                                                         |
 |                      |          |         |       |                                                                         |
