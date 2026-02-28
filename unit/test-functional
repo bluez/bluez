@@ -1,0 +1,8 @@
+#!/bin/sh
+#
+# Examples:
+#
+#	./test-functional
+#	./test-functional --log-cli-level=0 -s
+#
+exec python3 -m pytest "$(dirname "$0")"/func_test "$@"
