@@ -31,6 +31,7 @@
 #include "src/shared/queue.h"
 #include "src/shared/shell.h"
 #include "src/shared/util.h"
+#include "services.h"
 
 #define DEFAULT_SOCKET_PATH	"/tmp/bt-stack-tester"
 
