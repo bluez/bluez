@@ -1950,9 +1950,16 @@ for which we know the test passed.
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |     - enter '1' when prompted                                           |
 |                        |          |         |       |                                                                         |
+|                        |          |         |       |   - [bluetooth]# gatt.register-characteristic 0xBBBB \                  |
+|                        |          |         |       |     authenticated-signed-writes                                         |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |     - enter '1' when prompted                                           |
+|                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# gatt.register-application                              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# advertise on                                           |
+|                        |          |         |       +-------------------------------------------------------------------------+
+|                        |          |         |       | Number of bytes of signed write characteristic => 1                     |
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
 | GAP/SEC/CSIGN/BI-01-C  | PASS     |     6.1 | 5.69  | Pre-condition:                                                          |
 |                        |          |         |       |                                                                         |
@@ -1967,6 +1974,11 @@ for which we know the test passed.
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |     - enter '1' when prompted                                           |
 |                        |          |         |       |                                                                         |
+|                        |          |         |       |   - [bluetooth]# gatt.register-characteristic 0xBBBB \                  |
+|                        |          |         |       |     authenticated-signed-writes                                         |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |     - enter '1' when prompted                                           |
+|                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# gatt.register-application                              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# advertise on                                           |
@@ -1974,6 +1986,8 @@ for which we know the test passed.
 |                        |          |         |       | On demand:                                                              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | - [PTS-GAP-2410]# disconnect                                            |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | Number of bytes of signed write characteristic => 1                     |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | No data update message => OK                                            |
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
@@ -1990,6 +2004,11 @@ for which we know the test passed.
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |     - enter '1' when prompted                                           |
 |                        |          |         |       |                                                                         |
+|                        |          |         |       |   - [bluetooth]# gatt.register-characteristic 0xBBBB \                  |
+|                        |          |         |       |     authenticated-signed-writes                                         |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |     - enter '1' when prompted                                           |
+|                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# gatt.register-application                              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# advertise on                                           |
@@ -1997,6 +2016,8 @@ for which we know the test passed.
 |                        |          |         |       | On demand:                                                              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | - [PTS-GAP-2410]# disconnect                                            |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | Number of bytes of signed write characteristic => 1                     |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | 2 update messages, out of 3 signed write commands => OK                 |
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
@@ -2013,6 +2034,11 @@ for which we know the test passed.
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |     - enter '1' when prompted                                           |
 |                        |          |         |       |                                                                         |
+|                        |          |         |       |   - [bluetooth]# gatt.register-characteristic 0xBBBB \                  |
+|                        |          |         |       |     authenticated-signed-writes                                         |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |     - enter '1' when prompted                                           |
+|                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# gatt.register-application                              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       |   - [bluetooth]# advertise on                                           |
@@ -2022,6 +2048,8 @@ for which we know the test passed.
 |                        |          |         |       | - [PTS-GAP-2410]# disconnect                                            |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | - [bluetooth]# remove <bdaddr>                                          |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | Number of bytes of signed write characteristic => 1                     |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | No data update message => OK                                            |
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
@@ -2045,6 +2073,8 @@ for which we know the test passed.
 |                        |          |         |       | On demand:                                                              |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | - [PTS-GAP-2410]# disconnect                                            |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | Number of bytes of signed write characteristic => 1                     |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | No data update message => OK                                            |
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
