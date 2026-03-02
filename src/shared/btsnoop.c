@@ -103,15 +103,23 @@ struct btsnoop *btsnoop_open(const char *path, unsigned long flags)
 		if (!(btsnoop->flags & BTSNOOP_FLAG_PKLG_SUPPORT))
 			goto failed;
 
-		/* Check for Apple Packet Logger format */
-		if (hdr.id[0] != 0x00 ||
-				(hdr.id[1] != 0x00 && hdr.id[1] != 0x01))
+		if (hdr.id[0] == 0x00 &&
+				(hdr.id[1] == 0x00 || hdr.id[1] == 0x01)) {
+			/* Apple Packet Logger format (big-endian) */
+			btsnoop->format = BTSNOOP_FORMAT_MONITOR;
+			btsnoop->index = 0xffff;
+			btsnoop->pklg_format = true;
+			btsnoop->pklg_v2 = false;
+		} else if (hdr.id[3] == 0x00 &&
+				(hdr.id[2] == 0x00 || hdr.id[2] == 0x01)) {
+			/* Apple Packet Logger format (little-endian) */
+			btsnoop->format = BTSNOOP_FORMAT_MONITOR;
+			btsnoop->index = 0xffff;
+			btsnoop->pklg_format = true;
+			btsnoop->pklg_v2 = true;
+		} else {
 			goto failed;
-
-		btsnoop->format = BTSNOOP_FORMAT_MONITOR;
-		btsnoop->index = 0xffff;
-		btsnoop->pklg_format = true;
-		btsnoop->pklg_v2 = (hdr.id[1] == 0x01);
+		}
 
 		/* Apple Packet Logger format has no header */
 		lseek(btsnoop->fd, 0, SEEK_SET);
