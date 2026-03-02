@@ -832,7 +832,7 @@ Prerequisite: GAP 5/3 "Peripheral (LE)" OR GAP 38/3 "Peripheral (BR/EDR/LE)"
 | TSPC_GAP_21_8    | x        | Peripheral-initiated Feature Exchange        |
 |                  |          | procedure (C.1)                              |
 +------------------+----------+----------------------------------------------+
-| TSPC_GAP_21_9    | x        | Connection Parameter Request procedure (O)   |
+| TSPC_GAP_21_9    | x(1)     | Connection Parameter Request procedure (O)   |
 +------------------+----------+----------------------------------------------+
 | TSPC_GAP_21_10   |          | Data Length Update procedure (O)             |
 +------------------+----------+----------------------------------------------+
@@ -848,6 +848,18 @@ Prerequisite: GAP 5/3 "Peripheral (LE)" OR GAP 38/3 "Peripheral (BR/EDR/LE)"
   otherwise Optional.
 - C.2: Excluded IF SUM ICS 31/17 "Core v4.2" OR SUM ICS 31/18 "Core v4.2+HS",
   otherwise Optional.
+- (1) Only set if Bluetooth controller supports the "Connection Parameters
+  Request procedure" LE feature, otherwise, GAP/CONN/CPUP/BV-08-C will fail.
+  To check for this feature, run in bluetoothctl:
+  - power off
+  - hci.open 0 user
+  - hci.cmd 0x2003
+    HCI Command complete:
+    00 bd 5f 66 00 00 00 00 00                       .._f.....       
+       ^^ 
+       ++- This byte must have the 2nd bit (0x02) set.
+  - hci.close
+  - power on
 
 LE Capability Statement
 =======================

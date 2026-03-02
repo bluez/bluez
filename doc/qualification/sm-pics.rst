@@ -149,14 +149,15 @@ Prerequisite: SM 1/2 "Peripheral Role (Responder)"
 +------------------+----------+----------------------------------------------+
 | Parameter Name   | Selected | Description                                  |
 +==================+==========+==============================================+
-| TSPC_SM_7b_1     | x        | Encryption Key (O)                           |
+| TSPC_SM_7b_1     | x        | Long Term Key (LTK) (C.1)                    |
 +------------------+----------+----------------------------------------------+
-| TSPC_SM_7b_2     | x        | Identity Key (O)                             |
+| TSPC_SM_7b_2     | x        | Identity Resolving Key (IRK) (O)             |
 +------------------+----------+----------------------------------------------+
-| TSPC_SM_7b_3     | x        | Signing Key (O)                              |
+| TSPC_SM_7b_3     | x        | Connection Signature Resolving Key (CRSK) (O)|
 +------------------+----------+----------------------------------------------+
 
 - O: Optional
+- C.1: Optional IF SM 2a/1 "Legacy pairing", otherwise Excluded.
 
 Key distribution and usage
 ==========================
