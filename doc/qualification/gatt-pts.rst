@@ -1099,6 +1099,25 @@ for which we know the test passed.
 |                        |          |         |       | Enter the handle displayed for the characteristic during                |
 |                        |          |         |       | register-application on handle request                                  |
 +------------------------+----------+---------+-------+-------------------------------------------------------------------------+
+| GATT/SR/GAW/BI-39-C    | PASS     |     6.1 | 5.69  | Pre-condition:                                                          |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | - Run 'bluetoothctl':                                                   |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |   - [bluetooth]# gatt.register-service 0xFFFF                           |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |     - *yes* when asked if primary service                               |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |   - [bluetooth]# gatt.register-characteristic 0xAAAA read,write         |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |     - enter '1' when prompted                                           |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       |   - [bluetooth]# gatt.register-application                              |
+|                        |          |         |       +-------------------------------------------------------------------------+
+|                        |          |         |       | Enter the handle displayed for the characteristic during                |
+|                        |          |         |       | register-application on handle request                                  |
+|                        |          |         |       |                                                                         |
+|                        |          |         |       | Enter '2' when asked for handle size                                    |
++------------------------+----------+---------+-------+-------------------------------------------------------------------------+
 | GATT/SR/GAN/BV-01-C    | PASS     |     6.1 | 5.69  | Run 'bluetoothctl advertise on'                                         |
 |                        |          |         |       |                                                                         |
 |                        |          |         |       | Run 'btgatt-server -r'                                                  |
