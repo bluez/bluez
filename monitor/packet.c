@@ -4502,7 +4502,7 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		packet_vendor_diag(tv, index, manufacturer, data, size);
 		break;
 	case BTSNOOP_OPCODE_SYSTEM_NOTE:
-		packet_system_note(tv, cred, index, data);
+		packet_system_note(tv, cred, index, data, size);
 		break;
 	case BTSNOOP_OPCODE_USER_LOGGING:
 		ul = data;
@@ -13817,11 +13817,16 @@ void packet_vendor_diag(struct timeval *tv, uint16_t index,
 	}
 }
 
-void packet_system_note(struct timeval *tv, struct ucred *cred,
-					uint16_t index, const void *message)
+void packet_system_note(struct timeval *tv, struct ucred *cred, uint16_t index,
+					const void *data, uint16_t size)
 {
-	print_packet(tv, cred, '=', index, NULL, COLOR_SYSTEM_NOTE,
-					"Note", message, NULL);
+	char *str = strndup(data, size);
+
+	if (str) {
+		print_packet(tv, cred, '=', index, NULL, COLOR_SYSTEM_NOTE,
+							"Note", str, NULL);
+		free(str);
+	}
 }
 
 struct monitor_l2cap_hdr {

@@ -118,8 +118,8 @@ void packet_index_info(struct timeval *tv, uint16_t index, const char *label,
 void packet_vendor_diag(struct timeval *tv, uint16_t index,
 					uint16_t manufacturer,
 					const void *data, uint16_t size);
-void packet_system_note(struct timeval *tv, struct ucred *cred,
-					uint16_t index, const void *message);
+void packet_system_note(struct timeval *tv, struct ucred *cred, uint16_t index,
+					const void *data, uint16_t size);
 void packet_user_logging(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint8_t priority,
 					const char *ident, const void *data,
