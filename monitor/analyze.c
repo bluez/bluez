@@ -225,13 +225,13 @@ static void conn_destroy(void *data)
 		str = "BR-ACL";
 		break;
 	case BTMON_CONN_LE:
-		str = "BR-SCO";
+		str = "LE-ACL";
 		break;
 	case BTMON_CONN_SCO:
-		str = "BR-ESCO";
+		str = "BR-SCO";
 		break;
 	case BTMON_CONN_ESCO:
-		str = "LE-ACL";
+		str = "BR-ESCO";
 		break;
 	case BTMON_CONN_CIS:
 		str = "LE-CIS";
