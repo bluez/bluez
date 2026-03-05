@@ -2767,6 +2767,7 @@ static void media_transport_emit_volume(struct media_transport *transport)
 int media_transport_get_a2dp_volume(struct btd_device *dev)
 {
 	GSList *l;
+	int volume;
 
 	if (dev == NULL)
 		return -1;
@@ -2793,7 +2794,11 @@ int media_transport_get_a2dp_volume(struct btd_device *dev)
 	 * of ordering between AVRCP and A2DP session start. (Note BAP+VCP do
 	 * not have this issue.)
 	 */
-	return btd_device_get_volume(dev);
+	volume = btd_device_get_volume(dev);
+	if (volume < 0)
+		volume = 127;
+
+	return volume;
 }
 
 void media_transport_set_a2dp_volume(struct btd_device *dev, int volume)
