@@ -96,20 +96,20 @@ for which we know the test passed.
 |                       |        |        |       | - Run:                                               |
 |                       |        |        |       |                                                      |
 |                       |        |        |       |   - btmon                                            |
+|                       |        |        |       +------------------------------------------------------+
+|                       |        |        |       | Look for "frame too long"                            |
 |                       |        |        |       |                                                      |
-|                       |        |        |       | - Look for "frame too long"                          |
-|                       |        |        |       |                                                      |
-|                       |        |        |       | - Answer PTS question with "yes"                     |
+|                       |        |        |       | Answer PTS question with "yes"                       |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
 | L2CAP/COS/CED/BI-09-C | PASS   |    6.1 | 5.69  | Pre-condition:                                       |
 |                       |        |        |       |                                                      |
 |                       |        |        |       | - Run:                                               |
 |                       |        |        |       |                                                      |
 |                       |        |        |       |   - btmon                                            |
+|                       |        |        |       +------------------------------------------------------+
+|                       |        |        |       | Look for "invalid signal packet size"                |
 |                       |        |        |       |                                                      |
-|                       |        |        |       | - Look for "invalid signal packet size"              |
-|                       |        |        |       |                                                      |
-|                       |        |        |       | - Answer PTS question with "yes"                     |
+|                       |        |        |       | Answer PTS question with "yes"                       |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
 | L2CAP/COS/CED/BI-11-C | PASS   |    6.1 | 5.69  |                                                      |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
@@ -118,30 +118,30 @@ for which we know the test passed.
 |                       |        |        |       | - Run:                                               |
 |                       |        |        |       |                                                      |
 |                       |        |        |       |   - btmon                                            |
+|                       |        |        |       +------------------------------------------------------+
+|                       |        |        |       | Look for "invalid signal packet size"                |
 |                       |        |        |       |                                                      |
-|                       |        |        |       | - Look for "invalid signal packet size"              |
-|                       |        |        |       |                                                      |
-|                       |        |        |       | - Answer PTS question with "yes"                     |
+|                       |        |        |       | Answer PTS question with "yes"                       |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
 | L2CAP/COS/CED/BI-16-C | PASS   |    6.1 | 5.69  | Pre-condition:                                       |
 |                       |        |        |       |                                                      |
 |                       |        |        |       | - Run:                                               |
 |                       |        |        |       |                                                      |
 |                       |        |        |       |   - btmon                                            |
+|                       |        |        |       +------------------------------------------------------+
+|                       |        |        |       | Look for "invalid signal packet size"                |
 |                       |        |        |       |                                                      |
-|                       |        |        |       | - Look for "invalid signal packet size"              |
-|                       |        |        |       |                                                      |
-|                       |        |        |       | - Answer PTS question with "yes"                     |
+|                       |        |        |       | Answer PTS question with "yes"                       |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
 | L2CAP/COS/CED/BI-17-C | PASS   |    6.1 | 5.69  | Pre-condition:                                       |
 |                       |        |        |       |                                                      |
 |                       |        |        |       | - Run:                                               |
 |                       |        |        |       |                                                      |
 |                       |        |        |       |   - btmon                                            |
+|                       |        |        |       +------------------------------------------------------+
+|                       |        |        |       | Look for "invalid signal packet size"                |
 |                       |        |        |       |                                                      |
-|                       |        |        |       | - Look for "invalid signal packet size"              |
-|                       |        |        |       |                                                      |
-|                       |        |        |       | - Answer PTS question with "yes"                     |
+|                       |        |        |       | Answer PTS question with "yes"                       |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
 | L2CAP/COS/CED/BI-29-C | PASS   | future | 5.69  | On request run:                                      |
 |                       |        |        |       |                                                      |
@@ -510,8 +510,8 @@ for which we know the test passed.
 |                       |        |        |       |                                                      |
 |                       |        |        |       |   - l2test -w -P 0x0027 -V le_public                 |
 |                       |        |        |       |                         -e $((0x78563412)) -b 10     |
-|                       |        |        |       |                                                      |
-|                       |        |        |       | - Result: 123456780A007F7F7F7F                       |
+|                       |        |        |       +------------------------------------------------------+
+|                       |        |        |       | Result: 123456780A007F7F7F7F                         |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
 | L2CAP/LE/CFC/BV-05-C  | PASS   |    6.1 | 5.69  |                                                      |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
@@ -533,8 +533,8 @@ for which we know the test passed.
 |                       |        |        |       | - Run:                                               |
 |                       |        |        |       |                                                      |
 |                       |        |        |       |   - l2test -r -V le_public -P 0x0027                 |
-|                       |        |        |       |                                                      |
-|                       |        |        |       | - On request terminate l2test                        |
+|                       |        |        |       +------------------------------------------------------|
+|                       |        |        |       | On request terminate l2test                          |
 +-----------------------+--------+--------+-------+------------------------------------------------------+
 | L2CAP/LE/CFC/BV-09-C  | PASS   |    6.1 | 5.69  | Pre-condition:                                       |
 |                       |        |        |       |                                                      |
