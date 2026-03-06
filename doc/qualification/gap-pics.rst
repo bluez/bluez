@@ -848,15 +848,18 @@ Prerequisite: GAP 5/3 "Peripheral (LE)" OR GAP 38/3 "Peripheral (BR/EDR/LE)"
   otherwise Optional.
 - C.2: Excluded IF SUM ICS 31/17 "Core v4.2" OR SUM ICS 31/18 "Core v4.2+HS",
   otherwise Optional.
-- (1) Only set of Bluetooth controller supports the HCI_LE_CONN_PARAM_REQ_PROC
-  LE feature, otherwise, GAP/CONN/CPUP/BV-08-C will fail.
-  # cat /sys/kernel/debug/bluetooth/hci0/features
-   0: ff ff ff fe db fd 7b 87
-   1: 02 00 00 00 00 00 00 00
-   2: 5f 02 00 00 00 00 00 00
-  LE: bd 5f 66 00 00 00 00 00
-      ^^
-      ++- This byte must have the 2nd bit (0x02) set.
+- (1) Only set if Bluetooth controller supports the "Connection Parameters
+  Request procedure" LE feature, otherwise, GAP/CONN/CPUP/BV-08-C will fail.
+  To check for this feature, run in bluetoothctl:
+  - power off
+  - hci.open 0 user
+  - hci.cmd 0x2003
+    HCI Command complete:
+    00 bd 5f 66 00 00 00 00 00                       .._f.....       
+       ^^ 
+       ++- This byte must have the 2nd bit (0x02) set.
+  - hci.close
+  - power on
 
 LE Capability Statement
 =======================
