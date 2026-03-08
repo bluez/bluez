@@ -1765,10 +1765,11 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-/* SetAbsoluteVolume requires at least version 1.4 and a category-2 */
+/* SetAbsoluteVolume requires at least version 1.4 and or category-2 */
 static bool avrcp_volume_supported(struct avrcp_data *data)
 {
-	if (!data || data->version < 0x0104)
+	if (!data || (data->version < 0x0104 &&
+		!(data->features & AVRCP_FEATURE_CATEGORY_2)))
 		return false;
 
 	if (btd_opts.avrcp.volume_category &&
@@ -4293,12 +4294,12 @@ static void target_init(struct avrcp *session)
 				(1 << AVRCP_EVENT_TRACK_REACHED_END) |
 				(1 << AVRCP_EVENT_SETTINGS_CHANGED);
 
-	if (target->version < 0x0104)
-		return;
-
 	if (avrcp_volume_supported(target))
 		session->supported_events |=
 				(1 << AVRCP_EVENT_VOLUME_CHANGED);
+
+	if (target->version < 0x0104)
+		return;
 
 	session->supported_events |=
 				(1 << AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED) |
