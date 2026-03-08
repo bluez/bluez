@@ -93,6 +93,7 @@ struct bt_gatt_client {
 	struct queue *notify_chrcs;
 	int next_reg_id;
 	unsigned int disc_id, nfy_id, nfy_mult_id, ind_id;
+	bool skip_secondary;
 
 	/*
 	 * Handles of the GATT Service and the Service Changed characteristic
@@ -1344,7 +1345,7 @@ secondary:
 	 * functionality of a device and is referenced from at least one
 	 * primary service on the device.
 	 */
-	if (queue_isempty(op->pending_svcs))
+	if (queue_isempty(op->pending_svcs) || client->skip_secondary)
 		goto done;
 
 	/* Discover secondary services */
@@ -2106,7 +2107,7 @@ done:
 	notify_client_ready(client, success, att_ecode);
 }
 
-static bool gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
+bool bt_gatt_client_init(struct bt_gatt_client *client, uint16_t mtu)
 {
 	struct discovery_op *op;
 
@@ -2549,7 +2550,6 @@ fail:
 
 struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 							struct bt_att *att,
-							uint16_t mtu,
 							uint8_t features)
 {
 	struct bt_gatt_client *client;
@@ -2560,11 +2560,6 @@ struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 	client = gatt_client_new(db, att, features);
 	if (!client)
 		return NULL;
-
-	if (!gatt_client_init(client, mtu)) {
-		bt_gatt_client_free(client);
-		return NULL;
-	}
 
 	return bt_gatt_client_ref(client);
 }
@@ -2590,6 +2585,17 @@ struct bt_gatt_client *bt_gatt_client_clone(struct bt_gatt_client *client)
 	clone->ready = client->ready;
 
 	return bt_gatt_client_ref(clone);
+}
+
+bool bt_gatt_client_set_skip_secondary(struct bt_gatt_client *client,
+								bool skip)
+{
+	if (!client)
+		return false;
+
+	client->skip_secondary = skip;
+
+	return true;
 }
 
 struct bt_gatt_client *bt_gatt_client_ref(struct bt_gatt_client *client)
