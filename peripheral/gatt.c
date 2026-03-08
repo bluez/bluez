@@ -121,9 +121,10 @@ static struct gatt_conn *gatt_conn_new(int fd)
 		return NULL;
 	}
 
-	conn->client = bt_gatt_client_new(gatt_cache, conn->att, mtu, 0);
-	if (!conn->gatt) {
+	conn->client = bt_gatt_client_new(gatt_cache, conn->att, 0);
+	if (!conn->client || !bt_gatt_client_init(conn->client, mtu)) {
 		fprintf(stderr, "Failed to create GATT client\n");
+		bt_gatt_client_unref(conn->client);
 		bt_gatt_server_unref(conn->gatt);
 		bt_att_unref(conn->att);
 		free(conn);
