@@ -4296,9 +4296,16 @@ static void target_init(struct avrcp *session)
 	if (target->version < 0x0104)
 		return;
 
-	if (avrcp_volume_supported(target))
+	if (avrcp_volume_supported(target)) {
 		session->supported_events |=
 				(1 << AVRCP_EVENT_VOLUME_CHANGED);
+		/* Check if transport volume hasn't been initialized then set it
+		 * to max so it works properly if the controller attempts to
+		 * subscribe to AVRCP_EVENT_VOLUME_CHANGED.
+		 */
+		if (media_transport_get_a2dp_volume(session->dev) < 0)
+			media_transport_set_a2dp_volume(session->dev, 127);
+	}
 
 	session->supported_events |=
 				(1 << AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED) |
