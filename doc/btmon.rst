@@ -1568,6 +1568,319 @@ channel, note the Source CID and Destination CID from the Connection
 Request/Response pair. Then search for those CIDs in subsequent data
 frames.
 
+LE AUDIO PROTOCOL FLOW
+=======================
+
+LE Audio uses a multi-layer protocol stack visible in btmon traces.
+The setup sequence involves ATT operations on specific GATT
+characteristics (PACS, ASCS) followed by HCI-level CIS/BIG
+management. btmon fully decodes all layers.
+
+PACS: Published Audio Capabilities
+------------------------------------
+
+Before audio streaming begins, devices exchange codec capabilities
+via the Published Audio Capabilities Service (PACS). The client reads
+PACS characteristics to learn what the remote device supports.
+
+**Sink PAC read** (remote device's receive capabilities)::
+
+    < ACL Data TX: Handle 2048 flags 0x00 dlen 7    #550 [hci0] 0.824003
+          ATT: Read Request (0x0a) len 2
+            Handle: 0x0075
+
+    > ACL Data RX: Handle 2048 flags 0x02 dlen 30   #552 [hci0] 0.886556
+          ATT: Read Response (0x0b) len 25
+            Handle: 0x0075
+              Number of PAC(s): 1
+              Codec: LC3 (0x06)
+              Codec Specific Capabilities: #0
+                Sampling Frequency: 8000 Hz 16000 Hz 24000 Hz 32000 Hz 48000 Hz
+                Frame Duration: 7.5 ms 10 ms
+                Audio Channel Counts: 1
+                Frame Length: 26 - 240
+
+The PAC record shows codec capabilities using LTV (Length-Type-Value)
+encoding. Key fields:
+
+- **Codec** -- ``LC3 (0x06)`` is the mandatory LE Audio codec
+- **Sampling Frequency** -- Supported sample rates (bitmask)
+- **Frame Duration** -- Supported frame durations (7.5 ms and/or 10 ms)
+- **Audio Channel Counts** -- Supported channel counts
+- **Frame Length** -- Min and max octets per codec frame
+
+**Audio Locations** (channel assignment)::
+
+    > ACL Data RX: Handle 2048 flags 0x02 dlen 9    #554 [hci0] 0.948003
+          ATT: Read Response (0x0b) len 4
+            Handle: 0x0077
+              Location: Front Left
+
+**Available Audio Contexts** (current use cases)::
+
+    > ACL Data RX: Handle 2048 flags 0x02 dlen 9    #558 [hci0] 1.012556
+          ATT: Read Response (0x0b) len 4
+            Handle: 0x007b
+              Sink Context: Media Conversational
+              Source Context: Unspecified
+
+ASCS: Audio Stream Control
+----------------------------
+
+The Audio Stream Control Service (ASCS) manages the ASE (Audio Stream
+Endpoint) state machine. Each ASE transitions through a defined set
+of states as streaming is set up and torn down.
+
+**ASE State Machine**::
+
+    Idle ──► Codec Configured ──► QoS Configured ──► Enabling ──► Streaming
+                                                                      │
+    Idle ◄── Releasing ◄──────── Disabling ◄─────────────────────────┘
+
+**ASE Status notification** (state change)::
+
+    > ACL Data RX: Handle 2048 flags 0x02 dlen 20   #580 [hci0] 1.456003
+          ATT: Handle Value Notification (0x1b) len 15
+            Handle: 0x0088
+              ASE ID: 0x01
+              State: Codec Configured (0x01)
+                Framing: Unframed PDUs supported (0x00)
+                PHY: 0x02
+                  LE 2M PHY (0x02)
+                RTN: 2
+                Max Transport Latency: 10
+                Presentation Delay Min: 20000 us
+                Presentation Delay Max: 40000 us
+                Preferred Presentation Delay Min: 20000 us
+                Preferred Presentation Delay Max: 40000 us
+                Codec: LC3 (0x06)
+                  Sampling Frequency: 48000 Hz
+                  Frame Duration: 10 ms
+                  Audio Channel Allocation: Front Left
+                  Frame Length: 120
+
+**ASE Control Point operations** drive state transitions. The client
+writes to the ASE Control Point characteristic to issue commands::
+
+    < ACL Data TX: Handle 2048 flags 0x00 dlen 25   #582 [hci0] 1.518003
+          ATT: Write Request (0x12) len 20
+            Handle: 0x008b
+              ASE Control Point: Config Codec (0x01)
+                ASE ID: 0x01
+                Target Latency: Low Latency (0x01)
+                PHY: LE 2M PHY
+                Codec: LC3 (0x06)
+                  Sampling Frequency: 48000 Hz
+                  Frame Duration: 10 ms
+                  Audio Channel Allocation: Front Left
+                  Frame Length: 120
+
+ASE Control Point commands:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 10 25 65
+
+   * - Opcode
+     - Command
+     - Purpose
+   * - 0x01
+     - Config Codec
+     - Select codec and parameters (Idle → Codec Configured)
+   * - 0x02
+     - Config QoS
+     - Set CIG/CIS IDs and QoS params (Codec Configured → QoS Configured)
+   * - 0x03
+     - Enable
+     - Start ASE with metadata (QoS Configured → Enabling)
+   * - 0x04
+     - Receiver Start Ready
+     - Signal receiver readiness (Enabling → Streaming, server-side)
+   * - 0x05
+     - Disable
+     - Stop streaming (Streaming → Disabling)
+   * - 0x06
+     - Receiver Stop Ready
+     - Signal receiver stopped
+   * - 0x07
+     - Update Metadata
+     - Change metadata during streaming
+   * - 0x08
+     - Release
+     - Tear down ASE (any → Releasing → Idle)
+
+CIS Setup and Teardown
+------------------------
+
+After ASE QoS Configuration, the host creates Connected Isochronous
+Streams (CIS) at the HCI level.
+
+**CIG Parameters** (configure the CIS group)::
+
+    < HCI Command: LE Set CIG Parameters (0x08|0x0062) plen 26  #590 [hci0] 1.624003
+          CIG ID: 0x00
+          Central to Peripheral SDU Interval: 10000 us
+          Peripheral to Central SDU Interval: 10000 us
+          SCA: 0x00
+          Packing: Sequential (0x00)
+          Framing: Unframed (0x00)
+          Central to Peripheral Max Latency: 10 ms
+          Peripheral to Central Max Latency: 10 ms
+          Number of CIS: 1
+          CIS ID: 0x00
+          Central to Peripheral Max SDU: 120
+          Peripheral to Central Max SDU: 0
+          Central to Peripheral PHY: LE 2M PHY
+          Peripheral to Central PHY: LE 2M PHY
+          Central to Peripheral RTN: 2
+          Peripheral to Central RTN: 2
+
+    > HCI Event: Command Complete (0x0e) plen 8              #592 [hci0] 1.624556
+          LE Set CIG Parameters (0x08|0x0062) ncmd 1
+            Status: Success (0x00)
+            CIG ID: 0x00
+            Number of Handles: 1
+            Connection Handle: 2064
+
+**CIS Creation**::
+
+    < HCI Command: LE Create CIS (0x08|0x0064) plen 9       #594 [hci0] 1.688003
+          Number of CIS: 1
+          CIS Handle: 2064
+          ACL Handle: 2048
+
+    > HCI Event: LE Meta Event (0x3e) plen 29                #596 [hci0] 1.756556
+          LE CIS Established (0x19)
+            Status: Success (0x00)
+            Connection Handle: 2064
+            CIG Sync Delay: 5000 us
+            CIS Sync Delay: 5000 us
+            Central to Peripheral Latency: 10000 us
+            Peripheral to Central Latency: 10000 us
+            Central to Peripheral PHY: LE 2M PHY
+            Peripheral to Central PHY: LE 2M PHY
+            NSE: 3
+            Central to Peripheral BN: 1
+            Peripheral to Central BN: 0
+            Central to Peripheral FT: 2
+            Peripheral to Central FT: 2
+            Max PDU C to P: 120
+            Max PDU P to C: 0
+            ISO Interval: 10.00 msec (0x0008)
+
+Note that the CIS Handle (2064) is different from the ACL Handle
+(2048). CIS data packets use the CIS handle.
+
+**ISO Data Path Setup**::
+
+    < HCI Command: LE Setup ISO Data Path (0x08|0x006e) plen 13  #598 [hci0] 1.820003
+          Handle: 2064
+          Data Path Direction: Input (Host to Controller) (0x00)
+          Data Path ID: HCI (0x00)
+          Coding Format: LC3 (0x06)
+          Company ID: 0x0000
+          Vendor Codec ID: 0x0000
+          Controller Delay: 0 us
+
+After this, ISO data packets flow on the CIS handle::
+
+    < ISO Data TS: Handle 2064 flags 0x02 dlen 124  #600 [hci0] 1.884003
+
+Broadcast Audio (BIG)
+----------------------
+
+Broadcast Isochronous Streams use BIG (Broadcast Isochronous Group)
+instead of CIS. The setup involves periodic advertising with BASE
+(Broadcast Audio Source Endpoint) announcements.
+
+**BASE announcement** (in periodic advertising data)::
+
+    > HCI Event: LE Meta Event (0x3e) plen 80                #200 [hci0] 0.500003
+          LE Periodic Advertising Report (0x0f)
+            ...
+            Service Data: Basic Audio Announcement (0x1851)
+              Presentation Delay: 40000 us
+              Number of Subgroups: 1
+                Number of BIS: 2
+                Codec: LC3 (0x06)
+                  Sampling Frequency: 48000 Hz
+                  Frame Duration: 10 ms
+                  Frame Length: 120
+                BIS #1
+                  Audio Channel Allocation: Front Left
+                BIS #2
+                  Audio Channel Allocation: Front Right
+
+**BIG creation** (source side)::
+
+    < HCI Command: LE Create BIG (0x08|0x0068) plen 31      #210 [hci0] 0.600003
+          BIG Handle: 0x00
+          Advertising Handle: 0x01
+          Number of BIS: 2
+          SDU Interval: 10000 us
+          Max SDU: 120
+          Max Latency: 10 ms
+          RTN: 2
+          PHY: LE 2M PHY
+          Packing: Sequential (0x00)
+          Framing: Unframed (0x00)
+          Encryption: Unencrypted (0x00)
+
+**BIG sync** (receiver side)::
+
+    < HCI Command: LE BIG Create Sync (0x08|0x006b) plen 15  #220 [hci0] 0.700003
+          BIG Handle: 0x00
+          Sync Handle: 0x0001
+          Encryption: Unencrypted (0x00)
+          Number of BIS: 2
+          BIS: 0x01
+          BIS: 0x02
+
+Automating LE Audio Analysis
+------------------------------
+
+**Identify LE Audio activity**::
+
+    grep -n "ASE Control Point\|ASE ID\|State:.*Codec Configured\|State:.*QoS Configured\|State:.*Enabling\|State:.*Streaming\|State:.*Releasing" output.txt
+
+**Track ASE state transitions** for a specific ASE::
+
+    grep -n "ASE ID:" output.txt
+
+Then examine the ``State:`` line following each ASE ID match.
+
+**Check codec configuration**::
+
+    grep -n "Codec: LC3\|Sampling Frequency:\|Frame Duration:\|Frame Length:\|Audio Channel" output.txt
+
+**Verify CIS establishment**::
+
+    grep -n "Set CIG Parameters\|Create CIS\|CIS Established\|Setup ISO Data Path" output.txt
+
+**Detect CIS failures** -- check the Status field after
+``CIS Established``::
+
+    grep -n "CIS Established" output.txt
+
+Then examine the following line for ``Status:``.
+
+**Detect broadcast audio**::
+
+    grep -n "Basic Audio Announcement\|Create BIG\|BIG Complete\|BIG Create Sync\|BIG Sync" output.txt
+
+**Full LE Audio diagnosis pattern**:
+
+1. Find PACS reads -- verify codec compatibility between devices
+2. Find ASE Control Point writes -- trace the Config Codec → Config
+   QoS → Enable sequence
+3. Find ASE state notifications -- verify each transition succeeds
+4. Find CIG Parameters and CIS creation -- verify HCI-level setup
+5. Find ``CIS Established`` -- check Status for success
+6. Find ``Setup ISO Data Path`` -- verify data path configuration
+7. Find ISO Data packets -- confirm audio is flowing
+8. On failure, check ASE Control Point notification responses for
+   error codes (Response Code and Response Reason fields)
+
 EXAMPLES
 ========
 
@@ -1633,7 +1946,8 @@ Recommended Workflow
 
        grep -n "Pairing Request\|Pairing Response\|Pairing Failed\|Encryption Change" output.txt
 
-6. **Identify LE Audio**: Search for ASCS and CIS activity::
+6. **Identify LE Audio**: Search for ASCS and CIS activity (see
+   `LE AUDIO PROTOCOL FLOW`_)::
 
        grep -n "ASE Control Point\|CIG Parameters\|Create Connected Isochronous\|CIS Established\|Setup ISO Data Path" output.txt
 
@@ -1680,7 +1994,8 @@ pattern in the trace:
    `L2CAP CHANNEL TRACKING`_ for channel setup.
 5. ``Disconnect Complete`` -- connection ended, check Reason field
 
-For LE Audio connections, additional steps appear between 3 and 5:
+For LE Audio connections, additional steps appear between 3 and 5
+(see `LE AUDIO PROTOCOL FLOW`_ for full details):
 
 - ATT operations on PACS/ASCS characteristics (codec negotiation)
 - ``LE Set CIG Parameters`` command and response
@@ -1705,6 +2020,15 @@ Common Debugging Scenarios
    succeeded
 5. If no SMP traffic on reconnect but ``Encryption Change`` fails,
    the bond was lost on one side
+
+**Audio streaming failure diagnosis** (see `LE AUDIO PROTOCOL FLOW`_):
+
+1. Check PACS reads -- do both devices support compatible codecs?
+2. Check ASE Control Point Config Codec -- was it accepted?
+3. Check ASE state notifications -- did the ASE reach Streaming?
+4. Check ``CIS Established`` -- was Status Success?
+5. Check ``Setup ISO Data Path`` -- was it configured?
+6. Check for ISO Data packets -- is audio actually flowing?
 
 **Connection parameter negotiation failure**:
 
