@@ -1881,6 +1881,187 @@ Then examine the following line for ``Status:``.
 8. On failure, check ASE Control Point notification responses for
    error codes (Response Code and Response Reason fields)
 
+PROTOCOL ERROR CODES
+=====================
+
+btmon automatically decodes error codes from multiple protocol layers.
+This section provides a reference for interpreting errors seen across
+ATT, SMP, and L2CAP layers.
+
+ATT Error Codes
+----------------
+
+ATT errors appear in ``Error Response (0x01)`` PDUs. Beyond the GATT
+discovery context (where ``Attribute Not Found`` is normal), these
+errors indicate real problems:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 8 35 57
+
+   * - Code
+     - Error
+     - Diagnostic Meaning
+   * - 0x01
+     - Invalid Handle
+     - Client used a handle that does not exist
+   * - 0x02
+     - Read Not Permitted
+     - Characteristic does not allow reads
+   * - 0x03
+     - Write Not Permitted
+     - Characteristic does not allow writes
+   * - 0x05
+     - Authentication Insufficient
+     - Operation requires an authenticated (MITM-protected)
+       bond. Triggers SMP pairing if not yet bonded.
+   * - 0x06
+     - Request Not Supported
+     - Server does not support this ATT operation
+   * - 0x07
+     - Invalid Offset
+     - Read/write blob offset exceeds attribute length
+   * - 0x08
+     - Authorization Insufficient
+     - Server requires additional authorization
+   * - 0x09
+     - Prepare Queue Full
+     - Too many prepared writes queued
+   * - 0x0a
+     - Attribute Not Found
+     - No attributes in requested range. Normal termination
+       for GATT discovery procedures.
+   * - 0x0b
+     - Attribute Not Long
+     - Attribute cannot be read with Read Blob
+   * - 0x0c
+     - Insufficient Encryption Key Size
+     - Encryption key is too short
+   * - 0x0d
+     - Invalid Attribute Value Length
+     - Write value length is incorrect for this attribute
+   * - 0x0e
+     - Unlikely Error
+     - Generic unlikely error
+   * - 0x0f
+     - Insufficient Encryption
+     - Link is not encrypted. Triggers encryption setup.
+   * - 0x10
+     - Unsupported Group Type
+     - Attribute type is not a valid grouping type
+   * - 0x11
+     - Insufficient Resources
+     - Server out of resources
+   * - 0x12
+     - Value Not Allowed
+     - Value is not within permitted range
+   * - 0x80-0x9f
+     - Application Error
+     - Application-specific error; meaning depends on the
+       profile/service. ASCS uses these for ASE-specific
+       errors.
+   * - 0xfc
+     - Write Request Rejected
+     - Write rejected (CSIP, ASCS)
+   * - 0xfd
+     - CCC Descriptor Improperly Configured
+     - CCC must be enabled before certain operations
+   * - 0xfe
+     - Procedure Already in Progress
+     - Another procedure is already running
+   * - 0xff
+     - Out of Range
+     - Value is outside valid range
+
+L2CAP Connection Response Results
+----------------------------------
+
+L2CAP Connection Response and LE Connection Response include a result
+code:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 8 35 57
+
+   * - Code
+     - Result
+     - Diagnostic Meaning
+   * - 0x0000
+     - Connection successful
+     - Channel established normally
+   * - 0x0001
+     - Connection pending
+     - Connection in progress (BR/EDR only)
+   * - 0x0002
+     - Connection refused - PSM not supported
+     - Remote does not have a server for this protocol
+   * - 0x0003
+     - Connection refused - security block
+     - Security requirements not met
+   * - 0x0004
+     - Connection refused - no resources
+     - Remote ran out of channel resources
+   * - 0x0005
+     - Connection refused - invalid Source CID
+     - Source CID is invalid or already in use
+   * - 0x0006
+     - Connection refused - Source CID already allocated
+     - CID collision
+   * - 0x0007
+     - Connection refused - unacceptable parameters
+     - LE credit-based: MTU, MPS, or credits unacceptable
+   * - 0x0008
+     - Connection refused - invalid parameters
+     - Parameter values are invalid
+   * - 0x0009
+     - Connection refused - insufficient authentication
+     - Not authenticated
+   * - 0x000a
+     - Connection refused - insufficient authorization
+     - Not authorized
+   * - 0x000b
+     - Connection refused - insufficient encryption key size
+     - Encryption key too short
+   * - 0x000c
+     - Connection refused - insufficient encryption
+     - Link not encrypted
+
+Automating Error Detection
+---------------------------
+
+**Find all ATT errors** (excluding normal discovery termination)::
+
+    grep -n "Error Response" output.txt
+
+Then check whether each error is ``Attribute Not Found (0x0a)``
+within a discovery sequence (normal) or a different error code
+(problem).
+
+**Find all authentication/encryption related errors**::
+
+    grep -n "Authentication Insufficient\|Insufficient Encryption\|Insufficient Security\|security block" output.txt
+
+These indicate the link needs pairing or encryption. Check whether
+SMP pairing follows.
+
+**Find all L2CAP channel rejections**::
+
+    grep -n "Connection refused" output.txt
+
+**Cross-layer error correlation**:
+
+Errors often cascade across layers. Common patterns:
+
+1. ATT ``Insufficient Encryption`` (0x0f) → triggers HCI
+   ``LE Start Encryption`` → ``Encryption Change`` success → ATT
+   operation retried
+2. ATT ``Authentication Insufficient`` (0x05) → triggers SMP
+   ``Pairing Request`` → pairing completes → ATT operation retried
+3. SMP ``Pairing Failed`` → ``Disconnect Complete`` with reason
+   ``Authentication Failure (0x05)``
+4. L2CAP ``Connection refused - security block`` → triggers SMP
+   pairing
+
 EXAMPLES
 ========
 
@@ -1951,9 +2132,20 @@ Recommended Workflow
 
        grep -n "ASE Control Point\|CIG Parameters\|Create Connected Isochronous\|CIS Established\|Setup ISO Data Path" output.txt
 
-7. **Check for errors**: Search for non-success status codes::
+7. **Check for errors**: Search across all protocol layers (see
+   `PROTOCOL ERROR CODES`_)::
 
+       # HCI-level errors
        grep -n "Status:" output.txt | grep -v "Success"
+
+       # ATT-level errors
+       grep -n "Error Response" output.txt
+
+       # SMP failures
+       grep -n "Pairing Failed" output.txt
+
+       # L2CAP rejections
+       grep -n "Connection refused" output.txt
 
 8. **Extract GATT discovery**: Filter the GATT service/characteristic
    discovery traffic (see `RECONSTRUCTING A GATT DATABASE FROM SNOOP
@@ -1991,8 +2183,10 @@ pattern in the trace:
    precedes this.
 4. ACL Data with ATT/SMP/L2CAP -- service discovery and data exchange.
    See `RECONSTRUCTING A GATT DATABASE FROM SNOOP TRACES`_ for GATT,
-   `L2CAP CHANNEL TRACKING`_ for channel setup.
-5. ``Disconnect Complete`` -- connection ended, check Reason field
+   `L2CAP CHANNEL TRACKING`_ for channel setup, and
+   `PROTOCOL ERROR CODES`_ for error interpretation.
+5. ``Disconnect Complete`` -- connection ended, check Reason field.
+   See `HCI ERROR AND DISCONNECT REASON CODES`_ for reason codes.
 
 For LE Audio connections, additional steps appear between 3 and 5
 (see `LE AUDIO PROTOCOL FLOW`_ for full details):
@@ -2029,6 +2223,15 @@ Common Debugging Scenarios
 4. Check ``CIS Established`` -- was Status Success?
 5. Check ``Setup ISO Data Path`` -- was it configured?
 6. Check for ISO Data packets -- is audio actually flowing?
+
+**GATT operation rejected** (see `PROTOCOL ERROR CODES`_):
+
+1. Find ``Error Response`` -- note the error code
+2. ``Insufficient Encryption`` (0x0f) → expect ``LE Start Encryption``
+   to follow
+3. ``Authentication Insufficient`` (0x05) → expect SMP pairing to
+   follow
+4. After security is established, the ATT operation should be retried
 
 **Connection parameter negotiation failure**:
 
