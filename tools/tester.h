@@ -34,6 +34,16 @@
 #define TS_TX_RECORD_MASK		(SOF_TIMESTAMPING_TX_RECORD_MASK | \
 						SOF_TIMESTAMPING_TX_COMPLETION)
 
+#ifndef BT_PKT_SEQNUM
+#define BT_PKT_SEQNUM		22
+#endif
+#ifndef BT_SCM_PKT_SEQNUM
+#define BT_SCM_PKT_SEQNUM	0x05
+#endif
+#ifndef BT_SCM_PKT_ISO_TS
+#define BT_SCM_PKT_ISO_TS	0x06
+#endif
+
 struct tx_tstamp_data {
 	struct {
 		uint32_t id;

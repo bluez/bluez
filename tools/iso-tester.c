@@ -522,6 +522,9 @@ struct iso_client_data {
 	 * Used for testing TX timestamping OPT_ID.
 	 */
 	unsigned int repeat_send;
+
+	/* Set HW timestamp on sent packets */
+	bool set_hw_tstamp;
 };
 
 typedef bool (*iso_defer_accept_t)(struct test_data *data, GIOChannel *io,
@@ -1074,6 +1077,16 @@ static const struct iso_client_data connect_send_swhw_timestamping = {
 					SOF_TIMESTAMPING_OPT_TX_SWHW),
 	.repeat_send = 1,
 	.repeat_send_pre_ts = 2,
+};
+
+static const struct iso_client_data connect_send_set_hw_timestamp = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.so_timestamping = (SOF_TIMESTAMPING_RAW_HARDWARE |
+					SOF_TIMESTAMPING_OPT_ID |
+					SOF_TIMESTAMPING_TX_HARDWARE),
+	.set_hw_tstamp = true,
 };
 
 static const struct iso_client_data listen_16_2_1_recv = {
@@ -1710,6 +1723,9 @@ static void bthost_recv_data(const void *buf, uint16_t len, bool ts,
 			tester_test_failed();
 	} else if (!data->step)
 		tester_test_passed();
+
+	if (isodata->set_hw_tstamp && (timestamp != 0x1234 || sn != 1234))
+		tester_test_failed();
 }
 
 static void bthost_iso_disconnected(void *user_data)
@@ -2629,15 +2645,24 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 	int sk;
 	int err;
 	unsigned int count;
-	int64_t interval = 10000000ULL;
+	int64_t interval = 10000000ULL, hw_base;
 
 	if (!(isodata->so_timestamping & TS_TX_RECORD_MASK))
 		return;
 
 	tester_print("Enabling TX timestamping");
 
+	/* Note: these depend on emulator/btdev.c details */
+	if (!isodata->set_hw_tstamp) {
+		interval = 10000000ULL;
+		hw_base = (isodata->repeat_send_pre_ts + 1)*interval;
+	} else {
+		hw_base = 0x1234 * 1000 + 10000000ULL;
+		interval = 0;
+	}
+
 	tx_tstamp_init(&data->tx_ts, isodata->so_timestamping, false,
-			(isodata->repeat_send_pre_ts + 1)*interval, interval);
+			hw_base, interval);
 
 	for (count = 0; count < isodata->repeat_send + 1; ++count)
 		data->step += tx_tstamp_expect(&data->tx_ts, 0);
@@ -2661,12 +2686,12 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 static void iso_send_data(struct test_data *data, GIOChannel *io)
 {
 	const struct iso_client_data *isodata = data->test_data;
-	char control[CMSG_SPACE(sizeof(uint32_t))];
+	char control[3 * CMSG_SPACE(sizeof(uint32_t))];
 	struct msghdr msg = {
 		.msg_iov = (struct iovec *)isodata->send,
 		.msg_iovlen = 1,
 	};
-	struct cmsghdr *cmsg;
+	struct cmsghdr *cmsg = NULL;
 	ssize_t ret;
 	int sk;
 
@@ -2674,18 +2699,37 @@ static void iso_send_data(struct test_data *data, GIOChannel *io)
 
 	sk = g_io_channel_unix_get_fd(io);
 
-	if (isodata->cmsg_timestamping) {
-		memset(control, 0, sizeof(control));
-		msg.msg_control = control;
-		msg.msg_controllen = sizeof(control);
+	memset(control, 0, sizeof(control));
+	msg.msg_control = control;
+	msg.msg_controllen = 0;
 
-		cmsg = CMSG_FIRSTHDR(&msg);
+	if (isodata->cmsg_timestamping) {
+		msg.msg_controllen += CMSG_SPACE(sizeof(uint32_t));
+		cmsg = cmsg ? CMSG_NXTHDR(&msg, cmsg) : CMSG_FIRSTHDR(&msg);
+
 		cmsg->cmsg_level = SOL_SOCKET;
 		cmsg->cmsg_type = SO_TIMESTAMPING;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(uint32_t));
-
 		*((uint32_t *)CMSG_DATA(cmsg)) = (isodata->so_timestamping &
 					TS_TX_RECORD_MASK);
+	}
+
+	if (isodata->set_hw_tstamp) {
+		msg.msg_controllen += CMSG_SPACE(sizeof(uint32_t));
+		cmsg = cmsg ? CMSG_NXTHDR(&msg, cmsg) : CMSG_FIRSTHDR(&msg);
+
+		cmsg->cmsg_level = SOL_BLUETOOTH;
+		cmsg->cmsg_type = BT_SCM_PKT_ISO_TS;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(uint32_t));
+		*((uint32_t *)CMSG_DATA(cmsg)) = 0x1234;
+
+		msg.msg_controllen += CMSG_SPACE(sizeof(uint16_t));
+		cmsg = CMSG_NXTHDR(&msg, cmsg);
+
+		cmsg->cmsg_level = SOL_BLUETOOTH;
+		cmsg->cmsg_type = BT_SCM_PKT_SEQNUM;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(uint16_t));
+		*((uint16_t *)CMSG_DATA(cmsg)) = 1234;
 	}
 
 	ret = sendmsg(sk, &msg, 0);
@@ -4124,6 +4168,10 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO Send - SWHW Timestamping",
 			&connect_send_swhw_timestamping, setup_powered,
+			test_connect);
+
+	test_iso("ISO Send - Set HW Timestamp",
+			&connect_send_set_hw_timestamp, setup_powered,
 			test_connect);
 
 	test_iso("ISO Receive - Success", &listen_16_2_1_recv, setup_powered,
