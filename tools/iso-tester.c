@@ -1051,6 +1051,31 @@ static const struct iso_client_data connect_send_tx_cmsg_timestamping = {
 	.cmsg_timestamping = true,
 };
 
+static const struct iso_client_data connect_send_hw_timestamping = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.so_timestamping = (SOF_TIMESTAMPING_RAW_HARDWARE |
+					SOF_TIMESTAMPING_OPT_ID |
+					SOF_TIMESTAMPING_TX_HARDWARE),
+	.repeat_send = 1,
+	.repeat_send_pre_ts = 2,
+};
+
+static const struct iso_client_data connect_send_swhw_timestamping = {
+	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.so_timestamping = (SOF_TIMESTAMPING_RAW_HARDWARE |
+					SOF_TIMESTAMPING_SOFTWARE |
+					SOF_TIMESTAMPING_OPT_ID |
+					SOF_TIMESTAMPING_TX_HARDWARE |
+					SOF_TIMESTAMPING_TX_SOFTWARE |
+					SOF_TIMESTAMPING_OPT_TX_SWHW),
+	.repeat_send = 1,
+	.repeat_send_pre_ts = 2,
+};
+
 static const struct iso_client_data listen_16_2_1_recv = {
 	.qos = QOS_16_2_1,
 	.expect_err = 0,
@@ -2604,13 +2629,15 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 	int sk;
 	int err;
 	unsigned int count;
+	int64_t interval = 10000000ULL;
 
 	if (!(isodata->so_timestamping & TS_TX_RECORD_MASK))
 		return;
 
 	tester_print("Enabling TX timestamping");
 
-	tx_tstamp_init(&data->tx_ts, isodata->so_timestamping, false);
+	tx_tstamp_init(&data->tx_ts, isodata->so_timestamping, false,
+			(isodata->repeat_send_pre_ts + 1)*interval, interval);
 
 	for (count = 0; count < isodata->repeat_send + 1; ++count)
 		data->step += tx_tstamp_expect(&data->tx_ts, 0);
@@ -4090,6 +4117,13 @@ int main(int argc, char *argv[])
 	/* Test TX timestamping with flags set via per-packet CMSG */
 	test_iso("ISO Send - TX CMSG Timestamping",
 			&connect_send_tx_cmsg_timestamping, setup_powered,
+			test_connect);
+
+	test_iso("ISO Send - HW Timestamping", &connect_send_hw_timestamping,
+						setup_powered, test_connect);
+
+	test_iso("ISO Send - SWHW Timestamping",
+			&connect_send_swhw_timestamping, setup_powered,
 			test_connect);
 
 	test_iso("ISO Receive - Success", &listen_16_2_1_recv, setup_powered,

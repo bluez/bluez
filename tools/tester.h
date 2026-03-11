@@ -38,50 +38,73 @@ struct tx_tstamp_data {
 	struct {
 		uint32_t id;
 		uint32_t type;
+		int64_t value;
+		bool sw;
 	} expect[16];
 	unsigned int pos;
 	unsigned int count;
 	unsigned int sent;
 	uint32_t so_timestamping;
 	bool stream;
+	int64_t hw_base;
+	int64_t hw_step;
 };
 
 static inline void tx_tstamp_init(struct tx_tstamp_data *data,
-				uint32_t so_timestamping, bool stream)
+			uint32_t so_timestamping, bool stream,
+			int64_t hw_base, int64_t hw_step)
 {
 	memset(data, 0, sizeof(*data));
 	memset(data->expect, 0xff, sizeof(data->expect));
 
 	data->so_timestamping = so_timestamping;
 	data->stream = stream;
+	data->hw_base = hw_base;
+	data->hw_step = hw_step;
 }
 
 static inline int tx_tstamp_expect(struct tx_tstamp_data *data, size_t len)
 {
+	uint32_t ts = data->so_timestamping;
 	unsigned int pos = data->count;
 	int steps;
 
 	if (data->stream && len)
 		data->sent += len - 1;
 
-	if (data->so_timestamping & SOF_TIMESTAMPING_TX_SCHED) {
+	if (ts & SOF_TIMESTAMPING_TX_SCHED) {
 		g_assert(pos < ARRAY_SIZE(data->expect));
 		data->expect[pos].type = SCM_TSTAMP_SCHED;
 		data->expect[pos].id = data->sent;
+		data->expect[pos].sw = true;
 		pos++;
 	}
 
-	if (data->so_timestamping & SOF_TIMESTAMPING_TX_SOFTWARE) {
+	if ((ts & SOF_TIMESTAMPING_TX_SOFTWARE) &&
+					(!(ts & SOF_TIMESTAMPING_TX_HARDWARE) ||
+					(ts & SOF_TIMESTAMPING_OPT_TX_SWHW))) {
 		g_assert(pos < ARRAY_SIZE(data->expect));
 		data->expect[pos].type = SCM_TSTAMP_SND;
 		data->expect[pos].id = data->sent;
+		data->expect[pos].sw = true;
 		pos++;
 	}
 
-	if (data->so_timestamping & SOF_TIMESTAMPING_TX_COMPLETION) {
+	if (ts & SOF_TIMESTAMPING_TX_COMPLETION) {
 		g_assert(pos < ARRAY_SIZE(data->expect));
 		data->expect[pos].type = SCM_TSTAMP_COMPLETION;
 		data->expect[pos].id = data->sent;
+		data->expect[pos].sw = true;
+		pos++;
+	}
+
+	if (ts & SOF_TIMESTAMPING_TX_HARDWARE) {
+		g_assert(pos < ARRAY_SIZE(data->expect));
+		data->expect[pos].type = SCM_TSTAMP_SND;
+		data->expect[pos].value = data->hw_base +
+			data->sent * data->hw_step;
+		data->expect[pos].id = data->sent;
+		data->expect[pos].sw = false;
 		pos++;
 	}
 
@@ -105,6 +128,7 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 	struct sock_extended_err *serr = NULL;
 	struct timespec now;
 	unsigned int i;
+	bool sw = true;
 
 	iov.iov_base = buf;
 	iov.iov_len = sizeof(buf);
@@ -156,6 +180,9 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 		return -EINVAL;
 	}
 
+	if (!TS_NSEC(tss->ts))
+		sw = false;
+
 	if (serr->ee_errno != ENOMSG ||
 				serr->ee_origin != SO_EE_ORIGIN_TIMESTAMPING) {
 		tester_warn("BT_SCM_ERROR wrong for timestamping");
@@ -164,8 +191,9 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 
 	clock_gettime(CLOCK_REALTIME, &now);
 
-	if (TS_NSEC(&now) < TS_NSEC(tss->ts) ||
-			TS_NSEC(&now) > TS_NSEC(tss->ts) + SEC_NSEC(10)) {
+	/* SW timestamp */
+	if (sw && (TS_NSEC(&now) < TS_NSEC(tss->ts) ||
+			TS_NSEC(&now) > TS_NSEC(tss->ts) + SEC_NSEC(10))) {
 		tester_warn("nonsense in timestamp");
 		return -EINVAL;
 	}
@@ -180,6 +208,9 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 		if (data->expect[i].type >= 0xffff)
 			continue;
 
+		if (sw != data->expect[i].sw)
+			continue;
+
 		if (serr->ee_info == data->expect[i].type) {
 			data->expect[i].type = 0xffff;
 			break;
@@ -190,14 +221,22 @@ static inline int tx_tstamp_recv(struct tx_tstamp_data *data, int sk, int len)
 		return -EINVAL;
 	}
 
+	/* Note: +1 is kernel-provided offset since can't report 0 tstamp */
+	if (!sw && TS_NSEC(&tss->ts[2]) != data->expect[i].value + 1) {
+		tester_print("Bad HW timestamp %u != %u",
+					(unsigned int)TS_NSEC(&tss->ts[2]),
+					(unsigned int)data->expect[i].value);
+		return -EINVAL;
+	}
+
 	if ((data->so_timestamping & SOF_TIMESTAMPING_OPT_ID) &&
-				serr->ee_data != data->expect[i].id) {
+					serr->ee_data != data->expect[i].id) {
 		tester_warn("Bad timestamp id %u", serr->ee_data);
 		return -EINVAL;
 	}
 
-	tester_print("Got valid TX timestamp %u (type %u, id %u)", i,
-						serr->ee_info, serr->ee_data);
+	tester_print("Got valid TX timestamp %u (type %u, %s, id %u)", i,
+				serr->ee_info, sw ? "SW" : "HW", serr->ee_data);
 
 	++data->pos;
 
@@ -317,6 +356,9 @@ static inline void test_ethtool_get_ts_info(unsigned int index, int proto,
 		SOF_TIMESTAMPING_SOFTWARE |
 		SOF_TIMESTAMPING_TX_COMPLETION;
 	int sk;
+
+	if (proto == BTPROTO_ISO)
+		so_timestamping |= SOF_TIMESTAMPING_TX_HARDWARE;
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, proto);
 	if (sk < 0) {

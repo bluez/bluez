@@ -1810,7 +1810,7 @@ static void l2cap_tx_timestamping(struct test_data *data, GIOChannel *io)
 	tester_print("Enabling TX timestamping");
 
 	tx_tstamp_init(&data->tx_ts, l2data->so_timestamping,
-					l2data->sock_type == SOCK_STREAM);
+					l2data->sock_type == SOCK_STREAM, 0, 0);
 
 	for (count = 0; count < l2data->repeat_send + 1; ++count)
 		data->step += tx_tstamp_expect(&data->tx_ts, l2data->data_len);
