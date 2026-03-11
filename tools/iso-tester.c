@@ -1669,7 +1669,8 @@ static void client_connectable_complete(uint16_t opcode, uint8_t status,
 	}
 }
 
-static void bthost_recv_data(const void *buf, uint16_t len, void *user_data)
+static void bthost_recv_data(const void *buf, uint16_t len, bool ts,
+			uint16_t sn, uint32_t timestamp, void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
