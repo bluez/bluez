@@ -22,6 +22,8 @@ char *btd_device_get_storage_path(struct btd_device *device,
 
 
 void btd_device_device_set_name(struct btd_device *device, const char *name);
+void btd_device_set_alias(struct btd_device *device, const char *alias);
+void btd_device_set_skip_secondary(struct btd_device *device, bool skip);
 void device_store_cached_name(struct btd_device *dev, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
 bool device_name_known(struct btd_device *device);

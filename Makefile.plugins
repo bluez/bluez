@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
+builtin_modules += switch2
+builtin_sources += plugins/switch2.c
+
 builtin_modules += hostname
 builtin_sources += plugins/hostname.c
 

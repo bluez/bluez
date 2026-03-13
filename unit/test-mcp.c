@@ -509,8 +509,9 @@ static void test_setup(const void *user_data)
 	db = gatt_db_new();
 	g_assert(db);
 
-	data->client = bt_gatt_client_new(db, att, 64, 0);
+	data->client = bt_gatt_client_new(db, att, 0);
 	g_assert(data->client);
+	g_assert(bt_gatt_client_init(data->client, 64));
 
 	bt_gatt_client_set_debug(data->client, print_debug, "bt_gatt_client:",
 						NULL);

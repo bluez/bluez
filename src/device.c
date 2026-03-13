@@ -275,6 +275,7 @@ struct btd_device {
 	struct gatt_db *db;			/* GATT db cache */
 	unsigned int db_id;
 	struct bt_gatt_client *client;		/* GATT client instance */
+	bool		skip_secondary;
 	struct bt_gatt_server *server;		/* GATT server instance */
 	unsigned int gatt_ready_id;
 
@@ -1062,17 +1063,12 @@ static gboolean dev_property_get_alias(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static void set_alias(GDBusPendingPropertySet id, const char *alias,
-								void *data)
+void btd_device_set_alias(struct btd_device *device, const char *alias)
 {
-	struct btd_device *device = data;
-
 	/* No change */
 	if ((device->alias == NULL && g_str_equal(alias, "")) ||
-					g_strcmp0(device->alias, alias) == 0) {
-		g_dbus_pending_property_success(id);
+					g_strcmp0(device->alias, alias) == 0)
 		return;
-	}
 
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
@@ -1081,8 +1077,6 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Alias");
-
-	g_dbus_pending_property_success(id);
 }
 
 static void dev_property_set_alias(const GDBusPropertyTable *property,
@@ -1100,7 +1094,9 @@ static void dev_property_set_alias(const GDBusPropertyTable *property,
 
 	dbus_message_iter_get_basic(value, &alias);
 
-	set_alias(id, alias, data);
+	btd_device_set_alias(data, alias);
+
+	g_dbus_pending_property_success(id);
 }
 
 static gboolean dev_property_exists_class(const GDBusPropertyTable *property,
@@ -5113,6 +5109,11 @@ void device_get_name(struct btd_device *device, char *name, size_t len)
 	}
 }
 
+void btd_device_set_skip_secondary(struct btd_device *device, bool skip)
+{
+	device->skip_secondary = skip;
+}
+
 bool device_name_known(struct btd_device *device)
 {
 	return device->name[0] != '\0';
@@ -6301,10 +6302,18 @@ static void gatt_client_init(struct btd_device *device)
 		bt_att_set_security(device->att, BT_ATT_SECURITY_MEDIUM);
 	}
 
-	device->client = bt_gatt_client_new(device->db, device->att,
-						device->att_mtu, features);
+	device->client = bt_gatt_client_new(device->db, device->att, features);
 	if (!device->client) {
+		DBG("Failed to create gatt client");
+		return;
+	}
+
+	bt_gatt_client_set_skip_secondary(device->client,
+						device->skip_secondary);
+
+	if (!bt_gatt_client_init(device->client, device->att_mtu)) {
 		DBG("Failed to initialize");
+		gatt_client_cleanup(device);
 		return;
 	}
 
