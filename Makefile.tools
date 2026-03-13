@@ -414,7 +414,7 @@ tools_mesh_cfgtest_LDADD = lib/libbluetooth-internal.la src/libshared-ell.la \
 endif
 
 if DEPRECATED
-bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
+bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool \
 			tools/rfcomm tools/sdptool tools/ciptool
 
 tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
@@ -433,48 +433,20 @@ tools_hciconfig_LDADD = lib/libbluetooth-internal.la
 tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c
 tools_hcitool_LDADD = lib/libbluetooth-internal.la $(UDEV_LIBS)
 
-tools_hcidump_SOURCES = tools/hcidump.c \
-				tools/parser/parser.h tools/parser/parser.c \
-				tools/parser/lmp.c \
-				tools/parser/hci.c \
-				tools/parser/l2cap.h tools/parser/l2cap.c \
-				tools/parser/smp.c \
-				tools/parser/att.c \
-				tools/parser/sdp.h tools/parser/sdp.c \
-				tools/parser/rfcomm.h tools/parser/rfcomm.c \
-				tools/parser/bnep.c \
-				tools/parser/cmtp.c \
-				tools/parser/hidp.c \
-				tools/parser/hcrp.c \
-				tools/parser/avdtp.c \
-				tools/parser/avctp.c \
-				tools/parser/avrcp.c \
-				tools/parser/sap.c \
-				tools/parser/obex.c \
-				tools/parser/capi.c \
-				tools/parser/ppp.c \
-				tools/parser/tcpip.c \
-				tools/parser/ericsson.c \
-				tools/parser/csr.c \
-				tools/parser/bpa.c
-
 tools_sdptool_SOURCES = tools/sdptool.c src/sdp-xml.h src/sdp-xml.c
 tools_sdptool_LDADD = lib/libbluetooth-internal.la $(GLIB_LIBS)
 
 tools_ciptool_LDADD = lib/libbluetooth-internal.la
-tools_hcidump_LDADD = lib/libbluetooth-internal.la
 
 tools_rfcomm_LDADD = lib/libbluetooth-internal.la
 
 if MANPAGES
-man_MANS += doc/hciattach.1 doc/hciconfig.1 \
-			doc/hcitool.1 doc/hcidump.1 \
+man_MANS += doc/hciattach.1 doc/hciconfig.1 doc/hcitool.1 \
 			doc/rfcomm.1 doc/sdptool.1 doc/ciptool.1
 endif
 endif
 endif
-manual_pages += doc/hciattach.1 doc/hciconfig.1 \
-			doc/hcitool.1 doc/hcidump.1 \
+manual_pages += doc/hciattach.1 doc/hciconfig.1 doc/hcitool.1 \
 			doc/rfcomm.1 doc/sdptool.1 doc/ciptool.1 \
 			doc/rctest.1 doc/l2ping.1 doc/btattach.1 \
 			doc/bdaddr.1 doc/isotest.1 doc/btmgmt.1 \
