@@ -27,6 +27,7 @@
 
 #define AD_PATH "/org/bluez/advertising"
 #define AD_IFACE "org.bluez.LEAdvertisement1"
+#define AD_TYPE_BROADCAST_NAME 0x30
 
 struct ad_data {
 	uint8_t data[245];
@@ -1039,6 +1040,57 @@ void ad_advertise_data(DBusConnection *conn, int type, int argc, char *argv[])
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
 							prop_names.data[type]);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_advertise_broadcast_name(DBusConnection *conn, int argc, char *argv[])
+{
+	GString *name;
+	size_t i;
+	size_t len;
+
+	if (argc < 2) {
+		if (ad.data[AD_TYPE_AD].valid &&
+				ad.data[AD_TYPE_AD].type == AD_TYPE_BROADCAST_NAME)
+			bt_shell_printf("Broadcast Name: %.*s\n",
+					ad.data[AD_TYPE_AD].data.len,
+					(char *) ad.data[AD_TYPE_AD].data.data);
+		else
+			bt_shell_printf("Broadcast Name not set\n");
+
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+
+	name = g_string_new(NULL);
+	for (i = 1; i < (size_t) argc; i++) {
+		g_string_append(name, argv[i]);
+		if (i + 1 < (size_t) argc)
+			g_string_append_c(name, ' ');
+	}
+
+	if (!name->len) {
+		bt_shell_printf("Broadcast name cannot be empty\n");
+		g_string_free(name, TRUE);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	len = name->len;
+	if (len > sizeof(ad.data[AD_TYPE_AD].data.data)) {
+		bt_shell_printf("Broadcast name is too long\n");
+		g_string_free(name, TRUE);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	ad_clear_data(AD_TYPE_AD);
+	ad.data[AD_TYPE_AD].valid = true;
+	ad.data[AD_TYPE_AD].type = AD_TYPE_BROADCAST_NAME;
+	memcpy(ad.data[AD_TYPE_AD].data.data, name->str, len);
+	ad.data[AD_TYPE_AD].data.len = len;
+	g_string_free(name, TRUE);
+
+	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE,
+							prop_names.data[AD_TYPE_AD]);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
