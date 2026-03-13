@@ -786,6 +786,13 @@ endif
 TESTS = $(unit_tests)
 AM_TESTS_ENVIRONMENT = MALLOC_CHECK_=3 MALLOC_PERTURB_=69
 
+check-functional: all
+	$(srcdir)/unit/test-functional -v --kernel="$(FUNCTIONAL_TESTING_KERNEL)" --build-dir="$(top_builddir)"
+
+if FUNCTIONAL_TESTING
+check: check-functional
+endif
+
 if DBUS_RUN_SESSION
 AM_TESTS_ENVIRONMENT += dbus-run-session --
 endif
