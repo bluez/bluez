@@ -882,7 +882,7 @@ static void sco_tx_timestamping(struct test_data *data, GIOChannel *io)
 
 	tester_print("Enabling TX timestamping");
 
-	tx_tstamp_init(&data->tx_ts, scodata->so_timestamping, false);
+	tx_tstamp_init(&data->tx_ts, scodata->so_timestamping, false, 0, 0);
 
 	for (count = 0; count < scodata->repeat_send + 1; ++count)
 		data->step += tx_tstamp_expect(&data->tx_ts, 0);

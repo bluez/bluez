@@ -86,7 +86,7 @@ void bthost_add_sco_hook(struct bthost *bthost, uint16_t handle,
 				bthost_destroy_func_t destroy);
 
 typedef void (*bthost_iso_hook_func_t)(const void *data, uint16_t len,
-							void *user_data);
+		bool ts, uint16_t sn, uint32_t timestamp, void *user_data);
 
 void bthost_add_iso_hook(struct bthost *bthost, uint16_t handle,
 				bthost_iso_hook_func_t func, void *user_data,
