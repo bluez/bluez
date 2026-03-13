@@ -957,6 +957,7 @@ static void do_send(int sk)
 {
 	uint32_t seq;
 	int i, fd, len, buflen, size, sent;
+	socklen_t optlen;
 
 	syslog(LOG_INFO, "Sending ...");
 
@@ -1021,8 +1022,15 @@ static void do_send(int sk)
 		}
 
 		if (num_frames && send_delay && count &&
-						!(seq % (count + seq_start)))
+						!(seq % (count + seq_start))) {
 			usleep(send_delay);
+			/* Attempt to update the BT_SNDMTU/omtu */
+			if (getsockopt(sk, SOL_BLUETOOTH, BT_SNDMTU, &omtu,
+					&optlen) < 0)
+				syslog(LOG_ERR,
+					"getsockopt(BT_SNDMTU): %s (%d)",
+					strerror(errno), errno);
+		}
 	}
 }
 
