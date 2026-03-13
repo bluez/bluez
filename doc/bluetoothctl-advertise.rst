@@ -171,6 +171,24 @@ To get the currently set data use the command data without any arguments.
 :Example Set service data for Battery Service (UUID 0x180F, level 100):
 	| **> data 0x16 0F 18 64**
 
+broadcast-name
+--------------
+
+Set BLE Audio Broadcast Name.
+
+This is a semantic helper for raw advertising data type ``0x30``. It writes
+only the payload bytes for that AD type into the same staged advertising data
+slot used by ``data 0x30 ...``. If either command is used later, the later
+call replaces the previous value.
+
+:Usage: **> broadcast-name <string>**
+:[string]: Broadcast Name string to be staged as AD type ``0x30`` payload
+:Example Show current broadcast name:
+	| **> broadcast-name**
+	| Broadcast Name: Collabora BlueZ Auracast
+:Example Set broadcast name to "Collabora BlueZ Auracast":
+	| **> broadcast-name "Collabora BlueZ Auracast"**
+
 sr-uuids
 --------
 
