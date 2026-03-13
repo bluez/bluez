@@ -47,6 +47,9 @@ int main(int argc, char *argv[])
 	bt_shell_init(argc, argv, &opt);
 
 	mgmt_add_submenu();
+
+	bt_shell_handle_non_interactive_help();
+
 	mgmt_set_index(index_option);
 	bt_shell_attach(fileno(stdin));
 	status = bt_shell_run();
