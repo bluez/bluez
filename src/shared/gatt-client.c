@@ -1243,6 +1243,19 @@ static void discover_secondary_cb(bool success, uint8_t att_ecode,
 
 	if (!success) {
 		switch (att_ecode) {
+		case 0x00:
+			/* fall through */
+		case BT_ATT_ERROR_UNLIKELY:
+			/*
+			 * att_ecode 0 or BT_ATT_ERROR_UNLIKELY (0x0e) with
+			 * success=false means the request was aborted.
+			 * disc_att_send_op() in att.c calls the callback as
+			 * (BT_ATT_OP_ERROR_RSP, NULL, 0); process_error()
+			 * maps a NULL PDU to BT_ATT_ERROR_UNLIKELY (0x0e).
+			 * Secondary services are optional; treat this the
+			 * same as ATTRIBUTE_NOT_FOUND and continue.
+			 */
+			/* fall through */
 		case BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND:
 		case BT_ATT_ERROR_UNSUPPORTED_GROUP_TYPE:
 			success = true;

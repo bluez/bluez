@@ -5105,6 +5105,20 @@ void btd_device_device_set_name(struct btd_device *device, const char *name)
 						DEVICE_INTERFACE, "Alias");
 }
 
+void btd_device_set_alias(struct btd_device *device, const char *alias)
+{
+	if (g_strcmp0(device->alias, alias) == 0)
+		return;
+
+	g_free(device->alias);
+	device->alias = (alias && *alias) ? g_strdup(alias) : NULL;
+
+	store_device_info(device);
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "Alias");
+}
+
 void device_get_name(struct btd_device *device, char *name, size_t len)
 {
 	if (name != NULL && len > 0) {

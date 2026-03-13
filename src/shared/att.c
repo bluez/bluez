@@ -504,11 +504,15 @@ static bool timeout_cb(void *user_data)
 	disc_att_send_op(op);
 
 	/*
-	 * Directly terminate the connection as required by the ATT protocol.
-	 * This should trigger an io disconnect event which will clean up the
-	 * io and notify the upper layer.
+	 * Do NOT call io_shutdown() here. Shutting down the ATT bearer on
+	 * every request timeout is too aggressive: some devices never respond
+	 * to optional ATT requests (e.g. secondary service discovery, UUID
+	 * 0x2801) while remaining otherwise fully functional. The upper layer
+	 * (gatt-client.c) already handles the aborted-request error codes
+	 * (BT_ATT_ERROR_UNLIKELY) for optional operations and continues
+	 * discovery. Truly dead connections are handled by the LL supervision
+	 * timeout without requiring ATT-level disconnection here.
 	 */
-	io_shutdown(chan->io);
 
 	return false;
 }

@@ -144,6 +144,8 @@ const char *gap_appearance_to_icon(uint16_t appearance)
 			return "scanner";
 		}
 		break;
+	case 0x2a: /* Gaming (BT 5.0+): generic, handheld console, controller */
+		return "input-gaming";
 	}
 
 	return NULL;
