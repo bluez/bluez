@@ -3799,8 +3799,8 @@ static struct btd_adapter_driver media_driver = {
 static int a2dp_init(void)
 {
 	btd_register_adapter_driver(&media_driver);
-	btd_profile_register(&a2dp_source_profile);
 	btd_profile_register(&a2dp_sink_profile);
+	btd_profile_register(&a2dp_source_profile);
 
 	return 0;
 }
