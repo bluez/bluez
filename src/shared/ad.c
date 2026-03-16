@@ -278,7 +278,8 @@ static bool ad_replace_name(struct bt_ad *ad, struct iovec *iov)
 	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
 
 	memset(utf8_name, 0, sizeof(utf8_name));
-	strncpy(utf8_name, (const char *)iov->iov_base, iov->iov_len);
+	strncpy(utf8_name, (const char *)iov->iov_base,
+			MIN(iov->iov_len, HCI_MAX_NAME_LENGTH));
 
 	if (strisutf8(utf8_name, iov->iov_len))
 		goto done;
