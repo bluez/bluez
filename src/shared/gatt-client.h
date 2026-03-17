@@ -19,7 +19,8 @@ struct bt_gatt_client;
 struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 							struct bt_att *att,
 							uint16_t mtu,
-							uint8_t features);
+							uint8_t features,
+							bool skip_secondary);
 struct bt_gatt_client *bt_gatt_client_clone(struct bt_gatt_client *client);
 
 struct bt_gatt_client *bt_gatt_client_ref(struct bt_gatt_client *client);

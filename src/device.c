@@ -213,6 +213,7 @@ struct btd_device {
 	bool		pending_paired;		/* "Paired" waiting for SDP */
 	bool		svc_refreshed;
 	bool		refresh_discovery;
+	bool		skip_secondary;
 
 	/* Manage whether this device can wake the system from suspend.
 	 * - wake_support: Requires a profile that supports wake (i.e. HID)
@@ -6302,7 +6303,8 @@ static void gatt_client_init(struct btd_device *device)
 	}
 
 	device->client = bt_gatt_client_new(device->db, device->att,
-						device->att_mtu, features);
+						device->att_mtu, features,
+						device->skip_secondary);
 	if (!device->client) {
 		DBG("Failed to initialize");
 		return;
@@ -8252,6 +8254,11 @@ void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
 					device->bdaddr_type, min_interval,
 					max_interval, latency,
 					timeout);
+}
+
+void btd_device_set_skip_secondary(struct btd_device *device, bool skip)
+{
+	device->skip_secondary = skip;
 }
 
 void btd_device_foreach_service_data(struct btd_device *dev, bt_ad_func_t func,
