@@ -1174,15 +1174,17 @@ static char **shell_completion(const char *text, int start, int end)
 		if (wordexp(rl_line_buffer, &w, WRDE_NOCMD))
 			return NULL;
 
-		matches = menu_completion(default_menu.entries, text,
-						w.we_wordc, w.we_wordv[0]);
-		if (!matches) {
-			matches = menu_completion(data.menu->entries, text,
-							w.we_wordc,
-							w.we_wordv[0]);
-			if (!matches)
-				matches = submenu_completion(text, w.we_wordc,
+		if (w.we_wordc != 0) {
+			matches = menu_completion(default_menu.entries, text,
+							w.we_wordc, w.we_wordv[0]);
+			if (!matches) {
+				matches = menu_completion(data.menu->entries, text,
+								w.we_wordc,
 								w.we_wordv[0]);
+				if (!matches)
+					matches = submenu_completion(text, w.we_wordc,
+									w.we_wordv[0]);
+			}
 		}
 
 		wordfree(&w);
