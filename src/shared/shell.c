@@ -1122,6 +1122,9 @@ static char **menu_completion(const struct bt_shell_menu_entry *entry,
 {
 	char **matches = NULL;
 
+	if (argc == 0)
+		return NULL;
+
 	for (; entry->cmd; entry++) {
 		if (strcmp(entry->cmd, input_cmd))
 			continue;
@@ -1145,6 +1148,8 @@ static char **submenu_completion(const char *text, int argc, char *input_cmd)
 	char *cmd;
 
 	if (data.main != data.menu)
+		return NULL;
+	if (!input_cmd)
 		return NULL;
 
 	cmd = strrchr(input_cmd, '.');
