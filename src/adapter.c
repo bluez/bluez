@@ -4963,8 +4963,11 @@ static void load_defaults(struct btd_adapter *adapter)
 	if (!load_le_defaults(adapter, list, &btd_opts.defaults.le))
 		goto done;
 
-	if (mgmt_tlv_list_size(list) == 0)
-		goto done;
+	/* No changes from defaults */
+	if (mgmt_tlv_list_size(list) == 0) {
+		mgmt_tlv_list_free(list);
+		return;
+	}
 
 	err = mgmt_send_tlv(adapter->mgmt, MGMT_OP_SET_DEF_SYSTEM_CONFIG,
 			adapter->dev_id, list, NULL, NULL, NULL);
