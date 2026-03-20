@@ -271,6 +271,9 @@ The functional tests are written in files (test modules) names
 `test/functional/test_*.py`.  They are written using standard Pytest
 style.  See https://docs.pytest.org/en/stable/getting-started.html
 
+Use `Black <https://black.readthedocs.io/en/stable/>`__ to autoformat
+Python test code.
+
 Example: Virtual machines
 -------------------------
 
