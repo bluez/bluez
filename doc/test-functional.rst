@@ -34,6 +34,9 @@ The following additional options apply:
 	environment variable is used. If none, all USB controllers
 	with suitable permissions are considered.
 
+:--btmon: Launch btmon on all hosts to log events, and dump traffic to
+	test-functional-\*.btsnoop
+
 :--force-usb: Force tests to use USB controllers instead of `btvirt`.
 
 :--vm-timeout=<seconds>: Specify timeout for communication with VM hosts.
@@ -725,6 +728,12 @@ Bluetoothd
 ----------
 
 Host plugin starting Bluetoothd.
+
+Btmon
+-----
+
+Host plugin providing btmon running in the background.
+Usually should be loaded via `--btmon`.
 
 Call
 ----
