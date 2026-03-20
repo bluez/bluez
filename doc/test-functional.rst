@@ -729,6 +729,143 @@ Base class for host plugins. See also example above.
            """VM-side teardown"""
            pass
 
+Agent
+-----
+
+DBus org.bluez.Agent1 test implementation.
+
+.. code-block::
+
+    class Agent(env.HostPlugin):
+        """
+        Host plugin providing org.bluez.Agent1 test implementation.
+
+        Asynchronous events are handled via expect().
+
+        Example:
+
+            host.agent.device_method(host1.bdaddr, "Pair")
+            event = host.agent.expect("org.bluez.Agent1.RequestConfirmation")
+            assert event.passkey == 1234
+            host.agent.reply()
+        """
+
+        depends = [Bluetoothd()]
+        name = "agent"
+
+        def __init__(self, capability="KeyboardDisplay", path="/agent"):
+
+        def has_device(self, address):
+            """
+            Return True if device with given address exists
+            """
+
+        def device_method(self, address, method, *a, **kw):
+            """
+            Call given org.bluez.Device1 DBus method
+
+            Args:
+                address (str): bdaddr of target device
+                method (str): name of DBus method, without interface prefix
+                *a, **kw: argument passed to the DBus method call
+
+            Events:
+                AgentEvent(kind="org.bluez.Device1.{method}:reply")
+            """
+
+        def adapter_method(self, method, *a, **kw):
+            """
+            Call given org.bluez.Adapter1 DBus method
+
+            Args:
+                method (str): name of DBus method, without interface prefix
+                *a, **kw: argument passed to the DBus method call
+
+            Events:
+                AgentEvent(kind="org.bluez.Adapter1.{method}")
+            """
+
+        def adapter_set(self, key, value):
+            """
+            Set given org.bluez.Adapter1 property
+            """
+
+        def adapter_get(self, key):
+            """
+            Get given org.bluez.Adapter1 property
+            """
+
+        def get_event(self, block=True):
+            """
+            Get most recent pending AgentEvent, blocking optional
+            """
+
+        def expect(self, kinds):
+            """
+            Get most recent pending AgentEvent and assert its kind
+
+            Returns:
+                event (AgentEvent)
+            """
+
+        def reply(self, *value):
+            """
+            Provide DBus reply to the most recent pending AgentEvent
+
+            Arguments:
+                *value: DBus reply return values
+            """
+
+        def reply_error(self, err=None):
+            """
+            Provide DBus error reply to the most recent pending AgentEvent
+
+            Arguments:
+                err (dbus.DBusException): DBus error. Default: org.bluez.Error.Rejected
+            """
+
+.. code-block::
+
+    class Event:
+        """
+        Asynchronous event
+
+        Properties:
+            kind (str): event kind
+            info (dict): event properties (also available as attributes)
+        """
+
+.. code-block::
+
+   class EventPluginMixin:
+       """
+       Simple expect() / reply() pattern for handing async events in
+       host plugins.
+       """
+
+.. code-block::
+
+   def dbus_service_event_method(
+       interface, name, args=(), in_signature="", out_signature="", sync=True
+   ):
+       """
+       dbus.service.method that pushes Event instances to self.events
+
+       Example:
+
+           class AgentObject(dbus.service.Object):
+               @utils.mainloop_assert
+               def __init__(self, bus, path, events):
+                   self.events = events
+                   super().__init__(bus, path)
+
+               AuthorizeService = dbus_service_event_method(
+                   "org.bluez.Agent1",
+                   "AuthorizeService", ("device", "uuid"), "os", sync=False
+               )
+
+       """
+
 Bdaddr
 ------
 
