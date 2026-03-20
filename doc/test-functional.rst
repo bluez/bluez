@@ -81,9 +81,10 @@ The following Python packages are required:
 
 .. code-block::
 
-   pytest
-   pexpect
-   dbus-python
+	pytest>=8
+	pexpect
+	dbus-python
+	PyGObject>=3.40
 
 To install them via pip::
 
