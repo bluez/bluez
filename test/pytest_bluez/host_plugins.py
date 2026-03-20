@@ -16,6 +16,7 @@ import signal
 import functools
 import threading
 import resource
+import shutil
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,7 @@ __all__ = [
     "Call",
     "DbusSession",
     "DbusSystem",
+    "Obexd",
     "Pexpect",
     "Rcvbuf",
 ]
@@ -261,6 +263,65 @@ class Bluetoothd(env.HostPlugin):
         self.job.terminate()
         self.tmpdir.cleanup()
         self.log_stream.close()
+
+
+class Obexd(env.HostPlugin):
+    """
+    Host plugin starting obexd.
+    """
+
+    name = "obexd"
+    depends = [Bluetoothd(), DbusSession()]
+
+    def __init__(self):
+        self.uuids = ("00001133-0000-1000-8000-00805f9b34fb",)
+
+    def presetup(self, config):
+        try:
+            self.exe = utils.find_exe("obexd/src", "obexd")
+        except FileNotFoundError as exc:
+            pytest.skip(reason=f"Obexd: {exc!r}")
+
+    @utils.mainloop_wrap
+    def setup(self, impl):
+        self.log = logging.getLogger(self.name)
+
+        self.path = Path("/run/obex")
+        self.path.mkdir()
+
+        cmd = [self.exe, "--nodetach", f"--root={self.path}", "-d", "*"]
+        self.log.info("Start obexd: {}".format(utils.quoted(cmd)))
+
+        self.log_stream = utils.LogStream("obexd")
+        self.job = subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=self.log_stream.stream,
+            stderr=subprocess.STDOUT,
+        )
+
+        # Wait for the service
+        self.log.info("Wait for obexd...")
+        bus = dbus.SystemBus()
+        bus.set_exit_on_disconnect(False)
+        adapter = dbus.Interface(
+            bus.get_object("org.bluez", "/org/bluez/hci0"),
+            "org.freedesktop.DBus.Properties",
+        )
+
+        def cond():
+            uuids = [str(uuid) for uuid in adapter.Get("org.bluez.Adapter1", "UUIDs")]
+            return all(uuid in uuids for uuid in self.uuids)
+
+        utils.wait_until(cond)
+
+        self.log.info("Obexd ready")
+
+    def teardown(self):
+        self.log.info("Stop obexd")
+        self.job.terminate()
+        self.log_stream.close()
+        shutil.rmtree(self.path)
 
 
 class Pexpect(env.HostPlugin):
