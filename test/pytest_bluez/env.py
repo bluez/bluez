@@ -581,8 +581,8 @@ class Environment:
                 errors = "\n".join(errors)
                 raise RuntimeError(f"Errors closing hosts:\n{errors}")
 
-    def _add_log(self, *a, **kw):
-        f = utils.LogStream(*a, **kw)
+    def _add_log(self, *a, cls=utils.LogStream, **kw):
+        f = cls(*a, **kw)
         self.log_streams.append(f)
         return f.stream
 
@@ -743,7 +743,7 @@ class Environment:
 
             host_names.append(f"host.{ENV_INDEX}.{idx}")
 
-            logger = self._add_log(host_names[-1])
+            logger = self._add_log(host_names[-1], cls=_HostLogStream)
             self.jobs.append(Popen(cmd, stdout=logger, stderr=logger, stdin=DEVNULL))
 
             # Start log reader
@@ -782,3 +782,22 @@ class Environment:
 
     def __exit__(self, type, value, tb):
         self.stop()
+
+
+class _HostLogStream(utils.LogStream):
+    """
+    Log streams that parses kernel BUG:/WARNING:
+    """
+
+    def __init__(self, name):
+        super().__init__(name)
+        self._warn_re = re.compile(
+            rb"^(BUG:|WARNING:|general protection fault|Kernel panic)"
+        )
+
+    def _do_log(self, line, anc):
+        super()._do_log(line, anc)
+
+        if self._warn_re.match(line):
+            fmt_line = line.decode("utf-8", errors="surrogateescape")
+            warnings.warn(fmt_line)
