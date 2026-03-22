@@ -251,6 +251,15 @@ AC_ARG_ENABLE(tools, AS_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
+openpty_libs=
+if (test "${enable_tools}" != "no"); then
+	AC_CHECK_FUNCS([openpty], [openpty_libs=],
+	  [AC_CHECK_LIB([util], [openpty], [openpty_libs=-lutil],
+	    [AC_CHECK_LIB([bsd], [openpty], [openpty_libs=-lbsd],
+                [AC_MSG_ERROR([openpty not found])])])])
+fi
+AC_SUBST(OPENPTY_LIBS, [${openpty_libs}])
+
 AC_ARG_ENABLE(monitor, AS_HELP_STRING([--disable-monitor],
 		[disable Bluetooth monitor]), [enable_monitor=${enableval}])
 AM_CONDITIONAL(MONITOR, test "${enable_monitor}" != "no")
