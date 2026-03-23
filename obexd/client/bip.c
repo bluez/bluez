@@ -38,9 +38,6 @@
 
 #define EOL_CHARS "\n"
 #define IMG_DESC_BEGIN "<image-descriptor version=\"1.0\">" EOL_CHARS
-#define IMG_BEGIN "<image encoding=\"%s\" pixel=\"%s\""
-#define IMG_TRANSFORM " transformation=\"%s\""
-#define IMG_END "/>" EOL_CHARS
 #define IMG_DESC_END "</image-descriptor>" EOL_CHARS
 
 static DBusConnection *conn;
@@ -206,9 +203,9 @@ static gboolean parse_get_image_dict(DBusMessage *msg, char **path,
 		goto failed;
 	dbus_message_iter_get_basic(&iter, path);
 	*path = g_strdup(*path);
+	dbus_message_iter_next(&iter);
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
 		goto failed;
-	dbus_message_iter_next(&iter);
 	dbus_message_iter_get_basic(&iter, handle);
 	*handle = g_strdup(*handle);
 	dbus_message_iter_next(&iter);
@@ -258,13 +255,11 @@ static gboolean parse_get_image_dict(DBusMessage *msg, char **path,
 		dbus_message_iter_next(&array);
 	}
 
-	if (*pixel == NULL)
-		*pixel = strdup("");
-	if (*encoding == NULL)
-		*encoding = strdup("");
-
-	DBG("pixel: '%s' encoding: '%s' maxsize: '%lu' transform: '%s'",
-			*pixel, *encoding, *maxsize, *transform
+	DBG("pixel: '%s' encoding: '%s' maxsize: '%llu' transform: '%s'",
+			*pixel ? *pixel : "",
+			*encoding ? *encoding : "",
+			(unsigned long long)*maxsize,
+			*transform ? *transform : ""
 	);
 
 	return TRUE;
@@ -283,7 +278,7 @@ static DBusMessage *get_image(DBusConnection *connection,
 	struct bip_avrcp_data *bip_avrcp = user_data;
 	char *handle = NULL, *image_path = NULL, *transform = NULL,
 		*encoding = NULL, *pixel = NULL;
-	uint64_t maxsize;
+	uint64_t maxsize = 0;
 	struct obc_transfer *transfer;
 	GObexHeader *header;
 	DBusMessage *reply = NULL;
@@ -310,10 +305,16 @@ static DBusMessage *get_image(DBusConnection *connection,
 	obc_transfer_add_header(transfer, header);
 
 	descriptor = g_string_new(IMG_DESC_BEGIN);
-	g_string_append_printf(descriptor, IMG_BEGIN, encoding, pixel);
+	g_string_append(descriptor, "<image");
+	if (encoding != NULL)
+		g_string_append_printf(descriptor, " encoding=\"%s\"", encoding);
+	if (pixel != NULL)
+		g_string_append_printf(descriptor, " pixel=\"%s\"", pixel);
+	if (maxsize > 0)
+		g_string_append_printf(descriptor, " maxsize=\"%llu\"", (unsigned long long)maxsize);
 	if (transform != NULL)
-		g_string_append_printf(descriptor, IMG_TRANSFORM, transform);
-	g_string_append(descriptor, IMG_END);
+		g_string_append_printf(descriptor, " transformation=\"%s\"", transform);
+	g_string_append(descriptor, "/>" EOL_CHARS);
 	descriptor = g_string_append(descriptor, IMG_DESC_END);
 	header = g_obex_header_new_bytes(IMG_DESC_TAG, descriptor->str,
 						descriptor->len);
