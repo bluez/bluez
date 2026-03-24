@@ -767,6 +767,8 @@ PROTOCOL FLOWS
 
 .. include:: btmon-le-audio.rst
 
+.. include:: btmon-classic-audio.rst
+
 .. include:: btmon-advertising.rst
 
 EXAMPLES
