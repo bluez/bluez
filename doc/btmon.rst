@@ -755,6 +755,8 @@ Errors often cascade across layers. Common patterns:
 PROTOCOL FLOWS
 ===============
 
+.. include:: btmon-hci-init.rst
+
 .. include:: btmon-connections.rst
 
 .. include:: btmon-gatt.rst
