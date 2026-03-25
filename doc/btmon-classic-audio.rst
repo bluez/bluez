@@ -10,3 +10,5 @@ A2DP uses L2CAP-based AVDTP media channels while HFP uses SCO/eSCO
 synchronous connections.
 
 .. include:: btmon-a2dp.rst
+
+.. include:: btmon-hfp.rst
