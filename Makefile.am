@@ -538,6 +538,8 @@ EXTRA_DIST += doc/pics-opp.txt doc/pixit-opp.txt \
 
 EXTRA_DIST += doc/btsnoop-protocol.rst
 
+EXTRA_DIST += doc/btmon-advertising.rst
+
 EXTRA_DIST += tools/magic.btsnoop
 
 AM_CPPFLAGS += $(DBUS_CFLAGS) $(GLIB_CFLAGS) -I$(srcdir)/lib
