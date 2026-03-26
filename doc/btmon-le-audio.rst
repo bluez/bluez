@@ -141,6 +141,55 @@ ASE Control Point commands:
      - Release
      - Tear down ASE (any → Releasing → Idle)
 
+Bidirectional Streams (Source + Sink)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A device may expose multiple ASEs with different directions. In the
+conversational (telephony) use case, the remote device typically has at
+least one **Sink** ASE (receives audio, e.g., speaker) and one
+**Source** ASE (sends audio, e.g., microphone). Both ASEs share the
+same CIG and often the same CIS, using the bidirectional capability of
+Connected Isochronous Streams.
+
+**Direction indicators in btmon traces:**
+
+- The ``Receiver Start Ready`` command is only sent for **Source**
+  ASEs (ASEs that send audio toward the local device). The server
+  issues this command to indicate it is ready to transmit.
+- The ``Receiver Stop Ready`` command likewise applies to Source ASEs.
+- **Sink** ASEs transition directly from Enabling to Streaming
+  without ``Receiver Start Ready``.
+
+**Typical bidirectional setup sequence** (two ASEs on one CIS)::
+
+    Config Codec  ASE ID=1 (Sink)    → Codec Configured
+    Config Codec  ASE ID=3 (Source)  → Codec Configured
+    Config QoS    ASE ID=1           → QoS Configured (CIG=X, CIS=Y)
+    Config QoS    ASE ID=3           → QoS Configured (CIG=X, CIS=Y)
+    Enable        ASE ID=1           → Enabling → Streaming (immediate)
+    Enable        ASE ID=3           → Enabling
+    CIS Established (Success)
+    Setup ISO Data Path  Input  (Host→Controller, for Sink)
+    Setup ISO Data Path  Output (Controller→Host, for Source)
+    Receiver Start Ready ASE ID=3   → Streaming
+
+Both ASEs may reach Streaming at different times. The Sink ASE can
+start receiving audio as soon as CIS is established, while the Source
+ASE waits for the ``Receiver Start Ready`` handshake.
+
+.. note::
+
+   **This is normal behavior.** Seeing one Source ASE and one Sink
+   ASE on the same connection is the standard bidirectional
+   (conversational) configuration. It is **not** an error or
+   misconfiguration. Both directions sharing a single CIS is
+   efficient and expected.
+
+**Multiple ASEs per direction** are also valid. For example, a stereo
+headset may expose two Sink ASEs (left and right channels) and one
+Source ASE (mono microphone), each with its own GATT handle for ASE
+state notifications.
+
 CIS Setup and Teardown
 ------------------------
 
