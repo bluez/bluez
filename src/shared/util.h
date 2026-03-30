@@ -22,6 +22,12 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define BIT(n)  (1 << (n))
 
+#undef MIN
+#define MIN(a, b) ((a) > (b) ? (a) : (b))
+
+#undef MAX
+#define MAX(a, b) ((a) < (b) ? (a) : (b))
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define le16_to_cpu(val) (val)
 #define le32_to_cpu(val) (val)
