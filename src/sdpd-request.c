@@ -40,8 +40,6 @@ typedef struct {
 
 #define SDP_CONT_STATE_SIZE (sizeof(uint8_t) + sizeof(sdp_cont_state_t))
 
-#define MIN(x, y) ((x) < (y)) ? (x): (y)
-
 typedef struct sdp_cont_info sdp_cont_info_t;
 
 struct sdp_cont_info {
