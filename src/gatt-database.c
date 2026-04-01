@@ -54,10 +54,6 @@
 #define UUID_GATT	0x1801
 #define UUID_DIS	0x180a
 
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 struct gatt_record {
 	struct btd_gatt_database *database;
 	uint32_t handle;

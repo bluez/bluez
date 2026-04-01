@@ -21,10 +21,6 @@
 #include "src/shared/util.h"
 #include "src/shared/ringbuf.h"
 
-#ifndef MIN
-#define MIN(x,y) ((x)<(y)?(x):(y))
-#endif
-
 struct ringbuf {
 	void *buffer;
 	size_t size;

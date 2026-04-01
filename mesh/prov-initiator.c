@@ -18,6 +18,7 @@
 
 #include "src/shared/ad.h"
 #include "src/shared/ecc.h"
+#include "src/shared/util.h"
 
 #include "mesh/mesh-defs.h"
 #include "mesh/util.h"
@@ -33,8 +34,6 @@
 #include "mesh/mesh.h"
 #include "mesh/agent.h"
 #include "mesh/error.h"
-
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 /* Quick size sanity check */
 static const uint16_t expected_pdu_size[] = {

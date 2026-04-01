@@ -26,10 +26,6 @@
 
 #define UHID_DEVICE_FILE "/dev/uhid"
 
-#ifndef MIN
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-#endif
-
 struct uhid_replay {
 	bool active;
 	struct queue *out;
