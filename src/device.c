@@ -6296,7 +6296,7 @@ static void gatt_client_init(struct btd_device *device)
 	if (btd_opts.gatt_channels > 1)
 		features |= BT_GATT_CHRC_CLI_FEAT_EATT;
 
-	if (device->bonding) {
+	if (!btd_opts.gatt_seclevel && device->bonding) {
 		DBG("Elevating security level since bonding is in progress");
 		bt_att_set_security(device->att, BT_ATT_SECURITY_MEDIUM);
 	}
@@ -6438,7 +6438,8 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 		return false;
 	}
 
-	if (sec_level == BT_IO_SEC_LOW && dev->le_state.paired) {
+	if (!btd_opts.gatt_seclevel && sec_level == BT_IO_SEC_LOW &&
+					dev->le_state.paired) {
 		DBG("Elevating security level since LTK is available");
 
 		sec_level = BT_IO_SEC_MEDIUM;
@@ -6477,6 +6478,10 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	if (dev->remote_csrk)
 		bt_att_set_remote_key(dev->att, dev->remote_csrk->key,
 							remote_counter, dev);
+
+	/* Force security level if it has been set */
+	if (btd_opts.gatt_seclevel)
+		bt_att_set_security(dev->att, btd_opts.gatt_seclevel);
 
 	database = btd_adapter_get_database(dev->adapter);
 
@@ -6593,7 +6598,9 @@ int device_connect_le(struct btd_device *dev)
 	/* Set as initiator */
 	dev->le_state.initiator = true;
 
-	if (dev->le_state.paired)
+	if (btd_opts.gatt_seclevel)
+		sec_level = btd_opts.gatt_seclevel;
+	else if (dev->le_state.paired)
 		sec_level = BT_IO_SEC_MEDIUM;
 	else
 		sec_level = BT_IO_SEC_LOW;

@@ -158,6 +158,7 @@ struct btd_opts {
 	uint8_t		gatt_channels;
 	bool		gatt_client;
 	enum bt_gatt_export_t gatt_export;
+	bool		gatt_seclevel;
 	enum mps_mode_t	mps;
 
 	struct btd_avdtp_opts avdtp;
