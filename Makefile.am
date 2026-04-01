@@ -556,6 +556,8 @@ EXTRA_DIST += doc/btmon-classic-audio.rst doc/btmon-a2dp.rst
 
 EXTRA_DIST += doc/btmon-hfp.rst
 
+EXTRA_DIST += doc/btmon-mgmt.rst
+
 EXTRA_DIST += tools/magic.btsnoop
 
 AM_CPPFLAGS += $(DBUS_CFLAGS) $(GLIB_CFLAGS) -I$(srcdir)/lib

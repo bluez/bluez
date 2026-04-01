@@ -771,6 +771,8 @@ PROTOCOL FLOWS
 
 .. include:: btmon-advertising.rst
 
+.. include:: btmon-mgmt.rst
+
 EXAMPLES
 ========
 
