@@ -33,8 +33,6 @@
 /* Returns the P/F-bit */
 #define GET_PF(ctr) (((ctr) >> 4) & 0x1)
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
 /* Endian-swapping macros for structs */
 #define swap_long_frame(x) ((x)->h.length.val = le16_to_cpu((x)->h.length.val))
 #define swap_mcc_long_frame(x) (swap_long_frame(x))

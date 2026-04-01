@@ -20,10 +20,6 @@
 #include "src/shared/gatt-helpers.h"
 #include "src/shared/util.h"
 
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 struct bt_gatt_result {
 	uint8_t opcode;
 	void *pdu;

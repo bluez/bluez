@@ -25,14 +25,6 @@
 #include <limits.h>
 #include <sys/uio.h>
 
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 #define UUID_BYTES (BT_GATT_UUID_SIZE * sizeof(uint8_t))
 
 #define GATT_SVC_UUID	0x1801
