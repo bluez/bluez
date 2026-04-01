@@ -6267,7 +6267,11 @@ static void gatt_client_service_changed(uint16_t start_handle,
 							uint16_t end_handle,
 							void *user_data)
 {
+	struct btd_device *device = user_data;
+
 	DBG("start 0x%04x, end: 0x%04x", start_handle, end_handle);
+
+	store_gatt_db(device);
 }
 
 static void gatt_debug(const char *str, void *user_data)
