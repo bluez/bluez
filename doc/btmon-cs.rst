@@ -549,33 +549,115 @@ High nibble (subevent abort reason):
 - ``0x03`` -- Scheduling conflict or limited resources
 - ``0x0f`` -- Unspecified reason
 
+CS State Machine
+-----------------
+
+A CS configuration transitions through these states on each device.
+The state is not reported explicitly in a single field -- it is
+inferred from the sequence of HCI commands and events::
+
+    ┌──────────┐
+    │   IDLE   │
+    └────┬─────┘
+         │ LE CS Read Local/Remote Supported Capabilities
+         │ LE CS Security Enable Complete
+         │ LE CS Set Default Settings
+         ▼
+    ┌──────────────────┐
+    │ CAPABILITIES     │  Both devices' CS parameters are known.
+    │ EXCHANGED        │  Security is established.
+    └────┬─────────────┘
+         │ LE CS Create Config
+         │ ──► LE CS Config Complete (status=0x00)
+         ▼
+    ┌──────────────────┐
+    │ CONFIGURED       │  Config ID N exists with negotiated params.
+    │ (config_id=N)    │  Can create up to 4 configs simultaneously.
+    └────┬─────────────┘
+         │ LE CS Set Procedure Parameters
+         ▼
+    ┌──────────────────┐
+    │ PARAMETERS SET   │  Scheduling and antenna params are locked.
+    │ (config_id=N)    │
+    └────┬─────────────┘
+         │ LE CS Procedure Enable (enable=1)
+         │ ──► LE CS Procedure Enable Complete (state=1)
+         ▼
+    ┌──────────────────┐
+    │ PROCEDURE        │  Controller is actively measuring.
+    │ RUNNING          │  Subevent Result events stream in.
+    │ (config_id=N)    │
+    └────┬─────────────┘
+         │ LE CS Procedure Enable (enable=0)
+         │ ──► LE CS Procedure Enable Complete (state=0)
+         ▼
+    ┌──────────────────┐
+    │ CONFIGURED       │  Config still exists, can re-enable.
+    │ (config_id=N)    │
+    └────┬─────────────┘
+         │ LE CS Remove Config
+         ▼
+    ┌──────────┐
+    │   IDLE   │
+    └──────────┘
+
+Multiple configurations can coexist. Removing one config does not
+affect others.
+
 Typical CS Setup Sequence
 --------------------------
 
-A complete CS distance measurement session follows this order::
+A complete HCI-only CS distance measurement session follows this
+flow. The left column shows the Host ──► Controller commands, and
+the right column shows the resulting state::
 
-    1. LE CS Read Local Supported Capabilities
-    2. LE CS Read Remote Supported Capabilities
-           ──► LE CS Read Remote Supported Capabilities Complete
-    3. LE CS Security Enable
-           ──► LE CS Security Enable Complete
-    4. LE CS Set Default Settings
-    5. LE CS Read Remote FAE Table          (optional)
-           ──► LE CS Read Remote FAE Table Complete
-    6. LE CS Set Channel Classification     (optional)
-    7. LE CS Create Config
-           ──► LE CS Config Complete
-    8. LE CS Set Procedure Parameters
-    9. LE CS Procedure Enable (enable=1)
-           ──► LE CS Procedure Enable Complete
-          ... LE CS Subevent Result (repeated)
-          ... LE CS Subevent Result Continue (if fragmented)
-   10. LE CS Procedure Enable (enable=0)
-           ──► LE CS Procedure Enable Complete (state=0)
-   11. LE CS Remove Config                  (optional, cleanup)
+     Host ──► Controller                            State
+    ═══════════════════════════════════════════════════════════════
+     LE CS Read Local Supported Capabilities        IDLE
+       ◄── Command Complete (capabilities)
+                                                    │
+     LE CS Read Remote Supported Capabilities       │
+       ◄── Command Status                           │
+       ◄── LE CS Read Remote Supp. Cap. Complete    │
+                                                    │
+     LE CS Security Enable                          │
+       ◄── Command Status                           │
+       ◄── LE CS Security Enable Complete           │
+                                                    │
+     LE CS Set Default Settings                     │
+       ◄── Command Complete                         ▼
+                                                    CAPABILITIES EXCHANGED
+     LE CS Read Remote FAE Table        (optional)  │
+       ◄── LE CS Read Remote FAE Complete           │
+                                                    │
+     LE CS Set Channel Classification   (optional)  │
+       ◄── Command Complete                         │
+                                                    │
+     LE CS Create Config (config_id=0)              │
+       ◄── Command Status                           │
+       ◄── LE CS Config Complete                    ▼
+                                                    CONFIGURED (id=0)
+     LE CS Set Procedure Parameters (config_id=0)   │
+       ◄── Command Complete                         ▼
+                                                    PARAMETERS SET (id=0)
+     LE CS Procedure Enable (id=0, enable=1)        │
+       ◄── Command Status                           │
+       ◄── LE CS Procedure Enable Complete (state=1)▼
+                                                    PROCEDURE RUNNING (id=0)
+       ◄── LE CS Subevent Result        ┐           │
+       ◄── LE CS Subevent Result Cont.  │(repeated) │
+       ◄── LE CS Subevent Result        ┘           │
+                                                    │
+     LE CS Procedure Enable (id=0, enable=0)        │
+       ◄── Command Status                           │
+       ◄── LE CS Procedure Enable Complete (state=0)▼
+                                                    CONFIGURED (id=0)
+     LE CS Remove Config (id=0)         (optional)  │
+       ◄── Command Status                           ▼
+                                                    IDLE
 
-Steps 1--4 are one-time setup per connection. Steps 7--10 can be
-repeated with different configurations or parameters.
+Steps above the first ``LE CS Create Config`` are one-time setup per
+connection. The config/params/enable/disable cycle can be repeated.
 
 CS Test Mode
 -------------
@@ -929,6 +1011,54 @@ Continuation segments contain only the Segmentation Header followed
 by raw ranging data bytes that are reassembled with the previous
 segments.
 
+RAS Data Transfer State Machine
+---------------------------------
+
+The RAS data transfer for a single ranging dataset transitions
+through these states::
+
+    ┌───────────────┐
+    │  IDLE         │  No active data transfer.
+    └─────┬─────────┘
+          │ Server: CS procedure completes (HCI level)
+          │ Server: notifies Ranging Data Ready (counter=N)
+          ▼
+    ┌───────────────┐
+    │  DATA READY   │  Dataset N is buffered on server.
+    │  (counter=N)  │  Client has been notified.
+    └─────┬─────────┘
+          │ Client writes: Get Ranging Data (counter=N)
+          │ ── OR ── (real-time mode: automatic push)
+          ▼
+    ┌───────────────┐
+    │  TRANSFERRING  │  Server sends segmented notifications.
+    │  (counter=N)   │  Segment Index increments: 0, 1, 2, ...
+    └─────┬──────┬──┘
+          │      │ Segment lost? Client writes:
+          │      │   Retrieve Lost Segments (counter=N, first, last)
+          │      │ Server re-sends missing segments.
+          │      │ (loops back to TRANSFERRING)
+          │      │
+          │      │ Client writes: Abort Operation
+          │      └──────────────────────┐
+          │ Last Segment received       │
+          ▼                             ▼
+    ┌───────────────┐           ┌───────────────┐
+    │  COMPLETE     │           │  ABORTED      │
+    │  (counter=N)  │           └───────┬───────┘
+    └─────┬─────────┘                   │
+          │ Client writes:              │
+          │   ACK Ranging Data          │
+          │   (counter=N)               │
+          ▼                             ▼
+    ┌───────────────┐
+    │  IDLE         │  Server may free buffer for counter=N.
+    └───────────────┘
+
+If the server's buffer fills before the client retrieves data,
+a Ranging Data Overwritten notification is sent and the dataset
+transitions directly from DATA READY to overwritten (lost).
+
 Typical RAS Data Flow
 ----------------------
 
@@ -954,6 +1084,184 @@ CS subevent completes, using the same segmented format.
 If segments are lost (e.g., due to ATT MTU limitations or missed
 notifications), the client uses Retrieve Lost Ranging Data Segments
 to request retransmission of specific segment indices.
+
+Combined HCI + GATT Flow
+--------------------------
+
+The following chart shows the full interleaved timeline of HCI CS
+operations and GATT RAS operations as they appear in a btmon trace.
+The left column is HCI traffic (``< HCI`` / ``> HCI``), the center
+shows GATT ATT traffic (``< ACL`` / ``> ACL``), and the right column
+shows the combined state::
+
+     HCI (CS)                        GATT (RAS)                  State
+    ══════════════════════════════════════════════════════════════════════════
+
+    --- One-time connection setup ---
+
+     < LE CS Read Local Supp. Cap.                                IDLE
+     > Command Complete                                           │
+     < LE CS Read Remote Supp. Cap.                               │
+     > Command Status                                             │
+     > LE CS Read Remote Supp.                                    │
+       Cap. Complete                                              │
+     < LE CS Security Enable                                      │
+     > Command Status                                             │
+     > LE CS Security Enable                                      │
+       Complete                                                   │
+     < LE CS Set Default Settings                                 │
+     > Command Complete                                           ▼
+                                                                  CAPS EXCHANGED
+                                     < ATT: Find By Type Value    │
+                                       (RAS UUID 0x185B)          │
+                                     > ATT: Find By Type Value    │
+                                       Response                   │
+                                     < ATT: Read Request           │
+                                       (RAS Features 0x2C14)      │
+                                     > ATT: Read Response          │
+                                       Features: 0x0000000f       │
+                                     < ATT: Write Request          │
+                                       (CCC: Ready 0x2C18)        │
+                                     > ATT: Write Response         │
+                                     < ATT: Write Request          │
+                                       (CCC: On-demand 0x2C16)    │
+                                     > ATT: Write Response         ▼
+                                                                  RAS READY
+
+    --- Per-measurement cycle (repeatable) ---
+
+     < LE CS Create Config (id=0)                                 │
+     > Command Status                                             │
+     > LE CS Config Complete                                      ▼
+                                                                  CONFIGURED (id=0)
+     < LE CS Set Proc. Params (id=0)                              │
+     > Command Complete                                           ▼
+                                                                  PARAMS SET (id=0)
+     < LE CS Proc. Enable                                         │
+       (id=0, enable=1)                                           │
+     > Command Status                                             │
+     > LE CS Proc. Enable                                         │
+       Complete (state=1)                                         ▼
+                                                                  PROCEDURE RUNNING
+     > LE CS Subevent Result  ─┐                                  │
+     > LE CS Subevent Result   │ (measurement data                │
+       Continue                │  streams from                    │
+     > LE CS Subevent Result   │  controller)                     │
+     > LE CS Subevent Result  ─┘                                  │
+                                                                  │
+     > LE CS Subevent Result                                      │
+       (Procedure Done=0x00)                                      ▼
+                                                                  PROCEDURE COMPLETE
+                                     > ATT: Notification           │
+                                       (Data Ready 0x2C18)        │
+                                       Counter: N                  ▼
+                                                                  DATA READY (N)
+                                     < ATT: Write Command          │
+                                       (Control Point 0x2C17)     │
+                                       Get Ranging Data            │
+                                       Counter: N                  ▼
+                                                                  TRANSFERRING (N)
+                                     > ATT: Notification           │
+                                       (On-demand 0x2C16)          │
+                                       Seg[0]: First=T Last=F     │
+                                       Ranging Header + data       │
+                                     > ATT: Notification           │
+                                       (On-demand 0x2C16)          │
+                                       Seg[1]: First=F Last=F     │
+                                     > ATT: Notification           │
+                                       (On-demand 0x2C16)          │
+                                       Seg[2]: First=F Last=T     ▼
+                                                                  TRANSFER COMPLETE (N)
+                                     < ATT: Write Command          │
+                                       (Control Point 0x2C17)     │
+                                       ACK Ranging Data            │
+                                       Counter: N                  ▼
+                                                                  IDLE (buffer freed)
+
+    --- Cleanup (optional) ---
+
+     < LE CS Remove Config (id=0)
+     > Command Status                                             IDLE
+
+Real-time Streaming Flow
+--------------------------
+
+When the server supports real-time ranging data (Features bit 0),
+results are pushed immediately as CS subevents complete, without
+waiting for a Get Ranging Data request::
+
+     HCI (CS)                        GATT (RAS)                  State
+    ══════════════════════════════════════════════════════════════════════════
+
+     < LE CS Proc. Enable                                         PARAMS SET
+       (id=0, enable=1)
+     > LE CS Proc. Enable Complete                                ▼
+                                                                  PROCEDURE RUNNING
+     > LE CS Subevent Result ──┐
+                               │     > ATT: Notification
+                               │       (Real-time 0x2C15)
+                               │       Seg[0]: First=T Last=T
+                               │       Ranging Header +
+                               │       subevent data
+     > LE CS Subevent Result ──┤
+                               │     > ATT: Notification
+                               │       (Real-time 0x2C15)
+                               │       Seg[0]: First=T Last=F
+                               │     > ATT: Notification
+                               │       (Real-time 0x2C15)
+                               │       Seg[1]: First=F Last=T
+     > LE CS Subevent Result ──┘
+                                     > ATT: Notification
+                                       (Real-time 0x2C15)
+                                       ...
+
+     > LE CS Subevent Result                                      │
+       (Procedure Done=0x00)                                      ▼
+                                                                  PROCEDURE COMPLETE
+                                     < ATT: Write Command
+                                       ACK Ranging Data
+                                       Counter: N                  ▼
+                                                                  IDLE
+
+In real-time mode, each HCI Subevent Result triggers one or more
+GATT notifications immediately. The Ranging Counter in the data
+header increments with each procedure. If a notification segment
+is lost, the client can use Retrieve Lost Segments after the
+procedure completes (if Features bit 1 is set).
+
+Lost Segment Recovery Flow
+----------------------------
+
+When segments are missed during transfer, the client requests
+retransmission::
+
+     GATT (RAS)                                      State
+    ══════════════════════════════════════════════════════════════
+     > ATT: Notification (On-demand 0x2C16)           TRANSFERRING
+       Seg[0]: First=T Last=F  ── received
+     > ATT: Notification (On-demand 0x2C16)
+       Seg[1]: First=F Last=F  ── received
+                                                      │
+       Seg[2] ── LOST (not received)                  │
+                                                      │
+     > ATT: Notification (On-demand 0x2C16)           │
+       Seg[3]: First=F Last=T  ── received            │
+                                                      │
+     (Client detects gap: Seg[2] missing)             ▼
+                                                      INCOMPLETE
+     < ATT: Write Command (Control Point 0x2C17)
+       Retrieve Lost Ranging Data Segments
+       Counter: N
+       First Segment Index: 2
+       Last Segment Index: 2                          ▼
+                                                      RECOVERING
+     > ATT: Notification (On-demand 0x2C16)
+       Seg[2]: First=F Last=F  ── re-sent             ▼
+                                                      TRANSFER COMPLETE
+     < ATT: Write Command (Control Point 0x2C17)
+       ACK Ranging Data
+       Counter: N                                     ▼
+                                                      IDLE
 
 RAS Common Issues
 ------------------
