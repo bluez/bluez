@@ -1063,17 +1063,12 @@ static gboolean dev_property_get_alias(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static void set_alias(GDBusPendingPropertySet id, const char *alias,
-								void *data)
+void btd_device_set_alias(struct btd_device *device, const char *alias)
 {
-	struct btd_device *device = data;
-
 	/* No change */
 	if ((device->alias == NULL && g_str_equal(alias, "")) ||
-					g_strcmp0(device->alias, alias) == 0) {
-		g_dbus_pending_property_success(id);
+					g_strcmp0(device->alias, alias) == 0)
 		return;
-	}
 
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
@@ -1082,8 +1077,6 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Alias");
-
-	g_dbus_pending_property_success(id);
 }
 
 static void dev_property_set_alias(const GDBusPropertyTable *property,
@@ -1101,7 +1094,9 @@ static void dev_property_set_alias(const GDBusPropertyTable *property,
 
 	dbus_message_iter_get_basic(value, &alias);
 
-	set_alias(id, alias, data);
+	btd_device_set_alias(data, alias);
+
+	g_dbus_pending_property_success(id);
 }
 
 static gboolean dev_property_exists_class(const GDBusPropertyTable *property,
