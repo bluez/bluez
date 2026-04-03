@@ -15,6 +15,7 @@
 #define BT_GATT_UUID_SIZE 16
 
 struct bt_gatt_client;
+struct gatt_db;
 
 struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 							struct bt_att *att,
