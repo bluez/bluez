@@ -293,6 +293,19 @@ struct btp_gatt_char_value {
 
 #define BTP_OP_GATT_READ_SUPPORTED_COMMANDS	0x01
 
+#define BTP_OP_GATT_READ			0x11
+struct btp_gatt_read_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint16_t handle;
+} __packed;
+
+struct btp_gatt_read_rp {
+	uint8_t response;
+	uint16_t len;
+	uint8_t data[];
+} __packed;
+
 #define BTP_OP_GATT_READ_UUID			0x12
 struct btp_gatt_read_uuid_cp {
 	uint8_t address_type;
@@ -307,6 +320,28 @@ struct btp_gatt_read_uuid_rp {
 	uint8_t att_response;
 	uint8_t values_count;
 	struct btp_gatt_char_value values[];
+} __packed;
+
+#define BTP_OP_GATT_WRITE_WITHOUT_RSP		0x15
+struct btp_gatt_write_without_rsp_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint16_t handle;
+	uint16_t len;
+	uint8_t data[];
+} __packed;
+
+#define BTP_OP_GATT_WRITE			0x17
+struct btp_gatt_write_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint16_t handle;
+	uint16_t len;
+	uint8_t data[];
+} __packed;
+
+struct btp_gatt_write_rp {
+	uint8_t att_response;
 } __packed;
 
 struct btp;
