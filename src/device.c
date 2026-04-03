@@ -2066,10 +2066,23 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		const char *err_str;
 		DBusMessage *reply;
 
-		if (device->bonding_status == MGMT_STATUS_AUTH_FAILED)
-			err_str = ERR_BREDR_CONN_KEY_MISSING;
-		else
-			err_str = ERR_BREDR_CONN_CANCELED;
+	if (device->bonding_status == MGMT_STATUS_AUTH_FAILED) {
+		char name[256] = {0};
+	
+		device_get_name(device, name, sizeof(name));
+	
+		if (name[0] == '\0')
+			snprintf(name, sizeof(name), "unknown");
+	
+		error("DEBUG HIT: Connection failed for %s (key missing case)", name);
+	
+		warn("Connection failed for %s. The device keys may have changed (e.g. pairing from another system). Consider removing and re-pairing.",
+		     name);
+		
+		err_str = ERR_BREDR_CONN_KEY_MISSING;
+	} else {
+		err_str = ERR_BREDR_CONN_CANCELED;
+	}
 		reply = btd_error_failed(device->connect, err_str);
 		g_dbus_send_message(dbus_conn, reply);
 		dbus_message_unref(device->connect);
