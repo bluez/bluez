@@ -7171,20 +7171,20 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 
 static void adapter_msd_notify(struct btd_adapter *adapter,
 							struct btd_device *dev,
-							GSList *msd_list)
+							struct queue *msd_list)
 {
 	GSList *cb_l, *cb_next;
-	GSList *msd_l, *msd_next;
+	struct queue_entry *msd_l, *msd_next;
 
 	for (cb_l = adapter->msd_callbacks; cb_l != NULL; cb_l = cb_next) {
 		btd_msd_cb_t cb = cb_l->data;
 
 		cb_next = g_slist_next(cb_l);
 
-		for (msd_l = msd_list; msd_l != NULL; msd_l = msd_next) {
+		for (msd_l = queue_peek_head_entry(msd_list); msd_l != NULL; msd_l = msd_next) {
 			const struct eir_msd *msd = msd_l->data;
 
-			msd_next = g_slist_next(msd_l);
+			msd_next = msd_l->next;
 
 			cb(adapter, dev, msd->company, msd->data,
 								msd->data_len);
@@ -7223,7 +7223,7 @@ static bool is_filter_match(GSList *discovery_filter, struct eir_data *eir_data,
 				/* m->data contains string representation of
 				 * uuid.
 				 */
-				if (g_slist_find_custom(eir_data->services,
+				if (queue_find(eir_data->services,
 							m->data,
 							g_strcmp) != NULL)
 					got_match = true;

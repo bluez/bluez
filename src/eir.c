@@ -47,9 +47,18 @@ static void data_free(void *data)
 	g_free(ad);
 }
 
+static struct queue *
+queue_append(struct queue *q, void *data)
+{
+	if (!q)
+		q = queue_new();
+	queue_push_tail(q, data);
+	return q;
+}
+
 void eir_data_free(struct eir_data *eir)
 {
-	g_slist_free_full(eir->services, free);
+	queue_destroy(eir->services, g_free);
 	eir->services = NULL;
 	g_free(eir->name);
 	eir->name = NULL;
@@ -57,11 +66,11 @@ void eir_data_free(struct eir_data *eir)
 	eir->hash = NULL;
 	free(eir->randomizer);
 	eir->randomizer = NULL;
-	g_slist_free_full(eir->msd_list, g_free);
+	queue_destroy(eir->msd_list, g_free);
 	eir->msd_list = NULL;
-	g_slist_free_full(eir->sd_list, sd_free);
+	queue_destroy(eir->sd_list, sd_free);
 	eir->sd_list = NULL;
-	g_slist_free_full(eir->data_list, data_free);
+	queue_destroy(eir->data_list, data_free);
 	eir->data_list = NULL;
 }
 
@@ -80,7 +89,7 @@ static void eir_parse_uuid16(struct eir_data *eir, const void *data,
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)
 			continue;
-		eir->services = g_slist_append(eir->services, uuid_str);
+		eir->services = queue_append(eir->services, uuid_str);
 	}
 }
 
@@ -99,7 +108,7 @@ static void eir_parse_uuid32(struct eir_data *eir, const void *data,
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)
 			continue;
-		eir->services = g_slist_append(eir->services, uuid_str);
+		eir->services = queue_append(eir->services, uuid_str);
 	}
 }
 
@@ -119,7 +128,7 @@ static void eir_parse_uuid128(struct eir_data *eir, const uint8_t *data,
 		uuid_str = bt_uuid2string(&service);
 		if (!uuid_str)
 			continue;
-		eir->services = g_slist_append(eir->services, uuid_str);
+		eir->services = queue_append(eir->services, uuid_str);
 		uuid_ptr += 16;
 	}
 }
@@ -151,7 +160,7 @@ static void eir_parse_msd(struct eir_data *eir, const uint8_t *data,
 	msd->data_len = len - 2;
 	memcpy(&msd->data, data + 2, msd->data_len);
 
-	eir->msd_list = g_slist_append(eir->msd_list, msd);
+	eir->msd_list = queue_append(eir->msd_list, msd);
 }
 
 static void eir_parse_sd(struct eir_data *eir, uuid_t *service,
@@ -169,7 +178,7 @@ static void eir_parse_sd(struct eir_data *eir, uuid_t *service,
 	sd->data_len = len;
 	memcpy(&sd->data, data, sd->data_len);
 
-	eir->sd_list = g_slist_append(eir->sd_list, sd);
+	eir->sd_list = queue_append(eir->sd_list, sd);
 }
 
 static void eir_parse_uuid16_data(struct eir_data *eir, const uint8_t *data,
@@ -226,7 +235,7 @@ static void eir_parse_data(struct eir_data *eir, uint8_t type,
 	ad->data = g_malloc(len);
 	memcpy(ad->data, data, len);
 
-	eir->data_list = g_slist_append(eir->data_list, ad);
+	eir->data_list = queue_append(eir->data_list, ad);
 
 	if (type == EIR_CSIP_RSI)
 		eir->rsi = true;
@@ -595,24 +604,18 @@ int eir_create_oob(const bdaddr_t *addr, const char *name, uint32_t cod,
 	return eir_total_len;
 }
 
-static int match_sd_uuid(const void *data, const void *user_data)
+static bool match_sd_uuid(const void *data, const void *user_data)
 {
 	const struct eir_sd *sd = data;
 	const char *uuid = user_data;
 
-	return strcmp(sd->uuid, uuid);
+	return strcmp(sd->uuid, uuid) == 0;
 }
 
 struct eir_sd *eir_get_service_data(struct eir_data *eir, const char *uuid)
 {
-	GSList *l;
-
 	if (!eir || !uuid)
 		return NULL;
 
-	l = g_slist_find_custom(eir->sd_list, uuid, match_sd_uuid);
-	if (!l)
-		return NULL;
-
-	return l->data;
+	return queue_find(eir->sd_list, match_sd_uuid, uuid);
 }

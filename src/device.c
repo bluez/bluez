@@ -2436,16 +2436,16 @@ unref:
 	dev->connect = NULL;
 }
 
-void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
+void device_add_eir_uuids(struct btd_device *dev, struct queue *uuids)
 {
-	GSList *l;
+	struct queue_entry *q;
 	GSList *added = NULL;
 
 	if (dev->bredr_state.svc_resolved || dev->le_state.svc_resolved)
 		return;
 
-	for (l = uuids; l != NULL; l = l->next) {
-		const char *str = l->data;
+	for (q = queue_peek_head_entry(uuids); q != NULL; q = q->next) {
+		const char *str = q->data;
 		if (g_slist_find_custom(dev->eir_uuids, str, bt_uuid_strcmp))
 			continue;
 		added = g_slist_append(added, (void *)str);
@@ -2469,13 +2469,13 @@ static void add_manufacturer_data(void *data, void *user_data)
 					DEVICE_INTERFACE, "ManufacturerData");
 }
 
-void device_set_manufacturer_data(struct btd_device *dev, GSList *list,
+void device_set_manufacturer_data(struct btd_device *dev, struct queue *queue,
 								bool duplicate)
 {
 	if (duplicate)
 		bt_ad_clear_manufacturer_data(dev->ad);
 
-	g_slist_foreach(list, add_manufacturer_data, dev);
+	queue_foreach(queue, add_manufacturer_data, dev);
 }
 
 static void add_service_data(void *data, void *user_data)
@@ -2483,7 +2483,7 @@ static void add_service_data(void *data, void *user_data)
 	struct eir_sd *sd = data;
 	struct btd_device *dev = user_data;
 	bt_uuid_t uuid;
-	GSList *l;
+	struct queue *q;
 
 	if (bt_string_to_uuid(&uuid, sd->uuid) < 0)
 		return;
@@ -2491,21 +2491,22 @@ static void add_service_data(void *data, void *user_data)
 	if (!bt_ad_add_service_data(dev->ad, &uuid, sd->data, sd->data_len))
 		return;
 
-	l = g_slist_append(NULL, sd->uuid);
-	device_add_eir_uuids(dev, l);
-	g_slist_free(l);
+	q = queue_new();
+	queue_push_tail(q, sd->uuid);
+	device_add_eir_uuids(dev, q);
+	queue_destroy(q, NULL);
 
 	g_dbus_emit_property_changed(dbus_conn, dev->path,
 					DEVICE_INTERFACE, "ServiceData");
 }
 
-void device_set_service_data(struct btd_device *dev, GSList *list,
+void device_set_service_data(struct btd_device *dev, struct queue *queue,
 							bool duplicate)
 {
 	if (duplicate)
 		bt_ad_clear_service_data(dev->ad);
 
-	g_slist_foreach(list, add_service_data, dev);
+	queue_foreach(queue, add_service_data, dev);
 }
 
 static void add_data(void *data, void *user_data)
@@ -2522,13 +2523,13 @@ static void add_data(void *data, void *user_data)
 						"AdvertisingData");
 }
 
-void device_set_data(struct btd_device *dev, GSList *list,
+void device_set_data(struct btd_device *dev, struct queue *queue,
 							bool duplicate)
 {
 	if (duplicate)
 		bt_ad_clear_data(dev->ad);
 
-	g_slist_foreach(list, add_data, dev);
+	queue_foreach(queue, add_data, dev);
 }
 
 static struct btd_service *find_connectable_service(struct btd_device *dev,
