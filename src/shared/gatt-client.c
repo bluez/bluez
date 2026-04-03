@@ -93,6 +93,7 @@ struct bt_gatt_client {
 	struct queue *notify_chrcs;
 	int next_reg_id;
 	unsigned int disc_id, nfy_id, nfy_mult_id, ind_id;
+	bool skip_secondary;
 
 	/*
 	 * Handles of the GATT Service and the Service Changed characteristic
@@ -1344,7 +1345,7 @@ secondary:
 	 * functionality of a device and is referenced from at least one
 	 * primary service on the device.
 	 */
-	if (queue_isempty(op->pending_svcs))
+	if (queue_isempty(op->pending_svcs) || client->skip_secondary)
 		goto done;
 
 	/* Discover secondary services */
@@ -2550,7 +2551,8 @@ fail:
 struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 							struct bt_att *att,
 							uint16_t mtu,
-							uint8_t features)
+							uint8_t features,
+							bool skip_secondary)
 {
 	struct bt_gatt_client *client;
 
@@ -2560,6 +2562,8 @@ struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 	client = gatt_client_new(db, att, features);
 	if (!client)
 		return NULL;
+
+	client->skip_secondary = skip_secondary;
 
 	if (!gatt_client_init(client, mtu)) {
 		bt_gatt_client_free(client);
