@@ -8,6 +8,8 @@
  *
  */
 
+#pragma once
+
 #include <stdbool.h>
 
 typedef void (*queue_destroy_func_t)(void *data);
