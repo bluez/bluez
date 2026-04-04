@@ -111,12 +111,12 @@ static int sixaxis_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
 
 static int ds4_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
 {
-	uint8_t buf[7];
+	uint8_t buf[16];
 	int ret;
 
 	memset(buf, 0, sizeof(buf));
 
-	buf[0] = 0x81;
+	buf[0] = 0x12;
 
 	ret = ioctl(fd, HIDIOCGFEATURE(sizeof(buf)), buf);
 	if (ret < 0) {
