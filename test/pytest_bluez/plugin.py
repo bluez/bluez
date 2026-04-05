@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from . import utils, env
+from .btmon import Btmon
 
 
 __all__ = [
@@ -109,6 +110,11 @@ def pytest_addoption(parser):
     )
     parser.addini(
         "vm_timeout", "Default timeout for communication with VM etc.", default="30"
+    )
+    group.addoption(
+        "--btmon",
+        action="store_true",
+        help="Launch btmon on all hosts to log events, and dump traffic to test-functional-*.btsnoop",
     )
 
     # host_plugins.Rcvbuf:
@@ -459,6 +465,9 @@ def _hosts_impl(request, vm, setup, name, reuse):
 
         h.set_instance_name(f"{name}.{idx}")
 
+        if request.session.config.option.btmon:
+            plugins = (Btmon(),) + plugins
+
         for p in plugins:
             h.start_load(p)
 
@@ -477,18 +486,24 @@ def _close_hosts(request, vm, name):
     if name is None:
         return
 
-    success = True
     try:
-        vm.close_hosts()
-    except:
-        success = False
-        warnings.warn(traceback.format_exc())
+        if request.session.config.option.btmon and name is not None:
+            for h in vm.hosts:
+                if hasattr(h, "btmon"):
+                    h.btmon._call_noreply("teardown")
     finally:
-        _copy_host_files(vm)
+        success = True
+        try:
+            vm.close_hosts()
+        except:
+            success = False
+            warnings.warn(traceback.format_exc())
+        finally:
+            _copy_host_files(vm)
 
-        # Stop VM if tester is not responding
-        if not success:
-            vm.stop()
+            # Stop VM if tester is not responding
+            if not success:
+                vm.stop()
 
 
 def _copy_host_files(vm):
