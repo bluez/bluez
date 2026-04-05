@@ -7,5 +7,6 @@ from .env import *
 from .utils import *
 from .host_plugins import *
 from .btmon import *
+from .agent import *
 
 from .plugin import *
