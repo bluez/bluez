@@ -11,6 +11,15 @@ DESCRIPTION
 kernel using multiple virtual machine environments, connected by real
 or virtual controllers.
 
+EXAMPLE
+=======
+
+.. code-block::
+
+   $ ./configure --enable-functional-testing --enable-testing --enable-tools
+   $ make -j8
+   $ test/test-functional --kernel-build -v
+
 OPTIONS
 =======
 
@@ -49,6 +58,12 @@ The following additional options apply:
         executables.
 
 :--list: Output brief lists of existing tests.
+
+:--kernel-build=no/use/auto/force: Build a suitable kernel image from source.
+
+:--kernel-upstream=<GIT_URL>: URL for Git clone of kernel sources.
+
+:--kernel-branch=<GIT_BRANCH>: Git branch to build from.
 
 Tests that require kernel image or USB controllers are skipped if none
 are available. Normally, tests use `btvirt`.
@@ -102,7 +117,11 @@ Kernel
 ------
 
 The **test-functional(1)** tool requires a kernel image with similar
-config as **test-runner(1)**.  Simplest setup is
+config as **test-runner(1)**.  If given `--kernel-build` option, a
+suitable image is built from sources downloaded under
+`test/.pytest_cache`.
+
+Simplest setup is
 
 .. code-block::
 
