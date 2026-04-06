@@ -536,19 +536,25 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	tester_print("Pairing succeedded");
 }
 
-static const void *get_pdu(const uint8_t *pdu)
+static const void *get_pdu(const uint8_t *pdu, size_t len)
 {
 	struct test_data *data = tester_get_data();
 	const struct smp_data *smp = data->test_data;
 	uint8_t opcode = pdu[0];
 	static uint8_t buf[65];
 
+	g_assert(len > 0);
+
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
-		memcpy(data->preq, pdu, sizeof(data->preq));
+		g_assert(len <= sizeof(data->preq));
+		memset(data->preq, 0, sizeof(data->preq));
+		memcpy(data->preq, pdu, len);
 		break;
 	case 0x02: /* Pairing Response */
-		memcpy(data->prsp, pdu, sizeof(data->prsp));
+		g_assert(len <= sizeof(data->prsp));
+		memset(data->prsp, 0, sizeof(data->prsp));
+		memcpy(data->prsp, pdu, len);
 		break;
 	case 0x03: /* Pairing Confirm */
 		buf[0] = pdu[0];
@@ -686,7 +692,7 @@ next:
 
 		req = &smp->req[test_data->counter];
 
-		pdu = get_pdu(req->send);
+		pdu = get_pdu(req->send, req->send_len);
 		bthost_send_cid(bthost, test_data->handle, SMP_CID, pdu,
 								req->send_len);
 		if (req->expect)
@@ -756,7 +762,7 @@ static void smp_new_conn(uint16_t handle, void *user_data)
 
 	tester_print("Sending SMP PDU");
 
-	pdu = get_pdu(req->send);
+	pdu = get_pdu(req->send, req->send_len);
 	bthost_send_cid(bthost, handle, SMP_CID, pdu, req->send_len);
 
 	if (!req->expect)
