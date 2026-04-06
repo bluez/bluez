@@ -904,9 +904,8 @@ void bthost_send_cid(struct bthost *bthost, uint16_t handle, uint16_t cid,
 			l2conn->mode == L2CAP_MODE_LE_ENH_CRED)) {
 		uint16_t sdu_len = len;
 		uint16_t slen;
-		int i;
 
-		for (i = 0; iov.iov_len; i++) {
+		while (iov.iov_len) {
 			if (sdu_len)
 				slen = MIN(iov.iov_len,
 					l2conn->tx_mps - sizeof(sdu_len));
