@@ -617,22 +617,24 @@ static void evt_le_enh_conn_complete(struct hci_dev *dev, struct timeval *tv,
 static void evt_num_completed_packets(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
-	uint8_t num_handles = get_u8(data);
+	struct iovec iov = { .iov_base = (void *)data, .iov_len = size };
+	uint8_t num_handles;
 	int i;
 
-	data += sizeof(num_handles);
-	size -= sizeof(num_handles);
+	if (!util_iov_pull_u8(&iov, &num_handles))
+		return;
 
 	for (i = 0; i < num_handles; i++) {
-		uint16_t handle = get_le16(data);
-		uint16_t count = get_le16(data + 2);
+		uint16_t handle, count;
 		struct hci_conn *conn;
 		struct timeval res;
 		struct hci_conn_tx *last_tx;
 		int j;
 
-		data += 4;
-		size -= 4;
+		if (!util_iov_pull_le16(&iov, &handle))
+			return;
+		if (!util_iov_pull_le16(&iov, &count))
+			return;
 
 		conn = conn_lookup(dev, handle);
 		if (!conn)
