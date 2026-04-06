@@ -263,6 +263,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			pSeq = sdp_list_append(pSeq, pElem);
 			numberOfElements++;
 			SDPDBG("No of elements : %d", numberOfElements);
+			(void)numberOfElements;
 
 			if (seqlen == data_size)
 				break;
