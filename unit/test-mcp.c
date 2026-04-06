@@ -1812,15 +1812,46 @@ static int32_t sr_mcp_track_position(void *user_data)
 {
 	struct test_data *data = user_data;
 
-	return 71 - data->id;
+	return data->id;
 }
 
 static bool sr_mcp_set_track_position(void *user_data, int32_t value)
 {
 	struct test_data *data = user_data;
 
-	data->id = 71 - value;
+	data->id = value;
 	return true;
+}
+
+static bool sr_mcp_move_relative(void *user_data, int32_t offset)
+{
+	struct test_data *data = user_data;
+	int pos = data->id;
+
+	tester_debug("Move Relative %d (pos %d)", (int)offset, pos);
+
+	if (!data->step)
+		FAIL_TEST();
+	data->step--;
+
+	if (bt_mcs_get_media_state(data->mcs) == BT_MCS_STATE_INACTIVE)
+		return false;
+
+	pos += offset;
+	if (pos < 0)
+		pos = 0;
+	if (pos > 71)
+		pos = 71;
+
+	data->id = pos;
+
+	bt_mcs_changed(data->mcs, MCS_TRACK_POSITION_CHRC_UUID);
+	return true;
+}
+
+static int32_t sr_mcp_track_duration(void *user_data)
+{
+	return 71;
 }
 
 const struct bt_mcs_callback sr_mcp_mcs = {
@@ -1832,6 +1863,8 @@ const struct bt_mcs_callback sr_mcp_mcs = {
 	.stop = sr_mcp_op_success_inactive,
 	.track_position = sr_mcp_track_position,
 	.set_track_position = sr_mcp_set_track_position,
+	.track_duration = sr_mcp_track_duration,
+	.move_relative = sr_mcp_move_relative,
 	.debug = mcs_debug,
 };
 
@@ -1908,12 +1941,61 @@ MCS_SR_MCP_CFG(bv_11_c, BT_MCS_STATE_SEEKING);
 MCS_SR_MCP_CFG(bv_74_c, BT_MCS_STATE_INACTIVE);
 #define MCS_SR_MCP_BV_74_C SR_MCP_STOP_INACTIVE
 
+#define SR_MCP_MOVE_RELATIVE(initial) \
+	NOTIFY_CHRC(STATE, initial), \
+	READ_CHRC(TRACK_DUR, 0x47, 0x00, 0x00, 0x00), \
+	WRITE_NORESP_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0xaf, 0xff, 0xff, \
+									0xff), \
+	NOTIFY_CHRC(TRACK_POS, 0x00, 0x00, 0x00, 0x00), \
+	NOTIFY_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0x01), \
+	WRITE_NORESP_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0x17, 0x00, 0x00, \
+									0x00), \
+	NOTIFY_CHRC(TRACK_POS, 0x17, 0x00, 0x00, 0x00), \
+	NOTIFY_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0x01), \
+	WRITE_NORESP_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0x30, 0x00, 0x00, \
+									0x00), \
+	NOTIFY_CHRC(TRACK_POS, 0x47, 0x00, 0x00, 0x00), \
+	NOTIFY_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0x01)
+
+#define SR_MCP_MOVE_RELATIVE_INACTIVE \
+	READ_CHRC(TRACK_DUR, 0x47, 0x00, 0x00, 0x00), \
+	WRITE_NORESP_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0xaf, 0xff, 0xff, \
+									0xff), \
+	NOTIFY_CHRC(CP, BT_MCS_CMD_MOVE_RELATIVE, 0x03)
+
+MCS_SR_MCP_CFG(bv_12_c, BT_MCS_STATE_PLAYING);
+#define MCS_SR_MCP_BV_12_C SR_MCP_MOVE_RELATIVE(BT_MCS_STATE_PLAYING)
+
+MCS_SR_MCP_CFG(bv_13_c, BT_MCS_STATE_PAUSED);
+#define MCS_SR_MCP_BV_13_C SR_MCP_MOVE_RELATIVE(BT_MCS_STATE_PAUSED)
+
+MCS_SR_MCP_CFG(bv_14_c, BT_MCS_STATE_SEEKING);
+#define MCS_SR_MCP_BV_14_C SR_MCP_MOVE_RELATIVE(BT_MCS_STATE_SEEKING)
+
+MCS_SR_MCP_CFG(bv_75_c, BT_MCS_STATE_INACTIVE);
+#define MCS_SR_MCP_BV_75_C SR_MCP_MOVE_RELATIVE_INACTIVE
+
 static void test_sr_mcp(const void *user_data)
 {
 	struct test_data *data = (void *)user_data;
 
+	data->id = 13;
+
 	bt_mcs_set_media_state(data->mcs, data->cfg->state);
 	data->step++;
+	test_server(data);
+}
+
+static void test_sr_mcp_move_relative(const void *user_data)
+{
+	struct test_data *data = (void *)user_data;
+
+	data->id = 13;
+
+	bt_mcs_set_media_state(data->mcs, data->cfg->state);
+	data->step++;
+	if (data->cfg->state != BT_MCS_STATE_INACTIVE)
+		data->step += 2;
 	test_server(data);
 }
 
@@ -1954,6 +2036,20 @@ static void testgroup_sr_mcp(void)
 	define_test("MCS/SR/MCP/BV-74-C [Stop from Inactive]",
 		test_setup_server, test_sr_mcp,
 		&cfg_mcs_sr_mcp_bv_74_c, MCS_SR_MCP_BV_74_C);
+
+	/* MCS.TS Sec 4.4.4 Move Relative */
+	define_test("MCS/SR/MCP/BV-12-C [Move Relative from Playing]",
+		test_setup_server, test_sr_mcp_move_relative,
+		&cfg_mcs_sr_mcp_bv_12_c, MCS_SR_MCP_BV_12_C);
+	define_test("MCS/SR/MCP/BV-13-C [Move Relative from Paused]",
+		test_setup_server, test_sr_mcp_move_relative,
+		&cfg_mcs_sr_mcp_bv_13_c, MCS_SR_MCP_BV_13_C);
+	define_test("MCS/SR/MCP/BV-14-C [Move Relative from Seeking]",
+		test_setup_server, test_sr_mcp_move_relative,
+		&cfg_mcs_sr_mcp_bv_14_c, MCS_SR_MCP_BV_14_C);
+	define_test("MCS/SR/MCP/BV-75-C [Move Relative from Inactive]",
+		test_setup_server, test_sr_mcp_move_relative,
+		&cfg_mcs_sr_mcp_bv_75_c, MCS_SR_MCP_BV_75_C);
 
 	/* TODO: other state transition tests. They largely test the profile
 	 * upper layer, so do not add much here.
