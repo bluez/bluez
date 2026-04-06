@@ -59,7 +59,6 @@ static void convert_file(const char *input_path, const char *output_path)
 	const char *ptr;
 	FILE *fp;
 	struct stat st;
-	off_t cur = 0;
 	int fd;
 
 	if (output_path) {
@@ -123,8 +122,6 @@ static void convert_file(const char *input_path, const char *output_path)
 		str = fgets(line_buffer, line_size - 1, fp);
 		if (!str)
 			break;
-
-		cur += strlen(str);
 
 		err = convert_line(fd, str);
 		if (err < 0) {
