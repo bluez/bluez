@@ -803,7 +803,6 @@ static bool avrcp_get_capabilities(struct avctp_frame *avctp_frame,
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
 	uint8_t cap, count;
-	int i;
 
 	if (!l2cap_frame_get_u8(frame, &cap))
 		return false;
@@ -835,7 +834,7 @@ static bool avrcp_get_capabilities(struct avctp_frame *avctp_frame,
 		}
 		break;
 	case 0x3:
-		for (i = 0; count > 0; count--, i++) {
+		for (; count > 0; count--) {
 			uint8_t event;
 
 			if (!l2cap_frame_get_u8(frame, &event))
@@ -858,7 +857,6 @@ static bool avrcp_list_player_attributes(struct avctp_frame *avctp_frame,
 {
 	struct l2cap_frame *frame = &avctp_frame->l2cap_frame;
 	uint8_t num;
-	int i;
 
 	if (len == 0)
 		return true;
@@ -868,7 +866,7 @@ static bool avrcp_list_player_attributes(struct avctp_frame *avctp_frame,
 
 	print_field("%*cAttributeCount: 0x%02x", (indent - 8), ' ', num);
 
-	for (i = 0; num > 0; num--, i++) {
+	for (; num > 0; num--) {
 		uint8_t attr;
 
 		if (!l2cap_frame_get_u8(frame, &attr))
