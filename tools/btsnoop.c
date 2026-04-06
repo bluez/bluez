@@ -266,7 +266,7 @@ static void command_extract_eir(const char *input)
 	ssize_t len;
 	uint32_t type, toread, flags;
 	uint16_t opcode;
-	int fd, count = 0;
+	int fd;
 
 	fd = open_btsnoop(input, &type);
 	if (fd < 0)
@@ -320,8 +320,6 @@ next_packet:
 				}
 			}
 			printf("\n");
-
-			count++;
 		}
 		break;
 	}
@@ -339,7 +337,7 @@ static void command_extract_ad(const char *input)
 	ssize_t len;
 	uint32_t type, toread, flags;
 	uint16_t opcode;
-	int fd, count = 0;
+	int fd;
 
 	fd = open_btsnoop(input, &type);
 	if (fd < 0)
@@ -392,8 +390,6 @@ next_packet:
 				}
 			}
 			printf("\n");
-
-			count++;
 		}
 		break;
 	}
