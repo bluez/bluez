@@ -62,6 +62,7 @@ struct ioctl_data {
 	uint32_t cmd;
 	const uint32_t opt;
 	const void *param;
+	size_t param_len;
 	int (*cmd_param_func)(void *param, uint32_t *length);
 	int expected_ioctl_err;
 	const void *block_bdaddr;
@@ -434,6 +435,7 @@ static const struct hci_dev_list_req dev_list_invalid_1_param = {
 static const struct ioctl_data dev_list_invalid_1 = {
 	.cmd = HCIGETDEVLIST,
 	.param = (void *)&dev_list_invalid_1_param,
+	.param_len = sizeof(dev_list_invalid_1_param),
 	.expected_ioctl_err = EINVAL,
 };
 
@@ -772,8 +774,13 @@ static void test_ioctl_common(const void *test_data)
 				tester_test_failed();
 				goto exit_free;
 			}
-		} else
+		} else {
+			if (ioctl_data->param_len) {
+				g_assert(req_len >= ioctl_data->param_len);
+				req_len = ioctl_data->param_len;
+			}
 			memcpy(req, ioctl_data->param, req_len);
+		}
 
 		tester_print("Command Parameter is updated");
 		test_condition_complete(data);
