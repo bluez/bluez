@@ -343,6 +343,11 @@ static void write_media_cp(struct gatt_db_attribute *attrib,
 		rsp.result = BT_MCS_RESULT_OP_NOT_SUPPORTED;
 		goto respond;
 	}
+	if (cmd->int32_arg && !util_iov_pull_le32(&iov, (uint32_t *)&arg)) {
+		ret = BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+		rsp.op = 0;
+		goto respond;
+	}
 
 	DBG_MCS(mcs, "Command %s", cmd->name);
 
