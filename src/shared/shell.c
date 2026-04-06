@@ -179,19 +179,16 @@ static const struct bt_shell_menu *find_menu(const char *name, size_t len,
 
 static char *menu_generator(const char *text, int state)
 {
-	static unsigned int index, len;
+	static unsigned int len;
 	static struct queue_entry *entry;
 
 	if (!state) {
-		index = 0;
 		len = strlen(text);
 		entry = (void *) queue_get_entries(data.submenus);
 	}
 
 	for (; entry; entry = entry->next) {
 		struct bt_shell_menu *menu = entry->data;
-
-		index++;
 
 		if (!strncmp(menu->name, text, len)) {
 			entry = entry->next;
