@@ -412,11 +412,23 @@ static bool match_cache_id(const void *data, const void *match_data)
 	return !bacmp(&cache->id, id);
 }
 
-static void gatt_cache_add(struct packet_conn_data *conn, struct gatt_db *db)
+static void gatt_cache_add(struct packet_conn_data *conn, struct gatt_db *ldb,
+							struct gatt_db *rdb)
 {
 	struct gatt_cache *cache;
 	bdaddr_t id;
 	uint8_t id_type;
+
+	/* Attempt to cache local db if not empty */
+	if (!gatt_db_isempty(ldb)) {
+		cache = new0(struct gatt_cache, 1);
+		bacpy(&cache->id, (bdaddr_t *)conn->src);
+		cache->db = gatt_db_ref(ldb);
+		queue_push_tail(cache_list, cache);
+	}
+
+	if (gatt_db_isempty(rdb))
+		return;
 
 	if (!keys_resolve_identity(conn->dst, id.b, &id_type))
 		bacpy(&id, (bdaddr_t *)conn->dst);
@@ -429,7 +441,7 @@ static void gatt_cache_add(struct packet_conn_data *conn, struct gatt_db *db)
 
 	cache = new0(struct gatt_cache, 1);
 	bacpy(&cache->id, &id);
-	cache->db = gatt_db_ref(db);
+	cache->db = gatt_db_ref(rdb);
 	queue_push_tail(cache_list, cache);
 }
 
@@ -437,8 +449,7 @@ static void att_conn_data_free(struct packet_conn_data *conn, void *data)
 {
 	struct att_conn_data *att_data = data;
 
-	if (!gatt_db_isempty(att_data->rdb))
-		gatt_cache_add(conn, att_data->rdb);
+	gatt_cache_add(conn, att_data->ldb, att_data->rdb);
 
 	gatt_db_unref(att_data->rdb);
 	gatt_db_unref(att_data->ldb);
@@ -520,6 +531,10 @@ static void load_gatt_db(struct packet_conn_data *conn)
 		cache = queue_find(cache_list, match_cache_id, &id);
 		if (cache)
 			data->rdb = gatt_db_ref(cache->db);
+
+		cache = queue_find(cache_list, match_cache_id, &conn->src);
+		if (cache)
+			data->ldb = gatt_db_ref(cache->db);
 	}
 }
 
