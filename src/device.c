@@ -2705,6 +2705,17 @@ static uint8_t select_conn_bearer(struct btd_device *dev)
 	return dev->bdaddr_type;
 }
 
+static void device_browse_cb(struct btd_device *dev, int err, void *user_data)
+{
+	DBG("err %d (%s)", err, strerror(-err));
+
+	/* If there are not errors with discovery proceed conecting services */
+	if (!err) {
+		dev->pending = create_pending_list(dev, NULL);
+		connect_next(dev);
+	}
+}
+
 int btd_device_connect_services(struct btd_device *dev, GSList *services)
 {
 	GSList *l;
@@ -2724,8 +2735,20 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services)
 		return device_connect_le(dev);
 	}
 
-	if (!dev->bredr_state.svc_resolved)
-		return -ENOENT;
+	if (!dev->bredr_state.svc_resolved) {
+		int err;
+
+		err = device_discover_services(dev);
+		if (err)
+			return err;
+
+		/* Wait for service discovery to complete before connecting to
+		 * profiles.
+		 */
+		device_wait_for_svc_complete(dev, device_browse_cb, NULL);
+
+		return 0;
+	}
 
 	if (services) {
 		for (l = services; l; l = g_slist_next(l)) {

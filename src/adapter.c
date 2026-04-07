@@ -3686,14 +3686,6 @@ struct device_connect_data {
 	DBusMessage *msg;
 };
 
-static void device_browse_cb(struct btd_device *dev, int err, void *user_data)
-{
-	DBG("err %d (%s)", err, strerror(-err));
-
-	if (!err)
-		btd_device_connect_services(dev, NULL);
-}
-
 static void device_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct device_connect_data *data = user_data;
@@ -3726,7 +3718,6 @@ static void device_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	}
 
 	device_discover_services(device);
-	device_wait_for_svc_complete(device, device_browse_cb, NULL);
 
 	g_io_channel_unref(io);
 	dbus_message_unref(data->msg);
