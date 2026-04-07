@@ -2210,6 +2210,37 @@ static void connect_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void prompt_scan_connect(const char *input, void *user_data)
+{
+	char *address = user_data;
+
+	if (!strcmp(input, "yes") || !strcmp(input, "y")) {
+		dbus_bool_t enable = TRUE;
+
+		free(filter.pattern);
+		filter.pattern = address;
+		filter.auto_connect = true;
+
+		filter.set = false;
+		set_discovery_filter(false);
+
+		if (!g_dbus_proxy_method_call(default_ctrl->proxy,
+						"StartDiscovery",
+						NULL, start_discovery_reply,
+						GUINT_TO_POINTER(enable),
+						NULL)) {
+			bt_shell_printf("Failed to start discovery\n");
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		return;
+	}
+
+	free(address);
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
 static void cmd_connect(int argc, char *argv[])
 {
 	struct connection_data *data;
@@ -2223,7 +2254,9 @@ static void cmd_connect(int argc, char *argv[])
 	proxy = find_proxy_by_address(default_ctrl->devices, argv[1]);
 	if (!proxy) {
 		bt_shell_printf("Device %s not available\n", argv[1]);
-		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		bt_shell_prompt_input(argv[1], "Scan and connect (yes,no):",
+				      prompt_scan_connect, strdup(argv[1]));
+		return;
 	}
 
 	data = new0(struct connection_data, 1);
