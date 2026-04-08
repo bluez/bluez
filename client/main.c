@@ -687,6 +687,14 @@ static GDBusProxy *find_proxies_by_path(GList *source, const char *path)
 	return NULL;
 }
 
+static bool filter_match_pattern(const char *pattern)
+{
+	if (!filter.active || !filter.pattern || !pattern)
+		return false;
+
+	return !strcmp(filter.pattern, pattern);
+}
+
 static void property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -699,12 +707,11 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 		if (default_ctrl && proxy_is_child(proxy,
 					default_ctrl->proxy) == TRUE) {
 			DBusMessageIter addr_iter;
+			const char *address = NULL;
 			char *str;
 
 			if (g_dbus_proxy_get_property(proxy, "Address",
 							&addr_iter) == TRUE) {
-				const char *address;
-
 				dbus_message_iter_get_basic(&addr_iter,
 								&address);
 				str = g_strdup_printf("[" COLORED_CHG
@@ -721,6 +728,19 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 					set_default_device(proxy, NULL);
 				else if (!connected && default_dev == proxy)
 					set_default_device(NULL, NULL);
+
+				/* If the device is connected and the filter
+				 * is auto_connect and it matches the pattern,
+				 * stop discovery.
+				 */
+				if (connected && filter.auto_connect &&
+						filter_match_pattern(address))
+					g_dbus_proxy_method_call(
+							default_ctrl->proxy,
+							"StopDiscovery",
+							NULL, NULL,
+							GUINT_TO_POINTER(false),
+							NULL);
 			}
 
 			print_iter(str, name, iter);
