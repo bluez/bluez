@@ -93,6 +93,7 @@ struct bt_gatt_server {
 	struct bt_att *att;
 	int ref_count;
 	uint16_t mtu;
+	bool perms;
 
 	unsigned int mtu_id;
 	unsigned int read_by_grp_type_id;
@@ -413,6 +414,9 @@ static uint8_t check_permissions(struct bt_gatt_server *server,
 	uint8_t enc_size;
 	uint32_t perm;
 	int security;
+
+	if (!server->perms)
+		return 0;
 
 	perm = gatt_db_attribute_get_permissions(attr);
 
@@ -1652,6 +1656,7 @@ struct bt_gatt_server *bt_gatt_server_new(struct gatt_db *db,
 	server->db = gatt_db_ref(db);
 	server->att = bt_att_ref(att);
 	server->mtu = MAX(mtu, BT_ATT_DEFAULT_LE_MTU);
+	server->perms = true;
 	server->max_prep_queue_len = DEFAULT_MAX_PREP_QUEUE_LEN;
 	server->prep_queue = queue_new();
 	server->min_enc_size = min_enc_size;
@@ -1678,6 +1683,14 @@ struct bt_att *bt_gatt_server_get_att(struct bt_gatt_server *server)
 		return NULL;
 
 	return server->att;
+}
+
+void bt_gatt_server_set_permissions(struct bt_gatt_server *server, bool value)
+{
+	if (!server)
+		return;
+
+	server->perms = value;
 }
 
 struct bt_gatt_server *bt_gatt_server_ref(struct bt_gatt_server *server)
