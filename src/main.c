@@ -152,6 +152,7 @@ static const char *gatt_options[] = {
 	"Channels",
 	"Client",
 	"ExportClaimedServices",
+	"Security",
 	NULL
 };
 
@@ -1112,6 +1113,38 @@ static void parse_gatt_export(GKeyFile *config)
 	g_free(str);
 }
 
+static uint8_t parse_gatt_seclevel_str(const char *str)
+{
+	if (!strcmp(str, "auto"))
+		return BT_ATT_SECURITY_AUTO;
+	else if (!strcmp(str, "low") || !strcmp(str, "1"))
+		return BT_ATT_SECURITY_LOW;
+	else if (!strcmp(str, "medium") || !strcmp(str, "2"))
+		return BT_ATT_SECURITY_MEDIUM;
+	else if (!strcmp(str, "high") || !strcmp(str, "3"))
+		return BT_ATT_SECURITY_HIGH;
+	else if (!strcmp(str, "fips") || !strcmp(str, "4"))
+		return BT_ATT_SECURITY_FIPS;
+
+	DBG("Invalid value for Security=%s", str);
+	return BT_ATT_SECURITY_AUTO;
+}
+
+static void parse_gatt_seclevel(GKeyFile *config)
+{
+	char *str = NULL;
+
+	if (!btd_opts.testing)
+		return;
+
+	parse_config_string(config, "GATT", "Security", &str);
+	if (!str)
+		return;
+
+	btd_opts.gatt_seclevel = parse_gatt_seclevel_str(str);
+	g_free(str);
+}
+
 static void parse_gatt(GKeyFile *config)
 {
 	parse_gatt_cache(config);
@@ -1122,6 +1155,7 @@ static void parse_gatt(GKeyFile *config)
 				1, 6);
 	parse_config_bool(config, "GATT", "Client", &btd_opts.gatt_client);
 	parse_gatt_export(config);
+	parse_gatt_seclevel(config);
 }
 
 static void parse_csis_sirk(GKeyFile *config)
@@ -1269,6 +1303,7 @@ static void init_defaults(void)
 	btd_opts.gatt_channels = 1;
 	btd_opts.gatt_client = true;
 	btd_opts.gatt_export = BT_GATT_EXPORT_READ_ONLY;
+	btd_opts.gatt_seclevel = BT_ATT_SECURITY_AUTO;
 
 	btd_opts.avdtp.session_mode = BT_IO_MODE_BASIC;
 	btd_opts.avdtp.stream_mode = BT_IO_MODE_BASIC;
