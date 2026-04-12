@@ -4147,6 +4147,8 @@ void btd_gatt_database_destroy(struct btd_gatt_database *database)
 					adapter_get_path(database->adapter),
 					GATT_MANAGER_IFACE);
 
+	queue_remove(dbs, database);
+
 	gatt_database_free(database);
 }
 
