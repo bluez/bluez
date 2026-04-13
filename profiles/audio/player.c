@@ -30,6 +30,7 @@
 #include "src/log.h"
 #include "src/dbus-common.h"
 #include "src/error.h"
+#include "src/shared/util.h"
 
 #include "player.h"
 
@@ -1442,6 +1443,8 @@ void media_player_set_metadata(struct media_player *mp,
 	GHashTable *metadata = item ? item->metadata : mp->track;
 
 	value = g_strndup(data, len);
+	/* Ensure this is a valid UTF-8 string */
+	strtoutf8(value, len);
 
 	DBG("%s: %s", key, value);
 
