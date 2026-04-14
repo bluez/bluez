@@ -23,14 +23,6 @@
 #define BT_VCP_UNMUTE			0x05
 #define BT_VCP_MUTE			0x06
 
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 struct bt_vcp;
 
 typedef void (*bt_vcp_destroy_func_t)(void *user_data);

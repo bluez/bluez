@@ -72,10 +72,6 @@
 #define DISCOVERY_TIMER		1
 #define INVALID_FLAGS		0xff
 
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 #define RSSI_THRESHOLD		8
 #define AUTH_FAILURES_THRESHOLD	3
 
