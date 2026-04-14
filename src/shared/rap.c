@@ -12,7 +12,6 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
-#include <glib.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/uuid.h"

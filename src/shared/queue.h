@@ -8,6 +8,8 @@
  *
  */
 
+#pragma once
+
 #include <stdbool.h>
 
 typedef void (*queue_destroy_func_t)(void *data);
@@ -27,6 +29,7 @@ bool queue_push_head(struct queue *queue, void *data);
 bool queue_push_after(struct queue *queue, void *entry, void *data);
 void *queue_pop_head(struct queue *queue);
 void *queue_peek_head(struct queue *queue);
+struct queue_entry *queue_peek_head_entry(struct queue *queue);
 void *queue_peek_tail(struct queue *queue);
 
 typedef void (*queue_foreach_func_t)(void *data, void *user_data);

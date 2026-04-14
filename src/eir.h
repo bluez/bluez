@@ -9,10 +9,9 @@
  *
  */
 
-#include <glib.h>
-
 #include "bluetooth/sdp.h"
 #include "bluetooth/uuid.h"
+#include "src/shared/queue.h"
 
 #define EIR_FLAGS                   0x01  /* flags */
 #define EIR_UUID16_SOME             0x02  /* 16-bit UUID, more available */
@@ -73,7 +72,7 @@ struct eir_ad {
 };
 
 struct eir_data {
-	GSList *services;
+	struct queue *services;
 	unsigned int flags;
 	char *name;
 	uint32_t class;
@@ -88,9 +87,9 @@ struct eir_data {
 	uint16_t did_product;
 	uint16_t did_version;
 	uint16_t did_source;
-	GSList *msd_list;
-	GSList *sd_list;
-	GSList *data_list;
+	struct queue *msd_list;
+	struct queue *sd_list;
+	struct queue *data_list;
 };
 
 void eir_data_free(struct eir_data *eir);

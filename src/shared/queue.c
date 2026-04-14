@@ -179,6 +179,14 @@ void *queue_peek_head(struct queue *queue)
 	return queue->head->data;
 }
 
+struct queue_entry *queue_peek_head_entry(struct queue *queue)
+{
+	if (!queue || !queue->head)
+		return NULL;
+
+	return queue->head;
+}
+
 void *queue_peek_tail(struct queue *queue)
 {
 	if (!queue || !queue->tail)

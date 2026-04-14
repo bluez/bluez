@@ -587,7 +587,7 @@ static void print_debug(const char *str, void *user_data)
 static void test_ad(const struct test_data *test, struct eir_data *eir)
 {
 	struct bt_ad *ad;
-	GSList *list;
+	struct queue_entry *q;
 
 	ad = bt_ad_new_with_data(test->eir_size, test->eir_data);
 	g_assert(ad);
@@ -607,8 +607,8 @@ static void test_ad(const struct test_data *test, struct eir_data *eir)
 		}
 	}
 
-	for (list = eir->msd_list; list; list = list->next) {
-		struct eir_msd *msd = list->data;
+	for (q = queue_peek_head_entry(eir->msd_list); q; q = q->next) {
+		struct eir_msd *msd = q->data;
 		struct bt_ad_manufacturer_data adm;
 
 		adm.manufacturer_id = msd->company;
@@ -618,8 +618,8 @@ static void test_ad(const struct test_data *test, struct eir_data *eir)
 		g_assert(bt_ad_has_manufacturer_data(ad, &adm));
 	}
 
-	for (list = eir->sd_list; list; list = list->next) {
-		struct eir_sd *sd = list->data;
+	for (q = queue_peek_head_entry(eir->sd_list); q; q = q->next) {
+		struct eir_sd *sd = q->data;
 		struct bt_ad_service_data ads;
 
 		bt_string_to_uuid(&ads.uuid, sd->uuid);
@@ -636,7 +636,7 @@ static void test_parsing(gconstpointer data)
 {
 	const struct test_data *test = data;
 	struct eir_data eir;
-	GSList *list;
+	struct queue_entry *q;
 
 	memset(&eir, 0, sizeof(eir));
 
@@ -646,8 +646,8 @@ static void test_parsing(gconstpointer data)
 	tester_debug("Name: %s", eir.name);
 	tester_debug("TX power: %d", eir.tx_power);
 
-	for (list = eir.services; list; list = list->next) {
-		char *uuid_str = list->data;
+	for (q = queue_peek_head_entry(eir.services); q; q = q->next) {
+		char *uuid_str = q->data;
 
 		tester_debug("UUID: %s", uuid_str);
 	}
@@ -664,11 +664,10 @@ static void test_parsing(gconstpointer data)
 	g_assert(eir.tx_power == test->tx_power);
 
 	if (test->uuid) {
-		GSList *list;
 		int n = 0;
 
-		for (list = eir.services; list; list = list->next, n++) {
-			char *uuid_str = list->data;
+		for (q = queue_peek_head_entry(eir.services); q; q = q->next, n++) {
+			char *uuid_str = q->data;
 			g_assert(test->uuid[n]);
 			g_assert_cmpstr(test->uuid[n], ==, uuid_str);
 		}
@@ -676,16 +675,16 @@ static void test_parsing(gconstpointer data)
 		g_assert(eir.services == NULL);
 	}
 
-	for (list = eir.msd_list; list; list = list->next) {
-		struct eir_msd *msd = list->data;
+	for (q = queue_peek_head_entry(eir.msd_list); q; q = q->next) {
+		struct eir_msd *msd = q->data;
 
 		tester_debug("Manufacturer ID: 0x%04x", msd->company);
 		util_hexdump(' ', msd->data, msd->data_len, print_debug,
 							"Manufacturer Data:");
 	}
 
-	for (list = eir.sd_list; list; list = list->next) {
-		struct eir_sd *sd = list->data;
+	for (q = queue_peek_head_entry(eir.sd_list); q; q = q->next) {
+		struct eir_sd *sd = q->data;
 
 		tester_debug("Service UUID: %s", sd->uuid);
 		util_hexdump(' ', sd->data, sd->data_len, print_debug,

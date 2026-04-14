@@ -246,6 +246,25 @@ static void test_remove_all(const void *data)
 	tester_test_passed();
 }
 
+static void test_peek_head_entry(const void *data)
+{
+	struct queue *queue;
+	struct queue_entry *entry;
+
+	queue = queue_new();
+	g_assert(queue != NULL);
+
+	g_assert(queue_push_tail(queue, INT_TO_PTR(10)));
+
+	entry = queue_peek_head_entry(queue);
+	g_assert(entry->data == queue_peek_head(queue));
+	g_assert_cmpint(PTR_TO_INT(entry->data), ==, PTR_TO_INT(queue_peek_head(queue)));
+	g_assert_cmpint(PTR_TO_INT(entry->data), ==, 10);
+
+	queue_destroy(queue, NULL);
+	tester_test_passed();
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -263,6 +282,7 @@ int main(int argc, char *argv[])
 						test_destroy_remove, NULL);
 	tester_add("/queue/push_after",  NULL, NULL, test_push_after, NULL);
 	tester_add("/queue/remove_all",  NULL, NULL, test_remove_all, NULL);
+	tester_add("/queue/peek_head_entry", NULL, NULL, test_peek_head_entry, NULL);
 
 	return tester_run();
 }
