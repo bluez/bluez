@@ -213,6 +213,7 @@ struct btd_device {
 	bool		pending_paired;		/* "Paired" waiting for SDP */
 	bool		svc_refreshed;
 	bool		refresh_discovery;
+	bool		skip_secondary;
 
 	/* Manage whether this device can wake the system from suspend.
 	 * - wake_support: Requires a profile that supports wake (i.e. HID)
@@ -1062,17 +1063,12 @@ static gboolean dev_property_get_alias(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static void set_alias(GDBusPendingPropertySet id, const char *alias,
-								void *data)
+void btd_device_set_alias(struct btd_device *device, const char *alias)
 {
-	struct btd_device *device = data;
-
 	/* No change */
 	if ((device->alias == NULL && g_str_equal(alias, "")) ||
-					g_strcmp0(device->alias, alias) == 0) {
-		g_dbus_pending_property_success(id);
+					g_strcmp0(device->alias, alias) == 0)
 		return;
-	}
 
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
@@ -1081,8 +1077,6 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Alias");
-
-	g_dbus_pending_property_success(id);
 }
 
 static void dev_property_set_alias(const GDBusPropertyTable *property,
@@ -1100,7 +1094,9 @@ static void dev_property_set_alias(const GDBusPropertyTable *property,
 
 	dbus_message_iter_get_basic(value, &alias);
 
-	set_alias(id, alias, data);
+	btd_device_set_alias(data, alias);
+
+	g_dbus_pending_property_success(id);
 }
 
 static gboolean dev_property_exists_class(const GDBusPropertyTable *property,
@@ -6329,7 +6325,8 @@ static void gatt_client_init(struct btd_device *device)
 	}
 
 	device->client = bt_gatt_client_new(device->db, device->att,
-						device->att_mtu, features);
+						device->att_mtu, features,
+						device->skip_secondary);
 	if (!device->client) {
 		DBG("Failed to initialize");
 		return;
@@ -8289,6 +8286,11 @@ void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
 					device->bdaddr_type, min_interval,
 					max_interval, latency,
 					timeout);
+}
+
+void btd_device_set_skip_secondary(struct btd_device *device, bool skip)
+{
+	device->skip_secondary = skip;
 }
 
 void btd_device_foreach_service_data(struct btd_device *dev, bt_ad_func_t func,

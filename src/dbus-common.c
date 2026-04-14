@@ -144,6 +144,8 @@ const char *gap_appearance_to_icon(uint16_t appearance)
 			return "scanner";
 		}
 		break;
+	case 0x2a: /* Gaming — Assigned Numbers, section 2.6.2 */
+		return "input-gaming";
 	}
 
 	return NULL;

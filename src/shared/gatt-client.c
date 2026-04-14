@@ -20,6 +20,7 @@
 #include "src/shared/queue.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
+#include "src/shared/timeout.h"
 
 #include <assert.h>
 #include <limits.h>
@@ -32,6 +33,8 @@
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
+
+#define SECONDARY_DISC_TIMEOUT	2000	/* 2 seconds in ms */
 
 #define UUID_BYTES (BT_GATT_UUID_SIZE * sizeof(uint8_t))
 
@@ -93,6 +96,7 @@ struct bt_gatt_client {
 	struct queue *notify_chrcs;
 	int next_reg_id;
 	unsigned int disc_id, nfy_id, nfy_mult_id, ind_id;
+	bool skip_secondary;
 
 	/*
 	 * Handles of the GATT Service and the Service Changed characteristic
@@ -113,6 +117,7 @@ struct bt_gatt_client {
 	unsigned int next_request_id;
 
 	struct bt_gatt_request *discovery_req;
+	unsigned int sec_disc_timeout_id;
 	unsigned int mtu_req_id;
 
 	/* Pending retry operation for DB out of sync handling */
@@ -1230,6 +1235,42 @@ static bool discovery_parse_services(struct discovery_op *op, bool primary,
 	return true;
 }
 
+struct sec_disc_timeout_data {
+	struct bt_gatt_client *client;
+	struct discovery_op *op;
+};
+
+static bool sec_disc_timeout_cb(void *user_data)
+{
+	struct sec_disc_timeout_data *data = user_data;
+	struct bt_gatt_client *client = data->client;
+	struct discovery_op *op = data->op;
+
+	DBG(client, "Secondary service discovery timed out, proceeding");
+
+	client->sec_disc_timeout_id = 0;
+
+	/* Cancel the pending ATT request before it hits the 30s ATT timeout */
+	if (client->discovery_req) {
+		bt_gatt_request_cancel(client->discovery_req);
+		bt_gatt_request_unref(client->discovery_req);
+		client->discovery_req = NULL;
+	}
+
+	/* Treat as success — no secondary services found */
+	discovery_op_complete(op, true, 0);
+
+	return false;
+}
+
+static void sec_disc_timeout_destroy(void *user_data)
+{
+	struct sec_disc_timeout_data *data = user_data;
+
+	discovery_op_unref(data->op);
+	free(data);
+}
+
 static void discover_secondary_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data)
@@ -1240,6 +1281,11 @@ static void discover_secondary_cb(bool success, uint8_t att_ecode,
 	struct handle_range *range;
 
 	discovery_req_clear(client);
+
+	if (client->sec_disc_timeout_id) {
+		timeout_remove(client->sec_disc_timeout_id);
+		client->sec_disc_timeout_id = 0;
+	}
 
 	if (!success) {
 		switch (att_ecode) {
@@ -1344,7 +1390,7 @@ secondary:
 	 * functionality of a device and is referenced from at least one
 	 * primary service on the device.
 	 */
-	if (queue_isempty(op->pending_svcs))
+	if (queue_isempty(op->pending_svcs) || client->skip_secondary)
 		goto done;
 
 	/* Discover secondary services */
@@ -1353,8 +1399,18 @@ secondary:
 						discover_secondary_cb,
 						discovery_op_ref(op),
 						discovery_op_unref);
-	if (client->discovery_req)
+	if (client->discovery_req) {
+		struct sec_disc_timeout_data *td;
+
+		td = new0(struct sec_disc_timeout_data, 1);
+		td->client = client;
+		td->op = discovery_op_ref(op);
+		client->sec_disc_timeout_id = timeout_add(
+						SECONDARY_DISC_TIMEOUT,
+						sec_disc_timeout_cb, td,
+						sec_disc_timeout_destroy);
 		return;
+	}
 
 	DBG(client, "Failed to start secondary service discovery");
 
@@ -2550,7 +2606,8 @@ fail:
 struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 							struct bt_att *att,
 							uint16_t mtu,
-							uint8_t features)
+							uint8_t features,
+							bool skip_secondary)
 {
 	struct bt_gatt_client *client;
 
@@ -2560,6 +2617,8 @@ struct bt_gatt_client *bt_gatt_client_new(struct gatt_db *db,
 	client = gatt_client_new(db, att, features);
 	if (!client)
 		return NULL;
+
+	client->skip_secondary = skip_secondary;
 
 	if (!gatt_client_init(client, mtu)) {
 		bt_gatt_client_free(client);
@@ -2817,6 +2876,11 @@ bool bt_gatt_client_cancel_all(struct bt_gatt_client *client)
 		return false;
 
 	queue_remove_all(client->pending_requests, NULL, NULL, cancel_pending);
+
+	if (client->sec_disc_timeout_id) {
+		timeout_remove(client->sec_disc_timeout_id);
+		client->sec_disc_timeout_id = 0;
+	}
 
 	if (client->discovery_req) {
 		bt_gatt_request_cancel(client->discovery_req);
