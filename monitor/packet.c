@@ -4359,6 +4359,24 @@ static int addr2str(const uint8_t *addr, char *str)
 			addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
 }
 
+static int get_msft_opcode(uint16_t manufacturer) {
+	switch (manufacturer) {
+	case COMPANY_ID_INTEL:
+		return 0xFC1E;
+	case COMPANY_ID_QUALCOMM:
+		return 0xFD70;
+	case COMPANY_ID_MEDIATEK:
+		return 0xFD30;
+	case COMPANY_ID_REALTEK:
+		return 0xFCF0;
+	case COMPANY_ID_LINUX:
+		return 0xFC1E;
+	default:
+		return BT_HCI_CMD_NOP;
+	}
+
+}
+
 void packet_monitor(struct timeval *tv, struct ucred *cred,
 					uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
@@ -4451,50 +4469,8 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		if (index < MAX_INDEX) {
 			memcpy(index_list[index].bdaddr, ii->bdaddr, 6);
 			index_list[index].manufacturer = manufacturer;
-
-			switch (manufacturer) {
-			case COMPANY_ID_INTEL:
-				/*
-				 * Intel controllers that support the
-				 * Microsoft vendor extension are using
-				 * 0xFC1E for VsMsftOpCode.
-				 */
-				index_list[index].msft_opcode = 0xFC1E;
-				break;
-			case COMPANY_ID_QUALCOMM:
-				/*
-				 * Qualcomm controllers that support the
-				 * Microsoft vendor extensions are using
-				 * 0xFD70 for VsMsftOpCode.
-				 */
-				index_list[index].msft_opcode = 0xFD70;
-				break;
-			case COMPANY_ID_MEDIATEK:
-				/*
-				 * Mediatek controllers that support the
-				 * Microsoft vendor extensions are using
-				 * 0xFD30 for VsMsftOpCode.
-				 */
-				index_list[index].msft_opcode = 0xFD30;
-				break;
-			case COMPANY_ID_REALTEK:
-				/*
-				 * Realtek controllers that support the
-				 * Microsoft vendor extensions are using
-				 * 0xFCF0 for VsMsftOpCode.
-				 */
-				index_list[index].msft_opcode = 0xFCF0;
-				break;
-			case COMPANY_ID_LINUX:
-				/*
-				 * Emulator controllers use Linux Foundation as
-				 * manufacturer and support the
-				 * Microsoft vendor extensions using
-				 * 0xFC1E for VsMsftOpCode.
-				 */
-				index_list[index].msft_opcode = 0xFC1E;
-				break;
-			}
+			index_list[index].msft_opcode =
+				get_msft_opcode(manufacturer);
 		}
 
 		addr2str(ii->bdaddr, str);
@@ -6530,6 +6506,10 @@ static void read_local_version_rsp(uint16_t index, const void *data,
 		}
 
 		index_list[index_current].manufacturer = manufacturer;
+		if (index_list[index_current].msft_opcode == BT_HCI_CMD_NOP) {
+			index_list[index_current].msft_opcode =
+				get_msft_opcode(manufacturer);
+		}
 	}
 
 	print_manufacturer(rsp->manufacturer);
