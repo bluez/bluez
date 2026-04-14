@@ -1,6 +1,12 @@
 name: CI
 
-on: [pull_request]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  checks: write
+  pull-requests: write
 
 jobs:
   ci:
