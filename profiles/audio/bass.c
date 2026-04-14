@@ -1865,21 +1865,21 @@ static bool setup_match_bis(const void *data, const void *match_data)
 static void bass_update_bis_sync(struct bass_delegator *dg,
 				struct bt_bcast_src *bcast_src)
 {
-	for (int bis = 1; bis < ISO_MAX_NUM_BIS; bis++) {
-		struct bass_setup *setup = queue_find(dg->setups,
-				setup_match_bis, INT_TO_PTR(bis));
-		uint8_t state;
+	struct queue_entry *entry;
 
-		if (!setup)
-			continue;
+	/* Check if existing setups if BIS needs to be added/removed */
+	for (entry = queue_get_entries(dg->setups); entry;
+				entry = entry->next) {
+		struct bass_setup *setup = entry->data;
+		uint8_t state;
 
 		state = bt_bap_stream_get_state(setup->stream);
 
-		if (!setup->stream && bt_bass_check_bis(bcast_src, bis))
+		if (!setup->stream && bt_bass_check_bis(bcast_src, setup->bis))
 			bass_add_bis(setup);
 		else if (setup->stream &&
 				state == BT_BAP_STREAM_STATE_STREAMING &&
-				!bt_bass_check_bis(bcast_src, bis))
+				!bt_bass_check_bis(bcast_src, setup->bis))
 			bass_remove_bis(setup);
 	}
 }
