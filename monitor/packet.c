@@ -450,8 +450,10 @@ void packet_set_fallback_manufacturer(uint16_t manufacturer)
 
 void packet_set_msft_evt_prefix(const uint8_t *prefix, uint8_t len)
 {
-	if (index_current < MAX_INDEX && len < 8)
+	if (index_current < MAX_INDEX && len < 8) {
 		memcpy(index_list[index_current].msft_evt_prefix, prefix, len);
+		index_list[index_current].msft_evt_len = len;
+	}
 }
 
 static void cred_pid(struct ucred *cred, char *str, size_t len)
@@ -4359,7 +4361,8 @@ static int addr2str(const uint8_t *addr, char *str)
 			addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
 }
 
-static int get_msft_opcode(uint16_t manufacturer) {
+static int get_msft_opcode(uint16_t manufacturer)
+{
 	switch (manufacturer) {
 	case COMPANY_ID_INTEL:
 		return 0xFC1E;
@@ -4374,7 +4377,23 @@ static int get_msft_opcode(uint16_t manufacturer) {
 	default:
 		return BT_HCI_CMD_NOP;
 	}
+}
 
+static bool msft_event_prefix_match(const void *data, int size)
+{
+	const void *prefix = index_list[index_current].msft_evt_prefix;
+	int prefix_len = index_list[index_current].msft_evt_len;
+
+	/*
+	 * MSFT event has one byte of event code following the MSFT prefix.
+	 * We need to check the event code is valid, as it's possible for
+	 * a vendor to use the same MSFT prefix but for other events.
+	 */
+	if (size >= prefix_len + 1 && !memcmp(prefix, data, prefix_len))
+		return msft_event_code_valid(
+				((const uint8_t *) data)[prefix_len]);
+
+	return false;
 }
 
 void packet_monitor(struct timeval *tv, struct ucred *cred,
@@ -10925,10 +10944,15 @@ static const struct vendor_ocf *current_vendor_ocf(uint16_t ocf)
 }
 
 static const struct vendor_evt *current_vendor_evt(const void *data,
-							int *consumed_size)
+					uint8_t size, int *consumed_size)
 {
 	uint16_t manufacturer;
 	uint8_t evt = *((const uint8_t *) data);
+
+	if (msft_event_prefix_match(data, size)) {
+		*consumed_size = index_list[index_current].msft_evt_len;
+		return msft_vendor_evt();
+	}
 
 	/* A regular vendor event consumes 1 byte. */
 	*consumed_size = 1;
@@ -10948,9 +10972,12 @@ static const struct vendor_evt *current_vendor_evt(const void *data,
 	return NULL;
 }
 
-static const char *current_vendor_evt_str(void)
+static const char *current_vendor_evt_str(const void *data, uint8_t size)
 {
 	uint16_t manufacturer;
+
+	if (msft_event_prefix_match(data, size))
+		return "Microsoft";
 
 	if (index_current < MAX_INDEX)
 		manufacturer = index_list[index_current].manufacturer;
@@ -13547,17 +13574,20 @@ static void vendor_evt(struct timeval *tv, uint16_t index,
 	struct subevent_data vendor_data;
 	char vendor_str[150];
 	int consumed_size;
-	const struct vendor_evt *vnd = current_vendor_evt(data, &consumed_size);
+	const struct vendor_evt *vnd = current_vendor_evt(data, size,
+								&consumed_size);
 
 	if (vnd) {
-		const char *str = current_vendor_evt_str();
+		const char *str = current_vendor_evt_str(data, size);
 
 		if (str) {
 			snprintf(vendor_str, sizeof(vendor_str),
 						"%s %s", str, vnd->str);
 			vendor_data.str = vendor_str;
-		} else
+		} else {
 			vendor_data.str = vnd->str;
+		}
+
 		vendor_data.subevent = vnd->evt;
 		vendor_data.func = vnd->evt_func;
 		vendor_data.size = vnd->evt_size;

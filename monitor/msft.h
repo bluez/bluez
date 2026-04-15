@@ -187,3 +187,4 @@ struct vendor_evt;
 
 const struct vendor_ocf *msft_vendor_ocf(void);
 const struct vendor_evt *msft_vendor_evt(void);
+bool msft_event_code_valid(uint8_t code);
