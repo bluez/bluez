@@ -61,6 +61,14 @@ struct hci_stats {
 	struct queue *plot;
 	uint16_t min;
 	uint16_t max;
+	/* Wall-clock throughput tracking */
+	struct timeval first_ts;
+	struct timeval last_ts;
+	/* Windowed throughput (1-second windows) */
+	struct timeval window_start;
+	size_t window_bytes;
+	long long speed_min;	/* Kb/s, 0 = not set */
+	long long speed_max;	/* Kb/s */
 };
 
 struct hci_conn {
@@ -141,6 +149,8 @@ static void plot_draw(struct queue *queue, const char *title)
 
 static void print_stats(struct hci_stats *stats, const char *label)
 {
+	long long duration_ms;
+
 	if (!stats->num)
 		return;
 
@@ -152,9 +162,41 @@ static void print_stats(struct hci_stats *stats, const char *label)
 	print_field("%s size: %u-%u octets (~%zd octets)", label,
 			stats->min, stats->max, stats->bytes / stats->num);
 
-	if (TV_MSEC(stats->latency.total))
-		print_field("%s speed: ~%lld Kb/s", label,
-			stats->bytes * 8 / TV_MSEC(stats->latency.total));
+	/* Compute wall-clock speed from first/last packet timestamps */
+	duration_ms = TV_MSEC(stats->last_ts) - TV_MSEC(stats->first_ts);
+	if (duration_ms > 0) {
+		long long avg_speed = stats->bytes * 8 / duration_ms;
+
+		/* Close the last window for min/max if it has data */
+		if (stats->window_bytes > 0 && stats->num > 1) {
+			struct timeval delta;
+			long long last_win_ms;
+
+			timersub(&stats->last_ts, &stats->window_start,
+								&delta);
+			last_win_ms = TV_MSEC(delta);
+			if (last_win_ms > 0) {
+				long long speed;
+
+				speed = stats->window_bytes * 8 /
+								last_win_ms;
+				if (!stats->speed_min ||
+						speed < stats->speed_min)
+					stats->speed_min = speed;
+				if (speed > stats->speed_max)
+					stats->speed_max = speed;
+			}
+		}
+
+		if (stats->speed_min && stats->speed_max)
+			print_field("%s speed: ~%lld Kb/s "
+				"(min ~%lld Kb/s max ~%lld Kb/s)",
+				label, avg_speed,
+				stats->speed_min, stats->speed_max);
+		else
+			print_field("%s speed: ~%lld Kb/s", label,
+								avg_speed);
+	}
 
 	plot_draw(stats->plot, label);
 }
@@ -1066,7 +1108,8 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 	}
 }
 
-static void stats_add(struct hci_stats *stats, uint16_t size)
+static void stats_add(struct hci_stats *stats, struct timeval *tv,
+							uint16_t size)
 {
 	stats->num++;
 	stats->bytes += size;
@@ -1075,6 +1118,39 @@ static void stats_add(struct hci_stats *stats, uint16_t size)
 		stats->min = size;
 	if (!stats->max || size > stats->max)
 		stats->max = size;
+
+	/* Wall-clock timestamp tracking */
+	if (!timerisset(&stats->first_ts))
+		stats->first_ts = *tv;
+	stats->last_ts = *tv;
+
+	/* Windowed throughput: 1-second windows */
+	if (!timerisset(&stats->window_start)) {
+		stats->window_start = *tv;
+		stats->window_bytes = size;
+	} else {
+		struct timeval delta;
+
+		timersub(tv, &stats->window_start, &delta);
+		if (TV_MSEC(delta) >= 1000) {
+			/* Close current window, compute speed */
+			long long speed;
+
+			speed = stats->window_bytes * 8 /
+						TV_MSEC(delta);
+
+			if (!stats->speed_min || speed < stats->speed_min)
+				stats->speed_min = speed;
+			if (speed > stats->speed_max)
+				stats->speed_max = speed;
+
+			/* Start new window */
+			stats->window_start = *tv;
+			stats->window_bytes = size;
+		} else {
+			stats->window_bytes += size;
+		}
+	}
 }
 
 static void conn_pkt_tx(struct hci_conn *conn, struct timeval *tv,
@@ -1087,10 +1163,10 @@ static void conn_pkt_tx(struct hci_conn *conn, struct timeval *tv,
 	last_tx->chan = chan;
 	queue_push_tail(conn->tx_queue, last_tx);
 
-	stats_add(&conn->tx, size);
+	stats_add(&conn->tx, tv, size);
 
 	if (chan)
-		stats_add(&chan->tx, size);
+		stats_add(&chan->tx, tv, size);
 }
 
 static void conn_pkt_rx(struct hci_conn *conn, struct timeval *tv,
@@ -1106,7 +1182,7 @@ static void conn_pkt_rx(struct hci_conn *conn, struct timeval *tv,
 
 	conn->last_rx = *tv;
 
-	stats_add(&conn->rx, size);
+	stats_add(&conn->rx, tv, size);
 	conn->rx.num_comp++;
 
 	if (chan) {
@@ -1118,7 +1194,7 @@ static void conn_pkt_rx(struct hci_conn *conn, struct timeval *tv,
 
 		chan->last_rx = *tv;
 
-		stats_add(&chan->rx, size);
+		stats_add(&chan->rx, tv, size);
 		chan->rx.num_comp++;
 	}
 }
