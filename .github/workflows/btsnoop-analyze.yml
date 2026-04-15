@@ -1,0 +1,13 @@
+name: Analyze on mention
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  analyze:
+    if: >-
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '/analyze')
+    uses: Vudentz/btsnoop-analyzer/.github/workflows/analyze-on-mention.yml@master
+    secrets: inherit
