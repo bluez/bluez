@@ -94,6 +94,9 @@ struct plot {
 struct l2cap_chan {
 	uint16_t cid;
 	uint16_t psm;
+	uint16_t mtu;
+	uint16_t mps;
+	uint8_t mode;
 	bool out;
 	struct timeval last_rx;
 	struct hci_stats rx;
@@ -156,17 +159,76 @@ static void print_stats(struct hci_stats *stats, const char *label)
 	plot_draw(stats->plot, label);
 }
 
+static const char *fixed_channel_name(uint16_t cid)
+{
+	switch (cid) {
+	case 0x0001:
+		return "L2CAP Signaling (BR/EDR)";
+	case 0x0002:
+		return "Connectionless";
+	case 0x0003:
+		return "AMP Manager";
+	case 0x0004:
+		return "ATT";
+	case 0x0005:
+		return "L2CAP Signaling (LE)";
+	case 0x0006:
+		return "SMP (LE)";
+	case 0x0007:
+		return "SMP (BR/EDR)";
+	default:
+		return NULL;
+	}
+}
+
+static const char *l2cap_mode_name(uint8_t mode)
+{
+	switch (mode) {
+	case 0x00:
+		return "Basic";
+	case 0x01:
+		return "Retransmission";
+	case 0x02:
+		return "Flow Control";
+	case 0x03:
+		return "ERTM";
+	case 0x04:
+		return "Streaming";
+	case 0x80:
+		return "LE Credit";
+	case 0x81:
+		return "Enhanced Credit";
+	default:
+		return "Unknown";
+	}
+}
+
 static void chan_destroy(void *data)
 {
 	struct l2cap_chan *chan = data;
+	const char *fixed;
 
 	if (!chan->rx.num && !chan->tx.num)
 		goto done;
 
-	printf("  Found %s L2CAP channel with CID %u\n",
+	fixed = fixed_channel_name(chan->cid);
+	if (fixed)
+		printf("  Found %s L2CAP channel with CID %u (%s)\n",
+					chan->out ? "TX" : "RX", chan->cid,
+					fixed);
+	else
+		printf("  Found %s L2CAP channel with CID %u\n",
 					chan->out ? "TX" : "RX", chan->cid);
+
 	if (chan->psm)
-		print_field("PSM %u", chan->psm);
+		print_field("PSM %u (0x%04x)", chan->psm, chan->psm);
+	if (!fixed) {
+		print_field("Mode: %s", l2cap_mode_name(chan->mode));
+		if (chan->mtu)
+			print_field("MTU: %u", chan->mtu);
+		if (chan->mps)
+			print_field("MPS: %u", chan->mps);
+	}
 
 	print_stats(&chan->rx, "RX");
 	print_stats(&chan->tx, "TX");
@@ -433,6 +495,159 @@ static void l2cap_sig(struct hci_conn *conn, bool out,
 				chan->psm = psm;
 		}
 		break;
+	case BT_L2CAP_PDU_CONFIG_REQ:
+	{
+		const struct bt_l2cap_pdu_config_req *pdu = data + 4;
+		const uint8_t *opts;
+		uint16_t opts_len;
+
+		dcid = le16_to_cpu(pdu->dcid);
+		/* Options start after the 4-byte config req header */
+		opts = data + 4 + sizeof(*pdu);
+		opts_len = size - 4 - sizeof(*pdu);
+
+		chan = chan_lookup(conn, dcid, !out);
+		if (!chan)
+			break;
+
+		while (opts_len >= 2) {
+			uint8_t type = opts[0];
+			uint8_t len = opts[1];
+
+			if (opts_len < (uint16_t)(2 + len))
+				break;
+
+			switch (type) {
+			case 0x01: /* MTU */
+				if (len >= 2)
+					chan->mtu = get_le16(opts + 2);
+				break;
+			case 0x04: /* Retransmission and Flow Control */
+				if (len >= 1)
+					chan->mode = opts[2];
+				break;
+			}
+
+			opts += 2 + len;
+			opts_len -= 2 + len;
+		}
+		break;
+	}
+	case BT_L2CAP_PDU_CONFIG_RSP:
+	{
+		const struct bt_l2cap_pdu_config_rsp *pdu = data + 4;
+		const uint8_t *opts;
+		uint16_t opts_len;
+
+		scid = le16_to_cpu(pdu->scid);
+		/* Options start after the 6-byte config rsp header */
+		opts = data + 4 + sizeof(*pdu);
+		opts_len = size - 4 - sizeof(*pdu);
+
+		chan = chan_lookup(conn, scid, out);
+		if (!chan)
+			break;
+
+		while (opts_len >= 2) {
+			uint8_t type = opts[0];
+			uint8_t len = opts[1];
+
+			if (opts_len < (uint16_t)(2 + len))
+				break;
+
+			switch (type) {
+			case 0x01: /* MTU */
+				if (len >= 2)
+					chan->mtu = get_le16(opts + 2);
+				break;
+			case 0x04: /* Retransmission and Flow Control */
+				if (len >= 1)
+					chan->mode = opts[2];
+				break;
+			}
+
+			opts += 2 + len;
+			opts_len -= 2 + len;
+		}
+		break;
+	}
+	}
+}
+
+static void l2cap_le_sig(struct hci_conn *conn, bool out,
+					const void *data, uint16_t size)
+{
+	const struct bt_l2cap_hdr_sig *hdr = data;
+	struct l2cap_chan *chan;
+	uint16_t psm, scid, dcid;
+
+	switch (hdr->code) {
+	case BT_L2CAP_PDU_LE_CONN_REQ:
+	{
+		const struct bt_l2cap_pdu_le_conn_req *pdu = data + 4;
+
+		psm = le16_to_cpu(pdu->psm);
+		scid = le16_to_cpu(pdu->scid);
+		chan = chan_lookup(conn, scid, out);
+		if (chan) {
+			chan->psm = psm;
+			chan->mtu = le16_to_cpu(pdu->mtu);
+			chan->mps = le16_to_cpu(pdu->mps);
+			chan->mode = 0x80; /* LE Credit */
+		}
+		break;
+	}
+	case BT_L2CAP_PDU_LE_CONN_RSP:
+	{
+		const struct bt_l2cap_pdu_le_conn_rsp *pdu = data + 4;
+
+		dcid = le16_to_cpu(pdu->dcid);
+
+		/* The response's dcid is the responder's CID.  Its MTU/MPS
+		 * belong to the responder, so set them on the channel for
+		 * that direction (out).  Also propagate PSM from the
+		 * requester's channel (!out) if available.
+		 */
+		chan = chan_lookup(conn, dcid, out);
+		if (chan) {
+			struct l2cap_chan *req_chan;
+
+			chan->mtu = le16_to_cpu(pdu->mtu);
+			chan->mps = le16_to_cpu(pdu->mps);
+			chan->mode = 0x80; /* LE Credit */
+
+			/* Propagate PSM from the request channel */
+			req_chan = queue_find(conn->chan_list,
+					chan_match_cid,
+					UINT_TO_PTR(dcid |
+						(!out ? 0x10000 : 0)));
+			if (req_chan && req_chan->psm)
+				chan->psm = req_chan->psm;
+		}
+		break;
+	}
+	case BT_L2CAP_PDU_ECRED_CONN_REQ:
+	{
+		const struct bt_l2cap_pdu_ecred_conn_req *pdu = data + 4;
+		uint16_t req_len = le16_to_cpu(hdr->len);
+		int num_cids;
+		int i;
+
+		psm = le16_to_cpu(pdu->psm);
+		num_cids = (req_len - sizeof(*pdu)) / sizeof(uint16_t);
+
+		for (i = 0; i < num_cids; i++) {
+			scid = le16_to_cpu(pdu->scid[i]);
+			chan = chan_lookup(conn, scid, out);
+			if (chan) {
+				chan->psm = psm;
+				chan->mtu = le16_to_cpu(pdu->mtu);
+				chan->mps = le16_to_cpu(pdu->mps);
+				chan->mode = 0x81; /* Enhanced Credit */
+			}
+		}
+		break;
+	}
 	}
 }
 
@@ -938,6 +1153,8 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 		chan = chan_lookup(conn, cid, out);
 		if (cid == 1)
 			l2cap_sig(conn, out, data + 4, size - 4);
+		else if (cid == 5)
+			l2cap_le_sig(conn, out, data + 4, size - 4);
 		break;
 	}
 
