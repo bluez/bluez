@@ -190,3 +190,59 @@ Automating L2CAP Analysis
 channel, note the Source CID and Destination CID from the Connection
 Request/Response pair. Then search for those CIDs in subsequent data
 frames.
+
+Throughput Estimation
+----------------------
+
+btmon's ``--analyze`` (``-a``) mode computes per-channel statistics
+including throughput.  For each L2CAP channel it reports:
+
+- **Speed**: Computed as ``bytes * 8 / latency_sum_ms`` where
+  ``latency_sum_ms`` is the sum of inter-packet deltas (not wall-clock
+  duration).  This means idle gaps are excluded, so the figure
+  represents the *active sending rate* rather than application-level
+  throughput.
+
+- **Min/Avg/Max latency**: Per-packet inter-arrival time range.
+
+Example output::
+
+    Found TX L2CAP channel with CID 64
+          PSM 128 (0x0080)
+          Mode: LE Credit
+          MTU: 672
+          MPS: 490
+          TX packets: 29120/29114
+          TX Latency: 1-79 msec (~29 msec)
+          TX size: 494-494 octets (~494 octets)
+          TX speed: ~571 Kb/s
+
+**Channel details shown in analyze mode:**
+
+- **Fixed channels** (CID <= 7) display their protocol name
+  (e.g., ``ATT``, ``L2CAP Signaling (LE)``).
+- **PSM** is shown in both decimal and hexadecimal.
+- **Mode** is decoded from Configure Request options (BR/EDR) or
+  LE signaling (``Basic``, ``ERTM``, ``LE Credit``,
+  ``Enhanced Credit``, etc.).
+- **MTU** and **MPS** are extracted from signaling exchanges.
+
+**Throughput caveats:**
+
+1. The speed value uses inter-packet latency sums as the denominator,
+   not wall-clock elapsed time.  If the sender pauses (e.g., waiting
+   for credits), the idle period is not counted, which inflates the
+   reported speed relative to overall throughput.
+
+2. TX latency is measured from command submission to completion event.
+   RX latency is the inter-arrival time between consecutive packets.
+   These measure different things, so TX and RX speeds for the same
+   channel are not directly comparable.
+
+3. For windowed throughput (min/avg/max), btsnoop-analyzer uses
+   1-second sampling windows over wall-clock time, which provides
+   a more realistic view of application-level bandwidth variation.
+
+**Automated throughput extraction** from btmon analyze output::
+
+    btmon -a trace.btsnoop 2>/dev/null | grep -E "speed:|Mode:|MTU:|MPS:|PSM"
