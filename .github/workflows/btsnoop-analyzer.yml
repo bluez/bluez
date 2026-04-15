@@ -1,0 +1,202 @@
+name: btsnoop-analyzer
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  analyze:
+    # Only run when the user acknowledged the privacy statement
+    if: contains(github.event.issue.body, 'I understand this trace will be processed')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Parse issue body
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || '';
+
+            // Extract trace file URL from issue body
+            const urlPatterns = [
+              /https:\/\/github\.com\/[^\s)]+\.(?:log|snoop|btsnoop|cfa)/gi,
+              /https:\/\/github\.com\/user-attachments\/(?:files|assets)\/[^\s)]+/gi,
+            ];
+
+            let traceUrl = '';
+            for (const pattern of urlPatterns) {
+              const match = body.match(pattern);
+              if (match) {
+                traceUrl = match[0];
+                break;
+              }
+            }
+
+            if (!traceUrl) {
+              console.log('No trace file URL found — skipping analysis');
+              core.setOutput('found', 'false');
+              return;
+            }
+
+            // Extract description
+            const descMatch = body.match(
+              /### Description\s*\n([\s\S]*?)(?=\n###|\n\*\*|$)/i
+            );
+            const description = descMatch?.[1]?.trim() || 'No description provided';
+
+            // Extract focus area
+            const focusMatch = body.match(
+              /### Analysis focus\s*\n\s*(\S[^\n]*)/i
+            );
+            const focus = focusMatch?.[1]?.trim() || 'General (full analysis)';
+
+            // Check anonymization preference
+            const skipAnon = body.includes('[X] **Skip anonymization**') ||
+                             body.includes('[x] **Skip anonymization**');
+
+            core.setOutput('found', 'true');
+            core.setOutput('trace_url', traceUrl);
+            core.setOutput('description', description);
+            core.setOutput('focus', focus);
+            core.setOutput('anonymize', skipAnon ? 'false' : 'true');
+
+            console.log(`Trace URL: ${traceUrl}`);
+            console.log(`Focus: ${focus}`);
+            console.log(`Anonymize: ${!skipAnon}`);
+
+      - name: Post "analyzing" comment
+        if: steps.parse.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '**btsnoop Analyzer** is processing your trace. This typically takes 1-3 minutes.\n\n_Decoding with btmon, then sending to LLM for analysis..._'
+            });
+
+      - name: Run btsnoop-analyzer
+        if: steps.parse.outputs.found == 'true'
+        id: analysis
+        uses: Vudentz/btsnoop-analyzer@master
+        with:
+          trace-url: ${{ steps.parse.outputs.trace_url }}
+          description: ${{ steps.parse.outputs.description }}
+          focus: ${{ steps.parse.outputs.focus }}
+          anonymize: ${{ steps.parse.outputs.anonymize }}
+          provider: ${{ vars.LLM_PROVIDER || 'github' }}
+          model: ${{ vars.LLM_MODEL || '' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+
+      - name: Post detection comment
+        if: steps.parse.outputs.found == 'true' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const detect = fs.readFileSync('${{ steps.analysis.outputs.detect }}', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: detect
+            });
+
+      - name: Post filter comment
+        if: steps.parse.outputs.found == 'true' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const filter = fs.readFileSync('${{ steps.analysis.outputs.filter }}', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: filter
+            });
+
+      - name: Post annotation comment
+        if: steps.parse.outputs.found == 'true' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const annotate = fs.readFileSync('${{ steps.analysis.outputs.annotate }}', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: annotate
+            });
+
+      - name: Post diagnostics comment
+        if: steps.parse.outputs.found == 'true' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const diagnose = fs.readFileSync('${{ steps.analysis.outputs.diagnose }}', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: diagnose
+            });
+
+      - name: Post analysis comment
+        if: steps.parse.outputs.found == 'true' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const analysis = fs.readFileSync('${{ steps.analysis.outputs.analyze }}', 'utf8');
+
+            const footer = `\n\n---\n<sub>Analyzed by [btsnoop-analyzer](https://github.com/Vudentz/btsnoop-analyzer) using btmon from [BlueZ](https://github.com/bluez/bluez). MAC addresses ${
+              '${{ steps.parse.outputs.anonymize }}' === 'true'
+                ? 'were anonymized'
+                : 'were **not** anonymized (user opted out)'
+            } before LLM processing.</sub>`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: analysis + footer
+            });
+
+      - name: Post error comment
+        if: steps.parse.outputs.found == 'true' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## Analysis Failed
+
+            The automated analysis encountered an error. This could be due to:
+            - Unsupported trace file format
+            - Trace file too large to process
+            - LLM API rate limiting or downtime
+
+            A maintainer will review your trace manually.
+
+            <details>
+            <summary>Debug info</summary>
+
+            Workflow run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+            </details>`
+            });
