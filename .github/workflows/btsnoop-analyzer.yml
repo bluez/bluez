@@ -100,12 +100,14 @@ jobs:
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
 
       - name: Post detection comment
-        if: steps.parse.outputs.found == 'true' && success()
+        if: always() && steps.parse.outputs.found == 'true' && steps.analysis.outcome != 'skipped'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const detect = fs.readFileSync('${{ steps.analysis.outputs.detect }}', 'utf8');
+            const path = '${{ steps.analysis.outputs.detect }}';
+            if (!fs.existsSync(path)) return;
+            const detect = fs.readFileSync(path, 'utf8');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -114,12 +116,14 @@ jobs:
             });
 
       - name: Post filter comment
-        if: steps.parse.outputs.found == 'true' && success()
+        if: always() && steps.parse.outputs.found == 'true' && steps.analysis.outcome != 'skipped'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const filter = fs.readFileSync('${{ steps.analysis.outputs.filter }}', 'utf8');
+            const path = '${{ steps.analysis.outputs.filter }}';
+            if (!fs.existsSync(path)) return;
+            const filter = fs.readFileSync(path, 'utf8');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -128,12 +132,14 @@ jobs:
             });
 
       - name: Post annotation comment
-        if: steps.parse.outputs.found == 'true' && success()
+        if: always() && steps.parse.outputs.found == 'true' && steps.analysis.outcome != 'skipped'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const annotate = fs.readFileSync('${{ steps.analysis.outputs.annotate }}', 'utf8');
+            const path = '${{ steps.analysis.outputs.annotate }}';
+            if (!fs.existsSync(path)) return;
+            const annotate = fs.readFileSync(path, 'utf8');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -142,12 +148,14 @@ jobs:
             });
 
       - name: Post diagnostics comment
-        if: steps.parse.outputs.found == 'true' && success()
+        if: always() && steps.parse.outputs.found == 'true' && steps.analysis.outcome != 'skipped'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const diagnose = fs.readFileSync('${{ steps.analysis.outputs.diagnose }}', 'utf8');
+            const path = '${{ steps.analysis.outputs.diagnose }}';
+            if (!fs.existsSync(path)) return;
+            const diagnose = fs.readFileSync(path, 'utf8');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -156,12 +164,14 @@ jobs:
             });
 
       - name: Post analysis comment
-        if: steps.parse.outputs.found == 'true' && success()
+        if: always() && steps.parse.outputs.found == 'true' && steps.analysis.outcome != 'skipped'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const analysis = fs.readFileSync('${{ steps.analysis.outputs.analyze }}', 'utf8');
+            const path = '${{ steps.analysis.outputs.analyze }}';
+            if (!fs.existsSync(path)) return;
+            const analysis = fs.readFileSync(path, 'utf8');
 
             const footer = `\n\n---\n<sub>Analyzed by [btsnoop-analyzer](https://github.com/Vudentz/btsnoop-analyzer) using btmon from [BlueZ](https://github.com/bluez/bluez). MAC addresses ${
               '${{ steps.parse.outputs.anonymize }}' === 'true'
@@ -177,7 +187,7 @@ jobs:
             });
 
       - name: Post error comment
-        if: steps.parse.outputs.found == 'true' && failure()
+        if: always() && steps.parse.outputs.found == 'true' && steps.analysis.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
@@ -190,7 +200,7 @@ jobs:
             The automated analysis encountered an error. This could be due to:
             - Unsupported trace file format
             - Trace file too large to process
-            - LLM API rate limiting or downtime
+            - btmon build failure
 
             A maintainer will review your trace manually.
 
