@@ -285,6 +285,27 @@ struct btp_gap_identity_resolved_ev {
 	bdaddr_t identity_address;
 } __packed;
 
+struct btp_gatt_service {
+	uint16_t start_handle;
+	uint16_t end_handle;
+	uint8_t uuid_length;
+	uint8_t uuid[];
+} __packed;
+
+struct btp_gatt_characteristic {
+	uint16_t characteristic_handle;
+	uint16_t value_handle;
+	uint8_t properties;
+	uint8_t uuid_length;
+	uint8_t uuid[];
+} __packed;
+
+struct btp_gatt_descriptor {
+	uint16_t descriptor_handle;
+	uint8_t uuid_length;
+	uint8_t uuid[];
+} __packed;
+
 struct btp_gatt_char_value {
 	uint16_t handle;
 	uint8_t data_len;
@@ -292,6 +313,47 @@ struct btp_gatt_char_value {
 } __packed;
 
 #define BTP_OP_GATT_READ_SUPPORTED_COMMANDS	0x01
+
+#define BTP_OP_GATT_DISC_PRIM_UUID		0x0c
+struct btp_gatt_disc_prim_uuid_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t uuid_length;
+	uint8_t uuid[];
+} __packed;
+
+struct btp_gatt_disc_prim_rp {
+	uint8_t services_count;
+	struct btp_gatt_service services[];
+} __packed;
+
+struct btp_gatt_disc_chrc_rp {
+	uint8_t characteristics_count;
+	struct btp_gatt_characteristic characteristics[];
+} __packed;
+
+#define BTP_OP_GATT_DISC_CHRC_UUID		0x0f
+struct btp_gatt_disc_chrc_uuid_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint16_t start_handle;
+	uint16_t end_handle;
+	uint8_t uuid_length;
+	uint8_t uuid[];
+} __packed;
+
+#define BTP_OP_GATT_DISC_ALL_DESC		0x10
+struct btp_gatt_disc_all_desc_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint16_t start_handle;
+	uint16_t end_handle;
+} __packed;
+
+struct btp_gatt_disc_all_desc_rp {
+	uint8_t descriptors_count;
+	struct btp_gatt_descriptor descriptors[];
+} __packed;
 
 #define BTP_OP_GATT_READ			0x11
 struct btp_gatt_read_cp {

@@ -53,6 +53,9 @@ static void btp_gatt_read_commands(uint8_t index, const void *param,
 	}
 
 	commands |= (1 << BTP_OP_GATT_READ_SUPPORTED_COMMANDS);
+	commands |= (1 << BTP_OP_GATT_DISC_PRIM_UUID);
+	commands |= (1 << BTP_OP_GATT_DISC_CHRC_UUID);
+	commands |= (1 << BTP_OP_GATT_DISC_ALL_DESC);
 	commands |= (1 << BTP_OP_GATT_READ);
 	commands |= (1 << BTP_OP_GATT_READ_UUID);
 	commands |= (1 << BTP_OP_GATT_WRITE_WITHOUT_RSP);
@@ -76,6 +79,218 @@ static bool match_attribute_handle(const void *attr, const void *handle)
 	const struct gatt_attribute *attribute = attr;
 
 	return attribute->handle == L_PTR_TO_UINT(handle);
+}
+
+static void btp_gatt_discover_prim_uuid(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	struct btp_device *device;
+	const struct btp_gatt_disc_prim_uuid_cp *cp = param;
+	uint8_t status = BTP_ERROR_FAIL;
+	bool prop;
+	bt_uuid_t uuid;
+	struct gatt_attribute *service;
+	uint16_t first_handle, end_handle;
+	uint rp_length;
+	struct btp_gatt_disc_prim_rp *rp;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	/* Adapter needs to be powered to be able to read Handle */
+	if (!l_dbus_proxy_get_property(adapter->proxy, "Powered", "b",
+					&prop) || !prop) {
+		goto failed;
+	}
+
+	device = find_device_by_address(adapter, &cp->address,
+							cp->address_type);
+	if (!device)
+		goto failed;
+
+	if (cp->uuid_length == 2)
+		bt_uuid16_create(&uuid, bt_get_le16(cp->uuid));
+	else if (cp->uuid_length == 4)
+		bt_uuid32_create(&uuid, bt_get_le32(cp->uuid));
+	else if (cp->uuid_length == 16) {
+		uint128_t uint128;
+
+		btoh128((uint128_t *)cp->uuid, &uint128);
+		bt_uuid128_create(&uuid, uint128);
+	} else
+		goto failed;
+
+	service = l_queue_find(device->services, match_attribute_uuid, &uuid);
+	if (!service)
+		goto failed;
+
+	/* TODO: Find last handle */
+	first_handle = end_handle = service->handle;
+
+	rp_length = sizeof(struct btp_gatt_disc_prim_rp) +
+					sizeof(struct btp_gatt_service) +
+					bt_uuid_len(&service->uuid);
+	rp = malloc(rp_length);
+	rp->services_count = 1;
+	rp->services[0].start_handle = first_handle;
+	rp->services[0].end_handle = end_handle;
+	rp->services[0].uuid_length = bt_uuid_len(&service->uuid);
+	bt_uuid_to_le(&service->uuid, rp->services[0].uuid);
+
+	btp_send(btp, BTP_GATT_SERVICE, BTP_OP_GATT_DISC_PRIM_UUID,
+					adapter->index, rp_length, rp);
+
+	free(rp);
+	return;
+
+failed:
+	btp_send_error(btp, BTP_GATT_SERVICE, index, status);
+}
+
+static void btp_gatt_discover_charac_uuid(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	struct btp_device *device;
+	const struct btp_gatt_disc_chrc_uuid_cp *cp = param;
+	uint8_t status = BTP_ERROR_FAIL;
+	bool prop;
+	bt_uuid_t uuid;
+	struct gatt_attribute *charac;
+	uint rp_length;
+	struct btp_gatt_disc_chrc_rp *rp = NULL;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	/* Adapter needs to be powered to be able to read Handle */
+	if (!l_dbus_proxy_get_property(adapter->proxy, "Powered", "b",
+					&prop) || !prop) {
+		goto failed;
+	}
+
+	device = find_device_by_address(adapter, &cp->address,
+							cp->address_type);
+	if (!device)
+		goto failed;
+
+	if (cp->uuid_length == 2)
+		bt_uuid16_create(&uuid, bt_get_le16(cp->uuid));
+	else if (cp->uuid_length == 4)
+		bt_uuid32_create(&uuid, bt_get_le32(cp->uuid));
+	else if (cp->uuid_length == 16) {
+		uint128_t uint128;
+
+		btoh128((uint128_t *)cp->uuid, &uint128);
+		bt_uuid128_create(&uuid, uint128);
+	} else
+		goto failed;
+
+	charac = l_queue_find(device->characteristics, match_attribute_uuid,
+									&uuid);
+	if (!charac)
+		goto failed;
+
+	rp_length = sizeof(struct btp_gatt_disc_chrc_rp) +
+				sizeof(struct btp_gatt_characteristic) +
+				bt_uuid_len(&charac->uuid);
+	rp = malloc(rp_length);
+	rp->characteristics_count = 1;
+
+	rp->characteristics[0].characteristic_handle = charac->handle;
+	rp->characteristics[0].value_handle = charac->handle + 1;
+	rp->characteristics[0].properties = 0;
+	rp->characteristics[0].uuid_length = bt_uuid_len(&charac->uuid);
+	bt_uuid_to_le(&charac->uuid, rp->characteristics[0].uuid);
+
+	btp_send(btp, BTP_GATT_SERVICE, BTP_OP_GATT_DISC_CHRC_UUID,
+					adapter->index, rp_length, rp);
+
+	free(rp);
+	return;
+
+failed:
+	free(rp);
+	btp_send_error(btp, BTP_GATT_SERVICE, index, status);
+}
+
+static void btp_gatt_discover_all_desc(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	struct btp_device *device;
+	const struct btp_gatt_disc_all_desc_cp *cp = param;
+	uint8_t status = BTP_ERROR_FAIL;
+	bool prop;
+	const struct l_queue_entry *entry;
+	struct l_queue *list;
+	uint16_t count;
+	uint rp_length;
+	struct btp_gatt_disc_all_desc_rp *rp = NULL;
+	uint8_t *ptr;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	/* Adapter needs to be powered to be able to read Handle */
+	if (!l_dbus_proxy_get_property(adapter->proxy, "Powered", "b",
+					&prop) || !prop) {
+		goto failed;
+	}
+
+	device = find_device_by_address(adapter, &cp->address,
+							cp->address_type);
+	if (!device)
+		goto failed;
+
+	list = l_queue_new();
+	count = 0;
+	rp_length = sizeof(struct btp_gatt_disc_all_desc_rp);
+	for (entry = l_queue_get_entries(device->descriptors); entry;
+							entry = entry->next) {
+		struct gatt_attribute *attribute = entry->data;
+
+		if (attribute->handle < cp->start_handle ||
+					attribute->handle > cp->end_handle)
+			continue;
+
+		l_queue_push_tail(list, attribute);
+		count++;
+		rp_length += sizeof(struct btp_gatt_descriptor) +
+						bt_uuid_len(&attribute->uuid);
+	}
+
+	rp = malloc(rp_length);
+	rp->descriptors_count = count;
+	ptr = (uint8_t *)rp->descriptors;
+	for (entry = l_queue_get_entries(list); entry; entry = entry->next) {
+		struct gatt_attribute *attribute = entry->data;
+		struct btp_gatt_descriptor *descriptor;
+
+		descriptor = (struct btp_gatt_descriptor *)ptr;
+		descriptor->descriptor_handle = attribute->handle;
+		descriptor->uuid_length = bt_uuid_len(&attribute->uuid);
+		bt_uuid_to_le(&attribute->uuid, descriptor->uuid);
+		ptr += sizeof(struct btp_gatt_descriptor) +
+						bt_uuid_len(&attribute->uuid);
+	}
+
+	btp_send(btp, BTP_GATT_SERVICE, BTP_OP_GATT_DISC_ALL_DESC,
+					adapter->index, rp_length, rp);
+
+	free(rp);
+	return;
+
+failed:
+	free(rp);
+	btp_send_error(btp, BTP_GATT_SERVICE, index, status);
 }
 
 static void gatt_read_setup(struct l_dbus_message *message,
@@ -470,6 +685,17 @@ bool gatt_register_service(struct btp *btp_, struct l_dbus *dbus_,
 
 	btp_register(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ_SUPPORTED_COMMANDS,
 					btp_gatt_read_commands, NULL, NULL);
+
+	btp_register(btp, BTP_GATT_SERVICE, BTP_OP_GATT_DISC_PRIM_UUID,
+					btp_gatt_discover_prim_uuid, NULL,
+					NULL);
+
+	btp_register(btp, BTP_GATT_SERVICE, BTP_OP_GATT_DISC_CHRC_UUID,
+					btp_gatt_discover_charac_uuid, NULL,
+					NULL);
+
+	btp_register(btp, BTP_GATT_SERVICE, BTP_OP_GATT_DISC_ALL_DESC,
+					btp_gatt_discover_all_desc, NULL, NULL);
 
 	btp_register(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ,
 					btp_gatt_read, NULL, NULL);
