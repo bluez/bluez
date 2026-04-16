@@ -58,7 +58,7 @@ struct oob_params {
 	bdaddr_t address;
 	uint32_t class;
 	char *name;
-	GSList *services;
+	struct queue *services;
 	uint8_t *hash;
 	uint8_t *randomizer;
 	uint8_t *pin;
@@ -68,7 +68,7 @@ struct oob_params {
 
 static void free_oob_params(struct oob_params *params)
 {
-	g_slist_free_full(params->services, free);
+	queue_destroy(params->services, free);
 	g_free(params->name);
 	g_free(params->hash);
 	g_free(params->randomizer);
