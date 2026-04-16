@@ -26,6 +26,7 @@
 #define BTP_GATT_SERVICE	2
 #define BTP_L2CAP_SERVICE	3
 #define BTP_MESH_NODE_SERVICE	4
+#define BTP_BAP_SERVICE		14
 
 struct btp_hdr {
 	uint8_t service;
@@ -342,6 +343,21 @@ struct btp_gatt_write_cp {
 
 struct btp_gatt_write_rp {
 	uint8_t att_response;
+} __packed;
+
+#define BTP_OP_BAP_READ_SUPPORTED_COMMANDS	0x01
+
+#define BTP_OP_BAP_DISCOVER			0x02
+struct btp_bap_discover_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+} __packed;
+
+#define BTP_EV_BAP_DISCOVERY_COMPLETED		0x80
+struct btp_bap_discovery_completed_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t status;
 } __packed;
 
 struct btp;
