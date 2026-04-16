@@ -542,6 +542,8 @@ EXTRA_DIST += doc/btmon-advertising.rst
 
 EXTRA_DIST += doc/btmon-le-audio.rst
 
+EXTRA_DIST += doc/btmon-cs.rst
+
 EXTRA_DIST += doc/btmon-l2cap.rst
 
 EXTRA_DIST += doc/btmon-smp.rst
