@@ -13,6 +13,7 @@
 #include "bluetooth/uuid.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
+#include "bap.h"
 #include "core.h"
 #include "gap.h"
 #include "gatt.h"
@@ -90,6 +91,14 @@ static void btp_core_register(uint8_t index, const void *param,
 			goto failed;
 
 		break;
+	case BTP_BAP_SERVICE:
+		if (bap_is_service_registered())
+			goto failed;
+
+		if (!bap_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
 	case BTP_L2CAP_SERVICE:
 	case BTP_MESH_NODE_SERVICE:
 	case BTP_CORE_SERVICE:
@@ -131,6 +140,12 @@ static void btp_core_unregister(uint8_t index, const void *param,
 			goto failed;
 
 		gatt_unregister_service(btp);
+		break;
+	case BTP_BAP_SERVICE:
+		if (!bap_is_service_registered())
+			goto failed;
+
+		bap_unregister_service(btp);
 		break;
 	case BTP_L2CAP_SERVICE:
 	case BTP_MESH_NODE_SERVICE:
