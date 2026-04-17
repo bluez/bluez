@@ -2526,6 +2526,9 @@ static unsigned int bap_bcast_metadata(struct bt_bap_stream *stream,
 	util_iov_free(stream->meta, 1);
 	stream->meta = util_iov_dup(data, 1);
 
+	if (func)
+		func(stream, BT_ASCS_RSP_SUCCESS, 0x00, user_data);
+
 	return 1;
 }
 
