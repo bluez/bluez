@@ -1556,6 +1556,8 @@ static void bcast_qos_set(void *user_data, int err)
 					"Failed to set Broadcast Code");
 }
 
+static void bap_update_bcast_qos(const struct media_transport *transport);
+
 static void set_bcast_qos(const GDBusPropertyTable *property,
 			DBusMessageIter *dict, GDBusPendingPropertySet id,
 			void *data)
@@ -1604,6 +1606,7 @@ static void set_bcast_qos(const GDBusPropertyTable *property,
 	}
 
 	bt_bap_stream_qos(bap->stream, bap_qos, NULL, NULL);
+	bap_update_bcast_qos(transport);
 	g_dbus_pending_property_success(id);
 }
 
