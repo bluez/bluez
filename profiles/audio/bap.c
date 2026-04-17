@@ -1502,6 +1502,7 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 
 static void create_stream_for_bis(struct bap_data *bap_data,
 				struct bt_bap_pac *lpac, uint8_t sid,
+				uint8_t bis, uint8_t sgrp,
 				struct bt_bap_qos *qos, struct iovec *caps,
 				struct iovec *meta, char *path)
 {
@@ -1512,6 +1513,8 @@ static void create_stream_for_bis(struct bap_data *bap_data,
 
 	/* Create an internal copy for bcode */
 	setup->qos.bcast.bcode = util_iov_dup(qos->bcast.bcode, 1);
+	setup->qos.bcast.big = sgrp;
+	setup->qos.bcast.bis = bis;
 
 	setup->data = bap_data;
 
@@ -1550,7 +1553,8 @@ static void bis_handler(uint8_t sid, uint8_t bis, uint8_t sgrp,
 			sid, bis) < 0)
 		return;
 
-	create_stream_for_bis(data, lpac, sid, qos, caps, meta, path);
+	create_stream_for_bis(data, lpac, sid, bis, sgrp, qos, caps, meta,
+									path);
 }
 
 static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
