@@ -1336,6 +1336,7 @@ static void set_metadata(const GDBusPropertyTable *property,
 	struct bap_transport *bap = transport->data;
 	DBusMessageIter array;
 	struct iovec iov;
+	int len;
 	int ret;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
@@ -1347,7 +1348,8 @@ static void set_metadata(const GDBusPropertyTable *property,
 
 	dbus_message_iter_recurse(iter, &array);
 	dbus_message_iter_get_fixed_array(&array, &iov.iov_base,
-					(int *)&iov.iov_len);
+					&len);
+	iov.iov_len = len;
 
 	ret = bt_bap_stream_metadata(bap->stream, &iov, bap_metadata_complete,
 				     UINT_TO_PTR(id));
@@ -1614,7 +1616,7 @@ static const GDBusPropertyTable transport_bap_bc_properties[] = {
 	{ "QoS", "a{sv}", get_bcast_qos, set_bcast_qos, qos_bcast_exists },
 	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
 	{ "Location", "u", get_location },
-	{ "Metadata", "ay", get_metadata },
+	{ "Metadata", "ay", get_metadata, set_metadata },
 	{ "Links", "ao", get_links, set_links, NULL },
 	{ }
 };
