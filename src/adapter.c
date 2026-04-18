@@ -1594,6 +1594,18 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 	if (!adapter->connect_list)
 		return;
 
+	/*
+	 * If the user has enabled DisableDiscoveryOnConnect, suppress
+	 * passive scanning whenever there is at least one active connection.
+	 * This prevents antenna multiplexing conflicts on combo chips where
+	 * Wi-Fi and Bluetooth share the same 2.4 GHz radio, which causes
+	 * audio drops and Wi-Fi packet loss during background scans.
+	 */
+	if (btd_opts.disable_discovery_on_connect && adapter->connections) {
+		DBG("suppress passive scan: active connection present");
+		return;
+	}
+
 	adapter->passive_scan_timeout = timeout_add_seconds(CONN_SCAN_TIMEOUT,
 					passive_scanning_timeout, adapter,
 					NULL);
@@ -5714,6 +5726,18 @@ void adapter_auto_connect_add(struct btd_adapter *adapter,
 	if (g_slist_find(adapter->connect_list, device)) {
 		DBG("ignoring already added device %s",
 						device_get_path(device));
+		return;
+	}
+
+	/*
+	 * If DisableDiscoveryOnConnect is enabled, suppress adding devices
+	 * to the kernel auto-connect list while an active connection exists.
+	 * On combo chips (shared Wi-Fi/Bluetooth antenna), the kernel's
+	 * background scanning for auto-connect devices competes with active
+	 * connections, causing audio drops and Wi-Fi packet loss.
+	 */
+	if (btd_opts.disable_discovery_on_connect && adapter->connections) {
+		DBG("suppress kernel auto-connect: active connection present");
 		return;
 	}
 
