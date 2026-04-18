@@ -9533,6 +9533,7 @@ static void disconnected_callback(uint16_t index, uint16_t length,
 {
 	const struct mgmt_ev_device_disconnected *ev = param;
 	struct btd_adapter *adapter = user_data;
+	struct btd_device *device = NULL;
 	uint8_t reason;
 
 	if (length < sizeof(struct mgmt_addr_info)) {
@@ -9546,7 +9547,18 @@ static void disconnected_callback(uint16_t index, uint16_t length,
 	else
 		reason = ev->reason;
 
+	if (btd_opts.disable_discovery_on_connect)
+		device = btd_adapter_find_device(adapter, &ev->addr.bdaddr,
+							ev->addr.type);
+
 	dev_disconnected(adapter, &ev->addr, reason);
+
+	/*
+	 * Re-add the device to the kernel accept list after disconnection
+	 * so it can auto-reconnect in the future.
+	 */
+	if (btd_opts.disable_discovery_on_connect && device)
+		adapter_auto_connect_add(adapter, device);
 }
 
 static void connected_callback(uint16_t index, uint16_t length,
@@ -9592,6 +9604,15 @@ static void connected_callback(uint16_t index, uint16_t length,
 
 	adapter_add_connection(adapter, device, ev->addr.type,
 					le32_to_cpu(ev->flags));
+
+	/*
+	 * If DisableDiscoveryOnConnect is enabled, remove the device from
+	 * the kernel accept list once it has connected. This stops the kernel
+	 * from continuing to scan for a device that is already connected,
+	 * eliminating antenna contention on combo chips.
+	 */
+	if (btd_opts.disable_discovery_on_connect)
+		adapter_auto_connect_remove(adapter, device);
 
 	name_known = device_name_known(device);
 
