@@ -144,6 +144,8 @@ struct btd_opts {
 	bool		experimental;
 	bool		testing;
 	bool		filter_discoverable;
+	bool		disable_discovery_on_connect;
+
 	struct queue	*kernel;
 
 	uint16_t	did_source;
