@@ -2651,12 +2651,56 @@ static void bap_connect_bcast_io_cb(GIOChannel *chan, GError *err,
 	iso_connect_bcast_cb(chan, err, setup->stream);
 }
 
+struct connect_io_data {
+	GIOChannel *chan;
+	GError *err;
+	uint8_t cig_id;
+};
+
+static bool find_enabling_stream(const void *data, const void *match_data)
+{
+	const struct bap_setup *setup = data;
+	const struct connect_io_data *d = match_data;
+	uint8_t state;
+
+	state = bt_bap_stream_get_state(setup->stream);
+	if (state == BT_BAP_STREAM_STATE_ENABLING &&
+			setup->qos.ucast.cig_id == d->cig_id)
+		iso_connect_cb(d->chan, d->err, setup->stream);
+
+	return false;
+}
+
+static bool find_enabling_ep(const void *data, const void *match_data)
+{
+	const struct bap_ep *ep = data;
+
+	if (ep->setups)
+		queue_find(ep->setups, find_enabling_stream, match_data);
+
+	return false;
+}
+
 static void bap_connect_io_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct bap_setup *setup = user_data;
+	struct connect_io_data data;
 
 	if (!setup->stream)
 		return;
+
+	if (bt_bap_stream_get_state(setup->stream) !=
+			 BT_BAP_STREAM_STATE_ENABLING) {
+		/* The stream may have manually been unliked for tests and the
+		 * connect event refers to another stream of the CIG.
+		 */
+		data.chan = chan;
+		data.err = err;
+		data.cig_id = setup->qos.ucast.cig_id;
+		queue_find(setup->ep->data->snks, find_enabling_ep, &data);
+		queue_find(setup->ep->data->srcs, find_enabling_ep, &data);
+		return;
+	}
 
 	iso_connect_cb(chan, err, setup->stream);
 }
