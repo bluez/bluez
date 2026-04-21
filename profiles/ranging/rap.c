@@ -17,6 +17,7 @@
 #include "gdbus/gdbus.h"
 
 #include "bluetooth/bluetooth.h"
+#include "bluetooth/l2cap.h"
 #include "bluetooth/uuid.h"
 
 #include "src/plugin.h"
@@ -34,15 +35,131 @@
 #include "src/shared/rap.h"
 #include "attrib/att.h"
 #include "src/log.h"
+#include "src/btd.h"
+
+struct rap_adapter_data {
+	struct btd_adapter *adapter;
+	struct bt_hci *hci;  /* Shared HCI raw channel */
+	int ref_count;  /* Number of devices using this adapter */
+};
 
 struct rap_data {
 	struct btd_device *device;
 	struct btd_service *service;
 	struct bt_rap *rap;
 	unsigned int ready_id;
+	struct rap_adapter_data *adapter_data;  /* Shared adapter-level HCI */
+	void *hci_sm;  /* Per-device HCI state machine */
 };
 
 static struct queue *sessions;
+static struct queue *adapter_list;  /* List of rap_adapter_data */
+
+/* Adapter data management */
+static bool match_adapter(const void *data, const void *match_data)
+{
+	const struct rap_adapter_data *adapter_data = data;
+	const struct btd_adapter *adapter = match_data;
+
+	return adapter_data->adapter == adapter;
+}
+
+static struct rap_adapter_data *rap_adapter_data_find(
+		struct btd_adapter *adapter)
+{
+	if (!adapter_list)
+		return NULL;
+
+	return queue_find(adapter_list, match_adapter, adapter);
+}
+
+static struct rap_adapter_data *rap_adapter_data_new(
+		struct btd_adapter *adapter)
+{
+	struct rap_adapter_data *adapter_data;
+	int16_t hci_index;
+
+	hci_index = btd_adapter_get_index(adapter);
+	DBG("Creating new adapter_data for hci%d", hci_index);
+
+	adapter_data = new0(struct rap_adapter_data, 1);
+	if (!adapter_data) {
+		error("Failed to allocate adapter_data");
+		return NULL;
+	}
+
+	adapter_data->adapter = adapter;
+	adapter_data->ref_count = 0;
+
+	/* Create adapter list if needed */
+	if (!adapter_list) {
+		DBG("Creating new adapter_list");
+		adapter_list = queue_new();
+	}
+
+	/* Add to queue BEFORE creating HCI to prevent race condition */
+	queue_push_tail(adapter_list, adapter_data);
+	DBG("Added adapter_data to queue");
+
+	/* Create HCI raw channel for this adapter */
+	DBG("Opening HCI raw device for hci%d", hci_index);
+	adapter_data->hci = bt_hci_new_raw_device(hci_index);
+
+	if (!adapter_data->hci) {
+		error("Failed to create HCI raw device for hci%d", hci_index);
+		queue_remove(adapter_list, adapter_data);
+		free(adapter_data);
+		return NULL;
+	}
+
+	DBG("HCI raw channel created successfully for hci%d", hci_index);
+
+	return adapter_data;
+}
+
+static struct rap_adapter_data *rap_adapter_data_ref(
+		struct btd_adapter *adapter)
+{
+	struct rap_adapter_data *adapter_data;
+
+	adapter_data = rap_adapter_data_find(adapter);
+	if (!adapter_data) {
+		adapter_data = rap_adapter_data_new(adapter);
+		if (!adapter_data)
+			return NULL;
+	}
+
+	adapter_data->ref_count++;
+
+	return adapter_data;
+}
+
+static void rap_adapter_data_unref(struct rap_adapter_data *adapter_data)
+{
+	if (!adapter_data)
+		return;
+
+	adapter_data->ref_count--;
+
+	if (adapter_data->ref_count > 0)
+		return;
+
+	/* No more devices using this adapter, clean up */
+	DBG("Cleaning up adapter HCI channel");
+
+	if (adapter_data->hci) {
+		bt_hci_unref(adapter_data->hci);
+		adapter_data->hci = NULL;
+	}
+
+	queue_remove(adapter_list, adapter_data);
+	free(adapter_data);
+
+	if (queue_isempty(adapter_list)) {
+		queue_destroy(adapter_list, NULL);
+		adapter_list = NULL;
+	}
+}
 
 static struct rap_data *rap_data_new(struct btd_device *device)
 {
@@ -95,6 +212,19 @@ static void rap_data_free(struct rap_data *data)
 	}
 
 	bt_rap_ready_unregister(data->rap, data->ready_id);
+
+	/* Detach per-device HCI state machine */
+	if (data->hci_sm) {
+		bt_rap_detach_hci(data->rap, data->hci_sm);
+		data->hci_sm = NULL;
+	}
+
+	/* Release reference to shared adapter HCI channel */
+	if (data->adapter_data) {
+		rap_adapter_data_unref(data->adapter_data);
+		data->adapter_data = NULL;
+	}
+
 	bt_rap_unref(data->rap);
 	free(data);
 }
@@ -177,7 +307,7 @@ static int rap_probe(struct btd_service *service)
 	ba2str(device_get_address(device), addr);
 	DBG("%s", addr);
 
-	/*Ignore, if we probed for this device already */
+	/* Ignore, if we probed for this device already */
 	if (data) {
 		error("Profile probed twice for this device");
 		return -EINVAL;
@@ -194,6 +324,35 @@ static int rap_probe(struct btd_service *service)
 		free(data);
 		return -EINVAL;
 	}
+
+	/* Get or create shared adapter-level HCI channel */
+	data->adapter_data = rap_adapter_data_ref(adapter);
+	if (!data->adapter_data) {
+		error("Failed to get adapter HCI channel");
+		bt_rap_unref(data->rap);
+		free(data);
+		return -EINVAL;
+	}
+
+	DBG("Using shared HCI channel for adapter (ref_count=%d)",
+		data->adapter_data->ref_count);
+
+	/* Create per-device HCI state machine with valid rap instance */
+	DBG("Attaching per-device HCI state machine");
+	data->hci_sm = bt_rap_attach_hci(data->rap, data->adapter_data->hci,
+					btd_opts.defaults.bcs.role,
+					btd_opts.defaults.bcs.cs_sync_ant_sel,
+					btd_opts.defaults.bcs.max_tx_power);
+
+	if (!data->hci_sm) {
+		error("Failed to attach HCI state machine for device");
+		rap_adapter_data_unref(data->adapter_data);
+		bt_rap_unref(data->rap);
+		free(data);
+		return -EINVAL;
+	}
+
+	DBG("HCI state machine attached successfully for device");
 
 	rap_data_add(data);
 
@@ -228,6 +387,10 @@ static int rap_accept(struct btd_service *service)
 	struct btd_device *device = btd_service_get_device(service);
 	struct bt_gatt_client *client = btd_device_get_gatt_client(device);
 	struct rap_data *data = btd_service_get_user_data(service);
+	struct bt_att *att;
+	const bdaddr_t *bdaddr;
+	uint8_t bdaddr_type;
+	uint16_t handle;
 	char addr[18];
 
 	ba2str(device_get_address(device), addr);
@@ -241,6 +404,31 @@ static int rap_accept(struct btd_service *service)
 	if (!bt_rap_attach(data->rap, client)) {
 		error("RAP unable to attach");
 		return -EINVAL;
+	}
+
+	/* Set up connection handle mapping for CS event routing */
+	att = bt_rap_get_att(data->rap);
+	bdaddr = device_get_address(device);
+	bdaddr_type = device_get_le_address_type(device);
+
+	if (att && data->adapter_data && data->adapter_data->hci &&
+	    data->hci_sm) {
+		/* Use bt_hci_get_conn_handle to find the connection handle
+		 * by bdaddr using HCIGETCONNLIST ioctl
+		 */
+		if (bt_hci_get_conn_handle(data->adapter_data->hci,
+					(const uint8_t *) bdaddr, &handle)) {
+			DBG("Found conn handle 0x%04X for %s", handle, addr);
+			DBG("Setting up handle mapping: handle=0x%04X",
+				handle);
+			bt_rap_set_conn_handle(data->hci_sm,
+						data->rap, handle,
+						(const uint8_t *) bdaddr,
+						bdaddr_type);
+		} else {
+			error("Failed to find connection handle for device %s",
+				addr);
+		}
 	}
 
 	btd_service_connecting_complete(service, 0);
