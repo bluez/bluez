@@ -127,8 +127,8 @@ static int connection_disconnect(struct input_device *idev, uint32_t flags);
 
 static bool input_device_bonded(struct input_device *idev)
 {
-	return device_is_bonded(idev->device,
-				btd_device_get_bdaddr_type(idev->device));
+	/* HIDP is classic only; so consider it bonded if BDADDR_BREDR is */
+	return device_is_bonded(idev->device, BDADDR_BREDR);
 }
 
 static void input_device_free(struct input_device *idev)
@@ -172,8 +172,8 @@ static void input_device_free(struct input_device *idev)
 
 static void virtual_cable_unplug(struct input_device *idev)
 {
-	device_remove_bonding(idev->device,
-				btd_device_get_bdaddr_type(idev->device));
+	/* HIDP is classic only; so only remove BDADDR_BREDR bonding */
+	device_remove_bonding(idev->device, BDADDR_BREDR);
 
 	idev->virtual_cable_unplug = false;
 }
