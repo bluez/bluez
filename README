@@ -284,6 +284,13 @@ For a working system, certain configuration options need to be enabled:
 		The plugin is built into bluetoothd therefore it does not need
 		to be package separately.
 
+AI Coding Assistants
+====================
+
+For guidance on using AI tools when contributing to BlueZ, see:
+	doc/coding-assistants.rst
+
+
 Information
 ===========
 
