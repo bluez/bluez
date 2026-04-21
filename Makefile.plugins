@@ -89,7 +89,8 @@ builtin_modules += battery
 builtin_sources += profiles/battery/battery.c
 
 builtin_modules += rap
-builtin_sources += profiles/ranging/rap.c
+builtin_sources += profiles/ranging/rap.c \
+		profiles/ranging/rap_hci.c
 
 if SIXAXIS
 builtin_modules += sixaxis
