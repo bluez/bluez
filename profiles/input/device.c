@@ -127,8 +127,7 @@ static int connection_disconnect(struct input_device *idev, uint32_t flags);
 
 static bool input_device_bonded(struct input_device *idev)
 {
-	return device_is_bonded(idev->device,
-				btd_device_get_bdaddr_type(idev->device));
+	return device_is_bonded(idev->device, BDADDR_BREDR);
 }
 
 static void input_device_free(struct input_device *idev)
