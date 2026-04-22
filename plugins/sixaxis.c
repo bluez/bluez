@@ -39,6 +39,9 @@
 #include "profiles/input/server.h"
 #include "profiles/input/sixaxis.h"
 
+#define DS4_FEATURE_REPORT_PAIRING_INFO		0x12
+#define DS4_FEATURE_REPORT_PAIRING_INFO_SIZE	16
+
 struct authentication_closure {
 	guint auth_id;
 	char *sysfs_path;
@@ -111,12 +114,12 @@ static int sixaxis_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
 
 static int ds4_get_device_bdaddr(int fd, bdaddr_t *bdaddr)
 {
-	uint8_t buf[7];
+	uint8_t buf[DS4_FEATURE_REPORT_PAIRING_INFO_SIZE];
 	int ret;
 
 	memset(buf, 0, sizeof(buf));
 
-	buf[0] = 0x81;
+	buf[0] = DS4_FEATURE_REPORT_PAIRING_INFO;
 
 	ret = ioctl(fd, HIDIOCGFEATURE(sizeof(buf)), buf);
 	if (ret < 0) {
@@ -163,12 +166,12 @@ static int sixaxis_get_central_bdaddr(int fd, bdaddr_t *bdaddr)
 
 static int ds4_get_central_bdaddr(int fd, bdaddr_t *bdaddr)
 {
-	uint8_t buf[16];
+	uint8_t buf[DS4_FEATURE_REPORT_PAIRING_INFO_SIZE];
 	int ret;
 
 	memset(buf, 0, sizeof(buf));
 
-	buf[0] = 0x12;
+	buf[0] = DS4_FEATURE_REPORT_PAIRING_INFO;
 
 	ret = ioctl(fd, HIDIOCGFEATURE(sizeof(buf)), buf);
 	if (ret < 0) {
