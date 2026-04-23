@@ -64,17 +64,14 @@ static bool match_adapter(const void *data, const void *match_data)
 	return adapter_data->adapter == adapter;
 }
 
-static struct rap_adapter_data *rap_adapter_data_find(
-		struct btd_adapter *adapter)
+static struct rap_adapter_data *
+rap_adapter_data_find(struct btd_adapter *adapter)
 {
-	if (!adapter_list)
-		return NULL;
-
 	return queue_find(adapter_list, match_adapter, adapter);
 }
 
-static struct rap_adapter_data *rap_adapter_data_new(
-		struct btd_adapter *adapter)
+static struct rap_adapter_data *
+rap_adapter_data_new(struct btd_adapter *adapter)
 {
 	struct rap_adapter_data *adapter_data;
 	int16_t hci_index;
@@ -117,8 +114,8 @@ static struct rap_adapter_data *rap_adapter_data_new(
 	return adapter_data;
 }
 
-static struct rap_adapter_data *rap_adapter_data_ref(
-		struct btd_adapter *adapter)
+static struct rap_adapter_data *
+rap_adapter_data_ref(struct btd_adapter *adapter)
 {
 	struct rap_adapter_data *adapter_data;
 
@@ -472,7 +469,7 @@ static void rap_server_remove(struct btd_profile *p,
 {
 	DBG("");
 }
-/* Profile definition */
+
 static struct btd_profile rap_profile = {
 	.name		= "rap",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
@@ -493,16 +490,15 @@ static struct btd_profile rap_profile = {
 };
 
 static unsigned int rap_id;
-/* Plugin init/exit */
+
 static int rap_init(void)
 {
-	DBG("");
-	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
-		DBG("D-Bus experimental not enabled");
-		return -ENOTSUP;
-	}
+	int err;
 
-	btd_profile_register(&rap_profile);
+	err = btd_profile_register(&rap_profile);
+	if (err)
+		return err;
+
 	rap_id = bt_rap_register(rap_attached, rap_detached, NULL);
 
 	return 0;
@@ -510,12 +506,9 @@ static int rap_init(void)
 
 static void rap_exit(void)
 {
-	if (g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) {
-		btd_profile_unregister(&rap_profile);
-		bt_rap_unregister(rap_id);
-	}
+	btd_profile_unregister(&rap_profile);
+	bt_rap_unregister(rap_id);
 }
 
-/* Plugin definition */
 BLUETOOTH_PLUGIN_DEFINE(rap, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
 			rap_init, rap_exit)
