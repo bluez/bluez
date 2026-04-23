@@ -1214,6 +1214,112 @@ gatt_db_service_add_ccc(struct gatt_db_attribute *attrib, uint32_t permissions)
 	return ccc;
 }
 
+static void ccc_custom_read(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct gatt_db *db = attrib->service->db;
+
+	db->ccc->read_func(attrib, id, offset, opcode, att, db->ccc->user_data);
+}
+
+static void custom_write_result(struct gatt_db_attribute *attr, int err,
+							void *user_data)
+{
+	int *result = user_data;
+
+	*result = err;
+}
+
+static void ccc_custom_write(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct gatt_db_ccc *data = user_data;
+	struct gatt_db *db = attrib->service->db;
+	struct pending_write *p;
+	int err = 0;
+
+	/* Create another pending write to handle results from custom write
+	 * function.
+	 */
+	p = new0(struct pending_write, 1);
+	p->attrib = attrib;
+	p->id = ++attrib->write_id;
+	p->func = custom_write_result;
+	p->user_data = &err;
+
+	queue_push_tail(attrib->pending_writes, p);
+
+	/* Call custom write function first */
+	data->write_func(attrib, p->id, offset, value, len, opcode, att,
+							data->user_data);
+
+	if (err) {
+		gatt_db_attribute_write_result(attrib, id, err);
+		return;
+	}
+
+	/* If custom write function did not return error proceed to call the
+	 * default CCC write function.
+	 */
+	db->ccc->write_func(attrib, id, offset, value, len, opcode, att,
+							db->ccc->user_data);
+}
+
+struct gatt_db_attribute *
+gatt_db_service_add_ccc_custom(struct gatt_db_attribute *attrib,
+				uint32_t permissions,
+				gatt_db_write_t write_func, void *user_data)
+{
+	struct gatt_db *db;
+	struct gatt_db_attribute *ccc;
+	struct gatt_db_attribute *value;
+	uint16_t handle = 0;
+	struct gatt_db_ccc *data;
+
+	if (!attrib || !permissions)
+		return NULL;
+
+	db = attrib->service->db;
+
+	if (!db->ccc)
+		return NULL;
+
+	/* Locate value handle */
+	gatt_db_service_foreach_char(attrib, find_ccc_value, &handle);
+
+	if (!handle)
+		return NULL;
+
+	value = gatt_db_get_attribute(db, handle);
+	if (!value || value->notify_func)
+		return NULL;
+
+	data = new0(struct gatt_db_ccc, 1);
+	data->write_func = write_func;
+	data->user_data = user_data;
+
+	ccc = service_insert_descriptor(attrib->service, 0, &ccc_uuid,
+					permissions,
+					ccc_custom_read,
+					ccc_custom_write,
+					data);
+	if (!ccc) {
+		free(data);
+		return NULL;
+	}
+
+	gatt_db_attribute_set_fixed_length(ccc, 2);
+	ccc->notify_func = db->ccc->notify_func;
+	value->notify_func = db->ccc->notify_func;
+
+	return ccc;
+}
+
 void gatt_db_ccc_register(struct gatt_db *db, gatt_db_read_t read_func,
 				gatt_db_write_t write_func,
 				gatt_db_notify_t notify_func,
@@ -2338,6 +2444,8 @@ bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
 					struct bt_att *att)
 {
 	struct gatt_db_attribute *ccc;
+	struct gatt_db *db;
+	void *notify_user_data;
 
 	if (!attrib || !attrib->notify_func)
 		return false;
@@ -2350,7 +2458,16 @@ bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
 	if (!ccc)
 		return false;
 
-	attrib->notify_func(attrib, ccc, value, len, att, ccc->user_data);
+	/* For custom CCC descriptors, use the database user_data for
+	 * notify_func. For regular CCC descriptors, use the CCC's user_data.
+	 */
+	db = attrib->service->db;
+	if (ccc->write_func == ccc_custom_write && db && db->ccc)
+		notify_user_data = db->ccc->user_data;
+	else
+		notify_user_data = ccc->user_data;
+
+	attrib->notify_func(attrib, ccc, value, len, att, notify_user_data);
 
 	return true;
 }
