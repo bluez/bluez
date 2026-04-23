@@ -17,6 +17,7 @@
 #include "gdbus/gdbus.h"
 
 #include "bluetooth/bluetooth.h"
+#include "bluetooth/l2cap.h"
 #include "bluetooth/uuid.h"
 
 #include "src/plugin.h"
@@ -34,12 +35,14 @@
 #include "src/shared/rap.h"
 #include "attrib/att.h"
 #include "src/log.h"
+#include "src/btd.h"
 
 struct rap_data {
 	struct btd_device *device;
 	struct btd_service *service;
 	struct bt_rap *rap;
 	unsigned int ready_id;
+	struct bt_hci *hci;
 };
 
 static struct queue *sessions;
@@ -95,6 +98,14 @@ static void rap_data_free(struct rap_data *data)
 	}
 
 	bt_rap_ready_unregister(data->rap, data->ready_id);
+
+	if (data->hci) {
+		bt_rap_hci_sm_cleanup();
+		bt_hci_unref(data->hci);
+	}
+
+	/* Clean up HCI connection mappings */
+	bt_rap_detach_hci(data->rap);
 	bt_rap_unref(data->rap);
 	free(data);
 }
@@ -173,6 +184,7 @@ static int rap_probe(struct btd_service *service)
 	struct btd_gatt_database *database = btd_adapter_get_database(adapter);
 	struct rap_data *data = btd_service_get_user_data(service);
 	char addr[18];
+	int16_t hci_index;
 
 	ba2str(device_get_address(device), addr);
 	DBG("%s", addr);
@@ -193,6 +205,19 @@ static int rap_probe(struct btd_service *service)
 		error("unable to create RAP instance");
 		free(data);
 		return -EINVAL;
+	}
+
+	hci_index = btd_adapter_get_index(adapter);
+
+	data->hci = bt_hci_new_raw_device(hci_index);
+	if (bt_rap_attach_hci(data->rap, data->hci)) {
+		DBG("HCI raw channel initialized, hci%d", hci_index);
+		bt_rap_hci_set_options(
+					btd_opts.defaults.bcs.role,
+					btd_opts.defaults.bcs.cs_sync_ant_sel,
+					btd_opts.defaults.bcs.max_tx_power);
+	} else {
+		error("HCI raw channel not available (may be in use)");
 	}
 
 	rap_data_add(data);
@@ -228,6 +253,10 @@ static int rap_accept(struct btd_service *service)
 	struct btd_device *device = btd_service_get_device(service);
 	struct bt_gatt_client *client = btd_device_get_gatt_client(device);
 	struct rap_data *data = btd_service_get_user_data(service);
+	struct bt_att *att;
+	const bdaddr_t *bdaddr;
+	uint8_t bdaddr_type;
+	uint16_t handle;
 	char addr[18];
 
 	ba2str(device_get_address(device), addr);
@@ -241,6 +270,29 @@ static int rap_accept(struct btd_service *service)
 	if (!bt_rap_attach(data->rap, client)) {
 		error("RAP unable to attach");
 		return -EINVAL;
+	}
+
+	/* Set up connection handle mapping for CS event routing */
+	att = bt_rap_get_att(data->rap);
+	bdaddr = device_get_address(device);
+	bdaddr_type = device_get_le_address_type(device);
+
+	if (att && data->hci) {
+		/* Use bt_hci_get_conn_handle to find the connection handle
+		 * by bdaddr using HCIGETCONNLIST ioctl
+		 */
+		if (bt_hci_get_conn_handle(data->hci,
+					(const uint8_t *)bdaddr, &handle)) {
+			DBG("Found conn handle 0x%04X for %s", handle, addr);
+			DBG("Setting up handle mapping: handle=0x%04X",
+				handle);
+			bt_rap_set_conn_handle(data->rap, handle,
+						(const uint8_t *)bdaddr,
+						bdaddr_type);
+		} else {
+			error("Failed to find connection handle for device %s",
+				addr);
+		}
 	}
 
 	btd_service_connecting_complete(service, 0);
