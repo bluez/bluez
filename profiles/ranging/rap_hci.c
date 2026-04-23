@@ -24,10 +24,6 @@
 #include "src/log.h"
 #include "monitor/bt.h"
 
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 /* Macro to sign-extend an N-bit value to 16-bit signed integer */
 #define SIGN_EXTEND_TO_16(val, bits) \
 	((int16_t)(((val) ^ (1U << ((bits)-1))) - (1U << ((bits)-1))))
@@ -184,30 +180,6 @@ static void remove_rap_mappings(struct cs_state_machine *sm)
 				mapping_free);
 }
 
-static struct bt_rap *resolve_handle_to_rap(struct cs_state_machine *sm,
-						uint16_t handle)
-{
-	struct rap_conn_mapping *mapping;
-
-	if (!sm)
-		return NULL;
-
-	/* Try to find in mapping cache */
-	mapping = find_mapping_by_handle(sm, handle);
-	if (mapping && mapping->rap) {
-		DBG("Found handle 0x%04X in mapping cache", handle);
-		return mapping->rap;
-	}
-
-	/* Profile layer should have called bt_rap_set_conn_handle() during
-	 * connection establishment. If we reach here, the mapping was not set.
-	 */
-	DBG("No mapping found for handle 0x%04X", handle);
-	DBG("Profile layer should call bt_rap_set_conn_handle() on connect");
-
-	return NULL;
-}
-
 /*  State Machine Functions */
 static void cs_state_machine_init(struct cs_state_machine *sm,
 				struct bt_rap *rap, struct bt_hci *hci,
@@ -271,10 +243,9 @@ static void rap_def_settings_done_cb(const void *data, uint8_t size,
 					void *user_data)
 {
 	struct bt_hci_rsp_le_cs_set_def_settings *rp;
-	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
+	struct cs_state_machine *sm = user_data;
 
-	if (!sm || !data ||
-		size < sizeof(struct bt_hci_rsp_le_cs_set_def_settings))
+	if (!sm || !data || size < sizeof(*rp))
 		return;
 
 	DBG("size=0x%02X", size);
@@ -302,20 +273,20 @@ static void rap_def_settings_done_cb(const void *data, uint8_t size,
 }
 
 static void rap_send_hci_def_settings_command(struct cs_state_machine *sm,
-		struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete *ev)
+						uint16_t handle)
 {
 	struct bt_hci_cmd_le_cs_set_def_settings cp;
 	unsigned int status;
-
-	memset(&cp, 0, sizeof(cp));
 
 	if (!sm || !sm->hci) {
 		error("Set Def Settings: sm or hci is null");
 		return;
 	}
 
-	if (ev->handle)
-		cp.handle = ev->handle;
+	memset(&cp, 0, sizeof(cp));
+
+	if (handle)
+		cp.handle = handle;
 
 	cp.role_enable = sm->role_enable;  /* Use preserved HCI command value */
 	cp.cs_sync_antenna_selection = sm->cs_opt.cs_sync_ant_sel;
@@ -334,13 +305,11 @@ static void rap_send_hci_def_settings_command(struct cs_state_machine *sm,
 static void rap_rd_rmt_supp_cap_cmplt_evt(const uint8_t *data, uint8_t size,
 					   void *user_data)
 {
-	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
+	struct cs_state_machine *sm = user_data;
 	const struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete *evt;
-	struct bt_rap *rap;
 	struct iovec iov;
 
-	if (!sm || !data ||
-		size < sizeof(struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete))
+	if (!sm || !data || size < sizeof(*evt))
 		return;
 
 	/* Initialize iovec with the event data */
@@ -365,16 +334,6 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const uint8_t *data, uint8_t size,
 		return;
 	}
 
-	/* Resolve handle to RAP instance */
-	rap = resolve_handle_to_rap(sm, evt->handle);
-
-	if (!rap) {
-		DBG("[WARN] Could not resolve handle 0x%04X to RAP instance",
-			evt->handle);
-		/* Continue with state machine RAP for now */
-		rap = sm->rap;
-	}
-
 	DBG("num_config=%u, ",
 		evt->num_config_supported);
 	DBG("max_consecutive_proc=%u, num_antennas=%u, ",
@@ -385,21 +344,19 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const uint8_t *data, uint8_t size,
 		evt->roles_supported,
 		evt->modes_supported);
 
-	rap_send_hci_def_settings_command(sm,
-		(struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete *) evt);
+	rap_send_hci_def_settings_command(sm, evt->handle);
 	cs_set_state(sm, CS_STATE_INIT);
 }
 
 static void rap_cs_config_cmplt_evt(const uint8_t *data, uint8_t size,
 				    void *user_data)
 {
-	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
+	struct cs_state_machine *sm = user_data;
 	const struct bt_hci_evt_le_cs_config_complete *evt;
 	struct rap_ev_cs_config_cmplt rap_ev;
 	struct iovec iov;
 
-	if (!sm || !data ||
-		size < sizeof(struct bt_hci_evt_le_cs_config_complete))
+	if (!sm || !data || size < sizeof(*evt))
 		return;
 
 	/* Initialize iovec with the event data */
@@ -485,7 +442,7 @@ static void rap_cs_config_cmplt_evt(const uint8_t *data, uint8_t size,
 static void rap_cs_sec_enable_cmplt_evt(const uint8_t *data, uint8_t size,
 					 void *user_data)
 {
-	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
+	struct cs_state_machine *sm = user_data;
 	struct rap_ev_cs_sec_enable_cmplt rap_ev;
 	struct iovec iov;
 	uint8_t status;
@@ -546,7 +503,7 @@ static void rap_cs_sec_enable_cmplt_evt(const uint8_t *data, uint8_t size,
 static void rap_cs_proc_enable_cmplt_evt(const uint8_t *data, uint8_t size,
 					  void *user_data)
 {
-	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
+	struct cs_state_machine *sm = user_data;
 	const struct bt_hci_evt_le_cs_proc_enable_complete *evt;
 	struct rap_ev_cs_proc_enable_cmplt rap_ev;
 	struct iovec iov;
