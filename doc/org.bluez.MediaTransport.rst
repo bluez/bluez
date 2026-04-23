@@ -180,6 +180,11 @@ array{object} Links [readonly, optional, CIS only, experimental]
 
 Linked transport objects which the transport is associated with.
 
+If D-Bus testing interfaces as been enabled this property is readwrite.
+
+This can be used to manually unlink transport objects by sending empty array.
+Then, each link needs be acquired separately.
+
 array{object} Links [readwrite, BIS only, experimental]
 ```````````````````````````````````````````````````````
 
