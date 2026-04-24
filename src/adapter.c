@@ -1594,6 +1594,18 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 	if (!adapter->connect_list)
 		return;
 
+	/*
+	 * If the user has enabled DisableDiscoveryOnConnect, suppress
+	 * passive scanning whenever there is at least one active connection.
+	 * This prevents antenna multiplexing conflicts on combo chips where
+	 * Wi-Fi and Bluetooth share the same 2.4 GHz radio, which causes
+	 * audio drops and Wi-Fi packet loss during background scans.
+	 */
+	if (btd_opts.disable_discovery_on_connect && adapter->connections) {
+		DBG("suppress passive scan: active connection present");
+		return;
+	}
+
 	adapter->passive_scan_timeout = timeout_add_seconds(CONN_SCAN_TIMEOUT,
 					passive_scanning_timeout, adapter,
 					NULL);
@@ -5717,6 +5729,18 @@ void adapter_auto_connect_add(struct btd_adapter *adapter,
 		return;
 	}
 
+	/*
+	 * If DisableDiscoveryOnConnect is enabled, suppress adding devices
+	 * to the kernel auto-connect list while an active connection exists.
+	 * On combo chips (shared Wi-Fi/Bluetooth antenna), the kernel's
+	 * background scanning for auto-connect devices competes with active
+	 * connections, causing audio drops and Wi-Fi packet loss.
+	 */
+	if (btd_opts.disable_discovery_on_connect && adapter->connections) {
+		DBG("suppress kernel auto-connect: active connection present");
+		return;
+	}
+
 	bdaddr = device_get_address(device);
 	bdaddr_type = btd_device_get_bdaddr_type(device);
 
@@ -9509,6 +9533,7 @@ static void disconnected_callback(uint16_t index, uint16_t length,
 {
 	const struct mgmt_ev_device_disconnected *ev = param;
 	struct btd_adapter *adapter = user_data;
+	struct btd_device *device = NULL;
 	uint8_t reason;
 
 	if (length < sizeof(struct mgmt_addr_info)) {
@@ -9522,7 +9547,18 @@ static void disconnected_callback(uint16_t index, uint16_t length,
 	else
 		reason = ev->reason;
 
+	if (btd_opts.disable_discovery_on_connect)
+		device = btd_adapter_find_device(adapter, &ev->addr.bdaddr,
+							ev->addr.type);
+
 	dev_disconnected(adapter, &ev->addr, reason);
+
+	/*
+	 * Re-add the device to the kernel accept list after disconnection
+	 * so it can auto-reconnect in the future.
+	 */
+	if (btd_opts.disable_discovery_on_connect && device)
+		adapter_auto_connect_add(adapter, device);
 }
 
 static void connected_callback(uint16_t index, uint16_t length,
@@ -9568,6 +9604,15 @@ static void connected_callback(uint16_t index, uint16_t length,
 
 	adapter_add_connection(adapter, device, ev->addr.type,
 					le32_to_cpu(ev->flags));
+
+	/*
+	 * If DisableDiscoveryOnConnect is enabled, remove the device from
+	 * the kernel accept list once it has connected. This stops the kernel
+	 * from continuing to scan for a device that is already connected,
+	 * eliminating antenna contention on combo chips.
+	 */
+	if (btd_opts.disable_discovery_on_connect)
+		adapter_auto_connect_remove(adapter, device);
 
 	name_known = device_name_known(device);
 
