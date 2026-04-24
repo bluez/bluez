@@ -113,6 +113,10 @@ struct gatt_db_attribute *
 gatt_db_service_add_ccc(struct gatt_db_attribute *attrib, uint32_t permissions);
 
 struct gatt_db_attribute *
+gatt_db_service_add_ccc_custom(struct gatt_db_attribute *attrib,
+				uint32_t permissions,
+				gatt_db_write_t write_func, void *user_data);
+struct gatt_db_attribute *
 gatt_db_insert_included(struct gatt_db *db, uint16_t handle,
 			struct gatt_db_attribute *include);
 
