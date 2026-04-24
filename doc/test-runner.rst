@@ -45,6 +45,7 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 
 	CONFIG_VIRTIO=y
 	CONFIG_VIRTIO_PCI=y
+	CONFIG_VIRTIO_CONSOLE=y
 
 	CONFIG_NET=y
 	CONFIG_INET=y
@@ -120,6 +121,22 @@ options may be useful:
 	CONFIG_LOCKDEP=y
 	CONFIG_DEBUG_MUTEXES=y
 	CONFIG_KASAN=y
+
+Other
+-----
+
+For tests requiring accurate time inside the VM, possible with KVM:
+
+.. code-block::
+
+	CONFIG_HYPERVISOR_GUEST=y
+	CONFIG_PARAVIRT=y
+	CONFIG_KVM_GUEST=y
+
+	CONFIG_PTP_1588_CLOCK=y
+	CONFIG_PTP_1588_CLOCK_KVM=y
+	CONFIG_PTP_1588_CLOCK_VMCLOCK=y
+
 
 EXAMPLES
 ========
