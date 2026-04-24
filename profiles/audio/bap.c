@@ -2655,12 +2655,61 @@ static void bap_connect_bcast_io_cb(GIOChannel *chan, GError *err,
 	iso_connect_bcast_cb(chan, err, setup->stream);
 }
 
+struct connect_io_data {
+	GIOChannel *chan;
+	GError *err;
+	uint8_t cig_id;
+	uint8_t cis_id;
+};
+
+static void connect_stream(void *data, void *user_data)
+{
+	struct bap_setup *setup = data;
+	struct connect_io_data *d = user_data;
+	uint8_t state;
+
+	/* Check stream state to only pass the connect event managed
+	 * by bap_stream_set_io()
+	 */
+	state = bt_bap_stream_get_state(setup->stream);
+	if ((state == BT_BAP_STREAM_STATE_ENABLING ||
+			state == BT_BAP_STREAM_STATE_DISABLING) &&
+			setup->qos.ucast.cig_id == d->cig_id &&
+			setup->qos.ucast.cis_id == d->cis_id)
+		iso_connect_cb(d->chan, d->err, setup->stream);
+}
+
+static void connect_ep(void *data, void *user_data)
+{
+	struct bap_ep *ep = data;
+
+	if (ep->setups)
+		queue_foreach(ep->setups, connect_stream, user_data);
+}
+
 static void bap_connect_io_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct bap_setup *setup = user_data;
+	struct connect_io_data data;
 
 	if (!setup->stream)
 		return;
+
+	if (queue_isempty(bt_bap_stream_io_get_links(setup->stream)) &&
+		btd_opts.testing) {
+		/* The stream may have manually been unliked for PTS tests,
+		 * e.g. BAP/UCL/STR/BV-543-C or BAP/UCL/STR/BV-546-C,
+		 * in this case send the connect event to all streams
+		 * belonging to the same CIG/CIS.
+		 */
+		data.chan = chan;
+		data.err = err;
+		data.cig_id = setup->qos.ucast.cig_id;
+		data.cis_id = setup->qos.ucast.cis_id;
+		queue_foreach(setup->ep->data->snks, connect_ep, &data);
+		queue_foreach(setup->ep->data->srcs, connect_ep, &data);
+		return;
+	}
 
 	iso_connect_cb(chan, err, setup->stream);
 }
