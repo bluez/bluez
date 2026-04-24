@@ -41,6 +41,8 @@
 
 #define COLOR_COMMAND		COLOR_BLUE
 #define COLOR_COMMAND_UNKNOWN	COLOR_WHITE_BG
+#define COLOR_EVENT		COLOR_MAGENTA
+#define COLOR_EVENT_UNKNOWN	COLOR_WHITE_BG
 
 static void null_cmd(const void *data, uint16_t size)
 {
@@ -299,10 +301,72 @@ const struct vendor_ocf *msft_vendor_ocf(void)
 	return &vendor_ocf_entry;
 }
 
+static void monitor_device_evt(const void *data, uint16_t size)
+{
+	const struct msft_evt_monitor_device *evt = data;
+	const char *str_state;
+
+	packet_print_addr(NULL, evt->addr, evt->addr_type);
+	print_field("Monitor handle: %u", evt->handle);
+
+	switch (evt->state) {
+	case 0x00:
+		str_state = "Stop monitoring";
+		break;
+	case 0x01:
+		str_state = "Start monitoring";
+		break;
+	default:
+		str_state = "Reserved";
+		break;
+	}
+
+	print_field("State: %s (0x%2.2x)", str_state, evt->state);
+}
+
+static const struct {
+	uint8_t code;
+	const char *str;
+	func_t evt_func;
+} evt_table[] = {
+	{ 0x01, "RSSI Event" },
+	{ 0x02, "LE Monitor Device Event", monitor_device_evt },
+	{ }
+};
+
 static void msft_evt(struct timeval *tv, uint16_t index,
 			const void *data, uint8_t size)
 {
-	packet_hexdump(data, size);
+	uint8_t code = get_u8(data);
+	const char *code_color, *code_str = NULL;
+	func_t code_func = NULL;
+	int i;
+
+	for (i = 0; evt_table[i].str; i++) {
+		if (evt_table[i].code == code) {
+			code_str = evt_table[i].str;
+			code_func = evt_table[i].evt_func;
+			break;
+		}
+	}
+
+	if (code_str) {
+		if (code_func)
+			code_color = COLOR_EVENT;
+		else
+			code_color = COLOR_EVENT_UNKNOWN;
+	} else {
+		code_color = COLOR_EVENT_UNKNOWN;
+		code_str = "Unknown";
+	}
+
+	print_indent(6, code_color, "", code_str, COLOR_OFF,
+						" (0x%2.2x)", code);
+
+	if (code_func)
+		code_func(data, size);
+	else
+		packet_hexdump(data + 1, size - 1);
 }
 
 static const struct vendor_evt vendor_evt_entry = {
@@ -312,4 +376,16 @@ static const struct vendor_evt vendor_evt_entry = {
 const struct vendor_evt *msft_vendor_evt(void)
 {
 	return &vendor_evt_entry;
+}
+
+bool msft_event_code_valid(uint8_t code)
+{
+	int i;
+
+	for (i = 0; evt_table[i].str; i++) {
+		if (evt_table[i].code == code)
+			return true;
+	}
+
+	return false;
 }
