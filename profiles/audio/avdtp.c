@@ -413,6 +413,8 @@ struct avdtp {
 
 	/* Attempt stream setup instead of disconnecting */
 	gboolean stream_setup;
+
+	gboolean discover_start;
 };
 
 static GSList *state_callbacks = NULL;
@@ -1417,6 +1419,11 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 	unsigned int rsp_size, sep_count;
 	struct seid_info *seps, *p;
 	gboolean ret;
+
+	if (session->discover_start) {
+		DBG("DISCOVER_CMD has been sent before.");
+		return TRUE;
+	}
 
 	sep_count = queue_length(session->lseps);
 
@@ -2496,6 +2503,8 @@ struct avdtp *avdtp_new(GIOChannel *chan, struct btd_device *device,
 	 * with respect to the disconnect timer */
 	session->stream_setup = TRUE;
 
+	session->discover_start = FALSE;
+
 	session->dc_timeout = DISCONNECT_TIMEOUT;
 
 	avdtp_connect_cb(chan, NULL, session);
@@ -3484,6 +3493,7 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 	if (err == 0) {
 		session->discover->cb = cb;
 		session->discover->user_data = user_data;
+		session->discover_start = TRUE;
 	} else if (session->discover) {
 		g_free(session->discover);
 		session->discover = NULL;
