@@ -3615,7 +3615,7 @@ static void print_ltv(const char *str, void *user_data)
 	print_field("%s: %s", label, str);
 }
 
-static void print_base_annoucement(const uint8_t *data, uint8_t data_len)
+static void print_base_announcement(const uint8_t *data, uint8_t data_len)
 {
 	struct iovec iov;
 	struct bt_hci_le_pa_base_data *base_data;
@@ -3714,7 +3714,7 @@ done:
 		print_hex_field("  Data", iov.iov_base, iov.iov_len);
 }
 
-static void print_broadcast_annoucement(const uint8_t *data, uint8_t data_len)
+static void print_broadcast_announcement(const uint8_t *data, uint8_t data_len)
 {
 	uint32_t bid;
 
@@ -3727,12 +3727,52 @@ static void print_broadcast_annoucement(const uint8_t *data, uint8_t data_len)
 	print_field("Broadcast ID: %u (0x%06x)", bid, bid);
 }
 
+static const struct bitfield_data pbp_feat_table[] = {
+	{ 0, "Encryption"					},
+	{ 1, "Standard Quality"					},
+	{ 2, "High Quality"					},
+	{}
+};
+
+static void print_pbp_announcement(const uint8_t *data, uint8_t data_len)
+{
+	struct iovec iov, meta;
+	uint8_t feat;
+	uint8_t len;
+
+	iov.iov_base = (void *) data;
+	iov.iov_len = data_len;
+
+	if (util_iov_pull_u8(&iov, &feat)) {
+		print_text(COLOR_ERROR, "  invalid features");
+		return;
+	}
+
+	print_field("Features: 0x%02x", feat);
+	print_bitfield(4, feat, pbp_feat_table);
+
+	if (util_iov_pull_u8(&iov, &len)) {
+		print_text(COLOR_ERROR, "  invalid metadata length");
+		return;
+	}
+
+	if (!len)
+		return;
+
+	meta.iov_base = util_iov_pull_mem(&iov, len);
+	meta.iov_len = len;
+
+	bt_bap_debug_metadata(meta.iov_base, meta.iov_len, print_ltv,
+						"    Metadata");
+}
+
 static const struct service_data_decoder {
 	uint16_t uuid;
 	void (*func)(const uint8_t *data, uint8_t data_len);
 } service_data_decoders[] = {
-	{ 0x1851, print_base_annoucement },
-	{ 0x1852, print_broadcast_annoucement }
+	{ 0x1851, print_base_announcement },
+	{ 0x1852, print_broadcast_announcement },
+	{ 0x1856, print_pbp_announcement }
 };
 
 static void print_service_data(const uint8_t *data, uint8_t data_len)
