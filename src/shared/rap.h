@@ -97,11 +97,11 @@ struct cs_mode_zero_data {
 
 struct cs_mode_one_data {
 	uint8_t packet_quality;
-	uint8_t packet_rssi_dbm;
-	uint8_t packet_ant;
 	uint8_t packet_nadm;
+	uint8_t packet_rssi_dbm;
 	int16_t toa_tod_init;
 	int16_t tod_toa_refl;
+	uint8_t packet_ant;
 	struct pct_iq_sample packet_pct1;
 	struct pct_iq_sample packet_pct2;
 };
