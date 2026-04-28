@@ -357,3 +357,17 @@ Possible values for both Unicast and Broadcast:
 :byte Retransmissions:
 
 	Indicates configured retransmissions.
+
+boolean Desynchronized [readwrite, optional, CIS only, testing, experimental]
+`````````````````````````````````````````````````````````````````````````````
+
+Available only when D-Bus testing interfaces are enabled and the transport has
+the **Links** property.
+
+Controls whether linked transports are acquired together.
+
+When set to False (default), acquiring one linked transport automatically
+acquires all links.
+
+When set to True, links are not acquired automatically and each link must be
+acquired separately.
