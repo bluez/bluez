@@ -2261,6 +2261,8 @@ void btd_gatt_client_destroy(struct btd_gatt_client *client)
 	if (!client)
 		return;
 
+	client->ready = false;
+
 	queue_destroy(client->services, unregister_service);
 	queue_destroy(client->all_notify_clients, NULL);
 	queue_destroy(client->ios, NULL);
