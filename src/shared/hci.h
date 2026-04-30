@@ -42,5 +42,11 @@ unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 				void *user_data, bt_hci_destroy_func_t destroy);
 bool bt_hci_unregister(struct bt_hci *hci, unsigned int id);
 
+unsigned int bt_hci_register_subevent(struct bt_hci *hci,
+				uint8_t subevent,
+				bt_hci_callback_func_t callback,
+				void *user_data, bt_hci_destroy_func_t destroy);
+bool bt_hci_unregister_subevent(struct bt_hci *hci, unsigned int id);
+
 bool bt_hci_get_conn_handle(struct bt_hci *hci, const uint8_t *bdaddr,
 				uint16_t *handle);
