@@ -4522,8 +4522,10 @@ static void ras_data_overwritten_notify(const struct l2cap_frame *frame)
 					ras_data_overwritten_notify)
 
 static const struct bitfield_data hog_info_flags[] = {
-	{  0, "RemoteWake (0x01)"		},
-	{  1, "NormallyConnectable (0x02)"	},
+	{  0, "RemoteWake (0x01)"			},
+	{  1, "NormallyConnectable (0x02)"		},
+	{  2, "SCI Supported (0x04)"			},
+	{  3, "SCI Low Power Mode Supported (0x08)"	},
 	{ }
 };
 
@@ -4598,9 +4600,116 @@ done:
 		print_hex_field("  Data", frame->data, frame->size);
 }
 
+static void print_sci_mode(const struct l2cap_frame *frame)
+{
+	uint8_t mode;
+
+	if (!l2cap_frame_get_u8((void *)frame, &mode)) {
+		print_text(COLOR_ERROR, "    Mode: invalid size");
+		goto done;
+	}
+
+	switch (mode) {
+	case 0x00:
+		print_field("    Mode: None (0x00)");
+		break;
+	case 0x02:
+		print_field("    Mode:  SCI Default Mode (0x02)");
+		break;
+	case 0x03:
+		print_field("    Mode:  SCI Fast Mode (0x03)");
+		break;
+	case 0x04:
+		print_field("    Mode:  SCI Low Power Mode (0x04)");
+		break;
+	case 0x05:
+		print_field("    Mode:  SCI Full Range Mode (0x04)");
+		break;
+	default:
+		print_field("    Mode:  Reserved (0x%2.2x)", mode);
+		break;
+	}
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
+static void hog_sci_mode_read(const struct l2cap_frame *frame)
+{
+	print_sci_mode(frame);
+}
+
+static void hog_sci_mode_notify(const struct l2cap_frame *frame)
+{
+	print_sci_mode(frame);
+}
+
+static void hog_sci_info_read(const struct l2cap_frame *frame)
+{
+	uint8_t min_conn_interval;
+	uint8_t num_grps;
+	uint8_t i;
+
+	if (!l2cap_frame_get_u8((void *)frame, &min_conn_interval)) {
+		print_text(COLOR_ERROR, "    Minimum Supported Connection "
+				"Interval: invalid size");
+		goto done;
+	}
+
+	print_field("    Minimum Supported Connection Interval: %.3f ms "
+		    "(0x%2.2x) ", min_conn_interval * 0.125, min_conn_interval);
+
+	if (!l2cap_frame_get_u8((void *)frame, &num_grps)) {
+		print_text(COLOR_ERROR, "    Number of Supported Subgroups: "
+				"invalid size");
+		goto done;
+	}
+
+	print_field("    Number of Supported Subgroups: %d", num_grps);
+
+	for (i = 0; i < num_grps; i++) {
+		uint16_t min, max, stride;
+
+		if (!l2cap_frame_get_le16((void *)frame, &min)) {
+			print_text(COLOR_ERROR, "    group[%u]: Minimum "
+					"Connection Interval: invalid size",
+					i);
+			goto done;
+		}
+
+		if (!l2cap_frame_get_le16((void *)frame, &max)) {
+			print_text(COLOR_ERROR, "    group[%u]: Maximum "
+					"Connection Interval: invalid size",
+					i);
+			goto done;
+		}
+
+		if (!l2cap_frame_get_le16((void *)frame, &stride)) {
+			print_text(COLOR_ERROR, "    group[%u]: Connection "
+					"Interval Stride: invalid size",
+					i);
+			goto done;
+		}
+
+		print_field("      Minimum Connection Interval[%u]: %.3f ms "
+				"(0x%4.4x)", i, min * 0.125, min);
+		print_field("      Maximum Connection Interval[%u]: %.3f ms "
+				"(0x%4.4x)", i, max * 0.125, max);
+		print_field("      Connection Interval Stride[%u]: %.3f ms "
+				"(0x%4.4x)", i, stride * 0.125, stride);
+	}
+
+done:
+	if (frame->size)
+		print_hex_field("  Data", frame->data, frame->size);
+}
+
 #define HIDS \
 	GATT_HANDLER(0x2a4a, hog_info_read, NULL, NULL), \
-	GATT_HANDLER(0x2a4c, NULL, hog_cp_write, NULL)
+	GATT_HANDLER(0x2a4c, NULL, hog_cp_write, NULL), \
+	GATT_HANDLER(0x2c39, hog_sci_mode_read, NULL, hog_sci_mode_notify), \
+	GATT_HANDLER(0x2c3a, hog_sci_info_read, NULL, NULL)
 
 #define GATT_HANDLER(_uuid, _read, _write, _notify) \
 { \
