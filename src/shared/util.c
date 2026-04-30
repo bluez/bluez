@@ -1164,6 +1164,8 @@ static const struct {
 	{ 0x2c17, "RAS Control Point"				},
 	{ 0x2c18, "RAS Ranging Data Ready"			},
 	{ 0x2c19, "RAS Ranging Data Overwritten"		},
+	{ 0x2c39, "HID SCI Mode"				},
+	{ 0x2c3a, "HID SCI Information"				},
 	/* vendor defined */
 	{ 0xfeff, "GN Netcom"					},
 	{ 0xfefe, "GN ReSound A/S"				},
