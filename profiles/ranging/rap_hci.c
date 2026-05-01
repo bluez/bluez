@@ -61,7 +61,7 @@ struct cs_state_machine {
 	enum cs_state old_state;
 	struct bt_hci *hci;
 	struct bt_rap *rap;
-	unsigned int event_id;
+	struct queue *event_ids;
 	bool initiator;
 	bool procedure_active;
 	struct bt_rap_hci_cs_options cs_opt;  /* Per-instance CS options */
@@ -302,7 +302,7 @@ static void rap_send_hci_def_settings_command(struct cs_state_machine *sm,
 		error("Failed to send default settings cmd");
 }
 
-static void rap_rd_rmt_supp_cap_cmplt_evt(const uint8_t *data, uint8_t size,
+static void rap_rd_rmt_supp_cap_cmplt_evt(const void *data, uint8_t size,
 					   void *user_data)
 {
 	struct cs_state_machine *sm = user_data;
@@ -348,7 +348,7 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const uint8_t *data, uint8_t size,
 	cs_set_state(sm, CS_STATE_INIT);
 }
 
-static void rap_cs_config_cmplt_evt(const uint8_t *data, uint8_t size,
+static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 				    void *user_data)
 {
 	struct cs_state_machine *sm = user_data;
@@ -439,7 +439,7 @@ static void rap_cs_config_cmplt_evt(const uint8_t *data, uint8_t size,
 	bt_rap_hci_cs_config_complete_callback(size, &rap_ev, sm->rap);
 }
 
-static void rap_cs_sec_enable_cmplt_evt(const uint8_t *data, uint8_t size,
+static void rap_cs_sec_enable_cmplt_evt(const void *data, uint8_t size,
 					 void *user_data)
 {
 	struct cs_state_machine *sm = user_data;
@@ -500,7 +500,7 @@ static void rap_cs_sec_enable_cmplt_evt(const uint8_t *data, uint8_t size,
 	bt_rap_hci_cs_sec_enable_complete_callback(size, &rap_ev, sm->rap);
 }
 
-static void rap_cs_proc_enable_cmplt_evt(const uint8_t *data, uint8_t size,
+static void rap_cs_proc_enable_cmplt_evt(const void *data, uint8_t size,
 					  void *user_data)
 {
 	struct cs_state_machine *sm = user_data;
@@ -800,7 +800,7 @@ static void parse_cs_step(struct iovec *iov, struct cs_step_data *step,
 	}
 }
 
-static void rap_cs_subevt_result_evt(const uint8_t *data, uint8_t size,
+static void rap_cs_subevt_result_evt(const void *data, uint8_t size,
 				void *user_data)
 {
 	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
@@ -910,7 +910,7 @@ send_event:
 	free(rap_ev);
 }
 
-static void rap_cs_subevt_result_cont_evt(const uint8_t *data, uint8_t size,
+static void rap_cs_subevt_result_cont_evt(const void *data, uint8_t size,
 					void *user_data)
 {
 	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
@@ -1009,113 +1009,12 @@ send_event:
 }
 
 /* Subevent handler function type */
-typedef void (*subevent_handler_t)(const uint8_t *data, uint8_t size,
-				   void *user_data);
 
-/* Subevent table entry */
-struct subevent_entry {
-	uint8_t opcode;
-	uint8_t min_len;
-	uint8_t max_len;
-	subevent_handler_t handler;
-	const char *name;
-};
-
-/* Macro to define HCI event entries
- * Note: min_len excludes the subevent byte since it's stripped before dispatch
- */
-#define HCI_EVT(_opcode, _struct, _handler, _name) \
-	{ \
-		.opcode = _opcode, \
-		.min_len = sizeof(_struct), \
-		.max_len = 0xFF, \
-		.handler = _handler, \
-		.name = _name \
-	}
-
-/* Subevent dispatch table */
-static const struct subevent_entry subevent_table[] = {
-	HCI_EVT(BT_HCI_EVT_LE_CS_RD_REM_SUPP_CAP_COMPLETE,
-		struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete,
-		rap_rd_rmt_supp_cap_cmplt_evt,
-		"CS Read Remote Supported Capabilities Complete"),
-	HCI_EVT(BT_HCI_EVT_LE_CS_CONFIG_COMPLETE,
-		struct bt_hci_evt_le_cs_config_complete,
-		rap_cs_config_cmplt_evt,
-		"CS Config Complete"),
-	HCI_EVT(BT_HCI_EVT_LE_CS_SEC_ENABLE_COMPLETE,
-		struct bt_hci_evt_le_cs_sec_enable_complete,
-		rap_cs_sec_enable_cmplt_evt,
-		"CS Security Enable Complete"),
-	HCI_EVT(BT_HCI_EVT_LE_CS_PROC_ENABLE_COMPLETE,
-		struct bt_hci_evt_le_cs_proc_enable_complete,
-		rap_cs_proc_enable_cmplt_evt,
-		"CS Procedure Enable Complete"),
-	HCI_EVT(BT_HCI_EVT_LE_CS_SUBEVENT_RESULT,
-		struct bt_hci_evt_le_cs_subevent_result,
-		rap_cs_subevt_result_evt,
-		"CS Subevent Result"),
-	HCI_EVT(BT_HCI_EVT_LE_CS_SUBEVENT_RESULT_CONTINUE,
-		struct bt_hci_evt_le_cs_subevent_result_continue,
-		rap_cs_subevt_result_cont_evt,
-		"CS Subevent Result Continue")
-};
-
-#undef HCI_EVT
-
-#define SUBEVENT_TABLE_SIZE ARRAY_SIZE(subevent_table)
-
-/* HCI Event Registration */
-static void rap_handle_hci_events(const void *data, uint8_t size,
-				void *user_data)
+static void unregister_event_id(void *data, void *user_data)
 {
-	struct iovec iov;
-	uint8_t subevent;
-	const struct subevent_entry *entry = NULL;
-	size_t i;
+	struct bt_hci *hci = user_data;
 
-	/* Initialize iovec with the event data */
-	iov.iov_base = (void *) data;
-	iov.iov_len = size;
-
-	/* Pull the subevent code */
-	if (!util_iov_pull_u8(&iov, &subevent)) {
-		DBG("Failed to parse subevent code");
-		return;
-	}
-
-	/* Find the subevent in the table */
-	for (i = 0; i < SUBEVENT_TABLE_SIZE; i++) {
-		if (subevent_table[i].opcode == subevent) {
-			entry = &subevent_table[i];
-			break;
-		}
-	}
-
-	/* Check if subevent is supported */
-	if (!entry) {
-		DBG("Unknown subevent: 0x%02X", subevent);
-		return;
-	}
-
-	/* Validate payload length */
-	if (iov.iov_len < entry->min_len) {
-		DBG("%s: payload too short (%zu < %u)",
-		    entry->name, iov.iov_len, entry->min_len);
-		return;
-	}
-
-	if (entry->max_len != 0xFF && iov.iov_len > entry->max_len) {
-		DBG("%s: payload too long (%zu > %u)",
-		    entry->name, iov.iov_len, entry->max_len);
-		return;
-	}
-
-	/* Call the handler */
-	DBG("Handling %s (opcode=0x%02X, len=%zu)",
-	    entry->name, subevent, iov.iov_len);
-
-	entry->handler(iov.iov_base, iov.iov_len, user_data);
+	bt_hci_unregister_subevent(hci, PTR_TO_UINT(data));
 }
 
 void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
@@ -1123,6 +1022,7 @@ void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
 			int8_t max_tx_power)
 {
 	struct cs_state_machine *sm;
+	unsigned int id;
 
 	if (!rap || !hci) {
 		error("rap or hci null");
@@ -1140,22 +1040,68 @@ void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
 	cs_state_machine_init(sm, rap, hci, role, cs_sync_ant_sel,
 				max_tx_power);
 
-	sm->event_id = bt_hci_register(hci, BT_HCI_EVT_LE_META_EVENT,
-					rap_handle_hci_events, sm, NULL);
+	sm->event_ids = queue_new();
 
-	DBG("bt_hci_register done, event_id : %d", sm->event_id);
+	/* Register each LE Meta subevent individually */
+	id = bt_hci_register_subevent(hci,
+			BT_HCI_EVT_LE_CS_RD_REM_SUPP_CAP_COMPLETE,
+			rap_rd_rmt_supp_cap_cmplt_evt, sm, NULL);
+	if (!id)
+		goto fail;
 
-	if (!sm->event_id) {
-		error("Failed to register hci le meta events");
-		error("event_id=0x%02X", sm->event_id);
-		free(sm);
-		return NULL;
-	}
+	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
+
+	id = bt_hci_register_subevent(hci,
+			BT_HCI_EVT_LE_CS_CONFIG_COMPLETE,
+			rap_cs_config_cmplt_evt, sm, NULL);
+	if (!id)
+		goto fail;
+
+	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
+
+	id = bt_hci_register_subevent(hci,
+			BT_HCI_EVT_LE_CS_SEC_ENABLE_COMPLETE,
+			rap_cs_sec_enable_cmplt_evt, sm, NULL);
+	if (!id)
+		goto fail;
+
+	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
+
+	id = bt_hci_register_subevent(hci,
+			BT_HCI_EVT_LE_CS_PROC_ENABLE_COMPLETE,
+			rap_cs_proc_enable_cmplt_evt, sm, NULL);
+	if (!id)
+		goto fail;
+
+	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
+
+	id = bt_hci_register_subevent(hci,
+			BT_HCI_EVT_LE_CS_SUBEVENT_RESULT,
+			rap_cs_subevt_result_evt, sm, NULL);
+	if (!id)
+		goto fail;
+
+	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
+
+	id = bt_hci_register_subevent(hci,
+			BT_HCI_EVT_LE_CS_SUBEVENT_RESULT_CONTINUE,
+			rap_cs_subevt_result_cont_evt, sm, NULL);
+	if (!id)
+		goto fail;
+
+	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
 
 	DBG("CS options: role=%u, cs_sync_ant_sel=%u, max_tx_power=%d",
 		role, cs_sync_ant_sel, max_tx_power);
 
 	return sm;
+
+fail:
+	error("Failed to register hci le meta subevents");
+	queue_foreach(sm->event_ids, unregister_event_id, hci);
+	queue_destroy(sm->event_ids, NULL);
+	free(sm);
+	return NULL;
 }
 
 bool bt_rap_set_conn_handle(void *hci_sm, struct bt_rap *rap, uint16_t handle,
@@ -1204,8 +1150,11 @@ void bt_rap_detach_hci(struct bt_rap *rap, void *hci_sm)
 	/* Cleanup the per-instance state machine */
 	if (sm) {
 		/* Unregister HCI events */
-		if (sm->event_id && sm->hci)
-			bt_hci_unregister(sm->hci, sm->event_id);
+		if (sm->hci)
+			queue_foreach(sm->event_ids, unregister_event_id,
+								sm->hci);
+
+		queue_destroy(sm->event_ids, NULL);
 
 		/* Clean up per-instance connection mappings */
 		remove_rap_mappings(sm);
