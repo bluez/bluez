@@ -45,6 +45,7 @@ struct bt_hci {
 	struct queue *cmd_queue;
 	struct queue *rsp_queue;
 	struct queue *evt_list;
+	struct queue *subevt_list;
 	struct queue *data_queue;
 };
 
@@ -239,6 +240,21 @@ static void process_notify(void *data, void *user_data)
 						hdr->plen, evt->user_data);
 }
 
+struct subevt_data {
+	uint8_t subevent;
+	const void *data;
+	uint8_t size;
+};
+
+static void process_subevt_notify(void *data, void *user_data)
+{
+	struct subevt_data *sd = user_data;
+	struct evt *evt = data;
+
+	if (evt->event == sd->subevent)
+		evt->callback(sd->data, sd->size, evt->user_data);
+}
+
 static void process_event(struct bt_hci *hci, const void *data, size_t size)
 {
 	const struct bt_hci_evt_hdr *hdr = data;
@@ -275,6 +291,16 @@ static void process_event(struct bt_hci *hci, const void *data, size_t size)
 
 	default:
 		queue_foreach(hci->evt_list, process_notify, (void *) hdr);
+		if (hdr->evt == BT_HCI_EVT_LE_META_EVENT && size > 0) {
+			const uint8_t *params = data;
+			struct subevt_data sd;
+
+			sd.subevent = params[0];
+			sd.data = data + 1;
+			sd.size = size - 1;
+			queue_foreach(hci->subevt_list,
+					process_subevt_notify, &sd);
+		}
 		break;
 	}
 }
@@ -332,10 +358,12 @@ static struct bt_hci *create_hci(int fd)
 	hci->cmd_queue = queue_new();
 	hci->rsp_queue = queue_new();
 	hci->evt_list = queue_new();
+	hci->subevt_list = queue_new();
 	hci->data_queue = queue_new();
 
 	if (!io_set_read_handler(hci->io, io_read_callback, hci, NULL)) {
 		queue_destroy(hci->evt_list, NULL);
+		queue_destroy(hci->subevt_list, NULL);
 		queue_destroy(hci->rsp_queue, NULL);
 		queue_destroy(hci->cmd_queue, NULL);
 		queue_destroy(hci->data_queue, NULL);
@@ -458,6 +486,7 @@ void bt_hci_unref(struct bt_hci *hci)
 		return;
 
 	queue_destroy(hci->evt_list, evt_free);
+	queue_destroy(hci->subevt_list, evt_free);
 	queue_destroy(hci->cmd_queue, cmd_free);
 	queue_destroy(hci->rsp_queue, cmd_free);
 	queue_destroy(hci->data_queue, data_free);
@@ -571,7 +600,7 @@ static void update_evt_filter(struct bt_hci *hci)
 	const struct queue_entry *entry;
 	struct sock_filter *filters;
 	struct sock_fprog fprog;
-	unsigned int count, i;
+	unsigned int evt_count, subevt_count, count, i;
 	int fd;
 
 	fd = io_get_fd(hci->io);
@@ -582,21 +611,38 @@ static void update_evt_filter(struct bt_hci *hci)
 	if (hci->is_stream)
 		return;
 
-	count = queue_length(hci->evt_list);
+	evt_count = queue_length(hci->evt_list);
+	subevt_count = queue_length(hci->subevt_list);
 
-	/* Build filter: load event code, check defaults + registered events.
-	 * Packet layout for HCI_CHANNEL_RAW: [H4 type (1 byte)][evt code (1)]
-	 * So event code is at offset 1.
+	/* Filter structure:
+	 * Packet layout: [H4 type(1)][evt code(1)][plen(1)][params...]
+	 * For LE Meta: params[0] is the subevent code (offset 3 from start)
 	 *
-	 * Filter structure:
 	 *   [0] Load byte at offset 1 (event code)
-	 *   [1] JEQ BT_HCI_EVT_CMD_COMPLETE -> accept
-	 *   [2] JEQ BT_HCI_EVT_CMD_STATUS -> accept
-	 *   [3..3+count-1] JEQ registered_event -> accept
-	 *   [3+count] reject
-	 *   [4+count] accept
+	 *   [1] JEQ CMD_COMPLETE -> accept
+	 *   [2] JEQ CMD_STATUS -> accept
+	 *   [3] JEQ LE_META -> subevent_check (if subevts registered)
+	 *   [4..4+evt_count-1] JEQ registered_event -> accept
+	 *   [4+evt_count] reject
+	 *   -- subevent section (if subevt_count > 0) --
+	 *   [5+evt_count] Load byte at offset 3 (subevent code)
+	 *   [6+evt_count..6+evt_count+subevt_count-1] JEQ subevent -> accept
+	 *   [6+evt_count+subevt_count] reject
+	 *   -- shared accept --
+	 *   [last] accept
 	 */
-	filters = malloc(sizeof(*filters) * (count + 5));
+
+	/* Without subevents: 3 (defaults) + evt_count + reject + accept =
+	 *                    evt_count + 5
+	 * With subevents: 4 (defaults+LE_META) + evt_count + reject +
+	 *                 1 (load subevent) + subevt_count + reject + accept
+	 */
+	if (subevt_count)
+		count = 4 + evt_count + 1 + 1 + subevt_count + 1 + 1;
+	else
+		count = 3 + evt_count + 1 + 1;
+
+	filters = malloc(sizeof(*filters) * count);
 	if (!filters)
 		return;
 
@@ -606,32 +652,106 @@ static void update_evt_filter(struct bt_hci *hci)
 	filters[i++] = (struct sock_filter)
 		BPF_STMT(BPF_LD + BPF_B + BPF_ABS, 1);
 
-	/* Check BT_HCI_EVT_CMD_COMPLETE (0x0e) */
-	filters[i++] = (struct sock_filter)
-		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, BT_HCI_EVT_CMD_COMPLETE,
-			 count + 2, 0);
+	if (subevt_count) {
+		/* accept is at index: count - 1
+		 * From instruction at index i, jump_true = (count-1) - (i+1)
+		 */
 
-	/* Check BT_HCI_EVT_CMD_STATUS (0x0f) */
-	filters[i++] = (struct sock_filter)
-		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, BT_HCI_EVT_CMD_STATUS,
-			 count + 1, 0);
-
-	/* Check each registered event */
-	entry = queue_get_entries(hci->evt_list);
-	while (entry) {
-		const struct evt *evt = entry->data;
-		unsigned int jump = count - (i - 3);
-
+		/* Check BT_HCI_EVT_CMD_COMPLETE -> accept */
 		filters[i] = (struct sock_filter)
-			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, evt->event,
-				 jump, 0);
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_COMPLETE,
+				 count - 1 - (i + 1), 0);
 		i++;
-		entry = entry->next;
-	}
 
-	/* Reject */
-	filters[i++] = (struct sock_filter)
-		BPF_STMT(BPF_RET | BPF_K, 0);
+		/* Check BT_HCI_EVT_CMD_STATUS -> accept */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_STATUS,
+				 count - 1 - (i + 1), 0);
+		i++;
+
+		/* Check LE_META -> subevent section
+		 * subevent section starts at: 4 + evt_count + 1
+		 * (after the evt reject instruction)
+		 */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_LE_META_EVENT,
+				 4 + evt_count + 1 - (i + 1), 0);
+		i++;
+
+		/* Check each registered event -> accept */
+		entry = queue_get_entries(hci->evt_list);
+		while (entry) {
+			const struct evt *evt = entry->data;
+
+			filters[i] = (struct sock_filter)
+				BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+					 evt->event,
+					 count - 1 - (i + 1), 0);
+			i++;
+			entry = entry->next;
+		}
+
+		/* Reject (for non-matching events) */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_RET | BPF_K, 0);
+
+		/* Subevent section: load subevent byte at offset 3 */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_LD + BPF_B + BPF_ABS, 3);
+
+		/* Check each registered subevent -> accept */
+		entry = queue_get_entries(hci->subevt_list);
+		while (entry) {
+			const struct evt *evt = entry->data;
+
+			filters[i] = (struct sock_filter)
+				BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+					 evt->event,
+					 count - 1 - (i + 1), 0);
+			i++;
+			entry = entry->next;
+		}
+
+		/* Reject (for non-matching subevents) */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_RET | BPF_K, 0);
+	} else {
+		/* No subevents - simple filter */
+
+		/* Check BT_HCI_EVT_CMD_COMPLETE -> accept */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_COMPLETE,
+				 count - 1 - (i + 1), 0);
+		i++;
+
+		/* Check BT_HCI_EVT_CMD_STATUS -> accept */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_STATUS,
+				 count - 1 - (i + 1), 0);
+		i++;
+
+		/* Check each registered event -> accept */
+		entry = queue_get_entries(hci->evt_list);
+		while (entry) {
+			const struct evt *evt = entry->data;
+
+			filters[i] = (struct sock_filter)
+				BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+					 evt->event,
+					 count - 1 - (i + 1), 0);
+			i++;
+			entry = entry->next;
+		}
+
+		/* Reject */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_RET | BPF_K, 0);
+	}
 
 	/* Accept */
 	filters[i++] = (struct sock_filter)
@@ -734,6 +854,58 @@ bool bt_hci_unregister(struct bt_hci *hci, unsigned int id)
 		return false;
 
 	evt = queue_remove_if(hci->evt_list, match_evt_id, UINT_TO_PTR(id));
+	if (!evt)
+		return false;
+
+	evt_free(evt);
+
+	update_evt_filter(hci);
+
+	return true;
+}
+
+
+unsigned int bt_hci_register_subevent(struct bt_hci *hci,
+				uint8_t subevent,
+				bt_hci_callback_func_t callback,
+				void *user_data, bt_hci_destroy_func_t destroy)
+{
+	struct evt *evt;
+
+	if (!hci)
+		return 0;
+
+	evt = new0(struct evt, 1);
+	evt->event = subevent;
+
+	if (hci->next_evt_id < 1)
+		hci->next_evt_id = 1;
+
+	evt->id = hci->next_evt_id++;
+
+	evt->callback = callback;
+	evt->destroy = destroy;
+	evt->user_data = user_data;
+
+	if (!queue_push_tail(hci->subevt_list, evt)) {
+		free(evt);
+		return 0;
+	}
+
+	update_evt_filter(hci);
+
+	return evt->id;
+}
+
+bool bt_hci_unregister_subevent(struct bt_hci *hci, unsigned int id)
+{
+	struct evt *evt;
+
+	if (!hci || !id)
+		return false;
+
+	evt = queue_remove_if(hci->subevt_list, match_evt_id,
+							UINT_TO_PTR(id));
 	if (!evt)
 		return false;
 
