@@ -23,6 +23,7 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <linux/filter.h>
 
 #include "bluetooth/hci.h"
 #include "monitor/bt.h"
@@ -565,6 +566,85 @@ bool bt_hci_flush(struct bt_hci *hci)
 	return true;
 }
 
+static void update_evt_filter(struct bt_hci *hci)
+{
+	const struct queue_entry *entry;
+	struct sock_filter *filters;
+	struct sock_fprog fprog;
+	unsigned int count, i;
+	int fd;
+
+	fd = io_get_fd(hci->io);
+	if (fd < 0)
+		return;
+
+	/* If stream-based (not a raw socket), no BPF filtering needed */
+	if (hci->is_stream)
+		return;
+
+	count = queue_length(hci->evt_list);
+
+	/* Build filter: load event code, check defaults + registered events.
+	 * Packet layout for HCI_CHANNEL_RAW: [H4 type (1 byte)][evt code (1)]
+	 * So event code is at offset 1.
+	 *
+	 * Filter structure:
+	 *   [0] Load byte at offset 1 (event code)
+	 *   [1] JEQ BT_HCI_EVT_CMD_COMPLETE -> accept
+	 *   [2] JEQ BT_HCI_EVT_CMD_STATUS -> accept
+	 *   [3..3+count-1] JEQ registered_event -> accept
+	 *   [3+count] reject
+	 *   [4+count] accept
+	 */
+	filters = malloc(sizeof(*filters) * (count + 5));
+	if (!filters)
+		return;
+
+	i = 0;
+
+	/* Load event code byte */
+	filters[i++] = (struct sock_filter)
+		BPF_STMT(BPF_LD + BPF_B + BPF_ABS, 1);
+
+	/* Check BT_HCI_EVT_CMD_COMPLETE (0x0e) */
+	filters[i++] = (struct sock_filter)
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, BT_HCI_EVT_CMD_COMPLETE,
+			 count + 2, 0);
+
+	/* Check BT_HCI_EVT_CMD_STATUS (0x0f) */
+	filters[i++] = (struct sock_filter)
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, BT_HCI_EVT_CMD_STATUS,
+			 count + 1, 0);
+
+	/* Check each registered event */
+	entry = queue_get_entries(hci->evt_list);
+	while (entry) {
+		const struct evt *evt = entry->data;
+		unsigned int jump = count - (i - 3);
+
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, evt->event,
+				 jump, 0);
+		i++;
+		entry = entry->next;
+	}
+
+	/* Reject */
+	filters[i++] = (struct sock_filter)
+		BPF_STMT(BPF_RET | BPF_K, 0);
+
+	/* Accept */
+	filters[i++] = (struct sock_filter)
+		BPF_STMT(BPF_RET | BPF_K, 0x0fffffff);
+
+	fprog.len = i;
+	fprog.filter = filters;
+
+	setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog));
+
+	free(filters);
+}
+
 unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 				bt_hci_callback_func_t callback,
 				void *user_data, bt_hci_destroy_func_t destroy)
@@ -590,6 +670,8 @@ unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 		free(evt);
 		return 0;
 	}
+
+	update_evt_filter(hci);
 
 	return evt->id;
 }
@@ -656,6 +738,8 @@ bool bt_hci_unregister(struct bt_hci *hci, unsigned int id)
 		return false;
 
 	evt_free(evt);
+
+	update_evt_filter(hci);
 
 	return true;
 }
