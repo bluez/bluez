@@ -240,6 +240,7 @@ struct btd_device {
 	char		*modalias;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
+	GSList		*connected_uuids;	/* Currently connected UUIDs */
 	GSList		*primaries;		/* List of primary services */
 	GSList		*services;		/* List of btd_service */
 	GSList		*pending;		/* Pending services */
@@ -906,6 +907,7 @@ static void device_free(gpointer user_data)
 	device->client_dbus = NULL;
 
 	g_slist_free_full(device->uuids, g_free);
+	g_slist_free_full(device->connected_uuids, g_free);
 	g_slist_free_full(device->primaries, g_free);
 	g_slist_free_full(device->svc_callbacks, svc_dev_remove);
 
@@ -1458,6 +1460,70 @@ static gboolean dev_property_get_uuids(const GDBusPropertyTable *property,
 	dbus_message_iter_close_container(iter, &entry);
 
 	return TRUE;
+}
+
+static GSList *device_get_connected_uuids(struct btd_device *device)
+{
+	return device->connected_uuids;
+}
+
+static gboolean property_get_connected_uuids(const GDBusPropertyTable *property,
+						DBusMessageIter *iter,
+						void *data)
+{
+	struct btd_device *device = data;
+	GSList *l, *uuids = device_get_connected_uuids(device);
+	DBusMessageIter array_iter;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					 DBUS_TYPE_STRING_AS_STRING,
+					 &array_iter);
+
+	for (l = uuids; l; l = g_slist_next(l)) {
+		const char *uuid = l->data;
+		dbus_message_iter_append_basic(&array_iter,
+					       DBUS_TYPE_STRING,
+					       &uuid);
+	}
+
+	dbus_message_iter_close_container(iter, &array_iter);
+	return TRUE;
+}
+
+static void device_add_connected_uuid(struct btd_device *device, const char *uuid)
+{
+	if (!device || !uuid)
+		return;
+
+	if (g_slist_find_custom(device->connected_uuids, uuid,
+				(GCompareFunc)strcmp))
+		return;
+
+	device->connected_uuids = g_slist_append(device->connected_uuids,
+						 g_strdup(uuid));
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+				     DEVICE_INTERFACE, "ConnectedUUIDs");
+}
+
+static void device_remove_connected_uuid(struct btd_device *device, const char *uuid)
+{
+	GSList *match;
+
+	if (!device || !uuid)
+		return;
+
+	match = g_slist_find_custom(device->connected_uuids, uuid,
+				    (GCompareFunc)strcmp);
+	if (!match)
+		return;
+
+	g_free(match->data);
+	device->connected_uuids = g_slist_delete_link(device->connected_uuids,
+						      match);
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+				     DEVICE_INTERFACE, "ConnectedUUIDs");
 }
 
 static gboolean dev_property_get_modalias(const GDBusPropertyTable *property,
@@ -3712,6 +3778,7 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "RSSI", "n", dev_property_get_rssi, NULL, dev_property_exists_rssi },
 	{ "Connected", "b", dev_property_get_connected },
 	{ "UUIDs", "as", dev_property_get_uuids },
+	{ "ConnectedUUIDs", "as", property_get_connected_uuids },
 	{ "Modalias", "s", dev_property_get_modalias, NULL,
 						dev_property_exists_modalias },
 	{ "Adapter", "o", dev_property_get_adapter },
@@ -8228,6 +8295,11 @@ static void service_state_changed(struct btd_service *service,
 		device_profile_connected(device, profile, err);
 	else if (old_state == BTD_SERVICE_STATE_DISCONNECTING)
 		device_profile_disconnected(device, profile, err);
+
+	if (new_state == BTD_SERVICE_STATE_CONNECTED)
+		device_add_connected_uuid(device, profile->remote_uuid);
+	else if (new_state == BTD_SERVICE_STATE_DISCONNECTED)
+		device_remove_connected_uuid(device, profile->remote_uuid);
 }
 
 struct btd_service *btd_device_get_service(struct btd_device *dev,
