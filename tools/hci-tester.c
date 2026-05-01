@@ -407,17 +407,9 @@ static void test_le_rand(const void *test_data)
 static void test_le_read_local_pk_complete(const void *data, uint8_t size,
 								void *user_data)
 {
-	const uint8_t *event = data;
-	const struct bt_hci_evt_le_read_local_pk256_complete *evt;
+	const struct bt_hci_evt_le_read_local_pk256_complete *evt = data;
 	struct le_keys *keys = user_data;
 
-	if (*event != BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE) {
-		tester_warn("Failed Read Local PK256 command");
-		tester_test_failed();
-		return;
-	}
-
-	evt = (void *)(event + 1);
 	if (evt->status) {
 		tester_warn("HCI Read Local PK complete failed (0x%02x)",
 								evt->status);
@@ -450,7 +442,8 @@ static void test_le_read_local_pk(const void *test_data)
 	struct bt_hci_cmd_set_event_mask sem;
 	struct bt_hci_cmd_le_set_event_mask lsem;
 
-	bt_hci_register(user->hci_ut, BT_HCI_EVT_LE_META_EVENT,
+	bt_hci_register_subevent(user->hci_ut,
+				BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE,
 				test_le_read_local_pk_complete,
 				(void *)test_data, NULL);
 
@@ -480,17 +473,9 @@ static void test_le_read_local_pk(const void *test_data)
 static void setup_le_read_local_pk_complete(const void *data, uint8_t size,
 								void *user_data)
 {
-	const uint8_t *event = data;
-	const struct bt_hci_evt_le_read_local_pk256_complete *evt;
+	const struct bt_hci_evt_le_read_local_pk256_complete *evt = data;
 	struct le_keys *keys = user_data;
 
-	if (*event != BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE) {
-		tester_warn("Failed Read Local PK256 command");
-		tester_setup_failed();
-		return;
-	}
-
-	evt = (void *)(event + 1);
 	if (evt->status) {
 		tester_warn("HCI Read Local PK complete failed (0x%02x)",
 								evt->status);
@@ -523,7 +508,8 @@ static void setup_le_generate_dhkey(const void *test_data)
 	struct bt_hci_cmd_set_event_mask sem;
 	struct bt_hci_cmd_le_set_event_mask lsem;
 
-	bt_hci_register(user->hci_ut, BT_HCI_EVT_LE_META_EVENT,
+	bt_hci_register_subevent(user->hci_ut,
+				BT_HCI_EVT_LE_READ_LOCAL_PK256_COMPLETE,
 				setup_le_read_local_pk_complete,
 				(void *)test_data, NULL);
 
@@ -554,18 +540,10 @@ static void setup_le_generate_dhkey(const void *test_data)
 static void test_le_generate_dhkey_complete(const void *data, uint8_t size,
 								void *user_data)
 {
-	const uint8_t *event = data;
-	const struct bt_hci_evt_le_generate_dhkey_complete *evt;
+	const struct bt_hci_evt_le_generate_dhkey_complete *evt = data;
 	struct le_keys *keys = user_data;
 	uint8_t dhkey[32];
 
-	if (*event != BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE) {
-		tester_warn("Failed DHKey generation command");
-		tester_test_failed();
-		return;
-	}
-
-	evt = (void *)(event + 1);
 	if (evt->status) {
 		tester_warn("HCI Generate DHKey complete failed (0x%02x)",
 								evt->status);
@@ -613,10 +591,11 @@ static void test_le_generate_dhkey(const void *test_data)
 
 	ecc_make_key(cmd.remote_pk256, keys->remote_sk);
 
-	/* Unregister handler for META event */
-	bt_hci_unregister(user->hci_ut, 1);
+	/* Unregister handler for PK256 subevent */
+	bt_hci_unregister_subevent(user->hci_ut, 1);
 
-	bt_hci_register(user->hci_ut, BT_HCI_EVT_LE_META_EVENT,
+	bt_hci_register_subevent(user->hci_ut,
+				BT_HCI_EVT_LE_GENERATE_DHKEY_COMPLETE,
 				test_le_generate_dhkey_complete, keys,
 				NULL);
 
@@ -830,15 +809,10 @@ static void teardown_connection(const void *test_data)
 static void test_adv_report(const void *data, uint8_t size, void *user_data)
 {
 	struct user_data *user = tester_get_data();
-	uint8_t subevent = *((uint8_t *) data);
-	const struct bt_hci_evt_le_adv_report *lar = data + 1;
+	const struct bt_hci_evt_le_adv_report *lar = data;
 
-	switch (subevent) {
-	case BT_HCI_EVT_LE_ADV_REPORT:
-		if (!memcmp(lar->addr, user->bdaddr_ut, 6))
-			tester_setup_complete();
-		break;
-	}
+	if (!memcmp(lar->addr, user->bdaddr_ut, 6))
+		tester_setup_complete();
 }
 
 static void setup_advertising_initiated(const void *test_data)
@@ -850,8 +824,9 @@ static void setup_advertising_initiated(const void *test_data)
 	struct bt_hci_cmd_le_set_adv_parameters lsap;
 	struct bt_hci_cmd_le_set_adv_enable lsae;
 
-	bt_hci_register(user->hci_lt, BT_HCI_EVT_LE_META_EVENT,
-					test_adv_report, NULL, NULL);
+	bt_hci_register_subevent(user->hci_lt,
+				BT_HCI_EVT_LE_ADV_REPORT,
+				test_adv_report, NULL, NULL);
 
 	memset(sem.mask, 0, 8);
 	sem.mask[1] |= 0x20;	/* Command Complete */
