@@ -1249,7 +1249,15 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 			SDPERR("Unexpected end of packet");
 			return 0;
 		}
-		*size = bt_get_be32(buf);
+		{
+			uint32_t val32 = bt_get_be32(buf);
+
+			if (val32 > INT_MAX) {
+				SDPERR("Sequence length overflow");
+				return 0;
+			}
+			*size = (int) val32;
+		}
 		scanned += sizeof(uint32_t);
 		break;
 	default:
