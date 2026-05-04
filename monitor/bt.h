@@ -3196,6 +3196,49 @@ struct bt_hci_cmd_le_fsu {
 	uint8_t  types;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_CONN_RATE		0x20a1
+#define BT_HCI_BIT_LE_CONN_RATE		BT_HCI_CMD_BIT(48, 5)
+struct bt_hci_cmd_le_conn_rate {
+	uint16_t handle;
+	uint16_t interval_min;
+	uint16_t interval_max;
+	uint16_t subrate_min;
+	uint16_t subrate_max;
+	uint16_t max_latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+	uint16_t min_ce_len;
+	uint16_t max_ce_len;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_SET_DEF_RATE		0x20a2
+#define BT_HCI_BIT_LE_SET_DEF_RATE		BT_HCI_CMD_BIT(48, 6)
+struct bt_hci_cmd_le_set_def_rate {
+	uint16_t interval_min;
+	uint16_t interval_max;
+	uint16_t subrate_min;
+	uint16_t subrate_max;
+	uint16_t max_latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+	uint16_t min_ce_len;
+	uint16_t max_ce_len;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_CONN_INTERVAL	0x20a3
+#define BT_HCI_BIT_LE_READ_CONN_INTERVAL	BT_HCI_CMD_BIT(48, 7)
+struct bt_hci_le_conn_interval_group {
+	uint16_t min;
+	uint16_t max;
+	uint16_t stride;
+} __attribute__ ((packed));
+
+struct bt_hci_rsp_le_read_conn_interval {
+	uint8_t  status;
+	uint8_t  num_grps;
+	struct bt_hci_le_conn_interval_group grps[0];
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
@@ -4152,6 +4195,17 @@ struct bt_hci_evt_le_fsu_complete {
 	uint16_t frame_space;
 	uint8_t  phys;
 	uint8_t  types;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_CONN_RATE_CHANGE		0x37
+struct bt_hci_evt_le_conn_rate_change {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t interval;
+	uint16_t subrate;
+	uint16_t latency;
+	uint16_t cont_number;
+	uint16_t supv_timeout;
 } __attribute__ ((packed));
 
 #define BT_HCI_ERR_SUCCESS			0x00
