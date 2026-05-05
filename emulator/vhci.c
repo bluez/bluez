@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <sys/uio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -29,6 +30,7 @@
 #include "bluetooth/hci.h"
 
 #include "src/shared/io.h"
+#include "src/shared/util.h"
 #include "monitor/bt.h"
 #include "btdev.h"
 #include "vhci.h"
@@ -41,7 +43,22 @@ struct vhci {
 	uint16_t index;
 	struct io *io;
 	struct btdev *btdev;
+	vhci_debug_func_t debug_callback;
+	vhci_destroy_func_t debug_destroy;
+	void *debug_data;
 };
+
+static void vhci_debug(struct vhci *vhci, const char *format, ...)
+{
+	va_list ap;
+
+	if (!vhci || !format || !vhci->debug_callback)
+		return;
+
+	va_start(ap, format);
+	util_debug_va(vhci->debug_callback, vhci->debug_data, format, ap);
+	va_end(ap);
+}
 
 static void vhci_destroy(void *user_data)
 {
@@ -61,7 +78,7 @@ static void vhci_write_callback(const struct iovec *iov, int iovlen,
 
 	written = io_send(vhci->io, iov, iovlen);
 	if (written < 0)
-		return;
+		vhci_debug(vhci, "Failed to write: %s", strerror(-written));
 }
 
 static bool vhci_read_callback(struct io *io, void *user_data)
@@ -72,8 +89,10 @@ static bool vhci_read_callback(struct io *io, void *user_data)
 	ssize_t len;
 
 	len = read(fd, buf, sizeof(buf));
-	if (len < 1)
+	if (len < 1) {
+		vhci_debug(vhci, "Failed to read: %s", strerror(errno));
 		return false;
+	}
 
 	btdev_receive_h4(vhci->btdev, buf, len);
 
@@ -85,6 +104,13 @@ bool vhci_set_debug(struct vhci *vhci, vhci_debug_func_t callback,
 {
 	if (!vhci)
 		return false;
+
+	if (vhci->debug_destroy)
+		vhci->debug_destroy(vhci->debug_data);
+
+	vhci->debug_callback = callback;
+	vhci->debug_destroy = destroy;
+	vhci->debug_data = user_data;
 
 	return btdev_set_debug(vhci->btdev, callback, user_data, destroy);
 }
@@ -205,14 +231,20 @@ static int vhci_debugfs_write(struct vhci *vhci, char *option, const void *data,
 	sprintf(path, DEBUGFS_PATH "/hci%d/%s", vhci->index, option);
 
 	fd = open(path, O_RDWR);
-	if (fd < 0)
+	if (fd < 0) {
+		vhci_debug(vhci, "Failed to open %s: %s", path,
+							strerror(errno));
 		return -errno;
+	}
 
 	n = write(fd, data, len);
 	if (n == len)
 		err = 0;
-	else
+	else {
 		err = -errno;
+		vhci_debug(vhci, "Failed to write %s: %s", option,
+							strerror(-err));
+	}
 
 	close(fd);
 
