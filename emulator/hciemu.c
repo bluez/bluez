@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -59,6 +60,18 @@ struct hciemu {
 
 	unsigned int flush_id;
 };
+
+static void hciemu_debug(struct hciemu *hciemu, const char *format, ...)
+{
+	va_list ap;
+
+	if (!hciemu || !format || !hciemu->debug_callback)
+		return;
+
+	va_start(ap, format);
+	util_debug_va(hciemu->debug_callback, hciemu->debug_data, format, ap);
+	va_end(ap);
+}
 
 struct hciemu_command_hook {
 	hciemu_command_func_t function;
@@ -249,8 +262,10 @@ static bool create_vhci(struct hciemu *hciemu)
 	struct vhci *vhci;
 
 	vhci = vhci_open(hciemu->btdev_type);
-	if (!vhci)
+	if (!vhci) {
+		hciemu_debug(hciemu, "Failed to open vhci");
 		return false;
+	}
 
 	btdev_set_command_handler(vhci_get_btdev(vhci),
 					central_command_callback, hciemu);
@@ -343,12 +358,14 @@ static struct hciemu_client *hciemu_client_new(struct hciemu *hciemu,
 
 	client->dev = btdev_create(hciemu->btdev_type, id++);
 	if (!client->dev) {
+		hciemu_debug(hciemu, "Failed to create btdev");
 		free(client);
 		return NULL;
 	}
 
 	client->host = bthost_create();
 	if (!client->host) {
+		hciemu_debug(hciemu, "Failed to create bthost");
 		btdev_destroy(client->dev);
 		free(client);
 		return NULL;
@@ -358,6 +375,8 @@ static struct hciemu_client *hciemu_client_new(struct hciemu *hciemu,
 
 	if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC,
 								0, sv) < 0) {
+		hciemu_debug(hciemu, "Failed to create socketpair: %s",
+							strerror(errno));
 		bthost_destroy(client->host);
 		btdev_destroy(client->dev);
 		return NULL;
