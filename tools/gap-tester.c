@@ -23,11 +23,21 @@ static GDBusProxy *adapter_proxy = NULL;
 
 static struct hciemu *hciemu_stack = NULL;
 
+static void print_debug(const char *str, void *user_data)
+{
+	const char *prefix = user_data;
+
+	tester_print("%s%s", prefix, str);
+}
+
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	tester_print("Connected to daemon");
 
 	hciemu_stack = hciemu_new(HCIEMU_TYPE_BREDRLE);
+
+	if (tester_use_debug())
+		hciemu_set_debug(hciemu_stack, print_debug, "hciemu: ", NULL);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
