@@ -435,7 +435,9 @@ struct hciemu *hciemu_new_num(enum hciemu_type type, uint8_t num)
 
 		if (!client) {
 			queue_destroy(hciemu->clients, hciemu_client_destroy);
-			break;
+			queue_destroy(hciemu->post_command_hooks, NULL);
+			free(hciemu);
+			return NULL;
 		}
 
 		queue_push_tail(hciemu->clients, client);
