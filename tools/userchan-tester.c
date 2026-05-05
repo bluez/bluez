@@ -158,6 +158,9 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 		tester_pre_setup_failed();
 	}
 
+	if (tester_use_debug())
+		hciemu_set_debug(data->hciemu, mgmt_debug, "hciemu: ", NULL);
+
 	tester_print("New hciemu instance created");
 }
 
