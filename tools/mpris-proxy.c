@@ -2816,8 +2816,12 @@ static struct player *find_player_by_obex(const char *path)
 	for (l = players; l; l = l->next) {
 		struct player *player = l->data;
 		struct obex_session *session = player->obex;
-		const char *obex_path = g_dbus_proxy_get_path(session->obex);
+		const char *obex_path = NULL;
 
+		if (session == NULL)
+			continue;
+
+		obex_path = g_dbus_proxy_get_path(session->obex);
 		if (g_str_has_prefix(path, obex_path))
 			return player;
 	}
