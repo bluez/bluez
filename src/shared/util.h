@@ -93,6 +93,14 @@ do {						\
 #define newa(t, n) ((t*) alloca(sizeof(t)*(n)))
 #define malloc0(n) (calloc(1, (n)))
 
+static inline void freep(void *p)
+{
+	free(*(void **) p);
+}
+
+#define _cleanup_(f) __attribute__((cleanup(f)))
+#define _cleanup_free_ _cleanup_(freep)
+
 char *strdelimit(char *str, char *del, char c);
 int strsuffix(const char *str, const char *suffix);
 char *strstrip(char *str);
