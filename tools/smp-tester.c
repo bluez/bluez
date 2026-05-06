@@ -185,6 +185,9 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	if (!data->hciemu) {
 		tester_warn("Failed to setup HCI emulation");
 		tester_pre_setup_failed();
+		mgmt_unref(data->mgmt);
+		data->mgmt = NULL;
+		return;
 	}
 
 	if (tester_use_debug())
