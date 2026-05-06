@@ -396,7 +396,9 @@ static struct hciemu_client *hciemu_client_new(struct hciemu *hciemu,
 	return client;
 }
 
-struct hciemu *hciemu_new_num(enum hciemu_type type, uint8_t num)
+struct hciemu *hciemu_new_num_debug(enum hciemu_type type, uint8_t num,
+			hciemu_debug_func_t callback, void *user_data,
+			hciemu_destroy_func_t destroy)
 {
 
 	struct hciemu *hciemu;
@@ -408,6 +410,10 @@ struct hciemu *hciemu_new_num(enum hciemu_type type, uint8_t num)
 	hciemu = new0(struct hciemu, 1);
 	if (!hciemu)
 		return NULL;
+
+	hciemu->debug_callback = callback;
+	hciemu->debug_destroy = destroy;
+	hciemu->debug_data = user_data;
 
 	switch (type) {
 	case HCIEMU_TYPE_BREDRLE:
@@ -465,9 +471,21 @@ struct hciemu *hciemu_new_num(enum hciemu_type type, uint8_t num)
 	return hciemu_ref(hciemu);
 }
 
+struct hciemu *hciemu_new_num(enum hciemu_type type, uint8_t num)
+{
+	return hciemu_new_num_debug(type, num, NULL, NULL, NULL);
+}
+
 struct hciemu *hciemu_new(enum hciemu_type type)
 {
 	return hciemu_new_num(type, 1);
+}
+
+struct hciemu *hciemu_new_debug(enum hciemu_type type,
+			hciemu_debug_func_t callback, void *user_data,
+			hciemu_destroy_func_t destroy)
+{
+	return hciemu_new_num_debug(type, 1, callback, user_data, destroy);
 }
 
 struct hciemu *hciemu_ref(struct hciemu *hciemu)
