@@ -33,10 +33,6 @@
 #include "hci.h"
 #include "hci_lib.h"
 
-#ifndef MIN
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-#endif
-
 typedef struct {
 	char *str;
 	unsigned int val;

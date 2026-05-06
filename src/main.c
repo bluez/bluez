@@ -205,10 +205,6 @@ static const struct group_table {
 	{ }
 };
 
-#ifndef MIN
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-#endif
-
 static int8_t check_sirk_alpha_numeric(char *str)
 {
 	int8_t val = 0;
