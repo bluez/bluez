@@ -178,6 +178,9 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 					index_removed_callback, NULL, NULL);
 
 	data->hciemu = hciemu_new(HCIEMU_TYPE_LE);
+	if (!data->hciemu)
+		data->hciemu = hciemu_new_debug(HCIEMU_TYPE_LE, print_debug,
+							"hciemu: ", NULL);
 	if (!data->hciemu) {
 		tester_warn("Failed to setup HCI emulation");
 		tester_pre_setup_failed();
