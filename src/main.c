@@ -205,6 +205,12 @@ static const struct group_table {
 	{ }
 };
 
+static inline void free_error(void *err) {
+        g_error_free(*(void**) err);
+}
+
+#define _cleanup_error_ _cleanup_(free_error)
+
 static int8_t check_sirk_alpha_numeric(char *str)
 {
 	int8_t val = 0;
@@ -252,7 +258,7 @@ GKeyFile *btd_get_main_conf(void)
 
 static GKeyFile *load_config(const char *name)
 {
-	GError *err = NULL;
+	_cleanup_error_ GError *err = NULL;
 	GKeyFile *keyfile;
 	int len;
 
@@ -285,7 +291,6 @@ static GKeyFile *load_config(const char *name)
 		if (!g_error_matches(err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
 			error("Parsing %s failed: %s", main_conf_file_path,
 				err->message);
-		g_error_free(err);
 		g_key_file_free(keyfile);
 		return NULL;
 	}
@@ -436,14 +441,13 @@ static int get_mode(const char *str)
 static bool parse_config_string(GKeyFile *config, const char *group,
 					const char *key, char **val)
 {
-	GError *err = NULL;
+	_cleanup_error_ GError *err = NULL;
 	char *tmp;
 
 	tmp = g_key_file_get_string(config, group, key, &err);
 	if (err) {
 		if (err->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND)
 			DBG("%s", err->message);
-		g_error_free(err);
 		return false;
 	}
 
@@ -885,14 +889,13 @@ static bool parse_config_u8(GKeyFile *config, const char *group,
 static bool parse_config_bool(GKeyFile *config, const char *group,
 					const char *key, bool *val)
 {
-	GError *err = NULL;
+	_cleanup_error_ GError *err = NULL;
 	gboolean tmp;
 
 	tmp = g_key_file_get_boolean(config, group, key, &err);
 	if (err) {
 		if (err->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND)
 			DBG("%s", err->message);
-		g_error_free(err);
 		return false;
 	}
 
@@ -1205,8 +1208,8 @@ static void parse_csis(GKeyFile *config)
 static bool parse_cs_role(GKeyFile *config, const char *group,
 					const char *key, uint8_t *val)
 {
-	GError *err = NULL;
-	char *str = NULL;
+	_cleanup_error_ GError *err = NULL;
+	_cleanup_(g_free) char *str = NULL;
 	char *endptr = NULL;
 	int numeric_val;
 
@@ -1215,7 +1218,6 @@ static bool parse_cs_role(GKeyFile *config, const char *group,
 	if (err) {
 		if (err->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND)
 			DBG("%s", err->message);
-		g_error_free(err);
 		return false;
 	}
 
@@ -1225,17 +1227,14 @@ static bool parse_cs_role(GKeyFile *config, const char *group,
 	if (!strcmp(str, "Initiator") || !strcmp(str, "initiator")) {
 		if (val)
 			*val = 1;
-		g_free(str);
 		return true;
 	} else if (!strcmp(str, "Reflector") || !strcmp(str, "reflector")) {
 		if (val)
 			*val = 2;
-		g_free(str);
 		return true;
 	} else if (!strcmp(str, "Both") || !strcmp(str, "both")) {
 		if (val)
 			*val = 3;
-		g_free(str);
 		return true;
 	}
 
@@ -1246,7 +1245,6 @@ static bool parse_cs_role(GKeyFile *config, const char *group,
 		warn("%s.%s = %s is not a valid value. "
 			"Expected: 1/Initiator, 2/Reflector, or 3/Both",
 			group, key, str);
-		g_free(str);
 		return false;
 	}
 
@@ -1254,14 +1252,12 @@ static bool parse_cs_role(GKeyFile *config, const char *group,
 		warn("%s.%s = %d is out of range. "
 			"Valid values: 1 (Initiator), 2 (Reflector), 3 (Both)",
 			group, key, numeric_val);
-		g_free(str);
 		return false;
 	}
 
 	if (val)
 		*val = numeric_val;
 
-	g_free(str);
 	return true;
 }
 
@@ -1575,7 +1571,7 @@ static GOptionEntry options[] = {
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
-	GError *err = NULL;
+	_cleanup_error_ GError *err = NULL;
 	uint16_t sdp_mtu = 0;
 	uint32_t sdp_flags = 0;
 	int gdbus_flags = 0;
@@ -1588,7 +1584,6 @@ int main(int argc, char *argv[])
 	if (g_option_context_parse(context, &argc, &argv, &err) == FALSE) {
 		if (err != NULL) {
 			g_printerr("%s\n", err->message);
-			g_error_free(err);
 		} else
 			g_printerr("An unknown error occurred\n");
 		exit(1);
