@@ -98,6 +98,9 @@ do this:
 
 The above assumes that a kernel tree resides in ``~/src/linux/``.
 
+Also make sure to use ``_cleanup_free_`` and ``_cleanup_(free_func)`` when
+possible. It makes your code much nicer to read (and shorter), and avoids
+common memory leaks on error paths.
 
 Rule 4: Pay extra attention to adding new files to the tree
 -----------------------------------------------------------
