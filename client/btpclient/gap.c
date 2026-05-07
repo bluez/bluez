@@ -2538,6 +2538,21 @@ static void btp_gap_device_connection_ev(struct l_dbus_proxy *proxy,
 	}
 }
 
+static void btp_security_changed_ev(struct l_dbus_proxy *proxy, bool paired)
+{
+	struct btp_device *dev = find_device_by_proxy(proxy);
+	struct btp_adapter *adapter = find_adapter_by_device(dev);
+	struct btp_gap_sec_level_changed_ev ev;
+
+	/* TODO: get real security level */
+	memcpy(&ev.address, &dev->address, sizeof(ev.address));
+	ev.address_type = dev->address_type;
+	ev.sec_level = BTP_GAP_SEC_LEVEL_AUTH_ENC;
+
+	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_SEC_LEVEL_CHANGED,
+					adapter->index, sizeof(ev), &ev);
+}
+
 static void btp_identity_resolved_ev(struct l_dbus_proxy *proxy)
 {
 	struct btp_device *dev = find_device_by_proxy(proxy);
@@ -2709,6 +2724,13 @@ void gap_property_changed(struct l_dbus_proxy *proxy, const char *name,
 			 */
 			if (!prop)
 				btp_gap_device_connection_ev(proxy, prop);
+		} else if (!strcmp(name, "Paired")) {
+			bool prop;
+
+			if (!l_dbus_message_get_arguments(msg, "b", &prop))
+				return;
+
+			btp_security_changed_ev(proxy, prop);
 		} else if (!strcmp(name, "AddressType")) {
 			/* Address property change came first along with address
 			 * type.
