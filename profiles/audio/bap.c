@@ -432,11 +432,11 @@ static gboolean get_qos(const GDBusPropertyTable *property,
 	dict_append_entry(&dict, "Retransmissions", DBUS_TYPE_BYTE, &qos->rtn);
 	dict_append_entry(&dict, "MaximumLatency", DBUS_TYPE_UINT16,
 					&qos->latency);
-	dict_append_entry(&dict, "MimimumDelay", DBUS_TYPE_UINT32,
+	dict_append_entry(&dict, "MinimumDelay", DBUS_TYPE_UINT32,
 					&qos->pd_min);
 	dict_append_entry(&dict, "MaximumDelay", DBUS_TYPE_UINT32,
 					&qos->pd_max);
-	dict_append_entry(&dict, "PreferredMimimumDelay", DBUS_TYPE_UINT32,
+	dict_append_entry(&dict, "PreferredMinimumDelay", DBUS_TYPE_UINT32,
 					&qos->ppd_min);
 	dict_append_entry(&dict, "PreferredMaximumDelay", DBUS_TYPE_UINT32,
 					&qos->ppd_max);
