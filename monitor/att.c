@@ -4425,7 +4425,7 @@ static void print_step_mode_1(const struct l2cap_frame *frame, uint8_t len)
 		return;
 	}
 
-	print_field("          ToA_ToD: 0x%08x", toa_tod | 0xFFFF0000);
+	print_field("          ToA_ToD: 0x%08x", (uint32_t)(int16_t)toa_tod);
 
 	if (!l2cap_frame_get_u8((void *)frame, &antenna)) {
 		print_text(COLOR_ERROR, "          Packet Antenna: invalid");
@@ -4501,13 +4501,7 @@ static void print_step_mode_2(const struct l2cap_frame *frame, uint8_t len,
 static void print_step_mode_3(const struct l2cap_frame *frame, uint8_t len,
 				uint8_t num_antenna_paths)
 {
-	uint8_t quality, nadm, rssi, antenna;
-	uint16_t toa_tod;
-	uint8_t ant_perm_idx;
-	uint8_t i;
-	uint32_t pct;
-	uint16_t i_sample, q_sample;
-	uint8_t tone_quality;
+	uint8_t mode2_len;
 
 	/* Mode 3 = Mode 1 (6 bytes) + Mode 2 (variable) */
 	if (len < 6) {
@@ -4515,101 +4509,18 @@ static void print_step_mode_3(const struct l2cap_frame *frame, uint8_t len,
 		return;
 	}
 
-	/* Parse Mode 1 data first */
-	if (!l2cap_frame_get_u8((void *)frame, &quality)) {
-		print_text(COLOR_ERROR, "          Packet Quality: invalid");
-		return;
-	}
+	/* Parse Mode 1 portion */
+	print_step_mode_1(frame, 6);
 
-	print_field("          Packet Quality: 0x%02x", quality);
-	print_field("            %s", packet_quality_str(quality));
-	print_field("            Bit errors: %u", (quality >> 2) & 0x3F);
-
-	if (!l2cap_frame_get_u8((void *)frame, &nadm)) {
-		print_text(COLOR_ERROR, "          Packet NADM: invalid size");
-		return;
-	}
-
-	if (nadm == 0xFF)
-		print_field("          Packet NADM: Unknown NADM (0xff)");
-	else
-		print_field("          Packet NADM: %u", nadm);
-
-	if (!l2cap_frame_get_u8((void *)frame, &rssi)) {
-		print_text(COLOR_ERROR, "          Packet RSSI: invalid size");
-		return;
-	}
-
-	print_field("          Packet RSSI: %d", (int8_t)rssi);
-
-	if (!l2cap_frame_get_le16((void *)frame, &toa_tod)) {
-		print_text(COLOR_ERROR, "          ToA_ToD: invalid size");
-		return;
-	}
-
-	print_field("          ToA_ToD: 0x%08x", toa_tod | 0xFFFF0000);
-
-	if (!l2cap_frame_get_u8((void *)frame, &antenna)) {
-		print_text(COLOR_ERROR, "          Packet Antenna: invalid");
-		return;
-	}
-
-	print_field("          Packet Antenna: %u", antenna);
-
-	/* Now parse Mode 2 data */
 	if (frame->size < 1)
 		return;
 
-	if (!l2cap_frame_get_u8((void *)frame, &ant_perm_idx)) {
-		print_text(COLOR_ERROR, "          Antenna Permutation Index: "
-							"invalid size");
-		return;
-	}
-
-	print_field("          Antenna Permutation Index: %u", ant_perm_idx);
-
-	/* Use the antenna paths count from ranging header */
-	for (i = 0; i < (num_antenna_paths + 1); i++) {
-		if (frame->size < 4) {
-			print_text(COLOR_ERROR,
-				"            Insufficient data for path %u",
-				i);
-			return;
-		}
-
-		if (!l2cap_frame_get_le24((void *)frame, &pct)) {
-			print_text(COLOR_ERROR, "            PCT: invalid");
-			return;
-		}
-
-		/* Extract 12-bit I and Q samples from 24-bit PCT */
-		i_sample = pct & 0x0FFF;
-		q_sample = (pct >> 12) & 0x0FFF;
-
-		print_field("          Path %u", i);
-		print_field("            PCT: 0x%06x", pct);
-		print_field("              I: 0x%03x", i_sample);
-		print_field("              Q: 0x%03x", q_sample);
-
-		if (!l2cap_frame_get_u8((void *)frame, &tone_quality)) {
-			print_text(COLOR_ERROR,
-				"            Tone quality indicator: "
-				"invalid size");
-			return;
-		}
-
-		print_field("            Tone quality indicator: 0x%02x",
-				tone_quality);
-		print_field("              %s (0x%02x)",
-				tone_quality_str(tone_quality),
-				tone_quality & 0x03);
-		print_field("              %s (0x%02x)",
-				tone_extension_str(tone_quality),
-				(tone_quality >> 4) & 0x03);
-	}
+	/* Parse Mode 2 portion */
+	mode2_len = len - 6;
+	print_step_mode_2(frame, mode2_len, num_antenna_paths);
 }
 
-static void  print_ranging_steps(const struct l2cap_frame *frame,
+static void print_ranging_steps(const struct l2cap_frame *frame,
 				uint8_t num_steps, uint8_t num_antenna_paths)
 {
 	uint8_t step_idx;
@@ -4649,15 +4560,18 @@ static void  print_ranging_steps(const struct l2cap_frame *frame,
 		 */
 		switch (mode_type) {
 		case 0:
-			/* Mode 0: Default to 3 bytes (reflector)
-			 * Only use 5 bytes if we're the last step AND have
-			 * exactly 5 bytes remaining
+			/* Mode 0: 3 bytes without Measured Freq Offset, or
+			 * 5 bytes with it. The presence depends on the CS
+			 * role (initiator includes it, reflector does not).
+			 * Without role info, try 5 bytes if remaining data
+			 * aligns exactly, otherwise default to 3 bytes.
 			 */
-			if (step_idx == num_steps - 1 && frame->size == 5) {
-				/* Initiator - last step with exactly 5 bytes */
+			if (frame->size >= 5 &&
+					frame->size % 5 == 0 &&
+					frame->size / 5 ==
+					(size_t)(num_steps - step_idx)) {
 				step_data_len = 5;
 			} else if (frame->size >= 3) {
-				/* Reflector - default case */
 				step_data_len = 3;
 			} else {
 				print_text(COLOR_ERROR,
@@ -4742,7 +4656,7 @@ static void  print_ranging_steps(const struct l2cap_frame *frame,
 static void ras_ranging_data_read(const struct l2cap_frame *frame)
 {
 	uint8_t seg_header;
-	bool first_segment = true;
+	bool first_segment = false;
 
 	if (!l2cap_frame_get_u8((void *)frame, &seg_header)) {
 		print_text(COLOR_ERROR, "  Segmentation Header: invalid size");
