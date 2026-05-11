@@ -6670,9 +6670,38 @@ bool bt_bap_match_bcast_sink_stream(const void *data, const void *user_data)
 	return stream->lpac->type == BT_BAP_BCAST_SINK;
 }
 
+static void stream_io_qos_disconnect(struct bt_bap_stream *stream,
+					struct bt_bap_stream_io *io)
+{
+	uint8_t state;
+
+	if (!stream || !stream->ep || stream->io != io)
+		return;
+
+	state = stream->ep->state;
+
+	DBG(stream->bap, "CIS disconnected for stream %p state %u", stream,
+								state);
+
+	if (state != BT_ASCS_ASE_STATE_ENABLING &&
+			state != BT_ASCS_ASE_STATE_STREAMING)
+		return;
+
+	DBG(stream->bap, "Moving ASE %u to QoS Configured after CIS loss",
+							stream->ep->id);
+
+	stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+}
+
+static void stream_link_io_qos_disconnect(void *data, void *user_data)
+{
+	stream_io_qos_disconnect(data, user_data);
+}
+
 static bool stream_io_disconnected(struct io *io, void *user_data)
 {
 	struct bt_bap_stream *stream = user_data;
+	struct bt_bap_stream_io *sio;
 
 	DBG(stream->bap, "stream %p io disconnected", stream);
 
@@ -6683,6 +6712,12 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 	if (stream->lpac->type == BT_BAP_BCAST_SINK) {
 		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
 		return false;
+	}
+
+	sio = stream->io;
+	if (sio) {
+		stream_io_qos_disconnect(stream, sio);
+		queue_foreach(stream->links, stream_link_io_qos_disconnect, sio);
 	}
 
 	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
