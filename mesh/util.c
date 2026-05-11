@@ -95,7 +95,8 @@ size_t hex2str(const uint8_t *in, size_t in_len, char *out, size_t out_len)
 int create_dir(const char *dir_name)
 {
 	struct stat st;
-	char dir[PATH_MAX + 1], *prev, *next;
+	const char *prev, *next;
+	char dir[PATH_MAX + 1];
 	int err;
 
 	err = stat(dir_name, &st);
