@@ -1566,7 +1566,6 @@ static void ack_received(struct mesh_net *net, bool timeout,
 {
 	struct mesh_sar *outgoing;
 	uint32_t seg_flag = 0x00000001;
-	uint32_t ack_copy = ack_flag;
 	uint16_t i;
 
 	l_debug("ACK Rxed (%x) (to:%d): %8.8x", seq0, timeout, ack_flag);
@@ -1599,16 +1598,12 @@ static void ack_received(struct mesh_net *net, bool timeout,
 
 	outgoing->last_nak |= ack_flag;
 
-	ack_copy &= outgoing->flags;
-
 	for (i = 0; i <= SEG_MAX(true, outgoing->len); i++, seg_flag <<= 1) {
 		if (seg_flag & ack_flag) {
 			l_debug("Skipping Seg %d of %d",
 					i, SEG_MAX(true, outgoing->len));
 			continue;
 		}
-
-		ack_copy |= seg_flag;
 
 		l_debug("Resend Seg %d net:%p dst:%x app_idx:%3.3x",
 				i, net, outgoing->remote, outgoing->app_idx);
