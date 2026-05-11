@@ -7360,6 +7360,14 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 	discoverable = device_is_discoverable(adapter, &eir_data, addr,
 						bdaddr_type, &auto_connect);
 
+	/* Monitor Devices advertising Broadcast Announcements if the
+	 * adapter is capable of synchronizing to it.
+	 */
+	if (eir_get_service_data(&eir_data, BCAA_SERVICE_UUID) &&
+					btd_adapter_has_settings(adapter,
+					MGMT_SETTING_ISO_SYNC_RECEIVER))
+		monitoring = true;
+
 	dev = btd_adapter_find_device(adapter, bdaddr, bdaddr_type);
 	if (!dev) {
 		/* In case of being just a scan response don't attempt to create
@@ -7369,14 +7377,6 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 			eir_data_free(&eir_data);
 			return;
 		}
-
-		/* Monitor Devices advertising Broadcast Announcements if the
-		 * adapter is capable of synchronizing to it.
-		 */
-		if (eir_get_service_data(&eir_data, BCAA_SERVICE_UUID) &&
-				btd_adapter_has_settings(adapter,
-				MGMT_SETTING_ISO_SYNC_RECEIVER))
-			monitoring = true;
 
 		/* If ISO  Socket is enabled, monitor Devices advertising RSI
 		 * since those can be coordinated sets not marked as visible but
