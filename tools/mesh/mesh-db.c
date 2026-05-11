@@ -2547,7 +2547,9 @@ void *mesh_db_prepare_export(void)
 bool mesh_db_finish_export(bool is_error, void *expt_cfg, const char *fname)
 {
 	FILE *outfile = NULL;
-	const char *str, *hdr;
+	const char *str_s, *hdr_s;
+	char *str = NULL;
+	char *hdr = NULL;
 	json_object *jhdr = NULL;
 	bool result = false;
 	char *pos;
@@ -2581,14 +2583,17 @@ bool mesh_db_finish_export(bool is_error, void *expt_cfg, const char *fname)
 	if (!add_string(jhdr, "version", schema_version))
 		goto done;
 
-	hdr = json_object_to_json_string_ext(jhdr, JSON_C_TO_STRING_PRETTY |
+	hdr_s = json_object_to_json_string_ext(jhdr, JSON_C_TO_STRING_PRETTY |
 						JSON_C_TO_STRING_NOSLASHESCAPE);
 
-	str = json_object_to_json_string_ext(expt_cfg, JSON_C_TO_STRING_PRETTY |
+	str_s = json_object_to_json_string_ext(expt_cfg, JSON_C_TO_STRING_PRETTY |
 						JSON_C_TO_STRING_NOSLASHESCAPE);
 
-	if (!hdr || !str)
+	if (!hdr_s || !str_s)
 		goto done;
+
+	hdr = strdup(hdr_s);
+	str = strdup(str_s);
 
 	/*
 	 * Write two strings to the output while stripping closing "}" from the
@@ -2624,6 +2629,10 @@ bool mesh_db_finish_export(bool is_error, void *expt_cfg, const char *fname)
 	result = true;
 
 done:
+	if (hdr != NULL)
+		free(hdr);
+	if (str != NULL)
+		free(str);
 	if (outfile)
 		fclose(outfile);
 
