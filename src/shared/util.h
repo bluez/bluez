@@ -15,9 +15,11 @@
 #include <stdbool.h>
 #include <alloca.h>
 #include <byteswap.h>
+#include <errno.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <unistd.h>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define BIT(n)  (1 << (n))
@@ -92,6 +94,44 @@ do {						\
 
 #define newa(t, n) ((t*) alloca(sizeof(t)*(n)))
 #define malloc0(n) (calloc(1, (n)))
+
+static inline void freep(void *p)
+{
+	free(*(void **) p);
+}
+
+static inline void * _steal_(void *p)
+{
+	void **orig = (void **) p;
+	void *ret = *orig;
+	*orig = NULL;
+	return ret;
+}
+
+static inline int _steal_fd_(int *fdp)
+{
+	int fd = *fdp;
+	*fdp = -1;
+	return fd;
+}
+
+static inline void closefd(int *fdp)
+{
+	int errno_save = errno;
+	int fd = *fdp;
+	*fdp = -1;
+	if (fd < 0)
+		return;
+	close(fd);
+	errno = errno_save;
+}
+
+#define CLEANUP_FREEFUNC(type, func) static inline void cleanup_##type (type **_ptr) { (func) (*_ptr); }
+
+#define _cleanup_(f) __attribute__((cleanup(f)))
+#define _cleanup_type_(type) __attribute__((cleanup(cleanup_##type)))
+#define _cleanup_free_ _cleanup_(freep)
+#define _cleanup_fd_ _cleanup_(closefd)
 
 char *strdelimit(char *str, char *del, char c);
 int strsuffix(const char *str, const char *suffix);

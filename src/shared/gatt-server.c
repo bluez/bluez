@@ -26,14 +26,6 @@
 #include "src/shared/util.h"
 #include "src/shared/timeout.h"
 
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 /*
  * TODO: This is an arbitrary limit. Come up with something reasonable or
  * perhaps an API to set this value if there is a use case for it.
