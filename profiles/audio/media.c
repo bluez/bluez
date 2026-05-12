@@ -611,6 +611,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 static void release_endpoint(struct media_endpoint *endpoint)
 {
 	DBusMessage *msg;
+	struct media_adapter *adapter = endpoint->adapter;
 
 	DBG("sender=%s path=%s", endpoint->sender, endpoint->path);
 
@@ -631,7 +632,9 @@ static void release_endpoint(struct media_endpoint *endpoint)
 	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 done:
-	media_endpoint_remove(endpoint);
+	/* Make sure endpoint didn't already get removed */
+	if (g_slist_find(adapter->endpoints, endpoint))
+		media_endpoint_remove(endpoint);
 }
 
 static const char *get_name(struct a2dp_sep *sep, void *user_data)
