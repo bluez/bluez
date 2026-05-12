@@ -330,7 +330,8 @@ static void read_databaseid(struct pbap_data *pbap, GObexApparam *apparam)
 		data = value;
 	}
 
-	if (memcmp(data, pbap->databaseid, len)) {
+	if (len == sizeof(pbap->databaseid) &&
+			memcmp(data, pbap->databaseid, len)) {
 		memcpy(pbap->databaseid, data, len);
 		g_dbus_emit_property_changed(conn,
 					obc_session_get_path(pbap->session),
