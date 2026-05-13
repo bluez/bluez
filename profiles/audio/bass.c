@@ -108,7 +108,14 @@ struct bass_assistant {
 	struct iovec *meta;
 	struct iovec *caps;
 	enum assistant_state state;
+	uint8_t src_id;
+	struct queue *srcs;		/* Per-device source tracking */
 	char *path;
+};
+
+struct bass_src {
+	struct bt_bass *bass;
+	uint8_t src_id;
 };
 
 struct bass_delegator {
@@ -158,6 +165,17 @@ static void bass_data_remove(struct bass_data *data);
 static void bis_probe(uint8_t sid, uint8_t bis, uint8_t sgrp,
 			struct iovec *caps, struct iovec *meta,
 			struct bt_bap_qos *qos, void *user_data);
+
+static bool match_src_data(const void *data, const void *match_data)
+{
+	const struct bass_src *src = data;
+	const struct bt_bass *bass = match_data;
+
+	return src->bass == bass;
+}
+
+static struct bass_src *assistant_add_src(struct bass_assistant *assistant,
+					struct bt_bass *bass, uint8_t id);
 static void bis_remove(struct bt_bap *bap, void *user_data);
 
 
@@ -1010,34 +1028,61 @@ static void assistant_past(struct bass_assistant *assistant)
 	free(addr);
 }
 
-static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
-							  void *user_data)
+static DBusMessage *push_mod_src(struct bass_assistant *assistant,
+					DBusMessage *msg)
 {
-	struct bass_assistant *assistant = user_data;
+	struct bt_bass_bcast_audio_scan_cp_hdr hdr;
+	struct bt_bass_mod_src_params params = {0};
+	struct iovec iov = {0};
+	uint32_t bis_sync = 0;
+	uint8_t meta_len = 0;
+	int err;
+
+	hdr.op = BT_BASS_MOD_SRC;
+
+	params.id = assistant->src_id;
+	params.pa_sync = PA_SYNC_NO_SYNC;
+	params.pa_interval = PA_INTERVAL_UNKNOWN;
+	params.num_subgroups = assistant->sgrp + 1;
+
+	util_iov_append(&iov, &params, sizeof(params));
+
+	for (uint8_t sgrp = 0; sgrp < params.num_subgroups; sgrp++) {
+		util_iov_append(&iov, &bis_sync, sizeof(bis_sync));
+		util_iov_append(&iov, &meta_len, sizeof(meta_len));
+	}
+
+	err = bt_bass_send(assistant->data->bass, &hdr, &iov);
+	if (err) {
+		DBG("Unable to send BASS Write Command");
+		return btd_error_failed(msg, strerror(-err));
+	}
+
+	free(iov.iov_base);
+
+	if (assistant->device) {
+		assistant_set_state(assistant, ASSISTANT_STATE_IDLE);
+	} else {
+		struct bass_src *src;
+
+		src = queue_remove_if(assistant->srcs, match_src_data,
+						assistant->data->bass);
+		free(src);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *push_add_src(struct bass_assistant *assistant,
+					DBusMessage *msg)
+{
 	struct bt_bass_bcast_audio_scan_cp_hdr hdr;
 	struct bt_bass_add_src_params params = {0};
 	struct iovec iov = {0};
 	uint32_t bis_sync = 0;
 	uint8_t meta_len = 0;
 	int err;
-	DBusMessageIter props, dict;
 	struct io *io;
-
-	DBG("");
-
-	dbus_message_iter_init(msg, &props);
-
-	if (dbus_message_iter_get_arg_type(&props) != DBUS_TYPE_ARRAY) {
-		DBG("Unable to parse properties");
-		return btd_error_invalid_args(msg);
-	}
-
-	dbus_message_iter_recurse(&props, &dict);
-
-	if (assistant_parse_props(assistant, &dict)) {
-		DBG("Unable to parse properties");
-		return btd_error_invalid_args(msg);
-	}
 
 	hdr.op = BT_BASS_ADD_SRC;
 
@@ -1130,9 +1175,50 @@ static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 
 	free(iov.iov_base);
 
-	assistant_set_state(assistant, ASSISTANT_STATE_PENDING);
+	if (assistant->state == ASSISTANT_STATE_LOCAL)
+		assistant_add_src(assistant, assistant->data->bass, 0);
+	else
+		assistant_set_state(assistant, ASSISTANT_STATE_PENDING);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
+							  void *user_data)
+{
+	struct bass_assistant *assistant = user_data;
+	DBusMessageIter props, dict;
+
+	DBG("");
+
+	dbus_message_iter_init(msg, &props);
+
+	if (dbus_message_iter_get_arg_type(&props) != DBUS_TYPE_ARRAY) {
+		DBG("Unable to parse properties");
+		return btd_error_invalid_args(msg);
+	}
+
+	dbus_message_iter_recurse(&props, &dict);
+
+	if (assistant_parse_props(assistant, &dict)) {
+		DBG("Unable to parse properties");
+		return btd_error_invalid_args(msg);
+	}
+
+	if (assistant->state == ASSISTANT_STATE_ACTIVE) {
+		return push_mod_src(assistant, msg);
+	} else if (assistant->state == ASSISTANT_STATE_LOCAL) {
+		struct bass_src *src;
+
+		src = queue_find(assistant->srcs, match_src_data,
+						assistant->data->bass);
+		if (src) {
+			assistant->src_id = src->src_id;
+			return push_mod_src(assistant, msg);
+		}
+	}
+
+	return push_add_src(assistant, msg);
 }
 
 static const GDBusMethodTable assistant_methods[] = {
@@ -1235,6 +1321,7 @@ static void assistant_free(void *data)
 	g_free(assistant->path);
 	util_iov_free(assistant->meta, 1);
 	util_iov_free(assistant->caps, 1);
+	queue_destroy(assistant->srcs, free);
 
 	free(assistant);
 }
@@ -2015,9 +2102,33 @@ static void bass_handle_bcode_req(struct bass_assistant *assistant, int id)
 	free(iov.iov_base);
 }
 
+static struct bass_src *assistant_add_src(struct bass_assistant *assistant,
+					struct bt_bass *bass, uint8_t id)
+{
+	struct bass_src *src;
+
+	if (!assistant->srcs)
+		assistant->srcs = queue_new();
+
+	src = queue_find(assistant->srcs, match_src_data, bass);
+	if (src) {
+		src->src_id = id;
+		return src;
+	}
+
+	src = new0(struct bass_src, 1);
+	src->bass = bass;
+	src->src_id = id;
+
+	queue_push_tail(assistant->srcs, src);
+
+	return src;
+}
+
 static void bass_src_changed(uint8_t id, uint32_t bid, uint8_t state,
 				uint8_t enc, uint32_t bis_sync, void *user_data)
 {
+	struct bass_data *data = user_data;
 	const struct queue_entry *entry;
 
 	for (entry = queue_get_entries(assistants); entry;
@@ -2032,9 +2143,9 @@ static void bass_src_changed(uint8_t id, uint32_t bid, uint8_t state,
 			continue;
 
 		/* If BID is not set it may happen to be local stream so ignore
-		 * non-local assistants.
+		 * non-local assistants unless their BID is also not set.
 		 */
-		if (!bid && assistant->state != ASSISTANT_STATE_LOCAL)
+		if (!bid && assistant->bid)
 			continue;
 
 		if (state == BT_BASS_SYNC_INFO_RE) {
@@ -2066,21 +2177,34 @@ static void bass_src_changed(uint8_t id, uint32_t bid, uint8_t state,
 				break;
 
 			/* Match BIS index */
-			if (bis & bis_sync)
+			if (bis & bis_sync) {
+				assistant->src_id = id;
 				assistant_set_state(assistant,
 						ASSISTANT_STATE_ACTIVE);
+			}
 			break;
 		case BT_BASS_BIG_ENC_STATE_DEC:
 			/* Only handle assistant objects that
 			 * have requested a Broadcast Code
 			 */
-			if (assistant->state != ASSISTANT_STATE_REQUESTING)
+			if (assistant->state != ASSISTANT_STATE_REQUESTING &&
+				assistant->state != ASSISTANT_STATE_LOCAL)
 				break;
 
 			/* Match BIS index */
-			if (bis & bis_sync)
+			if (bis & bis_sync) {
+				assistant->src_id = id;
+
+				if (assistant->state ==
+						ASSISTANT_STATE_LOCAL) {
+					assistant_add_src(assistant, data->bass,
+								id);
+					break;
+				}
+
 				assistant_set_state(assistant,
 						ASSISTANT_STATE_ACTIVE);
+			}
 			break;
 		default:
 			continue;
