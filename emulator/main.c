@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <sys/uio.h>
+#include <limits.h>
 
 #include "src/shared/mainloop.h"
 #include "src/shared/util.h"
@@ -46,7 +47,7 @@ static void usage(void)
 	printf("options:\n"
 		"\t-d                    Enable debug\n"
 		"\t-S                    Create local serial port\n"
-		"\t-s                    Create local server sockets\n"
+		"\t-s[path=/tmp]         Create local server sockets\n"
 		"\t-t[port=45550]        Create a TCP server\n"
 		"\t-l[num]               Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
@@ -60,7 +61,7 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "debug",   no_argument,       NULL, 'd' },
 	{ "serial",  no_argument,       NULL, 'S' },
-	{ "server",  no_argument,       NULL, 's' },
+	{ "server",  optional_argument, NULL, 's' },
 	{ "tcp",     optional_argument, NULL, 't' },
 	{ "local",   optional_argument, NULL, 'l' },
 	{ "le",      no_argument,       NULL, 'L' },
@@ -88,6 +89,7 @@ int main(int argc, char *argv[])
 	struct server *server5;
 	bool debug_enabled = false;
 	bool server_enabled = false;
+	const char *server_path = "/tmp";
 	uint16_t tcp_port = 0;
 	bool serial_enabled = false;
 	int letest_count = 0;
@@ -100,7 +102,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "dSst::l::LBAU::T::vh",
+		opt = getopt_long(argc, argv, "dSs::t::l::LBAU::T::vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -114,6 +116,8 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			server_enabled = true;
+			if (optarg)
+				server_path = optarg;
 			break;
 		case 't':
 			if (optarg)
@@ -196,28 +200,35 @@ int main(int argc, char *argv[])
 	}
 
 	if (server_enabled) {
-		server1 = server_open_unix(SERVER_TYPE_BREDRLE,
-						"/tmp/bt-server-bredrle");
+		char path[PATH_MAX];
+
+		snprintf(path, sizeof(path), "%s/%s", server_path,
+							"bt-server-bredrle");
+		server1 = server_open_unix(SERVER_TYPE_BREDRLE, path);
 		if (!server1)
 			fprintf(stderr, "Failed to open BR/EDR/LE server\n");
 
-		server2 = server_open_unix(SERVER_TYPE_BREDR,
-						"/tmp/bt-server-bredr");
+		snprintf(path, sizeof(path), "%s/%s", server_path,
+							"bt-server-bredr");
+		server2 = server_open_unix(SERVER_TYPE_BREDR, path);
 		if (!server2)
 			fprintf(stderr, "Failed to open BR/EDR server\n");
 
-		server3 = server_open_unix(SERVER_TYPE_AMP,
-						"/tmp/bt-server-amp");
+		snprintf(path, sizeof(path), "%s/%s", server_path,
+							"bt-server-amp");
+		server3 = server_open_unix(SERVER_TYPE_AMP, path);
 		if (!server3)
 			fprintf(stderr, "Failed to open AMP server\n");
 
-		server4 = server_open_unix(SERVER_TYPE_LE,
-						"/tmp/bt-server-le");
+		snprintf(path, sizeof(path), "%s/%s", server_path,
+							"bt-server-le");
+		server4 = server_open_unix(SERVER_TYPE_LE, path);
 		if (!server4)
 			fprintf(stderr, "Failed to open LE server\n");
 
-		server5 = server_open_unix(SERVER_TYPE_MONITOR,
-						"/tmp/bt-server-mon");
+		snprintf(path, sizeof(path), "%s/%s", server_path,
+							"bt-server-mon");
+		server5 = server_open_unix(SERVER_TYPE_MONITOR, path);
 		if (!server5)
 			fprintf(stderr, "Failed to open monitor server\n");
 	}
