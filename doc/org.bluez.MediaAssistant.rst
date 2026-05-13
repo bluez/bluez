@@ -27,6 +27,10 @@ void Push(dict properties)
 
 Send stream information to the remote device.
 
+If the assistant is in the "active" state, this method uses
+BASS_Modify_Source to update the existing source on the remote device
+instead of adding a new one with BASS_Add_Source.
+
 :dict properties:
 
 Indicate stream properties that will be sent to the peer.
