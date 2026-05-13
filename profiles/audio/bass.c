@@ -420,7 +420,13 @@ static void setup_clear(struct bass_setup *setup, int bis)
 
 	bt_bass_clear_bis_sync(dg->src, bis);
 	setup->stream = NULL;
-	queue_remove(setup->dg->setups, setup);
+
+	if (!queue_remove(setup->dg->setups, setup))
+		/* Setup has already been removed from the queue (e.g. during
+		 * handle_mod_src_req PA_SYNC_NO_SYNC processing). Skip
+		 * disconnect check and free since the caller handles cleanup.
+		 */
+		return;
 
 	/* Remove any pending bcode request associated with setup */
 	req = queue_remove_if(dg->bcode_reqs, match_bcode_setup, setup);
@@ -596,6 +602,8 @@ static void bass_remove_bis(struct bass_setup *setup)
 {
 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
 
+	DBG("%p", setup);
+
 	queue_foreach(links, stream_unlink, setup->stream);
 	bt_bap_stream_release(setup->stream, NULL, NULL);
 }
@@ -618,6 +626,8 @@ static void setup_disable_streaming(void *data, void *user_data)
 
 static void bass_add_bis(struct bass_setup *setup)
 {
+	DBG("%p", setup);
+
 	queue_foreach(setup->dg->setups, setup_disable_streaming, NULL);
 	setup_configure_stream(setup);
 }
@@ -1941,8 +1951,40 @@ static int handle_set_bcode_req(struct bt_bcast_src *bcast_src,
 	return 0;
 }
 
+static bool check_bis_sync(struct bt_bass_mod_src_params *params, uint8_t bis)
+{
+	uint32_t bitmask = 1 << (bis - 1);
+	struct iovec iov = {
+		.iov_base = params->subgroup_data,
+		.iov_len = 0,
+	};
+
+	/* Calculate subgroup data length based on each subgroup's
+	 * bis_sync (4 bytes) + meta_len (1 byte) + meta fields.
+	 */
+	for (uint8_t i = 0; i < params->num_subgroups; i++) {
+		uint32_t bis_sync;
+		uint8_t meta_len;
+
+		iov.iov_len += sizeof(bis_sync) + sizeof(meta_len);
+
+		memcpy(&bis_sync, params->subgroup_data + iov.iov_len -
+				sizeof(bis_sync) - sizeof(meta_len),
+				sizeof(bis_sync));
+		memcpy(&meta_len, params->subgroup_data + iov.iov_len -
+				sizeof(meta_len), sizeof(meta_len));
+
+		if (le32_to_cpu(bis_sync) & bitmask)
+			return true;
+
+		iov.iov_len += meta_len;
+	}
+
+	return false;
+}
+
 static void bass_update_bis_sync(struct bass_delegator *dg,
-				struct bt_bcast_src *bcast_src)
+				struct bt_bass_mod_src_params *params)
 {
 	const struct queue_entry *entry;
 
@@ -1954,11 +1996,14 @@ static void bass_update_bis_sync(struct bass_delegator *dg,
 
 		state = bt_bap_stream_get_state(setup->stream);
 
-		if (!setup->stream && bt_bass_check_bis(bcast_src, setup->bis))
+		DBG("stream %p: BIS %d state %s(%u)", setup->stream, setup->bis,
+				bt_bap_stream_statestr(state), state);
+
+		if (!setup->stream && check_bis_sync(params, setup->bis))
 			bass_add_bis(setup);
 		else if (setup->stream &&
 				state == BT_BAP_STREAM_STATE_STREAMING &&
-				!bt_bass_check_bis(bcast_src, setup->bis))
+				!check_bis_sync(params, setup->bis))
 			bass_remove_bis(setup);
 	}
 }
@@ -1981,9 +2026,26 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
 	if (err)
 		return err;
 
+	DBG("PA sync state %d", sync_state);
+
 	switch (sync_state) {
 	case BT_BASS_SYNCHRONIZED_TO_PA:
-		bass_update_bis_sync(dg, bcast_src);
+		if (params->pa_sync == PA_SYNC_NO_SYNC) {
+			/* Release all setups. Note: bass_remove_bis may
+			 * trigger synchronous state transitions that call
+			 * setup_clear which will return early since the
+			 * setup has already been removed from the queue.
+			 */
+			struct bass_setup *setup;
+
+			while ((setup = queue_pop_head(dg->setups))) {
+				bass_remove_bis(setup);
+				setup_free(setup);
+			}
+
+			delegator_disconnect(dg);
+		} else
+			bass_update_bis_sync(dg, params);
 		break;
 	case BT_BASS_NOT_SYNCHRONIZED_TO_PA:
 		if (params->pa_sync == PA_SYNC_NO_PAST) {
