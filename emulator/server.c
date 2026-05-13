@@ -119,6 +119,7 @@ again:
 		hci_command_hdr *cmd_hdr;
 		hci_acl_hdr *acl_hdr;
 		hci_iso_hdr *iso_hdr;
+		hci_sco_hdr *sco_hdr;
 
 		if (!client->pkt_data) {
 			client->pkt_type = ptr[0];
@@ -153,6 +154,17 @@ again:
 				iso_hdr = (hci_iso_hdr *)(ptr + 1);
 				client->pkt_expect = HCI_ISO_HDR_SIZE +
 							iso_hdr->dlen + 1;
+				client->pkt_data = malloc(client->pkt_expect);
+				client->pkt_len = 0;
+				break;
+			case HCI_SCODATA_PKT:
+				if (count < HCI_SCO_HDR_SIZE + 1) {
+					client->pkt_offset += len;
+					return;
+				}
+				sco_hdr = (hci_sco_hdr *)(ptr + 1);
+				client->pkt_expect = HCI_SCO_HDR_SIZE +
+							sco_hdr->dlen + 1;
 				client->pkt_data = malloc(client->pkt_expect);
 				client->pkt_len = 0;
 				break;
