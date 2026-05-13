@@ -306,7 +306,7 @@ static void start_qemu(void)
 				testargs);
 
 	argv = alloca(sizeof(qemu_argv) +
-			(sizeof(char *) * (6 + (num_devs * 4))) +
+			(sizeof(char *) * (8 + (num_devs * 4))) +
 			(sizeof(char *) * (usb_dev ? 4 : 0)) +
 			(sizeof(char *) * num_extra_opts));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
@@ -330,14 +330,19 @@ static void start_qemu(void)
 	argv[pos++] = "-append";
 	argv[pos++] = (char *) cmdline;
 
+	if (num_devs) {
+		argv[pos++] = "-device";
+		argv[pos++] = "virtio-serial";
+	}
+
 	for (i = 0; i < num_devs; i++) {
 		char *chrdev, *serdev;
 
 		chrdev = alloca(48 + strlen(device_path));
 		sprintf(chrdev, "socket,path=%s,id=bt%d", device_path, i);
 
-		serdev = alloca(48);
-		sprintf(serdev, "pci-serial,chardev=bt%d", i);
+		serdev = alloca(64);
+		sprintf(serdev, "virtconsole,chardev=bt%d,name=bt.%d", i, i);
 
 		argv[pos++] = "-chardev";
 		argv[pos++] = chrdev;
@@ -910,7 +915,7 @@ static void run_command(char *cmdname, char *home)
 	}
 
 	if (num_devs) {
-		const char *node = "/dev/ttyS1";
+		const char *node = "/dev/hvc0";
 		unsigned int basic_flags, extra_flags;
 
 		printf("Attaching BR/EDR controller to %s\n", node);
