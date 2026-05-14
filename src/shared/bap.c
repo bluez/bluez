@@ -3028,6 +3028,10 @@ static void bap_stream_set_io(void *data, void *user_data)
 		else
 			bt_bap_stream_start(stream, NULL, NULL);
 		break;
+	case BT_BAP_STREAM_STATE_STREAMING:
+		if (fd < 0)
+			stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+		break;
 	case BT_BAP_STREAM_STATE_DISABLING:
 		if (fd < 0)
 			bt_bap_stream_stop(stream, NULL, NULL);
