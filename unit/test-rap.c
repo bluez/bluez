@@ -253,8 +253,7 @@ static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
 	struct ccc_state *ccc;
 	uint16_t handle;
 	uint8_t ecode = 0;
-	const uint8_t *value = NULL;
-	size_t len = 0;
+	uint16_t value = 0;
 
 	handle = gatt_db_attribute_get_handle(attrib);
 
@@ -264,11 +263,11 @@ static void gatt_ccc_read_cb(struct gatt_db_attribute *attrib,
 		goto done;
 	}
 
-	len = sizeof(ccc->value);
-	value = (void *) &ccc->value;
+	value = cpu_to_le16(ccc->value);
 
 done:
-	gatt_db_attribute_read_result(attrib, id, ecode, value, len);
+	gatt_db_attribute_read_result(attrib, id, ecode, (void *)&value,
+							sizeof(value));
 }
 
 static void ras_attached(struct bt_rap *rap, void *user_data)
@@ -528,7 +527,7 @@ static void test_server(const void *user_data)
 	RAS_FIND_INFO
 
 /*
- * RAS/SR/RCO/BV-01-C – Characteristic Read: RAS Features
+ * RAS/SR/RCO/BV-01-C Characteristic Read: RAS Features
  *
  *  ATT: Read Request (0x0a) len 2
  *       Handle: 0x0003 (RAS Features value handle)
