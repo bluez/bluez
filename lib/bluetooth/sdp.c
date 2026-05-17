@@ -1214,6 +1214,7 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 {
 	uint8_t dtd;
 	int scanned = sizeof(uint8_t);
+	uint32_t val32;
 
 	if (bufsize < (int) sizeof(uint8_t)) {
 		SDPERR("Unexpected end of packet");
@@ -1249,7 +1250,12 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 			SDPERR("Unexpected end of packet");
 			return 0;
 		}
-		*size = bt_get_be32(buf);
+		val32 = bt_get_be32(buf);
+		if (val32 > INT_MAX) {
+			SDPERR("Invalid size");
+			return 0;
+		}
+		*size = val32;
 		scanned += sizeof(uint32_t);
 		break;
 	default:
