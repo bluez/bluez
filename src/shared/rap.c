@@ -1096,7 +1096,6 @@ static void send_ras_segment_data(struct bt_rap *rap,
 	uint16_t value_max;
 	const uint16_t header_len = ras_segment_header_size;
 	uint16_t raw_payload_size;
-	bool ok;
 
 	if (!rap || !proc)
 		return;
@@ -1128,6 +1127,7 @@ static void send_ras_segment_data(struct bt_rap *rap,
 		uint16_t seg_len;
 		uint8_t *seg;
 		uint16_t wr = 0;
+		bool ok = true;
 
 		if (index > total_len)
 			index = total_len;
@@ -1180,7 +1180,7 @@ static void send_ras_segment_data(struct bt_rap *rap,
 						wr, bt_rap_get_att(rap));
 
 		/* Try sending to on-demand characteristic */
-		if (ras->ondemand_chrc)
+		if (ras->ondemand_chrc && ok)
 			ok = gatt_db_attribute_notify(ras->ondemand_chrc, seg,
 						wr, bt_rap_get_att(rap));
 
