@@ -99,6 +99,7 @@ test/bluezutils.pyc
 unit/test-tester
 unit/test-ringbuf
 unit/test-queue
+unit/test-util
 unit/test-eir
 unit/test-uuid
 unit/test-crc
