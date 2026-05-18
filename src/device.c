@@ -7896,7 +7896,7 @@ bool btd_device_set_gatt_db(struct btd_device *device, struct gatt_db *db)
 		return false;
 
 	clone = gatt_db_clone(db);
-	if (clone)
+	if (!clone)
 		return false;
 
 	gatt_db_unregister(device->db, device->db_id);
