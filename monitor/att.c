@@ -5769,11 +5769,35 @@ static void att_handle_value_conf(const struct l2cap_frame *frame)
 {
 }
 
-static void att_multiple_vl_rsp(const struct l2cap_frame *frame)
+static void att_read_multiple_vl_rsp(const struct l2cap_frame *frame)
 {
 	struct l2cap_frame *f = (void *) frame;
 
-	while (frame->size) {
+	while (f->size) {
+		uint16_t len;
+
+		if (!l2cap_frame_get_le16(f, &len))
+			return;
+
+		print_field("Length: 0x%4.4x", len);
+
+		if (len > f->size) {
+			print_text(COLOR_ERROR, "invalid size");
+			return;
+		}
+
+		print_hex_field("Data", f->data, len);
+		
+		if (!l2cap_frame_pull(f, f, len))
+			return;
+	}
+}
+
+static void att_multiple_vl_ntf(const struct l2cap_frame *frame)
+{
+	struct l2cap_frame *f = (void *) frame;
+
+	while (f->size) {
 		uint16_t handle;
 		uint16_t len;
 
@@ -5787,7 +5811,8 @@ static void att_multiple_vl_rsp(const struct l2cap_frame *frame)
 
 		print_notify(frame, handle, len);
 
-		l2cap_frame_pull(f, f, len);
+		if (!l2cap_frame_pull(f, f, len))
+			return;
 	}
 }
 
@@ -5878,9 +5903,9 @@ static const struct att_opcode_data att_opcode_table[] = {
 	{ 0x20, "Read Multiple Request Variable Length",
 			att_read_multiple_req, 4, false },
 	{ 0x21, "Read Multiple Response Variable Length",
-			att_multiple_vl_rsp, 4, false },
+			att_read_multiple_vl_rsp, 2, false },
 	{ 0x23, "Handle Multiple Value Notification",
-			att_multiple_vl_rsp, 4, false },
+			att_multiple_vl_ntf, 4, false },
 	{ 0x52, "Write Command",
 			att_write_command, 2, false },
 	{ 0xd2, "Signed Write Command", att_signed_write_command, 14, false },
