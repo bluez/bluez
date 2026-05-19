@@ -82,6 +82,8 @@ struct btp_gap_read_index_rp {
 #define BTP_GAP_SETTING_PRIVACY			0x00002000
 #define BTP_GAP_SETTING_CONTROLLER_CONF		0x00004000
 #define BTP_GAP_SETTING_STATIC_ADDRESS		0x00008000
+#define BTP_GAP_SETTINGS_SC_ONLY		0x00010000
+#define BTP_GAP_SETTINGS_EXTENDED_ADVERTISING	0x00020000
 
 #define BTP_OP_GAP_READ_CONTROLLER_INFO		0x03
 struct btp_gap_read_info_rp {
@@ -222,6 +224,11 @@ struct btp_gap_passkey_confirm_rsp_cp {
 	uint8_t address_type;
 	bdaddr_t address;
 	uint8_t match;
+} __packed;
+
+#define BTP_OP_GAP_SET_EXTENDED_ADVERTISING	0x21
+struct btp_gap_set_extended_advertising_cp {
+	uint8_t settings;
 } __packed;
 
 #define BTP_EV_GAP_NEW_SETTINGS			0x80

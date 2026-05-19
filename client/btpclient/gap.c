@@ -73,7 +73,7 @@ static char *dupuuid2str(const uint8_t *uuid, uint8_t len)
 {
 	switch (len) {
 	case 16:
-		return l_strdup_printf("%hhx%hhx", uuid[0], uuid[1]);
+		return l_strdup_printf("%hhx%hhx", uuid[1], uuid[0]);
 	case 128:
 		return l_strdup_printf("%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx"
 					"%hhx%hhx%hhx%hhx%hhx%hhx%hhx", uuid[0],
@@ -109,6 +109,7 @@ static void btp_gap_read_commands(uint8_t index, const void *param,
 		BTP_OP_GAP_UNPAIR,
 		BTP_OP_GAP_PASSKEY_ENTRY_RSP,
 		BTP_OP_GAP_PASSKEY_CONFIRM_RSP,
+		BTP_OP_GAP_SET_EXTENDED_ADVERTISING,
 	};
 	uint8_t *commands = NULL;
 	size_t commands_len = 0;
@@ -813,6 +814,22 @@ static bool ad_timeout_getter(struct l_dbus *dbus,
 	return true;
 }
 
+static bool ad_secondarychannel_getter(struct l_dbus *dbus,
+					struct l_dbus_message *message,
+					struct l_dbus_message_builder *builder,
+					void *user_data)
+{
+	struct btp_adapter *adapter = user_data;
+	uint32_t settings = adapter->current_settings;
+
+	if (!(settings & BTP_GAP_SETTINGS_EXTENDED_ADVERTISING))
+		return false;
+
+	l_dbus_message_builder_append_basic(builder, 's', "2M");
+
+	return true;
+}
+
 static void setup_ad_interface(struct l_dbus_interface *interface)
 {
 	l_dbus_interface_method(interface, "Release",
@@ -839,6 +856,8 @@ static void setup_ad_interface(struct l_dbus_interface *interface)
 						ad_duration_getter, NULL);
 	l_dbus_interface_property(interface, "Timeout", 0, "q",
 						ad_timeout_getter, NULL);
+	l_dbus_interface_property(interface, "SecondaryChannel", 0, "s",
+					ad_secondarychannel_getter, NULL);
 }
 
 static void start_advertising_reply(struct l_dbus_proxy *proxy,
@@ -889,7 +908,18 @@ static void create_advertising_data(uint8_t adv_data_len, const uint8_t *data)
 		ad_data = &data[adv_data_len - remaining_data_len + 2];
 
 		switch (ad_type) {
+		case BT_AD_FLAGS:
+			/* Advertisement flags are set by bluetoothd */
+			break;
 		case BT_AD_UUID16_SOME:
+		{
+			char *uuid = dupuuid2str(ad_data, 16);
+
+			l_queue_push_tail(ad.uuids, uuid);
+
+			break;
+		}
+		case BT_AD_UUID16_ALL:
 		{
 			char *uuid = dupuuid2str(ad_data, 16);
 
@@ -1008,7 +1038,7 @@ static void btp_gap_start_advertising(uint8_t index, const void *param,
 		goto failed;
 	}
 
-	if (!l_dbus_object_add_interface(dbus, AD_PATH, AD_IFACE, NULL)) {
+	if (!l_dbus_object_add_interface(dbus, AD_PATH, AD_IFACE, adapter)) {
 		l_info("Unable to instantiate ad interface");
 
 		if (!l_dbus_unregister_interface(dbus, AD_IFACE))
@@ -2380,6 +2410,36 @@ failed:
 	btp_send_error(btp, BTP_GAP_SERVICE, index, status);
 }
 
+
+static void btp_gap_set_extended_advertising(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	const struct btp_gap_set_extended_advertising_cp *cp = param;
+	uint32_t new_settings;
+	uint8_t status = BTP_ERROR_FAIL;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	new_settings = adapter->current_settings;
+	if (cp->settings)
+		new_settings |= BTP_GAP_SETTINGS_EXTENDED_ADVERTISING;
+	else
+		new_settings &= ~BTP_GAP_SETTINGS_EXTENDED_ADVERTISING;
+	update_current_settings(adapter, new_settings);
+
+	btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_SET_EXTENDED_ADVERTISING,
+					adapter->index, sizeof(new_settings),
+					&new_settings);
+
+	return;
+failed:
+	btp_send_error(btp, BTP_GAP_SERVICE, index, status);
+}
+
 static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 {
 	struct btp_device *device = find_device_by_proxy(proxy);
@@ -2632,6 +2692,10 @@ static void register_gap_service(void)
 
 	btp_register(btp, BTP_GAP_SERVICE, BTP_OP_GAP_PASSKEY_CONFIRM_RSP,
 					btp_gap_confirm_entry_rsp, NULL, NULL);
+
+	btp_register(btp, BTP_GAP_SERVICE, BTP_OP_GAP_SET_EXTENDED_ADVERTISING,
+					btp_gap_set_extended_advertising,
+								NULL, NULL);
 }
 
 void gap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
