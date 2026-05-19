@@ -17,6 +17,7 @@
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/uuid.h"
+#include "src/shared/ad.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
 #include "core.h"
@@ -26,17 +27,6 @@
 #define AG_PATH "/org/bluez/agent"
 #define AD_IFACE "org.bluez.LEAdvertisement1"
 #define AG_IFACE "org.bluez.Agent1"
-
-/* List of assigned numbers for advertising data and scan response */
-#define AD_TYPE_FLAGS				0x01
-#define AD_TYPE_INCOMPLETE_UUID16_SERVICE_LIST	0x02
-#define AD_TYPE_SHORT_NAME			0x08
-#define AD_TYPE_COMPLETE_NAME			0x09
-#define AD_TYPE_TX_POWER			0x0a
-#define AD_TYPE_SOLICIT_UUID16_SERVICE_LIST	0x14
-#define AD_TYPE_SERVICE_DATA_UUID16		0x16
-#define AD_TYPE_APPEARANCE			0x19
-#define AD_TYPE_MANUFACTURER_DATA		0xff
 
 static void register_gap_service(void);
 
@@ -899,7 +889,7 @@ static void create_advertising_data(uint8_t adv_data_len, const uint8_t *data)
 		ad_data = &data[adv_data_len - remaining_data_len + 2];
 
 		switch (ad_type) {
-		case AD_TYPE_INCOMPLETE_UUID16_SERVICE_LIST:
+		case BT_AD_UUID16_SOME:
 		{
 			char *uuid = dupuuid2str(ad_data, 16);
 
@@ -907,20 +897,28 @@ static void create_advertising_data(uint8_t adv_data_len, const uint8_t *data)
 
 			break;
 		}
-		case AD_TYPE_SHORT_NAME:
-		case AD_TYPE_COMPLETE_NAME:
+		case BT_AD_NAME_SHORT:
+		case BT_AD_NAME_COMPLETE:
 			ad.local_name = malloc(ad_len + 1);
 			memcpy(ad.local_name, ad_data, ad_len);
 			ad.local_name[ad_len] = '\0';
 
 			break;
-		case AD_TYPE_TX_POWER:
+		case BT_AD_TX_POWER:
 			ad.tx_power = true;
 
 			/* XXX Value is omitted cause, stack fills it */
 
 			break;
-		case AD_TYPE_SERVICE_DATA_UUID16:
+		case BT_AD_SOLICIT16:
+		{
+			char *uuid = dupuuid2str(ad_data, 16);
+
+			l_queue_push_tail(ad.solicits, uuid);
+
+			break;
+		}
+		case BT_AD_SERVICE_DATA16:
 		{
 			struct service_data *sd;
 
@@ -933,11 +931,11 @@ static void create_advertising_data(uint8_t adv_data_len, const uint8_t *data)
 
 			break;
 		}
-		case AD_TYPE_APPEARANCE:
+		case BT_AD_GAP_APPEARANCE:
 			memcpy(&ad.local_appearance, ad_data, ad_len);
 
 			break;
-		case AD_TYPE_MANUFACTURER_DATA:
+		case BT_AD_MANUFACTURER_DATA:
 		{
 			struct manufacturer_data *md;
 
@@ -951,14 +949,6 @@ static void create_advertising_data(uint8_t adv_data_len, const uint8_t *data)
 			memcpy(md->data.data, ad_data + 2, md->data.len);
 
 			l_queue_push_tail(ad.manufacturers, md);
-
-			break;
-		}
-		case AD_TYPE_SOLICIT_UUID16_SERVICE_LIST:
-		{
-			char *uuid = dupuuid2str(ad_data, 16);
-
-			l_queue_push_tail(ad.solicits, uuid);
 
 			break;
 		}
@@ -2455,7 +2445,7 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 				ev->eir_len);
 			eir = &ev->eir[ev->eir_len - n - 4];
 			eir[0] = n + 3;
-			eir[1] = AD_TYPE_MANUFACTURER_DATA;
+			eir[1] = BT_AD_MANUFACTURER_DATA;
 			eir[2] = key >> 8;
 			eir[3] = key & 0xFF;
 			memcpy(&eir[4], data, n);
