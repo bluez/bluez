@@ -44,7 +44,19 @@ static int create_uuid(bt_uuid_t *btuuid, uint8_t len, const uint8_t *data)
 static void btp_gatt_read_commands(uint8_t index, const void *param,
 					uint16_t length, void *user_data)
 {
-	uint16_t commands = 0;
+	const uint8_t supported_commands[] = {
+		BTP_OP_GATT_READ_SUPPORTED_COMMANDS,
+		BTP_OP_GATT_DISC_PRIM_UUID,
+		BTP_OP_GATT_DISC_CHRC_UUID,
+		BTP_OP_GATT_DISC_ALL_DESC,
+		BTP_OP_GATT_READ,
+		BTP_OP_GATT_READ_UUID,
+		BTP_OP_GATT_WRITE_WITHOUT_RSP,
+		BTP_OP_GATT_WRITE,
+	};
+	uint8_t *commands = NULL;
+	size_t commands_len = 0;
+	size_t i;
 
 	if (index != BTP_INDEX_NON_CONTROLLER) {
 		btp_send_error(btp, BTP_GATT_SERVICE, index,
@@ -52,19 +64,22 @@ static void btp_gatt_read_commands(uint8_t index, const void *param,
 		return;
 	}
 
-	commands |= (1 << BTP_OP_GATT_READ_SUPPORTED_COMMANDS);
-	commands |= (1 << BTP_OP_GATT_DISC_PRIM_UUID);
-	commands |= (1 << BTP_OP_GATT_DISC_CHRC_UUID);
-	commands |= (1 << BTP_OP_GATT_DISC_ALL_DESC);
-	commands |= (1 << BTP_OP_GATT_READ);
-	commands |= (1 << BTP_OP_GATT_READ_UUID);
-	commands |= (1 << BTP_OP_GATT_WRITE_WITHOUT_RSP);
-	commands |= (1 << BTP_OP_GATT_WRITE);
-
-	commands = L_CPU_TO_LE16(commands);
+	for (i = 0; i < L_ARRAY_SIZE(supported_commands); i++) {
+		if (!add_supported_command(&commands, &commands_len,
+						supported_commands[i]))
+			goto failed;
+	}
 
 	btp_send(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ_SUPPORTED_COMMANDS,
-			BTP_INDEX_NON_CONTROLLER, sizeof(commands), &commands);
+			BTP_INDEX_NON_CONTROLLER, commands_len, commands);
+
+	l_free(commands);
+
+	return;
+
+failed:
+	l_free(commands);
+	btp_send_error(btp, BTP_GATT_SERVICE, index, BTP_ERROR_FAIL);
 }
 
 static bool match_attribute_uuid(const void *attr, const void *uuid)

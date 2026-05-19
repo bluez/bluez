@@ -99,7 +99,30 @@ static char *dupuuid2str(const uint8_t *uuid, uint8_t len)
 static void btp_gap_read_commands(uint8_t index, const void *param,
 					uint16_t length, void *user_data)
 {
-	uint16_t commands = 0;
+	const uint8_t supported_commands[] = {
+		BTP_OP_GAP_READ_SUPPORTED_COMMANDS,
+		BTP_OP_GAP_READ_CONTROLLER_INDEX_LIST,
+		BTP_OP_GAP_READ_CONTROLLER_INFO,
+		BTP_OP_GAP_RESET,
+		BTP_OP_GAP_SET_POWERED,
+		BTP_OP_GAP_SET_CONNECTABLE,
+		BTP_OP_GAP_SET_DISCOVERABLE,
+		BTP_OP_GAP_SET_BONDABLE,
+		BTP_OP_GAP_START_ADVERTISING,
+		BTP_OP_GAP_STOP_ADVERTISING,
+		BTP_OP_GAP_START_DISCOVERY,
+		BTP_OP_GAP_STOP_DISCOVERY,
+		BTP_OP_GAP_CONNECT,
+		BTP_OP_GAP_DISCONNECT,
+		BTP_OP_GAP_SET_IO_CAPA,
+		BTP_OP_GAP_PAIR,
+		BTP_OP_GAP_UNPAIR,
+		BTP_OP_GAP_PASSKEY_ENTRY_RSP,
+		BTP_OP_GAP_PASSKEY_CONFIRM_RSP,
+	};
+	uint8_t *commands = NULL;
+	size_t commands_len = 0;
+	size_t i;
 
 	if (index != BTP_INDEX_NON_CONTROLLER) {
 		btp_send_error(btp, BTP_GAP_SERVICE, index,
@@ -107,28 +130,22 @@ static void btp_gap_read_commands(uint8_t index, const void *param,
 		return;
 	}
 
-	commands |= (1 << BTP_OP_GAP_READ_SUPPORTED_COMMANDS);
-	commands |= (1 << BTP_OP_GAP_READ_CONTROLLER_INDEX_LIST);
-	commands |= (1 << BTP_OP_GAP_READ_CONTROLLER_INFO);
-	commands |= (1 << BTP_OP_GAP_RESET);
-	commands |= (1 << BTP_OP_GAP_SET_POWERED);
-	commands |= (1 << BTP_OP_GAP_SET_CONNECTABLE);
-	commands |= (1 << BTP_OP_GAP_SET_DISCOVERABLE);
-	commands |= (1 << BTP_OP_GAP_SET_BONDABLE);
-	commands |= (1 << BTP_OP_GAP_START_ADVERTISING);
-	commands |= (1 << BTP_OP_GAP_STOP_ADVERTISING);
-	commands |= (1 << BTP_OP_GAP_START_DISCOVERY);
-	commands |= (1 << BTP_OP_GAP_STOP_DISCOVERY);
-	commands |= (1 << BTP_OP_GAP_CONNECT);
-	commands |= (1 << BTP_OP_GAP_DISCONNECT);
-	commands |= (1 << BTP_OP_GAP_SET_IO_CAPA);
-	commands |= (1 << BTP_OP_GAP_PAIR);
-	commands |= (1 << BTP_OP_GAP_UNPAIR);
-
-	commands = L_CPU_TO_LE16(commands);
+	for (i = 0; i < L_ARRAY_SIZE(supported_commands); i++) {
+		if (!add_supported_command(&commands, &commands_len,
+						supported_commands[i]))
+			goto failed;
+	}
 
 	btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_READ_SUPPORTED_COMMANDS,
-			BTP_INDEX_NON_CONTROLLER, sizeof(commands), &commands);
+			BTP_INDEX_NON_CONTROLLER, commands_len, commands);
+
+	l_free(commands);
+
+	return;
+
+failed:
+	l_free(commands);
+	btp_send_error(btp, BTP_GAP_SERVICE, index, BTP_ERROR_FAIL);
 }
 
 static void btp_gap_read_controller_index(uint8_t index, const void *param,

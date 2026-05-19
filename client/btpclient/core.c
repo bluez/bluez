@@ -24,7 +24,15 @@ static struct l_dbus *dbus;
 static void btp_core_read_commands(uint8_t index, const void *param,
 					uint16_t length, void *user_data)
 {
-	uint8_t commands = 0;
+	const uint8_t supported_commands[] = {
+		BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
+		BTP_OP_CORE_READ_SUPPORTED_SERVICES,
+		BTP_OP_CORE_REGISTER,
+		BTP_OP_CORE_UNREGISTER,
+	};
+	uint8_t *commands = NULL;
+	size_t commands_len = 0;
+	size_t i;
 
 	if (index != BTP_INDEX_NON_CONTROLLER) {
 		btp_send_error(btp, BTP_CORE_SERVICE, index,
@@ -32,13 +40,22 @@ static void btp_core_read_commands(uint8_t index, const void *param,
 		return;
 	}
 
-	commands |= (1 << BTP_OP_CORE_READ_SUPPORTED_COMMANDS);
-	commands |= (1 << BTP_OP_CORE_READ_SUPPORTED_SERVICES);
-	commands |= (1 << BTP_OP_CORE_REGISTER);
-	commands |= (1 << BTP_OP_CORE_UNREGISTER);
+	for (i = 0; i < L_ARRAY_SIZE(supported_commands); i++) {
+		if (!add_supported_command(&commands, &commands_len,
+						supported_commands[i]))
+			goto failed;
+	}
 
 	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
-			BTP_INDEX_NON_CONTROLLER, sizeof(commands), &commands);
+			BTP_INDEX_NON_CONTROLLER, commands_len, commands);
+
+	l_free(commands);
+
+	return;
+
+failed:
+	l_free(commands);
+	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
 }
 
 static void btp_core_read_services(uint8_t index, const void *param,
