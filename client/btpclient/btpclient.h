@@ -7,6 +7,8 @@
  *
  */
 
+#include <stddef.h>
+
 struct btp_adapter {
 	struct l_dbus_proxy *proxy;
 	struct l_dbus_proxy *ad_proxy;
@@ -54,3 +56,6 @@ struct btp_agent *get_agent(void);
 bool request_default_agent(l_dbus_client_proxy_result_func_t reply,
 						void *user_data,
 						l_dbus_destroy_func_t destroy);
+
+bool add_supported_command(uint8_t **commands, size_t *commands_len,
+							uint8_t command);

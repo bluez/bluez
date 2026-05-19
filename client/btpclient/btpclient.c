@@ -38,6 +38,31 @@ static struct btp *btp;
 
 static struct btp_agent ag;
 
+bool add_supported_command(uint8_t **commands, size_t *commands_len,
+							uint8_t command)
+{
+	size_t cmd_byte = command / 8;
+
+	if (cmd_byte >= *commands_len) {
+		size_t old_len = *commands_len;
+		size_t new_len = cmd_byte + 1;
+		uint8_t *tmp;
+
+		tmp = l_realloc(*commands, new_len);
+		if (!tmp)
+			return false;
+
+		memset(tmp + old_len, 0, new_len - old_len);
+
+		*commands = tmp;
+		*commands_len = new_len;
+	}
+
+	(*commands)[cmd_byte] |= (1U << (command % 8));
+
+	return true;
+}
+
 struct l_queue *get_adapters_list(void)
 {
 	return adapters;
