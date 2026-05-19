@@ -2211,17 +2211,15 @@ failed:
 	btp_send_error(btp, BTP_GAP_SERVICE, index, status);
 }
 
+struct unpair_req {
+	uint8_t index;
+	struct btp_device *device;
+};
+
 static void unpair_reply(struct l_dbus_proxy *proxy,
 				struct l_dbus_message *result, void *user_data)
 {
-	struct btp_device *device = user_data;
-	struct btp_adapter *adapter = find_adapter_by_device(device);
-
-	if (!adapter) {
-		btp_send_error(btp, BTP_GAP_SERVICE, BTP_INDEX_NON_CONTROLLER,
-								BTP_ERROR_FAIL);
-		return;
-	}
+	struct unpair_req *req = user_data;
 
 	if (l_dbus_message_is_error(result)) {
 		const char *name, *desc;
@@ -2229,19 +2227,19 @@ static void unpair_reply(struct l_dbus_proxy *proxy,
 		l_dbus_message_get_error(result, &name, &desc);
 		l_error("Failed to unpair (%s), %s", name, desc);
 
-		btp_send_error(btp, BTP_GAP_SERVICE, adapter->index,
-								BTP_ERROR_FAIL);
+		btp_send_error(btp, BTP_GAP_SERVICE, req->index,
+							BTP_ERROR_FAIL);
 		return;
 	}
 
-	btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_UNPAIR, adapter->index, 0,
-									NULL);
+	btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_UNPAIR, req->index, 0,
+								NULL);
 }
 
 static void unpair_setup(struct l_dbus_message *message, void *user_data)
 {
-	struct btp_device *device = user_data;
-	const char *path = l_dbus_proxy_get_path(device->proxy);
+	struct unpair_req *req = user_data;
+	const char *path = l_dbus_proxy_get_path(req->device->proxy);
 	struct l_dbus_message_builder *builder;
 
 	builder = l_dbus_message_builder_new(message);
@@ -2260,6 +2258,7 @@ static void btp_gap_unpair(uint8_t index, const void *param, uint16_t length,
 	uint8_t status = BTP_ERROR_FAIL;
 	struct btp_device *device;
 	bool prop;
+	struct unpair_req *req;
 
 	if (!adapter) {
 		status = BTP_ERROR_INVALID_INDEX;
@@ -2274,14 +2273,21 @@ static void btp_gap_unpair(uint8_t index, const void *param, uint16_t length,
 	device = find_device_by_address(adapter, &cp->address,
 							cp->address_type);
 
-	if (!device)
-		goto failed;
+	if (!device) {
+		btp_send(btp, BTP_GAP_SERVICE, BTP_OP_GAP_UNPAIR,
+							adapter->index, 0,
+							NULL);
+		return;
+	}
 
 	/* There is no direct unpair method, removing device will clear pairing
 	 * information.
 	 */
+	req = l_new(struct unpair_req, 1);
+	req->index = index;
+	req->device = device;
 	l_dbus_proxy_method_call(adapter->proxy, "RemoveDevice", unpair_setup,
-						unpair_reply, device, NULL);
+						unpair_reply, req, l_free);
 
 	return;
 
