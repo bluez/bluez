@@ -200,39 +200,6 @@ failed:
 	btp_send_error(btp, BTP_GAP_SERVICE, index, status);
 }
 
-static void remove_device_setup(struct l_dbus_message *message,
-							void *user_data)
-{
-	struct btp_device *device = user_data;
-
-	l_dbus_message_set_arguments(message, "o",
-					l_dbus_proxy_get_path(device->proxy));
-}
-
-static void remove_device_reply(struct l_dbus_proxy *proxy,
-						struct l_dbus_message *result,
-						void *user_data)
-{
-	struct btp_device *device = user_data;
-	struct btp_adapter *adapter = find_adapter_by_proxy(proxy);
-
-	if (!adapter)
-		return;
-
-	if (l_dbus_message_is_error(result)) {
-		const char *name;
-
-		l_dbus_message_get_error(result, &name, NULL);
-
-		l_error("Failed to remove device %s (%s)",
-					l_dbus_proxy_get_path(device->proxy),
-					name);
-		return;
-	}
-
-	l_queue_remove(adapter->devices, device);
-}
-
 static void unreg_advertising_setup(struct l_dbus_message *message,
 								void *user_data)
 {
@@ -351,7 +318,6 @@ static void btp_gap_reset(uint8_t index, const void *param, uint16_t length,
 {
 	struct btp_adapter *adapter = find_adapter_by_index(index);
 	struct btp_agent *ag = get_agent();
-	const struct l_queue_entry *entry;
 	uint8_t status;
 	bool prop;
 	uint32_t default_settings;
@@ -361,22 +327,10 @@ static void btp_gap_reset(uint8_t index, const void *param, uint16_t length,
 		goto failed;
 	}
 
-	/* Adapter needs to be powered to be able to remove devices */
-	if (!l_dbus_proxy_get_property(adapter->proxy, "Powered", "b", &prop) ||
-									!prop) {
-		status = BTP_ERROR_FAIL;
-		goto failed;
-	}
-
-	for (entry = l_queue_get_entries(adapter->devices); entry;
-							entry = entry->next) {
-		struct btp_device *device = entry->data;
-
-		l_dbus_proxy_method_call(adapter->proxy, "RemoveDevice",
-						remove_device_setup,
-						remove_device_reply, device,
-						NULL);
-	}
+	/* PTS devices should be removed explicitly by calling
+	 * BTP_OP_GAP_UNPAIR to prevent removing all paired devices
+	 * from the IUT.
+	 */
 
 	if (adapter->ad_proxy && ad.registered)
 		if (!l_dbus_proxy_method_call(adapter->ad_proxy,
