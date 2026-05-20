@@ -1,0 +1,2 @@
+pytest>=8
+pytest-bluezenv==0.1.5
