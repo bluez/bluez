@@ -4011,6 +4011,18 @@ static void print_mesh_data(const uint8_t *data, uint8_t len)
 	packet_hexdump(data + 1, len - 1);
 }
 
+static char *get_org_label(uint8_t org)
+{
+	switch (org) {
+	case 0x01:
+		return "Bluetooth SIG";
+	case 0x02:
+		return "Wi-Fi Alliance";
+	default:
+		return "RFU";
+	}
+}
+
 static void print_transport_data(const uint8_t *data, uint8_t len)
 {
 	print_field("Transport Discovery Data");
@@ -4018,8 +4030,8 @@ static void print_transport_data(const uint8_t *data, uint8_t len)
 	if (len < 3)
 		return;
 
-	print_field("  Organization: %s (0x%02x)",
-			data[0] == 0x01 ? "Bluetooth SIG" : "RFU", data[0]);
+	print_field("  Organization: %s (0x%02x)", get_org_label(data[0]),
+			data[0]);
 	print_field("  Flags: 0x%2.2x", data[1]);
 	print_field("    Role: 0x%2.2x", data[1] & 0x03);
 
