@@ -12,6 +12,7 @@
 #include "bluetooth/mgmt.h"
 #include "src/shared/hci.h"
 
+struct bcs_procedure_data;
 struct bt_rap;
 struct gatt_db;
 struct bt_gatt_client;
@@ -162,6 +163,9 @@ typedef void (*bt_rap_ready_func_t)(struct bt_rap *rap, void *user_data);
 typedef void (*bt_rap_destroy_func_t)(void *user_data);
 typedef void (*bt_rap_func_t)(struct bt_rap *rap, void *user_data);
 
+typedef void (*bt_rap_procedure_data_func_t)(struct bt_rap *rap,
+				const struct bcs_procedure_data *bcs,
+				void *user_data);
 struct bt_rap *bt_rap_ref(struct bt_rap *rap);
 void bt_rap_unref(struct bt_rap *rap);
 
@@ -176,6 +180,10 @@ bool bt_rap_set_user_data(struct bt_rap *rap, void *user_data);
 
 bool bt_rap_set_debug(struct bt_rap *rap, bt_rap_debug_func_t func,
 			void *user_data, bt_rap_destroy_func_t destroy);
+bool bt_rap_set_procedure_data_cb(struct bt_rap *rap,
+				  bt_rap_procedure_data_func_t cb,
+				  void *user_data,
+				  bt_rap_destroy_func_t destroy);
 
 /* session related functions */
 unsigned int bt_rap_register(bt_rap_func_t attached, bt_rap_func_t detached,
