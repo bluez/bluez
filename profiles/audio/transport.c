@@ -1605,6 +1605,8 @@ static gboolean get_bcast_qos(const GDBusPropertyTable *property,
 					&bap->qos.bcast.mse);
 	dict_append_entry(&dict, "Timeout", DBUS_TYPE_UINT16,
 					&bap->qos.bcast.timeout);
+	dict_append_entry(&dict, "PresentationDelay", DBUS_TYPE_UINT32,
+					&bap->qos.bcast.delay);
 
 	append_io_qos(&dict, &bap->qos.bcast.io_qos);
 
