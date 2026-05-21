@@ -7655,16 +7655,15 @@ bool bt_bap_parse_base(uint8_t sid, struct iovec *iov,
 			bt_bap_bis_func_t handler,
 			void *user_data)
 {
-	uint32_t delay;
 	uint8_t sgrps;
 	bool ret = true;
 
 	util_debug(func, NULL, "BASE len: %zd", iov->iov_len);
 
-	if (!util_iov_pull_le24(iov, &delay))
+	if (!util_iov_pull_le24(iov, &qos->bcast.delay))
 		return false;
 
-	util_debug(func, NULL, "PresentationDelay: %d", delay);
+	util_debug(func, NULL, "PresentationDelay: %d", qos->bcast.delay);
 
 	if (!util_iov_pull_u8(iov, &sgrps))
 		return false;
