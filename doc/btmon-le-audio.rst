@@ -454,12 +454,12 @@ On success, the controller assigns BIS connection handles (0x0010,
 
     < HCI Command: LE Setup ISO Data Path (0x08|0x006e) plen 13  #140 [hci0] 0.500003
           Connection Handle: 0x0010
-          Data Path Direction: Output (Host to Controller) (0x01)
+          Data Path Direction: Output (Controller to Host) (0x01)
           Data Path ID: HCI (0x00)
 
     < HCI Command: LE Setup ISO Data Path (0x08|0x006e) plen 13  #145 [hci0] 0.550003
           Connection Handle: 0x0011
-          Data Path Direction: Output (Host to Controller) (0x01)
+          Data Path Direction: Output (Controller to Host) (0x01)
           Data Path ID: HCI (0x00)
 
 **Step 8 -- ISO Data flows** on BIS handles::
