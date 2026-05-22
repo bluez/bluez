@@ -262,6 +262,9 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 	data->query = e_book_query_to_string(query);
 	e_book_query_unref(query);
 
+	if (err)
+		*err = 0;
+
 	return data;
 }
 
