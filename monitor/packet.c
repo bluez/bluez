@@ -12193,6 +12193,17 @@ static void auth_payload_timeout_expired_evt(struct timeval *tv, uint16_t index,
 	print_handle(evt->handle);
 }
 
+static void encrypt_change_evt_v2(struct timeval *tv, uint16_t index,
+					const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_encrypt_change_v2 *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_encr_mode_change(evt->encr_mode, evt->handle);
+	print_key_size(evt->encr_key_size);
+}
+
 static void le_conn_complete_evt(struct timeval *tv, uint16_t index,
 					const void *data, uint8_t size)
 {
@@ -13949,6 +13960,8 @@ static const struct event_data event_table[] = {
 	{ 0x57, "Authenticated Payload Timeout Expired",
 				auth_payload_timeout_expired_evt, 2, true },
 	{ 0x58, "SAM Status Change" },
+	{ 0x59, "Encryption Change v2",
+				encrypt_change_evt_v2, 5, true },
 	{ 0xfe, "Testing" },
 	{ 0xff, "Vendor", vendor_evt, 0, false },
 	{ }
