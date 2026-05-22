@@ -3739,6 +3739,14 @@ struct bt_hci_evt_auth_payload_timeout_expired {
 	uint16_t handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_ENCRYPT_CHANGE_V2		0x59
+struct bt_hci_evt_encrypt_change_v2 {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  encr_mode;
+	uint8_t  encr_key_size;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LE_CONN_COMPLETE		0x01
 struct bt_hci_evt_le_conn_complete {
 	uint8_t  status;
