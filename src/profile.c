@@ -55,6 +55,8 @@
 #define MAS_DEFAULT_CHANNEL	16
 #define MNS_DEFAULT_CHANNEL	17
 
+#define BT_RX_MTU		32767
+
 #define BTD_PROFILE_PSM_AUTO	-1
 #define BTD_PROFILE_CHAN_AUTO	-1
 
@@ -1411,6 +1413,7 @@ static uint32_t ext_start_servers(struct ext_profile *ext,
 					BT_IO_OPT_MODE, ext->mode,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
+					BT_IO_OPT_IMTU, BT_RX_MTU,
 					BT_IO_OPT_INVALID);
 		if (err != NULL) {
 			error("L2CAP server failed for %s: %s",
