@@ -661,7 +661,7 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 {
 	struct pbap_session *pbap = context;
 	phonebook_cb cb;
-	int ret;
+	int ret = 0;
 	void *request;
 
 	DBG("name %s context %p maxlistcount %d", name, context,
