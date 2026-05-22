@@ -2132,6 +2132,9 @@ int main(int argc, char *argv[])
 {
 	l_log_set_stderr();
 
+	if (!mesh_crypto_check_avail())
+		return 0;
+
 	/* Section 8.1 Sample Data Tests */
 	check_s1(&s8_1_1);
 	check_k1(&s8_1_2);
