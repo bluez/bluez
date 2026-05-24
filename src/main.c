@@ -32,6 +32,7 @@
 #include <dbus/dbus.h>
 
 #include "bluetooth/bluetooth.h"
+#include "bluetooth/mgmt.h"
 #include "bluetooth/sdp.h"
 
 #include "gdbus/gdbus.h"
@@ -132,6 +133,7 @@ static const char *le_options[] = {
 	"Autoconnecttimeout",
 	"AdvMonAllowlistScanDuration",
 	"AdvMonNoFilterScanDuration",
+	"DefaultPHYs",
 	"EnableAdvMonInterleaveScan",
 	NULL
 };
@@ -144,6 +146,8 @@ static const char *policy_options[] = {
 	"ResumeDelay",
 	NULL
 };
+
+static void parse_default_le_phys(GKeyFile *config);
 
 static const char *gatt_options[] = {
 	"Cache",
@@ -751,6 +755,7 @@ static void parse_le_config(GKeyFile *config)
 		return;
 
 	parse_mode_config(config, "LE", params, ARRAY_SIZE(params));
+	parse_default_le_phys(config);
 }
 
 static bool match_experimental(const void *data, const void *match_data)
@@ -963,6 +968,62 @@ static void parse_repairing(GKeyFile *config)
 	}
 
 	btd_opts.jw_repairing = parse_jw_repairing(str);
+	g_free(str);
+}
+
+struct phy_config_entry {
+	const char *name;
+	uint32_t bit;
+};
+
+static const struct phy_config_entry le_phy_configs[] = {
+	{ "LE1MTX", MGMT_PHY_LE_1M_TX },
+	{ "LE1MRX", MGMT_PHY_LE_1M_RX },
+	{ "LE2MTX", MGMT_PHY_LE_2M_TX },
+	{ "LE2MRX", MGMT_PHY_LE_2M_RX },
+	{ "LECODEDTX", MGMT_PHY_LE_CODED_TX },
+	{ "LECODEDRX", MGMT_PHY_LE_CODED_RX },
+};
+
+static void parse_default_le_phys(GKeyFile *config)
+{
+	char *str = NULL;
+	char **tokens;
+	uint32_t phys = 0;
+	bool valid = false;
+	int i;
+
+	if (!parse_config_string(config, "LE", "DefaultPHYs", &str))
+		return;
+
+	tokens = g_strsplit_set(str, ", \t", -1);
+
+	for (i = 0; tokens[i]; i++) {
+		const char *token = tokens[i];
+		size_t j;
+
+		if (!token[0])
+			continue;
+
+		for (j = 0; j < ARRAY_SIZE(le_phy_configs); j++) {
+			if (strcasecmp(le_phy_configs[j].name, token) != 0)
+				continue;
+
+			phys |= le_phy_configs[j].bit;
+			valid = true;
+			break;
+		}
+
+		if (j == ARRAY_SIZE(le_phy_configs))
+			warn("Invalid DefaultPHYs token: %s", token);
+	}
+
+	if (valid) {
+		btd_opts.default_le_phys = phys;
+		btd_opts.default_le_phys_configured = true;
+	}
+
+	g_strfreev(tokens);
 	g_free(str);
 }
 

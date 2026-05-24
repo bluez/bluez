@@ -4972,6 +4972,81 @@ done:
 	mgmt_tlv_list_free(list);
 }
 
+static void set_default_le_phys_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS)
+		btd_error(adapter->dev_id,
+				"Failed to set default LE PHYs for hci%u: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+}
+
+static void get_default_le_phys_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_rp_get_phy_confguration *rp = param;
+	struct mgmt_cp_set_phy_confguration cp;
+	uint32_t configurable_phys;
+	uint32_t selected_phys;
+	uint32_t next_phys;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		btd_error(adapter->dev_id,
+				"Failed to read PHY configuration for hci%u: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		btd_error(adapter->dev_id,
+				"Too small get PHY configuration response for hci%u",
+				adapter->dev_id);
+		return;
+	}
+
+	configurable_phys = btohl(rp->configurable_phys);
+	selected_phys = btohl(rp->selected_phys);
+
+	configurable_phys &= MGMT_PHY_LE_TX_MASK | MGMT_PHY_LE_RX_MASK;
+	next_phys = selected_phys & ~configurable_phys;
+	next_phys |= btd_opts.default_le_phys & configurable_phys;
+
+	if (next_phys == selected_phys)
+		return;
+
+	cp.selected_phys = cpu_to_le32(next_phys);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_PHY_CONFIGURATION,
+			adapter->dev_id, sizeof(cp), &cp,
+			set_default_le_phys_complete, adapter, NULL) > 0)
+		return;
+
+	btd_error(adapter->dev_id,
+			"Failed to set default LE PHYs for hci%u",
+			adapter->dev_id);
+}
+
+static void load_default_le_phys(struct btd_adapter *adapter)
+{
+	if (!btd_opts.default_le_phys_configured)
+		return;
+
+	if (!(adapter->supported_settings & MGMT_SETTING_LE))
+		return;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_GET_PHY_CONFIGURATION,
+			adapter->dev_id, 0, NULL,
+			get_default_le_phys_complete, adapter, NULL) > 0)
+		return;
+
+	btd_error(adapter->dev_id,
+			"Failed to read PHY configuration for hci%u",
+			adapter->dev_id);
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
 	char dirname[PATH_MAX];
@@ -9455,6 +9530,7 @@ load:
 	btd_profile_foreach(probe_profile, adapter);
 	clear_blocked(adapter);
 	load_defaults(adapter);
+	load_default_le_phys(adapter);
 	load_devices(adapter);
 
 	/* restore Service Changed CCC value for bonded devices */
