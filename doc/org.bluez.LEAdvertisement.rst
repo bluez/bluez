@@ -235,3 +235,9 @@ The provided value is used only if the "CanSetTxPower" feature is enabled on the
 **org.bluez.LEAdvertisingManager(5)**.
 
 Values must be in range [-127 to +20], where units are in dBm.
+
+byte Identifier [read-write, optional]
+``````````````````````````````````````
+
+Identifier of the advertisement. Set by bluetoothd after advertisement is registered with
+**org.bluez.LEAdvertisingManager(5)**.

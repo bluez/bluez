@@ -1390,8 +1390,19 @@ static void add_client_complete(struct btd_adv_client *client, uint8_t status)
 		queue_remove(client->manager->clients, client);
 		g_idle_add(client_free_idle_cb, client);
 
-	} else
+	} else {
+		DBusMessageIter iter;
+
+		/* Check if the attribute has the Identifier property */
+		if (g_dbus_proxy_get_property(client->proxy, "Identifier",
+								&iter)) {
+			g_dbus_proxy_set_property_basic(client->proxy,
+				"Identifier", DBUS_TYPE_BYTE, &client->instance,
+				NULL, NULL, NULL);
+		}
+
 		reply = dbus_message_new_method_return(client->reg);
+	}
 
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
 	dbus_message_unref(client->reg);
