@@ -140,6 +140,8 @@ struct btd_opts {
 	bool		device_privacy;
 	uint32_t	name_request_retry_delay;
 	uint8_t		secure_conn;
+	uint32_t	default_le_phys;
+	bool		default_le_phys_configured;
 
 	struct btd_defaults defaults;
 
