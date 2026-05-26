@@ -3186,6 +3186,13 @@ struct bt_hci_rsp_le_cs_test {
 #define BT_HCI_CMD_LE_CS_TEST_END		0x2096
 #define BT_HCI_BIT_LE_CS_TEST_END		BT_HCI_CMD_BIT(23, 4)
 
+#define BT_HCI_CMD_LE_SET_HOST_FEATURE_V2	0x2097
+#define BT_HCI_BIT_LE_SET_HOST_FEATURE_V2	BT_HCI_CMD_BIT(47, 4)
+struct bt_hci_cmd_le_set_host_feature_v2 {
+	uint16_t bit_number;
+	uint8_t  bit_value;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_FSU			0x209d
 #define BT_HCI_BIT_LE_FSU			BT_HCI_CMD_BIT(48, 1)
 struct bt_hci_cmd_le_fsu {
