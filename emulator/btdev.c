@@ -7907,11 +7907,40 @@ static int cmd_le_read_all_remote_features(struct btdev *dev, const void *data,
 	return 0;
 }
 
+static int cmd_set_host_feature_v2(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_set_host_feature_v2 *cmd = data;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+	uint16_t bit = le16_to_cpu(cmd->bit_number);
+	uint8_t page = bit / 8;
+	uint8_t mask = BIT(bit % 8);
+
+	/* Only allow setting host controlled features */
+	if (page >= sizeof(dev->le_features)) {
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	if (cmd->bit_value)
+		dev->le_features[page] |= mask;
+	else
+		dev->le_features[page] &= ~mask;
+
+done:
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_HOST_FEATURE_V2, &status,
+							sizeof(status));
+
+	return 0;
+}
+
 #define CMD_LE_60 \
 	CMD(BT_HCI_CMD_LE_READ_ALL_LOCAL_FEATURES, \
 			cmd_le_read_all_local_features, NULL), \
 	CMD(BT_HCI_CMD_LE_READ_ALL_REMOTE_FEATURES, \
-			cmd_le_read_all_remote_features, NULL)
+			cmd_le_read_all_remote_features, NULL), \
+	CMD(BT_HCI_CMD_LE_SET_HOST_FEATURE_V2, \
+			cmd_set_host_feature_v2, NULL)
 
 static const struct btdev_cmd cmd_le_6_0[] = {
 	CMD_COMMON_ALL,
@@ -7930,6 +7959,7 @@ static void set_le_60_commands(struct btdev *btdev)
 {
 	btdev->commands[47] |= BIT(2);	/* LE Read All Local Features */
 	btdev->commands[47] |= BIT(3);	/* LE Read All Remote Features */
+	btdev->commands[47] |= BIT(4);	/* LE Set Host Feature V2 */
 	btdev->cmds = cmd_le_6_0;
 }
 
