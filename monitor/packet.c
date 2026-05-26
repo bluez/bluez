@@ -9820,6 +9820,33 @@ static void le_cs_test_cmd(uint16_t index, const void *data, uint8_t size)
 		cmd->override_parameters_length);
 }
 
+static void le_set_host_feature_v2_cmd(uint16_t index, const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_host_feature_v2 *cmd = data;
+	uint8_t page;
+	uint8_t features[24] = {};
+	uint16_t bit_number = le16_to_cpu(cmd->bit_number);
+
+	print_field("Bit Number: %u", bit_number);
+
+	if (bit_number < 64) {
+		features[bit_number / 8] |= (1 << (bit_number % 8));
+		print_features(0, features, 0x01);
+	} else {
+		uint16_t bit;
+
+		page = (bit_number - 64) / 24 + 1;
+		/* Adjust the bit number to be relative to the page */
+		bit = (bit_number - 64) % 24;
+		/* Set the bit in the features array */
+		features[bit / 8] |= (1 << ((bit % 8)));
+		print_features(page, features, 0x01);
+	}
+
+	print_field("Bit Value: %u", cmd->bit_value);
+}
+
 static void le_cs_test_rsp(uint16_t index, const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_cs_test *rsp = data;
@@ -11013,6 +11040,11 @@ static const struct opcode_data opcode_table[] = {
 				true},
 	{ BT_HCI_CMD_LE_CS_TEST_END, BT_HCI_BIT_LE_CS_TEST_END,
 				"LE CS Test End" },
+	{ BT_HCI_CMD_LE_SET_HOST_FEATURE_V2, BT_HCI_BIT_LE_SET_HOST_FEATURE_V2,
+			"LE Set Host Feature V2",
+			le_set_host_feature_v2_cmd,
+			sizeof(struct bt_hci_cmd_le_set_host_feature_v2),
+			true, status_rsp, 1, true },
 	{ BT_HCI_CMD_LE_FSU, BT_HCI_BIT_LE_FSU,
 				"LE Frame Space Update", le_fsu_cmd,
 				sizeof(struct bt_hci_cmd_le_fsu),
