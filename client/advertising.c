@@ -67,6 +67,7 @@ static struct ad {
 	uint16_t duration;
 	uint16_t timeout;
 	uint16_t discoverable_to;
+	uint8_t instance;
 	char **uuids[AD_TYPE_COUNT];
 	size_t uuids_len[AD_TYPE_COUNT];
 	char **solicit[AD_TYPE_COUNT];
@@ -233,6 +234,9 @@ static void print_ad(void)
 	if (ad.min_interval)
 		bt_shell_printf("Interval: %u-%u msec\n", ad.min_interval,
 					ad.max_interval);
+
+	if (ad.instance)
+		bt_shell_printf("Instance: %u\n", ad.instance);
 }
 
 static void register_reply(DBusMessage *message, void *user_data)
@@ -640,6 +644,32 @@ static gboolean get_secondary(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean get_instance(const GDBusPropertyTable *property,
+				DBusMessageIter *iter, void *user_data)
+{
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &ad.instance);
+
+	return TRUE;
+}
+
+static void set_instance(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
+{
+	uint8_t value;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BYTE) {
+		g_dbus_pending_property_error(id,
+					"org.bluez.Error.InvalidArguments",
+					"Invalid argument type");
+		return;
+	}
+
+	dbus_message_iter_get_basic(iter, &value);
+	ad.instance = value;
+	g_dbus_pending_property_success(id);
+}
+
 static gboolean min_interval_exists(const GDBusPropertyTable *property,
 							void *data)
 {
@@ -700,6 +730,7 @@ static const GDBusPropertyTable ad_props[] = {
 	{ "MinInterval", "u", get_min_interval, NULL, min_interval_exists },
 	{ "MaxInterval", "u", get_max_interval, NULL, max_interval_exists },
 	{ "SecondaryChannel", "s", get_secondary, NULL, secondary_exists },
+	{ "Instance", "y", get_instance, set_instance, NULL },
 	{ }
 };
 
@@ -1443,6 +1474,13 @@ void ad_advertise_rsi(DBusConnection *conn, dbus_bool_t *value)
 	ad.rsi = *value;
 
 	g_dbus_emit_property_changed(conn, AD_PATH, AD_IFACE, "Includes");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+void ad_advertise_instance(void)
+{
+	bt_shell_printf("Instance: %u\n", ad.instance);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }

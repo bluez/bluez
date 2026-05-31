@@ -42,3 +42,4 @@ void ad_advertise_discoverable_timeout(DBusConnection *conn, long int *value);
 void ad_advertise_secondary(DBusConnection *conn, const char *value);
 void ad_advertise_interval(DBusConnection *conn, uint32_t *min, uint32_t *max);
 void ad_advertise_rsi(DBusConnection *conn, dbus_bool_t *value);
+void ad_advertise_instance(void);
