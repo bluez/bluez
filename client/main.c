@@ -3206,6 +3206,11 @@ static void cmd_advertise_rsi(int argc, char *argv[])
 	ad_advertise_rsi(dbus_conn, &value);
 }
 
+static void cmd_advertise_instance(int argc, char *argv[])
+{
+	ad_advertise_instance();
+}
+
 static void ad_clear_uuids(void)
 {
 	ad_disable_uuids(dbus_conn, AD_TYPE_AD);
@@ -3705,6 +3710,8 @@ static const struct bt_shell_menu advertise_menu = {
 			"Set/Get advertise interval range" },
 	{ "rsi", "[on/off]", cmd_advertise_rsi,
 			"Show/Enable/Disable RSI to be advertised", NULL },
+	{ "instance", NULL, cmd_advertise_instance,
+					"Show advertisement instance number" },
 	{ "clear", "[uuids/service/manufacturer/config-name...]", cmd_ad_clear,
 			"Clear advertise config" },
 	{ } },
