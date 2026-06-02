@@ -1498,8 +1498,7 @@ static void add_adv_params_callback(uint8_t status, uint16_t length,
 		}
 	}
 
-	param_len = sizeof(struct mgmt_cp_add_advertising) + adv_data_len +
-							scan_rsp_len;
+	param_len = sizeof(*cp) + adv_data_len + scan_rsp_len;
 
 	cp = malloc0(param_len);
 	if (!cp) {
