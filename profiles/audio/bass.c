@@ -257,9 +257,17 @@ static void bass_req_bcode(struct bt_bap_stream *stream,
 	}
 
 	if (dg->bcode) {
-		/* Broadcast Code has already been received before. */
-		setup_set_bcode(dg->bcode, setup, reply, reply_data);
-		return;
+		uint8_t empty_bcode[BT_BASS_BCAST_CODE_SIZE] = {0};
+
+		if (memcmp(dg->bcode, empty_bcode, BT_BASS_BCAST_CODE_SIZE)) {
+			/* Broadcast Code has already been received before. */
+			setup_set_bcode(dg->bcode, setup, reply, reply_data);
+			return;
+		}
+
+		error("dg %p has invalid bcode", dg);
+		free(dg->bcode);
+		dg->bcode = NULL;
 	}
 
 	/* Create a request for the Broadcast Code. The request
@@ -376,20 +384,37 @@ static void setup_free(void *data)
 	free(setup);
 }
 
+static void delegator_free(struct bass_delegator *dg);
+
 static void delegator_disconnect(struct bass_delegator *dg)
 {
 	struct btd_device *device = dg->device;
 	struct btd_service *service = dg->service;
+	struct btd_profile *profile = btd_service_get_profile(service);
 
 	DBG("%p", dg);
+
+	/* Remove delegator from the queue and free it before removing the
+	 * service profile. This prevents delegator_attach from finding a
+	 * stale entry when a new delegator is created for the same device,
+	 * and also avoids use-after-free since device_remove_profile may
+	 * trigger bap_detached -> delegator_detach which would otherwise
+	 * try to free the delegator again.
+	 */
+	queue_remove(delegators, dg);
+	btd_service_set_user_data(service, NULL);
+	delegator_free(dg);
 
 	/* Disconnect service so BAP driver is cleanup properly and bt_bap is
 	 * detached from the device.
 	 */
 	btd_service_disconnect(service);
 
-	/* Remove service since delegator shold have been freed at this point */
-	device_remove_profile(device, btd_service_get_profile(service));
+	/* Remove service since delegator has been freed at this point.
+	 * delegator_detach (triggered by bap_detached) will be a no-op
+	 * since the delegator has already been removed from the queue.
+	 */
+	device_remove_profile(device, profile);
 
 	/* If the device is no longer consider connected  it means no other
 	 * service was connected so it has no longer any use and can be safely
