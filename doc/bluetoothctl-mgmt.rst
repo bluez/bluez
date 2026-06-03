@@ -509,11 +509,24 @@ Load Link Keys
 ltks
 ----
 
-Load Long Term Keys
+Load Long Term Keys. Note that loading keys replaces all previously loaded
+keys, so loading a single entry invalidates all previously loaded keys.
 
-:Usage: **> ltks**
-:Example Load stored LE long term keys:
+:Usage: **> ltks [-a addr_type] [-t key_type] [-c central] [-e enc_size] [-d ediv] [-r rand] [-k key] [address]**
+:[-a addr_type]: Address type (1=LE Public, 2=LE Random). Default: 1 (LE Public)
+:[-t key_type]: Key type (0=Unauthenticated, 1=Authenticated). Default: 0 (Unauthenticated)
+:[-c central]: Central flag (0 or 1). Default: 0
+:[-e enc_size]: Encryption key size (7-16). Default: 0
+:[-d ediv]: Encrypted Diversifier (16-bit value). Default: 0x0000
+:[-r rand]: Random number (64-bit value). Default: 0x0000000000000000
+:[-k key]: 128-bit key as 32 hex characters. Default: all zeros
+:[address]: Bluetooth address of the peer device
+:Example Clear all long term keys:
 	| **> ltks**
+:Example Load an authenticated LTK for a specific device:
+	| **> ltks -t 1 -c 1 -e 16 -d 0x1234 -r 0xABCD -k 0123456789abcdef0123456789abcdef 00:11:22:33:44:55**
+:Example Load an LTK with LE Random address type:
+	| **> ltks -a 2 -t 0 -c 1 -e 16 -d 0 -r 0 -k 0123456789abcdef0123456789abcdef AA:BB:CC:DD:EE:FF**
 
 irks
 ----
