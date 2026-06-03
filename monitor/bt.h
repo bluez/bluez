@@ -2966,6 +2966,27 @@ struct bt_hci_rsp_le_read_iso_link_quality {
 	uint32_t duplicated_packets;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_SET_DEFAULT_SUBRATE	0x207d
+#define BT_HCI_BIT_LE_SET_DEFAULT_SUBRATE	BT_HCI_CMD_BIT(46, 0)
+struct bt_hci_cmd_le_set_default_subrate {
+	uint16_t subrate_min;
+	uint16_t subrate_max;
+	uint16_t max_latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_SUBRATE_REQUEST		0x207e
+#define BT_HCI_BIT_LE_SUBRATE_REQUEST		BT_HCI_CMD_BIT(46, 1)
+struct bt_hci_cmd_le_subrate_request {
+	uint16_t handle;
+	uint16_t subrate_min;
+	uint16_t subrate_max;
+	uint16_t max_latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_ALL_LOCAL_FEATURES	0x2087
 #define BT_HCI_BIT_LE_READ_ALL_LOCAL_FEATURES	BT_HCI_CMD_BIT(47, 2)
 struct bt_hci_rsp_le_read_all_local_features {
@@ -4075,6 +4096,16 @@ struct bt_hci_evt_le_big_info_adv_report {
 	uint8_t  phy;
 	uint8_t  framing;
 	uint8_t  encryption;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_SUBRATE_CHANGE		0x23
+struct bt_hci_evt_le_subrate_change {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t subrate_factor;
+	uint16_t latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_READ_ALL_REMOTE_FEATURES_COMPLETE	0x2B

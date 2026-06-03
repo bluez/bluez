@@ -9941,6 +9941,45 @@ static void le_set_def_rate_cmd(uint16_t index, const void *data, uint8_t size)
 	print_slot_125u("Maximum CE Length", cmd->max_ce_len);
 }
 
+static void le_set_default_subrate_cmd(uint16_t index, const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_default_subrate *cmd = data;
+
+	print_field("Subrate Min: %u (0x%4.4x)", le16_to_cpu(cmd->subrate_min),
+					le16_to_cpu(cmd->subrate_min));
+	print_field("Subrate Max: %u (0x%4.4x)", le16_to_cpu(cmd->subrate_max),
+					le16_to_cpu(cmd->subrate_max));
+	print_field("Max Latency: %u (0x%4.4x)", le16_to_cpu(cmd->max_latency),
+					le16_to_cpu(cmd->max_latency));
+	print_field("Continuation Number: %u (0x%4.4x)",
+					le16_to_cpu(cmd->cont_num),
+					le16_to_cpu(cmd->cont_num));
+	print_field("Supervision Timeout: %d ms (0x%4.4x)",
+					le16_to_cpu(cmd->supv_timeout) * 10,
+					le16_to_cpu(cmd->supv_timeout));
+}
+
+static void le_subrate_request_cmd(uint16_t index, const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_cmd_le_subrate_request *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("Subrate Min: %u (0x%4.4x)", le16_to_cpu(cmd->subrate_min),
+					le16_to_cpu(cmd->subrate_min));
+	print_field("Subrate Max: %u (0x%4.4x)", le16_to_cpu(cmd->subrate_max),
+					le16_to_cpu(cmd->subrate_max));
+	print_field("Max Latency: %u (0x%4.4x)", le16_to_cpu(cmd->max_latency),
+					le16_to_cpu(cmd->max_latency));
+	print_field("Continuation Number: %u (0x%4.4x)",
+					le16_to_cpu(cmd->cont_num),
+					le16_to_cpu(cmd->cont_num));
+	print_field("Supervision Timeout: %d ms (0x%4.4x)",
+					le16_to_cpu(cmd->supv_timeout) * 10,
+					le16_to_cpu(cmd->supv_timeout));
+}
+
 static void le_read_conn_interval_rsp(uint16_t index, const void *data,
 					uint8_t size)
 {
@@ -10931,6 +10970,17 @@ static const struct opcode_data opcode_table[] = {
 				true, status_le_read_iso_link_quality_rsp,
 				sizeof(
 				struct bt_hci_rsp_le_read_iso_link_quality),
+				true },
+	{ BT_HCI_CMD_LE_SET_DEFAULT_SUBRATE,
+				BT_HCI_BIT_LE_SET_DEFAULT_SUBRATE,
+				"LE Set Default Subrate",
+				le_set_default_subrate_cmd,
+				sizeof(struct bt_hci_cmd_le_set_default_subrate),
+				true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_SUBRATE_REQUEST, BT_HCI_BIT_LE_SUBRATE_REQUEST,
+				"LE Subrate Request",
+				le_subrate_request_cmd,
+				sizeof(struct bt_hci_cmd_le_subrate_request),
 				true },
 	{ BT_HCI_CMD_LE_READ_ALL_LOCAL_FEATURES,
 			BT_HCI_BIT_LE_READ_ALL_LOCAL_FEATURES,
@@ -13596,6 +13646,27 @@ static void le_conn_rate_change_evt(struct timeval *tv, uint16_t index,
 					le16_to_cpu(evt->supv_timeout));
 }
 
+static void le_subrate_change_evt(struct timeval *tv, uint16_t index,
+					const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_subrate_change *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_field("Subrate Factor: %u (0x%4.4x)",
+					le16_to_cpu(evt->subrate_factor),
+					le16_to_cpu(evt->subrate_factor));
+	print_field("Peripheral Latency: %u (0x%4.4x)",
+					le16_to_cpu(evt->latency),
+					le16_to_cpu(evt->latency));
+	print_field("Continuation Number: %u (0x%4.4x)",
+					le16_to_cpu(evt->cont_num),
+					le16_to_cpu(evt->cont_num));
+	print_field("Supervision Timeout: %d ms (0x%4.4x)",
+					le16_to_cpu(evt->supv_timeout) * 10,
+					le16_to_cpu(evt->supv_timeout));
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -13721,6 +13792,10 @@ static const struct subevent_data le_meta_event_table[] = {
 		"LE Broadcast Isochronous Group Info Advertising Report",
 		le_big_info_evt,
 		sizeof(struct bt_hci_evt_le_big_info_adv_report) },
+	{ BT_HCI_EVT_LE_SUBRATE_CHANGE,
+		"LE Subrate Change",
+		le_subrate_change_evt,
+		sizeof(struct bt_hci_evt_le_subrate_change), true },
 	{ BT_HCI_EVT_LE_READ_ALL_REMOTE_FEATURES_COMPLETE,
 		"LE Read All Remote Features Complete",
 		le_read_all_remote_features_complete_evt,
