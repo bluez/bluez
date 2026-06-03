@@ -2601,6 +2601,8 @@ static struct media_item *parse_media_element(struct avrcp *session,
 
 	memset(name, 0, sizeof(name));
 	namesize = get_be16(&operands[11]);
+	if (len < namesize + 14)
+		return NULL;
 	namelen = MIN(namesize, sizeof(name) - 1);
 	if (namelen > 0) {
 		memcpy(name, &operands[13], namelen);
@@ -2630,7 +2632,7 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	struct avrcp_player *player = session->controller->player;
 	struct media_player *mp = player->user_data;
 	struct media_item *item;
-	uint16_t namelen;
+	uint16_t namelen, namesize;
 	char name[255];
 	uint64_t uid;
 	uint8_t type;
@@ -2644,7 +2646,10 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	playable = operands[9];
 
 	memset(name, 0, sizeof(name));
-	namelen = MIN(get_be16(&operands[12]), sizeof(name) - 1);
+	namesize = get_be16(&operands[12]);
+	if (len < namesize + 14)
+		return NULL;
+	namelen = MIN(namesize, sizeof(name) - 1);
 	if (namelen > 0)
 		memcpy(name, &operands[14], namelen);
 
