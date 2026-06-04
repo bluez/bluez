@@ -7288,7 +7288,7 @@ static bool device_is_discoverable(struct btd_adapter *adapter,
 			return true;
 		}
 
-		if (!strncmp(filter->pattern, addr, pattern_len)) {
+		if (!strncasecmp(filter->pattern, addr, pattern_len)) {
 			*auto_connect = filter->auto_connect;
 			return true;
 		}
