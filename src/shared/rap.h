@@ -92,7 +92,7 @@ struct cs_mode_zero_data {
 	uint8_t packet_quality;
 	uint8_t packet_rssi_dbm;
 	uint8_t packet_ant;
-	uint32_t init_measured_freq_offset;
+	uint16_t init_measured_freq_offset;
 };
 
 struct cs_mode_one_data {
