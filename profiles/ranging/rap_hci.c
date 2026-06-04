@@ -601,7 +601,7 @@ static void parse_mode_zero_data(struct iovec *iov,
 				 struct cs_mode_zero_data *mode_data,
 				 uint8_t cs_role)
 {
-	uint32_t freq_offset;
+	uint16_t freq_offset;
 
 	if (iov->iov_len < 3) {
 		DBG("Mode 0: too short (<3)");
@@ -614,7 +614,7 @@ static void parse_mode_zero_data(struct iovec *iov,
 	DBG("CS Step mode 0");
 
 	if (cs_role == CS_INITIATOR && iov->iov_len >= 4) {
-		util_iov_pull_le32(iov, &freq_offset);
+		util_iov_pull_le16(iov, &freq_offset);
 		mode_data->init_measured_freq_offset = freq_offset;
 	}
 }
