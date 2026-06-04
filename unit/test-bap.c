@@ -4349,6 +4349,69 @@ static void test_scc_metadata(void)
 	test_usr_scc_metadata();
 }
 
+#define ASE_CP_RSP(_op, _ase, _code, _reason) \
+	IOV_DATA(0x1b, CP_HND, _op, 0x01, _ase, _code, _reason)
+
+#define ASE_CP_RSP_TRUNCATED(_op) \
+	IOV_DATA(0x1b, CP_HND, _op, 0xff, 0x00, 0x02, 0x00)
+
+#define SPE_CP_TRUNCATED(_op) \
+	IOV_DATA(0x52, CP_HND, _op), \
+	ASE_CP_RSP_TRUNCATED(_op)
+
+#define SPE_CP_ZERO_ASES(_op) \
+	IOV_DATA(0x52, CP_HND, _op, 0x00), \
+	ASE_CP_RSP_TRUNCATED(_op)
+
+#define SPE_METADATA_TRUNCATED(_ase) \
+	IOV_DATA(0x52, CP_HND, 0x07, 0x01, _ase), \
+	ASE_CP_RSP_TRUNCATED(0x07)
+
+#define SPE_METADATA_UNSUPPORTED(_ase) \
+	SCC_SRC_ENABLE, \
+	IOV_DATA(0x52, CP_HND, 0x07, 0x01, _ase, 0x02, 0x01, 0xfc), \
+	ASE_CP_RSP(0x07, _ase, 0x0a, 0xfc)
+
+#define SPE_METADATA_INVALID_CONTEXT(_ase) \
+	SCC_SRC_ENABLE, \
+	IOV_DATA(0x52, CP_HND, 0x07, 0x01, _ase, 0x04, 0x03, 0x02, \
+			0x00, 0x10), \
+	ASE_CP_RSP(0x07, _ase, 0x0c, 0x02)
+
+/* Unicast Server Rejects Invalid ASE Control Point Procedures
+ *
+ * Test Purpose:
+ * Verify the behavior of a Unicast Server IUT when a Unicast Client writes
+ * invalid ASE Control Point parameters.
+ *
+ * Pass verdict:
+ * The IUT sends a notification of the ASE Control Point characteristic with
+ * the expected Response_Code and Reason values.
+ */
+static void test_usr_spe(void)
+{
+	define_test("BAP/USR/SPE/BI-01-C [USR ASE Control Point truncated]",
+			test_setup_server, test_server, NULL,
+			SPE_CP_TRUNCATED(0x03));
+	define_test("BAP/USR/SPE/BI-02-C [USR ASE Control Point zero ASEs]",
+			test_setup_server, test_server, NULL,
+			SPE_CP_ZERO_ASES(0x03));
+	define_test("BAP/USR/SPE/BI-03-C [USR Update Metadata truncated]",
+			test_setup_server, test_server, NULL,
+			SPE_METADATA_TRUNCATED(SRC_ID(0)));
+	define_test("BAP/USR/SPE/BI-04-C [USR Update Metadata unsupported]",
+			test_setup_server, test_server, &cfg_src_enable,
+			SPE_METADATA_UNSUPPORTED(SRC_ID(0)));
+	define_test("BAP/USR/SPE/BI-05-C [USR Update Metadata invalid context]",
+			test_setup_server, test_server, &cfg_src_enable,
+			SPE_METADATA_INVALID_CONTEXT(SRC_ID(0)));
+}
+
+static void test_spe(void)
+{
+	test_usr_spe();
+}
+
 #define SNK_ENABLE \
 	IOV_DATA(0x52, 0x22, 0x00, 0x03, 0x01, 0x01, 0x04, 0x03, 0x02, 0x01, \
 			00), \
@@ -10259,6 +10322,7 @@ int main(int argc, char *argv[])
 	tester_init(&argc, &argv);
 
 	test_disc();
+	test_spe();
 	test_scc();
 	test_bsrc_scc();
 	test_bsnk_scc();
