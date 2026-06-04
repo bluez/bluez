@@ -306,7 +306,9 @@ fi
 AC_ARG_ENABLE(obex, AS_HELP_STRING([--disable-obex],
 		[disable OBEX profile support]), [enable_obex=${enableval}])
 if (test "${enable_obex}" != "no"); then
-	PKG_CHECK_MODULES(ICAL, libical)
+	PKG_CHECK_MODULES(ICAL, [libicalvcal >= 4.0.0], [],
+                [PKG_CHECK_MODULES(ICAL, [libical])]
+        )
 fi
 AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
 
