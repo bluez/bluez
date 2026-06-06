@@ -252,6 +252,26 @@ static gboolean server_cb(GIOChannel *io, GIOCondition cond,
 
 	srv_sock = g_io_channel_unix_get_fd(io);
 
+	if (cond & G_IO_ERR) {
+		int err, sk_err;
+		socklen_t len = sizeof(sk_err);
+
+		if (getsockopt(srv_sock, SOL_SOCKET, SO_ERROR, &sk_err, &len)
+									< 0)
+			err = errno;
+		else
+			err = sk_err;
+
+		if (server->connect) {
+			GError *gerr = NULL;
+
+			ERROR_FAILED(&gerr, "ERR on socket", err);
+			server->connect(io, gerr, server->user_data);
+			g_clear_error(&gerr);
+		}
+		return FALSE;
+	}
+
 	cli_sock = accept(srv_sock, NULL, NULL);
 	if (cli_sock < 0) {
 		if (errno == EBADFD)
