@@ -1474,7 +1474,10 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 	int fd;
 	struct bap_data *bap_data = setup->data;
 
-	DBG("BIG Sync completed");
+	if (err)
+		error("BIG Sync failed: %s", err->message);
+	else
+		DBG("BIG Sync completed");
 
 	/* The order of the BIS fds notified from kernel corresponds
 	 * to the order of the BISes that were enqueued before
