@@ -31,6 +31,7 @@
 #include "src/shared/io.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
+#include "src/shared/timeout.h"
 #include "src/shared/hci.h"
 
 
@@ -42,6 +43,7 @@ struct bt_hci {
 	uint8_t num_cmds;
 	unsigned int next_cmd_id;
 	unsigned int next_evt_id;
+	unsigned int filter_id;
 	struct queue *cmd_queue;
 	struct queue *rsp_queue;
 	struct queue *evt_list;
@@ -485,6 +487,9 @@ void bt_hci_unref(struct bt_hci *hci)
 	if (__sync_sub_and_fetch(&hci->ref_count, 1))
 		return;
 
+	if (hci->filter_id)
+		timeout_remove(hci->filter_id);
+
 	queue_destroy(hci->evt_list, evt_free);
 	queue_destroy(hci->subevt_list, evt_free);
 	queue_destroy(hci->cmd_queue, cmd_free);
@@ -765,6 +770,27 @@ static void update_evt_filter(struct bt_hci *hci)
 	free(filters);
 }
 
+static bool filter_timeout(void *user_data)
+{
+	struct bt_hci *hci = user_data;
+
+	hci->filter_id = 0;
+	update_evt_filter(hci);
+
+	return false;
+}
+
+static void schedule_evt_filter(struct bt_hci *hci)
+{
+	/* Coalesce multiple filter updates into a single SO_ATTACH_FILTER call
+	 * by deferring the update to the next event loop iteration.
+	 */
+	if (hci->filter_id)
+		return;
+
+	hci->filter_id = timeout_add(0, filter_timeout, hci, NULL);
+}
+
 static bool match_evt_event(const void *a, const void *b)
 {
 	const struct evt *evt = a;
@@ -805,7 +831,7 @@ unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 	}
 
 	if (update_filter)
-		update_evt_filter(hci);
+		schedule_evt_filter(hci);
 
 	return evt->id;
 }
@@ -877,7 +903,7 @@ bool bt_hci_unregister(struct bt_hci *hci, unsigned int id)
 
 	/* Only update filter if no other handler for this event remains */
 	if (!queue_find(hci->evt_list, match_evt_event, UINT_TO_PTR(event)))
-		update_evt_filter(hci);
+		schedule_evt_filter(hci);
 
 	return true;
 }
@@ -916,7 +942,7 @@ unsigned int bt_hci_register_subevent(struct bt_hci *hci,
 	}
 
 	if (update_filter)
-		update_evt_filter(hci);
+		schedule_evt_filter(hci);
 
 	return evt->id;
 }
@@ -940,7 +966,7 @@ bool bt_hci_unregister_subevent(struct bt_hci *hci, unsigned int id)
 	/* Only update filter if no other handler for this subevent remains */
 	if (!queue_find(hci->subevt_list, match_evt_event,
 							UINT_TO_PTR(event)))
-		update_evt_filter(hci);
+		schedule_evt_filter(hci);
 
 	return true;
 }
