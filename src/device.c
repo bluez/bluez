@@ -5469,6 +5469,8 @@ static void device_remove_stored(struct btd_device *device)
 								gerr->message);
 			g_error_free(gerr);
 		}
+	} else {
+		unlink(filename);
 	}
 
 	g_free(data);
