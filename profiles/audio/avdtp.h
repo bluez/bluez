@@ -267,8 +267,15 @@ int avdtp_set_configuration(struct avdtp *session,
 				GSList *caps,
 				struct avdtp_stream **stream);
 
+typedef void (*avdtp_get_configuration_cb_t)(struct avdtp *session,
+						GSList *caps,
+						struct avdtp_error *err,
+						void *user_data);
+
 int avdtp_get_configuration(struct avdtp *session,
-				struct avdtp_stream *stream);
+				struct avdtp_remote_sep *rsep,
+				avdtp_get_configuration_cb_t cb,
+				void *user_data);
 
 int avdtp_open(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_start(struct avdtp *session, struct avdtp_stream *stream);
