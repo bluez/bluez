@@ -115,6 +115,7 @@ struct characteristic {
 	struct queue *descs;
 
 	bool notifying;
+	bool prefer_indicate;
 	struct queue *notify_clients;
 };
 
@@ -1595,6 +1596,9 @@ static DBusMessage *characteristic_acquire_notify(DBusConnection *conn,
 	if (!client)
 		return btd_error_failed(msg, "Failed allocate notify session");
 
+	bt_gatt_client_set_notify_prefer_indicate(gatt, chrc->value_handle,
+							chrc->prefer_indicate);
+
 	client->notify_id = bt_gatt_client_register_notify(gatt,
 						chrc->value_handle,
 						register_notify_io_cb,
@@ -1673,6 +1677,9 @@ static DBusMessage *characteristic_start_notify(DBusConnection *conn,
 
 	op = async_dbus_op_new(msg, client);
 
+	bt_gatt_client_set_notify_prefer_indicate(gatt, chrc->value_handle,
+							chrc->prefer_indicate);
+
 	client->notify_id = bt_gatt_client_register_notify(gatt,
 						chrc->value_handle,
 						register_notify_cb, notify_cb,
@@ -1719,6 +1726,76 @@ static DBusMessage *characteristic_stop_notify(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static gboolean
+characteristic_get_prefer_notify_type(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct characteristic *chrc = data;
+	const char *str = chrc->prefer_indicate ? "indication" : "notification";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
+
+	return TRUE;
+}
+
+static void
+characteristic_set_prefer_notify_type(const GDBusPropertyTable *property,
+					DBusMessageIter *iter,
+					GDBusPendingPropertySet id, void *data)
+{
+	struct characteristic *chrc = data;
+	struct bt_gatt_client *gatt = chrc->service->client->gatt;
+	const char *str;
+	bool prefer;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+		return;
+	}
+
+	dbus_message_iter_get_basic(iter, &str);
+
+	if (!strcmp(str, "notification"))
+		prefer = false;
+	else if (!strcmp(str, "indication"))
+		prefer = true;
+	else {
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+		return;
+	}
+
+	if (chrc->prefer_indicate == prefer) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
+
+	chrc->prefer_indicate = prefer;
+
+	if (gatt)
+		bt_gatt_client_set_notify_prefer_indicate(gatt,
+						chrc->value_handle, prefer);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), chrc->path,
+					GATT_CHARACTERISTIC_IFACE,
+					"PreferredNotifyType");
+
+	g_dbus_pending_property_success(id);
+}
+
+static gboolean
+characteristic_prefer_notify_type_exists(const GDBusPropertyTable *property,
+					void *data)
+{
+	struct characteristic *chrc = data;
+
+	return (chrc->props & BT_GATT_CHRC_PROP_NOTIFY) &&
+				(chrc->props & BT_GATT_CHRC_PROP_INDICATE);
+}
+
 static const GDBusPropertyTable characteristic_properties[] = {
 	{ "Handle", "q", characteristic_get_handle },
 	{ "UUID", "s", characteristic_get_uuid, NULL, NULL },
@@ -1733,6 +1810,10 @@ static const GDBusPropertyTable characteristic_properties[] = {
 	{ "NotifyAcquired", "b", characteristic_get_notify_acquired, NULL,
 				characteristic_notify_acquired_exists },
 	{ "MTU", "q", characteristic_get_mtu, NULL, characteristic_mtu_exists },
+	{ "PreferredNotifyType", "s", characteristic_get_prefer_notify_type,
+				characteristic_set_prefer_notify_type,
+				characteristic_prefer_notify_type_exists,
+				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
 
@@ -2281,6 +2362,10 @@ static void register_notify(void *data, void *user_data)
 
 	op = new0(struct async_dbus_op, 1);
 	op->data = notify_client;
+
+	bt_gatt_client_set_notify_prefer_indicate(client->gatt,
+					notify_client->chrc->value_handle,
+					notify_client->chrc->prefer_indicate);
 
 	notify_client->notify_id = bt_gatt_client_register_notify(client->gatt,
 					notify_client->chrc->value_handle,
