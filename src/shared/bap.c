@@ -3776,6 +3776,7 @@ static struct bt_ascs *ascs_new(struct gatt_db *db)
 					&uuid,
 					BT_ATT_PERM_WRITE,
 					BT_GATT_CHRC_PROP_WRITE |
+					BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP |
 					BT_GATT_CHRC_PROP_NOTIFY,
 					NULL, ascs_ase_cp_write,
 					ascs);
