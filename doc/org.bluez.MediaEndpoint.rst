@@ -96,6 +96,19 @@ Examples:
 
 :bluetoothctl: > endpoint.config <endpoint> <local endpoint> [preset]
 
+array{byte} GetConfiguration()
+``````````````````````````````
+
+Retrieve the current configuration of the remote endpoint.
+
+Sends an AVDTP GET_CONFIGURATION command to the remote endpoint and returns
+the configuration as a raw byte array containing AVDTP service capabilities.
+
+Possible errors:
+
+	:org.bluez.Error.NotAvailable:
+	:org.bluez.Error.Failed:
+
 array{byte} SelectConfiguration(array{byte} capabilities)
 `````````````````````````````````````````````````````````
 
