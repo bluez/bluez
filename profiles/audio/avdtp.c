@@ -42,6 +42,8 @@
 #include "sink.h"
 #include "source.h"
 
+#include "a2dp-codecs.h"
+
 #define AVDTP_PSM 25
 
 #define MAX_SEID 0x3E
@@ -1293,10 +1295,49 @@ static struct avdtp_stream *find_stream_by_lseid(struct avdtp *session,
 	return find_stream_by_lsep(session, sep);
 }
 
+static unsigned int get_codec_priority(
+				struct avdtp_media_codec_capability *codec_cap)
+{
+	unsigned int priority = codec_cap->media_codec_type;
+
+	if (codec_cap->media_codec_type == A2DP_CODEC_VENDOR) {
+		a2dp_vendor_codec_t *vendor_codec = (void *) codec_cap->data;
+
+		switch (A2DP_GET_VENDOR_ID(*vendor_codec)) {
+		case APTX_VENDOR_ID:
+			return priority + 100;
+		case APTX_HD_VENDOR_ID:
+			return priority + 200;
+		case LDAC_VENDOR_ID:
+			return priority + 300;
+		}
+	}
+
+	return priority;
+}
+
+static int sep_codec_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct avdtp_remote_sep *sep1 = a;
+	struct avdtp_service_capability *cap1 = sep1->codec;
+	unsigned int priority1 = get_codec_priority((void *) cap1->data);
+
+	const struct avdtp_remote_sep *sep2 = b;
+	struct avdtp_service_capability *cap2 = sep2->codec;
+	unsigned int priority2 = get_codec_priority((void *) cap2->data);
+
+	if (priority1 < priority2)
+		return 1;
+	if (priority1 > priority2)
+		return -1;
+	return 0;
+}
+
 struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
 						struct avdtp_local_sep *lsep)
 {
 	GSList *l;
+	GSList *sorted = NULL;
 
 	for (l = session->seps; l != NULL; l = g_slist_next(l)) {
 		struct avdtp_remote_sep *sep = l->data;
@@ -1325,7 +1366,15 @@ struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
 				continue;
 
 		if (sep->stream == NULL)
-			return sep;
+			sorted = g_slist_insert_sorted(sorted, sep,
+							sep_codec_cmp);
+	}
+
+	if (sorted) {
+		struct avdtp_remote_sep *sep = sorted->data;
+
+		g_slist_free(sorted);
+		return sep;
 	}
 
 	return NULL;
