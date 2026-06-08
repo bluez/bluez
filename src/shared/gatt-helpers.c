@@ -1306,7 +1306,8 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 	}
 
 	data_length = ((uint8_t *) pdu)[0];
-	if (((length - 1) % data_length)) {
+	if (data_length < 2 || (length - 1) < data_length ||
+					((length - 1) % data_length)) {
 		success = false;
 		att_ecode = 0;
 		goto done;
