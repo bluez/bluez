@@ -1641,7 +1641,6 @@ static gboolean avdtp_getconf_cmd(struct avdtp *session, uint8_t transaction,
 					struct seid_req *req, int size)
 {
 	GSList *l;
-	struct avdtp_local_sep *sep = NULL;
 	struct avdtp_stream *stream;
 	int rsp_size;
 	uint8_t err;
@@ -1656,7 +1655,7 @@ static gboolean avdtp_getconf_cmd(struct avdtp *session, uint8_t transaction,
 	memset(buf, 0, sizeof(buf));
 
 	stream = find_stream_by_lseid(session, req->acp_seid);
-	if (!sep) {
+	if (!stream) {
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
 	}
