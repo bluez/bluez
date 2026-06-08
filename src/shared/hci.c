@@ -765,14 +765,27 @@ static void update_evt_filter(struct bt_hci *hci)
 	free(filters);
 }
 
+static bool match_evt_event(const void *a, const void *b)
+{
+	const struct evt *evt = a;
+	uint8_t event = PTR_TO_UINT(b);
+
+	return evt->event == event;
+}
+
 unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 				bt_hci_callback_func_t callback,
 				void *user_data, bt_hci_destroy_func_t destroy)
 {
 	struct evt *evt;
+	bool update_filter;
 
 	if (!hci)
 		return 0;
+
+	/* Check if event already has a handler registered */
+	update_filter = !queue_find(hci->evt_list, match_evt_event,
+							UINT_TO_PTR(event));
 
 	evt = new0(struct evt, 1);
 	evt->event = event;
@@ -791,7 +804,8 @@ unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
 		return 0;
 	}
 
-	update_evt_filter(hci);
+	if (update_filter)
+		update_evt_filter(hci);
 
 	return evt->id;
 }
@@ -849,6 +863,7 @@ static bool match_evt_id(const void *a, const void *b)
 bool bt_hci_unregister(struct bt_hci *hci, unsigned int id)
 {
 	struct evt *evt;
+	uint8_t event;
 
 	if (!hci || !id)
 		return false;
@@ -857,9 +872,12 @@ bool bt_hci_unregister(struct bt_hci *hci, unsigned int id)
 	if (!evt)
 		return false;
 
+	event = evt->event;
 	evt_free(evt);
 
-	update_evt_filter(hci);
+	/* Only update filter if no other handler for this event remains */
+	if (!queue_find(hci->evt_list, match_evt_event, UINT_TO_PTR(event)))
+		update_evt_filter(hci);
 
 	return true;
 }
@@ -871,9 +889,14 @@ unsigned int bt_hci_register_subevent(struct bt_hci *hci,
 				void *user_data, bt_hci_destroy_func_t destroy)
 {
 	struct evt *evt;
+	bool update_filter;
 
 	if (!hci)
 		return 0;
+
+	/* Check if subevent already has a handler registered */
+	update_filter = !queue_find(hci->subevt_list, match_evt_event,
+						UINT_TO_PTR(subevent));
 
 	evt = new0(struct evt, 1);
 	evt->event = subevent;
@@ -892,7 +915,8 @@ unsigned int bt_hci_register_subevent(struct bt_hci *hci,
 		return 0;
 	}
 
-	update_evt_filter(hci);
+	if (update_filter)
+		update_evt_filter(hci);
 
 	return evt->id;
 }
@@ -900,6 +924,7 @@ unsigned int bt_hci_register_subevent(struct bt_hci *hci,
 bool bt_hci_unregister_subevent(struct bt_hci *hci, unsigned int id)
 {
 	struct evt *evt;
+	uint8_t event;
 
 	if (!hci || !id)
 		return false;
@@ -909,9 +934,13 @@ bool bt_hci_unregister_subevent(struct bt_hci *hci, unsigned int id)
 	if (!evt)
 		return false;
 
+	event = evt->event;
 	evt_free(evt);
 
-	update_evt_filter(hci);
+	/* Only update filter if no other handler for this subevent remains */
+	if (!queue_find(hci->subevt_list, match_evt_event,
+							UINT_TO_PTR(event)))
+		update_evt_filter(hci);
 
 	return true;
 }
