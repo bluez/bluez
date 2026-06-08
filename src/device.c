@@ -3810,8 +3810,8 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 	struct bearer_state *state = get_state(dev, bdaddr_type);
 
 	if (dev->auth_retry_id) {
-		dev->auth_retry_id = 0;
 		timeout_remove(dev->auth_retry_id);
+		dev->auth_retry_id = 0;
 		dev->auth_failures = 0;
 	}
 
