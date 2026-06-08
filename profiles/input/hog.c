@@ -189,6 +189,9 @@ static int hog_accept(struct btd_service *service)
 		if (!bt_gatt_client_set_security(client,
 						BT_ATT_SECURITY_MEDIUM))
 			return -ECONNREFUSED;
+	} else if (auto_sec) {
+		bt_gatt_client_set_security(btd_device_get_gatt_client(device),
+				BT_ATT_SECURITY_MEDIUM);
 	}
 
 	/* TODO: Replace GAttrib with bt_gatt_client */
