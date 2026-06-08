@@ -3717,7 +3717,7 @@ static void device_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		device_attach_att(device, io);
 	}
 
-	device_discover_services(device);
+	device_discover_services(device, data->dst_type, NULL);
 
 	g_io_channel_unref(io);
 	dbus_message_unref(data->msg);
