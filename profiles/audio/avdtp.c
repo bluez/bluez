@@ -1556,6 +1556,12 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 		goto failed;
 	}
 
+	/* check if SEID is in use */
+	if (find_stream_by_lsep(session, sep)) {
+		err = AVDTP_SEP_IN_USE;
+		goto failed;
+	}
+
 	switch (sep->info.type) {
 	case AVDTP_SEP_TYPE_SOURCE:
 		service = btd_device_get_service(session->device,
