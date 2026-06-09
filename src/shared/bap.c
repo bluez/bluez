@@ -6779,6 +6779,14 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
 		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
 
+	/* On loss of the CIS the ASE shall autonomously transition to QoS
+	 * Configured and notify the peer.
+	 */
+	if (stream->ep->state == BT_ASCS_ASE_STATE_STREAMING ||
+			stream->ep->state == BT_ASCS_ASE_STATE_ENABLING ||
+			stream->ep->state == BT_ASCS_ASE_STATE_DISABLING)
+		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+
 	bt_bap_stream_set_io(stream, -1);
 	return false;
 }
