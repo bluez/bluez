@@ -3762,9 +3762,9 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
 	if (!len) {
 		DBG(bap, "invalid len %u < %u sizeof(*hdr)", len,
 							sizeof(*hdr));
-		gatt_db_attribute_write_result(attrib, id,
-				BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN);
-		return;
+		rsp = ascs_ase_cp_rsp_new(len > 0 ? value[0] : 0x00);
+		ret = BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+		goto respond;
 	}
 
 	if (len < sizeof(*hdr)) {
@@ -3829,8 +3829,10 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
 	}
 
 respond:
-	if (ret == BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN)
+	if (ret == BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN) {
 		ascs_ase_rsp_add_errno(rsp, 0x00, -ENOMSG);
+		ret = 0;
+	}
 
 	gatt_db_attribute_notify(attrib, rsp->iov_base, rsp->iov_len, att);
 	gatt_db_attribute_write_result(attrib, id, ret);
