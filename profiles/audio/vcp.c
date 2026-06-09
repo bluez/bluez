@@ -185,6 +185,26 @@ int bt_audio_vcp_set_volume(struct btd_device *device, uint8_t volume)
 	return -ENODEV;
 }
 
+int bt_audio_vcp_get_mute(struct btd_device *device)
+{
+	struct vcp_data *data = queue_find(sessions, match_device, device);
+
+	if (data)
+		return bt_vcp_get_mute(data->vcp);
+
+	return -ENODEV;
+}
+
+int bt_audio_vcp_set_mute(struct btd_device *device, bool mute)
+{
+	struct vcp_data *data = queue_find(sessions, match_device, device);
+
+	if (data)
+		return bt_vcp_set_mute(data->vcp, mute) ? 0 : -EIO;
+
+	return -ENODEV;
+}
+
 static void vcp_remote_client_detached(struct bt_vcp *vcp, void *user_data)
 {
 	struct vcp_data *data;

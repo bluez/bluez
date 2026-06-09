@@ -1191,6 +1191,64 @@ static void set_volume(const GDBusPropertyTable *property,
 	g_dbus_pending_property_success(id);
 }
 
+static int transport_bap_get_mute(struct media_transport *transport);
+static int transport_bap_set_mute(struct media_transport *transport,
+								bool mute);
+
+static gboolean mute_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_transport *transport = data;
+
+	return transport_bap_get_mute(transport) >= 0;
+}
+
+static gboolean get_mute(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	dbus_bool_t mute;
+	int ret;
+
+	ret = transport_bap_get_mute(transport);
+	if (ret < 0)
+		return FALSE;
+
+	mute = ret;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &mute);
+
+	return TRUE;
+}
+
+static void set_mute(const GDBusPropertyTable *property,
+			DBusMessageIter *iter, GDBusPendingPropertySet id,
+			void *data)
+{
+	struct media_transport *transport = data;
+	dbus_bool_t mute;
+	int err;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN) {
+		g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Expected BOOLEAN");
+		return;
+	}
+
+	dbus_message_iter_get_basic(iter, &mute);
+
+	err = transport_bap_set_mute(transport, mute);
+	if (err) {
+		error("Unable to set mute: %s (%d)", strerror(-err), err);
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
+						"Internal error %s (%d)",
+						strerror(-err), err);
+		return;
+	}
+
+	g_dbus_pending_property_success(id);
+}
+
 static gboolean endpoint_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_transport *transport = data;
@@ -1544,6 +1602,7 @@ static const GDBusPropertyTable transport_bap_uc_properties[] = {
 	{ "Metadata", "ay", get_metadata, set_metadata },
 	{ "Links", "ao", get_links, NULL, links_exists },
 	{ "Volume", "q", get_volume, set_volume, volume_exists },
+	{ "Mute", "b", get_mute, set_mute, mute_exists },
 	{ }
 };
 
@@ -2424,6 +2483,22 @@ static int transport_bap_set_volume(struct media_transport *transport,
 
 	if (transport_bap_is_playback(transport))
 		return bt_audio_vcp_set_volume(transport->device, volume);
+	else
+		return -ENOTSUP; /* TODO: MICP */
+}
+
+static int transport_bap_get_mute(struct media_transport *transport)
+{
+	if (transport_bap_is_playback(transport))
+		return bt_audio_vcp_get_mute(transport->device);
+	else
+		return -ENOTSUP; /* TODO: MICP */
+}
+
+static int transport_bap_set_mute(struct media_transport *transport, bool mute)
+{
+	if (transport_bap_is_playback(transport))
+		return bt_audio_vcp_set_mute(transport->device, mute);
 	else
 		return -ENOTSUP; /* TODO: MICP */
 }

@@ -42,6 +42,9 @@ void bt_vcp_detach(struct bt_vcp *vcp);
 uint8_t bt_vcp_get_volume(struct bt_vcp *vcp);
 bool bt_vcp_set_volume(struct bt_vcp *vcp, uint8_t volume);
 
+uint8_t bt_vcp_get_mute(struct bt_vcp *vcp);
+bool bt_vcp_set_mute(struct bt_vcp *vcp, uint8_t mute);
+
 bool bt_vcp_set_debug(struct bt_vcp *vcp, bt_vcp_debug_func_t cb,
 			void *user_data, bt_vcp_destroy_func_t destroy);
 
