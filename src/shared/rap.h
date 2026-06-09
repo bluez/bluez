@@ -213,5 +213,6 @@ void bt_rap_detach_hci(struct bt_rap *rap, void *hci_sm);
 
 /* Connection handle mapping functions */
 bool bt_rap_set_conn_handle(void *hci_sm, struct bt_rap *rap, uint16_t handle,
-				const uint8_t *bdaddr, uint8_t bdaddr_type);
+			const uint8_t *bdaddr, uint8_t bdaddr_type,
+			bool is_central);
 void bt_rap_clear_conn_handle(void *hci_sm, uint16_t handle);
