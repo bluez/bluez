@@ -4987,8 +4987,17 @@ static struct btd_profile avrcp_controller_profile = {
 
 static int avrcp_init(void)
 {
-	btd_profile_register(&avrcp_controller_profile);
-	btd_profile_register(&avrcp_target_profile);
+	int err;
+
+	err = btd_profile_register(&avrcp_controller_profile);
+	if (err)
+		return err;
+
+	err = btd_profile_register(&avrcp_target_profile);
+	if (err) {
+		btd_profile_unregister(&avrcp_controller_profile);
+		return err;
+	}
 
 	populate_default_features();
 
