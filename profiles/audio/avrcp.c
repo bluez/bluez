@@ -2473,6 +2473,24 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 	}
 }
 
+static void avrcp_abort_continuing(struct avrcp *session, uint8_t pdu_id)
+{
+	uint8_t buf[AVRCP_HEADER_LENGTH + 1];
+	struct avrcp_header *pdu = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+
+	set_company_id(pdu->company_id, IEEEID_BTSIG);
+	pdu->pdu_id = AVRCP_ABORT_CONTINUING;
+	pdu->packet_type = AVRCP_PACKET_TYPE_SINGLE;
+	pdu->params_len = cpu_to_be16(1);
+	pdu->params[0] = pdu_id;
+
+	avctp_send_vendordep_req(session->conn, AVC_CTYPE_CONTROL,
+					AVC_SUBUNIT_PANEL, buf, sizeof(buf),
+					NULL, session);
+}
+
 static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 						uint8_t code, uint8_t subunit,
 						uint8_t transaction,
@@ -2489,6 +2507,13 @@ static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 
 	if (code == AVC_CTYPE_REJECTED)
 		return FALSE;
+
+	/* Abort fragmented responses as reassembly is not supported */
+	if (pdu->packet_type == AVRCP_PACKET_TYPE_START ||
+			pdu->packet_type == AVRCP_PACKET_TYPE_CONTINUING) {
+		avrcp_abort_continuing(session, AVRCP_GET_ELEMENT_ATTRIBUTES);
+		return FALSE;
+	}
 
 	count = pdu->params[0];
 
