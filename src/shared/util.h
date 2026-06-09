@@ -100,20 +100,15 @@ static inline void freep(void *p)
 	free(*(void **) p);
 }
 
-static inline void *_steal_(void *p)
-{
-	void **orig = (void **) p;
-	void *ret = *orig;
-	*orig = NULL;
-	return ret;
-}
+#define _exchange_(var, new_value) ({		\
+	__typeof__(var) *orig = &(var);		\
+	__typeof__(var) ret = *orig;		\
+	*orig = new_value;			\
+	ret;					\
+})
 
-static inline int _steal_fd_(int *fdp)
-{
-	int fd = *fdp;
-	*fdp = -1;
-	return fd;
-}
+#define _steal_(p) _exchange_(p, NULL)
+#define _steal_fd_(fd) _exchange_(fd, -1)
 
 static inline void closefd(int *fdp)
 {
