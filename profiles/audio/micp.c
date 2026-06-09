@@ -318,12 +318,17 @@ static unsigned int micp_id;
 
 static int micp_init(void)
 {
+	int err;
+
 	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
 		DBG("D-Bus experimental not enabled");
 		return -ENOTSUP;
 	}
 
-	btd_profile_register(&micp_profile);
+	err = btd_profile_register(&micp_profile);
+	if (err)
+		return err;
+
 	micp_id = bt_micp_register(micp_attached, micp_detached, NULL);
 
 	return 0;

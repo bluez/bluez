@@ -3624,7 +3624,9 @@ static void add_profile(void *data, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
-	btd_profile_register(data);
+	if (btd_profile_register(data))
+		return;
+
 	adapter_add_profile(adapter, data);
 }
 

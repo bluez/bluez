@@ -507,9 +507,7 @@ static struct btd_profile hfp_hf_profile = {
 
 static int hfp_init(void)
 {
-	btd_profile_register(&hfp_hf_profile);
-
-	return 0;
+	return btd_profile_register(&hfp_hf_profile);
 }
 
 static void hfp_exit(void)

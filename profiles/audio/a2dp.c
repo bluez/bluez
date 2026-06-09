@@ -3798,9 +3798,19 @@ static struct btd_adapter_driver media_driver = {
 
 static int a2dp_init(void)
 {
+	int err;
+
 	btd_register_adapter_driver(&media_driver);
-	btd_profile_register(&a2dp_source_profile);
-	btd_profile_register(&a2dp_sink_profile);
+
+	err = btd_profile_register(&a2dp_source_profile);
+	if (err)
+		return err;
+
+	err = btd_profile_register(&a2dp_sink_profile);
+	if (err) {
+		btd_profile_unregister(&a2dp_source_profile);
+		return err;
+	}
 
 	return 0;
 }
