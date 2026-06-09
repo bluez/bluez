@@ -2545,12 +2545,12 @@ static unsigned int bap_bcast_sink_get_dir(struct bt_bap_stream *stream)
 static void bap_sink_get_allocation(size_t i, uint8_t l, uint8_t t,
 		uint8_t *v, void *user_data)
 {
-	uint32_t location32;
+	uint32_t location32 = 0;
 
 	if (!v)
 		return;
 
-	memcpy(&location32, v, l);
+	memcpy(&location32, v, MIN(l, sizeof(location32)));
 	*((uint32_t *)user_data) = le32_to_cpu(location32);
 }
 
@@ -7533,12 +7533,12 @@ static void bap_sink_match_allocation(size_t i, uint8_t l, uint8_t t,
 		uint8_t *v, void *user_data)
 {
 	struct bt_ltv_match *data = user_data;
-	uint32_t location32;
+	uint32_t location32 = 0;
 
 	if (!v)
 		return;
 
-	memcpy(&location32, v, l);
+	memcpy(&location32, v, MIN(l, sizeof(location32)));
 	location32 = le32_to_cpu(location32);
 
 	/* If all the bits in the received bitmask are found in
