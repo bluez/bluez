@@ -180,7 +180,10 @@ static int network_init(void)
 	if (server_init(conf_security) < 0)
 		return -1;
 
-	btd_profile_register(&panu_profile);
+	err = btd_profile_register(&panu_profile);
+	if (err)
+		return err;
+
 	btd_profile_register(&gn_profile);
 	btd_profile_register(&nap_profile);
 
