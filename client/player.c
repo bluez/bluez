@@ -6070,6 +6070,54 @@ static void cmd_volume_transport(int argc, char *argv[])
 	}
 }
 
+static void mute_callback(const DBusError *error, void *user_data)
+{
+	if (dbus_error_is_set(error)) {
+		bt_shell_printf("Failed to set Mute: %s\n", error->name);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Changing Mute succeeded\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_mute_transport(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	dbus_bool_t mute;
+
+	proxy = g_dbus_proxy_lookup(transports, NULL, argv[1],
+					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Transport %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (argc == 2) {
+		print_property(proxy, "Mute");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!strcasecmp(argv[2], "on") || !strcasecmp(argv[2], "yes") ||
+				!strcmp(argv[2], "1"))
+		mute = TRUE;
+	else if (!strcasecmp(argv[2], "off") || !strcasecmp(argv[2], "no") ||
+				!strcmp(argv[2], "0"))
+		mute = FALSE;
+	else {
+		bt_shell_printf("Invalid argument: %s\n", argv[2]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!g_dbus_proxy_set_property_basic(proxy, "Mute", DBUS_TYPE_BOOLEAN,
+						&mute, mute_callback,
+						NULL, NULL)) {
+		bt_shell_printf("Failed to set mute\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static void set_metadata_cb(const DBusError *error, void *user_data)
 {
 	if (dbus_error_is_set(error)) {
@@ -6187,6 +6235,9 @@ static const struct bt_shell_menu transport_menu = {
 						transport_generator },
 	{ "volume",      "<transport> [value]",	cmd_volume_transport,
 						"Get/Set transport volume",
+						transport_generator },
+	{ "mute",        "<transport> [on/off]", cmd_mute_transport,
+						"Get/Set transport mute",
 						transport_generator },
 	{ "select",      "<transport> [transport1...]", cmd_select_transport,
 						"Select Transport",
