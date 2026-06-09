@@ -254,7 +254,7 @@ static gboolean server_cb(GIOChannel *io, GIOCondition cond,
 
 	cli_sock = accept(srv_sock, NULL, NULL);
 	if (cli_sock < 0) {
-		if (errno == EBADFD)
+		if (errno == EBADFD || errno == EOPNOTSUPP)
 			return FALSE;
 		return TRUE;
 	}
