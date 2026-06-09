@@ -127,7 +127,7 @@ static inline void closefd(int *fdp)
 }
 
 #define CLEANUP_FREEFUNC(type, func) \
-	static inline void cleanup_##type (type **_ptr) { (func) (*_ptr); }
+	static inline void cleanup_##type (type **_ptr) { if (*_ptr != NULL) (func) (*_ptr); }
 
 #define _cleanup_(f) __attribute__((cleanup(f)))
 #define _cleanup_type_(type) __attribute__((cleanup(cleanup_##type)))
