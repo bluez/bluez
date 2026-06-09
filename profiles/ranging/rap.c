@@ -421,7 +421,8 @@ static int rap_accept(struct btd_service *service)
 			bt_rap_set_conn_handle(data->hci_sm,
 						data->rap, handle,
 						(const uint8_t *) bdaddr,
-						bdaddr_type);
+						bdaddr_type,
+					btd_device_is_initiator(device));
 		} else {
 			error("Failed to find connection handle for device %s",
 				addr);
