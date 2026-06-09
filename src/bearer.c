@@ -34,6 +34,7 @@
 
 #include "log.h"
 #include "error.h"
+#include "btd.h"
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
@@ -277,6 +278,19 @@ static const char *bearer_interface(uint8_t type)
 struct btd_bearer *btd_bearer_new(struct btd_device *device, uint8_t type)
 {
 	struct btd_bearer *bearer;
+
+	switch (btd_opts.mode) {
+	case BT_MODE_LE:
+		if (type == BDADDR_BREDR)
+			return NULL;
+		break;
+	case BT_MODE_BREDR:
+		if (type != BDADDR_BREDR)
+			return NULL;
+		break;
+	case BT_MODE_DUAL:
+		break;
+	}
 
 	bearer = new0(struct btd_bearer, 1);
 	bearer->device = device;
