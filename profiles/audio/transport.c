@@ -2397,6 +2397,13 @@ static void bap_connecting(struct bt_bap_stream *stream, bool state, int fd,
 		return;
 
 	bap_update_links(transport);
+
+	/* IO connected; re-run Enabling to complete a deferred Acquire. */
+	if (!state && fd >= 0 && bt_bap_stream_get_state(stream) ==
+					BT_BAP_STREAM_STATE_ENABLING)
+		bap_state_changed(stream, BT_BAP_STREAM_STATE_ENABLING,
+					BT_BAP_STREAM_STATE_ENABLING,
+					user_data);
 }
 
 static bool transport_bap_is_playback(struct media_transport *transport)
