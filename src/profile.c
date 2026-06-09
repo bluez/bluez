@@ -36,6 +36,7 @@
 #include "dbus-common.h"
 #include "sdp-client.h"
 #include "sdp-xml.h"
+#include "btd.h"
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
@@ -802,6 +803,14 @@ struct btd_profile *btd_profile_find_remote_uuid(const char *uuid)
 
 int btd_profile_register(struct btd_profile *profile)
 {
+	if ((profile->bearer == BTD_PROFILE_BEARER_LE &&
+				btd_opts.mode == BT_MODE_BREDR) ||
+			(profile->bearer == BTD_PROFILE_BEARER_BREDR &&
+				btd_opts.mode == BT_MODE_LE)) {
+		DBG("Bearer not enabled");
+		return -ENOTSUP;
+	}
+
 	if (profile->experimental && !(g_dbus_get_flags() &
 					G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
 		DBG("D-Bus experimental not enabled");
