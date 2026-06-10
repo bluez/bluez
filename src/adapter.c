@@ -8622,7 +8622,9 @@ static void dev_disconnected(struct btd_adapter *adapter,
 		disconnect_notify(device, reason);
 	}
 
-	bonding_attempt_complete(adapter, &addr->bdaddr, addr->type,
+	/* device could be still connected to different bearer */
+	if (!device || !btd_device_is_connected(device))
+		bonding_attempt_complete(adapter, &addr->bdaddr, addr->type,
 						MGMT_STATUS_DISCONNECTED);
 }
 
