@@ -210,6 +210,7 @@ static gboolean hostname_cb(GIOChannel *io, GIOCondition cond,
 {
 	DBG("transient hostname changed");
 	read_transient_hostname();
+	btd_adapter_foreach(update_name, NULL);
 	btd_adapter_foreach(update_class, NULL);
 	return TRUE;
 }
