@@ -231,7 +231,7 @@ static size_t hex2bin(const char *hexstr, uint8_t *buf, size_t buflen)
 {
 	size_t i, len;
 
-	if (!hexstr)
+	if (!hexstr || !buf || !buflen)
 		return 0;
 
 	len = MIN((strlen(hexstr) / 2), buflen);
