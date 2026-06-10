@@ -214,7 +214,7 @@ static int8_t check_sirk_alpha_numeric(char *str)
 		return 0;
 
 	for ( ; *s; s++) {
-		if (((*s >= '0') & (*s <= '9'))
+		if (((*s >= '0') && (*s <= '9'))
 			|| ((*s >= 'a') && (*s <= 'z'))
 			|| ((*s >= 'A') && (*s <= 'Z'))) {
 			val = 1;
