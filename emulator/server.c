@@ -39,10 +39,14 @@ struct server {
 	enum server_type type;
 	uint16_t id;
 	int fd;
+	server_debug_func_t debug_callback;
+	server_destroy_func_t debug_destroy;
+	void *debug_data;
 };
 
 struct client {
 	int fd;
+	struct server *server;
 	struct btdev *btdev;
 	uint8_t *pkt_data;
 	uint8_t pkt_type;
@@ -223,6 +227,18 @@ static int accept_client(int fd)
 	return nfd;
 }
 
+static void dev_debug(const char *str, void *user_data)
+{
+	struct client *client = user_data;
+	struct server *server = client->server;
+	char buf[512];
+
+	if (server->debug_callback) {
+		snprintf(buf, sizeof(buf), "host%d: %s", client->fd, str);
+		server->debug_callback(buf, server->debug_data);
+	}
+}
+
 static void server_accept_callback(int fd, uint32_t events, void *user_data)
 {
 	struct server *server = user_data;
@@ -239,6 +255,8 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 		return;
 
 	memset(client, 0, sizeof(*client));
+
+	client->server = server;
 
 	client->fd = accept_client(server->fd);
 	if (client->fd < 0) {
@@ -271,6 +289,7 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 	}
 
 	btdev_set_send_handler(client->btdev, client_write_callback, client);
+	btdev_set_debug(client->btdev, dev_debug, client, NULL);
 
 done:
 	if (mainloop_add_fd(client->fd, EPOLLIN, client_read_callback,
@@ -413,4 +432,30 @@ void server_close(struct server *server)
 		return;
 
 	mainloop_remove_fd(server->fd);
+
+	if (server->debug_destroy)
+		server->debug_destroy(server->debug_data);
+
+	server->debug_callback = NULL;
+	server->debug_destroy = NULL;
+	server->debug_data = NULL;
+
+	free(server);
 }
+
+bool server_set_debug(struct server *server, server_debug_func_t callback,
+			void *user_data, server_destroy_func_t destroy)
+{
+	if (!server)
+		return false;
+
+	if (server->debug_destroy)
+		server->debug_destroy(server->debug_data);
+
+	server->debug_callback = callback;
+	server->debug_destroy = destroy;
+	server->debug_data = user_data;
+
+	return true;
+}
+
