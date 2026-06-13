@@ -2679,6 +2679,12 @@ static int bap_ucast_io_link(struct bt_bap_stream *stream,
 			stream->ep->dir == link->ep->dir)
 		return -EINVAL;
 
+	/* Don't link until QoS Configured assigns the CIS IDs; while unset
+	 * the check above would pair unrelated streams.
+	 */
+	if (!stream->qos.ucast.cis_id || !link->qos.ucast.cis_id)
+		return -EINVAL;
+
 	if (stream->client && !(stream->locked && link->locked))
 		return -EINVAL;
 
