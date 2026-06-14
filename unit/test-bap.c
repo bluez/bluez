@@ -1486,6 +1486,37 @@ static void test_server(const void *user_data)
 	tester_io_send();
 }
 
+static void bap_attached_state(struct bt_bap *bap, void *user_data)
+{
+	struct test_data *data = user_data;
+
+	data->bap = bap;
+
+	bt_bap_set_debug(data->bap, print_debug, "bt_bap:", NULL);
+
+	bt_bap_state_register(data->bap, data->cfg->state_func, NULL, data,
+									NULL);
+}
+
+/* Like test_server() but registers the config's state callback so the test can
+ * drive autonomous server transitions (e.g. loss of the CIS).
+ */
+static void test_server_state(const void *user_data)
+{
+	struct test_data *data = (void *)user_data;
+	struct io *io;
+
+	io = tester_setup_io(data->iov, data->iovcnt);
+	g_assert(io);
+
+	tester_io_set_complete_func(test_complete_cb);
+
+	data->id = bt_bap_register(bap_attached_state, NULL, data);
+	g_assert(data->id);
+
+	tester_io_send();
+}
+
 static void test_usr_disc(void)
 {
 	/* BAP/USR/DISC/BV-01-C [Expose Audio Sink Capabilities]
@@ -4427,6 +4458,48 @@ static void test_spe(void)
 	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x04, 0x00, 0x00, 0x04, 0x03, 0x02, \
 			0x01, 0x00)
 
+static void state_cis_loss(struct bt_bap_stream *stream, uint8_t old_state,
+					uint8_t new_state, void *user_data)
+{
+	struct test_data *data = user_data;
+	int fds[2];
+	int err;
+
+	if (new_state != data->cfg->state)
+		return;
+
+	/* Attach a CIS and tear it down to simulate its loss. */
+	err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, fds);
+	g_assert(err == 0);
+	g_assert(bt_bap_stream_io_connecting(stream, fds[0]) == 0);
+	close(fds[1]);
+}
+
+static struct test_config cfg_src_enabling_cis_loss = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.src = true,
+	.state = BT_BAP_STREAM_STATE_ENABLING,
+	.state_func = state_cis_loss,
+};
+
+/* On loss of the CIS a Source ASE in Enabling moves to QoS Configured, not
+ * Disabling.
+ */
+#define SCC_SRC_ENABLING_CIS_LOSS \
+	SCC_SRC_16_2_1, \
+	ENABLE_ASE(SRC_ID(0)), \
+	QOS_SRC_NOTIFY(0, 0, 0x10, 0x27, 0x00, 0x00, 0x02, 0x28, 0x00, \
+			0x02, 0x0a, 0x00, 0x40, 0x9c, 0x00)
+
+static void test_usr_scc_cis_loss(void)
+{
+	define_test("BAP/USR/SCC/BV-167-C [USR SRC QoS Configured on CIS loss]",
+			test_setup_server, test_server_state,
+			&cfg_src_enabling_cis_loss,
+			SCC_SRC_ENABLING_CIS_LOSS);
+}
+
 static struct test_config str_snk_ac2_8_1_1 = {
 	.cc = LC3_CONFIG_8_1_AC(1),
 	.qos = LC3_QOS_8_1_1_AC(1),
@@ -7287,6 +7360,7 @@ static void test_scc(void)
 	test_scc_enable();
 	test_scc_disable();
 	test_scc_release();
+	test_usr_scc_cis_loss();
 	test_scc_metadata();
 	test_str_1_1_1_lc3();
 }
