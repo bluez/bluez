@@ -1446,7 +1446,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	 * TODO: If the device is not connected but bonded, send the
 	 * notification/indication when it becomes connected.
 	 */
-	if (!(ccc->value & 0x0002)) {
+	if (ccc->value & 0x0001) {
 		DBG("GATT server sending notification");
 		bt_gatt_server_send_notification(server,
 					notify->handle, notify->value,
