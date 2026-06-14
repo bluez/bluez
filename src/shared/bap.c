@@ -2679,6 +2679,15 @@ static int bap_ucast_io_link(struct bt_bap_stream *stream,
 			stream->ep->dir == link->ep->dir)
 		return -EINVAL;
 
+	/* The server pairs Sink and Source by matching CIG/CIS, but those are
+	 * unset until QoS Configured, so it would link unrelated ASEs (CIS 0
+	 * is otherwise a valid ID). Clients gate linking on the lock instead.
+	 */
+	if (!stream->client &&
+			(stream->qos.ucast.cis_id == BT_ISO_QOS_CIS_UNSET ||
+			link->qos.ucast.cis_id == BT_ISO_QOS_CIS_UNSET))
+		return -EINVAL;
+
 	if (stream->client && !(stream->locked && link->locked))
 		return -EINVAL;
 
