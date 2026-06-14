@@ -2901,6 +2901,10 @@ static struct bt_bap_stream *bap_stream_new(struct bt_bap *bap,
 	stream->client = client;
 	stream->ops = bap_stream_new_ops(stream);
 	stream->pending_states = queue_new();
+	stream->qos.bcast.big = BT_ISO_QOS_BIG_UNSET;
+	stream->qos.bcast.bis = BT_ISO_QOS_BIS_UNSET;
+	stream->qos.ucast.cig_id = BT_ISO_QOS_CIG_UNSET;
+	stream->qos.ucast.cis_id = BT_ISO_QOS_CIS_UNSET;
 
 	queue_push_tail(bap->streams, stream);
 
