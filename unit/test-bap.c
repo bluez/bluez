@@ -9894,7 +9894,7 @@ static int streaming_ucl_create_io(struct bt_bap_stream *stream,
 
 	i = qos[0] ? qos[0]->ucast.cis_id : qos[1]->ucast.cis_id;
 
-	if (i == BT_ISO_QOS_CIG_UNSET) {
+	if (i == BT_ISO_QOS_CIS_UNSET) {
 		for (i = 0; i < ARRAY_SIZE(data->fds); ++i) {
 			if (data->fds[i][0] > 0)
 				continue;
@@ -10000,7 +10000,7 @@ static void test_select_cb(struct bt_bap_pac *pac, int err,
 
 	if (!data->cfg->streams) {
 		qos->ucast.cig_id = BT_ISO_QOS_CIG_UNSET;
-		qos->ucast.cis_id = BT_ISO_QOS_CIG_UNSET;
+		qos->ucast.cis_id = BT_ISO_QOS_CIS_UNSET;
 	} else {
 		/* All streams to separate CIS.
 		 *
