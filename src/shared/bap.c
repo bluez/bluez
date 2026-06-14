@@ -6796,8 +6796,16 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 		return false;
 	}
 
-	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
+	switch (stream->ep->state) {
+	case BT_ASCS_ASE_STATE_RELEASING:
 		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
+		break;
+	case BT_ASCS_ASE_STATE_ENABLING:
+	case BT_ASCS_ASE_STATE_STREAMING:
+	case BT_ASCS_ASE_STATE_DISABLING:
+		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+		break;
+	}
 
 	bt_bap_stream_set_io(stream, -1);
 	return false;
