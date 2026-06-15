@@ -971,7 +971,7 @@ static void store_remote_sep(void *data, void *user_data)
 {
 	struct a2dp_remote_sep *sep = data;
 	GKeyFile *key_file = user_data;
-	char seid[4], value[256];
+	char seid[4], value[9 + 512];
 	struct avdtp_service_capability *service = avdtp_get_codec(sep->sep);
 	struct avdtp_media_codec_capability *codec;
 	unsigned int i;
@@ -2373,7 +2373,7 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 		uint8_t codec;
 		uint8_t delay_reporting;
 		GSList *l = NULL;
-		char caps[256];
+		char caps[513];
 		uint8_t data[128];
 		int i, size;
 
@@ -2386,10 +2386,10 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 			continue;
 
 		/* Try loading with delay_reporting first */
-		if (sscanf(value, "%02hhx:%02hhx:%02hhx:%s", &type, &codec,
+		if (sscanf(value, "%02hhx:%02hhx:%02hhx:%512s", &type, &codec,
 					&delay_reporting, caps) != 4) {
 			/* Try old format */
-			if (sscanf(value, "%02hhx:%02hhx:%s", &type, &codec,
+			if (sscanf(value, "%02hhx:%02hhx:%512s", &type, &codec,
 								caps) != 3) {
 				warn("Unable to load Endpoint: seid %u", rseid);
 				g_free(value);
@@ -2398,7 +2398,7 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 			delay_reporting = false;
 		}
 
-		for (i = 0, size = strlen(caps); i < size; i += 2) {
+		for (i = 0, size = strlen(caps); i < size && i >= 2; i += 2) {
 			uint8_t *tmp = data + i / 2;
 
 			if (sscanf(caps + i, "%02hhx", tmp) != 1) {
