@@ -2902,6 +2902,19 @@ static struct bt_bap_stream *bap_stream_new(struct bt_bap *bap,
 	stream->ops = bap_stream_new_ops(stream);
 	stream->pending_states = queue_new();
 
+	switch (bt_bap_pac_get_type(lpac)) {
+	case BT_BAP_SINK:
+	case BT_BAP_SOURCE:
+		stream->qos.ucast.cig_id = BT_ISO_QOS_CIG_UNSET;
+		stream->qos.ucast.cis_id = BT_ISO_QOS_CIS_UNSET;
+		break;
+	case BT_BAP_BCAST_SOURCE:
+	case BT_BAP_BCAST_SINK:
+		stream->qos.bcast.big = BT_ISO_QOS_BIG_UNSET;
+		stream->qos.bcast.bis = BT_ISO_QOS_BIS_UNSET;
+		break;
+	}
+
 	queue_push_tail(bap->streams, stream);
 
 	return bt_bap_stream_ref(stream);
