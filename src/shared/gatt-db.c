@@ -330,6 +330,7 @@ struct gatt_db *gatt_db_clone(struct gatt_db *db)
 		return NULL;
 
 	queue_foreach(db->services, service_clone, clone);
+	clone->last_handle = db->last_handle;
 
 	return clone;
 }
@@ -433,7 +434,7 @@ static bool db_hash_update(void *user_data)
 
 	db->hash_id = 0;
 
-	if (gatt_db_isempty(db))
+	if (gatt_db_isempty(db) || !db->last_handle)
 		return false;
 
 	hash.iov = new0(struct iovec, db->last_handle + 1);
