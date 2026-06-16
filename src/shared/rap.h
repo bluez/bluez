@@ -212,10 +212,6 @@ void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
 void bt_rap_detach_hci(struct bt_rap *rap, void *hci_sm);
 
 /* Connection handle mapping functions */
-/* Old API preserved as wrapper */
-bool bt_rap_set_conn_handle(void *hci_sm, struct bt_rap *rap, uint16_t handle,
-			const uint8_t *bdaddr, uint8_t bdaddr_type);
-
 bool bt_rap_set_conn_hndl(void *hci_sm,
 			struct bt_rap *rap,
 			uint16_t handle,
