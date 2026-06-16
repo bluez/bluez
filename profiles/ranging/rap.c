@@ -418,10 +418,11 @@ static int rap_accept(struct btd_service *service)
 			DBG("Found conn handle 0x%04X for %s", handle, addr);
 			DBG("Setting up handle mapping: handle=0x%04X",
 				handle);
-			bt_rap_set_conn_handle(data->hci_sm,
-						data->rap, handle,
-						(const uint8_t *) bdaddr,
-						bdaddr_type);
+			bt_rap_set_conn_hndl(data->hci_sm,
+					data->rap, handle,
+					(const uint8_t *) bdaddr,
+					bdaddr_type,
+					btd_device_is_initiator(device));
 		} else {
 			error("Failed to find connection handle for device %s",
 				addr);
