@@ -1307,15 +1307,40 @@ static void process_cs_mode_zero(struct bt_rap *rap,
 				const struct cs_step_data *step,
 				uint8_t idx, uint8_t mode_byte)
 {
-	const uint8_t *payload;
-	uint8_t plen;
+	const struct cs_mode_zero_data *m0 =
+		&step->step_mode_data.mode_zero_data;
+	struct cstracker *resptracker = rap->resptracker;
+	enum cs_role cs_role = resptracker->role;
+	struct iovec temp_iov = { 0 };
 
-	/* Mode 0: use raw structure bytes */
-	payload = (const uint8_t *)&step->step_mode_data;
-	plen = step->step_data_length;
-	cs_pd_ras_append_subevent_bytes(proc, payload, plen);
-	DBG(rap, "step[%u]: mode=0x%02x Mode0 payload_len=%u sent",
-		idx, mode_byte, (unsigned int)plen);
+	temp_iov.iov_base = malloc(8);
+	if (!temp_iov.iov_base) {
+		DBG(rap, "Mode0 ERROR: malloc failed!");
+		return;
+	}
+	temp_iov.iov_len = 0;
+
+	if (!util_iov_push_u8(&temp_iov, m0->packet_quality) ||
+	    !util_iov_push_u8(&temp_iov, m0->packet_rssi_dbm) ||
+	    !util_iov_push_u8(&temp_iov, m0->packet_ant))
+		goto done;
+
+	if (cs_role == CS_ROLE_INITIATOR) {
+		if (!util_iov_push_le16(&temp_iov,
+					m0->init_measured_freq_offset))
+			goto done;
+	}
+
+	cs_pd_ras_append_subevent_bytes(proc, temp_iov.iov_base,
+					temp_iov.iov_len);
+
+done:
+	free(temp_iov.iov_base);
+
+	DBG(rap, "step[%u]: mode=0x%02x Mode0 serialized payload_len=%zu "
+		"role=%s",
+		idx, mode_byte, temp_iov.iov_len,
+		cs_role == CS_ROLE_INITIATOR ? "INIT" : "REFL");
 }
 
 static void process_cs_mode_one(struct bt_rap *rap,
