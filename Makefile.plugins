@@ -27,6 +27,7 @@ builtin_modules += a2dp
 builtin_sources += profiles/audio/source.h profiles/audio/source.c \
 			profiles/audio/sink.h profiles/audio/sink.c \
 			profiles/audio/a2dp.h profiles/audio/a2dp.c \
+			profiles/audio/a2dp-helpers.h profiles/audio/a2dp-helpers.c \
 			profiles/audio/avdtp.h profiles/audio/avdtp.c \
 			profiles/audio/a2dp-codecs.h
 endif
