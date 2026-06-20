@@ -589,7 +589,8 @@ unit_test_textfile_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
 unit_tests += unit/test-btsnoop
 
-unit_test_btsnoop_SOURCES = unit/test-btsnoop.c \
+unit_test_btsnoop_SOURCES = unit/test-btsnoop.c unit/test-btsnoop.h \
+				unit/test-btsnoop-pklg.c \
 				src/shared/btsnoop.h src/shared/btsnoop.c
 unit_test_btsnoop_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
