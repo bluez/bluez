@@ -587,6 +587,12 @@ unit_tests += unit/test-textfile
 unit_test_textfile_SOURCES = unit/test-textfile.c src/textfile.h src/textfile.c
 unit_test_textfile_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
+unit_tests += unit/test-btsnoop
+
+unit_test_btsnoop_SOURCES = unit/test-btsnoop.c \
+				src/shared/btsnoop.h src/shared/btsnoop.c
+unit_test_btsnoop_LDADD = src/libshared-glib.la $(GLIB_LIBS)
+
 unit_tests += unit/test-crc
 
 unit_test_crc_SOURCES = unit/test-crc.c monitor/crc.h monitor/crc.c
