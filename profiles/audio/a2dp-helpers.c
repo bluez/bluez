@@ -74,6 +74,46 @@ static bool parse_caps(const char *value, uint8_t *caps, size_t caps_len,
 	return true;
 }
 
+static bool has_delay_field(const char *value)
+{
+	return value[0] != '\0' && value[1] != '\0' &&
+			g_ascii_isxdigit(value[0]) &&
+			g_ascii_isxdigit(value[1]) &&
+			value[2] == ':';
+}
+
+static bool parse_endpoint_header(const char **value, uint8_t *type,
+							uint8_t *codec)
+{
+	if (!parse_hex_byte(value, type) || !parse_colon(value))
+		return false;
+
+	if (!parse_hex_byte(value, codec) || !parse_colon(value))
+		return false;
+
+	return true;
+}
+
+static bool parse_delay_field(const char **value, uint8_t *delay)
+{
+	*delay = 0;
+
+	if (!has_delay_field(*value))
+		return true;
+
+	parse_hex_byte(value, delay);
+	parse_colon(value);
+
+	return *delay <= 1;
+}
+
+static bool valid_endpoint_args(const char *value,
+				const uint8_t *type, const uint8_t *codec,
+				const bool *delay_reporting, const size_t *size)
+{
+	return value && type && codec && delay_reporting && size;
+}
+
 bool a2dp_parse_capabilities_array(DBusMessageIter *value,
 					uint8_t **caps, int *size)
 {
@@ -106,26 +146,17 @@ bool a2dp_parse_persisted_endpoint(const char *value, uint8_t *type,
 	const char *pos;
 	uint8_t delay = 0;
 
-	if (!value || !type || !codec || !delay_reporting || !size)
+	if (!valid_endpoint_args(value, type, codec, delay_reporting, size))
 		return false;
 
 	*size = 0;
 
 	pos = value;
-	if (!parse_hex_byte(&pos, type) || !parse_colon(&pos))
+	if (!parse_endpoint_header(&pos, type, codec))
 		return false;
 
-	if (!parse_hex_byte(&pos, codec) || !parse_colon(&pos))
+	if (!parse_delay_field(&pos, &delay))
 		return false;
-
-	if (pos[0] != '\0' && pos[1] != '\0' &&
-			g_ascii_isxdigit(pos[0]) && g_ascii_isxdigit(pos[1]) &&
-			pos[2] == ':') {
-		parse_hex_byte(&pos, &delay);
-		parse_colon(&pos);
-		if (delay > 1)
-			return false;
-	}
 
 	if (!parse_caps(pos, caps, caps_len, size))
 		return false;
