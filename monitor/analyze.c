@@ -1405,7 +1405,7 @@ void analyze_trace(const char *path)
 		uint16_t index, opcode, pktlen;
 
 		if (!btsnoop_read_hci(btsnoop_file, &tv, &index, &opcode,
-								buf, &pktlen))
+							buf, sizeof(buf), &pktlen))
 			break;
 
 		switch (opcode) {

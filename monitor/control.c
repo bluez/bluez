@@ -1564,7 +1564,8 @@ void control_reader(const char *path, bool pager)
 			uint16_t index, opcode;
 
 			if (!btsnoop_read_hci(btsnoop_file, &tv, &index,
-							&opcode, buf, &pktlen))
+							&opcode, buf, sizeof(buf),
+							&pktlen))
 				break;
 
 			if (opcode == 0xffff)
