@@ -642,6 +642,13 @@ unit_test_avdtp_SOURCES = unit/test-avdtp.c \
 				unit/avdtp.c unit/avdtp.h
 unit_test_avdtp_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
+unit_tests += unit/test-a2dp
+
+unit_test_a2dp_SOURCES = unit/test-a2dp.c \
+				profiles/audio/a2dp-helpers.c \
+				profiles/audio/a2dp-helpers.h
+unit_test_a2dp_LDADD = src/libshared-glib.la $(GLIB_LIBS) $(DBUS_LIBS)
+
 unit_tests += unit/test-avctp
 
 unit_test_avctp_SOURCES = unit/test-avctp.c \
