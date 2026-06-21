@@ -13,6 +13,12 @@
 #include <config.h>
 #endif
 
+#if defined(__GNUC__)
+/* Speed up compilation */
+#pragma GCC optimize ("O0")
+#undef _FORTIFY_SOURCE
+#endif
+
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <string.h>
