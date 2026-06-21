@@ -56,12 +56,12 @@ bool hwdb_get_vendor_model(const char *modalias, char **vendor, char **model)
 			*model = strdup(udev_list_entry_get_value(entry));
 	}
 
-	hwdb = udev_hwdb_unref(hwdb);
+	udev_hwdb_unref(hwdb);
 
 	result = true;
 
 done:
-	udev = udev_unref(udev);
+	udev_unref(udev);
 
 	return result;
 }
@@ -103,12 +103,12 @@ bool hwdb_get_company(const uint8_t *bdaddr, char **company)
 		}
 	}
 
-	hwdb = udev_hwdb_unref(hwdb);
+	udev_hwdb_unref(hwdb);
 
 	result = true;
 
 done:
-	udev = udev_unref(udev);
+	udev_unref(udev);
 
 	return result;
 }
