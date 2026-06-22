@@ -2917,7 +2917,9 @@ static const struct bitfield_data features_msft[] = {
 	{  2, "RSSI Monitoring of LE advertisements"		},
 	{  3, "Advertising Monitoring of LE advertisements"	},
 	{  4, "Verifying the validity of P-192 and P-256 keys"	},
-	{  5, "Continuous Advertising Monitoring"		},
+	{  5, "Continuous Advertising Monitoring (v1)"		},
+	{  7, "AVDTP offload"					},
+	{ 10, "Continuous Advertising Monitoring (v2)"		},
 	{ }
 };
 
