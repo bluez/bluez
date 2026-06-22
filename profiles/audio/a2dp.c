@@ -52,6 +52,7 @@
 #include "sink.h"
 #include "source.h"
 #include "a2dp.h"
+#include "a2dp-helpers.h"
 #include "a2dp-codecs.h"
 #include "media.h"
 
@@ -689,7 +690,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		if (err < 0 && err != -EINPROGRESS) {
 			error("avdtp_start: %s (%d)", strerror(-err), -err);
 			finalize_setup_errno(setup, err, finalize_resume,
-									NULL);
+							(GSourceFunc) NULL);
 			return;
 		}
 
@@ -942,7 +943,8 @@ static void endpoint_open_cb(struct a2dp_setup *setup, uint8_t error_code)
 
 	if (error_code != 0) {
 		setup->stream = NULL;
-		finalize_setup_errno(setup, -EPERM, finalize_config, NULL);
+		finalize_setup_errno(setup, -EPERM, finalize_config,
+							(GSourceFunc) NULL);
 		goto done;
 	}
 
@@ -954,7 +956,7 @@ static void endpoint_open_cb(struct a2dp_setup *setup, uint8_t error_code)
 
 	error("avdtp_open %s (%d)", strerror(-err), -err);
 	setup->stream = NULL;
-	finalize_setup_errno(setup, err, finalize_config, NULL);
+	finalize_setup_errno(setup, err, finalize_config, (GSourceFunc) NULL);
 done:
 	setup_unref(setup);
 }
@@ -974,6 +976,7 @@ static void store_remote_sep(void *data, void *user_data)
 	char seid[4], value[256];
 	struct avdtp_service_capability *service = avdtp_get_codec(sep->sep);
 	struct avdtp_media_codec_capability *codec;
+	uint8_t delay_reporting;
 	unsigned int i;
 	ssize_t offset;
 
@@ -981,12 +984,13 @@ static void store_remote_sep(void *data, void *user_data)
 		return;
 
 	codec = (void *) service->data;
+	delay_reporting = avdtp_get_delay_reporting(sep->sep);
 
 	sprintf(seid, "%02hhx", avdtp_get_seid(sep->sep));
 
 	offset = sprintf(value, "%02hhx:%02hhx:%02hhx:",
 			avdtp_get_type(sep->sep), codec->media_codec_type,
-			avdtp_get_delay_reporting(sep->sep));
+			delay_reporting);
 
 	for (i = 0; i < service->length - sizeof(*codec); i++)
 		offset += sprintf(value + offset, "%02hhx", codec->data[i]);
@@ -1139,7 +1143,8 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			return;
 
 		setup->stream = NULL;
-		finalize_setup_errno(setup, -EPERM, finalize_config, NULL);
+		finalize_setup_errno(setup, -EPERM, finalize_config,
+							(GSourceFunc) NULL);
 		setup_unref(setup);
 		return;
 	}
@@ -1148,7 +1153,8 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (ret < 0) {
 		error("avdtp_open %s (%d)", strerror(-ret), -ret);
 		setup->stream = NULL;
-		finalize_setup_errno(setup, ret, finalize_config, NULL);
+		finalize_setup_errno(setup, ret, finalize_config,
+							(GSourceFunc) NULL);
 	}
 }
 
@@ -1431,7 +1437,8 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (start_err < 0 && start_err != -EINPROGRESS) {
 		error("avdtp_start: %s (%d)", strerror(-start_err),
 								-start_err);
-		finalize_setup_errno(setup, start_err, finalize_resume, NULL);
+		finalize_setup_errno(setup, start_err, finalize_resume,
+							(GSourceFunc) NULL);
 	}
 
 	return TRUE;
@@ -1483,7 +1490,8 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	start_err = avdtp_start(session, a2dp_stream->stream);
 	if (start_err < 0 && start_err != -EINPROGRESS) {
 		error("avdtp_start: %s (%d)", strerror(-start_err), -start_err);
-		finalize_setup_errno(setup, start_err, finalize_suspend, NULL);
+		finalize_setup_errno(setup, start_err, finalize_suspend,
+							(GSourceFunc) NULL);
 	}
 }
 
@@ -1504,7 +1512,7 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		return TRUE;
 
 	finalize_setup_errno(setup, -ECONNRESET, finalize_suspend,
-							finalize_resume, NULL);
+					finalize_resume, (GSourceFunc) NULL);
 
 	return TRUE;
 }
@@ -1572,7 +1580,8 @@ static gboolean a2dp_reconfigure(gpointer data)
 	return FALSE;
 
 failed:
-	finalize_setup_errno(setup, posix_err, finalize_config, NULL);
+	finalize_setup_errno(setup, posix_err, finalize_config,
+							(GSourceFunc) NULL);
 	return FALSE;
 }
 
@@ -1648,8 +1657,8 @@ static void abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		return;
 
 	finalize_setup_errno(setup, -ECONNRESET, finalize_suspend,
-							finalize_resume,
-							finalize_config, NULL);
+					finalize_resume, finalize_config,
+					(GSourceFunc) NULL);
 
 	return;
 }
@@ -1901,7 +1910,8 @@ static void channel_free(void *data)
 		setup->chan = NULL;
 		setup_ref(setup);
 		/* Finalize pending commands before we NULL setup->session */
-		finalize_setup_errno(setup, -ENOTCONN, finalize_all, NULL);
+		finalize_setup_errno(setup, -ENOTCONN, finalize_all,
+							(GSourceFunc) NULL);
 		avdtp_unref(setup->session);
 		setup->session = NULL;
 		setup_unref(setup);
@@ -1991,10 +2001,12 @@ static struct a2dp_sep *find_sep(struct a2dp_server *server, uint8_t type,
 
 static int parse_properties(DBusMessageIter *props, uint8_t **caps, int *size)
 {
+	*caps = NULL;
+	*size = 0;
+
 	while (dbus_message_iter_get_arg_type(props) == DBUS_TYPE_DICT_ENTRY) {
 		const char *key;
 		DBusMessageIter value, entry;
-		int var;
 
 		dbus_message_iter_recurse(props, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
@@ -2002,15 +2014,10 @@ static int parse_properties(DBusMessageIter *props, uint8_t **caps, int *size)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		var = dbus_message_iter_get_arg_type(&value);
 		if (strcasecmp(key, "Capabilities") == 0) {
-			DBusMessageIter array;
-
-			if (var != DBUS_TYPE_ARRAY)
+			if (!a2dp_parse_capabilities_array(&value, caps, size))
 				return -EINVAL;
 
-			dbus_message_iter_recurse(&value, &array);
-			dbus_message_iter_get_fixed_array(&array, caps, size);
 			return 0;
 		}
 
@@ -2130,7 +2137,7 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	struct avdtp_media_codec_capability *codec;
 	DBusMessageIter args, props;
 	const char *sender, *path;
-	uint8_t *caps;
+	uint8_t *caps = NULL;
 	int err, size = 0;
 
 	sender = dbus_message_get_sender(msg);
@@ -2371,11 +2378,10 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 	for (; *seids; seids++) {
 		uint8_t type;
 		uint8_t codec;
-		uint8_t delay_reporting;
+		bool delay_reporting;
 		GSList *l = NULL;
-		char caps[256];
 		uint8_t data[128];
-		int i, size;
+		size_t size;
 
 		if (sscanf(*seids, "%02hhx", &rseid) != 1)
 			continue;
@@ -2385,34 +2391,16 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 		if (!value)
 			continue;
 
-		/* Try loading with delay_reporting first */
-		if (sscanf(value, "%02hhx:%02hhx:%02hhx:%s", &type, &codec,
-					&delay_reporting, caps) != 4) {
-			/* Try old format */
-			if (sscanf(value, "%02hhx:%02hhx:%s", &type, &codec,
-								caps) != 3) {
-				warn("Unable to load Endpoint: seid %u", rseid);
-				g_free(value);
-				continue;
-			}
-			delay_reporting = false;
+		if (!a2dp_parse_persisted_endpoint(value, &type, &codec,
+						&delay_reporting, data,
+						sizeof(data), &size)) {
+			warn("Unable to load Endpoint: seid %u", rseid);
+			g_free(value);
+			continue;
 		}
-
-		for (i = 0, size = strlen(caps); i < size; i += 2) {
-			uint8_t *tmp = data + i / 2;
-
-			if (sscanf(caps + i, "%02hhx", tmp) != 1) {
-				warn("Unable to load Endpoint: seid %u", rseid);
-				break;
-			}
-		}
-
 		g_free(value);
 
-		if (i != size)
-			continue;
-
-		caps_add_codec(&l, codec, data, size / 2);
+		caps_add_codec(&l, codec, data, size);
 
 		rsep = avdtp_register_remote_sep(chan->session, rseid, type, l,
 							delay_reporting);
