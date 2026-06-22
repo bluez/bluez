@@ -322,35 +322,6 @@ static int rap_probe(struct btd_service *service)
 		return -EINVAL;
 	}
 
-	/* Get or create shared adapter-level HCI channel */
-	data->adapter_data = rap_adapter_data_ref(adapter);
-	if (!data->adapter_data) {
-		error("Failed to get adapter HCI channel");
-		bt_rap_unref(data->rap);
-		free(data);
-		return -EINVAL;
-	}
-
-	DBG("Using shared HCI channel for adapter (ref_count=%d)",
-		data->adapter_data->ref_count);
-
-	/* Create per-device HCI state machine with valid rap instance */
-	DBG("Attaching per-device HCI state machine");
-	data->hci_sm = bt_rap_attach_hci(data->rap, data->adapter_data->hci,
-					btd_opts.defaults.bcs.role,
-					btd_opts.defaults.bcs.cs_sync_ant_sel,
-					btd_opts.defaults.bcs.max_tx_power);
-
-	if (!data->hci_sm) {
-		error("Failed to attach HCI state machine for device");
-		rap_adapter_data_unref(data->adapter_data);
-		bt_rap_unref(data->rap);
-		free(data);
-		return -EINVAL;
-	}
-
-	DBG("HCI state machine attached successfully for device");
-
 	rap_data_add(data);
 
 	data->ready_id = bt_rap_ready_register(data->rap, rap_ready, service,
@@ -382,6 +353,7 @@ static void rap_remove(struct btd_service *service)
 static int rap_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	struct bt_gatt_client *client = btd_device_get_gatt_client(device);
 	struct rap_data *data = btd_service_get_user_data(service);
 	struct bt_att *att;
@@ -398,6 +370,33 @@ static int rap_accept(struct btd_service *service)
 		return -EINVAL;
 	}
 
+	/* init shared adapter HCI channel */
+	if (!data->adapter_data) {
+		data->adapter_data = rap_adapter_data_ref(adapter);
+		if (!data->adapter_data) {
+			error("Failed to get adapter HCI channel");
+			return -EINVAL;
+		}
+		DBG("Using shared HCI channel for adapter (ref_count=%d)",
+			data->adapter_data->ref_count);
+	}
+
+	/* per-device HCI state machine */
+	if (!data->hci_sm) {
+		data->hci_sm = bt_rap_attach_hci(data->rap,
+					data->adapter_data->hci,
+					btd_opts.defaults.bcs.role,
+					btd_opts.defaults.bcs.cs_sync_ant_sel,
+					btd_opts.defaults.bcs.max_tx_power);
+		if (!data->hci_sm) {
+			error("Failed to attach HCI state machine for device");
+			rap_adapter_data_unref(data->adapter_data);
+			data->adapter_data = NULL;
+			return -EINVAL;
+		}
+		DBG("HCI state machine attached successfully for device");
+	}
+
 	if (!bt_rap_attach(data->rap, client)) {
 		error("RAP unable to attach");
 		return -EINVAL;
@@ -408,11 +407,7 @@ static int rap_accept(struct btd_service *service)
 	bdaddr = device_get_address(device);
 	bdaddr_type = device_get_le_address_type(device);
 
-	if (att && data->adapter_data && data->adapter_data->hci &&
-	    data->hci_sm) {
-		/* Use bt_hci_get_conn_handle to find the connection handle
-		 * by bdaddr using HCIGETCONNLIST ioctl
-		 */
+	if (att && data->adapter_data->hci && data->hci_sm) {
 		if (bt_hci_get_conn_handle(data->adapter_data->hci,
 					(const uint8_t *) bdaddr, &handle)) {
 			DBG("Found conn handle 0x%04X for %s", handle, addr);
