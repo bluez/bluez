@@ -2326,7 +2326,7 @@ static bool parse_step(struct bt_rap *rap, struct iovec *iov,
 	DBG(rap, "  Step %u: mode=%u payload_len=%zu",
 	    step_idx, step_mode, step_payload_len);
 
-	payload = util_iov_pull(iov, step_payload_len);
+	payload = util_iov_pull_mem(iov, step_payload_len);
 	if (!payload) {
 		DBG(rap, "Insufficient data for step %u payload "
 			"(need %zu, have %zu)",
