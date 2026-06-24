@@ -47,10 +47,10 @@ char *batocomp(const bdaddr_t *ba)
 		}
 	}
 
-	hwdb = udev_hwdb_unref(hwdb);
+	udev_hwdb_unref(hwdb);
 
 done:
-	udev = udev_unref(udev);
+	udev_unref(udev);
 
 	return comp;
 }
