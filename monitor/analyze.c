@@ -1404,8 +1404,8 @@ void analyze_trace(const char *path)
 		struct timeval tv;
 		uint16_t index, opcode, pktlen;
 
-		if (!btsnoop_read_hci(btsnoop_file, &tv, &index, &opcode,
-								buf, &pktlen))
+		if (!btsnoop_read_hci(btsnoop_file, &tv, &index,
+					&opcode, buf, sizeof(buf), &pktlen))
 			break;
 
 		switch (opcode) {
