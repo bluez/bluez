@@ -1447,10 +1447,19 @@ static bool bap_stream_io_detach(struct bt_bap_stream *stream)
 	return true;
 }
 
+static void stream_state_changed(void *data, void *user_data)
+{
+	const struct bt_bap_state *state = data;
+	struct bt_bap_stream *stream = user_data;
+
+	if (state->func)
+		state->func(stream, stream->old_state, stream->state,
+							state->data);
+}
+
 static void bap_stream_state_changed(struct bt_bap_stream *stream)
 {
 	struct bt_bap *bap = stream->bap;
-	const struct queue_entry *entry;
 
 	/* Pre notification updates */
 	switch (stream->ep->state) {
@@ -1475,14 +1484,13 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 		break;
 	}
 
-	for (entry = queue_get_entries(bap->state_cbs); entry;
-							entry = entry->next) {
-		struct bt_bap_state *state = entry->data;
+	stream->old_state = stream->ep->old_state;
+	stream->state = stream->ep->state;
 
-		if (state->func)
-			state->func(stream, stream->ep->old_state,
-					stream->ep->state, state->data);
-	}
+	/* Notify callbacks using queue_foreach since it does attempt to
+	 * protect against concurrent modifications to the list.
+	 */
+	queue_foreach(bap->state_cbs, stream_state_changed, stream);
 
 	/* Post notification updates */
 	switch (stream->ep->state) {
@@ -2407,7 +2415,6 @@ static unsigned int bap_ucast_release(struct bt_bap_stream *stream,
 static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 {
 	struct bt_bap *bap = stream->bap;
-	const struct queue_entry *entry;
 
 	stream->old_state = stream->state;
 	stream->state = state;
@@ -2419,14 +2426,10 @@ static void bap_bcast_set_state(struct bt_bap_stream *stream, uint8_t state)
 			bt_bap_stream_statestr(stream->old_state),
 			bt_bap_stream_statestr(stream->state));
 
-	for (entry = queue_get_entries(bap->state_cbs); entry;
-							entry = entry->next) {
-		struct bt_bap_state *state = entry->data;
-
-		if (state->func)
-			state->func(stream, stream->old_state,
-					stream->state, state->data);
-	}
+	/* Notify callbacks using queue_foreach since it does attempt to
+	 * protect against concurrent modifications to the list.
+	 */
+	queue_foreach(bap->state_cbs, stream_state_changed, stream);
 
 	/* Post notification updates */
 	switch (stream->state) {
