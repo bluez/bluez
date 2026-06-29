@@ -3535,21 +3535,107 @@ static void ltks_rsp(uint8_t status, uint16_t len, const void *param,
 	bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static const struct option ltks_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "address-type", 1, 0, 'a' },
+	{ "type",	1, 0, 't' },
+	{ "central",	1, 0, 'c' },
+	{ "enc-size",	1, 0, 'e' },
+	{ "ediv",	1, 0, 'd' },
+	{ "rand",	1, 0, 'r' },
+	{ "key",	1, 0, 'k' },
+	{ 0, 0, 0, 0 }
+};
+
 static void cmd_ltks(int argc, char **argv)
 {
-	struct mgmt_cp_load_long_term_keys cp;
+	struct mgmt_cp_load_long_term_keys *cp;
+	uint8_t buf[sizeof(*cp) + sizeof(struct mgmt_ltk_info)];
+	uint16_t count = 0;
+	struct mgmt_ltk_info *ltk;
+	uint8_t addr_type = BDADDR_LE_PUBLIC;
+	int opt;
 	uint16_t index;
 
 	index = mgmt_index;
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	memset(&cp, 0, sizeof(cp));
+	cp = (void *) buf;
+	memset(buf, 0, sizeof(buf));
+	ltk = &cp->keys[0];
 
-	if (mgmt_send(mgmt, MGMT_OP_LOAD_LONG_TERM_KEYS, index, sizeof(cp), &cp,
-						ltks_rsp, NULL, NULL) == 0) {
+	while ((opt = getopt_long(argc, argv, "+a:t:c:e:d:r:k:h",
+					ltks_options, NULL)) != -1) {
+		switch (opt) {
+		case 'a':
+			addr_type = strtol(optarg, NULL, 0);
+			if (addr_type != BDADDR_LE_PUBLIC &&
+					addr_type != BDADDR_LE_RANDOM) {
+				error("Invalid address type (expected 1=LE "
+							"Public, 2=LE Random)");
+				optind = 0;
+				return bt_shell_noninteractive_quit(
+								EXIT_FAILURE);
+			}
+			break;
+		case 't':
+			ltk->type = strtol(optarg, NULL, 0);
+			break;
+		case 'c':
+			ltk->central = strtol(optarg, NULL, 0);
+			break;
+		case 'e':
+			ltk->enc_size = strtol(optarg, NULL, 0);
+			break;
+		case 'd':
+			ltk->ediv = strtol(optarg, NULL, 0);
+			break;
+		case 'r':
+			ltk->rand = strtoull(optarg, NULL, 0);
+			break;
+		case 'k':
+			if (strlen(optarg) != 32) {
+				error("Invalid key length (expected 32 hex "
+								"chars)");
+				optind = 0;
+				return bt_shell_noninteractive_quit(
+								EXIT_FAILURE);
+			}
+			for (int i = 0; i < 16; i++) {
+				char byte[3] = { optarg[i * 2],
+						optarg[i * 2 + 1], 0 };
+				ltk->val[i] = strtol(byte, NULL, 16);
+			}
+			break;
+		case 'h':
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		default:
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc > 0) {
+		str2ba(argv[0], &ltk->addr.bdaddr);
+		ltk->addr.type = addr_type;
+		count = 1;
+	}
+
+	cp->key_count = cpu_to_le16(count);
+
+	if (mgmt_send(mgmt, MGMT_OP_LOAD_LONG_TERM_KEYS, index,
+				sizeof(*cp) + count * sizeof(*ltk), cp,
+				ltks_rsp, NULL, NULL) == 0) {
 		error("Unable to send load_ltks cmd");
-		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 }
 
@@ -6136,7 +6222,9 @@ static const struct bt_shell_menu mgmt_menu = {
 		cmd_unpair,		"Unpair device"			},
 	{ "keys",		NULL,
 		cmd_keys,		"Load Link Keys"		},
-	{ "ltks",		NULL,
+	{ "ltks",		"[-a addr_type] [-t key_type] [-c central] "
+				"[-e enc_size] [-d ediv] [-r rand] [-k key] "
+				"[address]",
 		cmd_ltks,		"Load Long Term Keys"		},
 	{ "irks",		"[--local index] [--file file path]",
 		cmd_irks,		"Load Identity Resolving Keys"	},
