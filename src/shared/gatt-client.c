@@ -217,6 +217,7 @@ struct notify_chrc {
 	uint16_t properties;
 	unsigned int notify_id;
 	int notify_count;  /* Reference count of registered notify callbacks */
+	bool prefer_indicate;
 
 	/* Pending calls to register_notify are queued here so that they can be
 	 * processed after a write that modifies the CCC descriptor.
@@ -1671,9 +1672,13 @@ static bool notify_data_write_ccc(struct notify_data *notify_data, bool enable,
 
 	if (enable) {
 		/* Try to enable notifications or indications based on
-		 * whatever the characteristic supports.
+		 * whatever the characteristic supports. If both are
+		 * available honor the per-chrc prefer_indicate flag.
 		 */
-		if (properties & BT_GATT_CHRC_PROP_NOTIFY)
+		if (notify_data->chrc->prefer_indicate &&
+				(properties & BT_GATT_CHRC_PROP_INDICATE))
+			value = cpu_to_le16(0x0002);
+		else if (properties & BT_GATT_CHRC_PROP_NOTIFY)
 			value = cpu_to_le16(0x0001);
 		else if (properties & BT_GATT_CHRC_PROP_INDICATE)
 			value = cpu_to_le16(0x0002);
@@ -3836,6 +3841,28 @@ unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 
 	return register_notify(client, chrc_value_handle, callback, notify,
 							user_data, destroy);
+}
+
+bool bt_gatt_client_set_notify_prefer_indicate(struct bt_gatt_client *client,
+						uint16_t value_handle,
+						bool prefer)
+{
+	struct notify_chrc *chrc;
+
+	if (!client || !client->db || !value_handle)
+		return false;
+
+	chrc = queue_find(client->notify_chrcs, match_notify_chrc_value_handle,
+						UINT_TO_PTR(value_handle));
+	if (!chrc) {
+		chrc = notify_chrc_create(client, value_handle);
+		if (!chrc)
+			return false;
+	}
+
+	chrc->prefer_indicate = prefer;
+
+	return true;
 }
 
 bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,

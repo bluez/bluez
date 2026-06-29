@@ -401,3 +401,24 @@ uint16 MTU [read-only]
 
 Characteristic MTU, this is valid both for **ReadValue()** and **WriteValue()**
 but either method can use long procedures when supported.
+
+string PreferredNotifyType [readwrite, optional, experimental]
+``````````````````````````````````````````````````````````````
+
+Selects whether **StartNotify()** and **AcquireNotify()** enable notifications
+or indications when the characteristic supports both. Only present when both
+"notify" and "indicate" flags are set.
+
+Possible values:
+
+:"notification":
+
+	Enable notifications (CCC = 0x0001). Default.
+
+:"indication":
+
+	Enable indications (CCC = 0x0002).
+
+Note: the preference applies on the next CCC write. If another client has
+already enabled the CCC on this characteristic, the existing setting is kept
+and the new preference takes effect only after the last subscriber stops.
