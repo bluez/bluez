@@ -3036,9 +3036,13 @@ static void bap_stream_notify_connecting(struct bt_bap_stream *stream,
 {
 	const struct queue_entry *entry;
 
-	for (entry = queue_get_entries(stream->bap->state_cbs); entry;
-						entry = entry->next) {
+	for (entry = queue_get_entries(stream->bap->state_cbs); entry;) {
 		struct bt_bap_state *state = entry->data;
+
+		/* Prefetch next entry since the callback may remove the current
+		 * entry.
+		 */
+		entry = entry->next;
 
 		if (state->connecting)
 			state->connecting(stream, connecting, fd, state->data);
