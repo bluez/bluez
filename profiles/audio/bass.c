@@ -2014,10 +2014,14 @@ static void bass_update_bis_sync(struct bass_delegator *dg,
 	const struct queue_entry *entry;
 
 	/* Check if existing setups if BIS needs to be added/removed */
-	for (entry = queue_get_entries(dg->setups); entry;
-				entry = entry->next) {
+	for (entry = queue_get_entries(dg->setups); entry;) {
 		struct bass_setup *setup = entry->data;
 		uint8_t state;
+
+		/* Prefetch next entry since the likes of bass_remove_bis can
+		 * end up removing the next entry.
+		 */
+		entry = entry->next;
 
 		state = bt_bap_stream_get_state(setup->stream);
 
