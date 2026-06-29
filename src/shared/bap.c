@@ -6727,6 +6727,9 @@ unsigned int bt_bap_stream_release(struct bt_bap_stream *stream,
 	unsigned int id;
 	struct bt_bap *bap;
 
+	if (!bap_stream_valid(stream))
+		return 0;
+
 	if (!stream || !stream->ops || !stream->ops->release)
 		return 0;
 
