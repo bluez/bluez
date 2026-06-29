@@ -12,6 +12,7 @@
 #include <config.h>
 #endif
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -57,6 +58,7 @@ static void test_pre_setup_lt_address(const void *data, uint8_t size,
 	struct user_data *user = tester_get_data();
 	const struct bt_hci_rsp_read_bd_addr *rsp = data;
 
+	assert(user);
 	if (rsp->status) {
 		tester_warn("Read lower tester address failed (0x%02x)",
 								rsp->status);
