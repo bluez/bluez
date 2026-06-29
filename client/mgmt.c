@@ -2681,7 +2681,7 @@ static void cmd_privacy(int argc, char **argv)
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
 	} else {
-		int fd;
+		_cleanup_fd_ int fd = -1;
 
 		fd = open("/dev/urandom", O_RDONLY);
 		if (fd < 0) {
@@ -2691,11 +2691,8 @@ static void cmd_privacy(int argc, char **argv)
 
 		if (read(fd, cp.irk, sizeof(cp.irk)) != sizeof(cp.irk)) {
 			error("Reading from urandom failed");
-			close(fd);
 			return bt_shell_noninteractive_quit(EXIT_FAILURE);
 		}
-
-		close(fd);
 	}
 
 	if (send_cmd(mgmt, MGMT_OP_SET_PRIVACY, index, sizeof(cp), &cp,

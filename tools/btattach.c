@@ -40,7 +40,8 @@
 static int open_serial(const char *path, unsigned int speed, bool flowctl)
 {
 	struct termios ti;
-	int fd, saved_ldisc, ldisc = N_HCI;
+	_cleanup_fd_ int fd = -1;
+	int saved_ldisc, ldisc = N_HCI;
 
 	fd = open(path, O_RDWR | O_NOCTTY);
 	if (fd < 0) {
@@ -50,13 +51,11 @@ static int open_serial(const char *path, unsigned int speed, bool flowctl)
 
 	if (tcflush(fd, TCIOFLUSH) < 0) {
 		perror("Failed to flush serial port");
-		close(fd);
 		return -1;
 	}
 
 	if (ioctl(fd, TIOCGETD, &saved_ldisc) < 0) {
 		perror("Failed get serial line discipline");
-		close(fd);
 		return -1;
 	}
 
@@ -73,19 +72,17 @@ static int open_serial(const char *path, unsigned int speed, bool flowctl)
 
 	if (tcsetattr(fd, TCSANOW, &ti) < 0) {
 		perror("Failed to set serial port settings");
-		close(fd);
 		return -1;
 	}
 
 	if (ioctl(fd, TIOCSETD, &ldisc) < 0) {
 		perror("Failed set serial line discipline");
-		close(fd);
 		return -1;
 	}
 
 	printf("Switched line discipline from %d to %d\n", saved_ldisc, ldisc);
 
-	return fd;
+	return _steal_fd_(fd);
 }
 
 static void local_version_callback(const void *data, uint8_t size,
@@ -99,7 +96,8 @@ static void local_version_callback(const void *data, uint8_t size,
 static int attach_proto(const char *path, unsigned int proto,
 			unsigned int speed, bool flowctl, unsigned int flags)
 {
-	int fd, dev_id;
+	_cleanup_fd_ int fd = -1;
+	int dev_id;
 
 	fd = open_serial(path, speed, flowctl);
 	if (fd < 0)
@@ -107,20 +105,17 @@ static int attach_proto(const char *path, unsigned int proto,
 
 	if (ioctl(fd, HCIUARTSETFLAGS, flags) < 0) {
 		perror("Failed to set flags");
-		close(fd);
 		return -1;
 	}
 
 	if (ioctl(fd, HCIUARTSETPROTO, proto) < 0) {
 		perror("Failed to set protocol");
-		close(fd);
 		return -1;
 	}
 
 	dev_id = ioctl(fd, HCIUARTGETDEVICE);
 	if (dev_id < 0) {
 		perror("Failed to get device id");
-		close(fd);
 		return -1;
 	}
 
@@ -140,7 +135,6 @@ static int attach_proto(const char *path, unsigned int proto,
 
 		if (!hci) {
 			fprintf(stderr, "Failed to open HCI user channel\n");
-			close(fd);
 			return -1;
 		}
 
@@ -149,7 +143,7 @@ static int attach_proto(const char *path, unsigned int proto,
 					(bt_hci_destroy_func_t) bt_hci_unref);
 	}
 
-	return fd;
+	return _steal_fd_(fd);
 }
 
 static void uart_callback(int fd, uint32_t events, void *user_data)

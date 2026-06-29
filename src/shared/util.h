@@ -100,20 +100,15 @@ static inline void freep(void *p)
 	free(*(void **) p);
 }
 
-static inline void *_steal_(void *p)
-{
-	void **orig = (void **) p;
-	void *ret = *orig;
-	*orig = NULL;
-	return ret;
-}
+#define _exchange_(var, new_value) ({		\
+	__typeof__(var) *orig = &(var);		\
+	__typeof__(var) ret = *orig;		\
+	*orig = new_value;			\
+	ret;					\
+})
 
-static inline int _steal_fd_(int *fdp)
-{
-	int fd = *fdp;
-	*fdp = -1;
-	return fd;
-}
+#define _steal_(p) _exchange_(p, NULL)
+#define _steal_fd_(fd) _exchange_(fd, -1)
 
 static inline void closefd(int *fdp)
 {
@@ -127,7 +122,7 @@ static inline void closefd(int *fdp)
 }
 
 #define CLEANUP_FREEFUNC(type, func) \
-	static inline void cleanup_##type (type **_ptr) { (func) (*_ptr); }
+	static inline void cleanup_##type (type **_ptr) { if (*_ptr != NULL) (func) (*_ptr); }
 
 #define _cleanup_(f) __attribute__((cleanup(f)))
 #define _cleanup_type_(type) __attribute__((cleanup(cleanup_##type)))
