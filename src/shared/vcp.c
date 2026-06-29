@@ -216,6 +216,7 @@ struct bt_vcp {
 
 	uint8_t volume;
 	uint8_t volume_counter;
+	uint8_t mute;
 
 	struct bt_vcp_client_op pending_op;
 
@@ -861,6 +862,9 @@ static uint8_t vcs_mute(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	vstate->mute = 0x01;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 
+	gatt_db_attribute_notify(vdb->vcs->vs, (void *)vstate,
+				 sizeof(struct vol_state),
+				 bt_vcp_get_att(vcp));
 	return 0;
 }
 
@@ -2076,6 +2080,7 @@ static void vcp_vstate_notify(struct bt_vcp *vcp, uint16_t value_handle,
 
 	vcp->volume = vstate->vol_set;
 	vcp->volume_counter = vstate->counter;
+	vcp->mute = vstate->mute;
 
 	if (vcp->volume_changed)
 		vcp->volume_changed(vcp, vcp->volume);
@@ -2207,6 +2212,86 @@ uint8_t bt_vcp_get_volume(struct bt_vcp *vcp)
 	return vcp->volume;
 }
 
+static void vcp_mute_cp_sent(bool success, uint8_t err, void *user_data)
+{
+	struct bt_vcp *vcp = user_data;
+
+	if (!success)
+		DBG(vcp, "setting mute failed: error 0x%x", err);
+}
+
+static bool vcp_set_mute_client(struct bt_vcp *vcp, uint8_t mute)
+{
+	struct bt_vcs_param req;
+	uint16_t value_handle;
+	struct bt_vcs *vcs = vcp_get_vcs(vcp);
+
+	if (!vcs || !vcs->vol_cp) {
+		DBG(vcp, "error: vol_cp characteristic not available");
+		return false;
+	}
+
+	if (!gatt_db_attribute_get_char_data(vcs->vol_cp, NULL, &value_handle,
+							NULL, NULL, NULL)) {
+		DBG(vcp, "error: vol_cp characteristic not available");
+		return false;
+	}
+
+	if (vcp->mute == mute)
+		return true;
+
+	req.op = mute ? BT_VCS_MUTE : BT_VCS_UNMUTE;
+	req.change_counter = vcp->volume_counter;
+
+	if (!bt_gatt_client_write_value(vcp->client, value_handle, (void *)&req,
+					sizeof(req), vcp_mute_cp_sent, vcp,
+					NULL)) {
+		DBG(vcp, "error writing mute");
+		return false;
+	}
+
+	return true;
+}
+
+static bool vcp_set_mute_server(struct bt_vcp *vcp, uint8_t mute)
+{
+	struct bt_vcp_db *vdb = vcp_get_vdb(vcp);
+	struct vol_state *vstate;
+
+	vcp->mute = mute;
+
+	if (!vdb) {
+		DBG(vcp, "error: VDB not available");
+		return false;
+	}
+
+	vstate = vdb_get_vstate(vdb);
+	if (!vstate) {
+		DBG(vcp, "error: VSTATE not available");
+		return false;
+	}
+
+	vstate->mute = mute;
+	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
+
+	gatt_db_attribute_notify(vdb->vcs->vs, (void *) vstate,
+			sizeof(struct vol_state), bt_vcp_get_att(vcp));
+	return true;
+}
+
+bool bt_vcp_set_mute(struct bt_vcp *vcp, uint8_t mute)
+{
+	if (vcp->client)
+		return vcp_set_mute_client(vcp, mute);
+	else
+		return vcp_set_mute_server(vcp, mute);
+}
+
+uint8_t bt_vcp_get_mute(struct bt_vcp *vcp)
+{
+	return vcp->mute;
+}
+
 static void vcp_voffset_state_notify(struct bt_vcp *vcp, uint16_t value_handle,
 				const uint8_t *value, uint16_t length,
 				void *user_data)
@@ -2320,6 +2405,7 @@ static void read_vol_state(struct bt_vcp *vcp, bool success, uint8_t att_ecode,
 
 	vcp->volume = vs->vol_set;
 	vcp->volume_counter = vs->counter;
+	vcp->mute = vs->mute;
 }
 
 static void read_vol_offset_state(struct bt_vcp *vcp, bool success,
