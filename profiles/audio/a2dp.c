@@ -2168,11 +2168,74 @@ static DBusMessage *set_configuration(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static void get_configuration_cb(struct avdtp *session, GSList *caps,
+				struct avdtp_error *err, void *user_data)
+{
+	DBusMessage *msg = user_data;
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	GSList *l;
+
+	if (err) {
+		reply = btd_error_failed(msg, "GetConfiguration rejected");
+		goto done;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+
+	for (l = caps; l; l = g_slist_next(l)) {
+		struct avdtp_service_capability *cap = l->data;
+		uint8_t *ptr = (uint8_t *) cap;
+		int i;
+
+		for (i = 0; i < cap->length + 2; i++)
+			dbus_message_iter_append_basic(&array,
+							DBUS_TYPE_BYTE,
+							&ptr[i]);
+	}
+
+	dbus_message_iter_close_container(&iter, &array);
+
+done:
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(msg);
+	g_slist_free_full(caps, g_free);
+}
+
+static DBusMessage *get_configuration(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct a2dp_remote_sep *rsep = data;
+	struct a2dp_channel *chan = rsep->chan;
+	int err;
+
+	if (chan->session == NULL)
+		return btd_error_not_available(msg);
+
+	err = avdtp_get_configuration(chan->session, rsep->sep,
+					get_configuration_cb,
+					dbus_message_ref(msg));
+	if (err < 0) {
+		dbus_message_unref(msg);
+		return btd_error_failed(msg, strerror(-err));
+	}
+
+	return NULL;
+}
+
 static const GDBusMethodTable sep_methods[] = {
 	{ GDBUS_ASYNC_METHOD("SetConfiguration",
 					GDBUS_ARGS({ "endpoint", "o" },
 						{ "properties", "a{sv}" } ),
 					NULL, set_configuration) },
+	{ GDBUS_ASYNC_METHOD("GetConfiguration",
+					NULL,
+					GDBUS_ARGS({ "configuration", "ay" }),
+					get_configuration) },
 	{ },
 };
 

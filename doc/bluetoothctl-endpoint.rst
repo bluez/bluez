@@ -154,6 +154,17 @@ Note:
 If the endpoint was registered by an audio server, it can't be configured from bluetoothctl.
 This must be done by the audio server as well.
 
+get-config
+----------
+
+Get Endpoint Configuration.
+
+:Usage: **> get-config <endpoint>**
+:Uses: **org.bluez.MediaEndpoint(5)** method **GetConfiguration**
+:<endpoint>: Path to the remote endpoint to query
+:Example Get configuration of remote endpoint:
+	| **> get-config /org/bluez/hci0/dev_00_11_22_33_44_55/sep1**
+
 presets
 -------
 

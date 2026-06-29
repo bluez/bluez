@@ -4571,6 +4571,60 @@ enter_cc:
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static void get_config_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+	DBusMessageIter iter, array;
+	uint8_t *data;
+	int len, i;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		bt_shell_printf("Failed to get configuration: %s\n",
+								error.name);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (!dbus_message_iter_init(message, &iter) ||
+			dbus_message_iter_get_arg_type(&iter) !=
+							DBUS_TYPE_ARRAY) {
+		bt_shell_printf("Invalid GetConfiguration reply\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &data, &len);
+
+	bt_shell_printf("Configuration (%d bytes):", len);
+
+	for (i = 0; i < len; i++)
+		bt_shell_printf(" %02x", data[i]);
+
+	bt_shell_printf("\n");
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_get_config_endpoint(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	proxy = g_dbus_proxy_lookup(endpoints, NULL, argv[1],
+						BLUEZ_MEDIA_ENDPOINT_INTERFACE);
+	if (!proxy) {
+		bt_shell_printf("Endpoint %s not found\n", argv[1]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "GetConfiguration", NULL,
+				get_config_reply, NULL, NULL) == FALSE) {
+		bt_shell_printf("Failed to call GetConfiguration\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
 static const struct bt_shell_menu endpoint_menu = {
 	.name = "endpoint",
 	.desc = "Media Endpoint Submenu",
@@ -4590,6 +4644,9 @@ static const struct bt_shell_menu endpoint_menu = {
 	{ "config",       "<endpoint> [local endpoint] [preset]",
 						cmd_config_endpoint,
 						"Configure Endpoint",
+						endpoint_generator },
+	{ "get-config",   "<endpoint>", cmd_get_config_endpoint,
+						"Get Endpoint Configuration",
 						endpoint_generator },
 	{ "presets",      "<endpoint>/<UUID> [codec[:company]] [preset] "
 						"[codec config] [metadata]",

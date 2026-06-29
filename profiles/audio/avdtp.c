@@ -348,6 +348,11 @@ struct discover_callback {
 	void *user_data;
 };
 
+struct getconf_callback {
+	avdtp_get_configuration_cb_t cb;
+	void *user_data;
+};
+
 struct avdtp_stream {
 	GIOChannel *io;
 	uint16_t imtu;
@@ -406,6 +411,7 @@ struct avdtp {
 	char *buf;
 
 	struct discover_callback *discover;
+	struct getconf_callback *getconf;
 	struct pending_req *req;
 
 	unsigned int dc_timer;
@@ -1093,6 +1099,24 @@ static void finalize_discovery(struct avdtp *session, int err)
 	session->discover = NULL;
 }
 
+static void finalize_getconf(struct avdtp *session, int err)
+{
+	struct getconf_callback *getconf = session->getconf;
+	struct avdtp_error avdtp_err;
+
+	if (!getconf)
+		return;
+
+	session->getconf = NULL;
+
+	avdtp_error_init(&avdtp_err, AVDTP_ERRNO, err);
+
+	if (getconf->cb)
+		getconf->cb(session, NULL, &avdtp_err, getconf->user_data);
+
+	g_free(getconf);
+}
+
 static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
@@ -1144,6 +1168,7 @@ static void avdtp_free(void *data)
 	g_slist_free_full(session->seps, sep_free);
 
 	g_free(session->buf);
+	g_free(session->getconf);
 
 	btd_device_unref(session->device);
 	g_free(session);
@@ -1162,6 +1187,7 @@ static void connection_lost(struct avdtp *session, int err)
 	session->streams = NULL;
 
 	finalize_discovery(session, err);
+	finalize_getconf(session, err);
 
 	avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
 
@@ -3013,6 +3039,20 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 				next->signal_id == AVDTP_GET_ALL_CAPABILITIES)))
 			finalize_discovery(session, 0);
 		return TRUE;
+	case AVDTP_GET_CONFIGURATION:
+		DBG("GET_CONFIGURATION request succeeded");
+		if (session->getconf) {
+			struct getconf_callback *cb = session->getconf;
+			GSList *caps;
+
+			session->getconf = NULL;
+			caps = caps_to_list(((struct getcap_resp *) buf)->caps,
+					size - sizeof(struct getcap_resp),
+					NULL, NULL, NULL);
+			cb->cb(session, caps, NULL, cb->user_data);
+			g_free(cb);
+		}
+		return TRUE;
 	}
 
 	/* The remaining commands require an existing stream so bail out
@@ -3119,6 +3159,19 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 			return FALSE;
 		error("GET_CAPABILITIES request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
+		return TRUE;
+	case AVDTP_GET_CONFIGURATION:
+		if (!seid_rej_to_err(buf, size, &err))
+			return FALSE;
+		error("GET_CONFIGURATION request rejected: %s (%d)",
+				avdtp_strerror(&err), err.err.error_code);
+		if (session->getconf) {
+			struct getconf_callback *cb = session->getconf;
+
+			session->getconf = NULL;
+			cb->cb(session, NULL, &err, cb->user_data);
+			g_free(cb);
+		}
 		return TRUE;
 	case AVDTP_OPEN:
 		if (!seid_rej_to_err(buf, size, &err))
@@ -3541,18 +3594,35 @@ unsigned int avdtp_stream_add_cb(struct avdtp *session,
 	return stream_cb->id;
 }
 
-int avdtp_get_configuration(struct avdtp *session, struct avdtp_stream *stream)
+int avdtp_get_configuration(struct avdtp *session,
+					struct avdtp_remote_sep *rsep,
+					avdtp_get_configuration_cb_t cb,
+					void *user_data)
 {
 	struct seid_req req;
+	int err;
 
 	if (session->state < AVDTP_SESSION_STATE_CONNECTED)
 		return -EINVAL;
 
-	memset(&req, 0, sizeof(req));
-	req.acp_seid = stream->rseid;
+	if (session->getconf)
+		return -EBUSY;
 
-	return send_request(session, FALSE, stream, AVDTP_GET_CONFIGURATION,
+	memset(&req, 0, sizeof(req));
+	req.acp_seid = rsep->seid;
+
+	err = send_request(session, FALSE, NULL, AVDTP_GET_CONFIGURATION,
 							&req, sizeof(req));
+	if (err < 0)
+		return err;
+
+	if (cb) {
+		session->getconf = g_new0(struct getconf_callback, 1);
+		session->getconf->cb = cb;
+		session->getconf->user_data = user_data;
+	}
+
+	return 0;
 }
 
 static void copy_capabilities(gpointer data, gpointer user_data)
