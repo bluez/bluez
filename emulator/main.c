@@ -80,6 +80,13 @@ static void vhci_debug(const char *str, void *user_data)
 	printf("vhci%u: %s\n", i, str);
 }
 
+static void server_debug(const char *str, void *user_data)
+{
+	const char *name = user_data;
+
+	printf("%s: %s\n", name, str);
+}
+
 int main(int argc, char *argv[])
 {
 	struct server *server1;
@@ -231,6 +238,15 @@ int main(int argc, char *argv[])
 		server5 = server_open_unix(SERVER_TYPE_MONITOR, path);
 		if (!server5)
 			fprintf(stderr, "Failed to open monitor server\n");
+
+		if (debug_enabled) {
+			server_set_debug(server1, server_debug, "bredrle",
+									NULL);
+			server_set_debug(server2, server_debug, "bredr", NULL);
+			server_set_debug(server3, server_debug, "amp", NULL);
+			server_set_debug(server4, server_debug, "le", NULL);
+			server_set_debug(server5, server_debug, "mon", NULL);
+		}
 	}
 
 	if (tcp_port) {
