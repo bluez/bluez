@@ -1939,6 +1939,9 @@ static struct bt_vcp_db *vcp_get_db(struct gatt_db *db)
 
 void bt_vcp_add_db(struct gatt_db *db)
 {
+	if (!db || queue_find(vcp_db, vcp_db_match, db))
+		return;
+
 	vcp_db_new(db);
 }
 
