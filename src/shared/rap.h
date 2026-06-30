@@ -206,7 +206,6 @@ void bt_rap_hci_cs_subevent_result_cont_callback(uint16_t length,
 						  const void *param,
 						  void *user_data);
 
-void *bt_rap_attach_hci_v2(struct bt_rap *rap, struct bt_hci *hci);
 void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci);
 void bt_rap_detach_hci(struct bt_rap *rap, void *hci_sm);
 
