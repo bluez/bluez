@@ -206,9 +206,7 @@ void bt_rap_hci_cs_subevent_result_cont_callback(uint16_t length,
 						  const void *param,
 						  void *user_data);
 
-void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
-			uint8_t role, uint8_t cs_sync_ant_sel,
-			int8_t max_tx_power);
+void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci);
 void bt_rap_detach_hci(struct bt_rap *rap, void *hci_sm);
 
 /* Connection handle mapping functions */
