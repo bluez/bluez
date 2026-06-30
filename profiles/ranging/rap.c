@@ -383,11 +383,8 @@ static int rap_accept(struct btd_service *service)
 
 	/* per-device HCI state machine */
 	if (!data->hci_sm) {
-		data->hci_sm = bt_rap_attach_hci(data->rap,
-					data->adapter_data->hci,
-					btd_opts.defaults.bcs.role,
-					btd_opts.defaults.bcs.cs_sync_ant_sel,
-					btd_opts.defaults.bcs.max_tx_power);
+		data->hci_sm = bt_rap_attach_hci_v2(data->rap,
+					data->adapter_data->hci);
 		if (!data->hci_sm) {
 			error("Failed to attach HCI state machine for device");
 			rap_adapter_data_unref(data->adapter_data);
