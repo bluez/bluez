@@ -169,9 +169,7 @@ static void remove_conn_mapping(struct cs_state_machine *sm, uint16_t handle)
 
 /*  State Machine Functions */
 static void cs_state_machine_init(struct cs_state_machine *sm,
-				struct bt_rap *rap, struct bt_hci *hci,
-				uint8_t role, uint8_t cs_sync_ant_sel,
-				int8_t max_tx_power)
+				struct bt_rap *rap, struct bt_hci *hci)
 {
 	if (!sm)
 		return;
@@ -183,16 +181,18 @@ static void cs_state_machine_init(struct cs_state_machine *sm,
 	sm->procedure_active = false;
 	sm->conn_mappings = queue_new();
 
-	/* Store role_enable for HCI commands (1, 2, or 3 from config) */
-	sm->role_enable = role;
+	/* Defaults — caller
+	 * should follow up with bt_rap_set_default_settings_params()
+	 */
+	sm->role_enable = 0x03;
 
 	/* Initialize per-instance CS options
 	 * Note: cs_opt.role will be overwritten with actual role (0x00 or 0x01)
 	 * from config complete event, but role_enable preserves the HCI value
 	 */
-	sm->cs_opt.role = role;
-	sm->cs_opt.cs_sync_ant_sel = cs_sync_ant_sel;
-	sm->cs_opt.max_tx_power = max_tx_power;
+	sm->cs_opt.role = 0x03;
+	sm->cs_opt.cs_sync_ant_sel = 0xFF;
+	sm->cs_opt.max_tx_power = 0x14;
 	sm->cs_opt.rtt_type = 0;  /* Will be set from config complete event */
 }
 
@@ -1533,9 +1533,7 @@ static void unregister_event_id(void *data, void *user_data)
 	bt_hci_unregister_subevent(hci, PTR_TO_UINT(data));
 }
 
-void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
-			uint8_t role, uint8_t cs_sync_ant_sel,
-			int8_t max_tx_power)
+void *bt_rap_attach_hci_v2(struct bt_rap *rap, struct bt_hci *hci)
 {
 	struct cs_state_machine *sm;
 	unsigned int id;
@@ -1552,9 +1550,7 @@ void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
 		return NULL;
 	}
 
-	/* Initialize state machine with provided CS options */
-	cs_state_machine_init(sm, rap, hci, role, cs_sync_ant_sel,
-				max_tx_power);
+	cs_state_machine_init(sm, rap, hci);
 
 	sm->event_ids = queue_new();
 	if (!sm->event_ids) {
@@ -1620,9 +1616,6 @@ void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
 		goto fail;
 
 	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
-
-	DBG("CS options: role=%u, cs_sync_ant_sel=%u, max_tx_power=%d",
-		role, cs_sync_ant_sel, max_tx_power);
 
 	/* place holder, need DBus API to be called */
 	bt_rap_read_local_supported_capabilities(sm);
