@@ -1533,7 +1533,7 @@ static void unregister_event_id(void *data, void *user_data)
 	bt_hci_unregister_subevent(hci, PTR_TO_UINT(data));
 }
 
-void *bt_rap_attach_hci_v2(struct bt_rap *rap, struct bt_hci *hci)
+void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci)
 {
 	struct cs_state_machine *sm;
 	unsigned int id;
