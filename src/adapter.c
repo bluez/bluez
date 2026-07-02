@@ -7612,11 +7612,15 @@ struct agent *adapter_get_agent(struct btd_adapter *adapter)
 static void adapter_remove_connection(struct btd_adapter *adapter,
 						struct btd_device *device,
 						uint8_t bdaddr_type,
-						uint8_t reason)
+						uint8_t reason,
+						bool *removed)
 {
 	bool remove_device = false;
 
 	DBG("");
+
+	if (removed)
+		*removed = false;
 
 	if (!g_slist_find(adapter->connections, device)) {
 		btd_error(adapter->dev_id, "No matching connection for device");
@@ -7638,6 +7642,9 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 
 		DBG("Removing temporary device %s", path);
 		btd_adapter_remove_device(adapter, device);
+
+		if (removed)
+			*removed = true;
 	}
 }
 
@@ -7665,10 +7672,10 @@ static void adapter_stop(struct btd_adapter *adapter)
 		uint8_t addr_type = btd_device_get_bdaddr_type(device);
 
 		adapter_remove_connection(adapter, device, BDADDR_BREDR,
-						MGMT_DEV_DISCONN_UNKNOWN);
+						MGMT_DEV_DISCONN_UNKNOWN, NULL);
 		if (addr_type != BDADDR_BREDR)
 			adapter_remove_connection(adapter, device, addr_type,
-						MGMT_DEV_DISCONN_UNKNOWN);
+						MGMT_DEV_DISCONN_UNKNOWN, NULL);
 	}
 
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
@@ -8618,7 +8625,17 @@ static void dev_disconnected(struct btd_adapter *adapter,
 
 	device = btd_adapter_find_device(adapter, &addr->bdaddr, addr->type);
 	if (device) {
-		adapter_remove_connection(adapter, device, addr->type, reason);
+		bool removed;
+
+		adapter_remove_connection(adapter, device, addr->type, reason,
+						&removed);
+		/* No need to continue if device was removed from the adapter,
+		 * as it will be freed and the disconnect notify will be called
+		 * in the device free callback.
+		 */
+		if (removed)
+			return;
+
 		disconnect_notify(device, reason);
 	}
 
