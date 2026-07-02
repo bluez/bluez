@@ -29,6 +29,7 @@
 #include "src/shared/gatt-client.h"
 #include "src/shared/bap.h"
 #include "src/shared/ascs.h"
+#include "src/shared/lc3.h"
 #include "src/shared/bap-debug.h"
 
 /* Maximum number of ASE(s) */
@@ -3157,6 +3158,7 @@ static uint8_t ep_config(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 	struct iovec cc;
 	const struct queue_entry *e;
 	struct bt_bap_codec codec;
+	uint8_t *ltv;
 
 	DBG(bap, "ep %p id 0x%02x dir 0x%02x", ep, ep->id, ep->dir);
 
@@ -3190,6 +3192,19 @@ static uint8_t ep_config(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 		return 0;
 	}
 
+	ltv = cc.iov_base;
+
+	if (req->codec.id == LC3_ID && cc.iov_len == 3 &&
+			ltv[0] == 0x02 &&
+			ltv[1] == LC3_CONFIG_DURATION &&
+			ltv[2] != LC3_CONFIG_DURATION_7_5 &&
+			ltv[2] != LC3_CONFIG_DURATION_10) {
+		ascs_ase_rsp_add(rsp, req->ase,
+				BT_ASCS_RSP_CONF_INVALID,
+				BT_ASCS_REASON_CODEC_DATA);
+		return 0;
+	}
+
 	switch (ep->dir) {
 	case BT_BAP_SINK:
 		e = queue_get_entries(bap->ldb->sinks);
@@ -3206,6 +3221,13 @@ static uint8_t ep_config(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 	codec.id = req->codec.id;
 	codec.cid = le16_to_cpu(req->codec.cid);
 	codec.vid = le16_to_cpu(req->codec.vid);
+
+	if (codec.id != 0xff && (codec.cid || codec.vid)) {
+		ascs_ase_rsp_add(rsp, req->ase,
+				BT_ASCS_RSP_CONF_INVALID,
+				BT_ASCS_REASON_CODEC);
+		return 0;
+	}
 
 	for (; e; e = e->next) {
 		struct bt_bap_pac *pac = e->data;
