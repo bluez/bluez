@@ -1346,6 +1346,7 @@ done:
 
 int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec)
 {
+	char *svc_uuid;
 	int ret;
 
 	/*
@@ -1356,6 +1357,18 @@ int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec)
 		return -ENOTSUP;
 
 	DBG("%s", adapter->path);
+
+	svc_uuid = bt_uuid2string(&rec->svclass);
+	if (!svc_uuid)
+		return -ENOMEM;
+
+	if (!btd_adapter_is_uuid_allowed(adapter, svc_uuid)) {
+		DBG("Service %s blocked by admin allowlist", svc_uuid);
+		free(svc_uuid);
+		return -EPERM;
+	}
+
+	free(svc_uuid);
 
 	ret = add_record_to_server(&adapter->bdaddr, rec);
 	if (ret < 0)
@@ -5201,6 +5214,70 @@ static void load_drivers(struct btd_adapter *adapter)
 		probe_driver(adapter, l->data);
 }
 
+struct profile_allowlist_map {
+	const char *name;
+	const char *uuid;
+	bool use_remote_uuid;
+};
+
+/*
+ * Adapter server policy UUID defaults to local_uuid when available.
+ * Profiles listed below are exceptions where adapter-side server behavior
+ * needs a different UUID source (e.g. A2DP source/sink role inversion) or
+ * where server policy is derived from the profile remote_uuid.
+ */
+static const struct profile_allowlist_map profile_allowlist_map[] = {
+	{ "a2dp-source", A2DP_SINK_UUID, false },
+	{ "a2dp-sink", A2DP_SOURCE_UUID, false },
+	{ "audio-avrcp-target", NULL, true },
+	{ "avrcp-controller", NULL, true },
+	{ "vcp", NULL, true },
+	{ "micp", NULL, true },
+	{ "ccp", NULL, true },
+	{ "gmap", NULL, true },
+	{ "tmap", NULL, true },
+	{ "bass", NULL, true },
+	{ "bap", NULL, true },
+	{ "mcp-gmcs", NULL, true },
+};
+
+static const char *profile_allowlist_uuid(const struct btd_profile *profile)
+{
+	size_t i;
+
+	if (profile->local_uuid)
+		return profile->local_uuid;
+
+	if (!profile->name)
+		return NULL;
+
+	for (i = 0; i < ARRAY_SIZE(profile_allowlist_map); i++) {
+		const struct profile_allowlist_map *entry =
+						&profile_allowlist_map[i];
+
+		if (strcmp(profile->name, entry->name))
+			continue;
+
+		if (entry->use_remote_uuid)
+			return profile->remote_uuid;
+
+		return entry->uuid;
+	}
+
+	return NULL;
+}
+
+static bool adapter_profile_is_allowed(struct btd_adapter *adapter,
+					const struct btd_profile *profile)
+{
+	const char *uuid = profile_allowlist_uuid(profile);
+
+	if (!uuid)
+		return true;
+
+	return btd_adapter_is_uuid_allowed(adapter, uuid);
+}
+
 static void probe_profile(struct btd_profile *profile, void *data)
 {
 	struct btd_adapter *adapter = data;
@@ -5208,6 +5285,11 @@ static void probe_profile(struct btd_profile *profile, void *data)
 
 	if (profile->adapter_probe == NULL)
 		return;
+
+	if (!adapter_profile_is_allowed(adapter, profile)) {
+		DBG("%s blocked by admin allowlist", profile->name);
+		return;
+	}
 
 	err = profile->adapter_probe(profile, adapter);
 	if (err < 0) {
@@ -5217,6 +5299,63 @@ static void probe_profile(struct btd_profile *profile, void *data)
 	}
 
 	adapter->profiles = g_slist_prepend(adapter->profiles, profile);
+}
+
+static void reapply_profile(struct btd_profile *profile, void *data)
+{
+	struct btd_adapter *adapter = data;
+	bool active;
+
+	if (profile->adapter_probe == NULL)
+		return;
+
+	active = g_slist_find(adapter->profiles, profile) != NULL;
+
+	if (adapter_profile_is_allowed(adapter, profile)) {
+		if (!active)
+			probe_profile(profile, adapter);
+		return;
+	}
+
+	if (!active)
+		return;
+
+	adapter->profiles = g_slist_remove(adapter->profiles, profile);
+
+	if (profile->adapter_remove)
+		profile->adapter_remove(profile, adapter);
+}
+
+static void reapply_adapter_services(struct btd_adapter *adapter)
+{
+	sdp_list_t *l;
+
+	for (l = adapter->services; l != NULL;) {
+		sdp_list_t *next = l->next;
+		sdp_record_t *rec = l->data;
+		char *svc_uuid;
+
+		svc_uuid = bt_uuid2string(&rec->svclass);
+		if (!svc_uuid) {
+			l = next;
+			continue;
+		}
+
+		if (!btd_adapter_is_uuid_allowed(adapter, svc_uuid))
+			adapter_service_remove(adapter, rec->handle);
+
+		free(svc_uuid);
+		l = next;
+	}
+}
+
+void btd_adapter_reapply_allowed_uuids(struct btd_adapter *adapter)
+{
+	if (!adapter || !adapter->initialized)
+		return;
+
+	btd_profile_foreach(reapply_profile, adapter);
+	reapply_adapter_services(adapter);
 }
 
 void adapter_add_profile(struct btd_adapter *adapter, gpointer p)
