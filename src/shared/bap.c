@@ -3316,6 +3316,32 @@ static uint8_t ep_qos(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 		return 0;
 	}
 
+	if (ep->stream->lpac->codec.id == LC3_ID &&
+			qos->ucast.io_qos.interval < 0x0000ff) {
+		ascs_ase_rsp_add(rsp, ep->id,
+				BT_ASCS_RSP_CONF_INVALID,
+				BT_ASCS_REASON_INTERVAL);
+		return 0;
+	}
+
+	if (qos->ucast.framing != BT_ASCS_QOS_FRAMING_UNFRAMED &&
+			qos->ucast.framing != BT_ASCS_QOS_FRAMING_FRAMED) {
+		ascs_ase_rsp_add(rsp, ep->id,
+				BT_ASCS_RSP_CONF_INVALID,
+				BT_ASCS_REASON_FRAMING);
+		return 0;
+	}
+
+	if (!qos->ucast.io_qos.phys ||
+			(qos->ucast.io_qos.phys & ~(BT_BAP_CONFIG_PHY_1M |
+					BT_BAP_CONFIG_PHY_2M |
+					BT_BAP_CONFIG_PHY_CODEC))) {
+		ascs_ase_rsp_add(rsp, ep->id,
+				BT_ASCS_RSP_CONF_INVALID,
+				BT_ASCS_REASON_PHY);
+		return 0;
+	}
+
 	return stream_qos(ep->stream, qos, rsp);
 }
 
