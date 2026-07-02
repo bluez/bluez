@@ -881,6 +881,25 @@ static struct adapter *find_ctrl_by_address(GList *source, const char *address)
 	return NULL;
 }
 
+GDBusProxy *bluetoothctl_get_default_controller(void)
+{
+	if (!default_ctrl)
+		return NULL;
+
+	return default_ctrl->proxy;
+}
+
+GDBusProxy *bluetoothctl_find_controller(const char *address)
+{
+	struct adapter *adapter;
+
+	adapter = find_ctrl_by_address(ctrl_list, address);
+	if (!adapter)
+		return NULL;
+
+	return adapter->proxy;
+}
+
 static GDBusProxy *find_proxies_by_iface(GList *source, const char *path,
 							const char *iface)
 {
@@ -2788,7 +2807,7 @@ static char *generic_generator(const char *text, int state,
 	return NULL;
 }
 
-static char *ctrl_generator(const char *text, int state)
+char *bluetoothctl_controller_generator(const char *text, int state)
 {
 	static int index = 0;
 	static int len = 0;
@@ -3876,9 +3895,9 @@ static const struct bt_shell_menu main_menu = {
 	.entries = {
 	{ "list",         NULL,       cmd_list, "List available controllers" },
 	{ "show",         "[ctrl]",   cmd_show, "Controller information",
-							ctrl_generator },
+					bluetoothctl_controller_generator },
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
-							ctrl_generator },
+					bluetoothctl_controller_generator },
 	{ "devices",      "[Paired/Bonded/Trusted/Connected]", cmd_devices,
 					"List available devices, with an "
 					"optional property as the filter" },
