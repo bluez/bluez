@@ -1,3 +1,15 @@
+ver 5.87:
+	Fix issue with GATT database and out of sync errors.
+	Fix issue with BASS and setting a stream to idle.
+	Fix issue with BASS and rescanning broadcast sources.
+	Fix issue with BAP and broadcast sink cleanup.
+	Fix issue with BAP and endpoint configuration.
+	Fix issue with BAP and ASE control point properties.
+	Fix issue with BAP and BIG/BIS receiver QoS structures.
+	Fix issue with AVRCP and tracking of TG and CT events.
+	Fix issue with PBAP and Database Identifier length.
+	Fix issue with MCP and ATT disconnect events.
+
 ver 5.86:
 	Fix issue with number of retries on authentication failures.
 	Fix issue with G.722 @ 16 kHz codec ID value reported by transport.
