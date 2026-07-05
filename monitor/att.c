@@ -1815,7 +1815,7 @@ static const struct ase_cmd {
 
 static const struct ase_cmd *ase_get_cmd(uint8_t op)
 {
-	if (op > ARRAY_SIZE(ase_cmd_table))
+	if (op >= ARRAY_SIZE(ase_cmd_table))
 		return NULL;
 
 	return &ase_cmd_table[op];
@@ -2264,7 +2264,7 @@ static const struct vcs_cmd {
 
 static const struct vcs_cmd *vcs_get_cmd(uint8_t op)
 {
-	if (op > ARRAY_SIZE(vcs_cmd_table))
+	if (op >= ARRAY_SIZE(vcs_cmd_table))
 		return NULL;
 
 	return &vcs_cmd_table[op];
@@ -3907,7 +3907,7 @@ static const struct bcast_audio_scan_cp_cmd {
 static const struct bcast_audio_scan_cp_cmd *
 bcast_audio_scan_cp_get_cmd(uint8_t op)
 {
-	if (op > ARRAY_SIZE(bcast_audio_scan_cp_cmd_table))
+	if (op >= ARRAY_SIZE(bcast_audio_scan_cp_cmd_table))
 		return NULL;
 
 	return &bcast_audio_scan_cp_cmd_table[op];
@@ -4821,7 +4821,7 @@ static const struct ras_cmd {
 
 static const struct ras_cmd *ras_get_cmd(uint8_t op)
 {
-	if (op > ARRAY_SIZE(ras_cmd_table))
+	if (op >= ARRAY_SIZE(ras_cmd_table))
 		return NULL;
 
 	return &ras_cmd_table[op];
