@@ -21,6 +21,8 @@
 #include "lib/bluetooth/bluetooth.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
+#include "src/shared/timeout.h"
+#include "src/shared/cs-types.h"
 #include "src/shared/rap.h"
 #include "src/shared/att.h"
 #include "src/log.h"
@@ -60,19 +62,28 @@ _Static_assert(ARRAY_SIZE(state_names) == CS_STATE_UNSPECIFIED + 1,
 typedef void (*cs_callback_t)(uint16_t length,
 			const void *param, void *user_data);
 
-/* State Machine Context */
+typedef void (*cs_timeout_func_t)(void *user_data);
+
 struct cs_state_machine {
 	enum cs_state current_state;
 	enum cs_state old_state;
 	struct bt_hci *hci;
 	struct bt_rap *rap;
 	struct queue *event_ids;
+	unsigned int measurement_timeout_id;
 	bool initiator;
 	bool procedure_active;
 	struct bt_rap_hci_cs_options cs_opt;  /* Per-instance CS options */
 	uint8_t role_enable;  /* Role value for HCI commands (1, 2, or 3) */
 	struct queue *conn_mappings;  /* Per-instance connection mappings */
+	uint16_t active_conn_handle;  /* current measurement handle */
 	struct timespec last_chan_class_time;  /* For 1-second rate limit */
+	struct bt_rap_le_cs_config   cs_config;
+	struct bt_rap_le_cs_frequency cs_frequency;
+	cs_timeout_func_t timeout_func;
+	void *timeout_data;
+	void (*proc_active_func)(bool active, void *user_data);
+	void *proc_active_data;
 };
 
 /* Connection Handle Mapping */
@@ -85,7 +96,83 @@ struct rap_conn_mapping {
 	struct bt_rap *rap;
 };
 
-/* Connection Mapping Helper Functions */
+bool bt_rap_set_cs_config_params(void *hci_sm,
+				 const struct bt_rap_le_cs_config *config)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !config)
+		return false;
+
+	sm->cs_config = *config;
+	return true;
+}
+
+bool bt_rap_set_cs_freq_params(void *hci_sm,
+			       const struct bt_rap_le_cs_frequency *frequency)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !frequency)
+		return false;
+
+	sm->cs_frequency = *frequency;
+	return true;
+}
+
+bool bt_rap_set_default_settings_params(void *hci_sm,
+			const struct bt_rap_le_cs_default_settings *settings)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !settings)
+		return false;
+
+	sm->role_enable            = settings->role;
+	sm->cs_opt.role            = settings->role;
+	sm->cs_opt.cs_sync_ant_sel = settings->cs_sync_ant_sel;
+	sm->cs_opt.max_tx_power    = settings->max_tx_power;
+	return true;
+}
+
+bool bt_rap_get_cs_config_params(void *hci_sm,
+				 struct bt_rap_le_cs_config *config)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !config)
+		return false;
+
+	*config = sm->cs_config;
+	return true;
+}
+
+bool bt_rap_get_cs_freq_params(void *hci_sm,
+			       struct bt_rap_le_cs_frequency *frequency)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !frequency)
+		return false;
+
+	*frequency = sm->cs_frequency;
+	return true;
+}
+
+bool bt_rap_get_default_settings_params(void *hci_sm,
+			struct bt_rap_le_cs_default_settings *settings)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !settings)
+		return false;
+
+	settings->role            = sm->cs_opt.role;
+	settings->cs_sync_ant_sel = sm->cs_opt.cs_sync_ant_sel;
+	settings->max_tx_power    = sm->cs_opt.max_tx_power;
+	return true;
+}
+
 static void mapping_free(void *data)
 {
 	struct rap_conn_mapping *mapping = data;
@@ -173,6 +260,12 @@ static void cs_state_machine_init(struct cs_state_machine *sm,
 				uint8_t role, uint8_t cs_sync_ant_sel,
 				int8_t max_tx_power)
 {
+	static const uint8_t ch_map[10] = {
+		0xFC, 0xFF, 0x7F, 0xFC, 0xFF,
+		0xFF, 0xFF, 0xFF, 0xFF, 0x1F
+	};
+	uint8_t i;
+
 	if (!sm)
 		return;
 
@@ -185,15 +278,50 @@ static void cs_state_machine_init(struct cs_state_machine *sm,
 
 	/* Store role_enable for HCI commands (1, 2, or 3 from config) */
 	sm->role_enable = role;
-
-	/* Initialize per-instance CS options
-	 * Note: cs_opt.role will be overwritten with actual role (0x00 or 0x01)
-	 * from config complete event, but role_enable preserves the HCI value
-	 */
-	sm->cs_opt.role = role;
+	sm->cs_opt.role            = role;
 	sm->cs_opt.cs_sync_ant_sel = cs_sync_ant_sel;
-	sm->cs_opt.max_tx_power = max_tx_power;
-	sm->cs_opt.rtt_type = 0;  /* Will be set from config complete event */
+	sm->cs_opt.max_tx_power    = max_tx_power;
+	sm->cs_opt.rtt_type        = 0;
+
+	sm->cs_config.num_configs = BT_RAP_CS_MAX_CONFIGS;
+	for (i = 0; i < BT_RAP_CS_MAX_CONFIGS; i++) {
+		sm->cs_config.config_id[i]              = i;
+		sm->cs_config.main_mode_type[i]         = 0x01;
+		sm->cs_config.sub_mode_type[i]          = 0xFF;
+		sm->cs_config.main_mode_min_steps[i]    = 0x02;
+		sm->cs_config.main_mode_max_steps[i]    = 0x03;
+		sm->cs_config.main_mode_repetition[i]   = 0x01;
+		sm->cs_config.mode0_steps[i]            = 0x02;
+		sm->cs_config.role[i]                   = 0x00;
+		sm->cs_config.rtt_types[i]              = 0x00;
+		sm->cs_config.cs_sync_phy[i]            = 0x01;
+		memcpy(sm->cs_config.channel_map[i], ch_map, 10);
+		sm->cs_config.channel_map_repetition[i] = 0x01;
+		sm->cs_config.channel_selection_type[i] = 0x00;
+		sm->cs_config.channel_shape[i]          = 0x00;
+		sm->cs_config.channel_jump[i]           = 0x02;
+		sm->cs_config.companion_signal_enable[i] = 0x00;
+	}
+
+	sm->cs_frequency.num_durations = BT_RAP_CS_MAX_FREQ_SETS;
+	for (i = 0; i < BT_RAP_CS_MAX_FREQ_SETS; i++) {
+		sm->cs_frequency.max_procedure_duration[i]        = 0x0640;
+		sm->cs_frequency.min_period_between_procedures[i] = 0x001E;
+		sm->cs_frequency.max_period_between_procedures[i] = 0x0096;
+		sm->cs_frequency.max_procedure_count[i]           = 0x0000;
+		sm->cs_frequency.min_sub_event_len[i][0]          = 0x00;
+		sm->cs_frequency.min_sub_event_len[i][1]          = 0x20;
+		sm->cs_frequency.min_sub_event_len[i][2]          = 0x00;
+		sm->cs_frequency.max_sub_event_len[i][0]          = 0x03;
+		sm->cs_frequency.max_sub_event_len[i][1]          = 0x20;
+		sm->cs_frequency.max_sub_event_len[i][2]          = 0x00;
+		sm->cs_frequency.tone_antenna_config_selection[i] = 0x07;
+		sm->cs_frequency.phy[i]                           = 0x01;
+		sm->cs_frequency.tx_power_delta[i]                = 0x80;
+		sm->cs_frequency.preferred_peer_antenna[i]        = 0x03;
+		sm->cs_frequency.snr_control_initiator[i]         = 0xFF;
+		sm->cs_frequency.snr_control_reflector[i]         = 0xFF;
+	}
 }
 
 /* State Transition Logic */
@@ -228,10 +356,17 @@ static enum cs_state cs_get_current_state(struct cs_state_machine *sm)
 
 static bool is_initiator_role(const struct cs_state_machine *sm)
 {
-	return sm->role_enable == 0x01 || sm->role_enable == 0x03;
+	return sm->role_enable == 0x01;
 }
 
-/* Helper function to send read remote capabilities for all connections */
+/* For role_enable=0x03 (Both), Central acts as Initiator and Peripheral as
+ * Reflector — the link layer topology determines the CS role assignment.
+ */
+static bool is_both_role(const struct cs_state_machine *sm)
+{
+	return sm->role_enable == 0x03;
+}
+
 static bool bt_rap_read_remote_supported_capabilities(void *hci_sm,
 		uint16_t handle)
 {
@@ -260,20 +395,6 @@ static bool bt_rap_read_remote_supported_capabilities(void *hci_sm,
 
 	DBG("Read Remote Capabilities command sent successfully");
 	return true;
-}
-
-/* Helper function to send read remote capabilities for all connections */
-static void send_read_remote_cap_for_mapping(void *data, void *user_data)
-{
-	struct rap_conn_mapping *mapping = data;
-	struct cs_state_machine *sm = user_data;
-
-	if (!mapping || !sm)
-		return;
-
-	DBG("Sending read remote capabilities for handle 0x%04X",
-		mapping->handle);
-	bt_rap_read_remote_supported_capabilities(sm, mapping->handle);
 }
 
 /* HCI Event Callbacks */
@@ -324,12 +445,9 @@ static void rap_rd_loc_supp_cap_done_cb(const void *data, uint8_t size,
 	/* Transition to INIT state before reading remote capabilities */
 	cs_set_state(sm, CS_STATE_INIT);
 
-	/* Send read remote capabilities for all connected devices */
-	if (sm->conn_mappings) {
-		DBG("Sending read remote capabilities for all connections");
-		queue_foreach(sm->conn_mappings,
-				send_read_remote_cap_for_mapping, sm);
-	}
+	DBG("Sending read remote capabilities for handle 0x%04X",
+		sm->active_conn_handle);
+	bt_rap_read_remote_supported_capabilities(sm, sm->active_conn_handle);
 }
 
 static void rap_send_hci_cs_create_config_command(struct cs_state_machine *sm,
@@ -337,11 +455,6 @@ static void rap_send_hci_cs_create_config_command(struct cs_state_machine *sm,
 {
 	struct bt_hci_cmd_le_cs_create_config cmd;
 	unsigned int status;
-
-	uint8_t channel_map[10] = {
-		0xFC, 0xFF, 0x7F, 0xFC, 0xFF,
-		0xFF, 0xFF, 0xFF, 0xFF, 0x1F
-	};
 
 	if (!sm || !sm->hci) {
 		error("CS Create Config: sm or hci is null");
@@ -353,22 +466,22 @@ static void rap_send_hci_cs_create_config_command(struct cs_state_machine *sm,
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.handle = cpu_to_le16(handle);
 	cmd.create_context = 1;
-	/* Default values, will change to pick user given values later */
-	cmd.config_id              = 0x00;
-	cmd.main_mode_type         = 0x01;
-	cmd.sub_mode_type          = 0xFF;
-	cmd.min_main_mode_steps    = 0x02;
-	cmd.max_main_mode_steps    = 0x03;
-	cmd.main_mode_repetition   = 0x01;
-	cmd.mode_0_steps           = 0x02;
-	cmd.role                   = 0x00;
-	cmd.rtt_type               = 0x00;
-	cmd.cs_sync_phy            = 0x01;
-	memcpy(cmd.channel_map, channel_map, 10);
-	cmd.channel_map_repetition = 0x01;
-	cmd.channel_selection_type = 0x00;
-	cmd.ch3c_shape             = 0x00;
-	cmd.ch3c_jump              = 0x02;
+
+	cmd.config_id              = sm->cs_config.config_id[0];
+	cmd.main_mode_type         = sm->cs_config.main_mode_type[0];
+	cmd.sub_mode_type          = sm->cs_config.sub_mode_type[0];
+	cmd.min_main_mode_steps    = sm->cs_config.main_mode_min_steps[0];
+	cmd.max_main_mode_steps    = sm->cs_config.main_mode_max_steps[0];
+	cmd.main_mode_repetition   = sm->cs_config.main_mode_repetition[0];
+	cmd.mode_0_steps           = sm->cs_config.mode0_steps[0];
+	cmd.role                   = sm->cs_config.role[0];
+	cmd.rtt_type               = sm->cs_config.rtt_types[0];
+	cmd.cs_sync_phy            = sm->cs_config.cs_sync_phy[0];
+	memcpy(cmd.channel_map, sm->cs_config.channel_map[0], 10);
+	cmd.channel_map_repetition = sm->cs_config.channel_map_repetition[0];
+	cmd.channel_selection_type = sm->cs_config.channel_selection_type[0];
+	cmd.ch3c_shape             = sm->cs_config.channel_shape[0];
+	cmd.ch3c_jump              = sm->cs_config.channel_jump[0];
 	cmd.reserved               = 0x00;
 
 	status = bt_hci_send(sm->hci, BT_HCI_CMD_LE_CS_CREATE_CONFIG,
@@ -388,6 +501,7 @@ static void rap_def_settings_done_cb(const void *data, uint8_t size,
 {
 	const struct bt_hci_rsp_le_cs_set_def_settings *rp;
 	struct cs_state_machine *sm = user_data;
+	struct rap_conn_mapping *m;
 
 	if (!sm || !data || size < sizeof(*rp))
 		return;
@@ -403,14 +517,24 @@ static void rap_def_settings_done_cb(const void *data, uint8_t size,
 	}
 
 	if (rp->status == 0) {
-		/* Success - proceed to configuration */
 		cs_set_state(sm, CS_STATE_WAIT_CONFIG_CMPLT);
 
-		/* If role is initiator, send CS Create Config command */
-		if (is_initiator_role(sm))
+		/* Send CS Create Config if we are (or will act as) Initiator.
+		 * For role_enable=Both, Central acts as Initiator.
+		 */
+		if (is_initiator_role(sm)) {
 			rap_send_hci_cs_create_config_command(sm, rp->handle);
-		else
+		} else if (is_both_role(sm)) {
+			m = find_mapping_by_handle(sm, rp->handle);
+
+			if (m && m->is_central)
+				rap_send_hci_cs_create_config_command(sm,
+								rp->handle);
+			else
+				DBG("Both role: Wait for CS Config Cmpl");
+		} else {
 			DBG("Reflector role: Waiting for CS Config Completed");
+		}
 	} else {
 		/* Error - transition to stopped */
 		error("CS Set default setting failed with status 0x%02X",
@@ -434,7 +558,7 @@ static void rap_send_hci_cs_remove_config_command(struct cs_state_machine *sm,
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.handle = cpu_to_le16(handle);
-	cmd.config_id = 0x00;  /* Default config ID */
+	cmd.config_id = sm->cs_config.config_id[0];
 
 	status = bt_hci_send(sm->hci, BT_HCI_CMD_LE_CS_REMOVE_CONFIG,
 				&cmd, sizeof(cmd), NULL, sm, NULL);
@@ -481,13 +605,6 @@ static bool rap_send_hci_cs_set_procedure_parameters(
 {
 	struct bt_hci_cmd_le_cs_set_proc_params cmd;
 	unsigned int status;
-	uint8_t min_sub_event_len[3] = {
-		0x00, 0x20, 0x00
-	};
-
-	uint8_t max_sub_event_len[3] = {
-		0x03, 0x20, 0x00
-	};
 
 	if (!sm || !sm->hci) {
 		error("CS Set Procedure Parameters: sm or hci is null");
@@ -498,20 +615,25 @@ static bool rap_send_hci_cs_set_procedure_parameters(
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.handle = cpu_to_le16(handle);
-	/* Default values, will change to pick user given values later */
-	cmd.config_id = 0x00;
-	cmd.max_procedure_len = 0x0640;
-	cmd.min_procedure_interval = 0x1E;
-	cmd.max_procedure_interval = 0x96;
-	cmd.max_procedure_count = 0x00;
-	memcpy(cmd.min_subevent_len, min_sub_event_len, 3);
-	memcpy(cmd.max_subevent_len, max_sub_event_len, 3);
-	cmd.tone_antenna_config_selection = 0x07;
-	cmd.phy                    = 0x01;
-	cmd.tx_power_delta         = 0x80;
-	cmd.preferred_peer_antenna = 0x03;
-	cmd.snr_control_initiator  = 0xFF;
-	cmd.snr_control_reflector  = 0xFF;
+
+	cmd.config_id = sm->cs_config.config_id[0];
+	cmd.max_procedure_len =
+		cpu_to_le16(sm->cs_frequency.max_procedure_duration[0]);
+	cmd.min_procedure_interval =
+		cpu_to_le16(sm->cs_frequency.min_period_between_procedures[0]);
+	cmd.max_procedure_interval =
+		cpu_to_le16(sm->cs_frequency.max_period_between_procedures[0]);
+	cmd.max_procedure_count =
+		cpu_to_le16(sm->cs_frequency.max_procedure_count[0]);
+	memcpy(cmd.min_subevent_len, sm->cs_frequency.min_sub_event_len[0], 3);
+	memcpy(cmd.max_subevent_len, sm->cs_frequency.max_sub_event_len[0], 3);
+	cmd.tone_antenna_config_selection =
+		sm->cs_frequency.tone_antenna_config_selection[0];
+	cmd.phy                    = sm->cs_frequency.phy[0];
+	cmd.tx_power_delta         = sm->cs_frequency.tx_power_delta[0];
+	cmd.preferred_peer_antenna = sm->cs_frequency.preferred_peer_antenna[0];
+	cmd.snr_control_initiator  = sm->cs_frequency.snr_control_initiator[0];
+	cmd.snr_control_reflector  = sm->cs_frequency.snr_control_reflector[0];
 
 	status = bt_hci_send(sm->hci, BT_HCI_CMD_LE_CS_SET_PROC_PARAMS,
 				&cmd, sizeof(cmd), NULL, sm, NULL);
@@ -541,7 +663,7 @@ static bool rap_send_hci_cs_procedure_enable(struct cs_state_machine *sm,
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.handle = cpu_to_le16(handle);
-	cmd.config_id = 0x00; /* Default config Id */
+	cmd.config_id = sm->cs_config.config_id[0];
 	cmd.enable = enable_proc ? 0x01 : 0x00;
 
 	status = bt_hci_send(sm->hci, BT_HCI_CMD_LE_CS_PROC_ENABLE,
@@ -591,6 +713,8 @@ static void rap_rd_rem_fae_cmplt_evt(const void *data, uint8_t size,
 {
 	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
 	const struct bt_hci_evt_le_cs_rd_rem_fae_complete *evt;
+	struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete tmp_ev;
+	struct rap_conn_mapping *m;
 	struct iovec iov;
 	int i;
 
@@ -598,11 +722,9 @@ static void rap_rd_rem_fae_cmplt_evt(const void *data, uint8_t size,
 		size < sizeof(struct bt_hci_evt_le_cs_rd_rem_fae_complete))
 		return;
 
-	/* Initialize iovec with the event data */
 	iov.iov_base = (void *) data;
 	iov.iov_len = size;
 
-	/* Pull the entire structure at once */
 	evt = util_iov_pull_mem(&iov, sizeof(*evt));
 
 	if (!evt) {
@@ -612,21 +734,20 @@ static void rap_rd_rem_fae_cmplt_evt(const void *data, uint8_t size,
 
 	DBG("status=0x%02X, handle=0x%04X", evt->status, evt->handle);
 
-	/* Check status */
 	if (evt->status != 0) {
 		/* Status 0x11 (Unsupported Feature or Parameter Value) means
 		 * the remote has zero FAE, the procedure continues
 		 * to the Default Settings step.
 		 */
 		if (evt->status == 0x11) {
-			DBG("Remote FAE=0 (No_FAE), proceed to Def Settings");
-			if (is_initiator_role(sm)) {
-				struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete
-								tmp_ev;
+			m = find_mapping_by_handle(sm, evt->handle);
 
+			DBG("Remote FAE=0 (No_FAE), proceed to Def Settings");
+			if (is_initiator_role(sm) ||
+			    (is_both_role(sm) && m && m->is_central)) {
 				memset(&tmp_ev, 0, sizeof(tmp_ev));
 				tmp_ev.handle = evt->handle;
-				DBG("Initiator: send def settings (No_FAE)");
+				DBG("Init/Both: send def settings (No_FAE)");
 				rap_send_hci_def_settings_command(sm, &tmp_ev);
 			} else {
 				DBG("Reflector role: continuing after No_FAE");
@@ -651,13 +772,13 @@ static void rap_rd_rem_fae_cmplt_evt(const void *data, uint8_t size,
 	}
 
 	/* After receiving FAE Table, send default settings */
-	/* Local capabilities already read before this event */
-	if (is_initiator_role(sm)) {
-		struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete tmp_ev;
+	m = find_mapping_by_handle(sm, evt->handle);
 
+	if (is_initiator_role(sm) ||
+	    (is_both_role(sm) && m && m->is_central)) {
 		memset(&tmp_ev, 0, sizeof(tmp_ev));
 		tmp_ev.handle = evt->handle;
-		DBG("Initiator role: send def settings after FAE table");
+		DBG("Init/Both: send def settings after FAE");
 		rap_send_hci_def_settings_command(sm, &tmp_ev);
 	} else {
 		DBG("Reflector role: Proceeding after FAE Table");
@@ -698,17 +819,16 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const void *data, uint8_t size,
 {
 	struct cs_state_machine *sm = user_data;
 	const struct bt_hci_evt_le_cs_rd_rem_supp_cap_complete *evt;
+	struct rap_conn_mapping *m;
 	struct iovec iov;
 	uint16_t subfeatures_supported;
 
 	if (!sm || !data || size < sizeof(*evt))
 		return;
 
-	/* Initialize iovec with the event data */
 	iov.iov_base = (void *) data;
 	iov.iov_len = size;
 
-	/* Pull the entire structure at once */
 	evt = util_iov_pull_mem(&iov, sizeof(*evt));
 
 	if (!evt) {
@@ -718,7 +838,6 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const void *data, uint8_t size,
 
 	DBG("status=0x%02X, handle=0x%04X", evt->status, evt->handle);
 
-	/* Check status */
 	if (evt->status != 0) {
 		error("Remote capabilities failed with status 0x%02X",
 			evt->status);
@@ -738,16 +857,17 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const void *data, uint8_t size,
 	subfeatures_supported = le16_to_cpu(evt->subfeatures_supported);
 	DBG("subfeatures_supported=0x%04X", subfeatures_supported);
 
-	/* Check Bit 1 of subfeatures_supported (0x0002) */
 	if (!(subfeatures_supported & 0x0002)) {
 		DBG("Bit 1 not set, sending Read Remote FAE Table");
 		bt_rap_read_remote_fae_table(sm, evt->handle);
 		return;
 	}
 
-	/* Local capabilities already read before this event */
-	if (is_initiator_role(sm)) {
-		DBG("Initiator role: send def settings cmd for handle 0x%04X",
+	m = find_mapping_by_handle(sm, evt->handle);
+
+	if (is_initiator_role(sm) ||
+	    (is_both_role(sm) && m && m->is_central)) {
+		DBG("Init/Both: send def settings for 0x%04X",
 			evt->handle);
 		rap_send_hci_def_settings_command(sm, evt);
 	} else {
@@ -763,25 +883,23 @@ static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 	struct cs_state_machine *sm = user_data;
 	const struct bt_hci_evt_le_cs_config_complete *evt;
 	struct rap_ev_cs_config_cmplt rap_ev;
+	struct rap_conn_mapping *mapping;
 	struct iovec iov;
 
 	if (!sm || !data || size < sizeof(*evt))
 		return;
 
-	/* Initialize iovec with the event data */
 	iov.iov_base = (void *) data;
 	iov.iov_len = size;
 
 	DBG("size=0x%02X", size);
 
-	/* State Check */
 	if (cs_get_current_state(sm) != CS_STATE_WAIT_CONFIG_CMPLT) {
 		DBG("Event received in Wrong State!! ");
 		DBG("Expected : CS_STATE_WAIT_CONFIG_CMPLT");
 		return;
 	}
 
-	/* Pull the entire structure at once */
 	evt = util_iov_pull_mem(&iov, sizeof(*evt));
 	if (!evt) {
 		error("Failed to pull config complete struct");
@@ -855,9 +973,6 @@ static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 
 	/* CS Security Enable may only be issued by the BLE Central */
 	if (rap_ev.role == 0x00) {
-		/* Initiator role */
-		struct rap_conn_mapping *mapping;
-
 		mapping = find_mapping_by_handle(sm, evt->handle);
 		if (!mapping || !mapping->is_central) {
 			error("CS Security Enable skipped: not BLE Central");
@@ -980,8 +1095,8 @@ static void rap_cs_proc_enable_cmplt_evt(const void *data, uint8_t size,
 
 	DBG("size=0x%02X", size);
 
-	/* State Check */
-	if (cs_get_current_state(sm) != CS_STATE_WAIT_PROC_CMPLT) {
+	if ((cs_get_current_state(sm) != CS_STATE_WAIT_PROC_CMPLT) &&
+		(cs_get_current_state(sm) != CS_STATE_STARTED)) {
 		DBG("Event received in Wrong State!! ");
 		DBG("Expected : CS_STATE_WAIT_PROC_CMPLT");
 		return;
@@ -1002,6 +1117,8 @@ static void rap_cs_proc_enable_cmplt_evt(const void *data, uint8_t size,
 			evt->status);
 		cs_set_state(sm, CS_STATE_STOPPED);
 		sm->procedure_active = false;
+		if (sm->proc_active_func)
+			sm->proc_active_func(false, sm->proc_active_data);
 		return;
 	}
 
@@ -1030,9 +1147,13 @@ static void rap_cs_proc_enable_cmplt_evt(const void *data, uint8_t size,
 	if (rap_ev.state == 0x01) {
 		cs_set_state(sm, CS_STATE_STARTED);
 		sm->procedure_active = true;
+		if (sm->proc_active_func)
+			sm->proc_active_func(true, sm->proc_active_data);
 	} else if (rap_ev.state == 0x00) {
 		cs_set_state(sm, CS_STATE_STOPPED);
 		sm->procedure_active = false;
+		if (sm->proc_active_func)
+			sm->proc_active_func(false, sm->proc_active_data);
 	}
 
 	/* Send callback to RAP Profile */
@@ -1621,11 +1742,9 @@ void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
 
 	queue_push_tail(sm->event_ids, UINT_TO_PTR(id));
 
-	DBG("CS options: role=%u, cs_sync_ant_sel=%u, max_tx_power=%d",
-		role, cs_sync_ant_sel, max_tx_power);
-
-	/* place holder, need DBus API to be called */
-	bt_rap_read_local_supported_capabilities(sm);
+	DBG("HCI state machine attached (role=%u, ant=0x%02x, power=%d)",
+		sm->role_enable, sm->cs_opt.cs_sync_ant_sel,
+		sm->cs_opt.max_tx_power);
 
 	return sm;
 
@@ -1636,6 +1755,73 @@ fail:
 	queue_destroy(sm->conn_mappings, mapping_free);
 	free(sm);
 	return NULL;
+}
+
+static bool measurement_timeout_cb(void *user_data)
+{
+	struct cs_state_machine *sm = user_data;
+
+	sm->measurement_timeout_id = 0;
+
+	DBG("Measurement duration expired, stopping CS procedure");
+	bt_rap_stop_measurement(sm);
+
+	if (sm->timeout_func)
+		sm->timeout_func(sm->timeout_data);
+
+	return false;
+}
+
+bool bt_rap_start_measurement(void *hci_sm, uint16_t conn_handle,
+			      uint32_t duration_secs)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !sm->hci)
+		return false;
+
+	if (!find_mapping_by_handle(sm, conn_handle)) {
+		error("start_measurement: hndl 0x%04X not found", conn_handle);
+		return false;
+	}
+
+	sm->active_conn_handle = conn_handle;
+
+	if (sm->measurement_timeout_id) {
+		timeout_remove(sm->measurement_timeout_id);
+		sm->measurement_timeout_id = 0;
+	}
+
+	if (!bt_rap_read_local_supported_capabilities(sm))
+		return false;
+
+	if (duration_secs > 0)
+		sm->measurement_timeout_id = timeout_add_seconds(duration_secs,
+					measurement_timeout_cb, sm, NULL);
+
+	return true;
+}
+
+bool bt_rap_stop_measurement(void *hci_sm)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !sm->hci)
+		return false;
+
+	if (sm->measurement_timeout_id) {
+		timeout_remove(sm->measurement_timeout_id);
+		sm->measurement_timeout_id = 0;
+	}
+
+	if (!find_mapping_by_handle(sm, sm->active_conn_handle)) {
+		error("stop_measurement: handle 0x%04X not found",
+		      sm->active_conn_handle);
+		return false;
+	}
+
+	return rap_send_hci_cs_procedure_enable(sm, sm->active_conn_handle,
+						false);
 }
 
 bool bt_rap_set_conn_hndl(void *hci_sm, struct bt_rap *rap,
@@ -1672,6 +1858,40 @@ void bt_rap_clear_conn_handle(void *hci_sm, uint16_t handle)
 
 	DBG("Clearing connection mapping: handle=0x%04X", handle);
 	remove_conn_mapping(sm, handle);
+	sm->procedure_active = false;
+}
+
+bool bt_rap_is_procedure_active(void *hci_sm)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm)
+		return false;
+
+	return sm->procedure_active;
+}
+
+void bt_rap_set_timeout_cb(void *hci_sm, void (*func)(void *), void *user_data)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm)
+		return;
+
+	sm->timeout_func = func;
+	sm->timeout_data = user_data;
+}
+
+void bt_rap_set_proc_active_cb(void *hci_sm, void (*func)(bool, void *),
+				void *user_data)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm)
+		return;
+
+	sm->proc_active_func = func;
+	sm->proc_active_data = user_data;
 }
 
 void bt_rap_detach_hci(struct bt_rap *rap, void *hci_sm)
@@ -1690,12 +1910,14 @@ void bt_rap_detach_hci(struct bt_rap *rap, void *hci_sm)
 			queue_foreach(sm->event_ids, unregister_event_id,
 								sm->hci);
 
+		if (sm->measurement_timeout_id) {
+			timeout_remove(sm->measurement_timeout_id);
+			sm->measurement_timeout_id = 0;
+		}
+
 		queue_destroy(sm->event_ids, NULL);
 
-		/* Clean up per-instance connection mappings.
-		 * Each state machine owns its own conn_mappings queue;
-		 * this destroys all mappings for this instance only.
-		 */
+		/* destroys mappings for this instance only */
 		queue_destroy(sm->conn_mappings, mapping_free);
 
 		/* Free the state machine */

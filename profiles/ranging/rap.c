@@ -35,12 +35,24 @@
 #include "src/shared/rap.h"
 #include "attrib/att.h"
 #include "src/log.h"
+#include "src/shared/cs-types.h"
 #include "src/btd.h"
+#include "src/dbus-common.h"
+
+#define CS_INTERFACE "org.bluez.ChannelSounding1"
 
 struct rap_adapter_data {
 	struct btd_adapter *adapter;
 	struct bt_hci *hci;  /* Shared HCI raw channel */
 	int ref_count;  /* Number of devices using this adapter */
+};
+
+struct cs_session {
+	bool active;
+	uint32_t duration_secs;
+	struct bt_rap_le_cs_default_settings settings;
+	struct bt_rap_le_cs_config    cfg;
+	struct bt_rap_le_cs_frequency freq;
 };
 
 struct rap_data {
@@ -50,6 +62,8 @@ struct rap_data {
 	unsigned int ready_id;
 	struct rap_adapter_data *adapter_data;  /* Shared adapter-level HCI */
 	void *hci_sm;  /* Per-device HCI state machine */
+	uint16_t conn_handle;  /* Last known connection handle */
+	struct cs_session active_session;  /* active==false when idle */
 };
 
 static struct queue *sessions;
@@ -293,6 +307,335 @@ static void rap_attached(struct bt_rap *rap, void *user_data)
 	rap_data_add(data);
 }
 
+static DBusMessage *set_default_settings(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct rap_data *data = user_data;
+	struct bt_rap_le_cs_default_settings settings;
+	DBusMessageIter iter, dict;
+
+	bt_rap_get_default_settings_params(data->hci_sm, &settings);
+
+	dbus_message_iter_init(msg, &iter);
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
+					"Expected a{sv} dictionary");
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, variant;
+		const char *key;
+		int vtype;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &variant);
+		vtype = dbus_message_iter_get_arg_type(&variant);
+
+		if (strcmp(key, "role") == 0) {
+			if (vtype != DBUS_TYPE_BYTE)
+				goto bad_type;
+			dbus_message_iter_get_basic(&variant, &settings.role);
+		} else if (strcmp(key, "cs_sync_ant_sel") == 0) {
+			if (vtype != DBUS_TYPE_BYTE)
+				goto bad_type;
+			dbus_message_iter_get_basic(&variant,
+						    &settings.cs_sync_ant_sel);
+		} else if (strcmp(key, "max_tx_power") == 0) {
+			uint8_t bval;
+
+			if (vtype != DBUS_TYPE_BYTE)
+				goto bad_type;
+			dbus_message_iter_get_basic(&variant, &bval);
+			settings.max_tx_power = (int8_t)bval;
+		}
+
+		dbus_message_iter_next(&dict);
+		continue;
+bad_type:
+		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
+					"Unexpected variant type for key");
+	}
+
+	if (!bt_rap_set_default_settings_params(data->hci_sm, &settings))
+		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
+					"Set default settings failed");
+
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *start_measurement(DBusConnection *conn,
+				DBusMessage *msg, void *user_data)
+{
+	struct rap_data *data = user_data;
+	struct bt_rap_le_cs_config cfg;
+	struct bt_rap_le_cs_frequency freq;
+	struct bt_rap_le_cs_default_settings settings;
+	uint32_t duration_secs = 0;
+	DBusMessageIter iter, dict;
+
+	if (data->active_session.active)
+		return g_dbus_create_error(msg,
+					"org.bluez.Error.InProgress",
+					"Measurement already active");
+
+	/* Seed locals from current state-machine defaults */
+	bt_rap_get_cs_config_params(data->hci_sm, &cfg);
+	bt_rap_get_cs_freq_params(data->hci_sm, &freq);
+	bt_rap_get_default_settings_params(data->hci_sm, &settings);
+
+	dbus_message_iter_init(msg, &iter);
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
+					   "Expected a{sv} dictionary");
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, variant;
+		const char *key;
+		int vtype;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &variant);
+		vtype = dbus_message_iter_get_arg_type(&variant);
+
+		if (strcmp(key, "duration_secs") == 0) {
+			if (vtype != DBUS_TYPE_UINT32)
+				goto bad_type;
+			dbus_message_iter_get_basic(&variant, &duration_secs);
+		} else if (strcmp(key, "role") == 0 &&
+			   vtype == DBUS_TYPE_BYTE) {
+			dbus_message_iter_get_basic(&variant, &settings.role);
+		} else if (strcmp(key, "cs_sync_ant_sel") == 0 &&
+			   vtype == DBUS_TYPE_BYTE) {
+			dbus_message_iter_get_basic(&variant,
+						    &settings.cs_sync_ant_sel);
+		} else if (strcmp(key, "max_tx_power") == 0 &&
+			   vtype == DBUS_TYPE_BYTE) {
+			uint8_t bval;
+
+			dbus_message_iter_get_basic(&variant, &bval);
+			settings.max_tx_power = (int8_t)bval;
+		} else if (strcmp(key, "channel_map") == 0) {
+			DBusMessageIter array;
+			uint8_t *bytes;
+			int len;
+
+			if (vtype != DBUS_TYPE_ARRAY)
+				goto bad_type;
+			dbus_message_iter_recurse(&variant, &array);
+			dbus_message_iter_get_fixed_array(&array, &bytes, &len);
+			if (len != 10)
+				return g_dbus_create_error(msg,
+						DBUS_ERROR_INVALID_ARGS,
+						"channel_map must be 10 bytes");
+			memcpy(cfg.channel_map[0], bytes, 10);
+		} else if (strcmp(key, "min_sub_event_len") == 0 ||
+			   strcmp(key, "max_sub_event_len") == 0) {
+			DBusMessageIter array;
+			uint8_t *bytes;
+			int len;
+
+			if (vtype != DBUS_TYPE_ARRAY)
+				goto bad_type;
+			dbus_message_iter_recurse(&variant, &array);
+			dbus_message_iter_get_fixed_array(&array, &bytes, &len);
+			if (len != 3)
+				return g_dbus_create_error(msg,
+						DBUS_ERROR_INVALID_ARGS,
+						"sub_event_len must be 3 bytes");
+			if (strcmp(key, "min_sub_event_len") == 0)
+				memcpy(freq.min_sub_event_len[0], bytes, 3);
+			else
+				memcpy(freq.max_sub_event_len[0], bytes, 3);
+		} else if (strcmp(key, "max_procedure_duration") == 0 ||
+			   strcmp(key, "min_period_between_procedures") == 0 ||
+			   strcmp(key, "max_period_between_procedures") == 0 ||
+			   strcmp(key, "max_procedure_count") == 0) {
+			uint16_t u16val;
+
+			if (vtype != DBUS_TYPE_UINT16)
+				goto bad_type;
+			dbus_message_iter_get_basic(&variant, &u16val);
+
+			if (strcmp(key, "max_procedure_duration") == 0)
+				freq.max_procedure_duration[0] = u16val;
+			else if (strcmp(key,
+					"min_period_between_procedures") == 0)
+				freq.min_period_between_procedures[0] = u16val;
+			else if (strcmp(key,
+					"max_period_between_procedures") == 0)
+				freq.max_period_between_procedures[0] = u16val;
+			else
+				freq.max_procedure_count[0] = u16val;
+		} else {
+			/* All remaining keys expect a byte variant */
+			uint8_t bval;
+
+			if (vtype != DBUS_TYPE_BYTE)
+				goto bad_type;
+			dbus_message_iter_get_basic(&variant, &bval);
+
+			if (strcmp(key, "config_id") == 0)
+				cfg.config_id[0] = bval;
+			else if (strcmp(key, "main_mode_type") == 0)
+				cfg.main_mode_type[0] = bval;
+			else if (strcmp(key, "sub_mode_type") == 0)
+				cfg.sub_mode_type[0] = bval;
+			else if (strcmp(key, "main_mode_min_steps") == 0)
+				cfg.main_mode_min_steps[0] = bval;
+			else if (strcmp(key, "main_mode_max_steps") == 0)
+				cfg.main_mode_max_steps[0] = bval;
+			else if (strcmp(key, "main_mode_repetition") == 0)
+				cfg.main_mode_repetition[0] = bval;
+			else if (strcmp(key, "mode0_steps") == 0)
+				cfg.mode0_steps[0] = bval;
+			else if (strcmp(key, "rtt_types") == 0)
+				cfg.rtt_types[0] = bval;
+			else if (strcmp(key, "cs_sync_phy") == 0)
+				cfg.cs_sync_phy[0] = bval;
+			else if (strcmp(key, "channel_map_repetition") == 0)
+				cfg.channel_map_repetition[0] = bval;
+			else if (strcmp(key, "channel_selection_type") == 0)
+				cfg.channel_selection_type[0] = bval;
+			else if (strcmp(key, "channel_shape") == 0)
+				cfg.channel_shape[0] = bval;
+			else if (strcmp(key, "channel_jump") == 0)
+				cfg.channel_jump[0] = bval;
+			else if (strcmp(key, "companion_signal_enable") == 0)
+				cfg.companion_signal_enable[0] = bval;
+			else if (strcmp(key,
+					"tone_antenna_config_selection") == 0)
+				freq.tone_antenna_config_selection[0] = bval;
+			else if (strcmp(key, "phy") == 0)
+				freq.phy[0] = bval;
+			else if (strcmp(key, "tx_power_delta") == 0)
+				freq.tx_power_delta[0] = bval;
+			else if (strcmp(key, "preferred_peer_antenna") == 0)
+				freq.preferred_peer_antenna[0] = bval;
+			else if (strcmp(key, "snr_control_initiator") == 0)
+				freq.snr_control_initiator[0] = bval;
+			else if (strcmp(key, "snr_control_reflector") == 0)
+				freq.snr_control_reflector[0] = bval;
+		}
+
+		dbus_message_iter_next(&dict);
+		continue;
+bad_type:
+		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
+					   "Unexpected variant type for key");
+	}
+
+	if (data->conn_handle == 0)
+		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
+					   "Device not connected");
+
+	if (!bt_rap_set_default_settings_params(data->hci_sm, &settings))
+		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
+					   "Set default settings failed");
+
+	if (!bt_rap_set_cs_config_params(data->hci_sm, &cfg))
+		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
+					   "Set CS config params failed");
+
+	if (!bt_rap_set_cs_freq_params(data->hci_sm, &freq))
+		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
+					   "Set CS freq params failed");
+
+	if (!bt_rap_start_measurement(data->hci_sm, data->conn_handle,
+							duration_secs))
+		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
+					   "Start measurement failed");
+
+	data->active_session.active        = true;
+	data->active_session.duration_secs = duration_secs;
+	data->active_session.settings      = settings;
+	data->active_session.cfg           = cfg;
+	data->active_session.freq          = freq;
+
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *stop_measurement(DBusConnection *conn,
+				DBusMessage *msg, void *user_data)
+{
+	struct rap_data *data = user_data;
+
+	if (!data->active_session.active)
+		return g_dbus_create_error(msg,
+					"org.bluez.Error.NotConnected",
+					"No active measurement");
+
+	if (!bt_rap_stop_measurement(data->hci_sm))
+		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
+					"Stop measurement failed");
+
+	memset(&data->active_session, 0, sizeof(data->active_session));
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				device_get_path(data->device),
+				CS_INTERFACE, "Active");
+
+	return dbus_message_new_method_return(msg);
+}
+
+static const GDBusMethodTable cs_dbus_methods[] = {
+	{ GDBUS_METHOD("SetDefaultSettings",
+			GDBUS_ARGS({ "params", "a{sv}" }),
+			NULL,
+			set_default_settings) },
+	{ GDBUS_METHOD("StartMeasurement",
+			GDBUS_ARGS({ "params", "a{sv}" }),
+			NULL,
+			start_measurement) },
+	{ GDBUS_METHOD("StopMeasurement",
+			NULL,
+			NULL,
+			stop_measurement) },
+	{ }
+};
+
+static gboolean cs_property_get_active(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct rap_data *data = user_data;
+	dbus_bool_t active = data->active_session.active ||
+				bt_rap_is_procedure_active(data->hci_sm);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &active);
+	return TRUE;
+}
+
+static const GDBusPropertyTable cs_dbus_properties[] = {
+	{ "Active", "b", cs_property_get_active, NULL, NULL, 0 },
+	{ }
+};
+
+static void rap_measurement_timeout_cb(void *user_data)
+{
+	struct rap_data *data = user_data;
+
+	memset(&data->active_session, 0, sizeof(data->active_session));
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				device_get_path(data->device),
+				CS_INTERFACE, "Active");
+}
+
+static void rap_proc_active_changed(bool active, void *user_data)
+{
+	struct rap_data *data = user_data;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				device_get_path(data->device),
+				CS_INTERFACE, "Active");
+}
+
 static int rap_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -329,6 +672,10 @@ static int rap_probe(struct btd_service *service)
 
 	bt_rap_set_user_data(data->rap, service);
 
+	bt_rap_set_timeout_cb(data->hci_sm, rap_measurement_timeout_cb, data);
+
+	bt_rap_set_proc_active_cb(data->hci_sm, rap_proc_active_changed, data);
+
 	return 0;
 }
 
@@ -347,13 +694,16 @@ static void rap_remove(struct btd_service *service)
 		return;
 	}
 
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+				    device_get_path(device),
+				    CS_INTERFACE);
+
 	rap_data_remove(data);
 }
 
 static int rap_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
-	struct btd_adapter *adapter = device_get_adapter(device);
 	struct bt_gatt_client *client = btd_device_get_gatt_client(device);
 	struct rap_data *data = btd_service_get_user_data(service);
 	struct bt_att *att;
@@ -370,33 +720,6 @@ static int rap_accept(struct btd_service *service)
 		return -EINVAL;
 	}
 
-	/* init shared adapter HCI channel */
-	if (!data->adapter_data) {
-		data->adapter_data = rap_adapter_data_ref(adapter);
-		if (!data->adapter_data) {
-			error("Failed to get adapter HCI channel");
-			return -EINVAL;
-		}
-		DBG("Using shared HCI channel for adapter (ref_count=%d)",
-			data->adapter_data->ref_count);
-	}
-
-	/* per-device HCI state machine */
-	if (!data->hci_sm) {
-		data->hci_sm = bt_rap_attach_hci(data->rap,
-					data->adapter_data->hci,
-					btd_opts.defaults.bcs.role,
-					btd_opts.defaults.bcs.cs_sync_ant_sel,
-					btd_opts.defaults.bcs.max_tx_power);
-		if (!data->hci_sm) {
-			error("Failed to attach HCI state machine for device");
-			rap_adapter_data_unref(data->adapter_data);
-			data->adapter_data = NULL;
-			return -EINVAL;
-		}
-		DBG("HCI state machine attached successfully for device");
-	}
-
 	if (!bt_rap_attach(data->rap, client)) {
 		error("RAP unable to attach");
 		return -EINVAL;
@@ -411,8 +734,7 @@ static int rap_accept(struct btd_service *service)
 		if (bt_hci_get_conn_handle(data->adapter_data->hci,
 					(const uint8_t *) bdaddr, &handle)) {
 			DBG("Found conn handle 0x%04X for %s", handle, addr);
-			DBG("Setting up handle mapping: handle=0x%04X",
-				handle);
+			data->conn_handle = handle;
 			bt_rap_set_conn_hndl(data->hci_sm,
 					data->rap, handle,
 					(const uint8_t *) bdaddr,
@@ -426,12 +748,33 @@ static int rap_accept(struct btd_service *service)
 
 	btd_service_connecting_complete(service, 0);
 
+	g_dbus_register_interface(btd_get_dbus_connection(),
+				  device_get_path(data->device),
+				  CS_INTERFACE, cs_dbus_methods,
+				  NULL, cs_dbus_properties, data, NULL);
+
 	return 0;
 }
 
 static int rap_disconnect(struct btd_service *service)
 {
-	DBG(" ");
+	struct rap_data *data = btd_service_get_user_data(service);
+	char addr[18];
+
+	ba2str(device_get_address(btd_service_get_device(service)), addr);
+	DBG("%s", addr);
+	if (!data) {
+		error("RAP Service not handled by profile");
+		return -EINVAL;
+	}
+
+	if (data && data->hci_sm && data->conn_handle) {
+		bt_rap_clear_conn_handle(data->hci_sm, data->conn_handle);
+		data->conn_handle = 0;
+	}
+
+	memset(&data->active_session, 0, sizeof(data->active_session));
+
 	btd_service_disconnecting_complete(service, 0);
 	return 0;
 }
