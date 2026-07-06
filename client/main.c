@@ -39,6 +39,7 @@
 #include "assistant.h"
 #include "hci.h"
 #include "telephony.h"
+#include "cs.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -60,6 +61,7 @@ struct adapter {
 	GList *devices;
 	GList *sets;
 	GList *bearers;
+	GList *cs_proxies;
 };
 
 static struct adapter *default_ctrl;
@@ -124,6 +126,7 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 	battery_proxies = NULL;
 
 	default_ctrl = NULL;
+	cs_set_device_list(NULL);
 }
 
 static void print_adapter(GDBusProxy *proxy, const char *description)
@@ -391,8 +394,10 @@ static struct adapter *adapter_new(GDBusProxy *proxy)
 
 	ctrl_list = g_list_append(ctrl_list, adapter);
 
-	if (!default_ctrl)
+	if (!default_ctrl) {
 		default_ctrl = adapter;
+		cs_set_device_list(&adapter->devices);
+	}
 
 	return adapter;
 }
@@ -525,6 +530,31 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		bearer_added(proxy);
 	} else if (!strcmp(interface, "org.bluez.Bearer.LE1")) {
 		bearer_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
+		const char *cs_path = g_dbus_proxy_get_path(proxy);
+		GList *list;
+
+		for (list = g_list_first(ctrl_list); list;
+		     list = g_list_next(list)) {
+			struct adapter *a = list->data;
+			const char *ap;
+			size_t ap_len;
+
+			if (!a->proxy)
+				continue;
+
+			ap = g_dbus_proxy_get_path(a->proxy);
+			ap_len = strlen(ap);
+
+			if (!strncmp(cs_path, ap, ap_len) &&
+						cs_path[ap_len] == '/') {
+				a->cs_proxies = g_list_append(
+							a->cs_proxies, proxy);
+				break;
+			}
+		}
+
+		cs_proxy_added(proxy);
 	}
 }
 
@@ -577,6 +607,7 @@ static void adapter_removed(GDBusProxy *proxy)
 			g_list_free(adapter->devices);
 			g_list_free(adapter->sets);
 			g_list_free(adapter->bearers);
+			g_list_free(adapter->cs_proxies);
 			g_free(adapter);
 			g_list_free(ll);
 			return;
@@ -656,6 +687,30 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		bearer_removed(proxy);
 	} else if (!strcmp(interface, "org.bluez.Bearer.LE1")) {
 		bearer_removed(proxy);
+	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
+		const char *cs_path = g_dbus_proxy_get_path(proxy);
+		GList *list;
+
+		for (list = g_list_first(ctrl_list); list;
+		     list = g_list_next(list)) {
+			struct adapter *a = list->data;
+			const char *ap;
+			size_t ap_len;
+
+			if (!a->proxy)
+				continue;
+
+			ap = g_dbus_proxy_get_path(a->proxy);
+			ap_len = strlen(ap);
+
+			if (!strncmp(cs_path, ap, ap_len) &&
+						cs_path[ap_len] == '/') {
+				a->cs_proxies = g_list_remove(
+							a->cs_proxies, proxy);
+				break;
+			}
+		}
+		cs_proxy_removed(proxy);
 	}
 }
 
@@ -728,6 +783,10 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 					set_default_device(proxy, NULL);
 				else if (!connected && default_dev == proxy)
 					set_default_device(NULL, NULL);
+
+				if (!connected)
+					cs_device_disconnected(
+						g_dbus_proxy_get_path(proxy));
 
 				/* If the device is connected and the filter
 				 * is auto_connect and it matches the pattern,
@@ -820,6 +879,16 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 			print_iter(str, name, iter);
 			g_free(str);
+		}
+	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
+		if (!strcmp(name, "Active")) {
+			dbus_bool_t active;
+
+			dbus_message_iter_get_basic(iter, &active);
+			if (active)
+				cs_measurement_started(proxy);
+			else
+				cs_measurement_stopped(proxy);
 		}
 	}
 }
@@ -1090,6 +1159,7 @@ static void cmd_select(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	default_ctrl = adapter;
+	cs_set_device_list(&adapter->devices);
 	print_adapter(adapter->proxy, NULL);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -4003,6 +4073,7 @@ int main(int argc, char *argv[])
 	assistant_add_submenu();
 	hci_add_submenu();
 	telephony_add_submenu();
+	cs_add_submenu();
 	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	bt_shell_handle_non_interactive_help();
