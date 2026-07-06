@@ -66,6 +66,9 @@
 #ifdef HAVE_A2DP
 #include "a2dp.h"
 #endif
+#ifdef HAVE_AVRCP
+#include "avrcp-bip.h"
+#endif
 
 #define MEDIA_INTERFACE "org.bluez.Media1"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
@@ -159,6 +162,8 @@ struct local_player {
 	bool			previous;
 	bool			control;
 	char			*name;
+	char			*art_url;	/* Registered cover art URL */
+	char			art_handle[8];	/* BIP handle of art_url */
 	struct queue		*cbs;
 };
 
@@ -2069,6 +2074,7 @@ static void local_player_destroy(struct local_player *mp)
 	g_free(mp->path);
 	g_free(mp->status);
 	g_free(mp->name);
+	g_free(mp->art_url);
 	g_free(mp);
 }
 
@@ -2458,6 +2464,72 @@ static gboolean parse_int32_metadata(struct local_player *mp, const char *key,
 	return TRUE;
 }
 
+#ifdef HAVE_AVRCP
+#define COVER_ART_MAX_SIZE (1024 * 1024)
+
+static gboolean parse_art_url_metadata(struct local_player *mp,
+							DBusMessageIter *iter)
+{
+	const char *url, *handle;
+	char *filename, *contents = NULL;
+	gsize len = 0;
+	GError *gerr = NULL;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
+		return FALSE;
+
+	dbus_message_iter_get_basic(iter, &url);
+
+	if (!avrcp_bip_server_active())
+		return TRUE;
+
+	if (mp->art_url != NULL && g_str_equal(mp->art_url, url) &&
+						mp->art_handle[0] != '\0') {
+		g_hash_table_insert(mp->track, g_strdup("ImgHandle"),
+						g_strdup(mp->art_handle));
+		return TRUE;
+	}
+
+	filename = g_filename_from_uri(url, NULL, NULL);
+	if (filename == NULL) {
+		DBG("cover art %s is not a local file, ignoring", url);
+		return TRUE;
+	}
+
+	if (!g_file_get_contents(filename, &contents, &len, &gerr)) {
+		DBG("cover art %s: %s", filename, gerr->message);
+		g_error_free(gerr);
+		g_free(filename);
+		return TRUE;
+	}
+
+	g_free(filename);
+
+	if (len == 0 || len > COVER_ART_MAX_SIZE) {
+		DBG("cover art has invalid size (%zu bytes), ignoring", len);
+		g_free(contents);
+		return TRUE;
+	}
+
+	handle = avrcp_bip_set_cover_art((const uint8_t *) contents, len);
+	g_free(contents);
+
+	/* Non-JPEG images are rejected by the responder */
+	if (handle == NULL)
+		return TRUE;
+
+	g_free(mp->art_url);
+	mp->art_url = g_strdup(url);
+	strncpy(mp->art_handle, handle, sizeof(mp->art_handle) - 1);
+	mp->art_handle[sizeof(mp->art_handle) - 1] = '\0';
+
+	g_hash_table_insert(mp->track, g_strdup("ImgHandle"),
+							g_strdup(handle));
+
+	return TRUE;
+}
+#endif
+
 static gboolean parse_player_metadata(struct local_player *mp,
 							DBusMessageIter *iter)
 {
@@ -2517,6 +2589,11 @@ static gboolean parse_player_metadata(struct local_player *mp,
 		} else if (strcasecmp(key, "xesam:trackNumber") == 0) {
 			if (!parse_int32_metadata(mp, "TrackNumber", &var))
 				return FALSE;
+		} else if (strcasecmp(key, "mpris:artUrl") == 0) {
+#ifdef HAVE_AVRCP
+			if (!parse_art_url_metadata(mp, &var))
+				return FALSE;
+#endif
 		} else
 			DBG("%s not supported, ignoring", key);
 
