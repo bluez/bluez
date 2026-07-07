@@ -861,6 +861,14 @@ gboolean g_obex_cancel_req(GObex *obex, guint req_id, gboolean remove_callback)
 
 	g_queue_delete_link(obex->tx_queue, match);
 
+	/* In SRM mode pending_req may belong to the same transfer but carry
+	 * a different req_id. Clear its callback to avoid use-after-free
+	 * when its timeout fires after transfer_free().
+	 */
+	if (remove_callback && obex->pending_req &&
+				obex->pending_req->rsp_data == p->rsp_data)
+		obex->pending_req->rsp_func = NULL;
+
 immediate_completion:
 	p->cancelled = TRUE;
 	p->obex = g_obex_ref(obex);
