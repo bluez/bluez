@@ -3356,35 +3356,69 @@ static uint8_t stream_enable(struct bt_bap_stream *stream, struct iovec *meta,
 	return 0;
 }
 
-static bool ascs_metadata_rsp(struct bt_bap_endpoint *ep, struct iovec *meta,
-							struct iovec *rsp)
+struct bap_metadata_process {
+	struct bt_bap_endpoint *ep;
+	uint16_t context;
+	struct iovec *rsp;
+	uint8_t err;
+};
+
+static void bap_metadata_process(size_t i, uint8_t l, uint8_t t, uint8_t *v,
+					void *user_data)
 {
-	struct bt_ltv *ltv;
-	uint16_t supported_context = 0;
+	struct bap_metadata_process *data = user_data;
 	uint16_t context;
 
-	if (ep->stream && ep->stream->lpac)
-		supported_context = ep->stream->lpac->qos.supported_context;
-
-	ltv = meta->iov_base;
-	if (meta->iov_len >= sizeof(*ltv) &&
-			(ltv->type < BAP_METADATA_PREF_CONTEXT_LTV_TYPE ||
-			ltv->type > BAP_METADATA_LANGUAGE_LTV_TYPE)) {
-		ascs_ase_rsp_add(rsp, ep->id,
-				BT_ASCS_RSP_METADATA_UNSUPPORTED, ltv->type);
-		return true;
-	}
-
-	if (meta->iov_len >= sizeof(*ltv) + sizeof(context) &&
-			ltv->type == BAP_METADATA_CONTEXT_LTV_TYPE &&
-			ltv->len == sizeof(context) + 1) {
-		context = get_le16(ltv->value);
-		if (!context || (context & ~supported_context)) {
-			ascs_ase_rsp_add(rsp, ep->id,
-					BT_ASCS_RSP_METADATA_INVALID,
-					ltv->type);
-			return true;
+	switch (t) {
+	case BAP_METADATA_PREF_CONTEXT_LTV_TYPE:
+		break;
+	case BAP_METADATA_CONTEXT_LTV_TYPE:
+		if (l != sizeof(context)) {
+			ascs_ase_rsp_add(data->rsp, data->ep->id,
+					BT_ASCS_RSP_METADATA_INVALID, t);
+			data->err = BT_ASCS_RSP_METADATA_INVALID;
+			break;
 		}
+
+		context = get_le16(v);
+		if (!context || (context & ~data->context)) {
+			ascs_ase_rsp_add(data->rsp, data->ep->id,
+					BT_ASCS_RSP_METADATA_INVALID, t);
+			data->err = BT_ASCS_RSP_METADATA_INVALID;
+		}
+
+		break;
+	case BAP_METADATA_PROGRAM_INFO_LTV_TYPE:
+	case BAP_METADATA_LANGUAGE_LTV_TYPE:
+		break;
+	default:
+		ascs_ase_rsp_add(data->rsp, data->ep->id,
+					BT_ASCS_RSP_METADATA_UNSUPPORTED,
+					t);
+		data->err = BT_ASCS_RSP_METADATA_UNSUPPORTED;
+		break;
+	};
+}
+
+static bool ascs_metadata_rsp(struct bt_bap_endpoint *ep, struct bt_bap *bap,
+				struct iovec *meta, struct iovec *rsp)
+{
+	struct bap_metadata_process data = {
+		.ep = ep,
+		.rsp = rsp,
+		.err = 0,
+	};
+
+	if (ep->stream && ep->stream->lpac)
+		data.context = ep->stream->lpac->qos.supported_context;
+
+	util_ltv_foreach(meta->iov_base, meta->iov_len, NULL,
+				bap_metadata_process, &data);
+
+	if (data.err) {
+		DBG(bap, "ep %p id 0x%02x metadata error 0x%02x", ep, ep->id,
+				data.err);
+		return true;
 	}
 
 	return false;
@@ -3421,7 +3455,7 @@ static uint8_t ep_enable(struct bt_bap_endpoint *ep, struct bt_bap *bap,
 		return 0;
 	}
 
-	if (ascs_metadata_rsp(ep, &meta, rsp))
+	if (ascs_metadata_rsp(ep, bap, &meta, rsp))
 		return 0;
 
 	if (!ep->stream) {
@@ -3657,7 +3691,7 @@ static uint8_t ep_metadata(struct bt_bap_endpoint *ep,
 	meta.iov_base = util_iov_pull_mem(iov, req->len);
 	meta.iov_len = req->len;
 
-	if (ascs_metadata_rsp(ep, &meta, rsp))
+	if (ascs_metadata_rsp(ep, stream->bap, &meta, rsp))
 		return 0;
 
 	return stream_metadata(ep->stream, &meta, rsp);
