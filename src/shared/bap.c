@@ -3407,7 +3407,7 @@ static uint8_t stream_enable(struct bt_bap_stream *stream, struct iovec *meta,
 static bool ascs_metadata_rsp(struct bt_bap_endpoint *ep, struct iovec *meta,
 							struct iovec *rsp)
 {
-	struct bt_ltv *ltv;
+	struct bt_ltv *ltv, *next;
 	uint16_t supported_context = 0;
 	uint16_t context;
 
@@ -3421,6 +3421,18 @@ static bool ascs_metadata_rsp(struct bt_bap_endpoint *ep, struct iovec *meta,
 		ascs_ase_rsp_add(rsp, ep->id,
 				BT_ASCS_RSP_METADATA_UNSUPPORTED, ltv->type);
 		return true;
+	}
+
+	if (meta->iov_len >= sizeof(*ltv) &&
+			meta->iov_len >= (size_t) ltv->len + 1 + sizeof(*next)) {
+		next = (void *)((uint8_t *)meta->iov_base + ltv->len + 1);
+		if (next->type < BAP_METADATA_PREF_CONTEXT_LTV_TYPE ||
+				next->type > BAP_METADATA_LANGUAGE_LTV_TYPE) {
+			ascs_ase_rsp_add(rsp, ep->id,
+					BT_ASCS_RSP_METADATA_UNSUPPORTED,
+					next->type);
+			return true;
+		}
 	}
 
 	if (meta->iov_len >= sizeof(*ltv) + sizeof(context) &&
@@ -3921,6 +3933,7 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
 	} else {
 		DBG(bap, "Unknown opcode 0x%02x", hdr->op);
 		ascs_ase_rsp_add_errno(rsp, 0x00, -ENOTSUP);
+		ret = 0;
 	}
 
 respond:
