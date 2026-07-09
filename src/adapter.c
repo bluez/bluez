@@ -7184,6 +7184,14 @@ static void adapter_msd_notify(struct btd_adapter *adapter,
 	}
 }
 
+static bool match_uuid(const void *data, const void *match_data)
+{
+	const char *uuid = data;
+	const char *match = match_data;
+
+	return strcmp(uuid, match) == 0;
+}
+
 static bool is_filter_match(GSList *discovery_filter, struct eir_data *eir_data,
 								int8_t rssi)
 {
@@ -7216,8 +7224,7 @@ static bool is_filter_match(GSList *discovery_filter, struct eir_data *eir_data,
 				 * uuid.
 				 */
 				if (queue_find(eir_data->services,
-							m->data,
-							g_strcmp) != NULL)
+							match_uuid, m->data))
 					got_match = true;
 			}
 		}
