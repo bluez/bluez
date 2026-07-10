@@ -9,8 +9,8 @@
 #include <inttypes.h>
 
 #include "src/shared/io.h"
-#include "bluetooth/mgmt.h"
 #include "src/shared/hci.h"
+#include "src/shared/cs-types.h"
 
 struct bt_rap;
 struct gatt_db;
@@ -189,6 +189,23 @@ bool bt_rap_unregister(unsigned int id);
 
 struct bt_rap *bt_rap_new(struct gatt_db *ldb, struct gatt_db *rdb);
 
+bool bt_rap_set_cs_config_params(void *hci_sm,
+				const struct bt_rap_le_cs_config *config);
+bool bt_rap_set_cs_freq_params(void *hci_sm,
+				const struct bt_rap_le_cs_frequency *frequency);
+bool bt_rap_set_default_settings_params(void *hci_sm,
+				const struct bt_rap_le_cs_default_settings *s);
+bool bt_rap_get_cs_config_params(void *hci_sm,
+				struct bt_rap_le_cs_config *config);
+bool bt_rap_get_cs_freq_params(void *hci_sm,
+				struct bt_rap_le_cs_frequency *frequency);
+bool bt_rap_get_default_settings_params(void *hci_sm,
+				struct bt_rap_le_cs_default_settings *s);
+/* Distance measurement control */
+bool bt_rap_start_measurement(void *hci_sm, uint16_t conn_handle,
+				uint32_t duration_secs);
+bool bt_rap_stop_measurement(void *hci_sm);
+
 /* HCI Raw Channel Approach */
 void bt_rap_hci_cs_config_complete_callback(uint16_t length,
 					     const void *param,
@@ -220,3 +237,11 @@ bool bt_rap_set_conn_hndl(void *hci_sm,
 			bool is_central);
 
 void bt_rap_clear_conn_handle(void *hci_sm, uint16_t handle);
+
+bool bt_rap_is_procedure_active(void *hci_sm);
+
+void bt_rap_set_timeout_cb(void *hci_sm, void (*func)(void *),
+				void *user_data);
+
+void bt_rap_set_proc_active_cb(void *hci_sm, void (*func)(bool, void *),
+				void *user_data);

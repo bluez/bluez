@@ -249,7 +249,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/asha.h src/shared/asha.c \
 			src/shared/battery.h src/shared/battery.c \
 			src/shared/uinput.h src/shared/uinput.c \
-			src/shared/rap.h src/shared/rap.c
+			src/shared/rap.h src/shared/rap.c src/shared/cs-types.h
 
 
 if READLINE
