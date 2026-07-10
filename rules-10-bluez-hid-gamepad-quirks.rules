@@ -1,0 +1,9 @@
+# udev rules for BlueZ HID gamepad quirks
+# These rules ensure proper permissions for gamepad devices
+
+# TG170W / DualShock 4 compatible gamepads
+ACTION=="add", SUBSYSTEM=="input", ATTRS{id/vendor}=="054c", ATTRS{id/product}=="05c4", TAG+="uaccess"
+ACTION=="add", SUBSYSTEM=="input", ATTRS{id/vendor}=="054c", ATTRS{id/product}=="09cc", TAG+="uaccess"
+
+# Generic HID input device permissions
+ACTION=="add", SUBSYSTEM=="input", MODE="0660", GROUP="input"
