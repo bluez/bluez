@@ -2335,6 +2335,12 @@ typedef struct {
 #define iso_flags_ts(f)		((f >> 2) & 0x0001)
 #define iso_flags_pack(pb, ts)	((pb & 0x03) | ((ts & 0x01) << 2))
 
+/* ISO data length and flags pack/unpack */
+#define iso_data_len_pack(h, f)	((__u16) (((h) & 0x0fff) | \
+						  (((f) & 0x3) << 14)))
+#define iso_data_len(h)		((h) & 0x0fff)
+#define iso_data_flags(h)	((h) >> 14)
+
 #endif /* _NO_HCI_DEFS */
 
 /* HCI Socket options */
