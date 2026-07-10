@@ -39,20 +39,44 @@
 #define BTD_DEVICE_INTERFACE		"org.bluez.Device1"
 
 static DBusConnection *dbus_conn;
-static struct queue *devices; /* List of struct device_data objects */
+static struct queue *policies; /* List of struct btd_admin_policy objects */
 
-/* |policy_data| has the same life cycle as btd_adapter */
-static struct btd_admin_policy {
+/* One policy context per adapter */
+struct btd_admin_policy {
 	struct btd_adapter *adapter;
 	uint16_t adapter_id;
 	struct queue *service_allowlist;
-} *policy_data = NULL;
+	struct queue *devices;
+};
 
 struct device_data {
 	struct btd_device *device;
 	char *path;
 	bool affected;
+	struct btd_admin_policy *policy;
 };
+
+static void free_device_data(void *data);
+static void unregister_device_data(void *data, void *user_data);
+
+static bool policy_match_adapter(const void *data, const void *match_data)
+{
+	const struct btd_admin_policy *policy = data;
+	const struct btd_adapter *adapter = match_data;
+
+	if (!policy)
+		return false;
+
+	return policy->adapter == adapter;
+}
+
+static struct btd_admin_policy *admin_policy_find(struct btd_adapter *adapter)
+{
+	if (!policies)
+		return NULL;
+
+	return queue_find(policies, policy_match_adapter, adapter);
+}
 
 static struct btd_admin_policy *admin_policy_new(struct btd_adapter *adapter)
 {
@@ -68,6 +92,16 @@ static struct btd_admin_policy *admin_policy_new(struct btd_adapter *adapter)
 	admin_policy->adapter = adapter;
 	admin_policy->adapter_id = btd_adapter_get_index(adapter);
 	admin_policy->service_allowlist = queue_new();
+	admin_policy->devices = queue_new();
+
+	if (!admin_policy->service_allowlist || !admin_policy->devices) {
+		queue_destroy(admin_policy->service_allowlist, free);
+		queue_destroy(admin_policy->devices, NULL);
+		g_free(admin_policy);
+		btd_error(btd_adapter_get_index(adapter),
+				"Failed to allocate queues for admin_policy");
+		return NULL;
+	}
 
 	return admin_policy;
 }
@@ -82,12 +116,15 @@ static void admin_policy_free(void *data)
 	struct btd_admin_policy *admin_policy = data;
 
 	free_service_allowlist(admin_policy->service_allowlist);
+	queue_destroy(admin_policy->devices, free_device_data);
 	g_free(admin_policy);
 }
 
 static void admin_policy_destroy(struct btd_admin_policy *admin_policy)
 {
 	const char *path = adapter_get_path(admin_policy->adapter);
+
+	queue_foreach(admin_policy->devices, unregister_device_data, NULL);
 
 	g_dbus_unregister_interface(dbus_conn, path,
 						ADMIN_POLICY_SET_INTERFACE);
@@ -166,6 +203,7 @@ static bool service_allowlist_set(struct btd_admin_policy *admin_policy,
 
 	free_service_allowlist(admin_policy->service_allowlist);
 	admin_policy->service_allowlist = uuid_list;
+	btd_adapter_reapply_allowed_uuids(adapter);
 
 	return true;
 }
@@ -346,7 +384,7 @@ static void load_policy_settings(struct btd_admin_policy *admin_policy)
 			btd_adapter_get_storage_dir(admin_policy->adapter));
 
 	if (stat(filename, &st) < 0)
-		store_policy_settings(policy_data);
+		store_policy_settings(admin_policy);
 
 	key_file = g_key_file_new();
 
@@ -387,11 +425,11 @@ static DBusMessage *set_service_allowlist(DBusConnection *conn,
 	}
 
 	g_dbus_emit_property_changed(dbus_conn,
-					adapter_get_path(policy_data->adapter),
+					adapter_get_path(admin_policy->adapter),
 					ADMIN_POLICY_STATUS_INTERFACE,
 					"ServiceAllowList");
 
-	queue_foreach(devices, update_device_affected, NULL);
+	queue_foreach(admin_policy->devices, update_device_affected, NULL);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -488,56 +526,68 @@ static void remove_device_data(void *data)
 
 	DBG("device_data for %s removing", device_data->path);
 
-	queue_remove(devices, device_data);
+	if (device_data->policy)
+		queue_remove(device_data->policy->devices, device_data);
+
 	free_device_data(device_data);
 }
 
 static int admin_policy_adapter_probe(struct btd_adapter *adapter)
 {
+	struct btd_admin_policy *policy;
 	const char *adapter_path;
 
-	if (!devices)
-		devices = queue_new();
+	if (!policies)
+		policies = queue_new();
 
-	if (policy_data) {
-		btd_warn(policy_data->adapter_id,
-						"Policy data already exists");
-		policy_data = NULL;
-	}
-
-	policy_data = admin_policy_new(adapter);
-	if (!policy_data)
+	if (!policies)
 		return -ENOMEM;
 
-	load_policy_settings(policy_data);
+	if (admin_policy_find(adapter)) {
+		btd_warn(btd_adapter_get_index(adapter),
+						"Policy data already exists");
+		return -EALREADY;
+	}
+
+	policy = admin_policy_new(adapter);
+	if (!policy)
+		return -ENOMEM;
+
+	load_policy_settings(policy);
 	adapter_path = adapter_get_path(adapter);
 
 	if (!g_dbus_register_interface(dbus_conn, adapter_path,
 					ADMIN_POLICY_SET_INTERFACE,
 					admin_policy_adapter_methods, NULL,
-					NULL, policy_data, NULL)) {
-		btd_error(policy_data->adapter_id,
+					NULL, policy, NULL)) {
+		btd_error(policy->adapter_id,
 			"Admin Policy Set interface init failed on path %s",
 								adapter_path);
+		admin_policy_free(policy);
 		return -EINVAL;
 	}
 
-	btd_info(policy_data->adapter_id,
+	btd_info(policy->adapter_id,
 				"Admin Policy Set interface registered");
 
 	if (!g_dbus_register_interface(dbus_conn, adapter_path,
 					ADMIN_POLICY_STATUS_INTERFACE,
 					NULL, NULL,
 					admin_policy_adapter_properties,
-					policy_data, NULL)) {
-		btd_error(policy_data->adapter_id,
+					policy, NULL)) {
+		btd_error(policy->adapter_id,
 			"Admin Policy Status interface init failed on path %s",
 								adapter_path);
+		g_dbus_unregister_interface(dbus_conn, adapter_path,
+						ADMIN_POLICY_SET_INTERFACE);
+		admin_policy_free(policy);
 		return -EINVAL;
 	}
 
-	btd_info(policy_data->adapter_id,
+	btd_info(policy->adapter_id,
 				"Admin Policy Status interface registered");
+
+	queue_push_tail(policies, policy);
 
 	return 0;
 }
@@ -545,9 +595,17 @@ static int admin_policy_adapter_probe(struct btd_adapter *adapter)
 static void admin_policy_device_added(struct btd_adapter *adapter,
 						struct btd_device *device)
 {
+	struct btd_admin_policy *policy;
 	struct device_data *data;
 
-	if (queue_find(devices, device_data_match, device))
+	policy = admin_policy_find(adapter);
+	if (!policy) {
+		btd_warn(btd_adapter_get_index(adapter),
+				"Policy data not found for adapter");
+		return;
+	}
+
+	if (queue_find(policy->devices, device_data_match, device))
 		return;
 
 	data = g_new0(struct device_data, 1);
@@ -560,6 +618,7 @@ static void admin_policy_device_added(struct btd_adapter *adapter,
 	data->device = device;
 	data->path = g_strdup(device_get_path(device));
 	data->affected = !btd_device_all_services_allowed(data->device);
+	data->policy = policy;
 
 	if (!g_dbus_register_interface(dbus_conn, data->path,
 					ADMIN_POLICY_STATUS_INTERFACE,
@@ -573,7 +632,7 @@ static void admin_policy_device_added(struct btd_adapter *adapter,
 		return;
 	}
 
-	queue_push_tail(devices, data);
+	queue_push_tail(policy->devices, data);
 
 	DBG("device_data for %s added", data->path);
 }
@@ -589,9 +648,14 @@ static void unregister_device_data(void *data, void *user_data)
 static void admin_policy_device_removed(struct btd_adapter *adapter,
 						struct btd_device *device)
 {
+	struct btd_admin_policy *policy;
 	struct device_data *data;
 
-	data = queue_find(devices, device_data_match, device);
+	policy = admin_policy_find(adapter);
+	if (!policy)
+		return;
+
+	data = queue_find(policy->devices, device_data_match, device);
 
 	if (data)
 		unregister_device_data(data, NULL);
@@ -599,15 +663,20 @@ static void admin_policy_device_removed(struct btd_adapter *adapter,
 
 static void admin_policy_remove(struct btd_adapter *adapter)
 {
+	struct btd_admin_policy *policy;
+
 	DBG("");
 
-	queue_foreach(devices, unregister_device_data, NULL);
-	queue_destroy(devices, g_free);
-	devices = NULL;
+	policy = admin_policy_find(adapter);
+	if (!policy)
+		return;
 
-	if (policy_data) {
-		admin_policy_destroy(policy_data);
-		policy_data = NULL;
+	queue_remove(policies, policy);
+	admin_policy_destroy(policy);
+
+	if (!queue_length(policies)) {
+		queue_destroy(policies, NULL);
+		policies = NULL;
 	}
 }
 
