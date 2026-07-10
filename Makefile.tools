@@ -575,3 +575,11 @@ client_btpclient_btpclientctl_SOURCES = client/btpclient/btpclientctl.c client/d
 client_btpclient_btpclientctl_LDADD = src/libshared-mainloop.la src/libshared-glib.la \
 				lib/libbluetooth-internal.la -lreadline
 endif
+
+if HID
+bin_PROGRAMS += tools/bluez-quirkctl
+
+tools_bluez_quirkctl_SOURCES = tools/quirkctl.c
+tools_bluez_quirkctl_CFLAGS = $(JSONC_CFLAGS)
+tools_bluez_quirkctl_LDADD = $(JSONC_LIBS)
+endif
