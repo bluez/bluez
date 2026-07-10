@@ -2925,17 +2925,29 @@ static const struct bitfield_data features_msft[] = {
 
 static void print_features_subpage(uint8_t page, uint8_t subpages,
 					const uint8_t *features_array,
-					uint64_t *features)
+					uint64_t *features,
+					const struct bitfield_data *table)
 {
 	int i, j;
 	char str[18];
 
 	for (i = 0; i < subpages; i++) {
+		uint64_t mask;
+
 		for (j = 0; j < 8; j++)
 			features[i] |= ((uint64_t) features_array[i * 8 + j])
 					<< (j * 8);
 		sprintf(str, "Features[%u/%u]", page, i);
 		print_hex_field(str, &features_array[i * 8], 8);
+
+		if (!table)
+			continue;
+
+		mask = print_bitfield(2, features[i], table);
+		if (mask)
+			print_text(COLOR_UNKNOWN_FEATURE_BIT,
+				"  Unknown features (0x%16.16" PRIx64 ")",
+				mask);
 	}
 }
 
@@ -2943,15 +2955,12 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 								uint8_t type)
 {
 	const struct bitfield_data *features_table = NULL;
-	uint64_t mask, features[3] = {};
+	uint64_t features[3] = {};
 	uint8_t subpages = 1;
-	int i;
 
 	/* LE pages 1-10 are 192 bits (24 octets) each */
 	if (type == 0x01 && page)
 		subpages = 3;
-
-	print_features_subpage(page, subpages, features_array, features);
 
 	switch (type) {
 	case 0x00:
@@ -2985,16 +2994,8 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 		break;
 	}
 
-	if (!features_table)
-		return;
-
-	for (i = 0; i < subpages; i++) {
-		mask = print_bitfield(2, features[i], features_table);
-		if (mask)
-			print_text(COLOR_UNKNOWN_FEATURE_BIT,
-				"  Unknown features (0x%16.16" PRIx64 ")",
-				mask);
-	}
+	print_features_subpage(page, subpages, features_array, features,
+							features_table);
 }
 
 void packet_print_features_lmp(const uint8_t *features, uint8_t page)
@@ -11065,7 +11066,7 @@ static const struct opcode_data opcode_table[] = {
 				"LE Read Minimum Supported Connection Interval",
 				null_cmd, 0, true, le_read_conn_interval_rsp,
 				sizeof(struct bt_hci_rsp_le_read_conn_interval),
-				true },
+				false },
 	{ }
 };
 
