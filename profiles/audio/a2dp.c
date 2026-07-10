@@ -2398,7 +2398,16 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 			delay_reporting = false;
 		}
 
-		for (i = 0, size = strlen(caps); i < size && i >= 2; i += 2) {
+		size = strlen(caps);
+
+		g_free(value);
+
+		if (size % 2 || size / 2 > (int) sizeof(data)) {
+			warn("Unable to load Endpoint: seid %u", rseid);
+			continue;
+		}
+
+		for (i = 0; i < size; i += 2) {
 			uint8_t *tmp = data + i / 2;
 
 			if (sscanf(caps + i, "%02hhx", tmp) != 1) {
@@ -2406,8 +2415,6 @@ static void load_remote_sep(struct a2dp_channel *chan, GKeyFile *key_file,
 				break;
 			}
 		}
-
-		g_free(value);
 
 		if (i != size)
 			continue;
