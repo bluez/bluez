@@ -14540,19 +14540,22 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 				bool in, const void *data, uint16_t size)
 {
 	const struct bt_hci_iso_hdr *hdr = data;
-	const struct bt_hci_iso_data_start *start;
-	uint16_t handle = le16_to_cpu(hdr->handle);
-	uint8_t flags = acl_flags(handle);
+	uint16_t handle, dlen;
+	uint8_t flags, pb_flag;
 	char label[8];
-	char handle_str[56], extra_str[50], ts_str[16] = { 0 };
-	struct index_buf_pool *pool = &index_list[index].iso;
+	char handle_str[100], extra_str[70], ts_str[16] = { 0 };
+	char sn_str[16] = { 0 }, slen_str[32] = { 0 };
+	struct index_buf_pool *pool;
 	struct packet_conn_data *conn;
 	size_t ts_size = 0;
+	bool have_hdr;
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
 		return;
 	}
+
+	pool = &index_list[index].iso;
 
 	index_list[index].frame++;
 
@@ -14562,11 +14565,18 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	data += sizeof(*hdr);
 	size -= sizeof(*hdr);
 
+	handle = le16_to_cpu(hdr->handle);
+	flags = acl_flags(handle);
+	pb_flag = iso_flags_pb(flags);
+	dlen = le16_to_cpu(hdr->dlen);
+
+	have_hdr = (pb_flag == 0x00 || pb_flag == 0x02);
+
 	/* Detect if timestamp field is preset */
 	if (iso_flags_ts(flags)) {
 		ts_size = sizeof(uint32_t);
 
-		if (size < ts_size)
+		if (size < ts_size || !have_hdr)
 			goto malformed;
 
 		snprintf(ts_str, sizeof(ts_str), " ts %u", get_le32(data));
@@ -14575,20 +14585,31 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		size -= ts_size;
 	}
 
-	start = data;
+	if (have_hdr) {
+		const struct bt_hci_iso_data_start *start = data;
+
+		if (size < sizeof(*start))
+			goto malformed;
+
+		snprintf(sn_str, sizeof(sn_str), " SN %u",
+							le16_to_cpu(start->sn));
+		snprintf(slen_str, sizeof(slen_str), " slen %u sflags %u",
+				iso_data_len(le16_to_cpu(start->slen)),
+				iso_data_flags(le16_to_cpu(start->slen)));
+	}
+
 	conn = packet_get_conn_data(handle);
 
 	if (!in && pool->total)
-		sprintf(handle_str, "Handle %d [%u/%u] SN %u",
-			acl_handle(handle), ++pool->tx, pool->total, start->sn);
+		sprintf(handle_str, "Handle %d [%u/%u]%s",
+			acl_handle(handle), ++pool->tx, pool->total, sn_str);
 	else
-		sprintf(handle_str, "Handle %u SN %u", acl_handle(handle),
-			start->sn);
+		sprintf(handle_str, "Handle %u%s", acl_handle(handle), sn_str);
 
 	handle_str_append_addr(handle_str, conn);
 
-	sprintf(extra_str, "flags 0x%2.2x dlen %u slen %u%s", flags, hdr->dlen,
-							start->slen, ts_str);
+	sprintf(extra_str, "flags 0x%2.2x dlen %u%s%s", flags, dlen, slen_str,
+									ts_str);
 
 	if (conn)
 		sprintf(label, "%s", conn_type_str(conn->type));
@@ -14600,18 +14621,11 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	if (!in)
 		packet_enqueue_tx(tv, acl_handle(handle),
-					index_list[index].frame, hdr->dlen);
+					index_list[index].frame, dlen);
 
-	if (size + ts_size != hdr->dlen) {
+	if (size + ts_size != dlen) {
 		print_text(COLOR_ERROR, "invalid packet size (%d != %d)",
-						size + (int)ts_size, hdr->dlen);
-		packet_hexdump(data, size);
-		return;
-	}
-
-	if (size != start->slen + 4) {
-		print_text(COLOR_ERROR, "invalid packet slen (%d+4 != %d)",
-							start->slen, size);
+						size + (int)ts_size, dlen);
 		packet_hexdump(data, size);
 		return;
 	}
