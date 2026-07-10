@@ -28,6 +28,8 @@
 #include "src/profile.h"
 #include "src/service.h"
 
+#include "quirk-profile.h"
+
 #include "device.h"
 #include "server.h"
 
@@ -121,11 +123,15 @@ static int input_init(void)
 	if (config)
 		g_key_file_free(config);
 
+	/* Load external quirk profiles from system directory */
+	load_external_quirks(NULL);
+
 	return btd_profile_register(&input_profile);
 }
 
 static void input_exit(void)
 {
+	free_external_quirks();
 	btd_profile_unregister(&input_profile);
 }
 

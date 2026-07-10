@@ -40,10 +40,15 @@ bool gamepad_quirk_match(struct input_device *idev)
 {
 	int i;
 
+	/* Check built-in quirks first */
 	for (i = 0; quirks[i]; i++) {
 		if (quirks[i]->match(idev))
 			return true;
 	}
+
+	/* Then check external (file-based) quirks */
+	if (external_quirk_match(idev))
+		return true;
 
 	return false;
 }
@@ -53,6 +58,7 @@ int gamepad_quirk_apply(struct input_device *idev,
 {
 	int i;
 
+	/* Try built-in quirks first */
 	for (i = 0; quirks[i]; i++) {
 		if (!quirks[i]->match(idev))
 			continue;
@@ -60,6 +66,11 @@ int gamepad_quirk_apply(struct input_device *idev,
 		DBG("Applying HID quirk: %s", quirks[i]->name);
 
 		return quirks[i]->apply(idev, req);
+	}
+
+	/* Try external quirks */
+	if (external_quirk_match(idev)) {
+		return external_quirk_apply(idev, req);
 	}
 
 	return -1;

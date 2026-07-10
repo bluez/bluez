@@ -29,4 +29,9 @@ bool gamepad_quirk_match(struct input_device *idev);
 int gamepad_quirk_apply(struct input_device *idev,
 			struct hidp_connadd_req *req);
 
+/* External quirk support (quirk-profile.c) */
+bool external_quirk_match(struct input_device *idev);
+int external_quirk_apply(struct input_device *idev,
+			struct hidp_connadd_req *req);
+
 #endif
