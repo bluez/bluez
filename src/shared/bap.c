@@ -2589,8 +2589,17 @@ static unsigned int bap_bcast_release(struct bt_bap_stream *stream,
 
 static bool bap_ucast_set_io(struct bt_bap_stream *stream, int fd)
 {
-	if (!stream || (fd >= 0 && stream->io && !stream->io->connecting))
+	if (!stream)
 		return false;
+
+	/*
+	 * The STREAMING state handler may already have attached this io
+	 * if the remote's ASE notification raced ahead of iso_connect_cb
+	 * (see bap_state() in profiles/audio/bap.c). Re-attaching the
+	 * same fd is a no-op success; only a different fd is an error.
+	 */
+	if (fd >= 0 && stream->io && !stream->io->connecting)
+		return stream_io_get_fd(stream->io) == fd;
 
 	bap_stream_set_io(stream, INT_TO_PTR(fd));
 
