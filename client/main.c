@@ -39,6 +39,7 @@
 #include "assistant.h"
 #include "hci.h"
 #include "telephony.h"
+#include "cs.h"
 
 /* String display constants */
 #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
@@ -124,6 +125,7 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 	battery_proxies = NULL;
 
 	default_ctrl = NULL;
+	cs_set_device_list(NULL);
 }
 
 static void print_adapter(GDBusProxy *proxy, const char *description)
@@ -391,8 +393,10 @@ static struct adapter *adapter_new(GDBusProxy *proxy)
 
 	ctrl_list = g_list_append(ctrl_list, adapter);
 
-	if (!default_ctrl)
+	if (!default_ctrl) {
 		default_ctrl = adapter;
+		cs_set_device_list(&adapter->devices);
+	}
 
 	return adapter;
 }
@@ -525,6 +529,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		bearer_added(proxy);
 	} else if (!strcmp(interface, "org.bluez.Bearer.LE1")) {
 		bearer_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
+		cs_proxy_added(proxy);
 	}
 }
 
@@ -656,6 +662,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		bearer_removed(proxy);
 	} else if (!strcmp(interface, "org.bluez.Bearer.LE1")) {
 		bearer_removed(proxy);
+	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
+		cs_proxy_removed(proxy);
 	}
 }
 
@@ -728,6 +736,10 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 					set_default_device(proxy, NULL);
 				else if (!connected && default_dev == proxy)
 					set_default_device(NULL, NULL);
+
+				if (!connected)
+					cs_device_disconnected(
+						g_dbus_proxy_get_path(proxy));
 
 				/* If the device is connected and the filter
 				 * is auto_connect and it matches the pattern,
@@ -820,6 +832,16 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 			print_iter(str, name, iter);
 			g_free(str);
+		}
+	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
+		if (!strcmp(name, "Active")) {
+			dbus_bool_t active;
+
+			dbus_message_iter_get_basic(iter, &active);
+			if (active)
+				cs_measurement_started(proxy);
+			else
+				cs_measurement_stopped(proxy);
 		}
 	}
 }
@@ -1090,6 +1112,7 @@ static void cmd_select(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 
 	default_ctrl = adapter;
+	cs_set_device_list(&adapter->devices);
 	print_adapter(adapter->proxy, NULL);
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
@@ -4003,6 +4026,7 @@ int main(int argc, char *argv[])
 	assistant_add_submenu();
 	hci_add_submenu();
 	telephony_add_submenu();
+	cs_add_submenu();
 	bt_shell_set_prompt(PROMPT_OFF, NULL);
 
 	bt_shell_handle_non_interactive_help();
@@ -4044,6 +4068,7 @@ int main(int argc, char *argv[])
 	assistant_remove_submenu();
 	hci_remove_submenu();
 	telephony_remove_submenu();
+	cs_remove_submenu();
 
 	g_dbus_client_unref(client);
 
