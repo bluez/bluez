@@ -648,8 +648,11 @@ static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
 	if (cdata->disable_on_connect) {
 		if (write_6lowpan("6lowpan_enable", "0"))
 			tester_test_failed();
-		else
+		else {
+			data->handle = 0;
+			data->dcid = 0;
 			tester_test_passed();
+		}
 	}
 }
 
