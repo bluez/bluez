@@ -277,7 +277,7 @@ static void test_data_free(void *test_data)
 #define test_l2cap(name, type, data, setup, func) \
 	do { \
 		struct test_data *user; \
-		user = malloc(sizeof(struct test_data)); \
+		user = calloc(1, sizeof(struct test_data)); \
 		if (!user) \
 			break; \
 		user->hciemu_type = type; \
@@ -1657,8 +1657,10 @@ static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
 		tester_print("err %d != %d expected_err", -err,
 						l2data->expect_err);
 		tester_test_failed();
-	} else
+	} else if (!data->step)
 		tester_test_passed();
+	else
+		tester_test_failed();
 
 	return FALSE;
 }
@@ -1729,12 +1731,13 @@ static gboolean check_phy(gpointer args)
 	}
 
 	if (l2data->phy && l2data->phy != data->phys) {
-		tester_warn("phy 0x%08x != 0x%08x", l2data->phy, data->phys);
-		tester_test_failed();
-		goto done;
+		tester_print("phy 0x%08x != 0x%08x", l2data->phy, data->phys);
+
+		/* Retry */
+		return TRUE;
 	}
 
-	tester_test_passed();
+	data->step--;
 
 done:
 	shutdown(sk, SHUT_WR);
@@ -1770,7 +1773,8 @@ static int check_phys(struct test_data *data, int sk)
 		}
 
 		/* Wait for the PHY to change */
-		g_idle_add(check_phy, INT_TO_PTR(sk));
+		data->step++;
+		g_timeout_add(50, check_phy, INT_TO_PTR(sk));
 
 		return -EINPROGRESS;
 	}
