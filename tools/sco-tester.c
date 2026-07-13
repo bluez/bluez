@@ -1415,6 +1415,8 @@ static gboolean sco_accept_cb(GIOChannel *io, GIOCondition cond,
 	gboolean ret;
 	GIOChannel *new_io;
 
+	data->io_id = 0;
+
 	tester_debug("New connection");
 
 	sk = g_io_channel_unix_get_fd(io);
