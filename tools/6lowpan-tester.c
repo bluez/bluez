@@ -76,6 +76,9 @@ struct client_data {
 
 	/* Interface listener socket type, SOCK_RAW / DGRAM */
 	int sk_type;
+
+	/* Don't disable 6lowpan before adapter teardown */
+	bool no_teardown_disable;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -264,6 +267,7 @@ static void test_pre_setup(const void *test_data)
 static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct client_data *cdata = data->test_data;
 	int ret;
 
 	if (data->io_id > 0) {
@@ -276,11 +280,13 @@ static void test_post_teardown(const void *test_data)
 		data->packet_fd = -1;
 	}
 
-	ret = write_6lowpan("6lowpan_enable", "0");
-	if (ret < 0) {
-		tester_warn("Failed to disable 6lowpan");
-		tester_post_teardown_failed();
-		return;
+	if (!cdata || !cdata->no_teardown_disable) {
+		ret = write_6lowpan("6lowpan_enable", "0");
+		if (ret < 0) {
+			tester_warn("Failed to disable 6lowpan");
+			tester_post_teardown_failed();
+			return;
+		}
 	}
 
 	hciemu_unref(data->hciemu);
@@ -315,6 +321,10 @@ static const struct client_data client_connect_terminate = {
 
 static const struct client_data client_connect_disable = {
 	.disable_on_connect = true,
+};
+
+static const struct client_data client_connect_no_disable = {
+	.no_teardown_disable = true,
 };
 
 static const struct client_data client_connect_disconnect = {
@@ -653,6 +663,10 @@ static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
 			data->dcid = 0;
 			tester_test_passed();
 		}
+	} else if (cdata->no_teardown_disable) {
+		data->handle = 0;
+		data->dcid = 0;
+		tester_test_passed();
 	}
 }
 
@@ -705,6 +719,10 @@ int main(int argc, char *argv[])
 							test_connect);
 
 	test_6lowpan("Client Connect - Disable", &client_connect_disable,
+							setup_powered_client,
+							test_connect);
+
+	test_6lowpan("Client Connect - No Disable", &client_connect_no_disable,
 							setup_powered_client,
 							test_connect);
 
