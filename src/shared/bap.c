@@ -1000,7 +1000,8 @@ static void ascs_ase_rsp_add(struct iovec *iov, uint8_t id,
 	}
 
 	iov->iov_len += sizeof(*rsp);
-	iov->iov_base = realloc(iov->iov_base, iov->iov_len);
+	if (!bt_realloc(&iov->iov_base, iov->iov_len))
+		return;
 
 	rsp = iov->iov_base + (iov->iov_len - sizeof(*rsp));
 	rsp->ase = id;
