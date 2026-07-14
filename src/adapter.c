@@ -9606,6 +9606,9 @@ static void connected_callback(uint16_t index, uint16_t length,
 		adapter_msd_notify(adapter, device, eir_data.msd_list);
 
 	eir_data_free(&eir_data);
+
+	if (device_is_bonded(device, BDADDR_BREDR))
+		btd_device_connect_services(device, NULL);
 }
 
 static void controller_resume_notify(struct btd_adapter *adapter)
