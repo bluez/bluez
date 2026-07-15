@@ -1,0 +1,5 @@
+power on
+cs.role 0x02
+cs.sync_ant_sel 0x01
+cs.max_tx_power 10
+cs.start

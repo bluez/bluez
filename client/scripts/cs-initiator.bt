@@ -1,0 +1,6 @@
+power on
+cs.role 0x01
+cs.main_mode_type 2
+cs.phy 0x02
+cs.sync_phy 0x02
+cs.start AA:BB:CC:DD:EE:FF 30
