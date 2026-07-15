@@ -7256,6 +7256,22 @@ static void filter_duplicate_data(void *data, void *user_data)
 	*duplicate = client->discovery_filter->duplicate;
 }
 
+static bool discovery_filter_has_proximity(struct btd_adapter *adapter)
+{
+	GSList *l;
+
+	for (l = adapter->discovery_list; l; l = g_slist_next(l)) {
+		struct discovery_client *client = l->data;
+		struct discovery_filter *filter = client->discovery_filter;
+
+		if (filter && (filter->rssi != DISTANCE_VAL_INVALID ||
+				filter->pathloss != DISTANCE_VAL_INVALID))
+			return true;
+	}
+
+	return false;
+}
+
 static bool device_is_discoverable(struct btd_adapter *adapter,
 					struct eir_data *eir, const char *addr,
 					uint8_t bdaddr_type, bool *auto_connect)
@@ -7452,7 +7468,8 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 	if (name_resolve_failed)
 		device_name_resolve_fail(dev);
 
-	if (adapter->filtered_discovery)
+	if (adapter->filtered_discovery &&
+				discovery_filter_has_proximity(adapter))
 		device_set_rssi_with_delta(dev, rssi, 0);
 	else
 		device_set_rssi(dev, rssi);
