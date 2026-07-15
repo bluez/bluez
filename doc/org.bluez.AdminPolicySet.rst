@@ -55,3 +55,4 @@ Possible errors:
 Examples:
 
 :bluetoothctl: > admin.allow [clear/uuid1 uuid2 ...]
+:bluetoothctl: > admin.allow [ctrl] [clear/uuid1 uuid2 ...]
