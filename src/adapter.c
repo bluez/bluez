@@ -5267,7 +5267,7 @@ static const char *profile_allowlist_uuid(const struct btd_profile *profile)
 	return NULL;
 }
 
-static bool adapter_profile_is_allowed(struct btd_adapter *adapter,
+bool btd_adapter_is_profile_allowed(struct btd_adapter *adapter,
 					const struct btd_profile *profile)
 {
 	const char *uuid = profile_allowlist_uuid(profile);
@@ -5286,7 +5286,7 @@ static void probe_profile(struct btd_profile *profile, void *data)
 	if (profile->adapter_probe == NULL)
 		return;
 
-	if (!adapter_profile_is_allowed(adapter, profile)) {
+	if (!btd_adapter_is_profile_allowed(adapter, profile)) {
 		DBG("%s blocked by admin allowlist", profile->name);
 		return;
 	}
@@ -5311,7 +5311,7 @@ static void reapply_profile(struct btd_profile *profile, void *data)
 
 	active = g_slist_find(adapter->profiles, profile) != NULL;
 
-	if (adapter_profile_is_allowed(adapter, profile)) {
+	if (btd_adapter_is_profile_allowed(adapter, profile)) {
 		if (!active)
 			probe_profile(profile, adapter);
 		return;
