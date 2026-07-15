@@ -2928,7 +2928,7 @@ static void print_features_subpage(uint8_t page, uint8_t subpages,
 					uint64_t *features,
 					const struct bitfield_data *table)
 {
-	int i, j;
+	uint8_t i, j;
 	char str[18];
 
 	for (i = 0; i < subpages; i++) {
