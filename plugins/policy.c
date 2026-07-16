@@ -45,6 +45,7 @@
 #define HS_RETRIES SOURCE_RETRIES
 #define CT_RETRIES 1
 #define TG_RETRIES CT_RETRIES
+#define GRACE_TIMEOUT 2
 
 struct reconnect_data {
 	struct btd_device *dev;
@@ -92,6 +93,7 @@ struct policy_data {
 	uint8_t tg_retries;
 	unsigned int hs_timer;
 	uint8_t hs_retries;
+	unsigned int grace_timer;
 };
 
 static struct reconnect_data *reconnect_find(struct btd_device *dev)
@@ -190,6 +192,9 @@ static void policy_remove(void *user_data)
 	if (data->hs_timer > 0)
 		timeout_remove(data->hs_timer);
 
+	if (data->grace_timer > 0)
+		timeout_remove(data->grace_timer);
+
 	g_free(data);
 }
 
@@ -207,6 +212,83 @@ static struct policy_data *policy_get_data(struct btd_device *dev)
 	devices = g_slist_prepend(devices, data);
 
 	return data;
+}
+
+static bool policy_has_audio_profile(struct btd_device *dev)
+{
+	struct btd_service *service;
+
+	service = btd_device_get_service(dev, A2DP_SINK_UUID);
+	if (service && btd_service_get_state(service) ==
+					BTD_SERVICE_STATE_CONNECTED)
+		return true;
+
+	service = btd_device_get_service(dev, A2DP_SOURCE_UUID);
+	if (service && btd_service_get_state(service) ==
+					BTD_SERVICE_STATE_CONNECTED)
+		return true;
+
+	return false;
+}
+
+static void policy_clear_grace_timer(struct policy_data *data)
+{
+	if (data->grace_timer > 0) {
+		timeout_remove(data->grace_timer);
+		data->grace_timer = 0;
+	}
+}
+
+static bool policy_grace_timeout(gpointer user_data)
+{
+	struct policy_data *data = user_data;
+	struct btd_device *dev = data->dev;
+	int err;
+
+	data->grace_timer = 0;
+
+	DBG("Grace period expired for %s", device_get_path(dev));
+
+	if (policy_has_audio_profile(dev))
+		return false;
+
+	err = btd_device_connect_services(dev, NULL);
+	if (err < 0)
+		error("Fallback profile connection failed: %s (%d)",
+							strerror(-err), -err);
+
+	return false;
+}
+
+static void policy_set_grace_timer(struct policy_data *data)
+{
+	policy_clear_grace_timer(data);
+
+	DBG("Starting %d second grace period for %s", GRACE_TIMEOUT,
+						device_get_path(data->dev));
+
+	data->grace_timer = timeout_add_seconds(GRACE_TIMEOUT,
+						policy_grace_timeout, data,
+						NULL);
+}
+
+static void policy_connect_cb(struct btd_device *dev, uint8_t bdaddr_type)
+{
+	struct policy_data *data;
+
+	if (bdaddr_type != BDADDR_BREDR)
+		return;
+
+	if (!device_is_bonded(dev, BDADDR_BREDR))
+		return;
+
+	if (policy_has_audio_profile(dev))
+		return;
+
+	DBG("Bonded BREDR ACL connected for %s", device_get_path(dev));
+
+	data = policy_get_data(dev);
+	policy_set_grace_timer(data);
 }
 
 static bool policy_connect_hs(gpointer user_data)
@@ -716,6 +798,22 @@ static void service_cb(struct btd_service *service,
 			g_str_equal(profile->remote_uuid, HSP_HS_UUID))
 		hs_cb(service, old_state, new_state);
 
+	/* Cancel grace timer if an audio profile connected naturally.
+	 * Only A2DP connectivity cancels the timer: a non-audio profile
+	 * (HFP, HID, etc.) may connect after the security block window
+	 * without resolving the A2DP failure the timer is meant to catch.
+	 */
+	if (new_state == BTD_SERVICE_STATE_CONNECTED) {
+		struct btd_device *dev = btd_service_get_device(service);
+		struct policy_data *data = find_data(dev);
+
+		if (data && data->grace_timer > 0 &&
+				policy_has_audio_profile(dev)) {
+			DBG("Audio connected during grace period, cancelling");
+			policy_clear_grace_timer(data);
+		}
+	}
+
 	/*
 	 * Return if the reconnection feature is not enabled (all
 	 * subsequent code in this function is about that).
@@ -810,8 +908,13 @@ static void reconnect_set_timer(struct reconnect_data *reconnect, int timeout)
 static void disconnect_cb(struct btd_device *dev, uint8_t reason)
 {
 	struct reconnect_data *reconnect;
+	struct policy_data *data;
 
 	DBG("reason %u", reason);
+
+	data = find_data(dev);
+	if (data)
+		policy_clear_grace_timer(data);
 
 	/* Only attempt reconnect for the following reasons */
 	if (reason != MGMT_DEV_DISCONN_TIMEOUT &&
@@ -917,6 +1020,8 @@ static int policy_init(void)
 
 	service_id = btd_service_add_state_cb(service_cb, NULL);
 
+	btd_add_connect_cb(policy_connect_cb);
+
 	conf = btd_get_main_conf();
 	if (!conf) {
 		reconnect_uuids = g_strdupv((char **) default_reconnect);
@@ -988,6 +1093,7 @@ static void policy_exit(void)
 {
 	btd_remove_disconnect_cb(disconnect_cb);
 	btd_remove_conn_fail_cb(conn_fail_cb);
+	btd_remove_connect_cb(policy_connect_cb);
 
 	if (reconnect_uuids)
 		g_strfreev(reconnect_uuids);
