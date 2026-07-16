@@ -65,6 +65,10 @@ typedef void (*btd_conn_fail_cb) (struct btd_device *device, uint8_t status);
 void btd_add_conn_fail_cb(btd_conn_fail_cb func);
 void btd_remove_conn_fail_cb(btd_conn_fail_cb func);
 
+typedef void (*btd_connect_cb) (struct btd_device *device, uint8_t bdaddr_type);
+void btd_add_connect_cb(btd_connect_cb func);
+void btd_remove_connect_cb(btd_connect_cb func);
+
 struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
 

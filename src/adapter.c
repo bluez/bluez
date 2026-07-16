@@ -167,6 +167,7 @@ static GSList *adapter_drivers = NULL;
 
 static GSList *disconnect_list = NULL;
 static GSList *conn_fail_list = NULL;
+static GSList *connect_list = NULL;
 
 struct link_key_info {
 	bdaddr_t bdaddr;
@@ -8609,6 +8610,17 @@ int adapter_bonding_attempt(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	return 0;
 }
 
+static void connect_notify(struct btd_device *dev, uint8_t bdaddr_type)
+{
+	GSList *l;
+
+	for (l = connect_list; l; l = g_slist_next(l)) {
+		btd_connect_cb connect_cb = l->data;
+
+		connect_cb(dev, bdaddr_type);
+	}
+}
+
 static void disconnect_notify(struct btd_device *dev, uint8_t reason)
 {
 	GSList *l;
@@ -8660,6 +8672,16 @@ void btd_add_disconnect_cb(btd_disconnect_cb func)
 void btd_remove_disconnect_cb(btd_disconnect_cb func)
 {
 	disconnect_list = g_slist_remove(disconnect_list, func);
+}
+
+void btd_add_connect_cb(btd_connect_cb func)
+{
+	connect_list = g_slist_append(connect_list, func);
+}
+
+void btd_remove_connect_cb(btd_connect_cb func)
+{
+	connect_list = g_slist_remove(connect_list, func);
 }
 
 static void disconnect_complete(uint8_t status, uint16_t length,
@@ -9606,6 +9628,8 @@ static void connected_callback(uint16_t index, uint16_t length,
 		adapter_msd_notify(adapter, device, eir_data.msd_list);
 
 	eir_data_free(&eir_data);
+
+	connect_notify(device, ev->addr.type);
 }
 
 static void controller_resume_notify(struct btd_adapter *adapter)
