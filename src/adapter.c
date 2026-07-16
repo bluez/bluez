@@ -7415,8 +7415,17 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
 	 * older kernels send separate adv_ind and scan_rsp. Newer
 	 * kernels send them merged, so once we know which mgmt version
 	 * supports this we can make the non-zero check conditional.
+	 *
+	 * Only infer BR/EDR support when the LE address is a Public Device
+	 * Address. A dual-mode device uses the same Public Device Address for
+	 * BR/EDR and LE, so in that case the advertised address is also a valid
+	 * BD_ADDR to page. A random address (static, resolvable or
+	 * non-resolvable) has no defined relationship to the device's BD_ADDR,
+	 * so recording BR/EDR support against it makes the device look pageable
+	 * at an address that can never be paged: SDP discovery then fails with
+	 * Page Timeout and takes the working LE link down with it.
 	 */
-	if (bdaddr_type != BDADDR_BREDR && eir_data.flags &&
+	if (bdaddr_type == BDADDR_LE_PUBLIC && eir_data.flags &&
 					!(eir_data.flags & EIR_BREDR_UNSUP)) {
 		device_set_bredr_support(dev);
 		/* Update last seen for BR/EDR in case its flag is set */
