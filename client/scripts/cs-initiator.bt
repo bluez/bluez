@@ -1,0 +1,23 @@
+power on
+#
+# Start scanning to discover the reflector
+#
+scan le
+#
+# Search for reflector device, stop scanning
+# and connect to the address.
+#
+# scan off
+# connect AA:BB:CC:DD:EE:FF
+#
+# Set CS config paramteres for Initiator (optional)
+#
+# cs.role 0x01
+# cs.main_mode_type 2
+# cs.phy 0x02
+# cs.sync_phy 0x02
+#
+# Start CS Procedure with the mandatory paramteres
+# remote device's address and timeout value in seconds
+#
+# cs.start AA:BB:CC:DD:EE:FF 30
