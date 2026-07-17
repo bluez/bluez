@@ -15,6 +15,7 @@
 struct bt_rap;
 struct gatt_db;
 struct bt_gatt_client;
+struct bt_att;
 
 /* Channel Sounding Events */
 struct bt_rap_hci_cs_options {
@@ -161,6 +162,7 @@ typedef void (*bt_rap_debug_func_t)(const char *str, void *user_data);
 typedef void (*bt_rap_ready_func_t)(struct bt_rap *rap, void *user_data);
 typedef void (*bt_rap_destroy_func_t)(void *user_data);
 typedef void (*bt_rap_func_t)(struct bt_rap *rap, void *user_data);
+typedef void (*bt_rap_accessed_func_t)(struct bt_att *att, void *user_data);
 
 struct bt_rap *bt_rap_ref(struct bt_rap *rap);
 void bt_rap_unref(struct bt_rap *rap);
@@ -186,6 +188,10 @@ unsigned int bt_rap_ready_register(struct bt_rap *rap,
 bool bt_rap_ready_unregister(struct bt_rap *rap, unsigned int id);
 
 bool bt_rap_unregister(unsigned int id);
+
+unsigned int bt_rap_ras_accessed_register(bt_rap_accessed_func_t func,
+							void *user_data);
+bool bt_rap_ras_accessed_unregister(unsigned int id);
 
 struct bt_rap *bt_rap_new(struct gatt_db *ldb, struct gatt_db *rdb);
 

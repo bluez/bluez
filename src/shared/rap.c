@@ -306,12 +306,19 @@ struct bt_rap {
 
 static struct queue *rap_db;
 static struct queue *bt_rap_cbs;
+static struct queue *bt_rap_accessed_cbs;
 static struct queue *sessions;
 
 struct bt_rap_cb {
 	unsigned int id;
 	bt_rap_func_t attached;
 	bt_rap_func_t detached;
+	void *user_data;
+};
+
+struct bt_rap_accessed_cb {
+	unsigned int id;
+	bt_rap_accessed_func_t func;
 	void *user_data;
 };
 
@@ -724,6 +731,42 @@ static void cs_tracker_init(struct cstracker *t)
 	t->segment_data.iov_len = 0;
 }
 
+static bool notify_ras_accessed_idle(void *user_data)
+{
+	struct bt_att *att = user_data;
+	const struct queue_entry *entry;
+
+	for (entry = queue_get_entries(bt_rap_accessed_cbs); entry;
+	     entry = entry->next) {
+		struct bt_rap_accessed_cb *cb = entry->data;
+
+		cb->func(att, cb->user_data);
+	}
+
+	return false;
+}
+
+static void notify_ras_accessed_destroy(void *user_data)
+{
+	struct bt_att *att = user_data;
+
+	bt_att_unref(att);
+}
+
+/*
+ * Notify that the remote side has discovered/accessed a RAS attribute.
+ * Deferred to idle so it does not reenter device/profile logic from within
+ * the gatt-server's request-dispatch stack.
+ */
+static void notify_ras_accessed(struct bt_att *att)
+{
+	if (!att || !bt_rap_accessed_cbs || queue_isempty(bt_rap_accessed_cbs))
+		return;
+
+	timeout_add(0, notify_ras_accessed_idle, bt_att_ref(att),
+					notify_ras_accessed_destroy);
+}
+
 static void ras_features_read_cb(struct gatt_db_attribute *attrib,
 				 unsigned int id, uint16_t offset,
 				 uint8_t opcode, struct bt_att *att,
@@ -737,6 +780,8 @@ static void ras_features_read_cb(struct gatt_db_attribute *attrib,
 	 */
 	uint8_t value[4] = { 0x01, 0x00, 0x00, 0x00 };
 
+	notify_ras_accessed(att);
+
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
 }
 
@@ -745,6 +790,8 @@ static void ras_ondemand_read_cb(struct gatt_db_attribute *attrib,
 				 uint8_t opcode, struct bt_att *att,
 				 void *user_data)
 {
+	notify_ras_accessed(att);
+
 	/* No static read data – on‑demand data is pushed via
 	 * notifications
 	 */
@@ -761,6 +808,8 @@ static void ras_control_point_write_cb(struct gatt_db_attribute *attrib,
 				       uint8_t opcode, struct bt_att *att,
 				       void *user_data)
 {
+	notify_ras_accessed(att);
+
 	/* Control point handler - implementation TBD */
 }
 
@@ -773,6 +822,8 @@ static void ras_data_ready_read_cb(struct gatt_db_attribute *attrib,
 	uint16_t counter = 0;
 	uint8_t value[2];
 
+	notify_ras_accessed(att);
+
 	put_le16(counter, value);
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
 }
@@ -784,6 +835,8 @@ static void ras_data_overwritten_read_cb(struct gatt_db_attribute *attrib,
 					 void *user_data)
 {
 	uint8_t value[2] = { 0x00, 0x00 };
+
+	notify_ras_accessed(att);
 
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
 }
@@ -800,6 +853,7 @@ static void ras_ranging_data_ccc_write_cb(struct gatt_db_attribute *attrib,
 	uint16_t *this_ccc;
 	uint16_t *other_ccc;
 
+	notify_ras_accessed(att);
 	if (!ras) {
 		gatt_db_attribute_write_result(attrib, id,
 					BT_ATT_ERROR_UNLIKELY);
@@ -1044,6 +1098,50 @@ bool bt_rap_unregister(unsigned int id)
 	struct bt_rap_cb *cb;
 
 	cb = queue_remove_if(bt_rap_cbs, match_id, UINT_TO_PTR(id));
+	if (!cb)
+		return false;
+
+	free(cb);
+
+	return true;
+}
+
+unsigned int bt_rap_ras_accessed_register(bt_rap_accessed_func_t func,
+							void *user_data)
+{
+	struct bt_rap_accessed_cb *cb;
+	static unsigned int id;
+
+	if (!func)
+		return 0;
+
+	if (!bt_rap_accessed_cbs)
+		bt_rap_accessed_cbs = queue_new();
+
+	cb = new0(struct bt_rap_accessed_cb, 1);
+	cb->id = ++id ? id : ++id;
+	cb->func = func;
+	cb->user_data = user_data;
+
+	queue_push_tail(bt_rap_accessed_cbs, cb);
+
+	return cb->id;
+}
+
+static bool match_accessed_id(const void *data, const void *match_data)
+{
+	const struct bt_rap_accessed_cb *cb = data;
+	unsigned int id = PTR_TO_UINT(match_data);
+
+	return cb->id == id;
+}
+
+bool bt_rap_ras_accessed_unregister(unsigned int id)
+{
+	struct bt_rap_accessed_cb *cb;
+
+	cb = queue_remove_if(bt_rap_accessed_cbs, match_accessed_id,
+							UINT_TO_PTR(id));
 	if (!cb)
 		return false;
 
