@@ -308,6 +308,27 @@ static void rap_attached(struct bt_rap *rap, void *user_data)
 	rap_data_add(data);
 }
 
+static void rap_ras_accessed(struct bt_att *att, void *user_data)
+{
+	struct btd_device *device;
+	struct btd_service *service;
+
+	device = btd_adapter_find_device_by_fd(bt_att_get_fd(att));
+	if (!device) {
+		error("unable to find device for RAS access");
+		return;
+	}
+
+	service = btd_device_get_service(device, GATT_UUID);
+	if (!service) {
+		btd_device_add_uuid(device, GATT_UUID);
+		service = btd_device_get_service(device, GATT_UUID);
+	}
+
+	if (service)
+		service_accept(service, btd_device_is_initiator(device));
+}
+
 enum cs_dict_target {
 	CS_TARGET_SETTINGS,
 	CS_TARGET_CFG,
@@ -830,6 +851,7 @@ static struct btd_profile rap_profile = {
 };
 
 static unsigned int rap_id;
+static unsigned int rap_ras_accessed_id;
 
 static int rap_init(void)
 {
@@ -840,6 +862,8 @@ static int rap_init(void)
 		return err;
 
 	rap_id = bt_rap_register(rap_attached, rap_detached, NULL);
+	rap_ras_accessed_id = bt_rap_ras_accessed_register(rap_ras_accessed,
+									NULL);
 
 	return 0;
 }
@@ -848,6 +872,7 @@ static void rap_exit(void)
 {
 	btd_profile_unregister(&rap_profile);
 	bt_rap_unregister(rap_id);
+	bt_rap_ras_accessed_unregister(rap_ras_accessed_id);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(rap, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
