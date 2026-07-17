@@ -191,6 +191,24 @@ Get/set the CS configuration identifier.
 :Example Set config id to 1:
 	| **> config_id 1**
 
+create_context
+--------------
+
+Get/set where the CS configuration is written when **cs.start** sends
+it to the Controller.
+
+:Usage: **> create_context [0|1]**
+:[0|1]: ``0x00`` write the configuration to the local Controller only;
+        ``0x01`` also write it to the remote Controller using the CS
+        Configuration procedure (optional, shows current if omitted;
+        default ``1``)
+:Example Show current value:
+	| **> create_context**
+:Example Write the configuration to the local Controller only:
+	| **> create_context 0**
+:Example Write the configuration to both local and remote Controllers:
+	| **> create_context 1**
+
 main_mode_type
 --------------
 
