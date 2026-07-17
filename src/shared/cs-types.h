@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 struct bt_rap_le_cs_config {
+	uint8_t create_context;
 	uint8_t config_id;
 	uint8_t main_mode_type;
 	uint8_t sub_mode_type;
