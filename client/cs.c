@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LGPL-2.1-or-later
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  BlueZ - Bluetooth protocol stack for Linux
  *
@@ -25,21 +25,6 @@
 
 static GList * cs_proxies;
 static GList **cs_device_list;
-static DBusConnection *dbus_conn;
-
-#define RANGING_INTERFACE "org.bluez.ChannelSoundingRanging1"
-#define RANGE_ESTIMATE     "RangeEstimate"
-
-/* One signal watch per device proxy, so each device's RangeEstimate
- * watch can be independently added/removed instead of clobbering a
- * single shared handle.
- */
-struct cs_watch {
-	GDBusProxy *proxy;
-	guint watch_id;
-};
-
-static GList *cs_watches;
 
 /* ---- Per-device active session ---- */
 
@@ -58,6 +43,7 @@ static uint8_t cs_sync_ant    = 0xFF;
 static int8_t  cs_max_tx_power = 0x14;
 
 static struct {
+	uint8_t create_context;
 	uint8_t config_id;
 	uint8_t main_mode_type;
 	uint8_t sub_mode_type;
@@ -75,6 +61,7 @@ static struct {
 	uint8_t channel_jump;
 	uint8_t companion_signal_enable;
 } cs_cfg = {
+	.create_context          = 0x01,
 	.config_id               = 0x00,
 	.main_mode_type          = 0x01,
 	.sub_mode_type           = 0xFF,
@@ -138,6 +125,10 @@ struct cs_param_desc {
 };
 
 static const struct cs_param_desc cs_param_table[] = {
+	{ .name = "create_context", .type = CS_PARAM_U8_RANGE,
+		.field = &cs_cfg.create_context, .min = 0, .max = 1,
+		.range_error = "create_context: 0x00=local only"
+				" 0x01=local and remote\n" },
 	{ .name = "sync_ant_sel", .type = CS_PARAM_U8, .field = &cs_sync_ant },
 	{ .name = "config_id", .type = CS_PARAM_U8,
 		.field = &cs_cfg.config_id },
@@ -195,74 +186,14 @@ static const struct cs_param_desc cs_param_table[] = {
 		.field = &cs_freq.snr_control_reflector },
 };
 
-static gboolean range_estimate_cb(DBusConnection *connection,
-					DBusMessage *msg, void *user_data)
-{
-	GDBusProxy *proxy = user_data;
-	DBusMessageIter iter;
-	double distance;
-	uint8_t confidence;
-
-	if (!dbus_message_iter_init(msg, &iter))
-		return TRUE;
-
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_DOUBLE)
-		return TRUE;
-
-	dbus_message_iter_get_basic(&iter, &distance);
-	dbus_message_iter_next(&iter);
-
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_BYTE)
-		return TRUE;
-
-	dbus_message_iter_get_basic(&iter, &confidence);
-
-	bt_shell_printf("[CS] %s Distance: %.3f m  Confidence: %u%%\n",
-			g_dbus_proxy_get_path(proxy), distance, confidence);
-
-	return TRUE;
-}
-
-static struct cs_watch *cs_find_watch(GDBusProxy *proxy)
-{
-	struct cs_watch *w;
-	GList *list;
-
-	for (list = g_list_first(cs_watches); list; list = g_list_next(list)) {
-		w = list->data;
-
-		if (w->proxy == proxy)
-			return w;
-	}
-
-	return NULL;
-}
-
 void cs_proxy_added(GDBusProxy *proxy)
 {
-	struct cs_watch *w;
-
 	cs_proxies = g_list_append(cs_proxies, proxy);
-
-	if (!dbus_conn)
-		dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
-
-	if (!dbus_conn)
-		return;
-
-	w = g_new0(struct cs_watch, 1);
-	w->proxy = proxy;
-	w->watch_id = g_dbus_add_signal_watch(dbus_conn, NULL,
-					g_dbus_proxy_get_path(proxy),
-					RANGING_INTERFACE, RANGE_ESTIMATE,
-					range_estimate_cb, proxy, NULL);
-	cs_watches = g_list_append(cs_watches, w);
 }
 
 void cs_proxy_removed(GDBusProxy *proxy)
 {
 	struct cs_session *s;
-	struct cs_watch *w;
 	GList *list;
 
 	cs_proxies = g_list_remove(cs_proxies, proxy);
@@ -276,13 +207,6 @@ void cs_proxy_removed(GDBusProxy *proxy)
 			g_free(s);
 			break;
 		}
-	}
-
-	w = cs_find_watch(proxy);
-	if (w) {
-		g_dbus_remove_watch(dbus_conn, w->watch_id);
-		cs_watches = g_list_remove(cs_watches, w);
-		g_free(w);
 	}
 }
 
@@ -506,6 +430,8 @@ static void start_measurement_setup(DBusMessageIter *iter, void *user_data)
 	dict_append_byte(&dict, "max_tx_power",    tx);
 
 	/* CS config */
+	dict_append_byte(&dict, "create_context",
+			 cs_cfg.create_context);
 	dict_append_byte(&dict, "config_id",
 			 cs_cfg.config_id);
 	dict_append_byte(&dict, "main_mode_type",
@@ -951,6 +877,9 @@ static void cmd_cs_show(int argc, char *argv[])
 	bt_shell_printf("  max_tx_power   : %d dBm\n", cs_max_tx_power);
 
 	bt_shell_printf("\n=== CS Config Params ===\n");
+	bt_shell_printf("  create_context          : %u"
+			" (0=local only 1=local+remote)\n",
+			cs_cfg.create_context);
 	bt_shell_printf("  config_id               : %u\n",
 			cs_cfg.config_id);
 	bt_shell_printf("  main_mode_type          : 0x%02x\n",
@@ -1051,6 +980,12 @@ static const struct bt_shell_menu cs_menu = {
 				"Max TX power in dBm, signed (default 20)" },
 	{ "config_id", "<value>", cmd_cs_set,
 				"CS configuration identifier (default 0)" },
+	{ "create_context", "<0|1>", cmd_cs_set,
+				"0x00 writes the CS config to the local"
+				" Controller only; 0x01 also writes it to"
+				" the remote Controller via the CS"
+				" Configuration procedure (default 1)",
+				cs_bool_generator },
 	{ "main_mode_type", "<1|2|3>", cmd_cs_set,
 				"1 Mode 1 (RTT), 2 Mode 2 (PBR), 3 Both"
 				" (default 1)",
@@ -1143,14 +1078,6 @@ void cs_remove_submenu(void)
 {
 	g_list_free_full(cs_sessions, g_free);
 	cs_sessions = NULL;
-
-	while (cs_watches) {
-		struct cs_watch *w = cs_watches->data;
-
-		g_dbus_remove_watch(dbus_conn, w->watch_id);
-		cs_watches = g_list_remove(cs_watches, w);
-		g_free(w);
-	}
 
 	g_list_free(cs_proxies);
 	cs_proxies = NULL;
