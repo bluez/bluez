@@ -282,6 +282,7 @@ static void cs_state_machine_init(struct cs_state_machine *sm,
 	sm->cs_opt.max_tx_power    = max_tx_power;
 	sm->cs_opt.rtt_type        = 0;
 
+	sm->cs_config.create_context          = 0x01;
 	sm->cs_config.config_id              = 0;
 	sm->cs_config.main_mode_type         = 0x01;
 	sm->cs_config.sub_mode_type          = 0xFF;
@@ -459,7 +460,12 @@ static void rap_send_hci_cs_create_config_command(struct cs_state_machine *sm,
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.handle = cpu_to_le16(handle);
-	cmd.create_context = 0x01; /* Initiates cs config procedure */
+
+	/* 0x00: write config to the local Controller only.
+	 * 0x01: write config to both local and remote Controllers using
+	 * the CS Configuration procedure.
+	 */
+	cmd.create_context = sm->cs_config.create_context;
 
 	cmd.config_id              = sm->cs_config.config_id;
 	cmd.main_mode_type         = sm->cs_config.main_mode_type;
@@ -483,7 +489,7 @@ static void rap_send_hci_cs_create_config_command(struct cs_state_machine *sm,
 
 	if (!status) {
 		error("Failed to send CS Create Config command");
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 		return;
 	}
 
@@ -530,10 +536,10 @@ static void rap_def_settings_done_cb(const void *data, uint8_t size,
 			DBG("Reflector role: Waiting for CS Config Completed");
 		}
 	} else {
-		/* Error - transition to stopped */
+		/* Error - transition to hold */
 		error("CS Set default setting failed with status 0x%02X",
 		rp->status);
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 	}
 }
 
@@ -559,7 +565,7 @@ static void rap_send_hci_cs_remove_config_command(struct cs_state_machine *sm,
 
 	if (!status) {
 		error("Failed to send CS Remove Config command");
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 		return;
 	}
 
@@ -587,7 +593,7 @@ static void rap_send_hci_cs_security_enable_command(
 
 	if (!status) {
 		error("Failed to send CS Security Enable command");
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 		return;
 	}
 
@@ -751,7 +757,7 @@ static void rap_rd_rem_fae_cmplt_evt(const void *data, uint8_t size,
 		}
 		error("Remote FAE Table read failed with status 0x%02X",
 			evt->status);
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 		return;
 	}
 
@@ -838,7 +844,7 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const void *data, uint8_t size,
 	if (evt->status != 0) {
 		error("Remote capabilities failed with status 0x%02X",
 			evt->status);
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 		return;
 	}
 
@@ -920,7 +926,7 @@ static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 			error("CS Config Remove failed with status 0x%02X",
 				evt->status);
 		}
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 		return;
 	}
 
@@ -977,14 +983,14 @@ static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 		mapping = find_mapping_by_handle(sm, evt->handle);
 		if (!mapping || !mapping->is_central) {
 			error("CS Security Enable skipped: not BLE Central");
-			cs_set_state(sm, CS_STATE_STOPPED);
+			cs_set_state(sm, CS_STATE_HOLD);
 			return;
 		}
 
 		if (bt_att_get_security(mapping->att, NULL) <
 						BT_ATT_SECURITY_MEDIUM) {
 			error("CS Security Enable skipped: not encrypted");
-			cs_set_state(sm, CS_STATE_STOPPED);
+			cs_set_state(sm, CS_STATE_HOLD);
 			return;
 		}
 
@@ -1052,7 +1058,7 @@ static void rap_cs_sec_enable_cmplt_evt(const void *data, uint8_t size,
 			if (!rap_send_hci_cs_set_procedure_parameters(
 							sm, handle)) {
 				error("Failed to send CS Set Procedure Params");
-				cs_set_state(sm, CS_STATE_STOPPED);
+				cs_set_state(sm, CS_STATE_HOLD);
 				return;
 			}
 
@@ -1060,7 +1066,7 @@ static void rap_cs_sec_enable_cmplt_evt(const void *data, uint8_t size,
 			if (!rap_send_hci_cs_procedure_enable(sm, handle,
 								      true)) {
 				error("Failed to send CS Procedure Enable");
-				cs_set_state(sm, CS_STATE_STOPPED);
+				cs_set_state(sm, CS_STATE_HOLD);
 				return;
 			}
 		} else {
@@ -1068,10 +1074,10 @@ static void rap_cs_sec_enable_cmplt_evt(const void *data, uint8_t size,
 			DBG("Reflector role: Waiting for CS Proc compl event");
 		}
 	} else {
-		/* Error - transition to stopped */
+		/* Error - transition to hold */
 		error("Security enable failed with status 0x%02X",
 			rap_ev.status);
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 	}
 
 	/* Send callback to RAP Profile */
@@ -1097,7 +1103,8 @@ static void rap_cs_proc_enable_cmplt_evt(const void *data, uint8_t size,
 	DBG("size=0x%02X", size);
 
 	if ((cs_get_current_state(sm) != CS_STATE_WAIT_PROC_CMPLT) &&
-		(cs_get_current_state(sm) != CS_STATE_STARTED)) {
+		(cs_get_current_state(sm) != CS_STATE_STARTED) &&
+		(cs_get_current_state(sm) != CS_STATE_STOPPED)) {
 		DBG("Event received in Wrong State!! ");
 		DBG("Expected : CS_STATE_WAIT_PROC_CMPLT");
 		return;
@@ -1116,7 +1123,7 @@ static void rap_cs_proc_enable_cmplt_evt(const void *data, uint8_t size,
 	if (evt->status != 0) {
 		error("Procedure enable failed with status 0x%02X",
 			evt->status);
-		cs_set_state(sm, CS_STATE_STOPPED);
+		cs_set_state(sm, CS_STATE_HOLD);
 		sm->procedure_active = false;
 		if (sm->proc_active_func)
 			sm->proc_active_func(false, sm->proc_active_data);
@@ -1816,6 +1823,7 @@ void bt_rap_clear_conn_handle(void *hci_sm, uint16_t handle)
 	DBG("Clearing connection mapping: handle=0x%04X", handle);
 	remove_conn_mapping(sm, handle);
 	sm->procedure_active = false;
+	sm->current_state = CS_STATE_UNSPECIFIED;
 }
 
 bool bt_rap_is_procedure_active(void *hci_sm)
