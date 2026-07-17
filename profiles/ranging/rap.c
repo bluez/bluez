@@ -337,6 +337,7 @@ struct cs_dict_param_desc {
 static const struct cs_dict_param_desc cs_dict_param_table[] = {
 	CS_SETTINGS_FIELD("role", role),
 	CS_SETTINGS_FIELD("sync_ant_sel", cs_sync_ant_sel),
+	CS_CFG_FIELD("create_context", create_context),
 	CS_CFG_FIELD("config_id", config_id),
 	CS_CFG_FIELD("main_mode_type", main_mode_type),
 	CS_CFG_FIELD("sub_mode_type", sub_mode_type),
