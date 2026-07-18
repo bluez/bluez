@@ -92,6 +92,10 @@ struct bt_att {
 
 	struct sign_info *local_sign;
 	struct sign_info *remote_sign;
+
+	bool no_auto_sec;		/* Never reactively elevate security
+					 * (would initiate an unrequested bond)
+					 */
 };
 
 struct sign_info {
@@ -765,6 +769,14 @@ static bool bt_att_chan_set_security(struct bt_att_chan *chan, int level)
 static bool change_security(struct bt_att_chan *chan, uint8_t ecode)
 {
 	int security;
+
+	/* A reactive elevation on an unbonded link starts SMP bonding.
+	 * When the owner has forbidden auto-elevation (no_auto_sec), a
+	 * speculative GATT profile probe that reads an auth-protected
+	 * characteristic must fail here rather than silently pair.
+	 */
+	if (chan->att->no_auto_sec)
+		return false;
 
 	if (chan->sec_level != BT_ATT_SECURITY_AUTO)
 		return false;
@@ -2101,6 +2113,14 @@ bool bt_att_set_security(struct bt_att *att, int level)
 		return -ENOTCONN;
 
 	return bt_att_chan_set_security(chan, level);
+}
+
+void bt_att_set_no_auto_sec(struct bt_att *att, bool value)
+{
+	if (!att)
+		return;
+
+	att->no_auto_sec = value;
 }
 
 void bt_att_set_enc_key_size(struct bt_att *att, uint8_t enc_size)
