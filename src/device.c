@@ -6301,6 +6301,7 @@ static void gatt_debug(const char *str, void *user_data)
 static void gatt_client_init(struct btd_device *device)
 {
 	uint8_t features;
+	bool unbonded;
 
 	gatt_client_cleanup(device);
 
@@ -6319,9 +6320,21 @@ static void gatt_client_init(struct btd_device *device)
 	if (btd_opts.gatt_channels > 1)
 		features |= BT_GATT_CHRC_CLI_FEAT_EATT;
 
+	unbonded = !device_is_bonded(device, device->bdaddr_type);
+
 	if (!btd_opts.gatt_seclevel && device->bonding) {
 		DBG("Elevating security level since bonding is in progress");
 		bt_att_set_security(device->att, BT_ATT_SECURITY_MEDIUM);
+	} else if (!btd_opts.gatt_seclevel && unbonded) {
+		/* No bond exists and none is being requested, so no
+		 * user or agent has consented to pairing. Forbid a
+		 * reactive security elevation: a speculative GATT
+		 * profile probe (battery, MCP, ...) that reads an
+		 * auth-protected characteristic must fail rather than
+		 * silently initiating SMP bonding nobody asked for.
+		 */
+		DBG("Unbonded link: no reactive GATT elevation");
+		bt_att_set_no_auto_sec(device->att, true);
 	}
 
 	device->client = bt_gatt_client_new(device->db, device->att,
