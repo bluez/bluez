@@ -136,6 +136,24 @@ Example:
     len = sizeof(mtu);
     err = getsockopt(sock, SOL_BLUETOOTH, BT_RCVMTU, &mtu, &len);
 
+BT_RCV_VENDOR_PKT (since Linux 7.3)
+-----------------------------------
+
+Enable receiving vendor HCI frames, requires hci_channel to be set to
+HCI_CHANNEL_USER.
+
+Default is disabled.
+
+Example:
+
+.. code-block::
+
+    int enable = 1;
+    int err;
+
+    err = setsockopt(fd, SOL_BLUETOOTH, BT_RCV_VENDOR_PKT, &enable,
+                                                    sizeof(enable));
+
 RESOURCES
 =========
 
