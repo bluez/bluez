@@ -238,6 +238,8 @@ static char *const qemu_argv[] = {
 	"-device", "virtio-9p-pci,fsdev=fsdev-root,mount_tag=/dev/root",
 	"-chardev", "stdio,id=con,mux=on",
 	"-serial", "chardev:con",
+	"-device", "virtio-serial",
+	"-device", "virtconsole,chardev=con,name=console.0",
 	NULL
 };
 
@@ -291,7 +293,7 @@ static void start_qemu(void)
 	}
 
 	snprintf(cmdline, sizeof(cmdline),
-				"console=ttyS0,115200n8 earlyprintk=serial "
+				"console=hvc0 earlyprintk=serial "
 				"no_hash_pointers=1 rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.u "
 				"acpi=off pci=noacpi noapic quiet ro init=%s "
@@ -329,11 +331,6 @@ static void start_qemu(void)
 	argv[pos++] = (char *) kernel_image;
 	argv[pos++] = "-append";
 	argv[pos++] = (char *) cmdline;
-
-	if (num_devs) {
-		argv[pos++] = "-device";
-		argv[pos++] = "virtio-serial";
-	}
 
 	for (i = 0; i < num_devs; i++) {
 		char *chrdev, *serdev;
@@ -915,7 +912,7 @@ static void run_command(char *cmdname, char *home)
 	}
 
 	if (num_devs) {
-		const char *node = "/dev/hvc0";
+		const char *node = "/dev/hvc1";
 		unsigned int basic_flags, extra_flags;
 
 		printf("Attaching BR/EDR controller to %s\n", node);
