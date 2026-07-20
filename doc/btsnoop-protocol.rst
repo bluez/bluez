@@ -116,6 +116,14 @@ values match the definitions in ``src/shared/btsnoop.h``.
      - 19
      - 0x0013
      - Incoming ISO packet
+   * - BTSNOOP_OPCODE_VENDOR_TX_PKT
+     - 22
+     - 0x0016
+     - Outgoing vendor HCI packet
+   * - BTSNOOP_OPCODE_VENDOR_RX_PKT
+     - 23
+     - 0x0017
+     - Incoming vendor HCI packet
 
 New Index
 ---------
