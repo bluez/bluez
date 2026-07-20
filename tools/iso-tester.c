@@ -697,9 +697,19 @@ static void test_pre_setup(const void *test_data)
 					read_index_list_callback, NULL, NULL);
 }
 
+static void io_free(void *data)
+{
+	GIOChannel *io = data;
+
+	g_io_channel_unref(io);
+}
+
 static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+
+	if (data->io_queue)
+		queue_remove_all(data->io_queue, NULL, NULL, io_free);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_EXP_FEATURE, MGMT_INDEX_NONE,
 		  sizeof(reset_iso_socket_param), reset_iso_socket_param,
@@ -707,13 +717,6 @@ static void test_post_teardown(const void *test_data)
 
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
-}
-
-static void io_free(void *data)
-{
-	GIOChannel *io = data;
-
-	g_io_channel_unref(io);
 }
 
 static void test_data_free(void *test_data)
@@ -2387,8 +2390,10 @@ static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 
 				data->step++;
 
-				iso_defer_accept_bcast(data,
-					parent, 0, iso_accept_cb);
+				if (!iso_defer_accept_bcast(data,
+						g_io_channel_ref(parent), 0,
+						iso_accept_cb))
+					g_io_channel_unref(parent);
 			}
 
 			return FALSE;
@@ -3094,15 +3099,15 @@ static void setup_connect_many(struct test_data *data, uint8_t n, uint8_t *num,
 		data->io_id[num[i]] = g_io_add_watch(io, G_IO_OUT, func[i],
 									NULL);
 
-		if (!isodata->bcast || !data->reconnect)
-			g_io_channel_unref(io);
-		else if (data->io_queue)
+		if (data->io_queue)
 			/* For the broadcast reconnect scenario, do not
 			 * unref channel here, to avoid closing the
 			 * socket. All queued channels will be closed
-			 * by test_data_free.
+			 * by test_post_teardown.
 			 */
 			queue_push_tail(data->io_queue, io);
+		else
+			g_io_channel_unref(io);
 
 		tester_print("Connect %d in progress", num[i]);
 
@@ -3495,6 +3500,7 @@ static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
 		if (!iso_defer_accept(data, new_io, num, func)) {
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
+			g_io_channel_unref(new_io);
 		}
 		return false;
 	}
@@ -3724,6 +3730,7 @@ static void test_connect_close(const void *test_data)
 									data);
 
 	shutdown(sk, SHUT_RDWR);
+	g_io_channel_unref(io);
 }
 
 static gboolean iso_connect_wait_close_cb(GIOChannel *io, GIOCondition cond,
