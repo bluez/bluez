@@ -54,7 +54,12 @@ builtin_modules += input
 builtin_sources += profiles/input/manager.c \
 			profiles/input/server.h profiles/input/server.c \
 			profiles/input/device.h profiles/input/device.c \
+			profiles/input/quirk.h profiles/input/quirk.c \
+			profiles/input/quirk-profile.h profiles/input/quirk-profile.c \
+			profiles/input/quirks/tg170w.c \
 			profiles/input/hidp_defs.h profiles/input/sixaxis.h
+builtin_cppflags += $(JSONC_CFLAGS)
+builtin_ldadd += $(JSONC_LIBS)
 endif
 
 if HOG

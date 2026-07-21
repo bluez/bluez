@@ -20,6 +20,8 @@ typedef enum {
 struct input_device;
 struct input_conn;
 
+struct btd_service *input_device_get_service(struct input_device *idev);
+
 void input_set_idle_timeout(int timeout);
 void input_set_userspace_hid(char *state);
 void input_set_classic_bonded_only(bool state);

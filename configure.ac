@@ -295,6 +295,12 @@ if (test "${enable_mesh}" = "yes"); then
 	PKG_CHECK_MODULES(JSONC, json-c >= 0.13)
 fi
 
+dnl json-c also needed for external gamepad quirk profiles
+if (test "${enable_mesh}" != "yes"); then
+	PKG_CHECK_MODULES(JSONC, json-c >= 0.13, [],
+		[AC_MSG_WARN([json-c not found, external quirk profiles disabled])])
+fi
+
 AC_ARG_ENABLE(midi, AS_HELP_STRING([--enable-midi],
                 [enable MIDI support]), [enable_midi=${enableval}])
 AM_CONDITIONAL(MIDI, test "${enable_midi}" = "yes")

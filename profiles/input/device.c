@@ -47,6 +47,7 @@
 
 #include "device.h"
 #include "hidp_defs.h"
+#include "quirk.h"
 #include "server.h"
 
 #define INPUT_INTERFACE "org.bluez.Input1"
@@ -88,6 +89,14 @@ struct input_device {
 	uint8_t			type;
 	unsigned int		idle_timer;
 };
+
+struct btd_service *input_device_get_service(struct input_device *idev)
+{
+	if (!idev)
+		return NULL;
+
+	return idev->service;
+}
 
 static int idle_timeout = 0;
 static uhid_state_t uhid_state = UHID_ENABLED;
@@ -1079,6 +1088,14 @@ static int hidp_add_connection(struct input_device *idev)
 	req->idle_to   = idle_timeout;
 
 	err = extract_hid_record(idev, req);
+	if (err < 0) {
+		/* Try gamepad quirk fallback for known broken devices */
+		if (gamepad_quirk_match(idev)) {
+			DBG("HID SDP failed, trying gamepad quirk");
+			err = gamepad_quirk_apply(idev, req);
+		}
+	}
+
 	if (err < 0) {
 		error("Could not parse HID SDP record: %s (%d)", strerror(-err),
 									-err);
