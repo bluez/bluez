@@ -15,6 +15,7 @@
 struct bt_rap;
 struct gatt_db;
 struct bt_gatt_client;
+struct bt_att;
 
 /* Channel Sounding Events */
 struct bt_rap_hci_cs_options {
@@ -171,6 +172,7 @@ bool bt_rap_attach(struct bt_rap *rap, struct bt_gatt_client *client);
 void bt_rap_detach(struct bt_rap *rap);
 
 struct bt_att *bt_rap_get_att(struct bt_rap *rap);
+struct bt_rap *bt_rap_get_session(struct bt_att *att, struct gatt_db *db);
 
 bool bt_rap_set_user_data(struct bt_rap *rap, void *user_data);
 
