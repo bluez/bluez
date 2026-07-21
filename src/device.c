@@ -6301,17 +6301,31 @@ static void gatt_debug(const char *str, void *user_data)
 static void gatt_client_init(struct btd_device *device)
 {
 	uint8_t features;
+	GSList *uuid_list;
 
 	gatt_client_cleanup(device);
 
-	if (!btd_device_is_initiator(device) && !btd_opts.reverse_discovery) {
-		DBG("Reverse service discovery disabled: skipping GATT client");
-		return;
-	}
+	if (!btd_device_is_initiator(device)) {
+		/*
+		 * For the reflector role GATT client discovery is skipped, but
+		 * profiles that match GATT_UUID still need to be probed and
+		 * accepted so they can register their D-Bus interfaces (e.g.
+		 * org.bluez.ChannelSounding1).
+		 */
+		uuid_list = g_slist_append(NULL, (char *)GATT_UUID);
+		device_probe_profiles(device, uuid_list);
+		g_slist_free(uuid_list);
+		device_accept_gatt_profiles(device);
 
-	if (!btd_device_is_initiator(device) && !btd_opts.gatt_client) {
-		DBG("GATT client disabled: skipping GATT client");
-		return;
+		if (!btd_opts.reverse_discovery) {
+			DBG("Reverse srvc disc disabled: skip GATT client");
+			return;
+		}
+
+		if (!btd_opts.gatt_client) {
+			DBG("GATT client disabled: skipping GATT client");
+			return;
+		}
 	}
 
 	features =  BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING
