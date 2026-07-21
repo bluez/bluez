@@ -19,7 +19,6 @@
 
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
-#include "src/shared/timeout.h"
 #include "src/shared/att.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-server.h"
@@ -291,6 +290,7 @@ struct bt_rap {
 	struct bt_att *att;
 
 	unsigned int idle_id;
+	unsigned int disconn_id;
 
 	struct queue *notify;
 	struct queue *pending;
@@ -564,6 +564,40 @@ static void rap_detached(void *data, void *user_data)
 	cb->detached(rap, cb->user_data);
 }
 
+static void rap_attached(void *data, void *user_data)
+{
+	struct bt_rap_cb *cb = data;
+	struct bt_rap *rap = user_data;
+
+	if (!cb->attached)
+		return;
+
+	cb->attached(rap, cb->user_data);
+}
+
+static void rap_disconnected(int err, void *user_data)
+{
+	struct bt_rap *rap = user_data;
+
+	rap->disconn_id = 0;
+
+	bt_rap_detach(rap);
+}
+
+static void rap_attach_att(struct bt_rap *rap, struct bt_att *att)
+{
+	if (rap->disconn_id) {
+		if (att == bt_rap_get_att(rap))
+			return;
+		bt_att_unregister_disconnect(rap->att, rap->disconn_id);
+	}
+
+	rap->att = att;
+	rap->disconn_id = bt_att_register_disconnect(rap->att,
+							rap_disconnected,
+							rap, NULL);
+}
+
 void bt_rap_detach(struct bt_rap *rap)
 {
 	if (!queue_remove(sessions, rap))
@@ -572,6 +606,9 @@ void bt_rap_detach(struct bt_rap *rap)
 	bt_gatt_client_idle_unregister(rap->client, rap->idle_id);
 	bt_gatt_client_unref(rap->client);
 	rap->client = NULL;
+
+	bt_att_unregister_disconnect(rap->att, rap->disconn_id);
+	rap->att = NULL;
 
 	queue_foreach(bt_rap_cbs, rap_detached, rap);
 }
@@ -653,6 +690,29 @@ struct bt_att *bt_rap_get_att(struct bt_rap *rap)
 	return bt_gatt_client_get_att(rap->client);
 }
 
+struct bt_rap *bt_rap_get_session(struct bt_att *att, struct gatt_db *db)
+{
+	const struct queue_entry *entry;
+	struct bt_rap *rap;
+
+	for (entry = queue_get_entries(sessions); entry; entry = entry->next) {
+		struct bt_rap *rap = entry->data;
+
+		if (att == bt_rap_get_att(rap))
+			return rap;
+	}
+
+	rap = bt_rap_new(db, NULL);
+	if (!rap)
+		return NULL;
+
+	rap->att = att;
+
+	bt_rap_attach(rap, NULL);
+
+	return rap;
+}
+
 struct bt_rap *bt_rap_ref(struct bt_rap *rap)
 {
 	if (!rap)
@@ -729,6 +789,7 @@ static void ras_features_read_cb(struct gatt_db_attribute *attrib,
 				 uint8_t opcode, struct bt_att *att,
 				 void *user_data)
 {
+	struct ras *ras = user_data;
 	/*
 	 * Feature mask: bits 0-2 set:
 	 *  - Real-time ranging
@@ -736,6 +797,9 @@ static void ras_features_read_cb(struct gatt_db_attribute *attrib,
 	 *  - Abort operation
 	 */
 	uint8_t value[4] = { 0x01, 0x00, 0x00, 0x00 };
+
+	if (ras)
+		bt_rap_get_session(att, ras->rapdb->db);
 
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
 }
@@ -745,6 +809,11 @@ static void ras_ondemand_read_cb(struct gatt_db_attribute *attrib,
 				 uint8_t opcode, struct bt_att *att,
 				 void *user_data)
 {
+	struct ras *ras = user_data;
+
+	if (ras)
+		bt_rap_get_session(att, ras->rapdb->db);
+
 	/* No static read data – on‑demand data is pushed via
 	 * notifications
 	 */
@@ -761,6 +830,11 @@ static void ras_control_point_write_cb(struct gatt_db_attribute *attrib,
 				       uint8_t opcode, struct bt_att *att,
 				       void *user_data)
 {
+	struct ras *ras = user_data;
+
+	if (ras)
+		bt_rap_get_session(att, ras->rapdb->db);
+
 	/* Control point handler - implementation TBD */
 }
 
@@ -770,8 +844,12 @@ static void ras_data_ready_read_cb(struct gatt_db_attribute *attrib,
 				   uint8_t opcode, struct bt_att *att,
 				   void *user_data)
 {
+	struct ras *ras = user_data;
 	uint16_t counter = 0;
 	uint8_t value[2];
+
+	if (ras)
+		bt_rap_get_session(att, ras->rapdb->db);
 
 	put_le16(counter, value);
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
@@ -783,7 +861,11 @@ static void ras_data_overwritten_read_cb(struct gatt_db_attribute *attrib,
 					 uint8_t opcode, struct bt_att *att,
 					 void *user_data)
 {
+	struct ras *ras = user_data;
 	uint8_t value[2] = { 0x00, 0x00 };
+
+	if (ras)
+		bt_rap_get_session(att, ras->rapdb->db);
 
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
 }
@@ -805,6 +887,8 @@ static void ras_ranging_data_ccc_write_cb(struct gatt_db_attribute *attrib,
 					BT_ATT_ERROR_UNLIKELY);
 		return;
 	}
+
+	bt_rap_get_session(att, ras->rapdb->db);
 
 	if (offset) {
 		gatt_db_attribute_write_result(attrib, id,
@@ -2795,27 +2879,42 @@ bool bt_rap_attach(struct bt_rap *rap, struct bt_gatt_client *client)
 {
 	bt_uuid_t uuid;
 
+	if (queue_find(sessions, NULL, rap)) {
+		if (client && !rap->client)
+			goto clone;
+		return true;
+	}
+
 	if (!sessions)
 		sessions = queue_new();
 
 	queue_push_tail(sessions, rap);
 
-	if (!client)
+	queue_foreach(bt_rap_cbs, rap_attached, rap);
+
+	if (!client) {
+		if (rap->att)
+			rap_attach_att(rap, rap->att);
 		return true;
+	}
 
 	if (rap->client)
 		return false;
 
+clone:
 	rap->client = bt_gatt_client_clone(client);
 	if (!rap->client)
 		return false;
+
+	rap_attach_att(rap, bt_gatt_client_get_att(client));
 
 	bt_gatt_client_idle_register(rap->client, rap_idle, rap, NULL);
 
 	bt_uuid16_create(&uuid, RAS_UUID16);
 
-	gatt_db_foreach_service(rap->rrapdb->db, &uuid,
-				foreach_rap_service, rap);
+	if (rap->rrapdb)
+		gatt_db_foreach_service(rap->rrapdb->db, &uuid,
+					foreach_rap_service, rap);
 
 	return true;
 }
