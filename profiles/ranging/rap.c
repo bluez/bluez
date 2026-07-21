@@ -65,10 +65,12 @@ struct rap_data {
 	void *hci_sm;  /* Per-device HCI state machine */
 	uint16_t conn_handle;  /* Last known connection handle */
 	struct cs_session active_session;  /* active==false when idle */
+	bool dbus_registered;
 };
 
 static struct queue *sessions;
 static struct queue *adapter_list;  /* List of rap_adapter_data */
+static int rap_setup_reflector(struct rap_data *data);
 
 /* Adapter data management */
 static bool match_adapter(const void *data, const void *match_data)
@@ -218,6 +220,13 @@ static bool match_data(const void *data, const void *match_data)
 
 static void rap_data_free(struct rap_data *data)
 {
+	if (data->dbus_registered) {
+		g_dbus_unregister_interface(btd_get_dbus_connection(),
+					    device_get_path(data->device),
+					    CS_INTERFACE);
+		data->dbus_registered = false;
+	}
+
 	if (data->service) {
 		btd_service_set_user_data(data->service, NULL);
 		bt_rap_set_user_data(data->rap, NULL);
@@ -281,14 +290,13 @@ static void rap_attached(struct bt_rap *rap, void *user_data)
 	struct rap_data *data;
 	struct bt_att *att;
 	struct btd_device *device;
+	int err;
 
 	DBG("%p", rap);
 
 	data = queue_find(sessions, match_data, rap);
-	if (data) {
-		DBG("data is already present");
-		return;
-	}
+	if (data)
+		goto setup;
 
 	att = bt_rap_get_att(rap);
 	if (!att) {
@@ -306,6 +314,11 @@ static void rap_attached(struct bt_rap *rap, void *user_data)
 	data->rap = rap;
 
 	rap_data_add(data);
+
+setup:
+	err = rap_setup_reflector(data);
+	if (err)
+		error("Failed to set up reflector session: %d", err);
 }
 
 enum cs_dict_target {
@@ -662,19 +675,13 @@ static void rap_remove(struct btd_service *service)
 		return;
 	}
 
-	g_dbus_unregister_interface(btd_get_dbus_connection(),
-				    device_get_path(device),
-				    CS_INTERFACE);
-
 	rap_data_remove(data);
 }
 
-static int rap_accept(struct btd_service *service)
+static int rap_setup_reflector(struct rap_data *data)
 {
-	struct btd_device *device = btd_service_get_device(service);
+	struct btd_device *device = data->device;
 	struct btd_adapter *adapter = device_get_adapter(device);
-	struct bt_gatt_client *client = btd_device_get_gatt_client(device);
-	struct rap_data *data = btd_service_get_user_data(service);
 	struct bt_att *att;
 	const bdaddr_t *bdaddr;
 	uint8_t bdaddr_type;
@@ -682,26 +689,18 @@ static int rap_accept(struct btd_service *service)
 	char addr[18];
 
 	ba2str(device_get_address(device), addr);
-	DBG("%s", addr);
 
-	if (!data) {
-		error("RAP Service not handled by profile");
-		return -EINVAL;
-	}
-
-	/* init shared adapter HCI channel */
-	if (!data->adapter_data) {
-		data->adapter_data = rap_adapter_data_ref(adapter);
-		if (!data->adapter_data) {
-			error("Failed to get adapter HCI channel");
-			return -EINVAL;
-		}
-		DBG("Using shared HCI channel for adapter (ref_count=%d)",
-			data->adapter_data->ref_count);
-	}
-
-	/* per-device HCI state machine */
 	if (!data->hci_sm) {
+		if (!data->adapter_data) {
+			data->adapter_data = rap_adapter_data_ref(adapter);
+			if (!data->adapter_data) {
+				error("Failed to get adapter HCI channel");
+				return -EINVAL;
+			}
+			DBG("Using shared HCI channel for adapter (ref =%d)",
+				data->adapter_data->ref_count);
+		}
+
 		data->hci_sm = bt_rap_attach_hci(data->rap,
 					data->adapter_data->hci,
 					btd_opts.defaults.bcs.role,
@@ -721,38 +720,70 @@ static int rap_accept(struct btd_service *service)
 					data);
 	}
 
+	/* Set up connection handle mapping for CS event routing. Retried on
+	 * every call until it succeeds, since att may not be available yet
+	 * the first time this runs (e.g. called from bt_rap_attach()'s
+	 * attached callback before rap->client/att are set).
+	 */
+	if (!data->conn_handle) {
+		att = bt_rap_get_att(data->rap);
+		bdaddr = device_get_address(device);
+		bdaddr_type = device_get_le_address_type(device);
+
+		if (att && data->adapter_data->hci) {
+			if (bt_hci_get_conn_handle(data->adapter_data->hci,
+				(const uint8_t *)bdaddr, &handle)) {
+				DBG("conn handle 0x%04X for %s", handle, addr);
+				data->conn_handle = handle;
+				bt_rap_set_conn_hndl(data->hci_sm,
+					data->rap, handle,
+					(const uint8_t *)bdaddr,
+					bdaddr_type,
+					btd_device_is_initiator(device));
+			} else {
+				error("Failed to find conn for device %s",
+					addr);
+			}
+		}
+	}
+
+	if (!data->dbus_registered) {
+		g_dbus_register_interface(btd_get_dbus_connection(),
+					  device_get_path(device),
+					  CS_INTERFACE, cs_dbus_methods,
+					  NULL, cs_dbus_properties, data, NULL);
+		data->dbus_registered = true;
+	}
+
+	return 0;
+}
+
+static int rap_accept(struct btd_service *service)
+{
+	struct btd_device *device = btd_service_get_device(service);
+	struct bt_gatt_client *client = btd_device_get_gatt_client(device);
+	struct rap_data *data = btd_service_get_user_data(service);
+	char addr[18];
+	int err;
+
+	ba2str(device_get_address(device), addr);
+	DBG("%s", addr);
+
+	if (!data) {
+		error("RAP Service not handled by profile");
+		return -EINVAL;
+	}
+
 	if (!bt_rap_attach(data->rap, client)) {
 		error("RAP unable to attach");
 		return -EINVAL;
 	}
 
-	/* Set up connection handle mapping for CS event routing */
-	att = bt_rap_get_att(data->rap);
-	bdaddr = device_get_address(device);
-	bdaddr_type = device_get_le_address_type(device);
-
-	if (att && data->adapter_data->hci && data->hci_sm) {
-		if (bt_hci_get_conn_handle(data->adapter_data->hci,
-					(const uint8_t *) bdaddr, &handle)) {
-			DBG("Found conn handle 0x%04X for %s", handle, addr);
-			data->conn_handle = handle;
-			bt_rap_set_conn_hndl(data->hci_sm,
-					data->rap, handle,
-					(const uint8_t *) bdaddr,
-					bdaddr_type,
-					btd_device_is_initiator(device));
-		} else {
-			error("Failed to find connection handle for device %s",
-				addr);
-		}
-	}
+	err = rap_setup_reflector(data);
+	if (err)
+		return err;
 
 	btd_service_connecting_complete(service, 0);
-
-	g_dbus_register_interface(btd_get_dbus_connection(),
-				  device_get_path(data->device),
-				  CS_INTERFACE, cs_dbus_methods,
-				  NULL, cs_dbus_properties, data, NULL);
 
 	return 0;
 }
