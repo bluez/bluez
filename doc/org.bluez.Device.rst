@@ -284,6 +284,11 @@ array{string} UUIDs [readonly, optional]
 
 List of 128-bit UUIDs that represents the available remote services.
 
+array{string} ConnectedUUIDs [readonly]
+````````````````````````````````````````
+
+List of 128-bit UUIDs of profiles currently connected.
+
 boolean Paired [readonly]
 `````````````````````````
 
