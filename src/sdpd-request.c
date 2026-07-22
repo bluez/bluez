@@ -909,6 +909,10 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	svcList = sdp_get_record_list();
 
 	tmpbuf.data = malloc(USHRT_MAX);
+	if (!tmpbuf.data) {
+		status = SDP_INSUFFICIENT_RESOURCES;
+		goto done;
+	}
 	tmpbuf.data_size = 0;
 	tmpbuf.buf_size = USHRT_MAX;
 	memset(tmpbuf.data, 0, USHRT_MAX);
@@ -1012,6 +1016,11 @@ static void process_request(sdp_req_t *req)
 	sdp_buf_t rsp;
 	uint8_t *buf = malloc(USHRT_MAX);
 	int status = SDP_INVALID_SYNTAX;
+
+	if (!buf) {
+		free(req->buf);
+		return;
+	}
 
 	memset(buf, 0, USHRT_MAX);
 	rsp.data = buf + sizeof(sdp_pdu_hdr_t);
