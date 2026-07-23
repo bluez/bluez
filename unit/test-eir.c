@@ -577,6 +577,38 @@ static void test_basic(const void *data)
 	tester_test_passed();
 }
 
+static void test_oversized_name(const void *data)
+{
+	/* Longest name a remote peer can put in a single AD structure:
+	 * length 0xfe, type 0x09 and 253 payload bytes which are neither
+	 * NUL terminated nor valid UTF-8.
+	 */
+	unsigned char buf[2 + 253];
+	char expected[HCI_MAX_NAME_LENGTH + 1];
+	struct eir_data eir;
+	struct bt_ad *ad;
+
+	buf[0] = sizeof(buf) - 1;
+	buf[1] = EIR_NAME_COMPLETE;
+	memset(buf + 2, 'A', sizeof(buf) - 3);
+	buf[sizeof(buf) - 1] = 0xff;
+
+	memset(expected, 'A', sizeof(expected) - 1);
+	expected[sizeof(expected) - 1] = '\0';
+
+	memset(&eir, 0, sizeof(eir));
+	eir_parse(&eir, buf, sizeof(buf));
+	g_assert_cmpstr(eir.name, ==, expected);
+	eir_data_free(&eir);
+
+	ad = bt_ad_new_with_data(sizeof(buf), buf);
+	g_assert(ad);
+	g_assert_cmpstr(bt_ad_get_name(ad), ==, expected);
+	bt_ad_unref(ad);
+
+	tester_test_passed();
+}
+
 static void print_debug(const char *str, void *user_data)
 {
 	char *prefix = user_data;
@@ -740,6 +772,8 @@ int main(int argc, char *argv[])
 	tester_init(&argc, &argv);
 
 	tester_add("/eir/basic", NULL, NULL, test_basic, NULL);
+	tester_add("/eir/oversized-name", NULL, NULL, test_oversized_name,
+									NULL);
 
 	tester_add("/eir/macbookair", &macbookair_test, NULL, test_parsing,
 									NULL);

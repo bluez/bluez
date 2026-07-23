@@ -276,15 +276,15 @@ static bool ad_replace_uuid128(struct bt_ad *ad, struct iovec *iov)
 static bool ad_replace_name(struct bt_ad *ad, struct iovec *iov)
 {
 	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
+	size_t len = MIN(iov->iov_len, HCI_MAX_NAME_LENGTH);
 
 	memset(utf8_name, 0, sizeof(utf8_name));
-	strncpy(utf8_name, (const char *)iov->iov_base,
-			MIN(iov->iov_len, HCI_MAX_NAME_LENGTH));
+	strncpy(utf8_name, (const char *)iov->iov_base, len);
 
-	if (strisutf8(utf8_name, iov->iov_len))
+	if (strisutf8(utf8_name, len))
 		goto done;
 
-	strtoutf8(utf8_name, iov->iov_len);
+	strtoutf8(utf8_name, len);
 
 	/* Remove leading and trailing whitespace characters */
 	strstrip(utf8_name);
