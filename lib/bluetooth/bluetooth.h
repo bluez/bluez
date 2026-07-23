@@ -20,6 +20,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <endian.h>
 #include <byteswap.h>
@@ -458,6 +459,7 @@ int basnprintf(char *str, size_t size, const char *format, ...);
 
 void *bt_malloc(size_t size);
 void *bt_malloc0(size_t size);
+bool bt_realloc(void *ptr, size_t size);
 void bt_free(void *ptr);
 
 int bt_error(uint16_t code);
