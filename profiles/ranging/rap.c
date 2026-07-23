@@ -380,6 +380,492 @@ static const struct cs_dict_param_desc *cs_find_dict_param_desc(
 	return NULL;
 }
 
+static void dict_append_byte(DBusMessageIter *dict, const char *key,
+				uint8_t val)
+{
+	DBusMessageIter entry, variant;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+						&entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "y",
+						&variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_BYTE, &val);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void dict_append_int32(DBusMessageIter *dict, const char *key,
+				dbus_int32_t val)
+{
+	DBusMessageIter entry, variant;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+						&entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "i",
+						&variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_INT32, &val);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void dict_append_uint32(DBusMessageIter *dict, const char *key,
+				dbus_uint32_t val)
+{
+	DBusMessageIter entry, variant;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+						&entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "u",
+						&variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_UINT32, &val);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void dict_append_uint64(DBusMessageIter *dict, const char *key,
+				dbus_uint64_t val)
+{
+	DBusMessageIter entry, variant;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+						&entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "t",
+						&variant);
+	dbus_message_iter_append_basic(&variant, DBUS_TYPE_UINT64, &val);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void dict_append_byte_array(DBusMessageIter *dict, const char *key,
+					const uint8_t *data, int len)
+{
+	DBusMessageIter entry, variant, arr;
+	int i;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+						&entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "ay",
+						&variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "y", &arr);
+	for (i = 0; i < len; i++)
+		dbus_message_iter_append_basic(&arr, DBUS_TYPE_BYTE, &data[i]);
+	dbus_message_iter_close_container(&variant, &arr);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_mode_zero(DBusMessageIter *dict,
+				const struct cs_mode_zero_data *m0)
+{
+	dict_append_byte(dict, "packetQuality", m0->packet_quality);
+	dict_append_byte(dict, "packetRssiDbm", m0->packet_rssi_dbm);
+	dict_append_byte(dict, "packetAntenna", m0->packet_ant);
+	dict_append_int32(dict, "initiatorMeasuredFreqOffset",
+				(dbus_int32_t)m0->init_measured_freq_offset);
+}
+
+static void append_pct_iq_pair(DBusMessageIter *dict, const char *key,
+				const struct pct_iq_sample *pct)
+{
+	DBusMessageIter entry, variant, arr;
+	dbus_int32_t i_s = pct->i_sample;
+	dbus_int32_t q_s = pct->q_sample;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+					 &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "ai",
+					 &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "i", &arr);
+	dbus_message_iter_append_basic(&arr, DBUS_TYPE_INT32, &i_s);
+	dbus_message_iter_append_basic(&arr, DBUS_TYPE_INT32, &q_s);
+	dbus_message_iter_close_container(&variant, &arr);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_mode_one(DBusMessageIter *dict,
+				const struct cs_mode_one_data *m1)
+{
+	dict_append_byte(dict, "packetQuality", m1->packet_quality);
+	dict_append_byte(dict, "packetNadm", m1->packet_nadm);
+	dict_append_byte(dict, "packetRssiDbm", m1->packet_rssi_dbm);
+	dict_append_int32(dict, "toaTodInitiator",
+				(dbus_int32_t)m1->toa_tod_init);
+	dict_append_int32(dict, "todToaReflector",
+				(dbus_int32_t)m1->tod_toa_refl);
+	dict_append_byte(dict, "packetAntenna", m1->packet_ant);
+	append_pct_iq_pair(dict, "packetPct1", &m1->packet_pct1);
+	append_pct_iq_pair(dict, "packetPct2", &m1->packet_pct2);
+}
+
+static void append_mode_two(DBusMessageIter *dict,
+				const struct cs_mode_two_data *m2,
+				uint8_t num_ant_paths)
+{
+	DBusMessageIter entry, variant, arr;
+	const char *key;
+	int j;
+	int num_paths;
+
+	/*
+	 * num_ant_paths is the HCI "number of antenna paths" value
+	 * (0-indexed), so actual tone sample count = num_ant_paths + 1,
+	 * capped at array size.
+	 */
+	num_paths = (num_ant_paths + 1) < CS_MAX_ANT_PATHS ?
+				(num_ant_paths + 1) : CS_MAX_ANT_PATHS;
+
+	dict_append_byte(dict, "antennaPermutationIndex", m2->ant_perm_index);
+
+	/* tonePctIQSamples: interleaved (i,q) pairs as "ai" */
+	key = "tonePctIQSamples";
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+					 &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "ai",
+					 &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "i", &arr);
+	for (j = 0; j < num_paths; j++) {
+		dbus_int32_t i_s = m2->tone_pct[j].i_sample;
+		dbus_int32_t q_s = m2->tone_pct[j].q_sample;
+
+		dbus_message_iter_append_basic(&arr, DBUS_TYPE_INT32, &i_s);
+		dbus_message_iter_append_basic(&arr, DBUS_TYPE_INT32, &q_s);
+	}
+	dbus_message_iter_close_container(&variant, &arr);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+
+	/* toneQualityIndicators: "ay" */
+	key = "toneQualityIndicators";
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+					 &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "ay",
+					 &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "y", &arr);
+	for (j = 0; j < num_paths; j++) {
+		uint8_t tqi = m2->tone_quality_indicator[j];
+
+		dbus_message_iter_append_basic(&arr, DBUS_TYPE_BYTE, &tqi);
+	}
+	dbus_message_iter_close_container(&variant, &arr);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_proc_enable_config(DBusMessageIter *outer_dict,
+				const struct rap_ev_cs_proc_enable_cmplt *cfg)
+{
+	DBusMessageIter entry, variant, inner;
+	const char *key = "procedureEnableConfig";
+	dbus_uint32_t sub_evt_len_us;
+
+	sub_evt_len_us = cfg->sub_evt_len[0] |
+			 ((uint32_t)cfg->sub_evt_len[1] << 8) |
+			 ((uint32_t)cfg->sub_evt_len[2] << 16);
+
+	dbus_message_iter_open_container(outer_dict, DBUS_TYPE_DICT_ENTRY,
+					 NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "a{sv}",
+					 &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "{sv}",
+					 &inner);
+
+	dict_append_byte(&inner, "toneAntennaConfigSelection",
+			 cfg->tone_ant_config_sel);
+	dict_append_uint32(&inner, "subeventLenUs", sub_evt_len_us);
+	dict_append_byte(&inner, "subeventsPerEvent", cfg->sub_evts_per_evt);
+	dict_append_uint32(&inner, "subeventInterval", cfg->sub_evt_intrvl);
+	dict_append_uint32(&inner, "eventInterval", cfg->evt_intrvl);
+	dict_append_uint32(&inner, "procedureInterval", cfg->proc_intrvl);
+	dict_append_uint32(&inner, "procedureCount", cfg->proc_counter);
+	dict_append_uint32(&inner, "maxProcedureLen", cfg->max_proc_len);
+
+	dbus_message_iter_close_container(&variant, &inner);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(outer_dict, &entry);
+}
+
+static void append_cs_config_param(DBusMessageIter *outer_dict,
+				const struct bcs_procedure_data *bcs)
+{
+	DBusMessageIter entry, variant, inner;
+	const char *key = "csConfigParam";
+	const struct rap_ev_cs_config_cmplt *cfg = &bcs->cs_config;
+
+	dbus_message_iter_open_container(outer_dict, DBUS_TYPE_DICT_ENTRY,
+					 NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "a{sv}",
+					 &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "{sv}",
+					 &inner);
+
+	dict_append_byte(&inner, "modeType", cfg->main_mode_type);
+	dict_append_byte(&inner, "subModeType", cfg->sub_mode_type);
+	dict_append_byte(&inner, "rttType", cfg->rtt_type);
+	dict_append_byte_array(&inner, "channelMap", cfg->channel_map,
+			       sizeof(cfg->channel_map));
+	dict_append_byte(&inner, "minMainModeSteps", cfg->min_main_mode_steps);
+	dict_append_byte(&inner, "maxMainModeSteps", cfg->max_main_mode_steps);
+	dict_append_byte(&inner, "mainModeRepetition", cfg->main_mode_rep);
+	dict_append_byte(&inner, "mode0Steps", cfg->mode_0_steps);
+	dict_append_byte(&inner, "role", cfg->role);
+	dict_append_byte(&inner, "csSyncPhyType", cfg->cs_sync_phy);
+	dict_append_byte(&inner, "channelSelectionType", cfg->channel_sel_type);
+	dict_append_byte(&inner, "ch3cShapeType", cfg->ch3c_shape);
+	dict_append_byte(&inner, "ch3cJump", cfg->ch3c_jump);
+	dict_append_byte(&inner, "channelMapRepetition", cfg->channel_map_rep);
+	dict_append_byte(&inner, "tIp1TimeUs", cfg->t_ip1_time);
+	dict_append_byte(&inner, "tIp2TimeUs", cfg->t_ip2_time);
+	dict_append_byte(&inner, "tFcsTimeUs", cfg->t_fcs_time);
+	dict_append_byte(&inner, "tPmTimeUs", cfg->t_pm_time);
+	dict_append_byte(&inner, "tSwTimeUsSupportedByLocal",
+			 bcs->t_sw_time_us_supported_by_local);
+	dict_append_byte(&inner, "tSwTimeUsSupportedByRemote",
+			 bcs->t_sw_time_us_supported_by_remote);
+	dict_append_uint32(&inner, "bleConnInterval", bcs->ble_conn_interval);
+
+	dbus_message_iter_close_container(&variant, &inner);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(outer_dict, &entry);
+}
+
+static void append_step_to_dict(DBusMessageIter *dict,
+				const struct cs_step_data *step,
+				uint8_t num_ant_paths)
+{
+	DBusMessageIter entry, variant, inner;
+	const char *mode_key;
+
+	dict_append_byte(dict, "stepMode", step->step_mode);
+	dict_append_byte(dict, "stepChannel", step->step_chnl);
+
+	switch (step->step_mode) {
+	case CS_MODE_ZERO:
+		mode_key = "modeZeroData";
+		dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						 NULL, &entry);
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+					       &mode_key);
+		dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+						 "a{sv}", &variant);
+		dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						 "{sv}", &inner);
+		append_mode_zero(&inner,
+				 &step->step_mode_data.mode_zero_data);
+		dbus_message_iter_close_container(&variant, &inner);
+		dbus_message_iter_close_container(&entry, &variant);
+		dbus_message_iter_close_container(dict, &entry);
+		break;
+
+	case CS_MODE_ONE:
+		mode_key = "modeOneData";
+		dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						 NULL, &entry);
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+					       &mode_key);
+		dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+						 "a{sv}", &variant);
+		dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						 "{sv}", &inner);
+		append_mode_one(&inner,
+				&step->step_mode_data.mode_one_data);
+		dbus_message_iter_close_container(&variant, &inner);
+		dbus_message_iter_close_container(&entry, &variant);
+		dbus_message_iter_close_container(dict, &entry);
+		break;
+
+	case CS_MODE_TWO:
+		mode_key = "modeTwoData";
+		dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						 NULL, &entry);
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+					       &mode_key);
+		dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+						 "a{sv}", &variant);
+		dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						 "{sv}", &inner);
+		append_mode_two(&inner,
+				&step->step_mode_data.mode_two_data,
+				num_ant_paths);
+		dbus_message_iter_close_container(&variant, &inner);
+		dbus_message_iter_close_container(&entry, &variant);
+		dbus_message_iter_close_container(dict, &entry);
+		break;
+
+	case CS_MODE_THREE:
+		mode_key = "modeThreeData";
+		dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						 NULL, &entry);
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+					       &mode_key);
+		dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+						 "a{sv}", &variant);
+		dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						 "{sv}", &inner);
+		append_mode_one(&inner,
+			&step->step_mode_data.mode_three_data.mode_one_data);
+		append_mode_two(&inner,
+			&step->step_mode_data.mode_three_data.mode_two_data,
+			num_ant_paths);
+		dbus_message_iter_close_container(&variant, &inner);
+		dbus_message_iter_close_container(&entry, &variant);
+		dbus_message_iter_close_container(dict, &entry);
+		break;
+
+	default:
+		break;
+	}
+}
+
+static void append_subevent_to_dict(DBusMessageIter *dict,
+				const struct cs_subevent_result_data *sub)
+{
+	DBusMessageIter entry, variant, arr;
+	const char *key;
+	uint32_t i;
+
+	dict_append_int32(dict, "startAclConnEvtCounter",
+			  (dbus_int32_t)sub->start_acl_conn_evt_counter);
+	dict_append_int32(dict, "freqComp", (dbus_int32_t)sub->freq_comp);
+	dict_append_byte(dict, "refPwrLvl", (uint8_t)sub->ref_pwr_lvl);
+	dict_append_byte(dict, "numAntPaths", sub->num_ant_paths);
+	dict_append_byte(dict, "subeventAbortReason",
+			 sub->subevent_abort_reason);
+	dict_append_uint64(dict, "timestampNanos", sub->timestamp_nanos);
+	dict_append_uint32(dict, "numSteps", sub->num_steps);
+
+	/* stepData: av (each element is a{sv}) */
+	key = "stepData";
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+					 &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "av",
+					 &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "v", &arr);
+	if (sub->step_data) {
+		for (i = 0; i < sub->num_steps; i++) {
+			DBusMessageIter inner, step_dict;
+
+			dbus_message_iter_open_container(&arr,
+					DBUS_TYPE_VARIANT, "a{sv}", &inner);
+			dbus_message_iter_open_container(&inner,
+					DBUS_TYPE_ARRAY, "{sv}", &step_dict);
+			append_step_to_dict(&step_dict, &sub->step_data[i],
+					    sub->num_ant_paths);
+			dbus_message_iter_close_container(&inner, &step_dict);
+			dbus_message_iter_close_container(&arr, &inner);
+		}
+	}
+	dbus_message_iter_close_container(&variant, &arr);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_subevent_array(DBusMessageIter *outer_dict,
+				const char *key,
+				const struct cs_subevent_result_data *subevents,
+				uint32_t count)
+{
+	DBusMessageIter entry, variant, arr;
+	uint32_t i;
+
+	dbus_message_iter_open_container(outer_dict, DBUS_TYPE_DICT_ENTRY,
+					 NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "av",
+					 &variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "v", &arr);
+	for (i = 0; i < count; i++) {
+		DBusMessageIter inner, sub_dict;
+
+		dbus_message_iter_open_container(&arr, DBUS_TYPE_VARIANT,
+						 "a{sv}", &inner);
+		dbus_message_iter_open_container(&inner, DBUS_TYPE_ARRAY,
+						 "{sv}", &sub_dict);
+		append_subevent_to_dict(&sub_dict, &subevents[i]);
+		dbus_message_iter_close_container(&inner, &sub_dict);
+		dbus_message_iter_close_container(&arr, &inner);
+	}
+	dbus_message_iter_close_container(&variant, &arr);
+	dbus_message_iter_close_container(&entry, &variant);
+	dbus_message_iter_close_container(outer_dict, &entry);
+}
+
+static void rap_emit_procedure_data(struct rap_data *data,
+				const struct bcs_procedure_data *bcs)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter, dict;
+
+	signal = dbus_message_new_signal(device_get_path(data->device),
+					 CS_INTERFACE, "ProcedureData");
+	if (!signal) {
+		error("Failed to allocate ProcedureData signal");
+		return;
+	}
+
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+	dict_append_int32(&dict, "procedureCounter",
+			  (dbus_int32_t)bcs->procedure_counter);
+	dict_append_int32(&dict, "procedureSequence",
+			  (dbus_int32_t)bcs->procedure_sequence);
+	dict_append_byte(&dict, "initiatorSelectedTxPower",
+			 (uint8_t)bcs->initiator_selected_tx_power);
+	dict_append_byte(&dict, "reflectorSelectedTxPower",
+			 (uint8_t)bcs->reflector_selected_tx_power);
+
+	dict_append_uint32(&dict, "initiatorSubeventCount",
+			   bcs->initiator_subevent_count);
+	if (bcs->initiator_subevent_results &&
+					bcs->initiator_subevent_count > 0)
+		append_subevent_array(&dict, "initiatorSubeventResults",
+				      bcs->initiator_subevent_results,
+				      bcs->initiator_subevent_count);
+
+	dict_append_byte(&dict, "initiatorProcedureAbortReason",
+			 bcs->initiator_procedure_abort_reason);
+
+	dict_append_uint32(&dict, "reflectorSubeventCount",
+			   bcs->reflector_subevent_count);
+	if (bcs->reflector_subevent_results &&
+					bcs->reflector_subevent_count > 0)
+		append_subevent_array(&dict, "reflectorSubeventResults",
+				      bcs->reflector_subevent_results,
+				      bcs->reflector_subevent_count);
+
+	dict_append_byte(&dict, "reflectorProcedureAbortReason",
+			 bcs->reflector_procedure_abort_reason);
+
+	append_proc_enable_config(&dict, &bcs->proc_enable_config);
+	append_cs_config_param(&dict, bcs);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	g_dbus_send_message(btd_get_dbus_connection(), signal);
+}
+
+static void rap_procedure_data(struct bt_rap *rap,
+				struct bcs_procedure_data *bcs,
+				void *user_data)
+{
+	struct rap_data *data = user_data;
+
+	DBG("procedure_counter=%u", bcs->procedure_counter);
+	rap_emit_procedure_data(data, bcs);
+}
+
 static DBusMessage *start_measurement(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
@@ -535,6 +1021,9 @@ bad_type:
 	data->active_session.cfg           = cfg;
 	data->active_session.freq          = freq;
 
+	bt_rap_hci_set_procedure_data_cb(data->hci_sm, rap_procedure_data,
+					 data, NULL);
+
 	return dbus_message_new_method_return(msg);
 }
 
@@ -586,6 +1075,11 @@ static gboolean cs_property_get_active(const GDBusPropertyTable *property,
 
 static const GDBusPropertyTable cs_dbus_properties[] = {
 	{ "Active", "b", cs_property_get_active, NULL, NULL, 0 },
+	{ }
+};
+
+static const GDBusSignalTable cs_dbus_signals[] = {
+	{ GDBUS_SIGNAL("ProcedureData", GDBUS_ARGS({ "data", "a{sv}" })) },
 	{ }
 };
 
@@ -753,7 +1247,8 @@ static int rap_accept(struct btd_service *service)
 	g_dbus_register_interface(btd_get_dbus_connection(),
 				  device_get_path(data->device),
 				  CS_INTERFACE, cs_dbus_methods,
-				  NULL, cs_dbus_properties, data, NULL);
+				  cs_dbus_signals, cs_dbus_properties,
+				  data, NULL);
 
 	return 0;
 }
