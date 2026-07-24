@@ -14941,6 +14941,7 @@ static const struct bitfield_data mgmt_settings_table[] = {
 	{ 22, "LL Privacy"		},
 	{ 23, "PAST Sender"		},
 	{ 24, "PAST Receiver"		},
+	{ 25, "Shorter Connection Interval"	},
 	{}
 };
 
@@ -15098,6 +15099,27 @@ static void mgmt_print_connection_parameter(const void *data)
 	print_field("Min connection interval: %u", min_conn_interval);
 	print_field("Max connection interval: %u", max_conn_interval);
 	print_conn_latency("Connection latency", conn_latency);
+	print_field("Supervision timeout: %u", supv_timeout);
+}
+
+static void mgmt_print_connection_subrate(const void *data)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint16_t min_interval = get_le16(data + 7);
+	uint16_t max_interval = get_le16(data + 9);
+	uint16_t subrate_min = get_le16(data + 11);
+	uint16_t subrate_max = get_le16(data + 13);
+	uint16_t max_latency = get_le16(data + 15);
+	uint16_t cont_num = get_le16(data + 17);
+	uint16_t supv_timeout = get_le16(data + 19);
+
+	mgmt_print_address(data, address_type);
+	print_field("Min connection interval: %u", min_interval);
+	print_field("Max connection interval: %u", max_interval);
+	print_field("Subrate min: %u", subrate_min);
+	print_field("Subrate max: %u", subrate_max);
+	print_field("Max latency: %u", max_latency);
+	print_field("Continuation number: %u", cont_num);
 	print_field("Supervision timeout: %u", supv_timeout);
 }
 
@@ -16024,6 +16046,22 @@ static void mgmt_load_connection_parameters_cmd(const void *data, uint16_t size)
 
 	for (i = 0; i < num_parameters; i++)
 		mgmt_print_connection_parameter(data + 2 + (i * 15));
+}
+
+static void mgmt_load_conn_subrate_cmd(const void *data, uint16_t size)
+{
+	uint16_t num_parameters = get_le16(data);
+	int i;
+
+	print_field("Parameters: %u", num_parameters);
+
+	if (size - 2 != num_parameters * 21) {
+		packet_hexdump(data + 2, size - 2);
+		return;
+	}
+
+	for (i = 0; i < num_parameters; i++)
+		mgmt_print_connection_subrate(data + 2 + (i * 21));
 }
 
 static void mgmt_read_unconf_index_list_rsp(const void *data, uint16_t size)
@@ -17096,6 +17134,9 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x005B, "Send HCI command and wait for event",
 				mgmt_hci_cmd_sync_cmd, 6, false,
 				mgmt_hci_cmd_sync_rsp, 0, false},
+	{ 0x005C, "Load Connection Subrate",
+				mgmt_load_conn_subrate_cmd, 2, false,
+				mgmt_null_rsp, 0, true },
 	{ }
 };
 
@@ -17620,6 +17661,25 @@ static void mgmt_mesh_packet_cmplt_evt(const void *data, uint16_t size)
 	print_field("Handle: %d", handle);
 }
 
+static void mgmt_conn_subrate_evt(const void *data, uint16_t size)
+{
+	uint8_t address_type = get_u8(data + 6);
+	uint8_t status = get_u8(data + 7);
+	uint16_t interval = get_le16(data + 8);
+	uint16_t subrate = get_le16(data + 10);
+	uint16_t latency = get_le16(data + 12);
+	uint16_t cont_num = get_le16(data + 14);
+	uint16_t supv_timeout = get_le16(data + 16);
+
+	mgmt_print_address(data, address_type);
+	mgmt_print_status(status);
+	print_field("Interval: %u", interval);
+	print_field("Subrate: %u", subrate);
+	print_field("Latency: %u", latency);
+	print_field("Continuation number: %u", cont_num);
+	print_field("Supervision timeout: %u", supv_timeout);
+}
+
 static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0001, "Command Complete",
 			mgmt_command_complete_evt, 3, false },
@@ -17717,6 +17777,8 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_mesh_device_found_evt, 22, false },
 	{ 0x0032, "Mesh Packet Complete",
 			mgmt_mesh_packet_cmplt_evt, 1, true },
+	{ 0x0033, "Connection Subrate",
+			mgmt_conn_subrate_evt, 18, true },
 	{ }
 };
 
