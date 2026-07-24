@@ -107,6 +107,7 @@ struct mgmt_rp_read_index_list {
 #define MGMT_SETTING_LL_PRIVACY		BIT(22)
 #define MGMT_SETTING_PAST_SENDER	BIT(23)
 #define MGMT_SETTING_PAST_RECEIVER	BIT(24)
+#define MGMT_SETTING_SCI		BIT(25)
 
 #define MGMT_OP_READ_INFO		0x0004
 struct mgmt_rp_read_info {
@@ -814,6 +815,23 @@ struct mgmt_cp_hci_cmd_sync {
 	uint8_t  params[];
 } __packed;
 
+struct mgmt_conn_subrate {
+	struct mgmt_addr_info addr;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t subrate_min;
+	uint16_t subrate_max;
+	uint16_t max_latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+} __packed;
+
+#define MGMT_OP_LOAD_CONN_SUBRATE	0x005C
+struct mgmt_cp_load_conn_subrate {
+	uint16_t param_count;
+	struct mgmt_conn_subrate params[];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -1107,6 +1125,17 @@ struct mgmt_ev_mesh_pkt_cmplt {
 	uint8_t	handle;
 } __packed;
 
+#define MGMT_EV_CONN_SUBRATE			0x0033
+struct mgmt_ev_conn_subrate {
+	struct mgmt_addr_info addr;
+	uint8_t  status;
+	uint16_t interval;
+	uint16_t subrate;
+	uint16_t latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -1200,6 +1229,7 @@ static const char *mgmt_op[] = {
 	"Mesh Send",
 	"Mesh Send Cancel",
 	"HCI Cmd Sync",
+	"Load Connection Subrate",
 };
 
 static const char *mgmt_ev[] = {
@@ -1254,6 +1284,7 @@ static const char *mgmt_ev[] = {
 	"Advertisement Monitor Device Lost",
 	"Mesh Packet Found",
 	"Mesh Packet Complete",
+	"Connection Subrate",
 };
 
 static const char *mgmt_status[] = {
