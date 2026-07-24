@@ -597,6 +597,13 @@ static void test_condition_complete(struct test_data *data)
 #define test_bredrle60(name, data, setup, func) \
 	test_bredrle60_full(name, data, setup, func, 2)
 
+#define test_bredrle62_full(name, data, setup, func, timeout) \
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE62, \
+					0x0e, 0x0201beff, 0x00000080)
+
+#define test_bredrle62(name, data, setup, func) \
+	test_bredrle62_full(name, data, setup, func, 2)
+
 #define test_hs_full(name, data, setup, func, timeout) \
 	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE, \
 					0x09, 0x0001bfff, 0x00000080)
@@ -4427,6 +4434,48 @@ static const struct generic_data load_conn_params_fail_1 = {
 	.send_param = load_conn_param_nval_1,
 	.send_len = sizeof(load_conn_param_nval_1),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const char set_le_settings_param_sci[] = { 0x81, 0x02, 0xfc, 0x03 };
+static const struct generic_data set_le_on_success_sci = {
+	.setup_settings = settings_le,
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_le_settings_param_sci,
+	.expect_len = sizeof(set_le_settings_param_sci),
+	.expect_settings_set = MGMT_SETTING_LE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
+	.expect_hci_param = set_le_on_write_le_host_param,
+	.expect_hci_len = sizeof(set_le_on_write_le_host_param),
+};
+
+static const uint8_t load_conn_subrate_nval_1[16] = { 0x12, 0x11 };
+static const struct generic_data load_conn_subrate_fail_1 = {
+	.send_opcode = MGMT_OP_LOAD_CONN_SUBRATE,
+	.send_param = load_conn_subrate_nval_1,
+	.send_len = sizeof(load_conn_subrate_nval_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const uint8_t load_conn_subrate_valid_1[] = {
+	0x01, 0x00,				/* param_count */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* address */
+	0x01,					/* address type */
+	0x08, 0x00,				/* min_interval */
+	0x80, 0x0c,				/* max_interval */
+	0x01, 0x00,				/* subrate_min */
+	0x04, 0x00,				/* subrate_max */
+	0x00, 0x00,				/* max_latency */
+	0x02, 0x00,				/* cont_num */
+	0xc8, 0x00,				/* supv_timeout */
+};
+static const struct generic_data load_conn_subrate_success_1 = {
+	.send_opcode = MGMT_OP_LOAD_CONN_SUBRATE,
+	.send_param = load_conn_subrate_valid_1,
+	.send_len = sizeof(load_conn_subrate_valid_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
 static const uint8_t add_device_nval_1[] = {
@@ -13329,6 +13378,9 @@ int main(int argc, char *argv[])
 	test_bredrle60("Set Low Energy on 6.0 - Success 5",
 				&set_le_on_success_test_4,
 				NULL, test_command_generic);
+	test_bredrle62("Set Low Energy on 6.2 - SCI Setting",
+				&set_le_on_success_sci,
+				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid parameters 1",
 				&set_le_on_invalid_param_test_1,
 				NULL, test_command_generic);
@@ -13810,6 +13862,13 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Load Connection Parameters - Invalid Params 1",
 				&load_conn_params_fail_1,
+				NULL, test_command_generic);
+
+	test_bredrle62("Load Connection Subrate - Invalid Params 1",
+				&load_conn_subrate_fail_1,
+				NULL, test_command_generic);
+	test_bredrle62("Load Connection Subrate - Success 1",
+				&load_conn_subrate_success_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Add Device - Invalid Params 1",
