@@ -740,6 +740,26 @@ static const struct l2cap_data le_client_connect_subrate_full_range_test = {
 	.conn_subrate = &conn_subrate_hids_full_range,
 };
 
+static const struct l2cap_data le_server_subrate_fast_test = {
+	.cid = 0x0004,
+	.conn_subrate = &conn_subrate_hids_fast,
+};
+
+static const struct l2cap_data le_server_subrate_default_test = {
+	.cid = 0x0004,
+	.conn_subrate = &conn_subrate_hids_default,
+};
+
+static const struct l2cap_data le_server_subrate_low_power_test = {
+	.cid = 0x0004,
+	.conn_subrate = &conn_subrate_hids_low_power,
+};
+
+static const struct l2cap_data le_server_subrate_full_range_test = {
+	.cid = 0x0004,
+	.conn_subrate = &conn_subrate_hids_full_range,
+};
+
 static const struct l2cap_data le_client_connect_close_test_1 = {
 	.client_psm = 0x0080,
 };
@@ -2963,6 +2983,24 @@ static void send_req_new_conn(uint16_t handle, void *user_data)
 
 	data->handle = handle;
 
+	if (l2data->conn_subrate) {
+		const struct l2cap_conn_subrate *cs = l2data->conn_subrate;
+		struct bthost_conn_rate rate;
+
+		rate.interval_min = cs->min_interval;
+		rate.interval_max = cs->max_interval;
+		rate.subrate_min = cs->subrate_min;
+		rate.subrate_max = cs->subrate_max;
+		rate.max_latency = cs->max_latency;
+		rate.cont_num = cs->cont_num;
+		rate.supv_timeout = cs->supv_timeout;
+
+		tester_print("Sending LE Connection Rate Request from client");
+
+		bthost = hciemu_client_get_host(data->hciemu);
+		bthost_le_conn_rate(bthost, handle, &rate);
+	}
+
 	if (l2data->send_cmd) {
 		bthost_l2cap_rsp_cb cb;
 
@@ -3248,6 +3286,19 @@ int main(int argc, char *argv[])
 	test_l2cap_le_62("L2CAP LE Client - SCI Full Range Mode",
 				&le_client_connect_subrate_full_range_test,
 				setup_powered_client, test_connect);
+
+	test_l2cap_le_62("L2CAP LE Server - SCI Fast Mode",
+				&le_server_subrate_fast_test,
+				setup_powered_server, test_server);
+	test_l2cap_le_62("L2CAP LE Server - SCI Default Mode",
+				&le_server_subrate_default_test,
+				setup_powered_server, test_server);
+	test_l2cap_le_62("L2CAP LE Server - SCI Low Power Mode",
+				&le_server_subrate_low_power_test,
+				setup_powered_server, test_server);
+	test_l2cap_le_62("L2CAP LE Server - SCI Full Range Mode",
+				&le_server_subrate_full_range_test,
+				setup_powered_server, test_server);
 	test_l2cap_le("L2CAP LE Client - Close",
 				&le_client_connect_close_test_1,
 				setup_powered_client, test_connect_close);
