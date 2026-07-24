@@ -1293,6 +1293,27 @@ Set device flags
 :Example Clear all flags for LE public device:
 	| **> set-flags -f 0x00 -t le_public 11:22:33:44:55:66**
 
+conn-subrate
+------------
+
+Load Connection Subrate
+
+:Usage: **> conn-subrate [-t type] <address> <min_interval> <max_interval>
+	<subrate_min> <subrate_max> <max_latency> <cont_num> <supv_timeout>**
+:[-t type]: Address type - 1 for LE Public, 2 for LE Random
+:<address>: Bluetooth address of the device
+:<min_interval>: Minimum connection interval (units of 0.125 ms)
+:<max_interval>: Maximum connection interval (units of 0.125 ms)
+:<subrate_min>: Minimum subrate factor
+:<subrate_max>: Maximum subrate factor
+:<max_latency>: Maximum peripheral latency (subrated connection events)
+:<cont_num>: Continuation number
+:<supv_timeout>: Supervision timeout (units of 10 ms)
+:Example Load subrate for LE public address device:
+	| **> conn-subrate -t 1 00:11:22:33:44:55 8 3200 1 4 0 2 200**
+:Example Load subrate for LE random address device:
+	| **> conn-subrate -t 2 AA:BB:CC:DD:EE:FF 16 1600 2 8 0 4 100**
+
 RESOURCES
 =========
 
