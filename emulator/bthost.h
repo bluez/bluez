@@ -66,6 +66,20 @@ void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr,
 void bthost_hci_ext_connect(struct bthost *bthost, const uint8_t *bdaddr,
 							uint8_t addr_type);
 
+struct bthost_conn_rate {
+	uint16_t interval_min;
+	uint16_t interval_max;
+	uint16_t subrate_min;
+	uint16_t subrate_max;
+	uint16_t max_latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+};
+
+/* Send LE Connection Rate Request for the given connection handle. */
+void bthost_le_conn_rate(struct bthost *bthost, uint16_t handle,
+					const struct bthost_conn_rate *rate);
+
 void bthost_hci_disconnect(struct bthost *bthost, uint16_t handle,
 								uint8_t reason);
 
