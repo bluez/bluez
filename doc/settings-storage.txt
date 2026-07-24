@@ -361,3 +361,25 @@ Long term key) related to a remote device.
 
   CCC_LE		Integer		CCC value for LE transport
   CCC_BR/EDR		Integer		CCC value for BR/EDR transport
+
+
+[ConnectionSubrate] group contains:
+
+  MinInterval		Integer		Minimum Connection Interval
+					(in units of 0.125 ms)
+
+  MaxInterval		Integer		Maximum Connection Interval
+					(in units of 0.125 ms)
+
+  SubrateMin		Integer		Minimum Subrate Factor
+
+  SubrateMax		Integer		Maximum Subrate Factor
+
+  MaxLatency		Integer		Maximum Peripheral Latency
+					(in units of subrated connection
+					events)
+
+  ContinuationNumber	Integer		Number of continuation events
+
+  SupervisionTimeout	Integer		Link Supervision Timeout
+					(in units of 10 ms)
