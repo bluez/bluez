@@ -4478,6 +4478,98 @@ static const struct generic_data load_conn_subrate_success_1 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
+/* HIDS 1.2 recommended SCI parameters (see HOGP v1.2 spec).
+ * Connection intervals are in units of 0.125 ms, supervision timeout in
+ * units of 10 ms.
+ *
+ * Fast mode: interval 1.25-5 ms, latency 0, subrate 1-4, cont_num 3,
+ * timeout >= (1 + 0) * 4 * 5 ms * 2 = 40 ms.
+ */
+static const uint8_t load_conn_subrate_hids_fast[] = {
+	0x01, 0x00,				/* param_count */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* address */
+	0x01,					/* address type (LE Public) */
+	0x0a, 0x00,				/* min_interval (1.25 ms) */
+	0x28, 0x00,				/* max_interval (5 ms) */
+	0x01, 0x00,				/* subrate_min */
+	0x04, 0x00,				/* subrate_max */
+	0x00, 0x00,				/* max_latency */
+	0x03, 0x00,				/* cont_num */
+	0x04, 0x00,				/* supv_timeout (40 ms) */
+};
+static const struct generic_data load_conn_subrate_hids_fast_test = {
+	.send_opcode = MGMT_OP_LOAD_CONN_SUBRATE,
+	.send_param = load_conn_subrate_hids_fast,
+	.send_len = sizeof(load_conn_subrate_hids_fast),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+/* Default mode: interval 7.5-15 ms, latency 0, subrate 1-4, cont_num 0,
+ * timeout >= (1 + 0) * 4 * 15 ms * 2 = 120 ms.
+ */
+static const uint8_t load_conn_subrate_hids_default[] = {
+	0x01, 0x00,				/* param_count */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* address */
+	0x01,					/* address type (LE Public) */
+	0x3c, 0x00,				/* min_interval (7.5 ms) */
+	0x78, 0x00,				/* max_interval (15 ms) */
+	0x01, 0x00,				/* subrate_min */
+	0x04, 0x00,				/* subrate_max */
+	0x00, 0x00,				/* max_latency */
+	0x00, 0x00,				/* cont_num */
+	0x0c, 0x00,				/* supv_timeout (120 ms) */
+};
+static const struct generic_data load_conn_subrate_hids_default_test = {
+	.send_opcode = MGMT_OP_LOAD_CONN_SUBRATE,
+	.send_param = load_conn_subrate_hids_default,
+	.send_len = sizeof(load_conn_subrate_hids_default),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+/* Low Power mode: interval 7.5-15 ms, latency 100, subrate 1-4,
+ * cont_num 0, timeout >= (1 + 100) * 4 * 15 ms * 2 = 12120 ms.
+ */
+static const uint8_t load_conn_subrate_hids_low_power[] = {
+	0x01, 0x00,				/* param_count */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* address */
+	0x01,					/* address type (LE Public) */
+	0x3c, 0x00,				/* min_interval (7.5 ms) */
+	0x78, 0x00,				/* max_interval (15 ms) */
+	0x01, 0x00,				/* subrate_min */
+	0x04, 0x00,				/* subrate_max */
+	0x64, 0x00,				/* max_latency (100) */
+	0x00, 0x00,				/* cont_num */
+	0xbc, 0x04,				/* supv_timeout (12120 ms) */
+};
+static const struct generic_data load_conn_subrate_hids_low_power_test = {
+	.send_opcode = MGMT_OP_LOAD_CONN_SUBRATE,
+	.send_param = load_conn_subrate_hids_low_power,
+	.send_len = sizeof(load_conn_subrate_hids_low_power),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+/* Full Range mode: interval 1.25-15 ms, latency 0, subrate 1-4,
+ * cont_num 1, timeout >= (1 + 0) * 4 * 15 ms * 2 = 120 ms.
+ */
+static const uint8_t load_conn_subrate_hids_full_range[] = {
+	0x01, 0x00,				/* param_count */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,	/* address */
+	0x01,					/* address type (LE Public) */
+	0x0a, 0x00,				/* min_interval (1.25 ms) */
+	0x78, 0x00,				/* max_interval (15 ms) */
+	0x01, 0x00,				/* subrate_min */
+	0x04, 0x00,				/* subrate_max */
+	0x00, 0x00,				/* max_latency */
+	0x01, 0x00,				/* cont_num */
+	0x0c, 0x00,				/* supv_timeout (120 ms) */
+};
+static const struct generic_data load_conn_subrate_hids_full_range_test = {
+	.send_opcode = MGMT_OP_LOAD_CONN_SUBRATE,
+	.send_param = load_conn_subrate_hids_full_range,
+	.send_len = sizeof(load_conn_subrate_hids_full_range),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
 static const uint8_t add_device_nval_1[] = {
 					0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
 					0x00,
@@ -13869,6 +13961,18 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle62("Load Connection Subrate - Success 1",
 				&load_conn_subrate_success_1,
+				NULL, test_command_generic);
+	test_bredrle62("Load Connection Subrate - HIDS Fast",
+				&load_conn_subrate_hids_fast_test,
+				NULL, test_command_generic);
+	test_bredrle62("Load Connection Subrate - HIDS Default",
+				&load_conn_subrate_hids_default_test,
+				NULL, test_command_generic);
+	test_bredrle62("Load Connection Subrate - HIDS Low Power",
+				&load_conn_subrate_hids_low_power_test,
+				NULL, test_command_generic);
+	test_bredrle62("Load Connection Subrate - HIDS Full Range",
+				&load_conn_subrate_hids_full_range_test,
 				NULL, test_command_generic);
 
 	test_bredrle("Add Device - Invalid Params 1",
