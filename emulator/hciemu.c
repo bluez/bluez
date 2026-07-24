@@ -437,6 +437,9 @@ struct hciemu *hciemu_new_num_debug(enum hciemu_type type, uint8_t num,
 	case HCIEMU_TYPE_BREDRLE60:
 		hciemu->btdev_type = BTDEV_TYPE_BREDRLE60;
 		break;
+	case HCIEMU_TYPE_BREDRLE62:
+		hciemu->btdev_type = BTDEV_TYPE_BREDRLE62;
+		break;
 	default:
 		return NULL;
 	}
