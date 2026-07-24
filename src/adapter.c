@@ -206,6 +206,18 @@ struct conn_param {
 	uint16_t timeout;
 };
 
+struct conn_subrate {
+	bdaddr_t bdaddr;
+	uint8_t  bdaddr_type;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t subrate_min;
+	uint16_t subrate_max;
+	uint16_t max_latency;
+	uint16_t cont_num;
+	uint16_t supv_timeout;
+};
+
 struct discovery_filter {
 	uint8_t type;
 	char *pattern;
@@ -4222,6 +4234,46 @@ static struct conn_param *get_conn_param(GKeyFile *key_file, const char *peer,
 	return param;
 }
 
+static struct conn_subrate *get_conn_subrate(GKeyFile *key_file,
+						const char *peer,
+						uint8_t bdaddr_type)
+{
+	struct conn_subrate *subrate;
+
+	if (!g_key_file_has_group(key_file, "ConnectionSubrate"))
+		return NULL;
+
+	subrate = g_new0(struct conn_subrate, 1);
+
+	subrate->min_interval = g_key_file_get_integer(key_file,
+							"ConnectionSubrate",
+							"MinInterval", NULL);
+	subrate->max_interval = g_key_file_get_integer(key_file,
+							"ConnectionSubrate",
+							"MaxInterval", NULL);
+	subrate->subrate_min = g_key_file_get_integer(key_file,
+							"ConnectionSubrate",
+							"SubrateMin", NULL);
+	subrate->subrate_max = g_key_file_get_integer(key_file,
+							"ConnectionSubrate",
+							"SubrateMax", NULL);
+	subrate->max_latency = g_key_file_get_integer(key_file,
+							"ConnectionSubrate",
+							"MaxLatency", NULL);
+	subrate->cont_num = g_key_file_get_integer(key_file,
+							"ConnectionSubrate",
+							"ContinuationNumber",
+							NULL);
+	subrate->supv_timeout = g_key_file_get_integer(key_file,
+							"ConnectionSubrate",
+							"SupervisionTimeout",
+							NULL);
+	str2ba(peer, &subrate->bdaddr);
+	subrate->bdaddr_type = bdaddr_type;
+
+	return subrate;
+}
+
 static int generate_and_write_irk(uint8_t *irk, GKeyFile *key_file,
 							const char *filename)
 {
@@ -4693,6 +4745,75 @@ void btd_adapter_load_conn_param(struct btd_adapter *adapter,
 	g_slist_free(params);
 }
 
+static void load_conn_subrate_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		btd_error(adapter->dev_id,
+			"hci%u Load Connection Subrate failed: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("Connection Subrate loaded for hci%u", adapter->dev_id);
+}
+
+static void load_conn_subrate(struct btd_adapter *adapter,
+						struct queue *subrates)
+{
+	struct mgmt_cp_load_conn_subrate *cp;
+	struct mgmt_conn_subrate *entry;
+	size_t count, cp_size;
+	unsigned int id;
+	const struct queue_entry *e;
+
+	if (!(adapter->supported_settings & MGMT_SETTING_SCI))
+		return;
+
+	count = queue_length(subrates);
+
+	DBG("hci%u conn subrates %zu", adapter->dev_id, count);
+
+	cp_size = sizeof(*cp) + (count * sizeof(*entry));
+
+	cp = g_try_malloc0(cp_size);
+	if (cp == NULL) {
+		btd_error(adapter->dev_id,
+			"Failed to allocate memory for connection subrate");
+		return;
+	}
+
+	cp->param_count = htobs(count);
+
+	entry = cp->params;
+	for (e = queue_get_entries(subrates); e; e = e->next) {
+		struct conn_subrate *info = e->data;
+
+		bacpy(&entry->addr.bdaddr, &info->bdaddr);
+		entry->addr.type = info->bdaddr_type;
+		entry->min_interval = htobs(info->min_interval);
+		entry->max_interval = htobs(info->max_interval);
+		entry->subrate_min = htobs(info->subrate_min);
+		entry->subrate_max = htobs(info->subrate_max);
+		entry->max_latency = htobs(info->max_latency);
+		entry->cont_num = htobs(info->cont_num);
+		entry->supv_timeout = htobs(info->supv_timeout);
+		entry++;
+	}
+
+	id = mgmt_send(adapter->mgmt, MGMT_OP_LOAD_CONN_SUBRATE,
+			adapter->dev_id, cp_size, cp,
+			load_conn_subrate_complete, adapter, NULL);
+
+	g_free(cp);
+
+	if (id == 0)
+		btd_error(adapter->dev_id,
+					"Load connection subrate failed");
+}
+
 static uint8_t get_addr_type(GKeyFile *keyfile)
 {
 	uint8_t addr_type;
@@ -4980,6 +5101,7 @@ static void load_devices(struct btd_adapter *adapter)
 	GSList *ltks = NULL;
 	GSList *irks = NULL;
 	GSList *params = NULL;
+	struct queue *subrates = NULL;
 	GSList *added_devices = NULL;
 	GError *gerr = NULL;
 	DIR *dir;
@@ -5006,6 +5128,7 @@ static void load_devices(struct btd_adapter *adapter)
 		GSList *list;
 		struct irk_info *irk_info;
 		struct conn_param *param;
+		struct conn_subrate *subrate;
 		uint8_t bdaddr_type;
 
 		if (entry->d_type == DT_UNKNOWN)
@@ -5082,6 +5205,14 @@ static void load_devices(struct btd_adapter *adapter)
 		if (param)
 			params = g_slist_append(params, param);
 
+		subrate = get_conn_subrate(key_file, entry->d_name,
+								bdaddr_type);
+		if (subrate) {
+			if (!subrates)
+				subrates = queue_new();
+			queue_push_tail(subrates, subrate);
+		}
+
 		list = g_slist_find_custom(adapter->devices, entry->d_name,
 							device_address_cmp);
 		if (list) {
@@ -5125,6 +5256,8 @@ free:
 	g_slist_free_full(irks, g_free);
 	load_conn_params(adapter, params);
 	g_slist_free_full(params, g_free);
+	load_conn_subrate(adapter, subrates);
+	queue_destroy(subrates, free);
 
 	g_slist_free_full(added_devices, probe_devices);
 }
@@ -9221,6 +9354,40 @@ static void new_conn_param(uint16_t index, uint16_t length,
 					ev->latency, ev->timeout);
 }
 
+static void conn_subrate_evt(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_conn_subrate *ev = param;
+	struct btd_adapter *adapter = user_data;
+	uint16_t interval, subrate, latency, cont_num, supv_timeout;
+	char dst[18];
+
+	if (length < sizeof(*ev)) {
+		btd_error(adapter->dev_id,
+				"Too small Connection Subrate event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, dst);
+
+	if (ev->status) {
+		DBG("hci%u %s (%u) subrate failed status 0x%02x",
+			adapter->dev_id, dst, ev->addr.type, ev->status);
+		return;
+	}
+
+	interval = btohs(ev->interval);
+	subrate = btohs(ev->subrate);
+	latency = btohs(ev->latency);
+	cont_num = btohs(ev->cont_num);
+	supv_timeout = btohs(ev->supv_timeout);
+
+	DBG("hci%u %s (%u) interval 0x%04x subrate 0x%04x latency 0x%04x "
+		"cont_num 0x%04x timeout 0x%04x", adapter->dev_id, dst,
+		ev->addr.type, interval, subrate, latency, cont_num,
+		supv_timeout);
+}
+
 int adapter_set_io_capability(struct btd_adapter *adapter,
 						enum mgmt_io_capability io_cap)
 {
@@ -10546,6 +10713,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_CONN_PARAM,
 						adapter->dev_id,
 						new_conn_param,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_CONN_SUBRATE,
+						adapter->dev_id,
+						conn_subrate_evt,
 						adapter, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_BLOCKED,

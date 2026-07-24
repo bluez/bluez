@@ -321,6 +321,7 @@ following available bits:
     22, LL Privacy
     23, PAST Sender
     24, PAST Receiver
+    25, Shorter Connection Interval
 
 This command generates a Command Complete event on success or a Command Status
 event on failure.
@@ -4170,6 +4171,86 @@ Possible errors:
 :Failed:
 :Invalid Parameters:
 
+Load Connection Subrate
+```````````````````````
+
+:Command Code:		0x005C
+:Controller Index:	<controller id>
+:Command Parameters:	Param_Count (2 Octets)
+:...:			Address[] (6 Octets)
+:...:			Address_Type[] (1 Octet)
+:...:			Min_Connection_Interval[] (2 Octets)
+:...:			Max_Connection_Interval[] (2 Octets)
+:...:			Subrate_Min[] (2 Octets)
+:...:			Subrate_Max[] (2 Octets)
+:...:			Max_Latency[] (2 Octets)
+:...:			Continuation_Number[] (2 Octets)
+:...:			Supervision_Timeout[] (2 Octets)
+:...:			...[]
+:Return Parameters:
+
+This command is used to load connection subrate parameters from several devices
+into the kernel. This is only supported on controllers with Low Energy support
+and the Shorter Connection Interval (SCI) feature.
+
+This command operates on the same device entries as Load Connection Parameters
+(0x0035). If an entry for the given device already exists, the subrate-specific
+fields are updated on that entry. If no entry exists, a new one is created. The
+device must have been previously added via Load Connection Parameters or this
+command.
+
+Note that the Min_Connection_Interval and Max_Connection_Interval parameters in
+this command refer to the connection rate interval used with the LE Connection
+Rate Request procedure, which has different valid ranges than the connection
+interval in Load Connection Parameters. The Load Connection Parameters interval
+is specified in units of 1.25 ms (range: 6 to 3200), while the connection rate
+interval here is specified in units of 0.125 ms (range: 8 to 3200).
+
+Loading with multiple entries overwrites the subrate parameters for all listed
+devices. Loading with a single entry attempts to update the parameters if an
+entry for the given device already exists, or adds a new entry otherwise.
+
+Possible values for the Address_Type parameter:
+
+.. csv-table::
+	:header: "Value", "Description"
+	:widths: auto
+
+	0x00, BR/EDR
+	0x01, LE Public
+	0x02, LE Random
+
+The provided Address and Address_Type are the identity of a device. So either
+its public address or static random address.
+
+The Min_Connection_Interval and Max_Connection_Interval parameters specify the
+connection rate interval range in units of 0.125 ms (range: 0x0008 to 0x0C80,
+corresponding to 1.0 ms to 400.0 ms). These are distinct from the connection
+parameters interval in Load Connection Parameters which uses units of 1.25 ms.
+
+The Subrate_Min and Subrate_Max parameters specify the acceptable subrate factor
+range.
+
+The Max_Latency parameter specifies the maximum peripheral latency in units of
+subrated connection events.
+
+The Continuation_Number parameter specifies the number of continuation events
+the peripheral will be listened to.
+
+The Supervision_Timeout parameter specifies the link supervision timeout in
+units of 10 ms.
+
+This command can be used when the controller is not powered.
+
+This command generates a Command Complete event on success or a Command Status
+event on failure.
+
+Possible errors:
+
+:Invalid Parameters:
+:Invalid Index:
+:Not Supported:
+
 Events
 ------
 
@@ -5394,5 +5475,49 @@ Mesh Packet Transmit Complete (since 1.21)
 
 This event indicates that a requested outbound Mesh packet has completed and no
 longer occupies a transmit slot.
+
+This event will be sent to all management sockets.
+
+Connection Subrate
+``````````````````
+
+:Event Code:		0x0033
+:Controller Index:	<controller id>
+:Event Parameters:	Address (6 Octets)
+:...:			Address_Type (1 Octet)
+:...:			Status (1 Octet)
+:...:			Interval (2 Octets)
+:...:			Subrate (2 Octets)
+:...:			Latency (2 Octets)
+:...:			Continuation_Number (2 Octets)
+:...:			Supervision_Timeout (2 Octets)
+
+This event indicates that the connection rate has changed for a device. This
+can be a result of a successful LE Connection Rate Request or a change
+initiated by the remote device.
+
+Possible values for the Address_Type parameter:
+
+.. csv-table::
+	:header: "Value", "Description"
+	:widths: auto
+
+	0x01, LE Public
+	0x02, LE Random
+
+The Status indicates whether the connection rate change was successful.
+
+The Interval parameter specifies the new connection interval in units of
+0.125 ms.
+
+The Subrate parameter specifies the subrate factor.
+
+The Latency parameter specifies the peripheral latency.
+
+The Continuation_Number parameter specifies the number of continuation
+events.
+
+The Supervision_Timeout parameter specifies the supervision timeout in units
+of 10 ms.
 
 This event will be sent to all management sockets.

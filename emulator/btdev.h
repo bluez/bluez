@@ -53,6 +53,7 @@ enum btdev_type {
 	BTDEV_TYPE_BREDRLE50,
 	BTDEV_TYPE_BREDRLE52,
 	BTDEV_TYPE_BREDRLE60,
+	BTDEV_TYPE_BREDRLE62,
 };
 
 enum btdev_hook_type {

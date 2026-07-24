@@ -56,6 +56,8 @@
 #define HOG_REPORT_UUID		0x2A4D
 #define HOG_PROTO_MODE_UUID	0x2A4E
 #define HOG_CONTROL_POINT_UUID	0x2A4C
+#define HOG_SCI_MODE_UUID	0x2C39
+#define HOG_SCI_INFO_UUID	0x2C3A
 
 #define HOG_REPORT_TYPE_INPUT	1
 #define HOG_REPORT_TYPE_OUTPUT	2
@@ -63,6 +65,8 @@
 
 #define HOG_PROTO_MODE_BOOT    0
 #define HOG_PROTO_MODE_REPORT  1
+
+#define HOG_INFO_FLAG_SCI_SUPPORTED	0x04
 
 #define HID_INFO_SIZE			4
 #define ATT_NOTIFICATION_HEADER_SIZE	3
@@ -98,6 +102,8 @@ struct bt_hog {
 	struct queue		*gatt_op;
 	struct gatt_db		*gatt_db;
 	struct gatt_db_attribute	*report_map_attr;
+	uint16_t		sci_mode_handle;
+	uint16_t		sci_info_handle;
 };
 
 struct report {
@@ -152,6 +158,10 @@ static void destroy_gatt_req(void *data)
 }
 
 static void read_report_map(struct bt_hog *hog);
+static void sci_mode_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data);
+static void sci_info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data);
 
 static void remove_gatt_req(struct gatt_request *req, uint8_t status)
 {
@@ -1105,6 +1115,85 @@ static void info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	DBG("bcdHID: 0x%04X bCountryCode: 0x%02X Flags: 0x%02X",
 			hog->bcdhid, hog->bcountrycode, hog->flags);
 
+	/* Read SCI attributes if SCI is supported */
+	if (hog->flags & HOG_INFO_FLAG_SCI_SUPPORTED) {
+		if (hog->sci_mode_handle)
+			read_char(hog, hog->attrib, hog->sci_mode_handle,
+						sci_mode_read_cb, hog);
+		if (hog->sci_info_handle)
+			read_char(hog, hog->attrib, hog->sci_info_handle,
+						sci_info_read_cb, hog);
+	}
+
+remove:
+	remove_gatt_req(req, status);
+}
+
+static void sci_mode_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct gatt_request *req = user_data;
+	uint8_t value;
+	ssize_t vlen;
+
+	if (status != 0) {
+		error("HID SCI Mode read failed: %s", att_ecode2str(status));
+		goto remove;
+	}
+
+	vlen = dec_read_resp(pdu, plen, &value, sizeof(value));
+	if (vlen != 1) {
+		error("ATT protocol error");
+		goto remove;
+	}
+
+	DBG("SCI Mode: 0x%02X", value);
+
+remove:
+	remove_gatt_req(req, status);
+}
+
+static void sci_info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct gatt_request *req = user_data;
+	uint8_t value[14];
+	ssize_t vlen;
+	uint8_t min_conn_interval;
+	uint8_t num_grps;
+	uint8_t i;
+
+	if (status != 0) {
+		error("HID SCI Information read failed: %s",
+						att_ecode2str(status));
+		goto remove;
+	}
+
+	vlen = dec_read_resp(pdu, plen, value, sizeof(value));
+	if (vlen < 2) {
+		error("ATT protocol error");
+		goto remove;
+	}
+
+	min_conn_interval = value[0];
+	num_grps = value[1];
+
+	DBG("SCI Info: Minimum Supported Connection Interval: %.3f ms "
+		"(0x%02x) Number of Supported Subgroups: %d",
+		min_conn_interval * 0.125, min_conn_interval, num_grps);
+
+	for (i = 0; i < num_grps && (2 + i * 6 + 5) < vlen; i++) {
+		uint16_t min, max, stride;
+		size_t off = 2 + i * 6;
+
+		min = get_le16(&value[off]);
+		max = get_le16(&value[off + 2]);
+		stride = get_le16(&value[off + 4]);
+
+		DBG("  Subgroup[%u]: Min %.3f ms Max %.3f ms Stride %.3f ms",
+			i, min * 0.125, max * 0.125, stride * 0.125);
+	}
+
 remove:
 	remove_gatt_req(req, status);
 }
@@ -1150,6 +1239,7 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 	struct gatt_primary *primary = hog->primary;
 	bt_uuid_t report_uuid, report_map_uuid, info_uuid;
 	bt_uuid_t proto_mode_uuid, ctrlpt_uuid;
+	bt_uuid_t sci_mode_uuid, sci_info_uuid;
 	struct report *report;
 	GSList *l;
 	uint16_t info_handle = 0, proto_mode_handle = 0;
@@ -1167,6 +1257,8 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 	bt_uuid16_create(&info_uuid, HOG_INFO_UUID);
 	bt_uuid16_create(&proto_mode_uuid, HOG_PROTO_MODE_UUID);
 	bt_uuid16_create(&ctrlpt_uuid, HOG_CONTROL_POINT_UUID);
+	bt_uuid16_create(&sci_mode_uuid, HOG_SCI_MODE_UUID);
+	bt_uuid16_create(&sci_info_uuid, HOG_SCI_INFO_UUID);
 
 	for (l = chars; l; l = g_slist_next(l)) {
 		struct gatt_char *chr, *next;
@@ -1201,6 +1293,10 @@ static void char_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 			proto_mode_handle = chr->value_handle;
 		else if (bt_uuid_cmp(&uuid, &ctrlpt_uuid) == 0)
 			hog->ctrlpt_handle = chr->value_handle;
+		else if (bt_uuid_cmp(&uuid, &sci_mode_uuid) == 0)
+			hog->sci_mode_handle = chr->value_handle;
+		else if (bt_uuid_cmp(&uuid, &sci_info_uuid) == 0)
+			hog->sci_info_handle = chr->value_handle;
 	}
 
 	if (proto_mode_handle) {
@@ -1360,7 +1456,7 @@ static void foreach_hog_chrc(struct gatt_db_attribute *attr, void *user_data)
 {
 	struct bt_hog *hog = user_data;
 	bt_uuid_t uuid, report_uuid, report_map_uuid, info_uuid;
-	bt_uuid_t proto_mode_uuid, ctrlpt_uuid;
+	bt_uuid_t proto_mode_uuid, ctrlpt_uuid, sci_mode_uuid, sci_info_uuid;
 	uint16_t handle, value_handle;
 	struct iovec map = {};
 
@@ -1414,6 +1510,14 @@ static void foreach_hog_chrc(struct gatt_db_attribute *attr, void *user_data)
 	bt_uuid16_create(&ctrlpt_uuid, HOG_CONTROL_POINT_UUID);
 	if (!bt_uuid_cmp(&ctrlpt_uuid, &uuid))
 		hog->ctrlpt_handle = value_handle;
+
+	bt_uuid16_create(&sci_mode_uuid, HOG_SCI_MODE_UUID);
+	if (!bt_uuid_cmp(&sci_mode_uuid, &uuid))
+		hog->sci_mode_handle = value_handle;
+
+	bt_uuid16_create(&sci_info_uuid, HOG_SCI_INFO_UUID);
+	if (!bt_uuid_cmp(&sci_info_uuid, &uuid))
+		hog->sci_info_handle = value_handle;
 }
 
 static struct bt_hog *hog_new(int fd, const char *name, uint16_t vendor,

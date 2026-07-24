@@ -6038,6 +6038,90 @@ static void register_mgmt_callbacks(struct mgmt *mgmt, uint16_t index)
 								NULL, NULL);
 }
 
+static void conn_subrate_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		error("Load Connection Subrate failed with status 0x%02x (%s)",
+						status, mgmt_errstr(status));
+	else
+		print("Connection Subrate loaded successfully");
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static const struct option conn_subrate_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+static void cmd_conn_subrate(int argc, char **argv)
+{
+	struct mgmt_cp_load_conn_subrate *cp;
+	uint8_t type = BDADDR_LE_PUBLIC;
+	int opt;
+	uint16_t index;
+	size_t cp_size;
+
+	while ((opt = getopt_long(argc, argv, "+t:h", conn_subrate_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		default:
+			bt_shell_usage();
+			optind = 0;
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 8) {
+		bt_shell_usage();
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	cp_size = sizeof(*cp) + sizeof(struct mgmt_conn_subrate);
+	cp = malloc0(cp_size);
+	if (!cp) {
+		error("Unable to allocate memory");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	cp->param_count = cpu_to_le16(1);
+	str2ba(argv[0], &cp->params[0].addr.bdaddr);
+	cp->params[0].addr.type = type;
+	cp->params[0].min_interval = cpu_to_le16(strtol(argv[1], NULL, 0));
+	cp->params[0].max_interval = cpu_to_le16(strtol(argv[2], NULL, 0));
+	cp->params[0].subrate_min = cpu_to_le16(strtol(argv[3], NULL, 0));
+	cp->params[0].subrate_max = cpu_to_le16(strtol(argv[4], NULL, 0));
+	cp->params[0].max_latency = cpu_to_le16(strtol(argv[5], NULL, 0));
+	cp->params[0].cont_num = cpu_to_le16(strtol(argv[6], NULL, 0));
+	cp->params[0].supv_timeout = cpu_to_le16(strtol(argv[7], NULL, 0));
+
+	if (mgmt_send(mgmt, MGMT_OP_LOAD_CONN_SUBRATE, index, cp_size, cp,
+					conn_subrate_rsp, NULL, NULL) == 0) {
+		error("Unable to send load connection subrate command");
+		free(cp);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	free(cp);
+}
+
 static void cmd_select(int argc, char **argv)
 {
 	mgmt_cancel_all(mgmt);
@@ -6233,6 +6317,10 @@ static const struct bt_shell_menu mgmt_menu = {
 		cmd_get_flags,		"Get device flags"		},
 	{ "set-flags",		"[-f flags] [-t type] <address>",
 		cmd_set_flags,		"Set device flags"		},
+	{ "conn-subrate",	"[-t type] <address> <min_interval> "
+				"<max_interval> <subrate_min> <subrate_max> "
+				"<max_latency> <cont_num> <supv_timeout>",
+		cmd_conn_subrate,	"Load Connection Subrate"	},
 	{ "hci-cmd",		"<opcode> [event] [timeout] [param...]",
 		cmd_hci_cmd,	"Send HCI Command and wait for Event"	},
 	{} },
