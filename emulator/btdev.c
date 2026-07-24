@@ -7963,6 +7963,96 @@ static void set_le_60_commands(struct btdev *btdev)
 	btdev->cmds = cmd_le_6_0;
 }
 
+static int cmd_le_conn_rate(struct btdev *dev, const void *data, uint8_t len)
+{
+	const struct bt_hci_cmd_le_conn_rate *cmd = data;
+	struct bt_hci_evt_le_conn_rate_change ev;
+	struct btdev_conn *conn;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	conn = queue_find(dev->conns, match_handle,
+				UINT_TO_PTR(le16_to_cpu(cmd->handle)));
+	if (!conn)
+		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+
+	cmd_status(dev, status, BT_HCI_CMD_LE_CONN_RATE);
+
+	if (status)
+		return 0;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.status = BT_HCI_ERR_SUCCESS;
+	ev.handle = cmd->handle;
+	ev.interval = cmd->interval_min;
+	ev.subrate = cmd->subrate_min;
+	ev.latency = cpu_to_le16(0);
+	ev.cont_number = cmd->cont_num;
+	ev.supv_timeout = cmd->supv_timeout;
+
+	le_meta_event(dev, BT_HCI_EVT_LE_CONN_RATE_CHANGE, &ev, sizeof(ev));
+	if (conn->link)
+		le_meta_event(conn->link->dev, BT_HCI_EVT_LE_CONN_RATE_CHANGE,
+				&ev, sizeof(ev));
+
+	return 0;
+}
+
+static int cmd_le_set_def_rate(struct btdev *dev, const void *data, uint8_t len)
+{
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_DEF_RATE, &status, sizeof(status));
+
+	return 0;
+}
+
+static int cmd_le_read_conn_interval(struct btdev *dev, const void *data,
+					uint8_t len)
+{
+	struct {
+		struct bt_hci_rsp_le_read_conn_interval rsp;
+		struct bt_hci_le_conn_interval_group grp;
+	} __attribute__ ((packed)) pdu;
+
+	memset(&pdu, 0, sizeof(pdu));
+	pdu.rsp.status = BT_HCI_ERR_SUCCESS;
+	pdu.rsp.num_grps = 1;
+	pdu.grp.min = cpu_to_le16(0x0008);	/* 1.000 ms */
+	pdu.grp.max = cpu_to_le16(0x0c80);	/* 400.000 ms */
+	pdu.grp.stride = cpu_to_le16(0x0001);	/* 0.125 ms */
+
+	cmd_complete(dev, BT_HCI_CMD_LE_READ_CONN_INTERVAL, &pdu, sizeof(pdu));
+
+	return 0;
+}
+
+#define CMD_LE_62 \
+	CMD(BT_HCI_CMD_LE_CONN_RATE, cmd_le_conn_rate, NULL), \
+	CMD(BT_HCI_CMD_LE_SET_DEF_RATE, cmd_le_set_def_rate, NULL), \
+	CMD(BT_HCI_CMD_LE_READ_CONN_INTERVAL, cmd_le_read_conn_interval, NULL)
+
+static const struct btdev_cmd cmd_le_6_2[] = {
+	CMD_COMMON_ALL,
+	CMD_COMMON_BREDR_LE,
+	CMD_COMMON_BREDR_20,
+	CMD_COMMON_BREDR_LE_40,
+	CMD_BREDR,
+	CMD_LE,
+	CMD_LE_50,
+	CMD_LE_52,
+	CMD_LE_60,
+	CMD_LE_62,
+	{}
+};
+
+static void set_le_62_commands(struct btdev *btdev)
+{
+	btdev->commands[48] |= BIT(5);	/* LE Connection Rate Request */
+	btdev->commands[48] |= BIT(6);	/* LE Set Default Rate Parameters */
+	btdev->commands[48] |= BIT(7);	/* LE Read Min Supported Conn Interval */
+	btdev->cmds = cmd_le_6_2;
+}
+
 static void set_le_commands(struct btdev *btdev)
 {
 	set_common_commands_all(btdev);
@@ -8037,6 +8127,12 @@ static void set_le_commands(struct btdev *btdev)
 		set_le_60_commands(btdev);
 		btdev->cmds = cmd_le_6_0;
 	}
+
+	/* Extra LE commands for >= 6.2 adapters */
+	if (btdev->type >= BTDEV_TYPE_BREDRLE62) {
+		set_le_62_commands(btdev);
+		btdev->cmds = cmd_le_6_2;
+	}
 }
 
 static void set_bredrle_commands(struct btdev *btdev)
@@ -8110,6 +8206,13 @@ static void set_bredrle_features(struct btdev *btdev)
 	if (btdev->type >= BTDEV_TYPE_BREDRLE60) {
 		btdev->version = 0x0e;
 		btdev->le_features[7] |= BIT(7); /* LL Extended Features */
+	}
+
+	if (btdev->type >= BTDEV_TYPE_BREDRLE62) {
+		/* Shorter Connection Intervals */
+		btdev->le_features[9] |= BIT(0);
+		/* Shorter Connection Intervals (Host Support) */
+		btdev->le_features[9] |= BIT(1);
 	}
 
 	btdev->feat_page_2[0] |= 0x01;	/* CPB - Central Operation */
@@ -8217,6 +8320,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	case BTDEV_TYPE_BREDRLE50:
 	case BTDEV_TYPE_BREDRLE52:
 	case BTDEV_TYPE_BREDRLE60:
+	case BTDEV_TYPE_BREDRLE62:
 		btdev->crypto = bt_crypto_new();
 		if (!btdev->crypto) {
 			free(btdev);
@@ -8240,6 +8344,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	case BTDEV_TYPE_BREDRLE50:
 	case BTDEV_TYPE_BREDRLE52:
 	case BTDEV_TYPE_BREDRLE60:
+	case BTDEV_TYPE_BREDRLE62:
 		btdev->version = 0x09;
 		set_bredrle_features(btdev);
 		set_bredrle_commands(btdev);
@@ -8933,6 +9038,7 @@ int btdev_set_msft_opcode(struct btdev *btdev, uint16_t opcode)
 	case BTDEV_TYPE_BREDRLE50:
 	case BTDEV_TYPE_BREDRLE52:
 	case BTDEV_TYPE_BREDRLE60:
+	case BTDEV_TYPE_BREDRLE62:
 		btdev->msft_opcode = opcode;
 		btdev->msft_cmds = cmd_msft;
 		return 0;
@@ -8991,6 +9097,7 @@ int btdev_set_emu_opcode(struct btdev *btdev, uint16_t opcode)
 	case BTDEV_TYPE_BREDRLE50:
 	case BTDEV_TYPE_BREDRLE52:
 	case BTDEV_TYPE_BREDRLE60:
+	case BTDEV_TYPE_BREDRLE62:
 		btdev->emu_opcode = opcode;
 		btdev->emu_cmds = cmd_emu;
 		return 0;
