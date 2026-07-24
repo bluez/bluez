@@ -3650,7 +3650,7 @@ static void setup_refresh_qos(void *data, void *user_data)
 	setup->qos = *bt_bap_stream_get_qos(stream);
 }
 
-static void iso_do_big_sync(GIOChannel *io, void *user_data)
+static void iso_do_big_sync(GIOChannel *io, GIOCondition cond, void *user_data)
 {
 	GError *err = NULL;
 	struct bap_setup *setup = user_data;
@@ -3659,7 +3659,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	struct bt_iso_qos qos;
 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
 
-	DBG("PA Sync done");
+	DBG("BIG info received, do BIG sync");
 
 	g_io_channel_unref(data->listen_io);
 	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
@@ -3695,13 +3695,27 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
 	}
 }
 
+static void long_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
+{
+	struct bap_setup *setup = user_data;
+	struct bap_data *data = setup->data;
+
+	DBG("Long PA Sync done");
+
+	/* store io and add watch that will call iso_do_big_sync */
+	data->io = io;
+	g_io_channel_ref(data->io);
+	data->io_id = g_io_add_watch(io, G_IO_OUT, iso_do_big_sync,
+							setup);
+}
+
 static void pa_and_big_sync(struct bap_setup *setup)
 {
 	GError *err = NULL;
 	struct bap_data *bap_data = setup->data;
-
 	DBG("Create PA sync with this source");
-	bap_data->listen_io = bt_io_listen(NULL, iso_do_big_sync, setup,
+
+	bap_data->listen_io = bt_io_listen(NULL, long_pa_sync_confirm_cb, setup,
 			NULL, &err,
 			BT_IO_OPT_SOURCE_BDADDR,
 			btd_adapter_get_address(bap_data->adapter),
