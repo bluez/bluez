@@ -1839,7 +1839,10 @@ static gboolean dev_property_wake_allowed_exist(
 {
 	struct btd_device *device = data;
 
-	return device_get_wake_support(device);
+	if (!device_get_wake_support(device))
+		return FALSE;
+
+	return btd_adapter_may_wake(device->adapter);
 }
 
 static void append_set(void *data, void *user_data)
