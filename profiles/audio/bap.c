@@ -3683,7 +3683,6 @@ static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond,
 			BT_IO_OPT_INVALID)) {
 		error("bt_io_set: %s", err->message);
 		g_error_free(err);
-		return FALSE;
 	}
 
 	if (!bt_io_bcast_accept(io,
@@ -3694,10 +3693,9 @@ static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond,
 			iso_bc_addr.bc_bis, BT_IO_OPT_INVALID)) {
 		error("bt_io_bcast_accept: %s", err->message);
 		g_error_free(err);
-		return FALSE;
 	}
 
-	return TRUE;
+	return FALSE;
 }
 
 static void long_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
