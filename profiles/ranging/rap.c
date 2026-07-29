@@ -380,6 +380,274 @@ static const struct cs_dict_param_desc *cs_find_dict_param_desc(
 	return NULL;
 }
 
+/*
+ * ProcedureData is emitted as a single opaque byte blob rather than an
+ * a{sv} dict: every field here is raw controller measurement data with
+ * no standalone meaning, consumed only by an external ranging estimation
+ * daemon that immediately unpacks it again. See
+ * doc/org.bluez.ChannelSounding1.rst for the documented binary layout.
+ *
+ * The blob's size is unbounded (variable subevent/step counts), so every
+ * field is appended with util_iov_append(), which reallocs as needed --
+ * unlike util_iov_push_*(), which assumes a pre-sized buffer.
+ */
+static void blob_push_u8(struct iovec *buf, uint8_t val)
+{
+	util_iov_append(buf, &val, sizeof(val));
+}
+
+static void blob_push_le16(struct iovec *buf, uint16_t val)
+{
+	uint8_t tmp[2];
+
+	put_le16(val, tmp);
+	util_iov_append(buf, tmp, sizeof(tmp));
+}
+
+static void blob_push_le32(struct iovec *buf, uint32_t val)
+{
+	uint8_t tmp[4];
+
+	put_le32(val, tmp);
+	util_iov_append(buf, tmp, sizeof(tmp));
+}
+
+static void blob_push_le64(struct iovec *buf, uint64_t val)
+{
+	uint8_t tmp[8];
+
+	put_le64(val, tmp);
+	util_iov_append(buf, tmp, sizeof(tmp));
+}
+
+static void serialize_mode_zero(struct iovec *buf,
+				const struct cs_mode_zero_data *m0)
+{
+	blob_push_u8(buf, m0->packet_quality);
+	blob_push_u8(buf, m0->packet_rssi_dbm);
+	blob_push_u8(buf, m0->packet_ant);
+	blob_push_le16(buf, m0->init_measured_freq_offset);
+}
+
+static void serialize_mode_one(struct iovec *buf,
+				const struct cs_mode_one_data *m1)
+{
+	blob_push_u8(buf, m1->packet_quality);
+	blob_push_u8(buf, m1->packet_nadm);
+	blob_push_u8(buf, m1->packet_rssi_dbm);
+	blob_push_le16(buf, (uint16_t)m1->toa_tod_init);
+	blob_push_le16(buf, (uint16_t)m1->tod_toa_refl);
+	blob_push_u8(buf, m1->packet_ant);
+	blob_push_le16(buf, (uint16_t)m1->packet_pct1.i_sample);
+	blob_push_le16(buf, (uint16_t)m1->packet_pct1.q_sample);
+	blob_push_le16(buf, (uint16_t)m1->packet_pct2.i_sample);
+	blob_push_le16(buf, (uint16_t)m1->packet_pct2.q_sample);
+}
+
+static void serialize_mode_two(struct iovec *buf,
+				const struct cs_mode_two_data *m2,
+				uint8_t num_ant_paths)
+{
+	int num_paths;
+	int j;
+
+	/*
+	 * num_ant_paths is the HCI "number of antenna paths" value
+	 * (0-indexed), so actual tone sample count = num_ant_paths + 1,
+	 * capped at array size.
+	 */
+	num_paths = (num_ant_paths + 1) < CS_MAX_ANT_PATHS ?
+				(num_ant_paths + 1) : CS_MAX_ANT_PATHS;
+
+	blob_push_u8(buf, m2->ant_perm_index);
+
+	for (j = 0; j < num_paths; j++) {
+		blob_push_le16(buf, (uint16_t)m2->tone_pct[j].i_sample);
+		blob_push_le16(buf, (uint16_t)m2->tone_pct[j].q_sample);
+	}
+
+	for (j = 0; j < num_paths; j++)
+		blob_push_u8(buf, m2->tone_quality_indicator[j]);
+}
+
+static void serialize_proc_enable_config(struct iovec *buf,
+				const struct rap_ev_cs_proc_enable_cmplt *cfg)
+{
+	uint32_t sub_evt_len_us;
+
+	sub_evt_len_us = cfg->sub_evt_len[0] |
+			 ((uint32_t)cfg->sub_evt_len[1] << 8) |
+			 ((uint32_t)cfg->sub_evt_len[2] << 16);
+
+	blob_push_u8(buf, cfg->tone_ant_config_sel);
+	blob_push_le32(buf, sub_evt_len_us);
+	blob_push_u8(buf, cfg->sub_evts_per_evt);
+	blob_push_le16(buf, cfg->sub_evt_intrvl);
+	blob_push_le16(buf, cfg->evt_intrvl);
+	blob_push_le16(buf, cfg->proc_intrvl);
+	blob_push_le16(buf, cfg->proc_counter);
+	blob_push_le16(buf, cfg->max_proc_len);
+}
+
+static void serialize_cs_config_param(struct iovec *buf,
+				const struct bcs_procedure_data *bcs)
+{
+	const struct rap_ev_cs_config_cmplt *cfg = &bcs->cs_config;
+
+	blob_push_u8(buf, cfg->main_mode_type);
+	blob_push_u8(buf, cfg->sub_mode_type);
+	blob_push_u8(buf, cfg->rtt_type);
+	util_iov_append(buf, cfg->channel_map, sizeof(cfg->channel_map));
+	blob_push_u8(buf, cfg->min_main_mode_steps);
+	blob_push_u8(buf, cfg->max_main_mode_steps);
+	blob_push_u8(buf, cfg->main_mode_rep);
+	blob_push_u8(buf, cfg->mode_0_steps);
+	blob_push_u8(buf, cfg->role);
+	blob_push_u8(buf, cfg->cs_sync_phy);
+	blob_push_u8(buf, cfg->channel_sel_type);
+	blob_push_u8(buf, cfg->ch3c_shape);
+	blob_push_u8(buf, cfg->ch3c_jump);
+	blob_push_u8(buf, cfg->channel_map_rep);
+	blob_push_u8(buf, cfg->t_ip1_time);
+	blob_push_u8(buf, cfg->t_ip2_time);
+	blob_push_u8(buf, cfg->t_fcs_time);
+	blob_push_u8(buf, cfg->t_pm_time);
+	blob_push_u8(buf, bcs->t_sw_time_us_supported_by_local);
+	blob_push_u8(buf, bcs->t_sw_time_us_supported_by_remote);
+	blob_push_le16(buf, bcs->ble_conn_interval);
+}
+
+static void serialize_step(struct iovec *buf,
+				const struct cs_step_data *step,
+				uint8_t num_ant_paths)
+{
+	blob_push_u8(buf, step->step_mode);
+	blob_push_u8(buf, step->step_chnl);
+
+	switch (step->step_mode) {
+	case CS_MODE_ZERO:
+		serialize_mode_zero(buf, &step->step_mode_data.mode_zero_data);
+		break;
+
+	case CS_MODE_ONE:
+		serialize_mode_one(buf, &step->step_mode_data.mode_one_data);
+		break;
+
+	case CS_MODE_TWO:
+		serialize_mode_two(buf, &step->step_mode_data.mode_two_data,
+					num_ant_paths);
+		break;
+
+	case CS_MODE_THREE:
+		serialize_mode_one(buf,
+			&step->step_mode_data.mode_three_data.mode_one_data);
+		serialize_mode_two(buf,
+			&step->step_mode_data.mode_three_data.mode_two_data,
+			num_ant_paths);
+		break;
+
+	default:
+		break;
+	}
+}
+
+static void serialize_subevent(struct iovec *buf,
+				const struct cs_subevent_result_data *sub)
+{
+	uint32_t i;
+
+	blob_push_le16(buf, sub->start_acl_conn_evt_counter);
+	blob_push_le16(buf, sub->freq_comp);
+	blob_push_u8(buf, (uint8_t)sub->ref_pwr_lvl);
+	blob_push_u8(buf, sub->num_ant_paths);
+	blob_push_u8(buf, sub->subevent_abort_reason);
+	blob_push_le64(buf, sub->timestamp_nanos);
+	blob_push_le32(buf, sub->num_steps);
+
+	if (!sub->step_data)
+		return;
+
+	for (i = 0; i < sub->num_steps; i++)
+		serialize_step(buf, &sub->step_data[i], sub->num_ant_paths);
+}
+
+static void serialize_subevent_array(struct iovec *buf,
+				const struct cs_subevent_result_data *subevents,
+				uint32_t count)
+{
+	uint32_t i;
+
+	for (i = 0; i < count; i++)
+		serialize_subevent(buf, &subevents[i]);
+}
+
+static void rap_emit_procedure_data(struct rap_data *data,
+				const struct bcs_procedure_data *bcs)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter, array;
+	struct iovec blob = { 0 };
+	const uint8_t *ptr;
+
+	signal = dbus_message_new_signal(device_get_path(data->device),
+					 CS_INTERFACE, "ProcedureData");
+	if (!signal) {
+		error("Failed to allocate ProcedureData signal");
+		return;
+	}
+
+	blob_push_le16(&blob, bcs->procedure_counter);
+	blob_push_le16(&blob, bcs->procedure_sequence);
+	blob_push_u8(&blob, (uint8_t)bcs->initiator_selected_tx_power);
+	blob_push_u8(&blob, (uint8_t)bcs->reflector_selected_tx_power);
+
+	if (!bcs->initiator_subevent_results) {
+		blob_push_le32(&blob, 0);
+	} else {
+		blob_push_le32(&blob, bcs->initiator_subevent_count);
+		serialize_subevent_array(&blob,
+					bcs->initiator_subevent_results,
+					bcs->initiator_subevent_count);
+	}
+
+	blob_push_u8(&blob, bcs->initiator_procedure_abort_reason);
+
+	if (!bcs->reflector_subevent_results) {
+		blob_push_le32(&blob, 0);
+	} else {
+		blob_push_le32(&blob, bcs->reflector_subevent_count);
+		serialize_subevent_array(&blob,
+					bcs->reflector_subevent_results,
+					bcs->reflector_subevent_count);
+	}
+
+	blob_push_u8(&blob, bcs->reflector_procedure_abort_reason);
+
+	serialize_proc_enable_config(&blob, &bcs->proc_enable_config);
+	serialize_cs_config_param(&blob, bcs);
+
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "y", &array);
+	ptr = blob.iov_base;
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE, &ptr,
+						blob.iov_len);
+	dbus_message_iter_close_container(&iter, &array);
+
+	g_dbus_send_message(btd_get_dbus_connection(), signal);
+
+	free(blob.iov_base);
+}
+
+static void rap_procedure_data(struct bt_rap *rap,
+				struct bcs_procedure_data *bcs,
+				void *user_data)
+{
+	struct rap_data *data = user_data;
+
+	DBG("procedure_counter=%u", bcs->procedure_counter);
+	rap_emit_procedure_data(data, bcs);
+}
+
 static DBusMessage *start_measurement(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
@@ -535,6 +803,9 @@ bad_type:
 	data->active_session.cfg           = cfg;
 	data->active_session.freq          = freq;
 
+	bt_rap_hci_set_procedure_data_cb(data->hci_sm, rap_procedure_data,
+					 data, NULL);
+
 	return dbus_message_new_method_return(msg);
 }
 
@@ -551,6 +822,8 @@ static DBusMessage *stop_measurement(DBusConnection *conn,
 	if (!bt_rap_stop_measurement(data->hci_sm))
 		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
 					"Stop measurement failed");
+
+	bt_rap_hci_set_procedure_data_cb(data->hci_sm, NULL, NULL, NULL);
 
 	memset(&data->active_session, 0, sizeof(data->active_session));
 
@@ -586,6 +859,11 @@ static gboolean cs_property_get_active(const GDBusPropertyTable *property,
 
 static const GDBusPropertyTable cs_dbus_properties[] = {
 	{ "Active", "b", cs_property_get_active, NULL, NULL, 0 },
+	{ }
+};
+
+static const GDBusSignalTable cs_dbus_signals[] = {
+	{ GDBUS_SIGNAL("ProcedureData", GDBUS_ARGS({ "data", "ay" })) },
 	{ }
 };
 
@@ -753,7 +1031,8 @@ static int rap_accept(struct btd_service *service)
 	g_dbus_register_interface(btd_get_dbus_connection(),
 				  device_get_path(data->device),
 				  CS_INTERFACE, cs_dbus_methods,
-				  NULL, cs_dbus_properties, data, NULL);
+				  cs_dbus_signals, cs_dbus_properties,
+				  data, NULL);
 
 	return 0;
 }
@@ -774,6 +1053,10 @@ static int rap_disconnect(struct btd_service *service)
 		bt_rap_clear_conn_handle(data->hci_sm, data->conn_handle);
 		data->conn_handle = 0;
 	}
+
+	if (data->hci_sm)
+		bt_rap_hci_set_procedure_data_cb(data->hci_sm, NULL, NULL,
+							NULL);
 
 	memset(&data->active_session, 0, sizeof(data->active_session));
 
