@@ -82,6 +82,13 @@ Supported dictionary keys:
 	Maximum TX power in dBm, treated as a signed value. Valid
 	range is -127 to +20 dBm.
 
+:byte create_context (Default: 0x01):
+
+	Controls where the CS configuration is written. Set to 0x00 to
+	write the configuration only to the local Controller. Set to
+	0x01 to write it to both the local and remote Controllers using
+	the CS Configuration procedure.
+
 :byte config_id:
 
 	CS configuration identifier.
@@ -254,254 +261,128 @@ Examples:
 Signals
 -------
 
-void ProcedureData(dict data)
-``````````````````````````````
+void ProcedureData(array{byte} data)
+`````````````````````````````````````
 
 Emitted when a Channel Sounding measurement procedure completes on this
 device, carrying the raw CS procedure results as reported by the
 controller. Consumers such as an external ranging estimation daemon
 subscribe to this signal to compute distance estimates.
 
-:dict data:
-
-	:int32 procedureCounter:
-
-		Procedure counter value from the controller.
-
-	:int32 procedureSequence:
-
-		Sequence number of this procedure.
-
-	:byte initiatorSelectedTxPower:
-
-		TX power selected by the Initiator, treated as a signed
-		value.
-
-	:byte reflectorSelectedTxPower:
-
-		TX power selected by the Reflector, treated as a signed
-		value.
-
-	:uint32 initiatorSubeventCount:
-
-		Number of subevent results reported by the Initiator.
-
-	:array{dict} initiatorSubeventResults:
-
-		Present only when ``initiatorSubeventCount`` is greater
-		than 0. One entry per Initiator subevent, each with the
-		fields described in `Subevent Result`_ below.
-
-	:byte initiatorProcedureAbortReason:
-
-		Reason the Initiator's procedure was aborted, 0 if not
-		aborted.
-
-	:uint32 reflectorSubeventCount:
-
-		Number of subevent results reported by the Reflector.
-
-	:array{dict} reflectorSubeventResults:
-
-		Present only when ``reflectorSubeventCount`` is greater
-		than 0. One entry per Reflector subevent, each with the
-		fields described in `Subevent Result`_ below.
-
-	:byte reflectorProcedureAbortReason:
-
-		Reason the Reflector's procedure was aborted, 0 if not
-		aborted.
-
-	:dict procedureEnableConfig:
-
-		:byte toneAntennaConfigSelection:
-
-			Antenna configuration used for CS tone exchanges.
-
-		:uint32 subeventLenUs:
-
-			Subevent length in microseconds.
-
-		:byte subeventsPerEvent:
-
-			Number of subevents per event.
-
-		:uint32 subeventInterval:
-
-			Interval between subevents.
-
-		:uint32 eventInterval:
-
-			Interval between events.
-
-		:uint32 procedureInterval:
-
-			Interval between procedures.
-
-		:uint32 procedureCount:
-
-			Number of procedures configured.
-
-		:uint32 maxProcedureLen:
-
-			Maximum procedure length.
-
-	:dict csConfigParam:
-
-		:byte modeType:
-
-			Main CS mode used in the procedure.
-
-		:byte subModeType:
-
-			Sub-mode within the main mode.
-
-		:byte rttType:
-
-			Round Trip Time measurement type.
-
-		:array{byte} channelMap:
-
-			10-byte channel map bitmap.
-
-		:byte minMainModeSteps:
-		:byte maxMainModeSteps:
-		:byte mainModeRepetition:
-		:byte mode0Steps:
-
-		:byte role:
-
-			CS role in effect for the procedure (Initiator,
-			Reflector, or Both).
-
-		:byte csSyncPhyType:
-
-			PHY used for CS sync packets.
-
-		:byte channelSelectionType:
-		:byte ch3cShapeType:
-		:byte ch3cJump:
-		:byte channelMapRepetition:
-		:byte tIp1TimeUs:
-		:byte tIp2TimeUs:
-		:byte tFcsTimeUs:
-		:byte tPmTimeUs:
-		:byte tSwTimeUsSupportedByLocal:
-		:byte tSwTimeUsSupportedByRemote:
-
-		:uint32 bleConnInterval:
-
-			BLE connection interval in effect during the
-			procedure.
-
-Subevent Result
-~~~~~~~~~~~~~~~~
-
-Each element of ``initiatorSubeventResults`` and
-``reflectorSubeventResults`` is a dict with the following fields:
-
-:int32 startAclConnEvtCounter:
-
-	ACL connection event counter at the start of the subevent.
-
-:int32 freqComp:
-
-	Frequency compensation value.
-
-:byte refPwrLvl:
-
-	Reference power level, treated as a signed value.
-
-:byte numAntPaths:
-
-	Number of antenna paths used.
-
-:byte subeventAbortReason:
-
-	Reason the subevent was aborted, 0 if not aborted.
-
-:uint64 timestampNanos:
-
-	Timestamp of the subevent result, in nanoseconds.
-
-:uint32 numSteps:
-
-	Number of steps reported in this subevent.
-
-:array{dict} stepData:
-
-	One entry per step. Each entry has:
-
-	:byte stepMode:
-
-		CS step mode (0-3).
-
-	:byte stepChannel:
-
-		Channel used for the step.
-
-	:dict modeZeroData:
-
-		Present when ``stepMode`` is 0.
-
-		:byte packetQuality:
-		:byte packetRssiDbm:
-		:byte packetAntenna:
-
-		:int32 initiatorMeasuredFreqOffset:
-
-			Frequency offset measured by the Initiator.
-
-	:dict modeOneData:
-
-		Present when ``stepMode`` is 1.
-
-		:byte packetQuality:
-		:byte packetNadm:
-		:byte packetRssiDbm:
-
-		:int32 toaTodInitiator:
-
-			Time of Arrival / Time of Departure at the
-			Initiator.
-
-		:int32 todToaReflector:
-
-			Time of Departure / Time of Arrival at the
-			Reflector.
-
-		:byte packetAntenna:
-
-		:array{int32} packetPct1:
-
-			In-phase/quadrature sample pair, as
-			``[i_sample, q_sample]``.
-
-		:array{int32} packetPct2:
-
-			In-phase/quadrature sample pair, as
-			``[i_sample, q_sample]``.
-
-	:dict modeTwoData:
-
-		Present when ``stepMode`` is 2.
-
-		:byte antennaPermutationIndex:
-
-		:array{int32} tonePctIQSamples:
-
-			Interleaved in-phase/quadrature tone samples, as
-			``[i_sample, q_sample, ...]`` — one pair per
-			antenna path.
-
-		:array{byte} toneQualityIndicators:
-
-			One quality indicator byte per antenna path.
-
-	:dict modeThreeData:
-
-		Present when ``stepMode`` is 3. Contains the combined
-		fields of both **modeOneData** and **modeTwoData**.
+``data`` is an opaque binary blob rather than an introspectable D-Bus
+dict: every field is raw controller measurement data with no standalone
+meaning outside of the ranging algorithm that consumes it, so there is no
+debugging value in exposing it field-by-field at the D-Bus level.
+Consumers must decode it according to the fixed layout below.
+
+All multi-byte integer fields are little-endian. Signed fields are noted
+explicitly; all others are unsigned.
+
+ProcedureData blob::
+
+	u16  procedureCounter
+	u16  procedureSequence
+	s8   initiatorSelectedTxPower
+	s8   reflectorSelectedTxPower
+	u32  initiatorSubeventCount
+	<initiatorSubeventCount> x SubeventBlob
+	u8   initiatorProcedureAbortReason
+	u32  reflectorSubeventCount
+	<reflectorSubeventCount> x SubeventBlob
+	u8   reflectorProcedureAbortReason
+	ProcEnableConfigBlob
+	CsConfigParamBlob
+
+SubeventBlob::
+
+	u16  startAclConnEvtCounter
+	u16  freqComp
+	s8   refPwrLvl
+	u8   numAntPaths
+	u8   subeventAbortReason
+	u64  timestampNanos
+	u32  numSteps
+	<numSteps> x StepBlob
+
+StepBlob::
+
+	u8   stepMode                  # 0-3, selects the payload below
+	u8   stepChannel
+	<mode payload, shape per stepMode -- see Mode*Blob below>
+
+ModeZeroBlob (5 bytes, present when stepMode is 0)::
+
+	u8   packetQuality
+	u8   packetRssiDbm
+	u8   packetAntenna
+	u16  initiatorMeasuredFreqOffset
+
+ModeOneBlob (16 bytes, present when stepMode is 1)::
+
+	u8   packetQuality
+	u8   packetNadm
+	u8   packetRssiDbm
+	s16  toaTodInitiator
+	s16  todToaReflector
+	u8   packetAntenna
+	s16  packetPct1_i
+	s16  packetPct1_q
+	s16  packetPct2_i
+	s16  packetPct2_q
+
+ModeTwoBlob (1 + 5*numPaths bytes, present when stepMode is 2)::
+
+	u8   antennaPermutationIndex
+	<numPaths> x { s16 toneI, s16 toneQ }
+	<numPaths> x u8 toneQualityIndicator
+
+	# numPaths = min(numAntPaths + 1, 5), where numAntPaths comes from
+	# the enclosing SubeventBlob.
+
+ModeThreeBlob (present when stepMode is 3)::
+
+	ModeOneBlob
+	ModeTwoBlob
+
+ProcEnableConfigBlob (16 bytes)::
+
+	u8   toneAntennaConfigSelection
+	u32  subeventLenUs
+	u8   subeventsPerEvent
+	u16  subeventInterval
+	u16  eventInterval
+	u16  procedureInterval
+	u16  procedureCount
+	u16  maxProcedureLen
+
+CsConfigParamBlob (30 bytes)::
+
+	u8   modeType
+	u8   subModeType
+	u8   rttType
+	u8[10] channelMap
+	u8   minMainModeSteps
+	u8   maxMainModeSteps
+	u8   mainModeRepetition
+	u8   mode0Steps
+	u8   role
+	u8   csSyncPhyType
+	u8   channelSelectionType
+	u8   ch3cShapeType
+	u8   ch3cJump
+	u8   channelMapRepetition
+	u8   tIp1TimeUs
+	u8   tIp2TimeUs
+	u8   tFcsTimeUs
+	u8   tPmTimeUs
+	u8   tSwTimeUsSupportedByLocal
+	u8   tSwTimeUsSupportedByRemote
+	u16  bleConnInterval
+
+The total blob length is fully determined by the counts embedded in the
+blob itself (``initiatorSubeventCount``, ``reflectorSubeventCount``, each
+subevent's ``numSteps``, and each mode-two step's ``numAntPaths``) — there
+is no separate length table to consult.
 
 Properties
 ----------
