@@ -437,6 +437,8 @@ static void rap_rd_loc_supp_cap_done_cb(const void *data, uint8_t size,
 	DBG("  T_SW Time Supported: %u", rsp->t_sw_time_supported);
 	DBG("  TX SNR Capability: 0x%02X", rsp->tx_snr_capability);
 
+	bt_rap_set_local_sw_time(sm->rap, rsp->t_sw_time_supported);
+
 	/* Transition to INIT state before reading remote capabilities */
 	cs_set_state(sm, CS_STATE_INIT);
 
@@ -860,6 +862,8 @@ static void rap_rd_rmt_supp_cap_cmplt_evt(const void *data, uint8_t size,
 	subfeatures_supported = le16_to_cpu(evt->subfeatures_supported);
 	DBG("subfeatures_supported=0x%04X", subfeatures_supported);
 
+	bt_rap_set_remote_sw_time(sm->rap, evt->t_sw_time_supported);
+
 	/* Check Bit 1 of subfeatures_supported (0x0002) */
 	if (!(subfeatures_supported & 0x0002)) {
 		DBG("Bit 1 not set, sending Read Remote FAE Table");
@@ -1167,6 +1171,46 @@ static void rap_cs_proc_enable_cmplt_evt(const void *data, uint8_t size,
 	/* Send callback to RAP Profile */
 	bt_rap_hci_cs_procedure_enable_complete_callback(size,
 			&rap_ev, sm->rap);
+}
+
+static void rap_le_conn_update_complete_evt(const void *data, uint8_t size,
+					    void *user_data)
+{
+	struct cs_state_machine *sm = user_data;
+	const struct bt_hci_evt_le_conn_update_complete *evt;
+	struct rap_conn_mapping *mapping;
+	struct bt_rap *rap;
+	struct iovec iov;
+
+	if (!sm || !data ||
+	    size < sizeof(struct bt_hci_evt_le_conn_update_complete))
+		return;
+
+	iov.iov_base = (void *)data;
+	iov.iov_len = size;
+
+	evt = util_iov_pull_mem(&iov, sizeof(*evt));
+	if (!evt) {
+		error("Failed to pull LE conn update complete struct");
+		return;
+	}
+
+	DBG("status=0x%02X handle=0x%04X interval=%u",
+	    evt->status, evt->handle, evt->interval);
+
+	if (evt->status != 0)
+		return;
+
+	mapping = find_mapping_by_handle(sm, evt->handle);
+	if (mapping && mapping->rap) {
+		DBG("Found handle 0x%04X in mapping cache", evt->handle);
+		rap = mapping->rap;
+	} else {
+		DBG("No RAP mapping for handle 0x%04X, ignoring", evt->handle);
+		return;
+	}
+
+	bt_rap_set_conn_interval(rap, evt->interval);
 }
 
 static void parse_i_q_sample(struct iovec *iov, int16_t *i_sample,
@@ -1669,6 +1713,8 @@ void *bt_rap_attach_hci(struct bt_rap *rap, struct bt_hci *hci,
 					rap_cs_subevt_result_evt },
 		{ BT_HCI_EVT_LE_CS_SUBEVENT_RESULT_CONTINUE,
 					rap_cs_subevt_result_cont_evt },
+		{ BT_HCI_EVT_LE_CONN_UPDATE_COMPLETE,
+					rap_le_conn_update_complete_evt },
 	};
 	struct cs_state_machine *sm;
 	unsigned int i;
@@ -1786,6 +1832,19 @@ bool bt_rap_stop_measurement(void *hci_sm)
 
 	return rap_send_hci_cs_procedure_enable(sm, sm->active_conn_handle,
 						false);
+}
+
+bool bt_rap_hci_set_procedure_data_cb(void *hci_sm,
+				bt_rap_procedure_data_func_t cb,
+				void *user_data,
+				bt_rap_destroy_func_t destroy)
+{
+	struct cs_state_machine *sm = hci_sm;
+
+	if (!sm || !sm->rap)
+		return false;
+
+	return bt_rap_set_procedure_data_cb(sm->rap, cb, user_data, destroy);
 }
 
 bool bt_rap_set_conn_hndl(void *hci_sm, struct bt_rap *rap,
