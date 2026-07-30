@@ -681,14 +681,43 @@ static void set_event_mask_cmd(uint16_t index, const void *data, uint8_t size)
 						"(0x%16.16" PRIx64 ")", mask);
 }
 
+#define DDC_ID_LE_EXT_FEATURES	0x031f
+
+/* LE extended features: page 0 is 8 octets, pages 1-10 are 24 octets each */
+static void print_ddc_le_ext_features(const uint8_t *features, uint8_t len)
+{
+	uint8_t i;
+
+	if (len < 8) {
+		packet_hexdump(features, len);
+		return;
+	}
+
+	packet_print_features_ext_ll(0, features);
+
+	for (i = 0; i < 10 && len >= 8 + (i + 1) * 24; i++)
+		packet_print_features_ext_ll(i + 1, features + 8 + i * 24);
+}
+
 static void ddc_config_write_cmd(uint16_t index, const void *data, uint8_t size)
 {
-	while (size > 0) {
+	while (size > 2) {
 		uint8_t param_len = get_u8(data);
 		uint16_t param_id = get_le16(data + 1);
 
+		if (param_len < 2 || param_len + 1 > size)
+			break;
+
 		print_field("Identifier: 0x%4.4x", param_id);
-		packet_hexdump(data + 3, param_len - 2);
+
+		switch (param_id) {
+		case DDC_ID_LE_EXT_FEATURES:
+			print_ddc_le_ext_features(data + 3, param_len - 2);
+			break;
+		default:
+			packet_hexdump(data + 3, param_len - 2);
+			break;
+		}
 
 		data += param_len + 1;
 		size -= param_len + 1;
