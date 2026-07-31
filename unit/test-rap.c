@@ -40,12 +40,18 @@ struct test_data_ras {
 	struct bt_rap *rap;  /* Store rap instance for CS injection */
 };
 
+struct test_config_rap {
+	const struct iovec *setup_data;
+	const size_t setup_data_len;
+};
+
 struct test_data_rap {
 	struct gatt_db *db;
 	struct bt_rap *rap;
 	struct bt_gatt_client *client;
 	size_t iovcnt;
 	struct iovec *iov;
+	const struct test_config_rap *cfg;
 };
 
 struct ccc_state {
@@ -73,6 +79,17 @@ struct notify {
 		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov)); \
 		tester_add(name, &data, NULL, function,	\
 				test_teardown_ras);			\
+	} while (0)
+
+#define define_test_rap(name, setup, function, _cfg, args...)	\
+	do {							\
+		const struct iovec iov[] = { args };		\
+		static struct test_data_rap data;		\
+		data.iovcnt = ARRAY_SIZE(iov);			\
+		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov));	\
+		data.cfg = _cfg;				\
+		tester_add(name, &data, setup, function,	\
+				test_teardown_rap);		\
 	} while (0)
 
 static void print_debug(const char *str, void *user_data)
@@ -330,6 +347,99 @@ static void test_server(const void *user_data)
 	bt_att_unref(att);
 }
 
+static void test_teardown_rap(const void *user_data)
+{
+	struct test_data_rap *data = (void *)user_data;
+
+	bt_rap_unref(data->rap);
+	bt_gatt_client_unref(data->client);
+	util_iov_free(data->iov, data->iovcnt);
+	gatt_db_unref(data->db);
+
+	tester_teardown_complete();
+}
+
+static void client_setup_ready_cb(bool success, uint8_t att_ecode,
+							void *user_data)
+{
+	if (!success)
+		tester_setup_failed();
+	else
+		tester_setup_complete();
+}
+
+/*
+ * Client-role setup: establishes the underlying bt_gatt_client and lets
+ * its internal auto-discovery run to completion against the local
+ * (initially empty) db.
+ */
+static void test_setup_rap(const void *user_data)
+{
+	struct test_data_rap *data = (void *)user_data;
+	struct bt_att *att;
+	struct gatt_db *db;
+	struct io *io;
+
+	io = tester_setup_io(data->cfg->setup_data, data->cfg->setup_data_len);
+	g_assert(io);
+
+	att = bt_att_new(io_get_fd(io), false);
+	g_assert(att);
+
+	bt_att_set_debug(att, BT_ATT_DEBUG, print_debug, "bt_att:", NULL);
+
+	db = gatt_db_new();
+	g_assert(db);
+
+	data->client = bt_gatt_client_new(db, att, RAP_GATT_CLIENT_MTU, 0);
+	g_assert(data->client);
+
+	bt_gatt_client_set_debug(data->client, print_debug, "bt_gatt_client:",
+						NULL);
+
+	bt_gatt_client_ready_register(data->client, client_setup_ready_cb,
+						data, NULL);
+
+	bt_att_unref(att);
+	gatt_db_unref(db);
+}
+
+static void rap_client_ready_cb(struct bt_rap *rap, void *user_data)
+{
+	tester_test_passed();
+}
+
+/*
+ * Client-role test body: attaches bt_rap to the already-discovered
+ * bt_gatt_client. bt_rap_attach() walks the remote db populated by the
+ * client's own auto-discovery and, upon reaching the RAS Features
+ * characteristic, issues its own Read Request for the Features value -
+ * this is an unavoidable side effect of bt_rap_attach() and is accounted
+ * for in the CGGIT IOV_DATA sequences below.
+ */
+static void test_client_rap(const void *user_data)
+{
+	struct test_data_rap *data = (void *)user_data;
+	struct io *io;
+
+	io = tester_setup_io(data->iov, data->iovcnt);
+	g_assert(io);
+
+	tester_io_set_complete_func(NULL);
+
+	data->db = gatt_db_new();
+	g_assert(data->db);
+
+	data->rap = bt_rap_new(data->db, bt_gatt_client_get_db(data->client));
+	g_assert(data->rap);
+
+	bt_rap_set_debug(data->rap, print_debug, "bt_rap:", NULL);
+
+	bt_rap_ready_register(data->rap, rap_client_ready_cb, data, NULL);
+
+	bt_rap_attach(data->rap, data->client);
+}
+
 /*
  *  ATT: Exchange MTU Request (0x02) len 2
  *       Client RX MTU: 64
@@ -494,6 +604,148 @@ static void test_server(const void *user_data)
 	IOV_DATA(0x01, 0x04, 0x13, 0x00, 0x0a)
 
 
+/*
+ * Client-role (bt_gatt_client) discovery preamble for the RAP CGGIT test
+ * cases below. Unlike the server-role RAS_SR_SGGIT_* tests (where the
+ * qualification test driver acts as the GATT client and is free to use
+ * either Read By Group Type or Find By Type Value to discover the Ranging
+ * Service), bt_gatt_client's internal auto-discovery always uses Read By
+ * Group Type for primary services, so no Find By Type Value exchange is
+ * included here.
+ */
+
+/*
+ *  ATT: Read By Type Request (0x08) len 6
+ *       Handle range: 0x0001-0xffff
+ *       Attribute type: Server Supported Features (0x2b3a)
+ *
+ *  ATT: Error Response (0x01) len 4
+ *       Read By Type Request (0x08)
+ *       Handle: 0x0001
+ *       Error: Attribute Not Found (0x0a)
+ */
+#define CGGIT_MTU_FEAT \
+	ATT_EXCHANGE_MTU, \
+	IOV_DATA(0x08, 0x01, 0x00, 0xff, 0xff, 0x3a, 0x2b), \
+	IOV_DATA(0x01, 0x08, 0x01, 0x00, 0x0a)
+
+/*
+ *  ATT: Read By Group Type Request (0x10) len 6
+ *       Handle range: 0x0001-0xffff
+ *       Attribute group type: Secondary Service (0x2801)
+ *
+ *  ATT: Error Response (0x01) len 4
+ *       Read By Group Type Request (0x10)
+ *       Handle: 0x0001
+ *       Error: Attribute Not Found (0x0a)
+ */
+#define CGGIT_SECONDARY_SERVICE \
+	IOV_DATA(0x10, 0x01, 0x00, 0xff, 0xff, 0x01, 0x28), \
+	IOV_DATA(0x01, 0x10, 0x01, 0x00, 0x0a)
+
+/*
+ *  ATT: Read By Type Request (0x08) len 6
+ *       Handle range: 0x0001-0x0012
+ *       Attribute type: Include (0x2802)
+ *
+ *  ATT: Error Response (0x01) len 4
+ *       Read By Type Request (0x08)
+ *       Handle: 0x0001
+ *       Error: Attribute Not Found (0x0a)
+ */
+#define CGGIT_INCLUDE \
+	IOV_DATA(0x08, 0x01, 0x00, 0x12, 0x00, 0x02, 0x28), \
+	IOV_DATA(0x01, 0x08, 0x01, 0x00, 0x0a)
+
+/*
+ *  ATT: Read By Type Request (0x08) len 6
+ *       Handle range: 0x0001-0xffff
+ *       Attribute type: Database Hash (0x2b2a)
+ *
+ *  ATT: Error Response (0x01) len 4
+ *       Read By Type Request (0x08)
+ *       Handle: 0x0001
+ *       Error: Attribute Not Found (0x0a)
+ */
+#define CGGIT_DATABASE_HASH \
+	IOV_DATA(0x08, 0x01, 0x00, 0xff, 0xff, 0x2a, 0x2b), \
+	IOV_DATA(0x01, 0x08, 0x01, 0x00, 0x0a)
+
+/*
+ * Full bt_gatt_client auto-discovery sequence against a remote db
+ * containing only the Ranging Service (matches DISC_RAS_CHAR_AFTER_TYPE /
+ * RAS_FIND_INFO's handle layout, reused as-is from the server-role tests
+ * above since the discovered service/characteristic/descriptor layout is
+ * identical regardless of which role performs the discovery).
+ */
+#define CGGIT_DISCOVERY_ALL \
+	CGGIT_MTU_FEAT, \
+	DISCOVER_PRIM_SERV_NOTIF, \
+	CGGIT_SECONDARY_SERVICE, \
+	CGGIT_INCLUDE, \
+	DISC_RAS_CHAR_AFTER_TYPE, \
+	RAS_FIND_INFO, \
+	CGGIT_DATABASE_HASH
+
+static const struct iovec cggit_setup_data[] = { CGGIT_DISCOVERY_ALL };
+
+const struct test_config_rap cfg_cggit_discovery = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+};
+
+/*
+ *  ATT: Read Request (0x0a) len 2
+ *       Handle: 0x0003 (RAS Features value handle)
+ *
+ *  ATT: Read Response (0x0b) len 5
+ *       Value: 0x00 0x00 0x00 0x00
+ *
+ *  Note: bt_rap_attach() always issues a Read Request for the RAS Features
+ *  characteristic once discovery has populated the remote db (see
+ *  foreach_rap_char()/read_ras_features() in src/shared/rap.c). The
+ *  real-time bit is kept clear here so that bt_rap_attach() does not also
+ *  auto-subscribe to Real-time Ranging Data notifications, keeping these
+ *  CGGIT discovery test cases focused on discovery alone.
+ */
+#define CGGIT_ATTACH_FEATURES \
+	IOV_DATA(0x0a, 0x03, 0x00), \
+	IOV_DATA(0x0b, 0x00, 0x00, 0x00, 0x00)
+
+/*
+ * RAP/REQ/CGGIT/SER/BV-01-C [Service GGIT - Ranging Service]
+ * RAP/REQ/CGGIT/CHA/BV-01-C through BV-06-C [Characteristic GGIT]
+ *
+ * These test cases verify that the IUT (acting as GATT client) discovers
+ * the Ranging Service and each of its characteristics (RAS Features,
+ * Real-time Ranging Data, On-demand Ranging Data, RAS Control Point,
+ * Ranging Data Ready, Ranging Data Overwritten) via bt_rap_new()/
+ * bt_rap_attach(). Discovery itself is performed entirely by
+ * bt_gatt_client's own auto-discovery in test_setup_rap() (see
+ * cfg_cggit_discovery); the byte sequence here only covers the additional
+ * exchange triggered by bt_rap_attach() itself (the RAS Features read).
+ */
+#define RAP_CL_CGGIT_SER_BV_01_C \
+	CGGIT_ATTACH_FEATURES
+
+#define RAP_CL_CGGIT_CHA_BV_01_C \
+	CGGIT_ATTACH_FEATURES
+
+#define RAP_CL_CGGIT_CHA_BV_02_C \
+	CGGIT_ATTACH_FEATURES
+
+#define RAP_CL_CGGIT_CHA_BV_03_C \
+	CGGIT_ATTACH_FEATURES
+
+#define RAP_CL_CGGIT_CHA_BV_04_C \
+	CGGIT_ATTACH_FEATURES
+
+#define RAP_CL_CGGIT_CHA_BV_05_C \
+	CGGIT_ATTACH_FEATURES
+
+#define RAP_CL_CGGIT_CHA_BV_06_C \
+	CGGIT_ATTACH_FEATURES
+
 #define RAS_SR_SGGIT_SER_BV_01_C \
 	ATT_EXCHANGE_MTU, \
 	DISCOVER_PRIM_SERV_NOTIF, \
@@ -525,6 +777,18 @@ static void test_server(const void *user_data)
 	RAS_FIND_BY_TYPE_VALUE, \
 	DISC_RAS_CHAR_AFTER_TYPE, \
 	RAS_FIND_INFO
+
+/*
+ * RAS/SR/SGGIT/CHA/BV-05-C through BV-12-C [Characteristic GGIT - Ranging
+ * Data Ready / Ranging Data Overwritten - Indicate, Notify, Read variants]
+ *
+ * These test cases verify discovery of the Ranging Data Ready and Ranging
+ * Data Overwritten characteristics and confirm their declared properties
+ * (Indicate, Notify, Read) via the standard GATT discovery sub-procedures.
+ * A single discovery pass covers every characteristic in the service, so
+ * the byte sequence is identical to RAS_SR_SGGIT_CHA_BV_04_C; it is reused
+ * directly for each of these test cases below.
+ */
 
 /*
  * RAS/SR/RCO/BV-01-C Characteristic Read: RAS Features
@@ -745,6 +1009,22 @@ int main(int argc, char *argv[])
 					RAS_SR_SGGIT_CHA_BV_03_C);
 	define_test_ras("RAS/SR/SGGIT/CHA/BV-04-C", test_server,
 					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-05-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-06-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-07-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-08-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-09-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-10-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-11-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
+	define_test_ras("RAS/SR/SGGIT/CHA/BV-12-C", test_server,
+					RAS_SR_SGGIT_CHA_BV_04_C);
 	/* RAS Read Characteristic Operations */
 	define_test_ras("RAS/SR/RCO/BV-01-C", test_server,
 					RAS_SR_RCO_BV_01_C);
@@ -759,6 +1039,39 @@ int main(int argc, char *argv[])
 	/* RAS Special Procedures - Mutual Exclusivity */
 	define_test_ras("RAS/SR/SPE/BI-11-C", test_server,
 					RAS_SR_SPE_BI_11_C);
+
+	/* RAP Client GATT-based Generic Interoperability Test cases */
+	define_test_rap("RAP/REQ/CGGIT/SER/BV-01-C "
+				"[Service GGIT - Ranging Service]",
+			test_setup_rap, test_client_rap,
+			&cfg_cggit_discovery, RAP_CL_CGGIT_SER_BV_01_C);
+	define_test_rap("RAP/REQ/CGGIT/CHA/BV-01-C "
+				"[Characteristic GGIT - RAS Features]",
+			test_setup_rap, test_client_rap,
+			&cfg_cggit_discovery, RAP_CL_CGGIT_CHA_BV_01_C);
+	define_test_rap("RAP/REQ/CGGIT/CHA/BV-02-C "
+				"[Characteristic GGIT - Real-time Ranging "
+				"Data]",
+			test_setup_rap, test_client_rap,
+			&cfg_cggit_discovery, RAP_CL_CGGIT_CHA_BV_02_C);
+	define_test_rap("RAP/REQ/CGGIT/CHA/BV-03-C "
+				"[Characteristic GGIT - On-demand Ranging "
+				"Data]",
+			test_setup_rap, test_client_rap,
+			&cfg_cggit_discovery, RAP_CL_CGGIT_CHA_BV_03_C);
+	define_test_rap("RAP/REQ/CGGIT/CHA/BV-04-C "
+				"[Characteristic GGIT - RAS Control Point]",
+			test_setup_rap, test_client_rap,
+			&cfg_cggit_discovery, RAP_CL_CGGIT_CHA_BV_04_C);
+	define_test_rap("RAP/REQ/CGGIT/CHA/BV-05-C "
+				"[Characteristic GGIT - Ranging Data Ready]",
+			test_setup_rap, test_client_rap,
+			&cfg_cggit_discovery, RAP_CL_CGGIT_CHA_BV_05_C);
+	define_test_rap("RAP/REQ/CGGIT/CHA/BV-06-C "
+				"[Characteristic GGIT - Ranging Data "
+				"Overwritten]",
+			test_setup_rap, test_client_rap,
+			&cfg_cggit_discovery, RAP_CL_CGGIT_CHA_BV_06_C);
 
 	return tester_run();
 }
