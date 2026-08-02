@@ -2625,8 +2625,12 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	uid = get_be64(&operands[0]);
 
 	memset(name, 0, sizeof(name));
-	namesize = get_be16(&operands[11]);
+	namesize = MIN(get_be16(&operands[11]), len - 13);
 	namelen = MIN(namesize, sizeof(name) - 1);
+
+	if (len < 13 + namesize)
+		return NULL;
+
 	if (namelen > 0) {
 		memcpy(name, &operands[13], namelen);
 		strtoutf8(name, namelen);
@@ -2669,7 +2673,8 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	playable = operands[9];
 
 	memset(name, 0, sizeof(name));
-	namelen = MIN(get_be16(&operands[12]), sizeof(name) - 1);
+	namelen = MIN(get_be16(&operands[12]), len - 14);
+	namelen = MIN(namelen, sizeof(name) - 1);
 	if (namelen > 0)
 		memcpy(name, &operands[14], namelen);
 
