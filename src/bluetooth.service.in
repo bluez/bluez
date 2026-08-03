@@ -10,11 +10,14 @@ ExecStart=@PKGLIBEXECDIR@/bluetoothd
 NotifyAccess=main
 #WatchdogSec=10
 #Restart=on-failure
-CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH
 LimitNPROC=1
 
 # Filesystem lockdown
-ProtectHome=true
+# Cover art referenced by MediaPlayer1 metadata (mpris:artUrl) usually
+# lives in the user's home directory (e.g. ~/.cache of the player), so
+# bluetoothd needs read access to serve it via the AVRCP BIP responder.
+ProtectHome=read-only
 ProtectSystem=strict
 PrivateTmp=true
 ProtectKernelTunables=true
