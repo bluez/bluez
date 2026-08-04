@@ -660,6 +660,15 @@ unit_test_avrcp_SOURCES = unit/test-avrcp.c \
 unit_test_avrcp_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
 
+unit_tests += unit/test-avrcp-sec
+
+unit_test_avrcp_sec_SOURCES = unit/test-avrcp-sec.c \
+			profiles/audio/avrcp-parse.c \
+			profiles/audio/avrcp-parse.h \
+			src/log.h src/log.c
+unit_test_avrcp_sec_LDADD = lib/libbluetooth-internal.la \
+				src/libshared-glib.la $(GLIB_LIBS)
+
 unit_tests += unit/test-hfp
 
 unit_test_hfp_SOURCES = unit/test-hfp.c
