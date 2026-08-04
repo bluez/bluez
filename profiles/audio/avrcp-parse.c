@@ -20,8 +20,12 @@ gboolean parse_media_element_name(uint8_t *operands, uint16_t len,
 		return FALSE;
 
 	memset(name, 0, NAME_MAX_LEN);
-	*namesize = get_be16(&operands[11]);
+	*namesize = MIN(get_be16(&operands[11]), len - 13);
 	namelen = MIN(*namesize, NAME_MAX_LEN - 1);
+
+	if (len < 13 + *namesize)
+		return FALSE;
+
 	if (namelen > 0) {
 		memcpy(name, &operands[13], namelen);
 		strtoutf8(name, namelen);
@@ -39,7 +43,8 @@ gboolean parse_media_folder_name(uint8_t *operands, uint16_t len,
 		return FALSE;
 
 	memset(name, 0, NAME_MAX_LEN);
-	namelen = MIN(get_be16(&operands[12]), NAME_MAX_LEN - 1);
+	namelen = MIN(get_be16(&operands[12]), len - 14);
+	namelen = MIN(namelen, NAME_MAX_LEN - 1);
 	if (namelen > 0)
 		memcpy(name, &operands[14], namelen);
 
