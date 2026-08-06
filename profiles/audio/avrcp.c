@@ -52,6 +52,7 @@
 
 #include "avctp.h"
 #include "avrcp.h"
+#include "avrcp-parse.h"
 #include "control.h"
 #include "media.h"
 #include "player.h"
@@ -2614,24 +2615,15 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	struct avrcp_player *player;
 	struct media_player *mp;
 	struct media_item *item;
-	uint16_t namelen, namesize;
-	char name[255];
+	uint16_t namesize;
+	char name[NAME_MAX_LEN];
 	uint64_t uid;
 	uint8_t count;
 
-	if (len < 13)
+	if (!parse_media_element_name(operands, len, name, &namesize))
 		return NULL;
 
 	uid = get_be64(&operands[0]);
-
-	memset(name, 0, sizeof(name));
-	namesize = get_be16(&operands[11]);
-	namelen = MIN(namesize, sizeof(name) - 1);
-	if (namelen > 0) {
-		memcpy(name, &operands[13], namelen);
-		strtoutf8(name, namelen);
-	}
-
 	count = operands[13 + namesize];
 
 	player = session->controller->player;
@@ -2655,23 +2647,17 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	struct avrcp_player *player = session->controller->player;
 	struct media_player *mp = player->user_data;
 	struct media_item *item;
-	uint16_t namelen;
-	char name[255];
+	char name[NAME_MAX_LEN];
 	uint64_t uid;
 	uint8_t type;
 	uint8_t playable;
 
-	if (len < 12)
+	if (!parse_media_folder_name(operands, len, name))
 		return NULL;
 
 	uid = get_be64(&operands[0]);
 	type = operands[8];
 	playable = operands[9];
-
-	memset(name, 0, sizeof(name));
-	namelen = MIN(get_be16(&operands[12]), sizeof(name) - 1);
-	if (namelen > 0)
-		memcpy(name, &operands[14], namelen);
 
 	item = media_player_create_folder(mp, name, type, uid);
 	if (!item)

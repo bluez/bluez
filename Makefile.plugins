@@ -37,6 +37,7 @@ builtin_modules += avrcp
 builtin_sources += profiles/audio/control.h profiles/audio/control.c \
 			profiles/audio/avctp.h profiles/audio/avctp.c \
 			profiles/audio/avrcp.h profiles/audio/avrcp.c \
+			profiles/audio/avrcp-parse.h profiles/audio/avrcp-parse.c \
 			profiles/audio/avrcp-player.c
 endif
 
