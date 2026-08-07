@@ -112,6 +112,7 @@ bool bt_att_unregister_all(struct bt_att *att);
 
 int bt_att_get_security(struct bt_att *att, uint8_t *enc_size);
 bool bt_att_set_security(struct bt_att *att, int level);
+void bt_att_set_no_auto_sec(struct bt_att *att, bool value);
 void bt_att_set_enc_key_size(struct bt_att *att, uint8_t enc_size);
 
 bool bt_att_set_local_key(struct bt_att *att, uint8_t sign_key[16],

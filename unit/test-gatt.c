@@ -755,6 +755,22 @@ static void test_read(struct context *context)
 						test_read_cb, context, NULL));
 }
 
+static void test_read_no_auto_sec(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	/* Arm reactive elevation (AUTO), then forbid it. An Insufficient
+	 * Authentication error must be delivered to the caller instead of
+	 * silently elevating security, which on a real unbonded link would
+	 * start SMP bonding that nobody requested.
+	 */
+	g_assert(bt_att_set_security(context->att, BT_ATT_SECURITY_AUTO));
+	bt_att_set_no_auto_sec(context->att, true);
+
+	g_assert(bt_gatt_client_read_value(context->client, step->handle,
+						test_read_cb, context, NULL));
+}
+
 static const uint8_t read_data_1[] = {0x01, 0x02, 0x03};
 
 static const struct test_step test_read_1 = {
@@ -793,6 +809,12 @@ static const struct test_step test_read_6 = {
 	.handle = 0x0003,
 	.func = test_read,
 	.expected_att_ecode = 0x0c,
+};
+
+static const struct test_step test_read_no_auto_sec_1 = {
+	.handle = 0x0003,
+	.func = test_read_no_auto_sec,
+	.expected_att_ecode = 0x05,
 };
 
 static const struct test_step test_read_7 = {
@@ -2802,6 +2824,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0x01, 0x0a, 0x03, 0x00, 0x05),
 			raw_pdu(0x0a, 0x03, 0x00),
 			raw_pdu(0x0b, 0x01, 0x02, 0x03));
+
+	define_test_client("/TP/GAR/CL/BI-04-C/no-auto-sec", test_client,
+			service_db_1, &test_read_no_auto_sec_1,
+			SERVICE_DATA_1_PDUS,
+			raw_pdu(0x0a, 0x03, 0x00),
+			raw_pdu(0x01, 0x0a, 0x03, 0x00, 0x05));
 
 	define_test_client("/TP/GAR/CL/BI-05-C", test_client, service_db_1,
 			&test_read_6,
