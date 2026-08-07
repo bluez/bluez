@@ -330,10 +330,13 @@ Examples:
 :bluetoothctl: > block [dev]
 :bluetoothctl: > unblock [dev]
 
-boolean WakeAllowed [readwrite]
-```````````````````````````````
+boolean WakeAllowed [readwrite, optional]
+`````````````````````````````````````````
 
 If set to true this device will be allowed to wake the host from system suspend.
+
+Only present on devices with a profile that supports wake configuration (e.g.
+HID) and when the host controller is configured to be able to wake the system.
 
 Examples:
 

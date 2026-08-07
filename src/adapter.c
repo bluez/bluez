@@ -575,6 +575,76 @@ uint8_t btd_adapter_get_address_type(struct btd_adapter *adapter)
 	return adapter->bdaddr_type;
 }
 
+static bool sysfs_wakeup_enabled(const char *dir)
+{
+	char path[PATH_MAX];
+	char *contents;
+	bool enabled;
+
+	snprintf(path, sizeof(path), "%s/power/wakeup", dir);
+
+	/* A missing attribute means the device cannot wake the host */
+	if (!g_file_get_contents(path, &contents, NULL, NULL))
+		return false;
+
+	enabled = g_str_has_prefix(contents, "enabled");
+
+	g_free(contents);
+
+	return enabled;
+}
+
+static bool sysfs_is_usb_device(const char *dir)
+{
+	char path[PATH_MAX];
+
+	/* USB devices expose idVendor, USB interfaces do not */
+	snprintf(path, sizeof(path), "%s/idVendor", dir);
+
+	return g_file_test(path, G_FILE_TEST_EXISTS);
+}
+
+/*
+ * Whether the controller is currently configured to wake the host from
+ * system suspend. btusb reports this to the kernel with
+ * device_may_wakeup() on the underlying USB device, which userspace
+ * controls through its power/wakeup attribute. Only USB is handled
+ * here. Controllers on other buses are assumed to be able to wake the
+ * host. The attribute is read on every call so that runtime changes
+ * are picked up.
+ */
+bool btd_adapter_may_wake(struct btd_adapter *adapter)
+{
+	char path[PATH_MAX];
+	char *dir;
+	char *sep;
+	bool may_wake = true;
+
+	snprintf(path, sizeof(path), "/sys/class/bluetooth/hci%u/device",
+							adapter->dev_id);
+
+	dir = realpath(path, NULL);
+	if (!dir)
+		return true;
+
+	while (g_str_has_prefix(dir, "/sys/devices/")) {
+		if (sysfs_is_usb_device(dir)) {
+			may_wake = sysfs_wakeup_enabled(dir);
+			break;
+		}
+
+		sep = strrchr(dir, '/');
+		if (!sep)
+			break;
+
+		*sep = '\0';
+	}
+
+	free(dir);
+
+	return may_wake;
+}
+
 static void store_adapter_info(struct btd_adapter *adapter)
 {
 	GKeyFile *key_file;
