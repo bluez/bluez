@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "bluetooth/bluetooth.h"
 #include "gdbus/gdbus.h"
 #include "src/shared/shell.h"
 
@@ -23,27 +24,79 @@
 #define _GNU_SOURCE
 
 static DBusConnection *dbus_conn;
-static GList *admin_proxies;
-static GDBusProxy *set_proxy;
-static GDBusProxy *status_proxy;
+static GList *set_proxies;
+static GList *status_proxies;
 
 static void admin_menu_pre_run(const struct bt_shell_menu *menu);
 
-static void admin_policy_set_set_proxy(GDBusProxy *proxy)
+static GDBusProxy *admin_policy_find_proxy(GList *proxies,
+						const char *path)
 {
-	set_proxy = proxy;
+	GList *list;
+
+	for (list = g_list_first(proxies); list; list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+
+		if (!strcmp(g_dbus_proxy_get_path(proxy), path))
+			return proxy;
+	}
+
+	return NULL;
 }
 
-static void admin_policy_set_status_proxy(GDBusProxy *proxy)
+static GDBusProxy *admin_policy_get_status_proxy(const char *controller_path)
 {
-	status_proxy = proxy;
+	if (!controller_path)
+		return NULL;
+
+	return admin_policy_find_proxy(status_proxies, controller_path);
 }
 
-static void admin_policy_read_service_allowlist(DBusConnection *dbus_conn)
+static GDBusProxy *admin_policy_get_set_proxy(const char *controller_path)
+{
+	if (!controller_path)
+		return NULL;
+
+	return admin_policy_find_proxy(set_proxies, controller_path);
+}
+
+static GDBusProxy *admin_policy_get_controller(int argc, char *argv[],
+						int *arg_index)
+{
+	GDBusProxy *controller;
+
+	*arg_index = 1;
+
+	if (argc > 1 && strlen(argv[1])) {
+		controller = bluetoothctl_find_controller(argv[1]);
+		if (controller) {
+			*arg_index = 2;
+			return controller;
+		}
+
+		if (bachk(argv[1]) == 0) {
+			bt_shell_printf("Controller %s not available\n",
+								argv[1]);
+			return NULL;
+		}
+	}
+
+	controller = bluetoothctl_get_default_controller();
+	if (controller)
+		return controller;
+
+	bt_shell_printf("No default controller available\n");
+	return NULL;
+}
+
+static void admin_policy_read_service_allowlist(GDBusProxy *controller)
 {
 	DBusMessageIter iter, subiter;
+	GDBusProxy *status_proxy;
 	char *uuid = NULL;
+	const char *controller_path = g_dbus_proxy_get_path(controller);
 
+	status_proxy = admin_policy_get_status_proxy(controller_path);
 	if (!status_proxy || !g_dbus_proxy_get_property(status_proxy,
 						"ServiceAllowList", &iter)) {
 		bt_shell_printf("Failed to get property\n");
@@ -106,10 +159,14 @@ static void set_service_reply(DBusMessage *message, void *user_data)
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
-static void admin_policy_set_service_allowlist(int argc, char *argv[])
+static void admin_policy_set_service_allowlist(GDBusProxy *controller,
+						int argc, char *argv[])
 {
 	struct uuid_list_data data;
+	GDBusProxy *set_proxy;
+	const char *controller_path = g_dbus_proxy_get_path(controller);
 
+	set_proxy = admin_policy_get_set_proxy(controller_path);
 	if (!set_proxy) {
 		bt_shell_printf("Set proxy not ready\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
@@ -128,15 +185,23 @@ static void admin_policy_set_service_allowlist(int argc, char *argv[])
 
 static void cmd_admin_allow(int argc, char *argv[])
 {
-	if (argc <= 1) {
-		admin_policy_read_service_allowlist(dbus_conn);
+	GDBusProxy *controller;
+	int arg_index;
+
+	controller = admin_policy_get_controller(argc, argv, &arg_index);
+	if (!controller)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (argc <= arg_index) {
+		admin_policy_read_service_allowlist(controller);
 		return;
 	}
 
-	if (strcmp(argv[1], "clear") == 0)
-		argc--;
+	if (strcmp(argv[arg_index], "clear") == 0)
+		arg_index++;
 
-	admin_policy_set_service_allowlist(argc - 1, argv + 1);
+	admin_policy_set_service_allowlist(controller, argc - arg_index,
+						argv + arg_index);
 }
 
 static const struct bt_shell_menu admin_menu = {
@@ -144,15 +209,15 @@ static const struct bt_shell_menu admin_menu = {
 	.desc = "Admin Policy Submenu",
 	.pre_run = admin_menu_pre_run,
 	.entries = {
-	{ "allow", "[clear/uuid1 uuid2 ...]", cmd_admin_allow,
-				"Allow service UUIDs and block rest of them"},
+	{ "allow", "[ctrl] [clear/uuid1 uuid2 ...]", cmd_admin_allow,
+				"Allow service UUIDs and block rest of them",
+				bluetoothctl_controller_generator},
 	{} },
 };
 
 static void admin_policy_status_added(GDBusProxy *proxy)
 {
-	admin_proxies = g_list_append(admin_proxies, proxy);
-	admin_policy_set_status_proxy(proxy);
+	status_proxies = g_list_append(status_proxies, proxy);
 }
 
 static void proxy_added(GDBusProxy *proxy, void *user_data)
@@ -162,15 +227,14 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	interface = g_dbus_proxy_get_interface(proxy);
 
 	if (!strcmp(interface, "org.bluez.AdminPolicySet1"))
-		admin_policy_set_set_proxy(proxy);
+		set_proxies = g_list_append(set_proxies, proxy);
 	else if (!strcmp(interface, "org.bluez.AdminPolicyStatus1"))
 		admin_policy_status_added(proxy);
 }
 
 static void admin_policy_status_removed(GDBusProxy *proxy)
 {
-	admin_proxies = g_list_remove(admin_proxies, proxy);
-	admin_policy_set_status_proxy(NULL);
+	status_proxies = g_list_remove(status_proxies, proxy);
 }
 
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
@@ -180,7 +244,7 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	interface = g_dbus_proxy_get_interface(proxy);
 
 	if (!strcmp(interface, "org.bluez.AdminPolicySet1"))
-		admin_policy_set_set_proxy(NULL);
+		set_proxies = g_list_remove(set_proxies, proxy);
 	else if (!strcmp(interface, "org.bluez.AdminPolicyStatus1"))
 		admin_policy_status_removed(proxy);
 }
@@ -189,8 +253,10 @@ static GDBusClient *client;
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
-	g_list_free_full(admin_proxies, NULL);
-	admin_proxies = NULL;
+	g_list_free_full(set_proxies, NULL);
+	set_proxies = NULL;
+	g_list_free_full(status_proxies, NULL);
+	status_proxies = NULL;
 }
 
 void admin_add_submenu(void)

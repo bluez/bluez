@@ -41,6 +41,17 @@ Sets the service allowlist by specifying service UUIDs.
 When called, **bluetoothd(8)** will block incoming and outgoing connections to
 the service not in UUIDs for all of the clients.
 
+The allowlist also applies to local adapter/server services. When an allowlist
+exists, only adapter/server services whose policy UUID is in UUIDs are started
+or registered.
+
+Updating the allowlist is applied immediately on initialized adapters:
+
+- services that become disallowed are stopped/removed
+- services that become allowed are started/registered
+
+This does not require restarting **bluetoothd(8)** or power-cycling adapters.
+
 Any subsequent calls to this method will supersede any previously set allowlist
 values.  Calling this method with an empty array will allow any service UUIDs to
 be used.
@@ -55,3 +66,4 @@ Possible errors:
 Examples:
 
 :bluetoothctl: > admin.allow [clear/uuid1 uuid2 ...]
+:bluetoothctl: > admin.allow [ctrl] [clear/uuid1 uuid2 ...]

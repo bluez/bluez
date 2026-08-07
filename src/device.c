@@ -2561,7 +2561,7 @@ bool btd_device_all_services_allowed(struct btd_device *dev)
 		if (!profile || !profile->auto_connect)
 			continue;
 
-		if (!btd_adapter_is_uuid_allowed(adapter, profile->remote_uuid))
+		if (!btd_adapter_is_profile_allowed(adapter, profile))
 			return false;
 	}
 
@@ -2591,8 +2591,7 @@ void btd_device_update_allowed_services(struct btd_device *dev)
 		service = l->data;
 		profile = btd_service_get_profile(service);
 
-		is_allowed = btd_adapter_is_uuid_allowed(adapter,
-							profile->remote_uuid);
+		is_allowed = btd_adapter_is_profile_allowed(adapter, profile);
 		btd_service_set_allowed(service, is_allowed);
 	}
 }
