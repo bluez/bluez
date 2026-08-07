@@ -178,6 +178,19 @@ void *bt_malloc0(size_t size)
 	return calloc(size, 1);
 }
 
+bool bt_realloc(void *ptr, size_t size)
+{
+	void **pptr = ptr;
+	void *tmp;
+
+	tmp = realloc(*pptr, size);
+	if (!tmp)
+		return false;
+
+	*pptr = tmp;
+	return true;
+}
+
 void bt_free(void *ptr)
 {
 	free(ptr);

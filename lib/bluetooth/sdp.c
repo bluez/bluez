@@ -3697,7 +3697,12 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 			cstate = cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
 
 			/* build concatenated response buffer */
-			rsp_concat_buf.data = realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
+			if (!bt_realloc(&rsp_concat_buf.data,
+					rsp_concat_buf.data_size + rsp_count)) {
+				SDPERR("Failed to reallocate buffer");
+				status = -1;
+				goto end;
+			}
 			rsp_concat_buf.buf_size = rsp_concat_buf.data_size + rsp_count;
 			targetPtr = rsp_concat_buf.data + rsp_concat_buf.data_size;
 			memcpy(targetPtr, pdata, rsp_count);
@@ -4338,7 +4343,13 @@ int sdp_process(sdp_session_t *session)
 	 * This is a split response, need to concatenate intermediate
 	 * responses and the last one which will have cstate length == 0
 	 */
-	t->rsp_concat_buf.data = realloc(t->rsp_concat_buf.data, t->rsp_concat_buf.data_size + rsp_count);
+	if (!bt_realloc(&t->rsp_concat_buf.data,
+			t->rsp_concat_buf.data_size + rsp_count)) {
+		SDPERR("Failed to reallocate buffer");
+		status = 0xffff;
+		t->err = ENOMEM;
+		goto end;
+	}
 	targetPtr = t->rsp_concat_buf.data + t->rsp_concat_buf.data_size;
 	t->rsp_concat_buf.buf_size = t->rsp_concat_buf.data_size + rsp_count;
 	memcpy(targetPtr, pdata, rsp_count);
@@ -4560,7 +4571,12 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 			cstate = cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
 
 			/* build concatenated response buffer */
-			rsp_concat_buf.data = realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
+			if (!bt_realloc(&rsp_concat_buf.data,
+					rsp_concat_buf.data_size + rsp_count)) {
+				SDPERR("Failed to reallocate buffer");
+				status = -1;
+				goto end;
+			}
 			targetPtr = rsp_concat_buf.data + rsp_concat_buf.data_size;
 			rsp_concat_buf.buf_size = rsp_concat_buf.data_size + rsp_count;
 			memcpy(targetPtr, pdata, rsp_count);

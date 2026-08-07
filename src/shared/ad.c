@@ -386,7 +386,8 @@ static bool ad_replace_data(struct bt_ad *ad, uint8_t type, const void *data,
 	if (new_data) {
 		if (new_data->len == len && !memcmp(new_data->data, data, len))
 			return false;
-		new_data->data = realloc(new_data->data, len);
+		if (!bt_realloc(&new_data->data, len))
+			return false;
 		memcpy(new_data->data, data, len);
 		new_data->len = len;
 		return true;
@@ -844,7 +845,8 @@ bool bt_ad_add_manufacturer_data(struct bt_ad *ad, uint16_t manufacturer_id,
 	if (new_data) {
 		if (new_data->len == len && !memcmp(new_data->data, data, len))
 			return false;
-		new_data->data = realloc(new_data->data, len);
+		if (!bt_realloc(&new_data->data, len))
+			return false;
 		memcpy(new_data->data, data, len);
 		new_data->len = len;
 		return true;
@@ -980,7 +982,8 @@ bool bt_ad_add_service_data(struct bt_ad *ad, const bt_uuid_t *uuid, void *data,
 	if (new_data) {
 		if (new_data->len == len && !memcmp(new_data->data, data, len))
 			return false;
-		new_data->data = realloc(new_data->data, len);
+		if (!bt_realloc(&new_data->data, len))
+			return false;
 		memcpy(new_data->data, data, len);
 		new_data->len = len;
 		return true;
