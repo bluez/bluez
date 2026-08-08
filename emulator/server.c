@@ -30,6 +30,7 @@
 #include "bluetooth/hci.h"
 
 #include "src/shared/mainloop.h"
+#include "src/shared/queue.h"
 #include "btdev.h"
 #include "server.h"
 
@@ -39,10 +40,15 @@ struct server {
 	enum server_type type;
 	uint16_t id;
 	int fd;
+	struct queue *clients;
+	server_debug_func_t debug_callback;
+	server_destroy_func_t debug_destroy;
+	void *debug_data;
 };
 
 struct client {
 	int fd;
+	struct server *server;
 	struct btdev *btdev;
 	uint8_t *pkt_data;
 	uint8_t pkt_type;
@@ -51,9 +57,21 @@ struct client {
 	uint16_t pkt_offset;
 };
 
+static void detach_client(void *data)
+{
+	struct client *client = data;
+
+	client->server = NULL;
+}
+
 static void server_destroy(void *user_data)
 {
 	struct server *server = user_data;
+
+	queue_destroy(server->clients, detach_client);
+
+	if (server->debug_destroy)
+		server->debug_destroy(server->debug_data);
 
 	close(server->fd);
 
@@ -63,6 +81,9 @@ static void server_destroy(void *user_data)
 static void client_destroy(void *user_data)
 {
 	struct client *client = user_data;
+
+	if (client->server)
+		queue_remove(client->server->clients, client);
 
 	btdev_destroy(client->btdev);
 
@@ -223,6 +244,18 @@ static int accept_client(int fd)
 	return nfd;
 }
 
+static void dev_debug(const char *str, void *user_data)
+{
+	struct client *client = user_data;
+	struct server *server = client->server;
+	char buf[512];
+
+	if (server && server->debug_callback) {
+		snprintf(buf, sizeof(buf), "host%d: %s", client->fd, str);
+		server->debug_callback(buf, server->debug_data);
+	}
+}
+
 static void server_accept_callback(int fd, uint32_t events, void *user_data)
 {
 	struct server *server = user_data;
@@ -279,6 +312,11 @@ done:
 		close(client->fd);
 		free(client);
 	}
+
+	client->server = server;
+	queue_push_tail(server->clients, client);
+
+	btdev_set_debug(client->btdev, dev_debug, client, NULL);
 }
 
 static int open_unix(const char *path)
@@ -337,6 +375,8 @@ struct server *server_open_unix(enum server_type type, const char *path)
 		free(server);
 		return NULL;
 	}
+
+	server->clients = queue_new();
 
 	return server;
 }
@@ -413,4 +453,20 @@ void server_close(struct server *server)
 		return;
 
 	mainloop_remove_fd(server->fd);
+}
+
+bool server_set_debug(struct server *server, server_debug_func_t callback,
+			void *user_data, server_destroy_func_t destroy)
+{
+	if (!server)
+		return false;
+
+	if (server->debug_destroy)
+		server->debug_destroy(server->debug_data);
+
+	server->debug_callback = callback;
+	server->debug_destroy = destroy;
+	server->debug_data = user_data;
+
+	return true;
 }
