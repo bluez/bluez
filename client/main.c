@@ -2297,8 +2297,20 @@ static void cmd_connect(int argc, char *argv[])
 	proxy = find_proxy_by_address(default_ctrl->devices, argv[1]);
 	if (!proxy) {
 		bt_shell_printf("Device %s not available\n", argv[1]);
-		bt_shell_prompt_input(argv[1], "Scan and connect (yes,no):",
-				      prompt_scan_connect, strdup(argv[1]));
+		dbus_bool_t discovering;
+		DBusMessageIter iter;
+
+		if (g_dbus_proxy_get_property(default_ctrl->proxy,
+					"Discovering", &iter)) {
+			dbus_message_iter_get_basic(&iter, &discovering);
+
+			if (!discovering)
+				bt_shell_prompt_input(argv[1],
+					"Scan and connect (yes,no):",
+					prompt_scan_connect,
+					strdup(argv[1]));
+
+		}
 		return;
 	}
 
