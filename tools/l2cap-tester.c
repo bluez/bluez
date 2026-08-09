@@ -127,6 +127,9 @@ struct l2cap_data {
 	 * The address is filled in with the client bdaddr at runtime.
 	 */
 	const struct l2cap_conn_subrate *conn_subrate;
+
+	/* Change security level to this after connecting */
+	int change_sec_level;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -354,6 +357,17 @@ static const struct l2cap_data client_connect_pin_success_test = {
 	.pin_len = sizeof(pair_device_pin),
 	.client_pin = pair_device_pin,
 	.client_pin_len = sizeof(pair_device_pin),
+};
+
+static const struct l2cap_data client_connect_pin_change_sec_success_test = {
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
+	.sec_level  = BT_SECURITY_MEDIUM,
+	.pin = pair_device_pin,
+	.pin_len = sizeof(pair_device_pin),
+	.client_pin = pair_device_pin,
+	.client_pin_len = sizeof(pair_device_pin),
+	.change_sec_level = BT_SECURITY_HIGH,
 };
 
 static uint8_t l2_data[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
@@ -859,6 +873,13 @@ static const struct l2cap_data le_client_connect_success_test_2 = {
 	.sec_level  = BT_SECURITY_MEDIUM,
 };
 
+static const struct l2cap_data le_client_change_sec_success_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.sec_level  = BT_SECURITY_LOW,
+	.change_sec_level = BT_SECURITY_MEDIUM,
+};
+
 static const uint8_t cmd_reject_rsp[] = { 0x01, 0x01, 0x02, 0x00, 0x00, 0x00 };
 
 static const struct l2cap_data le_client_connect_reject_test_1 = {
@@ -1187,6 +1208,12 @@ static const struct l2cap_data le_att_client_connect_success_test_1 = {
 	.sec_level = BT_SECURITY_LOW,
 };
 
+static const struct l2cap_data le_att_client_change_sec_success_test = {
+	.cid = 0x0004,
+	.sec_level = BT_SECURITY_LOW,
+	.change_sec_level = BT_SECURITY_MEDIUM,
+};
+
 static const struct l2cap_data le_att_server_success_test_1 = {
 	.cid = 0x0004,
 };
@@ -1196,6 +1223,14 @@ static const struct l2cap_data le_eatt_client_connect_success_test_1 = {
 	.server_psm = 0x0027,
 	.mode = BT_MODE_EXT_FLOWCTL,
 	.sec_level = BT_SECURITY_LOW,
+};
+
+static const struct l2cap_data le_eatt_client_change_sec_success_test = {
+	.client_psm = 0x0027,
+	.server_psm = 0x0027,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.sec_level = BT_SECURITY_LOW,
+	.change_sec_level = BT_SECURITY_MEDIUM,
 };
 
 static const uint8_t eatt_connect_req[] = {	0x27, 0x00, /* PSM */
@@ -1848,11 +1883,12 @@ static bool check_mtu(struct test_data *data, int sk)
 	return true;
 }
 
-static gboolean check_phy(gpointer args)
+static gboolean check_phy_and_sec(gpointer args)
 {
 	int sk = PTR_TO_INT(args);
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
+	struct bt_security sec;
 	socklen_t len;
 
 	len = sizeof(data->phys);
@@ -1874,6 +1910,24 @@ static gboolean check_phy(gpointer args)
 		return TRUE;
 	}
 
+	tester_print("Checking security level...");
+
+	len = sizeof(sec);
+	if (getsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) < 0) {
+		tester_warn("getsockopt(BT_SECURITY): %s (%d)",
+							strerror(errno), errno);
+		tester_test_failed();
+		goto done;
+	}
+
+	if (l2data->change_sec_level && sec.level != l2data->change_sec_level) {
+		tester_print("sec.level %d != %d", sec.level,
+						l2data->change_sec_level);
+
+		/* Retry */
+		return TRUE;
+	}
+
 	data->step--;
 
 done:
@@ -1882,10 +1936,12 @@ done:
 	return FALSE;
 }
 
-static int check_phys(struct test_data *data, int sk)
+static int check_phys_and_sec(struct test_data *data, int sk)
 {
 	const struct l2cap_data *l2data = data->test_data;
 	socklen_t len;
+	bool changed = false;
+	int err;
 
 	len = sizeof(data->phys);
 	data->phys = 0;
@@ -1901,17 +1957,41 @@ static int check_phys(struct test_data *data, int sk)
 		return -EINVAL;
 	}
 
+	if (l2data->change_sec_level) {
+		struct bt_security sec;
+
+		memset(&sec, 0, sizeof(sec));
+		sec.level = l2data->change_sec_level;
+
+		tester_print("Changing security level to %d", sec.level);
+
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec,
+							sizeof(sec)) < 0) {
+			err = -errno;
+			tester_warn("Can't set security level: %s (%d)",
+							strerror(errno), errno);
+			return err;
+		}
+
+		changed = true;
+	}
+
 	if (l2data->phy) {
 		if (setsockopt(sk, SOL_BLUETOOTH, BT_PHY, &l2data->phy,
 						sizeof(l2data->phy)) < 0) {
+			err = -errno;
 			tester_warn("setsockopt(BT_PHY): %s (%d)",
 					strerror(errno), errno);
-			return -errno;
+			return err;
 		}
 
-		/* Wait for the PHY to change */
+		changed = true;
+	}
+
+	if (changed) {
+		/* Wait for the change */
 		data->step++;
-		g_timeout_add(50, check_phy, INT_TO_PTR(sk));
+		g_timeout_add(50, check_phy_and_sec, INT_TO_PTR(sk));
 
 		return -EINPROGRESS;
 	}
@@ -2094,7 +2174,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	err = check_phys(data, sk);
+	err = check_phys_and_sec(data, sk);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
 			g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
@@ -2824,7 +2904,7 @@ static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	err = check_phys(data, sk);
+	err = check_phys_and_sec(data, sk);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
 			g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
@@ -3157,6 +3237,10 @@ int main(int argc, char *argv[])
 					&client_connect_pin_success_test,
 					setup_powered_client, test_connect);
 
+	test_l2cap_bredr("L2CAP BR/EDR Client PIN Code Change Sec - Success",
+				&client_connect_pin_change_sec_success_test,
+				setup_powered_client, test_connect);
+
 	test_l2cap_bredr("L2CAP BR/EDR Client - Read Success",
 					&client_connect_read_success_test,
 					setup_powered_client, test_connect);
@@ -3332,6 +3416,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Client SMP - Success",
 				&le_client_connect_success_test_2,
 				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE Client Change Sec - Success",
+				&le_client_change_sec_success_test,
+				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE Client - Command Reject",
 					&le_client_connect_reject_test_1,
 					setup_powered_client, test_connect);
@@ -3466,12 +3553,18 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE ATT Client - Success",
 				&le_att_client_connect_success_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE ATT Client Change Sec  - Success",
+				&le_att_client_change_sec_success_test,
+				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE ATT Server - Success",
 				&le_att_server_success_test_1,
 				setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP LE EATT Client - Success",
 				&le_eatt_client_connect_success_test_1,
+				setup_powered_client, test_connect);
+	test_l2cap_le("L2CAP LE EATT Client Change Sec - Success",
+				&le_eatt_client_change_sec_success_test,
 				setup_powered_client, test_connect);
 	test_l2cap_le("L2CAP LE EATT Server - Success",
 				&le_eatt_server_success_test_1,
