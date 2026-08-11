@@ -529,7 +529,9 @@ static void element_end(GMarkupParseContext *context,
 		return;
 
 	if (!strcmp(element_name, "attribute")) {
-		if (ctx_data->stack_head && ctx_data->stack_head->data) {
+		/* Attributes are expected at top-level record scope. */
+		if (ctx_data->stack_head && ctx_data->stack_head->data &&
+		    ctx_data->stack_head->next == NULL) {
 			int ret = sdp_attr_add(ctx_data->record, ctx_data->attr_id,
 							ctx_data->stack_head->data);
 			if (ret == -1)
@@ -539,6 +541,11 @@ static void element_end(GMarkupParseContext *context,
 			ctx_data->stack_head->data = NULL;
 			sdp_xml_data_free(ctx_data->stack_head);
 			ctx_data->stack_head = NULL;
+		} else if (ctx_data->stack_head && ctx_data->stack_head->next) {
+			g_set_error(err, G_MARKUP_ERROR,
+				    G_MARKUP_ERROR_INVALID_CONTENT,
+				    "Nested <attribute> is invalid");
+			return;
 		} else {
 			DBG("No data for attribute 0x%04x", ctx_data->attr_id);
 		}
@@ -558,6 +565,13 @@ static void element_end(GMarkupParseContext *context,
 	}
 
 	if (!strcmp(element_name, "sequence")) {
+		if (!SDP_IS_SEQ(ctx_data->stack_head->data->dtd)) {
+			g_set_error(err, G_MARKUP_ERROR,
+				    G_MARKUP_ERROR_INVALID_CONTENT,
+				    "Mismatched </sequence> close");
+			return;
+		}
+
 		ctx_data->stack_head->data->unitSize = compute_seq_size(ctx_data->stack_head->data);
 
 		if (ctx_data->stack_head->data->unitSize > USHRT_MAX) {
@@ -570,6 +584,13 @@ static void element_end(GMarkupParseContext *context,
 			ctx_data->stack_head->data->unitSize += sizeof(uint8_t);
 		}
 	} else if (!strcmp(element_name, "alternate")) {
+		if (!SDP_IS_ALT(ctx_data->stack_head->data->dtd)) {
+			g_set_error(err, G_MARKUP_ERROR,
+				    G_MARKUP_ERROR_INVALID_CONTENT,
+				    "Mismatched </alternate> close");
+			return;
+		}
+
 		ctx_data->stack_head->data->unitSize = compute_seq_size(ctx_data->stack_head->data);
 
 		if (ctx_data->stack_head->data->unitSize > USHRT_MAX) {
