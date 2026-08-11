@@ -64,6 +64,46 @@ static void parse_xml_for_filename(gconstpointer data)
 	g_free(path);
 }
 
+#define XML_START								\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"				\
+	"<record>\n"								\
+	"	<attribute id=\"0x0004\">\n"					\
+	"		<sequence>"
+
+#define XML_VALUE								\
+	"			<uint8 value=\"0x01\" />\n"
+
+#define XML_END									\
+	"		</sequence>\n"						\
+	"	</attribute>\n"							\
+	"</record>"
+
+static void sequence_on_squared(gconstpointer data)
+{
+	struct test_data *t = (struct test_data *) data;
+	parse_xml(t->s->str, t->s->len, TRUE);
+}
+
+static void sequence_on_squared_setup(gconstpointer data)
+{
+	struct test_data *t = (struct test_data *) data;
+	guint i;
+
+	t->s = g_string_new(XML_START);
+	for (i = 0; i < 40000; i++)
+		t->s = g_string_append(t->s, XML_VALUE);
+	t->s = g_string_append(t->s, XML_END);
+
+	tester_setup_complete();
+}
+
+static void sequence_on_squared_teardown(gconstpointer data)
+{
+	struct test_data *t = (struct test_data *) data;
+	g_string_free(t->s, TRUE);
+	tester_teardown_complete();
+}
+
 #define DEFINE_TEST(fname, res)							\
 	data.expected_result = res;						\
 	data.filename = fname;							\
@@ -81,6 +121,11 @@ int main(int argc, char *argv[])
 	DEFINE_TEST("compute-seq-size-type-confusion.xml", FALSE);
 	/* From https://github.com/bluez/bluez/security/advisories/GHSA-75v6-6q44-57hc */
 	DEFINE_TEST("duplicate-attribute.xml", TRUE);
+
+	tester_add("/sequence_on_squared", &data,
+		   sequence_on_squared_setup,
+		   sequence_on_squared,
+		   sequence_on_squared_teardown);
 
 	return tester_run();
 }
