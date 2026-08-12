@@ -682,9 +682,12 @@ sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 	return record;
 }
 
-
 static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
-		void *data, void (*appender)(void *, const char *))
+		void *data, void (*appender)(void *, const char *));
+
+static inline void convert_raw_data_to_xml_element(sdp_data_t *value,
+		int indent_level,void *data,
+		void (*appender)(void *, const char *))
 {
 	int i, hex;
 	char buf[STRBUFSIZE];
@@ -1002,8 +1005,15 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 
 		break;
 	}
+}
 
-	convert_raw_data_to_xml(value->next, indent_level, data, appender);
+static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
+		void *data, void (*appender)(void *, const char *))
+{
+	for (; value != NULL; value = value->next) {
+		convert_raw_data_to_xml_element(value, indent_level,
+			data, appender);
+	}
 }
 
 struct conversion_data {
