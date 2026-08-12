@@ -44,6 +44,7 @@ struct sdp_xml_data {
 	char type;			/* 0 = Text or Hexadecimal */
 	char *name;			/* Name, optional in the dtd */
 	/* TODO: What is it used for? */
+	sdp_data_t *tail;		/* Tail for O(1) dataseq append */
 };
 
 struct context_data {
@@ -609,6 +610,7 @@ static void element_end(GMarkupParseContext *context,
 
 	if (ctx_data->stack_head->next && ctx_data->stack_head->data &&
 					ctx_data->stack_head->next->data) {
+		sdp_data_t *tail;
 		switch (ctx_data->stack_head->next->data->dtd) {
 		case SDP_SEQ8:
 		case SDP_SEQ16:
@@ -616,10 +618,19 @@ static void element_end(GMarkupParseContext *context,
 		case SDP_ALT8:
 		case SDP_ALT16:
 		case SDP_ALT32:
-			ctx_data->stack_head->next->data->val.dataseq =
-				sdp_seq_append(ctx_data->stack_head->next->data->val.dataseq,
-								ctx_data->stack_head->data);
+			tail = ctx_data->stack_head->next->data->val.dataseq ?
+				ctx_data->stack_head->next->tail : NULL;
+			if (tail) {
+				sdp_seq_append(tail,
+					ctx_data->stack_head->data);
+			} else {
+				ctx_data->stack_head->next->data->val.dataseq =
+					sdp_seq_append(NULL,
+						ctx_data->stack_head->data);
+			}
+			ctx_data->stack_head->next->tail = ctx_data->stack_head->data;
 			ctx_data->stack_head->data = NULL;
+			ctx_data->stack_head->tail = NULL;
 			break;
 		}
 
