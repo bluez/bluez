@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+
+ From: https://github.com/AnesBenmerzoug/Bluetooth_HID/blob/master/sdp_record.xml
+ A description of these fields can be found in the following links:
+ http://www.bluecove.org/bluecove/apidocs/javax/bluetooth/ServiceRecord.html
+ https://www.bluetooth.com/specifications/assigned-numbers/service-discovery
+
+ -->
+
+<record>
+	<attribute id="0x0001"> <!-- Service Class ID List -->
+		<sequence>
+			<uuid value="0x1124" /> <!-- Human Interface Device -->
+		</sequence>
+	</attribute>
+	<attribute id="0x0004"> <!-- Protocol Descriptor List -->
+		<sequence>
+			<sequence>
+				<uuid value="0x0100" /> <!-- L2CAP -->
+				<uint16 value="0x0011" /> <!-- HIDP -->
+			</sequence>
+			<sequence>
+				<uuid value="0x0011" /> <!-- HIDP -->
+			</sequence>
+		</sequence>
+	</attribute>
+	<attribute id="0x0005"> <!-- Browse Group List -->
+		<sequence>
+			<uuid value="0x1002" />
+		</sequence>
+	</attribute>
+	<attribute id="0x0006"> <!-- Language Based Attribute ID List -->
+		<sequence>
+			<uint16 value="0x656e" /> <!-- code_ISO639 -->
+			<uint16 value="0x006a" /> <!-- encoding -->
+			<uint16 value="0x0100" /> <!-- base_offset -->
+		</sequence>
+	</attribute>
+	<attribute id="0x0009"> <!-- Bluetooth Profile Descriptor List -->
+		<sequence>
+			<sequence>
+				<uuid value="0x1124" /> <!-- Human Interface Device -->
+				<uint16 value="0x0100" /> <!-- L2CAP -->
+			</sequence>
+		</sequence>
+	</attribute>
+	<attribute id="0x000d"> <!-- Additional Protocol Descriptor Lists -->
+		<sequence>
+			<sequence>
+				<sequence>
+					<uuid value="0x0100" /> <!-- L2CAP -->
+					<uint16 value="0x0013" />
+				</sequence>
+				<sequence>
+					<uuid value="0x0011" /> <!-- HIDP -->
+				</sequence>
+			</sequence>
+		</sequence>
+	</attribute>
+	<attribute id="0x0100">
+		<text value="Bluetooth_Keyboard/Mouse" />
+	</attribute>
+	<attribute id="0x0101">
+		<text value="USB > BT Keyboard/Mouse" />
+	</attribute>
+	<attribute id="0x0102">
+		<text value="Raspberry Pi 3" />
+	</attribute>
+	<attribute id="0x0200">
+		<uint16 value="0x0100" />
+	</attribute>
+	<attribute id="0x0201">
+		<uint16 value="0x0111" />
+	</attribute>
+	<attribute id="0x0202">
+		<uint8 value="0x40" />
+	</attribute>
+	<attribute id="0x0203">
+		<uint8 value="0x00" />
+	</attribute>
+	<attribute id="0x0204">
+		<boolean value="false" />
+	</attribute>
+	<attribute id="0x0205">
+		<boolean value="false" />
+	</attribute>
+	<attribute id="0x0206">
+		<sequence>
+			<sequence>
+				<uint8 value="0x22" />
+				<text encoding="hex" value="05010906A1018501A100050719E029E71500250175019508810295017508810195087508150025650507190029658100C0C005010902A10185020901A1000509190129031500250175019503810275059501810105010930093109381581257F750895038106C0C0"/>
+			</sequence>
+		</sequence>
+	</attribute>
+	<attribute id="0x0207">
+		<sequence>
+			<sequence>
+				<uint16 value="0x0409" />
+				<uint16 value="0x0100" />
+			</sequence>
+		</sequence>
+	</attribute>
+	<attribute id="0x020b">
+		<uint16 value="0x0100" />
+	</attribute>
+	<attribute id="0x020c">
+		<uint16 value="0x0c80" />
+	</attribute>
+	<attribute id="0x020d">
+		<boolean value="true" />
+	</attribute>
+	<attribute id="0x020e">
+		<boolean value="false" />
+	</attribute>
+	<attribute id="0x020f">
+		<uint16 value="0x0640" />
+	</attribute>
+	<attribute id="0x0210">
+		<uint16 value="0x0320" />
+	</attribute>
+</record>
