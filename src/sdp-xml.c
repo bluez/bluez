@@ -537,8 +537,11 @@ static void element_end(GMarkupParseContext *context,
 			if (ret == -1)
 				DBG("Could not add attribute 0x%04x",
 							ctx_data->attr_id);
+			else {
+				/* ownership transferred to record */
+				ctx_data->stack_head->data = NULL;
+			}
 
-			ctx_data->stack_head->data = NULL;
 			sdp_xml_data_free(ctx_data->stack_head);
 			ctx_data->stack_head = NULL;
 		} else if (ctx_data->stack_head && ctx_data->stack_head->next) {
