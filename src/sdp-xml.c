@@ -44,6 +44,7 @@ struct sdp_xml_data {
 	char type;			/* 0 = Text or Hexadecimal */
 	char *name;			/* Name, optional in the dtd */
 	/* TODO: What is it used for? */
+	sdp_data_t *tail;		/* Tail for O(1) dataseq append */
 };
 
 struct context_data {
@@ -529,16 +530,26 @@ static void element_end(GMarkupParseContext *context,
 		return;
 
 	if (!strcmp(element_name, "attribute")) {
-		if (ctx_data->stack_head && ctx_data->stack_head->data) {
+		/* Attributes are expected at top-level record scope. */
+		if (ctx_data->stack_head && ctx_data->stack_head->data &&
+		    ctx_data->stack_head->next == NULL) {
 			int ret = sdp_attr_add(ctx_data->record, ctx_data->attr_id,
 							ctx_data->stack_head->data);
 			if (ret == -1)
 				DBG("Could not add attribute 0x%04x",
 							ctx_data->attr_id);
+			else {
+				/* ownership transferred to record */
+				ctx_data->stack_head->data = NULL;
+			}
 
-			ctx_data->stack_head->data = NULL;
 			sdp_xml_data_free(ctx_data->stack_head);
 			ctx_data->stack_head = NULL;
+		} else if (ctx_data->stack_head && ctx_data->stack_head->next) {
+			g_set_error(err, G_MARKUP_ERROR,
+				    G_MARKUP_ERROR_INVALID_CONTENT,
+				    "Nested <attribute> is invalid");
+			return;
 		} else {
 			DBG("No data for attribute 0x%04x", ctx_data->attr_id);
 		}
@@ -558,6 +569,13 @@ static void element_end(GMarkupParseContext *context,
 	}
 
 	if (!strcmp(element_name, "sequence")) {
+		if (!SDP_IS_SEQ(ctx_data->stack_head->data->dtd)) {
+			g_set_error(err, G_MARKUP_ERROR,
+				    G_MARKUP_ERROR_INVALID_CONTENT,
+				    "Mismatched </sequence> close");
+			return;
+		}
+
 		ctx_data->stack_head->data->unitSize = compute_seq_size(ctx_data->stack_head->data);
 
 		if (ctx_data->stack_head->data->unitSize > USHRT_MAX) {
@@ -570,6 +588,13 @@ static void element_end(GMarkupParseContext *context,
 			ctx_data->stack_head->data->unitSize += sizeof(uint8_t);
 		}
 	} else if (!strcmp(element_name, "alternate")) {
+		if (!SDP_IS_ALT(ctx_data->stack_head->data->dtd)) {
+			g_set_error(err, G_MARKUP_ERROR,
+				    G_MARKUP_ERROR_INVALID_CONTENT,
+				    "Mismatched </alternate> close");
+			return;
+		}
+
 		ctx_data->stack_head->data->unitSize = compute_seq_size(ctx_data->stack_head->data);
 
 		if (ctx_data->stack_head->data->unitSize > USHRT_MAX) {
@@ -585,6 +610,7 @@ static void element_end(GMarkupParseContext *context,
 
 	if (ctx_data->stack_head->next && ctx_data->stack_head->data &&
 					ctx_data->stack_head->next->data) {
+		sdp_data_t *tail;
 		switch (ctx_data->stack_head->next->data->dtd) {
 		case SDP_SEQ8:
 		case SDP_SEQ16:
@@ -592,10 +618,19 @@ static void element_end(GMarkupParseContext *context,
 		case SDP_ALT8:
 		case SDP_ALT16:
 		case SDP_ALT32:
-			ctx_data->stack_head->next->data->val.dataseq =
-				sdp_seq_append(ctx_data->stack_head->next->data->val.dataseq,
-								ctx_data->stack_head->data);
+			tail = ctx_data->stack_head->next->data->val.dataseq ?
+				ctx_data->stack_head->next->tail : NULL;
+			if (tail) {
+				sdp_seq_append(tail,
+					ctx_data->stack_head->data);
+			} else {
+				ctx_data->stack_head->next->data->val.dataseq =
+					sdp_seq_append(NULL,
+						ctx_data->stack_head->data);
+			}
+			ctx_data->stack_head->next->tail = ctx_data->stack_head->data;
 			ctx_data->stack_head->data = NULL;
+			ctx_data->stack_head->tail = NULL;
 			break;
 		}
 
@@ -646,9 +681,12 @@ sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 	return record;
 }
 
-
 static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
-		void *data, void (*appender)(void *, const char *))
+		void *data, void (*appender)(void *, const char *));
+
+static inline void convert_raw_data_to_xml_element(sdp_data_t *value,
+		int indent_level,void *data,
+		void (*appender)(void *, const char *))
 {
 	int i, hex;
 	char buf[STRBUFSIZE];
@@ -966,8 +1004,15 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 
 		break;
 	}
+}
 
-	convert_raw_data_to_xml(value->next, indent_level, data, appender);
+static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
+		void *data, void (*appender)(void *, const char *))
+{
+	for (; value != NULL; value = value->next) {
+		convert_raw_data_to_xml_element(value, indent_level,
+			data, appender);
+	}
 }
 
 struct conversion_data {
