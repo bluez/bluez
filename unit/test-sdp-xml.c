@@ -80,6 +80,8 @@ int main(int argc, char *argv[])
 
 	DEFINE_TEST("Bluetooth_HID-sdp_record.xml", TRUE);
 	DEFINE_TEST("qt-SerialPortSDPRecord.xml", TRUE);
+	/* From https://github.com/bluez/bluez/security/advisories/GHSA-7mmr-gwqx-vc34 */
+	DEFINE_TEST("compute-seq-size-type-confusion.xml", FALSE);
 
 	return tester_run();
 }
