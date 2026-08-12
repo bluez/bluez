@@ -28,6 +28,12 @@ struct test_data {
 	gboolean expected_result;
 };
 
+static void doprintf(void *data, const char *str)
+{
+	/* Do nothing for our tests */
+	/* printf("%s", str); */
+}
+
 static void parse_xml(gconstpointer data, gsize len, gboolean expected_result)
 {
 	sdp_record_t *rec = NULL;
@@ -39,8 +45,10 @@ static void parse_xml(gconstpointer data, gsize len, gboolean expected_result)
 		tester_test_passed();
 	else
 		tester_test_failed();
-	if (rec)
+	if (rec) {
+		convert_sdp_record_to_xml(rec, 0, doprintf);
 		sdp_record_free(rec);
+	}
 }
 
 static void parse_xml_for_filename(gconstpointer data)
