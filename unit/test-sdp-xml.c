@@ -82,6 +82,8 @@ int main(int argc, char *argv[])
 	DEFINE_TEST("qt-SerialPortSDPRecord.xml", TRUE);
 	/* From https://github.com/bluez/bluez/security/advisories/GHSA-7mmr-gwqx-vc34 */
 	DEFINE_TEST("compute-seq-size-type-confusion.xml", FALSE);
+	/* From https://github.com/bluez/bluez/security/advisories/GHSA-75v6-6q44-57hc */
+	DEFINE_TEST("duplicate-attribute.xml", TRUE);
 
 	return tester_run();
 }

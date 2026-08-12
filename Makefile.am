@@ -649,6 +649,7 @@ unit_test_sdp_xml_CPPFLAGS = -I$(srcdir)/lib
 
 EXTRA_DIST += unit/sdp-xml/Bluetooth_HID-sdp_record.xml		\
 	unit/sdp-xml/compute-seq-size-type-confusion.xml	\
+	unit/sdp-xml/duplicate-attribute.xml			\
 	unit/sdp-xml/qt-SerialPortSDPRecord.xml
 
 unit_tests += unit/test-avdtp
