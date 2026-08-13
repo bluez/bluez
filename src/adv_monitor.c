@@ -1106,12 +1106,15 @@ static bool merged_pattern_send_add_pattern(
 			struct adv_monitor_merged_pattern *merged_pattern)
 {
 	struct mgmt_cp_add_adv_monitor *cp = NULL;
-	uint8_t pattern_count, cp_len;
+	uint64_t cp_len;
+	uint8_t pattern_count;
 	const struct queue_entry *e;
 	bool success = true;
 
 	pattern_count = queue_length(merged_pattern->patterns);
 	cp_len = sizeof(*cp) + pattern_count * sizeof(struct mgmt_adv_pattern);
+	if (cp_len > UINT16_MAX)
+		return false;
 
 	cp = malloc0(cp_len);
 	if (!cp)
@@ -1126,8 +1129,9 @@ static bool merged_pattern_send_add_pattern(
 
 	if (!mgmt_send(merged_pattern->manager->mgmt,
 			MGMT_OP_ADD_ADV_PATTERNS_MONITOR,
-			merged_pattern->manager->adapter_id, cp_len, cp,
-			add_adv_patterns_monitor_cb, merged_pattern, NULL)) {
+			merged_pattern->manager->adapter_id, (uint16_t) cp_len,
+			cp, add_adv_patterns_monitor_cb, merged_pattern,
+			NULL)) {
 		error("Unable to send Add Adv Patterns Monitor command");
 		success = false;
 	}
@@ -1141,12 +1145,15 @@ static bool merged_pattern_send_add_pattern_rssi(
 			struct adv_monitor_merged_pattern *merged_pattern)
 {
 	struct mgmt_cp_add_adv_patterns_monitor_rssi *cp = NULL;
-	uint8_t pattern_count, cp_len;
+	uint64_t cp_len;
+	uint8_t pattern_count;
 	const struct queue_entry *e;
 	bool success = true;
 
 	pattern_count = queue_length(merged_pattern->patterns);
 	cp_len = sizeof(*cp) + pattern_count * sizeof(struct mgmt_adv_pattern);
+	if (cp_len > UINT16_MAX)
+		return false;
 
 	cp = malloc0(cp_len);
 	if (!cp)
@@ -1169,8 +1176,9 @@ static bool merged_pattern_send_add_pattern_rssi(
 
 	if (!mgmt_send(merged_pattern->manager->mgmt,
 			MGMT_OP_ADD_ADV_PATTERNS_MONITOR_RSSI,
-			merged_pattern->manager->adapter_id, cp_len, cp,
-			add_adv_patterns_monitor_cb, merged_pattern, NULL)) {
+			merged_pattern->manager->adapter_id, (uint16_t) cp_len,
+			cp, add_adv_patterns_monitor_cb, merged_pattern,
+			NULL)) {
 		error("Unable to send Add Adv Patterns Monitor RSSI command");
 		success = false;
 	}
