@@ -889,6 +889,7 @@ static bool parse_patterns(struct adv_monitor *monitor, const char *path)
 {
 	DBusMessageIter array, array_iter;
 	uint16_t adapter_id = monitor->app->manager->adapter_id;
+	uint8_t max_num_patterns = monitor->app->manager->max_num_patterns;
 
 	if (!g_dbus_proxy_get_property(monitor->proxy, "Patterns", &array)) {
 		btd_error(adapter_id,
@@ -949,6 +950,10 @@ static bool parse_patterns(struct adv_monitor *monitor, const char *path)
 			goto failed;
 
 		queue_push_tail(monitor->merged_pattern->patterns, pattern);
+
+		if (queue_length(monitor->merged_pattern->patterns) >=
+			max_num_patterns)
+			break;
 
 		dbus_message_iter_next(&array_iter);
 	}
