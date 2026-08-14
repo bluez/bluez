@@ -520,6 +520,17 @@ static void sdp_xml_data_free(struct sdp_xml_data *elem)
 	free(elem);
 }
 
+/* Free the elements left on the stack, e.g. by a document that is malformed */
+static void sdp_xml_data_free_stack(struct sdp_xml_data *elem)
+{
+	while (elem) {
+		struct sdp_xml_data *next = elem->next;
+
+		sdp_xml_data_free(elem);
+		elem = next;
+	}
+}
+
 static void element_end(GMarkupParseContext *context,
 		const char *element_name, gpointer user_data, GError **err)
 {
@@ -670,12 +681,15 @@ sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 	if (g_markup_parse_context_parse(ctx, data, size, NULL) == FALSE) {
 		error("XML parsing error");
 		g_markup_parse_context_free(ctx);
+		sdp_xml_data_free_stack(ctx_data->stack_head);
 		sdp_record_free(record);
 		free(ctx_data);
 		return NULL;
 	}
 
 	g_markup_parse_context_free(ctx);
+
+	sdp_xml_data_free_stack(ctx_data->stack_head);
 
 	free(ctx_data);
 
