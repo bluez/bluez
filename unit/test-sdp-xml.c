@@ -114,25 +114,35 @@ static void sequence_on_squared_teardown(gconstpointer data)
 	tester_teardown_complete();
 }
 
-#define DEFINE_TEST(fname, res) {					\
-	data.expected_result = res;					\
-	data.filename = fname;						\
-	tester_add("/" fname, &data, NULL,				\
-			parse_xml_for_filename, NULL);			\
-	}
+#define DEFINE_TEST(fname, res) { .filename = fname, .expected_result = res }
+
+/*
+ * Each test needs its own test_data, sharing a single one would make every
+ * test run with the values assigned by the last one registered.
+ */
+static struct test_data file_tests[] = {
+	DEFINE_TEST("Bluetooth_HID-sdp_record.xml", TRUE),
+	DEFINE_TEST("qt-SerialPortSDPRecord.xml", TRUE),
+	/* From https://github.com/bluez/bluez/security/advisories/GHSA-7mmr-gwqx-vc34 */
+	DEFINE_TEST("compute-seq-size-type-confusion.xml", FALSE),
+	/* From https://github.com/bluez/bluez/security/advisories/GHSA-75v6-6q44-57hc */
+	DEFINE_TEST("duplicate-attribute.xml", TRUE),
+};
 
 int main(int argc, char *argv[])
 {
 	struct test_data data;
+	unsigned int i;
 
 	tester_init(&argc, &argv);
 
-	DEFINE_TEST("Bluetooth_HID-sdp_record.xml", TRUE);
-	DEFINE_TEST("qt-SerialPortSDPRecord.xml", TRUE);
-	/* From https://github.com/bluez/bluez/security/advisories/GHSA-7mmr-gwqx-vc34 */
-	DEFINE_TEST("compute-seq-size-type-confusion.xml", FALSE);
-	/* From https://github.com/bluez/bluez/security/advisories/GHSA-75v6-6q44-57hc */
-	DEFINE_TEST("duplicate-attribute.xml", TRUE);
+	for (i = 0; i < G_N_ELEMENTS(file_tests); i++) {
+		char *name = g_strdup_printf("/%s", file_tests[i].filename);
+
+		tester_add(name, &file_tests[i], NULL,
+				parse_xml_for_filename, NULL);
+		g_free(name);
+	}
 
 	tester_add("/sequence_on_squared", &data,
 		   sequence_on_squared_setup,
