@@ -603,13 +603,26 @@ static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 			max_len = col - len - ts_len - 3;
 		}
 
+		/* col comes from the terminal and len includes the optional
+		 * "comm[pid]: " prefix, so max_len can still be negative
+		 * here, or larger than the space left in line[]. Both
+		 * overflow the snprintf below, and a negative value also
+		 * indexes before line[].
+		 */
+		if (max_len > (int) sizeof(line) - pos - 1)
+			max_len = (int) sizeof(line) - pos - 1;
+		if (max_len < 0)
+			max_len = 0;
+
 		n = snprintf(line + pos, max_len + 1, "%s%s",
 						label ? ": " : "", text);
 		if (n > max_len) {
-			line[pos + max_len - 1] = '.';
-			line[pos + max_len - 2] = '.';
-			if (line[pos + max_len - 3] == ' ')
-				line[pos + max_len - 3] = '.';
+			if (max_len >= 3) {
+				line[pos + max_len - 1] = '.';
+				line[pos + max_len - 2] = '.';
+				if (line[pos + max_len - 3] == ' ')
+					line[pos + max_len - 3] = '.';
+			}
 
 			n = max_len;
 		}
