@@ -127,6 +127,7 @@ static struct test_data file_tests[] = {
 	DEFINE_TEST("compute-seq-size-type-confusion.xml", FALSE),
 	/* From https://github.com/bluez/bluez/security/advisories/GHSA-75v6-6q44-57hc */
 	DEFINE_TEST("duplicate-attribute.xml", TRUE),
+	DEFINE_TEST("alternate.xml", TRUE),
 };
 
 int main(int argc, char *argv[])
