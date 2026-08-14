@@ -172,7 +172,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	rl_printf("Connection successful\n");
 }
 
-static void disconnect_io()
+static void disconnect_io(void)
 {
 	if (conn_state == STATE_DISCONNECTED)
 		return;
