@@ -145,6 +145,8 @@
 #define AVRCP_SCOPE_SEARCH				0x02
 #define AVRCP_SCOPE_NOW_PLAYING			0x03
 
+#define NAME_MAX_LEN 255
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct avrcp_header {
@@ -2608,30 +2610,45 @@ static const char *subtype_to_string(uint32_t subtype)
 	return "None";
 }
 
+static gboolean parse_media_name(uint8_t *operands, uint16_t len,
+				size_t name_len_offset,
+				char *name, uint16_t *namelen)
+{
+	uint16_t namesize;
+
+	if (len < name_len_offset + 2)
+		return FALSE;
+
+	memset(name, 0, NAME_MAX_LEN);
+	namesize = MIN(get_be16(&operands[name_len_offset]),
+			len - name_len_offset - 2);
+	namesize = MIN(namesize, NAME_MAX_LEN - 1);
+	if (*namelen > 0) {
+		if (len < name_len_offset + 2 + namesize)
+			return FALSE;
+		memcpy(name, &operands[name_len_offset + 2], namesize);
+		strtoutf8(name, namesize);
+	}
+	if (namelen)
+		*namelen = namesize;
+	return TRUE;
+}
+
 static struct media_item *parse_media_element(struct avrcp *session,
 					uint8_t *operands, uint16_t len)
 {
 	struct avrcp_player *player;
 	struct media_player *mp;
 	struct media_item *item;
-	uint16_t namelen, namesize;
-	char name[255];
+	uint16_t namesize;
+	char name[NAME_MAX_LEN];
 	uint64_t uid;
 	uint8_t count;
 
-	if (len < 13)
+	if (!parse_media_name(operands, len, 11, name, &namesize))
 		return NULL;
 
 	uid = get_be64(&operands[0]);
-
-	memset(name, 0, sizeof(name));
-	namesize = get_be16(&operands[11]);
-	namelen = MIN(namesize, sizeof(name) - 1);
-	if (namelen > 0) {
-		memcpy(name, &operands[13], namelen);
-		strtoutf8(name, namelen);
-	}
-
 	count = operands[13 + namesize];
 
 	player = session->controller->player;
@@ -2655,23 +2672,17 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	struct avrcp_player *player = session->controller->player;
 	struct media_player *mp = player->user_data;
 	struct media_item *item;
-	uint16_t namelen;
-	char name[255];
+	char name[NAME_MAX_LEN];
 	uint64_t uid;
 	uint8_t type;
 	uint8_t playable;
 
-	if (len < 12)
+	if (!parse_media_name(operands, len, 12, name, NULL))
 		return NULL;
 
 	uid = get_be64(&operands[0]);
 	type = operands[8];
 	playable = operands[9];
-
-	memset(name, 0, sizeof(name));
-	namelen = MIN(get_be16(&operands[12]), sizeof(name) - 1);
-	if (namelen > 0)
-		memcpy(name, &operands[14], namelen);
 
 	item = media_player_create_folder(mp, name, type, uid);
 	if (!item)
