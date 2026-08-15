@@ -198,7 +198,7 @@ static void track_position(uint32_t old, uint32_t position, void *user_data)
 static void track_changed(void *user_data)
 {
 	struct player_link *p = user_data;
-	uint64_t uid = lp_get_uid(p->lp);
+	uint64_t uid = lp_get_uid(p);
 
 	avrcp_player_event(p->avrcp, AVRCP_EVENT_TRACK_CHANGED, &uid);
 	avrcp_player_event(p->avrcp, AVRCP_EVENT_TRACK_REACHED_START, NULL);
