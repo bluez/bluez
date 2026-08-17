@@ -437,7 +437,9 @@ tools_hciconfig_LDADD = lib/libbluetooth-internal.la
 tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c
 tools_hcitool_LDADD = lib/libbluetooth-internal.la $(UDEV_LIBS)
 
-tools_sdptool_SOURCES = tools/sdptool.c src/sdp-xml.h src/sdp-xml.c
+tools_sdptool_SOURCES = tools/sdptool.c src/sdp-xml.h src/sdp-xml.c \
+			src/shared/queue.h src/shared/queue.c \
+			src/shared/util.h src/shared/util.c
 tools_sdptool_LDADD = lib/libbluetooth-internal.la $(GLIB_LIBS)
 
 tools_ciptool_LDADD = lib/libbluetooth-internal.la
