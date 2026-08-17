@@ -2623,7 +2623,7 @@ static gboolean parse_media_name(uint8_t *operands, uint16_t len,
 	namesize = MIN(get_be16(&operands[name_len_offset]),
 			len - name_len_offset - 2);
 	namesize = MIN(namesize, NAME_MAX_LEN - 1);
-	if (*namelen > 0) {
+	if (namesize > 0) {
 		if (len < name_len_offset + 2 + namesize)
 			return FALSE;
 		memcpy(name, &operands[name_len_offset + 2], namesize);
