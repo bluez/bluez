@@ -1420,14 +1420,14 @@ done:
 	 */
 }
 
-int phonebook_init(void)
+int phonebook_driver_init(void)
 {
 	g_type_init();
 
 	return 0;
 }
 
-void phonebook_exit(void)
+void phonebook_driver_exit(void)
 {
 }
 

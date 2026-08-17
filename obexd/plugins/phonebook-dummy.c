@@ -73,7 +73,7 @@ static void query_free(void *user_data)
 	g_free(query);
 }
 
-int phonebook_init(void)
+int phonebook_driver_init(void)
 {
 	if (root_folder)
 		return 0;
@@ -84,7 +84,7 @@ int phonebook_init(void)
 	return 0;
 }
 
-void phonebook_exit(void)
+void phonebook_driver_exit(void)
 {
 	g_free(root_folder);
 	root_folder = NULL;

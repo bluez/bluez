@@ -625,7 +625,7 @@ next:
 	return data;
 }
 
-int phonebook_init(void)
+int phonebook_driver_init(void)
 {
 	EClient *client;
 	GError *gerr = NULL;
@@ -662,7 +662,7 @@ int phonebook_init(void)
 	return 0;
 }
 
-void phonebook_exit(void)
+void phonebook_driver_exit(void)
 {
 	g_object_unref(book_client);
 	g_object_unref(address_book);
