@@ -972,6 +972,9 @@ void sdp_data_free(sdp_data_t *d)
 	case SDP_SEQ8:
 	case SDP_SEQ16:
 	case SDP_SEQ32:
+	case SDP_ALT8:
+	case SDP_ALT16:
+	case SDP_ALT32:
 		data_seq_free(d);
 		break;
 	case SDP_URL_STR8:
