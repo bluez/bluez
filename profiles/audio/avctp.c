@@ -1632,7 +1632,7 @@ static int avctp_send_req(struct avctp *session, uint8_t code,
 	if (control == NULL)
 		return -ENOTCONN;
 
-	/* If the request set a callback send it directly */
+	/* If the request did not set a callback send it directly */
 	if (!func)
 		return avctp_send(session->control, -1, AVCTP_COMMAND,
 				code, subunit, opcode, operands, operand_count);
