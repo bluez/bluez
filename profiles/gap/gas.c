@@ -86,7 +86,7 @@ static void read_device_name_cb(bool success, uint8_t att_ecode,
 
 	DBG("GAP Device Name: %s", name);
 
-	btd_device_device_set_name(gas->device, name);
+	btd_device_set_name(gas->device, name);
 
 	free(name);
 }

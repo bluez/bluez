@@ -362,7 +362,7 @@ static bool setup_device(int fd, const char *sysfs_path,
 
 	info("sixaxis: setting up new device");
 
-	btd_device_device_set_name(device, cp->name);
+	btd_device_set_name(device, cp->name);
 	btd_device_set_pnpid(device, cp->source, cp->vid, cp->pid, cp->version);
 	btd_device_set_temporary(device, true);
 
