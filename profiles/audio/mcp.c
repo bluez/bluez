@@ -73,26 +73,6 @@ struct remote_player {
 	uint8_t playing_order;
 };
 
-static char *name2utf8(const uint8_t *name, uint16_t len)
-{
-	char *utf8_name;
-
-	utf8_name = malloc(len + 1);
-	if (!utf8_name)
-		return NULL;
-
-	if (len)
-		memcpy(utf8_name, name, len);
-
-	utf8_name[len] = 0;
-	strtoutf8(utf8_name, len);
-
-	/* Remove leading and trailing whitespace characters */
-	g_strstrip(utf8_name);
-
-	return utf8_name;
-}
-
 static const char *mcp_status_val_to_string(uint8_t status)
 {
 	switch (status) {
@@ -118,7 +98,7 @@ static void remote_media_player_name(void *data, const uint8_t *value,
 	struct remote_player *remote = data;
 	char *name;
 
-	name = name2utf8(value, length);
+	name = str2utf8(value, length);
 	if (!name)
 		return;
 
@@ -145,7 +125,7 @@ static void remote_track_title(void *data, const uint8_t *value,
 	char *name;
 	uint16_t len;
 
-	name = name2utf8(value, length);
+	name = str2utf8(value, length);
 	if (!name)
 		return;
 

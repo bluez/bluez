@@ -66,22 +66,6 @@ static void gas_free(struct gas *gas)
 	g_free(gas);
 }
 
-static char *name2utf8(const uint8_t *name, uint16_t len)
-{
-	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
-
-	len = MIN(len, sizeof(utf8_name) - 1);
-
-	memset(utf8_name, 0, sizeof(utf8_name));
-	strncpy(utf8_name, (char *) name, len);
-	strtoutf8(utf8_name, len);
-
-	/* Remove leading and trailing whitespace characters */
-	g_strstrip(utf8_name);
-
-	return g_strdup(utf8_name);
-}
-
 static void read_device_name_cb(bool success, uint8_t att_ecode,
 					const uint8_t *value, uint16_t length,
 					void *user_data)
@@ -98,13 +82,13 @@ static void read_device_name_cb(bool success, uint8_t att_ecode,
 	if (!length)
 		return;
 
-	name = name2utf8(value, length);
+	name = str2utf8(value, length);
 
 	DBG("GAP Device Name: %s", name);
 
 	btd_device_device_set_name(gas->device, name);
 
-	g_free(name);
+	free(name);
 }
 
 static void handle_device_name(struct gas *gas, uint16_t value_handle)

@@ -407,7 +407,8 @@ static const unsigned char invalid_utf8_name_data[] = {
 static const struct test_data invalid_utf8_name_test = {
 	.eir_data = invalid_utf8_name_data,
 	.eir_size = sizeof(invalid_utf8_name_data),
-	.name = "test परी",
+	/* The truncated sequence is replaced by U+FFFD, the rest is kept */
+	.name = "test परी" "\xef\xbf\xbd" "्षा invalid",
 	.name_complete = true,
 	.tx_power = 127,
 };
@@ -435,7 +436,9 @@ static const unsigned char iso_2022_jp_name_data[] = {
 static const struct test_data iso_2022_jp_name_test = {
 	.eir_data = iso_2022_jp_name_data,
 	.eir_size = sizeof(iso_2022_jp_name_data),
-	.name = "test \033$B",
+	/* The 4 JIS bytes are replaced by U+FFFD, the escapes are ASCII */
+	.name = "test \033$B" "\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd"
+								"\033(B OK",
 	.name_complete = true,
 	.tx_power = 127,
 };

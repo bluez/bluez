@@ -275,22 +275,18 @@ static bool ad_replace_uuid128(struct bt_ad *ad, struct iovec *iov)
 
 static bool ad_replace_name(struct bt_ad *ad, struct iovec *iov)
 {
-	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
+	char *utf8_name;
+	bool ret;
 
-	memset(utf8_name, 0, sizeof(utf8_name));
-	strncpy(utf8_name, (const char *)iov->iov_base,
-			MIN(iov->iov_len, HCI_MAX_NAME_LENGTH));
+	utf8_name = str2utf8(iov->iov_base, iov->iov_len);
+	if (!utf8_name)
+		return false;
 
-	if (strisutf8(utf8_name, iov->iov_len))
-		goto done;
+	ret = bt_ad_add_name(ad, utf8_name);
 
-	strtoutf8(utf8_name, iov->iov_len);
+	free(utf8_name);
 
-	/* Remove leading and trailing whitespace characters */
-	strstrip(utf8_name);
-
-done:
-	return bt_ad_add_name(ad, utf8_name);
+	return ret;
 }
 
 static bool ad_replace_uuid16_data(struct bt_ad *ad, struct iovec *iov)
