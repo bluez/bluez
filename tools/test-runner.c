@@ -1213,7 +1213,7 @@ static void usage(void)
 		"Usage:\n");
 	printf("\ttest-runner [options] [--] <command> [args]\n");
 	printf("Options:\n"
-		"\t-a, --auto             Find tests and run them\n"
+		"\t-a, --all,--auto       Find tests and run them\n"
 		"\t-b, --dbus             Start D-Bus system daemon\n"
 		"\t-s, --dbus-session     Start D-Bus session daemon\n"
 		"\t-d, --daemon           Start bluetoothd\n"
