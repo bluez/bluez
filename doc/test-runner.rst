@@ -8,7 +8,7 @@ DESCRIPTION
 ===========
 
 **test-runner(1)** is used to test Kernel changes to the Bluetooth subsystem,
-it lunches a virtual machine using qemu(1) and mounts the local filesystem
+it launches a virtual machine using qemu(1) and mounts the local filesystem
 using virtio (9p).
 
 OPTIONS
