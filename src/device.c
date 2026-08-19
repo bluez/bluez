@@ -5101,7 +5101,7 @@ char *btd_device_get_storage_path(struct btd_device *device, const char *name)
 	return strdup(filename);
 }
 
-void btd_device_device_set_name(struct btd_device *device, const char *name)
+void btd_device_set_name(struct btd_device *device, const char *name)
 {
 	size_t len;
 
