@@ -203,6 +203,7 @@ static bool service_allowlist_set(struct btd_admin_policy *admin_policy,
 
 	free_service_allowlist(admin_policy->service_allowlist);
 	admin_policy->service_allowlist = uuid_list;
+	btd_adapter_reapply_allowed_uuids(adapter);
 
 	return true;
 }
