@@ -10,3 +10,5 @@
 
 void admin_add_submenu(void);
 void admin_remove_submenu(void);
+
+GDBusProxy *bluetoothctl_get_default_controller(void);
