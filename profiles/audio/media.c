@@ -3175,6 +3175,13 @@ static void app_register_endpoint(void *data, void *user_data)
 						metadata, metadata_size,
 						&features, &app->err);
 	if (!endpoint) {
+		if (app->err == -EPERM) {
+			info("Skipping endpoint %s:%s (%s) blocked by admin allowlist",
+				app->sender, path, uuid);
+			app->err = 0;
+			return;
+		}
+
 		error("Unable to register endpoint %s:%s: %s", app->sender,
 						path, strerror(-app->err));
 		return;
