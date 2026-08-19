@@ -143,6 +143,13 @@ bool strisutf8(const char *str, size_t length);
 bool argsisutf8(int argc, char *argv[]);
 char *strtoutf8(char *str, size_t len);
 
+/*
+ * Return a newly allocated, NUL terminated and whitespace stripped UTF-8
+ * copy of the first len bytes of str, with each ill-formed sequence replaced
+ * by U+FFFD REPLACEMENT CHARACTER. The result must be freed with free().
+ */
+char *str2utf8(const uint8_t *str, size_t len);
+
 void *util_malloc(size_t size);
 void *util_memdup(const void *src, size_t size);
 
