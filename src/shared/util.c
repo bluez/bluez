@@ -2315,3 +2315,49 @@ char *strtoutf8(char *str, size_t len)
 	memset(str + i, 0, len - i);
 	return str;
 }
+
+char *str2utf8(const uint8_t *str, size_t len)
+{
+	char *utf8, *out, *stripped;
+	size_t i = 0;
+
+	if (!str)
+		return NULL;
+
+	/*
+	 * Invalid bytes are replaced with U+FFFD REPLACEMENT CHARACTER, which
+	 * is 3 bytes long, so that is the worst case size of the result.
+	 */
+	utf8 = malloc(len * 3 + 1);
+	if (!utf8)
+		return NULL;
+
+	out = utf8;
+
+	while (i < len) {
+		size_t sublen;
+		size_t size = utf8_seqlen(str + i, len - i, &sublen);
+
+		if (size) {
+			memcpy(out, str + i, size);
+			out += size;
+			i += size;
+			continue;
+		}
+
+		/* Replace the maximal subpart with U+FFFD */
+		*out++ = 0xef;
+		*out++ = 0xbf;
+		*out++ = 0xbd;
+		i += sublen;
+	}
+
+	*out = '\0';
+
+	/* Remove leading and trailing whitespace characters */
+	stripped = strstrip(utf8);
+	if (stripped != utf8)
+		memmove(utf8, stripped, strlen(stripped) + 1);
+
+	return utf8;
+}
