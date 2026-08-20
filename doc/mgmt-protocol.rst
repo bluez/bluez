@@ -5521,3 +5521,48 @@ The Supervision_Timeout parameter specifies the supervision timeout in units
 of 10 ms.
 
 This event will be sent to all management sockets.
+
+Security Level Changed
+``````````````````````
+
+:Event Code:		0x0034
+:Controller Index:	<controller_id>
+:Event Parameters:	Address (6 Octets)
+:...:			Address_Type (1 Octet)
+:...:			Count (1 Octet)
+:...:			TLV_List (variable)
+
+This event indicates that the security level of a device has changed.
+
+Possible values for the TLV type parameter:
+
+.. csv-table::
+	:header: "Type", "Description"
+	:widths: auto
+
+	0x0000, Security Level
+	0x0001, Encryption type
+
+Possible values for the Security Level type:
+
+.. csv-table::
+	:header: "Value", "Description"
+	:widths: auto
+
+	0x00, No security
+	0x01, Unauthenticated pairing with encryption not required
+	0x02, Unauthenticated pairing with encryption desired
+	0x03, Authenticated pairing with encryption
+	0x04, FIPS authenticated pairing with encryption
+
+Possible values for the Encryption type:
+
+.. csv-table::
+	:header: "Value", "Description"
+	:widths: auto
+
+	0x00, No encryption
+	0x01, E0 encryption
+	0x02, AES-CCM encryption
+
+This event will be sent to all management sockets.
