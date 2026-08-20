@@ -644,22 +644,96 @@ static void cs_print_role_hint(uint8_t role)
 				" procedure.\n");
 }
 
+/* Core CS mode combinations: sub_mode_type == 0xFF means "None". */
+static const struct {
+	uint8_t main_mode_type;
+	uint8_t sub_mode_type;
+} cs_valid_mode_combos[] = {
+	{ 0x01, 0xFF },
+	{ 0x02, 0xFF },
+	{ 0x03, 0xFF },
+	{ 0x02, 0x01 },
+	{ 0x02, 0x03 },
+	{ 0x03, 0x02 },
+};
+
+static bool cs_mode_combo_is_valid(uint8_t main_mode_type,
+					uint8_t sub_mode_type)
+{
+	unsigned int i;
+
+	for (i = 0; i < G_N_ELEMENTS(cs_valid_mode_combos); i++) {
+		if (cs_valid_mode_combos[i].main_mode_type == main_mode_type &&
+				cs_valid_mode_combos[i].sub_mode_type ==
+							sub_mode_type)
+			return true;
+	}
+
+	return false;
+}
+
+static void cs_print_valid_mode_combos(void)
+{
+	bt_shell_printf("Valid combinations:\n"
+			"  main_mode_type - sub_mode_type\n"
+			"  Main(0x01) - Sub(0xff)\n"
+			"  Main(0x02) - Sub(0xff)\n"
+			"  Main(0x03) - Sub(0xff)\n"
+			"  Main(0x02) - Sub(0x01)\n"
+			"  Main(0x02) - Sub(0x03)\n"
+			"  Main(0x03) - Sub(0x02)\n");
+}
+
+/* Rejects the just-applied main_mode_type/sub_mode_type change by
+ * restoring the previous values if the resulting combination is not
+ * one of cs_valid_mode_combos.
+ */
+static void cs_enforce_mode_combo(uint8_t old_main_mode_type,
+					uint8_t old_sub_mode_type)
+{
+	if (cs_mode_combo_is_valid(cs_cfg.main_mode_type, cs_cfg.sub_mode_type))
+		return;
+
+	bt_shell_printf("Error: main_mode_type=0x%02x sub_mode_type=0x%02x is "
+			"not a valid combination. Rejecting change.\n",
+			cs_cfg.main_mode_type, cs_cfg.sub_mode_type);
+	cs_print_valid_mode_combos();
+
+	cs_cfg.main_mode_type = old_main_mode_type;
+	cs_cfg.sub_mode_type = old_sub_mode_type;
+
+	bt_shell_printf("Keeping main_mode_type=0x%02x sub_mode_type=0x%02x\n",
+			cs_cfg.main_mode_type, cs_cfg.sub_mode_type);
+}
+
 /* Generic handler for the per-parameter set commands (cs.role,
  * cs.main_mode_type, ...); argv[0] is the parameter name (the command
  * itself), argv[1] is the value.
  */
 static void cmd_cs_set(int argc, char *argv[])
 {
+	uint8_t old_main_mode_type = cs_cfg.main_mode_type;
+	uint8_t old_sub_mode_type = cs_cfg.sub_mode_type;
+	bool is_mode_param;
+
 	if (argc < 2) {
 		bt_shell_printf("Usage: %s <value>\n", argv[0]);
 		return;
 	}
 
+	is_mode_param = !strcmp(argv[0], "main_mode_type") ||
+				!strcmp(argv[0], "sub_mode_type");
+
 	if (!cs_set_param(argv[0], argv[1]))
 		return;
 
-	if (!strcmp(argv[0], "role"))
+	if (!strcmp(argv[0], "role")) {
 		cs_print_role_hint(cs_role);
+		return;
+	}
+
+	if (is_mode_param)
+		cs_enforce_mode_combo(old_main_mode_type, old_sub_mode_type);
 }
 
 /* Tab completion for params whose only legal values are a small fixed
