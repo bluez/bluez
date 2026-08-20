@@ -83,65 +83,101 @@ static void test_min_max(const void *data)
 	tester_test_passed();
 }
 
-struct str2utf8_data {
+struct utf8_data {
 	const char *input;	/* Not NUL terminated, len bytes are used */
 	size_t len;
-	const char *expected;
+	const char *str2utf8;	/* Ill-formed sequences replaced, stripped */
+	const char *strtoutf8;	/* Truncated at the first ill-formed one */
 };
 
 #define FFFD "\xef\xbf\xbd"		/* U+FFFD REPLACEMENT CHARACTER */
 
-static const struct str2utf8_data str2utf8_tests[] = {
+static const struct utf8_data utf8_tests[] = {
 	/* Nothing to do */
-	{ "", 0, "" },
-	{ "Pixel 7", 7, "Pixel 7" },
+	{ "", 0, "", "" },
+	{ "Pixel 7", 7, "Pixel 7", "Pixel 7" },
 	/* Well-formed multi-byte sequences are kept as they are */
-	{ "\xe2\x82\xac 5", 5, "\xe2\x82\xac 5" },		/* U+20AC */
-	{ "\xf0\x9f\x94\x8a", 4, "\xf0\x9f\x94\x8a" },		/* U+1F50A */
+	{ "\xe2\x82\xac 5", 5, "\xe2\x82\xac 5",		/* U+20AC */
+						"\xe2\x82\xac 5" },
+	{ "\xf0\x9f\x94\x8a", 4, "\xf0\x9f\x94\x8a",	/* U+1F50A */
+						"\xf0\x9f\x94\x8a" },
 	/* Leading and trailing whitespace is removed */
-	{ "  spaced  ", 10, "spaced" },
-	{ "\t\r\nname\n\r\t", 10, "name" },
-	{ "   ", 3, "" },
+	{ "  spaced  ", 10, "spaced", "  spaced  " },
+	{ "\t\r\nname\n\r\t", 10, "name", "\t\r\nname\n\r\t" },
+	{ "   ", 3, "", "   " },
 	/* The name is not NUL terminated, only len bytes are used */
-	{ "truncated", 4, "trun" },
+	{ "truncated", 4, "trun", "trun" },
 	/* A byte that can never appear in UTF-8 */
-	{ "ab\xff""cd", 5, "ab" FFFD "cd" },
+	{ "ab\xff""cd", 5, "ab" FFFD "cd", "ab" },
 	/* A continuation byte cannot start a sequence */
-	{ "ab\x80""cd", 5, "ab" FFFD "cd" },
+	{ "ab\x80""cd", 5, "ab" FFFD "cd", "ab" },
 	/* One U+FFFD per maximal subpart, not per byte */
-	{ "ab\xe2\x82""cd", 6, "ab" FFFD "cd" },
+	{ "ab\xe2\x82""cd", 6, "ab" FFFD "cd", "ab" },
 	/* A sequence cut short by len is still one maximal subpart */
-	{ "ab\xe2\x82\xac", 4, "ab" FFFD },
+	{ "ab\xe2\x82\xac", 4, "ab" FFFD, "ab" },
 	/* Latin-1 text is not valid UTF-8 */
-	{ "caf\xe9", 4, "caf" FFFD },
+	{ "caf\xe9", 4, "caf" FFFD, "caf" },
 	/* Overlong encodings are rejected, C0 and C1 are never valid */
-	{ "\xc0\x80", 2, FFFD FFFD },
-	{ "\xc0\xaf", 2, FFFD FFFD },
+	{ "\xc0\x80", 2, FFFD FFFD, "" },
+	{ "\xc0\xaf", 2, FFFD FFFD, "" },
 	/* UTF-16 surrogates have no UTF-8 encoding */
-	{ "\xed\xa0\x80", 3, FFFD FFFD FFFD },
+	{ "\xed\xa0\x80", 3, FFFD FFFD FFFD, "" },
 	/* U+10FFFF is the last code point, F5 to FF are out of range */
-	{ "\xf4\x90\x80\x80", 4, FFFD FFFD FFFD FFFD },
-	{ "\xf5\x80\x80\x80", 4, FFFD FFFD FFFD FFFD },
+	{ "\xf4\x90\x80\x80", 4, FFFD FFFD FFFD FFFD, "" },
+	{ "\xf5\x80\x80\x80", 4, FFFD FFFD FFFD FFFD, "" },
 	/* The last code point itself is fine */
-	{ "\xf4\x8f\xbf\xbf", 4, "\xf4\x8f\xbf\xbf" },
+	{ "\xf4\x8f\xbf\xbf", 4, "\xf4\x8f\xbf\xbf",
+						"\xf4\x8f\xbf\xbf" },
 	/* Replacement and stripping combined */
-	{ " \xff ", 3, FFFD },
+	{ " \xff ", 3, FFFD, " " },
 };
 
 static void test_str2utf8(const void *data)
 {
 	size_t i;
 
-	for (i = 0; i < sizeof(str2utf8_tests) /
-				sizeof(str2utf8_tests[0]); i++) {
-		const struct str2utf8_data *test = &str2utf8_tests[i];
+	for (i = 0; i < sizeof(utf8_tests) / sizeof(utf8_tests[0]); i++) {
+		const struct utf8_data *test = &utf8_tests[i];
 		char *str = str2utf8((const uint8_t *) test->input,
 								test->len);
 
 		assert(str);
-		if (strcmp(str, test->expected)) {
+		if (strcmp(str, test->str2utf8)) {
 			printf("test %zu: expected \"%s\", got \"%s\"\n", i,
-							test->expected, str);
+							test->str2utf8, str);
+			free(str);
+			tester_test_failed();
+			return;
+		}
+
+		/* The result is always well-formed UTF-8 */
+		assert(strisutf8(str, strlen(str)));
+
+		free(str);
+	}
+
+	tester_test_passed();
+}
+
+static void test_strtoutf8(const void *data)
+{
+	size_t i;
+
+	for (i = 0; i < sizeof(utf8_tests) / sizeof(utf8_tests[0]); i++) {
+		const struct utf8_data *test = &utf8_tests[i];
+		char *str;
+
+		/* strtoutf8() works in place, so it needs a writable copy */
+		str = malloc(test->len + 1);
+		assert(str);
+		memcpy(str, test->input, test->len);
+		str[test->len] = '\0';
+
+		assert(strtoutf8(str, test->len) == str);
+
+		if (strcmp(str, test->strtoutf8)) {
+			printf("test %zu: expected \"%s\", got \"%s\"\n", i,
+							test->strtoutf8, str);
 			free(str);
 			tester_test_failed();
 			return;
@@ -178,6 +214,8 @@ int main(int argc, char *argv[])
 			test_str2utf8, NULL);
 	tester_add("/util/str2utf8_null", NULL, NULL,
 			test_str2utf8_null, NULL);
+	tester_add("/util/strtoutf8", NULL, NULL,
+			test_strtoutf8, NULL);
 
 	return tester_run();
 }
