@@ -5103,12 +5103,22 @@ char *btd_device_get_storage_path(struct btd_device *device, const char *name)
 
 void btd_device_device_set_name(struct btd_device *device, const char *name)
 {
+	size_t len;
+
 	if (strncmp(name, device->name, MAX_NAME_LENGTH) == 0)
 		return;
 
 	DBG("%s %s", device->path, name);
 
-	strncpy(device->name, name, MAX_NAME_LENGTH);
+	/*
+	 * Truncate on a character boundary, so that a name longer than
+	 * MAX_NAME_LENGTH does not end up with a partial sequence, which
+	 * would no longer be valid UTF-8 and would be rejected by D-Bus.
+	 */
+	len = strnlenutf8(name, MIN(strlen(name), (size_t) MAX_NAME_LENGTH));
+
+	memcpy(device->name, name, len);
+	device->name[len] = '\0';
 
 	store_device_info(device);
 
