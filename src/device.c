@@ -306,6 +306,9 @@ struct btd_device {
 
 	uint32_t	auth_failures;
 	guint		auth_retry_id;
+
+	uint8_t		sec_level;
+	uint8_t		enc_type;
 };
 
 static const uint16_t uuid_list[] = {
@@ -3689,6 +3692,26 @@ dev_property_prefer_bearer_exists(const GDBusPropertyTable *property,
 	return device_prefer_bearer_str(device) != NULL;
 }
 
+static gboolean dev_get_security_level(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *dev = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &dev->sec_level);
+
+	return TRUE;
+}
+
+static gboolean dev_get_encryption_type(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *dev = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &dev->enc_type);
+
+	return TRUE;
+}
+
 static const GDBusPropertyTable device_properties[] = {
 	{ "Address", "s", dev_property_get_address },
 	{ "AddressType", "s", property_get_address_type },
@@ -3731,6 +3754,10 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "PreferredBearer", "s", dev_property_get_prefer_bearer,
 				dev_property_set_prefer_bearer,
 				dev_property_prefer_bearer_exists,
+				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "SecurityLevel", "y", dev_get_security_level, NULL, NULL,
+				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "EncryptionType", "y", dev_get_encryption_type, NULL, NULL,
 				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
@@ -8340,4 +8367,61 @@ void device_remove_pending_services(struct btd_device *dev,
 next:
 		l = next;
 	}
+}
+
+static void parse_sec_level_tlv(void *data, void *user_data)
+{
+	struct btd_device *dev = user_data;
+	const struct mgmt_tlv *entry = data;
+	uint16_t type = get_le16(&entry->type);
+	uint32_t value;
+
+	if (entry->length != 1 && entry->length != 2 && entry->length != 4) {
+		warn("Invalid length %u for security level TLV type %u",
+							entry->length, type);
+		return;
+	}
+
+	if (entry->length == 1)
+		value = get_u8(entry->value);
+	else if (entry->length == 2)
+		value = get_le16(entry->value);
+	else
+		value = get_le32(entry->value);
+
+	switch (type) {
+	case MGMT_SEC_LEVEL_CHANGED_PARAM_LEVEL:
+		if (dev->sec_level != value) {
+			dev->sec_level = value;
+			g_dbus_emit_property_changed(dbus_conn, dev->path,
+							DEVICE_INTERFACE,
+							"SecurityLevel");
+		}
+		break;
+	case MGMT_SEC_LEVEL_CHANGED_PARAM_ENC_TYPE:
+		if (dev->enc_type != value) {
+			dev->enc_type = value;
+			g_dbus_emit_property_changed(dbus_conn, dev->path,
+							DEVICE_INTERFACE,
+							"EncryptionType");
+		}
+		break;
+	default:
+		DBG("Unknown security level TLV type %u", type);
+		break;
+	}
+}
+
+void btd_device_sec_level_changed(struct btd_device *dev, const uint8_t *data,
+					uint16_t size)
+{
+	struct mgmt_tlv_list *tlv_list;
+
+	tlv_list = mgmt_tlv_list_load_from_buf(data, size);
+	if (!tlv_list) {
+		error("Failed to parse security level TLV list");
+		return;
+	}
+	mgmt_tlv_list_foreach(tlv_list, parse_sec_level_tlv, dev);
+	mgmt_tlv_list_free(tlv_list);
 }
