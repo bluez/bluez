@@ -60,7 +60,7 @@ void eir_data_free(struct eir_data *eir)
 {
 	queue_destroy(eir->services, g_free);
 	eir->services = NULL;
-	g_free(eir->name);
+	free(eir->name);
 	eir->name = NULL;
 	free(eir->hash);
 	eir->hash = NULL;
@@ -131,22 +131,6 @@ static void eir_parse_uuid128(struct eir_data *eir, const uint8_t *data,
 		eir->services = queue_append(eir->services, uuid_str);
 		uuid_ptr += 16;
 	}
-}
-
-static char *name2utf8(const uint8_t *name, uint8_t len)
-{
-	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
-
-	len = MIN(len, HCI_MAX_NAME_LENGTH);
-
-	memset(utf8_name, 0, sizeof(utf8_name));
-	strncpy(utf8_name, (char *) name, len);
-	strtoutf8(utf8_name, len);
-
-	/* Remove leading and trailing whitespace characters */
-	g_strstrip(utf8_name);
-
-	return g_strdup(utf8_name);
 }
 
 static void eir_parse_msd(struct eir_data *eir, const uint8_t *data,
@@ -301,9 +285,9 @@ void eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 			while (data_len > 0 && data[data_len - 1] == '\0')
 				data_len--;
 
-			g_free(eir->name);
+			free(eir->name);
 
-			eir->name = name2utf8(data, data_len);
+			eir->name = str2utf8(data, data_len);
 			eir->name_complete = eir_data[1] != EIR_NAME_SHORT;
 			break;
 
