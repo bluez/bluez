@@ -137,6 +137,8 @@ static char *name2utf8(const uint8_t *name, uint8_t len)
 {
 	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
 
+	len = MIN(len, HCI_MAX_NAME_LENGTH);
+
 	memset(utf8_name, 0, sizeof(utf8_name));
 	strncpy(utf8_name, (char *) name, len);
 	strtoutf8(utf8_name, len);
