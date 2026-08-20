@@ -440,6 +440,64 @@ static const struct test_data iso_2022_jp_name_test = {
 	.tx_power = 127,
 };
 
+/*
+ * A complete local name of HCI_MAX_NAME_LENGTH bytes, the longest one that
+ * fits the buffer eir_parse() copies the name into.
+ */
+static unsigned char max_name_data[HCI_MAX_NAME_LENGTH + 2];
+static char max_name[HCI_MAX_NAME_LENGTH + 1];
+
+static const struct test_data max_name_test = {
+	.eir_data = max_name_data,
+	.eir_size = sizeof(max_name_data),
+	.name = max_name,
+	.name_complete = true,
+	.tx_power = 127,
+};
+
+static void max_name_setup(const void *data)
+{
+	max_name_data[0] = sizeof(max_name_data) - 1;
+	max_name_data[1] = EIR_NAME_COMPLETE;
+	memset(max_name_data + 2, 'A', HCI_MAX_NAME_LENGTH);
+
+	memset(max_name, 'A', HCI_MAX_NAME_LENGTH);
+	max_name[HCI_MAX_NAME_LENGTH] = '\0';
+
+	tester_setup_complete();
+}
+
+/*
+ * The longest complete local name eir_parse() can be handed at all, which is
+ * bounded by the EIR length being a single byte. That is 253 bytes, more than
+ * the buffer it is copied into, so this used to overflow it.
+ */
+static unsigned char long_name_data[255];
+static char long_name[sizeof(long_name_data) - 2 + 1];
+
+/* The name does not fit, so it comes back clamped to HCI_MAX_NAME_LENGTH */
+#define LONG_NAME_LEN	HCI_MAX_NAME_LENGTH
+
+static const struct test_data long_name_test = {
+	.eir_data = long_name_data,
+	.eir_size = sizeof(long_name_data),
+	.name = long_name,
+	.name_complete = true,
+	.tx_power = 127,
+};
+
+static void long_name_setup(const void *data)
+{
+	long_name_data[0] = sizeof(long_name_data) - 1;
+	long_name_data[1] = EIR_NAME_COMPLETE;
+	memset(long_name_data + 2, 'B', sizeof(long_name_data) - 2);
+
+	memset(long_name, 'B', LONG_NAME_LEN);
+	long_name[LONG_NAME_LEN] = '\0';
+
+	tester_setup_complete();
+}
+
 static const unsigned char bluesc_data[] = {
 		0x02, 0x01, 0x06, 0x03, 0x02, 0x16, 0x18, 0x12,
 		0x09, 0x57, 0x61, 0x68, 0x6f, 0x6f, 0x20, 0x42,
@@ -755,6 +813,10 @@ int main(int argc, char *argv[])
 	tester_add("/eir/utf16-name", &utf16_name_test, NULL, test_parsing,
 									NULL);
 	tester_add("/eir/iso-2022-jp-name", &iso_2022_jp_name_test, NULL,
+							test_parsing, NULL);
+	tester_add("/eir/max-name", &max_name_test, max_name_setup,
+							test_parsing, NULL);
+	tester_add("/eir/long-name", &long_name_test, long_name_setup,
 							test_parsing, NULL);
 	tester_add("/ad/bluesc", &bluesc_test, NULL, test_parsing, NULL);
 	tester_add("/ad/wahooscale", &wahoo_scale_test, NULL, test_parsing,
