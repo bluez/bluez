@@ -66,7 +66,6 @@ struct media_folder {
 	uint32_t		number_of_items;/* Number of items */
 	GSList			*subfolders;
 	GSList			*items;
-	DBusMessage		*msg;
 };
 
 struct media_player {
@@ -89,6 +88,7 @@ struct media_player {
 	struct player_callback	*cb;
 	GSList			*pending;
 	GSList			*folders;
+	DBusMessage		*msg;		/* Pending request */
 	uint16_t		obex_port;
 };
 
@@ -662,19 +662,18 @@ static void parse_folder_list(gpointer data, gpointer user_data)
 void media_player_list_complete(struct media_player *mp, GSList *items,
 								int err)
 {
-	struct media_folder *folder = mp->scope;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
 
-	if (folder == NULL || folder->msg == NULL)
+	if (mp->msg == NULL)
 		return;
 
 	if (err < 0) {
-		reply = btd_error_failed(folder->msg, strerror(-err));
+		reply = btd_error_failed(mp->msg, strerror(-err));
 		goto done;
 	}
 
-	reply = dbus_message_new_method_return(folder->msg);
+	reply = dbus_message_new_method_return(mp->msg);
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -694,8 +693,8 @@ void media_player_list_complete(struct media_player *mp, GSList *items,
 
 done:
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
-	dbus_message_unref(folder->msg);
-	folder->msg = NULL;
+	dbus_message_unref(mp->msg);
+	mp->msg = NULL;
 }
 
 static struct media_item *
@@ -719,15 +718,14 @@ media_player_create_subfolder(struct media_player *mp, const char *name,
 
 void media_player_search_complete(struct media_player *mp, int ret)
 {
-	struct media_folder *folder = mp->scope;
 	struct media_folder *search = mp->search;
 	DBusMessage *reply;
 
-	if (folder == NULL || folder->msg == NULL)
+	if (mp->msg == NULL)
 		return;
 
 	if (ret < 0) {
-		reply = btd_error_failed(folder->msg, strerror(-ret));
+		reply = btd_error_failed(mp->msg, strerror(-ret));
 		goto done;
 	}
 
@@ -740,14 +738,14 @@ void media_player_search_complete(struct media_player *mp, int ret)
 
 	search->number_of_items = ret;
 
-	reply = g_dbus_create_reply(folder->msg,
+	reply = g_dbus_create_reply(mp->msg,
 				DBUS_TYPE_OBJECT_PATH, &search->item->path,
 				DBUS_TYPE_INVALID);
 
 done:
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
-	dbus_message_unref(folder->msg);
-	folder->msg = NULL;
+	dbus_message_unref(mp->msg);
+	mp->msg = NULL;
 }
 
 void media_player_total_items_complete(struct media_player *mp,
@@ -755,7 +753,7 @@ void media_player_total_items_complete(struct media_player *mp,
 {
 	struct media_folder *folder = mp->scope;
 
-	if (folder == NULL || folder->msg == NULL)
+	if (folder == NULL || mp->msg == NULL)
 		return;
 
 	if (folder->number_of_items != num_of_items) {
@@ -827,14 +825,14 @@ static DBusMessage *media_folder_search(DBusConnection *conn, DBusMessage *msg,
 	if (!mp->searchable || folder != mp->folder || !cb->cbs->search)
 		return btd_error_not_supported(msg);
 
-	if (folder->msg != NULL)
+	if (mp->msg != NULL)
 		return btd_error_failed(msg, strerror(EINVAL));
 
 	err = cb->cbs->search(mp, string, cb->user_data);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
-	folder->msg = dbus_message_ref(msg);
+	mp->msg = dbus_message_ref(msg);
 
 	return NULL;
 }
@@ -911,7 +909,7 @@ static DBusMessage *media_folder_list_items(DBusConnection *conn,
 	if (cb->cbs->list_items == NULL)
 		return btd_error_not_supported(msg);
 
-	if (folder->msg != NULL)
+	if (mp->msg != NULL)
 		return btd_error_failed(msg, strerror(EBUSY));
 
 	err = cb->cbs->list_items(mp, folder->item->name, start, end,
@@ -919,7 +917,7 @@ static DBusMessage *media_folder_list_items(DBusConnection *conn,
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
-	folder->msg = dbus_message_ref(msg);
+	mp->msg = dbus_message_ref(msg);
 
 	return NULL;
 }
@@ -952,9 +950,6 @@ static void media_folder_destroy(void *data)
 
 	g_slist_free_full(folder->subfolders, media_folder_destroy);
 	g_slist_free_full(folder->items, media_item_destroy);
-
-	if (folder->msg != NULL)
-		dbus_message_unref(folder->msg);
 
 	media_item_destroy(folder->item);
 	g_free(folder);
@@ -1041,7 +1036,7 @@ static DBusMessage *media_folder_change_folder(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct media_player *mp = data;
-	struct media_folder *folder = mp->scope;
+	struct media_folder *folder;
 	struct player_callback *cb = mp->cb;
 	const char *path;
 	int err;
@@ -1051,7 +1046,7 @@ static DBusMessage *media_folder_change_folder(DBusConnection *conn,
 					DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
 
-	if (folder->msg != NULL)
+	if (mp->msg != NULL)
 		return btd_error_failed(msg, strerror(EBUSY));
 
 	folder = media_player_find_folder(mp, path);
@@ -1083,7 +1078,7 @@ static DBusMessage *media_folder_change_folder(DBusConnection *conn,
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
-	mp->scope->msg = dbus_message_ref(msg);
+	mp->msg = dbus_message_ref(msg);
 
 	return NULL;
 }
@@ -1224,25 +1219,24 @@ void media_player_change_folder_complete(struct media_player *mp,
 						const char *path, uint64_t uid,
 						int ret)
 {
-	struct media_folder *folder = mp->scope;
 	DBusMessage *reply;
 
-	if (folder == NULL || folder->msg == NULL)
+	if (mp->msg == NULL)
 		return;
 
 	if (ret < 0) {
-		reply = btd_error_failed(folder->msg, strerror(-ret));
+		reply = btd_error_failed(mp->msg, strerror(-ret));
 		goto done;
 	}
 
 	media_player_set_folder_by_uid(mp, uid, ret);
 
-	reply = g_dbus_create_reply(folder->msg, DBUS_TYPE_INVALID);
+	reply = g_dbus_create_reply(mp->msg, DBUS_TYPE_INVALID);
 
 done:
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
-	dbus_message_unref(folder->msg);
-	folder->msg = NULL;
+	dbus_message_unref(mp->msg);
+	mp->msg = NULL;
 }
 
 void media_player_destroy(struct media_player *mp)
@@ -1262,6 +1256,9 @@ void media_player_destroy(struct media_player *mp)
 		g_dbus_unregister_interface(btd_get_dbus_connection(),
 						mp->path,
 						MEDIA_FOLDER_INTERFACE);
+
+	if (mp->msg)
+		dbus_message_unref(mp->msg);
 
 	g_slist_free_full(mp->pending, g_free);
 	g_slist_free_full(mp->folders, media_folder_destroy);
@@ -1613,7 +1610,6 @@ static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
 {
 	struct media_item *item = data;
 	struct media_player *mp = item->player;
-	struct media_folder *folder = mp->scope;
 	struct player_callback *cb = mp->cb;
 	const char *path;
 	int err;
@@ -1621,16 +1617,16 @@ static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
 	if (!item->playable || !cb->cbs->play_item)
 		return btd_error_not_supported(msg);
 
-	if (folder->msg)
+	if (mp->msg)
 		return btd_error_failed(msg, strerror(EBUSY));
 
-	path = mp->search && folder == mp->search ? "/Search" : item->path;
+	path = mp->search && mp->scope == mp->search ? "/Search" : item->path;
 
 	err = cb->cbs->play_item(mp, path, item->uid, cb->user_data);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
-	folder->msg = dbus_message_ref(msg);
+	mp->msg = dbus_message_ref(msg);
 
 	return NULL;
 }
@@ -1839,23 +1835,22 @@ static const GDBusPropertyTable media_item_properties[] = {
 
 void media_player_play_item_complete(struct media_player *mp, int err)
 {
-	struct media_folder *folder = mp->scope;
 	DBusMessage *reply;
 
-	if (folder == NULL || folder->msg == NULL)
+	if (mp->msg == NULL)
 		return;
 
 	if (err < 0) {
-		reply = btd_error_failed(folder->msg, strerror(-err));
+		reply = btd_error_failed(mp->msg, strerror(-err));
 		goto done;
 	}
 
-	reply = g_dbus_create_reply(folder->msg, DBUS_TYPE_INVALID);
+	reply = g_dbus_create_reply(mp->msg, DBUS_TYPE_INVALID);
 
 done:
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
-	dbus_message_unref(folder->msg);
-	folder->msg = NULL;
+	dbus_message_unref(mp->msg);
+	mp->msg = NULL;
 }
 
 void media_item_set_playable(struct media_item *item, bool value)
