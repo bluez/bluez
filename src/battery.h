@@ -14,8 +14,12 @@ struct btd_battery_provider_manager;
 
 struct btd_battery *btd_battery_register(const char *path, const char *source,
 					 const char *provider_path);
+struct btd_battery *btd_battery_register_component(const char *device_path,
+					 const char *identifier,
+					 const char *source);
 bool btd_battery_unregister(struct btd_battery *battery);
 bool btd_battery_update(struct btd_battery *battery, uint8_t percentage);
+bool btd_battery_update_charging(struct btd_battery *battery, int charging);
 
 struct btd_battery_provider_manager *
 btd_battery_provider_manager_create(struct btd_adapter *adapter);

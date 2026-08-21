@@ -35,11 +35,18 @@
 
 #define BATTERY_MAX_PERCENTAGE 100
 
+struct battery_provider;
+
 struct btd_battery {
 	char *path; /* D-Bus object path */
+	char *device_path; /* Parent Device1 object path, if any */
+	char *identifier; /* Stable component identifier, if any */
 	uint8_t percentage; /* valid between 0 to 100 inclusively */
+	int charging; /* 0 or 1 when known, -1 otherwise */
 	char *source; /* Descriptive source of the battery info */
 	char *provider_path; /* The provider root path, if any */
+	char *provider_object_path; /* The provider battery object, if any */
+	struct battery_provider *provider; /* Does not own pointer */
 	struct bt_battery *filter;
 };
 
@@ -86,18 +93,29 @@ static bool match_path(const void *data, const void *user_data)
 	return g_strcmp0(battery->path, path) == 0;
 }
 
-static struct btd_battery *battery_new(const char *path, const char *source,
-				       const char *provider_path)
+static struct btd_battery *battery_new(const char *path,
+				       const char *device_path,
+				       const char *identifier,
+				       const char *source,
+				       const char *provider_path,
+				       const char *provider_object_path,
+				       struct battery_provider *provider)
 {
 	struct btd_battery *battery;
 
 	battery = new0(struct btd_battery, 1);
 	battery->path = g_strdup(path);
+	battery->device_path = g_strdup(device_path);
+	battery->identifier = g_strdup(identifier);
 	battery->percentage = UINT8_MAX;
+	battery->charging = -1;
 	if (source)
 		battery->source = g_strdup(source);
 	if (provider_path)
 		battery->provider_path = g_strdup(provider_path);
+	if (provider_object_path)
+		battery->provider_object_path = g_strdup(provider_object_path);
+	battery->provider = provider;
 	battery->filter = bt_battery_new();
 
 	return battery;
@@ -105,11 +123,12 @@ static struct btd_battery *battery_new(const char *path, const char *source,
 
 static void battery_free(struct btd_battery *battery)
 {
-	if (battery->path)
-		g_free(battery->path);
-
-	if (battery->source)
-		g_free(battery->source);
+	g_free(battery->path);
+	g_free(battery->device_path);
+	g_free(battery->identifier);
+	g_free(battery->source);
+	g_free(battery->provider_path);
+	g_free(battery->provider_object_path);
 
 	if (battery->filter) {
 		bt_battery_free(battery->filter);
@@ -157,15 +176,83 @@ static gboolean property_source_exists(const GDBusPropertyTable *property,
 	return battery->source != NULL;
 }
 
+static gboolean property_device_get(const GDBusPropertyTable *property,
+				    DBusMessageIter *iter, void *data)
+{
+	struct btd_battery *battery = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+				       &battery->device_path);
+
+	return TRUE;
+}
+
+static gboolean property_device_exists(const GDBusPropertyTable *property,
+				       void *data)
+{
+	struct btd_battery *battery = data;
+
+	return battery->device_path != NULL;
+}
+
+static gboolean property_identifier_get(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_battery *battery = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+				       &battery->identifier);
+
+	return TRUE;
+}
+
+static gboolean property_identifier_exists(const GDBusPropertyTable *property,
+					   void *data)
+{
+	struct btd_battery *battery = data;
+
+	return battery->identifier != NULL;
+}
+
+static gboolean property_charging_get(const GDBusPropertyTable *property,
+				      DBusMessageIter *iter, void *data)
+{
+	struct btd_battery *battery = data;
+	dbus_bool_t charging = battery->charging;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &charging);
+
+	return TRUE;
+}
+
+static gboolean property_charging_exists(const GDBusPropertyTable *property,
+					 void *data)
+{
+	struct btd_battery *battery = data;
+
+	return battery->charging >= 0;
+}
+
 static const GDBusPropertyTable battery_properties[] = {
 	{ "Percentage", "y", property_percentage_get, NULL,
 	  property_percentage_exists },
 	{ "Source", "s", property_source_get, NULL, property_source_exists },
+	{ "Device", "o", property_device_get, NULL, property_device_exists,
+				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Identifier", "s", property_identifier_get, NULL,
+	  property_identifier_exists, G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Charging", "b", property_charging_get, NULL,
+	  property_charging_exists, G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{}
 };
 
-struct btd_battery *btd_battery_register(const char *path, const char *source,
-					 const char *provider_path)
+static struct btd_battery *battery_register(const char *path,
+					    const char *device_path,
+					    const char *identifier,
+					    const char *source,
+					    const char *provider_path,
+					    const char *provider_object_path,
+					    struct battery_provider *provider)
 {
 	struct btd_battery *battery;
 
@@ -181,7 +268,8 @@ struct btd_battery *btd_battery_register(const char *path, const char *source,
 		return NULL;
 	}
 
-	battery = battery_new(path, source, provider_path);
+	battery = battery_new(path, device_path, identifier, source,
+				provider_path, provider_object_path, provider);
 	battery_add(battery);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(), battery->path,
@@ -201,8 +289,78 @@ struct btd_battery *btd_battery_register(const char *path, const char *source,
 	return battery;
 }
 
+struct btd_battery *btd_battery_register(const char *path, const char *source,
+					 const char *provider_path)
+{
+	return battery_register(path, NULL, NULL, source, provider_path, NULL,
+				NULL);
+}
+
+static char *battery_build_component_path(const char *device_path,
+					  const char *identifier)
+{
+	const unsigned char *str = (const unsigned char *) identifier;
+	GString *path;
+
+	if (!device_path || !identifier || !identifier[0])
+		return NULL;
+
+	path = g_string_new(device_path);
+	g_string_append(path, "/battery_");
+
+	for (; *str; str++) {
+		if (g_ascii_isalnum(*str))
+			g_string_append_c(path, *str);
+		else
+			g_string_append_printf(path, "_%02x", *str);
+	}
+
+	return g_string_free(path, FALSE);
+}
+
+static struct btd_battery *
+battery_register_component(const char *device_path, const char *identifier,
+				const char *source, const char *provider_path,
+				const char *provider_object_path,
+				struct battery_provider *provider)
+{
+	struct btd_battery *battery;
+	char *path;
+
+	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
+		DBG("component batteries require experimental interfaces");
+		return NULL;
+	}
+
+	path = battery_build_component_path(device_path, identifier);
+	if (!path) {
+		error("error registering battery: invalid component");
+		return NULL;
+	}
+
+	battery = battery_register(path, device_path, identifier, source,
+					provider_path, provider_object_path,
+					provider);
+	g_free(path);
+
+	return battery;
+}
+
+struct btd_battery *btd_battery_register_component(const char *device_path,
+					 const char *identifier,
+					 const char *source)
+{
+	return battery_register_component(device_path, identifier, source, NULL,
+					  NULL, NULL);
+}
+
 bool btd_battery_unregister(struct btd_battery *battery)
 {
+	if (!battery) {
+		error("error unregistering battery: battery is null");
+		return false;
+	}
+
 	DBG("path = %s", battery->path);
 
 	if (!queue_find(batteries, NULL, battery)) {
@@ -227,6 +385,11 @@ bool btd_battery_unregister(struct btd_battery *battery)
 
 bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 {
+	if (!battery) {
+		error("error updating battery: battery is null");
+		return false;
+	}
+
 	DBG("path = %s", battery->path);
 
 	if (!queue_find(batteries, NULL, battery)) {
@@ -234,7 +397,7 @@ bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 		return false;
 	}
 
-	if (percentage > BATTERY_MAX_PERCENTAGE) {
+	if (percentage > BATTERY_MAX_PERCENTAGE && percentage != UINT8_MAX) {
 		error("error updating battery: percentage is not valid");
 		return false;
 	}
@@ -242,16 +405,76 @@ bool btd_battery_update(struct btd_battery *battery, uint8_t percentage)
 	if (battery->percentage == percentage)
 		return true;
 
-	battery->percentage = bt_battery_charge(battery->filter, percentage);
+	if (percentage == UINT8_MAX) {
+		battery->percentage = percentage;
+		bt_battery_free(battery->filter);
+		free(battery->filter);
+		battery->filter = bt_battery_new();
+	} else {
+		battery->percentage = bt_battery_charge(battery->filter,
+							percentage);
+	}
+
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), battery->path,
 				     BATTERY_INTERFACE, "Percentage");
 
 	return true;
 }
 
-static struct btd_battery *find_battery_by_path(const char *path)
+bool btd_battery_update_charging(struct btd_battery *battery, int charging)
 {
-	return queue_find(batteries, match_path, path);
+	if (!battery) {
+		error("error updating battery: battery is null");
+		return false;
+	}
+
+	DBG("path = %s", battery->path);
+
+	if (!queue_find(batteries, NULL, battery)) {
+		error("error updating battery: battery is not registered");
+		return false;
+	}
+
+	if (charging < -1 || charging > 1) {
+		error("error updating battery: charging state is not valid");
+		return false;
+	}
+
+	if (battery->charging == charging)
+		return true;
+
+	battery->charging = charging;
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), battery->path,
+				     BATTERY_INTERFACE, "Charging");
+
+	return true;
+}
+
+struct provider_battery_match {
+	struct battery_provider *provider;
+	const char *object_path;
+};
+
+static bool match_provider_battery(const void *data, const void *user_data)
+{
+	const struct btd_battery *battery = data;
+	const struct provider_battery_match *match = user_data;
+
+	return battery->provider == match->provider &&
+		g_strcmp0(battery->provider_object_path,
+					match->object_path) == 0;
+}
+
+static struct btd_battery *find_provider_battery(
+					struct battery_provider *provider,
+					const char *object_path)
+{
+	struct provider_battery_match match = {
+		.provider = provider,
+		.object_path = object_path,
+	};
+
+	return queue_find(batteries, match_provider_battery, &match);
 }
 
 static void provided_battery_property_changed_cb(GDBusProxy *proxy,
@@ -259,29 +482,51 @@ static void provided_battery_property_changed_cb(GDBusProxy *proxy,
 						 DBusMessageIter *iter,
 						 void *user_data)
 {
-	uint8_t percentage = 0;
-	const char *export_path;
-	DBusMessageIter dev_iter;
+	struct btd_battery *battery;
+	struct battery_provider *provider = user_data;
+	const char *path = g_dbus_proxy_get_path(proxy);
 
-	if (g_dbus_proxy_get_property(proxy, "Device", &dev_iter) == FALSE)
+	battery = find_provider_battery(provider, path);
+	if (!battery)
 		return;
 
-	dbus_message_iter_get_basic(&dev_iter, &export_path);
+	if (!strcmp(name, "Percentage")) {
+		uint8_t percentage = UINT8_MAX;
 
-	if (strcmp(name, "Percentage") != 0)
+		if (iter) {
+			if (dbus_message_iter_get_arg_type(iter) !=
+							DBUS_TYPE_BYTE)
+				return;
+
+			dbus_message_iter_get_basic(iter, &percentage);
+		}
+
+		DBG("battery percentage changed on %s, percentage = %d", path,
+		    percentage);
+		btd_battery_update(battery, percentage);
 		return;
-
-	if (iter) {
-		if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BYTE)
-			return;
-
-		dbus_message_iter_get_basic(iter, &percentage);
 	}
 
-	DBG("battery percentage changed on %s, percentage = %d",
-	    g_dbus_proxy_get_path(proxy), percentage);
+	if (!strcmp(name, "Charging")) {
+		dbus_bool_t value;
+		int charging = -1;
 
-	btd_battery_update(find_battery_by_path(export_path), percentage);
+		if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL))
+			return;
+
+		if (iter) {
+			if (dbus_message_iter_get_arg_type(iter) !=
+							DBUS_TYPE_BOOLEAN)
+				return;
+
+			dbus_message_iter_get_basic(iter, &value);
+			charging = value;
+		}
+
+		DBG("battery charging changed on %s, charging = %d", path,
+		    charging);
+		btd_battery_update_charging(battery, charging);
+	}
 }
 
 static void provided_battery_added_cb(GDBusProxy *proxy, void *user_data)
@@ -290,10 +535,13 @@ static void provided_battery_added_cb(GDBusProxy *proxy, void *user_data)
 	struct btd_battery *battery;
 	struct btd_device *device;
 	const char *path = g_dbus_proxy_get_path(proxy);
-	const char *export_path;
+	const char *device_path;
+	const char *identifier = NULL;
 	const char *source = NULL;
 	uint8_t percentage;
+	dbus_bool_t charging;
 	DBusMessageIter iter;
+	bool experimental;
 
 	if (strcmp(g_dbus_proxy_get_interface(proxy),
 		   BATTERY_PROVIDER_INTERFACE) != 0)
@@ -304,66 +552,103 @@ static void provided_battery_added_cb(GDBusProxy *proxy, void *user_data)
 		return;
 	}
 
-	dbus_message_iter_get_basic(&iter, &export_path);
-
-	device = btd_adapter_find_device_by_path(provider->manager->adapter,
-						 export_path);
-	if (!device || device_is_temporary(device)) {
-		warn("Ignoring non-existent device path for battery %s",
-		     export_path);
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_OBJECT_PATH) {
+		warn("Battery object %s has an invalid device path", path);
 		return;
 	}
 
-	if (find_battery_by_path(export_path)) {
-		DBG("Battery for %s is already provided, ignoring the new one",
-		    export_path);
+	dbus_message_iter_get_basic(&iter, &device_path);
+
+	device = btd_adapter_find_device_by_path(provider->manager->adapter,
+						 device_path);
+	if (!device || device_is_temporary(device)) {
+		warn("Ignoring non-existent device path for battery %s",
+		     device_path);
+		return;
+	}
+
+	experimental = g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
+
+	if (g_dbus_proxy_get_property(proxy, "Identifier", &iter) == TRUE) {
+		if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING) {
+			warn("Battery object %s has an invalid identifier",
+			     path);
+			return;
+		}
+
+		dbus_message_iter_get_basic(&iter, &identifier);
+		if (!identifier[0]) {
+			warn("Battery object %s has an empty identifier", path);
+			return;
+		}
+
+		if (!experimental) {
+			warn("Ignoring experimental component battery %s",
+								path);
+			return;
+		}
+	}
+
+	if (g_dbus_proxy_get_property(proxy, "Source", &iter) == TRUE &&
+			dbus_message_iter_get_arg_type(&iter) ==
+							DBUS_TYPE_STRING)
+		dbus_message_iter_get_basic(&iter, &source);
+
+	if (identifier) {
+		battery = battery_register_component(device_path, identifier,
+						     source, provider->path,
+						     path, provider);
+	} else {
+		battery = battery_register(device_path, NULL, NULL, source,
+					   provider->path, path, provider);
+	}
+
+	if (!battery) {
+		warn("Unable to add battery object %s for %s", path,
+		     device_path);
 		return;
 	}
 
 	g_dbus_proxy_set_property_watch(
 		proxy, provided_battery_property_changed_cb, provider);
 
-	if (g_dbus_proxy_get_property(proxy, "Source", &iter) == TRUE)
-		dbus_message_iter_get_basic(&iter, &source);
-
-	battery = btd_battery_register(export_path, source, provider->path);
-
 	DBG("provided battery added %s", path);
 
 	/* Percentage property may not be immediately available, that's okay
 	 * since we monitor changes to this property.
 	 */
-	if (g_dbus_proxy_get_property(proxy, "Percentage", &iter) == FALSE)
-		return;
+	if (g_dbus_proxy_get_property(proxy, "Percentage", &iter) == TRUE &&
+			dbus_message_iter_get_arg_type(&iter) ==
+							DBUS_TYPE_BYTE) {
+		dbus_message_iter_get_basic(&iter, &percentage);
+		btd_battery_update(battery, percentage);
+	}
 
-	dbus_message_iter_get_basic(&iter, &percentage);
-
-	btd_battery_update(battery, percentage);
+	if (experimental) {
+		if (g_dbus_proxy_get_property(proxy, "Charging",
+				&iter) == TRUE &&
+				dbus_message_iter_get_arg_type(&iter) ==
+							DBUS_TYPE_BOOLEAN) {
+			dbus_message_iter_get_basic(&iter, &charging);
+			btd_battery_update_charging(battery, charging);
+		}
+	}
 }
 
 static void provided_battery_removed_cb(GDBusProxy *proxy, void *user_data)
 {
 	struct battery_provider *provider = user_data;
 	struct btd_battery *battery;
-	const char *export_path;
-	DBusMessageIter iter;
+	const char *path = g_dbus_proxy_get_path(proxy);
 
 	if (strcmp(g_dbus_proxy_get_interface(proxy),
 		   BATTERY_PROVIDER_INTERFACE) != 0)
 		return;
 
-	if (g_dbus_proxy_get_property(proxy, "Device", &iter) == FALSE)
-		return;
+	DBG("provided battery removed %s", path);
 
-	dbus_message_iter_get_basic(&iter, &export_path);
-
-	DBG("provided battery removed %s", g_dbus_proxy_get_path(proxy));
-
-	battery = find_battery_by_path(export_path);
+	battery = find_provider_battery(provider, path);
 	if (!battery)
-		return;
-
-	if (g_strcmp0(battery->provider_path, provider->path) != 0)
 		return;
 
 	g_dbus_proxy_set_property_watch(proxy, NULL, NULL);
@@ -384,7 +669,7 @@ static void unregister_if_path_has_prefix(void *data, void *user_data)
 	struct btd_battery *battery = data;
 	struct battery_provider *provider = user_data;
 
-	if (g_strcmp0(battery->provider_path, provider->path) == 0)
+	if (battery->provider == provider)
 		btd_battery_unregister(battery);
 }
 
@@ -392,7 +677,7 @@ static void battery_provider_free(gpointer data)
 {
 	struct battery_provider *provider = data;
 
-	/* Unregister batteries under the root path of provider->path */
+	/* Unregister batteries registered by this provider. */
 	queue_foreach(batteries, unregister_if_path_has_prefix, provider);
 
 	if (provider->owner)
