@@ -105,6 +105,7 @@ unit/test-uuid
 unit/test-crc
 unit/test-textfile
 unit/test-gdbus-client
+unit/test-media-player
 unit/test-sdp
 unit/test-lib
 unit/test-mgmt

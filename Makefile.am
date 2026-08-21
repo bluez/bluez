@@ -687,6 +687,19 @@ unit_test_gdbus_client_SOURCES = unit/test-gdbus-client.c
 unit_test_gdbus_client_LDADD = gdbus/libgdbus-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS) $(DBUS_LIBS)
 
+unit_tests += unit/test-media-player
+
+unit_test_media_player_SOURCES = unit/test-media-player.c \
+				profiles/audio/player.h \
+				profiles/audio/player.c \
+				src/log.h src/log.c \
+				src/error.h src/error.c \
+				src/dbus-common.h src/dbus-common.c
+unit_test_media_player_LDADD = gdbus/libgdbus-internal.la \
+				src/libshared-glib.la \
+				lib/libbluetooth-internal.la \
+				$(GLIB_LIBS) $(DBUS_LIBS)
+
 if OBEX
 unit_tests += unit/test-gobex-header unit/test-gobex-packet unit/test-gobex \
 			unit/test-gobex-transfer unit/test-gobex-apparam
