@@ -106,6 +106,7 @@ unit/test-crc
 unit/test-textfile
 unit/test-gdbus-client
 unit/test-sdp
+unit/test-sdp-xml
 unit/test-lib
 unit/test-mgmt
 unit/test-uhid
