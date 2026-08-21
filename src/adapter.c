@@ -10036,6 +10036,34 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 	device_set_unpaired(device, ev->addr.type);
 }
 
+static void device_sec_level_callback(uint16_t index, uint16_t length,
+					  const void *param, void *user_data)
+{
+	const struct mgmt_ev_security_level_changed *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *dev;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		btd_error(adapter->dev_id,
+			  "Too small Device Security Level Changed event: %d",
+			  length);
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+
+	dev = btd_adapter_find_device(adapter, &ev->addr.bdaddr, ev->addr.type);
+	if (!dev) {
+		btd_error(adapter->dev_id,
+			"Device Security Level Changed for unknown device %s",
+			addr);
+		return;
+	}
+
+	btd_device_sec_level_changed(dev, ev->tlv_data, length - 8);
+}
+
 static void clear_devices_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -10752,6 +10780,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_CONTROLLER_RESUME,
 						adapter->dev_id,
 						controller_resume_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_SECURITY_LEVEL_CHANGED,
+						adapter->dev_id,
+						device_sec_level_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter);
