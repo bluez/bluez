@@ -1257,8 +1257,11 @@ void media_player_destroy(struct media_player *mp)
 						mp->path,
 						MEDIA_FOLDER_INTERFACE);
 
-	if (mp->msg)
+	if (mp->msg) {
+		g_dbus_send_message(btd_get_dbus_connection(),
+				btd_error_failed(mp->msg, "Player removed"));
 		dbus_message_unref(mp->msg);
+	}
 
 	g_slist_free_full(mp->pending, g_free);
 	g_slist_free_full(mp->folders, media_folder_destroy);
