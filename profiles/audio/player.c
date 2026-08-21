@@ -753,7 +753,7 @@ void media_player_total_items_complete(struct media_player *mp,
 {
 	struct media_folder *folder = mp->scope;
 
-	if (folder == NULL || mp->msg == NULL)
+	if (folder == NULL)
 		return;
 
 	if (folder->number_of_items != num_of_items) {
