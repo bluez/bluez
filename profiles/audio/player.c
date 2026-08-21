@@ -826,7 +826,7 @@ static DBusMessage *media_folder_search(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_not_supported(msg);
 
 	if (mp->msg != NULL)
-		return btd_error_failed(msg, strerror(EINVAL));
+		return btd_error_failed(msg, strerror(EBUSY));
 
 	err = cb->cbs->search(mp, string, cb->user_data);
 	if (err < 0)
