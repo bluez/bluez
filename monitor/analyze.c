@@ -155,10 +155,12 @@ static void print_stats(struct hci_stats *stats, const char *label)
 		return;
 
 	print_field("%s packets: %zu/%zu", label, stats->num, stats->num_comp);
-	print_field("%s Latency: %lld-%lld msec (~%lld msec)", label,
+	print_field("%s Latency: %lld-%lld msec (~%lld msec +/- %lld msec)",
+			label,
 			TV_MSEC(stats->latency.min),
 			TV_MSEC(stats->latency.max),
-			TV_MSEC(stats->latency.med));
+			TV_MSEC(stats->latency.med),
+			packet_latency_stddev(&stats->latency));
 	print_field("%s size: %u-%u octets (~%zd octets)", label,
 			stats->min, stats->max, stats->bytes / stats->num);
 

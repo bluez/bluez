@@ -31,6 +31,9 @@ struct packet_latency {
 	struct timeval min;
 	struct timeval max;
 	struct timeval med;
+	uint64_t count;
+	uint64_t sum_usec;	/* Sum of samples, in usec */
+	uint64_t sum_sq_msec;	/* Sum of squared samples, in msec^2 */
 };
 
 struct packet_frame {
@@ -69,6 +72,7 @@ struct packet_conn_data {
 
 struct packet_conn_data *packet_get_conn_data(uint16_t handle);
 void packet_latency_add(struct packet_latency *latency, struct timeval *delta);
+long long packet_latency_stddev(const struct packet_latency *latency);
 
 bool packet_has_filter(unsigned long filter);
 void packet_set_filter(unsigned long filter);

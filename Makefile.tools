@@ -62,7 +62,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				src/settings.h src/settings.c
 monitor_btmon_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-mainloop.la \
-				$(GLIB_LIBS) $(UDEV_LIBS) -ldl
+				$(GLIB_LIBS) $(UDEV_LIBS) -ldl -lm
 
 if MANPAGES
 man_MANS += doc/btmon.1
