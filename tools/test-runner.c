@@ -23,6 +23,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <poll.h>
+#include <dirent.h>
 #include <limits.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -60,6 +61,7 @@ static const char *qemu_binary = NULL;
 static const char *kernel_image = NULL;
 static char *audio_server;
 static char *usb_dev;
+static char *pcie_dev;
 static char *extra_opts[EXTRA_OPT_MAX];
 static int num_extra_opts;
 
@@ -260,12 +262,257 @@ static void check_virtualization(void)
 #endif
 }
 
-static void start_qemu(void)
+#define PCI_DEVICES_PATH "/sys/bus/pci/devices"
+
+static char pcie_bdf[16];
+static char pcie_driver[64];
+
+static bool sysfs_write(const char *path, const char *value)
+{
+	int fd;
+	ssize_t len;
+
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		perror(path);
+		return false;
+	}
+
+	len = write(fd, value, strlen(value));
+	close(fd);
+
+	if (len < 0) {
+		perror(path);
+		return false;
+	}
+
+	return true;
+}
+
+static bool pcie_parse_bdf(const char *opts, char *bdf, size_t size)
+{
+	unsigned int domain, bus, dev, func;
+	const char *ptr;
+	char addr[32];
+	size_t len;
+
+	ptr = strstr(opts, "host=");
+	if (!ptr)
+		return false;
+
+	ptr += 5;
+	len = strcspn(ptr, ",");
+	if (!len || len >= sizeof(addr))
+		return false;
+
+	memcpy(addr, ptr, len);
+	addr[len] = '\0';
+
+	if (sscanf(addr, "%x:%x:%x.%x", &domain, &bus, &dev, &func) != 4) {
+		domain = 0;
+		if (sscanf(addr, "%x:%x.%x", &bus, &dev, &func) != 3) {
+			fprintf(stderr, "Invalid PCI address %s\n", addr);
+			return false;
+		}
+	}
+
+	snprintf(bdf, size, "%04x:%02x:%02x.%x", domain, bus, dev, func);
+
+	return true;
+}
+
+static void load_module(const char *name)
+{
+	pid_t pid;
+
+	pid = fork();
+	if (pid < 0)
+		return;
+
+	if (pid == 0) {
+		char *argv[3] = { "/sbin/modprobe", (char *) name, NULL };
+
+		execv(argv[0], argv);
+		exit(EXIT_FAILURE);
+	}
+
+	waitpid(pid, NULL, 0);
+}
+
+/* Returns the name of the driver currently bound to the given device, or
+ * NULL if the device is not bound to any driver.
+ */
+static const char *pcie_get_driver(const char *bdf, char *buf, size_t size)
+{
+	char path[PATH_MAX], link[PATH_MAX];
+	const char *name;
+	ssize_t len;
+
+	snprintf(path, sizeof(path), PCI_DEVICES_PATH "/%s/driver", bdf);
+
+	len = readlink(path, link, sizeof(link) - 1);
+	if (len < 0)
+		return NULL;
+
+	link[len] = '\0';
+
+	name = strrchr(link, '/');
+	name = name ? name + 1 : link;
+
+	snprintf(buf, size, "%.*s", (int) size - 1, name);
+
+	return buf;
+}
+
+static bool pcie_probe(const char *bdf)
+{
+	return sysfs_write("/sys/bus/pci/drivers_probe", bdf);
+}
+
+/* VFIO can only pass through a device if every other device in its IOMMU
+ * group is either unbound or already handled by VFIO, so check that before
+ * taking the device away from its driver.
+ */
+static bool pcie_group_viable(const char *bdf)
+{
+	char path[PATH_MAX], driver[64];
+	struct dirent *entry;
+	bool viable = true;
+	DIR *dir;
+
+	snprintf(path, sizeof(path),
+			PCI_DEVICES_PATH "/%s/iommu_group/devices", bdf);
+
+	dir = opendir(path);
+	if (!dir) {
+		fprintf(stderr, "No IOMMU group for %s, "
+				"is the IOMMU enabled?\n", bdf);
+		return false;
+	}
+
+	while ((entry = readdir(dir))) {
+		const char *name = entry->d_name;
+
+		if (name[0] == '.' || !strcmp(name, bdf))
+			continue;
+
+		if (!pcie_get_driver(name, driver, sizeof(driver)) ||
+				!strcmp(driver, "vfio-pci") ||
+				!strcmp(driver, "pci-stub"))
+			continue;
+
+		fprintf(stderr, "Device %s in the same IOMMU group is bound "
+				"to %s\n", name, driver);
+		viable = false;
+	}
+
+	closedir(dir);
+
+	if (!viable)
+		fprintf(stderr, "IOMMU group of %s is not viable for "
+				"passthrough\n", bdf);
+
+	return viable;
+}
+
+/* Binds the device given with -P to vfio-pci so it can be handed to the
+ * guest, remembering the driver it was bound to so it can be restored once
+ * the guest is done with it.
+ */
+static void pcie_bind_vfio(void)
+{
+	char path[PATH_MAX];
+	const char *driver;
+	struct stat st;
+
+	if (!pcie_parse_bdf(pcie_dev, pcie_bdf, sizeof(pcie_bdf)))
+		return;
+
+	snprintf(path, sizeof(path), PCI_DEVICES_PATH "/%s", pcie_bdf);
+	if (stat(path, &st) < 0) {
+		fprintf(stderr, "PCI device %s not found\n", pcie_bdf);
+		exit(EXIT_FAILURE);
+	}
+
+	load_module("vfio-pci");
+
+	driver = pcie_get_driver(pcie_bdf, pcie_driver, sizeof(pcie_driver));
+	if (driver && !strcmp(driver, "vfio-pci")) {
+		printf("Device %s already bound to vfio-pci\n", pcie_bdf);
+		pcie_bdf[0] = '\0';
+		return;
+	}
+
+	if (!pcie_group_viable(pcie_bdf))
+		exit(EXIT_FAILURE);
+
+	if (driver) {
+		printf("Unbinding %s from %s\n", pcie_bdf, driver);
+
+		snprintf(path, sizeof(path),
+				PCI_DEVICES_PATH "/%s/driver/unbind", pcie_bdf);
+		if (!sysfs_write(path, pcie_bdf)) {
+			fprintf(stderr, "Failed to unbind %s\n", pcie_bdf);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		pcie_driver[0] = '\0';
+	}
+
+	printf("Binding %s to vfio-pci\n", pcie_bdf);
+
+	snprintf(path, sizeof(path),
+			PCI_DEVICES_PATH "/%s/driver_override", pcie_bdf);
+	if (!sysfs_write(path, "vfio-pci") || !pcie_probe(pcie_bdf)) {
+		fprintf(stderr, "Failed to bind %s to vfio-pci\n", pcie_bdf);
+		exit(EXIT_FAILURE);
+	}
+}
+
+/* Undoes pcie_bind_vfio() */
+static void pcie_unbind_vfio(void)
+{
+	char path[PATH_MAX];
+
+	if (!pcie_bdf[0])
+		return;
+
+	printf("Unbinding %s from vfio-pci\n", pcie_bdf);
+
+	snprintf(path, sizeof(path),
+			PCI_DEVICES_PATH "/%s/driver/unbind", pcie_bdf);
+	sysfs_write(path, pcie_bdf);
+
+	snprintf(path, sizeof(path),
+			PCI_DEVICES_PATH "/%s/driver_override", pcie_bdf);
+	sysfs_write(path, "\n");
+
+	if (!pcie_driver[0])
+		return;
+
+	printf("Binding %s back to %s\n", pcie_bdf, pcie_driver);
+
+	pcie_probe(pcie_bdf);
+}
+
+static pid_t qemu_pid;
+
+/* Forwards the signal to QEMU so it can shutdown, the host driver is then
+ * restored once it is reaped.
+ */
+static void qemu_signal(int sig)
+{
+	if (qemu_pid > 0)
+		kill(qemu_pid, sig);
+}
+
+static int start_qemu(void)
 {
 	char cwd[PATH_MAX/2], initcmd[PATH_MAX], testargs[PATH_MAX];
 	char cmdline[CMDLINE_MAX];
 	char **argv;
-	int i, pos;
+	int i, pos, status = 0;
+	pid_t pid;
 
 	check_virtualization();
 
@@ -296,11 +543,15 @@ static void start_qemu(void)
 				"console=hvc0 earlyprintk=serial "
 				"no_hash_pointers=1 rootfstype=9p "
 				"rootflags=trans=virtio,version=9p2000.u "
-				"acpi=off pci=noacpi noapic quiet ro init=%s "
+				"%s quiet ro init=%s "
 				"TESTHOME=%s TESTDBUS=%u TESTDAEMON=%u "
 				"TESTDBUSSESSION=%u XDG_RUNTIME_DIR=/run/user/0 "
 				"TESTMONITOR=%u TESTEMULATOR=%u TESTDEVS=%d "
 				"TESTAUTO=%u TESTAUDIO='%s' TESTARGS=\'%s\'",
+				/* PCIe passthrough requires ACPI and APIC for
+				 * device enumeration and MSI interrupts.
+				 */
+				pcie_dev ? "" : "acpi=off pci=noacpi noapic",
 				initcmd, cwd, start_dbus, start_daemon,
 				start_dbus_session,
 				start_monitor, num_emulator, num_devs,
@@ -310,6 +561,7 @@ static void start_qemu(void)
 	argv = alloca(sizeof(qemu_argv) +
 			(sizeof(char *) * (8 + (num_devs * 4))) +
 			(sizeof(char *) * (usb_dev ? 4 : 0)) +
+			(sizeof(char *) * (pcie_dev ? 2 : 0)) +
 			(sizeof(char *) * num_extra_opts));
 	memcpy(argv, qemu_argv, sizeof(qemu_argv));
 
@@ -354,12 +606,58 @@ static void start_qemu(void)
 		argv[pos++] = usb_dev;
 	}
 
+	if (pcie_dev) {
+		argv[pos++] = "-device";
+		argv[pos++] = pcie_dev;
+	}
+
 	for (i = 0; i < num_extra_opts; ++i)
 		argv[pos++] = extra_opts[i];
 
 	argv[pos] = NULL;
 
-	execve(argv[0], argv, qemu_envp);
+	if (!pcie_dev) {
+		execve(argv[0], argv, qemu_envp);
+		return EXIT_FAILURE;
+	}
+
+	/* With a device passed through the host driver has to be restored
+	 * once the guest is done with it, so QEMU cannot simply replace this
+	 * process here.
+	 */
+	pcie_bind_vfio();
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		pcie_unbind_vfio();
+		return EXIT_FAILURE;
+	}
+
+	if (pid == 0) {
+		execve(argv[0], argv, qemu_envp);
+		exit(EXIT_FAILURE);
+	}
+
+	qemu_pid = pid;
+
+	/* Terminate QEMU rather than this process, so the host driver can be
+	 * restored below.
+	 */
+	signal(SIGINT, qemu_signal);
+	signal(SIGTERM, qemu_signal);
+	signal(SIGHUP, qemu_signal);
+
+	while (waitpid(pid, &status, 0) < 0) {
+		if (errno != EINTR)
+			break;
+	}
+
+	qemu_pid = -1;
+
+	pcie_unbind_vfio();
+
+	return WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE;
 }
 
 static int open_serial(const char *path)
@@ -1222,6 +1520,7 @@ static void usage(void)
 		"\t-A, --audio[=path]     Start audio server\n"
 		"\t-u, --unix[=path]      Provide serial device\n"
 		"\t-U, --usb <qemu_args>  Provide USB device\n"
+		"\t-P, --pcie <qemu_args> Provide PCIe device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-H, --qemu-host-cpu    Use host CPU (requires KVM support)\n"
 		"\t-k, --kernel <image>   Kernel bzImage or source tree path\n"
@@ -1243,6 +1542,7 @@ static const struct option main_options[] = {
 	{ "kernel",  required_argument, NULL, 'k' },
 	{ "audio",   optional_argument, NULL, 'A' },
 	{ "usb",     required_argument, NULL, 'U' },
+	{ "pcie",    required_argument, NULL, 'P' },
 	{ "option",  required_argument, NULL, 'o' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
@@ -1265,7 +1565,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "au::bdsl::mq:Hk:A::U:o:vh",
+		opt = getopt_long(argc, argv, "au::bdsl::mq:Hk:A::U:P:o:vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -1309,6 +1609,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'U':
 			usb_dev = optarg;
+			break;
+		case 'P':
+			pcie_dev = optarg;
 			break;
 		case 'o':
 			if (num_extra_opts >= EXTRA_OPT_MAX) {
@@ -1362,7 +1665,5 @@ int main(int argc, char *argv[])
 	printf("Using QEMU binary %s\n", qemu_binary);
 	printf("Using kernel image %s\n", kernel_image);
 
-	start_qemu();
-
-	return EXIT_SUCCESS;
+	return start_qemu();
 }
