@@ -68,6 +68,7 @@ struct set_opts {
 	int central;
 	uint8_t mode;
 	int flushable;
+	int force_active;
 	uint32_t priority;
 	uint16_t voice;
 	struct bt_iso_qos qos;
@@ -601,6 +602,17 @@ static int l2cap_set_flushable(int sock, gboolean flushable)
 	return 0;
 }
 
+static int l2cap_set_bt_power(int sock, int force_active)
+{
+	struct bt_power pwr = {0};
+
+	pwr.force_active = force_active;
+	if (setsockopt(sock, SOL_BLUETOOTH, BT_POWER, &pwr, sizeof(pwr)) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static int set_priority(int sock, uint32_t prio)
 {
 	if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(prio)) < 0)
@@ -696,8 +708,8 @@ static gboolean set_le_mode(int sock, uint8_t mode, GError **err)
 
 static gboolean l2cap_set(int sock, uint8_t src_type, int sec_level,
 				int imtu, uint16_t omtu, uint8_t mode,
-				int central, int flushable, uint32_t priority,
-				GError **err)
+				int central, int flushable, int force_active,
+				uint32_t priority, GError **err)
 {
 	if (imtu != -1 || omtu || mode) {
 		gboolean ret = FALSE;
@@ -733,6 +745,11 @@ static gboolean l2cap_set(int sock, uint8_t src_type, int sec_level,
 
 	if (flushable >= 0 && l2cap_set_flushable(sock, flushable) < 0) {
 		ERROR_FAILED(err, "l2cap_set_flushable", errno);
+		return FALSE;
+	}
+
+	if (force_active >= 0 && l2cap_set_bt_power(sock, force_active) < 0) {
+		ERROR_FAILED(err, "l2cap_set_bt_power", errno);
 		return FALSE;
 	}
 
@@ -968,6 +985,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	opts->central = -1;
 	opts->mode = L2CAP_MODE_BASIC;
 	opts->flushable = -1;
+	opts->force_active = -1;
 	opts->priority = 0;
 	opts->src_type = BDADDR_BREDR;
 	opts->dst_type = BDADDR_BREDR;
@@ -1042,6 +1060,9 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			break;
 		case BT_IO_OPT_FLUSHABLE:
 			opts->flushable = va_arg(args, gboolean);
+			break;
+		case BT_IO_OPT_FORCE_ACTIVE:
+			opts->force_active = va_arg(args, int);
 			break;
 		case BT_IO_OPT_PRIORITY:
 			opts->priority = va_arg(args, int);
@@ -1387,6 +1408,7 @@ parse_opts:
 		case BT_IO_OPT_SOURCE_CHANNEL:
 		case BT_IO_OPT_DEST_CHANNEL:
 		case BT_IO_OPT_MTU:
+		case BT_IO_OPT_FORCE_ACTIVE:
 		case BT_IO_OPT_VOICE:
 		case BT_IO_OPT_QOS:
 		case BT_IO_OPT_BASE:
@@ -1544,6 +1566,7 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 		case BT_IO_OPT_IMTU:
 		case BT_IO_OPT_MODE:
 		case BT_IO_OPT_FLUSHABLE:
+		case BT_IO_OPT_FORCE_ACTIVE:
 		case BT_IO_OPT_PRIORITY:
 		case BT_IO_OPT_VOICE:
 		case BT_IO_OPT_QOS:
@@ -1658,6 +1681,7 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_CENTRAL:
 		case BT_IO_OPT_MODE:
 		case BT_IO_OPT_FLUSHABLE:
+		case BT_IO_OPT_FORCE_ACTIVE:
 		case BT_IO_OPT_PRIORITY:
 		case BT_IO_OPT_VOICE:
 		case BT_IO_OPT_QOS:
@@ -1795,6 +1819,7 @@ static gboolean iso_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_CENTRAL:
 		case BT_IO_OPT_MODE:
 		case BT_IO_OPT_FLUSHABLE:
+		case BT_IO_OPT_FORCE_ACTIVE:
 		case BT_IO_OPT_PRIORITY:
 		case BT_IO_OPT_VOICE:
 		case BT_IO_OPT_ISO_BC_NUM_BIS:
@@ -1963,7 +1988,8 @@ gboolean bt_io_set(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 	case BT_IO_L2CAP:
 		return l2cap_set(sock, opts.src_type, opts.sec_level, opts.imtu,
 					opts.omtu, opts.mode, opts.central,
-					opts.flushable, opts.priority, err);
+					opts.flushable, opts.force_active,
+					opts.priority, err);
 	case BT_IO_RFCOMM:
 		return rfcomm_set(sock, opts.sec_level, opts.central, err);
 	case BT_IO_SCO:
@@ -2014,7 +2040,8 @@ static GIOChannel *create_io(gboolean server, struct set_opts *opts,
 			goto failed;
 		if (!l2cap_set(sock, opts->src_type, opts->sec_level,
 				opts->imtu, opts->omtu, opts->mode,
-				opts->central, opts->flushable, opts->priority,
+				opts->central, opts->flushable,
+				opts->force_active, opts->priority,
 				err))
 			goto failed;
 		break;
