@@ -291,6 +291,14 @@ For guidance on using AI tools when contributing to BlueZ, see:
 	doc/coding-assistants.rst
 
 
+Reporting security issues
+=========================
+
+Do not report suspected vulnerabilities to the mailing list. The process for
+reporting them is described in:
+	SECURITY.md
+
+
 Information
 ===========
 
