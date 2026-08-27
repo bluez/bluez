@@ -2413,7 +2413,7 @@ static gboolean avrcp_list_player_attributes_rsp(struct avctp *conn,
 
 	for (i = 0; len > 0; len--, i++) {
 		/* Don't query invalid attributes */
-		if (pdu->params[i + 1] == AVRCP_ATTRIBUTE_ILEGAL ||
+		if (pdu->params[i + 1] == AVRCP_ATTRIBUTE_ILLEGAL ||
 				pdu->params[i + 1] > AVRCP_ATTRIBUTE_LAST)
 			continue;
 
