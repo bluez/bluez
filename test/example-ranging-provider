@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
+import dbus
+import dbus.exceptions
+import dbus.mainloop.glib
+import dbus.service
+
+try:
+  from gi.repository import GObject
+except ImportError:
+  import gobject as GObject
+
+mainloop = None
+app = None
+bus = None
+
+BLUEZ_SERVICE_NAME = 'org.bluez'
+DBUS_OM_IFACE =      'org.freedesktop.DBus.ObjectManager'
+DBUS_PROP_IFACE =    'org.freedesktop.DBus.Properties'
+
+RANGING_PROVIDER_MANAGER_IFACE = 'org.bluez.RangingProviderManager1'
+RANGING_PROVIDER_IFACE = 'org.bluez.RangingProvider1'
+RANGING_PROVIDER_PATH = '/org/bluez/hci0'
+
+CS_IFACE = 'org.bluez.ChannelSounding1'
+
+
+class InvalidArgsException(dbus.exceptions.DBusException):
+    _dbus_error_name = 'org.freedesktop.DBus.Error.InvalidArgs'
+
+
+class Application(dbus.service.Object):
+    def __init__(self, bus):
+        self.path = RANGING_PROVIDER_PATH
+        self.rangings = {}
+        dbus.service.Object.__init__(self, bus, self.path)
+
+    def get_path(self):
+        return dbus.ObjectPath(self.path)
+
+    def add_ranging(self, ranging):
+        self.rangings[ranging.dev_path] = ranging
+        self.InterfacesAdded(ranging.get_path(), ranging.get_properties())
+
+    def remove_ranging(self, ranging):
+        del self.rangings[ranging.dev_path]
+        self.InterfacesRemoved(ranging.get_path(), [RANGING_PROVIDER_IFACE])
+
+    def find_by_device(self, dev_path):
+        return self.rangings.get(dev_path)
+
+    @dbus.service.method(DBUS_OM_IFACE, out_signature='a{oa{sa{sv}}}')
+    def GetManagedObjects(self):
+        response = {}
+
+        for ranging in self.rangings.values():
+            response[ranging.get_path()] = ranging.get_properties()
+
+        return response
+
+    @dbus.service.signal(DBUS_OM_IFACE, signature='oa{sa{sv}}')
+    def InterfacesAdded(self, object_path, interfaces_and_properties):
+        return
+
+    @dbus.service.signal(DBUS_OM_IFACE, signature='oas')
+    def InterfacesRemoved(self, object_path, interfaces):
+        return
+
+
+class Ranging(dbus.service.Object):
+    """
+    org.bluez.RangingProvider1 interface implementation
+    """
+    def __init__(self, bus, dev_path):
+        dev = dev_path.rsplit('/', 1)[-1]
+        self.path = RANGING_PROVIDER_PATH + '/' + dev
+        self.dev_path = dev_path
+        self.bus = bus
+        self.millimeters = None
+        dbus.service.Object.__init__(self, bus, self.path)
+
+    def get_ranging_properties(self):
+        properties = {}
+        if self.millimeters is not None:
+            properties['Distance'] = dbus.UInt32(self.millimeters)
+        properties['Device'] = dbus.ObjectPath(self.dev_path)
+        return properties
+
+    def get_properties(self):
+        return { RANGING_PROVIDER_IFACE: self.get_ranging_properties() }
+
+    def get_path(self):
+        return dbus.ObjectPath(self.path)
+
+    def set_distance_millimeters(self, millimeters):
+        self.millimeters = millimeters
+        print('ranging %s Distance %d' %
+                (self.path, self.millimeters))
+        self.PropertiesChanged(
+                RANGING_PROVIDER_IFACE, self.get_ranging_properties(), [])
+
+    @dbus.service.method(DBUS_PROP_IFACE,
+                         in_signature='s',
+                         out_signature='a{sv}')
+    def GetAll(self, interface):
+        if interface != RANGING_PROVIDER_IFACE:
+            raise InvalidArgsException()
+
+        return self.get_properties()[RANGING_PROVIDER_IFACE]
+
+    @dbus.service.signal(DBUS_PROP_IFACE, signature='sa{sv}as')
+    def PropertiesChanged(self, interface, properties, invalidated):
+        return
+
+
+def procedure_data_cb(data, path, interface):
+    ranging = app.find_by_device(path)
+    if ranging is None:
+        ranging = Ranging(bus, path)
+        app.add_ranging(ranging)
+
+    # This example does not parse ProcedureData at all; it just reports a
+    # fixed 2 meters on every procedure to illustrate the RangingProvider
+    # wiring.
+    ranging.set_distance_millimeters(2000)
+
+
+def register_provider_cb():
+    print('Ranging Provider registered')
+
+
+def register_provider_error_cb(error):
+    print('Failed to register Ranging Provider: ' + str(error))
+    mainloop.quit()
+
+
+def find_manager(bus):
+    try:
+        remote_om = dbus.Interface(bus.get_object(BLUEZ_SERVICE_NAME, '/'),
+                                   DBUS_OM_IFACE)
+        objects = remote_om.GetManagedObjects()
+    except dbus.exceptions.DBusException as e:
+        print('Failed to reach bluetoothd: ' + str(e))
+        return None
+
+    for o, props in objects.items():
+        if RANGING_PROVIDER_MANAGER_IFACE in props.keys():
+            return o
+
+    return None
+
+
+def unregister_provider_cb():
+    print('Ranging Provider unregistered')
+    for ranging in list(app.rangings.values()):
+        app.remove_ranging(ranging)
+    mainloop.quit()
+
+
+def unregister_provider_error_cb(error):
+    print('Failed to unregister Ranging Provider: ' + str(error))
+
+
+def unregister_ranging_provider(ranging_provider_manager):
+    ranging_provider_manager.UnregisterRangingProvider(RANGING_PROVIDER_PATH,
+                                    reply_handler=unregister_provider_cb,
+                                    error_handler=unregister_provider_error_cb)
+
+
+def main():
+    """
+    Simulates an external Channel Sounding ranging daemon: it registers with
+    BlueZ as a Ranging Provider, then listens for ProcedureData signals from
+    every device exposing org.bluez.ChannelSounding1 and turns each completed
+    procedure into a Distance update on the matching
+    RangingProvider object.
+    """
+    global mainloop, bus, app
+
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+    try:
+        bus = dbus.SystemBus()
+    except dbus.exceptions.DBusException as e:
+        print('Failed to connect to the system bus: ' + str(e))
+        return
+
+    manager_path = find_manager(bus)
+    if not manager_path:
+        print('RangingProviderManager interface not found')
+        return
+
+    print('RangingProviderManager path = ', manager_path)
+
+    ranging_provider_manager = dbus.Interface(
+            bus.get_object(BLUEZ_SERVICE_NAME, manager_path),
+            RANGING_PROVIDER_MANAGER_IFACE)
+
+    app = Application(bus)
+
+    bus.add_signal_receiver(procedure_data_cb, signal_name='ProcedureData',
+                            dbus_interface=CS_IFACE, path_keyword='path',
+                            interface_keyword='interface')
+
+    mainloop = GObject.MainLoop()
+
+    print('Registering Ranging Provider...')
+
+    ranging_provider_manager.RegisterRangingProvider(RANGING_PROVIDER_PATH,
+                                    reply_handler=register_provider_cb,
+                                    error_handler=register_provider_error_cb)
+
+    # Unregister the Ranging Provider after an arbitrary amount of time
+    GObject.timeout_add(
+            60000, unregister_ranging_provider, ranging_provider_manager)
+
+    mainloop.run()
+
+
+if __name__ == '__main__':
+    main()
