@@ -561,15 +561,65 @@ Analyze mode reports, for each controller found in the trace:
   - Connection type (BR-ACL, LE-ACL, BR-SCO, BR-ESCO, LE-ISO)
   - Device address
   - TX and RX packet counts and completion counts
-  - Latency statistics (min, max, median) in milliseconds
+  - Latency statistics (min, max, moving average and standard
+    deviation) in milliseconds
   - Packet size statistics (min, max, average) in octets
   - Throughput estimate in Kb/s
+  - Packet loss statistics, for isochronous connections
 
 - **Per-channel statistics**: For each L2CAP channel within a
   connection, the same packet/latency/size statistics.
 
 - **Latency plots**: If ``gnuplot`` is installed, ASCII-art latency
    distribution plots are rendered in the terminal.
+
+Latency Standard Deviation
+--------------------------
+
+Latency is reported as::
+
+   TX Latency: 5-300 msec (~91 msec +/- 104 msec)
+
+The range is the minimum and maximum observed latency, ``~`` is a
+moving average and ``+/-`` is the standard deviation over all samples.
+
+The standard deviation is what distinguishes a link that is merely slow
+from one that is unstable. A high average with a low deviation means
+consistent latency, which is usually a scheduling or interval
+configuration issue. A low average with a high deviation means most
+packets are fast but some are heavily delayed, which typically points at
+interference, retransmissions or controller buffer stalls. Comparing the
+maximum against ``average + deviation`` shows whether the worst case is
+representative or a one-off outlier.
+
+Packet Loss
+-----------
+
+Packet loss is tracked for isochronous (CIS/BIS) connections, where the
+ISO data packet header carries an SDU sequence number and a packet
+status flag. It is reported as::
+
+   RX loss: 13/21 (61.90%) dropped 1 invalid 1
+
+The counters are:
+
+- **loss**: SDUs missing from the received sequence, derived from gaps
+  in the sequence number. The denominator is the number of SDUs that
+  should have been received, that is the ones actually seen plus the
+  ones detected as missing.
+
+- **dropped**: SDUs the controller delivered with a packet status flag
+  of ``2`` (lost data), meaning the controller knows the payload did not
+  arrive.
+
+- **invalid**: SDUs delivered with a packet status flag of ``1``
+  (possibly invalid), meaning the payload arrived but may be corrupt.
+
+Duplicate and reordered sequence numbers are not counted as loss.
+
+Loss counters are also shown during live decoding, on the ISO data
+packet where a discontinuity is detected. The line is only emitted once
+a loss has occurred, so a clean stream produces no extra output.
 
 PROTOCOL ERROR CODES
 =====================
