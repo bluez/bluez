@@ -32,6 +32,12 @@
 #define TIMEVAL_MSEC(_tv) \
 	(long long)((_tv)->tv_sec * 1000 + (_tv)->tv_usec / 1000)
 
+/* Same layout as the ISO handle/flags fields decoded in packet.c */
+#define ISO_FLAGS(_h)		((_h) >> 12)
+#define ISO_FLAGS_PB(_f)	((_f) & 0x0003)
+#define ISO_FLAGS_TS(_f)	(((_f) >> 2) & 0x0001)
+#define ISO_DATA_FLAGS(_h)	((_h) >> 14)
+
 struct hci_dev {
 	uint16_t index;
 	uint8_t type;
@@ -87,6 +93,7 @@ struct hci_conn {
 	struct queue *chan_list;
 	struct hci_stats rx;
 	struct hci_stats tx;
+	struct packet_loss rx_loss;
 };
 
 struct hci_conn_tx {
@@ -356,6 +363,15 @@ static void conn_destroy(void *data)
 		print_field("Connection setup missing");
 	print_stats(&conn->rx, "RX");
 	print_stats(&conn->tx, "TX");
+
+	if (conn->rx_loss.total)
+		print_field("RX loss: %zu/%zu (%zu.%02zu%%) "
+				"dropped %zu invalid %zu",
+				conn->rx_loss.lost, conn->rx_loss.total,
+				conn->rx_loss.lost * 100 / conn->rx_loss.total,
+				(conn->rx_loss.lost * 10000 /
+					conn->rx_loss.total) % 100,
+				conn->rx_loss.dropped, conn->rx_loss.invalid);
 
 	if (conn->setup_seen) {
 		print_field("Connected: #%lu", conn->frame_connected);
@@ -1338,8 +1354,11 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 					const void *data, uint16_t size)
 {
 	const struct bt_hci_iso_hdr *hdr = data;
+	struct iovec iov = { .iov_base = (void *)data, .iov_len = size };
 	struct hci_conn *conn;
 	struct hci_dev *dev;
+	uint16_t handle;
+	uint8_t flags, pb_flag;
 
 	dev = dev_lookup(index);
 	if (!dev)
@@ -1355,6 +1374,26 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 							BTMON_CONN_BIS);
 		if (!conn)
 			return;
+	}
+
+	handle = le16_to_cpu(hdr->handle);
+	flags = ISO_FLAGS(handle);
+	pb_flag = ISO_FLAGS_PB(flags);
+
+	/* Only the first fragment of an SDU carries the sequence number */
+	if (!out && (pb_flag == 0x00 || pb_flag == 0x02)) {
+		const struct bt_hci_iso_data_start *start;
+
+		util_iov_pull_mem(&iov, sizeof(*hdr));
+
+		/* Skip the timestamp when present */
+		if (ISO_FLAGS_TS(flags))
+			util_iov_pull_mem(&iov, sizeof(uint32_t));
+
+		start = util_iov_pull_mem(&iov, sizeof(*start));
+		if (start)
+			packet_loss_add(&conn->rx_loss, le16_to_cpu(start->sn),
+				ISO_DATA_FLAGS(le16_to_cpu(start->slen)));
 	}
 
 	if (out) {

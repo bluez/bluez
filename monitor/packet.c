@@ -11588,6 +11588,37 @@ long long packet_latency_stddev(const struct packet_latency *latency)
 	return (long long)sqrt(var);
 }
 
+void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags)
+{
+	loss->total++;
+
+	switch (sflags) {
+	case 0x01:
+		loss->invalid++;
+		break;
+	case 0x02:
+		loss->dropped++;
+		break;
+	}
+
+	if (loss->have_sn) {
+		uint16_t gap = sn - loss->last_sn - 1;
+
+		/*
+		 * A sequence number that did not advance is a duplicate or a
+		 * retransmission, and one that moved backwards is a reorder.
+		 * Neither is a loss, so only account for forward gaps.
+		 */
+		if (sn != loss->last_sn && gap < 0x8000) {
+			loss->lost += gap;
+			loss->total += gap;
+		}
+	}
+
+	loss->last_sn = sn;
+	loss->have_sn = true;
+}
+
 static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 {
 	struct packet_conn_data *conn;
@@ -14587,6 +14618,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	struct packet_conn_data *conn;
 	size_t ts_size = 0;
 	bool have_hdr;
+	uint16_t sn = 0;
+	uint8_t sflags = 0;
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
@@ -14625,12 +14658,12 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	if (have_hdr) {
 		const struct bt_hci_iso_data_start *start = data;
-		uint8_t sflags;
 		uint16_t slen;
 
 		if (size < sizeof(*start))
 			goto malformed;
 
+		sn = le16_to_cpu(start->sn);
 		sflags = iso_data_flags(le16_to_cpu(start->slen));
 		slen = iso_data_len(le16_to_cpu(start->slen));
 
@@ -14641,11 +14674,13 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 					sizeof(slen_str) - strlen(slen_str),
 					" sflags %u", sflags);
 
-		snprintf(sn_str, sizeof(sn_str), " SN %u",
-							le16_to_cpu(start->sn));
+		snprintf(sn_str, sizeof(sn_str), " SN %u", sn);
 	}
 
 	conn = packet_get_conn_data(handle);
+
+	if (in && have_hdr && conn)
+		packet_loss_add(&conn->rx_loss, sn, sflags);
 
 	if (!in && pool->total)
 		sprintf(handle_str, "Handle %d [%u/%u]%s",
@@ -14665,6 +14700,18 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ISODATA,
 				label, handle_str, extra_str);
+
+	if (in && conn) {
+		struct packet_loss *loss = &conn->rx_loss;
+
+		if (loss->lost || loss->dropped || loss->invalid)
+			print_field("Lost: %zu/%zu (%zu.%02zu%%) "
+				"dropped %zu invalid %zu",
+				loss->lost, loss->total,
+				loss->lost * 100 / loss->total,
+				(loss->lost * 10000 / loss->total) % 100,
+				loss->dropped, loss->invalid);
+	}
 
 	if (!in)
 		packet_enqueue_tx(tv, acl_handle(handle),

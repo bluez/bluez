@@ -36,6 +36,15 @@ struct packet_latency {
 	uint64_t sum_sq_msec;	/* Sum of squared samples, in msec^2 */
 };
 
+struct packet_loss {
+	uint16_t last_sn;
+	bool have_sn;
+	size_t lost;		/* Samples missing from the SN sequence */
+	size_t invalid;		/* Samples flagged possibly invalid */
+	size_t dropped;		/* Samples flagged as lost data */
+	size_t total;		/* Samples seen, including the lost ones */
+};
+
 struct packet_frame {
 	struct timeval tv;
 	size_t num;
@@ -66,6 +75,7 @@ struct packet_conn_data {
 	struct queue *tx_q;
 	struct queue *chan_q;
 	struct packet_latency tx_l;
+	struct packet_loss rx_loss;
 	void     *data;
 	void     (*destroy)(struct packet_conn_data *conn, void *data);
 };
@@ -73,6 +83,7 @@ struct packet_conn_data {
 struct packet_conn_data *packet_get_conn_data(uint16_t handle);
 void packet_latency_add(struct packet_latency *latency, struct timeval *delta);
 long long packet_latency_stddev(const struct packet_latency *latency);
+void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags);
 
 bool packet_has_filter(unsigned long filter);
 void packet_set_filter(unsigned long filter);
