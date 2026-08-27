@@ -145,7 +145,7 @@
 #define AVRCP_STATUS_ADDRESSED_PLAYER_CHANGED		0x16
 
 /* player attributes */
-#define AVRCP_ATTRIBUTE_ILEGAL		0x00
+#define AVRCP_ATTRIBUTE_ILLEGAL		0x00
 #define AVRCP_ATTRIBUTE_EQUALIZER	0x01
 #define AVRCP_ATTRIBUTE_REPEAT_MODE	0x02
 #define AVRCP_ATTRIBUTE_SHUFFLE		0x03
@@ -471,7 +471,7 @@ static void avrcp_get_capabilities_dump(int level, struct frame *frm, uint16_t l
 static const char *attr2str(uint8_t attr)
 {
 	switch (attr) {
-	case AVRCP_ATTRIBUTE_ILEGAL:
+	case AVRCP_ATTRIBUTE_ILLEGAL:
 		return "Illegal";
 	case AVRCP_ATTRIBUTE_EQUALIZER:
 		return "Equalizer ON/OFF Status";
@@ -512,7 +512,7 @@ static void avrcp_list_player_attributes_dump(int level, struct frame *frm,
 static const char *value2str(uint8_t attr, uint8_t value)
 {
 	switch (attr) {
-	case AVRCP_ATTRIBUTE_ILEGAL:
+	case AVRCP_ATTRIBUTE_ILLEGAL:
 		return "Illegal";
 	case AVRCP_ATTRIBUTE_EQUALIZER:
 		switch (value) {

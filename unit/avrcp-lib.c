@@ -717,7 +717,7 @@ static bool check_attributes(uint8_t number, const uint8_t *attrs)
 
 	for (i = 0; i < number; i++) {
 		if (attrs[i] > AVRCP_ATTRIBUTE_LAST ||
-					attrs[i] == AVRCP_ATTRIBUTE_ILEGAL)
+					attrs[i] == AVRCP_ATTRIBUTE_ILLEGAL)
 			return false;
 	}
 
@@ -765,7 +765,7 @@ static ssize_t list_values(struct avrcp *session, uint8_t transaction,
 
 	req = (void *) params;
 	if (req->attr > AVRCP_ATTRIBUTE_LAST ||
-					req->attr == AVRCP_ATTRIBUTE_ILEGAL)
+					req->attr == AVRCP_ATTRIBUTE_ILLEGAL)
 		return -EINVAL;
 
 	if (!player->ind || !player->ind->list_values)
@@ -828,7 +828,7 @@ static ssize_t get_value_text(struct avrcp *session, uint8_t transaction,
 		return -EINVAL;
 
 	if (req->number > AVRCP_ATTRIBUTE_LAST ||
-					req->number == AVRCP_ATTRIBUTE_ILEGAL)
+					req->number == AVRCP_ATTRIBUTE_ILLEGAL)
 		return -EINVAL;
 
 	if (!check_value(req->attr, req->number, req->values))
@@ -3138,7 +3138,7 @@ int avrcp_get_player_attribute_text_rsp(struct avrcp *session,
 		uint8_t len = 0;
 
 		if (attrs[i] > AVRCP_ATTRIBUTE_LAST ||
-					attrs[i] == AVRCP_ATTRIBUTE_ILEGAL)
+					attrs[i] == AVRCP_ATTRIBUTE_ILLEGAL)
 			return -EINVAL;
 
 		if (text[i])
