@@ -314,11 +314,12 @@ static void transfer_abort_req(GObex *obex, GObexPacket *req, gpointer user_data
 
 	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
 						"Request was aborted");
-	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, G_OBEX_HDR_INVALID);
-	g_obex_send(obex, rsp, NULL);
 
 	transfer_complete(transfer, err);
 	g_error_free(err);
+
+	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, G_OBEX_HDR_INVALID);
+	g_obex_send(obex, rsp, NULL);
 }
 
 static guint8 put_get_bytes(struct transfer *transfer, GObexPacket *req)
