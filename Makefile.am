@@ -332,6 +332,7 @@ bluetoothd_internal_sources = \
 			src/eir.h src/eir.c \
 			src/adv_monitor.h src/adv_monitor.c \
 			src/battery.h src/battery.c \
+			src/ranging.h src/ranging.c \
 			src/settings.h src/settings.c \
 			src/set.h src/set.c \
 			src/bearer.h src/bearer.c
