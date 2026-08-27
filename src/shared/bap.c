@@ -2555,7 +2555,7 @@ static void bap_sink_get_allocation(size_t i, uint8_t l, uint8_t t,
 {
 	uint32_t location32;
 
-	if (!v)
+	if (!v || l != sizeof(location32))
 		return;
 
 	memcpy(&location32, v, l);
@@ -7764,7 +7764,7 @@ static void bap_sink_match_allocation(size_t i, uint8_t l, uint8_t t,
 	struct bt_ltv_match *data = user_data;
 	uint32_t location32;
 
-	if (!v)
+	if (!v || l != sizeof(location32))
 		return;
 
 	memcpy(&location32, v, l);
