@@ -27,6 +27,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <limits.h>
+#include <math.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/uuid.h"
@@ -11524,7 +11525,26 @@ static void role_change_evt(struct timeval *tv, uint16_t index,
 
 void packet_latency_add(struct packet_latency *latency, struct timeval *delta)
 {
+	uint64_t usec;
+
 	timeradd(&latency->total, delta, &latency->total);
+
+	/*
+	 * Negative deltas are the result of out of order timestamps and
+	 * would only skew the deviation, so leave them out.
+	 */
+	if (delta->tv_sec >= 0 && delta->tv_usec >= 0) {
+		usec = (uint64_t)delta->tv_sec * 1000000 + delta->tv_usec;
+
+		latency->count++;
+		latency->sum_usec += usec;
+		/*
+		 * Square first and scale down to msec^2 afterwards so the
+		 * sub-msec resolution is not lost, while keeping the running
+		 * sum well clear of an overflow.
+		 */
+		latency->sum_sq_msec += (usec * usec) / 1000000;
+	}
 
 	if ((!timerisset(&latency->min) || timercmp(delta, &latency->min, <))
 				&& delta->tv_sec >= 0 && delta->tv_usec >= 0)
@@ -11551,6 +11571,21 @@ void packet_latency_add(struct packet_latency *latency, struct timeval *delta)
 		latency->med = tmp;
 	} else
 		latency->med = *delta;
+}
+
+long long packet_latency_stddev(const struct packet_latency *latency)
+{
+	double mean, var;
+
+	if (latency->count < 2)
+		return 0;
+
+	mean = (double)latency->sum_usec / latency->count / 1000;
+	var = (double)latency->sum_sq_msec / latency->count - mean * mean;
+	if (var <= 0)
+		return 0;
+
+	return (long long)sqrt(var);
 }
 
 static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
@@ -11585,10 +11620,12 @@ static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 	if (TV_MSEC(delta)) {
 		print_field("#%zu: len %zu (%lld Kb/s)", frame->num, frame->len,
 				frame->len * 8 / TV_MSEC(delta));
-		print_field("Latency: %lld msec (%lld-%lld msec ~%lld msec)",
+		print_field("Latency: %lld msec (%lld-%lld msec ~%lld msec "
+				"+/- %lld msec)",
 				TV_MSEC(delta), TV_MSEC(conn->tx_l.min),
 				TV_MSEC(conn->tx_l.max),
-				TV_MSEC(conn->tx_l.med));
+				TV_MSEC(conn->tx_l.med),
+				packet_latency_stddev(&conn->tx_l));
 	}
 
 	l2cap_dequeue_frame(&delta, conn);
