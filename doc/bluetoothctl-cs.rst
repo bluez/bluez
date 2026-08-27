@@ -122,6 +122,48 @@ The parameter output is divided into three sections:
 :Example Show active session and all CS parameters:
 	| **> show**
 
+register_provider
+-----------------
+
+**Reference implementation only** — not a real ranging algorithm. Registers
+bluetoothctl itself as a Channel Sounding ranging provider via
+**RegisterRangingProvider()**, then listens for **ProcedureData** signals on
+**org.bluez.ChannelSounding1(5)** and turns each one into a bounded,
+illustrative distance estimate (not an accurate measurement) exposed via
+**org.bluez.RangingProvider1(5)** — visible on the device's
+**org.bluez.Ranging1(5)** **Distance** property once bluetoothd reflects it.
+
+The provider path defaults to ``/``, the only path bluetoothctl exposes an
+``ObjectManager`` at; a different path will register but bluetoothd will not
+discover any objects under it. See **test/example-ranging-provider** for a
+minimal standalone provider skeleton, which reports a fixed placeholder
+distance and does not parse **ProcedureData** at all.
+
+Only one ranging provider may be registered per adapter at a time. If a
+real ranging daemon is already registered, this command fails with
+**AlreadyExists**; conversely, a real daemon cannot register while
+bluetoothctl's reference provider is active. Run **unregister_provider**
+(or stop the other provider) first.
+
+:Usage: **> register_provider [path]**
+:Uses: **org.bluez.RangingProviderManager1(5)** method
+       **RegisterRangingProvider**
+:[path]: Provider root object path (optional; default ``/``)
+:Example Register with the default path:
+	| **> register_provider**
+
+unregister_provider
+--------------------
+
+Unregisters the ranging provider previously registered with
+**register_provider**, removing its exposed **RangingProvider** objects.
+
+:Usage: **> unregister_provider**
+:Uses: **org.bluez.RangingProviderManager1(5)** method
+       **UnregisterRangingProvider**
+:Example Unregister the provider:
+	| **> unregister_provider**
+
 CS Parameter Commands
 ======================
 
