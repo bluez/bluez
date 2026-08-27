@@ -23,6 +23,7 @@ OPTIONS
 :-A/-audio[=path]: Start audio server
 :-u/--unix[=path]: Provide serial device
 :-U/--usb=<qemu_args>: Provide USB device
+:-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
 :-k/--kernel=<image>: Kernel image (bzImage)
 :-h/--help: Show help options
@@ -230,3 +231,30 @@ In addition the above kernel config option the following is required:
 
 	$ tools/test-runner -U "usb-host,vendorid=<0xxxxx>,productid=<0xxxxx>" \
 	-d -k /pathto/bzImage -- /bin/bash
+
+Running shell with host controller PCIe-passthrough
+---------------------------------------------------
+
+In addition the above kernel config option the following is required:
+
+.. code-block::
+
+	CONFIG_PCI=y
+	CONFIG_PCI_MSI=y
+	CONFIG_ACPI=y
+	CONFIG_BT_HCIBTINTEL_PCIE=y
+
+On the host, an IOMMU must be enabled in the firmware and on the host kernel
+command line (``intel_iommu=on`` or ``amd_iommu=on``). The controller itself
+does not need any manual preparation: test-runner unbinds it from its current
+driver, binds it to vfio-pci, and restores the original driver once the guest
+exits.
+
+.. code-block::
+
+	$ tools/test-runner -P "vfio-pci,host=0000:00:14.3" \
+	-d -k /pathto/bzImage -- /bin/bash
+
+Note that unlike the other modes, PCIe-passthrough boots the guest with ACPI
+and APIC enabled, as these are required for device enumeration and MSI
+interrupt delivery.
