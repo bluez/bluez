@@ -334,7 +334,7 @@ static int bass_build_bcast_src(struct bt_bcast_src *bcast_src,
 	if (num_subgroups == 0)
 		goto done;
 
-	subgroup_data = new0(struct bt_bass_subgroup_data, 1);
+	subgroup_data = new0(struct bt_bass_subgroup_data, num_subgroups);
 	if (!subgroup_data) {
 		DBG(bcast_src->bass, "Unable to allocate memory");
 		return -1;
