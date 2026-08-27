@@ -67,6 +67,7 @@
 #include "adv_monitor.h"
 #include "eir.h"
 #include "battery.h"
+#include "ranging.h"
 
 #define MODE_OFF		0x00
 #define MODE_CONNECTABLE	0x01
@@ -335,6 +336,8 @@ struct btd_adapter {
 	struct btd_adv_monitor_manager *adv_monitor_manager;
 
 	struct btd_battery_provider_manager *battery_provider_manager;
+
+	struct btd_ranging_provider_manager *ranging_provider_manager;
 
 	GHashTable *allowed_uuid_set;	/* Set of allowed service UUIDs */
 
@@ -7196,6 +7199,7 @@ static void adapter_remove(struct btd_adapter *adapter)
 {
 	GSList *l;
 	struct gatt_db *db;
+	struct btd_ranging_provider_manager *ranging_manager;
 
 	DBG("Removing adapter %s", adapter->path);
 
@@ -7229,6 +7233,10 @@ static void adapter_remove(struct btd_adapter *adapter)
 
 	btd_battery_provider_manager_destroy(adapter->battery_provider_manager);
 	adapter->battery_provider_manager = NULL;
+
+	ranging_manager = adapter->ranging_provider_manager;
+	btd_ranging_provider_manager_destroy(ranging_manager);
+	adapter->ranging_provider_manager = NULL;
 
 	g_slist_free(adapter->pin_callbacks);
 	adapter->pin_callbacks = NULL;
@@ -9644,6 +9652,9 @@ static int adapter_register(struct btd_adapter *adapter)
 
 	adapter->battery_provider_manager =
 		btd_battery_provider_manager_create(adapter);
+
+	adapter->ranging_provider_manager =
+		btd_ranging_provider_manager_create(adapter);
 
 	/* Don't start GATT database and advertising managers on
 	 * non-LE controllers.
