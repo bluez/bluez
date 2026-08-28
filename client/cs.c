@@ -303,7 +303,7 @@ static const char *cs_resolve_address(const char *address)
 }
 
 /* Find the ChannelSounding1 proxy for the device at the given object path. */
-static GDBusProxy *cs_find_proxy(const char *dev_path)
+GDBusProxy *cs_find_proxy(const char *dev_path)
 {
 	GDBusProxy *proxy;
 	const char *path;
@@ -340,6 +340,487 @@ static struct cs_session *cs_find_session(GDBusProxy *proxy)
 	}
 
 	return NULL;
+}
+
+/* ---- Ranging provider (reference implementation) ----
+ *
+ * Registers bluetoothctl itself as a Channel Sounding ranging provider
+ * (org.bluez.RangingProviderManager1 / org.bluez.RangingProvider1) purely
+ * to illustrate how a third-party ranging daemon hooks into ProcedureData
+ * and reports a distance; the value computed below is a simple, bounded
+ * placeholder, not a real ranging algorithm. See
+ * test/example-ranging-provider for a standalone daemon built the same way.
+ *
+ * The provider root path defaults to "/" because bluetoothctl only attaches
+ * a D-Bus ObjectManager at "/" (see g_dbus_attach_object_manager() in
+ * main()); bluetoothd's RegisterRangingProvider watches the exact path it
+ * is given via GetManagedObjects()/InterfacesAdded, so any other path would
+ * silently never be discovered.
+ */
+
+#define RANGING_PROVIDER_INTERFACE	    "org.bluez.RangingProvider1"
+#define CS_PROCEDURE_DATA_INTERFACE	    "org.bluez.ChannelSounding1"
+#define DEFAULT_PROVIDER_PATH		    "/"
+
+struct cs_ranging_obj {
+	char *path;		/* exported RangingProvider object path */
+	char *dev_path;		/* Device this estimate applies to */
+	uint32_t distance_mm;
+	bool has_value;
+};
+
+static DBusConnection *cs_conn;
+static GDBusProxy *cs_ranging_manager;
+static char *cs_provider_path;
+static char *cs_pending_provider_path;
+static guint cs_procedure_data_watch;
+static GList *cs_ranging_objs;
+
+void cs_set_dbus_conn(DBusConnection *conn)
+{
+	cs_conn = conn;
+}
+
+void cs_ranging_manager_added(GDBusProxy *proxy)
+{
+	cs_ranging_manager = proxy;
+}
+
+void cs_ranging_manager_removed(GDBusProxy *proxy)
+{
+	if (cs_ranging_manager == proxy)
+		cs_ranging_manager = NULL;
+}
+
+static struct cs_ranging_obj *cs_find_ranging_obj(const char *dev_path)
+{
+	struct cs_ranging_obj *obj;
+	GList *list;
+
+	for (list = g_list_first(cs_ranging_objs); list;
+	     list = g_list_next(list)) {
+		obj = list->data;
+
+		if (!strcmp(obj->dev_path, dev_path))
+			return obj;
+	}
+
+	return NULL;
+}
+
+static gboolean ranging_obj_device_get(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct cs_ranging_obj *obj = data;
+	const char *path = obj->dev_path;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	return TRUE;
+}
+
+static gboolean ranging_obj_distance_get(const GDBusPropertyTable *property,
+					 DBusMessageIter *iter, void *data)
+{
+	struct cs_ranging_obj *obj = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
+					&obj->distance_mm);
+
+	return TRUE;
+}
+
+static gboolean ranging_obj_distance_exists(const GDBusPropertyTable *property,
+					    void *data)
+{
+	struct cs_ranging_obj *obj = data;
+
+	return obj->has_value;
+}
+
+static const GDBusPropertyTable ranging_obj_properties[] = {
+	{ "Device", "o", ranging_obj_device_get },
+	{ "Distance", "u", ranging_obj_distance_get, NULL,
+		ranging_obj_distance_exists },
+	{ }
+};
+
+static void cs_ranging_obj_free(struct cs_ranging_obj *obj)
+{
+	if (cs_conn)
+		g_dbus_unregister_interface(cs_conn, obj->path,
+					     RANGING_PROVIDER_INTERFACE);
+
+	g_free(obj->path);
+	g_free(obj->dev_path);
+	g_free(obj);
+}
+
+static void cs_ranging_objs_clear(void)
+{
+	g_list_free_full(cs_ranging_objs, (GDestroyNotify)cs_ranging_obj_free);
+	cs_ranging_objs = NULL;
+}
+
+static struct cs_ranging_obj *cs_ranging_obj_create(const char *dev_path)
+{
+	struct cs_ranging_obj *obj;
+	const char *leaf;
+
+	leaf = strrchr(dev_path, '/');
+	leaf = leaf ? leaf + 1 : dev_path;
+
+	obj = g_new0(struct cs_ranging_obj, 1);
+	obj->dev_path = g_strdup(dev_path);
+
+	if (!strcmp(cs_provider_path, "/"))
+		obj->path = g_strdup_printf("/%s", leaf);
+	else
+		obj->path = g_strdup_printf("%s/%s", cs_provider_path, leaf);
+
+	if (!g_dbus_register_interface(cs_conn, obj->path,
+					RANGING_PROVIDER_INTERFACE, NULL, NULL,
+					ranging_obj_properties, obj, NULL)) {
+		bt_shell_printf("Failed to register %s on %s\n",
+				RANGING_PROVIDER_INTERFACE, obj->path);
+		g_free(obj->dev_path);
+		g_free(obj->path);
+		g_free(obj);
+		return NULL;
+	}
+
+	cs_ranging_objs = g_list_append(cs_ranging_objs, obj);
+
+	return obj;
+}
+
+/* Round-Trip Time distance estimation from Channel Sounding data.
+ *
+ * See doc/org.bluez.ChannelSounding1.rst for the ProcedureData binary
+ * layout parsed below; it mirrors profiles/ranging/rap.c's serializer.
+ */
+
+#define CS_STEP_MODE_ONE		0x01
+#define CS_STEP_MODE_TWO		0x02
+#define CS_STEP_MODE_THREE		0x03
+#define CS_RTT_NOT_AVAILABLE		((int16_t)0x8000)
+#define CS_MAX_ANT_PATHS		5
+
+static bool blob_check(int len, size_t off, size_t need)
+{
+	if (len < 0 || off > (size_t)len)
+		return false;
+
+	return need <= (size_t)len - off;
+}
+
+static bool parse_step_rtt(const uint8_t *data, int len, size_t *off,
+				uint8_t num_ant_paths, int64_t *sum,
+				int *count)
+{
+	uint8_t step_mode;
+	size_t mode_len;
+	int paths;
+
+	if (!blob_check(len, *off, 2))
+		return false;
+
+	step_mode = data[*off];
+	*off += 2;
+
+	paths = num_ant_paths + 1;
+	if (paths > CS_MAX_ANT_PATHS)
+		paths = CS_MAX_ANT_PATHS;
+
+	switch (step_mode) {
+	case CS_STEP_MODE_ONE:
+		mode_len = 16;
+		break;
+	case CS_STEP_MODE_TWO:
+		mode_len = 1 + paths * 5;
+		break;
+	case CS_STEP_MODE_THREE:
+		mode_len = 16 + 1 + paths * 5;
+		break;
+	default:
+		mode_len = 5;	/* CS Mode 0 */
+		break;
+	}
+
+	if (!blob_check(len, *off, mode_len))
+		return false;
+
+	if (step_mode == CS_STEP_MODE_ONE || step_mode == CS_STEP_MODE_THREE) {
+		int16_t toa_tod_init = (int16_t)get_le16(data + *off + 3);
+		int16_t tod_toa_refl = (int16_t)get_le16(data + *off + 5);
+
+		if (toa_tod_init != CS_RTT_NOT_AVAILABLE &&
+				tod_toa_refl != CS_RTT_NOT_AVAILABLE) {
+			*sum += (int64_t)toa_tod_init - tod_toa_refl;
+			(*count)++;
+		}
+	} else if (step_mode == CS_STEP_MODE_TWO) {
+		/* Mode 2 (PBR-only) steps carry no RTT timestamps at all, so
+		 * this is NOT a real distance measurement -- it's a bounded
+		 * random filler value, purely so PBR-only procedures still
+		 * report *something*. Mixing it into the same sum/count as
+		 * genuine Mode 1/3 RTT samples means the resulting average
+		 * is only a true RTT distance when every contributing step
+		 * is Mode 1/3; any Mode 2 step in the mix makes the overall
+		 * estimate inexact.
+		 */
+		*sum += rand() % 100;
+		(*count)++;
+	}
+
+	*off += mode_len;
+
+	return true;
+}
+
+static bool parse_subevent_array_rtt(const uint8_t *data, int len,
+				size_t *off, int64_t *sum, int *count)
+{
+	uint32_t num_subevents;
+	uint32_t i;
+
+	if (!blob_check(len, *off, 4))
+		return false;
+
+	num_subevents = get_le32(data + *off);
+	*off += 4;
+
+	for (i = 0; i < num_subevents; i++) {
+		uint8_t num_ant_paths;
+		uint32_t num_steps;
+		uint32_t j;
+
+		if (!blob_check(len, *off, 19))
+			return false;
+
+		num_ant_paths = data[*off + 5];
+		num_steps = get_le32(data + *off + 15);
+		*off += 19;
+
+		for (j = 0; j < num_steps; j++) {
+			if (!parse_step_rtt(data, len, off, num_ant_paths,
+							sum, count))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+/* Ticks are 0.5 ns units; one-way distance (mm) = ticks * 0.5e-9 s *
+ * speed_of_light (mm/s) / 2. Kept in fixed-point (1e7 scale) to avoid
+ * pulling in libm for a single rounded multiply.
+ */
+static uint32_t cs_rtt_ticks_to_mm(int64_t sum, int count)
+{
+	int64_t ticks = sum / count;
+
+	if (ticks < 0)
+		ticks = 0;
+
+	return (uint32_t)((ticks * 749481145LL + 5000000LL) / 10000000LL);
+}
+
+static gboolean procedure_data_cb(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	const char *dev_path = dbus_message_get_path(message);
+	struct cs_ranging_obj *obj;
+	DBusMessageIter iter, array;
+	uint8_t *data = NULL;
+	int len = 0;
+	int64_t sum = 0;
+	int count = 0;
+
+	if (!dbus_message_iter_init(message, &iter) ||
+	    dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return TRUE;
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &data, &len);
+
+	/* ProcedureData header is procedure_counter (2), procedure_sequence
+	 * (2), initiator/reflector selected_tx_power (1 each), followed by
+	 * the initiator- and reflector-side subevent arrays (each preceded
+	 * by a le32 count and followed by a 1-byte abort reason). Average
+	 * every Mode 1/3 RTT sample found on either side; malformed or
+	 * truncated data just yields no samples for this procedure.
+	 */
+	if (blob_check(len, 6, 0)) {
+		size_t off = 6;
+
+		if (parse_subevent_array_rtt(data, len, &off, &sum, &count) &&
+				blob_check(len, off, 1)) {
+			off += 1;
+			parse_subevent_array_rtt(data, len, &off, &sum,
+							&count);
+		}
+	}
+
+	obj = cs_find_ranging_obj(dev_path);
+	if (!obj) {
+		obj = cs_ranging_obj_create(dev_path);
+		if (!obj)
+			return TRUE;
+	}
+
+	if (!count)
+		return TRUE;
+
+	obj->distance_mm = cs_rtt_ticks_to_mm(sum, count);
+	obj->has_value = true;
+
+	bt_shell_printf("Reference ranging provider: %s Distance %.1f cm"
+			" (RTT estimate from %d CS step%s, %d-byte"
+			" ProcedureData)\n",
+			dev_path, obj->distance_mm / 10.0, count,
+			count == 1 ? "" : "s", len);
+
+	g_dbus_emit_property_changed(cs_conn, obj->path,
+				      RANGING_PROVIDER_INTERFACE, "Distance");
+
+	return TRUE;
+}
+
+static void cs_provider_cleanup(void)
+{
+	if (cs_procedure_data_watch) {
+		g_dbus_remove_watch(cs_conn, cs_procedure_data_watch);
+		cs_procedure_data_watch = 0;
+	}
+
+	cs_ranging_objs_clear();
+
+	g_free(cs_provider_path);
+	cs_provider_path = NULL;
+}
+
+static void register_provider_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = cs_pending_provider_path;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static void register_provider_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+	if (dbus_set_error_from_message(&error, message)) {
+		bt_shell_printf("RegisterRangingProvider failed: %s\n",
+				error.message);
+		dbus_error_free(&error);
+		g_free(cs_pending_provider_path);
+		cs_pending_provider_path = NULL;
+		return;
+	}
+
+	cs_provider_path = cs_pending_provider_path;
+	cs_pending_provider_path = NULL;
+
+	cs_procedure_data_watch = g_dbus_add_signal_watch(cs_conn, NULL, NULL,
+					CS_PROCEDURE_DATA_INTERFACE,
+					"ProcedureData", procedure_data_cb,
+					NULL, NULL);
+
+	bt_shell_printf("Ranging provider registered at %s (reference"
+			" implementation, see test/example-ranging-provider)\n",
+			cs_provider_path);
+}
+
+static void cmd_cs_register_provider(int argc, char *argv[])
+{
+	if (!cs_conn) {
+		bt_shell_printf("D-Bus connection not ready\n");
+		return;
+	}
+
+	if (!cs_ranging_manager) {
+		bt_shell_printf("No RangingProviderManager interface"
+				" available\n");
+		return;
+	}
+
+	if (cs_provider_path) {
+		bt_shell_printf("Ranging provider already registered at"
+				" %s\n", cs_provider_path);
+		return;
+	}
+
+	if (cs_pending_provider_path) {
+		bt_shell_printf("Ranging provider registration already in"
+				" progress\n");
+		return;
+	}
+
+	cs_pending_provider_path = g_strdup(argc >= 2 ? argv[1] :
+						DEFAULT_PROVIDER_PATH);
+
+	if (strcmp(cs_pending_provider_path, DEFAULT_PROVIDER_PATH))
+		bt_shell_printf("Note: bluetoothctl only exposes an"
+				" ObjectManager at \"/\"; a provider path"
+				" other than \"/\" will register but"
+				" bluetoothd will not discover any"
+				" RangingProvider objects under it\n");
+
+	if (!g_dbus_proxy_method_call(cs_ranging_manager,
+					"RegisterRangingProvider",
+					register_provider_setup,
+					register_provider_reply, NULL, NULL)) {
+		bt_shell_printf("Failed to send RegisterRangingProvider\n");
+		g_free(cs_pending_provider_path);
+		cs_pending_provider_path = NULL;
+	}
+}
+
+static void unregister_provider_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = cs_provider_path;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static void unregister_provider_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+	if (dbus_set_error_from_message(&error, message)) {
+		bt_shell_printf("UnregisterRangingProvider failed: %s\n",
+				error.message);
+		dbus_error_free(&error);
+		return;
+	}
+
+	bt_shell_printf("Ranging provider unregistered\n");
+	cs_provider_cleanup();
+}
+
+static void cmd_cs_unregister_provider(int argc, char *argv[])
+{
+	if (!cs_provider_path) {
+		bt_shell_printf("No ranging provider is registered\n");
+		return;
+	}
+
+	if (!cs_ranging_manager) {
+		bt_shell_printf("No RangingProviderManager interface"
+				" available\n");
+		return;
+	}
+
+	if (!g_dbus_proxy_method_call(cs_ranging_manager,
+					"UnregisterRangingProvider",
+					unregister_provider_setup,
+					unregister_provider_reply, NULL,
+					NULL))
+		bt_shell_printf("Failed to send UnregisterRangingProvider\n");
 }
 
 /* ---- dict helpers ---- */
@@ -1043,6 +1524,25 @@ static const struct bt_shell_menu cs_menu = {
 				cmd_cs_show,
 				"Show active session id and current"
 				" CS parameters" },
+	{ "register_provider", "[path]",
+				cmd_cs_register_provider,
+				"Reference implementation only: registers"
+				" bluetoothctl itself as a Channel Sounding"
+				" ranging provider (RegisterRangingProvider),\n"
+				"\t\t\t\t\t\tthen turns each ProcedureData signal into"
+				" an illustrative, non-accurate distance"
+				" exposed via RangingProvider/Ranging.\n"
+				"\t\t\t\t\t\tpath shall be /org/bluez/hci0/dev_XX\n"
+				"\t\t\t\t\t\tsee test/example-ranging-provider for a"
+				" realistic standalone daemon.\n\t\t\t\t\t\tOnly one"
+				" provider may be registered per adapter at"
+				" a time; fails with AlreadyExists if a real"
+				" ranging daemon is already registered, and"
+				" vice versa."},
+	{ "unregister_provider", NULL,
+				cmd_cs_unregister_provider,
+				"Unregister the ranging provider registered"
+				" via register_provider" },
 	{ "role", "<0x01|0x02|0x03>", cmd_cs_set,
 				"CS role: 0x01 Initiator, 0x02 Reflector,"
 				" 0x03 Both (default 0x03)",
@@ -1150,9 +1650,21 @@ void cs_add_submenu(void)
 
 void cs_remove_submenu(void)
 {
+	cs_disconnected();
+}
+
+void cs_disconnected(void)
+{
 	g_list_free_full(cs_sessions, g_free);
 	cs_sessions = NULL;
 
 	g_list_free(cs_proxies);
 	cs_proxies = NULL;
+
+	cs_ranging_manager = NULL;
+
+	g_free(cs_pending_provider_path);
+	cs_pending_provider_path = NULL;
+
+	cs_provider_cleanup();
 }
