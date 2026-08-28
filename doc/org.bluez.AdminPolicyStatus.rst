@@ -43,6 +43,11 @@ array{string} ServiceAllowList [readonly, adapter-only]
 
 Current value of service allow list.
 
+When non-empty, this list controls both:
+
+- remote service connection policy for device profiles
+- local adapter/server service startup and registration policy
+
 bool IsAffectedByPolicy [readonly, device-only]
 ```````````````````````````````````````````````
 

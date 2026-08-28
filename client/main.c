@@ -903,6 +903,14 @@ static struct adapter *find_ctrl_by_address(GList *source, const char *address)
 	return NULL;
 }
 
+GDBusProxy *bluetoothctl_get_default_controller(void)
+{
+	if (!default_ctrl)
+		return NULL;
+
+	return default_ctrl->proxy;
+}
+
 static GDBusProxy *find_proxies_by_iface(GList *source, const char *path,
 							const char *iface)
 {

@@ -811,6 +811,20 @@ static void reverse_discover(struct avdtp *session, GSList *seps, int err,
 	DBG("err %d", err);
 }
 
+static bool a2dp_sep_policy_allowed(struct avdtp *session,
+					const struct a2dp_sep *sep)
+{
+	struct btd_adapter *adapter = avdtp_get_adapter(session);
+	const char *uuid;
+
+	if (sep->type == AVDTP_SEP_TYPE_SOURCE)
+		uuid = A2DP_SOURCE_UUID;
+	else
+		uuid = A2DP_SINK_UUID;
+
+	return btd_adapter_is_uuid_allowed(adapter, uuid);
+}
+
 static gboolean endpoint_setconf_ind(struct avdtp *session,
 						struct avdtp_local_sep *sep,
 						struct avdtp_stream *stream,
@@ -826,6 +840,9 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 		DBG("Sink %p: Set_Configuration_Ind", sep);
 	else
 		DBG("Source %p: Set_Configuration_Ind", sep);
+
+	if (!a2dp_sep_policy_allowed(session, a2dp_sep))
+		return FALSE;
 
 	a2dp_stream = a2dp_stream_get(a2dp_sep, session);
 	if (!a2dp_stream)
@@ -904,6 +921,11 @@ static gboolean endpoint_getcap_ind(struct avdtp *session,
 		DBG("Sink %p: Get_Capability_Ind", sep);
 	else
 		DBG("Source %p: Get_Capability_Ind", sep);
+
+	if (!a2dp_sep_policy_allowed(session, a2dp_sep)) {
+		*err = AVDTP_BAD_ACP_SEID;
+		return FALSE;
+	}
 
 	*caps = NULL;
 
@@ -2858,6 +2880,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 	GSList **l;
 	uint32_t *record_id;
 	sdp_record_t *record;
+	int ret;
 
 	server = find_server(servers, adapter);
 	if (server == NULL) {
@@ -2918,12 +2941,13 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 		return NULL;
 	}
 
-	if (adapter_service_add(server->adapter, record) < 0) {
+	ret = adapter_service_add(server->adapter, record);
+	if (ret < 0) {
 		error("Unable to register A2DP service record");
 		sdp_record_free(record);
 		a2dp_unregister_sep(sep);
 		if (err)
-			*err = -EINVAL;
+			*err = ret;
 		return NULL;
 	}
 
@@ -3687,8 +3711,11 @@ static void a2dp_source_server_remove(struct btd_profile *p,
 	if (!server)
 		return;
 
+	server->source_enabled = FALSE;
+
 	g_slist_free_full(server->sources,
 					(GDestroyNotify) a2dp_unregister_sep);
+	server->sources = NULL;
 
 	if (server->source_record_id) {
 		adapter_service_remove(server->adapter,
@@ -3696,7 +3723,7 @@ static void a2dp_source_server_remove(struct btd_profile *p,
 		server->source_record_id = 0;
 	}
 
-	if (server->sink_record_id)
+	if (server->sink_enabled)
 		return;
 
 	a2dp_server_unregister(server);
@@ -3734,14 +3761,17 @@ static void a2dp_sink_server_remove(struct btd_profile *p,
 	if (!server)
 		return;
 
+	server->sink_enabled = FALSE;
+
 	g_slist_free_full(server->sinks, (GDestroyNotify) a2dp_unregister_sep);
+	server->sinks = NULL;
 
 	if (server->sink_record_id) {
 		adapter_service_remove(server->adapter, server->sink_record_id);
 		server->sink_record_id = 0;
 	}
 
-	if (server->source_record_id)
+	if (server->source_enabled)
 		return;
 
 	a2dp_server_unregister(server);

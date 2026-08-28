@@ -2547,21 +2547,44 @@ static struct btd_service *find_connectable_service(struct btd_device *dev,
 	return NULL;
 }
 
+static const char *service_policy_uuid(const struct btd_profile *profile)
+{
+	if (!profile)
+		return NULL;
+
+	/*
+	 * For A2DP device services, apply admin policy by local role UUID:
+	 * - a2dp-sink profile is local source role  (110a)
+	 * - a2dp-source profile is local sink role  (110b)
+	 */
+	if (profile->name) {
+		if (!strcmp(profile->name, "a2dp-sink"))
+			return A2DP_SOURCE_UUID;
+
+		if (!strcmp(profile->name, "a2dp-source"))
+			return A2DP_SINK_UUID;
+	}
+
+	return profile->remote_uuid;
+}
+
 bool btd_device_all_services_allowed(struct btd_device *dev)
 {
 	GSList *l;
 	struct btd_adapter *adapter = dev->adapter;
 	struct btd_service *service;
 	struct btd_profile *profile;
+	const char *uuid;
 
 	for (l = dev->services; l != NULL; l = g_slist_next(l)) {
 		service = l->data;
 		profile = btd_service_get_profile(service);
+		uuid = service_policy_uuid(profile);
 
-		if (!profile || !profile->auto_connect)
+		if (!profile || !profile->auto_connect || !uuid)
 			continue;
 
-		if (!btd_adapter_is_uuid_allowed(adapter, profile->remote_uuid))
+		if (!btd_adapter_is_uuid_allowed(adapter, uuid))
 			return false;
 	}
 
@@ -2575,6 +2598,7 @@ void btd_device_update_allowed_services(struct btd_device *dev)
 	struct btd_profile *profile;
 	GSList *l;
 	bool is_allowed;
+	const char *uuid;
 	char addr[18];
 
 	/* If service discovery is ongoing, let the service discovery complete
@@ -2590,9 +2614,12 @@ void btd_device_update_allowed_services(struct btd_device *dev)
 	for (l = dev->services; l != NULL; l = g_slist_next(l)) {
 		service = l->data;
 		profile = btd_service_get_profile(service);
+		uuid = service_policy_uuid(profile);
 
-		is_allowed = btd_adapter_is_uuid_allowed(adapter,
-							profile->remote_uuid);
+		if (!profile || !uuid)
+			continue;
+
+		is_allowed = btd_adapter_is_uuid_allowed(adapter, uuid);
 		btd_service_set_allowed(service, is_allowed);
 	}
 }
