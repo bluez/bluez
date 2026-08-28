@@ -4017,6 +4017,7 @@ static bool timeout_quit(void *user_data)
 int main(int argc, char *argv[])
 {
 	GDBusClient *client;
+	DBusError error;
 	int status;
 	int timeout;
 	unsigned int timeout_id;
@@ -4048,7 +4049,21 @@ int main(int argc, char *argv[])
 	else
 		auto_register_agent = g_strdup("");
 
-	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+	dbus_error_init(&error);
+	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &error);
+	if (dbus_conn == NULL) {
+		if (dbus_error_is_set(&error)) {
+			fprintf(stderr, "Failed to connect to system bus: %s\n",
+							error.message);
+			dbus_error_free(&error);
+		} else {
+			fprintf(stderr, "Failed to connect to system bus\n");
+		}
+
+		g_free(auto_register_agent);
+		return EXIT_FAILURE;
+	}
+
 	g_dbus_attach_object_manager(dbus_conn);
 
 	bt_shell_set_env("DBUS_CONNECTION", dbus_conn);
