@@ -2462,34 +2462,31 @@ static void avrcp_list_player_attributes(struct avrcp *session)
 
 static void avrcp_parse_attribute_list(struct avrcp_player *player,
 					struct media_item *item,
-					uint8_t *operands, uint8_t count)
+					struct iovec *iov, uint8_t count)
 {
 	struct media_player *mp = player->user_data;
-	int i;
 
-	for (i = 0; count > 0; count--) {
+	for (; count > 0; count--) {
 		uint32_t id;
 		uint16_t charset, len;
+		uint8_t *value;
 
-		id = get_be32(&operands[i]);
-		i += sizeof(uint32_t);
+		if (!util_iov_pull_be32(iov, &id) ||
+				!util_iov_pull_be16(iov, &charset) ||
+				!util_iov_pull_be16(iov, &len))
+			return;
 
-		charset = get_be16(&operands[i]);
-		i += sizeof(uint16_t);
-
-		len = get_be16(&operands[i]);
-		i += sizeof(uint16_t);
+		value = util_iov_pull_mem(iov, len);
+		if (!value)
+			return;
 
 		if (charset == 106) {
 			const char *key = metadata_to_str(id);
 
 			if (key != NULL)
-				media_player_set_metadata(mp, item,
-							metadata_to_str(id),
-							&operands[i], len);
+				media_player_set_metadata(mp, item, key,
+								value, len);
 		}
-
-		i += len;
 	}
 }
 
@@ -2520,13 +2517,20 @@ static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 {
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->controller->player;
-	struct avrcp_header *pdu = (void *) operands;
+	struct iovec iov = { operands, operand_count };
+	struct avrcp_header *pdu;
 	struct media_player *mp = player->user_data;
 	struct media_item *item;
 	uint8_t count;
 
 	if (code == AVC_CTYPE_REJECTED)
 		return FALSE;
+
+	pdu = util_iov_pull_mem(&iov, sizeof(*pdu));
+	if (!pdu) {
+		error("Invalid AVRCP header");
+		return FALSE;
+	}
 
 	/* Abort fragmented responses as reassembly is not supported */
 	if (pdu->packet_type == AVRCP_PACKET_TYPE_START ||
@@ -2535,18 +2539,19 @@ static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 		return FALSE;
 	}
 
-	count = pdu->params[0];
-
-	if (be16_to_cpu(pdu->params_len) - 1 < count * 8) {
+	if (be16_to_cpu(pdu->params_len) != iov.iov_len) {
 		error("Invalid parameters");
 		return FALSE;
 	}
+
+	if (!util_iov_pull_u8(&iov, &count))
+		return FALSE;
 
 	media_player_clear_metadata(mp);
 
 	item = media_player_set_playlist_item(mp, player->uid);
 
-	avrcp_parse_attribute_list(player, item, &pdu->params[1], count);
+	avrcp_parse_attribute_list(player, item, &iov, count);
 
 	media_player_metadata_changed(mp);
 
@@ -2628,46 +2633,46 @@ static const char *subtype_to_string(uint32_t subtype)
 	return "None";
 }
 
-static gboolean parse_media_name(uint8_t *operands, uint16_t len,
-				size_t name_len_offset,
-				char *name, uint16_t *namelen)
+static gboolean parse_media_name(struct iovec *iov, char *name)
 {
-	uint16_t namesize;
+	uint16_t namelen;
+	uint8_t *namebuf;
 
-	if (len < name_len_offset + 2)
+	if (!util_iov_pull_be16(iov, &namelen))
 		return FALSE;
 
+	namebuf = util_iov_pull_mem(iov, namelen);
+	if (!namebuf)
+		return FALSE;
+
+	namelen = MIN(namelen, NAME_MAX_LEN - 1);
+
 	memset(name, 0, NAME_MAX_LEN);
-	namesize = MIN(get_be16(&operands[name_len_offset]),
-			len - name_len_offset - 2);
-	namesize = MIN(namesize, NAME_MAX_LEN - 1);
-	if (namesize > 0) {
-		if (len < name_len_offset + 2 + namesize)
-			return FALSE;
-		memcpy(name, &operands[name_len_offset + 2], namesize);
-		strtoutf8(name, namesize);
-	}
-	if (namelen)
-		*namelen = namesize;
+	memcpy(name, namebuf, namelen);
+	strtoutf8(name, namelen);
+
 	return TRUE;
 }
 
 static struct media_item *parse_media_element(struct avrcp *session,
-					uint8_t *operands, uint16_t len)
+							struct iovec *iov)
 {
 	struct avrcp_player *player;
 	struct media_player *mp;
 	struct media_item *item;
-	uint16_t namesize;
 	char name[NAME_MAX_LEN];
 	uint64_t uid;
 	uint8_t count;
 
-	if (!parse_media_name(operands, len, 11, name, &namesize))
+	/* Skip the media type and character set */
+	if (!util_iov_pull_be64(iov, &uid) || !util_iov_pull(iov, 3))
 		return NULL;
 
-	uid = get_be64(&operands[0]);
-	count = operands[13 + namesize];
+	if (!parse_media_name(iov, name))
+		return NULL;
+
+	if (!util_iov_pull_u8(iov, &count))
+		return NULL;
 
 	player = session->controller->player;
 	mp = player->user_data;
@@ -2678,14 +2683,13 @@ static struct media_item *parse_media_element(struct avrcp *session,
 
 	media_item_set_playable(item, true);
 
-	avrcp_parse_attribute_list(player, item, &operands[14 + namesize],
-					count);
+	avrcp_parse_attribute_list(player, item, iov, count);
 
 	return item;
 }
 
 static struct media_item *parse_media_folder(struct avrcp *session,
-					uint8_t *operands, uint16_t len)
+							struct iovec *iov)
 {
 	struct avrcp_player *player = session->controller->player;
 	struct media_player *mp = player->user_data;
@@ -2695,12 +2699,15 @@ static struct media_item *parse_media_folder(struct avrcp *session,
 	uint8_t type;
 	uint8_t playable;
 
-	if (!parse_media_name(operands, len, 12, name, NULL))
+	/* Skip the character set */
+	if (!util_iov_pull_be64(iov, &uid) ||
+			!util_iov_pull_u8(iov, &type) ||
+			!util_iov_pull_u8(iov, &playable) ||
+			!util_iov_pull(iov, 2))
 		return NULL;
 
-	uid = get_be64(&operands[0]);
-	type = operands[8];
-	playable = operands[9];
+	if (!parse_media_name(iov, name))
+		return NULL;
 
 	item = media_player_create_folder(mp, name, type, uid);
 	if (!item)
@@ -2755,6 +2762,7 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 
 	for (i = 8; count && i + 3 < operand_count; count--) {
 		struct media_item *item;
+		struct iovec iov;
 		uint8_t type;
 		uint16_t len;
 
@@ -2772,10 +2780,13 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 			break;
 		}
 
+		iov.iov_base = &operands[i];
+		iov.iov_len = len;
+
 		if (type == 0x03)
-			item = parse_media_element(session, &operands[i], len);
+			item = parse_media_element(session, &iov);
 		else
-			item = parse_media_folder(session, &operands[i], len);
+			item = parse_media_folder(session, &iov);
 
 		if (item) {
 			p->items = g_slist_append(p->items, item);
@@ -2959,33 +2970,42 @@ static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
 {
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->controller->player;
-	struct avrcp_browsing_header *pdu = (void *) operands;
+	struct iovec iov = { operands, operand_count };
+	struct avrcp_browsing_header *pdu;
 	struct media_player *mp = player->user_data;
 	struct media_item *item;
-	uint8_t count;
+	uint8_t status, count;
 
-	if (pdu == NULL) {
+	if (operands == NULL) {
 		avrcp_get_element_attributes(session);
 		return FALSE;
 	}
 
-	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 4) {
+	pdu = util_iov_pull_mem(&iov, sizeof(*pdu));
+	if (!pdu) {
 		avrcp_get_element_attributes(session);
 		return FALSE;
 	}
 
-	count = pdu->params[1];
+	if (!util_iov_pull_u8(&iov, &status) ||
+					status != AVRCP_STATUS_SUCCESS) {
+		avrcp_get_element_attributes(session);
+		return FALSE;
+	}
 
-	if (be16_to_cpu(pdu->param_len) - 1 < count * 8) {
+	if (be16_to_cpu(pdu->param_len) != operand_count - sizeof(*pdu)) {
 		error("Invalid parameters");
 		return FALSE;
 	}
+
+	if (!util_iov_pull_u8(&iov, &count))
+		return FALSE;
 
 	media_player_clear_metadata(mp);
 
 	item = media_player_set_playlist_item(mp, player->uid);
 
-	avrcp_parse_attribute_list(player, item, &pdu->params[2], count);
+	avrcp_parse_attribute_list(player, item, &iov, count);
 
 	media_player_metadata_changed(mp);
 
