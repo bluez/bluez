@@ -16,3 +16,4 @@ void cs_device_disconnected(const char *dev_path);
 void cs_measurement_started(GDBusProxy *proxy);
 void cs_measurement_stopped(GDBusProxy *proxy);
 void cs_set_device_list(GList **devices);
+GDBusProxy *cs_find_proxy(const char *dev_path);

@@ -303,7 +303,7 @@ static const char *cs_resolve_address(const char *address)
 }
 
 /* Find the ChannelSounding1 proxy for the device at the given object path. */
-static GDBusProxy *cs_find_proxy(const char *dev_path)
+GDBusProxy *cs_find_proxy(const char *dev_path)
 {
 	GDBusProxy *proxy;
 	const char *path;

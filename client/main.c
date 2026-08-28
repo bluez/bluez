@@ -69,6 +69,7 @@ static char *default_local_attr;
 static GDBusProxy *default_attr;
 static GList *ctrl_list;
 static GList *battery_proxies;
+static GList *cs_distance_proxies;
 
 static const char *agent_arguments[] = {
 	"on",
@@ -121,8 +122,10 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 
 	g_list_free_full(ctrl_list, proxy_leak);
 	g_list_free_full(battery_proxies, proxy_leak);
+	g_list_free_full(cs_distance_proxies, proxy_leak);
 	ctrl_list = NULL;
 	battery_proxies = NULL;
+	cs_distance_proxies = NULL;
 
 	default_ctrl = NULL;
 	cs_set_device_list(NULL);
@@ -358,6 +361,16 @@ static void battery_removed(GDBusProxy *proxy)
 	battery_proxies = g_list_remove(battery_proxies, proxy);
 }
 
+static void cs_distance_added(GDBusProxy *proxy)
+{
+	cs_distance_proxies = g_list_append(cs_distance_proxies, proxy);
+}
+
+static void cs_distance_removed(GDBusProxy *proxy)
+{
+	cs_distance_proxies = g_list_remove(cs_distance_proxies, proxy);
+}
+
 static void device_added(GDBusProxy *proxy)
 {
 	DBusMessageIter iter;
@@ -531,6 +544,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		bearer_added(proxy);
 	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
 		cs_proxy_added(proxy);
+	} else if (!strcmp(interface, "org.bluez.CSDistance1")) {
+		cs_distance_added(proxy);
 	}
 }
 
@@ -664,6 +679,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		bearer_removed(proxy);
 	} else if (!strcmp(interface, "org.bluez.ChannelSounding1")) {
 		cs_proxy_removed(proxy);
+	} else if (!strcmp(interface, "org.bluez.CSDistance1")) {
+		cs_distance_removed(proxy);
 	}
 }
 
@@ -843,6 +860,9 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 			else
 				cs_measurement_stopped(proxy);
 		}
+	} else if (!strcmp(interface, "org.bluez.CSDistance1")) {
+		if (!strcmp(name, "DistanceMeters"))
+			print_property(proxy, "DistanceMeters");
 	}
 }
 
@@ -1882,6 +1902,8 @@ static void cmd_info(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	GDBusProxy *battery_proxy;
+	GDBusProxy *cs_proxy;
+	GDBusProxy *cs_distance_proxy;
 	GDBusProxy *bearer;
 	DBusMessageIter iter;
 	const char *address;
@@ -1933,6 +1955,17 @@ static void cmd_info(int argc, char *argv[])
 					g_dbus_proxy_get_path(proxy));
 	print_property_with_label(battery_proxy, "Percentage",
 					"Battery Percentage");
+
+	cs_proxy = cs_find_proxy(g_dbus_proxy_get_path(proxy));
+	if (cs_proxy)
+		print_property_with_label(cs_proxy, "Active",
+					"CS Session Active");
+
+	cs_distance_proxy = find_proxies_by_path(cs_distance_proxies,
+					g_dbus_proxy_get_path(proxy));
+	if (cs_distance_proxy)
+		print_property_with_label(cs_distance_proxy, "DistanceMeters",
+					"CS DistanceMeters");
 
 	bearer = find_proxies_by_iface(default_ctrl->bearers,
 				      g_dbus_proxy_get_path(proxy),

@@ -332,6 +332,7 @@ bluetoothd_internal_sources = \
 			src/eir.h src/eir.c \
 			src/adv_monitor.h src/adv_monitor.c \
 			src/battery.h src/battery.c \
+			src/cs_distance.h src/cs_distance.c \
 			src/settings.h src/settings.c \
 			src/set.h src/set.c \
 			src/bearer.h src/bearer.c
@@ -405,7 +406,10 @@ man_MANS += doc/org.bluez.Telephony.5 doc/org.bluez.Call.5
 man_MANS += doc/org.bluez.ThermometerManager.5 \
 		doc/org.bluez.Thermometer.5 \
 		doc/org.bluez.ThermometerWatcher.5
-man_MANS += doc/org.bluez.ChannelSounding1.5
+man_MANS += doc/org.bluez.ChannelSounding1.5 \
+	    doc/org.bluez.CSDistance1.5 \
+	    doc/org.bluez.CSDistanceProvider.5 \
+	    doc/org.bluez.CSDistanceProviderManager.5
 endif
 manual_pages += doc/bluetoothd.8
 manual_pages += doc/hci.7 doc/mgmt.7 doc/l2cap.7 doc/rfcomm.7 doc/sco.7 \
@@ -446,7 +450,10 @@ manual_pages += doc/org.bluez.Telephony.5 doc/org.bluez.Call.5
 manual_pages += doc/org.bluez.ThermometerManager.5 \
 		doc/org.bluez.Thermometer.5 \
 		doc/org.bluez.ThermometerWatcher.5
-manual_pages += doc/org.bluez.ChannelSounding1.5
+manual_pages += doc/org.bluez.ChannelSounding1.5 \
+	        doc/org.bluez.CSDistance1.5 \
+	        doc/org.bluez.CSDistanceProvider.5 \
+	        doc/org.bluez.CSDistanceProviderManager.5
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
@@ -536,6 +543,11 @@ EXTRA_DIST += doc/org.bluez.Telephony.rst doc/org.bluez.Call.rst
 EXTRA_DIST += doc/org.bluez.ThermometerManager.rst \
 	      doc/org.bluez.Thermometer.rst \
 	      doc/org.bluez.ThermometerWatcher.rst
+
+EXTRA_DIST += doc/org.bluez.ChannelSounding1.rst \
+	      doc/org.bluez.CSDistance1.rst \
+	      doc/org.bluez.CSDistanceProvider.rst \
+	      doc/org.bluez.CSDistanceProviderManager.rst
 
 EXTRA_DIST += doc/pics-opp.txt doc/pixit-opp.txt \
 		doc/pts-opp.txt
