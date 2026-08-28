@@ -2395,30 +2395,48 @@ static gboolean avrcp_list_player_attributes_rsp(struct avctp *conn,
 					uint8_t transaction, uint8_t *operands,
 					size_t operand_count, void *user_data)
 {
+	struct iovec iov = { operands, operand_count };
 	uint8_t attrs[AVRCP_ATTRIBUTE_LAST];
 	struct avrcp *session = user_data;
-	struct avrcp_header *pdu = (void *) operands;
+	struct avrcp_header *pdu;
 	uint8_t len, count = 0;
 	int i;
 
 	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED)
 		return FALSE;
 
-	len = pdu->params[0];
+	pdu = util_iov_pull_mem(&iov, sizeof(*pdu));
+	if (!pdu) {
+		error("Invalid AVRCP header");
+		return FALSE;
+	}
 
-	if (be16_to_cpu(pdu->params_len) < count) {
+	if (be16_to_cpu(pdu->params_len) != iov.iov_len) {
 		error("Invalid parameters");
 		return FALSE;
 	}
 
-	for (i = 0; len > 0; len--, i++) {
+	if (!util_iov_pull_u8(&iov, &len))
+		return FALSE;
+
+	len = MIN(len, AVRCP_ATTRIBUTE_LAST);
+
+	for (i = 0; i < len; i++) {
+		uint8_t attr;
+
+		if (!util_iov_pull_u8(&iov, &attr))
+			break;
+
 		/* Don't query invalid attributes */
-		if (pdu->params[i + 1] == AVRCP_ATTRIBUTE_ILLEGAL ||
-				pdu->params[i + 1] > AVRCP_ATTRIBUTE_LAST)
+		if (attr == AVRCP_ATTRIBUTE_ILLEGAL ||
+					attr > AVRCP_ATTRIBUTE_LAST)
 			continue;
 
-		attrs[count++] = pdu->params[i + 1];
+		attrs[count++] = attr;
 	}
+
+	if (!count)
+		return FALSE;
 
 	avrcp_get_current_player_value(session, attrs, count);
 
