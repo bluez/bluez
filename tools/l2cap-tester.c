@@ -1389,6 +1389,12 @@ static const struct l2cap_data ext_flowctl_client_set_phy_coded_test = {
 	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
 };
 
+static const struct l2cap_data ext_flowctl_client_defer_limit = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+};
+
 static void client_cmd_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -2890,6 +2896,92 @@ static void test_connect_2(const void *test_data)
 								defer);
 }
 
+static gboolean watch_no_track_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	int sk = g_io_channel_unix_get_fd(io);
+
+	tester_print("Ready sk = %d", sk);
+	return FALSE;
+}
+
+static int watch_and_close_sk(int sk)
+{
+	GIOChannel *io;
+
+	if (sk < 0)
+		return sk;
+
+	io = g_io_channel_unix_new(sk);
+	g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+						watch_no_track_cb, NULL);
+	g_io_channel_unref(io);
+
+	return sk;
+}
+
+static void test_connect_ext_defer_limit(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	const uint8_t *client_bdaddr;
+	int sk[6];
+	int err;
+	int opt = 1;
+	int i;
+
+	data->step = 6;
+
+	if (l2data->server_psm) {
+		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+
+		if (!l2data->data_len)
+			bthost_add_l2cap_server(bthost, l2data->server_psm,
+						NULL, NULL, NULL);
+	}
+
+	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+
+	/* Close sk only after connection, to trigger kernel processing */
+	sk[0] = watch_and_close_sk(connect_socket(client_bdaddr, NULL, true));
+	sk[1] = watch_and_close_sk(connect_socket(client_bdaddr, NULL, true));
+	sk[2] = watch_and_close_sk(connect_socket(client_bdaddr, NULL, true));
+	sk[3] = watch_and_close_sk(connect_socket(client_bdaddr, NULL, true));
+	sk[4] = watch_and_close_sk(connect_socket(client_bdaddr, NULL, false));
+
+	/* Open one deferred socket too many for ECRED REQ, triggers miscounting
+	 * of pending connections in some kernel versions.
+	 */
+	sk[5] = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level,
+								l2data->mode);
+	if (sk[5] < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	if (setsockopt(sk[5], SOL_BLUETOOTH, BT_DEFER_SETUP, &opt,
+							sizeof(opt)) < 0) {
+		tester_test_failed();
+		close(sk[5]);
+		return;
+	}
+
+	err = connect_l2cap_impl(sk[5], client_bdaddr, BDADDR_LE_PUBLIC,
+					l2data->client_psm, l2data->cid);
+	if (err == -EPROTO) {
+		tester_test_passed();
+
+		for (i = 0; i < (int)ARRAY_SIZE(sk); ++i)
+			if (sk[i] >= 0)
+				close(sk[i]);
+	} else {
+		/* Try to trigger kernel to make ECRED REQ with > 5 SCID */
+		watch_and_close_sk(sk[5]);
+
+		tester_test_failed();
+	}
+}
+
 static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -3527,6 +3619,11 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP Ext-Flowctl Client - Set PHY Coded",
 				&ext_flowctl_client_set_phy_coded_test,
 				setup_powered_client, test_connect);
+
+	test_l2cap_le("L2CAP Ext-Flowctl Client - Defer limit",
+				&ext_flowctl_client_defer_limit,
+				setup_powered_client,
+				test_connect_ext_defer_limit);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Success",
 				&ext_flowctl_server_success_test,
