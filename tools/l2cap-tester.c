@@ -30,6 +30,7 @@
 
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
+#include "src/shared/queue.h"
 #include "src/shared/util.h"
 
 #include "tester.h"
@@ -51,6 +52,7 @@ struct test_data {
 	int sk2;
 	bool host_disconnected;
 	int step;
+	struct queue *io_channels;
 	struct tx_tstamp_data tx_ts;
 };
 
@@ -267,6 +269,11 @@ static void test_pre_setup(const void *test_data)
 					read_index_list_callback, NULL, NULL);
 }
 
+static void io_channel_unref(void *data)
+{
+	g_io_channel_unref(data);
+}
+
 static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -280,6 +287,9 @@ static void test_post_teardown(const void *test_data)
 		g_source_remove(data->err_io_id);
 		data->err_io_id = 0;
 	}
+
+	queue_destroy(data->io_channels, io_channel_unref);
+	data->io_channels = NULL;
 
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
@@ -1135,6 +1145,30 @@ static const struct l2cap_data ext_flowctl_server_nval_scid_test = {
 	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
 	.expect_cmd = nval_ecred_connect_rsp,
 	.expect_cmd_len = sizeof(nval_ecred_connect_rsp),
+};
+
+static const struct l2cap_data ext_flowctl_server_nval_conn_req_test = {
+	.server_psm = 0x0080,
+	.defer = true,
+	.mode = BT_MODE_EXT_FLOWCTL,
+};
+
+static const uint8_t ecred_connect_req_2[] = {
+						0x80, 0x00, /* PSM */
+						0x40, 0x00, /* MTU */
+						0x40, 0x00, /* MPS */
+						0x05, 0x00, /* Credits */
+						0x41, 0x00, /* SCID #1 */
+						0x42, 0x00, /* SCID #2 */
+};
+
+static const struct l2cap_data ext_flowctl_server_accept_2_close_1_test = {
+	.server_psm = 0x0080,
+	.defer = true,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req_2,
+	.send_cmd_len = ARRAY_SIZE(ecred_connect_req_2)
 };
 
 static const struct l2cap_data ext_flowctl_server_phy_test = {
@@ -2897,6 +2931,8 @@ static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 	const struct l2cap_data *l2data = data->test_data;
 	int sk, err;
 
+	data->io_id = 0;
+
 	sk = g_io_channel_unix_get_fd(io);
 
 	if (!check_mtu(data, sk)) {
@@ -2929,7 +2965,8 @@ static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static bool defer_accept(struct test_data *data, GIOChannel *io)
+static bool defer_accept(struct test_data *data, GIOChannel *io,
+							GIOFunc accept_cb)
 {
 	int sk;
 	char c;
@@ -2953,11 +2990,12 @@ static bool defer_accept(struct test_data *data, GIOChannel *io)
 		}
 	}
 
-	data->io_id = g_io_add_watch(io, G_IO_OUT, l2cap_accept_cb, NULL);
+	if (accept_cb)
+		data->io_id = g_io_add_watch(io, G_IO_OUT, accept_cb, NULL);
 
 	g_io_channel_unref(io);
 
-	tester_print("Accept deferred setup");
+	tester_print("Accept deferred setup sk = %d", sk);
 
 	return true;
 }
@@ -2980,6 +3018,8 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
+	tester_print("Accept sk = %d", new_sk);
+
 	io = g_io_channel_unix_new(new_sk);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
@@ -2989,7 +3029,7 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 			return FALSE;
 		}
 
-		if (!defer_accept(data, io)) {
+		if (!defer_accept(data, io, l2cap_accept_cb)) {
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
 		}
@@ -3098,7 +3138,8 @@ static void send_req_new_conn(uint16_t handle, void *user_data)
 	}
 }
 
-static void test_server(const void *test_data)
+static void start_test_server(const void *test_data, bthost_new_conn_cb conn_cb,
+							GIOFunc listen_cb)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
@@ -3128,7 +3169,7 @@ static void test_server(const void *test_data)
 			return;
 		}
 
-		if (listen(sk, 5) < 0) {
+		if (listen(sk, 32) < 0) {
 			tester_warn("listening on socket failed: %s (%u)",
 					strerror(errno), errno);
 			tester_test_failed();
@@ -3139,8 +3180,7 @@ static void test_server(const void *test_data)
 		io = g_io_channel_unix_new(sk);
 		g_io_channel_set_close_on_unref(io, TRUE);
 
-		data->io_id = g_io_add_watch(io, G_IO_IN, l2cap_listen_cb,
-									NULL);
+		data->io_id = g_io_add_watch(io, G_IO_IN, listen_cb, NULL);
 		g_io_channel_unref(io);
 
 		tester_print("Listening for connections");
@@ -3154,7 +3194,7 @@ static void test_server(const void *test_data)
 	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_connect_cb(bthost, send_req_new_conn, data);
+	bthost_set_connect_cb(bthost, conn_cb, data);
 
 	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
 		addr_type = BDADDR_BREDR;
@@ -3162,6 +3202,174 @@ static void test_server(const void *test_data)
 		addr_type = BDADDR_LE_PUBLIC;
 
 	bthost_hci_connect(bthost, central_bdaddr, addr_type);
+}
+
+static void test_server(const void *test_data)
+{
+	start_test_server(test_data, send_req_new_conn, l2cap_listen_cb);
+}
+
+static gboolean ext_flowctl_accept_2_close_1_listen_cb(GIOChannel *io,
+					GIOCondition cond, gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int sk, new_sk;
+	int err = 0;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	new_sk = accept(sk, NULL, NULL);
+	if (err < 0) {
+		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
+		tester_test_failed();
+		return FALSE;
+	}
+
+	if (!defer_accept(data, g_io_channel_unix_new(new_sk), NULL))
+		goto fail;
+
+	close(new_sk);
+
+	if (data->step--)
+		return TRUE;
+
+	tester_test_passed();
+
+	data->io_id = 0;
+	return FALSE;
+
+fail:
+	tester_test_failed();
+	close(new_sk);
+	return FALSE;
+}
+
+static void test_ext_flowctl_server_accept_2_close_1(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->step = 1;
+	start_test_server(test_data, send_req_new_conn,
+					ext_flowctl_accept_2_close_1_listen_cb);
+}
+
+static gboolean ext_flowctl_nval_conn_req_ready_cb(gpointer ptr)
+{
+	struct test_data *data = tester_get_data();
+	const struct queue_entry *entry;
+	GIOFunc cb = l2cap_accept_cb;
+
+	if (data->io_id) {
+		g_source_remove(data->io_id);
+		data->io_id = 0;
+	}
+
+	data->err_io_id = 0;
+	data->step = 0;
+
+	tester_print("Accepting %d deferred", queue_length(data->io_channels));
+
+	entry = queue_get_entries(data->io_channels);
+	for (; entry; entry = entry->next) {
+		GIOChannel *io = entry->data;
+
+		if (!defer_accept(data, g_io_channel_ref(io), cb)) {
+			g_io_channel_unref(io);
+			tester_warn("Unable to accept deferred setup");
+			tester_test_failed();
+			break;
+		}
+
+		/* Require only the first to connect */
+		cb = NULL;
+	}
+
+	return FALSE;
+}
+
+static gboolean ext_flowctl_nval_conn_req_listen_cb(GIOChannel *io,
+					GIOCondition cond, gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int sk, new_sk;
+	GIOChannel *new_io;
+
+	if (!data->step)
+		return FALSE;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	new_sk = accept(sk, NULL, NULL);
+	if (new_sk < 0) {
+		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
+		tester_test_failed();
+		return FALSE;
+	}
+
+	tester_print("Accept sk = %d", new_sk);
+
+	new_io = g_io_channel_unix_new(new_sk);
+	g_io_channel_set_close_on_unref(new_io, TRUE);
+
+	if (!data->io_channels)
+		data->io_channels = queue_new();
+	queue_push_tail(data->io_channels, new_io);
+
+	if (data->err_io_id) {
+		g_source_remove(data->err_io_id);
+		data->err_io_id = 0;
+	}
+
+	/* Accept all deferred connections at once, or until timeout */
+	data->step--;
+	if (!data->step) {
+		data->io_id = 0;
+		ext_flowctl_nval_conn_req_ready_cb(NULL);
+		return FALSE;
+	}
+
+	data->err_io_id = g_timeout_add(1000,
+				ext_flowctl_nval_conn_req_ready_cb, NULL);
+
+	return TRUE;
+}
+
+static void ext_flowctl_nval_conn_req_conn_cb(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bthost *bthost;
+	int i;
+
+	tester_print("New client connection with handle 0x%04x", handle);
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	tester_print("Sending %d L2CAP_LE_CONN_REQ", data->step);
+
+	/* All L2CAP_LE_CONN_REQ (0x14) use the same PSM, same ident, different
+	 * SCID.  Receiver may reject some of these due to ident collision,
+	 * but at least it should not hang/crash.
+	 */
+	for (i = 0; i < data->step; ++i) {
+		uint8_t cmd[] = {
+			/* PSM(2), SCID(2), MTU(2), MPS(2), Crd(2) */
+			0x80, 0x00, 0x40 + i, 0x00,
+			0x40, 0x00, 0x40, 0x00,
+			0x05, 0x00
+		};
+
+		bthost_l2cap_sig_raw(bthost, handle, 0x14, 0x9f,
+							cmd, ARRAY_SIZE(cmd));
+	}
+}
+
+static void test_ext_flowctl_server_nval_conn_req(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->step = 32;
+	start_test_server(test_data, ext_flowctl_nval_conn_req_conn_cb,
+					ext_flowctl_nval_conn_req_listen_cb);
 }
 
 static void test_getpeername_not_connected(const void *test_data)
@@ -3534,6 +3742,10 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Nval SCID",
 				&ext_flowctl_server_nval_scid_test,
 				setup_powered_server, test_server);
+	test_l2cap_le("L2CAP Ext-Flowctl Server - Accept 2 Close 1",
+				&ext_flowctl_server_accept_2_close_1_test,
+				setup_powered_server,
+				test_ext_flowctl_server_accept_2_close_1);
 	test_l2cap_le("L2CAP Ext-Flowctl Server - PHY",
 				&ext_flowctl_server_phy_test,
 				setup_powered_server, test_server);
@@ -3549,6 +3761,11 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Set PHY Coded",
 				&ext_flowctl_server_set_phy_coded_test,
 				setup_powered_server, test_server);
+
+	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Nval Conn Req",
+				&ext_flowctl_server_nval_conn_req_test,
+				setup_powered_server,
+				test_ext_flowctl_server_nval_conn_req);
 
 	test_l2cap_le("L2CAP LE ATT Client - Success",
 				&le_att_client_connect_success_test_1,
