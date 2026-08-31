@@ -336,6 +336,13 @@ static void linked_transport_remove_owner(void *data, void *user_data)
 		return;
 	}
 
+	/* Owner may have already been replaced (e.g. by a subsequent
+	 * linked_transport_set_owner), in which case it is not this
+	 * function's place to clear it.
+	 */
+	if (transport->owner != owner)
+		return;
+
 	DBG("Transport %s Owner %s", transport->path, owner->name);
 	transport->owner = NULL;
 }
@@ -727,6 +734,16 @@ static void linked_transport_set_owner(void *data, void *user_data)
 		error("Unable to find transport");
 		return;
 	}
+
+	/* If the linked transport already has a different owner (e.g. it
+	 * was Acquired separately), tear it down properly instead of
+	 * silently overwriting it. Otherwise the previous owner is
+	 * orphaned: its D-Bus disconnect watch stays registered and its
+	 * ->transport back-pointer becomes dangling once this transport is
+	 * later destroyed, causing a use-after-free when the watch fires.
+	 */
+	if (transport->owner && transport->owner != owner)
+		media_transport_remove_owner(transport);
 
 	DBG("Transport %s Owner %s", transport->path, owner->name);
 	transport->owner = owner;
