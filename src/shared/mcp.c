@@ -324,6 +324,7 @@ static void write_media_cp(struct gatt_db_attribute *attrib,
 	int ret = 0;
 	int32_t arg = 0;
 	uint8_t op;
+	bool rfu_op = false;
 	bool ok = false;
 
 	if (offset) {
@@ -337,6 +338,7 @@ static void write_media_cp(struct gatt_db_attribute *attrib,
 	}
 
 	rsp.op = op;
+	rfu_op = !op;
 
 	cmd = mcs_get_command(op);
 	if (!cmd || !(cmd->support & mcs_get_supported(mcs))) {
@@ -370,7 +372,7 @@ respond:
 							ret, rsp.result);
 
 	gatt_db_attribute_write_result(attrib, id, ret);
-	if (!rsp.op)
+	if (!rsp.op && !rfu_op)
 		return;
 
 	/* Make state transition immediately if command was successful and has

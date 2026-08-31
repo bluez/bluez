@@ -2057,6 +2057,19 @@ static void testgroup_sr_mcp(void)
 }
 
 
+#define GMCS_SR_SPE_BI_01_C \
+	WRITE_NORESP_CHRC(CP, 0x00), \
+	NOTIFY_CHRC(CP, 0x00, 0x02 /* not supp */)
+
+static void testgroup_sr_spe(void)
+{
+	define_test("GMCS/SR/SPE/BI-01-C [Media Control Point - Opcode not "
+							"Supported]",
+		test_setup_server, test_server,
+		&cfg_sggit_gmcs, GMCS_SR_SPE_BI_01_C);
+}
+
+
 static void sr_spn_value(struct test_data *data, struct iovec *buf, size_t size,
 								uint16_t uuid)
 {
@@ -2132,6 +2145,7 @@ int main(int argc, char *argv[])
 	testgroup_cl_extra();
 	testgroup_sr_sggit();
 	testgroup_sr_mcp();
+	testgroup_sr_spe();
 	testgroup_sr_spn();
 
 	return tester_run();
