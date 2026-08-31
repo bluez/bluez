@@ -66,6 +66,9 @@
 #ifdef HAVE_A2DP
 #include "a2dp.h"
 #endif
+#ifdef HAVE_AVRCP
+#include "avrcp-bip.h"
+#endif
 
 #define MEDIA_INTERFACE "org.bluez.Media1"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
@@ -161,6 +164,10 @@ struct local_player {
 	bool			previous;
 	bool			control;
 	char			*name;
+	char			*art_url;	/* Registered cover art URL */
+	char			art_handle[8];	/* BIP handle of art_url */
+	char			*art_pending;	/* URL being fetched */
+	DBusPendingCall		*art_call;	/* Pending GetCoverArt call */
 	struct queue		*cbs;
 };
 
@@ -2046,6 +2053,20 @@ static void local_player_emit_player_added(struct local_player *mp)
 	}
 }
 
+#ifdef HAVE_AVRCP
+static void cover_art_cancel(struct local_player *mp)
+{
+	if (mp->art_call != NULL) {
+		dbus_pending_call_cancel(mp->art_call);
+		dbus_pending_call_unref(mp->art_call);
+		mp->art_call = NULL;
+	}
+
+	g_free(mp->art_pending);
+	mp->art_pending = NULL;
+}
+#endif
+
 static void local_player_destroy(struct local_player *mp)
 {
 	DBusConnection *conn = btd_get_dbus_connection();
@@ -2071,11 +2092,16 @@ static void local_player_destroy(struct local_player *mp)
 	if (mp->settings)
 		g_hash_table_unref(mp->settings);
 
+#ifdef HAVE_AVRCP
+	cover_art_cancel(mp);
+#endif
+
 	g_timer_destroy(mp->timer);
 	g_free(mp->sender);
 	g_free(mp->path);
 	g_free(mp->status);
 	g_free(mp->name);
+	g_free(mp->art_url);
 	g_free(mp);
 }
 
@@ -2470,6 +2496,159 @@ static gboolean parse_int32_metadata(struct local_player *mp, const char *key,
 	return TRUE;
 }
 
+#ifdef HAVE_AVRCP
+#define COVER_ART_MAX_SIZE (1024 * 1024)
+#define COVER_ART_TIMEOUT 5000 /* ms */
+#define MEDIA_PLAYER_COVER_ART_INTERFACE "org.bluez.MediaPlayerCoverArt1"
+
+static void cover_art_reset(struct local_player *mp)
+{
+	cover_art_cancel(mp);
+
+	g_free(mp->art_url);
+	mp->art_url = NULL;
+	mp->art_handle[0] = '\0';
+}
+
+static void cover_art_reply(DBusPendingCall *call, void *user_data)
+{
+	struct local_player *mp = user_data;
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	const uint8_t *data = NULL;
+	const char *handle;
+	int len = 0;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_pending_call_unref(mp->art_call);
+	mp->art_call = NULL;
+
+	/* The call was cancelled or the connection went away */
+	if (reply == NULL) {
+		g_free(mp->art_pending);
+		mp->art_pending = NULL;
+		return;
+	}
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		DBG("GetCoverArt: %s", dbus_message_get_error_name(reply));
+		goto done;
+	}
+
+	if (!dbus_message_iter_init(reply, &iter) ||
+			dbus_message_iter_get_arg_type(&iter) !=
+							DBUS_TYPE_ARRAY ||
+			dbus_message_iter_get_element_type(&iter) !=
+							DBUS_TYPE_BYTE) {
+		DBG("GetCoverArt: unexpected reply signature");
+		goto done;
+	}
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &data, &len);
+
+	if (len <= 0 || len > COVER_ART_MAX_SIZE) {
+		DBG("cover art has invalid size (%d bytes), ignoring", len);
+		goto done;
+	}
+
+	/* Non-JPEG images are rejected by the responder */
+	handle = avrcp_bip_set_cover_art(data, len);
+	if (handle == NULL)
+		goto done;
+
+	g_free(mp->art_url);
+	mp->art_url = mp->art_pending;
+	mp->art_pending = NULL;
+
+	strncpy(mp->art_handle, handle, sizeof(mp->art_handle) - 1);
+	mp->art_handle[sizeof(mp->art_handle) - 1] = '\0';
+
+	/*
+	 * The track was announced without attribute 0x08 while the image
+	 * was in flight, so tell the peer to read the metadata again now
+	 * that a valid handle exists.
+	 */
+	if (mp->track != NULL) {
+		g_hash_table_insert(mp->track, g_strdup("ImgHandle"),
+							g_strdup(handle));
+		local_player_emit_track_changed(mp);
+	}
+
+done:
+	g_free(mp->art_pending);
+	mp->art_pending = NULL;
+	dbus_message_unref(reply);
+}
+
+static void cover_art_request(struct local_player *mp, const char *url)
+{
+	DBusMessage *msg;
+
+	cover_art_cancel(mp);
+
+	msg = dbus_message_new_method_call(mp->sender, mp->path,
+					MEDIA_PLAYER_COVER_ART_INTERFACE,
+					"GetCoverArt");
+	if (msg == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &url,
+							DBUS_TYPE_INVALID);
+
+	if (!g_dbus_send_message_with_reply(btd_get_dbus_connection(), msg,
+					&mp->art_call, COVER_ART_TIMEOUT)) {
+		error("Failed to send GetCoverArt");
+		dbus_message_unref(msg);
+		return;
+	}
+
+	dbus_message_unref(msg);
+
+	mp->art_pending = g_strdup(url);
+
+	dbus_pending_call_set_notify(mp->art_call, cover_art_reply, mp, NULL);
+}
+
+static gboolean parse_art_url_metadata(struct local_player *mp,
+							DBusMessageIter *iter)
+{
+	const char *url;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
+		return FALSE;
+
+	dbus_message_iter_get_basic(iter, &url);
+
+	if (!avrcp_bip_server_active())
+		return TRUE;
+
+	/*
+	 * Players resend their full metadata on many state changes.
+	 * Reuse the registered handle if the cover has not changed to
+	 * avoid refetching the image and churning image handles, which
+	 * would make controllers re-fetch an unchanged image.
+	 */
+	if (mp->art_url != NULL && g_str_equal(mp->art_url, url) &&
+						mp->art_handle[0] != '\0') {
+		g_hash_table_insert(mp->track, g_strdup("ImgHandle"),
+						g_strdup(mp->art_handle));
+		return TRUE;
+	}
+
+	/* Likewise, do not restart a request that is already in flight */
+	if (mp->art_pending != NULL && g_str_equal(mp->art_pending, url))
+		return TRUE;
+
+	cover_art_request(mp, url);
+
+	return TRUE;
+}
+#endif
+
 static gboolean parse_player_metadata(struct local_player *mp,
 							DBusMessageIter *iter)
 {
@@ -2477,6 +2656,9 @@ static gboolean parse_player_metadata(struct local_player *mp,
 	DBusMessageIter var;
 	int ctype;
 	gboolean title = FALSE;
+#ifdef HAVE_AVRCP
+	gboolean art = FALSE;
+#endif
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype != DBUS_TYPE_ARRAY)
@@ -2529,6 +2711,12 @@ static gboolean parse_player_metadata(struct local_player *mp,
 		} else if (strcasecmp(key, "xesam:trackNumber") == 0) {
 			if (!parse_int32_metadata(mp, "TrackNumber", &var))
 				return FALSE;
+		} else if (strcasecmp(key, "mpris:artUrl") == 0) {
+#ifdef HAVE_AVRCP
+			if (!parse_art_url_metadata(mp, &var))
+				return FALSE;
+			art = TRUE;
+#endif
 		} else
 			DBG("%s not supported, ignoring", key);
 
@@ -2538,6 +2726,12 @@ static gboolean parse_player_metadata(struct local_player *mp,
 	if (title == FALSE)
 		g_hash_table_insert(mp->track, g_strdup("Title"),
 								g_strdup(""));
+
+#ifdef HAVE_AVRCP
+	/* The new track has no cover art, drop whatever was cached */
+	if (art == FALSE)
+		cover_art_reset(mp);
+#endif
 
 	mp->position = 0;
 	g_timer_start(mp->timer);

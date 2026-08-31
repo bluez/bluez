@@ -91,6 +91,27 @@ MPRIS 2.2 spec:
 
 http://specifications.freedesktop.org/mpris-spec/latest/
 
+The object may additionally implement **org.bluez.MediaPlayerCoverArt1** to
+serve album art to remote AVRCP controllers:
+
+.. code-block::
+
+	array{byte} GetCoverArt(string url)
+
+Called with the value the player last exported as **mpris:artUrl** whenever
+that value changes. It shall return the image as JPEG data, at most 1 MiB in
+size; other encodings are ignored by the AVRCP Cover Art responder.
+
+The image is passed as bytes rather than read from **mpris:artUrl** directly
+because bluetoothd is sandboxed and cannot access the caches players commonly
+store their artwork in. Players that do not implement this interface simply do
+not provide cover art.
+
+Possible Errors:
+
+:org.bluez.Error.NotSupported:
+:org.bluez.Error.Failed:
+
 Note: If the sender disconnects its objects are automatically unregistered.
 
 Possible Errors:

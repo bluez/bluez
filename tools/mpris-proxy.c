@@ -33,6 +33,8 @@
 #define BLUEZ_DEVICE_INTERFACE "org.bluez.Device1"
 #define BLUEZ_MEDIA_INTERFACE "org.bluez.Media1"
 #define BLUEZ_MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
+#define BLUEZ_MEDIA_PLAYER_COVER_ART_INTERFACE \
+					"org.bluez.MediaPlayerCoverArt1"
 #define BLUEZ_MEDIA_FOLDER_INTERFACE "org.bluez.MediaFolder1"
 #define BLUEZ_MEDIA_ITEM_INTERFACE "org.bluez.MediaItem1"
 #define BLUEZ_MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport1"
@@ -385,6 +387,76 @@ done:
 	dbus_message_unref(reply);
 }
 
+#define COVER_ART_MAX_SIZE (1024 * 1024)
+
+/*
+ * bluetoothd is sandboxed and has no access to the user's home directory,
+ * so it cannot read the file mpris:artUrl points to. Read it here instead,
+ * where we already run with the permissions of the player, and hand the
+ * image over as plain bytes.
+ */
+static DBusHandlerResult cover_art_get(DBusConnection *conn, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	const char *url;
+	char *filename, *contents = NULL;
+	gsize len = 0;
+	GError *gerr = NULL;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &url,
+							DBUS_TYPE_INVALID))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	filename = g_filename_from_uri(url, NULL, NULL);
+	if (filename == NULL) {
+		reply = g_dbus_create_error(msg, ERROR_INTERFACE
+					".NotSupported", "Not a local file");
+		goto send;
+	}
+
+	if (!g_file_get_contents(filename, &contents, &len, &gerr)) {
+		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							"%s", gerr->message);
+		g_error_free(gerr);
+		g_free(filename);
+		goto send;
+	}
+
+	g_free(filename);
+
+	if (len == 0 || len > COVER_ART_MAX_SIZE) {
+		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							"Invalid image size");
+		g_free(contents);
+		goto send;
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL) {
+		g_free(contents);
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+							&contents, len);
+	dbus_message_iter_close_container(&iter, &array);
+
+	g_free(contents);
+
+send:
+	if (reply == NULL)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_connection_send(conn, reply, NULL);
+	dbus_message_unref(reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusHandlerResult player_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -392,6 +464,15 @@ static DBusHandlerResult player_message(DBusConnection *conn,
 	DBusMessage *copy;
 	DBusMessageIter args, iter;
 	DBusPendingCall *call;
+
+	/*
+	 * Cover art is served by the proxy itself, the player behind it
+	 * knows nothing about this interface.
+	 */
+	if (dbus_message_is_method_call(msg,
+				BLUEZ_MEDIA_PLAYER_COVER_ART_INTERFACE,
+				"GetCoverArt"))
+		return cover_art_get(conn, msg);
 
 	dbus_message_iter_init(msg, &args);
 
