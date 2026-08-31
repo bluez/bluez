@@ -5958,8 +5958,10 @@ void bt_bap_detach(struct bt_bap *bap)
 
 	/* Cancel ongoing request */
 	if (bap->req) {
-		bap_req_detach(bap->req);
+		struct bt_bap_req *req = bap->req;
+
 		bap->req = NULL;
+		bap_req_detach(req);
 	}
 
 	bt_gatt_client_idle_unregister(bap->client, bap->idle_id);
