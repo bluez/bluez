@@ -835,8 +835,24 @@ static uint16_t mcs_playing_order_supported(void *data)
 
 static bool mcs_set_track_position(void *data, int32_t value)
 {
-	/* TODO: add support to setting position in org.bluez.MediaPlayer */
-	return false;
+	struct mcs_instance *mcs = data;
+	struct player_link *p = mcs_get_active(mcs);
+	int64_t position = value;
+
+	if (!p)
+		return false;
+
+	if (value < 0) {
+		int32_t duration = mcs_track_duration(mcs);
+
+		if (duration == BT_MCS_DURATION_UNAVAILABLE)
+			return false;
+
+		position += duration;
+	}
+
+	return local_player_seek(p->lp, (position * 10 -
+				local_player_get_position(p->lp)) * 1000);
 }
 
 static bool mcs_set_playing_order(void *data, uint8_t value)
