@@ -60,6 +60,7 @@
 
 #define MCS_UUID_STR	"00001848-0000-1000-8000-00805f9b34fb"
 #define GMCS_UUID_STR	"00001849-0000-1000-8000-00805f9b34fb"
+#define MCS_SEEK_OFFSET	(10 * 1000 * 1000)
 
 
 /*
@@ -440,6 +441,7 @@ struct mcs_instance {
 	struct bt_mcs *mcs;
 	struct queue *player_links;
 	bool at_start;
+	int8_t seeking_speed;
 
 	/* GMCS-specific */
 	struct bt_uinput *uinput;
@@ -492,6 +494,11 @@ static void mcs_update_media_state(struct mcs_instance *mcs)
 		state = BT_MCS_STATE_SEEKING;
 	} else {
 		state = BT_MCS_STATE_INACTIVE;
+	}
+
+	if (state != BT_MCS_STATE_SEEKING && mcs->seeking_speed) {
+		mcs->seeking_speed = 0;
+		bt_mcs_changed(mcs->mcs, MCS_SEEKING_SPEED_CHRC_UUID);
 	}
 
 	bt_mcs_set_media_state(mcs->mcs, state);
@@ -656,6 +663,32 @@ static bool mcs_pause(void *data)
 	return mcs_command(mcs, BT_MCS_CMD_PAUSE);
 }
 
+static bool mcs_fast_rewind(void *data)
+{
+	struct mcs_instance *mcs = data;
+	struct player_link *p = mcs_get_active(mcs);
+
+	if (!p || !local_player_seek(p->lp, -MCS_SEEK_OFFSET))
+		return false;
+
+	mcs->seeking_speed = -1;
+	bt_mcs_changed(mcs->mcs, MCS_SEEKING_SPEED_CHRC_UUID);
+	return true;
+}
+
+static bool mcs_fast_forward(void *data)
+{
+	struct mcs_instance *mcs = data;
+	struct player_link *p = mcs_get_active(mcs);
+
+	if (!p || !local_player_seek(p->lp, MCS_SEEK_OFFSET))
+		return false;
+
+	mcs->seeking_speed = 1;
+	bt_mcs_changed(mcs->mcs, MCS_SEEKING_SPEED_CHRC_UUID);
+	return true;
+}
+
 static bool mcs_stop(void *data)
 {
 	struct mcs_instance *mcs = data;
@@ -750,6 +783,13 @@ static int32_t mcs_track_position(void *data)
 		return 0;
 
 	return local_player_get_position(p->lp) / 10;
+}
+
+static int8_t mcs_seeking_speed(void *data)
+{
+	struct mcs_instance *mcs = data;
+
+	return mcs->seeking_speed;
 }
 
 static uint8_t mcs_playing_order(void *data)
@@ -858,12 +898,15 @@ static const struct bt_mcs_callback gmcs_cb = {
 	.track_title = mcs_track_title,
 	.track_duration = mcs_track_duration,
 	.track_position = mcs_track_position,
+	.seeking_speed = mcs_seeking_speed,
 	.playing_order = mcs_playing_order,
 	.playing_order_supported = mcs_playing_order_supported,
 	.set_track_position = mcs_set_track_position,
 	.set_playing_order = mcs_set_playing_order,
 	.play = mcs_play,
 	.pause = mcs_pause,
+	.fast_rewind = mcs_fast_rewind,
+	.fast_forward = mcs_fast_forward,
 	.stop = mcs_stop,
 	.next_track = mcs_next_track,
 	.previous_track = mcs_previous_track,
