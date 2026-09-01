@@ -674,7 +674,9 @@ unit_tests += unit/test-avrcp
 unit_test_avrcp_SOURCES = unit/test-avrcp.c \
 				src/log.h src/log.c \
 				unit/avctp.c unit/avctp.h \
-				unit/avrcp-lib.c unit/avrcp-lib.h
+				unit/avrcp-lib.c unit/avrcp-lib.h \
+				profiles/audio/avrcp-parse.h \
+				profiles/audio/avrcp-parse.c
 unit_test_avrcp_LDADD = lib/libbluetooth-internal.la \
 				src/libshared-glib.la $(GLIB_LIBS)
 
