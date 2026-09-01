@@ -88,6 +88,11 @@ endif
 builtin_modules += battery
 builtin_sources += profiles/battery/battery.c
 
+builtin_modules += fastpair
+builtin_sources += profiles/fastpair/fastpair.c \
+			profiles/fastpair/message-stream.h \
+			profiles/fastpair/message-stream.c
+
 builtin_modules += rap
 builtin_sources += profiles/ranging/rap.c \
 		profiles/ranging/rap_hci.c

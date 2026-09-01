@@ -118,6 +118,7 @@ unit/test-hog
 unit/test-bap
 unit/test-bass
 unit/test-battery
+unit/test-fastpair
 unit/test-tmap
 unit/test-gmap
 unit/test-mcp

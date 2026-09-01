@@ -814,6 +814,14 @@ unit_test_battery_SOURCES = unit/test-battery.c
 unit_test_battery_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 
+unit_tests += unit/test-fastpair
+
+unit_test_fastpair_SOURCES = unit/test-fastpair.c \
+			profiles/fastpair/message-stream.h \
+			profiles/fastpair/message-stream.c
+unit_test_fastpair_LDADD = src/libshared-glib.la \
+				lib/libbluetooth-internal.la $(GLIB_LIBS)
+
 unit_tests += unit/test-rap
 
 unit_test_rap_SOURCES = unit/test-rap.c $(btio_sources)
