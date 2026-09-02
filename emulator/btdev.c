@@ -7963,6 +7963,27 @@ static void set_le_60_commands(struct btdev *btdev)
 	btdev->cmds = cmd_le_6_0;
 }
 
+/* Connection event length recommended in requests by a Peripheral:
+ * Range: 0x0001 to 0x7CFF, Time = N * 125 us
+ * Time Range: 0.125 ms to 3.999875 s
+ */
+#define BT_HCI_CE_LEN_MIN 0x0001
+#define BT_HCI_CE_LEN_MAX 0x7cff
+
+static bool valid_ce_len(uint16_t min_ce_len, uint16_t max_ce_len)
+{
+	uint16_t min = le16_to_cpu(min_ce_len);
+	uint16_t max = le16_to_cpu(max_ce_len);
+
+	if (min < BT_HCI_CE_LEN_MIN || min > BT_HCI_CE_LEN_MAX)
+		return false;
+
+	if (max < BT_HCI_CE_LEN_MIN || max > BT_HCI_CE_LEN_MAX)
+		return false;
+
+	return min <= max;
+}
+
 static int cmd_le_conn_rate(struct btdev *dev, const void *data, uint8_t len)
 {
 	const struct bt_hci_cmd_le_conn_rate *cmd = data;
@@ -7974,6 +7995,8 @@ static int cmd_le_conn_rate(struct btdev *dev, const void *data, uint8_t len)
 				UINT_TO_PTR(le16_to_cpu(cmd->handle)));
 	if (!conn)
 		status = BT_HCI_ERR_UNKNOWN_CONN_ID;
+	else if (!valid_ce_len(cmd->min_ce_len, cmd->max_ce_len))
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
 
 	cmd_status(dev, status, BT_HCI_CMD_LE_CONN_RATE);
 
@@ -7999,7 +8022,11 @@ static int cmd_le_conn_rate(struct btdev *dev, const void *data, uint8_t len)
 
 static int cmd_le_set_def_rate(struct btdev *dev, const void *data, uint8_t len)
 {
+	const struct bt_hci_cmd_le_set_def_rate *cmd = data;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	if (!valid_ce_len(cmd->min_ce_len, cmd->max_ce_len))
+		status = BT_HCI_ERR_INVALID_PARAMETERS;
 
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_DEF_RATE, &status, sizeof(status));
 
