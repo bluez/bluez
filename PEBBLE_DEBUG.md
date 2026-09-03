@@ -39,6 +39,7 @@ Bluetooth devices.
 
 Re-arming the kernel auto-connect entry alone did not make the `0a12:0001`
 controller resume useful LE scanning. Because a USB reset is known to recover
-the device, the Pebble-specific disconnect path now schedules `/usr/bin/usbreset
-0a12:0001` after one second. It runs outside the disconnect callback to avoid
-re-entrant adapter teardown. A pending guard prevents duplicate reset jobs.
+the device, the Pebble-specific disconnect path now schedules
+`/usr/bin/usbreset 0a12:0001` after 100 milliseconds. It runs outside the
+disconnect callback to avoid re-entrant adapter teardown. A pending guard
+prevents duplicate reset jobs.
