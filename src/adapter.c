@@ -7216,6 +7216,9 @@ static void adapter_remove(struct btd_adapter *adapter)
 	g_slist_free(adapter->devices);
 	adapter->devices = NULL;
 
+	g_slist_free(adapter->discovery_found);
+	adapter->discovery_found = NULL;
+
 	discovery_cleanup(adapter, 0);
 
 	unload_drivers(adapter);
