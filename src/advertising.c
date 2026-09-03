@@ -1042,7 +1042,7 @@ static int refresh_legacy_adv(struct btd_adv_client *client,
 
 	cp->flags = htobl(flags);
 	cp->instance = client->instance;
-	cp->duration = client->duration;
+	cp->duration = cpu_to_le16(client->duration);
 	cp->adv_data_len = adv_data_len;
 	cp->scan_rsp_len = scan_rsp_len;
 	memcpy(cp->data, adv_data, adv_data_len);
@@ -1093,13 +1093,13 @@ static int refresh_extended_adv(struct btd_adv_client *client,
 	 */
 
 	if (client->duration) {
-		cp.duration = client->duration;
+		cp.duration = cpu_to_le16(client->duration);
 		flags |= MGMT_ADV_PARAM_DURATION;
 	}
 
 	if (client->min_interval && client->max_interval) {
-		cp.min_interval = client->min_interval;
-		cp.max_interval = client->max_interval;
+		cp.min_interval = cpu_to_le32(client->min_interval);
+		cp.max_interval = cpu_to_le32(client->max_interval);
 		flags |= MGMT_ADV_PARAM_INTERVALS;
 	}
 

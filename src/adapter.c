@@ -10219,10 +10219,11 @@ static bool set_blocked_keys(struct btd_adapter *adapter)
 					sizeof(blocked_keys)] = { 0 };
 	struct mgmt_cp_set_blocked_keys *cp =
 				(struct mgmt_cp_set_blocked_keys *)buffer;
+	const uint16_t key_count = ARRAY_SIZE(blocked_keys);
 	int i;
 
-	cp->key_count = ARRAY_SIZE(blocked_keys);
-	for (i = 0; i < cp->key_count; ++i) {
+	cp->key_count = cpu_to_le16(key_count);
+	for (i = 0; i < key_count; ++i) {
 		cp->keys[i].type = blocked_keys[i].type;
 		memcpy(cp->keys[i].val, blocked_keys[i].val,
 						sizeof(cp->keys[i].val));
