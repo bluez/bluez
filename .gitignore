@@ -186,3 +186,4 @@ cscope.out
 cscope.po.out
 
 **/__pycache__
+/pebble-trace.log

@@ -1,0 +1,52 @@
+# Pebble K380s reconnect investigation
+
+Target device: Logitech Pebble K380s (`046d:b377`), Bluetooth address
+`D2:92:89:C7:3A:ED` during the current pairing.
+
+Symptom: after switching the keyboard to another Easy-Switch host and back,
+BlueZ reports `Connected: yes` and exposes a UHID input node, but no key events
+arrive. Resetting the USB Bluetooth adapter restores input.
+
+The instrumentation in `profiles/input/hog-lib.c` records:
+
+- HoG attach and rejected duplicate attach attempts;
+- HoG detach and whether it is forced;
+- CCC notification enablement;
+- notification handler registration and removal;
+- incoming HID report notifications.
+
+## Capture protocol
+
+1. Start `tools/capture-pebble-trace.sh`.
+2. Reset the adapter and type several keys (known-good baseline).
+3. Switch to another Easy-Switch channel for at least five seconds.
+4. Switch back and type several keys (failing path).
+5. Reset the adapter and type again (recovery baseline).
+6. Stop capture with Ctrl+C.
+
+## Experimental fix 1
+
+The first capture showed a clean forced HoG detach when the keyboard left its
+Linux Easy-Switch channel. No subsequent HoG attach occurred until the USB
+adapter reset, at which point CCC subscriptions and input reports were restored.
+
+For `046d:b377`, `device_remove_connection()` now removes and re-adds the device
+to the kernel auto-connect list after an LE disconnect. This re-arms controller
+background scanning without resetting the adapter or disturbing unrelated
+Bluetooth devices.
+
+## Experimental fix 2
+
+Re-arming the kernel auto-connect entry alone did not make the `0a12:0001`
+controller resume useful LE scanning. Because a USB reset is known to recover
+the device, the Pebble-specific disconnect path now schedules
+`/usr/bin/usbreset 0a12:0001` after 1 millisecond. It runs outside the
+disconnect callback to avoid re-entrant adapter teardown. A pending guard
+prevents duplicate reset jobs.
+
+## Latency tuning
+
+The fork uses a continuous 10 ms LE scan window for auto-connect and connection
+establishment. This favors reconnection latency over adapter power consumption;
+the target is a mains-powered desktop. The deferred USB reset delay is reduced
+to 1 ms, which still keeps adapter teardown outside the disconnect callback.
