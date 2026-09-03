@@ -44,6 +44,7 @@ struct hci_dev {
 	unsigned long num_acl;
 	unsigned long num_sco;
 	unsigned long num_iso;
+	unsigned long num_vendor;
 	unsigned long vendor_diag;
 	unsigned long system_note;
 	unsigned long user_log;
@@ -465,6 +466,7 @@ static void dev_destroy(void *data)
 	printf("  %lu ACL packets\n", dev->num_acl);
 	printf("  %lu SCO packets\n", dev->num_sco);
 	printf("  %lu ISO packets\n", dev->num_iso);
+	printf("  %lu vendor packets\n", dev->num_vendor);
 	printf("  %lu vendor diagnostics\n", dev->vendor_diag);
 	printf("  %lu system notes\n", dev->system_note);
 	printf("  %lu user logs\n", dev->user_log);
@@ -1362,6 +1364,19 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 	}
 }
 
+static void vendor_pkt(struct timeval *tv, uint16_t index, bool out,
+					const void *data, uint16_t size)
+{
+	struct hci_dev *dev;
+
+	dev = dev_lookup(index);
+	if (!dev)
+		return;
+
+	dev->num_hci++;
+	dev->num_vendor++;
+}
+
 static void unknown_opcode(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
@@ -1467,6 +1482,14 @@ void analyze_trace(const char *path)
 		case BTSNOOP_OPCODE_ISO_RX_PKT:
 			num_frames++;
 			iso_pkt(&tv, index, false, buf, pktlen);
+			break;
+		case BTSNOOP_OPCODE_VENDOR_TX_PKT:
+			num_frames++;
+			vendor_pkt(&tv, index, true, buf, pktlen);
+			break;
+		case BTSNOOP_OPCODE_VENDOR_RX_PKT:
+			num_frames++;
+			vendor_pkt(&tv, index, false, buf, pktlen);
 			break;
 		default:
 			unknown_opcode(&tv, index, buf, pktlen);
