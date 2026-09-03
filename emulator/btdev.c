@@ -1104,8 +1104,8 @@ static bool inquiry_timeout(void *user_data)
 	struct btdev *btdev = data->btdev;
 	struct bt_hci_evt_inquiry_complete ic;
 
-	timeout_remove(btdev->inquiry_id);
 	btdev->inquiry_timeout_id = 0;
+	timeout_remove(btdev->inquiry_id);
 
 	/* Inquiry is stopped, send Inquiry complete event. */
 	ic.status = BT_HCI_ERR_SUCCESS;
