@@ -1291,7 +1291,7 @@ static void system_exception_evt(struct timeval *tv, uint16_t index,
 	packet_hexdump(data + 1, size - 1);
 }
 
-static const struct vendor_evt vendor_evt_table[] = {
+static const struct evt_vendor evt_vendor_table[] = {
 	{ 0x00, "Startup",
 			startup_evt, 0, true },
 	{ 0x01, "Fatal Exception",
@@ -1866,7 +1866,7 @@ static void intel_vendor_ext_evt(struct timeval *tv, uint16_t index,
 }
 
 /* Vendor extended events with a vendor prefix. */
-static const struct vendor_evt vendor_prefix_evt_table[] = {
+static const struct evt_vendor vendor_prefix_evt_table[] = {
 	{ 0x03, "Extended Telemetry", intel_vendor_ext_evt },
 	{ }
 };
@@ -1888,7 +1888,7 @@ struct vendor_prefix_evt {
 	uint8_t subopcode;
 };
 
-static const struct vendor_evt *intel_vendor_prefix_evt(const void *data,
+static const struct evt_vendor *intel_vendor_prefix_evt(const void *data,
 							int *consumed_size)
 {
 	unsigned int i;
@@ -1919,7 +1919,7 @@ static const struct vendor_evt *intel_vendor_prefix_evt(const void *data,
 	return NULL;
 }
 
-const struct vendor_evt *intel_vendor_evt(const void *data, int *consumed_size)
+const struct evt_vendor *intel_evt_vendor(const void *data, int *consumed_size)
 {
 	uint8_t evt = *((const uint8_t *) data);
 	int i;
@@ -1927,11 +1927,11 @@ const struct vendor_evt *intel_vendor_evt(const void *data, int *consumed_size)
 	/*
 	 * Handle the vendor event without a vendor prefix.
 	 *   0xff <length> <evt> <data>
-	 * This loop checks whether the <evt> exists in the vendor_evt_table.
+	 * This loop checks whether the <evt> exists in the evt_vendor_table.
 	 */
-	for (i = 0; vendor_evt_table[i].str; i++) {
-		if (vendor_evt_table[i].evt == evt)
-			return &vendor_evt_table[i];
+	for (i = 0; evt_vendor_table[i].str; i++) {
+		if (evt_vendor_table[i].evt == evt)
+			return &evt_vendor_table[i];
 	}
 
 	/*

@@ -183,8 +183,8 @@ struct msft_evt_monitor_device {
 } __attribute__((packed));
 
 struct vendor_ocf;
-struct vendor_evt;
+struct evt_vendor;
 
 const struct vendor_ocf *msft_vendor_ocf(void);
-const struct vendor_evt *msft_vendor_evt(void);
+const struct evt_vendor *msft_evt_vendor(void);
 bool msft_event_code_valid(uint8_t code);

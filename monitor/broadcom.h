@@ -12,8 +12,8 @@
 #include <stdint.h>
 
 struct vendor_ocf;
-struct vendor_evt;
+struct evt_vendor;
 
 const struct vendor_ocf *broadcom_vendor_ocf(uint16_t ocf);
-const struct vendor_evt *broadcom_vendor_evt(uint8_t evt);
+const struct evt_vendor *broadcom_evt_vendor(uint8_t evt);
 void broadcom_lm_diag(const void *data, uint8_t size);

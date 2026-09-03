@@ -369,13 +369,13 @@ static void msft_evt(struct timeval *tv, uint16_t index,
 		packet_hexdump(data + 1, size - 1);
 }
 
-static const struct vendor_evt vendor_evt_entry = {
+static const struct evt_vendor evt_vendor_entry = {
 	0x00, "Extension", msft_evt, 1, false
 };
 
-const struct vendor_evt *msft_vendor_evt(void)
+const struct evt_vendor *msft_evt_vendor(void)
 {
-	return &vendor_evt_entry;
+	return &evt_vendor_entry;
 }
 
 bool msft_event_code_valid(uint8_t code)

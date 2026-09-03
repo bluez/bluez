@@ -17,7 +17,7 @@
 #include "packet.h"
 #include "vendor.h"
 
-void vendor_event(uint16_t manufacturer, const void *data, uint8_t size)
+void event_vendor(uint16_t manufacturer, const void *data, uint8_t size)
 {
 	packet_hexdump(data, size);
 }
