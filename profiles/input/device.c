@@ -1065,6 +1065,9 @@ static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 	return FALSE;
 }
 
+#define NINTENDO_VENDOR_ID 0x057e
+#define NINTENDO_PRO_CONTROLLER_PID 0x2009
+
 static int hidp_add_connection(struct input_device *idev)
 {
 	struct hidp_connadd_req *req;
@@ -1099,6 +1102,19 @@ static int hidp_add_connection(struct input_device *idev)
 			!input_device_bonded(idev)) {
 		error("Rejected connection from !bonded device %s", idev->path);
 		goto cleanup;
+	}
+
+	if ((req->vendor == NINTENDO_VENDOR_ID) &&
+		(req->product == NINTENDO_PRO_CONTROLLER_PID)) {
+		if (!bt_io_set(idev->intr_io, &gerr,
+					BT_IO_OPT_FORCE_ACTIVE,
+					BT_POWER_FORCE_ACTIVE_OFF,
+					BT_IO_OPT_INVALID)) {
+			error("btio: %s", gerr->message);
+			g_error_free(gerr);
+			err = -EFAULT;
+			goto cleanup;
+		}
 	}
 
 	/* Encryption is mandatory for keyboards */
