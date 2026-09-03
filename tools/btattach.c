@@ -64,7 +64,12 @@ static int open_serial(const char *path, unsigned int speed, bool flowctl)
 	memset(&ti, 0, sizeof(ti));
 	cfmakeraw(&ti);
 
-	ti.c_cflag |= (speed | CLOCAL | CREAD);
+	ti.c_cflag |= (CLOCAL | CREAD);
+	if (cfsetspeed(&ti, speed) < 0) {
+		perror("Failed to set serial port speed");
+		close(fd);
+		return -1;
+	}
 
 	if (flowctl) {
 		/* Set flow control */
