@@ -4099,7 +4099,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 		 */
 		if (!pebble_usb_reset_pending) {
 			pebble_usb_reset_pending = true;
-			timeout_add(100, reset_pebble_usb_adapter, NULL, NULL);
+			timeout_add(1, reset_pebble_usb_adapter, NULL, NULL);
 		}
 	}
 
