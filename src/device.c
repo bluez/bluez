@@ -4048,6 +4048,21 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 
 	device_disconnected(device, reason);
 
+	/* Some USB controllers keep the LE background-connect entry but fail to
+	 * resume scanning after a multi-host HID keyboard leaves the link. The
+	 * device then remains disconnected until the controller is reset. Re-arm
+	 * the kernel entry for the affected Pebble K380s instead of resetting the
+	 * whole adapter.
+	 */
+	if (device->auto_connect && bdaddr_type != BDADDR_BREDR &&
+			btd_device_get_vendor(device) == 0x046d &&
+			btd_device_get_product(device) == 0xb377) {
+		info("PEBBLE_TRACE rearming kernel auto-connect after reason=0x%02x",
+								reason);
+		adapter_auto_connect_remove(device->adapter, device);
+		adapter_auto_connect_add(device->adapter, device);
+	}
+
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
 
