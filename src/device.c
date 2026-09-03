@@ -77,6 +77,36 @@
 
 static DBusConnection *dbus_conn = NULL;
 static unsigned service_state_cb_id;
+static bool pebble_usb_reset_pending;
+
+static bool reset_pebble_usb_adapter(void *user_data)
+{
+	char *argv[] = { "/usr/bin/usbreset", "0a12:0001", NULL };
+	GError *err = NULL;
+	int status = 0;
+	bool ok;
+
+	info("PEBBLE_TRACE resetting USB adapter 0a12:0001");
+	ok = g_spawn_sync(NULL, argv, NULL,
+			G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL,
+			NULL, NULL, NULL, NULL, &status, &err);
+	pebble_usb_reset_pending = false;
+
+	if (!ok) {
+		error("PEBBLE_TRACE USB reset spawn failed: %s", err->message);
+		g_error_free(err);
+		return false;
+	}
+
+	if (!g_spawn_check_wait_status(status, &err)) {
+		error("PEBBLE_TRACE USB reset failed: %s", err->message);
+		g_error_free(err);
+		return false;
+	}
+
+	info("PEBBLE_TRACE USB adapter reset complete");
+	return false;
+}
 
 struct btd_disconnect_data {
 	guint id;
@@ -4061,6 +4091,16 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 								reason);
 		adapter_auto_connect_remove(device->adapter, device);
 		adapter_auto_connect_add(device->adapter, device);
+
+		/* Re-arming is insufficient on 0a12:0001: the controller only
+		 * resumes useful LE scanning after a USB-level reset. Schedule it
+		 * outside this disconnect callback so adapter teardown is not
+		 * re-entrant.
+		 */
+		if (!pebble_usb_reset_pending) {
+			pebble_usb_reset_pending = true;
+			timeout_add_seconds(1, reset_pebble_usb_adapter, NULL, NULL);
+		}
 	}
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,

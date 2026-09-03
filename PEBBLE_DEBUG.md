@@ -34,3 +34,11 @@ For `046d:b377`, `device_remove_connection()` now removes and re-adds the device
 to the kernel auto-connect list after an LE disconnect. This re-arms controller
 background scanning without resetting the adapter or disturbing unrelated
 Bluetooth devices.
+
+## Experimental fix 2
+
+Re-arming the kernel auto-connect entry alone did not make the `0a12:0001`
+controller resume useful LE scanning. Because a USB reset is known to recover
+the device, the Pebble-specific disconnect path now schedules `/usr/bin/usbreset
+0a12:0001` after one second. It runs outside the disconnect callback to avoid
+re-entrant adapter teardown. A pending guard prevents duplicate reset jobs.
