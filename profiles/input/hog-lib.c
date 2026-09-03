@@ -100,6 +100,11 @@ struct bt_hog {
 	struct gatt_db_attribute	*report_map_attr;
 };
 
+static bool is_pebble_k380s(const struct bt_hog *hog)
+{
+	return hog && hog->vendor == 0x046d && hog->product == 0xb377;
+}
+
 struct report {
 	struct bt_hog		*hog;
 	bool			numbered;
@@ -334,6 +339,12 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 	pdu += ATT_NOTIFICATION_HEADER_SIZE;
 	len -= ATT_NOTIFICATION_HEADER_SIZE;
 
+	if (is_pebble_k380s(hog))
+		info("PEBBLE_TRACE report handle=0x%04x id=0x%02x "
+				"numbered=%u len=%u notifyid=%u",
+			report->value_handle, report->id, report->numbered, len,
+			report->notifyid);
+
 	err = bt_uhid_input(hog->uhid, report->numbered ? report->id : 0, pdu,
 				len);
 	if (err < 0)
@@ -343,8 +354,12 @@ static void report_value_cb(const guint8 *pdu, guint16 len, gpointer user_data)
 static void report_notify_destroy(void *user_data)
 {
 	struct report *report = user_data;
+	struct bt_hog *hog = report->hog;
 
 	DBG("");
+	if (is_pebble_k380s(hog))
+		info("PEBBLE_TRACE notify-destroy handle=0x%04x notifyid=%u",
+			report->value_handle, report->notifyid);
 
 	report->notifyid = 0;
 }
@@ -375,6 +390,10 @@ static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 					report->value_handle);
 		goto remove;
 	}
+
+	if (is_pebble_k380s(hog))
+		info("PEBBLE_TRACE ccc-enabled handle=0x%04x notifyid=%u",
+			report->value_handle, report->notifyid);
 
 	DBG("Report characteristic descriptor written: notifications enabled");
 
@@ -1693,8 +1712,17 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 {
 	GSList *l;
 
-	if (hog->attrib)
+	if (is_pebble_k380s(hog))
+		info("PEBBLE_TRACE attach begin attrib=%p uhid-created=%u reports=%u",
+			hog->attrib, bt_uhid_created(hog->uhid),
+			g_slist_length(hog->reports));
+
+	if (hog->attrib) {
+		if (is_pebble_k380s(hog))
+			info("PEBBLE_TRACE attach rejected: existing attrib=%p",
+				hog->attrib);
 		return false;
+	}
 
 	hog->attrib = g_attrib_ref(gatt);
 
@@ -1747,8 +1775,11 @@ bool bt_hog_attach(struct bt_hog *hog, void *gatt)
 					report_value_cb, r,
 					report_notify_destroy);
 		if (!r->notifyid)
-			error("Unable to register report notification: "
+				error("Unable to register report notification: "
 				"handle 0x%04x", r->value_handle);
+		else if (is_pebble_k380s(hog))
+			info("PEBBLE_TRACE reconnect-notify handle=0x%04x "
+					"notifyid=%u", r->value_handle, r->notifyid);
 	}
 
 	/* Attempt to replay get/set report messages since the driver might not
@@ -1765,6 +1796,12 @@ void bt_hog_detach(struct bt_hog *hog, bool force)
 
 	if (!hog)
 		return;
+
+	if (is_pebble_k380s(hog))
+		info("PEBBLE_TRACE detach begin force=%u attrib=%p "
+				"uhid-created=%u reports=%u", force, hog->attrib,
+				bt_uhid_created(hog->uhid),
+				g_slist_length(hog->reports));
 
 	if (!hog->attrib)
 		goto done;
