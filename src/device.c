@@ -5281,7 +5281,25 @@ void device_set_bredr_support(struct btd_device *device)
 
 void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 {
-	if (btd_opts.mode == BT_MODE_BREDR || device->le)
+	if (btd_opts.mode == BT_MODE_BREDR)
+		return;
+
+	/*
+	 * device->bdaddr_type only gets recorded here, on the LE bearer's
+	 * *first* creation below -- but the LE bearer can already exist
+	 * (e.g. loaded from storage, or created by an earlier BR/EDR-first
+	 * device_create()) without device->bdaddr_type ever having been set
+	 * to the actual LE address type, leaving it stuck at BDADDR_BREDR
+	 * for an otherwise dual-mode bonded device. When that happens,
+	 * adapter_auto_connect_add() sees BDADDR_BREDR and refuses to add
+	 * the device to the kernel's LE auto-connect list at all, and
+	 * adapter_set_device_flags() (e.g. for DEVICE_FLAG_ADDRESS_RESOLUTION)
+	 * targets the wrong kernel device object -- so background/auto
+	 * reconnect over LE never works for such a device. See
+	 * https://github.com/bluez/bluez/issues/2356. Correct it here too,
+	 * not only on first bearer creation.
+	 */
+	if (device->le && device->bdaddr_type != BDADDR_BREDR)
 		return;
 
 	if (!device->le)
