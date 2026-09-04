@@ -1410,6 +1410,16 @@ static void init_defaults(void)
 	btd_opts.defaults.le.addr_resolution = 0x01;
 	btd_opts.defaults.le.enable_advmon_interleave_scan = 0xFF;
 
+	/* This fork targets a mains-powered desktop with a multi-host Pebble
+	 * keyboard. Use a continuous 10 ms scan window while auto-connecting and
+	 * while establishing the LE link, minimizing the delay after the adapter
+	 * is reset. Values are in Bluetooth units of 0.625 ms (0x0010 = 10 ms).
+	 */
+	btd_opts.defaults.le.scan_interval_autoconnect = 0x0010;
+	btd_opts.defaults.le.scan_win_autoconnect = 0x0010;
+	btd_opts.defaults.le.scan_interval_connect = 0x0010;
+	btd_opts.defaults.le.scan_win_connect = 0x0010;
+
 	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
 		return;
 
