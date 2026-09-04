@@ -37,7 +37,9 @@ builtin_modules += avrcp
 builtin_sources += profiles/audio/control.h profiles/audio/control.c \
 			profiles/audio/avctp.h profiles/audio/avctp.c \
 			profiles/audio/avrcp.h profiles/audio/avrcp.c \
-			profiles/audio/avrcp-player.c
+			profiles/audio/avrcp-player.c \
+			profiles/audio/avrcp-bip.h profiles/audio/avrcp-bip.c \
+			$(gobex_sources)
 endif
 
 if NETWORK

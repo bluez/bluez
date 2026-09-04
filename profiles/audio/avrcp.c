@@ -52,6 +52,7 @@
 
 #include "avctp.h"
 #include "avrcp.h"
+#include "avrcp-bip.h"
 #include "control.h"
 #include "media.h"
 #include "player.h"
@@ -218,6 +219,7 @@ struct get_total_number_of_items_rsp {
 struct avrcp_server {
 	struct btd_adapter *adapter;
 	bool browsing;
+	bool cover_art;
 	uint32_t tg_record_id;
 	uint32_t ct_record_id;
 	GSList *players;
@@ -486,7 +488,63 @@ static sdp_record_t *avrcp_ct_record(bool browsing)
 	return record;
 }
 
-static sdp_record_t *avrcp_tg_record(bool browsing)
+static void avrcp_tg_add_protos(sdp_record_t *record, sdp_data_t *version,
+					bool browsing, uint16_t cover_psm)
+{
+	sdp_list_t *apseq_browsing = NULL, *apseq_obex = NULL;
+	uuid_t l2cap, avctp, obex;
+	sdp_list_t *aproto = NULL, *proto[2] = { NULL, NULL };
+	sdp_list_t *oproto[2] = { NULL, NULL };
+	sdp_data_t *psm = NULL, *opsm = NULL;
+	uint16_t ap = AVCTP_BROWSING_PSM;
+
+	if (!browsing && cover_psm == 0)
+		return;
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+
+	if (browsing) {
+		proto[0] = sdp_list_append(NULL, &l2cap);
+		psm = sdp_data_alloc(SDP_UINT16, &ap);
+		proto[0] = sdp_list_append(proto[0], psm);
+		apseq_browsing = sdp_list_append(NULL, proto[0]);
+
+		sdp_uuid16_create(&avctp, AVCTP_UUID);
+		proto[1] = sdp_list_append(NULL, &avctp);
+		proto[1] = sdp_list_append(proto[1], version);
+		apseq_browsing = sdp_list_append(apseq_browsing, proto[1]);
+
+		aproto = sdp_list_append(aproto, apseq_browsing);
+	}
+
+	/* AVRCP 1.6 section 8: Cover Art OBEX transport entry */
+	if (cover_psm != 0) {
+		oproto[0] = sdp_list_append(NULL, &l2cap);
+		opsm = sdp_data_alloc(SDP_UINT16, &cover_psm);
+		oproto[0] = sdp_list_append(oproto[0], opsm);
+		apseq_obex = sdp_list_append(NULL, oproto[0]);
+
+		sdp_uuid16_create(&obex, OBEX_UUID);
+		oproto[1] = sdp_list_append(NULL, &obex);
+		apseq_obex = sdp_list_append(apseq_obex, oproto[1]);
+
+		aproto = sdp_list_append(aproto, apseq_obex);
+	}
+
+	sdp_set_add_access_protos(record, aproto);
+
+	free(psm);
+	free(opsm);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(oproto[0], NULL);
+	sdp_list_free(oproto[1], NULL);
+	sdp_list_free(apseq_browsing, NULL);
+	sdp_list_free(apseq_obex, NULL);
+	sdp_list_free(aproto, NULL);
+}
+
+static sdp_record_t *avrcp_tg_record(bool browsing, uint16_t cover_psm)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avctp, avrtg;
@@ -501,6 +559,9 @@ static sdp_record_t *avrcp_tg_record(bool browsing)
 					AVRCP_FEATURE_CATEGORY_3 |
 					AVRCP_FEATURE_CATEGORY_4 |
 					AVRCP_FEATURE_TG_PLAYER_SETTINGS);
+
+	if (cover_psm != 0)
+		feat |= AVRCP_FEATURE_TG_COVERT_ART;
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -532,10 +593,10 @@ static sdp_record_t *avrcp_tg_record(bool browsing)
 	sdp_set_access_protos(record, aproto_control);
 
 	/* Additional Protocol Descriptor List */
-	if (browsing) {
+	if (browsing)
 		feat |= AVRCP_FEATURE_BROWSING;
-		avrcp_browsing_record(record, version);
-	}
+
+	avrcp_tg_add_protos(record, version, browsing, cover_psm);
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
@@ -1272,6 +1333,18 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp *session,
 			/* Don't add invalid attributes */
 			if (id == AVRCP_MEDIA_ATTRIBUTE_ILLEGAL ||
 					id > AVRCP_MEDIA_ATTRIBUTE_LAST)
+				continue;
+
+			/*
+			 * AVRCP 1.6 Section 5.14: the Default Cover Art
+			 * attribute shall only be included if a valid
+			 * image handle exists for the current track.
+			 * Returning it with an empty value makes some
+			 * head units (e.g. VW MIB) give up on Cover Art
+			 * for the rest of the session.
+			 */
+			if (id == AVRCP_MEDIA_ATTRIBUTE_IMG_HANDLE &&
+					player_get_metadata(player, id) == NULL)
 				continue;
 
 			len++;
@@ -4883,6 +4956,11 @@ static void avrcp_target_server_remove(struct btd_profile *p,
 		server->tg_record_id = 0;
 	}
 
+	if (server->cover_art) {
+		avrcp_bip_server_stop();
+		server->cover_art = false;
+	}
+
 	if (server->ct_record_id == 0)
 		avrcp_server_unregister(server);
 }
@@ -4904,7 +4982,11 @@ static int avrcp_target_server_probe(struct btd_profile *p,
 		return -EPROTONOSUPPORT;
 
 done:
-	record = avrcp_tg_record(server->browsing);
+	if (!server->cover_art)
+		server->cover_art = avrcp_bip_server_start() != 0;
+
+	record = avrcp_tg_record(server->browsing,
+			server->cover_art ? avrcp_bip_server_get_psm() : 0);
 	if (!record) {
 		error("Unable to allocate new service record");
 		avrcp_target_server_remove(p, adapter);
