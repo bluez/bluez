@@ -370,7 +370,7 @@ respond:
 							ret, rsp.result);
 
 	gatt_db_attribute_write_result(attrib, id, ret);
-	if (!rsp.op)
+	if (ret)
 		return;
 
 	/* Make state transition immediately if command was successful and has
