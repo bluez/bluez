@@ -13,10 +13,13 @@
 #include "bluetooth/uuid.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
+#include "ascs.h"
 #include "bap.h"
 #include "core.h"
 #include "gap.h"
 #include "gatt.h"
+#include "pacs.h"
+#include "vendor.h"
 
 static struct btp *btp;
 static struct l_dbus *dbus;
@@ -61,7 +64,18 @@ failed:
 static void btp_core_read_services(uint8_t index, const void *param,
 					uint16_t length, void *user_data)
 {
-	uint8_t services = 0;
+	const uint8_t supported_services[] = {
+		BTP_CORE_SERVICE,
+		BTP_GAP_SERVICE,
+		BTP_GATT_SERVICE,
+		BTP_PACS_SERVICE,
+		BTP_ASCS_SERVICE,
+		BTP_BAP_SERVICE,
+		BTP_VENDOR_SERVICE,
+	};
+	uint8_t *services = NULL;
+	size_t services_len = 0;
+	size_t i;
 
 	if (index != BTP_INDEX_NON_CONTROLLER) {
 		btp_send_error(btp, BTP_CORE_SERVICE, index,
@@ -69,11 +83,22 @@ static void btp_core_read_services(uint8_t index, const void *param,
 		return;
 	}
 
-	services |= (1 << BTP_CORE_SERVICE);
-	services |= (1 << BTP_GAP_SERVICE);
+	for (i = 0; i < L_ARRAY_SIZE(supported_services); i++) {
+		if (!add_supported_command(&services, &services_len,
+						supported_services[i]))
+			goto failed;
+	}
 
 	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_READ_SUPPORTED_SERVICES,
-			BTP_INDEX_NON_CONTROLLER, sizeof(services), &services);
+			BTP_INDEX_NON_CONTROLLER, services_len, services);
+
+	l_free(services);
+
+	return;
+
+failed:
+	l_free(services);
+	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
 }
 
 static void btp_core_register(uint8_t index, const void *param,
@@ -108,11 +133,35 @@ static void btp_core_register(uint8_t index, const void *param,
 			goto failed;
 
 		break;
+	case BTP_PACS_SERVICE:
+		if (pacs_is_service_registered())
+			goto failed;
+
+		if (!pacs_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
+	case BTP_ASCS_SERVICE:
+		if (ascs_is_service_registered())
+			goto failed;
+
+		if (!ascs_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
 	case BTP_BAP_SERVICE:
 		if (bap_is_service_registered())
 			goto failed;
 
 		if (!bap_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
+	case BTP_VENDOR_SERVICE:
+		if (vendor_is_service_registered())
+			goto failed;
+
+		if (!vendor_register_service(btp, dbus, client))
 			goto failed;
 
 		break;
@@ -158,11 +207,29 @@ static void btp_core_unregister(uint8_t index, const void *param,
 
 		gatt_unregister_service(btp);
 		break;
+	case BTP_PACS_SERVICE:
+		if (!pacs_is_service_registered())
+			goto failed;
+
+		ascs_unregister_service(btp);
+		break;
+	case BTP_ASCS_SERVICE:
+		if (!ascs_is_service_registered())
+			goto failed;
+
+		ascs_unregister_service(btp);
+		break;
 	case BTP_BAP_SERVICE:
 		if (!bap_is_service_registered())
 			goto failed;
 
 		bap_unregister_service(btp);
+		break;
+	case BTP_VENDOR_SERVICE:
+		if (!vendor_is_service_registered())
+			goto failed;
+
+		vendor_unregister_service(btp);
 		break;
 	case BTP_L2CAP_SERVICE:
 	case BTP_MESH_NODE_SERVICE:

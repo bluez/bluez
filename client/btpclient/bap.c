@@ -17,8 +17,10 @@
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/uuid.h"
+#include "src/shared/bap-defs.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
+#include "ascs.h"
 #include "bap.h"
 
 static struct btp *btp;
@@ -30,6 +32,7 @@ static void btp_bap_read_commands(uint8_t index, const void *param,
 	const uint8_t supported_commands[] = {
 		BTP_OP_BAP_READ_SUPPORTED_COMMANDS,
 		BTP_OP_BAP_DISCOVER,
+		BTP_OP_BAP_SEND,
 	};
 	uint8_t *commands = NULL;
 	size_t commands_len = 0;
@@ -57,6 +60,13 @@ static void btp_bap_read_commands(uint8_t index, const void *param,
 failed:
 	l_free(commands);
 	btp_send_error(btp, BTP_BAP_SERVICE, index, BTP_ERROR_FAIL);
+}
+
+static bool match_attribute_uuid(const void *attr, const void *uuid)
+{
+	const struct gatt_attribute *attribute = attr;
+
+	return !bt_uuid_cmp(&attribute->uuid, uuid);
 }
 
 static void btp_bap_discover(uint8_t index, const void *param, uint16_t length,
@@ -96,6 +106,374 @@ failed:
 	btp_send_error(btp, BTP_BAP_SERVICE, index, status);
 }
 
+static bool match_ase(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	uint8_t id = L_PTR_TO_UINT(data);
+
+	return ase->ase_id == id;
+}
+
+static void btp_bap_send(uint8_t index, const void *param, uint16_t length,
+								void *user_data)
+{
+	const struct btp_bap_send_cp *cp = param;
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	uint8_t status = BTP_ERROR_FAIL;
+	struct btp_device *dev;
+	struct btp_ase *ase;
+	ssize_t bytes_written;
+	struct btp_bap_send_rp rp;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	dev = find_device_by_address(adapter, &cp->address, cp->address_type);
+	ase = l_queue_find(dev->ases, match_ase, L_UINT_TO_PTR(cp->ase_id));
+	if (!ase || !ase->io)
+		goto failed;
+
+	bytes_written = write(l_io_get_fd(ase->io), cp->data,
+		cp->data_len <= ase->tx_mtu ? cp->data_len : ase->tx_mtu);
+	if (bytes_written < 0) {
+		l_error("Failed to write (%d)", errno);
+		goto failed;
+	}
+	rp.data_len = bytes_written;
+
+	btp_send(btp, BTP_BAP_SERVICE, BTP_OP_BAP_SEND, index, sizeof(rp), &rp);
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_BAP_SERVICE, index, status);
+}
+
+static void bap_charac_read_setup(struct l_dbus_message *message,
+							void *user_data)
+{
+	struct l_dbus_message_builder *builder;
+
+	builder = l_dbus_message_builder_new(message);
+	l_dbus_message_builder_enter_array(builder, "{sv}");
+	l_dbus_message_builder_enter_dict(builder, "sv");
+	l_dbus_message_builder_leave_dict(builder);
+	l_dbus_message_builder_leave_array(builder);
+	l_dbus_message_builder_finalize(builder);
+	l_dbus_message_builder_destroy(builder);
+}
+
+static void bap_read_pac_reply(struct l_dbus_proxy *proxy,
+						struct l_dbus_message *result,
+						void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	struct btp_device *device = ase->device;
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct btp_bap_codec_cap_found_ev *rp;
+	struct l_dbus_message_iter iter;
+	uint8_t *data;
+	uint32_t n, i, capa_length;
+
+	if (l_dbus_message_is_error(result)) {
+		const char *name, *desc;
+
+		l_dbus_message_get_error(result, &name, &desc);
+		l_error("Failed to read value (%s), %s", name, desc);
+
+		btp_send_error(btp, BTP_BAP_SERVICE, adapter->index,
+							BTP_ERROR_FAIL);
+		return;
+	}
+
+	if (!l_dbus_message_get_arguments(result, "ay", &iter))
+		goto failed;
+
+	if (!l_dbus_message_iter_get_fixed_array(&iter, &data, &n)) {
+		l_debug("Cannot read value");
+		goto failed;
+	}
+
+	rp = l_new(struct btp_bap_codec_cap_found_ev, 1);
+	rp->address_type = device->address_type;
+	rp->address = device->address;
+	rp->dir = ase->dir;
+	rp->coding_format = data[1];
+	capa_length = data[6];
+	i = 0;
+	while (i < capa_length) {
+		struct bt_ltv *ltv = (struct bt_ltv *)(data + i + 7);
+
+		if ((i + ltv->len >= capa_length) || (!ltv->len))
+			goto failed;
+
+		if (ltv->type == 0x01)
+			rp->frequencies = bt_get_le16(ltv->value);
+		else if (ltv->type == 0x02)
+			rp->frame_durations = ltv->value[0];
+		else if (ltv->type == 0x03)
+			rp->channel_counts = ltv->value[0];
+		else if (ltv->type == 0x04)
+			rp->octets_per_frame = bt_get_le32(ltv->value);
+
+		i += ltv->len + 1;
+	}
+
+	btp_send(btp, BTP_BAP_SERVICE, BTP_BAP_EV_CODEC_CAP_FOUND,
+		adapter->index, sizeof(struct btp_bap_codec_cap_found_ev), rp);
+
+	free(rp);
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_BAP_SERVICE, adapter->index, BTP_ERROR_FAIL);
+}
+
+static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
+						struct l_dbus_message *result,
+						void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	struct btp_device *device = ase->device;
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct btp_bap_ase_found_ev *rp;
+	struct l_dbus_message_iter iter;
+	uint8_t *data;
+	uint32_t n;
+	bt_uuid_t uuid;
+	struct gatt_attribute *attribute;
+	const char *pac_uuid;
+	const struct l_queue_entry *entry;
+
+	if (l_dbus_message_is_error(result)) {
+		const char *name, *desc;
+
+		l_dbus_message_get_error(result, &name, &desc);
+		l_error("Failed to read value (%s), %s", name, desc);
+
+		goto failed;
+	}
+
+	if (!l_dbus_message_get_arguments(result, "ay", &iter))
+		goto failed;
+
+	if (!l_dbus_message_iter_get_fixed_array(&iter, &data, &n)) {
+		l_debug("Cannot read value");
+		goto failed;
+	}
+
+	ase->ase_id = data[0];
+
+	rp = l_new(struct btp_bap_ase_found_ev, 1);
+	rp->address_type = device->address_type;
+	rp->address = device->address;
+	rp->dir = ase->dir;
+	rp->ase_id = data[0];
+
+	btp_send(btp, BTP_BAP_SERVICE, BTP_EV_BAP_ASE_FOUND, adapter->index,
+				sizeof(struct btp_bap_ase_found_ev), rp);
+
+	free(rp);
+
+	if (bt_uuid16_cmp(&ase->uuid, ASE_SINK_UUID)) {
+		bt_uuid16_create(&uuid, PAC_SINK_CHRC_UUID);
+		pac_uuid = PAC_SINK_UUID;
+	} else {
+		bt_uuid16_create(&uuid, PAC_SOURCE_CHRC_UUID);
+		pac_uuid = PAC_SOURCE_UUID;
+	}
+
+	for (entry = l_queue_get_entries(device->endpoints); entry;
+						entry = entry->next) {
+		struct l_dbus_proxy *p = entry->data;
+		const char *str;
+
+		if (!l_dbus_proxy_get_property(p, "UUID", "s", &str))
+			continue;
+
+		if (!strcmp(str, pac_uuid)) {
+			ase->ep_proxy = p;
+			break;
+		}
+	}
+
+	ascs_ase_replied(adapter, ase);
+
+	attribute = l_queue_find(device->characteristics,
+						match_attribute_uuid, &uuid);
+	if (!attribute)
+		goto failed;
+
+	l_dbus_proxy_method_call(attribute->proxy, "ReadValue",
+				bap_charac_read_setup, bap_read_pac_reply,
+				ase, NULL);
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_BAP_SERVICE, adapter->index, BTP_ERROR_FAIL);
+}
+
+void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
+{
+	struct btp_device *device = user_data;
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
+		char *str, str_uuid[MAX_LEN_UUID_STR];
+		bt_uuid_t uuid;
+		struct btp_ase *ase;
+
+		if (!l_dbus_proxy_get_property(proxy, "UUID", "s", &str))
+			return;
+
+		bt_uuid16_create(&uuid, ASE_SINK_UUID);
+		bt_uuid_to_string(&uuid, str_uuid, MAX_LEN_UUID_STR);
+		if (!bt_uuid_strcmp(str, str_uuid)) {
+			ase = l_new(struct btp_ase, 1);
+			ase->device = device;
+			ase->dir = BTP_BAP_DIR_SINK;
+			ase->uuid = uuid;
+			ase->cig_id = BT_ISO_QOS_CIG_UNSET;
+			ase->cis_id = BT_ISO_QOS_CIS_UNSET;
+			l_queue_push_tail(device->ases, ase);
+
+			l_dbus_proxy_method_call(proxy, "ReadValue",
+						bap_charac_read_setup,
+						bap_read_ase_reply,
+						ase, NULL);
+		}
+
+		bt_uuid16_create(&uuid, ASE_SOURCE_UUID);
+		bt_uuid_to_string(&uuid, str_uuid, MAX_LEN_UUID_STR);
+		if (!bt_uuid_strcmp(str, str_uuid)) {
+			ase = l_new(struct btp_ase, 1);
+			ase->device = device;
+			ase->dir = BTP_BAP_DIR_SOURCE;
+			ase->uuid = uuid;
+			ase->cig_id = BT_ISO_QOS_CIG_UNSET;
+			ase->cis_id = BT_ISO_QOS_CIS_UNSET;
+			l_queue_push_tail(device->ases, ase);
+
+			l_dbus_proxy_method_call(proxy, "ReadValue",
+						bap_charac_read_setup,
+						bap_read_ase_reply,
+						ase, NULL);
+		}
+	}
+}
+
+static bool transport_get_cig_cis(struct l_dbus_proxy *proxy, uint8_t *cig,
+								uint8_t *cis)
+{
+	struct l_dbus_message_iter iter, var;
+	const char *key;
+
+	*cig = BT_ISO_QOS_CIG_UNSET;
+	*cis = BT_ISO_QOS_CIS_UNSET;
+
+	if (!l_dbus_proxy_get_property(proxy, "QoS", "a{sv}", &iter))
+		return false;
+
+	while (l_dbus_message_iter_next_entry(&iter, &key, &var)) {
+		if (!strcmp(key, "CIG")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cig))
+				return false;
+		}
+
+		if (!strcmp(key, "CIS")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cis))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+static void send_data(struct l_idle *idle, void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	ssize_t bytes_written;
+	uint8_t *data;
+
+	if (!ase->idle_writer || !ase->io) {
+		l_idle_remove(idle);
+		ase->idle_writer = NULL;
+		return;
+	}
+
+	data = l_malloc(ase->tx_mtu);
+	bytes_written = write(l_io_get_fd(ase->io), data, ase->tx_mtu);
+	if (bytes_written < 0) {
+		l_error("Failed to write (%d)", errno);
+		l_idle_remove(idle);
+		ase->idle_writer = NULL;
+	}
+	l_free(data);
+}
+
+void bap_property_changed(struct l_dbus_proxy *proxy, const char *name,
+				struct l_dbus_message *msg, void *user_data)
+{
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.MediaTransport1")) {
+		if (!strcmp(name, "State")) {
+			const char *state, *path, *uuid;
+			struct btp_device *dev;
+			struct btp_adapter *adapter;
+			uint8_t dir, cig, cis;
+			struct btp_ase *ase;
+
+			if (!l_dbus_message_get_arguments(msg, "s", &state))
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "Device", "o",
+								&path))
+				return;
+
+			dev = find_device_by_path(path);
+			if (!dev)
+				return;
+
+			adapter = find_adapter_by_device(dev);
+			if (!adapter)
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "UUID", "s",
+								&uuid))
+				return;
+
+			if (!bt_uuid_strcmp(uuid, PAC_SINK_UUID))
+				dir = BTP_BAP_DIR_SOURCE;
+			else
+				dir = BTP_BAP_DIR_SINK;
+
+			if (!transport_get_cig_cis(proxy, &cig, &cis))
+				return;
+
+			ase = find_ase(dev, cig, cis, dir);
+			if (!ase)
+				return;
+
+			if (!strcmp(state, "active") && ase->auto_send &&
+					(ase->dir == BTP_BAP_DIR_SINK)) {
+				ase->idle_writer = l_idle_create(send_data,
+								ase, NULL);
+			} else if (!strcmp(state, "pending")) {
+				ase->auto_send = true;
+			} else if (!strcmp(state, "idle") &&
+							ase->idle_writer) {
+				l_idle_remove(ase->idle_writer);
+				ase->idle_writer = NULL;
+			}
+		}
+	}
+}
+
 bool bap_register_service(struct btp *btp_, struct l_dbus *dbus_,
 					struct l_dbus_client *client)
 {
@@ -106,6 +484,9 @@ bool bap_register_service(struct btp *btp_, struct l_dbus *dbus_,
 
 	btp_register(btp, BTP_BAP_SERVICE, BTP_OP_BAP_DISCOVER,
 					btp_bap_discover, NULL, NULL);
+
+	btp_register(btp, BTP_BAP_SERVICE, BTP_OP_BAP_SEND,
+					btp_bap_send, NULL, NULL);
 
 	bap_service_registered = true;
 

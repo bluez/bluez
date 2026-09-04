@@ -26,7 +26,10 @@
 #define BTP_GATT_SERVICE	2
 #define BTP_L2CAP_SERVICE	3
 #define BTP_MESH_NODE_SERVICE	4
+#define BTP_PACS_SERVICE	12
+#define BTP_ASCS_SERVICE	13
 #define BTP_BAP_SERVICE		14
+#define BTP_VENDOR_SERVICE	255
 
 struct btp_hdr {
 	uint8_t service;
@@ -414,6 +417,109 @@ struct btp_gatt_write_rp {
 	uint8_t att_response;
 } __packed;
 
+#define BTP_OP_PACS_READ_SUPPORTED_COMMANDS	0x01
+
+#define BTP_OP_PACS_SET_LOCATION		0x03
+struct btp_pacs_set_location_cp {
+	uint8_t dir;
+	uint32_t location;
+} __packed;
+
+#define BTP_OP_ASCS_READ_SUPPORTED_COMMANDS	0x01
+
+#define BTP_OP_ASCS_CONFIGURE_CODEC		0x02
+struct btp_ascs_configure_codec_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t coding_format;
+	uint16_t vid;
+	uint16_t cid;
+	uint8_t cc_ltvs_len;
+	uint8_t cc_ltvs[];
+} __packed;
+
+#define BTP_OP_ASCS_CONFIGURE_QOS		0x03
+struct btp_ascs_configure_qos_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t cig_id;
+	uint8_t cis_id;
+	uint8_t sdu_interval[3];
+	uint8_t framing;
+	uint16_t max_sdu;
+	uint8_t retransmission_num;
+	uint16_t max_transport_latency;
+	uint8_t presentation_delay[3];
+} __packed;
+
+#define BTP_OP_ASCS_ENABLE			0x04
+struct btp_ascs_enable_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+} __packed;
+
+#define BTP_OP_ASCS_RECEIVER_START_READY	0x05
+struct btp_ascs_receiver_start_ready_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+} __packed;
+
+#define BTP_OP_ASCS_ADD_ASE_TO_CIS		0x0a
+struct btp_ascs_add_ase_to_cis_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t cig_id;
+	uint8_t cis_id;
+} __packed;
+
+#define BTP_OP_ASCS_PRECONFIGURE_QOS		0x0b
+struct btp_ascs_preconfigure_qos_cp {
+	uint8_t cig_id;
+	uint8_t cis_id;
+	uint8_t sdu_interval[3];
+	uint8_t framing;
+	uint16_t max_sdu;
+	uint8_t retransmission_num;
+	uint16_t max_transport_latency;
+	uint8_t presentation_delay[3];
+} __packed;
+
+#define BTP_EV_ASCS_OPERATION_COMPLETED		0x80
+struct btp_ascs_operation_completed_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t opcode;
+	uint8_t status;
+
+	/* RFU */
+	uint8_t flags;
+} __packed;
+
+#define BTP_EV_ASCS_ASE_STATE_CHANGED		0x82
+struct btp_ascs_ase_state_changed_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t state;
+} __packed;
+
+#define BTP_EV_ASCS_CIS_CONNECTED		0x83
+struct btp_ascs_cis_connected_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t cis_id;
+} __packed;
+
+#define BTP_BAP_DIR_SINK			0x01
+#define BTP_BAP_DIR_SOURCE			0x02
+
 #define BTP_OP_BAP_READ_SUPPORTED_COMMANDS	0x01
 
 #define BTP_OP_BAP_DISCOVER			0x02
@@ -422,11 +528,61 @@ struct btp_bap_discover_cp {
 	bdaddr_t address;
 } __packed;
 
+#define BTP_OP_BAP_SEND				0x03
+struct btp_bap_send_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t data_len;
+	uint8_t data[];
+} __packed;
+
+struct btp_bap_send_rp {
+	uint8_t data_len;
+} __packed;
+
 #define BTP_EV_BAP_DISCOVERY_COMPLETED		0x80
 struct btp_bap_discovery_completed_ev {
 	uint8_t address_type;
 	bdaddr_t address;
 	uint8_t status;
+} __packed;
+
+#define BTP_BAP_EV_CODEC_CAP_FOUND		0x81
+struct btp_bap_codec_cap_found_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t dir;
+	uint8_t coding_format;
+	uint16_t frequencies;
+	uint8_t frame_durations;
+	uint32_t octets_per_frame;
+	uint8_t channel_counts;
+} __packed;
+
+#define BTP_EV_BAP_ASE_FOUND			0x82
+struct btp_bap_ase_found_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t dir;
+	uint8_t ase_id;
+} __packed;
+
+#define BTP_EV_BAP_STREAM_RECEIVED		0x83
+struct btp_bap_stream_received_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t data_len;
+	uint8_t data[];
+} __packed;
+
+#define BTP_OP_VENDOR_READ_SUPPORTED_COMMANDS	0x01
+
+#define BTP_OP_VENDOR_ASCS_SETUP		0x02
+struct btp_vendor_ascs_setup_cp {
+	uint8_t target_latency;
+	uint8_t desync;
 } __packed;
 
 struct btp;

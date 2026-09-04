@@ -2669,9 +2669,6 @@ void gap_property_changed(struct l_dbus_proxy *proxy, const char *name,
 				struct l_dbus_message *msg, void *user_data)
 {
 	const char *interface = l_dbus_proxy_get_interface(proxy);
-	const char *path = l_dbus_proxy_get_path(proxy);
-
-	l_info("property_changed %s %s %s", name, path, interface);
 
 	if (!strcmp(interface, "org.bluez.Adapter1")) {
 		struct btp_adapter *adapter = find_adapter_by_proxy(proxy);
