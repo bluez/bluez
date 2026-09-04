@@ -2971,8 +2971,15 @@ static uint8_t ccc_write_cb(struct pending_op *op, void *user_data)
 		if (!chrc->ntfy_cnt)
 			goto done;
 
-		client = queue_remove_if(chrc->notify_ios, match_client_att,
-							op ? op->att : NULL);
+		/*
+		 * A NULL op means clear_ccc_state() is clearing the CCC of a
+		 * device that has just disconnected. Its own IO is reclaimed
+		 * by att_disconnect_cb(), and match_client_att() matches any
+		 * entry when the ATT instance is NULL, which would free the
+		 * IO of an unrelated client, so only account for it here.
+		 */
+		client = op ? queue_remove_if(chrc->notify_ios,
+					match_client_att, op->att) : NULL;
 		if (client) {
 			client_io_free(client);
 			__sync_sub_and_fetch(&chrc->ntfy_cnt, 1);
