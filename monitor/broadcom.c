@@ -712,18 +712,18 @@ static void lm_diag_evt(struct timeval *tv, uint16_t index,
 	broadcom_lm_diag(data, 63);
 }
 
-static const struct vendor_evt vendor_evt_table[] = {
+static const struct evt_vendor evt_vendor_table[] = {
 	{ 0xb4, "LM Diag", lm_diag_evt, 64, true },
 	{ }
 };
 
-const struct vendor_evt *broadcom_vendor_evt(uint8_t evt)
+const struct evt_vendor *broadcom_evt_vendor(uint8_t evt)
 {
 	int i;
 
-	for (i = 0; vendor_evt_table[i].str; i++) {
-		if (vendor_evt_table[i].evt == evt)
-			return &vendor_evt_table[i];
+	for (i = 0; evt_vendor_table[i].str; i++) {
+		if (evt_vendor_table[i].evt == evt)
+			return &evt_vendor_table[i];
 	}
 
 	return NULL;

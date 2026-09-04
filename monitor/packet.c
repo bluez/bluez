@@ -73,6 +73,7 @@
 #define COLOR_HCI_ACLDATA		COLOR_CYAN
 #define COLOR_HCI_SCODATA		COLOR_YELLOW
 #define COLOR_HCI_ISODATA		COLOR_YELLOW
+#define COLOR_HCI_VENDOR		COLOR_GREEN
 
 #define COLOR_UNKNOWN_ERROR		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
@@ -4528,6 +4529,12 @@ void packet_monitor(struct timeval *tv, struct ucred *cred,
 		break;
 	case BTSNOOP_OPCODE_ISO_RX_PKT:
 		packet_hci_isodata(tv, cred, index, true, data, size);
+		break;
+	case BTSNOOP_OPCODE_VENDOR_TX_PKT:
+		packet_hci_vendor(tv, cred, index, false, data, size);
+		break;
+	case BTSNOOP_OPCODE_VENDOR_RX_PKT:
+		packet_hci_vendor(tv, cred, index, true, data, size);
 		break;
 	case BTSNOOP_OPCODE_OPEN_INDEX:
 		if (index < MAX_INDEX)
@@ -11137,7 +11144,7 @@ static const struct vendor_ocf *current_vendor_ocf(uint16_t ocf)
 	return NULL;
 }
 
-static const struct vendor_evt *current_vendor_evt(const void *data,
+static const struct evt_vendor *current_evt_vendor(const void *data,
 					uint8_t size, int *consumed_size)
 {
 	uint16_t manufacturer;
@@ -11145,7 +11152,7 @@ static const struct vendor_evt *current_vendor_evt(const void *data,
 
 	if (msft_event_prefix_match(data, size)) {
 		*consumed_size = index_list[index_current].msft_evt_len;
-		return msft_vendor_evt();
+		return msft_evt_vendor();
 	}
 
 	/* A regular vendor event consumes 1 byte. */
@@ -11158,15 +11165,15 @@ static const struct vendor_evt *current_vendor_evt(const void *data,
 
 	switch (manufacturer) {
 	case COMPANY_ID_INTEL:
-		return intel_vendor_evt(data, consumed_size);
+		return intel_evt_vendor(data, consumed_size);
 	case COMPANY_ID_BROADCOM:
-		return broadcom_vendor_evt(evt);
+		return broadcom_evt_vendor(evt);
 	}
 
 	return NULL;
 }
 
-static const char *current_vendor_evt_str(const void *data, uint8_t size)
+static const char *current_evt_vendor_str(const void *data, uint8_t size)
 {
 	uint16_t manufacturer;
 
@@ -13864,17 +13871,17 @@ static void le_meta_event_evt(struct timeval *tv, uint16_t index,
 	print_subevent(tv, index, subevent_data, data + 1, size - 1);
 }
 
-static void vendor_evt(struct timeval *tv, uint16_t index,
+static void evt_vendor(struct timeval *tv, uint16_t index,
 				const void *data, uint8_t size)
 {
 	struct subevent_data vendor_data;
 	char vendor_str[150];
 	int consumed_size;
-	const struct vendor_evt *vnd = current_vendor_evt(data, size,
+	const struct evt_vendor *vnd = current_evt_vendor(data, size,
 								&consumed_size);
 
 	if (vnd) {
-		const char *str = current_vendor_evt_str(data, size);
+		const char *str = current_evt_vendor_str(data, size);
 
 		if (str) {
 			snprintf(vendor_str, sizeof(vendor_str),
@@ -13899,7 +13906,7 @@ static void vendor_evt(struct timeval *tv, uint16_t index,
 		else
 			manufacturer = fallback_manufacturer;
 
-		vendor_event(manufacturer, data, size);
+		event_vendor(manufacturer, data, size);
 	}
 }
 
@@ -14066,7 +14073,7 @@ static const struct event_data event_table[] = {
 	{ 0x59, "Encryption Change v2",
 				encrypt_change_evt_v2, 5, true },
 	{ 0xfe, "Testing" },
-	{ 0xff, "Vendor", vendor_evt, 0, false },
+	{ 0xff, "Vendor", evt_vendor, 0, false },
 	{ }
 };
 
@@ -14736,6 +14743,25 @@ malformed:
 	else
 		print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
 				"Malformed ISO Data TX packet", NULL, NULL);
+	packet_hexdump(data, size);
+}
+
+void packet_hci_vendor(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size)
+{
+	char extra_str[16];
+
+	if (index >= MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
+
+	index_list[index].frame++;
+
+	sprintf(extra_str, "(len %d)", size);
+	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_VENDOR,
+				"HCI Vendor", NULL, extra_str);
+
 	packet_hexdump(data, size);
 }
 

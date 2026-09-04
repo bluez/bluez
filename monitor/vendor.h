@@ -22,7 +22,7 @@ struct vendor_ocf {
 	bool rsp_fixed;
 };
 
-struct vendor_evt {
+struct evt_vendor {
 	uint8_t evt;
 	const char *str;
 	void (*evt_func) (struct timeval *tv, uint16_t index,
@@ -31,4 +31,4 @@ struct vendor_evt {
 	bool evt_fixed;
 };
 
-void vendor_event(uint16_t manufacturer, const void *data, uint8_t size);
+void event_vendor(uint16_t manufacturer, const void *data, uint8_t size);

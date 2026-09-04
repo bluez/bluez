@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 struct vendor_ocf;
-struct vendor_evt;
+struct evt_vendor;
 
 const struct vendor_ocf *intel_vendor_ocf(uint16_t ocf);
-const struct vendor_evt *intel_vendor_evt(const void *data, int *consumed_size);
+const struct evt_vendor *intel_evt_vendor(const void *data, int *consumed_size);
