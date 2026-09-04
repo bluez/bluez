@@ -2424,6 +2424,24 @@ static void print_slot_125u(const char *label, uint16_t value)
 				le16_to_cpu(value) * 0.125, le16_to_cpu(value));
 }
 
+/* Connection event length recommended in requests by a Peripheral:
+ * Range: 0x0001 to 0x7CFF, Time = N * 125 us
+ */
+#define BT_HCI_CE_LEN_MIN 0x0001
+#define BT_HCI_CE_LEN_MAX 0x7cff
+
+static void print_ce_len(const char *label, uint16_t value)
+{
+	uint16_t val = le16_to_cpu(value);
+
+	if (val < BT_HCI_CE_LEN_MIN || val > BT_HCI_CE_LEN_MAX) {
+		print_field("%s: Reserved (0x%4.4x)", label, val);
+		return;
+	}
+
+	print_field("%s: %.3f msec (0x%4.4x)", label, val * 0.125, val);
+}
+
 static void print_slot_625(const char *label, uint16_t value)
 {
 	 print_field("%s: %.3f msec (0x%4.4x)", label,
@@ -9916,8 +9934,8 @@ static void le_conn_rate_cmd(uint16_t index, const void *data, uint8_t size)
 	print_field("Supervision Timeout: %d ms (0x%4.4x)",
 				le16_to_cpu(cmd->supv_timeout) * 10,
 				le16_to_cpu(cmd->supv_timeout));
-	print_slot_125u("Minimum CE Length", cmd->min_ce_len);
-	print_slot_125u("Maximum CE Length", cmd->max_ce_len);
+	print_ce_len("Minimum CE Length", cmd->min_ce_len);
+	print_ce_len("Maximum CE Length", cmd->max_ce_len);
 }
 
 static void le_set_def_rate_cmd(uint16_t index, const void *data, uint8_t size)
@@ -9941,8 +9959,8 @@ static void le_set_def_rate_cmd(uint16_t index, const void *data, uint8_t size)
 	print_field("Supervision Timeout: %d ms (0x%4.4x)",
 				le16_to_cpu(cmd->supv_timeout) * 10,
 				le16_to_cpu(cmd->supv_timeout));
-	print_slot_125u("Minimum CE Length", cmd->min_ce_len);
-	print_slot_125u("Maximum CE Length", cmd->max_ce_len);
+	print_ce_len("Minimum CE Length", cmd->min_ce_len);
+	print_ce_len("Maximum CE Length", cmd->max_ce_len);
 }
 
 static void le_read_conn_interval_rsp(uint16_t index, const void *data,
