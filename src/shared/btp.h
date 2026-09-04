@@ -432,6 +432,18 @@ struct btp_bap_discovery_completed_ev {
 	uint8_t status;
 } __packed;
 
+#define BTP_BAP_EV_CODEC_CAP_FOUND		0x81
+struct btp_bap_codec_cap_found_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t dir;
+	uint8_t coding_format;
+	uint16_t frequencies;
+	uint8_t frame_durations;
+	uint32_t octets_per_frame;
+	uint8_t channel_counts;
+} __packed;
+
 #define BTP_EV_BAP_ASE_FOUND			0x82
 struct btp_bap_ase_found_ev {
 	uint8_t address_type;
