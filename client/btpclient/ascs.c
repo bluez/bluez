@@ -131,6 +131,11 @@ static void btp_ascs_read_commands(uint8_t index, const void *param,
 	const uint8_t supported_commands[] = {
 		BTP_OP_ASCS_READ_SUPPORTED_COMMANDS,
 		BTP_OP_ASCS_CONFIGURE_CODEC,
+		BTP_OP_ASCS_CONFIGURE_QOS,
+		BTP_OP_ASCS_ENABLE,
+		BTP_OP_ASCS_RECEIVER_START_READY,
+		BTP_OP_ASCS_ADD_ASE_TO_CIS,
+		BTP_OP_ASCS_PRECONFIGURE_QOS,
 	};
 	uint8_t *commands = NULL;
 	size_t commands_len = 0;
@@ -360,6 +365,394 @@ static void btp_ascs_configure_codec(uint8_t index, const void *param,
 
 failed:
 	btp_send_error(btp, BTP_ASCS_SERVICE, index, status);
+}
+
+static bool match_ase(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	uint8_t id = L_PTR_TO_UINT(data);
+
+	return ase->ase_id == id;
+}
+
+struct configure_qos_complete_data {
+	struct btp_adapter *adapter;
+	const struct btp_ascs_configure_qos_cp *cp;
+};
+
+static void configure_qos_complete_cb(void *data, void *user_data)
+{
+	struct btp_ase *ase = data;
+	struct configure_qos_complete_data *param = user_data;
+	const struct btp_ascs_configure_qos_cp *cp = param->cp;
+	struct btp_ascs_operation_completed_ev ev;
+
+	if ((cp->ase_id && cp->ase_id != ase->ase_id) ||
+					(cp->cig_id != ase->cig_id))
+		return;
+
+	memcpy(&ev.address, &cp->address, sizeof(ev.address));
+	ev.address_type = cp->address_type;
+	ev.ase_id = ase->ase_id;
+	ev.opcode = BTP_OP_ASCS_CONFIGURE_QOS;
+	ev.status = 0;
+	ev.flags = 0;
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_EV_ASCS_OPERATION_COMPLETED,
+			param->adapter->index, sizeof(ev), &ev);
+
+	send_state_changed(param->adapter->index,  &cp->address,
+					cp->address_type, ase->ase_id,
+					BT_BAP_STREAM_STATE_QOS);
+}
+
+static void btp_ascs_configure_qos(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	struct btp_device *dev;
+	const struct btp_ascs_configure_qos_cp *cp = param;
+	struct configure_qos_complete_data data;
+	uint8_t status = BTP_ERROR_FAIL;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	dev = find_device_by_address(adapter, &cp->address, cp->address_type);
+	if (!dev)
+		goto failed;
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_CONFIGURE_QOS, index, 0,
+									NULL);
+
+	/* Send BTP_EV_ASCS_OPERATION_COMPLETED for each of the ASEs */
+	data.adapter = adapter;
+	data.cp = cp;
+	l_queue_foreach(dev->ases, configure_qos_complete_cb, &data);
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_ASCS_SERVICE, index, status);
+}
+
+static bool read_cb(struct l_io *io, void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	struct btp_device *device = ase->device;
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct btp_bap_stream_received_ev *ev;
+	ssize_t bytes_read;
+
+	ev = l_malloc(sizeof(struct btp_bap_stream_received_ev) + ase->rx_mtu);
+	memcpy(&ev->address, &device->address, sizeof(ev->address));
+	ev->address_type = device->address_type;
+	ev->ase_id = ase->ase_id;
+
+	bytes_read = read(l_io_get_fd(io), ev->data, ase->rx_mtu);
+	if (bytes_read < 0) {
+		l_info("Invalid read length: %ld", bytes_read);
+		l_free(ev);
+		return false;
+	}
+	ev->data_len = bytes_read;
+
+	btp_send(btp, BTP_BAP_SERVICE, BTP_EV_BAP_STREAM_RECEIVED,
+				adapter->index, sizeof(*ev) + bytes_read, ev);
+
+	l_free(ev);
+
+	return false;
+}
+
+static bool match_ase_path(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	const char *path = data;
+	const char *ase_path = l_dbus_proxy_get_path(ase->transport_proxy);
+
+	if (!path || !ase_path)
+		return false;
+
+	return !strcmp(path, ase_path);
+}
+
+static void ase_change_state(struct btp_ase *ase,
+					enum ase_transport_state state)
+{
+	struct btp_device *device = ase->device;
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct l_dbus_message_iter iter;
+	const char *path;
+
+	ase->transport_state = state;
+	if (state == ASE_TRANSPORT_ACQUIRED)
+		send_state_changed(adapter->index, &device->address,
+						device->address_type,
+						ase->ase_id,
+						BT_BAP_STREAM_STATE_ENABLING);
+
+	if (adapter->desync)
+		return;
+
+	/* Update linked endpoints */
+	if (!l_dbus_proxy_get_property(ase->transport_proxy, "Links", "ao",
+						&iter))
+		return;
+
+	while (l_dbus_message_iter_next_entry(&iter, &path)) {
+		struct btp_ase *l;
+
+		l = l_queue_find(device->ases, match_ase_path, path);
+		if (!l)
+			continue;
+
+		l->transport_state = state;
+		if (state != ASE_TRANSPORT_ACQUIRED)
+			continue;
+
+		send_state_changed(adapter->index, &l->device->address,
+						l->device->address_type,
+						l->ase_id,
+						BT_BAP_STREAM_STATE_ENABLING);
+	}
+}
+
+static void ascs_acquire_reply(struct l_dbus_proxy *proxy,
+						struct l_dbus_message *result,
+						void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	struct btp_device *device = ase->device;
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	uint8_t status = BTP_ERROR_FAIL;
+	int sk;
+	uint16_t rx, tx;
+	struct l_dbus_message_iter iter;
+
+	if (l_dbus_message_is_error(result)) {
+		const char *name, *desc;
+
+		l_dbus_message_get_error(result, &name, &desc);
+		l_error("Failed to acquire endpoint (%s), %s", name, desc);
+
+		goto failed;
+	}
+
+	if (!l_dbus_message_get_arguments(result, "hqq", &sk, &rx, &tx))
+		goto failed;
+
+	ase_change_state(ase, ASE_TRANSPORT_ACQUIRED);
+	ase->rx_mtu = rx;
+	ase->tx_mtu = tx;
+	ase->io = l_io_new(sk);
+	if (!ase->io) {
+		close(sk);
+		goto failed;
+	}
+
+	if (ase->dir == BTP_BAP_DIR_SOURCE)
+		l_io_set_read_handler(ase->io, read_cb, ase, NULL);
+
+	/* Update linked endpoints */
+	if (l_dbus_proxy_get_property(ase->transport_proxy, "Links", "ao",
+						&iter)) {
+		const char *path;
+
+		while (l_dbus_message_iter_next_entry(&iter, &path)) {
+			struct btp_ase *l;
+
+			l = l_queue_find(device->ases, match_ase_path, path);
+			if (l) {
+				l->rx_mtu = rx;
+				l->tx_mtu = tx;
+				if (l->dir == BTP_BAP_DIR_SOURCE)
+					l_io_set_read_handler(ase->io,
+							read_cb, l, NULL);
+				break;
+			}
+		}
+	}
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_ASCS_SERVICE, adapter->index, status);
+}
+
+static void btp_ascs_enable(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	const struct btp_ascs_enable_cp *cp = param;
+	struct btp_ascs_operation_completed_ev ev;
+	struct btp_device *dev;
+	struct btp_ase *ase;
+	uint8_t status = BTP_ERROR_FAIL;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_ENABLE, index, 0, NULL);
+
+	memcpy(&ev.address, &cp->address, sizeof(ev.address));
+	ev.address_type = cp->address_type;
+	ev.ase_id = cp->ase_id;
+	ev.opcode = BTP_OP_ASCS_ENABLE;
+	ev.status = 0;
+	ev.flags = 0;
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_EV_ASCS_OPERATION_COMPLETED,
+			adapter->index, sizeof(ev), &ev);
+
+	dev = find_device_by_address(adapter, &cp->address, cp->address_type);
+	if (!dev)
+		goto failed;
+
+	ase = l_queue_find(dev->ases, match_ase, L_UINT_TO_PTR(cp->ase_id));
+	if (!ase)
+		goto failed;
+
+	/* In desync mode, Acquire the transport straight away and defer
+	 * sending the ENABLING state notification until Acquire completes;
+	 * otherwise notify ENABLING immediately.
+	 */
+	if (adapter->desync) {
+		l_dbus_proxy_method_call(ase->transport_proxy, "Acquire",
+					NULL, ascs_acquire_reply, ase, NULL);
+		ase_change_state(ase, ASE_TRANSPORT_ACQUIRING);
+	} else {
+		send_state_changed(adapter->index, &cp->address,
+						cp->address_type,
+						ase->ase_id,
+						BT_BAP_STREAM_STATE_ENABLING);
+	}
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_ASCS_SERVICE, index, status);
+}
+
+static void btp_ascs_receiver_start_ready(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	const struct btp_ascs_enable_cp *cp = param;
+	uint8_t status = BTP_ERROR_FAIL;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	/* Outside desync mode, Acquire the transport on Receiver Start
+	 * Ready; in desync mode it was already Acquired when Enable was
+	 * received.
+	 */
+	if (!adapter->desync) {
+		struct btp_device *dev;
+		struct btp_ase *ase;
+
+		dev = find_device_by_address(adapter, &cp->address,
+							cp->address_type);
+		if (!dev)
+			goto failed;
+
+		ase = l_queue_find(dev->ases, match_ase,
+						L_UINT_TO_PTR(cp->ase_id));
+		if (!ase)
+			goto failed;
+
+		l_dbus_proxy_method_call(ase->transport_proxy, "Acquire",
+					NULL, ascs_acquire_reply, ase, NULL);
+		ase_change_state(ase, ASE_TRANSPORT_ACQUIRING);
+
+		if (adapter->desync)
+			return;
+
+		send_state_changed(adapter->index, &cp->address,
+						cp->address_type,
+						ase->ase_id,
+						BT_BAP_STREAM_STATE_ENABLING);
+	}
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_RECEIVER_START_READY,
+							index, 0, NULL);
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_ASCS_SERVICE, index, status);
+}
+
+static void btp_ascs_add_ase_to_cis(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	struct btp_device *dev;
+	const struct btp_ascs_add_ase_to_cis_cp *cp = param;
+	struct btp_ase *ase;
+	uint8_t status = BTP_ERROR_FAIL;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	dev = find_device_by_address(adapter, &cp->address, cp->address_type);
+	if (!dev)
+		goto failed;
+
+	ase = l_queue_find(dev->ases, match_ase, L_UINT_TO_PTR(cp->ase_id));
+	if (!ase)
+		goto failed;
+
+	if (ase->cig_id != cp->cig_id || ase->cis_id != cp->cis_id) {
+		l_error("Invalid CIG/CIS ID, expecting %u/%u, got %u/%u",
+						ase->cig_id, ase->cis_id,
+						cp->cig_id, cp->cis_id);
+		goto failed;
+	}
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_ADD_ASE_TO_CIS, index, 0,
+									NULL);
+
+	if (ase->transport_proxy) {
+		struct btp_ascs_cis_connected_ev ev;
+
+		memcpy(&ev.address, &dev->address, sizeof(ev.address));
+		ev.address_type = dev->address_type;
+		ev.ase_id = ase->ase_id;
+		ev.cis_id = ase->cis_id;
+
+		btp_send(btp, BTP_ASCS_SERVICE, BTP_EV_ASCS_CIS_CONNECTED,
+				adapter->index, sizeof(ev), &ev);
+	}
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_ASCS_SERVICE, index, status);
+}
+
+static void btp_ascs_preconfigure_qos(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+
+	if (!adapter) {
+		btp_send_error(btp, BTP_ASCS_SERVICE, index,
+						BTP_ERROR_INVALID_INDEX);
+		return;
+	}
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_PRECONFIGURE_QOS, index, 0,
+									NULL);
 }
 
 bool ascs_setup(struct btp_adapter *adapter)
@@ -626,6 +1019,28 @@ static struct l_dbus_message *get_properties_reply(
 	l_dbus_message_builder_enter_variant(builder, "a{sv}");
 	l_dbus_message_builder_enter_array(builder, "{sv}");
 
+	if (ase->cig_id != BT_ISO_QOS_CIG_UNSET) {
+		l_dbus_message_builder_enter_dict(builder, "sv");
+		l_dbus_message_builder_append_basic(builder, 's',
+						"CIG");
+		l_dbus_message_builder_enter_variant(builder, "y");
+		l_dbus_message_builder_append_basic(builder, 'y',
+						&ase->cig_id);
+		l_dbus_message_builder_leave_variant(builder);
+		l_dbus_message_builder_leave_dict(builder);
+	}
+
+	if (ase->cis_id != BT_ISO_QOS_CIS_UNSET) {
+		l_dbus_message_builder_enter_dict(builder, "sv");
+		l_dbus_message_builder_append_basic(builder, 's',
+						"CIS");
+		l_dbus_message_builder_enter_variant(builder, "y");
+		l_dbus_message_builder_append_basic(builder, 'y',
+						&ase->cis_id);
+		l_dbus_message_builder_leave_variant(builder);
+		l_dbus_message_builder_leave_dict(builder);
+	}
+
 	l_dbus_message_builder_enter_dict(builder, "sv");
 	l_dbus_message_builder_append_basic(builder, 's',
 					"PresentationDelay");
@@ -815,79 +1230,242 @@ static struct l_dbus_message *find_pending_msg(struct l_queue *l,
 	return NULL;
 }
 
+static void set_desync_reply(struct l_dbus_proxy *proxy,
+				struct l_dbus_message *result, void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	struct btp_adapter *adapter;
+	struct btp_ascs_cis_connected_ev ev;
+
+	if (l_dbus_message_is_error(result)) {
+		const char *name, *desc;
+
+		l_dbus_message_get_error(result, &name, &desc);
+		l_error("Failed to desync Links (%s), %s", name, desc);
+		return;
+	}
+
+	adapter = find_adapter_by_device(ase->device);
+	if (!adapter)
+		return;
+
+	memcpy(&ev.address, &ase->device->address, sizeof(ev.address));
+	ev.address_type = ase->device->address_type;
+	ev.ase_id = ase->ase_id;
+	ev.cis_id = ase->cis_id;
+
+	btp_send(btp, BTP_ASCS_SERVICE, BTP_EV_ASCS_CIS_CONNECTED,
+			adapter->index, sizeof(ev), &ev);
+}
+
+void ascs_ase_replied(struct btp_adapter *adapter, struct btp_ase *ase)
+{
+	struct l_dbus_message *msg, *reply;
+
+	msg = find_pending_msg(pending_select_properties, ase);
+	if (msg) {
+		l_queue_remove(pending_select_properties, msg);
+		reply = get_properties_reply(msg, adapter, ase);
+		l_dbus_send(dbus, reply);
+
+		l_dbus_message_unref(msg);
+	}
+}
+
+static bool transport_get_cig_cis(struct l_dbus_proxy *proxy, uint8_t *cig,
+								uint8_t *cis)
+{
+	struct l_dbus_message_iter iter, var;
+	const char *key;
+
+	*cig = BT_ISO_QOS_CIG_UNSET;
+	*cis = BT_ISO_QOS_CIS_UNSET;
+
+	if (!l_dbus_proxy_get_property(proxy, "QoS", "a{sv}", &iter))
+		return false;
+
+	while (l_dbus_message_iter_next_entry(&iter, &key, &var)) {
+		if (!strcmp(key, "CIG")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cig))
+				return false;
+		}
+
+		if (!strcmp(key, "CIS")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cis))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+void ascs_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
+{
+	char *str, *state;
+	struct btp_device *device = user_data;
+	struct btp_adapter *adapter;
+	uint8_t dir;
+	uint8_t cig = BT_ISO_QOS_CIG_UNSET, cis = BT_ISO_QOS_CIS_UNSET;
+	struct btp_ase *ase;
+
+	adapter = find_adapter_by_device(device);
+	if (!adapter)
+		return;
+
+	if (!l_dbus_proxy_get_property(proxy, "UUID", "s", &str))
+		return;
+
+	if (!l_dbus_proxy_get_property(proxy, "State", "s", &state))
+		return;
+
+	if (!bt_uuid_strcmp(str, PAC_SINK_UUID))
+		dir = BTP_BAP_DIR_SOURCE;
+	else
+		dir = BTP_BAP_DIR_SINK;
+
+	if (!transport_get_cig_cis(proxy, &cig, &cis))
+		return;
+
+	ase = find_ase(device, cig, cis, dir);
+	if (!ase)
+		return;
+
+	ase->transport_proxy = proxy;
+
+	/* In desync mode, the CIS_CONNECTED event is sent later, once the
+	 * "Desynchronized" property has been set (see set_desync_reply());
+	 * otherwise send it now.
+	 */
+	if (!adapter->desync) {
+		struct btp_ascs_cis_connected_ev ev;
+
+		memcpy(&ev.address, &device->address, sizeof(ev.address));
+		ev.address_type = device->address_type;
+		ev.ase_id = ase->ase_id;
+		ev.cis_id = ase->cis_id;
+
+		btp_send(btp, BTP_ASCS_SERVICE, BTP_EV_ASCS_CIS_CONNECTED,
+				adapter->index, sizeof(ev), &ev);
+	}
+
+	if (ase->transport_state == ASE_TRANSPORT_ACQUIRING &&
+			!strcmp(state, "idle")) {
+		l_dbus_proxy_method_call(proxy, "Acquire",
+					NULL,
+					ascs_acquire_reply,
+					ase, NULL);
+	}
+}
+
 void ascs_property_changed(struct l_dbus_proxy *proxy, const char *name,
 				struct l_dbus_message *msg, void *user_data)
 {
 	const char *interface = l_dbus_proxy_get_interface(proxy);
 
-	if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
-		char *uuid, *str;
-		struct btp_device *device;
-		struct btp_adapter *adapter;
-		struct btp_ase *ase;
-		struct l_dbus_message_iter iter;
-		uint8_t *data;
-		uint32_t n;
-		const struct l_queue_entry *entry;
-		struct l_dbus_message *reply;
+	if (!strcmp(interface, "org.bluez.MediaTransport1")) {
+		if (!strcmp(name, "State")) {
+			const char *state, *path, *uuid;
+			struct btp_device *dev;
+			struct btp_adapter *adapter;
+			uint8_t dir, cig, cis;
+			struct btp_ase *ase;
+			uint8_t ase_state;
 
-		if (strcmp(name, "Value"))
-			return;
+			if (!l_dbus_message_get_arguments(msg, "s", &state))
+				return;
 
-		if (!l_dbus_proxy_get_property(proxy, "UUID", "s", &uuid))
-			return;
+			if (!l_dbus_proxy_get_property(proxy, "Device", "o",
+								&path))
+				return;
 
-		if (!l_dbus_proxy_get_property(proxy, "Service", "o", &str))
-			return;
+			dev = find_device_by_path(path);
+			if (!dev)
+				return;
 
-		device = find_device_by_service_path(str);
-		if (!device)
-			return;
+			adapter = find_adapter_by_device(dev);
+			if (!adapter)
+				return;
 
-		adapter = find_adapter_by_device(device);
-		if (!adapter)
-			return;
+			if (!l_dbus_proxy_get_property(proxy, "UUID", "s",
+								&uuid))
+				return;
 
-		ase = find_ase_by_uuid(device, uuid);
-		if (!ase)
-			return;
-
-		if (!l_dbus_message_get_arguments(msg, "ay", &iter))
-			return;
-
-		if (!l_dbus_message_iter_get_fixed_array(&iter, &data, &n)) {
-			l_debug("Cannot read value");
-			return;
-		}
-
-		ase->ase_id = data[0];
-
-		for (entry = l_queue_get_entries(device->endpoints); entry;
-							entry = entry->next) {
-			struct l_dbus_proxy *p = entry->data;
-			const char *str, *pac_uuid;
-
-			if (!l_dbus_proxy_get_property(p, "UUID", "s", &str))
-				continue;
-
-			if (bt_uuid16_cmp(&ase->uuid, ASE_SINK_UUID))
-				pac_uuid = PAC_SINK_UUID;
+			if (!bt_uuid_strcmp(uuid, PAC_SINK_UUID))
+				dir = BTP_BAP_DIR_SOURCE;
 			else
-				pac_uuid = PAC_SOURCE_UUID;
+				dir = BTP_BAP_DIR_SINK;
 
-			if (!strcmp(str, pac_uuid)) {
-				ase->ep_proxy = p;
-				break;
+			if (!transport_get_cig_cis(proxy, &cig, &cis))
+				return;
+
+			ase = find_ase(dev, cig, cis, dir);
+			if (!ase)
+				return;
+
+			if (!strcmp(state, "active"))
+				ase_state = BT_BAP_STREAM_STATE_STREAMING;
+			else {
+				if (ase->io) {
+					l_io_destroy(ase->io);
+					ase->io = NULL;
+				}
+
+				ase_state = BT_BAP_STREAM_STATE_IDLE;
 			}
+
+			send_state_changed(adapter->index,  &dev->address,
+							dev->address_type,
+							ase->ase_id,
+							ase_state);
 		}
 
-		msg = find_pending_msg(pending_select_properties, ase);
-		if (msg) {
-			l_queue_remove(pending_select_properties, msg);
-			reply = get_properties_reply(msg, adapter, ase);
-			l_dbus_send(dbus, reply);
+		if (!strcmp(name, "Desynchronized")) {
+			struct btp_device *dev;
+			struct btp_adapter *adapter;
+			const bool desynchronized;
+			const char *path, *uuid;
+			uint8_t dir, cig, cis;
+			struct btp_ase *ase;
 
-			l_dbus_message_unref(msg);
+			if (!l_dbus_message_get_arguments(msg, "b",
+							&desynchronized))
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "Device", "o",
+								&path))
+				return;
+
+			dev = find_device_by_path(path);
+			if (!dev)
+				return;
+
+			adapter = find_adapter_by_device(dev);
+			if (!adapter || !adapter->desync)
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "UUID", "s",
+								&uuid))
+				return;
+
+			if (!bt_uuid_strcmp(uuid, PAC_SINK_UUID))
+				dir = BTP_BAP_DIR_SOURCE;
+			else
+				dir = BTP_BAP_DIR_SINK;
+
+			if (!transport_get_cig_cis(proxy, &cig, &cis))
+				return;
+
+			ase = find_ase(dev, cig, cis, dir);
+			if (!ase)
+				return;
+
+			if (!desynchronized) {
+				l_dbus_proxy_set_property(proxy,
+							set_desync_reply,
+							ase, NULL,
+							"Desynchronized", "b",
+							true);
+			}
 		}
 	}
 }
@@ -904,6 +1482,22 @@ bool ascs_register_service(struct btp *btp_, struct l_dbus *dbus_,
 
 	btp_register(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_CONFIGURE_CODEC,
 					btp_ascs_configure_codec, NULL, NULL);
+
+	btp_register(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_CONFIGURE_QOS,
+					btp_ascs_configure_qos, NULL, NULL);
+
+	btp_register(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_ENABLE,
+					btp_ascs_enable, NULL, NULL);
+
+	btp_register(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_RECEIVER_START_READY,
+					btp_ascs_receiver_start_ready,
+					NULL, NULL);
+
+	btp_register(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_ADD_ASE_TO_CIS,
+					btp_ascs_add_ase_to_cis, NULL, NULL);
+
+	btp_register(btp, BTP_ASCS_SERVICE, BTP_OP_ASCS_PRECONFIGURE_QOS,
+					btp_ascs_preconfigure_qos, NULL, NULL);
 
 	if (!l_dbus_register_interface(dbus, ENDPOINT_IFACE,
 						setup_endpoint_interface,

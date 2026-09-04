@@ -23,6 +23,7 @@ struct btp_adapter {
 	uint32_t source_locations;
 
 	uint8_t target_latency;
+	bool desync;
 };
 
 struct btp_device {
@@ -36,12 +37,25 @@ struct btp_device {
 	struct l_queue *endpoints;
 };
 
+enum ase_transport_state {
+	ASE_TRANSPORT_READY = 0,
+	ASE_TRANSPORT_ACQUIRING,
+	ASE_TRANSPORT_ACQUIRED,
+};
+
 struct btp_ase {
 	struct btp_device *device;
 	bt_uuid_t uuid;
 	uint8_t dir;
 	uint8_t ase_id;
+	uint8_t cig_id;
+	uint8_t cis_id;
 	struct l_dbus_proxy *ep_proxy;
+	struct l_dbus_proxy *transport_proxy;
+	enum ase_transport_state transport_state;
+	struct l_io *io;
+	uint16_t rx_mtu;
+	uint16_t tx_mtu;
 };
 
 struct btp_agent {
@@ -67,6 +81,8 @@ struct btp_device *find_device_by_path(const char *path);
 struct btp_adapter *find_adapter_by_device(struct btp_device *device);
 struct btp_device *find_device_by_proxy(struct l_dbus_proxy *proxy);
 struct btp_device *find_device_by_service_path(const char *path);
+struct btp_ase *find_ase(struct btp_device *device, uint8_t cig, uint8_t cis,
+							uint8_t dir);
 struct btp_ase *find_ase_by_uuid(struct btp_device *device, char *uuid);
 
 struct btp_agent *get_agent(void);

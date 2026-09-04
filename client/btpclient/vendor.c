@@ -65,6 +65,7 @@ static void btp_vendor_ascs_setup(uint8_t index, const void *param,
 	const struct btp_vendor_ascs_setup_cp *cp = param;
 
 	adapter->target_latency = cp->target_latency;
+	adapter->desync = cp->desync;
 
 	ascs_setup(adapter);
 

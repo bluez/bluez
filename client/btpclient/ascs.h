@@ -14,5 +14,8 @@ bool ascs_is_service_registered(void);
 
 bool ascs_setup(struct btp_adapter *adapter);
 
+void ascs_proxy_added(struct l_dbus_proxy *proxy, void *user_data);
 void ascs_property_changed(struct l_dbus_proxy *proxy, const char *name,
 				struct l_dbus_message *msg, void *user_data);
+
+void ascs_ase_replied(struct btp_adapter *adapter, struct btp_ase *ase);

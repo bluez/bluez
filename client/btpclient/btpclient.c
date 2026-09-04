@@ -230,6 +230,26 @@ struct btp_device *find_device_by_proxy(struct l_dbus_proxy *proxy)
 	return NULL;
 }
 
+static bool match_cigcisdir(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	uint32_t cigcisdir = L_PTR_TO_UINT(data);
+	uint8_t cig = cigcisdir & 0xFF;
+	uint8_t cis = (cigcisdir >> 8) & 0xFF;
+	uint8_t dir = (cigcisdir >> 16) & 0xFF;
+
+	return ase->cig_id == cig && ase->cis_id == cis && ase->dir == dir;
+}
+
+struct btp_ase *find_ase(struct btp_device *device, uint8_t cig, uint8_t cis,
+								uint8_t dir)
+{
+	uint32_t cigcisdir = cig + (cis << 8) + (dir << 16);
+
+	return l_queue_find(device->ases, match_cigcisdir,
+						L_UINT_TO_PTR(cigcisdir));
+}
+
 static bool match_uuid(const void *entry, const void *data)
 {
 	const struct btp_ase *ase = entry;
@@ -632,6 +652,21 @@ static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 		l_queue_push_tail(device->endpoints, proxy);
 
 		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.MediaTransport1")) {
+		char *str;
+		struct btp_device *device;
+
+		if (!l_dbus_proxy_get_property(proxy, "Device", "o", &str))
+			return;
+
+		device = find_device_by_path(str);
+		if (!device)
+			return;
+
+		if (ascs_is_service_registered())
+			ascs_proxy_added(proxy, device);
 	}
 }
 

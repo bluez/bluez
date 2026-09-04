@@ -20,6 +20,7 @@
 #include "src/shared/bap-defs.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
+#include "ascs.h"
 #include "bap.h"
 
 static struct btp *btp;
@@ -105,6 +106,14 @@ failed:
 	btp_send_error(btp, BTP_BAP_SERVICE, index, status);
 }
 
+static bool match_ase(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	uint8_t id = L_PTR_TO_UINT(data);
+
+	return ase->ase_id == id;
+}
+
 static void btp_bap_send(uint8_t index, const void *param, uint16_t length,
 								void *user_data)
 {
@@ -122,7 +131,7 @@ static void btp_bap_send(uint8_t index, const void *param, uint16_t length,
 	}
 
 	dev = find_device_by_address(adapter, &cp->address, cp->address_type);
-	ase = find_ase_by_dir(dev, BTP_BAP_DIR_SINK);
+	ase = l_queue_find(dev->ases, match_ase, L_UINT_TO_PTR(cp->ase_id));
 	if (!ase || !ase->io)
 		goto failed;
 
@@ -236,6 +245,8 @@ static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
 	uint32_t n;
 	bt_uuid_t uuid;
 	struct gatt_attribute *attribute;
+	const char *pac_uuid;
+	const struct l_queue_entry *entry;
 
 	if (l_dbus_message_is_error(result)) {
 		const char *name, *desc;
@@ -267,10 +278,30 @@ static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
 
 	free(rp);
 
-	if (bt_uuid16_cmp(&ase->uuid, ASE_SINK_UUID))
+	if (bt_uuid16_cmp(&ase->uuid, ASE_SINK_UUID)) {
 		bt_uuid16_create(&uuid, PAC_SINK_CHRC_UUID);
-	else
+		pac_uuid = PAC_SINK_UUID;
+	} else {
 		bt_uuid16_create(&uuid, PAC_SOURCE_CHRC_UUID);
+		pac_uuid = PAC_SOURCE_UUID;
+	}
+
+	for (entry = l_queue_get_entries(device->endpoints); entry;
+						entry = entry->next) {
+		struct l_dbus_proxy *p = entry->data;
+		const char *str;
+
+		if (!l_dbus_proxy_get_property(p, "UUID", "s", &str))
+			continue;
+
+		if (!strcmp(str, pac_uuid)) {
+			ase->ep_proxy = p;
+			break;
+		}
+	}
+
+	ascs_ase_replied(adapter, ase);
+
 	attribute = l_queue_find(device->characteristics,
 						match_attribute_uuid, &uuid);
 	if (!attribute)
@@ -284,6 +315,72 @@ static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
 
 failed:
 	btp_send_error(btp, BTP_BAP_SERVICE, adapter->index, BTP_ERROR_FAIL);
+}
+
+static uint8_t get_next_cis(struct btp_device *device, uint8_t dir)
+{
+	const struct l_queue_entry *adapter_entry;
+	const struct l_queue_entry *ase_entry;
+	uint8_t cis = 0;
+	bool found = false;
+
+	/* For the same device, reuse the opposite cis_id if there is no ASE
+	 * in the requested direction already using that same cis_id
+	 */
+	for (ase_entry = l_queue_get_entries(device->ases); ase_entry;
+					ase_entry = ase_entry->next) {
+		struct btp_ase *ase = ase_entry->data;
+		const struct l_queue_entry *entry;
+		bool has_same_dir = false;
+
+		if (ase->dir == dir)
+			continue;
+
+		for (entry = l_queue_get_entries(device->ases); entry;
+					entry = entry->next) {
+			struct btp_ase *peer = entry->data;
+
+			if (peer->dir == dir && peer->cis_id == ase->cis_id) {
+				has_same_dir = true;
+				break;
+			}
+		}
+
+		if (!has_same_dir)
+			return ase->cis_id;
+	}
+
+	/* Else returns the global highest cis_id + 1 across all ASEs of all
+	 * devices, or 0 if no ASE exists
+	 */
+	for (adapter_entry = l_queue_get_entries(get_adapters_list());
+					adapter_entry;
+					adapter_entry = adapter_entry->next) {
+		struct btp_adapter *adapter = adapter_entry->data;
+		const struct l_queue_entry *device_entry;
+
+		for (device_entry = l_queue_get_entries(adapter->devices);
+					device_entry;
+					device_entry = device_entry->next) {
+			struct btp_device *dev = device_entry->data;
+
+			for (ase_entry = l_queue_get_entries(dev->ases);
+						ase_entry;
+						ase_entry = ase_entry->next) {
+				struct btp_ase *ase = ase_entry->data;
+
+				if (!found || ase->cis_id > cis)
+					cis = ase->cis_id;
+
+				found = true;
+			}
+		}
+	}
+
+	if (!found)
+		return 0;
+
+	return cis + 1;
 }
 
 void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
@@ -306,6 +403,8 @@ void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 			ase->device = device;
 			ase->dir = BTP_BAP_DIR_SINK;
 			ase->uuid = uuid;
+			ase->cig_id = 0;
+			ase->cis_id = get_next_cis(device, ase->dir);
 			l_queue_push_tail(device->ases, ase);
 
 			l_dbus_proxy_method_call(proxy, "ReadValue",
@@ -321,6 +420,8 @@ void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 			ase->device = device;
 			ase->dir = BTP_BAP_DIR_SOURCE;
 			ase->uuid = uuid;
+			ase->cig_id = 0;
+			ase->cis_id = get_next_cis(device, ase->dir);
 			l_queue_push_tail(device->ases, ase);
 
 			l_dbus_proxy_method_call(proxy, "ReadValue",
