@@ -25,6 +25,7 @@
 #include "bluetooth/uuid.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
+#include "ascs.h"
 #include "bap.h"
 #include "core.h"
 #include "gap.h"
@@ -229,6 +230,24 @@ struct btp_device *find_device_by_proxy(struct l_dbus_proxy *proxy)
 	return NULL;
 }
 
+static bool match_uuid(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	const bt_uuid_t *uuid = data;
+
+	return !bt_uuid_cmp(&ase->uuid, uuid);
+}
+
+struct btp_ase *find_ase_by_uuid(struct btp_device *device, char *uuid)
+{
+	bt_uuid_t u;
+
+	if (bt_string_to_uuid(&u, uuid) < 0)
+		return NULL;
+
+	return l_queue_find(device->ases, match_uuid, &u);
+}
+
 static bool match_device_service_path(const void *device, const void *path)
 {
 	const struct btp_device *dev = device;
@@ -246,7 +265,7 @@ static bool match_device_service_path(const void *device, const void *path)
 	return false;
 }
 
-static struct btp_device *find_device_by_service_path(const char *path)
+struct btp_device *find_device_by_service_path(const char *path)
 {
 	const struct l_queue_entry *entry;
 	struct btp_device *device;
@@ -348,6 +367,7 @@ static void signal_handler(uint32_t signo, void *user_data)
 
 static void btp_device_free(struct btp_device *device)
 {
+	l_queue_destroy(device->endpoints, NULL);
 	l_queue_destroy(device->ases, l_free);
 	l_queue_destroy(device->services, l_free);
 	l_queue_destroy(device->characteristics, l_free);
@@ -447,6 +467,7 @@ static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 		device->characteristics = l_queue_new();
 		device->descriptors = l_queue_new();
 		device->ases = l_queue_new();
+		device->endpoints = l_queue_new();
 
 		l_queue_push_tail(adapter->devices, device);
 
@@ -584,6 +605,34 @@ static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 
 		l_queue_push_tail(device->descriptors, attribute);
 	}
+
+	if (!strcmp(interface, "org.bluez.Media1")) {
+		struct btp_adapter *adapter;
+
+		adapter = find_adapter_by_path(path);
+		if (!adapter)
+			return;
+
+		adapter->media_proxy = proxy;
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.MediaEndpoint1")) {
+		char *str;
+		struct btp_device *device;
+
+		if (!l_dbus_proxy_get_property(proxy, "Device", "o", &str))
+			return;
+
+		device = find_device_by_path(str);
+		if (!device)
+			return;
+
+		l_queue_push_tail(device->endpoints, proxy);
+
+		return;
+	}
 }
 
 static bool device_match_by_proxy(const void *a, const void *b)
@@ -653,13 +702,47 @@ static void proxy_removed(struct l_dbus_proxy *proxy, void *user_data)
 
 		l_queue_remove(device->descriptors, proxy);
 	}
+
+	if (!strcmp(interface, "org.bluez.Media1")) {
+		struct btp_adapter *adapter;
+
+		adapter = find_adapter_by_path(path);
+		if (!adapter)
+			return;
+
+		adapter->media_proxy = NULL;
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.MediaEndpoint1")) {
+		char *str;
+		struct btp_device *device;
+
+		if (!l_dbus_proxy_get_property(proxy, "Device", "o", &str))
+			return;
+
+		device = find_device_by_path(str);
+		if (!device)
+			return;
+
+		l_queue_remove(device->endpoints, proxy);
+	}
 }
 
 static void property_changed(struct l_dbus_proxy *proxy, const char *name,
 				struct l_dbus_message *msg, void *user_data)
 {
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+	const char *path = l_dbus_proxy_get_path(proxy);
+
+	l_info("Property changed: %s %s %s", name, path, interface);
+
 	if (gap_is_service_registered())
 		gap_property_changed(proxy, name, msg, user_data);
+
+	if (ascs_is_service_registered())
+		ascs_property_changed(proxy, name, msg, user_data);
 }
 
 static void client_connected(struct l_dbus *dbus, void *user_data)
