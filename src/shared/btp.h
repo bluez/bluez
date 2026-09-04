@@ -470,6 +470,19 @@ struct btp_bap_discover_cp {
 	bdaddr_t address;
 } __packed;
 
+#define BTP_OP_BAP_SEND				0x03
+struct btp_bap_send_cp {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t ase_id;
+	uint8_t data_len;
+	uint8_t data[];
+} __packed;
+
+struct btp_bap_send_rp {
+	uint8_t data_len;
+} __packed;
+
 #define BTP_EV_BAP_DISCOVERY_COMPLETED		0x80
 struct btp_bap_discovery_completed_ev {
 	uint8_t address_type;

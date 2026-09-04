@@ -31,6 +31,7 @@ static void btp_bap_read_commands(uint8_t index, const void *param,
 	const uint8_t supported_commands[] = {
 		BTP_OP_BAP_READ_SUPPORTED_COMMANDS,
 		BTP_OP_BAP_DISCOVER,
+		BTP_OP_BAP_SEND,
 	};
 	uint8_t *commands = NULL;
 	size_t commands_len = 0;
@@ -97,6 +98,43 @@ static void btp_bap_discover(uint8_t index, const void *param, uint16_t length,
 
 	btp_send(btp, BTP_BAP_SERVICE, BTP_EV_BAP_DISCOVERY_COMPLETED,
 			adapter->index, sizeof(ev), &ev);
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_BAP_SERVICE, index, status);
+}
+
+static void btp_bap_send(uint8_t index, const void *param, uint16_t length,
+								void *user_data)
+{
+	const struct btp_bap_send_cp *cp = param;
+	struct btp_adapter *adapter = find_adapter_by_index(index);
+	uint8_t status = BTP_ERROR_FAIL;
+	struct btp_device *dev;
+	struct btp_ase *ase;
+	ssize_t bytes_written;
+	struct btp_bap_send_rp rp;
+
+	if (!adapter) {
+		status = BTP_ERROR_INVALID_INDEX;
+		goto failed;
+	}
+
+	dev = find_device_by_address(adapter, &cp->address, cp->address_type);
+	ase = find_ase_by_dir(dev, BTP_BAP_DIR_SINK);
+	if (!ase || !ase->io)
+		goto failed;
+
+	bytes_written = write(l_io_get_fd(ase->io), cp->data,
+		cp->data_len <= ase->tx_mtu ? cp->data_len : ase->tx_mtu);
+	if (bytes_written < 0) {
+		l_error("Failed to write (%d)", errno);
+		goto failed;
+	}
+	rp.data_len = bytes_written;
+
+	btp_send(btp, BTP_BAP_SERVICE, BTP_OP_BAP_SEND, index, sizeof(rp), &rp);
 
 	return;
 
@@ -303,6 +341,9 @@ bool bap_register_service(struct btp *btp_, struct l_dbus *dbus_,
 
 	btp_register(btp, BTP_BAP_SERVICE, BTP_OP_BAP_DISCOVER,
 					btp_bap_discover, NULL, NULL);
+
+	btp_register(btp, BTP_BAP_SERVICE, BTP_OP_BAP_SEND,
+					btp_bap_send, NULL, NULL);
 
 	bap_service_registered = true;
 
