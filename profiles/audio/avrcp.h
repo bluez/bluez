@@ -9,13 +9,7 @@
  *
  */
 
-/* player attributes */
-#define AVRCP_ATTRIBUTE_ILLEGAL		0x00
-#define AVRCP_ATTRIBUTE_EQUALIZER	0x01
-#define AVRCP_ATTRIBUTE_REPEAT_MODE	0x02
-#define AVRCP_ATTRIBUTE_SHUFFLE		0x03
-#define AVRCP_ATTRIBUTE_SCAN		0x04
-#define AVRCP_ATTRIBUTE_LAST		AVRCP_ATTRIBUTE_SCAN
+#include "avrcp-parse.h"
 
 /* equalizer values */
 #define AVRCP_EQUALIZER_OFF		0x01
