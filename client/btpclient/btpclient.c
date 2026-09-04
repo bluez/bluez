@@ -25,6 +25,7 @@
 #include "bluetooth/uuid.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
+#include "bap.h"
 #include "core.h"
 #include "gap.h"
 #include "gatt.h"
@@ -347,6 +348,7 @@ static void signal_handler(uint32_t signo, void *user_data)
 
 static void btp_device_free(struct btp_device *device)
 {
+	l_queue_destroy(device->ases, l_free);
 	l_queue_destroy(device->services, l_free);
 	l_queue_destroy(device->characteristics, l_free);
 	l_queue_destroy(device->descriptors, l_free);
@@ -444,6 +446,7 @@ static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 		device->services = l_queue_new();
 		device->characteristics = l_queue_new();
 		device->descriptors = l_queue_new();
+		device->ases = l_queue_new();
 
 		l_queue_push_tail(adapter->devices, device);
 
@@ -545,6 +548,9 @@ static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 		}
 
 		l_queue_push_tail(device->characteristics, attribute);
+
+		if (bap_is_service_registered())
+			bap_proxy_added(proxy, device);
 	}
 
 	if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
