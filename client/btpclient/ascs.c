@@ -1506,7 +1506,15 @@ void ascs_property_changed(struct l_dbus_proxy *proxy, const char *name,
 
 			if (!strcmp(state, "active"))
 				ase_state = BT_BAP_STREAM_STATE_STREAMING;
-			else {
+			else if (!strcmp(state, "pending") &&
+				ase->transport_state == ASE_TRANSPORT_READY) {
+				l_dbus_proxy_method_call(proxy, "Acquire",
+							NULL,
+							ascs_acquire_reply,
+							ase, NULL);
+				ase_change_state(ase, ASE_TRANSPORT_ACQUIRING);
+				ase_state = BT_BAP_STREAM_STATE_ENABLING;
+			} else {
 				if (ase->io) {
 					l_io_destroy(ase->io);
 					ase->io = NULL;

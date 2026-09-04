@@ -56,6 +56,8 @@ struct btp_ase {
 	struct l_io *io;
 	uint16_t rx_mtu;
 	uint16_t tx_mtu;
+	bool auto_send;
+	struct l_idle *idle_writer;
 };
 
 struct btp_agent {

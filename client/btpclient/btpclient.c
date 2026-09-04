@@ -445,6 +445,30 @@ static void extract_settings(struct l_dbus_proxy *proxy, uint32_t *current,
 		*current |=  BTP_GAP_SETTING_BONDABLE;
 }
 
+static bool transport_get_cig_cis(struct l_dbus_message_iter *iter,
+						uint8_t *cig, uint8_t *cis)
+{
+	struct l_dbus_message_iter var;
+	const char *key;
+
+	*cig = BT_ISO_QOS_CIG_UNSET;
+	*cis = BT_ISO_QOS_CIS_UNSET;
+
+	while (l_dbus_message_iter_next_entry(iter, &key, &var)) {
+		if (!strcmp(key, "CIG")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cig))
+				return false;
+		}
+
+		if (!strcmp(key, "CIS")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cis))
+				return false;
+		}
+	}
+
+	return true;
+}
+
 static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 {
 	const char *interface = l_dbus_proxy_get_interface(proxy);
@@ -773,11 +797,55 @@ static void property_changed(struct l_dbus_proxy *proxy, const char *name,
 
 	l_info("Property changed: %s %s %s", name, path, interface);
 
+	if (!strcmp(interface, "org.bluez.MediaTransport1")) {
+		if (!strcmp(name, "QoS")) {
+			struct btp_device *dev;
+			const char *dev_path, *uuid;
+			uint8_t dir;
+			struct l_dbus_message_iter iter;
+			uint8_t cig = BT_ISO_QOS_CIG_UNSET;
+			uint8_t cis = BT_ISO_QOS_CIS_UNSET;
+			struct btp_ase *ase;
+
+			if (!l_dbus_proxy_get_property(proxy, "Device", "s",
+								&dev_path))
+				return;
+
+			dev = find_device_by_path(path);
+			if (!dev)
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "UUID", "s",
+								&uuid))
+				return;
+
+			if (!bt_uuid_strcmp(uuid, PAC_SINK_UUID))
+				dir = BTP_BAP_DIR_SOURCE;
+			else
+				dir = BTP_BAP_DIR_SINK;
+
+			if (!l_dbus_message_get_arguments(msg, "a{sv}", &iter))
+				return;
+
+			if (!transport_get_cig_cis(&iter, &cig, &cis))
+				return;
+
+			ase = find_ase(dev, cig, cis, dir);
+			if (!ase)
+				return;
+
+			ase->transport_proxy = proxy;
+		}
+	}
+
 	if (gap_is_service_registered())
 		gap_property_changed(proxy, name, msg, user_data);
 
 	if (ascs_is_service_registered())
 		ascs_property_changed(proxy, name, msg, user_data);
+
+	if (bap_is_service_registered())
+		bap_property_changed(proxy, name, msg, user_data);
 }
 
 static void client_connected(struct l_dbus *dbus, void *user_data)
