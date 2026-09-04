@@ -73,6 +73,7 @@ bool local_player_have_track(struct local_player *lp);
 bool local_player_play(struct local_player *lp);
 bool local_player_stop(struct local_player *lp);
 bool local_player_pause(struct local_player *lp);
+bool local_player_seek(struct local_player *lp, int64_t offset);
 bool local_player_next(struct local_player *lp);
 bool local_player_previous(struct local_player *lp);
 
