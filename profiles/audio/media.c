@@ -157,6 +157,7 @@ struct local_player {
 	GTimer			*timer;
 	bool			play;
 	bool			pause;
+	bool			seek;
 	bool			next;
 	bool			previous;
 	bool			control;
@@ -2296,6 +2297,29 @@ bool local_player_pause(struct local_player *mp)
 	return local_player_send(mp, "Pause");
 }
 
+bool local_player_seek(struct local_player *mp, int64_t offset_usec)
+{
+	DBusMessage *msg;
+
+	DBG("");
+
+	if (!mp->seek || !mp->control)
+		return false;
+
+	msg = dbus_message_new_method_call(mp->sender, mp->path,
+					MEDIA_PLAYER_INTERFACE, "Seek");
+	if (msg == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return false;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_INT64, &offset_usec,
+					DBUS_TYPE_INVALID);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
+
+	return true;
+}
+
 bool local_player_next(struct local_player *mp)
 {
 	DBG("");
@@ -2672,6 +2696,9 @@ static gboolean set_player_property(struct local_player *mp, const char *key,
 
 	if (strcasecmp(key, "CanPause") == 0)
 		return set_flag(mp, &var, &mp->pause);
+
+	if (strcasecmp(key, "CanSeek") == 0)
+		return set_flag(mp, &var, &mp->seek);
 
 	if (strcasecmp(key, "CanGoNext") == 0)
 		return set_flag(mp, &var, &mp->next);
@@ -3244,6 +3271,11 @@ static void app_register_player(void *data, void *user_data)
 
 	if (g_dbus_proxy_get_property(proxy, "CanPause", &iter)) {
 		if (!set_flag(player, &iter, &player->pause))
+			goto fail;
+	}
+
+	if (g_dbus_proxy_get_property(proxy, "CanSeek", &iter)) {
+		if (!set_flag(player, &iter, &player->seek))
 			goto fail;
 	}
 
