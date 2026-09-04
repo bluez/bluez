@@ -135,9 +135,11 @@ illustrative distance estimate (not an accurate measurement) exposed via
 
 The provider path defaults to ``/``, the only path bluetoothctl exposes an
 ``ObjectManager`` at; a different path will register but bluetoothd will not
-discover any objects under it. See **test/example-ranging-provider** for a
-minimal standalone provider skeleton, which reports a fixed placeholder
-distance and does not parse **ProcedureData** at all.
+discover any objects under it. The exported **RangingProvider1** objects
+themselves are nested under ``/org/example/ranging`` rather than directly
+under ``/``. See **test/example-ranging-provider** for a minimal standalone
+provider skeleton, which reports a fixed placeholder distance and does not
+parse **ProcedureData** at all.
 
 Only one ranging provider may be registered per adapter at a time. If a
 real ranging daemon is already registered, this command fails with

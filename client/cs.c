@@ -357,11 +357,22 @@ static struct cs_session *cs_find_session(GDBusProxy *proxy)
  * main()); bluetoothd's RegisterRangingProvider watches the exact path it
  * is given via GetManagedObjects()/InterfacesAdded, so any other path would
  * silently never be discovered.
+ *
+ * Exported RangingProvider1 objects are nested under RANGING_PROVIDER_PATH
+ * rather than directly under "/" (see cs_ranging_obj_create()), to avoid a
+ * gdbus/object.c bug hit when linking a brand-new direct child of a path
+ * that already has an ObjectManager attached.
  */
 
 #define RANGING_PROVIDER_INTERFACE	    "org.bluez.RangingProvider1"
 #define CS_PROCEDURE_DATA_INTERFACE	    "org.bluez.ChannelSounding1"
 #define DEFAULT_PROVIDER_PATH		    "/"
+
+/* Prefix used for exported RangingProvider1 objects when the registered
+ * provider root is "/" (see cs_ranging_obj_create()); matches the object
+ * path test/example-ranging-provider uses for the same purpose.
+ */
+#define RANGING_PROVIDER_PATH		    "/org/example/ranging"
 
 struct cs_ranging_obj {
 	char *path;		/* exported RangingProvider object path */
@@ -479,8 +490,20 @@ static struct cs_ranging_obj *cs_ranging_obj_create(const char *dev_path)
 	obj = g_new0(struct cs_ranging_obj, 1);
 	obj->dev_path = g_strdup(dev_path);
 
+	/* Never export a RangingProvider1 object as a direct child of "/":
+	 * bluetoothctl attaches its ObjectManager there, so "/" already has
+	 * registered gdbus object data, and gdbus/object.c's
+	 * invalidate_parent_data() dereferences a NULL "grandparent" when
+	 * asked to link a brand-new top-level child in that state. Nesting
+	 * under RANGING_PROVIDER_PATH instead keeps the immediate parent
+	 * unregistered, so gdbus skips the ancestor walk instead of
+	 * crashing. bluetoothd's provider watch matches any descendant of
+	 * the given root (see path_has_root() in src/ranging.c), so the
+	 * extra path component doesn't affect discovery.
+	 */
 	if (!strcmp(cs_provider_path, "/"))
-		obj->path = g_strdup_printf("/%s", leaf);
+		obj->path = g_strdup_printf("%s/%s", RANGING_PROVIDER_PATH,
+						leaf);
 	else
 		obj->path = g_strdup_printf("%s/%s", cs_provider_path, leaf);
 
@@ -1537,6 +1560,9 @@ static const struct bt_shell_menu cs_menu = {
 				"\t\t\t\t\t\t[path] is the provider root object"
 				" path; default \"/\", the only path"
 				" bluetoothctl exposes an ObjectManager at.\n"
+				"\t\t\t\t\t\texported RangingProvider1 objects are"
+				" nested under /org/example/ranging rather"
+				" than directly under \"/\".\n"
 				"\t\t\t\t\t\tsee test/example-ranging-provider for a"
 				" minimal standalone provider skeleton.\n\t\t\t\t\t\tOnly one"
 				" provider may be registered per adapter at"
