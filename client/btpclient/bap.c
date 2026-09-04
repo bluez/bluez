@@ -317,72 +317,6 @@ failed:
 	btp_send_error(btp, BTP_BAP_SERVICE, adapter->index, BTP_ERROR_FAIL);
 }
 
-static uint8_t get_next_cis(struct btp_device *device, uint8_t dir)
-{
-	const struct l_queue_entry *adapter_entry;
-	const struct l_queue_entry *ase_entry;
-	uint8_t cis = 0;
-	bool found = false;
-
-	/* For the same device, reuse the opposite cis_id if there is no ASE
-	 * in the requested direction already using that same cis_id
-	 */
-	for (ase_entry = l_queue_get_entries(device->ases); ase_entry;
-					ase_entry = ase_entry->next) {
-		struct btp_ase *ase = ase_entry->data;
-		const struct l_queue_entry *entry;
-		bool has_same_dir = false;
-
-		if (ase->dir == dir)
-			continue;
-
-		for (entry = l_queue_get_entries(device->ases); entry;
-					entry = entry->next) {
-			struct btp_ase *peer = entry->data;
-
-			if (peer->dir == dir && peer->cis_id == ase->cis_id) {
-				has_same_dir = true;
-				break;
-			}
-		}
-
-		if (!has_same_dir)
-			return ase->cis_id;
-	}
-
-	/* Else returns the global highest cis_id + 1 across all ASEs of all
-	 * devices, or 0 if no ASE exists
-	 */
-	for (adapter_entry = l_queue_get_entries(get_adapters_list());
-					adapter_entry;
-					adapter_entry = adapter_entry->next) {
-		struct btp_adapter *adapter = adapter_entry->data;
-		const struct l_queue_entry *device_entry;
-
-		for (device_entry = l_queue_get_entries(adapter->devices);
-					device_entry;
-					device_entry = device_entry->next) {
-			struct btp_device *dev = device_entry->data;
-
-			for (ase_entry = l_queue_get_entries(dev->ases);
-						ase_entry;
-						ase_entry = ase_entry->next) {
-				struct btp_ase *ase = ase_entry->data;
-
-				if (!found || ase->cis_id > cis)
-					cis = ase->cis_id;
-
-				found = true;
-			}
-		}
-	}
-
-	if (!found)
-		return 0;
-
-	return cis + 1;
-}
-
 void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 {
 	struct btp_device *device = user_data;
@@ -403,8 +337,8 @@ void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 			ase->device = device;
 			ase->dir = BTP_BAP_DIR_SINK;
 			ase->uuid = uuid;
-			ase->cig_id = 0;
-			ase->cis_id = get_next_cis(device, ase->dir);
+			ase->cig_id = BT_ISO_QOS_CIG_UNSET;
+			ase->cis_id = BT_ISO_QOS_CIS_UNSET;
 			l_queue_push_tail(device->ases, ase);
 
 			l_dbus_proxy_method_call(proxy, "ReadValue",
@@ -420,8 +354,8 @@ void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 			ase->device = device;
 			ase->dir = BTP_BAP_DIR_SOURCE;
 			ase->uuid = uuid;
-			ase->cig_id = 0;
-			ase->cis_id = get_next_cis(device, ase->dir);
+			ase->cig_id = BT_ISO_QOS_CIG_UNSET;
+			ase->cis_id = BT_ISO_QOS_CIS_UNSET;
 			l_queue_push_tail(device->ases, ase);
 
 			l_dbus_proxy_method_call(proxy, "ReadValue",

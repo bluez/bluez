@@ -918,6 +918,76 @@ static void ltv_find(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 	*found = true;
 }
 
+static uint8_t get_next_cis(struct btp_device *device, uint8_t dir,
+							uint8_t base)
+{
+	const struct l_queue_entry *adapter_entry;
+	const struct l_queue_entry *ase_entry;
+	uint8_t cis = base;
+	bool found = false;
+
+	/* For the same device, reuse the opposite cis_id if there is no ASE
+	 * in the requested direction already using that same cis_id
+	 */
+	for (ase_entry = l_queue_get_entries(device->ases); ase_entry;
+					ase_entry = ase_entry->next) {
+		struct btp_ase *ase = ase_entry->data;
+		const struct l_queue_entry *entry;
+		bool has_same_dir = false;
+
+		if (ase->dir == dir)
+			continue;
+
+		for (entry = l_queue_get_entries(device->ases); entry;
+					entry = entry->next) {
+			struct btp_ase *peer = entry->data;
+
+			if (peer->dir == dir && peer->cis_id == ase->cis_id) {
+				has_same_dir = true;
+				break;
+			}
+		}
+
+		if (!has_same_dir)
+			return ase->cis_id;
+	}
+
+	/* Else returns the global highest cis_id + 1 across all ASEs of all
+	 * devices, or 'base' if none has already been assigned
+	 */
+	for (adapter_entry = l_queue_get_entries(get_adapters_list());
+					adapter_entry;
+					adapter_entry = adapter_entry->next) {
+		struct btp_adapter *adapter = adapter_entry->data;
+		const struct l_queue_entry *device_entry;
+
+		for (device_entry = l_queue_get_entries(adapter->devices);
+					device_entry;
+					device_entry = device_entry->next) {
+			struct btp_device *dev = device_entry->data;
+
+			for (ase_entry = l_queue_get_entries(dev->ases);
+						ase_entry;
+						ase_entry = ase_entry->next) {
+				struct btp_ase *ase = ase_entry->data;
+
+				if (ase->cis_id == BT_ISO_QOS_CIS_UNSET)
+					continue;
+
+				if (!found || ase->cis_id > cis)
+					cis = ase->cis_id;
+
+				found = true;
+			}
+		}
+	}
+
+	if (!found)
+		return cis;
+
+	return cis + 1;
+}
+
 static struct l_dbus_message *get_properties_reply(
 						struct l_dbus_message *message,
 						struct btp_adapter *adapter,
@@ -1019,27 +1089,31 @@ static struct l_dbus_message *get_properties_reply(
 	l_dbus_message_builder_enter_variant(builder, "a{sv}");
 	l_dbus_message_builder_enter_array(builder, "{sv}");
 
-	if (ase->cig_id != BT_ISO_QOS_CIG_UNSET) {
-		l_dbus_message_builder_enter_dict(builder, "sv");
-		l_dbus_message_builder_append_basic(builder, 's',
-						"CIG");
-		l_dbus_message_builder_enter_variant(builder, "y");
-		l_dbus_message_builder_append_basic(builder, 'y',
-						&ase->cig_id);
-		l_dbus_message_builder_leave_variant(builder);
-		l_dbus_message_builder_leave_dict(builder);
-	}
+	/* SelectProperties() is only invoked when acting as the Unicast Client,
+	 * so assign CIG 0 here and pick the next available CIS for this ASE.
+	 */
+	if (ase->cig_id == BT_ISO_QOS_CIG_UNSET)
+		ase->cig_id = 0;
+	if (ase->cis_id == BT_ISO_QOS_CIS_UNSET)
+		ase->cis_id = get_next_cis(ase->device, ase->dir, 0);
 
-	if (ase->cis_id != BT_ISO_QOS_CIS_UNSET) {
-		l_dbus_message_builder_enter_dict(builder, "sv");
-		l_dbus_message_builder_append_basic(builder, 's',
-						"CIS");
-		l_dbus_message_builder_enter_variant(builder, "y");
-		l_dbus_message_builder_append_basic(builder, 'y',
-						&ase->cis_id);
-		l_dbus_message_builder_leave_variant(builder);
-		l_dbus_message_builder_leave_dict(builder);
-	}
+	l_dbus_message_builder_enter_dict(builder, "sv");
+	l_dbus_message_builder_append_basic(builder, 's',
+					"CIG");
+	l_dbus_message_builder_enter_variant(builder, "y");
+	l_dbus_message_builder_append_basic(builder, 'y',
+					&ase->cig_id);
+	l_dbus_message_builder_leave_variant(builder);
+	l_dbus_message_builder_leave_dict(builder);
+
+	l_dbus_message_builder_enter_dict(builder, "sv");
+	l_dbus_message_builder_append_basic(builder, 's',
+					"CIS");
+	l_dbus_message_builder_enter_variant(builder, "y");
+	l_dbus_message_builder_append_basic(builder, 'y',
+					&ase->cis_id);
+	l_dbus_message_builder_leave_variant(builder);
+	l_dbus_message_builder_leave_dict(builder);
 
 	l_dbus_message_builder_enter_dict(builder, "sv");
 	l_dbus_message_builder_append_basic(builder, 's',
@@ -1299,6 +1373,24 @@ static bool transport_get_cig_cis(struct l_dbus_proxy *proxy, uint8_t *cig,
 	return true;
 }
 
+struct set_cig_cis_data {
+	struct btp_device *device;
+	uint8_t cig;
+};
+
+static void set_cig_cis(void *data, void *user_data)
+{
+	struct btp_ase *ase = data;
+	struct set_cig_cis_data *param = user_data;
+	uint8_t cis = get_next_cis(param->device, ase->dir, 1);
+
+	if (ase->cig_id != BT_ISO_QOS_CIG_UNSET)
+		return;
+
+	ase->cig_id = param->cig;
+	ase->cis_id = cis;
+}
+
 void ascs_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 {
 	char *str, *state;
@@ -1323,8 +1415,18 @@ void ascs_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 	else
 		dir = BTP_BAP_DIR_SINK;
 
-	if (!transport_get_cig_cis(proxy, &cig, &cis))
+	if (!transport_get_cig_cis(proxy, &cig, &cis)) {
+		struct set_cig_cis_data data;
+
+		/* No CIG/CIS reported on the transport yet, meaning this ASE
+		 * is acting as the Unicast Server: assign CIG 1 to all of the
+		 * device's ASEs and let set_cig_cis() derive their CIS ids.
+		 */
+		data.device = device;
+		data.cig = 1;
+		l_queue_foreach(device->ases, set_cig_cis, &data);
 		return;
+	}
 
 	ase = find_ase(device, cig, cis, dir);
 	if (!ase)
