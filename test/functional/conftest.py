@@ -3,6 +3,7 @@
 import os
 import re
 from pathlib import Path
+import pytest
 
 
 def pytest_addoption(parser):
@@ -62,3 +63,14 @@ def pytest_collection_modifyitems(session, config, items):
         # Add security advisory marks based on test name
         if sa_re.search(item.name):
             item.add_marker(pytest.mark.sa)
+
+
+@pytest.fixture
+def paired_hosts_bredr(hosts):
+    from .test_agent import test_agent_pair_bredr
+
+    if hosts[0].agent.has_device(hosts[1].bdaddr):
+        return hosts
+
+    test_agent_pair_bredr(hosts, True)
+    return hosts

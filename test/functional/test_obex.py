@@ -186,17 +186,6 @@ class ObexClient(HostPlugin, EventPluginMixin):
         return properties["Filename"]
 
 
-@pytest.fixture
-def paired_hosts(hosts):
-    from .test_agent import test_agent_pair_bredr
-
-    if hosts[0].agent.has_device(hosts[1].bdaddr):
-        return hosts
-
-    test_agent_pair_bredr(hosts, True)
-    return hosts
-
-
 obex_host_config = host_config(
     [Agent(), Obexd(), ObexClient(), Pexpect()],
     [Agent(), Obexd(), ObexAgent()],
@@ -205,11 +194,11 @@ obex_host_config = host_config(
 
 
 @pytest.fixture
-def obex_hosts(paired_hosts):
-    host0, host1 = paired_hosts
+def obex_hosts(paired_hosts_bredr):
+    host0, host1 = paired_hosts_bredr
 
     if hasattr(host0, "session"):
-        return paired_hosts
+        return paired_hosts_bredr
 
     host0.obex.connect(host1.bdaddr)
 
@@ -219,7 +208,7 @@ def obex_hosts(paired_hosts):
 
     host0.obex.expect("org.bluez.obex.Client1.CreateSession:reply")
 
-    yield paired_hosts
+    yield paired_hosts_bredr
 
     host1.obex_agent.cleanup()
 
