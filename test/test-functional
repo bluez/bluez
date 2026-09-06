@@ -1,0 +1,21 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# See doc/test-functional.rst
+#
+TESTDIR="$(dirname "$0")"
+SRCDIR="$TESTDIR/.."
+
+BUILDDIR=
+for d in "$SRCDIR" "$SRCDIR/build" "$SRCDIR/builddir"; do
+    if [ -f "$d/src/bluetoothd" ]; then
+        BUILDDIR="$d"
+        break
+    fi
+done
+
+if [ -n "$BUILDDIR" ] && [ -d "$BUILDDIR" ]; then
+    exec python3 -m pytest "$TESTDIR/functional" --bluez-src-dir "$SRCDIR" --bluez-build-dir "$BUILDDIR" "$@"
+else
+    exec python3 -m pytest "$TESTDIR/functional" --bluez-src-dir "$SRCDIR" "$@"
+fi
