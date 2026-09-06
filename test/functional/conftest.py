@@ -50,9 +50,15 @@ def pytest_collection_finish(session):
 
 @pytest.hookimpl()
 def pytest_collection_modifyitems(session, config, items):
+    sa_re = re.compile(r"_GHSA_...._...._....")
+
     for item in items:
         callspec = getattr(item, "callspec", None)
 
         # Add vm mark to VM-using tests
         if callspec is not None and callspec.params.get("vm_setup", None) is not None:
             item.add_marker(pytest.mark.vm)
+
+        # Add security advisory marks based on test name
+        if sa_re.search(item.name):
+            item.add_marker(pytest.mark.sa)
