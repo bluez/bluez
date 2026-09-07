@@ -69,7 +69,7 @@ struct input_device {
 	char			*path;
 	bdaddr_t		src;
 	bdaddr_t		dst;
-	const sdp_record_t	*rec;
+	sdp_record_t		*rec;
 	GIOChannel		*ctrl_io;
 	GIOChannel		*intr_io;
 	guint			ctrl_watch;
@@ -157,6 +157,9 @@ static void input_device_free(struct input_device *idev)
 		g_free(idev->req->rd_data);
 		g_free(idev->req);
 	}
+
+	if (idev->rec)
+		sdp_record_free(idev->rec);
 
 	if (idev->idle_timer)
 		timeout_remove(idev->idle_timer);
@@ -1223,15 +1226,22 @@ static void input_device_update_rec(struct input_device *idev)
 	struct btd_profile *p = btd_service_get_profile(idev->service);
 	const sdp_record_t *rec;
 
+	/* The device frees and rebuilds its record list on every SDP
+	 * browse, so keep a private copy instead of a pointer into that
+	 * list. When the new list has no HID record, keep the last copy.
+	 */
 	rec = btd_device_get_record(idev->device, p->remote_uuid);
-	if (!rec || idev->rec == rec)
+	if (!rec)
 		return;
 
-	idev->rec = rec;
-	idev->disable_sdp = is_device_sdp_disable(rec);
+	if (idev->rec)
+		sdp_record_free(idev->rec);
+
+	idev->rec = sdp_copy_record(rec);
+	idev->disable_sdp = is_device_sdp_disable(idev->rec);
 
 	/* Initialize device properties */
-	extract_hid_props(idev, rec);
+	extract_hid_props(idev, idev->rec);
 
 	if (idev->disable_sdp)
 		device_set_refresh_discovery(idev->device, false);
