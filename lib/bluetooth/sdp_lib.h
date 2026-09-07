@@ -595,7 +595,7 @@ int sdp_set_supp_feat(sdp_record_t *rec, const sdp_list_t *sf);
 int sdp_get_supp_feat(const sdp_record_t *rec, sdp_list_t **seqp);
 
 sdp_record_t *sdp_extract_pdu(const uint8_t *pdata, int bufsize, int *scanned);
-sdp_record_t *sdp_copy_record(sdp_record_t *rec);
+sdp_record_t *sdp_copy_record(const sdp_record_t *rec);
 
 void sdp_data_print(sdp_data_t *data);
 void sdp_print_service_attr(sdp_list_t *alist);

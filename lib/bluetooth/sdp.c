@@ -1583,7 +1583,7 @@ static void sdp_copy_attrlist(void *value, void *udata)
 							data->dtd, val, len);
 }
 
-sdp_record_t *sdp_copy_record(sdp_record_t *rec)
+sdp_record_t *sdp_copy_record(const sdp_record_t *rec)
 {
 	sdp_record_t *cpy;
 
