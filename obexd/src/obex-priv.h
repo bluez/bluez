@@ -17,6 +17,7 @@ struct obex_session {
 	char *src;
 	char *dst;
 	char *name;
+	char *img_handle;
 	char *destname;
 	char *type;
 	char *path;
