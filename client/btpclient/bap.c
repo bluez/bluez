@@ -17,6 +17,7 @@
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/uuid.h"
+#include "src/shared/bap-defs.h"
 #include "src/shared/btp.h"
 #include "btpclient.h"
 #include "bap.h"
@@ -57,6 +58,13 @@ static void btp_bap_read_commands(uint8_t index, const void *param,
 failed:
 	l_free(commands);
 	btp_send_error(btp, BTP_BAP_SERVICE, index, BTP_ERROR_FAIL);
+}
+
+static bool match_attribute_uuid(const void *attr, const void *uuid)
+{
+	const struct gatt_attribute *attribute = attr;
+
+	return !bt_uuid_cmp(&attribute->uuid, uuid);
 }
 
 static void btp_bap_discover(uint8_t index, const void *param, uint16_t length,
@@ -110,6 +118,73 @@ static void bap_charac_read_setup(struct l_dbus_message *message,
 	l_dbus_message_builder_destroy(builder);
 }
 
+static void bap_read_pac_reply(struct l_dbus_proxy *proxy,
+						struct l_dbus_message *result,
+						void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	struct btp_device *device = ase->device;
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct btp_bap_codec_cap_found_ev *rp;
+	struct l_dbus_message_iter iter;
+	uint8_t *data;
+	uint32_t n, i, capa_length;
+
+	if (l_dbus_message_is_error(result)) {
+		const char *name, *desc;
+
+		l_dbus_message_get_error(result, &name, &desc);
+		l_error("Failed to read value (%s), %s", name, desc);
+
+		btp_send_error(btp, BTP_BAP_SERVICE, adapter->index,
+							BTP_ERROR_FAIL);
+		return;
+	}
+
+	if (!l_dbus_message_get_arguments(result, "ay", &iter))
+		goto failed;
+
+	if (!l_dbus_message_iter_get_fixed_array(&iter, &data, &n)) {
+		l_debug("Cannot read value");
+		goto failed;
+	}
+
+	rp = l_new(struct btp_bap_codec_cap_found_ev, 1);
+	rp->address_type = device->address_type;
+	rp->address = device->address;
+	rp->dir = ase->dir;
+	rp->coding_format = data[1];
+	capa_length = data[6];
+	i = 0;
+	while (i < capa_length) {
+		struct bt_ltv *ltv = (struct bt_ltv *)(data + i + 7);
+
+		if ((i + ltv->len >= capa_length) || (!ltv->len))
+			goto failed;
+
+		if (ltv->type == 0x01)
+			rp->frequencies = bt_get_le16(ltv->value);
+		else if (ltv->type == 0x02)
+			rp->frame_durations = ltv->value[0];
+		else if (ltv->type == 0x03)
+			rp->channel_counts = ltv->value[0];
+		else if (ltv->type == 0x04)
+			rp->octets_per_frame = bt_get_le32(ltv->value);
+
+		i += ltv->len + 1;
+	}
+
+	btp_send(btp, BTP_BAP_SERVICE, BTP_BAP_EV_CODEC_CAP_FOUND,
+		adapter->index, sizeof(struct btp_bap_codec_cap_found_ev), rp);
+
+	free(rp);
+
+	return;
+
+failed:
+	btp_send_error(btp, BTP_BAP_SERVICE, adapter->index, BTP_ERROR_FAIL);
+}
+
 static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
 						struct l_dbus_message *result,
 						void *user_data)
@@ -121,6 +196,8 @@ static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
 	struct l_dbus_message_iter iter;
 	uint8_t *data;
 	uint32_t n;
+	bt_uuid_t uuid;
+	struct gatt_attribute *attribute;
 
 	if (l_dbus_message_is_error(result)) {
 		const char *name, *desc;
@@ -128,9 +205,7 @@ static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
 		l_dbus_message_get_error(result, &name, &desc);
 		l_error("Failed to read value (%s), %s", name, desc);
 
-		btp_send_error(btp, BTP_BAP_SERVICE, adapter->index,
-							BTP_ERROR_FAIL);
-		return;
+		goto failed;
 	}
 
 	if (!l_dbus_message_get_arguments(result, "ay", &iter))
@@ -153,6 +228,19 @@ static void bap_read_ase_reply(struct l_dbus_proxy *proxy,
 				sizeof(struct btp_bap_ase_found_ev), rp);
 
 	free(rp);
+
+	if (bt_uuid16_cmp(&ase->uuid, ASE_SINK_UUID))
+		bt_uuid16_create(&uuid, PAC_SINK_CHRC_UUID);
+	else
+		bt_uuid16_create(&uuid, PAC_SOURCE_CHRC_UUID);
+	attribute = l_queue_find(device->characteristics,
+						match_attribute_uuid, &uuid);
+	if (!attribute)
+		goto failed;
+
+	l_dbus_proxy_method_call(attribute->proxy, "ReadValue",
+				bap_charac_read_setup, bap_read_pac_reply,
+				ase, NULL);
 
 	return;
 
