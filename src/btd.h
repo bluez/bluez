@@ -98,6 +98,7 @@ struct btd_le_bcs {
 	uint8_t role;
 	uint8_t cs_sync_ant_sel;
 	int8_t max_tx_power;
+	bool ondemand_ranging;
 };
 
 struct btd_defaults {

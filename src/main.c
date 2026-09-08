@@ -160,6 +160,7 @@ static const char *const bcs_options[] = {
 	"Role",
 	"CsSyncAntennaSel",
 	"MaxTxPower",
+	"OndemandRanging",
 	NULL
 };
 
@@ -1301,6 +1302,8 @@ static void parse_le_cs_config(GKeyFile *config)
 	parse_config_signed_int(config, "ChannelSounding",
 			"MaxTxPower", &btd_opts.defaults.bcs.max_tx_power,
 			INT8_MIN, INT8_MAX);
+	parse_config_bool(config, "ChannelSounding", "OndemandRanging",
+			&btd_opts.defaults.bcs.ondemand_ranging);
 }
 
 static void parse_avdtp_session_mode(GKeyFile *config)
@@ -1437,6 +1440,7 @@ static void init_defaults(void)
 	btd_opts.defaults.bcs.role = 0x03;
 	btd_opts.defaults.bcs.cs_sync_ant_sel = 0xFF;
 	btd_opts.defaults.bcs.max_tx_power = 0x14;
+	btd_opts.defaults.bcs.ondemand_ranging = false;
 }
 
 static void log_handler(const gchar *log_domain, GLogLevelFlags log_level,
