@@ -297,3 +297,9 @@ void bt_rap_set_local_sw_time(struct bt_rap *rap, uint8_t local_sw_time);
 void bt_rap_set_remote_sw_time(struct bt_rap *rap, uint8_t remote_sw_time);
 
 void bt_rap_set_conn_interval(struct bt_rap *rap, uint16_t conn_interval);
+
+/* Initiator role: select real-time (false, default) or on-demand (true)
+ * ranging data delivery. Must be called before bt_rap_attach() drives
+ * GATT discovery to completion to take effect.
+ */
+bool bt_rap_set_ondemand_ranging(struct bt_rap *rap, bool enable);
