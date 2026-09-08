@@ -1105,6 +1105,9 @@ static int rap_accept(struct btd_service *service)
 		return -EINVAL;
 	}
 
+	if (btd_opts.defaults.bcs.ondemand_ranging)
+		bt_rap_set_ondemand_ranging(data->rap, true);
+
 	if (!bt_rap_attach(data->rap, client)) {
 		error("RAP unable to attach");
 		return -EINVAL;
