@@ -19,6 +19,9 @@ struct btp_adapter {
 	uint32_t default_settings;
 	struct l_queue *devices;
 
+	uint32_t sink_locations;
+	uint32_t source_locations;
+
 	uint8_t target_latency;
 };
 

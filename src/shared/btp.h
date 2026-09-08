@@ -26,6 +26,7 @@
 #define BTP_GATT_SERVICE	2
 #define BTP_L2CAP_SERVICE	3
 #define BTP_MESH_NODE_SERVICE	4
+#define BTP_PACS_SERVICE	12
 #define BTP_ASCS_SERVICE	13
 #define BTP_BAP_SERVICE		14
 #define BTP_VENDOR_SERVICE	255
@@ -414,6 +415,14 @@ struct btp_gatt_write_cp {
 
 struct btp_gatt_write_rp {
 	uint8_t att_response;
+} __packed;
+
+#define BTP_OP_PACS_READ_SUPPORTED_COMMANDS	0x01
+
+#define BTP_OP_PACS_SET_LOCATION		0x03
+struct btp_pacs_set_location_cp {
+	uint8_t dir;
+	uint32_t location;
 } __packed;
 
 #define BTP_OP_ASCS_READ_SUPPORTED_COMMANDS	0x01
