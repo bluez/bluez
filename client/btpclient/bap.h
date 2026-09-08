@@ -11,3 +11,5 @@ bool bap_register_service(struct btp *btp_, struct l_dbus *dbus_,
 					struct l_dbus_client *client);
 void bap_unregister_service(struct btp *btp);
 bool bap_is_service_registered(void);
+
+void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data);

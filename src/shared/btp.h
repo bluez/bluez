@@ -414,6 +414,9 @@ struct btp_gatt_write_rp {
 	uint8_t att_response;
 } __packed;
 
+#define BTP_BAP_DIR_SINK			0x01
+#define BTP_BAP_DIR_SOURCE			0x02
+
 #define BTP_OP_BAP_READ_SUPPORTED_COMMANDS	0x01
 
 #define BTP_OP_BAP_DISCOVER			0x02
@@ -427,6 +430,14 @@ struct btp_bap_discovery_completed_ev {
 	uint8_t address_type;
 	bdaddr_t address;
 	uint8_t status;
+} __packed;
+
+#define BTP_EV_BAP_ASE_FOUND			0x82
+struct btp_bap_ase_found_ev {
+	uint8_t address_type;
+	bdaddr_t address;
+	uint8_t dir;
+	uint8_t ase_id;
 } __packed;
 
 struct btp;

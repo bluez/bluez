@@ -26,6 +26,14 @@ struct btp_device {
 	struct l_queue *services;
 	struct l_queue *characteristics;
 	struct l_queue *descriptors;
+	struct l_queue *ases;
+};
+
+struct btp_ase {
+	struct btp_device *device;
+	bt_uuid_t uuid;
+	uint8_t dir;
+	uint8_t ase_id;
 };
 
 struct btp_agent {
