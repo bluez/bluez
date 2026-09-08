@@ -42,6 +42,9 @@ struct btp_ase {
 	uint8_t dir;
 	uint8_t ase_id;
 	struct l_dbus_proxy *ep_proxy;
+	struct l_io *io;
+	uint16_t rx_mtu;
+	uint16_t tx_mtu;
 };
 
 struct btp_agent {
