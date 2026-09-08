@@ -366,6 +366,114 @@ void bap_proxy_added(struct l_dbus_proxy *proxy, void *user_data)
 	}
 }
 
+static bool transport_get_cig_cis(struct l_dbus_proxy *proxy, uint8_t *cig,
+								uint8_t *cis)
+{
+	struct l_dbus_message_iter iter, var;
+	const char *key;
+
+	*cig = BT_ISO_QOS_CIG_UNSET;
+	*cis = BT_ISO_QOS_CIS_UNSET;
+
+	if (!l_dbus_proxy_get_property(proxy, "QoS", "a{sv}", &iter))
+		return false;
+
+	while (l_dbus_message_iter_next_entry(&iter, &key, &var)) {
+		if (!strcmp(key, "CIG")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cig))
+				return false;
+		}
+
+		if (!strcmp(key, "CIS")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cis))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+static void send_data(struct l_idle *idle, void *user_data)
+{
+	struct btp_ase *ase = user_data;
+	ssize_t bytes_written;
+	uint8_t *data;
+
+	if (!ase->idle_writer || !ase->io) {
+		l_idle_remove(idle);
+		ase->idle_writer = NULL;
+		return;
+	}
+
+	data = l_malloc(ase->tx_mtu);
+	bytes_written = write(l_io_get_fd(ase->io), data, ase->tx_mtu);
+	if (bytes_written < 0) {
+		l_error("Failed to write (%d)", errno);
+		l_idle_remove(idle);
+		ase->idle_writer = NULL;
+	}
+	l_free(data);
+}
+
+void bap_property_changed(struct l_dbus_proxy *proxy, const char *name,
+				struct l_dbus_message *msg, void *user_data)
+{
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.MediaTransport1")) {
+		if (!strcmp(name, "State")) {
+			const char *state, *path, *uuid;
+			struct btp_device *dev;
+			struct btp_adapter *adapter;
+			uint8_t dir, cig, cis;
+			struct btp_ase *ase;
+
+			if (!l_dbus_message_get_arguments(msg, "s", &state))
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "Device", "o",
+								&path))
+				return;
+
+			dev = find_device_by_path(path);
+			if (!dev)
+				return;
+
+			adapter = find_adapter_by_device(dev);
+			if (!adapter)
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "UUID", "s",
+								&uuid))
+				return;
+
+			if (!bt_uuid_strcmp(uuid, PAC_SINK_UUID))
+				dir = BTP_BAP_DIR_SOURCE;
+			else
+				dir = BTP_BAP_DIR_SINK;
+
+			if (!transport_get_cig_cis(proxy, &cig, &cis))
+				return;
+
+			ase = find_ase(dev, cig, cis, dir);
+			if (!ase)
+				return;
+
+			if (!strcmp(state, "active") && ase->auto_send &&
+					(ase->dir == BTP_BAP_DIR_SINK)) {
+				ase->idle_writer = l_idle_create(send_data,
+								ase, NULL);
+			} else if (!strcmp(state, "pending")) {
+				ase->auto_send = true;
+			} else if (!strcmp(state, "idle") &&
+							ase->idle_writer) {
+				l_idle_remove(ase->idle_writer);
+				ase->idle_writer = NULL;
+			}
+		}
+	}
+}
+
 bool bap_register_service(struct btp *btp_, struct l_dbus *dbus_,
 					struct l_dbus_client *client)
 {
