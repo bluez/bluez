@@ -232,13 +232,25 @@ input going into the controller, ``>`` is output coming from it.
 
 **HCI event responses** reference the command they complete::
 
+    < HCI Command: Reset (0x03|0x0003) plen 0             #5 [hci0] 12:35:01.843185
     > HCI Event: Command Complete (0x0e) plen 4           #6 [hci0] 12:35:01.864922
-          Reset (0x03|0x0003) ncmd 2
+          Reset (0x03|0x0003) ncmd 2 #5 (21.737 msec)
             Status: Success (0x00)
 
 Here ``ncmd 2`` indicates the controller can accept 2 more commands
 (HCI flow control). The indented body shows the command this event
 completes and the result status.
+
+The trailing ``#5 (21.737 msec)`` is the frame number of the command that
+this event responds to, and how long the controller took to respond. It
+saves scrolling back through the trace to find the request, and makes a
+slow command obvious at the point where it completes.
+
+Several commands may be outstanding at once and they need not complete in
+order, so the reference is resolved by opcode, oldest first. It is omitted
+when the request was not captured, which is normal for the first commands
+seen when attaching to a system that is already running. ``Command Status``
+events carry the same reference.
 
 **LE Meta Events** contain a subevent type::
 
