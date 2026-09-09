@@ -148,6 +148,7 @@ struct index_data {
 	uint8_t  msft_evt_prefix[8];
 	uint8_t  msft_evt_len;
 	size_t   frame;
+	struct queue *cmd_q;
 	struct index_buf_pool acl;
 	struct index_buf_pool sco;
 	struct index_buf_pool le;
@@ -155,6 +156,85 @@ struct index_data {
 };
 
 static struct index_data index_list[MAX_INDEX];
+
+/*
+ * Commands awaiting a Command Complete or a Command Status, so that the
+ * response can point back at the frame that carried the request.
+ */
+struct pending_cmd {
+	uint16_t opcode;
+	size_t frame;
+	struct timeval tv;
+};
+
+/* Bound the queue so commands that never get a response cannot pile up */
+#define PENDING_CMD_MAX 64
+
+static bool match_pending_cmd(const void *data, const void *user_data)
+{
+	const struct pending_cmd *cmd = data;
+
+	return cmd->opcode == PTR_TO_UINT(user_data);
+}
+
+static void pending_cmd_enqueue(uint16_t index, uint16_t opcode,
+						struct timeval *tv)
+{
+	struct index_data *ctrl = &index_list[index];
+	struct pending_cmd *cmd;
+
+	if (!ctrl->cmd_q)
+		ctrl->cmd_q = queue_new();
+
+	if (queue_length(ctrl->cmd_q) >= PENDING_CMD_MAX)
+		free(queue_pop_head(ctrl->cmd_q));
+
+	cmd = new0(struct pending_cmd, 1);
+	cmd->opcode = opcode;
+	cmd->frame = ctrl->frame;
+	if (tv)
+		cmd->tv = *tv;
+
+	queue_push_tail(ctrl->cmd_q, cmd);
+}
+
+/*
+ * Format the request reference for a response, as the frame number of the
+ * command and the time elapsed since it was sent. Leaves the string empty
+ * when the request was not seen, which is the normal case for a capture
+ * started while commands were already in flight.
+ */
+static void pending_cmd_str(uint16_t index, uint16_t opcode,
+				struct timeval *tv, char *str, size_t len)
+{
+	struct pending_cmd *cmd;
+	struct timeval delta;
+
+	str[0] = '\0';
+
+	if (index >= MAX_INDEX)
+		return;
+
+	/*
+	 * Several commands may be outstanding at once and they need not
+	 * complete in order, so match on the opcode and take the oldest.
+	 */
+	cmd = queue_remove_if(index_list[index].cmd_q, match_pending_cmd,
+							UINT_TO_PTR(opcode));
+	if (!cmd)
+		return;
+
+	if (tv && timerisset(&cmd->tv)) {
+		timersub(tv, &cmd->tv, &delta);
+		snprintf(str, len, " #%zu (%lld.%03lld msec)", cmd->frame,
+				(long long)delta.tv_sec * 1000 +
+						delta.tv_usec / 1000,
+				(long long)delta.tv_usec % 1000);
+	} else
+		snprintf(str, len, " #%zu", cmd->frame);
+
+	free(cmd);
+}
 
 static void assign_ctrl(uint32_t cookie, uint16_t format, const char *name)
 {
@@ -11437,8 +11517,10 @@ static void cmd_complete_evt(struct timeval *tv, uint16_t index,
 	struct opcode_data vendor_data;
 	const struct opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
-	char vendor_str[150];
+	char vendor_str[150], req_str[32];
 	int i;
+
+	pending_cmd_str(index, opcode, tv, req_str, sizeof(req_str));
 
 	for (i = 0; opcode_table[i].str; i++) {
 		if (opcode_table[i].opcode == opcode) {
@@ -11488,7 +11570,8 @@ static void cmd_complete_evt(struct timeval *tv, uint16_t index,
 	}
 
 	print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
-			" (0x%2.2x|0x%4.4x) ncmd %d", ogf, ocf, evt->ncmd);
+			" (0x%2.2x|0x%4.4x) ncmd %d%s", ogf, ocf, evt->ncmd,
+			req_str);
 
 	if (!opcode_data || !opcode_data->rsp_func) {
 		if (size > 3) {
@@ -11533,8 +11616,10 @@ static void cmd_status_evt(struct timeval *tv, uint16_t index,
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 	const struct opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
-	char vendor_str[150];
+	char vendor_str[150], req_str[32];
 	int i;
+
+	pending_cmd_str(index, opcode, tv, req_str, sizeof(req_str));
 
 	for (i = 0; opcode_table[i].str; i++) {
 		if (opcode_table[i].opcode == opcode) {
@@ -11572,7 +11657,8 @@ static void cmd_status_evt(struct timeval *tv, uint16_t index,
 	}
 
 	print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
-			" (0x%2.2x|0x%4.4x) ncmd %d", ogf, ocf, evt->ncmd);
+			" (0x%2.2x|0x%4.4x) ncmd %d%s", ogf, ocf, evt->ncmd,
+			req_str);
 
 	print_status(evt->status);
 }
@@ -14166,6 +14252,11 @@ void packet_del_index(struct timeval *tv, uint16_t index, const char *label)
 {
 	print_packet(tv, NULL, '=', index, NULL, COLOR_DEL_INDEX,
 					"Delete Index", label, NULL);
+
+	if (index < MAX_INDEX) {
+		queue_destroy(index_list[index].cmd_q, free);
+		index_list[index].cmd_q = NULL;
+	}
 }
 
 void packet_open_index(struct timeval *tv, uint16_t index, const char *label)
@@ -14178,6 +14269,11 @@ void packet_close_index(struct timeval *tv, uint16_t index, const char *label)
 {
 	print_packet(tv, NULL, '=', index, NULL, COLOR_CLOSE_INDEX,
 					"Close Index", label, NULL);
+
+	if (index < MAX_INDEX) {
+		queue_destroy(index_list[index].cmd_q, free);
+		index_list[index].cmd_q = NULL;
+	}
 }
 
 void packet_index_info(struct timeval *tv, uint16_t index, const char *label,
@@ -14328,6 +14424,10 @@ void packet_hci_command(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	data += HCI_COMMAND_HDR_SIZE;
 	size -= HCI_COMMAND_HDR_SIZE;
+
+	/* NOP carries no request and is only used to update ncmd */
+	if (opcode != BT_HCI_CMD_NOP)
+		pending_cmd_enqueue(index, opcode, tv);
 
 	for (i = 0; opcode_table[i].str; i++) {
 		if (opcode_table[i].opcode == opcode) {
