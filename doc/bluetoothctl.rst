@@ -38,6 +38,7 @@ OPTIONS
 -a capability, --agent capability        Register agent handler: <capability>
 -e, --endpoints                  Register Media endpoints
 -m, --monitor                    Enable monitor output
+-s file, --init-script file      Run the commands in the given script file
 -t seconds, --timeout seconds    Timeout in seconds for non-interactive mode
 -v, --version       Display version
 -h, --help          Display help
@@ -589,6 +590,110 @@ Using Here Docs to show information about the Bluetooth controller.
    show
    EOF
 
+Commands can also be read from a file with the **--init-script** option.
+The tool stays interactive after the script has been executed, which is
+useful to set up a role and then drive it by hand:
+
+.. code::
+
+   bluetoothctl --init-script client/scripts/power-on.bt
+
+Lines starting with **#** are comments, and lines are also used to answer
+the prompts of the commands, in the order the prompts appear.
+
+SCRIPTS
+=======
+
+The scripts shipped in **client/scripts** set up common roles. Scripts
+registering a media endpoint are named
+*<profile>-<role>-<codec>[-<preset>].bt*, where the preset is only part
+of the name if the script also configures the stream.
+
+Controller setup
+----------------
+
+``power-on.bt``, ``power-on-off.bt``
+	Power the controller on, or power it off and on again.
+
+``scan-on.bt``, ``scan-on-off.bt``, ``scan-le.bt``, ``scan-bredr.bt``
+	Start discovery, optionally restricted to a transport.
+
+``advertise-on.bt``, ``advertise-peripheral.bt``, ``advertise-broadcast.bt``, ``advertise-rsi.bt``
+	Start advertising with the given type.
+
+A2DP
+----
+
+``a2dp-source-sbc.bt``
+	Register a local A2DP Source endpoint (``0000110a-...``) with SBC,
+	i.e. act as the device sending audio, such as a phone.
+
+``a2dp-sink-sbc.bt``
+	Register a local A2DP Sink endpoint (``0000110b-...``) with SBC,
+	i.e. act as the device receiving audio, such as a speaker.
+
+Once connected, the stream is configured automatically and a transport
+is created, which can be acquired with **transport.acquire**.
+
+BAP unicast
+-----------
+
+``bap-source-lc3.bt``
+	Register a local PAC Source endpoint (``00002bcb-...``) with LC3,
+	i.e. act as the initiator sending audio.
+
+``bap-sink-lc3.bt``
+	Register a local PAC Sink endpoint (``00002bc9-...``) with LC3,
+	i.e. act as the acceptor receiving audio.
+
+The initiator configures a remote endpoint with **endpoint.config**,
+choosing a preset, which creates the transport:
+
+.. code::
+
+   endpoint.config /org/bluez/hci0/dev_XX_XX_XX_XX_XX_XX/pac_snk0 \
+	   /local/endpoint/ep0 16_2_1
+
+``preset-custom.bt``
+	Add a custom LC3 preset, instead of using one of the presets
+	defined by the specification.
+
+BAP broadcast
+-------------
+
+``broadcast-source.bt``, ``broadcast-source-2bis.bt``, ``broadcast-source-pbp.bt``
+	Register a Broadcast Source endpoint (``00001852-...``) with LC3,
+	configure it with the 16_2_1 preset and acquire the transport,
+	which starts the broadcast. The variants set up two BISes and the
+	Public Broadcast Profile respectively.
+
+``broadcast-sink.bt``
+	Register a Broadcast Sink endpoint (``00001851-...``) with LC3 and
+	scan, to sync to a Broadcast Source without the help of a
+	Broadcast Assistant.
+
+``scan-delegator.bt``, ``broadcast-delegator.bt``
+	Register a Broadcast Sink endpoint and advertise, to be used as
+	Scan Delegator by a Broadcast Assistant. The stream is then synced
+	using PAST, and the transport moved to broadcasting with
+	**transport.select** before it is acquired.
+
+``broadcast-assistant.bt``
+	Scan, to discover a Scan Delegator to connect to and Broadcast
+	Sources to offer it with **assistant.push**.
+
+Channel Sounding
+----------------
+
+``cs-initiator.bt``, ``cs-reflector.bt``
+	Set up the two sides of a Channel Sounding procedure.
+
+GATT
+----
+
+``gatt-batt.bt``
+	Register a Battery Service with a notifiable Battery Level
+	characteristic.
 
 RESOURCES
 =========
