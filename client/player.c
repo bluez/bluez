@@ -3506,6 +3506,12 @@ static void endpoint_locations(const char *input, void *user_data)
 				endpoint_supported_context, ep);
 }
 
+static bool endpoint_is_a2dp(struct endpoint *ep)
+{
+	return !strcasecmp(ep->uuid, A2DP_SOURCE_UUID) ||
+			!strcasecmp(ep->uuid, A2DP_SINK_UUID);
+}
+
 static void endpoint_max_transports(const char *input, void *user_data)
 {
 	struct endpoint *ep = user_data;
@@ -3523,6 +3529,12 @@ static void endpoint_max_transports(const char *input, void *user_data)
 		}
 
 		ep->max_transports = value;
+	}
+
+	/* Locations, contexts and ISO settings only apply to LE Audio */
+	if (endpoint_is_a2dp(ep)) {
+		endpoint_register(ep);
+		return;
 	}
 
 	bt_shell_prompt_input(ep->path, "Locations:", endpoint_locations, ep);
@@ -4629,8 +4641,7 @@ static void endpoint_init_defaults(struct endpoint *ep)
 	ep->max_transports = UINT8_MAX;
 	ep->auto_accept = true;
 
-	if (!strcmp(ep->uuid, A2DP_SOURCE_UUID) ||
-			!strcmp(ep->uuid, A2DP_SOURCE_UUID))
+	if (endpoint_is_a2dp(ep))
 		return;
 
 	ep->iso_group = BT_ISO_QOS_GROUP_UNSET;
