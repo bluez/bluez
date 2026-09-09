@@ -497,6 +497,9 @@ EXTRA_DIST += doc/assigned-numbers.rst doc/supported-features.txt \
 				doc/test-coverage.txt \
 				doc/test-runner.rst \
 				doc/test-functional.rst \
+				doc/functional-testing.rst \
+				doc/functional-avrcp.rst \
+				doc/functional-obex.rst \
 				doc/settings-storage.txt
 
 EXTRA_DIST += doc/hci-protocol.rst doc/mgmt-protocol.rst \
