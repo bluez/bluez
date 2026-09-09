@@ -5873,6 +5873,64 @@ static const char *att_opcode_to_str(uint8_t opcode)
 	return "Unknown";
 }
 
+/*
+ * ATT responses use the request opcode plus one, except for an Error
+ * Response which names the request it rejects. Only one request may be
+ * outstanding on a bearer, so the opcode itself identifies the transaction.
+ */
+static void att_req_str(uint16_t handle, uint16_t key, uint8_t opcode,
+			const void *data, uint16_t size, struct timeval *tv,
+			size_t num, char *str, size_t len)
+{
+	str[0] = '\0';
+
+	switch (opcode) {
+	/* Requests, and the indication which is answered by a confirmation */
+	case 0x02:
+	case 0x04:
+	case 0x06:
+	case 0x08:
+	case 0x0a:
+	case 0x0c:
+	case 0x0e:
+	case 0x10:
+	case 0x12:
+	case 0x16:
+	case 0x18:
+	case 0x1d:
+	case 0x20:
+		packet_req_add(handle, key, PACKET_PROTO_ATT, opcode, tv,
+								num);
+		return;
+	case 0x01:
+		/* The rejected request is named in the response */
+		if (size < 1)
+			return;
+		packet_req_str(handle, key, PACKET_PROTO_ATT,
+				*((const uint8_t *) data), tv, str, len);
+		return;
+	case 0x1e:
+		packet_req_str(handle, key, PACKET_PROTO_ATT, 0x1d, tv, str,
+									len);
+		return;
+	case 0x03:
+	case 0x05:
+	case 0x07:
+	case 0x09:
+	case 0x0b:
+	case 0x0d:
+	case 0x0f:
+	case 0x11:
+	case 0x13:
+	case 0x17:
+	case 0x19:
+	case 0x21:
+		packet_req_str(handle, key, PACKET_PROTO_ATT, opcode - 1, tv,
+								str, len);
+		return;
+	}
+}
+
 void att_packet(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 					const void *data, uint16_t size)
 {
@@ -5880,6 +5938,9 @@ void att_packet(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 	uint8_t opcode = *((const uint8_t *) data);
 	const struct att_opcode_data *opcode_data = NULL;
 	const char *opcode_color, *opcode_str;
+	char req_str[32];
+	struct timeval tv;
+	size_t num;
 	int i;
 
 	if (size < 1) {
@@ -5909,8 +5970,14 @@ void att_packet(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 		opcode_str = "Unknown";
 	}
 
+	packet_get_context(&tv, &num);
+	att_req_str(handle, l2cap_chan_key(index, in, handle, cid), opcode,
+			data + 1, size - 1, &tv, num, req_str,
+			sizeof(req_str));
+
 	print_indent(6, opcode_color, "ATT: ", opcode_str, COLOR_OFF,
-				" (0x%2.2x) len %d", opcode, size - 1);
+				" (0x%2.2x) len %d%s%s", opcode, size - 1,
+				req_str[0] ? " " : "", req_str);
 
 	if (!opcode_data || !opcode_data->func) {
 		packet_hexdump(data + 1, size - 1);
