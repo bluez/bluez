@@ -58,7 +58,19 @@ struct hci_dev {
 	unsigned long unknown;
 	uint16_t manufacturer;
 	struct queue *conn_list;
+	struct queue *cmd_list;
+	struct packet_latency cmd_latency;
+	unsigned long num_cmd_rsp;
 };
+
+/* Command awaiting a Command Complete or a Command Status */
+struct hci_cmd {
+	uint16_t opcode;
+	struct timeval tv;
+};
+
+/* Bound the queue so commands that never get a response cannot pile up */
+#define CMD_LIST_MAX 64
 
 struct hci_stats {
 	size_t bytes;
@@ -490,6 +502,21 @@ static void dev_destroy(void *data)
 	printf("  %lu user logs\n", dev->user_log);
 	printf("  %lu control messages \n", dev->ctrl_msg);
 	printf("  %lu unknown opcodes\n", dev->unknown);
+
+	if (dev->num_cmd_rsp)
+		printf("  Command latency: %lld-%lld msec "
+				"(~%lld msec +/- %lld msec)\n",
+				TV_MSEC(dev->cmd_latency.min),
+				TV_MSEC(dev->cmd_latency.max),
+				TV_MSEC(dev->cmd_latency.med),
+				packet_latency_stddev(&dev->cmd_latency));
+
+	/* Whatever is left never got a Command Complete or Command Status */
+	if (!queue_isempty(dev->cmd_list))
+		printf("  Commands without response: %u\n",
+					queue_length(dev->cmd_list));
+
+	queue_destroy(dev->cmd_list, free);
 	queue_destroy(dev->conn_list, conn_destroy);
 	printf("\n");
 
@@ -506,6 +533,7 @@ static struct hci_dev *dev_alloc(uint16_t index)
 	dev->manufacturer = 0xffff;
 
 	dev->conn_list = queue_new();
+	dev->cmd_list = queue_new();
 
 	return dev;
 }
@@ -741,10 +769,20 @@ static void del_index(struct timeval *tv, uint16_t index,
 	dev_destroy(dev);
 }
 
+static bool match_cmd_opcode(const void *data, const void *user_data)
+{
+	const struct hci_cmd *cmd = data;
+
+	return cmd->opcode == PTR_TO_UINT(user_data);
+}
+
 static void command_pkt(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
+	const struct bt_hci_cmd_hdr *hdr = data;
 	struct hci_dev *dev;
+	struct hci_cmd *cmd;
+	uint16_t opcode;
 
 	dev = dev_lookup(index);
 	if (!dev)
@@ -752,6 +790,51 @@ static void command_pkt(struct timeval *tv, uint16_t index,
 
 	dev->num_hci++;
 	dev->num_cmd++;
+
+	if (size < sizeof(*hdr))
+		return;
+
+	opcode = le16_to_cpu(hdr->opcode);
+
+	/* NOP carries no request and is only used to update ncmd */
+	if (opcode == BT_HCI_CMD_NOP)
+		return;
+
+	if (queue_length(dev->cmd_list) >= CMD_LIST_MAX)
+		free(queue_pop_head(dev->cmd_list));
+
+	cmd = new0(struct hci_cmd, 1);
+	cmd->opcode = opcode;
+	cmd->tv = *tv;
+
+	queue_push_tail(dev->cmd_list, cmd);
+}
+
+/*
+ * Measure how long the controller took to acknowledge a command. Commands
+ * that are only acknowledged here and complete later through a separate
+ * event are still measured up to the acknowledgement, so that the figure
+ * stays a property of the controller rather than of the remote device.
+ */
+static void cmd_rsp(struct hci_dev *dev, struct timeval *tv, uint16_t opcode)
+{
+	struct hci_cmd *cmd;
+	struct timeval res;
+
+	/*
+	 * Several commands may be outstanding at once and they need not
+	 * complete in order, so match on the opcode and take the oldest.
+	 */
+	cmd = queue_remove_if(dev->cmd_list, match_cmd_opcode,
+							UINT_TO_PTR(opcode));
+	if (!cmd)
+		return;
+
+	timersub(tv, &cmd->tv, &res);
+	packet_latency_add(&dev->cmd_latency, &res);
+	dev->num_cmd_rsp++;
+
+	free(cmd);
 }
 
 static void evt_conn_complete(struct hci_dev *dev, struct timeval *tv,
@@ -814,11 +897,24 @@ static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 
 	opcode = le16_to_cpu(evt->opcode);
 
+	cmd_rsp(dev, tv, opcode);
+
 	switch (opcode) {
 	case BT_HCI_CMD_READ_BD_ADDR:
 		rsp_read_bd_addr(dev, tv, data, size);
 		break;
 	}
+}
+
+static void evt_cmd_status(struct hci_dev *dev, struct timeval *tv,
+					const void *data, uint16_t size)
+{
+	const struct bt_hci_evt_cmd_status *evt = data;
+
+	if (size < sizeof(*evt))
+		return;
+
+	cmd_rsp(dev, tv, le16_to_cpu(evt->opcode));
 }
 
 static bool match_plot_latency(const void *data, const void *user_data)
@@ -1115,6 +1211,9 @@ static void event_pkt(struct timeval *tv, uint16_t index,
 		break;
 	case BT_HCI_EVT_CMD_COMPLETE:
 		evt_cmd_complete(dev, tv, data, size);
+		break;
+	case BT_HCI_EVT_CMD_STATUS:
+		evt_cmd_status(dev, tv, data, size);
 		break;
 	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
 		evt_num_completed_packets(dev, tv, data, size);
