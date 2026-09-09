@@ -1,0 +1,19 @@
+power on
+#
+#
+# Register an A2DP Sink endpoint with SBC, to act as the device
+# receiving audio, e.g. a speaker.
+#
+endpoint.register 0000110b-0000-1000-8000-00805f9b34fb 0x00
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+#
+#
+# The endpoint has to be registered before pairing, so the SDP record
+# is in place when the peer resolves the services.
+#
+# A transport is created once the peer configures the stream, and it is
+# the peer, as the A2DP Source, that acquires it to start the stream.
+#
