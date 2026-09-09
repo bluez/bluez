@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
 struct l2cap_frame {
 	uint16_t index;
@@ -24,6 +25,8 @@ struct l2cap_frame {
 	uint8_t seq_num;
 	const void *data;
 	uint16_t size;
+	struct timeval tv;	/* Timestamp of the carrying frame */
+	size_t num;		/* Number of the carrying frame */
 };
 
 void l2cap_frame_init(struct l2cap_frame *frame, uint16_t index, bool in,
@@ -46,6 +49,8 @@ static inline void l2cap_frame_clone_size(struct l2cap_frame *frame,
 		frame->mode    = source->mode;
 		frame->data    = source->data;
 		frame->size    = size;
+		frame->tv      = source->tv;
+		frame->num     = source->num;
 	}
 }
 
@@ -350,6 +355,9 @@ static inline bool l2cap_frame_get_be128(struct l2cap_frame *frame,
 
 void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 		uint16_t psm, const void *data, uint16_t size);
+
+uint16_t l2cap_chan_key(uint16_t index, bool in, uint16_t handle,
+							uint16_t cid);
 
 void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 					const void *data, uint16_t size);

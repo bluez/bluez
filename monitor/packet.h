@@ -45,6 +45,13 @@ struct packet_loss {
 	size_t total;		/* Samples seen, including the lost ones */
 };
 
+/* Protocols tracked for request and response matching */
+#define PACKET_PROTO_L2CAP	0x00
+#define PACKET_PROTO_ATT	0x01
+#define PACKET_PROTO_SDP	0x02
+#define PACKET_PROTO_AVDTP	0x03
+#define PACKET_PROTO_AVCTP	0x04
+
 struct packet_frame {
 	struct timeval tv;
 	size_t num;
@@ -76,6 +83,7 @@ struct packet_conn_data {
 	struct queue *chan_q;
 	struct packet_latency tx_l;
 	struct packet_loss rx_loss;
+	struct queue *req_q;
 	void     *data;
 	void     (*destroy)(struct packet_conn_data *conn, void *data);
 };
@@ -84,6 +92,12 @@ struct packet_conn_data *packet_get_conn_data(uint16_t handle);
 void packet_latency_add(struct packet_latency *latency, struct timeval *delta);
 long long packet_latency_stddev(const struct packet_latency *latency);
 void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags);
+
+void packet_get_context(struct timeval *tv, size_t *num);
+void packet_req_add(uint16_t handle, uint16_t cid, uint8_t proto, uint16_t id,
+					struct timeval *tv, size_t num);
+void packet_req_str(uint16_t handle, uint16_t cid, uint8_t proto, uint16_t id,
+			struct timeval *tv, char *str, size_t len);
 
 bool packet_has_filter(unsigned long filter);
 void packet_set_filter(unsigned long filter);

@@ -555,6 +555,7 @@ static struct packet_conn_data *release_handle(uint16_t handle)
 
 			queue_destroy(conn->tx_q, free);
 			queue_destroy(conn->chan_q, free);
+			queue_destroy(conn->req_q, free);
 			memset(conn, 0, sizeof(*conn));
 			conn->handle = 0xffff;
 			return conn;
@@ -11993,6 +11994,125 @@ void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags)
 	loss->have_sn = true;
 }
 
+/*
+ * Timestamp and frame number of the packet being decoded. btmon decodes one
+ * packet at a time, so this lets the upper layers reference the frame that
+ * carried a request without threading it through every protocol handler.
+ */
+static struct timeval cur_tv;
+static bool cur_tv_valid;
+static size_t cur_num;
+
+static void packet_set_context(struct timeval *tv, size_t num)
+{
+	cur_tv_valid = tv;
+	if (tv)
+		cur_tv = *tv;
+	cur_num = num;
+}
+
+void packet_get_context(struct timeval *tv, size_t *num)
+{
+	if (tv) {
+		if (cur_tv_valid)
+			*tv = cur_tv;
+		else
+			timerclear(tv);
+	}
+
+	if (num)
+		*num = cur_num;
+}
+
+/*
+ * Requests from the protocols above HCI, so that a response can point back
+ * at the frame that carried the request.
+ */
+struct packet_req {
+	uint16_t cid;
+	uint8_t proto;
+	uint16_t id;
+	size_t num;
+	struct timeval tv;
+};
+
+/* Bound the queue so requests that never get a response cannot pile up */
+#define PACKET_REQ_MAX 64
+
+static bool match_packet_req(const void *data, const void *user_data)
+{
+	const struct packet_req *req = data;
+	const struct packet_req *match = user_data;
+
+	return req->cid == match->cid && req->proto == match->proto &&
+						req->id == match->id;
+}
+
+void packet_req_add(uint16_t handle, uint16_t cid, uint8_t proto, uint16_t id,
+					struct timeval *tv, size_t num)
+{
+	struct packet_conn_data *conn;
+	struct packet_req *req;
+
+	conn = packet_get_conn_data(handle);
+	if (!conn)
+		return;
+
+	if (!conn->req_q)
+		conn->req_q = queue_new();
+
+	if (queue_length(conn->req_q) >= PACKET_REQ_MAX)
+		free(queue_pop_head(conn->req_q));
+
+	req = new0(struct packet_req, 1);
+	req->cid = cid;
+	req->proto = proto;
+	req->id = id;
+	req->num = num;
+	if (tv)
+		req->tv = *tv;
+
+	queue_push_tail(conn->req_q, req);
+}
+
+/*
+ * Format the request reference for a response. Leaves the string empty when
+ * the request was not seen, which is the normal case for a capture started
+ * while a transaction was already in progress.
+ */
+void packet_req_str(uint16_t handle, uint16_t cid, uint8_t proto, uint16_t id,
+			struct timeval *tv, char *str, size_t len)
+{
+	struct packet_conn_data *conn;
+	struct packet_req *req, match;
+	struct timeval delta;
+
+	str[0] = '\0';
+
+	conn = packet_get_conn_data(handle);
+	if (!conn)
+		return;
+
+	match.cid = cid;
+	match.proto = proto;
+	match.id = id;
+
+	req = queue_remove_if(conn->req_q, match_packet_req, &match);
+	if (!req)
+		return;
+
+	if (tv && timerisset(tv) && timerisset(&req->tv)) {
+		timersub(tv, &req->tv, &delta);
+		snprintf(str, len, "#%zu (%lld.%03lld msec)", req->num,
+				(long long)delta.tv_sec * 1000 +
+						delta.tv_usec / 1000,
+				(long long)delta.tv_usec % 1000);
+	} else
+		snprintf(str, len, "#%zu", req->num);
+
+	free(req);
+}
+
 static void packet_dequeue_tx(struct timeval *tv, uint16_t handle)
 {
 	struct packet_conn_data *conn;
@@ -14946,7 +15066,11 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	if (filter_mask & PACKET_FILTER_SHOW_ACL_DATA)
 		packet_hexdump(data, size);
 
+	packet_set_context(tv, index_list[index].frame);
+
 	l2cap_packet(index, in, acl_handle(handle), flags, data, size);
+
+	packet_set_context(NULL, 0);
 }
 
 void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
