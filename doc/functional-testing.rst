@@ -14,6 +14,7 @@ are documented separately:
 
 - **functional-a2dp(7)**: `test/functional/test_a2dp.py`
 - **functional-avrcp(7)**: `test/functional/test_avrcp.py`
+- **functional-bap(7)**: `test/functional/test_bap.py`
 - **functional-obex(7)**: `test/functional/test_obex.py`
 
 Each test case is described as:
