@@ -12,6 +12,7 @@ configure and run the suite, see **test-functional(1)**.
 This document covers the core test cases. Tests for a specific profile
 are documented separately:
 
+- **functional-a2dp(7)**: `test/functional/test_a2dp.py`
 - **functional-avrcp(7)**: `test/functional/test_avrcp.py`
 - **functional-obex(7)**: `test/functional/test_obex.py`
 
