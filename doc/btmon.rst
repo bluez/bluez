@@ -591,6 +591,9 @@ Analyze mode reports, for each controller found in the trace:
   events, ACL, SCO, ISO, vendor diagnostics, system notes, user
   logs, control messages).
 
+- **Command latency**: How long the controller took to acknowledge
+  commands, and how many commands were never answered at all.
+
 - **Per-connection statistics**: For each connection handle found:
 
   - Connection type (BR-ACL, LE-ACL, BR-SCO, BR-ESCO, LE-ISO)
@@ -626,6 +629,30 @@ packets are fast but some are heavily delayed, which typically points at
 interference, retransmissions or controller buffer stalls. Comparing the
 maximum against ``average + deviation`` shows whether the worst case is
 representative or a one-off outlier.
+
+Command Latency
+---------------
+
+Command latency is reported per controller::
+
+   Command latency: 0-215 msec (~55 msec +/- 70 msec)
+   Commands without response: 3
+
+This measures the interval between an HCI command and the ``Command
+Complete`` or ``Command Status`` that acknowledges it, so it describes the
+responsiveness of the controller itself.
+
+Commands that are only acknowledged by a ``Command Status`` and complete
+much later through a separate event are measured up to the acknowledgement
+only. A ``Create Connection`` that takes three seconds to reach its
+``Connect Complete`` is waiting on the remote device rather than on the
+controller, and including it would swamp both the average and the
+deviation.
+
+``Commands without response`` counts commands that were never acknowledged
+at all before the end of the trace. A non-zero value usually means the
+capture simply ended with commands in flight, but a persistently high count
+points at firmware dropping commands.
 
 Packet Loss
 -----------
