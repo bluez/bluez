@@ -252,6 +252,29 @@ when the request was not captured, which is normal for the first commands
 seen when attaching to a system that is already running. ``Command Status``
 events carry the same reference.
 
+Some commands are only acknowledged by a ``Command Status`` and complete
+much later through a separate event. Those events carry the reference as a
+``Request`` field instead::
+
+    < HCI Command: Create Connection (0x01|0x0005) plen 13    #12 [hci0] 3.175055
+            Address: 00:11:22:33:44:55 (CIMSYS Inc)
+    > HCI Event: Command Status (0x0f) plen 4                 #13 [hci0] 3.176055
+          Create Connection (0x01|0x0005) ncmd 1 #12 (1.000 msec)
+    > HCI Event: Connect Complete (0x03) plen 11              #27 [hci0] 6.178055
+            Request: #12 (3003.000 msec)
+            Status: Success (0x00)
+
+This is where the reference is most useful, since the delay between the
+command and its completing event is often seconds and is otherwise only
+visible by comparing timestamps by hand. Page timeouts, slow authentication
+and slow encryption setup all show up directly.
+
+Commands of this kind are matched to their event by connection handle or by
+remote address, so several may be outstanding towards different devices at
+once and still resolve correctly. A ``Command Status`` reporting an error
+means the completing event will never arrive, and the command is dropped
+rather than left to match a later unrelated event.
+
 **LE Meta Events** contain a subevent type::
 
     > HCI Event: LE Meta Event (0x3e) plen 31           #487 [hci0] 12:36:18.974201
