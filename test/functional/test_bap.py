@@ -167,3 +167,71 @@ def test_bap_unicast_transport_acquire(unicast_hosts):
             f"Transport {right} State: active",
         ],
     )
+
+
+# Broadcast code used by the broadcast scripts, see BCAST_CODE in
+# client/player.c
+BCAST_CODE = (
+    "0x01 0x02 0x68 0x05 0x53 0xf1 0x41 0x5a " "0xa2 0x65 0xbb 0xaf 0xc6 0xea 0x03 0xb8"
+)
+
+BCAST_SOURCES = ["broadcast-source.bt", "broadcast-source-pbp.bt"]
+BCAST_IDS = ["lc3", "pbp"]
+
+broadcast_host_config = host_config(
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+)
+
+
+def start_broadcast(hosts, source_script):
+    """
+    Source broadcasting with the given script, and sink scanning for it.
+    """
+    source_host, sink_host = hosts
+
+    source = start_bluetoothctl(source_host, source_script)
+    source.expect(r"Acquire successful: fd \d+ MTU \d+:\d+")
+
+    sink = start_bluetoothctl(sink_host, "broadcast-sink.bt")
+
+    return source, sink
+
+
+@broadcast_host_config
+@pytest.mark.parametrize("source_script", BCAST_SOURCES, ids=BCAST_IDS)
+def test_bap_broadcast_transport_created(hosts, source_script):
+    source, sink = start_broadcast(hosts, source_script)
+
+    # Sink syncs to the periodic advertising and creates a transport
+    # for each BIS described by the BASE
+    _, m = sink.expect(TRANSPORT_RE)
+    transport = m[0].decode("utf-8")
+
+    sink.send(f"transport.show {transport}\n")
+    sink.expect(f"Transport {transport}")
+    sink.expect(r"Codec: 0x06")
+    sink.expect("State: idle")
+
+
+@broadcast_host_config
+@pytest.mark.parametrize("source_script", BCAST_SOURCES, ids=BCAST_IDS)
+def test_bap_broadcast_transport_acquire(hosts, source_script):
+    source, sink = start_broadcast(hosts, source_script)
+
+    _, m = sink.expect(TRANSPORT_RE)
+    transport = m[0].decode("utf-8")
+
+    # Selecting the transport syncs to the BIG and starts acquiring it
+    sink.send(f"transport.select {transport}\n")
+    sink.expect(r"Enter bcode\[value/no\]:")
+    sink.send(f"{BCAST_CODE}\n")
+
+    expect_all(
+        sink,
+        [
+            f"Transport {transport} State: broadcasting",
+            r"Acquire successful: fd \d+ MTU \d+:\d+",
+            f"Transport {transport} State: active",
+        ],
+    )

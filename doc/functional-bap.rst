@@ -13,6 +13,23 @@ suite.
 SETUP
 =====
 
+BAP requires the ISO socket support, so all hosts run `bluetoothd`
+with:
+
+.. code-block::
+
+	[General]
+	Experimental = true
+	KernelExperimental = true
+	ControllerMode = le
+
+`bluetoothctl` is started with ``-a auto``, so pairing and service
+authorization are accepted without prompting, and with an endpoint
+registration script from `client/scripts`.
+
+UNICAST
+=======
+
 Two hosts, connected over LE:
 
 .. code-block::
@@ -31,20 +48,6 @@ Two hosts, connected over LE:
 
 	--> connection is initiated by      ==> audio flows towards
 
-BAP requires the ISO socket support, so all hosts run `bluetoothd`
-with:
-
-.. code-block::
-
-	[General]
-	Experimental = true
-	KernelExperimental = true
-	ControllerMode = le
-
-`bluetoothctl` is started with ``-a auto``, so pairing and service
-authorization are accepted without prompting, and with an endpoint
-registration script:
-
 ``client/scripts/bap-source-lc3.bt`` on host0
 	Registers a local PAC Source endpoint
 	(``00002bcb-0000-1000-8000-00805f9b34fb``) with LC3. host0 is the
@@ -54,9 +57,6 @@ registration script:
 	Registers a local PAC Sink endpoint
 	(``00002bc9-0000-1000-8000-00805f9b34fb``) with LC3. host1 is the
 	acceptor, i.e. the device receiving audio.
-
-TEST CASES
-==========
 
 test_bap_unicast_transport_created
 ----------------------------------
@@ -107,3 +107,90 @@ test_bap_unicast_transport_acquire
 	The acceptor does not have to acquire its transports for the CIS to
 	be established, as `bluetoothd` sets up the ISO listener on its own
 	when the stream is enabled.
+
+BROADCAST
+=========
+
+Two hosts, with no connection between them:
+
+.. code-block::
+
+	+------------------------+                 +------------------------+
+	| host0                  |    extended +   | host1                  |
+	| Broadcast Source       |    periodic     | Broadcast Sink         |
+	| bluetoothctl -a auto   |   advertising   | bluetoothctl -a auto   |
+	| broadcast-source.bt    | --------------> | broadcast-sink.bt      |
+	| or -pbp variant        |                 |                        |
+	| BCAA endpoint (0x1852) |   BIS 0 (LC3)   | BAA endpoint (0x1851)  |
+	|                        | ==============> |                        |
+	+------------------------+                 +------------------------+
+
+	no ACL is established: the sink syncs to the periodic advertising,
+	reads the BASE from it and then syncs to the BIG
+
+	--> advertising is scanned by       ==> audio flows towards
+
+``client/scripts/broadcast-source.bt`` on host0
+	Registers a Broadcast Source endpoint
+	(``00001852-0000-1000-8000-00805f9b34fb``) with LC3, configures it
+	with the 16_2_1 preset and acquires the transport, which starts
+	the broadcast. The stream is encrypted with the broadcast code
+	`bluetoothctl` uses by default.
+
+``client/scripts/broadcast-source-pbp.bt`` on host0
+	As above, but adds the Public Broadcast Announcement service
+	(``0x1856``) to the extended advertising first, so the broadcast
+	is a Public Broadcast Profile one.
+
+``client/scripts/broadcast-sink.bt`` on host1
+	Registers a Broadcast Sink endpoint
+	(``00001851-0000-1000-8000-00805f9b34fb``) with LC3 and scans.
+
+Both test cases run for each source, i.e. with the ``lc3`` parameter
+for a plain broadcast and with ``pbp`` for a Public Broadcast Profile
+one.
+
+test_bap_broadcast_transport_created[lc3|pbp]
+---------------------------------------------
+
+:Setup: As above.
+
+:Steps:
+	1. Start `bluetoothctl` with the source script on host0.
+	2. Start `bluetoothctl` with the sink script on host1.
+	3. Sink: ``transport.show <transport>``.
+
+:Expected:
+	1. ``Endpoint /local/endpoint/ep0 registered``, then
+	   ``Acquire successful: fd <fd> MTU <read>:<write>`` on the
+	   source, i.e. it is broadcasting.
+	2. The sink syncs to the periodic advertising on its own and
+	   creates a transport per BIS described by the BASE, under
+	   ``/org/bluez/hci0/dev_XX/sidN/bisM/fdK``.
+	3. The transport reports ``Codec: 0x06`` for LC3 and
+	   ``State: idle``.
+
+:Notes: The sink does not need a Broadcast Assistant here: it scans,
+	finds the Broadcast Source and syncs by itself.
+
+test_bap_broadcast_transport_acquire[lc3|pbp]
+---------------------------------------------
+
+:Setup: As above, with the transport already created.
+
+:Steps:
+	1. Sink: ``transport.select <transport>``.
+	2. Answer ``Enter bcode[value/no]:`` with the broadcast code the
+	   source used.
+
+:Expected:
+	1. The transport moves to ``State: broadcasting``, i.e. the sink
+	   synced to the BIG.
+	2. ``Acquire successful: fd <fd> MTU <read>:<write>`` and the
+	   transport moves to ``State: active``.
+
+:Notes: Selecting the transport is what moves it out of idle, and
+	`bluetoothctl` starts acquiring it right after, so the test does
+	not issue ``transport.acquire`` itself. The broadcast code has to
+	match the one the source encrypted the BIG with, otherwise the
+	sink cannot decrypt the stream.
