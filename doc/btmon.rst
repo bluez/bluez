@@ -275,6 +275,53 @@ once and still resolve correctly. A ``Command Status`` reporting an error
 means the completing event will never arrive, and the command is dropped
 rather than left to match a later unrelated event.
 
+Protocols Above HCI
+-------------------
+
+The protocols carried over ACL pair their requests and responses through an
+identifier of their own, and their responses carry the same reference::
+
+    L2CAP: Connection Request (0x02) ident 1 len 4
+    L2CAP: Connection Response (0x03) ident 1 len 8 #2 (1.000 msec)
+    ATT: Read By Group Type Request (0x10) len 6
+    ATT: Error Response (0x01) len 4 #6 (45.500 msec)
+    SDP: Service Search Request (0x02) tid 5 len 8
+    SDP: Service Search Response (0x03) tid 5 len 5 #8 (12.400 msec)
+    AVCTP Control: Command: type 0x00 label 7 PID 0x110e
+    AVCTP Control: Response: type 0x00 label 7 PID 0x110e #12 (23.100 msec)
+
+What pairs the two halves differs by protocol:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 20 65
+
+   * - Protocol
+     - Paired by
+     - Notes
+   * - L2CAP
+     - ``ident``
+     - Responses are the request code plus one. A Command Reject
+       may answer any request.
+   * - ATT
+     - Opcode
+     - Responses are the request opcode plus one. Only one request
+       may be outstanding on a bearer. An Error Response names the
+       request it rejects. An indication is paired with its
+       confirmation.
+   * - SDP
+     - ``tid``
+     - Responses are the request PDU plus one. An Error Response
+       may answer any request.
+   * - AVDTP
+     - ``label``
+     - A command is answered by a response accept or reject.
+   * - AVCTP
+     - ``label``
+     - A command is answered by a response.
+
+SMP is not tracked, as its exchange has no transaction identifier.
+
 **LE Meta Events** contain a subevent type::
 
     > HCI Event: LE Meta Event (0x3e) plen 31           #487 [hci0] 12:36:18.974201
