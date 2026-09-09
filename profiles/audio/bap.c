@@ -139,6 +139,8 @@ struct bap_data {
 	struct queue *bcast_snks;
 	struct queue *server_streams;
 	GIOChannel *listen_io;
+	bool pa_synced;
+	unsigned int pa_timer;
 	unsigned int io_id;
 	unsigned int cig_update_id;
 	bool services_ready;
@@ -175,6 +177,9 @@ static void setup_free(void *data);
 static void bap_data_free(struct bap_data *data)
 {
 	struct queue *bcast_snks = data->bcast_snks;
+
+	if (data->pa_timer)
+		g_source_remove(data->pa_timer);
 
 	if (data->listen_io) {
 		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
@@ -1560,6 +1565,63 @@ static void bis_handler(uint8_t sid, uint8_t bis, uint8_t sgrp,
 									path);
 }
 
+/* Time a PA sync is kept around waiting for a stream to be enabled,
+ * before it is released.
+ */
+#define PA_SYNC_GRACE_TIMEOUT 5
+
+static void pa_sync_release(struct bap_data *data)
+{
+	if (!data->pa_synced)
+		return;
+
+	DBG("Release PA sync");
+
+	if (data->pa_timer) {
+		g_source_remove(data->pa_timer);
+		data->pa_timer = 0;
+	}
+
+	if (data->listen_io) {
+		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
+		g_io_channel_unref(data->listen_io);
+		data->listen_io = NULL;
+	}
+
+	data->pa_synced = false;
+}
+
+static gboolean pa_sync_timeout(gpointer user_data)
+{
+	struct bap_data *data = user_data;
+
+	data->pa_timer = 0;
+	pa_sync_release(data);
+
+	return FALSE;
+}
+
+static bool pa_sync_pending(const void *data, const void *match_data)
+{
+	const struct bap_data *bdata = data;
+
+	if (bdata == match_data)
+		return false;
+
+	/* A session with a listener that has not synced yet is still
+	 * discovering a Broadcast Source.
+	 */
+	return bdata->listen_io && !bdata->pa_synced;
+}
+
+static void pa_sync_release_session(void *data, void *user_data)
+{
+	struct bap_data *bdata = data;
+
+	if (bdata != user_data)
+		pa_sync_release(bdata);
+}
+
 static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1591,10 +1653,21 @@ static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
 	g_io_channel_unref(data->listen_io);
 	data->listen_io = NULL;
 
-	/* For short-lived PA, the sync is no longer needed at
-	 * this point, so the io can be closed.
-	 */
-	g_io_channel_shutdown(io, TRUE, NULL);
+	if (queue_find(sessions, pa_sync_pending, data)) {
+		/* Other Broadcast Sources are still being discovered, so the
+		 * sync is closed to not hold the resources needed for them.
+		 */
+		g_io_channel_shutdown(io, TRUE, NULL);
+	} else {
+		/* Nothing else to discover: keep the sync for a while, as
+		 * syncing to the BIG requires one, so it does not have to be
+		 * established again if a stream is enabled.
+		 */
+		data->listen_io = g_io_channel_ref(io);
+		data->pa_synced = true;
+		data->pa_timer = g_timeout_add_seconds(PA_SYNC_GRACE_TIMEOUT,
+							pa_sync_timeout, data);
+	}
 
 	/* Analyze received BASE data and create remote media endpoints for each
 	 * BIS matching our capabilities
@@ -3592,6 +3665,11 @@ static int pa_sync(struct bap_data *data)
 
 	DBG("Create PA sync with this source");
 
+	/* Release any sync kept by another session, as it is not needed
+	 * to discover this source.
+	 */
+	queue_foreach(sessions, pa_sync_release_session, data);
+
 	data->listen_io = bt_io_listen(NULL, iso_pa_sync_confirm_cb, data,
 		NULL, &err,
 		BT_IO_OPT_SOURCE_BDADDR,
@@ -3662,10 +3740,12 @@ static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond,
 
 	DBG("BIG info received, do BIG sync");
 
-	g_io_channel_unref(data->listen_io);
-	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
-	data->listen_io = io;
-	g_io_channel_ref(data->listen_io);
+	if (data->listen_io != io) {
+		g_io_channel_unref(data->listen_io);
+		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
+		data->listen_io = io;
+		g_io_channel_ref(data->listen_io);
+	}
 
 	/* Append each linked BIS to the BIG sync request */
 	append_setup(setup->stream, &iso_bc_addr);
@@ -3714,6 +3794,25 @@ static void pa_and_big_sync(struct bap_setup *setup)
 {
 	GError *err = NULL;
 	struct bap_data *bap_data = setup->data;
+
+	if (bap_data->pa_synced) {
+		DBG("Reuse PA sync with this source");
+
+		/* The sync is in use from now on, so it is not released
+		 * while the BIG sync is being set up.
+		 */
+		bap_data->pa_synced = false;
+
+		if (bap_data->pa_timer) {
+			g_source_remove(bap_data->pa_timer);
+			bap_data->pa_timer = 0;
+		}
+
+		bap_data->io_id = g_io_add_watch(bap_data->listen_io, G_IO_OUT,
+							iso_do_big_sync, setup);
+		return;
+	}
+
 	DBG("Create PA sync with this source");
 
 	bap_data->listen_io = bt_io_listen(NULL, long_pa_sync_confirm_cb, setup,
