@@ -713,6 +713,8 @@ static const struct sdp_data sdp_table[] = {
 
 void sdp_packet(const struct l2cap_frame *frame)
 {
+	char req_str[32];
+	uint16_t key;
 	uint8_t pdu;
 	uint16_t tid, plen;
 	struct l2cap_frame sdp_frame;
@@ -758,8 +760,25 @@ void sdp_packet(const struct l2cap_frame *frame)
 		pdu_str = "Unknown";
 	}
 
+	/*
+	 * SDP responses use the request PDU plus one, and an Error Response
+	 * may answer any request. The transaction identifier pairs them.
+	 */
+	key = l2cap_chan_key(frame->index, frame->in, frame->handle,
+								frame->cid);
+	req_str[0] = '\0';
+	if (pdu == 0x02 || pdu == 0x04 || pdu == 0x06)
+		packet_req_add(frame->handle, key, PACKET_PROTO_SDP,
+					tid, (struct timeval *)&frame->tv,
+					frame->num);
+	else if (pdu == 0x01 || pdu == 0x03 || pdu == 0x05 || pdu == 0x07)
+		packet_req_str(frame->handle, key, PACKET_PROTO_SDP,
+					tid, (struct timeval *)&frame->tv,
+					req_str, sizeof(req_str));
+
 	print_indent(6, pdu_color, "SDP: ", pdu_str, COLOR_OFF,
-				" (0x%2.2x) tid %d len %d", pdu, tid, plen);
+				" (0x%2.2x) tid %d len %d%s%s", pdu, tid, plen,
+				req_str[0] ? " " : "", req_str);
 
 	tid_info = get_tid(tid, frame->chan);
 

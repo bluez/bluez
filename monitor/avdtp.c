@@ -667,6 +667,8 @@ static bool avdtp_delayreport(struct avdtp_frame *avdtp_frame)
 
 static bool avdtp_signalling_packet(struct avdtp_frame *avdtp_frame)
 {
+	char req_str[32];
+	uint16_t key;
 	struct l2cap_frame *frame = &avdtp_frame->l2cap_frame;
 	const char *pdu_color;
 	uint8_t hdr;
@@ -703,10 +705,28 @@ static bool avdtp_signalling_packet(struct avdtp_frame *avdtp_frame)
 
 	avdtp_frame->sig_id = sig_id;
 
+	/*
+	 * A command is answered by a response accept or reject carrying the
+	 * same transaction label, which is what pairs the two.
+	 */
+	key = l2cap_chan_key(frame->index, frame->in, frame->handle,
+								frame->cid);
+	req_str[0] = '\0';
+	if ((hdr & 0x03) == 0x00)
+		packet_req_add(frame->handle, key, PACKET_PROTO_AVDTP,
+				hdr >> 4, (struct timeval *)&frame->tv,
+				frame->num);
+	else
+		packet_req_str(frame->handle, key, PACKET_PROTO_AVDTP,
+				hdr >> 4, (struct timeval *)&frame->tv,
+				req_str, sizeof(req_str));
+
 	print_indent(6, pdu_color, "AVDTP: ", sigid2str(sig_id), COLOR_OFF,
-			" (0x%02x) %s (0x%02x) type 0x%02x label %d nosp %d",
+			" (0x%02x) %s (0x%02x) type 0x%02x label %d nosp %d"
+			"%s%s",
 			sig_id, msgtype2str(hdr & 0x03), hdr & 0x03,
-			hdr & 0x0c, hdr >> 4, nosp);
+			hdr & 0x0c, hdr >> 4, nosp,
+			req_str[0] ? " " : "", req_str);
 
 	/* Start Packet */
 	if ((hdr & 0x0c) == 0x04) {

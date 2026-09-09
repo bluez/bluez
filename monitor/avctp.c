@@ -2512,6 +2512,8 @@ void avctp_packet(const struct l2cap_frame *frame)
 	struct l2cap_frame *l2cap_frame;
 	struct avctp_frame avctp_frame;
 	const char *pdu_color;
+	char req_str[32];
+	uint16_t key;
 
 	l2cap_frame_pull(&avctp_frame.l2cap_frame, frame, 0);
 
@@ -2529,12 +2531,30 @@ void avctp_packet(const struct l2cap_frame *frame)
 	else
 		pdu_color = COLOR_BLUE;
 
+	/*
+	 * A command is answered by a response carrying the same transaction
+	 * label, which is what pairs the two.
+	 */
+	key = l2cap_chan_key(frame->index, frame->in, frame->handle,
+								frame->cid);
+	req_str[0] = '\0';
+	if (avctp_frame.hdr & 0x02)
+		packet_req_str(frame->handle, key, PACKET_PROTO_AVCTP,
+				avctp_frame.hdr >> 4,
+				(struct timeval *)&frame->tv,
+				req_str, sizeof(req_str));
+	else
+		packet_req_add(frame->handle, key, PACKET_PROTO_AVCTP,
+				avctp_frame.hdr >> 4,
+				(struct timeval *)&frame->tv, frame->num);
+
 	print_indent(6, pdu_color, "AVCTP", "", COLOR_OFF,
-				" %s: %s: type 0x%02x label %d PID 0x%04x",
+				" %s: %s: type 0x%02x label %d PID 0x%04x%s%s",
 				frame->psm == 23 ? "Control" : "Browsing",
 				avctp_frame.hdr & 0x02 ? "Response" : "Command",
 				avctp_frame.hdr & 0x0c, avctp_frame.hdr >> 4,
-				avctp_frame.pid);
+				avctp_frame.pid,
+				req_str[0] ? " " : "", req_str);
 
 	if (avctp_frame.pid == 0x110e || avctp_frame.pid == 0x110c)
 		avrcp_packet(&avctp_frame);
