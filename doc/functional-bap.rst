@@ -194,3 +194,97 @@ test_bap_broadcast_transport_acquire[lc3|pbp]
 	not issue ``transport.acquire`` itself. The broadcast code has to
 	match the one the source encrypted the BIG with, otherwise the
 	sink cannot decrypt the stream.
+
+BROADCAST ASSISTANT
+===================
+
+Two hosts, with the Broadcast Source and the Broadcast Assistant
+colocated on host0, sharing its own broadcast with the Scan Delegator:
+
+.. code-block::
+
+	+------------------------+                 +------------------------+
+	| host0                  |                 | host1                  |
+	| Broadcast Source       |   extended +    | Scan Delegator         |
+	| + Broadcast Assistant  |  periodic adv   | (Broadcast Sink)       |
+	| bluetoothctl -a auto   | --------------> | bluetoothctl -a auto   |
+	| broadcast-source.bt    |                 | broadcast-delegator.bt |
+	| BCAA endpoint (0x1852) |   BIG (BIS 1)   | BAA endpoint (0x1851)  |
+	|                        | ==============> |                        |
+	|                        | ACL, BASS, PAST |                        |
+	|                        | --------------> |                        |
+	+------------------------+                 +------------------------+
+
+	--> advertising is scanned by          ==> audio flows towards
+
+	The assistant connects to the delegator over ACL and shares the
+	local broadcast with it: the delegator receives the periodic
+	advertising sync over that connection (PAST), rather than scanning
+	the source itself.
+
+``client/scripts/broadcast-source.bt`` on host0
+	Registers a Broadcast Source endpoint
+	(``00001852-0000-1000-8000-00805f9b34fb``) with LC3, configures it
+	with the 16_2_1 preset and acquires the transport, which starts
+	the broadcast. The stream is encrypted with the broadcast code
+	`bluetoothctl` uses by default.
+
+``client/scripts/broadcast-delegator.bt`` on host1
+	Registers a Broadcast Sink endpoint
+	(``00001851-0000-1000-8000-00805f9b34fb``) with LC3, enables
+	automatic transport selection and acquisition, and advertises, so
+	the Broadcast Assistant can discover it and connect.
+
+The local broadcast of host0 is exposed as a MediaAssistant object in
+the ``local`` state, under the adapter path, e.g.
+``/org/bluez/hci0/sid0/bis1``. The push is driven through the commands
+of the assistant submenu, see **bluetoothctl-assistant(1)**.
+
+test_bass_past_transport_acquire
+--------------------------------
+
+:Setup: As above.
+
+:Steps:
+	1. Start `bluetoothctl` with the source script on host0 and the
+	   delegator script on host1.
+	2. Assistant: ``scan on``, wait for the delegator device, then
+	   ``connect`` it.
+	3. Assistant: ``assistant.push <local assistant path>``, answering
+	   the device prompt with the delegator device path and, if asked,
+	   the broadcast code prompt with the code the stream is encrypted
+	   with.
+
+:Expected:
+	1. ``Acquire successful: fd <fd> MTU <read>:<write>`` on the
+	   source, i.e. it is broadcasting, and the local stream is
+	   exposed as ``[NEW] Assistant <adapter>/sid0/bis1``. On the
+	   delegator, ``Advertising object registered``.
+	2. ``Connection successful``, with the delegator authorizing the
+	   assistant.
+	3. ``Assistant <path> pushed``.
+	4. On the delegator a transport is created for the BIS, and
+	   selected and acquired automatically, reaching
+	   ``State: broadcasting``, i.e. it synced to the BIG, and then
+	   ``State: active``.
+
+:Notes: The delegator does not scan the source: it syncs to the
+	periodic advertising over the ACL to the assistant, as pushing a
+	local stream requests PAST. When instead the assistant scans and
+	relays a *remote* source, it shares the stream without PAST and
+	the delegator has to sync by scanning itself; that topology, with
+	the assistant on a third host, is left to be added later.
+
+	The broadcast code of the local stream is handed to the delegator
+	by the push, so its automatic transport selection does not have to
+	prompt for it, and the push itself is only asked for the device to
+	share the stream with.
+
+	The delegator is paired first: the Broadcast Receive State
+	characteristic requires an encrypted link, and without it the
+	assistant fails to read it and the push is rejected with
+	``org.bluez.Error.InvalidArguments``.
+
+	The stream is verified on the delegator rather than through the
+	state of the MediaAssistant object, as an object created for a
+	local stream stays in the ``local`` state.

@@ -34,13 +34,18 @@ def dev_addr(host):
 
 def expect_all(ctl, patterns):
     """
-    Expect all the given patterns, in any order.
+    Expect all the given patterns, in any order, returning the groups
+    each of them matched.
     """
-    patterns = list(patterns)
+    pending = list(enumerate(patterns))
+    groups = [None] * len(patterns)
 
-    while patterns:
-        idx, _ = ctl.expect(patterns)
-        patterns.pop(idx)
+    while pending:
+        idx, m = ctl.expect([pattern for _, pattern in pending])
+        groups[pending[idx][0]] = m
+        pending.pop(idx)
+
+    return groups
 
 
 def script(name):
@@ -63,28 +68,39 @@ def start_bluetoothctl(host, init_script):
     return ctl
 
 
-def pair_le(host0, ctl0, host1, ctl1):
+def pair_le(host0, ctl0, host1, ctl1, advertise=True, services=False):
     ctl0.send("scan on\n")
     ctl0.expect(f"Controller {host0.bdaddr.upper()} Discovering: yes")
 
-    ctl1.send("advertise on\n")
-    ctl1.expect("Advertising object registered")
+    if advertise:
+        ctl1.send("advertise on\n")
+        ctl1.expect("Advertising object registered")
 
     ctl0.expect(f"Device {host1.bdaddr.upper()}")
     ctl0.send(f"pair {host1.bdaddr.upper()}\n")
 
+    pending = ["Pairing successful"]
+    if services:
+        pending.append(f"Device {host1.bdaddr.upper()} ServicesResolved: yes")
+
     # See test_bluetoothctl_pair_le: passkey confirmation is handled by
     # the auto agent, but legacy passkey entry still needs an answer
-    idx, m = ctl0.expect([r"\[agent\].*Passkey:.*m(\d+)", "Pairing successful"])
+    legacy = r"\[agent\].*Passkey:.*m(\d+)"
 
-    if idx == 0:
-        warnings.warn(
-            "BUG: we got passkey authentication, bluetoothd/kernel should be fixed"
-        )
-        key = m[0].decode("utf-8")
-        ctl1.expect(r"\[agent\] Enter passkey \(number in 0-999999\):")
-        ctl1.send(f"{key}\n")
-        ctl0.expect("Pairing successful")
+    while pending:
+        idx, m = ctl0.expect([legacy] + pending)
+
+        if idx == 0:
+            warnings.warn(
+                "BUG: we got passkey authentication, bluetoothd/kernel "
+                "should be fixed"
+            )
+            key = m[0].decode("utf-8")
+            ctl1.expect(r"\[agent\] Enter passkey \(number in 0-999999\):")
+            ctl1.send(f"{key}\n")
+            continue
+
+        pending.pop(idx - 1)
 
     ctl0.send("scan off\n")
 
@@ -232,6 +248,71 @@ def test_bap_broadcast_transport_acquire(hosts, source_script):
         [
             f"Transport {transport} State: broadcasting",
             r"Acquire successful: fd \d+ MTU \d+:\d+",
+            f"Transport {transport} State: active",
+        ],
+    )
+
+
+past_host_config = host_config(
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+)
+
+LOCAL_ASSISTANT_RE = r"Assistant (/org/bluez/\S+/sid\d+/bis\d+)"
+
+
+@past_host_config
+def test_bass_past_transport_acquire(hosts):
+    source_host, delegator_host = hosts
+
+    # Source broadcasting, and its own stream exposed as a local
+    # MediaAssistant object
+    source = start_bluetoothctl(source_host, "broadcast-source.bt")
+    groups = expect_all(
+        source,
+        [LOCAL_ASSISTANT_RE, r"Acquire successful: fd \d+ MTU \d+:\d+"],
+    )
+    assistant_path = groups[0][0].decode("utf-8")
+
+    # Delegator advertising, selecting and acquiring automatically
+    delegator = start_bluetoothctl(delegator_host, "broadcast-delegator.bt")
+    delegator.expect("Advertising object registered")
+
+    # Pair with the delegator: the Broadcast Receive State requires
+    # an encrypted link to be read
+    pair_le(
+        source_host,
+        source,
+        delegator_host,
+        delegator,
+        advertise=False,
+        services=True,
+    )
+
+    # Share the local broadcast: the delegator receives the periodic
+    # advertising sync over the connection (PAST)
+    source.send(f"assistant.push {assistant_path}\n")
+    source.expect(r"Enter Device \(path\):")
+    source.send(f"/org/bluez/hci0/dev_{dev_addr(delegator_host)}\n")
+
+    # The local stream may already know the broadcast code
+    idx, _ = source.expect(
+        [r"Enter Broadcast Code \(auto/value\):", r"Assistant \S+ pushed"]
+    )
+    if idx == 0:
+        source.send(f"{BCAST_CODE}\n")
+        source.expect(r"Assistant \S+ pushed")
+
+    # A transport is created on the delegator, selected and acquired
+    # automatically
+    _, m = delegator.expect(TRANSPORT_RE)
+    transport = m[0].decode("utf-8")
+
+    expect_all(
+        delegator,
+        [
+            r"Acquire successful: fd \d+ MTU \d+:\d+",
+            f"Transport {transport} State: broadcasting",
             f"Transport {transport} State: active",
         ],
     )
