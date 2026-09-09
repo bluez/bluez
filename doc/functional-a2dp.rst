@@ -20,7 +20,7 @@ Two hosts, connected over BR/EDR:
 	| host0                  |     BR/EDR      | host1                  |
 	| central                | --------------> | peripheral             |
 	| bluetoothctl           |                 | bluetoothctl           |
-	| a2dp-source.bt         |   AVDTP (SBC)   | a2dp-sink.bt           |
+	| a2dp-source-sbc.bt     |   AVDTP (SBC)   | a2dp-sink-sbc.bt       |
 	| A2DP Source endpoint   | ==============> | A2DP Sink endpoint     |
 	+------------------------+                 +------------------------+
 
@@ -28,12 +28,12 @@ Two hosts, connected over BR/EDR:
 
 Both hosts start `bluetoothctl` with an endpoint registration script:
 
-``client/scripts/a2dp-source.bt`` on host0
+``client/scripts/a2dp-source-sbc.bt`` on host0
 	Registers a local A2DP Source endpoint
 	(``0000110a-0000-1000-8000-00805f9b34fb``) with SBC. host0 is the
 	central, i.e. the device sending audio.
 
-``client/scripts/a2dp-sink.bt`` on host1
+``client/scripts/a2dp-sink-sbc.bt`` on host1
 	Registers a local A2DP Sink endpoint
 	(``0000110b-0000-1000-8000-00805f9b34fb``) with SBC. host1 is the
 	peripheral, i.e. the device receiving audio.

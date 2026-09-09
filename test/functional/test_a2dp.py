@@ -93,8 +93,8 @@ def a2dp_hosts(hosts):
     """
     host0, host1 = hosts
 
-    source = start_bluetoothctl(host0, "a2dp-source.bt")
-    sink = start_bluetoothctl(host1, "a2dp-sink.bt")
+    source = start_bluetoothctl(host0, "a2dp-source-sbc.bt")
+    sink = start_bluetoothctl(host1, "a2dp-sink-sbc.bt")
 
     pair(host0, source, host1, sink)
 
