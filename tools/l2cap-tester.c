@@ -1153,6 +1153,24 @@ static const struct l2cap_data ext_flowctl_server_nval_conn_req_test = {
 	.mode = BT_MODE_EXT_FLOWCTL,
 };
 
+static const uint8_t ecred_connect_req_2[] = {
+						0x80, 0x00, /* PSM */
+						0x40, 0x00, /* MTU */
+						0x40, 0x00, /* MPS */
+						0x05, 0x00, /* Credits */
+						0x41, 0x00, /* SCID #1 */
+						0x42, 0x00, /* SCID #2 */
+};
+
+static const struct l2cap_data ext_flowctl_server_accept_2_close_1_test = {
+	.server_psm = 0x0080,
+	.defer = true,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req_2,
+	.send_cmd_len = ARRAY_SIZE(ecred_connect_req_2)
+};
+
 static const struct l2cap_data ext_flowctl_server_phy_test = {
 	.server_psm = 0x0080,
 	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
@@ -3283,6 +3301,50 @@ static void test_server(const void *test_data)
 	start_test_server(test_data, send_req_new_conn, l2cap_listen_cb);
 }
 
+static gboolean ext_flowctl_accept_2_close_1_listen_cb(GIOChannel *io,
+					GIOCondition cond, gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int sk, new_sk;
+	int err = 0;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	new_sk = accept(sk, NULL, NULL);
+	if (err < 0) {
+		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
+		tester_test_failed();
+		return FALSE;
+	}
+
+	if (!defer_accept(data, g_io_channel_unix_new(new_sk), NULL))
+		goto fail;
+
+	close(new_sk);
+
+	if (data->step--)
+		return TRUE;
+
+	tester_test_passed();
+
+	data->io_id = 0;
+	return FALSE;
+
+fail:
+	tester_test_failed();
+	close(new_sk);
+	return FALSE;
+}
+
+static void test_ext_flowctl_server_accept_2_close_1(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->step = 1;
+	start_test_server(test_data, send_req_new_conn,
+					ext_flowctl_accept_2_close_1_listen_cb);
+}
+
 static gboolean ext_flowctl_nval_conn_req_ready_cb(gpointer ptr)
 {
 	struct test_data *data = tester_get_data();
@@ -3777,6 +3839,10 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Nval SCID",
 				&ext_flowctl_server_nval_scid_test,
 				setup_powered_server, test_server);
+	test_l2cap_le("L2CAP Ext-Flowctl Server - Accept 2 Close 1",
+				&ext_flowctl_server_accept_2_close_1_test,
+				setup_powered_server,
+				test_ext_flowctl_server_accept_2_close_1);
 	test_l2cap_le("L2CAP Ext-Flowctl Server - PHY",
 				&ext_flowctl_server_phy_test,
 				setup_powered_server, test_server);
