@@ -28,6 +28,7 @@
 #include "src/shared/util.h"
 #include "src/shared/ad.h"
 #include "gdbus/gdbus.h"
+#include "main.h"
 #include "print.h"
 #include "agent.h"
 #include "gatt.h"

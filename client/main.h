@@ -3,10 +3,9 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2021 Google LLC
+ *  Copyright (C) 2026  Collabora Ltd.
  *
  *
  */
 
-void admin_add_submenu(void);
-void admin_remove_submenu(void);
+GDBusProxy *bluetoothctl_get_default_controller(void);
