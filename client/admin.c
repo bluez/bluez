@@ -16,11 +16,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "bluetooth/bluetooth.h"
 #include "gdbus/gdbus.h"
 #include "src/shared/shell.h"
 
 #include "admin.h"
+#include "main.h"
 #define _GNU_SOURCE
 
 static DBusConnection *dbus_conn;
