@@ -1207,6 +1207,8 @@ static bool append_prep_data(struct prep_write_data *prep_data, uint16_t handle,
 		return true;
 
 	len = (size_t)prep_data->length + (size_t)length;
+	if (len > UINT16_MAX)
+		return false;
 
 	val = realloc(prep_data->value, len);
 	if (!val)
@@ -1215,9 +1217,6 @@ static bool append_prep_data(struct prep_write_data *prep_data, uint16_t handle,
 	memcpy(val + prep_data->length, value, length);
 
 	prep_data->value = val;
-
-	if (len > UINT16_MAX)
-		return false;
 	prep_data->length = (uint16_t)len;
 
 	return true;
