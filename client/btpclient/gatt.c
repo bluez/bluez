@@ -376,6 +376,7 @@ static void btp_gatt_read(uint8_t index, const void *param,
 	uint8_t status = BTP_ERROR_FAIL;
 	bool prop;
 	struct gatt_attribute *characteristic;
+	struct l_dbus_message_iter iter;
 
 	if (!adapter) {
 		status = BTP_ERROR_INVALID_INDEX;
@@ -398,6 +399,30 @@ static void btp_gatt_read(uint8_t index, const void *param,
 					L_UINT_TO_PTR(cp->handle - 1));
 	if (!characteristic)
 		goto failed;
+
+	/* First try to read the property value from the proxy cache */
+	if (l_dbus_proxy_get_property(characteristic->proxy, "Value", "ay",
+								&iter)) {
+		uint8_t *data;
+		uint32_t n;
+
+		if (l_dbus_message_iter_get_fixed_array(&iter, &data, &n) &&
+								n > 0) {
+			struct btp_gatt_read_rp *rp;
+
+			rp = malloc(sizeof(struct btp_gatt_read_rp) + n);
+			rp->response = 0;
+			rp->len = n;
+			memcpy(rp->data, data, n);
+
+			btp_send(btp, BTP_GATT_SERVICE, BTP_OP_GATT_READ,
+				adapter->index,
+				sizeof(struct btp_gatt_read_rp) + n, rp);
+
+			free(rp);
+			return;
+		}
+	}
 
 	l_dbus_proxy_method_call(characteristic->proxy, "ReadValue",
 					gatt_read_setup, gatt_read_reply,
