@@ -26,6 +26,7 @@ OPTIONS
 :-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
 :-k/--kernel=<image>: Kernel image (bzImage)
+:-F/--virtiofs=<virtiofsd / no>: Enable/disable use of virtio-fs.
 :-h/--help: Show help options
 
 Kernel
@@ -47,6 +48,8 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 	CONFIG_VIRTIO=y
 	CONFIG_VIRTIO_PCI=y
 	CONFIG_VIRTIO_CONSOLE=y
+	CONFIG_VIRTIO_FS=y
+	CONFIG_FUSE_FS=y
 
 	CONFIG_NET=y
 	CONFIG_INET=y
