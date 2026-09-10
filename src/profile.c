@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 #include <glib.h>
@@ -751,6 +752,29 @@ void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
 
 		func(&profile->p, data);
 	}
+}
+
+const char *btd_profile_get_policy_uuid(const struct btd_profile *profile)
+{
+	if (!profile)
+		return NULL;
+
+	/*
+	 * The admin allowlist is expressed in terms of the services the local
+	 * adapter exposes, while btd_profile names and remote_uuid describe
+	 * the remote role. The A2DP profiles therefore have to be inverted:
+	 * the "a2dp-source" profile drives the local Sink server and the
+	 * "a2dp-sink" profile drives the local Source server.
+	 */
+	if (profile->name) {
+		if (!strcmp(profile->name, "a2dp-source"))
+			return A2DP_SINK_UUID;
+
+		if (!strcmp(profile->name, "a2dp-sink"))
+			return A2DP_SOURCE_UUID;
+	}
+
+	return profile->remote_uuid;
 }
 
 static struct btd_profile *btd_profile_find_uuid(const char *uuid)
