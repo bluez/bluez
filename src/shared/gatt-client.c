@@ -87,6 +87,14 @@ struct bt_gatt_client {
 	unsigned int disc_id, nfy_id, nfy_mult_id, ind_id;
 
 	/*
+	 * Handles of CCC descriptors that were synthesized rather than
+	 * discovered (discover_descs() assumed a lone descriptor on a
+	 * notify/indicate characteristic must be the CCC). Consulted by
+	 * register_notify() before it writes to one of these handles.
+	 */
+	struct queue *unverified_ccc;
+
+	/*
 	 * Handles of the GATT Service and the Service Changed characteristic
 	 * value handle. These will have the value 0 if they are not present on
 	 * the remote peripheral.
@@ -111,6 +119,23 @@ struct bt_gatt_client {
 	unsigned int pending_retry_att_id;
 	uint16_t pending_error_handle;
 };
+
+/*
+ * discover_descs() only ever runs on the root (non-cloned) client, since
+ * clones share the parent's gatt_db rather than discovering it themselves
+ * (see bt_gatt_client_clone()). unverified_ccc must therefore live on the
+ * root: a clone's own copy is always empty, and register_notify() is
+ * commonly called through a clone (src/gatt-client.c takes one per D-Bus
+ * consumer), so checking client->unverified_ccc directly there would never
+ * see anything discover_descs() recorded.
+ */
+static struct bt_gatt_client *root_client(struct bt_gatt_client *client)
+{
+	while (client->parent)
+		client = client->parent;
+
+	return client;
+}
 
 struct request {
 	struct bt_gatt_client *client;
@@ -178,11 +203,29 @@ bt_gatt_client_ref_safe(struct bt_gatt_client *client)
 	return bt_gatt_client_ref(client);
 }
 
+/*
+ * Defined after struct notify_chrc (below); checks whether any
+ * notify_chrc on this client still has a CCC verify FIND_INFORMATION
+ * outstanding. That request goes through bt_gatt_discover_descriptors(),
+ * which - unlike bt_gatt_client_write_value()/read - is not tracked in
+ * client->pending_requests, so notify_client_idle() cannot see it there.
+ * Without this, the client looks idle (and idle_cbs fire, including
+ * whatever the application does next) while a request is still genuinely
+ * outstanding on the wire, reordering it ahead of the CCC write
+ * register_notify() has not been able to send yet.
+ */
+static bool chrc_has_pending_ccc_verify(struct bt_gatt_client *client);
+
 static void notify_client_idle(struct bt_gatt_client *client)
 {
 	client = bt_gatt_client_ref_safe(client);
 	if (!client)
 		return;
+
+	if (chrc_has_pending_ccc_verify(client)) {
+		bt_gatt_client_unref(client);
+		return;
+	}
 
 	queue_remove_all(client->idle_cbs, idle_notify, NULL, idle_destroy);
 
@@ -219,10 +262,20 @@ struct notify_chrc {
 	int notify_count;  /* Reference count of registered notify callbacks */
 
 	/* Pending calls to register_notify are queued here so that they can be
-	 * processed after a write that modifies the CCC descriptor.
+	 * processed after a write that modifies the CCC descriptor, or after
+	 * a pending ccc_verify_req below is resolved.
 	 */
 	struct queue *reg_notify_queue;
 	unsigned int ccc_write_id;
+
+	/*
+	 * Set if ccc_handle names a descriptor discover_descs() synthesized
+	 * rather than discovered. register_notify() must confirm it with the
+	 * peer before writing to it; ccc_verify_req is the outstanding
+	 * confirmation request, if any.
+	 */
+	bool ccc_unverified;
+	struct bt_gatt_request *ccc_verify_req;
 };
 
 struct notify_data {
@@ -283,6 +336,11 @@ static void notify_chrc_free(void *data)
 	if (chrc->notify_id)
 		gatt_db_attribute_unregister(chrc->attr, chrc->notify_id);
 
+	if (chrc->ccc_verify_req) {
+		bt_gatt_request_cancel(chrc->ccc_verify_req);
+		bt_gatt_request_unref(chrc->ccc_verify_req);
+	}
+
 	queue_destroy(chrc->reg_notify_queue, notify_data_unref);
 	free(chrc);
 }
@@ -334,8 +392,18 @@ static struct notify_chrc *notify_chrc_create(struct bt_gatt_client *client,
 	}
 
 	ccc = gatt_db_attribute_get_ccc(attr);
-	if (ccc)
+	if (ccc) {
 		chrc->ccc_handle = gatt_db_attribute_get_handle(ccc);
+
+		/*
+		 * If discover_descs() never actually asked the peer about
+		 * this handle, don't trust it until register_notify() has
+		 * confirmed it.
+		 */
+		if (queue_remove(root_client(client)->unverified_ccc,
+					UINT_TO_PTR(chrc->ccc_handle)))
+			chrc->ccc_unverified = true;
+	}
 
 	chrc->client = client;
 	chrc->attr = attr;
@@ -789,6 +857,20 @@ static bool discover_descs(struct discovery_op *op, bool *discovering)
 							&ccc_uuid, 0, NULL,
 							NULL, NULL);
 			if (attr) {
+				struct bt_gatt_client *root;
+
+				root = root_client(client);
+
+				/*
+				 * The peer was never asked about this handle.
+				 * register_notify() will issue a single-handle
+				 * FIND_INFORMATION before it writes here, in
+				 * case this device is one of the ones that
+				 * declares notify/indicate without actually
+				 * having a CCC descriptor.
+				 */
+				queue_push_tail(root->unverified_ccc,
+						UINT_TO_PTR(desc_start));
 				free(chrc_data);
 				continue;
 			}
@@ -1747,6 +1829,130 @@ static bool match_notify_chrc_value_handle(const void *a, const void *b)
 	return chrc->value_handle == value_handle;
 }
 
+static bool match_chrc_ccc_verify_pending(const void *data,
+						const void *user_data)
+{
+	const struct notify_chrc *chrc = data;
+
+	return chrc->ccc_verify_req != NULL;
+}
+
+static bool chrc_has_pending_ccc_verify(struct bt_gatt_client *client)
+{
+	return queue_find(client->notify_chrcs, match_chrc_ccc_verify_pending,
+							NULL) != NULL;
+}
+
+/*
+ * Resumes register_notify() for notify_data once ccc_unverified has been
+ * settled. This is deliberately not the same "notify_count > 1 means
+ * someone already wrote it" check register_notify() itself uses: with the
+ * verify request outstanding, every other caller for this characteristic
+ * queued behind chrc->ccc_verify_req instead of writing (register_notify()
+ * checks that before it checks notify_count), so notify_count having grown
+ * past 1 by the time verify resolves just means callers piled up while we
+ * waited - not that anyone already wrote the CCC. This resume is the only
+ * place that can, so it must go by whether the peer confirmed a CCC exists,
+ * not by how many callers are now waiting on the answer.
+ */
+static void resume_after_ccc_verify(struct notify_data *notify_data)
+{
+	struct notify_chrc *chrc = notify_data->chrc;
+
+	if (!chrc->ccc_handle || !notify_data->callback) {
+		complete_notify_request(notify_data);
+		return;
+	}
+
+	if (!notify_data_write_ccc(notify_data, true, enable_ccc_callback))
+		complete_notify_request(notify_data);
+}
+
+static void verify_ccc_cb(bool success, uint8_t att_ecode,
+					struct bt_gatt_result *result,
+					void *user_data)
+{
+	struct notify_data *notify_data = user_data;
+	struct notify_chrc *chrc = notify_data->chrc;
+	struct bt_gatt_client *client = notify_data->client;
+	struct bt_gatt_iter iter;
+	uint16_t handle;
+	uint128_t u128;
+	bt_uuid_t uuid, ccc_uuid;
+	bool is_ccc = false;
+
+	bt_gatt_request_unref(chrc->ccc_verify_req);
+	chrc->ccc_verify_req = NULL;
+	chrc->ccc_unverified = false;
+
+	bt_uuid16_create(&ccc_uuid, GATT_CLIENT_CHARAC_CFG_UUID);
+
+	if (success && result && bt_gatt_iter_init(&iter, result) &&
+			bt_gatt_iter_next_descriptor(&iter, &handle,
+								u128.data)) {
+		bt_uuid128_create(&uuid, u128);
+
+		if (handle == chrc->ccc_handle && !bt_uuid_cmp(&uuid,
+								&ccc_uuid))
+			is_ccc = true;
+	}
+
+	DBG(client, "handle 0x%04x confirmed %s a CCC descriptor",
+				chrc->ccc_handle, is_ccc ? "is" : "is not");
+
+	/*
+	 * The peer just answered for itself: the earlier guess was wrong.
+	 * Undo it so nothing downstream (including a later notify_count > 1
+	 * fast path) treats this characteristic as having a CCC to write.
+	 */
+	if (!is_ccc)
+		chrc->ccc_handle = 0;
+
+	resume_after_ccc_verify(notify_data);
+
+	if (is_ccc)
+		return;
+
+	/*
+	 * No write is coming to drive enable_ccc_callback's usual flush of
+	 * reg_notify_queue, so do it here instead.
+	 */
+	queue_remove_all(chrc->reg_notify_queue, notify_set_ecode,
+				UINT_TO_PTR(0), complete_notify_request);
+
+	/*
+	 * Nothing else naturally rechecks idle now that ccc_verify_req is
+	 * clear and no write followed it - do it explicitly, the same way
+	 * request_unref() would if this had gone through pending_requests.
+	 */
+	notify_client_idle(client);
+}
+
+/*
+ * Issues a single-handle FIND_INFORMATION for chrc->ccc_handle to confirm
+ * it is really a CCC descriptor before register_notify() writes to it.
+ * Returns false only on the kind of immediate failure register_notify()
+ * already treats as a failed registration.
+ */
+static bool verify_ccc_handle(struct notify_data *notify_data)
+{
+	struct notify_chrc *chrc = notify_data->chrc;
+	struct bt_gatt_client *client = notify_data->client;
+
+	chrc->ccc_verify_req = bt_gatt_discover_descriptors(client->att,
+						chrc->ccc_handle,
+						chrc->ccc_handle,
+						verify_ccc_cb,
+						notify_data_ref(notify_data),
+						notify_data_unref);
+	if (!chrc->ccc_verify_req) {
+		notify_data_unref(notify_data);
+		return false;
+	}
+
+	return true;
+}
+
 static unsigned int register_notify(struct bt_gatt_client *client,
 				uint16_t handle,
 				bt_gatt_client_register_callback_t callback,
@@ -1800,10 +2006,11 @@ static unsigned int register_notify(struct bt_gatt_client *client,
 	__sync_fetch_and_add(&notify_data->chrc->notify_count, 1);
 
 	/*
-	 * If a write to the CCC descriptor is in progress, then queue this
+	 * If a write to the CCC descriptor is in progress, or a synthesized
+	 * CCC handle is still being confirmed with the peer, then queue this
 	 * request.
 	 */
-	if (chrc->ccc_write_id) {
+	if (chrc->ccc_write_id || chrc->ccc_verify_req) {
 		queue_push_tail(chrc->reg_notify_queue, notify_data);
 		return notify_data->id;
 	}
@@ -1814,6 +2021,21 @@ static unsigned int register_notify(struct bt_gatt_client *client,
 	 */
 	if (chrc->notify_count > 1 || !chrc->ccc_handle || !callback) {
 		complete_notify_request(notify_data);
+		return notify_data->id;
+	}
+
+	/*
+	 * ccc_handle was never actually discovered - confirm it with the
+	 * peer before writing to it. resume_after_ccc_verify() takes the
+	 * write-or-complete branch below once the answer is known.
+	 */
+	if (chrc->ccc_unverified) {
+		if (!verify_ccc_handle(notify_data)) {
+			queue_remove(client->notify_list, notify_data);
+			free(notify_data);
+			return 0;
+		}
+
 		return notify_data->id;
 	}
 
@@ -2291,6 +2513,7 @@ static void bt_gatt_client_free(struct bt_gatt_client *client)
 
 	queue_destroy(client->notify_chrcs, notify_chrc_free);
 	queue_destroy(client->notify_list, notify_data_cleanup);
+	queue_destroy(client->unverified_ccc, NULL);
 
 	queue_destroy(client->ready_cbs, ready_destroy);
 	queue_destroy(client->idle_cbs, idle_destroy);
@@ -2507,6 +2730,7 @@ static struct bt_gatt_client *gatt_client_new(struct gatt_db *db,
 	client->svc_chngd_queue = queue_new();
 	client->notify_list = queue_new();
 	client->notify_chrcs = queue_new();
+	client->unverified_ccc = queue_new();
 	client->pending_requests = queue_new();
 
 	client->nfy_id = bt_att_register(att, BT_ATT_OP_HANDLE_NFY,
