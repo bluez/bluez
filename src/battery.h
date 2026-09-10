@@ -18,7 +18,15 @@ struct btd_battery *btd_battery_register_component(const char *device_path,
 					 const char *identifier,
 					 const char *source);
 bool btd_battery_unregister(struct btd_battery *battery);
+
+/* Pass UINT8_MAX as percentage to mark the level as unknown, which
+ * invalidates the Percentage property instead of setting it.
+ */
 bool btd_battery_update(struct btd_battery *battery, uint8_t percentage);
+
+/* charging is 0 or 1 when known, or -1 to mark the state as unknown, which
+ * invalidates the Charging property instead of setting it.
+ */
 bool btd_battery_update_charging(struct btd_battery *battery, int charging);
 
 struct btd_battery_provider_manager *

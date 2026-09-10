@@ -664,7 +664,7 @@ static bool match_provider_path(const void *data, const void *user_data)
 	return strcmp(provider->path, path) == 0;
 }
 
-static void unregister_if_path_has_prefix(void *data, void *user_data)
+static void unregister_if_provider_matches(void *data, void *user_data)
 {
 	struct btd_battery *battery = data;
 	struct battery_provider *provider = user_data;
@@ -678,7 +678,7 @@ static void battery_provider_free(gpointer data)
 	struct battery_provider *provider = data;
 
 	/* Unregister batteries registered by this provider. */
-	queue_foreach(batteries, unregister_if_path_has_prefix, provider);
+	queue_foreach(batteries, unregister_if_provider_matches, provider);
 
 	if (provider->owner)
 		g_free(provider->owner);
