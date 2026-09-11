@@ -143,8 +143,96 @@ Tests that require kernel image or USB controllers are skipped if none
 are available. Normally, tests use `btvirt`.
 
 VM instances share a directory ``/run/shared`` with host machine,
-located on host usually in ``/tmp/bluez-func-test-*/shared-*``.  Core
+located on host usually in ``/tmp/pytest-bluezenv-*/shared-*``.  Core
 dumps etc. are copied out from it before test instance is shut down.
+
+ARCHITECTURE
+============
+
+A test run consists of the Pytest process (the *upper tester*, running on
+the developer machine) and one or more *VM hosts*.  Each VM host is a
+separate **test-runner(1)** instance, i.e. a QEMU virtual machine booting
+the given kernel image with the developer machine's root filesystem passed
+through read-only.  The VM hosts are wired together by a Bluetooth
+controller: either the emulated **btvirt(1)** controller, or a real USB
+controller passed through to the VM::
+
+    developer machine (upper tester)            VM hosts (lower testers)
+    ┌──────────────────────────────┐           ┌────────────────────────┐
+    │ pytest                       │  control  │ test-runner / qemu #0  │
+    │  ├ host #0 ──────────────────┼───────────┤  └ bluetoothd, obexd,  │
+    │  ├ host #1 ─────────┐        │    log    │    bluetoothctl, ...   │
+    │  │                  │        │           └───────────┬────────────┘
+    │  └ btvirt ──────────┼────────┼── HCI ────────────────┘
+    │                     │        │           ┌────────────────────────┐
+    └─────────────────────┼────────┘           │ test-runner / qemu #1  │
+                          └────────── control ─┤  (same as above)       │
+                                     log, HCI  └────────────────────────┘
+
+The upper tester never runs Bluetooth code itself; it only drives the VM
+hosts.  Test code executes inside the VMs, which is what makes it possible
+to test two independent BlueZ and kernel instances talking to each other.
+
+VM hosts are started lazily and reused between tests where possible, since
+booting is the expensive part of a run.
+
+Channels
+--------
+
+Each VM host is started by ``test-runner`` with additional QEMU devices
+(``-o``), providing the following channels between the upper tester and
+the VM:
+
+control
+	Virtio-serial port used for the RPC connection over which the
+	upper tester drives the VM: starting daemons, running commands,
+	collecting results and exceptions.
+
+log
+	Virtio-serial port carrying the log records produced inside the
+	VM, with their timestamps.  This is what ``--log-filter`` and
+	``--no-log-reorder`` operate on, and why accurate guest time
+	(``chronyd`` plus the KVM PTP clock) matters.
+
+tty
+	A serial port with a root shell on it, used by
+	``test/test-functional-attach``.  The socket path is printed at
+	startup as a ``socat`` command line.
+
+shared
+	Writable shared directory, ``/run/shared`` in the VM and
+	``/tmp/pytest-bluezenv-*/shared-*`` on the developer machine.
+	Core dumps and ``btmon`` captures are written there and collected
+	before the VM is shut down.
+
+The ``test-runner`` console (``/dev/hvc0``) additionally carries kernel
+messages and is captured as the host log.
+
+Controllers
+-----------
+
+By default a single ``btvirt`` process runs on the developer machine and
+provides an emulated BR/EDR/LE controller to every VM host over a UNIX
+socket, also bridging the air interface between them::
+
+    VM host #0                 developer machine              VM host #1
+    ┌────────────┐            ┌─────────────────┐            ┌────────────┐
+    │ bluetoothd │            │     btvirt      │            │ bluetoothd │
+    │  hci0      ├─ HCI H:4 ──┤ (emulated air   ├── HCI H:4 ─┤  hci0      │
+    └────────────┘            │      link)      │            └────────────┘
+                              └─────────────────┘
+
+See **test-runner(1)** for how the socket is attached to the VM.
+
+With ``--usb`` the ``btvirt`` process is not started; each VM host gets a
+real USB controller passed through instead, and the VMs talk over the
+actual radio.  Tests still prefer ``btvirt`` unless ``--force-usb`` is
+given.
+
+Writing test code that runs in the VM, and the available VM-side
+facilities, are documented by `pytest-bluezenv
+<https://pypi.org/project/pytest-bluezenv/>`__.
+
 
 REQUIREMENTS
 ============
@@ -357,7 +445,7 @@ e.g. by running with ``--trace`` option.
 
 To do it manually, when starting the tester will log a line like::
 
-	TTY: socat /tmp/bluez-func-test-q658swgi/bluez-func-test-tty-0 STDIO,rawer
+	TTY: socat /tmp/pytest-bluezenv-q658swgi/pytest-bluezenv-tty-0 STDIO,rawer
 
 with the location of the socket where the serial is connected to.
 
