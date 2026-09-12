@@ -8,8 +8,8 @@ DESCRIPTION
 ===========
 
 **test-runner(1)** is used to test Kernel changes to the Bluetooth subsystem,
-it launches a virtual machine using qemu(1) and mounts the local filesystem
-using virtio (9p).
+it launches a virtual machine using qemu(1) with the host filesystem mounted
+read-only inside the guest.
 
 OPTIONS
 =======
@@ -26,6 +26,7 @@ OPTIONS
 :-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
 :-k/--kernel=<image>: Kernel image (bzImage)
+:-F/--virtiofs[=<path>]: Path to virtiofsd, or no to disable virtio-fs
 :-h/--help: Show help options
 
 Kernel
@@ -47,6 +48,8 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 	CONFIG_VIRTIO=y
 	CONFIG_VIRTIO_PCI=y
 	CONFIG_VIRTIO_CONSOLE=y
+	CONFIG_VIRTIO_FS=y
+	CONFIG_FUSE_FS=y
 
 	CONFIG_NET=y
 	CONFIG_INET=y
@@ -68,6 +71,9 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 
 	CONFIG_DEVTMPFS=y
 	CONFIG_DEBUG_FS=y
+
+Filesystem passthrough uses virtio-fs when ``virtiofsd`` is installed on the
+host, otherwise 9p. Use ``-Fno`` for kernels without ``CONFIG_VIRTIO_FS``.
 
 Bluetooth
 ---------
