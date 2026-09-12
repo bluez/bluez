@@ -33,6 +33,11 @@
 #include <sys/param.h>
 #include <sys/reboot.h>
 
+#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
+#include <cpuid.h>
+#define HAVE_GET_CPUID
+#endif
+
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hci.h"
 #include "bluetooth/hci_lib.h"
@@ -306,12 +311,10 @@ static char *const qemu_envp[] = {
 
 static void check_virtualization(void)
 {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
-	uint32_t ecx;
+#ifdef HAVE_GET_CPUID
+	unsigned int eax, ebx, ecx, edx;
 
-	__asm__ __volatile__("cpuid" : "=c" (ecx) : "a" (1) : "memory");
-
-	if (!!(ecx & (1 << 5)))
+	if (__get_cpuid(1, &eax, &ebx, &ecx, &edx) && (ecx & (1 << 5)))
 		printf("Found support for Virtual Machine eXtensions\n");
 #endif
 }
