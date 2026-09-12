@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <string.h>
+#include <stdarg.h>
 #include <getopt.h>
 #include <poll.h>
 #include <dirent.h>
@@ -40,6 +41,10 @@
 #ifndef WAIT_ANY
 #define WAIT_ANY (-1)
 #endif
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#define _cleanup_(f) __attribute__((cleanup(f)))
 
 #define CMDLINE_MAX (2048 * 10)
 #define EXTRA_OPT_MAX 64
@@ -64,6 +69,58 @@ static char *usb_dev;
 static char *pcie_dev;
 static char *extra_opts[EXTRA_OPT_MAX];
 static int num_extra_opts;
+
+struct strv {
+	char **strv;
+	size_t size;
+	size_t i;
+};
+
+#define STRV_ERROR(s) ((s).size == 0)
+
+static void __attribute__((format(printf, 2, 3)))
+strv_append(struct strv *s, const char *fmt, ...)
+{
+	va_list ap;
+	int ret;
+
+	if (s->size == 0 || s->i >= s->size - 1)
+		goto fail;
+
+	va_start(ap, fmt);
+	ret = vasprintf(&s->strv[s->i], fmt, ap);
+	va_end(ap);
+
+	if (ret < 0) {
+		perror("vasprintf");
+		s->strv[s->i] = NULL;
+		goto fail;
+	}
+
+	s->strv[++s->i] = NULL;
+	return;
+
+fail:
+	s->size = 0;
+}
+
+static void strv_concat(struct strv *s, const char *const *str)
+{
+	while (*str) {
+		strv_append(s, "%s", *str);
+		str++;
+	}
+}
+
+static void strv_cleanup(struct strv *s)
+{
+	size_t i;
+
+	for (i = 0; i < s->i; ++i)
+		free(s->strv[i]);
+
+	memset(s, 0, sizeof(*s));
+}
 
 static const char *qemu_table[] = {
 	"qemu-system-x86_64",
@@ -225,8 +282,7 @@ static void prepare_sandbox(void)
 	enable_printk();
 }
 
-static char *const qemu_argv[] = {
-	"",
+static const char *const qemu_argv[] = {
 	"-nodefaults",
 	"-no-user-config",
 	"-monitor", "none",
@@ -510,7 +566,9 @@ static int start_qemu(void)
 {
 	char cwd[PATH_MAX/2], initcmd[PATH_MAX], testargs[PATH_MAX];
 	char cmdline[CMDLINE_MAX];
-	char **argv;
+	char *argv_strv[EXTRA_OPT_MAX + 64];
+	struct strv _cleanup_(strv_cleanup) argv = { argv_strv,
+							ARRAY_SIZE(argv_strv) };
 	int i, pos, status = 0;
 	pid_t pid;
 
@@ -533,7 +591,7 @@ static int start_qemu(void)
 		if (n < 0 || n >= len) {
 			fprintf(stderr, "Buffer overflow detected in "
 					"testargs\n");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 
 		pos += n;
@@ -558,66 +616,54 @@ static int start_qemu(void)
 				run_auto, audio_server ? audio_server : "",
 				testargs);
 
-	argv = alloca(sizeof(qemu_argv) +
-			(sizeof(char *) * (8 + (num_devs * 4))) +
-			(sizeof(char *) * (usb_dev ? 4 : 0)) +
-			(sizeof(char *) * (pcie_dev ? 2 : 0)) +
-			(sizeof(char *) * num_extra_opts));
-	memcpy(argv, qemu_argv, sizeof(qemu_argv));
-
-	pos = (sizeof(qemu_argv) / sizeof(char *)) - 1;
-
 	/* Make sure qemu_binary is not null */
 	if (!qemu_binary) {
 		fprintf(stderr, "No QEMU binary is set\n");
-		exit(1);
+		return EXIT_FAILURE;
 	}
-	argv[0] = (char *) qemu_binary;
+
+	strv_append(&argv, "%s", qemu_binary);
+	strv_concat(&argv, qemu_argv);
 
 	if (qemu_host_cpu) {
-		argv[pos++] = "-cpu";
-		argv[pos++] = "host";
+		strv_append(&argv, "-cpu");
+		strv_append(&argv, "host");
 	}
 
-	argv[pos++] = "-kernel";
-	argv[pos++] = (char *) kernel_image;
-	argv[pos++] = "-append";
-	argv[pos++] = (char *) cmdline;
+	strv_append(&argv, "-kernel");
+	strv_append(&argv, "%s", kernel_image);
+	strv_append(&argv, "-append");
+	strv_append(&argv, "%s", cmdline);
 
 	for (i = 0; i < num_devs; i++) {
-		char *chrdev, *serdev;
-
-		chrdev = alloca(48 + strlen(device_path));
-		sprintf(chrdev, "socket,path=%s,id=bt%d", device_path, i);
-
-		serdev = alloca(64);
-		sprintf(serdev, "virtconsole,chardev=bt%d,name=bt.%d", i, i);
-
-		argv[pos++] = "-chardev";
-		argv[pos++] = chrdev;
-		argv[pos++] = "-device";
-		argv[pos++] = serdev;
+		strv_append(&argv, "-chardev");
+		strv_append(&argv, "socket,path=%s,id=bt%d", device_path, i);
+		strv_append(&argv, "-device");
+		strv_append(&argv, "virtconsole,chardev=bt%d,name=bt.%d", i, i);
 	}
 
 	if (usb_dev) {
-		argv[pos++] = "-device";
-		argv[pos++] = "qemu-xhci";
-		argv[pos++] = "-device";
-		argv[pos++] = usb_dev;
+		strv_append(&argv, "-device");
+		strv_append(&argv, "qemu-xhci");
+		strv_append(&argv, "-device");
+		strv_append(&argv, "%s", usb_dev);
 	}
 
 	if (pcie_dev) {
-		argv[pos++] = "-device";
-		argv[pos++] = pcie_dev;
+		strv_append(&argv, "-device");
+		strv_append(&argv, "%s", pcie_dev);
 	}
 
 	for (i = 0; i < num_extra_opts; ++i)
-		argv[pos++] = extra_opts[i];
+		strv_append(&argv, "%s", extra_opts[i]);
 
-	argv[pos] = NULL;
+	if (STRV_ERROR(argv)) {
+		fprintf(stderr, "Failed to build argument list\n");
+		return EXIT_FAILURE;
+	}
 
 	if (!pcie_dev) {
-		execve(argv[0], argv, qemu_envp);
+		execve(argv.strv[0], argv.strv, qemu_envp);
 		return EXIT_FAILURE;
 	}
 
@@ -635,7 +681,7 @@ static int start_qemu(void)
 	}
 
 	if (pid == 0) {
-		execve(argv[0], argv, qemu_envp);
+		execve(argv.strv[0], argv.strv, qemu_envp);
 		exit(EXIT_FAILURE);
 	}
 
