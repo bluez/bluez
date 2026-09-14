@@ -84,6 +84,13 @@ struct btd_profile {
 void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
 								void *data);
 
+/*
+ * Return the UUID of the local service a profile provides, for use by the
+ * admin policy allowlist. Returns NULL when the profile has no service to
+ * match against.
+ */
+const char *btd_profile_get_policy_uuid(const struct btd_profile *profile);
+
 int btd_profile_register(struct btd_profile *profile);
 void btd_profile_unregister(struct btd_profile *profile);
 

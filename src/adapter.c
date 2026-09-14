@@ -5353,59 +5353,12 @@ static void load_drivers(struct btd_adapter *adapter)
 		probe_driver(adapter, l->data);
 }
 
-struct profile_allowlist_map {
-	const char *name;
-	const char *uuid;
-	bool use_remote_uuid;
-};
-
-/*
- * Adapter server policy UUID defaults to local_uuid when available.
- * Profiles listed below are exceptions.
- *
- * A2DP profiles map to ADVANCED_AUDIO_UUID so profile probe gating matches
- * the A2DP profile class (0x110d), while adapter service registration/removal
- * still filters specific Source/Sink records by their own UUIDs.
- */
-static const struct profile_allowlist_map profile_allowlist_map[] = {
-	{ "a2dp-source", ADVANCED_AUDIO_UUID, false },
-	{ "a2dp-sink", ADVANCED_AUDIO_UUID, false },
-	{ "audio-avrcp-target", NULL, true },
-	{ "avrcp-controller", NULL, true },
-	{ "vcp", NULL, true },
-	{ "micp", NULL, true },
-	{ "ccp", NULL, true },
-	{ "gmap", NULL, true },
-	{ "tmap", NULL, true },
-	{ "bass", NULL, true },
-	{ "bap", NULL, true },
-	{ "mcp-gmcs", NULL, true },
-};
-
 static const char *profile_allowlist_uuid(const struct btd_profile *profile)
 {
-	size_t i;
-
 	if (profile->local_uuid)
 		return profile->local_uuid;
 
-	if (!profile->name)
-		return NULL;
-
-	for (i = 0; i < ARRAY_SIZE(profile_allowlist_map); i++) {
-		const struct profile_allowlist_map *entry =
-						&profile_allowlist_map[i];
-
-		if (strcmp(profile->name, entry->name))
-			continue;
-
-		if (entry->use_remote_uuid)
-			return profile->remote_uuid;
-
-		return entry->uuid;
-	}
-
-	return NULL;
+	return btd_profile_get_policy_uuid(profile);
 }
 
 bool btd_adapter_is_profile_allowed(struct btd_adapter *adapter,
