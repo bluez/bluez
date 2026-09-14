@@ -30,6 +30,13 @@
 
 struct bt_bass_db;
 
+struct bt_bass_ready {
+	unsigned int id;
+	bt_bass_ready_func_t func;
+	bt_bass_destroy_func_t destroy;
+	void *data;
+};
+
 struct bt_bass_cb {
 	unsigned int id;
 	bt_bass_func_t attached;
@@ -67,8 +74,10 @@ struct bt_bass {
 
 	struct queue *src_cbs;
 	struct queue *cp_handlers;
+	struct queue *ready_cbs;
 
 	unsigned int disconn_id;
+	unsigned int idle_id;
 
 	void *user_data;
 };
@@ -1520,6 +1529,8 @@ static void bass_attach_att(struct bt_bass *bass, struct bt_att *att)
 							bass, NULL);
 }
 
+static void bass_idle(void *data);
+
 bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client)
 {
 	bt_uuid_t uuid;
@@ -1545,6 +1556,14 @@ bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client)
 		return false;
 
 	bass_attach_att(bass, bt_gatt_client_get_att(client));
+
+	/* Notify the upper layer once the discovery, reads and
+	 * subscriptions are complete, so it does not attempt any
+	 * operation before it is able to receive the notifications it
+	 * would generate.
+	 */
+	bass->idle_id = bt_gatt_client_idle_register(bass->client, bass_idle,
+								bass, NULL);
 
 	bt_uuid16_create(&uuid, BASS_UUID);
 	gatt_db_foreach_service(bass->rdb->db, &uuid, foreach_bass_service,
@@ -1584,6 +1603,11 @@ void bt_bass_detach(struct bt_bass *bass)
 
 	bt_att_unregister_disconnect(att, bass->disconn_id);
 
+	if (bass->idle_id) {
+		bt_gatt_client_idle_unregister(bass->client, bass->idle_id);
+		bass->idle_id = 0;
+	}
+
 	bt_gatt_client_unref(bass->client);
 	bass->client = NULL;
 
@@ -1605,6 +1629,87 @@ static void bass_db_free(void *data)
 	free(bdb);
 }
 
+static void bass_ready_free(void *data)
+{
+	struct bt_bass_ready *ready = data;
+
+	if (ready->destroy)
+		ready->destroy(ready->data);
+
+	free(ready);
+}
+
+static void bass_notify_ready(struct bt_bass *bass)
+{
+	const struct queue_entry *entry;
+
+	bt_bass_ref(bass);
+
+	for (entry = queue_get_entries(bass->ready_cbs); entry;
+							entry = entry->next) {
+		struct bt_bass_ready *ready = entry->data;
+
+		ready->func(bass, ready->data);
+	}
+
+	bt_bass_unref(bass);
+}
+
+static void bass_idle(void *data)
+{
+	struct bt_bass *bass = data;
+
+	bass->idle_id = 0;
+
+	bass_notify_ready(bass);
+}
+
+unsigned int bt_bass_ready_register(struct bt_bass *bass,
+				bt_bass_ready_func_t func, void *user_data,
+				bt_bass_destroy_func_t destroy)
+{
+	struct bt_bass_ready *ready;
+	static unsigned int id;
+
+	if (!bass)
+		return 0;
+
+	ready = new0(struct bt_bass_ready, 1);
+	ready->id = ++id ? id : ++id;
+	ready->func = func;
+	ready->destroy = destroy;
+	ready->data = user_data;
+
+	queue_push_tail(bass->ready_cbs, ready);
+
+	return ready->id;
+}
+
+static bool match_ready_id(const void *data, const void *match_data)
+{
+	const struct bt_bass_ready *ready = data;
+	unsigned int id = PTR_TO_UINT(match_data);
+
+	return (ready->id == id);
+}
+
+bool bt_bass_ready_unregister(struct bt_bass *bass, unsigned int id)
+{
+	struct bt_bass_ready *ready;
+
+	if (!bass)
+		return false;
+
+	ready = queue_remove_if(bass->ready_cbs, match_ready_id,
+						UINT_TO_PTR(id));
+	if (!ready)
+		return false;
+
+	bass_ready_free(ready);
+
+	return true;
+}
+
 static void bass_free(void *data)
 {
 	struct bt_bass *bass = data;
@@ -1614,6 +1719,7 @@ static void bass_free(void *data)
 	queue_destroy(bass->notify, NULL);
 	queue_destroy(bass->src_cbs, bass_src_changed_free);
 	queue_destroy(bass->cp_handlers, bass_cp_handler_free);
+	queue_destroy(bass->ready_cbs, bass_ready_free);
 
 	free(bass);
 }
@@ -1710,6 +1816,7 @@ struct bt_bass *bt_bass_new(struct gatt_db *ldb, struct gatt_db *rdb,
 	bass->notify = queue_new();
 	bass->src_cbs = queue_new();
 	bass->cp_handlers = queue_new();
+	bass->ready_cbs = queue_new();
 
 	if (!rdb)
 		goto done;
