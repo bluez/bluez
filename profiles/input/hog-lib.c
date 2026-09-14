@@ -71,6 +71,9 @@
 #define HID_INFO_SIZE			4
 #define ATT_NOTIFICATION_HEADER_SIZE	3
 
+#define HOG_GATT_RETRY_MAX		3
+#define HOG_GATT_RETRY_DELAY_MS		200
+
 struct bt_hog {
 	int			ref_count;
 	char			*name;
@@ -124,6 +127,10 @@ struct gatt_request {
 	unsigned int id;
 	struct bt_hog *hog;
 	void *user_data;
+	uint16_t handle;
+	GAttribResultFunc func;
+	uint8_t retry_count;
+	guint retry_timer;
 };
 
 static struct gatt_request *create_request(struct bt_hog *hog,
@@ -153,11 +160,17 @@ static void destroy_gatt_req(void *data)
 {
 	struct gatt_request *req = data;
 
+	if (req->retry_timer) {
+		g_source_remove(req->retry_timer);
+		req->retry_timer = 0;
+	}
+
 	bt_hog_unref(req->hog);
 	free(req);
 }
 
 static void read_report_map(struct bt_hog *hog);
+static gboolean retry_gatt_read(gpointer user_data);
 static void sci_mode_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data);
 static void sci_info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -169,6 +182,22 @@ static void remove_gatt_req(struct gatt_request *req, uint8_t status)
 
 	queue_remove(hog->gatt_op, req);
 
+	/* Retry on ATT Unlikely Error (0x0E) - peripheral GATT server may
+	 * not be ready yet after waking from deep sleep.  Schedule a delayed
+	 * retry instead of giving up immediately.
+	 */
+	if (status == ATT_ECODE_UNLIKELY &&
+			req->retry_count < HOG_GATT_RETRY_MAX &&
+			req->func && hog->attrib) {
+		req->retry_count++;
+		DBG("hog: GATT retry %d/%d for handle 0x%04x",
+				req->retry_count, HOG_GATT_RETRY_MAX,
+				req->handle);
+		req->retry_timer = g_timeout_add(HOG_GATT_RETRY_DELAY_MS,
+						retry_gatt_read, req);
+		return;
+	}
+
 	if (!status && queue_isempty(hog->gatt_op)) {
 		/* Report Map must be read last since that can result
 		 * in uhid being created and the driver may start to
@@ -179,6 +208,37 @@ static void remove_gatt_req(struct gatt_request *req, uint8_t status)
 	}
 
 	destroy_gatt_req(req);
+}
+
+static gboolean retry_gatt_read(gpointer user_data)
+{
+	struct gatt_request *req = user_data;
+	struct bt_hog *hog = req->hog;
+	unsigned int id;
+
+	req->retry_timer = 0;
+
+	if (!hog->attrib) {
+		DBG("hog: Retry cancelled, device detached");
+		destroy_gatt_req(req);
+		return FALSE;
+	}
+
+	id = gatt_read_char(hog->attrib, req->handle, req->func, req);
+	if (!id) {
+		error("hog: GATT retry failed to queue read");
+		destroy_gatt_req(req);
+		return FALSE;
+	}
+
+	if (!set_and_store_gatt_req(hog, req, id)) {
+		error("hog: Failed to queue GATT retry");
+		g_attrib_cancel(hog->attrib, id);
+		destroy_gatt_req(req);
+		return FALSE;
+	}
+
+	return FALSE;
 }
 
 static void write_char(struct bt_hog *hog, GAttrib *attrib, uint16_t handle,
@@ -216,6 +276,9 @@ static unsigned int read_char(struct bt_hog *hog, GAttrib *attrib,
 	req = create_request(hog, user_data);
 	if (!req)
 		return 0;
+
+	req->handle = handle;
+	req->func = func;
 
 	id = gatt_read_char(attrib, handle, func, req);
 	if (!id) {
