@@ -25,9 +25,114 @@ OPTIONS
 :-U/--usb=<qemu_args>: Provide USB device
 :-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
+:-H/--qemu-host-cpu: Use host CPU (requires KVM support)
 :-k/--kernel=<image>: Kernel image (bzImage)
 :-F/--virtiofs[=<path>]: Path to virtiofsd, or no to disable virtio-fs
+:-o/--option=<opt>: Additional argument passed to QEMU
 :-h/--help: Show help options
+
+ARCHITECTURE
+============
+
+**test-runner(1)** is both the launcher and the guest ``init``.  When run
+normally it builds a QEMU command line and starts QEMU, replacing itself
+with it unless it has to stay around to clean up after a ``virtiofsd`` or
+a passed-through PCIe device.  The same binary is re-executed inside the
+guest as PID 1, where it sets up the sandbox and runs the requested
+command::
+
+    ┌────────────────────────────────────────────────────────┐
+    │ test-runner (launcher)                                 │
+    │   ├ virtiofsd (optional)  ←─── vhost-user ───┐         │
+    │   └ qemu                                     │         │
+    │      ┌──── guest ─────────────────────────────┴─────┐  │
+    │      │ kernel (bzImage), init=test-runner           │  │
+    │      │   ├ prepare_sandbox()                        │  │
+    │      │   ├ attach controller (optional)             │  │
+    │      │   ├ start dbus / bluetoothd / btmon / btvirt │  │
+    │      │   ├ fork+exec <command>                      │  │
+    │      │   └ reboot() when it exits                   │  │
+    │      └──────────────────────────────────────────────┘  │
+    └────────────────────────────────────────────────────────┘
+
+There is no disk image.  The launcher's root filesystem is passed through
+read-only and used as the guest root, so the guest runs the very same
+BlueZ build tree that was just compiled.
+
+Two passthrough implementations are supported.  When ``virtiofsd`` is
+available, a ``virtiofsd`` process is started alongside QEMU and exports
+``/`` over a vhost-user socket::
+
+    virtiofsd --socket-path <tmpdir>/virtiofs --shared-dir / --readonly
+              --tag /dev/root ...
+    -chardev socket,id=virtiofs0,path=<tmpdir>/virtiofs
+    -device  vhost-user-fs-pci,queue-size=1024,chardev=virtiofs0,tag=/dev/root
+    -object  memory-backend-memfd,id=mem0,size=<mem>,share=on
+    -numa    node,memdev=mem0
+    -append  "... rootfstype=virtiofs root=/dev/root ..."
+
+Since vhost-user requires the guest memory to be shareable, the machine
+memory is backed by a memfd object.  Otherwise, the fallback is 9p::
+
+    -fsdev local,id=fsdev-root,path=/,readonly=on,security_model=none
+    -device virtio-9p-pci,fsdev=fsdev-root,mount_tag=/dev/root
+    -append "... rootfstype=9p rootflags=trans=virtio,version=9p2000.u ..."
+
+9p passthrough is noticeably more CPU intensive, so virtio-fs is used by
+default whenever possible.
+
+Either way the kernel command line also carries the launcher settings::
+
+    -append "... init=<test-runner> TESTHOME=<cwd> TESTARGS='<command>' ..."
+
+The ``TEST*`` variables carry the options given to the launcher over to
+the guest instance.
+
+As PID 1, ``prepare_sandbox()`` mounts ``sysfs``, ``proc``, ``devtmpfs``,
+``devpts``, ``debugfs`` and ``tmpfs`` on ``/dev/shm``, ``/run`` and
+``/tmp``.  Since the root is read-only, writable ``tmpfs`` instances are
+also overlaid on ``/var/lib/bluetooth``, ``/etc/bluetooth``,
+``/etc/dbus-1`` and ``/usr/share/dbus-1``.
+
+Console and controller
+----------------------
+
+The guest console is a virtio console, ``/dev/hvc0``, multiplexed onto the
+launcher's stdio, so kernel messages and the command output appear on the
+terminal that started test-runner.
+
+With ``-u``, the given UNIX socket (typically a **btproxy(1)** or
+**btvirt(1)** server socket) is attached as a second virtio console::
+
+    -chardev socket,path=<socket>,id=bt0
+    -device  virtconsole,chardev=bt0,name=bt.0
+
+In the guest this is ``/dev/hvc1``.  test-runner sets the ``N_HCI`` line
+discipline with the H:4 protocol on it, so the kernel ``hci_uart`` driver
+registers an ``hciX`` device.  The transport is therefore plain HCI H:4
+carried over a virtio console to a UNIX socket on the launcher side::
+
+    guest                                             launcher
+    ┌───────────────────────────┐                 ┌──────────────────┐
+    │ bluetoothd                │                 │ btvirt/btproxy   │
+    │   ↕ mgmt / HCI sockets    │                 │                  │
+    │ hci_uart  hci0            │   virtconsole   │                  │
+    │   ↕ H:4                   │     bt.0        │                  │
+    │ /dev/hvc1  ───────────────┼─────────────────┤  AF_UNIX socket  │
+    └───────────────────────────┘                 └──────────────────┘
+
+With ``-U`` a host USB controller is passed through instead (a
+``qemu-xhci`` controller plus the given ``usb-host`` device), and with
+``-P`` a PCIe controller is passed through via vfio-pci.  In both cases
+the guest uses the normal ``btusb``/``btintel_pcie`` drivers.
+
+Extra QEMU devices
+------------------
+
+``-o`` appends raw arguments to the QEMU command line.  This is how
+additional channels between the launcher and the guest are added, for
+example by **test-functional(1)**, which attaches its own virtio-serial
+ports and a writable shared directory this way.
 
 Kernel
 ======
