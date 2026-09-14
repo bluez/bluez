@@ -70,6 +70,7 @@ def check_avrcp_GHSA_m2vx_pw5f_rc8v(bus):
     AVCTP_RESPONSE = 1
     AVC_CTYPE_ACCEPTED = 0x09
     AVC_CTYPE_STABLE = 0x0C
+    AVC_CTYPE_INTERIM = 0x0F
     AVC_OP_VENDORDEP = 0x00
     AVC_SUBUNIT_PANEL = 0x09
 
@@ -213,6 +214,18 @@ def check_avrcp_GHSA_m2vx_pw5f_rc8v(bus):
                     )
                 elif pdu_id == PDU_REGISTER_NOTIFICATION:
                     print("[*] RegisterNotification: %s" % hexdump(params), flush=True)
+
+                    # Answer as a target would, otherwise the request
+                    # times out and is retried, and the controller only
+                    # moves on to the next one 20 seconds later
+                    self.response(
+                        transaction,
+                        AVC_CTYPE_INTERIM,
+                        avrcp_pdu(
+                            PDU_REGISTER_NOTIFICATION,
+                            bytes([EVENT_TRACK_CHANGED]) + bytes(8),
+                        ),
+                    )
                 else:
                     self.response(transaction, 0x0A, avrcp_pdu(pdu_id, b"\x00"))
 
