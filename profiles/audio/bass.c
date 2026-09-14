@@ -94,6 +94,14 @@ struct bass_data {
 	unsigned int cp_id;
 	unsigned int bis_id;
 	unsigned int state_id;
+	unsigned int ready_id;
+	bool ready;
+	struct queue *pushes;
+};
+
+struct bass_push {
+	struct bass_assistant *assistant;
+	DBusMessage *msg;
 };
 
 struct bass_assistant {
@@ -1218,10 +1226,31 @@ static DBusMessage *push_add_src(struct bass_assistant *assistant,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *push_src(struct bass_assistant *assistant,
+							DBusMessage *msg)
+{
+	if (assistant->state == ASSISTANT_STATE_ACTIVE) {
+		return push_mod_src(assistant, msg);
+	} else if (assistant->state == ASSISTANT_STATE_LOCAL) {
+		struct bass_src *src;
+
+		src = queue_find(assistant->srcs, match_src_data,
+						assistant->data->bass);
+		if (src) {
+			assistant->src_id = src->src_id;
+			return push_mod_src(assistant, msg);
+		}
+	}
+
+	return push_add_src(assistant, msg);
+}
+
 static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 							  void *user_data)
 {
 	struct bass_assistant *assistant = user_data;
+	struct bass_data *data;
+	struct bass_push *push;
 	DBusMessageIter props, dict;
 
 	DBG("");
@@ -1240,20 +1269,25 @@ static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 	}
 
-	if (assistant->state == ASSISTANT_STATE_ACTIVE) {
-		return push_mod_src(assistant, msg);
-	} else if (assistant->state == ASSISTANT_STATE_LOCAL) {
-		struct bass_src *src;
+	/* Wait for the session to be ready before writing to the control
+	 * point, otherwise the Broadcast Receive State notifications may not
+	 * be enabled yet and the state changes it triggers, e.g. a request to
+	 * transfer the sync info, would be missed.
+	 */
+	data = queue_find(sessions, match_bass, assistant->data->bass);
+	if (data && !data->ready) {
+		DBG("Session not ready, queueing request");
 
-		src = queue_find(assistant->srcs, match_src_data,
-						assistant->data->bass);
-		if (src) {
-			assistant->src_id = src->src_id;
-			return push_mod_src(assistant, msg);
-		}
+		push = new0(struct bass_push, 1);
+		push->assistant = assistant;
+		push->msg = dbus_message_ref(msg);
+
+		queue_push_tail(data->pushes, push);
+
+		return NULL;
 	}
 
-	return push_add_src(assistant, msg);
+	return push_src(assistant, msg);
 }
 
 static const GDBusMethodTable assistant_methods[] = {
@@ -1754,6 +1788,7 @@ static struct bass_data *bass_data_new(struct btd_adapter *adapter,
 	data = new0(struct bass_data, 1);
 	data->adapter = adapter;
 	data->device = device;
+	data->pushes = queue_new();
 
 	return data;
 }
@@ -1788,6 +1823,19 @@ static void bass_data_add(struct bass_data *data)
 		device_set_past_support(data->device, true);
 }
 
+static void bass_push_free(void *user_data)
+{
+	struct bass_push *push = user_data;
+	DBusMessage *reply;
+
+	reply = btd_error_failed(push->msg, "Session removed");
+	if (reply)
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+
+	dbus_message_unref(push->msg);
+	free(push);
+}
+
 static void bass_data_free(struct bass_data *data)
 {
 	if (data->service) {
@@ -1797,6 +1845,11 @@ static void bass_data_free(struct bass_data *data)
 
 	bt_bass_src_unregister(data->bass, data->src_id);
 	bt_bass_cp_handler_unregister(data->bass, data->cp_id);
+
+	if (data->ready_id)
+		bt_bass_ready_unregister(data->bass, data->ready_id);
+
+	queue_destroy(data->pushes, bass_push_free);
 
 	bt_bass_unref(data->bass);
 
@@ -2365,6 +2418,35 @@ static void bass_remove(struct btd_service *service)
 	bass_data_remove(data);
 }
 
+static void bass_ready(struct bt_bass *bass, void *user_data)
+{
+	struct btd_service *service = user_data;
+	struct bass_data *data = btd_service_get_user_data(service);
+	struct bass_push *push;
+
+	DBG("bass %p", bass);
+
+	/* The callback is unregistered with the session, not here, as it is
+	 * called while the ready callbacks are being iterated.
+	 */
+	btd_service_connecting_complete(service, 0);
+
+	if (!data)
+		return;
+
+	data->ready = true;
+
+	while ((push = queue_pop_head(data->pushes))) {
+		DBusMessage *reply = push_src(push->assistant, push->msg);
+
+		if (reply)
+			g_dbus_send_message(btd_get_dbus_connection(), reply);
+
+		dbus_message_unref(push->msg);
+		free(push);
+	}
+}
+
 static int bass_accept(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
@@ -2383,10 +2465,22 @@ static int bass_accept(struct btd_service *service)
 	/* Only attach client if initiator of the connection otherwise act as
 	 * delegator.
 	 */
-	if (btd_service_is_initiator(service) &&
-			!bt_bass_attach(data->bass, client)) {
-		error("BASS unable to attach");
-		return -EINVAL;
+	if (btd_service_is_initiator(service)) {
+		/* Complete the connection once the session is ready, so no
+		 * operation is attempted before the Broadcast Receive State
+		 * notifications are enabled, otherwise the state changes they
+		 * trigger, e.g. a request to transfer the sync info, would be
+		 * missed.
+		 */
+		data->ready_id = bt_bass_ready_register(data->bass, bass_ready,
+							service, NULL);
+
+		if (!bt_bass_attach(data->bass, client)) {
+			error("BASS unable to attach");
+			return -EINVAL;
+		}
+
+		return 0;
 	}
 
 	btd_service_connecting_complete(service, 0);
