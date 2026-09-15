@@ -966,6 +966,9 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 							data->buf, pktlen);
 			break;
 		case HCI_CHANNEL_MONITOR:
+			if (pktlen > (len - MGMT_HDR_SIZE))
+				pktlen = (len - MGMT_HDR_SIZE);
+
 			btsnoop_write_hci(btsnoop_file, tv, index, opcode, 0,
 							data->buf, pktlen);
 			ellisys_inject_hci(tv, index, opcode,
