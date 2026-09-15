@@ -1,0 +1,30 @@
+power on
+#
+#
+# Register a PAC Sink endpoint with LC3 taking a single channel, to act
+# as the left member of a coordinated set. The members of the set are
+# programmed with the same SIRK, see [CSIS] in main.conf.
+#
+endpoint.register 00002bc9-0000-1000-8000-00805f9b34fb 0x06
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+# Locations: Front Left, so only its own channel is configured
+1
+# Supported Context: same as the contexts bluetoothctl registers with
+0x0fff
+# Context
+0x0fff
+# CIG: assigned automatically
+a
+# CIS: assigned automatically
+a
+#
+#
+# Advertise the Resolvable Set Identifier, so the initiator is able to
+# resolve this device as a member of the set, otherwise it is streamed
+# to on its own.
+#
+advertise.rsi on
+advertise on
