@@ -99,6 +99,9 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 		index  = le16_to_cpu(hdr.index);
 		pktlen = le16_to_cpu(hdr.len);
 
+		if (pktlen > (len - sizeof(hdr)))
+			pktlen = (len - sizeof(hdr));
+
 		btsnoop_write_hci(btsnoop_file, tv, index, opcode, 0, buf,
 									pktlen);
 	}
