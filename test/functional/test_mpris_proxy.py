@@ -325,7 +325,7 @@ def vm_set_trusted(bdaddr):
 
 
 @pytest.fixture
-def mpris_player(paired_hosts_bredr):
+def mpris_player(paired_hosts):
     """
     Two paired and trusted hosts, the client connected to the dummy MPRIS
     player of the server, exported on the client session bus by
@@ -336,7 +336,7 @@ def mpris_player(paired_hosts_bredr):
 
     Yields (client, server, exported player bus name).
     """
-    client, server = paired_hosts_bredr
+    client, server = paired_hosts
 
     client.call(vm_set_trusted, server.bdaddr)
     server.call(vm_set_trusted, client.bdaddr)
