@@ -22,12 +22,14 @@ from pytest_bluezenv import (
     dbus_service_event_method,
     find_exe,
     get_dbus,
-    host_config,
     mainloop_assert,
     mainloop_wrap,
+    parametrized_host_config,
     quoted,
     wait_until,
 )
+
+from .le_utils import LeAdvertiser
 
 BLUEZ_BUS_NAME = "org.bluez"
 
@@ -42,6 +44,10 @@ BLUEZ_DEVICE_INTERFACE = "org.bluez.Device1"
 PROPS_INTERFACE = "org.freedesktop.DBus.Properties"
 
 AVRCP_CONTROLLER_UUID = "0000110c-0000-1000-8000-00805f9b34fb"
+
+GMCS_UUID = "00001849-0000-1000-8000-00805f9b34fb"
+
+LE_BLUETOOTHD_CONF = "[General]\nControllerMode = le\nExperimental = true\n"
 
 
 def mpris_player_method(*a, **kw):
@@ -257,9 +263,9 @@ class MprisProxy(HostPlugin):
 
 class MprisClient(HostPlugin):
     """
-    Host plugin used by the test on the client host to discover and
-    control the player of a remote device through the MPRIS client API,
-    as exported to the session bus by `mpris-proxy --export`.
+    Host plugin used by the test on the controlling host to discover and
+    control the remote player through the MPRIS client API, as exported
+    to the session bus by `mpris-proxy --export`.
     """
 
     name = "mpris_client"
@@ -324,8 +330,13 @@ def vm_set_trusted(bdaddr):
     props.Set(BLUEZ_DEVICE_INTERFACE, "Trusted", dbus.Boolean(True))
 
 
+def idle_status(le):
+    """Playback status a stopped player reads as, MCP has no stopped state."""
+    return "Paused" if le else "Stopped"
+
+
 @pytest.fixture
-def mpris_player(paired_hosts):
+def mpris_player(paired_hosts, is_le):
     """
     Two paired and trusted hosts, the client connected to the dummy MPRIS
     player of the server, exported on the client session bus by
@@ -341,33 +352,59 @@ def mpris_player(paired_hosts):
     client.call(vm_set_trusted, server.bdaddr)
     server.call(vm_set_trusted, client.bdaddr)
 
-    client.agent.device_method(server.bdaddr, "ConnectProfile", AVRCP_CONTROLLER_UUID)
+    if is_le:
+        method, args = "Connect", ()
+    else:
+        method, args = "ConnectProfile", (AVRCP_CONTROLLER_UUID,)
+
+    client.agent.device_method(server.bdaddr, method, *args)
     event = client.agent.expect(
-        (
-            "org.bluez.Device1.ConnectProfile:reply",
-            "org.bluez.Device1.ConnectProfile:error",
-        )
+        (f"org.bluez.Device1.{method}:reply", f"org.bluez.Device1.{method}:error")
     )
     if event.kind.endswith(":error"):
         # OK if the player is already connected (reused host setup)
-        assert "AlreadyConnected" in str(
-            event.error
-        ), f"ConnectProfile failed: {event.error}"
+        assert "AlreadyConnected" in str(event.error), f"{method} failed: {event.error}"
 
     wait_until(lambda: client.mpris_client.exported_player())
     player_name = client.mpris_client.exported_player()
 
-    wait_until(lambda: client.mpris_client.get_status(player_name) == "Stopped")
+    wait_until(
+        lambda: client.mpris_client.get_status(player_name) == idle_status(is_le)
+    )
 
     yield client, server, player_name
 
     server.dummy_player.reset()
-    wait_until(lambda: client.mpris_client.get_status(player_name) == "Stopped")
+    wait_until(
+        lambda: client.mpris_client.get_status(player_name) == idle_status(is_le)
+    )
 
 
-mpris_proxy_host_config = host_config(
-    [MprisProxy(args=("--export",)), MprisClient(), Agent()],
-    [MprisProxy(), DummyMprisPlayer(), Agent()],
+mpris_proxy_host_config = parametrized_host_config(
+    [
+        # BR/EDR
+        (
+            [MprisProxy(args=("--export",)), MprisClient(), Agent()],
+            [MprisProxy(), DummyMprisPlayer(), Agent()],
+        ),
+        # LE
+        (
+            [
+                Bluetoothd(conf=LE_BLUETOOTHD_CONF),
+                MprisProxy(args=("--export",)),
+                MprisClient(),
+                Agent(capability="NoInputNoOutput"),
+            ],
+            [
+                Bluetoothd(conf=LE_BLUETOOTHD_CONF),
+                MprisProxy(),
+                DummyMprisPlayer(),
+                LeAdvertiser(service_uuids=[GMCS_UUID]),
+                Agent(capability="NoInputNoOutput"),
+            ],
+        ),
+    ],
+    ids=["bredr", "le"],
     reuse=True,
 )
 
@@ -385,13 +422,13 @@ def control_player(client, server, player_name, method, update, *args):
 
 
 @mpris_proxy_host_config
-def test_mpris_proxy_playback_control(mpris_player):
+def test_mpris_proxy_playback_control(mpris_player, is_le):
     client, server, player_name = mpris_player
 
-    for method, status in (
-        ("Play", "Playing"),
-        ("Pause", "Paused"),
-        ("Stop", "Stopped"),
+    for method, status, expected in (
+        ("Play", "Playing", "Playing"),
+        ("Pause", "Paused", "Paused"),
+        ("Stop", "Stopped", idle_status(is_le)),
     ):
         control_player(
             client,
@@ -401,11 +438,11 @@ def test_mpris_proxy_playback_control(mpris_player):
             server.dummy_player.set_status,
             status,
         )
-        wait_until(lambda: client.mpris_client.get_status(player_name) == status)
+        wait_until(lambda: client.mpris_client.get_status(player_name) == expected)
 
 
 @mpris_proxy_host_config
-def test_mpris_proxy_track_control(mpris_player):
+def test_mpris_proxy_track_control(mpris_player, is_le):
     client, server, player_name = mpris_player
 
     track_number = server.dummy_player.get_track_number()
@@ -424,5 +461,7 @@ def test_mpris_proxy_track_control(mpris_player):
             lambda: client.mpris_client.get_metadata(player_name).get("xesam:title")
             == f"Test Track {track_number}"
         )
-        metadata = client.mpris_client.get_metadata(player_name)
-        assert int(metadata["xesam:trackNumber"]) == track_number
+        if not is_le:
+            # Over LE, bluetoothd knows only the GMCS object name, no track number
+            metadata = client.mpris_client.get_metadata(player_name)
+            assert int(metadata["xesam:trackNumber"]) == track_number
