@@ -293,7 +293,6 @@ static const char *const qemu_argv[] = {
 	"-no-user-config",
 	"-monitor", "none",
 	"-display", "none",
-	"-machine", "type=q35,accel=kvm:tcg",
 	"-m", "256M",
 	"-net", "none",
 	"-no-reboot",
@@ -810,6 +809,13 @@ static int start_qemu(void)
 	strv_append(&argv, "%s", qemu_binary);
 	strv_concat(&argv, qemu_argv);
 
+	/* Interrupt remapping is required to pass through a device using
+	 * MSI-X, which in turn needs the split irqchip.
+	 */
+	strv_append(&argv, "-machine");
+	strv_append(&argv, "type=q35,accel=kvm:tcg%s",
+			pcie_dev ? ",kernel-irqchip=split" : "");
+
 	if (qemu_host_cpu) {
 		strv_append(&argv, "-cpu");
 		strv_append(&argv, "host");
@@ -835,6 +841,8 @@ static int start_qemu(void)
 	}
 
 	if (pcie_dev) {
+		strv_append(&argv, "-device");
+		strv_append(&argv, "intel-iommu,intremap=on");
 		strv_append(&argv, "-device");
 		strv_append(&argv, "%s", pcie_dev);
 	}
