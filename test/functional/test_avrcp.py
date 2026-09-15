@@ -43,8 +43,8 @@ class CheckAvrcpCrash_GHSA_m2vx_pw5f_rc8v(HostPlugin):
         Agent(),
     ],
 )
-def test_avrcp_GHSA_m2vx_pw5f_rc8v(paired_hosts_bredr):
-    client, server = paired_hosts_bredr
+def test_avrcp_GHSA_m2vx_pw5f_rc8v(paired_hosts):
+    client, server = paired_hosts
 
     client.agent.device_method(
         server.bdaddr, "ConnectProfile", "0000110c-0000-1000-8000-00805f9b34fb"

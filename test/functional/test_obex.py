@@ -194,11 +194,11 @@ obex_host_config = host_config(
 
 
 @pytest.fixture
-def obex_hosts(paired_hosts_bredr):
-    host0, host1 = paired_hosts_bredr
+def obex_hosts(paired_hosts):
+    host0, host1 = paired_hosts
 
     if hasattr(host0, "session"):
-        return paired_hosts_bredr
+        return paired_hosts
 
     host0.obex.connect(host1.bdaddr)
 
@@ -208,7 +208,7 @@ def obex_hosts(paired_hosts_bredr):
 
     host0.obex.expect("org.bluez.obex.Client1.CreateSession:reply")
 
-    yield paired_hosts_bredr
+    yield paired_hosts
 
     host1.obex_agent.cleanup()
 

@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 import pytest
 
+from .le_utils import host_setup_is_le, pair_le
+
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -66,11 +68,26 @@ def pytest_collection_modifyitems(session, config, items):
 
 
 @pytest.fixture
-def paired_hosts_bredr(hosts):
+def is_le(host_setup):
+    """True if the current host configuration runs bluetoothd in LE-only mode."""
+    return host_setup_is_le(host_setup)
+
+
+@pytest.fixture
+def paired_hosts(hosts, is_le):
+    """
+    Two hosts, paired over the bearer their host configuration uses.
+    """
     from .test_agent import test_agent_pair_bredr
 
-    if hosts[0].agent.has_device(hosts[1].bdaddr):
+    host0, host1 = hosts
+
+    if host0.agent.has_device(host1.bdaddr):
         return hosts
 
-    test_agent_pair_bredr(hosts, True)
+    if is_le:
+        pair_le(host0, host1)
+    else:
+        test_agent_pair_bredr([host0, host1], True)
+
     return hosts
