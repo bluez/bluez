@@ -282,7 +282,10 @@ struct btd_device {
 
 	struct csrk_info *local_csrk;
 	struct csrk_info *remote_csrk;
-	struct ltk_info *ltk;
+	struct ltk_info *ltk;		/* Used when acting as central */
+	struct ltk_info *peripheral_ltk;	/* Used when acting as
+						 * peripheral
+						 */
 	struct queue	*sirks;
 
 	sdp_list_t	*tmp_records;
@@ -957,6 +960,7 @@ static void device_free(gpointer user_data)
 	g_free(device->local_csrk);
 	g_free(device->remote_csrk);
 	free(device->ltk);
+	free(device->peripheral_ltk);
 	g_free(device->path);
 	g_free(device->alias);
 	free(device->modalias);
@@ -2132,12 +2136,19 @@ static void add_set(void *data, void *user_data)
 void device_set_ltk(struct btd_device *device, const uint8_t val[16],
 				bool central, uint8_t enc_size)
 {
-	if (!device->ltk)
-		device->ltk = new0(struct ltk_info, 1);
+	struct ltk_info **ltk;
 
-	memcpy(device->ltk->key, val, sizeof(device->ltk->key));
-	device->ltk->central = central;
-	device->ltk->enc_size = enc_size;
+	/* Legacy pairing distributes one key per role, so both are kept
+	 * to let each of them be selected by the role of the link.
+	 */
+	ltk = central ? &device->ltk : &device->peripheral_ltk;
+
+	if (!*ltk)
+		*ltk = new0(struct ltk_info, 1);
+
+	memcpy((*ltk)->key, val, sizeof((*ltk)->key));
+	(*ltk)->central = central;
+	(*ltk)->enc_size = enc_size;
 	bt_att_set_enc_key_size(device->att, enc_size);
 
 	/* Check if there is any set/sirk that needs decryption */
@@ -2147,16 +2158,27 @@ void device_set_ltk(struct btd_device *device, const uint8_t val[16],
 bool btd_device_get_ltk(struct btd_device *device, uint8_t key[16],
 				bool *central, uint8_t *enc_size)
 {
-	if (!device || !device->ltk || !key)
+	struct ltk_info *ltk;
+
+	if (!device || !key)
 		return false;
 
-	memcpy(key, device->ltk->key, sizeof(device->ltk->key));
+	/* The key securing the link is the one distributed by the
+	 * peripheral, so each side has to select the one matching its
+	 * role for both to use the same key.
+	 */
+	ltk = btd_device_is_initiator(device) ? device->ltk :
+						device->peripheral_ltk;
+	if (!ltk)
+		return false;
+
+	memcpy(key, ltk->key, sizeof(ltk->key));
 
 	if (central)
-		*central = device->ltk->central;
+		*central = ltk->central;
 
 	if (enc_size)
-		*enc_size = device->ltk->enc_size;
+		*enc_size = ltk->enc_size;
 
 	return true;
 }
@@ -6426,6 +6448,9 @@ static void gatt_server_init(struct btd_device *device,
 
 	if (device->ltk)
 		bt_att_set_enc_key_size(device->att, device->ltk->enc_size);
+	else if (device->peripheral_ltk)
+		bt_att_set_enc_key_size(device->att,
+					device->peripheral_ltk->enc_size);
 
 	if (btd_opts.gatt_seclevel == BT_ATT_SECURITY_LOW)
 		bt_gatt_server_set_permissions(device->server, false);
