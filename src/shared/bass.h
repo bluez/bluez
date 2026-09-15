@@ -95,6 +95,7 @@ struct bt_bass_remove_src_params {
 
 typedef void (*bt_bass_func_t)(struct bt_bass *bass, void *user_data);
 typedef void (*bt_bass_destroy_func_t)(void *user_data);
+typedef void (*bt_bass_ready_func_t)(struct bt_bass *bass, void *user_data);
 typedef void (*bt_bass_debug_func_t)(const char *str, void *user_data);
 typedef void (*bt_bass_src_func_t)(uint8_t id, uint32_t bid, uint8_t enc,
 				   uint8_t state, uint32_t bis_sync,
@@ -116,6 +117,11 @@ bool bt_bass_set_user_data(struct bt_bass *bass, void *user_data);
 struct bt_bass *bt_bass_ref(struct bt_bass *bass);
 void bt_bass_unref(struct bt_bass *bass);
 bool bt_bass_attach(struct bt_bass *bass, struct bt_gatt_client *client);
+
+unsigned int bt_bass_ready_register(struct bt_bass *bass,
+				bt_bass_ready_func_t func, void *user_data,
+				bt_bass_destroy_func_t destroy);
+bool bt_bass_ready_unregister(struct bt_bass *bass, unsigned int id);
 bool bt_bass_set_att(struct bt_bass *bass, struct bt_att *att);
 void bt_bass_detach(struct bt_bass *bass);
 void bt_bass_add_db(struct gatt_db *db, const bdaddr_t *adapter_bdaddr);
