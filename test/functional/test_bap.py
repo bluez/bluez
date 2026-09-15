@@ -4,6 +4,7 @@
 Tests for BAP (LE Audio) using bluetoothctl in VM instances
 """
 
+import re
 import warnings
 
 import pytest
@@ -78,8 +79,18 @@ def script(name):
 
 def start_bluetoothctl(host, init_script):
     exe = find_exe("client", "bluetoothctl")
-    # -a auto: accept pairing and authorize services without prompting
-    ctl = host.pexpect.spawn([exe, "-a", "auto", "--init-script", script(init_script)])
+    # Accept pairing and authorize services without prompting, with a
+    # capability pairing Just Works, as there is no one to answer the
+    # entry of a passkey
+    ctl = host.pexpect.spawn(
+        [
+            exe,
+            "-a",
+            "auto:NoInputNoOutput",
+            "--init-script",
+            script(init_script),
+        ]
+    )
     ctl.expect("Endpoint /local/endpoint/ep0 registered")
     return ctl
 
@@ -99,9 +110,68 @@ def pair_le(host0, ctl0, host1, ctl1, advertise=True, services=False):
     if services:
         pending.append(f"Device {host1.bdaddr.upper()} ServicesResolved: yes")
 
+    pair_wait(ctl0, ctl1, pending)
+
+    ctl0.send("scan off\n")
+
+
+# Transport of the remote PAC Sink endpoint of a device
+TRANSPORT = r"Transport (/org/bluez/hci0/dev_{}/pac_sink\d+/fd\d+)"
+
+# What a command reports is printed as it runs, unlike what the peers
+# report over the air, so waiting the default timeout for it only makes
+# a failure slower
+REPLY_TIMEOUT = 5
+
+
+def list_transports(ctl0, hosts):
+    """
+    List the transports already available for the given hosts, giving
+    None for those that are not.
+
+    The listing has no end of its own, so a command with a known output
+    is issued after it to tell when everything has been listed.
+    """
+    patterns = [TRANSPORT.format(dev_addr(host)) for host in hosts]
+
+    ctl0.send("transport.list\nversion\n")
+
+    transports = [None] * len(patterns)
+
+    while True:
+        idx, m = ctl0.expect([r"Version \d"] + patterns, timeout=REPLY_TIMEOUT)
+        if not idx:
+            return transports
+
+        transports[idx - 1] = m[0].decode("utf-8")
+
+
+def remove_device(ctl0, host):
+    """
+    Remove the given host, so the test starts from a state where it is
+    neither paired nor connected.
+    """
+    addr = host.bdaddr.upper()
+
+    ctl0.send(f"remove {addr}\n")
+
+    # Not matched with expect_all: a device that is not available is
+    # simply one with nothing to remove, not a failure
+    ctl0.expect(
+        rf"Device has been removed|Device {addr} not available",
+        timeout=REPLY_TIMEOUT,
+    )
+
+
+def pair_wait(ctl0, ctl1, pending):
+    """
+    Wait for the given events while answering the pairing requests.
+    """
     # See test_bluetoothctl_pair_le: passkey confirmation is handled by
     # the auto agent, but legacy passkey entry still needs an answer
     legacy = r"\[agent\].*Passkey:.*m(\d+)"
+
+    pending = list(pending)
 
     while pending:
         idx, m = ctl0.expect(FAILURES + [legacy] + pending)
@@ -122,8 +192,6 @@ def pair_le(host0, ctl0, host1, ctl1, advertise=True, services=False):
             continue
 
         pending.pop(idx - 1)
-
-    ctl0.send("scan off\n")
 
 
 unicast_host_config = host_config(
@@ -336,4 +404,157 @@ def test_bass_past_transport_acquire(hosts):
             f"Transport {transport} State: broadcasting",
             f"Transport {transport} State: active",
         ],
+    )
+
+
+# Key shared by the members of the set, see [CSIS] in main.conf
+SIRK = "861FAE703ED681F0C50B34155B6434FB"
+
+# A set is exposed under the SIRK of its members, in reverse byte order
+SET_PATH = "set_" + bytes.fromhex(SIRK)[::-1].hex()
+
+
+def csip_conf(rank):
+    """
+    Configuration of a member of a coordinated set: the key and the size
+    describe the set, so they are the same for every member, while the
+    rank identifies the member within it.
+    """
+    return BAP_CONF + f"""
+[CSIS]
+SIRK = {SIRK}
+Encryption = true
+Size = 2
+Rank = {rank}
+"""
+
+
+set_host_config = host_config(
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+    [Bluetoothd(conf=csip_conf(1)), Pexpect()],
+    [Bluetoothd(conf=csip_conf(2)), Pexpect()],
+)
+
+
+@pytest.fixture
+def set_hosts(hosts):
+    """
+    Initiator (host0) and two acceptors forming a coordinated set, one
+    taking the left channel (host1) and one the right (host2), paired
+    over LE.
+    """
+    host0, host1, host2 = hosts
+
+    initiator = start_bluetoothctl(host0, "bap-source-lc3.bt")
+    left = start_bluetoothctl(host1, "bap-sink-lc3-left.bt")
+    right = start_bluetoothctl(host2, "bap-sink-lc3-right.bt")
+
+    # Every member has to be advertising before connecting, so the set
+    # can be resolved and the remaining members found. The acceptors
+    # advertise themselves, as they have to include the RSI.
+    #
+    # Matched before anything else is read from them, as an expect
+    # discards everything before what it matches.
+    left.expect("Advertising object registered", timeout=REPLY_TIMEOUT)
+    right.expect("Advertising object registered", timeout=REPLY_TIMEOUT)
+
+    # A previous test may have left everything in place, in which case
+    # there is nothing to set up and the transports are used as they
+    # are
+    transports = list_transports(initiator, (host1, host2))
+
+    if all(transports):
+        yield host0, host1, host2, initiator, left, right, transports
+        return
+
+    # Otherwise the setup starts from a clean state: a device kept from
+    # a previous test would already be paired, connected and part of
+    # the set, so none of the events waited for below would be
+    # reported again
+    remove_device(initiator, host1)
+    remove_device(initiator, host2)
+    remove_device(left, host0)
+    remove_device(right, host0)
+
+    initiator.send("scan on\n")
+    initiator.expect(
+        f"Controller {host0.bdaddr.upper()} Discovering: yes",
+        timeout=REPLY_TIMEOUT,
+    )
+
+    # Connect only once every member has been found: the set is resolved
+    # from the RSI of the members that are already known, so a member
+    # found later would not be part of it
+    expect_all(
+        initiator,
+        [
+            f"Device {host1.bdaddr.upper()}",
+            f"Device {host2.bdaddr.upper()}",
+        ],
+    )
+
+    # Stop scanning before connecting, so the discovery does not
+    # interfere with the connections to the members
+    initiator.send("scan off\n")
+    initiator.expect(
+        f"Controller {host0.bdaddr.upper()} Discovering: no",
+        timeout=REPLY_TIMEOUT,
+    )
+
+    initiator.send(f"pair {host1.bdaddr.upper()}\n")
+
+    # Finding a member of a set connects the remaining ones, so the
+    # other member is neither connected nor paired by the test: it is
+    # bonded as reading its services requires an encrypted link, which
+    # is what is waited for. Its connection is not, as the link of a
+    # previous test may still be up, in which case the device is
+    # reported as connected from the start and never changes.
+    #
+    # The streams are configured by the daemon, so the transports are
+    # created without the test configuring the endpoints.
+    #
+    # The two members report independently, so their events interleave
+    # and have to be matched in any order, in a single pass including
+    # the pairing: an expect only reports what it matches and discards
+    # everything before it, so waiting for one event at a time drops
+    # the ones that happen meanwhile, e.g. a transport created while
+    # the pairing is still being waited for.
+    groups = expect_all(
+        initiator,
+        [
+            "Pairing successful",
+            f"DeviceSet /org/bluez/hci0/{SET_PATH}",
+            f"Device {host2.bdaddr.upper()} Bonded: yes",
+            TRANSPORT.format(dev_addr(host1)),
+            TRANSPORT.format(dev_addr(host2)),
+        ],
+    )
+
+    transports = [m[0].decode("utf-8") for m in groups[-2:]]
+
+    yield host0, host1, host2, initiator, left, right, transports
+
+
+@set_host_config
+def test_bap_unicast_set_transport_created(set_hosts):
+    host0, host1, host2, initiator, left, right, transports = set_hosts
+
+    # One transport per member, each taking a single channel
+    left.expect(TRANSPORT_RE)
+    right.expect(TRANSPORT_RE)
+
+
+@set_host_config
+def test_bap_unicast_set_transport_acquire(set_hosts):
+    host0, host1, host2, initiator, left, right, transports = set_hosts
+
+    # The CIS of a CIG are only created once every one of them is
+    # active, so the transports of both members have to be acquired
+    initiator.send("transport.acquire {} {}\n".format(*transports))
+
+    acquired = r"Acquire successful: fd \d+ MTU \d+:\d+"
+    expect_all(
+        initiator,
+        [acquired, acquired]
+        + [f"Transport {transport} State: active" for transport in transports],
     )

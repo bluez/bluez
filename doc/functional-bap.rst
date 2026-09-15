@@ -316,6 +316,9 @@ each side, so the initiator has to discover both before it can stream:
 	both acceptors share the same SIRK, so they are resolved into a
 	single set, and one CIS per member carries its channel
 
+	connecting one member connects the rest of the set, so the
+	initiator only connects once
+
 	--> connection is initiated by      ==> audio flows towards
 
 The acceptors run `bluetoothd` with the same SIRK, so the initiator
@@ -356,24 +359,30 @@ test_bap_unicast_set_transport_created
 
 :Steps:
 	1. Start `bluetoothctl` with the scripts on the three hosts.
-	2. Pair the initiator with each acceptor over LE.
-	3. Initiator: ``endpoint.config <remote endpoint>
-	   /local/endpoint/ep0 16_2_1``, for the remote PAC Sink endpoint
-	   of each member.
+	2. Pair the initiator with one of the acceptors over LE.
 
 :Expected:
 	1. ``Endpoint /local/endpoint/ep0 registered`` on the three hosts.
-	2. ``Pairing successful`` for both, and the members are resolved
-	   into a single set, reported as
-	   ``[NEW] DeviceSet /org/bluez/hci0/set_<sirk>`` listing both
-	   devices.
+	2. ``Pairing successful``, the members are resolved into a single
+	   set, reported as
+	   ``[NEW] DeviceSet /org/bluez/hci0/set_<sirk>``, and the other
+	   member is bonded on its own, without the initiator connecting
+	   or pairing it.
 	3. A transport is created for each member, one per channel, i.e.
 	   one for the Front Left endpoint and one for the Front Right
 	   one.
 
-:Notes: Without the same SIRK, or without the RSI in the advertising,
-	the members are not resolved into a set and each is streamed to
-	on its own, which is not what this test covers.
+	The endpoints are not configured by the test: the daemon
+	configures a stream for them on its own, and configuring them
+	again would add a CIS to the CIG for every extra configuration.
+
+:Notes: Only one member is connected: finding a member of a set
+	triggers connecting the remaining ones, so a single
+	**org.bluez.Device(5)** ``Connect`` covers the whole set.
+
+	Without the same SIRK, or without the RSI in the advertising, the
+	members are not resolved into a set, each is connected on its own
+	and the set behaviour this test covers does not happen.
 
 test_bap_unicast_set_transport_acquire
 --------------------------------------
@@ -386,6 +395,7 @@ test_bap_unicast_set_transport_acquire
 :Expected: ``Acquire successful: fd <fd> MTU <read>:<write>`` for each
 	transport, and both move to ``State: active``.
 
-:Notes: As for a stereo stream to a single acceptor, the CIS are only
-	created once every CIS of the CIG is ready, so the transports of
-	both members have to be acquired.
+:Notes: As for a stereo stream to a single acceptor, the CIS of a CIG
+	are only created once every one of them is active, so the
+	transports of both members have to be acquired: acquiring only
+	one leaves the group incomplete and no CIS is created at all.
