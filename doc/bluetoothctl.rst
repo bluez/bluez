@@ -301,11 +301,15 @@ for pairing and allows you to choose the IO capabilities of the controller.
 The valid agent capabilities are: DisplayOnly, DisplayYesNo, KeyboardDisplay,
 KeyboardOnly, NoInputNoOutput.
 
-:Usage: **> agent <on/off/auto/capability>**
+:Usage: **> agent <on/off/auto[:capability]/capability>**
 :Uses: **org.bluez.AgentManager(5)** method **RegisterAgent**
 :<on/off/auto/capability>: Agent mode - "on", "off", "auto", or capability type (DisplayOnly, DisplayYesNo, KeyboardDisplay, KeyboardOnly, NoInputNoOutput) (required)
 :Example Enable agent with default capability:
 	| **> agent on**
+:Example Enable agent answering automatically, only for test automation:
+	| **> agent auto**
+:Example Enable agent answering automatically with the given capability:
+	| **> agent auto:NoInputNoOutput**
 :Example Disable agent:
 	| **> agent off**
 :Example Enable agent that can only display pairing codes:

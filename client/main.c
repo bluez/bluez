@@ -1416,9 +1416,17 @@ static void cmd_agent(int argc, char *argv[])
 	dbus_bool_t enable;
 	const char *capability;
 
-	if (!parse_argument(argc, argv, agent_arguments, "capability",
-						&enable, &capability))
+	/* The capability of the auto response is given after a colon,
+	 * e.g. auto:NoInputNoOutput, so it cannot be looked up in the
+	 * list of arguments.
+	 */
+	if (argc > 1 && !strncasecmp(argv[1], "auto:", 5)) {
+		enable = TRUE;
+		capability = argv[1];
+	} else if (!parse_argument(argc, argv, agent_arguments, "capability",
+						&enable, &capability)) {
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
 
 	if (enable == TRUE) {
 		g_free(auto_register_agent);
@@ -4034,7 +4042,7 @@ static const struct bt_shell_menu main_menu = {
 							NULL },
 	{ "discoverable-timeout", "[value]", cmd_discoverable_timeout,
 					"Set discoverable timeout", NULL },
-	{ "agent",        "<on/off/auto/capability>", cmd_agent,
+	{ "agent",        "<on/off/auto[:capability]/capability>", cmd_agent,
 				"Enable/disable agent with given capability",
 							capability_generator},
 	{ "default-agent",NULL,       cmd_default_agent,
