@@ -107,6 +107,20 @@ The following additional options apply:
 ``--force-usb``
         Force tests to use USB controllers instead of `btvirt`.
 
+``--pcie=hci0,hci1``
+        PCIe controllers to use in tests that require use of
+	real controllers.
+
+	If not provided, value from `FUNCTIONAL_TESTING_CONTROLLERS`
+	environment variable is used. If none, all PCIe controllers
+	are considered.
+
+	Passing a PCIe controller through binds it to vfio-pci for
+	the time a VM host uses it, which requires running as root.
+
+``--force-pcie``
+        Force tests to use PCIe controllers instead of `btvirt`.
+
 ``--bluez-build-dir=<path>``
         Path to build directory where to search for BlueZ
         executables.
@@ -139,7 +153,7 @@ The following additional options apply:
         Git branch to build from.
 
 
-Tests that require kernel image or USB controllers are skipped if none
+Tests that require kernel image or real controllers are skipped if none
 are available. Normally, tests use `btvirt`.
 
 VM instances share a directory ``/run/shared`` with host machine,
@@ -224,10 +238,10 @@ socket, also bridging the air interface between them::
 
 See **test-runner(1)** for how the socket is attached to the VM.
 
-With ``--usb`` the ``btvirt`` process is not started; each VM host gets a
-real USB controller passed through instead, and the VMs talk over the
-actual radio.  Tests still prefer ``btvirt`` unless ``--force-usb`` is
-given.
+With ``--usb`` or ``--pcie`` the ``btvirt`` process is not started; each
+VM host gets a real USB or PCIe controller passed through instead, and the
+VMs talk over the actual radio.  Tests still prefer ``btvirt`` unless
+``--force-usb`` or ``--force-pcie`` is given.
 
 Writing test code that runs in the VM, and the available VM-side
 facilities, are documented by `pytest-bluezenv
@@ -305,6 +319,17 @@ USB
 ---
 
 Some tests may require a hardware controller instead of the virtual `btvirt` one.
+
+PCIe
+----
+
+A PCIe controller may be used instead of a USB one. It is bound to
+vfio-pci for the time a VM host uses it, and bound back to its own
+driver afterwards, which requires running the tests as root.
+
+The IOMMU has to be enabled on the host, and the controller has to be
+alone in its IOMMU group. See **test-runner(1)** for the kernel config
+the passed through controller needs.
 
 EXAMPLES
 ========
@@ -421,6 +446,22 @@ possible.  To force all tests use the USB controllers:
 .. code-block::
 
 	$ test/test-functional --usb=hci0,hci1 --force-usb
+
+Redirect PCIe devices
+---------------------
+
+.. code-block::
+
+	$ sudo test/test-functional --pcie=hci0,hci1
+
+Unlike USB controllers, this requires running as root, as the controller
+is bound to vfio-pci while a VM host uses it.
+
+To force all tests use the PCIe controllers:
+
+.. code-block::
+
+	$ sudo test/test-functional --pcie=hci0,hci1 --force-pcie
 
 Run tests in parallel
 ---------------------
