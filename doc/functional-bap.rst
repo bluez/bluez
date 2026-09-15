@@ -288,3 +288,104 @@ test_bass_past_transport_acquire
 	The stream is verified on the delegator rather than through the
 	state of the MediaAssistant object, as an object created for a
 	local stream stays in the ``local`` state.
+
+COORDINATED SET
+===============
+
+Three hosts, with the two acceptors forming a coordinated set, one for
+each side, so the initiator has to discover both before it can stream:
+
+.. code-block::
+
+	+------------------------+                 +------------------------+
+	| host1                  |      LE ACL     | host0                  |
+	| acceptor, left         | <-------------- | initiator (central)    |
+	| bluetoothctl -a auto   |                 | bluetoothctl -a auto   |
+	| bap-sink-lc3-left.bt   |  CIS 0x00 (LC3) | bap-source-lc3.bt      |
+	| PAC Sink, Front Left   | <============== | PAC Source endpoint    |
+	+------------------------+                 |                        |
+	                                           |                        |
+	+------------------------+      LE ACL     |                        |
+	| host2                  | <-------------- |                        |
+	| acceptor, right        |                 |                        |
+	| bluetoothctl -a auto   |  CIS 0x01 (LC3) |                        |
+	| bap-sink-lc3-right.bt  | <============== |                        |
+	| PAC Sink, Front Right  |                 |                        |
+	+------------------------+                 +------------------------+
+
+	both acceptors share the same SIRK, so they are resolved into a
+	single set, and one CIS per member carries its channel
+
+	--> connection is initiated by      ==> audio flows towards
+
+The acceptors run `bluetoothd` with the same SIRK, so the initiator
+resolves them into one set:
+
+.. code-block::
+
+	[CSIS]
+	SIRK = 861FAE703ED681F0C50B34155B6434FB
+	Size = 2
+	Rank = 1
+
+``Rank`` differs per member, 1 for the left and 2 for the right one,
+while ``SIRK`` and ``Size`` are the same, as they describe the set.
+
+Each acceptor also has to include the RSI in its advertising, with
+``advertise.rsi on``, otherwise the initiator cannot tell the two are
+members of the same set, and the resolved set does not appear as a
+**org.bluez.DeviceSet(5)** object.
+
+``client/scripts/bap-sink-lc3-left.bt`` on host1
+	Registers a local PAC Sink endpoint
+	(``00002bc9-0000-1000-8000-00805f9b34fb``) with LC3 and Front Left
+	as its only location, and advertises with the RSI.
+
+``client/scripts/bap-sink-lc3-right.bt`` on host2
+	As above, with Front Right as its only location.
+
+Each acceptor takes a single channel, unlike the stereo unicast case
+where one acceptor takes both: registering exactly one location makes
+`bluetoothctl` add the channel count to the capabilities, so a member
+is only ever configured for its own channel.
+
+test_bap_unicast_set_transport_created
+--------------------------------------
+
+:Setup: As above.
+
+:Steps:
+	1. Start `bluetoothctl` with the scripts on the three hosts.
+	2. Pair the initiator with each acceptor over LE.
+	3. Initiator: ``endpoint.config <remote endpoint>
+	   /local/endpoint/ep0 16_2_1``, for the remote PAC Sink endpoint
+	   of each member.
+
+:Expected:
+	1. ``Endpoint /local/endpoint/ep0 registered`` on the three hosts.
+	2. ``Pairing successful`` for both, and the members are resolved
+	   into a single set, reported as
+	   ``[NEW] DeviceSet /org/bluez/hci0/set_<sirk>`` listing both
+	   devices.
+	3. A transport is created for each member, one per channel, i.e.
+	   one for the Front Left endpoint and one for the Front Right
+	   one.
+
+:Notes: Without the same SIRK, or without the RSI in the advertising,
+	the members are not resolved into a set and each is streamed to
+	on its own, which is not what this test covers.
+
+test_bap_unicast_set_transport_acquire
+--------------------------------------
+
+:Setup: As above, with the transports already created.
+
+:Steps: Initiator: ``transport.acquire <left> <right>``, for the
+	transports of both members.
+
+:Expected: ``Acquire successful: fd <fd> MTU <read>:<write>`` for each
+	transport, and both move to ``State: active``.
+
+:Notes: As for a stereo stream to a single acceptor, the CIS are only
+	created once every CIS of the CIG is ready, so the transports of
+	both members have to be acquired.
