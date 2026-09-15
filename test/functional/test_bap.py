@@ -32,16 +32,32 @@ def dev_addr(host):
     return host.bdaddr.upper().replace(":", "_")
 
 
-def expect_all(ctl, patterns):
+# Reported when an operation cannot complete, so a test does not have to
+# wait for its timeout to know it is not going to
+FAILURES = [
+    r"(Failed to \w+[^\r\n]*)",
+    r"(Device \S+ not available)",
+]
+
+
+def expect_all(ctl, patterns, failures=FAILURES):
     """
     Expect all the given patterns, in any order, returning the groups
     each of them matched.
+
+    Fail as soon as one of the failures shows up, e.g. a request that
+    was rejected, instead of waiting for the timeout.
     """
     pending = list(enumerate(patterns))
     groups = [None] * len(patterns)
 
     while pending:
-        idx, m = ctl.expect([pattern for _, pattern in pending])
+        idx, m = ctl.expect(list(failures) + [pattern for _, pattern in pending])
+
+        if idx < len(failures):
+            raise AssertionError(m[0].decode("utf-8") if m else "failed")
+
+        idx -= len(failures)
         groups[pending[idx][0]] = m
         pending.pop(idx)
 
@@ -88,7 +104,12 @@ def pair_le(host0, ctl0, host1, ctl1, advertise=True, services=False):
     legacy = r"\[agent\].*Passkey:.*m(\d+)"
 
     while pending:
-        idx, m = ctl0.expect([legacy] + pending)
+        idx, m = ctl0.expect(FAILURES + [legacy] + pending)
+
+        if idx < len(FAILURES):
+            raise AssertionError(m[0].decode("utf-8") if m else "failed")
+
+        idx -= len(FAILURES)
 
         if idx == 0:
             warnings.warn(
