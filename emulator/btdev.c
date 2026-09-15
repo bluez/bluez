@@ -40,7 +40,10 @@
 
 #define AL_SIZE			16
 #define RL_SIZE			16
-#define CIS_SIZE		3
+/* Maximum number of CIS of a CIG, as the Num_CIS of LE Set CIG
+ * Parameters ranges from 0x00 to 0x1f
+ */
+#define CIS_SIZE		31
 #define BIS_SIZE		3
 #define CIG_SIZE		3
 
