@@ -2087,7 +2087,12 @@ static void init_complete(struct discovery_op *op, bool success,
 		goto done;
 
 	DBG(client, "Failed to register handler for \"Service Changed\"");
-	success = false;
+
+	/* Discovery continues even without service changed being registered,
+	 * some peripherals expose it without notify/indicate properties.
+	 */
+	success = true;
+	goto done;
 
 fail:
 	DBG(client, "Failed to initialize gatt-client");
