@@ -82,6 +82,11 @@ struct test_data {
 	size_t iovcnt;
 	struct iovec *iov;
 	int fds[8][2];
+	unsigned int metadata_config_count;
+	struct bt_bap_stream *metadata_stream;
+	bool metadata_reused;
+	bool metadata_config_replied;
+	unsigned int metadata_qos_id;
 };
 
 struct notify {
@@ -4215,6 +4220,129 @@ static void test_scc_release(void)
 	test_usr_scc_release();
 }
 
+static bool metadata_reuse_pac(struct bt_bap_pac *lpac,
+				struct bt_bap_pac *rpac, void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bt_bap_stream *stream;
+
+	stream = bt_bap_stream_new(data->bap, lpac, rpac, &data->cfg->qos,
+							&data->cfg->cc);
+	g_assert(stream == data->metadata_stream);
+	data->metadata_reused = true;
+
+	return false;
+}
+
+static void metadata_config_response(struct bt_bap_stream *stream,
+					uint8_t code, uint8_t reason,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	unsigned int id;
+
+	g_assert_cmpuint(code, ==, 0);
+	g_assert_cmpuint(reason, ==, 0);
+	g_assert_cmpuint(data->metadata_config_count, ==, 1);
+
+	/* A successful CP response has not confirmed the new ASE status. */
+	id = bt_bap_stream_qos(stream, &data->cfg->qos, bap_qos, data);
+	g_assert_cmpuint(id, ==, 0);
+	data->metadata_config_replied = true;
+}
+
+/* Local metadata must not replace the peer's Codec Configured notification. */
+static void state_cc_metadata(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	uint8_t value[] = { 0x03, 0x02, 0x02, 0x00 };
+	struct iovec metadata = {
+		.iov_base = value,
+		.iov_len = sizeof(value),
+	};
+	struct iovec *cached;
+	unsigned int id;
+
+	if (new_state == BT_BAP_STREAM_STATE_QOS) {
+		g_assert_cmpuint(data->metadata_config_count, ==, 2);
+		g_assert(data->metadata_config_replied);
+		g_assert(data->metadata_qos_id);
+		id = bt_bap_stream_release(stream, bap_release, data);
+		g_assert(id);
+		return;
+	}
+
+	if (new_state != BT_BAP_STREAM_STATE_CONFIG)
+		return;
+
+	data->metadata_config_count++;
+
+	if (data->metadata_config_count == 2) {
+		/* The peer notification makes the reused stream QoS-ready. */
+		g_assert_cmpuint(old_state, ==, BT_BAP_STREAM_STATE_CONFIG);
+		id = bt_bap_stream_qos(stream, &data->cfg->qos, bap_qos, data);
+		g_assert(id);
+		g_assert(data->metadata_config_replied);
+		data->metadata_qos_id = id;
+		return;
+	}
+
+	g_assert_cmpuint(data->metadata_config_count, ==, 1);
+
+	/* Reuse the actual configured ASE, setting internal need_reconfig. */
+	data->metadata_stream = stream;
+	bt_bap_foreach_pac(data->bap, bt_bap_stream_get_dir(stream),
+						metadata_reuse_pac, data);
+	g_assert(data->metadata_reused);
+	id = bt_bap_stream_qos(stream, &data->cfg->qos, bap_qos, data);
+	g_assert_cmpuint(id, ==, 0);
+
+	id = bt_bap_stream_config(stream, &data->cfg->qos, &data->cfg->cc,
+						metadata_config_response, data);
+	g_assert(id);
+
+	id = bt_bap_stream_metadata(stream, &metadata, NULL, NULL);
+	g_assert_cmpuint(id, ==, 0);
+	g_assert_cmpuint(data->metadata_config_count, ==, 1);
+
+	cached = bt_bap_stream_get_metadata(stream);
+	g_assert(cached);
+	g_assert_cmpuint(cached->iov_len, ==, metadata.iov_len);
+	g_assert(!memcmp(cached->iov_base, value, sizeof(value)));
+}
+
+static struct test_config cfg_snk_cc_metadata = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.state_func = state_cc_metadata,
+};
+
+static struct test_config cfg_src_cc_metadata = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.src = true,
+	.state_func = state_cc_metadata,
+};
+
+#define SCC_SNK_CC_METADATA \
+	SCC_SNK_16_2, \
+	SCC_SNK(LC3_CODEC_ID_DATA, 0x0a, 0x02, 0x01, 0x03, 0x02, 0x02, \
+			0x01, 0x03, 0x04, 0x28, 0x00), \
+	QOS_SNK(0x10, 0x27, 0x00, 0x00, 0x02, 0x28, 0x00, 0x02, 0x0a, 0x00, \
+		0x40, 0x9c, 0x00), \
+	ASE_SNK_RELEASE
+
+#define SCC_SRC_CC_METADATA \
+	SCC_SRC_16_2, \
+	SCC_SRC(LC3_CODEC_ID_DATA, 0x0a, 0x02, 0x01, 0x03, 0x02, 0x02, \
+			0x01, 0x03, 0x04, 0x28, 0x00), \
+	QOS_SRC(0x10, 0x27, 0x00, 0x00, 0x02, 0x28, 0x00, 0x02, 0x0a, 0x00, \
+		0x40, 0x9c, 0x00), \
+	ASE_SRC_RELEASE
+
 static void bap_metadata(struct bt_bap_stream *stream,
 					uint8_t code, uint8_t reason,
 					void *user_data)
@@ -4341,6 +4469,12 @@ static struct test_config cfg_src_metadata_streaming = {
  */
 static void test_ucl_scc_metadata(void)
 {
+	define_test("BAP/UCL/SCC/Metadata-Configured-Sink",
+			test_setup, test_client, &cfg_snk_cc_metadata,
+			SCC_SNK_CC_METADATA);
+	define_test("BAP/UCL/SCC/Metadata-Configured-Source",
+			test_setup, test_client, &cfg_src_cc_metadata,
+			SCC_SRC_CC_METADATA);
 	define_test("BAP/UCL/SCC/BV-115-C [UCL SNK Update Metadata in Enabling "
 			"State]",
 			test_setup, test_client, &cfg_src_metadata,
