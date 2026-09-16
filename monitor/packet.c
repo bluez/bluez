@@ -3339,6 +3339,7 @@ static const struct bitfield_data events_page2_table[] = {
 	{ 22, "Inquiry Response Notification"				},
 	{ 23, "Authenticated Payload Timeout Expired"			},
 	{ 24, "SAM Status Change"					},
+	{ 25, "Encryption Change [v2]"					},
 	{ }
 };
 
