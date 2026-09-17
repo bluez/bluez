@@ -67,17 +67,14 @@ test_bap_unicast_transport_created
 	1. Start `bluetoothctl` with the scripts on both hosts.
 	2. Pair over LE: ``scan on`` on the initiator, ``advertise on`` on
 	   the acceptor, then ``pair``.
-	3. Initiator: ``endpoint.config <remote endpoint>
-	   /local/endpoint/ep0 16_2_1``, using the remote PAC Sink endpoint
-	   exposed once the services are resolved.
+	3. Wait for automatic stream configuration through the registered
+	   endpoint's ``SelectProperties`` method.
 	4. Initiator: ``transport.show <transport>`` for each transport.
 
 :Expected:
 	1. ``Endpoint /local/endpoint/ep0 registered`` on both hosts.
 	2. ``Pairing successful``.
-	3. The remote endpoint appears as
-	   ``Endpoint /org/bluez/hci0/dev_XX/pac_sinkN``, and configuring it
-	   creates one transport per location on *both* hosts.
+	3. One transport per location is created on *both* hosts.
 	4. Each transport of the initiator reports the local PAC Source
 	   UUID (``00002bcb-...``), ``Codec: 0x06`` for LC3, ``Device:``
 	   pointing at the acceptor device object, and ``State: idle``.
@@ -107,6 +104,35 @@ test_bap_unicast_transport_acquire
 	The acceptor does not have to acquire its transports for the CIS to
 	be established, as `bluetoothd` sets up the ISO listener on its own
 	when the stream is enabled.
+
+test_bap_unicast_reconfigure_metadata[empty|media]
+------------------------------------------------
+
+:Setup: As above, with both transports already created and ATT MTU 64.
+
+:Steps:
+	1. Create two custom presets from the existing codec configurations
+	   and QoS, with empty or Media streaming-context metadata. Call
+	   ``MediaEndpoint1.ClearConfiguration`` on the remote endpoint.
+	2. Wait for completion and check that both old transports are gone.
+	3. Issue ``endpoint.config`` for both presets without waiting
+	   between requests.
+	4. Acquire both replacement transports.
+
+:Expected: Both configuration requests succeed. Two replacement transports
+	retain their codec configurations and the requested metadata. Both
+	acquisitions succeed and the transports become active.
+
+:Notes: MTU 64 meets BAP's minimum. It fits the two-ASE Codec Configuration
+	response and one Codec Configured notification together, but not the
+	second ASE notification. This exercises the interval in which the
+	initiator has received a successful response but is still waiting
+	for a fresh Configured state before starting QoS.
+
+	Release uses D-Bus directly: bluetoothctl has no command for
+	``ClearConfiguration``. This test covers the initiator's playback
+	streams; it does not exercise microphone streams or simultaneous
+	playback and capture.
 
 BROADCAST
 =========

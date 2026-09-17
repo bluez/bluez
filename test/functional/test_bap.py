@@ -4,13 +4,22 @@
 Tests for BAP (LE Audio) using bluetoothctl in VM instances
 """
 
-import re
+import threading
 import warnings
 
+import dbus
 import pytest
 
-from pytest_bluezenv import Bluetoothd, Pexpect, find_exe, host_config, run
-from pytest_bluezenv.utils import bluez_src_dir
+from pytest_bluezenv import (
+    Bluetoothd,
+    Pexpect,
+    find_exe,
+    get_dbus,
+    host_config,
+    mainloop_wrap,
+    run,
+)
+from pytest_bluezenv.utils import DEFAULT_TIMEOUT, bluez_src_dir
 
 pytestmark = [pytest.mark.vm]
 
@@ -23,8 +32,6 @@ Experimental = true
 KernelExperimental = true
 ControllerMode = le
 """
-
-PRESET = "16_2_1"
 
 TRANSPORT_RE = r"Transport (/org/bluez/\S+/fd\d+)"
 
@@ -214,12 +221,7 @@ def unicast_hosts(hosts):
 
     pair_le(host0, initiator, host1, acceptor)
 
-    # Remote PAC Sink endpoint is exposed once services are resolved
-    _, m = initiator.expect(r"Endpoint (/org/bluez/\S+/pac_sink\d+)")
-    remote = m[0].decode("utf-8")
-
-    initiator.send(f"endpoint.config {remote} /local/endpoint/ep0 {PRESET}\n")
-
+    # SelectProperties configures the streams automatically after pairing.
     yield host0, host1, initiator, acceptor
 
 
@@ -262,6 +264,122 @@ def test_bap_unicast_transport_acquire(unicast_hosts):
     # all the transports need to be acquired
     initiator.send(f"transport.acquire {left} {right}\n")
 
+    acquired = r"Acquire successful: fd \d+ MTU \d+:\d+"
+    expect_all(
+        initiator,
+        [
+            acquired,
+            acquired,
+            f"Transport {left} State: active",
+            f"Transport {right} State: active",
+        ],
+    )
+
+
+def clear_remote_transports(remote):
+    """Release the peer ASEs while retaining the connected GATT session."""
+    done = threading.Event()
+    errors = []
+
+    def failed(error):
+        errors.append(error)
+        done.set()
+
+    @mainloop_wrap
+    def clear():
+        dbus.Interface(
+            get_dbus().get_object("org.bluez", remote), "org.bluez.MediaEndpoint1"
+        ).ClearConfiguration(
+            dbus.ObjectPath(remote), reply_handler=done.set, error_handler=failed
+        )
+
+    clear()
+    assert done.wait(DEFAULT_TIMEOUT), "release did not complete"
+    if errors:
+        raise errors[0]
+
+
+@mainloop_wrap
+def remote_transport_properties(remote):
+    objects = dbus.Interface(
+        get_dbus().get_object("org.bluez", "/"),
+        "org.freedesktop.DBus.ObjectManager",
+    ).GetManagedObjects()
+    return {
+        str(path): props["org.bluez.MediaTransport1"]
+        for path, props in objects.items()
+        if path.startswith(remote + "/") and "org.bluez.MediaTransport1" in props
+    }
+
+
+def add_preset(ctl, name, props, metadata):
+    """Make a custom preset from a transport's codec configuration and QoS."""
+
+    def expect_reply(pattern):
+        failures = FAILURES + [r"(Invalid [^\r\n]*)", r"(No preset found)"]
+        idx, matches = ctl.expect(failures + [pattern], timeout=REPLY_TIMEOUT)
+        if idx < len(failures):
+            raise AssertionError(matches[0].decode("utf-8") if matches else "failed")
+
+    caps = " ".join(f"0x{byte:02x}" for byte in props["Configuration"])
+    meta = " ".join(f"0x{byte:02x}" for byte in metadata) or "no"
+    # dbus.Byte formats as a character unless converted to an ordinary int.
+    qos = {str(key): int(value) for key, value in props["QoS"].items()}
+    ctl.send(f'endpoint.presets /local/endpoint/ep0 {name} "{caps}"\n')
+    for prompt, value in [
+        ("Enter Target Latency", "Balance"),
+        ("Enter SDU Interval", qos["Interval"]),
+        ("Enter Framing", qos["Framing"]),
+        ("Enter PHY", qos["PHY"]),
+        ("Enter Max SDU", qos["SDU"]),
+        ("Enter RTN", qos["Retransmissions"]),
+        ("Enter Max Transport Latency", qos["Latency"]),
+        ("Enter Presentation Delay", qos["PresentationDelay"]),
+        ("Enter Metadata", meta),
+    ]:
+        expect_reply(prompt)
+        ctl.send(f"{value}\n")
+    ctl.send("version\n")
+    expect_reply(r"Version \d")
+
+
+# MTU 64 meets BAP's minimum and fits a two-ASE Codec Configuration response
+# with one Codec Configured notification, but not both ASE notifications.
+@host_config(
+    [Bluetoothd(conf=BAP_CONF + "\n[GATT]\nExchangeMTU = 64\n"), Pexpect()],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+)
+@pytest.mark.parametrize("metadata", [b"", b"\x03\x02\x04\x00"], ids=["empty", "media"])
+def test_bap_unicast_reconfigure_metadata(unicast_hosts, metadata):
+    host0, host1, initiator, acceptor = unicast_hosts
+    transports = expect_transports(initiator)
+    expect_transports(acceptor)
+    remote = transports[0].rsplit("/", 1)[0]
+    original = host0.call(remote_transport_properties, remote)
+    assert set(original) == set(transports)
+    presets = [f"metadata-{i}" for i in range(len(transports))]
+    for name, transport in zip(presets, transports):
+        add_preset(initiator, name, original[transport], metadata)
+
+    host0.call(clear_remote_transports, remote)
+    # Transport paths can be reused: check removal before recreating them.
+    assert not host0.call(remote_transport_properties, remote)
+
+    # PTY input permits both asynchronous requests without waiting for replies.
+    initiator.send(
+        "".join(
+            f"endpoint.config {remote} /local/endpoint/ep0 {name}\n" for name in presets
+        )
+    )
+    expect_all(initiator, [r"Endpoint /local/endpoint/ep0 configured"] * 2)
+    current = host0.call(remote_transport_properties, remote)
+    assert len(current) == len(original)
+    assert sorted(bytes(p["Configuration"]) for p in current.values()) == sorted(
+        bytes(p["Configuration"]) for p in original.values()
+    )
+    assert all(bytes(p["Metadata"]) == metadata for p in current.values())
+    left, right = sorted(current)
+    initiator.send(f"transport.acquire {left} {right}\n")
     acquired = r"Acquire successful: fd \d+ MTU \d+:\d+"
     expect_all(
         initiator,
