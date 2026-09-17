@@ -67,17 +67,14 @@ test_bap_unicast_transport_created
 	1. Start `bluetoothctl` with the scripts on both hosts.
 	2. Pair over LE: ``scan on`` on the initiator, ``advertise on`` on
 	   the acceptor, then ``pair``.
-	3. Initiator: ``endpoint.config <remote endpoint>
-	   /local/endpoint/ep0 16_2_1``, using the remote PAC Sink endpoint
-	   exposed once the services are resolved.
+	3. Wait for automatic stream configuration through the registered
+	   endpoint's ``SelectProperties`` method.
 	4. Initiator: ``transport.show <transport>`` for each transport.
 
 :Expected:
 	1. ``Endpoint /local/endpoint/ep0 registered`` on both hosts.
 	2. ``Pairing successful``.
-	3. The remote endpoint appears as
-	   ``Endpoint /org/bluez/hci0/dev_XX/pac_sinkN``, and configuring it
-	   creates one transport per location on *both* hosts.
+	3. One transport per location is created on *both* hosts.
 	4. Each transport of the initiator reports the local PAC Source
 	   UUID (``00002bcb-...``), ``Codec: 0x06`` for LC3, ``Device:``
 	   pointing at the acceptor device object, and ``State: idle``.
@@ -107,6 +104,30 @@ test_bap_unicast_transport_acquire
 	The acceptor does not have to acquire its transports for the CIS to
 	be established, as `bluetoothd` sets up the ISO listener on its own
 	when the stream is enabled.
+
+test_bap_unicast_reconfigure_metadata[empty|media]
+------------------------------------------------
+
+:Setup: As above, with the transports already created and ATT MTU 48.
+
+:Steps:
+	1. Call ``MediaEndpoint1.ClearConfiguration`` on the remote endpoint
+	   and wait for completion. The peer retains the codec configuration.
+	2. Call ``MediaEndpoint1.SetConfiguration`` with the previous codec
+	   configuration and QoS, and empty or Media streaming-context metadata.
+
+:Expected: Reconfiguration completes successfully after the fresh
+	Codec Configured notification. The same ASE is reused, and the new
+	transport retains the requested metadata.
+
+:Notes: MTU 48 fits each notification separately, but prevents the peer
+	from batching the Codec Configuration response and the fresh ASE
+	notification together. Nonempty metadata must not let the initiator
+	use the cached Configured state to start QoS prematurely.
+
+	Reconfiguration uses the D-Bus method directly because
+	``bluetoothctl endpoint.config`` does not pass metadata for unicast
+	presets.
 
 BROADCAST
 =========

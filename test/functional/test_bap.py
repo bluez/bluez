@@ -5,12 +5,21 @@ Tests for BAP (LE Audio) using bluetoothctl in VM instances
 """
 
 import re
+import threading
 import warnings
 
+import dbus
 import pytest
 
-from pytest_bluezenv import Bluetoothd, Pexpect, find_exe, host_config
-from pytest_bluezenv.utils import bluez_src_dir
+from pytest_bluezenv import (
+    Bluetoothd,
+    Pexpect,
+    find_exe,
+    get_dbus,
+    host_config,
+    mainloop_wrap,
+)
+from pytest_bluezenv.utils import DEFAULT_TIMEOUT, bluez_src_dir
 
 pytestmark = [pytest.mark.vm]
 
@@ -23,8 +32,6 @@ Experimental = true
 KernelExperimental = true
 ControllerMode = le
 """
-
-PRESET = "16_2_1"
 
 TRANSPORT_RE = r"Transport (/org/bluez/\S+/fd\d+)"
 
@@ -214,12 +221,7 @@ def unicast_hosts(hosts):
 
     pair_le(host0, initiator, host1, acceptor)
 
-    # Remote PAC Sink endpoint is exposed once services are resolved
-    _, m = initiator.expect(r"Endpoint (/org/bluez/\S+/pac_sink\d+)")
-    remote = m[0].decode("utf-8")
-
-    initiator.send(f"endpoint.config {remote} /local/endpoint/ep0 {PRESET}\n")
-
+    # SelectProperties configures the streams automatically after pairing.
     yield host0, host1, initiator, acceptor
 
 
@@ -272,6 +274,87 @@ def test_bap_unicast_transport_acquire(unicast_hosts):
             f"Transport {right} State: active",
         ],
     )
+
+
+def reconfigure_transport(transport, metadata):
+    """Clear a configured stream and reuse its ASE with explicit metadata."""
+    done = threading.Event()
+    errors = []
+    remote = transport.rsplit("/", 1)[0]
+
+    def failed(error):
+        errors.append(error)
+        done.set()
+
+    @mainloop_wrap
+    def start():
+        bus = get_dbus()
+        props = dbus.Interface(
+            bus.get_object("org.bluez", transport),
+            "org.freedesktop.DBus.Properties",
+        ).GetAll("org.bluez.MediaTransport1")
+        endpoint = dbus.Interface(
+            bus.get_object("org.bluez", remote), "org.bluez.MediaEndpoint1"
+        )
+        qos = {k: v for k, v in props["QoS"].items() if k not in ("CIG", "CIS")}
+        qos["TargetLatency"] = dbus.Byte(2)
+        config = {
+            "Capabilities": props["Configuration"],
+            "QoS": dbus.Dictionary(qos, signature="sv"),
+            "Metadata": dbus.ByteArray(metadata),
+        }
+
+        def configure():
+            endpoint.SetConfiguration(
+                dbus.ObjectPath("/local/endpoint/ep0"),
+                dbus.Dictionary(config, signature="sv"),
+                reply_handler=done.set,
+                error_handler=failed,
+            )
+
+        # The reply waits for Release to return the peer ASE to CONFIG.
+        endpoint.ClearConfiguration(
+            dbus.ObjectPath(remote), reply_handler=configure, error_handler=failed
+        )
+
+    start()
+    assert done.wait(DEFAULT_TIMEOUT), "reconfiguration did not complete"
+    if errors:
+        raise errors[0]
+
+    @mainloop_wrap
+    def check_transport():
+        objects = dbus.Interface(
+            get_dbus().get_object("org.bluez", "/"),
+            "org.freedesktop.DBus.ObjectManager",
+        ).GetManagedObjects()
+        transports = [
+            interfaces["org.bluez.MediaTransport1"]
+            for path, interfaces in objects.items()
+            if path.startswith(remote + "/")
+            and "org.bluez.MediaTransport1" in interfaces
+        ]
+        assert len(transports) == 1
+        assert bytes(transports[0]["Metadata"]) == metadata
+
+    check_transport()
+
+
+# Fit each notification, but not both the Codec Configuration response and
+# Codec Configured state in one ATT Multiple Handle Value Notification.
+@host_config(
+    [Bluetoothd(conf=BAP_CONF + "\n[GATT]\nExchangeMTU = 48\n"), Pexpect()],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+)
+@pytest.mark.parametrize("metadata", [b"", b"\x03\x02\x04\x00"], ids=["empty", "media"])
+def test_bap_unicast_reconfigure_metadata(unicast_hosts, metadata):
+    host0, host1, initiator, acceptor = unicast_hosts
+    left, _ = expect_transports(initiator)
+    expect_transports(acceptor)
+
+    # endpoint.config currently omits Metadata for unicast presets. Exercise
+    # its D-Bus entry point directly, after bluetoothctl's initial setup.
+    host0.call(reconfigure_transport, left, metadata)
 
 
 # Broadcast code used by the broadcast scripts, see BCAST_CODE in
