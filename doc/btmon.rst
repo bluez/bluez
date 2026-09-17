@@ -639,7 +639,9 @@ separates the lines within one and would otherwise show as a blank line at
 the end of every entry.
 
 Nothing is separated unless it was asked for, so a pager reading lines,
-such as ``less``, is unaffected and never shows the separator.
+such as ``less``, is unaffected and never shows the separator. Redirected
+output is never separated either unless ``--print0`` says so, since nothing
+is then reading it as records.
 
 Searching a running capture
 ---------------------------
@@ -657,8 +659,17 @@ Whatever arrives while the pager is up is printed once it closes, so the
 trace on the terminal has no gap. The capture is never paused, as anything
 not read in time would be dropped by the kernel.
 
-The pager is taken from ``PAGER``, falling back to ``less``. Setting it to
-``cat`` or leaving it empty disables the pager, as elsewhere.
+The pager is taken from ``PAGER``. When that is not set and ``fzf`` is
+installed it is used instead of the plain pager, as it suits a trace far
+better. Wherever ``fzf`` is used it is given the options it needs, adding
+whichever of them are missing::
+
+   fzf --ansi --read0
+
+``--read0`` is what makes an entry a whole frame rather than a single line
+of one, and ``--ansi`` is what renders the colours instead of showing the
+escape sequences. Setting ``PAGER`` to ``cat`` or leaving it empty disables
+the pager, as elsewhere.
 
 Frames are only collected when the output is a terminal, so a capture that
 is piped or redirected behaves exactly as it always has. The terminal is
