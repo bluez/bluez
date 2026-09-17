@@ -2278,6 +2278,11 @@ static uint8_t stream_metadata(struct bt_bap_stream *stream, struct iovec *meta,
 	util_iov_free(stream->meta, 1);
 	stream->meta = util_iov_dup(meta, 1);
 
+	/* Local client metadata does not confirm the peer config. */
+	if (stream->client && bt_bap_stream_get_state(stream) ==
+					BT_BAP_STREAM_STATE_CONFIG)
+		return 0;
+
 	switch (bt_bap_stream_get_state(stream)) {
 	case BT_BAP_STREAM_STATE_IDLE:
 		/* Initial metadata */
