@@ -1049,16 +1049,16 @@ response:
 
 		print_field("%*cStringLength: 0x%02x", (indent - 8), ' ', len);
 
-		printf("String: ");
+		display_printf("String: ");
 		for (; len > 0; len--) {
 			uint8_t c;
 
 			if (!l2cap_frame_get_u8(frame, &c))
 				return false;
 
-			printf("%1c", isprint(c) ? c : '.');
+			display_printf("%1c", isprint(c) ? c : '.');
 		}
-		printf("\n");
+		display_printf("\n");
 	}
 
 	return true;
@@ -1125,16 +1125,16 @@ response:
 
 		print_field("%*cStringLength: 0x%02x", (indent - 8), ' ', len);
 
-		printf("String: ");
+		display_printf("String: ");
 		for (; len > 0; len--) {
 			uint8_t c;
 
 			if (!l2cap_frame_get_u8(frame, &c))
 				return false;
 
-			printf("%1c", isprint(c) ? c : '.');
+			display_printf("%1c", isprint(c) ? c : '.');
 		}
-		printf("\n");
+		display_printf("\n");
 	}
 
 	return true;
@@ -1405,16 +1405,16 @@ response:
 								' ', status);
 		switch (status) {
 		case 0x00:
-			printf("(POWER_ON)\n");
+			display_printf("(POWER_ON)\n");
 			break;
 		case 0x01:
-			printf("(POWER_OFF)\n");
+			display_printf("(POWER_OFF)\n");
 			break;
 		case 0x02:
-			printf("(UNPLUGGED)\n");
+			display_printf("(UNPLUGGED)\n");
 			break;
 		default:
-			printf("(UNKNOWN)\n");
+			display_printf("(UNKNOWN)\n");
 			break;
 		}
 		break;
@@ -1873,16 +1873,16 @@ static bool avrcp_media_player_item(struct avctp_frame *avctp_frame,
 	print_field("%*cPlayStatus: 0x%02x (%s)", indent, ' ',
 						status, playstatus2str(status));
 
-	printf("%*cFeatures: 0x", indent+8, ' ');
+	display_printf("%*cFeatures: 0x", indent+8, ' ');
 
 	for (i = 0; i < 16; i++) {
 		if (!l2cap_frame_get_u8(frame, &features[i]))
 			return false;
 
-		printf("%02x", features[i]);
+		display_printf("%02x", features[i]);
 	}
 
-	printf("\n");
+	display_printf("\n");
 
 	print_features(features, indent + 2);
 
@@ -1898,15 +1898,15 @@ static bool avrcp_media_player_item(struct avctp_frame *avctp_frame,
 	print_field("%*cNameLength: 0x%04x (%u)", indent, ' ',
 						namelen, namelen);
 
-	printf("%*cName: ", indent+8, ' ');
+	display_printf("%*cName: ", indent+8, ' ');
 	for (; namelen > 0; namelen--) {
 		uint8_t c;
 
 		if (!l2cap_frame_get_u8(frame, &c))
 			return false;
-		printf("%1c", isprint(c) ? c : '.');
+		display_printf("%1c", isprint(c) ? c : '.');
 	}
-	printf("\n");
+	display_printf("\n");
 
 	return true;
 }
@@ -1920,7 +1920,7 @@ static bool avrcp_folder_item(struct avctp_frame *avctp_frame,
 	uint64_t uid;
 
 	if (frame->size < 14) {
-		printf("PDU Malformed\n");
+		display_printf("PDU Malformed\n");
 		return false;
 	}
 
@@ -1954,15 +1954,15 @@ static bool avrcp_folder_item(struct avctp_frame *avctp_frame,
 	print_field("%*cNameLength: 0x%04x (%u)", indent, ' ',
 					namelen, namelen);
 
-	printf("%*cName: ", indent+8, ' ');
+	display_printf("%*cName: ", indent+8, ' ');
 	for (; namelen > 0; namelen--) {
 		uint8_t c;
 		if (!l2cap_frame_get_u8(frame, &c))
 			return false;
 
-		printf("%1c", isprint(c) ? c : '.');
+		display_printf("%1c", isprint(c) ? c : '.');
 	}
-	printf("\n");
+	display_printf("\n");
 
 	return true;
 }
@@ -1994,16 +1994,16 @@ static bool avrcp_attribute_entry_list(struct avctp_frame *avctp_frame,
 		print_field("%*cAttributeLength: 0x%04x (%u)", indent, ' ',
 						len, len);
 
-		printf("%*cAttributeValue: ", indent+8, ' ');
+		display_printf("%*cAttributeValue: ", indent+8, ' ');
 		for (; len > 0; len--) {
 			uint8_t c;
 
 			if (!l2cap_frame_get_u8(frame, &c))
 				return false;
 
-			printf("%1c", isprint(c) ? c : '.');
+			display_printf("%1c", isprint(c) ? c : '.');
 		}
-		printf("\n");
+		display_printf("\n");
 	}
 
 	return true;
@@ -2041,15 +2041,15 @@ static bool avrcp_media_element_item(struct avctp_frame *avctp_frame,
 	print_field("%*cNameLength: 0x%04x (%u)", indent, ' ',
 					namelen, namelen);
 
-	printf("%*cName: ", indent+8, ' ');
+	display_printf("%*cName: ", indent+8, ' ');
 	for (; namelen > 0; namelen--) {
 		uint8_t c;
 		if (!l2cap_frame_get_u8(frame, &c))
 			return false;
 
-		printf("%1c", isprint(c) ? c : '.');
+		display_printf("%1c", isprint(c) ? c : '.');
 	}
-	printf("\n");
+	display_printf("\n");
 
 	if (!l2cap_frame_get_u8(frame, &count))
 		return false;
@@ -2097,7 +2097,7 @@ static bool avrcp_get_total_number_of_items(struct avctp_frame *avctp_frame)
 		goto response;
 
 	if (frame->size < 4) {
-		printf("PDU Malformed\n");
+		display_printf("PDU Malformed\n");
 		packet_hexdump(frame->data, frame->size);
 		return false;
 	}
@@ -2146,7 +2146,7 @@ static bool avrcp_search_item(struct avctp_frame *avctp_frame)
 		goto response;
 
 	if (frame->size < 4) {
-		printf("PDU Malformed\n");
+		display_printf("PDU Malformed\n");
 		packet_hexdump(frame->data, frame->size);
 		return false;
 	}
@@ -2162,17 +2162,17 @@ static bool avrcp_search_item(struct avctp_frame *avctp_frame)
 
 	print_field("%*cLength: 0x%04x (%u)", indent, ' ', namelen, namelen);
 
-	printf("%*cString: ", indent+8, ' ');
+	display_printf("%*cString: ", indent+8, ' ');
 	for (; namelen > 0; namelen--) {
 		uint8_t c;
 
 		if (!l2cap_frame_get_u8(frame, &c))
 			return false;
 
-		printf("%1c", isprint(c) ? c : '.');
+		display_printf("%1c", isprint(c) ? c : '.');
 	}
 
-	printf("\n");
+	display_printf("\n");
 
 	return true;
 
@@ -2426,16 +2426,16 @@ response:
 			continue;
 		}
 
-		printf("%*cFolder: ", indent+8, ' ');
+		display_printf("%*cFolder: ", indent+8, ' ');
 		for (; len > 0; len--) {
 			uint8_t c;
 
 			if (!l2cap_frame_get_u8(frame, &c))
 				return false;
 
-			printf("%1c", isprint(c) ? c : '.');
+			display_printf("%1c", isprint(c) ? c : '.');
 		}
-		printf("\n");
+		display_printf("\n");
 	}
 
 	return true;

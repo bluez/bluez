@@ -44,10 +44,10 @@ static void signal_callback(int signum, void *user_data)
 
 static void usage(void)
 {
-	printf("btmon - Bluetooth monitor\n"
+	display_printf("btmon - Bluetooth monitor\n"
 		"Usage:\n");
-	printf("\tbtmon [options]\n");
-	printf("options:\n"
+	display_printf("\tbtmon [options]\n");
+	display_printf("options:\n"
 		"\t-r, --read <file>      Read traces in btsnoop format\n"
 		"\t-w, --write <file>     Save traces in btsnoop format\n"
 		"\t-a, --analyze <file>   Analyze traces in btsnoop format\n"
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 			lmp_todo();
 			return EXIT_SUCCESS;
 		case 'v':
-			printf("%s\n", VERSION);
+			display_printf("%s\n", VERSION);
 			return EXIT_SUCCESS;
 		case 'h':
 			usage();
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	printf("Bluetooth monitor ver %s\n", VERSION);
+	display_printf("Bluetooth monitor ver %s\n", VERSION);
 
 	keys_setup();
 
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (writer_path && !control_writer(writer_path)) {
-		printf("Failed to open '%s'\n", writer_path);
+		display_printf("Failed to open '%s'\n", writer_path);
 		return EXIT_FAILURE;
 	}
 
