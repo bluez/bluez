@@ -3797,15 +3797,20 @@ static void config_endpoint_setup(DBusMessageIter *iter, void *user_data)
 	append_properties(iter, cfg);
 }
 
+static void config_endpoint_free(struct endpoint_config *cfg)
+{
+	util_iov_free(cfg->caps, 1);
+	util_iov_free(cfg->meta, 1);
+	free(cfg);
+}
+
 static void config_endpoint_reply(DBusMessage *message, void *user_data)
 {
 	struct endpoint_config *cfg = user_data;
 	struct endpoint *ep = cfg->ep;
 	DBusError error;
 
-	free(cfg->caps->iov_base);
-	free(cfg->caps);
-	free(cfg);
+	config_endpoint_free(cfg);
 
 	dbus_error_init(&error);
 
@@ -3827,6 +3832,7 @@ static void endpoint_set_config(struct endpoint_config *cfg)
 						config_endpoint_setup,
 						config_endpoint_reply,
 						cfg, NULL)) {
+		config_endpoint_free(cfg);
 		bt_shell_printf("Failed to config endpoint\n");
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
@@ -4050,8 +4056,10 @@ static void cmd_config_endpoint(int argc, char *argv[])
 
 		if (cfg->ep->broadcast)
 			endpoint_set_config_bcast(cfg);
-		else
+		else {
+			cfg->meta = util_iov_dup(&preset->meta, 1);
 			endpoint_set_config(cfg);
+		}
 
 		return;
 	}
@@ -4062,7 +4070,7 @@ static void cmd_config_endpoint(int argc, char *argv[])
 	return;
 
 fail:
-	g_free(cfg);
+	config_endpoint_free(cfg);
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
 
