@@ -2282,6 +2282,11 @@ static uint8_t stream_metadata(struct bt_bap_stream *stream, struct iovec *meta,
 	case BT_BAP_STREAM_STATE_IDLE:
 		/* Initial metadata */
 		break;
+	case BT_BAP_STREAM_STATE_CONFIG:
+		/* Local client metadata does not confirm the peer config. */
+		if (stream->client)
+			break;
+		/* Fallthrough */
 	default:
 		/* Force state change to the same state to update metadata */
 		stream_set_state(stream, bt_bap_stream_get_state(stream));
