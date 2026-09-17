@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
@@ -117,6 +118,69 @@ static void wait_for_terminate(pid_t pid)
 	}
 }
 
+/* Look for a command in PATH, so that it can be preferred if present */
+static bool have_command(const char *name)
+{
+	const char *path = getenv("PATH");
+	char *dirs, *dir, *save = NULL;
+	bool found = false;
+
+	if (!path)
+		return false;
+
+	dirs = strdup(path);
+	if (!dirs)
+		return false;
+
+	for (dir = strtok_r(dirs, ":", &save); dir;
+					dir = strtok_r(NULL, ":", &save)) {
+		char file[PATH_MAX];
+
+		if (snprintf(file, sizeof(file), "%s/%s", dir, name) < 0)
+			continue;
+
+		if (!access(file, X_OK)) {
+			found = true;
+			break;
+		}
+	}
+
+	free(dirs);
+
+	return found;
+}
+
+bool pager_disabled(void)
+{
+	const char *pager = getenv("PAGER");
+
+	return pager && (!*pager || !strcmp(pager, "cat"));
+}
+
+/*
+ * A fuzzy finder is a far better fit for a trace than a plain pager, so
+ * prefer it when one is installed and nothing was asked for. Wherever it
+ * is used it is told to take whole frames rather than lines, and to
+ * render the colours instead of showing the escape sequences.
+ */
+const char *pager_command(void)
+{
+	static char cmd[256];
+	const char *pager = getenv("PAGER");
+
+	if (!pager || !*pager)
+		return have_command("fzf") ? "fzf --ansi --read0" : NULL;
+
+	if (!strstr(pager, "fzf"))
+		return pager;
+
+	snprintf(cmd, sizeof(cmd), "%s%s%s", pager,
+			strstr(pager, "--ansi") ? "" : " --ansi",
+			strstr(pager, "--read0") ? "" : " --read0");
+
+	return cmd;
+}
+
 void open_pager(void)
 {
 	const char *pager;
@@ -126,11 +190,10 @@ void open_pager(void)
 	if (pager_pid > 0)
 		return;
 
-	pager = getenv("PAGER");
-	if (pager) {
-		if (!*pager || strcmp(pager, "cat") == 0)
-			return;
-	}
+	if (pager_disabled())
+		return;
+
+	pager = pager_command();
 
 	if (!(isatty(STDOUT_FILENO) > 0))
 		return;

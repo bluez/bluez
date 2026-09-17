@@ -60,6 +60,7 @@ static bool store;	/* Keep the frames for handing to the pager */
 static bool records;	/* Separate the frames with a NUL */
 static bool printed;	/* Something has been written out already */
 static bool print0;
+static bool use_pager;
 static bool raw_mode;
 static int poll_id = -1;
 static struct termios saved_term;
@@ -312,16 +313,14 @@ static void pager_open(void)
 	const char *pager;
 	int fd;
 
-	if (pager_pid || !num_frames)
+	if (pager_pid || !num_frames || !use_pager || pager_disabled())
 		return;
 
 	fd = frames_to_file();
 	if (fd < 0)
 		return;
 
-	pager = getenv("PAGER");
-	if (pager && (!*pager || !strcmp(pager, "cat")))
-		pager = NULL;
+	pager = pager_command();
 
 	fflush(stdout);
 
@@ -427,13 +426,22 @@ static bool want_records(void)
 	if (print0)
 		return true;
 
-	pager = getenv("PAGER");
+	/*
+	 * Only separate the frames if something is actually going to read
+	 * them as records. Nothing does when the output is redirected or
+	 * the pager has been turned off.
+	 */
+	if (!use_pager || pager_disabled() || !isatty(STDOUT_FILENO))
+		return false;
+
+	pager = pager_command();
 
 	return pager && strstr(pager, "--read0");
 }
 
-void find_setup(bool live)
+void find_setup(bool live, bool pager)
 {
+	use_pager = pager;
 	records = want_records();
 
 	if (live && isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {

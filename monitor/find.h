@@ -11,7 +11,7 @@
 #include <stdbool.h>
 
 void find_set_print0(void);
-void find_setup(bool live);
+void find_setup(bool live, bool pager);
 
 void find_frame_begin(void);
 void find_frame_end(void);

@@ -135,5 +135,8 @@ static inline void print_hex_field(const char *label, const uint8_t *data,
 void set_default_pager_num_columns(int num_columns);
 int num_columns(void);
 
+bool pager_disabled(void);
+const char *pager_command(void);
+
 void open_pager(void);
 void close_pager(void);
