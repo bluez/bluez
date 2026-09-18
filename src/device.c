@@ -163,6 +163,7 @@ struct bearer_state {
 
 struct ltk_info {
 	uint8_t key[16];
+	uint8_t type;
 	uint8_t enc_size;
 };
 
@@ -2132,21 +2133,41 @@ static void add_set(void *data, void *user_data)
 	}
 }
 
-void device_set_ltk(struct btd_device *device, const uint8_t val[16],
-				bool central, uint8_t enc_size)
+static bool ltk_is_sc(uint8_t type)
 {
-	struct ltk_info **ltk;
+	return type == MGMT_LTK_P256_UNAUTH || type == MGMT_LTK_P256_AUTH ||
+						type == MGMT_LTK_P256_DEBUG;
+}
+
+void device_set_ltk(struct btd_device *device, const uint8_t val[16],
+				bool central, uint8_t type, uint8_t enc_size)
+{
+	struct ltk_info **ltk, **other;
 
 	/* Legacy pairing distributes one key per role, so both are kept
 	 * to let each of them be selected by the role of the link.
+	 * Secure Connections has no difference, so duplicate same key in
+	 * both slots.
 	 */
 	ltk = central ? &device->ltk : &device->peripheral_ltk;
+	other = central ? &device->peripheral_ltk : &device->ltk;
 
 	if (!*ltk)
 		*ltk = new0(struct ltk_info, 1);
 
 	memcpy((*ltk)->key, val, sizeof((*ltk)->key));
+	(*ltk)->type = type;
 	(*ltk)->enc_size = enc_size;
+
+	if (ltk_is_sc(type)) {
+		free(*other);
+		*other = util_memdup(*ltk, sizeof(**ltk));
+	} else if (*other && ltk_is_sc((*other)->type)) {
+		/* Drop stale SC key */
+		free(*other);
+		*other = NULL;
+	}
+
 	bt_att_set_enc_key_size(device->att, enc_size);
 
 	/* Check if there is any set/sirk that needs decryption */
@@ -2162,8 +2183,9 @@ bool btd_device_get_ltk(struct btd_device *device, uint8_t key[16],
 		return false;
 
 	/* The key securing the link is the one distributed by the
-	 * peripheral, so each side has to select the one matching its
-	 * role for both to use the same key.
+	 * peripheral, so for LE legacy pairing each side has to select
+	 * the one matching its role for both to use the same key.
+	 * Secure Connections duplicates its single shared key in both slots.
 	 */
 	ltk = btd_device_is_initiator(device) ? device->ltk :
 						device->peripheral_ltk;
