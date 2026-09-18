@@ -149,7 +149,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
 bool device_is_disconnecting(struct btd_device *device);
 bool device_is_connecting(struct btd_device *device);
 void device_set_ltk(struct btd_device *device, const uint8_t val[16],
-				bool central, uint8_t enc_size);
+				bool central, uint8_t type, uint8_t enc_size);
 bool btd_device_get_ltk(struct btd_device *device, uint8_t val[16],
 				uint8_t *enc_size);
 void device_set_csrk(struct btd_device *device, const uint8_t val[16],

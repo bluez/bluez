@@ -4580,7 +4580,7 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 			device_set_paired(dev, info->bdaddr_type);
 			device_set_bonded(dev, info->bdaddr_type);
 			device_set_ltk(dev, info->val, info->central,
-						info->enc_size);
+					info->authenticated, info->enc_size);
 		}
 	}
 
@@ -9241,7 +9241,8 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 		device_set_bonded(device, addr->type);
 	}
 
-	device_set_ltk(device, ev->key.val, ev->key.central, ev->key.enc_size);
+	device_set_ltk(device, ev->key.val, ev->key.central, ev->key.type,
+							ev->key.enc_size);
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
 }
