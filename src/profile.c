@@ -60,6 +60,9 @@
 #define BT_RX_MTU		32767
 
 #define BTD_PROFILE_PSM_AUTO	-1
+
+static void psm_watch_notify(const char *uuid, struct btd_adapter *adapter,
+							uint16_t psm);
 #define BTD_PROFILE_CHAN_AUTO	-1
 
 #define HFP_HF_RECORD							\
@@ -1468,6 +1471,8 @@ static uint32_t ext_start_servers(struct ext_profile *ext,
 			l2cap->adapter = btd_adapter_ref(adapter);
 			ext->servers = g_slist_append(ext->servers, l2cap);
 			DBG("%s listening on PSM %u", ext->name, psm);
+
+			psm_watch_notify(ext->uuid, adapter, psm);
 		}
 	}
 
@@ -1516,6 +1521,66 @@ failed:
 	}
 
 	return 0;
+}
+
+struct psm_watch {
+	unsigned int id;
+	char *uuid;
+	btd_profile_psm_func func;
+	void *user_data;
+};
+
+static GSList *psm_watches = NULL;
+static unsigned int psm_watch_id = 0;
+
+unsigned int btd_profile_add_psm_watch(const char *uuid,
+					btd_profile_psm_func func,
+					void *user_data)
+{
+	struct psm_watch *watch;
+
+	if (uuid == NULL || func == NULL)
+		return 0;
+
+	watch = g_new0(struct psm_watch, 1);
+	watch->id = ++psm_watch_id;
+	watch->uuid = g_strdup(uuid);
+	watch->func = func;
+	watch->user_data = user_data;
+
+	psm_watches = g_slist_append(psm_watches, watch);
+
+	return watch->id;
+}
+
+static void psm_watch_notify(const char *uuid, struct btd_adapter *adapter,
+							uint16_t psm)
+{
+	GSList *l;
+
+	for (l = psm_watches; l != NULL; l = g_slist_next(l)) {
+		struct psm_watch *watch = l->data;
+
+		if (strcasecmp(watch->uuid, uuid) == 0)
+			watch->func(adapter, psm, watch->user_data);
+	}
+}
+
+void btd_profile_remove_psm_watch(unsigned int id)
+{
+	GSList *l;
+
+	for (l = psm_watches; l != NULL; l = g_slist_next(l)) {
+		struct psm_watch *watch = l->data;
+
+		if (watch->id != id)
+			continue;
+
+		psm_watches = g_slist_remove(psm_watches, watch);
+		g_free(watch->uuid);
+		g_free(watch);
+		return;
+	}
 }
 
 static struct ext_profile *find_ext(struct btd_profile *p)
@@ -1597,6 +1662,9 @@ static void ext_adapter_remove(struct btd_profile *p,
 
 		if (server->adapter != adapter)
 			continue;
+
+		if (server->proto == BTPROTO_L2CAP)
+			psm_watch_notify(ext->uuid, adapter, 0);
 
 		ext->servers = g_slist_remove(ext->servers, server);
 		ext_io_destroy(server);
@@ -2236,6 +2304,15 @@ static struct default_settings {
 		.authorize	= true,
 		.get_record	= get_mns_record,
 		.version	= 0x0104,
+		.imtu		= BT_RX_MTU,
+	}, {
+		.uuid		= OBEX_BIP_AVRCP_UUID,
+		.name		= "AVRCP Cover Art",
+		.psm		= BTD_PROFILE_PSM_AUTO,
+		.mode		= BT_IO_MODE_ERTM,
+		.sec_level	= BT_IO_SEC_LOW,
+		.authorize	= false,
+		.version	= 0x0100,
 		.imtu		= BT_RX_MTU,
 	},
 };

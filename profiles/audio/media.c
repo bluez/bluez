@@ -2494,6 +2494,38 @@ static gboolean parse_int32_metadata(struct local_player *mp, const char *key,
 	return TRUE;
 }
 
+/*
+ * AVRCP 1.6 section 5.14: the Default Cover Art attribute carries a BIP
+ * image handle, seven US-ASCII digits identifying the image.
+ *
+ * The handle is derived from the art URL rather than allocated, so that
+ * the Cover Art responder in obexd arrives at the same value for the same
+ * URL without any coordination between the two daemons. It also makes the
+ * handle stable across reconnects and daemon restarts, which spares
+ * controllers a re-fetch of an image they already hold.
+ *
+ * Keep in sync with obexd/plugins/bip-avrcp.c.
+ */
+static gboolean parse_art_url_metadata(struct local_player *mp,
+							DBusMessageIter *iter)
+{
+	const char *url;
+	char handle[8];
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
+		return FALSE;
+
+	dbus_message_iter_get_basic(iter, &url);
+
+	snprintf(handle, sizeof(handle), "%07u",
+					g_str_hash(url) % 10000000);
+
+	g_hash_table_insert(mp->track, g_strdup("ImgHandle"),
+							g_strdup(handle));
+
+	return TRUE;
+}
+
 static gboolean parse_player_metadata(struct local_player *mp,
 							DBusMessageIter *iter)
 {
@@ -2552,6 +2584,9 @@ static gboolean parse_player_metadata(struct local_player *mp,
 				return FALSE;
 		} else if (strcasecmp(key, "xesam:trackNumber") == 0) {
 			if (!parse_int32_metadata(mp, "TrackNumber", &var))
+				return FALSE;
+		} else if (strcasecmp(key, "mpris:artUrl") == 0) {
+			if (!parse_art_url_metadata(mp, &var))
 				return FALSE;
 		} else
 			DBG("%s not supported, ignoring", key);
