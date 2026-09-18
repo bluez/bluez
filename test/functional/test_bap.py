@@ -9,7 +9,7 @@ import warnings
 
 import pytest
 
-from pytest_bluezenv import Bluetoothd, Pexpect, find_exe, host_config
+from pytest_bluezenv import Bluetoothd, Pexpect, find_exe, host_config, run
 from pytest_bluezenv.utils import bluez_src_dir
 
 pytestmark = [pytest.mark.vm]
@@ -437,7 +437,19 @@ set_host_config = host_config(
 
 
 @pytest.fixture
-def set_hosts(hosts):
+def secure_connections(hosts, request):
+    """Set Secure Connections from fixture param"""
+
+    if getattr(request, "param", None) is None:
+        return
+
+    btmgmt = find_exe("tools", "btmgmt")
+    for host in hosts:
+        host.call(run, [btmgmt, "sc", request.param], check=True)
+
+
+@pytest.fixture
+def set_hosts(hosts, secure_connections):
     """
     Initiator (host0) and two acceptors forming a coordinated set, one
     taking the left channel (host1) and one the right (host2), paired
@@ -535,8 +547,11 @@ def set_hosts(hosts):
     yield host0, host1, host2, initiator, left, right, transports
 
 
+@pytest.mark.parametrize(
+    "secure_connections", ["on", "off"], ids=["sc", "legacy"], indirect=True
+)
 @set_host_config
-def test_bap_unicast_set_transport_created(set_hosts):
+def test_bap_unicast_set_transport_created(secure_connections, set_hosts):
     host0, host1, host2, initiator, left, right, transports = set_hosts
 
     # One transport per member, each taking a single channel
