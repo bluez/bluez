@@ -31,6 +31,7 @@
 #include "ellisys.h"
 #include "control.h"
 #include "display.h"
+#include "find.h"
 
 static void signal_callback(int signum, void *user_data)
 {
@@ -69,6 +70,8 @@ static void usage(void)
 		"\t-I, --iso              Dump ISO traffic\n"
 		"\t-E, --ellisys [ip]     Send Ellisys HCI Injection\n"
 		"\t-P, --no-pager         Disable pager usage\n"
+		"\t-0, --print0           Separate frames with a NUL, for a\n"
+		"\t                       pager reading records\n"
 		"\t-J  --jlink <device>,[<serialno>],[<interface>],[<speed>]\n"
 		"\t                       Read data from RTT\n"
 		"\t-R  --rtt [<address>],[<area>],[<name>]\n"
@@ -98,6 +101,7 @@ static const struct option main_options[] = {
 	{ "iso",       no_argument,       NULL, 'I' },
 	{ "ellisys",   required_argument, NULL, 'E' },
 	{ "no-pager",  no_argument,       NULL, 'P' },
+	{ "print0",    no_argument,       NULL, '0' },
 	{ "jlink",     required_argument, NULL, 'J' },
 	{ "rtt",       required_argument, NULL, 'R' },
 	{ "columns",   required_argument, NULL, 'C' },
@@ -133,7 +137,7 @@ int main(int argc, char *argv[])
 		struct sockaddr_un addr;
 
 		opt = getopt_long(argc, argv,
-				"r:w:a:s:p:i:d:B:V:MKNtTSAIE:PJ:R:C:c:vh",
+				"r:w:a:s:p:i:d:B:V:MKNtTSAIE:P0J:R:C:c:vh",
 				main_options, NULL);
 		if (opt < 0)
 			break;
@@ -217,6 +221,9 @@ int main(int argc, char *argv[])
 		case 'P':
 			use_pager = false;
 			break;
+		case '0':
+			find_set_print0();
+			break;
 		case 'J':
 			jlink = optarg;
 			break;
@@ -279,6 +286,8 @@ int main(int argc, char *argv[])
 		if (ellisys_server)
 			ellisys_enable(ellisys_server, ellisys_port);
 
+		find_setup();
+
 		control_reader(reader_path, use_pager);
 		return EXIT_SUCCESS;
 	}
@@ -300,7 +309,11 @@ int main(int argc, char *argv[])
 	if (jlink && control_rtt(jlink, rtt) < 0)
 		return EXIT_FAILURE;
 
+	find_setup();
+
 	exit_status = mainloop_run_with_signal(signal_callback, NULL);
+
+	find_cleanup();
 
 	keys_cleanup();
 

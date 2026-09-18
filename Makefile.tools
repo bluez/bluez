@@ -58,6 +58,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				monitor/jlink.h monitor/jlink.c \
 				monitor/tty.h monitor/emulator.h \
 				monitor/att.h monitor/att.c \
+				monitor/find.h monitor/find.c \
 				src/log.h src/log.c \
 				src/textfile.h src/textfile.c \
 				src/settings.h src/settings.c
