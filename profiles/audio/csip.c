@@ -328,7 +328,7 @@ static bool csis_encrypt(struct bt_att *att, uint8_t val[16])
 		return false;
 	}
 
-	if (!btd_device_get_ltk(device, ltk, NULL, NULL)) {
+	if (!btd_device_get_ltk(device, ltk, NULL)) {
 		error("Unable to get device LTK");
 		return false;
 	}
