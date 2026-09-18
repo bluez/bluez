@@ -163,7 +163,6 @@ struct bearer_state {
 
 struct ltk_info {
 	uint8_t key[16];
-	bool central;
 	uint8_t enc_size;
 };
 
@@ -2147,7 +2146,6 @@ void device_set_ltk(struct btd_device *device, const uint8_t val[16],
 		*ltk = new0(struct ltk_info, 1);
 
 	memcpy((*ltk)->key, val, sizeof((*ltk)->key));
-	(*ltk)->central = central;
 	(*ltk)->enc_size = enc_size;
 	bt_att_set_enc_key_size(device->att, enc_size);
 
@@ -2156,7 +2154,7 @@ void device_set_ltk(struct btd_device *device, const uint8_t val[16],
 }
 
 bool btd_device_get_ltk(struct btd_device *device, uint8_t key[16],
-				bool *central, uint8_t *enc_size)
+				uint8_t *enc_size)
 {
 	struct ltk_info *ltk;
 
@@ -2173,9 +2171,6 @@ bool btd_device_get_ltk(struct btd_device *device, uint8_t key[16],
 		return false;
 
 	memcpy(key, ltk->key, sizeof(ltk->key));
-
-	if (central)
-		*central = ltk->central;
 
 	if (enc_size)
 		*enc_size = ltk->enc_size;
