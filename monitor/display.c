@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <limits.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
@@ -117,6 +119,114 @@ static void wait_for_terminate(pid_t pid)
 	}
 }
 
+/* Look for a command in PATH, so that it can be preferred if present */
+static bool have_command(const char *name)
+{
+	const char *path = getenv("PATH");
+	char *dirs, *dir, *save = NULL;
+	bool found = false;
+
+	if (!path)
+		return false;
+
+	dirs = strdup(path);
+	if (!dirs)
+		return false;
+
+	for (dir = strtok_r(dirs, ":", &save); dir;
+					dir = strtok_r(NULL, ":", &save)) {
+		char file[PATH_MAX];
+
+		if (snprintf(file, sizeof(file), "%s/%s", dir, name) < 0)
+			continue;
+
+		if (!access(file, X_OK)) {
+			found = true;
+			break;
+		}
+	}
+
+	free(dirs);
+
+	return found;
+}
+
+bool pager_disabled(void)
+{
+	const char *pager = getenv("PAGER");
+
+	return pager && (!*pager || !strcmp(pager, "cat"));
+}
+
+/*
+ * What a fuzzy finder needs to make sense of a trace: an entry has to be a
+ * whole frame rather than a line of one, the colours have to be rendered
+ * instead of shown, and the most recent frame is the one usually being
+ * looked for.
+ */
+static const char * const fzf_options[] = {
+	"--ansi",
+	"--read0",
+	"--tac",
+	NULL
+};
+
+#define FZF_COMMAND "fzf --ansi --read0 --tac"
+
+/* Match a whole option, so a longer one starting the same is not it */
+static bool has_option(const char *cmd, const char *opt)
+{
+	size_t len = strlen(opt);
+	const char *p = cmd;
+
+	while ((p = strstr(p, opt))) {
+		char next = p[len];
+
+		if ((p == cmd || isspace(p[-1])) &&
+				(!next || isspace(next) || next == '='))
+			return true;
+
+		p += len;
+	}
+
+	return false;
+}
+
+const char *pager_command(void)
+{
+	static char cmd[512];
+	const char *pager = getenv("PAGER");
+	size_t pos = 0;
+	int i, n;
+
+	if (!pager || !*pager)
+		return have_command("fzf") ? FZF_COMMAND : NULL;
+
+	if (!strstr(pager, "fzf"))
+		return pager;
+
+	n = snprintf(cmd, sizeof(cmd), "%s", pager);
+	if (n < 0 || (size_t)n >= sizeof(cmd))
+		return pager;
+
+	pos = n;
+
+	for (i = 0; fzf_options[i]; i++) {
+		if (has_option(pager, fzf_options[i]))
+			continue;
+
+		n = snprintf(cmd + pos, sizeof(cmd) - pos, " %s",
+							fzf_options[i]);
+		/* Leave it as given rather than pass something truncated */
+		if (n < 0 || (size_t)n >= sizeof(cmd) - pos)
+			return pager;
+
+		pos += n;
+	}
+
+	return cmd;
+}
+
 void open_pager(void)
 {
 	const char *pager;
@@ -126,11 +236,10 @@ void open_pager(void)
 	if (pager_pid > 0)
 		return;
 
-	pager = getenv("PAGER");
-	if (pager) {
-		if (!*pager || strcmp(pager, "cat") == 0)
-			return;
-	}
+	if (pager_disabled())
+		return;
+
+	pager = pager_command();
 
 	if (!(isatty(STDOUT_FILENO) > 0))
 		return;
