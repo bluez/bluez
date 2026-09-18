@@ -2913,9 +2913,11 @@ void l2cap_dequeue_frame(struct timeval *delta, struct packet_conn_data *conn)
 			frame->cid, frame->psm, mode2str(frame->mode),
 			frame->mode, frame->chan);
 
-	print_field("Channel Latency: %lld msec (%lld-%lld msec ~%lld msec)",
+	print_field("Channel Latency: %lld msec (%lld-%lld msec ~%lld msec "
+			"+/- %lld msec)",
 			TV_MSEC(*delta), TV_MSEC(chan->tx_l.min),
-			TV_MSEC(chan->tx_l.max), TV_MSEC(chan->tx_l.med));
+			TV_MSEC(chan->tx_l.max), TV_MSEC(chan->tx_l.med),
+			packet_latency_stddev(&chan->tx_l));
 
 	free(frame);
 }
