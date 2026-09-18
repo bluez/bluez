@@ -39,6 +39,7 @@
 #include "src/shared/mainloop.h"
 
 #include "display.h"
+#include "find.h"
 #include "packet.h"
 #include "hcidump.h"
 #include "ellisys.h"
@@ -973,8 +974,10 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 
 		switch (data->channel) {
 		case HCI_CHANNEL_CONTROL:
+			find_frame_begin();
 			packet_control(tv, cred, index, opcode,
 							data->buf, pktlen);
+			find_frame_end();
 			break;
 		case HCI_CHANNEL_MONITOR:
 			if (pktlen > (len - MGMT_HDR_SIZE))
@@ -984,8 +987,10 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 							data->buf, pktlen);
 			ellisys_inject_hci(tv, index, opcode,
 							data->buf, pktlen);
+			find_frame_begin();
 			packet_monitor(tv, cred, index, opcode,
 							data->buf, pktlen);
+			find_frame_end();
 			break;
 		}
 	}
@@ -1131,8 +1136,10 @@ static void kmsg_callback(int fd, uint32_t events, void *user_data)
 
 	btsnoop_write_hci(btsnoop_file, &tv, HCI_DEV_NONE,
 				BTSNOOP_OPCODE_SYSTEM_NOTE, 0, msg, len);
+	find_frame_begin();
 	packet_monitor(&tv, NULL, HCI_DEV_NONE,
 				BTSNOOP_OPCODE_SYSTEM_NOTE, msg, len);
+	find_frame_end();
 }
 
 static int open_kmsg(void)
@@ -1179,8 +1186,10 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 		opcode = le16_to_cpu(hdr->opcode);
 		index = le16_to_cpu(hdr->index);
 
+		find_frame_begin();
 		packet_monitor(NULL, NULL, index, opcode,
 					data->buf + MGMT_HDR_SIZE, pktlen);
+		find_frame_end();
 
 		data->offset -= pktlen + MGMT_HDR_SIZE;
 
@@ -1399,8 +1408,10 @@ static void process_data(struct control_data *data)
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
 		ellisys_inject_hci(tv, 0, opcode, hdr->ext_hdr + hdr->hdr_len,
 					pktlen);
+		find_frame_begin();
 		packet_monitor(tv, NULL, 0, opcode,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
+		find_frame_end();
 
 		data->offset -= 2 + data_len;
 
@@ -1586,7 +1597,9 @@ void control_reader(const char *path, bool pager)
 			if (opcode == 0xffff)
 				continue;
 
+			find_frame_begin();
 			packet_monitor(&tv, NULL, index, opcode, buf, pktlen);
+			find_frame_end();
 			ellisys_inject_hci(&tv, index, opcode, buf, pktlen);
 		}
 		break;
@@ -1599,7 +1612,9 @@ void control_reader(const char *path, bool pager)
 								buf, &pktlen))
 				break;
 
+			find_frame_begin();
 			packet_simulator(&tv, frequency, buf, pktlen);
+			find_frame_end();
 		}
 		break;
 	}
