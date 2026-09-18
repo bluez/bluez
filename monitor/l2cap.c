@@ -443,73 +443,74 @@ static char *mode2str(uint8_t mode)
 
 static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
 {
-	printf("      %s:",
+	display_printf("      %s:",
 		ctrl & L2CAP_EXT_CTRL_FRAME_TYPE ? "S-frame" : "I-frame");
 
 	if (ctrl & L2CAP_EXT_CTRL_FRAME_TYPE) {
-		printf(" %s",
+		display_printf(" %s",
 		supervisory2str((ctrl & L2CAP_EXT_CTRL_SUPERVISE_MASK) >>
 						L2CAP_EXT_CTRL_SUPER_SHIFT));
 
 		if (ctrl & L2CAP_EXT_CTRL_POLL)
-			printf(" P-bit");
+			display_printf(" P-bit");
 	} else {
 		uint8_t sar = (ctrl & L2CAP_EXT_CTRL_SAR_MASK) >>
 						L2CAP_EXT_CTRL_SAR_SHIFT;
-		printf(" %s", sar2str(sar));
+		display_printf(" %s", sar2str(sar));
 		if (sar == L2CAP_SAR_START) {
 			uint16_t len;
 
 			if (!l2cap_frame_get_le16(frame, &len))
 				return;
 
-			printf(" (len %d)", len);
+			display_printf(" (len %d)", len);
 		}
-		printf(" TxSeq %d", (ctrl & L2CAP_EXT_CTRL_TXSEQ_MASK) >>
+		display_printf(" TxSeq %d",
+			(ctrl & L2CAP_EXT_CTRL_TXSEQ_MASK) >>
 						L2CAP_EXT_CTRL_TXSEQ_SHIFT);
 	}
 
-	printf(" ReqSeq %d", (ctrl & L2CAP_EXT_CTRL_REQSEQ_MASK) >>
+	display_printf(" ReqSeq %d", (ctrl & L2CAP_EXT_CTRL_REQSEQ_MASK) >>
 						L2CAP_EXT_CTRL_REQSEQ_SHIFT);
 
 	if (ctrl & L2CAP_EXT_CTRL_FINAL)
-		printf(" F-bit");
+		display_printf(" F-bit");
 }
 
 static void l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl)
 {
-	printf("      %s:",
+	display_printf("      %s:",
 			ctrl & L2CAP_CTRL_FRAME_TYPE ? "S-frame" : "I-frame");
 
 	if (ctrl & 0x01) {
-		printf(" %s",
+		display_printf(" %s",
 			supervisory2str((ctrl & L2CAP_CTRL_SUPERVISE_MASK) >>
 						L2CAP_CTRL_SUPER_SHIFT));
 
 		if (ctrl & L2CAP_CTRL_POLL)
-			printf(" P-bit");
+			display_printf(" P-bit");
 	} else {
 		uint8_t sar;
 
 		sar = (ctrl & L2CAP_CTRL_SAR_MASK) >> L2CAP_CTRL_SAR_SHIFT;
-		printf(" %s", sar2str(sar));
+		display_printf(" %s", sar2str(sar));
 		if (sar == L2CAP_SAR_START) {
 			uint16_t len;
 
 			if (!l2cap_frame_get_le16(frame, &len))
 				return;
 
-			printf(" (len %d)", len);
+			display_printf(" (len %d)", len);
 		}
-		printf(" TxSeq %d", (ctrl & L2CAP_CTRL_TXSEQ_MASK) >>
+		display_printf(" TxSeq %d", (ctrl & L2CAP_CTRL_TXSEQ_MASK) >>
 						L2CAP_CTRL_TXSEQ_SHIFT);
 	}
 
-	printf(" ReqSeq %d", (ctrl & L2CAP_CTRL_REQSEQ_MASK) >>
+	display_printf(" ReqSeq %d", (ctrl & L2CAP_CTRL_REQSEQ_MASK) >>
 						L2CAP_CTRL_REQSEQ_SHIFT);
 
 	if (ctrl & L2CAP_CTRL_FINAL)
-		printf(" F-bit");
+		display_printf(" F-bit");
 }
 
 #define MAX_INDEX 16
@@ -2732,7 +2733,7 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 				l2cap_ctrl_parse(&frame, ctrl16);
 			}
 
-			printf("\n");
+			display_printf("\n");
 			break;
 		}
 
@@ -2913,9 +2914,11 @@ void l2cap_dequeue_frame(struct timeval *delta, struct packet_conn_data *conn)
 			frame->cid, frame->psm, mode2str(frame->mode),
 			frame->mode, frame->chan);
 
-	print_field("Channel Latency: %lld msec (%lld-%lld msec ~%lld msec)",
+	print_field("Channel Latency: %lld msec (%lld-%lld msec ~%lld msec "
+			"+/- %lld msec)",
 			TV_MSEC(*delta), TV_MSEC(chan->tx_l.min),
-			TV_MSEC(chan->tx_l.max), TV_MSEC(chan->tx_l.med));
+			TV_MSEC(chan->tx_l.max), TV_MSEC(chan->tx_l.med),
+			packet_latency_stddev(&chan->tx_l));
 
 	free(frame);
 }

@@ -913,12 +913,12 @@ void lmp_todo(void)
 {
 	int i;
 
-	printf("LMP operations with missing decodings:\n");
+	display_printf("LMP operations with missing decodings:\n");
 
 	for (i = 0; lmp_table[i].str; i++) {
 		if (lmp_table[i].func)
 			continue;
 
-		printf("\t%s\n", lmp_table[i].str);
+		display_printf("\t%s\n", lmp_table[i].str);
 	}
 }

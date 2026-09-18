@@ -12,8 +12,17 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <stdio.h>
 
 bool use_color(void);
+
+/*
+ * All decoding output goes through here so that it can be captured, for
+ * example to match a whole frame against a query before showing it.
+ */
+void display_printf(const char *fmt, ...)
+			__attribute__((format(printf, 1, 2)));
+void display_set_output(FILE *fp);
 
 enum monitor_color { COLOR_AUTO, COLOR_ALWAYS, COLOR_NEVER };
 void set_monitor_color(enum monitor_color);
@@ -44,7 +53,7 @@ void set_monitor_color(enum monitor_color);
 
 #define print_indent(indent, color1, prefix, title, color2, fmt, args...) \
 do { \
-	printf("%*c%s%s%s%s" fmt "%s\n", (indent), ' ', \
+	display_printf("%*c%s%s%s%s" fmt "%s\n", (indent), ' ', \
 		use_color() ? (color1) : "", prefix, title, \
 		use_color() ? (color2) : "", ## args, \
 		use_color() ? COLOR_OFF : ""); \
@@ -125,6 +134,9 @@ static inline void print_hex_field(const char *label, const uint8_t *data,
 
 void set_default_pager_num_columns(int num_columns);
 int num_columns(void);
+
+bool pager_disabled(void);
+const char *pager_command(void);
 
 void open_pager(void);
 void close_pager(void);

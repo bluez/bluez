@@ -39,6 +39,7 @@
 #include "src/shared/mainloop.h"
 
 #include "display.h"
+#include "find.h"
 #include "packet.h"
 #include "hcidump.h"
 #include "ellisys.h"
@@ -69,28 +70,28 @@ static void free_data(void *user_data)
 
 static void mgmt_index_added(uint16_t len, const void *buf)
 {
-	printf("@ Index Added\n");
+	display_printf("@ Index Added\n");
 
 	packet_hexdump(buf, len);
 }
 
 static void mgmt_index_removed(uint16_t len, const void *buf)
 {
-	printf("@ Index Removed\n");
+	display_printf("@ Index Removed\n");
 
 	packet_hexdump(buf, len);
 }
 
 static void mgmt_unconf_index_added(uint16_t len, const void *buf)
 {
-	printf("@ Unconfigured Index Added\n");
+	display_printf("@ Unconfigured Index Added\n");
 
 	packet_hexdump(buf, len);
 }
 
 static void mgmt_unconf_index_removed(uint16_t len, const void *buf)
 {
-	printf("@ Unconfigured Index Removed\n");
+	display_printf("@ Unconfigured Index Removed\n");
 
 	packet_hexdump(buf, len);
 }
@@ -100,11 +101,11 @@ static void mgmt_ext_index_added(uint16_t len, const void *buf)
 	const struct mgmt_ev_ext_index_added *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Extended Index Added control\n");
+		display_printf("* Malformed Extended Index Added control\n");
 		return;
 	}
 
-	printf("@ Extended Index Added: %u (%u)\n", ev->type, ev->bus);
+	display_printf("@ Extended Index Added: %u (%u)\n", ev->type, ev->bus);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -117,11 +118,12 @@ static void mgmt_ext_index_removed(uint16_t len, const void *buf)
 	const struct mgmt_ev_ext_index_removed *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Extended Index Removed control\n");
+		display_printf("* Malformed Extended Index Removed control\n");
 		return;
 	}
 
-	printf("@ Extended Index Removed: %u (%u)\n", ev->type, ev->bus);
+	display_printf("@ Extended Index Removed: %u (%u)\n", ev->type,
+				ev->bus);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -134,11 +136,11 @@ static void mgmt_controller_error(uint16_t len, const void *buf)
 	const struct mgmt_ev_controller_error *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Controller Error control\n");
+		display_printf("* Malformed Controller Error control\n");
 		return;
 	}
 
-	printf("@ Controller Error: 0x%2.2x\n", ev->error_code);
+	display_printf("@ Controller Error: 0x%2.2x\n", ev->error_code);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -160,21 +162,22 @@ static void mgmt_new_config_options(uint16_t len, const void *buf)
 	unsigned int i;
 
 	if (len < 4) {
-		printf("* Malformed New Configuration Options control\n");
+		display_printf("* Malformed New Configuration Options "
+				"control\n");
 		return;
 	}
 
 	options = get_le32(buf);
 
-	printf("@ New Configuration Options: 0x%4.4x\n", options);
+	display_printf("@ New Configuration Options: 0x%4.4x\n", options);
 
 	if (options) {
-		printf("%-12c", ' ');
+		display_printf("%-12c", ' ');
 		for (i = 0; i < NELEM(config_options_str); i++) {
 			if (options & (1 << i))
-				printf("%s ", config_options_str[i]);
+				display_printf("%s ", config_options_str[i]);
 		}
-		printf("\n");
+		display_printf("\n");
 	}
 
 	buf += 4;
@@ -196,21 +199,21 @@ static void mgmt_new_settings(uint16_t len, const void *buf)
 	unsigned int i;
 
 	if (len < 4) {
-		printf("* Malformed New Settings control\n");
+		display_printf("* Malformed New Settings control\n");
 		return;
 	}
 
 	settings = get_le32(buf);
 
-	printf("@ New Settings: 0x%4.4x\n", settings);
+	display_printf("@ New Settings: 0x%4.4x\n", settings);
 
 	if (settings) {
-		printf("%-12c", ' ');
+		display_printf("%-12c", ' ');
 		for (i = 0; i < NELEM(settings_str); i++) {
 			if (settings & (1 << i))
-				printf("%s ", settings_str[i]);
+				display_printf("%s ", settings_str[i]);
 		}
-		printf("\n");
+		display_printf("\n");
 	}
 
 	buf += 4;
@@ -224,11 +227,11 @@ static void mgmt_class_of_dev_changed(uint16_t len, const void *buf)
 	const struct mgmt_ev_class_of_dev_changed *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Class of Device Changed control\n");
+		display_printf("* Malformed Class of Device Changed control\n");
 		return;
 	}
 
-	printf("@ Class of Device Changed: 0x%2.2x%2.2x%2.2x\n",
+	display_printf("@ Class of Device Changed: 0x%2.2x%2.2x%2.2x\n",
 						ev->dev_class[2],
 						ev->dev_class[1],
 						ev->dev_class[0]);
@@ -244,11 +247,12 @@ static void mgmt_local_name_changed(uint16_t len, const void *buf)
 	const struct mgmt_ev_local_name_changed *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Local Name Changed control\n");
+		display_printf("* Malformed Local Name Changed control\n");
 		return;
 	}
 
-	printf("@ Local Name Changed: %s (%s)\n", ev->name, ev->short_name);
+	display_printf("@ Local Name Changed: %s (%s)\n", ev->name,
+				ev->short_name);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -274,7 +278,7 @@ static void mgmt_new_link_key(uint16_t len, const void *buf)
 	};
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed New Link Key control\n");
+		display_printf("* Malformed New Link Key control\n");
 		return;
 	}
 
@@ -285,7 +289,7 @@ static void mgmt_new_link_key(uint16_t len, const void *buf)
 
 	ba2str(&ev->key.addr.bdaddr, str);
 
-	printf("@ New Link Key: %s (%d) %s (%u)\n", str,
+	display_printf("@ New Link Key: %s (%d) %s (%u)\n", str,
 				ev->key.addr.type, type, ev->key.type);
 
 	buf += sizeof(*ev);
@@ -301,7 +305,7 @@ static void mgmt_new_long_term_key(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed New Long Term Key control\n");
+		display_printf("* Malformed New Long Term Key control\n");
 		return;
 	}
 
@@ -335,7 +339,7 @@ static void mgmt_new_long_term_key(uint16_t len, const void *buf)
 
 	ba2str(&ev->key.addr.bdaddr, str);
 
-	printf("@ New Long Term Key: %s (%d) %s 0x%02x\n", str,
+	display_printf("@ New Long Term Key: %s (%d) %s 0x%02x\n", str,
 			ev->key.addr.type, type, ev->key.type);
 
 	buf += sizeof(*ev);
@@ -351,14 +355,14 @@ static void mgmt_device_connected(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Device Connected control\n");
+		display_printf("* Malformed Device Connected control\n");
 		return;
 	}
 
 	flags = le32_to_cpu(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Connected: %s (%d) flags 0x%4.4x\n",
+	display_printf("@ Device Connected: %s (%d) flags 0x%4.4x\n",
 						str, ev->addr.type, flags);
 
 	buf += sizeof(*ev);
@@ -375,7 +379,7 @@ static void mgmt_device_disconnected(uint16_t len, const void *buf)
 	uint16_t consumed_len;
 
 	if (len < sizeof(struct mgmt_addr_info)) {
-		printf("* Malformed Device Disconnected control\n");
+		display_printf("* Malformed Device Disconnected control\n");
 		return;
 	}
 
@@ -389,7 +393,8 @@ static void mgmt_device_disconnected(uint16_t len, const void *buf)
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Disconnected: %s (%d) reason %u\n", str, ev->addr.type,
+	display_printf("@ Device Disconnected: %s (%d) reason %u\n", str,
+					ev->addr.type,
 									reason);
 
 	buf += consumed_len;
@@ -404,13 +409,13 @@ static void mgmt_connect_failed(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Connect Failed control\n");
+		display_printf("* Malformed Connect Failed control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Connect Failed: %s (%d) status 0x%2.2x\n",
+	display_printf("@ Connect Failed: %s (%d) status 0x%2.2x\n",
 					str, ev->addr.type, ev->status);
 
 	buf += sizeof(*ev);
@@ -425,13 +430,13 @@ static void mgmt_pin_code_request(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed PIN Code Request control\n");
+		display_printf("* Malformed PIN Code Request control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ PIN Code Request: %s (%d) secure 0x%2.2x\n",
+	display_printf("@ PIN Code Request: %s (%d) secure 0x%2.2x\n",
 					str, ev->addr.type, ev->secure);
 
 	buf += sizeof(*ev);
@@ -446,13 +451,15 @@ static void mgmt_user_confirm_request(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed User Confirmation Request control\n");
+		display_printf("* Malformed User Confirmation Request "
+				"control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ User Confirmation Request: %s (%d) hint %d value %d\n",
+	display_printf("@ User Confirmation Request: %s (%d) hint %d "
+			"value %d\n",
 			str, ev->addr.type, ev->confirm_hint, ev->value);
 
 	buf += sizeof(*ev);
@@ -467,13 +474,13 @@ static void mgmt_user_passkey_request(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed User Passkey Request control\n");
+		display_printf("* Malformed User Passkey Request control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ User Passkey Request: %s (%d)\n", str, ev->addr.type);
+	display_printf("@ User Passkey Request: %s (%d)\n", str, ev->addr.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -487,13 +494,13 @@ static void mgmt_auth_failed(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Authentication Failed control\n");
+		display_printf("* Malformed Authentication Failed control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Authentication Failed: %s (%d) status 0x%2.2x\n",
+	display_printf("@ Authentication Failed: %s (%d) status 0x%2.2x\n",
 					str, ev->addr.type, ev->status);
 
 	buf += sizeof(*ev);
@@ -509,14 +516,14 @@ static void mgmt_device_found(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Device Found control\n");
+		display_printf("* Malformed Device Found control\n");
 		return;
 	}
 
 	flags = le32_to_cpu(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Found: %s (%d) rssi %d flags 0x%4.4x\n",
+	display_printf("@ Device Found: %s (%d) rssi %d flags 0x%4.4x\n",
 					str, ev->addr.type, ev->rssi, flags);
 
 	buf += sizeof(*ev);
@@ -530,11 +537,12 @@ static void mgmt_discovering(uint16_t len, const void *buf)
 	const struct mgmt_ev_discovering *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Discovering control\n");
+		display_printf("* Malformed Discovering control\n");
 		return;
 	}
 
-	printf("@ Discovering: 0x%2.2x (%d)\n", ev->discovering, ev->type);
+	display_printf("@ Discovering: 0x%2.2x (%d)\n", ev->discovering,
+				ev->type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -548,13 +556,13 @@ static void mgmt_device_blocked(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Device Blocked control\n");
+		display_printf("* Malformed Device Blocked control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Blocked: %s (%d)\n", str, ev->addr.type);
+	display_printf("@ Device Blocked: %s (%d)\n", str, ev->addr.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -568,13 +576,13 @@ static void mgmt_device_unblocked(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Device Unblocked control\n");
+		display_printf("* Malformed Device Unblocked control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Unblocked: %s (%d)\n", str, ev->addr.type);
+	display_printf("@ Device Unblocked: %s (%d)\n", str, ev->addr.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -588,13 +596,13 @@ static void mgmt_device_unpaired(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Device Unpaired control\n");
+		display_printf("* Malformed Device Unpaired control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Unpaired: %s (%d)\n", str, ev->addr.type);
+	display_printf("@ Device Unpaired: %s (%d)\n", str, ev->addr.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -609,7 +617,7 @@ static void mgmt_passkey_notify(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Passkey Notify control\n");
+		display_printf("* Malformed Passkey Notify control\n");
 		return;
 	}
 
@@ -617,7 +625,7 @@ static void mgmt_passkey_notify(uint16_t len, const void *buf)
 
 	passkey = le32_to_cpu(ev->passkey);
 
-	printf("@ Passkey Notify: %s (%d) passkey %06u entered %u\n",
+	display_printf("@ Passkey Notify: %s (%d) passkey %06u entered %u\n",
 				str, ev->addr.type, passkey, ev->entered);
 
 	buf += sizeof(*ev);
@@ -632,14 +640,14 @@ static void mgmt_new_irk(uint16_t len, const void *buf)
 	char addr[18], rpa[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed New IRK control\n");
+		display_printf("* Malformed New IRK control\n");
 		return;
 	}
 
 	ba2str(&ev->rpa, rpa);
 	ba2str(&ev->key.addr.bdaddr, addr);
 
-	printf("@ New IRK: %s (%d) %s\n", addr, ev->key.addr.type, rpa);
+	display_printf("@ New IRK: %s (%d) %s\n", addr, ev->key.addr.type, rpa);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -654,7 +662,7 @@ static void mgmt_new_csrk(uint16_t len, const void *buf)
 	char addr[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed New CSRK control\n");
+		display_printf("* Malformed New CSRK control\n");
 		return;
 	}
 
@@ -678,7 +686,7 @@ static void mgmt_new_csrk(uint16_t len, const void *buf)
 		break;
 	}
 
-	printf("@ New CSRK: %s (%d) %s (%u)\n", addr, ev->key.addr.type,
+	display_printf("@ New CSRK: %s (%d) %s (%u)\n", addr, ev->key.addr.type,
 							type, ev->key.type);
 
 	buf += sizeof(*ev);
@@ -693,13 +701,14 @@ static void mgmt_device_added(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Device Added control\n");
+		display_printf("* Malformed Device Added control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Added: %s (%d) %d\n", str, ev->addr.type, ev->action);
+	display_printf("@ Device Added: %s (%d) %d\n", str, ev->addr.type,
+				ev->action);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -713,13 +722,13 @@ static void mgmt_device_removed(uint16_t len, const void *buf)
 	char str[18];
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Device Removed control\n");
+		display_printf("* Malformed Device Removed control\n");
 		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Removed: %s (%d)\n", str, ev->addr.type);
+	display_printf("@ Device Removed: %s (%d)\n", str, ev->addr.type);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -734,7 +743,8 @@ static void mgmt_new_conn_param(uint16_t len, const void *buf)
 	uint16_t min, max, latency, timeout;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed New Connection Parameter control\n");
+		display_printf("* Malformed New Connection Parameter "
+				"control\n");
 		return;
 	}
 
@@ -744,7 +754,8 @@ static void mgmt_new_conn_param(uint16_t len, const void *buf)
 	latency = le16_to_cpu(ev->latency);
 	timeout = le16_to_cpu(ev->timeout);
 
-	printf("@ New Conn Param: %s (%d) hint %d min 0x%4.4x max 0x%4.4x "
+	display_printf("@ New Conn Param: %s (%d) hint %d min 0x%4.4x "
+			"max 0x%4.4x "
 		"latency 0x%4.4x timeout 0x%4.4x\n", addr, ev->addr.type,
 		ev->store_hint, min, max, latency, timeout);
 
@@ -759,11 +770,11 @@ static void mgmt_advertising_added(uint16_t len, const void *buf)
 	const struct mgmt_ev_advertising_added *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Advertising Added control\n");
+		display_printf("* Malformed Advertising Added control\n");
 		return;
 	}
 
-	printf("@ Advertising Added: %u\n", ev->instance);
+	display_printf("@ Advertising Added: %u\n", ev->instance);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -776,11 +787,11 @@ static void mgmt_advertising_removed(uint16_t len, const void *buf)
 	const struct mgmt_ev_advertising_removed *ev = buf;
 
 	if (len < sizeof(*ev)) {
-		printf("* Malformed Advertising Removed control\n");
+		display_printf("* Malformed Advertising Removed control\n");
 		return;
 	}
 
-	printf("@ Advertising Removed: %u\n", ev->instance);
+	display_printf("@ Advertising Removed: %u\n", ev->instance);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -894,7 +905,8 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		mgmt_advertising_removed(size, data);
 		break;
 	default:
-		printf("* Unknown control (code %d len %d)\n", opcode, size);
+		display_printf("* Unknown control (code %d len %d)\n", opcode,
+					size);
 		packet_hexdump(data, size);
 		break;
 	}
@@ -962,8 +974,10 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 
 		switch (data->channel) {
 		case HCI_CHANNEL_CONTROL:
+			find_frame_begin();
 			packet_control(tv, cred, index, opcode,
 							data->buf, pktlen);
+			find_frame_end();
 			break;
 		case HCI_CHANNEL_MONITOR:
 			if (pktlen > (len - MGMT_HDR_SIZE))
@@ -973,8 +987,10 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 							data->buf, pktlen);
 			ellisys_inject_hci(tv, index, opcode,
 							data->buf, pktlen);
+			find_frame_begin();
 			packet_monitor(tv, cred, index, opcode,
 							data->buf, pktlen);
+			find_frame_end();
 			break;
 		}
 	}
@@ -1120,8 +1136,10 @@ static void kmsg_callback(int fd, uint32_t events, void *user_data)
 
 	btsnoop_write_hci(btsnoop_file, &tv, HCI_DEV_NONE,
 				BTSNOOP_OPCODE_SYSTEM_NOTE, 0, msg, len);
+	find_frame_begin();
 	packet_monitor(&tv, NULL, HCI_DEV_NONE,
 				BTSNOOP_OPCODE_SYSTEM_NOTE, msg, len);
+	find_frame_end();
 }
 
 static int open_kmsg(void)
@@ -1168,8 +1186,10 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 		opcode = le16_to_cpu(hdr->opcode);
 		index = le16_to_cpu(hdr->index);
 
+		find_frame_begin();
 		packet_monitor(NULL, NULL, index, opcode,
 					data->buf + MGMT_HDR_SIZE, pktlen);
+		find_frame_end();
 
 		data->offset -= pktlen + MGMT_HDR_SIZE;
 
@@ -1200,7 +1220,7 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 		return;
 	}
 
-	printf("--- New monitor connection ---\n");
+	display_printf("--- New monitor connection ---\n");
 
 	data = malloc(sizeof(*data));
 	if (!data) {
@@ -1339,14 +1359,16 @@ static bool tty_parse_header(uint8_t *hdr, uint8_t len, struct timeval **tv,
 			*tv = ctv;
 			break;
 		default:
-			printf("Unknown extended header type %u\n", type);
+			display_printf("Unknown extended header type %u\n",
+					type);
 			return false;
 		}
 	}
 
 	if (total) {
 		*drops += total;
-		printf("* Drops: cmd %u evt %u acl_tx %u acl_rx %u sco_tx %u "
+		display_printf("* Drops: cmd %u evt %u acl_tx %u acl_rx %u "
+			"sco_tx %u "
 			"sco_rx %u other %u\n", cmd, evt, acl_tx, acl_rx,
 			sco_tx, sco_rx, other);
 	}
@@ -1386,8 +1408,10 @@ static void process_data(struct control_data *data)
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
 		ellisys_inject_hci(tv, 0, opcode, hdr->ext_hdr + hdr->hdr_len,
 					pktlen);
+		find_frame_begin();
 		packet_monitor(tv, NULL, 0, opcode,
 					hdr->ext_hdr + hdr->hdr_len, pktlen);
+		find_frame_end();
 
 		data->offset -= 2 + data_len;
 
@@ -1453,7 +1477,7 @@ int control_tty(const char *path, unsigned int speed)
 		return err;
 	}
 
-	printf("--- %s opened ---\n", path);
+	display_printf("--- %s opened ---\n", path);
 
 	data = malloc(sizeof(*data));
 	if (!data) {
@@ -1510,7 +1534,7 @@ int control_rtt(char *jlink, char *rtt)
 		return -ENODEV;
 	}
 
-	printf("--- RTT opened ---\n");
+	display_printf("--- RTT opened ---\n");
 
 	data = new0(struct control_data, 1);
 	data->channel = HCI_CHANNEL_MONITOR;
@@ -1573,7 +1597,9 @@ void control_reader(const char *path, bool pager)
 			if (opcode == 0xffff)
 				continue;
 
+			find_frame_begin();
 			packet_monitor(&tv, NULL, index, opcode, buf, pktlen);
+			find_frame_end();
 			ellisys_inject_hci(&tv, index, opcode, buf, pktlen);
 		}
 		break;
@@ -1586,7 +1612,9 @@ void control_reader(const char *path, bool pager)
 								buf, &pktlen))
 				break;
 
+			find_frame_begin();
 			packet_simulator(&tv, frequency, buf, pktlen);
+			find_frame_end();
 		}
 		break;
 	}

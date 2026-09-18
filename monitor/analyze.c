@@ -277,11 +277,11 @@ static void chan_destroy(void *data)
 
 	fixed = fixed_channel_name(chan->cid);
 	if (fixed)
-		printf("  Found %s L2CAP channel with CID %u (%s)\n",
+		display_printf("  Found %s L2CAP channel with CID %u (%s)\n",
 					chan->out ? "TX" : "RX", chan->cid,
 					fixed);
 	else
-		printf("  Found %s L2CAP channel with CID %u\n",
+		display_printf("  Found %s L2CAP channel with CID %u\n",
 					chan->out ? "TX" : "RX", chan->cid);
 
 	if (chan->psm)
@@ -298,6 +298,8 @@ static void chan_destroy(void *data)
 	print_stats(&chan->tx, "TX");
 
 done:
+	queue_destroy(chan->rx.plot, free);
+	queue_destroy(chan->tx.plot, free);
 	free(chan);
 }
 
@@ -370,7 +372,8 @@ static void conn_destroy(void *data)
 		break;
 	}
 
-	printf("  Found %s connection with handle %u\n", str, conn->handle);
+	display_printf("  Found %s connection with handle %u\n", str,
+				conn->handle);
 	packet_print_addr("Address", conn->bdaddr, conn->bdaddr_type);
 	if (!conn->setup_seen)
 		print_field("Connection setup missing");
@@ -482,29 +485,29 @@ static void dev_destroy(void *data)
 		break;
 	}
 
-	printf("Found %s controller with index %u\n", str, dev->index);
-	printf("  BD_ADDR %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+	display_printf("Found %s controller with index %u\n", str, dev->index);
+	display_printf("  BD_ADDR %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
 			dev->bdaddr[5], dev->bdaddr[4], dev->bdaddr[3],
 			dev->bdaddr[2], dev->bdaddr[1], dev->bdaddr[0]);
 	if (dev->manufacturer != 0xffff)
-		printf(" (%s)", bt_compidtostr(dev->manufacturer));
-	printf("\n");
+		display_printf(" (%s)", bt_compidtostr(dev->manufacturer));
+	display_printf("\n");
 
 
-	printf("  %lu commands\n", dev->num_cmd);
-	printf("  %lu events\n", dev->num_evt);
-	printf("  %lu ACL packets\n", dev->num_acl);
-	printf("  %lu SCO packets\n", dev->num_sco);
-	printf("  %lu ISO packets\n", dev->num_iso);
-	printf("  %lu vendor packets\n", dev->num_vendor);
-	printf("  %lu vendor diagnostics\n", dev->vendor_diag);
-	printf("  %lu system notes\n", dev->system_note);
-	printf("  %lu user logs\n", dev->user_log);
-	printf("  %lu control messages \n", dev->ctrl_msg);
-	printf("  %lu unknown opcodes\n", dev->unknown);
+	display_printf("  %lu commands\n", dev->num_cmd);
+	display_printf("  %lu events\n", dev->num_evt);
+	display_printf("  %lu ACL packets\n", dev->num_acl);
+	display_printf("  %lu SCO packets\n", dev->num_sco);
+	display_printf("  %lu ISO packets\n", dev->num_iso);
+	display_printf("  %lu vendor packets\n", dev->num_vendor);
+	display_printf("  %lu vendor diagnostics\n", dev->vendor_diag);
+	display_printf("  %lu system notes\n", dev->system_note);
+	display_printf("  %lu user logs\n", dev->user_log);
+	display_printf("  %lu control messages\n", dev->ctrl_msg);
+	display_printf("  %lu unknown opcodes\n", dev->unknown);
 
 	if (dev->num_cmd_rsp)
-		printf("  Command latency: %lld-%lld msec "
+		display_printf("  Command latency: %lld-%lld msec "
 				"(~%lld msec +/- %lld msec)\n",
 				TV_MSEC(dev->cmd_latency.min),
 				TV_MSEC(dev->cmd_latency.max),
@@ -513,12 +516,12 @@ static void dev_destroy(void *data)
 
 	/* Whatever is left never got a Command Complete or Command Status */
 	if (!queue_isempty(dev->cmd_list))
-		printf("  Commands without response: %u\n",
+		display_printf("  Commands without response: %u\n",
 					queue_length(dev->cmd_list));
 
 	queue_destroy(dev->cmd_list, free);
 	queue_destroy(dev->conn_list, conn_destroy);
-	printf("\n");
+	display_printf("\n");
 
 	free(dev);
 }
@@ -1639,7 +1642,7 @@ void analyze_trace(const char *path)
 		num_packets++;
 	}
 
-	printf("Trace contains %lu packets\n\n", num_packets);
+	display_printf("Trace contains %lu packets\n\n", num_packets);
 
 	queue_destroy(dev_list, dev_destroy);
 

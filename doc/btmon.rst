@@ -96,6 +96,9 @@ OPTIONS
 -E IP, --ellisys IP         Send Ellisys HCI Injection.
 
 -P, --no-pager              Disable pager usage while reading the log file.
+-0, --print0                Separate the frames with a NUL, so that a pager
+                            or a tool reading records rather than lines sees
+                            a whole frame as one entry.
 
 -J OPTIONS, --jlink OPTIONS     Read data from RTT.  Each options are comma(,)
                                 separated without spaces.
@@ -615,6 +618,67 @@ Read this as: The controller reported a new LE connection (HCI event).
 The kernel forwarded this as a MGMT Device Connected event. bluetoothd
 logged its ``connected_callback()``. Then data exchange began -- an L2CAP
 parameter update and ATT MTU negotiation over the new ACL connection.
+
+SEARCHING THE FRAMES
+====================
+
+A frame spans several lines, so a pager that works on records rather than
+lines has to be told where one ends. Asking for that with ``--print0``, or
+by having ``--read0`` in ``PAGER``, separates the frames with a NUL so that
+a whole frame is one entry::
+
+   $ PAGER='fzf --read0' btmon -r hcidump.log
+   $ btmon -r hcidump.log --print0 | fzf --read0
+
+Without it each line becomes an entry of its own, so searching finds the
+line reporting an error without the header saying which controller, handle
+and time it belongs to.
+
+The newline that ends a frame is left out of a record, since it is what
+separates the lines within one and would otherwise show as a blank line at
+the end of every entry.
+
+Nothing is separated unless it was asked for, so a pager reading lines,
+such as ``less``, is unaffected and never shows the separator. Redirected
+output is never separated either unless ``--print0`` says so, since nothing
+is then reading it as records.
+
+Searching a running capture
+---------------------------
+
+While capturing, the frames seen so far can be handed to a pager at any
+time by pressing ``Ctrl-R``, in the manner of the shell. The capture keeps
+running underneath, and closing the pager returns to it.
+
+.. code-block::
+
+   $ btmon                          # then press Ctrl-R
+   $ PAGER='fzf --read0' btmon      # then press Ctrl-R
+
+Whatever arrives while the pager is up is printed once it closes, so the
+trace on the terminal has no gap. The capture is never paused, as anything
+not read in time would be dropped by the kernel.
+
+The pager is taken from ``PAGER``. When that is not set and ``fzf`` is
+installed it is used instead of the plain pager, as it suits a trace far
+better. Wherever ``fzf`` is used it is given the options it needs, adding
+whichever of them are missing::
+
+   fzf --ansi --read0 --tac
+
+``--read0`` is what makes an entry a whole frame rather than a single line
+of one, ``--ansi`` renders the colours instead of showing the escape
+sequences, and ``--tac`` puts the most recent frame first. Setting
+``PAGER`` to ``cat`` or leaving it empty disables the pager, as elsewhere.
+
+Frames are only collected when the output is a terminal, so a capture that
+is piped or redirected behaves exactly as it always has. The terminal is
+switched to reading keys as they are typed, but signals are left enabled so
+``Ctrl-C`` still interrupts the capture.
+
+They are held in memory and the oldest are dropped once 200000 are held, so
+that a capture left running does not risk the monitor being killed for
+using too much memory.
 
 ANALYZE MODE
 ============
