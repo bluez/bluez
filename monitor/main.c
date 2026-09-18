@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 		if (ellisys_server)
 			ellisys_enable(ellisys_server, ellisys_port);
 
-		find_setup();
+		find_setup(false);
 
 		control_reader(reader_path, use_pager);
 		return EXIT_SUCCESS;
@@ -309,7 +309,8 @@ int main(int argc, char *argv[])
 	if (jlink && control_rtt(jlink, rtt) < 0)
 		return EXIT_FAILURE;
 
-	find_setup();
+	/* Watch for the key that brings the pager up */
+	find_setup(true);
 
 	exit_status = mainloop_run_with_signal(signal_callback, NULL);
 
