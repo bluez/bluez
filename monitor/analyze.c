@@ -298,8 +298,6 @@ static void chan_destroy(void *data)
 	print_stats(&chan->tx, "TX");
 
 done:
-	queue_destroy(chan->rx.plot, free);
-	queue_destroy(chan->tx.plot, free);
 	free(chan);
 }
 
