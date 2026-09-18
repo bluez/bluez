@@ -500,7 +500,7 @@ static void dev_destroy(void *data)
 	printf("  %lu vendor diagnostics\n", dev->vendor_diag);
 	printf("  %lu system notes\n", dev->system_note);
 	printf("  %lu user logs\n", dev->user_log);
-	printf("  %lu control messages \n", dev->ctrl_msg);
+	printf("  %lu control messages\n", dev->ctrl_msg);
 	printf("  %lu unknown opcodes\n", dev->unknown);
 
 	if (dev->num_cmd_rsp)
