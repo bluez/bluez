@@ -709,7 +709,7 @@ void packet_select_index(uint16_t index)
 	index_filter = true;
 }
 
-#define print_space(x) printf("%*c", (x), ' ');
+#define print_space(x) display_printf("%*c", (x), ' ')
 
 void packet_set_fallback_manufacturer(uint16_t manufacturer)
 {
@@ -919,12 +919,13 @@ static void print_packet(struct timeval *tv, struct ucred *cred, char ident,
 	}
 
 	if (ts_len > 0) {
-		printf("%s", line);
+		display_printf("%s", line);
 		if (len < col)
 			print_space(col - len - ts_len - 1);
-		printf("%s%s\n", use_color() ? COLOR_TIMESTAMP : "", ts_str);
+		display_printf("%s%s\n", use_color() ? COLOR_TIMESTAMP : "",
+				ts_str);
 	} else
-		printf("%s\n", line);
+		display_printf("%s\n", line);
 }
 
 static const struct {
@@ -18664,7 +18665,7 @@ void packet_todo(void)
 {
 	int i;
 
-	printf("HCI commands with missing decodings:\n");
+	display_printf("HCI commands with missing decodings:\n");
 
 	for (i = 0; opcode_table[i].str; i++) {
 		if (opcode_table[i].bit < 0)
@@ -18673,22 +18674,22 @@ void packet_todo(void)
 		if (opcode_table[i].cmd_func)
 			continue;
 
-		printf("\t%s\n", opcode_table[i].str);
+		display_printf("\t%s\n", opcode_table[i].str);
 	}
 
-	printf("HCI events with missing decodings:\n");
+	display_printf("HCI events with missing decodings:\n");
 
 	for (i = 0; event_table[i].str; i++) {
 		if (event_table[i].func)
 			continue;
 
-		printf("\t%s\n", event_table[i].str);
+		display_printf("\t%s\n", event_table[i].str);
 	}
 
 	for (i = 0; le_meta_event_table[i].str; i++) {
 		if (le_meta_event_table[i].func)
 			continue;
 
-		printf("\t%s\n", le_meta_event_table[i].str);
+		display_printf("\t%s\n", le_meta_event_table[i].str);
 	}
 }

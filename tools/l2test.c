@@ -16,6 +16,7 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <errno.h>
 #include <ctype.h>
@@ -332,6 +333,15 @@ static int setopts(int sk, struct l2cap_options *opts)
 bool use_color(void)
 {
 	return false;
+}
+
+void display_printf(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
 }
 
 static const struct bitfield_data phy_table[] = {

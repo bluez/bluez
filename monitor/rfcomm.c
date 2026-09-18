@@ -139,15 +139,15 @@ static inline bool mcc_test(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
 	uint8_t data;
 
-	printf("%*cTest Data: 0x ", indent, ' ');
+	display_printf("%*cTest Data: 0x ", indent, ' ');
 
 	while (frame->size > 1) {
 		if (!l2cap_frame_get_u8(frame, &data))
 			return false;
-		printf("%2.2x ", data);
+		display_printf("%2.2x ", data);
 	}
 
-	printf("\n");
+	display_printf("\n");
 	return true;
 }
 

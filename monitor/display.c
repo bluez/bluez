@@ -15,6 +15,7 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -28,6 +29,25 @@
 #include "display.h"
 
 static pid_t pager_pid = 0;
+static FILE *display_out;
+
+/*
+ * Redirect the decoding output, so that a caller can capture a frame and
+ * decide what to do with it. Passing NULL restores the normal output.
+ */
+void display_set_output(FILE *fp)
+{
+	display_out = fp;
+}
+
+void display_printf(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(display_out ? display_out : stdout, fmt, ap);
+	va_end(ap);
+}
 int default_pager_num_columns = FALLBACK_TERMINAL_WIDTH;
 enum monitor_color setting_monitor_color = COLOR_AUTO;
 
