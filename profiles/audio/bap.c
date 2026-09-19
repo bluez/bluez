@@ -207,6 +207,9 @@ static void bap_data_free(struct bap_data *data)
 	if (data->cig_update_id)
 		g_source_remove(data->cig_update_id);
 
+	if (data->device)
+		btd_device_unref(data->device);
+
 	free(data);
 }
 
@@ -1784,9 +1787,6 @@ static struct bap_ep *ep_register_bcast(struct bap_data *data,
 	ep->data = data;
 	ep->lpac = lpac;
 	ep->rpac = rpac;
-
-	if (device)
-		ep->data->device = device;
 
 	switch (bt_bap_pac_get_type(lpac)) {
 	case BT_BAP_BCAST_SOURCE:
@@ -3463,7 +3463,8 @@ static struct bap_data *bap_data_new(struct btd_device *device)
 	struct bap_data *data;
 
 	data = new0(struct bap_data, 1);
-	data->device = device;
+	/* Hold reference: sessions may outlive device removal */
+	data->device = device ? btd_device_ref(device) : NULL;
 	data->srcs = queue_new();
 	data->snks = queue_new();
 	data->bcast = queue_new();
@@ -3888,7 +3889,6 @@ static int bap_bcast_probe(struct btd_service *service)
 	data = bap_data_new(device);
 	data->service = service;
 	data->adapter = adapter;
-	data->device = device;
 	data->bap = bap;
 	data->bcast_snks = queue_new();
 
@@ -3985,6 +3985,7 @@ static int bap_probe(struct btd_service *service)
 					btd_device_get_gatt_db(device));
 	if (!data->bap) {
 		error("Unable to create BAP instance");
+		btd_device_unref(data->device);
 		free(data);
 		return -EINVAL;
 	}
