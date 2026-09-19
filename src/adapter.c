@@ -1881,6 +1881,12 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 		if (status != MGMT_STATUS_SUCCESS)
 			return;
 
+		if (length < sizeof(*rp)) {
+			btd_error(adapter->dev_id,
+				"Wrong size of start discovery return parameters");
+			return;
+		}
+
 		/* Stop discovering as there are no clients left */
 		cp.type = rp->type;
 		mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
