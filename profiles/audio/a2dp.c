@@ -2694,6 +2694,11 @@ static void transport_cb(GIOChannel *io, GError *err, gpointer user_data)
 		goto drop;
 	}
 
+	if (!setup->stream) {
+		error("bt_io_accept: setup %p has no stream", setup);
+		goto drop;
+	}
+
 	if (!avdtp_stream_set_transport(setup->stream,
 					g_io_channel_unix_get_fd(io),
 					imtu, omtu))
