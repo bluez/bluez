@@ -3246,6 +3246,11 @@ static const struct generic_data pair_device_legacy_nonbondable_1 = {
 	.client_pin_len = sizeof(pair_device_pin),
 };
 
+/* Whether the pending Pair Device command gets answered by
+ * __mgmt_power_off() with Not Powered or by the connection failure
+ * callbacks with Disconnected when the controller is forced down
+ * with HCIDEVDOWN depends on timing.
+ */
 static const struct generic_data pair_device_power_off_test_1 = {
 	.setup_settings = settings_powered_bondable,
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -3253,6 +3258,7 @@ static const struct generic_data pair_device_power_off_test_1 = {
 	.force_power_off = true,
 	.expect_status = MGMT_STATUS_DISCONNECTED,
 	.expect_func = pair_device_expect_param_func,
+	.fail_tolerant = true,
 };
 
 static const void *client_bdaddr_param_func(uint8_t *len)
