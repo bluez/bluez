@@ -2769,11 +2769,15 @@ static const struct generic_data load_link_keys_invalid_params_test_2 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+/* Kernel commit 1e9683c9b6ca ("Bluetooth: MGMT: Ignore keys being loaded
+ * with invalid type") made invalid entries be skipped instead of failing
+ * the whole command, so this is expected to succeed.
+ */
 static const struct generic_data load_link_keys_invalid_params_test_3 = {
 	.send_opcode = MGMT_OP_LOAD_LINK_KEYS,
 	.send_param = load_link_keys_invalid_param_3,
 	.send_len = sizeof(load_link_keys_invalid_param_3),
-	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
 static const char load_ltks_valid_param_1[] = { 0x00, 0x00 };
@@ -3067,18 +3071,22 @@ static const struct generic_data load_ltks_invalid_params_test_1 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+/* Invalid entries are skipped instead of failing the whole command,
+ * see kernel commit 1e9683c9b6ca ("Bluetooth: MGMT: Ignore keys being
+ * loaded with invalid type").
+ */
 static const struct generic_data load_ltks_invalid_params_test_2 = {
 	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
 	.send_param = load_ltks_invalid_param_2,
 	.send_len = sizeof(load_ltks_invalid_param_2),
-	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
 static const struct generic_data load_ltks_invalid_params_test_3 = {
 	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
 	.send_param = load_ltks_invalid_param_3,
 	.send_len = sizeof(load_ltks_invalid_param_3),
-	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_status = MGMT_STATUS_SUCCESS,
 };
 
 static const char load_ltks_invalid_param_4[22] = { 0x1d, 0x07 };
