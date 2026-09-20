@@ -37,8 +37,6 @@ XFAIL = {
         "Mesh - Send cancel - 2",
     },
     "mgmt-tester": {
-        # Always fail:
-        "Read Exp Feature - Success",
         # Flaky, randomly fail:
         "LL Privacy - Add Device 1 (Add to AL)",
         "LL Privacy - Add Device 2 (2 Devices to AL)",
