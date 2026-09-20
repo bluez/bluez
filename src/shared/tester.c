@@ -558,6 +558,8 @@ void tester_pre_setup_failed(void)
 		test->timeout_id = 0;
 	}
 
+	test->result = TEST_RESULT_FAILED;
+
 	print_progress(test->name, COLOR_RED, "pre setup failed");
 
 	g_idle_add(done_callback, test);
@@ -624,6 +626,7 @@ void tester_setup_failed(void)
 	if (test->stage != TEST_STAGE_SETUP)
 		return;
 
+	test->result = TEST_RESULT_FAILED;
 	test->stage = TEST_STAGE_POST_TEARDOWN;
 
 	if (test->timeout_id > 0) {
