@@ -7656,7 +7656,12 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 
 	if (status != test->expect_status) {
 		if (!test->fail_tolerant || !!status != !!test->expect_status) {
-			tester_test_abort();
+			tester_warn("Unexpected status got %s (0x%02x) "
+							"expected %s (0x%02x)",
+				mgmt_errstr(status), status,
+				mgmt_errstr(test->expect_status),
+				test->expect_status);
+			tester_test_failed();
 			return;
 		}
 
