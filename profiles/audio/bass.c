@@ -108,6 +108,13 @@ struct bass_assistant {
 	struct btd_adapter *adapter;	/* Broadcast source device */
 	struct btd_device *device;	/* Broadcast source device */
 	struct bass_data *data;		/* BASS session with peer device */
+	struct bt_bass *bass;		/* BASS session the stream is pushed
+					 * to, which for a local stream is
+					 * chosen by the push, so it is kept
+					 * per assistant: the session of the
+					 * data is shared by every assistant
+					 * of the adapter.
+					 */
 	uint8_t sgrp;
 	uint8_t sid;
 	uint8_t bis;
@@ -803,6 +810,7 @@ assistant_new(struct btd_adapter *adapter,
 	assistant->adapter = adapter;
 	assistant->device = device;
 	assistant->data = data;
+	assistant->bass = bt_bass_ref(data->bass);
 	assistant->sgrp = sgrp;
 	assistant->sid = sid;
 	assistant->bis = bis;
@@ -991,10 +999,10 @@ static int assistant_parse_props(struct bass_assistant *assistant,
 				goto fail;
 			}
 
-			if (assistant->data->bass)
-				bt_bass_unref(assistant->data->bass);
+			if (assistant->bass)
+				bt_bass_unref(assistant->bass);
 
-			assistant->data->bass = bt_bass_ref(data->bass);
+			assistant->bass = bt_bass_ref(data->bass);
 		}
 
 		dbus_message_iter_next(props);
@@ -1040,7 +1048,7 @@ static void assistant_past(struct bass_assistant *assistant)
 		return;
 
 	if (!device) {
-		struct bt_bass *bass = assistant->data->bass;
+		struct bt_bass *bass = assistant->bass;
 		struct bass_data *data;
 
 		data = queue_find(sessions, match_bass, bass);
@@ -1095,7 +1103,7 @@ static DBusMessage *push_mod_src(struct bass_assistant *assistant,
 		util_iov_append(&iov, &meta_len, sizeof(meta_len));
 	}
 
-	err = bt_bass_send(assistant->data->bass, &hdr, &iov);
+	err = bt_bass_send(assistant->bass, &hdr, &iov);
 	if (err) {
 		DBG("Unable to send BASS Write Command");
 		return btd_error_failed(msg, strerror(-err));
@@ -1109,7 +1117,7 @@ static DBusMessage *push_mod_src(struct bass_assistant *assistant,
 		struct bass_src *src;
 
 		src = queue_remove_if(assistant->srcs, match_src_data,
-						assistant->data->bass);
+						assistant->bass);
 		free(src);
 	}
 
@@ -1210,7 +1218,7 @@ static DBusMessage *push_add_src(struct bass_assistant *assistant,
 	util_iov_append(&iov, assistant->meta->iov_base,
 				assistant->meta->iov_len);
 
-	err = bt_bass_send(assistant->data->bass, &hdr, &iov);
+	err = bt_bass_send(assistant->bass, &hdr, &iov);
 	if (err) {
 		DBG("Unable to send BASS Write Command");
 		return btd_error_failed(msg, strerror(-err));
@@ -1219,7 +1227,7 @@ static DBusMessage *push_add_src(struct bass_assistant *assistant,
 	free(iov.iov_base);
 
 	if (assistant->state == ASSISTANT_STATE_LOCAL)
-		assistant_add_src(assistant, assistant->data->bass, 0);
+		assistant_add_src(assistant, assistant->bass, 0);
 	else
 		assistant_set_state(assistant, ASSISTANT_STATE_PENDING);
 
@@ -1235,7 +1243,7 @@ static DBusMessage *push_src(struct bass_assistant *assistant,
 		struct bass_src *src;
 
 		src = queue_find(assistant->srcs, match_src_data,
-						assistant->data->bass);
+						assistant->bass);
 		if (src) {
 			assistant->src_id = src->src_id;
 			return push_mod_src(assistant, msg);
@@ -1274,7 +1282,7 @@ static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
 	 * be enabled yet and the state changes it triggers, e.g. a request to
 	 * transfer the sync info, would be missed.
 	 */
-	data = queue_find(sessions, match_bass, assistant->data->bass);
+	data = queue_find(sessions, match_bass, assistant->bass);
 	if (data && !data->ready) {
 		DBG("Session not ready, queueing request");
 
@@ -1391,6 +1399,7 @@ static void assistant_free(void *data)
 	util_iov_free(assistant->meta, 1);
 	util_iov_free(assistant->caps, 1);
 	queue_destroy(assistant->srcs, free);
+	bt_bass_unref(assistant->bass);
 
 	free(assistant);
 }
@@ -2237,7 +2246,7 @@ static void bass_handle_bcode_req(struct bass_assistant *assistant, int id)
 
 	util_iov_push_mem(&iov, sizeof(params), &params);
 
-	err = bt_bass_send(assistant->data->bass, &hdr, &iov);
+	err = bt_bass_send(assistant->bass, &hdr, &iov);
 	if (err) {
 		DBG("Unable to send BASS Write Command");
 		return;
@@ -2279,6 +2288,14 @@ static void bass_src_changed(uint8_t id, uint32_t bid, uint8_t state,
 						entry = entry->next) {
 		struct bass_assistant *assistant = entry->data;
 		uint32_t bis = 1 << (assistant->bis - 1);
+
+		if (assistant->bass != data->bass)
+			/* Only handle assistant objects that have been
+			 * pushed to the delegator reporting the change,
+			 * otherwise e.g. the Broadcast Code of a request
+			 * would be sent to a different delegator.
+			 */
+			continue;
 
 		if (bid && assistant->bid != bid)
 			/* Only handle assistant objects
