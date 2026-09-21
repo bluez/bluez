@@ -221,6 +221,118 @@ test_bap_broadcast_transport_acquire[lc3|pbp]
 	match the one the source encrypted the BIG with, otherwise the
 	sink cannot decrypt the stream.
 
+TRUE WIRELESS BROADCAST
+=======================
+
+Three hosts, with the two sinks acting as the sides of a true wireless
+pair, e.g. a pair of earbuds, each one a device of its own:
+
+.. code-block::
+
+	+------------------------+                 +------------------------+
+	| host0                  |    extended +   | host1                  |
+	| Broadcast Source       |    periodic     | Broadcast Sink, left   |
+	| bluetoothctl -a auto   |   advertising   | bluetoothctl -a auto   |
+	| broadcast-source-2bis  | --------------> | broadcast-sink-left.bt |
+	| BCAA endpoint (0x1852) |                 | BAA endpoint (0x1851)  |
+	|                        |  BIS 1, F.Left  | Front Left             |
+	|                        | ==============> |                        |
+	|                        |                 +------------------------+
+	|                        |
+	|                        |    extended +   +------------------------+
+	|                        |    periodic     | host2                  |
+	|                        |   advertising   | Broadcast Sink, right  |
+	|                        | --------------> | bluetoothctl -a auto   |
+	|                        |                 | broadcast-sink-right   |
+	|                        |  BIS 2, F.Right | BAA endpoint (0x1851)  |
+	|                        | ==============> | Front Right            |
+	+------------------------+                 +------------------------+
+
+	one BIG holding one BIS per channel, and each side syncing to the
+	BIS carrying its own channel
+
+	--> advertising is scanned by       ==> audio flows towards
+
+There is no connection at all here, not between the source and the
+sides and not between the sides either: each side scans, finds the
+Broadcast Source, syncs to the periodic advertising, reads the BASE and
+syncs to the BIG on its own.
+
+``client/scripts/broadcast-source-2bis.bt`` on host0
+	Registers a Broadcast Source endpoint
+	(``00001852-0000-1000-8000-00805f9b34fb``) with LC3 and configures
+	it twice with the 16_2_1 preset, in the same BIG, once with Front
+	Left and once with Front Right as the channel allocation, so the
+	BIG carries one BIS per channel. Both transports are acquired,
+	which starts the broadcast, encrypted with the broadcast code
+	`bluetoothctl` uses by default.
+
+``client/scripts/broadcast-sink-left.bt`` on host1
+	Registers a Broadcast Sink endpoint
+	(``00001851-0000-1000-8000-00805f9b34fb``) with LC3 and Front Left
+	as its only location, and scans.
+
+``client/scripts/broadcast-sink-right.bt`` on host2
+	As above, with Front Right as its only location.
+
+Registering a single location is what makes a side take a single
+channel: `bluetoothctl` adds the channel count to the capabilities, and
+`bluetoothd` only creates a transport for a BIS whose Channel
+Allocation is covered by the locations of the local PAC. A sink
+registering both locations, as in the BROADCAST section above, takes
+every BIS of the BIG instead.
+
+test_bap_broadcast_earbuds_transport_created
+--------------------------------------------
+
+:Setup: As above.
+
+:Steps:
+	1. Start `bluetoothctl` with the source script on host0.
+	2. Start `bluetoothctl` with the sink scripts on host1 and host2.
+	3. Each side: ``transport.list``, to check that nothing besides
+	   the transport of its own BIS was created.
+
+:Expected:
+	1. ``Endpoint /local/endpoint/ep0 registered``, then two
+	   ``Acquire successful: fd <fd> MTU <read>:<write>`` on the
+	   source, one per BIS, i.e. it is broadcasting both channels.
+	2. Each side syncs to the periodic advertising on its own and
+	   creates exactly one transport, for the BIS carrying its own
+	   channel: ``.../sid0/bis1/fdN`` on the left side and
+	   ``.../sid0/bis2/fdN`` on the right one.
+	3. Each transport reports ``Codec: 0x06`` for LC3 and
+	   ``State: idle``.
+
+:Notes: The BIS index of the path is what tells the two apart, as each
+	side only ever sees its own.
+
+	Both transports of the source have to be acquired, as for the CIS
+	of a CIG: the BIG is only created once every BIS of it is ready.
+
+test_bap_broadcast_earbuds_transport_acquire
+--------------------------------------------
+
+:Setup: As above, with the transport of each side already created.
+
+:Steps:
+	1. Each side: ``transport.select <transport>``.
+	2. Answer ``Enter bcode[value/no]:`` with the broadcast code the
+	   source used.
+
+:Expected: On each side the transport moves to ``State: broadcasting``,
+	i.e. it synced to the BIG, then ``Acquire successful: fd <fd> MTU
+	<read>:<write>`` and ``State: active``.
+
+:Notes: The two sides sync independently, so each has to be given the
+	broadcast code of its own, and one side reaching ``active`` says
+	nothing about the other: both are checked.
+
+	Nothing keeps the sides in step, unlike a coordinated set, where
+	they are at least discovered and connected together. Rendering
+	them in sync is left to the BIG itself, through the presentation
+	delay.
+
 BROADCAST ASSISTANT
 ===================
 
