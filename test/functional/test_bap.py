@@ -5,6 +5,7 @@ Tests for BAP (LE Audio) using bluetoothctl in VM instances
 """
 
 import threading
+import time
 import warnings
 
 import dbus
@@ -113,7 +114,7 @@ def pair_le(host0, ctl0, host1, ctl1, advertise=True, services=False):
     ctl0.expect(f"Device {host1.bdaddr.upper()}")
     ctl0.send(f"pair {host1.bdaddr.upper()}\n")
 
-    pending = ["Pairing successful"]
+    pending = [PAIRED]
     if services:
         pending.append(f"Device {host1.bdaddr.upper()} ServicesResolved: yes")
 
@@ -168,6 +169,11 @@ def remove_device(ctl0, host):
         rf"Device has been removed|Device {addr} not available",
         timeout=REPLY_TIMEOUT,
     )
+
+
+# A device that is already paired is connected instead, see cmd_pair in
+# client/main.c, so a pairing reports one or the other
+PAIRED = r"Pairing successful|Connection successful"
 
 
 def pair_wait(ctl0, ctl1, pending):
@@ -324,6 +330,41 @@ def transport_paths():
         for path, props in objects.items()
         if "org.bluez.MediaTransport1" in props
     )
+
+
+@mainloop_wrap
+def device_properties(paths):
+    """Properties of the given devices, empty for those that are unknown."""
+    objects = dbus.Interface(
+        get_dbus().get_object("org.bluez", "/"),
+        "org.freedesktop.DBus.ObjectManager",
+    ).GetManagedObjects()
+    return {
+        path: {
+            str(key): bool(value)
+            for key, value in objects.get(path, {}).get("org.bluez.Device1", {}).items()
+            if key in ("Paired", "Connected", "ServicesResolved")
+        }
+        for path in paths
+    }
+
+
+def wait_properties(host, paths, name):
+    """
+    Wait for the given property of the given devices to be set.
+
+    Polled rather than waited for on the output, as a device that is
+    already in that state does not report it again.
+    """
+    deadline = time.monotonic() + DEFAULT_TIMEOUT
+
+    while True:
+        props = host.call(device_properties, paths)
+        if all(props[path].get(name) for path in paths):
+            return
+
+        assert time.monotonic() < deadline, f"{name} not set on {paths}: {props}"
+        time.sleep(0.2)
 
 
 def add_preset(ctl, name, props, metadata):
@@ -571,6 +612,28 @@ past_host_config = host_config(
 
 LOCAL_ASSISTANT_RE = r"Assistant (/org/bluez/\S+/sid\d+/bis\d+)"
 
+# Local MediaAssistant object of a given BIS of the local broadcast
+LOCAL_ASSISTANT = r"Assistant (/org/bluez/hci0/sid\d+/bis{})"
+
+
+def push_assistant(source, assistant_path, host):
+    """
+    Share the local stream of the given MediaAssistant object with the
+    given delegator, which receives the periodic advertising sync over
+    the connection (PAST).
+    """
+    source.send(f"assistant.push {assistant_path}\n")
+    source.expect(r"Enter Device \(path\):")
+    source.send(f"/org/bluez/hci0/dev_{dev_addr(host)}\n")
+
+    # The local stream may already know the broadcast code
+    idx, _ = source.expect(
+        [r"Enter Broadcast Code \(auto/value\):", r"Assistant \S+ pushed"]
+    )
+    if idx == 0:
+        source.send(f"{BCAST_CODE}\n")
+        source.expect(r"Assistant \S+ pushed")
+
 
 @past_host_config
 def test_bass_past_transport_acquire(hosts):
@@ -602,17 +665,7 @@ def test_bass_past_transport_acquire(hosts):
 
     # Share the local broadcast: the delegator receives the periodic
     # advertising sync over the connection (PAST)
-    source.send(f"assistant.push {assistant_path}\n")
-    source.expect(r"Enter Device \(path\):")
-    source.send(f"/org/bluez/hci0/dev_{dev_addr(delegator_host)}\n")
-
-    # The local stream may already know the broadcast code
-    idx, _ = source.expect(
-        [r"Enter Broadcast Code \(auto/value\):", r"Assistant \S+ pushed"]
-    )
-    if idx == 0:
-        source.send(f"{BCAST_CODE}\n")
-        source.expect(r"Assistant \S+ pushed")
+    push_assistant(source, assistant_path, delegator_host)
 
     # A transport is created on the delegator, selected and acquired
     # automatically
@@ -795,3 +848,107 @@ def test_bap_unicast_set_transport_acquire(set_hosts):
         [acquired, acquired]
         + [f"Transport {transport} State: active" for transport in transports],
     )
+
+
+def discover_set(source_host, source, left_host, right_host):
+    """
+    Scan until both members of the set have been found.
+
+    The set is resolved from the RSI of the members that are already
+    known, so connecting before both have been found would leave the
+    one found later out of it.
+    """
+    source.send("scan on\n")
+    source.expect(f"Controller {source_host.bdaddr.upper()} Discovering: yes")
+
+    expect_all(
+        source,
+        [
+            f"Device {left_host.bdaddr.upper()}",
+            f"Device {right_host.bdaddr.upper()}",
+        ],
+    )
+
+    # Stop scanning before connecting, so the discovery does not
+    # interfere with the connections to the members
+    source.send("scan off\n")
+    source.expect(f"Controller {source_host.bdaddr.upper()} Discovering: no")
+
+
+bass_set_host_config = host_config(
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+    [Bluetoothd(conf=csip_conf(1)), Pexpect()],
+    [Bluetoothd(conf=csip_conf(2)), Pexpect()],
+)
+
+
+@bass_set_host_config
+def test_bass_past_earbuds_transport_acquire(hosts):
+    source_host, left_host, right_host = hosts
+
+    # Source broadcasting one BIS per channel, with its own streams
+    # exposed as local MediaAssistant objects, one per BIS
+    source = start_bluetoothctl(source_host, "broadcast-source-2bis.bt")
+    groups = expect_all(
+        source,
+        [LOCAL_ASSISTANT.format(1), LOCAL_ASSISTANT.format(2), ACQUIRED, ACQUIRED],
+    )
+    assistants = [m[0].decode("utf-8") for m in groups[:2]]
+
+    # Delegators advertising, selecting and acquiring automatically
+    left = start_bluetoothctl(left_host, "broadcast-delegator-left.bt")
+    right = start_bluetoothctl(right_host, "broadcast-delegator-right.bt")
+
+    # Every member has to be advertising before connecting, so the set
+    # can be resolved and the remaining members found
+    left.expect("Advertising object registered")
+    right.expect("Advertising object registered")
+
+    paths = [
+        f"/org/bluez/hci0/dev_{dev_addr(host)}" for host in (left_host, right_host)
+    ]
+
+    # The hosts are reused, so a previous test may have left the
+    # members bonded, in which case they are known already and the
+    # discovery below would report nothing for them, as only what
+    # changes is reported: they are connected directly instead.
+    props = source_host.call(device_properties, paths)
+
+    if not all(props[path].get("Paired") for path in paths):
+        discover_set(source_host, source, left_host, right_host)
+
+    # Connecting one member connects the rest of the set, so a single
+    # request covers both, and pairing a member that is bonded already
+    # connects it, see cmd_pair in client/main.c
+    source.send(f"pair {left_host.bdaddr.upper()}\n")
+    pair_wait(source, left, [PAIRED])
+
+    # The Broadcast Receive State of each member is read over its own
+    # connection, so the services of both have to be resolved, and an
+    # encrypted link is required for the read to succeed.
+    #
+    # Checked over D-Bus rather than waited for on the output, as a
+    # device whose services are already resolved does not report it
+    # again, e.g. when the members were bonded already.
+    wait_properties(source_host, paths, "ServicesResolved")
+
+    # One push per member, each carrying the BIS of its own channel:
+    # BASS has no notion of a set, so the source is added to the
+    # Broadcast Receive State of each delegator separately, and each of
+    # them receives the periodic advertising sync over its own ACL
+    for assistant, host in zip(assistants, (left_host, right_host)):
+        push_assistant(source, assistant, host)
+
+    # A transport is created on each side for the BIS that was pushed
+    # to it, and selected and acquired automatically
+    for ctl, host, bis in ((left, left_host, 1), (right, right_host, 2)):
+        transport = expect_bis_transport(ctl, host, bis)
+
+        expect_all(
+            ctl,
+            [
+                ACQUIRED,
+                f"Transport {transport} State: broadcasting",
+                f"Transport {transport} State: active",
+            ],
+        )
