@@ -648,6 +648,12 @@ test_bass_past_earbuds_transport_acquire
 	characteristic of each member is read over its own connection,
 	which is why the services of both are waited for.
 
+	The hosts are reused between tests, so the members may be bonded
+	already, in which case ``pair`` connects them instead, see
+	**bluetoothctl(1)**. What is already in place is then checked over
+	D-Bus rather than waited for on the output, as a device whose
+	services are already resolved does not report it again.
+
 	Each member gets a push of its own: BASS has no notion of a set,
 	so the assistant adds the source to the Broadcast Receive State
 	of each delegator separately, and each of them receives the
