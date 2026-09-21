@@ -290,8 +290,9 @@ test_bap_broadcast_earbuds_transport_created
 :Steps:
 	1. Start `bluetoothctl` with the source script on host0.
 	2. Start `bluetoothctl` with the sink scripts on host1 and host2.
-	3. Each side: ``transport.list``, to check that nothing besides
-	   the transport of its own BIS was created.
+	3. Each side: list its **org.bluez.MediaTransport1** objects, to
+	   check that nothing besides the transport of its own BIS was
+	   created.
 
 :Expected:
 	1. ``Endpoint /local/endpoint/ep0 registered``, then two
@@ -306,6 +307,11 @@ test_bap_broadcast_earbuds_transport_created
 
 :Notes: The BIS index of the path is what tells the two apart, as each
 	side only ever sees its own.
+
+	The objects are listed over D-Bus rather than with
+	``transport.list``: the endpoint prints the transport it was
+	configured with as well, so a listing cannot be told apart from
+	it in the output.
 
 	Both transports of the source have to be acquired, as for the CIS
 	of a CIG: the BIG is only created once every BIS of it is ready.

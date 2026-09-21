@@ -312,6 +312,20 @@ def remote_transport_properties(remote):
     }
 
 
+@mainloop_wrap
+def transport_paths():
+    """Paths of every MediaTransport1 object of the host."""
+    objects = dbus.Interface(
+        get_dbus().get_object("org.bluez", "/"),
+        "org.freedesktop.DBus.ObjectManager",
+    ).GetManagedObjects()
+    return sorted(
+        str(path)
+        for path, props in objects.items()
+        if "org.bluez.MediaTransport1" in props
+    )
+
+
 def add_preset(ctl, name, props, metadata):
     """Make a custom preset from a transport's codec configuration and QoS."""
 
@@ -458,6 +472,96 @@ def test_bap_broadcast_transport_acquire(hosts, source_script):
             f"Transport {transport} State: active",
         ],
     )
+
+
+ACQUIRED = r"Acquire successful: fd \d+ MTU \d+:\d+"
+
+# Transport of a given BIS of a broadcast the sink is synced to
+BIS_TRANSPORT = r"Transport (/org/bluez/\S+/bis{}/fd\d+)"
+
+earbuds_host_config = host_config(
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+)
+
+
+def start_earbuds_broadcast(hosts):
+    """
+    Source broadcasting one BIS per channel, with the two sides of a
+    true wireless pair scanning for it, each one taking a single
+    channel.
+    """
+    source_host, left_host, right_host = hosts
+
+    source = start_bluetoothctl(source_host, "broadcast-source-2bis.bt")
+
+    # The BIG is only created once every BIS of it is ready, so the
+    # script acquires both transports
+    expect_all(source, [ACQUIRED, ACQUIRED])
+
+    left = start_bluetoothctl(left_host, "broadcast-sink-left.bt")
+    right = start_bluetoothctl(right_host, "broadcast-sink-right.bt")
+
+    return source, left, right
+
+
+def expect_bis_transport(ctl, host, bis):
+    """
+    Transport a side created for the BIS carrying its own channel,
+    checking it is the only one it has.
+    """
+    _, m = ctl.expect(BIS_TRANSPORT.format(bis))
+    transport = m[0].decode("utf-8")
+
+    # Checked over D-Bus rather than with transport.list, as the
+    # endpoint prints the transport it was configured with as well, so
+    # a listing cannot be told apart from it in the output
+    assert host.call(transport_paths) == [transport]
+
+    return transport
+
+
+@earbuds_host_config
+def test_bap_broadcast_earbuds_transport_created(hosts):
+    source_host, left_host, right_host = hosts
+    source, left, right = start_earbuds_broadcast(hosts)
+
+    # Each side syncs to the periodic advertising on its own and only
+    # creates a transport for the BIS whose channel allocation matches
+    # its own location
+    for ctl, host, bis in ((left, left_host, 1), (right, right_host, 2)):
+        transport = expect_bis_transport(ctl, host, bis)
+
+        ctl.send(f"transport.show {transport}\n")
+        ctl.expect(f"Transport {transport}")
+        ctl.expect(r"Codec: 0x06")
+        ctl.expect("State: idle")
+
+
+@earbuds_host_config
+def test_bap_broadcast_earbuds_transport_acquire(hosts):
+    source_host, left_host, right_host = hosts
+    source, left, right = start_earbuds_broadcast(hosts)
+
+    # The two sides sync independently, so each of them is given the
+    # broadcast code of its own, and both are checked
+    for ctl, host, bis in ((left, left_host, 1), (right, right_host, 2)):
+        transport = expect_bis_transport(ctl, host, bis)
+
+        # Selecting the transport syncs to the BIG and starts acquiring
+        ctl.send(f"transport.select {transport}\n")
+        ctl.expect(r"Enter bcode\[value/no\]:")
+        ctl.send(f"{BCAST_CODE}\n")
+
+        expect_all(
+            ctl,
+            [
+                f"Transport {transport} State: broadcasting",
+                ACQUIRED,
+                f"Transport {transport} State: active",
+            ],
+        )
 
 
 past_host_config = host_config(
