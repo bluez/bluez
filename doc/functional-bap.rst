@@ -537,3 +537,125 @@ test_bap_unicast_set_transport_acquire
 	are only created once every one of them is active, so the
 	transports of both members have to be acquired: acquiring only
 	one leaves the group incomplete and no CIS is created at all.
+
+TRUE WIRELESS BROADCAST ASSISTANT
+=================================
+
+Three hosts, with the Broadcast Source and the Broadcast Assistant
+colocated on host0, and the two sides of a true wireless pair as Scan
+Delegators forming a coordinated set:
+
+.. code-block::
+
+	+------------------------+                 +------------------------+
+	| host0                  |  extended +     | host1                  |
+	| Broadcast Source       |  periodic adv   | Scan Delegator, left   |
+	| + Broadcast Assistant  | --------------> | bluetoothctl -a auto   |
+	| bluetoothctl -a auto   |                 | broadcast-delegator-   |
+	| broadcast-source-2bis  |  BIS 1, F.Left  |   left.bt              |
+	| BCAA endpoint (0x1852) | ==============> | BAA endpoint (0x1851)  |
+	|                        |                 | Front Left, rank 1     |
+	|                        | ACL, BASS, PAST |                        |
+	|                        | --------------> |                        |
+	|                        |                 +------------------------+
+	|                        |
+	|                        |  extended +     +------------------------+
+	|                        |  periodic adv   | host2                  |
+	|                        | --------------> | Scan Delegator, right  |
+	|                        |                 | bluetoothctl -a auto   |
+	|                        | BIS 2, F.Right  | broadcast-delegator-   |
+	|                        | ==============> |   right.bt             |
+	|                        |                 | BAA endpoint (0x1851)  |
+	|                        | ACL, BASS, PAST | Front Right, rank 2    |
+	|                        | --------------> |                        |
+	+------------------------+                 +------------------------+
+
+	the two delegators share the same SIRK, so they are resolved into
+	a single set and connecting one connects the other
+
+	the assistant pushes one BIS to each side, and each of them
+	receives the periodic advertising sync over its own connection
+
+	--> advertising is scanned by       ==> audio flows towards
+
+This combines the two topologies above: the BIG carries one BIS per
+channel, as in TRUE WIRELESS BROADCAST, while the sides are members of
+a coordinated set, as in COORDINATED SET, so the assistant discovers
+and connects them as one device.
+
+The delegators run `bluetoothd` with the same ``[CSIS]`` configuration
+as the acceptors of the COORDINATED SET section, with ``Rank`` 1 for
+the left one and 2 for the right one, and both advertise the RSI.
+
+``client/scripts/broadcast-source-2bis.bt`` on host0
+	As in TRUE WIRELESS BROADCAST: a BIG with one BIS per channel,
+	encrypted with the broadcast code `bluetoothctl` uses by default.
+	The two local streams are exposed as MediaAssistant objects in
+	the ``local`` state, under the adapter path, i.e.
+	``/org/bluez/hci0/sid0/bis1`` and ``/org/bluez/hci0/sid0/bis2``.
+
+``client/scripts/broadcast-delegator-left.bt`` on host1
+	Registers a Broadcast Sink endpoint
+	(``00001851-0000-1000-8000-00805f9b34fb``) with LC3 and Front Left
+	as its only location, enables automatic transport selection and
+	acquisition, and advertises with the RSI, so the Broadcast
+	Assistant can discover it as a member of the set and connect.
+
+``client/scripts/broadcast-delegator-right.bt`` on host2
+	As above, with Front Right as its only location and rank 2.
+
+test_bass_past_earbuds_transport_acquire
+----------------------------------------
+
+:Setup: As above.
+
+:Steps:
+	1. Start `bluetoothctl` with the source script on host0 and the
+	   delegator scripts on host1 and host2.
+	2. Assistant: ``scan on``, wait for both members to be found,
+	   ``scan off``, then ``pair`` one of them.
+	3. Assistant: ``assistant.push /org/bluez/hci0/sid0/bis1``,
+	   answering the device prompt with the device path of the left
+	   delegator, and ``assistant.push /org/bluez/hci0/sid0/bis2``
+	   with the right one.
+
+:Expected:
+	1. Two ``Acquire successful: fd <fd> MTU <read>:<write>`` on the
+	   source, i.e. it is broadcasting both channels, with the local
+	   streams exposed as ``[NEW] Assistant <adapter>/sid0/bis1`` and
+	   ``<adapter>/sid0/bis2``. On both delegators,
+	   ``Advertising object registered``.
+	2. ``Pairing successful``, the members are resolved into a single
+	   set, reported as
+	   ``[NEW] DeviceSet /org/bluez/hci0/set_<sirk>``, and the other
+	   member is connected and bonded on its own, with the services
+	   of both resolved.
+	3. ``Assistant <path> pushed`` for both pushes.
+	4. On each delegator a transport is created for the BIS that was
+	   pushed to it, and selected and acquired automatically, reaching
+	   ``State: broadcasting``, i.e. it synced to the BIG, and then
+	   ``State: active``.
+
+:Notes: Only one member is paired: finding a member of a set triggers
+	connecting the remaining ones. Both links still have to be
+	encrypted before the pushes, as the Broadcast Receive State
+	characteristic of each member is read over its own connection,
+	which is why the services of both are waited for.
+
+	Each member gets a push of its own: BASS has no notion of a set,
+	so the assistant adds the source to the Broadcast Receive State
+	of each delegator separately, and each of them receives the
+	periodic advertising sync over its own ACL (PAST).
+
+	A push carries the BIS to sync to, but the location of the member
+	is what decides whether a transport is created for it: pushing
+	the right BIS to the left side leaves it without one, as the
+	Channel Allocation does not match its PAC.
+
+	The broadcast code of the local streams is handed to the
+	delegators by the pushes, so their automatic transport selection
+	does not have to prompt for it on either side.
+
+	As in the BROADCAST ASSISTANT case, the streams are verified on
+	the delegators rather than through the state of the MediaAssistant
+	objects, which stay in the ``local`` state.
