@@ -1,0 +1,32 @@
+power on
+#
+#
+# Register a Broadcast Sink endpoint with LC3 taking a single channel,
+# to act as the right member of a coordinated set of Scan Delegators.
+# The members of the set are programmed with the same SIRK, see [CSIS]
+# in main.conf.
+#
+endpoint.register 00001851-0000-1000-8000-00805f9b34fb 0x06
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+# Locations: Front Right, so only the BIS carrying that channel is synced
+2
+# Supported Context: Media
+4
+#
+#
+# Select and acquire automatically the transports of the streams the
+# Broadcast Assistant adds.
+#
+transport.select auto
+transport.acquire auto
+#
+#
+# Advertise the Resolvable Set Identifier, so the assistant is able to
+# resolve this device as a member of the set, and connecting one member
+# connects the other.
+#
+advertise.rsi on
+advertise on

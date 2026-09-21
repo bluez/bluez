@@ -2068,6 +2068,9 @@ static void cmd_info(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+static const char *proxy_address(GDBusProxy *proxy);
+static void connect_device(GDBusProxy *proxy);
+
 static void pair_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
@@ -2101,10 +2104,30 @@ static const char *proxy_address(GDBusProxy *proxy)
 static void cmd_pair(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
+	DBusMessageIter iter;
+	dbus_bool_t paired;
 
 	proxy = find_device(argc, argv);
 	if (!proxy)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	/* Pairing a device that is already paired is rejected with
+	 * AlreadyExists, so connect it instead: the bond is there, which
+	 * is what pairing it again would be for, and removing it first is
+	 * what actually pairs it anew.
+	 */
+	if (g_dbus_proxy_get_property(proxy, "Paired", &iter)) {
+		dbus_message_iter_get_basic(&iter, &paired);
+
+		if (paired) {
+			bt_shell_printf("Device %s is already paired, "
+					"connecting instead, remove it first "
+					"to pair it again\n",
+					proxy_address(proxy));
+			connect_device(proxy);
+			return;
+		}
+	}
 
 	if (g_dbus_proxy_method_call(proxy, "Pair", NULL, pair_reply,
 							NULL, NULL) == FALSE) {
@@ -2363,6 +2386,23 @@ static void connect_reply(DBusMessage *message, void *user_data)
 
 	set_default_device(proxy, NULL);
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void connect_device(GDBusProxy *proxy)
+{
+	struct connection_data *data;
+
+	data = new0(struct connection_data, 1);
+	data->proxy = proxy;
+
+	if (g_dbus_proxy_method_call(proxy, "Connect", connection_setup,
+					connect_reply, data, NULL) == FALSE) {
+		bt_shell_printf("Failed to connect\n");
+		g_free(data);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	bt_shell_printf("Attempting to connect to %s\n", proxy_address(proxy));
 }
 
 static void prompt_scan_connect(const char *input, void *user_data)
