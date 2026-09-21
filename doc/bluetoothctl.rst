@@ -207,7 +207,8 @@ pair
 Pair with device.
 
 This will pair with a device and then trust and connect to it. If the device is
-already paired this will first remove the pairing.
+already paired this will connect to it instead, as the bond is already in
+place: use **remove** first to pair it again.
 
 The command can either be used while the controller is in the connected or not
 connected state.
@@ -221,7 +222,8 @@ Before pairing the agent must be selected to choose the authentication
 mechanism.
 
 :Usage: **> pair [dev]**
-:Uses: **org.bluez.Device(5)** method **Pair**
+:Uses: **org.bluez.Device(5)** method **Pair**, or **Connect** if the device is
+	already paired
 :[dev]: Device MAC address (XX:XX:XX:XX:XX:XX) (optional, uses current device if omitted)
 :Example Pair with device using MAC address:
 	| **> pair 00:11:22:33:44:55**
