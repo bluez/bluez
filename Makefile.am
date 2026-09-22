@@ -779,6 +779,20 @@ unit_test_hog_SOURCES = unit/test-hog.c \
 unit_test_hog_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 
+unit_tests += unit/test-hog-lifetime
+
+unit_test_hog_lifetime_SOURCES = unit/test-hog-lifetime.c \
+			$(btio_sources) \
+			profiles/input/hog-lib.h \
+			profiles/scanparam/scpp.h profiles/scanparam/scpp.c \
+			profiles/battery/bas.h profiles/battery/bas.c \
+			profiles/deviceinfo/dis.h profiles/deviceinfo/dis.c \
+			src/log.h src/log.c \
+			attrib/att.h attrib/att.c \
+			attrib/gatt.h attrib/gatt.c \
+			attrib/gattrib.h attrib/gattrib.c
+unit_test_hog_lifetime_LDADD = $(unit_test_hog_LDADD)
+
 unit_tests += unit/test-gattrib
 
 unit_test_gattrib_SOURCES = unit/test-gattrib.c attrib/gattrib.c \
