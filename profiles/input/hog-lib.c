@@ -1896,6 +1896,17 @@ void bt_hog_detach(struct bt_hog *hog, bool force)
 	if (hog->dis)
 		bt_dis_detach(hog->dis);
 
+	/* Report requests are tracked separately from gatt_op. */
+	if (hog->getrep_att) {
+		g_attrib_cancel(hog->attrib, hog->getrep_att);
+		hog->getrep_att = 0;
+	}
+
+	if (hog->setrep_att) {
+		g_attrib_cancel(hog->attrib, hog->setrep_att);
+		hog->setrep_att = 0;
+	}
+
 	queue_remove_all(hog->gatt_op, cancel_gatt_req, hog, destroy_gatt_req);
 	g_attrib_unref(hog->attrib);
 	hog->attrib = NULL;
