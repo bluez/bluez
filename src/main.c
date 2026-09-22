@@ -181,6 +181,7 @@ static const char *avdtp_options[] = {
 static const char *avrcp_options[] = {
 	"VolumeWithoutTarget",
 	"VolumeCategory",
+	"AvrcpVersion",
 	NULL
 };
 
@@ -1350,6 +1351,35 @@ static void parse_avdtp(GKeyFile *config)
 	parse_avdtp_stream_mode(config);
 }
 
+static void parse_avrcp_version(GKeyFile *config)
+{
+	char *str = NULL;
+	char *endptr = NULL;
+	unsigned int major, minor;
+	unsigned long val;
+	int n = 0;
+
+	if (!parse_config_string(config, "AVRCP", "AvrcpVersion", &str))
+		return;
+
+	if (sscanf(str, "%u.%u%n", &major, &minor, &n) == 2 && !str[n] &&
+					major <= 0xff && minor <= 0xff) {
+		btd_opts.avrcp.version = (major << 8) | minor;
+		g_free(str);
+		return;
+	}
+
+	val = strtoul(str, &endptr, 0);
+	if (endptr && *endptr == '\0' && val > 0 && val <= 0xffff) {
+		btd_opts.avrcp.version = val;
+		g_free(str);
+		return;
+	}
+
+	error("Invalid AVRCP version \"%s\"", str);
+	g_free(str);
+}
+
 static void parse_avrcp(GKeyFile *config)
 {
 	parse_config_bool(config, "AVRCP",
@@ -1358,6 +1388,7 @@ static void parse_avrcp(GKeyFile *config)
 	parse_config_bool(config, "AVRCP",
 		"VolumeCategory",
 		&btd_opts.avrcp.volume_category);
+	parse_avrcp_version(config);
 }
 
 static void parse_advmon(GKeyFile *config)
@@ -1433,6 +1464,7 @@ static void init_defaults(void)
 
 	btd_opts.avrcp.volume_without_target = false;
 	btd_opts.avrcp.volume_category = true;
+	btd_opts.avrcp.version = 0;
 
 	btd_opts.advmon.rssi_sampling_period = 0xFF;
 	btd_opts.csis.encrypt = true;
