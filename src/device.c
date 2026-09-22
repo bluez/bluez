@@ -1455,9 +1455,13 @@ static gboolean dev_property_get_uuids(const GDBusPropertyTable *property,
 	else
 		l = dev->uuids;
 
-	for (; l != NULL; l = l->next)
-		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
-							&l->data);
+	for (; l != NULL; l = l->next) {
+		const char *uuid = l->data;
+		if (uuid != NULL) {
+			dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
+							&uuid);
+		}
+	}
 
 	dbus_message_iter_close_container(iter, &entry);
 
