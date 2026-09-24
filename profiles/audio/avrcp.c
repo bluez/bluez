@@ -4304,6 +4304,13 @@ static void target_init(struct avrcp *session)
 	target = data_init(session, AVRCP_REMOTE_UUID);
 	session->target = target;
 
+	if (btd_opts.avrcp.version &&
+			target->version < btd_opts.avrcp.version) {
+		DBG("Forcing AVRCP version 0x%04x (SDP 0x%04x)",
+				btd_opts.avrcp.version, target->version);
+		target->version = btd_opts.avrcp.version;
+	}
+
 	DBG("%p version 0x%04x", target, target->version);
 
 	btd_service_connecting_complete(service, 0);
