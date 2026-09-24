@@ -15,6 +15,8 @@
 #include "bluetooth/uuid.h"
 
 #define BT_AD_MAX_DATA_LEN		31
+#define BT_AD_BC_NAME_MIN_LEN		4
+#define BT_AD_BC_NAME_MAX_LEN		32
 #define BT_EA_MAX_DATA_LEN		251
 #define BT_PA_MAX_DATA_LEN		252
 
@@ -60,6 +62,7 @@
 #define BT_AD_MESH_DATA			0x2a
 #define BT_AD_MESH_BEACON		0x2b
 #define BT_AD_CSIP_RSI			0x2e
+#define BT_AD_BC_NAME			0x30
 #define BT_AD_3D_INFO_DATA		0x3d
 #define BT_AD_MANUFACTURER_DATA		0xff
 
