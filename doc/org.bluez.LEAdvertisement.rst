@@ -172,6 +172,13 @@ fit into the packet it will be truncated.
 If this property is available 'local-name' cannot be present in the
 **Includes**.
 
+string BroadcastName [readonly, optional]
+`````````````````````````````````````
+
+Broadcast name to be used in the advertising report. If the string is shorter
+than 4 chars an error will be returned. If it is longer than 32 chars it will
+be truncated.
+
 uint16 Appearance [readonly, optional]
 ``````````````````````````````````````
 
