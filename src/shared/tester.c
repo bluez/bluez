@@ -948,6 +948,25 @@ static bool test_io_send(struct io *io, void *user_data)
 	if (!iov)
 		return false;
 
+	/* IOV_NULL following an expected PDU means there is no response to
+	 * it, e.g. a Write Command: wait for the next PDU instead, unless
+	 * followed by another IOV_NULL chaining the PDUs to send.
+	 */
+	if (!iov->iov_base) {
+		/* Nothing left to send or to expect */
+		if (!test->iovcnt) {
+			if (test->io_complete_func)
+				test->io_complete_func(test->test_data);
+			return false;
+		}
+
+		if (test->iov->iov_base)
+			return false;
+
+		test_get_iov(test);
+		return test_io_send(io, user_data);
+	}
+
 	len = io_send(io, iov, 1);
 
 	tester_monitor('<', 0x0004, 0x0000, iov->iov_base, len);
