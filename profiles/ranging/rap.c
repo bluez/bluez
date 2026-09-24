@@ -27,7 +27,6 @@
 #include "src/profile.h"
 #include "src/service.h"
 #include "src/gatt-database.h"
-#include "attrib/gattrib.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/att.h"

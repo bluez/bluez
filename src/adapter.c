@@ -59,7 +59,6 @@
 #include "uuid-helper.h"
 #include "agent.h"
 #include "storage.h"
-#include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "gatt-database.h"
