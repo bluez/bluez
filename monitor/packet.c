@@ -14971,17 +14971,23 @@ static void packet_enqueue_tx(struct timeval *tv, uint16_t handle,
 	queue_push_tail(conn->tx_q, frame);
 }
 
-static void handle_str_append_addr(char *handle_str,
+static void handle_str_append_addr(char *handle_str, size_t handle_str_size,
 					struct packet_conn_data *conn)
 {
+	size_t len;
+
 	if (!conn)
+		return;
+
+	len = strlen(handle_str);
+	if (len >= handle_str_size)
 		return;
 
 	switch (conn->dst_type) {
 	case 0x00:
 	case 0x02:
 		if (conn->dst_oui) {
-			sprintf(handle_str + strlen(handle_str),
+			snprintf(handle_str + len, handle_str_size - len,
 				" [%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X (%.16s)]",
 				conn->dst[5], conn->dst[4], conn->dst[3],
 				conn->dst[2], conn->dst[1], conn->dst[0],
@@ -14992,7 +14998,7 @@ static void handle_str_append_addr(char *handle_str,
 	case 0x01:
 	case 0x03:
 		if (conn->dst_rtype) {
-			sprintf(handle_str + strlen(handle_str),
+			snprintf(handle_str + len, handle_str_size - len,
 				" [%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X (%.16s)]",
 				conn->dst[5], conn->dst[4], conn->dst[3],
 				conn->dst[2], conn->dst[1], conn->dst[0],
@@ -15002,7 +15008,7 @@ static void handle_str_append_addr(char *handle_str,
 		break;
 	}
 
-	sprintf(handle_str + strlen(handle_str),
+	snprintf(handle_str + len, handle_str_size - len,
 			" [%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X]",
 			conn->dst[5], conn->dst[4], conn->dst[3],
 			conn->dst[2], conn->dst[1], conn->dst[0]);
@@ -15046,12 +15052,12 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		pool = &index_list[index].le;
 
 	if (!in && pool && pool->total)
-		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
+		snprintf(handle_str, sizeof(handle_str), "Handle %d [%u/%u]", acl_handle(handle),
 				++pool->tx, pool->total);
 	else
-		sprintf(handle_str, "Handle %d", acl_handle(handle));
+		snprintf(handle_str, sizeof(handle_str), "Handle %d", acl_handle(handle));
 
-	handle_str_append_addr(handle_str, conn);
+	handle_str_append_addr(handle_str, sizeof(handle_str), conn);
 
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, dlen);
 
@@ -15088,10 +15094,10 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 				bool in, const void *data, uint16_t size)
 {
 	const hci_sco_hdr *hdr = data;
-	uint16_t handle = le16_to_cpu(hdr->handle);
-	uint8_t flags = acl_flags(handle);
+	uint16_t handle;
+	uint8_t flags;
 	char label[8];
-	char handle_str[42], extra_str[32];
+	char handle_str[64], extra_str[32];
 	struct packet_conn_data *conn;
 
 	if (index >= MAX_INDEX) {
@@ -15112,17 +15118,20 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		return;
 	}
 
+	handle = le16_to_cpu(hdr->handle);
+	flags = acl_flags(handle);
+
 	data += HCI_SCO_HDR_SIZE;
 	size -= HCI_SCO_HDR_SIZE;
 	conn = packet_get_conn_data(handle);
 
 	if (index_list[index].sco.total && !in)
-		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
+		snprintf(handle_str, sizeof(handle_str), "Handle %d [%u/%u]", acl_handle(handle),
 			index_list[index].sco.total, index_list[index].sco.tx);
 	else
-		sprintf(handle_str, "Handle %d", acl_handle(handle));
+		snprintf(handle_str, sizeof(handle_str), "Handle %d", acl_handle(handle));
 
-	handle_str_append_addr(handle_str, conn);
+	handle_str_append_addr(handle_str, sizeof(handle_str), conn);
 
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
 
@@ -15227,12 +15236,12 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		packet_loss_add(&conn->rx_loss, sn, sflags);
 
 	if (!in && pool->total)
-		sprintf(handle_str, "Handle %d [%u/%u]%s",
+		snprintf(handle_str, sizeof(handle_str), "Handle %d [%u/%u]%s",
 			acl_handle(handle), ++pool->tx, pool->total, sn_str);
 	else
-		sprintf(handle_str, "Handle %u%s", acl_handle(handle), sn_str);
+		snprintf(handle_str, sizeof(handle_str), "Handle %u%s", acl_handle(handle), sn_str);
 
-	handle_str_append_addr(handle_str, conn);
+	handle_str_append_addr(handle_str, sizeof(handle_str), conn);
 
 	sprintf(extra_str, "flags 0x%2.2x dlen %u%s%s", flags, dlen, slen_str,
 									ts_str);
