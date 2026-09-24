@@ -1303,9 +1303,17 @@ static uint8_t get_uuid_mask(uuid_t *uuid)
 	case AUDIO_SOURCE_SVCLASS_ID:
 	case VIDEO_SOURCE_SVCLASS_ID:
 		return 0x08;	/* Capturing */
-	case AUDIO_SINK_SVCLASS_ID:
 	case VIDEO_SINK_SVCLASS_ID:
 		return 0x04;	/* Rendering */
+	/*
+	 * A2DP v1.4 section 5.5.1 mandates only the 'Rendering'
+	 * bit for a sink, but the Nintendo Switch will not connect
+	 * to an audio device whose Class of Device is missing the
+	 * 'Audio' bit, which is otherwise only set for HEADSET and
+	 * HANDSFREE.
+	 */
+	case AUDIO_SINK_SVCLASS_ID:
+		return 0x24;	/* Audio & Rendering */
 	case PANU_SVCLASS_ID:
 	case NAP_SVCLASS_ID:
 	case GN_SVCLASS_ID:
