@@ -768,16 +768,7 @@ unit_test_gatt_LDADD = src/libshared-glib.la \
 
 unit_tests += unit/test-hog
 
-unit_test_hog_SOURCES = unit/test-hog.c \
-			$(btio_sources) \
-			profiles/input/hog-lib.h profiles/input/hog-lib.c \
-			profiles/scanparam/scpp.h profiles/scanparam/scpp.c \
-			profiles/battery/bas.h profiles/battery/bas.c \
-			profiles/deviceinfo/dis.h profiles/deviceinfo/dis.c \
-			src/log.h src/log.c \
-			attrib/att.h attrib/att.c \
-			attrib/gatt.h attrib/gatt.c \
-			attrib/gattrib.h attrib/gattrib.c
+unit_test_hog_SOURCES = unit/test-hog.c
 unit_test_hog_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
 
