@@ -26,12 +26,12 @@ gatt.register-descriptor 0x2908 read
 gatt.register-characteristic 0x2a4e read,write-without-response
 0x01
 #
-# HID Control Point
+# HID Control Point: Suspend, Exit Suspend and Enable SCI modes
 gatt.register-characteristic 0x2a4c write-without-response
 0x00
 #
-# HID SCI Mode: None (0x00), notified when changed
-gatt.register-characteristic 0x2c39 read,write,notify
+# HID SCI Mode: None (0x00), notified once changed with the HID Control Point
+gatt.register-characteristic 0x2c39 read,notify
 0x00
 #
 # HID SCI Information (intervals in units of 0.125 ms):
