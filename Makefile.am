@@ -287,8 +287,7 @@ src_libshared_ell_la_CFLAGS = $(AM_CFLAGS)
 endif
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
-		attrib/gatt.h attrib/gatt.c \
-		attrib/gattrib.h attrib/gattrib.c
+		attrib/gatt.h attrib/gatt.c
 
 btio_sources = btio/btio.h btio/btio.c
 
@@ -771,14 +770,6 @@ unit_tests += unit/test-hog
 unit_test_hog_SOURCES = unit/test-hog.c
 unit_test_hog_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
-
-unit_tests += unit/test-gattrib
-
-unit_test_gattrib_SOURCES = unit/test-gattrib.c attrib/gattrib.c \
-					$(btio_sources) src/log.h src/log.c
-unit_test_gattrib_LDADD = src/libshared-glib.la \
-				lib/libbluetooth-internal.la \
-				$(GLIB_LIBS) $(DBUS_LIBS) -ldl -lrt
 
 unit_tests += unit/test-bap
 
