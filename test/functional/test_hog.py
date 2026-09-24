@@ -18,7 +18,8 @@ from pytest_bluezenv.utils import bluez_src_dir
 pytestmark = [pytest.mark.vm]
 
 # The HID Service is claimed by the input plugin of the HID host, so it
-# has to be exported read-write for bluetoothctl to write HID SCI Mode
+# has to be exported read-write for bluetoothctl to write the HID Control
+# Point
 HOG_CONF = """[General]
 ControllerMode = le
 
@@ -30,6 +31,7 @@ HIDS_UUID = "00001812-0000-1000-8000-00805f9b34fb"
 
 # Local attributes registered by client/scripts/hog-device*.bt
 LOCAL_REPORT = "/org/bluez/app/service0/chrc2"
+LOCAL_CP = "/org/bluez/app/service0/chrc4"
 LOCAL_SCI_MODE = "/org/bluez/app/service0/chrc5"
 
 # Keyboard Input Reports: Modifiers, Reserved, then 6 Key Codes
@@ -39,7 +41,8 @@ REPORTS = [
     "00 00 00 00 00 00 00 00",  # released
 ]
 
-# HID SCI Mode: Fast Mode
+# HID Control Point: Enable SCI Fast mode, the value then notified with
+# HID SCI Mode
 SCI_FAST_MODE = "03"
 
 # LE Connection Rate parameters requested with mgmt.conn-subrate once in
@@ -229,14 +232,27 @@ def test_hog(hosts, init_script, flags, sci):
     assert read_attribute(ctl, "2c39") == mode
     assert read_attribute(ctl, "2c3a") == info
 
-    # SCI mode change: the HID host writes the new mode to the HID device
-    enable_notifications(ctl, device, "2c39", LOCAL_SCI_MODE)
+    # The input plugin of the HID host enables the notifications of HID
+    # SCI Mode on its own, so they only have to be started on bluetoothctl
+    # to be printed
+    ctl.send("gatt.select-attribute 2c39\n")
+    ctl.send("gatt.notify on\n")
+    expect(ctl, r"Notify started", timeout=REPLY_TIMEOUT)
 
+    # SCI mode change, see HOGP.TS 4.6.1: the HID host writes the mode to
+    # enable to the HID Control Point, with Write Without Response
+    ctl.send("gatt.select-attribute 2a4c\n")
     ctl.send(f'gatt.write "{hexbytes(SCI_FAST_MODE)}"\n')
-    expect(device, rf"\[{LOCAL_SCI_MODE} .*\] WriteValue:")
+    # Received with WriteValue, or over the socket acquired with
+    # AcquireWrite
+    expect(
+        device,
+        rf"\[{LOCAL_CP} .*\] WriteValue:|Attribute {LOCAL_CP} .*written:",
+    )
     assert expect_hexdump(device) == SCI_FAST_MODE
 
-    # The HID host, as central, changes the connection rate accordingly
+    # The HID device is meant to change the connection rate, but the kernel
+    # only requests it as central, so the HID host does it instead
     ctl.send(f"mgmt.conn-subrate {host1.bdaddr} {' '.join(SCI_RATE)}\n")
     # The connection rate may change before the command completes, so the
     # event may be printed before the reply
@@ -248,5 +264,6 @@ def test_hog(hosts, init_script, flags, sci):
     expect(device, rate.format(host0.bdaddr.upper()))
 
     # Then the HID device confirms the mode has been changed
+    ctl.send("gatt.select-attribute 2c39\n")
     notify(device, LOCAL_SCI_MODE, SCI_FAST_MODE)
     assert expect_notification(ctl) == SCI_FAST_MODE
