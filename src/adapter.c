@@ -60,7 +60,6 @@
 #include "agent.h"
 #include "storage.h"
 #include "attrib/att.h"
-#include "attrib/gattrib.h"
 #include "attrib/gatt.h"
 #include "gatt-database.h"
 #include "advertising.h"

@@ -47,7 +47,6 @@
 #include "btio/btio.h"
 #include "bluetooth/mgmt.h"
 #include "attrib/att.h"
-#include "attrib/gattrib.h"
 #include "attrib/gatt.h"
 #include "btd.h"
 #include "adapter.h"
