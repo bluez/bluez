@@ -62,10 +62,6 @@ endif
 if HOG
 builtin_modules += hog
 builtin_sources += profiles/input/hog.c \
-			profiles/input/hog-lib.c profiles/input/hog-lib.h \
-			profiles/deviceinfo/dis.c profiles/deviceinfo/dis.h \
-			profiles/battery/bas.c profiles/battery/bas.h \
-			profiles/scanparam/scpp.c profiles/scanparam/scpp.h \
 			profiles/input/suspend.h profiles/input/suspend-none.c
 endif
 
