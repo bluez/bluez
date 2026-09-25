@@ -53,6 +53,10 @@
 #include "asha.h"
 #endif
 
+#ifdef HAVE_HFP
+#include "hfp-hf.h"
+#endif
+
 #include "media.h"
 #include "transport.h"
 #include "vcp.h"
@@ -1748,6 +1752,15 @@ static const GDBusPropertyTable transport_asha_properties[] = {
 };
 #endif /* HAVE_ASHA */
 
+static const GDBusPropertyTable transport_hfp_properties[] = {
+	{ "Device", "o", get_device },
+	{ "Endpoint", "o", get_endpoint, NULL, endpoint_exists },
+	{ "UUID", "s", get_uuid },
+	{ "Codec", "y", get_codec },
+	{ "State", "s", get_state },
+	{ }
+};
+
 #ifdef HAVE_A2DP
 static void transport_a2dp_destroy(void *data)
 {
@@ -2644,6 +2657,140 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 }
 #endif /* HAVE_ASHA */
 
+#ifdef HAVE_HFP
+static void hfp_transport_sco_closed(struct hfp_device *hfp_dev,
+							void *user_data)
+{
+	struct media_transport *transport = user_data;
+
+	DBG("%s", transport->path);
+
+	/* The remote hung up the SCO connection on its own, without us
+	 * requesting a Release/Suspend. Bring the transport back down so
+	 * its state reflects reality.
+	 */
+	if (transport->owner)
+		media_transport_remove_owner(transport);
+	else if (transport->state != TRANSPORT_STATE_IDLE)
+		transport_set_state(transport, TRANSPORT_STATE_IDLE);
+}
+
+static void *transport_hfp_init(struct media_transport *transport, void *data)
+{
+	/* We just store the struct hfp_device on the transport */
+	hfp_hf_set_sco_closed_cb(data, hfp_transport_sco_closed, transport);
+
+	return data;
+}
+
+static void transport_hfp_destroy(void *data)
+{
+	hfp_hf_set_sco_closed_cb(data, NULL, NULL);
+}
+
+static void hfp_transport_resume_cb(int status, void *user_data)
+{
+	struct media_owner *owner = user_data;
+	struct media_transport *transport = owner->transport;
+	struct hfp_device *hfp_dev = transport->data;
+	int fd;
+	uint16_t imtu, omtu;
+	gboolean ret;
+
+	DBG("");
+
+	if (!transport) {
+		DBG("Lost owner while connecting, bailing");
+		return;
+	}
+
+	fd = hfp_hf_device_get_fd(hfp_dev);
+	imtu = hfp_hf_device_get_imtu(hfp_dev);
+	omtu = hfp_hf_device_get_omtu(hfp_dev);
+
+	media_transport_set_fd(transport, fd, imtu, omtu);
+
+	owner->pending->id = 0;
+	ret = g_dbus_send_reply(btd_get_dbus_connection(),
+			owner->pending->msg,
+			DBUS_TYPE_UNIX_FD, &fd,
+			DBUS_TYPE_UINT16, &imtu,
+			DBUS_TYPE_UINT16, &omtu,
+			DBUS_TYPE_INVALID);
+	if (!ret) {
+		media_transport_remove_owner(transport);
+		return;
+	}
+
+	media_owner_remove(owner);
+
+	transport_set_state(transport, TRANSPORT_STATE_ACTIVE);
+}
+
+static guint transport_hfp_resume(struct media_transport *transport,
+						struct media_owner *owner)
+{
+	struct hfp_device *hfp_dev = transport->data;
+
+	return hfp_hf_sco_start(hfp_dev, hfp_transport_resume_cb, owner);
+}
+
+static gboolean hfp_transport_suspend_cb(void *user_data)
+{
+	struct media_owner *owner = user_data;
+	struct media_transport *transport = owner->transport;
+
+	/* Release always succeeds */
+	if (owner->pending) {
+		owner->pending->id = 0;
+		media_request_reply(owner->pending, 0);
+		media_owner_remove(owner);
+	}
+
+	media_transport_remove_owner(transport);
+	return FALSE;
+}
+
+static guint transport_hfp_suspend(struct media_transport *transport,
+						struct media_owner *owner)
+{
+	struct hfp_device *hfp_dev = transport->data;
+	guint ret = 0;
+
+	hfp_hf_sco_stop(hfp_dev);
+
+	if (owner) {
+		/* Return the g_idle_add() source id here, not
+		 * hfp_hf_sco_stop()'s return value (dev->resume_id). The
+		 * latter is unrelated and is 0 whenever dev->sco_io is
+		 * already NULL, e.g. right after the peer has hung up SCO.
+		 * release() below treats a 0 id as "no pending async
+		 * operation" and immediately, synchronously frees owner via
+		 * media_transport_remove_owner() -- while the idle callback
+		 * queued here still holds a pointer to it, causing a
+		 * use-after-free crash in hfp_transport_suspend_cb() on the
+		 * next mainloop iteration.
+		 */
+		ret = g_idle_add(hfp_transport_suspend_cb, owner);
+	} else {
+		/* We won't have a callback to set the final state */
+		transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	}
+
+	return ret;
+}
+
+static void transport_hfp_cancel(struct media_transport *transport, guint id)
+{
+	/* id is the g_idle_add() source id returned by transport_hfp_suspend()
+	 * for its still-pending hfp_transport_suspend_cb() callback. Cancel it
+	 * so it can never fire with a dangling owner pointer if owner is torn
+	 * down through another path first.
+	 */
+	g_source_remove(id);
+}
+#endif /* HAVE_HFP */
+
 #define TRANSPORT_OPS(_uuid, _props, _set_owner, _remove_owner, _init, \
 		      _resume, _suspend, _cancel, _set_state, _get_stream, \
 		      _get_volume, _set_volume, _set_delay, _update_links, \
@@ -2704,6 +2851,14 @@ static void *transport_asha_init(struct media_transport *transport, void *data)
 			transport_asha_get_volume, transport_asha_set_volume, \
 			NULL, NULL, NULL, NULL)
 
+#define HFP_OPS(_uuid) \
+	TRANSPORT_OPS(_uuid, transport_hfp_properties, NULL, NULL, \
+			transport_hfp_init, \
+			transport_hfp_resume, transport_hfp_suspend, \
+			transport_hfp_cancel, NULL, NULL, \
+			NULL, NULL, \
+			NULL, NULL, transport_hfp_destroy, NULL)
+
 static const struct media_transport_ops transport_ops[] = {
 #ifdef HAVE_A2DP
 	A2DP_OPS(A2DP_SOURCE_UUID, transport_a2dp_src_init,
@@ -2730,6 +2885,9 @@ static const struct media_transport_ops transport_ops[] = {
 #ifdef HAVE_ASHA
 	ASHA_OPS(ASHA_PROFILE_UUID),
 #endif /* HAVE_ASHA */
+#ifdef HAVE_HFP
+	HFP_OPS(HFP_AG_UUID),
+#endif /* HAVE_HFP */
 };
 
 static const struct media_transport_ops *
