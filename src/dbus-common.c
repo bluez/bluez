@@ -73,6 +73,8 @@ const char *class_to_icon(uint32_t class)
 		case 0x01:
 		case 0x02:
 			return "audio-headset";
+		case 0x05:
+			return "audio-speakers";
 		case 0x06:
 			return "audio-headphones";
 		case 0x0b: /* VCR */
