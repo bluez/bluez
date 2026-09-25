@@ -9514,14 +9514,8 @@ int adapter_set_io_capability(struct btd_adapter *adapter,
 
 	if (!btd_opts.pairable) {
 		if (io_cap == MGMT_IO_CAPABILITY_INVALID) {
-			if (adapter->current_settings & MGMT_SETTING_BONDABLE)
-				set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x00);
-
 			return 0;
 		}
-
-		if (!(adapter->current_settings & MGMT_SETTING_BONDABLE))
-			set_mode(adapter, MGMT_OP_SET_BONDABLE, 0x01);
 	} else if (io_cap == MGMT_IO_CAPABILITY_INVALID)
 		io_cap = MGMT_IO_CAPABILITY_NOINPUTNOOUTPUT;
 
