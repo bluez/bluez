@@ -767,7 +767,7 @@ unit_test_gatt_LDADD = src/libshared-glib.la \
 unit_tests += unit/test-hog
 
 unit_test_hog_SOURCES = unit/test-hog.c \
-			$(btio_sources) \
+			btio/btio.h \
 			profiles/input/hog-lib.h profiles/input/hog-lib.c \
 			profiles/scanparam/scpp.h profiles/scanparam/scpp.c \
 			profiles/battery/bas.h profiles/battery/bas.c \
