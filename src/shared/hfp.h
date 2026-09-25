@@ -258,6 +258,9 @@ bool hfp_hf_release_and_accept(struct hfp_hf *hfp,
 bool hfp_hf_swap_calls(struct hfp_hf *hfp,
 				hfp_response_func_t resp_cb,
 				void *user_data);
+bool hfp_hf_hangup_all(struct hfp_hf *hfp,
+				hfp_response_func_t resp_cb,
+				void *user_data);
 bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 				hfp_response_func_t resp_cb,
 				void *user_data);
