@@ -245,3 +245,6 @@ void btd_device_foreach_service(struct btd_device *dev,
 				void *user_data);
 void device_remove_pending_services(struct btd_device *dev,
 					uint8_t bdaddr_type);
+
+void btd_device_sec_level_changed(struct btd_device *dev, const uint8_t *data,
+					uint16_t size);
