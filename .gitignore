@@ -45,7 +45,6 @@ tools/97-hid2hci.rules
 profiles/cups/bluetooth
 profiles/iap/iapd
 
-attrib/gatttool
 tools/avinfo
 tools/bccmd
 tools/hwdb
@@ -174,7 +173,6 @@ unit/test-avctp
 unit/test-avrcp
 unit/test-gatt
 unit/test-midi
-unit/test-gattrib
 unit/test-mesh-crypto
 unit/test-micp
 unit/test-vcp

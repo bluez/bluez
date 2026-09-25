@@ -169,7 +169,10 @@ static bool uhid_read_handler(struct io *io, void *user_data)
 
 	len = read(fd, &ev, sizeof(ev));
 	if (len < 0)
-		return false;
+		/* Keep reading if the event was consumed by another reader of
+		 * a non-blocking fd.
+		 */
+		return errno == EAGAIN || errno == EINTR;
 
 	if ((size_t) len < sizeof(ev.type))
 		return false;
@@ -530,7 +533,7 @@ int bt_uhid_get_report_reply(struct bt_uhid *uhid, uint32_t id, uint8_t number,
 
 	if (number) {
 		rsp->data[len++] = number;
-		rsp->size += MIN(size, sizeof(rsp->data) - 1);
+		rsp->size = 1 + MIN(size, sizeof(rsp->data) - 1);
 	} else
 		rsp->size = MIN(size, sizeof(ev.u.input.data));
 

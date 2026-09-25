@@ -38,13 +38,10 @@
 #include "src/shared/queue.h"
 #include "src/shared/att.h"
 #include "src/shared/gatt-client.h"
+#include "src/shared/hog.h"
 #include "src/plugin.h"
 
 #include "suspend.h"
-#include "attrib/att.h"
-#include "attrib/gattrib.h"
-#include "attrib/gatt.h"
-#include "hog-lib.h"
 
 struct hog_device {
 	struct btd_device	*device;
@@ -56,6 +53,11 @@ static gboolean suspend_supported = FALSE;
 static bool auto_sec = true;
 static bool uhid_state_persist = false;
 static struct queue *devices = NULL;
+
+static void hog_debug(const char *str, void *user_data)
+{
+	DBG_IDX(0xffff, "%s", str);
+}
 
 static void hog_device_accept(struct hog_device *dev, struct gatt_db *db)
 {
@@ -79,6 +81,8 @@ static void hog_device_accept(struct hog_device *dev, struct gatt_db *db)
 							product, version);
 
 	dev->hog = bt_hog_new_default(name, vendor, product, version, type, db);
+	if (dev->hog)
+		bt_hog_set_debug(dev->hog, hog_debug, NULL, NULL);
 }
 
 static struct hog_device *hog_device_new(struct btd_device *device)
@@ -170,7 +174,10 @@ static int hog_accept(struct btd_service *service)
 	struct hog_device *dev = btd_service_get_user_data(service);
 	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_db *db = btd_device_get_gatt_db(device);
-	GAttrib *attrib = btd_device_get_attrib(device);
+	struct bt_gatt_client *client = btd_device_get_gatt_client(device);
+
+	if (!client)
+		return -ENOTCONN;
 
 	if (!dev->hog) {
 		hog_device_accept(dev, db);
@@ -180,19 +187,23 @@ static int hog_accept(struct btd_service *service)
 
 	/* HOGP 1.0 Section 6.1 requires bonding */
 	if (!device_is_bonded(device, btd_device_get_bdaddr_type(device))) {
-		struct bt_gatt_client *client;
-
 		if (!auto_sec)
 			return -ECONNREFUSED;
 
-		client = btd_device_get_gatt_client(device);
 		if (!bt_gatt_client_set_security(client,
 						BT_ATT_SECURITY_MEDIUM))
 			return -ECONNREFUSED;
 	}
 
-	/* TODO: Replace GAttrib with bt_gatt_client */
-	bt_hog_attach(dev->hog, attrib);
+	/* The PnP ID may have been read by the deviceinfo plugin since the
+	 * HoG instance was created, the uHID device is only created once
+	 * the Report Map is read.
+	 */
+	bt_hog_set_ids(dev->hog, btd_device_get_vendor(device),
+					btd_device_get_product(device),
+					btd_device_get_version(device));
+
+	bt_hog_attach(dev->hog, client);
 
 	btd_service_connecting_complete(service, 0);
 

@@ -1488,11 +1488,14 @@ static void register_notify_cb(uint16_t att_ecode, void *user_data)
 	struct characteristic *chrc = client->chrc;
 
 	if (att_ecode) {
+		/* Reply first, as freeing the client unregisters the
+		 * notification, which frees op with its destroy callback.
+		 */
+		create_notify_reply(op, false, att_ecode);
+
 		queue_remove(chrc->notify_clients, client);
 		queue_remove(chrc->service->client->all_notify_clients, client);
 		notify_client_free(client);
-
-		create_notify_reply(op, false, att_ecode);
 
 		return;
 	}

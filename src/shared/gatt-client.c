@@ -3842,6 +3842,8 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 							unsigned int id)
 {
 	struct notify_data *notify_data;
+	bt_gatt_client_destroy_func_t destroy;
+	void *user_data;
 
 	if (!client || !id)
 		return false;
@@ -3858,7 +3860,26 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	notify_data->callback = NULL;
 	notify_data->notify = NULL;
 
+	/* Call destroy once unregistered, as the user data may be freed then,
+	 * while notify_data may still be referenced by a pending procedure,
+	 * e.g. the write of the CCC, which would otherwise call it later.
+	 */
+	destroy = notify_data->destroy;
+	user_data = notify_data->user_data;
+	notify_data->destroy = NULL;
+
+	/* The client may be freed by destroy, e.g. if the user data holds
+	 * its last reference.
+	 */
+	bt_gatt_client_ref(client);
+
 	complete_unregister_notify(notify_data);
+
+	if (destroy)
+		destroy(user_data);
+
+	bt_gatt_client_unref(client);
+
 	return true;
 }
 

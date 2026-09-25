@@ -239,6 +239,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/mcs.h src/shared/mcp.h src/shared/mcp.c \
 			src/shared/vcp.c src/shared/vcp.h \
 			src/shared/micp.c src/shared/micp.h \
+			src/shared/hog.c src/shared/hog.h \
 			src/shared/csip.c src/shared/csip.h \
 			src/shared/bass.h src/shared/bass.c \
 			src/shared/ccp.h src/shared/ccp.c \
@@ -286,8 +287,7 @@ src_libshared_ell_la_CFLAGS = $(AM_CFLAGS)
 endif
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
-		attrib/gatt.h attrib/gatt.c \
-		attrib/gattrib.h attrib/gattrib.c
+		attrib/gatt.h attrib/gatt.c
 
 btio_sources = btio/btio.h btio/btio.c
 
@@ -501,6 +501,7 @@ EXTRA_DIST += doc/assigned-numbers.rst doc/supported-features.txt \
 				doc/functional-a2dp.rst \
 				doc/functional-avrcp.rst \
 				doc/functional-bap.rst \
+				doc/functional-hog.rst \
 				doc/functional-mpris-proxy.rst \
 				doc/functional-obex.rst \
 				doc/settings-storage.txt
@@ -766,26 +767,9 @@ unit_test_gatt_LDADD = src/libshared-glib.la \
 
 unit_tests += unit/test-hog
 
-unit_test_hog_SOURCES = unit/test-hog.c \
-			$(btio_sources) \
-			profiles/input/hog-lib.h profiles/input/hog-lib.c \
-			profiles/scanparam/scpp.h profiles/scanparam/scpp.c \
-			profiles/battery/bas.h profiles/battery/bas.c \
-			profiles/deviceinfo/dis.h profiles/deviceinfo/dis.c \
-			src/log.h src/log.c \
-			attrib/att.h attrib/att.c \
-			attrib/gatt.h attrib/gatt.c \
-			attrib/gattrib.h attrib/gattrib.c
+unit_test_hog_SOURCES = unit/test-hog.c
 unit_test_hog_LDADD = src/libshared-glib.la \
 				lib/libbluetooth-internal.la $(GLIB_LIBS)
-
-unit_tests += unit/test-gattrib
-
-unit_test_gattrib_SOURCES = unit/test-gattrib.c attrib/gattrib.c \
-					$(btio_sources) src/log.h src/log.c
-unit_test_gattrib_LDADD = src/libshared-glib.la \
-				lib/libbluetooth-internal.la \
-				$(GLIB_LIBS) $(DBUS_LIBS) -ldl -lrt
 
 unit_tests += unit/test-bap
 
@@ -884,9 +868,14 @@ check-TESTS recheck: AM_MAKEFLAGS += -j$(CHECK_JOBS)
 
 # The functional tests are parallelized by pytest-xdist, loadgroup is required
 # since pytest-bluezenv groups the tests sharing a host/VM setup together.
+# Each worker runs VM instances, so by default the number of workers is limited
+# by the memory available (see test/functional/conftest.py), override with e.g.
+# CHECK_FUNCTIONAL_JOBS=4.
+CHECK_FUNCTIONAL_JOBS ?= auto
+
 check-functional: all
 	python3 -m pytest "$(srcdir)/test/functional" -v \
-		-n $(CHECK_JOBS) --dist loadgroup \
+		-n $(CHECK_FUNCTIONAL_JOBS) --dist loadgroup \
 		-m "not tester" \
 		--kernel="$(FUNCTIONAL_TESTING_KERNEL)" \
 		--bluez-build-dir="$(top_builddir)" \
