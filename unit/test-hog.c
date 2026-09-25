@@ -17,6 +17,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <fcntl.h>
+#include <stdarg.h>
+#include <linux/uhid.h>
 
 #include <glib.h>
 
@@ -30,8 +32,27 @@
 #include "src/shared/gatt-db.h"
 
 #include "attrib/gattrib.h"
+#include "btio/btio.h"
 
 #include "profiles/input/hog-lib.h"
+
+gboolean bt_io_get(GIOChannel *io, GError **error, BtIOOption opt, ...)
+{
+	va_list args;
+
+	va_start(args, opt);
+
+	while (opt != BT_IO_OPT_INVALID) {
+		g_assert(opt == BT_IO_OPT_SOURCE_BDADDR ||
+					opt == BT_IO_OPT_DEST_BDADDR);
+		memset(va_arg(args, bdaddr_t *), 0, sizeof(bdaddr_t));
+		opt = va_arg(args, int);
+	}
+
+	va_end(args);
+
+	return TRUE;
+}
 
 struct test_pdu {
 	bool valid;
@@ -211,9 +232,127 @@ static void test_hog(gconstpointer data)
 	g_assert(bt_hog_attach(context->hog, context->attrib));
 }
 
+static ssize_t receive(int fd, void *buf, size_t size)
+{
+	gint64 deadline = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
+	ssize_t len;
+
+	do {
+		while (g_main_context_iteration(NULL, FALSE))
+			;
+
+		len = recv(fd, buf, size, MSG_DONTWAIT);
+		if (len >= 0)
+			return len;
+
+		g_usleep(1000);
+	} while (g_get_monotonic_time() < deadline);
+
+	return -1;
+}
+
+static void expect_read(int fd, uint8_t handle)
+{
+	uint8_t buf[32];
+	ssize_t len = receive(fd, buf, sizeof(buf));
+
+	g_assert_cmpint(len, ==, 3);
+	g_assert_cmpuint(buf[0], ==, BT_ATT_OP_READ_REQ);
+	g_assert_cmpuint(buf[1], ==, handle);
+	g_assert_cmpuint(buf[2], ==, 0);
+}
+
+static void respond(int fd, const void *buf, size_t size)
+{
+	g_assert_cmpint(send(fd, buf, size, 0), ==, size);
+}
+
+static void test_reconnect(gconstpointer data)
+{
+	const uint8_t info[] = { 0x0b, 0x11, 0x01, 0x00, 0x00 };
+	const uint8_t error[] = { 0x01, 0x0a, 0x05, 0x00, 0x0e };
+	const uint8_t map[] = { 0x0b, 0x05, 0x01, 0x09, 0x02, 0xa1, 0x01,
+				0x09, 0x30, 0x15, 0x81, 0x25, 0x7f, 0x75,
+				0x08, 0x95, 0x01, 0x81, 0x06, 0xc0 };
+	struct gatt_db *db = gatt_db_new();
+	struct gatt_db_attribute *service;
+	struct bt_hog *hog;
+	struct uhid_event ev;
+	GIOChannel *channel;
+	GAttrib *attrib;
+	bt_uuid_t uuid;
+	int att[2], uhid[2];
+	bool cancel = GPOINTER_TO_INT(data);
+
+	g_assert_cmpint(socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK,
+							0, att), ==, 0);
+	g_assert_cmpint(socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK,
+							0, uhid), ==, 0);
+	bt_uuid16_create(&uuid, 0x1812);
+	service = gatt_db_add_service(db, &uuid, true, 5);
+	g_assert(service);
+	bt_uuid16_create(&uuid, 0x2a4a);
+	g_assert(gatt_db_service_add_characteristic(service, &uuid,
+				BT_ATT_PERM_READ, 0x02, NULL, NULL, NULL));
+	bt_uuid16_create(&uuid, 0x2a4b);
+	g_assert(gatt_db_service_add_characteristic(service, &uuid,
+				BT_ATT_PERM_READ, 0x02, NULL, NULL, NULL));
+	gatt_db_service_set_active(service, true);
+	channel = g_io_channel_unix_new(att[0]);
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	attrib = g_attrib_new(channel, 23, false);
+	g_io_channel_unref(channel);
+	hog = bt_hog_new(uhid[0], "report-map-test", 1, 1, 1, 0, db);
+	g_assert(hog);
+	g_assert(bt_hog_attach(hog, attrib));
+	expect_read(att[1], 3);
+	respond(att[1], info, sizeof(info));
+	expect_read(att[1], 5);
+
+	if (!cancel) {
+		respond(att[1], error, sizeof(error));
+
+		while (g_main_context_iteration(NULL, FALSE))
+			;
+	}
+
+	bt_hog_detach(hog, false);
+	g_attrib_unref(attrib);
+	close(att[1]);
+	g_assert_cmpint(socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK,
+							0, att), ==, 0);
+	channel = g_io_channel_unix_new(att[0]);
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	attrib = g_attrib_new(channel, 23, false);
+	g_io_channel_unref(channel);
+	g_assert(bt_hog_attach(hog, attrib));
+	expect_read(att[1], 3);
+	respond(att[1], info, sizeof(info));
+	expect_read(att[1], 5);
+	respond(att[1], map, sizeof(map));
+	g_assert_cmpint(receive(uhid[1], &ev, sizeof(ev)), ==, sizeof(ev));
+	g_assert_cmpuint(ev.type, ==, UHID_CREATE2);
+	g_assert_cmpuint(ev.u.create2.rd_size, ==, sizeof(map) - 1);
+	g_assert_cmpmem(ev.u.create2.rd_data, ev.u.create2.rd_size,
+						map + 1, sizeof(map) - 1);
+	bt_hog_detach(hog, true);
+	bt_hog_unref(hog);
+	g_attrib_unref(attrib);
+	gatt_db_unref(db);
+	close(att[1]);
+	close(uhid[0]);
+	close(uhid[1]);
+	tester_test_passed();
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
+
+	tester_add("/hog/report-map/error-reconnect", GINT_TO_POINTER(false),
+					NULL, test_reconnect, NULL);
+	tester_add("/hog/report-map/cancel-reconnect", GINT_TO_POINTER(true),
+					NULL, test_reconnect, NULL);
 
 	define_test("/TP/HGRF/RH/BV-01-I", test_hog,
 		raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28),
