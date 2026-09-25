@@ -1908,6 +1908,7 @@ void bt_hog_detach(struct bt_hog *hog, bool force)
 	}
 
 	queue_remove_all(hog->gatt_op, cancel_gatt_req, hog, destroy_gatt_req);
+	hog->report_map_id = 0;
 	g_attrib_unref(hog->attrib);
 	hog->attrib = NULL;
 
