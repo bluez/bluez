@@ -39,6 +39,7 @@ struct mesh_io_private {
 	struct tx_pkt *tx;
 	uint16_t interval;
 	bool sending;
+	bool scan_paused;
 	bool active;
 };
 
@@ -454,22 +455,77 @@ static bool dev_caps(struct mesh_io *io, struct mesh_io_caps *caps)
 	return true;
 }
 
+static void set_random_address_rsp(const void *buf, uint8_t size,
+							void *user_data)
+{
+	struct mesh_io_private *pvt = user_data;
+	uint8_t status = *((uint8_t *) buf);
+
+	if (status)
+		l_error("LE Set Random Address failed (0x%02x)", status);
+
+	if (!pvt->scan_paused)
+		return;
+
+	pvt->scan_paused = false;
+
+	/* Only resume if a scan is still wanted: recv_deregister() may have
+	 * stopped it while the address change was in flight.
+	 */
+	if (!l_queue_isempty(pvt->io->rx_regs))
+		set_recv_scan_enable(NULL, 0, pvt);
+}
+
+static void send_set_random_address(struct mesh_io_private *pvt)
+{
+	struct bt_hci_cmd_le_set_random_address cmd;
+
+	l_getrandom(cmd.addr, 6);
+	cmd.addr[5] |= 0xc0;
+	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_RANDOM_ADDRESS,
+				&cmd, sizeof(cmd), set_random_address_rsp,
+				pvt, NULL);
+}
+
+static void scan_disable_for_addr_change_rsp(const void *buf, uint8_t size,
+							void *user_data)
+{
+	struct mesh_io_private *pvt = user_data;
+	uint8_t status = *((uint8_t *) buf);
+
+	if (status)
+		l_error("LE Scan disable failed (0x%02x)", status);
+
+	send_set_random_address(pvt);
+}
+
 static void send_cancel_done(const void *buf, uint8_t size,
 							void *user_data)
 {
 	struct mesh_io_private *pvt = user_data;
-	struct bt_hci_cmd_le_set_random_address cmd;
+	struct bt_hci_cmd_le_set_scan_enable cmd;
 
 	if (!pvt)
 		return;
 
 	pvt->sending = false;
 
-	/* At end of any burst of ADVs, change random address */
-	l_getrandom(cmd.addr, 6);
-	cmd.addr[5] |= 0xc0;
-	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_RANDOM_ADDRESS,
-				&cmd, sizeof(cmd), NULL, NULL, NULL);
+	/* At end of any burst of ADVs, change random address. The controller
+	 * rejects LE Set Random Address with Command Disallowed while
+	 * scanning is enabled (Core Spec, Vol 4, Part E, Section 7.8.4).
+	 */
+	pvt->scan_paused = !l_queue_isempty(pvt->io->rx_regs);
+
+	if (!pvt->scan_paused) {
+		send_set_random_address(pvt);
+		return;
+	}
+
+	cmd.enable = 0x00;	/* Disable scanning */
+	cmd.filter_dup = 0x00;	/* Report duplicates */
+	bt_hci_send(pvt->hci, BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+				&cmd, sizeof(cmd),
+				scan_disable_for_addr_change_rsp, pvt, NULL);
 }
 
 static void send_cancel(struct mesh_io_private *pvt)
