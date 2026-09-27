@@ -593,6 +593,11 @@ unit_test_tester_SOURCES = unit/test-tester.c
 unit_test_tester_LDADD = src/libshared-glib.la lib/libbluetooth-internal.la \
 								$(GLIB_LIBS)
 
+unit_tests += unit/test-mainloop
+
+unit_test_mainloop_SOURCES = unit/test-mainloop.c
+unit_test_mainloop_LDADD = src/libshared-mainloop.la
+
 unit_tests += unit/test-eir
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/uuid-helper.c
