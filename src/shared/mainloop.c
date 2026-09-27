@@ -35,9 +35,11 @@
 static int epoll_fd;
 static int epoll_terminate;
 static int exit_status = EXIT_SUCCESS;
+static uint64_t next_id;
 
 struct mainloop_data {
 	int fd;
+	uint64_t id;
 	uint32_t events;
 	mainloop_event_func callback;
 	mainloop_destroy_func destroy;
@@ -99,7 +101,13 @@ int mainloop_run(void)
 			continue;
 
 		for (n = 0; n < nfds; n++) {
-			struct mainloop_data *data = events[n].data.ptr;
+			uint64_t id = events[n].data.u64;
+			int fd = id % MAX_MAINLOOP_ENTRIES;
+			struct mainloop_data *data = mainloop_list[fd];
+
+			/* Another callback may have removed it */
+			if (!data || data->id != id)
+				continue;
 
 			data->callback(data->fd, events[n].events,
 							data->user_data);
@@ -145,6 +153,7 @@ int mainloop_add_fd(int fd, uint32_t events, mainloop_event_func callback,
 
 	memset(data, 0, sizeof(*data));
 	data->fd = fd;
+	data->id = ++next_id * MAX_MAINLOOP_ENTRIES + fd;
 	data->events = events;
 	data->callback = callback;
 	data->destroy = destroy;
@@ -152,7 +161,7 @@ int mainloop_add_fd(int fd, uint32_t events, mainloop_event_func callback,
 
 	memset(&ev, 0, sizeof(ev));
 	ev.events = events;
-	ev.data.ptr = data;
+	ev.data.u64 = data->id;
 
 	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, data->fd, &ev);
 	if (err < 0) {
@@ -180,7 +189,7 @@ int mainloop_modify_fd(int fd, uint32_t events)
 
 	memset(&ev, 0, sizeof(ev));
 	ev.events = events;
-	ev.data.ptr = data;
+	ev.data.u64 = data->id;
 
 	err = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, data->fd, &ev);
 	if (err < 0)
