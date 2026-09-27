@@ -97,6 +97,7 @@ tools/isotest
 tools/iso-tester
 test/bluezutils.pyc
 unit/test-tester
+unit/test-mainloop
 unit/test-ringbuf
 unit/test-queue
 unit/test-util
