@@ -227,7 +227,9 @@ Controllers
 
 By default a single ``btvirt`` process runs on the developer machine and
 provides an emulated BR/EDR/LE controller to every VM host over a UNIX
-socket, also bridging the air interface between them::
+socket, also bridging the air interface between them. The controllers
+emulate the latest Core Specification version supported by ``btvirt``,
+6.2, older ones can be emulated with its ``-C/--core`` option::
 
     VM host #0                 developer machine              VM host #1
     ┌────────────┐            ┌─────────────────┐            ┌────────────┐
