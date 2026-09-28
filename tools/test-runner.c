@@ -577,6 +577,46 @@ static void terminate_signal(int sig)
 	terminate = 1;
 }
 
+#define COVERAGE_TAG "bluez-coverage"
+
+static bool coverage_enabled(void)
+{
+#ifdef HAVE_COVERAGE
+	return true;
+#else
+	return false;
+#endif
+}
+
+/* The root filesystem is shared read-only, so gcov would be unable to write
+ * the .gcda files of the binaries run inside the guest. Share the build
+ * directory writable so it can be mounted over the read-only one.
+ */
+static void coverage_setup(struct strv *argv, const char *dir)
+{
+	if (!coverage_enabled())
+		return;
+
+	strv_append(argv, "-fsdev");
+	strv_append(argv, "local,id=fsdev-coverage,path=%s,readonly=off,"
+				"security_model=none,multidevs=remap", dir);
+	strv_append(argv, "-device");
+	strv_append(argv, "virtio-9p-pci,fsdev=fsdev-coverage,"
+					"mount_tag=" COVERAGE_TAG);
+}
+
+static void coverage_mount(const char *dir)
+{
+	if (!coverage_enabled())
+		return;
+
+	printf("Mounting %s writable for coverage\n", dir);
+
+	if (mount(COVERAGE_TAG, dir, "9p", 0,
+				"trans=virtio,version=9p2000.L") < 0)
+		perror("Failed to mount coverage directory");
+}
+
 static bool rootfs_setup(struct rootfs *r, struct strv *argv)
 {
 	const char *mem = "256M";
@@ -825,6 +865,8 @@ static int start_qemu(void)
 	strv_append(&argv, "%s", kernel_image);
 	strv_append(&argv, "-append");
 	strv_append(&argv, "%s", cmdline);
+
+	coverage_setup(&argv, cwd);
 
 	for (i = 0; i < num_devs; i++) {
 		strv_append(&argv, "-chardev");
@@ -1455,6 +1497,9 @@ static void run_command(char *cmdname, char *home)
 		perror("Invalid parameter: TESTHOME");
 		return;
 	}
+
+	/* home is "HOME=<dir>" */
+	coverage_mount(home + 5);
 
 	if (num_devs) {
 		const char *node = "/dev/hvc1";
