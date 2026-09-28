@@ -47,10 +47,10 @@
 #include "btio/btio.h"
 #include "bluetooth/mgmt.h"
 #include "attrib/att.h"
+#include "attrib/gatt.h"
 #include "btd.h"
 #include "adapter.h"
 #include "gatt-database.h"
-#include "attrib/gattrib.h"
 #include "device.h"
 #include "gatt-client.h"
 #include "profile.h"
@@ -59,7 +59,6 @@
 #include "error.h"
 #include "uuid-helper.h"
 #include "sdp-client.h"
-#include "attrib/gatt.h"
 #include "agent.h"
 #include "textfile.h"
 #include "storage.h"
@@ -257,7 +256,6 @@ struct btd_device {
 	GSList		*disconnects;		/* disconnects message */
 	DBusMessage	*connect;		/* connect message */
 	DBusMessage	*disconnect;		/* disconnect message */
-	GAttrib		*attrib;
 
 	struct bt_att *att;			/* The new ATT transport */
 	uint16_t att_mtu;			/* The ATT MTU */
@@ -864,14 +862,6 @@ static void attio_cleanup(struct btd_device *device)
 	if (device->att) {
 		bt_att_unref(device->att);
 		device->att = NULL;
-	}
-
-	if (device->attrib) {
-		GAttrib *attrib = device->attrib;
-
-		device->attrib = NULL;
-		g_attrib_cancel_all(attrib);
-		g_attrib_unref(attrib);
 	}
 }
 
@@ -2342,7 +2332,7 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 	/* Enabling auto connect */
 	adapter_auto_connect_add(device->adapter, device);
 
-	if (device->attrib) {
+	if (device->att) {
 		DBG("Already connected");
 		return;
 	}
@@ -6391,7 +6381,6 @@ static void gatt_client_init(struct btd_device *device)
 	}
 
 	bt_gatt_client_set_debug(device->client, gatt_debug, NULL, NULL);
-	g_attrib_attach_client(device->attrib, device->client);
 
 	/*
 	 * If we have cache, notify existing service about the new connection
@@ -6491,7 +6480,7 @@ static bool remote_counter(uint32_t *sign_cnt, void *user_data)
 bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 {
 	GError *gerr = NULL;
-	GAttrib *attrib;
+	struct bt_att *att;
 	BtIOSecLevel sec_level;
 	uint16_t mtu;
 	uint16_t cid;
@@ -6541,17 +6530,24 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	}
 
 	dev->att_mtu = MIN(mtu, btd_opts.gatt_mtu);
-	attrib = g_attrib_new(io, cid == BT_ATT_CID ? BT_ATT_DEFAULT_LE_MTU :
-					dev->att_mtu, false);
-	if (!attrib) {
-		error("Unable to create new GAttrib instance");
+
+	att = bt_att_new(g_io_channel_unix_get_fd(io), false);
+	if (!att) {
+		error("Unable to create new ATT instance");
 		return false;
 	}
 
-	dev->attrib = attrib;
-	dev->att = g_attrib_get_att(attrib);
+	if (!bt_att_set_mtu(att, cid == BT_ATT_CID ? BT_ATT_DEFAULT_LE_MTU :
+							dev->att_mtu)) {
+		error("Unable to set ATT MTU");
+		bt_att_unref(att);
+		return false;
+	}
 
-	bt_att_ref(dev->att);
+	/* The fd is closed once the ATT instance is freed */
+	g_io_channel_set_close_on_unref(io, FALSE);
+
+	dev->att = att;
 
 	bt_att_set_debug(dev->att, BT_ATT_DEBUG, gatt_debug, NULL, NULL);
 
@@ -7982,14 +7978,6 @@ struct bt_gatt_client *btd_device_get_gatt_client(struct btd_device *device)
 		return NULL;
 
 	return device->client;
-}
-
-void *btd_device_get_attrib(struct btd_device *device)
-{
-	if (!device)
-		return NULL;
-
-	return device->attrib;
 }
 
 struct bt_gatt_server *btd_device_get_gatt_server(struct btd_device *device)
