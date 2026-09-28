@@ -2620,6 +2620,14 @@ bool bt_gatt_client_is_ready(struct bt_gatt_client *client)
 	return (client && client->ready);
 }
 
+/* Whether there are no pending requests, e.g. to know if the callbacks
+ * registered with bt_gatt_client_idle_register would be called.
+ */
+bool bt_gatt_client_is_idle(struct bt_gatt_client *client)
+{
+	return (client && queue_isempty(client->pending_requests));
+}
+
 unsigned int bt_gatt_client_ready_register(struct bt_gatt_client *client,
 					bt_gatt_client_callback_t callback,
 					void *user_data,
