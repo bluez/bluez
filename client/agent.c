@@ -255,8 +255,14 @@ static DBusMessage *cancel_request(DBusConnection *conn,
 	bt_shell_printf("Request canceled\n");
 
 	agent_release_prompt();
-	dbus_message_unref(pending_message);
-	pending_message = NULL;
+
+	/* There is no pending request with the auto agent, which replies
+	 * right away, or if it has already been replied.
+	 */
+	if (pending_message) {
+		dbus_message_unref(pending_message);
+		pending_message = NULL;
+	}
 
 	return dbus_message_new_method_return(msg);
 }
