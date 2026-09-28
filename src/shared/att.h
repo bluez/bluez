@@ -29,6 +29,8 @@ bool bt_att_set_close_on_unref(struct bt_att *att, bool do_close);
 
 int bt_att_get_fd(struct bt_att *att);
 
+const char *bt_att_ecode2str(uint8_t ecode);
+
 int bt_att_attach_fd(struct bt_att *att, int fd);
 
 int bt_att_get_channels(struct bt_att *att);
