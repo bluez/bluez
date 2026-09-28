@@ -40,7 +40,6 @@
 #include "src/service.h"
 #include "src/log.h"
 #include "src/battery.h"
-#include "attrib/att.h"
 
 #define BATTERY_INTERFACE "org.bluez.Battery1"
 
@@ -128,7 +127,7 @@ static void batt_io_ccc_written_cb(uint16_t att_ecode, void *user_data)
 
 	if (att_ecode != 0) {
 		error("Battery Level: notifications not enabled %s",
-		      att_ecode2str(att_ecode));
+		      bt_att_ecode2str(att_ecode));
 		return;
 	}
 

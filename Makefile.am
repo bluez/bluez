@@ -286,8 +286,6 @@ src_libshared_ell_la_LDFLAGS = $(AM_LDFLAGS)
 src_libshared_ell_la_CFLAGS = $(AM_CFLAGS)
 endif
 
-attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
-		attrib/gatt.h attrib/gatt.c
 
 btio_sources = btio/btio.h btio/btio.c
 
@@ -308,7 +306,7 @@ include Makefile.plugins
 pkglibexec_PROGRAMS += src/bluetoothd
 
 bluetoothd_internal_sources = \
-			$(attrib_sources) $(btio_sources) \
+			$(btio_sources) \
 			src/log.h src/log.c \
 			src/backtrace.h src/backtrace.c \
 			src/rfkill.c src/btd.h src/sdpd.h \

@@ -9,6 +9,7 @@
  *
  */
 
+#include "bluetooth/uuid.h"
 #include "src/shared/queue.h"
 
 #define DEVICE_INTERFACE	"org.bluez.Device1"
@@ -67,6 +68,18 @@ void btd_device_set_record(struct btd_device *device, const char *uuid,
 							const char *record);
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 						const char *uuid);
+struct gatt_primary {
+	char uuid[MAX_LEN_UUID_STR + 1];
+	gboolean changed;
+	struct {
+		uint16_t start;
+		uint16_t end;
+	} range;
+};
+
+gboolean gatt_parse_record(const sdp_record_t *rec, uuid_t *prim_uuid,
+				uint16_t *psm, uint16_t *start, uint16_t *end);
+
 struct gatt_primary *btd_device_get_primary(struct btd_device *device,
 							const char *uuid);
 GSList *btd_device_get_primaries(struct btd_device *device);

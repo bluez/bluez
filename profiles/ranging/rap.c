@@ -33,7 +33,6 @@
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
 #include "src/shared/rap.h"
-#include "attrib/att.h"
 #include "src/log.h"
 #include "src/shared/cs-types.h"
 #include "src/btd.h"

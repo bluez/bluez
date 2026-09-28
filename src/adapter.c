@@ -45,6 +45,7 @@
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
 #include "src/shared/att.h"
+#include "src/shared/crypto.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/timeout.h"
 
@@ -59,8 +60,6 @@
 #include "uuid-helper.h"
 #include "agent.h"
 #include "storage.h"
-#include "attrib/att.h"
-#include "attrib/gatt.h"
 #include "gatt-database.h"
 #include "advertising.h"
 #include "adv_monitor.h"

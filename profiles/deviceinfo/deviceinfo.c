@@ -31,7 +31,6 @@
 #include "src/shared/att.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
-#include "attrib/att.h"
 #include "src/log.h"
 
 #define PNP_ID_SIZE	7
@@ -43,7 +42,7 @@ static void read_pnpid_cb(bool success, uint8_t att_ecode, const uint8_t *value,
 
 	if (!success) {
 		error("Error reading PNP_ID value: %s",
-						att_ecode2str(att_ecode));
+						bt_att_ecode2str(att_ecode));
 		return;
 	}
 

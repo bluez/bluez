@@ -31,7 +31,6 @@
 #include "src/shared/queue.h"
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-client.h"
-#include "attrib/att.h"
 #include "src/btd.h"
 
 #define SCAN_INTERVAL_WIN_UUID		0x2A4F
@@ -91,7 +90,7 @@ static void refresh_ccc_written_cb(uint16_t att_ecode, void *user_data)
 {
 	if (att_ecode != 0) {
 		error("Scan Refresh: notifications not enabled %s",
-						att_ecode2str(att_ecode));
+						bt_att_ecode2str(att_ecode));
 		return;
 	}
 
