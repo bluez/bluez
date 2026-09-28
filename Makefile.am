@@ -994,7 +994,11 @@ if COVERAGE
 	@lcov --directory $(top_builddir) --zerocounters
 	$(RM) -r coverage $(top_builddir)/coverage.info
 
-coverage: check
+.PHONY: coverage clean-coverage
+
+coverage:
+	@lcov --directory $(top_builddir) --zerocounters
+	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) check
 	@lcov --compat-libtool --directory $(top_builddir) --capture \
 				--output-file $(top_builddir)/coverage.info
 	$(AM_V_at)$(MKDIR_P) coverage
