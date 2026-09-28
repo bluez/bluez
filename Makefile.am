@@ -239,6 +239,7 @@ shared_sources = src/shared/io.h src/shared/timeout.h \
 			src/shared/mcs.h src/shared/mcp.h src/shared/mcp.c \
 			src/shared/vcp.c src/shared/vcp.h \
 			src/shared/micp.c src/shared/micp.h \
+			src/shared/hog.c src/shared/hog.h \
 			src/shared/csip.c src/shared/csip.h \
 			src/shared/bass.h src/shared/bass.c \
 			src/shared/ccp.h src/shared/ccp.c \
