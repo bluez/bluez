@@ -169,7 +169,10 @@ static bool uhid_read_handler(struct io *io, void *user_data)
 
 	len = read(fd, &ev, sizeof(ev));
 	if (len < 0)
-		return false;
+		/* Keep reading if the event was consumed by another reader of
+		 * a non-blocking fd.
+		 */
+		return errno == EAGAIN || errno == EINTR;
 
 	if ((size_t) len < sizeof(ev.type))
 		return false;
