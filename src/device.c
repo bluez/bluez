@@ -330,6 +330,14 @@ static struct bearer_state *get_state(struct btd_device *dev,
 		return &dev->le_state;
 }
 
+static bool device_connectable_known(struct btd_device *dev)
+{
+	if (dev->bredr)
+		return true;
+
+	return get_state(dev, dev->bdaddr_type)->last_seen != 0;
+}
+
 bool btd_device_is_initiator(struct btd_device *dev)
 {
 	if (dev->le_state.connected)
@@ -1290,6 +1298,25 @@ static gboolean dev_property_exists_tx_power(const GDBusPropertyTable *property,
 		return FALSE;
 
 	return TRUE;
+}
+
+static gboolean
+dev_property_get_connectable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *dev = data;
+	dbus_bool_t val = device_is_connectable(dev);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
+
+	return TRUE;
+}
+
+static gboolean
+dev_property_exists_connectable(const GDBusPropertyTable *property,
+								void *data)
+{
+	return device_connectable_known(data);
 }
 
 static gboolean
@@ -3767,6 +3794,8 @@ static const GDBusPropertyTable device_properties[] = {
 				NULL, dev_property_service_data_exist },
 	{ "TxPower", "n", dev_property_get_tx_power, NULL,
 					dev_property_exists_tx_power },
+	{ "Connectable", "b", dev_property_get_connectable, NULL,
+					dev_property_exists_connectable },
 	{ "ServicesResolved", "b", dev_property_get_svc_resolved, NULL, NULL },
 	{ "AdvertisingFlags", "ay", dev_property_get_flags, NULL,
 					dev_property_flags_exist },
@@ -5352,11 +5381,18 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type,
 							bool connectable)
 {
 	struct bearer_state *state;
+	bool known = device_connectable_known(device);
+	bool was_connectable = device_is_connectable(device);
 
 	state = get_state(device, bdaddr_type);
 
 	state->last_seen = time(NULL);
 	state->connectable = connectable;
+
+	if (known != device_connectable_known(device) ||
+			was_connectable != device_is_connectable(device))
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "Connectable");
 
 	if (!device_is_temporary(device))
 		return;
