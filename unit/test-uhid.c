@@ -18,7 +18,12 @@
 #include <inttypes.h>
 #include <string.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <linux/hidraw.h>
 
 #include <glib.h>
 
@@ -56,6 +61,14 @@ struct context {
 	int fd;
 	unsigned int pdu_offset;
 	const struct test_data *data;
+	/* Get Report through hidraw, see test_get_report */
+	guint poll;
+	unsigned int poll_count;
+	GThread *thread;
+	guint done;
+	uint8_t report[64];
+	int report_len;
+	int report_err;
 };
 
 #define event(args...)						\
@@ -99,6 +112,20 @@ static void destroy_context(struct context *context)
 {
 	if (context->source > 0)
 		g_source_remove(context->source);
+
+	if (context->poll > 0)
+		g_source_remove(context->poll);
+
+	if (context->thread) {
+		/* Destroying the device fails the pending request, if any, so
+		 * the thread returns.
+		 */
+		bt_uhid_destroy(context->uhid, true);
+		g_thread_join(context->thread);
+	}
+
+	if (context->done > 0)
+		g_source_remove(context->done);
 
 	bt_uhid_unregister_all(context->uhid);
 	bt_uhid_unref(context->uhid);
@@ -331,6 +358,245 @@ static void test_server(gconstpointer data)
 }
 
 
+/* Feature Report 1: 8 bytes, which is numbered since the Report Map uses a
+ * Report ID.
+ */
+#define FEATURE_REPORT_ID	0x01
+#define FEATURE_REPORT		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+
+static const uint8_t feature_report[] = { FEATURE_REPORT };
+
+static const struct uhid_event ev_get_report = {
+	.type = UHID_GET_REPORT,
+	.u.get_report = {
+		.id = 0x42,
+		.rnum = FEATURE_REPORT_ID,
+		.rtype = UHID_FEATURE_REPORT,
+	},
+};
+
+/* The reply contains the Report ID, followed by the report data, as the
+ * buffer returned by hid_hw_raw_request which uhid copies the reply to.
+ */
+static const struct uhid_event ev_get_report_reply = {
+	.type = UHID_GET_REPORT_REPLY,
+	.u.get_report_reply = {
+		.id = 0x42,
+		.err = 0,
+		.size = 1 + sizeof(feature_report),
+		.data = { FEATURE_REPORT_ID, FEATURE_REPORT },
+	},
+};
+
+static void handle_get_report(struct uhid_event *ev, void *user_data)
+{
+	struct context *context = user_data;
+	int err;
+
+	g_assert_cmpint(ev->type, ==, UHID_GET_REPORT);
+	g_assert_cmpint(ev->u.get_report.rnum, ==, FEATURE_REPORT_ID);
+	g_assert_cmpint(ev->u.get_report.rtype, ==, UHID_FEATURE_REPORT);
+
+	err = bt_uhid_get_report_reply(context->uhid, ev->u.get_report.id,
+					FEATURE_REPORT_ID, 0, feature_report,
+					sizeof(feature_report));
+	g_assert_cmpint(err, ==, 0);
+}
+
+static void test_get_report_reply(gconstpointer data)
+{
+	struct context *context = create_context(data);
+
+	bt_uhid_register(context->uhid, UHID_GET_REPORT, handle_get_report,
+								context);
+
+	g_idle_add(send_pdu, context);
+}
+
+static struct test_device get_report_device = {
+	.name = "BlueZ uHID Get Report",
+	.type = BT_UHID_NONE,
+	/* Vendor defined collection with Feature Report 1 of 8 bytes */
+	.map = UTIL_IOV_INIT(0x06, 0x00, 0xff, 0x09, 0x01, 0xa1, 0x01, 0x85,
+				FEATURE_REPORT_ID, 0x09, 0x01, 0x15, 0x00,
+				0x26, 0xff, 0x00, 0x75, 0x08, 0x95, 0x08,
+				0xb1, 0x02, 0xc0),
+};
+
+static gboolean get_report_done(gpointer user_data)
+{
+	struct context *context = user_data;
+	uint8_t expected[] = { FEATURE_REPORT_ID, FEATURE_REPORT };
+
+	g_thread_join(context->thread);
+	context->thread = NULL;
+	context->done = 0;
+
+	if (context->report_len < 0) {
+		tester_warn("HIDIOCGFEATURE: %s",
+					strerror(context->report_err));
+		tester_test_failed();
+		return FALSE;
+	}
+
+	if (tester_use_debug())
+		util_hexdump('>', context->report, context->report_len,
+						test_debug, "hidraw: ");
+
+	/* hidraw returns the Report ID in the first byte for numbered
+	 * reports, see Documentation/hid/hidraw.rst, followed by the data
+	 * of the reply.
+	 */
+	g_assert_cmpint(context->report_len, ==, sizeof(expected));
+	g_assert(!memcmp(context->report, expected, sizeof(expected)));
+
+	bt_uhid_destroy(context->uhid, true);
+	context_quit(context);
+
+	return FALSE;
+}
+
+static bool find_hidraw(const char *name, char *path, size_t len)
+{
+	DIR *dir;
+	struct dirent *d;
+	bool found = false;
+
+	dir = opendir("/sys/class/hidraw");
+	if (!dir)
+		return false;
+
+	while (!found && (d = readdir(dir))) {
+		char uevent[PATH_MAX], buf[1024];
+		ssize_t n;
+		int fd;
+
+		if (d->d_name[0] == '.')
+			continue;
+
+		snprintf(uevent, sizeof(uevent),
+				"/sys/class/hidraw/%s/device/uevent",
+				d->d_name);
+
+		fd = open(uevent, O_RDONLY);
+		if (fd < 0)
+			continue;
+
+		/* Start with a new line so every line can be matched in full */
+		buf[0] = '\n';
+
+		n = read(fd, buf + 1, sizeof(buf) - 2);
+		close(fd);
+		if (n <= 0)
+			continue;
+
+		buf[n + 1] = '\0';
+
+		if (strstr(buf, name)) {
+			snprintf(path, len, "/dev/%s", d->d_name);
+			found = true;
+		}
+	}
+
+	closedir(dir);
+
+	return found;
+}
+
+static char hidraw_path[PATH_MAX];
+
+static gpointer hidraw_get_feature(gpointer user_data)
+{
+	struct context *context = user_data;
+	int fd;
+
+	fd = open(hidraw_path, O_RDWR);
+	if (fd < 0) {
+		context->report_len = -1;
+		context->report_err = errno;
+		goto done;
+	}
+
+	/* The first byte is the Report ID of the requested report */
+	context->report[0] = FEATURE_REPORT_ID;
+
+	/* Blocks until the reply to UHID_GET_REPORT, which is handled by the
+	 * main loop.
+	 */
+	context->report_len = ioctl(fd, HIDIOCGFEATURE(sizeof(context->report)),
+							context->report);
+	context->report_err = errno;
+
+	close(fd);
+
+done:
+	/* Read by the main thread once joined */
+	context->done = g_idle_add(get_report_done, context);
+
+	return NULL;
+}
+
+static gboolean poll_hidraw(gpointer user_data)
+{
+	struct context *context = user_data;
+	char name[128];
+
+	/* Match the whole line, not another device named with a prefix */
+	snprintf(name, sizeof(name), "\nHID_NAME=%s\n",
+						get_report_device.name);
+
+	/* The hidraw device is created once the HID device is started */
+	if (!find_hidraw(name, hidraw_path, sizeof(hidraw_path))) {
+		if (++context->poll_count < 40)
+			return TRUE;
+
+		tester_warn("hidraw device not found, is CONFIG_HIDRAW set?");
+		context->poll = 0;
+		tester_test_failed();
+		return FALSE;
+	}
+
+	context->poll = 0;
+	context->thread = g_thread_new("hidraw", hidraw_get_feature, context);
+
+	return FALSE;
+}
+
+static void test_get_report(gconstpointer data)
+{
+	struct context *context;
+	struct test_device *device = ((struct test_data *) data)->test_device;
+	int err;
+
+	/* Requires the permissions to create uHID devices, and the kernel
+	 * to support hidraw.
+	 */
+	if (getuid() || access("/sys/class/hidraw", F_OK)) {
+		tester_test_abort();
+		return;
+	}
+
+	context = create_context(data);
+	if (!context)
+		return;
+
+	bt_uhid_register(context->uhid, UHID_GET_REPORT, handle_get_report,
+								context);
+
+	err = bt_uhid_create(context->uhid, device->name, BDADDR_ANY,
+				BDADDR_ANY, device->vendor, device->product,
+				device->version, device->country, device->type,
+				device->map.iov_base, device->map.iov_len);
+	if (err < 0) {
+		tester_warn("create failed: %s", strerror(-err));
+		destroy_context(context);
+		tester_test_failed();
+		return;
+	}
+
+	context->poll = g_timeout_add(50, poll_hidraw, context);
+}
+
 static struct test_device mx_anywhere_3 = {
 	.name = "MX Anywhere 3",
 	.vendor = 0x46D,
@@ -366,8 +632,14 @@ int main(int argc, char *argv[])
 	define_test("/uhid/event/output", test_server, event(&ev_output));
 	define_test("/uhid/event/feature", test_server, event(&ev_feature));
 
+	define_test("/uhid/command/get_report_reply", test_get_report_reply,
+					event(&ev_get_report),
+					event(&ev_get_report_reply));
+
 	define_test_device("/uhid/device/mx_anywhere_3", test_client,
 					&mx_anywhere_3, event(&ev_create));
+	define_test_device("/uhid/device/get_report", test_get_report,
+					&get_report_device, event(&ev_create));
 
 	return tester_run();
 }
