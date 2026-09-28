@@ -395,6 +395,17 @@ int16 TxPower [readonly, optional]
 
 Advertised transmitted power level (inquiry or advertising).
 
+bool Connectable [readonly, optional]
+`````````````````````````````````````
+
+Indicates whether the remote device accepts connections, based on the most
+recent advertising report or inquiry result. For LE this is false when the
+last advertising report was non-connectable, e.g. ADV_NONCONN_IND or
+ADV_SCAN_IND.
+
+BR/EDR devices are always considered connectable. LE devices only have this
+property once they have been discovered or connected.
+
 dict ManufacturerData [readonly, optional]
 ``````````````````````````````````````````
 
