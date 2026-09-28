@@ -325,6 +325,9 @@ tools_btgatt_server_LDADD = src/libshared-mainloop.la \
 						lib/libbluetooth-internal.la
 
 tools_test_runner_CFLAGS = $(WARNING_CFLAGS)
+if COVERAGE
+tools_test_runner_CFLAGS += -DHAVE_COVERAGE
+endif
 tools_test_runner_LDFLAGS =
 
 tools_rctest_LDADD = lib/libbluetooth-internal.la
