@@ -180,11 +180,21 @@ bt_gatt_client_ref_safe(struct bt_gatt_client *client)
 
 static void notify_client_idle(struct bt_gatt_client *client)
 {
+	struct queue *idle_cbs;
+
 	client = bt_gatt_client_ref_safe(client);
 	if (!client)
 		return;
 
-	queue_remove_all(client->idle_cbs, idle_notify, NULL, idle_destroy);
+	/* Detach the callbacks before calling them, as a callback may make
+	 * the client idle again, e.g. if a request it sends fails right away,
+	 * which would otherwise call them again while being removed.
+	 */
+	idle_cbs = client->idle_cbs;
+	client->idle_cbs = queue_new();
+
+	queue_remove_all(idle_cbs, idle_notify, NULL, idle_destroy);
+	queue_destroy(idle_cbs, NULL);
 
 	bt_gatt_client_unref(client);
 }
