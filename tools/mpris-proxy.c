@@ -2954,6 +2954,10 @@ int main(int argc, char *argv[])
 	guint owner_watch, properties_watch, signal_watch;
 	struct sigaction sa;
 
+	/* stdout is a pipe to the journal when running as a service, so make
+	 * it line buffered to get the messages out as they happen. */
+	setlinebuf(stdout);
+
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
