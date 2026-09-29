@@ -3858,6 +3858,15 @@ bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 	notify_data->callback = NULL;
 	notify_data->notify = NULL;
 
+	/* Call destroy now as the user data may be freed once unregistered,
+	 * while notify_data may still be referenced by a pending procedure,
+	 * e.g. the write of the CCC.
+	 */
+	if (notify_data->destroy) {
+		notify_data->destroy(notify_data->user_data);
+		notify_data->destroy = NULL;
+	}
+
 	complete_unregister_notify(notify_data);
 	return true;
 }

@@ -45,6 +45,7 @@ struct _GAttrib {
 	uint8_t *buf;
 	int buflen;
 	struct queue *track_ids;
+	unsigned int next_reg_id;
 };
 
 struct attrib_callbacks {
@@ -55,6 +56,9 @@ struct attrib_callbacks {
 	gpointer user_data;
 	GAttrib *parent;
 	uint16_t notify_handle;
+	unsigned int reg_id;
+	unsigned int att_id;
+	unsigned int client_id;
 };
 
 GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu, bool ext_signed)
@@ -363,38 +367,52 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 				GAttribNotifyFunc func, gpointer user_data,
 				GDestroyNotify notify)
 {
-	struct attrib_callbacks *cb = NULL;
+	struct attrib_callbacks *cb;
 
 	if (!attrib)
 		return 0;
 
-	if (func || notify) {
-		cb = new0(struct attrib_callbacks, 1);
-		if (!cb)
-			return 0;
-		cb->notify_func = func;
-		cb->notify_handle = handle;
-		cb->user_data = user_data;
-		cb->destroy_func = notify;
-		cb->parent = attrib;
-		queue_push_head(attrib->callbacks, cb);
-	}
+	cb = new0(struct attrib_callbacks, 1);
+	if (!cb)
+		return 0;
 
-	if (opcode == ATT_OP_HANDLE_NOTIFY && attrib->client) {
-		unsigned int id;
+	cb->notify_func = func;
+	cb->notify_handle = handle;
+	cb->user_data = user_data;
+	cb->destroy_func = notify;
+	cb->parent = attrib;
+	queue_push_head(attrib->callbacks, cb);
 
-		id = bt_gatt_client_register_notify(attrib->client, handle,
-						NULL, client_notify_cb, cb,
-						attrib_callbacks_remove);
-		if (id)
-			return id;
-	}
-
-	if (opcode == GATTRIB_ALL_REQS)
-		opcode = BT_ATT_ALL_REQUESTS;
-
-	return bt_att_register(attrib->att, opcode, attrib_callback_notify,
+	/* The notifications are registered with bt_gatt_client when there
+	 * is one, which uses ids of its own, so give out ids of our own to
+	 * know how to unregister them.
+	 */
+	if (opcode == ATT_OP_HANDLE_NOTIFY && attrib->client)
+		cb->client_id = bt_gatt_client_register_notify(attrib->client,
+						handle, NULL, client_notify_cb,
 						cb, attrib_callbacks_remove);
+
+	if (!cb->client_id) {
+		if (opcode == GATTRIB_ALL_REQS)
+			opcode = BT_ATT_ALL_REQUESTS;
+
+		cb->att_id = bt_att_register(attrib->att, opcode,
+						attrib_callback_notify, cb,
+						attrib_callbacks_remove);
+	}
+
+	if (!cb->client_id && !cb->att_id) {
+		queue_remove(attrib->callbacks, cb);
+		free(cb);
+		return 0;
+	}
+
+	if (++attrib->next_reg_id == 0)
+		++attrib->next_reg_id;
+
+	cb->reg_id = attrib->next_reg_id;
+
+	return cb->reg_id;
 }
 
 uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
@@ -456,12 +474,30 @@ gboolean g_attrib_attach_client(GAttrib *attrib, struct bt_gatt_client *client)
 	return TRUE;
 }
 
+static bool match_reg_id(const void *data, const void *match_data)
+{
+	const struct attrib_callbacks *cb = data;
+
+	return cb->reg_id && cb->reg_id == PTR_TO_UINT(match_data);
+}
+
 gboolean g_attrib_unregister(GAttrib *attrib, guint id)
 {
-	if (!attrib)
+	struct attrib_callbacks *cb;
+
+	if (!attrib || !id)
 		return FALSE;
 
-	return bt_att_unregister(attrib->att, id);
+	cb = queue_find(attrib->callbacks, match_reg_id, UINT_TO_PTR(id));
+	if (!cb)
+		return FALSE;
+
+	/* cb is freed by attrib_callbacks_remove once unregistered */
+	if (cb->client_id)
+		return bt_gatt_client_unregister_notify(attrib->client,
+							cb->client_id);
+
+	return bt_att_unregister(attrib->att, cb->att_id);
 }
 
 gboolean g_attrib_unregister_all(GAttrib *attrib)
