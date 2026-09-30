@@ -1478,6 +1478,7 @@ static void rap_cs_subevt_result_evt(const void *data, uint8_t size,
 {
 	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
 	struct rap_ev_cs_subevent_result *rap_ev;
+	struct rap_conn_mapping *mapping;
 	struct iovec iov;
 	uint8_t cs_role;
 	uint8_t cs_rtt_type;
@@ -1563,7 +1564,12 @@ static void rap_cs_subevt_result_evt(const void *data, uint8_t size,
 			offsetof(struct rap_ev_cs_subevent_result, step_data));
 
 	DBG("CS subevent result processed: %zu bytes, ", send_len);
-	bt_rap_hci_cs_subevent_result_callback(send_len, rap_ev, sm->rap);
+	mapping = find_mapping_by_handle(sm, handle);
+	if (mapping && mapping->rap)
+		bt_rap_hci_cs_subevent_result_callback(send_len, rap_ev,
+							mapping->rap);
+	else
+		DBG("No RAP mapping for handle 0x%04X, ignoring", handle);
 	free(rap_ev);
 }
 
@@ -1572,6 +1578,7 @@ static void rap_cs_subevt_result_cont_evt(const void *data, uint8_t size,
 {
 	struct cs_state_machine *sm = (struct cs_state_machine *) user_data;
 	struct rap_ev_cs_subevent_result_cont *rap_ev;
+	struct rap_conn_mapping *mapping;
 	struct iovec iov;
 	uint8_t cs_role;
 	uint8_t cs_rtt_type;
@@ -1646,7 +1653,12 @@ static void rap_cs_subevt_result_cont_evt(const void *data, uint8_t size,
 							step_data));
 
 	DBG("CS subevent result cont processed: %zu bytes, ", send_len);
-	bt_rap_hci_cs_subevent_result_cont_callback(send_len, rap_ev, sm->rap);
+	mapping = find_mapping_by_handle(sm, handle);
+	if (mapping && mapping->rap)
+		bt_rap_hci_cs_subevent_result_cont_callback(send_len, rap_ev,
+							mapping->rap);
+	else
+		DBG("No RAP mapping for handle 0x%04X, ignoring", handle);
 	free(rap_ev);
 }
 

@@ -2343,6 +2343,18 @@ static void handle_local_subevent_result(struct bt_rap *rap,
 
 	resptracker = rap->resptracker;
 
+	/* A connection can hold several CS configurations at once. Only the one
+	 * the responder tracker was set up for by CS Config Complete may feed
+	 * this procedure, otherwise subevents of a different configuration
+	 * would be appended to the same ranging data.
+	 */
+	if (resptracker->config_id != CS_INVALID_CONFIG_ID &&
+			resptracker->config_id != config_id) {
+		DBG(rap, "Ignoring subevent for config_id %u (tracking %u)",
+			config_id, resptracker->config_id);
+		return;
+	}
+
 	if (resptracker->current_proc) {
 		struct cs_procedure_data *cur = resptracker->current_proc;
 
@@ -2613,6 +2625,16 @@ static void parse_cs_local_initiator_data(struct bt_rap *rap,
 	uint16_t effective_counter;
 	struct cs_proc_state *state;
 	struct bcs_procedure_data *bcs;
+
+	/* Same as the responder side: only the tracked CS configuration may
+	 * contribute steps to this procedure.
+	 */
+	if (reqtracker->config_id != CS_INVALID_CONFIG_ID &&
+			reqtracker->config_id != config_id) {
+		DBG(rap, "Ignoring subevent for config_id %u (tracking %u)",
+			config_id, reqtracker->config_id);
+		return;
+	}
 
 	effective_counter = has_header_fields ? proc_counter
 					      : reqtracker->last_proc_counter;
