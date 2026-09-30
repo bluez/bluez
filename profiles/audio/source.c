@@ -282,7 +282,11 @@ int source_connect(struct btd_service *service)
 	if (source->connect_id > 0 || source->disconnect_id > 0)
 		return -EBUSY;
 
-	if (source->state == SOURCE_STATE_CONNECTING)
+	if (source->state == SOURCE_STATE_CONNECTING &&
+	    source->session_state == AVDTP_SESSION_STATE_CONNECTING)
+		return -EBUSY;
+
+	if (source->stream)
 		return -EBUSY;
 
 	if (source->stream_state >= AVDTP_STATE_OPEN)
