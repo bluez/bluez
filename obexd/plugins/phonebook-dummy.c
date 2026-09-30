@@ -164,6 +164,13 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 		}
 
 		fp = fdopen(fd, "r");
+		if (fp == NULL) {
+			err = errno;
+			error("fdopen(%s): %s(%d)", filename, strerror(err), err);
+			close(fd);
+			continue;
+		}
+
 		v = Parse_MIME_FromFile(fp);
 		if (v != NULL) {
 			func(filename, v, user_data);
@@ -171,7 +178,7 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 			n++;
 		}
 
-		close(fd);
+		fclose(fp);
 	}
 
 	g_slist_free_full(sorted, g_free);
