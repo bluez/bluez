@@ -69,6 +69,7 @@ struct btd_adv_client {
 	char *owner;
 	char *path;
 	char *name;
+	char *bcast_name;
 	uint16_t appearance;
 	uint16_t duration;
 	uint16_t timeout;
@@ -153,6 +154,7 @@ static void client_free(void *data)
 		g_free(client->path);
 
 	free(client->name);
+	free(client->bcast_name);
 	free(client);
 }
 
@@ -674,6 +676,42 @@ static bool parse_local_name(DBusMessageIter *iter,
 	return true;
 }
 
+static bool parse_bcast_name(DBusMessageIter *iter,
+					struct btd_adv_client *client)
+{
+	const char *bcast_name;
+	size_t len;
+
+	if (!iter) {
+		free(client->bcast_name);
+		client->bcast_name = NULL;
+		return true;
+	}
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
+		return false;
+
+	dbus_message_iter_get_basic(iter, &bcast_name);
+
+	len = strlen(bcast_name);
+	if (len < BT_AD_BC_NAME_MIN_LEN) {
+		error("Broacast name %s too short", bcast_name);
+		return false;
+	}
+
+	if (len > BT_AD_BC_NAME_MAX_LEN) {
+		warn("Broacast name %s too long. Truncating...", bcast_name);
+		len = BT_AD_BC_NAME_MAX_LEN;
+	}
+
+	free(client->bcast_name);
+	client->bcast_name = strndup(bcast_name, len);
+
+	DBG("Adding Broadcast Name %s to adv data", client->bcast_name);
+
+	return true;
+}
+
 static bool parse_appearance(DBusMessageIter *iter,
 					struct btd_adv_client *client)
 {
@@ -932,6 +970,11 @@ static uint8_t *generate_adv_data(struct btd_adv_client *client,
 				client->name) {
 		*flags &= ~MGMT_ADV_FLAG_LOCAL_NAME;
 		bt_ad_add_name(client->data, client->name);
+	}
+
+	if ((client->type == AD_TYPE_BROADCAST) && client->bcast_name) {
+		bt_ad_add_data(client->data, BT_AD_BC_NAME, client->bcast_name,
+				strlen(client->bcast_name));
 	}
 
 	return bt_ad_generate(client->data, len);
@@ -1329,6 +1372,7 @@ static struct adv_parser {
 	{ "ServiceData", parse_service_data_ad },
 	{ "ScanResponseServiceData", parse_service_data_sr, true },
 	{ "Includes", parse_includes },
+	{ "BroadcastName", parse_bcast_name },
 	{ "LocalName", parse_local_name },
 	{ "Appearance", parse_appearance },
 	{ "Duration", parse_duration },
