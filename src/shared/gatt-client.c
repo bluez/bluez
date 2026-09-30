@@ -1170,10 +1170,16 @@ static void discovery_found_service(struct discovery_op *op,
 {
 	/* Skip if service already active */
 	if (!gatt_db_service_get_active(attr)) {
-		/* Skip if there are no attributes */
+		/*
+		 * Skip if there are no attributes. An inactive service left by
+		 * an interrupted discovery is already pending from
+		 * discovery_op_create(); queueing it twice makes
+		 * discovery_op_complete() free it and then dereference the
+		 * second entry.
+		 */
 		if (end == start)
 			gatt_db_service_set_active(attr, true);
-		else
+		else if (!queue_find(op->pending_svcs, NULL, attr))
 			queue_push_tail(op->pending_svcs, attr);
 
 		if (start < op->svc_first)
