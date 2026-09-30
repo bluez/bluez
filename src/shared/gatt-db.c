@@ -507,8 +507,13 @@ static void gatt_db_service_destroy(void *data)
 	struct gatt_db_service *service = data;
 	int i;
 
-	if (service->active)
-		notify_service_changed(service->db, service, false);
+	/*
+	 * Notify even if the service never became active: gatt-client
+	 * discovery keeps inactive services in its pending list and only
+	 * learns of their removal from this notification, so skipping it
+	 * leaves that list pointing at freed memory.
+	 */
+	notify_service_changed(service->db, service, false);
 
 	for (i = 0; i < service->num_handles; i++)
 		attribute_destroy(service->attributes[i]);
