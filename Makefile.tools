@@ -85,6 +85,7 @@ endif
 
 if TESTING
 noinst_PROGRAMS += emulator/btvirt emulator/b1ee emulator/hfp \
+					emulator/hci_rfkill \
 					peripheral/btsensor tools/3dsp \
 					tools/mgmt-tester tools/gap-tester \
 					tools/l2cap-tester tools/sco-tester \
@@ -110,6 +111,8 @@ emulator_b1ee_LDADD = src/libshared-mainloop.la
 
 emulator_hfp_SOURCES = emulator/hfp.c
 emulator_hfp_LDADD = src/libshared-mainloop.la
+
+emulator_hci_rfkill_SOURCES = emulator/hci_rfkill.c
 
 peripheral_btsensor_SOURCES = peripheral/main.c \
 				peripheral/efivars.h peripheral/efivars.c \
