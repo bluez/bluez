@@ -153,5 +153,9 @@ endif
 
 if HFP
 builtin_modules += hfp
-builtin_sources += profiles/audio/telephony.h profiles/audio/telephony.c profiles/audio/hfp-hf.c
+builtin_sources += profiles/audio/telephony.h \
+			profiles/audio/telephony.c \
+			profiles/audio/hfp-hf.c \
+			profiles/audio/hfp-hf.h
+
 endif

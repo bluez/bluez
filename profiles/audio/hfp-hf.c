@@ -44,7 +44,11 @@
 #include "src/shared/hfp.h"
 #include "src/shared/queue.h"
 
+#include "hfp-hf.h"
+#include "media.h"
 #include "telephony.h"
+
+#define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
 
 #define HFP_HF_VERSION		0x0109
 #define HFP_HF_DEFAULT_CHANNEL	7
@@ -70,14 +74,23 @@ struct hfp_device {
 	struct telephony	*telephony;
 	uint16_t		version;
 	GIOChannel		*io;
+	GIOChannel		*sco_io;
+	uint16_t		imtu;
+	uint16_t		omtu;
 	struct hfp_hf		*hf;
 	struct queue		*calls;
+	uint8_t			codec;
+	unsigned int		resume_id;
+	hfp_hf_sco_closed_cb	sco_closed_cb;
+	void			*sco_closed_data;
 };
 
 struct hfp_server {
 	struct btd_adapter	*adapter;
 	GIOChannel		*io;
+	GIOChannel		*sco_io;
 	uint32_t		record_id;
+	GSList			*endpoints;
 };
 
 static GSList *servers;
@@ -85,6 +98,22 @@ static GSList *servers;
 static void hfp_hf_debug(const char *str, void *user_data)
 {
 	DBG_IDX(0xffff, "%s", str);
+}
+
+static char *make_endpoint_path(struct telephony *telephony, uint8_t codec)
+{
+	char *path;
+	int err;
+
+	err = asprintf(&path, "%s/sep%u", telephony_get_path(telephony),
+								codec);
+	if (err < 0) {
+		error("Could not allocate path for remote %s",
+			device_get_path(telephony_get_device(telephony)));
+		return NULL;
+	}
+
+	return path;
 }
 
 static struct hfp_server *find_server(GSList *list, struct btd_adapter *a)
@@ -97,6 +126,20 @@ static struct hfp_server *find_server(GSList *list, struct btd_adapter *a)
 	}
 
 	return NULL;
+}
+
+static void unregister_endpoint(gpointer data, gpointer user_data)
+{
+	struct media_endpoint *ep = data;
+	struct telephony *telephony = user_data;
+	char *path;
+
+	path = make_endpoint_path(telephony, media_endpoint_get_codec(ep));
+	if (path) {
+		g_dbus_unregister_interface(btd_get_dbus_connection(),
+				path, MEDIA_ENDPOINT_INTERFACE);
+		free(path);
+	}
 }
 
 static enum call_state hfp_call_status_to_call_state(
@@ -128,6 +171,8 @@ static bool call_id_cmp(const void *data, const void *match_data)
 
 static void device_destroy(struct hfp_device *dev)
 {
+	struct hfp_server *server;
+
 	DBG("%s", telephony_get_path(dev->telephony));
 
 	telephony_set_state(dev->telephony, DISCONNECTING);
@@ -137,10 +182,21 @@ static void device_destroy(struct hfp_device *dev)
 		dev->hf = NULL;
 	}
 
+	if (dev->sco_io) {
+		g_io_channel_unref(dev->sco_io);
+		dev->sco_io = NULL;
+	}
+
 	if (dev->io) {
 		g_io_channel_unref(dev->io);
 		dev->io = NULL;
 	}
+
+	server = find_server(servers,
+		device_get_adapter(telephony_get_device(dev->telephony)));
+	if (server)
+		g_slist_foreach(server->endpoints, unregister_endpoint,
+					dev->telephony);
 
 	telephony_unregister_interface(dev->telephony);
 }
@@ -296,10 +352,68 @@ static void hfp_disconnect_watch(void *user_data)
 	device_destroy(user_data);
 }
 
+static gboolean get_uuid(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	const char *uuid;
+
+	uuid = HFP_HS_UUID;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
+
+	return TRUE;
+}
+
+static gboolean get_device(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct hfp_device *dev = data;
+	const char *path;
+
+	path = device_get_path(telephony_get_device(dev->telephony));
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	return TRUE;
+}
+
+static const GDBusMethodTable hfp_hf_ep_methods[] = {
+	{ },
+};
+
+static const GDBusPropertyTable hfp_hf_ep_properties[] = {
+	{ "UUID", "s", get_uuid, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Device", "o", get_device, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ }
+};
+
+static void register_endpoint(gpointer data, gpointer user_data)
+{
+	struct media_endpoint *ep = data;
+	struct hfp_device *dev = user_data;
+	char *path = NULL;
+
+	path = make_endpoint_path(dev->telephony,
+					media_endpoint_get_codec(ep));
+	if (path) {
+		if (g_dbus_register_interface(btd_get_dbus_connection(),
+					path, MEDIA_ENDPOINT_INTERFACE,
+					hfp_hf_ep_methods, NULL,
+					hfp_hf_ep_properties,
+					dev, NULL) == FALSE) {
+			error("Could not register remote ep %s", path);
+		}
+		free(path);
+	}
+}
+
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct hfp_device *dev = user_data;
 	struct btd_service *service = telephony_get_service(dev->telephony);
+	struct hfp_server *server;
 
 	DBG("");
 
@@ -332,6 +446,10 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	telephony_set_state(dev->telephony, SESSION_CONNECTING);
 	btd_service_connecting_complete(service, 0);
+
+	server = find_server(servers,
+		device_get_adapter(telephony_get_device(dev->telephony)));
+	g_slist_foreach(server->endpoints, register_endpoint, dev);
 
 	return;
 
@@ -507,6 +625,8 @@ static int hfp_probe(struct btd_service *service)
 		return -EINVAL;
 
 	dev->telephony = telephony_new(service, dev, &hfp_callbacks);
+	/* Use CVSD codec by default */
+	dev->codec = 1;
 	btd_service_set_user_data(service, dev);
 	telephony_add_uri_scheme(dev->telephony, URI);
 
@@ -670,6 +790,296 @@ static GIOChannel *server_socket(struct btd_adapter *adapter)
 	return io;
 }
 
+static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+{
+	struct hfp_device *dev = data;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	DBG("sco connection released");
+	g_io_channel_shutdown(dev->sco_io, TRUE, NULL);
+	g_io_channel_unref(dev->sco_io);
+	dev->sco_io = NULL;
+
+	/* The remote end hung up the SCO connection instead of us
+	 * releasing it locally, e.g. via Suspend/Release on the media
+	 * transport. Notify the transport so it can update its state
+	 * and release/suspend accordingly.
+	 */
+	if (dev->sco_closed_cb)
+		dev->sco_closed_cb(dev, dev->sco_closed_data);
+
+	return FALSE;
+}
+
+struct connect_data {
+	struct hfp_device *dev;
+	void (*cb)(int status, void *data);
+	void *cb_user_data;
+};
+
+static void sco_connect_complete(struct connect_data *connect_data, int status)
+{
+	if (!connect_data || !connect_data->cb)
+		goto done;
+
+	connect_data->cb(status, connect_data->cb_user_data);
+
+done:
+	g_free(connect_data);
+}
+
+static void sco_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+{
+	struct connect_data *connect_data = user_data;
+	bdaddr_t src, dst;
+	char addr[18];
+	uint16_t handle;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	struct btd_service *service;
+	struct hfp_device *dev;
+	struct hfp_server *server;
+	struct media_endpoint *endpoint = NULL;
+	GSList *l;
+	char *path = NULL;
+	uint16_t imtu, omtu;
+
+	if (err) {
+		error("Connecting failed: %s\n", err->message);
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+
+	if (!bt_io_get(io, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, addr,
+			BT_IO_OPT_HANDLE, &handle,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_OMTU, &omtu,
+			BT_IO_OPT_INVALID)) {
+		error("Unable to get destination address: %s\n", err->message);
+		g_clear_error(&err);
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+
+	DBG("Successfully connected to %s. handle=%u imtu=%u omtu=%u",
+						addr, handle, imtu, omtu);
+
+	adapter = adapter_find(&src);
+	if (!adapter) {
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+
+	device = btd_adapter_find_device(adapter, &dst, BDADDR_BREDR);
+	if (!device) {
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+
+	service = btd_device_get_service(device, HFP_AG_UUID);
+	if (!service) {
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+
+	dev = btd_service_get_user_data(service);
+
+	server = find_server(servers, adapter);
+	if (server == NULL) {
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+
+	for (l = server->endpoints; l; l = l->next) {
+		if (media_endpoint_get_codec(l->data) == dev->codec) {
+			endpoint = l->data;
+			break;
+		}
+	}
+	if (endpoint == NULL) {
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+
+	path = make_endpoint_path(dev->telephony, dev->codec);
+	if (path == NULL) {
+		error("Could not allocate path for remote %s",
+			device_get_path(telephony_get_device(dev->telephony)));
+		sco_connect_complete(connect_data, -ENOMEM);
+		return;
+	}
+
+	if (!hfp_hf_set_configuration(endpoint, path, NULL, dev, NULL)) {
+		free(path);
+		sco_connect_complete(connect_data, -EIO);
+		return;
+	}
+	free(path);
+
+	dev->imtu = imtu;
+	dev->omtu = omtu;
+	dev->sco_io = g_io_channel_ref(io);
+
+	g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				(GIOFunc) sco_io_cb, dev);
+
+	sco_connect_complete(connect_data, 0);
+}
+
+bool hfp_hf_sco_listen(struct btd_adapter *adapter, void *endpoint)
+{
+	struct hfp_server *server;
+	GError *err = NULL;
+
+	DBG("path %s, codec %u", adapter_get_path(adapter),
+					media_endpoint_get_codec(endpoint));
+
+	server = find_server(servers, adapter);
+	if (server == NULL)
+		return false;
+
+	server->endpoints = g_slist_append(server->endpoints, endpoint);
+
+	if (server->sco_io)
+		return true;
+
+	server->sco_io = bt_io_listen(sco_connect_cb, NULL, NULL, NULL,
+				&err,
+				BT_IO_OPT_SOURCE_BDADDR,
+				btd_adapter_get_address(server->adapter),
+				BT_IO_OPT_INVALID);
+	if (server->sco_io) {
+		DBG("SCO server started");
+		return true;
+	}
+
+	server->endpoints = g_slist_remove(server->endpoints, endpoint);
+	error("%s", err->message);
+	g_error_free(err);
+
+	return false;
+}
+
+void hfp_hf_sco_remove(struct btd_adapter *adapter, void *endpoint)
+{
+	struct hfp_server *server;
+
+	DBG("path %s, codec %u", adapter_get_path(adapter),
+					media_endpoint_get_codec(endpoint));
+
+	server = find_server(servers, adapter);
+	if (server == NULL) {
+		error("No server for %s codec %u", adapter_get_path(adapter),
+					media_endpoint_get_codec(endpoint));
+		return;
+	}
+
+	server->endpoints = g_slist_remove(server->endpoints, endpoint);
+
+	if (server->sco_io && g_slist_length(server->endpoints) == 0) {
+		g_io_channel_shutdown(server->sco_io, TRUE, NULL);
+		g_io_channel_unref(server->sco_io);
+		server->sco_io = NULL;
+		DBG("SCO server stopped");
+	}
+}
+
+struct btd_device *hfp_hf_get_device(struct hfp_device *dev)
+{
+	return telephony_get_device(dev->telephony);
+}
+
+int hfp_hf_device_get_fd(struct hfp_device *dev)
+{
+	if (!dev->sco_io)
+		return -1;
+
+	return g_io_channel_unix_get_fd(dev->sco_io);
+}
+
+uint16_t hfp_hf_device_get_imtu(struct hfp_device *dev)
+{
+	return dev->imtu;
+}
+
+uint16_t hfp_hf_device_get_omtu(struct hfp_device *dev)
+{
+	return dev->omtu;
+}
+
+static gboolean sco_start_cb(gpointer data)
+{
+	struct connect_data *connect_data = data;
+
+	if (connect_data && connect_data->cb) {
+		connect_data->cb(0, connect_data->cb_user_data);
+		g_free(connect_data);
+	}
+
+	return FALSE;
+}
+
+unsigned int hfp_hf_sco_start(struct hfp_device *dev, void *cb, void *user_data)
+{
+	bdaddr_t src, dst;
+	struct connect_data *connect_data;
+	GError *err = NULL;
+	GIOChannel *io;
+
+	DBG("codec %u", dev->codec);
+
+	connect_data = g_new0(struct connect_data, 1);
+	connect_data->dev = dev;
+	connect_data->cb = cb;
+	connect_data->cb_user_data = user_data;
+
+	src = telephony_get_src(dev->telephony);
+	dst = telephony_get_dst(dev->telephony);
+	if (!dev->sco_io) {
+		io = bt_io_connect(sco_connect_cb, connect_data, NULL, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+			BT_IO_OPT_INVALID);
+		if (!io) {
+			error("%s", err->message);
+			g_error_free(err);
+			g_free(connect_data);
+			return 0;
+		}
+	} else {
+		g_idle_add(sco_start_cb, connect_data);
+	}
+
+	return (++dev->resume_id);
+}
+
+unsigned int hfp_hf_sco_stop(struct hfp_device *dev)
+{
+	if (!dev->sco_io)
+		return 0;
+
+	DBG("codec %u", dev->codec);
+
+	g_io_channel_shutdown(dev->sco_io, TRUE, NULL);
+	g_io_channel_unref(dev->sco_io);
+	dev->sco_io = NULL;
+
+	return dev->resume_id;
+}
+
+void hfp_hf_set_sco_closed_cb(struct hfp_device *dev,
+				hfp_hf_sco_closed_cb cb, void *user_data)
+{
+	dev->sco_closed_cb = cb;
+	dev->sco_closed_data = user_data;
+}
+
 static int hfp_adapter_probe(struct btd_profile *p,
 				struct btd_adapter *adapter)
 {
@@ -723,6 +1133,11 @@ static void hfp_adapter_remove(struct btd_profile *p,
 	server = find_server(servers, adapter);
 	if (!server)
 		return;
+
+	if (server->sco_io) {
+		g_io_channel_shutdown(server->sco_io, TRUE, NULL);
+		g_io_channel_unref(server->sco_io);
+	}
 
 	if (server->io) {
 		g_io_channel_shutdown(server->io, TRUE, NULL);
