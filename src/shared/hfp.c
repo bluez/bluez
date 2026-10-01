@@ -2970,6 +2970,53 @@ bool hfp_hf_swap_calls(struct hfp_hf *hfp,
 	return hfp_hf_send_command(hfp, resp_cb, user_data, "AT+CHLD=2");
 }
 
+bool hfp_hf_hangup_all(struct hfp_hf *hfp,
+				hfp_response_func_t resp_cb,
+				void *user_data)
+{
+	bool found_active = false;
+	bool found_held = false;
+	const struct queue_entry *entry;
+
+	if (!hfp)
+		return false;
+
+	DBG(hfp, "");
+
+	for (entry = queue_get_entries(hfp->calls); entry;
+					entry = entry->next) {
+		struct hf_call *call = entry->data;
+
+		if (call_setup_match(call, NULL) ||
+					call_active_match(call, NULL)) {
+			found_active = true;
+		} else if (call_held_match(call, NULL)) {
+			found_held = true;
+		}
+	}
+
+	if (!found_active && !found_held)
+		return false;
+
+	if (found_held && (hfp->chlds & HFP_CHLD_0)) {
+		if (!hfp_hf_send_command(hfp, resp_cb, user_data,
+							"AT+CHLD=0")) {
+			DBG(hfp, "Failed to hangup held calls");
+			return false;
+		}
+	}
+
+	if (found_active) {
+		if (!hfp_hf_send_command(hfp, resp_cb, user_data,
+							"AT+CHUP")) {
+			DBG(hfp, "Failed to hangup active calls");
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 				hfp_response_func_t resp_cb,
 				void *user_data)
