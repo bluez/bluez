@@ -718,6 +718,13 @@ static gboolean auto_config(gpointer data)
 	struct btd_service *service;
 	struct a2dp_stream *stream;
 
+	/* Check if the channel has been disconnected while waiting for the
+	 * endpoint, in which case channel_free has already rejected the
+	 * configuration.
+	 */
+	if (!setup->session)
+		goto done;
+
 	dev = avdtp_get_device(setup->session);
 
 	if (setup->sep->type == AVDTP_SEP_TYPE_SOURCE)
@@ -754,6 +761,7 @@ done:
 			a2dp_stream_destroy(setup->sep, setup->stream);
 
 		setup->setconf_cb(setup->session, setup->stream, setup->err);
+		setup->setconf_cb = NULL;
 
 		if (setup->err)
 			setup->stream = NULL;
@@ -1932,6 +1940,27 @@ static void channel_free(void *data)
 		setup_ref(setup);
 		/* Finalize pending commands before we NULL setup->session */
 		finalize_setup_errno(setup, -ENOTCONN, finalize_all, NULL);
+		/* Reject pending Set Configuration since the endpoint reply
+		 * can no longer be processed without setup->session.
+		 */
+		if (setup->setconf_cb) {
+			struct a2dp_sep *sep = setup->sep;
+			struct avdtp_error err;
+
+			avdtp_error_init(&err, AVDTP_MEDIA_CODEC,
+					AVDTP_UNSUPPORTED_CONFIGURATION);
+			a2dp_stream_destroy(sep, setup->stream);
+			setup->setconf_cb(setup->session, setup->stream, &err);
+			setup->setconf_cb = NULL;
+			setup->stream = NULL;
+			/* Clear the transport set while waiting for the
+			 * endpoint so it can be configured again.
+			 */
+			if (sep->endpoint && sep->endpoint->clear_configuration)
+				sep->endpoint->clear_configuration(sep,
+					avdtp_get_device(setup->session),
+					sep->user_data);
+		}
 		avdtp_unref(setup->session);
 		setup->session = NULL;
 		setup_unref(setup);
