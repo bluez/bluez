@@ -517,6 +517,26 @@ static DBusMessage *hangup_all(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static DBusMessage *send_tones(DBusConnection *conn, DBusMessage *msg,
+				void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	const char *tones;
+	bool ret;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &tones,
+					DBUS_TYPE_INVALID)) {
+		return btd_error_invalid_args(msg);
+	}
+
+	ret = hfp_hf_send_tones(dev->hf, tones, cmd_complete,
+					dbus_message_ref(msg));
+	if (!ret)
+		return btd_error_failed(msg, "Send tones command failed");
+
+	return NULL;
+}
+
 static DBusMessage *call_answer(DBusConnection *conn, DBusMessage *msg,
 				void *call_data)
 {
@@ -550,6 +570,7 @@ static DBusMessage *call_hangup(DBusConnection *conn, DBusMessage *msg,
 struct telephony_callbacks hfp_callbacks = {
 	.dial = dial,
 	.hangup_all = hangup_all,
+	.send_tones = send_tones,
 	.call_answer = call_answer,
 	.call_hangup = call_hangup,
 };
