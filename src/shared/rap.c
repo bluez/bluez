@@ -34,6 +34,7 @@
  */
 #define RAS_CP_RESPONSE_TIMEOUT (5 * 1000)
 #define RAS_SEGMENT_TIMEOUT (1 * 1000)
+#define RAS_REALTIME_FIRST_SEGMENT_TIMEOUT (5 * 1000)
 /* Delay between On-demand ranging-data notification segments, see
  * send_ondemand_segment_data_cb().
  */
@@ -470,6 +471,15 @@ struct bt_rap {
 	 * bt_rap_attach() to take effect.
 	 */
 	bool ondemand_mode;
+	uint16_t realtime_ccc_value;
+	uint16_t ondemand_ccc_value;
+	unsigned int realtime_notify_id;
+	unsigned int realtime_timeout_id;
+	unsigned int ondemand_notify_id;
+	unsigned int cp_notify_id;
+	unsigned int ready_notify_id;
+	unsigned int overwritten_notify_id;
+	uint32_t ras_features;
 
 	/* Responder role: this connection's on-demand ranging data cache.
 	 * Per-connection (not on the shared struct ras) so that concurrent
@@ -957,6 +967,15 @@ void bt_rap_detach(struct bt_rap *rap)
 	bt_gatt_client_idle_unregister(rap->client, rap->idle_id);
 	bt_gatt_client_unref(rap->client);
 	rap->client = NULL;
+	if (rap->realtime_timeout_id) {
+		timeout_remove(rap->realtime_timeout_id);
+		rap->realtime_timeout_id = 0;
+	}
+	rap->realtime_notify_id = 0;
+	rap->ondemand_notify_id = 0;
+	rap->cp_notify_id = 0;
+	rap->ready_notify_id = 0;
+	rap->overwritten_notify_id = 0;
 
 	bt_att_unregister_disconnect(rap->att, rap->disconn_id);
 	rap->att = NULL;
@@ -3419,6 +3438,7 @@ static void rap_notify_destroy(void *data)
 
 static unsigned int bt_rap_register_notify(struct bt_rap *rap,
 					uint16_t value_handle,
+					uint16_t ccc_value,
 					rap_notify_t func,
 					void *user_data)
 {
@@ -3431,9 +3451,13 @@ static unsigned int bt_rap_register_notify(struct bt_rap *rap,
 
 	DBG(rap, "register for notifications");
 
-	notify->id = bt_gatt_client_register_notify(rap->client,
-					value_handle, ras_register,
-					rap_notify, notify,
+	if (ccc_value)
+		notify->id = bt_gatt_client_register_notify_with_ccc(rap->client,
+					value_handle, ccc_value, ras_register,
+					rap_notify, notify, rap_notify_destroy);
+	else
+		notify->id = bt_gatt_client_register_notify(rap->client,
+					value_handle, ras_register, rap_notify, notify,
 					rap_notify_destroy);
 	if (!notify->id) {
 		DBG(rap, "Unable to register for notifications");
@@ -3444,6 +3468,85 @@ static unsigned int bt_rap_register_notify(struct bt_rap *rap,
 	queue_push_tail(rap->notify, notify);
 
 	return notify->id;
+}
+
+bool bt_rap_disable_realtime_ranging(struct bt_rap *rap)
+{
+	unsigned int notify_id;
+
+	if (!rap || !rap->client)
+		return false;
+
+	if (rap->realtime_timeout_id) {
+		timeout_remove(rap->realtime_timeout_id);
+		rap->realtime_timeout_id = 0;
+	}
+
+	if (!rap->realtime_notify_id)
+		return true;
+
+	notify_id = rap->realtime_notify_id;
+	rap->realtime_notify_id = 0;
+
+	return bt_gatt_client_unregister_notify(rap->client, notify_id);
+}
+
+static bool ras_realtime_timeout_cb(void *user_data)
+{
+	struct bt_rap *rap = user_data;
+
+	rap->realtime_timeout_id = 0;
+	DBG(rap, "Real-time Ranging Data segment timeout; disabling CCCD");
+	bt_rap_disable_realtime_ranging(rap);
+
+	return false;
+}
+
+static void ras_realtime_arm_timeout(struct bt_rap *rap, unsigned int timeout)
+{
+	if (rap->realtime_timeout_id)
+		timeout_remove(rap->realtime_timeout_id);
+
+	rap->realtime_timeout_id = timeout_add(timeout, ras_realtime_timeout_cb,
+						rap, NULL);
+}
+
+static void ras_realtime_cancel_timeout(struct bt_rap *rap)
+{
+	if (!rap->realtime_timeout_id)
+		return;
+
+	timeout_remove(rap->realtime_timeout_id);
+	rap->realtime_timeout_id = 0;
+}
+
+static bool bt_rap_unregister_notify(struct bt_rap *rap, unsigned int *id)
+{
+	unsigned int notify_id;
+
+	if (!*id)
+		return true;
+
+	notify_id = *id;
+	*id = 0;
+	return bt_gatt_client_unregister_notify(rap->client, notify_id);
+}
+
+static bool bt_rap_disable_ranging_data(struct bt_rap *rap)
+{
+	bool success = true;
+
+	if (!rap || !rap->client)
+		return false;
+
+	ras_realtime_cancel_timeout(rap);
+
+	success &= bt_rap_unregister_notify(rap, &rap->realtime_notify_id);
+	success &= bt_rap_unregister_notify(rap, &rap->ondemand_notify_id);
+	success &= bt_rap_unregister_notify(rap, &rap->cp_notify_id);
+	success &= bt_rap_unregister_notify(rap, &rap->ready_notify_id);
+	success &= bt_rap_unregister_notify(rap, &rap->overwritten_notify_id);
+	return success;
 }
 
 static void ras_ondemand_client_reset(struct ras *ras)
@@ -4182,11 +4285,21 @@ static void ras_segment_notify_cb(struct bt_rap *rap, uint16_t value_handle,
 {
 	const char *label = user_data ? user_data : "real-time";
 	struct ras *ras = rap_get_ras(rap);
+	struct iovec iov = { .iov_base = (void *)value, .iov_len = length };
+	struct segmentation_header seg_hdr;
+	bool realtime = !strcmp(label, "real-time");
 
 	DBG(rap, "Received %s notification: handle=0x%04x len=%u",
 	    label, value_handle, length);
 
 	ras_reassemble_segment_notify(rap, value, length);
+
+	if (realtime && parse_segmentation_header(&iov, &seg_hdr)) {
+		if (seg_hdr.last_segment)
+			ras_realtime_cancel_timeout(rap);
+		else
+			ras_realtime_arm_timeout(rap, RAS_SEGMENT_TIMEOUT);
+	}
 
 	if (ras && ras->client.pending_op == RAS_CP_PENDING_GET)
 		ras_cp_arm_segment_timeout(rap, ras);
@@ -4331,7 +4444,8 @@ static void ras_cp_response_notify_cb(struct bt_rap *rap,
  */
 static void rap_subscribe_ondemand_chrc(struct bt_rap *rap,
 					struct gatt_db_attribute *chrc,
-					rap_notify_t func, const char *name)
+					uint16_t ccc_value, rap_notify_t func, const char *name,
+					unsigned int *notify_id_out)
 {
 	uint16_t value_handle;
 	unsigned int notify_id;
@@ -4347,13 +4461,112 @@ static void rap_subscribe_ondemand_chrc(struct bt_rap *rap,
 		return;
 	}
 
-	notify_id = bt_rap_register_notify(rap, value_handle, func,
+	notify_id = bt_rap_register_notify(rap, value_handle, ccc_value, func,
 							(void *)name);
 	if (!notify_id)
 		DBG(rap, "Failed to register for %s notifications", name);
 	else
 		DBG(rap, "Registered for %s notifications: id=%u", name,
 							notify_id);
+
+	if (notify_id_out)
+		*notify_id_out = notify_id;
+}
+
+static void ras_data_ready_read_complete(struct bt_rap *rap, bool success,
+					uint8_t att_ecode, const uint8_t *value,
+					uint16_t length, void *user_data)
+{
+	if (!success) {
+		DBG(rap, "Unable to read Ranging Data Ready: error 0x%02x",
+			att_ecode);
+		return;
+	}
+
+	/* This read only synchronizes the characteristic as required by RAS.
+	 * A Ready notification, not its current value, starts a retrieval. */
+	DBG(rap, "Read Ranging Data Ready (%u bytes)", length);
+}
+
+static bool rap_subscribe_ranging_data(struct bt_rap *rap,
+			enum bt_rap_ranging_data_mode mode)
+{
+	struct ras *ras = rap_get_ras(rap);
+
+	if (!ras || !rap->client)
+		return false;
+
+	if (mode == BT_RAP_RANGING_DATA_REALTIME) {
+		uint16_t value_handle;
+
+		if (!(rap->ras_features & 0x01) || !ras->realtime_chrc ||
+			!gatt_db_attribute_get_char_data(ras->realtime_chrc, NULL,
+							&value_handle, NULL, NULL, NULL))
+			return false;
+
+		rap->realtime_notify_id = bt_rap_register_notify(rap, value_handle,
+				rap->realtime_ccc_value, ras_segment_notify_cb,
+				"real-time");
+		if (rap->realtime_notify_id)
+			ras_realtime_arm_timeout(rap,
+					RAS_REALTIME_FIRST_SEGMENT_TIMEOUT);
+		return rap->realtime_notify_id != 0;
+	}
+
+	if (mode == BT_RAP_RANGING_DATA_ONDEMAND) {
+		uint16_t value_handle;
+
+		/* Data is segmented and can be large; keep it notification-based.
+		 * The control/status characteristics use the requested transport. */
+		rap_subscribe_ondemand_chrc(rap, ras->ondemand_chrc,
+			BT_RAP_RANGING_NOTIFY,
+			ras_segment_notify_cb, "on-demand", &rap->ondemand_notify_id);
+		rap_subscribe_ondemand_chrc(rap, ras->cp_chrc,
+			rap->ondemand_ccc_value,
+			ras_cp_response_notify_cb, "RAS Control Point", &rap->cp_notify_id);
+		rap_subscribe_ondemand_chrc(rap, ras->ready_chrc,
+			rap->ondemand_ccc_value,
+			ras_data_ready_notify_cb, "Ranging Data Ready", &rap->ready_notify_id);
+		rap_subscribe_ondemand_chrc(rap, ras->overwritten_chrc,
+			rap->ondemand_ccc_value,
+			ras_data_overwritten_notify_cb, "Ranging Data Overwritten",
+			&rap->overwritten_notify_id);
+		if (ras->ready_chrc &&
+			gatt_db_attribute_get_char_data(ras->ready_chrc, NULL,
+						&value_handle, NULL, NULL, NULL))
+			rap_read_value(rap, value_handle, ras_data_ready_read_complete,
+					NULL);
+		return rap->ondemand_notify_id || rap->cp_notify_id ||
+			rap->ready_notify_id || rap->overwritten_notify_id;
+	}
+
+	return true;
+}
+
+bool bt_rap_set_ranging_data_mode(struct bt_rap *rap,
+			enum bt_rap_ranging_data_mode mode,
+			enum bt_rap_ranging_transport transport)
+{
+	if (!rap || !rap->client || !rap->ras_features)
+		return false;
+
+	if (mode == BT_RAP_RANGING_DATA_REALTIME &&
+			transport != BT_RAP_RANGING_NOTIFY &&
+			transport != BT_RAP_RANGING_INDICATE)
+		return false;
+
+	if (mode == BT_RAP_RANGING_DATA_ONDEMAND &&
+			transport != BT_RAP_RANGING_NOTIFY &&
+			transport != BT_RAP_RANGING_INDICATE)
+		return false;
+
+	if (!bt_rap_disable_ranging_data(rap))
+		return false;
+
+	rap->realtime_ccc_value = transport;
+	rap->ondemand_ccc_value = transport;
+
+	return rap_subscribe_ranging_data(rap, mode);
 }
 
 static void read_ras_features(struct bt_rap *rap, bool success,
@@ -4401,6 +4614,7 @@ static void read_ras_features(struct bt_rap *rap, bool success,
 	abort_operation = (features & 0x04) != 0;
 	if (ras)
 		ras->client.abort_operation = abort_operation;
+	rap->ras_features = features;
 
 	DBG(rap, "RAS Features - Real-time: %s, Retrieve Lost: %s, Abort: %s",
 	    supports_realtime ? "Yes" : "No",
@@ -4414,48 +4628,10 @@ static void read_ras_features(struct bt_rap *rap, bool success,
 		return;
 	}
 
-	if (!rap->ondemand_mode) {
-		/* Register for real-time characteristic notifications */
-		if (supports_realtime && ras->realtime_chrc) {
-			uint16_t value_handle;
-
-			if (gatt_db_attribute_get_char_data(ras->realtime_chrc,
-						NULL, &value_handle,
-						NULL, NULL, NULL)) {
-				unsigned int notify_id;
-
-				notify_id = bt_rap_register_notify(rap,
-							value_handle,
-							ras_segment_notify_cb,
-							"real-time");
-				if (!notify_id)
-					DBG(rap, "Failed to register for "
-						"real-time notifications");
-				else
-					DBG(rap, "Registered for real-time "
-						"features: id=%u", notify_id);
-			}
-		}
-
-		return;
-	}
-
-	/* On-demand mode: subscribe to each on-demand characteristic
-	 * independently so a partially-capable peer doesn't block the
-	 * others.
-	 */
-	rap_subscribe_ondemand_chrc(rap, ras->ondemand_chrc,
-					ras_segment_notify_cb,
-					"on-demand");
-	rap_subscribe_ondemand_chrc(rap, ras->cp_chrc,
-					ras_cp_response_notify_cb,
-					"RAS Control Point");
-	rap_subscribe_ondemand_chrc(rap, ras->ready_chrc,
-					ras_data_ready_notify_cb,
-					"Ranging Data Ready");
-	rap_subscribe_ondemand_chrc(rap, ras->overwritten_chrc,
-					ras_data_overwritten_notify_cb,
-					"Ranging Data Overwritten");
+	if (!rap_subscribe_ranging_data(rap, rap->ondemand_mode ?
+				BT_RAP_RANGING_DATA_ONDEMAND :
+				BT_RAP_RANGING_DATA_REALTIME))
+		DBG(rap, "Failed to subscribe to requested Ranging Data mode");
 }
 
 static void foreach_rap_char(struct gatt_db_attribute *attr, void *user_data)
