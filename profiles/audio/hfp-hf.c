@@ -65,10 +65,18 @@
 
 #define HFP_HF_SDP_FEATURES	(HFP_HF_SDP_ECNR | HFP_HF_SDP_3WAY |\
 				HFP_HF_SDP_CLIP |\
-				HFP_HF_SDP_REMOTE_VOLUME_CONTROL)
+				HFP_HF_SDP_REMOTE_VOLUME_CONTROL |\
+				HFP_HF_SDP_WIDE_BAND_SPEECH |\
+				HFP_HF_SDP_SUPER_WIDE_BAND_SPEECH)
 
 #define URI	"tel"
 #define URI_PREFIX	URI ":"
+
+struct connect_data {
+	struct hfp_device *dev;
+	void (*cb)(int status, void *data);
+	void *cb_user_data;
+};
 
 struct hfp_device {
 	struct telephony	*telephony;
@@ -81,6 +89,7 @@ struct hfp_device {
 	struct queue		*calls;
 	uint8_t			codec;
 	unsigned int		resume_id;
+	struct connect_data	*pending_connect;
 	hfp_hf_sco_closed_cb	sco_closed_cb;
 	void			*sco_closed_data;
 };
@@ -169,6 +178,20 @@ static bool call_id_cmp(const void *data, const void *match_data)
 	return call->idx == id;
 }
 
+static void sco_connect_complete(struct connect_data *connect_data, int status)
+{
+	if (!connect_data)
+		return;
+
+	if (connect_data->dev->pending_connect == connect_data)
+		connect_data->dev->pending_connect = NULL;
+
+	if (connect_data->cb)
+		connect_data->cb(status, connect_data->cb_user_data);
+
+	g_free(connect_data);
+}
+
 static void device_destroy(struct hfp_device *dev)
 {
 	struct hfp_server *server;
@@ -176,6 +199,9 @@ static void device_destroy(struct hfp_device *dev)
 	DBG("%s", telephony_get_path(dev->telephony));
 
 	telephony_set_state(dev->telephony, DISCONNECTING);
+
+	if (dev->pending_connect)
+		sco_connect_complete(dev->pending_connect, -ENOTCONN);
 
 	if (dev->hf) {
 		hfp_hf_unref(dev->hf);
@@ -329,6 +355,49 @@ static void hfp_hf_call_line_id_updated(uint id, const char *number,
 	telephony_call_set_line_id(call, number);
 }
 
+static uint8_t hfp_hf_get_codecs(uint8_t *codecs, uint8_t max_codecs,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+	struct btd_adapter *adapter;
+	struct hfp_server *server;
+	GSList *l;
+	uint8_t i = 0;
+
+	adapter = device_get_adapter(telephony_get_device(dev->telephony));
+	server = find_server(servers, adapter);
+
+	for (l = server->endpoints; l; l = l->next) {
+		codecs[i++] = media_endpoint_get_codec(l->data);
+		if (i >= max_codecs)
+			break;
+	}
+
+	return i;
+}
+
+static bool hfp_hf_select_codec(uint8_t codec, void *user_data)
+{
+	struct hfp_device *dev = user_data;
+	struct btd_adapter *adapter;
+	struct hfp_server *server;
+	GSList *l;
+
+	DBG("Selecting codec: %u", codec);
+	adapter = device_get_adapter(telephony_get_device(dev->telephony));
+	server = find_server(servers, adapter);
+
+	for (l = server->endpoints; l; l = l->next) {
+		if (media_endpoint_get_codec(l->data) == codec) {
+			dev->codec = codec;
+			return true;
+		}
+	}
+
+	DBG("Unsupported codec: %u", codec);
+	return false;
+}
+
 static struct hfp_hf_callbacks hf_session_callbacks = {
 	.session_ready = hfp_hf_session_ready_cb,
 	.update_indicator = hfp_hf_update_indicator,
@@ -338,6 +407,8 @@ static struct hfp_hf_callbacks hf_session_callbacks = {
 	.call_removed = hfp_hf_call_removed,
 	.call_status_updated = hfp_hf_call_status_updated,
 	.call_line_id_updated = hfp_hf_call_line_id_updated,
+	.get_codecs = hfp_hf_get_codecs,
+	.select_codec = hfp_hf_select_codec,
 };
 
 static void hfp_disconnect_watch(void *user_data)
@@ -991,23 +1062,6 @@ static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	return FALSE;
 }
 
-struct connect_data {
-	struct hfp_device *dev;
-	void (*cb)(int status, void *data);
-	void *cb_user_data;
-};
-
-static void sco_connect_complete(struct connect_data *connect_data, int status)
-{
-	if (!connect_data || !connect_data->cb)
-		goto done;
-
-	connect_data->cb(status, connect_data->cb_user_data);
-
-done:
-	g_free(connect_data);
-}
-
 static void sco_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct connect_data *connect_data = user_data;
@@ -1109,6 +1163,62 @@ static void sco_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	sco_connect_complete(connect_data, 0);
 }
 
+static void confirm_cb(GIOChannel *io, gpointer user_data)
+{
+	bdaddr_t src, dst;
+	char address[18];
+	struct btd_device *device;
+	struct btd_service *service;
+	struct hfp_device *dev = NULL;
+	int voice;
+	GError *err = NULL;
+
+	if (!bt_io_get(io, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_INVALID)) {
+		error("Unable to get destination address: %s", err->message);
+		g_clear_error(&err);
+		goto drop;
+	}
+
+	DBG("Incoming SCO connection from %s", address);
+
+	device = btd_adapter_find_device(adapter_find(&src), &dst,
+								BDADDR_BREDR);
+	if (!device)
+		goto drop;
+
+	service = btd_device_get_service(device, HFP_AG_UUID);
+	if (!service)
+		goto drop;
+
+	dev = btd_service_get_user_data(service);
+	voice = dev->codec == 1 ? BT_VOICE_CVSD_16BIT : BT_VOICE_TRANSPARENT;
+
+	if (!bt_io_set(io, &err, BT_IO_OPT_VOICE, voice, BT_IO_OPT_INVALID)) {
+		error("Could not set voice settings on SCO IO: %s",
+								err->message);
+		g_error_free(err);
+		goto drop;
+	}
+
+	if (!bt_io_accept(io, sco_connect_cb, dev->pending_connect, NULL,
+								&err)) {
+		error("bt_io_accept() failed: %s", err->message);
+		g_error_free(err);
+		goto drop;
+	}
+
+	return;
+
+drop:
+	if (dev && dev->pending_connect)
+		sco_connect_complete(dev->pending_connect, -EIO);
+	g_io_channel_shutdown(io, TRUE, NULL);
+}
+
 bool hfp_hf_sco_listen(struct btd_adapter *adapter, void *endpoint)
 {
 	struct hfp_server *server;
@@ -1126,7 +1236,7 @@ bool hfp_hf_sco_listen(struct btd_adapter *adapter, void *endpoint)
 	if (server->sco_io)
 		return true;
 
-	server->sco_io = bt_io_listen(sco_connect_cb, NULL, NULL, NULL,
+	server->sco_io = bt_io_listen(NULL, confirm_cb, NULL, NULL,
 				&err,
 				BT_IO_OPT_SOURCE_BDADDR,
 				btd_adapter_get_address(server->adapter),
@@ -1190,6 +1300,16 @@ uint16_t hfp_hf_device_get_omtu(struct hfp_device *dev)
 	return dev->omtu;
 }
 
+static void req_codec_connection_complete(enum hfp_result res,
+						enum hfp_error cme_err,
+						void *user_data)
+{
+	struct connect_data *connect_data = user_data;
+
+	if (res != HFP_RESULT_OK)
+		sco_connect_complete(connect_data, -EIO);
+}
+
 static gboolean sco_start_cb(gpointer data)
 {
 	struct connect_data *connect_data = data;
@@ -1211,6 +1331,11 @@ unsigned int hfp_hf_sco_start(struct hfp_device *dev, void *cb, void *user_data)
 
 	DBG("codec %u", dev->codec);
 
+	if (dev->pending_connect) {
+		error("SCO connect already in progress");
+		return 0;
+	}
+
 	connect_data = g_new0(struct connect_data, 1);
 	connect_data->dev = dev;
 	connect_data->cb = cb;
@@ -1219,6 +1344,13 @@ unsigned int hfp_hf_sco_start(struct hfp_device *dev, void *cb, void *user_data)
 	src = telephony_get_src(dev->telephony);
 	dst = telephony_get_dst(dev->telephony);
 	if (!dev->sco_io) {
+		if (hfp_hf_request_codec_connection(dev->hf,
+						req_codec_connection_complete,
+						connect_data)) {
+			dev->pending_connect = connect_data;
+			goto done;
+		}
+
 		io = bt_io_connect(sco_connect_cb, connect_data, NULL, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
@@ -1234,6 +1366,7 @@ unsigned int hfp_hf_sco_start(struct hfp_device *dev, void *cb, void *user_data)
 		g_idle_add(sco_start_cb, connect_data);
 	}
 
+done:
 	return (++dev->resume_id);
 }
 
