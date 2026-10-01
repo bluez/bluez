@@ -167,10 +167,15 @@ static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 
 	printf("%s: notify.value:%d notify->len:%d\n", __func__,
 		(int)*(notify.value), notify.len);
-	if (!bt_gatt_server_send_notification(data->server,
-			notify.handle, notify.value,
-			notify.len, false))
-		printf("%s: Failed to send notification\n", __func__);
+	if (gatt_db_attribute_indicate_only(attrib)) {
+		if (!bt_gatt_server_send_indication(data->server, notify.handle,
+				notify.value, notify.len, NULL, NULL, NULL) &&
+				tester_use_debug())
+			tester_debug("Failed to send indication");
+	} else if (!bt_gatt_server_send_notification(data->server,
+			notify.handle, notify.value, notify.len, false) &&
+			tester_use_debug())
+		tester_debug("Failed to send notification");
 }
 
 static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,

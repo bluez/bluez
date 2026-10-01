@@ -300,6 +300,23 @@ bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
 					const uint8_t *value, size_t len,
 					struct bt_att *att);
 
+/* Same as gatt_db_attribute_notify() but requests an indication even when the
+ * client has also enabled notifications. Some profiles mandate the indication
+ * transport for specific characteristics (e.g. the RAS Ranging Data Ready and
+ * Ranging Data Overwritten characteristics), which gatt_db_attribute_notify()
+ * cannot express since it prefers notifications whenever the client enabled
+ * them.
+ */
+bool gatt_db_attribute_indicate(struct gatt_db_attribute *attrib,
+					const uint8_t *value, size_t len,
+					struct bt_att *att);
+
+/* Valid only while a gatt_db_notify_t callback is running: tells whether it was
+ * triggered by gatt_db_attribute_indicate() rather than
+ * gatt_db_attribute_notify().
+ */
+bool gatt_db_attribute_indicate_only(const struct gatt_db_attribute *attrib);
+
 bool gatt_db_attribute_reset(struct gatt_db_attribute *attrib);
 
 void *gatt_db_attribute_get_user_data(struct gatt_db_attribute *attrib);

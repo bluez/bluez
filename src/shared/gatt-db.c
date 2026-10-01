@@ -123,6 +123,11 @@ struct gatt_db_attribute {
 
 	unsigned int next_notify_id;
 	struct queue *notify_list;
+
+	/* Set only while notify_func is being called on behalf of
+	 * gatt_db_attribute_indicate().
+	 */
+	bool indicate_only;
 };
 
 struct gatt_db_service {
@@ -2440,9 +2445,9 @@ gatt_db_attribute_get_ccc(struct gatt_db_attribute *attrib)
 	return ccc;
 }
 
-bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
+static bool attribute_notify(struct gatt_db_attribute *attrib,
 					const uint8_t *value, size_t len,
-					struct bt_att *att)
+					struct bt_att *att, bool indicate_only)
 {
 	struct gatt_db_attribute *ccc;
 	struct gatt_db *db;
@@ -2468,9 +2473,35 @@ bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
 	else
 		notify_user_data = ccc->user_data;
 
+	attrib->indicate_only = indicate_only;
+
 	attrib->notify_func(attrib, ccc, value, len, att, notify_user_data);
 
+	attrib->indicate_only = false;
+
 	return true;
+}
+
+bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
+					const uint8_t *value, size_t len,
+					struct bt_att *att)
+{
+	return attribute_notify(attrib, value, len, att, false);
+}
+
+bool gatt_db_attribute_indicate(struct gatt_db_attribute *attrib,
+					const uint8_t *value, size_t len,
+					struct bt_att *att)
+{
+	return attribute_notify(attrib, value, len, att, true);
+}
+
+bool gatt_db_attribute_indicate_only(const struct gatt_db_attribute *attrib)
+{
+	if (!attrib)
+		return false;
+
+	return attrib->indicate_only;
 }
 
 bool gatt_db_attribute_reset(struct gatt_db_attribute *attrib)
