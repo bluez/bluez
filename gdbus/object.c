@@ -1166,6 +1166,17 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 						iface->user_data) == TRUE)
 			return DBUS_HANDLER_RESULT_HANDLED;
 
+		/* A method that declares a privilege must not run when no security
+		 * table has been registered: check_privilege() returns FALSE both for
+		 * "authorized" and for "no table", and falling through here would
+		 * execute it without any check.  Fail closed instead.
+		 */
+		if (method->privilege != 0) {
+			g_dbus_send_error(connection, message, DBUS_ERROR_AUTH_FAILED,
+								NULL);
+			return DBUS_HANDLER_RESULT_HANDLED;
+		}
+
 		return process_message(connection, message, method,
 							iface->user_data);
 	}
