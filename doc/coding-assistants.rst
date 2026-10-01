@@ -45,3 +45,25 @@ Basic development tools (git, gcc, make, editors) should not be listed.
 Example::
 
   Assisted-by: Claude:claude-3-opus coccinelle sparse
+
+Commit Messages
+===============
+
+Commit messages must follow Rule 2 in doc/maintainer-guidelines.rst.
+
+A commit message records only the changes being made and the rationale
+for them. For each sentence in a draft, ask what change it records or
+what decision it justifies. If the answer is neither, delete it. In
+particular, cut anything that:
+
+* explains something the project's developers already know
+* restates general knowledge about the language, toolkits, or codebase
+* restates what the diff already shows (e.g. listing touched functions)
+* narrates the reasoning behind an earlier, abandoned attempt
+
+Additionally:
+
+* Keep it brief; use bullets only when listing multiple distinct changes.
+* Use a subject prefix consistent with the history of the files touched.
+* Verify factual claims in the message (file counts, symbol names,
+  paths) against the actual diff before committing.
