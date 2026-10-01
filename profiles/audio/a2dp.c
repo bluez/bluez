@@ -748,8 +748,16 @@ static gboolean auto_config(gpointer data)
 	}
 
 done:
-	if (setup->setconf_cb)
+	if (setup->setconf_cb) {
+		/* Rejecting the configuration frees the avdtp_stream */
+		if (setup->err)
+			a2dp_stream_destroy(setup->sep, setup->stream);
+
 		setup->setconf_cb(setup->session, setup->stream, setup->err);
+
+		if (setup->err)
+			setup->stream = NULL;
+	}
 
 	finalize_config(setup);
 
