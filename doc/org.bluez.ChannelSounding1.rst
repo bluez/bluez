@@ -258,6 +258,38 @@ Examples:
 :bluetoothctl stop a specific device when multiple are active:
 	| [cs] > stop AA:BB:CC:DD:EE:FF
 
+void SetRangingDataMode(byte mode, byte transport)
+``````````````````````````````````````````````````
+
+Selects the RAP Requester's received Ranging Data subscription after remote
+RAS discovery has completed. This is independent of the local Channel Sounding
+measurement lifecycle. Changing mode first disables all current Ranging Data
+CCCD subscriptions, then enables the selected mode.
+
+``mode`` values:
+
+:0x00: Disabled. Stop receiving Ranging Data and disable all RAS data CCCDs.
+:0x01: Real-time. Enable the Real-time Ranging Data CCCD.
+:0x02: On-demand. Enable On-demand Data, Control Point, Ready, and Overwritten
+	CCCDs.
+
+``transport`` selects the CCCD value for Real-time or On-demand mode. It is
+ignored for Disabled mode. Use ``0x01`` for notifications or ``0x02`` for
+indications. For On-demand mode, this applies to Control Point, Ready, and
+Overwritten; segmented On-demand Data always uses notifications.
+
+Raises ``org.bluez.Error.Failed`` when remote RAS discovery and Features read
+have not completed, or the selected mode is unsupported by the peer.
+
+Example:
+
+:bluetoothctl disable Real-time Ranging Data:
+	| [cs] > ranging-data-mode AA:BB:CC:DD:EE:FF disabled
+:bluetoothctl enable Real-time indications:
+	| [cs] > ranging-data-mode AA:BB:CC:DD:EE:FF realtime indicate
+:bluetoothctl enable On-demand indications:
+	| [cs] > ranging-data-mode AA:BB:CC:DD:EE:FF ondemand indicate
+
 Signals
 -------
 
