@@ -503,6 +503,144 @@ static DBusMessage *dial(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static DBusMessage *swap_calls(DBusConnection *conn, DBusMessage *msg,
+				void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	const struct queue_entry *entry;
+	bool found_held = false;
+	bool ret;
+
+	for (entry = queue_get_entries(dev->calls); entry;
+					entry = entry->next) {
+		struct call *call = entry->data;
+
+		if (call->state == CALL_STATE_HELD) {
+			found_held = true;
+			break;
+		}
+	}
+
+	if (!found_held) {
+		return btd_error_failed(msg,
+					"Swap calls command failed: "
+					"no held calls");
+	}
+
+	ret = hfp_hf_swap_calls(dev->hf, cmd_complete,
+					dbus_message_ref(msg));
+	if (!ret)
+		return btd_error_failed(msg, "Swap calls command failed");
+
+	return NULL;
+}
+
+static DBusMessage *release_and_answer(DBusConnection *conn, DBusMessage *msg,
+					void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	const struct queue_entry *entry;
+	bool found_active = false;
+	bool found_waiting = false;
+	bool ret;
+
+	for (entry = queue_get_entries(dev->calls); entry;
+					entry = entry->next) {
+		struct call *call = entry->data;
+
+		if (call->state == CALL_STATE_ACTIVE)
+			found_active = true;
+		else if (call->state == CALL_STATE_WAITING)
+			found_waiting = true;
+	}
+
+	if (!found_active || !found_waiting) {
+		return btd_error_failed(msg,
+					"Release and answer command failed: "
+					"no active and waiting calls");
+	}
+
+	ret = hfp_hf_release_and_accept(dev->hf, cmd_complete,
+					dbus_message_ref(msg));
+	if (!ret)
+		return btd_error_failed(msg,
+					"Release and answer command failed");
+
+	return NULL;
+}
+
+static DBusMessage *release_and_swap(DBusConnection *conn, DBusMessage *msg,
+					void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	const struct queue_entry *entry;
+	bool found_active = false;
+	bool found_held = false;
+	bool ret;
+
+	for (entry = queue_get_entries(dev->calls); entry;
+					entry = entry->next) {
+		struct call *call = entry->data;
+
+		if (call->state == CALL_STATE_WAITING) {
+			return btd_error_failed(msg,
+					"Release and swap command failed: "
+					"waiting call exists");
+		} else if (call->state == CALL_STATE_ACTIVE)
+			found_active = true;
+		else if (call->state == CALL_STATE_HELD)
+			found_held = true;
+	}
+
+	if (!found_active || !found_held) {
+		return btd_error_failed(msg,
+					"Release and swap command failed: "
+					"no active and held calls");
+	}
+
+	ret = hfp_hf_release_and_accept(dev->hf, cmd_complete,
+					dbus_message_ref(msg));
+	if (!ret)
+		return btd_error_failed(msg,
+					"Release and swap command failed");
+
+	return NULL;
+}
+
+static DBusMessage *hold_and_answer(DBusConnection *conn, DBusMessage *msg,
+					void *profile_data)
+{
+	struct hfp_device *dev = profile_data;
+	const struct queue_entry *entry;
+	bool found_active = false;
+	bool found_waiting = false;
+	bool ret;
+
+	for (entry = queue_get_entries(dev->calls); entry;
+					entry = entry->next) {
+		struct call *call = entry->data;
+
+		if (call->state == CALL_STATE_ACTIVE)
+			found_active = true;
+		else if (call->state == CALL_STATE_WAITING)
+			found_waiting = true;
+	}
+
+	if (!found_active || !found_waiting) {
+		return btd_error_failed(msg,
+					"Hold and answer command failed: "
+					"no active and waiting calls");
+	}
+
+	ret = hfp_hf_swap_calls(dev->hf, cmd_complete,
+					dbus_message_ref(msg));
+	if (!ret)
+		return btd_error_failed(msg,
+					"Hold and answer command failed");
+
+	return NULL;
+}
+
 static DBusMessage *hangup_all(DBusConnection *conn, DBusMessage *msg,
 				void *profile_data)
 {
@@ -569,6 +707,10 @@ static DBusMessage *call_hangup(DBusConnection *conn, DBusMessage *msg,
 
 struct telephony_callbacks hfp_callbacks = {
 	.dial = dial,
+	.swap_calls = swap_calls,
+	.release_and_answer = release_and_answer,
+	.release_and_swap = release_and_swap,
+	.hold_and_answer = hold_and_answer,
 	.hangup_all = hangup_all,
 	.send_tones = send_tones,
 	.call_answer = call_answer,
