@@ -42,6 +42,7 @@ struct packet_loss {
 	size_t lost;		/* Samples missing from the SN sequence */
 	size_t invalid;		/* Samples flagged possibly invalid */
 	size_t dropped;		/* Samples flagged as lost data */
+	size_t partial;		/* Samples flagged as partially lost */
 	size_t total;		/* Samples seen, including the lost ones */
 	/* Bursts of erased samples, either missing or flagged as lost */
 	size_t erased;		/* Erased samples */
@@ -118,6 +119,7 @@ struct packet_conn_data {
 	struct packet_loss rx_loss;
 	struct packet_jitter rx_jitter;
 	struct packet_quality rx_quality;
+	uint8_t  sco_rate;	/* SCO octets per msec, 0 if unknown */
 	struct queue *req_q;
 	void     *data;
 	void     (*destroy)(struct packet_conn_data *conn, void *data);
@@ -131,6 +133,10 @@ size_t packet_loss_burst_max(const struct packet_loss *loss);
 bool packet_loss_burst_ratio(const struct packet_loss *loss, double *p,
 						double *q, double *ratio);
 void packet_loss_print(const struct packet_loss *loss, const char *label);
+void packet_loss_add_status(struct packet_loss *loss, uint8_t status);
+void packet_jitter_add(struct packet_jitter *jitter, struct timeval *tv,
+							uint32_t expected);
+uint8_t packet_sco_rate(uint8_t air_mode);
 void packet_jitter_add_sn(struct packet_jitter *jitter, struct timeval *tv,
 								uint16_t sn);
 void packet_jitter_add_ts(struct packet_jitter *jitter, struct timeval *tv,

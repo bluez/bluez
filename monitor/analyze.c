@@ -108,6 +108,7 @@ struct hci_conn {
 	struct hci_stats tx;
 	struct packet_loss rx_loss;
 	struct packet_jitter rx_jitter;
+	uint8_t sco_rate;
 };
 
 struct hci_conn_tx {
@@ -1072,6 +1073,7 @@ static void evt_sync_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	memcpy(conn->bdaddr, evt->bdaddr, 6);
 	conn->frame_connected = frame;
 	conn->setup_seen = true;
+	conn->sco_rate = packet_sco_rate(evt->air_mode);
 }
 
 /* Nominal SDU interval of an unframed stream: ISO Interval over BN */
@@ -1407,6 +1409,19 @@ static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 
 	conn = conn_lookup_types(dev, le16_to_cpu(hdr->handle) & 0x0fff,
 					BTMON_CONN_SCO, BTMON_CONN_ESCO);
+
+	if (!out && size > sizeof(*hdr)) {
+		uint8_t status = (le16_to_cpu(hdr->handle) >> 12) & 0x03;
+
+		packet_loss_add_status(&conn->rx_loss, status);
+
+		if (conn->sco_rate) {
+			conn->rx_jitter.interval = hdr->dlen * 1000 /
+							conn->sco_rate;
+			packet_jitter_add(&conn->rx_jitter, tv,
+						conn->rx_jitter.interval);
+		}
+	}
 
 	if (out) {
 		conn_pkt_tx(conn, tv, size - sizeof(*hdr), NULL);

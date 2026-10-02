@@ -12076,6 +12076,26 @@ void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags)
 	loss->have_sn = true;
 }
 
+/* Packet_Status_Flag of SCO data, reported with Erroneous Data Reporting */
+void packet_loss_add_status(struct packet_loss *loss, uint8_t status)
+{
+	loss->total++;
+
+	switch (status) {
+	case 0x01:
+		loss->invalid++;
+		break;
+	case 0x02:
+		loss->dropped++;
+		break;
+	case 0x03:
+		loss->partial++;
+		break;
+	}
+
+	loss_sample(loss, status == 0x02 || status == 0x03, 1);
+}
+
 size_t packet_loss_burst_max(const struct packet_loss *loss)
 {
 	return loss->burst_max;
@@ -12113,11 +12133,12 @@ void packet_loss_print(const struct packet_loss *loss, const char *label)
 	if (!loss->total)
 		return;
 
-	print_field("%s loss: %zu/%zu (%zu.%02zu%%) dropped %zu invalid %zu",
-				label, loss->lost, loss->total,
-				loss->lost * 100 / loss->total,
-				(loss->lost * 10000 / loss->total) % 100,
-				loss->dropped, loss->invalid);
+	print_field("%s loss: %zu/%zu (%zu.%02zu%%) missing %zu dropped %zu "
+				"invalid %zu partial %zu", label, loss->erased,
+				loss->total, loss->erased * 100 / loss->total,
+				(loss->erased * 10000 / loss->total) % 100,
+				loss->lost, loss->dropped, loss->invalid,
+				loss->partial);
 
 	/* Account for the burst still in progress */
 	loss_burst_end(&tmp);
@@ -12166,6 +12187,18 @@ static void jitter_add(struct packet_jitter *jitter, struct timeval *tv,
 		jitter->max_dev = d;
 
 	jitter->jitter16 += (uint64_t)d - ((jitter->jitter16 + 8) >> 4);
+}
+
+void packet_jitter_add(struct packet_jitter *jitter, struct timeval *tv,
+							uint32_t expected)
+{
+	if (!jitter->have_prev) {
+		jitter->prev_tv = *tv;
+		jitter->have_prev = true;
+		return;
+	}
+
+	jitter_add(jitter, tv, expected);
 }
 
 void packet_jitter_add_sn(struct packet_jitter *jitter, struct timeval *tv,
@@ -12615,11 +12648,18 @@ static void sync_conn_complete_evt(struct timeval *tv, uint16_t index,
 	print_field("TX packet length: %d", le16_to_cpu(evt->tx_pkt_len));
 	print_air_mode(evt->air_mode);
 
-	if (evt->status == 0x00)
+	if (evt->status == 0x00) {
+		struct packet_conn_data *conn;
+
 		assign_handle(index, le16_to_cpu(evt->handle),
 					evt->link_type ? BTMON_CONN_ESCO :
 					BTMON_CONN_SCO,
 					(void *)evt->bdaddr, BDADDR_BREDR);
+
+		conn = packet_get_conn_data(le16_to_cpu(evt->handle));
+		if (conn)
+			conn->sco_rate = packet_sco_rate(evt->air_mode);
+	}
 }
 
 static void sync_conn_changed_evt(struct timeval *tv, uint16_t index,
@@ -15337,71 +15377,6 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	packet_set_context(NULL, 0);
 }
 
-void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
-				bool in, const void *data, uint16_t size)
-{
-	const hci_sco_hdr *hdr = data;
-	uint16_t handle = le16_to_cpu(hdr->handle);
-	uint8_t flags = acl_flags(handle);
-	char label[8];
-	char handle_str[42], extra_str[32];
-	struct packet_conn_data *conn;
-
-	if (index >= MAX_INDEX) {
-		print_field("Invalid index (%d).", index);
-		return;
-	}
-
-	index_list[index].frame++;
-
-	if (size < HCI_SCO_HDR_SIZE) {
-		if (in)
-			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
-				"Malformed SCO Data RX packet", NULL, NULL);
-		else
-			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
-				"Malformed SCO Data TX packet", NULL, NULL);
-		packet_hexdump(data, size);
-		return;
-	}
-
-	data += HCI_SCO_HDR_SIZE;
-	size -= HCI_SCO_HDR_SIZE;
-	conn = packet_get_conn_data(handle);
-
-	if (index_list[index].sco.total && !in)
-		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
-			index_list[index].sco.total, index_list[index].sco.tx);
-	else
-		sprintf(handle_str, "Handle %d", acl_handle(handle));
-
-	handle_str_append_addr(handle_str, conn);
-
-	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
-
-	if (conn)
-		sprintf(label, "%s", conn_type_str(conn->type));
-	else
-		sprintf(label, "SCO");
-
-	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_SCODATA,
-				label, handle_str, extra_str);
-
-	if (!in)
-		packet_enqueue_tx(tv, acl_handle(handle),
-					index_list[index].frame, hdr->dlen);
-
-	if (size != hdr->dlen) {
-		print_text(COLOR_ERROR, "invalid packet size (%d != %d)",
-							size, hdr->dlen);
-		packet_hexdump(data, size);
-		return;
-	}
-
-	if (filter_mask & PACKET_FILTER_SHOW_SCO_DATA)
-		packet_hexdump(data, size);
-}
-
 static void print_rx_quality(struct packet_conn_data *conn, size_t erased,
 				size_t late, uint8_t sflags, size_t burst)
 {
@@ -15410,12 +15385,13 @@ static void print_rx_quality(struct packet_conn_data *conn, size_t erased,
 
 	/* Only report the samples that revealed a loss or arrived late */
 	if (loss->erased != erased || sflags)
-		print_field("Lost: %zu/%zu (%zu.%02zu%%) dropped %zu "
-				"invalid %zu burst %zu",
-				loss->lost, loss->total,
-				loss->lost * 100 / loss->total,
-				(loss->lost * 10000 / loss->total) % 100,
-				loss->dropped, loss->invalid, burst);
+		print_field("Lost: %zu/%zu (%zu.%02zu%%) missing %zu "
+				"dropped %zu invalid %zu partial %zu burst %zu",
+				loss->erased, loss->total,
+				loss->erased * 100 / loss->total,
+				(loss->erased * 10000 / loss->total) % 100,
+				loss->lost, loss->dropped, loss->invalid,
+				loss->partial, burst);
 
 	if (jitter->late != late)
 		print_field("Late: +%" PRId64 ".%02" PRId64 " msec "
@@ -15489,6 +15465,150 @@ static void quality_summary(struct timeval *tv, struct ucred *cred,
 	q->total = loss->total;
 	q->late = jitter->late;
 	q->burst_max = loss->burst;
+}
+
+static void rx_quality(struct timeval *tv, struct ucred *cred,
+				uint16_t index, struct packet_conn_data *conn,
+				size_t erased, size_t late, uint8_t status)
+{
+	struct packet_loss *loss = &conn->rx_loss;
+	size_t burst = loss->burst;
+
+	/* A burst that this sample has just ended */
+	if (!burst && loss->erased != erased)
+		burst = loss->burst_last;
+
+	print_rx_quality(conn, erased, late, status, burst);
+	quality_summary(tv, cred, index, conn, burst);
+}
+
+static void sco_rx_quality(struct timeval *tv, struct ucred *cred,
+				uint16_t index, struct packet_conn_data *conn,
+				uint8_t status, uint8_t dlen);
+
+void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
+				bool in, const void *data, uint16_t size)
+{
+	const hci_sco_hdr *hdr = data;
+	uint16_t handle = le16_to_cpu(hdr->handle);
+	uint8_t flags = acl_flags(handle);
+	char label[8];
+	char handle_str[42], extra_str[32];
+	struct packet_conn_data *conn;
+
+	if (index >= MAX_INDEX) {
+		print_field("Invalid index (%d).", index);
+		return;
+	}
+
+	index_list[index].frame++;
+
+	if (size < HCI_SCO_HDR_SIZE) {
+		if (in)
+			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
+				"Malformed SCO Data RX packet", NULL, NULL);
+		else
+			print_packet(tv, cred, '*', index, NULL, COLOR_ERROR,
+				"Malformed SCO Data TX packet", NULL, NULL);
+		packet_hexdump(data, size);
+		return;
+	}
+
+	data += HCI_SCO_HDR_SIZE;
+	size -= HCI_SCO_HDR_SIZE;
+	conn = packet_get_conn_data(handle);
+
+	if (index_list[index].sco.total && !in)
+		sprintf(handle_str, "Handle %d [%u/%u]", acl_handle(handle),
+			index_list[index].sco.total, index_list[index].sco.tx);
+	else
+		sprintf(handle_str, "Handle %d", acl_handle(handle));
+
+	handle_str_append_addr(handle_str, conn);
+
+	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
+
+	if (conn)
+		sprintf(label, "%s", conn_type_str(conn->type));
+	else
+		sprintf(label, "SCO");
+
+	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_SCODATA,
+				label, handle_str, extra_str);
+
+	if (!in)
+		packet_enqueue_tx(tv, acl_handle(handle),
+					index_list[index].frame, hdr->dlen);
+
+	if (size != hdr->dlen) {
+		print_text(COLOR_ERROR, "invalid packet size (%d != %d)",
+							size, hdr->dlen);
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (in && conn)
+		sco_rx_quality(tv, cred, index, conn, flags & 0x03,
+								hdr->dlen);
+
+	if (filter_mask & PACKET_FILTER_SHOW_SCO_DATA)
+		packet_hexdump(data, size);
+}
+
+static const char *sco_status_str(uint8_t status)
+{
+	switch (status) {
+	case 0x01:
+		return "Possibly invalid";
+	case 0x02:
+		return "No data";
+	case 0x03:
+		return "Partially lost";
+	}
+
+	return "Correct";
+}
+
+/* Octets per msec of the host data, as configured by the air mode */
+uint8_t packet_sco_rate(uint8_t air_mode)
+{
+	switch (air_mode) {
+	case 0x00:
+	case 0x01:
+		/* 8 kHz 8-bit logarithmic */
+		return 8;
+	case 0x02:
+		/* 8 kHz 16-bit linear */
+		return 16;
+	case 0x03:
+		/* 64 kb/s transparent: mSBC, LC3-SWB */
+		return 8;
+	}
+
+	return 0;
+}
+
+static void sco_rx_quality(struct timeval *tv, struct ucred *cred,
+				uint16_t index, struct packet_conn_data *conn,
+				uint8_t status, uint8_t dlen)
+{
+	size_t erased = conn->rx_loss.erased;
+	size_t late = conn->rx_jitter.late;
+
+	if (status)
+		print_field("Status: %s (0x%2.2x)", sco_status_str(status),
+								status);
+
+	packet_loss_add_status(&conn->rx_loss, status);
+
+	if (tv && conn->sco_rate) {
+		/* The data of a packet takes that long to play */
+		conn->rx_jitter.interval = dlen * 1000 / conn->sco_rate;
+		packet_jitter_add(&conn->rx_jitter, tv,
+						conn->rx_jitter.interval);
+	}
+
+	rx_quality(tv, cred, index, conn, erased, late, status);
 }
 
 void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
@@ -15600,17 +15720,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ISODATA,
 				label, handle_str, extra_str);
 
-	if (in && have_hdr && conn) {
-		struct packet_loss *loss = &conn->rx_loss;
-		size_t burst = loss->burst;
-
-		/* A burst that this sample has just ended */
-		if (!burst && loss->erased != erased)
-			burst = loss->burst_last;
-
-		print_rx_quality(conn, erased, late, sflags, burst);
-		quality_summary(tv, cred, index, conn, burst);
-	}
+	if (in && have_hdr && conn)
+		rx_quality(tv, cred, index, conn, erased, late, sflags);
 
 	if (!in)
 		packet_enqueue_tx(tv, acl_handle(handle),
