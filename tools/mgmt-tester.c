@@ -3818,7 +3818,7 @@ static bool verify_security_level_changed(const void *param, uint16_t length)
 	expected_addr_type = data->hciemu_type == HCIEMU_TYPE_LE ?
 						BDADDR_LE_PUBLIC : BDADDR_BREDR;
 	expected_enc_type = data->hciemu_type == HCIEMU_TYPE_LE ?
-					MGMT_CONN_SEC_ENCRYPT_NONE :
+					MGMT_CONN_SEC_ENCRYPT_AES_CCM :
 					MGMT_CONN_SEC_ENCRYPT_E0;
 
 	if (memcmp(event, expected_addr, 6)) {
