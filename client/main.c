@@ -2028,6 +2028,7 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "ServiceData");
 	print_property(proxy, "RSSI");
 	print_property(proxy, "TxPower");
+	print_property(proxy, "Connectable");
 	print_property(proxy, "AdvertisingFlags");
 	print_property(proxy, "AdvertisingData");
 	print_property(proxy, "Sets");
@@ -2056,6 +2057,8 @@ static void cmd_info(int argc, char *argv[])
 		print_property_with_label(bearer, "Bonded", "BREDR.Bonded");
 		print_property_with_label(bearer, "Connected",
 							"BREDR.Connected");
+		print_property_with_label(bearer, "Connectable",
+							"BREDR.Connectable");
 	}
 
 	bearer = find_proxies_by_iface(default_ctrl->bearers,
@@ -2065,6 +2068,8 @@ static void cmd_info(int argc, char *argv[])
 		print_property_with_label(bearer, "Paired", "LE.Paired");
 		print_property_with_label(bearer, "Bonded", "LE.Bonded");
 		print_property_with_label(bearer, "Connected", "LE.Connected");
+		print_property_with_label(bearer, "Connectable",
+							"LE.Connectable");
 	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
