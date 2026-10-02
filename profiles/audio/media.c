@@ -66,6 +66,9 @@
 #ifdef HAVE_A2DP
 #include "a2dp.h"
 #endif
+#ifdef HAVE_HFP
+#include "hfp-hf.h"
+#endif
 
 #define MEDIA_INTERFACE "org.bluez.Media1"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
@@ -119,6 +122,7 @@ struct media_endpoint {
 #endif
 	struct bt_bap_pac	*pac;
 	struct bt_asha_device	*asha;
+	bool			sco;
 	char			*sender;	/* Endpoint DBus bus id */
 	char			*path;		/* Endpoint object path */
 	char			*uuid;		/* Endpoint property UUID */
@@ -232,6 +236,11 @@ static void media_endpoint_destroy(struct media_endpoint *endpoint)
 	if (endpoint->pac) {
 		bt_bap_remove_pac(endpoint->pac);
 		endpoint->pac = NULL;
+	}
+
+	if (endpoint->sco) {
+		hfp_hf_sco_remove(endpoint->adapter->btd_adapter, endpoint);
+		endpoint->sco = false;
 	}
 
 	g_dbus_remove_watch(btd_get_dbus_connection(), endpoint->watch);
@@ -1430,6 +1439,64 @@ static bool endpoint_init_asha(struct media_endpoint *endpoint,
 	return true;
 }
 
+gboolean hfp_hf_set_configuration(struct media_endpoint *endpoint,
+					const char *ep_path,
+					media_endpoint_cb_t cb,
+					void *user_data,
+					GDestroyNotify destroy)
+{
+	struct hfp_device *hfp_dev = user_data;
+	struct btd_device *device = hfp_hf_get_device(hfp_dev);
+	DBusConnection *conn = btd_get_dbus_connection();
+	DBusMessage *msg;
+	DBusMessageIter iter;
+	struct media_transport *transport;
+	const char *path;
+
+	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
+						MEDIA_ENDPOINT_INTERFACE,
+						"SetConfiguration");
+	if (msg == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return FALSE;
+	}
+
+	transport = find_device_transport(endpoint, device);
+	if (transport == NULL) {
+		transport = media_transport_create(device, ep_path, NULL, 0,
+							endpoint, hfp_dev);
+		if (transport == NULL)
+			return FALSE;
+
+		endpoint->transports = g_slist_append(endpoint->transports,
+								transport);
+	}
+
+	dbus_message_iter_init_append(msg, &iter);
+
+	path = media_transport_get_path(transport);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	g_dbus_get_properties(conn, path, "org.bluez.MediaTransport1", &iter);
+
+	return media_endpoint_async_call(msg, endpoint, transport,
+						cb, user_data, destroy, -1);
+}
+
+static bool endpoint_init_sco(struct media_endpoint *endpoint,
+						int *err)
+{
+	if (!(g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL)) {
+		DBG("D-Bus experimental not enabled");
+		*err = -ENOTSUP;
+		return false;
+	}
+
+	endpoint->sco = true;
+
+	return hfp_hf_sco_listen(endpoint->adapter->btd_adapter, endpoint);
+}
+
 static bool endpoint_properties_exists(const char *uuid,
 						struct btd_device *dev,
 						void *user_data)
@@ -1559,6 +1626,11 @@ static bool experimental_asha_supported(struct btd_adapter *adapter)
 	return g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
 }
 
+static bool experimental_sco_supported(struct btd_adapter *adapter)
+{
+	return g_dbus_get_flags() & G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
+}
+
 static const struct media_endpoint_init {
 	const char *uuid;
 	bool (*func)(struct media_endpoint *endpoint, int *err);
@@ -1580,6 +1652,10 @@ static const struct media_endpoint_init {
 			experimental_bcast_sink_ep_supported },
 	{ ASHA_PROFILE_UUID, endpoint_init_asha,
 			experimental_asha_supported },
+#ifdef HAVE_HFP
+	{ HFP_AG_UUID, endpoint_init_sco,
+			experimental_sco_supported },
+#endif
 };
 
 static struct media_endpoint *

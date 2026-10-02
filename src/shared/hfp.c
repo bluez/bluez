@@ -100,6 +100,7 @@ struct hfp_hf {
 	struct hfp_hf_callbacks *callbacks;
 	void *callbacks_data;
 
+	uint32_t hf_features;
 	uint32_t features;
 	struct indicator ag_ind[HFP_INDICATOR_LAST];
 	bool service;
@@ -2235,6 +2236,101 @@ static void clip_cb(struct hfp_context *context, void *user_data)
 							hfp->callbacks_data);
 }
 
+static bool available_codecs_update(struct hfp_hf *hfp,
+						hfp_response_func_t resp_cb,
+						void *user_data)
+{
+	uint8_t codecs[UINT8_MAX];
+	uint8_t len;
+	uint32_t codecs_str_len;
+	char *codecs_str, *ptr;
+
+	len = hfp->callbacks->get_codecs(codecs, UINT8_MAX,
+							hfp->callbacks_data);
+	if (!len) {
+		DBG(hfp, "hf: Failed to get supported codecs");
+		return false;
+	}
+
+	/* Each codec can be up to 3 digits + comma + null terminator */
+	codecs_str_len = len * 4 + 1;
+	codecs_str = malloc(codecs_str_len);
+	if (!codecs_str) {
+		DBG(hfp, "hf: Failed to allocate memory for codecs");
+		return false;
+	}
+
+	ptr = codecs_str;
+	for (uint8_t i = 0; i < len; i++) {
+		int ret;
+
+		ret = snprintf(ptr, codecs_str_len - (ptr - codecs_str),
+							"%u,", codecs[i]);
+		if (ret < 0 || ret >= codecs_str_len - (ptr - codecs_str)) {
+			DBG(hfp, "hf: Failed to format codecs string");
+			free(codecs_str);
+			return false;
+		}
+		ptr += ret;
+	}
+	/* Remove the trailing comma */
+	if (ptr != codecs_str) {
+		ptr--;
+		*ptr = '\0';
+	}
+
+	if (!hfp_hf_send_command(hfp, resp_cb, user_data, "AT+BAC=%s",
+								codecs_str)) {
+		DBG(hfp, "hf: Could not send AT+BAC=%s", codecs_str);
+		free(codecs_str);
+		return false;
+	}
+
+	free(codecs_str);
+
+	return true;
+}
+
+static void bac_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	if (result != HFP_RESULT_OK)
+		DBG(hfp, "hf: BAC error: %d", result);
+}
+
+static void bcs_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	if (result != HFP_RESULT_OK)
+		DBG(hfp, "hf: BCS error: %d", result);
+}
+
+static void bcs_cb(struct hfp_context *context, void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+	unsigned int val;
+
+	if (!hfp_context_get_number(context, &val))
+		return;
+
+	if (!hfp->callbacks->select_codec(val, hfp->callbacks_data)) {
+		DBG(hfp, "hf: Codec selection failed: %d", val);
+
+		if (!available_codecs_update(hfp, bac_resp, hfp)) {
+			DBG(hfp, "hf: Could not re-trigger codec update");
+			return;
+		}
+	}
+
+	if (!hfp_hf_send_command(hfp, bcs_resp, hfp, "AT+BCS=%u", val)) {
+		DBG(hfp, "hf: Could not send AT+BCS=%u", val);
+	}
+}
+
 static void nrec_resp(enum hfp_result result, enum hfp_error cme_err,
 	void *user_data)
 {
@@ -2794,17 +2890,15 @@ static void slc_brsf_cb(struct hfp_context *context, void *user_data)
 		hfp->features = feat;
 }
 
-static void slc_brsf_resp(enum hfp_result result, enum hfp_error cme_err,
+static void slc_bac_resp(enum hfp_result result, enum hfp_error cme_err,
 	void *user_data)
 {
 	struct hfp_hf *hfp = user_data;
 
 	DBG(hfp, "");
 
-	hfp_hf_unregister(hfp, "+BRSF");
-
 	if (result != HFP_RESULT_OK) {
-		DBG(hfp, "BRSF error: %d", result);
+		DBG(hfp, "hf: BAC error: %d", result);
 		goto failed;
 	}
 
@@ -2822,6 +2916,46 @@ static void slc_brsf_resp(enum hfp_result result, enum hfp_error cme_err,
 	}
 
 	return;
+
+failed:
+	if (hfp->callbacks->session_ready)
+		hfp->callbacks->session_ready(result, cme_err,
+						hfp->callbacks_data);
+}
+
+static void slc_brsf_resp(enum hfp_result result, enum hfp_error cme_err,
+	void *user_data)
+{
+	struct hfp_hf *hfp = user_data;
+
+	DBG(hfp, "");
+
+	hfp_hf_unregister(hfp, "+BRSF");
+
+	if (result != HFP_RESULT_OK) {
+		DBG(hfp, "BRSF error: %d", result);
+		goto failed;
+	}
+
+	/* Continue with SLC creation */
+	if (!(hfp->hf_features & HFP_HF_FEAT_CODEC_NEGOTIATION) ||
+			!(hfp->features & HFP_AG_FEAT_CODEC_NEGOTIATION)) {
+		/* Jump to next setup state */
+		slc_bac_resp(HFP_RESULT_OK, cme_err, user_data);
+		return;
+	}
+
+	if (!hfp_hf_register(hfp, bcs_cb, "+BCS", hfp, NULL)) {
+		DBG(hfp, "hf: Could not register for +BCS");
+		result = HFP_RESULT_ERROR;
+		goto failed;
+	}
+
+	if (!available_codecs_update(hfp, slc_bac_resp, hfp)) {
+		DBG(hfp, "hf: Could not send AT+BAC");
+		result = HFP_RESULT_ERROR;
+		goto failed;
+	}
 
 failed:
 	if (hfp->callbacks->session_ready)
@@ -2849,11 +2983,15 @@ bool hfp_hf_session(struct hfp_hf *hfp)
 
 	DBG(hfp, "");
 
+	hfp->hf_features = HFP_HF_FEATURES;
+	if (hfp->callbacks->get_codecs && hfp->callbacks->select_codec)
+		hfp->hf_features |= HFP_HF_FEAT_CODEC_NEGOTIATION;
+
 	if (!hfp_hf_register(hfp, slc_brsf_cb, "+BRSF", hfp, NULL))
 		return false;
 
 	return hfp_hf_send_command(hfp, slc_brsf_resp, hfp,
-					"AT+BRSF=%u", HFP_HF_FEATURES);
+					"AT+BRSF=%u", hfp->hf_features);
 }
 
 const char *hfp_hf_call_get_number(struct hfp_hf *hfp, uint id)
@@ -2970,6 +3108,71 @@ bool hfp_hf_swap_calls(struct hfp_hf *hfp,
 	return hfp_hf_send_command(hfp, resp_cb, user_data, "AT+CHLD=2");
 }
 
+bool hfp_hf_hangup_all(struct hfp_hf *hfp,
+				hfp_response_func_t resp_cb,
+				void *user_data)
+{
+	bool found_active = false;
+	bool found_held = false;
+	const struct queue_entry *entry;
+
+	if (!hfp)
+		return false;
+
+	DBG(hfp, "");
+
+	for (entry = queue_get_entries(hfp->calls); entry;
+					entry = entry->next) {
+		struct hf_call *call = entry->data;
+
+		if (call_setup_match(call, NULL) ||
+					call_active_match(call, NULL)) {
+			found_active = true;
+		} else if (call_held_match(call, NULL)) {
+			found_held = true;
+		}
+	}
+
+	if (!found_active && !found_held)
+		return false;
+
+	if (found_held && (hfp->chlds & HFP_CHLD_0)) {
+		if (!hfp_hf_send_command(hfp, resp_cb, user_data,
+							"AT+CHLD=0")) {
+			DBG(hfp, "Failed to hangup held calls");
+			return false;
+		}
+	}
+
+	if (found_active) {
+		if (!hfp_hf_send_command(hfp, resp_cb, user_data,
+							"AT+CHUP")) {
+			DBG(hfp, "Failed to hangup active calls");
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool hfp_hf_send_tones(struct hfp_hf *hfp, const char *tones,
+				hfp_response_func_t resp_cb,
+				void *user_data)
+{
+	if (!hfp)
+		return false;
+
+	DBG(hfp, "");
+
+	if (!queue_find(hfp->calls, call_active_match, NULL)) {
+		DBG(hfp, "hf: No active call to send tones");
+		return false;
+	}
+
+	return hfp_hf_send_command(hfp, resp_cb, user_data, "AT+VTS=%s",
+								tones);
+}
+
 bool hfp_hf_call_answer(struct hfp_hf *hfp, uint id,
 				hfp_response_func_t resp_cb,
 				void *user_data)
@@ -3024,4 +3227,20 @@ bool hfp_hf_call_hangup(struct hfp_hf *hfp, uint id,
 	}
 
 	return false;
+}
+
+bool hfp_hf_request_codec_connection(struct hfp_hf *hfp,
+				hfp_response_func_t resp_cb,
+				void *user_data)
+{
+	if (!hfp)
+		return false;
+
+	if (!(hfp->hf_features & HFP_HF_FEAT_CODEC_NEGOTIATION) ||
+			!(hfp->features & HFP_AG_FEAT_CODEC_NEGOTIATION)) {
+		DBG(hfp, "hf: Codec negotiation not supported");
+		return false;
+	}
+
+	return hfp_hf_send_command(hfp, resp_cb, user_data, "AT+BCC");
 }
