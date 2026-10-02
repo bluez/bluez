@@ -1392,7 +1392,7 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 					const void *data, uint16_t size)
 {
-	const struct bt_hci_acl_hdr *hdr = data;
+	const struct bt_hci_sco_hdr *hdr = data;
 	struct hci_dev *dev;
 	struct hci_conn *conn;
 
