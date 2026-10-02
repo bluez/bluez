@@ -141,3 +141,9 @@ boolean Connected [readonly, experimental]
 Indicates if the remote device is currently connected to BREDR bearer.
 
 A PropertiesChanged signal indicate changes to this status.
+
+boolean Connectable [readonly, experimental]
+````````````````````````````````````````````
+
+Indicates if the remote device accepts connections on BREDR bearer. BREDR
+devices are always considered connectable.

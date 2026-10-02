@@ -141,3 +141,15 @@ boolean Connected [readonly, experimental]
 Indicates if the remote device is currently connected to LE bearer.
 
 A PropertiesChanged signal indicate changes to this status.
+
+boolean Connectable [readonly, optional, experimental]
+``````````````````````````````````````````````````````
+
+Indicates if the remote device accepts connections on LE bearer, based on the
+most recent advertising report. It is false when the last advertising report
+was non-connectable, e.g. ADV_NONCONN_IND or ADV_SCAN_IND.
+
+The property is only present once the device has been discovered or connected
+over LE bearer.
+
+A PropertiesChanged signal indicate changes to this status.
