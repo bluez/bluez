@@ -463,6 +463,23 @@ static struct hci_conn *conn_lookup_type(struct hci_dev *dev, uint16_t handle,
 	return conn;
 }
 
+/*
+ * Look up a connection of either type, only allocating one of the first type
+ * when there is none, so the packets of the second type do not end up on a
+ * new connection each.
+ */
+static struct hci_conn *conn_lookup_types(struct hci_dev *dev,
+					uint16_t handle, uint8_t type1,
+					uint8_t type2)
+{
+	struct hci_conn *conn = conn_lookup(dev, handle);
+
+	if (conn && (conn->type == type1 || conn->type == type2))
+		return conn;
+
+	return conn_lookup_type(dev, handle, type1);
+}
+
 static void dev_destroy(void *data)
 {
 	struct hci_dev *dev = data;
@@ -1386,14 +1403,8 @@ static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 	dev->num_hci++;
 	dev->num_sco++;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_SCO);
-	if (!conn) {
-		conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_ESCO);
-		if (!conn)
-			return;
-	}
+	conn = conn_lookup_types(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+					BTMON_CONN_SCO, BTMON_CONN_ESCO);
 
 	if (out) {
 		conn_pkt_tx(conn, tv, size - sizeof(*hdr), NULL);
@@ -1481,14 +1492,8 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 	dev->num_hci++;
 	dev->num_iso++;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_CIS);
-	if (!conn) {
-		conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_BIS);
-		if (!conn)
-			return;
-	}
+	conn = conn_lookup_types(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+					BTMON_CONN_CIS, BTMON_CONN_BIS);
 
 	handle = le16_to_cpu(hdr->handle);
 	flags = ISO_FLAGS(handle);
