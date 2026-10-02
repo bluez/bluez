@@ -107,6 +107,7 @@ struct hci_conn {
 	struct hci_stats rx;
 	struct hci_stats tx;
 	struct packet_loss rx_loss;
+	struct packet_jitter rx_jitter;
 };
 
 struct hci_conn_tx {
@@ -380,14 +381,8 @@ static void conn_destroy(void *data)
 	print_stats(&conn->rx, "RX");
 	print_stats(&conn->tx, "TX");
 
-	if (conn->rx_loss.total)
-		print_field("RX loss: %zu/%zu (%zu.%02zu%%) "
-				"dropped %zu invalid %zu",
-				conn->rx_loss.lost, conn->rx_loss.total,
-				conn->rx_loss.lost * 100 / conn->rx_loss.total,
-				(conn->rx_loss.lost * 10000 /
-					conn->rx_loss.total) % 100,
-				conn->rx_loss.dropped, conn->rx_loss.invalid);
+	packet_loss_print(&conn->rx_loss, "RX");
+	packet_jitter_print(&conn->rx_jitter, "RX");
 
 	if (conn->setup_seen) {
 		print_field("Connected: #%lu", conn->frame_connected);
@@ -1060,6 +1055,15 @@ static void evt_sync_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	conn->setup_seen = true;
 }
 
+/* Nominal SDU interval of an unframed stream: ISO Interval over BN */
+static void set_iso_interval(struct hci_conn *conn, uint16_t interval,
+								uint8_t bn)
+{
+	if (bn)
+		conn->rx_jitter.interval = (uint32_t)le16_to_cpu(interval) *
+								1250 / bn;
+}
+
 static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
 					unsigned long frame,
 					struct iovec *iov)
@@ -1082,6 +1086,9 @@ static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
 	link = link_lookup(dev, conn->handle);
 	if (link)
 		memcpy(conn->bdaddr, link->bdaddr, 6);
+
+	/* Only the Peripheral gets a CIS Request for the handle */
+	set_iso_interval(conn, evt->interval, link ? evt->c_bn : evt->p_bn);
 }
 
 static void evt_le_cis_req(struct hci_dev *dev, struct timeval *tv,
@@ -1123,6 +1130,7 @@ static void evt_le_big_complete(struct hci_dev *dev, struct timeval *tv,
 		if (conn) {
 			conn->setup_seen = true;
 			conn->frame_connected = frame;
+			set_iso_interval(conn, evt->interval, evt->bn);
 		}
 	}
 }
@@ -1149,6 +1157,7 @@ static void evt_le_big_sync_established(struct hci_dev *dev, struct timeval *tv,
 		if (conn) {
 			conn->setup_seen = true;
 			conn->frame_connected = frame;
+			set_iso_interval(conn, evt->interval, evt->bn);
 		}
 	}
 }
@@ -1459,6 +1468,7 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 {
 	const struct bt_hci_iso_hdr *hdr = data;
 	struct iovec iov = { .iov_base = (void *)data, .iov_len = size };
+	const void *ts = NULL;
 	struct hci_conn *conn;
 	struct hci_dev *dev;
 	uint16_t handle;
@@ -1492,12 +1502,22 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 
 		/* Skip the timestamp when present */
 		if (ISO_FLAGS_TS(flags))
-			util_iov_pull_mem(&iov, sizeof(uint32_t));
+			ts = util_iov_pull_mem(&iov, sizeof(uint32_t));
 
 		start = util_iov_pull_mem(&iov, sizeof(*start));
-		if (start)
-			packet_loss_add(&conn->rx_loss, le16_to_cpu(start->sn),
+		if (start) {
+			uint16_t sn = le16_to_cpu(start->sn);
+
+			packet_loss_add(&conn->rx_loss, sn,
 				ISO_DATA_FLAGS(le16_to_cpu(start->slen)));
+
+			/* Prefer the controller timestamp over the SN */
+			if (ts)
+				packet_jitter_add_ts(&conn->rx_jitter, tv,
+								get_le32(ts));
+			else
+				packet_jitter_add_sn(&conn->rx_jitter, tv, sn);
+		}
 	}
 
 	if (out) {

@@ -93,6 +93,12 @@ OPTIONS
 -I, --iso                   Dump ISO stream traffic in raw hex format. Required
                             to see LE Audio isochronous data in the output.
 
+-Q MSEC, --quality MSEC     Print a summary of the received audio stream
+                            quality every MSEC milliseconds: erasures, the
+                            longest burst of erasures, jitter and late
+                            samples. Only LE Audio isochronous streams are
+                            currently supported.
+
 -E IP, --ellisys IP         Send Ellisys HCI Injection.
 
 -P, --no-pager              Disable pager usage while reading the log file.
