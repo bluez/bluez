@@ -68,6 +68,8 @@ static void usage(void)
 		"\t-S, --sco              Dump SCO traffic\n"
 		"\t-A, --a2dp             Dump A2DP stream traffic\n"
 		"\t-I, --iso              Dump ISO traffic\n"
+		"\t-Q, --quality <msec>   Print a periodic quality summary\n"
+		"\t                       of the audio streams\n"
 		"\t-E, --ellisys [ip]     Send Ellisys HCI Injection\n"
 		"\t-P, --no-pager         Disable pager usage\n"
 		"\t-0, --print0           Separate frames with a NUL, for a\n"
@@ -99,6 +101,7 @@ static const struct option main_options[] = {
 	{ "sco",       no_argument,       NULL, 'S' },
 	{ "a2dp",      no_argument,       NULL, 'A' },
 	{ "iso",       no_argument,       NULL, 'I' },
+	{ "quality",   required_argument, NULL, 'Q' },
 	{ "ellisys",   required_argument, NULL, 'E' },
 	{ "no-pager",  no_argument,       NULL, 'P' },
 	{ "print0",    no_argument,       NULL, '0' },
@@ -137,7 +140,7 @@ int main(int argc, char *argv[])
 		struct sockaddr_un addr;
 
 		opt = getopt_long(argc, argv,
-				"r:w:a:s:p:i:d:B:V:MKNtTSAIE:P0J:R:C:c:vh",
+				"r:w:a:s:p:i:d:B:V:MKNtTSAIQ:E:P0J:R:C:c:vh",
 				main_options, NULL);
 		if (opt < 0)
 			break;
@@ -213,6 +216,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'I':
 			filter_mask |= PACKET_FILTER_SHOW_ISO_DATA;
+			break;
+		case 'Q':
+			if (atoi(optarg) <= 0) {
+				usage();
+				return EXIT_FAILURE;
+			}
+			packet_set_quality_period(atoi(optarg));
 			break;
 		case 'E':
 			ellisys_server = optarg;

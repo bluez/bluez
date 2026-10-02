@@ -42,7 +42,56 @@ struct packet_loss {
 	size_t lost;		/* Samples missing from the SN sequence */
 	size_t invalid;		/* Samples flagged possibly invalid */
 	size_t dropped;		/* Samples flagged as lost data */
+	size_t partial;		/* Samples flagged as partially lost */
 	size_t total;		/* Samples seen, including the lost ones */
+	/* Bursts of erased samples, either missing or flagged as lost */
+	size_t erased;		/* Erased samples */
+	size_t burst;		/* Length of the burst in progress */
+	size_t burst_max;	/* Longest burst */
+	size_t burst_last;	/* Length of the last burst ended */
+	size_t bursts;		/* Bursts ended so far */
+	size_t burst_hist[5];	/* Burst lengths: 1, 2, 3-5, 6-10, >10 */
+	size_t good_lost;	/* Transitions from received to erased */
+	size_t lost_good;	/* Transitions from erased to received */
+	bool have_prev;
+	bool prev_erased;
+};
+
+struct packet_jitter {
+	uint32_t interval;	/* Nominal interval in usec, 0 if unknown */
+	uint8_t bn;		/* Samples delivered together, 0 if 1 */
+	uint64_t ext_sn;	/* Extended sequence number */
+	bool have_prev;
+	struct timeval prev_tv;
+	uint32_t prev_ts;
+	uint16_t prev_sn;
+	uint64_t jitter16;	/* RFC 3550 jitter in usec, scaled by 16 */
+	int64_t last_dev;	/* Deviation of the last sample in usec */
+	uint64_t max_dev;	/* Largest deviation in usec */
+	size_t late;		/* Samples deviating more than an interval */
+	struct packet_latency delta;	/* Arrival intervals */
+};
+
+/* RTP media stream, the clock rate is derived from the arrival times */
+struct packet_rtp {
+	struct packet_loss loss;
+	struct packet_jitter jitter;
+	uint32_t rate;		/* Clock rate in Hz, 0 until known */
+	size_t probe;		/* Samples taken to derive the rate */
+	struct timeval first_tv;
+	uint32_t first_ts;
+	uint32_t prev_ts;
+	uint8_t pt;		/* Payload type */
+	size_t gaps;		/* Pauses, such as a suspended stream */
+};
+
+/* Window of the periodic quality summary */
+struct packet_quality {
+	struct timeval start;
+	size_t erased;
+	size_t total;
+	size_t burst_max;
+	size_t late;
 };
 
 /* Protocols tracked for request and response matching */
@@ -83,6 +132,9 @@ struct packet_conn_data {
 	struct queue *chan_q;
 	struct packet_latency tx_l;
 	struct packet_loss rx_loss;
+	struct packet_jitter rx_jitter;
+	struct packet_quality rx_quality;
+	uint8_t  sco_rate;	/* SCO octets per msec, 0 if unknown */
 	struct queue *req_q;
 	void     *data;
 	void     (*destroy)(struct packet_conn_data *conn, void *data);
@@ -92,6 +144,28 @@ struct packet_conn_data *packet_get_conn_data(uint16_t handle);
 void packet_latency_add(struct packet_latency *latency, struct timeval *delta);
 long long packet_latency_stddev(const struct packet_latency *latency);
 void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags);
+size_t packet_loss_burst_max(const struct packet_loss *loss);
+bool packet_loss_burst_ratio(const struct packet_loss *loss, double *p,
+						double *q, double *ratio);
+void packet_loss_print(const struct packet_loss *loss, const char *label);
+void packet_loss_add_status(struct packet_loss *loss, uint8_t status);
+void packet_jitter_add(struct packet_jitter *jitter, struct timeval *tv,
+							uint32_t expected);
+uint8_t packet_sco_rate(uint8_t air_mode);
+void packet_jitter_add_sn(struct packet_jitter *jitter, struct timeval *tv,
+								uint16_t sn);
+void packet_jitter_add_ts(struct packet_jitter *jitter, struct timeval *tv,
+								uint32_t ts);
+void packet_jitter_print(const struct packet_jitter *jitter,
+							const char *label);
+bool packet_rtp_add(struct packet_rtp *rtp, struct timeval *tv,
+					const void *data, uint16_t size);
+void packet_rtp_print(const struct packet_rtp *rtp, const char *label);
+void packet_rtp_quality(struct timeval *tv, uint16_t index, uint16_t handle,
+				uint16_t cid, bool in, struct packet_rtp *rtp,
+				struct packet_quality *q, size_t erased,
+				size_t late);
+void packet_set_quality_period(unsigned int msec);
 
 void packet_get_context(struct timeval *tv, size_t *num);
 void packet_req_add(uint16_t handle, uint16_t cid, uint8_t proto, uint16_t id,

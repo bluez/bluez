@@ -107,6 +107,11 @@ struct hci_conn {
 	struct hci_stats rx;
 	struct hci_stats tx;
 	struct packet_loss rx_loss;
+	struct packet_jitter rx_jitter;
+	uint8_t sco_rate;
+	size_t lq_num;
+	struct bt_hci_rsp_le_read_iso_link_quality lq;
+	char iso_link[96];
 };
 
 struct hci_conn_tx {
@@ -127,6 +132,7 @@ struct l2cap_chan {
 	uint8_t mode;
 	bool out;
 	struct timeval last_rx;
+	struct packet_rtp rtp;
 	struct hci_stats rx;
 	struct hci_stats tx;
 };
@@ -296,6 +302,7 @@ static void chan_destroy(void *data)
 
 	print_stats(&chan->rx, "RX");
 	print_stats(&chan->tx, "TX");
+	packet_rtp_print(&chan->rtp, chan->out ? "TX" : "RX");
 
 done:
 	queue_destroy(chan->rx.plot, free);
@@ -380,14 +387,25 @@ static void conn_destroy(void *data)
 	print_stats(&conn->rx, "RX");
 	print_stats(&conn->tx, "TX");
 
-	if (conn->rx_loss.total)
-		print_field("RX loss: %zu/%zu (%zu.%02zu%%) "
-				"dropped %zu invalid %zu",
-				conn->rx_loss.lost, conn->rx_loss.total,
-				conn->rx_loss.lost * 100 / conn->rx_loss.total,
-				(conn->rx_loss.lost * 10000 /
-					conn->rx_loss.total) % 100,
-				conn->rx_loss.dropped, conn->rx_loss.invalid);
+	if (conn->iso_link[0])
+		print_field("Link: %s", conn->iso_link);
+
+	packet_loss_print(&conn->rx_loss, "RX");
+	packet_jitter_print(&conn->rx_jitter, "RX");
+
+	if (conn->lq_num) {
+		print_field("Link quality: %zu reads", conn->lq_num);
+		print_field("  TX unacked %u flushed %u last subevent %u "
+				"retransmitted %u",
+				le32_to_cpu(conn->lq.tx_unacked_packets),
+				le32_to_cpu(conn->lq.tx_flushed_packets),
+				le32_to_cpu(conn->lq.tx_last_subevent_packets),
+				le32_to_cpu(conn->lq.retransmitted_packets));
+		print_field("  RX CRC errors %u unreceived %u duplicated %u",
+				le32_to_cpu(conn->lq.crc_error_packets),
+				le32_to_cpu(conn->lq.rx_unreceived_packets),
+				le32_to_cpu(conn->lq.duplicated_packets));
+	}
 
 	if (conn->setup_seen) {
 		print_field("Connected: #%lu", conn->frame_connected);
@@ -466,6 +484,23 @@ static struct hci_conn *conn_lookup_type(struct hci_dev *dev, uint16_t handle,
 	}
 
 	return conn;
+}
+
+/*
+ * Look up a connection of either type, only allocating one of the first type
+ * when there is none, so the packets of the second type do not end up on a
+ * new connection each.
+ */
+static struct hci_conn *conn_lookup_types(struct hci_dev *dev,
+					uint16_t handle, uint8_t type1,
+					uint8_t type2)
+{
+	struct hci_conn *conn = conn_lookup(dev, handle);
+
+	if (conn && (conn->type == type1 || conn->type == type2))
+		return conn;
+
+	return conn_lookup_type(dev, handle, type1);
 }
 
 static void dev_destroy(void *data)
@@ -889,6 +924,24 @@ static void rsp_read_bd_addr(struct hci_dev *dev, struct timeval *tv,
 	memcpy(dev->bdaddr, rsp->bdaddr, 6);
 }
 
+static void rsp_le_read_iso_link_quality(struct hci_dev *dev,
+					const void *data, uint16_t size)
+{
+	const struct bt_hci_rsp_le_read_iso_link_quality *rsp = data;
+	struct hci_conn *conn;
+
+	if (size < sizeof(*rsp) || rsp->status)
+		return;
+
+	conn = conn_lookup(dev, le16_to_cpu(rsp->handle));
+	if (!conn)
+		return;
+
+	/* The counters are cumulative so the last read has them all */
+	conn->lq = *rsp;
+	conn->lq_num++;
+}
+
 static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
@@ -905,6 +958,9 @@ static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 	switch (opcode) {
 	case BT_HCI_CMD_READ_BD_ADDR:
 		rsp_read_bd_addr(dev, tv, data, size);
+		break;
+	case BT_HCI_CMD_LE_READ_ISO_LINK_QUALITY:
+		rsp_le_read_iso_link_quality(dev, data, size);
 		break;
 	}
 }
@@ -1051,13 +1107,38 @@ static void evt_sync_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	if (evt->status)
 		return;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), evt->link_type);
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle),
+				evt->link_type ? BTMON_CONN_ESCO :
+				BTMON_CONN_SCO);
 	if (!conn)
 		return;
 
 	memcpy(conn->bdaddr, evt->bdaddr, 6);
 	conn->frame_connected = frame;
 	conn->setup_seen = true;
+	conn->sco_rate = packet_sco_rate(evt->air_mode);
+}
+
+/* Nominal SDU interval of an unframed stream: ISO Interval over BN */
+static void set_iso_interval(struct hci_conn *conn, uint16_t interval,
+								uint8_t bn)
+{
+	if (!bn)
+		return;
+
+	conn->rx_jitter.interval = (uint32_t)le16_to_cpu(interval) * 1250 / bn;
+	conn->rx_jitter.bn = bn;
+}
+
+static void set_bis_link(struct hci_conn *conn, uint16_t interval,
+				uint8_t nse, uint8_t bn, uint8_t pto,
+				uint8_t irc, const uint8_t *latency)
+{
+	snprintf(conn->iso_link, sizeof(conn->iso_link), "ISO interval "
+			"%u.%02u msec NSE %u BN %u PTO %u IRC %u latency %u "
+			"usec", le16_to_cpu(interval) * 125 / 100,
+			le16_to_cpu(interval) * 125 % 100, nse, bn, pto, irc,
+			get_le24(latency));
 }
 
 static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
@@ -1082,6 +1163,18 @@ static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
 	link = link_lookup(dev, conn->handle);
 	if (link)
 		memcpy(conn->bdaddr, link->bdaddr, 6);
+
+	/* Only the Peripheral gets a CIS Request for the handle */
+	set_iso_interval(conn, evt->interval, link ? evt->c_bn : evt->p_bn);
+
+	snprintf(conn->iso_link, sizeof(conn->iso_link), "ISO interval "
+			"%u.%02u msec NSE %u BN %u/%u FT %u/%u latency %u/%u "
+			"usec (C/P)",
+			le16_to_cpu(evt->interval) * 125 / 100,
+			le16_to_cpu(evt->interval) * 125 % 100, evt->nse,
+			evt->c_bn, evt->p_bn, evt->c_ft, evt->p_ft,
+			get_le24(evt->c_latency),
+			get_le24(evt->p_latency));
 }
 
 static void evt_le_cis_req(struct hci_dev *dev, struct timeval *tv,
@@ -1123,6 +1216,9 @@ static void evt_le_big_complete(struct hci_dev *dev, struct timeval *tv,
 		if (conn) {
 			conn->setup_seen = true;
 			conn->frame_connected = frame;
+			set_iso_interval(conn, evt->interval, evt->bn);
+			set_bis_link(conn, evt->interval, evt->nse, evt->bn,
+					evt->pto, evt->irc, evt->latency);
 		}
 	}
 }
@@ -1149,6 +1245,9 @@ static void evt_le_big_sync_established(struct hci_dev *dev, struct timeval *tv,
 		if (conn) {
 			conn->setup_seen = true;
 			conn->frame_connected = frame;
+			set_iso_interval(conn, evt->interval, evt->bn);
+			set_bis_link(conn, evt->interval, evt->nse, evt->bn,
+					evt->pto, evt->irc, evt->latency);
 		}
 	}
 }
@@ -1347,12 +1446,23 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	switch (le16_to_cpu(hdr->handle) >> 12) {
 	case 0x00:
 	case 0x02:
+		/* The start of a frame carries the L2CAP header */
+		if (size < 4)
+			break;
+
 		cid = get_le16(data + 2);
 		chan = chan_lookup(conn, cid, out);
 		if (cid == 1)
 			l2cap_sig(conn, out, data + 4, size - 4);
 		else if (cid == 5)
 			l2cap_le_sig(conn, out, data + 4, size - 4);
+		else if (chan && cid >= 0x0040 &&
+				(chan->psm == 0x0019 || !chan->psm))
+			/*
+			 * AVDTP media transport, also attempted on channels
+			 * whose setup was not captured.
+			 */
+			packet_rtp_add(&chan->rtp, tv, data + 4, size - 4);
 		break;
 	}
 
@@ -1366,7 +1476,7 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 					const void *data, uint16_t size)
 {
-	const struct bt_hci_acl_hdr *hdr = data;
+	const struct bt_hci_sco_hdr *hdr = data;
 	struct hci_dev *dev;
 	struct hci_conn *conn;
 
@@ -1377,13 +1487,20 @@ static void sco_pkt(struct timeval *tv, uint16_t index, bool out,
 	dev->num_hci++;
 	dev->num_sco++;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_SCO);
-	if (!conn) {
-		conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_ESCO);
-		if (!conn)
-			return;
+	conn = conn_lookup_types(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+					BTMON_CONN_SCO, BTMON_CONN_ESCO);
+
+	if (!out && size > sizeof(*hdr)) {
+		uint8_t status = (le16_to_cpu(hdr->handle) >> 12) & 0x03;
+
+		packet_loss_add_status(&conn->rx_loss, status);
+
+		if (conn->sco_rate) {
+			conn->rx_jitter.interval = hdr->dlen * 1000 /
+							conn->sco_rate;
+			packet_jitter_add(&conn->rx_jitter, tv,
+						conn->rx_jitter.interval);
+		}
 	}
 
 	if (out) {
@@ -1459,6 +1576,7 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 {
 	const struct bt_hci_iso_hdr *hdr = data;
 	struct iovec iov = { .iov_base = (void *)data, .iov_len = size };
+	const void *ts = NULL;
 	struct hci_conn *conn;
 	struct hci_dev *dev;
 	uint16_t handle;
@@ -1471,14 +1589,8 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 	dev->num_hci++;
 	dev->num_iso++;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_CIS);
-	if (!conn) {
-		conn = conn_lookup_type(dev, le16_to_cpu(hdr->handle) & 0x0fff,
-							BTMON_CONN_BIS);
-		if (!conn)
-			return;
-	}
+	conn = conn_lookup_types(dev, le16_to_cpu(hdr->handle) & 0x0fff,
+					BTMON_CONN_CIS, BTMON_CONN_BIS);
 
 	handle = le16_to_cpu(hdr->handle);
 	flags = ISO_FLAGS(handle);
@@ -1492,12 +1604,22 @@ static void iso_pkt(struct timeval *tv, uint16_t index, bool out,
 
 		/* Skip the timestamp when present */
 		if (ISO_FLAGS_TS(flags))
-			util_iov_pull_mem(&iov, sizeof(uint32_t));
+			ts = util_iov_pull_mem(&iov, sizeof(uint32_t));
 
 		start = util_iov_pull_mem(&iov, sizeof(*start));
-		if (start)
-			packet_loss_add(&conn->rx_loss, le16_to_cpu(start->sn),
+		if (start) {
+			uint16_t sn = le16_to_cpu(start->sn);
+
+			packet_loss_add(&conn->rx_loss, sn,
 				ISO_DATA_FLAGS(le16_to_cpu(start->slen)));
+
+			/* Prefer the controller timestamp over the SN */
+			if (ts)
+				packet_jitter_add_ts(&conn->rx_jitter, tv,
+								get_le32(ts));
+			else
+				packet_jitter_add_sn(&conn->rx_jitter, tv, sn);
+		}
 	}
 
 	if (out) {

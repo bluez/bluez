@@ -768,6 +768,64 @@ static bool avdtp_signalling_packet(struct avdtp_frame *avdtp_frame)
 	return true;
 }
 
+#define MAX_STREAM 8
+
+/* Media transport channels, tracked for their RTP quality */
+static struct avdtp_stream {
+	bool used;
+	uint16_t index;
+	uint16_t handle;
+	uint16_t cid;
+	bool in;
+	struct packet_rtp rtp;
+	struct packet_quality q;
+} stream_list[MAX_STREAM];
+
+static struct avdtp_stream *stream_lookup(const struct l2cap_frame *frame)
+{
+	struct avdtp_stream *stream;
+	static unsigned int next;
+	int i;
+
+	for (i = 0; i < MAX_STREAM; i++) {
+		stream = &stream_list[i];
+
+		if (stream->used && stream->index == frame->index &&
+				stream->handle == frame->handle &&
+				stream->cid == frame->cid &&
+				stream->in == frame->in)
+			return stream;
+	}
+
+	/* Take over the oldest stream when all are used */
+	stream = &stream_list[next++ % MAX_STREAM];
+	memset(stream, 0, sizeof(*stream));
+	stream->used = true;
+	stream->index = frame->index;
+	stream->handle = frame->handle;
+	stream->cid = frame->cid;
+	stream->in = frame->in;
+
+	return stream;
+}
+
+static void avdtp_media_packet(const struct l2cap_frame *frame)
+{
+	struct avdtp_stream *stream = stream_lookup(frame);
+	struct timeval tv = frame->tv;
+	size_t erased = stream->rtp.loss.erased;
+	size_t late = stream->rtp.jitter.late;
+
+	if (!packet_rtp_add(&stream->rtp, timerisset(&tv) ? &tv : NULL,
+						frame->data, frame->size))
+		return;
+
+	packet_rtp_quality(timerisset(&tv) ? &tv : NULL, frame->index,
+				frame->handle, frame->cid,
+				frame->in, &stream->rtp, &stream->q, erased,
+				late);
+}
+
 void avdtp_packet(const struct l2cap_frame *frame)
 {
 	struct avdtp_frame avdtp_frame;
@@ -780,6 +838,7 @@ void avdtp_packet(const struct l2cap_frame *frame)
 		ret = avdtp_signalling_packet(&avdtp_frame);
 		break;
 	default:
+		avdtp_media_packet(frame);
 		if (packet_has_filter(PACKET_FILTER_SHOW_A2DP_STREAM))
 			packet_hexdump(frame->data, frame->size);
 		return;
