@@ -72,6 +72,19 @@ struct packet_jitter {
 	struct packet_latency delta;	/* Arrival intervals */
 };
 
+/* RTP media stream, the clock rate is derived from the arrival times */
+struct packet_rtp {
+	struct packet_loss loss;
+	struct packet_jitter jitter;
+	uint32_t rate;		/* Clock rate in Hz, 0 until known */
+	size_t probe;		/* Samples taken to derive the rate */
+	struct timeval first_tv;
+	uint32_t first_ts;
+	uint32_t prev_ts;
+	uint8_t pt;		/* Payload type */
+	size_t gaps;		/* Pauses, such as a suspended stream */
+};
+
 /* Window of the periodic quality summary */
 struct packet_quality {
 	struct timeval start;
@@ -145,6 +158,13 @@ void packet_jitter_add_ts(struct packet_jitter *jitter, struct timeval *tv,
 								uint32_t ts);
 void packet_jitter_print(const struct packet_jitter *jitter,
 							const char *label);
+bool packet_rtp_add(struct packet_rtp *rtp, struct timeval *tv,
+					const void *data, uint16_t size);
+void packet_rtp_print(const struct packet_rtp *rtp, const char *label);
+void packet_rtp_quality(struct timeval *tv, uint16_t index, uint16_t handle,
+				uint16_t cid, bool in, struct packet_rtp *rtp,
+				struct packet_quality *q, size_t erased,
+				size_t late);
 void packet_set_quality_period(unsigned int msec);
 
 void packet_get_context(struct timeval *tv, size_t *num);

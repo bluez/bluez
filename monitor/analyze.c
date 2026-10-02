@@ -132,6 +132,7 @@ struct l2cap_chan {
 	uint8_t mode;
 	bool out;
 	struct timeval last_rx;
+	struct packet_rtp rtp;
 	struct hci_stats rx;
 	struct hci_stats tx;
 };
@@ -301,6 +302,7 @@ static void chan_destroy(void *data)
 
 	print_stats(&chan->rx, "RX");
 	print_stats(&chan->tx, "TX");
+	packet_rtp_print(&chan->rtp, chan->out ? "TX" : "RX");
 
 done:
 	queue_destroy(chan->rx.plot, free);
@@ -1444,12 +1446,23 @@ static void acl_pkt(struct timeval *tv, uint16_t index, bool out,
 	switch (le16_to_cpu(hdr->handle) >> 12) {
 	case 0x00:
 	case 0x02:
+		/* The start of a frame carries the L2CAP header */
+		if (size < 4)
+			break;
+
 		cid = get_le16(data + 2);
 		chan = chan_lookup(conn, cid, out);
 		if (cid == 1)
 			l2cap_sig(conn, out, data + 4, size - 4);
 		else if (cid == 5)
 			l2cap_le_sig(conn, out, data + 4, size - 4);
+		else if (chan && cid >= 0x0040 &&
+				(chan->psm == 0x0019 || !chan->psm))
+			/*
+			 * AVDTP media transport, also attempted on channels
+			 * whose setup was not captured.
+			 */
+			packet_rtp_add(&chan->rtp, tv, data + 4, size - 4);
 		break;
 	}
 

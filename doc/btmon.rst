@@ -96,8 +96,9 @@ OPTIONS
 -Q MSEC, --quality MSEC     Print a summary of the received audio stream
                             quality every MSEC milliseconds: erasures, the
                             longest burst of erasures, jitter and late
-                            samples. Only LE Audio isochronous streams are
-                            currently supported.
+                            samples. Covers LE Audio isochronous streams,
+                            SCO/eSCO data over HCI and the RTP of A2DP media
+                            channels.
 
 -E IP, --ellisys IP         Send Ellisys HCI Injection.
 
