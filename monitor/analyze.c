@@ -1063,7 +1063,9 @@ static void evt_sync_conn_complete(struct hci_dev *dev, struct timeval *tv,
 	if (evt->status)
 		return;
 
-	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle), evt->link_type);
+	conn = conn_lookup_type(dev, le16_to_cpu(evt->handle),
+				evt->link_type ? BTMON_CONN_ESCO :
+				BTMON_CONN_SCO);
 	if (!conn)
 		return;
 
