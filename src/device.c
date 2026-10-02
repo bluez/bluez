@@ -3856,6 +3856,19 @@ bool btd_device_bdaddr_type_connected(struct btd_device *dev, uint8_t type)
 	return dev->le_state.connected;
 }
 
+bool btd_device_bdaddr_type_connectable(struct btd_device *dev, uint8_t type)
+{
+	if (type == BDADDR_BREDR)
+		return true;
+
+	return dev->le_state.connectable;
+}
+
+bool btd_device_bdaddr_type_seen(struct btd_device *dev, uint8_t type)
+{
+	return get_state(dev, type)->last_seen != 0;
+}
+
 static void clear_temporary_timer(struct btd_device *dev)
 {
 	if (dev->temporary_timer) {
@@ -5399,8 +5412,10 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type,
 	struct bearer_state *state;
 	bool known = device_connectable_known(device);
 	bool was_connectable = device_is_connectable(device);
+	bool changed;
 
 	state = get_state(device, bdaddr_type);
+	changed = !state->last_seen || state->connectable != connectable;
 
 	state->last_seen = time(NULL);
 	state->connectable = connectable;
@@ -5409,6 +5424,9 @@ void device_update_last_seen(struct btd_device *device, uint8_t bdaddr_type,
 			was_connectable != device_is_connectable(device))
 		g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "Connectable");
+
+	if (changed && bdaddr_type != BDADDR_BREDR)
+		btd_bearer_connectable(device->le);
 
 	if (!device_is_temporary(device))
 		return;

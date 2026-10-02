@@ -249,6 +249,31 @@ static gboolean bearer_get_connected(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean bearer_get_connectable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_bearer *bearer = data;
+	dbus_bool_t connectable;
+
+	connectable = btd_device_bdaddr_type_connectable(bearer->device,
+								bearer->type);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &connectable);
+
+	return TRUE;
+}
+
+static gboolean bearer_connectable_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_bearer *bearer = data;
+
+	if (bearer->type == BDADDR_BREDR)
+		return TRUE;
+
+	return btd_device_bdaddr_type_seen(bearer->device, bearer->type);
+}
+
 static const GDBusSignalTable bearer_signals[] = {
 	{ GDBUS_SIGNAL("Disconnected",
 			GDBUS_ARGS({ "name", "s" }, { "message", "s" })) },
@@ -263,6 +288,9 @@ static const GDBusPropertyTable bearer_properties[] = {
 	{ "Bonded", "b", bearer_get_bonded, NULL, NULL,
 			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Connected", "b", bearer_get_connected, NULL, NULL,
+			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Connectable", "b", bearer_get_connectable, NULL,
+			bearer_connectable_exists,
 			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{}
 };
@@ -352,6 +380,16 @@ void btd_bearer_bonded(struct btd_bearer *bearer)
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
 					bearer_interface(bearer->type),
 					"Bonded");
+}
+
+void btd_bearer_connectable(struct btd_bearer *bearer)
+{
+	if (!bearer || !bearer->path)
+		return;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
+					bearer_interface(bearer->type),
+					"Connectable");
 }
 
 void btd_bearer_connected(struct btd_bearer *bearer, int err)
