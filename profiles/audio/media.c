@@ -353,8 +353,18 @@ static struct media_adapter *find_adapter(struct btd_device *device)
 static void endpoint_remove_transport(struct media_endpoint *endpoint,
 					struct media_transport *transport)
 {
+	GSList *l;
+
 	if (!endpoint || !transport)
 		return;
+
+	/* Pending requests must not refer to the transport once freed */
+	for (l = endpoint->requests; l; l = l->next) {
+		struct endpoint_request *request = l->data;
+
+		if (request->transport == transport)
+			request->transport = NULL;
+	}
 
 	endpoint->transports = g_slist_remove(endpoint->transports, transport);
 	media_transport_destroy(transport);
