@@ -109,6 +109,9 @@ struct hci_conn {
 	struct packet_loss rx_loss;
 	struct packet_jitter rx_jitter;
 	uint8_t sco_rate;
+	size_t lq_num;
+	struct bt_hci_rsp_le_read_iso_link_quality lq;
+	char iso_link[96];
 };
 
 struct hci_conn_tx {
@@ -382,8 +385,25 @@ static void conn_destroy(void *data)
 	print_stats(&conn->rx, "RX");
 	print_stats(&conn->tx, "TX");
 
+	if (conn->iso_link[0])
+		print_field("Link: %s", conn->iso_link);
+
 	packet_loss_print(&conn->rx_loss, "RX");
 	packet_jitter_print(&conn->rx_jitter, "RX");
+
+	if (conn->lq_num) {
+		print_field("Link quality: %zu reads", conn->lq_num);
+		print_field("  TX unacked %u flushed %u last subevent %u "
+				"retransmitted %u",
+				le32_to_cpu(conn->lq.tx_unacked_packets),
+				le32_to_cpu(conn->lq.tx_flushed_packets),
+				le32_to_cpu(conn->lq.tx_last_subevent_packets),
+				le32_to_cpu(conn->lq.retransmitted_packets));
+		print_field("  RX CRC errors %u unreceived %u duplicated %u",
+				le32_to_cpu(conn->lq.crc_error_packets),
+				le32_to_cpu(conn->lq.rx_unreceived_packets),
+				le32_to_cpu(conn->lq.duplicated_packets));
+	}
 
 	if (conn->setup_seen) {
 		print_field("Connected: #%lu", conn->frame_connected);
@@ -902,6 +922,24 @@ static void rsp_read_bd_addr(struct hci_dev *dev, struct timeval *tv,
 	memcpy(dev->bdaddr, rsp->bdaddr, 6);
 }
 
+static void rsp_le_read_iso_link_quality(struct hci_dev *dev,
+					const void *data, uint16_t size)
+{
+	const struct bt_hci_rsp_le_read_iso_link_quality *rsp = data;
+	struct hci_conn *conn;
+
+	if (size < sizeof(*rsp) || rsp->status)
+		return;
+
+	conn = conn_lookup(dev, le16_to_cpu(rsp->handle));
+	if (!conn)
+		return;
+
+	/* The counters are cumulative so the last read has them all */
+	conn->lq = *rsp;
+	conn->lq_num++;
+}
+
 static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 					const void *data, uint16_t size)
 {
@@ -918,6 +956,9 @@ static void evt_cmd_complete(struct hci_dev *dev, struct timeval *tv,
 	switch (opcode) {
 	case BT_HCI_CMD_READ_BD_ADDR:
 		rsp_read_bd_addr(dev, tv, data, size);
+		break;
+	case BT_HCI_CMD_LE_READ_ISO_LINK_QUALITY:
+		rsp_le_read_iso_link_quality(dev, data, size);
 		break;
 	}
 }
@@ -1080,9 +1121,22 @@ static void evt_sync_conn_complete(struct hci_dev *dev, struct timeval *tv,
 static void set_iso_interval(struct hci_conn *conn, uint16_t interval,
 								uint8_t bn)
 {
-	if (bn)
-		conn->rx_jitter.interval = (uint32_t)le16_to_cpu(interval) *
-								1250 / bn;
+	if (!bn)
+		return;
+
+	conn->rx_jitter.interval = (uint32_t)le16_to_cpu(interval) * 1250 / bn;
+	conn->rx_jitter.bn = bn;
+}
+
+static void set_bis_link(struct hci_conn *conn, uint16_t interval,
+				uint8_t nse, uint8_t bn, uint8_t pto,
+				uint8_t irc, const uint8_t *latency)
+{
+	snprintf(conn->iso_link, sizeof(conn->iso_link), "ISO interval "
+			"%u.%02u msec NSE %u BN %u PTO %u IRC %u latency %u "
+			"usec", le16_to_cpu(interval) * 125 / 100,
+			le16_to_cpu(interval) * 125 % 100, nse, bn, pto, irc,
+			get_le24(latency));
 }
 
 static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
@@ -1110,6 +1164,15 @@ static void evt_le_cis_established(struct hci_dev *dev, struct timeval *tv,
 
 	/* Only the Peripheral gets a CIS Request for the handle */
 	set_iso_interval(conn, evt->interval, link ? evt->c_bn : evt->p_bn);
+
+	snprintf(conn->iso_link, sizeof(conn->iso_link), "ISO interval "
+			"%u.%02u msec NSE %u BN %u/%u FT %u/%u latency %u/%u "
+			"usec (C/P)",
+			le16_to_cpu(evt->interval) * 125 / 100,
+			le16_to_cpu(evt->interval) * 125 % 100, evt->nse,
+			evt->c_bn, evt->p_bn, evt->c_ft, evt->p_ft,
+			get_le24(evt->c_latency),
+			get_le24(evt->p_latency));
 }
 
 static void evt_le_cis_req(struct hci_dev *dev, struct timeval *tv,
@@ -1152,6 +1215,8 @@ static void evt_le_big_complete(struct hci_dev *dev, struct timeval *tv,
 			conn->setup_seen = true;
 			conn->frame_connected = frame;
 			set_iso_interval(conn, evt->interval, evt->bn);
+			set_bis_link(conn, evt->interval, evt->nse, evt->bn,
+					evt->pto, evt->irc, evt->latency);
 		}
 	}
 }
@@ -1179,6 +1244,8 @@ static void evt_le_big_sync_established(struct hci_dev *dev, struct timeval *tv,
 			conn->setup_seen = true;
 			conn->frame_connected = frame;
 			set_iso_interval(conn, evt->interval, evt->bn);
+			set_bis_link(conn, evt->interval, evt->nse, evt->bn,
+					evt->pto, evt->irc, evt->latency);
 		}
 	}
 }

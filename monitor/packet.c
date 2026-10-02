@@ -12161,7 +12161,7 @@ static void jitter_add(struct packet_jitter *jitter, struct timeval *tv,
 							int64_t expected)
 {
 	struct timeval delta;
-	int64_t arrival, d;
+	int64_t arrival, d, period;
 
 	timersub(tv, &jitter->prev_tv, &delta);
 	jitter->prev_tv = *tv;
@@ -12177,7 +12177,8 @@ static void jitter_add(struct packet_jitter *jitter, struct timeval *tv,
 	jitter->last_dev = d;
 
 	/* A sample arriving an interval or more later than expected */
-	if (jitter->interval && d >= jitter->interval)
+	period = (int64_t)jitter->interval * (jitter->bn > 1 ? jitter->bn : 1);
+	if (jitter->interval && d >= period)
 		jitter->late++;
 
 	if (d < 0)
@@ -12212,6 +12213,7 @@ void packet_jitter_add_sn(struct packet_jitter *jitter, struct timeval *tv,
 	if (!jitter->have_prev) {
 		jitter->prev_tv = *tv;
 		jitter->prev_sn = sn;
+		jitter->ext_sn = sn;
 		jitter->have_prev = true;
 		return;
 	}
@@ -12221,7 +12223,18 @@ void packet_jitter_add_sn(struct packet_jitter *jitter, struct timeval *tv,
 		return;
 
 	jitter->prev_sn = sn;
-	jitter_add(jitter, tv, (int64_t)diff * jitter->interval);
+	jitter->ext_sn += diff;
+
+	/*
+	 * With a burst number above one the samples of an ISO interval are
+	 * delivered together, so pace them by the interval they belong to.
+	 */
+	if (jitter->bn > 1)
+		jitter_add(jitter, tv, (int64_t)(jitter->ext_sn / jitter->bn -
+				(jitter->ext_sn - diff) / jitter->bn) *
+				jitter->interval * jitter->bn);
+	else
+		jitter_add(jitter, tv, (int64_t)diff * jitter->interval);
 }
 
 void packet_jitter_add_ts(struct packet_jitter *jitter, struct timeval *tv,
@@ -13617,6 +13630,7 @@ static void set_iso_interval(uint16_t handle, uint16_t interval, uint8_t bn)
 		return;
 
 	conn->rx_jitter.interval = (uint32_t)le16_to_cpu(interval) * 1250 / bn;
+	conn->rx_jitter.bn = bn;
 }
 
 static void le_cis_established_evt(struct timeval *tv, uint16_t index,

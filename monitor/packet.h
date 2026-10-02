@@ -59,6 +59,8 @@ struct packet_loss {
 
 struct packet_jitter {
 	uint32_t interval;	/* Nominal interval in usec, 0 if unknown */
+	uint8_t bn;		/* Samples delivered together, 0 if 1 */
+	uint64_t ext_sn;	/* Extended sequence number */
 	bool have_prev;
 	struct timeval prev_tv;
 	uint32_t prev_ts;
