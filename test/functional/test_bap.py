@@ -4,6 +4,7 @@
 Tests for BAP (LE Audio) using bluetoothctl in VM instances
 """
 
+import os
 import threading
 import time
 import warnings
@@ -280,6 +281,106 @@ def test_bap_unicast_transport_acquire(unicast_hosts):
             f"Transport {right} State: active",
         ],
     )
+
+
+def resume_transports(paths, delay):
+    """Release and reacquire all CIS in a CIG through the same D-Bus owner."""
+    bus = None
+    interfaces = []
+    fds = {}
+
+    @mainloop_wrap
+    def setup():
+        nonlocal bus, interfaces
+        bus = get_dbus(private=True)
+        interfaces = [
+            dbus.Interface(
+                bus.get_object("org.bluez", path, introspect=False),
+                "org.bluez.MediaTransport1",
+            )
+            for path in paths
+        ]
+
+    def operation(method):
+        done = threading.Event()
+        replies = []
+        errors = []
+
+        def finished(index, error=None, values=()):
+            replies.append(index)
+            if error is not None:
+                errors.append((paths[index], str(error)))
+            elif method == "Acquire" and tuple(type(value) for value in values) == (
+                dbus.types.UnixFd,
+                dbus.UInt16,
+                dbus.UInt16,
+            ):
+                fds[index] = values[0].take()
+            elif method == "Acquire" or values:
+                # Release has an empty reply: a late ready callback must not
+                # answer it with an Acquire payload. Dispose of any stray FDs.
+                for value in values:
+                    if isinstance(value, dbus.types.UnixFd):
+                        os.close(value.take())
+                errors.append((paths[index], f"invalid {method} reply"))
+            if len(replies) == len(paths):
+                done.set()
+
+        @mainloop_wrap
+        def submit():
+            for index, interface in enumerate(interfaces):
+                if method == "Release":
+                    os.close(fds.pop(index))
+                getattr(interface, method)(
+                    reply_handler=lambda *values, i=index: finished(i, values=values),
+                    error_handler=lambda error, i=index: finished(i, error=error),
+                    timeout=DEFAULT_TIMEOUT,
+                )
+
+        submit()
+        assert done.wait(DEFAULT_TIMEOUT + 1), f"{method} did not complete"
+        assert not errors, (method, errors)
+
+    @mainloop_wrap
+    def check_active():
+        objects = dbus.Interface(
+            bus.get_object("org.bluez", "/"),
+            "org.freedesktop.DBus.ObjectManager",
+        ).GetManagedObjects()
+        for path in paths:
+            assert objects[path]["org.bluez.MediaTransport1"]["State"] == "active"
+
+    @mainloop_wrap
+    def cleanup():
+        for fd in fds.values():
+            os.close(fd)
+        fds.clear()
+        if bus is not None:
+            bus.close()
+
+    try:
+        setup()
+        operation("Acquire")
+        check_active()
+        for _ in range(3):
+            # Close the client sockets before Release, then reacquire as soon
+            # as both replies arrive (or after a short playback pause).
+            operation("Release")
+            if delay:
+                time.sleep(delay)
+            operation("Acquire")
+            check_active()
+    finally:
+        cleanup()
+
+
+@unicast_host_config
+@pytest.mark.parametrize("delay", [0, 0.1, 1.0])
+def test_bap_unicast_transport_resume(unicast_hosts, delay):
+    host0, host1, initiator, acceptor = unicast_hosts
+    transports = expect_transports(initiator)
+    expect_transports(acceptor)
+    host0.call(resume_transports, transports, delay)
 
 
 def clear_remote_transports(remote):

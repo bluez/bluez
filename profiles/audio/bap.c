@@ -2576,12 +2576,17 @@ static void update_cig_setup_io(void *data, void *match_data)
 	struct update_cig_data *info = match_data;
 	struct bt_bap_stream *stream = setup->stream;
 	struct bt_bap_qos *qos = bt_bap_stream_get_qos(stream);
+	uint8_t state;
 
 	if (qos && qos->ucast.cig_id != info->cig)
 		return;
 	if (!setup->want_io || !stream || setup->io || setup->closing)
 		return;
-	if (bt_bap_stream_get_state(stream) != BT_BAP_STREAM_STATE_QOS)
+
+	/* Enable may complete while the previous IO is still disconnecting. */
+	state = bt_bap_stream_get_state(stream);
+	if (state != BT_BAP_STREAM_STATE_QOS &&
+					state != BT_BAP_STREAM_STATE_ENABLING)
 		return;
 
 	DBG("%p", setup);

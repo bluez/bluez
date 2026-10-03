@@ -1952,8 +1952,16 @@ static void bap_resume_complete(struct media_transport *transport)
 	if (!owner)
 		return;
 
-	if (owner->pending)
+	if (owner->pending) {
+		const char *member;
+
+		member = dbus_message_get_member(owner->pending->msg);
+		/* A late ready event must not complete a pending Release. */
+		if (strcmp(member, "Acquire") && strcmp(member, "TryAcquire"))
+			return;
+
 		owner->pending->id = 0;
+	}
 
 	if (transport->fd < 0) {
 		media_transport_remove_owner(transport);

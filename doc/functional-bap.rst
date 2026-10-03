@@ -105,6 +105,26 @@ test_bap_unicast_transport_acquire
 	be established, as `bluetoothd` sets up the ISO listener on its own
 	when the stream is enabled.
 
+test_bap_unicast_transport_resume[0|0.1|1.0]
+------------------------------------------
+
+:Setup: As above, with both transports already created.
+
+:Steps:
+	1. Acquire both transports through one D-Bus connection.
+	2. Close both acquired sockets and call ``MediaTransport1.Release``
+	   for both transports without waiting between requests.
+	3. After both replies, reacquire immediately or after 0.1 or 1 second.
+	4. Repeat the release/reacquire cycle three times.
+
+:Expected: Each ``Release`` succeeds with an empty reply. Every ``Acquire``
+	returns an FD and MTUs, and both transports become active again.
+
+:Notes: D-Bus is used directly to check the Release reply signature and
+	close the client sockets before releasing the transports. A late ready
+	callback must not answer a pending Release with an Acquire payload.
+	These tests do not force ISO disconnection to overlap the next Enable.
+
 test_bap_unicast_reconfigure_metadata[empty|media]
 ------------------------------------------------
 
