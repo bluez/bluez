@@ -8656,6 +8656,18 @@ static const struct generic_data add_ext_advertising_success_4 = {
 	.expect_hci_len = sizeof(set_ext_adv_data_txpwr),
 };
 
+static const char set_ext_adv_disable_param_0[] = {
+	0x00,		/* Disable */
+	0x01,		/* No of sets */
+	0x00,		/* Handle */
+	0x00, 0x00,	/* Duration */
+	0x00,		/* Max events */
+};
+
+/* With extended advertising instance 1 is already advertising alongside
+ * Global Advertising (instance 0), so disabling it shall only disable the
+ * advertising set used by instance 0.
+ */
 static const struct generic_data add_ext_advertising_success_5 = {
 	.send_opcode = MGMT_OP_SET_ADVERTISING,
 	.send_param = set_adv_off_param,
@@ -8663,9 +8675,61 @@ static const struct generic_data add_ext_advertising_success_5 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_powered_ext_adv_instance_settings_param,
 	.expect_len = sizeof(set_powered_ext_adv_instance_settings_param),
-	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_DATA,
-	.expect_hci_param = set_ext_adv_data_test1,
-	.expect_hci_len = sizeof(set_ext_adv_data_test1),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE,
+	.expect_hci_param = set_ext_adv_disable_param_0,
+	.expect_hci_len = sizeof(set_ext_adv_disable_param_0),
+};
+
+static uint16_t settings_powered_le_advertising[] = { MGMT_OP_SET_LE,
+					MGMT_OP_SET_ADVERTISING,
+					MGMT_OP_SET_POWERED, 0 };
+
+/* Instances not sharing the advertising set of Global Advertising
+ * (instance 0) shall be advertised right away.
+ */
+static const struct generic_data add_ext_advertising_global_adv = {
+	.setup_settings = settings_powered_le_advertising,
+	.send_opcode = MGMT_OP_ADD_ADVERTISING,
+	.send_param = add_advertising_param_uuid,
+	.send_len = sizeof(add_advertising_param_uuid),
+	.expect_param = advertising_instance1_param,
+	.expect_len = sizeof(advertising_instance1_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_ADVERTISING_ADDED,
+	.expect_alt_ev_param = advertising_instance1_param,
+	.expect_alt_ev_len = sizeof(advertising_instance1_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE,
+	.expect_hci_param = set_ext_adv_on_set_adv_enable_param,
+	.expect_hci_len = sizeof(set_ext_adv_on_set_adv_enable_param),
+};
+
+static const struct generic_data adv_data_global_adv = {
+	.setup_settings = settings_powered_le_advertising,
+	.send_opcode = MGMT_OP_ADD_EXT_ADV_DATA,
+	.send_param = ext_adv_data_valid,
+	.send_len = sizeof(ext_adv_data_valid),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = ext_adv_data_mgmt_rsp_valid,
+	.expect_len = sizeof(ext_adv_data_mgmt_rsp_valid),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE,
+	.expect_hci_param = set_ext_adv_on_set_adv_enable_param,
+	.expect_hci_len = sizeof(set_ext_adv_on_set_adv_enable_param),
+};
+
+/* Removing the last instance shall not disable Global Advertising */
+static const struct generic_data remove_ext_advertising_global_adv = {
+	.send_opcode = MGMT_OP_REMOVE_ADVERTISING,
+	.send_param = remove_advertising_param_1,
+	.send_len = sizeof(remove_advertising_param_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = remove_advertising_param_1,
+	.expect_len = sizeof(remove_advertising_param_1),
+	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
+	.expect_alt_ev_param = advertising_instance1_param,
+	.expect_alt_ev_len = sizeof(advertising_instance1_param),
+	.expect_hci_command = BT_HCI_CMD_LE_REMOVE_ADV_SET,
+	.expect_hci_param = advertising_instance1_param,
+	.expect_hci_len = sizeof(advertising_instance1_param),
 };
 
 static const struct generic_data add_ext_advertising_success_6 = {
@@ -12071,6 +12135,32 @@ static void test_command_generic(const void *test_data)
 	test_add_condition(data);
 }
 
+static void global_adv_disable_hci_callback(uint16_t opcode,
+					const void *param, uint8_t length,
+					void *user_data)
+{
+	const uint8_t *cp = param;
+
+	if (opcode != BT_HCI_CMD_LE_SET_EXT_ADV_ENABLE || length < 2)
+		return;
+
+	/* Fail if all sets, including Global Advertising, are disabled */
+	if (!cp[0] && !cp[1]) {
+		tester_warn("Global Advertising disabled");
+		tester_test_failed();
+	}
+}
+
+static void test_command_global_adv(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	hciemu_add_central_post_command_hook(data->hciemu,
+					global_adv_disable_hci_callback, data);
+
+	test_command_generic(test_data);
+}
+
 static void setup_set_static_addr_success_2(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -14627,6 +14717,10 @@ int main(int argc, char *argv[])
 					setup_set_and_add_advertising,
 					test_command_generic);
 
+	test_bredrle50("Add Ext Advertising - Success (Global Adv)",
+					&add_ext_advertising_global_adv,
+					NULL, test_command_generic);
+
 	test_bredrle50("Add Ext Advertising - Success 6 (Scan Rsp Dta, Adv ok)",
 					&add_ext_advertising_success_6,
 					NULL, test_command_generic);
@@ -14807,6 +14901,11 @@ int main(int argc, char *argv[])
 						setup_add_advertising,
 						test_command_generic);
 
+	test_bredrle50("Remove Ext Advertising - Success (Global Adv)",
+					&remove_ext_advertising_global_adv,
+					setup_set_and_add_advertising,
+					test_command_global_adv);
+
 	/* When advertising two instances, the instances should be
 	 * advertised in a round-robin fashion.
 	 */
@@ -14986,6 +15085,11 @@ int main(int argc, char *argv[])
 
 	test_bredrle50("Ext Adv MGMT - AD Data (5.0) Success",
 				&adv_data_success,
+				setup_ext_adv_params,
+				test_command_generic);
+
+	test_bredrle50("Ext Adv MGMT - AD Data (5.0) Success (Global Adv)",
+				&adv_data_global_adv,
 				setup_ext_adv_params,
 				test_command_generic);
 
