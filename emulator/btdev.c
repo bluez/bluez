@@ -5537,17 +5537,19 @@ static bool ext_adv_broadcast(void *user_data)
 
 		/* if scannable bit is set the send scan response */
 		if (ext_adv->type & 0x02) {
+			uint16_t rsp_type;
+
 			if (ext_adv->type == 0x13)
-				report_type = 0x1b;
+				rsp_type = 0x1b;
 			else if (ext_adv->type == 0x12)
-				report_type = 0x1a;
+				rsp_type = 0x1a;
 			else if (!(ext_adv->type & 0x10))
-				report_type |= 0x08;
+				rsp_type = report_type | 0x08;
 			else
 				continue;
 
 			send_ext_adv(btdev_list[i], btdev, ext_adv,
-							report_type, true);
+							rsp_type, true);
 		}
 	}
 
