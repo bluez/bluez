@@ -5542,7 +5542,7 @@ static bool ext_adv_broadcast(void *user_data)
 			else if (ext_adv->type == 0x12)
 				report_type = 0x1a;
 			else if (!(ext_adv->type & 0x10))
-				report_type &= 0x08;
+				report_type |= 0x08;
 			else
 				continue;
 
