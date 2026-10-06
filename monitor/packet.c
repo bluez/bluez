@@ -114,6 +114,7 @@
 static time_t time_offset = ((time_t) -1);
 static int priority_level = BTSNOOP_PRIORITY_DEBUG;
 static unsigned long filter_mask = 0;
+static unsigned int quality_period;
 static bool index_filter = false;
 static uint16_t index_current = 0;
 static uint16_t fallback_manufacturer = COMPANY_ID_UNKNOWN;
@@ -11974,8 +11975,62 @@ long long packet_latency_stddev(const struct packet_latency *latency)
 	return (long long)sqrt(var);
 }
 
+static void loss_burst_end(struct packet_loss *loss)
+{
+	size_t len = loss->burst;
+
+	if (!len)
+		return;
+
+	loss->bursts++;
+	loss->burst_last = len;
+
+	if (len == 1)
+		loss->burst_hist[0]++;
+	else if (len == 2)
+		loss->burst_hist[1]++;
+	else if (len <= 5)
+		loss->burst_hist[2]++;
+	else if (len <= 10)
+		loss->burst_hist[3]++;
+	else
+		loss->burst_hist[4]++;
+
+	loss->burst = 0;
+}
+
+static void loss_sample(struct packet_loss *loss, bool erased, size_t count)
+{
+	if (!count)
+		return;
+
+	if (loss->have_prev && loss->prev_erased != erased) {
+		if (erased)
+			loss->good_lost++;
+		else
+			loss->lost_good++;
+	}
+
+	if (erased) {
+		loss->erased += count;
+		loss->burst += count;
+		if (loss->burst > loss->burst_max)
+			loss->burst_max = loss->burst;
+	} else {
+		loss_burst_end(loss);
+	}
+
+	loss->prev_erased = erased;
+	loss->have_prev = true;
+}
+
+/* How far back a sequence number may go to be considered a reorder */
+#define LOSS_REORDER_MAX 16
+
 void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags)
 {
+	bool advanced = true;
+
 	loss->total++;
 
 	switch (sflags) {
@@ -11998,11 +12053,351 @@ void packet_loss_add(struct packet_loss *loss, uint16_t sn, uint8_t sflags)
 		if (sn != loss->last_sn && gap < 0x8000) {
 			loss->lost += gap;
 			loss->total += gap;
+			loss_sample(loss, true, gap);
+		} else if ((uint16_t)(loss->last_sn - sn) < LOSS_REORDER_MAX) {
+			advanced = false;
+
+			/* A late arrival of a sample already counted as lost */
+			if (sn != loss->last_sn && loss->lost) {
+				loss->lost--;
+				loss->total--;
+			}
 		}
 	}
 
+	/* Duplicates and reorders do not take part in the bursts */
+	if (!advanced)
+		return;
+
+	loss_sample(loss, sflags == 0x02, 1);
+
+	/* Anything further back than a reorder restarts the sequence */
 	loss->last_sn = sn;
 	loss->have_sn = true;
+}
+
+/* Packet_Status_Flag of SCO data, reported with Erroneous Data Reporting */
+void packet_loss_add_status(struct packet_loss *loss, uint8_t status)
+{
+	loss->total++;
+
+	switch (status) {
+	case 0x01:
+		loss->invalid++;
+		break;
+	case 0x02:
+		loss->dropped++;
+		break;
+	case 0x03:
+		loss->partial++;
+		break;
+	}
+
+	loss_sample(loss, status == 0x02 || status == 0x03, 1);
+}
+
+size_t packet_loss_burst_max(const struct packet_loss *loss)
+{
+	return loss->burst_max;
+}
+
+/*
+ * Two state Gilbert model of the erasures: p is the probability of going
+ * from received to erased and q the one of going back, the burst ratio
+ * being how much burstier the erasures are than random ones.
+ */
+bool packet_loss_burst_ratio(const struct packet_loss *loss, double *p,
+						double *q, double *ratio)
+{
+	size_t good = loss->total - loss->erased;
+
+	if (!loss->erased || !good)
+		return false;
+
+	*p = (double)loss->good_lost / good;
+	*q = (double)loss->lost_good / loss->erased;
+
+	if (*p + *q <= 0)
+		return false;
+
+	*ratio = 1 / (*p + *q);
+
+	return true;
+}
+
+void packet_loss_print(const struct packet_loss *loss, const char *label)
+{
+	struct packet_loss tmp = *loss;
+	double p, q, ratio;
+
+	if (!loss->total)
+		return;
+
+	print_field("%s loss: %zu/%zu (%zu.%02zu%%) missing %zu dropped %zu "
+				"invalid %zu partial %zu", label, loss->erased,
+				loss->total, loss->erased * 100 / loss->total,
+				(loss->erased * 10000 / loss->total) % 100,
+				loss->lost, loss->dropped, loss->invalid,
+				loss->partial);
+
+	/* Account for the burst still in progress */
+	loss_burst_end(&tmp);
+
+	if (!tmp.bursts)
+		return;
+
+	print_field("%s bursts: %zu (max %zu) [1: %zu, 2: %zu, 3-5: %zu, "
+			"6-10: %zu, >10: %zu]", label, tmp.bursts,
+			tmp.burst_max, tmp.burst_hist[0], tmp.burst_hist[1],
+			tmp.burst_hist[2], tmp.burst_hist[3],
+			tmp.burst_hist[4]);
+
+	if (packet_loss_burst_ratio(loss, &p, &q, &ratio))
+		print_field("%s burstiness: p %.4f q %.4f BurstR %.2f", label,
+								p, q, ratio);
+}
+
+static void jitter_add(struct packet_jitter *jitter, struct timeval *tv,
+							int64_t expected)
+{
+	struct timeval delta;
+	int64_t arrival, d, period;
+
+	timersub(tv, &jitter->prev_tv, &delta);
+	jitter->prev_tv = *tv;
+
+	packet_latency_add(&jitter->delta, &delta);
+
+	/*
+	 * RFC 3550 interarrival jitter: the difference of the transit times
+	 * of two consecutive samples, smoothed with a gain of 1/16.
+	 */
+	arrival = (int64_t)delta.tv_sec * 1000000 + delta.tv_usec;
+	d = arrival - expected;
+	jitter->last_dev = d;
+
+	/* A sample arriving an interval or more later than expected */
+	period = (int64_t)jitter->interval * (jitter->bn > 1 ? jitter->bn : 1);
+	if (jitter->interval && d >= period)
+		jitter->late++;
+
+	if (d < 0)
+		d = -d;
+
+	if ((uint64_t)d > jitter->max_dev)
+		jitter->max_dev = d;
+
+	jitter->jitter16 += (uint64_t)d - ((jitter->jitter16 + 8) >> 4);
+}
+
+void packet_jitter_add(struct packet_jitter *jitter, struct timeval *tv,
+							uint32_t expected)
+{
+	if (!jitter->have_prev) {
+		jitter->prev_tv = *tv;
+		jitter->have_prev = true;
+		return;
+	}
+
+	jitter_add(jitter, tv, expected);
+}
+
+void packet_jitter_add_sn(struct packet_jitter *jitter, struct timeval *tv,
+								uint16_t sn)
+{
+	uint16_t diff = sn - jitter->prev_sn;
+
+	if (!jitter->interval)
+		return;
+
+	if (!jitter->have_prev) {
+		jitter->prev_tv = *tv;
+		jitter->prev_sn = sn;
+		jitter->ext_sn = sn;
+		jitter->have_prev = true;
+		return;
+	}
+
+	/* Leave the duplicates and the reorders out */
+	if (!diff || diff >= 0x8000)
+		return;
+
+	jitter->prev_sn = sn;
+	jitter->ext_sn += diff;
+
+	/*
+	 * With a burst number above one the samples of an ISO interval are
+	 * delivered together, so pace them by the interval they belong to.
+	 */
+	if (jitter->bn > 1)
+		jitter_add(jitter, tv, (int64_t)(jitter->ext_sn / jitter->bn -
+				(jitter->ext_sn - diff) / jitter->bn) *
+				jitter->interval * jitter->bn);
+	else
+		jitter_add(jitter, tv, (int64_t)diff * jitter->interval);
+}
+
+void packet_jitter_add_ts(struct packet_jitter *jitter, struct timeval *tv,
+								uint32_t ts)
+{
+	uint32_t diff = ts - jitter->prev_ts;
+
+	if (!jitter->have_prev) {
+		jitter->prev_tv = *tv;
+		jitter->prev_ts = ts;
+		jitter->have_prev = true;
+		return;
+	}
+
+	if (!diff || diff >= 0x80000000)
+		return;
+
+	jitter->prev_ts = ts;
+	jitter_add(jitter, tv, diff);
+}
+
+static const uint32_t rtp_rates[] = {
+	8000, 16000, 22050, 24000, 32000, 44100, 48000, 88200, 90000, 96000,
+};
+
+/* Number of samples to derive the RTP clock rate from */
+#define RTP_PROBE 100
+
+/* Pause in the arrivals that restarts the pacing, in seconds */
+#define RTP_GAP_SEC 1
+
+static uint32_t rtp_rate(uint64_t ts, uint64_t usec)
+{
+	uint32_t best = 0;
+	uint64_t rate, best_diff = UINT64_MAX;
+	size_t i;
+
+	if (!usec)
+		return 0;
+
+	rate = ts * 1000000 / usec;
+
+	for (i = 0; i < ARRAY_SIZE(rtp_rates); i++) {
+		uint64_t diff = rate > rtp_rates[i] ? rate - rtp_rates[i] :
+							rtp_rates[i] - rate;
+
+		if (diff < best_diff) {
+			best_diff = diff;
+			best = rtp_rates[i];
+		}
+	}
+
+	return best;
+}
+
+/*
+ * Account a RTP packet, which is recognized by its version and a dynamic
+ * payload type, the latter never matching an AVDTP signal identifier.
+ */
+bool packet_rtp_add(struct packet_rtp *rtp, struct timeval *tv,
+					const void *data, uint16_t size)
+{
+	const uint8_t *hdr = data;
+	uint16_t seq;
+	uint32_t ts, diff;
+	struct timeval delta;
+
+	if (size < 12 || (hdr[0] & 0xc0) != 0x80 || (hdr[1] & 0x7f) < 96)
+		return false;
+
+	seq = get_be16(hdr + 2);
+	ts = get_be32(hdr + 4);
+
+	packet_loss_add(&rtp->loss, seq, 0);
+	rtp->pt = hdr[1] & 0x7f;
+
+	if (!tv)
+		return true;
+
+	if (!rtp->probe++) {
+		rtp->first_tv = *tv;
+		rtp->first_ts = ts;
+		rtp->prev_ts = ts;
+		return true;
+	}
+
+	if (!rtp->rate) {
+		if (rtp->probe < RTP_PROBE)
+			return true;
+
+		timersub(tv, &rtp->first_tv, &delta);
+		rtp->rate = rtp_rate(ts - rtp->first_ts,
+				(uint64_t)delta.tv_sec * 1000000 +
+				delta.tv_usec);
+		if (!rtp->rate)
+			return true;
+
+		rtp->jitter.prev_tv = *tv;
+		rtp->jitter.have_prev = true;
+		rtp->prev_ts = ts;
+		return true;
+	}
+
+	diff = ts - rtp->prev_ts;
+
+	/* Leave the duplicates and the reorders out */
+	if (!diff || diff >= 0x80000000)
+		return true;
+
+	rtp->prev_ts = ts;
+
+	/*
+	 * A pause, such as the stream being suspended and started again,
+	 * restarts the pacing instead of accounting the packet as late.
+	 */
+	timersub(tv, &rtp->jitter.prev_tv, &delta);
+	if (delta.tv_sec >= RTP_GAP_SEC) {
+		rtp->jitter.prev_tv = *tv;
+		rtp->gaps++;
+		return true;
+	}
+
+	/* A packet is late once it misses the time its data takes to play */
+	rtp->jitter.interval = (uint64_t)diff * 1000000 / rtp->rate;
+	jitter_add(&rtp->jitter, tv, rtp->jitter.interval);
+
+	return true;
+}
+
+void packet_rtp_print(const struct packet_rtp *rtp, const char *label)
+{
+	if (!rtp->loss.total)
+		return;
+
+	print_field("%s RTP: payload type %u clock %u Hz gaps %zu", label,
+						rtp->pt, rtp->rate, rtp->gaps);
+	packet_loss_print(&rtp->loss, label);
+	packet_jitter_print(&rtp->jitter, label);
+}
+
+void packet_jitter_print(const struct packet_jitter *jitter,
+							const char *label)
+{
+	uint64_t j = jitter->jitter16 >> 4;
+
+	if (!jitter->delta.count)
+		return;
+
+	print_field("%s jitter: %" PRIu64 ".%02" PRIu64 " msec (max %"
+			PRIu64 ".%02" PRIu64 " msec, late %zu)", label,
+			j / 1000, (j % 1000) / 10,
+			jitter->max_dev / 1000, (jitter->max_dev % 1000) / 10,
+			jitter->late);
+
+	if (jitter->interval)
+		print_field("%s interval: %u.%02u msec (%lld-%lld msec, "
+				"~%lld msec +/- %lld msec)", label,
+				jitter->interval / 1000,
+				(jitter->interval % 1000) / 10,
+				TV_MSEC(jitter->delta.min),
+				TV_MSEC(jitter->delta.max),
+				TV_MSEC(jitter->delta.med),
+				packet_latency_stddev(&jitter->delta));
 }
 
 /*
@@ -12385,11 +12780,18 @@ static void sync_conn_complete_evt(struct timeval *tv, uint16_t index,
 	print_field("TX packet length: %d", le16_to_cpu(evt->tx_pkt_len));
 	print_air_mode(evt->air_mode);
 
-	if (evt->status == 0x00)
+	if (evt->status == 0x00) {
+		struct packet_conn_data *conn;
+
 		assign_handle(index, le16_to_cpu(evt->handle),
 					evt->link_type ? BTMON_CONN_ESCO :
 					BTMON_CONN_SCO,
 					(void *)evt->bdaddr, BDADDR_BREDR);
+
+		conn = packet_get_conn_data(le16_to_cpu(evt->handle));
+		if (conn)
+			conn->sco_rate = packet_sco_rate(evt->air_mode);
+	}
 }
 
 static void sync_conn_changed_evt(struct timeval *tv, uint16_t index,
@@ -13338,6 +13740,18 @@ static void le_past_received_evt(struct timeval *tv, uint16_t index,
 	print_clock_accuracy(evt->clock_accuracy);
 }
 
+/* Nominal SDU interval of an unframed stream: ISO Interval over BN */
+static void set_iso_interval(uint16_t handle, uint16_t interval, uint8_t bn)
+{
+	struct packet_conn_data *conn = packet_get_conn_data(handle);
+
+	if (!conn || !bn)
+		return;
+
+	conn->rx_jitter.interval = (uint32_t)le16_to_cpu(interval) * 1250 / bn;
+	conn->rx_jitter.bn = bn;
+}
+
 static void le_cis_established_evt(struct timeval *tv, uint16_t index,
 					const void *data, uint8_t size)
 {
@@ -13360,10 +13774,16 @@ static void le_cis_established_evt(struct timeval *tv, uint16_t index,
 	print_field("Peripheral to Central MTU: %u", le16_to_cpu(evt->p_mtu));
 	print_slot_125("ISO Interval", evt->interval);
 
-	if (!evt->status)
-		assign_handle(index, le16_to_cpu(evt->conn_handle),
-					BTMON_CONN_CIS,
-					NULL, BDADDR_LE_PUBLIC);
+	if (!evt->status) {
+		uint16_t handle = le16_to_cpu(evt->conn_handle);
+
+		assign_handle(index, handle, BTMON_CONN_CIS, NULL,
+							BDADDR_LE_PUBLIC);
+
+		/* Only the Peripheral gets a CIS Request for the handle */
+		set_iso_interval(handle, evt->interval,
+				lookup_parent(handle) ? evt->c_bn : evt->p_bn);
+	}
 }
 
 static void le_req_cis_evt(struct timeval *tv, uint16_t index,
@@ -13411,10 +13831,13 @@ static void le_big_complete_evt(struct timeval *tv, uint16_t index,
 	if (!evt->status) {
 		int i;
 
-		for (i = 0; i < evt->num_bis; i++)
+		for (i = 0; i < evt->num_bis; i++) {
 			assign_handle(index, le16_to_cpu(evt->bis_handle[i]),
 					BTMON_CONN_BIS, NULL,
 					BDADDR_LE_PUBLIC);
+			set_iso_interval(le16_to_cpu(evt->bis_handle[i]),
+						evt->interval, evt->bn);
+		}
 	}
 }
 
@@ -13447,9 +13870,12 @@ static void le_big_sync_estabilished_evt(struct timeval *tv, uint16_t index,
 	if (!evt->status) {
 		int i;
 
-		for (i = 0; i < evt->num_bis; i++)
+		for (i = 0; i < evt->num_bis; i++) {
 			assign_handle(index, le16_to_cpu(evt->bis[i]),
 					BTMON_CONN_BIS, NULL, BDADDR_LE_PUBLIC);
+			set_iso_interval(le16_to_cpu(evt->bis[i]),
+						evt->interval, evt->bn);
+		}
 	}
 }
 
@@ -15084,6 +15510,143 @@ void packet_hci_acldata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	packet_set_context(NULL, 0);
 }
 
+static void print_quality(struct packet_loss *loss,
+				struct packet_jitter *jitter, size_t erased,
+				size_t late, uint8_t status, size_t burst)
+{
+	/* Only report the samples that revealed a loss or arrived late */
+	if (loss->erased != erased || status)
+		print_field("Lost: %zu/%zu (%zu.%02zu%%) missing %zu "
+				"dropped %zu invalid %zu partial %zu burst %zu",
+				loss->erased, loss->total,
+				loss->erased * 100 / loss->total,
+				(loss->erased * 10000 / loss->total) % 100,
+				loss->lost, loss->dropped, loss->invalid,
+				loss->partial, burst);
+
+	if (jitter->late != late)
+		print_field("Late: +%" PRId64 ".%02" PRId64 " msec "
+				"(interval %u.%02u msec)",
+				jitter->last_dev / 1000,
+				(jitter->last_dev % 1000) / 10,
+				jitter->interval / 1000,
+				(jitter->interval % 1000) / 10);
+}
+
+void packet_set_quality_period(unsigned int msec)
+{
+	quality_period = msec;
+}
+
+static void quality_window(struct packet_quality *q, struct timeval *tv,
+				struct packet_loss *loss,
+				struct packet_jitter *jitter)
+{
+	q->start = *tv;
+	q->erased = loss->erased;
+	q->total = loss->total;
+	q->late = jitter->late;
+	q->burst_max = loss->burst;
+}
+
+static void quality_summary(struct timeval *tv, uint16_t index,
+				const char *name, const char *dir,
+				struct packet_quality *q,
+				struct packet_loss *loss,
+				struct packet_jitter *jitter,
+				struct packet_latency *tx_l, size_t burst)
+{
+	struct timeval delta;
+	size_t erased, total;
+	uint64_t j;
+
+	if (!quality_period || !tv)
+		return;
+
+	if (burst > q->burst_max)
+		q->burst_max = burst;
+
+	if (!timerisset(&q->start)) {
+		quality_window(q, tv, loss, jitter);
+		return;
+	}
+
+	timersub(tv, &q->start, &delta);
+	if (TV_MSEC(delta) < quality_period)
+		return;
+
+	erased = loss->erased - q->erased;
+	total = loss->total - q->total;
+	j = jitter->jitter16 >> 4;
+
+	print_packet(tv, NULL, '=', index, NULL, COLOR_SYSTEM_NOTE,
+						"Quality", name, NULL);
+
+	print_field("%s loss: %zu/%zu (%zu.%02zu%%) burst max %zu", dir,
+			erased, total, total ? erased * 100 / total : 0,
+			total ? (erased * 10000 / total) % 100 : 0,
+			q->burst_max);
+
+	if (jitter->delta.count)
+		print_field("%s jitter: %" PRIu64 ".%02" PRIu64 " msec "
+				"late %zu", dir, j / 1000, (j % 1000) / 10,
+				jitter->late - q->late);
+
+	if (tx_l && tx_l->count)
+		print_field("TX latency: ~%lld msec", TV_MSEC(tx_l->med));
+
+	quality_window(q, tv, loss, jitter);
+}
+
+static void stream_quality(struct timeval *tv, uint16_t index,
+				const char *name, const char *dir,
+				struct packet_quality *q,
+				struct packet_loss *loss,
+				struct packet_jitter *jitter,
+				struct packet_latency *tx_l, size_t erased,
+				size_t late, uint8_t status)
+{
+	size_t burst = loss->burst;
+
+	/* A burst that this sample has just ended */
+	if (!burst && loss->erased != erased)
+		burst = loss->burst_last;
+
+	print_quality(loss, jitter, erased, late, status, burst);
+	quality_summary(tv, index, name, dir, q, loss, jitter, tx_l, burst);
+}
+
+static void rx_quality(struct timeval *tv, uint16_t index,
+				struct packet_conn_data *conn, size_t erased,
+				size_t late, uint8_t status)
+{
+	char name[32];
+
+	snprintf(name, sizeof(name), "%s %u", conn_type_str(conn->type),
+							conn->handle);
+
+	stream_quality(tv, index, name, "RX", &conn->rx_quality,
+				&conn->rx_loss, &conn->rx_jitter, &conn->tx_l,
+				erased, late, status);
+}
+
+void packet_rtp_quality(struct timeval *tv, uint16_t index, uint16_t handle,
+				uint16_t cid, bool in, struct packet_rtp *rtp,
+				struct packet_quality *q, size_t erased,
+				size_t late)
+{
+	char name[32];
+
+	snprintf(name, sizeof(name), "A2DP %u CID 0x%4.4x", handle, cid);
+
+	stream_quality(tv, index, name, in ? "RX" : "TX", q, &rtp->loss,
+				&rtp->jitter, NULL, erased, late, 0);
+}
+
+static void sco_rx_quality(struct timeval *tv, struct ucred *cred,
+				uint16_t index, struct packet_conn_data *conn,
+				uint8_t status, uint8_t dlen);
+
 void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 				bool in, const void *data, uint16_t size)
 {
@@ -15145,8 +15708,68 @@ void packet_hci_scodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		return;
 	}
 
+	if (in && conn)
+		sco_rx_quality(tv, cred, index, conn, flags & 0x03,
+								hdr->dlen);
+
 	if (filter_mask & PACKET_FILTER_SHOW_SCO_DATA)
 		packet_hexdump(data, size);
+}
+
+static const char *sco_status_str(uint8_t status)
+{
+	switch (status) {
+	case 0x01:
+		return "Possibly invalid";
+	case 0x02:
+		return "No data";
+	case 0x03:
+		return "Partially lost";
+	}
+
+	return "Correct";
+}
+
+/* Octets per msec of the host data, as configured by the air mode */
+uint8_t packet_sco_rate(uint8_t air_mode)
+{
+	switch (air_mode) {
+	case 0x00:
+	case 0x01:
+		/* 8 kHz 8-bit logarithmic */
+		return 8;
+	case 0x02:
+		/* 8 kHz 16-bit linear */
+		return 16;
+	case 0x03:
+		/* 64 kb/s transparent: mSBC, LC3-SWB */
+		return 8;
+	}
+
+	return 0;
+}
+
+static void sco_rx_quality(struct timeval *tv, struct ucred *cred,
+				uint16_t index, struct packet_conn_data *conn,
+				uint8_t status, uint8_t dlen)
+{
+	size_t erased = conn->rx_loss.erased;
+	size_t late = conn->rx_jitter.late;
+
+	if (status)
+		print_field("Status: %s (0x%2.2x)", sco_status_str(status),
+								status);
+
+	packet_loss_add_status(&conn->rx_loss, status);
+
+	if (tv && conn->sco_rate) {
+		/* The data of a packet takes that long to play */
+		conn->rx_jitter.interval = dlen * 1000 / conn->sco_rate;
+		packet_jitter_add(&conn->rx_jitter, tv,
+						conn->rx_jitter.interval);
+	}
+
+	rx_quality(tv, index, conn, erased, late, status);
 }
 
 void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
@@ -15164,6 +15787,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	bool have_hdr;
 	uint16_t sn = 0;
 	uint8_t sflags = 0;
+	uint32_t ts = 0;
+	size_t erased = 0, late = 0;
 
 	if (index >= MAX_INDEX) {
 		print_field("Invalid index (%d).", index);
@@ -15194,7 +15819,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 		if (size < ts_size || !have_hdr)
 			goto malformed;
 
-		snprintf(ts_str, sizeof(ts_str), " ts %u", get_le32(data));
+		ts = get_le32(data);
+		snprintf(ts_str, sizeof(ts_str), " ts %u", ts);
 
 		data += ts_size;
 		size -= ts_size;
@@ -15223,8 +15849,18 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 
 	conn = packet_get_conn_data(handle);
 
-	if (in && have_hdr && conn)
+	if (in && have_hdr && conn) {
+		erased = conn->rx_loss.erased;
+		late = conn->rx_jitter.late;
+
 		packet_loss_add(&conn->rx_loss, sn, sflags);
+
+		/* Prefer the controller timestamp over the SN pacing */
+		if (tv && ts_size)
+			packet_jitter_add_ts(&conn->rx_jitter, tv, ts);
+		else if (tv)
+			packet_jitter_add_sn(&conn->rx_jitter, tv, sn);
+	}
 
 	if (!in && pool->total)
 		sprintf(handle_str, "Handle %d [%u/%u]%s",
@@ -15245,17 +15881,8 @@ void packet_hci_isodata(struct timeval *tv, struct ucred *cred, uint16_t index,
 	print_packet(tv, cred, in ? '>' : '<', index, NULL, COLOR_HCI_ISODATA,
 				label, handle_str, extra_str);
 
-	if (in && conn) {
-		struct packet_loss *loss = &conn->rx_loss;
-
-		if (loss->lost || loss->dropped || loss->invalid)
-			print_field("Lost: %zu/%zu (%zu.%02zu%%) "
-				"dropped %zu invalid %zu",
-				loss->lost, loss->total,
-				loss->lost * 100 / loss->total,
-				(loss->lost * 10000 / loss->total) % 100,
-				loss->dropped, loss->invalid);
-	}
+	if (in && have_hdr && conn)
+		rx_quality(tv, index, conn, erased, late, sflags);
 
 	if (!in)
 		packet_enqueue_tx(tv, acl_handle(handle),
