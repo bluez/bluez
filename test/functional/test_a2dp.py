@@ -142,3 +142,61 @@ def test_a2dp_transport_acquire(a2dp_hosts):
     source.expect(r"Acquire successful: fd \d+ MTU \d+:\d+")
 
     source.expect(f"Transport {transport} State: active")
+
+
+def start_bluetoothctl_manual_sink(host):
+    """
+    Start bluetoothctl registering an A2DP Sink endpoint that does not
+    auto accept, so that SetConfiguration is left pending until the
+    Accept prompt is answered.
+    """
+    exe = find_exe("client", "bluetoothctl")
+    ctl = host.pexpect.spawn([exe])
+
+    ctl.send("power on\n")
+    ctl.expect("Changing power on succeeded")
+
+    ctl.send(f"endpoint.register {A2DP_SINK_UUID} 0x00\n")
+    ctl.expect(r"Auto Accept \(yes/no\):")
+    ctl.send("no\n")
+    ctl.expect(r"Max Transports \(auto/value\):")
+    ctl.send("a\n")
+    ctl.expect("Endpoint /local/endpoint/ep0 registered")
+    return ctl
+
+
+@pytest.mark.parametrize("reply", ["accept", "reject"])
+@a2dp_host_config
+def test_a2dp_disconnect_during_setconf(hosts, reply):
+    host0, host1 = hosts
+
+    source = start_bluetoothctl(host0, "a2dp-source-sbc.bt")
+    sink = start_bluetoothctl_manual_sink(host1)
+
+    pair(host0, source, host1, sink)
+
+    # Leave SetConfiguration pending on the sink
+    source.send(f"connect {host1.bdaddr}\n")
+    sink.expect("Endpoint: SetConfiguration")
+    _, m = sink.expect(TRANSPORT_RE)
+    transport = m[0].decode("utf-8")
+    sink.expect(r"Accept \(yes/no\):")
+
+    source.send(f"disconnect {host1.bdaddr}\n")
+    source.expect("Disconnection successful")
+
+    # The pending configuration is cleared on disconnection
+    # [DEL] is colored, so match around the escape sequences
+    sink.expect(rf"DEL\S*\] Transport {transport}")
+
+    # Late reply must be ignored
+    sink.send("yes\n" if reply == "accept" else "no\n")
+
+    # bluetoothd is still alive and the stream can be configured again
+    source.send(f"connect {host1.bdaddr}\n")
+    sink.expect("Endpoint: SetConfiguration")
+    sink.expect(TRANSPORT_RE)
+    sink.expect(r"Accept \(yes/no\):")
+    sink.send("yes\n")
+    source.expect("Connection successful")
+    source.expect(TRANSPORT_RE)
