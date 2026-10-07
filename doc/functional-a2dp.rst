@@ -97,3 +97,40 @@ test_a2dp_transport_acquire
 
 :Notes: Acquiring on the source side starts the stream, so the
 	peripheral does not have to acquire its own transport.
+
+test_a2dp_disconnect_during_setconf[accept|reject]
+--------------------------------------------------
+
+:Setup: As above, except the peripheral registers its A2DP Sink
+	endpoint manually with ``Auto Accept: no``, so that `bluetoothd`
+	is left waiting for the reply to
+	``org.bluez.MediaEndpoint1.SetConfiguration``.
+
+:Steps:
+	1. Pair and trust as above.
+	2. Central: ``connect <peripheral bdaddr>``.
+	3. Peripheral: wait for the ``Accept (yes/no):`` prompt, without
+	   answering it.
+	4. Central: ``disconnect <peripheral bdaddr>``.
+	5. Peripheral: answer the pending prompt with ``yes``
+	   (``accept``) or ``no`` (``reject``).
+	6. Central: ``connect <peripheral bdaddr>`` again, and the
+	   peripheral answers ``yes`` to the new prompt.
+
+:Expected:
+	1. ``Pairing successful`` and ``trust succeeded`` on both hosts.
+	2. The peripheral receives ``Endpoint: SetConfiguration``.
+	3. The prompt is shown.
+	4. ``Disconnection successful`` on the central, and the transport
+	   created on the peripheral for the pending configuration is
+	   removed (``[DEL] Transport``).
+	5. The late reply is ignored.
+	6. ``Connection successful``, and a transport appears on both
+	   hosts.
+
+:Notes: Regression test for a crash of `bluetoothd` on the peripheral:
+	the setup of the pending configuration outlived the AVDTP session
+	and the late reply dereferenced a NULL session in
+	``auto_config()``. A late ``yes`` used to also leave the stale
+	transport registered, failing the next connection with
+	``Resource temporarily unavailable``.
