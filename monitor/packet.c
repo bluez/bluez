@@ -13074,10 +13074,10 @@ static void print_legacy_adv_report_pdu(uint16_t flags)
 		str = "ADV_DIRECT_IND";
 		break;
 	case 0x1a:
-		str = "SCAN_RSP to an ADV_IND";
+		str = "SCAN_RSP to an ADV_SCAN_IND";
 		break;
 	case 0x1b:
-		str = "SCAN_RSP to an ADV_SCAN_IND";
+		str = "SCAN_RSP to an ADV_IND";
 		break;
 	default:
 		str = "Reserved";
