@@ -730,7 +730,10 @@ static int sdp_get_data_size(sdp_buf_t *buf, sdp_data_t *d)
 	case SDP_URL_STR8:
 	case SDP_URL_STR16:
 	case SDP_URL_STR32:
-		data_size = d->unitSize - sizeof(uint8_t);
+		if (d->unitSize > sizeof(uint8_t))
+			data_size = d->unitSize - sizeof(uint8_t);
+		else
+			data_size = 0;
 		break;
 	case SDP_SEQ8:
 	case SDP_SEQ16:
@@ -1524,7 +1527,8 @@ static void *sdp_data_value(sdp_data_t *data, uint32_t *len)
 	case SDP_TEXT_STR32:
 		val = data->val.str;
 		if (len)
-			*len = data->unitSize - sizeof(uint8_t);
+			*len = (data->unitSize > sizeof(uint8_t)) ?
+				(data->unitSize - sizeof(uint8_t)) : 0;
 		break;
 	case SDP_ALT8:
 	case SDP_ALT16:
@@ -4852,7 +4856,8 @@ int sdp_set_supp_feat(sdp_record_t *rec, const sdp_list_t *sf)
 			case SDP_TEXT_STR8:
 			case SDP_TEXT_STR16:
 				vals[j] = data->val.str;
-				lengths[j] = data->unitSize - sizeof(uint8_t);
+				lengths[j] = (data->unitSize > sizeof(uint8_t)) ?
+					(data->unitSize - sizeof(uint8_t)) : 0;
 				break;
 			case SDP_ALT8:
 			case SDP_ALT16:
@@ -4929,7 +4934,8 @@ int sdp_get_supp_feat(const sdp_record_t *rec, sdp_list_t **seqp)
 			case SDP_TEXT_STR8:
 			case SDP_TEXT_STR16:
 				val = dd->val.str;
-				length = dd->unitSize - sizeof(uint8_t);
+				length = (dd->unitSize > sizeof(uint8_t)) ?
+					(dd->unitSize - sizeof(uint8_t)) : 0;
 				break;
 			case SDP_UINT8:
 			case SDP_UINT16:
