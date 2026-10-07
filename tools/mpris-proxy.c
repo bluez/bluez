@@ -2091,6 +2091,11 @@ static struct obex_session *create_obex_session(GDBusProxy *device,
 		printf("Bluetooth Obex Create new session\n");
 		session = g_new0(struct obex_session, 1);
 		session->obex = connect_obex_session(address, port);
+		if (session->obex == NULL) {
+			g_free(session);
+			return NULL;
+		}
+
 		session->device = g_dbus_proxy_ref(device);
 		session->port = port;
 
@@ -2816,7 +2821,12 @@ static struct player *find_player_by_obex(const char *path)
 	for (l = players; l; l = l->next) {
 		struct player *player = l->data;
 		struct obex_session *session = player->obex;
-		const char *obex_path = g_dbus_proxy_get_path(session->obex);
+		const char *obex_path;
+
+		if (session == NULL)
+			continue;
+
+		obex_path = g_dbus_proxy_get_path(session->obex);
 
 		if (g_str_has_prefix(path, obex_path))
 			return player;
