@@ -359,11 +359,25 @@ static struct media_adapter *find_adapter(struct btd_device *device)
 	return NULL;
 }
 
+static int request_transport_cmp(gconstpointer data, gconstpointer user_data)
+{
+	const struct endpoint_request *request = data;
+
+	return request->transport == user_data ? 0 : -1;
+}
+
 static void endpoint_remove_transport(struct media_endpoint *endpoint,
 					struct media_transport *transport)
 {
+	GSList *l;
+
 	if (!endpoint || !transport)
 		return;
+
+	/* Cancel pending requests for the transport */
+	while ((l = g_slist_find_custom(endpoint->requests, transport,
+						request_transport_cmp)))
+		media_endpoint_cancel(l->data);
 
 	endpoint->transports = g_slist_remove(endpoint->transports, transport);
 	media_transport_destroy(transport);
@@ -431,7 +445,11 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 		if (dbus_message_is_method_call(request->msg,
 					MEDIA_ENDPOINT_INTERFACE,
 					"SetConfiguration")) {
-			endpoint_remove_transport(endpoint, request->transport);
+			struct media_transport *transport = request->transport;
+
+			/* Detach so the request is not canceled */
+			request->transport = NULL;
+			endpoint_remove_transport(endpoint, transport);
 			error_code = a2dp_parse_config_error(err.name);
 			ret = &error_code;
 			size = 1;

@@ -507,41 +507,6 @@ static void finalize_discover(struct a2dp_setup *s)
 	}
 }
 
-static gboolean finalize_all(gpointer data)
-{
-	struct a2dp_setup *s = data;
-	struct avdtp_stream *stream = s->err ? NULL : s->stream;
-	GSList *l;
-
-	for (l = s->cb; l != NULL; ) {
-		struct a2dp_setup_cb *cb = l->data;
-
-		l = l->next;
-
-		if (cb->discover_cb) {
-			cb->discover_cb(s->session, s->seps,
-					error_to_errno(s->err), cb->user_data);
-		} else if (cb->select_cb) {
-			cb->select_cb(s->session, s->sep, s->caps,
-					error_to_errno(s->err), cb->user_data);
-		} else if (cb->suspend_cb) {
-			cb->suspend_cb(s->session,
-					error_to_errno(s->err), cb->user_data);
-		} else if (cb->resume_cb) {
-			cb->resume_cb(s->session,
-					error_to_errno(s->err), cb->user_data);
-		} else if (cb->config_cb) {
-			cb->config_cb(s->session, s->sep, stream,
-					error_to_errno(s->err), cb->user_data);
-		} else
-			warn("setup_cb doesn't have any callback function");
-
-		setup_cb_free(cb);
-	}
-
-	return FALSE;
-}
-
 static struct a2dp_setup *find_setup_by_session(struct avdtp *session)
 {
 	GSList *l;
@@ -711,12 +676,98 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		sep->endpoint->clear_configuration(sep, dev, sep->user_data);
 }
 
+static void setup_setconf_reply(struct a2dp_setup *setup,
+					struct avdtp_error *err)
+{
+	avdtp_set_configuration_cb cb = setup->setconf_cb;
+
+	if (!cb)
+		return;
+
+	setup->setconf_cb = NULL;
+
+	/* Rejecting the configuration frees the avdtp_stream */
+	if (err)
+		a2dp_stream_destroy(setup->sep, setup->stream);
+
+	cb(setup->session, setup->stream, err);
+
+	if (err)
+		setup->stream = NULL;
+}
+
+/* Reject a pending Set Configuration while setup->session is still valid */
+static void setup_abort_setconf(struct a2dp_setup *setup)
+{
+	struct a2dp_sep *sep = setup->sep;
+	struct avdtp_error err;
+
+	if (!setup->setconf_cb)
+		return;
+
+	/* Clearing the endpoint configuration cancels its pending request
+	 * which rejects the configuration via auto_config().
+	 */
+	if (sep->endpoint && sep->endpoint->clear_configuration)
+		sep->endpoint->clear_configuration(sep,
+					avdtp_get_device(setup->session),
+					sep->user_data);
+
+	/* Reject it if it was not pending on the endpoint */
+	avdtp_error_init(&err, AVDTP_MEDIA_CODEC,
+					AVDTP_UNSUPPORTED_CONFIGURATION);
+	setup_setconf_reply(setup, &err);
+}
+
+static gboolean finalize_all(gpointer data)
+{
+	struct a2dp_setup *s = data;
+	struct avdtp_stream *stream = s->err ? NULL : s->stream;
+	GSList *l;
+
+	for (l = s->cb; l != NULL; ) {
+		struct a2dp_setup_cb *cb = l->data;
+
+		l = l->next;
+
+		if (cb->discover_cb) {
+			cb->discover_cb(s->session, s->seps,
+					error_to_errno(s->err), cb->user_data);
+		} else if (cb->select_cb) {
+			cb->select_cb(s->session, s->sep, s->caps,
+					error_to_errno(s->err), cb->user_data);
+		} else if (cb->suspend_cb) {
+			cb->suspend_cb(s->session,
+					error_to_errno(s->err), cb->user_data);
+		} else if (cb->resume_cb) {
+			cb->resume_cb(s->session,
+					error_to_errno(s->err), cb->user_data);
+		} else if (cb->config_cb) {
+			cb->config_cb(s->session, s->sep, stream,
+					error_to_errno(s->err), cb->user_data);
+		} else
+			warn("setup_cb doesn't have any callback function");
+
+		setup_cb_free(cb);
+	}
+
+	setup_abort_setconf(s);
+
+	return FALSE;
+}
+
 static gboolean auto_config(gpointer data)
 {
 	struct a2dp_setup *setup = data;
 	struct btd_device *dev = NULL;
 	struct btd_service *service;
 	struct a2dp_stream *stream;
+
+	/* Check if the channel has been disconnected, in which case
+	 * channel_free() has already rejected the configuration.
+	 */
+	if (!setup->session)
+		goto done;
 
 	dev = avdtp_get_device(setup->session);
 
@@ -748,16 +799,7 @@ static gboolean auto_config(gpointer data)
 	}
 
 done:
-	if (setup->setconf_cb) {
-		/* Rejecting the configuration frees the avdtp_stream */
-		if (setup->err)
-			a2dp_stream_destroy(setup->sep, setup->stream);
-
-		setup->setconf_cb(setup->session, setup->stream, setup->err);
-
-		if (setup->err)
-			setup->stream = NULL;
-	}
+	setup_setconf_reply(setup, setup->err);
 
 	finalize_config(setup);
 
