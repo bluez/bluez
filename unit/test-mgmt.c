@@ -416,6 +416,223 @@ static void test_destroy(gconstpointer data)
 	execute_context(context);
 }
 
+struct unregister_test;
+
+struct unregister_entry {
+	struct unregister_test *test;
+	unsigned int n;
+};
+
+/*
+ * An entry unregistered from a notification callback must not be notified
+ * again, must not be destroyed while the notification is dispatched, and
+ * must have been destroyed, once, by the next idle callback.
+ */
+struct unregister_test {
+	struct context *context;
+	unsigned int entries;
+	unsigned int events;
+	struct unregister_entry entry[3];
+	unsigned int id[3];
+	bool removed[3];
+	unsigned int called[3];
+	unsigned int expected[3];
+	unsigned int destroyed[3];
+};
+
+static void unregister_destroy(void *user_data)
+{
+	struct unregister_entry *entry = user_data;
+
+	entry->test->destroyed[entry->n]++;
+	g_assert_cmpuint(entry->test->destroyed[entry->n], ==, 1);
+}
+
+static void unregister_add(struct unregister_test *test,
+				const struct command_test_data *data,
+				mgmt_notify_func_t callback)
+{
+	unsigned int n = test->entries++;
+
+	test->entry[n].test = test;
+	test->entry[n].n = n;
+	test->id[n] = mgmt_register(test->context->mgmt_client, data->opcode,
+					data->index, callback, &test->entry[n],
+					unregister_destroy);
+	g_assert_cmpuint(test->id[n], !=, 0);
+}
+
+static void unregister_check_alive(struct unregister_test *test)
+{
+	unsigned int i;
+
+	for (i = 0; i < test->entries; i++)
+		g_assert_cmpuint(test->destroyed[i], ==, 0);
+}
+
+static gboolean unregister_check_idle(gpointer user_data)
+{
+	struct unregister_test *test = user_data;
+	unsigned int i;
+
+	/* Entries unregistered while notifying are freed by now */
+	for (i = 0; i < test->entries; i++)
+		g_assert_cmpuint(test->destroyed[i], ==, test->removed[i]);
+
+	context_quit(test->context);
+
+	return FALSE;
+}
+
+static void unregister_from_cb(struct unregister_test *test, unsigned int n)
+{
+	struct mgmt *mgmt = test->context->mgmt_client;
+
+	g_assert_cmpint(mgmt_unregister(mgmt, test->id[n]), ==, true);
+	g_assert_cmpint(mgmt_unregister(mgmt, test->id[n]), ==, false);
+	test->removed[n] = true;
+
+	unregister_check_alive(test);
+}
+
+static void count_cb(uint16_t index, uint16_t length, const void *param,
+							void *user_data)
+{
+	struct unregister_entry *entry = user_data;
+
+	entry->test->called[entry->n]++;
+}
+
+static void unregister_self_cb(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct unregister_entry *entry = user_data;
+
+	if (!entry->test->called[entry->n]++)
+		unregister_from_cb(entry->test, entry->n);
+}
+
+static void unregister_next_cb(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct unregister_entry *entry = user_data;
+
+	if (!entry->test->called[entry->n]++)
+		unregister_from_cb(entry->test, entry->n + 1);
+}
+
+static void unregister_all_from_cb(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct unregister_entry *entry = user_data;
+	struct unregister_test *test = entry->test;
+	struct mgmt *mgmt = test->context->mgmt_client;
+	unsigned int i;
+
+	test->called[entry->n]++;
+
+	unregister_from_cb(test, 1);
+	g_assert_cmpint(mgmt_unregister_all(mgmt), ==, true);
+
+	for (i = 0; i < test->entries; i++)
+		test->removed[i] = true;
+
+	g_assert_cmpint(mgmt_unregister(mgmt, test->id[2]), ==, false);
+
+	unregister_check_alive(test);
+
+	/* No registered entry is left to schedule the check */
+	g_idle_add(unregister_check_idle, test);
+}
+
+static void unregister_quit_cb(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct unregister_entry *entry = user_data;
+	struct unregister_test *test = entry->test;
+
+	if (++test->called[entry->n] < test->events) {
+		unregister_check_alive(test);
+		return;
+	}
+
+	g_idle_add(unregister_check_idle, test);
+}
+
+static void unregister_run(struct unregister_test *test,
+				const struct command_test_data *data)
+{
+	unsigned int i;
+
+	for (i = 0; i < test->events; i++)
+		g_assert_cmpint(write(test->context->fd, data->cmd_data,
+					data->cmd_size), ==, data->cmd_size);
+
+	execute_context(test->context);
+
+	for (i = 0; i < test->entries; i++) {
+		g_assert_cmpuint(test->called[i], ==, test->expected[i]);
+		g_assert_cmpuint(test->destroyed[i], ==, 1);
+	}
+}
+
+static void test_unregister_self(gconstpointer data)
+{
+	/* Calls per entry over two events; the first unregisters itself */
+	struct unregister_test test = { .context = create_context(),
+					.events = 2, .expected = { 1, 2, 2 } };
+
+	unregister_add(&test, data, unregister_self_cb);
+	unregister_add(&test, data, count_cb);
+	unregister_add(&test, data, unregister_quit_cb);
+
+	unregister_run(&test, data);
+}
+
+static void test_unregister_next(gconstpointer data)
+{
+	/* Calls per entry over two events; the first unregisters the second */
+	struct unregister_test test = { .context = create_context(),
+					.events = 2, .expected = { 2, 0, 2 } };
+
+	unregister_add(&test, data, unregister_next_cb);
+	unregister_add(&test, data, count_cb);
+	unregister_add(&test, data, unregister_quit_cb);
+
+	unregister_run(&test, data);
+}
+
+static void test_unregister_id_all(gconstpointer data)
+{
+	/* Calls per entry; the first unregisters the second, then all */
+	struct unregister_test test = { .context = create_context(),
+					.events = 1, .expected = { 1, 0, 0 } };
+
+	unregister_add(&test, data, unregister_all_from_cb);
+	unregister_add(&test, data, count_cb);
+	unregister_add(&test, data, count_cb);
+
+	unregister_run(&test, data);
+}
+
+static void test_unregister_direct(gconstpointer data)
+{
+	/* Calls per entry; the first is unregistered before the event */
+	struct unregister_test test = { .context = create_context(),
+					.events = 1, .expected = { 0, 1 } };
+	struct mgmt *mgmt = test.context->mgmt_client;
+
+	unregister_add(&test, data, count_cb);
+	unregister_add(&test, data, unregister_quit_cb);
+
+	g_assert_cmpint(mgmt_unregister(mgmt, test.id[0]), ==, true);
+	g_assert_cmpuint(test.destroyed[0], ==, 1);
+	g_assert_cmpint(mgmt_unregister(mgmt, test.id[0]), ==, false);
+	test.removed[0] = true;
+
+	unregister_run(&test, data);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -435,6 +652,14 @@ int main(int argc, char *argv[])
 							test_unregister_all);
 	g_test_add_data_func("/mgmt/unregister/2", &event_test_1,
 							test_unregister_index);
+	g_test_add_data_func("/mgmt/unregister/3", &event_test_1,
+							test_unregister_self);
+	g_test_add_data_func("/mgmt/unregister/4", &event_test_1,
+							test_unregister_next);
+	g_test_add_data_func("/mgmt/unregister/5", &event_test_1,
+							test_unregister_id_all);
+	g_test_add_data_func("/mgmt/unregister/6", &event_test_1,
+							test_unregister_direct);
 
 	g_test_add_data_func("/mgmt/destroy/1", &event_test_1, test_destroy);
 
