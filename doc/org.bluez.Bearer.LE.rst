@@ -153,3 +153,27 @@ The property is only present once the device has been discovered or connected
 over LE bearer.
 
 A PropertiesChanged signal indicate changes to this status.
+
+string Role [readonly, optional, experimental]
+``````````````````````````````````````````````
+
+Indicates the role of the remote device in the current connection on LE bearer.
+It is only present while the remote device is connected over LE bearer.
+
+It is the link layer role of the connection. It does not imply which side acts
+as GATT client or server, as GATT roles are independent of it and both may be
+used at the same time.
+
+Possible values:
+
+:"central":
+
+	The remote device initiated the connection, and the adapter is the
+	peripheral.
+
+:"peripheral":
+
+	The adapter initiated the connection, and the remote device is the
+	peripheral.
+
+A PropertiesChanged signal indicate changes to this status.
