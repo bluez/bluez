@@ -1457,6 +1457,28 @@ static gboolean dev_property_get_connected(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean dev_property_get_role(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *dev = data;
+	const char *role;
+
+	/* The initiator of an LE connection is always the central */
+	role = dev->le_state.initiator ? "peripheral" : "central";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &role);
+
+	return TRUE;
+}
+
+static gboolean dev_property_exists_role(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_device *dev = data;
+
+	return dev->le_state.connected;
+}
+
 static gboolean dev_property_get_uuids(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -3796,6 +3818,7 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "CablePairing", "b", dev_property_get_cable_pairing },
 	{ "RSSI", "n", dev_property_get_rssi, NULL, dev_property_exists_rssi },
 	{ "Connected", "b", dev_property_get_connected },
+	{ "Role", "s", dev_property_get_role, NULL, dev_property_exists_role },
 	{ "UUIDs", "as", dev_property_get_uuids },
 	{ "Modalias", "s", dev_property_get_modalias, NULL,
 						dev_property_exists_modalias },
@@ -3944,6 +3967,10 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
 	state->connected = true;
 	state->initiator = flags & BIT(3);
 
+	if (bdaddr_type != BDADDR_BREDR)
+		g_dbus_emit_property_changed(dbus_conn, dev->path,
+						DEVICE_INTERFACE, "Role");
+
 	if (dev->le_state.connected && dev->bredr_state.connected)
 		return;
 
@@ -4059,6 +4086,10 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	state->connected = false;
 	state->initiator = false;
 	device->general_connect = FALSE;
+
+	if (bdaddr_type != BDADDR_BREDR)
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Role");
 
 	device_set_svc_refreshed(device, false);
 
