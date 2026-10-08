@@ -999,18 +999,28 @@ bool mgmt_unregister(struct mgmt *mgmt, unsigned int id)
 	if (!mgmt || !id)
 		return false;
 
+	/*
+	 * While notifying, leave the entry on the list for process_notify()
+	 * to free once it is done with it.
+	 */
+	if (mgmt->in_notify) {
+		notify = queue_find(mgmt->notify_list, match_notify_id,
+							UINT_TO_PTR(id));
+		if (!notify || notify->removed)
+			return false;
+
+		notify->removed = true;
+		mgmt->need_notify_cleanup = true;
+
+		return true;
+	}
+
 	notify = queue_remove_if(mgmt->notify_list, match_notify_id,
 							UINT_TO_PTR(id));
 	if (!notify)
 		return false;
 
-	if (!mgmt->in_notify) {
-		destroy_notify(notify);
-		return true;
-	}
-
-	notify->removed = true;
-	mgmt->need_notify_cleanup = true;
+	destroy_notify(notify);
 
 	return true;
 }
