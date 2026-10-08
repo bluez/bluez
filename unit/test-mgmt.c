@@ -13,6 +13,7 @@
 #endif
 
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 
@@ -22,13 +23,18 @@
 #include "bluetooth/mgmt.h"
 
 #include "src/shared/mgmt.h"
+#include "src/shared/tester.h"
+
+typedef void (*context_finish_func_t)(void *user_data);
 
 struct context {
-	GMainLoop *main_loop;
 	int fd;
 	struct mgmt *mgmt_client;
 	guint server_source;
+	guint quit_source;
 	GList *handler_list;
+	context_finish_func_t finish;
+	void *finish_data;
 };
 
 enum action {
@@ -51,12 +57,37 @@ static void mgmt_debug(const char *str, void *user_data)
 {
 	const char *prefix = user_data;
 
-	g_print("%s%s\n", prefix, str);
+	tester_debug("%s%s", prefix, str);
 }
 
+static gboolean context_done(gpointer user_data)
+{
+	struct context *context = user_data;
+
+	g_list_free_full(context->handler_list, g_free);
+
+	g_source_remove(context->server_source);
+
+	mgmt_unref(context->mgmt_client);
+
+	if (context->finish)
+		context->finish(context->finish_data);
+
+	g_free(context);
+
+	tester_test_passed();
+
+	return FALSE;
+}
+
+/*
+ * Defer the teardown to an idle callback so the mgmt instance is not freed
+ * from within its own callbacks.
+ */
 static void context_quit(struct context *context)
 {
-	g_main_loop_quit(context->main_loop);
+	if (!context->quit_source)
+		context->quit_source = g_idle_add(context_done, context);
 }
 
 static void check_actions(struct context *context, int fd,
@@ -93,7 +124,7 @@ static void check_actions(struct context *context, int fd,
 		}
 	}
 
-	g_test_message("Command not handled\n");
+	tester_warn("Command not handled");
 	g_assert_not_reached();
 }
 
@@ -125,9 +156,6 @@ static struct context *create_context(void)
 	GIOChannel *channel;
 	int err, sv[2];
 
-	context->main_loop = g_main_loop_new(NULL, FALSE);
-	g_assert(context->main_loop);
-
 	err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sv);
 	g_assert(err == 0);
 
@@ -148,28 +176,13 @@ static struct context *create_context(void)
 	context->mgmt_client = mgmt_new(sv[1]);
 	g_assert(context->mgmt_client);
 
-	if (g_test_verbose() == TRUE)
+	if (tester_use_debug())
 		mgmt_set_debug(context->mgmt_client,
 					mgmt_debug, "mgmt: ", NULL);
 
 	mgmt_set_close_on_unref(context->mgmt_client, true);
 
 	return context;
-}
-
-static void execute_context(struct context *context)
-{
-	g_main_loop_run(context->main_loop);
-
-	g_list_free_full(context->handler_list, g_free);
-
-	g_source_remove(context->server_source);
-
-	mgmt_unref(context->mgmt_client);
-
-	g_main_loop_unref(context->main_loop);
-
-	g_free(context);
 }
 
 static void add_action(struct context *context,
@@ -265,8 +278,6 @@ static void test_command(gconstpointer data)
 	mgmt_send(context->mgmt_client, test->opcode, test->index,
 					test->length, test->param,
 						NULL ,NULL, NULL);
-
-	execute_context(context);
 }
 
 static void response_cb(uint8_t status, uint16_t length, const void *param,
@@ -292,8 +303,6 @@ static void test_response(gconstpointer data)
 	mgmt_send(context->mgmt_client, test->opcode, test->index,
 					test->length, test->param,
 					response_cb, context, NULL);
-
-	execute_context(context);
 }
 
 static void event_cb(uint16_t index, uint16_t length, const void *param,
@@ -301,8 +310,7 @@ static void event_cb(uint16_t index, uint16_t length, const void *param,
 {
 	struct context *context = user_data;
 
-	if (g_test_verbose())
-		printf("Event received\n");
+	tester_debug("Event received");
 
 	context_quit(context);
 }
@@ -317,8 +325,6 @@ static void test_event(gconstpointer data)
 
 	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
 								test->cmd_size);
-
-	execute_context(context);
 }
 
 static void test_event2(gconstpointer data)
@@ -333,8 +339,6 @@ static void test_event2(gconstpointer data)
 
 	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
 								test->cmd_size);
-
-	execute_context(context);
 }
 
 static void unregister_all_cb(uint16_t index, uint16_t length,
@@ -359,8 +363,6 @@ static void test_unregister_all(gconstpointer data)
 
 	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
 								test->cmd_size);
-
-	execute_context(context);
 }
 
 static void unregister_index_cb(uint16_t index, uint16_t length,
@@ -396,8 +398,6 @@ static void test_unregister_index(gconstpointer data)
 
 	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
 								test->cmd_size);
-
-	execute_context(context);
 }
 
 static void test_destroy(gconstpointer data)
@@ -412,8 +412,6 @@ static void test_destroy(gconstpointer data)
 
 	g_assert_cmpint(write(context->fd, test->cmd_data, test->cmd_size), ==,
 								test->cmd_size);
-
-	execute_context(context);
 }
 
 struct unregister_test;
@@ -559,6 +557,31 @@ static void unregister_quit_cb(uint16_t index, uint16_t length,
 	g_idle_add(unregister_check_idle, test);
 }
 
+static void unregister_finish(void *user_data)
+{
+	struct unregister_test *test = user_data;
+	unsigned int i;
+
+	for (i = 0; i < test->entries; i++) {
+		g_assert_cmpuint(test->called[i], ==, test->expected[i]);
+		g_assert_cmpuint(test->destroyed[i], ==, 1);
+	}
+
+	g_free(test);
+}
+
+static struct unregister_test *unregister_new(unsigned int events)
+{
+	struct unregister_test *test = g_new0(struct unregister_test, 1);
+
+	test->context = create_context();
+	test->context->finish = unregister_finish;
+	test->context->finish_data = test;
+	test->events = events;
+
+	return test;
+}
+
 static void unregister_run(struct unregister_test *test,
 				const struct command_test_data *data)
 {
@@ -567,101 +590,107 @@ static void unregister_run(struct unregister_test *test,
 	for (i = 0; i < test->events; i++)
 		g_assert_cmpint(write(test->context->fd, data->cmd_data,
 					data->cmd_size), ==, data->cmd_size);
-
-	execute_context(test->context);
-
-	for (i = 0; i < test->entries; i++) {
-		g_assert_cmpuint(test->called[i], ==, test->expected[i]);
-		g_assert_cmpuint(test->destroyed[i], ==, 1);
-	}
 }
 
 static void test_unregister_self(gconstpointer data)
 {
 	/* Calls per entry over two events; the first unregisters itself */
-	struct unregister_test test = { .context = create_context(),
-					.events = 2, .expected = { 1, 2, 2 } };
+	struct unregister_test *test = unregister_new(2);
+	const unsigned int expected[] = { 1, 2, 2 };
 
-	unregister_add(&test, data, unregister_self_cb);
-	unregister_add(&test, data, count_cb);
-	unregister_add(&test, data, unregister_quit_cb);
+	unregister_add(test, data, unregister_self_cb);
+	unregister_add(test, data, count_cb);
+	unregister_add(test, data, unregister_quit_cb);
 
-	unregister_run(&test, data);
+	memcpy(test->expected, expected, sizeof(expected));
+
+	unregister_run(test, data);
 }
 
 static void test_unregister_next(gconstpointer data)
 {
 	/* Calls per entry over two events; the first unregisters the second */
-	struct unregister_test test = { .context = create_context(),
-					.events = 2, .expected = { 2, 0, 2 } };
+	struct unregister_test *test = unregister_new(2);
+	const unsigned int expected[] = { 2, 0, 2 };
 
-	unregister_add(&test, data, unregister_next_cb);
-	unregister_add(&test, data, count_cb);
-	unregister_add(&test, data, unregister_quit_cb);
+	unregister_add(test, data, unregister_next_cb);
+	unregister_add(test, data, count_cb);
+	unregister_add(test, data, unregister_quit_cb);
 
-	unregister_run(&test, data);
+	memcpy(test->expected, expected, sizeof(expected));
+
+	unregister_run(test, data);
 }
 
 static void test_unregister_id_all(gconstpointer data)
 {
 	/* Calls per entry; the first unregisters the second, then all */
-	struct unregister_test test = { .context = create_context(),
-					.events = 1, .expected = { 1, 0, 0 } };
+	struct unregister_test *test = unregister_new(1);
+	const unsigned int expected[] = { 1, 0, 0 };
 
-	unregister_add(&test, data, unregister_all_from_cb);
-	unregister_add(&test, data, count_cb);
-	unregister_add(&test, data, count_cb);
+	unregister_add(test, data, unregister_all_from_cb);
+	unregister_add(test, data, count_cb);
+	unregister_add(test, data, count_cb);
 
-	unregister_run(&test, data);
+	memcpy(test->expected, expected, sizeof(expected));
+
+	unregister_run(test, data);
 }
 
 static void test_unregister_direct(gconstpointer data)
 {
 	/* Calls per entry; the first is unregistered before the event */
-	struct unregister_test test = { .context = create_context(),
-					.events = 1, .expected = { 0, 1 } };
-	struct mgmt *mgmt = test.context->mgmt_client;
+	struct unregister_test *test = unregister_new(1);
+	const unsigned int expected[] = { 0, 1 };
+	struct mgmt *mgmt = test->context->mgmt_client;
 
-	unregister_add(&test, data, count_cb);
-	unregister_add(&test, data, unregister_quit_cb);
+	unregister_add(test, data, count_cb);
+	unregister_add(test, data, unregister_quit_cb);
 
-	g_assert_cmpint(mgmt_unregister(mgmt, test.id[0]), ==, true);
-	g_assert_cmpuint(test.destroyed[0], ==, 1);
-	g_assert_cmpint(mgmt_unregister(mgmt, test.id[0]), ==, false);
-	test.removed[0] = true;
+	g_assert_cmpint(mgmt_unregister(mgmt, test->id[0]), ==, true);
+	g_assert_cmpuint(test->destroyed[0], ==, 1);
+	g_assert_cmpint(mgmt_unregister(mgmt, test->id[0]), ==, false);
+	test->removed[0] = true;
 
-	unregister_run(&test, data);
+	memcpy(test->expected, expected, sizeof(expected));
+
+	unregister_run(test, data);
 }
 
 int main(int argc, char *argv[])
 {
-	g_test_init(&argc, &argv, NULL);
+	tester_init(&argc, &argv);
 
-	g_test_add_data_func("/mgmt/command/1", &command_test_1, test_command);
-	g_test_add_data_func("/mgmt/command/2", &command_test_2, test_command);
+	tester_add("/mgmt/command/1", &command_test_1, NULL,
+						test_command, NULL);
+	tester_add("/mgmt/command/2", &command_test_2, NULL,
+						test_command, NULL);
 
-	g_test_add_data_func("/mgmt/response/1", &command_test_1,
-								test_response);
-	g_test_add_data_func("/mgmt/response/2", &command_test_3,
-								test_response);
+	tester_add("/mgmt/response/1", &command_test_1, NULL,
+						test_response, NULL);
+	tester_add("/mgmt/response/2", &command_test_3, NULL,
+						test_response, NULL);
 
-	g_test_add_data_func("/mgmt/event/1", &event_test_1, test_event);
-	g_test_add_data_func("/mgmt/event/2", &event_test_1, test_event2);
+	tester_add("/mgmt/event/1", &event_test_1, NULL,
+						test_event, NULL);
+	tester_add("/mgmt/event/2", &event_test_1, NULL,
+						test_event2, NULL);
 
-	g_test_add_data_func("/mgmt/unregister/1", &event_test_1,
-							test_unregister_all);
-	g_test_add_data_func("/mgmt/unregister/2", &event_test_1,
-							test_unregister_index);
-	g_test_add_data_func("/mgmt/unregister/3", &event_test_1,
-							test_unregister_self);
-	g_test_add_data_func("/mgmt/unregister/4", &event_test_1,
-							test_unregister_next);
-	g_test_add_data_func("/mgmt/unregister/5", &event_test_1,
-							test_unregister_id_all);
-	g_test_add_data_func("/mgmt/unregister/6", &event_test_1,
-							test_unregister_direct);
+	tester_add("/mgmt/unregister/1", &event_test_1, NULL,
+						test_unregister_all, NULL);
+	tester_add("/mgmt/unregister/2", &event_test_1, NULL,
+						test_unregister_index, NULL);
+	tester_add("/mgmt/unregister/3", &event_test_1, NULL,
+						test_unregister_self, NULL);
+	tester_add("/mgmt/unregister/4", &event_test_1, NULL,
+						test_unregister_next, NULL);
+	tester_add("/mgmt/unregister/5", &event_test_1, NULL,
+						test_unregister_id_all, NULL);
+	tester_add("/mgmt/unregister/6", &event_test_1, NULL,
+						test_unregister_direct, NULL);
 
-	g_test_add_data_func("/mgmt/destroy/1", &event_test_1, test_destroy);
+	tester_add("/mgmt/destroy/1", &event_test_1, NULL,
+						test_destroy, NULL);
 
-	return g_test_run();
+	return tester_run();
 }
