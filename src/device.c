@@ -3869,6 +3869,11 @@ bool btd_device_bdaddr_type_seen(struct btd_device *dev, uint8_t type)
 	return get_state(dev, type)->last_seen != 0;
 }
 
+bool btd_device_bdaddr_type_initiator(struct btd_device *dev, uint8_t type)
+{
+	return get_state(dev, type)->initiator;
+}
+
 static void clear_temporary_timer(struct btd_device *dev)
 {
 	if (dev->temporary_timer) {
