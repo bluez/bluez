@@ -32,7 +32,7 @@
  * response for. Guards against a lost/dropped notification leaving
  * ras_ondemand_client permanently stuck waiting.
  */
-#define RAS_CP_RESPONSE_TIMEOUT (10 * 1000)
+#define RAS_CP_RESPONSE_TIMEOUT (5 * 1000)
 #define RAS_SEGMENT_TIMEOUT (1 * 1000)
 /* Delay between On-demand ranging-data notification segments, see
  * send_ondemand_segment_data_cb().
