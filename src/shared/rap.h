@@ -303,3 +303,26 @@ void bt_rap_set_conn_interval(struct bt_rap *rap, uint16_t conn_interval);
  * GATT discovery to completion to take effect.
  */
 bool bt_rap_set_ondemand_ranging(struct bt_rap *rap, bool enable);
+
+enum bt_rap_ranging_data_mode {
+	BT_RAP_RANGING_DATA_DISABLED,
+	BT_RAP_RANGING_DATA_REALTIME,
+	BT_RAP_RANGING_DATA_ONDEMAND,
+};
+
+enum bt_rap_ranging_transport {
+	BT_RAP_RANGING_NOTIFY = 0x0001,
+	BT_RAP_RANGING_INDICATE = 0x0002,
+};
+
+/* Select the Requester's received Ranging Data subscription. This can only
+ * be called after remote RAS discovery and Features read complete.
+ */
+bool bt_rap_set_ranging_data_mode(struct bt_rap *rap,
+			enum bt_rap_ranging_data_mode mode,
+			enum bt_rap_ranging_transport transport);
+
+/* Initiator role: stop receiving Real-time Ranging Data. The GATT client
+ * disables the characteristic CCCD when this is its final subscription.
+ */
+bool bt_rap_disable_realtime_ranging(struct bt_rap *rap);
