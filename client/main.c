@@ -2097,6 +2097,7 @@ static void cmd_info(int argc, char *argv[])
 		print_property_with_label(bearer, "Connected", "LE.Connected");
 		print_property_with_label(bearer, "Connectable",
 							"LE.Connectable");
+		print_property_with_label(bearer, "Role", "LE.Role");
 	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
