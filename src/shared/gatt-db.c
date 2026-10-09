@@ -2468,7 +2468,8 @@ bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
 	else
 		notify_user_data = ccc->user_data;
 
-	attrib->notify_func(attrib, ccc, value, len, att, notify_user_data);
+	attrib->notify_func(attrib, ccc, value, len, BT_ATT_OP_HANDLE_NFY, att,
+							notify_user_data);
 
 	return true;
 }

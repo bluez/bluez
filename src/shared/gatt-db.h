@@ -51,7 +51,8 @@ typedef void (*gatt_db_write_t) (struct gatt_db_attribute *attrib,
 typedef void (*gatt_db_notify_t) (struct gatt_db_attribute *attrib,
 					struct gatt_db_attribute *ccc,
 					const uint8_t *value, size_t len,
-					struct bt_att *att, void *user_data);
+					uint8_t opcode, struct bt_att *att,
+					void *user_data);
 
 struct gatt_db_attribute *
 gatt_db_service_add_characteristic(struct gatt_db_attribute *attrib,
