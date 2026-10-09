@@ -6780,8 +6780,11 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		goto done;
 	}
 
-	/* Update connected state */
-	device->le_state.connected = true;
+	/* Update connected state in case the MGMT Device Connected event has
+	 * not been processed yet, the connection was locally initiated.
+	 */
+	if (!device->le_state.connected)
+		device_add_connection(device, device->bdaddr_type, BIT(3));
 
 	if (!device_attach_att(device, io))
 		goto done;
