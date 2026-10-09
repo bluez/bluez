@@ -38,6 +38,10 @@
  * send_ondemand_segment_data_cb().
  */
 #define RAS_SEGMENT_NFY_PACE_MS 5
+/* Upper bound on real-time segments awaiting delivery, so a peer that is
+ * slow to confirm indications cannot grow the queue without limit.
+ */
+#define RAS_REALTIME_MAX_SEGMENTS 256
 
 #define DBG(_rap, fmt, ...) \
 	rap_debug(_rap, "%s:%s() " fmt, __FILE__, __func__, ##__VA_ARGS__)
@@ -412,6 +416,7 @@ static inline bool ras_is_ondemand_mode(const struct ras *ras)
  * defined alongside the other RAS Control Point client helpers.
  */
 static void ras_ondemand_client_reset(struct ras *ras);
+static void ras_realtime_segments_clear(struct bt_rap *rap);
 static void ras_ondemand_cache_clear(struct bt_rap *rap);
 static bool ras_cp_write_op(struct bt_rap *rap, struct ras *ras,
 				uint8_t opcode, uint16_t counter);
@@ -420,6 +425,22 @@ struct bt_rap_db {
 	struct gatt_db *db;
 	struct ras *ras;
 };
+
+struct ras_realtime_segment {
+	uint8_t *value;
+	uint16_t len;
+};
+
+static void ras_realtime_segment_free(void *data)
+{
+	struct ras_realtime_segment *segment = data;
+
+	if (!segment)
+		return;
+
+	free(segment->value);
+	free(segment);
+}
 
 struct bt_rap {
 	int ref_count;
@@ -462,6 +483,12 @@ struct bt_rap {
 	 * centrals cannot evict or receive each other's cached data.
 	 */
 	struct ras_ondemand_cache cache;
+
+	/* Serialized real-time segments await transport-paced delivery. */
+	struct queue *realtime_segments;
+	unsigned int realtime_send_id;
+	unsigned int realtime_ind_id;
+	bool realtime_indicating;
 };
 
 static struct queue *rap_db;
@@ -935,6 +962,11 @@ void bt_rap_detach(struct bt_rap *rap)
 	if (!queue_remove(sessions, rap))
 		return;
 
+	/* Cancel queued and in-flight real-time segments while the ATT
+	 * transport is still reachable.
+	 */
+	ras_realtime_segments_clear(rap);
+
 	bt_gatt_client_idle_unregister(rap->client, rap->idle_id);
 	bt_gatt_client_unref(rap->client);
 	rap->client = NULL;
@@ -1021,6 +1053,9 @@ static void rap_free(void *data)
 	rap_db_free(rap->rrapdb);
 
 	free(rap->cache.data.iov_base);
+	if (rap->realtime_send_id)
+		timeout_remove(rap->realtime_send_id);
+	queue_destroy(rap->realtime_segments, ras_realtime_segment_free);
 
 	if (rap->resptracker) {
 		free(rap->resptracker->segment_data.iov_base);
@@ -2178,10 +2213,111 @@ static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
 	send_ondemand_segment_data_cb(rap);
 }
 
+static bool send_realtime_segment_cb(void *user_data);
+
+static void ras_realtime_segments_clear(struct bt_rap *rap)
+{
+	if (!rap)
+		return;
+
+	if (rap->realtime_send_id) {
+		timeout_remove(rap->realtime_send_id);
+		rap->realtime_send_id = 0;
+	}
+
+	if (rap->realtime_ind_id) {
+		bt_att_cancel(bt_rap_get_att(rap), rap->realtime_ind_id);
+		rap->realtime_ind_id = 0;
+	}
+
+	rap->realtime_indicating = false;
+
+	queue_destroy(rap->realtime_segments, ras_realtime_segment_free);
+	rap->realtime_segments = queue_new();
+}
+
+static void realtime_ind_conf_cb(uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
+{
+	struct bt_rap *rap = user_data;
+
+	if (!rap)
+		return;
+
+	rap->realtime_ind_id = 0;
+	rap->realtime_indicating = false;
+	send_realtime_segment_cb(rap);
+}
+
+static bool send_realtime_segment_cb(void *user_data)
+{
+	struct bt_rap *rap = user_data;
+	struct ras *ras = rap && rap->lrapdb ? rap->lrapdb->ras : NULL;
+	struct ras_realtime_segment *segment;
+
+	if (!rap || !ras || !rap->realtime_segments)
+		return false;
+
+	rap->realtime_send_id = 0;
+	if (rap->realtime_indicating || queue_isempty(rap->realtime_segments))
+		return false;
+
+	segment = queue_pop_head(rap->realtime_segments);
+	if (!segment)
+		return false;
+
+	if (ras_data_ccc_use_indication(ras->realtime_ccc_value)) {
+		uint16_t vhandle = gatt_db_attribute_get_handle(
+					gatt_db_attribute_get_value(
+						ras->realtime_chrc));
+		uint8_t *pdu = malloc(2 + segment->len);
+		unsigned int id = 0;
+		bool ref = false;
+
+		if (pdu) {
+			ref = true;
+			put_le16(vhandle, pdu);
+			memcpy(pdu + 2, segment->value, segment->len);
+			id = bt_att_send(bt_rap_get_att(rap),
+					BT_ATT_OP_HANDLE_IND, pdu,
+					2 + segment->len,
+					realtime_ind_conf_cb, bt_rap_ref(rap),
+					rap_ind_destroy);
+			free(pdu);
+		}
+
+		ras_realtime_segment_free(segment);
+		if (!id) {
+			DBG(rap, "Failed to send real-time indication");
+			/* bt_att_send() did not take the reference */
+			if (ref)
+				bt_rap_unref(rap);
+			return false;
+		}
+
+		rap->realtime_ind_id = id;
+		rap->realtime_indicating = true;
+		return false;
+	}
+
+	/* Reached whenever the client enabled notifications, so
+	 * gatt_db_attribute_notify() picks the notification transport.
+	 */
+	if (!gatt_db_attribute_notify(ras->realtime_chrc, segment->value,
+					segment->len, bt_rap_get_att(rap)))
+		DBG(rap, "Failed to send real-time notification");
+	ras_realtime_segment_free(segment);
+
+	if (!queue_isempty(rap->realtime_segments))
+		rap->realtime_send_id = timeout_add(RAS_SEGMENT_NFY_PACE_MS,
+					send_realtime_segment_cb, rap, NULL);
+
+	return false;
+}
+
 static void send_ras_segment_data(struct bt_rap *rap,
 				struct cs_procedure_data *proc)
 {
-	struct ras *ras;
 	uint16_t value_max;
 	const uint16_t header_len = ras_segment_header_size;
 	uint16_t raw_payload_size;
@@ -2192,7 +2328,10 @@ static void send_ras_segment_data(struct bt_rap *rap,
 	if (!rap->lrapdb || !rap->lrapdb->ras)
 		return;
 
-	ras = rap->lrapdb->ras;
+	/* Ranging data must only reach a client that subscribed to it. */
+	if (!rap->lrapdb->ras->realtime_ccc_value)
+		return;
+
 	value_max = ras_att_value_payload_max(rap);
 
 	if (value_max == 0) {
@@ -2216,7 +2355,6 @@ static void send_ras_segment_data(struct bt_rap *rap,
 		uint16_t seg_len;
 		uint8_t *seg;
 		uint16_t wr = 0;
-		bool ok = true;
 
 		if (index > total_len)
 			index = total_len;
@@ -2226,23 +2364,14 @@ static void send_ras_segment_data(struct bt_rap *rap,
 		if (unsent_data_size == 0)
 			return;
 
-		/* Set last_segment if procedure complete or fits in segment */
-		if ((proc->local_status != CS_PROC_PARTIAL_RESULTS &&
-				unsent_data_size <= raw_payload_size) ||
-			(proc->contains_complete_subevent_ &&
-				unsent_data_size <= raw_payload_size)) {
+		/* Only the final completed procedure segment terminates
+		 * the stream.
+		 */
+		if (proc->local_status != CS_PROC_PARTIAL_RESULTS &&
+				unsent_data_size <= raw_payload_size) {
 			proc->segmentation_header_.last_segment = 1;
 		} else {
 			proc->segmentation_header_.last_segment = 0;
-		}
-
-		/* Wait for more data if needed and not last segment */
-		if (unsent_data_size < raw_payload_size &&
-				proc->segmentation_header_.last_segment == 0) {
-			DBG(rap, "waiting for more data (unsent=%zu < "
-				"payload=%u)", unsent_data_size,
-				raw_payload_size);
-			return;
 		}
 
 		copy_size = (uint16_t)((unsent_data_size < raw_payload_size) ?
@@ -2263,38 +2392,32 @@ static void send_ras_segment_data(struct bt_rap *rap,
 			copy_size);
 		wr += copy_size;
 
-		/* Try sending to real-time characteristic */
-		if (ras->realtime_chrc) {
-			if (ras_data_ccc_use_indication(
-						ras->realtime_ccc_value))
-				ok = gatt_db_attribute_indicate(
-						ras->realtime_chrc, seg, wr,
-						bt_rap_get_att(rap));
-			else
-				ok = gatt_db_attribute_notify(
-						ras->realtime_chrc, seg, wr,
-						bt_rap_get_att(rap));
+		{
+			struct ras_realtime_segment *segment;
+
+			if (queue_length(rap->realtime_segments) >=
+					RAS_REALTIME_MAX_SEGMENTS) {
+				free(seg);
+				DBG(rap, "Real-time RAS segment queue full");
+				return;
+			}
+
+			segment = new0(struct ras_realtime_segment, 1);
+			if (!segment || !queue_push_tail(rap->realtime_segments,
+							segment)) {
+				free(segment);
+				free(seg);
+				DBG(rap, "Failed to queue real-time "
+							"RAS segment");
+				return;
+			}
+
+			segment->value = seg;
+			segment->len = wr;
 		}
 
-		/* Try sending to on-demand characteristic */
-		if (ras->ondemand_chrc && ok) {
-			if (ras_data_ccc_use_indication(
-						ras->ondemand_ccc_value))
-				ok = gatt_db_attribute_indicate(
-						ras->ondemand_chrc, seg, wr,
-						bt_rap_get_att(rap));
-			else
-				ok = gatt_db_attribute_notify(
-						ras->ondemand_chrc, seg, wr,
-						bt_rap_get_att(rap));
-		}
-
-		free(seg);
-
-		if (!ok) {
-			DBG(rap, "Failed to send RAS notification");
-			return;
-		}
+		if (!rap->realtime_send_id && !rap->realtime_indicating)
+			send_realtime_segment_cb(rap);
 
 		/* Advance read cursor and update segmentation state */
 		proc->ras_raw_data_index_ += copy_size;
@@ -2683,7 +2806,12 @@ static void handle_local_subevent_result(struct bt_rap *rap,
 		struct cs_procedure_data *cur = resptracker->current_proc;
 
 		if (has_header_fields && cur->counter != proc_counter) {
-			/* Safety: a new procedure; destroy the previous one */
+			/* A new real-time procedure supersedes queued
+			 * old ranging data.
+			 */
+			if (!ras_is_ondemand_mode(rap->lrapdb->ras))
+				ras_realtime_segments_clear(rap);
+
 			resptracker_reset_current_proc(resptracker);
 		}
 	}
@@ -3292,6 +3420,7 @@ struct bt_rap *bt_rap_new(struct gatt_db *ldb, struct gatt_db *rdb)
 	rap->pending = queue_new();
 	rap->ready_cbs = queue_new();
 	rap->notify = queue_new();
+	rap->realtime_segments = queue_new();
 
 	if (!rdb)
 		goto done;
