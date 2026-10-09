@@ -103,6 +103,30 @@ are active the address is required to identify which one to stop.
 :Example Stop a second device:
 	| **> stop 11:22:33:44:55:66**
 
+ranging-data-mode
+-----------------
+
+Controls the RAP Requester's received Ranging Data subscriptions independently
+of the local CS measurement lifecycle. Changing the mode disables the current
+RAS data CCCDs before enabling the requested mode.
+
+:Usage: **> ranging-data-mode <dev_addr> <disabled/realtime/ondemand> [notify/indicate]**
+:Uses: **org.bluez.ChannelSounding1(5)** method **SetRangingDataMode**
+:disabled: Disables all Ranging Data subscriptions.
+:realtime: Enables Real-time Ranging Data; transport defaults to ``notify``.
+:ondemand: Enables On-demand Data, Control Point, Ready, and Overwritten;
+	transport defaults to ``notify``. On-demand Data remains notification-based
+	so segmented transfers are not limited by indication confirmation pacing.
+:notify: Uses CCCD ``0x0001`` for the selected Ranging Data mode.
+:indicate: Uses CCCD ``0x0002`` for the selected Ranging Data mode.
+
+:Example Disable Ranging Data reception:
+	| **> ranging-data-mode AA:BB:CC:DD:EE:FF disabled**
+:Example Enable Real-time indications:
+	| **> ranging-data-mode AA:BB:CC:DD:EE:FF realtime indicate**
+:Example Enable On-demand indications:
+	| **> ranging-data-mode AA:BB:CC:DD:EE:FF ondemand indicate**
+
 show
 ----
 
