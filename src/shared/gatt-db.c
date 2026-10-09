@@ -2440,9 +2440,9 @@ gatt_db_attribute_get_ccc(struct gatt_db_attribute *attrib)
 	return ccc;
 }
 
-bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
+static bool attribute_notify(struct gatt_db_attribute *attrib,
 					const uint8_t *value, size_t len,
-					struct bt_att *att)
+					uint8_t opcode, struct bt_att *att)
 {
 	struct gatt_db_attribute *ccc;
 	struct gatt_db *db;
@@ -2468,10 +2468,24 @@ bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
 	else
 		notify_user_data = ccc->user_data;
 
-	attrib->notify_func(attrib, ccc, value, len, BT_ATT_OP_HANDLE_NFY, att,
+	attrib->notify_func(attrib, ccc, value, len, opcode, att,
 							notify_user_data);
 
 	return true;
+}
+
+bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
+					const uint8_t *value, size_t len,
+					struct bt_att *att)
+{
+	return attribute_notify(attrib, value, len, BT_ATT_OP_HANDLE_NFY, att);
+}
+
+bool gatt_db_attribute_indicate(struct gatt_db_attribute *attrib,
+					const uint8_t *value, size_t len,
+					struct bt_att *att)
+{
+	return attribute_notify(attrib, value, len, BT_ATT_OP_HANDLE_IND, att);
 }
 
 bool gatt_db_attribute_reset(struct gatt_db_attribute *attrib)
