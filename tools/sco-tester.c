@@ -1309,6 +1309,48 @@ static void test_connect_acl_disc(const void *test_data)
 	test_connect(test_data);
 }
 
+static bool hook_close_sync_conn(const void *msg, uint16_t len,
+							void *user_data)
+{
+	const struct bt_hci_evt_sync_conn_complete *evt = msg;
+	struct test_data *data = tester_get_data();
+
+	if (len < sizeof(*evt) || evt->status) {
+		tester_warn("Bad event");
+		tester_test_failed();
+		return true;
+	}
+
+	data->handle = le16_to_cpu(evt->handle);
+	tester_print("Closing socket before SCO Handle %u is up",
+							data->handle);
+
+	/* Abort the connection while its link is coming up, and let the
+	 * kernel process it before the event is sent.
+	 */
+	shutdown(data->sk, SHUT_RDWR);
+
+	return hook_delay_evt(msg, len, user_data);
+}
+
+static void test_connect_close_complete(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	/* The link shall be disconnected, as no connection takes it */
+	data->step++;
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_SYNC_CONN_COMPLETE,
+					hook_close_sync_conn, NULL);
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_DISCONNECT_COMPLETE,
+					hook_disconnect_evt, NULL);
+
+	test_connect(test_data);
+}
+
 static void test_sco_ethtool_get_ts_info(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1511,6 +1553,9 @@ int main(int argc, char *argv[])
 
 	test_sco("eSCO CVSD - Close", &connect_close, setup_powered,
 						test_connect_delayed);
+
+	test_sco("eSCO CVSD - Close Before Complete", &connect_failure_reset,
+				setup_powered, test_connect_close_complete);
 
 	test_sco("eSCO mSBC - Success", &connect_success, setup_powered,
 							test_connect_transp);
