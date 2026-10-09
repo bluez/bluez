@@ -153,7 +153,8 @@ static struct ccc_state *get_ccc_state(struct test_data_ras *data,
 static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 					struct gatt_db_attribute *ccc,
 					const uint8_t *value, size_t len,
-					struct bt_att *att, void *user_data)
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
 {
 	struct test_data_ras *data = user_data;
 	struct notify notify;
