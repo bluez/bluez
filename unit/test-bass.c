@@ -625,7 +625,8 @@ done:
 static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 				struct gatt_db_attribute *ccc,
 				const uint8_t *value, size_t len,
-				struct bt_att *att, void *user_data)
+				uint8_t opcode, struct bt_att *att,
+				void *user_data)
 {
 	struct test_data *data = user_data;
 	struct ccc_state *ccc_state;

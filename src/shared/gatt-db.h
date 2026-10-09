@@ -51,7 +51,8 @@ typedef void (*gatt_db_write_t) (struct gatt_db_attribute *attrib,
 typedef void (*gatt_db_notify_t) (struct gatt_db_attribute *attrib,
 					struct gatt_db_attribute *ccc,
 					const uint8_t *value, size_t len,
-					struct bt_att *att, void *user_data);
+					uint8_t opcode, struct bt_att *att,
+					void *user_data);
 
 struct gatt_db_attribute *
 gatt_db_service_add_characteristic(struct gatt_db_attribute *attrib,
@@ -297,6 +298,18 @@ struct gatt_db_attribute *
 gatt_db_attribute_get_ccc(struct gatt_db_attribute *attrib);
 
 bool gatt_db_attribute_notify(struct gatt_db_attribute *attrib,
+					const uint8_t *value, size_t len,
+					struct bt_att *att);
+
+/* Same as gatt_db_attribute_notify() but asks for an indication, so the
+ * notify callback is given BT_ATT_OP_HANDLE_IND instead of
+ * BT_ATT_OP_HANDLE_NFY. Some profiles mandate the indication transport for
+ * specific characteristics, for example the Ranging Service Ranging Data
+ * Ready and Ranging Data Overwritten ones, which gatt_db_attribute_notify()
+ * cannot express since it prefers notifications whenever the client enabled
+ * them.
+ */
+bool gatt_db_attribute_indicate(struct gatt_db_attribute *attrib,
 					const uint8_t *value, size_t len,
 					struct bt_att *att);
 

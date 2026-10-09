@@ -153,7 +153,8 @@ static struct ccc_state *get_ccc_state(struct test_data_ras *data,
 static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 					struct gatt_db_attribute *ccc,
 					const uint8_t *value, size_t len,
-					struct bt_att *att, void *user_data)
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
 {
 	struct test_data_ras *data = user_data;
 	struct notify notify;
@@ -797,11 +798,11 @@ const struct test_config_rap cfg_cggit_discovery = {
  *       Handle: 0x0003 (RAS Features value handle)
  *
  *  ATT: Read Response (0x0b) len 5
- *       Value: 0x01 0x00 0x00 0x00
+ *       Value: 0x05 0x00 0x00 0x00
  *       Feature bits:
  *         Bit 0: Real-time ranging (1 = supported)
  *         Bit 1: Retrieve stored results (0 = not supported)
- *         Bit 2: Abort operation (0 = not supported)
+ *         Bit 2: Abort operation (1 = supported)
  *
  *  Note: The RAS Features characteristic is registered with
  *  BT_ATT_PERM_READ | BT_ATT_PERM_READ_ENCRYPT. Since the test sets
@@ -812,7 +813,7 @@ const struct test_config_rap cfg_cggit_discovery = {
 
 #define ATT_READ_RAS_FEATURES \
 	IOV_DATA(0x0a, 0x03, 0x00), \
-	IOV_DATA(0x0b, 0x01, 0x00, 0x00, 0x00)
+	IOV_DATA(0x0b, 0x05, 0x00, 0x00, 0x00)
 
 #define RAS_SR_RCO_BV_01_C \
 	ATT_EXCHANGE_MTU, \
