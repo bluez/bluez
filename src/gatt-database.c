@@ -168,6 +168,7 @@ struct notify {
 	uint16_t len;
 	bt_gatt_server_conf_func_t conf;
 	void *user_data;
+	bool indicate;
 };
 
 #define CLI_FEAT_SIZE 1
@@ -1446,7 +1447,7 @@ static void send_notification_to_device(void *data, void *user_data)
 	 * TODO: If the device is not connected but bonded, send the
 	 * notification/indication when it becomes connected.
 	 */
-	if (ccc->value & 0x0001) {
+	if (!notify->indicate && (ccc->value & 0x0001)) {
 		DBG("GATT server sending notification");
 		bt_gatt_server_send_notification(server,
 					notify->handle, notify->value,
@@ -1454,6 +1455,9 @@ static void send_notification_to_device(void *data, void *user_data)
 					BT_GATT_CHRC_CLI_FEAT_NFY_MULTI);
 		return;
 	}
+
+	if (!(ccc->value & 0x0002))
+		return;
 
 	DBG("GATT server sending indication");
 	bt_gatt_server_send_indication(server, notify->handle, notify->value,
@@ -1487,6 +1491,7 @@ static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 	notify.ccc_handle = gatt_db_attribute_get_handle(ccc);
 	notify.value = (void *) value;
 	notify.len = len;
+	notify.indicate = (opcode == BT_ATT_OP_HANDLE_IND);
 
 	if (attrib == database->svc_chngd)
 		notify.conf = service_changed_conf;
