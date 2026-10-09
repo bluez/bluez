@@ -123,6 +123,13 @@ unsigned int bt_gatt_client_register_notify(struct bt_gatt_client *client,
 				bt_gatt_client_notify_callback_t notify,
 				void *user_data,
 				bt_gatt_client_destroy_func_t destroy);
+unsigned int bt_gatt_client_register_notify_with_ccc(
+				struct bt_gatt_client *client,
+				uint16_t chrc_value_handle, uint16_t ccc_value,
+				bt_gatt_client_register_callback_t callback,
+				bt_gatt_client_notify_callback_t notify,
+				void *user_data,
+				bt_gatt_client_destroy_func_t destroy);
 bool bt_gatt_client_unregister_notify(struct bt_gatt_client *client,
 							unsigned int id);
 
