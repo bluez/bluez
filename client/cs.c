@@ -1429,6 +1429,89 @@ static void cmd_cs_stop(int argc, char *argv[])
 		bt_shell_printf("Failed to send StopMeasurement\n");
 }
 
+/* ---- ranging-data-mode ---- */
+
+static void ranging_data_mode_setup(DBusMessageIter *iter, void *user_data)
+{
+	uint16_t values = PTR_TO_UINT(user_data);
+	uint8_t mode = values & 0xff;
+	uint8_t transport = values >> 8;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &mode);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &transport);
+}
+
+static void ranging_data_mode_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+	if (dbus_set_error_from_message(&error, message)) {
+		bt_shell_printf("SetRangingDataMode failed: %s\n",
+							error.message);
+		dbus_error_free(&error);
+		return;
+	}
+
+	bt_shell_printf("Ranging Data mode updated\n");
+}
+
+static void cmd_cs_ranging_data_mode(int argc, char *argv[])
+{
+	const char *dev_path;
+	GDBusProxy *proxy;
+	uint8_t mode;
+	uint8_t transport = 0x01;
+
+	if (argc < 3 || argc > 4) {
+		bt_shell_printf("Usage: ranging-data-mode <dev_addr>"
+				" <disabled/realtime/ondemand> [notify/indicate]\n");
+		return;
+	}
+
+	if (!strcmp(argv[2], "disabled"))
+		mode = 0x00;
+	else if (!strcmp(argv[2], "realtime"))
+		mode = 0x01;
+	else if (!strcmp(argv[2], "ondemand"))
+		mode = 0x02;
+	else {
+		bt_shell_printf("Invalid Ranging Data mode: %s\n", argv[2]);
+		return;
+	}
+
+	if (argc == 4) {
+		if (!strcmp(argv[3], "notify"))
+			transport = 0x01;
+		else if (!strcmp(argv[3], "indicate"))
+			transport = 0x02;
+		else {
+			bt_shell_printf("Invalid Ranging Data transport: "
+							"%s\n", argv[3]);
+			return;
+		}
+	}
+
+	dev_path = cs_resolve_address(argv[1]);
+	if (!dev_path) {
+		bt_shell_printf("Device %s not found\n", argv[1]);
+		return;
+	}
+
+	proxy = cs_find_proxy(dev_path);
+	if (!proxy) {
+		bt_shell_printf("No ChannelSounding1 interface for that "
+								"device\n");
+		return;
+	}
+
+	if (!g_dbus_proxy_method_call(proxy, "SetRangingDataMode",
+				ranging_data_mode_setup,
+				ranging_data_mode_reply,
+				UINT_TO_PTR(mode | (transport << 8)), NULL))
+		bt_shell_printf("Failed to send SetRangingDataMode\n");
+}
+
 /* ---- show ---- */
 
 static void cmd_cs_show(int argc, char *argv[])
@@ -1545,6 +1628,10 @@ static const struct bt_shell_menu cs_menu = {
 				cmd_cs_stop,
 				"Stop the active distance measurement;"
 				" address required when multiple are active" },
+	{ "ranging-data-mode",
+		"<dev_addr> <disabled/realtime/ondemand> [notify/indicate]",
+		cmd_cs_ranging_data_mode,
+		"Set RAP Requester Ranging Data subscription mode" },
 	{ "show",   NULL,
 				cmd_cs_show,
 				"Show active session id and current"
