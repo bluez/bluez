@@ -33,6 +33,11 @@
  * ras_ondemand_client permanently stuck waiting.
  */
 #define RAS_CP_RESPONSE_TIMEOUT (10 * 1000)
+#define RAS_SEGMENT_TIMEOUT (1 * 1000)
+/* Delay between On-demand ranging-data notification segments, see
+ * send_ondemand_segment_data_cb().
+ */
+#define RAS_SEGMENT_NFY_PACE_MS 5
 
 #define DBG(_rap, fmt, ...) \
 	rap_debug(_rap, "%s:%s() " fmt, __FILE__, __func__, ##__VA_ARGS__)
@@ -337,10 +342,13 @@ enum ras_cp_response_code {
  */
 struct ras_ondemand_cache {
 	bool     valid;
+	bool     sending;
 	uint16_t counter;
 	struct iovec data;
 	uint16_t send_index;
 	struct segmentation_header seg_hdr;
+	unsigned int send_id;
+	unsigned int ind_id;
 };
 
 /* Initiator role: which RAS Control Point request the client is
@@ -378,10 +386,17 @@ struct ras {
 	struct gatt_db_attribute *ready_ccc;
 	struct gatt_db_attribute *overwritten_chrc;
 	struct gatt_db_attribute *overwritten_ccc;
+	uint16_t ready_counter;
+	uint16_t overwritten_counter;
 
 	/* CCC state tracking for mutual exclusivity */
 	uint16_t realtime_ccc_value;
 	uint16_t ondemand_ccc_value;
+	/* CCC state for Ready/Overwritten so notifications are sent with
+	 * the transport (notification or indication) the client enabled.
+	 */
+	uint16_t ready_ccc_value;
+	uint16_t overwritten_ccc_value;
 
 	/* Initiator role: pending RAS Control Point request state */
 	struct ras_ondemand_client client;
@@ -396,6 +411,9 @@ static inline bool ras_is_ondemand_mode(const struct ras *ras)
  * defined alongside the other RAS Control Point client helpers.
  */
 static void ras_ondemand_client_reset(struct ras *ras);
+static void ras_ondemand_cache_clear(struct bt_rap *rap);
+static bool ras_cp_write_op(struct bt_rap *rap, struct ras *ras,
+				uint8_t opcode, uint16_t counter);
 
 struct bt_rap_db {
 	struct gatt_db *db;
@@ -942,8 +960,7 @@ void bt_rap_detach(struct bt_rap *rap)
 	 * connection so a reconnect (by this or another central) cannot
 	 * be served stale ranging data via Get_Ranging_Data.
 	 */
-	free(rap->cache.data.iov_base);
-	memset(&rap->cache, 0, sizeof(rap->cache));
+	ras_ondemand_cache_clear(rap);
 
 	if (rap->rrapdb && rap->rrapdb->ras) {
 		struct ras *ras = rap->rrapdb->ras;
@@ -1180,12 +1197,7 @@ static void ras_features_read_cb(struct gatt_db_attribute *attrib,
 				 void *user_data)
 {
 	struct ras *ras = user_data;
-	/*
-	 * Feature mask: bits 0-2 set:
-	 *  - Real-time ranging
-	 *  - Retrieve stored results
-	 *  - Abort operation
-	 */
+	/* Real-time ranging and Abort Operation are supported. */
 	uint8_t value[4] = { 0x01, 0x00, 0x00, 0x00 };
 
 	if (ras)
@@ -1199,13 +1211,10 @@ static void ras_cp_send_response_code(struct bt_rap *rap, struct ras *ras,
 static void ras_cp_send_complete_ranging_data(struct bt_rap *rap,
 					struct ras *ras, uint16_t counter);
 static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras);
-static void ras_ondemand_cache_clear(struct bt_rap *rap);
 
 /*
  * RAS Control Point handler, dispatches Get_Ranging_Data and
- * ACK_Ranging_Data. The remaining, optional
- * op codes (Retrieve_Lost_Ranging_Data_Segments, Abort_Operation,
- * Set_Filter) are not implemented.
+ * ACK_Ranging_Data. The remaining optional op codes are not implemented.
  */
 static void ras_control_point_write_cb(struct gatt_db_attribute *attrib,
 				       unsigned int id, uint16_t offset,
@@ -1235,6 +1244,14 @@ static void ras_control_point_write_cb(struct gatt_db_attribute *attrib,
 		gatt_db_attribute_write_result(attrib, id, 0);
 		return;
 	}
+
+	if (rap->cache.sending) {
+		ras_cp_send_response_code(rap, ras,
+					RAS_CP_RSP_CODE_SERVER_BUSY);
+		goto done;
+	}
+
+	DBG(rap, "CP write: opcode=0x%02x len=%zu", value[0], len);
 
 	switch (value[0]) {
 	case RAS_CP_OP_GET_RANGING_DATA:
@@ -1279,6 +1296,7 @@ static void ras_control_point_write_cb(struct gatt_db_attribute *attrib,
 		break;
 	}
 
+done:
 	gatt_db_attribute_write_result(attrib, id, 0);
 }
 
@@ -1289,13 +1307,12 @@ static void ras_data_ready_read_cb(struct gatt_db_attribute *attrib,
 				   void *user_data)
 {
 	struct ras *ras = user_data;
-	uint16_t counter = 0;
 	uint8_t value[2];
 
 	if (ras)
 		bt_rap_get_session(att, ras->rapdb->db);
 
-	put_le16(counter, value);
+	put_le16(ras ? ras->ready_counter : 0, value);
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
 }
 
@@ -1306,11 +1323,12 @@ static void ras_data_overwritten_read_cb(struct gatt_db_attribute *attrib,
 					 void *user_data)
 {
 	struct ras *ras = user_data;
-	uint8_t value[2] = { 0x00, 0x00 };
+	uint8_t value[2];
 
 	if (ras)
 		bt_rap_get_session(att, ras->rapdb->db);
 
+	put_le16(ras ? ras->overwritten_counter : 0, value);
 	gatt_db_attribute_read_result(attrib, id, 0, value, sizeof(value));
 }
 
@@ -1378,6 +1396,76 @@ static void ras_ranging_data_ccc_write_cb(struct gatt_db_attribute *attrib,
 	*this_ccc = ccc_value;
 
 	gatt_db_attribute_write_result(attrib, id, 0);
+}
+
+/* Track the Ready / Overwritten CCC value so their notifications are sent with
+ * the transport the client subscribed to (notification vs indication). Both
+ * characteristics support NOTIFY and INDICATE; a headless RAS server must honor
+ * whichever the client enabled (e.g. RCO/BV-05-C uses Indication, BV-06-C
+ * uses Notification).
+ */
+static void ras_ready_overwritten_ccc_write_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					const uint8_t *value, size_t len,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+	struct ras *ras = user_data;
+	uint16_t ccc_value;
+
+	if (!ras) {
+		gatt_db_attribute_write_result(attrib, id,
+					BT_ATT_ERROR_UNLIKELY);
+		return;
+	}
+
+	if (offset) {
+		gatt_db_attribute_write_result(attrib, id,
+					BT_ATT_ERROR_INVALID_OFFSET);
+		return;
+	}
+
+	if (len != 2) {
+		gatt_db_attribute_write_result(attrib, id,
+			BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN);
+		return;
+	}
+
+	ccc_value = get_le16(value);
+
+	if (ccc_value != 0x0000 && ccc_value != 0x0001 &&
+	    ccc_value != 0x0002 && ccc_value != 0x0003) {
+		gatt_db_attribute_write_result(attrib, id,
+					BT_ERROR_WRITE_REQUEST_REJECTED);
+		return;
+	}
+
+	if (attrib == ras->ready_ccc)
+		ras->ready_ccc_value = ccc_value;
+	else if (attrib == ras->overwritten_ccc)
+		ras->overwritten_ccc_value = ccc_value;
+
+	gatt_db_attribute_write_result(attrib, id, 0);
+}
+
+/* Pick the notify transport for Ranging Data Ready / Ranging Data Overwritten
+ * from a tracked CCC value. RAS 3.4.2 and 3.5.2 require indications when both
+ * transports are enabled (0x0003), so notification is used only when it is the
+ * sole enabled transport. The On-demand and Real-time Ranging Data
+ * characteristics take the opposite rule and must not use this helper.
+ */
+static bool ras_ccc_use_indication(uint16_t ccc_value)
+{
+	return !(ccc_value & 0x0001) || (ccc_value & 0x0002);
+}
+
+/* Pick the notify transport for On-demand / Real-time Ranging Data. RAS 3.2.2
+ * and 3.2.3.1 require notifications when both transports are enabled (0x0003),
+ * so indication is used only when it is the sole enabled transport.
+ */
+static bool ras_data_ccc_use_indication(uint16_t ccc_value)
+{
+	return !(ccc_value & 0x0001);
 }
 
 /* Service registration - store attribute pointers */
@@ -1470,8 +1558,10 @@ static struct ras *register_ras_service(struct gatt_db *db)
 						  ras_data_ready_read_cb, NULL,
 						  ras);
 
-	ras->ready_ccc = gatt_db_service_add_ccc(ras->svc,
-					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
+	ras->ready_ccc = gatt_db_service_add_ccc_custom(ras->svc,
+					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE,
+					ras_ready_overwritten_ccc_write_cb,
+					ras);
 
 	/* RAS Data Overwritten */
 	bt_uuid16_create(&uuid, RAS_DATA_OVERWRITTEN_UUID);
@@ -1485,8 +1575,10 @@ static struct ras *register_ras_service(struct gatt_db *db)
 						  ras_data_overwritten_read_cb,
 						  NULL, ras);
 
-	ras->overwritten_ccc = gatt_db_service_add_ccc(ras->svc,
-					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
+	ras->overwritten_ccc = gatt_db_service_add_ccc_custom(ras->svc,
+					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE,
+					ras_ready_overwritten_ccc_write_cb,
+					ras);
 
 	/* Activate the service */
 	gatt_db_service_set_active(ras->svc, true);
@@ -1697,10 +1789,24 @@ static bool ras_maybe_prepend_ranging_header(struct cs_procedure_data *d)
 	return ok;
 }
 
+static void ras_ondemand_cancel_ind(struct bt_rap *rap)
+{
+	if (!rap->cache.ind_id)
+		return;
+
+	bt_att_cancel(bt_rap_get_att(rap), rap->cache.ind_id);
+	rap->cache.ind_id = 0;
+}
+
 static void ras_ondemand_cache_clear(struct bt_rap *rap)
 {
 	if (!rap)
 		return;
+
+	if (rap->cache.send_id)
+		timeout_remove(rap->cache.send_id);
+
+	ras_ondemand_cancel_ind(rap);
 
 	free(rap->cache.data.iov_base);
 	rap->cache.data.iov_base = NULL;
@@ -1708,6 +1814,8 @@ static void ras_ondemand_cache_clear(struct bt_rap *rap)
 	rap->cache.valid = false;
 	rap->cache.counter = 0;
 	rap->cache.send_index = 0;
+	rap->cache.send_id = 0;
+	rap->cache.sending = false;
 }
 
 static void ras_ondemand_cache_store(struct bt_rap *rap,
@@ -1735,9 +1843,14 @@ static void ras_send_ranging_data_ready(struct bt_rap *rap, struct ras *ras,
 	if (!rap || !ras || !ras->ready_chrc)
 		return;
 
+	ras->ready_counter = counter;
 	put_le16(counter, value);
-	gatt_db_attribute_notify(ras->ready_chrc, value, sizeof(value),
-					bt_rap_get_att(rap));
+	if (ras_ccc_use_indication(ras->ready_ccc_value))
+		gatt_db_attribute_indicate(ras->ready_chrc, value,
+					sizeof(value), bt_rap_get_att(rap));
+	else
+		gatt_db_attribute_notify(ras->ready_chrc, value,
+					sizeof(value), bt_rap_get_att(rap));
 }
 
 static void ras_send_ranging_data_overwritten(struct bt_rap *rap,
@@ -1748,9 +1861,14 @@ static void ras_send_ranging_data_overwritten(struct bt_rap *rap,
 	if (!rap || !ras || !ras->overwritten_chrc)
 		return;
 
+	ras->overwritten_counter = counter;
 	put_le16(counter, value);
-	gatt_db_attribute_notify(ras->overwritten_chrc, value, sizeof(value),
-					bt_rap_get_att(rap));
+	if (ras_ccc_use_indication(ras->overwritten_ccc_value))
+		gatt_db_attribute_indicate(ras->overwritten_chrc, value,
+					sizeof(value), bt_rap_get_att(rap));
+	else
+		gatt_db_attribute_notify(ras->overwritten_chrc, value,
+					sizeof(value), bt_rap_get_att(rap));
 }
 
 static void ras_cp_send_response_code(struct bt_rap *rap, struct ras *ras,
@@ -1761,8 +1879,9 @@ static void ras_cp_send_response_code(struct bt_rap *rap, struct ras *ras,
 	if (!rap || !ras || !ras->cp_chrc)
 		return;
 
-	gatt_db_attribute_notify(ras->cp_chrc, value, sizeof(value),
-					bt_rap_get_att(rap));
+	DBG(rap, "CP send Response Code: rsp=0x%02x", response_code);
+	gatt_db_attribute_indicate(ras->cp_chrc, value, sizeof(value),
+						bt_rap_get_att(rap));
 }
 
 static void ras_cp_send_complete_ranging_data(struct bt_rap *rap,
@@ -1776,18 +1895,64 @@ static void ras_cp_send_complete_ranging_data(struct bt_rap *rap,
 	value[0] = RAS_CP_RSP_COMPLETE_RANGING_DATA;
 	put_le16(counter, value + 1);
 
-	gatt_db_attribute_notify(ras->cp_chrc, value, sizeof(value),
-					bt_rap_get_att(rap));
+	gatt_db_attribute_indicate(ras->cp_chrc, value, sizeof(value),
+						bt_rap_get_att(rap));
 }
 
-static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
+static bool send_ondemand_segment_data_cb(void *user_data);
+
+/* Pending indications hold a reference so their confirmation callback
+ * cannot run on a freed session.
+ */
+static void rap_ind_destroy(void *user_data)
 {
+	bt_rap_unref(user_data);
+}
+
+/*
+ * Confirmation callback for an on-demand ranging-data Indication segment.
+ * Invoked (opcode == BT_ATT_OP_HANDLE_CONF) when the client confirms the
+ * segment. Only then do we send the next segment (confirm-driven flow control),
+ * so at most one indication is in-flight and an Abort (which clears
+ * cache.sending) stops the transfer immediately.
+ */
+static void ondemand_ind_conf_cb(uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
+{
+	struct bt_rap *rap = user_data;
+	struct ras *ras = rap && rap->lrapdb ? rap->lrapdb->ras : NULL;
+
+	if (!rap)
+		return;
+
+	rap->cache.ind_id = 0;
+
+	if (!ras || !rap->cache.valid || !rap->cache.sending)
+		return;
+
+	/* All data sent and confirmed: finish with Complete Ranging Data. */
+	if (rap->cache.send_index >= rap->cache.data.iov_len) {
+		rap->cache.sending = false;
+		ras_cp_send_complete_ranging_data(rap, ras, rap->cache.counter);
+		return;
+	}
+
+	/* Otherwise send the next segment. */
+	send_ondemand_segment_data_cb(rap);
+}
+
+static bool send_ondemand_segment_data_cb(void *user_data)
+{
+	struct bt_rap *rap = user_data;
+	struct ras *ras = rap && rap->lrapdb ? rap->lrapdb->ras : NULL;
 	uint16_t value_max;
 	const uint16_t header_len = ras_segment_header_size;
 	uint16_t raw_payload_size;
 
-	if (!rap || !ras || !rap->cache.valid)
-		return;
+	if (!rap || !ras || !rap->cache.valid || !rap->cache.sending)
+		return false;
+
+	rap->cache.send_id = 0;
 
 	value_max = ras_att_value_payload_max(rap);
 
@@ -1801,17 +1966,13 @@ static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
 		 */
 		ras_cp_send_response_code(rap, ras,
 					RAS_CP_RSP_CODE_SERVER_BUSY);
-		return;
+		rap->cache.sending = false;
+		return false;
 	}
 
 	raw_payload_size = (uint16_t)(value_max - header_len);
 
-	rap->cache.send_index = 0;
-	rap->cache.seg_hdr.first_segment = 1;
-	rap->cache.seg_hdr.last_segment = 0;
-	rap->cache.seg_hdr.rolling_segment_counter = 0;
-
-	while (true) {
+	{
 		size_t total_len = rap->cache.data.iov_len;
 		size_t index = rap->cache.send_index;
 		size_t unsent_data_size = total_len - index;
@@ -1833,7 +1994,8 @@ static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
 			DBG(rap, "OOM (%u)", seg_len);
 			ras_cp_send_response_code(rap, ras,
 					RAS_CP_RSP_CODE_SERVER_BUSY);
-			return;
+			rap->cache.sending = false;
+			return false;
 		}
 
 		wr += (uint16_t)
@@ -1844,6 +2006,96 @@ static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
 			copy_size);
 		wr += copy_size;
 
+		/*
+		 * On-demand transfer flow control by transport:
+		 *
+		 * - Indication: send one segment as an ATT Handle Value
+		 *   Indication via bt_att_send() and advance/schedule the NEXT
+		 *   segment only from its confirmation callback
+		 *   (ondemand_ind_conf_cb). This keeps at most one segment
+		 *   in-flight, so an Abort Operation that clears cache.sending
+		 *   actually stops the transfer instead of a large backlog
+		 *   draining out of the att indication queue.
+		 * - Notification: fire-and-forget, so there is no confirmation
+		 *   to gate on. Notifications go to the att write queue, which
+		 *   pick_next_send_op() drains ahead of the request queue and
+		 *   without flow control of its own, so queueing the whole
+		 *   transfer at once would starve incoming ATT operations until
+		 *   the last segment is written. Queue the next segment from
+		 *   the next event loop iteration instead, which keeps one
+		 *   segment outstanding.
+		 *
+		 * The delay has to be non-zero for a client to be able to
+		 * abort a transfer it no longer wants. A zero timeout yields
+		 * the event loop but does not wait, since poll() returns at
+		 * once when nothing is pending on the socket, so a Control
+		 * Point write is only seen here once it has already arrived,
+		 * and the transfer can be over by then.
+		 *
+		 * What the peer gets is the transfer time, segments times this
+		 * delay, and it has to cover a connection event for an Abort
+		 * Operation to reach us at all. A short transfer is therefore
+		 * the constraining case, not a long one, and the rate at which
+		 * the controller reports ranging data does not help: the
+		 * segments of one subevent still go out back to back.
+		 * RAS/SR/SPE/BI-05-C, which writes an invalid Abort Operation
+		 * mid-transfer and expects Invalid Parameter rather than
+		 * Complete Ranging Data, fails at 0 ms and passes at 5 ms.
+		 *
+		 * The delay also bounds a transfer, so keep it short: at a
+		 * 247 byte MTU a 13 KB procedure is 57 segments.
+		 */
+		if (ras_data_ccc_use_indication(ras->ondemand_ccc_value)) {
+			uint16_t vhandle =
+				gatt_db_attribute_get_handle(
+					gatt_db_attribute_get_value(
+						ras->ondemand_chrc));
+			uint8_t *pdu = malloc(2 + wr);
+			unsigned int id = 0;
+			bool ref = false;
+
+			if (pdu) {
+				ref = true;
+				put_le16(vhandle, pdu);
+				memcpy(pdu + 2, seg, wr);
+				id = bt_att_send(bt_rap_get_att(rap),
+						BT_ATT_OP_HANDLE_IND,
+						pdu, 2 + wr,
+						ondemand_ind_conf_cb,
+						bt_rap_ref(rap),
+						rap_ind_destroy);
+				free(pdu);
+			}
+
+			free(seg);
+
+			rap->cache.ind_id = id;
+
+			if (!id) {
+				DBG(rap, "Failed to send on-demand indication");
+				ras_cp_send_response_code(rap, ras,
+						RAS_CP_RSP_CODE_SERVER_BUSY);
+				rap->cache.sending = false;
+				/* bt_att_send() did not take the reference */
+				if (ref)
+					bt_rap_unref(rap);
+				return false;
+			}
+
+			/* Advance now; last-segment completion and scheduling
+			 * of the next segment happen in the confirmation cb.
+			 */
+			rap->cache.send_index += copy_size;
+			rap->cache.seg_hdr.first_segment = 0;
+			rap->cache.seg_hdr.rolling_segment_counter =
+				(uint8_t)((rap->cache.seg_hdr
+					.rolling_segment_counter + 1) & 0x3F);
+			return false;
+		}
+
+		/* Reached whenever the client enabled notifications, so
+		 * gatt_db_attribute_notify() picks the notification transport.
+		 */
 		ok = gatt_db_attribute_notify(ras->ondemand_chrc, seg, wr,
 						bt_rap_get_att(rap));
 
@@ -1853,7 +2105,8 @@ static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
 			DBG(rap, "Failed to send on-demand RAS notification");
 			ras_cp_send_response_code(rap, ras,
 					RAS_CP_RSP_CODE_SERVER_BUSY);
-			return;
+			rap->cache.sending = false;
+			return false;
 		}
 
 		rap->cache.send_index += copy_size;
@@ -1863,11 +2116,44 @@ static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
 				.rolling_segment_counter + 1) & 0x3F);
 
 		if (rap->cache.seg_hdr.last_segment) {
+			rap->cache.sending = false;
 			ras_cp_send_complete_ranging_data(rap, ras,
 							rap->cache.counter);
-			return;
+			return false;
 		}
 	}
+
+	rap->cache.send_id = timeout_add(RAS_SEGMENT_NFY_PACE_MS,
+						send_ondemand_segment_data_cb,
+						rap, NULL);
+	if (!rap->cache.send_id) {
+		ras_cp_send_response_code(rap, ras,
+					RAS_CP_RSP_CODE_SERVER_BUSY);
+		rap->cache.sending = false;
+	}
+
+	return false;
+}
+
+static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras)
+{
+	if (!rap || !ras || !rap->cache.valid || rap->cache.sending)
+		return;
+
+	/* Ranging data must only reach a client that subscribed to it. */
+	if (!ras->ondemand_ccc_value) {
+		ras_cp_send_response_code(rap, ras,
+					RAS_CP_RSP_CODE_SERVER_BUSY);
+		return;
+	}
+
+	rap->cache.sending = true;
+	rap->cache.send_index = 0;
+	rap->cache.seg_hdr.first_segment = 1;
+	rap->cache.seg_hdr.last_segment = 0;
+	rap->cache.seg_hdr.rolling_segment_counter = 0;
+
+	send_ondemand_segment_data_cb(rap);
 }
 
 static void send_ras_segment_data(struct bt_rap *rap,
@@ -1956,14 +2242,30 @@ static void send_ras_segment_data(struct bt_rap *rap,
 		wr += copy_size;
 
 		/* Try sending to real-time characteristic */
-		if (ras->realtime_chrc)
-			ok = gatt_db_attribute_notify(ras->realtime_chrc, seg,
-						wr, bt_rap_get_att(rap));
+		if (ras->realtime_chrc) {
+			if (ras_data_ccc_use_indication(
+						ras->realtime_ccc_value))
+				ok = gatt_db_attribute_indicate(
+						ras->realtime_chrc, seg, wr,
+						bt_rap_get_att(rap));
+			else
+				ok = gatt_db_attribute_notify(
+						ras->realtime_chrc, seg, wr,
+						bt_rap_get_att(rap));
+		}
 
 		/* Try sending to on-demand characteristic */
-		if (ras->ondemand_chrc && ok)
-			ok = gatt_db_attribute_notify(ras->ondemand_chrc, seg,
-						wr, bt_rap_get_att(rap));
+		if (ras->ondemand_chrc && ok) {
+			if (ras_data_ccc_use_indication(
+						ras->ondemand_ccc_value))
+				ok = gatt_db_attribute_indicate(
+						ras->ondemand_chrc, seg, wr,
+						bt_rap_get_att(rap));
+			else
+				ok = gatt_db_attribute_notify(
+						ras->ondemand_chrc, seg, wr,
+						bt_rap_get_att(rap));
+		}
 
 		free(seg);
 
@@ -3109,7 +3411,7 @@ static bool ras_cp_timeout_cb(void *user_data)
 
 	if (ras) {
 		DBG(rap, "RAS CP response timed out (pending_op=%d "
-		    "counter=%u) - resetting", ras->client.pending_op,
+		    "counter=%u)", ras->client.pending_op,
 		    ras->client.pending_counter);
 
 		/* The glib source is about to be destroyed on return; avoid
@@ -3135,11 +3437,24 @@ static void ras_cp_arm_timeout(struct bt_rap *rap, struct ras *ras)
 						ras_cp_timeout_cb, rap, NULL);
 }
 
+static void ras_cp_arm_segment_timeout(struct bt_rap *rap, struct ras *ras)
+{
+	if (!ras)
+		return;
+
+	if (ras->client.cp_timeout_id)
+		timeout_remove(ras->client.cp_timeout_id);
+
+	ras->client.cp_timeout_id = timeout_add(RAS_SEGMENT_TIMEOUT,
+						ras_cp_timeout_cb, rap, NULL);
+}
+
 static bool ras_cp_write_op(struct bt_rap *rap, struct ras *ras,
 				uint8_t opcode, uint16_t counter)
 {
 	uint8_t value[3];
 	uint16_t value_handle;
+	uint16_t length = 1;
 
 	if (!rap || !ras || !ras->cp_chrc || !rap->client)
 		return false;
@@ -3150,10 +3465,11 @@ static bool ras_cp_write_op(struct bt_rap *rap, struct ras *ras,
 
 	value[0] = opcode;
 	put_le16(counter, value + 1);
+	length = sizeof(value);
 
 	return bt_gatt_client_write_without_response(rap->client,
 					value_handle, false,
-					value, sizeof(value));
+					value, length);
 }
 
 static bool ras_cp_send_get_ranging_data(struct bt_rap *rap, struct ras *ras,
@@ -3798,11 +4114,15 @@ static void ras_segment_notify_cb(struct bt_rap *rap, uint16_t value_handle,
 				   void *user_data)
 {
 	const char *label = user_data ? user_data : "real-time";
+	struct ras *ras = rap_get_ras(rap);
 
 	DBG(rap, "Received %s notification: handle=0x%04x len=%u",
 	    label, value_handle, length);
 
 	ras_reassemble_segment_notify(rap, value, length);
+
+	if (ras && ras->client.pending_op == RAS_CP_PENDING_GET)
+		ras_cp_arm_segment_timeout(rap, ras);
 }
 
 /* Initiator role: reacts to a Ranging Data Ready notification/indication
@@ -3918,11 +4238,23 @@ static void ras_cp_response_notify_cb(struct bt_rap *rap,
 		DBG(rap, "RAS CP response code=0x%02x (pending_op=%d "
 		    "counter=%u)", code, ras->client.pending_op,
 		    ras->client.pending_counter);
-		ras_ondemand_client_reset(ras);
+		switch (code) {
+		case RAS_CP_RSP_CODE_SUCCESS:
+		case RAS_CP_RSP_CODE_OPCODE_NOT_SUPPORTED:
+		case RAS_CP_RSP_CODE_INVALID_PARAMETER:
+		case RAS_CP_RSP_CODE_PROCEDURE_NOT_COMPLETED:
+		case RAS_CP_RSP_CODE_SERVER_BUSY:
+		case RAS_CP_RSP_CODE_NO_RECORDS_FOUND:
+			ras_ondemand_client_reset(ras);
+			break;
+		default:
+			DBG(rap, "Ignoring RFU RAS CP response code 0x%02x",
+									code);
+			break;
+		}
 		break;
 	default:
 		DBG(rap, "Unknown RAS CP response opcode 0x%02x", value[0]);
-		ras_ondemand_client_reset(ras);
 		break;
 	}
 }
