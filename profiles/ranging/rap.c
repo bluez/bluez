@@ -876,11 +876,43 @@ static DBusMessage *stop_measurement(DBusConnection *conn,
 
 	bt_rap_hci_set_procedure_data_cb(data->hci_sm, NULL, NULL, NULL);
 
+	/* The Requester owns the Real-time CCCD subscription. Unregister it
+	 * when the procedure ends so the peer receives the required CCCD
+	 * disable. The local procedure has already been stopped, so a failure
+	 * here (e.g. no remote RAS client) must not fail the method.
+	 */
+	if (!bt_rap_disable_realtime_ranging(data->rap))
+		DBG("Unable to disable Real-time Ranging Data");
+
 	memset(&data->active_session, 0, sizeof(data->active_session));
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device_get_path(data->device),
 				CS_INTERFACE, "Active");
+
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *set_ranging_data_mode(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct rap_data *data = user_data;
+	uint8_t mode;
+	uint8_t transport;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_BYTE, &mode,
+					DBUS_TYPE_BYTE, &transport,
+					DBUS_TYPE_INVALID))
+		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
+					"Expected Ranging Data mode byte");
+
+	if (mode > BT_RAP_RANGING_DATA_ONDEMAND)
+		return g_dbus_create_error(msg, DBUS_ERROR_INVALID_ARGS,
+					"Invalid Ranging Data mode");
+
+	if (!bt_rap_set_ranging_data_mode(data->rap, mode, transport))
+		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
+					"Set Ranging Data mode failed");
 
 	return dbus_message_new_method_return(msg);
 }
@@ -894,6 +926,10 @@ static const GDBusMethodTable cs_dbus_methods[] = {
 			NULL,
 			NULL,
 			stop_measurement) },
+	{ GDBUS_METHOD("SetRangingDataMode",
+			GDBUS_ARGS({ "mode", "y" }, { "transport", "y" }),
+			NULL,
+			set_ranging_data_mode) },
 	{ }
 };
 
