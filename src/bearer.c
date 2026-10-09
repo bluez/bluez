@@ -274,6 +274,34 @@ static gboolean bearer_connectable_exists(const GDBusPropertyTable *property,
 	return btd_device_bdaddr_type_seen(bearer->device, bearer->type);
 }
 
+static gboolean bearer_get_role(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_bearer *bearer = data;
+	const char *role;
+
+	/* The initiator of an LE connection is always the central */
+	if (btd_device_bdaddr_type_initiator(bearer->device, bearer->type))
+		role = "peripheral";
+	else
+		role = "central";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &role);
+
+	return TRUE;
+}
+
+static gboolean bearer_role_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_bearer *bearer = data;
+
+	if (bearer->type == BDADDR_BREDR)
+		return FALSE;
+
+	return btd_device_bdaddr_type_connected(bearer->device, bearer->type);
+}
+
 static const GDBusSignalTable bearer_signals[] = {
 	{ GDBUS_SIGNAL("Disconnected",
 			GDBUS_ARGS({ "name", "s" }, { "message", "s" })) },
@@ -291,6 +319,8 @@ static const GDBusPropertyTable bearer_properties[] = {
 			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Connectable", "b", bearer_get_connectable, NULL,
 			bearer_connectable_exists,
+			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Role", "s", bearer_get_role, NULL, bearer_role_exists,
 			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{}
 };
@@ -416,6 +446,12 @@ void btd_bearer_connected(struct btd_bearer *bearer, int err)
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
 					bearer_interface(bearer->type),
 					"Connected");
+
+	if (!err && bearer->type != BDADDR_BREDR)
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					bearer->path,
+					bearer_interface(bearer->type),
+					"Role");
 }
 
 void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
@@ -443,6 +479,12 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
 					bearer_interface(bearer->type),
 					"Connected");
+
+	if (bearer->type != BDADDR_BREDR)
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					bearer->path,
+					bearer_interface(bearer->type),
+					"Role");
 
 	switch (reason) {
 	case MGMT_DEV_DISCONN_UNKNOWN:
