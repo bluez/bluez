@@ -312,8 +312,8 @@ struct cstracker {
 enum ras_cp_opcode {
 	RAS_CP_OP_GET_RANGING_DATA = 0x00,
 	RAS_CP_OP_ACK_RANGING_DATA = 0x01,
+	RAS_CP_OP_ABORT_OPERATION = 0x03,
 	/* 0x02 Retrieve_Lost_Ranging_Data_Segments,
-	 * 0x03 Abort_Operation,
 	 * 0x04 Set_Filter - optional, not implemented
 	 */
 };
@@ -367,6 +367,7 @@ struct ras_ondemand_client {
 	 * peer never sends a Control Point response.
 	 */
 	unsigned int        cp_timeout_id;
+	bool                abort_operation;
 };
 
 /* Ranging Service context */
@@ -1198,7 +1199,7 @@ static void ras_features_read_cb(struct gatt_db_attribute *attrib,
 {
 	struct ras *ras = user_data;
 	/* Real-time ranging and Abort Operation are supported. */
-	uint8_t value[4] = { 0x01, 0x00, 0x00, 0x00 };
+	uint8_t value[4] = { 0x05, 0x00, 0x00, 0x00 };
 
 	if (ras)
 		bt_rap_get_session(att, ras->rapdb->db);
@@ -1211,6 +1212,7 @@ static void ras_cp_send_response_code(struct bt_rap *rap, struct ras *ras,
 static void ras_cp_send_complete_ranging_data(struct bt_rap *rap,
 					struct ras *ras, uint16_t counter);
 static void send_ondemand_segment_data(struct bt_rap *rap, struct ras *ras);
+static void ras_ondemand_cancel_ind(struct bt_rap *rap);
 
 /*
  * RAS Control Point handler, dispatches Get_Ranging_Data and
@@ -1245,7 +1247,7 @@ static void ras_control_point_write_cb(struct gatt_db_attribute *attrib,
 		return;
 	}
 
-	if (rap->cache.sending) {
+	if (rap->cache.sending && value[0] != RAS_CP_OP_ABORT_OPERATION) {
 		ras_cp_send_response_code(rap, ras,
 					RAS_CP_RSP_CODE_SERVER_BUSY);
 		goto done;
@@ -1270,6 +1272,26 @@ static void ras_control_point_write_cb(struct gatt_db_attribute *attrib,
 		}
 
 		send_ondemand_segment_data(rap, ras);
+		break;
+	case RAS_CP_OP_ABORT_OPERATION:
+		if (len != 1) {
+			ras_cp_send_response_code(rap, ras,
+					RAS_CP_RSP_CODE_INVALID_PARAMETER);
+			break;
+		}
+
+		if (rap->cache.sending) {
+			if (rap->cache.send_id)
+				timeout_remove(rap->cache.send_id);
+			rap->cache.send_id = 0;
+			rap->cache.sending = false;
+			/* Keep a stale confirmation from driving a later
+			 * transfer.
+			 */
+			ras_ondemand_cancel_ind(rap);
+		}
+
+		ras_cp_send_response_code(rap, ras, RAS_CP_RSP_CODE_SUCCESS);
 		break;
 	case RAS_CP_OP_ACK_RANGING_DATA:
 		if (len != 3) {
@@ -3419,6 +3441,10 @@ static bool ras_cp_timeout_cb(void *user_data)
 		 * on it.
 		 */
 		ras->client.cp_timeout_id = 0;
+		if (ras->client.pending_op == RAS_CP_PENDING_GET &&
+				ras->client.abort_operation)
+			ras_cp_write_op(rap, ras, RAS_CP_OP_ABORT_OPERATION,
+					ras->client.pending_counter);
 		ras_ondemand_client_reset(ras);
 	}
 
@@ -3464,8 +3490,10 @@ static bool ras_cp_write_op(struct bt_rap *rap, struct ras *ras,
 		return false;
 
 	value[0] = opcode;
-	put_le16(counter, value + 1);
-	length = sizeof(value);
+	if (opcode != RAS_CP_OP_ABORT_OPERATION) {
+		put_le16(counter, value + 1);
+		length = sizeof(value);
+	}
 
 	return bt_gatt_client_write_without_response(rap->client,
 					value_handle, false,
@@ -4333,6 +4361,8 @@ static void read_ras_features(struct bt_rap *rap, bool success,
 	supports_realtime = (features & 0x01) != 0;
 	retrieve_lost = (features & 0x02) != 0;
 	abort_operation = (features & 0x04) != 0;
+	if (ras)
+		ras->client.abort_operation = abort_operation;
 
 	DBG(rap, "RAS Features - Real-time: %s, Retrieve Lost: %s, Abort: %s",
 	    supports_realtime ? "Yes" : "No",
