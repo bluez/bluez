@@ -259,6 +259,17 @@ static int register_profile(struct bluetooth_profile *profile)
 					&opt);
 	g_dbus_dict_append_entry(&opt, "AutoConnect", DBUS_TYPE_BOOLEAN,
 								&auto_connect);
+	if (profile->driver->service == OBEX_BIP) {
+		dbus_uint16_t psm = 0;
+
+		/*
+		 * Ask for a dynamically assigned L2CAP PSM: Cover Art is
+		 * advertised inside the AVRCP target record, which
+		 * bluetoothd builds once it knows which PSM was handed
+		 * out, so no separate service record is published here.
+		 */
+		g_dbus_dict_append_entry(&opt, "PSM", DBUS_TYPE_UINT16, &psm);
+	}
 	if (profile->driver->record) {
 		if (profile->driver->port != 0)
 			xml = g_markup_printf_escaped(profile->driver->record,
@@ -309,6 +320,8 @@ static const char *service2uuid(uint16_t service)
 		return OBEX_MAS_UUID;
 	case OBEX_MNS:
 		return OBEX_MNS_UUID;
+	case OBEX_BIP:
+		return OBEX_BIP_AVRCP_UUID;
 	}
 
 	return NULL;

@@ -41,6 +41,9 @@ obexd_builtin_sources += obexd/plugins/opp.c
 obexd_builtin_modules += ftp
 obexd_builtin_sources += obexd/plugins/ftp.c obexd/plugins/ftp.h
 
+obexd_builtin_modules += bip_avrcp
+obexd_builtin_sources += obexd/plugins/bip-avrcp.c
+
 obexd_builtin_modules += irmc
 obexd_builtin_sources += obexd/plugins/irmc.c
 

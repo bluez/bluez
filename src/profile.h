@@ -119,3 +119,10 @@ typedef const struct btd_profile *(*btd_profile_list_get)(void *item,
 							void *user_data);
 GSList *btd_profile_sort_list(GSList *list, btd_profile_list_get get,
 							void *user_data);
+
+typedef void (*btd_profile_psm_func)(struct btd_adapter *adapter,
+					uint16_t psm, void *user_data);
+unsigned int btd_profile_add_psm_watch(const char *uuid,
+					btd_profile_psm_func func,
+					void *user_data);
+void btd_profile_remove_psm_watch(unsigned int id);
