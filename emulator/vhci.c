@@ -220,7 +220,7 @@ struct btdev *vhci_get_btdev(struct vhci *vhci)
 static int vhci_debugfs_write(struct vhci *vhci, char *option, const void *data,
 			      size_t len)
 {
-	char path[64];
+	char path[PATH_MAX];
 	int fd, err;
 	size_t n;
 
@@ -228,7 +228,8 @@ static int vhci_debugfs_write(struct vhci *vhci, char *option, const void *data,
 		return -EINVAL;
 
 	memset(path, 0, sizeof(path));
-	sprintf(path, DEBUGFS_PATH "/hci%d/%s", vhci->index, option);
+	snprintf(path, sizeof(path), DEBUGFS_PATH "/hci%d/%s", vhci->index,
+								option);
 
 	fd = open(path, O_RDWR);
 	if (fd < 0) {
@@ -304,6 +305,16 @@ int vhci_set_force_static_address(struct vhci *vhci, bool enable)
 	val = (enable) ? 'Y' : 'N';
 
 	return vhci_debugfs_write(vhci, "force_static_address", &val,
+							sizeof(val));
+}
+
+int vhci_set_quirk_simultaneous_discovery(struct vhci *vhci, bool enable)
+{
+	char val;
+
+	val = (enable) ? 'Y' : 'N';
+
+	return vhci_debugfs_write(vhci, "quirk_simultaneous_discovery", &val,
 							sizeof(val));
 }
 
