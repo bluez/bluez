@@ -464,6 +464,12 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
 	if (!bearer || !bearer->path)
 		return;
 
+	/* cancel disconnect timer if ACL link has already dropped */
+	if (bearer->disconn_timer) {
+		timeout_remove(bearer->disconn_timer);
+		bearer->disconn_timer = 0;
+	}
+
 	if (!btd_device_is_connected(bearer->device))
 		device_disconnect_watches_callback(bearer->device);
 
