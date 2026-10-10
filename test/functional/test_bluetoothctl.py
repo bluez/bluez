@@ -20,6 +20,28 @@ from pytest_bluezenv import host_config, find_exe, run, Bluetoothd, Bluetoothctl
 pytestmark = [pytest.mark.vm]
 
 
+def pairable_on(ctl):
+    """pairable on for given Bluetoothctl/Pexpect
+
+    Allow failure with org.bluez.Error.Busy, which can occur due to
+    bluetoothctl toggling bondable on startup. Retry until accepted.
+    """
+    while True:
+        ctl.send("pairable on\n")
+        idx, groups = ctl.expect(
+            [
+                "Changing pairable on succeeded",
+                r"Failed to set pairable on: (\S+)\r?\n",
+            ]
+        )
+        if idx == 0:
+            return
+
+        error = groups[0].decode()
+        if error != "org.bluez.Error.Busy":
+            raise AssertionError(f"Failed to set pairable on: {error}")
+
+
 @pytest.fixture
 def bluetoothctl():
     try:
@@ -41,8 +63,7 @@ def test_bluetoothctl_pair_bredr(hosts):
     host0.bluetoothctl.send("scan on\n")
     host0.bluetoothctl.expect(f"Controller {host0.bdaddr.upper()} Discovering: yes")
 
-    host1.bluetoothctl.send("pairable on\n")
-    host1.bluetoothctl.expect("Changing pairable on succeeded")
+    pairable_on(host1.bluetoothctl)
     host1.bluetoothctl.send("discoverable on\n")
     host1.bluetoothctl.expect(f"Controller {host1.bdaddr.upper()} Discoverable: yes")
 

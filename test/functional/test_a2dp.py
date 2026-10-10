@@ -9,6 +9,8 @@ import pytest
 from pytest_bluezenv import Bluetoothd, Pexpect, find_exe, host_config
 from pytest_bluezenv.utils import bluez_src_dir
 
+from .test_bluetoothctl import pairable_on
+
 pytestmark = [pytest.mark.vm]
 
 A2DP_SOURCE_UUID = "0000110a-0000-1000-8000-00805f9b34fb"
@@ -50,8 +52,7 @@ def pair(host0, ctl0, host1, ctl1):
     ctl0.send("scan on\n")
     ctl0.expect(f"Controller {host0.bdaddr.upper()} Discovering: yes")
 
-    ctl1.send("pairable on\n")
-    ctl1.expect("Changing pairable on succeeded")
+    pairable_on(ctl1)
     ctl1.send("discoverable on\n")
     ctl1.expect(f"Controller {host1.bdaddr.upper()} Discoverable: yes")
 
