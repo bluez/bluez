@@ -5456,9 +5456,22 @@ void device_merge_duplicate(struct btd_device *dev, struct btd_device *dup)
 {
 	GSList *l;
 
-	DBG("");
+	DBG("dev path '%s', dup dev path '%s'", dev->path, dup->path);
 
-	dev->bredr = dup->bredr;
+	/* copy state */
+	dev->bredr_state = dup->bredr_state;
+	dev->bredr = btd_bearer_new(dev, BDADDR_BREDR);
+	DBG("connected %d, paired %d, bonded %d",
+			dev->bredr_state.connected, dev->bredr_state.paired,
+			dev->bredr_state.bonded);
+
+	/* emit bearer properties */
+	if (dev->bredr_state.connected)
+		btd_bearer_connected(dev->bredr, 0);
+	if (dev->bredr_state.paired)
+		btd_bearer_paired(dev->bredr);
+	if (dev->bredr_state.bonded)
+		btd_bearer_bonded(dev->bredr);
 
 	dev->trusted = dup->trusted;
 	dev->blocked = dup->blocked;
