@@ -8424,6 +8424,8 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 void btdev_destroy(struct btdev *btdev)
 {
+	int i;
+
 	if (!btdev)
 		return;
 
@@ -8437,6 +8439,9 @@ void btdev_destroy(struct btdev *btdev)
 	queue_destroy(btdev->le_ext_adv, le_ext_adv_free);
 	queue_destroy(btdev->le_per_adv, free);
 	queue_destroy(btdev->le_big, le_big_free);
+
+	for (i = 0; i < MAX_HOOK_ENTRIES; i++)
+		free(btdev->hook_list[i]);
 
 	free(btdev);
 }
