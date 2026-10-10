@@ -9158,3 +9158,14 @@ int btdev_set_emu_opcode(struct btdev *btdev, uint16_t opcode)
 		return -ENOTSUP;
 	}
 }
+
+int btdev_send_event(struct btdev *btdev, uint8_t event, const void *data,
+								uint8_t len)
+{
+	if (!btdev)
+		return -EINVAL;
+
+	send_event(btdev, event, data, len);
+
+	return 0;
+}

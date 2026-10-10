@@ -112,3 +112,6 @@ bool btdev_del_hook(struct btdev *btdev, enum btdev_hook_type type,
 int btdev_set_msft_opcode(struct btdev *btdev, uint16_t opcode);
 int btdev_set_aosp_capable(struct btdev *btdev, bool enable);
 int btdev_set_emu_opcode(struct btdev *btdev, uint16_t opcode);
+
+int btdev_send_event(struct btdev *btdev, uint8_t event, const void *data,
+								uint8_t len);
