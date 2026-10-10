@@ -5456,9 +5456,26 @@ void device_merge_duplicate(struct btd_device *dev, struct btd_device *dup)
 {
 	GSList *l;
 
-	DBG("");
+	DBG("dev path '%s', dup dev path '%s'", dev->path, dup->path);
 
-	dev->bredr = dup->bredr;
+	/* dup keeps its own bearer, which is destroyed along with it, so
+	 * dev needs a bearer of its own unless it already has one.
+	 */
+	if (!dev->bredr)
+		dev->bredr = btd_bearer_new(dev, BDADDR_BREDR);
+
+	/* Connection state stays with dup, which owns the link and gets
+	 * its disconnection, so only the pairing state is inherited.
+	 */
+	if (dup->bredr_state.paired && !dev->bredr_state.paired) {
+		dev->bredr_state.paired = true;
+		btd_bearer_paired(dev->bredr);
+	}
+
+	if (dup->bredr_state.bonded && !dev->bredr_state.bonded) {
+		dev->bredr_state.bonded = true;
+		btd_bearer_bonded(dev->bredr);
+	}
 
 	dev->trusted = dup->trusted;
 	dev->blocked = dup->blocked;
