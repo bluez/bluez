@@ -707,6 +707,15 @@ static void io_free(void *data)
 static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(data->io_id); i++) {
+		if (!data->io_id[i])
+			continue;
+
+		g_source_remove(data->io_id[i]);
+		data->io_id[i] = 0;
+	}
 
 	if (data->io_queue)
 		queue_remove_all(data->io_queue, NULL, NULL, io_free);
@@ -722,14 +731,9 @@ static void test_post_teardown(const void *test_data)
 static void test_data_free(void *test_data)
 {
 	struct test_data *data = test_data;
-	unsigned int i;
 
 	if (data->io_queue)
 		queue_destroy(data->io_queue, io_free);
-
-	for (i = 0; i < ARRAY_SIZE(data->io_id); ++i)
-		if (data->io_id[i] > 0)
-			g_source_remove(data->io_id[i]);
 
 	free(data);
 }
