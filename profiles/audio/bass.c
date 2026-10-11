@@ -146,7 +146,9 @@ struct bass_delegator {
 	struct queue *bcode_reqs;
 	struct queue *setups;
 	unsigned int io_id;
+	unsigned int io_ready_id;
 	GIOChannel *io;
+	bool past;
 };
 
 struct bass_setup {
@@ -750,6 +752,11 @@ static void confirm_cb(GIOChannel *io, void *user_data)
 	struct bass_delegator *dg = user_data;
 
 	DBG("");
+
+	if (dg->io_ready_id) {
+		g_source_remove(dg->io_ready_id);
+		dg->io_ready_id = 0;
+	}
 
 	/* Close the listen io */
 	g_io_channel_shutdown(dg->io, TRUE, NULL);
@@ -1528,11 +1535,28 @@ static bool delegator_match_device(const void *data, const void *match_data)
 	return dg->device == device;
 }
 
+static gboolean pa_sync_ready_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct bass_delegator *dg = user_data;
+
+	dg->io_ready_id = 0;
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
+		return FALSE;
+
+	bt_bass_set_pa_sync(dg->src, BT_BASS_SYNC_INFO_RE);
+
+	return FALSE;
+}
+
 static void delegator_attach(struct bt_bap *bap, struct btd_device *device,
 				struct btd_service *service)
 {
 	struct bass_delegator *dg;
 	GError *err = NULL;
+	socklen_t len;
+	int sk, past_pollout;
 
 	dg = queue_find(delegators, delegator_match_device, device);
 	if (!dg)
@@ -1570,6 +1594,30 @@ static void delegator_attach(struct bt_bap *bap, struct btd_device *device,
 
 	/* Take ownership for the service by setting the user data. */
 	btd_service_set_user_data(service, dg);
+
+	if (!dg->past)
+		return;
+
+	sk = g_io_channel_unix_get_fd(dg->io);
+	len = sizeof(past_pollout);
+
+	if (getsockopt(sk, SOL_BLUETOOTH, BT_ISO_PAST_POLLOUT,
+						&past_pollout, &len) < 0) {
+		if (errno != ENOPROTOOPT) {
+			error("Unable to query PAST readiness support: %s",
+							strerror(errno));
+			return;
+		}
+
+		past_pollout = 0;
+	}
+
+	if (past_pollout)
+		dg->io_ready_id = g_io_add_watch(dg->io,
+				G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				pa_sync_ready_cb, dg);
+	else
+		bt_bass_set_pa_sync(dg->src, BT_BASS_SYNC_INFO_RE);
 }
 
 static void bap_attached(struct bt_bap *bap, void *user_data)
@@ -1644,6 +1692,9 @@ static void delegator_free(struct bass_delegator *dg)
 
 	if (dg->io_id)
 		g_source_remove(dg->io_id);
+
+	if (dg->io_ready_id)
+		g_source_remove(dg->io_ready_id);
 
 	if (dg->io) {
 		g_io_channel_shutdown(dg->io, TRUE, NULL);
@@ -1906,7 +1957,7 @@ static void bass_detached(struct bt_bass *bass, void *user_data)
 
 static struct bass_delegator *
 bass_delegator_new(struct btd_device *device, struct bt_bcast_src *src,
-			uint8_t sid)
+			uint8_t sid, bool past)
 {
 	struct bass_delegator *dg;
 
@@ -1917,6 +1968,7 @@ bass_delegator_new(struct btd_device *device, struct bt_bcast_src *src,
 	dg->device = device;
 	dg->src = src;
 	dg->sid = sid;
+	dg->past = past;
 	dg->bcode_reqs = queue_new();
 	dg->setups = queue_new();
 
@@ -1945,6 +1997,7 @@ static int handle_add_src_req(struct bt_bcast_src *bcast_src,
 	struct btd_adapter *adapter = device_get_adapter(data->device);
 	struct btd_device *device;
 	struct bass_delegator *dg;
+	bool past = false;
 
 	/* Detect if PAST can be used then it can be used as destination since
 	 * PAST Receiver uses the ACL connection itself.
@@ -1957,6 +2010,7 @@ static int handle_add_src_req(struct bt_bcast_src *bcast_src,
 		if (btd_adapter_has_settings(data->adapter,
 						MGMT_SETTING_PAST_RECEIVER)) {
 			device_set_past_support(data->device, true);
+			past = true;
 			device = data->device;
 			goto done;
 		}
@@ -1980,16 +2034,14 @@ done:
 	 * autonomously probed inside BAP.
 	 */
 	if (!btd_device_get_service(device, BCAAS_UUID_STR)) {
-		dg = bass_delegator_new(device, bcast_src, params->sid);
+		dg = bass_delegator_new(device, bcast_src, params->sid, past);
 		if (!dg)
 			return -ENOMEM;
+
+		if (past)
+			return 0;
 	}
 
-	/* Set PA sync state, this has to be done after probing otherwise there
-	 * is a race where the remote may receive BT_BASS_SYNC_INFO_RE and start
-	 * PAST before the kernel has sent PAST Parameter command that enables
-	 * receiving it.
-	 */
 	if (params->pa_sync == PA_SYNC_PAST) {
 		if (btd_adapter_has_settings(data->adapter,
 						MGMT_SETTING_PAST_RECEIVER))

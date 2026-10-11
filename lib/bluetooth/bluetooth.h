@@ -257,6 +257,8 @@ enum {
 
 #define BT_SCM_PKT_SEQNUM	0x05
 
+#define BT_ISO_PAST_POLLOUT	23
+
 /* Byte order conversions */
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define htobs(d)  (d)
