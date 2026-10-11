@@ -478,6 +478,7 @@ struct test_data {
 	bool suspending;
 	struct tx_tstamp_data tx_ts;
 	int seqnum;
+	bool past_params_complete;
 };
 
 struct iso_client_data {
@@ -1491,6 +1492,17 @@ static const struct iso_client_data past_16_2_1_recv = {
 	.bcast = true,
 	.past = true,
 	.server = true,
+	.big = true,
+};
+
+static const struct iso_client_data past_16_2_1_recv_defer = {
+	.qos = QOS_IN_16_2_1,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.past = true,
+	.server = true,
+	.defer = true,
+	.pa_bind = true,
 	.big = true,
 };
 
@@ -3909,6 +3921,184 @@ static void test_past_recv(const void *test_data)
 	setup_listen(data, 0, iso_accept_cb);
 }
 
+static bool past_listener_check(int sk, bool ready)
+{
+	struct pollfd pfd = {
+		.fd = sk,
+		.events = POLLIN | POLLOUT,
+	};
+	int err, new_sk;
+	socklen_t len;
+
+	if (poll(&pfd, 1, 0) < 0) {
+		tester_warn("poll: %s (%d)", strerror(errno), errno);
+		return false;
+	}
+
+	if (pfd.revents != (ready ? POLLOUT : 0)) {
+		tester_warn("Unexpected listener events: 0x%x", pfd.revents);
+		return false;
+	}
+
+	len = sizeof(err);
+
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0 || err) {
+		tester_warn("Unexpected listener socket error");
+		return false;
+	}
+
+	new_sk = accept(sk, NULL, NULL);
+	if (new_sk >= 0) {
+		tester_warn("Accepted connection before PAST");
+		close(new_sk);
+		return false;
+	}
+
+	if (errno != EAGAIN && errno != EWOULDBLOCK) {
+		tester_warn("accept: %s (%d)", strerror(errno), errno);
+		return false;
+	}
+
+	return true;
+}
+
+static gboolean past_params_resume(gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	GIOChannel *io = user_data;
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
+
+	data->io_id[3] = 0;
+
+	if (!past_listener_check(g_io_channel_unix_get_fd(io), false)) {
+		tester_test_failed();
+		return FALSE;
+	}
+
+	if (!vhci_pause_input(vhci, false)) {
+		tester_warn("Can't resume controller input");
+		tester_test_failed();
+	}
+
+	return FALSE;
+}
+
+static bool past_params_complete(const void *param, uint16_t len,
+							void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct bt_hci_rsp_le_past_params *rp = param;
+
+	if (len != sizeof(*rp) || rp->status) {
+		tester_warn("PAST Parameters failed");
+		tester_test_failed();
+		return false;
+	}
+
+	data->past_params_complete = true;
+	return true;
+}
+
+static gboolean iso_past_ready(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *host;
+	int sk = g_io_channel_unix_get_fd(io);
+
+	data->io_id[0] = 0;
+
+	if (cond != G_IO_OUT || !data->past_params_complete ||
+					!past_listener_check(sk, true)) {
+		tester_warn("Unexpected PAST listener readiness");
+		tester_test_failed();
+		return FALSE;
+	}
+
+	tester_print("PAST listener ready");
+
+	data->io_id[0] = g_io_add_watch(io, G_IO_IN, iso_accept_cb, NULL);
+	host = hciemu_client_get_host(data->hciemu);
+	bthost_past_set_info(host, data->acl_handle);
+
+	return FALSE;
+}
+
+static void test_past_ready(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct iso_client_data *isodata = data->test_data;
+	struct vhci *vhci = hciemu_get_vhci(data->hciemu);
+	GIOChannel *io;
+	socklen_t len;
+	int sk, past_pollout, err;
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_ISO);
+	if (sk < 0) {
+		tester_warn("Can't create socket: %s (%d)", strerror(errno),
+									errno);
+		tester_test_abort();
+		return;
+	}
+
+	len = sizeof(past_pollout);
+	err = getsockopt(sk, SOL_BLUETOOTH, BT_ISO_PAST_POLLOUT,
+						&past_pollout, &len);
+	if (err < 0) {
+		err = -errno;
+		tester_warn("Can't get PAST POLLOUT support: %s (%d)",
+						strerror(-err), -err);
+
+		if (err == -ENOPROTOOPT)
+			tester_test_abort();
+		else
+			tester_test_failed();
+
+		close(sk);
+		return;
+	}
+
+	close(sk);
+
+	if (!past_pollout) {
+		tester_print("PAST POLLOUT is not supported");
+		tester_test_abort();
+		return;
+	}
+
+	if (!vhci_pause_input(vhci, true)) {
+		tester_warn("Can't pause controller input");
+		tester_test_failed();
+		return;
+	}
+
+	sk = listen_iso_sock(data, 0);
+	if (sk < 0) {
+		if (sk == -EPROTONOSUPPORT)
+			tester_test_abort();
+		else
+			tester_test_failed();
+		return;
+	}
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	if (hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_CMD,
+		BT_HCI_CMD_LE_PAST_PARAMS, past_params_complete, NULL) < 0) {
+		g_io_channel_unref(io);
+		tester_test_failed();
+		return;
+	}
+
+	data->step = isodata->defer ? 2 : 1;
+	data->io_id[0] = g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP,
+							iso_past_ready, NULL);
+	data->io_id[3] = g_timeout_add_full(G_PRIORITY_DEFAULT, 50,
+			past_params_resume, g_io_channel_ref(io), io_free);
+	g_io_channel_unref(io);
+}
+
 static void test_connect2_suspend(const void *test_data)
 {
 	test_connect2(test_data);
@@ -4332,6 +4522,14 @@ int main(int argc, char *argv[])
 							&past_16_2_1_recv,
 							setup_powered,
 							test_past_recv);
+	test_iso("ISO Broadcaster PAST Listen Ready Receive - Success",
+							&past_16_2_1_recv,
+							setup_powered,
+							test_past_ready);
+	test_iso("ISO Broadcaster PAST Listen Ready Defer - Success",
+							&past_16_2_1_recv_defer,
+							setup_powered,
+							test_past_ready);
 	test_iso("ISO Broadcaster Receiver SID auto - Success",
 							&bcast_16_2_1_recv_sid,
 							setup_powered,
