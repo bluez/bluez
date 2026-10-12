@@ -135,7 +135,7 @@ test_hog[sci]
 	10. host0: ``gatt.select-attribute 2c39`` and ``gatt.notify on``.
 	11. host0: ``gatt.select-attribute 2a4c`` and ``gatt.write "0x03"``,
 	    i.e. Enable SCI Fast mode written to the HID Control Point.
-	12. host0: ``mgmt.conn-subrate <host1 bdaddr> 0x0008 0x0010 1 1 0 0
+	12. host1: ``mgmt.conn-subrate <host0 bdaddr> 0x0008 0x0010 1 1 0 0
 	    0x01f4``, i.e. interval 1 ms to 2 ms, within the range given in
 	    HID SCI Information, no subrating, no latency and 5 s
 	    supervision timeout.
@@ -196,9 +196,10 @@ test_hog[sci]
 	Notify only. The Control Point is written with bluetoothctl, as the
 	input plugin has no D-Bus API to request a mode.
 
-	The HID device is meant to change the connection rate once the
-	mode is written, but the kernel only issues the LE Connection Rate
-	Request as central, so the connection rate is changed by the HID
-	host. This requires
-	the controllers to support Shorter Connection Intervals, which
-	btvirt emulates as a BR/EDR/LE 6.2 controller.
+	The HID device, the peripheral, then changes the connection rate
+	according to the mode, which requires the kernel to issue the LE
+	Connection Rate Request as peripheral, as well as the controllers
+	to support Shorter Connection Intervals, which btvirt emulates as a
+	BR/EDR/LE 6.2 controller. With a kernel which only issues it as
+	central the test is marked as expected to fail, as the connection
+	rate is never changed.
