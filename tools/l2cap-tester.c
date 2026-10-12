@@ -2571,6 +2571,105 @@ static void test_connect_timeout(const void *test_data)
 	g_io_channel_unref(io);
 }
 
+static bool close_before_complete(uint8_t status, uint16_t handle)
+{
+	struct test_data *data = tester_get_data();
+
+	if (status || data->sk < 0) {
+		tester_warn("Unexpected connection complete");
+		tester_test_failed();
+		return true;
+	}
+
+	data->handle = handle;
+	tester_print("Closing socket before handle 0x%04x is up", handle);
+
+	/* Abort the connection while its link is coming up, and let the
+	 * kernel process it before the event is sent.
+	 */
+	close(data->sk);
+	data->sk = -1;
+	g_usleep(500000);
+
+	return true;
+}
+
+static bool hook_close_conn_complete(const void *msg, uint16_t len,
+							void *user_data)
+{
+	const struct bt_hci_evt_conn_complete *ev = msg;
+
+	if (len < sizeof(*ev))
+		return true;
+
+	return close_before_complete(ev->status, le16_to_cpu(ev->handle));
+}
+
+static bool hook_close_le_conn_complete(const void *msg, uint16_t len,
+							void *user_data)
+{
+	const uint8_t *subevent = msg;
+	const struct bt_hci_evt_le_conn_complete *ev = msg + 1;
+
+	if (len < 1 + sizeof(*ev) || *subevent != BT_HCI_EVT_LE_CONN_COMPLETE)
+		return true;
+
+	return close_before_complete(ev->status, le16_to_cpu(ev->handle));
+}
+
+static void close_complete_disconnect(uint16_t opcode, const void *param,
+					uint8_t len, void *user_data)
+{
+	const struct bt_hci_cmd_disconnect *cmd = param;
+	struct test_data *data = user_data;
+
+	if (opcode != BT_HCI_CMD_DISCONNECT || len < sizeof(*cmd))
+		return;
+
+	tester_print("Disconnect handle 0x%04x", le16_to_cpu(cmd->handle));
+
+	/* The link shall be disconnected, as no connection takes it */
+	if (le16_to_cpu(cmd->handle) == data->handle)
+		tester_test_passed();
+}
+
+static void test_connect_close_complete(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	int sk;
+
+	if (data->hciemu_type == HCIEMU_TYPE_LE)
+		hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_LE_META_EVENT,
+					hook_close_le_conn_complete, NULL);
+	else
+		hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_CONN_COMPLETE,
+					hook_close_conn_complete, NULL);
+
+	hciemu_add_central_post_command_hook(data->hciemu,
+					close_complete_disconnect, data);
+
+	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level,
+							l2data->mode);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	if (connect_l2cap_sock(data, sk, l2data->client_psm,
+							l2data->cid) < 0) {
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	data->sk = sk;
+
+	tester_print("Connect in progress");
+}
+
 static void test_connect_reject(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -3526,6 +3625,10 @@ int main(int argc, char *argv[])
 					&client_connect_timeout_test,
 					setup_powered_client,
 					test_connect_timeout);
+	test_l2cap_bredr("L2CAP BR/EDR Client - Close Before Complete",
+					&client_connect_close_test,
+					setup_powered_client,
+					test_connect_close_complete);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client SSP - Success 1",
 					&client_connect_ssp_success_test_1,
@@ -3689,6 +3792,10 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP LE Client - Timeout",
 				&le_client_connect_timeout_test_1,
 				setup_powered_client, test_connect_timeout);
+	test_l2cap_le("L2CAP LE Client - Close Before Complete",
+				&le_client_connect_close_test_1,
+				setup_powered_client,
+				test_connect_close_complete);
 	test_l2cap_le("L2CAP LE Client - Read Success",
 				&le_client_connect_read_success_test,
 				setup_powered_client, test_connect);
