@@ -67,6 +67,9 @@ static void bearer_free(void *data)
 {
 	struct btd_bearer *bearer = data;
 
+	if (bearer->disconn_timer)
+		timeout_remove(bearer->disconn_timer);
+
 	free(bearer);
 }
 
