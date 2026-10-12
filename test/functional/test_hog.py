@@ -45,10 +45,10 @@ REPORTS = [
 # HID SCI Mode
 SCI_FAST_MODE = "03"
 
-# LE Connection Rate parameters requested with mgmt.conn-subrate once in
-# SCI Fast Mode: interval 1 ms to 2 ms (units of 0.125 ms), within the
-# range given in HID SCI Information, no subrating, no latency and 5 s
-# supervision timeout (units of 10 ms)
+# LE Connection Rate parameters requested by the HID device with
+# mgmt.conn-subrate once in SCI Fast Mode: interval 1 ms to 2 ms (units of
+# 0.125 ms), within the range given in HID SCI Information, no subrating,
+# no latency and 5 s supervision timeout (units of 10 ms)
 SCI_RATE = ["0x0008", "0x0010", "1", "1", "0", "0", "0x01f4"]
 
 # Reported when an operation cannot complete, so a test does not have to
@@ -251,17 +251,18 @@ def test_hog(hosts, init_script, flags, sci):
     )
     assert expect_hexdump(device) == SCI_FAST_MODE
 
-    # The HID device is meant to change the connection rate, but the kernel
-    # only requests it as central, so the HID host does it instead
-    ctl.send(f"mgmt.conn-subrate {host1.bdaddr} {' '.join(SCI_RATE)}\n")
+    # The HID device then changes the connection rate according to the
+    # mode, see the HIDS/HOGP SCI FIPD, which requires the kernel to issue
+    # the LE Connection Rate Request as peripheral
+    device.send(f"mgmt.conn-subrate {host0.bdaddr} {' '.join(SCI_RATE)}\n")
     # The connection rate may change before the command completes, so the
     # event may be printed before the reply
     rate = rf"{{}} type .* connection subrate interval {SCI_RATE[0]}"
     expect_all(
-        ctl,
-        [r"Connection Subrate loaded successfully", rate.format(host1.bdaddr.upper())],
+        device,
+        [r"Connection Subrate loaded successfully", rate.format(host0.bdaddr.upper())],
     )
-    expect(device, rate.format(host0.bdaddr.upper()))
+    expect(ctl, rate.format(host1.bdaddr.upper()))
 
     # Then the HID device confirms the mode has been changed
     ctl.send("gatt.select-attribute 2c39\n")
