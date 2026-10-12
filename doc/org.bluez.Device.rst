@@ -304,6 +304,26 @@ Indicates if the remote device is currently connected.
 
 A PropertiesChanged signal indicate changes to this status.
 
+string Role [readonly, optional]
+````````````````````````````````
+
+Indicates the role of the remote device in the current LE connection. It is
+only present while the remote device is connected over LE.
+
+Possible values:
+
+:"central":
+
+	The remote device initiated the connection, and the adapter is the
+	peripheral.
+
+:"peripheral":
+
+	The adapter initiated the connection, and the remote device is the
+	peripheral.
+
+A PropertiesChanged signal indicate changes to this status.
+
 boolean Trusted [readwrite]
 ```````````````````````````
 
