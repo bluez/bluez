@@ -284,8 +284,9 @@ unsigned int bt_asha_stop(struct bt_asha *asha)
 
 	asha->state = ASHA_STOPPED;
 
-	ret = asha_send_acp(asha, acp_stop_cmd, sizeof(acp_stop_cmd), NULL,
-			NULL);
+	/* State is reset below without waiting for an ATT response. */
+	ret = asha_send_acp_without_response(asha, acp_stop_cmd,
+			sizeof(acp_stop_cmd));
 	asha_set_send_status(asha, false);
 
 	/* We reset our state without waiting for a response */
