@@ -8044,6 +8044,7 @@ static int cmd_le_read_conn_interval(struct btdev *dev, const void *data,
 
 	memset(&pdu, 0, sizeof(pdu));
 	pdu.rsp.status = BT_HCI_ERR_SUCCESS;
+	pdu.rsp.min = 0x08;			/* 1.000 ms */
 	pdu.rsp.num_grps = 1;
 	pdu.grp.min = cpu_to_le16(0x0008);	/* 1.000 ms */
 	pdu.grp.max = cpu_to_le16(0x0c80);	/* 400.000 ms */
