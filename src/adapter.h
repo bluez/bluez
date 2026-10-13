@@ -119,6 +119,11 @@ bool btd_adapter_uuid_is_allowed(struct btd_adapter *adapter, const char *uuid);
 struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter);
 void btd_adapter_unref(struct btd_adapter *adapter);
 
+/* Defer BR/EDR discovery while ASHA streams are active. */
+void btd_adapter_le_audio_ref(struct btd_adapter *adapter);
+void btd_adapter_le_audio_unref(struct btd_adapter *adapter);
+bool btd_adapter_le_audio_active(struct btd_adapter *adapter);
+
 void btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 							uint8_t minor);
 int btd_adapter_set_name(struct btd_adapter *adapter, const char *name);
