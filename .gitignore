@@ -112,6 +112,7 @@ unit/test-lib
 unit/test-mgmt
 unit/test-uhid
 unit/test-hfp
+unit/test-asha-phy
 unit/test-crypto
 unit/test-ecc
 unit/test-hog
