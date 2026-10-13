@@ -706,6 +706,15 @@ unit_test_avrcp_LDADD = lib/libbluetooth-internal.la \
 
 unit_tests += unit/test-hfp
 
+unit_tests += unit/test-asha-phy
+
+unit_test_asha_phy_SOURCES = unit/test-asha-phy.c
+unit_test_asha_phy_CFLAGS = $(AM_CFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
+	-ffunction-sections -fdata-sections
+unit_test_asha_phy_LDADD = src/libshared-glib.la \
+	lib/libbluetooth-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
+unit_test_asha_phy_LDFLAGS = -Wl,--gc-sections
+
 unit_test_hfp_SOURCES = unit/test-hfp.c
 unit_test_hfp_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
