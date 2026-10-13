@@ -10276,6 +10276,8 @@ static void le_read_conn_interval_rsp(uint16_t index, const void *data,
 	uint8_t i;
 
 	print_status(rsp->status);
+	print_field("Minimum Supported Interval: %.3f msec (0x%2.2x)",
+						rsp->min * 0.125, rsp->min);
 	print_field("Number of Groups: %u", rsp->num_grps);
 
 	if (!rsp->num_grps)

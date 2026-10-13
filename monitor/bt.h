@@ -3242,6 +3242,7 @@ struct bt_hci_le_conn_interval_group {
 
 struct bt_hci_rsp_le_read_conn_interval {
 	uint8_t  status;
+	uint8_t  min;
 	uint8_t  num_grps;
 	struct bt_hci_le_conn_interval_group grps[0];
 } __attribute__ ((packed));
