@@ -88,6 +88,8 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	struct connect_data *conn_data = user_data;
 	struct bt_asha_device *asha_dev = conn_data->asha_dev;
 	GError *gerr = NULL;
+	uint32_t phys;
+	int fd;
 
 	if (err) {
 		error("%s", err->message);
@@ -104,6 +106,15 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		error("Could not get L2CAP CoC socket MTU: %s", gerr->message);
 		g_error_free(gerr);
 	}
+
+	/*
+	 * Allow LE 2M with LE 1M fallback. Older kernels may lack BT_PHY.
+	 */
+	phys = BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+			BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX;
+	fd = g_io_channel_unix_get_fd(io);
+	if (setsockopt(fd, SOL_BLUETOOTH, BT_PHY, &phys, sizeof(phys)) < 0)
+		DBG("Could not set LE 2M PHY preference: %s", strerror(errno));
 
 	asha_dev->io = io;
 
