@@ -112,12 +112,20 @@ def pair_le(host0, ctl0, host1, ctl1, advertise=True, services=False):
         ctl1.send("advertise on\n")
         ctl1.expect("Advertising object registered")
 
-    ctl0.expect(f"Device {host1.bdaddr.upper()}")
-    ctl0.send(f"pair {host1.bdaddr.upper()}\n")
+    addr = host1.bdaddr.upper()
+
+    ctl0.expect(f"Device {addr}")
+
+    # A device bonded by an earlier test on the same hosts is rejected
+    # with AlreadyExists if paired again, so connect it instead
+    if is_bonded(ctl0, addr):
+        ctl0.send(f"connect {addr}\n")
+    else:
+        ctl0.send(f"pair {addr}\n")
 
     pending = [PAIRED]
     if services:
-        pending.append(f"Device {host1.bdaddr.upper()} ServicesResolved: yes")
+        pending.append(f"Device {addr} ServicesResolved: yes")
 
     pair_wait(ctl0, ctl1, pending)
 
@@ -153,6 +161,25 @@ def list_transports(ctl0, hosts):
             return transports
 
         transports[idx - 1] = m[0].decode("utf-8")
+
+
+def is_bonded(ctl0, addr):
+    """
+    Tell whether the given device is bonded already.
+
+    This is what pairing it is rejected for, which Paired does not
+    reflect until the services are resolved, so cmd_pair, which checks
+    Paired, can still end up pairing a bonded device.
+    """
+    ctl0.send(f"info {addr}\n")
+
+    # Tab indented: the [CHG] lines and the LE. and BREDR. ones are not
+    idx, m = ctl0.expect(
+        [r"\tBonded: (yes|no)", rf"Device {addr} not available"],
+        timeout=REPLY_TIMEOUT,
+    )
+
+    return idx == 0 and m[0] == b"yes"
 
 
 def remove_device(ctl0, host):
