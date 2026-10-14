@@ -10758,6 +10758,70 @@ static const struct generic_data host_rpa_no_irk_autoconnect = {
 	.expect_hci_param_check_func = host_rpa_filtered_check,
 };
 
+static const uint8_t ll_privacy_rpa_filtered[] = {
+	0x00,			/* Own Address Type */
+	0x01,			/* Filter Policy - Accept List */
+	0x05,			/* PHYs - 1M and Coded */
+	0x00,			/* Type - Passive */
+	0x60, 0x00,		/* Interval */
+	0x30, 0x00,		/* Window */
+	0x00,			/* Type - Passive */
+	0x60, 0x00,		/* Interval */
+	0x30, 0x00,		/* Window */
+};
+
+static int ll_privacy_rpa_filtered_check(const void *param, uint16_t length)
+{
+	const struct bt_hci_cmd_le_set_ext_scan_params *cp = param;
+	const struct bt_hci_le_scan_phy *phy = (void *) cp->data;
+
+	if (length != sizeof(ll_privacy_rpa_filtered))
+		return -EINVAL;
+
+	return cp->filter_policy != 0x01 || phy[0].type != 0x00 ||
+							phy[1].type != 0x00;
+}
+
+static const struct generic_data ll_privacy_rpa_autoconnect = {
+	.setup_settings = settings_powered_le,
+	.setup_send_opcode = MGMT_OP_LOAD_IRKS,
+	.setup_send_param = load_irks_le_public_param_1,
+	.setup_send_len = sizeof(load_irks_le_public_param_1),
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_le_public_param_1,
+	.send_len = sizeof(add_device_le_public_param_1),
+	.expect_param = add_device_rsp_le_public,
+	.expect_len = sizeof(add_device_rsp_le_public),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_le_public_param_1,
+	.expect_alt_ev_len = sizeof(add_device_le_public_param_1),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_SCAN_PARAMS,
+	.expect_hci_param = ll_privacy_rpa_filtered,
+	.expect_hci_len = sizeof(ll_privacy_rpa_filtered),
+	.expect_hci_param_check_func = ll_privacy_rpa_filtered_check,
+};
+
+static const struct generic_data ll_privacy_rpa_report = {
+	.setup_settings = settings_powered_le,
+	.setup_send_opcode = MGMT_OP_LOAD_IRKS,
+	.setup_send_param = load_irks_le_public_param_1,
+	.setup_send_len = sizeof(load_irks_le_public_param_1),
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = host_rpa_report_param,
+	.send_len = sizeof(host_rpa_report_param),
+	.expect_param = add_device_rsp_le_public,
+	.expect_len = sizeof(add_device_rsp_le_public),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = host_rpa_report_param,
+	.expect_alt_ev_len = sizeof(host_rpa_report_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_EXT_SCAN_PARAMS,
+	.expect_hci_param = ll_privacy_rpa_filtered,
+	.expect_hci_len = sizeof(ll_privacy_rpa_filtered),
+	.expect_hci_param_check_func = ll_privacy_rpa_filtered_check,
+};
+
 static const struct generic_data host_rpa_no_irk_report = {
 	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_ADD_DEVICE,
@@ -15855,6 +15919,26 @@ int main(int argc, char *argv[])
 							test_command_generic);
 	test_bredrle("Scan RPA - Background report without IRK",
 			&host_rpa_no_irk_report, NULL, test_command_generic);
+
+	/* LL Privacy
+	 * Setup: Enable LE, load IRK and Power On
+	 * Run: Add new device with auto-connect
+	 * Expect: Passive scanning uses the accept list since the controller
+	 *         resolves RPAs
+	 */
+	test_bredrle50("LL Privacy - Scan RPA - Auto-connect with IRK",
+				&ll_privacy_rpa_autoconnect,
+				setup_command_generic, test_command_generic);
+
+	/* LL Privacy
+	 * Setup: Enable LE, load IRK and Power On
+	 * Run: Add new device with background report
+	 * Expect: Passive scanning uses the accept list since the controller
+	 *         resolves RPAs
+	 */
+	test_bredrle50("LL Privacy - Scan RPA - Background report with IRK",
+				&ll_privacy_rpa_report,
+				setup_command_generic, test_command_generic);
 
 	/* LL Privacy
 	 * Setup: Enable LE and Power On
