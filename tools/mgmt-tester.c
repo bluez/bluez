@@ -10667,6 +10667,114 @@ static const char load_irks_le_public_param_1[] = {
 	0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
 };
 
+static const uint8_t host_rpa_report_param[] = {
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+	0x01,
+	0x00,
+};
+
+static const struct bt_hci_cmd_le_set_scan_parameters host_rpa_unfiltered = {
+	.filter_policy = 0x00,
+};
+
+static const struct bt_hci_cmd_le_set_scan_parameters host_rpa_filtered = {
+	.filter_policy = 0x01,
+};
+
+static int host_rpa_unfiltered_check(const void *param, uint16_t length)
+{
+	const struct bt_hci_cmd_le_set_scan_parameters *cp = param;
+
+	if (length != sizeof(*cp))
+		return -EINVAL;
+
+	return cp->type != 0x00 || cp->filter_policy != 0x00;
+}
+
+static int host_rpa_filtered_check(const void *param, uint16_t length)
+{
+	const struct bt_hci_cmd_le_set_scan_parameters *cp = param;
+
+	if (length != sizeof(*cp))
+		return -EINVAL;
+
+	return cp->type != 0x00 || cp->filter_policy != 0x01;
+}
+
+static const struct generic_data host_rpa_autoconnect = {
+	.setup_settings = settings_powered_le,
+	.setup_send_opcode = MGMT_OP_LOAD_IRKS,
+	.setup_send_param = load_irks_le_public_param_1,
+	.setup_send_len = sizeof(load_irks_le_public_param_1),
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_le_public_param_1,
+	.send_len = sizeof(add_device_le_public_param_1),
+	.expect_param = add_device_rsp_le_public,
+	.expect_len = sizeof(add_device_rsp_le_public),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_le_public_param_1,
+	.expect_alt_ev_len = sizeof(add_device_le_public_param_1),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
+	.expect_hci_param = &host_rpa_unfiltered,
+	.expect_hci_len = sizeof(host_rpa_unfiltered),
+	.expect_hci_param_check_func = host_rpa_unfiltered_check,
+};
+
+static const struct generic_data host_rpa_report = {
+	.setup_settings = settings_powered_le,
+	.setup_send_opcode = MGMT_OP_LOAD_IRKS,
+	.setup_send_param = load_irks_le_public_param_1,
+	.setup_send_len = sizeof(load_irks_le_public_param_1),
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = host_rpa_report_param,
+	.send_len = sizeof(host_rpa_report_param),
+	.expect_param = add_device_rsp_le_public,
+	.expect_len = sizeof(add_device_rsp_le_public),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = host_rpa_report_param,
+	.expect_alt_ev_len = sizeof(host_rpa_report_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
+	.expect_hci_param = &host_rpa_unfiltered,
+	.expect_hci_len = sizeof(host_rpa_unfiltered),
+	.expect_hci_param_check_func = host_rpa_unfiltered_check,
+};
+
+static const struct generic_data host_rpa_no_irk_autoconnect = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = add_device_le_public_param_1,
+	.send_len = sizeof(add_device_le_public_param_1),
+	.expect_param = add_device_rsp_le_public,
+	.expect_len = sizeof(add_device_rsp_le_public),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = add_device_le_public_param_1,
+	.expect_alt_ev_len = sizeof(add_device_le_public_param_1),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
+	.expect_hci_param = &host_rpa_filtered,
+	.expect_hci_len = sizeof(host_rpa_filtered),
+	.expect_hci_param_check_func = host_rpa_filtered_check,
+};
+
+static const struct generic_data host_rpa_no_irk_report = {
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_param = host_rpa_report_param,
+	.send_len = sizeof(host_rpa_report_param),
+	.expect_param = add_device_rsp_le_public,
+	.expect_len = sizeof(add_device_rsp_le_public),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_ADDED,
+	.expect_alt_ev_param = host_rpa_report_param,
+	.expect_alt_ev_len = sizeof(host_rpa_report_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_PARAMETERS,
+	.expect_hci_param = &host_rpa_filtered,
+	.expect_hci_len = sizeof(host_rpa_filtered),
+	.expect_hci_param_check_func = host_rpa_filtered_check,
+};
+
 static const uint8_t add_device_le_public_param_2[] = {
 	0x11, 0x22, 0x33, 0x44, 0x55, 0x66,	/* BDADDR */
 	0x01,					/* Type - LE Public */
@@ -15736,6 +15844,17 @@ int main(int argc, char *argv[])
 	test_bredrle50("Set Exp Feature - Unknown feature",
 				&set_exp_feat_unknown,
 				NULL, test_command_generic);
+
+	/* Bluetooth 4.0 has no controller-side address resolution. */
+	test_bredrle("Host RPA - Auto-connect with IRK", &host_rpa_autoconnect,
+				setup_command_generic, test_command_generic);
+	test_bredrle("Host RPA - Background report with IRK", &host_rpa_report,
+				setup_command_generic, test_command_generic);
+	test_bredrle("Host RPA - Auto-connect without IRK",
+				&host_rpa_no_irk_autoconnect, NULL,
+							test_command_generic);
+	test_bredrle("Host RPA - Background report without IRK",
+			&host_rpa_no_irk_report, NULL, test_command_generic);
 
 	/* LL Privacy
 	 * Setup: Enable LE and Power On
