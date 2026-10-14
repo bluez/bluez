@@ -3017,6 +3017,199 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable, int to)
 	return 0;
 }
 
+int hci_le_set_ext_adv_params(int dd, uint8_t handle, uint16_t evt_properties,
+				uint32_t min_interval, uint32_t max_interval,
+				uint8_t channel_map, uint8_t own_addr_type,
+				uint8_t peer_addr_type, const bdaddr_t *peer_addr,
+				uint8_t filter_policy, int8_t tx_power,
+				uint8_t primary_phy, uint8_t secondary_max_skip,
+				uint8_t secondary_phy, uint8_t sid,
+				uint8_t notif_enable, int to)
+{
+	struct hci_request rq;
+	le_set_ext_adv_params_cp cp;
+	struct {
+		uint8_t status;
+		int8_t  tx_power;
+	} rsp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = handle;
+	cp.evt_properties = evt_properties;
+	cp.min_interval[0] = min_interval & 0xff;
+	cp.min_interval[1] = (min_interval >> 8) & 0xff;
+	cp.min_interval[2] = (min_interval >> 16) & 0xff;
+	cp.max_interval[0] = max_interval & 0xff;
+	cp.max_interval[1] = (max_interval >> 8) & 0xff;
+	cp.max_interval[2] = (max_interval >> 16) & 0xff;
+	cp.channel_map = channel_map;
+	cp.own_addr_type = own_addr_type;
+	cp.peer_addr_type = peer_addr_type;
+	if (peer_addr)
+		memcpy(&cp.peer_addr, peer_addr, sizeof(cp.peer_addr));
+	cp.filter_policy = filter_policy;
+	cp.tx_power = tx_power;
+	cp.primary_phy = primary_phy;
+	cp.secondary_max_skip = secondary_max_skip;
+	cp.secondary_phy = secondary_phy;
+	cp.sid = sid;
+	cp.notif_enable = notif_enable;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_EXT_ADV_PARAMS;
+	rq.cparam = &cp;
+	rq.clen = sizeof(cp);
+	rq.rparam = &rsp;
+	rq.rlen = sizeof(rsp);
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rsp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_set_ext_adv_data(int dd, uint8_t handle, uint8_t operation,
+				uint8_t fragment_pref, const uint8_t *data,
+				uint8_t data_len, int to)
+{
+	struct hci_request rq;
+	le_set_ext_adv_data_cp *cp;
+	uint8_t status;
+	size_t plen = sizeof(*cp) + data_len;
+
+	cp = malloc(plen);
+	if (!cp) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	memset(cp, 0, plen);
+	cp->handle = handle;
+	cp->operation = operation;
+	cp->fragment_preference = fragment_pref;
+	cp->data_len = data_len;
+	if (data && data_len)
+		memcpy(cp->data, data, data_len);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_EXT_ADV_DATA;
+	rq.cparam = cp;
+	rq.clen = plen;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0) {
+		free(cp);
+		return -1;
+	}
+
+	free(cp);
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_set_ext_scan_rsp_data(int dd, uint8_t handle, uint8_t operation,
+				uint8_t fragment_pref, const uint8_t *data,
+				uint8_t data_len, int to)
+{
+	struct hci_request rq;
+	le_set_ext_adv_data_cp *cp;
+	uint8_t status;
+	size_t plen = sizeof(*cp) + data_len;
+
+	cp = malloc(plen);
+	if (!cp) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	memset(cp, 0, plen);
+	cp->handle = handle;
+	cp->operation = operation;
+	cp->fragment_preference = fragment_pref;
+	cp->data_len = data_len;
+	if (data && data_len)
+		memcpy(cp->data, data, data_len);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_EXT_SCAN_RSP_DATA;
+	rq.cparam = cp;
+	rq.clen = plen;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0) {
+		free(cp);
+		return -1;
+	}
+
+	free(cp);
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_set_ext_adv_enable(int dd, uint8_t enable, uint8_t num_of_sets,
+				const void *sets, int to)
+{
+	struct hci_request rq;
+	le_set_ext_adv_enable_cp *cp;
+	uint8_t status;
+	size_t set_entry_len = 4; /* handle (1) + duration (2) + max_events (1) */
+	size_t plen = sizeof(le_set_ext_adv_enable_cp) + (num_of_sets * set_entry_len);
+
+	cp = malloc(plen);
+	if (!cp) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	memset(cp, 0, plen);
+	cp->enable = enable;
+	cp->num_of_sets = num_of_sets;
+	if (sets && num_of_sets)
+		memcpy(cp->sets, sets, num_of_sets * set_entry_len);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_EXT_ADV_ENABLE;
+	rq.cparam = cp;
+	rq.clen = plen;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0) {
+		free(cp);
+		return -1;
+	}
+
+	free(cp);
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
 		bdaddr_t peer_bdaddr, uint8_t own_bdaddr_type,

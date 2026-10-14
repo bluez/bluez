@@ -112,6 +112,22 @@ int hci_le_set_scan_enable(int dev_id, uint8_t enable, uint8_t filter_dup, int t
 int hci_le_set_scan_parameters(int dev_id, uint8_t type, uint16_t interval,
 					uint16_t window, uint8_t own_type,
 					uint8_t filter, int to);
+int hci_le_set_ext_adv_params(int dev_id, uint8_t handle, uint16_t evt_properties,
+				uint32_t min_interval, uint32_t max_interval,
+				uint8_t channel_map, uint8_t own_addr_type,
+				uint8_t peer_addr_type, const bdaddr_t *peer_addr,
+				uint8_t filter_policy, int8_t tx_power,
+				uint8_t primary_phy, uint8_t secondary_max_skip,
+				uint8_t secondary_phy, uint8_t sid,
+				uint8_t notif_enable, int to);
+int hci_le_set_ext_adv_data(int dev_id, uint8_t handle, uint8_t operation,
+				uint8_t fragment_pref, const uint8_t *data,
+				uint8_t data_len, int to);
+int hci_le_set_ext_scan_rsp_data(int dev_id, uint8_t handle, uint8_t operation,
+				uint8_t fragment_pref, const uint8_t *data,
+				uint8_t data_len, int to);
+int hci_le_set_ext_adv_enable(int dev_id, uint8_t enable, uint8_t num_of_sets,
+				const void *sets, int to);
 int hci_le_set_advertise_enable(int dev_id, uint8_t enable, int to);
 int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
