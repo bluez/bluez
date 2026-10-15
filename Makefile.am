@@ -706,6 +706,12 @@ unit_test_avrcp_LDADD = lib/libbluetooth-internal.la \
 
 unit_tests += unit/test-hfp
 
+unit_tests += unit/test-asha-stop
+
+unit_test_asha_stop_SOURCES = unit/test-asha-stop.c
+unit_test_asha_stop_LDADD = src/libshared-glib.la \
+	lib/libbluetooth-internal.la $(GLIB_LIBS)
+
 unit_test_hfp_SOURCES = unit/test-hfp.c
 unit_test_hfp_LDADD = src/libshared-glib.la $(GLIB_LIBS)
 
