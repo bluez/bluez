@@ -50,6 +50,9 @@
 #define ASHA_MIN_MTU 163
 /* The default of 672 does not work */
 #define ASHA_CONNECTION_MTU 512
+#define ASHA_CONN_INTERVAL 0x0010 /* 20 ms in 1.25 ms units */
+#define ASHA_CONN_LATENCY 0x0005
+#define ASHA_SUPERVISION_TIMEOUT 0x0258 /* 6 s in 10 ms units */
 
 struct bt_asha_device {
 	struct bt_asha *asha;
@@ -162,10 +165,8 @@ unsigned int bt_asha_device_start(struct bt_asha_device *asha_dev,
 	int ret;
 
 	btd_device_set_conn_param(asha_dev->device,
-			0x0010 /* min interval = 1.25ms intervals => 20ms */,
-			0x0010 /* max interval = 1.25ms intervals => 20ms */,
-			0x000A /* 10 events' latency */,
-			0x0064 /* 1s timeout */);
+			ASHA_CONN_INTERVAL, ASHA_CONN_INTERVAL,
+			ASHA_CONN_LATENCY, ASHA_SUPERVISION_TIMEOUT);
 
 	ret = asha_connect_socket(asha_dev, cb, user_data);
 
