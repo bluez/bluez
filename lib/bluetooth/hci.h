@@ -1735,6 +1735,61 @@ typedef struct {
 } __attribute__ ((packed)) le_set_address_resolution_enable_cp;
 #define LE_SET_ADDRESS_RESOLUTION_ENABLE_CP_SIZE 1
 
+#define OCF_LE_SET_EXT_ADV_PARAMS		0x0036
+typedef struct {
+	uint8_t  handle;
+	uint16_t evt_properties;
+	uint8_t  min_interval[3];
+	uint8_t  max_interval[3];
+	uint8_t  channel_map;
+	uint8_t  own_addr_type;
+	uint8_t  peer_addr_type;
+	bdaddr_t peer_addr;
+	uint8_t  filter_policy;
+	int8_t   tx_power;
+	uint8_t  primary_phy;
+	uint8_t  secondary_max_skip;
+	uint8_t  secondary_phy;
+	uint8_t  sid;
+	uint8_t  notif_enable;
+} __attribute__ ((packed)) le_set_ext_adv_params_cp;
+#define LE_SET_EXT_ADV_PARAMS_CP_SIZE 25
+
+typedef struct {
+	uint8_t status;
+	int8_t  selected_tx_power;
+} __attribute__ ((packed)) le_set_ext_adv_params_rp;
+#define LE_SET_EXT_ADV_PARAMS_RP_SIZE 9
+
+#define OCF_LE_SET_EXT_ADV_DATA			0x0037
+typedef struct {
+	uint8_t handle;
+	uint8_t operation;
+	uint8_t fragment_preference;
+	uint8_t data_len;
+	uint8_t data[0];
+} __attribute__ ((packed)) le_set_ext_adv_data_cp;
+#define LE_SET_EXT_ADV_DATA_CP_MAX_SIZE  (4 + 251)
+
+#define OCF_LE_SET_EXT_SCAN_RSP_DATA		0x0038
+typedef struct {
+	uint8_t advertising_handle;
+	uint8_t operation;
+	uint8_t fragment_preference;
+	uint8_t scan_response_data_length;
+	uint8_t scan_response_data[31];
+} __attribute__((packed)) le_set_ext_scan_rsp_data_cp;
+#define LE_SET_EXT_SCAN_RSP_DATA_CP_SIZE (4 + 31)
+
+#define OCF_LE_SET_EXT_ADV_ENABLE		0x0039
+typedef struct {
+	uint8_t enable;
+	uint8_t num_of_sets;
+	/* followed by ext adv set entries: handle(1), duration(2), max_events(1) */
+	uint8_t sets[0];
+} __attribute__ ((packed)) le_set_ext_adv_enable_cp;
+#define LE_SET_EXT_ADV_ENABLE_CP_SIZE (2 + 4)
+
 /* Vendor specific commands */
 #define OGF_VENDOR_CMD		0x3f
 
