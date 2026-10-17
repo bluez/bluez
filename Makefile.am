@@ -850,8 +850,12 @@ endif
 if MESH
 unit_tests += unit/test-mesh-crypto
 unit_test_mesh_crypto_CPPFLAGS = $(ell_cflags)
+if EXTERNAL_ELL
+unit_test_mesh_crypto_SOURCES = unit/test-mesh-crypto.c mesh/crypto.h
+else
 unit_test_mesh_crypto_SOURCES = unit/test-mesh-crypto.c \
 				mesh/crypto.h ell/internal ell/ell.h
+endif
 unit_test_mesh_crypto_LDADD = $(ell_ldadd)
 endif
 
@@ -973,11 +977,13 @@ ell/internal: Makefile
 		fi \
 	done > $@
 
+if !EXTERNAL_ELL
 ell/ell.h: Makefile
 	$(AM_V_at)echo -n > $@
 	$(AM_V_GEN)for f in $(ell_headers) ; do \
 		echo "#include <$$f>" >> $@ ; \
 	done
+endif
 
 maintainer-clean-local:
 	-rm -rf ell
