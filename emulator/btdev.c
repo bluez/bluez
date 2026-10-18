@@ -476,7 +476,7 @@ static void send_cmd(struct btdev *btdev, uint8_t evt, uint16_t opcode,
 					const struct iovec *iov, int iovlen)
 {
 	struct bt_hci_evt_hdr hdr;
-	struct iovec iov2[2 + iovlen];
+	struct iovec *iov2 = newa(struct iovec, 2 + iovlen);
 	uint8_t pkt = BT_H4_EVT_PKT;
 	int i;
 
