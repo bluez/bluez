@@ -2774,7 +2774,7 @@ static void device_browse_cb(struct btd_device *dev, int err, void *user_data)
 {
 	DBG("err %d (%s)", err, strerror(-err));
 
-	/* If there are not errors with discovery proceed conecting services */
+	/* If there are not errors with discovery proceed connecting services */
 	if (!err) {
 		dev->pending = create_pending_list(dev, NULL);
 		connect_next(dev);
@@ -4140,7 +4140,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 		 * connect immediately to prevent us from retrying to
 		 * connect to this device again and start an 1, 2, 4
 		 * second timers to re-enable that knob in hopes that
-		 * subsequent retires will be more successul
+		 * subsequent retries will be more successful
 		 */
 		device_set_auto_connect(device, FALSE);
 		if (device->auth_failures < AUTH_FAILURES_THRESHOLD) {
@@ -7586,7 +7586,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	}
 
 	/* If we were initiators start service discovery immediately.
-	 * However if the other end was the initator wait a few seconds
+	 * However if the other end was the initiator wait a few seconds
 	 * before SDP. This is due to potential IOP issues if the other
 	 * end starts doing SDP at the same time as us */
 	if (bonding) {
