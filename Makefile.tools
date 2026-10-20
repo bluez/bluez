@@ -103,7 +103,8 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 				emulator/smp.c \
 				emulator/phy.h emulator/phy.c \
 				emulator/le.h emulator/le.c \
-				emulator/vhost.h emulator/vhost.c
+				emulator/vhost.h emulator/vhost.c \
+				emulator/virtio.h emulator/virtio.c
 emulator_btvirt_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la
 
 emulator_b1ee_SOURCES = emulator/b1ee.c

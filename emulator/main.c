@@ -27,6 +27,7 @@
 #include "btdev.h"
 #include "server.h"
 #include "vhci.h"
+#include "virtio.h"
 #include "le.h"
 
 static void signal_callback(int signum, void *user_data)
@@ -49,6 +50,8 @@ static void usage(void)
 		"\t-S                    Create local serial port\n"
 		"\t-s[path=/tmp]         Create local server sockets\n"
 		"\t-t[port=45550]        Create a TCP server\n"
+		"\t-V[path=/tmp]         Create local vhost-user virtio\n"
+		"\t                      server socket\n"
 		"\t-l[num]               Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
 		"\t-U[num]               Number of test LE controllers\n"
@@ -56,7 +59,7 @@ static void usage(void)
 		"\t-A                    Create AMP controller\n"
 		"\t-C, --core=<version>  Core Specification version of the\n"
 		"\t                      BR/EDR/LE controllers created with\n"
-		"\t                      -l, -s and -t:\n"
+		"\t                      -l, -s, -t and -V:\n"
 		"\t                      5.0, 5.2, 6.0 or 6.2 (default)\n"
 		"\t-h, --help            Show help options\n");
 }
@@ -66,6 +69,7 @@ static const struct option main_options[] = {
 	{ "serial",  no_argument,       NULL, 'S' },
 	{ "server",  optional_argument, NULL, 's' },
 	{ "tcp",     optional_argument, NULL, 't' },
+	{ "vhost",   optional_argument, NULL, 'V' },
 	{ "local",   optional_argument, NULL, 'l' },
 	{ "le",      no_argument,       NULL, 'L' },
 	{ "bredr",   no_argument,       NULL, 'B' },
@@ -126,6 +130,7 @@ int main(int argc, char *argv[])
 	bool server_enabled = false;
 	const char *server_path = "/tmp";
 	uint16_t tcp_port = 0;
+	const char *vhost_path = NULL;
 	bool serial_enabled = false;
 	int letest_count = 0;
 	int vhci_count = 0;
@@ -140,7 +145,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "dSs::t::l::LBAC:U::vh",
+		opt = getopt_long(argc, argv, "dSs::t::V::l::LBAC:U::vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -162,6 +167,9 @@ int main(int argc, char *argv[])
 				tcp_port = atoi(optarg);
 			else
 				tcp_port = 45550;
+			break;
+		case 'V':
+			vhost_path = optarg ? optarg : "/tmp";
 			break;
 		case 'l':
 			if (optarg)
@@ -209,7 +217,7 @@ int main(int argc, char *argv[])
 		type = bredrle_type;
 
 	if (letest_count < 1 && vhci_count < 1 && !server_enabled &&
-						!tcp_port && !serial_enabled) {
+				!tcp_port && !serial_enabled && !vhost_path) {
 		fprintf(stderr, "No emulator specified\n");
 		return EXIT_FAILURE;
 	}
@@ -304,6 +312,19 @@ int main(int argc, char *argv[])
 		else
 			server_set_bredrle_type(tcp_server, bredrle_type);
 		fprintf(stderr, "Listening TCP on 127.0.0.1:%d\n", tcp_port);
+	}
+
+	if (vhost_path) {
+		struct vtio *vtio;
+		char path[PATH_MAX];
+
+		snprintf(path, sizeof(path), "%s/%s", vhost_path,
+							"bt-vhost-bredrle");
+		vtio = vtio_open(bredrle_type, path);
+		if (!vtio)
+			fprintf(stderr, "Failed to open vhost-user server\n");
+		else if (debug_enabled)
+			vtio_set_debug(vtio, server_debug, "vhost");
 	}
 
 	return mainloop_run_with_signal(signal_callback, NULL);
