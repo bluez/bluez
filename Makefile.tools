@@ -106,6 +106,8 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 				emulator/vhost.h emulator/vhost.c \
 				emulator/virtio.h emulator/virtio.c \
 				emulator/timetravel.h emulator/timetravel.c \
+				emulator/vconsole.h emulator/vconsole.c \
+				emulator/ttclient.h emulator/ttclient.c \
 				emulator/timeout.c
 emulator_btvirt_LDADD = lib/libbluetooth-internal.la src/libshared-mainloop.la
 
