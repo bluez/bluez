@@ -168,6 +168,8 @@ static void parse_event_report_type(struct map_event *event, const char *value)
 		event->type = MAP_ET_MESSAGE_DELETED;
 	else if (!g_ascii_strcasecmp(value, "MessageShift"))
 		event->type = MAP_ET_MESSAGE_SHIFT;
+	else if (!g_ascii_strcasecmp(value, "ReadStatusChanged"))
+		event->type = MAP_ET_READ_STATUS_CHANGED;
 }
 
 static void parse_event_report_handle(struct map_event *event,
