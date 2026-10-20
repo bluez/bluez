@@ -27,6 +27,7 @@
 
 #include "btdev.h"
 #include "vhost.h"
+#include "timetravel.h"
 #include "virtio.h"
 
 /* Virtio device ID 40, see include/uapi/linux/virtio_bt.h in Linux */
@@ -160,6 +161,34 @@ static void queue_notify(struct vhost *vu, unsigned int index,
 		flush_pending(client);
 		break;
 	}
+
+	/* The guest may wait for the calendar now */
+	tt_schedule();
+}
+
+/* The guest acknowledges in-band notifications only after its calendar
+ * requests are answered, so keep serving the calendar meanwhile.
+ */
+static void vhost_wait(struct vhost *vu, void *user_data)
+{
+	tt_process();
+}
+
+static void flush_client(void *data, void *user_data)
+{
+	struct client *client = data;
+
+	vhost_process(client->vu);
+}
+
+/* Process guest notifications sent before the guest waited, so time does
+ * not advance past them.
+ */
+static void flush(void *user_data)
+{
+	struct vtio *vtio = user_data;
+
+	queue_foreach(vtio->clients, flush_client, NULL);
 }
 
 static void disconnect(struct vhost *vu, void *user_data)
@@ -182,6 +211,7 @@ static const struct vhost_ops vhost_ops = {
 	.config_len = sizeof(config),
 	.queue_notify = queue_notify,
 	.disconnect = disconnect,
+	.wait = vhost_wait,
 };
 
 static void vu_debug(const char *str, void *user_data)
@@ -247,6 +277,7 @@ static void vtio_destroy(void *user_data)
 {
 	struct vtio *vtio = user_data;
 
+	tt_remove_flush(flush, vtio);
 	queue_destroy(vtio->clients, detach_client);
 	close(vtio->fd);
 	free(vtio);
@@ -291,6 +322,8 @@ struct vtio *vtio_open(enum btdev_type type, const char *path)
 	if (mainloop_add_fd(vtio->fd, EPOLLIN, accept_callback, vtio,
 							vtio_destroy) < 0)
 		goto fail;
+
+	tt_add_flush(flush, vtio);
 
 	return vtio;
 
