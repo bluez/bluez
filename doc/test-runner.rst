@@ -26,9 +26,12 @@ OPTIONS
 :-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
 :-H/--qemu-host-cpu: Use host CPU (requires KVM support)
-:-k/--kernel=<image>: Kernel image (bzImage)
+:-k/--kernel=<image>: Kernel image (bzImage) or User Mode Linux binary
 :-F/--virtiofs[=<path>]: Path to virtiofsd, or no to disable virtio-fs
-:-o/--option=<opt>: Additional argument passed to QEMU
+:-T/--time-travel: Run a User Mode Linux kernel on simulated time, with
+    btvirt as time travel calendar
+:-o/--option=<opt>: Additional argument passed to QEMU, or kernel
+    parameter with User Mode Linux
 :-h/--help: Show help options
 
 ARCHITECTURE
@@ -133,6 +136,28 @@ Extra QEMU devices
 additional channels between the launcher and the guest are added, for
 example by **test-functional(1)**, which attaches its own virtio-serial
 ports and a writable shared directory this way.
+
+User Mode Linux
+---------------
+
+When ``-k`` is a User Mode Linux (UML) binary, recognized by its
+``.uml.setup.init`` section, test-runner runs it directly instead of QEMU,
+with the host filesystem mounted as root through hostfs, and powers it off
+at the end since rebooting UML starts it again. The kernel needs
+``CONFIG_HOSTFS``, and ``CONFIG_VIRTIO_UML`` for virtio devices.
+
+``-o`` then adds kernel parameters, which is how UML attaches devices served
+from the host, e.g. ``virtio_uml.device=<socket>:40`` for a virtio
+Bluetooth controller, or joins an external simulated clock with
+``time-travel=ext:<socket>``. See `virtio.rst <virtio.rst>`_. ``-u``,
+``-U``, ``-P``, ``-q`` and ``-H`` need QEMU.
+
+With ``-T``, test-runner starts **btvirt(1)** ``--time`` as time travel
+calendar and runs the guest on its simulated clock: time only advances when
+the guest waits, so it skips idle time and timeouts take no real time, while
+the guest sees the same timings on every run. This needs a kernel with
+``CONFIG_UML_TIME_TRAVEL_SUPPORT``, which test-runner checks; without
+``-T`` the same kernel runs on real time.
 
 Kernel
 ======
@@ -385,3 +410,20 @@ exits.
 Note that unlike the other modes, PCIe-passthrough boots the guest with ACPI
 and APIC enabled, as these are required for device enumeration and MSI
 interrupt delivery.
+
+Running mgmt-tester under User Mode Linux
+-----------------------------------------
+
+.. code-block::
+
+	$ make ARCH=um defconfig
+	$ scripts/kconfig/merge_config.sh -m .config <bluez>/doc/tester.config
+	$ make ARCH=um olddefconfig linux
+	$ tools/test-runner -k <linux>/linux -- tools/mgmt-tester
+
+On simulated time, with a kernel that also has
+``CONFIG_UML_TIME_TRAVEL_SUPPORT=y``:
+
+.. code-block::
+
+	$ tools/test-runner -T -k <linux>/linux -- tools/mgmt-tester
