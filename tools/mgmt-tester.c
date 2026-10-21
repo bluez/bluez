@@ -22,6 +22,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <linux/rfkill.h>
+
 #include <glib.h>
 
 #include "bluetooth/bluetooth.h"
@@ -810,6 +812,13 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const struct generic_data set_powered_on_rfkill_test = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_RFKILLED,
 };
 
 static uint16_t settings_powered_advertising_privacy[] = {
@@ -6577,6 +6586,51 @@ static void setup_bthost(void)
 			bthost_set_adv_enable(bthost, 0x01);
 	} else
 		bthost_write_scan_enable(bthost, 0x03);
+}
+
+static int rfkill_block(uint16_t index)
+{
+	struct rfkill_event ev;
+	char path[64], name[16], hci[16];
+	ssize_t len;
+	int fd, name_fd, err;
+
+	snprintf(hci, sizeof(hci), "hci%u", index);
+
+	fd = open("/dev/rfkill", O_RDWR | O_NONBLOCK | O_CLOEXEC);
+	if (fd < 0)
+		return -errno;
+
+	/* Reading /dev/rfkill returns an add event for each rfkill device */
+	while (read(fd, &ev, RFKILL_EVENT_SIZE_V1) == RFKILL_EVENT_SIZE_V1) {
+		snprintf(path, sizeof(path), "/sys/class/rfkill/rfkill%u/name",
+								ev.idx);
+
+		name_fd = open(path, O_RDONLY | O_CLOEXEC);
+		if (name_fd < 0)
+			continue;
+
+		len = read(name_fd, name, sizeof(name) - 1);
+		close(name_fd);
+		if (len <= 0)
+			continue;
+
+		name[len] = '\0';
+		name[strcspn(name, "\n")] = '\0';
+		if (strcmp(name, hci))
+			continue;
+
+		ev.op = RFKILL_OP_CHANGE;
+		ev.soft = 1;
+
+		len = write(fd, &ev, RFKILL_EVENT_SIZE_V1);
+		err = len == RFKILL_EVENT_SIZE_V1 ? 0 : -EIO;
+		close(fd);
+		return err;
+	}
+
+	close(fd);
+	return -ENODEV;
 }
 
 static void setup_pairing_acceptor(const void *test_data)
@@ -12349,6 +12403,31 @@ static void test_command_generic(const void *test_data)
 	test_add_condition(data);
 }
 
+static void test_command_rfkill_blocked(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	int err;
+
+	tester_print("Blocking controller through rfkill");
+
+	err = rfkill_block(data->mgmt_index);
+	if (err == -ENOENT) {
+		/* Kernel built without rfkill support */
+		tester_warn("No /dev/rfkill, skipping test");
+		tester_test_abort();
+		return;
+	}
+
+	if (err < 0) {
+		tester_warn("Failed to block hci%u through rfkill: %s",
+					data->mgmt_index, strerror(-err));
+		tester_test_failed();
+		return;
+	}
+
+	test_command_generic(test_data);
+}
+
 static void global_adv_disable_hci_callback(uint16_t opcode,
 					const void *param, uint8_t length,
 					void *user_data)
@@ -14073,6 +14152,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Set powered on - Invalid index",
 				&set_powered_on_invalid_index_test,
 				NULL, test_command_generic);
+	test_bredrle("Set powered on - Blocked by rfkill",
+				&set_powered_on_rfkill_test,
+				NULL, test_command_rfkill_blocked);
 	test_le("Set powered on - Privacy and Advertising",
 				&set_powered_on_privacy_adv_test,
 				NULL, test_command_generic);
