@@ -471,6 +471,7 @@ struct test_data {
 	uint16_t handle;
 	uint16_t acl_handle;
 	struct queue *io_queue;
+	GIOChannel *past_io;
 	unsigned int io_id[4];
 	uint8_t client_num;
 	int step;
@@ -711,6 +712,11 @@ static void test_post_teardown(const void *test_data)
 
 	if (data->io_queue)
 		queue_remove_all(data->io_queue, NULL, NULL, io_free);
+
+	if (data->past_io) {
+		g_io_channel_unref(data->past_io);
+		data->past_io = NULL;
+	}
 
 	/* Remove the watches with the test, as the sockets they keep open
 	 * hang up once the controller is removed, which would wake up the
@@ -1716,6 +1722,8 @@ static void bthost_iso_disconnected(void *user_data)
 	data->handle = 0x0000;
 }
 
+static void iso_send(struct test_data *data, GIOChannel *io);
+
 static void iso_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
@@ -1726,6 +1734,12 @@ static void iso_new_conn(uint16_t handle, void *user_data)
 	tester_print("New client connection with handle 0x%04x", handle);
 
 	data->handle = handle;
+
+	if (data->past_io) {
+		iso_send(data, data->past_io);
+		g_io_channel_unref(data->past_io);
+		data->past_io = NULL;
+	}
 
 	host = hciemu_client_get_host(data->hciemu);
 	bthost_add_iso_hook(host, data->handle, bthost_recv_data, data,
@@ -2703,10 +2717,15 @@ static gboolean iso_pollout(GIOChannel *io, GIOCondition cond,
 	const struct iso_client_data *isodata = data->test_data;
 	unsigned int count;
 
-	if (isodata->past && !data->handle)
-		return TRUE;
-
 	data->io_id[0] = 0;
+
+	/* Send once the connection to the PAST receiver is there, see
+	 * iso_new_conn(), rather than waking up for good until then.
+	 */
+	if (isodata->past && !data->handle) {
+		data->past_io = g_io_channel_ref(io);
+		return FALSE;
+	}
 
 	tester_print("POLLOUT event received");
 
