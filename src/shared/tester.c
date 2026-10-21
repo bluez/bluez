@@ -423,12 +423,63 @@ static int tester_summarize(void)
 	return failed;
 }
 
+static gboolean done_callback(gpointer user_data);
+
+static bool teardown_timeout(gpointer user_data)
+{
+	struct test_case *test = user_data;
+
+	test->timeout_id = 0;
+
+	if (!test_current || test_current->data != test)
+		return FALSE;
+
+	/* Give up waiting, e.g. for an index that was never added to be
+	 * removed, rather than blocking for good. Its callbacks may still
+	 * complete later, and would be taken for those of the test running
+	 * then, so do not run the remaining tests.
+	 */
+	test->result = TEST_RESULT_TIMED_OUT;
+	test->stage = TEST_STAGE_INVALID;
+
+	print_progress(test->name, COLOR_RED, "teardown timed out");
+	tester_warn("Not running the remaining tests");
+
+	while (test_current->next)
+		test_current = test_current->next;
+
+	g_idle_add(done_callback, test);
+
+	return FALSE;
+}
+
+/* Teardown may have to wait for the kernel to time out commands still sent
+ * to a controller being removed, 2 seconds each, so only give up on a
+ * teardown that clearly does not complete.
+ */
+#define TEARDOWN_TIMEOUT	30
+
+static void teardown_timeout_start(struct test_case *test)
+{
+	if (test->timeout_id > 0) {
+		timeout_remove(test->timeout_id);
+		test->timeout_id = 0;
+	}
+
+	if (test->timeout > 0)
+		test->timeout_id = timeout_add_seconds(
+					MAX(test->timeout, TEARDOWN_TIMEOUT),
+					teardown_timeout, test, NULL);
+}
+
 static gboolean teardown_callback(gpointer user_data)
 {
 	struct test_case *test = user_data;
 
 	test->teardown_id = 0;
 	test->stage = TEST_STAGE_TEARDOWN;
+
+	teardown_timeout_start(test);
 
 	print_progress(test->name, COLOR_MAGENTA, "teardown");
 	test->teardown_func(test->test_data);
@@ -629,10 +680,7 @@ void tester_setup_failed(void)
 	test->result = TEST_RESULT_FAILED;
 	test->stage = TEST_STAGE_POST_TEARDOWN;
 
-	if (test->timeout_id > 0) {
-		timeout_remove(test->timeout_id);
-		test->timeout_id = 0;
-	}
+	teardown_timeout_start(test);
 
 	print_progress(test->name, COLOR_RED, "setup failed");
 	print_progress(test->name, COLOR_MAGENTA, "teardown");
@@ -745,6 +793,11 @@ void tester_post_teardown_complete(void)
 	if (test->stage != TEST_STAGE_POST_TEARDOWN)
 		return;
 
+	if (test->timeout_id > 0) {
+		timeout_remove(test->timeout_id);
+		test->timeout_id = 0;
+	}
+
 	print_progress(test->name, COLOR_MAGENTA, "teardown complete");
 
 	g_idle_add(done_callback, test);
@@ -761,6 +814,11 @@ void tester_post_teardown_failed(void)
 
 	if (test->stage != TEST_STAGE_POST_TEARDOWN)
 		return;
+
+	if (test->timeout_id > 0) {
+		timeout_remove(test->timeout_id);
+		test->timeout_id = 0;
+	}
 
 	print_progress(test->name, COLOR_RED, "teardown failed");
 
