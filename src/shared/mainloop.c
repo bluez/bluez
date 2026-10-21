@@ -90,7 +90,7 @@ void mainloop_exit_failure(void)
 }
 
 static bool idle_pending(void);
-static void run_idles(void);
+static void run_idles(bool deferred);
 static void remove_all_idles(void);
 
 int mainloop_run(void)
@@ -107,7 +107,8 @@ int mainloop_run(void)
 			continue;
 
 		if (!nfds) {
-			run_idles();
+			run_idles(true);
+			run_idles(false);
 			continue;
 		}
 
@@ -123,6 +124,8 @@ int mainloop_run(void)
 			data->callback(data->fd, events[n].events,
 							data->user_data);
 		}
+
+		run_idles(true);
 	}
 
 	for (i = 0; i < MAX_MAINLOOP_ENTRIES; i++) {
@@ -330,6 +333,7 @@ int mainloop_add_timeout(unsigned int msec, mainloop_timeout_func callback,
 
 struct idle_data {
 	int id;
+	bool deferred;
 	bool armed;
 	bool removed;
 	mainloop_timeout_func callback;
@@ -396,14 +400,15 @@ static void remove_all_idles(void)
 	free_removed_idles();
 }
 
-/* Run the idle callbacks armed before this pass, once each */
-static void run_idles(void)
+/* Run the idle or deferred callbacks armed before this pass, once each */
+static void run_idles(bool deferred)
 {
 	struct idle_data *idle;
 	int last = idle_next_id;
 
 	for (idle = idle_list; idle; idle = idle->next) {
-		if (idle->removed || !idle->armed || idle->id >= last)
+		if (idle->removed || !idle->armed || idle->id >= last ||
+						idle->deferred != deferred)
 			continue;
 
 		idle->armed = false;
@@ -413,11 +418,8 @@ static void run_idles(void)
 	free_removed_idles();
 }
 
-/* Run callback once the mainloop is idle, again after
- * mainloop_modify_timeout() with 0; removed with mainloop_remove_timeout().
- */
-int mainloop_add_idle(mainloop_timeout_func callback, void *user_data,
-				mainloop_destroy_func destroy)
+static int add_idle(bool deferred, mainloop_timeout_func callback,
+			void *user_data, mainloop_destroy_func destroy)
 {
 	struct idle_data *idle, **last;
 
@@ -430,6 +432,7 @@ int mainloop_add_idle(mainloop_timeout_func callback, void *user_data,
 
 	memset(idle, 0, sizeof(*idle));
 	idle->id = idle_next_id++;
+	idle->deferred = deferred;
 	idle->armed = true;
 	idle->callback = callback;
 	idle->destroy = destroy;
@@ -440,6 +443,24 @@ int mainloop_add_idle(mainloop_timeout_func callback, void *user_data,
 	*last = idle;
 
 	return idle->id;
+}
+
+/* Run callback once the mainloop is idle, again after
+ * mainloop_modify_timeout() with 0; removed with mainloop_remove_timeout().
+ */
+int mainloop_add_idle(mainloop_timeout_func callback, void *user_data,
+				mainloop_destroy_func destroy)
+{
+	return add_idle(false, callback, user_data, destroy);
+}
+
+/* Run callback after the events ready now were handled, before the idle
+ * callbacks, like a source of default priority added last with GLib.
+ */
+int mainloop_add_deferred(mainloop_timeout_func callback, void *user_data,
+				mainloop_destroy_func destroy)
+{
+	return add_idle(true, callback, user_data, destroy);
 }
 
 int mainloop_modify_timeout(int id, unsigned int msec)
