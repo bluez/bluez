@@ -262,6 +262,10 @@ unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
 		return 0;
 	}
 
+	/* Some renderers require a Volume write before START. */
+	if (!bt_asha_set_volume(asha, asha->volume))
+		DBG("ASHA volume priming failed, continuing with START");
+
 	ret = asha_send_acp(asha, acp_start_cmd, sizeof(acp_start_cmd), cb,
 			user_data);
 	if (ret < 0)
