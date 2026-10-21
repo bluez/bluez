@@ -21,7 +21,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <glib.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hci.h"
