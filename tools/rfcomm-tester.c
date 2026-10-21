@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#include <glib.h>
+#include <assert.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/rfcomm.h"
@@ -29,6 +29,8 @@
 #include "emulator/hciemu.h"
 
 #include "src/shared/tester.h"
+#include "src/shared/timeout.h"
+#include "tools/tester-io.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/util.h"
 
@@ -38,7 +40,7 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	const void *test_data;
-	GIOChannel *io;
+	struct tester_io *io;
 	unsigned int io_id;
 	uint16_t conn_handle;
 	uint16_t send_len;
@@ -204,12 +206,12 @@ static void test_post_teardown(const void *test_data)
 	struct test_data *data = tester_get_data();
 
 	if (data->io_id > 0) {
-		g_source_remove(data->io_id);
+		tester_remove_source(data->io_id);
 		data->io_id = 0;
 	}
 
 	if (data->io)
-		g_io_channel_unref(data->io);
+		tester_io_unref(data->io);
 
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
@@ -432,8 +434,8 @@ static int connect_rfcomm_sock(int sk, const bdaddr_t *bdaddr, uint8_t channel)
 	return 0;
 }
 
-static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool client_received_data(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_client_data *cli = data->test_data;
@@ -441,7 +443,7 @@ static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
 	ssize_t ret;
 	char buf[248];
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	ret = read(sk, buf, cli->data_len);
 	if (cli->data_len != ret) {
@@ -457,24 +459,24 @@ static gboolean client_received_data(GIOChannel *io, GIOCondition cond,
 	return false;
 }
 
-static gboolean rc_write_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool rc_write_data(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct rfcomm_client_data *cli = data->test_data;
 	int sk;
 	ssize_t ret;
 
-	if (cond & G_IO_NVAL)
+	if (cond & TESTER_IO_NVAL)
 		return false;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	if (cond & (TESTER_IO_HUP | TESTER_IO_ERR))
 		goto done;
 
 	tester_print("Writing %u bytes of data",
 			cli->data_len - data->send_len);
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	ret = write(sk, cli->send_data + data->send_len,
 			cli->data_len - data->send_len);
@@ -495,8 +497,8 @@ done:
 	return false;
 }
 
-static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool rc_connect_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_client_data *cli = data->test_data;
@@ -507,7 +509,7 @@ static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	data->io_id = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
 		err = -errno;
@@ -520,12 +522,15 @@ static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	if (cli->send_data) {
-		data->io = g_io_channel_ref(io);
-		cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-		data->io_id = g_io_add_watch(io, cond, rc_write_data, data);
+		data->io = tester_io_ref(io);
+		cond = TESTER_IO_OUT | TESTER_IO_HUP | TESTER_IO_ERR |
+							TESTER_IO_NVAL;
+		data->io_id = tester_io_add_watch(io, cond, rc_write_data,
+									data);
 		return false;
 	} else if (cli->read_data) {
-		g_io_add_watch(io, G_IO_IN, client_received_data, NULL);
+		tester_io_add_watch(io, TESTER_IO_IN, client_received_data,
+									NULL);
 		bthost_send_rfcomm_data(hciemu_client_get_host(data->hciemu),
 						data->conn_handle,
 						cli->client_channel,
@@ -543,8 +548,8 @@ static gboolean rc_connect_cb(GIOChannel *io, GIOCondition cond,
 	return false;
 }
 
-static gboolean rc_close_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool rc_close_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -585,10 +590,10 @@ static void client_hook_func(const void *data, uint16_t len,
 
 	if (cli->data_len != test_data->recv_len) {
 		if (cli->data_len != test_data->send_len)
-			test_data->io_id = g_io_add_watch(test_data->io,
-						     G_IO_OUT | G_IO_HUP |
-						     G_IO_ERR | G_IO_NVAL,
-						     rc_write_data, test_data);
+			test_data->io_id = tester_io_add_watch(test_data->io,
+					TESTER_IO_OUT | TESTER_IO_HUP |
+					TESTER_IO_ERR | TESTER_IO_NVAL,
+					rc_write_data, test_data);
 		return;
 	}
 
@@ -637,7 +642,7 @@ static void test_connect(const void *test_data)
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	const struct rfcomm_client_data *cli = data->test_data;
 	const uint8_t *client_addr, *central_addr;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 
 	bthost_add_l2cap_server(bthost, 0x0003, NULL, NULL, NULL);
@@ -656,25 +661,26 @@ static void test_connect(const void *test_data)
 		return;
 	}
 
-	io = g_io_channel_unix_new(sk);
+	io = tester_io_new(sk);
 
 	tester_print("Connect in progress %d", sk);
 
 	if (cli->close) {
-		data->io_id = g_io_add_watch(io, G_IO_NVAL, rc_close_cb, NULL);
-		close(sk);
+		data->io_id = tester_io_add_watch(io, TESTER_IO_NVAL,
+							rc_close_cb, NULL);
+		tester_io_close(io);
 		tester_print("Close socket %d", sk);
 	} else {
-		g_io_channel_set_close_on_unref(io, TRUE);
-		data->io_id = g_io_add_watch(io, G_IO_OUT, rc_connect_cb,
-						NULL);
+		tester_io_set_close_on_unref(io, true);
+		data->io_id = tester_io_add_watch(io, TESTER_IO_OUT,
+							rc_connect_cb, NULL);
 	}
 
-	g_io_channel_unref(io);
+	tester_io_unref(io);
 }
 
-static gboolean server_received_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool server_received_data(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_server_data *srv = data->test_data;
@@ -682,7 +688,7 @@ static gboolean server_received_data(GIOChannel *io, GIOCondition cond,
 	ssize_t ret;
 	int sk;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	ret = read(sk, buf, srv->data_len);
 	if (ret != srv->data_len) {
@@ -698,8 +704,8 @@ static gboolean server_received_data(GIOChannel *io, GIOCondition cond,
 	return false;
 }
 
-static gboolean rfcomm_listen_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool rfcomm_listen_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct rfcomm_server_data *srv = data->test_data;
@@ -707,7 +713,7 @@ static gboolean rfcomm_listen_cb(GIOChannel *io, GIOCondition cond,
 
 	data->io_id = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	new_sk = accept(sk, NULL, NULL);
 	if (new_sk < 0) {
@@ -725,15 +731,15 @@ static gboolean rfcomm_listen_cb(GIOChannel *io, GIOCondition cond,
 		close(new_sk);
 		return false;
 	} else if (srv->read_data) {
-		GIOChannel *new_io;
+		struct tester_io *new_io;
 
-		new_io = g_io_channel_unix_new(new_sk);
-		g_io_channel_set_close_on_unref(new_io, TRUE);
+		new_io = tester_io_new(new_sk);
+		tester_io_set_close_on_unref(new_io, true);
 
-		data->io_id = g_io_add_watch(new_io, G_IO_IN,
+		data->io_id = tester_io_add_watch(new_io, TESTER_IO_IN,
 						server_received_data, NULL);
 
-		g_io_channel_unref(new_io);
+		tester_io_unref(new_io);
 		return false;
 	}
 
@@ -786,7 +792,7 @@ static void test_server(const void *test_data)
 	const struct rfcomm_server_data *srv = data->test_data;
 	const uint8_t *central_addr;
 	struct bthost *bthost;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 
 	central_addr = hciemu_get_central_bdaddr(data->hciemu);
@@ -805,11 +811,12 @@ static void test_server(const void *test_data)
 		return;
 	}
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
 
-	data->io_id = g_io_add_watch(io, G_IO_IN, rfcomm_listen_cb, NULL);
-	g_io_channel_unref(io);
+	data->io_id = tester_io_add_watch(io, TESTER_IO_IN, rfcomm_listen_cb,
+									NULL);
+	tester_io_unref(io);
 
 	tester_print("Listening for connections");
 
