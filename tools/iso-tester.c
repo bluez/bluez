@@ -707,9 +707,21 @@ static void io_free(void *data)
 static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	unsigned int i;
 
 	if (data->io_queue)
 		queue_remove_all(data->io_queue, NULL, NULL, io_free);
+
+	/* Remove the watches with the test, as the sockets they keep open
+	 * hang up once the controller is removed, which would wake up the
+	 * main loop over and over for the following tests.
+	 */
+	for (i = 0; i < ARRAY_SIZE(data->io_id); ++i) {
+		if (data->io_id[i] > 0) {
+			g_source_remove(data->io_id[i]);
+			data->io_id[i] = 0;
+		}
+	}
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_EXP_FEATURE, MGMT_INDEX_NONE,
 		  sizeof(reset_iso_socket_param), reset_iso_socket_param,
@@ -2542,9 +2554,11 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 
 	if (memcmp(buf, isodata->recv->iov_base, ret))
 		tester_test_failed();
-	else if (data->step)
+	else if (data->step) {
+		/* Keep the watch, and its id so teardown can remove it */
+		data->io_id[0] = g_source_get_id(g_main_current_source());
 		return TRUE;
-	else if (isodata->disconnect)
+	} else if (isodata->disconnect)
 		iso_shutdown(data, io);
 	else if (isodata->terminate)
 		iso_terminate(data, io);
