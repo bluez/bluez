@@ -1158,10 +1158,10 @@ static void connection_lost(struct avdtp *session, int err)
 	ba2str(device_get_address(session->device), address);
 	DBG("Disconnected from %s", address);
 
+	finalize_discovery(session, err);
+
 	g_slist_foreach(session->streams, (GFunc) release_stream, session);
 	session->streams = NULL;
-
-	finalize_discovery(session, err);
 
 	avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
 
