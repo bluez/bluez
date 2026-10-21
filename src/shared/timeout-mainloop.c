@@ -54,7 +54,14 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 	data->timeout = timeout;
 	data->destroy = destroy;
 
-	data->id = mainloop_add_timeout(timeout, timeout_callback, data,
+	/* A timeout of 0 runs as soon as the mainloop gets to it, as with the
+	 * other backends, while mainloop_add_timeout() leaves it disarmed.
+	 */
+	if (timeout)
+		data->id = mainloop_add_timeout(timeout, timeout_callback, data,
+							timeout_destroy);
+	else
+		data->id = mainloop_add_idle(timeout_callback, data,
 							timeout_destroy);
 	if (data->id < 0) {
 		free(data);
