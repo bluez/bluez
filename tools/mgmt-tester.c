@@ -78,6 +78,8 @@ struct test_data {
 	struct queue *expect_hci_q;
 	int unmet_conditions;
 	int unmet_setup_conditions;
+	bool setup_settle;
+	unsigned int settle_id;
 	int sk;
 	struct simult_discovery simult;
 };
@@ -120,6 +122,11 @@ static void test_post_teardown(const void *test_data)
 	struct test_data *data = tester_get_data();
 
 	simult_discovery_cleanup(data);
+
+	if (data->settle_id) {
+		timeout_remove(data->settle_id);
+		data->settle_id = 0;
+	}
 
 	if (data->sk >= 0)
 		close(data->sk);
@@ -556,6 +563,50 @@ static void test_add_setup_condition(struct test_data *data)
 		     data->unmet_setup_conditions);
 }
 
+/* Time without HCI commands after which the controller is considered
+ * settled, see test_setup_settle().
+ */
+#define SETTLE_TIMEOUT	100
+
+static bool settle_timeout(void *user_data)
+{
+	struct test_data *data = user_data;
+
+	data->settle_id = 0;
+	hciemu_clear_central_post_command_hooks(data->hciemu);
+
+	tester_print("Controller settled");
+	tester_setup_complete();
+
+	return false;
+}
+
+static void settle_command(uint16_t opcode, const void *param,
+					uint8_t length, void *user_data)
+{
+	struct test_data *data = user_data;
+
+	if (data->settle_id)
+		timeout_remove(data->settle_id);
+
+	data->settle_id = timeout_add(SETTLE_TIMEOUT, settle_timeout, data,
+									NULL);
+}
+
+/* The kernel may still program the controller, e.g. its accept and
+ * resolving lists, after replying to the setup commands, so wait for the
+ * controller to be idle for a while, or a test may see the setup commands
+ * instead of its own.
+ */
+static void test_setup_settle(struct test_data *data)
+{
+	tester_print("Waiting for the controller to settle");
+
+	hciemu_add_central_post_command_hook(data->hciemu, settle_command,
+									data);
+	settle_command(0, NULL, 0, data);
+}
+
 static void test_setup_condition_complete(struct test_data *data)
 {
 	data->unmet_setup_conditions--;
@@ -565,6 +616,11 @@ static void test_setup_condition_complete(struct test_data *data)
 
 	if (data->unmet_setup_conditions > 0)
 		return;
+
+	if (data->setup_settle) {
+		test_setup_settle(data);
+		return;
+	}
 
 	tester_setup_complete();
 }
@@ -6678,6 +6734,18 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 	setup_bthost();
 }
 
+/* Powered on as one of several setup commands, which completes once all
+ * of them are, not just the client setup started from here.
+ */
+static void setup_powered_condition_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	setup_powered_callback(status, length, param, user_data);
+
+	if (status == MGMT_STATUS_SUCCESS)
+		test_setup_condition_complete(tester_get_data());
+}
+
 static void setup_class(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -11580,6 +11648,8 @@ static void setup_add_device_callback(uint8_t status, uint16_t length,
 	}
 
 	tester_print("New Device is Added");
+
+	test_setup_condition_complete(tester_get_data());
 }
 
 static void setup_remove_device_callback(uint8_t status, uint16_t length,
@@ -11613,6 +11683,17 @@ static void setup_add_adv_callback(uint8_t status, uint16_t length,
 								rp->instance);
 }
 
+/* Last of several setup commands, see setup_powered_condition_callback() */
+static void setup_add_advertising_condition_callback(uint8_t status,
+					uint16_t length, const void *param,
+					void *user_data)
+{
+	setup_add_advertising_callback(status, length, param, user_data);
+
+	if (status == MGMT_STATUS_SUCCESS)
+		test_setup_condition_complete(tester_get_data());
+}
+
 static void setup_add_adv_callback_adv(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -11636,7 +11717,7 @@ static void setup_add_adv_callback_adv(uint8_t status, uint16_t length,
 
 	mgmt_send(data->mgmt, MGMT_OP_ADD_ADVERTISING, data->mgmt_index,
 					sizeof(adv_param), adv_param,
-					setup_add_advertising_callback,
+				setup_add_advertising_condition_callback,
 					NULL, NULL);
 }
 
@@ -11645,17 +11726,22 @@ static void setup_ll_privacy_set_flags_1(const void *test_data)
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
 
+	data->setup_settle = true;
+
 	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
 					sizeof(load_irks_le_public_param_1),
 					load_irks_le_public_param_1,
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Set Powered On */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
@@ -11671,12 +11757,16 @@ static void setup_set_device_flags_callback(uint8_t status, uint16_t length,
 	}
 
 	tester_print("Device Flags are set");
+
+	test_setup_condition_complete(tester_get_data());
 }
 
 static void setup_ll_privacy_add_2(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
+
+	data->setup_settle = true;
 
 	/* Add IRKs of Device1 and Device2 */
 	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
@@ -11685,16 +11775,20 @@ static void setup_ll_privacy_add_2(const void *test_data)
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Set Powered On */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 	/* Device 1 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_1),
 					set_device_flags_param_1,
@@ -11707,6 +11801,8 @@ static void setup_ll_privacy_set_flags_3(const void *test_data)
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
 
+	data->setup_settle = true;
+
 	/* Add IRKs of Device1 and Device2 */
 	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
 					sizeof(load_irks_2_devices_param),
@@ -11714,17 +11810,21 @@ static void setup_ll_privacy_set_flags_3(const void *test_data)
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Set Powered On */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 1 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_1),
 					set_device_flags_param_1,
@@ -11732,6 +11832,7 @@ static void setup_ll_privacy_set_flags_3(const void *test_data)
 					NULL);
 
 	/* Add Device 2 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
@@ -11752,6 +11853,8 @@ static void setup_ll_privacy_3_devices(const void *test_data)
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
 
+	data->setup_settle = true;
+
 	/* Add IRKs of 4 Devices */
 	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
 					sizeof(load_irks_4_devices_param),
@@ -11759,12 +11862,14 @@ static void setup_ll_privacy_3_devices(const void *test_data)
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 1 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_1),
 					set_device_flags_param_1,
@@ -11772,12 +11877,14 @@ static void setup_ll_privacy_3_devices(const void *test_data)
 					NULL);
 
 	/* Add Device 2 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 2 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_2),
 					set_device_flags_param_2,
@@ -11785,27 +11892,33 @@ static void setup_ll_privacy_3_devices(const void *test_data)
 					NULL);
 
 	/* Add Device 3 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_3),
 					add_device_le_public_param_3,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 3 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_3),
 					set_device_flags_param_3,
 					setup_set_device_flags_callback, NULL,
 					NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 }
 
 static void setup_ll_privacy_set_flags_4(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
+
+	data->setup_settle = true;
 
 	hciemu_set_central_le_rl_len(data->hciemu, 4);
 
@@ -11816,12 +11929,14 @@ static void setup_ll_privacy_set_flags_4(const void *test_data)
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 1 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_1),
 					set_device_flags_param_1,
@@ -11829,12 +11944,14 @@ static void setup_ll_privacy_set_flags_4(const void *test_data)
 					NULL);
 
 	/* Add Device 2 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 2 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_2),
 					set_device_flags_param_2,
@@ -11842,12 +11959,14 @@ static void setup_ll_privacy_set_flags_4(const void *test_data)
 					NULL);
 
 	/* Add Device 3 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_3),
 					add_device_le_public_param_3,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 3 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_3),
 					set_device_flags_param_3,
@@ -11855,20 +11974,25 @@ static void setup_ll_privacy_set_flags_4(const void *test_data)
 					NULL);
 
 	/* Add Device 4 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_4),
 					add_device_le_public_param_4,
 					setup_add_device_callback, NULL, NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 }
 
 static void setup_ll_privacy_add_3(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
+
+	data->setup_settle = true;
 
 	hciemu_set_central_le_al_len(data->hciemu, 2);
 
@@ -11879,17 +12003,21 @@ static void setup_ll_privacy_add_3(const void *test_data)
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Set Powered On */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 1 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_1),
 					set_device_flags_param_1,
@@ -11897,12 +12025,14 @@ static void setup_ll_privacy_add_3(const void *test_data)
 					NULL);
 
 	/* Add Device 2 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 2 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_2),
 					set_device_flags_param_2,
@@ -11917,9 +12047,13 @@ static void setup_ll_privacy_device2_discovry(const void *test_data)
 	unsigned char param[] = { 0x01 };
 	uint8_t disc_param[] = { 0x06 };
 
+	data->setup_settle = true;
+
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 	/* Load IRKs */
 	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
 					sizeof(load_irks_2_devices_param),
@@ -11927,11 +12061,13 @@ static void setup_ll_privacy_device2_discovry(const void *test_data)
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Load Device1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
@@ -11960,6 +12096,8 @@ static void setup_ll_privacy_add_4(const void *test_data)
 	unsigned char param[] = { 0x01 };
 	unsigned char adv_param[sizeof(*cp) + TESTER_ADD_ADV_DATA_LEN];
 
+	data->setup_settle = true;
+
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	setup_add_adv_param(cp, 1);
 
@@ -11980,6 +12118,8 @@ static void setup_ll_privacy_set_flags_5(const void *test_data)
 	unsigned char param[] = { 0x01 };
 	unsigned char adv_param[sizeof(*cp) + TESTER_ADD_ADV_DATA_LEN];
 
+	data->setup_settle = true;
+
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	setup_add_adv_param(cp, 1);
 
@@ -11995,11 +12135,13 @@ static void setup_ll_privacy_set_flags_5(const void *test_data)
 					NULL, NULL, NULL);
 
 	/* Add Advertising Instance */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_ADVERTISING, data->mgmt_index,
 					sizeof(adv_param), adv_param,
 					setup_add_adv_callback_adv, NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
@@ -12012,6 +12154,8 @@ static void setup_ll_privacy_set_flags_6(const void *test_data)
 	struct mgmt_cp_add_advertising *cp;
 	unsigned char param[] = { 0x01 };
 	unsigned char adv_param[sizeof(*cp) + TESTER_ADD_ADV_DATA_LEN];
+
+	data->setup_settle = true;
 
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	setup_add_adv_param(cp, 1);
@@ -12028,17 +12172,20 @@ static void setup_ll_privacy_set_flags_6(const void *test_data)
 					NULL, NULL, NULL);
 
 	/* Add Advertising Instance 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_ADVERTISING, data->mgmt_index,
 					sizeof(adv_param), adv_param,
 					setup_add_adv_callback_adv, NULL, NULL);
 
 	/* Add Device 2 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 2 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_2),
 					set_device_flags_param_2,
@@ -12046,6 +12193,7 @@ static void setup_ll_privacy_set_flags_6(const void *test_data)
 					NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
@@ -12058,6 +12206,8 @@ static void setup_ll_privacy_adv_3_devices(const void *test_data)
 	struct mgmt_cp_add_advertising *cp;
 	unsigned char param[] = { 0x01 };
 	unsigned char adv_param[sizeof(*cp) + TESTER_ADD_ADV_DATA_LEN];
+
+	data->setup_settle = true;
 
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	setup_add_adv_param(cp, 1);
@@ -12073,12 +12223,14 @@ static void setup_ll_privacy_adv_3_devices(const void *test_data)
 					setup_load_irks_callback, NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 1 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_1),
 					set_device_flags_param_1,
@@ -12086,12 +12238,14 @@ static void setup_ll_privacy_adv_3_devices(const void *test_data)
 					NULL);
 
 	/* Add Device 2 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 2 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_2),
 					set_device_flags_param_2,
@@ -12099,21 +12253,25 @@ static void setup_ll_privacy_adv_3_devices(const void *test_data)
 					NULL);
 
 	/* Add Device 3 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_3),
 					add_device_le_public_param_3,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 3 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_3),
 					set_device_flags_param_3,
 					setup_set_device_flags_callback, NULL,
 					NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 }
 
 static void setup_ll_privacy_adv_1_device_2_advs(const void *test_data)
@@ -12122,6 +12280,8 @@ static void setup_ll_privacy_adv_1_device_2_advs(const void *test_data)
 	struct mgmt_cp_add_advertising *cp;
 	unsigned char param[] = { 0x01 };
 	unsigned char adv_param[sizeof(*cp) + TESTER_ADD_ADV_DATA_LEN];
+
+	data->setup_settle = true;
 
 	cp = (struct mgmt_cp_add_advertising *) adv_param;
 	setup_add_adv_param(cp, 1);
@@ -12137,12 +12297,14 @@ static void setup_ll_privacy_adv_1_device_2_advs(const void *test_data)
 					NULL, NULL, NULL);
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 1 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_1),
 					set_device_flags_param_1,
@@ -12150,18 +12312,21 @@ static void setup_ll_privacy_adv_1_device_2_advs(const void *test_data)
 					NULL);
 
 	/* Add Device 2 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_2),
 					add_device_le_public_param_2,
 					setup_add_device_callback, NULL, NULL);
 
 	/* Device 2 Flags */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
 					sizeof(set_device_flags_param_2),
 					set_device_flags_param_2,
 					setup_set_device_flags_callback, NULL,
 					NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_ADVERTISING, data->mgmt_index,
 					sizeof(adv_param), adv_param,
 					setup_add_adv_callback_adv, NULL, NULL);
@@ -12187,6 +12352,7 @@ static void setup_add_2_advertisings(const void *test_data)
 					sizeof(param), param,
 					NULL, NULL, NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_ADVERTISING, data->mgmt_index,
 						sizeof(adv_param), adv_param,
 						setup_add_adv_callback_adv,
@@ -12209,6 +12375,7 @@ static void setup_add_2_advertisings_no_power(const void *test_data)
 						sizeof(param), &param,
 						NULL, NULL, NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_ADVERTISING, data->mgmt_index,
 						sizeof(adv_param), adv_param,
 						setup_add_adv_callback_adv,
@@ -12220,6 +12387,8 @@ static void setup_ll_privacy_enable_powered(const void *test_data)
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
 	struct bthost *bthost;
+
+	data->setup_settle = true;
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_scan_params(bthost, 0x01, 0x00, 0x00);
@@ -12237,6 +12406,8 @@ static void setup_ll_privacy_add_adv(const void *test_data)
 	unsigned char param[] = { 0x01 };
 	unsigned char set_adv_param[] = { 0x02 };
 	struct bthost *bthost;
+
+	data->setup_settle = true;
 
 	/* Setup bthost to enable the scan */
 	bthost = hciemu_client_get_host(data->hciemu);
@@ -12270,15 +12441,20 @@ static void setup_ll_privacy_add_device(const void *test_data)
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
 
+	data->setup_settle = true;
+
 	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
 					sizeof(load_irks_le_public_param_1),
 					load_irks_le_public_param_1,
 					setup_load_irks_callback, NULL, NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_le_public_param_1),
 					add_device_le_public_param_1,
@@ -13662,15 +13838,18 @@ static void setup_suspend_resume_success_3(const void *test_data)
 	unsigned char param[] = { 0x01 };
 
 	/* Add Device 1 */
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_ADD_DEVICE, data->mgmt_index,
 					sizeof(add_device_success_param_3),
 					add_device_success_param_3,
 					setup_add_device_callback,
 					NULL, NULL);
 
+	test_add_setup_condition(data);
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+					setup_powered_condition_callback,
+					NULL, NULL);
 }
 
 static void test_suspend_resume_success_3(const void *test_data)
