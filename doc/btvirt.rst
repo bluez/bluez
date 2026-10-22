@@ -47,8 +47,8 @@ btvirt runs until it receives **SIGINT** or **SIGTERM**.
 OPTIONS
 =======
 
-At least one of **-l**, **-s**, **-t**, **-V**, **-S** or **-U** must be
-given.
+At least one of **-l**, **-s**, **-t**, **-V**, **-S**, **-U** or
+**--time** must be given.
 Optional arguments must be attached to the option, as in **-l2**,
 **-t45551** or **--server=/tmp/bt**.
 
@@ -88,6 +88,17 @@ Optional arguments must be attached to the option, as in **-l2**,
                             **-C**, provided to the guest as a virtio
                             Bluetooth device. See **virtio** for how to
                             attach it to QEMU or User Mode Linux guests.
+
+--time[=path]               Create a time travel calendar socket ``bt-time``
+                            in the directory *path* (default: ``/tmp``) for
+                            User Mode Linux guests started with
+                            ``time-travel=ext:<path>/bt-time``. The guests
+                            and btvirt then share a simulated clock: time
+                            only advances when every guest waits, and the
+                            timers of the emulated controllers run on it.
+                            Notifications of **-V** controllers are
+                            exchanged in-band, so they are ordered with
+                            the guests' clocks.
 
 -S, --serial                Create a pseudo terminal with a BR/EDR/LE
                             controller attached as an H:4 stream. The path of
@@ -149,6 +160,13 @@ devices, two from the same socket::
 
     $ btvirt -V/tmp/bt
     $ linux ... virtio_uml.device=/tmp/bt/bt-vhost-bredrle:40 \
+                virtio_uml.device=/tmp/bt/bt-vhost-bredrle:40
+
+Run the same guests on a simulated clock shared with btvirt::
+
+    $ btvirt --time=/tmp/bt -V/tmp/bt
+    $ linux ... time-travel=ext:/tmp/bt/bt-time \
+                virtio_uml.device=/tmp/bt/bt-vhost-bredrle:40 \
                 virtio_uml.device=/tmp/bt/bt-vhost-bredrle:40
 
 Emulate a Bluetooth 5.2 controller over TCP::

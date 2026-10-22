@@ -28,6 +28,7 @@
 #include "server.h"
 #include "vhci.h"
 #include "virtio.h"
+#include "timetravel.h"
 #include "le.h"
 
 static void signal_callback(int signum, void *user_data)
@@ -52,6 +53,8 @@ static void usage(void)
 		"\t-t[port=45550]        Create a TCP server\n"
 		"\t-V[path=/tmp]         Create local vhost-user virtio\n"
 		"\t                      server socket\n"
+		"\t--time[=path=/tmp]    Create time travel calendar socket\n"
+		"\t                      for User Mode Linux guests\n"
 		"\t-l[num]               Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
 		"\t-U[num]               Number of test LE controllers\n"
@@ -70,6 +73,7 @@ static const struct option main_options[] = {
 	{ "server",  optional_argument, NULL, 's' },
 	{ "tcp",     optional_argument, NULL, 't' },
 	{ "vhost",   optional_argument, NULL, 'V' },
+	{ "time",    optional_argument, NULL, 'I' },
 	{ "local",   optional_argument, NULL, 'l' },
 	{ "le",      no_argument,       NULL, 'L' },
 	{ "bredr",   no_argument,       NULL, 'B' },
@@ -131,6 +135,7 @@ int main(int argc, char *argv[])
 	const char *server_path = "/tmp";
 	uint16_t tcp_port = 0;
 	const char *vhost_path = NULL;
+	const char *time_path = NULL;
 	bool serial_enabled = false;
 	int letest_count = 0;
 	int vhci_count = 0;
@@ -145,7 +150,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "dSs::t::V::l::LBAC:U::vh",
+		opt = getopt_long(argc, argv, "dSs::t::V::I::l::LBAC:U::vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -167,6 +172,9 @@ int main(int argc, char *argv[])
 				tcp_port = atoi(optarg);
 			else
 				tcp_port = 45550;
+			break;
+		case 'I':
+			time_path = optarg ? optarg : "/tmp";
 			break;
 		case 'V':
 			vhost_path = optarg ? optarg : "/tmp";
@@ -217,12 +225,27 @@ int main(int argc, char *argv[])
 		type = bredrle_type;
 
 	if (letest_count < 1 && vhci_count < 1 && !server_enabled &&
-				!tcp_port && !serial_enabled && !vhost_path) {
+				!tcp_port && !serial_enabled && !vhost_path &&
+				!time_path) {
 		fprintf(stderr, "No emulator specified\n");
 		return EXIT_FAILURE;
 	}
 
 	printf("Bluetooth emulator ver %s\n", VERSION);
+
+	/* Before any controller, so their timers use the simulated clock */
+	if (time_path) {
+		char path[PATH_MAX];
+
+		snprintf(path, sizeof(path), "%s/%s", time_path, "bt-time");
+		if (!tt_open(path)) {
+			fprintf(stderr, "Failed to open time travel socket\n");
+			return EXIT_FAILURE;
+		}
+
+		if (debug_enabled)
+			tt_set_debug(server_debug, "time");
+	}
 
 	for (i = 0; i < letest_count; i++) {
 		struct bt_le *le;
