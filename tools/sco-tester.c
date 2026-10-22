@@ -18,7 +18,7 @@
 #include <poll.h>
 #include <stdbool.h>
 
-#include <glib.h>
+#include <assert.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/sco.h"
@@ -29,6 +29,8 @@
 #include "emulator/hciemu.h"
 
 #include "src/shared/tester.h"
+#include "src/shared/timeout.h"
+#include "tools/tester-io.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/util.h"
 
@@ -260,7 +262,7 @@ static void test_data_free(void *test_data)
 	struct test_data *data = test_data;
 
 	if (data->io_id > 0)
-		g_source_remove(data->io_id);
+		tester_remove_source(data->io_id);
 
 	free(data);
 }
@@ -850,29 +852,29 @@ static int connect_sco_sock(struct test_data *data, int sk)
 	return 0;
 }
 
-static gboolean recv_errqueue(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool recv_errqueue(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct sco_client_data *scodata = data->test_data;
-	int sk = g_io_channel_unix_get_fd(io);
+	int sk = tester_io_get_fd(io);
 	int err;
 
 	data->step--;
 
 	err = tx_tstamp_recv(&data->tx_ts, sk, scodata->data_len);
 	if (err > 0)
-		return TRUE;
+		return true;
 	else if (err)
 		tester_test_failed();
 	else if (!data->step)
 		tester_test_passed();
 
 	data->err_io_id = 0;
-	return FALSE;
+	return false;
 }
 
-static void sco_tx_timestamping(struct test_data *data, GIOChannel *io)
+static void sco_tx_timestamping(struct test_data *data, struct tester_io *io)
 {
 	const struct sco_client_data *scodata = data->test_data;
 	int so = scodata->so_timestamping;
@@ -883,7 +885,7 @@ static void sco_tx_timestamping(struct test_data *data, GIOChannel *io)
 	if (!(scodata->so_timestamping & TS_TX_RECORD_MASK))
 		return;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	tester_print("Enabling TX timestamping");
 
@@ -900,11 +902,12 @@ static void sco_tx_timestamping(struct test_data *data, GIOChannel *io)
 		return;
 	}
 
-	data->err_io_id = g_io_add_watch(io, G_IO_ERR, recv_errqueue, data);
+	data->err_io_id = tester_io_add_watch(io, TESTER_IO_ERR, recv_errqueue,
+									data);
 }
 
-static gboolean sock_received_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool sock_received_data(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct sco_client_data *scodata = data->test_data;
@@ -913,20 +916,20 @@ static gboolean sock_received_data(GIOChannel *io, GIOCondition cond,
 	int sk;
 	ssize_t len;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	len = recv_tstamp(sk, buf, sizeof(buf), tstamp);
 	if (len < 0) {
 		tester_warn("Unable to read: %s (%d)", strerror(errno), errno);
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	tester_debug("read: %d", (int)len);
 
 	if (len != scodata->data_len) {
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	--data->step;
@@ -937,35 +940,35 @@ static gboolean sock_received_data(GIOChannel *io, GIOCondition cond,
 	else if (!data->step)
 		tester_test_passed();
 	else
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
-static void sco_recv_data(struct test_data *data, GIOChannel *io)
+static void sco_recv_data(struct test_data *data, struct tester_io *io)
 {
 	const struct sco_client_data *scodata = data->test_data;
 
 	data->step = 0;
 
-	if (rx_timestamping_init(g_io_channel_unix_get_fd(io),
+	if (rx_timestamping_init(tester_io_get_fd(io),
 						scodata->so_timestamping))
 		return;
 
-	g_io_add_watch(io, G_IO_IN, sock_received_data, NULL);
+	tester_io_add_watch(io, TESTER_IO_IN, sock_received_data, NULL);
 
 	++data->step;
 }
 
-static gboolean sco_connect(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool sco_connect(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct sco_client_data *scodata = data->test_data;
 	int err, sk_err, sk;
 	socklen_t len = sizeof(sk_err);
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
 		err = -errno;
@@ -1003,7 +1006,7 @@ static gboolean sco_connect(GIOChannel *io, GIOCondition cond,
 		}
 
 		/* Don't close the socket until all data is sent */
-		g_io_channel_set_close_on_unref(io, FALSE);
+		tester_io_set_close_on_unref(io, false);
 	}
 
 	if (scodata->shutdown) {
@@ -1016,24 +1019,24 @@ static gboolean sco_connect(GIOChannel *io, GIOCondition cond,
 	else if (!data->step)
 		tester_test_passed();
 
-	return FALSE;
+	return false;
 }
 
-static gboolean sco_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool sco_connect_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
 	data->io_id = 0;
 	sco_connect(io, cond, user_data);
-	return FALSE;
+	return false;
 }
 
 static void test_connect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct sco_client_data *scodata = data->test_data;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 
 	sk = create_sco_sock(data);
@@ -1056,12 +1059,13 @@ static void test_connect(const void *test_data)
 
 	data->sk = sk;
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
 
-	data->io_id = g_io_add_watch(io, G_IO_OUT, sco_connect_cb, NULL);
+	data->io_id = tester_io_add_watch(io, TESTER_IO_OUT, sco_connect_cb,
+									NULL);
 
-	g_io_channel_unref(io);
+	tester_io_unref(io);
 
 	tester_print("Connect in progress");
 }
@@ -1155,7 +1159,7 @@ end:
 static bool hook_delay_evt(const void *msg, uint16_t len, void *user_data)
 {
 	tester_print("Delaying emulator response...");
-	g_usleep(500000);
+	usleep(500000);
 	tester_print("Delaying emulator response... Done.");
 	return true;
 }
@@ -1259,7 +1263,7 @@ static bool hook_simult_disc(const void *msg, uint16_t len, void *user_data)
 static bool hook_delay_cmd(const void *data, uint16_t len, void *user_data)
 {
 	tester_print("Delaying emulator response...");
-	g_usleep(250000);
+	usleep(250000);
 	tester_print("Delaying emulator response... Done.");
 	return true;
 }
@@ -1377,13 +1381,13 @@ fail:
 	return err;
 }
 
-static bool sco_defer_accept(struct test_data *data, GIOChannel *io)
+static bool sco_defer_accept(struct test_data *data, struct tester_io *io)
 {
 	int sk;
 	char c;
 	struct pollfd pfd;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	memset(&pfd, 0, sizeof(pfd));
 	pfd.fd = sk;
@@ -1406,20 +1410,20 @@ static bool sco_defer_accept(struct test_data *data, GIOChannel *io)
 	return true;
 }
 
-static gboolean sco_accept_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool sco_accept_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct sco_client_data *scodata = data->test_data;
 	int sk, new_sk;
-	gboolean ret;
-	GIOChannel *new_io;
+	bool ret;
+	struct tester_io *new_io;
 
 	data->io_id = 0;
 
 	tester_debug("New connection");
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	new_sk = accept(sk, NULL, NULL);
 	if (new_sk < 0) {
@@ -1427,12 +1431,12 @@ static gboolean sco_accept_cb(GIOChannel *io, GIOCondition cond,
 		return false;
 	}
 
-	new_io = g_io_channel_unix_new(new_sk);
-	g_io_channel_set_close_on_unref(new_io, TRUE);
+	new_io = tester_io_new(new_sk);
+	tester_io_set_close_on_unref(new_io, true);
 
 	if (scodata->defer) {
 		if (scodata->expect_err < 0) {
-			g_io_channel_unref(new_io);
+			tester_io_unref(new_io);
 			tester_test_passed();
 			return false;
 		}
@@ -1446,16 +1450,16 @@ static gboolean sco_accept_cb(GIOChannel *io, GIOCondition cond,
 
 	ret = sco_connect(new_io, cond, user_data);
 
-	g_io_channel_unref(new_io);
+	tester_io_unref(new_io);
 	return ret;
 }
 
-static void setup_listen(struct test_data *data, GIOFunc func)
+static void setup_listen(struct test_data *data, tester_io_func_t func)
 {
 	struct hciemu_client *client;
 	struct bthost *host;
 	int sk;
-	GIOChannel *io;
+	struct tester_io *io;
 
 	sk = listen_sco_sock(data);
 	if (sk < 0) {
@@ -1466,11 +1470,11 @@ static void setup_listen(struct test_data *data, GIOFunc func)
 		return;
 	}
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
 
-	data->io_id = g_io_add_watch(io, G_IO_IN, func, NULL);
-	g_io_channel_unref(io);
+	data->io_id = tester_io_add_watch(io, TESTER_IO_IN, func, NULL);
+	tester_io_unref(io);
 
 	tester_print("Listen in progress");
 

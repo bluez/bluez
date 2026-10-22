@@ -20,7 +20,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-#include <glib.h>
+#include <assert.h>
 
 #define SEC_NSEC(_t)  ((_t) * 1000000000LL)
 #define TS_NSEC(_ts)  (SEC_NSEC((_ts)->tv_sec) + (_ts)->tv_nsec)
@@ -65,21 +65,21 @@ static inline int tx_tstamp_expect(struct tx_tstamp_data *data, size_t len)
 		data->sent += len - 1;
 
 	if (data->so_timestamping & SOF_TIMESTAMPING_TX_SCHED) {
-		g_assert(pos < ARRAY_SIZE(data->expect));
+		assert(pos < ARRAY_SIZE(data->expect));
 		data->expect[pos].type = SCM_TSTAMP_SCHED;
 		data->expect[pos].id = data->sent;
 		pos++;
 	}
 
 	if (data->so_timestamping & SOF_TIMESTAMPING_TX_SOFTWARE) {
-		g_assert(pos < ARRAY_SIZE(data->expect));
+		assert(pos < ARRAY_SIZE(data->expect));
 		data->expect[pos].type = SCM_TSTAMP_SND;
 		data->expect[pos].id = data->sent;
 		pos++;
 	}
 
 	if (data->so_timestamping & SOF_TIMESTAMPING_TX_COMPLETION) {
-		g_assert(pos < ARRAY_SIZE(data->expect));
+		assert(pos < ARRAY_SIZE(data->expect));
 		data->expect[pos].type = SCM_TSTAMP_COMPLETION;
 		data->expect[pos].id = data->sent;
 		pos++;

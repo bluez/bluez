@@ -27,6 +27,10 @@
 #include "btdev.h"
 #include "server.h"
 #include "vhci.h"
+#include "virtio.h"
+#include "timetravel.h"
+#include "vconsole.h"
+#include "ttclient.h"
 #include "le.h"
 
 static void signal_callback(int signum, void *user_data)
@@ -49,6 +53,18 @@ static void usage(void)
 		"\t-S                    Create local serial port\n"
 		"\t-s[path=/tmp]         Create local server sockets\n"
 		"\t-t[port=45550]        Create a TCP server\n"
+		"\t-V[path=/tmp]         Create local vhost-user virtio\n"
+		"\t                      server socket\n"
+		"\t--time[=path=/tmp]    Create time travel calendar socket\n"
+		"\t                      for User Mode Linux guests\n"
+		"\t--time-skew=<msec>    Let guests run up to msec apart\n"
+		"\t                      (default: 0, lock-step)\n"
+		"\t--time-client=<id>:<socket>\n"
+		"\t                      Inject console input as client of a\n"
+		"\t                      time travel calendar\n"
+		"\t--console=<path>:<name>[=sync]...\n"
+		"\t                      Create vhost-user virtio console with\n"
+		"\t                      named ports relayed to <path>-<name>\n"
 		"\t-l[num]               Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
 		"\t-U[num]               Number of test LE controllers\n"
@@ -56,9 +72,8 @@ static void usage(void)
 		"\t-A                    Create AMP controller\n"
 		"\t-C, --core=<version>  Core Specification version of the\n"
 		"\t                      BR/EDR/LE controllers created with\n"
-		"\t                      -l, -s and -t:\n"
+		"\t                      -l, -s, -t and -V:\n"
 		"\t                      5.0, 5.2, 6.0 or 6.2 (default)\n"
-		"\t-T[num]               Number of test AMP controllers\n"
 		"\t-h, --help            Show help options\n");
 }
 
@@ -67,6 +82,11 @@ static const struct option main_options[] = {
 	{ "serial",  no_argument,       NULL, 'S' },
 	{ "server",  optional_argument, NULL, 's' },
 	{ "tcp",     optional_argument, NULL, 't' },
+	{ "vhost",   optional_argument, NULL, 'V' },
+	{ "time",    optional_argument, NULL, 'I' },
+	{ "console", required_argument, NULL, 'O' },
+	{ "time-skew", required_argument, NULL, 'K' },
+	{ "time-client", required_argument, NULL, 'J' },
 	{ "local",   optional_argument, NULL, 'l' },
 	{ "le",      no_argument,       NULL, 'L' },
 	{ "bredr",   no_argument,       NULL, 'B' },
@@ -127,6 +147,12 @@ int main(int argc, char *argv[])
 	bool server_enabled = false;
 	const char *server_path = "/tmp";
 	uint16_t tcp_port = 0;
+	const char *vhost_path = NULL;
+	const char *time_path = NULL;
+	const char *consoles[16];
+	int console_count = 0;
+	unsigned int time_skew = 0;
+	const char *time_client = NULL;
 	bool serial_enabled = false;
 	int letest_count = 0;
 	int vhci_count = 0;
@@ -141,8 +167,9 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "dSs::t::l::LBAC:U::T::vh",
-						main_options, NULL);
+		opt = getopt_long(argc, argv,
+					"dSs::t::V::I::O:K:J:l::LBAC:U::vh",
+					main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -163,6 +190,25 @@ int main(int argc, char *argv[])
 				tcp_port = atoi(optarg);
 			else
 				tcp_port = 45550;
+			break;
+		case 'J':
+			time_client = optarg;
+			break;
+		case 'K':
+			time_skew = atoi(optarg);
+			break;
+		case 'O':
+			if (console_count == ARRAY_SIZE(consoles)) {
+				fprintf(stderr, "Too many consoles\n");
+				return EXIT_FAILURE;
+			}
+			consoles[console_count++] = optarg;
+			break;
+		case 'I':
+			time_path = optarg ? optarg : "/tmp";
+			break;
+		case 'V':
+			vhost_path = optarg ? optarg : "/tmp";
 			break;
 		case 'l':
 			if (optarg)
@@ -210,12 +256,29 @@ int main(int argc, char *argv[])
 		type = bredrle_type;
 
 	if (letest_count < 1 && vhci_count < 1 && !server_enabled &&
-						!tcp_port && !serial_enabled) {
+				!tcp_port && !serial_enabled && !vhost_path &&
+				!time_path && !console_count) {
 		fprintf(stderr, "No emulator specified\n");
 		return EXIT_FAILURE;
 	}
 
 	printf("Bluetooth emulator ver %s\n", VERSION);
+
+	/* Before any controller, so their timers use the simulated clock */
+	if (time_path) {
+		char path[PATH_MAX];
+
+		snprintf(path, sizeof(path), "%s/%s", time_path, "bt-time");
+		if (!tt_open(path)) {
+			fprintf(stderr, "Failed to open time travel socket\n");
+			return EXIT_FAILURE;
+		}
+
+		tt_set_skew(time_skew);
+
+		if (debug_enabled)
+			tt_set_debug(server_debug, "time");
+	}
 
 	for (i = 0; i < letest_count; i++) {
 		struct bt_le *le;
@@ -305,6 +368,49 @@ int main(int argc, char *argv[])
 		else
 			server_set_bredrle_type(tcp_server, bredrle_type);
 		fprintf(stderr, "Listening TCP on 127.0.0.1:%d\n", tcp_port);
+	}
+
+	for (i = 0; i < console_count; i++) {
+		struct vcon *vcon;
+
+		vcon = vcon_open(consoles[i]);
+		if (!vcon)
+			return EXIT_FAILURE;
+
+		if (debug_enabled)
+			vcon_set_debug(vcon, server_debug, "console");
+	}
+
+	if (time_client) {
+		char *end;
+		unsigned long id = strtoul(time_client, &end, 0);
+
+		if (*end != ':' || !end[1]) {
+			fprintf(stderr, "Invalid time client: %s\n",
+								time_client);
+			return EXIT_FAILURE;
+		}
+
+		if (debug_enabled)
+			ttc_set_debug(server_debug, "time-client");
+
+		if (!ttc_open(end + 1, id, 0)) {
+			fprintf(stderr, "Failed to connect to %s\n", end + 1);
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (vhost_path) {
+		struct vtio *vtio;
+		char path[PATH_MAX];
+
+		snprintf(path, sizeof(path), "%s/%s", vhost_path,
+							"bt-vhost-bredrle");
+		vtio = vtio_open(bredrle_type, path);
+		if (!vtio)
+			fprintf(stderr, "Failed to open vhost-user server\n");
+		else if (debug_enabled)
+			vtio_set_debug(vtio, server_debug, "vhost");
 	}
 
 	return mainloop_run_with_signal(signal_callback, NULL);

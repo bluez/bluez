@@ -23,7 +23,9 @@
 #include <linux/if_packet.h>
 #include <sys/ioctl.h>
 
-#include <glib.h>
+#include <assert.h>
+#include <limits.h>
+#include <dirent.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/mgmt.h"
@@ -33,6 +35,8 @@
 #include "emulator/hciemu.h"
 
 #include "src/shared/tester.h"
+#include "src/shared/timeout.h"
+#include "tools/tester-io.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/util.h"
 
@@ -271,7 +275,7 @@ static void test_post_teardown(const void *test_data)
 	int ret;
 
 	if (data->io_id > 0) {
-		g_source_remove(data->io_id);
+		tester_remove_source(data->io_id);
 		data->io_id = 0;
 	}
 
@@ -530,7 +534,7 @@ error:
 	return -EIO;
 }
 
-static gboolean client_do_disconnect(gpointer user_data)
+static bool client_do_disconnect(void *user_data)
 {
 	struct test_data *data = user_data;
 	const uint8_t *client_bdaddr;
@@ -548,11 +552,11 @@ static gboolean client_do_disconnect(gpointer user_data)
 	if (write_6lowpan("6lowpan_control", "disconnect %s 0", addr))
 		tester_test_failed();
 
-	return FALSE;
+	return false;
 }
 
-static gboolean recv_iface_packet(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool recv_iface_packet(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct client_data *cdata = data->test_data;
@@ -560,10 +564,10 @@ static gboolean recv_iface_packet(GIOChannel *io, GIOCondition cond,
 	int fd;
 	ssize_t ret;
 
-	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
+	if (cond & (TESTER_IO_ERR | TESTER_IO_HUP | TESTER_IO_NVAL))
 		goto done;
 
-	fd = g_io_channel_unix_get_fd(io);
+	fd = tester_io_get_fd(io);
 	ret = recv(fd, buf, sizeof(buf), 0);
 	if (ret < 0) {
 		tester_print("recv failed");
@@ -574,9 +578,9 @@ static gboolean recv_iface_packet(GIOChannel *io, GIOCondition cond,
 	tester_print("Recv %d bytes", (int)ret);
 
 	if (ret != cdata->send_expect_data_len)
-		return TRUE;
+		return true;
 	if (memcmp(buf, cdata->send_expect_data, ret))
-		return TRUE;
+		return true;
 
 	tester_print("Received sent packet");
 
@@ -587,43 +591,102 @@ static gboolean recv_iface_packet(GIOChannel *io, GIOCondition cond,
 
 done:
 	data->io_id = 0;
-	return FALSE;
+	return false;
 }
 
-static gboolean client_open_iface(gpointer user_data)
+/* Find the interface of the controller of this test, the most recent one,
+ * as the interface of a previous test may still be there, which can also
+ * make the name of this one other than bt0.
+ */
+static bool find_iface(struct test_data *data, char *ifname, size_t len)
+{
+	char path[PATH_MAX], link[PATH_MAX], hci[16];
+	struct dirent *entry;
+	int best = -1;
+	DIR *dir;
+
+	snprintf(hci, sizeof(hci), "hci%u", data->mgmt_index);
+
+	dir = opendir("/sys/class/net");
+	if (!dir)
+		return false;
+
+	while ((entry = readdir(dir))) {
+		const char *name;
+		ssize_t n;
+		int index;
+
+		if (strncmp(entry->d_name, "bt", 2))
+			continue;
+
+		snprintf(path, sizeof(path), "/sys/class/net/%s/device",
+							entry->d_name);
+
+		n = readlink(path, link, sizeof(link) - 1);
+		if (n < 0)
+			continue;
+
+		link[n] = '\0';
+		name = strrchr(link, '/');
+		name = name ? name + 1 : link;
+
+		if (strcmp(name, hci))
+			continue;
+
+		if (strlen(entry->d_name) >= len)
+			continue;
+
+		index = if_nametoindex(entry->d_name);
+		if (index > best) {
+			best = index;
+			memcpy(ifname, entry->d_name,
+						strlen(entry->d_name) + 1);
+		}
+	}
+
+	closedir(dir);
+
+	return best >= 0;
+}
+
+static bool client_open_iface(void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct client_data *cdata = data->test_data;
+	char ifname[IFNAMSIZ];
 
 	data->io_id = 0;
 
-	data->packet_fd = open_iface("bt0", cdata->sk_type);
+	data->packet_fd = -1;
+
+	if (find_iface(data, ifname, sizeof(ifname)))
+		data->packet_fd = open_iface(ifname, cdata->sk_type);
 	if (data->packet_fd < 0) {
 		tester_print("Wait for interface...");
-		data->io_id = g_timeout_add(500, client_open_iface, data);
-		return FALSE;
+		data->io_id = timeout_add(500, client_open_iface, data, NULL);
+		return false;
 	}
 
 	if (cdata->send_data) {
 		struct bthost *bthost;
-		GIOChannel *io;
+		struct tester_io *io;
 
 		bthost = hciemu_client_get_host(data->hciemu);
 
-		io = g_io_channel_unix_new(data->packet_fd);
-		data->io_id = g_io_add_watch(io,
-				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				recv_iface_packet, data);
-		g_io_channel_unref(io);
+		io = tester_io_new(data->packet_fd);
+		data->io_id = tester_io_add_watch(io,
+				TESTER_IO_IN | TESTER_IO_ERR | TESTER_IO_HUP |
+				TESTER_IO_NVAL, recv_iface_packet, data);
+		tester_io_unref(io);
 
 		tester_debug("Send %u bytes", cdata->send_data_len);
 		bthost_send_cid(bthost, data->handle, data->dcid,
 				cdata->send_data, cdata->send_data_len);
 	} else if (cdata->disconnect) {
-		data->io_id = g_idle_add(client_do_disconnect, data);
+		data->io_id = timeout_add(0, client_do_disconnect, data, NULL);
 	}
 
-	return FALSE;
+	return false;
 }
 
 static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
@@ -653,7 +716,7 @@ static void client_l2cap_connect_cb(uint16_t handle, uint16_t cid,
 
 	/* Wait until kernel handles L2CAP connect RSP */
 	if (cdata->send_data || cdata->disconnect)
-		data->io_id = g_idle_add(client_open_iface, data);
+		data->io_id = timeout_add(0, client_open_iface, data, NULL);
 
 	if (cdata->disable_on_connect) {
 		if (write_6lowpan("6lowpan_enable", "0"))

@@ -22,7 +22,7 @@
 #include <linux/errqueue.h>
 #include <linux/net_tstamp.h>
 
-#include <glib.h>
+#include <assert.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/iso.h"
@@ -35,6 +35,8 @@
 #include "emulator/hciemu.h"
 
 #include "src/shared/tester.h"
+#include "src/shared/timeout.h"
+#include "tools/tester-io.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
@@ -471,6 +473,7 @@ struct test_data {
 	uint16_t handle;
 	uint16_t acl_handle;
 	struct queue *io_queue;
+	struct tester_io *past_io;
 	unsigned int io_id[4];
 	uint8_t client_num;
 	int step;
@@ -524,8 +527,9 @@ struct iso_client_data {
 	unsigned int repeat_send;
 };
 
-typedef bool (*iso_defer_accept_t)(struct test_data *data, GIOChannel *io,
-						uint8_t num, GIOFunc func);
+typedef bool (*iso_defer_accept_t)(struct test_data *data, struct tester_io *io,
+						uint8_t num,
+							tester_io_func_t func);
 
 static void mgmt_debug(const char *str, void *user_data)
 {
@@ -699,17 +703,32 @@ static void test_pre_setup(const void *test_data)
 
 static void io_free(void *data)
 {
-	GIOChannel *io = data;
+	struct tester_io *io = data;
 
-	g_io_channel_unref(io);
+	tester_io_unref(io);
 }
 
 static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	unsigned int i;
 
 	if (data->io_queue)
 		queue_remove_all(data->io_queue, NULL, NULL, io_free);
+
+	tester_io_unref(data->past_io);
+	data->past_io = NULL;
+
+	/* Remove the watches with the test, as the sockets they keep open
+	 * hang up once the controller is removed, which would wake up the
+	 * main loop over and over for the following tests.
+	 */
+	for (i = 0; i < ARRAY_SIZE(data->io_id); ++i) {
+		if (data->io_id[i] > 0) {
+			tester_remove_source(data->io_id[i]);
+			data->io_id[i] = 0;
+		}
+	}
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_EXP_FEATURE, MGMT_INDEX_NONE,
 		  sizeof(reset_iso_socket_param), reset_iso_socket_param,
@@ -729,7 +748,7 @@ static void test_data_free(void *test_data)
 
 	for (i = 0; i < ARRAY_SIZE(data->io_id); ++i)
 		if (data->io_id[i] > 0)
-			g_source_remove(data->io_id[i]);
+			tester_remove_source(data->io_id[i]);
 
 	free(data);
 }
@@ -1704,6 +1723,8 @@ static void bthost_iso_disconnected(void *user_data)
 	data->handle = 0x0000;
 }
 
+static void iso_send(struct test_data *data, struct tester_io *io);
+
 static void iso_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
@@ -1714,6 +1735,12 @@ static void iso_new_conn(uint16_t handle, void *user_data)
 	tester_print("New client connection with handle 0x%04x", handle);
 
 	data->handle = handle;
+
+	if (data->past_io) {
+		iso_send(data, data->past_io);
+		tester_io_unref(data->past_io);
+		data->past_io = NULL;
+	}
 
 	host = hciemu_client_get_host(data->hciemu);
 	bthost_add_iso_hook(host, data->handle, bthost_recv_data, data,
@@ -2356,22 +2383,23 @@ static bool check_bcast_qos(const struct bt_iso_qos *qos1,
 }
 
 static void test_connect(const void *test_data);
-static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data);
-static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data);
-static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io,
-						uint8_t num, GIOFunc func);
+static bool iso_connect_cb(struct tester_io *io, uint32_t cond,
+							void *user_data);
+static bool iso_accept_cb(struct tester_io *io, uint32_t cond,
+							void *user_data);
+static bool iso_defer_accept_bcast(struct test_data *data, struct tester_io *io,
+						uint8_t num,
+							tester_io_func_t func);
 
-static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_disconnected(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
 
 	data->io_id[0] = 0;
 
-	if (cond & G_IO_HUP) {
+	if (cond & TESTER_IO_HUP) {
 		if (!isodata->bcast && data->handle)
 			tester_test_failed();
 
@@ -2385,34 +2413,35 @@ static gboolean iso_disconnected(GIOChannel *io, GIOCondition cond,
 			if (!isodata->server)
 				test_connect(data->test_data);
 			else {
-				GIOChannel *parent =
+				struct tester_io *parent =
 					queue_peek_head(data->io_queue);
 
 				data->step++;
 
 				if (!iso_defer_accept_bcast(data,
-						g_io_channel_ref(parent), 0,
+						tester_io_ref(parent), 0,
 						iso_accept_cb))
-					g_io_channel_unref(parent);
+					tester_io_unref(parent);
 			}
 
-			return FALSE;
+			return false;
 		}
 
 		tester_test_passed();
 	} else
 		tester_test_failed();
 
-	return FALSE;
+	return false;
 }
 
-static void iso_shutdown(struct test_data *data, GIOChannel *io)
+static void iso_shutdown(struct test_data *data, struct tester_io *io)
 {
 	int sk;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
-	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_disconnected, data);
+	data->io_id[0] = tester_io_add_watch(io, TESTER_IO_HUP,
+							iso_disconnected, data);
 
 	/* Shutdown using SHUT_WR as SHUT_RDWR cause the socket to HUP
 	 * immediately instead of waiting for Disconnect Complete event.
@@ -2422,12 +2451,13 @@ static void iso_shutdown(struct test_data *data, GIOChannel *io)
 	tester_print("Disconnecting...");
 }
 
-static void iso_terminate(struct test_data *data, GIOChannel *io)
+static void iso_terminate(struct test_data *data, struct tester_io *io)
 {
 	struct bthost *host;
 
 	/* Setup watcher to check if fd is closed properly after termination */
-	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_disconnected, data);
+	data->io_id[0] = tester_io_add_watch(io, TESTER_IO_HUP,
+							iso_disconnected, data);
 
 	tester_print("Terminating...");
 
@@ -2437,12 +2467,12 @@ static void iso_terminate(struct test_data *data, GIOChannel *io)
 	bthost_terminate_big(host, BT_HCI_ERR_LOCAL_HOST_TERM);
 }
 
-static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_recv_data(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
-	int sk = g_io_channel_unix_get_fd(io);
+	int sk = tester_io_get_fd(io);
 	unsigned char control[256];
 	ssize_t ret;
 	char buf[1024];
@@ -2465,7 +2495,7 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 		tester_warn("Failed to read %zu bytes: %s (%d)",
 				isodata->recv->iov_len, strerror(errno), errno);
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (isodata->pkt_status) {
@@ -2494,7 +2524,7 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 		} else
 			tester_test_passed();
 
-		return FALSE;
+		return false;
 	}
 
 	if (isodata->pkt_seqnum) {
@@ -2524,37 +2554,39 @@ static gboolean iso_recv_data(GIOChannel *io, GIOCondition cond,
 			tester_warn("isodata->pkt_seqnum 0x%2.2x != 0x%2.2x "
 					"pkt_seqnum", pkt_seqnum, data->seqnum);
 			tester_test_failed();
-			return FALSE;
+			return false;
 		}
 	}
 
 	if (rx_timestamp_check(&msg, isodata->so_timestamping, 1000) < 0) {
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (data->step) {
 		data->step--;
 	} else {
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (memcmp(buf, isodata->recv->iov_base, ret))
 		tester_test_failed();
-	else if (data->step)
-		return TRUE;
-	else if (isodata->disconnect)
+	else if (data->step) {
+		/* Keep the watch, and its id so teardown can remove it */
+		data->io_id[0] = tester_current_source();
+		return true;
+	} else if (isodata->disconnect)
 		iso_shutdown(data, io);
 	else if (isodata->terminate)
 		iso_terminate(data, io);
 	else
 		tester_test_passed();
 
-	return FALSE;
+	return false;
 }
 
-static void iso_recv(struct test_data *data, GIOChannel *io)
+static void iso_recv(struct test_data *data, struct tester_io *io)
 {
 	const struct iso_client_data *isodata = data->test_data;
 	struct bthost *host;
@@ -2569,7 +2601,7 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 		return;
 	}
 
-	if (rx_timestamping_init(g_io_channel_unix_get_fd(io),
+	if (rx_timestamping_init(tester_io_get_fd(io),
 						isodata->so_timestamping))
 		return;
 
@@ -2582,32 +2614,33 @@ static void iso_recv(struct test_data *data, GIOChannel *io)
 		data->step++;
 	}
 
-	data->io_id[0] = g_io_add_watch(io, G_IO_IN, iso_recv_data, data);
+	data->io_id[0] = tester_io_add_watch(io, TESTER_IO_IN, iso_recv_data,
+									data);
 }
 
-static gboolean iso_recv_errqueue(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_recv_errqueue(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
-	int sk = g_io_channel_unix_get_fd(io);
+	int sk = tester_io_get_fd(io);
 	int err;
 
 	data->step--;
 
 	err = tx_tstamp_recv(&data->tx_ts, sk, isodata->send->iov_len);
 	if (err > 0)
-		return TRUE;
+		return true;
 	else if (err)
 		tester_test_failed();
 	else if (!data->step)
 		tester_test_passed();
 
 	data->io_id[2] = 0;
-	return FALSE;
+	return false;
 }
 
-static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
+static void iso_tx_timestamping(struct test_data *data, struct tester_io *io)
 {
 	const struct iso_client_data *isodata = data->test_data;
 	int so = isodata->so_timestamping;
@@ -2625,9 +2658,10 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 	for (count = 0; count < isodata->repeat_send + 1; ++count)
 		data->step += tx_tstamp_expect(&data->tx_ts, 0);
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
-	data->io_id[2] = g_io_add_watch(io, G_IO_ERR, iso_recv_errqueue, data);
+	data->io_id[2] = tester_io_add_watch(io, TESTER_IO_ERR,
+						iso_recv_errqueue, data);
 
 	if (isodata->cmsg_timestamping)
 		so &= ~TS_TX_RECORD_MASK;
@@ -2641,7 +2675,7 @@ static void iso_tx_timestamping(struct test_data *data, GIOChannel *io)
 	}
 }
 
-static void iso_send_data(struct test_data *data, GIOChannel *io)
+static void iso_send_data(struct test_data *data, struct tester_io *io)
 {
 	const struct iso_client_data *isodata = data->test_data;
 	char control[CMSG_SPACE(sizeof(uint32_t))];
@@ -2655,7 +2689,7 @@ static void iso_send_data(struct test_data *data, GIOChannel *io)
 
 	tester_print("Writing %zu bytes of data", isodata->send->iov_len);
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (isodata->cmsg_timestamping) {
 		memset(control, 0, sizeof(control));
@@ -2682,17 +2716,22 @@ static void iso_send_data(struct test_data *data, GIOChannel *io)
 	data->step++;
 }
 
-static gboolean iso_pollout(GIOChannel *io, GIOCondition cond,
-				gpointer user_data)
+static bool iso_pollout(struct tester_io *io, uint32_t cond,
+				void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct iso_client_data *isodata = data->test_data;
 	unsigned int count;
 
-	if (isodata->past && !data->handle)
-		return TRUE;
-
 	data->io_id[0] = 0;
+
+	/* Send once the connection to the PAST receiver is there, see
+	 * iso_new_conn(), rather than waking up for good until then.
+	 */
+	if (isodata->past && !data->handle) {
+		data->past_io = tester_io_ref(io);
+		return false;
+	}
 
 	tester_print("POLLOUT event received");
 
@@ -2706,20 +2745,21 @@ static gboolean iso_pollout(GIOChannel *io, GIOCondition cond,
 
 	if (isodata->bcast) {
 		if (isodata->past)
-			return FALSE;
+			return false;
 		tester_test_passed();
-		return FALSE;
+		return false;
 	}
 
 	if (isodata->recv)
 		iso_recv(data, io);
 
-	return FALSE;
+	return false;
 }
 
-static void iso_send(struct test_data *data, GIOChannel *io)
+static void iso_send(struct test_data *data, struct tester_io *io)
 {
-	data->io_id[0] = g_io_add_watch(io, G_IO_OUT, iso_pollout, data);
+	data->io_id[0] = tester_io_add_watch(io, TESTER_IO_OUT, iso_pollout,
+									data);
 }
 
 static bool hook_set_event_mask(const void *msg, uint16_t len, void *user_data)
@@ -2840,8 +2880,8 @@ static bool check_rpa(struct test_data *data, int sk)
 	return true;
 }
 
-static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = data->test_data;
@@ -2851,7 +2891,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 	bool ret = true;
 	uint8_t base[BASE_MAX_LENGTH] = {0};
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	len = sizeof(qos);
 	memset(&qos, 0, len);
@@ -2862,7 +2902,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 							strerror(errno), errno);
 		data->step = 0;
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (!isodata->bcast) {
@@ -2878,7 +2918,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 		tester_warn("Unexpected QoS parameter");
 		data->step = 0;
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (isodata->bcast && isodata->server && isodata->base) {
@@ -2890,7 +2930,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 						strerror(errno), errno);
 			data->step = 0;
 			tester_test_failed();
-			return FALSE;
+			return false;
 		}
 
 		if (len != isodata->base_len ||
@@ -2898,7 +2938,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 			tester_warn("Unexpected BASE");
 			data->step = 0;
 			tester_test_failed();
-			return FALSE;
+			return false;
 		}
 	}
 
@@ -2917,7 +2957,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 					strerror(errno), errno);
 			data->step = 0;
 			tester_test_failed();
-			return FALSE;
+			return false;
 		}
 
 		if (olen != sizeof(addr)) {
@@ -2925,14 +2965,14 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 					olen, sizeof(addr));
 			data->step = 0;
 			tester_test_failed();
-			return FALSE;
+			return false;
 		}
 
 		if (addr.bc.bc_sid > 0x0f) {
 			tester_warn("Invalid SID: %d", addr.bc.bc_sid);
 			data->step = 0;
 			tester_test_failed();
-			return FALSE;
+			return false;
 		}
 
 		tester_print("SID: 0x%02x", addr.bc.bc_sid);
@@ -2951,7 +2991,7 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 		if (!check_rpa(data, sk)) {
 			data->step = 0;
 			tester_test_failed();
-			return FALSE;
+			return false;
 		}
 
 		tester_print("Successfully connected");
@@ -2979,11 +3019,11 @@ static gboolean iso_connect(GIOChannel *io, GIOCondition cond,
 			tester_test_passed();
 	}
 
-	return FALSE;
+	return false;
 }
 
-static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -2992,8 +3032,8 @@ static gboolean iso_connect_cb(GIOChannel *io, GIOCondition cond,
 	return iso_connect(io, cond, user_data);
 }
 
-static gboolean iso_connect2_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect2_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -3073,11 +3113,11 @@ static int connect_deferred(int sk)
 }
 
 static void setup_connect_many(struct test_data *data, uint8_t n, uint8_t *num,
-								GIOFunc *func)
+							tester_io_func_t *func)
 {
 	const struct iso_client_data *isodata = data->test_data;
 	int sk[256];
-	GIOChannel *io;
+	struct tester_io *io;
 	unsigned int i;
 
 	for (i = 0; i < n; ++i) {
@@ -3093,10 +3133,11 @@ static void setup_connect_many(struct test_data *data, uint8_t n, uint8_t *num,
 	}
 
 	for (i = 0; i < n; ++i) {
-		io = g_io_channel_unix_new(sk[i]);
-		g_io_channel_set_close_on_unref(io, TRUE);
+		io = tester_io_new(sk[i]);
+		tester_io_set_close_on_unref(io, true);
 
-		data->io_id[num[i]] = g_io_add_watch(io, G_IO_OUT, func[i],
+		data->io_id[num[i]] = tester_io_add_watch(io, TESTER_IO_OUT,
+									func[i],
 									NULL);
 
 		if (data->io_queue)
@@ -3107,7 +3148,7 @@ static void setup_connect_many(struct test_data *data, uint8_t n, uint8_t *num,
 			 */
 			queue_push_tail(data->io_queue, io);
 		else
-			g_io_channel_unref(io);
+			tester_io_unref(io);
 
 		tester_print("Connect %d in progress", num[i]);
 
@@ -3115,7 +3156,8 @@ static void setup_connect_many(struct test_data *data, uint8_t n, uint8_t *num,
 	}
 }
 
-static void setup_connect(struct test_data *data, uint8_t num, GIOFunc func)
+static void setup_connect(struct test_data *data, uint8_t num,
+							tester_io_func_t func)
 {
 	return setup_connect_many(data, 1, &num, &func);
 }
@@ -3125,7 +3167,7 @@ static void test_connect(const void *test_data)
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = test_data;
 	uint8_t n = 0;
-	GIOFunc func[2];
+	tester_io_func_t func[2];
 	uint8_t num[2] = {0, 1};
 
 	func[n++] = iso_connect_cb;
@@ -3287,7 +3329,7 @@ fail:
 	return err;
 }
 
-static gboolean test_listen_past(gpointer user_data)
+static bool test_listen_past(void *user_data)
 {
 	struct test_data *data = user_data;
 	struct bthost *host;
@@ -3299,15 +3341,15 @@ static gboolean test_listen_past(gpointer user_data)
 	host = hciemu_client_get_host(data->hciemu);
 	bthost_past_set_info(host, data->acl_handle);
 
-	return FALSE;
+	return false;
 }
 
 static void setup_listen_many(struct test_data *data, uint8_t n, uint8_t *num,
-								GIOFunc *func)
+							tester_io_func_t *func)
 {
 	const struct iso_client_data *isodata = data->test_data;
 	int sk[256];
-	GIOChannel *io;
+	struct tester_io *io;
 	unsigned int i;
 
 	for (i = 0; i < n; ++i) {
@@ -3320,13 +3362,13 @@ static void setup_listen_many(struct test_data *data, uint8_t n, uint8_t *num,
 			return;
 		}
 
-		io = g_io_channel_unix_new(sk[i]);
-		g_io_channel_set_close_on_unref(io, TRUE);
+		io = tester_io_new(sk[i]);
+		tester_io_set_close_on_unref(io, true);
 
-		data->io_id[num[i]] = g_io_add_watch(io, G_IO_IN,
+		data->io_id[num[i]] = tester_io_add_watch(io, TESTER_IO_IN,
 							func[i], NULL);
 
-		g_io_channel_unref(io);
+		tester_io_unref(io);
 
 		tester_print("Listen %d in progress", num[i]);
 
@@ -3358,25 +3400,27 @@ static void setup_listen_many(struct test_data *data, uint8_t n, uint8_t *num,
 		/* Wait for listen to take effect before initiating PAST
 		 * procedure.
 		 */
-		g_assert(data->io_id[3] == 0);
-		data->io_id[3] = g_timeout_add(250, test_listen_past, data);
+		assert(data->io_id[3] == 0);
+		data->io_id[3] = timeout_add(250, test_listen_past, data, NULL);
 	}
 }
 
-static void setup_listen(struct test_data *data, uint8_t num, GIOFunc func)
+static void setup_listen(struct test_data *data, uint8_t num,
+							tester_io_func_t func)
 {
 	return setup_listen_many(data, 1, &num, &func);
 }
 
-static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io,
-						uint8_t num, GIOFunc func)
+static bool iso_defer_accept_bcast(struct test_data *data, struct tester_io *io,
+						uint8_t num,
+							tester_io_func_t func)
 {
 	int sk;
 	char c;
 	const struct iso_client_data *isodata = data->test_data;
 	struct sockaddr_iso *addr = NULL;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (isodata->pa_bind) {
 		addr = malloc(sizeof(*addr) + sizeof(*addr->iso_bc));
@@ -3409,20 +3453,21 @@ static bool iso_defer_accept_bcast(struct test_data *data, GIOChannel *io,
 	if (data->io_queue)
 		queue_push_tail(data->io_queue, io);
 
-	data->io_id[num] = g_io_add_watch(io, G_IO_IN,
+	data->io_id[num] = tester_io_add_watch(io, TESTER_IO_IN,
 				func, NULL);
 
 	return true;
 }
 
-static bool iso_defer_accept_ucast(struct test_data *data, GIOChannel *io,
-						uint8_t num, GIOFunc func)
+static bool iso_defer_accept_ucast(struct test_data *data, struct tester_io *io,
+						uint8_t num,
+							tester_io_func_t func)
 {
 	int sk;
 	char c;
 	struct pollfd pfd;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	memset(&pfd, 0, sizeof(pfd));
 	pfd.fd = sk;
@@ -3446,25 +3491,26 @@ static bool iso_defer_accept_ucast(struct test_data *data, GIOChannel *io,
 	if (data->io_queue)
 		queue_push_tail(data->io_queue, io);
 
-	data->io_id[num] = g_io_add_watch(io, G_IO_OUT,
+	data->io_id[num] = tester_io_add_watch(io, TESTER_IO_OUT,
 				func, NULL);
 
 	return true;
 }
 
-static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
-				gpointer user_data, uint8_t num, GIOFunc func)
+static bool iso_accept(struct tester_io *io, uint32_t cond,
+				void *user_data, uint8_t num,
+							tester_io_func_t func)
 {
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = data->test_data;
 	int sk, new_sk;
-	gboolean ret;
-	GIOChannel *new_io;
+	bool ret;
+	struct tester_io *new_io;
 	iso_defer_accept_t iso_defer_accept = isodata->bcast ?
 						iso_defer_accept_bcast :
 						iso_defer_accept_ucast;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	new_sk = accept(sk, NULL, NULL);
 	if (new_sk < 0) {
@@ -3472,12 +3518,12 @@ static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
 		return false;
 	}
 
-	new_io = g_io_channel_unix_new(new_sk);
-	g_io_channel_set_close_on_unref(new_io, TRUE);
+	new_io = tester_io_new(new_sk);
+	tester_io_set_close_on_unref(new_io, true);
 
 	if (isodata->defer) {
 		if (isodata->expect_err < 0) {
-			g_io_channel_unref(new_io);
+			tester_io_unref(new_io);
 			tester_test_passed();
 			return false;
 		}
@@ -3486,13 +3532,13 @@ static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
 			iso_connect(new_io, cond, user_data);
 
 			if (!data->step) {
-				g_io_channel_unref(new_io);
+				tester_io_unref(new_io);
 				return false;
 			}
 
 			/* Return if connection has already been accepted */
 			if (queue_find(data->io_queue, NULL, io)) {
-				g_io_channel_unref(new_io);
+				tester_io_unref(new_io);
 				return false;
 			}
 		}
@@ -3500,7 +3546,7 @@ static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
 		if (!iso_defer_accept(data, new_io, num, func)) {
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
-			g_io_channel_unref(new_io);
+			tester_io_unref(new_io);
 		}
 		return false;
 	}
@@ -3533,12 +3579,12 @@ static gboolean iso_accept(GIOChannel *io, GIOCondition cond,
 
 	ret = iso_connect(new_io, cond, user_data);
 
-	g_io_channel_unref(new_io);
+	tester_io_unref(new_io);
 	return ret;
 }
 
-static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_accept_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct iso_client_data *isodata = data->test_data;
@@ -3551,8 +3597,8 @@ static gboolean iso_accept_cb(GIOChannel *io, GIOCondition cond,
 		return iso_accept(io, cond, user_data, 0, iso_connect_cb);
 }
 
-static gboolean iso_accept2_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_accept2_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -3572,13 +3618,13 @@ static void test_connect2(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	uint8_t num[2] = {0, 1};
-	GIOFunc funcs[2] = {iso_connect_cb, iso_connect2_cb};
+	tester_io_func_t funcs[2] = {iso_connect_cb, iso_connect2_cb};
 
 	setup_connect_many(data, 2, num, funcs);
 }
 
-static gboolean iso_connect2_seq_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect2_seq_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -3596,7 +3642,7 @@ static void test_connect2_seq(const void *test_data)
 	setup_connect(data, 0, iso_connect2_seq_cb);
 }
 
-static gboolean test_connect2_busy_done(gpointer user_data)
+static bool test_connect2_busy_done(void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -3604,18 +3650,18 @@ static gboolean test_connect2_busy_done(gpointer user_data)
 
 	if (data->io_id[0] > 0) {
 		/* First connection still exists */
-		g_source_remove(data->io_id[0]);
+		tester_remove_source(data->io_id[0]);
 		data->io_id[0] = 0;
 		tester_test_passed();
 	} else {
 		tester_test_failed();
 	}
 
-	return FALSE;
+	return false;
 }
 
-static gboolean iso_connect_cb_busy_disc(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect_cb_busy_disc(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
@@ -3623,11 +3669,11 @@ static gboolean iso_connect_cb_busy_disc(GIOChannel *io, GIOCondition cond,
 
 	tester_print("Disconnected 1");
 	tester_test_failed();
-	return FALSE;
+	return false;
 }
 
-static gboolean iso_connect_cb_busy_2(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect_cb_busy_2(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	int err, sk_err, sk;
@@ -3635,7 +3681,7 @@ static gboolean iso_connect_cb_busy_2(GIOChannel *io, GIOCondition cond,
 
 	data->io_id[1] = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	len = sizeof(sk_err);
 
@@ -3648,22 +3694,22 @@ static gboolean iso_connect_cb_busy_2(GIOChannel *io, GIOCondition cond,
 
 	if (err == -EBUSY && data->io_id[0] > 0) {
 		/* Wait in case first connection still gets disconnected */
-		data->io_id[1] = g_timeout_add(250, test_connect2_busy_done,
-									data);
+		data->io_id[1] = timeout_add(250, test_connect2_busy_done,
+								data, NULL);
 	} else {
 		tester_test_failed();
 	}
 
-	return FALSE;
+	return false;
 }
 
-static gboolean iso_connect_cb_busy(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect_cb_busy(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
 	/* First connection shall not be disconnected */
-	data->io_id[0] = g_io_add_watch(io, G_IO_ERR | G_IO_HUP,
+	data->io_id[0] = tester_io_add_watch(io, TESTER_IO_ERR | TESTER_IO_HUP,
 						iso_connect_cb_busy_disc, data);
 
 	/* Second connect shall fail since CIG is now busy */
@@ -3679,8 +3725,8 @@ static void test_connect2_busy(const void *test_data)
 	setup_connect(data, 0, iso_connect_cb_busy);
 }
 
-static gboolean iso_connect_close_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect_close_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 
@@ -3692,7 +3738,7 @@ static gboolean iso_connect_close_cb(GIOChannel *io, GIOCondition cond,
 	if (!data->step)
 		tester_test_passed();
 
-	return FALSE;
+	return false;
 }
 
 static bool hook_remove_cig(const void *msg, uint16_t len, void *user_data)
@@ -3712,7 +3758,7 @@ static void test_connect_close(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	int sk;
-	GIOChannel *io;
+	struct tester_io *io;
 
 	data->step = 2;
 
@@ -3724,31 +3770,33 @@ static void test_connect_close(const void *test_data)
 	if (sk < 0)
 		return;
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_connect_close_cb,
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
+	data->io_id[0] = tester_io_add_watch(io, TESTER_IO_HUP,
+							iso_connect_close_cb,
 									data);
 
 	shutdown(sk, SHUT_RDWR);
-	g_io_channel_unref(io);
+	tester_io_unref(io);
 }
 
-static gboolean iso_connect_wait_close_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool iso_connect_wait_close_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	int sk;
 
 	tester_print("Connected");
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
-	data->io_id[0] = g_io_add_watch(io, G_IO_HUP, iso_connect_close_cb,
+	data->io_id[0] = tester_io_add_watch(io, TESTER_IO_HUP,
+							iso_connect_close_cb,
 									data);
 
 	shutdown(sk, SHUT_RDWR);
 
-	return FALSE;
+	return false;
 }
 
 static void test_connect_wait_close(const void *test_data)
@@ -3815,7 +3863,7 @@ static void test_past(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	uint8_t num[1] = { 1 };
-	GIOFunc funcs[1] = { iso_accept2_cb };
+	tester_io_func_t funcs[1] = { iso_accept2_cb };
 
 	if (data->client_num > 1)
 		setup_listen_many(data, 1, num, funcs);
@@ -3835,7 +3883,7 @@ static void test_bcast2(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	uint8_t num[2] = {0, 1};
-	GIOFunc funcs[2] = {iso_connect_cb, iso_connect2_cb};
+	tester_io_func_t funcs[2] = {iso_connect_cb, iso_connect2_cb};
 
 	setup_connect_many(data, 2, num, funcs);
 }
@@ -3844,7 +3892,7 @@ static void test_bcast2_reconn(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	uint8_t num[2] = {0, 1};
-	GIOFunc funcs[2] = {iso_connect_cb, iso_connect2_cb};
+	tester_io_func_t funcs[2] = {iso_connect_cb, iso_connect2_cb};
 
 	data->io_queue = queue_new();
 
@@ -3863,7 +3911,7 @@ static void test_bcast_recv2(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	uint8_t num[2] = {0, 1};
-	GIOFunc funcs[2] = {iso_accept_cb, iso_accept2_cb};
+	tester_io_func_t funcs[2] = {iso_accept_cb, iso_accept2_cb};
 
 	setup_listen_many(data, 2, num, funcs);
 }
@@ -3891,7 +3939,7 @@ static void test_bcast_recv2_defer(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	uint8_t num[2] = {0, 1};
-	GIOFunc funcs[2] = {iso_accept_cb, iso_accept2_cb};
+	tester_io_func_t funcs[2] = {iso_accept_cb, iso_accept2_cb};
 
 	data->step = 2;
 

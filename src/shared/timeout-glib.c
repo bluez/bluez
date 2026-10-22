@@ -52,7 +52,15 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 	data->destroy = destroy;
 	data->user_data = user_data;
 
-	id = g_timeout_add_full(G_PRIORITY_DEFAULT, timeout, timeout_callback,
+	/* A timeout of 0 runs once nothing else is pending, as with the
+	 * mainloop backend.
+	 */
+	if (timeout)
+		id = g_timeout_add_full(G_PRIORITY_DEFAULT, timeout,
+					timeout_callback, data,
+					timeout_destroy);
+	else
+		id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, timeout_callback,
 						data, timeout_destroy);
 	if (!id)
 		g_free(data);

@@ -100,6 +100,18 @@ int mainloop_add_timeout(unsigned int msec, mainloop_timeout_func callback,
 	return -ENOSYS;
 }
 
+int mainloop_add_idle(mainloop_timeout_func callback, void *user_data,
+				mainloop_destroy_func destroy)
+{
+	return -EOPNOTSUPP;
+}
+
+int mainloop_add_deferred(mainloop_timeout_func callback, void *user_data,
+				mainloop_destroy_func destroy)
+{
+	return -EOPNOTSUPP;
+}
+
 int mainloop_modify_timeout(int fd, unsigned int msec)
 {
 	return -ENOSYS;

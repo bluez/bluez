@@ -24,8 +24,6 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 
-#include <glib.h>
-
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hci.h"
 
@@ -35,14 +33,16 @@
 #include "emulator/bthost.h"
 #include "src/shared/util.h"
 #include "src/shared/queue.h"
+#include "src/shared/io.h"
+#include "src/shared/timeout.h"
 #include "emulator/hciemu.h"
 
 struct hciemu_client {
 	struct bthost *host;
 	struct btdev *dev;
-	guint start_source;
-	guint host_source;
-	guint source;
+	unsigned int start_source;
+	struct io *host_io;
+	struct io *io;
 	int sock[2];
 };
 
@@ -124,11 +124,11 @@ static void client_command_callback(uint16_t opcode,
 static void writev_callback(const struct iovec *iov, int iovlen,
 								void *user_data)
 {
-	GIOChannel *channel = user_data;
+	struct io *io = user_data;
 	ssize_t written;
 	int fd;
 
-	fd = g_io_channel_unix_get_fd(channel);
+	fd = io_get_fd(io);
 
 	written = writev(fd, iov, iovlen);
 	if (written < 0) {
@@ -162,99 +162,69 @@ static void writev_callback(const struct iovec *iov, int iovlen,
 	}
 }
 
-static gboolean receive_bthost(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
+static bool receive_bthost(struct io *io, void *user_data)
 {
 	struct bthost *bthost = user_data;
 	unsigned char buf[4096];
 	ssize_t len;
-	int fd;
 
-	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
-		return FALSE;
-
-	fd = g_io_channel_unix_get_fd(channel);
-
-	len = read(fd, buf, sizeof(buf));
+	len = read(io_get_fd(io), buf, sizeof(buf));
 	if (len < 0)
-		return FALSE;
+		return false;
 
 	bthost_receive_h4(bthost, buf, len);
 
-	return TRUE;
+	return true;
 }
 
-static guint create_source_bthost(int fd, struct bthost *bthost)
+static struct io *create_io_bthost(int fd, struct bthost *bthost)
 {
-	GIOChannel *channel;
-	guint source;
+	struct io *io;
 
-	channel = g_io_channel_unix_new(fd);
+	io = io_new(fd);
+	io_set_close_on_destroy(io, true);
 
-	g_io_channel_set_close_on_unref(channel, TRUE);
-	g_io_channel_set_encoding(channel, NULL, NULL);
-	g_io_channel_set_buffered(channel, FALSE);
+	bthost_set_send_handler(bthost, writev_callback, io);
 
-	bthost_set_send_handler(bthost, writev_callback, channel);
+	io_set_read_handler(io, receive_bthost, bthost, NULL);
 
-	source = g_io_add_watch_full(channel, G_PRIORITY_DEFAULT,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				receive_bthost, bthost, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
+	return io;
 }
 
-static gboolean receive_btdev(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
+static bool receive_btdev(struct io *io, void *user_data)
 {
 	struct btdev *btdev = user_data;
 	unsigned char buf[4096];
 	ssize_t len;
-	int fd;
 
-	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
-		return FALSE;
-
-	fd = g_io_channel_unix_get_fd(channel);
-
-	len = read(fd, buf, sizeof(buf));
+	len = read(io_get_fd(io), buf, sizeof(buf));
 	if (len < 0) {
 		if (errno == EAGAIN || errno == EINTR)
-			return TRUE;
+			return true;
 
-		return FALSE;
+		return false;
 	}
 
 	if (len < 1)
-		return FALSE;
+		return false;
 
 	btdev_receive_h4(btdev, buf, len);
 
-	return TRUE;
+	return true;
 }
 
-static guint create_source_btdev(int fd, struct btdev *btdev)
+static struct io *create_io_btdev(int fd, struct btdev *btdev)
 {
-	GIOChannel *channel;
-	guint source;
+	struct io *io;
 
-	channel = g_io_channel_unix_new(fd);
+	io = io_new(fd);
+	io_set_close_on_destroy(io, true);
 
-	g_io_channel_set_close_on_unref(channel, TRUE);
-	g_io_channel_set_encoding(channel, NULL, NULL);
-	g_io_channel_set_buffered(channel, FALSE);
+	btdev_set_send_handler(btdev, writev_callback, io);
 
-	btdev_set_send_handler(btdev, writev_callback, channel);
+	io_set_read_handler(io, receive_btdev, btdev, NULL);
 
-	source = g_io_add_watch_full(channel, G_PRIORITY_DEFAULT,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				receive_btdev, btdev, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
+	return io;
 }
 
 static bool create_vhci(struct hciemu *hciemu)
@@ -318,7 +288,7 @@ struct bthost *hciemu_client_get_host(struct hciemu *hciemu)
 	return hciemu_client_host(client);
 }
 
-static gboolean start_host(gpointer user_data)
+static bool start_host(void *user_data)
 {
 	struct hciemu_client *client = user_data;
 
@@ -326,18 +296,17 @@ static gboolean start_host(gpointer user_data)
 
 	bthost_start(client->host);
 
-	return FALSE;
+	return false;
 }
 
 static void hciemu_client_destroy(void *data)
 {
 	struct hciemu_client *client = data;
 
-	if (client->start_source)
-		g_source_remove(client->start_source);
+	timeout_remove(client->start_source);
 
-	g_source_remove(client->host_source);
-	g_source_remove(client->source);
+	io_destroy(client->host_io);
+	io_destroy(client->io);
 
 	bthost_destroy(client->host);
 	btdev_destroy(client->dev);
@@ -385,9 +354,9 @@ static struct hciemu_client *hciemu_client_new(struct hciemu *hciemu,
 	client->sock[0] = sv[0];
 	client->sock[1] = sv[1];
 
-	client->source = create_source_btdev(sv[0], client->dev);
-	client->host_source = create_source_bthost(sv[1], client->host);
-	client->start_source = g_idle_add(start_host, client);
+	client->io = create_io_btdev(sv[0], client->dev);
+	client->host_io = create_io_bthost(sv[1], client->host);
+	client->start_source = timeout_add(0, start_host, client, NULL);
 
 	btdev_get_mtu(client->dev, &acl_mtu, NULL, &iso_mtu);
 	bthost_set_acl_mtu(client->host, acl_mtu);
@@ -512,8 +481,7 @@ void hciemu_unref(struct hciemu *hciemu)
 	queue_destroy(hciemu->post_command_hooks, destroy_command_hook);
 	queue_destroy(hciemu->clients, hciemu_client_destroy);
 
-	if (hciemu->flush_id)
-		g_source_remove(hciemu->flush_id);
+	timeout_remove(hciemu->flush_id);
 
 	vhci_close(hciemu->vhci);
 
@@ -853,7 +821,7 @@ static bool client_is_pending(const void *data, const void *match_data)
 	struct hciemu_client *client = (struct hciemu_client *)data;
 	int used, i;
 
-	if (!client->source || !client->host_source)
+	if (!client->io || !client->host_io)
 		return false;
 
 	for (i = 0; i < 2; ++i) {
@@ -866,12 +834,12 @@ static bool client_is_pending(const void *data, const void *match_data)
 	return false;
 }
 
-static gboolean flush_client_events(gpointer user_data)
+static bool flush_client_events(void *user_data)
 {
 	struct hciemu *hciemu = user_data;
 
 	if (queue_find(hciemu->clients, client_is_pending, NULL))
-		return TRUE;
+		return true;
 
 	hciemu->flush_id = 0;
 
@@ -879,7 +847,7 @@ static gboolean flush_client_events(gpointer user_data)
 	if (hciemu->vhci)
 		vhci_pause_input(hciemu->vhci, false);
 
-	return FALSE;
+	return false;
 }
 
 void hciemu_flush_client_events(struct hciemu *hciemu)
@@ -889,5 +857,5 @@ void hciemu_flush_client_events(struct hciemu *hciemu)
 
 	util_debug(hciemu->debug_callback, hciemu->debug_data, "vhci: pause");
 	vhci_pause_input(hciemu->vhci, true);
-	hciemu->flush_id = g_idle_add(flush_client_events, hciemu);
+	hciemu->flush_id = timeout_add(0, flush_client_events, hciemu, NULL);
 }

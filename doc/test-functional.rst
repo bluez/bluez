@@ -90,7 +90,7 @@ The following additional options apply:
 
 ``--kernel=<image>``
         Kernel image (or built Linux source tree root) to
-	use.  See **test-runner(1)** and `tester.config` for required
+	use.  See **test-runner(1)** and `tester.kvm.config` for required
 	kernel config.
 
 	If not provided, value from `FUNCTIONAL_TESTING_KERNEL`
@@ -300,7 +300,7 @@ Simplest setup is
 
 .. code-block::
 
-	cp ../bluez/doc/tester.config .config
+	cp ../bluez/doc/tester.kvm.config .config
 	make olddefconfig
 	make -j8
 

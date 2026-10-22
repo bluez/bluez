@@ -33,6 +33,10 @@ int mainloop_remove_fd(int fd);
 int mainloop_add_timeout(unsigned int msec, mainloop_timeout_func callback,
 				void *user_data, mainloop_destroy_func destroy);
 int mainloop_modify_timeout(int fd, unsigned int msec);
+int mainloop_add_idle(mainloop_timeout_func callback, void *user_data,
+				mainloop_destroy_func destroy);
+int mainloop_add_deferred(mainloop_timeout_func callback, void *user_data,
+				mainloop_destroy_func destroy);
 int mainloop_remove_timeout(int id);
 
 int mainloop_set_signal(sigset_t *mask, mainloop_signal_func callback,

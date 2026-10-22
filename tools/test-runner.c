@@ -43,6 +43,8 @@
 #include "bluetooth/hci_lib.h"
 #include "tools/hciattach.h"
 
+#include <elf.h>
+
 #ifndef WAIT_ANY
 #define WAIT_ANY (-1)
 #endif
@@ -64,6 +66,7 @@ static bool start_dbus_session;
 static bool start_daemon = false;
 static bool start_monitor = false;
 static bool qemu_host_cpu = false;
+static bool time_travel;
 static int num_devs = 0;
 static int num_emulator = 0;
 static const char *device_path = "/tmp/bt-server-bredr";
@@ -155,8 +158,78 @@ static const char *kernel_table[] = {
 	"arch/x86/boot/bzImage",
 	"vmlinux",
 	"arch/x86/boot/vmlinux",
+	"linux",
 	NULL
 };
+
+/* A User Mode Linux kernel is an executable with the .uml.setup.init
+ * section, through which it registers its command line options.
+ */
+static bool is_uml_kernel(const char *path)
+{
+	Elf64_Ehdr ehdr;
+	Elf64_Shdr *shdrs = NULL;
+	char *names = NULL;
+	bool found = false;
+	size_t size;
+	FILE *fp;
+	int i;
+
+	fp = fopen(path, "re");
+	if (!fp)
+		return false;
+
+	if (fread(&ehdr, sizeof(ehdr), 1, fp) != 1 ||
+			memcmp(ehdr.e_ident, ELFMAG, SELFMAG) ||
+			ehdr.e_ident[EI_CLASS] != ELFCLASS64 ||
+			ehdr.e_shentsize != sizeof(Elf64_Shdr) ||
+			ehdr.e_shstrndx >= ehdr.e_shnum)
+		goto done;
+
+	shdrs = calloc(ehdr.e_shnum, sizeof(*shdrs));
+	if (!shdrs || fseek(fp, ehdr.e_shoff, SEEK_SET) ||
+			fread(shdrs, sizeof(*shdrs), ehdr.e_shnum, fp) !=
+							ehdr.e_shnum)
+		goto done;
+
+	size = shdrs[ehdr.e_shstrndx].sh_size;
+	names = calloc(1, size + 1);
+	if (!names || fseek(fp, shdrs[ehdr.e_shstrndx].sh_offset, SEEK_SET) ||
+			fread(names, size, 1, fp) != 1)
+		goto done;
+
+	for (i = 0; i < ehdr.e_shnum; i++) {
+		if (shdrs[i].sh_name < size &&
+				!strcmp(names + shdrs[i].sh_name,
+						".uml.setup.init")) {
+			found = true;
+			break;
+		}
+	}
+
+done:
+	free(names);
+	free(shdrs);
+	fclose(fp);
+	return found;
+}
+
+static bool is_uml_guest(void)
+{
+	char cmdline[CMDLINE_MAX];
+	bool uml = false;
+	FILE *fp;
+
+	fp = fopen("/proc/cmdline", "re");
+	if (!fp)
+		return false;
+
+	if (fgets(cmdline, sizeof(cmdline), fp))
+		uml = strstr(cmdline, "TESTUML=1") != NULL;
+
+	fclose(fp);
+	return uml;
+}
 
 static bool find_kernel(const char *root, char path[PATH_MAX])
 {
@@ -254,11 +327,14 @@ static void prepare_sandbox(void)
 		printf("Mounting %s to %s\n", mount_table[i].fstype,
 						mount_table[i].target);
 
+		/* The kernel may have mounted it already, e.g. devtmpfs
+		 * with CONFIG_DEVTMPFS_MOUNT.
+		 */
 		if (mount(mount_table[i].fstype,
 				mount_table[i].target,
 				mount_table[i].fstype,
 				mount_table[i].flags,
-				mount_table[i].options) < 0)
+				mount_table[i].options) < 0 && errno != EBUSY)
 			perror("Failed to mount filesystem");
 	}
 
@@ -612,6 +688,12 @@ static void coverage_mount(const char *dir)
 
 	printf("Mounting %s writable for coverage\n", dir);
 
+	if (is_uml_guest()) {
+		if (mount("none", dir, "hostfs", 0, dir) < 0)
+			perror("Failed to mount coverage directory");
+		return;
+	}
+
 	if (mount(COVERAGE_TAG, dir, "9p", 0,
 				"trans=virtio,version=9p2000.L") < 0)
 		perror("Failed to mount coverage directory");
@@ -945,6 +1027,254 @@ static int start_qemu(void)
 
 	if (pcie_dev)
 		pcie_unbind_vfio();
+
+	return WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE;
+}
+
+static const char *find_btvirt(void);
+
+#define TT_DIR_MAX	32
+
+/* A User Mode Linux kernel built with time travel support lists the
+ * external mode, time-travel=ext, in its help.
+ */
+static bool uml_has_time_travel(void)
+{
+	char *line = NULL;
+	bool found = false;
+	size_t size = 0;
+	int fds[2];
+	FILE *fp;
+	pid_t pid;
+
+	if (pipe(fds) < 0)
+		return false;
+
+	pid = fork();
+	if (pid < 0) {
+		close(fds[0]);
+		close(fds[1]);
+		return false;
+	}
+
+	if (pid == 0) {
+		dup2(fds[1], STDOUT_FILENO);
+		close(fds[0]);
+		close(fds[1]);
+		execl(kernel_image, kernel_image, "--help", NULL);
+		exit(EXIT_FAILURE);
+	}
+
+	close(fds[1]);
+
+	fp = fdopen(fds[0], "r");
+	if (!fp) {
+		close(fds[0]);
+		waitpid(pid, NULL, 0);
+		return false;
+	}
+
+	while (getline(&line, &size, fp) > 0) {
+		if (strstr(line, "time-travel=ext"))
+			found = true;
+	}
+
+	free(line);
+	fclose(fp);
+	waitpid(pid, NULL, 0);
+
+	return found;
+}
+
+/* Start btvirt as time travel calendar for the guest, in a new directory
+ * for its socket. Returns the pid of btvirt, or -1 on failure.
+ */
+static pid_t start_calendar(char dir[TT_DIR_MAX])
+{
+	const char *btvirt;
+	char opt[PATH_MAX], sock[PATH_MAX];
+	struct stat st;
+	pid_t pid;
+	int i;
+
+	btvirt = find_btvirt();
+	if (!btvirt) {
+		fprintf(stderr, "Failed to locate btvirt binary\n");
+		return -1;
+	}
+
+	snprintf(dir, TT_DIR_MAX, "/tmp/test-runner-tt.XXXXXX");
+	if (!mkdtemp(dir)) {
+		perror("Failed to create time travel directory");
+		return -1;
+	}
+
+	snprintf(opt, sizeof(opt), "--time=%s", dir);
+	snprintf(sock, sizeof(sock), "%s/bt-time", dir);
+
+	printf("Starting time travel calendar %s %s\n", btvirt, opt);
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		rmdir(dir);
+		return -1;
+	}
+
+	if (pid == 0) {
+		execl(btvirt, btvirt, opt, NULL);
+		exit(EXIT_FAILURE);
+	}
+
+	for (i = 0; i < 100; i++) {
+		if (!stat(sock, &st))
+			return pid;
+
+		if (waitpid(pid, NULL, WNOHANG) == pid)
+			break;
+
+		usleep(50000);
+	}
+
+	fprintf(stderr, "Time travel calendar did not start\n");
+	kill(pid, SIGTERM);
+	waitpid(pid, NULL, 0);
+	rmdir(dir);
+
+	return -1;
+}
+
+static void stop_calendar(pid_t pid, const char *dir)
+{
+	char sock[PATH_MAX];
+
+	kill(pid, SIGTERM);
+	waitpid(pid, NULL, 0);
+
+	snprintf(sock, sizeof(sock), "%s/bt-time", dir);
+	unlink(sock);
+	rmdir(dir);
+}
+
+/* Run a User Mode Linux kernel with the host filesystem as root and this
+ * binary as init, as start_qemu() does for QEMU. Extra options (-o) are
+ * kernel parameters, e.g. time-travel=ext:<socket> or
+ * virtio_uml.device=<socket>:<id> for devices served from the host.
+ */
+static int start_uml(void)
+{
+	char cwd[PATH_MAX/2], initcmd[PATH_MAX], testargs[PATH_MAX];
+	char dir[TT_DIR_MAX];
+	pid_t calendar = -1, pid;
+	int status = EXIT_FAILURE << 8;
+	char *argv_strv[EXTRA_OPT_MAX + 64];
+	struct strv _cleanup_(strv_cleanup) argv = { argv_strv,
+							ARRAY_SIZE(argv_strv) };
+	int i, pos;
+
+	if (!getcwd(cwd, sizeof(cwd)))
+		strcat(cwd, "/");
+
+	if (own_binary[0] == '/')
+		snprintf(initcmd, sizeof(initcmd), "%s", own_binary);
+	else
+		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
+
+	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
+
+	for (i = 1; i < test_argc; i++) {
+		int len = sizeof(testargs) - pos;
+		int n = snprintf(testargs + pos, len, " %s", test_argv[i]);
+
+		if (n < 0 || n >= len) {
+			fprintf(stderr, "Buffer overflow detected in "
+					"testargs\n");
+			return EXIT_FAILURE;
+		}
+
+		pos += n;
+	}
+
+	strv_append(&argv, "%s", kernel_image);
+	strv_append(&argv, "mem=512M");
+	/* UML keeps its PID file in uml_dir, ~/.uml by default */
+	strv_append(&argv, "uml_dir=/tmp");
+	/* No block device, UML would otherwise try to open root_fs */
+	strv_append(&argv, "ubd0r=/dev/null");
+	strv_append(&argv, "root=/dev/root");
+	strv_append(&argv, "rootfstype=hostfs");
+	strv_append(&argv, "hostfs=/");
+	strv_append(&argv, "ro");
+	strv_append(&argv, "quiet");
+	/* Run the guest's processes with seccomp instead of ptrace */
+	strv_append(&argv, "seccomp=on");
+	strv_append(&argv, "con=null");
+	strv_append(&argv, "con0=fd:0,fd:1");
+	strv_append(&argv, "TESTUML=1");
+	strv_append(&argv, "init=%s", initcmd);
+	strv_append(&argv, "TESTHOME=%s", cwd);
+	strv_append(&argv, "TESTDBUS=%u", start_dbus);
+	strv_append(&argv, "TESTDAEMON=%u", start_daemon);
+	strv_append(&argv, "TESTDBUSSESSION=%u", start_dbus_session);
+	strv_append(&argv, "XDG_RUNTIME_DIR=/run/user/0");
+	strv_append(&argv, "TESTMONITOR=%u", start_monitor);
+	strv_append(&argv, "TESTEMULATOR=%u", num_emulator);
+	strv_append(&argv, "TESTDEVS=0");
+	strv_append(&argv, "TESTAUTO=%u", run_auto);
+	strv_append(&argv, "TESTAUDIO='%s'", audio_server ? audio_server : "");
+	strv_append(&argv, "TESTARGS='%s'", testargs);
+
+	for (i = 0; i < num_extra_opts; ++i)
+		strv_append(&argv, "%s", extra_opts[i]);
+
+	if (time_travel) {
+		calendar = start_calendar(dir);
+		if (calendar < 0)
+			return EXIT_FAILURE;
+
+		strv_append(&argv, "time-travel=ext:%s/bt-time", dir);
+	}
+
+	if (STRV_ERROR(argv)) {
+		fprintf(stderr, "Failed to build argument list\n");
+		goto done;
+	}
+
+	/* Exec directly if there is no calendar to stop afterwards */
+	if (!time_travel) {
+		execve(argv.strv[0], argv.strv, qemu_envp);
+		perror("Failed to start User Mode Linux");
+		return EXIT_FAILURE;
+	}
+
+	pid = fork();
+	if (pid < 0) {
+		perror("Failed to fork new process");
+		goto done;
+	}
+
+	if (pid == 0) {
+		execve(argv.strv[0], argv.strv, qemu_envp);
+		perror("Failed to start User Mode Linux");
+		exit(EXIT_FAILURE);
+	}
+
+	qemu_pid = pid;
+
+	signal(SIGINT, qemu_signal);
+	signal(SIGTERM, qemu_signal);
+	signal(SIGHUP, qemu_signal);
+
+	while (waitpid(pid, &status, 0) < 0) {
+		if (errno != EINTR)
+			break;
+	}
+
+	qemu_pid = -1;
+
+done:
+	if (calendar > 0)
+		stop_calendar(calendar, dir);
 
 	return WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE;
 }
@@ -1324,6 +1654,20 @@ static const char *btvirt_table[] = {
 	"/usr/sbin/btvirt",
 	NULL
 };
+
+static const char *find_btvirt(void)
+{
+	int i;
+
+	for (i = 0; btvirt_table[i]; i++) {
+		struct stat st;
+
+		if (!stat(btvirt_table[i], &st))
+			return btvirt_table[i];
+	}
+
+	return NULL;
+}
 
 static pid_t start_btvirt(const char *home, int num)
 {
@@ -1815,9 +2159,14 @@ static void usage(void)
 		"\t-P, --pcie <qemu_args> Provide PCIe device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-H, --qemu-host-cpu    Use host CPU (requires KVM support)\n"
-		"\t-k, --kernel <image>   Kernel bzImage or source tree path\n"
+		"\t-k, --kernel <image>   Kernel bzImage, User Mode Linux\n"
+		"\t                       binary or source tree path\n"
 		"\t-F, --virtiofs[=<path>]  Virtiofsd path or 'no'\n"
-		"\t-o, --option <opt>     Additional argument passed to QEMU\n"
+		"\t-T, --time-travel      Run User Mode Linux on simulated\n"
+		"\t                       time, with btvirt as calendar\n"
+		"\t-o, --option <opt>     Additional argument passed to QEMU,\n"
+		"\t                       or kernel parameter with User\n"
+		"\t                       Mode Linux\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -1838,6 +2187,7 @@ static const struct option main_options[] = {
 	{ "pcie",    required_argument, NULL, 'P' },
 	{ "option",  required_argument, NULL, 'o' },
 	{ "virtiofs", optional_argument, NULL, 'F' },
+	{ "time-travel", no_argument,   NULL, 'T' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -1845,7 +2195,7 @@ static const struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	char kernel_path[PATH_MAX];
+	static char kernel_path[PATH_MAX];
 	bool virtiofs_auto = true;
 
 	if (getpid() == 1 && getppid() == 0) {
@@ -1853,14 +2203,15 @@ int main(int argc, char *argv[])
 		run_tests();
 
 		sync();
-		reboot(RB_AUTOBOOT);
+		/* Rebooting User Mode Linux starts it again */
+		reboot(is_uml_guest() ? RB_POWER_OFF : RB_AUTOBOOT);
 		return EXIT_SUCCESS;
 	}
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "au::bdsl::mq:Hk:A::U:P:o:F::vh",
+		opt = getopt_long(argc, argv, "au::bdsl::mq:Hk:A::U:P:o:F::Tvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -1915,6 +2266,9 @@ int main(int argc, char *argv[])
 			}
 			extra_opts[num_extra_opts++] = optarg;
 			break;
+		case 'T':
+			time_travel = true;
+			break;
 		case 'F':
 			virtiofs_auto = false;
 			if (optarg) {
@@ -1954,6 +2308,37 @@ int main(int argc, char *argv[])
 	test_argv = argv + optind;
 	test_argc = argc - optind;
 
+	if (!find_kernel(kernel_image, kernel_path)) {
+		fprintf(stderr, "No kernel image found\n");
+		return EXIT_FAILURE;
+	}
+
+	kernel_image = kernel_path;
+
+	if (is_uml_kernel(kernel_image)) {
+		if (num_devs || usb_dev || pcie_dev || qemu_binary ||
+							qemu_host_cpu) {
+			fprintf(stderr, "-u, -U, -P, -q and -H need QEMU, not "
+						"User Mode Linux\n");
+			return EXIT_FAILURE;
+		}
+
+		if (time_travel && !uml_has_time_travel()) {
+			fprintf(stderr, "%s has no time travel support "
+					"(CONFIG_UML_TIME_TRAVEL_SUPPORT)\n",
+					kernel_image);
+			return EXIT_FAILURE;
+		}
+
+		printf("Using User Mode Linux kernel %s\n", kernel_image);
+		return start_uml();
+	}
+
+	if (time_travel) {
+		fprintf(stderr, "-T needs a User Mode Linux kernel\n");
+		return EXIT_FAILURE;
+	}
+
 	if (!qemu_binary) {
 		qemu_binary = find_qemu();
 		if (!qemu_binary) {
@@ -1961,13 +2346,6 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 	}
-
-	if (!find_kernel(kernel_image, kernel_path)) {
-		fprintf(stderr, "No kernel image found\n");
-		return EXIT_FAILURE;
-	}
-
-	kernel_image = kernel_path;
 
 	printf("Using QEMU binary %s\n", qemu_binary);
 	printf("Using kernel image %s\n", kernel_image);
