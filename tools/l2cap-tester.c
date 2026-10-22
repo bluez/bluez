@@ -18,7 +18,7 @@
 #include <poll.h>
 #include <stdbool.h>
 
-#include <glib.h>
+#include <assert.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/l2cap.h"
@@ -29,6 +29,8 @@
 #include "emulator/hciemu.h"
 
 #include "src/shared/tester.h"
+#include "src/shared/timeout.h"
+#include "tools/tester-io.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/queue.h"
 #include "src/shared/util.h"
@@ -271,7 +273,7 @@ static void test_pre_setup(const void *test_data)
 
 static void io_channel_unref(void *data)
 {
-	g_io_channel_unref(data);
+	tester_io_unref(data);
 }
 
 static void test_post_teardown(const void *test_data)
@@ -279,12 +281,12 @@ static void test_post_teardown(const void *test_data)
 	struct test_data *data = tester_get_data();
 
 	if (data->io_id > 0) {
-		g_source_remove(data->io_id);
+		tester_remove_source(data->io_id);
 		data->io_id = 0;
 	}
 
 	if (data->err_io_id > 0) {
-		g_source_remove(data->err_io_id);
+		tester_remove_source(data->err_io_id);
 		data->err_io_id = 0;
 	}
 
@@ -1798,8 +1800,8 @@ static void received_data(struct test_data *tdata, const void *buf,
 	iov.iov_len = 0;
 }
 
-static gboolean sock_received_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool sock_received_data(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
@@ -1808,21 +1810,21 @@ static gboolean sock_received_data(GIOChannel *io, GIOCondition cond,
 	int sk;
 	ssize_t len;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	len = recv_tstamp(sk, buf, sizeof(buf), tstamp);
 	if (len < 0) {
 		tester_warn("Unable to read: %s (%d)", strerror(errno), errno);
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	received_data(data, buf, len, l2data->read_data, l2data->data_len);
 
 	if (data->step)
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 static void bthost_received_data(const void *buf, uint16_t len,
@@ -1834,8 +1836,8 @@ static void bthost_received_data(const void *buf, uint16_t len,
 	received_data(data, buf, len, l2data->write_data, l2data->data_len);
 }
 
-static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool socket_closed_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
@@ -1846,19 +1848,19 @@ static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
 
 	if (l2data->shut_sock_wr) {
 		/* if socket is closed using SHUT_WR, L2CAP disconnection
-		 * response must be received first before G_IO_HUP event.
+		 * response must be received first before TESTER_IO_HUP event.
 		 */
 		if (data->host_disconnected)
 			tester_test_passed();
 		else {
-			tester_warn("G_IO_HUP received before receiving L2CAP disconnection");
+			tester_warn("TESTER_IO_HUP received before receiving L2CAP disconnection");
 			tester_test_failed();
 		}
 	}
 
 	data->io_id = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
 		err = -errno;
@@ -1874,7 +1876,7 @@ static gboolean socket_closed_cb(GIOChannel *io, GIOCondition cond,
 	else
 		tester_test_failed();
 
-	return FALSE;
+	return false;
 }
 
 static bool check_mtu(struct test_data *data, int sk)
@@ -1923,7 +1925,7 @@ static bool check_mtu(struct test_data *data, int sk)
 	return true;
 }
 
-static gboolean check_phy_and_sec(gpointer args)
+static bool check_phy_and_sec(void *args)
 {
 	int sk = PTR_TO_INT(args);
 	struct test_data *data = tester_get_data();
@@ -1947,7 +1949,7 @@ static gboolean check_phy_and_sec(gpointer args)
 		tester_print("phy 0x%08x != 0x%08x", l2data->phy, data->phys);
 
 		/* Retry */
-		return TRUE;
+		return true;
 	}
 
 	tester_print("Checking security level...");
@@ -1965,7 +1967,7 @@ static gboolean check_phy_and_sec(gpointer args)
 						l2data->change_sec_level);
 
 		/* Retry */
-		return TRUE;
+		return true;
 	}
 
 	data->step--;
@@ -1973,7 +1975,7 @@ static gboolean check_phy_and_sec(gpointer args)
 done:
 	shutdown(sk, SHUT_WR);
 
-	return FALSE;
+	return false;
 }
 
 static int check_phys_and_sec(struct test_data *data, int sk)
@@ -2031,7 +2033,7 @@ static int check_phys_and_sec(struct test_data *data, int sk)
 	if (changed) {
 		/* Wait for the change */
 		data->step++;
-		g_timeout_add(50, check_phy_and_sec, INT_TO_PTR(sk));
+		timeout_add(50, check_phy_and_sec, INT_TO_PTR(sk), NULL);
 
 		return -EINPROGRESS;
 	}
@@ -2039,29 +2041,29 @@ static int check_phys_and_sec(struct test_data *data, int sk)
 	return 0;
 }
 
-static gboolean recv_errqueue(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool recv_errqueue(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct l2cap_data *l2data = data->test_data;
-	int sk = g_io_channel_unix_get_fd(io);
+	int sk = tester_io_get_fd(io);
 	int err;
 
 	data->step--;
 
 	err = tx_tstamp_recv(&data->tx_ts, sk, l2data->data_len);
 	if (err > 0)
-		return TRUE;
+		return true;
 	else if (err)
 		tester_test_failed();
 	else if (!data->step)
 		tester_test_passed();
 
 	data->err_io_id = 0;
-	return FALSE;
+	return false;
 }
 
-static void l2cap_tx_timestamping(struct test_data *data, GIOChannel *io)
+static void l2cap_tx_timestamping(struct test_data *data, struct tester_io *io)
 {
 	const struct l2cap_data *l2data = data->test_data;
 	int so = l2data->so_timestamping;
@@ -2072,7 +2074,7 @@ static void l2cap_tx_timestamping(struct test_data *data, GIOChannel *io)
 	if (!(l2data->so_timestamping & TS_TX_RECORD_MASK))
 		return;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	tester_print("Enabling TX timestamping");
 
@@ -2090,7 +2092,8 @@ static void l2cap_tx_timestamping(struct test_data *data, GIOChannel *io)
 		return;
 	}
 
-	data->err_io_id = g_io_add_watch(io, G_IO_ERR, recv_errqueue, data);
+	data->err_io_id = tester_io_add_watch(io, TESTER_IO_ERR, recv_errqueue,
+									data);
 }
 
 static int l2cap_send(int sk, const void *data, size_t len, uint16_t mtu)
@@ -2115,7 +2118,7 @@ static int l2cap_send(int sk, const void *data, size_t len, uint16_t mtu)
 	return total;
 }
 
-static void l2cap_read_data(struct test_data *data, GIOChannel *io,
+static void l2cap_read_data(struct test_data *data, struct tester_io *io,
 							uint16_t cid)
 {
 	const struct l2cap_data *l2data = data->test_data;
@@ -2125,12 +2128,12 @@ static void l2cap_read_data(struct test_data *data, GIOChannel *io,
 
 	data->step = 0;
 
-	if (rx_timestamping_init(g_io_channel_unix_get_fd(io),
+	if (rx_timestamping_init(tester_io_get_fd(io),
 						l2data->so_timestamping))
 		return;
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	g_io_add_watch(io, G_IO_IN, sock_received_data, NULL);
+	tester_io_add_watch(io, TESTER_IO_IN, sock_received_data, NULL);
 
 	len = MIN(iov.iov_len, data->l2o.imtu);
 
@@ -2144,7 +2147,7 @@ static void l2cap_read_data(struct test_data *data, GIOChannel *io,
 	++data->step;
 }
 
-static void l2cap_write_data(struct test_data *data, GIOChannel *io,
+static void l2cap_write_data(struct test_data *data, struct tester_io *io,
 							uint16_t cid)
 {
 	const struct l2cap_data *l2data = data->test_data;
@@ -2154,7 +2157,7 @@ static void l2cap_write_data(struct test_data *data, GIOChannel *io,
 	unsigned int count;
 	socklen_t len = sizeof(size);
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	data->step = 0;
 
@@ -2185,8 +2188,8 @@ static void l2cap_write_data(struct test_data *data, GIOChannel *io,
 	}
 }
 
-static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool l2cap_connect_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
@@ -2195,7 +2198,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	data->io_id = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
 		err = -errno;
@@ -2211,30 +2214,31 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	if (!check_mtu(data, sk)) {
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	err = check_phys_and_sec(data, sk);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
-			g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
-			return FALSE;
+			tester_io_add_watch(io, TESTER_IO_HUP, socket_closed_cb,
+									NULL);
+			return false;
 		}
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (l2data->read_data) {
 		l2cap_read_data(data, io, data->dcid);
-		return FALSE;
+		return false;
 	} else if (l2data->write_data) {
 		l2cap_write_data(data, io, data->dcid);
-		return FALSE;
+		return false;
 	} else if (l2data->shut_sock_wr) {
-		g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
+		tester_io_add_watch(io, TESTER_IO_HUP, socket_closed_cb, NULL);
 		shutdown(sk, SHUT_WR);
 
-		return FALSE;
+		return false;
 	}
 
 failed:
@@ -2243,7 +2247,7 @@ failed:
 	else
 		tester_test_passed();
 
-	return FALSE;
+	return false;
 }
 
 static int create_l2cap_sock(struct test_data *data, uint16_t psm,
@@ -2434,7 +2438,7 @@ static void test_connect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 
 	if (l2data->server_psm) {
@@ -2485,12 +2489,13 @@ static void test_connect(const void *test_data)
 		return;
 	}
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
 
-	data->io_id = g_io_add_watch(io, G_IO_OUT, l2cap_connect_cb, NULL);
+	data->io_id = tester_io_add_watch(io, TESTER_IO_OUT, l2cap_connect_cb,
+									NULL);
 
-	g_io_channel_unref(io);
+	tester_io_unref(io);
 
 	tester_print("Connect in progress");
 }
@@ -2499,7 +2504,7 @@ static void test_connect_close(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 
 	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level,
@@ -2519,10 +2524,11 @@ static void test_connect_close(const void *test_data)
 		return;
 	}
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-	data->io_id = g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
-	g_io_channel_unref(io);
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
+	data->io_id = tester_io_add_watch(io, TESTER_IO_HUP, socket_closed_cb,
+									NULL);
+	tester_io_unref(io);
 
 	shutdown(sk, SHUT_RDWR);
 }
@@ -2531,7 +2537,7 @@ static void test_connect_timeout(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 	struct timeval sndto;
 	socklen_t len;
@@ -2565,10 +2571,11 @@ static void test_connect_timeout(const void *test_data)
 		return;
 	}
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-	data->io_id = g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
-	g_io_channel_unref(io);
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
+	data->io_id = tester_io_add_watch(io, TESTER_IO_HUP, socket_closed_cb,
+									NULL);
+	tester_io_unref(io);
 }
 
 static void test_connect_reject(const void *test_data)
@@ -2593,12 +2600,13 @@ static void test_connect_reject(const void *test_data)
 	close(sk);
 }
 
-static int connect_socket(const uint8_t *client_bdaddr, GIOFunc connect_cb,
+static int connect_socket(const uint8_t *client_bdaddr,
+						tester_io_func_t connect_cb,
 								bool defer)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 
 	sk = create_l2cap_sock(data, 0, l2data->cid, l2data->sec_level,
@@ -2634,12 +2642,13 @@ static int connect_socket(const uint8_t *client_bdaddr, GIOFunc connect_cb,
 	}
 
 	if (connect_cb) {
-		io = g_io_channel_unix_new(sk);
-		g_io_channel_set_close_on_unref(io, TRUE);
+		io = tester_io_new(sk);
+		tester_io_set_close_on_unref(io, true);
 
-		data->io_id = g_io_add_watch(io, G_IO_OUT, connect_cb, NULL);
+		data->io_id = tester_io_add_watch(io, TESTER_IO_OUT, connect_cb,
+									NULL);
 
-		g_io_channel_unref(io);
+		tester_io_unref(io);
 	}
 
 	tester_print("Connect in progress, sk = %d %s", sk,
@@ -2648,7 +2657,7 @@ static int connect_socket(const uint8_t *client_bdaddr, GIOFunc connect_cb,
 	return sk;
 }
 
-static gboolean test_close_socket_1_part_3(gpointer arg)
+static bool test_close_socket_1_part_3(void *arg)
 {
 	struct test_data *data = tester_get_data();
 
@@ -2657,20 +2666,20 @@ static gboolean test_close_socket_1_part_3(gpointer arg)
 	if (data->sk != -1) {
 		tester_print("Error - scan was not enabled yet");
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (hciemu_get_central_le_scan_enable(data->hciemu)) {
 		tester_print("Delayed check whether scann is off failed");
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	tester_test_passed();
-	return FALSE;
+	return false;
 }
 
-static gboolean test_close_socket_1_part_2(gpointer args)
+static bool test_close_socket_1_part_2(void *args)
 {
 	struct test_data *data = tester_get_data();
 	int sk = data->sk;
@@ -2684,7 +2693,7 @@ static gboolean test_close_socket_1_part_2(gpointer args)
 	if (!hciemu_get_central_le_scan_enable(data->hciemu)) {
 		tester_print("Error - should be still scanning");
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	/* Calling close() should remove device from  accept list, and stop
@@ -2693,15 +2702,15 @@ static gboolean test_close_socket_1_part_2(gpointer args)
 	if (close(sk) < 0) {
 		tester_print("Error when closing socket");
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	data->sk = -1;
 	/* tester_test_passed will be called when scan is stopped. */
-	return FALSE;
+	return false;
 }
 
-static gboolean test_close_socket_2_part_3(gpointer arg)
+static bool test_close_socket_2_part_3(void *arg)
 {
 	struct test_data *data = tester_get_data();
 	int sk = data->sk;
@@ -2711,7 +2720,7 @@ static gboolean test_close_socket_2_part_3(gpointer arg)
 	if (hciemu_get_central_le_scan_enable(data->hciemu)) {
 		tester_print("Error - should no longer scan");
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	/* Calling close() should eventually cause CMD_LE_CREATE_CONN_CANCEL */
@@ -2719,11 +2728,11 @@ static gboolean test_close_socket_2_part_3(gpointer arg)
 	if (err < 0) {
 		tester_print("Error when closing socket");
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	/* CMD_LE_CREATE_CONN_CANCEL will trigger test pass. */
-	return FALSE;
+	return false;
 }
 
 static bool test_close_socket_cc_hook(const void *data, uint16_t len,
@@ -2732,7 +2741,7 @@ static bool test_close_socket_cc_hook(const void *data, uint16_t len,
 	return false;
 }
 
-static gboolean test_close_socket_2_part_2(gpointer arg)
+static bool test_close_socket_2_part_2(void *arg)
 {
 	struct test_data *data = tester_get_data();
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
@@ -2748,7 +2757,7 @@ static gboolean test_close_socket_2_part_2(gpointer arg)
 	 */
 	bthost_set_adv_enable(bthost, 0x01);
 	bthost_set_adv_enable(bthost, 0x00);
-	return FALSE;
+	return false;
 }
 
 static void test_close_socket_scan_enabled(void)
@@ -2757,9 +2766,9 @@ static void test_close_socket_scan_enabled(void)
 	const struct l2cap_data *l2data = data->test_data;
 
 	if (l2data == &le_client_close_socket_test_1)
-		g_idle_add(test_close_socket_1_part_2, NULL);
+		timeout_add(0, test_close_socket_1_part_2, NULL, NULL);
 	else if (l2data == &le_client_close_socket_test_2)
-		g_idle_add(test_close_socket_2_part_2, NULL);
+		timeout_add(0, test_close_socket_2_part_2, NULL, NULL);
 }
 
 static void test_close_socket_scan_disabled(void)
@@ -2768,7 +2777,7 @@ static void test_close_socket_scan_disabled(void)
 	const struct l2cap_data *l2data = data->test_data;
 
 	if (l2data == &le_client_close_socket_test_1)
-		g_idle_add(test_close_socket_1_part_3, NULL);
+		timeout_add(0, test_close_socket_1_part_3, NULL, NULL);
 }
 
 /* The kernel creates the connection once the scan is disabled, close the
@@ -2780,7 +2789,7 @@ static void test_close_socket_create_conn(void)
 	const struct l2cap_data *l2data = data->test_data;
 
 	if (l2data == &le_client_close_socket_test_2)
-		g_idle_add(test_close_socket_2_part_3, NULL);
+		timeout_add(0, test_close_socket_2_part_3, NULL, NULL);
 }
 
 static void test_close_socket_conn_cancel(void)
@@ -2828,8 +2837,8 @@ static void test_close_socket(const void *test_data)
 }
 
 static uint8_t test_2_connect_cb_cnt;
-static gboolean test_2_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool test_2_connect_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
@@ -2838,7 +2847,7 @@ static gboolean test_2_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	data->io_id = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
 		err = -errno;
@@ -2848,7 +2857,7 @@ static gboolean test_2_connect_cb(GIOChannel *io, GIOCondition cond,
 	if (err < 0) {
 		tester_warn("Connect failed: %s (%d)", strerror(-err), -err);
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	tester_print("Successfully connected");
@@ -2865,16 +2874,16 @@ static gboolean test_2_connect_cb(GIOChannel *io, GIOCondition cond,
 		tester_test_passed();
 	}
 
-	return FALSE;
+	return false;
 }
 
-static gboolean enable_advertising(gpointer args)
+static bool enable_advertising(void *args)
 {
 	struct test_data *data = tester_get_data();
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 
 	bthost_set_adv_enable(bthost, 0x01);
-	return FALSE;
+	return false;
 }
 
 static void test_connect_2_part_2(void)
@@ -2891,7 +2900,7 @@ static void test_connect_2_part_2(void)
 		close(data->sk);
 	}
 
-	g_idle_add(enable_advertising, NULL);
+	timeout_add(0, enable_advertising, NULL, NULL);
 }
 
 static uint8_t test_scan_enable_counter;
@@ -2907,7 +2916,7 @@ static void test_connect_2_router(uint16_t opcode, const void *param,
 		if (test_scan_enable_counter == 1)
 			test_connect_2_part_2();
 		else if (test_scan_enable_counter == 2)
-			g_idle_add(enable_advertising, NULL);
+			timeout_add(0, enable_advertising, NULL, NULL);
 	}
 }
 
@@ -2942,26 +2951,27 @@ static void test_connect_2(const void *test_data)
 								defer);
 }
 
-static gboolean watch_no_track_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool watch_no_track_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
-	int sk = g_io_channel_unix_get_fd(io);
+	int sk = tester_io_get_fd(io);
 
 	tester_print("Ready sk = %d", sk);
-	return FALSE;
+	return false;
 }
 
 static int watch_and_close_sk(int sk)
 {
-	GIOChannel *io;
+	struct tester_io *io;
 
 	if (sk < 0)
 		return sk;
 
-	io = g_io_channel_unix_new(sk);
-	g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+	io = tester_io_new(sk);
+	tester_io_add_watch(io,
+		TESTER_IO_OUT | TESTER_IO_ERR | TESTER_IO_HUP | TESTER_IO_NVAL,
 						watch_no_track_cb, NULL);
-	g_io_channel_unref(io);
+	tester_io_unref(io);
 
 	return sk;
 }
@@ -3028,8 +3038,8 @@ static void test_connect_ext_defer_limit(const void *test_data)
 	}
 }
 
-static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool l2cap_accept_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
@@ -3037,46 +3047,47 @@ static gboolean l2cap_accept_cb(GIOChannel *io, GIOCondition cond,
 
 	data->io_id = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	if (!check_mtu(data, sk)) {
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	err = check_phys_and_sec(data, sk);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
-			g_io_add_watch(io, G_IO_HUP, socket_closed_cb, NULL);
-			return FALSE;
+			tester_io_add_watch(io, TESTER_IO_HUP, socket_closed_cb,
+									NULL);
+			return false;
 		}
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	if (l2data->read_data) {
 		l2cap_read_data(data, io, data->dcid);
-		return FALSE;
+		return false;
 	} else if (l2data->write_data) {
 		l2cap_write_data(data, io, data->scid);
-		return FALSE;
+		return false;
 	}
 
 	tester_print("Successfully connected");
 
 	tester_test_passed();
 
-	return FALSE;
+	return false;
 }
 
-static bool defer_accept(struct test_data *data, GIOChannel *io,
-							GIOFunc accept_cb)
+static bool defer_accept(struct test_data *data, struct tester_io *io,
+						tester_io_func_t accept_cb)
 {
 	int sk;
 	char c;
 	struct pollfd pfd;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	memset(&pfd, 0, sizeof(pfd));
 	pfd.fd = sk;
@@ -3095,17 +3106,18 @@ static bool defer_accept(struct test_data *data, GIOChannel *io,
 	}
 
 	if (accept_cb)
-		data->io_id = g_io_add_watch(io, G_IO_OUT, accept_cb, NULL);
+		data->io_id = tester_io_add_watch(io, TESTER_IO_OUT, accept_cb,
+									NULL);
 
-	g_io_channel_unref(io);
+	tester_io_unref(io);
 
 	tester_print("Accept deferred setup sk = %d", sk);
 
 	return true;
 }
 
-static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static bool l2cap_listen_cb(struct tester_io *io, uint32_t cond,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
@@ -3113,31 +3125,31 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 
 	data->io_id = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	new_sk = accept(sk, NULL, NULL);
 	if (new_sk < 0) {
 		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	tester_print("Accept sk = %d", new_sk);
 
-	io = g_io_channel_unix_new(new_sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	io = tester_io_new(new_sk);
+	tester_io_set_close_on_unref(io, true);
 
 	if (l2data->defer) {
 		if (l2data->expect_err < 0) {
-			g_io_channel_unref(io);
-			return FALSE;
+			tester_io_unref(io);
+			return false;
 		}
 
 		if (!defer_accept(data, io, l2cap_accept_cb)) {
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
 		}
-		return FALSE;
+		return false;
 	}
 
 	return l2cap_accept_cb(io, cond, user_data);
@@ -3243,14 +3255,14 @@ static void send_req_new_conn(uint16_t handle, void *user_data)
 }
 
 static void start_test_server(const void *test_data, bthost_new_conn_cb conn_cb,
-							GIOFunc listen_cb)
+						tester_io_func_t listen_cb)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_data *l2data = data->test_data;
 	const uint8_t *central_bdaddr;
 	uint8_t addr_type;
 	struct bthost *bthost;
-	GIOChannel *io;
+	struct tester_io *io;
 	int sk;
 
 	if (l2data->server_psm || l2data->cid) {
@@ -3281,11 +3293,12 @@ static void start_test_server(const void *test_data, bthost_new_conn_cb conn_cb,
 			return;
 		}
 
-		io = g_io_channel_unix_new(sk);
-		g_io_channel_set_close_on_unref(io, TRUE);
+		io = tester_io_new(sk);
+		tester_io_set_close_on_unref(io, true);
 
-		data->io_id = g_io_add_watch(io, G_IO_IN, listen_cb, NULL);
-		g_io_channel_unref(io);
+		data->io_id = tester_io_add_watch(io, TESTER_IO_IN, listen_cb,
+									NULL);
+		tester_io_unref(io);
 
 		tester_print("Listening for connections");
 	}
@@ -3313,39 +3326,39 @@ static void test_server(const void *test_data)
 	start_test_server(test_data, send_req_new_conn, l2cap_listen_cb);
 }
 
-static gboolean ext_flowctl_accept_2_close_1_listen_cb(GIOChannel *io,
-					GIOCondition cond, gpointer user_data)
+static bool ext_flowctl_accept_2_close_1_listen_cb(struct tester_io *io,
+					uint32_t cond, void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	int sk, new_sk;
 	int err = 0;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	new_sk = accept(sk, NULL, NULL);
 	if (err < 0) {
 		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
-	if (!defer_accept(data, g_io_channel_unix_new(new_sk), NULL))
+	if (!defer_accept(data, tester_io_new(new_sk), NULL))
 		goto fail;
 
 	close(new_sk);
 
 	if (data->step--)
-		return TRUE;
+		return true;
 
 	tester_test_passed();
 
 	data->io_id = 0;
-	return FALSE;
+	return false;
 
 fail:
 	tester_test_failed();
 	close(new_sk);
-	return FALSE;
+	return false;
 }
 
 static void test_ext_flowctl_server_accept_2_close_1(const void *test_data)
@@ -3357,14 +3370,14 @@ static void test_ext_flowctl_server_accept_2_close_1(const void *test_data)
 					ext_flowctl_accept_2_close_1_listen_cb);
 }
 
-static gboolean ext_flowctl_nval_conn_req_ready_cb(gpointer ptr)
+static bool ext_flowctl_nval_conn_req_ready_cb(void *ptr)
 {
 	struct test_data *data = tester_get_data();
 	const struct queue_entry *entry;
-	GIOFunc cb = l2cap_accept_cb;
+	tester_io_func_t cb = l2cap_accept_cb;
 
 	if (data->io_id) {
-		g_source_remove(data->io_id);
+		tester_remove_source(data->io_id);
 		data->io_id = 0;
 	}
 
@@ -3375,10 +3388,10 @@ static gboolean ext_flowctl_nval_conn_req_ready_cb(gpointer ptr)
 
 	entry = queue_get_entries(data->io_channels);
 	for (; entry; entry = entry->next) {
-		GIOChannel *io = entry->data;
+		struct tester_io *io = entry->data;
 
-		if (!defer_accept(data, g_io_channel_ref(io), cb)) {
-			g_io_channel_unref(io);
+		if (!defer_accept(data, tester_io_ref(io), cb)) {
+			tester_io_unref(io);
 			tester_warn("Unable to accept deferred setup");
 			tester_test_failed();
 			break;
@@ -3388,39 +3401,39 @@ static gboolean ext_flowctl_nval_conn_req_ready_cb(gpointer ptr)
 		cb = NULL;
 	}
 
-	return FALSE;
+	return false;
 }
 
-static gboolean ext_flowctl_nval_conn_req_listen_cb(GIOChannel *io,
-					GIOCondition cond, gpointer user_data)
+static bool ext_flowctl_nval_conn_req_listen_cb(struct tester_io *io,
+					uint32_t cond, void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	int sk, new_sk;
-	GIOChannel *new_io;
+	struct tester_io *new_io;
 
 	if (!data->step)
-		return FALSE;
+		return false;
 
-	sk = g_io_channel_unix_get_fd(io);
+	sk = tester_io_get_fd(io);
 
 	new_sk = accept(sk, NULL, NULL);
 	if (new_sk < 0) {
 		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
 		tester_test_failed();
-		return FALSE;
+		return false;
 	}
 
 	tester_print("Accept sk = %d", new_sk);
 
-	new_io = g_io_channel_unix_new(new_sk);
-	g_io_channel_set_close_on_unref(new_io, TRUE);
+	new_io = tester_io_new(new_sk);
+	tester_io_set_close_on_unref(new_io, true);
 
 	if (!data->io_channels)
 		data->io_channels = queue_new();
 	queue_push_tail(data->io_channels, new_io);
 
 	if (data->err_io_id) {
-		g_source_remove(data->err_io_id);
+		tester_remove_source(data->err_io_id);
 		data->err_io_id = 0;
 	}
 
@@ -3429,13 +3442,13 @@ static gboolean ext_flowctl_nval_conn_req_listen_cb(GIOChannel *io,
 	if (!data->step) {
 		data->io_id = 0;
 		ext_flowctl_nval_conn_req_ready_cb(NULL);
-		return FALSE;
+		return false;
 	}
 
-	data->err_io_id = g_timeout_add(1000,
-				ext_flowctl_nval_conn_req_ready_cb, NULL);
+	data->err_io_id = timeout_add(1000,
+				ext_flowctl_nval_conn_req_ready_cb, NULL, NULL);
 
-	return TRUE;
+	return true;
 }
 
 static void ext_flowctl_nval_conn_req_conn_cb(uint16_t handle, void *user_data)
