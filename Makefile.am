@@ -272,7 +272,8 @@ src_libshared_mainloop_la_SOURCES = $(shared_sources) \
 				src/shared/timeout-mainloop.c \
 				src/shared/mainloop.h src/shared/mainloop.c \
 				src/shared/mainloop-notify.h \
-				src/shared/mainloop-notify.c
+				src/shared/mainloop-notify.c \
+				src/shared/tester.c
 src_libshared_mainloop_la_LDFLAGS = $(AM_LDFLAGS)
 src_libshared_mainloop_la_CFLAGS = $(AM_CFLAGS)
 
