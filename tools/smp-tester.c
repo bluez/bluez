@@ -18,7 +18,7 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 
-#include <glib.h>
+#include <assert.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hci.h"
@@ -31,6 +31,7 @@
 #include "src/shared/crypto.h"
 #include "src/shared/ecc.h"
 #include "src/shared/tester.h"
+#include "src/shared/util.h"
 #include "src/shared/mgmt.h"
 
 #define SMP_CID 0x0006
@@ -41,7 +42,6 @@ struct test_data {
 	uint16_t mgmt_index;
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
-	unsigned int io_id;
 	uint8_t ia[6];
 	uint8_t ia_type;
 	uint8_t ra[6];
@@ -229,10 +229,6 @@ static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	if (data->io_id > 0) {
-		g_source_remove(data->io_id);
-		data->io_id = 0;
-	}
 
 	if (data->crypto) {
 		bt_crypto_unref(data->crypto);
@@ -293,7 +289,7 @@ static const struct smp_req_rsp nval_req_1[] = {
 
 static const struct smp_data smp_server_nval_req_1_test = {
 	.req = nval_req_1,
-	.req_count = G_N_ELEMENTS(nval_req_1),
+	.req_count = ARRAY_SIZE(nval_req_1),
 };
 
 static const uint8_t smp_nval_req_2[7] = { 0x01 };
@@ -306,7 +302,7 @@ static const struct smp_req_rsp srv_nval_req_1[] = {
 
 static const struct smp_data smp_server_nval_req_2_test = {
 	.req = srv_nval_req_1,
-	.req_count = G_N_ELEMENTS(srv_nval_req_1),
+	.req_count = ARRAY_SIZE(srv_nval_req_1),
 };
 
 static const uint8_t smp_nval_req_3[] = { 0x01, 0xff };
@@ -319,7 +315,7 @@ static const struct smp_req_rsp srv_nval_req_2[] = {
 
 static const struct smp_data smp_server_nval_req_3_test = {
 	.req = srv_nval_req_2,
-	.req_count = G_N_ELEMENTS(srv_nval_req_2),
+	.req_count = ARRAY_SIZE(srv_nval_req_2),
 };
 
 static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
@@ -353,7 +349,7 @@ static const struct smp_req_rsp srv_basic_req_1[] = {
 
 static const struct smp_data smp_server_basic_req_1_test = {
 	.req = srv_basic_req_1,
-	.req_count = G_N_ELEMENTS(srv_basic_req_1),
+	.req_count = ARRAY_SIZE(srv_basic_req_1),
 };
 
 static const struct smp_req_rsp cli_basic_req_1[] = {
@@ -367,7 +363,7 @@ static const struct smp_req_rsp cli_basic_req_1[] = {
 
 static const struct smp_data smp_client_basic_req_1_test = {
 	.req = cli_basic_req_1,
-	.req_count = G_N_ELEMENTS(cli_basic_req_1),
+	.req_count = ARRAY_SIZE(cli_basic_req_1),
 };
 
 static const uint8_t smp_basic_req_2[] = {	0x01,	/* Pairing Request */
@@ -390,7 +386,7 @@ static const struct smp_req_rsp cli_basic_req_2[] = {
 
 static const struct smp_data smp_client_basic_req_2_test = {
 	.req = cli_basic_req_2,
-	.req_count = G_N_ELEMENTS(cli_basic_req_1),
+	.req_count = ARRAY_SIZE(cli_basic_req_1),
 	.mitm = true,
 };
 
@@ -429,7 +425,7 @@ static const struct smp_req_rsp cli_sc_req_1[] = {
 
 static const struct smp_data smp_client_sc_req_1_test = {
 	.req = cli_sc_req_1,
-	.req_count = G_N_ELEMENTS(cli_sc_req_1),
+	.req_count = ARRAY_SIZE(cli_sc_req_1),
 	.sc = true,
 };
 
@@ -455,7 +451,7 @@ static const struct smp_req_rsp cli_sc_req_2[] = {
 
 static const struct smp_data smp_client_sc_req_2_test = {
 	.req = cli_sc_req_2,
-	.req_count = G_N_ELEMENTS(cli_sc_req_2),
+	.req_count = ARRAY_SIZE(cli_sc_req_2),
 	.sc = true,
 };
 
@@ -549,16 +545,16 @@ static const void *get_pdu(const uint8_t *pdu, size_t len)
 	uint8_t opcode = pdu[0];
 	static uint8_t buf[65];
 
-	g_assert(len > 0);
+	assert(len > 0);
 
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
-		g_assert(len <= sizeof(data->preq));
+		assert(len <= sizeof(data->preq));
 		memset(data->preq, 0, sizeof(data->preq));
 		memcpy(data->preq, pdu, len);
 		break;
 	case 0x02: /* Pairing Response */
-		g_assert(len <= sizeof(data->prsp));
+		assert(len <= sizeof(data->prsp));
 		memset(data->prsp, 0, sizeof(data->prsp));
 		memcpy(data->prsp, pdu, len);
 		break;

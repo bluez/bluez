@@ -20,7 +20,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
-#include <glib.h>
+#include <assert.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/mgmt.h"
@@ -50,8 +50,6 @@ struct test_data {
 
 	uint16_t handle;
 	uint16_t acl_handle;
-	GIOChannel *io;
-	unsigned int io_id[2];
 	int step;
 	bool reconnect;
 
@@ -782,7 +780,7 @@ static void test_ioctl_common(const void *test_data)
 			}
 		} else {
 			if (ioctl_data->param_len) {
-				g_assert(req_len >= ioctl_data->param_len);
+				assert(req_len >= ioctl_data->param_len);
 				req_len = ioctl_data->param_len;
 			}
 			memcpy(req, ioctl_data->param, req_len);

@@ -18,7 +18,6 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#include <glib.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/bnep.h"
@@ -37,7 +36,6 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	const void *test_data;
-	unsigned int io_id;
 	uint16_t conn_handle;
 };
 
@@ -198,10 +196,6 @@ static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
-	if (data->io_id > 0) {
-		g_source_remove(data->io_id);
-		data->io_id = 0;
-	}
 
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
@@ -288,7 +282,6 @@ static void test_basic(const void *test_data)
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDR; \
 		user->test_data = data; \
-		user->io_id = 0; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, 2, user, test_data_free); \

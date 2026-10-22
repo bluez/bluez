@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <glib.h>
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hci.h"
@@ -12599,7 +12598,7 @@ static void test_remove_device(const void *test_data)
 static bool hook_delay_cmd(const void *data, uint16_t len, void *user_data)
 {
 	tester_print("Delaying emulator response...");
-	g_usleep(250000);
+	usleep(250000);
 	tester_print("Delaying emulator response... Done.");
 	return true;
 }
