@@ -58,7 +58,6 @@ static void usage(void)
 		"\t                      BR/EDR/LE controllers created with\n"
 		"\t                      -l, -s and -t:\n"
 		"\t                      5.0, 5.2, 6.0 or 6.2 (default)\n"
-		"\t-T[num]               Number of test AMP controllers\n"
 		"\t-h, --help            Show help options\n");
 }
 
@@ -141,7 +140,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "dSs::t::l::LBAC:U::T::vh",
+		opt = getopt_long(argc, argv, "dSs::t::l::LBAC:U::vh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
