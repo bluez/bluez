@@ -22,6 +22,7 @@
 #include <net/if.h>
 #include <linux/if_packet.h>
 #include <sys/ioctl.h>
+#include <dirent.h>
 
 #include <glib.h>
 
@@ -590,14 +591,73 @@ done:
 	return FALSE;
 }
 
+/* Find the interface of the controller of this test, the most recent one,
+ * as the interface of a previous test may still be there, which can also
+ * make the name of this one other than bt0.
+ */
+static bool find_iface(struct test_data *data, char *ifname, size_t len)
+{
+	char path[PATH_MAX], link[PATH_MAX], hci[16];
+	struct dirent *entry;
+	int best = -1;
+	DIR *dir;
+
+	snprintf(hci, sizeof(hci), "hci%u", data->mgmt_index);
+
+	dir = opendir("/sys/class/net");
+	if (!dir)
+		return false;
+
+	while ((entry = readdir(dir))) {
+		const char *name;
+		ssize_t n;
+		int index;
+
+		if (strncmp(entry->d_name, "bt", 2))
+			continue;
+
+		snprintf(path, sizeof(path), "/sys/class/net/%s/device",
+							entry->d_name);
+
+		n = readlink(path, link, sizeof(link) - 1);
+		if (n < 0)
+			continue;
+
+		link[n] = '\0';
+		name = strrchr(link, '/');
+		name = name ? name + 1 : link;
+
+		if (strcmp(name, hci))
+			continue;
+
+		if (strlen(entry->d_name) >= len)
+			continue;
+
+		index = if_nametoindex(entry->d_name);
+		if (index > best) {
+			best = index;
+			memcpy(ifname, entry->d_name,
+						strlen(entry->d_name) + 1);
+		}
+	}
+
+	closedir(dir);
+
+	return best >= 0;
+}
+
 static gboolean client_open_iface(gpointer user_data)
 {
 	struct test_data *data = user_data;
 	const struct client_data *cdata = data->test_data;
+	char ifname[IFNAMSIZ];
 
 	data->io_id = 0;
 
-	data->packet_fd = open_iface("bt0", cdata->sk_type);
+	data->packet_fd = -1;
+
+	if (find_iface(data, ifname, sizeof(ifname)))
+		data->packet_fd = open_iface(ifname, cdata->sk_type);
 	if (data->packet_fd < 0) {
 		tester_print("Wait for interface...");
 		data->io_id = g_timeout_add(500, client_open_iface, data);
