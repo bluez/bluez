@@ -495,6 +495,7 @@ EXTRA_DIST += doc/assigned-numbers.rst doc/supported-features.txt \
 				doc/test-coverage.txt \
 				doc/test-runner.rst \
 				doc/btvirt.rst \
+				doc/virtio.rst \
 				doc/test-functional.rst \
 				doc/functional-testing.rst \
 				doc/functional-a2dp.rst \
