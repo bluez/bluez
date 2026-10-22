@@ -2769,7 +2769,17 @@ static void test_close_socket_scan_disabled(void)
 
 	if (l2data == &le_client_close_socket_test_1)
 		g_idle_add(test_close_socket_1_part_3, NULL);
-	else if (l2data == &le_client_close_socket_test_2)
+}
+
+/* The kernel creates the connection once the scan is disabled, close the
+ * socket only then, so it has a connection attempt to cancel.
+ */
+static void test_close_socket_create_conn(void)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+
+	if (l2data == &le_client_close_socket_test_2)
 		g_idle_add(test_close_socket_2_part_3, NULL);
 }
 
@@ -2793,6 +2803,8 @@ static void test_close_socket_router(uint16_t opcode, const void *param,
 			test_close_socket_scan_enabled();
 		else
 			test_close_socket_scan_disabled();
+	} else if (opcode == BT_HCI_CMD_LE_CREATE_CONN) {
+		test_close_socket_create_conn();
 	} else if (opcode == BT_HCI_CMD_LE_CREATE_CONN_CANCEL) {
 		test_close_socket_conn_cancel();
 	}
