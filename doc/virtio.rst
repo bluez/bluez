@@ -375,14 +375,14 @@ version and machine, User Mode Linux with seccomp, with and without
 **-T**, all tests passing::
 
     tester            tests    KVM    UML    UML -T
-    mgmt-tester         514   83.6  111.6     42.6
-    l2cap-tester        111    9.6   13.7     10.2
-    iso-tester          141   13.7   24.3     16.3
-    sco-tester           30    5.1    4.1      3.6
-    rfcomm-tester        11    3.6    2.0      2.6
-    smp-tester            8    4.1    1.5      1.5
-    ioctl-tester         28    4.1    2.6      3.1
-    userchan-tester       4    2.6    1.5      1.5
+    mgmt-tester         514   78.2   94.0     20.3
+    l2cap-tester        111    9.2   10.2      5.6
+    iso-tester          141    8.1   11.7      7.6
+    sco-tester           30    4.6    3.1      2.0
+    rfcomm-tester        11    3.6    1.5      1.5
+    smp-tester            8    3.6    1.5      1.0
+    ioctl-tester         28    4.1    2.1      1.5
+    userchan-tester       4    2.6    1.0      1.0
     bnep-tester           1    2.6    1.0      1.0
 
 UML runs the guest's system calls and context switches considerably slower
@@ -390,6 +390,12 @@ than KVM, as each one goes through the host, so testers exchanging many
 small messages are slower without time travel. With it, tests that wait,
 like most of mgmt-tester, take no real time for timers and timeouts. Small
 testers are faster under UML, which starts in a fraction of a second.
+
+Under UML, reading the clock is a system call through the host too, about
+6 us against 0.02 us with KVM, where the vDSO answers it. GLib's main loop
+reads it for every source on every iteration, so testers run on the
+mainloop of ``src/shared/mainloop.c`` instead, which waits with
+``epoll_wait()`` and one ``timerfd`` per timer and does not read the clock.
 
 Time travel helps most when tests wait: timers, timeouts and idle time take
 no real time, and the timing is the same on every run. It also lets
