@@ -143,8 +143,8 @@ User Mode Linux
 When ``-k`` is a User Mode Linux (UML) binary, recognized by its
 ``.uml.setup.init`` section, test-runner runs it directly instead of QEMU,
 with the host filesystem mounted as root through hostfs, and powers it off
-at the end since rebooting UML starts it again. The kernel needs
-``CONFIG_HOSTFS``, and ``CONFIG_VIRTIO_UML`` for virtio devices.
+at the end since rebooting UML starts it again. See `User Mode Linux kernel`_
+for its configuration.
 
 ``-o`` then adds kernel parameters, which is how UML attaches devices served
 from the host, e.g. ``virtio_uml.device=<socket>:40`` for a virtio
@@ -162,16 +162,50 @@ the guest sees the same timings on every run. This needs a kernel with
 Kernel
 ======
 
-The test-runner tool requires a kernel that is at least build with these
-minimal options for a successful boot. These options should be installed as
-.config in the kernel source directory followed by:
+Two configuration fragments with everything the testers need are provided:
+``doc/tester.kvm.config`` for a kernel run with QEMU and KVM, and
+``doc/tester.uml.config`` for a User Mode Linux kernel. ``doc/tester.config``
+is the same as ``doc/tester.kvm.config``. The options they contain are
+described below.
+
+Both also build every Bluetooth protocol and device driver into the kernel,
+with the buses and subsystems they depend on, so a tester kernel verifies
+that they all build, even those the testers do not use, and those for other
+platforms with ``CONFIG_COMPILE_TEST``:
 
 .. code-block::
 
-	make olddefconfig
+	CONFIG_COMPILE_TEST=y
+	CONFIG_USB_SUPPORT=y
+	CONFIG_USB=y
+	CONFIG_MMC=y
+	CONFIG_SERIAL_DEV_BUS=y
+	CONFIG_SERIAL_DEV_CTRL_TTYPORT=y
+	CONFIG_GPIOLIB=y
+	CONFIG_PM=y
+	CONFIG_NVMEM=y
+	CONFIG_POWER_SEQUENCING=y
+	CONFIG_HID=y
+	CONFIG_NEW_LEDS=y
+	CONFIG_LEDS_CLASS=y
 
-After that a default kernel with the required options can be built. More
-option (like the Bluetooth subsystem) can be enabled on top of this.
+QEMU and KVM kernel
+-------------------
+
+With QEMU, the kernel is a bzImage, and test-runner reaches the guest
+through virtio devices: the console, the shared host filesystem
+(virtio-fs or 9p) and the emulated serial ports of ``-u``. Build it with
+``doc/tester.kvm.config`` installed as .config in the kernel source
+directory:
+
+.. code-block::
+
+	cp <bluez>/doc/tester.kvm.config .config
+	make olddefconfig
+	make
+
+The minimal options for a successful boot are the following, on top of
+which more options, like the Bluetooth subsystem, can be enabled:
 
 .. code-block::
 
@@ -192,7 +226,7 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 
 	CONFIG_SERIAL_8250=y
 	CONFIG_SERIAL_8250_CONSOLE=y
-	CONFIG_SERIAL_8250_PCI=yCONFIG_DEBUG_KERNEL=y
+	CONFIG_SERIAL_8250_PCI=y
 	CONFIG_SERIAL_8250_NR_UARTS=4
 
 	CONFIG_TMPFS=y
@@ -204,6 +238,60 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 
 Filesystem passthrough uses virtio-fs when ``virtiofsd`` is installed on the
 host, otherwise 9p. Use ``-Fno`` for kernels without ``CONFIG_VIRTIO_FS``.
+
+The controllers that can be passed through to the guest, see the USB and
+PCIe passthrough examples, also need the host controller drivers of
+``doc/tester.kvm.config``, and ``CONFIG_PCI`` and ``CONFIG_ACPI`` for the
+PCIe ones.
+
+User Mode Linux kernel
+----------------------
+
+A User Mode Linux kernel is a program run on the host, built with
+``ARCH=um``, and has no PCI, USB or serial devices: the host filesystem is
+mounted with hostfs, controllers are emulated inside the guest through
+``/dev/vhci`` or served from the host as virtio devices with
+``virtio_uml``, and **-T** needs time travel support. Build it from the
+default configuration with ``doc/tester.uml.config`` merged in:
+
+.. code-block::
+
+	make ARCH=um defconfig
+	scripts/kconfig/merge_config.sh -m .config <bluez>/doc/tester.uml.config
+	make ARCH=um olddefconfig
+	make ARCH=um linux
+
+The resulting ``linux`` binary is given to test-runner with ``-k``. The
+options specific to User Mode Linux are the following, with the Bluetooth
+and debugging ones below in addition:
+
+.. code-block::
+
+	CONFIG_HOSTFS=y
+	CONFIG_VIRTIO_UML=y
+	CONFIG_UML_PCI_OVER_VIRTIO=y
+	CONFIG_UML_TIME_TRAVEL_SUPPORT=y
+
+	CONFIG_NET=y
+	CONFIG_INET=y
+	CONFIG_IPV6=y
+
+	CONFIG_TMPFS=y
+	CONFIG_DEVTMPFS=y
+	CONFIG_DEBUG_FS=y
+
+	CONFIG_BT_HCIVHCI=y
+	CONFIG_BT_VIRTIO=y
+
+The User Mode Linux default configuration does not enable IPv6, which
+6lowpan-tester needs. ``CONFIG_UML_PCI_OVER_VIRTIO`` provides the PCI bus
+for the PCI drivers to build. User Mode Linux has no ACPI, so
+``CONFIG_BT_INTEL_PCIE`` is only built with ``CONFIG_COMPILE_TEST``, in
+kernels where it does not depend on ACPI otherwise.
+
+As it builds every driver and runs the testers, a single User Mode Linux
+kernel can verify both; a QEMU kernel is only needed for what QEMU
+provides, such as passing controllers through to the guest.
 
 Bluetooth
 ---------
@@ -268,7 +356,8 @@ options may be useful:
 Other
 -----
 
-For tests requiring accurate time inside the VM, possible with KVM:
+For tests requiring accurate time inside the VM, possible with KVM, part of
+``doc/tester.kvm.config``:
 
 .. code-block::
 
@@ -414,15 +503,14 @@ interrupt delivery.
 Running mgmt-tester under User Mode Linux
 -----------------------------------------
 
+With a kernel built from ``doc/tester.uml.config``, see
+`User Mode Linux kernel`_:
+
 .. code-block::
 
-	$ make ARCH=um defconfig
-	$ scripts/kconfig/merge_config.sh -m .config <bluez>/doc/tester.config
-	$ make ARCH=um olddefconfig linux
 	$ tools/test-runner -k <linux>/linux -- tools/mgmt-tester
 
-On simulated time, with a kernel that also has
-``CONFIG_UML_TIME_TRAVEL_SUPPORT=y``:
+On simulated time:
 
 .. code-block::
 
