@@ -254,11 +254,14 @@ static void prepare_sandbox(void)
 		printf("Mounting %s to %s\n", mount_table[i].fstype,
 						mount_table[i].target);
 
+		/* The kernel may have mounted it already, e.g. devtmpfs
+		 * with CONFIG_DEVTMPFS_MOUNT.
+		 */
 		if (mount(mount_table[i].fstype,
 				mount_table[i].target,
 				mount_table[i].fstype,
 				mount_table[i].flags,
-				mount_table[i].options) < 0)
+				mount_table[i].options) < 0 && errno != EBUSY)
 			perror("Failed to mount filesystem");
 	}
 
