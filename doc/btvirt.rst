@@ -32,6 +32,8 @@ and speak HCI. They can be exposed to a Bluetooth stack in several ways:
   appear as ``hciN`` on the machine running btvirt;
 - as H:4 streams on Unix socket servers (**-s**) or a TCP server (**-t**),
   one controller per client connection;
+- as virtio Bluetooth devices on a vhost-user server (**-V**), one
+  controller per connection, for virtual machines;
 - as an H:4 stream on a pseudo terminal (**-S**).
 
 All controllers created by one btvirt process share an emulated air
@@ -45,7 +47,8 @@ btvirt runs until it receives **SIGINT** or **SIGTERM**.
 OPTIONS
 =======
 
-At least one of **-l**, **-s**, **-t**, **-S** or **-U** must be given.
+At least one of **-l**, **-s**, **-t**, **-V**, **-S** or **-U** must be
+given.
 Optional arguments must be attached to the option, as in **-l2**,
 **-t45551** or **--server=/tmp/bt**.
 
@@ -78,6 +81,14 @@ Optional arguments must be attached to the option, as in **-l2**,
                             attached as an H:4 stream. The server listens on
                             127.0.0.1 only.
 
+-V[path], --vhost[=path]    Create a vhost-user server socket
+                            ``bt-vhost-bredrle`` in the directory *path*
+                            (default: ``/tmp``). Each connection gets a new
+                            BR/EDR/LE controller, of the version given with
+                            **-C**, provided to the guest as a virtio
+                            Bluetooth device. See **virtio** for how to
+                            attach it to QEMU or User Mode Linux guests.
+
 -S, --serial                Create a pseudo terminal with a BR/EDR/LE
                             controller attached as an H:4 stream. The path of
                             the terminal is printed on startup; attach it
@@ -99,12 +110,12 @@ Optional arguments must be attached to the option, as in **-l2**,
 
 -C version, --core=version  Core Specification version of the BR/EDR/LE
                             controllers created with **-l**, **-s** (on
-                            ``bt-server-bredrle``) and **-t**. Supported
+                            ``bt-server-bredrle``), **-t** and **-V**. Supported
                             values are ``5.0``, ``5.2``, ``6.0`` and ``6.2``
                             (default).
 
--d, --debug                 Enable debug output for the **-l** and **-s**
-                            controllers.
+-d, --debug                 Enable debug output for the **-l**, **-s** and
+                            **-V** controllers.
 
 -v, --version               Show version.
 
@@ -132,6 +143,13 @@ Serve controllers to virtual machines, one per connecting VM, the way
 
     $ btvirt --server=/tmp/bt
     $ test-runner -u/tmp/bt/bt-server-bredrle -k bzImage -- ...
+
+Provide controllers to User Mode Linux guests as virtio Bluetooth
+devices, two from the same socket::
+
+    $ btvirt -V/tmp/bt
+    $ linux ... virtio_uml.device=/tmp/bt/bt-vhost-bredrle:40 \
+                virtio_uml.device=/tmp/bt/bt-vhost-bredrle:40
 
 Emulate a Bluetooth 5.2 controller over TCP::
 
