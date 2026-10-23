@@ -34,9 +34,7 @@ DEVICE_INTERFACE = "org.bluez.Device1"
 LE_INTERFACE = "org.bluez.Bearer.LE1"
 BREDR_INTERFACE = "org.bluez.Bearer.BREDR1"
 
-# The bearer interfaces are experimental
-CONF = "[General]\nExperimental = true\n"
-LE_CONF = CONF + "ControllerMode = le\n"
+LE_CONF = "[General]\nControllerMode = le\n"
 
 # bluetoothd only creates device objects for advertisers that are
 # discoverable, which a broadcaster is not
@@ -170,8 +168,8 @@ le_config = host_config(
 )
 
 bredr_config = host_config(
-    [Bluetoothd(conf=CONF, args=ARGS), Agent(), Bearers()],
-    [Bluetoothd(conf=CONF, args=ARGS), Agent(), Bearers()],
+    [Bluetoothd(args=ARGS), Agent(), Bearers()],
+    [Bluetoothd(args=ARGS), Agent(), Bearers()],
 )
 
 

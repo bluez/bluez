@@ -13,10 +13,9 @@ used here, and **test-functional(1)** for how to run the suite.
 SETUP
 =====
 
-Two hosts, both running **bluetoothd(8)** with ``Experimental = true``,
-as the bearer interfaces are experimental, and with the MIDI plugin
-disabled (``-P midi``), as the MIDI profile would ask to pair as soon as
-it finds the MIDI service the other host exports:
+Two hosts, both running **bluetoothd(8)** with the MIDI plugin disabled
+(``-P midi``), as the MIDI profile would ask to pair as soon as it finds
+the MIDI service the other host exports:
 
 .. code-block::
 
