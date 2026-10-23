@@ -66,6 +66,7 @@ unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
 unsigned int bt_asha_stop(struct bt_asha *asha);
 
 bool bt_asha_set_volume(struct bt_asha *asha, int8_t volume);
+bool bt_asha_set_connection_interval(struct bt_asha *asha, uint16_t interval);
 
 bool bt_asha_attach(struct bt_asha *asha, struct gatt_db *db,
 		struct bt_gatt_client *client, bt_asha_attach_cb_t probe_cb,
