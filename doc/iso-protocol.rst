@@ -145,11 +145,90 @@ Advertising Sync Transfer (PAST):
     /* Rebind already connected socket to PAST address */
     bind(iso_socket, (struct sockaddr *)addr, addr_len);
 
+Receiving PAST: set *PAST enabled* with MGMT *Set Device Flags*.
+
+Bind the ISO socket to that peer and its advertising SID, set receiver
+QoS, then call **listen(2)**. Setup is asynchronous: wait for
+``POLLOUT`` before requesting PAST from the peer. ``POLLIN`` indicates
+a connection ready for **accept(2)** as usual. On error, ``POLLIN`` is
+indicated and **accept(2)** produces a socket in error state.
+``POLLOUT`` is not necessarily indicated on error.
+
+Signaling ``POLLOUT`` on PAST ready is not available in Linux <= 7.3.
+Query **BT_ISO_PAST_POLLOUT** with **getsockopt(2)** to check whether
+this notification is supported before waiting for it.
+
+Example (``qos`` contains the receiver QoS):
+
+.. code-block::
+
+    struct {
+        struct sockaddr_iso iso;
+        struct sockaddr_iso_bc bc;
+    } addr = {
+        .iso.iso_family = AF_BLUETOOTH,
+        .iso.iso_bdaddr_type = BDADDR_LE_PUBLIC,
+        .bc.bc_bdaddr_type = peer_addr_type,
+        .bc.bc_sid = sid,
+        .bc.bc_num_bis = 1,
+        .bc.bc_bis = {1},
+    };
+    struct pollfd pfd = {
+        .fd = iso_socket,
+        .events = POLLIN | POLLOUT,
+    };
+    int past_pollout;
+    socklen_t optlen = sizeof(past_pollout);
+
+    if (getsockopt(iso_socket, SOL_BLUETOOTH, BT_ISO_PAST_POLLOUT,
+                   &past_pollout, &optlen) < 0) {
+        if (errno != ENOPROTOOPT)
+            goto error;
+
+        past_pollout = 0;
+    }
+
+    bacpy(&addr.iso.iso_bdaddr, &local_addr);
+    bacpy(&addr.bc.bc_bdaddr, &peer_addr);
+
+    if (bind(iso_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        goto error;
+
+    if (setsockopt(iso_socket, SOL_BLUETOOTH, BT_ISO_QOS,
+                   &qos, sizeof(qos)) < 0)
+        goto error;
+
+    if (listen(iso_socket, 5) < 0)
+        goto error;
+
+    if (past_pollout) {
+        if (poll(&pfd, 1, 5000) <= 0)
+            goto error;
+    }
+    if (!past_pollout || (pfd.revents & POLLOUT))
+           notify_bcast_rcv_state(peer);
+
+    sk = accept(iso_socket, ...);
+
 SOCKET OPTIONS (SOL_BLUETOOTH)
 ==============================
 
 The socket options listed below can be set by using **setsockopt(2)** and read
-with **getsockopt(2)** with the socket level set to SOL_BLUETOOTH.
+with **getsockopt(2)** with the socket level set to SOL_BLUETOOTH, unless
+otherwise noted.
+
+BT_ISO_PAST_POLLOUT (since Linux 7.4)
+--------------------------------------
+
+Read-only capability query (option number 23). **getsockopt(2)** returns
+an ``int`` with value **1** when the kernel supports signaling ``POLLOUT``
+on a PAST listen socket after receiver setup completes. It reports
+support for the notification, not the current readiness of the socket;
+use **poll(2)** to wait for readiness.
+
+Kernels without this option return **ENOPROTOOPT**. Applications running
+on those kernels must not wait for the readiness notification.
+**setsockopt(2)** returns **EINVAL** for this option.
 
 BT_SECURITY
 -----------
