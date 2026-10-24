@@ -199,9 +199,8 @@ static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable bearer_methods[] = {
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("Connect", NULL, NULL,
-						bearer_connect) },
-	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("Disconnect", NULL, NULL,
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, bearer_connect) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL,
 						bearer_disconnect) },
 	{}
 };
@@ -312,19 +311,13 @@ static const GDBusSignalTable bearer_signals[] = {
 };
 
 static const GDBusPropertyTable bearer_properties[] = {
-	{ "Adapter", "o", bearer_get_adapter, NULL, NULL,
-			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Paired", "b", bearer_get_paired, NULL, NULL,
-			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Bonded", "b", bearer_get_bonded, NULL, NULL,
-			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Connected", "b", bearer_get_connected, NULL, NULL,
-			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Adapter", "o", bearer_get_adapter },
+	{ "Paired", "b", bearer_get_paired },
+	{ "Bonded", "b", bearer_get_bonded },
+	{ "Connected", "b", bearer_get_connected },
 	{ "Connectable", "b", bearer_get_connectable, NULL,
-			bearer_connectable_exists,
-			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Role", "s", bearer_get_role, NULL, bearer_role_exists,
-			G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+					bearer_connectable_exists },
+	{ "Role", "s", bearer_get_role, NULL, bearer_role_exists },
 	{}
 };
 

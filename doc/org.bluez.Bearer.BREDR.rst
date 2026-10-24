@@ -21,8 +21,8 @@ Interface
 Methods
 -------
 
-void Connect() [experimental]
-`````````````````````````````
+void Connect()
+``````````````
 
 Connects all BREDR profiles the remote device supports that can be connected to
 and have been flagged as auto-connectable. If only subset of profiles is already
@@ -38,8 +38,8 @@ Possible errors:
 :org.bluez.Error.InProgress:
 :org.bluez.Error.AlreadyConnected:
 
-void Disconnect() [experimental]
-````````````````````````````````
+void Disconnect()
+`````````````````
 
 Disconnects all connected profiles and then terminates low-level ACL connection.
 
@@ -59,8 +59,8 @@ Possible errors:
 Signals
 -------
 
-void Disconnected(string reason, string message) [experimental]
-```````````````````````````````````````````````````````````````
+void Disconnected(string reason, string message)
+````````````````````````````````````````````````
 
 This signal is launched when a device is disconnected, with the reason of the
 disconnection.
@@ -113,37 +113,37 @@ Possible reasons:
 Properties
 ----------
 
-object Adapter [readonly, experimental]
-```````````````````````````````````````
+object Adapter [readonly]
+`````````````````````````
 
 The object path of the adapter the set belongs to.
 
 
-boolean Paired [readonly, experimental]
-```````````````````````````````````````
+boolean Paired [readonly]
+`````````````````````````
 
 Indicates if the remote device is paired to BREDR bearer.
 
 Paired means the pairing process where devices exchange the information to
 establish an encrypted connection has been completed.
 
-boolean Bonded [readonly, experimental]
-```````````````````````````````````````
+boolean Bonded [readonly]
+`````````````````````````
 
 Indicates if the remote device is bonded to BREDR bearer.
 
 Bonded means the information exchanged on pairing process has been stored and
 will be persisted.
 
-boolean Connected [readonly, experimental]
-``````````````````````````````````````````
+boolean Connected [readonly]
+````````````````````````````
 
 Indicates if the remote device is currently connected to BREDR bearer.
 
 A PropertiesChanged signal indicate changes to this status.
 
-boolean Connectable [readonly, experimental]
-````````````````````````````````````````````
+boolean Connectable [readonly]
+``````````````````````````````
 
 Indicates if the remote device accepts connections on BREDR bearer. BREDR
 devices are always considered connectable.

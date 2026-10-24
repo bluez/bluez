@@ -21,8 +21,8 @@ Interface
 Methods
 -------
 
-void Connect() [experimental]
-`````````````````````````````
+void Connect()
+``````````````
 
 Connects all LE profiles the remote device supports that can be connected to and
 have been flagged as auto-connectable. If only subset of profiles is already
@@ -38,8 +38,8 @@ Possible errors:
 :org.bluez.Error.InProgress:
 :org.bluez.Error.AlreadyConnected:
 
-void Disconnect() [experimental]
-````````````````````````````````
+void Disconnect()
+`````````````````
 
 Disconnects all connected profiles and then terminates low-level ACL-LE
 connection.
@@ -60,8 +60,8 @@ Possible errors:
 Signals
 -------
 
-void Disconnected(string reason, string message) [experimental]
-```````````````````````````````````````````````````````````````
+void Disconnected(string reason, string message)
+````````````````````````````````````````````````
 
 This signal is launched when a device is disconnected, with the reason of the
 disconnection.
@@ -114,36 +114,36 @@ Possible reasons:
 Properties
 ----------
 
-object Adapter [readonly, experimental]
-```````````````````````````````````````
+object Adapter [readonly]
+`````````````````````````
 
 The object path of the adapter the set belongs to.
 
-boolean Paired [readonly, experimental]
-```````````````````````````````````````
+boolean Paired [readonly]
+`````````````````````````
 
 Indicates if the remote device is paired to LE bearer.
 
 Paired means the pairing process where devices exchange the information to
 establish an encrypted connection has been completed.
 
-boolean Bonded [readonly, experimental]
-```````````````````````````````````````
+boolean Bonded [readonly]
+`````````````````````````
 
 Indicates if the remote device is bonded to LE bearer.
 
 Bonded means the information exchanged on pairing process has been stored and
 will be persisted.
 
-boolean Connected [readonly, experimental]
-``````````````````````````````````````````
+boolean Connected [readonly]
+````````````````````````````
 
 Indicates if the remote device is currently connected to LE bearer.
 
 A PropertiesChanged signal indicate changes to this status.
 
-boolean Connectable [readonly, optional, experimental]
-``````````````````````````````````````````````````````
+boolean Connectable [readonly, optional]
+````````````````````````````````````````
 
 Indicates if the remote device accepts connections on LE bearer, based on the
 most recent advertising report. It is false when the last advertising report
@@ -154,8 +154,8 @@ over LE bearer.
 
 A PropertiesChanged signal indicate changes to this status.
 
-string Role [readonly, optional, experimental]
-``````````````````````````````````````````````
+string Role [readonly, optional]
+````````````````````````````````
 
 Indicates the role of the remote device in the current connection on LE bearer.
 It is only present while the remote device is connected over LE bearer.
