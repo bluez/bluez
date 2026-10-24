@@ -11560,6 +11560,88 @@ static const struct generic_data ll_privacy_set_device_flag_1 = {
 	.expect_hci_list = ll_privacy_set_device_flags_1_hci_list,
 };
 
+static const char load_irks_le_public_param_2[] = {
+	0x01, 0x00,					/* Key Count */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,		/* Key 1 - BDADDR */
+	0x01,						/* Key 1 - Type */
+	0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, /* Key 1 - Value */
+	0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
+};
+
+static const char load_irks_none_param[] = {
+	0x00, 0x00,					/* Key Count */
+};
+
+static const uint8_t le_remove_from_resolv_list_param[] = {
+	0x00,						/* Type */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,		/* BDADDR */
+};
+
+static const uint8_t le_add_to_resolv_list_param_new_irk[] = {
+	0x00,						/* Type */
+	0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,		/* BDADDR */
+	0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,	/* Peer IRK */
+	0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,	/* Local IRK */
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+};
+
+static const struct hci_cmd_data ll_privacy_set_device_flags_2_hci_list[] = {
+	{
+		.opcode = BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
+		.param = le_remove_from_resolv_list_param,
+		.len = sizeof(le_remove_from_resolv_list_param),
+	},
+	{
+		.opcode = BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
+		.param = le_add_to_resolv_list_param_new_irk,
+		.len = sizeof(le_add_to_resolv_list_param_new_irk),
+	},
+	{
+		.opcode = BT_HCI_CMD_LE_SET_PRIV_MODE,
+		.param = le_set_priv_mode_param,
+		.len = sizeof(le_set_priv_mode_param),
+	},
+	{},
+};
+
+static const struct hci_cmd_data ll_privacy_set_device_flags_3_hci_list[] = {
+	{
+		.opcode = BT_HCI_CMD_LE_REMOVE_FROM_RESOLV_LIST,
+		.param = le_remove_from_resolv_list_param,
+		.len = sizeof(le_remove_from_resolv_list_param),
+	},
+	{},
+};
+
+static const struct generic_data ll_privacy_set_device_flag_2 = {
+	.setup_settings = settings_le_privacy_ll_privacy,
+	.send_opcode = MGMT_OP_SET_DEVICE_FLAGS,
+	.send_param = set_device_flags_param_1,
+	.send_len = sizeof(set_device_flags_param_1),
+	.expect_param = set_device_flags_rsp,
+	.expect_len = sizeof(set_device_flags_rsp),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_FLAGS_CHANGED,
+	.expect_alt_ev_param = device_flags_changed_params_1,
+	.expect_alt_ev_len = sizeof(device_flags_changed_params_1),
+	.expect_hci_list = ll_privacy_set_device_flags_2_hci_list,
+};
+
+static const struct generic_data ll_privacy_set_device_flag_3 = {
+	.setup_settings = settings_le_privacy_ll_privacy,
+	.send_opcode = MGMT_OP_SET_DEVICE_FLAGS,
+	.send_param = set_device_flags_param_1,
+	.send_len = sizeof(set_device_flags_param_1),
+	.expect_param = set_device_flags_rsp,
+	.expect_len = sizeof(set_device_flags_rsp),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_DEVICE_FLAGS_CHANGED,
+	.expect_alt_ev_param = device_flags_changed_params_1,
+	.expect_alt_ev_len = sizeof(device_flags_changed_params_1),
+	.expect_hci_list = ll_privacy_set_device_flags_3_hci_list,
+};
+
 static void setup_load_irks_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -12284,6 +12366,109 @@ static void setup_ll_privacy_add_device(const void *test_data)
 					add_device_le_public_param_1,
 					setup_add_device_callback, NULL, NULL);
 
+}
+
+struct irk_change {
+	const void *param;
+	uint16_t len;
+};
+
+static const struct irk_change new_irk = {
+	.param = load_irks_le_public_param_2,
+	.len = sizeof(load_irks_le_public_param_2),
+};
+
+static const struct irk_change no_irk = {
+	.param = load_irks_none_param,
+	.len = sizeof(load_irks_none_param),
+};
+
+static bool first_irk_programmed;
+
+static bool setup_first_irk_hook(const void *data, uint16_t len,
+							void *user_data)
+{
+	/* Skip the local identity programmed at power on */
+	if (len == sizeof(le_add_to_resolv_list_param) &&
+			!memcmp(data, le_add_to_resolv_list_param, len))
+		first_irk_programmed = true;
+
+	return true;
+}
+
+static void setup_irk_changed_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Device's IRK changed");
+
+	hciemu_del_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+					BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST);
+	test_setup_condition_complete(data);
+}
+
+static void setup_resolv_list_done_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct irk_change *change = user_data;
+	struct test_data *data = tester_get_data();
+
+	/* Read Local OOB Data completes after the resolving list updates
+	 * queued before it, so the first IRK is programmed by now.
+	 */
+	if (status != MGMT_STATUS_SUCCESS || !first_irk_programmed) {
+		tester_warn("First IRK not programmed in the resolving list");
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("First IRK programmed in the resolving list");
+
+	/* The device pairs again with a new IRK or without one */
+	mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
+					change->len, change->param,
+					setup_irk_changed_callback, NULL, NULL);
+}
+
+static void setup_ll_privacy_irk_change(const void *test_data,
+					const struct irk_change *change)
+{
+	struct test_data *data = tester_get_data();
+
+	test_add_setup_condition(data);
+	first_irk_programmed = false;
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+					BT_HCI_CMD_LE_ADD_TO_RESOLV_LIST,
+					setup_first_irk_hook, data);
+
+	setup_ll_privacy_add_device(test_data);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_DEVICE_FLAGS, data->mgmt_index,
+					sizeof(set_device_flags_param_1),
+					set_device_flags_param_1,
+					setup_set_device_flags_callback,
+					NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_READ_LOCAL_OOB_DATA, data->mgmt_index,
+					0, NULL,
+					setup_resolv_list_done_callback,
+					(void *) change, NULL);
+}
+
+static void setup_ll_privacy_new_irk(const void *test_data)
+{
+	setup_ll_privacy_irk_change(test_data, &new_irk);
+}
+
+static void setup_ll_privacy_no_irk(const void *test_data)
+{
+	setup_ll_privacy_irk_change(test_data, &no_irk);
 }
 
 static bool power_off(uint16_t index)
@@ -16283,6 +16468,31 @@ int main(int argc, char *argv[])
 	test_bredrle50("LL Privacy - Set Device Flag 1 (Device Privacy)",
 				&ll_privacy_set_device_flag_1,
 				setup_ll_privacy_add_device,
+				test_command_generic);
+
+	/* LL Privacy
+	 * Setup: Enable LL Privacy, add IRK of new device, Add Device, Set
+	 *        Device Flags, then load a new IRK for the device once the
+	 *        first one is in the resolving list
+	 * Run: Set Device Flags
+	 * Expect: The device's resolving list entry is replaced with the new
+	 *         IRK and Device Privacy Mode is set again.
+	 */
+	test_bredrle50("LL Privacy - Set Device Flag 2 (New IRK)",
+				&ll_privacy_set_device_flag_2,
+				setup_ll_privacy_new_irk,
+				test_command_generic);
+
+	/* LL Privacy
+	 * Setup: Enable LL Privacy, add IRK of new device, Add Device, Set
+	 *        Device Flags, then remove the device's IRK once the first
+	 *        one is in the resolving list
+	 * Run: Set Device Flags
+	 * Expect: The device is removed from the resolving list.
+	 */
+	test_bredrle50("LL Privacy - Set Device Flag 3 (IRK Removed)",
+				&ll_privacy_set_device_flag_3,
+				setup_ll_privacy_no_irk,
 				test_command_generic);
 
 	/* HCI Devcoredump
