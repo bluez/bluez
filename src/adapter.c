@@ -8260,14 +8260,23 @@ int btd_cancel_authorization(guint id)
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
 	bool powered;
+	int blocked;
 
 	powered = btd_adapter_get_powered(adapter);
-	if (adapter->power_state == ADAPTER_POWER_STATE_OFF_BLOCKED &&
-	    rfkill_get_blocked(adapter->dev_id) == 0) {
-		adapter_set_power_state(adapter,
-					powered ?
-					ADAPTER_POWER_STATE_ON :
-					ADAPTER_POWER_STATE_OFF);
+	if (adapter->power_state == ADAPTER_POWER_STATE_OFF_BLOCKED) {
+		blocked = rfkill_get_blocked(adapter->dev_id);
+
+		/* Powering on can't succeed while blocked, the rfkill
+		 * unblock event calls this function again.
+		 */
+		if (blocked > 0)
+			return 0;
+
+		if (blocked == 0)
+			adapter_set_power_state(adapter,
+						powered ?
+						ADAPTER_POWER_STATE_ON :
+						ADAPTER_POWER_STATE_OFF);
 	}
 
 	if (powered)
