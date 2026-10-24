@@ -62,6 +62,7 @@ struct test_data {
 	uint8_t local_sk[32];
 	uint8_t dhkey[32];
 	int unmet_conditions;
+	unsigned int new_ltk_id;
 };
 
 struct smp_req_rsp {
@@ -80,6 +81,8 @@ struct smp_data {
 	uint8_t expect_hci_len;
 	const void * (*expect_hci_func)(uint8_t *len);
 	bool sc;
+	bool load_irks;
+	bool expect_no_irk;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -459,6 +462,93 @@ static const struct smp_data smp_client_sc_req_2_test = {
 	.sc = true,
 };
 
+static const uint8_t smp_enc_info[17] = { 0x06 };
+static const uint8_t smp_central_ident[11] = { 0x07 };
+static const uint8_t smp_ident_info_zero[17] = { 0x08 };
+static const uint8_t smp_ident_addr_info[8] = { 0x09 };
+static const uint8_t smp_sign_info[17] = { 0x0a };
+
+static const uint8_t smp_id_req_1[] = {	0x01,	/* Pairing Request */
+					0x03,	/* NoInputNoOutput */
+					0x00,	/* OOB Flag */
+					0x01,	/* Bonding - no MITM */
+					0x10,	/* Max key size */
+					0x05,	/* Init. key dist. */
+					0x07,	/* Rsp. key dist. */
+};
+static const uint8_t smp_id_req_1_rsp[] = {	0x02,	/* Pairing Response */
+						0x03,	/* NoInputNoOutput */
+						0x00,	/* OOB Flag */
+						0x01,	/* Bonding - no MITM */
+						0x10,	/* Max key size */
+						0x05,	/* Init. key dist. */
+						0x07,	/* Rsp. key dist. */
+};
+
+/* Without privacy the identity key is an all-zero IRK and the identity
+ * address of the controller.
+ */
+static const struct smp_req_rsp srv_id_req_1[] = {
+	{ smp_id_req_1, sizeof(smp_id_req_1),
+			smp_id_req_1_rsp, sizeof(smp_id_req_1_rsp) },
+	{ smp_confirm_req_1, sizeof(smp_confirm_req_1),
+			smp_confirm_req_1, sizeof(smp_confirm_req_1) },
+	{ smp_random_req_1, sizeof(smp_random_req_1),
+			smp_random_req_1, sizeof(smp_random_req_1) },
+	{ NULL, 0, smp_enc_info, sizeof(smp_enc_info) },
+	{ NULL, 0, smp_central_ident, sizeof(smp_central_ident) },
+	{ NULL, 0, smp_ident_info_zero, sizeof(smp_ident_info_zero) },
+	{ NULL, 0, smp_ident_addr_info, sizeof(smp_ident_addr_info) },
+	{ NULL, 0, smp_sign_info, sizeof(smp_sign_info) },
+};
+
+static const struct smp_data smp_server_id_req_1_test = {
+	.req = srv_id_req_1,
+	.req_count = G_N_ELEMENTS(srv_id_req_1),
+};
+
+static const uint8_t smp_id_req_2[] = {	0x01,	/* Pairing Request */
+					0x03,	/* NoInputNoOutput */
+					0x00,	/* OOB Flag */
+					0x01,	/* Bonding - no MITM */
+					0x10,	/* Max key size */
+					0x07,	/* Init. key dist. */
+					0x05,	/* Rsp. key dist. */
+};
+static const uint8_t smp_id_req_2_rsp[] = {	0x02,	/* Pairing Response */
+						0x03,	/* NoInputNoOutput */
+						0x00,	/* OOB Flag */
+						0x01,	/* Bonding - no MITM */
+						0x10,	/* Max key size */
+						0x07,	/* Init. key dist. */
+						0x05,	/* Rsp. key dist. */
+};
+
+/* An all-zero IRK resolves no address, so it must not be stored */
+static const struct smp_req_rsp srv_id_req_2[] = {
+	{ smp_id_req_2, sizeof(smp_id_req_2),
+			smp_id_req_2_rsp, sizeof(smp_id_req_2_rsp) },
+	{ smp_confirm_req_1, sizeof(smp_confirm_req_1),
+			smp_confirm_req_1, sizeof(smp_confirm_req_1) },
+	{ smp_random_req_1, sizeof(smp_random_req_1),
+			smp_random_req_1, sizeof(smp_random_req_1) },
+	{ NULL, 0, smp_enc_info, sizeof(smp_enc_info) },
+	{ NULL, 0, smp_central_ident, sizeof(smp_central_ident) },
+	{ NULL, 0, smp_sign_info, sizeof(smp_sign_info) },
+	{ smp_enc_info, sizeof(smp_enc_info), NULL, 0 },
+	{ smp_central_ident, sizeof(smp_central_ident), NULL, 0 },
+	{ smp_ident_info_zero, sizeof(smp_ident_info_zero), NULL, 0 },
+	{ smp_ident_addr_info, sizeof(smp_ident_addr_info), NULL, 0 },
+	{ smp_sign_info, sizeof(smp_sign_info), NULL, 0 },
+};
+
+static const struct smp_data smp_server_id_req_2_test = {
+	.req = srv_id_req_2,
+	.req_count = G_N_ELEMENTS(srv_id_req_2),
+	.load_irks = true,
+	.expect_no_irk = true,
+};
+
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -578,6 +668,16 @@ static const void *get_pdu(const uint8_t *pdu, size_t len)
 		buf[0] = pdu[0];
 		memcpy(&buf[1], data->prnd, 16);
 		return buf;
+	case 0x09: /* Identity Address Information */
+		buf[0] = pdu[0];
+		if (data->out) {
+			buf[1] = data->ia_type;
+			memcpy(&buf[2], data->ia, 6);
+		} else {
+			buf[1] = data->ra_type;
+			memcpy(&buf[2], data->ra, 6);
+		}
+		return buf;
 	case 0x0c: /* Public Key */
 		buf[0] = pdu[0];
 		memcpy(&buf[1], data->local_pk, 64);
@@ -587,6 +687,20 @@ static const void *get_pdu(const uint8_t *pdu, size_t len)
 	}
 
 	return pdu;
+}
+
+static bool verify_ident_addr(const uint8_t *pdu)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *addr = data->out ? data->ra : data->ia;
+	uint8_t addr_type = data->out ? data->ra_type : data->ia_type;
+
+	if (pdu[1] != addr_type || memcmp(&pdu[2], addr, 6)) {
+		tester_warn("Unexpected identity address");
+		return false;
+	}
+
+	return true;
 }
 
 static bool verify_random(const uint8_t rnd[16])
@@ -680,6 +794,15 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 		ecdh_shared_secret(test_data->remote_pk, test_data->local_sk,
 							test_data->dhkey);
 		goto next;
+	case 0x06: /* Encryption Information */
+	case 0x07: /* Central Identification */
+	case 0x0a: /* Signing Information */
+		/* The keys are random */
+		goto next;
+	case 0x09: /* Identity Address Information */
+		if (!verify_ident_addr(data))
+			goto failed;
+		goto next;
 	default:
 		break;
 	}
@@ -698,9 +821,12 @@ next:
 
 		req = &smp->req[test_data->counter];
 
-		pdu = get_pdu(req->send, req->send_len);
-		bthost_send_cid(bthost, test_data->handle, SMP_CID, pdu,
-								req->send_len);
+		if (req->send) {
+			pdu = get_pdu(req->send, req->send_len);
+			bthost_send_cid(bthost, test_data->handle, SMP_CID,
+							pdu, req->send_len);
+		}
+
 		if (req->expect)
 			break;
 		else
@@ -871,6 +997,16 @@ static void setup_powered_server(const void *test_data)
 				sizeof(param), param, NULL, NULL, NULL);
 	mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
+	if (smp->load_irks) {
+		struct mgmt_cp_load_irks cp;
+
+		/* Loading IRKs, as bluetoothd does, makes the kernel accept
+		 * identity keys from the remote device.
+		 */
+		memset(&cp, 0, sizeof(cp));
+		mgmt_send(data->mgmt, MGMT_OP_LOAD_IRKS, data->mgmt_index,
+				sizeof(cp), &cp, NULL, NULL, NULL);
+	}
 	if (smp->sc) {
 		mgmt_send(data->mgmt, MGMT_OP_SET_SECURE_CONN,
 				data->mgmt_index, sizeof(param), param, NULL,
@@ -881,6 +1017,25 @@ static void setup_powered_server(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 			sizeof(param), param, setup_powered_server_callback,
 			NULL, NULL);
+}
+
+static void new_irk_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	tester_warn("Unexpected New IRK event");
+	tester_test_failed();
+}
+
+static void new_ltk_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = user_data;
+
+	/* The kernel reports a new IRK before the new LTKs */
+	tester_print("New LTK event");
+
+	mgmt_unregister(data->mgmt, data->new_ltk_id);
+	test_condition_complete(data);
 }
 
 static void test_server(const void *test_data)
@@ -896,6 +1051,16 @@ static void test_server(const void *test_data)
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, smp_new_conn, data);
 	test_add_condition(data);
+
+	if (smp->expect_no_irk) {
+		mgmt_register(data->mgmt, MGMT_EV_NEW_IRK, data->mgmt_index,
+					new_irk_callback, data, NULL);
+		data->new_ltk_id = mgmt_register(data->mgmt,
+					MGMT_EV_NEW_LONG_TERM_KEY,
+					data->mgmt_index, new_ltk_callback,
+					data, NULL);
+		test_add_condition(data);
+	}
 
 	bthost_hci_connect(bthost, data->ra, BDADDR_LE_PUBLIC);
 
@@ -922,6 +1087,12 @@ int main(int argc, char *argv[])
 					setup_powered_server, test_server);
 	test_smp("SMP Server - Invalid Request 3",
 					&smp_server_nval_req_3_test,
+					setup_powered_server, test_server);
+	test_smp("SMP Server - Identity Key 1",
+					&smp_server_id_req_1_test,
+					setup_powered_server, test_server);
+	test_smp("SMP Server - Identity Key 2",
+					&smp_server_id_req_2_test,
 					setup_powered_server, test_server);
 
 	test_smp("SMP Client - Basic Request 1",
