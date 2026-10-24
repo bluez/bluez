@@ -2126,6 +2126,9 @@ static void map_handle_notification(struct map_event *event, void *user_data)
 		event->msg_type);
 
 	switch (event->type) {
+	case MAP_ET_UNSUPPORTED:
+		map_handle_status_changed(map, event, "notification");
+		break;
 	case MAP_ET_NEW_MESSAGE:
 		map_handle_new_message(map, event);
 		map_handle_status_changed(map, event, "notification");
