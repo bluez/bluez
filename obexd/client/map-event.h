@@ -11,6 +11,7 @@
 struct obc_session;
 
 enum map_event_type {
+	MAP_ET_UNSUPPORTED,
 	MAP_ET_NEW_MESSAGE,
 	MAP_ET_DELIVERY_SUCCESS,
 	MAP_ET_SENDING_SUCCESS,
