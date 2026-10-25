@@ -115,7 +115,7 @@ uint16 MaxCount (default 1024):
 
 :array{string} Types:
 
-	Filter messages by type.
+	Filter out messages by type. The specified types shall be excluded.
 
 	Possible values:
 
