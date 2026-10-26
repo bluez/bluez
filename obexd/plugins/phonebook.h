@@ -61,7 +61,7 @@ struct apparam_field {
  * Contacts will be returned in the vcard format.
  */
 typedef void (*phonebook_cb) (const char *buffer, size_t bufsize,
-		int vcards, int missed, gboolean lastpart, void *user_data);
+		int vcards, uint8_t missed, gboolean lastpart, void *user_data);
 
 /*
  * Interface between the PBAP core and backends to
