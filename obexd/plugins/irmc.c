@@ -74,7 +74,7 @@ static const char *owner_vcard =
 		"END:VCARD\r\n";
 
 static void phonebook_size_result(const char *buffer, size_t bufsize,
-					int vcards, int missed,
+					int vcards, uint8_t missed,
 					gboolean lastpart, void *user_data)
 {
 	struct irmc_session *irmc = user_data;
@@ -90,7 +90,7 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 }
 
 static void query_result(const char *buffer, size_t bufsize, int vcards,
-				int missed, gboolean lastpart, void *user_data)
+				uint8_t missed, gboolean lastpart, void *user_data)
 {
 	struct irmc_session *irmc = user_data;
 	const char *s, *t;
