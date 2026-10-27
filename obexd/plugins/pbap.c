@@ -159,7 +159,7 @@ static void cache_clear(struct cache *cache)
 }
 
 static void phonebook_size_result(const char *buffer, size_t bufsize,
-					int vcards, int missed,
+					int vcards, uint8_t missed,
 					gboolean lastpart, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
@@ -186,7 +186,7 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 		DBG("missed %d", missed);
 	}
 
-	pbap->obj->apparam = g_obex_apparam_set_uint16(pbap->obj->apparam,
+	pbap->obj->apparam = g_obex_apparam_set_uint8(pbap->obj->apparam,
 							NEWMISSEDCALLS_TAG,
 							missed);
 
@@ -194,7 +194,7 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 }
 
 static void query_result(const char *buffer, size_t bufsize, int vcards,
-				int missed, gboolean lastpart, void *user_data)
+			uint8_t missed, gboolean lastpart, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 
@@ -224,7 +224,7 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 		pbap->obj->firstpacket = TRUE;
 	}
 
-	pbap->obj->apparam = g_obex_apparam_set_uint16(pbap->obj->apparam,
+	pbap->obj->apparam = g_obex_apparam_set_uint8(pbap->obj->apparam,
 							NEWMISSEDCALLS_TAG,
 							missed);
 
