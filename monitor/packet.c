@@ -12224,6 +12224,11 @@ static void return_link_keys_evt(struct timeval *tv, uint16_t index,
 
 	print_field("Num keys: %d", evt->num_keys);
 
+	if (size < 1u + (unsigned int) evt->num_keys * 22u) {
+		print_text(COLOR_ERROR, "too short packet");
+		return;
+	}
+
 	for (i = 0; i < evt->num_keys; i++) {
 		print_bdaddr(evt->keys + (i * 22));
 		print_link_key(evt->keys + (i * 22) + 6);
