@@ -964,6 +964,15 @@ static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 	 * (CS_INITIATOR=0x00, CS_REFLECTOR=0x01)
 	 * which is different from the role_enable value sent in HCI command
 	 */
+	if ((is_initiator_role(sm) && rap_ev.role != CS_INITIATOR) ||
+	    (!is_initiator_role(sm) && !is_both_role(sm) &&
+	     rap_ev.role != CS_REFLECTOR)) {
+		error("CS Config role 0x%02X doesn't match role enable 0x%02X",
+			rap_ev.role, sm->role_enable);
+		cs_set_state(sm, CS_STATE_HOLD);
+		return;
+	}
+
 	sm->cs_opt.role = rap_ev.role;
 	sm->cs_opt.rtt_type = rap_ev.rtt_type;
 
