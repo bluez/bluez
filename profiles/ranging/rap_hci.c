@@ -983,14 +983,8 @@ static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 	cs_set_state(sm, CS_STATE_WAIT_SEC_CMPLT);
 
 	/* CS Security Enable may only be issued by the BLE Central */
-	if (rap_ev.role == 0x00) {
-		mapping = find_mapping_by_handle(sm, evt->handle);
-		if (!mapping || !mapping->is_central) {
-			error("CS Security Enable skipped: not BLE Central");
-			cs_set_state(sm, CS_STATE_HOLD);
-			return;
-		}
-
+	mapping = find_mapping_by_handle(sm, evt->handle);
+	if (mapping && mapping->is_central) {
 		if (bt_att_get_security(mapping->att, NULL) <
 						BT_ATT_SECURITY_MEDIUM) {
 			error("CS Security Enable skipped: not encrypted");
@@ -1001,8 +995,7 @@ static void rap_cs_config_cmplt_evt(const void *data, uint8_t size,
 		DBG("Central,encrypted: Sending CS Security Enable command");
 		rap_send_hci_cs_security_enable_command(sm, evt->handle);
 	} else {
-		/* Reflector role */
-		DBG("Reflector role: Waiting for security enable event...");
+		DBG("Peripheral: Waiting for security enable event...");
 	}
 
 	/* Send callback to RAP Profile */
