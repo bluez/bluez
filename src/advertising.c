@@ -1388,6 +1388,7 @@ static void add_client_complete(struct btd_adv_client *client, uint8_t status)
 		reply = btd_error_failed(client->reg,
 					"Failed to register advertisement");
 		queue_remove(client->manager->clients, client);
+		g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
 		g_idle_add(client_free_idle_cb, client);
 
 	} else {
@@ -1427,8 +1428,6 @@ static void add_adv_callback(uint8_t status, uint16_t length,
 
 	client->instance = rp->instance;
 
-	g_dbus_client_set_disconnect_watch(client->client, client_disconnect_cb,
-									client);
 	DBG("Advertisement registered: %s", client->path);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
@@ -1641,6 +1640,7 @@ static void client_proxy_added(GDBusProxy *proxy, void *data)
 
 	/* Failed to publish for some reason, remove. */
 	queue_remove(client->manager->clients, client);
+	g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
 
 	g_idle_add(client_free_idle_cb, client);
 
@@ -1756,6 +1756,9 @@ static DBusMessage *register_advertisement(DBusConnection *conn,
 	client->reg = dbus_message_ref(msg);
 
 	queue_push_tail(manager->clients, client);
+
+	g_dbus_client_set_disconnect_watch(client->client, client_disconnect_cb,
+									client);
 
 	return NULL;
 }
