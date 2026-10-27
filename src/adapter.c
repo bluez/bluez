@@ -2146,6 +2146,17 @@ static void discovering_callback(uint16_t index, uint16_t length,
 	 * passive scanning attempt.
 	 */
 	if (!adapter->discovery_list) {
+		/*
+		 * Discovering is left set when stopping the discovery of the
+		 * last client failed, so clear it once the kernel reports the
+		 * discovery as stopped.
+		 */
+		if (!adapter->discovery_enable && adapter->discovering) {
+			adapter->discovering = false;
+			g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "Discovering");
+		}
+
 		if (!adapter->connect_le)
 			trigger_passive_scanning(adapter);
 		return;
@@ -2193,6 +2204,14 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 	struct discovery_client *client;
 
 	DBG("status 0x%02x", status);
+
+	/*
+	 * MGMT_STATUS_REJECTED is returned from kernel when no discovery is
+	 * active, e.g. because it ended or another mgmt client stopped it
+	 * just before this command, so treat it as stopped as well.
+	 */
+	if (status == MGMT_STATUS_REJECTED)
+		status = MGMT_STATUS_SUCCESS;
 
 	client = discovery_complete(adapter, status);
 	if (client)
