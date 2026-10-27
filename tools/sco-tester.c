@@ -27,6 +27,8 @@
 #include "monitor/bt.h"
 #include "emulator/bthost.h"
 #include "emulator/hciemu.h"
+#include "emulator/vhci.h"
+#include "emulator/btdev.h"
 
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
@@ -50,6 +52,27 @@ struct test_data {
 	uint16_t acl_handle;
 	uint16_t handle;
 	struct tx_tstamp_data tx_ts;
+
+	/* State of the reconnect tests */
+	int sk2;
+	unsigned int io2_id;
+	unsigned int timer_id;
+	bool done;
+	bool disc_held;
+	bool disc_released;
+	bool closing;
+	bool sco_gone;
+	struct bt_hci_evt_disconnect_complete held_evt;
+	unsigned int sync_complete;
+	unsigned int setup_cmds;
+	unsigned int disc_cmds;
+};
+
+enum reconnect_mode {
+	RECONNECT_NONE,
+	RECONNECT_AFTER,	/* Connect again once the first link is gone */
+	RECONNECT_DURING,	/* ... while the completion is held */
+	CONNECT_TWICE,		/* Connect again while the first link is up */
 };
 
 struct sco_client_data {
@@ -78,6 +101,9 @@ struct sco_client_data {
 
 	/* Defer setup when accepting SCO connections */
 	bool defer;
+
+	/* A second socket connects to the same peer, see the modes above */
+	enum reconnect_mode reconnect;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -250,6 +276,36 @@ static void test_pre_setup(const void *test_data)
 static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+
+	/*
+	 * The reconnect tests own their first socket (its channel does not
+	 * close it), so a test that timed out may have left it open.
+	 */
+	if (scodata && scodata->reconnect && data->sk >= 0) {
+		if (data->io_id) {
+			g_source_remove(data->io_id);
+			data->io_id = 0;
+		}
+
+		close(data->sk);
+		data->sk = -1;
+	}
+
+	if (data->timer_id) {
+		g_source_remove(data->timer_id);
+		data->timer_id = 0;
+	}
+
+	if (data->io2_id) {
+		g_source_remove(data->io2_id);
+		data->io2_id = 0;
+	}
+
+	if (data->sk2 >= 0) {
+		close(data->sk2);
+		data->sk2 = -1;
+	}
 
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
@@ -269,13 +325,14 @@ static void test_data_free(void *test_data)
 					_disable_sco_flowctl, _timeout) \
 	do { \
 		struct test_data *user; \
-		user = malloc(sizeof(struct test_data)); \
+		user = calloc(1, sizeof(struct test_data)); \
 		if (!user) \
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->io_id = 0; \
 		user->err_io_id = 0; \
 		user->sk = -1; \
+		user->sk2 = -1; \
 		user->test_data = data; \
 		user->step = 0; \
 		user->disable_esco = _disable_esco; \
@@ -327,6 +384,18 @@ static const struct sco_client_data connect_failure = {
 
 static const struct sco_client_data connect_failure_reset = {
 	.expect_err = ECONNRESET
+};
+
+static const struct sco_client_data reconnect_after = {
+	.reconnect = RECONNECT_AFTER,
+};
+
+static const struct sco_client_data reconnect_during = {
+	.reconnect = RECONNECT_DURING,
+};
+
+static const struct sco_client_data connect_twice = {
+	.reconnect = CONNECT_TWICE,
 };
 
 const uint8_t data[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -1309,6 +1378,490 @@ static void test_connect_acl_disc(const void *test_data)
 	test_connect(test_data);
 }
 
+#define RECONNECT_DELAY_MS	100	/* host handles the last event */
+#define RECONNECT_QUIET_MS	500	/* nothing more shall happen */
+#define RECONNECT_LINK_MS	3000	/* a link or a disconnect shall come */
+#define RECONNECT_ACL_MS	5000	/* the idle ACL link shall go */
+
+static void reconnect_end(struct test_data *data, bool ok)
+{
+	if (data->done)
+		return;
+
+	data->done = true;
+
+	/* The first socket is still open if the test ended early */
+	if (data->io_id) {
+		g_source_remove(data->io_id);
+		data->io_id = 0;
+	}
+
+	if (data->sk >= 0) {
+		close(data->sk);
+		data->sk = -1;
+	}
+
+	if (!ok)
+		tester_warn("Setup commands %u, Disconnect commands %u, "
+				"Synchronous Connection Complete %u",
+				data->setup_cmds, data->disc_cmds,
+				data->sync_complete);
+
+	if (ok)
+		tester_test_passed();
+	else
+		tester_test_failed();
+}
+
+static int sock_error(int sk)
+{
+	int err = 0;
+	socklen_t len = sizeof(err);
+
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
+		return errno;
+
+	return err;
+}
+
+static short sock_poll(int sk)
+{
+	struct pollfd pfd = { .fd = sk, .events = POLLOUT };
+
+	if (poll(&pfd, 1, 0) < 0)
+		return -1;
+
+	return pfd.revents;
+}
+
+static bool sock_connected(int sk, const char *name)
+{
+	short revents = sock_poll(sk);
+	int err = sock_error(sk);
+
+	if (!err && revents > 0 && (revents & POLLOUT) &&
+				!(revents & (POLLERR | POLLHUP)))
+		return true;
+
+	tester_warn("The %s socket is not connected: %s (%d), poll 0x%04x",
+					name, strerror(err), err, revents);
+	return false;
+}
+
+static bool io_connected(GIOCondition cond, int sk, const char *name)
+{
+	if ((cond & G_IO_OUT) && !(cond & (G_IO_ERR | G_IO_HUP)))
+		return sock_connected(sk, name);
+
+	tester_warn("The %s socket failed: condition 0x%x, %s", name, cond,
+						strerror(sock_error(sk)));
+	return false;
+}
+
+static void reconnect_arm(struct test_data *data, guint ms, GSourceFunc func)
+{
+	if (data->timer_id)
+		g_source_remove(data->timer_id);
+
+	data->timer_id = g_timeout_add(ms, func, NULL);
+}
+
+static gboolean reconnect_deadline(gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->timer_id = 0;
+
+	tester_warn("Timed out waiting for the next link event");
+	reconnect_end(data, false);
+
+	return FALSE;
+}
+
+static bool hook_reconnect_sync(const void *buf, uint16_t len, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct bt_hci_evt_sync_conn_complete *evt = buf;
+
+	if (len < sizeof(*evt) || data->done)
+		return true;
+
+	if (evt->status) {
+		tester_print("Synchronous Connection Complete failed: "
+					"status 0x%02x", evt->status);
+		return true;
+	}
+
+	data->sync_complete++;
+	if (data->sync_complete == 1)
+		data->handle = le16_to_cpu(evt->handle);
+
+	tester_print("Synchronous Connection Complete #%u: handle %u, "
+			"status 0x%02x", data->sync_complete,
+			le16_to_cpu(evt->handle), evt->status);
+
+	return true;
+}
+
+static bool hook_reconnect_acl(const void *buf, uint16_t len, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct bt_hci_evt_conn_complete *evt = buf;
+
+	if (len >= sizeof(*evt) && !evt->status)
+		data->acl_handle = le16_to_cpu(evt->handle);
+
+	return true;
+}
+
+static void hook_reconnect_cmd(uint16_t opcode, const void *buf, uint8_t len,
+							void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct sco_client_data *scodata = data->test_data;
+	const struct bt_hci_cmd_disconnect *cmd = buf;
+
+	if (opcode == BT_HCI_CMD_SETUP_SYNC_CONN ||
+			opcode == BT_HCI_CMD_ENHANCED_SETUP_SYNC_CONN) {
+		data->setup_cmds++;
+		tester_print("Setup Synchronous Connection #%u",
+							data->setup_cmds);
+	}
+
+	if (opcode != BT_HCI_CMD_DISCONNECT || len < sizeof(*cmd) ||
+			data->sync_complete < 1 ||
+			le16_to_cpu(cmd->handle) != data->handle)
+		return;
+
+	data->disc_cmds++;
+	tester_print("Disconnect for the first link, handle %u",
+							data->handle);
+
+	if (scodata->reconnect == CONNECT_TWICE && !data->closing) {
+		tester_warn("The first link is disconnected while its socket "
+				"is open");
+		reconnect_end(data, false);
+	}
+}
+
+static gboolean reconnect_connect2(gpointer user_data);
+
+static bool hook_reconnect_disc(const void *buf, uint16_t len, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+	const struct bt_hci_evt_disconnect_complete *evt = buf;
+
+	if (len < sizeof(*evt) || data->done)
+		return true;
+
+	tester_print("Disconnection Complete: handle %u, reason 0x%02x",
+				le16_to_cpu(evt->handle), evt->reason);
+
+	if (le16_to_cpu(evt->handle) == data->acl_handle) {
+		/* The ACL link, once nothing needs it, after the SCO link */
+		if (scodata->reconnect == CONNECT_TWICE && data->closing)
+			reconnect_end(data, data->disc_cmds == 1 &&
+						data->sco_gone && !evt->status);
+		return true;
+	}
+
+	if (le16_to_cpu(evt->handle) != data->handle)
+		return true;
+
+	if (scodata->reconnect == CONNECT_TWICE && data->closing)
+		data->sco_gone = !evt->status;
+
+	if (data->disc_released)
+		return true;
+
+	if (scodata->reconnect == RECONNECT_DURING) {
+		/*
+		 * The emulator has torn the link down; only the event to
+		 * the host is held back.
+		 */
+		data->held_evt = *evt;
+		data->disc_held = true;
+		reconnect_arm(data, 0, reconnect_connect2);
+		tester_print("Holding back the Disconnection Complete");
+		return false;
+	}
+
+	if (scodata->reconnect == RECONNECT_AFTER) {
+		data->disc_released = true;
+		reconnect_arm(data, RECONNECT_DELAY_MS, reconnect_connect2);
+	}
+
+	return true;
+}
+
+static void reconnect_release(struct test_data *data)
+{
+	struct btdev *btdev = vhci_get_btdev(hciemu_get_vhci(data->hciemu));
+
+	data->disc_released = true;
+
+	tester_print("Delivering the held Disconnection Complete");
+	if (btdev_send_event(btdev, BT_HCI_EVT_DISCONNECT_COMPLETE,
+				&data->held_evt, sizeof(data->held_evt))) {
+		tester_warn("Failed to deliver the Disconnection Complete");
+		reconnect_end(data, false);
+	}
+}
+
+static gboolean reconnect_quiet(gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+
+	data->timer_id = 0;
+
+	if (scodata->reconnect == CONNECT_TWICE) {
+		if (!sock_connected(data->sk, "first") || data->disc_cmds) {
+			reconnect_end(data, false);
+			return FALSE;
+		}
+
+		/*
+		 * Both sockets closed: the SCO link and then the ACL link
+		 * shall go.
+		 */
+		tester_print("First link still up, closing both sockets");
+		data->closing = true;
+		close(data->sk2);
+		data->sk2 = -1;
+		close(data->sk);
+		data->sk = -1;
+		reconnect_arm(data, RECONNECT_ACL_MS, reconnect_deadline);
+		return FALSE;
+	}
+
+	/* The connect was refused: no link of its own */
+	if (data->setup_cmds != 1 || data->sync_complete != 1 ||
+						data->disc_cmds != 1) {
+		tester_warn("Unexpected commands after the refused connect");
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	reconnect_end(data, true);
+	return FALSE;
+}
+
+static gboolean reconnect_stable(gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->timer_id = 0;
+
+	reconnect_end(data, sock_connected(data->sk2, "second") &&
+						data->disc_cmds == 1);
+	return FALSE;
+}
+
+static gboolean reconnect_linked(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->io2_id = 0;
+
+	if (!io_connected(cond, data->sk2, "second")) {
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	/*
+	 * The first link is gone, so the controller reuses its handle: the
+	 * second link is told apart by its own setup and its own completion,
+	 * after the Disconnection Complete of the first.
+	 */
+	if (data->setup_cmds != 2 || data->sync_complete != 2 ||
+						data->disc_cmds != 1) {
+		tester_warn("Second socket connected without a link of its "
+				"own");
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	if (!data->disc_released) {
+		tester_warn("Second link before the first one is gone");
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	/* The second link shall stay up */
+	reconnect_arm(data, RECONNECT_QUIET_MS, reconnect_stable);
+	return FALSE;
+}
+
+static gboolean reconnect_connect2(gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+	const uint8_t *client_bdaddr;
+	struct sockaddr_sco addr;
+	GIOChannel *io;
+	int ret, err;
+
+	data->timer_id = 0;
+
+	if (data->done)
+		return FALSE;
+
+	if (data->sync_complete != 1 || data->setup_cmds != 1) {
+		tester_warn("The first link was not set up as expected");
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	if (scodata->reconnect == RECONNECT_DURING &&
+			(!data->disc_held || data->disc_cmds != 1)) {
+		tester_warn("The Disconnection Complete was not held");
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+	data->sk2 = create_sco_sock(data);
+	if (!client_bdaddr || data->sk2 < 0) {
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sco_family = AF_BLUETOOTH;
+	bacpy(&addr.sco_bdaddr, (void *) client_bdaddr);
+
+	ret = connect(data->sk2, (struct sockaddr *) &addr, sizeof(addr));
+	err = ret < 0 ? errno : 0;
+
+	tester_print("Second connect() returned %d (%s)", ret, strerror(err));
+
+	if (scodata->reconnect == CONNECT_TWICE) {
+		if (ret >= 0 || err != EBUSY) {
+			tester_warn("Expected EBUSY from the second connect()");
+			reconnect_end(data, false);
+			return FALSE;
+		}
+
+		reconnect_arm(data, RECONNECT_QUIET_MS, reconnect_quiet);
+		return FALSE;
+	}
+
+	if (scodata->reconnect == RECONNECT_DURING &&
+				(err == ECONNABORTED || err == EBUSY)) {
+		/* Refused: the caller can connect again later */
+		reconnect_release(data);
+		reconnect_arm(data, RECONNECT_QUIET_MS, reconnect_quiet);
+		return FALSE;
+	}
+
+	if (ret >= 0) {
+		tester_warn("Connected at once, without a link of its own");
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	if (err != EINPROGRESS) {
+		tester_warn("Unexpected connect() error: %s", strerror(err));
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	/* Connecting: the new link shall come, after the first one is gone */
+	io = g_io_channel_unix_new(data->sk2);
+	g_io_channel_set_close_on_unref(io, FALSE);
+	data->io2_id = g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP,
+						reconnect_linked, NULL);
+	g_io_channel_unref(io);
+
+	reconnect_arm(data, RECONNECT_LINK_MS, reconnect_deadline);
+
+	if (scodata->reconnect == RECONNECT_DURING)
+		reconnect_release(data);
+
+	return FALSE;
+}
+
+static gboolean reconnect_first_connected(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+
+	data->io_id = 0;
+
+	if (!io_connected(cond, data->sk, "first")) {
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	if (data->sync_complete != 1 || data->setup_cmds != 1) {
+		tester_warn("The first link was not set up as expected");
+		reconnect_end(data, false);
+		return FALSE;
+	}
+
+	if (scodata->reconnect == CONNECT_TWICE) {
+		tester_print("First socket connected");
+		reconnect_connect2(NULL);
+		return FALSE;
+	}
+
+	tester_print("First socket connected, closing it");
+	close(data->sk);
+	data->sk = -1;
+
+	/* The Disconnection Complete is the next step */
+	reconnect_arm(data, RECONNECT_LINK_MS, reconnect_deadline);
+
+	return FALSE;
+}
+
+static void test_reconnect(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	GIOChannel *io;
+	int sk;
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_CONN_COMPLETE,
+					hook_reconnect_acl, NULL);
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_SYNC_CONN_COMPLETE,
+					hook_reconnect_sync, NULL);
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_DISCONNECT_COMPLETE,
+					hook_reconnect_disc, NULL);
+	hciemu_add_central_post_command_hook(data->hciemu,
+					hook_reconnect_cmd, data);
+
+	sk = create_sco_sock(data);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	if (connect_sco_sock(data, sk) < 0) {
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	data->sk = sk;
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, FALSE);
+
+	data->io_id = g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP,
+					reconnect_first_connected, NULL);
+
+	g_io_channel_unref(io);
+
+	tester_print("Connect in progress");
+}
+
 static void test_sco_ethtool_get_ts_info(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1525,6 +2078,18 @@ int main(int argc, char *argv[])
 	test_sco("eSCO ACL Disconnect - Failure",
 					&connect_failure_reset, setup_powered,
 					test_connect_acl_disc);
+
+	test_sco_full("eSCO CVSD - Reconnect After Disconnect",
+					&reconnect_after, setup_powered,
+					test_reconnect, false, false, false, 5);
+
+	test_sco_full("eSCO CVSD - Reconnect During Disconnect",
+					&reconnect_during, setup_powered,
+					test_reconnect, false, false, false, 5);
+
+	test_sco_full("eSCO CVSD - Connect Twice",
+					&connect_twice, setup_powered,
+					test_reconnect, false, false, false, 8);
 
 	test_sco_11("SCO CVSD 1.1 - Success", &connect_success, setup_powered,
 							test_connect);
