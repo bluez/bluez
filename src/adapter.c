@@ -2194,6 +2194,14 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 
 	DBG("status 0x%02x", status);
 
+	/*
+	 * MGMT_STATUS_REJECTED is returned from kernel when no discovery is
+	 * active, e.g. because it ended or another mgmt client stopped it
+	 * just before this command, so treat it as stopped as well.
+	 */
+	if (status == MGMT_STATUS_REJECTED)
+		status = MGMT_STATUS_SUCCESS;
+
 	client = discovery_complete(adapter, status);
 	if (client)
 		discovery_remove(client);
