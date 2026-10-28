@@ -39,6 +39,58 @@
 #define BT_BAP_CONFIG_PHY_2M		BIT(1)
 #define BT_BAP_CONFIG_PHY_CODEC		BIT(2)
 
+/* Assigned Numbers 6.12.4 Codec_Specific_Capabilities LTV structures */
+/* Supported_Sampling_Frequencies */
+#define BT_BAP_CAP_FREQ			0x01
+/* Supported_Frame_Durations */
+#define BT_BAP_CAP_DURATION		0x02
+/* Supported_Audio_Channel_Counts */
+#define BT_BAP_CAP_CHANNELS		0x03
+/* Supported_Octets_Per_Codec_Frame */
+#define BT_BAP_CAP_FRAME_LENGTH		0x04
+/* Supported_Max_Codec_Frames_Per_SDU */
+#define BT_BAP_CAP_SDU			0x05
+
+/* Assigned Numbers 6.12.5 Codec_Specific_Configuration LTV structures */
+/* Sampling_Frequency */
+#define BT_BAP_CC_FREQ			0x01
+/* Frame_Duration */
+#define BT_BAP_CC_DURATION		0x02
+/* Audio_Channel_Allocation */
+#define BT_BAP_CC_LOCATION		0x03
+/* Octets_Per_Codec_Frame */
+#define BT_BAP_CC_FRAME_LENGTH		0x04
+/* Codec_Frame_Blocks_Per_SDU */
+#define BT_BAP_CC_SDU			0x05
+
+/* Assigned Numbers 6.12.6 Metadata LTV structures */
+/* Preferred_Audio_Contexts */
+#define BT_BAP_META_PREFERRED_CONTEXT	0x01
+/* Streaming_Audio_Contexts */
+#define BT_BAP_META_CONTEXT		0x02
+/* Program_Info */
+#define BT_BAP_META_PROGRAM_INFO	0x03
+/* Language */
+#define BT_BAP_META_LANGUAGE		0x04
+/* CCID_List */
+#define BT_BAP_META_CCID_LIST		0x05
+/* Parental_Rating */
+#define BT_BAP_META_PARENTAL_RATING	0x06
+/* Program_Info_URI */
+#define BT_BAP_META_PROGRAM_INFO_URI	0x07
+/* Audio_Active_State */
+#define BT_BAP_META_AUDIO_ACTIVE_STATE	0x08
+/* Broadcast_Audio_Immediate_Rendering_Flag */
+#define BT_BAP_META_BCAST_IMMEDIATE	0x09
+/* Assisted_Listening_Stream */
+#define BT_BAP_META_ASSISTED_LISTENING	0x0a
+/* Broadcast_Name */
+#define BT_BAP_META_BROADCAST_NAME	0x0b
+/* Extended_Metadata */
+#define BT_BAP_META_EXTENDED		0xfe
+/* Vendor_Specific */
+#define BT_BAP_META_VENDOR		0xff
+
 struct bt_bap_codec {
 	uint8_t  id;
 	uint16_t cid;

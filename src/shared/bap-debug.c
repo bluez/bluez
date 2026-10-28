@@ -15,6 +15,7 @@
 #include <errno.h>
 
 #include "src/shared/util.h"
+#include "src/shared/bap-defs.h"
 #include "src/shared/bap-debug.h"
 
 static const struct util_bit_debugger pac_freq_table[] = {
@@ -185,11 +186,11 @@ done:
 }
 
 static const struct util_ltv_debugger pac_cap_table[] = {
-	UTIL_LTV_DEBUG(0x01, pac_debug_freq),
-	UTIL_LTV_DEBUG(0x02, pac_debug_duration),
-	UTIL_LTV_DEBUG(0x03, pac_debug_channels),
-	UTIL_LTV_DEBUG(0x04, pac_debug_frame_length),
-	UTIL_LTV_DEBUG(0x05, pac_debug_sdu)
+	UTIL_LTV_DEBUG(BT_BAP_CAP_FREQ, pac_debug_freq),
+	UTIL_LTV_DEBUG(BT_BAP_CAP_DURATION, pac_debug_duration),
+	UTIL_LTV_DEBUG(BT_BAP_CAP_CHANNELS, pac_debug_channels),
+	UTIL_LTV_DEBUG(BT_BAP_CAP_FRAME_LENGTH, pac_debug_frame_length),
+	UTIL_LTV_DEBUG(BT_BAP_CAP_SDU, pac_debug_sdu)
 };
 
 bool bt_bap_debug_caps(void *data, size_t len, util_debug_func_t func,
@@ -414,11 +415,11 @@ done:
 }
 
 static const struct util_ltv_debugger ase_cc_table[] = {
-	UTIL_LTV_DEBUG(0x01, ase_debug_freq),
-	UTIL_LTV_DEBUG(0x02, ase_debug_duration),
-	UTIL_LTV_DEBUG(0x03, ase_debug_location),
-	UTIL_LTV_DEBUG(0x04, ase_debug_frame_length),
-	UTIL_LTV_DEBUG(0x05, ase_debug_blocks)
+	UTIL_LTV_DEBUG(BT_BAP_CC_FREQ, ase_debug_freq),
+	UTIL_LTV_DEBUG(BT_BAP_CC_DURATION, ase_debug_duration),
+	UTIL_LTV_DEBUG(BT_BAP_CC_LOCATION, ase_debug_location),
+	UTIL_LTV_DEBUG(BT_BAP_CC_FRAME_LENGTH, ase_debug_frame_length),
+	UTIL_LTV_DEBUG(BT_BAP_CC_SDU, ase_debug_blocks)
 };
 
 bool bt_bap_debug_config(void *data, size_t len, util_debug_func_t func,
@@ -527,11 +528,191 @@ done:
 				user_data);
 }
 
+static void debug_string(const char *label, const uint8_t *data,
+				uint8_t len, util_debug_func_t func,
+				void *user_data)
+{
+	util_debug(func, user_data, "%s: %.*s", label, len, (const char *)data);
+}
+
+static void ase_debug_ccid_list(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	uint8_t i;
+
+	util_debug(func, user_data, "CCID List: %u entries", len);
+
+	for (i = 0; i < len; i++)
+		util_debug(func, user_data, "\tCCID: %u", data[i]);
+}
+
+static void ase_debug_parental_rating(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	struct iovec frame = { (void *)data, len };
+	uint8_t value;
+
+	if (!util_iov_pull_u8(&frame, &value)) {
+		util_debug(func, user_data, "value: invalid size");
+		goto done;
+	}
+
+	switch (value & 0x0f) {
+	case 0x00:
+		util_debug(func, user_data,
+				"Parental Rating: No rating (0x%2.2x)", value);
+		break;
+	case 0x01:
+		util_debug(func, user_data,
+				"Parental Rating: Any age (0x%2.2x)", value);
+		break;
+	default:
+		util_debug(func, user_data,
+				"Parental Rating: Age %u or older (0x%2.2x)",
+				(value & 0x0f) + 3, value);
+		break;
+	}
+
+done:
+	if (frame.iov_len)
+		util_hexdump(' ', frame.iov_base, frame.iov_len, func,
+				user_data);
+}
+
+static void ase_debug_program_info_uri(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	debug_string("Program Info URI", data, len, func, user_data);
+}
+
+static void ase_debug_audio_active_state(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	struct iovec frame = { (void *)data, len };
+	uint8_t value;
+
+	if (!util_iov_pull_u8(&frame, &value)) {
+		util_debug(func, user_data, "value: invalid size");
+		goto done;
+	}
+
+	switch (value) {
+	case 0x00:
+		util_debug(func, user_data,
+				"Audio Active State: No audio data (0x00)");
+		break;
+	case 0x01:
+		util_debug(func, user_data,
+				"Audio Active State: Audio data (0x01)");
+		break;
+	default:
+		util_debug(func, user_data,
+				"Audio Active State: RFU (0x%2.2x)", value);
+		break;
+	}
+
+done:
+	if (frame.iov_len)
+		util_hexdump(' ', frame.iov_base, frame.iov_len, func,
+				user_data);
+}
+
+static void ase_debug_bcast_immediate(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	util_debug(func, user_data, "Broadcast Audio Immediate Rendering");
+
+	if (len)
+		util_hexdump(' ', data, len, func, user_data);
+}
+
+static void ase_debug_assisted_listening(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	struct iovec frame = { (void *)data, len };
+	uint8_t value;
+
+	if (!util_iov_pull_u8(&frame, &value)) {
+		util_debug(func, user_data, "value: invalid size");
+		goto done;
+	}
+
+	if (value == 0x00)
+		util_debug(func, user_data, "Assisted Listening Stream: "
+				"Unspecified audio enhancement (0x00)");
+	else
+		util_debug(func, user_data,
+				"Assisted Listening Stream: RFU (0x%2.2x)",
+				value);
+
+done:
+	if (frame.iov_len)
+		util_hexdump(' ', frame.iov_base, frame.iov_len, func,
+				user_data);
+}
+
+static void ase_debug_broadcast_name(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	debug_string("Broadcast Name", data, len, func, user_data);
+}
+
+static void ase_debug_extended(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	struct iovec frame = { (void *)data, len };
+	uint16_t value;
+
+	if (!util_iov_pull_le16(&frame, &value)) {
+		util_debug(func, user_data, "value: invalid size");
+		goto done;
+	}
+
+	util_debug(func, user_data, "Extended Metadata Type: 0x%4.4x", value);
+
+done:
+	if (frame.iov_len)
+		util_hexdump(' ', frame.iov_base, frame.iov_len, func,
+				user_data);
+}
+
+static void ase_debug_vendor(const uint8_t *data, uint8_t len,
+				util_debug_func_t func, void *user_data)
+{
+	struct iovec frame = { (void *)data, len };
+	uint16_t value;
+
+	if (!util_iov_pull_le16(&frame, &value)) {
+		util_debug(func, user_data, "value: invalid size");
+		goto done;
+	}
+
+	util_debug(func, user_data, "Company ID: 0x%4.4x", value);
+
+done:
+	if (frame.iov_len)
+		util_hexdump(' ', frame.iov_base, frame.iov_len, func,
+				user_data);
+}
+
 static const struct util_ltv_debugger ase_metadata_table[] = {
-	UTIL_LTV_DEBUG(0x01, ase_debug_preferred_context),
-	UTIL_LTV_DEBUG(0x02, ase_debug_context),
-	UTIL_LTV_DEBUG(0x03, ase_debug_program_info),
-	UTIL_LTV_DEBUG(0x04, ase_debug_language)
+	UTIL_LTV_DEBUG(BT_BAP_META_PREFERRED_CONTEXT,
+					ase_debug_preferred_context),
+	UTIL_LTV_DEBUG(BT_BAP_META_CONTEXT, ase_debug_context),
+	UTIL_LTV_DEBUG(BT_BAP_META_PROGRAM_INFO, ase_debug_program_info),
+	UTIL_LTV_DEBUG(BT_BAP_META_LANGUAGE, ase_debug_language),
+	UTIL_LTV_DEBUG(BT_BAP_META_CCID_LIST, ase_debug_ccid_list),
+	UTIL_LTV_DEBUG(BT_BAP_META_PARENTAL_RATING, ase_debug_parental_rating),
+	UTIL_LTV_DEBUG(BT_BAP_META_PROGRAM_INFO_URI,
+					ase_debug_program_info_uri),
+	UTIL_LTV_DEBUG(BT_BAP_META_AUDIO_ACTIVE_STATE,
+					ase_debug_audio_active_state),
+	UTIL_LTV_DEBUG(BT_BAP_META_BCAST_IMMEDIATE, ase_debug_bcast_immediate),
+	UTIL_LTV_DEBUG(BT_BAP_META_ASSISTED_LISTENING,
+					ase_debug_assisted_listening),
+	UTIL_LTV_DEBUG(BT_BAP_META_BROADCAST_NAME, ase_debug_broadcast_name),
+	UTIL_LTV_DEBUG(BT_BAP_META_EXTENDED, ase_debug_extended),
+	UTIL_LTV_DEBUG(BT_BAP_META_VENDOR, ase_debug_vendor)
 };
 
 bool bt_bap_debug_metadata(void *data, size_t len, util_debug_func_t func,
