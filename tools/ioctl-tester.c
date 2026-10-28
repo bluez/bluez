@@ -918,7 +918,7 @@ int main(int argc, char *argv[])
 	test_ioctl("Set Pkt Type - 2-DH", &set_pkt_type_2dh,
 				NULL, test_ioctl_common);
 
-	test_ioctl("Set Pkt Type - 2-DH", &set_pkt_type_3dh,
+	test_ioctl("Set Pkt Type - 3-DH", &set_pkt_type_3dh,
 				NULL, test_ioctl_common);
 
 	test_ioctl("Set Pkt Type - ALL", &set_pkt_type_all,
