@@ -49,19 +49,10 @@
 
 #define BAP_PROCESS_TIMEOUT 10
 
-#define BAP_FREQ_LTV_TYPE 1
-#define BAP_DURATION_LTV_TYPE 2
-#define BAP_CHANNEL_ALLOCATION_LTV_TYPE 3
-#define BAP_FRAME_LEN_LTV_TYPE 4
 #define CODEC_SPECIFIC_CONFIGURATION_MASK (\
-		(1<<BAP_FREQ_LTV_TYPE)|\
-		(1<<BAP_DURATION_LTV_TYPE)|\
-		(1<<BAP_FRAME_LEN_LTV_TYPE))
-
-#define BAP_METADATA_PREF_CONTEXT_LTV_TYPE	0x01
-#define BAP_METADATA_CONTEXT_LTV_TYPE		0x02
-#define BAP_METADATA_PROGRAM_INFO_LTV_TYPE	0x03
-#define BAP_METADATA_LANGUAGE_LTV_TYPE		0x04
+		(1<<BT_BAP_CC_FREQ)|\
+		(1<<BT_BAP_CC_DURATION)|\
+		(1<<BT_BAP_CC_FRAME_LENGTH))
 
 struct bt_bap_pac_changed {
 	unsigned int id;
@@ -2569,7 +2560,7 @@ static void bap_sink_get_allocation(size_t i, uint8_t l, uint8_t t,
 
 static unsigned int bap_bcast_get_location(struct bt_bap_stream *stream)
 {
-	uint8_t type = BAP_CHANNEL_ALLOCATION_LTV_TYPE;
+	uint8_t type = BT_BAP_CC_LOCATION;
 	uint32_t allocation = 0;
 	struct iovec *caps;
 
@@ -3432,9 +3423,9 @@ static void bap_metadata_process(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 	uint16_t context;
 
 	switch (t) {
-	case BAP_METADATA_PREF_CONTEXT_LTV_TYPE:
+	case BT_BAP_META_PREFERRED_CONTEXT:
 		break;
-	case BAP_METADATA_CONTEXT_LTV_TYPE:
+	case BT_BAP_META_CONTEXT:
 		if (l != sizeof(context)) {
 			ascs_ase_rsp_add(data->rsp, data->ep->id,
 					BT_ASCS_RSP_METADATA_INVALID, t);
@@ -3450,8 +3441,8 @@ static void bap_metadata_process(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 		}
 
 		break;
-	case BAP_METADATA_PROGRAM_INFO_LTV_TYPE:
-	case BAP_METADATA_LANGUAGE_LTV_TYPE:
+	case BT_BAP_META_PROGRAM_INFO:
+	case BT_BAP_META_LANGUAGE:
 		break;
 	default:
 		ascs_ase_rsp_add(data->rsp, data->ep->id,
@@ -7649,17 +7640,17 @@ static void check_pac_caps_ltv(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 	uint16_t frame_len;
 
 	switch (t) {
-	case BAP_FREQ_LTV_TYPE:
+	case BT_BAP_CAP_FREQ:
 		mask = get_le16(v);
 
 		if (mask & (1 << (bis_v[0] - 1)))
 			compare_data->data32 |= 1<<t;
 		break;
-	case BAP_DURATION_LTV_TYPE:
+	case BT_BAP_CAP_DURATION:
 		if ((v[0]) & (1 << bis_v[0]))
 			compare_data->data32 |= 1<<t;
 		break;
-	case BAP_FRAME_LEN_LTV_TYPE:
+	case BT_BAP_CAP_FRAME_LENGTH:
 		min = get_le16(v);
 		max = get_le16(v + 2);
 		frame_len = get_le16(bis_v);
@@ -7798,7 +7789,7 @@ static struct bt_ltv_match bap_check_bis(uint32_t sink_loc, struct queue *pacs,
 	compare_data.found = true;
 
 	if (sink_loc) {
-		uint8_t type = BAP_CHANNEL_ALLOCATION_LTV_TYPE;
+		uint8_t type = BT_BAP_CC_LOCATION;
 
 		compare_data.data32 = sink_loc;
 		util_ltv_foreach(bis_data->iov_base, bis_data->iov_len, &type,
