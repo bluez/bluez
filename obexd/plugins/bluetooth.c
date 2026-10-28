@@ -93,7 +93,6 @@ done:
 drop:
 	error("%s", err->message);
 	g_io_channel_shutdown(io, TRUE, NULL);
-	return;
 }
 
 static DBusMessage *invalid_args(DBusMessage *msg)
@@ -329,12 +328,9 @@ static void name_acquired(DBusConnection *conn, void *user_data)
 		if (profile->path != NULL)
 			continue;
 
-		if (register_profile(profile) < 0) {
-			error("bluetooth: Failed to register profile %s",
-							profile->path);
-			g_free(profile->path);
-			profile->path = NULL;
-		}
+		if (register_profile(profile) < 0)
+			error("bluetooth: Failed to register profile UUID %s",
+			      profile->uuid);
 	}
 }
 
@@ -484,9 +480,10 @@ static int bluetooth_init(void)
 {
 	return logind_register(bluetooth_init_cb, bluetooth_exit_cb);
 }
+
 static void bluetooth_exit(void)
 {
-	return logind_unregister(bluetooth_init_cb, bluetooth_exit_cb);
+	logind_unregister(bluetooth_init_cb, bluetooth_exit_cb);
 }
 
 OBEX_PLUGIN_DEFINE(bluetooth, bluetooth_init, bluetooth_exit)
