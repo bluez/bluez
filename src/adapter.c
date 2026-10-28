@@ -302,6 +302,7 @@ struct btd_adapter {
 					 * without delay */
 	uint8_t discovery_type;		/* current active discovery type */
 	uint8_t discovery_enable;	/* discovery enabled/disabled */
+	unsigned int le_audio_active;	/* Active ASHA streams */
 	bool discovery_suspended;	/* discovery has been suspended */
 	bool discovery_discoverable;	/* discoverable while discovering */
 	GSList *discovery_list;		/* list of discovery clients */
@@ -1833,6 +1834,8 @@ static void discovery_remove(struct discovery_client *client)
 }
 
 static void trigger_start_discovery(struct btd_adapter *adapter, guint delay);
+static int update_discovery_filter(struct btd_adapter *adapter);
+static uint8_t discovery_scan_type(struct btd_adapter *adapter, uint8_t type);
 
 static struct discovery_client *discovery_complete(struct btd_adapter *adapter,
 						uint8_t status)
@@ -1867,6 +1870,7 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 	struct discovery_client *client;
 	const struct mgmt_cp_start_discovery *rp = param;
+	uint8_t type;
 
 	DBG("status 0x%02x", status);
 
@@ -1911,6 +1915,16 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 
 		discovery_complete(adapter, status);
 
+		/* Audio or filters may change while START is pending. */
+		type = adapter->current_discovery_filter ?
+				adapter->current_discovery_filter->type :
+				get_scan_type(adapter);
+		type = discovery_scan_type(adapter, type);
+
+		if (!adapter->discovery_suspended &&
+						adapter->discovery_type != type)
+			trigger_start_discovery(adapter, 0);
+
 		if (adapter->discovering)
 			return;
 
@@ -1934,15 +1948,52 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 	trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT * 2);
 }
 
+/*
+ * Defer BR/EDR discovery during ASHA streaming, leaving LE discovery available.
+ * A zero result means the client requested only BR/EDR discovery.
+ */
+static uint8_t discovery_scan_type(struct btd_adapter *adapter, uint8_t type)
+{
+	if ((type & SCAN_TYPE_BREDR) && btd_adapter_le_audio_active(adapter)) {
+		DBG("LE audio active: deferring BR/EDR inquiry");
+		type &= ~SCAN_TYPE_BREDR;
+	}
+
+	return type;
+}
+
+static void defer_discovery(struct btd_adapter *adapter)
+{
+	struct discovery_client *client;
+
+	/* Do not leave a new BR/EDR-only StartDiscovery call unanswered. */
+	client = discovery_complete(adapter, MGMT_STATUS_BUSY);
+	if (client) {
+		discovery_remove(client);
+
+		if (adapter->discovery_list)
+			update_discovery_filter(adapter);
+
+		return;
+	}
+
+	/* Keep accepted sessions until audio releases the adapter. */
+	trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT);
+}
+
 static bool start_discovery_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct mgmt_cp_start_service_discovery *sd_cp;
+	size_t sd_len;
 	uint8_t new_type;
 
 	DBG("");
 
 	adapter->discovery_idle_timeout = 0;
+
+	if (!adapter->discovery_list || adapter->discovery_suspended)
+		return FALSE;
 
 	/* If we're doing filtered discovery, it must be quickly restarted */
 	adapter->no_scan_restart_delay = !!adapter->current_discovery_filter;
@@ -1950,7 +2001,7 @@ static bool start_discovery_timeout(gpointer user_data)
 	DBG("adapter->current_discovery_filter == %d",
 	    !!adapter->current_discovery_filter);
 
-	new_type = get_scan_type(adapter);
+	new_type = discovery_scan_type(adapter, get_scan_type(adapter));
 
 	if (adapter->discovery_enable == 0x01) {
 		struct mgmt_cp_stop_discovery cp;
@@ -1999,6 +2050,12 @@ static bool start_discovery_timeout(gpointer user_data)
 		struct mgmt_cp_start_discovery cp;
 
 		cp.type = new_type;
+
+		if (!cp.type) {
+			defer_discovery(adapter);
+			return FALSE;
+		}
+
 		mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
 					adapter->dev_id, sizeof(cp), &cp,
 					start_discovery_complete, adapter,
@@ -2007,17 +2064,31 @@ static bool start_discovery_timeout(gpointer user_data)
 		return FALSE;
 	}
 
-	/* Filtered discovery is required */
-	sd_cp = adapter->current_discovery_filter;
+	/* Filtered discovery is required. Keep the cached client filter intact;
+	 * it is needed to restore BR/EDR discovery after audio stops.
+	 */
+	sd_len = sizeof(*sd_cp) +
+		btohs(adapter->current_discovery_filter->uuid_count) * 16;
+	sd_cp = util_memdup(adapter->current_discovery_filter, sd_len);
+	if (!sd_cp)
+		return FALSE;
+
+	sd_cp->type = discovery_scan_type(adapter, sd_cp->type);
+	if (!sd_cp->type) {
+		free(sd_cp);
+		defer_discovery(adapter);
+		return FALSE;
+	}
 
 	DBG("sending MGMT_OP_START_SERVICE_DISCOVERY %d, %d, %d",
 				sd_cp->rssi, sd_cp->type,
 				btohs(sd_cp->uuid_count));
 
 	mgmt_send(adapter->mgmt, MGMT_OP_START_SERVICE_DISCOVERY,
-		  adapter->dev_id, sizeof(*sd_cp) +
-		  btohs(sd_cp->uuid_count) * 16,
+		  adapter->dev_id, sd_len,
 		  sd_cp, start_discovery_complete, adapter, NULL);
+
+	free(sd_cp);
 
 	return FALSE;
 }
@@ -6264,6 +6335,44 @@ struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
 	__sync_fetch_and_add(&adapter->ref_count, 1);
 
 	return adapter;
+}
+
+void btd_adapter_le_audio_ref(struct btd_adapter *adapter)
+{
+	if (!adapter)
+		return;
+
+	adapter->le_audio_active++;
+
+	/* First active stream: re-evaluate any running discovery so an
+	 * in-progress BR/EDR inquiry is dropped right away rather than only at
+	 * the next ~5 s re-arm.
+	 */
+	if (adapter->le_audio_active == 1 && adapter->discovery_list &&
+						!adapter->discovery_suspended) {
+		DBG("LE audio active: restarting discovery without BR/EDR");
+		trigger_start_discovery(adapter, 0);
+	}
+}
+
+void btd_adapter_le_audio_unref(struct btd_adapter *adapter)
+{
+	if (!adapter || !adapter->le_audio_active)
+		return;
+
+	adapter->le_audio_active--;
+
+	/* Restore requested discovery after the last stream stops. */
+	if (adapter->le_audio_active == 0 && adapter->discovery_list &&
+						!adapter->discovery_suspended) {
+		DBG("LE audio idle: restoring BR/EDR discovery");
+		trigger_start_discovery(adapter, 0);
+	}
+}
+
+bool btd_adapter_le_audio_active(struct btd_adapter *adapter)
+{
+	return adapter && adapter->le_audio_active > 0;
 }
 
 void btd_adapter_unref(struct btd_adapter *adapter)
