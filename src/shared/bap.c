@@ -7557,7 +7557,7 @@ static void set_base_subgroup(void *data, void *user_data)
 		for (entry = queue_get_entries(base->subgroups);
 						entry; entry = entry->next) {
 			subgroup = entry->data;
-			same_meta = compare_ltv(subgroup->meta,	stream->meta);
+			same_meta = compare_ltv(subgroup->meta, stream->meta);
 			if (same_meta)
 				break;
 		}
