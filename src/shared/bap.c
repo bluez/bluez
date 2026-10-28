@@ -3443,6 +3443,39 @@ static void bap_metadata_process(size_t i, uint8_t l, uint8_t t, uint8_t *v,
 		break;
 	case BT_BAP_META_PROGRAM_INFO:
 	case BT_BAP_META_LANGUAGE:
+	case BT_BAP_META_CCID_LIST:
+	case BT_BAP_META_PROGRAM_INFO_URI:
+		break;
+	case BT_BAP_META_BROADCAST_NAME:
+		if (l < 4 || l > 128) {
+			ascs_ase_rsp_add(data->rsp, data->ep->id,
+					BT_ASCS_RSP_METADATA_INVALID, t);
+			data->err = BT_ASCS_RSP_METADATA_INVALID;
+		}
+		break;
+	case BT_BAP_META_BCAST_IMMEDIATE:
+		if (l) {
+			ascs_ase_rsp_add(data->rsp, data->ep->id,
+					BT_ASCS_RSP_METADATA_INVALID, t);
+			data->err = BT_ASCS_RSP_METADATA_INVALID;
+		}
+		break;
+	case BT_BAP_META_EXTENDED:
+	case BT_BAP_META_VENDOR:
+		if (l < sizeof(uint16_t)) {
+			ascs_ase_rsp_add(data->rsp, data->ep->id,
+					BT_ASCS_RSP_METADATA_INVALID, t);
+			data->err = BT_ASCS_RSP_METADATA_INVALID;
+		}
+		break;
+	case BT_BAP_META_PARENTAL_RATING:
+	case BT_BAP_META_AUDIO_ACTIVE_STATE:
+	case BT_BAP_META_ASSISTED_LISTENING:
+		if (l != sizeof(uint8_t)) {
+			ascs_ase_rsp_add(data->rsp, data->ep->id,
+					BT_ASCS_RSP_METADATA_INVALID, t);
+			data->err = BT_ASCS_RSP_METADATA_INVALID;
+		}
 		break;
 	default:
 		ascs_ase_rsp_add(data->rsp, data->ep->id,
