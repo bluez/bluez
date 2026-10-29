@@ -90,8 +90,9 @@ The following additional options apply:
 
 ``--kernel=<image>``
         Kernel image (or built Linux source tree root) to
-	use.  See **test-runner(1)** and `tester.config` for required
-	kernel config.
+	use, either a QEMU ``bzImage`` or a User Mode Linux binary, see
+	`User Mode Linux`_.  See **test-runner(1)** and `tester.config`
+	for required kernel config.
 
 	If not provided, value from `FUNCTIONAL_TESTING_KERNEL`
 	environment variable is used. If none, no image is used.
@@ -167,7 +168,9 @@ A test run consists of the Pytest process (the *upper tester*, running on
 the developer machine) and one or more *VM hosts*.  Each VM host is a
 separate **test-runner(1)** instance, i.e. a QEMU virtual machine booting
 the given kernel image with the developer machine's root filesystem passed
-through read-only.  The VM hosts are wired together by a Bluetooth
+through read-only.  With a User Mode Linux kernel the VM hosts are UML
+processes instead, see `User Mode Linux`_.  The VM hosts are wired
+together by a Bluetooth
 controller: either the emulated **btvirt(1)** controller, or a real USB
 controller passed through to the VM::
 
@@ -249,6 +252,46 @@ Writing test code that runs in the VM, and the available VM-side
 facilities, are documented by `pytest-bluezenv
 <https://pypi.org/project/pytest-bluezenv/>`__.
 
+User Mode Linux
+---------------
+
+When ``--kernel`` is a User Mode Linux (UML) binary, or a built kernel tree
+with a ``linux`` binary and no ``bzImage``, **test-runner(1)** runs the VM
+hosts as UML processes instead of QEMU, e.g. on machines without KVM
+support, with the developer machine's root filesystem mounted read-only
+through hostfs. The channels are passed to it with ``-o`` as kernel
+parameters: a single ``btvirt`` process serves every device of the VM hosts
+over vhost-user (see `virtio.rst <virtio.rst>`_), the controllers with
+``-V``, and the control and log channels as virtio consoles with
+``--console``::
+
+    VM host #0 (UML)            developer machine              VM host #1 (UML)
+    ┌────────────┐            ┌─────────────────┐            ┌────────────┐
+    │ virtio_bt  ├─ vhost ────┤     btvirt      ├──── vhost ─┤ virtio_bt  │
+    │ hvc        ├─ vhost ────┤ controllers,    ├──── vhost ─┤ hvc        │
+    └────────────┘            │ consoles        │            └────────────┘
+                              └────────┬────────┘
+                                       │ control, log
+                                    pytest
+
+The shared directory is mounted with hostfs instead of 9p. There is no
+``tty`` channel, so ``test/test-functional-attach`` is not available, and
+controllers cannot be passed through, so ``--usb`` and ``--pcie`` need
+QEMU.
+
+The VM hosts run on real time, with test-runner ``-R``. Time travel, which
+makes the kernel testers faster, makes the functional tests slower: they
+exchange traffic between two or three guests, and in lock-step only one
+guest runs at a time, each exchange taking a round trip to the calendar.
+Wall clock time of ``make check-functional`` with 4 workers, same kernel
+version and machine, UML with seccomp, cut off at 78 s, and of
+``-k test_bluetoothctl``::
+
+    VM hosts             check-functional        test_bluetoothctl
+    KVM                  68 s, 49 tests run      20.1 s
+    UML                  78 s, 41 tests run      20.4 s
+    UML time travel      78 s, 12 tests run      25.8 s
+
 
 REQUIREMENTS
 ============
@@ -258,7 +301,7 @@ General
 
 The following are needed:
 
-- QEmu (x86_64)
+- QEmu (x86_64), unless running User Mode Linux VM hosts
 - ``dbus-daemon`` available
 
 Recommended:
@@ -317,6 +360,22 @@ configuration enabled:
 	CONFIG_PTP_1588_CLOCK_KVM=y
 	CONFIG_PTP_1588_CLOCK_VMCLOCK=y
 
+A User Mode Linux kernel is built with ``ARCH=um`` from the same config,
+and needs in addition:
+
+.. code-block::
+
+	CONFIG_HOSTFS=y
+	CONFIG_VIRTIO_UML=y
+
+.. code-block::
+
+	make ARCH=um defconfig
+	scripts/kconfig/merge_config.sh -m .config ../bluez/doc/tester.config
+	make ARCH=um olddefconfig linux
+
+The KVM and PTP options above do not apply to User Mode Linux.
+
 USB
 ---
 
@@ -347,6 +406,13 @@ Run all tests
 	$ test/test-functional
 
 Test output is logged in ``test-functional.log``.
+
+Run all tests under User Mode Linux
+-----------------------------------
+
+.. code-block::
+
+	$ test/test-functional --kernel=/pathto/linux
 
 Show output during run
 ----------------------
