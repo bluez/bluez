@@ -29,7 +29,8 @@ OPTIONS
 :-k/--kernel=<image>: Kernel image (bzImage) or User Mode Linux binary
 :-F/--virtiofs[=<path>]: Path to virtiofsd, or no to disable virtio-fs
 :-T/--time-travel: Run a User Mode Linux kernel on simulated time, with
-    btvirt as time travel calendar
+    btvirt as time travel calendar (default if the kernel supports it)
+:-R/--real-time: Run a User Mode Linux kernel on real time
 :-o/--option=<opt>: Additional argument passed to QEMU, or kernel
     parameter with User Mode Linux
 :-h/--help: Show help options
@@ -152,12 +153,14 @@ Bluetooth controller, or joins an external simulated clock with
 ``time-travel=ext:<socket>``. See `virtio.rst <virtio.rst>`_. ``-u``,
 ``-U``, ``-P``, ``-q`` and ``-H`` need QEMU.
 
-With ``-T``, test-runner starts **btvirt(1)** ``--time`` as time travel
-calendar and runs the guest on its simulated clock: time only advances when
-the guest waits, so it skips idle time and timeouts take no real time, while
-the guest sees the same timings on every run. This needs a kernel with
-``CONFIG_UML_TIME_TRAVEL_SUPPORT``, which test-runner checks; without
-``-T`` the same kernel runs on real time.
+If the kernel has ``CONFIG_UML_TIME_TRAVEL_SUPPORT``, test-runner starts
+**btvirt(1)** ``--time`` as time travel calendar and runs the guest on its
+simulated clock: time only advances when the guest waits, so it skips idle
+time and timeouts take no real time, while the guest sees the same timings
+on every run. ``-R`` runs the guest on real time instead, and ``-T`` fails if
+the kernel has no time travel support. A ``time-travel`` kernel parameter
+given with ``-o``, e.g. to join the calendar of other guests, replaces the
+calendar of test-runner.
 
 Kernel
 ======
@@ -421,9 +424,9 @@ Running mgmt-tester under User Mode Linux
 	$ make ARCH=um olddefconfig linux
 	$ tools/test-runner -k <linux>/linux -- tools/mgmt-tester
 
-On simulated time, with a kernel that also has
-``CONFIG_UML_TIME_TRAVEL_SUPPORT=y``:
+With a kernel that also has ``CONFIG_UML_TIME_TRAVEL_SUPPORT=y`` this runs
+on simulated time; to run it on real time:
 
 .. code-block::
 
-	$ tools/test-runner -T -k <linux>/linux -- tools/mgmt-tester
+	$ tools/test-runner -R -k <linux>/linux -- tools/mgmt-tester

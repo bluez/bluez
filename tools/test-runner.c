@@ -66,7 +66,8 @@ static bool start_dbus_session;
 static bool start_daemon = false;
 static bool start_monitor = false;
 static bool qemu_host_cpu = false;
-static bool time_travel;
+/* Simulated time with User Mode Linux: -1 if supported by the kernel */
+static int time_travel = -1;
 static int num_devs = 0;
 static int num_emulator = 0;
 static const char *device_path = "/tmp/bt-server-bredr";
@@ -1224,8 +1225,13 @@ static int start_uml(void)
 	strv_append(&argv, "TESTAUDIO='%s'", audio_server ? audio_server : "");
 	strv_append(&argv, "TESTARGS='%s'", testargs);
 
-	for (i = 0; i < num_extra_opts; ++i)
+	for (i = 0; i < num_extra_opts; ++i) {
 		strv_append(&argv, "%s", extra_opts[i]);
+
+		/* Time travel mode given with -o, e.g. an external calendar */
+		if (!strncmp(extra_opts[i], "time-travel", 11))
+			time_travel = 0;
+	}
 
 	if (time_travel) {
 		calendar = start_calendar(dir);
@@ -2164,6 +2170,8 @@ static void usage(void)
 		"\t-F, --virtiofs[=<path>]  Virtiofsd path or 'no'\n"
 		"\t-T, --time-travel      Run User Mode Linux on simulated\n"
 		"\t                       time, with btvirt as calendar\n"
+		"\t                       (default if supported)\n"
+		"\t-R, --real-time        Run User Mode Linux on real time\n"
 		"\t-o, --option <opt>     Additional argument passed to QEMU,\n"
 		"\t                       or kernel parameter with User\n"
 		"\t                       Mode Linux\n"
@@ -2188,6 +2196,7 @@ static const struct option main_options[] = {
 	{ "option",  required_argument, NULL, 'o' },
 	{ "virtiofs", optional_argument, NULL, 'F' },
 	{ "time-travel", no_argument,   NULL, 'T' },
+	{ "real-time", no_argument,     NULL, 'R' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -2211,8 +2220,9 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "au::bdsl::mq:Hk:A::U:P:o:F::Tvh",
-						main_options, NULL);
+		opt = getopt_long(argc, argv,
+				"au::bdsl::mq:Hk:A::U:P:o:F::TRvh",
+				main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -2267,7 +2277,10 @@ int main(int argc, char *argv[])
 			extra_opts[num_extra_opts++] = optarg;
 			break;
 		case 'T':
-			time_travel = true;
+			time_travel = 1;
+			break;
+		case 'R':
+			time_travel = 0;
 			break;
 		case 'F':
 			virtiofs_auto = false;
@@ -2324,17 +2337,21 @@ int main(int argc, char *argv[])
 		}
 
 		if (time_travel && !uml_has_time_travel()) {
-			fprintf(stderr, "%s has no time travel support "
+			if (time_travel > 0) {
+				fprintf(stderr, "%s has no time travel support "
 					"(CONFIG_UML_TIME_TRAVEL_SUPPORT)\n",
 					kernel_image);
-			return EXIT_FAILURE;
+				return EXIT_FAILURE;
+			}
+
+			time_travel = 0;
 		}
 
 		printf("Using User Mode Linux kernel %s\n", kernel_image);
 		return start_uml();
 	}
 
-	if (time_travel) {
+	if (time_travel > 0) {
 		fprintf(stderr, "-T needs a User Mode Linux kernel\n");
 		return EXIT_FAILURE;
 	}
