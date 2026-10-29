@@ -39,6 +39,11 @@
 #include "src/profile.h"
 #include "src/service.h"
 #include "src/shared/util.h"
+#include "src/shared/queue.h"
+#include "src/shared/hci.h"
+#include "src/shared/att.h"
+#include "src/shared/gatt-client.h"
+#include "monitor/bt.h"
 
 #include "profiles/audio/asha.h"
 #include "profiles/audio/media.h"
@@ -51,6 +56,18 @@
 /* The default of 672 does not work */
 #define ASHA_CONNECTION_MTU 512
 
+/* HCI connection handles occupy 0x0000 through 0x0eff. Zero is unknown. */
+#define ASHA_NUM_HANDLES 0x0f00
+
+struct asha_adapter {
+	struct btd_adapter *adapter;
+	struct bt_hci *hci;
+	uint16_t intervals[ASHA_NUM_HANDLES];
+};
+
+static struct queue *asha_adapters;
+static struct queue *asha_streams;
+
 struct bt_asha_device {
 	struct bt_asha *asha;
 	struct btd_device *device;
@@ -61,6 +78,209 @@ struct bt_asha_device {
 
 	unsigned int resume_id;
 };
+
+static bool match_adapter(const void *data, const void *user_data)
+{
+	const struct asha_adapter *data_adapter = data;
+
+	return data_adapter->adapter == user_data;
+}
+
+static bool asha_get_handle(struct bt_asha_device *asha_dev, uint16_t *handle)
+{
+	struct bt_att *att;
+	struct l2cap_conninfo info;
+	socklen_t len = sizeof(info);
+	int fd;
+
+	if (!asha_dev->asha->client)
+		return false;
+
+	att = bt_gatt_client_get_att(asha_dev->asha->client);
+	fd = bt_att_get_fd(att);
+
+	/* The ATT socket identifies this link even when CoC is not open. */
+	if (fd < 0 || getsockopt(fd, SOL_L2CAP, L2CAP_CONNINFO,
+							&info, &len) < 0) {
+		DBG("Could not read ASHA connection handle");
+		return false;
+	}
+
+	if (len != sizeof(info) || info.hci_handle >= ASHA_NUM_HANDLES)
+		return false;
+
+	*handle = info.hci_handle;
+	return true;
+}
+
+static void asha_notify_interval(struct bt_asha_device *asha_dev,
+					uint16_t handle, uint16_t interval)
+{
+	/* Only announce an interval observed on this connection. */
+	if (!interval)
+		return;
+
+	DBG("ASHA connection h%u interval %u", handle, interval);
+
+	if (!bt_asha_set_connection_interval(asha_dev->asha, interval))
+		DBG("Could not send ASHA connection interval notification");
+}
+
+static void asha_send_interval(struct bt_asha_device *asha_dev)
+{
+	struct asha_adapter *data;
+	uint16_t handle;
+
+	data = queue_find(asha_adapters, match_adapter,
+					device_get_adapter(asha_dev->device));
+	if (!data || !asha_get_handle(asha_dev, &handle))
+		return;
+
+	asha_notify_interval(asha_dev, handle, data->intervals[handle]);
+}
+
+struct interval_update {
+	struct asha_adapter *adapter;
+	uint16_t handle;
+};
+
+static void asha_update_stream(void *data, void *user_data)
+{
+	struct bt_asha_device *asha_dev = data;
+	struct interval_update *update = user_data;
+	uint16_t handle;
+
+	if (device_get_adapter(asha_dev->device) != update->adapter->adapter ||
+			!asha_get_handle(asha_dev, &handle) ||
+			handle != update->handle)
+		return;
+
+	asha_notify_interval(asha_dev, handle,
+					update->adapter->intervals[handle]);
+}
+
+static void asha_conn_update(const void *param, uint8_t size, void *user_data)
+{
+	const struct bt_hci_evt_le_conn_update_complete *ev = param;
+	struct asha_adapter *data = user_data;
+	struct interval_update update;
+	uint16_t handle;
+
+	if (size != sizeof(*ev) || ev->status)
+		return;
+
+	handle = get_le16(&ev->handle);
+
+	if (handle >= ASHA_NUM_HANDLES)
+		return;
+
+	data->intervals[handle] = get_le16(&ev->interval);
+	update.adapter = data;
+	update.handle = handle;
+	queue_foreach(asha_streams, asha_update_stream, &update);
+}
+
+static void asha_conn_complete(const void *param, uint8_t size, void *user_data)
+{
+	const struct bt_hci_evt_le_conn_complete *ev = param;
+	struct asha_adapter *data = user_data;
+	uint16_t handle;
+
+	if (size != sizeof(*ev) || ev->status)
+		return;
+
+	handle = get_le16(&ev->handle);
+
+	if (handle < ASHA_NUM_HANDLES)
+		data->intervals[handle] = get_le16(&ev->interval);
+}
+
+static void asha_enhanced_conn_complete(const void *param, uint8_t size,
+							void *user_data)
+{
+	const struct bt_hci_evt_le_enhanced_conn_complete *ev = param;
+	struct asha_adapter *data = user_data;
+	uint16_t handle;
+
+	if (size != sizeof(*ev) || ev->status)
+		return;
+
+	handle = get_le16(&ev->handle);
+
+	if (handle < ASHA_NUM_HANDLES)
+		data->intervals[handle] = get_le16(&ev->interval);
+}
+
+static void asha_disconn_complete(const void *param, uint8_t size,
+							void *user_data)
+{
+	const struct bt_hci_evt_disconnect_complete *ev = param;
+	struct asha_adapter *data = user_data;
+	uint16_t handle;
+
+	if (size != sizeof(*ev) || ev->status)
+		return;
+
+	handle = get_le16(&ev->handle);
+
+	if (handle < ASHA_NUM_HANDLES)
+		data->intervals[handle] = 0;
+}
+
+static int asha_adapter_probe(struct btd_profile *profile,
+						struct btd_adapter *adapter)
+{
+	struct asha_adapter *data;
+
+	data = new0(struct asha_adapter, 1);
+	data->adapter = adapter;
+	data->hci = bt_hci_new_raw_device(btd_adapter_get_index(adapter));
+
+	if (!data->hci)
+		goto fail;
+
+	if (!bt_hci_register_subevent(data->hci, BT_HCI_EVT_LE_CONN_COMPLETE,
+					asha_conn_complete, data, NULL) ||
+		!bt_hci_register_subevent(data->hci,
+					BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE,
+				asha_enhanced_conn_complete, data, NULL) ||
+		!bt_hci_register_subevent(data->hci,
+					BT_HCI_EVT_LE_CONN_UPDATE_COMPLETE,
+					asha_conn_update, data, NULL) ||
+		!bt_hci_register(data->hci, BT_HCI_EVT_DISCONNECT_COMPLETE,
+					asha_disconn_complete, data, NULL))
+		goto fail;
+
+	if (!asha_adapters)
+		asha_adapters = queue_new();
+
+	queue_push_tail(asha_adapters, data);
+	return 0;
+
+fail:
+	bt_hci_unref(data->hci);
+	free(data);
+	return -EIO;
+}
+
+static void asha_adapter_remove(struct btd_profile *profile,
+						struct btd_adapter *adapter)
+{
+	struct asha_adapter *data;
+
+	data = queue_remove_if(asha_adapters, match_adapter, adapter);
+
+	if (!data)
+		return;
+
+	bt_hci_unref(data->hci);
+	free(data);
+
+	if (queue_isempty(asha_adapters)) {
+		queue_destroy(asha_adapters, NULL);
+		asha_adapters = NULL;
+	}
+}
 
 static char *make_endpoint_path(struct bt_asha_device *asha_dev)
 {
@@ -106,6 +326,8 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	}
 
 	asha_dev->io = io;
+
+	asha_send_interval(asha_dev);
 
 	bt_asha_start(asha_dev->asha, conn_data->cb,
 					conn_data->cb_user_data);
@@ -350,6 +572,11 @@ static int asha_source_device_probe(struct btd_service *service)
 	asha_dev->asha = bt_asha_new();
 	asha_dev->io = NULL;
 
+	if (!asha_streams)
+		asha_streams = queue_new();
+
+	queue_push_tail(asha_streams, asha_dev);
+
 	btd_service_set_user_data(service, asha_dev);
 
 	return 0;
@@ -369,6 +596,13 @@ static void asha_source_device_remove(struct btd_service *service)
 		/* Can this actually happen? */
 		DBG("Not handling ASHA profile");
 		return;
+	}
+
+	queue_remove(asha_streams, asha_dev);
+
+	if (queue_isempty(asha_streams)) {
+		queue_destroy(asha_streams, NULL);
+		asha_streams = NULL;
 	}
 
 	bt_asha_free(asha_dev->asha);
@@ -502,6 +736,9 @@ static struct btd_profile asha_source_profile = {
 	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= ASHA_PROFILE_UUID,
 	.experimental	= true,
+
+	.adapter_probe	= asha_adapter_probe,
+	.adapter_remove	= asha_adapter_remove,
 
 	.device_probe	= asha_source_device_probe,
 	.device_remove	= asha_source_device_remove,
