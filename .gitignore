@@ -99,6 +99,8 @@ unit/test-tester
 unit/test-mainloop
 unit/test-ringbuf
 unit/test-queue
+unit/test-asha-conn
+unit/test-asha-interval
 unit/test-util
 unit/test-eir
 unit/test-uuid
@@ -112,6 +114,8 @@ unit/test-lib
 unit/test-mgmt
 unit/test-uhid
 unit/test-hfp
+unit/test-asha-interval
+unit/test-asha-conn
 unit/test-crypto
 unit/test-ecc
 unit/test-hog
