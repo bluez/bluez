@@ -2473,8 +2473,10 @@ done:
 	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
 
 	if (err) {
-		/* Fallback to LE bearer if supported */
-		if (err == -EHOSTDOWN && dev->le && !dev->le_state.connected) {
+		/* Only general connection requests may fall back to LE */
+		if (err == -EHOSTDOWN && dev->le && !dev->le_state.connected &&
+				dbus_message_is_method_call(dev->connect,
+						DEVICE_INTERFACE, "Connect")) {
 			err = device_connect_le(dev);
 			if (err == 0)
 				return;
@@ -3177,9 +3179,11 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
 	}
 
 	if (err) {
-		/* Fallback to LE bearer if supported */
+		/* Only general connection requests may fall back to LE */
 		if (err == -EHOSTDOWN && bdaddr_type == BDADDR_BREDR &&
-				dev->le && !dev->le_state.connected) {
+				dev->le && !dev->le_state.connected &&
+				dbus_message_is_method_call(req->msg,
+						DEVICE_INTERFACE, "Connect")) {
 			err = device_connect_le(dev);
 			if (err == 0)
 				goto done;
