@@ -280,6 +280,8 @@ struct btd_adapter {
 	char *short_name;		/* controller short name */
 	uint32_t supported_settings;	/* controller supported settings */
 	uint32_t pending_settings;	/* pending controller settings */
+	uint32_t pending_values;	/* values of pending settings */
+	struct queue *pending_props;	/* requests waiting a pending setting */
 	uint32_t power_state;		/* the power state */
 	uint32_t current_settings;	/* current controller settings */
 
@@ -745,6 +747,44 @@ struct set_mode_data {
 	uint8_t value;
 };
 
+struct pending_prop {
+	uint32_t setting;
+	GDBusPendingPropertySet id;
+	uint8_t status;
+};
+
+static bool reply_pending_prop(const void *data, const void *match_data)
+{
+	const struct pending_prop *prop = data;
+	const struct pending_prop *done = match_data;
+
+	if (!(prop->setting & done->setting))
+		return false;
+
+	if (done->status == MGMT_STATUS_SUCCESS)
+		g_dbus_pending_property_success(prop->id);
+	else if (done->status == MGMT_STATUS_RFKILLED)
+		g_dbus_pending_property_error(prop->id,
+					ERROR_INTERFACE ".Blocked",
+					mgmt_errstr(done->status));
+	else
+		g_dbus_pending_property_error(prop->id,
+					ERROR_INTERFACE ".Failed",
+					mgmt_errstr(done->status));
+
+	return true;
+}
+
+/* Reply to the requests that waited for a pending setting change */
+static void reply_pending_props(struct btd_adapter *adapter,
+					uint32_t setting, uint8_t status)
+{
+	struct pending_prop done = { .setting = setting, .status = status };
+
+	queue_remove_all(adapter->pending_props, reply_pending_prop, &done,
+									free);
+}
+
 static void set_mode_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -761,6 +801,7 @@ static void set_mode_complete(uint8_t status, uint16_t length,
 		if (status != MGMT_STATUS_RFKILLED &&
 		    data->setting & MGMT_SETTING_POWERED)
 			reset_power_state_target(adapter, data->value);
+		reply_pending_props(adapter, data->setting, status);
 		return;
 	}
 
@@ -770,6 +811,7 @@ static void set_mode_complete(uint8_t status, uint16_t length,
 	 * event handling functions here.
 	 */
 	new_settings_callback(adapter->dev_id, length, param, adapter);
+	reply_pending_props(adapter, data->setting, status);
 }
 
 static void remove_temporary_devices(struct btd_adapter *adapter)
@@ -783,6 +825,17 @@ static void remove_temporary_devices(struct btd_adapter *adapter)
 		if (device_is_temporary(dev))
 			btd_adapter_remove_device(adapter, dev);
 	}
+}
+
+static void set_pending(struct btd_adapter *adapter, uint32_t setting,
+							uint8_t value)
+{
+	adapter->pending_settings |= setting;
+
+	if (value)
+		adapter->pending_values |= setting;
+	else
+		adapter->pending_values &= ~setting;
 }
 
 static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
@@ -828,7 +881,7 @@ static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
 	if (mgmt_send(adapter->mgmt, opcode,
 				adapter->dev_id, sizeof(cp), &cp,
 				set_mode_complete, data, g_free) > 0) {
-		adapter->pending_settings |= setting;
+		set_pending(adapter, setting, mode);
 		return true;
 	}
 	g_free(data);
@@ -3149,6 +3202,7 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 		if (status != MGMT_STATUS_RFKILLED &&
 		    data->setting & MGMT_SETTING_POWERED)
 			reset_power_state_target(adapter, data->value);
+		reply_pending_props(adapter, data->setting, status);
 		return;
 	}
 
@@ -3160,6 +3214,7 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 	 * event handling functions here.
 	 */
 	new_settings_callback(adapter->dev_id, length, param, adapter);
+	reply_pending_props(adapter, data->setting, status);
 }
 
 static void clear_discoverable(struct btd_adapter *adapter)
@@ -3199,9 +3254,23 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 
 	dbus_message_iter_get_basic(value, &enable);
 
+	/* A pending change, e.g. bondable set when an agent registers,
+	 * already does what is requested if it sets the same value: reply
+	 * once it completed instead of sending the command again.
+	 */
 	if (adapter->pending_settings & setting) {
-		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Busy",
-						NULL);
+		struct pending_prop *prop;
+
+		if (!!(adapter->pending_values & setting) != !!enable) {
+			g_dbus_pending_property_error(id,
+						ERROR_INTERFACE ".Busy", NULL);
+			return;
+		}
+
+		prop = new0(struct pending_prop, 1);
+		prop->setting = setting;
+		prop->id = id;
+		queue_push_tail(adapter->pending_props, prop);
 		return;
 	}
 
@@ -3289,7 +3358,7 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 
 	if (mgmt_send(adapter->mgmt, opcode, adapter->dev_id, len, param,
 			property_set_mode_complete, data, g_free) > 0) {
-		adapter->pending_settings |= setting;
+		set_pending(adapter, setting, mode);
 		return;
 	}
 
@@ -6244,6 +6313,9 @@ static void adapter_free(gpointer user_data)
 
 	queue_destroy(adapter->exp_pending, cancel_exp_pending);
 
+	reply_pending_props(adapter, UINT32_MAX, MGMT_STATUS_FAILED);
+	queue_destroy(adapter->pending_props, NULL);
+
 	/*
 	 * Unregister all handlers for this specific index since
 	 * the adapter bound to them is no longer valid.
@@ -7311,6 +7383,7 @@ static struct btd_adapter *btd_adapter_new(uint16_t index)
 	adapter->auths = g_queue_new();
 	adapter->exps = queue_new();
 	adapter->exp_pending = queue_new();
+	adapter->pending_props = queue_new();
 
 	return btd_adapter_ref(adapter);
 }
