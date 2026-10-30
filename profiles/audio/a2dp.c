@@ -2796,6 +2796,13 @@ static void confirm_cb(GIOChannel *io, gpointer data)
 		goto drop;
 
 	chan = queue_find(server->channels, match_by_device, device);
+
+	/* The channel of a previous link, if its disconnection was not
+	 * processed yet: this is not a transport channel of it.
+	 */
+	if (chan && chan->session && avdtp_check_disconnected(chan->session))
+		chan = queue_find(server->channels, match_by_device, device);
+
 	if (chan) {
 		struct a2dp_setup *setup;
 
