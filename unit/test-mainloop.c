@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include "src/shared/mainloop.h"
+#include "src/shared/timeout.h"
 
 
 #define test_failed_msg(msg) \
@@ -153,6 +154,42 @@ static void test_timeout(struct test_data *data)
 	check(data->destroys == 1);
 }
 
+static unsigned int self_remove_id;
+
+static bool readded_callback(void *user_data)
+{
+	struct test_data *data = user_data;
+
+	data->new_calls++;
+	mainloop_quit();
+
+	return false;
+}
+
+static bool self_remove_callback(void *user_data)
+{
+	struct test_data *data = user_data;
+
+	data->old_calls++;
+	timeout_remove(self_remove_id);
+	check(data->destroys == 1);
+	check(timeout_add(1, readded_callback, data, destroy) > 0);
+
+	return false;
+}
+
+static void test_timeout_remove_self(struct test_data *data)
+{
+	mainloop_init();
+
+	self_remove_id = timeout_add(1, self_remove_callback, data, destroy);
+	check(self_remove_id > 0);
+	check(mainloop_run() == EXIT_SUCCESS);
+	check(data->old_calls == 1);
+	check(data->new_calls == 1);
+	check(data->destroys == 2);
+}
+
 #define define_test(name, function)				\
 	do {							\
 		static struct test_data data = {};		\
@@ -167,5 +204,6 @@ int main(int argc, char *argv[])
 	define_test("Test Modify File Descriptor", test_modify_fd);
 	define_test("Test Re-Add Other Callback", test_readd_other_callback);
 	define_test("Test Timeout", test_timeout);
+	define_test("Test Timeout Remove Self", test_timeout_remove_self);
 	return 0;
 }

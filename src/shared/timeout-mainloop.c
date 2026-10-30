@@ -20,14 +20,28 @@ struct timeout_data {
 	timeout_destroy_func_t destroy;
 	unsigned int timeout;
 	void *user_data;
+	bool running;
+	bool removed;
 };
 
 static void timeout_callback(int id, void *user_data)
 {
 	struct timeout_data *data = user_data;
+	bool ret;
 
-	if (data->func(data->user_data) &&
-			!mainloop_modify_timeout(data->id, data->timeout))
+	data->running = true;
+	ret = data->func(data->user_data);
+	data->running = false;
+
+	/* The callback removed the timeout, so data was only kept around to
+	 * be checked here and its id may already be reused.
+	 */
+	if (data->removed) {
+		free(data);
+		return;
+	}
+
+	if (ret && !mainloop_modify_timeout(data->id, data->timeout))
 		return;
 
 	mainloop_remove_timeout(data->id);
@@ -39,6 +53,11 @@ static void timeout_destroy(void *user_data)
 
 	if (data->destroy)
 		data->destroy(data->user_data);
+
+	if (data->running) {
+		data->removed = true;
+		return;
+	}
 
 	free(data);
 }
