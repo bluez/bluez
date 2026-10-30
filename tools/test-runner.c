@@ -232,6 +232,39 @@ static bool is_uml_guest(void)
 	return uml;
 }
 
+#define VIRTIO_UML_DRIVER "/sys/bus/platform/drivers/virtio-uml"
+
+/* User Mode Linux unbinds its virtio devices when powering off, in atomic
+ * context where their drivers cannot sleep, so unbind them before.
+ */
+static void uml_unbind_virtio(void)
+{
+	struct dirent *d;
+	DIR *dir;
+	int fd;
+
+	dir = opendir(VIRTIO_UML_DRIVER);
+	if (!dir)
+		return;
+
+	fd = open(VIRTIO_UML_DRIVER "/unbind", O_WRONLY | O_CLOEXEC);
+	if (fd < 0) {
+		closedir(dir);
+		return;
+	}
+
+	while ((d = readdir(dir))) {
+		if (strncmp(d->d_name, "virtio-uml.", 11))
+			continue;
+
+		if (write(fd, d->d_name, strlen(d->d_name)) < 0)
+			perror("Failed to unbind virtio device");
+	}
+
+	close(fd);
+	closedir(dir);
+}
+
 static bool find_kernel(const char *root, char path[PATH_MAX])
 {
 	struct stat st;
@@ -2213,7 +2246,11 @@ int main(int argc, char *argv[])
 
 		sync();
 		/* Rebooting User Mode Linux starts it again */
-		reboot(is_uml_guest() ? RB_POWER_OFF : RB_AUTOBOOT);
+		if (is_uml_guest()) {
+			uml_unbind_virtio();
+			reboot(RB_POWER_OFF);
+		} else
+			reboot(RB_AUTOBOOT);
 		return EXIT_SUCCESS;
 	}
 
