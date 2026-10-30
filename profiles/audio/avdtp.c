@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <poll.h>
 #include <unistd.h>
 #include <assert.h>
 
@@ -1166,6 +1167,29 @@ static void connection_lost(struct avdtp *session, int err)
 	avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
 
 	avdtp_unref(session);
+}
+
+/* Process a disconnection of the signalling channel not dispatched yet,
+ * returning whether it is disconnected.
+ */
+bool avdtp_check_disconnected(struct avdtp *session)
+{
+	struct pollfd pfd;
+
+	if (!session->io)
+		return false;
+
+	pfd.fd = g_io_channel_unix_get_fd(session->io);
+	pfd.events = 0;
+	pfd.revents = 0;
+
+	if (poll(&pfd, 1, 0) <= 0 ||
+			!(pfd.revents & (POLLHUP | POLLERR | POLLNVAL)))
+		return false;
+
+	connection_lost(session, ECONNRESET);
+
+	return true;
 }
 
 static bool disconnect_timeout(gpointer user_data)
