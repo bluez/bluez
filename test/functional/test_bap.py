@@ -37,6 +37,11 @@ ControllerMode = le
 
 TRANSPORT_RE = r"Transport (/org/bluez/\S+/fd\d+)"
 
+# A transport is reported once created, and indented under the endpoint
+# SetConfiguration call once its local endpoint is configured with it,
+# which bluetoothctl requires to select or acquire it
+CONFIGURED = "\t"
+
 
 def dev_addr(host):
     return host.bdaddr.upper().replace(":", "_")
@@ -259,14 +264,15 @@ def unicast_hosts(hosts):
     yield host0, host1, initiator, acceptor
 
 
-def expect_transports(ctl):
+def expect_transports(ctl, configured=False):
     """
     The endpoint is configured for stereo, so one stream per location is
     created, each with its own CIS in the same CIG.
     """
-    _, m = ctl.expect(r"Transport (/org/bluez/\S+/fd0)")
+    prefix = CONFIGURED if configured else ""
+    _, m = ctl.expect(prefix + r"Transport (/org/bluez/\S+/fd0)")
     left = m[0].decode("utf-8")
-    _, m = ctl.expect(r"Transport (/org/bluez/\S+/fd1)")
+    _, m = ctl.expect(prefix + r"Transport (/org/bluez/\S+/fd1)")
     right = m[0].decode("utf-8")
 
     return left, right
@@ -292,7 +298,7 @@ def test_bap_unicast_transport_created(unicast_hosts):
 def test_bap_unicast_transport_acquire(unicast_hosts):
     host0, host1, initiator, acceptor = unicast_hosts
 
-    left, right = expect_transports(initiator)
+    left, right = expect_transports(initiator, configured=True)
 
     # The CIS are only created once every CIS of the CIG is ready, so
     # all the transports need to be acquired
@@ -627,7 +633,7 @@ def test_bap_broadcast_transport_created(hosts, source_script):
 def test_bap_broadcast_transport_acquire(hosts, source_script):
     source, sink = start_broadcast(hosts, source_script)
 
-    _, m = sink.expect(TRANSPORT_RE)
+    _, m = sink.expect(CONFIGURED + TRANSPORT_RE)
     transport = m[0].decode("utf-8")
 
     # Selecting the transport syncs to the BIG and starts acquiring it
@@ -682,7 +688,7 @@ def expect_bis_transport(ctl, host, bis):
     Transport a side created for the BIS carrying its own channel,
     checking it is the only one it has.
     """
-    _, m = ctl.expect(BIS_TRANSPORT.format(bis))
+    _, m = ctl.expect(CONFIGURED + BIS_TRANSPORT.format(bis))
     transport = m[0].decode("utf-8")
 
     # Checked over D-Bus rather than with transport.list, as the
@@ -942,8 +948,8 @@ def set_hosts(hosts, secure_connections):
             "Pairing successful",
             f"DeviceSet /org/bluez/hci0/{SET_PATH}",
             f"Device {host2.bdaddr.upper()} Bonded: yes",
-            TRANSPORT.format(dev_addr(host1)),
-            TRANSPORT.format(dev_addr(host2)),
+            CONFIGURED + TRANSPORT.format(dev_addr(host1)),
+            CONFIGURED + TRANSPORT.format(dev_addr(host2)),
         ],
     )
 
