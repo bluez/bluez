@@ -4,6 +4,9 @@
 Tests for A2DP using bluetoothctl in VM instances
 """
 
+import signal
+import subprocess
+
 import pytest
 
 from pytest_bluezenv import Bluetoothd, Pexpect, find_exe, host_config
@@ -200,3 +203,36 @@ def test_a2dp_disconnect_during_setconf(hosts, reply):
     sink.send("yes\n")
     source.expect("Connection successful")
     source.expect(TRANSPORT_RE)
+
+
+def vm_signal_bluetoothd(sig):
+    subprocess.run(["pkill", f"-{sig}", "-x", "bluetoothd"], check=True)
+
+
+@a2dp_host_config
+def test_a2dp_reconnect_pending_disconnect(a2dp_hosts):
+    host0, host1, source, sink = a2dp_hosts
+
+    source.expect(TRANSPORT_RE)
+    sink.expect(TRANSPORT_RE)
+
+    # Stop the sink's bluetoothd so that the disconnection of the link and
+    # the AVDTP connection on the new one are pending together when it
+    # resumes, as when it is slow to process the disconnection
+    host1.call(vm_signal_bluetoothd, signal.SIGSTOP)
+    try:
+        source.send(f"disconnect {host1.bdaddr}\n")
+        source.expect("Disconnection successful")
+
+        source.send(f"connect {host1.bdaddr}\n")
+        source.expect(f"Device {host1.bdaddr.upper()} Connected: yes")
+    finally:
+        host1.call(vm_signal_bluetoothd, signal.SIGCONT)
+
+    # The transport may be reported before or after the reply
+    pending = ["Connection successful", TRANSPORT_RE]
+    while pending:
+        idx, _ = source.expect(pending)
+        pending.pop(idx)
+
+    sink.expect(TRANSPORT_RE)
