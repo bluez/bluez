@@ -461,8 +461,14 @@ static void handle_msg(struct tt_client *client, struct tt_msg *msg)
 		break;
 	case TT_GET:
 		/* The guest takes it as the time of an interrupt: the current
-		 * time, which no guest is ahead of.
+		 * time, which no guest is ahead of in lock-step. With a skew,
+		 * other guests may be ahead of this one, which must stay at
+		 * its own time to run the events it requested.
 		 */
+		if (tt.skew) {
+			send_msg(client, TT_ACK, msg->seq, client->time);
+			return;
+		}
 		client->time = MAX(client->time, tt.now);
 		send_msg(client, TT_ACK, msg->seq, client->time);
 		return;

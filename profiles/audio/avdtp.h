@@ -205,6 +205,7 @@ typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
 					struct avdtp_error *err, void *user_data);
 
 void avdtp_unref(struct avdtp *session);
+bool avdtp_check_disconnected(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
 
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
