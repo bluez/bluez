@@ -134,3 +134,35 @@ test_a2dp_disconnect_during_setconf[accept|reject]
 	``auto_config()``. A late ``yes`` used to also leave the stale
 	transport registered, failing the next connection with
 	``Resource temporarily unavailable``.
+
+test_a2dp_reconnect_pending_disconnect
+--------------------------------------
+
+:Setup: As above, with the stream configured and the transport created.
+
+:Steps:
+	1. Peripheral: stop `bluetoothd` with ``SIGSTOP``.
+	2. Central: ``disconnect <peripheral bdaddr>``.
+	3. Central: ``connect <peripheral bdaddr>``.
+	4. Peripheral: once the new link is up, resume `bluetoothd` with
+	   ``SIGCONT``.
+
+:Expected:
+	1. `bluetoothd` on the peripheral stops processing events.
+	2. ``Disconnection successful`` on the central.
+	3. The new ACL link is established by the kernels, and the AVDTP
+	   connection of the central waits for `bluetoothd` on the
+	   peripheral to accept it.
+	4. ``Connection successful`` on the central, and a transport
+	   appears on both hosts.
+
+:Notes: Regression test for `bluetoothd` on the peripheral handling the
+	incoming AVDTP connection of the new link before the disconnection
+	of the previous one. It used to take the connection for a transport
+	channel of the A2DP channel of the previous link, still registered,
+	and refuse it, or, once that channel was gone, the disconnection
+	cancelled the service authorization of the new channel
+	(``Access denied: org.bluez.Error.Canceled``). In both cases the
+	central failed with ``Connection refused``. Without the pause the
+	two events are rarely pending at the same time, mostly under the
+	slower timing of User Mode Linux.
