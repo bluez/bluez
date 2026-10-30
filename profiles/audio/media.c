@@ -238,10 +238,12 @@ static void media_endpoint_destroy(struct media_endpoint *endpoint)
 		endpoint->pac = NULL;
 	}
 
+#ifdef HAVE_HFP
 	if (endpoint->sco) {
 		hfp_hf_sco_remove(endpoint->adapter->btd_adapter, endpoint);
 		endpoint->sco = false;
 	}
+#endif
 
 	g_dbus_remove_watch(btd_get_dbus_connection(), endpoint->watch);
 	g_free(endpoint->capabilities);
@@ -1457,6 +1459,7 @@ static bool endpoint_init_asha(struct media_endpoint *endpoint,
 	return true;
 }
 
+#ifdef HAVE_HFP
 gboolean hfp_hf_set_configuration(struct media_endpoint *endpoint,
 					const char *ep_path,
 					media_endpoint_cb_t cb,
@@ -1514,6 +1517,7 @@ static bool endpoint_init_sco(struct media_endpoint *endpoint,
 
 	return hfp_hf_sco_listen(endpoint->adapter->btd_adapter, endpoint);
 }
+#endif /* HAVE_HFP */
 
 static bool endpoint_properties_exists(const char *uuid,
 						struct btd_device *dev,
