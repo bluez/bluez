@@ -253,35 +253,35 @@ static int remote_mp_play(struct media_player *mp, void *user_data)
 {
 	struct remote_player *remote = user_data;
 
-	return bt_mcp_play(remote->mcp, remote->ccid);
+	return bt_mcp_play(remote->mcp, remote->ccid) ? 0 : -EIO;
 }
 
 static int remote_mp_pause(struct media_player *mp, void *user_data)
 {
 	struct remote_player *remote = user_data;
 
-	return bt_mcp_pause(remote->mcp, remote->ccid);
+	return bt_mcp_pause(remote->mcp, remote->ccid) ? 0 : -EIO;
 }
 
 static int remote_mp_stop(struct media_player *mp, void *user_data)
 {
 	struct remote_player *remote = user_data;
 
-	return bt_mcp_stop(remote->mcp, remote->ccid);
+	return bt_mcp_stop(remote->mcp, remote->ccid) ? 0 : -EIO;
 }
 
 static int remote_mp_next(struct media_player *mp, void *user_data)
 {
 	struct remote_player *remote = user_data;
 
-	return bt_mcp_next_track(remote->mcp, remote->ccid);
+	return bt_mcp_next_track(remote->mcp, remote->ccid) ? 0 : -EIO;
 }
 
 static int remote_mp_previous(struct media_player *mp, void *user_data)
 {
 	struct remote_player *remote = user_data;
 
-	return bt_mcp_previous_track(remote->mcp, remote->ccid);
+	return bt_mcp_previous_track(remote->mcp, remote->ccid) ? 0 : -EIO;
 }
 
 static bool remote_mp_set_setting(struct media_player *mp, const char *key,

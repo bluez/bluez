@@ -108,6 +108,7 @@ struct bt_mcp_service {
 	struct bt_mcs_db rdb;
 
 	bool ready;
+	bool op_supported_known;
 
 	unsigned int notify_id[MAX_ATTR];
 	unsigned int notify_id_count;
@@ -1256,7 +1257,11 @@ static unsigned int mcp_command(struct bt_mcp *mcp, uint8_t ccid, uint8_t op,
 	if (!service || !cmd)
 		return 0;
 
-	if (!(service->rdb.media_cp_op_supported_value & cmd->support))
+	/* The service is added once its CCID is read, so commands may come
+	 * before the supported opcodes are known: let the server reject them
+	 */
+	if (service->op_supported_known &&
+		!(service->rdb.media_cp_op_supported_value & cmd->support))
 		return 0;
 
 	DBG_SVC(service, "%s %d", cmd->name, arg);
@@ -1686,6 +1691,7 @@ static void update_media_cp_op_supported(bool success, uint8_t att_ecode,
 	DBG_SVC(service, "Media CP Op Supported: %d", v);
 
 	service->rdb.media_cp_op_supported_value = v;
+	service->op_supported_known = true;
 }
 
 static void update_add_service(void *data, void *user_data)
