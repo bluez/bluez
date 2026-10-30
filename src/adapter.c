@@ -7985,6 +7985,36 @@ struct agent *adapter_get_agent(struct btd_adapter *adapter)
 	return agent_get(NULL);
 }
 
+/* Whether the kernel has a BR/EDR link to the device: its disconnection
+ * may be processed after the device connected again, e.g. when bluetoothd
+ * was slow to process events.
+ */
+static bool link_connected(struct btd_adapter *adapter,
+				struct btd_device *device, uint8_t bdaddr_type)
+{
+	struct hci_conn_info_req *cr;
+	bool connected;
+	int dd;
+
+	if (bdaddr_type != BDADDR_BREDR)
+		return false;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0)
+		return false;
+
+	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
+	bacpy(&cr->bdaddr, device_get_address(device));
+	cr->type = ACL_LINK;
+
+	connected = !ioctl(dd, HCIGETCONNINFO, cr);
+
+	g_free(cr);
+	hci_close_dev(dd);
+
+	return connected;
+}
+
 static void adapter_remove_connection(struct btd_adapter *adapter,
 						struct btd_device *device,
 						uint8_t bdaddr_type,
@@ -8005,7 +8035,9 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 
 	device_remove_connection(device, bdaddr_type, &remove_device, reason);
 
-	device_cancel_authentication(device, TRUE);
+	/* Requests of a link that connected meanwhile are not cancelled */
+	if (!link_connected(adapter, device, bdaddr_type))
+		device_cancel_authentication(device, TRUE);
 
 	/* If another bearer is still connected */
 	if (btd_device_bearer_is_connected(device))
@@ -9013,6 +9045,7 @@ static void dev_disconnected(struct btd_adapter *adapter,
 					uint8_t reason)
 {
 	struct btd_device *device;
+	bool reconnected = false;
 	char dst[18];
 
 	ba2str(&addr->bdaddr, dst);
@@ -9022,6 +9055,11 @@ static void dev_disconnected(struct btd_adapter *adapter,
 	device = btd_adapter_find_device(adapter, &addr->bdaddr, addr->type);
 	if (device) {
 		bool removed;
+
+		/* The device connected again before this was processed: its
+		 * pending requests belong to the new link.
+		 */
+		reconnected = link_connected(adapter, device, addr->type);
 
 		adapter_remove_connection(adapter, device, addr->type, reason,
 						&removed);
@@ -9036,7 +9074,7 @@ static void dev_disconnected(struct btd_adapter *adapter,
 	}
 
 	/* device could be still connected to different bearer */
-	if (!device || !btd_device_is_connected(device))
+	if (!reconnected && (!device || !btd_device_is_connected(device)))
 		bonding_attempt_complete(adapter, &addr->bdaddr, addr->type,
 						MGMT_STATUS_DISCONNECTED);
 }
