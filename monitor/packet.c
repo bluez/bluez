@@ -10289,7 +10289,7 @@ static void le_read_conn_interval_rsp(uint16_t index, const void *data,
 	for (i = 0; i < rsp->num_grps; i++) {
 		const struct bt_hci_le_conn_interval_group *grp;
 
-		grp = util_iov_pull(&iov, sizeof(*grp));
+		grp = util_iov_pull_mem(&iov, sizeof(*grp));
 		if (!grp) {
 			print_text(COLOR_ERROR, "  invalid group");
 			break;
