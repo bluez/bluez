@@ -525,6 +525,24 @@ static const snd_seq_event_t event5_expect[] = {
 
 static const struct midi_write_test midi5 = BLE_WRITE_TEST_INIT(event5, event5_expect);
 
+/*
+ * Same event type on different channels: each needs its own status byte and
+ * timestampLow, so running status must not carry over between them.
+ */
+static const snd_seq_event_t event6[] = {
+	NOTE_EVENT(NOTEON, 0, 60, 100),       /* Note On */
+	NOTE_EVENT(NOTEON, 1, 64, 100),       /* Note On, other channel */
+	NOTE_EVENT(NOTEON, 1, 67, 100),       /* Note On, running status */
+	NOTE_EVENT(NOTEOFF, 0, 60, 0),        /* Note Off */
+	NOTE_EVENT(NOTEOFF, 1, 64, 0),        /* Note Off, other channel */
+	CONTROL_EVENT(CONTROLLER, 2, 0, 123), /* All Notes Off */
+	CONTROL_EVENT(CONTROLLER, 3, 0, 123), /* All Notes Off, other channel */
+	CONTROL_EVENT(PITCHBEND, 4, 0, 0),    /* Pitch Bend */
+	CONTROL_EVENT(PITCHBEND, 5, 0, 0),    /* Pitch Bend, other channel */
+};
+
+static const struct midi_write_test midi6 = BLE_WRITE_TEST_INIT_BASIC(event6);
+
 struct midi_data {
 	size_t events_tested;
 	const struct midi_write_test *midi_test;
@@ -618,6 +636,8 @@ int main(int argc, char *argv[])
 	           &midi4, NULL, test_midi_writer, NULL);
 	tester_add("Split ALSA SysEx events to raw BLE packets",
 	           &midi5, NULL, test_midi_writer, NULL);
+	tester_add("ALSA Seq events on several channels to Raw BLE packets",
+			&midi6, NULL, test_midi_writer, NULL);
 
 	return tester_run();
 }
