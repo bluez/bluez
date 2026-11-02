@@ -1018,6 +1018,17 @@ void bt_rap_detach(struct bt_rap *rap)
 	 */
 	ras_ondemand_cache_clear(rap);
 
+	/* Reads of Ranging Data Ready and Ranging Data Overwritten report the
+	 * Ranging Counter of the most recent CS procedure completed,
+	 * respectively overwritten, *during the connection*, and 0 when there
+	 * was none (RAS v1.0, 3.4 and 3.5). Neither counter may survive the
+	 * link it was counted on.
+	 */
+	if (rap->lrapdb && rap->lrapdb->ras) {
+		rap->lrapdb->ras->ready_counter = 0;
+		rap->lrapdb->ras->overwritten_counter = 0;
+	}
+
 	if (rap->rrapdb && rap->rrapdb->ras) {
 		struct ras *ras = rap->rrapdb->ras;
 
