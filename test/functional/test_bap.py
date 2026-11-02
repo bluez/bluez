@@ -577,6 +577,176 @@ def test_bap_unicast_reconfigure_metadata(unicast_hosts, metadata):
     )
 
 
+# The initiator runs in testing mode, so the Desynchronized property of
+# its transports can be set and each direction enabled on its own
+duplex_host_config = host_config(
+    [
+        Bluetoothd(conf=BAP_CONF.replace("[General]\n", "[General]\nTesting = true\n")),
+        Pexpect(),
+    ],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+)
+
+# Sockets of the acquired transports, held by the host process until
+# the test ends, as closing them releases the stream
+held_fds = []
+
+
+@mainloop_wrap
+def transports_by_uuid():
+    """Transports of the host, with their properties, keyed by UUID."""
+    objects = dbus.Interface(
+        get_dbus().get_object("org.bluez", "/"),
+        "org.freedesktop.DBus.ObjectManager",
+    ).GetManagedObjects()
+    return {
+        str(props["org.bluez.MediaTransport1"]["UUID"]): (
+            str(path),
+            {
+                str(key): value
+                for key, value in props["org.bluez.MediaTransport1"].items()
+            },
+        )
+        for path, props in objects.items()
+        if "org.bluez.MediaTransport1" in props
+    }
+
+
+@mainloop_wrap
+def desynchronize(path):
+    dbus.Interface(
+        get_dbus().get_object("org.bluez", path),
+        "org.freedesktop.DBus.Properties",
+    ).Set("org.bluez.MediaTransport1", "Desynchronized", dbus.Boolean(True))
+
+
+@mainloop_wrap
+def acquire(path):
+    """Acquire a transport, returning the D-Bus error name if it fails."""
+    try:
+        fd, _, _ = dbus.Interface(
+            get_dbus().get_object("org.bluez", path),
+            "org.bluez.MediaTransport1",
+        ).Acquire(timeout=DEFAULT_TIMEOUT)
+    except dbus.exceptions.DBusException as e:
+        return e.get_dbus_name()
+
+    held_fds.append(fd.take())
+    return None
+
+
+@mainloop_wrap
+def release(path):
+    """Release a transport, returning the D-Bus error name if it fails."""
+    try:
+        dbus.Interface(
+            get_dbus().get_object("org.bluez", path),
+            "org.bluez.MediaTransport1",
+        ).Release(timeout=DEFAULT_TIMEOUT)
+    except dbus.exceptions.DBusException as e:
+        return e.get_dbus_name()
+
+    return None
+
+
+def wait_state(host, uuid, states):
+    """Wait for the transport with the given UUID to reach one of states."""
+    deadline = time.monotonic() + DEFAULT_TIMEOUT
+
+    while True:
+        path, props = host.call(transports_by_uuid)[uuid]
+        if props["State"] in states:
+            return
+
+        assert time.monotonic() < deadline, f"{path} not {states}: {props['State']}"
+        time.sleep(0.1)
+
+
+@pytest.fixture
+def duplex_hosts(hosts):
+    """
+    Initiator (host0) and acceptor (host1) each with a local PAC Sink and
+    PAC Source endpoint for a single location, paired over LE, with a
+    stream configured for each direction over the same CIS.
+
+    Initiator transports are keyed by the UUID of the local endpoint: the
+    local PAC Source streams to the remote Sink ASE, and the local PAC
+    Sink from the remote Source ASE. Acceptor transports carry the UUID
+    of the local PAC of their ASE.
+    """
+    host0, host1 = hosts
+
+    initiator = start_bluetoothctl(host0, "bap-duplex-lc3.bt")
+    acceptor = start_bluetoothctl(host1, "bap-duplex-lc3.bt")
+
+    pair_le(host0, initiator, host1, acceptor)
+
+    expect_all(initiator, [CONFIGURED + TRANSPORT_RE] * 2)
+    expect_all(acceptor, [TRANSPORT_RE] * 2)
+
+    transports = host0.call(transports_by_uuid)
+    to_sink, props = transports[PAC_SOURCE_UUID]
+    from_source, _ = transports[PAC_SINK_UUID]
+
+    # Both directions share the CIS, so their transports are linked
+    assert [str(link) for link in props.get("Links", [])] == [from_source]
+
+    yield host0, host1, to_sink, from_source
+
+
+@duplex_host_config
+def test_bap_unicast_desync(duplex_hosts):
+    host0, host1, to_sink, from_source = duplex_hosts
+
+    # Desynchronizing a transport desynchronizes its links as well
+    host0.call(desynchronize, to_sink)
+    transports = host0.call(transports_by_uuid)
+    for uuid in (PAC_SOURCE_UUID, PAC_SINK_UUID):
+        path, props = transports[uuid]
+        assert props["Desynchronized"], f"{path} not desynchronized"
+
+    # Acquiring one transport leaves its link alone
+    assert host0.call(acquire, from_source) is None
+    wait_state(host0, PAC_SINK_UUID, ("active",))
+    path, props = host0.call(transports_by_uuid)[PAC_SOURCE_UUID]
+    assert props["State"] == "idle", f"{path} {props['State']} not acquired"
+
+    # The link is acquired on its own, over the CIS already established
+    assert host0.call(acquire, to_sink) is None
+    wait_state(host0, PAC_SOURCE_UUID, ("active",))
+
+
+@duplex_host_config
+def test_bap_unicast_duplex_enable_one(duplex_hosts):
+    host0, host1, to_sink, from_source = duplex_hosts
+
+    host0.call(desynchronize, to_sink)
+
+    # Enable the remote Source ASE only, leaving its Sink ASE in QoS,
+    # while the CIS they share is established. bluetoothctl on the
+    # acceptor acquires a transport as soon as it is pending, as an
+    # audio server would.
+    assert host0.call(acquire, from_source) is None
+    wait_state(host1, PAC_SOURCE_UUID, ("pending", "active"))
+
+    # The Sink ASE has not been enabled, so its transport must not be
+    # reported as pending, nor acquired along with the Source one
+    path, props = host1.call(transports_by_uuid)[PAC_SINK_UUID]
+    assert props["State"] == "idle", f"{path} {props['State']} while in QoS"
+
+    # Once the initiator enables it, it is acquired on its own
+    assert host0.call(acquire, to_sink) is None
+    wait_state(host1, PAC_SINK_UUID, ("active",))
+
+    # Disabling the Sink ASE alone leaves the Source one streaming
+    assert host0.call(release, to_sink) is None
+    wait_state(host1, PAC_SINK_UUID, ("idle",))
+    time.sleep(1)
+    for host, uuid in ((host0, PAC_SINK_UUID), (host1, PAC_SOURCE_UUID)):
+        path, props = host.call(transports_by_uuid)[uuid]
+        assert props["State"] == "active", f"{path} {props['State']}"
+
+
 # Broadcast code used by the broadcast scripts, see BCAST_CODE in
 # client/player.c
 BCAST_CODE = (
