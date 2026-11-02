@@ -583,6 +583,156 @@ def test_bap_unicast_reconfigure_metadata(unicast_hosts, metadata):
     )
 
 
+# The initiator runs in testing mode, so its transports can be
+# desynchronized and each direction enabled on its own
+duplex_host_config = host_config(
+    [
+        Bluetoothd(conf=BAP_CONF.replace("[General]\n", "[General]\nTesting = true\n")),
+        Pexpect(),
+    ],
+    [Bluetoothd(conf=BAP_CONF), Pexpect()],
+)
+
+
+def show_transport(ctl, path):
+    """
+    Properties transport.show reports for the given transport.
+
+    They are indented, unlike the [CHG] lines of other transports that
+    may be printed in between, and a command with a known output is
+    issued after it to tell when everything has been listed.
+    """
+    ctl.send(f"transport.show {path}\nversion\n")
+    ctl.expect(f"Transport {path}", timeout=REPLY_TIMEOUT)
+
+    # Up to the end of the line, or a line still being printed would
+    # match only in part
+    props = {}
+    while True:
+        idx, m = ctl.expect(
+            [r"Version \d", r"\t(UUID|State|Desynchronized): ([^\r\n]*)\r?\n"],
+            timeout=REPLY_TIMEOUT,
+        )
+        if idx == 0:
+            return props
+
+        props[m[0].decode("utf-8")] = m[1].decode("utf-8")
+
+
+def show_state(ctl, path):
+    return show_transport(ctl, path)["State"]
+
+
+@pytest.fixture
+def duplex_hosts(hosts):
+    """
+    Initiator (host0) and acceptor (host1) each with a local PAC Sink and
+    PAC Source endpoint for a single location, paired over LE, with a
+    stream configured for each direction over the same CIS.
+
+    On the initiator, the transport of the remote Sink ASE is under its
+    pac_sink endpoint and the one of the remote Source ASE under its
+    pac_source endpoint. On the acceptor, each transport carries the UUID
+    of the local PAC of its ASE.
+    """
+    host0, host1 = hosts
+
+    initiator = start_bluetoothctl(host0, "bap-duplex-lc3.bt")
+    acceptor = start_bluetoothctl(host1, "bap-duplex-lc3.bt")
+
+    pair_le(host0, initiator, host1, acceptor)
+
+    # bluetoothctl only acquires a transport its local endpoint was
+    # configured with
+    paths = [
+        m[0].decode("utf-8")
+        for m in expect_all(initiator, [CONFIGURED + TRANSPORT_RE] * 2)
+    ]
+    to_sink = next(path for path in paths if "/pac_sink" in path)
+    from_source = next(path for path in paths if "/pac_source" in path)
+
+    # Each transport is reported when created and again under the
+    # SetConfiguration call of its endpoint
+    paths = []
+    while len(paths) < 2:
+        path = expect_all(acceptor, [TRANSPORT_RE])[0][0].decode("utf-8")
+        if path not in paths:
+            paths.append(path)
+    uuids = {path: show_transport(acceptor, path)["UUID"] for path in paths}
+    by_uuid = {
+        uuid: path
+        for path in paths
+        for uuid in (PAC_SINK_UUID, PAC_SOURCE_UUID)
+        if uuid in uuids[path]
+    }
+    assert len(by_uuid) == 2, f"acceptor transports: {uuids}"
+    sink = by_uuid[PAC_SINK_UUID]
+    source = by_uuid[PAC_SOURCE_UUID]
+
+    yield initiator, acceptor, to_sink, from_source, sink, source
+
+
+def desync(initiator, to_sink, from_source):
+    """Desynchronizing a transport desynchronizes its links as well."""
+    initiator.send(f"transport.desync {to_sink} on\n")
+    expect_all(initiator, ["Desynchronize succeeded"])
+
+    for path in (to_sink, from_source):
+        desync = show_transport(initiator, path)["Desynchronized"]
+        assert desync == "yes", f"{path} Desynchronized: {desync}"
+
+
+@duplex_host_config
+def test_bap_unicast_desync(duplex_hosts):
+    initiator, acceptor, to_sink, from_source, sink, source = duplex_hosts
+
+    desync(initiator, to_sink, from_source)
+
+    # Acquiring one transport leaves its link alone
+    initiator.send(f"transport.acquire {from_source}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {from_source} State: active"])
+    assert show_state(initiator, to_sink) == "idle"
+
+    # The link is acquired on its own, over the CIS already established
+    initiator.send(f"transport.acquire {to_sink}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {to_sink} State: active"])
+
+
+@duplex_host_config
+def test_bap_unicast_duplex_enable_one(duplex_hosts):
+    initiator, acceptor, to_sink, from_source, sink, source = duplex_hosts
+
+    desync(initiator, to_sink, from_source)
+
+    # Enable the remote Source ASE only, leaving its Sink ASE in QoS,
+    # while the CIS they share is established. bluetoothctl on the
+    # acceptor acquires a transport as soon as it is pending, as an
+    # audio server would.
+    initiator.send(f"transport.acquire {from_source}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {from_source} State: active"])
+    expect_all(acceptor, [ACQUIRED, f"Transport {source} State: active"])
+
+    # The Sink ASE has not been enabled, so its transport must not be
+    # reported as pending, nor acquired along with the Source one
+    state = show_state(acceptor, sink)
+    assert state == "idle", f"{sink} {state} while in QoS"
+
+    # Once the initiator enables it, it is acquired on its own
+    initiator.send(f"transport.acquire {to_sink}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {to_sink} State: active"])
+    expect_all(acceptor, [ACQUIRED, f"Transport {sink} State: active"])
+
+    # Disabling the Sink ASE alone leaves the Source one streaming
+    initiator.send(f"transport.release {to_sink}\n")
+    expect_all(initiator, ["Release successful", f"Transport {to_sink} State: idle"])
+    expect_all(acceptor, [f"Transport {sink} State: idle"])
+    time.sleep(1)
+
+    for ctl, path in ((initiator, from_source), (acceptor, source)):
+        state = show_state(ctl, path)
+        assert state == "active", f"{path} {state} once the Sink ASE released"
+
+
 # Broadcast code used by the broadcast scripts, see BCAST_CODE in
 # client/player.c
 BCAST_CODE = (
