@@ -2277,10 +2277,10 @@ static guint transport_bap_suspend(struct media_transport *transport,
 
 	bap_update_links(transport);
 
-	/* Don't disable links acquired on their own, they are disabled
-	 * when they are released.
+	/* Don't disable links that are desynchronized or acquired on their
+	 * own, they are disabled when they are released.
 	 */
-	disable_links = bap->linked &&
+	disable_links = bap->linked && !bap->desync &&
 			!queue_find(links, match_link_independent, owner);
 
 	id = bt_bap_stream_disable(bap->stream, disable_links, func, owner);
