@@ -191,40 +191,47 @@ static void read_ev_sysex(struct midi_write_parser *parser, const snd_seq_event_
 static void read_ev_others(struct midi_write_parser *parser, const snd_seq_event_t *ev,
                            midi_read_ev_cb write_cb, void *user_data)
 {
-	int length;
+	uint8_t msg[MIDI_MSG_MAX_SIZE];
+	long length;
+	bool status;
 
-	/* check for running status */
-	if (parser->rstatus != ev->type) {
+	/* running status only ever continues the same event type */
+	if (parser->rstatus != ev->type)
 		snd_midi_event_reset_decode(parser->midi_ev);
-		append_timestamp_low(parser);
-	}
 
-	/* each midi message has timestampLow byte to follow */
-	length = snd_midi_event_decode(parser->midi_ev,
-	                               parser->midi_stream.data +
-	                               parser->midi_stream.len,
-	                               parser_get_available_size(parser),
-	                               ev);
+	length = snd_midi_event_decode(parser->midi_ev, msg, sizeof(msg), ev);
+	if (length <= 0)
+		return;
 
-	if (length == -ENOMEM) {
-		/* remove previously added timestampLow */
-		if (parser->rstatus != ev->type)
-			parser->midi_stream.len--;
+	/*
+	 * The decoder leaves the status byte out only when it repeats the
+	 * previous one, channel included, and every status byte it does write
+	 * needs a timestampLow before it. Decide that from the decoded message,
+	 * not from the event type: two note-ons on different channels share a
+	 * type but not a status byte.
+	 */
+	status = msg[0] & 0x80;
+
+	if (parser_get_available_size(parser) < (size_t) length + status) {
 		write_cb(parser, user_data);
-		/* cleanup state for next packet */
-		snd_midi_event_reset_decode(parser->midi_ev);
 		midi_write_reset(parser);
 		append_timestamp_high_maybe(parser);
-		append_timestamp_low(parser);
-		length = snd_midi_event_decode(parser->midi_ev,
-		                               parser->midi_stream.data +
-		                               parser->midi_stream.len,
-		                               parser_get_available_size(parser),
-		                               ev);
+
+		/* a new packet cannot continue running status */
+		if (!status) {
+			snd_midi_event_reset_decode(parser->midi_ev);
+			length = snd_midi_event_decode(parser->midi_ev, msg,
+							sizeof(msg), ev);
+			if (length <= 0)
+				return;
+			status = true;
+		}
 	}
 
-	if (length > 0)
-		parser->midi_stream.len += length;
+	if (status)
+		append_timestamp_low(parser);
+
+	buffer_append_data(&parser->midi_stream, msg, length);
 }
 
 void midi_read_ev(struct midi_write_parser *parser, const snd_seq_event_t *ev,
