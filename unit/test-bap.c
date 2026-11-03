@@ -73,6 +73,7 @@ struct test_config {
 	const struct iovec *setup_data;
 	size_t setup_data_len;
 	uint8_t cancel;
+	bool mnotify;
 };
 
 struct test_data {
@@ -668,7 +669,8 @@ static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 	}
 
 	if (!bt_gatt_server_send_notification(data->server,
-			handle, value, len, false))
+			handle, value, len,
+			data->cfg ? data->cfg->mnotify : false))
 		tester_debug("%s: Failed to send notification", __func__);
 }
 
@@ -2067,6 +2069,30 @@ static void test_ucl_scc_cc_lc3(void)
 
 
 /* 4.9 Unicast Server Configuration */
+static struct test_config cfg_snk_8_1_mnotify = {
+	.cc = LC3_CONFIG_8_1,
+	.qos = QOS_UCAST,
+	.snk = true,
+	.mnotify = true,
+};
+
+/* The CP notification and the ASE state notification are expected to be
+ * sent in the same Notify Multiple PDU.
+ */
+#define SCC_SNK_8_1_MNOTIFY \
+	DISC_SRC_ASE_LC3, \
+	IOV_DATA(SCC_PDU(1), SCC_PDU_ASE(SNK_ID(0), LC3_CODEC_ID_DATA, \
+			0x0a, 0x02, 0x01, 0x01, 0x02, 0x02, 0x00, 0x03, 0x04, \
+			0x1a, 0x00)), \
+	IOV_DATA(0x23, CP_HND, 0x05, 0x00, 0x01, 0x01, SNK_ID(0), 0x00, \
+			0x00, \
+			SNK_HND(0), 0x23, 0x00, SNK_ID(0), 0x01, \
+			0x00, 0x02, 0x01, 0x0a, 0x00, \
+			0x20, 0x4e, 0x00, 0x40, 0x9c, 0x00, 0x20, 0x4e, 0x00, \
+			0x40, 0x9c, 0x00, LC3_CODEC_ID_DATA, \
+			0x0a, 0x02, 0x01, 0x01, 0x02, 0x02, 0x00, 0x03, 0x04, \
+			0x1a, 0x00)
+
 static void test_usr_scc_cc_lc3(void)
 {
 	/* 4.9.1 Unicast Server as Audio Sink Performs Config Codec – LC3
@@ -2100,6 +2126,10 @@ static void test_usr_scc_cc_lc3(void)
 	define_test("BAP/USR/SCC/BV-001-C [USR SNK Config Codec, LC3 8_1]",
 			test_setup_server, test_server, &cfg_snk_8_1,
 			SCC_SNK_8_1);
+	define_test("BAP/USR/SCC/BLUEZ-1 [USR SNK Config Codec, LC3 8_1, "
+			"Notify Multiple]",
+			test_setup_server, test_server, &cfg_snk_8_1_mnotify,
+			SCC_SNK_8_1_MNOTIFY);
 	define_test("BAP/USR/SCC/BV-002-C [USR SNK Config Codec, LC3 8_2]",
 			test_setup_server, test_server, &cfg_snk_8_2,
 			SCC_SNK_8_2);
