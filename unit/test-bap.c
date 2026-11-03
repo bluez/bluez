@@ -4007,9 +4007,25 @@ static struct test_config cfg_src_cc_release = {
 	IOV_NULL, \
 	IOV_DATA(0x1b, 0x1c, 0x00, 0x03, 0x06)
 
+/* After Releasing the ASE moves to Idle, or to Codec Configured if the
+ * configuration is cached.
+ */
+#define ASE_SRC_RELEASE_IDLE \
+	ASE_SRC_RELEASE, \
+	IOV_NULL, \
+	IOV_DATA(0x1b, SRC_HND(0), SRC_ID(0), 0x00)
+
+#define LC3_CONFIG_16_2_DATA \
+	LC3_CODEC_ID_DATA, 0x0a, 0x02, 0x01, 0x03, 0x02, 0x02, 0x01, 0x03, \
+	0x04, 0x28, 0x00
+
+#define ASE_SRC_RELEASE_CC \
+	ASE_SRC_RELEASE, \
+	SCC_SRC_NOTIFY(0, LC3_CONFIG_16_2_DATA)
+
 #define SCC_SRC_CC_RELEASE \
 	SCC_SRC_16_2, \
-	ASE_SRC_RELEASE
+	ASE_SRC_RELEASE_IDLE
 
 static struct test_config cfg_snk_cc_release = {
 	.cc = LC3_CONFIG_16_2,
@@ -4034,9 +4050,18 @@ static struct test_config cfg_snk_cc_release = {
 	IOV_NULL, \
 	IOV_DATA(0x1b, 0x16, 0x00, 0x01, 0x06)
 
+#define ASE_SNK_RELEASE_IDLE \
+	ASE_SNK_RELEASE, \
+	IOV_NULL, \
+	IOV_DATA(0x1b, SNK_HND(0), SNK_ID(0), 0x00)
+
+#define ASE_SNK_RELEASE_CC \
+	ASE_SNK_RELEASE, \
+	SCC_SNK_NOTIFY(0, LC3_CONFIG_16_2_DATA)
+
 #define SCC_SNK_CC_RELEASE \
 	SCC_SNK_16_2, \
-	ASE_SNK_RELEASE
+	ASE_SNK_RELEASE_IDLE
 
 static void state_qos_release(struct bt_bap_stream *stream,
 					uint8_t old_state, uint8_t new_state,
@@ -4063,7 +4088,7 @@ static struct test_config cfg_src_qos_release = {
 
 #define SCC_SRC_QOS_RELEASE \
 	SCC_SRC_16_2_1, \
-	ASE_SRC_RELEASE
+	ASE_SRC_RELEASE_CC
 
 static struct test_config cfg_snk_qos_release = {
 	.cc = LC3_CONFIG_16_2,
@@ -4075,7 +4100,7 @@ static struct test_config cfg_snk_qos_release = {
 
 #define SCC_SNK_QOS_RELEASE \
 	SCC_SNK_16_2_1, \
-	ASE_SNK_RELEASE
+	ASE_SNK_RELEASE_CC
 
 static void state_enable_release(struct bt_bap_stream *stream,
 					uint8_t old_state, uint8_t new_state,
@@ -4102,7 +4127,7 @@ static struct test_config cfg_src_enable_release = {
 
 #define SCC_SRC_ENABLE_RELEASE \
 	SCC_SRC_ENABLE, \
-	ASE_SRC_RELEASE
+	ASE_SRC_RELEASE_CC
 
 static struct test_config cfg_snk_enable_release = {
 	.cc = LC3_CONFIG_16_2,
@@ -4114,7 +4139,7 @@ static struct test_config cfg_snk_enable_release = {
 
 #define SCC_SNK_ENABLE_RELEASE \
 	SCC_SNK_ENABLE, \
-	ASE_SNK_RELEASE
+	ASE_SNK_RELEASE_CC
 
 static void state_start_release(struct bt_bap_stream *stream,
 					uint8_t old_state, uint8_t new_state,
@@ -4142,7 +4167,7 @@ static struct test_config cfg_src_start_release = {
 #define SCC_SRC_START_RELEASE \
 	SCC_SRC_ENABLE, \
 	SRC_START, \
-	ASE_SRC_RELEASE
+	ASE_SRC_RELEASE_CC
 
 static void state_disable_release(struct bt_bap_stream *stream,
 					uint8_t old_state, uint8_t new_state,
@@ -4169,7 +4194,7 @@ static struct test_config cfg_src_disable_release = {
 
 #define SCC_SRC_DISABLE_RELEASE \
 	SCC_SRC_DISABLE, \
-	ASE_SRC_RELEASE
+	ASE_SRC_RELEASE_CC
 
 /* Test Purpose:
  * Verify that a Unicast Client IUT can release an ASE by initiating a Release
