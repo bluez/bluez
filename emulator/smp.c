@@ -81,6 +81,7 @@ struct smp_conn {
 	uint8_t method;
 	uint8_t local_key_dist;
 	uint8_t remote_key_dist;
+	bool keys_distributed;
 	uint8_t ia[6];
 	uint8_t ia_type;
 	uint8_t ra[6];
@@ -380,6 +381,8 @@ static void distribute_keys(struct smp_conn *conn)
 {
 	uint8_t buf[16];
 
+	conn->keys_distributed = true;
+
 	if (conn->local_key_dist & DIST_ENC_KEY) {
 		memset(buf, 0, sizeof(buf));
 		smp_send(conn, BT_L2CAP_SMP_ENCRYPT_INFO, buf, sizeof(buf));
@@ -435,6 +438,7 @@ static void pairing_req(struct smp_conn *conn, const void *data, uint16_t len)
 
 	conn->local_key_dist	= rsp.resp_key_dist;
 	conn->remote_key_dist	= rsp.init_key_dist;
+	conn->keys_distributed	= false;
 
 	if (((conn->prsp[3] & 0x08) && (conn->preq[3] & 0x08)) ||
 					conn->addr_type == BDADDR_BREDR) {
@@ -458,6 +462,7 @@ static void pairing_rsp(struct smp_conn *conn, const void *data, uint16_t len)
 
 	conn->local_key_dist = conn->prsp[5];
 	conn->remote_key_dist = conn->prsp[6];
+	conn->keys_distributed = false;
 
 	if (conn->addr_type == BDADDR_BREDR) {
 		conn->local_key_dist &= ~SC_NO_DIST;
@@ -832,6 +837,12 @@ void smp_conn_encrypted(void *conn_data, uint8_t encrypt)
 	}
 
 	if (conn->out && conn->remote_key_dist)
+		return;
+
+	/* Encryption is also reported for a refresh of the key, such as with
+	 * a new MIC length, after the keys were distributed.
+	 */
+	if (conn->keys_distributed)
 		return;
 
 	distribute_keys(conn);
