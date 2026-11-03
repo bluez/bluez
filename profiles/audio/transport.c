@@ -727,6 +727,44 @@ static void media_owner_exit(DBusConnection *connection, void *user_data)
 	media_transport_remove_owner(owner->transport);
 }
 
+static bool bap_link_enabled(struct bt_bap_stream *link)
+{
+	/* A client enables its links along with the stream, while a server
+	 * has to wait for the client to enable each of them.
+	 */
+	if (bt_bap_stream_is_client(link))
+		return true;
+
+	switch (bt_bap_stream_get_state(link)) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+	case BT_BAP_STREAM_STATE_STREAMING:
+		return true;
+	}
+
+	return false;
+}
+
+static bool bap_link_independent(struct bt_bap_stream *link,
+						struct media_owner *owner)
+{
+	struct media_transport *transport;
+
+	/* A server has its links enabled separately by the client, so they
+	 * may have been acquired by a different owner.
+	 */
+	if (bt_bap_stream_is_client(link))
+		return false;
+
+	transport = find_transport_by_bap_stream(link);
+
+	return transport && transport->owner && transport->owner != owner;
+}
+
+static bool match_link_independent(const void *data, const void *user_data)
+{
+	return bap_link_independent((void *)data, (void *)user_data);
+}
+
 static void linked_transport_set_owner(void *data, void *user_data)
 {
 	struct bt_bap_stream *stream = data;
@@ -738,6 +776,19 @@ static void linked_transport_set_owner(void *data, void *user_data)
 		error("Unable to find transport");
 		return;
 	}
+
+	/* A link that is not enabled cannot be acquired yet, and once it is
+	 * it will be acquired on its own.
+	 */
+	if (!bap_link_enabled(stream))
+		return;
+
+	/* As a server, links are enabled separately by the client, so a link
+	 * acquired already keeps its own owner.
+	 */
+	if (!bt_bap_stream_is_client(stream) && transport->owner &&
+						transport->owner != owner)
+		return;
 
 	/* If the linked transport already has a different owner (e.g. it
 	 * was Acquired separately), tear it down properly instead of
@@ -2209,6 +2260,7 @@ static guint transport_bap_suspend(struct media_transport *transport,
 	struct bap_transport *bap = transport->data;
 	struct queue *links = bt_bap_stream_io_get_links(bap->stream);
 	bt_bap_stream_func_t func = NULL;
+	bool disable_links;
 	guint id;
 
 	if (!bap->stream)
@@ -2225,7 +2277,13 @@ static guint transport_bap_suspend(struct media_transport *transport,
 
 	bap_update_links(transport);
 
-	id = bt_bap_stream_disable(bap->stream, bap->linked, func, owner);
+	/* Don't disable links that are desynchronized or acquired on their
+	 * own, they are disabled when they are released.
+	 */
+	disable_links = bap->linked && !bap->desync &&
+			!queue_find(links, match_link_independent, owner);
+
+	id = bt_bap_stream_disable(bap->stream, disable_links, func, owner);
 
 	if (bt_bap_stream_get_type(bap->stream) == BT_BAP_STREAM_TYPE_BCAST) {
 		if (transport->owner == owner)
@@ -2262,10 +2320,16 @@ static void transport_bap_cancel(struct media_transport *transport, guint id)
 	bt_bap_stream_cancel(bap->stream, id);
 }
 
+struct link_state {
+	transport_state_t state;
+	struct media_owner *owner;
+};
+
 static void link_set_state(void *data, void *user_data)
 {
 	struct bt_bap_stream *stream = data;
-	transport_state_t state = PTR_TO_UINT(user_data);
+	struct link_state *ls = user_data;
+	transport_state_t state = ls->state;
 	struct media_transport *transport;
 
 	transport = find_transport_by_bap_stream(stream);
@@ -2274,6 +2338,30 @@ static void link_set_state(void *data, void *user_data)
 		return;
 	}
 
+	/* A link acquired on its own keeps its state */
+	if (bap_link_independent(stream, ls->owner))
+		return;
+
+	/* Don't bring back a link that is acquired already */
+	if (state == TRANSPORT_STATE_PENDING &&
+			transport->state >= TRANSPORT_STATE_REQUESTING)
+		return;
+
+	/* A link whose stream is not enabled cannot be acquired */
+	if ((state == TRANSPORT_STATE_PENDING ||
+			state == TRANSPORT_STATE_ACTIVE) &&
+			!bap_link_enabled(stream))
+		return;
+
+	/* As a server, a link only becomes active along with the transport
+	 * if it was given its owner, otherwise it may have been enabled in
+	 * the meantime and has to be acquired on its own.
+	 */
+	if (state == TRANSPORT_STATE_ACTIVE &&
+			!bt_bap_stream_is_client(stream) &&
+			transport->owner != ls->owner)
+		return;
+
 	transport_set_state(transport, state);
 }
 
@@ -2281,13 +2369,14 @@ static void transport_bap_set_state(struct media_transport *transport,
 					transport_state_t state)
 {
 	struct bap_transport *bap = transport->data;
+	struct link_state ls = { state, transport->owner };
 
 	if (!bap->linked || bap->desync)
 		return;
 
 	/* Update links */
 	queue_foreach(bt_bap_stream_io_get_links(bap->stream), link_set_state,
-							UINT_TO_PTR(state));
+									&ls);
 }
 
 static void bap_metadata_changed(struct media_transport *transport)

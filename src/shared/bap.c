@@ -4549,6 +4549,14 @@ struct iovec *bt_bap_pac_get_metadata(struct bt_bap_pac *pac)
 	return pac->metadata;
 }
 
+bool bt_bap_stream_is_client(struct bt_bap_stream *stream)
+{
+	if (!stream)
+		return false;
+
+	return stream->client;
+}
+
 uint8_t bt_bap_stream_get_type(struct bt_bap_stream *stream)
 {
 	if (!stream)

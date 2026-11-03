@@ -157,6 +157,118 @@ test_bap_unicast_reconfigure_metadata[empty|media]
 	streams; it does not exercise microphone streams or simultaneous
 	playback and capture.
 
+DUPLEX UNICAST
+==============
+
+Two hosts, connected over LE, with a stream for each direction sharing
+a single CIS, e.g. a voice call to a headset with a microphone:
+
+.. code-block::
+
+	+------------------------+                 +------------------------+
+	| host0                  |      LE ACL     | host1                  |
+	| initiator (central)    | --------------> | acceptor (peripheral)  |
+	| bluetoothd, testing    |                 | bluetoothctl -a auto   |
+	| bluetoothctl -a auto   |                 | bap-duplex-lc3.bt      |
+	| bap-duplex-lc3.bt      |  CIS 0x00 (LC3) | PAC Sink, Front Left   |
+	| PAC Source, Front Left | ==============> |                        |
+	| PAC Sink, Front Left   | <============== | PAC Source, Front Left |
+	+------------------------+                 +------------------------+
+
+	one CIG holding one bidirectional CIS: the Sink ASE and the Source
+	ASE of the acceptor use the same CIS, so the transports of each
+	host are linked
+
+	--> connection is initiated by      ==> audio flows towards
+
+The initiator runs `bluetoothd` in testing mode:
+
+.. code-block::
+
+	[General]
+	Testing = true
+
+which makes the ``Desynchronized`` property of
+**org.bluez.MediaTransport(5)** writable, through ``transport.desync``,
+so each direction can be acquired, and so its ASE enabled, on its own.
+The acceptor does not run in testing mode.
+
+Everything is driven through `bluetoothctl`, see
+**bluetoothctl-transport(1)**, so the sequence can be reproduced by hand
+with the same script. On the initiator, the transport of the remote Sink
+ASE is the one under ``pac_sink``, and the one of the remote Source ASE
+under ``pac_source``. On the acceptor, ``transport.show`` reports the
+UUID of the local PAC of the ASE of each transport.
+
+``client/scripts/bap-duplex-lc3.bt`` on both hosts
+	Registers a PAC Sink endpoint
+	(``00002bc9-0000-1000-8000-00805f9b34fb``) and a PAC Source endpoint
+	(``00002bcb-0000-1000-8000-00805f9b34fb``) with LC3, both with
+	Front Left as their only location, so a single CIS carries both
+	directions. The host that pairs is the initiator.
+
+test_bap_unicast_desync
+-----------------------
+
+:Setup: As above, with both transports created and linked.
+
+:Steps:
+	1. Initiator: ``transport.desync <sink transport> on``.
+	2. Initiator: ``transport.acquire <source transport>``.
+	3. Initiator: ``transport.acquire <sink transport>``.
+
+:Expected:
+	1. ``Desynchronize succeeded``, and ``transport.show`` reports
+	   ``Desynchronized: yes`` for both transports, as it applies to the
+	   links of a transport as well.
+	2. ``Acquire successful: fd <fd> MTU <read>:<write>`` and the
+	   transport moves to ``State: active``, while its link stays in
+	   ``State: idle``.
+	3. The link is acquired on its own and moves to ``State: active``.
+
+:Notes: Checks the mechanism the next test relies on to enable a
+	single ASE of a CIS, so a failure of that one can be told apart
+	from a failure of the initiator to enable the ASEs separately.
+
+test_bap_unicast_duplex_enable_one
+----------------------------------
+
+:Setup: As above, with both transports created and linked, and
+	desynchronized on the initiator.
+
+:Steps:
+	1. Initiator: ``transport.acquire <source transport>`` only, so the
+	   acceptor's Source ASE is enabled and the CIS is established,
+	   while its Sink ASE stays in the QoS Configured state.
+	2. Acceptor: ``transport.show <sink transport>``.
+	3. Initiator: ``transport.acquire <sink transport>``.
+	4. Initiator: ``transport.release <sink transport>``.
+
+:Expected:
+	1. The acceptor's Source ASE transport is acquired by
+	   `bluetoothctl` and moves to ``State: active``.
+	2. The Sink ASE transport stays in ``State: idle``: its ASE has not
+	   been enabled, so it is neither pending nor acquired along with
+	   its link.
+	3. The Sink ASE transport moves to ``State: active``, acquired on
+	   its own once the initiator enables its ASE.
+	4. The Sink ASE transport moves back to ``State: idle`` while the
+	   Source ASE transport stays in ``State: active``, on both hosts:
+	   transports acquired on their own are released on their own.
+
+:Notes: Reproduces a remote initiator, e.g. a phone in a voice call,
+	enabling the Source ASE of a headset before its Sink ASE. As an
+	acceptor cannot enable an ASE itself, acquiring a transport whose
+	ASE is still in QoS is rejected with ``NotAuthorized``. An audio
+	server acquiring every pending transport then fails, and with it
+	the linked transport that was working.
+
+	`bluetoothctl` acquires a transport of its endpoints as soon as it
+	is pending, as an audio server would. Depending on which transport
+	it acquires first, the Sink ASE transport is either rejected or
+	made active through its link, so the test checks the state of the
+	transport rather than the result of the acquisition.
+
 BROADCAST
 =========
 
