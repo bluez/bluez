@@ -19,5 +19,8 @@ void btd_bearer_destroy(struct btd_bearer *bearer);
 void btd_bearer_paired(struct btd_bearer *bearer);
 void btd_bearer_bonded(struct btd_bearer *bearer);
 void btd_bearer_connectable(struct btd_bearer *bearer);
+void btd_bearer_conn_params(struct btd_bearer *bearer, uint32_t interval,
+				uint16_t latency, uint16_t supv_timeout,
+				uint16_t subrate);
 void btd_bearer_connected(struct btd_bearer *bearer, int err);
 void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason);

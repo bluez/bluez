@@ -8523,6 +8523,14 @@ void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
 					timeout);
 }
 
+void device_set_le_conn_params(struct btd_device *device, uint32_t interval,
+				uint16_t latency, uint16_t supv_timeout,
+				uint16_t subrate)
+{
+	btd_bearer_conn_params(device->le, interval, latency, supv_timeout,
+								subrate);
+}
+
 void btd_device_foreach_service_data(struct btd_device *dev, bt_ad_func_t func,
 							void *data)
 {

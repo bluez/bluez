@@ -9617,6 +9617,7 @@ static void conn_subrate_evt(uint16_t index, uint16_t length,
 	const struct mgmt_ev_conn_subrate *ev = param;
 	struct btd_adapter *adapter = user_data;
 	uint16_t interval, subrate, latency, cont_num, supv_timeout;
+	struct btd_device *device;
 	char dst[18];
 
 	if (length < sizeof(*ev)) {
@@ -9643,6 +9644,17 @@ static void conn_subrate_evt(uint16_t index, uint16_t length,
 		"cont_num 0x%04x timeout 0x%04x", adapter->dev_id, dst,
 		ev->addr.type, interval, subrate, latency, cont_num,
 		supv_timeout);
+
+	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr,
+							ev->addr.type);
+	if (!device)
+		return;
+
+	/* The interval is in units of 0.125 ms and the supervision timeout
+	 * in units of 10 ms.
+	 */
+	device_set_le_conn_params(device, interval * 125, latency,
+					supv_timeout * 10, subrate);
 }
 
 int adapter_set_io_capability(struct btd_adapter *adapter,
