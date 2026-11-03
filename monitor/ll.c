@@ -537,7 +537,9 @@ static void length_req_rsp(const void *data, uint8_t size)
 static const struct bitfield_data le_phys[] = {
 	{  0, "LE 1M"	},
 	{  1, "LE 2M"	},
-	{  2, "LE Coded"},
+	{  2, "LE Coded S=8"},
+	{  3, "LE Coded S=2"},
+	{  4, "LE HDT"	},
 	{ }
 };
 
@@ -759,6 +761,303 @@ static void feature_ext_rsp(const void *data, uint8_t size)
 	packet_print_features_ext_ll(rsp->page, rsp->features);
 }
 
+static const struct bitfield_data coded_rates[] = {
+	{ 0, "CODED S=8" },
+	{ 1, "CODED S=0" },
+	{ }
+};
+
+static const struct bitfield_data hdt_rates[] = {
+	{ 0, "HDT 2M" },
+	{ 1, "HDT 3M" },
+	{ 2, "HDT 4M" },
+	{ 3, "HDT 6M" },
+	{ 4, "HDT 7.5M" },
+	{ }
+};
+
+static void print_rates(const char *prefix, uint8_t phy, uint16_t rates)
+{
+	const struct bitfield_data *fields = NULL;
+
+	switch (phy) {
+	case 0x01:
+	case 0x02:
+		break;
+	case 0x03:
+		fields = coded_rates;
+		break;
+	case 0x04:
+		fields = hdt_rates;
+		break;
+	default:
+		break;
+	}
+
+	print_field("%s: 0x%4.4x", prefix, rates);
+
+	if (fields) {
+		uint16_t mask = print_bitfield(2, rates, fields);
+		if (mask)
+			print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%4.4x)", mask);
+	}
+}
+
+static void print_le_phy(const char *prefix, uint8_t phy)
+{
+	const char *str;
+
+	switch (phy) {
+	case 0x01:
+		str = "LE 1M";
+		break;
+	case 0x02:
+		str = "LE 2M";
+		break;
+	case 0x03:
+		str = "LE Coded";
+		break;
+	case 0x04:
+		str = "LE HDT";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s: %s (0x%2.2x)", prefix, str, phy);
+}
+
+static void cis_req_v3(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_req_v3 *cmd = data;
+
+	print_field("CIG ID: 0x%2.2x", cmd->cig);
+	print_field("CIS ID: 0x%2.2x", cmd->cis);
+
+	print_le_phy("Central to Peripheral PHY", cmd->c_phy);
+	print_le_phy("Peripheral To Central PHY", cmd->p_phy);
+
+	print_field("Central to Peripheral Maximum SDU: %u", cmd->c_sdu);
+	print_field("Peripheral to Central Maximum SDU: %u", cmd->p_sdu);
+
+	print_field("Central to Peripheral Interval: %u",
+						get_le24(cmd->c_interval));
+	print_field("Peripheral to Central Interval: %u",
+						get_le24(cmd->p_interval));
+
+	print_field("Central to Peripheral Maximum Payload: %u", cmd->c_pdu);
+	print_field("Peripheral to Central Maximum Payload: %u", cmd->p_pdu);
+
+	print_field("BN: %u", cmd->bn);
+
+	print_field("Sub-Interval: %u", get_le24(cmd->sub_interval));
+
+	print_field("NSE: %u", cmd->nse);
+
+	print_field("Central to Peripheral Flush Timeout: %u", cmd->c_ft);
+	print_field("Peripheral to Central Flush Timeout: %u", cmd->p_ft);
+
+	print_field("ISO Interval: %u", le16_to_cpu(cmd->iso_interval));
+
+	print_field("CIS Offset Minimum: %u", get_le24(cmd->offset_min));
+	print_field("CIS Offset Maximum: %u", get_le24(cmd->offset_max));
+
+	print_field("Connection Event Count: %u", cmd->conn_event_count);
+
+	print_rates("Central to Peripheral Rates", cmd->c_phy, cmd->c_rates);
+	print_rates("Peripheral To Central Rates", cmd->p_phy, cmd->p_rates);
+
+	print_field("Config ID: %u", cmd->config_id);
+	print_field("TL Group ID: 0x%2.2x", cmd->tl_group_id);
+
+	print_field("Central to Peripheral Windows Size: %u",
+			cmd->wincfg | (BIT(0) & BIT(1)));
+	print_field("Peripheral to Central Windows Size: %u",
+			cmd->wincfg | (BIT(2) & BIT(3)));
+	print_field("MIC Length: %u", cmd->wincfg & BIT(4));
+}
+
+static const struct bitfield_data lqf_transports[] = {
+	{ 0, "ACL" },
+	{ 1, "CIS" },
+	{ }
+};
+
+static void hdt_lqf_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_hdt_lqf_ind *pdu = data;
+	uint8_t mask;
+
+	print_field("Transport: 0x%2.2x", pdu->transport);
+
+	mask = print_bitfield(2, pdu->transport, lqf_transports);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+}
+
+static void hdt_config_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_hdt_config_req *pdu = data;
+
+	print_field("ACL RX Payload Windows Size: %u",
+			pdu->wincfg & (BIT(0) & BIT(1)));
+	print_field("Max CIS TX Windows Size: %u",
+			pdu->wincfg & (BIT(2) & BIT(3)));
+	print_field("Max CIS RX Windows Size: %u",
+			pdu->wincfg & (BIT(4) & BIT(5)));
+	print_rates("ACL RX Rates", 0x04, pdu->acl_rx_rates);
+	print_field("Max ACL RX Packet Size: %u", pdu->acl_rx_mtu);
+}
+
+static void hdt_config_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_hdt_config_rsp *pdu = data;
+
+	print_field("ACL RX Payload Windows Size: %u",
+			pdu->wincfg & (BIT(0) & BIT(1)));
+	print_field("Max CIS TX Windows Size: %u",
+			pdu->wincfg & (BIT(2) & BIT(3)));
+	print_field("Max CIS RX Windows Size: %u",
+			pdu->wincfg & (BIT(4) & BIT(5)));
+	print_rates("ACL RX Rates", 0x04, pdu->acl_rx_rates);
+	print_field("Max ACL RX Packet Size: %u", pdu->acl_rx_mtu);
+}
+
+static void phy_update_ind_v2(const void *data, uint8_t size)
+{
+	const struct bt_ll_phy_update_ind_v2 *pdu = data;
+	uint8_t mask;
+
+	print_field("C_TO_P_PHY: 0x%2.2x", pdu->c_phy);
+
+	mask = print_bitfield(2, pdu->c_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("P_TO_C_PHY: 0x%2.2x", pdu->p_phy);
+
+	mask = print_bitfield(2, pdu->p_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("Instant: 0x%4.4x", pdu->instant);
+
+	print_field("Address: %2.2x:%2.2x:%2.2x:%2.2x:%2.2x",
+			pdu->address[0], pdu->address[1], pdu->address[2],
+			pdu->address[3], pdu->address[4]);
+}
+
+static void cis_ind_v2(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_ind_v2 *ind = data;
+
+	print_field("CIS Access Address: 0x%4.4x", le32_to_cpu(ind->addr));
+	print_field("CIS Offset: 0x%6.6x", get_le24(ind->cis_offset));
+
+	print_field("CIG Synchronization Delay: %u us",
+				get_le24(ind->cig_sync_delay));
+	print_field("CIS Synchronization Delay: %u us",
+				get_le24(ind->cis_sync_delay));
+	print_field("Connection Event Count: %u", ind->conn_event_count);
+	print_field("PCA-H: 0x%2.2x", ind->pca_h);
+}
+
+static const struct bitfield_data ecdh_flags[] = {
+	{ 0, "Allow 64-bit MIC length" },
+	{ 1, "Opportunistic encryption" },
+	{ }
+};
+
+static void print_key_type(const char *str, uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		print_field("%s: Public key P-256 (0x00)", str);
+		break;
+	default:
+		print_field("%s: Reserved (0x%2.2x)", str, type);
+		break;
+	}
+}
+
+static void enc_ecdh_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_ecdh_req *cmd = data;
+	uint8_t mask;
+
+	print_field("Flags: 0x%2.2x", cmd->flags);
+
+	mask = print_bitfield(2, cmd->flags, ecdh_flags);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_hex_field("Rand", cmd->rand, 16);
+	print_key_type("Key Type", cmd->key_type);
+	print_hex_field("Public Key", cmd->pubkey, 64);
+}
+
+static void enc_ecdh_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_ecdh_rsp *rsp = data;
+	uint8_t mask;
+
+	print_field("Flags: 0x%2.2x", rsp->flags);
+
+	mask = print_bitfield(2, rsp->flags, ecdh_flags);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_hex_field("Rand", rsp->rand, 16);
+	print_key_type("Key Type", rsp->key_type);
+	print_hex_field("Public Key", rsp->pubkey, 64);
+}
+
+static const struct bitfield_data refresh_flags[] = {
+	{ 0, "64-bit MIC length preferred" },
+	{ }
+};
+
+static void refresh_enc_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_refresh_enc_req *pdu = data;
+	uint8_t mask;
+
+	print_field("Flags: 0x%2.2x", pdu->flags);
+
+	mask = print_bitfield(2, pdu->flags, refresh_flags);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+}
+
+static void refresh_enc_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_refresh_enc_req *pdu = data;
+	uint8_t mask;
+
+	print_field("Flags: 0x%2.2x", pdu->flags);
+
+	mask = print_bitfield(2, pdu->flags, refresh_flags);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+}
+
+static void refresh_enc_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_refresh_enc_ind *pdu = data;
+
+	print_field("MIC length: %u", pdu->mic_len);
+	print_field("Instant: 0x%4.4x", pdu->instant);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -766,6 +1065,12 @@ struct llcp_data {
 	uint8_t size;
 	bool fixed;
 };
+
+#define LLCP_OP_VL(_op, _str, _func, _type) \
+	{ _op, _str, _func, sizeof(_type), false }
+
+#define LLCP_OP(_op, _str, _func, _type) \
+	{ _op, _str, _func, sizeof(_type), true }
 
 static const struct llcp_data llcp_table[] = {
 	{ 0x00, "LL_CONNECTION_UPDATE_REQ", conn_update_req,   11, true },
@@ -814,6 +1119,30 @@ static const struct llcp_data llcp_table[] = {
 	{ BT_LL_CIS_RSP, "LL_FEATURE_EXT_RSP", feature_ext_rsp,
 					sizeof(struct bt_ll_feature_ext_rsp),
 					true },
+	/* HDT LLCP commands */
+	LLCP_OP(BT_LL_CIS_REQ_V3, "LL_CIS_REQ[v3]", cis_req_v3,
+					struct bt_ll_cis_req_v3),
+	LLCP_OP(BT_LL_HDT_LQF_REPORTING_IND, "LL_HDT_LQF_REPORTING_IND",
+					hdt_lqf_ind, struct bt_ll_hdt_lqf_ind),
+	LLCP_OP(BT_LL_HDT_CONFIG_REQ, "LL_HDT_CONFIG_REQ", hdt_config_req,
+					struct bt_ll_hdt_config_req),
+	LLCP_OP(BT_LL_HDT_CONFIG_RSP, "LL_HDT_CONFIG_RSP", hdt_config_rsp,
+					struct bt_ll_hdt_config_rsp),
+	LLCP_OP(BT_LL_PHY_UPDATE_IND_V2, "LL_PHY_UPDATE_IND[v2]",
+					phy_update_ind_v2,
+					struct bt_ll_phy_update_ind_v2),
+	LLCP_OP(BT_LL_CIS_IND_V2, "LL_CIS_IND[v2]", cis_ind_v2,
+					struct bt_ll_cis_ind_v2),
+	LLCP_OP(BT_LL_ENC_ECDH_REQ, "LL_ENC_ECDH_REQ", enc_ecdh_req,
+					struct bt_ll_enc_ecdh_req),
+	LLCP_OP(BT_LL_ENC_ECDH_RSP, "LL_ENC_ECDH_RSP", enc_ecdh_rsp,
+					struct bt_ll_enc_ecdh_rsp),
+	LLCP_OP(BT_LL_REFRESH_ENC_REQ, "LL_REFRESH_ENC_REQ", refresh_enc_req,
+					struct bt_ll_refresh_enc_req),
+	LLCP_OP(BT_LL_REFRESH_ENC_RSP, "LL_REFRESH_ENC_RSP", refresh_enc_rsp,
+					struct bt_ll_refresh_enc_rsp),
+	LLCP_OP(BT_LL_REFRESH_ENC_IND, "LL_REFRESH_ENC_IND", refresh_enc_ind,
+					struct bt_ll_refresh_enc_ind),
 	{ }
 };
 
