@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <string.h>
+#include <limits.h>
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/timerfd.h>
@@ -335,6 +336,7 @@ struct idle_data {
 	int id;
 	bool deferred;
 	bool armed;
+	bool ready;
 	bool removed;
 	mainloop_timeout_func callback;
 	mainloop_destroy_func destroy;
@@ -355,6 +357,18 @@ static struct idle_data *find_idle(int id)
 	}
 
 	return NULL;
+}
+
+static bool idle_in_use(int id)
+{
+	struct idle_data *idle;
+
+	for (idle = idle_list; idle; idle = idle->next) {
+		if (idle->id == id)
+			return true;
+	}
+
+	return false;
 }
 
 static bool idle_pending(void)
@@ -407,13 +421,19 @@ static void remove_all_idles(void)
 static void run_idles(bool deferred)
 {
 	struct idle_data *idle;
-	int last = idle_next_id;
+
+	/* Mark the ones armed before this pass, so the ones added or armed by
+	 * the callbacks only run on the next pass.
+	 */
+	for (idle = idle_list; idle; idle = idle->next)
+		idle->ready = idle->armed && !idle->removed &&
+						idle->deferred == deferred;
 
 	for (idle = idle_list; idle; idle = idle->next) {
-		if (idle->removed || !idle->armed || idle->id >= last ||
-						idle->deferred != deferred)
+		if (!idle->ready || idle->removed)
 			continue;
 
+		idle->ready = false;
 		idle->armed = false;
 		idle->callback(idle->id, idle->user_data);
 	}
@@ -434,7 +454,13 @@ static int add_idle(bool deferred, mainloop_timeout_func callback,
 		return -ENOMEM;
 
 	memset(idle, 0, sizeof(*idle));
-	idle->id = idle_next_id++;
+
+	/* Recycle the IDs within the idle range, skipping the ones in use */
+	do {
+		idle->id = idle_next_id;
+		idle_next_id = idle_next_id < INT_MAX ? idle_next_id + 1 :
+								IDLE_ID_BASE;
+	} while (idle_in_use(idle->id));
 	idle->deferred = deferred;
 	idle->armed = true;
 	idle->callback = callback;
