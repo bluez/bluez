@@ -2098,6 +2098,11 @@ static void cmd_info(int argc, char *argv[])
 		print_property_with_label(bearer, "Connectable",
 							"LE.Connectable");
 		print_property_with_label(bearer, "Role", "LE.Role");
+		print_property_with_label(bearer, "Interval", "LE.Interval");
+		print_property_with_label(bearer, "Latency", "LE.Latency");
+		print_property_with_label(bearer, "SupervisionTimeout",
+						"LE.SupervisionTimeout");
+		print_property_with_label(bearer, "Subrate", "LE.Subrate");
 	}
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
