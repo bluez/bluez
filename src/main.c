@@ -151,6 +151,7 @@ static const char *gatt_options[] = {
 	"ExchangeMTU",
 	"Channels",
 	"Client",
+	"NotifyMultiple",
 	"ExportClaimedServices",
 	"Security",
 	NULL
@@ -1190,6 +1191,35 @@ static void parse_gatt_seclevel(GKeyFile *config)
 	g_free(str);
 }
 
+static void parse_gatt_mnotify(GKeyFile *config)
+{
+	char *str = NULL;
+	char *endptr = NULL;
+	long val;
+
+	parse_config_string(config, "GATT", "NotifyMultiple", &str);
+	if (!str)
+		return;
+
+	if (!strcmp(str, "false") || !strcmp(str, "no") ||
+				!strcmp(str, "off")) {
+		btd_opts.gatt_mnotify = -1;
+	} else if (!strcmp(str, "true") || !strcmp(str, "yes") ||
+				!strcmp(str, "on")) {
+		btd_opts.gatt_mnotify = 0;
+	} else {
+		val = strtol(str, &endptr, 0);
+		if (!endptr || *endptr != '\0' || val < 0 || val > INT_MAX)
+			error("Invalid value for NotifyMultiple=%s", str);
+		else
+			btd_opts.gatt_mnotify = val;
+	}
+
+	DBG("NotifyMultiple=%d", btd_opts.gatt_mnotify);
+
+	g_free(str);
+}
+
 static void parse_gatt(GKeyFile *config)
 {
 	parse_gatt_cache(config);
@@ -1199,6 +1229,7 @@ static void parse_gatt(GKeyFile *config)
 	parse_config_u8(config, "GATT", "Channels", &btd_opts.gatt_channels,
 				1, 6);
 	parse_config_bool(config, "GATT", "Client", &btd_opts.gatt_client);
+	parse_gatt_mnotify(config);
 	parse_gatt_export(config);
 	parse_gatt_seclevel(config);
 }
@@ -1425,6 +1456,7 @@ static void init_defaults(void)
 	btd_opts.gatt_mtu = BT_ATT_MAX_LE_MTU;
 	btd_opts.gatt_channels = 1;
 	btd_opts.gatt_client = true;
+	btd_opts.gatt_mnotify = 0;
 	btd_opts.gatt_export = BT_GATT_EXPORT_READ_ONLY;
 	btd_opts.gatt_seclevel = BT_ATT_SECURITY_AUTO;
 

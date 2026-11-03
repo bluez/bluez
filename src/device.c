@@ -6547,6 +6547,8 @@ static void gatt_server_init(struct btd_device *device,
 		bt_gatt_server_set_permissions(device->server, false);
 
 	bt_gatt_server_set_debug(device->server, gatt_debug, NULL, NULL);
+	bt_gatt_server_set_mnotify_timeout(device->server,
+						btd_opts.gatt_mnotify);
 
 	btd_gatt_database_server_connected(database, device->server);
 }
