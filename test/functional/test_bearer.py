@@ -48,6 +48,12 @@ BROADCAST_UUID = "6e2c1d84-7a3b-4f50-9c1e-5b8d2a7f0e13"
 # other host exports, which would need an agent reply in every test
 ARGS = ("-P", "midi")
 
+# host1 wants a 100 ms connection interval (80 units of 1.25 ms), so it asks
+# host0 to update the connection once connected
+UPDATE_CONF = LE_CONF + "[LE]\nMinConnectionInterval = 80\nMaxConnectionInterval = 80\n"
+
+CONN_PARAMS = ("Interval", "Latency", "SupervisionTimeout", "Subrate")
+
 
 class Bearers(HostPlugin, EventPluginMixin):
     """
@@ -188,6 +194,25 @@ def peers(host0, host1):
     return ((host0, host1), (host1, host0))
 
 
+def conn_params(host, remote):
+    """
+    The connection parameters of the LE bearer host has for remote, or
+    None if they are not present.
+    """
+    values = [host.bearers.get(remote.bdaddr, LE_INTERFACE, n) for n in CONN_PARAMS]
+    if None in values:
+        return None
+
+    return dict(zip(CONN_PARAMS, map(int, values)))
+
+
+def connect_le(host0, host1):
+    discover(host0, host1)
+
+    host0.bearers.call(host1.bdaddr, LE_INTERFACE, "Connect")
+    host0.bearers.expect(f"{LE_INTERFACE}.Connect:reply")
+
+
 def disconnect(host0, host1, interface):
     """
     Disconnect the bearer from host0, and check it is reported as
@@ -228,6 +253,59 @@ def test_bearer_le_connect(hosts):
 
     for host, remote in peers(host0, host1):
         assert host.bearers.get(remote.bdaddr, LE_INTERFACE, "Role") is None
+
+
+@le_config
+def test_bearer_le_conn_params(hosts):
+    host0, host1 = hosts
+
+    connect_le(host0, host1)
+
+    for host, remote in peers(host0, host1):
+        wait_until(lambda: conn_params(host, remote) is not None)
+
+    # The parameters are not known in advance, as the kernel of host0 may
+    # keep connection parameters for host1 from an earlier test, but both
+    # ends of the connection report the same ones
+    params = conn_params(host0, host1)
+    assert conn_params(host1, host0) == params
+    assert params["Subrate"] == 1
+
+    # The supervision timeout is longer than twice the time between the
+    # connection events the peripheral listens to
+    timeout = params["SupervisionTimeout"] * 1000
+    assert timeout > 2 * (1 + params["Latency"]) * params["Interval"]
+
+    disconnect(host0, host1, LE_INTERFACE)
+
+    for host, remote in peers(host0, host1):
+        for name in CONN_PARAMS:
+            assert host.bearers.get(remote.bdaddr, LE_INTERFACE, name) is None
+
+
+@host_config(
+    [
+        Bluetoothd(conf=LE_CONF, args=ARGS),
+        Agent(capability="NoInputNoOutput"),
+        Bearers(),
+    ],
+    [
+        Bluetoothd(conf=UPDATE_CONF, args=ARGS),
+        LeAdvertiser(),
+        Agent(capability="NoInputNoOutput"),
+        Bearers(),
+    ],
+)
+def test_bearer_le_conn_update(hosts):
+    host0, host1 = hosts
+
+    connect_le(host0, host1)
+
+    for host, remote in peers(host0, host1):
+        wait_until(
+            lambda: host.bearers.get(remote.bdaddr, LE_INTERFACE, "Interval")
+            == "100000"
+        )
 
 
 @host_config(

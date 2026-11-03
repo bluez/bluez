@@ -62,6 +62,49 @@ test_bearer_le_connect
 	   ``org.bluez.Reason.Remote`` on host1. ``Connected`` is false on
 	   both hosts and ``Role`` is no longer present.
 
+test_bearer_le_conn_params
+--------------------------
+
+:Setup: As above, over LE.
+
+:Steps:
+	1. host0 connects to host1, as in test_bearer_le_connect.
+	2. Both hosts read ``Interval``, ``Latency``, ``SupervisionTimeout``
+	   and ``Subrate`` on the LE bearer.
+	3. host0 calls ``org.bluez.Bearer.LE1.Disconnect``.
+
+:Expected:
+	1. ``Connect`` replies.
+	2. Both hosts report the same values, ``Subrate`` is 1, and the
+	   supervision timeout is longer than twice ``(1 + Latency) *
+	   Interval``, as the Core specification requires, which also
+	   checks the units of the properties.
+	3. ``Disconnect`` replies, and the four properties are no longer
+	   present on either host.
+
+:Notes: The values are not checked against the defaults, as the kernel
+	of host0 may keep connection parameters for host1 from an earlier
+	test on the same VM instance, e.g. after pairing.
+
+test_bearer_le_conn_update
+--------------------------
+
+:Setup: As above, over LE, except host1 runs **bluetoothd(8)** with a
+	connection interval of 100 ms (``MinConnectionInterval`` and
+	``MaxConnectionInterval`` of 80).
+
+:Steps:
+	1. host0 connects to host1, as in test_bearer_le_connect.
+	2. Both hosts read ``Interval`` on the LE bearer.
+
+:Expected:
+	1. ``Connect`` replies.
+	2. ``Interval`` becomes 100000 on both hosts.
+
+:Notes: host0 connects with a shorter interval, which is outside the
+	range of host1, so the kernel of host1 asks host0 to update the
+	connection with an L2CAP Connection Parameter Update Request.
+
 test_bearer_le_connectable
 --------------------------
 
