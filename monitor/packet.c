@@ -1004,6 +1004,9 @@ static const struct {
 	{ 0x43, "Limit Reached"						},
 	{ 0x44, "Operation Cancelled by Host"				},
 	{ 0x45, "Packet Too Long"					},
+	{ 0x49, "Invalid Packet Format"					},
+	{ 0x4a, "Invalid Public Key"					},
+	{ 0x4b, "Debug Key Not Allowed"					},
 	{ }
 };
 
@@ -3227,6 +3230,15 @@ static const struct bitfield_data features_le_1[] = {
 	{  9, "Shorter Connection Intervals (Host Support)"	},
 	{ 10, "LE Flushable ACL Data"				},
 	{ 11, "Channel Sounding Enhancement #1"			},
+	{ 12, "Encryption Key Schedule"				},
+	{ 13, "High Data Throughput"				},
+	{ 14, "Receive HDT6 Rate"				},
+	{ 15, "Transmit HDT6 Rate"				},
+	{ 16, "Receive HDT7.5 Rate"				},
+	{ 17, "Transmit HDT7.5 Rate"				},
+	{ 18, "HDT Packet Format 1"				},
+	{ 19, "Link Quality Feedback"				},
+	{ 26, "Opportunistic Encryption (Host Support)"		},
 	{ }
 };
 
@@ -3302,6 +3314,7 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 			break;
 		case 1:
 			features_table = features_le_1;
+			break;
 		}
 		break;
 	case 0xf0:
@@ -3615,9 +3628,11 @@ static const struct bitfield_data events_page2_table[] = {
 	{ 23, "Authenticated Payload Timeout Expired"			},
 	{ 24, "SAM Status Change"					},
 	{ 25, "Encryption Change [v2]"					},
+	{ 26, "Encryption Change [v3]"					},
+	{ 27, "Encryption Key Refresh Complete [v2]"			},
+	{ 28, "Encryption Key Debug Report"				},
 	{ }
 };
-
 static const struct bitfield_data events_le_table[] = {
 	{  0, "LE Connection Complete"					},
 	{  1, "LE Advertising Report"					},
@@ -3675,6 +3690,9 @@ static const struct bitfield_data events_le_table[] = {
 	{ 53, "LE UTP Received"						},
 	{ 54, "LE Connection Rate Change"				},
 	{ 55, "LE CS Read Remote Supported Capabilities Complete [v2]"	},
+	{ 56, "LE Data Length Change [v2]"				},
+	{ 57, "LE CIS Established [v3]"				},
+	{ 58, "LE Create BIG Complete [v2]"				},
 	{ }
 };
 
@@ -8168,6 +8186,9 @@ static void print_le_phy(const char *prefix, uint8_t phy)
 	case 0x03:
 		str = "LE Coded";
 		break;
+	case 0x05:
+		str = "LE HDT";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -8190,6 +8211,7 @@ static const struct bitfield_data le_phys[] = {
 	{  0, "LE 1M"	},
 	{  1, "LE 2M"	},
 	{  2, "LE Coded"},
+	{  4, "LE HDT"	},
 	{ }
 };
 
@@ -8235,26 +8257,82 @@ static void le_set_default_phy_cmd(uint16_t index, const void *data,
 	print_le_phys_preference(cmd->all_phys, cmd->tx_phys, cmd->rx_phys);
 }
 
-static void le_set_phy_cmd(uint16_t index, const void *data, uint8_t size)
-{
-	const struct bt_hci_cmd_le_set_phy *cmd = data;
-	const char *str;
+/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 4, Part E, Section 7.8.49:
+ *
+ * PHY_Options, bits 0 to 1: 0 = the Host has no preferred coding when
+ * transmitting on the LE Coded PHY, 1 = the Host prefers that S=2 coding be
+ * used, 2 = the Host prefers that S=8 coding be used, 3 = Reserved for future
+ * use. Bits 2 to 6 are the HDT rates, bit 7 is the preference for a 64-bit
+ * MIC length on the LE HDT PHY, bits 8 to 9 are the preferred packet format
+ * (0 = no preference, 1 = packet format 0, 2 = packet format 1, 3 = Reserved
+ * for future use) and bit 10 forces the key to be refreshed if the connection
+ * is encrypted using EKS. All other bits are Reserved for future use.
+ */
+static const struct bitfield_data hdt_phy_opts[] = {
+	{ 2, "HDT 2M" },
+	{ 3, "HDT 3M" },
+	{ 4, "HDT 4M" },
+	{ 5, "HDT 6M" },
+	{ 6, "HDT 7.5M" },
+	{ 7, "Prefer 64-bit MIC" },
+	{ 10, "Force key refresh" },
+	{ }
+};
 
-	print_handle(cmd->handle);
-	print_le_phys_preference(cmd->all_phys, cmd->tx_phys, cmd->rx_phys);
-	switch (le16_to_cpu(cmd->phy_opts)) {
+static void print_le_phy_options(const char *label, uint16_t opts)
+{
+	const char *str;
+	uint16_t mask;
+
+	print_field("%s: 0x%4.4x", label, opts);
+
+	switch (opts & 0x0003) {
+	case 0x0000:
+		str = "No preferred coding";
+		break;
 	case 0x0001:
-		str = "S2 coding";
+		str = "Prefer S=2 coding";
 		break;
 	case 0x0002:
-		str = "S8 coding";
+		str = "Prefer S=8 coding";
 		break;
 	default:
 		str = "Reserved";
 		break;
 	}
 
-	print_field("PHY options preference: %s (0x%4.4x)", str, cmd->phy_opts);
+	print_field("  LE Coded: %s (%u)", str, opts & 0x0003);
+
+	switch ((opts >> 8) & 0x0003) {
+	case 0x0000:
+		str = "No preferred packet format";
+		break;
+	case 0x0001:
+		str = "Prefer packet format 0";
+		break;
+	case 0x0002:
+		str = "Prefer packet format 1";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("  LE HDT: %s (%u)", str, (opts >> 8) & 0x0003);
+
+	mask = print_bitfield(4, opts & ~0x0303, hdt_phy_opts);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%4.4x)", mask);
+}
+
+static void le_set_phy_cmd(uint16_t index, const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_phy *cmd = data;
+
+	print_handle(cmd->handle);
+	print_le_phys_preference(cmd->all_phys, cmd->tx_phys, cmd->rx_phys);
+	print_le_phy_options("PHY Options", le16_to_cpu(cmd->phy_opts));
 }
 
 static void le_enhanced_receiver_test_cmd(uint16_t index, const void *data,
@@ -9211,7 +9289,7 @@ static void print_framing(uint8_t value)
 		print_field("Framing: Framed (0x%2.2x)", value);
 		return;
 	default:
-		print_field("Packing: Reserved (0x%2.2x)", value);
+		print_field("Framing: Reserved (0x%2.2x)", value);
 	}
 }
 
@@ -10303,6 +10381,541 @@ static void le_read_conn_interval_rsp(uint16_t index, const void *data,
 		print_slot_125u("  Interval Max", grp->max);
 		print_slot_125u("  Interval Stride", grp->stride);
 	}
+}
+
+static void print_le_def_phys(uint8_t phys)
+{
+	const char *str;
+
+	switch (phys) {
+	case 0x00:
+		str = "All GFSK";
+		break;
+	case 0x01:
+		str = "HDT";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("PHYs: %s (0x%2.2x)", str, phys);
+}
+
+static void le_write_def_data_len_v2(uint16_t index, const void *data,
+							uint8_t size)
+{
+	const struct bt_hci_cmd_le_write_def_data_len_v2 *cmd = data;
+
+	print_field("TX octets: %d", le16_to_cpu(cmd->tx_len));
+	print_field("TX time: %d", le16_to_cpu(cmd->tx_time));
+	print_le_def_phys(cmd->phys);
+}
+
+static void le_read_def_data_len_v2(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_def_data_len_v2 *cmd = data;
+
+	print_le_def_phys(cmd->phys);
+}
+
+static void le_read_def_data_len_v2_rsp(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_def_data_len_v2 *rsp = data;
+
+	print_status(rsp->status);
+	print_field("TX octets: %d", le16_to_cpu(rsp->tx_len));
+	print_field("TX time: %d", le16_to_cpu(rsp->tx_time));
+}
+
+static void print_prefer_mic_len(uint8_t mic_len)
+{
+	const char *str;
+
+	switch (mic_len) {
+	case 0x01:
+		str = "Prefer 64 bits";
+		break;
+	case 0x02:
+		str = "128 bits";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("MIC Length: %s (0x%2.2x)", str, mic_len);
+}
+
+static void print_enable_encrypt(uint8_t encrypt)
+{
+	const char *str;
+
+	switch (encrypt) {
+	case 0x00:
+		str = "LTK";
+		break;
+	case 0x01:
+		str = "Opportunistic with Key Schedule";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("Encryption: %s (0x%2.2x)", str, encrypt);
+}
+
+static void le_enable_encrypt_v2(uint16_t index, const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_enable_encrypt_v2 *cmd = data;
+
+	print_handle(cmd->handle);
+	print_random_number(cmd->rand);
+	print_encrypted_diversifier(cmd->ediv);
+	print_key("Long term key", cmd->ltk);
+	print_prefer_mic_len(cmd->mic_len);
+	print_enable_encrypt(cmd->encryption);
+}
+
+static void print_set_le_phy(const char *prefix, uint8_t phy)
+{
+	if (phy)
+		return print_le_phy(prefix, phy);
+
+	print_field("%s: No PHY (0x%2.2x)", prefix, phy);
+}
+
+static void le_read_max_data_len_v2(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_read_data_len_v2 *cmd = data;
+
+	print_set_le_phy("PHY", cmd->phy);
+}
+
+static void le_read_max_data_len_v2_rsp(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_data_len_v2 *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Max TX octets: %d", le16_to_cpu(rsp->max_tx_len));
+	print_field("Max TX time: %d", le16_to_cpu(rsp->max_tx_time));
+	print_field("Max RX octets: %d", le16_to_cpu(rsp->max_rx_len));
+	print_field("Max RX time: %d", le16_to_cpu(rsp->max_rx_time));
+	print_field("Max TX Payload Window size: %d", rsp->max_tx_win);
+	print_field("Max RX Payload Window size: %d", rsp->max_rx_win);
+	print_field("Max RX Payload Packet size: %d",
+			le16_to_cpu(rsp->max_rx_packet));
+}
+
+static void print_phys(uint8_t phys)
+{
+	const char *str;
+
+	switch (phys) {
+	case 0x00:
+		str = "GFSK";
+		break;
+	case 0x01:
+		str = "HDT";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("PHYs: %s (0x%2.2x)", str, phys);
+}
+
+static void le_set_data_len_v2(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_data_len_v2 *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("TX octets: %d", le16_to_cpu(cmd->tx_len));
+	print_field("TX time: %d", le16_to_cpu(cmd->tx_time));
+	print_phys(cmd->phys);
+}
+
+static void le_set_data_len_v2_rsp(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_rsp_le_set_data_len_v2 *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
+/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 4, Part E, Section 7.8.97:
+ *
+ * Coded_Rates_C_To_P[i]: bit 0 is "For LE Coded PHY, the Host prefers to use
+ * the S=8 coding (possibly among others)", bit 1 is the same for the S=2
+ * coding. HDT_Rates_C_To_P[i]: bits 0 to 4 are the HDT2, HDT3, HDT4, HDT6 and
+ * HDT7.5 rates of the LE HDT PHY. All other bits are Reserved for future use,
+ * and each is ignored unless its PHY is in PHY_C_To_P[i].
+ *
+ * The same bits are used for the P_To_C direction and, in the events, for the
+ * rates in use.
+ */
+static const struct bitfield_data coded_rates[] = {
+	{ 0, "CODED S=8" },
+	{ 1, "CODED S=2" },
+	{ }
+};
+
+static const struct bitfield_data hdt_rates[] = {
+	{ 0, "HDT 2M" },
+	{ 1, "HDT 3M" },
+	{ 2, "HDT 4M" },
+	{ 3, "HDT 6M" },
+	{ 4, "HDT 7.5M" },
+	{ }
+};
+
+static void print_rates(const char *prefix, uint8_t phy, uint16_t rates)
+{
+	const struct bitfield_data *fields = NULL;
+
+	switch (phy) {
+	case 0x01:
+	case 0x02:
+		break;
+	case 0x03:
+		fields = coded_rates;
+		break;
+	case 0x05:
+		fields = hdt_rates;
+		break;
+	default:
+		break;
+	}
+
+	print_field("%s: 0x%4.4x", prefix, rates);
+
+	if (fields) {
+		uint16_t mask = print_bitfield(2, rates, fields);
+
+		if (mask)
+			print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%4.4x)", mask);
+	}
+}
+
+static void print_packet_format(uint8_t format)
+{
+	const char *str;
+
+	switch (format) {
+	case 0x00:
+		str = "No preferred format";
+		break;
+	case 0x01:
+		str = "Packet Format 0";
+		break;
+	case 0x02:
+		str = "Packet Format 1";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("Packet Format: %s (0x%2.2x)", str, format);
+}
+
+static void print_cis_params_v2(const void *data, int i)
+{
+	const struct bt_hci_cis_params_v2 *cis = data;
+
+	print_field("CIS ID: 0x%2.2x", cis->cis_id);
+	print_field("Central to Peripheral Maximum SDU Size: %u",
+						le16_to_cpu(cis->c_sdu));
+	print_field("Peripheral to Central Maximum SDU Size: %u",
+						le16_to_cpu(cis->p_sdu));
+	print_le_phys("Central to Peripheral PHY", cis->c_phy);
+	print_le_phys("Peripheral to Central PHY", cis->p_phy);
+	print_field("Central to Peripheral Retransmission attempts: 0x%2.2x",
+							cis->c_rtn);
+	print_field("Peripheral to Central Retransmission attempts: 0x%2.2x",
+							cis->p_rtn);
+	print_rates("Central to Peripheral Coded Rates", 0x03,
+			cis->c_coded_rates);
+	print_rates("Peripheral to Central Coded Rates", 0x03,
+			cis->p_coded_rates);
+	print_rates("Central to Peripheral HDT Rates", 0x05,
+			le16_to_cpu(cis->c_hdt_rates));
+	print_rates("Peripheral to Central HDT Rates", 0x05,
+			le16_to_cpu(cis->p_hdt_rates));
+	print_prefer_mic_len(cis->mic_len);
+	print_packet_format(cis->format);
+}
+
+static void le_set_cig_params_v2(uint16_t index, const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_cig_params_v2 *cmd = data;
+
+	print_field("CIG ID: 0x%2.2x", cmd->cig_id);
+	print_usec_interval("Central to Peripheral SDU Interval",
+							cmd->c_interval);
+	print_usec_interval("Peripheral to Central SDU Interval",
+							cmd->p_interval);
+	print_sca(cmd->sca);
+	print_packing(cmd->packing);
+	print_framing(cmd->framing);
+	print_field("Central to Peripheral Maximum Latency: %d ms (0x%4.4x)",
+		le16_to_cpu(cmd->c_latency), le16_to_cpu(cmd->c_latency));
+	print_field("Peripheral to Central Maximum Latency: %d ms (0x%4.4x)",
+		le16_to_cpu(cmd->p_latency), le16_to_cpu(cmd->p_latency));
+	print_field("Number of CIS: %u", cmd->num_cis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->cis, size, cmd->num_cis, sizeof(*cmd->cis),
+						print_cis_params_v2);
+}
+
+static void le_set_cig_params_v2_rsp(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_rsp_le_set_cig_params *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("CIG ID: 0x%2.2x", rsp->cig_id);
+	print_field("Number of Handles: %u", rsp->num_handles);
+
+	size -= sizeof(*rsp);
+
+	print_list(rsp->handle, size, rsp->num_handles, sizeof(*rsp->handle),
+						print_cig_handle);
+}
+
+static void print_cis_params_test_v2(const void *data, int i)
+{
+	const struct bt_hci_cis_params_test_v2 *cis = data;
+
+	print_field("CIS ID: 0x%2.2x", cis->cis_id);
+	print_field("NSE: 0x%2.2x", cis->nse);
+	print_field("Central to Peripheral Maximum SDU: 0x%4.4x",
+						le16_to_cpu(cis->c_sdu));
+	print_field("Peripheral to Central Maximum SDU: 0x%4.4x",
+						le16_to_cpu(cis->p_sdu));
+	print_field("Central to Peripheral Maximum PDU: 0x%4.4x",
+						le16_to_cpu(cis->c_pdu));
+	print_field("Peripheral to Central Maximum PDU: 0x%4.4x",
+						le16_to_cpu(cis->p_pdu));
+	print_le_phys("Central to Peripheral PHY", cis->c_phy);
+	print_le_phys("Peripheral to Central PHY", cis->p_phy);
+	print_field("Central to Peripheral Burst Number: 0x%2.2x", cis->c_bn);
+	print_field("Peripheral to Central Burst Number: 0x%2.2x", cis->p_bn);
+	print_rates("Central to Peripheral Coded Rates", 0x03,
+			cis->c_coded_rates);
+	print_rates("Peripheral to Central Coded Rates", 0x03,
+			cis->p_coded_rates);
+	print_rates("Central to Peripheral HDT Rates", 0x05,
+			le16_to_cpu(cis->c_hdt_rates));
+	print_rates("Peripheral to Central HDT Rates", 0x05,
+			le16_to_cpu(cis->p_hdt_rates));
+	print_prefer_mic_len(cis->mic_len);
+	print_packet_format(cis->format);
+	print_field("Central to Peripheral Payload Window size: %d",
+			cis->c_win);
+	print_field("Peripheral to Central Payload Window size: %d",
+			cis->p_win);
+}
+
+static void le_set_cig_params_test_v2(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_cig_params_test_v2 *cmd = data;
+
+	print_field("CIG ID: 0x%2.2x", cmd->cig_id);
+	print_usec_interval("Central to Peripheral SDU Interval",
+							cmd->c_interval);
+	print_usec_interval("Peripheral to Central SDU Interval",
+							cmd->p_interval);
+	print_field("Central to Peripheral Flush Timeout: 0x%2.2x", cmd->c_ft);
+	print_field("Peripheral to Central Flush Timeout: 0x%2.2x", cmd->p_ft);
+	print_field("ISO Interval: %.2f ms (0x%4.4x)",
+				le16_to_cpu(cmd->iso_interval) * 1.25,
+				le16_to_cpu(cmd->iso_interval));
+	print_sca(cmd->sca);
+	print_field("Anchor Update Buffer Time: %u us",
+					le16_to_cpu(cmd->anchor_update));
+	print_packing(cmd->packing);
+	print_framing(cmd->framing);
+	print_field("Number of CIS: %u", cmd->num_cis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->cis, size, cmd->num_cis, sizeof(*cmd->cis),
+						print_cis_params_test_v2);
+}
+
+static void le_set_cig_params_test_v2_rsp(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_rsp_le_set_cig_params_v2 *rsp = data;
+
+	print_status(rsp->status);
+
+	if (size == 1)
+		return;
+
+	print_field("CIG ID: 0x%2.2x", rsp->cig_id);
+	print_field("Number of Handles: %u", rsp->num_handles);
+
+	size -= sizeof(*rsp);
+
+	print_list(rsp->handle, size, rsp->num_handles, sizeof(*rsp->handle),
+						print_cig_handle);
+}
+
+static void print_bis_v2(const struct bt_hci_bis_v2 *bis)
+{
+	print_usec_interval("SDU Interval", bis->sdu_interval);
+	print_field("Maximum SDU size: %u", le16_to_cpu(bis->sdu));
+	print_field("Maximum Latency: %u ms (0x%4.4x)",
+			le16_to_cpu(bis->latency), le16_to_cpu(bis->latency));
+	print_field("RTN: 0x%2.2x", bis->rtn);
+	print_le_phys("PHY", bis->phy);
+	print_packing(bis->packing);
+	print_framing(bis->framing);
+	print_field("Encryption: 0x%2.2x", bis->encryption);
+	print_hex_field("Broadcast Code", bis->bcode, 16);
+	print_rates("Coded Rates", 0x03, bis->coded_rates);
+	print_rates("HDT Rates", 0x05, le16_to_cpu(bis->hdt_rates));
+	print_prefer_mic_len(bis->mic_len);
+	print_packet_format(bis->format);
+}
+
+static void le_create_big_v2(uint16_t index, const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_create_big_v2 *cmd = data;
+
+	print_field("Handle: 0x%2.2x", cmd->handle);
+	print_field("Advertising Handle: 0x%2.2x", cmd->adv_handle);
+	print_field("Number of BIS: %u", cmd->num_bis);
+	print_bis_v2(&cmd->bis);
+}
+
+static void print_bis_test_v2(const void *data, int i)
+{
+	const struct bt_hci_bis_test_v2 *bis = data;
+
+	print_usec_interval("SDU Interval", bis->sdu_interval);
+	print_field("ISO Interval: %.2f ms (0x%4.4x)",
+				le16_to_cpu(bis->iso_interval) * 1.25,
+				le16_to_cpu(bis->iso_interval));
+	print_field("Number of Subevents: %u", bis->nse);
+	print_field("Maximum SDU: %u", le16_to_cpu(bis->sdu));
+	print_field("Maximum PDU: %u", le16_to_cpu(bis->pdu));
+	print_packing(bis->packing);
+	print_framing(bis->framing);
+	print_le_phy("PHY", bis->phy);
+	print_field("Burst Number: %u", bis->bn);
+	print_field("Immediate Repetition Count: %u", bis->irc);
+	print_field("Pre Transmission Offset: 0x%2.2x", bis->pto);
+	print_field("Encryption: 0x%2.2x", bis->encryption);
+	print_hex_field("Broadcast Code", bis->bcode, 16);
+	print_rates("Coded Rates", 0x03, bis->coded_rates);
+	print_rates("HDT Rates", 0x05, le16_to_cpu(bis->hdt_rates));
+	print_prefer_mic_len(bis->mic_len);
+	print_packet_format(bis->format);
+	print_field("Blocks per Payload: %u", bis->blocks);
+}
+
+static void le_create_big_test_v2(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_create_big_test_v2 *cmd = data;
+
+	print_field("BIG Handle: 0x%2.2x", cmd->big_handle);
+	print_field("Advertising Handle: 0x%2.2x", cmd->adv_handle);
+	print_field("Number of BIS: %u", cmd->num_bis);
+
+	size -= sizeof(*cmd);
+
+	print_list(cmd->bis, size, cmd->num_bis, sizeof(*cmd->bis),
+						print_bis_test_v2);
+}
+
+static void le_set_hdt_default_params(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_hdt_set_default_params *cmd = data;
+
+	print_prefer_mic_len(cmd->mic_len);
+	print_packet_format(cmd->format);
+	print_rates("ACL Rates", 0x05, le16_to_cpu(cmd->rates));
+}
+
+static void le_set_hdt_params_test(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_hdt_set_params_test *cmd = data;
+
+	print_handle(cmd->handle);
+	print_prefer_mic_len(cmd->mic_len);
+	print_packet_format(cmd->format);
+	print_field("Blocks per Payload: %u", cmd->blocks);
+	print_rates("TX Rates", 0x05, le16_to_cpu(cmd->tx_rates));
+}
+
+static void le_set_hdt_params_test_rsp(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_rsp_le_hdt_set_params_test *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
+static void print_eks_debug_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Disable";
+		break;
+	case 0x01:
+		str = "Accept";
+		break;
+	case 0x02:
+		str = "Enable";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Debug Mode: %s (0x%2.2x)", str, mode);
+}
+
+static void le_read_eks_debug_mode_rsp(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_eks_debug_mode *rsp = data;
+
+	print_status(rsp->status);
+	print_eks_debug_mode(rsp->mode);
+}
+
+static void le_write_eks_debug_mode(uint16_t index, const void *data,
+					uint8_t size)
+{
+	const struct bt_hci_cmd_le_write_eks_debug_mode *cmd = data;
+
+	print_eks_debug_mode(cmd->mode);
 }
 
 struct opcode_data {
@@ -11435,6 +12048,87 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x20a6, 395, "LE CS Write Cached Remote Supported Capabilities [v2]" },
 	{ 0x20a7, 396, "LE CS Set Security Requirements" },
 	{ 0x20a8, 397, "LE CS Set Default Security Requirements" },
+	{ BT_HCI_CMD_LE_WRITE_DEF_DATA_LEN_V2,
+			BT_HCI_BIT_LE_WRITE_DEF_DATA_LEN_V2,
+			"LE Write Suggested Default Data Length V2",
+			le_write_def_data_len_v2,
+			sizeof(struct bt_hci_cmd_le_write_def_data_len_v2),
+			true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_READ_DEF_DATA_LEN_V2,
+			BT_HCI_BIT_LE_READ_DEF_DATA_LEN_V2,
+			"LE Read Suggested Default Data Length v2",
+			le_read_def_data_len_v2,
+			sizeof(struct bt_hci_cmd_le_read_def_data_len_v2),
+			true, le_read_def_data_len_v2_rsp,
+			sizeof(struct bt_hci_rsp_le_read_def_data_len_v2),
+			true },
+	{ BT_HCI_CMD_LE_ENABLE_ENCRYPT_V2, BT_HCI_BIT_LE_ENABLE_ENCRYPT_V2,
+				"LE Enable Encryption v2", le_enable_encrypt_v2,
+				sizeof(struct bt_hci_cmd_le_enable_encrypt_v2),
+				true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_READ_MAX_DATA_LEN_V2,
+			BT_HCI_BIT_LE_READ_MAX_DATA_LEN_V2,
+			"LE Read Max Data Length v2", le_read_max_data_len_v2,
+			sizeof(struct bt_hci_cmd_le_read_data_len_v2),
+			true, le_read_max_data_len_v2_rsp,
+			sizeof(struct bt_hci_rsp_le_read_data_len_v2),
+			true },
+	{ BT_HCI_CMD_LE_SET_DATA_LEN_V2, BT_HCI_BIT_LE_SET_DATA_LEN_V2,
+			"LE Set Data Length v2", le_set_data_len_v2,
+			sizeof(struct bt_hci_cmd_le_set_data_len_v2),
+			true, le_set_data_len_v2_rsp,
+			sizeof(struct bt_hci_rsp_le_set_data_len_v2),
+			true },
+	{ BT_HCI_CMD_LE_SET_CIG_PARAMS_V2, BT_HCI_BIT_LE_SET_CIG_PARAMS_V2,
+			"LE Set Connected Isochronous Group Parameters v2",
+			le_set_cig_params_v2,
+			sizeof(struct bt_hci_cmd_le_set_cig_params_v2),
+			false, le_set_cig_params_v2_rsp,
+			sizeof(struct bt_hci_rsp_le_set_cig_params_v2),
+			false },
+	{ BT_HCI_CMD_LE_SET_CIG_PARAMS_TEST_V2,
+			BT_HCI_BIT_LE_SET_CIG_PARAMS_TEST_V2,
+			"LE Set Connected Isochronous Group Parameters Test v2",
+			le_set_cig_params_test_v2,
+			sizeof(struct bt_hci_cmd_le_set_cig_params_test_v2),
+			false, le_set_cig_params_test_v2_rsp,
+			sizeof(struct bt_hci_rsp_le_set_cig_params_v2),
+			false },
+	{ BT_HCI_CMD_LE_CREATE_BIG_V2, BT_HCI_BIT_LE_CREATE_BIG_V2,
+				"LE Create Broadcast Isochronous Group v2",
+				le_create_big_v2,
+				sizeof(struct bt_hci_cmd_le_create_big_v2),
+				true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_CREATE_BIG_TEST_V2, BT_HCI_BIT_LE_CREATE_BIG_TEST_V2,
+				"LE Create Broadcast Isochronous Group Test v2",
+				le_create_big_test_v2,
+				sizeof(struct bt_hci_cmd_le_create_big_test_v2),
+				false, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_SET_HDT_DEFAULT_PARAMS,
+			BT_HCI_BIT_LE_SET_HDT_DEFAULT_PARAMS,
+			"LE Set HDT Default Parameters",
+			le_set_hdt_default_params,
+			sizeof(struct bt_hci_cmd_le_hdt_set_default_params),
+			true, status_rsp, 1, true },
+	{ BT_HCI_CMD_LE_SET_HDT_PARAMS_TEST, BT_HCI_BIT_LE_SET_HDT_PARAMS_TEST,
+			"LE Set HDT Parameters Test",
+			le_set_hdt_params_test,
+			sizeof(struct bt_hci_cmd_le_hdt_set_params_test), true,
+			le_set_hdt_params_test_rsp,
+			sizeof(struct bt_hci_rsp_le_hdt_set_params_test),
+			true },
+	{ BT_HCI_CMD_LE_READ_EKS_DEBUG_MODE, BT_HCI_BIT_LE_READ_EKS_DEBUG_MODE,
+			"LE Read Encryption Key Schedule Debug Mode",
+			null_cmd, 0, true,
+			le_read_eks_debug_mode_rsp,
+			sizeof(struct bt_hci_rsp_le_read_eks_debug_mode),
+			true },
+	{ BT_HCI_CMD_LE_WRITE_EKS_DEBUG_MODE,
+			BT_HCI_BIT_LE_WRITE_EKS_DEBUG_MODE,
+			"LE Write Encryption Key Schedule Debug Mode",
+			le_write_eks_debug_mode,
+			sizeof(struct bt_hci_cmd_le_write_eks_debug_mode),
+			true },
 	{ }
 };
 
@@ -14182,6 +14876,197 @@ static void le_conn_rate_change_evt(struct timeval *tv, uint16_t index,
 					le16_to_cpu(evt->supv_timeout));
 }
 
+static void print_mic_len(uint8_t value)
+{
+	const char *str;
+
+	switch (value) {
+	case 0x00:
+		str = "32 bits";
+		break;
+	case 0x01:
+		str = "64 bits";
+		break;
+	case 0x02:
+		str = "128 bits";
+		break;
+	default:
+		str = "RFU";
+	}
+
+	print_field("MIC length: %s (0x%2.2x)", str, value);
+}
+
+static void print_eks_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "off";
+		break;
+	case 0x01:
+		str = "AES-CCM";
+		break;
+	case 0x02:
+		str = "opportunistic AES-CCM";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("Key Schedule: %s (%d)", str, mode);
+}
+
+static void encrypt_change_v3_evt(struct timeval *tv, uint16_t index,
+					const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_encrypt_change_v3 *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_encr_mode_change(evt->mode, evt->handle);
+	print_field("Key size: %u", evt->key_size);
+	print_mic_len(evt->mic_len);
+	print_eks_mode(evt->eks_mode);
+	print_field("EKS Debug: %s (0x%2.2x)",
+		    evt->eks_debug ? "Enabled" : "Disabled", evt->eks_debug);
+}
+
+static void encrypt_key_refresh_complete_v2_evt(struct timeval *tv,
+						uint16_t index,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_encrypt_key_refresh_complete_v2 *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_mic_len(evt->mic_len);
+	print_eks_mode(evt->eks_mode);
+	print_field("EKS Debug: %s (0x%2.2x)",
+		    evt->eks_debug ? "Enabled" : "Disabled", evt->eks_debug);
+}
+
+static void le_data_len_change_v2_evt(struct timeval *tv, uint16_t index,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_data_length_change_v2 *evt = data;
+
+	print_handle(evt->handle);
+	print_field("Max TX octets: %d", le16_to_cpu(evt->max_tx_len));
+	print_field("Max TX time: %d", le16_to_cpu(evt->max_tx_time));
+	print_field("Max RX octets: %d", le16_to_cpu(evt->max_rx_len));
+	print_field("Max RX time: %d", le16_to_cpu(evt->max_rx_time));
+	print_phys(evt->phys);
+}
+
+static void print_cis_encryption(uint8_t encryption)
+{
+	const char *str;
+
+	switch (encryption) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	case 0x02:
+		str = "Key Schedule";
+		break;
+	case 0x03:
+		str = "Opportunistic and Key Schedule";
+		break;
+	default:
+		str = "RFU";
+		break;
+	}
+
+	print_field("Encryption: %s (%d)", str, encryption);
+}
+
+static void le_cis_estabilished_v3_evt(struct timeval *tv, uint16_t index,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_cis_established_v3 *evt = data;
+
+	print_status(evt->status);
+	print_field("Connection Handle: %d", le16_to_cpu(evt->conn_handle));
+	print_usec_interval("CIG Synchronization Delay", evt->cig_sync_delay);
+	print_usec_interval("CIS Synchronization Delay", evt->cis_sync_delay);
+	print_usec_interval("Central to Peripheral Latency", evt->c_latency);
+	print_usec_interval("Peripheral to Central Latency", evt->p_latency);
+	print_le_phy("Central to Peripheral PHY", evt->c_phy);
+	print_le_phy("Peripheral to Central PHY", evt->p_phy);
+	print_field("Number of Subevents: %u", evt->nse);
+	print_field("Central to Peripheral Burst Number: %u", evt->c_bn);
+	print_field("Peripheral to Central Burst Number: %u", evt->p_bn);
+	print_field("Central to Peripheral Flush Timeout: %u", evt->c_ft);
+	print_field("Peripheral to Central Flush Timeout: %u", evt->p_ft);
+	print_field("Central to Peripheral MTU: %u", le16_to_cpu(evt->c_mtu));
+	print_field("Peripheral to Central MTU: %u", le16_to_cpu(evt->p_mtu));
+	print_slot_125("ISO Interval", evt->interval);
+	print_usec_interval("ISO Sub-Interval", evt->sub_interval);
+	print_field("Central to Peripheral SDU: %u", le16_to_cpu(evt->c_sdu));
+	print_field("Peripheral to Central SDU: %u", le16_to_cpu(evt->p_sdu));
+	print_usec_interval("Central to Peripheral SDU Interval",
+				evt->c_sdu_interval);
+	print_usec_interval("Peripheral to Central SDU Interval",
+				evt->p_sdu_interval);
+	print_framing(evt->framing);
+	print_rates("Central to Peripheral Rates", evt->c_phy,
+			le16_to_cpu(evt->c_rates));
+	print_rates("Peripheral to Central Rates", evt->p_phy,
+			le16_to_cpu(evt->p_rates));
+	print_field("Config ID: %u", evt->config_id);
+	print_field("Group ID: %u", evt->group_id);
+	print_cis_encryption(evt->encryption);
+	print_mic_len(evt->mic_len);
+
+	if (!evt->status)
+		assign_handle(index, le16_to_cpu(evt->conn_handle),
+					BTMON_CONN_CIS, NULL, BDADDR_LE_PUBLIC);
+}
+
+static void le_big_complete_v2_evt(struct timeval *tv, uint16_t index,
+						const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_big_complete_v2 *evt = data;
+
+	print_status(evt->status);
+	print_field("Handle: 0x%2.2x", evt->handle);
+	print_usec_interval("BIG Synchronization Delay", evt->sync_delay);
+	print_usec_interval("Transport Latency", evt->latency);
+	print_le_phy("PHY", evt->phy);
+	print_field("NSE: %u", evt->nse);
+	print_field("BN: %u", evt->bn);
+	print_field("PTO: %u", evt->pto);
+	print_field("IRC: %u", evt->irc);
+	print_field("Maximum PDU: %u", le16_to_cpu(evt->max_pdu));
+	print_slot_125("ISO Interval", evt->interval);
+	print_rates("Rates", evt->phy, le16_to_cpu(evt->rates));
+	print_field("Encryption: %s (0x%2.2x)",
+			evt->encryption ? "Encrypted" : "Unencrypted",
+			evt->encryption);
+	print_mic_len(evt->mic_len);
+
+	/* Only the handles the event has room for */
+	size -= sizeof(*evt);
+
+	print_list(evt->bis_handle, size, evt->num_bis,
+				sizeof(*evt->bis_handle), print_bis_handle);
+
+	if (!evt->status) {
+		int max = size / sizeof(*evt->bis_handle);
+		int i;
+
+		for (i = 0; i < evt->num_bis && i < max; i++)
+			assign_handle(index, le16_to_cpu(evt->bis_handle[i]),
+					0x05, NULL, BDADDR_LE_PUBLIC);
+	}
+}
+
 struct subevent_data {
 	uint8_t subevent;
 	const char *str;
@@ -14356,6 +15241,18 @@ static const struct subevent_data le_meta_event_table[] = {
 		"LE Connection Rate Change",
 		le_conn_rate_change_evt,
 		sizeof(struct bt_hci_evt_le_conn_rate_change) },
+	{ BT_HCI_EVT_LE_DATA_LENGTH_CHANGE_V2,
+		"LE Data Length Change v2",
+		le_data_len_change_v2_evt,
+		sizeof(struct bt_hci_evt_le_data_length_change_v2) },
+	{ BT_HCI_EVT_LE_CIS_ESTABLISHED_V3,
+		"LE Connected Isochronous Stream Established v3",
+		le_cis_estabilished_v3_evt,
+		sizeof(struct bt_hci_evt_le_cis_established_v3) },
+	{ BT_HCI_EVT_LE_BIG_COMPLETE_V2,
+		"LE Broadcast Isochronous Group Complete v2",
+		le_big_complete_v2_evt,
+		sizeof(struct bt_hci_evt_le_big_complete_v2) },
 	{ }
 };
 
@@ -14586,8 +15483,17 @@ static const struct event_data event_table[] = {
 	{ 0x57, "Authenticated Payload Timeout Expired",
 				auth_payload_timeout_expired_evt, 2, true },
 	{ 0x58, "SAM Status Change" },
+
 	{ 0x59, "Encryption Change v2",
 				encrypt_change_evt_v2, 5, true },
+	{ BT_HCI_EVT_ENCRYPT_CHANGE_V3, "Encrypt Change V3",
+				encrypt_change_v3_evt,
+				sizeof(struct bt_hci_evt_encrypt_change_v3),
+				true },
+	{ BT_HCI_EVT_ENCRYPT_KEY_REFRESH_COMPLETE_V2,
+		"Encrypt Key Refresh Complete v2",
+		encrypt_key_refresh_complete_v2_evt,
+		sizeof(struct bt_hci_evt_encrypt_key_refresh_complete_v2) },
 	{ 0xfe, "Testing" },
 	{ 0xff, "Vendor", evt_vendor, 0, false },
 	{ }
@@ -15613,6 +16519,7 @@ static const struct bitfield_data mgmt_settings_table[] = {
 	{ 23, "PAST Sender"		},
 	{ 24, "PAST Receiver"		},
 	{ 25, "Shorter Connection Interval"	},
+	{ 26, "HDT"			},
 	{}
 };
 
@@ -17107,6 +18014,10 @@ static const struct {
 	{0x001e, "LE No Filter Scanning Duration for adv monitoring"  },
 	{0x001f, "LE Enable Interleave Scan for adv monitoring"       },
 	{0x0020, "BR/EDR Connection Idle Timeout"                     },
+	{0x0021, "LE HDT Default MIC Length"                          },
+	{0x0022, "LE HDT Default Packet Format"                      },
+	{0x0023, "LE HDT Default Rates"                              },
+	{0x0024, "LE Opportunistic Encryption"                        },
 	{ }
 };
 
