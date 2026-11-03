@@ -285,6 +285,7 @@ struct bt_bap_stream {
 	uint8_t old_state;
 	uint8_t state;
 	unsigned int state_id;
+	bool state_defer;
 	struct queue *pending_states;
 	bool no_cache_config;
 	bool client;
@@ -1841,17 +1842,32 @@ static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
 	if (stream->client)
 		goto done;
 
-	if (!stream->bap->in_cp_write)
+	if (!stream->bap->in_cp_write) {
 		stream_notify_state(stream);
-	else if (!stream->state_id)
-		stream->state_id = timeout_add(BAP_PROCESS_TIMEOUT,
-						stream_notify_state,
-						bt_bap_stream_ref(stream),
-						bt_bap_stream_unref);
-	else /* If a state_id is already pending then queue the old one */
+	} else if (stream->state_id || stream->state_defer) {
+		/* If a notification is already pending then queue the old
+		 * state.
+		 */
 		queue_push_tail(stream->pending_states,
 				UINT_TO_PTR(ep->old_state));
-
+	} else {
+		/* Defer ASE state notifications until the mainloop is idle so
+		 * the CP notification is sent first while still allowing them
+		 * to be grouped into the same Notify Multiple PDU. This is
+		 * scheduled after the state callbacks so any I/O they setup,
+		 * e.g. on CIS loss, is processed first.
+		 */
+		stream->state_defer = true;
+		bt_bap_stream_ref(stream);
+		bap_stream_state_changed(stream);
+		stream->state_defer = false;
+		if (!stream->state_id)
+			stream->state_id = timeout_add(0, stream_notify_state,
+						bt_bap_stream_ref(stream),
+						bt_bap_stream_unref);
+		bt_bap_stream_unref(stream);
+		return;
+	}
 
 done:
 	bap_stream_state_changed(stream);
