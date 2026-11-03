@@ -2336,6 +2336,70 @@ static const struct test_step test_notification_server_1 = {
 	.length = 0x03,
 };
 
+static void test_server_mnotify(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	bt_gatt_server_send_notification(context->server, step->handle,
+					step->value, step->length, true);
+	bt_gatt_server_send_notification(context->server, step->handle,
+					step->value, step->length, true);
+}
+
+static const struct test_step test_mnotify_server_1 = {
+	.handle = 0x0003,
+	.func = test_server_mnotify,
+	.value = read_data_1,
+	.length = 0x03,
+};
+
+static void test_server_mnotify_timeout(struct context *context)
+{
+	bt_gatt_server_set_mnotify_timeout(context->server, 1);
+	test_server_mnotify(context);
+}
+
+static const struct test_step test_mnotify_server_2 = {
+	.handle = 0x0003,
+	.func = test_server_mnotify_timeout,
+	.value = read_data_1,
+	.length = 0x03,
+};
+
+static void test_server_mnotify_flush(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	bt_gatt_server_send_notification(context->server, step->handle,
+					step->value, step->length, true);
+
+	/* Disabling sends the pending notification right away */
+	bt_gatt_server_set_mnotify_timeout(context->server, -1);
+}
+
+static const struct test_step test_mnotify_server_3 = {
+	.handle = 0x0003,
+	.func = test_server_mnotify_flush,
+	.value = read_data_1,
+	.length = 0x03,
+};
+
+static void test_server_mnotify_disabled(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	bt_gatt_server_set_mnotify_timeout(context->server, -1);
+	bt_gatt_server_send_notification(context->server, step->handle,
+					step->value, step->length, true);
+}
+
+static const struct test_step test_mnotify_server_4 = {
+	.handle = 0x0003,
+	.func = test_server_mnotify_disabled,
+	.value = read_data_1,
+	.length = 0x03,
+};
+
 static uint8_t indication_received;
 
 static void test_indication_cb(void *user_data)
@@ -3331,6 +3395,41 @@ int main(int argc, char *argv[])
 
 	define_test_server("/TP/GAN/SR/BV-01-C", test_server, ts_small_db,
 			&test_notification_server_1,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
+			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x1B, 0x03, 0x00, 0x01, 0x02, 0x03));
+
+	define_test_server("/robustness/mnotify", test_server, ts_small_db,
+			&test_mnotify_server_1,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
+			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x23, 0x03, 0x00, 0x03, 0x00, 0x01, 0x02, 0x03,
+				0x03, 0x00, 0x03, 0x00, 0x01, 0x02, 0x03));
+
+	define_test_server("/robustness/mnotify-timeout", test_server,
+			ts_small_db, &test_mnotify_server_2,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
+			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x23, 0x03, 0x00, 0x03, 0x00, 0x01, 0x02, 0x03,
+				0x03, 0x00, 0x03, 0x00, 0x01, 0x02, 0x03));
+
+	define_test_server("/robustness/mnotify-flush", test_server,
+			ts_small_db, &test_mnotify_server_3,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
+			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x23, 0x03, 0x00, 0x03, 0x00, 0x01, 0x02,
+				0x03));
+
+	define_test_server("/robustness/mnotify-disabled", test_server,
+			ts_small_db, &test_mnotify_server_4,
 			raw_pdu(0x03, 0x00, 0x02),
 			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
 			raw_pdu(0x13),
