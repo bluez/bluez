@@ -43,6 +43,9 @@ bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
 					uint16_t handle, const uint8_t *value,
 					uint16_t length, bool multiple);
 
+bool bt_gatt_server_set_mnotify_timeout(struct bt_gatt_server *server,
+							int timeout);
+
 bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
 					uint16_t handle, const uint8_t *value,
 					uint16_t length,
