@@ -177,3 +177,41 @@ Possible values:
 	peripheral.
 
 A PropertiesChanged signal indicate changes to this status.
+
+uint32 Interval [readonly, optional]
+````````````````````````````````````
+
+Indicates the connection interval of the current connection on LE bearer, in
+microseconds. It is only present while the remote device is connected over LE
+bearer.
+
+A PropertiesChanged signal indicate changes to this status.
+
+uint16 Latency [readonly, optional]
+```````````````````````````````````
+
+Indicates the peripheral latency of the current connection on LE bearer, the
+number of consecutive connection events the peripheral may skip. When the
+connection is subrated, it counts subrated connection events. It is only present
+while the remote device is connected over LE bearer.
+
+A PropertiesChanged signal indicate changes to this status.
+
+uint16 SupervisionTimeout [readonly, optional]
+``````````````````````````````````````````````
+
+Indicates the supervision timeout of the current connection on LE bearer, in
+milliseconds. It is only present while the remote device is connected over LE
+bearer.
+
+A PropertiesChanged signal indicate changes to this status.
+
+uint16 Subrate [readonly, optional]
+```````````````````````````````````
+
+Indicates the subrate factor of the current connection on LE bearer: only one of
+every Subrate connection events is used. It is 1 when the connection is not
+subrated. It is only present while the remote device is connected over LE
+bearer.
+
+A PropertiesChanged signal indicate changes to this status.
