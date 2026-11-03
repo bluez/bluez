@@ -5520,6 +5520,11 @@ This event indicates that the connection rate has changed for a device. This
 can be a result of a successful LE Connection Rate Request or a change
 initiated by the remote device.
 
+It is also sent when an LE connection is established and after each LE
+Connection Update, which do not report subrating: the Subrate and
+Continuation_Number parameters then keep the values of the last connection
+rate change, or 1 and 0 if there was none.
+
 Possible values for the Address_Type parameter:
 
 .. csv-table::
@@ -5529,7 +5534,8 @@ Possible values for the Address_Type parameter:
 	0x01, LE Public
 	0x02, LE Random
 
-The Status indicates whether the connection rate change was successful.
+The Status indicates whether the connection rate change was successful. When it
+was not, the other parameters are the current ones of the connection.
 
 The Interval parameter specifies the new connection interval in units of
 0.125 ms.
