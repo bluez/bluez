@@ -48,6 +48,7 @@
 	}
 
 #define BAP_PROCESS_TIMEOUT 10
+#define BAP_STATE_TIMEOUT 1000
 
 #define CODEC_SPECIFIC_CONFIGURATION_MASK (\
 		(1<<BT_BAP_CC_FREQ)|\
@@ -156,6 +157,10 @@ struct bt_bap_req {
 	size_t len;
 	bt_bap_stream_func_t func;
 	void *user_data;
+	uint8_t state;
+	bool wait;
+	bool has_rsp;
+	struct bt_ascs_ase_rsp rsp;
 };
 
 typedef void (*bap_notify_t)(struct bt_bap *bap, uint16_t value_handle,
@@ -176,6 +181,8 @@ struct bt_bap {
 	struct bt_gatt_client *client;
 	struct bt_att *att;
 	struct bt_bap_req *req;
+	unsigned int wait_id;
+	struct bt_ascs_ase_rsp wait_rsp;
 
 	unsigned int cp_id;
 	unsigned int process_id;
@@ -1271,6 +1278,10 @@ static void bap_req_complete(struct bt_bap_req *req,
 {
 	struct queue *group;
 
+	/* Use the response of the request own ASE if there is one */
+	if (req->has_rsp)
+		rsp = &req->rsp;
+
 	if (!req->func)
 		goto done;
 
@@ -1300,26 +1311,175 @@ static bool match_req_stream(const void *data, const void *match_data)
 	return req->stream == match_data;
 }
 
-static void bap_req_abort(void *data)
+static bool req_is_waiting(const void *data, const void *user_data)
+{
+	const struct bt_bap_req *req = data;
+
+	return req->wait;
+}
+
+static bool bap_req_waiting(struct bt_bap_req *req)
+{
+	return req->wait || queue_find(req->group, req_is_waiting, NULL);
+}
+
+static void bap_wait_complete(struct bt_bap *bap)
+{
+	struct bt_bap_req *req = bap->req;
+	struct bt_ascs_ase_rsp rsp = bap->wait_rsp;
+
+	if (bap->wait_id) {
+		timeout_remove(bap->wait_id);
+		bap->wait_id = 0;
+	}
+
+	bap->req = NULL;
+	bap_req_complete(req, &rsp);
+}
+
+static bool bap_process_queue(void *data);
+
+/* Complete the request once no stream is waiting for its ASE state */
+static void bap_wait_check(struct bt_bap *bap)
+{
+	if (!bap->req || !bap->wait_id || bap_req_waiting(bap->req))
+		return;
+
+	bap_wait_complete(bap);
+	bap_process_queue(bap);
+}
+
+static void req_clear_wait(void *data, void *user_data)
 {
 	struct bt_bap_req *req = data;
-	struct bt_bap *bap = req->stream->bap;
 
-	DBG(bap, "req %p", req);
-	bap_req_complete(req, NULL);
+	/* Ignore notifications that don't change the state, e.g. metadata */
+	if (req->stream == user_data && req->stream->ep->state != req->state)
+		req->wait = false;
+}
+
+static void bap_wait_state_changed(struct bt_bap *bap,
+					struct bt_bap_stream *stream)
+{
+	if (!bap->req || !bap->wait_id)
+		return;
+
+	req_clear_wait(bap->req, stream);
+	queue_foreach(bap->req->group, req_clear_wait, stream);
+
+	bap_wait_check(bap);
+}
+
+/* Keep a request without callback in place of a cancelled request whose
+ * CP notification is still pending, so it is not taken as the response of
+ * the next request.
+ */
+static struct bt_bap_req *bap_req_placeholder(struct bt_bap *bap,
+						uint8_t op)
+{
+	struct bt_bap_req *req;
+
+	req = new0(struct bt_bap_req, 1);
+	req->op = op;
+
+	DBG(bap, "req %p placeholder for op 0x%02x", req, op);
+
+	return req;
+}
+
+static void bap_schedule_queue(struct bt_bap *bap)
+{
+	if (bap->req || bap->process_id || queue_isempty(bap->reqs))
+		return;
+
+	bap->process_id = timeout_add(BAP_PROCESS_TIMEOUT, bap_process_queue,
+								bap, NULL);
+}
+
+/* Unlink the requests of a stream from a request and its group into
+ * removed, if the stream is the leader the next member of the group is
+ * promoted.
+ */
+static struct bt_bap_req *bap_req_unlink_stream(struct bt_bap_req *req,
+						struct bt_bap_stream *stream,
+						struct queue *removed)
+{
+	struct bt_bap_req *member;
+
+	while ((member = queue_remove_if(req->group, match_req_stream,
+								stream)))
+		queue_push_tail(removed, member);
+
+	if (req->stream != stream)
+		return req;
+
+	member = queue_pop_head(req->group);
+	if (member) {
+		member->group = req->group;
+		req->group = NULL;
+	}
+
+	queue_push_tail(removed, req);
+
+	return member;
+}
+
+static void bap_req_complete_all(struct queue *reqs,
+					const struct bt_ascs_ase_rsp *rsp)
+{
+	struct bt_bap_req *req;
+
+	while ((req = queue_pop_head(reqs)))
+		bap_req_complete(req, rsp);
+
+	queue_destroy(reqs, NULL);
 }
 
 static void bap_abort_stream_req(struct bt_bap *bap,
 						struct bt_bap_stream *stream)
 {
-	queue_remove_all(bap->reqs, match_req_stream, stream, bap_req_abort);
+	struct queue *reqs = bap->reqs;
+	struct queue *aborted = queue_new();
+	struct queue *completed = queue_new();
+	struct bt_ascs_ase_rsp rsp = bap->wait_rsp;
+	struct bt_bap_req *req;
 
-	if (bap->req && bap->req->stream == stream) {
-		struct bt_bap_req *req = bap->req;
+	/* Unlink all requests of the stream before completing them, so the
+	 * callbacks see the remaining requests.
+	 */
+	bap->reqs = queue_new();
 
-		bap->req = NULL;
-		bap_req_complete(req, NULL);
+	while ((req = queue_pop_head(reqs))) {
+		req = bap_req_unlink_stream(req, stream, aborted);
+		if (req)
+			queue_push_tail(bap->reqs, req);
 	}
+
+	queue_destroy(reqs, NULL);
+
+	if (bap->req) {
+		uint8_t op = bap->req->op;
+
+		/* If the request is waiting for the ASE state the CP operation
+		 * has already succeeded, so complete it with its response.
+		 */
+		bap->req = bap_req_unlink_stream(bap->req, stream,
+					bap->wait_id ? completed : aborted);
+		if (!bap->req) {
+			if (bap->wait_id) {
+				timeout_remove(bap->wait_id);
+				bap->wait_id = 0;
+			} else {
+				bap->req = bap_req_placeholder(bap, op);
+			}
+		}
+	}
+
+	bap_req_complete_all(aborted, NULL);
+	bap_req_complete_all(completed, &rsp);
+
+	bap_wait_check(bap);
+	bap_schedule_queue(bap);
 }
 
 static void bt_bap_stream_unref(void *data)
@@ -1488,10 +1648,7 @@ static void bap_stream_state_changed(struct bt_bap_stream *stream)
 	/* Post notification updates */
 	switch (stream->ep->state) {
 	case BT_ASCS_ASE_STATE_IDLE:
-		if (bap->req && bap->req->stream == stream) {
-			bap_req_complete(bap->req, NULL);
-			bap->req = NULL;
-		}
+		bap_abort_stream_req(bap, stream);
 
 		if (stream->ops && stream->ops->detach)
 			stream->ops->detach(stream);
@@ -1651,6 +1808,9 @@ static void append_group(void *data, void *user_data)
 	struct iovec *iov = user_data;
 	size_t i;
 
+	if (req->stream)
+		req->state = req->stream->ep->state;
+
 	for (i = 0; i < req->len; i++)
 		util_iov_push_mem(iov, req->iov[i].iov_len,
 					req->iov[i].iov_base);
@@ -1683,6 +1843,9 @@ static bool bap_send(struct bt_bap *bap, struct bt_bap_req *req)
 
 	iov.iov_base = alloca(iov.iov_len);
 	iov.iov_len = 0;
+
+	if (req->stream)
+		req->state = req->stream->ep->state;
 
 	hdr.op = req->op;
 	hdr.num = 1 + queue_length(req->group);
@@ -1720,6 +1883,10 @@ static bool bap_process_queue(void *data)
 		timeout_remove(bap->process_id);
 		bap->process_id = 0;
 	}
+
+	/* Wait for the outstanding request to complete */
+	if (bap->req)
+		return false;
 
 	while ((req = queue_pop_head(bap->reqs))) {
 		if (bap_send(bap, req))
@@ -4784,6 +4951,7 @@ static void bap_free(void *data)
 	struct bt_bap *bap = data;
 
 	timeout_remove(bap->process_id);
+	timeout_remove(bap->wait_id);
 
 	bt_bap_detach(bap);
 
@@ -5525,6 +5693,7 @@ static void bap_ep_set_status(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 					const uint8_t *value, uint16_t length)
 {
 	struct bt_ascs_ase_status *rsp;
+	struct bt_bap_stream *stream;
 	struct iovec iov = {
 		.iov_base = (void *) value,
 		.iov_len = length,
@@ -5565,7 +5734,13 @@ static void bap_ep_set_status(struct bt_bap *bap, struct bt_bap_endpoint *ep,
 	if (!ep->stream)
 		return;
 
-	bap_stream_state_changed(ep->stream);
+	stream = ep->stream;
+
+	bap_stream_state_changed(stream);
+
+	/* Complete the request if it was waiting for the ASE state */
+	if (ep->stream == stream)
+		bap_wait_state_changed(bap, stream);
 }
 
 static void read_ase_status(bool success, uint8_t att_ecode,
@@ -5665,6 +5840,139 @@ static void bap_endpoint_attach(struct bt_bap *bap, struct bt_bap_endpoint *ep)
 						bap_endpoint_notify, ep);
 }
 
+struct req_rsp_data {
+	struct bt_bap *bap;
+	const struct bt_ascs_ase_rsp *rsp;
+};
+
+static void req_set_rsp(void *data, void *user_data)
+{
+	struct bt_bap_req *req = data;
+	struct req_rsp_data *rsp = user_data;
+
+	if (!req->stream || !queue_find(rsp->bap->streams, NULL, req->stream))
+		return;
+
+	if (req->stream->ep->id != rsp->rsp->ase)
+		return;
+
+	req->rsp = *rsp->rsp;
+	req->has_rsp = true;
+}
+
+static void req_default_rsp(void *data, void *user_data)
+{
+	struct bt_bap_req *req = data;
+	struct req_rsp_data *rsp = user_data;
+
+	if (req->has_rsp)
+		return;
+
+	req->rsp = *rsp->rsp;
+	req->has_rsp = true;
+}
+
+static bool bap_req_needs_wait(struct bt_bap *bap, struct bt_bap_req *req)
+{
+	struct bt_bap_endpoint *ep;
+
+	if (!req->stream || !queue_find(bap->streams, NULL, req->stream))
+		return false;
+
+	/* Only wait if the operation succeeded for the ASE */
+	if (!req->has_rsp || req->rsp.code != BT_ASCS_RSP_SUCCESS)
+		return false;
+
+	ep = req->stream->ep;
+
+	/* ASE state has already been notified */
+	if (ep->state != req->state)
+		return false;
+
+	switch (req->op) {
+	case BT_ASCS_CONFIG:
+		return req->state != BT_ASCS_ASE_STATE_CONFIG;
+	case BT_ASCS_QOS:
+		return req->state != BT_ASCS_ASE_STATE_QOS;
+	case BT_ASCS_ENABLE:
+	case BT_ASCS_START:
+	case BT_ASCS_DISABLE:
+	case BT_ASCS_STOP:
+	case BT_ASCS_RELEASE:
+		return true;
+	}
+
+	return false;
+}
+
+static void req_set_wait(void *data, void *user_data)
+{
+	struct bt_bap_req *req = data;
+	struct bt_bap *bap = user_data;
+
+	req->wait = bap_req_needs_wait(bap, req);
+}
+
+static bool bap_wait_timeout(void *data)
+{
+	struct bt_bap *bap = data;
+
+	DBG(bap, "req %p timeout waiting for ASE state", bap->req);
+
+	bap->wait_id = 0;
+	bap_wait_complete(bap);
+	bap_process_queue(bap);
+
+	return false;
+}
+
+/* Wait for the ASE state notifications before completing the request, as
+ * the CP notification may arrive first. Further requests are not sent
+ * until then, so each request waits for the states it caused.
+ */
+static bool bap_req_wait(struct bt_bap *bap, struct bt_bap_req *req,
+				const struct bt_ascs_ase_rsp *rsp)
+{
+	struct req_rsp_data data = {
+		.bap = bap,
+		.rsp = rsp,
+	};
+
+	if (!rsp)
+		return false;
+
+	/* ASEs without a response of their own use the last one */
+	req_default_rsp(req, &data);
+	queue_foreach(req->group, req_default_rsp, &data);
+
+	req_set_wait(req, bap);
+	queue_foreach(req->group, req_set_wait, bap);
+
+	if (!bap_req_waiting(req))
+		return false;
+
+	DBG(bap, "req %p wait for ASE state", req);
+
+	bap->wait_rsp = *rsp;
+	bap->wait_id = timeout_add(BAP_STATE_TIMEOUT, bap_wait_timeout, bap,
+									NULL);
+
+	return bap->wait_id != 0;
+}
+
+/* Store the response of each ASE in its request */
+static void bap_req_set_rsp(struct bt_bap *bap, struct bt_bap_req *req,
+				const struct bt_ascs_ase_rsp *ase_rsp)
+{
+	struct req_rsp_data rsp = {
+		.bap = bap,
+		.rsp = ase_rsp,
+	};
+
+	req_set_rsp(req, &rsp);
+	queue_foreach(req->group, req_set_rsp, &rsp);
+}
+
 static void bap_cp_notify(struct bt_bap *bap, uint16_t value_handle,
 				const uint8_t *value, uint16_t length,
 				void *user_data)
@@ -5674,11 +5982,11 @@ static void bap_cp_notify(struct bt_bap *bap, uint16_t value_handle,
 	struct bt_bap_req *req;
 	int i;
 
-	if (!bap->req)
+	/* Ignore if there is no request or it is waiting for ASE state */
+	if (!bap->req || bap->wait_id)
 		return;
 
 	req = bap->req;
-	bap->req = NULL;
 
 	if (length < sizeof(*rsp)) {
 		DBG(bap, "Invalid ASE CP notification: length %u < %zu",
@@ -5707,9 +6015,16 @@ static void bap_cp_notify(struct bt_bap *bap, uint16_t value_handle,
 		}
 
 		ase_rsp = &rsp->rsp[i];
+		length -= sizeof(*ase_rsp);
+
+		bap_req_set_rsp(bap, req, ase_rsp);
 	}
 
 done:
+	if (bap_req_wait(bap, req, ase_rsp))
+		return;
+
+	bap->req = NULL;
 	bap_req_complete(req, ase_rsp);
 	bap_process_queue(bap);
 }
@@ -6002,6 +6317,11 @@ void bt_bap_detach(struct bt_bap *bap)
 		return;
 
 	/* Cancel ongoing request */
+	if (bap->wait_id) {
+		timeout_remove(bap->wait_id);
+		bap->wait_id = 0;
+	}
+
 	if (bap->req) {
 		struct bt_bap_req *req = bap->req;
 
@@ -7020,26 +7340,76 @@ static bool match_name(const void *data, const void *match_data)
 	return (!strcmp(pac->name, name));
 }
 
+/* Remove the request matching id from a request and its group, if it is the
+ * leader the next member of the group is promoted.
+ */
+static struct bt_bap_req *bap_req_cancel(struct bt_bap_req *req,
+						unsigned int id)
+{
+	struct bt_bap_req *member;
+
+	member = queue_remove_if(req->group, match_req_id, UINT_TO_PTR(id));
+	if (member) {
+		bap_req_free(member);
+		return req;
+	}
+
+	if (req->id != id)
+		return req;
+
+	member = queue_pop_head(req->group);
+	if (member) {
+		member->group = req->group;
+		req->group = NULL;
+	}
+
+	bap_req_free(req);
+
+	return member;
+}
+
 int bt_bap_stream_cancel(struct bt_bap_stream *stream, unsigned int id)
 {
-	struct bt_bap_req *req;
+	struct bt_bap *bap;
+	const struct queue_entry *entry;
 
 	if (!stream)
 		return -EINVAL;
 
-	if (stream->bap->req && stream->bap->req->id == id) {
-		req = stream->bap->req;
-		stream->bap->req = NULL;
-		bap_req_free(req);
-		return 0;
+	bap = stream->bap;
+
+	/* The outstanding request has already been sent, so only drop its
+	 * callback and keep waiting for its CP notification and ASE state
+	 * before sending the next request.
+	 */
+	if (bap->req) {
+		struct bt_bap_req *req = bap->req;
+
+		if (req->id != id)
+			req = queue_find(req->group, match_req_id,
+							UINT_TO_PTR(id));
+		if (req) {
+			req->func = NULL;
+			req->user_data = NULL;
+			return 0;
+		}
 	}
 
-	req = queue_remove_if(stream->bap->reqs, match_req_id,
-						UINT_TO_PTR(id));
-	if (!req)
-		return 0;
+	for (entry = queue_get_entries(bap->reqs); entry;
+						entry = entry->next) {
+		struct bt_bap_req *req = entry->data;
+		struct bt_bap_req *leader = bap_req_cancel(req, id);
 
-	bap_req_free(req);
+		if (leader == req)
+			continue;
+
+		if (leader)
+			queue_push_after(bap->reqs, req, leader);
+
+		queue_remove(bap->reqs, req);
+
+		break;
+	}
 
 	return 0;
 }
