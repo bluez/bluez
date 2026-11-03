@@ -165,6 +165,7 @@ struct btd_opts {
 	uint16_t	gatt_mtu;
 	uint8_t		gatt_channels;
 	bool		gatt_client;
+	int		gatt_mnotify;
 	enum bt_gatt_export_t gatt_export;
 	bool		gatt_seclevel;
 	enum mps_mode_t	mps;
