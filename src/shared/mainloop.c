@@ -361,8 +361,11 @@ static bool idle_pending(void)
 {
 	struct idle_data *idle;
 
+	/* Removed idles also count so they are freed without waiting for
+	 * another event.
+	 */
 	for (idle = idle_list; idle; idle = idle->next) {
-		if (idle->armed && !idle->removed)
+		if (idle->armed || idle->removed)
 			return true;
 	}
 
