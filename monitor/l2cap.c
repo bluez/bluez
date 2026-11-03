@@ -633,6 +633,9 @@ static void print_le_conn_result(uint16_t result)
 	case 0x000b:
 		str = "Connection refused - unacceptable parameters";
 		break;
+	case 0x000d:
+		str = "Connection refused - MIC length too short";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -1439,6 +1442,9 @@ static void print_ecred_conn_result(uint16_t result)
 		break;
 	case 0x000b:
 		str = "All Connections refused - unacceptable parameters";
+		break;
+	case 0x000d:
+		str = "All Connections refused - MIC length too short";
 		break;
 	default:
 		str = "Reserved";
