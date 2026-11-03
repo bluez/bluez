@@ -85,6 +85,7 @@ struct test_case {
 	const void *test_data;
 	const struct iovec *iov;
 	size_t iovcnt;
+	struct iovec *alt_iov;
 	tester_data_func_t pre_setup_func;
 	tester_data_func_t setup_func;
 	tester_data_func_t test_func;
@@ -144,6 +145,8 @@ static double test_timer_elapsed(void)
 static void test_destroy(void *data)
 {
 	struct test_case *test = data;
+
+	free(test->alt_iov);
 
 	if (test->timeout_id > 0)
 		timeout_remove(test->timeout_id);
@@ -527,6 +530,8 @@ static bool test_timeout(void *user_data)
 static void next_test_case(void)
 {
 	struct test_case *test;
+
+	tester_io_set_alt(0);
 
 	if (test_current)
 		test_current = test_current->next;
@@ -1170,6 +1175,73 @@ static void setup_io(void)
 	io_set_read_handler(ios[1], test_io_recv, NULL, NULL);
 }
 
+const uint8_t tester_iov_markers[3];
+
+static unsigned int io_alt;
+
+static bool iov_is_marker(const struct iovec *iov, unsigned int idx)
+{
+	return iov->iov_base == &tester_iov_markers[idx];
+}
+
+/* Only keep the selected alternative of the PDUs in between IOV_ALT and
+ * IOV_ALT_END.
+ */
+static int test_setup_alt(struct test_case *test, const struct iovec **iov,
+								int iovcnt)
+{
+	unsigned int alt = 0;
+	bool in_alt = false;
+	int i, cnt = 0;
+
+	for (i = 0; i < iovcnt; i++) {
+		if (iov_is_marker(&(*iov)[i], 0))
+			break;
+	}
+
+	if (i == iovcnt)
+		return iovcnt;
+
+	free(test->alt_iov);
+	test->alt_iov = calloc(iovcnt, sizeof(*test->alt_iov));
+	if (!test->alt_iov)
+		abort();
+
+	for (i = 0; i < iovcnt; i++) {
+		const struct iovec *v = &(*iov)[i];
+
+		if (iov_is_marker(v, 0)) {
+			in_alt = true;
+			alt = 0;
+			continue;
+		}
+
+		if (iov_is_marker(v, 1)) {
+			alt++;
+			continue;
+		}
+
+		if (iov_is_marker(v, 2)) {
+			in_alt = false;
+			continue;
+		}
+
+		if (in_alt && alt != io_alt)
+			continue;
+
+		test->alt_iov[cnt++] = *v;
+	}
+
+	*iov = test->alt_iov;
+
+	return cnt;
+}
+
+void tester_io_set_alt(unsigned int alt)
+{
+	io_alt = alt;
+}
+
 struct io *tester_setup_io(const struct iovec *iov, int iovcnt)
 {
 	struct test_case *test = tester_get_test();
@@ -1181,6 +1253,8 @@ struct io *tester_setup_io(const struct iovec *iov, int iovcnt)
 			return NULL;
 		}
 	}
+
+	iovcnt = test_setup_alt(test, &iov, iovcnt);
 
 	test->iov = iov;
 	test->iovcnt = iovcnt;

@@ -23,6 +23,18 @@
 
 #define IOV_NULL {}
 
+/* Markers for PDUs that can be exchanged in alternative ways:
+ *
+ *   IOV_ALT, <alternative 0>, IOV_ALT_OR, <alternative 1>, ..., IOV_ALT_END
+ *
+ * Only the alternative selected with tester_io_set_alt() is used.
+ */
+extern const uint8_t tester_iov_markers[3];
+
+#define IOV_ALT		{ .iov_base = (void *) &tester_iov_markers[0] }
+#define IOV_ALT_OR	{ .iov_base = (void *) &tester_iov_markers[1] }
+#define IOV_ALT_END	{ .iov_base = (void *) &tester_iov_markers[2] }
+
 void tester_init(int *argc, char ***argv);
 int tester_run(void);
 
@@ -84,3 +96,4 @@ struct io *tester_setup_io(const struct iovec *iov, int iovcnt);
 void tester_shutdown_io(void);
 void tester_io_send(void);
 void tester_io_set_complete_func(tester_data_func_t func);
+void tester_io_set_alt(unsigned int alt);
