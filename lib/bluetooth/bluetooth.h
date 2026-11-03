@@ -53,6 +53,7 @@ extern "C" {
 struct bt_security {
 	uint8_t level;
 	uint8_t key_size;
+	uint8_t mic_len;
 };
 #define BT_SECURITY_SDP		0
 #define BT_SECURITY_LOW		1
@@ -115,21 +116,31 @@ struct bt_voice {
 
 #define BT_PHY			14
 
-#define BT_PHY_BR_1M_1SLOT	0x00000001
-#define BT_PHY_BR_1M_3SLOT	0x00000002
-#define BT_PHY_BR_1M_5SLOT	0x00000004
-#define BT_PHY_EDR_2M_1SLOT	0x00000008
-#define BT_PHY_EDR_2M_3SLOT	0x00000010
-#define BT_PHY_EDR_2M_5SLOT	0x00000020
-#define BT_PHY_EDR_3M_1SLOT	0x00000040
-#define BT_PHY_EDR_3M_3SLOT	0x00000080
-#define BT_PHY_EDR_3M_5SLOT	0x00000100
-#define BT_PHY_LE_1M_TX		0x00000200
-#define BT_PHY_LE_1M_RX		0x00000400
-#define BT_PHY_LE_2M_TX		0x00000800
-#define BT_PHY_LE_2M_RX		0x00001000
-#define BT_PHY_LE_CODED_TX	0x00002000
-#define BT_PHY_LE_CODED_RX	0x00004000
+#define BT_PHY_BR_1M_1SLOT	BIT(0)
+#define BT_PHY_BR_1M_3SLOT	BIT(1)
+#define BT_PHY_BR_1M_5SLOT	BIT(2)
+#define BT_PHY_EDR_2M_1SLOT	BIT(3)
+#define BT_PHY_EDR_2M_3SLOT	BIT(4)
+#define BT_PHY_EDR_2M_5SLOT	BIT(5)
+#define BT_PHY_EDR_3M_1SLOT	BIT(6)
+#define BT_PHY_EDR_3M_3SLOT	BIT(7)
+#define BT_PHY_EDR_3M_5SLOT	BIT(8)
+#define BT_PHY_LE_1M_TX		BIT(9)
+#define BT_PHY_LE_1M_RX		BIT(10)
+#define BT_PHY_LE_2M_TX		BIT(11)
+#define BT_PHY_LE_2M_RX		BIT(12)
+#define BT_PHY_LE_CODED_TX	BIT(13)
+#define BT_PHY_LE_CODED_RX	BIT(14)
+#define BT_PHY_HDT_2M_TX	BIT(15)
+#define BT_PHY_HDT_2M_RX	BIT(16)
+#define BT_PHY_HDT_3M_TX	BIT(17)
+#define BT_PHY_HDT_3M_RX	BIT(18)
+#define BT_PHY_HDT_4M_TX	BIT(19)
+#define BT_PHY_HDT_4M_RX	BIT(20)
+#define BT_PHY_HDT_6M_TX	BIT(21)
+#define BT_PHY_HDT_6M_RX	BIT(22)
+#define BT_PHY_HDT_7_5M_TX	BIT(23)
+#define BT_PHY_HDT_7_5M_RX	BIT(24)
 
 #define BT_MODE			15
 
@@ -216,6 +227,50 @@ struct bt_iso_qos {
 	union {
 		struct bt_iso_ucast_qos ucast;
 		struct bt_iso_bcast_qos bcast;
+	};
+};
+
+struct bt_iso_io_qos_v2 {
+	uint32_t interval;
+	uint16_t latency;
+	uint16_t sdu;
+	uint8_t  phys;
+	uint8_t  rtn;
+	uint16_t rates;
+};
+
+struct bt_iso_ucast_qos_v2 {
+	uint8_t  cig;
+	uint8_t  cis;
+	uint8_t  sca;
+	uint8_t  packing;
+	uint8_t  framing;
+	struct bt_iso_io_qos_v2 in;
+	struct bt_iso_io_qos_v2 out;
+};
+
+struct bt_iso_bcast_qos_v2 {
+	uint8_t  big;
+	uint8_t  bis;
+	uint8_t  sync_factor;
+	uint8_t  packing;
+	uint8_t  framing;
+	struct bt_iso_io_qos_v2 in;
+	struct bt_iso_io_qos_v2 out;
+	uint8_t  encryption;
+	uint8_t  bcode[16];
+	uint8_t  options;
+	uint16_t skip;
+	uint16_t sync_timeout;
+	uint8_t  sync_cte_type;
+	uint8_t  mse;
+	uint16_t timeout;
+};
+
+struct bt_iso_qos_v2 {
+	union {
+		struct bt_iso_ucast_qos_v2 ucast;
+		struct bt_iso_bcast_qos_v2 bcast;
 	};
 };
 
