@@ -45,6 +45,17 @@
 	do { tester_warn("%s:%d: failed in %s", __FILE__, __LINE__, __func__); \
 		tester_test_failed(); } while (0)
 
+/* Cancel one of the grouped Enable requests, either while it is queued or
+ * while the request is waiting for the ASE state.
+ */
+enum {
+	CANCEL_NONE,
+	CANCEL_LEADER,
+	CANCEL_MEMBER,
+	CANCEL_WAIT_LEADER,
+	CANCEL_WAIT_MEMBER,
+};
+
 struct test_config {
 	struct iovec cc;
 	struct iovec base;
@@ -61,6 +72,7 @@ struct test_config {
 	struct iovec *pac_caps;
 	const struct iovec *setup_data;
 	size_t setup_data_len;
+	uint8_t cancel;
 };
 
 struct test_data {
@@ -82,6 +94,9 @@ struct test_data {
 	size_t iovcnt;
 	struct iovec *iov;
 	int fds[8][2];
+	unsigned int enable_ids[2];
+	struct bt_bap_stream *cancelled;
+	unsigned int enabled;
 };
 
 struct notify {
@@ -9461,6 +9476,31 @@ static void test_bsrc_str(void)
 							LC3_PAC_CAPS(0x01))
 
 #define STR_AC3		DISC_AC3, STR_SNK_SRC_STREAMING_LC3(0, 0, 0x1, 0x1)
+
+#define STR_SNK_SRC_QOS(cis1, cis2, challoc1, challoc2, codec_id...) \
+	SCC_ASE2(SNK_ID(0), SRC_ID(0), challoc1, challoc2, codec_id), \
+	SCC_SNK_NOTIFY(0, STR_SCC_DATA(challoc1, codec_id)), \
+	SCC_SRC_NOTIFY(0, STR_SCC_DATA(challoc2, codec_id)), \
+	QOS_ASE2(SNK_ID(0), SRC_ID(0), cis1, cis2, QOS_SRC_8_1_1_DATA), \
+	QOS_SNK_NOTIFY(0, cis1, QOS_SRC_8_1_1_DATA), \
+	QOS_SRC_NOTIFY(0, cis2, QOS_SRC_8_1_1_DATA)
+
+/* Enable of the Sink ASE cancelled, only the Source ASE is enabled */
+#define STR_AC3_CANCEL_LEADER \
+	DISC_AC3, \
+	STR_SNK_SRC_QOS(0, 0, 0x1, 0x1, LC3_CODEC_ID_DATA), \
+	ENABLE_ASE(SRC_ID(0)), \
+	SRC_ENABLE_NOTIFY(0, 0), \
+	START_ASE(SRC_ID(0)), \
+	SRC_START_NOTIFY(0, 0)
+
+/* Enable of the Source ASE cancelled, only the Sink ASE is enabled */
+#define STR_AC3_CANCEL_MEMBER \
+	DISC_AC3, \
+	STR_SNK_SRC_QOS(0, 0, 0x1, 0x1, LC3_CODEC_ID_DATA), \
+	ENABLE_ASE(SNK_ID(0)), \
+	SNK_ENABLE_NOTIFY(0, 0), \
+	SNK_START_NOTIFY(0, 0)
 #define STR_AC5		DISC_AC5, STR_SNK_SRC_STREAMING_LC3(0, 0, 0x22, 0x2)
 #define STR_AC7i	DISC_AC7i, STR_SNK_SRC_STREAMING_LC3(0, 1, 0x4, 0x4)
 
@@ -9647,6 +9687,42 @@ static struct test_config cfg_str_ac3 = {
 	.snk_locations = { 0x1, -1 },
 	.src_locations = { 0x1, -1 },
 	.qos = LC3_QOS_8_1_1,
+};
+
+static struct test_config cfg_str_ac3_cancel_leader = {
+	.snk = true,
+	.src = true,
+	.snk_locations = { 0x1, -1 },
+	.src_locations = { 0x1, -1 },
+	.qos = LC3_QOS_8_1_1,
+	.cancel = CANCEL_LEADER,
+};
+
+static struct test_config cfg_str_ac3_cancel_member = {
+	.snk = true,
+	.src = true,
+	.snk_locations = { 0x1, -1 },
+	.src_locations = { 0x1, -1 },
+	.qos = LC3_QOS_8_1_1,
+	.cancel = CANCEL_MEMBER,
+};
+
+static struct test_config cfg_str_ac3_cancel_wait_leader = {
+	.snk = true,
+	.src = true,
+	.snk_locations = { 0x1, -1 },
+	.src_locations = { 0x1, -1 },
+	.qos = LC3_QOS_8_1_1,
+	.cancel = CANCEL_WAIT_LEADER,
+};
+
+static struct test_config cfg_str_ac3_cancel_wait_member = {
+	.snk = true,
+	.src = true,
+	.snk_locations = { 0x1, -1 },
+	.src_locations = { 0x1, -1 },
+	.qos = LC3_QOS_8_1_1,
+	.cancel = CANCEL_WAIT_MEMBER,
 };
 
 static struct test_config cfg_str_ac5 = {
@@ -9931,8 +10007,17 @@ static void streaming_ucl_do_stream(struct bt_bap_stream *stream,
 	}
 
 	/* All streams handled */
-	if (data->id == 0)
-		tester_test_passed();
+	if (data->id)
+		return;
+
+	/* Check the requests not cancelled have been completed */
+	if (data->cfg->cancel && data->enabled + !!data->cancelled !=
+					queue_length(data->streams)) {
+		FAIL_TEST();
+		return;
+	}
+
+	tester_test_passed();
 }
 
 static void streaming_ucl_connect(struct bt_bap_stream *stream)
@@ -10005,6 +10090,37 @@ static int streaming_ucl_create_io(struct bt_bap_stream *stream,
 	return i;
 }
 
+static void streaming_ucl_enable(struct bt_bap_stream *stream, uint8_t code,
+					uint8_t reason, void *user_data)
+{
+	struct test_data *data = user_data;
+
+	tester_debug("stream %p enable code 0x%02x", stream, code);
+
+	/* Cancelled requests shall not be completed */
+	if (code || stream == data->cancelled) {
+		FAIL_TEST();
+		return;
+	}
+
+	data->enabled++;
+}
+
+static void streaming_ucl_cancel(struct test_data *data, unsigned int idx)
+{
+	const struct queue_entry *entry = queue_get_entries(data->streams);
+
+	if (idx)
+		entry = entry->next;
+
+	data->cancelled = entry->data;
+
+	tester_debug("cancel stream %p enable", data->cancelled);
+
+	g_assert(!bt_bap_stream_cancel(data->cancelled,
+						data->enable_ids[idx]));
+}
+
 static void streaming_ucl_state(struct bt_bap_stream *stream,
 					uint8_t old_state, uint8_t new_state,
 					void *user_data)
@@ -10033,18 +10149,47 @@ static void streaming_ucl_state(struct bt_bap_stream *stream,
 		for (entry = queue_get_entries(data->streams);
 					entry; entry = entry->next) {
 			struct bt_bap_stream *s = entry->data;
+			unsigned int idx = data->id;
 
-			if (data->cfg->state != BT_BAP_STREAM_STATE_ENABLING)
+			/* Don't connect the stream to be cancelled */
+			if (data->cfg->state != BT_BAP_STREAM_STATE_ENABLING &&
+				!(data->cfg->cancel == CANCEL_LEADER && !idx) &&
+				!(data->cfg->cancel == CANCEL_MEMBER && idx))
 				streaming_ucl_connect(s);
 
 			id = bt_bap_stream_enable(s, false, NULL,
-							NULL, NULL);
+						data->cfg->cancel ?
+						streaming_ucl_enable : NULL,
+						data);
 			g_assert(id);
+
+			if (idx < ARRAY_SIZE(data->enable_ids))
+				data->enable_ids[idx] = id;
 
 			data->id++;
 		}
+
+		switch (data->cfg->cancel) {
+		case CANCEL_LEADER:
+			streaming_ucl_cancel(data, 0);
+			data->id--;
+			break;
+		case CANCEL_MEMBER:
+			streaming_ucl_cancel(data, 1);
+			data->id--;
+			break;
+		}
 		break;
 	case BT_BAP_STREAM_STATE_ENABLING:
+		/* Cancel once the first ASE is enabling, the request is then
+		 * waiting for the other one.
+		 */
+		if (!data->cancelled && data->cfg->cancel == CANCEL_WAIT_LEADER)
+			streaming_ucl_cancel(data, 0);
+		else if (!data->cancelled &&
+				data->cfg->cancel == CANCEL_WAIT_MEMBER)
+			streaming_ucl_cancel(data, 1);
+
 		/* TODO: not correct to call bt_bap_stream_set_io() from this
 		 * callback
 		 */
@@ -10324,6 +10469,18 @@ static void test_ucl_str(void)
 
 	define_test("BAP/UCL/STR/BV-549-C [UCL, AC 3, Generic, QoS, QoS]",
 		test_setup, test_select, &cfg_str_ac3, STR_AC3);
+	define_test("BAP/UCL/STR/BLUEZ-3 [UCL, AC 3, Cancel Enable leader]",
+		test_setup, test_select, &cfg_str_ac3_cancel_leader,
+		STR_AC3_CANCEL_LEADER);
+	define_test("BAP/UCL/STR/BLUEZ-4 [UCL, AC 3, Cancel Enable member]",
+		test_setup, test_select, &cfg_str_ac3_cancel_member,
+		STR_AC3_CANCEL_MEMBER);
+	define_test("BAP/UCL/STR/BLUEZ-5 [UCL, AC 3, Cancel Enable leader "
+		"waiting]", test_setup, test_select,
+		&cfg_str_ac3_cancel_wait_leader, STR_AC3);
+	define_test("BAP/UCL/STR/BLUEZ-6 [UCL, AC 3, Cancel Enable member "
+		"waiting]", test_setup, test_select,
+		&cfg_str_ac3_cancel_wait_member, STR_AC3);
 	define_test("BAP/UCL/STR/BV-550-C [UCL, AC 5, Generic, QoS, QoS]",
 		test_setup, test_select, &cfg_str_ac5, STR_AC5);
 	define_test("BAP/UCL/STR/BV-551-C [UCL, AC 7(i), Generic, QoS, QoS]",
