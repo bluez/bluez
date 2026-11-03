@@ -128,11 +128,40 @@
 	QOS_FULL(0x01, 0x02, \
 		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
 
+#define QOS_IO_V2(_interval, _latency, _sdu, _phys, _rtn, _rates) \
+{ \
+	.interval = _interval, \
+	.latency = _latency, \
+	.sdu = _sdu, \
+	.phys = _phys, \
+	.rtn = _rtn, \
+	.rates = _rates, \
+}
+
+#define QOS_FULL_V2(_cig, _cis, _in, _out) \
+{ \
+	.ucast = { \
+		.cig = _cig, \
+		.cis = _cis, \
+		.sca = 0x07, \
+		.packing = 0x00, \
+		.framing = 0x00, \
+		.in = _in, \
+		.out = _out, \
+	},\
+}
+
+#define QOS_V2(_interval, _latency, _sdu, _phy, _rtn, _rates) \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(_interval, _latency, _sdu, _phy, _rtn, _rates), \
+		QOS_IO_V2(_interval, _latency, _sdu, _phy, _rtn, _rates))
+
 /* QoS Configuration settings for low latency audio data */
 #define QOS_8_1_1 QOS(7500, 8, 26, 0x02, 2)
 #define QOS_8_2_1 QOS(10000, 10, 30, 0x02, 2)
 #define QOS_16_1_1 QOS(7500, 8, 30, 0x02, 2)
 #define QOS_16_2_1 QOS(10000, 10, 40, 0x02, 2)
+#define HDT_16_2_1 QOS(10000, 10, 40, BIT(4), 2)
 #define QOS_1_16_2_1 QOS_1(10000, 10, 40, 0x02, 2)
 #define QOS_2_16_2_1 QOS_2(10000, 10, 40, 0x02, 2)
 #define QOS_1_1_16_2_1 QOS_1_1(10000, 10, 40, 0x02, 2)
@@ -178,6 +207,92 @@
 #define QOS_48_2_gr QOS(10000, 20, 100, 0x02, 1)
 #define QOS_48_3_gr QOS(7500, 15, 90, 0x02, 1)
 #define QOS_48_4_gr QOS(10000, 20, 120, 0x02, 1)
+
+#define HDT_2M QOS_V2(10000, 10, 40, BIT(4), 2, BIT(0))
+#define HDT_3M QOS_V2(10000, 10, 40, BIT(4), 2, BIT(1))
+#define HDT_4M QOS_V2(10000, 10, 40, BIT(4), 2, BIT(2))
+#define HDT_6M QOS_V2(10000, 10, 40, BIT(4), 2, BIT(3))
+#define HDT_7_5M QOS_V2(10000, 10, 40, BIT(4), 2, BIT(4))
+#define HDT_IN_2M_OUT_3M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)))
+#define HDT_IN_2M_OUT_4M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)))
+#define HDT_IN_2M_OUT_6M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)))
+#define HDT_IN_2M_OUT_7_5M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)))
+#define HDT_IN_3M_OUT_2M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)))
+#define HDT_IN_3M_OUT_4M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)))
+#define HDT_IN_3M_OUT_6M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)))
+#define HDT_IN_3M_OUT_7_5M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)))
+#define HDT_IN_4M_OUT_2M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)))
+#define HDT_IN_4M_OUT_3M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)))
+#define HDT_IN_4M_OUT_6M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)))
+#define HDT_IN_4M_OUT_7_5M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)))
+#define HDT_IN_6M_OUT_2M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)))
+#define HDT_IN_6M_OUT_3M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)))
+#define HDT_IN_6M_OUT_4M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)))
+#define HDT_IN_6M_OUT_7_5M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)))
+#define HDT_IN_7_5M_OUT_2M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(0)))
+#define HDT_IN_7_5M_OUT_3M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(1)))
+#define HDT_IN_7_5M_OUT_4M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(2)))
+#define HDT_IN_7_5M_OUT_6M \
+	QOS_FULL_V2(BT_ISO_QOS_CIG_UNSET, BT_ISO_QOS_CIS_UNSET, \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(4)), \
+		QOS_IO_V2(10000, 10, 40, BIT(4), 2, BIT(3)))
 
 /* One unidirectional CIS. Unicast Server is Audio Sink */
 #define AC_1_4 QOS_OUT(10000, 10, 40, 0x02, 2)
@@ -307,16 +422,38 @@
 		0x00, {0x00}, \
 		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
 
+#define BCAST_QOS_IN_V2(_interval, _latency, _sdu, _phy, _rtn, _rates) \
+	QOS_BCAST_FULL(BT_ISO_QOS_BIG_UNSET, BT_ISO_QOS_BIS_UNSET, \
+		0x00, {0x00}, \
+		QOS_IO_V2(_interval, _latency, _sdu, _phy, _rtn, _rates), {})
+
 #define BCAST_QOS_IN_ENC(_interval, _latency, _sdu, _phy, _rtn) \
 	QOS_BCAST_FULL(BT_ISO_QOS_BIG_UNSET, BT_ISO_QOS_BIS_UNSET, \
 		0x01, BCODE, \
 		QOS_IO(_interval, _latency, _sdu, _phy, _rtn), {})
 
+#define BCAST_QOS_OUT_V2(_interval, _latency, _sdu, _phy, _rtn, _rates) \
+	QOS_BCAST_FULL(BT_ISO_QOS_BIG_UNSET, BT_ISO_QOS_BIS_UNSET, \
+		0x00, {0x00}, {}, \
+		QOS_IO_V2(_interval, _latency, _sdu, _phy, _rtn, _rates))
+
 #define QOS_OUT_16_2_1 BCAST_QOS_OUT(10000, 10, 40, 0x02, 2)
+#define HDT_OUT_16_2_1 BCAST_QOS_OUT(10000, 10, 40, BIT(4), 2)
+#define HDT_OUT_2M BCAST_QOS_OUT_V2(10000, 10, 40, BIT(4), 2, BIT(0))
+#define HDT_OUT_3M BCAST_QOS_OUT_V2(10000, 10, 40, BIT(4), 2, BIT(1))
+#define HDT_OUT_4M BCAST_QOS_OUT_V2(10000, 10, 40, BIT(4), 2, BIT(2))
+#define HDT_OUT_6M BCAST_QOS_OUT_V2(10000, 10, 40, BIT(4), 2, BIT(3))
+#define HDT_OUT_7_5M BCAST_QOS_OUT_V2(10000, 10, 40, BIT(4), 2, BIT(4))
 #define QOS_OUT_ENC_16_2_1 BCAST_QOS_OUT_ENC(10000, 10, 40, 0x02, 2)
 #define QOS_OUT_1_16_2_1 BCAST_QOS_OUT_1(10000, 10, 40, 0x02, 2)
 #define QOS_OUT_1_1_16_2_1 BCAST_QOS_OUT_1_1(10000, 10, 40, 0x02, 2)
 #define QOS_IN_16_2_1 BCAST_QOS_IN(10000, 10, 40, 0x02, 2)
+#define HDT_IN_16_2_1 BCAST_QOS_IN(10000, 10, 40, BIT(4), 2)
+#define HDT_IN_2M BCAST_QOS_IN_V2(10000, 10, 40, BIT(4), 2, BIT(0))
+#define HDT_IN_3M BCAST_QOS_IN_V2(10000, 10, 40, BIT(4), 2, BIT(1))
+#define HDT_IN_4M BCAST_QOS_IN_V2(10000, 10, 40, BIT(4), 2, BIT(2))
+#define HDT_IN_6M BCAST_QOS_IN_V2(10000, 10, 40, BIT(4), 2, BIT(3))
+#define HDT_IN_7_5M BCAST_QOS_IN_V2(10000, 10, 40, BIT(4), 2, BIT(4))
 #define QOS_IN_ENC_16_2_1 BCAST_QOS_IN_ENC(10000, 10, 40, 0x02, 2)
 #define QOS_OUT_48_1_g BCAST_QOS_OUT(7500, 8, 75, 0x02, 1)
 #define QOS_OUT_48_2_g BCAST_QOS_OUT(10000, 10, 100, 0x02, 1)
@@ -483,8 +620,17 @@ struct test_data {
 	int seqnum;
 };
 
+enum {
+	BT_ISO_QOS_V1 = 0,
+	BT_ISO_QOS_V2,
+};
+
 struct iso_client_data {
-	struct bt_iso_qos qos;
+	uint8_t qos_ver;
+	union {
+		struct bt_iso_qos qos;
+		struct bt_iso_qos_v2 qos_v2;
+	};
 	struct bt_iso_qos qos_2;
 	int expect_err;
 	const struct iovec *send;
@@ -525,6 +671,13 @@ struct iso_client_data {
 	 * Used for testing TX timestamping OPT_ID.
 	 */
 	unsigned int repeat_send;
+
+	/* Configure def_mic_len as the default MIC length and check that
+	 * the resulting LE Set CIG Parameters or LE Create BIG carries it.
+	 * HDT is 64-bit or 128-bit only, 32-bit being GFSK, so 0x00 is not
+	 * a value to test for and doubles as unset.
+	 */
+	uint8_t def_mic_len;
 };
 
 typedef bool (*iso_defer_accept_t)(struct test_data *data, struct tester_io *io,
@@ -637,9 +790,9 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	mgmt_register(data->mgmt, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
 					index_removed_callback, NULL, NULL);
 
-	data->hciemu = hciemu_new_num(HCIEMU_TYPE_BREDRLE52, data->client_num);
+	data->hciemu = hciemu_new_num(data->hciemu_type, data->client_num);
 	if (!data->hciemu)
-		data->hciemu = hciemu_new_num_debug(HCIEMU_TYPE_BREDRLE52,
+		data->hciemu = hciemu_new_num_debug(data->hciemu_type,
 						data->client_num, hciemu_debug,
 						"hciemu: ", NULL);
 	if (!data->hciemu) {
@@ -753,13 +906,13 @@ static void test_data_free(void *test_data)
 	free(data);
 }
 
-#define test_iso_full(name, data, setup, func, num, reason) \
+#define test_iso_full(name, type, data, setup, func, num, reason) \
 	do { \
 		struct test_data *user; \
 		user = new0(struct test_data, 1); \
 		if (!user) \
 			break; \
-		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
+		user->hciemu_type = type; \
 		user->test_data = data; \
 		user->client_num = num; \
 		user->accept_reason = reason; \
@@ -768,14 +921,21 @@ static void test_data_free(void *test_data)
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
+#define test_le52(name, data, setup, func, num, reason) \
+	test_iso_full(name, HCIEMU_TYPE_BREDRLE52, data, setup, func, num, \
+			reason)
+
 #define test_iso(name, data, setup, func) \
-	test_iso_full(name, data, setup, func, 1, 0x00)
+	test_le52(name, data, setup, func, 1, 0x00)
 
 #define test_iso2(name, data, setup, func) \
-	test_iso_full(name, data, setup, func, 2, 0x00)
+	test_le52(name, data, setup, func, 2, 0x00)
 
 #define test_iso_rej(name, data, setup, func, reason) \
-	test_iso_full(name, data, setup, func, 1, reason)
+	test_le52(name, data, setup, func, 1, reason)
+
+#define test_bredrle70(name, data, setup, func) \
+	test_iso_full(name, HCIEMU_TYPE_BREDRLE70, data, setup, func, 1, 0x00)
 
 static const struct iso_client_data connect_8_1_1 = {
 	.qos = QOS_8_1_1,
@@ -794,6 +954,175 @@ static const struct iso_client_data connect_16_1_1 = {
 
 static const struct iso_client_data connect_16_2_1 = {
 	.qos = QOS_16_2_1,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_16_2_1 = {
+	.qos = HDT_16_2_1,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_2m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_2M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_3m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_3M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_4m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_4M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_6m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_6M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_7_5m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_7_5M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_mic_len_64 = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_7_5M,
+	.expect_err = 0,
+	.def_mic_len = 0x01,
+};
+
+static const struct iso_client_data connect_hdt_mic_len_128 = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_7_5M,
+	.expect_err = 0,
+	.def_mic_len = 0x02,
+};
+
+static const struct iso_client_data connect_hdt_2m_3m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_3M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_2m_4m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_4M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_2m_6m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_6M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_2m_7_5m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_7_5M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_3m_2m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_2M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_3m_4m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_4M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_3m_6m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_6M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_3m_7_5m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_7_5M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_4m_2m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_2M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_4m_3m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_3M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_4m_6m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_6M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_4m_7_5m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_7_5M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_6m_2m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_2M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_6m_3m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_3M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_6m_4m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_4M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_6m_7_5m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_7_5M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_7_5m_2m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_2M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_7_5m_3m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_3M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_7_5m_4m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_4M,
+	.expect_err = 0
+};
+
+static const struct iso_client_data connect_hdt_7_5m_6m = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_6M,
 	.expect_err = 0
 };
 
@@ -1081,6 +1410,213 @@ static const struct iso_client_data connect_send_tx_cmsg_timestamping = {
 
 static const struct iso_client_data listen_16_2_1_recv = {
 	.qos = QOS_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_16_2_1_recv = {
+	.qos = HDT_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_2m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_2M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_3m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_3M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_4m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_4M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_6m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_6M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_7_5m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_7_5M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_2m_3m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_3M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_2m_4m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_4M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_2m_6m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_6M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_2m_7_5m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M_OUT_7_5M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_3m_2m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_2M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_3m_4m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_4M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_3m_6m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_6M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_3m_7_5m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M_OUT_7_5M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_4m_2m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_2M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_4m_3m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_3M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_4m_6m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_6M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_4m_7_5m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M_OUT_7_5M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_6m_2m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_2M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_6m_3m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_3M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_6m_4m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_4M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_6m_7_5m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M_OUT_7_5M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_7_5m_2m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_2M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_7_5m_3m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_3M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_7_5m_4m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_4M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.server = true,
+};
+
+static const struct iso_client_data listen_hdt_7_5m_6m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M_OUT_6M,
 	.expect_err = 0,
 	.recv = &send_16_2_1,
 	.server = true,
@@ -1412,6 +1948,76 @@ static const struct iso_client_data bcast_16_2_1_send = {
 	.base_len = sizeof(base_lc3_16_2_1),
 };
 
+static const struct iso_client_data bcast_hdt_16_2_1_send = {
+	.qos = HDT_OUT_16_2_1,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+};
+
+static const struct iso_client_data bcast_hdt_2m_send = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_OUT_2M,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+};
+
+static const struct iso_client_data bcast_hdt_3m_send = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_OUT_3M,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+};
+
+static const struct iso_client_data bcast_hdt_4m_send = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_OUT_4M,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+};
+
+static const struct iso_client_data bcast_hdt_6m_send = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_OUT_6M,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+};
+
+static const struct iso_client_data bcast_hdt_mic_len_64_send = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_OUT_7_5M,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+	.def_mic_len = 0x01,
+};
+
+static const struct iso_client_data bcast_hdt_7_5m_send = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_OUT_7_5M,
+	.expect_err = 0,
+	.send = &send_16_2_1,
+	.bcast = true,
+	.base = base_lc3_16_2_1,
+	.base_len = sizeof(base_lc3_16_2_1),
+};
+
 static const struct iso_client_data past_16_2_1_send = {
 	.qos = QOS_OUT_16_2_1,
 	.expect_err = 0,
@@ -1492,6 +2098,65 @@ static const struct iso_client_data bcast_16_2_1_reconnect = {
 
 static const struct iso_client_data bcast_16_2_1_recv = {
 	.qos = QOS_IN_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_hdt_16_2_1_recv = {
+	.qos = HDT_IN_16_2_1,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_hdt_2m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_2M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_hdt_3m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_3M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_hdt_4m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_4M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_hdt_6m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_6M,
+	.expect_err = 0,
+	.recv = &send_16_2_1,
+	.bcast = true,
+	.server = true,
+	.big = true,
+};
+
+static const struct iso_client_data bcast_hdt_7_5m_recv = {
+	.qos_ver = BT_ISO_QOS_V2,
+	.qos_v2 = HDT_IN_7_5M,
 	.expect_err = 0,
 	.recv = &send_16_2_1,
 	.bcast = true,
@@ -1897,6 +2562,66 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 	}
 }
 
+static void check_mic_len(struct test_data *data, uint8_t mic_len)
+{
+	const struct iso_client_data *isodata = data->test_data;
+
+	tester_print("MIC length: 0x%02x", mic_len);
+
+	if (mic_len != isodata->def_mic_len) {
+		tester_warn("Expected MIC length 0x%02x, got 0x%02x",
+				isodata->def_mic_len, mic_len);
+		tester_test_failed();
+	}
+}
+
+static bool hook_cig_mic_len(const void *msg, uint16_t len, void *user_data)
+{
+	const struct bt_hci_cmd_le_set_cig_params_v2 *cmd = msg;
+
+	if (len < sizeof(*cmd) + sizeof(*cmd->cis))
+		return true;
+
+	check_mic_len(user_data, cmd->cis[0].mic_len);
+
+	return true;
+}
+
+static bool hook_big_mic_len(const void *msg, uint16_t len, void *user_data)
+{
+	const struct bt_hci_cmd_le_create_big_v2 *cmd = msg;
+
+	if (len < sizeof(*cmd))
+		return true;
+
+	check_mic_len(user_data, cmd->bis.mic_len);
+
+	return true;
+}
+
+static void setup_mic_len(struct test_data *data, uint8_t mic_len)
+{
+	uint8_t param[] = {
+		0x21, 0x00,	/* Type: LE HDT Default MIC Length */
+		0x01,		/* Length */
+		0x00,		/* Value */
+	};
+
+	param[3] = mic_len;
+
+	tester_print("Setting default MIC length to 0x%02x", mic_len);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_DEF_SYSTEM_CONFIG, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+				BT_HCI_CMD_LE_SET_CIG_PARAMS_V2,
+				hook_cig_mic_len, data);
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_PRE_CMD,
+				BT_HCI_CMD_LE_CREATE_BIG_V2,
+				hook_big_mic_len, data);
+}
+
 static void setup_powered(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1904,6 +2629,9 @@ static void setup_powered(const void *test_data)
 	unsigned char param[] = { 0x01 };
 
 	tester_print("Powering on controller");
+
+	if (isodata && isodata->def_mic_len)
+		setup_mic_len(data, isodata->def_mic_len);
 
 	if (!isodata || !isodata->bcast || isodata->past)
 		mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
@@ -2108,6 +2836,7 @@ static int connect_iso_sock(struct test_data *data, uint8_t num, int sk)
 	struct hciemu_client *client;
 	const uint8_t *client_bdaddr = NULL;
 	const struct bt_iso_qos *qos = &isodata->qos;
+	const struct bt_iso_qos_v2 *qos_v2 = &isodata->qos_v2;
 	struct sockaddr_iso addr;
 	char str[18];
 	int err;
@@ -2146,7 +2875,21 @@ static int connect_iso_sock(struct test_data *data, uint8_t num, int sk)
 		}
 	}
 
-	err = setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, qos, sizeof(*qos));
+	switch (isodata->qos_ver) {
+	case BT_ISO_QOS_V1:
+		err = setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, qos,
+						sizeof(*qos));
+		break;
+	case BT_ISO_QOS_V2:
+		err = setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, qos_v2,
+						sizeof(*qos_v2));
+		break;
+	default:
+		tester_warn("Undefined qos_ver %u", isodata->qos_ver);
+		tester_test_failed();
+		return -EINVAL;
+	}
+
 	if (err < 0) {
 		tester_warn("Can't set socket BT_ISO_QOS option : %s (%d)",
 							strerror(errno), errno);
@@ -2187,6 +2930,28 @@ static int connect_iso_sock(struct test_data *data, uint8_t num, int sk)
 	return 0;
 }
 
+static uint8_t bit_phy(uint8_t bits)
+{
+	uint8_t phy = 0x00;
+
+	/* Convert PHY bits to PHY values on a ascending order so if HDT bit is
+	 * set it takes precedence over LE 2M and LE 1M.
+	 */
+	if (bits & BIT(0))
+		phy = 0x01; /* LE 1M */
+
+	if (bits & BIT(1))
+		phy = 0x02; /* LE 2M */
+
+	if (bits & BIT(2))
+		phy = 0x03; /* LE Coded */
+
+	if (bits & BIT(4))
+		phy = 0x05; /* HDT */
+
+	return phy;
+}
+
 static bool check_io_qos(const struct bt_iso_io_qos *io1,
 				const struct bt_iso_io_qos *io2)
 {
@@ -2207,7 +2972,9 @@ static bool check_io_qos(const struct bt_iso_io_qos *io1,
 		return false;
 	}
 
-	if (io1->phys && io2->phys && io1->phys != io2->phys) {
+	if (io1->phys && io2->phys && io1->phys != io2->phys &&
+			io1->phys != bit_phy(io2->phys) &&
+			bit_phy(io1->phys) != io2->phys) {
 		tester_warn("Unexpected IO PHY: 0x%02x != 0x%02x",
 				io1->phys, io2->phys);
 		return false;
@@ -2327,6 +3094,190 @@ static bool check_bcast_qos(const struct bt_iso_qos *qos1,
 	}
 
 	if (!check_io_qos(&qos1->ucast.out, &qos2->ucast.out)) {
+		tester_warn("Unexpected Output QoS");
+		return false;
+	}
+
+	if (qos1->bcast.encryption != qos2->bcast.encryption) {
+		tester_warn("Unexpected QoS encryption: 0x%02x != 0x%02x",
+				qos1->bcast.encryption, qos2->bcast.encryption);
+		return false;
+	}
+
+	if (memcmp(qos1->bcast.bcode, qos2->bcast.bcode,
+				sizeof(qos1->bcast.bcode))) {
+		tester_warn("Unexpected QoS Broadcast Code");
+		return false;
+	}
+
+	if (qos1->bcast.options != qos2->bcast.options) {
+		tester_warn("Unexpected QoS options: 0x%02x != 0x%02x",
+				qos1->bcast.options, qos2->bcast.options);
+		return false;
+	}
+
+	if (qos1->bcast.skip != qos2->bcast.skip) {
+		tester_warn("Unexpected QoS skip: 0x%04x != 0x%04x",
+				qos1->bcast.skip, qos2->bcast.skip);
+		return false;
+	}
+
+	if (qos1->bcast.sync_timeout != qos2->bcast.sync_timeout) {
+		tester_warn("Unexpected QoS sync timeout: 0x%04x != 0x%04x",
+			qos1->bcast.sync_timeout, qos2->bcast.sync_timeout);
+		return false;
+	}
+
+	if (qos1->bcast.sync_cte_type != qos2->bcast.sync_cte_type) {
+		tester_warn("Unexpected QoS sync cte type: 0x%02x != 0x%02x",
+			qos1->bcast.sync_cte_type, qos2->bcast.sync_cte_type);
+		return false;
+	}
+
+	if (qos1->bcast.mse != qos2->bcast.mse) {
+		tester_warn("Unexpected QoS MSE: 0x%02x != 0x%02x",
+				qos1->bcast.mse, qos2->bcast.mse);
+		return false;
+	}
+
+	if (qos1->bcast.timeout != qos2->bcast.timeout) {
+		tester_warn("Unexpected QoS MSE: 0x%04x != 0x%04x",
+				qos1->bcast.timeout, qos2->bcast.timeout);
+		return false;
+	}
+
+	return true;
+}
+
+static bool check_io_qos_v2(const struct bt_iso_io_qos_v2 *io1,
+				const struct bt_iso_io_qos_v2 *io2)
+{
+	if (io1->interval && io2->interval && io1->interval > io2->interval) {
+		tester_warn("Unexpected IO interval: %u > %u",
+				io1->interval, io2->interval);
+		return false;
+	}
+
+	if (io1->latency && io2->latency && io1->latency > io2->latency) {
+		tester_warn("Unexpected IO latency: %u > %u",
+				io1->latency, io2->latency);
+		return false;
+	}
+
+	if (io1->sdu && io2->sdu && io1->sdu != io2->sdu) {
+		tester_warn("Unexpected IO SDU: %u != %u", io1->sdu, io2->sdu);
+		return false;
+	}
+
+	if (io1->phys && io2->phys && io1->phys != io2->phys &&
+			io1->phys != bit_phy(io2->phys) &&
+			bit_phy(io1->phys) != io2->phys) {
+		tester_warn("Unexpected IO PHYs: 0x%02x != 0x%02x",
+				io1->phys, io2->phys);
+		return false;
+	}
+
+	if (io1->rtn && io2->rtn && io1->rtn != io2->rtn) {
+		tester_warn("Unexpected IO RTN: %u != %u", io1->rtn, io2->rtn);
+		return false;
+	}
+
+	if (io1->rates && io2->rates && io1->rates != io2->rates) {
+		tester_warn("Unexpected IO rates: 0x%04x != 0x%04x",
+				io1->rates, io2->rates);
+		return false;
+	}
+
+	return true;
+}
+
+static bool check_ucast_qos_v2(const struct bt_iso_qos_v2 *qos1,
+				const struct bt_iso_qos_v2 *qos2)
+{
+	if (qos1->ucast.cig != BT_ISO_QOS_CIG_UNSET &&
+			qos2->ucast.cig != BT_ISO_QOS_CIG_UNSET &&
+			qos1->ucast.cig != qos2->ucast.cig) {
+		tester_warn("Unexpected CIG ID: 0x%02x != 0x%02x",
+				qos1->ucast.cig, qos2->ucast.cig);
+		return false;
+	}
+
+	if (qos1->ucast.cis != BT_ISO_QOS_CIS_UNSET &&
+			qos2->ucast.cis != BT_ISO_QOS_CIS_UNSET &&
+			qos1->ucast.cis != qos2->ucast.cis) {
+		tester_warn("Unexpected CIS ID: 0x%02x != 0x%02x",
+				qos1->ucast.cis, qos2->ucast.cis);
+		return false;
+	}
+
+	if (qos1->ucast.packing != qos2->ucast.packing) {
+		tester_warn("Unexpected QoS packing: 0x%02x != 0x%02x",
+				qos1->ucast.packing, qos2->ucast.packing);
+		return false;
+	}
+
+	if (qos1->ucast.framing != qos2->ucast.framing) {
+		tester_warn("Unexpected QoS framing: 0x%02x != 0x%02x",
+				qos1->ucast.framing, qos2->ucast.framing);
+		return false;
+	}
+
+	if (!check_io_qos_v2(&qos1->ucast.in, &qos2->ucast.in)) {
+		tester_warn("Unexpected Input QoS");
+		return false;
+	}
+
+	if (!check_io_qos_v2(&qos1->ucast.out, &qos2->ucast.out)) {
+		tester_warn("Unexpected Output QoS");
+		return false;
+	}
+
+	return true;
+}
+
+static bool check_bcast_qos_v2(const struct bt_iso_qos_v2 *qos1,
+				const struct bt_iso_qos_v2 *qos2)
+{
+	if (qos1->bcast.big != BT_ISO_QOS_BIG_UNSET &&
+			qos2->bcast.big != BT_ISO_QOS_BIG_UNSET &&
+			qos1->bcast.big != qos2->bcast.big) {
+		tester_warn("Unexpected BIG ID: 0x%02x != 0x%02x",
+				qos1->bcast.big, qos2->bcast.big);
+		return false;
+	}
+
+	if (qos1->bcast.bis != BT_ISO_QOS_BIS_UNSET &&
+			qos2->bcast.bis != BT_ISO_QOS_BIS_UNSET &&
+			qos1->bcast.bis != qos2->bcast.bis) {
+		tester_warn("Unexpected BIS ID: 0x%02x != 0x%02x",
+				qos1->bcast.bis, qos2->bcast.bis);
+		return false;
+	}
+
+	if (qos1->bcast.sync_factor != qos2->bcast.sync_factor) {
+		tester_warn("Unexpected QoS sync interval: 0x%02x != 0x%02x",
+			qos1->bcast.sync_factor, qos2->bcast.sync_factor);
+		return false;
+	}
+
+	if (qos1->bcast.packing != qos2->bcast.packing) {
+		tester_warn("Unexpected QoS packing: 0x%02x != 0x%02x",
+				qos1->bcast.packing, qos2->bcast.packing);
+		return false;
+	}
+
+	if (qos1->bcast.framing != qos2->bcast.framing) {
+		tester_warn("Unexpected QoS framing: 0x%02x != 0x%02x",
+				qos1->bcast.framing, qos2->bcast.framing);
+		return false;
+	}
+
+	if (!check_io_qos_v2(&qos1->ucast.in, &qos2->ucast.in)) {
+		tester_warn("Unexpected Input QoS");
+		return false;
+	}
+
+	if (!check_io_qos_v2(&qos1->ucast.out, &qos2->ucast.out)) {
 		tester_warn("Unexpected Output QoS");
 		return false;
 	}
@@ -2888,15 +3839,30 @@ static bool iso_connect(struct tester_io *io, uint32_t cond,
 	int err, sk_err, sk;
 	socklen_t len;
 	struct bt_iso_qos qos;
+	struct bt_iso_qos_v2 qos_v2;
 	bool ret = true;
 	uint8_t base[BASE_MAX_LENGTH] = {0};
 
 	sk = tester_io_get_fd(io);
 
-	len = sizeof(qos);
-	memset(&qos, 0, len);
+	switch (isodata->qos_ver) {
+	case BT_ISO_QOS_V1:
+		len = sizeof(qos);
+		memset(&qos, 0, len);
+		err = getsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos, &len);
+		break;
+	case BT_ISO_QOS_V2:
+		len = sizeof(qos_v2);
+		memset(&qos_v2, 0, len);
+		err = getsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos_v2, &len);
+		break;
+	default:
+		tester_warn("Invalid BT_ISO_QOS version");
+		data->step = 0;
+		tester_test_failed();
+		return false;
+	}
 
-	err = getsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &qos, &len);
 	if (err < 0) {
 		tester_warn("Can't get socket option : %s (%d)",
 							strerror(errno), errno);
@@ -2906,12 +3872,26 @@ static bool iso_connect(struct tester_io *io, uint32_t cond,
 	}
 
 	if (!isodata->bcast) {
-		ret = check_ucast_qos(&qos, &isodata->qos,
+		switch (isodata->qos_ver) {
+		case BT_ISO_QOS_V1:
+			ret = check_ucast_qos(&qos, &isodata->qos,
 				      isodata->mconn ? &isodata->qos_2 : NULL);
+			break;
+		case BT_ISO_QOS_V2:
+			ret = check_ucast_qos_v2(&qos_v2, &isodata->qos_v2);
+			break;
+		}
 	} else if (!isodata->server) {
-		ret = check_bcast_qos(&qos, &isodata->qos);
-		if (ret && isodata->past)
-			ret = iso_rebind_bcast_dst(data, sk) == 0;
+		switch (isodata->qos_ver) {
+		case BT_ISO_QOS_V1:
+			ret = check_bcast_qos(&qos, &isodata->qos);
+			if (ret && isodata->past)
+				ret = iso_rebind_bcast_dst(data, sk) == 0;
+			break;
+		case BT_ISO_QOS_V2:
+			ret = check_bcast_qos_v2(&qos_v2, &isodata->qos_v2);
+			break;
+		}
 	}
 
 	if (!ret) {
@@ -3305,8 +4285,22 @@ static int listen_iso_sock(struct test_data *data, uint8_t num)
 		}
 	}
 
-	if (setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &isodata->qos,
-						sizeof(isodata->qos)) < 0) {
+	switch (isodata->qos_ver) {
+	case BT_ISO_QOS_V1:
+		err = setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS, &isodata->qos,
+				sizeof(isodata->qos));
+		break;
+	case BT_ISO_QOS_V2:
+		err = setsockopt(sk, SOL_BLUETOOTH, BT_ISO_QOS,
+				&isodata->qos_v2, sizeof(isodata->qos_v2));
+		break;
+	default:
+		tester_warn("Unexpected BT_ISO_QOS version");
+		err = -EINVAL;
+		goto fail;
+	}
+
+	if (err < 0) {
 		tester_print("Can't set socket BT_ISO_QOS option: %s (%d)",
 					strerror(errno), errno);
 		goto fail;
@@ -3973,6 +4967,9 @@ int main(int argc, char *argv[])
 	test_iso("Basic Framework - Success", NULL, setup_powered,
 							test_framework);
 
+	test_bredrle70("HDT Framework - Success", NULL, setup_powered,
+							test_framework);
+
 	test_iso("Basic ISO Socket - Success", NULL, setup_powered,
 							test_socket);
 
@@ -4000,6 +4997,94 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO QoS 16_2_1 CIG 0x01 CIS 0x01 - Success",
 							&connect_1_1_16_2_1,
+							setup_powered,
+							test_connect);
+
+	test_bredrle70("ISO QoS 16_2_1 HDT - Success", &connect_hdt_16_2_1,
+							setup_powered,
+							test_connect);
+
+	test_bredrle70("ISO QoS HDT 2M - Success", &connect_hdt_2m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 3M - Success", &connect_hdt_3m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 4M - Success", &connect_hdt_4m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 6M - Success", &connect_hdt_6m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 7.5M - Success", &connect_hdt_7_5m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT MIC Length 64 - Success",
+							&connect_hdt_mic_len_64,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT MIC Length 128 - Success",
+						&connect_hdt_mic_len_128,
+						setup_powered,
+						test_connect);
+	test_bredrle70("ISO QoS HDT 2M:3M - Success", &connect_hdt_2m_3m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 2M:4M - Success", &connect_hdt_2m_4m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 2M:6M - Success", &connect_hdt_2m_6m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 2M:7.5M - Success", &connect_hdt_2m_7_5m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 3M:2M - Success", &connect_hdt_3m_2m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 3M:4M - Success", &connect_hdt_3m_4m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 3M:6M - Success", &connect_hdt_3m_6m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 3M:7.5M - Success", &connect_hdt_3m_7_5m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 4M:2M - Success", &connect_hdt_4m_2m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 4M:3M - Success", &connect_hdt_4m_3m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 4M:6M - Success", &connect_hdt_4m_6m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 4M:7.5M - Success", &connect_hdt_4m_7_5m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 6M:2M - Success", &connect_hdt_6m_2m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 6M:3M - Success", &connect_hdt_6m_3m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 6M:4M - Success", &connect_hdt_6m_4m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 6M:7.5M - Success", &connect_hdt_6m_7_5m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 7.5M:2M - Success", &connect_hdt_7_5m_2m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 7.5M:3M - Success", &connect_hdt_7_5m_3m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 7.5M:4M - Success", &connect_hdt_7_5m_4m,
+							setup_powered,
+							test_connect);
+	test_bredrle70("ISO QoS HDT 7.5M:6M - Success", &connect_hdt_7_5m_6m,
 							setup_powered,
 							test_connect);
 
@@ -4160,6 +5245,110 @@ int main(int argc, char *argv[])
 			test_connect);
 
 	test_iso("ISO Receive - Success", &listen_16_2_1_recv, setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT - Success", &listen_hdt_16_2_1_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 2M - Success", &listen_hdt_2m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 3M - Success", &listen_hdt_3m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 4M - Success", &listen_hdt_4m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 6M - Success", &listen_hdt_6m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 7.5M - Success", &listen_hdt_7_5m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 2M:3M - Success", &listen_hdt_2m_3m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 2M:4M - Success", &listen_hdt_2m_4m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 2M:6M - Success", &listen_hdt_2m_6m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 2M:7.5M - Success", &listen_hdt_2m_7_5m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 3M:2M - Success", &listen_hdt_3m_2m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 3M:4M - Success", &listen_hdt_3m_4m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 3M:6M - Success", &listen_hdt_3m_6m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 3M:7.5M - Success", &listen_hdt_3m_7_5m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 4M:2M - Success", &listen_hdt_4m_2m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 4M:3M - Success", &listen_hdt_4m_3m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 4M:6M - Success", &listen_hdt_4m_6m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 4M:7.5M - Success", &listen_hdt_4m_7_5m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 6M:2M - Success", &listen_hdt_6m_2m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 6M:3M - Success", &listen_hdt_6m_3m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 6M:4M - Success", &listen_hdt_6m_4m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 6M:7.5M - Success", &listen_hdt_6m_7_5m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 7.5M:2M - Success", &listen_hdt_7_5m_2m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 7.5M:3M - Success", &listen_hdt_7_5m_3m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 7.5M:4M - Success", &listen_hdt_7_5m_4m_recv,
+							setup_powered,
+							test_listen);
+
+	test_iso("ISO Receive HDT 7.5M:6M - Success", &listen_hdt_7_5m_6m_recv,
+							setup_powered,
 							test_listen);
 
 	test_iso("ISO Receive Fragmented - Success", &listen_16_2_1_recv_frag,
@@ -4340,6 +5529,29 @@ int main(int argc, char *argv[])
 
 	test_iso("ISO Broadcaster - Success", &bcast_16_2_1_send, setup_powered,
 							test_bcast);
+	test_bredrle70("ISO Broadcaster HDT - Success", &bcast_hdt_16_2_1_send,
+							setup_powered,
+							test_bcast);
+	test_bredrle70("ISO Broadcaster HDT 2M - Success", &bcast_hdt_2m_send,
+							setup_powered,
+							test_bcast);
+	test_bredrle70("ISO Broadcaster HDT 3M - Success", &bcast_hdt_3m_send,
+							setup_powered,
+							test_bcast);
+	test_bredrle70("ISO Broadcaster HDT 4M - Success", &bcast_hdt_4m_send,
+							setup_powered,
+							test_bcast);
+	test_bredrle70("ISO Broadcaster HDT 6M - Success", &bcast_hdt_6m_send,
+							setup_powered,
+							test_bcast);
+	test_bredrle70("ISO Broadcaster HDT 7.5M - Success",
+							&bcast_hdt_7_5m_send,
+							setup_powered,
+							test_bcast);
+	test_bredrle70("ISO Broadcaster HDT MIC Length 64 - Success",
+						&bcast_hdt_mic_len_64_send,
+						setup_powered,
+						test_bcast);
 	test_iso("ISO Broadcaster PAST Info - Success", &past_16_2_1_send,
 							setup_powered,
 							test_past);
@@ -4370,6 +5582,30 @@ int main(int argc, char *argv[])
 							test_bcast_reconnect);
 
 	test_iso("ISO Broadcaster Receiver - Success", &bcast_16_2_1_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver HDT - Success",
+							&bcast_hdt_16_2_1_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver HDT 2M - Success",
+							&bcast_hdt_2m_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver HDT 3M - Success",
+							&bcast_hdt_3m_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver HDT 4M - Success",
+							&bcast_hdt_4m_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver HDT 6M - Success",
+							&bcast_hdt_6m_recv,
+							setup_powered,
+							test_bcast_recv);
+	test_iso("ISO Broadcaster Receiver HDT 7.5M - Success",
+							&bcast_hdt_7_5m_recv,
 							setup_powered,
 							test_bcast_recv);
 	test_iso("ISO Broadcaster PAST Receiver - Success",
