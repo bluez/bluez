@@ -95,6 +95,10 @@ struct test_data {
 	size_t iovcnt;
 	struct iovec *iov;
 	int fds[8][2];
+	bool mnotify;
+	struct iovec *alt_iov;
+	size_t alt_iovcnt;
+	struct queue *alt_pdus;
 	unsigned int enable_ids[2];
 	struct bt_bap_stream *cancelled;
 	unsigned int enabled;
@@ -132,23 +136,168 @@ static struct bt_bap_pac_qos lc3_qos = {
 
 #define iov_data(args...) ((const struct iovec[]) { args })
 
+/* Unicast tests are also run with Notify Multiple, using the same test data
+ * with the notifications sent as Handle Value Multiple Notification as
+ * alternative.
+ */
 #define define_test(name, setup, function, _cfg, args...)		\
 	do {							\
 		const struct iovec iov[] = { args };		\
 		static struct test_data data;			\
-		data.caps = &lc3_caps;				\
-		data.qos = &lc3_qos;				\
-		data.cfg = _cfg;				\
-		if (data.cfg && data.cfg->pac_caps)		\
-			data.caps = data.cfg->pac_caps;		\
-		if (data.cfg && data.cfg->pac_qos)		\
-			data.qos = data.cfg->pac_qos;		\
-		data.iovcnt = ARRAY_SIZE(iov);			\
-		data.iov = util_iov_dup(iov, ARRAY_SIZE(iov));	\
-		data.streams = queue_new(); \
-		tester_add(name, &data, setup, function,	\
-				test_teardown);			\
+		static struct test_data data_mnotify;		\
+		test_add(&data, name, setup, function, _cfg,	\
+				iov, ARRAY_SIZE(iov), false);	\
+		if (setup == test_setup_server ||		\
+				setup == test_setup)		\
+			test_add(&data_mnotify, name, setup,	\
+					function, _cfg, iov,	\
+					ARRAY_SIZE(iov), true);	\
 	} while (0)
+
+static void test_setup_server(const void *user_data);
+static void test_setup(const void *user_data);
+static void test_teardown(const void *user_data);
+
+#define ATT_MTU			64
+#define ATT_OP_NFY		0x1b
+#define ATT_OP_NFY_MULT		0x23
+
+static const struct iovec iov_null = IOV_NULL;
+static const struct iovec iov_alt = IOV_ALT;
+static const struct iovec iov_alt_or = IOV_ALT_OR;
+static const struct iovec iov_alt_end = IOV_ALT_END;
+
+static bool iov_is_nfy(const struct iovec *iov)
+{
+	return iov->iov_base && iov->iov_len >= 3 &&
+			((uint8_t *)iov->iov_base)[0] == ATT_OP_NFY;
+}
+
+static void mnotify_pdu_free(void *data)
+{
+	struct iovec *pdu = data;
+
+	free(pdu->iov_base);
+	free(pdu);
+}
+
+static struct iovec *mnotify_pdu_new(struct test_data *data)
+{
+	struct iovec *pdu = new0(struct iovec, 1);
+
+	pdu->iov_base = malloc(ATT_MTU);
+	util_iov_push_u8(pdu, ATT_OP_NFY_MULT);
+	queue_push_tail(data->alt_pdus, pdu);
+
+	return pdu;
+}
+
+static void mnotify_push(struct test_data *data, const struct iovec *iov)
+{
+	data->alt_iov[data->alt_iovcnt++] = *iov;
+}
+
+/* Add each chain of notifications, i.e. notifications separated by
+ * IOV_NULL, with the alternative of sending them as Handle Value Multiple
+ * Notifications:
+ *
+ * IOV_ALT, <notifications>, IOV_ALT_OR, <multiple notifications>,
+ * IOV_ALT_END
+ */
+static void test_setup_mnotify(struct test_data *data)
+{
+	size_t i, j, k;
+
+	data->alt_pdus = queue_new();
+	data->alt_iov = new0(struct iovec, data->iovcnt * 5);
+	data->alt_iovcnt = 0;
+
+	for (i = 0; i < data->iovcnt; i = j + 1) {
+		struct iovec *pdu;
+
+		if (!iov_is_nfy(&data->iov[i])) {
+			j = i;
+			mnotify_push(data, &data->iov[i]);
+			continue;
+		}
+
+		/* Find the end of the chain */
+		for (j = i; j + 2 < data->iovcnt; j += 2) {
+			if (data->iov[j + 1].iov_base ||
+					!iov_is_nfy(&data->iov[j + 2]))
+				break;
+		}
+
+		mnotify_push(data, &iov_alt);
+
+		for (k = i; k <= j; k++)
+			mnotify_push(data, &data->iov[k]);
+
+		mnotify_push(data, &iov_alt_or);
+
+		pdu = mnotify_pdu_new(data);
+
+		for (k = i; k <= j; k += 2) {
+			const struct iovec *nfy = &data->iov[k];
+			size_t len = nfy->iov_len - 3;
+
+			/* Start a new PDU if it doesn't fit in the MTU */
+			if (pdu->iov_len > 1 &&
+					pdu->iov_len + 4 + len > ATT_MTU) {
+				mnotify_push(data, pdu);
+				mnotify_push(data, &iov_null);
+				pdu = mnotify_pdu_new(data);
+			}
+
+			/* Handle */
+			util_iov_push_mem(pdu, 2, nfy->iov_base + 1);
+			util_iov_push_le16(pdu, len);
+			util_iov_push_mem(pdu, len, nfy->iov_base + 3);
+		}
+
+		mnotify_push(data, pdu);
+		mnotify_push(data, &iov_alt_end);
+	}
+}
+
+static void test_add(struct test_data *data, const char *name,
+			tester_data_func_t setup, tester_data_func_t function,
+			struct test_config *cfg, const struct iovec *iov,
+			size_t iovcnt, bool mnotify)
+{
+	char mname[256];
+
+	data->caps = &lc3_caps;
+	data->qos = &lc3_qos;
+	data->cfg = cfg;
+	if (cfg && cfg->pac_caps)
+		data->caps = cfg->pac_caps;
+	if (cfg && cfg->pac_qos)
+		data->qos = cfg->pac_qos;
+	data->iovcnt = iovcnt;
+	data->iov = util_iov_dup(iov, iovcnt);
+	data->streams = queue_new();
+	data->mnotify = mnotify;
+
+	if (mnotify) {
+		test_setup_mnotify(data);
+		snprintf(mname, sizeof(mname), "%s (Notify Multiple)", name);
+		name = mname;
+	}
+
+	tester_add(name, data, setup, function, test_teardown);
+}
+
+static struct io *test_setup_iov(struct test_data *data)
+{
+	if (!data->mnotify)
+		return tester_setup_io(data->iov, data->iovcnt);
+
+	/* Use the Handle Value Multiple Notification alternative */
+	tester_io_set_alt(1);
+
+	return tester_setup_io(data->alt_iov, data->alt_iovcnt);
+}
 
 static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 {
@@ -670,7 +819,7 @@ static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 
 	if (!bt_gatt_server_send_notification(data->server,
 			handle, value, len,
-			data->cfg ? data->cfg->mnotify : false))
+			data->mnotify || (data->cfg && data->cfg->mnotify)))
 		tester_debug("%s: Failed to send notification", __func__);
 }
 
@@ -942,7 +1091,7 @@ static void test_client(const void *user_data)
 	struct test_data *data = (void *)user_data;
 	struct io *io;
 
-	io = tester_setup_io(data->iov, data->iovcnt);
+	io = test_setup_iov(data);
 	g_assert(io);
 
 	tester_io_set_complete_func(test_complete_cb);
@@ -1141,6 +1290,8 @@ static void test_teardown(const void *user_data)
 	bt_bap_unref(data->bap);
 	bt_gatt_client_unref(data->client);
 	util_iov_free(data->iov, data->iovcnt);
+	free(data->alt_iov);
+	queue_destroy(data->alt_pdus, mnotify_pdu_free);
 
 	util_iov_free(data->base, 1);
 
@@ -1499,7 +1650,7 @@ static void test_server(const void *user_data)
 	struct test_data *data = (void *)user_data;
 	struct io *io;
 
-	io = tester_setup_io(data->iov, data->iovcnt);
+	io = test_setup_iov(data);
 	g_assert(io);
 
 	tester_io_set_complete_func(test_complete_cb);
@@ -1530,7 +1681,7 @@ static void test_server_state(const void *user_data)
 	struct test_data *data = (void *)user_data;
 	struct io *io;
 
-	io = tester_setup_io(data->iov, data->iovcnt);
+	io = test_setup_iov(data);
 	g_assert(io);
 
 	tester_io_set_complete_func(test_complete_cb);
@@ -10406,7 +10557,7 @@ static void test_select(const void *user_data)
 
 	data->id = 0;
 
-	io = tester_setup_io(data->iov, data->iovcnt);
+	io = test_setup_iov(data);
 	g_assert(io);
 
 	tester_io_set_complete_func(NULL);
