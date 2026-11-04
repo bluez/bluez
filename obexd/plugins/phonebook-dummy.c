@@ -49,6 +49,7 @@ struct cache_query {
 	phonebook_cache_ready_cb ready_cb;
 	void *user_data;
 	DIR *dp;
+	uint8_t newmissedcalls;
 };
 
 static char *root_folder = NULL;
@@ -381,7 +382,7 @@ static gboolean create_cache(void *user_data)
 	 */
 	foreach_vcard(query->dp, entry_notify, 0, 0xffff, query, NULL);
 
-	query->ready_cb(query->user_data);
+	query->ready_cb(query->newmissedcalls, query->user_data);
 
 	return FALSE;
 }
@@ -652,6 +653,13 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	query->ready_cb = ready_cb;
 	query->user_data = user_data;
 	query->dp = dp;
+
+	if (g_str_equal(name, PB_CALLS_MISSED_FOLDER)) {
+		foldername = g_build_filename(root_folder,
+						PB_CALLS_MISSED_FOLDER, NULL);
+		query->newmissedcalls = count_vcards(foldername);
+		g_free(foldername);
+	}
 
 	dummy = g_new0(struct dummy_data, 1);
 

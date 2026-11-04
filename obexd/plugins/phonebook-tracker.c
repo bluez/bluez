@@ -480,6 +480,12 @@ struct pending_reply {
 	int num_fields;
 };
 
+enum phonebook_request {
+	PHONEBOOK_REQUEST_PULL,
+	PHONEBOOK_REQUEST_ENTRY,
+	PHONEBOOK_REQUEST_CACHE,
+};
+
 struct contact_data {
 	char *id;
 	struct phonebook_contact *contact;
@@ -489,7 +495,7 @@ struct phonebook_data {
 	phonebook_cb cb;
 	void *user_data;
 	int index;
-	gboolean vcardentry;
+	enum phonebook_request request;
 	const struct apparam_field *params;
 	GSList *contacts;
 	phonebook_cache_ready_cb ready_cb;
@@ -1278,7 +1284,7 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 	}
 
 	/* We are doing a PullvCardEntry, no need for those checks */
-	if (data->vcardentry)
+	if (data->request == PHONEBOOK_REQUEST_ENTRY)
 		goto add_entry;
 
 	/* Last four fields are always present, ignoring them */
@@ -1411,7 +1417,8 @@ static int add_to_cache(const char **reply, int num_fields, void *user_data)
 
 done:
 	if (num_fields <= 0)
-		data->ready_cb(data->user_data);
+		data->ready_cb(num_fields < 0 ? 0 : data->newmissedcalls,
+							data->user_data);
 
 	return -EINTR;
 	/*
@@ -1517,7 +1524,11 @@ static int pull_newmissedcalls(const char **reply, int num_fields,
 	int nmissed;
 
 	if (num_fields < 0) {
-		data->cb(NULL, 0, num_fields, 0, TRUE, data->user_data);
+		if (data->request == PHONEBOOK_REQUEST_CACHE)
+			data->ready_cb(0, data->user_data);
+		else
+			data->cb(NULL, 0, num_fields, 0, TRUE,
+							data->user_data);
 
 		return -EINTR;
 	}
@@ -1531,7 +1542,12 @@ static int pull_newmissedcalls(const char **reply, int num_fields,
 		return 0;
 	}
 
-	if (data->params->maxlistcount == 0) {
+	if (data->request == PHONEBOOK_REQUEST_CACHE) {
+		query = folder2query(data->req_name);
+		col_amount = 8;
+		pull_cb = add_to_cache;
+	} else if (data->request == PHONEBOOK_REQUEST_PULL &&
+					data->params->maxlistcount == 0) {
 		query = name2count_query(PB_CALLS_MISSED);
 		col_amount = COUNT_QUERY_COL_AMOUNT;
 		pull_cb = pull_contacts_size;
@@ -1543,7 +1559,10 @@ static int pull_newmissedcalls(const char **reply, int num_fields,
 
 	err = query_tracker(query, col_amount, pull_cb, data);
 	if (err < 0) {
-		data->cb(NULL, 0, err, 0, TRUE, data->user_data);
+		if (data->request == PHONEBOOK_REQUEST_CACHE)
+			data->ready_cb(0, data->user_data);
+		else
+			data->cb(NULL, 0, err, 0, TRUE, data->user_data);
 
 		return -EINTR;
 	}
@@ -1580,6 +1599,7 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 	DBG("name %s", name);
 
 	data = g_new0(struct phonebook_data, 1);
+	data->request = PHONEBOOK_REQUEST_PULL;
 	data->params = params;
 	data->user_data = user_data;
 	data->cb = cb;
@@ -1656,7 +1676,7 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	data->user_data = user_data;
 	data->params = params;
 	data->cb = cb;
-	data->vcardentry = TRUE;
+	data->request = PHONEBOOK_REQUEST_ENTRY;
 
 	if (g_str_has_prefix(id, CONTACT_ID_PREFIX) == TRUE ||
 				g_strcmp0(id, TRACKER_DEFAULT_CONTACT_ME) == 0)
@@ -1694,11 +1714,19 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	}
 
 	data = g_new0(struct phonebook_data, 1);
+	data->request = PHONEBOOK_REQUEST_CACHE;
 	data->entry_cb = entry_cb;
 	data->ready_cb = ready_cb;
 	data->user_data = user_data;
+	data->req_name = g_strdup(name);
 
-	ret = query_tracker(query, 8, add_to_cache, data);
+	if (g_str_equal(name, PB_CALLS_MISSED_FOLDER))
+		ret = query_tracker(NEW_MISSED_CALLS_COUNT_QUERY,
+					COUNT_QUERY_COL_AMOUNT,
+					pull_newmissedcalls, data);
+	else
+		ret = query_tracker(query, 8, add_to_cache, data);
+
 	if (err)
 		*err = ret;
 
