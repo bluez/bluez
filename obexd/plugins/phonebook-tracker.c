@@ -76,11 +76,14 @@
 
 #define CONTACTS_QUERY_ALL						\
 "SELECT "								\
-"(SELECT GROUP_CONCAT(fn:concat(rdf:type(?aff_number),"			\
-"\"\31\", nco:phoneNumber(?aff_number)), \"\30\")"			\
-"WHERE {"								\
-"	?_role nco:hasPhoneNumber ?aff_number"				\
-"}) "									\
+"fn:concat(tracker:coalesce((SELECT GROUP_CONCAT("		\
+"fn:concat(rdf:type(?aff_number), \"\31\","			\
+"nco:phoneNumber(?aff_number), \"\31A\30\"), \"\") "		\
+"WHERE { ?_role nco:hasPhoneNumber ?aff_number }), \"\"), "	\
+"tracker:coalesce((SELECT GROUP_CONCAT("		\
+"fn:concat(rdf:type(?con_number), \"\31\","			\
+"nco:phoneNumber(?con_number), \"\31D\30\"), \"\") "		\
+"WHERE { ?_contact nco:hasPhoneNumber ?con_number }), \"\")) "	\
 "nco:fullname(?_contact) "						\
 "nco:nameFamily(?_contact) "						\
 "nco:nameGiven(?_contact) "						\
@@ -325,11 +328,14 @@ COMBINED_CONSTRAINT		\
 
 #define CONTACTS_QUERY_FROM_URI						\
 "SELECT "								\
-"(SELECT GROUP_CONCAT(fn:concat(rdf:type(?aff_number),"			\
-"\"\31\", nco:phoneNumber(?aff_number)), \"\30\")"			\
-"WHERE {"								\
-"	?_role nco:hasPhoneNumber ?aff_number"				\
-"}) "									\
+"fn:concat(tracker:coalesce((SELECT GROUP_CONCAT("		\
+"fn:concat(rdf:type(?aff_number), \"\31\","			\
+"nco:phoneNumber(?aff_number), \"\31A\30\"), \"\") "		\
+"WHERE { ?_role nco:hasPhoneNumber ?aff_number }), \"\"), "	\
+"tracker:coalesce((SELECT GROUP_CONCAT("		\
+"fn:concat(rdf:type(?con_number), \"\31\","			\
+"nco:phoneNumber(?con_number), \"\31D\30\"), \"\") "		\
+"WHERE { <%s> nco:hasPhoneNumber ?con_number }), \"\")) "	\
 "nco:fullname(<%s>) "							\
 "nco:nameFamily(<%s>) "							\
 "nco:nameGiven(<%s>) "							\
@@ -1063,10 +1069,8 @@ static void add_aff_number(struct phonebook_contact *contact,
 	char **num_parts;
 	char *type, *number;
 
-	/* For phone taken directly from contacts data, phone number string
-	 * is represented as number type and number string - those strings are
-	 * separated by SUB_DELIM string */
-	num_parts = g_strsplit(pnumber, SUB_DELIM, 2);
+	/* Type and number may be followed by A (affiliation) or D (direct). */
+	num_parts = g_strsplit(pnumber, SUB_DELIM, 3);
 
 	if (!num_parts)
 		return;
@@ -1085,10 +1089,9 @@ static void add_aff_number(struct phonebook_contact *contact,
 		add_phone_number(contact, number, TEL_TYPE_FAX);
 	else if (g_strrstr(type, MOBILE_NUM_TYPE))
 		add_phone_number(contact, number, TEL_TYPE_MOBILE);
+	else if (g_strcmp0(num_parts[2], "D") == 0)
+		add_phone_number(contact, number, TEL_TYPE_OTHER);
 	else
-		/* if this is no fax/mobile phone, then adding phone number
-		 * type based on type of the affiliation field
-		 */
 		add_phone_number(contact, number, get_phone_type(aff_type));
 
 failed:
@@ -1658,7 +1661,7 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	if (g_str_has_prefix(id, CONTACT_ID_PREFIX) == TRUE ||
 				g_strcmp0(id, TRACKER_DEFAULT_CONTACT_ME) == 0)
 		query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id,
-					id, id, id, id, id, id, id, id, id);
+					id, id, id, id, id, id, id, id, id, id);
 	else if (g_str_has_prefix(id, CALL_ID_PREFIX) == TRUE)
 		query = g_strdup_printf(CONTACT_FROM_CALL_QUERY, id);
 	else
