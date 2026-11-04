@@ -193,10 +193,64 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 	return 0;
 }
 
+struct concat_data {
+	GString *buffer;
+	const struct apparam_field *params;
+};
+
+static char *filter_vcard_photo(const char *buffer, size_t length,
+					const struct apparam_field *params,
+					size_t *filtered_length)
+{
+	GString *result;
+	char *copy;
+	char **lines;
+	gboolean include = TRUE;
+	unsigned int i;
+
+	/* PHOTO is bit 3 of the PropertySelector. */
+	if (!params->filter || (params->filter & (1ULL << 3))) {
+		*filtered_length = length;
+		return g_strndup(buffer, length);
+	}
+
+	copy = g_strndup(buffer, length);
+	lines = g_strsplit_set(copy, "\r\n", -1);
+	result = g_string_new(NULL);
+
+	for (i = 0; lines[i]; i++) {
+		const char *line = lines[i];
+		const char *end;
+		const char *name;
+
+		if (!line[0])
+			continue;
+
+		if (line[0] != ' ' && line[0] != '\t') {
+			end = strpbrk(line, ";:");
+			name = end ? memrchr(line, '.', end - line) : NULL;
+			name = name ? name + 1 : line;
+			include = !end || end - name != 5 ||
+				g_ascii_strncasecmp(name, "PHOTO", 5) != 0;
+		}
+
+		if (include)
+			g_string_append_printf(result, "%s\r\n", line);
+	}
+
+	g_strfreev(lines);
+	g_free(copy);
+
+	*filtered_length = result->len;
+	return g_string_free(result, FALSE);
+}
+
 static void entry_concat(const char *filename, VObject *v, void *user_data)
 {
-	GString *buffer = user_data;
+	struct concat_data *data = user_data;
+	char *filtered;
 	char tmp[1024];
+	size_t filtered_len;
 	int len;
 
 	/*
@@ -207,19 +261,22 @@ static void entry_concat(const char *filename, VObject *v, void *user_data)
 	memset(tmp, 0, len);
 
 	writeMemVObject(tmp, &len, v);
+	filtered = filter_vcard_photo(tmp, len, data->params,
+						&filtered_len);
 
-	/* FIXME: only the requested fields must be added */
-	g_string_append_len(buffer, tmp, len);
+	g_string_append_len(data->buffer, filtered, filtered_len);
+	g_free(filtered);
 }
 
 static gboolean read_dir(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
-	GString *buffer;
+	struct concat_data data;
 	DIR *dp;
 	uint16_t count = 0, max, offset;
 
-	buffer = g_string_new("");
+	data.buffer = g_string_new("");
+	data.params = dummy->apparams;
 
 	dp = opendir(dummy->folder);
 	if (dp == NULL) {
@@ -242,15 +299,15 @@ static gboolean read_dir(void *user_data)
 		offset = dummy->apparams->liststartoffset;
 	}
 
-	foreach_vcard(dp, entry_concat, offset, max, buffer, &count);
+	foreach_vcard(dp, entry_concat, offset, max, &data, &count);
 
 	closedir(dp);
 done:
 	/* FIXME: Missing vCards fields filtering */
-	dummy->cb(buffer->str, buffer->len, count, dummy->newmissedcalls,
-							TRUE, dummy->user_data);
+	dummy->cb(data.buffer->str, data.buffer->len, count,
+			dummy->newmissedcalls, TRUE, dummy->user_data);
 
-	g_string_free(buffer, TRUE);
+	g_string_free(data.buffer, TRUE);
 
 	return FALSE;
 }
@@ -332,7 +389,9 @@ static gboolean create_cache(void *user_data)
 static gboolean read_entry(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
+	char *filtered;
 	char buffer[1024];
+	size_t filtered_len;
 	ssize_t count;
 
 	memset(buffer, 0, sizeof(buffer));
@@ -344,9 +403,10 @@ static gboolean read_entry(void *user_data)
 		count = 0;
 	}
 
-	/* FIXME: Missing vCards fields filtering */
-
-	dummy->cb(buffer, count, 1, 0, TRUE, dummy->user_data);
+	filtered = filter_vcard_photo(buffer, count, dummy->apparams,
+							&filtered_len);
+	dummy->cb(filtered, filtered_len, 1, 0, TRUE, dummy->user_data);
+	g_free(filtered);
 
 	return FALSE;
 }
