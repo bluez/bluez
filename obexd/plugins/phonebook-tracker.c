@@ -491,6 +491,7 @@ struct phonebook_data {
 	uint8_t newmissedcalls;
 	GCancellable *query_canc;
 	char *req_name;
+	char *last_id;
 	int vcard_part_count;
 	int tracker_index;
 };
@@ -1250,7 +1251,6 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 	struct contact_data *contact_data;
 	int last_index, i;
 	gboolean cdata_present = FALSE, part_sent = FALSE;
-	static char *temp_id = NULL;
 
 	if (num_fields < 0) {
 		data->cb(NULL, 0, num_fields, 0, TRUE, data->user_data);
@@ -1288,10 +1288,10 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 						TRACKER_DEFAULT_CONTACT_ME))
 		return 0;
 
-	if (g_strcmp0(temp_id, reply[CONTACTS_ID_COL])) {
+	if (g_strcmp0(data->last_id, reply[CONTACTS_ID_COL])) {
 		data->index++;
-		g_free(temp_id);
-		temp_id = g_strdup(reply[CONTACTS_ID_COL]);
+		g_free(data->last_id);
+		data->last_id = g_strdup(reply[CONTACTS_ID_COL]);
 
 		/* Incrementing counter for vcards in current part of data,
 		 * but only if liststartoffset has been already reached */
@@ -1359,9 +1359,6 @@ done:
 	send_pull_part(data, params, TRUE);
 
 fail:
-	g_free(temp_id);
-	temp_id = NULL;
-
 	return -EINTR;
 	/*
 	 * phonebook_data is freed in phonebook_req_finalize. Useful in
@@ -1568,6 +1565,7 @@ void phonebook_req_finalize(void *request)
 
 	free_data_contacts(data);
 	g_free(data->req_name);
+	g_free(data->last_id);
 	g_free(data);
 }
 
