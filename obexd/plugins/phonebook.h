@@ -55,6 +55,11 @@ struct apparam_field {
 	char *searchval;
 };
 
+/* Metadata identifying the current database contents. */
+struct phonebook_metadata {
+	uint8_t database_identifier[16];
+};
+
 /*
  * Interface between the PBAP core and backends to retrieve
  * all contacts that match the application parameters rules.
@@ -98,6 +103,12 @@ void phonebook_driver_exit(void);
 */
 char *phonebook_set_folder(const char *current_folder,
 		const char *new_folder, uint8_t flags, int *err);
+
+/*
+ * Returns the metadata identifying the current database contents. A zero
+ * database identifier means the values are not persistent.
+ */
+int phonebook_get_metadata(struct phonebook_metadata *metadata);
 
 /*
  * phonebook_pull should be used only to prepare pull request - prepared
