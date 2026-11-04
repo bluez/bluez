@@ -55,6 +55,10 @@ struct apparam_field {
 	uint8_t order;
 	uint8_t searchattrib;
 	char *searchval;
+
+	/* vCard Selecting attributes */
+	uint64_t selector;
+	uint8_t selector_operator;
 };
 
 /* Metadata identifying the current database contents. */
@@ -75,14 +79,73 @@ typedef void (*phonebook_cb) (const char *buffer, size_t bufsize,
 /*
  * Interface between the PBAP core and backends to
  * append a new entry in the PBAP folder cache.
+ *
+ * mask is a bitmask of the vCard properties holding a value for this
+ * entry, using the bit assignment of the vCardSelector.
  */
 #define PHONEBOOK_INVALID_HANDLE 0xffffffff
 typedef void (*phonebook_entry_cb) (const char *id, uint32_t handle,
 					const char *name, const char *sound,
-					const char *tel, void *user_data);
+					const char *tel, uint64_t mask,
+					void *user_data);
 
 /* Notifies cache completion and the number of undismissed missed calls. */
 typedef void (*phonebook_cache_ready_cb) (uint8_t missed, void *user_data);
+
+/* vCardSelector property names, indexed by bit number. */
+static const char * const phonebook_selector_properties[] = {
+/* 0 */	"VERSION",
+	"FN",
+	"N",
+	"PHOTO",
+	"BDAY",
+	"ADR",
+	"LABEL",
+	"TEL",
+/* 8 */	"EMAIL",
+	"MAILER",
+	"TZ",
+	"GEO",
+	"TITLE",
+	"ROLE",
+	"LOGO",
+	"AGENT",
+/* 16 */	"ORG",
+	"NOTE",
+	"REV",
+	"SOUND",
+	"URL",
+	"UID",
+	"KEY",
+	"NICKNAME",
+/* 24 */	"CATEGORIES",
+	"PROID",
+	"CLASS",
+	"SORT-STRING",
+/* 28 */	"X-IRMC-CALL-DATETIME",
+	"X-BT-SPEEDDIALKEY",
+	"X-BT-UCI",
+	"X-BT-UID"
+};
+
+/*
+ * A zero selector matches all entries. Bit 0 of the operator selects
+ * AND (1) or OR (0).
+ */
+static inline gboolean phonebook_selector_match(uint64_t mask,
+				uint64_t selector, uint8_t selector_operator)
+{
+	/* Ignore reserved property bits. */
+	selector &= ~(0x7fULL << 32);
+
+	if (!selector)
+		return TRUE;
+
+	if (selector_operator & 0x01)
+		return (mask & selector) == selector;
+
+	return (mask & selector) != 0;
+}
 
 
 /*
