@@ -53,6 +53,12 @@ struct cache_query {
 	uint8_t newmissedcalls;
 };
 
+struct digest_data {
+	GChecksum *primary;
+	GChecksum *secondary;
+	char *path;
+};
+
 static char *root_folder = NULL;
 
 static void dummy_free(void *user_data)
@@ -76,9 +82,54 @@ static void query_free(void *user_data)
 	g_free(query);
 }
 
+static gboolean phonebook_compute_folder_digest(const char *folder,
+						uint8_t primary_digest[16],
+						uint8_t secondary_digest[16]);
+
+static const char * const version_folders[] = {
+	PB_CONTACTS_FOLDER,
+	PB_CALLS_COMBINED_FOLDER,
+	PB_CALLS_INCOMING_FOLDER,
+	PB_CALLS_MISSED_FOLDER,
+	PB_CALLS_OUTGOING_FOLDER,
+	PB_CALLS_SPEEDDIAL_FOLDER,
+	PB_CALLS_FAVORITE_FOLDER,
+	NULL,
+};
+
+static gboolean folder_has_version(const char *folder)
+{
+	unsigned int i;
+
+	for (i = 0; version_folders[i]; i++) {
+		if (g_str_equal(folder, version_folders[i]))
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void dummy_metadata_init(void)
 {
+	static const uint8_t zeros[16] = {0};
+	uint8_t primary[16], secondary[16];
+	int i;
+
 	metadata_identifier_update();
+
+	for (i = 0; version_folders[i]; i++) {
+		const char *folder = version_folders[i];
+
+		if (phonebook_compute_folder_digest(folder, primary,
+					secondary)) {
+			metadata_set(folder, "primary_digest", primary);
+			metadata_set(folder, "secondary_digest", secondary);
+		}
+
+		metadata_set(folder, PRIMARY_COUNTER, zeros);
+		metadata_set(folder, SECONDARY_COUNTER, zeros);
+	}
+
 	metadata_save();
 }
 
@@ -215,6 +266,194 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 		*count = n;
 
 	return 0;
+}
+
+static char *vobject_get_string(VObject *prop)
+{
+	switch (vObjectValueType(prop)) {
+	case VCVT_STRINGZ:
+		return g_strdup(vObjectStringZValue(prop));
+	case VCVT_USTRINGZ:
+		return fakeCString(vObjectUStringZValue(prop));
+	default:
+		return NULL;
+	}
+}
+
+static void digest_entry(const char *filename, VObject *v, void *user_data)
+{
+	struct digest_data *data = user_data;
+	VObjectIterator iterator, sub_iterator;
+	VObject *prop, *subprop;
+	char *entry;
+	char *contents;
+	char *str;
+	gsize len;
+
+	/* The primary digest covers the file name and the whole contents. */
+	g_checksum_update(data->primary, (const guchar *) filename,
+							strlen(filename));
+	g_checksum_update(data->primary, (const guchar *) "\0", 1);
+
+	entry = g_build_filename(data->path, filename, NULL);
+
+	if (g_file_get_contents(entry, &contents, &len, NULL)) {
+		g_checksum_update(data->primary,
+					(const guchar *) contents, len);
+		g_free(contents);
+	}
+
+	g_free(entry);
+
+	g_checksum_update(data->primary, (const guchar *) "\0", 1);
+
+	/*
+	 * The secondary digest covers the file name and the properties
+	 * tracked by the secondary counter.
+	 */
+	g_checksum_update(data->secondary, (const guchar *) filename,
+							strlen(filename));
+	g_checksum_update(data->secondary, (const guchar *) "\0", 1);
+
+	initPropIterator(&iterator, v);
+
+	while (moreIteration(&iterator)) {
+		prop = nextVObject(&iterator);
+
+		if (g_ascii_strcasecmp(vObjectName(prop), VCNameProp) &&
+				g_ascii_strcasecmp(vObjectName(prop),
+							VCFullNameProp) &&
+				g_ascii_strcasecmp(vObjectName(prop),
+							VCTelephoneProp) &&
+				g_ascii_strcasecmp(vObjectName(prop),
+							VCEmailAddressProp) &&
+				g_ascii_strcasecmp(vObjectName(prop),
+							VCMailerProp) &&
+				g_ascii_strcasecmp(vObjectName(prop),
+							VCAdrProp) &&
+				g_ascii_strcasecmp(vObjectName(prop),
+							"X-BT-UCI"))
+			continue;
+
+		g_checksum_update(data->secondary,
+					(const guchar *) vObjectName(prop),
+					strlen(vObjectName(prop)));
+		g_checksum_update(data->secondary, (const guchar *) "\0", 1);
+
+		str = vobject_get_string(prop);
+		if (str) {
+			g_checksum_update(data->secondary,
+					(const guchar *) str, strlen(str));
+			g_free(str);
+			g_checksum_update(data->secondary,
+					(const guchar *) "\0", 1);
+		}
+
+		/* Property components and parameters are included. */
+		initPropIterator(&sub_iterator, prop);
+
+		while (moreIteration(&sub_iterator)) {
+			subprop = nextVObject(&sub_iterator);
+
+			g_checksum_update(data->secondary,
+					(const guchar *) vObjectName(subprop),
+					strlen(vObjectName(subprop)));
+			g_checksum_update(data->secondary,
+					(const guchar *) "\0", 1);
+
+			str = vobject_get_string(subprop);
+			if (str) {
+				g_checksum_update(data->secondary,
+						(const guchar *) str,
+						strlen(str));
+				g_free(str);
+				g_checksum_update(data->secondary,
+						(const guchar *) "\0", 1);
+			}
+		}
+	}
+}
+
+/* Computes the digests used to detect changes of a folder's contents. */
+static gboolean phonebook_compute_folder_digest(const char *folder,
+						uint8_t primary_digest[16],
+						uint8_t secondary_digest[16])
+{
+	struct digest_data digest;
+	DIR *dp;
+	char *path;
+	gsize len = g_checksum_type_get_length(G_CHECKSUM_MD5);
+
+	path = g_build_filename(root_folder, folder, NULL);
+
+	dp = opendir(path);
+	if (!dp) {
+		g_free(path);
+		return FALSE;
+	}
+
+	digest.primary = g_checksum_new(G_CHECKSUM_MD5);
+	digest.secondary = g_checksum_new(G_CHECKSUM_MD5);
+	digest.path = path;
+
+	/* Entries beyond 65535 are not covered by the digest */
+	foreach_vcard(dp, digest_entry, 0, 0xffff, &digest, NULL);
+
+	closedir(dp);
+	g_free(path);
+
+	g_checksum_get_digest(digest.primary, primary_digest, &len);
+	g_checksum_get_digest(digest.secondary, secondary_digest, &len);
+
+	g_checksum_free(digest.primary);
+	g_checksum_free(digest.secondary);
+
+	return TRUE;
+}
+
+static void dummy_update_folder_version(const char *folder)
+{
+	uint8_t primary[16], secondary[16];
+	uint8_t stored_primary[16], stored_secondary[16];
+	uint8_t counter[16];
+	gboolean primary_changed, secondary_changed;
+
+	/* Retries a previously failed save. */
+	metadata_save();
+
+	if (!folder_has_version(folder))
+		return;
+
+	if (!phonebook_compute_folder_digest(folder, primary, secondary))
+		return;
+
+	/* Missing counters restart with a new Database Identifier. */
+	if (!metadata_get(folder, PRIMARY_COUNTER, counter) ||
+			!metadata_get(folder, SECONDARY_COUNTER, counter)) {
+		dummy_metadata_init();
+		return;
+	}
+
+	/* A missing or unreadable digest counts as a change. */
+	primary_changed = !metadata_get(folder, "primary_digest",
+					stored_primary) ||
+			memcmp(primary, stored_primary, 16) != 0;
+	secondary_changed = !metadata_get(folder, "secondary_digest",
+					stored_secondary) ||
+			memcmp(secondary, stored_secondary, 16) != 0;
+
+	if (!primary_changed && !secondary_changed)
+		return;
+
+	if (!metadata_folder_version_counter_incr(folder, primary_changed,
+							secondary_changed)) {
+		dummy_metadata_init();
+		return;
+	}
+
+	metadata_set(folder, "primary_digest", primary);
+	metadata_set(folder, "secondary_digest", secondary);
+	metadata_save();
 }
 
 struct concat_data {
@@ -578,6 +817,11 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 		return NULL;
 	}
 
+	folder = g_strndup(name, strlen(name) - 4);
+
+	dummy_update_folder_version(folder);
+	g_free(folder);
+
 	folder = g_strndup(filename, strlen(filename) - 4);
 	g_free(filename);
 	if (!is_dir(folder)) {
@@ -624,6 +868,8 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	char *filename;
 	int fd;
 
+	dummy_update_folder_version(folder);
+
 	filename = g_build_filename(root_folder, folder, id, NULL);
 
 	fd = open(filename, O_RDONLY);
@@ -659,6 +905,8 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	char *foldername;
 	DIR *dp;
 	struct dummy_data *dummy;
+
+	dummy_update_folder_version(name);
 
 	foldername = g_build_filename(root_folder, name, NULL);
 	dp = opendir(foldername);
