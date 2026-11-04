@@ -163,7 +163,7 @@ gboolean metadata_file_open(const char *file)
 	return TRUE;
 }
 
-gboolean metadata_read(struct phonebook_metadata *metadata)
+gboolean metadata_read(const char *folder, struct phonebook_metadata *metadata)
 {
 	memset(metadata, 0, sizeof(*metadata));
 
@@ -174,8 +174,17 @@ gboolean metadata_read(struct phonebook_metadata *metadata)
 	if (metadata_dirty)
 		return FALSE;
 
-	if (!metadata_get("identifier", "value", metadata->database_identifier))
-		DBG("identifier not found in metadata");
+	/* Report incomplete metadata as zero values. */
+	if (!metadata_get("identifier", "value",
+				metadata->database_identifier) ||
+			!metadata_get(folder, PRIMARY_COUNTER,
+						metadata->primary_counter) ||
+			!metadata_get(folder, SECONDARY_COUNTER,
+						metadata->secondary_counter)) {
+		DBG("Metadata of %s is incomplete", folder);
+		memset(metadata, 0, sizeof(*metadata));
+		return FALSE;
+	}
 
 	return TRUE;
 }

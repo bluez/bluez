@@ -24,7 +24,8 @@ gboolean metadata_file_open(const char *file);
 void metadata_file_close(void);
 
 /* Reads metadata and zeroes invalid or unsaved values. */
-gboolean metadata_read(struct phonebook_metadata *metadata);
+gboolean metadata_read(const char *folder,
+				struct phonebook_metadata *metadata);
 
 /* Stores a hex encoded byte array. */
 void metadata_set(const char *group, const char *key,

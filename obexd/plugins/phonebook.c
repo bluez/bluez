@@ -48,7 +48,8 @@ void phonebook_exit(void)
 	metadata_file_close();
 }
 
-int phonebook_get_metadata(struct phonebook_metadata *metadata)
+int phonebook_get_metadata(const char *folder,
+					struct phonebook_metadata *metadata)
 {
-	return metadata_read(metadata);
+	return metadata_read(folder, metadata);
 }
