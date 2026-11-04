@@ -544,6 +544,10 @@ static int pbap_get(struct obex_session *os, void *user_data)
 	} else if (g_ascii_strcasecmp(type, VCARDLISTING_TYPE) == 0) {
 		/* Always relative */
 		if (!name || strlen(name) == 0) {
+			/* telecom has no vCard listing. */
+			if (g_strcmp0(pbap->folder, PB_TELECOM_FOLDER) == 0)
+				return -ENOENT;
+
 			/* Current folder */
 			path = g_strdup(pbap->folder);
 		} else {
