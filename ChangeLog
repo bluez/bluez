@@ -1,3 +1,11 @@
+ver 5.88:
+	Fix issue with UUID discovery filter match.
+	Fix issue with handling unsupported MAP events.
+	Fix issue with AVRCP and ListPlayerAttributes response.
+	Add support for Shorter Connection Interval settings.
+	Add support for Connection Subrating settings.
+	Add support for Channel Sounding interfaces.
+
 ver 5.87:
 	Fix issue with GATT database and out of sync errors.
 	Fix issue with BASS and setting a stream to idle.
