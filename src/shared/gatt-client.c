@@ -2299,6 +2299,9 @@ static void notify_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
 			pdu += data.len;
 		}
 	} else {
+		if (length < 2)
+			goto done;
+
 		data.handle = get_le16(pdu);
 		length -= 2;
 		pdu += 2;
