@@ -1701,7 +1701,7 @@ static void setup_powered_client(const void *test_data)
 		struct {
 			struct mgmt_cp_load_conn_subrate cp;
 			struct mgmt_conn_subrate param;
-		} __attribute__((packed)) load;
+		} __packed load;
 
 		client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
 		if (!client_bdaddr) {
