@@ -2334,6 +2334,41 @@ static const struct test_step test_notification_1 = {
 	.length = 0x03,
 };
 
+static void notification_short_cb(uint16_t value_handle,
+					const uint8_t *value, uint16_t length,
+					void *user_data)
+{
+	struct context *context = user_data;
+	const struct test_step *step = context->data->step;
+	static int count;
+
+	g_assert_cmpint(value_handle, ==, step->handle);
+	g_assert_cmpint(length, ==, step->length);
+	g_assert(memcmp(value, step->value, length) == 0);
+
+	if (++count == 2) {
+		count = 0;
+		context_quit(context);
+	}
+}
+
+static void test_notification_short(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	g_assert(bt_gatt_client_register_notify(context->client, step->handle,
+						notification_register_cb,
+						notification_short_cb, context,
+						NULL));
+}
+
+static const struct test_step test_notification_short_1 = {
+	.handle = 0x0003,
+	.func = test_notification_short,
+	.value = read_data_1,
+	.length = 0x03,
+};
+
 static void test_server_notification(struct context *context)
 {
 	const struct test_step *step = context->data->step;
@@ -3478,6 +3513,21 @@ int main(int argc, char *argv[])
 			SMALL_DB_DISCOVERY_PDUS,
 			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
 			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x1B, 0x03, 0x00, 0x01, 0x02, 0x03));
+
+	define_test_client("/robustness/notify-short", test_client,
+			ts_small_db, &test_notification_short_1,
+			CLIENT_INIT_PDUS,
+			SMALL_DB_DISCOVERY_PDUS,
+			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
+			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x1B, 0x03, 0x00, 0x01, 0x02, 0x03),
+			raw_pdu(),
+			raw_pdu(0x1B),
+			raw_pdu(),
+			raw_pdu(0x1B, 0x03),
 			raw_pdu(),
 			raw_pdu(0x1B, 0x03, 0x00, 0x01, 0x02, 0x03));
 
