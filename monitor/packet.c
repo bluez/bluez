@@ -2920,6 +2920,9 @@ void packet_print_version(const char *label, uint8_t version,
 	case 0x11:
 		str = "Bluetooth 6.3";
 		break;
+	case 0x12:
+		str = "Bluetooth 7.0";
+		break;
 	default:
 		str = "Reserved";
 		break;
