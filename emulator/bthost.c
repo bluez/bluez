@@ -2597,7 +2597,7 @@ static bool l2cap_ecred_conn_req(struct bthost *bthost, struct btconn *conn,
 	struct {
 		struct bt_l2cap_pdu_ecred_conn_rsp pdu;
 		uint16_t dcid[5];
-	} __attribute__ ((packed)) rsp;
+	} __packed rsp;
 	uint16_t psm;
 	int num_scid, i = 0;
 
@@ -2640,10 +2640,10 @@ respond:
 static bool l2cap_ecred_conn_rsp(struct bthost *bthost, struct btconn *conn,
 				uint8_t ident, const void *data, uint16_t len)
 {
-	const struct  {
+	const struct __packed {
 		const struct bt_l2cap_pdu_ecred_conn_rsp pdu;
 		uint16_t scid[5];
-	} __attribute__ ((packed)) *rsp = data;
+	} *rsp = data;
 	int num_scid, i;
 	struct l2conn *l2conn;
 
