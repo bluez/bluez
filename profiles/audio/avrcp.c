@@ -3495,26 +3495,26 @@ static gboolean avrcp_get_total_numberofitems_rsp(struct avctp *conn,
 	uint8_t status;
 
 	if (operands == NULL)
-		return -ETIMEDOUT;
+		return FALSE;
 
 	if (!avrcp_pull_browsing_header(&iov) ||
 			!util_iov_pull_u8(&iov, &status))
-		return -EINVAL;
+		return FALSE;
 
 	if (status == AVRCP_STATUS_OUT_OF_BOUNDS)
 		goto done;
 
 	if (status != AVRCP_STATUS_SUCCESS)
-		return -EINVAL;
+		return FALSE;
 
 	if (!util_iov_pull_be16(&iov, &uid_counter) ||
 			!util_iov_pull_be32(&iov, &num_of_items))
-		return -EINVAL;
+		return FALSE;
 
 	player->uid_counter = uid_counter;
 
 	if (!num_of_items)
-		return -EINVAL;
+		return FALSE;
 
 done:
 	media_player_total_items_complete(mp, num_of_items);
@@ -3523,14 +3523,14 @@ done:
 
 static void avrcp_get_total_numberofitems(struct avrcp *session)
 {
-	uint8_t buf[AVRCP_BROWSING_HEADER_LENGTH + 7];
+	uint8_t buf[AVRCP_BROWSING_HEADER_LENGTH + 1];
 	struct avrcp_player *player = session->controller->player;
 	struct avrcp_browsing_header *pdu = (void *) buf;
 
 	memset(buf, 0, sizeof(buf));
 
 	pdu->pdu_id = AVRCP_GET_TOTAL_NUMBER_OF_ITEMS;
-	pdu->param_len = cpu_to_be16(7 + sizeof(uint32_t));
+	pdu->param_len = cpu_to_be16(1);
 
 	pdu->params[0] = player->scope;
 
