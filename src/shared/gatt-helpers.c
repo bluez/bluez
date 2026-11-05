@@ -1299,14 +1299,15 @@ static void read_by_type_cb(uint8_t opcode, const void *pdu,
 		goto done;
 	}
 
-	if (opcode != BT_ATT_OP_READ_BY_TYPE_RSP || !pdu) {
+	if (opcode != BT_ATT_OP_READ_BY_TYPE_RSP || !pdu || length < 3) {
 		success = false;
 		att_ecode = 0;
 		goto done;
 	}
 
-	data_length = ((uint8_t *) pdu)[0];
-	if (((length - 1) % data_length)) {
+	data_length = ((const uint8_t *) pdu)[0];
+	if (data_length < 2 || data_length > length - 1U ||
+					(length - 1) % data_length) {
 		success = false;
 		att_ecode = 0;
 		goto done;

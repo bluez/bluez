@@ -1565,8 +1565,10 @@ static void db_server_feat_read(bool success, uint8_t att_ecode,
 	if (!result)
 		return;
 
-	bt_gatt_iter_init(&iter, result);
-	bt_gatt_iter_next_read_by_type(&iter, &handle, &len, &value);
+	if (!bt_gatt_iter_init(&iter, result) ||
+			!bt_gatt_iter_next_read_by_type(&iter, &handle,
+						&len, &value) || !len)
+		return;
 
 	DBG(client, "Server Features found: handle 0x%04x "
 				"length 0x%04x value 0x%02x", handle, len,
