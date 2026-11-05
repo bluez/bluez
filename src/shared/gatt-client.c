@@ -887,7 +887,8 @@ static void ext_prop_read_cb(bool success, uint8_t att_ecode,
 	if (!success)
 		goto done;
 
-	DBG(client, "Ext. prop value: 0x%04x", (uint16_t)value[0]);
+	DBG(client, "Ext. prop value: 0x%04x",
+				length ? (uint16_t)value[0] : 0);
 
 	desc_attr = queue_pop_head(op->ext_prop_desc);
 	if (!desc_attr)
@@ -1475,8 +1476,10 @@ static void db_hash_read_cb(bool success, uint8_t att_ecode,
 	if (!success)
 		goto discover;
 
-	bt_gatt_iter_init(&iter, result);
-	bt_gatt_iter_next_read_by_type(&iter, &handle, &len, &value);
+	if (!bt_gatt_iter_init(&iter, result) ||
+			!bt_gatt_iter_next_read_by_type(&iter, &handle,
+							&len, &value))
+		goto discover;
 
 	DBG(client, "DB Hash found: handle 0x%04x length 0x%04x",
 							handle, len);
