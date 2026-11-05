@@ -2942,9 +2942,12 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu, uint16_t length,
 		 * current ATT_MTU.
 		 */
 		if (len > length)
-			length = len;
+			len = length;
 
 		op->callback(success, att_ecode, pdu, len, op->user_data);
+
+		length -= len;
+		pdu += len;
 	}
 }
 
