@@ -703,6 +703,13 @@ static void test_condition_complete(struct test_data *data)
 #define test_bredrle62(name, data, setup, func) \
 	test_bredrle62_full(name, data, setup, func, 2)
 
+#define test_bredrle70_full(name, data, setup, func, timeout) \
+	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE70, \
+					0x10, 0x0601beff, 0x00000080)
+
+#define test_bredrle70(name, data, setup, func) \
+	test_bredrle70_full(name, data, setup, func, 2)
+
 #define test_hs_full(name, data, setup, func, timeout) \
 	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE, \
 					0x09, 0x0001bfff, 0x00000080)
@@ -4703,6 +4710,21 @@ static const struct generic_data set_le_on_success_sci = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_le_settings_param_sci,
 	.expect_len = sizeof(set_le_settings_param_sci),
+	.expect_settings_set = MGMT_SETTING_LE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
+	.expect_hci_param = set_le_on_write_le_host_param,
+	.expect_hci_len = sizeof(set_le_on_write_le_host_param),
+};
+
+static const char set_le_settings_param_hdt[] = { 0x81, 0x02, 0xfc, 0x07 };
+static const struct generic_data set_le_on_success_hdt = {
+	.setup_settings = settings_le,
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_le_settings_param_hdt,
+	.expect_len = sizeof(set_le_settings_param_hdt),
 	.expect_settings_set = MGMT_SETTING_LE,
 	.expect_hci_command = BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
 	.expect_hci_param = set_le_on_write_le_host_param,
@@ -14253,6 +14275,124 @@ static void test_hci_devcd(const void *test_data)
 	tester_wait(test->dump_data->timeout + 1, verify_devcd, NULL);
 }
 
+/* HDT Default Parameters - Set Default System Config with TLVs 0x0021-0x0023 */
+static const uint8_t set_def_system_config_hdt_mic_len_param[] = {
+	0x21, 0x00,	/* Type: LE HDT Default MIC Length */
+	0x01,		/* Length */
+	0x02,		/* Value: 128-bit */
+};
+
+static const struct generic_data set_def_system_config_hdt_mic_len = {
+	.send_opcode = MGMT_OP_SET_DEF_SYSTEM_CONFIG,
+	.send_param = set_def_system_config_hdt_mic_len_param,
+	.send_len = sizeof(set_def_system_config_hdt_mic_len_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+static const uint8_t set_def_system_config_hdt_format_param[] = {
+	0x22, 0x00,	/* Type: LE HDT Default Packet Format */
+	0x01,		/* Length */
+	0x01,		/* Value: Format 1 */
+};
+
+static const struct generic_data set_def_system_config_hdt_format = {
+	.send_opcode = MGMT_OP_SET_DEF_SYSTEM_CONFIG,
+	.send_param = set_def_system_config_hdt_format_param,
+	.send_len = sizeof(set_def_system_config_hdt_format_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+static const uint8_t set_def_system_config_hdt_rates_param[] = {
+	0x23, 0x00,	/* Type: LE HDT Default Rates */
+	0x02,		/* Length */
+	0x1f, 0x00,	/* Value: All rates (bits 0-4) */
+};
+
+static const struct generic_data set_def_system_config_hdt_rates = {
+	.send_opcode = MGMT_OP_SET_DEF_SYSTEM_CONFIG,
+	.send_param = set_def_system_config_hdt_rates_param,
+	.send_len = sizeof(set_def_system_config_hdt_rates_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+/* EKS Opportunistic Encryption - Set Default System Config with TLV 0x0024 */
+static const uint8_t set_def_system_config_eks_oppt_param[] = {
+	0x24, 0x00,	/* Type: LE Opportunistic Encryption */
+	0x01,		/* Length */
+	0x01,		/* Value: enabled */
+};
+
+static const struct generic_data set_def_system_config_eks_oppt_on = {
+	.send_opcode = MGMT_OP_SET_DEF_SYSTEM_CONFIG,
+	.send_param = set_def_system_config_eks_oppt_param,
+	.send_len = sizeof(set_def_system_config_eks_oppt_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+static const uint8_t set_def_system_config_eks_oppt_off_param[] = {
+	0x24, 0x00,	/* Type: LE Opportunistic Encryption */
+	0x01,		/* Length */
+	0x00,		/* Value: disabled */
+};
+
+static const struct generic_data set_def_system_config_eks_oppt_off = {
+	.send_opcode = MGMT_OP_SET_DEF_SYSTEM_CONFIG,
+	.send_param = set_def_system_config_eks_oppt_off_param,
+	.send_len = sizeof(set_def_system_config_eks_oppt_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+/* EKS Opportunistic Encryption - Verify encryption happens on connect */
+static const void *add_device_auto_connect_func(uint16_t *len)
+{
+	struct test_data *data = tester_get_data();
+	static struct mgmt_cp_add_device cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.addr.bdaddr, hciemu_get_client_bdaddr(data->hciemu), 6);
+	cp.addr.type = BDADDR_LE_PUBLIC;
+	cp.action = 0x02; /* Auto connect */
+
+	*len = sizeof(cp);
+
+	return &cp;
+}
+
+static int check_encrypt_v2_opportunistic(const void *param, uint16_t length)
+{
+	const struct bt_hci_cmd_le_enable_encrypt_v2 *cmd = param;
+
+	if (length < sizeof(*cmd))
+		return -1;
+
+	/* Verify encryption field is 0x01 (opportunistic) */
+	if (cmd->encryption != 0x01) {
+		tester_warn("Expected encryption=0x01 (opportunistic), "
+					"got 0x%02x", cmd->encryption);
+		return -1;
+	}
+
+	return 0;
+}
+
+static uint16_t settings_powered_le_ssp[] = {
+	MGMT_OP_SET_LE,
+	MGMT_OP_SET_SSP,
+	MGMT_OP_SET_POWERED,
+	0 };
+
+static const struct generic_data eks_oppt_connect_encrypt_test = {
+	.setup_settings = settings_powered_le_ssp,
+	.client_enable_adv = true,
+	.send_opcode = MGMT_OP_ADD_DEVICE,
+	.send_func = add_device_auto_connect_func,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_ignore_param = true,
+	.expect_hci_command = BT_HCI_CMD_LE_ENABLE_ENCRYPT_V2,
+	.expect_hci_len = sizeof(struct bt_hci_cmd_le_enable_encrypt_v2),
+	.expect_hci_param_check_func = check_encrypt_v2_opportunistic,
+};
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -14600,6 +14740,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle62("Set Low Energy on 6.2 - SCI Setting",
 				&set_le_on_success_sci,
+				NULL, test_command_generic);
+	test_bredrle70("Set Low Energy on HDT - HDT Setting",
+				&set_le_on_success_hdt,
 				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid parameters 1",
 				&set_le_on_invalid_param_test_1,
@@ -16485,6 +16628,26 @@ int main(int argc, char *argv[])
 	 */
 	test_bredrle_full("HCI Devcoredump - Dump Timeout", &dump_timeout, NULL,
 				test_hci_devcd, 3);
+
+	/* EKS Opportunistic Encryption */
+	test_bredrle70("Set Default System Config - HDT MIC Length",
+				&set_def_system_config_hdt_mic_len,
+				NULL, test_command_generic);
+	test_bredrle70("Set Default System Config - HDT Packet Format",
+				&set_def_system_config_hdt_format,
+				NULL, test_command_generic);
+	test_bredrle70("Set Default System Config - HDT Rates",
+				&set_def_system_config_hdt_rates,
+				NULL, test_command_generic);
+	test_bredrle70("Set Default System Config - EKS Opportunistic on",
+				&set_def_system_config_eks_oppt_on,
+				NULL, test_command_generic);
+	test_bredrle70("Set Default System Config - EKS Opportunistic off",
+				&set_def_system_config_eks_oppt_off,
+				NULL, test_command_generic);
+	test_bredrle70_full("EKS Opportunistic - Auto Encrypt on Connect",
+				&eks_oppt_connect_encrypt_test,
+				NULL, test_command_generic, 5);
 
 	return tester_run();
 }
