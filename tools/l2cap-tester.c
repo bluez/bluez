@@ -52,6 +52,9 @@ struct test_data {
 	uint32_t phys;
 	int sk;
 	int sk2;
+	int reencrypt_sk;
+	int opp_sk;
+	bool opp_encrypted;
 	bool host_disconnected;
 	int step;
 	struct queue *io_channels;
@@ -94,6 +97,17 @@ struct l2cap_data {
 	uint8_t client_io_cap;
 	int sec_level;
 	bool reject_ssp;
+
+	uint8_t mic_len;
+	uint8_t client_mic_len;
+	bool client_encrypt;
+	uint8_t reencrypt_mic_len;
+
+	/* Expect opportunistic encryption, then raise the security level of
+	 * the connected socket to this, if set.
+	 */
+	bool opp_encrypt;
+	int opp_sec_level;
 
 	bool expect_pin;
 	uint8_t pin_len;
@@ -330,6 +344,9 @@ static void test_data_free(void *test_data)
 
 #define test_l2cap_le_62(name, data, setup, func) \
 	test_l2cap(name, HCIEMU_TYPE_BREDRLE62, data, setup, func)
+
+#define test_l2cap_bredrle70(name, data, setup, func) \
+	test_l2cap(name, HCIEMU_TYPE_BREDRLE70, data, setup, func)
 
 static uint8_t pair_device_pin[] = { 0x30, 0x30, 0x30, 0x30 }; /* "0000" */
 
@@ -921,6 +938,32 @@ static const struct l2cap_data le_client_connect_phy_2m_coded_test_1 = {
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 };
 
+static const struct l2cap_data le_client_opp_encrypt_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.opp_encrypt = true,
+};
+
+static const struct l2cap_data le_client_opp_encrypt_pair_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.opp_encrypt = true,
+	.opp_sec_level = BT_SECURITY_MEDIUM,
+};
+
+static const struct l2cap_data le_client_connect_phy_hdt_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+};
+
 static const struct l2cap_data le_client_set_phy_1m_test = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
@@ -946,6 +989,76 @@ static const struct l2cap_data le_client_set_phy_coded_test = {
 		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
+};
+
+static const struct l2cap_data le_client_set_hdt_2m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX,
+};
+
+static const struct l2cap_data le_client_set_hdt_3m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX,
+};
+
+static const struct l2cap_data le_client_set_hdt_4m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX,
+};
+
+static const struct l2cap_data le_client_set_hdt_6m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX,
+};
+
+static const struct l2cap_data le_client_set_hdt_7_5m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX,
 };
 
 static uint8_t nonexisting_bdaddr[] = {0x00, 0xAA, 0x01, 0x02, 0x03, 0x00};
@@ -1049,6 +1162,24 @@ static const struct l2cap_data le_server_phy_2m_coded_test = {
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 };
 
+static const struct l2cap_data le_server_phy_hdt_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+};
+
 static const struct l2cap_data le_server_set_phy_1m_test = {
 	.server_psm = 0x0080,
 	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
@@ -1077,6 +1208,101 @@ static const struct l2cap_data le_server_set_phy_2m_test = {
 	.phy = BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX,
 };
 
+static const struct l2cap_data le_server_set_hdt_2m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX,
+};
+
+static const struct l2cap_data le_server_set_hdt_3m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX,
+};
+
+static const struct l2cap_data le_server_set_hdt_4m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX,
+};
+
+static const struct l2cap_data le_server_set_hdt_6m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX,
+};
+
+static const struct l2cap_data le_server_set_hdt_7_5m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = le_connect_rsp,
+	.expect_cmd_len = sizeof(le_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX,
+};
+
 static const struct l2cap_data le_server_set_phy_coded_test = {
 	.server_psm = 0x0080,
 	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
@@ -1089,6 +1315,117 @@ static const struct l2cap_data le_server_set_phy_coded_test = {
 		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
+};
+
+static const uint8_t nval_mic_len_connect_rsp[] = {
+						0x00, 0x00, /* DCID */
+						0x00, 0x00, /* MTU */
+						0x00, 0x00, /* MPS */
+						0x00, 0x00, /* Credits */
+						0x0c, 0x00, /* Result */
+};
+
+static const struct l2cap_data le_server_nval_mic_len_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = nval_mic_len_connect_rsp,
+	.expect_cmd_len = sizeof(nval_mic_len_connect_rsp),
+	.sec_level = BT_SECURITY_MEDIUM,
+	.mic_len = 0x02,
+	.client_mic_len = 0x01,
+};
+
+static const uint8_t ecred_mic_len_connect_req[] = {
+						0x80, 0x00, /* PSM */
+						0x40, 0x00, /* MTU */
+						0x40, 0x00, /* MPS */
+						0x05, 0x00, /* Credits */
+						0x41, 0x00, /* SCID #1 */
+};
+
+static const uint8_t nval_mic_len_ecred_connect_rsp[] = {
+						0x00, 0x00, /* MTU */
+						0x00, 0x00, /* MPS */
+						0x00, 0x00, /* Credits */
+						0x10, 0x00, /* Result */
+						0x00, 0x00, /* DCID #1 */
+};
+
+/* HDT, 64-bit MIC, Enhanced Credit Based, server requires 128-bit */
+static const struct l2cap_data le_server_nval_mic_len_ecred_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_mic_len_connect_req,
+	.send_cmd_len = sizeof(ecred_mic_len_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = nval_mic_len_ecred_connect_rsp,
+	.expect_cmd_len = sizeof(nval_mic_len_ecred_connect_rsp),
+	.sec_level = BT_SECURITY_MEDIUM,
+	.mic_len = 0x02,
+	.client_mic_len = 0x01,
+};
+
+/* LE 1M, 32-bit MIC (implicit), LE Credit Based, server requires
+ * 64-bit
+ */
+static const struct l2cap_data le_server_nval_mic_len_1m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_LE_CONN_RSP,
+	.expect_cmd = nval_mic_len_connect_rsp,
+	.expect_cmd_len = sizeof(nval_mic_len_connect_rsp),
+	.sec_level = BT_SECURITY_MEDIUM,
+	.mic_len = 0x01,
+	.client_encrypt = true,
+};
+
+/* LE 1M, 32-bit MIC (implicit), Enhanced Credit Based, server
+ * requires 64-bit
+ */
+static const struct l2cap_data le_server_nval_mic_len_1m_ecred_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_mic_len_connect_req,
+	.send_cmd_len = sizeof(ecred_mic_len_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = nval_mic_len_ecred_connect_rsp,
+	.expect_cmd_len = sizeof(nval_mic_len_ecred_connect_rsp),
+	.sec_level = BT_SECURITY_MEDIUM,
+	.mic_len = 0x01,
+	.client_encrypt = true,
+};
+
+/* HDT, 128-bit MIC, LE Credit Based, re-encrypting asking for a 64-bit MIC
+ * keeps the 128-bit MIC since only one side prefers 64-bit.
+ */
+static const struct l2cap_data le_server_reencrypt_mic_len_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_LE_CONN_REQ,
+	.send_cmd = le_connect_req,
+	.send_cmd_len = sizeof(le_connect_req),
+	.sec_level = BT_SECURITY_MEDIUM,
+	.mic_len = 0x02,
+	.client_mic_len = 0x02,
+	.reencrypt_mic_len = 0x01,
+};
+
+/* HDT, 128-bit MIC, Enhanced Credit Based, re-encrypting asking for a 64-bit
+ * MIC keeps the 128-bit MIC since only one side prefers 64-bit.
+ */
+static const struct l2cap_data le_server_reencrypt_mic_len_ecred_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_mic_len_connect_req,
+	.send_cmd_len = sizeof(ecred_mic_len_connect_req),
+	.sec_level = BT_SECURITY_MEDIUM,
+	.mic_len = 0x02,
+	.client_mic_len = 0x02,
+	.reencrypt_mic_len = 0x01,
 };
 
 static const uint8_t ecred_connect_req[] = {	0x80, 0x00, /* PSM */
@@ -1197,6 +1534,24 @@ static const struct l2cap_data ext_flowctl_server_phy_2m_coded_test = {
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 };
 
+static const struct l2cap_data ext_flowctl_server_phy_hdt_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+};
+
 static const struct l2cap_data ext_flowctl_server_set_phy_1m_test = {
 	.server_psm = 0x0080,
 	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
@@ -1237,6 +1592,101 @@ static const struct l2cap_data ext_flowctl_server_set_phy_coded_test = {
 		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
+};
+
+static const struct l2cap_data ext_flowctl_server_set_hdt_2m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_server_set_hdt_3m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_server_set_hdt_4m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_server_set_hdt_6m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_server_set_hdt_7_5m_test = {
+	.server_psm = 0x0080,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req,
+	.send_cmd_len = sizeof(ecred_connect_req),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp,
+	.expect_cmd_len = sizeof(ecred_connect_rsp),
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX,
 };
 
 static const struct l2cap_data le_att_client_connect_success_test_1 = {
@@ -1395,6 +1845,20 @@ static const struct l2cap_data ext_flowctl_client_phy_2m_coded_test_1 = {
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 };
 
+static const struct l2cap_data ext_flowctl_client_phy_hdt_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+};
+
 static const struct l2cap_data ext_flowctl_client_set_phy_1m_test = {
 	.client_psm = 0x0080,
 	.server_psm = 0x0080,
@@ -1423,6 +1887,81 @@ static const struct l2cap_data ext_flowctl_client_set_phy_coded_test = {
 		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
 		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX),
 	.phy = BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX,
+};
+
+static const struct l2cap_data ext_flowctl_client_set_hdt_2m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_client_set_hdt_3m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_client_set_hdt_4m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_client_set_hdt_6m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX,
+};
+
+static const struct l2cap_data ext_flowctl_client_set_hdt_7_5m_test = {
+	.client_psm = 0x0080,
+	.server_psm = 0x0080,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.phys = (BT_PHY_LE_1M_TX | BT_PHY_LE_1M_RX |
+		 BT_PHY_LE_2M_TX | BT_PHY_LE_2M_RX |
+		 BT_PHY_LE_CODED_TX | BT_PHY_LE_CODED_RX |
+		 BT_PHY_HDT_2M_TX | BT_PHY_HDT_2M_RX |
+		 BT_PHY_HDT_3M_TX | BT_PHY_HDT_3M_RX |
+		 BT_PHY_HDT_4M_TX | BT_PHY_HDT_4M_RX |
+		 BT_PHY_HDT_6M_TX | BT_PHY_HDT_6M_RX |
+		 BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX),
+	.phy = BT_PHY_HDT_7_5M_TX | BT_PHY_HDT_7_5M_RX,
 };
 
 static const struct l2cap_data ext_flowctl_client_defer_limit = {
@@ -1701,7 +2240,7 @@ static void setup_powered_client(const void *test_data)
 		struct {
 			struct mgmt_cp_load_conn_subrate cp;
 			struct mgmt_conn_subrate param;
-		} __attribute__((packed)) load;
+		} __packed load;
 
 		client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
 		if (!client_bdaddr) {
@@ -1734,6 +2273,7 @@ static void setup_powered_client(const void *test_data)
 static void setup_powered_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
 	unsigned char param[] = { 0x01 };
 
 	setup_powered_common();
@@ -1742,6 +2282,36 @@ static void setup_powered_server(const void *test_data)
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
+
+	/* A 64-bit MIC is only used if both sides prefer it, so make this
+	 * side prefer it too when the client asks for one, while the channel
+	 * still requires what the test sets.
+	 */
+	if (l2data && l2data->client_mic_len == 0x01) {
+		uint8_t mic_param[] = {
+			0x21, 0x00,	/* Type: LE HDT Default MIC Length */
+			0x01,		/* Length */
+			0x01,		/* Value: 64-bit */
+		};
+
+		mgmt_send(data->mgmt, MGMT_OP_SET_DEF_SYSTEM_CONFIG,
+				data->mgmt_index, sizeof(mic_param),
+				mic_param, NULL, NULL, NULL);
+	}
+
+	/* Re-encrypting needs the LTK on both sides, which Secure
+	 * Connections pairing gives with EDIV and Rand set to zero.
+	 */
+	if (l2data && l2data->reencrypt_mic_len) {
+		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+
+		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+		mgmt_send(data->mgmt, MGMT_OP_SET_SECURE_CONN,
+				data->mgmt_index, sizeof(param), param, NULL,
+				NULL, NULL);
+		bthost_set_sc_support(bthost, true);
+	}
 
 	if (data->hciemu_type > HCIEMU_TYPE_LE)
 		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
@@ -1921,6 +2491,178 @@ static bool check_mtu(struct test_data *data, int sk)
 			 return false;
 		}
 	}
+
+	return true;
+}
+
+static bool check_reencrypt_mic_len(void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	struct bt_security sec;
+	socklen_t optlen = sizeof(sec);
+	/* A 64-bit MIC is only used if both sides prefer it, so the
+	 * refresh keeps the 128-bit MIC the channel requires.
+	 */
+	memset(&sec, 0, sizeof(sec));
+	if (getsockopt(data->reencrypt_sk, SOL_BLUETOOTH, BT_SECURITY, &sec,
+							&optlen) < 0) {
+		tester_warn("getsockopt(BT_SECURITY): %s (%d)",
+						strerror(errno), errno);
+		tester_test_failed();
+		return false;
+	}
+
+	if (sec.mic_len != l2data->mic_len) {
+		tester_warn("MIC length changed: 0x%02x != 0x%02x",
+						sec.mic_len, l2data->mic_len);
+		tester_test_failed();
+		return false;
+	}
+
+	tester_print("MIC length unchanged: 0x%02x", sec.mic_len);
+	tester_test_passed();
+
+	return false;
+}
+
+static bool hook_reencrypt_complete(const void *msg, uint16_t len,
+							void *user_data)
+{
+	const uint8_t *status = msg;
+
+	if (len < 1)
+		return true;
+
+	if (*status) {
+		tester_warn("Re-encryption failed: status 0x%02x", *status);
+		tester_test_failed();
+		return true;
+	}
+
+	tester_print("Re-encryption complete");
+
+	/* Let the host process the event before checking */
+	timeout_add(50, check_reencrypt_mic_len, NULL, NULL);
+
+	return true;
+}
+
+static bool check_opp_sec(void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	int level = l2data->opp_sec_level ? : BT_SECURITY_LOW;
+	struct bt_security sec;
+	socklen_t optlen = sizeof(sec);
+
+	memset(&sec, 0, sizeof(sec));
+	if (getsockopt(data->opp_sk, SOL_BLUETOOTH, BT_SECURITY, &sec,
+							&optlen) < 0) {
+		tester_warn("getsockopt(BT_SECURITY): %s (%d)",
+						strerror(errno), errno);
+		tester_test_failed();
+		return false;
+	}
+
+	tester_print("Security level %u key size %u", sec.level,
+							sec.key_size);
+
+	close(data->opp_sk);
+	data->opp_sk = -1;
+
+	if (sec.level != level) {
+		tester_warn("Security level %u != %u", sec.level, level);
+		tester_test_failed();
+		return false;
+	}
+
+	/* Only a key from pairing has a key size */
+	if (l2data->opp_sec_level && sec.key_size < 7) {
+		tester_warn("Invalid key size %u", sec.key_size);
+		tester_test_failed();
+		return false;
+	}
+
+	tester_test_passed();
+
+	return false;
+}
+
+static bool hook_opp_key_refresh(const void *msg, uint16_t len,
+							void *user_data)
+{
+	const struct bt_hci_evt_encrypt_key_refresh_complete_v2 *ev = msg;
+
+	if (len < sizeof(*ev))
+		return true;
+
+	if (ev->status) {
+		tester_warn("Key refresh failed: status 0x%02x", ev->status);
+		tester_test_failed();
+		return true;
+	}
+
+	tester_print("Key refreshed by pairing");
+
+	/* Let the host process the event before checking */
+	timeout_add(50, check_opp_sec, NULL, NULL);
+
+	return true;
+}
+
+/* Runs once the socket is connected and the link opportunistically
+ * encrypted, which may happen in either order.
+ */
+static void opp_encrypt_continue(struct test_data *data)
+{
+	const struct l2cap_data *l2data = data->test_data;
+	struct bt_security sec;
+
+	if (data->opp_sk < 0 || !data->opp_encrypted)
+		return;
+
+	if (!l2data->opp_sec_level) {
+		check_opp_sec(NULL);
+		return;
+	}
+
+	tester_print("Raising security level to %u", l2data->opp_sec_level);
+
+	/* Pairing over the encrypted link refreshes its key */
+	hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+				BT_HCI_EVT_ENCRYPT_KEY_REFRESH_COMPLETE_V2,
+				hook_opp_key_refresh, data);
+
+	memset(&sec, 0, sizeof(sec));
+	sec.level = l2data->opp_sec_level;
+	if (setsockopt(data->opp_sk, SOL_BLUETOOTH, BT_SECURITY, &sec,
+							sizeof(sec)) < 0) {
+		tester_warn("setsockopt(BT_SECURITY): %s (%d)",
+						strerror(errno), errno);
+		tester_test_failed();
+	}
+}
+
+static bool hook_opp_encrypt(const void *msg, uint16_t len, void *user_data)
+{
+	const struct bt_hci_evt_encrypt_change_v3 *ev = msg;
+	struct test_data *data = user_data;
+
+	if (len < sizeof(*ev) || ev->eks_mode != 0x02)
+		return true;
+
+	if (ev->status || !ev->mode) {
+		tester_warn("Opportunistic encryption failed: status 0x%02x",
+								ev->status);
+		tester_test_failed();
+		return true;
+	}
+
+	tester_print("Link opportunistically encrypted");
+
+	data->opp_encrypted = true;
+	opp_encrypt_continue(data);
 
 	return true;
 }
@@ -2228,6 +2970,19 @@ static bool l2cap_connect_cb(struct tester_io *io, uint32_t cond,
 		return false;
 	}
 
+	if (l2data->opp_encrypt) {
+		/* The socket is closed once this returns, so keep a copy */
+		data->opp_sk = dup(sk);
+		if (data->opp_sk < 0) {
+			tester_warn("dup: %s (%d)", strerror(errno), errno);
+			tester_test_failed();
+			return false;
+		}
+
+		opp_encrypt_continue(data);
+		return false;
+	}
+
 	if (l2data->read_data) {
 		l2cap_read_data(data, io, data->dcid);
 		return false;
@@ -2303,6 +3058,9 @@ static int create_l2cap_sock(struct test_data *data, uint16_t psm,
 
 		memset(&sec, 0, sizeof(sec));
 		sec.level = sec_level;
+
+		if (l2data)
+			sec.mic_len = l2data->mic_len;
 
 		if (setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec,
 							sizeof(sec)) < 0) {
@@ -2440,6 +3198,13 @@ static void test_connect(const void *test_data)
 	const struct l2cap_data *l2data = data->test_data;
 	struct tester_io *io;
 	int sk;
+
+	if (l2data->opp_encrypt) {
+		data->opp_sk = -1;
+		hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_ENCRYPT_CHANGE_V3,
+					hook_opp_encrypt, data);
+	}
 
 	if (l2data->server_psm) {
 		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
@@ -3075,6 +3840,30 @@ static bool l2cap_accept_cb(struct tester_io *io, uint32_t cond,
 
 	tester_print("Successfully connected");
 
+	if (l2data->reencrypt_mic_len) {
+		struct bthost *bthost;
+
+		tester_print("Re-encrypting with mic_len 0x%02x"
+					" (expect the MIC to be kept)",
+					l2data->reencrypt_mic_len);
+
+		/* The check runs once the refresh reaches the host, as
+		 * Encryption Change v3 or Key Refresh Complete v2.
+		 */
+		data->reencrypt_sk = sk;
+		hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+					BT_HCI_EVT_ENCRYPT_CHANGE_V3,
+					hook_reencrypt_complete, data);
+		hciemu_add_hook(data->hciemu, HCIEMU_HOOK_POST_EVT,
+				BT_HCI_EVT_ENCRYPT_KEY_REFRESH_COMPLETE_V2,
+				hook_reencrypt_complete, data);
+
+		bthost = hciemu_client_get_host(data->hciemu);
+		bthost_le_reencrypt(bthost, data->handle,
+						l2data->reencrypt_mic_len);
+		return false;
+	}
+
 	tester_test_passed();
 
 	return false;
@@ -3209,6 +3998,30 @@ failed:
 	tester_test_failed();
 }
 
+static void send_l2cap_req_after_encrypt(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct l2cap_data *l2data = data->test_data;
+	struct bthost *bthost;
+	bthost_l2cap_rsp_cb cb;
+
+	if (l2data->expect_cmd_code)
+		cb = client_l2cap_rsp;
+	else
+		cb = NULL;
+
+	tester_print("Sending L2CAP Request from client after encryption");
+
+	bthost = hciemu_client_get_host(data->hciemu);
+
+	/* Only once: a later re-encryption must not send it again */
+	bthost_set_encrypt_cb(bthost, NULL, NULL);
+
+	bthost_l2cap_req(bthost, handle, l2data->send_cmd_code,
+				l2data->send_cmd, l2data->send_cmd_len,
+				cb, data);
+}
+
 static void send_req_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
@@ -3239,6 +4052,25 @@ static void send_req_new_conn(uint16_t handle, void *user_data)
 
 	if (l2data->send_cmd) {
 		bthost_l2cap_rsp_cb cb;
+
+		if (l2data->client_mic_len) {
+			bthost = hciemu_client_get_host(data->hciemu);
+			/* Set HDT PHY first, then encrypt, then send L2CAP */
+			bthost_le_set_phy(bthost, handle, 0x17, 0x17);
+			bthost_set_encrypt_cb(bthost,
+					send_l2cap_req_after_encrypt, data);
+			bthost_request_auth(bthost, handle);
+			return;
+		}
+
+		if (l2data->client_encrypt) {
+			bthost = hciemu_client_get_host(data->hciemu);
+			/* Encrypt (no PHY change), then send L2CAP */
+			bthost_set_encrypt_cb(bthost,
+					send_l2cap_req_after_encrypt, data);
+			bthost_request_auth(bthost, handle);
+			return;
+		}
 
 		if (l2data->expect_cmd_code)
 			cb = client_l2cap_rsp;
@@ -3312,6 +4144,9 @@ static void start_test_server(const void *test_data, bthost_new_conn_cb conn_cb,
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, conn_cb, data);
+
+	if (l2data->client_mic_len)
+		bthost_set_mic_len(bthost, l2data->client_mic_len);
 
 	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
 		addr_type = BDADDR_BREDR;
@@ -3756,6 +4591,16 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP LE Client - PHY 2M/Coded",
 				&le_client_connect_phy_2m_coded_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - Opportunistic Encryption HDT",
+				&le_client_opp_encrypt_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - Opportunistic Encryption "
+				"then Pairing HDT",
+				&le_client_opp_encrypt_pair_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - PHY HDT",
+				&le_client_connect_phy_hdt_test,
+				setup_powered_client, test_connect);
 	test_l2cap_le_52("L2CAP LE Client - Set PHY 1M",
 				&le_client_set_phy_1m_test,
 				setup_powered_client, test_connect);
@@ -3764,6 +4609,21 @@ int main(int argc, char *argv[])
 				setup_powered_client, test_connect);
 	test_l2cap_le_52("L2CAP LE Client - Set PHY Coded",
 				&le_client_set_phy_coded_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - Set HDT 2M",
+				&le_client_set_hdt_2m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - Set HDT 3M",
+				&le_client_set_hdt_3m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - Set HDT 4M",
+				&le_client_set_hdt_4m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - Set HDT 6M",
+				&le_client_set_hdt_6m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP LE Client - Set HDT 7.5M",
+				&le_client_set_hdt_7_5m_test,
 				setup_powered_client, test_connect);
 
 	test_l2cap_le("L2CAP LE Client - Close socket 1",
@@ -3798,6 +4658,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP LE Server - PHY 2M/Coded",
 					&le_server_phy_2m_coded_test,
 					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - PHY HDT",
+					&le_server_phy_hdt_test,
+					setup_powered_server, test_server);
 	test_l2cap_le_52("L2CAP LE Server - Set PHY 1M",
 					&le_server_set_phy_1m_test,
 					setup_powered_server, test_server);
@@ -3806,6 +4669,39 @@ int main(int argc, char *argv[])
 					setup_powered_server, test_server);
 	test_l2cap_le_52("L2CAP LE Server - Set PHY Coded",
 					&le_server_set_phy_coded_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - Set HDT 2M",
+					&le_server_set_hdt_2m_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - Set HDT 3M",
+					&le_server_set_hdt_3m_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - Set HDT 4M",
+					&le_server_set_hdt_4m_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - Set HDT 6M",
+					&le_server_set_hdt_6m_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - Set HDT 7.5M",
+					&le_server_set_hdt_7_5m_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - MIC Length Too Short HDT/CFC",
+					&le_server_nval_mic_len_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - MIC Length Too Short HDT/ECFC",
+					&le_server_nval_mic_len_ecred_test,
+					setup_powered_server, test_server);
+	test_l2cap_le("L2CAP LE Server - MIC Length Too Short 1M/CFC",
+					&le_server_nval_mic_len_1m_test,
+					setup_powered_server, test_server);
+	test_l2cap_le("L2CAP LE Server - MIC Length Too Short 1M/ECFC",
+					&le_server_nval_mic_len_1m_ecred_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - MIC Length Downgrade HDT/CFC",
+					&le_server_reencrypt_mic_len_test,
+					setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP LE Server - MIC Length Downgrade HDT/ECFC",
+					&le_server_reencrypt_mic_len_ecred_test,
 					setup_powered_server, test_server);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Client - Success",
@@ -3843,6 +4739,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP Ext-Flowctl Client - PHY 2M/Coded",
 				&ext_flowctl_client_phy_2m_coded_test_1,
 				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Client - PHY HDT",
+				&ext_flowctl_client_phy_hdt_test,
+				setup_powered_client, test_connect);
 	test_l2cap_le_52("L2CAP Ext-Flowctl Client - Set PHY 1M",
 				&ext_flowctl_client_set_phy_1m_test,
 				setup_powered_client, test_connect);
@@ -3851,6 +4750,21 @@ int main(int argc, char *argv[])
 				setup_powered_client, test_connect);
 	test_l2cap_le_52("L2CAP Ext-Flowctl Client - Set PHY Coded",
 				&ext_flowctl_client_set_phy_coded_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Client - Set HDT 2M",
+				&ext_flowctl_client_set_hdt_2m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Client - Set HDT 3M",
+				&ext_flowctl_client_set_hdt_3m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Client - Set HDT 4M",
+				&ext_flowctl_client_set_hdt_4m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Client - Set HDT 6M",
+				&ext_flowctl_client_set_hdt_6m_test,
+				setup_powered_client, test_connect);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Client - Set HDT 7.5M",
+				&ext_flowctl_client_set_hdt_7_5m_test,
 				setup_powered_client, test_connect);
 
 	test_l2cap_le("L2CAP Ext-Flowctl Client - Defer limit",
@@ -3874,6 +4788,9 @@ int main(int argc, char *argv[])
 	test_l2cap_le_52("L2CAP Ext-Flowctl Server - PHY 2M/Coded",
 				&ext_flowctl_server_phy_2m_coded_test,
 				setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Server - PHY HDT",
+				&ext_flowctl_server_phy_hdt_test,
+				setup_powered_server, test_server);
 	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Set PHY 1M",
 				&ext_flowctl_server_set_phy_1m_test,
 				setup_powered_server, test_server);
@@ -3882,6 +4799,21 @@ int main(int argc, char *argv[])
 				setup_powered_server, test_server);
 	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Set PHY Coded",
 				&ext_flowctl_server_set_phy_coded_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Server - Set HDT 2M",
+				&ext_flowctl_server_set_hdt_2m_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Server - Set HDT 3M",
+				&ext_flowctl_server_set_hdt_3m_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Server - Set HDT 4M",
+				&ext_flowctl_server_set_hdt_4m_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Server - Set HDT 6M",
+				&ext_flowctl_server_set_hdt_6m_test,
+				setup_powered_server, test_server);
+	test_l2cap_bredrle70("L2CAP Ext-Flowctl Server - Set HDT 7.5M",
+				&ext_flowctl_server_set_hdt_7_5m_test,
 				setup_powered_server, test_server);
 
 	test_l2cap_le_52("L2CAP Ext-Flowctl Server - Nval Conn Req",
