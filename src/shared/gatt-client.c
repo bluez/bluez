@@ -2929,8 +2929,11 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu, uint16_t length,
 		return;
 	}
 
+	/* Keep the request alive in case a callback cancels it */
+	request_ref(req);
+
 	/* Parse response */
-	while (length >= 2) {
+	while (length >= 2 && !req->removed) {
 		uint16_t len;
 
 		len = get_le16(pdu);
@@ -2942,10 +2945,15 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu, uint16_t length,
 		 * current ATT_MTU.
 		 */
 		if (len > length)
-			length = len;
+			len = length;
 
 		op->callback(success, att_ecode, pdu, len, op->user_data);
+
+		length -= len;
+		pdu += len;
 	}
+
+	request_unref(req);
 }
 
 unsigned int bt_gatt_client_read_multiple(struct bt_gatt_client *client,
