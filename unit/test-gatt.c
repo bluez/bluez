@@ -119,6 +119,29 @@ struct context {
 		MTU_EXCHANGE_CLIENT_PDUS,				\
 		READ_SERVER_FEAT_PDUS
 
+#define EATT_CLIENT_INIT_PDUS						\
+		MTU_EXCHANGE_CLIENT_PDUS,				\
+		raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x3a, 0x2b),	\
+		raw_pdu(0x09, 0x03, 0x03, 0x00, 0x01),			\
+		raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28),	\
+		raw_pdu(0x11, 0x06, 0x01, 0x00, 0x05, 0x00, 0x01, 0x18),\
+		raw_pdu(0x08, 0x04, 0x00, 0xff, 0xff, 0x3a, 0x2b),	\
+		raw_pdu(0x01, 0x08, 0x04, 0x00, 0x0a),			\
+		raw_pdu(0x10, 0x06, 0x00, 0xff, 0xff, 0x00, 0x28),	\
+		raw_pdu(0x01, 0x10, 0x06, 0x00, 0x0a),			\
+		raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x01, 0x28),	\
+		raw_pdu(0x01, 0x10, 0x01, 0x00, 0x0a),			\
+		raw_pdu(0x08, 0x01, 0x00, 0x05, 0x00, 0x02, 0x28),	\
+		raw_pdu(0x01, 0x08, 0x01, 0x00, 0x0a),			\
+		raw_pdu(0x08, 0x01, 0x00, 0x05, 0x00, 0x03, 0x28),	\
+		raw_pdu(0x09, 0x07, 0x02, 0x00, 0x02, 0x03, 0x00, 0x3a,	\
+				0x2b, 0x04, 0x00, 0x0a, 0x05, 0x00, 0x29,\
+				0x2b),					\
+		raw_pdu(0x08, 0x05, 0x00, 0x05, 0x00, 0x03, 0x28),	\
+		raw_pdu(0x01, 0x08, 0x05, 0x00, 0x0a),			\
+		raw_pdu(0x12, 0x05, 0x00, 0x07),			\
+		raw_pdu(0x13)
+
 #define SERVICE_DATA_1_PDUS						\
 		CLIENT_INIT_PDUS,					\
 		raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28),	\
@@ -328,6 +351,7 @@ struct test_step {
 	uint8_t expected_att_ecode;
 	const uint8_t *value;
 	uint16_t length;
+	uint8_t features;
 };
 
 static void destroy_context(struct context *context)
@@ -624,7 +648,7 @@ static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 
 	g_assert(success);
 
-	if (!context->data->source_db) {
+	if (!context->data->source_db && !context->data->step) {
 		context_quit(context);
 		return;
 	}
@@ -632,8 +656,10 @@ static void client_ready_cb(bool success, uint8_t att_ecode, void *user_data)
 	g_assert(context->client);
 	g_assert(context->client_db);
 
-	gatt_db_foreach_service(context->client_db, NULL, match_services,
-						context->data->source_db);
+	if (context->data->source_db)
+		gatt_db_foreach_service(context->client_db, NULL,
+					match_services,
+					context->data->source_db);
 
 	if (context->data->step) {
 		const struct test_step *step = context->data->step;
@@ -653,6 +679,7 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 {
 	struct context *context = g_new0(struct context, 1);
 	const struct test_data *test_data = data;
+	const struct test_step *step;
 	GIOChannel *channel;
 	int err, sv[2];
 
@@ -680,11 +707,14 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 						"bt_gatt_server:", NULL);
 		break;
 	case CLIENT:
+		step = test_data->step;
+
 		context->client_db = gatt_db_new();
 		g_assert(context->client_db);
 
 		context->client = bt_gatt_client_new(context->client_db,
-							context->att, mtu, 0);
+						context->att, mtu,
+						step ? step->features : 0);
 		g_assert(context->client);
 
 		bt_gatt_client_set_debug(context->client, print_debug,
@@ -2064,6 +2094,18 @@ static const struct test_step test_read_by_type_6 = {
 	.expected_att_ecode = 0x0c,
 };
 
+static const struct test_step test_read_by_type_malformed = {
+	.handle = 0x0001,
+	.end_handle = 0xffff,
+};
+
+static const struct test_step test_read_by_type_empty = {
+	.handle = 0x0001,
+	.end_handle = 0xffff,
+	.expected_att_ecode = 0x0a,
+	.value = read_data_1,
+};
+
 static void multiple_read_cb(bool success, uint8_t att_ecode,
 					const uint8_t *value, uint16_t length,
 					void *user_data)
@@ -2137,6 +2179,109 @@ static const struct test_step test_multiple_read_6 = {
 	.expected_att_ecode = 0x0c
 };
 
+static void multiple_read_vl_cb(bool success, uint8_t att_ecode,
+					const uint8_t *value, uint16_t length,
+					void *user_data)
+{
+	struct context *context = user_data;
+	const struct test_step *step = context->data->step;
+	static uint16_t offset;
+
+	g_assert(success);
+	g_assert_cmpint(offset + 2 + length, <=, step->length);
+	g_assert_cmpint(get_le16(step->value + offset), ==, length);
+	g_assert(memcmp(value, step->value + offset + 2, length) == 0);
+
+	offset += 2 + length;
+	if (offset == step->length) {
+		offset = 0;
+		context_quit(context);
+	}
+}
+
+static void test_multiple_read_vl(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+	uint16_t handles[2];
+
+	handles[0] = step->handle;
+	handles[1] = step->end_handle;
+
+	g_assert(bt_gatt_client_read_multiple(context->client, handles, 2,
+						multiple_read_vl_cb, context,
+						NULL));
+}
+
+static const uint8_t read_mult_vl_data_1[] = {
+	0x02, 0x00, 0x01, 0x02,
+	0x03, 0x00, 0x03, 0x04, 0x05
+};
+
+static const struct test_step test_multiple_read_vl_1 = {
+	.handle = 0x0003,
+	.end_handle = 0x0005,
+	.func = test_multiple_read_vl,
+	.value = read_mult_vl_data_1,
+	.length = sizeof(read_mult_vl_data_1),
+	.features = BT_GATT_CHRC_CLI_FEAT_EATT,
+};
+
+static const uint8_t read_mult_vl_data_2[] = {
+	0x02, 0x00, 0x01, 0x02,
+	0x01, 0x00, 0x03
+};
+
+static const struct test_step test_multiple_read_vl_2 = {
+	.handle = 0x0003,
+	.end_handle = 0x0005,
+	.func = test_multiple_read_vl,
+	.value = read_mult_vl_data_2,
+	.length = sizeof(read_mult_vl_data_2),
+	.features = BT_GATT_CHRC_CLI_FEAT_EATT,
+};
+
+static unsigned int multiple_read_vl_id;
+
+static void multiple_read_vl_cancel_cb(bool success, uint8_t att_ecode,
+					const uint8_t *value, uint16_t length,
+					void *user_data)
+{
+	struct context *context = user_data;
+	const struct test_step *step = context->data->step;
+
+	g_assert(success);
+	g_assert_cmpint(get_le16(step->value), ==, length);
+	g_assert(memcmp(value, step->value + 2, length) == 0);
+
+	g_assert(bt_gatt_client_cancel(context->client, multiple_read_vl_id));
+	multiple_read_vl_id = 0;
+
+	context_quit(context);
+}
+
+static void test_multiple_read_vl_cancel(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+	uint16_t handles[2];
+
+	handles[0] = step->handle;
+	handles[1] = step->end_handle;
+
+	multiple_read_vl_id = bt_gatt_client_read_multiple(context->client,
+					handles, 2, multiple_read_vl_cancel_cb,
+					context, NULL);
+	g_assert(multiple_read_vl_id);
+}
+
+static const struct test_step test_multiple_read_vl_3 = {
+	.handle = 0x0003,
+	.end_handle = 0x0005,
+	.func = test_multiple_read_vl_cancel,
+	.value = read_mult_vl_data_1,
+	.length = sizeof(read_mult_vl_data_1),
+	.features = BT_GATT_CHRC_CLI_FEAT_EATT,
+};
+
 static void read_by_type_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data)
@@ -2146,6 +2291,7 @@ static void read_by_type_cb(bool success, uint8_t att_ecode,
 	struct bt_gatt_iter iter;
 
 	g_assert(att_ecode == step->expected_att_ecode);
+	g_assert(success == !!step->value);
 
 	if (success) {
 		uint16_t length, handle;
@@ -2317,6 +2463,41 @@ static void test_notification(struct context *context)
 static const struct test_step test_notification_1 = {
 	.handle = 0x0003,
 	.func = test_notification,
+	.value = read_data_1,
+	.length = 0x03,
+};
+
+static void notification_short_cb(uint16_t value_handle,
+					const uint8_t *value, uint16_t length,
+					void *user_data)
+{
+	struct context *context = user_data;
+	const struct test_step *step = context->data->step;
+	static int count;
+
+	g_assert_cmpint(value_handle, ==, step->handle);
+	g_assert_cmpint(length, ==, step->length);
+	g_assert(memcmp(value, step->value, length) == 0);
+
+	if (++count == 2) {
+		count = 0;
+		context_quit(context);
+	}
+}
+
+static void test_notification_short(struct context *context)
+{
+	const struct test_step *step = context->data->step;
+
+	g_assert(bt_gatt_client_register_notify(context->client, step->handle,
+						notification_register_cb,
+						notification_short_cb, context,
+						NULL));
+}
+
+static const struct test_step test_notification_short_1 = {
+	.handle = 0x0003,
+	.func = test_notification_short,
 	.value = read_data_1,
 	.length = 0x03,
 };
@@ -2957,6 +3138,81 @@ int main(int argc, char *argv[])
 			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
 			raw_pdu(0x01, 0x08, 0x0b, 0x00, 0x0c));
 
+	define_test_att("/read-by-type/zero-data-length", test_read_by_type,
+			&uuid_char_16, &test_read_by_type_malformed,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x09, 0x00, 0x0a, 0x00));
+
+	define_test_att("/read-by-type/short-data-length", test_read_by_type,
+			&uuid_char_16, &test_read_by_type_malformed,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x09, 0x01, 0x0a, 0x00));
+
+	define_test_att("/read-by-type/missing-data", test_read_by_type,
+			&uuid_char_16, &test_read_by_type_malformed,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x09, 0x12));
+
+	define_test_att("/read-by-type/short-handle", test_read_by_type,
+			&uuid_char_16, &test_read_by_type_malformed,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x09, 0x02, 0x0a));
+
+	define_test_att("/read-by-type/oversized-data-length",
+			test_read_by_type,
+			&uuid_char_16, &test_read_by_type_malformed,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x09, 0x04, 0x0a, 0x00));
+
+	define_test_att("/read-by-type/truncated-data", test_read_by_type,
+			&uuid_char_16, &test_read_by_type_malformed,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x09, 0x03, 0x0a, 0x00, 0x01, 0x0b));
+
+	define_test_att("/read-by-type/empty-value", test_read_by_type,
+			&uuid_char_16, &test_read_by_type_empty,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x09, 0x02, 0x0a, 0x00),
+			raw_pdu(0x08, 0x0b, 0x00, 0xff, 0xff, 0x0d, 0x2a),
+			raw_pdu(0x01, 0x08, 0x0b, 0x00, 0x0a));
+
+	define_test_client("/read-by-type/empty-server-features", test_client,
+			service_db_1, NULL,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x3a, 0x2b),
+			raw_pdu(0x09, 0x02, 0xff, 0xff),
+			raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28),
+			raw_pdu(0x11, 0x06, 0x01, 0x00, 0x04, 0x00, 0x01,
+					0x18),
+			raw_pdu(0x10, 0x05, 0x00, 0xff, 0xff, 0x00, 0x28),
+			raw_pdu(0x11, 0x06, 0x05, 0x00, 0x08, 0x00, 0x0d,
+					0x18),
+			raw_pdu(0x10, 0x09, 0x00, 0xff, 0xff, 0x00, 0x28),
+			raw_pdu(0x01, 0x10, 0x09, 0x00, 0x0a),
+			raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x01, 0x28),
+			raw_pdu(0x01, 0x10, 0x01, 0x00, 0x0a),
+			raw_pdu(0x08, 0x01, 0x00, 0x08, 0x00, 0x02, 0x28),
+			raw_pdu(0x01, 0x08, 0x01, 0x00, 0x0a),
+			raw_pdu(0x08, 0x01, 0x00, 0x08, 0x00, 0x03, 0x28),
+			raw_pdu(0x09, 0x07, 0x02, 0x00, 0x02, 0x03, 0x00,
+					0x00, 0x2a),
+			raw_pdu(0x08, 0x03, 0x00, 0x08, 0x00, 0x03, 0x28),
+			raw_pdu(0x09, 0x07, 0x06, 0x00, 0x0a, 0x07, 0x00,
+					0x29, 0x2a),
+			raw_pdu(0x08, 0x07, 0x00, 0x08, 0x00, 0x03, 0x28),
+			raw_pdu(0x01, 0x08, 0x07, 0x00, 0x0a),
+			raw_pdu(0x04, 0x04, 0x00, 0x04, 0x00),
+			raw_pdu(0x05, 0x01, 0x04, 0x00, 0x01, 0x29),
+			raw_pdu(0x04, 0x08, 0x00, 0x08, 0x00),
+			raw_pdu(0x05, 0x01, 0x08, 0x00, 0x01, 0x29));
+
 	define_test_server("/TP/GAR/SR/BV-03-C/small", test_server, ts_small_db,
 			NULL,
 			raw_pdu(0x03, 0x00, 0x02),
@@ -3255,6 +3511,27 @@ int main(int argc, char *argv[])
 			raw_pdu(0x0e, 0x03, 0x00, 0x07, 0x00),
 			raw_pdu(0x0f, 0x01, 0x02, 0x03));
 
+	define_test_client("/robustness/read-multiple-vl", test_client,
+			NULL, &test_multiple_read_vl_1,
+			EATT_CLIENT_INIT_PDUS,
+			raw_pdu(0x20, 0x03, 0x00, 0x05, 0x00),
+			raw_pdu(0x21, 0x02, 0x00, 0x01, 0x02, 0x03, 0x00,
+					0x03, 0x04, 0x05));
+
+	define_test_client("/robustness/read-multiple-vl-truncated",
+			test_client, NULL, &test_multiple_read_vl_2,
+			EATT_CLIENT_INIT_PDUS,
+			raw_pdu(0x20, 0x03, 0x00, 0x05, 0x00),
+			raw_pdu(0x21, 0x02, 0x00, 0x01, 0x02, 0x03, 0x00,
+					0x03));
+
+	define_test_client("/robustness/read-multiple-vl-cancel",
+			test_client, NULL, &test_multiple_read_vl_3,
+			EATT_CLIENT_INIT_PDUS,
+			raw_pdu(0x20, 0x03, 0x00, 0x05, 0x00),
+			raw_pdu(0x21, 0x02, 0x00, 0x01, 0x02, 0x03, 0x00,
+					0x03, 0x04, 0x05));
+
 	define_test_client("/TP/GAR/CL/BI-22-C", test_client, service_db_1,
 			&test_multiple_read_6,
 			SERVICE_DATA_1_PDUS,
@@ -3266,6 +3543,13 @@ int main(int argc, char *argv[])
 			raw_pdu(0x03, 0x00, 0x02),
 			raw_pdu(0x0e, 0x15, 0xF0, 0x03, 0x00),
 			raw_pdu(0x0f, 0x09, 'B', 'l', 'u', 'e', 'Z'));
+
+	define_test_server("/robustness/read-multiple-vl/server",
+			test_server, ts_small_db, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x20, 0x15, 0xF0, 0x03, 0x00),
+			raw_pdu(0x21, 0x01, 0x00, 0x09, 0x05, 0x00, 'B', 'l',
+					'u', 'e', 'Z'));
 
 	define_test_server("/TP/GAR/SR/BV-05-C/large-1", test_server,
 			ts_large_db_1, NULL,
@@ -3390,6 +3674,21 @@ int main(int argc, char *argv[])
 			SMALL_DB_DISCOVERY_PDUS,
 			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
 			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x1B, 0x03, 0x00, 0x01, 0x02, 0x03));
+
+	define_test_client("/robustness/notify-short", test_client,
+			ts_small_db, &test_notification_short_1,
+			CLIENT_INIT_PDUS,
+			SMALL_DB_DISCOVERY_PDUS,
+			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
+			raw_pdu(0x13),
+			raw_pdu(),
+			raw_pdu(0x1B, 0x03, 0x00, 0x01, 0x02, 0x03),
+			raw_pdu(),
+			raw_pdu(0x1B),
+			raw_pdu(),
+			raw_pdu(0x1B, 0x03),
 			raw_pdu(),
 			raw_pdu(0x1B, 0x03, 0x00, 0x01, 0x02, 0x03));
 

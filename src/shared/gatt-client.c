@@ -887,7 +887,8 @@ static void ext_prop_read_cb(bool success, uint8_t att_ecode,
 	if (!success)
 		goto done;
 
-	DBG(client, "Ext. prop value: 0x%04x", (uint16_t)value[0]);
+	DBG(client, "Ext. prop value: 0x%04x",
+				length ? (uint16_t)value[0] : 0);
 
 	desc_attr = queue_pop_head(op->ext_prop_desc);
 	if (!desc_attr)
@@ -1475,8 +1476,10 @@ static void db_hash_read_cb(bool success, uint8_t att_ecode,
 	if (!success)
 		goto discover;
 
-	bt_gatt_iter_init(&iter, result);
-	bt_gatt_iter_next_read_by_type(&iter, &handle, &len, &value);
+	if (!bt_gatt_iter_init(&iter, result) ||
+			!bt_gatt_iter_next_read_by_type(&iter, &handle,
+							&len, &value))
+		goto discover;
 
 	DBG(client, "DB Hash found: handle 0x%04x length 0x%04x",
 							handle, len);
@@ -1565,8 +1568,10 @@ static void db_server_feat_read(bool success, uint8_t att_ecode,
 	if (!result)
 		return;
 
-	bt_gatt_iter_init(&iter, result);
-	bt_gatt_iter_next_read_by_type(&iter, &handle, &len, &value);
+	if (!bt_gatt_iter_init(&iter, result) ||
+			!bt_gatt_iter_next_read_by_type(&iter, &handle,
+						&len, &value) || !len)
+		return;
 
 	DBG(client, "Server Features found: handle 0x%04x "
 				"length 0x%04x value 0x%02x", handle, len,
@@ -2297,6 +2302,9 @@ static void notify_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
 			pdu += data.len;
 		}
 	} else {
+		if (length < 2)
+			goto done;
+
 		data.handle = get_le16(pdu);
 		length -= 2;
 		pdu += 2;
@@ -2924,8 +2932,11 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu, uint16_t length,
 		return;
 	}
 
+	/* Keep the request alive in case a callback cancels it */
+	request_ref(req);
+
 	/* Parse response */
-	while (length >= 2) {
+	while (length >= 2 && !req->removed) {
 		uint16_t len;
 
 		len = get_le16(pdu);
@@ -2937,10 +2948,15 @@ static void read_multiple_cb(uint8_t opcode, const void *pdu, uint16_t length,
 		 * current ATT_MTU.
 		 */
 		if (len > length)
-			length = len;
+			len = length;
 
 		op->callback(success, att_ecode, pdu, len, op->user_data);
+
+		length -= len;
+		pdu += len;
 	}
+
+	request_unref(req);
 }
 
 unsigned int bt_gatt_client_read_multiple(struct bt_gatt_client *client,
