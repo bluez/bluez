@@ -4689,7 +4689,7 @@ struct broadcast_message {
 	uint16_t right_close_offset;
 	uint16_t frame_sync_period;
 	uint8_t  frame_sync_period_fraction;
-} __attribute__ ((packed));
+} __packed;
 
 static void print_3d_broadcast(const void *data, uint8_t size)
 {
@@ -14680,7 +14680,7 @@ void packet_system_note(struct timeval *tv, struct ucred *cred, uint16_t index,
 struct monitor_l2cap_hdr {
 	uint16_t cid;
 	uint16_t psm;
-} __attribute__((packed));
+} __packed;
 
 static void packet_decode(struct timeval *tv, struct ucred *cred, char dir,
 				uint16_t index, const char *color,
