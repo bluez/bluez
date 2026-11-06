@@ -1306,7 +1306,7 @@ static int parse_track_entry(DBusMessageIter *entry, const char *key,
 		const char *handle, *path;
 		char *filename, *uri;
 
-		if (!player || !player->obex)
+		if (!player || !player->obex || !player->obex->obex)
 			return -EINVAL;
 
 		path = g_dbus_proxy_get_path(player->obex->obex);
@@ -2614,8 +2614,13 @@ static void obex_get_image(struct player *player, const char *handle)
 	DBusMessage *msg;
 	DBusMessageIter iter, array;
 	struct obex_session *obex_session = player->obex;
-	const char *path = g_dbus_proxy_get_path(obex_session->obex);
+	const char *path;
 	char *filename;
+
+	if (!obex_session || !obex_session->obex)
+		return;
+
+	path = g_dbus_proxy_get_path(obex_session->obex);
 
 	player->filename = g_strconcat(g_get_tmp_dir(), "/",
 				path + strlen(BLUEZ_OBEX_CLIENT_PATH "/"),
@@ -2674,7 +2679,7 @@ static void device_property_changed(GDBusProxy *proxy, const char *name,
 			player->obex = NULL;
 	}
 
-	g_dbus_proxy_unref(session->obex);
+	g_clear_pointer(&session->obex, g_dbus_proxy_unref);
 	g_dbus_proxy_unref(session->device);
 	obex_sessions = g_slist_remove(obex_sessions, session);
 	g_free(session);
@@ -2816,7 +2821,14 @@ static struct player *find_player_by_obex(const char *path)
 	for (l = players; l; l = l->next) {
 		struct player *player = l->data;
 		struct obex_session *session = player->obex;
-		const char *obex_path = g_dbus_proxy_get_path(session->obex);
+		const char *obex_path;
+
+		if (session == NULL || session->obex == NULL)
+			continue;
+
+		obex_path = g_dbus_proxy_get_path(session->obex);
+		if (obex_path == NULL)
+			continue;
 
 		if (g_str_has_prefix(path, obex_path))
 			return player;
