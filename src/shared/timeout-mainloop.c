@@ -16,31 +16,46 @@
 
 struct timeout_data {
 	int id;
+	unsigned int ref_count;
 	timeout_func_t func;
 	timeout_destroy_func_t destroy;
 	unsigned int timeout;
 	void *user_data;
 };
 
+static void timeout_unref(struct timeout_data *data)
+{
+	if (!--data->ref_count)
+		free(data);
+}
+
 static void timeout_callback(int id, void *user_data)
 {
 	struct timeout_data *data = user_data;
+	bool repeat;
 
-	if (data->func(data->user_data) &&
-			!mainloop_modify_timeout(data->id, data->timeout))
-		return;
+	/* The callback may remove the timeout. */
+	data->ref_count++;
+	repeat = data->func(data->user_data);
 
-	mainloop_remove_timeout(data->id);
+	if (data->id) {
+		if (!repeat || mainloop_modify_timeout(data->id, data->timeout))
+			mainloop_remove_timeout(data->id);
+	}
+
+	timeout_unref(data);
 }
 
 static void timeout_destroy(void *user_data)
 {
 	struct timeout_data *data = user_data;
 
+	data->id = 0;
+
 	if (data->destroy)
 		data->destroy(data->user_data);
 
-	free(data);
+	timeout_unref(data);
 }
 
 unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
@@ -49,6 +64,7 @@ unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 	struct timeout_data *data;
 
 	data = new0(struct timeout_data, 1);
+	data->ref_count = 1;
 	data->func = func;
 	data->user_data = user_data;
 	data->timeout = timeout;

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include "src/shared/mainloop.h"
+#include "src/shared/timeout.h"
 
 
 #define test_failed_msg(msg) \
@@ -153,6 +154,104 @@ static void test_timeout(struct test_data *data)
 	check(data->destroys == 1);
 }
 
+struct wrapper_data {
+	unsigned int id;
+	unsigned int calls;
+	unsigned int destroys;
+	unsigned int replacement_calls;
+	unsigned int replacement_destroys;
+	unsigned int interval;
+	bool repeat;
+	bool remove;
+	bool replace;
+};
+
+static void wrapper_destroy(void *user_data)
+{
+	struct wrapper_data *data = user_data;
+
+	data->destroys++;
+}
+
+static void replacement_destroy(void *user_data)
+{
+	struct wrapper_data *data = user_data;
+
+	data->replacement_destroys++;
+}
+
+static bool replacement_callback(void *user_data)
+{
+	struct wrapper_data *data = user_data;
+
+	data->replacement_calls++;
+	mainloop_exit_success();
+	return false;
+}
+
+static bool wrapper_callback(void *user_data)
+{
+	struct wrapper_data *data = user_data;
+	unsigned int replacement;
+
+	data->calls++;
+
+	if (data->remove) {
+		timeout_remove(data->id);
+
+		if (data->interval)
+			check(data->destroys == 1);
+
+		if (data->replace) {
+			replacement = timeout_add(1, replacement_callback,
+						  data, replacement_destroy);
+			check(replacement > 0);
+
+			if (data->interval)
+				check(replacement == data->id);
+		} else {
+			mainloop_exit_success();
+		}
+
+		return data->repeat;
+	}
+
+	if (data->repeat && data->calls < 3)
+		return true;
+
+	mainloop_exit_success();
+	return false;
+}
+
+static void test_timeout_wrapper(void)
+{
+	unsigned int interval, mode;
+
+	for (interval = 0; interval < 2; interval++) {
+		for (mode = 0; mode < 6; mode++) {
+			struct wrapper_data data = {
+				.interval = interval,
+				.repeat = mode & 1,
+				.remove = mode >= 2,
+				.replace = mode >= 4,
+			};
+
+			mainloop_init();
+			data.id = timeout_add(interval, wrapper_callback,
+					      &data, wrapper_destroy);
+			check(data.id > 0);
+			check(mainloop_run() == EXIT_SUCCESS);
+			check(data.calls ==
+					(!data.remove && data.repeat ? 3 : 1));
+			check(data.destroys == 1);
+			check(data.replacement_calls == data.replace);
+			check(data.replacement_destroys == data.replace);
+			fprintf(stderr, "Timeout wrapper %u/%u passed\n",
+				interval, mode);
+		}
+	}
+}
+
 #define define_test(name, function)				\
 	do {							\
 		static struct test_data data = {};		\
@@ -167,5 +266,6 @@ int main(int argc, char *argv[])
 	define_test("Test Modify File Descriptor", test_modify_fd);
 	define_test("Test Re-Add Other Callback", test_readd_other_callback);
 	define_test("Test Timeout", test_timeout);
+	test_timeout_wrapper();
 	return 0;
 }
