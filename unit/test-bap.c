@@ -4728,6 +4728,230 @@ static void test_usr_scc_cis_loss(void)
 			SCC_SRC_ENABLING_CIS_LOSS);
 }
 
+static void state_release_link(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	int fds[2];
+	int err;
+
+	if (bt_bap_stream_get_dir(stream) != BT_BAP_SOURCE)
+		return;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+		/* Establish the CIS for the Source ASE, which its linked Sink
+		 * ASE shares.
+		 */
+		err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+									fds);
+		g_assert(err == 0);
+		g_assert(bt_bap_stream_io_connecting(stream, fds[0]) == 0);
+		data->fds[0][0] = fds[0];
+		data->fds[0][1] = fds[1];
+		break;
+	case BT_BAP_STREAM_STATE_IDLE:
+		/* Once the Source ASE is released and its stream freed,
+		 * disconnect the CIS the Sink ASE kept.
+		 */
+		if (data->fds[0][1] > 0) {
+			close(data->fds[0][1]);
+			data->fds[0][1] = -1;
+		}
+		break;
+	}
+}
+
+static struct test_config cfg_release_link = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.src = true,
+	.state_func = state_release_link,
+};
+
+#define QOS_16_2_1_DATA \
+	0x10, 0x27, 0x00, 0x00, 0x02, 0x28, 0x00, 0x02, 0x0a, 0x00, 0x40, \
+	0x9c, 0x00
+
+/* Sink and Source ASE configured for the same CIS: the Source ASE is
+ * enabled, disabled and released until its stream is freed, while the Sink
+ * ASE keeps the CIS, which is then disconnected. The Sink ASE is then
+ * enabled, without a CIS.
+ */
+#define SCC_RELEASE_LINK \
+	DISC_SRC_ASE_LC3, \
+	SCC_SNK(LC3_CONFIG_16_2_DATA), \
+	SCC_SRC(LC3_CONFIG_16_2_DATA), \
+	QOS_SNK(QOS_16_2_1_DATA), \
+	QOS_SRC(QOS_16_2_1_DATA), \
+	SRC_ENABLE, \
+	SRC_DISABLE, \
+	ASE_SRC_RELEASE_CC, \
+	ASE_SRC_RELEASE_IDLE, \
+	ENABLE_ASE(SNK_ID(0)), \
+	SNK_ENABLE_NOTIFY(0, 0)
+
+static void test_usr_scc_release_link(void)
+{
+	define_test("BAP/USR/SCC/BLUEZ-2 [USR Release ASE of a CIS kept by its "
+			"link]",
+			test_setup_server, test_server_state,
+			&cfg_release_link, SCC_RELEASE_LINK);
+}
+
+static gboolean disconnect_cis(gpointer user_data)
+{
+	struct test_data *data = user_data;
+
+	if (data->fds[0][1] > 0) {
+		close(data->fds[0][1]);
+		data->fds[0][1] = -1;
+	}
+
+	return FALSE;
+}
+
+static void state_release_cis(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	int fds[2];
+	int err;
+
+	if (bt_bap_stream_get_dir(stream) != BT_BAP_SOURCE)
+		return;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+		err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+									fds);
+		g_assert(err == 0);
+		g_assert(bt_bap_stream_io_connecting(stream, fds[0]) == 0);
+		data->fds[0][0] = fds[0];
+		data->fds[0][1] = fds[1];
+		break;
+	case BT_BAP_STREAM_STATE_RELEASING:
+		/* The client disconnects the CIS once notified that the
+		 * Source ASE is releasing, while the Sink ASE is still
+		 * configured for it.
+		 */
+		g_timeout_add(50, disconnect_cis, data);
+		break;
+	}
+}
+
+static struct test_config cfg_release_cis = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.src = true,
+	.state_func = state_release_cis,
+};
+
+/* Sink and Source ASE configured for the same CIS: the Source ASE is
+ * enabled and released, and remains releasing until the CIS is
+ * disconnected, then it is released caching its codec configuration,
+ * although the Sink ASE, configured first, was using the CIS as well.
+ */
+#define SCC_RELEASE_CIS \
+	DISC_SRC_ASE_LC3, \
+	SCC_SNK(LC3_CONFIG_16_2_DATA), \
+	SCC_SRC(LC3_CONFIG_16_2_DATA), \
+	QOS_SNK(QOS_16_2_1_DATA), \
+	QOS_SRC(QOS_16_2_1_DATA), \
+	SRC_ENABLE, \
+	ASE_SRC_RELEASE, \
+	IOV_DATA(0x0a, SRC_HND(0)), \
+	IOV_DATA(0x0b, SRC_ID(0), 0x06), \
+	SCC_SRC_NOTIFY(0, LC3_CONFIG_16_2_DATA)
+
+static void test_usr_scc_release_cis(void)
+{
+	define_test("BAP/USR/SCC/BLUEZ-3 [USR Release ASE of a shared CIS]",
+			test_setup_server, test_server_state,
+			&cfg_release_cis, SCC_RELEASE_CIS);
+}
+
+static int switch_cis_fd = -1;
+
+static void state_switch_cis(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	char buf;
+	int fds[2];
+	int err;
+	int fd;
+
+	switch (bt_bap_stream_get_dir(stream)) {
+	case BT_BAP_SOURCE:
+		if (new_state != BT_BAP_STREAM_STATE_ENABLING)
+			return;
+
+		/* Establish the CIS for the Source ASE, which its linked
+		 * Sink ASE shares.
+		 */
+		err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+									fds);
+		g_assert(err == 0);
+		g_assert(bt_bap_stream_io_connecting(stream, fds[0]) == 0);
+		switch_cis_fd = fds[0];
+		data->fds[0][0] = fds[0];
+		data->fds[0][1] = fds[1];
+		break;
+	case BT_BAP_SINK:
+		if (new_state != BT_BAP_STREAM_STATE_STREAMING)
+			return;
+
+		/* The Sink ASE streams over the CIS established for the
+		 * Source ASE, which is still connected.
+		 */
+		fd = -1;
+		bt_bap_stream_io_is_connecting(stream, &fd);
+		g_assert(fd == switch_cis_fd);
+		err = recv(data->fds[0][1], &buf, 1, MSG_DONTWAIT | MSG_PEEK);
+		g_assert(err < 0 && errno == EAGAIN);
+		break;
+	}
+}
+
+static struct test_config cfg_switch_cis = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.src = true,
+	.state_func = state_switch_cis,
+};
+
+/* Sink and Source ASE configured for the same CIS: the Source ASE is
+ * enabled, establishing the CIS, then disabled, and the Sink ASE is
+ * enabled right after, as when switching a headset from its microphone to
+ * its speaker. The Sink ASE has to start streaming over the same CIS, as
+ * the client does not establish it again.
+ */
+#define SCC_SWITCH_CIS \
+	DISC_SRC_ASE_LC3, \
+	SCC_SNK(LC3_CONFIG_16_2_DATA), \
+	SCC_SRC(LC3_CONFIG_16_2_DATA), \
+	QOS_SNK(QOS_16_2_1_DATA), \
+	QOS_SRC(QOS_16_2_1_DATA), \
+	SRC_ENABLE, \
+	SRC_DISABLE, \
+	ENABLE_ASE(SNK_ID(0)), \
+	SNK_ENABLE_NOTIFY(0, 0), \
+	SNK_START_NOTIFY(0, 0)
+
+static void test_usr_scc_switch_cis(void)
+{
+	define_test("BAP/USR/SCC/BLUEZ-4 [USR Switch direction of a CIS]",
+			test_setup_server, test_server_state,
+			&cfg_switch_cis, SCC_SWITCH_CIS);
+}
+
 static struct test_config str_snk_ac2_8_1_1 = {
 	.cc = LC3_CONFIG_8_1_AC(1),
 	.qos = LC3_QOS_8_1_1_AC(1),
@@ -7589,6 +7813,9 @@ static void test_scc(void)
 	test_scc_disable();
 	test_scc_release();
 	test_usr_scc_cis_loss();
+	test_usr_scc_release_link();
+	test_usr_scc_release_cis();
+	test_usr_scc_switch_cis();
 	test_scc_metadata();
 	test_str_1_1_1_lc3();
 }
