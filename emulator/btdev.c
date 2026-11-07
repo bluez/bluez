@@ -145,7 +145,7 @@ struct le_cig {
 	struct bt_hci_cmd_le_set_cig_params params;
 	struct bt_hci_cis_params cis[CIS_SIZE];
 	bool activated;
-} __attribute__ ((packed));
+} __packed;
 
 struct pending_conn {
 	struct btdev *dev;
@@ -6851,7 +6851,7 @@ static int cmd_set_cig_params(struct btdev *dev, const void *data,
 	struct lescp {
 		struct bt_hci_rsp_le_set_cig_params params;
 		uint16_t handle[CIS_SIZE];
-	} __attribute__ ((packed)) rsp;
+	} __packed rsp;
 	int i = 0;
 	int cig_idx;
 	uint32_t interval;
@@ -8040,7 +8040,7 @@ static int cmd_le_read_conn_interval(struct btdev *dev, const void *data,
 	struct {
 		struct bt_hci_rsp_le_read_conn_interval rsp;
 		struct bt_hci_le_conn_interval_group grp;
-	} __attribute__ ((packed)) pdu;
+	} __packed pdu;
 
 	memset(&pdu, 0, sizeof(pdu));
 	pdu.rsp.status = BT_HCI_ERR_SUCCESS;
