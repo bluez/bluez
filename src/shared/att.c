@@ -1028,6 +1028,7 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t *pdu,
 	struct bt_att *att = chan->att;
 	const struct queue_entry *entry;
 	bool found;
+	bool verified = false;
 	uint8_t opcode = pdu[0];
 
 	bt_att_ref(att);
@@ -1043,12 +1044,15 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t *pdu,
 		if (!opcode_match(notify->opcode, opcode))
 			continue;
 
-		if ((opcode & ATT_OP_SIGNED_MASK) && att->crypto) {
+		if ((opcode & ATT_OP_SIGNED_MASK) && att->crypto && !verified) {
 			if (!handle_signed(att, pdu, pdu_len)) {
 				bt_att_unref(att);
 				return;
 			}
+
+			/* Verify and strip the signature only once */
 			pdu_len -= BT_ATT_SIGNATURE_LEN;
+			verified = true;
 		}
 
 		/* BLUETOOTH CORE SPECIFICATION Version 5.1 | Vol 3, Part G
