@@ -304,6 +304,7 @@ struct btd_adapter {
 					 * without delay */
 	uint8_t discovery_type;		/* current active discovery type */
 	uint8_t discovery_enable;	/* discovery enabled/disabled */
+	unsigned int le_audio_active;	/* Active ASHA streams */
 	bool discovery_suspended;	/* discovery has been suspended */
 	bool discovery_discoverable;	/* discoverable while discovering */
 	GSList *discovery_list;		/* list of discovery clients */
@@ -1886,6 +1887,8 @@ static void discovery_remove(struct discovery_client *client)
 }
 
 static void trigger_start_discovery(struct btd_adapter *adapter, guint delay);
+static int update_discovery_filter(struct btd_adapter *adapter);
+static uint8_t discovery_scan_type(struct btd_adapter *adapter);
 
 static struct discovery_client *discovery_complete(struct btd_adapter *adapter,
 						uint8_t status)
@@ -1964,6 +1967,11 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 
 		discovery_complete(adapter, status);
 
+		/* Audio or filters may change while START is pending. */
+		if (!adapter->discovery_suspended &&
+		    adapter->discovery_type != discovery_scan_type(adapter))
+			trigger_start_discovery(adapter, 0);
+
 		if (adapter->discovering)
 			return;
 
@@ -1987,15 +1995,31 @@ static void start_discovery_complete(uint8_t status, uint16_t length,
 	trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT * 2);
 }
 
+static uint8_t discovery_scan_type(struct btd_adapter *adapter)
+{
+	uint8_t type = adapter->current_discovery_filter ?
+				adapter->current_discovery_filter->type :
+				get_scan_type(adapter);
+
+	if (adapter->le_audio_active)
+		type &= ~SCAN_TYPE_BREDR;
+
+	return type;
+}
+
 static bool start_discovery_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct mgmt_cp_start_service_discovery *sd_cp;
+	size_t sd_len;
 	uint8_t new_type;
 
 	DBG("");
 
 	adapter->discovery_idle_timeout = 0;
+
+	if (!adapter->discovery_list || adapter->discovery_suspended)
+		return FALSE;
 
 	/* If we're doing filtered discovery, it must be quickly restarted */
 	adapter->no_scan_restart_delay = !!adapter->current_discovery_filter;
@@ -2003,7 +2027,7 @@ static bool start_discovery_timeout(gpointer user_data)
 	DBG("adapter->current_discovery_filter == %d",
 	    !!adapter->current_discovery_filter);
 
-	new_type = get_scan_type(adapter);
+	new_type = discovery_scan_type(adapter);
 
 	if (adapter->discovery_enable == 0x01) {
 		struct mgmt_cp_stop_discovery cp;
@@ -2047,11 +2071,27 @@ static bool start_discovery_timeout(gpointer user_data)
 
 	}
 
+	if (!new_type) {
+		struct discovery_client *client;
+
+		/* Reject new requests; keep sessions until audio stops. */
+		client = discovery_complete(adapter, MGMT_STATUS_BUSY);
+		if (client) {
+			discovery_remove(client);
+
+			if (adapter->discovery_list)
+				update_discovery_filter(adapter);
+		}
+
+		return FALSE;
+	}
+
 	/* Regular discovery is required */
 	if (!adapter->current_discovery_filter) {
 		struct mgmt_cp_start_discovery cp;
 
 		cp.type = new_type;
+
 		mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
 					adapter->dev_id, sizeof(cp), &cp,
 					start_discovery_complete, adapter,
@@ -2060,17 +2100,24 @@ static bool start_discovery_timeout(gpointer user_data)
 		return FALSE;
 	}
 
-	/* Filtered discovery is required */
-	sd_cp = adapter->current_discovery_filter;
+	/* Keep the requested filter intact for when audio stops. */
+	sd_len = sizeof(*sd_cp) +
+		btohs(adapter->current_discovery_filter->uuid_count) * 16;
+	sd_cp = util_memdup(adapter->current_discovery_filter, sd_len);
+	if (!sd_cp)
+		return FALSE;
+
+	sd_cp->type = new_type;
 
 	DBG("sending MGMT_OP_START_SERVICE_DISCOVERY %d, %d, %d",
 				sd_cp->rssi, sd_cp->type,
 				btohs(sd_cp->uuid_count));
 
 	mgmt_send(adapter->mgmt, MGMT_OP_START_SERVICE_DISCOVERY,
-		  adapter->dev_id, sizeof(*sd_cp) +
-		  btohs(sd_cp->uuid_count) * 16,
+		  adapter->dev_id, sd_len,
 		  sd_cp, start_discovery_complete, adapter, NULL);
+
+	free(sd_cp);
 
 	return FALSE;
 }
@@ -6356,6 +6403,24 @@ struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
 	__sync_fetch_and_add(&adapter->ref_count, 1);
 
 	return adapter;
+}
+
+void btd_adapter_le_audio_ref(struct btd_adapter *adapter)
+{
+	if (adapter->le_audio_active++)
+		return;
+
+	if (adapter->discovery_list && !adapter->discovery_suspended)
+		trigger_start_discovery(adapter, 0);
+}
+
+void btd_adapter_le_audio_unref(struct btd_adapter *adapter)
+{
+	if (!adapter->le_audio_active || --adapter->le_audio_active)
+		return;
+
+	if (adapter->discovery_list && !adapter->discovery_suspended)
+		trigger_start_discovery(adapter, 0);
 }
 
 void btd_adapter_unref(struct btd_adapter *adapter)
