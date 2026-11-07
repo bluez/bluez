@@ -1310,10 +1310,15 @@ static void prep_write_complete_cb(struct gatt_db_attribute *attr, int err,
 	}
 
 	if (!store_prep_data(pwcd->server, handle, offset, iov.iov_len,
-							iov.iov_base))
-		bt_att_chan_send_error_rsp(pwcd->chan, BT_ATT_OP_PREP_WRITE_RSP,
+							iov.iov_base)) {
+		bt_att_chan_send_error_rsp(pwcd->chan, BT_ATT_OP_PREP_WRITE_REQ,
 					handle,
 					BT_ATT_ERROR_INSUFFICIENT_RESOURCES);
+		free(pwcd->pdu);
+		free(pwcd);
+
+		return;
+	}
 
 	bt_att_chan_send_rsp(pwcd->chan, BT_ATT_OP_PREP_WRITE_RSP, pwcd->pdu,
 								pwcd->length);
