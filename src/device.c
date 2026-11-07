@@ -2369,19 +2369,34 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 	adapter_connect_list_add(device->adapter, device);
 }
 
+/*
+ * If device is not trusted disable connections through passive scanning
+ * until Connect is called
+ */
+void device_pause_auto_connect(struct btd_device *device)
+{
+	if (!device->auto_connect || device->trusted)
+		return;
+
+	device->disable_auto_connect = TRUE;
+	device_set_auto_connect(device, FALSE);
+}
+
+void device_resume_auto_connect(struct btd_device *device)
+{
+	if (!device->disable_auto_connect)
+		return;
+
+	device->disable_auto_connect = FALSE;
+	device_set_auto_connect(device, TRUE);
+}
+
 static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
 	struct btd_device *device = user_data;
 
-	/*
-	 * If device is not trusted disable connections through passive
-	 * scanning until Device1.Connect is called
-	 */
-	if (device->auto_connect && !device->trusted) {
-		device->disable_auto_connect = TRUE;
-		device_set_auto_connect(device, FALSE);
-	}
+	device_pause_auto_connect(device);
 
 	device_request_disconnect(device, msg);
 
@@ -2926,11 +2941,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 			return dbus_message_new_method_return(msg);
 
 		btd_device_set_temporary(dev, false);
-
-		if (dev->disable_auto_connect) {
-			dev->disable_auto_connect = FALSE;
-			device_set_auto_connect(dev, TRUE);
-		}
+		device_resume_auto_connect(dev);
 
 		err = device_connect_le(dev);
 		if (err < 0)
@@ -3480,10 +3491,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	 * this in the ATT connect callback)
 	 */
 	if (bdaddr_type != BDADDR_BREDR) {
-		if (device->disable_auto_connect) {
-			device->disable_auto_connect = FALSE;
-			device_set_auto_connect(device, TRUE);
-		}
+		device_resume_auto_connect(device);
 
 		if (!state->connected && btd_le_connect_before_pairing())
 			err = device_connect_le(device);
