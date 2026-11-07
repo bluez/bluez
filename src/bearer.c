@@ -153,6 +153,7 @@ static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
 								msg, NULL);
 	else {
 		btd_device_set_temporary(device, false);
+		device_resume_auto_connect(device);
 		err = device_connect_le(device);
 		if (err < 0)
 			return btd_error_failed(msg, strerror(-err));
@@ -182,6 +183,10 @@ static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
 			return btd_error_in_progress(msg);
 		return NULL;
 	}
+
+	/* Auto-connect is only done over LE */
+	if (bearer->type != BDADDR_BREDR)
+		device_pause_auto_connect(device);
 
 	if (msg)
 		queue_push_tail(bearer->disconnects, dbus_message_ref(msg));
