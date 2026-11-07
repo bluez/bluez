@@ -42,6 +42,7 @@ struct test_pdu {
 enum context_type {
 	ATT,
 	CLIENT,
+	CLIENT_CACHED,
 	SERVER
 };
 
@@ -680,7 +681,13 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 						"bt_gatt_server:", NULL);
 		break;
 	case CLIENT:
-		context->client_db = gatt_db_new();
+	case CLIENT_CACHED:
+		if (test_data->context_type == CLIENT_CACHED)
+			context->client_db =
+					gatt_db_clone(test_data->source_db);
+		else
+			context->client_db = gatt_db_new();
+
 		g_assert(context->client_db);
 
 		context->client = bt_gatt_client_new(context->client_db,
@@ -1968,6 +1975,22 @@ static void test_client(gconstpointer data)
 	create_context(512, data);
 }
 
+static void test_client_cancel(gconstpointer data)
+{
+	struct context *context = create_context(23, data);
+
+	context_quit(context);
+}
+
+static void test_client_cancel_all(gconstpointer data)
+{
+	struct context *context = create_context(23, data);
+
+	g_assert(bt_gatt_client_cancel_all(context->client));
+	g_assert(bt_gatt_client_cancel_all(context->client));
+	context_quit(context);
+}
+
 static void test_server(gconstpointer data)
 {
 	struct context *context = create_context(512, data);
@@ -2480,8 +2503,35 @@ int main(int argc, char *argv[])
 {
 	struct gatt_db *service_db_1, *service_db_2, *service_db_3;
 	struct gatt_db *ts_small_db, *ts_large_db_1, *ts_tail_db;
+	struct gatt_db *hash_db;
+	const struct att_handle_spec hash_specs[] = {
+		PRIMARY_SERVICE(0x0001, GATT_UUID, 3),
+		CHARACTERISTIC(GATT_CHARAC_DB_HASH, BT_ATT_PERM_READ,
+				BT_GATT_CHRC_PROP_READ, 0x00),
+		{ }
+	};
 
 	tester_init(&argc, &argv);
+
+	define_test_client("/robustness/client-cancel-queued-discovery",
+			test_client_cancel, NULL, NULL, {});
+
+	define_test_client("/robustness/client-cancel-pending-server-features",
+			test_client, NULL, NULL, MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x3a, 0x2b));
+
+	define_test_client("/robustness/client-cancel-all-queued-discovery",
+			test_client_cancel_all, NULL, NULL, {});
+
+	hash_db = make_db(hash_specs);
+	define_test("/robustness/client-cancel-queued-db-hash",
+			test_client_cancel, CLIENT_CACHED, NULL, hash_db,
+			NULL, {});
+
+	define_test("/robustness/client-cancel-pending-db-hash",
+			test_client, CLIENT_CACHED, NULL, hash_db, NULL,
+			CLIENT_INIT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x2a, 0x2b));
 
 	service_db_1 = make_service_data_1_db();
 	service_db_2 = make_service_data_2_db();

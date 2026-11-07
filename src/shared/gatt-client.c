@@ -105,6 +105,8 @@ struct bt_gatt_client {
 	unsigned int next_request_id;
 
 	struct bt_gatt_request *discovery_req;
+	struct bt_gatt_request *server_feat_req;
+	struct bt_gatt_request *db_hash_req;
 	unsigned int mtu_req_id;
 
 	/* Pending retry operation for DB out of sync handling */
@@ -1472,6 +1474,9 @@ static void db_hash_read_cb(bool success, uint8_t att_ecode,
 	uint16_t len, handle;
 	struct bt_gatt_iter iter;
 
+	bt_gatt_request_unref(client->db_hash_req);
+	client->db_hash_req = NULL;
+
 	if (!success)
 		goto discover;
 
@@ -1542,10 +1547,12 @@ static bool read_db_hash(struct discovery_op *op)
 	if (!op->hash)
 		return false;
 
-	if (!bt_gatt_read_by_type(client->att, 0x0001, 0xffff, &uuid,
+	client->db_hash_req = bt_gatt_read_by_type_request(client->att,
+							0x0001, 0xffff, &uuid,
 							db_hash_read_cb,
 							discovery_op_ref(op),
-							discovery_op_unref)) {
+							discovery_op_unref);
+	if (!client->db_hash_req) {
 		discovery_op_unref(op);
 		return false;
 	}
@@ -1561,6 +1568,9 @@ static void db_server_feat_read(bool success, uint8_t att_ecode,
 	const uint8_t *value;
 	uint16_t len, handle;
 	struct bt_gatt_iter iter;
+
+	bt_gatt_request_unref(client->server_feat_req);
+	client->server_feat_req = NULL;
 
 	if (!result)
 		return;
@@ -1606,10 +1616,12 @@ static void read_server_feat(struct discovery_op *op)
 			return;
 	}
 
-	if (!bt_gatt_read_by_type(client->att, 0x0001, 0xffff, &uuid,
+	client->server_feat_req = bt_gatt_read_by_type_request(client->att,
+							0x0001, 0xffff, &uuid,
 							db_server_feat_read,
 							discovery_op_ref(op),
-							discovery_op_unref))
+							discovery_op_unref);
+	if (!client->server_feat_req)
 		discovery_op_unref(op);
 }
 
@@ -2841,12 +2853,24 @@ static void cancel_pending(void *data)
 	cancel_request(data);
 }
 
+static void cancel_gatt_request(struct bt_gatt_request **req)
+{
+	struct bt_gatt_request *pending = *req;
+
+	*req = NULL;
+	bt_gatt_request_cancel(pending);
+	bt_gatt_request_unref(pending);
+}
+
 bool bt_gatt_client_cancel_all(struct bt_gatt_client *client)
 {
 	if (!client || !client->att)
 		return false;
 
 	queue_remove_all(client->pending_requests, NULL, NULL, cancel_pending);
+
+	cancel_gatt_request(&client->server_feat_req);
+	cancel_gatt_request(&client->db_hash_req);
 
 	if (client->discovery_req) {
 		bt_gatt_request_cancel(client->discovery_req);
