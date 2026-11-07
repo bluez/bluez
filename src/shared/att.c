@@ -1044,8 +1044,10 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t *pdu,
 			continue;
 
 		if ((opcode & ATT_OP_SIGNED_MASK) && att->crypto) {
-			if (!handle_signed(att, pdu, pdu_len))
+			if (!handle_signed(att, pdu, pdu_len)) {
+				bt_att_unref(att);
 				return;
+			}
 			pdu_len -= BT_ATT_SIGNATURE_LEN;
 		}
 
