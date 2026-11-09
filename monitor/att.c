@@ -364,6 +364,9 @@ static void att_error_response(const struct l2cap_frame *frame)
 	case 0x13:
 		str = "Value Not Allowed";
 		break;
+	case 0x14:
+		str = "MIC Length Too Short";
+		break;
 	case 0xfd:
 		str = "CCC Improperly Configured";
 		break;
