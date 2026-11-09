@@ -338,7 +338,9 @@ static bool encode_pdu(struct bt_att *att, struct att_send_op *op,
 {
 	uint16_t pdu_len = 1;
 	struct sign_info *sign = att->local_sign;
+	struct iovec iov;
 	uint32_t sign_cnt;
+	void *sig;
 
 	if (sign && (op->opcode & ATT_OP_SIGNED_MASK))
 		pdu_len += BT_ATT_SIGNATURE_LEN;
@@ -354,9 +356,12 @@ static bool encode_pdu(struct bt_att *att, struct att_send_op *op,
 	if (!op->pdu)
 		return false;
 
-	((uint8_t *) op->pdu)[0] = op->opcode;
-	if (pdu_len > 1)
-		memcpy(op->pdu + 1, pdu, length);
+	iov.iov_base = op->pdu;
+	iov.iov_len = 0;
+
+	util_iov_push_u8(&iov, op->opcode);
+	if (length && pdu)
+		util_iov_push_mem(&iov, length, pdu);
 
 	if (!sign || !(op->opcode & ATT_OP_SIGNED_MASK) || !att->crypto)
 		return true;
@@ -364,8 +369,13 @@ static bool encode_pdu(struct bt_att *att, struct att_send_op *op,
 	if (!sign->counter(&sign_cnt, sign->user_data))
 		goto fail;
 
-	if ((bt_crypto_sign_att(att->crypto, sign->key, op->pdu, 1 + length,
-				sign_cnt, &((uint8_t *) op->pdu)[1 + length])))
+	sig = util_iov_push(&iov, BT_ATT_SIGNATURE_LEN);
+	if (!sig)
+		goto fail;
+
+	if ((bt_crypto_sign_att(att->crypto, sign->key, op->pdu,
+				iov.iov_len - BT_ATT_SIGNATURE_LEN,
+				sign_cnt, sig)))
 		return true;
 
 	DBG(att, "ATT unable to generate signature");
@@ -978,7 +988,7 @@ static void respond_not_supported(struct bt_att *att, uint8_t opcode)
 
 static bool handle_signed(struct bt_att *att, uint8_t *pdu, ssize_t pdu_len)
 {
-	uint8_t *signature;
+	struct iovec iov = { pdu, pdu_len };
 	uint32_t sign_cnt;
 	struct sign_info *sign;
 	uint8_t opcode = pdu[0];
@@ -991,8 +1001,10 @@ static bool handle_signed(struct bt_att *att, uint8_t *pdu, ssize_t pdu_len)
 	if (!sign)
 		goto fail;
 
-	signature = pdu + (pdu_len - BT_ATT_SIGNATURE_LEN);
-	sign_cnt = get_le32(signature);
+	/* Skip to the signature trailer, the counter is its first field */
+	if (!util_iov_pull(&iov, pdu_len - BT_ATT_SIGNATURE_LEN) ||
+			!util_iov_pull_le32(&iov, &sign_cnt))
+		goto fail;
 
 	/* Validate counter */
 	if (!sign->counter(&sign_cnt, sign->user_data))
