@@ -1653,7 +1653,7 @@ static bool gatt_server_register_att_handlers(struct bt_gatt_server *server)
 						BT_ATT_OP_EXEC_WRITE_REQ,
 						exec_write_cb, server, NULL);
 	if (!server->exec_write_id)
-		return NULL;
+		return false;
 
 	/* Signed Write Command */
 	server->signed_write_cmd_id = bt_att_register(server->att,
