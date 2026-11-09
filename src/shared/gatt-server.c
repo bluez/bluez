@@ -838,7 +838,7 @@ static void write_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
 	struct async_write_op *op = NULL;
 	uint8_t ecode;
 
-	if (iov.iov_len < sizeof(handle)) {
+	if (!util_iov_pull_le16(&iov, &handle)) {
 		ecode = BT_ATT_ERROR_INVALID_PDU;
 		goto error;
 	}
@@ -846,8 +846,6 @@ static void write_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
 	ecode = authorize_req(server, opcode, handle);
 	if (ecode)
 		goto error;
-
-	util_iov_pull_le16(&iov, &handle);
 
 	attr = gatt_db_get_attribute(server->db, handle);
 	if (!attr) {

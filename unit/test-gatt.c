@@ -2008,7 +2008,7 @@ static void test_client(gconstpointer data)
 	create_context(512, data);
 }
 
-static void test_server(gconstpointer data)
+static struct context *create_server_context(gconstpointer data)
 {
 	struct context *context = create_context(512, data);
 	ssize_t len;
@@ -2021,7 +2021,37 @@ static void test_server(gconstpointer data)
 	tester_monitor('<', 0x0004, 0x0000, pdu.data, len);
 
 	g_free(pdu.data);
+
+	return context;
 }
+
+static void test_server(gconstpointer data)
+{
+	create_server_context(data);
+}
+
+static uint8_t server_authorize_cb(struct bt_att *att, uint8_t opcode,
+					uint16_t handle, void *user_data)
+{
+	struct context *context = user_data;
+	const struct test_step *step = context->data->step;
+
+	g_assert_cmpint(handle, ==, step->handle);
+
+	return 0;
+}
+
+static void test_server_authorize(gconstpointer data)
+{
+	struct context *context = create_server_context(data);
+
+	g_assert(bt_gatt_server_set_authorize(context->server,
+						server_authorize_cb, context));
+}
+
+static const struct test_step test_server_authorize_1 = {
+	.handle = 0x0004,
+};
 
 static void test_search_primary(gconstpointer data)
 {
@@ -5037,6 +5067,13 @@ int main(int argc, char *argv[])
 			raw_pdu(),
 			raw_pdu(0x23, 0x03, 0x00, 0x09, 0x00, 0x01, 0x02,
 				0x03));
+
+	define_test_server("/robustness/write-authorize-handle",
+			test_server_authorize, ts_small_db,
+			&test_server_authorize_1,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x12, 0x04, 0x00, 0x01, 0x00),
+			raw_pdu(0x13));
 
 	define_test_server("/robustness/read-by-grp-type-malformed",
 			test_server, ts_small_db, NULL,
