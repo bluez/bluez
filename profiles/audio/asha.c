@@ -60,7 +60,35 @@ struct bt_asha_device {
 	uint16_t imtu, omtu;
 
 	unsigned int resume_id;
+	bool streaming_counted;
+	bt_asha_cb_t start_cb;
+	void *start_cb_data;
 };
+
+static void asha_set_streaming(struct bt_asha_device *asha_dev, bool streaming)
+{
+	if (streaming == asha_dev->streaming_counted)
+		return;
+
+	if (streaming)
+		btd_adapter_le_audio_ref(device_get_adapter(asha_dev->device));
+	else
+		btd_adapter_le_audio_unref(
+					device_get_adapter(asha_dev->device));
+
+	asha_dev->streaming_counted = streaming;
+}
+
+static void asha_start_cb(int status, void *user_data)
+{
+	struct bt_asha_device *asha_dev = user_data;
+
+	if (status)
+		asha_set_streaming(asha_dev, false);
+
+	if (asha_dev->start_cb)
+		asha_dev->start_cb(status, asha_dev->start_cb_data);
+}
 
 static char *make_endpoint_path(struct bt_asha_device *asha_dev)
 {
@@ -91,6 +119,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	if (err) {
 		error("%s", err->message);
+		asha_set_streaming(asha_dev, false);
 		return;
 	}
 
@@ -107,8 +136,11 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	asha_dev->io = io;
 
-	bt_asha_start(asha_dev->asha, conn_data->cb,
-					conn_data->cb_user_data);
+	asha_dev->start_cb = conn_data->cb;
+	asha_dev->start_cb_data = conn_data->cb_user_data;
+
+	if (bt_asha_start(asha_dev->asha, asha_start_cb, asha_dev))
+		asha_set_streaming(asha_dev, false);
 }
 
 static int asha_connect_socket(struct bt_asha_device *asha_dev,
@@ -171,12 +203,15 @@ unsigned int bt_asha_device_start(struct bt_asha_device *asha_dev,
 
 	if (ret < 0)
 		return 0;
-	else
-		return (++asha_dev->resume_id);
+
+	asha_set_streaming(asha_dev, true);
+	return (++asha_dev->resume_id);
 }
 
 unsigned int bt_asha_device_stop(struct bt_asha_device *asha_dev)
 {
+	asha_set_streaming(asha_dev, false);
+
 	bt_asha_stop(asha_dev->asha);
 
 	if (asha_dev->io) {
@@ -190,6 +225,8 @@ unsigned int bt_asha_device_stop(struct bt_asha_device *asha_dev)
 
 void bt_asha_device_state_reset(struct bt_asha_device *asha_dev)
 {
+	asha_set_streaming(asha_dev, false);
+
 	if (asha_dev->io) {
 		g_io_channel_shutdown(asha_dev->io, TRUE, NULL);
 		g_io_channel_unref(asha_dev->io);
@@ -370,6 +407,8 @@ static void asha_source_device_remove(struct btd_service *service)
 		DBG("Not handling ASHA profile");
 		return;
 	}
+
+	asha_set_streaming(asha_dev, false);
 
 	bt_asha_free(asha_dev->asha);
 	g_free(asha_dev);
