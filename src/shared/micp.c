@@ -79,19 +79,6 @@ struct bt_micp_notify {
 	void *user_data;
 };
 
-static void *iov_pull_mem(struct iovec *iov, size_t len)
-{
-	void *data = iov->iov_base;
-
-	if (iov->iov_len < len)
-		return NULL;
-
-	iov->iov_base += len;
-	iov->iov_len -= len;
-
-	return data;
-}
-
 static struct bt_micp_db *micp_get_mdb(struct bt_micp *micp)
 {
 	if (!micp)
@@ -397,9 +384,9 @@ static void mics_mute_write(struct gatt_db_attribute *attrib,
 		goto respond;
 	}
 
-	micp_op = iov_pull_mem(&iov, sizeof(*micp_op));
+	micp_op = util_iov_pull_mem(&iov, sizeof(*micp_op));
 	if (!micp_op) {
-		DBG(micp, "iov_pull_mem() returned NULL");
+		DBG(micp, "util_iov_pull_mem() returned NULL");
 		goto respond;
 	}
 
@@ -746,7 +733,7 @@ static void read_mute_state(struct bt_micp *micp, bool success,
 		return;
 	}
 
-	mute_state = iov_pull_mem(&iov, sizeof(uint8_t));
+	mute_state = util_iov_pull_mem(&iov, sizeof(uint8_t));
 	if (mute_state == NULL) {
 		DBG(micp, "Unable to get Mute state");
 		return;
