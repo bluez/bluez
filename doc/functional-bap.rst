@@ -339,6 +339,31 @@ test_bap_unicast_duplex_disable_one
 	owner between the two transports, and set it only to disable the
 	ASEs one at a time.
 
+test_bap_unicast_duplex_release_shared
+--------------------------------------
+
+:Setup: As above, with both transports created and linked.
+
+:Steps:
+	1. Initiator: ``transport.acquire <sink transport>``, without
+	   desynchronizing, so both ASEs are enabled together.
+	2. Acceptor: ``transport.release <sink transport>``.
+
+:Expected:
+	1. ``Acquire successful: fd <fd> MTU <read>:<write>`` on both hosts,
+	   and both transports of the acceptor move to ``State: active``:
+	   `bluetoothctl` acquires the Sink ASE one as an audio server
+	   would, and its link shares the owner.
+	2. ``Release successful``, and both transports of the acceptor move
+	   to ``State: idle``.
+
+:Notes: The audio server releasing the transport it acquired has to
+	release the linked one with it, even though a transport leaving
+	streaming hands its owner over to a link that is still streaming
+	(see the previous test): a transport that is being released has its
+	owner removed by ``Release`` itself, so the link, which shares it,
+	has to follow, or it stays owned and never goes idle.
+
 BROADCAST
 =========
 
