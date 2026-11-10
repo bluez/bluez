@@ -2459,8 +2459,12 @@ static bool bap_handover_owner(struct media_transport *transport)
 	struct bt_bap_stream *stream;
 	struct media_transport *link;
 
-	if (!owner || !owner->watch || !bap->linked || bap->desync ||
-				bt_bap_stream_is_client(bap->stream))
+	/* A pending request is answered through its transport, and a transport
+	 * being released has its owner removed by Release itself.
+	 */
+	if (!owner || owner->pending || !owner->watch || !bap->linked ||
+			bap->desync || bt_bap_stream_is_client(bap->stream) ||
+			transport->state == TRANSPORT_STATE_SUSPENDING)
 		return false;
 
 	stream = queue_find(bt_bap_stream_io_get_links(bap->stream),
