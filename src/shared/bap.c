@@ -1564,20 +1564,8 @@ static void bap_stream_update_io_links(struct bt_bap_stream *stream)
 	queue_find(bap->streams, bap_stream_io_link, stream);
 }
 
-static bool match_stream_io(const void *data, const void *user_data)
-{
-	const struct bt_bap_stream *stream = data;
-	const struct bt_bap_stream_io *io = user_data;
-
-	if (!stream->io)
-		return false;
-
-	return stream->io == io;
-}
-
 static bool bap_stream_io_detach(struct bt_bap_stream *stream)
 {
-	struct bt_bap_stream *link;
 	struct bt_bap_stream_io *io;
 
 	if (!stream->io)
@@ -1588,13 +1576,10 @@ static bool bap_stream_io_detach(struct bt_bap_stream *stream)
 	io = stream->io;
 	stream->io = NULL;
 
-	link = queue_find(stream->links, match_stream_io, io);
-	if (link) {
-		/* Detach link if in QoS state */
-		if (link->ep->state == BT_ASCS_ASE_STATE_QOS)
-			bap_stream_io_detach(link);
-	}
-
+	/* A link keeps the CIS, even in QoS state, as it may be enabled
+	 * next over the same CIS: it is detached in turn when it is
+	 * disabled, released or the CIS is disconnected.
+	 */
 	stream_io_unref(io);
 
 	return true;
@@ -3215,7 +3200,10 @@ static bool bap_stream_io_attach(struct bt_bap_stream *stream, int fd,
 
 	io->connecting = connecting;
 	stream->io = io;
-	io_set_disconnect_handler(io->io, stream_io_disconnected, stream, NULL);
+	/* The IO may outlive the stream it was created for, as long as a
+	 * link uses it, so the handler looks up the stream using it.
+	 */
+	io_set_disconnect_handler(io->io, stream_io_disconnected, io, NULL);
 
 	return true;
 }
@@ -7279,9 +7267,21 @@ bool bt_bap_match_bcast_sink_stream(const void *data, const void *user_data)
 	return stream->lpac->type == BT_BAP_BCAST_SINK;
 }
 
-static bool stream_io_disconnected(struct io *io, void *user_data)
+static void stream_io_collect(void *data, void *user_data)
 {
-	struct bt_bap_stream *stream = user_data;
+	struct bt_bap_stream *stream = data;
+	void **args = user_data;
+
+	if (stream->io == args[0])
+		queue_push_tail(args[1], bt_bap_stream_ref(stream));
+}
+
+static void stream_io_lost(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+
+	if (!bap_stream_valid(stream))
+		return;
 
 	DBG(stream->bap, "stream %p io disconnected", stream);
 
@@ -7289,9 +7289,9 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 	 * and PA Sync have been lost so switch to idle state to cleanup the
 	 * stream.
 	 */
-	if (stream->lpac->type == BT_BAP_BCAST_SINK) {
+	if (stream->lpac && stream->lpac->type == BT_BAP_BCAST_SINK) {
 		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
-		return false;
+		return;
 	}
 
 	switch (stream->ep->state) {
@@ -7304,8 +7304,42 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
 		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
 		break;
 	}
+}
 
-	bt_bap_stream_set_io(stream, -1);
+static void stream_io_clear(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+
+	if (bap_stream_valid(stream))
+		bt_bap_stream_set_io(stream, -1);
+}
+
+static bool stream_io_disconnected(struct io *io, void *user_data)
+{
+	struct bt_bap_stream_io *sio = user_data;
+	struct bt_bap *bap;
+	struct queue *streams;
+	void *args[2];
+
+	bap = bt_bap_ref_safe(sio->bap);
+	if (!bap)
+		return false;
+
+	/* Every stream using the CIS, e.g. a Sink and a Source ASE sharing
+	 * it, has to be cleaned up, and their state callbacks may release
+	 * them or change their links, so hold a reference to each of them.
+	 */
+	streams = queue_new();
+	args[0] = sio;
+	args[1] = streams;
+	queue_foreach(bap->streams, stream_io_collect, args);
+
+	queue_foreach(streams, stream_io_lost, NULL);
+	queue_foreach(streams, stream_io_clear, NULL);
+
+	queue_destroy(streams, bt_bap_stream_unref);
+	bt_bap_unref(bap);
+
 	return false;
 }
 
