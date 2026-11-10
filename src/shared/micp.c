@@ -717,9 +717,16 @@ static void micp_mute_state_notify(struct bt_micp *micp, uint16_t value_handle,
 					const uint8_t *value, uint16_t length,
 					void *user_data)
 {
+	struct iovec iov = {
+		.iov_base = (void *)value,
+		.iov_len = length,
+	};
 	uint8_t mute_state;
 
-	memcpy(&mute_state, value, sizeof(mute_state));
+	if (!util_iov_pull_u8(&iov, &mute_state)) {
+		DBG(micp, "Unable to get Mute state");
+		return;
+	}
 
 	DBG(micp, "Mute state: 0x%x", mute_state);
 }
