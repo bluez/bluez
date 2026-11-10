@@ -1319,6 +1319,27 @@ static void clear_configuration_cb(int count, void *user_data)
 	free(data);
 }
 
+static struct bap_setup *bap_find_setup_by_stream(struct bap_data *data,
+					struct bt_bap_stream *stream);
+
+static void ep_release_cached(struct bt_bap_stream *stream, void *user_data)
+{
+	struct bap_ep *ep = user_data;
+
+	/* The server may have cached the codec configuration of a released
+	 * ASE, which has no setup anymore, so release it again.
+	 */
+	if (bt_bap_stream_get_rpac(stream) != ep->rpac ||
+			bt_bap_stream_get_state(stream) !=
+					BT_BAP_STREAM_STATE_CONFIG ||
+			bap_find_setup_by_stream(ep->data, stream))
+		return;
+
+	DBG("stream %p", stream);
+
+	bt_bap_stream_release(stream, NULL, NULL);
+}
+
 static DBusMessage *clear_configuration(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -1338,6 +1359,10 @@ static DBusMessage *clear_configuration(DBusConnection *conn, DBusMessage *msg,
 	cbdata->all = (path == NULL);
 
 	DBG("%p %s %s", cbdata, ep->path, path ? path : "NULL");
+
+	if (!path && ep->rpac)
+		bt_bap_foreach_stream(ep->data->bap, ep_release_cached, ep);
+
 	ep_close(ep, path, clear_configuration_cb, cbdata);
 	return NULL;
 }
