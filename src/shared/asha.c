@@ -368,18 +368,17 @@ static void read_psm(bool success,
 			void *user_data)
 {
 	struct bt_asha *asha = user_data;
+	struct iovec iov = { (void *)value, length };
 
 	if (!success) {
 		DBG("Reading PSM failed with ATT error: %u", att_ecode);
 		return;
 	}
 
-	if (length != 2) {
+	if (length != 2 || !util_iov_pull_le16(&iov, &asha->psm)) {
 		DBG("Reading PSM failed: unexpected length %u", length);
 		return;
 	}
-
-	asha->psm = get_le16(value);
 
 	DBG("Got PSM: %u", asha->psm);
 
@@ -393,41 +392,62 @@ static void read_rops(bool success,
 			void *user_data)
 {
 	struct bt_asha *asha = user_data;
+	struct iovec iov = { (void *)value, length };
+	uint8_t version, caps, features;
+	uint16_t render_delay, codec_ids;
+	uint8_t *hisyncid;
 
 	if (!success) {
 		DBG("Reading ROPs failed with ATT error: %u", att_ecode);
 		return;
 	}
 
-	if (length != 17) {
-		DBG("Reading ROPs failed: unexpected length %u", length);
-		return;
-	}
+	if (length != 17)
+		goto invalid;
 
-	if (value[0] != 0x01) {
-		DBG("Unexpected ASHA version: %u", value[0]);
+	if (!util_iov_pull_u8(&iov, &version) ||
+			!util_iov_pull_u8(&iov, &caps))
+		goto invalid;
+
+	hisyncid = util_iov_pull_mem(&iov, 8);
+	if (!hisyncid)
+		goto invalid;
+
+	if (!util_iov_pull_u8(&iov, &features) ||
+			!util_iov_pull_le16(&iov, &render_delay) ||
+			!util_iov_pull(&iov, 2) ||
+			!util_iov_pull_le16(&iov, &codec_ids))
+		goto invalid;
+
+	if (version != 0x01) {
+		DBG("Unexpected ASHA version: %u", version);
 		return;
 	}
 
 	/* Device Capabilities */
-	asha->right_side = (value[1] & 0x1) != 0;
-	asha->binaural = (value[1] & 0x2) != 0;
-	asha->csis_supported = (value[1] & 0x4) != 0;
+	asha->right_side = (caps & 0x1) != 0;
+	asha->binaural = (caps & 0x2) != 0;
+	asha->csis_supported = (caps & 0x4) != 0;
 	/* HiSyncId: 2 byte company id, 6 byte ID shared by left and right */
-	memcpy(asha->hisyncid, &value[2], 8);
+	memcpy(asha->hisyncid, hisyncid, 8);
 	/* FeatureMap */
-	asha->coc_streaming_supported = (value[10] & 0x1) != 0;
+	asha->coc_streaming_supported = (features & 0x1) != 0;
 	/* RenderDelay */
-	asha->render_delay = get_le16(&value[11]);
+	asha->render_delay = render_delay;
 	/* byte 13 & 14 are reserved */
 	/* Codec IDs */
-	asha->codec_ids = get_le16(&value[15]);
+	asha->codec_ids = codec_ids;
 
 	DBG("Got ROPS: side %u, binaural %u, csis: %u, delay %u, codecs: %u",
 			asha->right_side, asha->binaural, asha->csis_supported,
 			asha->render_delay, asha->codec_ids);
 
 	check_probe_done(asha);
+
+	return;
+
+invalid:
+	DBG("Reading ROPs failed: unexpected length %u", length);
 }
 
 static void audio_status_register(uint16_t att_ecode, void *user_data)
