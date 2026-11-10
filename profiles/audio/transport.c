@@ -2431,6 +2431,54 @@ done:
 	return FALSE;
 }
 
+static bool match_link_shares_owner(const void *data, const void *user_data)
+{
+	struct bt_bap_stream *link = (void *)data;
+	struct media_transport *transport;
+
+	if (!bap_link_enabled(link))
+		return false;
+
+	transport = find_transport_by_bap_stream(link);
+
+	return transport && transport->owner == user_data;
+}
+
+/*
+ * As a server, the client disables each ASE of a shared CIS on its own, so a
+ * link still enabled keeps streaming and takes over the owner they shared.
+ */
+static bool bap_handover_owner(struct media_transport *transport)
+{
+	struct bap_transport *bap = transport->data;
+	struct media_owner *owner = transport->owner;
+	struct bt_bap_stream *stream;
+	struct media_transport *link;
+
+	if (!owner || !owner->watch || !bap->linked || bap->desync ||
+				bt_bap_stream_is_client(bap->stream))
+		return false;
+
+	stream = queue_find(bt_bap_stream_io_get_links(bap->stream),
+				match_link_shares_owner, owner);
+	if (!stream)
+		return false;
+
+	link = find_transport_by_bap_stream(stream);
+
+	DBG("Transport %s Owner %s handed over to %s", transport->path,
+						owner->name, link->path);
+
+	transport->owner = NULL;
+	if (owner->transport == transport)
+		owner->transport = link;
+
+	/* The link now has its own owner, so it keeps its state */
+	media_transport_suspend(transport, NULL);
+
+	return true;
+}
+
 static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 				uint8_t new_state, void *user_data)
 {
@@ -2460,7 +2508,8 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 			bap_update_qos(transport);
 		else if (bt_bap_stream_io_dir(stream) != BT_BAP_BCAST_SOURCE)
 			bap_update_bcast_qos(transport);
-		transport_update_playing(transport, FALSE);
+		if (!bap_handover_owner(transport))
+			transport_update_playing(transport, FALSE);
 		return;
 	case BT_BAP_STREAM_STATE_DISABLING:
 		return;
@@ -2480,7 +2529,8 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
 	case BT_BAP_STREAM_STATE_RELEASING:
 		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SINK)
 			return;
-		transport_update_playing(transport, FALSE);
+		if (!bap_handover_owner(transport))
+			transport_update_playing(transport, FALSE);
 		goto done;
 	}
 
