@@ -306,6 +306,39 @@ test_bap_unicast_duplex_switch
 	seen by the controller of the acceptor, recorded with `btmon`,
 	rather than by the states of the transports.
 
+test_bap_unicast_duplex_disable_one
+-----------------------------------
+
+:Setup: As above, with both transports created and linked.
+
+:Steps:
+	1. Initiator: ``transport.acquire <source transport>``, without
+	   desynchronizing, so both ASEs are enabled together.
+	2. Initiator: ``transport.desync <source transport> on``, then
+	   ``transport.release <source transport>``.
+	3. Acceptor: ``transport.show <sink transport>``.
+
+:Expected:
+	1. ``Acquire successful: fd <fd> MTU <read>:<write>`` on both hosts,
+	   and both transports of the acceptor move to ``State: active``:
+	   `bluetoothctl` acquires one of them as an audio server would,
+	   and its link shares the owner.
+	2. ``Release successful``, and the transport of the Source ASE moves
+	   to ``State: idle`` on both hosts.
+	3. The transport of the Sink ASE is still ``State: active``.
+
+:Notes: Reproduces a remote initiator, e.g. a phone ending a call,
+	disabling the Source ASE of a headset while the Sink ASE keeps
+	receiving media. The transport of the Source ASE leaving streaming
+	used to take the owner, and so the state, of its link with it: the
+	audio server stopped the stream of the Sink ASE, which kept
+	receiving data, and acquired it again on its next update.
+
+	The initiator has to acquire the transport without having set
+	``Desynchronized``, as that is what makes the acceptor share the
+	owner between the two transports, and set it only to disable the
+	ASEs one at a time.
+
 BROADCAST
 =========
 
