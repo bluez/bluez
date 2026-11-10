@@ -835,6 +835,38 @@ def test_bap_unicast_duplex_disable_one(duplex_hosts):
     assert state == "active", f"{sink} {state} while its ASE keeps streaming"
 
 
+@duplex_host_config
+def test_bap_unicast_duplex_release_shared(duplex_hosts):
+    initiator, acceptor, to_sink, from_source, sink, source = duplex_hosts
+
+    # Acquire the transport of the Sink ASE without desynchronizing, so both
+    # ASEs are enabled together and bluetoothctl on the acceptor, as an
+    # audio server would, acquires the Sink ASE transport, its link sharing
+    # the owner
+    initiator.send(f"transport.acquire {to_sink}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {to_sink} State: active"])
+    expect_all(
+        acceptor,
+        [
+            ACQUIRED,
+            f"Transport {source} State: active",
+            f"Transport {sink} State: active",
+        ],
+    )
+
+    # Release the transport it acquired: its link shares the owner, so it
+    # has to be released along with it
+    acceptor.send(f"transport.release {sink}\n")
+    expect_all(
+        acceptor,
+        [
+            "Release successful",
+            f"Transport {sink} State: idle",
+            f"Transport {source} State: idle",
+        ],
+    )
+
+
 # Broadcast code used by the broadcast scripts, see BCAST_CODE in
 # client/player.c
 BCAST_CODE = (
