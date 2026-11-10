@@ -801,6 +801,40 @@ def test_bap_unicast_duplex_switch(duplex_hosts, acceptor_cis_count):
     expect_all(acceptor, [ACQUIRED, f"Transport {source} State: active"])
 
 
+@duplex_host_config
+def test_bap_unicast_duplex_disable_one(duplex_hosts):
+    initiator, acceptor, to_sink, from_source, sink, source = duplex_hosts
+
+    # Acquire the transport of the Source ASE without desynchronizing, so
+    # both ASEs are enabled together and bluetoothctl on the acceptor, as an
+    # audio server would, acquires one transport, whose link shares the
+    # owner
+    initiator.send(f"transport.acquire {from_source}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {from_source} State: active"])
+    expect_all(
+        acceptor,
+        [
+            ACQUIRED,
+            f"Transport {source} State: active",
+            f"Transport {sink} State: active",
+        ],
+    )
+
+    # Disable the Source ASE alone, as when a microphone is closed while
+    # media keeps playing
+    desync(initiator, to_sink, from_source)
+    initiator.send(f"transport.release {from_source}\n")
+    expect_all(
+        initiator, ["Release successful", f"Transport {from_source} State: idle"]
+    )
+    expect_all(acceptor, [f"Transport {source} State: idle"])
+
+    # The Sink ASE keeps streaming, so its transport has to stay active
+    time.sleep(2)
+    state = show_state(acceptor, sink)
+    assert state == "active", f"{sink} {state} while its ASE keeps streaming"
+
+
 # Broadcast code used by the broadcast scripts, see BCAST_CODE in
 # client/player.c
 BCAST_CODE = (
