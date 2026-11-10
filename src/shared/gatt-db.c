@@ -377,8 +377,8 @@ struct hash_data {
 static void gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
 {
 	struct hash_data *hash = user_data;
-	uint8_t *data;
-	size_t len;
+	struct iovec iov = {};
+	bool with_value;
 
 	if (!attr || !attr->value)
 		return;
@@ -391,30 +391,31 @@ static void gen_hash_m(struct gatt_db_attribute *attr, void *user_data)
 	case GATT_SND_SVC_UUID:
 	case GATT_INCLUDE_UUID:
 	case GATT_CHARAC_UUID:
-		/* Allocate space for handle + type + value */
-		len = 2 + 2 + attr->value_len;
-		data = malloc(2 + 2 + attr->value_len);
-		put_le16(attr->handle, data);
-		bt_uuid_to_le(&attr->uuid, data + 2);
-		memcpy(data + 4, attr->value, attr->value_len);
+		with_value = true;
 		break;
 	case GATT_CHARAC_USER_DESC_UUID:
 	case GATT_CLIENT_CHARAC_CFG_UUID:
 	case GATT_SERVER_CHARAC_CFG_UUID:
 	case GATT_CHARAC_FMT_UUID:
 	case GATT_CHARAC_AGREG_FMT_UUID:
-		/* Allocate space for handle + type  */
-		len = 2 + 2;
-		data = malloc(2 + 2 + attr->value_len);
-		put_le16(attr->handle, data);
-		bt_uuid_to_le(&attr->uuid, data + 2);
+		with_value = false;
 		break;
 	default:
 		return;
 	}
 
-	hash->iov[hash->i].iov_base = data;
-	hash->iov[hash->i].iov_len = len;
+	/* Allocate space for handle + type + value */
+	iov.iov_base = malloc(2 + 2 + attr->value_len);
+	if (!iov.iov_base)
+		return;
+
+	util_iov_push_le16(&iov, attr->handle);
+	util_iov_push_le16(&iov, attr->uuid.value.u16);
+
+	if (with_value)
+		util_iov_push_mem(&iov, attr->value_len, attr->value);
+
+	hash->iov[hash->i] = iov;
 
 	hash->i++;
 
@@ -563,41 +564,57 @@ bool gatt_db_isempty(struct gatt_db *db)
 	return queue_isempty(db->services);
 }
 
-static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)
+static bool push_uuid_le(struct iovec *iov, const bt_uuid_t *uuid)
 {
 	bt_uuid_t uuid128;
+	void *data;
 
-	if (uuid->type == BT_UUID16) {
-		put_le16(uuid->value.u16, dst);
-		return bt_uuid_len(uuid);
-	}
+	if (uuid->type == BT_UUID16)
+		return util_iov_push_le16(iov, uuid->value.u16) != NULL;
 
 	bt_uuid_to_uuid128(uuid, &uuid128);
-	bswap_128(&uuid128.value.u128, dst);
-	return bt_uuid_len(&uuid128);
-}
 
-static bool le_to_uuid(const uint8_t *src, size_t len, bt_uuid_t *uuid)
-{
-	uint128_t u128;
-
-	if (len == 2) {
-		bt_uuid16_create(uuid, get_le16(src));
-		return true;
-	}
-
-	if (len == 4) {
-		bt_uuid32_create(uuid, get_le32(src));
-		return true;
-	}
-
-	if (len != 16)
+	data = util_iov_push(iov, sizeof(uuid128.value.u128));
+	if (!data)
 		return false;
 
-	bswap_128(src, &u128);
-	bt_uuid128_create(uuid, u128);
+	bswap_128(&uuid128.value.u128, data);
 
 	return true;
+}
+
+/* Pull a 16, 32 or 128 bits UUID taking all the remaining data in iov */
+static bool pull_uuid_le(struct iovec *iov, bt_uuid_t *uuid)
+{
+	uint128_t u128;
+	uint16_t u16;
+	uint32_t u32;
+	void *data;
+
+	switch (iov->iov_len) {
+	case 2:
+		if (!util_iov_pull_le16(iov, &u16))
+			return false;
+
+		bt_uuid16_create(uuid, u16);
+		return true;
+	case 4:
+		if (!util_iov_pull_le32(iov, &u32))
+			return false;
+
+		bt_uuid32_create(uuid, u32);
+		return true;
+	case 16:
+		data = util_iov_pull_mem(iov, sizeof(u128));
+		if (!data)
+			return false;
+
+		bswap_128(data, &u128);
+		bt_uuid128_create(uuid, u128);
+		return true;
+	default:
+		return false;
+	}
 }
 
 static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
@@ -608,7 +625,7 @@ static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
 	struct gatt_db_service *service;
 	const bt_uuid_t *type;
 	uint8_t value[16];
-	uint16_t len;
+	struct iovec iov = { value, 0 };
 
 	if (num_handles < 1)
 		return NULL;
@@ -621,10 +638,10 @@ static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
 	else
 		type = &secondary_service_uuid;
 
-	len = uuid_to_le(uuid, value);
+	push_uuid_le(&iov, uuid);
 
 	service->attributes[0] = new_attribute(service, handle, type, value,
-									len);
+								iov.iov_len);
 	if (!service->attributes[0]) {
 		gatt_db_service_destroy(service);
 		return NULL;
@@ -943,6 +960,14 @@ static uint16_t service_get_attribute_index(struct gatt_db_service *service,
 	return i;
 }
 
+static void push_chrc_decl(struct iovec *iov, uint8_t properties,
+				uint16_t value_handle, const bt_uuid_t *uuid)
+{
+	util_iov_push_u8(iov, properties);
+	util_iov_push_le16(iov, value_handle);
+	push_uuid_le(iov, uuid);
+}
+
 static struct gatt_db_attribute *
 service_insert_characteristic(struct gatt_db_service *service,
 					uint16_t handle,
@@ -956,7 +981,7 @@ service_insert_characteristic(struct gatt_db_service *service,
 {
 	struct gatt_db_attribute **chrc;
 	uint8_t value[MAX_CHAR_DECL_VALUE_LEN];
-	uint16_t len = 0;
+	struct iovec iov = { value, 0 };
 	int i;
 
 	/* Check if handle is in within service range */
@@ -980,17 +1005,12 @@ service_insert_characteristic(struct gatt_db_service *service,
 	if (!i)
 		return NULL;
 
-	value[0] = properties;
-	len += sizeof(properties);
-
 	/* We set handle of characteristic value, which will be added next */
-	put_le16(value_handle, &value[1]);
-	len += sizeof(uint16_t);
-	len += uuid_to_le(uuid, &value[3]);
+	push_chrc_decl(&iov, properties, value_handle, uuid);
 
 	service->attributes[i] = new_attribute(service, handle,
 							&characteristic_uuid,
-							value, len);
+							value, iov.iov_len);
 	if (!service->attributes[i])
 		return NULL;
 
@@ -1014,7 +1034,8 @@ service_insert_characteristic(struct gatt_db_service *service,
 	}
 
 	/* Update handle of characteristic value_handle if it has changed */
-	put_le16(value_handle, &value[1]);
+	iov.iov_len = 0;
+	push_chrc_decl(&iov, properties, value_handle, uuid);
 
 	if (!(*chrc)->value) {
 		free(*chrc);
@@ -1022,8 +1043,8 @@ service_insert_characteristic(struct gatt_db_service *service,
 		return NULL;
 	}
 
-	if (memcmp((*chrc)->value, value, len))
-		memcpy((*chrc)->value, value, len);
+	if (memcmp((*chrc)->value, iov.iov_base, iov.iov_len))
+		memcpy((*chrc)->value, iov.iov_base, iov.iov_len);
 
 	set_attribute_data(service->attributes[i], read_func, write_func,
 							permissions, user_data);
@@ -1349,7 +1370,8 @@ service_insert_included(struct gatt_db_service *service, uint16_t handle,
 {
 	struct gatt_db_service *included;
 	uint8_t value[MAX_INCLUDED_VALUE_LEN];
-	uint16_t included_handle, len = 0;
+	struct iovec iov = { value, 0 };
+	uint16_t included_handle;
 	int index;
 
 	if (!include || !include->value || !include->service || !service)
@@ -1363,19 +1385,14 @@ service_insert_included(struct gatt_db_service *service, uint16_t handle,
 
 	included_handle = include->handle;
 
-	put_le16(included_handle, &value[len]);
-	len += sizeof(uint16_t);
-
-	put_le16(included_handle + included->num_handles - 1, &value[len]);
-	len += sizeof(uint16_t);
+	util_iov_push_le16(&iov, included_handle);
+	util_iov_push_le16(&iov, included_handle + included->num_handles - 1);
 
 	/* The Service UUID shall only be present when the UUID is a 16-bit
 	 * Bluetooth UUID. Vol 2. Part G. 3.2
 	 */
-	if (include->value_len == sizeof(uint16_t)) {
-		memcpy(&value[len], include->value, include->value_len);
-		len += include->value_len;
-	}
+	if (include->value_len == sizeof(uint16_t))
+		util_iov_push_mem(&iov, include->value_len, include->value);
 
 	index = service_get_attribute_index(service, &handle, 0);
 	if (!index)
@@ -1383,7 +1400,7 @@ service_insert_included(struct gatt_db_service *service, uint16_t handle,
 
 	service->attributes[index] = new_attribute(service, handle,
 							&included_service_uuid,
-							value, len);
+							value, iov.iov_len);
 	if (!service->attributes[index])
 		return NULL;
 
@@ -1953,28 +1970,19 @@ bool gatt_db_attribute_get_service_uuid(const struct gatt_db_attribute *attrib,
 							bt_uuid_t *uuid)
 {
 	struct gatt_db_service *service;
+	struct gatt_db_attribute *decl;
 
 	if (!attrib || !uuid)
 		return false;
 
 	service = attrib->service;
+	decl = service->attributes[0];
 
-	if (service->attributes[0]->value_len == sizeof(uint16_t)) {
-		uint16_t value;
+	if (decl->value_len == sizeof(uint16_t) ||
+				decl->value_len == sizeof(uint128_t)) {
+		struct iovec iov = { decl->value, decl->value_len };
 
-		value = get_le16(service->attributes[0]->value);
-		bt_uuid16_create(uuid, value);
-
-		return true;
-	}
-
-	if (service->attributes[0]->value_len == sizeof(uint128_t)) {
-		uint128_t value;
-
-		bswap_128(service->attributes[0]->value, &value);
-		bt_uuid128_create(uuid, value);
-
-		return true;
+		return pull_uuid_le(&iov, uuid);
 	}
 
 	return false;
@@ -2005,6 +2013,7 @@ bool gatt_db_attribute_get_service_data(const struct gatt_db_attribute *attrib,
 {
 	struct gatt_db_service *service;
 	struct gatt_db_attribute *decl;
+	struct iovec iov;
 
 	if (!attrib)
 		return false;
@@ -2024,7 +2033,10 @@ bool gatt_db_attribute_get_service_data(const struct gatt_db_attribute *attrib,
 	 * The service declaration attribute value is the 16 or 128 bit service
 	 * UUID.
 	 */
-	return le_to_uuid(decl->value, decl->value_len, uuid);
+	iov.iov_base = decl->value;
+	iov.iov_len = decl->value_len;
+
+	return pull_uuid_le(&iov, uuid);
 }
 
 static void read_ext_prop_value(struct gatt_db_attribute *attrib,
@@ -2091,6 +2103,10 @@ bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 							uint16_t *ext_prop,
 							bt_uuid_t *uuid)
 {
+	struct iovec iov;
+	uint8_t props;
+	uint16_t vhandle;
+
 	if (!attrib)
 		return false;
 
@@ -2117,22 +2133,29 @@ bool gatt_db_attribute_get_char_data(const struct gatt_db_attribute *attrib,
 						attrib->value_len != 19))
 		return false;
 
+	iov.iov_base = attrib->value;
+	iov.iov_len = attrib->value_len;
+
+	if (!util_iov_pull_u8(&iov, &props) ||
+			!util_iov_pull_le16(&iov, &vhandle))
+		return false;
+
+	if (uuid && !pull_uuid_le(&iov, uuid))
+		return false;
+
 	if (handle)
 		*handle = attrib->handle;
 
 	if (properties)
-		*properties = attrib->value[0];
+		*properties = props;
 
 	if (ext_prop)
 		*ext_prop = get_char_extended_prop(attrib);
 
 	if (value_handle)
-		*value_handle = get_le16(attrib->value + 1);
+		*value_handle = vhandle;
 
-	if (!uuid)
-		return true;
-
-	return le_to_uuid(attrib->value + 3, attrib->value_len - 3, uuid);
+	return true;
 }
 
 bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
@@ -2140,6 +2163,9 @@ bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 							uint16_t *start_handle,
 							uint16_t *end_handle)
 {
+	struct iovec iov;
+	uint16_t start, end;
+
 	if (!attrib)
 		return false;
 
@@ -2155,6 +2181,13 @@ bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 	if (!attrib->value || attrib->value_len < 4 || attrib->value_len > 6)
 		return false;
 
+	iov.iov_base = attrib->value;
+	iov.iov_len = attrib->value_len;
+
+	if (!util_iov_pull_le16(&iov, &start) ||
+			!util_iov_pull_le16(&iov, &end))
+		return false;
+
 	/*
 	 * We only return the handles since the UUID can be easily obtained
 	 * from the corresponding attribute.
@@ -2163,10 +2196,10 @@ bool gatt_db_attribute_get_incl_data(const struct gatt_db_attribute *attrib,
 		*handle = attrib->handle;
 
 	if (start_handle)
-		*start_handle = get_le16(attrib->value);
+		*start_handle = start;
 
 	if (end_handle)
-		*end_handle = get_le16(attrib->value + 2);
+		*end_handle = end;
 
 	return true;
 }
