@@ -733,6 +733,74 @@ def test_bap_unicast_duplex_enable_one(duplex_hosts):
         assert state == "active", f"{path} {state} once the Sink ASE released"
 
 
+@pytest.fixture
+def acceptor_cis_count(hosts):
+    """
+    Function telling how many CIS the acceptor (host1) was asked to accept so
+    far, which bluetoothd does not report to the test: btmon records what the
+    controller of the acceptor sees.
+    """
+    btmon = find_exe("monitor", "btmon")
+    trace = "/tmp/acceptor-cis.btsnoop"
+
+    host = hosts[1]
+    host.pexpect.spawn([btmon, "-w", trace])
+
+    # btmon has started recording once the trace has its header
+    ready = f"until [ -s {trace} ]; do sleep 0.1; done; echo ready"
+    with host.pexpect.spawn(["sh", "-c", ready]) as ctl:
+        ctl.expect("ready")
+
+    def count():
+        events = (
+            f"{btmon} -r {trace} -P | grep -c 'LE Connected Isochronous Stream Request'"
+        )
+        with host.pexpect.spawn(["sh", "-c", events]) as ctl:
+            _, m = ctl.expect(r"(\d+)\r?\n")
+            return int(m[0])
+
+    yield count
+
+
+@duplex_host_config
+def test_bap_unicast_duplex_switch(duplex_hosts, acceptor_cis_count):
+    initiator, acceptor, to_sink, from_source, sink, source = duplex_hosts
+
+    desync(initiator, to_sink, from_source)
+
+    # Enable the remote Source ASE alone, as for the microphone of a
+    # voice call
+    initiator.send(f"transport.acquire {from_source}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {from_source} State: active"])
+    expect_all(acceptor, [ACQUIRED, f"Transport {source} State: active"])
+    assert acceptor_cis_count() == 1
+
+    # Disable it and enable the Sink ASE right after, over the same CIS
+    initiator.send(f"transport.release {from_source}\n")
+    expect_all(
+        initiator, ["Release successful", f"Transport {from_source} State: idle"]
+    )
+    expect_all(acceptor, [f"Transport {source} State: idle"])
+
+    initiator.send(f"transport.acquire {to_sink}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {to_sink} State: active"])
+    expect_all(acceptor, [ACQUIRED, f"Transport {sink} State: active"])
+
+    # The Sink ASE streams over the CIS of the Source ASE: the acceptor must
+    # not disconnect it, as the initiator does not have to request it again
+    assert acceptor_cis_count() == 1, "CIS requested again for the Sink ASE"
+
+    # Once neither is enabled the CIS is disconnected, so enabling one
+    # again needs a new CIS on both sides
+    initiator.send(f"transport.release {to_sink}\n")
+    expect_all(initiator, ["Release successful", f"Transport {to_sink} State: idle"])
+    expect_all(acceptor, [f"Transport {sink} State: idle"])
+
+    initiator.send(f"transport.acquire {from_source}\n")
+    expect_all(initiator, [ACQUIRED, f"Transport {from_source} State: active"])
+    expect_all(acceptor, [ACQUIRED, f"Transport {source} State: active"])
+
+
 # Broadcast code used by the broadcast scripts, see BCAST_CODE in
 # client/player.c
 BCAST_CODE = (
