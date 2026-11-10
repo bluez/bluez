@@ -124,6 +124,7 @@ static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_bearer *bearer = user_data;
 	struct btd_device *device = bearer->device;
+	DBusMessage *reply;
 	int err;
 
 	if (btd_device_bdaddr_type_connected(device, bearer->type)) {
@@ -145,19 +146,21 @@ static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 	}
 
-	if (msg)
-		bearer->connect = dbus_message_ref(msg);
-
-	if (bearer->type == BDADDR_BREDR)
-		return device_connect_profiles(device, BDADDR_BREDR,
-								msg, NULL);
-	else {
+	if (bearer->type == BDADDR_BREDR) {
+		reply = device_connect_profiles(device, BDADDR_BREDR, msg,
+									NULL);
+		if (reply)
+			return reply;
+	} else {
 		btd_device_set_temporary(device, false);
 		device_resume_auto_connect(device);
 		err = device_connect_le(device);
 		if (err < 0)
 			return btd_error_failed(msg, strerror(-err));
 	}
+
+	if (msg)
+		bearer->connect = dbus_message_ref(msg);
 
 	return NULL;
 }
