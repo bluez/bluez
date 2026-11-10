@@ -4952,6 +4952,95 @@ static void test_usr_scc_switch_cis(void)
 			&cfg_switch_cis, SCC_SWITCH_CIS);
 }
 
+static int disable_link_cis_fd = -1;
+
+static bool match_stream_dir(const void *data, const void *user_data)
+{
+	return bt_bap_stream_get_dir((void *)data) == PTR_TO_UINT(user_data);
+}
+
+static void state_disable_link(struct bt_bap_stream *stream,
+					uint8_t old_state, uint8_t new_state,
+					void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bt_bap_stream *link;
+	char buf;
+	int fds[2];
+	int err;
+	int fd;
+
+	if (bt_bap_stream_get_dir(stream) != BT_BAP_SOURCE)
+		return;
+
+	switch (new_state) {
+	case BT_BAP_STREAM_STATE_ENABLING:
+		err = socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+									fds);
+		g_assert(err == 0);
+		g_assert(bt_bap_stream_io_connecting(stream, fds[0]) == 0);
+		disable_link_cis_fd = fds[0];
+		data->fds[0][0] = fds[0];
+		data->fds[0][1] = fds[1];
+		break;
+	case BT_BAP_STREAM_STATE_QOS:
+		if (old_state != BT_BAP_STREAM_STATE_DISABLING)
+			return;
+
+		/* The Sink ASE is still streaming over the CIS, linked to the
+		 * Source ASE, so its transport has to stay acquired.
+		 */
+		link = queue_find(bt_bap_stream_io_get_links(stream),
+					match_stream_dir,
+					UINT_TO_PTR(BT_BAP_SINK));
+		g_assert(link);
+		g_assert(bt_bap_stream_get_state(link) ==
+					BT_BAP_STREAM_STATE_STREAMING);
+
+		fd = -1;
+		bt_bap_stream_io_is_connecting(link, &fd);
+		g_assert(fd == disable_link_cis_fd);
+		err = recv(data->fds[0][1], &buf, 1, MSG_DONTWAIT | MSG_PEEK);
+		g_assert(err < 0 && errno == EAGAIN);
+		break;
+	}
+}
+
+static struct test_config cfg_disable_link = {
+	.cc = LC3_CONFIG_16_2,
+	.qos = LC3_QOS_16_2_1,
+	.snk = true,
+	.src = true,
+	.state_func = state_disable_link,
+};
+
+/* Sink and Source ASE configured for the same CIS and both streaming: the
+ * Source ASE alone is disabled and stopped, as when a call ends while media
+ * keeps playing. The Sink ASE has to keep streaming over the same CIS.
+ */
+#define SCC_DISABLE_LINK \
+	DISC_SRC_ASE_LC3, \
+	SCC_SNK(LC3_CONFIG_16_2_DATA), \
+	SCC_SRC(LC3_CONFIG_16_2_DATA), \
+	QOS_SNK(QOS_16_2_1_DATA), \
+	QOS_SRC(QOS_16_2_1_DATA), \
+	SRC_ENABLE, \
+	SRC_START, \
+	ENABLE_ASE(SNK_ID(0)), \
+	SNK_ENABLE_NOTIFY(0, 0), \
+	SNK_START_NOTIFY(0, 0), \
+	SRC_DISABLE, \
+	IOV_DATA(0x52, CP_HND, 0x06, 0x01, SRC_ID(0)), \
+	ASE_CP_RSP(0x06, SRC_ID(0), 0x00, 0x00), \
+	QOS_SRC_NOTIFY(0, 0, QOS_16_2_1_DATA)
+
+static void test_usr_scc_disable_link(void)
+{
+	define_test("BAP/USR/SCC/BLUEZ-5 [USR Disable one ASE of a shared CIS]",
+			test_setup_server, test_server_state,
+			&cfg_disable_link, SCC_DISABLE_LINK);
+}
+
 static struct test_config str_snk_ac2_8_1_1 = {
 	.cc = LC3_CONFIG_8_1_AC(1),
 	.qos = LC3_QOS_8_1_1_AC(1),
@@ -7816,6 +7905,7 @@ static void test_scc(void)
 	test_usr_scc_release_link();
 	test_usr_scc_release_cis();
 	test_usr_scc_switch_cis();
+	test_usr_scc_disable_link();
 	test_scc_metadata();
 	test_str_1_1_1_lc3();
 }
