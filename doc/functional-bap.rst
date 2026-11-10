@@ -269,6 +269,43 @@ test_bap_unicast_duplex_enable_one
 	made active through its link, so the test checks the state of the
 	transport rather than the result of the acquisition.
 
+test_bap_unicast_duplex_switch
+------------------------------
+
+:Setup: As above, with both transports created and linked, and
+	desynchronized on the initiator.
+
+:Steps:
+	1. Initiator: ``transport.acquire <source transport>``.
+	2. Initiator: ``transport.release <source transport>``, then right
+	   after ``transport.acquire <sink transport>``.
+	3. Initiator: ``transport.release <sink transport>``, then
+	   ``transport.acquire <source transport>``.
+
+:Expected:
+	1. The Source ASE transport moves to ``State: active`` on both hosts.
+	2. The Source ASE transport moves back to ``State: idle`` and the
+	   Sink ASE one to ``State: active`` on both hosts, over the CIS
+	   established in step 1, which neither host disconnects while the
+	   Sink ASE is still configured for it: the acceptor is asked to
+	   accept a single CIS up to this point.
+	3. Once neither ASE is enabled the CIS is disconnected, and the
+	   Source ASE transport moves to ``State: active`` again on both
+	   hosts, over a new CIS.
+
+:Notes: Reproduces a remote initiator, e.g. a phone in a voice call,
+	switching a headset from its microphone to its speaker over the
+	same CIS. An acceptor disconnecting the CIS when the Source ASE is
+	disabled leaves the Sink ASE enabled without a CIS, as the
+	initiator does not establish it again, so the Sink ASE transport
+	never becomes pending.
+
+	`bluetoothd` as initiator establishes a new CIS when needed, so the
+	switch still succeeds when the acceptor disconnects the CIS, over a
+	second one. The test tells them apart by counting the CIS requests
+	seen by the controller of the acceptor, recorded with `btmon`,
+	rather than by the states of the transports.
+
 BROADCAST
 =========
 
