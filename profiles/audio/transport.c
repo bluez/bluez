@@ -370,7 +370,11 @@ static void transport_bap_remove_owner(struct media_transport *transport,
 {
 	struct bap_transport *bap = transport->data;
 
-	if (bap && bap->linked && !bap->desync)
+	/*
+	 * Also when desynchronized, as the links may have been given the owner
+	 * before, and the owner is about to be freed.
+	 */
+	if (bap && bap->linked)
 		queue_foreach(bt_bap_stream_io_get_links(bap->stream),
 				linked_transport_remove_owner, owner);
 }
