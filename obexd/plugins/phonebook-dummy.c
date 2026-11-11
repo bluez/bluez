@@ -175,7 +175,9 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 
 		v = Parse_MIME_FromFile(fp);
 		if (v != NULL) {
-			func(filename, v, user_data);
+			if (func)
+				func(filename, v, user_data);
+
 			deleteVObject(v);
 			n++;
 		}
