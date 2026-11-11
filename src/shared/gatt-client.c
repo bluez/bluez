@@ -1560,11 +1560,15 @@ static bool read_db_hash(struct discovery_op *op)
 static void db_server_feat_read(bool success, uint8_t att_ecode,
 				struct bt_gatt_result *result, void *user_data)
 {
-	struct discovery_op *op = user_data;
+	struct request *req = user_data;
+	struct discovery_op *op = req->data;
 	struct bt_gatt_client *client = op->client;
 	const uint8_t *value;
 	uint16_t len, handle;
 	struct bt_gatt_iter iter;
+
+	bt_gatt_request_unref(req->gatt_req);
+	req->gatt_req = NULL;
 
 	if (!result)
 		return;
@@ -1596,6 +1600,7 @@ static void server_feat_read_value(struct gatt_db_attribute *attrib,
 static void read_server_feat(struct discovery_op *op)
 {
 	struct bt_gatt_client *client = op->client;
+	struct request *req;
 	struct gatt_db_attribute *attr = NULL;
 	const uint8_t *feat = NULL;
 	bt_uuid_t uuid;
@@ -1612,11 +1617,18 @@ static void read_server_feat(struct discovery_op *op)
 			return;
 	}
 
-	if (!bt_gatt_read_by_type(client->att, 0x0001, 0xffff, &uuid,
-							db_server_feat_read,
-							discovery_op_ref(op),
-							discovery_op_unref))
-		discovery_op_unref(op);
+	req = request_create(client);
+	if (!req)
+		return;
+
+	req->data = discovery_op_ref(op);
+	req->destroy = discovery_op_unref;
+	req->gatt_req = bt_gatt_read_by_type_request(client->att,
+						0x0001, 0xffff, &uuid,
+						db_server_feat_read, req,
+						request_unref);
+	if (!req->gatt_req)
+		request_unref(req);
 }
 
 static void exchange_mtu_cb(bool success, uint8_t att_ecode, void *user_data)

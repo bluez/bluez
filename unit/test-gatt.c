@@ -2008,6 +2008,15 @@ static void test_client(gconstpointer data)
 	create_context(512, data);
 }
 
+static void test_client_cancel_features(gconstpointer data)
+{
+	struct context *context = create_context(23, data);
+
+	g_assert(bt_gatt_client_cancel_all(context->client));
+	g_assert(bt_gatt_client_cancel_all(context->client));
+	context_quit(context);
+}
+
 static struct context *create_server_context(gconstpointer data)
 {
 	struct context *context = create_context(512, data);
@@ -2792,6 +2801,22 @@ int main(int argc, char *argv[])
 	struct gatt_db *mic_len_db;
 
 	tester_init(&argc, &argv);
+
+	define_test_client("/robustness/server-features/queued",
+			test_client_cancel_features, NULL, NULL, {});
+
+	define_test_client("/robustness/server-features/pending",
+			test_client, NULL, NULL, MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x3a, 0x2b));
+
+	define_test_client("/robustness/server-features/continuation",
+			test_client, NULL, NULL, MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x3a, 0x2b),
+			raw_pdu(0x09, 0x03, 0x03, 0x00, 0x01),
+			raw_pdu(0x10, 0x01, 0x00, 0xff, 0xff, 0x00, 0x28),
+			raw_pdu(0x11, 0x06, 0x01, 0x00, 0x04, 0x00,
+				0x01, 0x18),
+			raw_pdu(0x08, 0x04, 0x00, 0xff, 0xff, 0x3a, 0x2b));
 
 	service_db_1 = make_service_data_1_db();
 	service_db_2 = make_service_data_2_db();
