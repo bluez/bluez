@@ -1468,11 +1468,15 @@ static void db_hash_read_cb(bool success, uint8_t att_ecode,
 						struct bt_gatt_result *result,
 						void *user_data)
 {
-	struct discovery_op *op = user_data;
+	struct request *req = user_data;
+	struct discovery_op *op = req->data;
 	struct bt_gatt_client *client = op->client;
 	const uint8_t *hash = NULL, *value;
 	uint16_t len, handle;
 	struct bt_gatt_iter iter;
+
+	bt_gatt_request_unref(req->gatt_req);
+	req->gatt_req = NULL;
 
 	if (!success)
 		goto discover;
@@ -1532,6 +1536,7 @@ static void get_first_attribute(struct gatt_db_attribute *attrib,
 static bool read_db_hash(struct discovery_op *op)
 {
 	struct bt_gatt_client *client = op->client;
+	struct request *req;
 	bt_uuid_t uuid;
 
 	/* Check if hash was already been read or there are more services to
@@ -1546,11 +1551,18 @@ static bool read_db_hash(struct discovery_op *op)
 	if (!op->hash)
 		return false;
 
-	if (!bt_gatt_read_by_type(client->att, 0x0001, 0xffff, &uuid,
-							db_hash_read_cb,
-							discovery_op_ref(op),
-							discovery_op_unref)) {
-		discovery_op_unref(op);
+	req = request_create(client);
+	if (!req)
+		return false;
+
+	req->data = discovery_op_ref(op);
+	req->destroy = discovery_op_unref;
+	req->gatt_req = bt_gatt_read_by_type_request(client->att,
+						0x0001, 0xffff, &uuid,
+						db_hash_read_cb, req,
+						request_unref);
+	if (!req->gatt_req) {
+		request_unref(req);
 		return false;
 	}
 

@@ -42,6 +42,7 @@ struct test_pdu {
 enum context_type {
 	ATT,
 	CLIENT,
+	CLIENT_CACHED,
 	SERVER
 };
 
@@ -717,9 +718,15 @@ static struct context *create_context(uint16_t mtu, gconstpointer data)
 						"bt_gatt_server:", NULL);
 		break;
 	case CLIENT:
+	case CLIENT_CACHED:
 		step = test_data->step;
 
-		context->client_db = gatt_db_new();
+		if (test_data->context_type == CLIENT_CACHED)
+			context->client_db =
+					gatt_db_ref(test_data->source_db);
+		else
+			context->client_db = gatt_db_new();
+
 		g_assert(context->client_db);
 
 		context->client = bt_gatt_client_new(context->client_db,
@@ -2003,6 +2010,15 @@ static struct gatt_db *make_test_tail_db(void)
 	return make_db(specs);
 }
 
+static void test_client_cancel_hash(gconstpointer data)
+{
+	struct context *context = create_context(23, data);
+
+	g_assert(bt_gatt_client_cancel_all(context->client));
+	g_assert(bt_gatt_client_cancel_all(context->client));
+	context_quit(context);
+}
+
 static void test_client(gconstpointer data)
 {
 	create_context(512, data);
@@ -2799,6 +2815,15 @@ int main(int argc, char *argv[])
 	struct gatt_db *service_db_1, *service_db_2, *service_db_3;
 	struct gatt_db *ts_small_db, *ts_large_db_1, *ts_tail_db;
 	struct gatt_db *mic_len_db;
+	struct gatt_db *hash_db;
+	const struct att_handle_spec hash_specs[] = {
+		PRIMARY_SERVICE(0x0001, GATT_UUID, 5),
+		CHARACTERISTIC(GATT_CHARAC_SERVER_FEAT, BT_ATT_PERM_READ,
+				BT_GATT_CHRC_PROP_READ, 0x00),
+		CHARACTERISTIC(GATT_CHARAC_DB_HASH, BT_ATT_PERM_READ,
+				BT_GATT_CHRC_PROP_READ, 0x00),
+		{ }
+	};
 
 	tester_init(&argc, &argv);
 
@@ -2833,6 +2858,24 @@ int main(int argc, char *argv[])
 	 * The test group objective is to verify Generic Attribute Profile
 	 * Server Configuration.
 	 */
+
+	hash_db = make_db(hash_specs);
+	define_test("/robustness/db-hash/queued", test_client_cancel_hash,
+			CLIENT_CACHED, NULL, hash_db, NULL, {});
+
+	define_test("/robustness/db-hash/pending", test_client,
+			CLIENT_CACHED, NULL, hash_db, NULL,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x2a, 0x2b));
+
+	define_test("/robustness/db-hash/continuation", test_client,
+			CLIENT_CACHED, NULL, hash_db, NULL,
+			MTU_EXCHANGE_CLIENT_PDUS,
+			raw_pdu(0x08, 0x01, 0x00, 0xff, 0xff, 0x2a, 0x2b),
+			raw_pdu(0x09, 0x12, 0x05, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
+			raw_pdu(0x08, 0x06, 0x00, 0xff, 0xff, 0x2a, 0x2b));
 
 	define_test_client("/TP/GAC/CL/BV-01-C", test_client, NULL, NULL,
 						raw_pdu(0x02, 0x00, 0x02));
