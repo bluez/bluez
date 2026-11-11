@@ -1484,7 +1484,8 @@ done:
 	discovery_op_complete(op, success, att_ecode);
 }
 
-bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
+struct bt_gatt_request *bt_gatt_read_by_type_request(struct bt_att *att,
+					uint16_t start, uint16_t end,
 					const bt_uuid_t *uuid,
 					bt_gatt_request_callback_t callback,
 					void *user_data,
@@ -1495,7 +1496,7 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 	struct iovec req = { pdu, 0 };
 
 	if (!att || !uuid || uuid->type == BT_UUID_UNSPEC)
-		return false;
+		return NULL;
 
 	op = new0(struct bt_gatt_request, 1);
 	op->att = att;
@@ -1516,10 +1517,27 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 						bt_gatt_request_ref(op),
 						async_req_unref);
 	if (op->id)
-		return true;
+		return bt_gatt_request_ref(op);
 
 	free(op);
-	return false;
+	return NULL;
+}
+
+bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
+					const bt_uuid_t *uuid,
+					bt_gatt_request_callback_t callback,
+					void *user_data,
+					bt_gatt_destroy_func_t destroy)
+{
+	struct bt_gatt_request *req;
+
+	req = bt_gatt_read_by_type_request(att, start, end, uuid, callback,
+							user_data, destroy);
+	if (!req)
+		return false;
+
+	bt_gatt_request_unref(req);
+	return true;
 }
 
 static void discover_descs_cb(uint8_t opcode, const void *pdu,
