@@ -329,7 +329,7 @@ Possible return:
 :"KEY":
 :"NICKNAME":
 :"CATEGORIES":
-:"PROID":
+:"PRODID":
 :"CLASS":
 :"SORT-STRING":
 :"X-IRMC-CALL-DATETIME":
