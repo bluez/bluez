@@ -118,13 +118,13 @@ bool vhci_set_debug(struct vhci *vhci, vhci_debug_func_t callback,
 struct vhci_create_req {
 	uint8_t  pkt_type;
 	uint8_t  opcode;
-} __attribute__((packed));
+} __packed;
 
 struct vhci_create_rsp {
 	uint8_t  pkt_type;
 	uint8_t  opcode;
 	uint16_t index;
-} __attribute__((packed));
+} __packed;
 
 struct vhci *vhci_open(uint8_t type)
 {
