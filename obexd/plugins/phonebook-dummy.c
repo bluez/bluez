@@ -61,6 +61,109 @@ struct digest_data {
 
 static char *root_folder = NULL;
 
+static gboolean vobject_value_present(VObject *prop)
+{
+	const char *str;
+	const wchar_t *ustr;
+	VObject *size;
+
+	switch (vObjectValueType(prop)) {
+	case VCVT_STRINGZ:
+		str = vObjectStringZValue(prop);
+		return str && str[0];
+	case VCVT_USTRINGZ:
+		ustr = vObjectUStringZValue(prop);
+		return ustr && uStrLen(ustr) > 0;
+	case VCVT_UINT:
+	case VCVT_ULONG:
+		return TRUE;
+	case VCVT_RAW:
+		if (!vObjectAnyValue(prop))
+			return FALSE;
+
+		size = isAPropertyOf(prop, VCDataSizeProp);
+		if (!size)
+			return FALSE;
+
+		switch (vObjectValueType(size)) {
+		case VCVT_UINT:
+			return vObjectIntegerValue(size) > 0;
+		case VCVT_ULONG:
+			return vObjectLongValue(size) > 0;
+		default:
+			return FALSE;
+		}
+	case VCVT_VOBJECT:
+		return vObjectVObjectValue(prop) != NULL;
+	default:
+		return FALSE;
+	}
+}
+
+static gboolean vcard_property_present(VObject *v, const char *name)
+{
+	static const char * const name_fields[] = {
+		VCFamilyNameProp, VCGivenNameProp, VCAdditionalNamesProp,
+		VCNamePrefixesProp, VCNameSuffixesProp, NULL
+	};
+	static const char * const address_fields[] = {
+		VCPostalBoxProp, VCExtAddressProp, VCStreetAddressProp,
+		VCCityProp, VCRegionProp, VCPostalCodeProp, VCCountryNameProp,
+		NULL
+	};
+	static const char * const org_fields[] = {
+		VCOrgNameProp, VCOrgUnitProp, VCOrgUnit2Prop, VCOrgUnit3Prop,
+		VCOrgUnit4Prop, NULL
+	};
+	const char * const *fields = NULL;
+	VObjectIterator iterator;
+	VObject *prop;
+	unsigned int i;
+
+	if (!g_ascii_strcasecmp(name, VCNameProp))
+		fields = name_fields;
+	else if (!g_ascii_strcasecmp(name, VCAdrProp))
+		fields = address_fields;
+	else if (!g_ascii_strcasecmp(name, VCOrgProp))
+		fields = org_fields;
+
+	initPropIterator(&iterator, v);
+
+	while (moreIteration(&iterator)) {
+		prop = nextVObject(&iterator);
+
+		if (g_ascii_strcasecmp(vObjectName(prop), name))
+			continue;
+
+		if (vobject_value_present(prop))
+			return TRUE;
+
+		for (i = 0; fields && fields[i]; i++) {
+			VObject *field = isAPropertyOf(prop, fields[i]);
+
+			if (field && vobject_value_present(field))
+				return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+static uint64_t vcard_presence_mask(VObject *v)
+{
+	uint64_t mask = 0;
+	unsigned int i;
+
+	for (i = 0; i < G_N_ELEMENTS(phonebook_selector_properties); i++) {
+		const char *property = phonebook_selector_properties[i];
+
+		if (property && vcard_property_present(v, property))
+			mask |= (1ULL << i);
+	}
+
+	return mask;
+}
+
 static void dummy_free(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
@@ -459,6 +562,9 @@ static void dummy_update_folder_version(const char *folder)
 struct concat_data {
 	GString *buffer;
 	const struct apparam_field *params;
+	uint16_t offset;
+	uint16_t max;
+	uint16_t count;
 };
 
 static char *filter_vcard_photo(const char *buffer, size_t length,
@@ -537,6 +643,23 @@ static void entry_concat(const char *filename, VObject *v, void *user_data)
 	size_t filtered_len;
 	int len;
 
+	if (!phonebook_selector_match(vcard_presence_mask(v),
+					data->params->selector,
+					data->params->selector_operator))
+		return;
+
+	data->count++;
+
+	/*
+	 * Offset and MaxListCount apply to the vCards matching the
+	 * vCardSelector.
+	 */
+	if (data->count <= data->offset)
+		return;
+
+	if (data->count - data->offset > data->max)
+		return;
+
 	/*
 	 * VObject API uses len for IN and OUT
 	 * Written bytes is also returned in the len variable
@@ -555,41 +678,43 @@ static void entry_concat(const char *filename, VObject *v, void *user_data)
 static gboolean read_dir(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
-	struct concat_data data;
+	struct concat_data data = { 0 };
 	DIR *dp;
-	uint16_t count = 0, max, offset;
 
 	data.buffer = g_string_new("");
 	data.params = dummy->apparams;
-
-	dp = opendir(dummy->folder);
-	if (dp == NULL) {
-		int err = errno;
-		DBG("opendir(): %s(%d)", strerror(err), err);
-		goto done;
-	}
 
 	/*
 	 * For PullPhoneBook function, the decision of returning the size
 	 * or contacts is made in the PBAP core. When MaxListCount is ZERO,
 	 * PCE wants to know the size of a given folder, PSE shall ignore all
-	 * other applicattion parameters that may be present in the request.
+	 * other application parameters that may be present in the request,
+	 * except the vCardSelector and vCardSelectorOperator, which still
+	 * apply to the returned size.
 	 */
-	if (dummy->apparams->maxlistcount == 0) {
-		max = 0xffff;
-		offset = 0;
-	} else {
-		max = dummy->apparams->maxlistcount;
-		offset = dummy->apparams->liststartoffset;
+	if (dummy->apparams->maxlistcount == 0)
+		data.max = 0xffff;
+	else {
+		data.max = dummy->apparams->maxlistcount;
+		data.offset = dummy->apparams->liststartoffset;
 	}
 
-	foreach_vcard(dp, entry_concat, offset, max, &data, &count);
+	dp = opendir(dummy->folder);
+	if (dp == NULL) {
+		int err = errno;
+
+		DBG("opendir(): %s(%d)", strerror(err), err);
+
+		goto done;
+	}
+
+	foreach_vcard(dp, entry_concat, 0, 0xffff, &data, NULL);
 
 	closedir(dp);
 done:
 	/* FIXME: Missing vCards fields filtering */
-	dummy->cb(data.buffer->str, data.buffer->len, count,
-			dummy->newmissedcalls, TRUE, dummy->user_data);
+	dummy->cb(data.buffer->str, data.buffer->len, data.count,
+				dummy->newmissedcalls, TRUE, dummy->user_data);
 
 	g_string_free(data.buffer, TRUE);
 
@@ -602,6 +727,7 @@ static void entry_notify(const char *filename, VObject *v, void *user_data)
 	VObject *property, *subproperty;
 	GString *name;
 	const char *tel;
+	uint64_t mask;
 	long unsigned int handle;
 
 	property = isAPropertyOf(v, VCNameProp);
@@ -613,6 +739,8 @@ static void entry_notify(const char *filename, VObject *v, void *user_data)
 
 	if (handle > UINT32_MAX)
 		return;
+
+	mask = vcard_presence_mask(v);
 
 	/* LastName; FirstName; MiddleName; Prefix; Suffix */
 
@@ -648,7 +776,7 @@ static void entry_notify(const char *filename, VObject *v, void *user_data)
 
 	tel = property ? fakeCString(vObjectUStringZValue(property)) : NULL;
 
-	query->entry_cb(filename, handle, name->str, NULL, tel,
+	query->entry_cb(filename, handle, name->str, NULL, tel, mask,
 							query->user_data);
 	g_string_free(name, TRUE);
 }

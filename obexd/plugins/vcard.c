@@ -387,6 +387,75 @@ static gboolean contact_fields_present(struct phonebook_contact * contact)
 	return FALSE;
 }
 
+static gboolean field_values_present(GSList *fields)
+{
+	GSList *l;
+
+	for (l = fields; l; l = l->next) {
+		struct phonebook_field *field = l->data;
+
+		if (field->text && field->text[0])
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+uint64_t phonebook_contact_get_mask(struct phonebook_contact *contact)
+{
+	const char * const values[] = {
+		[1] = contact->fullname,
+		[3] = contact->photo,
+		[4] = contact->birthday,
+		[12] = contact->title,
+		[13] = contact->role,
+		[16] = contact->company,
+		[21] = contact->uid,
+		[23] = contact->nickname,
+		[28] = contact->calltype != CALL_TYPE_NOT_A_CALL ?
+						contact->datetime : NULL,
+	};
+	uint64_t mask = FILTER_VERSION;
+	GSList *l;
+	unsigned int i;
+
+	for (i = 0; i < G_N_ELEMENTS(values); i++) {
+		if (values[i] && values[i][0])
+			mask |= 1ULL << i;
+	}
+
+	if (contact_fields_present(contact))
+		mask |= FILTER_N;
+
+	if (contact->department && contact->department[0])
+		mask |= FILTER_ORG;
+
+	if (field_values_present(contact->numbers))
+		mask |= FILTER_TEL;
+
+	if (field_values_present(contact->emails))
+		mask |= FILTER_EMAIL;
+
+	if (field_values_present(contact->urls))
+		mask |= FILTER_URL;
+
+	for (l = contact->addresses; l; l = l->next) {
+		struct phonebook_addr *addr = l->data;
+		GSList *field;
+
+		for (field = addr->fields; field; field = field->next) {
+			const char *value = field->data;
+
+			if (value && value[0]) {
+				mask |= FILTER_ADR;
+				break;
+			}
+		}
+	}
+
+	return mask;
+}
+
 static void vcard_printf_name(GString *vcards, uint8_t format,
 					struct phonebook_contact *contact)
 {
