@@ -51,13 +51,16 @@
 #define FORMAT_TAG			0x07
 #define PHONEBOOKSIZE_TAG		0x08
 #define NEWMISSEDCALLS_TAG		0x09
+#define DATABASEID_TAG			0x0D
 #define SUPPORTED_FEATURES_TAG		0x10
 
 #define DOWNLOAD_FEATURE	0x00000001
 #define BROWSE_FEATURE		0x00000002
+#define DATABASEID_FEATURE	0x00000004
 
 #define PSE_SUPPORTED_FEATURES \
-	(DOWNLOAD_FEATURE | BROWSE_FEATURE)
+	(DOWNLOAD_FEATURE | BROWSE_FEATURE | \
+	DATABASEID_FEATURE)
 
 struct cache {
 	gboolean valid;
@@ -167,6 +170,25 @@ static void cache_clear(struct cache *cache)
 	cache->entries = NULL;
 }
 
+/* Adds the metadata application parameters to the response. */
+static void response_add_metadata(struct pbap_session *pbap)
+{
+	struct phonebook_metadata metadata;
+
+	if (!(pbap->negotiated_features & DATABASEID_FEATURE))
+		return;
+
+	memset(&metadata, 0, sizeof(metadata));
+
+	if (!phonebook_get_metadata(&metadata))
+		DBG("Metadata unavailable");
+
+	pbap->obj->apparam = g_obex_apparam_set_bytes(pbap->obj->apparam,
+					DATABASEID_TAG,
+					metadata.database_identifier,
+					sizeof(metadata.database_identifier));
+}
+
 static void response_add_missed_calls(struct pbap_session *pbap, uint8_t missed)
 {
 	const char *folder = pbap->obj->folder;
@@ -208,6 +230,7 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	pbap->obj->firstpacket = TRUE;
 
 	response_add_missed_calls(pbap, missed);
+	response_add_metadata(pbap);
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
@@ -256,6 +279,7 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	/* Application parameters go in the first response packet only */
 	if (first) {
 		response_add_missed_calls(pbap, missed);
+		response_add_metadata(pbap);
 
 		if (pbap->obj->apparam)
 			pbap->obj->firstpacket = TRUE;
@@ -273,6 +297,14 @@ static void vcard_result(const char *buffer, size_t bufsize, int vcards,
 	first = vobject_append(pbap, buffer, bufsize, vcards, lastpart);
 	if (first < 0)
 		return;
+
+	/* Application parameters go in the first response packet only */
+	if (first) {
+		response_add_metadata(pbap);
+
+		if (pbap->obj->apparam)
+			pbap->obj->firstpacket = TRUE;
+	}
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
@@ -396,6 +428,7 @@ static int generate_response(struct pbap_session *pbap, uint8_t missed)
 	DBG("");
 
 	response_add_missed_calls(pbap, missed);
+	response_add_metadata(pbap);
 
 	if (max == 0) {
 		/* Ignore all other parameter and return PhoneBookSize */
@@ -902,7 +935,7 @@ fail:
 	return NULL;
 }
 
-static ssize_t vobject_pull_get_next_header(void *object, void *buf, size_t mtu,
+static ssize_t vobject_get_next_header(void *object, void *buf, size_t mtu,
 								uint8_t *hi)
 {
 	struct pbap_object *obj = object;
@@ -1006,7 +1039,7 @@ static const struct obex_mime_type_driver mime_pull = {
 	.open = vobject_pull_open,
 	.close = vobject_close,
 	.read = vobject_pull_read,
-	.get_next_header = vobject_pull_get_next_header,
+	.get_next_header = vobject_get_next_header,
 };
 
 static const struct obex_mime_type_driver mime_list = {
@@ -1026,6 +1059,7 @@ static const struct obex_mime_type_driver mime_vcard = {
 	.open = vobject_vcard_open,
 	.close = vobject_close,
 	.read = vobject_vcard_read,
+	.get_next_header = vobject_get_next_header,
 };
 
 static int pbap_init(void)
