@@ -1035,7 +1035,44 @@ static void ep_close_setup(void *data, void *user_data)
 		epdata->count++;
 }
 
-static void ep_close(struct bap_ep *ep, const char *transport_path,
+static struct bap_setup *bap_find_setup_by_stream(struct bap_data *data,
+					struct bt_bap_stream *stream);
+
+struct cached_release_data {
+	struct bap_ep *ep;
+	struct ep_close_data *epdata;
+};
+
+static void ep_release_cached_cb(struct bt_bap_stream *stream, uint8_t code,
+					uint8_t reason, void *user_data)
+{
+	struct ep_close_data *epdata = user_data;
+
+	ep_close_setup_cb(NULL, epdata);
+}
+
+static void ep_release_cached(struct bt_bap_stream *stream, void *user_data)
+{
+	struct cached_release_data *data = user_data;
+	struct bap_ep *ep = data->ep;
+
+	/* The server may have cached the codec configuration of a released
+	 * ASE, which has no setup anymore, so release it again.
+	 */
+	if (bt_bap_stream_get_rpac(stream) != ep->rpac ||
+			bt_bap_stream_get_state(stream) !=
+					BT_BAP_STREAM_STATE_CONFIG ||
+			bap_find_setup_by_stream(ep->data, stream))
+		return;
+
+	DBG("stream %p", stream);
+
+	data->epdata->remaining++;
+	if (!bt_bap_stream_release(stream, ep_release_cached_cb, data->epdata))
+		data->epdata->remaining--;
+}
+
+static void ep_close(struct bap_ep *ep, const char *transport_path, bool cached,
 			void (*cb)(int count, void *user_data), void *user_data)
 {
 	struct ep_close_data *epdata;
@@ -1050,6 +1087,15 @@ static void ep_close(struct bap_ep *ep, const char *transport_path,
 
 	if (ep)
 		queue_foreach(ep->setups, ep_close_setup, epdata);
+
+	/* The cached streams have to be released before replying, as an ASE
+	 * still being released can't be configured again.
+	 */
+	if (cached && ep && ep->rpac) {
+		struct cached_release_data data = { ep, epdata };
+
+		bt_bap_foreach_stream(ep->data->bap, ep_release_cached, &data);
+	}
 
 	epdata->path = NULL;
 	ep_close_setup_cb(NULL, epdata);
@@ -1338,7 +1384,8 @@ static DBusMessage *clear_configuration(DBusConnection *conn, DBusMessage *msg,
 	cbdata->all = (path == NULL);
 
 	DBG("%p %s %s", cbdata, ep->path, path ? path : "NULL");
-	ep_close(ep, path, clear_configuration_cb, cbdata);
+
+	ep_close(ep, path, !path, clear_configuration_cb, cbdata);
 	return NULL;
 }
 
@@ -1424,7 +1471,7 @@ static void ep_close_if_reconfigure(void *obj, void *user_data)
 
 	if (ep->reconfigure) {
 		data->remaining++;
-		ep_close(ep, NULL, reconfigure_close_cb, data);
+		ep_close(ep, NULL, false, reconfigure_close_cb, data);
 	}
 }
 
