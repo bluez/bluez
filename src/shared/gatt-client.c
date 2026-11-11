@@ -120,6 +120,7 @@ struct request {
 	int ref_count;
 	unsigned int id;
 	unsigned int att_id;
+	struct bt_gatt_request *gatt_req;
 	void *data;
 	void (*destroy)(void *);
 };
@@ -2810,6 +2811,15 @@ static bool cancel_prep_write_session(struct bt_gatt_client *client,
 static bool cancel_request(struct request *req)
 {
 	req->removed = true;
+
+	if (req->gatt_req) {
+		struct bt_gatt_request *gatt_req = req->gatt_req;
+
+		req->gatt_req = NULL;
+		bt_gatt_request_cancel(gatt_req);
+		bt_gatt_request_unref(gatt_req);
+		return true;
+	}
 
 	if (req->long_write)
 		return cancel_long_write_req(req->client, req);
