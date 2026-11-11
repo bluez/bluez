@@ -353,14 +353,15 @@ static GSList *sort_entries(GSList *l, uint8_t order, uint8_t search_attrib,
 	return sorted;
 }
 
-static int generate_response(void *user_data)
+static int generate_response(struct pbap_session *pbap, uint8_t missed)
 {
-	struct pbap_session *pbap = user_data;
 	GSList *sorted;
 	GSList *l;
 	uint16_t max = pbap->params->maxlistcount;
 
 	DBG("");
+
+	response_add_missed_calls(pbap, missed);
 
 	if (max == 0) {
 		/* Ignore all other parameter and return PhoneBookSize */
@@ -401,10 +402,13 @@ static int generate_response(void *user_data)
 							VCARD_LISTING_END);
 	g_slist_free(sorted);
 
+	if (pbap->obj->apparam)
+		pbap->obj->firstpacket = TRUE;
+
 	return 0;
 }
 
-static void cache_ready_notify(void *user_data)
+static void cache_ready_notify(uint8_t missed, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 
@@ -415,11 +419,11 @@ static void cache_ready_notify(void *user_data)
 
 	pbap->cache.valid = TRUE;
 
-	generate_response(pbap);
+	generate_response(pbap, missed);
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
 
-static void cache_entry_done(void *user_data)
+static void cache_entry_done(uint8_t missed, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const char *id;
