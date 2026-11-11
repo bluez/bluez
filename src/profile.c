@@ -469,7 +469,7 @@
 			<uint8 value=\"0x01\"/>				\
 		</attribute>						\
 		<attribute id=\"0x0317\">				\
-			<uint32 value=\"0x00000003\"/>			\
+			<uint32 value=\"0x0000021f\"/>			\
 		</attribute>						\
 		<attribute id=\"0x0200\">				\
 			<uint16 value=\"%u\" name=\"psm\"/>		\
@@ -2208,7 +2208,7 @@ static struct default_settings {
 		.mode		= BT_IO_MODE_ERTM,
 		.authorize	= true,
 		.get_record	= get_pse_record,
-		.version	= 0x0101,
+		.version	= 0x0102,
 		.imtu		= BT_RX_MTU,
 	}, {
 		.uuid		= OBEX_PCE_UUID,
