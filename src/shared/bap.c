@@ -2794,6 +2794,13 @@ static struct bt_bap_stream_io *bap_ucast_get_io(struct bt_bap_stream *stream)
 
 	queue_foreach(stream->links, stream_find_io, &io);
 
+	/* The stream uses the IO of its link, e.g. when enabled again over the
+	 * CIS its link kept, so it has to hold it as well, as the link may be
+	 * its last other user.
+	 */
+	if (io)
+		stream->io = stream_io_ref(io);
+
 	return io;
 }
 
