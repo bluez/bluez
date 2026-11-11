@@ -267,12 +267,14 @@ static void ccc_read_cb(bool success, uint8_t att_ecode,
 {
 	struct report *report = user_data;
 	struct bt_hog *hog = report->hog;
+	struct iovec iov = { (void *)value, length };
+	uint16_t ccc;
 
 	if (!success)
 		DBG(hog, "Error reading CCC value: 0x%02x", att_ecode);
-	else if (length == 2)
+	else if (length == 2 && util_iov_pull_le16(&iov, &ccc))
 		DBG(hog, "Report 0x%04x: CCC 0x%04x",
-				report->value_handle, get_le16(value));
+				report->value_handle, ccc);
 
 	/* Enable notifications regardless, as the HID Device may not
 	 * persist them.
@@ -286,6 +288,7 @@ static void report_reference_cb(bool success, uint8_t att_ecode,
 {
 	struct report *report = user_data;
 	struct bt_hog *hog = report->hog;
+	struct iovec iov = { (void *)value, length };
 
 	if (!success) {
 		DBG(hog, "Read Report Reference descriptor failed: 0x%02x",
@@ -300,8 +303,9 @@ static void report_reference_cb(bool success, uint8_t att_ecode,
 
 	cache_value(hog, report->ref_handle, value, length);
 
-	report->id = value[0];
-	report->type = value[1];
+	if (!util_iov_pull_u8(&iov, &report->id) ||
+			!util_iov_pull_u8(&iov, &report->type))
+		return;
 
 	DBG(hog, "Report 0x%04x: id 0x%02x type %s", report->value_handle,
 				report->id, type_to_string(report->type));
@@ -438,6 +442,7 @@ static void external_report_reference_cb(bool success, uint8_t att_ecode,
 {
 	struct ext_ref *ref = user_data;
 	struct bt_hog *hog = ref->hog;
+	struct iovec iov = { (void *)value, length };
 	uint16_t uuid16;
 
 	if (!success) {
@@ -454,7 +459,9 @@ static void external_report_reference_cb(bool success, uint8_t att_ecode,
 
 	cache_value(hog, ref->handle, value, length);
 
-	uuid16 = get_le16(value);
+	if (!util_iov_pull_le16(&iov, &uuid16))
+		goto done;
+
 	DBG(hog, "External report reference read, external report "
 				"characteristic UUID: 0x%04x", uuid16);
 
@@ -901,20 +908,19 @@ static void sci_mode_read_cb(bool success, uint8_t att_ecode,
 					void *user_data)
 {
 	struct bt_hog *hog = user_data;
+	struct iovec iov = { (void *)value, length };
 
 	if (!success) {
 		DBG(hog, "HID SCI Mode read failed: 0x%02x", att_ecode);
 		return;
 	}
 
-	if (length != 1) {
+	if (length != 1 || !util_iov_pull_u8(&iov, &hog->sci_mode)) {
 		DBG(hog, "Malformed HID SCI Mode: length %u", length);
 		return;
 	}
 
-	hog->sci_mode = value[0];
-
-	DBG(hog, "SCI Mode: 0x%02X", value[0]);
+	DBG(hog, "SCI Mode: 0x%02X", hog->sci_mode);
 
 }
 
@@ -923,6 +929,7 @@ static void sci_info_read_cb(bool success, uint8_t att_ecode,
 					void *user_data)
 {
 	struct bt_hog *hog = user_data;
+	struct iovec iov = { (void *)value, length };
 	uint8_t min_conn_interval;
 	uint8_t num_grps;
 	uint8_t i;
@@ -932,25 +939,23 @@ static void sci_info_read_cb(bool success, uint8_t att_ecode,
 		return;
 	}
 
-	if (length < 2) {
+	if (!util_iov_pull_u8(&iov, &min_conn_interval) ||
+			!util_iov_pull_u8(&iov, &num_grps)) {
 		DBG(hog, "Malformed HID SCI Information: length %u", length);
 		return;
 	}
-
-	min_conn_interval = value[0];
-	num_grps = value[1];
 
 	DBG(hog, "SCI Info: Minimum Supported Connection Interval: %.3f ms "
 		"(0x%02x) Number of Supported Subgroups: %d",
 		min_conn_interval * 0.125, min_conn_interval, num_grps);
 
-	for (i = 0; i < num_grps && (2 + i * 6 + 5) < length; i++) {
+	for (i = 0; i < num_grps; i++) {
 		uint16_t min, max, stride;
-		size_t off = 2 + i * 6;
 
-		min = get_le16(&value[off]);
-		max = get_le16(&value[off + 2]);
-		stride = get_le16(&value[off + 4]);
+		if (!util_iov_pull_le16(&iov, &min) ||
+				!util_iov_pull_le16(&iov, &max) ||
+				!util_iov_pull_le16(&iov, &stride))
+			break;
 
 		DBG(hog, "  Subgroup[%u]: Min %.3f ms Max %.3f ms "
 				"Stride %.3f ms", i, min * 0.125, max * 0.125,
@@ -963,14 +968,13 @@ static void sci_mode_notify_cb(uint16_t value_handle, const uint8_t *value,
 					uint16_t length, void *user_data)
 {
 	struct bt_hog *hog = user_data;
+	struct iovec iov = { (void *)value, length };
 
-	if (length != 1) {
+	if (length != 1 || !util_iov_pull_u8(&iov, &hog->sci_mode)) {
 		DBG(hog, "Malformed HID SCI Mode notification: length %u",
 								length);
 		return;
 	}
-
-	hog->sci_mode = value[0];
 
 	DBG(hog, "SCI Mode changed: 0x%02X", hog->sci_mode);
 
@@ -1007,6 +1011,7 @@ static void info_read_cb(bool success, uint8_t att_ecode,
 					void *user_data)
 {
 	struct bt_hog *hog = user_data;
+	struct iovec iov = { (void *)value, length };
 
 	if (!success) {
 		DBG(hog, "HID Information read failed: 0x%02x", att_ecode);
@@ -1020,9 +1025,10 @@ static void info_read_cb(bool success, uint8_t att_ecode,
 
 	cache_value(hog, hog->info_handle, value, length);
 
-	hog->bcdhid = get_le16(&value[0]);
-	hog->bcountrycode = value[2];
-	hog->flags = value[3];
+	if (!util_iov_pull_le16(&iov, &hog->bcdhid) ||
+			!util_iov_pull_u8(&iov, &hog->bcountrycode) ||
+			!util_iov_pull_u8(&iov, &hog->flags))
+		return;
 
 	DBG(hog, "bcdHID: 0x%04X bCountryCode: 0x%02X Flags: 0x%02X",
 			hog->bcdhid, hog->bcountrycode, hog->flags);
@@ -1047,6 +1053,8 @@ static void proto_mode_read_cb(bool success, uint8_t att_ecode,
 					void *user_data)
 {
 	struct bt_hog *hog = user_data;
+	struct iovec iov = { (void *)value, length };
+	uint8_t mode;
 
 	if (!success) {
 		DBG(hog, "Protocol Mode characteristic read failed: 0x%02x",
@@ -1054,12 +1062,12 @@ static void proto_mode_read_cb(bool success, uint8_t att_ecode,
 		return;
 	}
 
-	if (length < 1) {
+	if (!util_iov_pull_u8(&iov, &mode)) {
 		DBG(hog, "Malformed Protocol Mode: length %u", length);
 		return;
 	}
 
-	if (value[0] == HOG_PROTO_MODE_BOOT) {
+	if (mode == HOG_PROTO_MODE_BOOT) {
 		uint8_t nval = HOG_PROTO_MODE_REPORT;
 
 		DBG(hog, "HoG is operating in Boot Protocol Mode");
@@ -1067,7 +1075,7 @@ static void proto_mode_read_cb(bool success, uint8_t att_ecode,
 		bt_gatt_client_write_without_response(hog->client,
 						hog->proto_mode_handle, false,
 						&nval, sizeof(nval));
-	} else if (value[0] == HOG_PROTO_MODE_REPORT)
+	} else if (mode == HOG_PROTO_MODE_REPORT)
 		DBG(hog, "HoG is operating in Report Protocol Mode");
 
 }
