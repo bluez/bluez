@@ -54,7 +54,7 @@
 #define FILTER_KEY (1 << 22)
 #define FILTER_NICKNAME (1 << 23)
 #define FILTER_CATEGORIES (1 << 24)
-#define FILTER_PROID (1 << 25)
+#define FILTER_PRODID (1 << 25)
 #define FILTER_CLASS (1 << 26)
 #define FILTER_SORT_STRING (1 << 27)
 #define FILTER_X_IRMC_CALL_DATETIME (1 << 28)
