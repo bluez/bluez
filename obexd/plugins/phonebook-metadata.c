@@ -192,3 +192,57 @@ void metadata_file_close(void)
 		metadata_file = NULL;
 	}
 }
+
+/* Increments a 128-bit big-endian counter. Returns FALSE on rollover. */
+static gboolean counter_incr(uint8_t counter[16])
+{
+	int i;
+
+	for (i = 15; i >= 0; i--) {
+		counter[i]++;
+
+		if (counter[i])
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+/*
+ * Increments the primary and secondary folder version counters.
+ * Returns FALSE on missing counters or rollover.
+ */
+gboolean metadata_folder_version_counter_incr(const char *folder,
+						gboolean primary_changed,
+						gboolean secondary_changed)
+{
+	uint8_t primary[16];
+	uint8_t secondary[16];
+
+	if (!metadata_file || !metadata_kf)
+		return FALSE;
+
+	if (primary_changed) {
+		if (!metadata_get(folder, PRIMARY_COUNTER, primary))
+			return FALSE;
+
+		if (!counter_incr(primary))
+			return FALSE;
+
+		metadata_set(folder, PRIMARY_COUNTER, primary);
+	}
+
+	if (secondary_changed && (g_str_equal(folder, PB_CONTACTS_FOLDER) ||
+			g_str_equal(folder, PB_CALLS_SPEEDDIAL_FOLDER) ||
+			g_str_equal(folder, PB_CALLS_FAVORITE_FOLDER))) {
+		if (!metadata_get(folder, SECONDARY_COUNTER, secondary))
+			return FALSE;
+
+		if (!counter_incr(secondary))
+			return FALSE;
+
+		metadata_set(folder, SECONDARY_COUNTER, secondary);
+	}
+
+	return TRUE;
+}

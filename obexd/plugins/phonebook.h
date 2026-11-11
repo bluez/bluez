@@ -39,6 +39,8 @@
 #define PB_INFO_LOG "/telecom/pb/info.log"
 #define PB_CC_LOG "/telecom/pb/luid/cc.log"
 
+#define PRIMARY_COUNTER "primary_counter"
+#define SECONDARY_COUNTER "secondary_counter"
 
 struct apparam_field {
 	/* list and pull attributes */
