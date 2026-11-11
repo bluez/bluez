@@ -60,6 +60,8 @@ struct apparam_field {
 /* Metadata identifying the current database contents. */
 struct phonebook_metadata {
 	uint8_t database_identifier[16];
+	uint8_t primary_counter[16];
+	uint8_t secondary_counter[16];
 };
 
 /*
@@ -110,7 +112,8 @@ char *phonebook_set_folder(const char *current_folder,
  * Returns the metadata identifying the current database contents. A zero
  * database identifier means the values are not persistent.
  */
-int phonebook_get_metadata(struct phonebook_metadata *metadata);
+int phonebook_get_metadata(const char *folder,
+					struct phonebook_metadata *metadata);
 
 /*
  * phonebook_pull should be used only to prepare pull request - prepared

@@ -51,16 +51,19 @@
 #define FORMAT_TAG			0x07
 #define PHONEBOOKSIZE_TAG		0x08
 #define NEWMISSEDCALLS_TAG		0x09
+#define PRIMARY_COUNTER_TAG		0x0A
+#define SECONDARY_COUNTER_TAG		0x0B
 #define DATABASEID_TAG			0x0D
 #define SUPPORTED_FEATURES_TAG		0x10
 
 #define DOWNLOAD_FEATURE	0x00000001
 #define BROWSE_FEATURE		0x00000002
 #define DATABASEID_FEATURE	0x00000004
+#define FOLDER_VERSION_FEATURE	0x00000008
 
 #define PSE_SUPPORTED_FEATURES \
 	(DOWNLOAD_FEATURE | BROWSE_FEATURE | \
-	DATABASEID_FEATURE)
+	DATABASEID_FEATURE | FOLDER_VERSION_FEATURE)
 
 struct cache {
 	gboolean valid;
@@ -171,22 +174,42 @@ static void cache_clear(struct cache *cache)
 }
 
 /* Adds the metadata application parameters to the response. */
-static void response_add_metadata(struct pbap_session *pbap)
+static void response_add_metadata(struct pbap_session *pbap,
+						gboolean include_counters)
 {
 	struct phonebook_metadata metadata;
+	gboolean database_id, folder_version;
+	const char *folder = pbap->obj->folder;
 
-	if (!(pbap->negotiated_features & DATABASEID_FEATURE))
+	database_id = pbap->negotiated_features & DATABASEID_FEATURE;
+	folder_version = include_counters &&
+			(pbap->negotiated_features & FOLDER_VERSION_FEATURE);
+
+	if (!database_id && !folder_version)
 		return;
 
-	memset(&metadata, 0, sizeof(metadata));
-
-	if (!phonebook_get_metadata(&metadata))
+	if (!phonebook_get_metadata(folder, &metadata))
 		DBG("Metadata unavailable");
 
-	pbap->obj->apparam = g_obex_apparam_set_bytes(pbap->obj->apparam,
-					DATABASEID_TAG,
+	if (database_id)
+		pbap->obj->apparam = g_obex_apparam_set_bytes(
+					pbap->obj->apparam, DATABASEID_TAG,
 					metadata.database_identifier,
 					sizeof(metadata.database_identifier));
+
+	if (folder_version) {
+		pbap->obj->apparam = g_obex_apparam_set_bytes(
+					pbap->obj->apparam,
+					PRIMARY_COUNTER_TAG,
+					metadata.primary_counter,
+					sizeof(metadata.primary_counter));
+
+		pbap->obj->apparam = g_obex_apparam_set_bytes(
+					pbap->obj->apparam,
+					SECONDARY_COUNTER_TAG,
+					metadata.secondary_counter,
+					sizeof(metadata.secondary_counter));
+	}
 }
 
 static void response_add_missed_calls(struct pbap_session *pbap, uint8_t missed)
@@ -230,7 +253,7 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	pbap->obj->firstpacket = TRUE;
 
 	response_add_missed_calls(pbap, missed);
-	response_add_metadata(pbap);
+	response_add_metadata(pbap, TRUE);
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
@@ -279,7 +302,7 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	/* Application parameters go in the first response packet only */
 	if (first) {
 		response_add_missed_calls(pbap, missed);
-		response_add_metadata(pbap);
+		response_add_metadata(pbap, TRUE);
 
 		if (pbap->obj->apparam)
 			pbap->obj->firstpacket = TRUE;
@@ -300,7 +323,7 @@ static void vcard_result(const char *buffer, size_t bufsize, int vcards,
 
 	/* Application parameters go in the first response packet only */
 	if (first) {
-		response_add_metadata(pbap);
+		response_add_metadata(pbap, FALSE);
 
 		if (pbap->obj->apparam)
 			pbap->obj->firstpacket = TRUE;
@@ -428,7 +451,7 @@ static int generate_response(struct pbap_session *pbap, uint8_t missed)
 	DBG("");
 
 	response_add_missed_calls(pbap, missed);
-	response_add_metadata(pbap);
+	response_add_metadata(pbap, TRUE);
 
 	if (max == 0) {
 		/* Ignore all other parameter and return PhoneBookSize */
