@@ -1887,6 +1887,8 @@ static bool register_service_changed(struct bt_gatt_client *client)
 {
 	bt_uuid_t uuid;
 	struct gatt_db_attribute *attr = NULL;
+	uint8_t properties;
+	uint16_t ccc_value = 0;
 
 	bt_uuid16_create(&uuid, SVC_CHNGD_UUID);
 
@@ -1899,13 +1901,24 @@ static bool register_service_changed(struct bt_gatt_client *client)
 		return true;
 
 	/*
+	 * "Service Changed" shall be indicated, but some devices only
+	 * declare the notify property. Request indications only when they
+	 * are supported, otherwise let register_notify() pick the CCC value
+	 * from the properties.
+	 */
+	if (gatt_db_attribute_get_char_data(attr, NULL, NULL, &properties,
+							NULL, NULL) &&
+				(properties & BT_GATT_CHRC_PROP_INDICATE))
+		ccc_value = 0x0002;
+
+	/*
 	 * Register an indication handler for the "Service Changed"
 	 * characteristic and report ready only if the handler is registered
 	 * successfully.
 	 */
 	client->svc_chngd_ind_id = register_notify(client,
 					gatt_db_attribute_get_handle(attr),
-					0x0002,
+					ccc_value,
 					service_changed_register_cb,
 					service_changed_cb,
 					client, NULL);
