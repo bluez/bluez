@@ -704,6 +704,20 @@ void hciemu_set_central_le_rl_len(struct hciemu *hciemu, uint8_t len)
 	btdev_set_rl_len(dev, len);
 }
 
+bool hciemu_set_central_le_adv_sets(struct hciemu *hciemu, uint8_t num)
+{
+	struct btdev *dev;
+
+	if (!hciemu || !hciemu->vhci)
+		return false;
+
+	dev = vhci_get_btdev(hciemu->vhci);
+	if (!dev)
+		return false;
+
+	return btdev_set_adv_sets(dev, num);
+}
+
 const uint8_t *hciemu_get_central_adv_addr(struct hciemu *hciemu,
 								uint8_t handle)
 {
