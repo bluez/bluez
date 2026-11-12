@@ -102,5 +102,12 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);
 
+struct bt_gatt_request *bt_gatt_read_by_type_request(struct bt_att *att,
+					uint16_t start, uint16_t end,
+					const bt_uuid_t *uuid,
+					bt_gatt_request_callback_t callback,
+					void *user_data,
+					bt_gatt_destroy_func_t destroy);
+
 uint16_t bt_gatt_req_get_end_handle(struct bt_gatt_request *req);
 uint16_t bt_gatt_req_get_start_handle(struct bt_gatt_request *req);
