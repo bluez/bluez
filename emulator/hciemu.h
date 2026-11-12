@@ -80,6 +80,8 @@ void hciemu_set_central_le_al_len(struct hciemu *hciemu, uint8_t len);
 
 void hciemu_set_central_le_rl_len(struct hciemu *hciemu, uint8_t len);
 
+bool hciemu_set_central_le_adv_sets(struct hciemu *hciemu, uint8_t num);
+
 const uint8_t *hciemu_get_central_adv_addr(struct hciemu *hciemu,
 							uint8_t handle);
 

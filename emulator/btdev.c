@@ -280,6 +280,8 @@ struct btdev {
 	uint16_t le_rl_timeout;
 
 	struct queue *le_ext_adv;
+	/* Number of advertising sets reported, kept across HCI_Reset */
+	uint8_t le_adv_sets;
 	struct queue *le_per_adv;
 	struct queue *le_big;
 
@@ -574,6 +576,17 @@ void btdev_set_al_len(struct btdev *btdev, uint8_t len)
 void btdev_set_rl_len(struct btdev *btdev, uint8_t len)
 {
 	btdev->le_rl_len = len;
+}
+
+/* Set the number of advertising sets, 1 to MAX_EXT_ADV_SETS */
+bool btdev_set_adv_sets(struct btdev *btdev, uint8_t num)
+{
+	if (!num || num > MAX_EXT_ADV_SETS)
+		return false;
+
+	btdev->le_adv_sets = num;
+
+	return true;
 }
 
 static void conn_unlink(struct btdev_conn *conn1, struct btdev_conn *conn2)
@@ -5350,7 +5363,7 @@ static int cmd_set_ext_adv_params(struct btdev *dev, const void *data,
 						UINT_TO_PTR(cmd->handle));
 	if (!ext_adv) {
 		/* No more than maximum number */
-		if (queue_length(dev->le_ext_adv) >= MAX_EXT_ADV_SETS) {
+		if (queue_length(dev->le_ext_adv) >= dev->le_adv_sets) {
 			rsp.status = BT_HCI_ERR_MEM_CAPACITY_EXCEEDED;
 			cmd_complete(dev, BT_HCI_CMD_LE_SET_EXT_ADV_PARAMS,
 						&rsp, sizeof(rsp));
@@ -5707,7 +5720,7 @@ static int cmd_read_num_adv_sets(struct btdev *dev, const void *data,
 	memset(&rsp, 0, sizeof(rsp));
 
 	rsp.status = BT_HCI_ERR_SUCCESS;
-	rsp.num_of_sets = MAX_EXT_ADV_SETS;
+	rsp.num_of_sets = dev->le_adv_sets;
 	cmd_complete(dev, BT_HCI_CMD_LE_READ_NUM_SUPPORTED_ADV_SETS, &rsp,
 							sizeof(rsp));
 
@@ -8420,6 +8433,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	btdev->le_al_len = AL_SIZE;
 	btdev->le_rl_len = RL_SIZE;
+	btdev->le_adv_sets = MAX_EXT_ADV_SETS;
 	return btdev;
 }
 
