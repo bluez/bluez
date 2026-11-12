@@ -37,7 +37,7 @@ struct broadcast_message {
 	uint16_t right_close_offset;
 	uint16_t frame_sync_period;
 	uint8_t  frame_sync_period_fraction;
-} __attribute__ ((packed));
+} __packed;
 
 struct brcm_evt_sync_train_received {
 	uint8_t  status;
@@ -48,7 +48,7 @@ struct brcm_evt_sync_train_received {
 	uint8_t  lt_addr;
 	uint32_t instant;
 	uint16_t interval;
-} __attribute__ ((packed));
+} __packed;
 
 static struct bt_hci *hci_dev;
 

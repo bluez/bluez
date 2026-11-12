@@ -35,7 +35,7 @@ struct cmd_reset {
 	uint8_t  otp_ddc_reload;
 	uint8_t  boot_option;
 	uint32_t boot_addr;
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_NO_OPERATION	0xfc02
 
@@ -51,7 +51,7 @@ struct rsp_read_version {
 	uint8_t  fw_build_cw;
 	uint8_t  fw_build_yy;
 	uint8_t  fw_patch;
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_READ_BOOT_PARAMS	0xfc0d
 struct rsp_read_boot_params {
@@ -72,7 +72,7 @@ struct rsp_read_boot_params {
 	uint8_t  min_fw_build_yy;
 	uint8_t  limited_cce;
 	uint8_t  unlocked_state;
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_WRITE_BOOT_PARAMS	0xfc0e
 struct cmd_write_boot_params {
@@ -80,13 +80,13 @@ struct cmd_write_boot_params {
 	uint8_t  fw_build_nn;
 	uint8_t  fw_build_cw;
 	uint8_t  fw_build_yy;
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_MANUFACTURER_MODE	0xfc11
 struct cmd_manufacturer_mode {
 	uint8_t  mode_switch;
 	uint8_t  reset;
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_WRITE_BD_DATA	0xfc2f
 struct cmd_write_bd_data {
@@ -97,7 +97,7 @@ struct cmd_write_bd_data {
 	uint8_t  reserved2[32];
 	uint8_t  lmp_version;
 	uint8_t  reserved3[26];
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_READ_BD_DATA	0xfc30
 struct rsp_read_bd_data {
@@ -109,24 +109,24 @@ struct rsp_read_bd_data {
 	uint8_t  reserved2[32];
 	uint8_t  lmp_version;
 	uint8_t  reserved3[26];
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_WRITE_BD_ADDRESS	0xfc31
 struct cmd_write_bd_address {
 	uint8_t  bdaddr[6];
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_ACT_DEACT_TRACES	0xfc43
 struct cmd_act_deact_traces {
 	uint8_t  tx_trace;
 	uint8_t  tx_arq;
 	uint8_t  rx_trace;
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_TRIGGER_EXCEPTION	0xfc4d
 struct cmd_trigger_exception {
 	uint8_t  type;
-} __attribute__ ((packed));
+} __packed;
 
 #define CMD_DDC_CONFIG_WRITE	0xfc8b
 
@@ -755,7 +755,7 @@ struct ddc {
 	uint8_t  size;
 	uint16_t id;
 	uint8_t  value[0];
-} __attribute__ ((packed));
+} __packed;
 
 static unsigned int analyze_ddc(uint8_t *data, ssize_t len)
 {
@@ -852,7 +852,7 @@ struct css_hdr {
 	uint32_t modulus_size;
 	uint32_t exponent_size;
 	uint8_t  reserved[88];
-} __attribute__ ((packed));
+} __packed;
 
 static void analyze_firmware(const char *path)
 {
