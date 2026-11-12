@@ -46,6 +46,7 @@
 #include "src/shared/gatt-client.h"
 #include "src/shared/gatt-server.h"
 #include "src/shared/bap.h"
+#include "src/shared/ascs.h"
 #include "src/shared/tmap.h"
 #include "src/shared/gmap.h"
 
@@ -138,6 +139,7 @@ struct bap_data {
 	struct queue *bcast;
 	struct queue *bcast_snks;
 	struct queue *server_streams;
+	struct queue *cached_releases;
 	GIOChannel *listen_io;
 	bool pa_synced;
 	unsigned int pa_timer;
@@ -148,6 +150,8 @@ struct bap_data {
 };
 
 static struct queue *sessions;
+
+static void cached_release_cancel(void *data);
 
 static int setup_config(struct bap_setup *setup, bap_setup_ready_func_t cb,
 							void *user_data);
@@ -196,6 +200,7 @@ static void bap_data_free(struct bap_data *data)
 	queue_destroy(data->srcs, ep_unregister);
 	queue_destroy(data->bcast, ep_unregister);
 	queue_destroy(data->server_streams, NULL);
+	queue_destroy(data->cached_releases, cached_release_cancel);
 	data->bcast_snks = NULL;
 	queue_destroy(bcast_snks, setup_free);
 
@@ -996,8 +1001,9 @@ static int setup_close(struct bap_setup *setup, bap_setup_close_func_t cb,
 struct ep_close_data {
 	int remaining;
 	int count;
+	int err;
 	const char *path;
-	void (*cb)(int count, void *user_data);
+	void (*cb)(int count, int err, void *user_data);
 	void *user_data;
 };
 
@@ -1013,7 +1019,7 @@ static void ep_close_setup_cb(struct bap_setup *setup, void *user_data)
 		return;
 
 	if (epdata->cb)
-		epdata->cb(epdata->count, epdata->user_data);
+		epdata->cb(epdata->count, epdata->err, epdata->user_data);
 
 	free(epdata);
 }
@@ -1035,8 +1041,144 @@ static void ep_close_setup(void *data, void *user_data)
 		epdata->count++;
 }
 
+static struct bap_setup *bap_find_setup_by_stream(struct bap_data *data,
+					struct bt_bap_stream *stream);
+
+struct cached_release_data {
+	struct bap_ep *ep;
+	struct ep_close_data *epdata;
+};
+
+/* The release of a cached stream, done once the ASE has left Releasing */
+struct cached_release {
+	struct bap_data *data;
+	struct bt_bap_stream *stream;
+	struct ep_close_data *epdata;
+	int refs;
+	bool done;
+};
+
+static void cached_release_unref(struct cached_release *cr)
+{
+	if (--cr->refs)
+		return;
+
+	free(cr);
+}
+
+static void cached_release_done(struct cached_release *cr, int err)
+{
+	if (cr->done)
+		return;
+
+	cr->done = true;
+
+	if (err)
+		cr->epdata->err = err;
+
+	ep_close_setup_cb(NULL, cr->epdata);
+}
+
+static bool match_cached_release(const void *data, const void *match_data)
+{
+	const struct cached_release *cr = data;
+
+	return cr->stream == match_data;
+}
+
+static void bap_cached_release_done(struct bap_data *data,
+					struct bt_bap_stream *stream)
+{
+	struct cached_release *cr;
+
+	/* A server may keep the codec configuration of the ASE when released,
+	 * moving it back to Codec Configured instead of Idle, which can't be
+	 * cleared, so it is done once the ASE has left Releasing either way.
+	 */
+	while ((cr = queue_remove_if(data->cached_releases,
+					match_cached_release, stream))) {
+		cached_release_done(cr, 0);
+		cached_release_unref(cr);
+	}
+}
+
+static void cached_release_cancel(void *data)
+{
+	struct cached_release *cr = data;
+
+	cr->data = NULL;
+	cached_release_done(cr, -ECANCELED);
+	cached_release_unref(cr);
+}
+
+static void ep_release_cached_cb(struct bt_bap_stream *stream, uint8_t code,
+					uint8_t reason, void *user_data)
+{
+	struct cached_release *cr = user_data;
+
+	/* The ASE leaves Releasing once notified, so only a failure completes
+	 * the release here.
+	 */
+	if (code != BT_ASCS_RSP_SUCCESS) {
+		if (cr->data && queue_remove(cr->data->cached_releases, cr))
+			cached_release_unref(cr);
+
+		cached_release_done(cr, -EIO);
+	}
+
+	cached_release_unref(cr);
+}
+
+static void ep_release_cached(struct bt_bap_stream *stream, void *user_data)
+{
+	struct cached_release_data *data = user_data;
+	struct bap_ep *ep = data->ep;
+	struct cached_release *cr, *pending;
+
+	/* The server may have cached the codec configuration of a released
+	 * ASE, which has no setup anymore, so release it again.
+	 */
+	if (bt_bap_stream_get_rpac(stream) != ep->rpac ||
+			bt_bap_stream_get_state(stream) !=
+					BT_BAP_STREAM_STATE_CONFIG ||
+			bap_find_setup_by_stream(ep->data, stream))
+		return;
+
+	DBG("stream %p", stream);
+
+	/* Don't release it again while an earlier release is pending, just
+	 * wait for it as well.
+	 */
+	pending = queue_find(ep->data->cached_releases, match_cached_release,
+								stream);
+
+	cr = new0(struct cached_release, 1);
+	cr->data = ep->data;
+	cr->stream = stream;
+	cr->epdata = data->epdata;
+	cr->refs = pending ? 1 : 2;
+
+	data->epdata->remaining++;
+
+	if (!ep->data->cached_releases)
+		ep->data->cached_releases = queue_new();
+
+	queue_push_tail(ep->data->cached_releases, cr);
+
+	if (pending)
+		return;
+
+	if (!bt_bap_stream_release(stream, ep_release_cached_cb, cr)) {
+		queue_remove(ep->data->cached_releases, cr);
+		data->epdata->remaining--;
+		free(cr);
+	}
+}
+
 static void ep_close(struct bap_ep *ep, const char *transport_path,
-			void (*cb)(int count, void *user_data), void *user_data)
+			bool cached,
+			void (*cb)(int count, int err, void *user_data),
+			void *user_data)
 {
 	struct ep_close_data *epdata;
 
@@ -1050,6 +1192,15 @@ static void ep_close(struct bap_ep *ep, const char *transport_path,
 
 	if (ep)
 		queue_foreach(ep->setups, ep_close_setup, epdata);
+
+	/* The cached streams have to be released before replying, as an ASE
+	 * still being released can't be configured again.
+	 */
+	if (cached && ep && ep->rpac) {
+		struct cached_release_data data = { ep, epdata };
+
+		bt_bap_foreach_stream(ep->data->bap, ep_release_cached, &data);
+	}
 
 	epdata->path = NULL;
 	ep_close_setup_cb(NULL, epdata);
@@ -1302,14 +1453,16 @@ struct clear_configuration_data {
 	bool all;
 };
 
-static void clear_configuration_cb(int count, void *user_data)
+static void clear_configuration_cb(int count, int err, void *user_data)
 {
 	struct clear_configuration_data *data = user_data;
 	DBusMessage *reply;
 
 	DBG("%p", data);
 
-	if (!data->all && count == 0)
+	if (err)
+		reply = btd_error_failed(data->msg, strerror(-err));
+	else if (!data->all && count == 0)
 		reply = btd_error_invalid_args(data->msg);
 	else
 		reply = dbus_message_new_method_return(data->msg);
@@ -1338,7 +1491,8 @@ static DBusMessage *clear_configuration(DBusConnection *conn, DBusMessage *msg,
 	cbdata->all = (path == NULL);
 
 	DBG("%p %s %s", cbdata, ep->path, path ? path : "NULL");
-	ep_close(ep, path, clear_configuration_cb, cbdata);
+
+	ep_close(ep, path, !path, clear_configuration_cb, cbdata);
 	return NULL;
 }
 
@@ -1403,7 +1557,7 @@ static void reconfigure_select_cb(int err, void *user_data)
 	free(data);
 }
 
-static void reconfigure_close_cb(int count, void *user_data)
+static void reconfigure_close_cb(int count, int err, void *user_data)
 {
 	struct reconfigure_data *data = user_data;
 
@@ -1424,7 +1578,7 @@ static void ep_close_if_reconfigure(void *obj, void *user_data)
 
 	if (ep->reconfigure) {
 		data->remaining++;
-		ep_close(ep, NULL, reconfigure_close_cb, data);
+		ep_close(ep, NULL, false, reconfigure_close_cb, data);
 	}
 }
 
@@ -1464,7 +1618,7 @@ static DBusMessage *reconfigure(DBusConnection *conn, DBusMessage *msg,
 	queue_foreach(data->snks, ep_close_if_reconfigure, cbdata);
 	queue_foreach(data->srcs, ep_close_if_reconfigure, cbdata);
 
-	reconfigure_close_cb(0, cbdata);
+	reconfigure_close_cb(0, 0, cbdata);
 	return NULL;
 }
 
@@ -3015,6 +3169,9 @@ static void bap_state(struct bt_bap_stream *stream, uint8_t old_state,
 	if (new_state == old_state && new_state != BT_BAP_STREAM_STATE_CONFIG)
 		return;
 
+	if (old_state == BT_BAP_STREAM_STATE_RELEASING)
+		bap_cached_release_done(data, stream);
+
 	setup = bap_find_setup_by_stream(data, stream);
 
 	if (setup && setup->closing) {
@@ -4053,6 +4210,9 @@ static int bap_disconnect(struct btd_service *service)
 
 	queue_destroy(data->server_streams, NULL);
 	data->server_streams = NULL;
+
+	queue_destroy(data->cached_releases, cached_release_cancel);
+	data->cached_releases = NULL;
 
 	bt_bap_detach(data->bap);
 
