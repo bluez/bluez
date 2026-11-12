@@ -88,6 +88,7 @@ struct btd_adv_client {
 	uint32_t max_interval;
 	int8_t tx_power;
 	mgmt_request_func_t refresh_done_func;
+	bool pending_destroy;
 };
 
 struct dbus_obj_match {
@@ -195,13 +196,43 @@ static void remove_advertising(struct btd_adv_manager *manager,
 			manager->mgmt_index, sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
+/*
+ * Queue client_free once. Later calls are ignored so remove and a late
+ * MGMT completion cannot free the client twice.
+ */
+static bool client_destroy_start(struct btd_adv_client *client)
+{
+	if (client->pending_destroy)
+		return false;
+
+	client->pending_destroy = true;
+
+	if (client->client) {
+		g_dbus_client_set_proxy_handlers(client->client, NULL, NULL,
+						 NULL, client);
+		g_dbus_client_set_disconnect_watch(client->client, NULL,
+						   NULL);
+	}
+
+	if (client->proxy)
+		g_dbus_proxy_set_property_watch(client->proxy, NULL, NULL);
+
+	if (client->add_adv_id) {
+		mgmt_cancel(client->manager->mgmt, client->add_adv_id);
+		client->add_adv_id = 0;
+	}
+
+	g_idle_add(client_free_idle_cb, client);
+
+	return true;
+}
+
 static void client_remove(struct btd_adv_client *client)
 {
 	struct mgmt_cp_remove_advertising cp;
 
-	g_dbus_client_set_proxy_handlers(client->client, NULL, NULL, NULL,
-									client);
-	g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
+	if (!client_destroy_start(client))
+		return;
 
 	cp.instance = client->instance;
 
@@ -210,8 +241,6 @@ static void client_remove(struct btd_adv_client *client)
 			NULL, NULL, NULL);
 
 	queue_remove(client->manager->clients, client);
-
-	g_idle_add(client_free_idle_cb, client);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter_get_path(client->manager->adapter),
@@ -1373,6 +1402,9 @@ static void add_client_complete(struct btd_adv_client *client, uint8_t status)
 {
 	DBusMessage *reply;
 
+	if (client->pending_destroy)
+		return;
+
 	if (status)
 		error("Failed to add advertisement: %s (0x%02x)",
 						mgmt_errstr(status), status);
@@ -1385,11 +1417,12 @@ static void add_client_complete(struct btd_adv_client *client, uint8_t status)
 		return;
 
 	if (status) {
+		if (!client_destroy_start(client))
+			return;
+
 		reply = btd_error_failed(client->reg,
 					"Failed to register advertisement");
 		queue_remove(client->manager->clients, client);
-		g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
-		g_idle_add(client_free_idle_cb, client);
 
 	} else {
 		DBusMessageIter iter;
@@ -1415,6 +1448,9 @@ static void add_adv_callback(uint8_t status, uint16_t length,
 {
 	struct btd_adv_client *client = user_data;
 	const struct mgmt_rp_add_advertising *rp = param;
+
+	if (client->pending_destroy)
+		return;
 
 	client->add_adv_id = 0;
 
@@ -1459,6 +1495,9 @@ static void add_adv_params_callback(uint8_t status, uint16_t length,
 	uint32_t flags = 0;
 	unsigned int mgmt_ret;
 	dbus_int16_t tx_power;
+
+	if (client->pending_destroy)
+		return;
 
 	client->add_adv_id = 0;
 
@@ -1634,15 +1673,18 @@ static void client_proxy_added(GDBusProxy *proxy, void *data)
 	if (g_str_equal(interface, LE_ADVERTISEMENT_IFACE) == FALSE)
 		return;
 
+	if (client->pending_destroy)
+		return;
+
 	reply = parse_advertisement(client);
 	if (!reply)
 		return;
 
 	/* Failed to publish for some reason, remove. */
-	queue_remove(client->manager->clients, client);
-	g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
+	if (!client_destroy_start(client))
+		return;
 
-	g_idle_add(client_free_idle_cb, client);
+	queue_remove(client->manager->clients, client);
 
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
 
