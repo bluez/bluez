@@ -57,6 +57,10 @@ struct btd_bearer {
 	 */
 	DBusMessage *connect; /* connect message */
 
+	/* ReadRSSI calls waiting for the Get Connection Information reply */
+	unsigned int conn_info_id;
+	struct queue *rssi_reads;
+
 	/* LE connection parameters, only valid while connected */
 	bool conn_params;
 	uint32_t interval; /* in microseconds */
@@ -213,10 +217,92 @@ static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static const GDBusMethodTable bearer_methods[] = {
+static DBusMessage *rssi_reply(struct btd_bearer *bearer, DBusMessage *msg,
+					uint8_t status, uint16_t length,
+					const struct mgmt_rp_get_conn_info *rp)
+{
+	dbus_int16_t rssi;
+
+	/* The kernel reports the connection as soon as it is established, but
+	 * only answers once it has set it up, e.g. read the remote features.
+	 */
+	if (status == MGMT_STATUS_NOT_CONNECTED) {
+		if (btd_device_bdaddr_type_connected(bearer->device,
+							bearer->type))
+			return btd_error_not_ready(msg);
+
+		return btd_error_not_connected(msg);
+	}
+
+	if (status != MGMT_STATUS_SUCCESS)
+		return btd_error_failed(msg, mgmt_errstr(status));
+
+	if (length < sizeof(*rp))
+		return btd_error_failed(msg, "Invalid response");
+
+	/* 127 means the controller has no RSSI for the connection */
+	if (rp->rssi == 127)
+		return btd_error_not_available(msg);
+
+	rssi = rp->rssi;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INT16, &rssi,
+							DBUS_TYPE_INVALID);
+}
+
+static void conn_info_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_bearer *bearer = user_data;
+	DBusMessage *msg;
+
+	bearer->conn_info_id = 0;
+
+	while ((msg = queue_pop_head(bearer->rssi_reads))) {
+		g_dbus_send_message(btd_get_dbus_connection(),
+				rssi_reply(bearer, msg, status, length, param));
+		dbus_message_unref(msg);
+	}
+}
+
+static DBusMessage *bearer_read_rssi(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct btd_bearer *bearer = user_data;
+	struct btd_device *device = bearer->device;
+
+	if (!btd_device_bdaddr_type_connected(device, bearer->type))
+		return btd_error_not_connected(msg);
+
+	/* Calls made while a read is pending get the same result */
+	if (!bearer->conn_info_id) {
+		bearer->conn_info_id = btd_adapter_get_conn_info(
+					device_get_adapter(device),
+					device_get_address(device),
+					device_get_le_address_type(device),
+					conn_info_complete, bearer);
+		if (!bearer->conn_info_id)
+			return btd_error_failed(msg, "Unable to read RSSI");
+	}
+
+	queue_push_tail(bearer->rssi_reads, dbus_message_ref(msg));
+
+	return NULL;
+}
+
+static const GDBusMethodTable bearer_bredr_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, bearer_connect) },
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL,
 						bearer_disconnect) },
+	{}
+};
+
+static const GDBusMethodTable bearer_le_methods[] = {
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, bearer_connect) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL,
+						bearer_disconnect) },
+	{ GDBUS_ASYNC_METHOD("ReadRSSI", NULL, GDBUS_ARGS({ "rssi", "n" }),
+						bearer_read_rssi) },
 	{}
 };
 
@@ -404,6 +490,14 @@ static const char *bearer_interface(uint8_t type)
 		return BTD_BEARER_LE_INTERFACE;
 }
 
+static const GDBusMethodTable *bearer_methods(uint8_t type)
+{
+	if (type == BDADDR_BREDR)
+		return bearer_bredr_methods;
+	else
+		return bearer_le_methods;
+}
+
 struct btd_bearer *btd_bearer_new(struct btd_device *device, uint8_t type)
 {
 	struct btd_bearer *bearer;
@@ -426,10 +520,11 @@ struct btd_bearer *btd_bearer_new(struct btd_device *device, uint8_t type)
 	bearer->type = type;
 	bearer->path = device_get_path(device);
 	bearer->disconnects = queue_new();
+	bearer->rssi_reads = queue_new();
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					bearer->path, bearer_interface(type),
-					bearer_methods, bearer_signals,
+					bearer_methods(type), bearer_signals,
 					bearer_properties,
 					bearer, bearer_free)) {
 		error("Unable to register BREDR interface");
@@ -457,6 +552,17 @@ void btd_bearer_destroy(struct btd_bearer *bearer)
 	if (bearer->connect) {
 		dbus_message_unref(bearer->connect);
 		bearer->connect = NULL;
+	}
+
+	if (bearer->conn_info_id) {
+		btd_adapter_cancel_request(device_get_adapter(bearer->device),
+							bearer->conn_info_id);
+		bearer->conn_info_id = 0;
+	}
+
+	if (bearer->rssi_reads) {
+		queue_destroy(bearer->rssi_reads, bearer_free_dbus_message);
+		bearer->rssi_reads = NULL;
 	}
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(), bearer->path,
