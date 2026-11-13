@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 #include <signal.h>
 #include <sys/socket.h>
 
@@ -23,6 +24,8 @@
 #include "bluetooth/sdp_lib.h"
 
 #include "cups.h"
+
+#define ATTRID_1284ID 0x0300
 
 int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm)
 {
@@ -103,4 +106,49 @@ int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel)
 	}
 
 	return -1;
+}
+
+char *sdp_search_ieee1284_id(sdp_session_t *sdp)
+{
+	sdp_list_t *srch, *attrs, *rsp, *l;
+	uuid_t svclass;
+	uint16_t attr;
+	char *id = NULL;
+	int err;
+
+	if (!sdp)
+		return NULL;
+
+	sdp_uuid16_create(&svclass, HCR_PRINT_SVCLASS_ID);
+	srch = sdp_list_append(NULL, &svclass);
+
+	attr = ATTRID_1284ID;
+	attrs = sdp_list_append(NULL, &attr);
+
+	err = sdp_service_search_attr_req(sdp, srch, SDP_ATTR_REQ_INDIVIDUAL,
+								attrs, &rsp);
+	sdp_list_free(srch, NULL);
+	sdp_list_free(attrs, NULL);
+	if (err)
+		return NULL;
+
+	for (l = rsp; l; l = l->next) {
+		sdp_record_t *rec = l->data;
+		sdp_data_t *data = sdp_data_get(rec, ATTRID_1284ID);
+		int len;
+
+		/* The device ID is preceded by its two length bytes */
+		if (!id && data && SDP_IS_TEXT_STR(data->dtd)) {
+			len = data->unitSize - sizeof(uint8_t);
+
+			if (len > 2)
+				id = strndup(data->val.str + 2, len - 2);
+		}
+
+		sdp_record_free(rec);
+	}
+
+	sdp_list_free(rsp, NULL);
+
+	return id;
 }
