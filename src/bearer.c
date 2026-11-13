@@ -109,13 +109,17 @@ static bool bearer_disconnect_link(gpointer user_data)
 {
 	struct btd_bearer *bearer = user_data;
 	struct btd_device *device = bearer->device;
+	uint8_t type = bearer->type;
 
 	bearer->disconn_timer = 0;
 
-	if (btd_device_bdaddr_type_connected(device, bearer->type))
+	if (type != BDADDR_BREDR)
+		type = device_get_le_address_type(device);
+
+	if (btd_device_bdaddr_type_connected(device, type))
 		btd_adapter_disconnect_device(device_get_adapter(device),
 						device_get_address(device),
-						bearer->type);
+						type);
 	return FALSE;
 }
 
