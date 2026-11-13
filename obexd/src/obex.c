@@ -254,6 +254,24 @@ probe:
 						who, who_size);
 }
 
+static void parse_apparam(struct obex_session *os, GObexPacket *req)
+{
+	GObexHeader *hdr;
+	const guint8 *apparam;
+	gsize len;
+
+	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_APPARAM);
+	if (hdr == NULL)
+		return;
+
+	if (!g_obex_header_get_bytes(hdr, &apparam, &len))
+		return;
+
+	os->apparam = util_memdup(apparam, len);
+	os->apparam_len = len;
+	DBG("APPARAM");
+}
+
 static void cmd_connect(GObex *obex, GObexPacket *req, void *user_data)
 {
 	struct obex_session *os = user_data;
@@ -275,7 +293,13 @@ static void cmd_connect(GObex *obex, GObexPacket *req, void *user_data)
 
 	DBG("Selected driver: %s", os->service->name);
 
+	parse_apparam(os, req);
+
 	os->service_data = os->service->connect(os, &err);
+	free(os->apparam);
+	os->apparam = NULL;
+	os->apparam_len = 0;
+
 	if (err < 0) {
 		os_set_response(os, err);
 		return;
@@ -580,24 +604,6 @@ static void parse_name(struct obex_session *os, GObexPacket *req)
 
 	os->name = g_strdup(name);
 	DBG("NAME: %s", os->name);
-}
-
-static void parse_apparam(struct obex_session *os, GObexPacket *req)
-{
-	GObexHeader *hdr;
-	const guint8 *apparam;
-	gsize len;
-
-	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_APPARAM);
-	if (hdr == NULL)
-		return;
-
-	if (!g_obex_header_get_bytes(hdr, &apparam, &len))
-		return;
-
-	os->apparam = util_memdup(apparam, len);
-	os->apparam_len = len;
-	DBG("APPARAM");
 }
 
 static void cmd_get(GObex *obex, GObexPacket *req, gpointer user_data)

@@ -81,7 +81,7 @@ static const char *attribute_mask[] = {
 		"KEY",
 		"NICKNAME",
 /* 24 */	"CATEGORIES",
-		"PROID",
+		"PRODID",
 		"CLASS",
 		"SORT-STRING",
 /* 28 */	"X-IRMC-CALL-DATETIME",
@@ -99,6 +99,42 @@ static void free_query_context(struct query_context *data)
 		g_free(data->query);
 
 	g_free(data);
+}
+
+static uint64_t evcard_presence_mask(EVCard *evcard)
+{
+	GList *l;
+	/* VERSION is generated when serializing the vCard. */
+	uint64_t mask = 1ULL << 0;
+
+	for (l = e_vcard_get_attributes(evcard); l; l = l->next) {
+		EVCardAttribute *attrib = l->data;
+		const char *name = e_vcard_attribute_get_name(attrib);
+		GList *values;
+		unsigned int i;
+
+		for (values = e_vcard_attribute_get_values(attrib); values;
+							values = values->next) {
+			const char *value = values->data;
+
+			if (value && value[0])
+				break;
+		}
+
+		if (!values)
+			continue;
+
+		for (i = 0; i < G_N_ELEMENTS(phonebook_selector_properties);
+									i++) {
+			if (!g_ascii_strcasecmp(name,
+					phonebook_selector_properties[i])) {
+				mask |= 1ULL << i;
+				break;
+			}
+		}
+	}
+
+	return mask;
 }
 
 static char *evcard_to_string(EVCard *evcard, unsigned int format,
@@ -275,7 +311,7 @@ static void phonebook_pull_read_ready(GObject *source_object,
 	GSList *l = NULL;
 	GSList *contacts = NULL;
 	GError *gerr = NULL;
-	unsigned int count, maxcount;
+	unsigned int count, maxcount, offset;
 
 	/* Finish async call to retrieve contacts */
 	data->queued_calls--;
@@ -292,27 +328,34 @@ static void phonebook_pull_read_ready(GObject *source_object,
 		goto done;
 	}
 
-	/*
-	 * When MaxListCount is zero, PCE wants to know the number of used
-	 * indexes in the phonebook of interest. All other parameters that
-	 * may be present in the request shall be ignored.
-	 */
 	maxcount = data->params->maxlistcount;
-	if (maxcount == 0) {
-		data->count += g_slist_length(contacts);
-		goto done;
-	}
+	offset = data->params->liststartoffset;
+	count = 0;
 
-	/*
-	 * Convert each contact to a vCard and append the card to
-	 * the buffer string.
-	 */
-	l = g_slist_nth(contacts, data->params->liststartoffset);
-	for (count = 0; l && count + data->count < maxcount;
-						l = g_slist_next(l), count++) {
+	for (l = contacts; l; l = l->next) {
 		EContact *contact = E_CONTACT(l->data);
 		EVCard *evcard = E_VCARD(contact);
 		char *vcard;
+
+		if (data->params->selector &&
+				!phonebook_selector_match(
+					evcard_presence_mask(evcard),
+					data->params->selector,
+					data->params->selector_operator))
+			continue;
+
+		if (maxcount == 0) {
+			count++;
+			continue;
+		}
+
+		if (offset) {
+			offset--;
+			continue;
+		}
+
+		if (count + data->count >= maxcount)
+			break;
 
 		if (data->params->format == PB_FORMAT_VCARD30)
 			vcard = evcard_to_string(evcard, EVC_FORMAT_VCARD_30,
@@ -326,6 +369,7 @@ static void phonebook_pull_read_ready(GObject *source_object,
 		data->buf = g_string_append(data->buf, vcard);
 		data->buf = g_string_append(data->buf, "\r\n");
 		g_free(vcard);
+		count++;
 	}
 
 	DBG("collected %d contacts", count);
@@ -527,7 +571,8 @@ static void phonebook_create_cache_ready(GObject *source_object,
 			tel = g_strdup("");
 
 		data->entry_cb(uid, PHONEBOOK_INVALID_HANDLE, name, NULL,
-							tel, data->user_data);
+					tel, evcard_presence_mask(evcard),
+							data->user_data);
 
 		g_free(name);
 		g_free(uid);
@@ -540,7 +585,7 @@ static void phonebook_create_cache_ready(GObject *source_object,
 
 done:
 	if (data->queued_calls == 0)
-		data->ready_cb(data->user_data);
+		data->ready_cb(0, data->user_data);
 
 	return;
 
@@ -605,7 +650,8 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	else
 		tel = g_strdup("");
 
-	data->entry_cb(uid, 0, cname, NULL, tel, data->user_data);
+	data->entry_cb(uid, 0, cname, NULL, tel, evcard_presence_mask(evcard),
+							data->user_data);
 	data->count++;
 
 	g_free(cname);
