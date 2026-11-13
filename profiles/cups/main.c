@@ -44,136 +44,21 @@ static GMainLoop *loop = NULL;
 static DBusConnection *conn = NULL;
 static gboolean doing_disco = FALSE;
 
-#define ATTRID_1284ID 0x0300
-
-struct context_data {
-	gboolean found;
+static char *device_get_ieee1284_id(const char *address)
+{
+	sdp_session_t *sdp;
+	bdaddr_t bdaddr;
 	char *id;
-};
 
-static void element_start(GMarkupParseContext *context,
-				const char *element_name,
-				const char **attribute_names,
-				const char **attribute_values,
-				gpointer user_data, GError **err)
-{
-	struct context_data *ctx_data = user_data;
+	str2ba(address, &bdaddr);
 
-	if (!strcmp(element_name, "record"))
-		return;
-
-	if (!strcmp(element_name, "attribute")) {
-		int i;
-		for (i = 0; attribute_names[i]; i++) {
-			if (strcmp(attribute_names[i], "id") != 0)
-				continue;
-			if (strtol(attribute_values[i], 0, 0) == ATTRID_1284ID)
-				ctx_data->found = TRUE;
-			break;
-		}
-		return;
-	}
-
-	if (ctx_data->found  && !strcmp(element_name, "text")) {
-		int i;
-		for (i = 0; attribute_names[i]; i++) {
-			if (!strcmp(attribute_names[i], "value")) {
-				ctx_data->id = g_strdup(attribute_values[i] + 2);
-				ctx_data->found = FALSE;
-			}
-		}
-	}
-}
-
-static GMarkupParser parser = {
-	element_start, NULL, NULL, NULL, NULL
-};
-
-static char *sdp_xml_parse_record(const char *data)
-{
-	GMarkupParseContext *ctx;
-	struct context_data ctx_data;
-	int size;
-
-	size = strlen(data);
-	ctx_data.found = FALSE;
-	ctx_data.id = NULL;
-	ctx = g_markup_parse_context_new(&parser, 0, &ctx_data, NULL);
-
-	if (g_markup_parse_context_parse(ctx, data, size, NULL) == FALSE) {
-		g_markup_parse_context_free(ctx);
-		g_free(ctx_data.id);
-		return NULL;
-	}
-
-	g_markup_parse_context_free(ctx);
-
-	return ctx_data.id;
-}
-
-static char *device_get_ieee1284_id(const char *adapter, const char *device)
-{
-	DBusMessage *message, *reply;
-	DBusMessageIter iter, reply_iter;
-	DBusMessageIter reply_iter_entry;
-	const char *hcr_print = "00001126-0000-1000-8000-00805f9b34fb";
-	const char *xml;
-	char *id = NULL;
-
-	/* Look for the service handle of the HCRP service */
-	message = dbus_message_new_method_call("org.bluez", device,
-						"org.bluez.Device1",
-						"DiscoverServices");
-	dbus_message_iter_init_append(message, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &hcr_print);
-
-	reply = dbus_connection_send_with_reply_and_block(conn,
-							message, -1, NULL);
-
-	dbus_message_unref(message);
-
-	if (!reply)
+	sdp = sdp_connect(BDADDR_ANY, &bdaddr, SDP_RETRY_IF_BUSY);
+	if (!sdp)
 		return NULL;
 
-	dbus_message_iter_init(reply, &reply_iter);
+	id = sdp_search_ieee1284_id(sdp);
 
-	if (dbus_message_iter_get_arg_type(&reply_iter) != DBUS_TYPE_ARRAY) {
-		dbus_message_unref(reply);
-		return NULL;
-	}
-
-	dbus_message_iter_recurse(&reply_iter, &reply_iter_entry);
-
-	/* Hopefully we only get one handle, or take a punt */
-	while (dbus_message_iter_get_arg_type(&reply_iter_entry) ==
-							DBUS_TYPE_DICT_ENTRY) {
-		guint32 key;
-		DBusMessageIter dict_entry;
-
-		dbus_message_iter_recurse(&reply_iter_entry, &dict_entry);
-
-		/* Key ? */
-		dbus_message_iter_get_basic(&dict_entry, &key);
-		if (!key) {
-			dbus_message_iter_next(&reply_iter_entry);
-			continue;
-		}
-
-		/* Try to get the value */
-		if (!dbus_message_iter_next(&dict_entry)) {
-			dbus_message_iter_next(&reply_iter_entry);
-			continue;
-		}
-
-		dbus_message_iter_get_basic(&dict_entry, &xml);
-
-		id = sdp_xml_parse_record(xml);
-		if (id != NULL)
-			break;
-		dbus_message_iter_next(&reply_iter_entry);
-	}
-
-	dbus_message_unref(reply);
+	sdp_close(sdp);
 
 	return id;
 }
@@ -362,9 +247,9 @@ static void remote_device_found(const char *adapter, const char *bdaddr,
 		return;
 	}
 
-	id = device_get_ieee1284_id(adapter, object_path);
+	id = device_get_ieee1284_id(bdaddr);
 	add_device_to_list(name, bdaddr, id);
-	g_free(id);
+	free(id);
 
 	dbus_message_unref(reply);
 }
@@ -434,9 +319,9 @@ static gboolean list_known_printers(const char *adapter)
 		if (device_is_printer(adapter, object_path, &name, &bdaddr)) {
 			char *id;
 
-			id = device_get_ieee1284_id(adapter, object_path);
+			id = device_get_ieee1284_id(bdaddr);
 			add_device_to_list(name, bdaddr, id);
-			g_free(id);
+			free(id);
 		}
 		g_free(name);
 		g_free(bdaddr);
@@ -601,84 +486,14 @@ static gboolean list_printers(void)
 
 static gboolean print_ieee1284(const char *bdaddr)
 {
-	DBusMessage *message, *reply, *adapter_reply;
-	DBusMessageIter iter;
-	char *object_path = NULL;
-	char *adapter;
 	char *id;
 
-	adapter_reply = NULL;
-
-	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
-	if (conn == NULL)
+	id = device_get_ieee1284_id(bdaddr);
+	if (id == NULL)
 		return FALSE;
 
-	message = dbus_message_new_method_call("org.bluez", "/",
-			"org.bluez.Manager",
-			"DefaultAdapter");
-
-	adapter_reply = dbus_connection_send_with_reply_and_block(conn,
-			message, -1, NULL);
-
-	dbus_message_unref(message);
-
-	if (!adapter_reply)
-		return FALSE;
-
-	if (dbus_message_get_args(adapter_reply, NULL,
-			DBUS_TYPE_OBJECT_PATH, &adapter,
-			DBUS_TYPE_INVALID) == FALSE) {
-		dbus_message_unref(adapter_reply);
-		return FALSE;
-	}
-
-	message = dbus_message_new_method_call("org.bluez", adapter,
-			"org.bluez.Adapter1",
-			"FindDevice");
-	dbus_message_iter_init_append(message, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
-
-	if (adapter_reply != NULL)
-		dbus_message_unref(adapter_reply);
-
-	reply = dbus_connection_send_with_reply_and_block(conn,
-			message, -1, NULL);
-
-	dbus_message_unref(message);
-
-	if (!reply) {
-		message = dbus_message_new_method_call("org.bluez", adapter,
-				"org.bluez.Adapter1",
-				"CreateDevice");
-		dbus_message_iter_init_append(message, &iter);
-		dbus_message_iter_append_basic(&iter,
-				DBUS_TYPE_STRING, &bdaddr);
-
-		reply = dbus_connection_send_with_reply_and_block(conn,
-				message, -1, NULL);
-
-		dbus_message_unref(message);
-
-		if (!reply)
-			return FALSE;
-	}
-
-	if (dbus_message_get_args(reply, NULL,
-					DBUS_TYPE_OBJECT_PATH, &object_path,
-					DBUS_TYPE_INVALID) == FALSE) {
-		dbus_message_unref(reply);
-		return FALSE;
-	}
-
-	id = device_get_ieee1284_id(adapter, object_path);
-	if (id == NULL) {
-		dbus_message_unref(reply);
-		return FALSE;
-	}
 	printf("%s", id);
-	g_free(id);
-
-	dbus_message_unref(reply);
+	free(id);
 
 	return TRUE;
 }
