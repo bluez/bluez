@@ -96,6 +96,8 @@ void btdev_set_al_len(struct btdev *btdev, uint8_t len);
 
 void btdev_set_rl_len(struct btdev *btdev, uint8_t len);
 
+bool btdev_set_adv_sets(struct btdev *btdev, uint8_t num);
+
 void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
 							void *user_data);
 

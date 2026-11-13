@@ -367,6 +367,7 @@ struct generic_data {
 	bdaddr_t *setup_bdaddr;
 	bool setup_le_states;
 	const uint8_t *le_states;
+	uint8_t setup_adv_sets;
 	const uint16_t *setup_settings;
 	bool setup_nobredr;
 	bool setup_limited_discov;
@@ -504,6 +505,13 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 
 	if (test && test->setup_le_states)
 		hciemu_set_central_le_states(data->hciemu, test->le_states);
+
+	if (test && test->setup_adv_sets &&
+			!hciemu_set_central_le_adv_sets(data->hciemu,
+							test->setup_adv_sets)) {
+		tester_warn("hciemu_set_central_le_adv_sets failed");
+		tester_pre_setup_failed();
+	}
 
 }
 
@@ -9266,6 +9274,72 @@ static const struct generic_data add_ext_advertising_timeout_expired = {
 	.expect_alt_ev_len = sizeof(advertising_instance1_param),
 };
 
+/* A controller with a single advertising set: instance 1 is given handle
+ * 0x00, so the set's commands and events carry handle 0x00, not the
+ * instance number.
+ */
+static int set_adv_set_rand_addr_handle_0_check(const void *param,
+							uint16_t length)
+{
+	const struct bt_hci_cmd_le_set_adv_set_rand_addr *cp = param;
+
+	if (length != sizeof(*cp))
+		return -EINVAL;
+
+	return cp->handle != 0x00;
+}
+
+static const uint8_t remove_adv_set_handle_0_param[] = {
+	0x00,
+};
+
+/* Handle 0x00 and any address: printed if the check fails */
+static const uint8_t set_adv_set_rand_addr_handle_0_param[] = {
+	0x00,					/* handle */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* address */
+};
+
+static const struct generic_data add_ext_advertising_1_set = {
+	.setup_adv_sets = 1,
+	.setup_settings = settings_powered_le,
+	.send_opcode = MGMT_OP_ADD_ADVERTISING,
+	.send_param = add_advertising_param_uuid,
+	.send_len = sizeof(add_advertising_param_uuid),
+	.expect_param = advertising_instance1_param,
+	.expect_len = sizeof(advertising_instance1_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_alt_ev = MGMT_EV_ADVERTISING_ADDED,
+	.expect_alt_ev_param = advertising_instance1_param,
+	.expect_alt_ev_len = sizeof(advertising_instance1_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_SET_RAND_ADDR,
+	.expect_hci_param = set_adv_set_rand_addr_handle_0_param,
+	.expect_hci_len = sizeof(set_adv_set_rand_addr_handle_0_param),
+	.expect_hci_param_check_func = set_adv_set_rand_addr_handle_0_check,
+};
+
+static const struct generic_data add_ext_adv_1_set_timeout_expired = {
+	.setup_adv_sets = 1,
+	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
+	.expect_alt_ev_param = advertising_instance1_param,
+	.expect_alt_ev_len = sizeof(advertising_instance1_param),
+};
+
+static const struct generic_data remove_ext_advertising_1_set = {
+	.setup_adv_sets = 1,
+	.send_opcode = MGMT_OP_REMOVE_ADVERTISING,
+	.send_param = remove_advertising_param_1,
+	.send_len = sizeof(remove_advertising_param_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = remove_advertising_param_1,
+	.expect_len = sizeof(remove_advertising_param_1),
+	.expect_alt_ev = MGMT_EV_ADVERTISING_REMOVED,
+	.expect_alt_ev_param = advertising_instance1_param,
+	.expect_alt_ev_len = sizeof(advertising_instance1_param),
+	.expect_hci_command = BT_HCI_CMD_LE_REMOVE_ADV_SET,
+	.expect_hci_param = remove_adv_set_handle_0_param,
+	.expect_hci_len = sizeof(remove_adv_set_handle_0_param),
+};
+
 static const struct generic_data remove_ext_advertising_fail_1 = {
 	.send_opcode = MGMT_OP_REMOVE_ADVERTISING,
 	.send_param = remove_advertising_param_1,
@@ -15906,6 +15980,19 @@ int main(int argc, char *argv[])
 	test_bredrle50("Add Ext Advertising - Success (1m Connectable -> off)",
 					&add_ext_advertising_conn_off_1m,
 					setup_add_advertising_connectable_1m,
+					test_command_generic);
+
+	/* A single advertising set: instance 1 on handle 0x00 */
+	test_bredrle50("Add Ext Advertising - Success (1 set, Rand Addr)",
+					&add_ext_advertising_1_set,
+					NULL, test_command_generic);
+	test_bredrle50_full("Add Ext Advertising - Success (1 set, Timeout)",
+					&add_ext_adv_1_set_timeout_expired,
+					setup_add_advertising_timeout,
+					test_command_generic, 3);
+	test_bredrle50("Remove Ext Advertising - Success (1 set)",
+					&remove_ext_advertising_1_set,
+					setup_add_advertising,
 					test_command_generic);
 
 	test_bredrle50("Remove Ext Advertising - Invalid Params 1",
