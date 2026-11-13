@@ -76,6 +76,7 @@ struct btd_adv_client {
 	unsigned int to_id;
 	unsigned int disc_to_id;
 	unsigned int add_adv_id;
+	unsigned int free_id;
 	GDBusClient *client;
 	GDBusProxy *proxy;
 	DBusMessage *reg;
@@ -112,6 +113,11 @@ static bool match_client(const void *a, const void *b)
 static void client_free(void *data)
 {
 	struct btd_adv_client *client = data;
+
+	if (client->free_id) {
+		g_source_remove(client->free_id);
+		client->free_id = 0;
+	}
 
 	if (client->to_id > 0)
 		timeout_remove(client->to_id);
@@ -158,9 +164,21 @@ static void client_free(void *data)
 
 static gboolean client_free_idle_cb(void *data)
 {
+	struct btd_adv_client *client = data;
+
+	client->free_id = 0;
+
 	client_free(data);
 
 	return FALSE;
+}
+
+static void client_free_idle(struct btd_adv_client *client)
+{
+	if (client->free_id)
+		return;
+
+	client->free_id = g_idle_add(client_free_idle_cb, client);
 }
 
 static void client_release(void *data)
@@ -211,7 +229,7 @@ static void client_remove(struct btd_adv_client *client)
 
 	queue_remove(client->manager->clients, client);
 
-	g_idle_add(client_free_idle_cb, client);
+	client_free_idle(client);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter_get_path(client->manager->adapter),
@@ -1389,7 +1407,7 @@ static void add_client_complete(struct btd_adv_client *client, uint8_t status)
 					"Failed to register advertisement");
 		queue_remove(client->manager->clients, client);
 		g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
-		g_idle_add(client_free_idle_cb, client);
+		client_free_idle(client);
 
 	} else {
 		DBusMessageIter iter;
@@ -1642,7 +1660,7 @@ static void client_proxy_added(GDBusProxy *proxy, void *data)
 	queue_remove(client->manager->clients, client);
 	g_dbus_client_set_disconnect_watch(client->client, NULL, NULL);
 
-	g_idle_add(client_free_idle_cb, client);
+	client_free_idle(client);
 
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
 
