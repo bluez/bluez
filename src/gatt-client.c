@@ -2414,9 +2414,29 @@ void btd_gatt_client_eatt_connect(struct btd_gatt_client *client)
 	}
 }
 
+static void characteristic_attach_att(void *data, void *user_data)
+{
+	struct characteristic *chrc = data;
+	struct bt_att *att = user_data;
+
+	chrc->exchange_id = bt_att_register_exchange(att, att_exchange, chrc,
+									NULL);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), chrc->path,
+					GATT_CHARACTERISTIC_IFACE, "MTU");
+}
+
+static void service_attach_att(void *data, void *user_data)
+{
+	struct service *service = data;
+
+	queue_foreach(service->chrcs, characteristic_attach_att, user_data);
+}
+
 void btd_gatt_client_connected(struct btd_gatt_client *client)
 {
 	struct bt_gatt_client *gatt;
+	struct bt_att *att;
 
 	gatt = btd_device_get_gatt_client(client->device);
 	if (!gatt) {
@@ -2428,6 +2448,15 @@ void btd_gatt_client_connected(struct btd_gatt_client *client)
 
 	bt_gatt_client_unref(client->gatt);
 	client->gatt = bt_gatt_client_clone(gatt);
+
+	/*
+	 * Characteristics kept from a previous connection have their exchange
+	 * callback registered on its bt_att, and MTU was omitted while
+	 * disconnected, so register them again and emit MTU.
+	 */
+	att = bt_gatt_client_get_att(client->gatt);
+	if (att)
+		queue_foreach(client->services, service_attach_att, att);
 
 	/*
 	 * Services have already been created before. Re-enable notifications
