@@ -237,6 +237,54 @@ test_btmgmt_info
 :Notes: Skipped if `btmgmt` is not built. Checks the mgmt interface is
 	usable without a daemon.
 
+test_sdp.py
+===========
+
+test_sdp_records_without_handle[switch2]
+----------------------------------------
+
+:Setup: Two hosts. host0 runs `bluetoothd` with an agent. host1 runs no
+	`bluetoothd`: `btmgmt` makes it connectable and discoverable, and it
+	answers SDP on PSM 1 itself with the records of a Nintendo Switch 2,
+	none of which has the ServiceRecordHandle attribute.
+
+	.. code-block::
+
+		+--------------------+                 +--------------------+
+		| host0              |      BR/EDR     | host1              |
+		| bluetoothd, agent  | --------------> | SDP server, PSM 1  |
+		| discovers, browses |                 | no bluetoothd      |
+		+--------------------+                 +--------------------+
+
+:Steps:
+	1. host0 calls ``org.bluez.Adapter1.StartDiscovery`` until it has a
+	   device object for host1, then ``StopDiscovery``.
+	2. host0 calls ``org.bluez.Device1.Connect``, which browses the SDP
+	   records of host1.
+	3. Wait until ``org.bluez.Device1.UUIDs`` of host1 contains the Audio
+	   Source UUID of its first record.
+
+:Expected:
+	1. ``UUIDs`` also contains the A/V Remote Control Target, A/V Remote
+	   Control and PnP Information UUIDs of the other records.
+	2. The cache file of host1 in the state directory of host0 holds
+	   each of the 4 records once.
+
+:Notes: Records without a handle all keep the 0xffffffff placeholder, so
+	a duplicate check that compares handles only keeps the first record
+	and drops the others, and records cached under their handle
+	overwrite each other. Skipped if `btmgmt` is not built.
+
+test_sdp_records_without_handle[duplicate]
+------------------------------------------
+
+:Setup: As above, but host1 also returns the PnP Information record for
+	the L2CAP search, so host0 receives it from both of its searches.
+
+:Steps: As above.
+
+:Expected: As above: the PnP Information record is cached once.
+
 test_adv_monitor.py
 ===================
 
