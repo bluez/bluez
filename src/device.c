@@ -5948,14 +5948,15 @@ add_uuids:
 	device_add_uuids(device, uuids);
 }
 
-static void store_sdp_record(GKeyFile *key_file, sdp_record_t *rec)
+static void store_sdp_record(GKeyFile *key_file, sdp_record_t *rec,
+							uint32_t handle)
 {
 	char handle_str[11];
 	sdp_buf_t buf;
 	int size, i;
 	char *str;
 
-	sprintf(handle_str, "0x%8.8X", rec->handle);
+	sprintf(handle_str, "0x%8.8X", handle);
 
 	if (sdp_gen_record_pdu(rec, &buf) < 0)
 		return;
@@ -6024,8 +6025,41 @@ static int rec_cmp(const void *a, const void *b)
 {
 	const sdp_record_t *r1 = a;
 	const sdp_record_t *r2 = b;
+	sdp_buf_t pdu1, pdu2;
+	int ret;
 
-	return r1->handle - r2->handle;
+	if (r1->handle != r2->handle)
+		return r1->handle - r2->handle;
+
+	/*
+	 * Some devices (e.g. the Nintendo Switch 2) omit the
+	 * ServiceRecordHandle attribute from their Service Search Attribute
+	 * responses, so all of their records keep the 0xffffffff placeholder
+	 * set by sdp_record_alloc(). Comparing handles alone would treat every
+	 * such record as a duplicate of the first one, so compare their
+	 * contents instead: copies of one record returned by different
+	 * searches are identical, different records are not.
+	 */
+	if (r1->handle != 0xffffffff)
+		return 0;
+
+	if (sdp_gen_record_pdu(r1, &pdu1) < 0)
+		return -1;
+
+	if (sdp_gen_record_pdu(r2, &pdu2) < 0) {
+		free(pdu1.data);
+		return -1;
+	}
+
+	if (pdu1.data_size != pdu2.data_size)
+		ret = pdu1.data_size < pdu2.data_size ? -1 : 1;
+	else
+		ret = memcmp(pdu1.data, pdu2.data, pdu1.data_size);
+
+	free(pdu1.data);
+	free(pdu2.data);
+
+	return ret;
 }
 
 static int update_record(struct browse_req *req, const char *uuid,
@@ -6052,6 +6086,31 @@ static int update_record(struct browse_req *req, const char *uuid,
 	}
 
 	return 0;
+}
+
+/*
+ * Records without a ServiceRecordHandle all keep the 0xffffffff placeholder,
+ * so store them as 0xffffffff, 0xfffffffe, ... in the order they were found
+ * instead of under the same key.
+ */
+static uint32_t record_storage_handle(struct browse_req *req,
+						const sdp_record_t *rec)
+{
+	uint32_t handle = 0xffffffff;
+	sdp_list_t *l;
+
+	if (rec->handle != 0xffffffff)
+		return rec->handle;
+
+	/* The last entry is the copy of rec added by update_record() */
+	for (l = req->records; l && l->next; l = l->next) {
+		const sdp_record_t *r = l->data;
+
+		if (r->handle == 0xffffffff)
+			handle--;
+	}
+
+	return handle;
 }
 
 static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
@@ -6136,7 +6195,8 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 			goto next;
 
 		if (sdp_key_file)
-			store_sdp_record(sdp_key_file, rec);
+			store_sdp_record(sdp_key_file, rec,
+					record_storage_handle(req, rec));
 
 		if (att_key_file)
 			store_primaries_from_sdp_record(att_key_file, rec);
