@@ -90,6 +90,7 @@ struct hfp_device {
 	uint8_t			codec;
 	unsigned int		resume_id;
 	struct connect_data	*pending_connect;
+	DBusMessage		*dial_msg;
 	hfp_hf_sco_closed_cb	sco_closed_cb;
 	void			*sco_closed_data;
 };
@@ -192,6 +193,29 @@ static void sco_connect_complete(struct connect_data *connect_data, int status)
 	g_free(connect_data);
 }
 
+static void dial_complete(enum hfp_result res, enum hfp_error cme_err,
+							void *user_data)
+{
+	struct hfp_device *dev = user_data;
+
+	if (dev->dial_msg == NULL)
+		return;
+
+	if (res != HFP_RESULT_OK) {
+		DBusMessage *reply;
+		const char *name = dbus_message_get_member(dev->dial_msg);
+
+		error("Command %s error: %d", name, res);
+		reply = g_dbus_create_error(dev->dial_msg, ERROR_INTERFACE
+					".Failed",
+					"Command %s failed: %d", name, res);
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		dbus_message_unref(dev->dial_msg);
+		dev->dial_msg = NULL;
+		return;
+	}
+}
+
 static void device_destroy(struct hfp_device *dev)
 {
 	struct hfp_server *server;
@@ -199,6 +223,10 @@ static void device_destroy(struct hfp_device *dev)
 	DBG("%s", telephony_get_path(dev->telephony));
 
 	telephony_set_state(dev->telephony, DISCONNECTING);
+
+	if (dev->dial_msg)
+		dial_complete(HFP_RESULT_ERROR,
+				HFP_ERROR_NO_CONNECTION_TO_PHONE, dev);
 
 	if (dev->pending_connect)
 		sco_connect_complete(dev->pending_connect, -ENOTCONN);
@@ -288,10 +316,23 @@ static void hfp_hf_call_added(uint id, enum hfp_call_status status,
 		call->multiparty = mpty;
 	if (telephony_call_register_interface(call)) {
 		telephony_free_call(call);
+		if (status == CALL_STATUS_DIALING ||
+				status == CALL_STATUS_ALERTING)
+			dial_complete(HFP_RESULT_ERROR, HFP_ERROR_MEMORY_FULL,
+									dev);
 		return;
 	}
 
 	queue_push_tail(dev->calls, call);
+
+	if ((status == CALL_STATUS_DIALING || status == CALL_STATUS_ALERTING)
+			&& dev->dial_msg) {
+		g_dbus_send_reply(btd_get_dbus_connection(), dev->dial_msg,
+					DBUS_TYPE_OBJECT_PATH, &call->path,
+					DBUS_TYPE_INVALID);
+		dbus_message_unref(dev->dial_msg);
+		dev->dial_msg = NULL;
+	}
 }
 
 static void hfp_hf_call_removed(uint id, void *user_data)
@@ -566,10 +607,14 @@ static DBusMessage *dial(DBusConnection *conn, DBusMessage *msg,
 	if (strncmp(number, URI_PREFIX, strlen(URI_PREFIX)) != 0)
 		return btd_error_invalid_args(msg);
 
-	ret = hfp_hf_dial(dev->hf, number + strlen(URI_PREFIX), cmd_complete,
-					dbus_message_ref(msg));
-	if (!ret)
+	dev->dial_msg = dbus_message_ref(msg);
+	ret = hfp_hf_dial(dev->hf, number + strlen(URI_PREFIX), dial_complete,
+									dev);
+	if (!ret) {
+		dbus_message_unref(dev->dial_msg);
+		dev->dial_msg = NULL;
 		return btd_error_failed(msg, "Dial command failed");
+	}
 
 	return NULL;
 }
