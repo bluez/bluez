@@ -3765,11 +3765,23 @@ error:
 	return false;
 }
 
+static bool probe_hfp_hf(struct media_adapter *adapter)
+{
+	struct btd_profile *profile;
+
+	profile = btd_profile_find_remote_uuid(HFP_AG_UUID);
+	if (!profile || profile->external)
+		return false;
+
+	return true;
+}
+
 static const struct {
 	const char *name;
 	bool (*probe)(struct media_adapter *adapter);
 } features[] = {
 	{ "tx-timestamping", probe_tx_timestamping },
+	{ "hfp-hf", probe_hfp_hf },
 };
 
 static gboolean supported_features(const GDBusPropertyTable *property,
