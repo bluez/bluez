@@ -193,10 +193,228 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 	return 0;
 }
 
+struct concat_data {
+	GString *buffer;
+	const struct apparam_field *params;
+};
+
+struct photo_filter {
+	GString *result;
+	GString *header;
+	gboolean include;
+	gboolean quoted_printable;
+	gboolean qp_continuation;
+};
+
+static const char *photo_filter_find_separator(const char *line, size_t length,
+							char separator)
+{
+	gboolean quoted = FALSE;
+	gboolean escaped = FALSE;
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		if (escaped) {
+			escaped = FALSE;
+			continue;
+		}
+
+		if (quoted && line[i] == '\\') {
+			escaped = TRUE;
+			continue;
+		}
+
+		if (line[i] == '"') {
+			quoted = !quoted;
+			continue;
+		}
+
+		if (!quoted && line[i] == separator)
+			return line + i;
+	}
+
+	return NULL;
+}
+
+static gboolean line_is_quoted_printable(const char *line)
+{
+	const char *colon;
+	const char *p;
+
+	colon = photo_filter_find_separator(line, strlen(line), ':');
+	if (!colon)
+		return FALSE;
+
+	p = line;
+	while (p < colon && (*p == ' ' || *p == '\t'))
+		p++;
+
+	if (colon - p == 25 && g_ascii_strncasecmp(p,
+				"ENCODING=QUOTED-PRINTABLE", 25) == 0)
+		return TRUE;
+
+	while ((p = photo_filter_find_separator(p, colon - p, ';'))) {
+		const char *next;
+		size_t len;
+
+		p++;
+		next = photo_filter_find_separator(p, colon - p, ';');
+		if (!next)
+			next = colon;
+
+		len = next - p;
+		if (len > 9 && g_ascii_strncasecmp(p, "ENCODING=", 9) == 0) {
+			p += 9;
+			len -= 9;
+		}
+
+		if (len == 16 && g_ascii_strncasecmp(p, "QUOTED-PRINTABLE",
+								16) == 0)
+			return TRUE;
+
+		p = next;
+	}
+
+	return FALSE;
+}
+
+static void photo_filter_append(struct photo_filter *filter, const char *line)
+{
+	if (filter->include)
+		g_string_append_printf(filter->result, "%s\r\n", line);
+}
+
+static void photo_filter_append_header(struct photo_filter *filter,
+						const char *line)
+{
+	if (photo_filter_find_separator(filter->header->str,
+						filter->header->len, ':'))
+		return;
+
+	while (*line == ' ' || *line == '\t')
+		line++;
+
+	g_string_append(filter->header, line);
+	filter->quoted_printable =
+				line_is_quoted_printable(filter->header->str);
+}
+
+static gboolean photo_filter_continuation(struct photo_filter *filter,
+						const char *line, size_t len)
+{
+	if (filter->qp_continuation) {
+		photo_filter_append(filter, line);
+		filter->qp_continuation = len && line[len - 1] == '=';
+		return TRUE;
+	}
+
+	if (line[0] != ' ' && line[0] != '\t')
+		return FALSE;
+
+	photo_filter_append(filter, line);
+	photo_filter_append_header(filter, line);
+
+	filter->qp_continuation = filter->quoted_printable && len &&
+						line[len - 1] == '=';
+
+	return TRUE;
+}
+
+static gboolean photo_filter_skip_value(struct photo_filter *filter,
+						const char *line)
+{
+	if (filter->include)
+		return FALSE;
+
+	/*
+	 * Folded lines, and the unfolded BASE64 lines and the terminating
+	 * blank line of vCard 2.1, belong to the PHOTO value.
+	 */
+	if (!line[0]) {
+		filter->include = TRUE;
+		return TRUE;
+	}
+
+	return !strchr(line, ':');
+}
+
+static void photo_filter_property(struct photo_filter *filter,
+						const char *line, size_t len)
+{
+	const char *end;
+	const char *name;
+
+	end = strpbrk(line, ";:");
+	name = end ? memrchr(line, '.', end - line) : NULL;
+	name = name ? name + 1 : line;
+	filter->include = !end || end - name != 5 ||
+				g_ascii_strncasecmp(name, "PHOTO", 5) != 0;
+
+	g_string_assign(filter->header, line);
+	filter->quoted_printable = line_is_quoted_printable(line);
+	filter->qp_continuation = filter->quoted_printable && len &&
+						line[len - 1] == '=';
+
+	photo_filter_append(filter, line);
+}
+
+static char *filter_vcard_photo(const char *buffer, size_t length,
+					const struct apparam_field *params,
+					size_t *filtered_length)
+{
+	struct photo_filter filter;
+	char *copy;
+	char **lines;
+	unsigned int i;
+
+	/* PHOTO is bit 3 of the PropertySelector. */
+	if (!params->filter || (params->filter & (1ULL << 3))) {
+		*filtered_length = length;
+		return g_strndup(buffer, length);
+	}
+
+	copy = g_strndup(buffer, length);
+	lines = g_strsplit(copy, "\n", -1);
+	filter.result = g_string_new(NULL);
+	filter.header = g_string_new(NULL);
+	filter.include = TRUE;
+	filter.quoted_printable = FALSE;
+	filter.qp_continuation = FALSE;
+
+	for (i = 0; lines[i]; i++) {
+		char *line = lines[i];
+		size_t len = strlen(line);
+
+		if (len && line[len - 1] == '\r')
+			line[--len] = '\0';
+
+		/* Nothing follows the last line break. */
+		if (!lines[i + 1] && !line[0])
+			break;
+
+		if (photo_filter_continuation(&filter, line, len))
+			continue;
+
+		if (photo_filter_skip_value(&filter, line))
+			continue;
+
+		photo_filter_property(&filter, line, len);
+	}
+
+	g_strfreev(lines);
+	g_free(copy);
+	g_string_free(filter.header, TRUE);
+
+	*filtered_length = filter.result->len;
+	return g_string_free(filter.result, FALSE);
+}
+
 static void entry_concat(const char *filename, VObject *v, void *user_data)
 {
-	GString *buffer = user_data;
+	struct concat_data *data = user_data;
+	char *filtered;
 	char tmp[1024];
+	size_t filtered_len;
 	int len;
 
 	/*
@@ -207,19 +425,22 @@ static void entry_concat(const char *filename, VObject *v, void *user_data)
 	memset(tmp, 0, len);
 
 	writeMemVObject(tmp, &len, v);
+	filtered = filter_vcard_photo(tmp, len, data->params,
+						&filtered_len);
 
-	/* FIXME: only the requested fields must be added */
-	g_string_append_len(buffer, tmp, len);
+	g_string_append_len(data->buffer, filtered, filtered_len);
+	g_free(filtered);
 }
 
 static gboolean read_dir(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
-	GString *buffer;
+	struct concat_data data;
 	DIR *dp;
 	uint16_t count = 0, max, offset;
 
-	buffer = g_string_new("");
+	data.buffer = g_string_new("");
+	data.params = dummy->apparams;
 
 	dp = opendir(dummy->folder);
 	if (dp == NULL) {
@@ -242,15 +463,15 @@ static gboolean read_dir(void *user_data)
 		offset = dummy->apparams->liststartoffset;
 	}
 
-	foreach_vcard(dp, entry_concat, offset, max, buffer, &count);
+	foreach_vcard(dp, entry_concat, offset, max, &data, &count);
 
 	closedir(dp);
 done:
 	/* FIXME: Missing vCards fields filtering */
-	dummy->cb(buffer->str, buffer->len, count, dummy->newmissedcalls,
-							TRUE, dummy->user_data);
+	dummy->cb(data.buffer->str, data.buffer->len, count,
+			dummy->newmissedcalls, TRUE, dummy->user_data);
 
-	g_string_free(buffer, TRUE);
+	g_string_free(data.buffer, TRUE);
 
 	return FALSE;
 }
@@ -332,7 +553,9 @@ static gboolean create_cache(void *user_data)
 static gboolean read_entry(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
+	char *filtered;
 	char buffer[1024];
+	size_t filtered_len;
 	ssize_t count;
 
 	memset(buffer, 0, sizeof(buffer));
@@ -344,9 +567,10 @@ static gboolean read_entry(void *user_data)
 		count = 0;
 	}
 
-	/* FIXME: Missing vCards fields filtering */
-
-	dummy->cb(buffer, count, 1, 0, TRUE, dummy->user_data);
+	filtered = filter_vcard_photo(buffer, count, dummy->apparams,
+							&filtered_len);
+	dummy->cb(filtered, filtered_len, 1, 0, TRUE, dummy->user_data);
+	g_free(filtered);
 
 	return FALSE;
 }
