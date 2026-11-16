@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <signal.h>
 #include <sys/socket.h>
 
@@ -33,16 +32,19 @@
 
 #include "cups.h"
 
-struct cups_device {
-	char *bdaddr;
+#define DISCOVERY_TIMEOUT 10
+
+struct id_lookup {
 	char *name;
-	char *id;
+	char *bdaddr;
+	sdp_session_t *sdp;
+	guint watch;
 };
 
-static GSList *device_list = NULL;
+static GSList *printer_list = NULL;
+static GSList *lookup_list = NULL;
 static GMainLoop *loop = NULL;
-static DBusConnection *conn = NULL;
-static gboolean doing_disco = FALSE;
+static gboolean adapter_found = FALSE;
 
 static char *device_get_ieee1284_id(const char *address)
 {
@@ -85,400 +87,212 @@ static void print_printer_details(const char *name, const char *bdaddr,
 	g_free(uri);
 }
 
-static void add_device_to_list(const char *name, const char *bdaddr,
-								const char *id)
+static void lookup_done(struct id_lookup *lookup, const char *id)
 {
-	struct cups_device *device;
-	GSList *l;
+	print_printer_details(lookup->name, lookup->bdaddr, id);
 
-	/* Look for the device in the list */
-	for (l = device_list; l != NULL; l = l->next) {
-		device = (struct cups_device *) l->data;
+	lookup_list = g_slist_remove(lookup_list, lookup);
 
-		if (strcmp(device->bdaddr, bdaddr) == 0) {
-			if (device->name != name) {
-				g_free(device->name);
-				device->name = g_strdup(name);
-			}
-			g_free(device->id);
-			device->id = g_strdup(id);
-			return;
-		}
-	}
+	if (lookup->watch)
+		g_source_remove(lookup->watch);
 
-	/* Or add it to the list if it's not there */
-	device = g_new0(struct cups_device, 1);
-	device->bdaddr = g_strdup(bdaddr);
-	device->name = g_strdup(name);
-	device->id = g_strdup(id);
-
-	device_list = g_slist_prepend(device_list, device);
-	print_printer_details(device->name, device->bdaddr, device->id);
+	sdp_close(lookup->sdp);
+	g_free(lookup->name);
+	g_free(lookup->bdaddr);
+	g_free(lookup);
 }
 
-static gboolean parse_device_properties(DBusMessageIter *reply_iter,
-						char **name, char **bdaddr)
+static void lookup_complete(uint8_t type, uint16_t status, uint8_t *rsp,
+						size_t size, void *user_data)
 {
-	guint32 class = 0;
-	DBusMessageIter reply_iter_entry;
+	struct id_lookup *lookup = user_data;
+	char *id = NULL;
 
-	if (dbus_message_iter_get_arg_type(reply_iter) != DBUS_TYPE_ARRAY)
+	if (!status && type == SDP_SVC_SEARCH_ATTR_RSP)
+		id = sdp_parse_ieee1284_id(rsp, size);
+
+	lookup->watch = 0;
+	lookup_done(lookup, id);
+	free(id);
+}
+
+static gboolean lookup_process(GIOChannel *chan, GIOCondition cond,
+							gpointer user_data)
+{
+	struct id_lookup *lookup = user_data;
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
+		lookup->watch = 0;
+		lookup_done(lookup, NULL);
 		return FALSE;
-
-	dbus_message_iter_recurse(reply_iter, &reply_iter_entry);
-
-	while (dbus_message_iter_get_arg_type(&reply_iter_entry) ==
-							DBUS_TYPE_DICT_ENTRY) {
-		const char *key;
-		DBusMessageIter dict_entry, iter_dict_val;
-
-		dbus_message_iter_recurse(&reply_iter_entry, &dict_entry);
-
-		/* Key == Class ? */
-		dbus_message_iter_get_basic(&dict_entry, &key);
-		if (!key) {
-			dbus_message_iter_next(&reply_iter_entry);
-			continue;
-		}
-
-		if (strcmp(key, "Class") != 0 &&
-				strcmp(key, "Alias") != 0 &&
-				strcmp(key, "Address") != 0) {
-			dbus_message_iter_next(&reply_iter_entry);
-			continue;
-		}
-
-		/* Try to get the value */
-		if (!dbus_message_iter_next(&dict_entry)) {
-			dbus_message_iter_next(&reply_iter_entry);
-			continue;
-		}
-		dbus_message_iter_recurse(&dict_entry, &iter_dict_val);
-		if (strcmp(key, "Class") == 0) {
-			dbus_message_iter_get_basic(&iter_dict_val, &class);
-		} else {
-			const char *value;
-			dbus_message_iter_get_basic(&iter_dict_val, &value);
-			if (strcmp(key, "Alias") == 0) {
-				*name = g_strdup(value);
-			} else if (bdaddr) {
-				*bdaddr = g_strdup(value);
-			}
-		}
-		dbus_message_iter_next(&reply_iter_entry);
 	}
 
-	if (class == 0)
+	/* On failure or completion sdp_process() calls lookup_complete() */
+	if (sdp_process(lookup->sdp) < 0)
 		return FALSE;
-	if (((class & 0x1f00) >> 8) == 0x06 && (class & 0x80))
-		return TRUE;
+
+	return TRUE;
+}
+
+static gboolean lookup_connected(GIOChannel *chan, GIOCondition cond,
+							gpointer user_data)
+{
+	struct id_lookup *lookup = user_data;
+	socklen_t len = sizeof(int);
+	int sk_err = 0;
+
+	lookup->watch = 0;
+
+	if (getsockopt(g_io_channel_unix_get_fd(chan), SOL_SOCKET, SO_ERROR,
+						&sk_err, &len) < 0 || sk_err ||
+			sdp_set_notify(lookup->sdp, lookup_complete, lookup) < 0 ||
+			sdp_search_ieee1284_id_async(lookup->sdp) < 0) {
+		lookup_done(lookup, NULL);
+		return FALSE;
+	}
+
+	lookup->watch = g_io_add_watch(chan,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				lookup_process, lookup);
 
 	return FALSE;
 }
 
-static gboolean device_is_printer(const char *adapter, const char *device_path, char **name, char **bdaddr)
+static void lookup_start(const char *name, const char *bdaddr)
 {
-	DBusMessage *message, *reply;
-	DBusMessageIter reply_iter;
-	gboolean retval;
+	struct id_lookup *lookup;
+	sdp_session_t *sdp;
+	GIOChannel *chan;
+	bdaddr_t ba;
 
-	message = dbus_message_new_method_call("org.bluez", device_path,
-							"org.bluez.Device1",
-							"GetProperties");
+	str2ba(bdaddr, &ba);
 
-	reply = dbus_connection_send_with_reply_and_block(conn,
-							message, -1, NULL);
-
-	dbus_message_unref(message);
-
-	if (!reply)
-		return FALSE;
-
-	dbus_message_iter_init(reply, &reply_iter);
-
-	retval = parse_device_properties(&reply_iter, name, bdaddr);
-
-	dbus_message_unref(reply);
-
-	return retval;
-}
-
-static void remote_device_found(const char *adapter, const char *bdaddr,
-							const char *name)
-{
-	DBusMessage *message, *reply;
-	DBusMessageIter iter;
-	char *object_path = NULL;
-	char *id;
-
-	assert(adapter != NULL);
-
-	message = dbus_message_new_method_call("org.bluez", adapter,
-							"org.bluez.Adapter1",
-							"FindDevice");
-	dbus_message_iter_init_append(message, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
-
-	reply = dbus_connection_send_with_reply_and_block(conn,
-							message, -1, NULL);
-
-	dbus_message_unref(message);
-
-	if (!reply) {
-		message = dbus_message_new_method_call("org.bluez", adapter,
-							"org.bluez.Adapter1",
-							"CreateDevice");
-		dbus_message_iter_init_append(message, &iter);
-		dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
-
-		reply = dbus_connection_send_with_reply_and_block(conn,
-							message, -1, NULL);
-
-		dbus_message_unref(message);
-
-		if (!reply)
-			return;
-	}
-
-	if (dbus_message_get_args(reply, NULL,
-					DBUS_TYPE_OBJECT_PATH, &object_path,
-					DBUS_TYPE_INVALID) == FALSE) {
-		dbus_message_unref(reply);
+	sdp = sdp_connect(BDADDR_ANY, &ba, SDP_NON_BLOCKING);
+	if (!sdp) {
+		print_printer_details(name, bdaddr, NULL);
 		return;
 	}
 
-	id = device_get_ieee1284_id(bdaddr);
-	add_device_to_list(name, bdaddr, id);
-	free(id);
+	lookup = g_new0(struct id_lookup, 1);
+	lookup->name = g_strdup(name);
+	lookup->bdaddr = g_strdup(bdaddr);
+	lookup->sdp = sdp;
 
-	dbus_message_unref(reply);
+	chan = g_io_channel_unix_new(sdp_get_socket(sdp));
+	lookup->watch = g_io_add_watch(chan,
+				G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				lookup_connected, lookup);
+	g_io_channel_unref(chan);
+
+	lookup_list = g_slist_prepend(lookup_list, lookup);
 }
 
-static void discovery_completed(void)
+static void device_added(GDBusProxy *proxy)
 {
-	g_slist_free(device_list);
-	device_list = NULL;
+	DBusMessageIter iter;
+	dbus_uint32_t class;
+	const char *bdaddr, *name;
+
+	if (!g_dbus_proxy_get_property(proxy, "Class", &iter))
+		return;
+
+	dbus_message_iter_get_basic(&iter, &class);
+
+	/* Imaging major class with the printer bit set */
+	if (((class & 0x1f00) >> 8) != 0x06 || !(class & 0x80))
+		return;
+
+	if (!g_dbus_proxy_get_property(proxy, "Address", &iter))
+		return;
+
+	dbus_message_iter_get_basic(&iter, &bdaddr);
+
+	if (!g_dbus_proxy_get_property(proxy, "Alias", &iter))
+		return;
+
+	dbus_message_iter_get_basic(&iter, &name);
+
+	if (g_slist_find_custom(printer_list, bdaddr, (GCompareFunc) strcmp))
+		return;
+
+	printer_list = g_slist_prepend(printer_list, g_strdup(bdaddr));
+
+	lookup_start(name, bdaddr);
+}
+
+static void proxy_added(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.Adapter1")) {
+		adapter_found = TRUE;
+		g_dbus_proxy_method_call(proxy, "StartDiscovery", NULL, NULL,
+								NULL, NULL);
+	} else if (!strcmp(interface, "org.bluez.Device1")) {
+		device_added(proxy);
+	}
+}
+
+static void property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	const char *interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.Device1") && !strcmp(name, "Class"))
+		device_added(proxy);
+}
+
+static void client_ready(GDBusClient *client, void *user_data)
+{
+	if (!adapter_found)
+		g_main_loop_quit(loop);
+}
+
+static gboolean discovery_timeout(gpointer user_data)
+{
+	/* List the printers whose device ID did not arrive in time */
+	while (lookup_list)
+		lookup_done(lookup_list->data, NULL);
 
 	g_main_loop_quit(loop);
-}
-
-static void remote_device_disappeared(const char *bdaddr)
-{
-	GSList *l;
-
-	for (l = device_list; l != NULL; l = l->next) {
-		struct cups_device *device = l->data;
-
-		if (strcmp(device->bdaddr, bdaddr) == 0) {
-			g_free(device->name);
-			g_free(device->bdaddr);
-			g_free(device);
-			device_list = g_slist_delete_link(device_list, l);
-			return;
-		}
-	}
-}
-
-static gboolean list_known_printers(const char *adapter)
-{
-	DBusMessageIter reply_iter, iter_array;
-	DBusError error;
-	DBusMessage *message, *reply;
-
-	message = dbus_message_new_method_call("org.bluez", adapter,
-						"org.bluez.Adapter1",
-						"ListDevices");
-	if (message == NULL)
-		return FALSE;
-
-	dbus_error_init(&error);
-	reply = dbus_connection_send_with_reply_and_block(conn, message,
-								-1, &error);
-
-	dbus_message_unref(message);
-
-	if (dbus_error_is_set(&error)) {
-		dbus_error_free(&error);
-		return FALSE;
-	}
-
-	dbus_message_iter_init(reply, &reply_iter);
-	if (dbus_message_iter_get_arg_type(&reply_iter) != DBUS_TYPE_ARRAY) {
-		dbus_message_unref(reply);
-		return FALSE;
-	}
-
-	dbus_message_iter_recurse(&reply_iter, &iter_array);
-	while (dbus_message_iter_get_arg_type(&iter_array) ==
-						DBUS_TYPE_OBJECT_PATH) {
-		const char *object_path;
-		char *name = NULL;
-		char *bdaddr = NULL;
-
-		dbus_message_iter_get_basic(&iter_array, &object_path);
-		if (device_is_printer(adapter, object_path, &name, &bdaddr)) {
-			char *id;
-
-			id = device_get_ieee1284_id(bdaddr);
-			add_device_to_list(name, bdaddr, id);
-			free(id);
-		}
-		g_free(name);
-		g_free(bdaddr);
-		dbus_message_iter_next(&iter_array);
-	}
-
-	dbus_message_unref(reply);
 
 	return FALSE;
-}
-
-static DBusHandlerResult filter_func(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	if (dbus_message_is_signal(message, "org.bluez.Adapter1",
-						"DeviceFound")) {
-		const char *adapter, *bdaddr;
-		char *name;
-		DBusMessageIter iter;
-
-		dbus_message_iter_init(message, &iter);
-		dbus_message_iter_get_basic(&iter, &bdaddr);
-		dbus_message_iter_next(&iter);
-
-		adapter = dbus_message_get_path(message);
-		if (parse_device_properties(&iter, &name, NULL))
-			remote_device_found(adapter, bdaddr, name);
-		g_free (name);
-	} else if (dbus_message_is_signal(message, "org.bluez.Adapter1",
-						"DeviceDisappeared")) {
-		const char *bdaddr;
-
-		dbus_message_get_args(message, NULL,
-					DBUS_TYPE_STRING, &bdaddr,
-					DBUS_TYPE_INVALID);
-		remote_device_disappeared(bdaddr);
-	} else if (dbus_message_is_signal(message, "org.bluez.Adapter1",
-						"PropertyChanged")) {
-		DBusMessageIter iter, value_iter;
-		const char *name;
-		gboolean discovering;
-
-		dbus_message_iter_init(message, &iter);
-		dbus_message_iter_get_basic(&iter, &name);
-		if (name == NULL || strcmp(name, "Discovering") != 0)
-			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-		dbus_message_iter_next(&iter);
-		dbus_message_iter_recurse(&iter, &value_iter);
-		dbus_message_iter_get_basic(&value_iter, &discovering);
-
-		if (discovering == FALSE && doing_disco) {
-			doing_disco = FALSE;
-			discovery_completed();
-		}
-	}
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static gboolean list_printers(void)
 {
-	/* 1. Connect to the bus
-	 * 2. Get the manager
-	 * 3. Get the default adapter
-	 * 4. Get a list of devices
-	 * 5. Get the class of each device
-	 * 6. Print the details from each printer device
-	 */
-	DBusError error;
-	dbus_bool_t hcid_exists;
-	DBusMessage *reply, *message;
-	DBusMessageIter reply_iter;
-	char *adapter, *match;
+	DBusConnection *conn;
+	GDBusClient *client;
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (conn == NULL)
 		return TRUE;
 
-	dbus_error_init(&error);
-	hcid_exists = dbus_bus_name_has_owner(conn, "org.bluez", &error);
-	if (dbus_error_is_set(&error)) {
-		dbus_error_free(&error);
+	if (!dbus_bus_name_has_owner(conn, "org.bluez", NULL)) {
+		dbus_connection_unref(conn);
 		return TRUE;
 	}
 
-	if (!hcid_exists)
-		return TRUE;
+	loop = g_main_loop_new(NULL, FALSE);
 
-	/* Get the default adapter */
-	message = dbus_message_new_method_call("org.bluez", "/",
-						"org.bluez.Manager",
-						"DefaultAdapter");
-	if (message == NULL) {
+	client = g_dbus_client_new(conn, "org.bluez", "/org/bluez");
+	if (client == NULL) {
+		g_main_loop_unref(loop);
 		dbus_connection_unref(conn);
 		return FALSE;
 	}
 
-	reply = dbus_connection_send_with_reply_and_block(conn,
-							message, -1, &error);
+	g_dbus_client_set_ready_watch(client, client_ready, NULL);
+	g_dbus_client_set_proxy_handlers(client, proxy_added, NULL,
+						property_changed, NULL);
 
-	dbus_message_unref(message);
+	/* bluetoothd stops the discovery when we drop off the bus */
+	g_timeout_add_seconds(DISCOVERY_TIMEOUT, discovery_timeout, NULL);
 
-	if (dbus_error_is_set(&error)) {
-		dbus_error_free(&error);
-		dbus_connection_unref(conn);
-		/* No adapter */
-		return TRUE;
-	}
-
-	dbus_message_iter_init(reply, &reply_iter);
-	if (dbus_message_iter_get_arg_type(&reply_iter) !=
-						DBUS_TYPE_OBJECT_PATH) {
-		dbus_message_unref(reply);
-		dbus_connection_unref(conn);
-		return FALSE;
-	}
-
-	dbus_message_iter_get_basic(&reply_iter, &adapter);
-	adapter = g_strdup(adapter);
-	dbus_message_unref(reply);
-
-	if (!dbus_connection_add_filter(conn, filter_func, adapter, g_free)) {
-		g_free(adapter);
-		dbus_connection_unref(conn);
-		return FALSE;
-	}
-
-#define MATCH_FORMAT				\
-	"type='signal',"			\
-	"interface='org.bluez.Adapter1',"	\
-	"sender='org.bluez',"			\
-	"path='%s'"
-
-	match = g_strdup_printf(MATCH_FORMAT, adapter);
-	dbus_bus_add_match(conn, match, &error);
-	g_free(match);
-
-	/* Add the the recent devices */
-	list_known_printers(adapter);
-
-	doing_disco = TRUE;
-	message = dbus_message_new_method_call("org.bluez", adapter,
-					"org.bluez.Adapter1",
-					"StartDiscovery");
-
-	if (!dbus_connection_send_with_reply(conn, message, NULL, -1)) {
-		dbus_message_unref(message);
-		dbus_connection_unref(conn);
-		g_free(adapter);
-		return FALSE;
-	}
-	dbus_message_unref(message);
-
-	loop = g_main_loop_new(NULL, TRUE);
 	g_main_loop_run(loop);
 
-	g_free(adapter);
+	g_dbus_client_unref(client);
+	g_main_loop_unref(loop);
 	dbus_connection_unref(conn);
 
 	return TRUE;

@@ -124,16 +124,15 @@ static char *record_get_ieee1284_id(sdp_record_t *rec)
 	return strndup(data->val.str + 2, len - 2);
 }
 
-char *sdp_search_ieee1284_id(sdp_session_t *sdp)
+static int search_ieee1284_id(sdp_session_t *sdp, sdp_list_t **rsp)
 {
-	sdp_list_t *srch, *attrs, *rsp, *l;
+	sdp_list_t *srch, *attrs;
 	uuid_t svclass;
 	uint16_t attr;
-	char *id = NULL;
 	int err;
 
 	if (!sdp)
-		return NULL;
+		return -1;
 
 	sdp_uuid16_create(&svclass, HCR_PRINT_SVCLASS_ID);
 	srch = sdp_list_append(NULL, &svclass);
@@ -141,11 +140,25 @@ char *sdp_search_ieee1284_id(sdp_session_t *sdp)
 	attr = ATTRID_1284ID;
 	attrs = sdp_list_append(NULL, &attr);
 
-	err = sdp_service_search_attr_req(sdp, srch, SDP_ATTR_REQ_INDIVIDUAL,
-								attrs, &rsp);
+	if (rsp)
+		err = sdp_service_search_attr_req(sdp, srch,
+					SDP_ATTR_REQ_INDIVIDUAL, attrs, rsp);
+	else
+		err = sdp_service_search_attr_async(sdp, srch,
+					SDP_ATTR_REQ_INDIVIDUAL, attrs);
+
 	sdp_list_free(srch, NULL);
 	sdp_list_free(attrs, NULL);
-	if (err)
+
+	return err;
+}
+
+char *sdp_search_ieee1284_id(sdp_session_t *sdp)
+{
+	sdp_list_t *rsp, *l;
+	char *id = NULL;
+
+	if (search_ieee1284_id(sdp, &rsp))
 		return NULL;
 
 	for (l = rsp; l; l = l->next) {
@@ -156,6 +169,47 @@ char *sdp_search_ieee1284_id(sdp_session_t *sdp)
 	}
 
 	sdp_list_free(rsp, NULL);
+
+	return id;
+}
+
+int sdp_search_ieee1284_id_async(sdp_session_t *sdp)
+{
+	return search_ieee1284_id(sdp, NULL);
+}
+
+char *sdp_parse_ieee1284_id(uint8_t *rsp, size_t size)
+{
+	int scanned, seqlen = 0, bytesleft = size;
+	uint8_t dtd;
+	char *id = NULL;
+
+	scanned = sdp_extract_seqtype(rsp, bytesleft, &dtd, &seqlen);
+	if (!scanned || !seqlen)
+		return NULL;
+
+	rsp += scanned;
+	bytesleft -= scanned;
+
+	while (!id && bytesleft > 0) {
+		sdp_record_t *rec;
+		int recsize = 0;
+
+		rec = sdp_extract_pdu(rsp, bytesleft, &recsize);
+		if (!rec)
+			break;
+
+		if (recsize)
+			id = record_get_ieee1284_id(rec);
+
+		sdp_record_free(rec);
+
+		if (!recsize)
+			break;
+
+		rsp += recsize;
+		bytesleft -= recsize;
+	}
 
 	return id;
 }
