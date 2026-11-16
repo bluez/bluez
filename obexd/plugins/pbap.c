@@ -42,15 +42,22 @@
 #define VCARDLISTING_TYPE	"x-bt/vcard-listing"
 #define VCARDENTRY_TYPE		"x-bt/vcard"
 
-#define ORDER_TAG		0x01
-#define SEARCHVALUE_TAG		0x02
-#define SEARCHATTRIB_TAG	0x03
-#define MAXLISTCOUNT_TAG	0x04
-#define LISTSTARTOFFSET_TAG	0x05
-#define FILTER_TAG		0x06
-#define FORMAT_TAG		0X07
-#define PHONEBOOKSIZE_TAG	0X08
-#define NEWMISSEDCALLS_TAG	0X09
+#define ORDER_TAG			0x01
+#define SEARCHVALUE_TAG			0x02
+#define SEARCHATTRIB_TAG		0x03
+#define MAXLISTCOUNT_TAG		0x04
+#define LISTSTARTOFFSET_TAG		0x05
+#define FILTER_TAG			0x06
+#define FORMAT_TAG			0x07
+#define PHONEBOOKSIZE_TAG		0x08
+#define NEWMISSEDCALLS_TAG		0x09
+#define SUPPORTED_FEATURES_TAG		0x10
+
+#define DOWNLOAD_FEATURE	0x00000001
+#define BROWSE_FEATURE		0x00000002
+
+#define PSE_SUPPORTED_FEATURES \
+	(DOWNLOAD_FEATURE | BROWSE_FEATURE)
 
 struct cache {
 	gboolean valid;
@@ -72,6 +79,7 @@ struct pbap_session {
 	uint32_t find_handle;
 	struct cache cache;
 	struct pbap_object *obj;
+	uint32_t negotiated_features;
 };
 
 struct pbap_object {
@@ -513,12 +521,33 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 static void *pbap_connect(struct obex_session *os, int *err)
 {
 	struct pbap_session *pbap;
+	const uint8_t *buffer;
+	GObexApparam *apparam;
+	uint32_t pce_features;
+	ssize_t rsize;
 
 	manager_register_session(os);
 
 	pbap = g_new0(struct pbap_session, 1);
 	pbap->folder = g_strdup("/");
 	pbap->find_handle = PHONEBOOK_INVALID_HANDLE;
+
+	rsize = obex_get_apparam(os, &buffer);
+	pce_features = DOWNLOAD_FEATURE | BROWSE_FEATURE;
+
+	if (rsize > 0) {
+		apparam = g_obex_apparam_decode(buffer, rsize);
+		if (apparam) {
+			g_obex_apparam_get_uint32(apparam,
+						SUPPORTED_FEATURES_TAG,
+						&pce_features);
+			g_obex_apparam_free(apparam);
+		}
+	}
+
+	pbap->negotiated_features = PSE_SUPPORTED_FEATURES & pce_features;
+
+	DBG("negotiated features 0x%08x", pbap->negotiated_features);
 
 	if (err)
 		*err = 0;
