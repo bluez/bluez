@@ -81,7 +81,7 @@ static const char *attribute_mask[] = {
 		"KEY",
 		"NICKNAME",
 /* 24 */	"CATEGORIES",
-		"PROID",
+		"PRODID",
 		"CLASS",
 		"SORT-STRING",
 /* 28 */	"X-IRMC-CALL-DATETIME",
