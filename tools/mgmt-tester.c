@@ -706,14 +706,14 @@ static void test_condition_complete(struct test_data *data)
 
 #define test_bredrle62_full(name, data, setup, func, timeout) \
 	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE62, \
-					0x0e, 0x0201beff, 0x00000080)
+					0x10, 0x0201beff, 0x00000080)
 
 #define test_bredrle62(name, data, setup, func) \
 	test_bredrle62_full(name, data, setup, func, 2)
 
 #define test_bredrle70_full(name, data, setup, func, timeout) \
 	test_full(name, data, setup, func, timeout, HCIEMU_TYPE_BREDRLE70, \
-					0x10, 0x0601beff, 0x00000080)
+					0x12, 0x0601beff, 0x00000080)
 
 #define test_bredrle70(name, data, setup, func) \
 	test_bredrle70_full(name, data, setup, func, 2)
