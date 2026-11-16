@@ -60,6 +60,8 @@ struct apparam_field {
 /* Metadata identifying the current database contents. */
 struct phonebook_metadata {
 	uint8_t database_identifier[16];
+	uint8_t primary_counter[16];
+	uint8_t secondary_counter[16];
 };
 
 /*
