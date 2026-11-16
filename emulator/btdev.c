@@ -9151,6 +9151,7 @@ static void set_bredrle_features(struct btdev *btdev)
 	}
 
 	if (btdev->type >= BTDEV_TYPE_BREDRLE62) {
+		btdev->version = 0x10;
 		/* Shorter Connection Intervals */
 		btdev->le_features[9] |= BIT(0);
 		/* Shorter Connection Intervals (Host Support) */
@@ -9160,7 +9161,7 @@ static void set_bredrle_features(struct btdev *btdev)
 	if (btdev->type >= BTDEV_TYPE_BREDRLE70) {
 		uint8_t *page_1 = &btdev->le_features[8];
 
-		btdev->version = 0x10;
+		btdev->version = 0x12;
 
 		/* The data length commands of 7.0 are the ones emulated */
 		btdev->le_features[0] |= BIT(5); /* LE Data Length Extension */
@@ -9302,17 +9303,12 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->revision = 0x0000;
 
 	switch (btdev->type) {
-	case BTDEV_TYPE_BREDRLE70:
-		btdev->version = 0x0e;
-		set_bredrle_features(btdev);
-		set_bredrle_commands(btdev);
-		set_le_states(btdev);
-		break;
 	case BTDEV_TYPE_BREDRLE:
 	case BTDEV_TYPE_BREDRLE50:
 	case BTDEV_TYPE_BREDRLE52:
 	case BTDEV_TYPE_BREDRLE60:
 	case BTDEV_TYPE_BREDRLE62:
+	case BTDEV_TYPE_BREDRLE70:
 		btdev->version = 0x09;
 		set_bredrle_features(btdev);
 		set_bredrle_commands(btdev);
