@@ -247,7 +247,9 @@ struct avrcp {
 	unsigned int control_id;
 	unsigned int browsing_id;
 	unsigned int browsing_timer;
+	unsigned int position_timer;
 	uint16_t supported_events;
+	bool pos_changed_supported;
 	uint8_t transaction;
 	struct pending_pdu *pending_pdu;
 };
@@ -341,6 +343,7 @@ static const uint32_t company_ids[] = {
 
 static void avrcp_register_notification(struct avrcp *session, uint8_t event);
 static GList *player_list_settings(struct avrcp_player *player);
+static void avrcp_get_play_status(struct avrcp *session);
 
 static void avrcp_browsing_record(sdp_record_t *record, sdp_data_t *version)
 {
@@ -2224,6 +2227,59 @@ static const char *status_to_string(uint8_t status)
 	}
 }
 
+static bool avrcp_poll_play_status(gpointer user_data)
+{
+	struct avrcp *session = user_data;
+
+	avrcp_get_play_status(session);
+
+	return TRUE;
+}
+
+static void avrcp_stop_pos_polling(struct avrcp *session)
+{
+	if (session->position_timer == 0)
+		return;
+
+	timeout_remove(session->position_timer);
+	session->position_timer = 0;
+}
+
+static void avrcp_start_pos_polling(struct avrcp *session)
+{
+	if (session->position_timer > 0)
+		return;
+
+	session->position_timer = timeout_add_seconds(1,
+						avrcp_poll_play_status,
+						session, NULL);
+}
+
+/*
+ * Poll GetPlayStatus once a second to resync position while playing when
+ * the remote does not support AVRCP_EVENT_PLAYBACK_POS_CHANGED. Polling is
+ * paused whenever playback is not actively progressing.
+ */
+static void avrcp_update_pos_polling(struct avrcp *session, uint8_t status)
+{
+	if (session->pos_changed_supported)
+		return;
+
+	switch (status) {
+	case AVRCP_PLAY_STATUS_PLAYING:
+		avrcp_start_pos_polling(session);
+		break;
+	case AVRCP_PLAY_STATUS_FWD_SEEK:
+	case AVRCP_PLAY_STATUS_REV_SEEK:
+		/* Position already resynced once via GetPlayStatus,
+		 * no need for continuous polling on seek.
+		 */
+	default:
+		avrcp_stop_pos_polling(session);
+		break;
+	}
+}
+
 static gboolean avrcp_get_play_status_rsp(struct avctp *conn, uint8_t code,
 					uint8_t subunit, uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
@@ -2251,6 +2307,8 @@ static gboolean avrcp_get_play_status_rsp(struct avctp *conn, uint8_t code,
 	media_player_set_duration(mp, duration);
 	media_player_set_position(mp, position);
 	media_player_set_status(mp, status_to_string(status));
+
+	avrcp_update_pos_polling(session, status);
 
 	return FALSE;
 }
@@ -4128,6 +4186,9 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn, uint8_t code,
 		}
 	}
 
+	session->pos_changed_supported =
+			!!(events & (1 << AVRCP_EVENT_PLAYBACK_POS_CHANGED));
+
 	if (!session->controller || !session->controller->player)
 		return FALSE;
 
@@ -4140,7 +4201,8 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn, uint8_t code,
 			!(events & (1 << AVRCP_EVENT_SETTINGS_CHANGED)))
 		avrcp_list_player_attributes(session);
 
-	if (!(events & (1 << AVRCP_EVENT_STATUS_CHANGED)))
+	if (!(events & (1 << AVRCP_EVENT_STATUS_CHANGED)) ||
+			!session->pos_changed_supported)
 		avrcp_get_play_status(session);
 
 	if (!(events & (1 << AVRCP_EVENT_STATUS_CHANGED)))
@@ -4469,6 +4531,9 @@ static void session_destroy(struct avrcp *session, int err)
 
 	if (session->browsing_timer > 0)
 		timeout_remove(session->browsing_timer);
+
+	if (session->position_timer > 0)
+		timeout_remove(session->position_timer);
 
 	if (session->controller != NULL)
 		controller_destroy(session);
