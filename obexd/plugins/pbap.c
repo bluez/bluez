@@ -204,13 +204,11 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
 
-static void query_result(const char *buffer, size_t bufsize, int vcards,
-			uint8_t missed, gboolean lastpart, void *user_data)
+/* Returns -1 on error, otherwise whether this is the first packet. */
+static int vobject_append(struct pbap_session *pbap, const char *buffer,
+			size_t bufsize, int vcards, gboolean lastpart)
 {
-	struct pbap_session *pbap = user_data;
 	gboolean first;
-
-	DBG("");
 
 	if (pbap->obj->request && lastpart) {
 		phonebook_req_finalize(pbap->obj->request);
@@ -221,7 +219,7 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 
 	if (vcards < 0) {
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, -ENOENT);
-		return;
+		return -1;
 	}
 
 	first = !pbap->obj->buffer;
@@ -232,6 +230,21 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 		pbap->obj->buffer = g_string_append_len(pbap->obj->buffer,
 							buffer,	bufsize);
 
+	return first;
+}
+
+static void query_result(const char *buffer, size_t bufsize, int vcards,
+			uint8_t missed, gboolean lastpart, void *user_data)
+{
+	struct pbap_session *pbap = user_data;
+	int first;
+
+	DBG("");
+
+	first = vobject_append(pbap, buffer, bufsize, vcards, lastpart);
+	if (first < 0)
+		return;
+
 	/* Application parameters go in the first response packet only */
 	if (first) {
 		response_add_missed_calls(pbap, missed);
@@ -239,6 +252,19 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 		if (pbap->obj->apparam)
 			pbap->obj->firstpacket = TRUE;
 	}
+
+	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
+}
+
+static void vcard_result(const char *buffer, size_t bufsize, int vcards,
+			uint8_t missed, gboolean lastpart, void *user_data)
+{
+	struct pbap_session *pbap = user_data;
+	int first;
+
+	first = vobject_append(pbap, buffer, bufsize, vcards, lastpart);
+	if (first < 0)
+		return;
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
@@ -442,7 +468,7 @@ static void cache_entry_done(uint8_t missed, void *user_data)
 
 	phonebook_req_finalize(pbap->obj->request);
 	pbap->obj->request = phonebook_get_entry(pbap->folder, id,
-				pbap->params, query_result, pbap, &ret);
+				pbap->params, vcard_result, pbap, &ret);
 	if (ret < 0)
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, ret);
 }
@@ -829,7 +855,7 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 	}
 
 	request = phonebook_get_entry(pbap->folder, id, pbap->params,
-						query_result, pbap, &ret);
+						vcard_result, pbap, &ret);
 
 done:
 	if (ret < 0)
