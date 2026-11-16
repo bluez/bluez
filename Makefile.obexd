@@ -49,6 +49,8 @@ obexd_builtin_sources += obexd/plugins/pbap.c \
 				obexd/plugins/vcard.h obexd/plugins/vcard.c \
 				obexd/plugins/phonebook.h \
 				obexd/plugins/phonebook.c \
+				obexd/plugins/phonebook-metadata.h \
+				obexd/plugins/phonebook-metadata.c \
 				obexd/plugins/phonebook-@PLUGIN_PHONEBOOK@.c
 EXTRA_DIST += obexd/plugins/phonebook-dummy.c obexd/plugins/phonebook-ebook.c \
 				obexd/plugins/phonebook-tracker.c

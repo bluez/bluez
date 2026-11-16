@@ -31,6 +31,7 @@
 
 #include "obexd/src/log.h"
 #include "phonebook.h"
+#include "phonebook-metadata.h"
 
 typedef void (*vcard_func_t) (const char *file, VObject *vo, void *user_data);
 
@@ -75,13 +76,35 @@ static void query_free(void *user_data)
 	g_free(query);
 }
 
+static void dummy_metadata_init(void)
+{
+	metadata_identifier_update();
+	metadata_save();
+}
+
 int phonebook_driver_init(void)
 {
+	char *metadata_path;
+	uint8_t id[16];
+
 	if (root_folder)
 		return 0;
 
 	/* FIXME: It should NOT be hard-coded */
 	root_folder = g_build_filename(getenv("HOME"), "phonebook", NULL);
+
+	metadata_path = g_build_filename(root_folder,
+					"phonebook-metadata", NULL);
+
+	if (!metadata_file_open(metadata_path)) {
+		g_free(metadata_path);
+		return 0;
+	}
+
+	g_free(metadata_path);
+
+	if (!metadata_get("identifier", "value", id))
+		dummy_metadata_init();
 
 	return 0;
 }

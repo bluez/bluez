@@ -17,6 +17,7 @@
 #include <glib.h>
 
 #include "phonebook.h"
+#include "phonebook-metadata.h"
 
 static unsigned int refcount = 0;
 
@@ -44,4 +45,10 @@ void phonebook_exit(void)
 		return;
 
 	phonebook_driver_exit();
+	metadata_file_close();
+}
+
+int phonebook_get_metadata(struct phonebook_metadata *metadata)
+{
+	return metadata_read(metadata);
 }
