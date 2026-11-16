@@ -107,7 +107,7 @@ static const char *filter_list[] = {
 	"KEY",
 	"NICKNAME",
 	"CATEGORIES",
-	"PROID",
+	"PRODID",
 	"CLASS",
 	"SORT-STRING",
 	"X-IRMC-CALL-DATETIME",

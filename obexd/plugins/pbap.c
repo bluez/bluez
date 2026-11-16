@@ -42,15 +42,38 @@
 #define VCARDLISTING_TYPE	"x-bt/vcard-listing"
 #define VCARDENTRY_TYPE		"x-bt/vcard"
 
-#define ORDER_TAG		0x01
-#define SEARCHVALUE_TAG		0x02
-#define SEARCHATTRIB_TAG	0x03
-#define MAXLISTCOUNT_TAG	0x04
-#define LISTSTARTOFFSET_TAG	0x05
-#define FILTER_TAG		0x06
-#define FORMAT_TAG		0X07
-#define PHONEBOOKSIZE_TAG	0X08
-#define NEWMISSEDCALLS_TAG	0X09
+#define ORDER_TAG			0x01
+#define SEARCHVALUE_TAG			0x02
+#define SEARCHATTRIB_TAG		0x03
+#define MAXLISTCOUNT_TAG		0x04
+#define LISTSTARTOFFSET_TAG		0x05
+#define FILTER_TAG			0x06
+#define FORMAT_TAG			0x07
+#define PHONEBOOKSIZE_TAG		0x08
+#define NEWMISSEDCALLS_TAG		0x09
+#define PRIMARY_COUNTER_TAG		0x0A
+#define SECONDARY_COUNTER_TAG		0x0B
+#define VCARD_SELECTOR_TAG		0x0C
+#define DATABASEID_TAG			0x0D
+#define VCARD_SELECTOR_OPERATOR_TAG	0x0E
+#define SUPPORTED_FEATURES_TAG		0x10
+
+#define DOWNLOAD_FEATURE	0x00000001
+#define BROWSE_FEATURE		0x00000002
+#define DATABASEID_FEATURE	0x00000004
+#define FOLDER_VERSION_FEATURE	0x00000008
+#define VCARD_SELECTING_FEATURE	0x00000010
+#define DEFAULT_IMAGE_FEATURE	0x00000200
+
+#define DEFAULT_IMAGE_MAX_SIZE		(50 * 1024)
+#define DEFAULT_IMAGE_MAX_DIMENSION	300
+/* Number of BASE64 characters encoding DEFAULT_IMAGE_MAX_SIZE bytes */
+#define DEFAULT_IMAGE_MAX_BASE64	((DEFAULT_IMAGE_MAX_SIZE + 2) / 3 * 4)
+
+#define PSE_SUPPORTED_FEATURES \
+	(DOWNLOAD_FEATURE | BROWSE_FEATURE | \
+	DATABASEID_FEATURE | FOLDER_VERSION_FEATURE | \
+	VCARD_SELECTING_FEATURE | DEFAULT_IMAGE_FEATURE)
 
 struct cache {
 	gboolean valid;
@@ -64,6 +87,7 @@ struct cache_entry {
 	char *name;
 	char *sound;
 	char *tel;
+	uint64_t mask;
 };
 
 struct pbap_session {
@@ -72,11 +96,13 @@ struct pbap_session {
 	uint32_t find_handle;
 	struct cache cache;
 	struct pbap_object *obj;
+	uint32_t negotiated_features;
 };
 
 struct pbap_object {
 	GString *buffer;
 	GObexApparam *apparam;
+	char *folder;
 	gboolean firstpacket;
 	gboolean lastpart;
 	struct pbap_session *session;
@@ -158,6 +184,61 @@ static void cache_clear(struct cache *cache)
 	cache->entries = NULL;
 }
 
+/* Adds the metadata application parameters to the response. */
+static void response_add_metadata(struct pbap_session *pbap,
+						gboolean include_counters)
+{
+	struct phonebook_metadata metadata;
+	gboolean database_id, folder_version;
+	const char *folder = pbap->obj->folder;
+
+	database_id = pbap->negotiated_features & DATABASEID_FEATURE;
+	folder_version = include_counters &&
+			(pbap->negotiated_features & FOLDER_VERSION_FEATURE);
+
+	if (!database_id && !folder_version)
+		return;
+
+	if (!phonebook_get_metadata(folder, &metadata))
+		DBG("Metadata unavailable");
+
+	if (database_id)
+		pbap->obj->apparam = g_obex_apparam_set_bytes(
+					pbap->obj->apparam, DATABASEID_TAG,
+					metadata.database_identifier,
+					sizeof(metadata.database_identifier));
+
+	if (folder_version) {
+		pbap->obj->apparam = g_obex_apparam_set_bytes(
+					pbap->obj->apparam,
+					PRIMARY_COUNTER_TAG,
+					metadata.primary_counter,
+					sizeof(metadata.primary_counter));
+
+		pbap->obj->apparam = g_obex_apparam_set_bytes(
+					pbap->obj->apparam,
+					SECONDARY_COUNTER_TAG,
+					metadata.secondary_counter,
+					sizeof(metadata.secondary_counter));
+	}
+}
+
+static void response_add_missed_calls(struct pbap_session *pbap, uint8_t missed)
+{
+	const char *folder = pbap->obj->folder;
+	gboolean include;
+
+	include = folder && g_str_has_suffix(folder, PB_CALLS_MISSED_FOLDER);
+
+	if (!include)
+		return;
+
+	DBG("missed %u", missed);
+
+	pbap->obj->apparam = g_obex_apparam_set_uint8(pbap->obj->apparam,
+						NEWMISSEDCALLS_TAG, missed);
+}
+
 static void phonebook_size_result(const char *buffer, size_t bufsize,
 					int vcards, uint8_t missed,
 					gboolean lastpart, void *user_data)
@@ -182,23 +263,498 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 
 	pbap->obj->firstpacket = TRUE;
 
-	if (missed > 0)	{
-		DBG("missed %d", missed);
-	}
-
-	pbap->obj->apparam = g_obex_apparam_set_uint8(pbap->obj->apparam,
-							NEWMISSEDCALLS_TAG,
-							missed);
+	response_add_missed_calls(pbap, missed);
+	response_add_metadata(pbap, TRUE);
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
 
-static void query_result(const char *buffer, size_t bufsize, int vcards,
-			uint8_t missed, gboolean lastpart, void *user_data)
+static gboolean jpeg_has_start_of_image(const uint8_t *image, size_t length)
 {
-	struct pbap_session *pbap = user_data;
+	return length >= 2 && image[0] == 0xff && image[1] == 0xd8;
+}
 
-	DBG("");
+static gboolean jpeg_marker_is_frame(uint8_t marker)
+{
+	const uint16_t excluded = (1 << 4) | (1 << 8) | (1 << 12);
+
+	if (marker < 0xc0 || marker > 0xcf)
+		return FALSE;
+
+	return !(excluded & (1 << (marker - 0xc0)));
+}
+
+static gboolean jpeg_segment_is_valid(size_t offset, uint16_t segment_length,
+							size_t length)
+{
+	if (segment_length < 2)
+		return FALSE;
+
+	return segment_length <= length - offset - 2;
+}
+
+static gboolean jpeg_dimensions_are_default(uint16_t height, uint16_t width)
+{
+	return height && width && height <= DEFAULT_IMAGE_MAX_DIMENSION &&
+				width <= DEFAULT_IMAGE_MAX_DIMENSION;
+}
+
+/* Returns whether a JPEG image is at most 300x300 pixels. */
+static gboolean jpeg_is_default_image(const uint8_t *image, size_t length)
+{
+	size_t offset = 2;
+
+	if (!jpeg_has_start_of_image(image, length))
+		return FALSE;
+
+	while (offset + 4 <= length) {
+		uint16_t segment_length, height, width;
+		uint8_t marker;
+
+		if (image[offset] != 0xff)
+			return FALSE;
+
+		marker = image[offset + 1];
+
+		/* Fill byte */
+		if (marker == 0xff) {
+			offset++;
+			continue;
+		}
+
+		/* Start of scan or end of image before the frame header */
+		if (marker == 0xda || marker == 0xd9)
+			return FALSE;
+
+		segment_length = (image[offset + 2] << 8) | image[offset + 3];
+		if (!jpeg_segment_is_valid(offset, segment_length, length))
+			return FALSE;
+
+		/* Start of frame markers, except DHT, JPG and DAC */
+		if (jpeg_marker_is_frame(marker)) {
+			if (segment_length < 7)
+				return FALSE;
+
+			height = (image[offset + 5] << 8) | image[offset + 6];
+			width = (image[offset + 7] << 8) | image[offset + 8];
+
+			return jpeg_dimensions_are_default(height, width);
+		}
+
+		offset += 2 + segment_length;
+	}
+
+	return FALSE;
+}
+
+/* Returns whether a value is valid BASE64 with correct padding. */
+static gboolean base64_is_valid(const GString *value)
+{
+	gsize padding = 0;
+	gsize i;
+
+	if (!value->len || value->len % 4)
+		return FALSE;
+
+	for (i = 0; i < value->len; i++) {
+		char c = value->str[i];
+
+		if (c == '=') {
+			padding++;
+			continue;
+		}
+
+		/* Padding is only allowed at the end */
+		if (padding)
+			return FALSE;
+
+		if (!g_ascii_isalnum(c) && c != '+' && c != '/')
+			return FALSE;
+	}
+
+	return padding <= 2;
+}
+
+static gboolean photo_is_default_image(const GString *value)
+{
+	guchar *image;
+	gsize length;
+	gboolean valid;
+
+	/* Reject images that are too large without decoding them. */
+	if (value->len > DEFAULT_IMAGE_MAX_BASE64)
+		return FALSE;
+
+	if (!base64_is_valid(value))
+		return FALSE;
+
+	image = g_base64_decode(value->str, &length);
+	valid = length <= DEFAULT_IMAGE_MAX_SIZE &&
+				jpeg_is_default_image(image, length);
+	g_free(image);
+
+	return valid;
+}
+
+enum vcard_encoding {
+	VCARD_ENCODING_NONE,
+	VCARD_ENCODING_BASE64,
+	VCARD_ENCODING_QUOTED_PRINTABLE,
+};
+
+struct default_image_filter {
+	const char *photo;
+	enum vcard_encoding encoding;
+	gboolean qp_continuation;
+	GString *header;
+	GString *result;
+	GString *value;
+};
+
+static const char *vcard_find_separator(const char *line, size_t length,
+							char separator)
+{
+	gboolean quoted = FALSE;
+	gboolean escaped = FALSE;
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		if (escaped) {
+			escaped = FALSE;
+			continue;
+		}
+
+		if (quoted && line[i] == '\\') {
+			escaped = TRUE;
+			continue;
+		}
+
+		if (line[i] == '"') {
+			quoted = !quoted;
+			continue;
+		}
+
+		if (!quoted && line[i] == separator)
+			return line + i;
+	}
+
+	return NULL;
+}
+
+static enum vcard_encoding params_get_encoding(const char *params,
+							const char *end)
+{
+	const char *p = params;
+
+	while (p < end) {
+		const char *next;
+		size_t len;
+
+		/* Skip the ';' separator */
+		p++;
+
+		next = vcard_find_separator(p, end - p, ';');
+		if (!next)
+			next = end;
+
+		len = next - p;
+
+		/* Check the value of ENCODING=, or a vCard 2.1 bare value. */
+		if (len > 9 && g_ascii_strncasecmp(p, "ENCODING=", 9) == 0) {
+			p += 9;
+			len -= 9;
+
+			/* vCard 3.0 ENCODING=b */
+			if (len == 1 && g_ascii_tolower(*p) == 'b')
+				return VCARD_ENCODING_BASE64;
+		}
+
+		/* vCard 2.1 ENCODING=BASE64 or BASE64 */
+		if (len == 6 && g_ascii_strncasecmp(p, "BASE64", 6) == 0)
+			return VCARD_ENCODING_BASE64;
+
+		if (len == 16 && g_ascii_strncasecmp(p, "QUOTED-PRINTABLE",
+								16) == 0)
+			return VCARD_ENCODING_QUOTED_PRINTABLE;
+
+		p = next;
+	}
+
+	return VCARD_ENCODING_NONE;
+}
+
+static enum vcard_encoding line_get_encoding(const char *line, size_t length)
+{
+	const char *colon;
+	const char *params;
+
+	colon = vcard_find_separator(line, length, ':');
+	if (!colon)
+		return VCARD_ENCODING_NONE;
+
+	params = memchr(line, ';', colon - line);
+	if (!params)
+		return VCARD_ENCODING_NONE;
+
+	return params_get_encoding(params, colon);
+}
+
+/* Appends a possibly folded property header and returns its raw end. */
+static const char *append_header(GString *header, const char *line,
+							const char *end)
+{
+	gboolean folded = FALSE;
+
+	while (line < end) {
+		const char *next = memchr(line, '\n', end - line);
+		size_t len, offset = 0;
+
+		next = next ? next + 1 : end;
+		len = next - line;
+
+		while (len && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+			len--;
+
+		if (folded && len && (line[0] == ' ' || line[0] == '\t'))
+			offset = 1;
+
+		g_string_append_len(header, line + offset, len - offset);
+
+		if (vcard_find_separator(header->str, header->len, ':'))
+			return next;
+
+		if (next == end || (next[0] != ' ' && next[0] != '\t'))
+			return next;
+
+		line = next;
+		folded = TRUE;
+	}
+
+	return end;
+}
+
+static gboolean line_has_soft_break(const char *line, size_t length)
+{
+	return length && line[length - 1] == '=';
+}
+
+/* Returns whether a line starts a PHOTO property. */
+static gboolean line_is_photo(const char *line, size_t length,
+						size_t *value_offset)
+{
+	const char *colon;
+	const char *end;
+	const char *name;
+	const char *p;
+
+	if (!length || line[0] == ' ' || line[0] == '\t')
+		return FALSE;
+
+	colon = vcard_find_separator(line, length, ':');
+	if (!colon)
+		return FALSE;
+
+	end = memchr(line, ';', colon - line);
+	if (!end)
+		end = colon;
+
+	/* Skip the group prefix */
+	for (name = p = line; p < end; p++) {
+		if (*p == '.')
+			name = p + 1;
+	}
+
+	if (end - name != 5 || g_ascii_strncasecmp(name, "PHOTO", 5) != 0)
+		return FALSE;
+
+	*value_offset = colon - line + 1;
+
+	return TRUE;
+}
+
+/* Appends a part of a PHOTO value without any space or tab. */
+static void append_value(GString *value, const char *part, size_t length)
+{
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		/* Larger values are rejected without being kept. */
+		if (value->len > DEFAULT_IMAGE_MAX_BASE64)
+			return;
+
+		if (part[i] != ' ' && part[i] != '\t')
+			g_string_append_c(value, part[i]);
+	}
+}
+
+static void append_photo(GString *result, const char *start, const char *end,
+				GString *value, enum vcard_encoding encoding)
+{
+	if (encoding == VCARD_ENCODING_BASE64 &&
+						photo_is_default_image(value))
+		g_string_append_len(result, start, end - start);
+
+	g_string_truncate(value, 0);
+}
+
+static const char *vcard_line_end(const char *line, const char *end,
+							size_t *length)
+{
+	const char *next = memchr(line, '\n', end - line);
+
+	next = next ? next + 1 : end;
+	*length = next - line;
+
+	while (*length && (line[*length - 1] == '\n' ||
+						line[*length - 1] == '\r'))
+		(*length)--;
+
+	return next;
+}
+
+static void default_image_finish_photo(struct default_image_filter *filter,
+							const char *end)
+{
+	append_photo(filter->result, filter->photo, end, filter->value,
+						filter->encoding);
+	filter->photo = NULL;
+	filter->encoding = VCARD_ENCODING_NONE;
+	filter->qp_continuation = FALSE;
+}
+
+static gboolean default_image_photo_continuation(
+					struct default_image_filter *filter,
+					const char *line, size_t length)
+{
+	if (!filter->photo)
+		return FALSE;
+
+	/*
+	 * Folded lines, and the unfolded BASE64 lines and the terminating
+	 * blank line of vCard 2.1, belong to the PHOTO value.
+	 */
+	if (!filter->qp_continuation && length && line[0] != ' ' &&
+			line[0] != '\t' && memchr(line, ':', length)) {
+		default_image_finish_photo(filter, line);
+		return FALSE;
+	}
+
+	append_value(filter->value, line, length);
+	filter->qp_continuation =
+		filter->encoding == VCARD_ENCODING_QUOTED_PRINTABLE &&
+					line_has_soft_break(line, length);
+
+	return TRUE;
+}
+
+static gboolean default_image_property_continuation(
+					struct default_image_filter *filter,
+					const char *line, const char *next,
+							size_t length)
+{
+	if (filter->qp_continuation) {
+		g_string_append_len(filter->result, line, next - line);
+		filter->qp_continuation = line_has_soft_break(line, length);
+		return TRUE;
+	}
+
+	if (line[0] != ' ' && line[0] != '\t')
+		return FALSE;
+
+	g_string_append_len(filter->result, line, next - line);
+	filter->qp_continuation =
+		filter->encoding == VCARD_ENCODING_QUOTED_PRINTABLE &&
+					line_has_soft_break(line, length);
+
+	return TRUE;
+}
+
+static const char *default_image_property_start(
+					struct default_image_filter *filter,
+					const char *line, const char *end)
+{
+	const char *next;
+	size_t offset;
+
+	g_string_truncate(filter->header, 0);
+	next = append_header(filter->header, line, end);
+	filter->encoding = line_get_encoding(filter->header->str,
+						filter->header->len);
+
+	if (line_is_photo(filter->header->str, filter->header->len,
+							&offset)) {
+		filter->photo = line;
+		append_value(filter->value, filter->header->str + offset,
+					filter->header->len - offset);
+	} else
+		g_string_append_len(filter->result, line, next - line);
+
+	filter->qp_continuation =
+		filter->encoding == VCARD_ENCODING_QUOTED_PRINTABLE &&
+		line_has_soft_break(filter->header->str, filter->header->len);
+
+	return next;
+}
+
+/*
+ * Drops PHOTO properties that are not BASE64 encoded JPEG images of at
+ * most 300x300 pixels and 50 KiB, as required by the Contact Image
+ * Default Format.
+ */
+static char *filter_default_images(const char *buffer, size_t length,
+						size_t *filtered_length)
+{
+	struct default_image_filter filter;
+	const char *line;
+	const char *end;
+
+	if (!buffer || !length) {
+		*filtered_length = 0;
+		return g_strdup("");
+	}
+
+	end = buffer + length;
+	filter.photo = NULL;
+	filter.encoding = VCARD_ENCODING_NONE;
+	filter.qp_continuation = FALSE;
+	filter.header = g_string_new(NULL);
+	filter.result = g_string_sized_new(length);
+	filter.value = g_string_new(NULL);
+
+	for (line = buffer; line < end;) {
+		const char *next;
+		size_t line_length;
+
+		next = vcard_line_end(line, end, &line_length);
+
+		if (default_image_photo_continuation(&filter, line,
+							line_length) ||
+			default_image_property_continuation(&filter, line, next,
+							line_length)) {
+			line = next;
+			continue;
+		}
+
+		line = default_image_property_start(&filter, line, end);
+	}
+
+	if (filter.photo)
+		default_image_finish_photo(&filter, end);
+
+	g_string_free(filter.header, TRUE);
+	g_string_free(filter.value, TRUE);
+
+	*filtered_length = filter.result->len;
+	return g_string_free(filter.result, FALSE);
+}
+
+/* Returns -1 on error, otherwise whether this is the first packet. */
+static int vobject_append(struct pbap_session *pbap, const char *buffer,
+			size_t bufsize, int vcards, gboolean lastpart)
+{
+	char *filtered;
+	size_t filtered_length;
+	gboolean first;
 
 	if (pbap->obj->request && lastpart) {
 		phonebook_req_finalize(pbap->obj->request);
@@ -209,31 +765,72 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 
 	if (vcards < 0) {
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, -ENOENT);
-		return;
+		return -1;
 	}
 
-	if (!pbap->obj->buffer)
-		pbap->obj->buffer = g_string_new_len(buffer, bufsize);
+	first = !pbap->obj->buffer;
+	filtered = filter_default_images(buffer, bufsize, &filtered_length);
+
+	if (first)
+		pbap->obj->buffer = g_string_new_len(filtered, filtered_length);
 	else
 		pbap->obj->buffer = g_string_append_len(pbap->obj->buffer,
-							buffer,	bufsize);
+						filtered, filtered_length);
 
-	if (missed > 0)	{
-		DBG("missed %d", missed);
+	g_free(filtered);
 
-		pbap->obj->firstpacket = TRUE;
+	return first;
+}
+
+static void query_result(const char *buffer, size_t bufsize, int vcards,
+			uint8_t missed, gboolean lastpart, void *user_data)
+{
+	struct pbap_session *pbap = user_data;
+	int first;
+
+	DBG("");
+
+	first = vobject_append(pbap, buffer, bufsize, vcards, lastpart);
+	if (first < 0)
+		return;
+
+	/* Application parameters go in the first response packet only */
+	if (first) {
+		response_add_missed_calls(pbap, missed);
+		response_add_metadata(pbap, TRUE);
+
+		if (pbap->obj->apparam)
+			pbap->obj->firstpacket = TRUE;
 	}
 
-	pbap->obj->apparam = g_obex_apparam_set_uint8(pbap->obj->apparam,
-							NEWMISSEDCALLS_TAG,
-							missed);
+	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
+}
+
+static void vcard_result(const char *buffer, size_t bufsize, int vcards,
+			uint8_t missed, gboolean lastpart, void *user_data)
+{
+	struct pbap_session *pbap = user_data;
+	int first;
+
+	first = vobject_append(pbap, buffer, bufsize, vcards, lastpart);
+	if (first < 0)
+		return;
+
+	/* Application parameters go in the first response packet only */
+	if (first) {
+		response_add_metadata(pbap, FALSE);
+
+		if (pbap->obj->apparam)
+			pbap->obj->firstpacket = TRUE;
+	}
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
 
 static void cache_entry_notify(const char *id, uint32_t handle,
 					const char *name, const char *sound,
-					const char *tel, void *user_data)
+					const char *tel, uint64_t mask,
+					void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	struct cache_entry *entry = g_new0(struct cache_entry, 1);
@@ -248,6 +845,7 @@ static void cache_entry_notify(const char *id, uint32_t handle,
 	entry->name = g_strdup(name);
 	entry->sound = g_strdup(sound);
 	entry->tel = g_strdup(tel);
+	entry->mask = mask;
 
 	cache->entries = g_slist_append(cache->entries, entry);
 }
@@ -341,24 +939,41 @@ static GSList *sort_entries(GSList *l, uint8_t order, uint8_t search_attrib,
 	return sorted;
 }
 
-static int generate_response(void *user_data)
+static int generate_response(struct pbap_session *pbap, uint8_t missed)
 {
-	struct pbap_session *pbap = user_data;
+	GSList *filtered = NULL;
 	GSList *sorted;
 	GSList *l;
 	uint16_t max = pbap->params->maxlistcount;
 
 	DBG("");
 
+	response_add_missed_calls(pbap, missed);
+	response_add_metadata(pbap, TRUE);
+
+	/* Select matching entries from the full cache. */
+	for (l = pbap->cache.entries; l; l = l->next) {
+		struct cache_entry *entry = l->data;
+
+		if (phonebook_selector_match(entry->mask,
+					pbap->params->selector,
+					pbap->params->selector_operator))
+			filtered = g_slist_prepend(filtered, entry);
+	}
+
+	filtered = g_slist_reverse(filtered);
+
 	if (max == 0) {
-		/* Ignore all other parameter and return PhoneBookSize */
-		uint16_t size = g_slist_length(pbap->cache.entries);
+		/* Return the number of matching entries. */
+		uint16_t size = g_slist_length(filtered);
 
 		pbap->obj->firstpacket = TRUE;
 		pbap->obj->apparam = g_obex_apparam_set_uint16(
 							pbap->obj->apparam,
 							PHONEBOOKSIZE_TAG,
 							size);
+
+		g_slist_free(filtered);
 
 		return 0;
 	}
@@ -367,9 +982,10 @@ static int generate_response(void *user_data)
 	 * Don't free the sorted list content: this list contains
 	 * only the reference for the "real" cache entry.
 	 */
-	sorted = sort_entries(pbap->cache.entries, pbap->params->order,
+	sorted = sort_entries(filtered, pbap->params->order,
 				pbap->params->searchattrib,
 				(const char *) pbap->params->searchval);
+	g_slist_free(filtered);
 
 	/* Computing offset considering first entry of the phonebook */
 	l = g_slist_nth(sorted, pbap->params->liststartoffset);
@@ -389,10 +1005,13 @@ static int generate_response(void *user_data)
 							VCARD_LISTING_END);
 	g_slist_free(sorted);
 
+	if (pbap->obj->apparam)
+		pbap->obj->firstpacket = TRUE;
+
 	return 0;
 }
 
-static void cache_ready_notify(void *user_data)
+static void cache_ready_notify(uint8_t missed, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 
@@ -403,11 +1022,11 @@ static void cache_ready_notify(void *user_data)
 
 	pbap->cache.valid = TRUE;
 
-	generate_response(pbap);
+	generate_response(pbap, missed);
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
 
-static void cache_entry_done(void *user_data)
+static void cache_entry_done(uint8_t missed, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const char *id;
@@ -426,7 +1045,7 @@ static void cache_entry_done(void *user_data)
 
 	phonebook_req_finalize(pbap->obj->request);
 	pbap->obj->request = phonebook_get_entry(pbap->folder, id,
-				pbap->params, query_result, pbap, &ret);
+				pbap->params, vcard_result, pbap, &ret);
 	if (ret < 0)
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, ret);
 }
@@ -454,16 +1073,23 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 		g_obex_apparam_get_uint16(apparam, LISTSTARTOFFSET_TAG,
 						&param->liststartoffset);
 		g_obex_apparam_get_uint64(apparam, FILTER_TAG, &param->filter);
+		g_obex_apparam_get_uint64(apparam, VCARD_SELECTOR_TAG,
+						&param->selector);
+		g_obex_apparam_get_uint8(apparam,
+						VCARD_SELECTOR_OPERATOR_TAG,
+						&param->selector_operator);
 		param->searchval = g_obex_apparam_get_string(apparam,
 						SEARCHVALUE_TAG);
 
 		g_obex_apparam_free(apparam);
 	}
 
-	DBG("o %x sa %x sv %s fil %" G_GINT64_MODIFIER "x for %x max %x off %x",
+	DBG("o %x sa %x sv %s fil %" G_GINT64_MODIFIER "x for %x max %x off %x "
+		"sel %" G_GINT64_MODIFIER "x op %x",
 			param->order, param->searchattrib, param->searchval,
 			param->filter, param->format, param->maxlistcount,
-			param->liststartoffset);
+			param->liststartoffset, param->selector,
+			param->selector_operator);
 
 	return param;
 }
@@ -471,12 +1097,33 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 static void *pbap_connect(struct obex_session *os, int *err)
 {
 	struct pbap_session *pbap;
+	const uint8_t *buffer;
+	GObexApparam *apparam;
+	uint32_t pce_features;
+	ssize_t rsize;
 
 	manager_register_session(os);
 
 	pbap = g_new0(struct pbap_session, 1);
 	pbap->folder = g_strdup("/");
 	pbap->find_handle = PHONEBOOK_INVALID_HANDLE;
+
+	rsize = obex_get_apparam(os, &buffer);
+	pce_features = DOWNLOAD_FEATURE | BROWSE_FEATURE;
+
+	if (rsize > 0) {
+		apparam = g_obex_apparam_decode(buffer, rsize);
+		if (apparam) {
+			g_obex_apparam_get_uint32(apparam,
+						SUPPORTED_FEATURES_TAG,
+						&pce_features);
+			g_obex_apparam_free(apparam);
+		}
+	}
+
+	pbap->negotiated_features = PSE_SUPPORTED_FEATURES & pce_features;
+
+	DBG("negotiated features 0x%08x", pbap->negotiated_features);
 
 	if (err)
 		*err = 0;
@@ -527,6 +1174,12 @@ static int pbap_get(struct obex_session *os, void *user_data)
 	if (params == NULL)
 		return -EBADR;
 
+	/* Ignore selectors unless vCard Selecting is negotiated. */
+	if (!(pbap->negotiated_features & VCARD_SELECTING_FEATURE)) {
+		params->selector = 0;
+		params->selector_operator = 0;
+	}
+
 	if (pbap->params) {
 		g_free(pbap->params->searchval);
 		g_free(pbap->params);
@@ -544,6 +1197,10 @@ static int pbap_get(struct obex_session *os, void *user_data)
 	} else if (g_ascii_strcasecmp(type, VCARDLISTING_TYPE) == 0) {
 		/* Always relative */
 		if (!name || strlen(name) == 0) {
+			/* telecom has no vCard listing. */
+			if (g_strcmp0(pbap->folder, PB_TELECOM_FOLDER) == 0)
+				return -ENOENT;
+
 			/* Current folder */
 			path = g_strdup(pbap->folder);
 		} else {
@@ -644,7 +1301,7 @@ static const struct obex_service_driver pbap = {
 };
 
 static struct pbap_object *vobject_create(struct pbap_session *pbap,
-								void *request)
+						void *request, const char *path)
 {
 	struct pbap_object *obj;
 
@@ -652,6 +1309,11 @@ static struct pbap_object *vobject_create(struct pbap_session *pbap,
 	obj->session = pbap;
 	pbap->obj = obj;
 	obj->request = request;
+
+	if (g_str_has_suffix(path, ".vcf"))
+		obj->folder = g_strndup(path, strlen(path) - 4);
+	else
+		obj->folder = g_strdup(path);
 
 	return obj;
 }
@@ -695,7 +1357,7 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 	if (err)
 		*err = 0;
 
-	return vobject_create(pbap, request);
+	return vobject_create(pbap, request, name);
 
 fail:
 	if (err)
@@ -722,6 +1384,7 @@ static int vobject_close(void *object)
 	if (obj->request)
 		phonebook_req_finalize(obj->request);
 
+	g_free(obj->folder);
 	g_free(obj);
 
 	return 0;
@@ -731,7 +1394,6 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 				void *context, size_t *size, int *err)
 {
 	struct pbap_session *pbap = context;
-	struct pbap_object *obj = NULL;
 	int ret;
 	void *request;
 
@@ -747,29 +1409,22 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
-	/* PullvCardListing always get the contacts from the cache */
+	/* The cache is rebuilt for each listing request. */
+	pbap->cache.valid = FALSE;
+	pbap->cache.index = 0;
+	cache_clear(&pbap->cache);
 
-	if (pbap->cache.valid) {
-		obj = vobject_create(pbap, NULL);
-		ret = generate_response(pbap);
-	} else {
-		request = phonebook_create_cache(name, cache_entry_notify,
+	request = phonebook_create_cache(name, cache_entry_notify,
 					cache_ready_notify, pbap, &ret);
-		if (ret == 0)
-			obj = vobject_create(pbap, request);
-	}
 	if (ret < 0)
 		goto fail;
 
 	if (err)
 		*err = 0;
 
-	return obj;
+	return vobject_create(pbap, request, name);
 
 fail:
-	if (obj)
-		vobject_close(obj);
-
 	if (err)
 		*err = ret;
 
@@ -811,7 +1466,7 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 	}
 
 	request = phonebook_get_entry(pbap->folder, id, pbap->params,
-						query_result, pbap, &ret);
+						vcard_result, pbap, &ret);
 
 done:
 	if (ret < 0)
@@ -820,7 +1475,7 @@ done:
 	if (err)
 		*err = 0;
 
-	return vobject_create(pbap, request);
+	return vobject_create(pbap, request, pbap->folder);
 
 fail:
 	if (err)
@@ -829,7 +1484,7 @@ fail:
 	return NULL;
 }
 
-static ssize_t vobject_pull_get_next_header(void *object, void *buf, size_t mtu,
+static ssize_t vobject_get_next_header(void *object, void *buf, size_t mtu,
 								uint8_t *hi)
 {
 	struct pbap_object *obj = object;
@@ -933,7 +1588,7 @@ static const struct obex_mime_type_driver mime_pull = {
 	.open = vobject_pull_open,
 	.close = vobject_close,
 	.read = vobject_pull_read,
-	.get_next_header = vobject_pull_get_next_header,
+	.get_next_header = vobject_get_next_header,
 };
 
 static const struct obex_mime_type_driver mime_list = {
@@ -953,6 +1608,7 @@ static const struct obex_mime_type_driver mime_vcard = {
 	.open = vobject_vcard_open,
 	.close = vobject_close,
 	.read = vobject_vcard_read,
+	.get_next_header = vobject_get_next_header,
 };
 
 static int pbap_init(void)
