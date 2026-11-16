@@ -53,17 +53,21 @@
 #define NEWMISSEDCALLS_TAG		0x09
 #define PRIMARY_COUNTER_TAG		0x0A
 #define SECONDARY_COUNTER_TAG		0x0B
+#define VCARD_SELECTOR_TAG		0x0C
 #define DATABASEID_TAG			0x0D
+#define VCARD_SELECTOR_OPERATOR_TAG	0x0E
 #define SUPPORTED_FEATURES_TAG		0x10
 
 #define DOWNLOAD_FEATURE	0x00000001
 #define BROWSE_FEATURE		0x00000002
 #define DATABASEID_FEATURE	0x00000004
 #define FOLDER_VERSION_FEATURE	0x00000008
+#define VCARD_SELECTING_FEATURE	0x00000010
 
 #define PSE_SUPPORTED_FEATURES \
 	(DOWNLOAD_FEATURE | BROWSE_FEATURE | \
-	DATABASEID_FEATURE | FOLDER_VERSION_FEATURE)
+	DATABASEID_FEATURE | FOLDER_VERSION_FEATURE | \
+	VCARD_SELECTING_FEATURE)
 
 struct cache {
 	gboolean valid;
@@ -77,6 +81,7 @@ struct cache_entry {
 	char *name;
 	char *sound;
 	char *tel;
+	uint64_t mask;
 };
 
 struct pbap_session {
@@ -334,7 +339,8 @@ static void vcard_result(const char *buffer, size_t bufsize, int vcards,
 
 static void cache_entry_notify(const char *id, uint32_t handle,
 					const char *name, const char *sound,
-					const char *tel, void *user_data)
+					const char *tel, uint64_t mask,
+					void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	struct cache_entry *entry = g_new0(struct cache_entry, 1);
@@ -349,6 +355,7 @@ static void cache_entry_notify(const char *id, uint32_t handle,
 	entry->name = g_strdup(name);
 	entry->sound = g_strdup(sound);
 	entry->tel = g_strdup(tel);
+	entry->mask = mask;
 
 	cache->entries = g_slist_append(cache->entries, entry);
 }
@@ -444,6 +451,7 @@ static GSList *sort_entries(GSList *l, uint8_t order, uint8_t search_attrib,
 
 static int generate_response(struct pbap_session *pbap, uint8_t missed)
 {
+	GSList *filtered = NULL;
 	GSList *sorted;
 	GSList *l;
 	uint16_t max = pbap->params->maxlistcount;
@@ -453,15 +461,29 @@ static int generate_response(struct pbap_session *pbap, uint8_t missed)
 	response_add_missed_calls(pbap, missed);
 	response_add_metadata(pbap, TRUE);
 
+	/* Select matching entries from the full cache. */
+	for (l = pbap->cache.entries; l; l = l->next) {
+		struct cache_entry *entry = l->data;
+
+		if (phonebook_selector_match(entry->mask,
+					pbap->params->selector,
+					pbap->params->selector_operator))
+			filtered = g_slist_prepend(filtered, entry);
+	}
+
+	filtered = g_slist_reverse(filtered);
+
 	if (max == 0) {
-		/* Ignore all other parameter and return PhoneBookSize */
-		uint16_t size = g_slist_length(pbap->cache.entries);
+		/* Return the number of matching entries. */
+		uint16_t size = g_slist_length(filtered);
 
 		pbap->obj->firstpacket = TRUE;
 		pbap->obj->apparam = g_obex_apparam_set_uint16(
 							pbap->obj->apparam,
 							PHONEBOOKSIZE_TAG,
 							size);
+
+		g_slist_free(filtered);
 
 		return 0;
 	}
@@ -470,9 +492,10 @@ static int generate_response(struct pbap_session *pbap, uint8_t missed)
 	 * Don't free the sorted list content: this list contains
 	 * only the reference for the "real" cache entry.
 	 */
-	sorted = sort_entries(pbap->cache.entries, pbap->params->order,
+	sorted = sort_entries(filtered, pbap->params->order,
 				pbap->params->searchattrib,
 				(const char *) pbap->params->searchval);
+	g_slist_free(filtered);
 
 	/* Computing offset considering first entry of the phonebook */
 	l = g_slist_nth(sorted, pbap->params->liststartoffset);
@@ -560,16 +583,23 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 		g_obex_apparam_get_uint16(apparam, LISTSTARTOFFSET_TAG,
 						&param->liststartoffset);
 		g_obex_apparam_get_uint64(apparam, FILTER_TAG, &param->filter);
+		g_obex_apparam_get_uint64(apparam, VCARD_SELECTOR_TAG,
+						&param->selector);
+		g_obex_apparam_get_uint8(apparam,
+						VCARD_SELECTOR_OPERATOR_TAG,
+						&param->selector_operator);
 		param->searchval = g_obex_apparam_get_string(apparam,
 						SEARCHVALUE_TAG);
 
 		g_obex_apparam_free(apparam);
 	}
 
-	DBG("o %x sa %x sv %s fil %" G_GINT64_MODIFIER "x for %x max %x off %x",
+	DBG("o %x sa %x sv %s fil %" G_GINT64_MODIFIER "x for %x max %x off %x "
+		"sel %" G_GINT64_MODIFIER "x op %x",
 			param->order, param->searchattrib, param->searchval,
 			param->filter, param->format, param->maxlistcount,
-			param->liststartoffset);
+			param->liststartoffset, param->selector,
+			param->selector_operator);
 
 	return param;
 }
@@ -653,6 +683,12 @@ static int pbap_get(struct obex_session *os, void *user_data)
 	params = parse_aparam(buffer, rsize);
 	if (params == NULL)
 		return -EBADR;
+
+	/* Ignore selectors unless vCard Selecting is negotiated. */
+	if (!(pbap->negotiated_features & VCARD_SELECTING_FEATURE)) {
+		params->selector = 0;
+		params->selector_operator = 0;
+	}
 
 	if (pbap->params) {
 		g_free(pbap->params->searchval);

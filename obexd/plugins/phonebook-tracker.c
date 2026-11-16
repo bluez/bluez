@@ -144,32 +144,6 @@
 "}"									\
 "ORDER BY tracker:id(?_contact)"
 
-#define CONTACTS_QUERY_ALL_LIST						\
-	"SELECT ?c nco:nameFamily(?c) "					\
-	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
-	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
-	"(SELECT "							\
-		"?nick "						\
-		"WHERE { "						\
-			"{ "						\
-				"?c nco:nickname ?nick "		\
-			"} UNION { "					\
-				"?c nco:hasAffiliation ?role . "	\
-				"?role nco:hasIMAddress ?im . "		\
-				"?im nco:imNickname ?nick "		\
-			"} "						\
-		"} "							\
-	") "								\
-	"nco:phoneNumber(?h) "						\
-	"WHERE { "							\
-		"?c a nco:PersonContact . "				\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
-	"OPTIONAL { "							\
-		"?c nco:hasAffiliation ?a . "				\
-		"?a nco:hasPhoneNumber ?h . "				\
-	"} "								\
-	"} GROUP BY ?c"
-
 #define CALLS_CONSTRAINTS(CONSTRAINT)					\
 " WHERE { "								\
 	"?_call a nmo:Call . "						\
@@ -193,27 +167,6 @@ CONSTRAINT								\
 		"?_cpn maemo:localPhoneNumber ?_no . "			\
 	"} "								\
 "} "
-
-#define CALLS_LIST(CONSTRAINT)						\
-"SELECT ?_call nco:nameFamily(?_contact) "				\
-	"nco:nameGiven(?_contact) nco:nameAdditional(?_contact) "	\
-	"nco:nameHonorificPrefix(?_contact) "				\
-	"nco:nameHonorificSuffix(?_contact) "				\
-	"(SELECT "							\
-		"?nick "						\
-		"WHERE { "						\
-			"{ "						\
-				"?_contact nco:nickname ?nick "		\
-			"} UNION { "					\
-				"?_contact nco:hasAffiliation ?role . "	\
-				"?role nco:hasIMAddress ?im . "		\
-				"?im nco:imNickname ?nick "		\
-			"} "						\
-		"} "							\
-	") "								\
-	"nco:phoneNumber(?_cpn) "					\
-CALLS_CONSTRAINTS(CONSTRAINT)						\
-"ORDER BY DESC(nmo:sentDate(?_call)) "
 
 #define CALLS_QUERY(CONSTRAINT)						\
 "SELECT "								\
@@ -317,13 +270,9 @@ COMBINED_CONSTRAINT		\
 "FILTER (?_call = <%s>) "
 
 #define MISSED_CALLS_QUERY CALLS_QUERY(MISSED_CONSTRAINT)
-#define MISSED_CALLS_LIST CALLS_LIST(MISSED_CONSTRAINT)
 #define INCOMING_CALLS_QUERY CALLS_QUERY(INCOMING_CONSTRAINT)
-#define INCOMING_CALLS_LIST CALLS_LIST(INCOMING_CONSTRAINT)
 #define OUTGOING_CALLS_QUERY CALLS_QUERY(OUTGOING_CONSTRAINT)
-#define OUTGOING_CALLS_LIST CALLS_LIST(OUTGOING_CONSTRAINT)
 #define COMBINED_CALLS_QUERY CALLS_QUERY(COMBINED_CONSTRAINT)
-#define COMBINED_CALLS_LIST CALLS_LIST(COMBINED_CONSTRAINT)
 #define CONTACT_FROM_CALL_QUERY CALLS_QUERY(CALL_URI_CONSTRAINT)
 
 #define CONTACTS_QUERY_FROM_URI						\
@@ -482,11 +431,13 @@ struct pending_reply {
 
 enum phonebook_request {
 	PHONEBOOK_REQUEST_PULL,
+	PHONEBOOK_REQUEST_SELECT,
 	PHONEBOOK_REQUEST_ENTRY,
 	PHONEBOOK_REQUEST_CACHE,
 };
 
 struct contact_data {
+	gboolean name_present;
 	char *id;
 	struct phonebook_contact *contact;
 };
@@ -498,6 +449,7 @@ struct phonebook_data {
 	enum phonebook_request request;
 	const struct apparam_field *params;
 	GSList *contacts;
+	GHashTable *contact_index;
 	phonebook_cache_ready_cb ready_cb;
 	phonebook_entry_cb entry_cb;
 	uint8_t newmissedcalls;
@@ -573,15 +525,15 @@ static gboolean folder_is_valid(const char *folder)
 static const char *folder2query(const char *folder)
 {
 	if (g_str_equal(folder, PB_CONTACTS_FOLDER))
-		return CONTACTS_QUERY_ALL_LIST;
+		return CONTACTS_QUERY_ALL;
 	else if (g_str_equal(folder, PB_CALLS_INCOMING_FOLDER))
-		return INCOMING_CALLS_LIST;
+		return INCOMING_CALLS_QUERY;
 	else if (g_str_equal(folder, PB_CALLS_OUTGOING_FOLDER))
-		return OUTGOING_CALLS_LIST;
+		return OUTGOING_CALLS_QUERY;
 	else if (g_str_equal(folder, PB_CALLS_MISSED_FOLDER))
-		return MISSED_CALLS_LIST;
+		return MISSED_CALLS_QUERY;
 	else if (g_str_equal(folder, PB_CALLS_COMBINED_FOLDER))
-		return COMBINED_CALLS_LIST;
+		return COMBINED_CALLS_QUERY;
 
 	return NULL;
 }
@@ -810,12 +762,22 @@ static gboolean contact_matches(struct contact_data *c_data, const char *id,
 	return (cmp_ret == 0) ? TRUE : FALSE;
 }
 
-static struct phonebook_contact *find_contact(GSList *contacts, const char *id,
-							const char *datetime)
+static struct phonebook_contact *find_contact(struct phonebook_data *data,
+				const char *id, const char *datetime)
 {
 	GSList *l;
 
-	for (l = contacts; l; l = l->next) {
+	if (data->contact_index) {
+		struct phonebook_contact *contact;
+		char *key = g_strconcat(id, "\n", datetime, NULL);
+
+		contact = g_hash_table_lookup(data->contact_index, key);
+		g_free(key);
+
+		return contact;
+	}
+
+	for (l = data->contacts; l; l = l->next) {
 		struct contact_data *c_data = l->data;
 
 		if (contact_matches(c_data, id, datetime))
@@ -1235,6 +1197,7 @@ static void free_data_contacts(struct phonebook_data *data)
 
 	g_slist_free(data->contacts);
 	data->contacts = NULL;
+	g_clear_pointer(&data->contact_index, g_hash_table_destroy);
 }
 
 static void send_pull_part(struct phonebook_data *data,
@@ -1252,6 +1215,87 @@ static void send_pull_part(struct phonebook_data *data,
 	g_string_free(vcards, TRUE);
 }
 
+static void send_cache(struct phonebook_data *data)
+{
+	GSList *l;
+
+	for (l = data->contacts; l; l = l->next) {
+		struct contact_data *entry = l->data;
+		struct phonebook_contact *contact = entry->contact;
+		struct phonebook_field *number;
+		uint32_t handle;
+		char *name;
+		const char *tel;
+
+		number = contact->numbers ? contact->numbers->data : NULL;
+		tel = number ? number->text : "";
+
+		if (entry->name_present)
+			name = g_strdup_printf("%s;%s;%s;%s;%s",
+				contact->family ? contact->family : "",
+				contact->given ? contact->given : "",
+				contact->additional ? contact->additional : "",
+				contact->prefix ? contact->prefix : "",
+				contact->suffix ? contact->suffix : "");
+		else if (contact->fullname[0])
+			name = g_strdup(contact->fullname);
+		else if (contact->nickname[0])
+			name = g_strdup(contact->nickname);
+		else
+			name = g_strdup(tel);
+
+		handle = g_str_equal(entry->id, TRACKER_DEFAULT_CONTACT_ME) ?
+						0 : PHONEBOOK_INVALID_HANDLE;
+		data->entry_cb(entry->id, handle, name, "", tel,
+				phonebook_contact_get_mask(contact),
+				data->user_data);
+		g_free(name);
+	}
+
+	data->ready_cb(data->newmissedcalls, data->user_data);
+}
+
+static void send_selected_contacts(struct phonebook_data *data)
+{
+	const struct apparam_field *params = data->params;
+	unsigned int count = 0;
+	unsigned int offset = params->liststartoffset;
+	GSList *l;
+	GString *vcards;
+
+	vcards = g_string_new(NULL);
+
+	for (l = data->contacts; l; l = l->next) {
+		struct contact_data *entry = l->data;
+		uint64_t mask = phonebook_contact_get_mask(entry->contact);
+
+		if (!phonebook_selector_match(mask, params->selector,
+						params->selector_operator))
+			continue;
+
+		if (params->maxlistcount == 0) {
+			count++;
+			continue;
+		}
+
+		if (offset) {
+			offset--;
+			continue;
+		}
+
+		if (count == params->maxlistcount)
+			break;
+
+		phonebook_add_contact(vcards, entry->contact, params->filter,
+							params->format);
+		count++;
+	}
+
+	data->cb(vcards->str, vcards->len, count, data->newmissedcalls,
+						TRUE, data->user_data);
+	g_string_free(vcards, TRUE);
+}
+
 static int pull_contacts(const char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
@@ -1262,7 +1306,12 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 	gboolean cdata_present = FALSE, part_sent = FALSE;
 
 	if (num_fields < 0) {
-		data->cb(NULL, 0, num_fields, 0, TRUE, data->user_data);
+		if (data->request == PHONEBOOK_REQUEST_CACHE)
+			data->ready_cb(0, data->user_data);
+		else
+			data->cb(NULL, 0, num_fields, 0, TRUE,
+							data->user_data);
+
 		goto fail;
 	}
 
@@ -1274,7 +1323,7 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 
 	/* Trying to find contact in recently added contacts. It is needed for
 	 * contacts that have more than one telephone number filled */
-	contact = find_contact(data->contacts, reply[CONTACTS_ID_COL],
+	contact = find_contact(data, reply[CONTACTS_ID_COL],
 							reply[COL_DATE]);
 
 	/* If contact is already created then adding only new phone numbers */
@@ -1296,6 +1345,11 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 	if (i == num_fields - 4 && !g_str_equal(reply[CONTACTS_ID_COL],
 						TRACKER_DEFAULT_CONTACT_ME))
 		return 0;
+
+	/* All rows of a contact are merged before the selection. */
+	if (data->request == PHONEBOOK_REQUEST_CACHE ||
+			data->request == PHONEBOOK_REQUEST_SELECT)
+		goto add_entry;
 
 	if (g_strcmp0(data->last_id, reply[CONTACTS_ID_COL])) {
 		data->index++;
@@ -1354,7 +1408,25 @@ add_numbers:
 		contact_data = g_new0(struct contact_data, 1);
 		contact_data->contact = contact;
 		contact_data->id = g_strdup(reply[CONTACTS_ID_COL]);
-		data->contacts = g_slist_append(data->contacts, contact_data);
+
+		for (i = COL_FAMILY_NAME; i <= COL_NAME_SUFFIX; i++) {
+			if (reply[i][0]) {
+				contact_data->name_present = TRUE;
+				break;
+			}
+		}
+
+		if (data->contact_index) {
+			char *key;
+
+			key = g_strconcat(reply[CONTACTS_ID_COL], "\n",
+							reply[COL_DATE], NULL);
+			g_hash_table_insert(data->contact_index, key, contact);
+			data->contacts = g_slist_prepend(data->contacts,
+							contact_data);
+		} else
+			data->contacts = g_slist_append(data->contacts,
+							contact_data);
 	}
 
 	if (part_sent)
@@ -1363,63 +1435,25 @@ add_numbers:
 	return 0;
 
 done:
+	if (data->contact_index)
+		data->contacts = g_slist_reverse(data->contacts);
+
 	/* Processing is end, this is definitely last part of transmission
 	 * (marking lastpart as TRUE) */
-	send_pull_part(data, params, TRUE);
-
-fail:
-	return -EINTR;
-	/*
-	 * phonebook_data is freed in phonebook_req_finalize. Useful in
-	 * cases when call is terminated.
-	 */
-}
-
-static int add_to_cache(const char **reply, int num_fields, void *user_data)
-{
-	struct phonebook_data *data = user_data;
-	char *formatted;
-	int i;
-
-	if (reply == NULL || num_fields < 0)
-		goto done;
-
-	/* the first element is the URI, always not empty */
-	for (i = 1; i < num_fields; i++) {
-		if (reply[i][0] != '\0')
-			break;
+	switch (data->request) {
+	case PHONEBOOK_REQUEST_CACHE:
+		send_cache(data);
+		break;
+	case PHONEBOOK_REQUEST_SELECT:
+		send_selected_contacts(data);
+		break;
+	case PHONEBOOK_REQUEST_PULL:
+	case PHONEBOOK_REQUEST_ENTRY:
+		send_pull_part(data, params, TRUE);
+		break;
 	}
 
-	if (i == num_fields &&
-			!g_str_equal(reply[0], TRACKER_DEFAULT_CONTACT_ME))
-		return 0;
-
-	if (i == 7)
-		formatted = g_strdup(reply[7]);
-	else if (i == 6)
-		formatted = g_strdup(reply[6]);
-	else
-		formatted = g_strdup_printf("%s;%s;%s;%s;%s",
-					reply[1], reply[2], reply[3], reply[4],
-					reply[5]);
-
-	/* The owner vCard must have the 0 handle */
-	if (strcmp(reply[0], TRACKER_DEFAULT_CONTACT_ME) == 0)
-		data->entry_cb(reply[0], 0, formatted, "",
-						reply[6], data->user_data);
-	else
-		data->entry_cb(reply[0], PHONEBOOK_INVALID_HANDLE, formatted,
-					"", reply[6], data->user_data);
-
-	g_free(formatted);
-
-	return 0;
-
-done:
-	if (num_fields <= 0)
-		data->ready_cb(num_fields < 0 ? 0 : data->newmissedcalls,
-							data->user_data);
-
+fail:
 	return -EINTR;
 	/*
 	 * phonebook_data is freed in phonebook_req_finalize. Useful in
@@ -1544,8 +1578,8 @@ static int pull_newmissedcalls(const char **reply, int num_fields,
 
 	if (data->request == PHONEBOOK_REQUEST_CACHE) {
 		query = folder2query(data->req_name);
-		col_amount = 8;
-		pull_cb = add_to_cache;
+		col_amount = PULL_QUERY_COL_AMOUNT;
+		pull_cb = pull_contacts;
 	} else if (data->request == PHONEBOOK_REQUEST_PULL &&
 					data->params->maxlistcount == 0) {
 		query = name2count_query(PB_CALLS_MISSED);
@@ -1599,11 +1633,17 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 	DBG("name %s", name);
 
 	data = g_new0(struct phonebook_data, 1);
-	data->request = PHONEBOOK_REQUEST_PULL;
 	data->params = params;
 	data->user_data = user_data;
 	data->cb = cb;
 	data->req_name = g_strdup(name);
+
+	if (params->selector) {
+		data->request = PHONEBOOK_REQUEST_SELECT;
+		data->contact_index = g_hash_table_new_full(g_str_hash,
+						g_str_equal, g_free, NULL);
+	} else
+		data->request = PHONEBOOK_REQUEST_PULL;
 
 	if (err)
 		*err = 0;
@@ -1633,7 +1673,8 @@ int phonebook_pull_read(void *request)
 		query = NEW_MISSED_CALLS_COUNT_QUERY;
 		col_amount = COUNT_QUERY_COL_AMOUNT;
 		pull_cb = pull_newmissedcalls;
-	} else if (data->params->maxlistcount == 0) {
+	} else if (data->request == PHONEBOOK_REQUEST_PULL &&
+					data->params->maxlistcount == 0) {
 		query = name2count_query(data->req_name);
 		col_amount = COUNT_QUERY_COL_AMOUNT;
 		pull_cb = pull_contacts_size;
@@ -1715,6 +1756,8 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 
 	data = g_new0(struct phonebook_data, 1);
 	data->request = PHONEBOOK_REQUEST_CACHE;
+	data->contact_index = g_hash_table_new_full(g_str_hash,
+						g_str_equal, g_free, NULL);
 	data->entry_cb = entry_cb;
 	data->ready_cb = ready_cb;
 	data->user_data = user_data;
@@ -1725,7 +1768,8 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 					COUNT_QUERY_COL_AMOUNT,
 					pull_newmissedcalls, data);
 	else
-		ret = query_tracker(query, 8, add_to_cache, data);
+		ret = query_tracker(query, PULL_QUERY_COL_AMOUNT,
+							pull_contacts, data);
 
 	if (err)
 		*err = ret;
