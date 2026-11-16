@@ -180,7 +180,7 @@ static void response_add_metadata(struct pbap_session *pbap)
 
 	memset(&metadata, 0, sizeof(metadata));
 
-	if (!phonebook_get_metadata(&metadata))
+	if (!phonebook_get_metadata(pbap->obj->folder, &metadata))
 		DBG("Metadata unavailable");
 
 	pbap->obj->apparam = g_obex_apparam_set_bytes(pbap->obj->apparam,

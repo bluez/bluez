@@ -39,6 +39,8 @@
 #define PB_INFO_LOG "/telecom/pb/info.log"
 #define PB_CC_LOG "/telecom/pb/luid/cc.log"
 
+#define PRIMARY_COUNTER "primary_counter"
+#define SECONDARY_COUNTER "secondary_counter"
 
 struct apparam_field {
 	/* list and pull attributes */
@@ -108,7 +110,8 @@ char *phonebook_set_folder(const char *current_folder,
  * Returns the metadata identifying the current database contents. A zero
  * database identifier means the values are not persistent.
  */
-int phonebook_get_metadata(struct phonebook_metadata *metadata);
+int phonebook_get_metadata(const char *folder,
+					struct phonebook_metadata *metadata);
 
 /*
  * phonebook_pull should be used only to prepare pull request - prepared

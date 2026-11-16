@@ -24,7 +24,8 @@ gboolean metadata_file_open(const char *file);
 void metadata_file_close(void);
 
 /* Reads metadata and zeroes invalid or unsaved values. */
-gboolean metadata_read(struct phonebook_metadata *metadata);
+gboolean metadata_read(const char *folder,
+				struct phonebook_metadata *metadata);
 
 /* Stores a hex encoded byte array. */
 void metadata_set(const char *group, const char *key,
@@ -40,6 +41,12 @@ gboolean metadata_get(const char *group, const char *key, uint8_t buf[16]);
 void metadata_identifier_update(void);
 
 /*
- * Persists the metadata file. Returns TRUE on success.
+ * Increments the primary and/or secondary folder version counters.
+ * Returns FALSE on missing counters or rollover.
  */
+gboolean metadata_folder_version_counter_incr(const char *folder,
+						gboolean primary_changed,
+						gboolean secondary_changed);
+
+/* Saves the metadata file when it has changes. Returns TRUE on success. */
 gboolean metadata_save(void);
