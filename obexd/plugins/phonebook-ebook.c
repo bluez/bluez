@@ -540,7 +540,7 @@ static void phonebook_create_cache_ready(GObject *source_object,
 
 done:
 	if (data->queued_calls == 0)
-		data->ready_cb(data->user_data);
+		data->ready_cb(0, data->user_data);
 
 	return;
 

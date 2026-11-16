@@ -72,11 +72,8 @@ typedef void (*phonebook_entry_cb) (const char *id, uint32_t handle,
 					const char *name, const char *sound,
 					const char *tel, void *user_data);
 
-/*
- * After notify all entries to PBAP core, the backend
- * needs to notify that the operation has finished.
- */
-typedef void (*phonebook_cache_ready_cb) (void *user_data);
+/* Notifies cache completion and the number of undismissed missed calls. */
+typedef void (*phonebook_cache_ready_cb) (uint8_t missed, void *user_data);
 
 
 /*
