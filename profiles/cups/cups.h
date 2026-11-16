@@ -20,6 +20,9 @@ enum {					/**** Backend exit codes ****/
 
 int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel);
 int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm);
+char *sdp_search_ieee1284_id(sdp_session_t *sdp);
+int sdp_search_ieee1284_id_async(sdp_session_t *sdp);
+char *sdp_parse_ieee1284_id(uint8_t *rsp, size_t size);
 
 int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies, const char *cups_class);
 int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies, const char *cups_class);
