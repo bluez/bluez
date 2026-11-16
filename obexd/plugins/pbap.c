@@ -63,11 +63,17 @@
 #define DATABASEID_FEATURE	0x00000004
 #define FOLDER_VERSION_FEATURE	0x00000008
 #define VCARD_SELECTING_FEATURE	0x00000010
+#define DEFAULT_IMAGE_FEATURE	0x00000200
+
+#define DEFAULT_IMAGE_MAX_SIZE		(50 * 1024)
+#define DEFAULT_IMAGE_MAX_DIMENSION	300
+/* Number of BASE64 characters encoding DEFAULT_IMAGE_MAX_SIZE bytes */
+#define DEFAULT_IMAGE_MAX_BASE64	((DEFAULT_IMAGE_MAX_SIZE + 2) / 3 * 4)
 
 #define PSE_SUPPORTED_FEATURES \
 	(DOWNLOAD_FEATURE | BROWSE_FEATURE | \
 	DATABASEID_FEATURE | FOLDER_VERSION_FEATURE | \
-	VCARD_SELECTING_FEATURE)
+	VCARD_SELECTING_FEATURE | DEFAULT_IMAGE_FEATURE)
 
 struct cache {
 	gboolean valid;
@@ -263,10 +269,491 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
 
+static gboolean jpeg_has_start_of_image(const uint8_t *image, size_t length)
+{
+	return length >= 2 && image[0] == 0xff && image[1] == 0xd8;
+}
+
+static gboolean jpeg_marker_is_frame(uint8_t marker)
+{
+	const uint16_t excluded = (1 << 4) | (1 << 8) | (1 << 12);
+
+	if (marker < 0xc0 || marker > 0xcf)
+		return FALSE;
+
+	return !(excluded & (1 << (marker - 0xc0)));
+}
+
+static gboolean jpeg_segment_is_valid(size_t offset, uint16_t segment_length,
+							size_t length)
+{
+	if (segment_length < 2)
+		return FALSE;
+
+	return segment_length <= length - offset - 2;
+}
+
+static gboolean jpeg_dimensions_are_default(uint16_t height, uint16_t width)
+{
+	return height && width && height <= DEFAULT_IMAGE_MAX_DIMENSION &&
+				width <= DEFAULT_IMAGE_MAX_DIMENSION;
+}
+
+/* Returns whether a JPEG image is at most 300x300 pixels. */
+static gboolean jpeg_is_default_image(const uint8_t *image, size_t length)
+{
+	size_t offset = 2;
+
+	if (!jpeg_has_start_of_image(image, length))
+		return FALSE;
+
+	while (offset + 4 <= length) {
+		uint16_t segment_length, height, width;
+		uint8_t marker;
+
+		if (image[offset] != 0xff)
+			return FALSE;
+
+		marker = image[offset + 1];
+
+		/* Fill byte */
+		if (marker == 0xff) {
+			offset++;
+			continue;
+		}
+
+		/* Start of scan or end of image before the frame header */
+		if (marker == 0xda || marker == 0xd9)
+			return FALSE;
+
+		segment_length = (image[offset + 2] << 8) | image[offset + 3];
+		if (!jpeg_segment_is_valid(offset, segment_length, length))
+			return FALSE;
+
+		/* Start of frame markers, except DHT, JPG and DAC */
+		if (jpeg_marker_is_frame(marker)) {
+			if (segment_length < 7)
+				return FALSE;
+
+			height = (image[offset + 5] << 8) | image[offset + 6];
+			width = (image[offset + 7] << 8) | image[offset + 8];
+
+			return jpeg_dimensions_are_default(height, width);
+		}
+
+		offset += 2 + segment_length;
+	}
+
+	return FALSE;
+}
+
+/* Returns whether a value is valid BASE64 with correct padding. */
+static gboolean base64_is_valid(const GString *value)
+{
+	gsize padding = 0;
+	gsize i;
+
+	if (!value->len || value->len % 4)
+		return FALSE;
+
+	for (i = 0; i < value->len; i++) {
+		char c = value->str[i];
+
+		if (c == '=') {
+			padding++;
+			continue;
+		}
+
+		/* Padding is only allowed at the end */
+		if (padding)
+			return FALSE;
+
+		if (!g_ascii_isalnum(c) && c != '+' && c != '/')
+			return FALSE;
+	}
+
+	return padding <= 2;
+}
+
+static gboolean photo_is_default_image(const GString *value)
+{
+	guchar *image;
+	gsize length;
+	gboolean valid;
+
+	/* Reject images that are too large without decoding them. */
+	if (value->len > DEFAULT_IMAGE_MAX_BASE64)
+		return FALSE;
+
+	if (!base64_is_valid(value))
+		return FALSE;
+
+	image = g_base64_decode(value->str, &length);
+	valid = length <= DEFAULT_IMAGE_MAX_SIZE &&
+				jpeg_is_default_image(image, length);
+	g_free(image);
+
+	return valid;
+}
+
+enum vcard_encoding {
+	VCARD_ENCODING_NONE,
+	VCARD_ENCODING_BASE64,
+	VCARD_ENCODING_QUOTED_PRINTABLE,
+};
+
+struct default_image_filter {
+	const char *photo;
+	enum vcard_encoding encoding;
+	gboolean qp_continuation;
+	GString *header;
+	GString *result;
+	GString *value;
+};
+
+static const char *vcard_find_separator(const char *line, size_t length,
+							char separator)
+{
+	gboolean quoted = FALSE;
+	gboolean escaped = FALSE;
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		if (escaped) {
+			escaped = FALSE;
+			continue;
+		}
+
+		if (quoted && line[i] == '\\') {
+			escaped = TRUE;
+			continue;
+		}
+
+		if (line[i] == '"') {
+			quoted = !quoted;
+			continue;
+		}
+
+		if (!quoted && line[i] == separator)
+			return line + i;
+	}
+
+	return NULL;
+}
+
+static enum vcard_encoding params_get_encoding(const char *params,
+							const char *end)
+{
+	const char *p = params;
+
+	while (p < end) {
+		const char *next;
+		size_t len;
+
+		/* Skip the ';' separator */
+		p++;
+
+		next = vcard_find_separator(p, end - p, ';');
+		if (!next)
+			next = end;
+
+		len = next - p;
+
+		/* Check the value of ENCODING=, or a vCard 2.1 bare value. */
+		if (len > 9 && g_ascii_strncasecmp(p, "ENCODING=", 9) == 0) {
+			p += 9;
+			len -= 9;
+
+			/* vCard 3.0 ENCODING=b */
+			if (len == 1 && g_ascii_tolower(*p) == 'b')
+				return VCARD_ENCODING_BASE64;
+		}
+
+		/* vCard 2.1 ENCODING=BASE64 or BASE64 */
+		if (len == 6 && g_ascii_strncasecmp(p, "BASE64", 6) == 0)
+			return VCARD_ENCODING_BASE64;
+
+		if (len == 16 && g_ascii_strncasecmp(p, "QUOTED-PRINTABLE",
+								16) == 0)
+			return VCARD_ENCODING_QUOTED_PRINTABLE;
+
+		p = next;
+	}
+
+	return VCARD_ENCODING_NONE;
+}
+
+static enum vcard_encoding line_get_encoding(const char *line, size_t length)
+{
+	const char *colon;
+	const char *params;
+
+	colon = vcard_find_separator(line, length, ':');
+	if (!colon)
+		return VCARD_ENCODING_NONE;
+
+	params = memchr(line, ';', colon - line);
+	if (!params)
+		return VCARD_ENCODING_NONE;
+
+	return params_get_encoding(params, colon);
+}
+
+/* Appends a possibly folded property header and returns its raw end. */
+static const char *append_header(GString *header, const char *line,
+							const char *end)
+{
+	gboolean folded = FALSE;
+
+	while (line < end) {
+		const char *next = memchr(line, '\n', end - line);
+		size_t len, offset = 0;
+
+		next = next ? next + 1 : end;
+		len = next - line;
+
+		while (len && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+			len--;
+
+		if (folded && len && (line[0] == ' ' || line[0] == '\t'))
+			offset = 1;
+
+		g_string_append_len(header, line + offset, len - offset);
+
+		if (vcard_find_separator(header->str, header->len, ':'))
+			return next;
+
+		if (next == end || (next[0] != ' ' && next[0] != '\t'))
+			return next;
+
+		line = next;
+		folded = TRUE;
+	}
+
+	return end;
+}
+
+static gboolean line_has_soft_break(const char *line, size_t length)
+{
+	return length && line[length - 1] == '=';
+}
+
+/* Returns whether a line starts a PHOTO property. */
+static gboolean line_is_photo(const char *line, size_t length,
+						size_t *value_offset)
+{
+	const char *colon;
+	const char *end;
+	const char *name;
+	const char *p;
+
+	if (!length || line[0] == ' ' || line[0] == '\t')
+		return FALSE;
+
+	colon = vcard_find_separator(line, length, ':');
+	if (!colon)
+		return FALSE;
+
+	end = memchr(line, ';', colon - line);
+	if (!end)
+		end = colon;
+
+	/* Skip the group prefix */
+	for (name = p = line; p < end; p++) {
+		if (*p == '.')
+			name = p + 1;
+	}
+
+	if (end - name != 5 || g_ascii_strncasecmp(name, "PHOTO", 5) != 0)
+		return FALSE;
+
+	*value_offset = colon - line + 1;
+
+	return TRUE;
+}
+
+/* Appends a part of a PHOTO value without any space or tab. */
+static void append_value(GString *value, const char *part, size_t length)
+{
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		/* Larger values are rejected without being kept. */
+		if (value->len > DEFAULT_IMAGE_MAX_BASE64)
+			return;
+
+		if (part[i] != ' ' && part[i] != '\t')
+			g_string_append_c(value, part[i]);
+	}
+}
+
+static void append_photo(GString *result, const char *start, const char *end,
+				GString *value, enum vcard_encoding encoding)
+{
+	if (encoding == VCARD_ENCODING_BASE64 &&
+						photo_is_default_image(value))
+		g_string_append_len(result, start, end - start);
+
+	g_string_truncate(value, 0);
+}
+
+static const char *vcard_line_end(const char *line, const char *end,
+							size_t *length)
+{
+	const char *next = memchr(line, '\n', end - line);
+
+	next = next ? next + 1 : end;
+	*length = next - line;
+
+	while (*length && (line[*length - 1] == '\n' ||
+						line[*length - 1] == '\r'))
+		(*length)--;
+
+	return next;
+}
+
+static void default_image_finish_photo(struct default_image_filter *filter,
+							const char *end)
+{
+	append_photo(filter->result, filter->photo, end, filter->value,
+						filter->encoding);
+	filter->photo = NULL;
+	filter->encoding = VCARD_ENCODING_NONE;
+	filter->qp_continuation = FALSE;
+}
+
+static gboolean default_image_photo_continuation(
+					struct default_image_filter *filter,
+					const char *line, size_t length)
+{
+	if (!filter->photo)
+		return FALSE;
+
+	/*
+	 * Folded lines, and the unfolded BASE64 lines and the terminating
+	 * blank line of vCard 2.1, belong to the PHOTO value.
+	 */
+	if (!filter->qp_continuation && length && line[0] != ' ' &&
+			line[0] != '\t' && memchr(line, ':', length)) {
+		default_image_finish_photo(filter, line);
+		return FALSE;
+	}
+
+	append_value(filter->value, line, length);
+	filter->qp_continuation =
+		filter->encoding == VCARD_ENCODING_QUOTED_PRINTABLE &&
+					line_has_soft_break(line, length);
+
+	return TRUE;
+}
+
+static gboolean default_image_property_continuation(
+					struct default_image_filter *filter,
+					const char *line, const char *next,
+							size_t length)
+{
+	if (filter->qp_continuation) {
+		g_string_append_len(filter->result, line, next - line);
+		filter->qp_continuation = line_has_soft_break(line, length);
+		return TRUE;
+	}
+
+	if (line[0] != ' ' && line[0] != '\t')
+		return FALSE;
+
+	g_string_append_len(filter->result, line, next - line);
+	filter->qp_continuation =
+		filter->encoding == VCARD_ENCODING_QUOTED_PRINTABLE &&
+					line_has_soft_break(line, length);
+
+	return TRUE;
+}
+
+static const char *default_image_property_start(
+					struct default_image_filter *filter,
+					const char *line, const char *end)
+{
+	const char *next;
+	size_t offset;
+
+	g_string_truncate(filter->header, 0);
+	next = append_header(filter->header, line, end);
+	filter->encoding = line_get_encoding(filter->header->str,
+						filter->header->len);
+
+	if (line_is_photo(filter->header->str, filter->header->len,
+							&offset)) {
+		filter->photo = line;
+		append_value(filter->value, filter->header->str + offset,
+					filter->header->len - offset);
+	} else
+		g_string_append_len(filter->result, line, next - line);
+
+	filter->qp_continuation =
+		filter->encoding == VCARD_ENCODING_QUOTED_PRINTABLE &&
+		line_has_soft_break(filter->header->str, filter->header->len);
+
+	return next;
+}
+
+/*
+ * Drops PHOTO properties that are not BASE64 encoded JPEG images of at
+ * most 300x300 pixels and 50 KiB, as required by the Contact Image
+ * Default Format.
+ */
+static char *filter_default_images(const char *buffer, size_t length,
+						size_t *filtered_length)
+{
+	struct default_image_filter filter;
+	const char *line;
+	const char *end;
+
+	if (!buffer || !length) {
+		*filtered_length = 0;
+		return g_strdup("");
+	}
+
+	end = buffer + length;
+	filter.photo = NULL;
+	filter.encoding = VCARD_ENCODING_NONE;
+	filter.qp_continuation = FALSE;
+	filter.header = g_string_new(NULL);
+	filter.result = g_string_sized_new(length);
+	filter.value = g_string_new(NULL);
+
+	for (line = buffer; line < end;) {
+		const char *next;
+		size_t line_length;
+
+		next = vcard_line_end(line, end, &line_length);
+
+		if (default_image_photo_continuation(&filter, line,
+							line_length) ||
+			default_image_property_continuation(&filter, line, next,
+							line_length)) {
+			line = next;
+			continue;
+		}
+
+		line = default_image_property_start(&filter, line, end);
+	}
+
+	if (filter.photo)
+		default_image_finish_photo(&filter, end);
+
+	g_string_free(filter.header, TRUE);
+	g_string_free(filter.value, TRUE);
+
+	*filtered_length = filter.result->len;
+	return g_string_free(filter.result, FALSE);
+}
+
 /* Returns -1 on error, otherwise whether this is the first packet. */
 static int vobject_append(struct pbap_session *pbap, const char *buffer,
 			size_t bufsize, int vcards, gboolean lastpart)
 {
+	char *filtered;
+	size_t filtered_length;
 	gboolean first;
 
 	if (pbap->obj->request && lastpart) {
@@ -282,12 +769,15 @@ static int vobject_append(struct pbap_session *pbap, const char *buffer,
 	}
 
 	first = !pbap->obj->buffer;
+	filtered = filter_default_images(buffer, bufsize, &filtered_length);
 
 	if (first)
-		pbap->obj->buffer = g_string_new_len(buffer, bufsize);
+		pbap->obj->buffer = g_string_new_len(filtered, filtered_length);
 	else
 		pbap->obj->buffer = g_string_append_len(pbap->obj->buffer,
-							buffer,	bufsize);
+						filtered, filtered_length);
+
+	g_free(filtered);
 
 	return first;
 }
