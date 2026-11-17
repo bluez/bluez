@@ -54,6 +54,9 @@ UPDATE_CONF = LE_CONF + "[LE]\nMinConnectionInterval = 80\nMaxConnectionInterval
 
 CONN_PARAMS = ("Interval", "Latency", "SupervisionTimeout", "Subrate")
 
+# ReadRSSI is a testing method
+TESTING_CONF = LE_CONF + "Testing = true\n"
+
 
 class Bearers(HostPlugin, EventPluginMixin):
     """
@@ -206,6 +209,22 @@ def conn_params(host, remote):
     return dict(zip(CONN_PARAMS, map(int, values)))
 
 
+def read_rssi(host, remote):
+    """
+    The RSSI ReadRSSI returns for the LE bearer host has for remote, or
+    None if the kernel has not finished setting up the connection yet.
+    """
+    host.bearers.call(remote.bdaddr, LE_INTERFACE, "ReadRSSI")
+    event = host.bearers.expect(
+        (f"{LE_INTERFACE}.ReadRSSI:reply", f"{LE_INTERFACE}.ReadRSSI:error")
+    )
+    if event.kind.endswith(":error"):
+        assert event.error.get_dbus_name() == "org.bluez.Error.NotReady"
+        return None
+
+    return int(event.values[0])
+
+
 def connect_le(host0, host1):
     discover(host0, host1)
 
@@ -281,6 +300,45 @@ def test_bearer_le_conn_params(hosts):
     for host, remote in peers(host0, host1):
         for name in CONN_PARAMS:
             assert host.bearers.get(remote.bdaddr, LE_INTERFACE, name) is None
+
+
+@host_config(
+    [
+        Bluetoothd(conf=TESTING_CONF, args=ARGS),
+        Agent(capability="NoInputNoOutput"),
+        Bearers(),
+    ],
+    [
+        Bluetoothd(conf=LE_CONF, args=ARGS),
+        LeAdvertiser(),
+        Agent(capability="NoInputNoOutput"),
+        Bearers(),
+    ],
+)
+def test_bearer_le_read_rssi(hosts):
+    host0, host1 = hosts
+
+    connect_le(host0, host1)
+
+    for host, remote in peers(host0, host1):
+        wait_until(
+            lambda: host.bearers.get(remote.bdaddr, LE_INTERFACE, "Connected") is True
+        )
+
+    wait_until(lambda: read_rssi(host0, host1) is not None)
+
+    # Controllers report the RSSI of a connection from -127 to 20 dBm
+    assert -127 <= read_rssi(host0, host1) <= 20
+
+    host1.bearers.call(host0.bdaddr, LE_INTERFACE, "ReadRSSI")
+    error = host1.bearers.expect(f"{LE_INTERFACE}.ReadRSSI:error").error
+    assert error.get_dbus_name() == "org.freedesktop.DBus.Error.UnknownMethod"
+
+    disconnect(host0, host1, LE_INTERFACE)
+
+    host0.bearers.call(host1.bdaddr, LE_INTERFACE, "ReadRSSI")
+    error = host0.bearers.expect(f"{LE_INTERFACE}.ReadRSSI:error").error
+    assert error.get_dbus_name() == "org.bluez.Error.NotConnected"
 
 
 @host_config(
