@@ -1109,6 +1109,7 @@ static void gmcs_remove(struct btd_profile *p, struct btd_adapter *adapter)
 
 static struct btd_profile mcp_gmcs_profile = {
 	.name			= "mcp-gmcs",
+	.paired_only		= true,
 	.priority		= BTD_PROFILE_PRIORITY_MEDIUM,
 	.bearer			= BTD_PROFILE_BEARER_LE,
 	.remote_uuid		= GMCS_UUID_STR,
@@ -1126,6 +1127,7 @@ static struct btd_profile mcp_gmcs_profile = {
 
 static struct btd_profile mcp_mcs_profile = {
 	.name			= "mcp-mcs",
+	.paired_only		= true,
 	.priority		= BTD_PROFILE_PRIORITY_MEDIUM,
 	.bearer			= BTD_PROFILE_BEARER_LE,
 	.remote_uuid		= MCS_UUID_STR,

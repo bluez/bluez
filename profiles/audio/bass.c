@@ -2542,6 +2542,7 @@ static void bass_server_remove(struct btd_profile *p,
 
 static struct btd_profile bass_service = {
 	.name		= "bass",
+	.paired_only	= true,
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= BASS_UUID_STR,

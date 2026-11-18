@@ -4350,6 +4350,7 @@ static void bap_adapter_remove(struct btd_profile *p,
 
 static struct btd_profile bap_profile = {
 	.name		= "bap",
+	.paired_only	= true,
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= PACS_UUID_STR,

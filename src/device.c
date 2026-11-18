@@ -4922,6 +4922,28 @@ static void device_accept_gatt_profiles(struct btd_device *device)
 	g_slist_free(services);
 }
 
+static void device_accept_paired_only_profiles(struct btd_device *device)
+{
+	GSList *l;
+	bool initiator = btd_device_is_initiator(device);
+	GSList *services;
+
+	if (!device->client)
+		return;
+
+	services = g_slist_copy(device->services);
+	services = btd_profile_sort_list(services, get_service_profile, NULL);
+
+	for (l = services; l != NULL; l = g_slist_next(l)) {
+		struct btd_service *service = l->data;
+
+		if (btd_service_get_profile(service)->paired_only)
+			service_accept(service, initiator);
+	}
+
+	g_slist_free(services);
+}
+
 static void device_remove_gatt_service(struct btd_device *device,
 						struct gatt_db_attribute *attr)
 {
@@ -7581,6 +7603,13 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 		return;
 
 	device_set_paired(device, bdaddr_type);
+
+	/* Profiles that require pairing were turned away while unpaired.
+	 * They are GATT based, so start them once the LE services are known,
+	 * whichever bearer the pairing was done on.
+	 */
+	if (device->le_state.svc_resolved)
+		device_accept_paired_only_profiles(device);
 
 	/* If services are already resolved just reply to the pairing
 	 * request
