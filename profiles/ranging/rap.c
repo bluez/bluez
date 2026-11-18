@@ -837,19 +837,16 @@ bad_type:
 		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
 					   "Set CS freq params failed");
 
-	/* Reflector never initiates a CS procedure locally: apply the
-	 * settings so the controller is ready to respond to the remote
-	 * Initiator, but do not arm a local measurement session.
-	 */
-	if (settings.role == 0x02)
-		return dbus_message_new_method_return(msg);
-
 	/* Nothing is subscribed at connection time unless On-demand is
 	 * configured, so subscribe now if SetRangingDataMode() was not called.
 	 */
 	if (!bt_rap_ensure_ranging_data(data->rap))
 		DBG("Unable to subscribe to Ranging Data");
 
+	/* The Reflector runs the setup phase too, so that the state machine
+	 * acts on the remote Initiator's events; rap_def_settings_done_cb()
+	 * leaves Create Config to the Initiator.
+	 */
 	if (!bt_rap_start_measurement(data->hci_sm, data->conn_handle,
 							duration_secs))
 		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
@@ -940,12 +937,20 @@ static const GDBusMethodTable cs_dbus_methods[] = {
 	{ }
 };
 
+#define CS_ROLE_INITIATOR	0x01
+
 static gboolean cs_property_get_active(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
 	struct rap_data *data = user_data;
-	dbus_bool_t active = data->active_session.active ||
-				bt_rap_is_procedure_active(data->hci_sm);
+	dbus_bool_t active = bt_rap_is_procedure_active(data->hci_sm);
+
+	/* A Reflector session is only armed while waiting for the peer, so
+	 * only report the procedure state for it.
+	 */
+	if (data->active_session.active &&
+	    (data->active_session.settings.role & CS_ROLE_INITIATOR))
+		active = true;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &active);
 	return TRUE;
