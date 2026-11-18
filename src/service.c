@@ -301,6 +301,19 @@ int service_accept(struct btd_service *service, bool initiator)
 		return -ECONNABORTED;
 	}
 
+	/* Pairing on either bearer counts: the user chose to pair the device,
+	 * so a missing LE key may be completed when the profile needs it.
+	 */
+	if (service->profile->paired_only &&
+			!device_is_paired(service->device, BDADDR_BREDR) &&
+			!device_is_paired(service->device,
+				btd_device_get_bdaddr_type(service->device)) &&
+			!device_is_bonding(service->device, NULL)) {
+		DBG("%s requires pairing: not accepting yet",
+						service->profile->name);
+		return -ECONNREFUSED;
+	}
+
 	service->initiator = initiator;
 	add_depends(service);
 
