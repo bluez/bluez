@@ -302,6 +302,7 @@ static void csip_remove(struct btd_service *service)
 
 static struct btd_profile csip_profile = {
 	.name		= "csip",
+	.paired_only	= true,
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= CSIS_UUID_STR,
