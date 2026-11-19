@@ -13890,6 +13890,28 @@ static void le_enhanced_conn_complete_evt(struct timeval *tv, uint16_t index,
 				(void *)evt->peer_addr, evt->peer_addr_type);
 }
 
+static void le_enhanced_conn_complete_v2_evt(struct timeval *tv,
+				uint16_t index, const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_enhanced_conn_complete_v2 *evt = data;
+
+	/* The v2 event starts with the parameters of the v1 event */
+	le_enhanced_conn_complete_evt(tv, index, data, size);
+
+	if (evt->adv_handle == 0xff)
+		print_field("Advertising handle: No Advertising Handle (0xff)");
+	else
+		print_field("Advertising handle: %u (0x%2.2x)",
+					evt->adv_handle, evt->adv_handle);
+
+	if (le16_to_cpu(evt->sync_handle) == 0xffff)
+		print_field("Sync handle: No Sync Handle (0xffff)");
+	else
+		print_field("Sync handle: %u (0x%4.4x)",
+					le16_to_cpu(evt->sync_handle),
+					le16_to_cpu(evt->sync_handle));
+}
+
 static void le_direct_adv_report_evt(struct timeval *tv, uint16_t index,
 					const void *data, uint8_t size)
 {
@@ -14118,6 +14140,18 @@ static void le_pa_sync_evt(struct timeval *tv, uint16_t index,
 	print_field("Advertiser clock accuracy: 0x%2.2x", evt->clock_accuracy);
 }
 
+static void le_pa_sync_v2_evt(struct timeval *tv, uint16_t index,
+				const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_per_sync_established_v2 *evt = data;
+
+	/* The v2 event starts with the parameters of the v1 event */
+	le_pa_sync_evt(tv, index, data, size);
+	print_pa_subevents(evt->num_subevents, evt->subevent_interval,
+				evt->response_slot_delay,
+				evt->response_slot_spacing);
+}
+
 static const char *pa_cte_type_str(uint8_t cte_type)
 {
 	switch (cte_type) {
@@ -14169,6 +14203,10 @@ static void print_pa_report_data(uint8_t data_status, uint8_t data_len,
 		str = "Incomplete, data truncated, no more to come";
 		color_on = COLOR_RED;
 		break;
+	case 0xff:
+		str = "Failed to receive AUX_SYNC_SUBEVENT_IND";
+		color_on = COLOR_RED;
+		break;
 	default:
 		str = "Reserved";
 		color_on = COLOR_RED;
@@ -14194,6 +14232,25 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 
 	print_pa_report_info(evt->handle, evt->tx_power, evt->rssi,
 							evt->cte_type);
+	print_pa_report_data(evt->data_status, evt->data_len, evt->data,
+							size - sizeof(*evt));
+}
+
+static void le_pa_report_v2_evt(struct timeval *tv, uint16_t index,
+				const void *data, uint8_t size)
+{
+	const struct bt_hci_le_pa_report_v2 *evt = data;
+
+	print_pa_report_info(evt->handle, evt->tx_power, evt->rssi,
+							evt->cte_type);
+	print_field("Periodic event counter: %u (0x%4.4x)",
+					le16_to_cpu(evt->event_counter),
+					le16_to_cpu(evt->event_counter));
+	if (evt->subevent == 0xff)
+		print_field("Subevent: No subevents (0xff)");
+	else
+		print_field("Subevent: %u (0x%2.2x)", evt->subevent,
+							evt->subevent);
 	print_pa_report_data(evt->data_status, evt->data_len, evt->data,
 							size - sizeof(*evt));
 }
@@ -14278,6 +14335,119 @@ static void le_past_received_evt(struct timeval *tv, uint16_t index,
 	print_field("Periodic advertising Interval: %.3f",
 							1.25 * evt->interval);
 	print_clock_accuracy(evt->clock_accuracy);
+}
+
+static void le_pa_subevent_data_request_evt(struct timeval *tv,
+				uint16_t index, const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_pa_subevent_data_request *evt = data;
+
+	print_handle(evt->handle);
+	print_field("Subevent start: %u (0x%2.2x)", evt->subevent_start,
+						evt->subevent_start);
+	print_field("Subevent data count: %u (0x%2.2x)",
+						evt->subevent_data_count,
+						evt->subevent_data_count);
+}
+
+static void le_pa_response_report_evt(struct timeval *tv, uint16_t index,
+					const void *data, uint8_t size)
+{
+	struct iovec iov = { .iov_base = (void *) data, .iov_len = size };
+	const struct bt_hci_evt_le_pa_response_report *evt;
+	const struct bt_hci_le_pa_response *rsp;
+	const char *color_on;
+	const char *str;
+	uint8_t i;
+
+	evt = util_iov_pull_mem(&iov, sizeof(*evt));
+	if (!evt)
+		goto done;
+
+	print_handle(evt->handle);
+	print_field("Subevent: %u (0x%2.2x)", evt->subevent, evt->subevent);
+
+	switch (evt->tx_status) {
+	case 0x00:
+		str = "AUX_SYNC_SUBEVENT_IND was transmitted";
+		break;
+	case 0x01:
+		str = "AUX_SYNC_SUBEVENT_IND was not transmitted";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("TX status: %s (0x%2.2x)", str, evt->tx_status);
+	print_field("Num responses: %u", evt->num_responses);
+
+	for (i = 0; i < evt->num_responses; i++) {
+		rsp = util_iov_pull_mem(&iov, sizeof(*rsp));
+		if (!rsp)
+			goto done;
+
+		print_field("Entry %u", i);
+		print_field("  TX power: %d dBm (0x%2.2x)", rsp->tx_power,
+						(uint8_t) rsp->tx_power);
+		if (rsp->rssi == 127)
+			print_field("  RSSI: not available (0x%2.2x)",
+						(uint8_t) rsp->rssi);
+		else if (rsp->rssi >= -127 && rsp->rssi <= 20)
+			print_field("  RSSI: %d dBm (0x%2.2x)",
+					rsp->rssi, (uint8_t) rsp->rssi);
+		else
+			print_field("  RSSI: reserved (0x%2.2x)",
+						(uint8_t) rsp->rssi);
+
+		print_field("  CTE Type: %s (0x%2x)",
+				pa_cte_type_str(rsp->cte_type), rsp->cte_type);
+		print_field("  Response slot: %u (0x%2.2x)",
+				rsp->response_slot, rsp->response_slot);
+
+		switch (rsp->data_status) {
+		case 0x00:
+			str = "Complete";
+			color_on = COLOR_GREEN;
+			break;
+		case 0x01:
+			str = "Incomplete, more data to come";
+			color_on = COLOR_YELLOW;
+			break;
+		case 0xff:
+			str = "Failed to receive AUX_SYNC_SUBEVENT_RSP";
+			color_on = COLOR_RED;
+			break;
+		default:
+			str = "Reserved";
+			color_on = COLOR_RED;
+			break;
+		}
+
+		print_field("  Data status: %s%s%s", color_on, str, COLOR_OFF);
+		print_field("  Data length: %u", rsp->data_len);
+
+		if (!util_iov_pull(&iov, rsp->data_len))
+			goto done;
+
+		print_eir("  Data", rsp->data, rsp->data_len, true);
+	}
+
+done:
+	if (iov.iov_len)
+		print_hex_field("  Data", iov.iov_base, iov.iov_len);
+}
+
+static void le_past_received_v2_evt(struct timeval *tv, uint16_t index,
+					const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_le_past_recv_v2 *evt = data;
+
+	/* The v2 event starts with the parameters of the v1 event */
+	le_past_received_evt(tv, index, data, size);
+	print_pa_subevents(evt->num_subevents, evt->subevent_interval,
+				evt->response_slot_delay,
+				evt->response_slot_spacing);
 }
 
 static void le_cis_established_evt(struct timeval *tv, uint16_t index,
@@ -15434,6 +15604,30 @@ static const struct subevent_data le_meta_event_table[] = {
 		"LE Broadcast Isochronous Group Info Advertising Report",
 		le_big_info_evt,
 		sizeof(struct bt_hci_evt_le_big_info_adv_report) },
+	{ BT_HCI_EVT_LE_PA_SYNC_ESTABLISHED_V2,
+		"LE Periodic Advertising Sync Established [v2]",
+		le_pa_sync_v2_evt,
+		sizeof(struct bt_hci_evt_le_per_sync_established_v2), true },
+	{ BT_HCI_EVT_LE_PA_REPORT_V2,
+		"LE Periodic Advertising Report [v2]",
+		le_pa_report_v2_evt,
+		sizeof(struct bt_hci_le_pa_report_v2), false },
+	{ BT_HCI_EVT_LE_PAST_RECEIVED_V2,
+		"LE Periodic Advertising Sync Transfer Received [v2]",
+		le_past_received_v2_evt,
+		sizeof(struct bt_hci_evt_le_past_recv_v2), true },
+	{ BT_HCI_EVT_LE_PA_SUBEVENT_DATA_REQUEST,
+		"LE Periodic Advertising Subevent Data Request",
+		le_pa_subevent_data_request_evt,
+		sizeof(struct bt_hci_evt_le_pa_subevent_data_request), true },
+	{ BT_HCI_EVT_LE_PA_RESPONSE_REPORT,
+		"LE Periodic Advertising Response Report",
+		le_pa_response_report_evt,
+		sizeof(struct bt_hci_evt_le_pa_response_report), false },
+	{ BT_HCI_EVT_LE_ENHANCED_CONN_COMPLETE_V2,
+		"LE Enhanced Connection Complete [v2]",
+		le_enhanced_conn_complete_v2_evt,
+		sizeof(struct bt_hci_evt_le_enhanced_conn_complete_v2), true },
 	{ BT_HCI_EVT_LE_READ_ALL_REMOTE_FEATURES_COMPLETE,
 		"LE Read All Remote Features Complete",
 		le_read_all_remote_features_complete_evt,
