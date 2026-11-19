@@ -14058,17 +14058,15 @@ static void le_past_received_evt(struct timeval *tv, uint16_t index,
 	const struct bt_hci_evt_le_past_recv *evt = data;
 
 	print_status(evt->status);
-	print_field("Handle: %d", evt->handle);
-	print_field("Connection handle: %d", evt->handle);
-	print_field("Service data: 0x%4.4x", evt->service_data);
-	print_field("Sync handle: %d", evt->sync_handle);
+	print_handle(evt->handle);
+	print_field("Service data: 0x%4.4x", le16_to_cpu(evt->service_data));
+	print_field("Sync handle: %d", le16_to_cpu(evt->sync_handle));
 	print_field("SID: 0x%2.2x", evt->sid);
-	print_peer_addr_type("Address type:", evt->addr_type);
-	print_addr("Address:", evt->addr, evt->addr_type);
-	print_le_phy("PHY:", evt->phy);
-	print_field("Periodic advertising Interval: %.3f",
-							1.25 * evt->interval);
-	print_clock_accuracy(evt->clock_accuracy);
+	print_peer_addr_type("Address type", evt->addr_type);
+	print_addr("Address", evt->addr, evt->addr_type);
+	print_le_phy("PHY", evt->phy);
+	print_slot_125("Periodic advertising interval", evt->interval);
+	print_field("Advertiser clock accuracy: 0x%2.2x", evt->clock_accuracy);
 }
 
 static void le_cis_established_evt(struct timeval *tv, uint16_t index,
