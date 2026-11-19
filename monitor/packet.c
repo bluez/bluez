@@ -13924,7 +13924,10 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 	const char *str;
 
 	print_field("Sync handle: %d", evt->handle);
-	print_power_level(evt->tx_power, NULL);
+	if (evt->tx_power == 127)
+		print_field("TX power: not available (0x7f)");
+	else
+		print_power_level(evt->tx_power, NULL);
 	if (evt->rssi == 127)
 		print_field("RSSI: not available (0x%2.2x)",
 						(uint8_t) evt->rssi);
@@ -13940,7 +13943,7 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 		str = "AoA Constant Tone Extension";
 		break;
 	case 0x01:
-		str = "AoA Constant Tone Extension with 1us slots";
+		str = "AoD Constant Tone Extension with 1us slots";
 		break;
 	case 0x02:
 		str = "AoD Constant Tone Extension with 2us slots";
@@ -13953,7 +13956,7 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 		break;
 	}
 
-	print_field("CTE Type: %s (0x%2x)", str, evt->cte_type);
+	print_field("CTE Type: %s (0x%2.2x)", str, evt->cte_type);
 
 	switch (evt->data_status) {
 	case 0x00:
