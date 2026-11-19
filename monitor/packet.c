@@ -8816,7 +8816,8 @@ static const struct bitfield_data ext_conn_phys_table[] = {
 	{ }
 };
 
-static void print_ext_conn_phys(const void *data, uint8_t flags)
+static void print_ext_conn_phys(const void *data, uint8_t size,
+							uint8_t flags)
 {
 	const struct bt_hci_le_ext_create_conn *entry;
 	uint8_t mask = flags;
@@ -8827,8 +8828,15 @@ static void print_ext_conn_phys(const void *data, uint8_t flags)
 
 	for (i = 0; ext_conn_phys_table[i].str; i++) {
 		if (flags & (1 << ext_conn_phys_table[i].bit)) {
-			entry = data + bits_set * sizeof(*entry);
 			mask &= ~(1 << ext_conn_phys_table[i].bit);
+
+			if ((bits_set + 1) * sizeof(*entry) > size) {
+				print_text(COLOR_ERROR,
+						"  invalid packet size");
+				break;
+			}
+
+			entry = data + bits_set * sizeof(*entry);
 
 			print_field("Entry %d: %s", bits_set,
 						ext_conn_phys_table[i].str);
@@ -8880,7 +8888,7 @@ static void le_ext_create_conn_cmd(uint16_t index, const void *data,
 	print_own_addr_type(cmd->own_addr_type);
 	print_peer_addr_type("Peer address type", cmd->peer_addr_type);
 	print_addr("Peer address", cmd->peer_addr, cmd->peer_addr_type);
-	print_ext_conn_phys(cmd->data, cmd->phys);
+	print_ext_conn_phys(cmd->data, size - sizeof(*cmd), cmd->phys);
 }
 
 static const struct bitfield_data create_sync_cte_type[] = {
