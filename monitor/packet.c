@@ -13916,49 +13916,62 @@ static void le_pa_sync_evt(struct timeval *tv, uint16_t index,
 	print_field("Advertiser clock accuracy: 0x%2.2x", evt->clock_accuracy);
 }
 
-static void le_pa_report_evt(struct timeval *tv, uint16_t index,
-				const void *data, uint8_t size)
+static const char *pa_cte_type_str(uint8_t cte_type)
 {
-	const struct bt_hci_le_pa_report *evt = data;
+	switch (cte_type) {
+	case 0x00:
+		return "AoA Constant Tone Extension";
+	case 0x01:
+		return "AoD Constant Tone Extension with 1us slots";
+	case 0x02:
+		return "AoD Constant Tone Extension with 2us slots";
+	case 0xff:
+		return "No Constant Tone Extension";
+	default:
+		return "Reserved";
+	}
+}
+
+static void print_pa_rssi(const char *prefix, int8_t rssi)
+{
+	if (rssi == 127)
+		print_field("%sRSSI: not available (0x%2.2x)", prefix,
+							(uint8_t) rssi);
+	else if (rssi >= -127 && rssi <= 20)
+		print_field("%sRSSI: %d dBm (0x%2.2x)", prefix, rssi,
+							(uint8_t) rssi);
+	else
+		print_field("%sRSSI: reserved (0x%2.2x)", prefix,
+							(uint8_t) rssi);
+}
+
+static void print_pa_tx_power(const char *prefix, int8_t tx_power)
+{
+	if (tx_power == 127)
+		print_field("%sTX power: not available (0x7f)", prefix);
+	else
+		print_field("%sTX power: %d dbm (0x%2.2x)", prefix, tx_power,
+							(uint8_t) tx_power);
+}
+
+static void print_pa_report_info(uint16_t handle, uint8_t tx_power,
+						int8_t rssi, uint8_t cte_type)
+{
+	print_field("Sync handle: %d", handle);
+	print_pa_tx_power("", tx_power);
+	print_pa_rssi("", rssi);
+
+	print_field("CTE Type: %s (0x%2.2x)", pa_cte_type_str(cte_type),
+								cte_type);
+}
+
+static void print_pa_report_data(uint8_t data_status, uint8_t data_len,
+					const uint8_t *data, uint8_t size)
+{
 	const char *color_on;
 	const char *str;
 
-	print_field("Sync handle: %d", evt->handle);
-	if (evt->tx_power == 127)
-		print_field("TX power: not available (0x7f)");
-	else
-		print_power_level(evt->tx_power, NULL);
-	if (evt->rssi == 127)
-		print_field("RSSI: not available (0x%2.2x)",
-						(uint8_t) evt->rssi);
-	else if (evt->rssi >= -127 && evt->rssi <= 20)
-		print_field("RSSI: %d dBm (0x%2.2x)",
-				evt->rssi, (uint8_t) evt->rssi);
-	else
-		print_field("RSSI: reserved (0x%2.2x)",
-						(uint8_t) evt->rssi);
-
-	switch (evt->cte_type) {
-	case 0x00:
-		str = "AoA Constant Tone Extension";
-		break;
-	case 0x01:
-		str = "AoD Constant Tone Extension with 1us slots";
-		break;
-	case 0x02:
-		str = "AoD Constant Tone Extension with 2us slots";
-		break;
-	case 0xff:
-		str = "No Constant Tone Extension";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("CTE Type: %s (0x%2.2x)", str, evt->cte_type);
-
-	switch (evt->data_status) {
+	switch (data_status) {
 	case 0x00:
 		str = "Complete";
 		color_on = COLOR_GREEN;
@@ -13978,15 +13991,26 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 	}
 
 	print_field("Data status: %s%s%s", color_on, str, COLOR_OFF);
-	print_field("Data length: %u", evt->data_len);
+	print_field("Data length: %u", data_len);
 
-	if (evt->data_len != size - sizeof(*evt)) {
+	if (data_len != size) {
 		print_text(COLOR_ERROR, "invalid data length");
-		packet_hexdump(evt->data, size - sizeof(*evt));
+		packet_hexdump(data, size);
 		return;
 	}
 
-	print_eir("Data", evt->data, evt->data_len, true);
+	print_eir("Data", data, data_len, true);
+}
+
+static void le_pa_report_evt(struct timeval *tv, uint16_t index,
+				const void *data, uint8_t size)
+{
+	const struct bt_hci_le_pa_report *evt = data;
+
+	print_pa_report_info(evt->handle, evt->tx_power, evt->rssi,
+							evt->cte_type);
+	print_pa_report_data(evt->data_status, evt->data_len, evt->data,
+							size - sizeof(*evt));
 }
 
 static void le_pa_sync_lost_evt(struct timeval *tv, uint16_t index,
