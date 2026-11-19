@@ -1245,7 +1245,7 @@ struct bt_ad_data *bt_ad_has_data(struct bt_ad *ad,
 					const struct bt_ad_data *data)
 {
 	if (!ad)
-		return false;
+		return NULL;
 
 	return queue_find(ad->data, data_match, data);
 }
