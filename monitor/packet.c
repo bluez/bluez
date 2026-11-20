@@ -4437,6 +4437,8 @@ static void print_eir(const char *label, const uint8_t *eir, uint8_t eir_len,
 
 		switch (eir[1]) {
 		case BT_EIR_FLAGS:
+			if (data_len < 1)
+				break;
 			flags = *data;
 
 			print_field("Flags: 0x%2.2x", flags);
@@ -4534,6 +4536,8 @@ static void print_eir(const char *label, const uint8_t *eir, uint8_t eir_len,
 			break;
 
 		case BT_EIR_SMP_OOB_FLAGS:
+			if (data_len < 1)
+				break;
 			print_field("SMP OOB Flags: 0x%2.2x", *data);
 			break;
 
