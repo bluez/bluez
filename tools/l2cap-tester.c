@@ -1526,13 +1526,25 @@ static const uint8_t ecred_connect_req_2[] = {
 						0x42, 0x00, /* SCID #2 */
 };
 
+static const uint8_t ecred_reject_rsp_2[] = {
+	0xa0, 0x02, /* MTU */
+	0xbc, 0x00, /* MPS */
+	0x04, 0x00, /* Credits */
+	0x06, 0x00, /* Result: insufficient authorization */
+	0x00, 0x00, /* DCID #1 */
+	0x00, 0x00, /* DCID #2 */
+};
+
 static const struct l2cap_data ext_flowctl_server_accept_2_close_1_test = {
 	.server_psm = 0x0080,
 	.defer = true,
 	.mode = BT_MODE_EXT_FLOWCTL,
 	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
 	.send_cmd = ecred_connect_req_2,
-	.send_cmd_len = ARRAY_SIZE(ecred_connect_req_2)
+	.send_cmd_len = ARRAY_SIZE(ecred_connect_req_2),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_reject_rsp_2,
+	.expect_cmd_len = sizeof(ecred_reject_rsp_2),
 };
 
 static const struct l2cap_data ext_flowctl_server_phy_test = {
@@ -1785,6 +1797,11 @@ static const uint8_t eatt_reject_rsp[] = {	0xa0, 0x02, /* MTU */
 						0xbc, 0x00, /* MPS */
 						0x04, 0x00, /* Credits */
 						0x06, 0x00, /* Result */
+						0x00, 0x00, /* DCID #1 */
+						0x00, 0x00, /* DCID #2 */
+						0x00, 0x00, /* DCID #3 */
+						0x00, 0x00, /* DCID #4 */
+						0x00, 0x00, /* DCID #5 */
 };
 
 static const struct l2cap_data le_eatt_server_reject_test_1 = {
@@ -4237,12 +4254,12 @@ static bool ext_flowctl_accept_2_close_1_listen_cb(struct tester_io *io,
 {
 	struct test_data *data = tester_get_data();
 	int sk, new_sk;
-	int err = 0;
+	struct pollfd pfd;
 
 	sk = tester_io_get_fd(io);
 
 	new_sk = accept(sk, NULL, NULL);
-	if (err < 0) {
+	if (new_sk < 0) {
 		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
 		tester_test_failed();
 		return false;
@@ -4253,11 +4270,16 @@ static bool ext_flowctl_accept_2_close_1_listen_cb(struct tester_io *io,
 
 	close(new_sk);
 
-	if (data->step--)
-		return true;
+	memset(&pfd, 0, sizeof(pfd));
+	pfd.fd = sk;
+	pfd.events = POLLIN;
 
-	tester_test_passed();
+	if (poll(&pfd, 1, 0) != 0) {
+		tester_warn("Rejected batch left an acceptable sibling");
+		tester_test_failed();
+	}
 
+	/* The peer callback checks the rejection response for both channels. */
 	data->io_id = 0;
 	return false;
 
@@ -4269,9 +4291,6 @@ fail:
 
 static void test_ext_flowctl_server_accept_2_close_1(const void *test_data)
 {
-	struct test_data *data = tester_get_data();
-
-	data->step = 1;
 	start_test_server(test_data, send_req_new_conn,
 					ext_flowctl_accept_2_close_1_listen_cb);
 }
@@ -4852,7 +4871,7 @@ int main(int argc, char *argv[])
 	test_l2cap_le("L2CAP Ext-Flowctl Server - Nval SCID",
 				&ext_flowctl_server_nval_scid_test,
 				setup_powered_server, test_server);
-	test_l2cap_le("L2CAP Ext-Flowctl Server - Accept 2 Close 1",
+	test_l2cap_le("L2CAP Ext-Flowctl Server - Close rejects deferred batch",
 				&ext_flowctl_server_accept_2_close_1_test,
 				setup_powered_server,
 				test_ext_flowctl_server_accept_2_close_1);
