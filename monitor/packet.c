@@ -8707,7 +8707,7 @@ static void le_set_pa_params_cmd(uint16_t index, const void *data, uint8_t size)
 	print_field("Handle: 0x%2.2x", cmd->handle);
 	print_slot_125("Min interval", cmd->min_interval);
 	print_slot_125("Max interval", cmd->max_interval);
-	print_pa_properties(cmd->properties);
+	print_pa_properties(le16_to_cpu(cmd->properties));
 }
 
 static void le_set_pa_data_cmd(uint16_t index, const void *data, uint8_t size)
@@ -13904,7 +13904,7 @@ static void le_pa_sync_evt(struct timeval *tv, uint16_t index,
 	const struct bt_hci_evt_le_per_sync_established *evt = data;
 
 	print_status(evt->status);
-	print_field("Sync handle: %d", evt->handle);
+	print_field("Sync handle: %d", le16_to_cpu(evt->handle));
 	if (evt->sid > 0x0f)
 		print_field("Advertising SID: Reserved (0x%2.2x)", evt->sid);
 	else
@@ -13924,7 +13924,7 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 	const char *color_on;
 	const char *str;
 
-	print_field("Sync handle: %d", evt->handle);
+	print_field("Sync handle: %d", le16_to_cpu(evt->handle));
 	if (evt->tx_power == 127)
 		print_field("TX power: not available (0x7f)");
 	else
