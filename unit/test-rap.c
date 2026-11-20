@@ -49,6 +49,8 @@ struct test_data_ras {
 struct test_config_rap {
 	const struct iovec *setup_data;
 	const size_t setup_data_len;
+	/* Run right after attaching, before RAS Features is read */
+	void (*early)(struct bt_rap *rap);
 	/* Run once the Requester is ready; when NULL the test passes there */
 	void (*action)(struct bt_rap *rap);
 	/* Called when the ATT script is exhausted; NULL leaves it to action */
@@ -467,6 +469,9 @@ static void test_client_rap(const void *user_data)
 	bt_rap_ready_register(data->rap, rap_client_ready_cb, data, NULL);
 
 	bt_rap_attach(data->rap, data->client);
+
+	if (data->cfg->early)
+		data->cfg->early(data->rap);
 }
 
 /*
@@ -1121,10 +1126,61 @@ static void action_ondemand_indicate(struct bt_rap *rap)
 	WRITE_CCCD(0x0f, 0x02), \
 	WRITE_CCCD(0x12, 0x02)
 
+/* StartMeasurement() before RAS Features was read waits for it, so the mode
+ * follows what the peer supports (Real-time here).
+ */
+static void early_ensure(struct bt_rap *rap)
+{
+	g_assert(bt_rap_ensure_ranging_data(rap));
+}
+
+/* An explicit Disabled selection is not overridden by StartMeasurement() */
+static void action_disabled_then_ensure(struct bt_rap *rap)
+{
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_DISABLED,
+				BT_RAP_RANGING_NOTIFY));
+	g_assert(bt_rap_ensure_ranging_data(rap));
+	g_timeout_add(300, idle_pass_cb, NULL);
+}
+
+static gboolean retry_ensure_cb(gpointer user_data)
+{
+	g_assert(bt_rap_ensure_ranging_data(user_data));
+	return FALSE;
+}
+
+/* The peer rejects the CCCD write: the next start has to retry it */
+static void action_ensure_retry(struct bt_rap *rap)
+{
+	g_assert(bt_rap_ensure_ranging_data(rap));
+	g_timeout_add(300, retry_ensure_cb, rap);
+}
+
 const struct test_config_rap cfg_rap_idle = {
 	.setup_data = cggit_setup_data,
 	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
 	.action = action_idle,
+};
+
+const struct test_config_rap cfg_rap_early_ensure = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.early = early_ensure,
+	.action = action_idle,
+};
+
+const struct test_config_rap cfg_rap_disabled = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_disabled_then_ensure,
+};
+
+const struct test_config_rap cfg_rap_retry = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_ensure_retry,
+	.complete = test_complete_cb,
 };
 
 const struct test_config_rap cfg_rap_rt_notify = {
@@ -1201,6 +1257,27 @@ const struct test_config_rap cfg_rap_rt_timeout = {
 	.setup_data = cggit_setup_data,
 	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
 	.action = action_realtime_timeout,
+	.complete = realtime_timeout_complete,
+};
+
+/*
+ * Real-time Ranging Data enabled while a procedure is already running arms
+ * the first data timeout as well.
+ */
+static void action_realtime_midproc(struct bt_rap *rap)
+{
+	proc_enable_time = g_get_monotonic_time();
+	inject_proc_enable(rap);
+
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_REALTIME,
+				BT_RAP_RANGING_NOTIFY));
+}
+
+const struct test_config_rap cfg_rap_rt_midproc = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_realtime_midproc,
 	.complete = realtime_timeout_complete,
 };
 
@@ -1496,6 +1573,26 @@ int main(int argc, char *argv[])
 				"Real-time support]",
 			test_setup_rap, test_client_rap, &cfg_rap_ensure,
 			RAP_REQ_ORD_ROUND(0x01));
+
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Subscribe on start before "
+				"Features read]",
+			test_setup_rap, test_client_rap, &cfg_rap_early_ensure,
+			ATTACH_FEATURES_REALTIME, WRITE_CCCD(0x06, 0x01));
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Disabled mode kept on start]",
+			test_setup_rap, test_client_rap, &cfg_rap_disabled,
+			ATTACH_FEATURES_REALTIME);
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Retry after rejected CCCD]",
+			test_setup_rap, test_client_rap, &cfg_rap_retry,
+			ATTACH_FEATURES_REALTIME,
+			IOV_DATA(0x12, 0x06, 0x00, 0x01, 0x00),
+			IOV_DATA(0x01, 0x12, 0x06, 0x00, 0x03),
+			WRITE_CCCD(0x06, 0x00),
+			WRITE_CCCD(0x06, 0x01));
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Real-time timeout when enabled "
+				"mid-procedure]",
+			test_setup_rap, test_client_rap, &cfg_rap_rt_midproc,
+			ATTACH_FEATURES_REALTIME, WRITE_CCCD(0x06, 0x01),
+			WRITE_CCCD(0x06, 0x00));
 
 	/* RAS Ranging Counters are per connection */
 	tester_add("RAS/SR/RCO/Ranging Counters per connection", &cnt_data,
