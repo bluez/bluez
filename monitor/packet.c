@@ -8704,7 +8704,7 @@ static void le_set_pa_params_cmd(uint16_t index, const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_pa_params *cmd = data;
 
-	print_handle(cmd->handle);
+	print_field("Handle: 0x%2.2x", cmd->handle);
 	print_slot_125("Min interval", cmd->min_interval);
 	print_slot_125("Max interval", cmd->max_interval);
 	print_pa_properties(cmd->properties);
@@ -8715,7 +8715,7 @@ static void le_set_pa_data_cmd(uint16_t index, const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_set_pa_data *cmd = data;
 	const char *str;
 
-	print_handle(cmd->handle);
+	print_field("Handle: 0x%2.2x", cmd->handle);
 
 	switch (cmd->operation) {
 	case 0x00:
@@ -8745,7 +8745,7 @@ static void le_set_pa_enable_cmd(uint16_t index, const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_set_pa_enable *cmd = data;
 
 	print_enable("Periodic advertising", cmd->enable);
-	print_handle(cmd->handle);
+	print_field("Handle: 0x%2.2x", cmd->handle);
 }
 
 static const struct bitfield_data ext_scan_phys_table[] = {
