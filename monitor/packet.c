@@ -13957,6 +13957,13 @@ static void le_pa_report_evt(struct timeval *tv, uint16_t index,
 
 	print_field("Data status: %s%s%s", color_on, str, COLOR_OFF);
 	print_field("Data length: %u", evt->data_len);
+
+	if (evt->data_len != size - sizeof(*evt)) {
+		print_text(COLOR_ERROR, "invalid data length");
+		packet_hexdump(evt->data, size - sizeof(*evt));
+		return;
+	}
+
 	print_eir("Data", evt->data, evt->data_len, true);
 }
 
