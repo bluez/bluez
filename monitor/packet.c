@@ -4418,7 +4418,7 @@ static void print_eir(const char *label, const uint8_t *eir, uint8_t eir_len,
 		uint8_t field_len = eir[0];
 		const uint8_t *data = &eir[2];
 		uint8_t data_len;
-		char name[239], label[100];
+		char name[255], label[100];
 		uint8_t flags, mask;
 
 		/* Check for the end of EIR */
