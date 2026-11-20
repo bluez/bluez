@@ -284,6 +284,11 @@ void bt_rap_clear_conn_handle(void *hci_sm, uint16_t handle);
 
 bool bt_rap_is_procedure_active(void *hci_sm);
 
+/* Negotiated CS role of the current configuration, once Config Complete has
+ * reported it. Returns false until then.
+ */
+bool bt_rap_get_cs_role(void *hci_sm, uint8_t *role);
+
 void bt_rap_set_timeout_cb(void *hci_sm, void (*func)(void *),
 				void *user_data);
 
