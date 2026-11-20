@@ -2069,7 +2069,7 @@ start_next:
 		kill(dbus_session_pid, SIGTERM);
 
 	if (emulator_pid > 0)
-		kill(dbus_pid, SIGTERM);
+		kill(emulator_pid, SIGTERM);
 
 	if (monitor_pid > 0)
 		kill(monitor_pid, SIGTERM);
