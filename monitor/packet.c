@@ -3763,18 +3763,16 @@ static void print_fec(uint8_t fec)
 
 static void print_manufacturer_apple(const void *data, uint8_t data_len)
 {
-	uint8_t type = *((uint8_t *) data);
+	uint8_t type;
 
 	if (data_len < 1)
 		return;
 
+	type = *((uint8_t *) data);
+
 	if (type == 0x01) {
-		char identifier[100];
-
-		snprintf(identifier, sizeof(identifier) - 1, "%s",
+		print_field("  Identifier: %.*s", data_len - 1,
 						(const char *) (data + 1));
-
-		print_field("  Identifier: %s", identifier);
 		return;
 	}
 
