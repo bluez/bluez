@@ -19,7 +19,6 @@ struct bt_att;
 
 /* Channel Sounding Events */
 struct bt_rap_hci_cs_options {
-	uint8_t role;
 	uint8_t cs_sync_ant_sel;
 	int8_t max_tx_power;
 	int rtt_type;
@@ -285,6 +284,11 @@ void bt_rap_clear_conn_handle(void *hci_sm, uint16_t handle);
 
 bool bt_rap_is_procedure_active(void *hci_sm);
 
+/* Negotiated CS role of the current configuration, once Config Complete has
+ * reported it. Returns false until then.
+ */
+bool bt_rap_get_cs_role(void *hci_sm, uint8_t *role);
+
 void bt_rap_set_timeout_cb(void *hci_sm, void (*func)(void *),
 				void *user_data);
 
@@ -321,6 +325,11 @@ enum bt_rap_ranging_transport {
 bool bt_rap_set_ranging_data_mode(struct bt_rap *rap,
 			enum bt_rap_ranging_data_mode mode,
 			enum bt_rap_ranging_transport transport);
+
+/* Subscribe to the configured Ranging Data mode unless one is already
+ * subscribed, falling back to On-demand if the peer lacks Real-time.
+ */
+bool bt_rap_ensure_ranging_data(struct bt_rap *rap);
 
 /* Initiator role: stop receiving Real-time Ranging Data. The GATT client
  * disables the characteristic CCCD when this is its final subscription.
