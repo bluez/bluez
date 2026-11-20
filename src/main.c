@@ -83,6 +83,7 @@ static const char *supported_options[] = {
 	"MultiProfile",
 	"FastConnectable",
 	"SecureConnections",
+	"SecureSimplePairing",
 	"Privacy",
 	"JustWorksRepairing",
 	"TemporaryTimeout",
@@ -1117,6 +1118,8 @@ static void parse_general(GKeyFile *config)
 	parse_config_bool(config, "General", "RefreshDiscovery",
 						&btd_opts.refresh_discovery);
 	parse_secure_conns(config);
+	parse_config_bool(config, "General", "SecureSimplePairing",
+						&btd_opts.ssp);
 	parse_config_bool(config, "General", "Experimental",
 						&btd_opts.experimental);
 	parse_config_bool(config, "General", "Testing",
@@ -1479,6 +1482,7 @@ static void init_defaults(void)
 	btd_opts.refresh_discovery = TRUE;
 	btd_opts.name_request_retry_delay = DEFAULT_NAME_REQUEST_RETRY_DELAY;
 	btd_opts.secure_conn = SC_ON;
+	btd_opts.ssp = true;
 	btd_opts.filter_discoverable = true;
 
 	btd_opts.defaults.num_entries = 0;
