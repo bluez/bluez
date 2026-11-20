@@ -4101,7 +4101,7 @@ static void print_pbp_announcement(const uint8_t *data, uint8_t data_len)
 	iov.iov_base = (void *) data;
 	iov.iov_len = data_len;
 
-	if (util_iov_pull_u8(&iov, &feat)) {
+	if (!util_iov_pull_u8(&iov, &feat)) {
 		print_text(COLOR_ERROR, "  invalid features");
 		return;
 	}
@@ -4113,7 +4113,7 @@ static void print_pbp_announcement(const uint8_t *data, uint8_t data_len)
 		print_text(COLOR_UNKNOWN_SERVICE_CLASS,
 					"  Unknown feature (0x%2.2x)", mask);
 
-	if (util_iov_pull_u8(&iov, &len)) {
+	if (!util_iov_pull_u8(&iov, &len)) {
 		print_text(COLOR_ERROR, "  invalid metadata length");
 		return;
 	}
@@ -4122,6 +4122,11 @@ static void print_pbp_announcement(const uint8_t *data, uint8_t data_len)
 		return;
 
 	meta.iov_base = util_iov_pull_mem(&iov, len);
+	if (!meta.iov_base) {
+		print_text(COLOR_ERROR, "  invalid metadata");
+		return;
+	}
+
 	meta.iov_len = len;
 
 	bt_bap_debug_metadata(meta.iov_base, meta.iov_len, print_ltv,
