@@ -244,6 +244,34 @@ static int asha_send_acp_without_response(struct bt_asha *asha,
 	return 0;
 }
 
+bool bt_asha_set_connection_interval(struct bt_asha *asha, uint16_t interval)
+{
+	struct bt_asha_set *set;
+	struct bt_asha *other = NULL;
+	uint8_t cmd[] = { 0x03, 0x02, 0x00 };
+	bool success;
+
+	/* The connection-update STATUS encodes 1.25 ms units in one byte. */
+	if (!asha || !asha->client || !asha->acp_handle ||
+				interval < 0x0006 || interval > UINT8_MAX)
+		return false;
+
+	cmd[2] = interval;
+	success = asha_send_acp_without_response(asha, cmd, sizeof(cmd)) == 0;
+	set = find_asha_set(asha);
+
+	if (set)
+		other = asha->right_side ? set->left : set->right;
+
+	/* Notify an attached peer even if it has not started streaming yet. */
+	if (other && other != asha && other->client && other->acp_handle) {
+		if (asha_send_acp_without_response(other, cmd, sizeof(cmd)) < 0)
+			success = false;
+	}
+
+	return success;
+}
+
 unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
 								void *user_data)
 {
