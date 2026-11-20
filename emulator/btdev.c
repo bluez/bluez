@@ -214,6 +214,8 @@ struct btdev {
 	uint8_t pin_len;
 	uint8_t io_cap;
 	uint8_t auth_req;
+	bool link_key_type_set;
+	uint8_t link_key_type;
 	bool ssp_auth_complete;
 	uint8_t ssp_status;
 
@@ -1906,7 +1908,10 @@ static void link_key_notify(struct btdev *btdev, const uint8_t *bdaddr,
 
 	memcpy(ev.bdaddr, bdaddr, 6);
 	memcpy(ev.link_key, key, 16);
-	ev.key_type = get_link_key_type(btdev, bdaddr);
+	if (btdev->link_key_type_set)
+		ev.key_type = btdev->link_key_type;
+	else
+		ev.key_type = get_link_key_type(btdev, bdaddr);
 
 	send_event(btdev, BT_HCI_EVT_LINK_KEY_NOTIFY, &ev, sizeof(ev));
 }
@@ -9456,6 +9461,12 @@ void btdev_get_mtu(struct btdev *btdev, uint16_t *acl, uint16_t *sco,
 		*sco = btdev->sco_mtu;
 	if (iso)
 		*iso = btdev->iso_mtu;
+}
+
+void btdev_set_link_key_type(struct btdev *btdev, uint8_t type)
+{
+	btdev->link_key_type_set = true;
+	btdev->link_key_type = type;
 }
 
 void btdev_set_le_states(struct btdev *btdev, const uint8_t *le_states)
