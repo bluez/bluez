@@ -3032,6 +3032,90 @@ struct bt_hci_rsp_le_read_iso_link_quality {
 	uint32_t duplicated_packets;
 } __packed;
 
+#define BT_HCI_CMD_LE_SET_PA_SUBEVENT_DATA	0x2082
+#define BT_HCI_BIT_LE_SET_PA_SUBEVENT_DATA	BT_HCI_CMD_BIT(46, 5)
+struct bt_hci_le_pa_subevent_data {
+	uint8_t  subevent;
+	uint8_t  response_slot_start;
+	uint8_t  response_slot_count;
+	uint8_t  data_len;
+	uint8_t  data[];
+} __packed;
+
+struct bt_hci_cmd_le_set_pa_subevent_data {
+	uint8_t  handle;
+	uint8_t  num_subevents;
+	struct bt_hci_le_pa_subevent_data subevents[];
+} __packed;
+
+struct bt_hci_rsp_le_set_pa_subevent_data {
+	uint8_t  status;
+	uint8_t  handle;
+} __packed;
+
+#define BT_HCI_CMD_LE_SET_PA_RESPONSE_DATA	0x2083
+#define BT_HCI_BIT_LE_SET_PA_RESPONSE_DATA	BT_HCI_CMD_BIT(46, 6)
+struct bt_hci_cmd_le_set_pa_response_data {
+	uint16_t sync_handle;
+	uint16_t request_event;
+	uint8_t  request_subevent;
+	uint8_t  response_subevent;
+	uint8_t  response_slot;
+	uint8_t  data_len;
+	uint8_t  data[];
+} __packed;
+
+struct bt_hci_rsp_le_set_pa_response_data {
+	uint8_t  status;
+	uint16_t sync_handle;
+} __packed;
+
+#define BT_HCI_CMD_LE_SET_PA_SYNC_SUBEVENT	0x2084
+#define BT_HCI_BIT_LE_SET_PA_SYNC_SUBEVENT	BT_HCI_CMD_BIT(46, 7)
+struct bt_hci_cmd_le_set_pa_sync_subevent {
+	uint16_t sync_handle;
+	uint16_t properties;
+	uint8_t  num_subevents;
+	uint8_t  subevents[];
+} __packed;
+
+struct bt_hci_rsp_le_set_pa_sync_subevent {
+	uint8_t  status;
+	uint16_t sync_handle;
+} __packed;
+
+#define BT_HCI_CMD_LE_EXT_CREATE_CONN_V2	0x2085
+#define BT_HCI_BIT_LE_EXT_CREATE_CONN_V2	BT_HCI_CMD_BIT(47, 0)
+struct bt_hci_cmd_le_ext_create_conn_v2 {
+	uint8_t  adv_handle;
+	uint8_t  subevent;
+	uint8_t  filter_policy;
+	uint8_t  own_addr_type;
+	uint8_t  peer_addr_type;
+	uint8_t  peer_addr[6];
+	uint8_t  phys;
+	uint8_t  data[];
+} __packed;
+
+#define BT_HCI_CMD_LE_SET_PA_PARAMS_V2		0x2086
+#define BT_HCI_BIT_LE_SET_PA_PARAMS_V2		BT_HCI_CMD_BIT(47, 1)
+struct bt_hci_cmd_le_set_pa_params_v2 {
+	uint8_t  handle;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t properties;
+	uint8_t  num_subevents;
+	uint8_t  subevent_interval;
+	uint8_t  response_slot_delay;
+	uint8_t  response_slot_spacing;
+	uint8_t  num_response_slots;
+} __packed;
+
+struct bt_hci_rsp_le_set_pa_params_v2 {
+	uint8_t  status;
+	uint8_t  handle;
+} __packed;
+
 #define BT_HCI_CMD_LE_READ_ALL_LOCAL_FEATURES	0x2087
 #define BT_HCI_BIT_LE_READ_ALL_LOCAL_FEATURES	BT_HCI_CMD_BIT(47, 2)
 struct bt_hci_rsp_le_read_all_local_features {
