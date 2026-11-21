@@ -19,6 +19,9 @@ are documented separately:
 - **functional-hog(7)**: `test/functional/test_hog.py`
 - **functional-mpris-proxy(7)**: `test/functional/test_mpris_proxy.py`
 - **functional-obex(7)**: `test/functional/test_obex.py`
+- **functional-sdp(7)**: `test/functional/test_sdp.py`,
+  `test/functional/test_sdp_out_of_range.py` and
+  `test/functional/test_sdp_cache.py`
 
 Each test case is described as:
 
