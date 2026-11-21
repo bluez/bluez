@@ -126,6 +126,9 @@ struct browse_req {
 	GSList *match_uuids;
 	GSList *profiles_added;
 	sdp_list_t *records;
+	GTree *handles;
+	GTree *pdus;
+	uint32_t keys_tried;
 	int search_uuid;
 	int reconnect_attempt;
 	guint listener_id;
@@ -797,6 +800,10 @@ static void browse_request_free(struct browse_req *req)
 	g_slist_free_full(req->profiles_added, g_free);
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
+	if (req->handles)
+		g_tree_destroy(req->handles);
+	if (req->pdus)
+		g_tree_destroy(req->pdus);
 
 	g_free(req);
 }
@@ -5948,29 +5955,144 @@ add_uuids:
 	device_add_uuids(device, uuids);
 }
 
-static void store_sdp_record(GKeyFile *key_file, sdp_record_t *rec)
+/*
+ * Some devices (e.g. the Nintendo Switch 2) omit the ServiceRecordHandle
+ * attribute from their Service Search Attribute responses. rec->handle of
+ * such a record is the placeholder set by sdp_record_alloc(), which is also
+ * a valid handle, so check for the attribute itself.
+ */
+static bool record_has_handle(const sdp_record_t *rec)
 {
-	char handle_str[11];
+	return sdp_data_get(rec, SDP_ATTR_RECORD_HANDLE) != NULL;
+}
+
+static char *record_to_string(const sdp_record_t *rec)
+{
 	sdp_buf_t buf;
-	int size, i;
+	uint32_t i;
 	char *str;
 
-	sprintf(handle_str, "0x%8.8X", rec->handle);
-
 	if (sdp_gen_record_pdu(rec, &buf) < 0)
-		return;
+		return NULL;
 
-	size = buf.data_size;
+	str = g_malloc0(buf.data_size * 2 + 1);
 
-	str = g_malloc0(size*2+1);
-
-	for (i = 0; i < size; i++)
+	for (i = 0; i < buf.data_size; i++)
 		sprintf(str + (i * 2), "%02X", buf.data[i]);
 
-	g_key_file_set_string(key_file, "ServiceRecords", handle_str, str);
-
 	free(buf.data);
-	g_free(str);
+
+	return str;
+}
+
+static bool string_is_record_without_handle(const char *str)
+{
+	sdp_record_t *rec;
+	bool ret;
+
+	rec = record_from_string(str);
+	if (!rec)
+		return false;
+
+	ret = rec->attrlist && !record_has_handle(rec);
+
+	sdp_record_free(rec);
+
+	return ret;
+}
+
+static int record_string_cmp(gconstpointer a, gconstpointer b, gpointer data)
+{
+	return strcmp(a, b);
+}
+
+static int record_handle_cmp(gconstpointer a, gconstpointer b)
+{
+	uint32_t h1 = GPOINTER_TO_UINT(a);
+	uint32_t h2 = GPOINTER_TO_UINT(b);
+
+	if (h1 == h2)
+		return 0;
+
+	return h1 < h2 ? -1 : 1;
+}
+
+/* Value to key of the cached records, to find the key of a known record */
+static GTree *load_sdp_record_keys(GKeyFile *key_file)
+{
+	GTree *keys;
+	char **names, **name;
+
+	keys = g_tree_new_full(record_string_cmp, NULL, g_free, g_free);
+
+	names = g_key_file_get_keys(key_file, "ServiceRecords", NULL, NULL);
+
+	for (name = names; name && *name; name++) {
+		char *str;
+
+		str = g_key_file_get_string(key_file, "ServiceRecords", *name,
+									NULL);
+		if (!str)
+			continue;
+
+		if (g_tree_lookup(keys, str))
+			g_free(str);
+		else
+			g_tree_insert(keys, str, g_strdup(*name));
+	}
+
+	g_strfreev(names);
+
+	return keys;
+}
+
+/* Next key, from 0xffffffff downwards, that nothing is stored under */
+static void unused_sdp_record_key(struct browse_req *req, GKeyFile *key_file,
+								char *key)
+{
+	do {
+		sprintf(key, "0x%8.8X", 0xffffffff - req->keys_tried++);
+	} while (g_key_file_has_key(key_file, "ServiceRecords", key, NULL));
+}
+
+/*
+ * A record is stored using its handle as key. A record without handle is
+ * stored under a key that nothing else uses, and keeps it as long as it
+ * does not change: there is nothing else to tell that it is the same
+ * record. It makes way for a record that has its key as handle.
+ */
+static void store_sdp_record(struct browse_req *req, GKeyFile *key_file,
+					GTree *keys, sdp_record_t *rec,
+					const char *str)
+{
+	char key[11];
+
+	if (record_has_handle(rec)) {
+		char *old;
+
+		sprintf(key, "0x%8.8X", rec->handle);
+
+		old = g_key_file_get_string(key_file, "ServiceRecords", key,
+									NULL);
+		if (old && string_is_record_without_handle(old)) {
+			char new_key[11];
+
+			unused_sdp_record_key(req, key_file, new_key);
+			g_key_file_set_string(key_file, "ServiceRecords",
+							new_key, old);
+			g_tree_replace(keys, old, g_strdup(new_key));
+		} else {
+			g_free(old);
+		}
+	} else {
+		if (g_tree_lookup(keys, str))
+			return;
+
+		unused_sdp_record_key(req, key_file, key);
+		g_tree_insert(keys, g_strdup(str), g_strdup(key));
+	}
+
+	g_key_file_set_string(key_file, "ServiceRecords", key, str);
 }
 
 static void store_primaries_from_sdp_record(GKeyFile *key_file,
@@ -6020,22 +6142,36 @@ done:
 	free(att_uuid);
 }
 
-static int rec_cmp(const void *a, const void *b)
-{
-	const sdp_record_t *r1 = a;
-	const sdp_record_t *r2 = b;
-
-	return r1->handle - r2->handle;
-}
-
 static int update_record(struct browse_req *req, const char *uuid,
-							sdp_record_t *rec)
+					sdp_record_t *rec, const char *str)
 {
 	GSList *l;
 
-	/* Check for duplicates */
-	if (sdp_list_find(req->records, rec, rec_cmp))
-		return -EALREADY;
+	/*
+	 * Check for duplicates. Records without handle are compared by
+	 * content: copies of one record returned by different searches are
+	 * identical, different records are not.
+	 */
+	if (record_has_handle(rec)) {
+		gpointer handle = GUINT_TO_POINTER(rec->handle);
+
+		if (!req->handles)
+			req->handles = g_tree_new(record_handle_cmp);
+
+		if (g_tree_lookup_extended(req->handles, handle, NULL, NULL))
+			return -EALREADY;
+
+		g_tree_insert(req->handles, handle, NULL);
+	} else {
+		if (!req->pdus)
+			req->pdus = g_tree_new_full(record_string_cmp, NULL,
+								g_free, NULL);
+
+		if (g_tree_lookup_extended(req->pdus, str, NULL, NULL))
+			return -EALREADY;
+
+		g_tree_insert(req->pdus, g_strdup(str), NULL);
+	}
 
 	/* Copy record */
 	req->records = sdp_list_append(req->records, sdp_copy_record(rec));
@@ -6063,6 +6199,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	char att_file[PATH_MAX];
 	GKeyFile *sdp_key_file;
 	GKeyFile *att_key_file;
+	GTree *sdp_keys = NULL;
 	GError *gerr = NULL;
 
 	char *data;
@@ -6081,7 +6218,8 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 		g_clear_error(&gerr);
 		g_key_file_free(sdp_key_file);
 		sdp_key_file = NULL;
-	}
+	} else
+		sdp_keys = load_sdp_record_keys(sdp_key_file);
 
 	create_filename(att_file, PATH_MAX, "/%s/%s/attributes", srcaddr,
 							dstaddr);
@@ -6099,6 +6237,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	for (seq = recs; seq; seq = seq->next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
 		char *profile_uuid;
+		char *str;
 
 		if (!rec)
 			break;
@@ -6132,16 +6271,22 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 							product, version);
 		}
 
-		if (update_record(req, profile_uuid, rec) < 0)
+		str = record_to_string(rec);
+		if (!str)
+			goto next;
+
+		if (update_record(req, profile_uuid, rec, str) < 0)
 			goto next;
 
 		if (sdp_key_file)
-			store_sdp_record(sdp_key_file, rec);
+			store_sdp_record(req, sdp_key_file, sdp_keys, rec,
+									str);
 
 		if (att_key_file)
 			store_primaries_from_sdp_record(att_key_file, rec);
 
 next:
+		g_free(str);
 		free(profile_uuid);
 	}
 
@@ -6158,6 +6303,7 @@ next:
 
 		g_free(data);
 		g_key_file_free(sdp_key_file);
+		g_tree_destroy(sdp_keys);
 	}
 
 	if (att_key_file) {
