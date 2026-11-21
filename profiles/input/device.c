@@ -24,6 +24,7 @@
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hidp.h"
+#include "bluetooth/mgmt.h"
 #include "bluetooth/sdp.h"
 #include "bluetooth/sdp_lib.h"
 #include "bluetooth/uuid.h"
@@ -1422,6 +1423,8 @@ static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode)
 
 static void input_device_enter_reconnect_mode(struct input_device *idev)
 {
+	uint8_t reason;
+
 	DBG("path=%s reconnect_mode=%s", idev->path,
 				reconnect_mode_to_string(idev->reconnect_mode));
 
@@ -1442,6 +1445,21 @@ static void input_device_enter_reconnect_mode(struct input_device *idev)
 	if (device_is_temporary(idev->device) ||
 					btd_device_is_connected(idev->device))
 		return;
+
+	/* The host is only expected to restore a connection that was lost,
+	 * e.g. because the device went out of range. Do not page a device
+	 * that terminated the link on purpose, or that the host itself
+	 * disconnected: devices which can be bonded to several hosts (e.g.
+	 * earbuds exposing a HID sensor) would otherwise be pulled back from
+	 * the host they just switched to.
+	 */
+	reason = btd_device_get_disconnect_reason(idev->device, BDADDR_BREDR);
+	if (reason == MGMT_DEV_DISCONN_REMOTE ||
+				reason == MGMT_DEV_DISCONN_LOCAL_HOST) {
+		DBG("link terminated on purpose (reason %u), not reconnecting",
+								reason);
+		return;
+	}
 
 	if (idev->reconnect_timer > 0)
 		timeout_remove(idev->reconnect_timer);
