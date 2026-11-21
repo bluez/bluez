@@ -187,7 +187,10 @@ Each file, named by remote device address, may includes multiple groups
 (General, ServiceRecords, Attributes, Endpoints, NameResolving).
 
 In ServiceRecords, SDP records are stored using their handle as key
-(hexadecimal format).
+(hexadecimal format). Records without a ServiceRecordHandle attribute are
+stored under a key that nothing else is stored under, chosen from 0xFFFFFFFF
+downwards. Such a record keeps its key as long as it does not change, and is
+moved to another key when a record with that handle is found.
 
 In "Attributes" group GATT database is stored using attribute handle as key
 (hexadecimal format). Value associated with this handle is serialized form of
