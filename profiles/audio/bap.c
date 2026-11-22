@@ -4284,6 +4284,16 @@ static int bap_bcast_disconnect(struct btd_service *service)
 		error("BAP service not handled by profile");
 		return -EINVAL;
 	}
+
+	/* A pending PA or BIG sync calls back with one of the setups freed
+	 * below, close it.
+	 */
+	if (data->listen_io) {
+		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
+		g_io_channel_unref(data->listen_io);
+		data->listen_io = NULL;
+	}
+
 	/* Clean up broadcast sinks before detach (like unicast does) */
 	if (data->bcast_snks) {
 		bcast_snks = data->bcast_snks;
