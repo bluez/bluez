@@ -2180,6 +2180,10 @@ static void manager_refresh(void *data, void *user_data)
 {
 	struct btd_adv_client *client = data;
 
+	/* Only a peripheral without its own Flags depends on discoverable */
+	if (client->type != AD_TYPE_PERIPHERAL || bt_ad_has_flags(client->data))
+		return;
+
 	refresh_advertisement(client, NULL);
 }
 
