@@ -1633,6 +1633,7 @@ static const char *test_table[] = {
 static const char *monitor_table[] = {
 	"btmon",
 	"monitor/btmon",
+	"/usr/bin/btmon",
 	"/usr/sbin/btmon",
 	NULL
 };
@@ -1690,6 +1691,7 @@ static pid_t start_btmon(const char *home)
 static const char *btvirt_table[] = {
 	"btvirt",
 	"emulator/btvirt",
+	"/usr/bin/btvirt",
 	"/usr/sbin/btvirt",
 	NULL
 };
