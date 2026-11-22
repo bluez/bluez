@@ -3212,7 +3212,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 					sep->user_data);
 		return FALSE;
 	case AVDTP_DELAY_REPORT:
-		if (!stream_rej_to_err(buf, size, &err, &acp_seid))
+		if (!seid_rej_to_err(buf, size, &err))
 			return FALSE;
 		error("DELAY_REPORT request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
