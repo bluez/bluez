@@ -133,10 +133,15 @@ static void strv_cleanup(struct strv *s)
 }
 
 static const char *qemu_table[] = {
+#if defined(__aarch64__)
+	"qemu-system-aarch64",
+	"/usr/bin/qemu-system-aarch64",
+#else
 	"qemu-system-x86_64",
 	"qemu-system-i386",
 	"/usr/bin/qemu-system-x86_64",
 	"/usr/bin/qemu-system-i386",
+#endif
 	NULL
 };
 
@@ -155,11 +160,16 @@ static const char *find_qemu(void)
 }
 
 static const char *kernel_table[] = {
+#if defined(__aarch64__)
+	"Image",
+	"arch/arm64/boot/Image",
+#else
 	"bzImage",
 	"arch/x86/boot/bzImage",
 	"vmlinux",
 	"arch/x86/boot/vmlinux",
 	"linux",
+#endif
 	NULL
 };
 
@@ -425,6 +435,9 @@ static void check_virtualization(void)
 
 	if (__get_cpuid(1, &eax, &ebx, &ecx, &edx) && (ecx & (1 << 5)))
 		printf("Found support for Virtual Machine eXtensions\n");
+#elif defined(__aarch64__)
+	if (access("/dev/kvm", R_OK | W_OK) < 0)
+		fprintf(stderr, "No access to /dev/kvm, falling back to TCG\n");
 #endif
 }
 
@@ -899,6 +912,8 @@ static int start_qemu(void)
 {
 	char cwd[PATH_MAX/2], initcmd[PATH_MAX], testargs[PATH_MAX];
 	const char *fscmdline;
+	const char *earlycon;
+	const char *noacpi;
 	char cmdline[CMDLINE_MAX];
 	char *argv_strv[EXTRA_OPT_MAX + 64];
 	struct strv _cleanup_(strv_cleanup) argv = { argv_strv,
@@ -938,18 +953,27 @@ static int start_qemu(void)
 	else
 		fscmdline = "rootfstype=virtiofs root=/dev/root";
 
+#if defined(__aarch64__)
+	earlycon = "earlycon";
+	noacpi = "";
+#else
+	earlycon = "earlyprintk=serial";
+	/* PCIe passthrough requires ACPI and APIC for device enumeration
+	 * and MSI interrupts.
+	 */
+	noacpi = pcie_dev ? "" : "acpi=off pci=noacpi noapic";
+#endif
+
 	snprintf(cmdline, sizeof(cmdline),
-				"console=hvc0 earlyprintk=serial "
+				"console=hvc0 %s "
 				"no_hash_pointers=1 %s %s quiet ro init=%s "
 				"TESTHOME=%s TESTDBUS=%u TESTDAEMON=%u "
 				"TESTDBUSSESSION=%u XDG_RUNTIME_DIR=/run/user/0 "
 				"TESTMONITOR=%u TESTEMULATOR=%u TESTDEVS=%d "
 				"TESTAUTO=%u TESTAUDIO='%s' TESTARGS=\'%s\'",
+				earlycon,
 				fscmdline,
-				/* PCIe passthrough requires ACPI and APIC for
-				 * device enumeration and MSI interrupts.
-				 */
-				pcie_dev ? "" : "acpi=off pci=noacpi noapic",
+				noacpi,
 				initcmd, cwd, start_dbus, start_daemon,
 				start_dbus_session,
 				start_monitor, num_emulator, num_devs,
@@ -965,6 +989,13 @@ static int start_qemu(void)
 	strv_append(&argv, "%s", qemu_binary);
 	strv_concat(&argv, qemu_argv);
 
+#if defined(__aarch64__)
+	strv_append(&argv, "-machine");
+	strv_append(&argv, "virt,gic-version=max,accel=kvm:tcg");
+
+	strv_append(&argv, "-cpu");
+	strv_append(&argv, qemu_host_cpu ? "host" : "max");
+#else
 	/* Interrupt remapping is required to pass through a device using
 	 * MSI-X, which in turn needs the split irqchip.
 	 */
@@ -976,6 +1007,7 @@ static int start_qemu(void)
 		strv_append(&argv, "-cpu");
 		strv_append(&argv, "host");
 	}
+#endif
 
 	strv_append(&argv, "-kernel");
 	strv_append(&argv, "%s", kernel_image);
@@ -999,8 +1031,10 @@ static int start_qemu(void)
 	}
 
 	if (pcie_dev) {
+#if !defined(__aarch64__)
 		strv_append(&argv, "-device");
 		strv_append(&argv, "intel-iommu,intremap=on");
+#endif
 		strv_append(&argv, "-device");
 		strv_append(&argv, "%s", pcie_dev);
 	}
@@ -2198,8 +2232,9 @@ static void usage(void)
 		"\t-P, --pcie <qemu_args> Provide PCIe device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-H, --qemu-host-cpu    Use host CPU (requires KVM support)\n"
-		"\t-k, --kernel <image>   Kernel bzImage, User Mode Linux\n"
-		"\t                       binary or source tree path\n"
+		"\t-k, --kernel <image>   Kernel image or source tree path,\n"
+		"\t                       x86: bzImage or User Mode Linux\n"
+		"\t                       arm64: Image\n"
 		"\t-F, --virtiofs[=<path>]  Virtiofsd path or 'no'\n"
 		"\t-T, --time-travel      Run User Mode Linux on simulated\n"
 		"\t                       time, with btvirt as calendar\n"

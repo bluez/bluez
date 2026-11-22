@@ -26,7 +26,10 @@ OPTIONS
 :-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
 :-H/--qemu-host-cpu: Use host CPU (requires KVM support)
-:-k/--kernel=<image>: Kernel image (bzImage) or User Mode Linux binary
+:-k/--kernel=<image>: Kernel image or source tree path:
+
+    | x86: bzImage or User Mode Linux binary
+    | arm64: Image
 :-F/--virtiofs[=<path>]: Path to virtiofsd, or no to disable virtio-fs
 :-T/--time-travel: Run a User Mode Linux kernel on simulated time, with
     btvirt as time travel calendar (default if the kernel supports it)
