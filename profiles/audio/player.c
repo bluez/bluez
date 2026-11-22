@@ -730,8 +730,17 @@ void media_player_search_complete(struct media_player *mp, int ret)
 	}
 
 	if (search == NULL) {
+		struct media_item *item;
+
+		item = media_player_create_subfolder(mp, "search", 0);
+		if (item == NULL) {
+			reply = btd_error_failed(mp->msg,
+					"Unable to create search folder");
+			goto done;
+		}
+
 		search = g_new0(struct media_folder, 1);
-		search->item = media_player_create_subfolder(mp, "search", 0);
+		search->item = item;
 		mp->search = search;
 		mp->folders = g_slist_prepend(mp->folders, search);
 	}
@@ -1890,11 +1899,23 @@ static struct media_item *media_folder_create_item(struct media_player *mp,
 	item->player = mp;
 	item->uid = uid;
 
-	if (!uid && name[0] == '/')
+	if (!uid && name[0] == '/') {
+		char *c;
+
 		item->path = g_strdup_printf("%s%s", mp->path, name);
-	else
+
+		/* Folder names may contain characters not valid in a path */
+		for (c = item->path + strlen(mp->path); *c; c++) {
+			if (*c == '/' && c[1] != '/' && c[1] != '\0')
+				continue;
+
+			if (!g_ascii_isalnum(*c) && *c != '_')
+				*c = '_';
+		}
+	} else {
 		item->path = g_strdup_printf("%s/item%" PRIu64 "",
 						folder->item->path, uid);
+	}
 
 	item->name = g_strdup(name);
 	item->type = type;
