@@ -688,6 +688,17 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 
 		trigger_pairable_timeout(adapter);
 	}
+
+	if (changed_mask) {
+		GSList *l;
+
+		for (l = adapter->drivers; l; l = g_slist_next(l)) {
+			struct btd_adapter_driver *driver = l->data;
+
+			if (driver->settings_changed)
+				driver->settings_changed(adapter, changed_mask);
+		}
+	}
 }
 
 static void adapter_set_power_state(struct btd_adapter *adapter, uint32_t value)
