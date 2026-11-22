@@ -3893,6 +3893,7 @@ static struct btd_adapter_driver media_driver = {
 	.name		= "media",
 	.probe		= media_server_probe,
 	.remove		= media_server_remove,
+	.settings_changed	= media_settings_changed,
 };
 
 static int a2dp_init(void)

@@ -17,6 +17,7 @@ typedef void (*media_endpoint_cb_t) (struct media_endpoint *endpoint,
 
 int media_register(struct btd_adapter *btd_adapter);
 void media_unregister(struct btd_adapter *btd_adapter);
+void media_settings_changed(struct btd_adapter *btd_adapter, uint32_t changed);
 
 #ifdef HAVE_A2DP
 struct a2dp_sep *media_endpoint_get_sep(struct media_endpoint *endpoint);
