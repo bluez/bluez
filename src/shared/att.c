@@ -1086,12 +1086,19 @@ static void handle_notify(struct bt_att_chan *chan, uint8_t *pdu,
 	}
 
 not_supported:
-	/*
-	 * If this was not a command and no handler was registered for it,
-	 * respond with "Not Supported"
-	 */
-	if (!found && get_op_type(opcode) != ATT_OP_TYPE_CMD)
-		respond_not_supported(att, opcode);
+	if (!found) {
+		/*
+		 * An indication can only be answered with a confirmation, an
+		 * Error Response leaves the peer waiting until its ATT
+		 * transaction times out. If this was not a command and no
+		 * handler was registered for it, respond with "Not Supported".
+		 */
+		if (opcode == BT_ATT_OP_HANDLE_IND)
+			bt_att_chan_send(chan, BT_ATT_OP_HANDLE_CONF, NULL, 0,
+								NULL, NULL, NULL);
+		else if (get_op_type(opcode) != ATT_OP_TYPE_CMD)
+			respond_not_supported(att, opcode);
+	}
 
 	bt_att_unref(att);
 }
