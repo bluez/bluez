@@ -17,7 +17,10 @@ OPTIONS
 :-a:--auto: Find tests and run them
 :-b/--dbus: Start D-Bus system daemon
 :-s/--dbus-session: Start D-Bus session daemon
-:-d/--daemon: Start bluetoothd
+:-d/--daemon[=mode]: Start bluetoothd, mode (default 1):
+
+    | 1: --nodetach -d [-f src/main.conf]
+    | 2: --nodetach [-f src/main.conf]
 :-m/--monitor: Start btmon
 :-l/--emulator[=num]: Start btvirt
 :-A/-audio[=path]: Start audio server
@@ -363,6 +366,17 @@ Running shell with host controller using btproxy
 
 	$ tools/btproxy -u [1]
 	$ tools/test-runner -u -d -k /pathto/bzImage -- /bin/bash [2]
+
+Running bluetoothctl with host controller using btproxy for normal output
+--------------------------------------------------------------------------
+
+With -d2, bluetoothd is started without -d, so the bluetoothctl console
+is not flooded with debug output:
+
+.. code-block::
+
+	$ tools/btproxy -u [1]
+	$ tools/test-runner -u -d2 -k /pathto/bzImage -- client/bluetoothctl [2]
 
 Running shell with host controller USB-passthrough
 --------------------------------------------------
