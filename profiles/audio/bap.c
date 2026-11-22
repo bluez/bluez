@@ -1672,10 +1672,23 @@ static bool stream_io_unset(const void *data, const void *user_data)
 	return !bt_bap_stream_get_io(stream);
 }
 
+static void find_lowest_unset_bis(void *data, void *user_data)
+{
+	struct bt_bap_stream *stream = data;
+	struct bt_bap_stream **lowest = user_data;
+
+	if (bt_bap_stream_get_io(stream))
+		return;
+
+	if (!*lowest || bt_bap_stream_get_qos(stream)->bcast.bis <
+				bt_bap_stream_get_qos(*lowest)->bcast.bis)
+		*lowest = stream;
+}
+
 static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 {
 	struct bap_setup *setup = user_data;
-	struct bt_bap_stream *stream = setup->stream;
+	struct bt_bap_stream *stream = NULL;
 	int fd;
 	struct bap_data *bap_data = setup->data;
 
@@ -1685,12 +1698,15 @@ static void iso_bcast_confirm_cb(GIOChannel *io, GError *err, void *user_data)
 		DBG("BIG Sync completed");
 
 	/* The order of the BIS fds notified from kernel corresponds
-	 * to the order of the BISes that were enqueued before
-	 * calling bt_io_bcast_accept.
+	 * to the order of the BISes passed to bt_io_bcast_accept,
+	 * which is ascending, so the fd belongs to the stream with
+	 * the lowest BIS that has no fd yet.
 	 */
-	if (bt_bap_stream_get_io(stream))
-		stream = queue_find(bt_bap_stream_io_get_links(stream),
-				stream_io_unset, NULL);
+	find_lowest_unset_bis(setup->stream, &stream);
+	queue_foreach(bt_bap_stream_io_get_links(setup->stream),
+					find_lowest_unset_bis, &stream);
+	if (!stream)
+		return;
 
 	fd = g_io_channel_unix_get_fd(io);
 
@@ -3902,27 +3918,17 @@ static void append_setup(void *data, void *user_data)
 {
 	struct bt_bap_stream *stream = data;
 	struct sockaddr_iso_bc *addr = user_data;
-	char *path = bt_bap_stream_get_user_data(stream);
-	int bis = 1;
-	int s_err;
-	const char *strbis = NULL;
-
-	strbis = strstr(path, "/bis");
-	if (!strbis) {
-		DBG("bis index cannot be found");
-		return;
-	}
-
-	s_err = sscanf(strbis, "/bis%d", &bis);
-	if (s_err == -1) {
-		DBG("sscanf error");
-		return;
-	}
+	uint8_t bis = bt_bap_stream_get_qos(stream)->bcast.bis;
 
 	DBG("Do BIG Sync with BIS %d", bis);
 
 	addr->bc_bis[addr->bc_num_bis] = bis;
 	addr->bc_num_bis++;
+}
+
+static int bis_cmp(const void *a, const void *b)
+{
+	return *(const uint8_t *)a - *(const uint8_t *)b;
 }
 
 static void setup_refresh_qos(void *data, void *user_data)
@@ -3956,6 +3962,10 @@ static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond,
 	/* Append each linked BIS to the BIG sync request */
 	append_setup(setup->stream, &iso_bc_addr);
 	queue_foreach(links, append_setup, &iso_bc_addr);
+
+	/* The BIS list shall be in ascending order */
+	qsort(iso_bc_addr.bc_bis, iso_bc_addr.bc_num_bis, sizeof(uint8_t),
+								bis_cmp);
 
 	/* Refresh qos stored in setups */
 	setup->qos = *bt_bap_stream_get_qos(setup->stream);
