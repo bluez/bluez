@@ -5205,6 +5205,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0xff, 0x00),
 			raw_pdu());
 
+	define_test_server("/robustness/indication-no-handler",
+			test_server, service_db_1, NULL,
+			raw_pdu(0x03, 0x00, 0x02),
+			raw_pdu(0x1d, 0x08, 0x00, 0x01, 0x00, 0xff, 0xff),
+			raw_pdu(0x1e));
+
 	define_test_client("/robustness/client-mtu-rsp-short", test_client,
 			NULL, &test_client_init_fail,
 			raw_pdu(0x02, 0x00, 0x02),
