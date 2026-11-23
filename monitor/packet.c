@@ -4205,7 +4205,7 @@ static void print_mesh_beacon(const uint8_t *data, uint8_t len)
 	switch (data[0]) {
 	case 0x00:
 		print_field("  Unprovisioned Device Beacon (0x00)");
-		if (len < 18) {
+		if (len < 19) {
 			packet_hexdump(data + 1, len - 1);
 			break;
 		}
@@ -4218,7 +4218,7 @@ static void print_mesh_beacon(const uint8_t *data, uint8_t len)
 		print_bitfield(4, oob, mesh_oob_table);
 
 		if (len < 23) {
-			packet_hexdump(data + 18, len - 18);
+			packet_hexdump(data + 19, len - 19);
 			break;
 		}
 
