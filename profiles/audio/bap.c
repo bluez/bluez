@@ -2919,6 +2919,13 @@ static void setup_io_disconnected(int cond, void *user_data)
 
 	setup_io_close(setup, NULL);
 
+	if (bt_bap_pac_get_type(setup->ep->lpac) == BT_BAP_BCAST_SOURCE &&
+			bt_bap_stream_get_state(setup->stream) ==
+					BT_BAP_STREAM_STATE_STREAMING) {
+		DBG("stream %p: io lost while streaming", setup->stream);
+		bt_bap_stream_disable(setup->stream, false, NULL, NULL);
+	}
+
 	bap_update_cigs(setup->ep->data);
 }
 
