@@ -344,6 +344,8 @@ static const uint32_t company_ids[] = {
 static void avrcp_register_notification(struct avrcp *session, uint8_t event);
 static GList *player_list_settings(struct avrcp_player *player);
 static void avrcp_get_play_status(struct avrcp *session);
+static void set_browsed_player(struct avrcp *session,
+					struct avrcp_player *player);
 
 static void avrcp_browsing_record(sdp_record_t *record, sdp_data_t *version)
 {
@@ -3063,10 +3065,11 @@ static gboolean avrcp_set_addressed_player_rsp(struct avctp *conn, uint8_t code,
 	if (!operands || code != AVC_CTYPE_ACCEPTED)
 		return FALSE;
 
-	if (!avrcp_pull_header(&iov))
+	if (!avrcp_pull_header(&iov) || player->addressed)
 		return FALSE;
 
 	player->addressed = true;
+	set_browsed_player(session, player);
 
 	return FALSE;
 }
@@ -3990,8 +3993,15 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 	struct avrcp_player *player = session->controller->player;
 	uint16_t id = get_be16(&pdu->params[1]);
 
-	if (player != NULL && player->id == id)
+	if (player != NULL && player->id == id) {
+		/* SetBrowsedPlayer is sent once the player is addressed */
+		if (!player->addressed) {
+			player->addressed = true;
+			set_browsed_player(session, player);
+		}
+
 		return;
+	}
 
 	player = find_ct_player(session, id);
 	if (player == NULL) {
