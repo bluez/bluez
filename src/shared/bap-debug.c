@@ -501,7 +501,7 @@ static void ase_debug_program_info(const uint8_t *data, uint8_t len,
 		goto done;
 	}
 
-	util_debug(func, user_data, "Program Info: %*s", len, str);
+	util_debug(func, user_data, "Program Info: %.*s", len, str);
 
 done:
 	if (frame.iov_len)
