@@ -53,6 +53,7 @@ struct context {
 	bool destroy_on_play;
 	bool check_total_items;
 	unsigned int total_items_calls;
+	char *total_items_name;
 };
 
 static struct context *context;
@@ -145,7 +146,8 @@ static gboolean complete_total_items(gpointer user_data)
 	if (context == NULL)
 		return FALSE;
 
-	media_player_total_items_complete(context->mp, TOTAL_ITEMS);
+	media_player_total_items_complete(context->mp,
+					context->total_items_name, TOTAL_ITEMS);
 
 	call_get_number_of_items(&context->pending2, number_of_items_reply);
 
@@ -164,6 +166,9 @@ static int test_total_items(struct media_player *mp, const char *name,
 	struct context *ctx = user_data;
 
 	ctx->total_items_calls++;
+
+	g_free(ctx->total_items_name);
+	ctx->total_items_name = g_strdup(name);
 
 	if (ctx->check_total_items)
 		g_idle_add(complete_total_items, NULL);
@@ -240,6 +245,7 @@ static void destroy_context(void)
 	dbus_connection_unref(context->dbus_conn);
 
 	g_free(context->play_item_name);
+	g_free(context->total_items_name);
 	g_free(context);
 	context = NULL;
 }

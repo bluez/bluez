@@ -758,11 +758,13 @@ done:
 }
 
 void media_player_total_items_complete(struct media_player *mp,
-							uint32_t num_of_items)
+						const char *name,
+						uint32_t num_of_items)
 {
 	struct media_folder *folder = mp->scope;
 
-	if (folder == NULL)
+	/* The scope may have changed while the request was in flight */
+	if (folder == NULL || g_strcmp0(folder->item->name, name) != 0)
 		return;
 
 	if (folder->number_of_items != num_of_items) {
@@ -2073,9 +2075,28 @@ struct media_item *media_player_set_playlist_item(struct media_player *mp,
 
 void media_player_clear_playlist(struct media_player *mp)
 {
+	struct player_callback *cb = mp->cb;
+
 	if (mp->playlist) {
 		g_slist_free_full(mp->playlist->items, media_item_destroy);
 		mp->playlist->items = NULL;
+
+		/*
+		 * The number of items may have changed: leave the end of the
+		 * list to the target until it is known again.
+		 */
+		mp->playlist->number_of_items = 0;
+	}
+
+	if (mp->playlist && mp->scope == mp->playlist) {
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						mp->path,
+						MEDIA_FOLDER_INTERFACE,
+						"NumberOfItems");
+
+		if (cb->cbs->total_items)
+			cb->cbs->total_items(mp, mp->scope->item->name,
+							cb->user_data);
 	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), mp->path,
