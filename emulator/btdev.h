@@ -90,6 +90,11 @@ const uint8_t *btdev_get_adv_addr(struct btdev *btdev, uint8_t handle);
 void btdev_get_mtu(struct btdev *btdev, uint16_t *acl, uint16_t *sco,
 								uint16_t *iso);
 
+/* Report the given type in Link Key Notification, whichever is the type of
+ * the key that pairing results in.
+ */
+void btdev_set_link_key_type(struct btdev *btdev, uint8_t type);
+
 void btdev_set_le_states(struct btdev *btdev, const uint8_t *le_states);
 
 void btdev_set_al_len(struct btdev *btdev, uint8_t len);
