@@ -386,12 +386,90 @@ static inline bool mcc_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	return true;
 }
 
+/* An OBEX PDU may be split across several RFCOMM UIH frames since the
+ * RFCOMM MTU is typically much smaller than the maximum OBEX PDU
+ * length. Information bytes are buffered per index/handle/channel and
+ * direction until a complete PDU (3-byte opcode+length header plus
+ * body) is available; complete PDUs are then decoded and any leftover
+ * bytes are kept for the next frame.
+ */
+#define MAX_OBEX_FRAG 64
+
+struct obex_frag_data {
+	uint16_t index;
+	uint16_t handle;
+	uint8_t channel;
+	bool in;
+	uint8_t *buf;
+	uint16_t len;
+};
+
+static struct obex_frag_data obex_frag_list[MAX_OBEX_FRAG];
+
+static struct obex_frag_data *obex_frag_get(uint16_t index, uint16_t handle,
+						uint8_t channel, bool in)
+{
+	int i, n = -1;
+
+	for (i = 0; i < MAX_OBEX_FRAG; i++) {
+		if (!obex_frag_list[i].channel) {
+			if (n < 0)
+				n = i;
+			continue;
+		}
+
+		if (obex_frag_list[i].index == index &&
+				obex_frag_list[i].handle == handle &&
+				obex_frag_list[i].channel == channel &&
+				obex_frag_list[i].in == in)
+			return &obex_frag_list[i];
+	}
+
+	if (n < 0)
+		return NULL;
+
+	obex_frag_list[n].index = index;
+	obex_frag_list[n].handle = handle;
+	obex_frag_list[n].channel = channel;
+	obex_frag_list[n].in = in;
+	obex_frag_list[n].buf = NULL;
+	obex_frag_list[n].len = 0;
+
+	return &obex_frag_list[n];
+}
+
+static void obex_frag_reset(struct obex_frag_data *frag)
+{
+	free(frag->buf);
+	frag->buf = NULL;
+	frag->len = 0;
+}
+
+static void rfcomm_remove_channel(uint16_t index, uint16_t handle,
+							uint8_t channel)
+{
+	int i;
+
+	for (i = 0; i < MAX_OBEX_FRAG; i++) {
+		if (obex_frag_list[i].channel == channel &&
+				obex_frag_list[i].index == index &&
+				obex_frag_list[i].handle == handle) {
+			obex_frag_reset(&obex_frag_list[i]);
+			memset(&obex_frag_list[i], 0,
+					sizeof(obex_frag_list[i]));
+		}
+	}
+}
+
 static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 {
 	uint8_t credits;
 	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
 	struct rfcomm_lhdr *hdr = &rfcomm_frame->hdr;
 	uint8_t channel = RFCOMM_GET_CHANNEL(hdr->address);
+	struct obex_frag_data *frag;
+	uint8_t *buf;
+	uint16_t pos;
 
 	if (!channel)
 		return mcc_frame(rfcomm_frame, indent);
@@ -410,10 +488,62 @@ static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	if (!frame->size)
 		return true;
 
-	if (obex_channel(frame->index, frame->handle, channel, NULL))
-		obex_packet(frame, channel, frame->size);
-	else
+	if (!obex_channel(frame->index, frame->handle, channel, NULL)) {
 		packet_hexdump(frame->data, frame->size);
+		return true;
+	}
+
+	frag = obex_frag_get(frame->index, frame->handle, channel, frame->in);
+	if (!frag) {
+		obex_packet(frame, channel, frame->size);
+		return true;
+	}
+
+	buf = realloc(frag->buf, frag->len + frame->size);
+	if (!buf) {
+		obex_frag_reset(frag);
+		obex_packet(frame, channel, frame->size);
+		return true;
+	}
+
+	memcpy(buf + frag->len, frame->data, frame->size);
+	frag->buf = buf;
+	frag->len += frame->size;
+
+	pos = 0;
+
+	while (frag->len - pos >= 3) {
+		struct l2cap_frame pdu_frame = *frame;
+		uint16_t pdu_len = get_be16(frag->buf + pos + 1);
+
+		if (pdu_len < 3) {
+			/* Malformed declared length: hand over the rest
+			 * of the buffer as-is and let obex_packet() report
+			 * the error, rather than buffering indefinitely.
+			 */
+			pdu_frame.data = frag->buf + pos;
+			pdu_frame.size = frag->len - pos;
+			obex_packet(&pdu_frame, channel, pdu_frame.size);
+			pos = frag->len;
+			break;
+		}
+
+		if ((uint16_t) (frag->len - pos) < pdu_len)
+			break;
+
+		pdu_frame.data = frag->buf + pos;
+		pdu_frame.size = pdu_len;
+		obex_packet(&pdu_frame, channel, pdu_len);
+
+		pos += pdu_len;
+	}
+
+	if (pos == frag->len) {
+		obex_frag_reset(frag);
+	} else if (pos) {
+		memmove(frag->buf, frag->buf + pos, frag->len - pos);
+		frag->len -= pos;
+	}
 
 	return true;
 }
@@ -522,6 +652,8 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 		 * of the same channel number isn't misdecoded.
 		 */
 		obex_remove_channel(frame->index, frame->handle,
+					RFCOMM_GET_CHANNEL(hdr.address));
+		rfcomm_remove_channel(frame->index, frame->handle,
 					RFCOMM_GET_CHANNEL(hdr.address));
 	}
 
