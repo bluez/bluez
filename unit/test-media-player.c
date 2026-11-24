@@ -142,10 +142,12 @@ static void number_of_items_reply(DBusPendingCall *call, void *user_data);
 
 static gboolean complete_total_items(gpointer user_data)
 {
+	const char *dir_path = user_data;
+
 	if (context == NULL)
 		return FALSE;
 
-	media_player_total_items_complete(context->mp, TOTAL_ITEMS);
+	media_player_total_items_complete(context->mp, dir_path, TOTAL_ITEMS);
 
 	call_get_number_of_items(&context->pending2, number_of_items_reply);
 
@@ -158,7 +160,7 @@ static int test_search(struct media_player *mp, const char *string,
 	return 0;
 }
 
-static int test_total_items(struct media_player *mp, const char *name,
+static int test_total_items(struct media_player *mp, const char *dir_path,
 							void *user_data)
 {
 	struct context *ctx = user_data;
@@ -166,7 +168,8 @@ static int test_total_items(struct media_player *mp, const char *name,
 	ctx->total_items_calls++;
 
 	if (ctx->check_total_items)
-		g_idle_add(complete_total_items, NULL);
+		g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, complete_total_items,
+						g_strdup(dir_path), g_free);
 
 	return 0;
 }
