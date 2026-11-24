@@ -578,6 +578,7 @@ static uint8_t vcs_rel_vol_down(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	struct bt_vcp_db *vdb;
 	struct vol_state *vstate;
 	uint8_t	*change_counter;
+	uint8_t vol_set;
 
 	DBG(vcp, "Volume Down");
 
@@ -602,7 +603,14 @@ static uint8_t vcs_rel_vol_down(struct bt_vcs *vcs, struct bt_vcp *vcp,
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
 	}
 
-	vstate->vol_set = MAX((vstate->vol_set - VCP_STEP_SIZE), 0);
+	vol_set = MAX((vstate->vol_set - VCP_STEP_SIZE), 0);
+
+	if (vol_set == vstate->vol_set) {
+		DBG(vcp, "Volume Down: already at minimum, no state change");
+		return 0;
+	}
+
+	vstate->vol_set = vol_set;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 	vcp->volume = vstate->vol_set;
 
@@ -621,6 +629,7 @@ static uint8_t vcs_rel_vol_up(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	struct bt_vcp_db *vdb;
 	struct vol_state *vstate;
 	uint8_t	*change_counter;
+	uint8_t vol_set;
 
 	DBG(vcp, "Volume Up");
 
@@ -645,7 +654,14 @@ static uint8_t vcs_rel_vol_up(struct bt_vcs *vcs, struct bt_vcp *vcp,
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
 	}
 
-	vstate->vol_set = MIN((vstate->vol_set + VCP_STEP_SIZE), 255);
+	vol_set = MIN((vstate->vol_set + VCP_STEP_SIZE), 255);
+
+	if (vol_set == vstate->vol_set) {
+		DBG(vcp, "Volume Up: already at maximum, no state change");
+		return 0;
+	}
+
+	vstate->vol_set = vol_set;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 	vcp->volume = vstate->vol_set;
 
@@ -664,6 +680,7 @@ static uint8_t vcs_unmute_rel_vol_down(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	struct bt_vcp_db *vdb;
 	struct vol_state *vstate;
 	uint8_t	*change_counter;
+	uint8_t vol_set;
 
 	DBG(vcp, "Un Mute and Volume Down");
 
@@ -688,8 +705,15 @@ static uint8_t vcs_unmute_rel_vol_down(struct bt_vcs *vcs, struct bt_vcp *vcp,
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
 	}
 
+	vol_set = MAX((vstate->vol_set - VCP_STEP_SIZE), 0);
+
+	if (vol_set == vstate->vol_set && vstate->mute == 0x00) {
+		DBG(vcp, "Un Mute and Volume Down: no state change");
+		return 0;
+	}
+
 	vstate->mute = 0x00;
-	vstate->vol_set = MAX((vstate->vol_set - VCP_STEP_SIZE), 0);
+	vstate->vol_set = vol_set;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 	vcp->volume = vstate->vol_set;
 
@@ -708,6 +732,7 @@ static uint8_t vcs_unmute_rel_vol_up(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	struct bt_vcp_db *vdb;
 	struct vol_state *vstate;
 	uint8_t	*change_counter;
+	uint8_t vol_set;
 
 	DBG(vcp, "UN Mute and Volume Up");
 
@@ -732,8 +757,15 @@ static uint8_t vcs_unmute_rel_vol_up(struct bt_vcs *vcs, struct bt_vcp *vcp,
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
 	}
 
+	vol_set = MIN((vstate->vol_set + VCP_STEP_SIZE), 255);
+
+	if (vol_set == vstate->vol_set && vstate->mute == 0x00) {
+		DBG(vcp, "Un Mute and Volume Up: no state change");
+		return 0;
+	}
+
 	vstate->mute = 0x00;
-	vstate->vol_set = MIN((vstate->vol_set + VCP_STEP_SIZE), 255);
+	vstate->vol_set = vol_set;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 	vcp->volume = vstate->vol_set;
 
@@ -774,6 +806,11 @@ static uint8_t vcs_set_absolute_vol(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	if (req->change_counter != vstate->counter) {
 		DBG(vcp, "Change Counter Mismatch Volume not decremented!");
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
+	}
+
+	if (req->vol_set == vstate->vol_set) {
+		DBG(vcp, "Set Absolute Volume: no state change");
+		return 0;
 	}
 
 	vstate->vol_set = req->vol_set;
@@ -819,6 +856,11 @@ static uint8_t vcs_unmute(struct bt_vcs *vcs, struct bt_vcp *vcp,
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
 	}
 
+	if (vstate->mute == 0x00) {
+		DBG(vcp, "Un Mute: already unmuted, no state change");
+		return 0;
+	}
+
 	vstate->mute = 0x00;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 
@@ -856,6 +898,11 @@ static uint8_t vcs_mute(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	if (*change_counter != vstate->counter) {
 		DBG(vcp, "Change Counter Mismatch Volume not decremented!");
 		return BT_ATT_ERROR_INVALID_CHANGE_COUNTER;
+	}
+
+	if (vstate->mute == 0x01) {
+		DBG(vcp, "Mute: already muted, no state change");
+		return 0;
 	}
 
 	vstate->mute = 0x01;
