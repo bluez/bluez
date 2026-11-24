@@ -480,6 +480,11 @@ struct bt_rap {
 	unsigned int ready_notify_id;
 	unsigned int overwritten_notify_id;
 	uint32_t ras_features;
+	bool features_read;	/* RAS Features read completed */
+	bool ensure_pending;	/* ensure_ranging_data() waits for it */
+	bool mode_selected;	/* SetRangingDataMode() called, even Disabled */
+	enum bt_rap_ranging_data_mode selected_mode;
+	bool proc_enabled;	/* a CS procedure is running */
 
 	/* Responder role: Ranging Counters read back through Ranging Data
 	 * Ready and Overwritten, scoped to this connection (RAS v1.0, 3.4
@@ -999,6 +1004,10 @@ void bt_rap_detach(struct bt_rap *rap)
 	rap->cp_notify_id = 0;
 	rap->ready_notify_id = 0;
 	rap->overwritten_notify_id = 0;
+	rap->features_read = false;
+	rap->ensure_pending = false;
+	rap->mode_selected = false;
+	rap->proc_enabled = false;
 
 	bt_att_unregister_disconnect(rap->att, rap->disconn_id);
 	rap->att = NULL;
@@ -3357,7 +3366,9 @@ void bt_rap_hci_cs_procedure_enable_complete_callback(uint16_t length,
 	/* RAP v1.0 4.4.1.1: the first Real-time Ranging Data is due within
 	 * 5 seconds after the CS procedure starts.
 	 */
-	if (data->state == 0x01 && rap->realtime_notify_id)
+	rap->proc_enabled = data->state == 0x01;
+
+	if (rap->proc_enabled && rap->realtime_notify_id)
 		ras_realtime_arm_timeout(rap,
 					RAS_REALTIME_FIRST_SEGMENT_TIMEOUT);
 }
@@ -3530,14 +3541,68 @@ static void rap_read_value(struct bt_rap *rap, uint16_t value_handle,
 	queue_push_tail(rap->pending, pending);
 }
 
+static void rap_forget_notify(struct bt_rap *rap, unsigned int id)
+{
+	if (rap->realtime_notify_id == id)
+		rap->realtime_notify_id = 0;
+	if (rap->ondemand_notify_id == id)
+		rap->ondemand_notify_id = 0;
+	if (rap->cp_notify_id == id)
+		rap->cp_notify_id = 0;
+	if (rap->ready_notify_id == id)
+		rap->ready_notify_id = 0;
+	if (rap->overwritten_notify_id == id)
+		rap->overwritten_notify_id = 0;
+}
+
+struct rap_failed_notify {
+	struct bt_rap *rap;
+	unsigned int id;
+};
+
+static bool rap_failed_notify_cb(void *user_data)
+{
+	struct rap_failed_notify *failed = user_data;
+
+	if (failed->rap->client)
+		bt_gatt_client_unregister_notify(failed->rap->client,
+							failed->id);
+
+	return false;
+}
+
+static void rap_failed_notify_free(void *user_data)
+{
+	struct rap_failed_notify *failed = user_data;
+
+	bt_rap_unref(failed->rap);
+	free(failed);
+}
+
 static void ras_register(uint16_t att_ecode, void *user_data)
 {
 	struct bt_rap_notify *notify = user_data;
+	struct rap_failed_notify *failed;
 
-	if (att_ecode)
-		DBG(notify->rap, "RAS register failed 0x%04x", att_ecode);
+	if (!att_ecode)
+		return;
 
-	(void)notify;
+	DBG(notify->rap, "RAS register failed 0x%04x", att_ecode);
+
+	/* The ID only says the CCC write was queued. Forget it so a later
+	 * subscription retries, and drop the handler the client still holds;
+	 * that is done from the mainloop as the client is iterating its
+	 * registrations right now.
+	 */
+	rap_forget_notify(notify->rap, notify->id);
+
+	failed = new0(struct rap_failed_notify, 1);
+	failed->rap = bt_rap_ref(notify->rap);
+	failed->id = notify->id;
+
+	if (!timeout_add(0, rap_failed_notify_cb, failed,
+					rap_failed_notify_free))
+		rap_failed_notify_free(failed);
 }
 
 static void rap_notify(uint16_t value_handle, const uint8_t *value,
@@ -4651,11 +4716,20 @@ static bool rap_subscribe_ranging_data(struct bt_rap *rap,
 		rap->realtime_notify_id = bt_rap_register_notify(rap,
 				value_handle, rap->realtime_ccc_value,
 				ras_segment_notify_cb, "real-time");
+
+		/* Enabled while a procedure is already running: its start,
+		 * which arms the first data timeout, has been missed.
+		 */
+		if (rap->realtime_notify_id && rap->proc_enabled)
+			ras_realtime_arm_timeout(rap,
+					RAS_REALTIME_FIRST_SEGMENT_TIMEOUT);
+
 		return rap->realtime_notify_id != 0;
 	}
 
 	if (mode == BT_RAP_RANGING_DATA_ONDEMAND) {
 		uint16_t value_handle;
+		bool ready_new = false;
 
 		/* Only the data characteristic follows the requested
 		 * transport (RAS v1.0 Table 3.1). The RAS Control Point can
@@ -4663,22 +4737,33 @@ static bool rap_subscribe_ranging_data(struct bt_rap *rap,
 		 * Overwritten are indicated whenever the server supports it,
 		 * since a server may send them only as indications.
 		 */
-		rap_subscribe_ondemand_chrc(rap, ras->ondemand_chrc,
-			rap->ondemand_ccc_value, ras_segment_notify_cb,
-			"on-demand", &rap->ondemand_notify_id);
-		rap_subscribe_ondemand_chrc(rap, ras->cp_chrc,
-			BT_RAP_RANGING_INDICATE, ras_cp_response_notify_cb,
-			"RAS Control Point", &rap->cp_notify_id);
-		rap_subscribe_ondemand_chrc(rap, ras->ready_chrc,
-			rap_status_ccc(ras->ready_chrc),
-			ras_data_ready_notify_cb,
-			"Ranging Data Ready", &rap->ready_notify_id);
-		rap_subscribe_ondemand_chrc(rap, ras->overwritten_chrc,
-			rap_status_ccc(ras->overwritten_chrc),
-			ras_data_overwritten_notify_cb,
-			"Ranging Data Overwritten",
-			&rap->overwritten_notify_id);
-		if (ras->ready_chrc &&
+		/* Only the registrations still missing are made, so this can
+		 * be repeated to retry the ones that failed or were rejected
+		 * without registering the others twice.
+		 */
+		if (!rap->ondemand_notify_id)
+			rap_subscribe_ondemand_chrc(rap, ras->ondemand_chrc,
+				rap->ondemand_ccc_value, ras_segment_notify_cb,
+				"on-demand", &rap->ondemand_notify_id);
+		if (!rap->cp_notify_id)
+			rap_subscribe_ondemand_chrc(rap, ras->cp_chrc,
+				BT_RAP_RANGING_INDICATE,
+				ras_cp_response_notify_cb,
+				"RAS Control Point", &rap->cp_notify_id);
+		if (!rap->ready_notify_id) {
+			ready_new = true;
+			rap_subscribe_ondemand_chrc(rap, ras->ready_chrc,
+				rap_status_ccc(ras->ready_chrc),
+				ras_data_ready_notify_cb,
+				"Ranging Data Ready", &rap->ready_notify_id);
+		}
+		if (!rap->overwritten_notify_id)
+			rap_subscribe_ondemand_chrc(rap, ras->overwritten_chrc,
+				rap_status_ccc(ras->overwritten_chrc),
+				ras_data_overwritten_notify_cb,
+				"Ranging Data Overwritten",
+				&rap->overwritten_notify_id);
+		if (ready_new && ras->ready_chrc &&
 			gatt_db_attribute_get_char_data(ras->ready_chrc, NULL,
 						&value_handle, NULL, NULL,
 						NULL))
@@ -4695,7 +4780,7 @@ bool bt_rap_set_ranging_data_mode(struct bt_rap *rap,
 			enum bt_rap_ranging_data_mode mode,
 			enum bt_rap_ranging_transport transport)
 {
-	if (!rap || !rap->client || !rap->ras_features)
+	if (!rap || !rap->client || !rap->features_read)
 		return false;
 
 	if (mode == BT_RAP_RANGING_DATA_REALTIME &&
@@ -4714,7 +4799,14 @@ bool bt_rap_set_ranging_data_mode(struct bt_rap *rap,
 	rap->realtime_ccc_value = transport;
 	rap->ondemand_ccc_value = transport;
 
-	return rap_subscribe_ranging_data(rap, mode);
+	/* Only a selection that took effect is kept for later starts */
+	if (!rap_subscribe_ranging_data(rap, mode))
+		return false;
+
+	rap->mode_selected = true;
+	rap->selected_mode = mode;
+
+	return true;
 }
 
 bool bt_rap_ensure_ranging_data(struct bt_rap *rap)
@@ -4724,17 +4816,37 @@ bool bt_rap_ensure_ranging_data(struct bt_rap *rap)
 	if (!rap || !rap->client)
 		return false;
 
-	if (rap->realtime_notify_id || rap->ondemand_notify_id)
+	/* An explicit selection stands, Disabled included. */
+	if (rap->mode_selected &&
+			rap->selected_mode == BT_RAP_RANGING_DATA_DISABLED)
 		return true;
 
-	/* The RREQ has to enable one of the two (RAP v1.0 4.4). Real-time
-	 * Ranging Data is optional for the RRSP, so fall back to On-demand
-	 * when it is not supported (RAP v1.0 4.4.2).
-	 */
-	if (rap->ondemand_mode || !(rap->ras_features & 0x01))
+	/* Which mode the peer supports is only known once Features is read */
+	if (!rap->features_read) {
+		rap->ensure_pending = true;
+		return true;
+	}
+
+	if (rap->mode_selected) {
+		mode = rap->selected_mode;
+	} else if (rap->realtime_notify_id) {
+		return true;
+	} else if (rap->ondemand_mode || !(rap->ras_features & 0x01)) {
+		/* The RREQ has to enable one of the two (RAP v1.0 4.4).
+		 * Real-time Ranging Data is optional for the RRSP, so fall
+		 * back to On-demand when it is not supported (RAP v1.0 4.4.2).
+		 */
 		mode = BT_RAP_RANGING_DATA_ONDEMAND;
-	else
+	} else {
 		mode = BT_RAP_RANGING_DATA_REALTIME;
+	}
+
+	/* A mode whose subscription ended with the last measurement (stop or
+	 * timeout) or was rejected is subscribed again with its transport;
+	 * the On-demand subscription only makes the registrations missing.
+	 */
+	if (mode == BT_RAP_RANGING_DATA_REALTIME && rap->realtime_notify_id)
+		return true;
 
 	return rap_subscribe_ranging_data(rap, mode);
 }
@@ -4785,6 +4897,7 @@ static void read_ras_features(struct bt_rap *rap, bool success,
 	if (ras)
 		ras->client.abort_operation = abort_operation;
 	rap->ras_features = features;
+	rap->features_read = true;
 
 	DBG(rap, "RAS Features - Real-time: %s, Retrieve Lost: %s, Abort: %s",
 	    supports_realtime ? "Yes" : "No",
@@ -4802,6 +4915,12 @@ static void read_ras_features(struct bt_rap *rap, bool success,
 			!rap_subscribe_ranging_data(rap,
 					BT_RAP_RANGING_DATA_ONDEMAND))
 		DBG(rap, "Failed to subscribe to requested Ranging Data mode");
+
+	/* StartMeasurement() arrived before the peer's features were known */
+	if (rap->ensure_pending) {
+		rap->ensure_pending = false;
+		bt_rap_ensure_ranging_data(rap);
+	}
 }
 
 static void foreach_rap_char(struct gatt_db_attribute *attr, void *user_data)
