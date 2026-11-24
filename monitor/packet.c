@@ -12315,6 +12315,7 @@ static void disconnect_complete_evt(struct timeval *tv, uint16_t index,
 	if (evt->status == 0x00) {
 		release_handle(le16_to_cpu(evt->handle));
 		obex_disconnect_handle(index, le16_to_cpu(evt->handle));
+		rfcomm_remove_handle(index, le16_to_cpu(evt->handle));
 	}
 }
 
