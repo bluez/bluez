@@ -4806,6 +4806,19 @@ static bool device_match_profile(struct btd_device *device,
 	return true;
 }
 
+static void device_accept_gatt_service(struct btd_device *device,
+						struct btd_service *service)
+{
+	struct btd_profile *profile = btd_service_get_profile(service);
+
+	/* A profile of the LE bearer doesn't run over ATT on BR/EDR */
+	if (profile->bearer == BTD_PROFILE_BEARER_LE &&
+			bt_att_get_link_type(device->att) == BT_ATT_BREDR)
+		return;
+
+	service_accept(service, btd_device_is_initiator(device));
+}
+
 static void add_gatt_service(struct gatt_db_attribute *attr, void *user_data)
 {
 	struct btd_device *device = user_data;
@@ -4845,7 +4858,7 @@ done:
 	}
 
 	/* Notify driver about the new connection */
-	service_accept(service, btd_device_is_initiator(device));
+	device_accept_gatt_service(device, service);
 }
 
 
@@ -4907,17 +4920,16 @@ static void device_add_gatt_services(struct btd_device *device)
 static void device_accept_gatt_profiles(struct btd_device *device)
 {
 	GSList *l;
-	bool initiator = btd_device_is_initiator(device);
 	GSList *services;
 
-	DBG("initiator %s", initiator ? "true" : "false");
+	DBG("initiator %s", btd_device_is_initiator(device) ? "true" : "false");
 
 	/* Accept in profile priority order */
 	services = g_slist_copy(device->services);
 	services = btd_profile_sort_list(services, get_service_profile, NULL);
 
 	for (l = services; l != NULL; l = g_slist_next(l))
-		service_accept(l->data, initiator);
+		device_accept_gatt_service(device, l->data);
 
 	g_slist_free(services);
 }
