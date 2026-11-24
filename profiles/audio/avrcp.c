@@ -1997,7 +1997,7 @@ static void avrcp_handle_media_player_list(struct avrcp *session,
 		struct player_item *item;
 		uint16_t namelen;
 
-		if (rsp->num_items == (end_item - start_item) + 1)
+		if (rsp->num_items > end_item - start_item)
 			break;
 
 		folder = (void *)&pdu->params[pdu->param_len];
