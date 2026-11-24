@@ -2761,12 +2761,85 @@ static void test_aics_unit_testcases(void)
 
 
 }
+/* ATT: Write Request (0x12) len 4
+ *   Handle: 0x0024 Type: Volume Control Point (0x2b7e)
+ *     Data: 0600
+ *       Opcode: Mute (0x06)
+ *       Change Counter: 0
+ * ATT: Write Response (0x13) len 0
+ * ATT: Handle Value Notification (0x1b) len 5
+ *   Handle: 0x0021 Type: Volume State (0x2b7d)
+ *     Data: 000101
+ *       Volume Setting: 0
+ *       Mute: 1
+ *       Change Counter: 1
+ */
+#define VCS_CP_MUTE \
+	IOV_DATA(0x12, 0x24, 0x00, 0x06, 0x00), \
+	IOV_DATA(0x13), \
+	IOV_NULL, \
+	IOV_DATA(0x1b, 0x21, 0x00, 0x00, 0x01, 0x01)
+
+/* ATT: Write Request (0x12) len 5
+ *   Handle: 0x0024 Type: Volume Control Point (0x2b7e)
+ *     Data: 040000
+ *       Opcode: Set Absolute Volume (0x04)
+ *       Change Counter: 0
+ *       Volume Setting: 0
+ * ATT: Write Response (0x13) len 0
+ * ATT: Write Request (0x12) len 4
+ *   Handle: 0x0024 Type: Volume Control Point (0x2b7e)
+ *     Data: 0500
+ *       Opcode: Unmute (0x05)
+ *       Change Counter: 0
+ * ATT: Write Response (0x13) len 0
+ * ATT: Write Request (0x12) len 4
+ *   Handle: 0x0024 Type: Volume Control Point (0x2b7e)
+ *     Data: 0000
+ *       Opcode: Relative Volume Down (0x00)
+ *       Change Counter: 0
+ * ATT: Write Response (0x13) len 0
+ * ATT: Write Request (0x12) len 5
+ *   Handle: 0x0024 Type: Volume Control Point (0x2b7e)
+ *     Data: 040010
+ *       Opcode: Set Absolute Volume (0x04)
+ *       Change Counter: 0
+ *       Volume Setting: 16
+ * ATT: Write Response (0x13) len 0
+ * ATT: Handle Value Notification (0x1b) len 5
+ *   Handle: 0x0021 Type: Volume State (0x2b7d)
+ *     Data: 100001
+ *       Volume Setting: 16
+ *       Mute: 0
+ *       Change Counter: 1
+ */
+#define VCS_CP_NO_CHANGE \
+	IOV_DATA(0x12, 0x24, 0x00, 0x04, 0x00, 0x00), \
+	IOV_DATA(0x13), \
+	IOV_DATA(0x12, 0x24, 0x00, 0x05, 0x00), \
+	IOV_DATA(0x13), \
+	IOV_DATA(0x12, 0x24, 0x00, 0x00, 0x00), \
+	IOV_DATA(0x13), \
+	IOV_DATA(0x12, 0x24, 0x00, 0x04, 0x00, 0x10), \
+	IOV_DATA(0x13), \
+	IOV_NULL, \
+	IOV_DATA(0x1b, 0x21, 0x00, 0x10, 0x00, 0x01)
+
+static void test_vcs_unit_testcases(void)
+{
+	define_test("VCS/SR/CP/BLUEZ-1 [Mute notifies Volume State]",
+					test_server, NULL, VCS_CP_MUTE);
+	define_test("VCS/SR/CP/BLUEZ-2 [No change keeps Change Counter]",
+					test_server, NULL, VCS_CP_NO_CHANGE);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
 	test_vocs_unit_testcases();
 	test_aics_unit_testcases();
+	test_vcs_unit_testcases();
 
 	return tester_run();
 }
