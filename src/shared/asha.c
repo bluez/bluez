@@ -260,6 +260,43 @@ static int asha_send_acp_without_response(struct bt_asha *asha,
 	return 0;
 }
 
+bool bt_asha_set_connection_interval(struct bt_asha *asha, uint16_t interval)
+{
+	struct bt_asha_set *set;
+	struct bt_asha *other = NULL;
+	uint8_t cmd[] = {
+		0x03,		/* STATUS */
+		0x02,		/* LE connection parameter update */
+		0x00,		/* Interval, in 1.25 ms units */
+	};
+	bool success;
+
+	/*
+	 * Android's ASHA document lists only the update type for this STATUS,
+	 * but its hearing aid stack appends the new interval as one more
+	 * byte and sends it to both sides. Reject a value that does not fit
+	 * in that byte instead of truncating it.
+	 */
+	if (!asha || !asha->client || !asha->acp_handle ||
+				interval < 0x0006 || interval > UINT8_MAX)
+		return false;
+
+	cmd[2] = interval;
+	success = asha_send_acp_without_response(asha, cmd, sizeof(cmd)) == 0;
+	set = find_asha_set(asha);
+
+	if (set)
+		other = asha->right_side ? set->left : set->right;
+
+	/* Notify an attached peer even if it has not started streaming yet. */
+	if (other && other != asha && other->client && other->acp_handle) {
+		if (asha_send_acp_without_response(other, cmd, sizeof(cmd)) < 0)
+			success = false;
+	}
+
+	return success;
+}
+
 unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
 								void *user_data)
 {
