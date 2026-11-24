@@ -35,6 +35,7 @@
 #include "rfcomm.h"
 #include "bnep.h"
 #include "att.h"
+#include "obex.h"
 
 #define L2CAP_MODE_BASIC		0x00
 #define L2CAP_MODE_RETRANS		0x01
@@ -1241,6 +1242,19 @@ static void sig_disconn_req(const struct l2cap_frame *frame)
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
+
+	/* The channel is being torn down; drop any OBEX request state
+	 * tracked for it (e.g. PSM 0x1001) so a later reuse of the same
+	 * CID isn't misdecoded. Resolve both endpoints to the same
+	 * direction-independent session key used by obex_packet(), since
+	 * the SCID/DCID values are direction specific.
+	 */
+	obex_remove_session(frame->index, frame->handle,
+			l2cap_chan_key(frame->index, frame->in, frame->handle,
+						le16_to_cpu(pdu->scid)));
+	obex_remove_session(frame->index, frame->handle,
+			l2cap_chan_key(frame->index, !frame->in, frame->handle,
+						le16_to_cpu(pdu->dcid)));
 }
 
 static void sig_disconn_rsp(const struct l2cap_frame *frame)
@@ -2818,7 +2832,11 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 			avdtp_packet(&frame);
 			break;
 		default:
-			packet_hexdump(data, size);
+			if (obex_psm(index, handle, frame.psm))
+				obex_packet(&frame, l2cap_chan_key(index, in,
+								handle, cid));
+			else
+				packet_hexdump(data, size);
 			break;
 		}
 		break;

@@ -49,6 +49,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 				monitor/a2dp.h monitor/a2dp.c \
 				monitor/rfcomm.h monitor/rfcomm.c \
 				monitor/bnep.h monitor/bnep.c \
+				monitor/obex.h monitor/obex.c \
 				monitor/hwdb.h monitor/hwdb.c \
 				monitor/keys.h monitor/keys.c \
 				monitor/analyze.h monitor/analyze.c \

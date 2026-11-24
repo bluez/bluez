@@ -29,6 +29,7 @@
 #include "display.h"
 #include "l2cap.h"
 #include "sdp.h"
+#include "obex.h"
 
 #define MAX_TID 16
 #define MAX_CONT_SIZE 17
@@ -423,7 +424,8 @@ struct cont_data {
 
 static struct cont_data cont_list[MAX_CONT];
 
-static void handle_continuation(struct tid_data *tid, bool nested,
+static void handle_continuation(const struct l2cap_frame *frame,
+			struct tid_data *tid, bool nested,
 			uint16_t bytes, const uint8_t *data, uint16_t size)
 {
 	uint8_t *newdata;
@@ -437,6 +439,7 @@ static void handle_continuation(struct tid_data *tid, bool nested,
 	if (tid->cont[0] == 0x00 && data[bytes] == 0x00) {
 		decode_data_elements(0, 2, data, bytes,
 				nested ? print_attr_lists : print_attr_list);
+		obex_sdp_scan(frame, data, bytes, nested);
 
 		print_continuation(data + bytes, size - bytes);
 		return;
@@ -489,6 +492,8 @@ static void handle_continuation(struct tid_data *tid, bool nested,
 
 		decode_data_elements(0, 2, cont_list[n].data, cont_list[n].size,
 				nested ? print_attr_lists : print_attr_list);
+		obex_sdp_scan(frame, cont_list[n].data, cont_list[n].size,
+								nested);
 
 		free(cont_list[n].data);
 		cont_list[n].data = NULL;
@@ -641,7 +646,7 @@ static void attr_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 
 	bytes = common_rsp(frame, tid);
 
-	handle_continuation(tid, false, bytes,
+	handle_continuation(frame, tid, false, bytes,
 					frame->data + 2, frame->size - 2);
 
 	clear_tid(tid);
@@ -689,7 +694,8 @@ static void search_attr_rsp(const struct l2cap_frame *frame,
 
 	bytes = common_rsp(frame, tid);
 
-	handle_continuation(tid, true, bytes, frame->data + 2, frame->size - 2);
+	handle_continuation(frame, tid, true, bytes, frame->data + 2,
+							frame->size - 2);
 
 	clear_tid(tid);
 }

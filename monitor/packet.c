@@ -47,6 +47,7 @@
 #include "keys.h"
 #include "packet.h"
 #include "l2cap.h"
+#include "obex.h"
 #include "control.h"
 #include "vendor.h"
 #include "msft.h"
@@ -12311,8 +12312,10 @@ static void disconnect_complete_evt(struct timeval *tv, uint16_t index,
 	print_handle(evt->handle);
 	print_reason(evt->reason);
 
-	if (evt->status == 0x00)
+	if (evt->status == 0x00) {
 		release_handle(le16_to_cpu(evt->handle));
+		obex_disconnect_handle(index, le16_to_cpu(evt->handle));
+	}
 }
 
 static void auth_complete_evt(struct timeval *tv, uint16_t index,
