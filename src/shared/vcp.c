@@ -861,6 +861,9 @@ static uint8_t vcs_mute(struct bt_vcs *vcs, struct bt_vcp *vcp,
 	vstate->mute = 0x01;
 	vstate->counter = -~vstate->counter; /*Increment Change Counter*/
 
+	gatt_db_attribute_notify(vdb->vcs->vs, (void *)vstate,
+				 sizeof(struct vol_state),
+				 bt_vcp_get_att(vcp));
 	return 0;
 }
 
