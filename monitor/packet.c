@@ -3763,18 +3763,16 @@ static void print_fec(uint8_t fec)
 
 static void print_manufacturer_apple(const void *data, uint8_t data_len)
 {
-	uint8_t type = *((uint8_t *) data);
+	uint8_t type;
 
 	if (data_len < 1)
 		return;
 
+	type = *((uint8_t *) data);
+
 	if (type == 0x01) {
-		char identifier[100];
-
-		snprintf(identifier, sizeof(identifier) - 1, "%s",
+		print_field("  Identifier: %.*s", data_len - 1,
 						(const char *) (data + 1));
-
-		print_field("  Identifier: %s", identifier);
 		return;
 	}
 
@@ -4103,7 +4101,7 @@ static void print_pbp_announcement(const uint8_t *data, uint8_t data_len)
 	iov.iov_base = (void *) data;
 	iov.iov_len = data_len;
 
-	if (util_iov_pull_u8(&iov, &feat)) {
+	if (!util_iov_pull_u8(&iov, &feat)) {
 		print_text(COLOR_ERROR, "  invalid features");
 		return;
 	}
@@ -4115,7 +4113,7 @@ static void print_pbp_announcement(const uint8_t *data, uint8_t data_len)
 		print_text(COLOR_UNKNOWN_SERVICE_CLASS,
 					"  Unknown feature (0x%2.2x)", mask);
 
-	if (util_iov_pull_u8(&iov, &len)) {
+	if (!util_iov_pull_u8(&iov, &len)) {
 		print_text(COLOR_ERROR, "  invalid metadata length");
 		return;
 	}
@@ -4124,6 +4122,11 @@ static void print_pbp_announcement(const uint8_t *data, uint8_t data_len)
 		return;
 
 	meta.iov_base = util_iov_pull_mem(&iov, len);
+	if (!meta.iov_base) {
+		print_text(COLOR_ERROR, "  invalid metadata");
+		return;
+	}
+
 	meta.iov_len = len;
 
 	bt_bap_debug_metadata(meta.iov_base, meta.iov_len, print_ltv,
@@ -4205,7 +4208,7 @@ static void print_mesh_beacon(const uint8_t *data, uint8_t len)
 	switch (data[0]) {
 	case 0x00:
 		print_field("  Unprovisioned Device Beacon (0x00)");
-		if (len < 18) {
+		if (len < 19) {
 			packet_hexdump(data + 1, len - 1);
 			break;
 		}
@@ -4218,7 +4221,7 @@ static void print_mesh_beacon(const uint8_t *data, uint8_t len)
 		print_bitfield(4, oob, mesh_oob_table);
 
 		if (len < 23) {
-			packet_hexdump(data + 18, len - 18);
+			packet_hexdump(data + 19, len - 19);
 			break;
 		}
 
@@ -4418,7 +4421,7 @@ static void print_eir(const char *label, const uint8_t *eir, uint8_t eir_len,
 		uint8_t field_len = eir[0];
 		const uint8_t *data = &eir[2];
 		uint8_t data_len;
-		char name[239], label[100];
+		char name[255], label[100];
 		uint8_t flags, mask;
 
 		/* Check for the end of EIR */
@@ -4437,6 +4440,8 @@ static void print_eir(const char *label, const uint8_t *eir, uint8_t eir_len,
 
 		switch (eir[1]) {
 		case BT_EIR_FLAGS:
+			if (data_len < 1)
+				break;
 			flags = *data;
 
 			print_field("Flags: 0x%2.2x", flags);
@@ -4534,6 +4539,8 @@ static void print_eir(const char *label, const uint8_t *eir, uint8_t eir_len,
 			break;
 
 		case BT_EIR_SMP_OOB_FLAGS:
+			if (data_len < 1)
+				break;
 			print_field("SMP OOB Flags: 0x%2.2x", *data);
 			break;
 
