@@ -61,6 +61,13 @@ struct btd_profile {
 	 */
 	bool testing;
 
+	/* Indicates the profile shall only be accepted on devices that are
+	 * paired or being paired. Use it for profiles whose remote service
+	 * requires an encrypted link, so that a peer that connects to us
+	 * unpaired is not prompted to pair by our attempts to read it.
+	 */
+	bool paired_only;
+
 	/* Indicates the profile should be ordered after profiles providing
 	 * these remote uuids when connecting. The callback function is called
 	 * when all uuids have finished connecting (successfully or not).
