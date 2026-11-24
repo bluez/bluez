@@ -730,8 +730,17 @@ void media_player_search_complete(struct media_player *mp, int ret)
 	}
 
 	if (search == NULL) {
+		struct media_item *item;
+
+		item = media_player_create_subfolder(mp, "search", 0);
+		if (item == NULL) {
+			reply = btd_error_failed(mp->msg,
+					"Unable to create search folder");
+			goto done;
+		}
+
 		search = g_new0(struct media_folder, 1);
-		search->item = media_player_create_subfolder(mp, "search", 0);
+		search->item = item;
 		mp->search = search;
 		mp->folders = g_slist_prepend(mp->folders, search);
 	}
@@ -749,11 +758,13 @@ done:
 }
 
 void media_player_total_items_complete(struct media_player *mp,
-							uint32_t num_of_items)
+						const char *name,
+						uint32_t num_of_items)
 {
 	struct media_folder *folder = mp->scope;
 
-	if (folder == NULL)
+	/* The scope may have changed while the request was in flight */
+	if (folder == NULL || g_strcmp0(folder->item->name, name) != 0)
 		return;
 
 	if (folder->number_of_items != num_of_items) {
@@ -1867,6 +1878,24 @@ void media_item_set_playable(struct media_item *item, bool value)
 					MEDIA_ITEM_INTERFACE, "Playable");
 }
 
+static void media_item_set_name(struct media_item *item, const char *name)
+{
+	if (name == NULL || g_strcmp0(item->name, name) == 0)
+		return;
+
+	g_free(item->name);
+	item->name = g_strdup(name);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), item->path,
+					MEDIA_ITEM_INTERFACE, "Name");
+
+	/* Without metadata, get_metadata() reports the name as Title */
+	if (item->metadata && g_hash_table_size(item->metadata) == 0)
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					item->path, MEDIA_ITEM_INTERFACE,
+					"Metadata");
+}
+
 static struct media_item *media_folder_create_item(struct media_player *mp,
 						struct media_folder *folder,
 						const char *name,
@@ -1877,8 +1906,14 @@ static struct media_item *media_folder_create_item(struct media_player *mp,
 	const char *strtype;
 
 	item = media_folder_find_item(folder, uid);
-	if (item != NULL)
+	if (item != NULL) {
+		/*
+		 * The item may have been created by
+		 * media_player_set_playlist_item(), which has no name for it.
+		 */
+		media_item_set_name(item, name);
 		return item;
+	}
 
 	strtype = type_to_string(type);
 	if (strtype == NULL)
@@ -1890,11 +1925,23 @@ static struct media_item *media_folder_create_item(struct media_player *mp,
 	item->player = mp;
 	item->uid = uid;
 
-	if (!uid && name[0] == '/')
+	if (!uid && name[0] == '/') {
+		char *c;
+
 		item->path = g_strdup_printf("%s%s", mp->path, name);
-	else
+
+		/* Folder names may contain characters not valid in a path */
+		for (c = item->path + strlen(mp->path); *c; c++) {
+			if (*c == '/' && c[1] != '/' && c[1] != '\0')
+				continue;
+
+			if (!g_ascii_isalnum(*c) && *c != '_')
+				*c = '_';
+		}
+	} else {
 		item->path = g_strdup_printf("%s/item%" PRIu64 "",
 						folder->item->path, uid);
+	}
 
 	item->name = g_strdup(name);
 	item->type = type;
@@ -2028,9 +2075,28 @@ struct media_item *media_player_set_playlist_item(struct media_player *mp,
 
 void media_player_clear_playlist(struct media_player *mp)
 {
+	struct player_callback *cb = mp->cb;
+
 	if (mp->playlist) {
 		g_slist_free_full(mp->playlist->items, media_item_destroy);
 		mp->playlist->items = NULL;
+
+		/*
+		 * The number of items may have changed: leave the end of the
+		 * list to the target until it is known again.
+		 */
+		mp->playlist->number_of_items = 0;
+	}
+
+	if (mp->playlist && mp->scope == mp->playlist) {
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						mp->path,
+						MEDIA_FOLDER_INTERFACE,
+						"NumberOfItems");
+
+		if (cb->cbs->total_items)
+			cb->cbs->total_items(mp, mp->scope->item->name,
+							cb->user_data);
 	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), mp->path,
