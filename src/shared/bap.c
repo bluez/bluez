@@ -4171,6 +4171,7 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
 	} else {
 		DBG(bap, "Unknown opcode 0x%02x", hdr->op);
 		ascs_ase_rsp_add_errno(rsp, 0x00, -ENOTSUP);
+		ret = 0;
 	}
 
 respond:
