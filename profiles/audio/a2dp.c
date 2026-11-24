@@ -1409,7 +1409,10 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!a2dp_stream)
 		return FALSE;
 
-	if (!a2dp_stream->locked)
+	/* Leave suspending a sink stream to the remote source: some phones
+	 * wait for us to resume a stream we suspended.
+	 */
+	if (!a2dp_stream->locked && a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
 		a2dp_stream->suspend_timer = timeout_add_seconds(
 					SUSPEND_TIMEOUT,
 					(timeout_func_t) suspend_timeout,
@@ -3604,7 +3607,8 @@ gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 		/* Set timer here */
 		break;
 	case AVDTP_STATE_STREAMING:
-		if (avdtp_suspend(session, stream->stream) == 0)
+		if (sep->type == AVDTP_SEP_TYPE_SOURCE &&
+				avdtp_suspend(session, stream->stream) == 0)
 			stream->suspending = TRUE;
 		break;
 	case AVDTP_STATE_IDLE:
