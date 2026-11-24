@@ -6423,12 +6423,15 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 								void *user_data)
 {
 	struct btd_device *device = user_data;
+	bool bredr = bt_att_get_link_type(device->att) == BT_ATT_BREDR;
 
 	DBG("status: %s, error: %u", success ? "success" : "failed", att_ecode);
 
+	/* Over BR/EDR, SDP resolves the services of the bearer */
 	if (!success) {
-		device_svc_resolved(device, BROWSE_GATT, device->bdaddr_type,
-									-EIO);
+		if (!bredr)
+			device_svc_resolved(device, BROWSE_GATT,
+						device->bdaddr_type, -EIO);
 		return;
 	}
 
@@ -6436,7 +6439,9 @@ static void gatt_client_ready_cb(bool success, uint8_t att_ecode,
 
 	btd_gatt_client_ready(device->client_dbus);
 
-	device_svc_resolved(device, BROWSE_GATT, device->bdaddr_type, 0);
+	if (!bredr)
+		device_svc_resolved(device, BROWSE_GATT, device->bdaddr_type,
+									0);
 
 	store_gatt_db(device);
 }
