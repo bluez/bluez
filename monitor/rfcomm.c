@@ -31,6 +31,7 @@
 #include "keys.h"
 #include "sdp.h"
 #include "rfcomm.h"
+#include "obex.h"
 
 static const char *cr_str[] = {
 	"RSP",
@@ -390,8 +391,9 @@ static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	uint8_t credits;
 	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
 	struct rfcomm_lhdr *hdr = &rfcomm_frame->hdr;
+	uint8_t channel = RFCOMM_GET_CHANNEL(hdr->address);
 
-	if (!RFCOMM_GET_CHANNEL(hdr->address))
+	if (!channel)
 		return mcc_frame(rfcomm_frame, indent);
 
 	/* fetching credits from UIH frame */
@@ -402,7 +404,11 @@ static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 		print_field("%*cCredits: %d", indent, ' ', hdr->credits);
 	}
 
-	packet_hexdump(frame->data, frame->size);
+	if (obex_channel(frame->index, frame->handle, channel, NULL))
+		obex_packet(frame, channel);
+	else
+		packet_hexdump(frame->data, frame->size);
+
 	return true;
 }
 
@@ -494,9 +500,17 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	print_rfcomm_hdr(&rfcomm_frame, indent);
 
 	/* UIH frame */
-	if (ctype == 0xef)
+	if (ctype == 0xef) {
 		if (!uih_frame(&rfcomm_frame, indent))
 			goto fail;
+	} else if (ctype == 0x43 || ctype == 0x0f) {
+		/* DISC or DM: the RFCOMM channel is being torn down, drop
+		 * any OBEX state tracked for it so a later renegotiation
+		 * of the same channel number isn't misdecoded.
+		 */
+		obex_remove_channel(frame->index, frame->handle,
+					RFCOMM_GET_CHANNEL(hdr.address));
+	}
 
 	return;
 
