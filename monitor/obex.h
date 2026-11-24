@@ -101,7 +101,8 @@
 #define OBEX_HDR_TYPE_UINT8	0x80
 #define OBEX_HDR_TYPE_UINT32	0xc0
 
-void obex_packet(const struct l2cap_frame *frame, uint16_t channel);
+void obex_packet(const struct l2cap_frame *frame, uint16_t channel,
+							uint16_t frag_len);
 
 void obex_add_channel(uint16_t index, uint16_t handle, uint8_t channel,
 							const char *profile);
