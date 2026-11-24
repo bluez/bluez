@@ -10852,6 +10852,19 @@ static void read_exp_features(struct btd_adapter *adapter)
 	btd_error(adapter->dev_id, "Failed to read exp features info");
 }
 
+static void set_ssp(struct btd_adapter *adapter)
+{
+	bool enabled = adapter->current_settings & MGMT_SETTING_SSP;
+
+	if (!(adapter->supported_settings & MGMT_SETTING_SSP))
+		return;
+
+	if (enabled == btd_opts.ssp)
+		return;
+
+	set_mode(adapter, MGMT_OP_SET_SSP, btd_opts.ssp ? 0x01 : 0x00);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -10932,8 +10945,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 			set_mode(adapter, MGMT_OP_SET_LE, 0x01);
 		if (missing_settings & MGMT_SETTING_BREDR)
 			set_mode(adapter, MGMT_OP_SET_BREDR, 0x01);
-		if (missing_settings & MGMT_SETTING_SSP)
-			set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
+
+		set_ssp(adapter);
 		break;
 	case BT_MODE_BREDR:
 		if (!(adapter->supported_settings & MGMT_SETTING_BREDR)) {
@@ -10944,8 +10957,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 		if (missing_settings & MGMT_SETTING_BREDR)
 			set_mode(adapter, MGMT_OP_SET_BREDR, 0x01);
-		if (missing_settings & MGMT_SETTING_SSP)
-			set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
+
+		set_ssp(adapter);
+
 		if (adapter->current_settings & MGMT_SETTING_LE)
 			set_mode(adapter, MGMT_OP_SET_LE, 0x00);
 		break;
