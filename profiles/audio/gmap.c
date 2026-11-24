@@ -169,6 +169,7 @@ static void gmap_adapter_remove(struct btd_profile *p,
 static struct btd_profile gmap_profile = {
 	.name		= "gmap",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+	.bearer		= BTD_PROFILE_BEARER_LE,
 	.remote_uuid	= GMAS_UUID_STR,
 
 	.device_probe	= gmap_probe,
