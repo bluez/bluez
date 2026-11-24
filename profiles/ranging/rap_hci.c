@@ -458,9 +458,6 @@ static void rap_rd_loc_supp_cap_done_cb(const void *data, uint8_t size,
 
 	bt_rap_set_local_sw_time(sm->rap, rsp->t_sw_time_supported);
 
-	/* Transition to INIT state before reading remote capabilities */
-	cs_set_state(sm, CS_STATE_INIT);
-
 	DBG("Sending read remote capabilities for handle 0x%04X",
 		sm->active_conn_handle);
 	bt_rap_read_remote_supported_capabilities(sm, sm->active_conn_handle);
@@ -537,6 +534,16 @@ static void rap_def_settings_done_cb(const void *data, uint8_t size,
 	}
 
 	if (rp->status == 0) {
+		/* A configuration created by the peer may have completed
+		 * while the capabilities were read or this response was
+		 * pending. Do not rewind its state.
+		 */
+		if (cs_get_current_state(sm) != CS_STATE_INIT) {
+			DBG("Setup already advanced to %s",
+				state_names[cs_get_current_state(sm)]);
+			return;
+		}
+
 		cs_set_state(sm, CS_STATE_WAIT_CONFIG_CMPLT);
 
 		/* Only the Initiator creates the config; the Reflector waits
@@ -1826,6 +1833,7 @@ bool bt_rap_start_measurement(void *hci_sm, uint16_t conn_handle,
 			      uint32_t duration_secs)
 {
 	struct cs_state_machine *sm = hci_sm;
+	enum cs_state state;
 
 	if (!sm || !sm->hci)
 		return false;
@@ -1841,6 +1849,22 @@ bool bt_rap_start_measurement(void *hci_sm, uint16_t conn_handle,
 		timeout_remove(sm->measurement_timeout_id);
 		sm->measurement_timeout_id = 0;
 	}
+
+	/* Enter INIT before the asynchronous capability reads, so progress
+	 * made by a configuration created by the peer in the meantime is not
+	 * rewound by their completion. A configuration the peer already
+	 * created before this call (Config Complete does not wait for the
+	 * local setup phase) has moved the state past INIT: keep it, or the
+	 * events that follow would fail their state checks.
+	 */
+	state = cs_get_current_state(sm);
+	if (state == CS_STATE_WAIT_SEC_CMPLT ||
+			state == CS_STATE_WAIT_PROC_CMPLT ||
+			state == CS_STATE_STARTED)
+		DBG("Keeping %s from a peer-created configuration",
+			state_names[state]);
+	else
+		cs_set_state(sm, CS_STATE_INIT);
 
 	if (!bt_rap_read_local_supported_capabilities(sm))
 		return false;
