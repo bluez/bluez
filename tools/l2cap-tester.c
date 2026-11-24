@@ -59,6 +59,7 @@ struct test_data {
 	int step;
 	struct queue *io_channels;
 	struct tx_tstamp_data tx_ts;
+	unsigned int interval_events;
 };
 
 struct l2cap_conn_subrate {
@@ -154,6 +155,7 @@ struct l2cap_data {
 
 	/* Change security level to this after connecting */
 	int change_sec_level;
+	const struct interval_test *interval;
 };
 
 static void print_debug(const char *str, void *user_data)
@@ -4428,6 +4430,193 @@ done:
 	close(sk);
 }
 
+enum interval_event {
+	INTERVAL_EVENT_UPDATE = 0x01,
+	INTERVAL_EVENT_RESPONSE = 0x02,
+};
+
+struct interval_test {
+	uint16_t local_min;
+	uint16_t local_max;
+	uint16_t peer_min;
+	uint16_t peer_max;
+	uint16_t expect_min;
+	uint16_t expect_max;
+	uint16_t peer_latency;
+	uint16_t peer_timeout;
+};
+
+/* Local, peer and selected ranges (1.25 ms), peer latency, timeout (10 ms). */
+static const struct interval_test interval_cases[] = {
+	{ 16, 16, 16, 24, 16, 16, 0, 600 },
+	{ 24, 40, 6, 6, 6, 6, 0, 600 },
+	{ 16, 24, 80, 160, 80, 160, 0, 600 },
+	{ 16, 16, 16, 16, 16, 16, 0, 600 },
+	{ 16, 32, 8, 24, 16, 24, 0, 600 },
+	{ 8, 24, 16, 32, 16, 24, 0, 600 },
+	{ 16, 24, 8, 32, 16, 24, 0, 600 },
+	{ 8, 32, 16, 24, 16, 24, 0, 600 },
+	{ 16, 24, 24, 32, 24, 24, 0, 600 },
+	{ 16, 16, 16, 24, 16, 16, 4, 200 },
+};
+
+static const struct l2cap_data interval_data[] = {
+	{ .interval = &interval_cases[0] },
+	{ .interval = &interval_cases[1] },
+	{ .interval = &interval_cases[2] },
+	{ .interval = &interval_cases[3] },
+	{ .interval = &interval_cases[4] },
+	{ .interval = &interval_cases[5] },
+	{ .interval = &interval_cases[6] },
+	{ .interval = &interval_cases[7] },
+	{ .interval = &interval_cases[8] },
+	{ .interval = &interval_cases[9] },
+};
+
+static void interval_complete(struct test_data *data, enum interval_event event)
+{
+	data->interval_events |= event;
+
+	if (data->interval_events == (INTERVAL_EVENT_UPDATE |
+						INTERVAL_EVENT_RESPONSE))
+		tester_test_passed();
+}
+
+static void interval_command(uint16_t opcode, const void *param, uint8_t len,
+							void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct l2cap_data *l2data = data->test_data;
+	const struct interval_test *test = l2data->interval;
+	const struct bt_hci_cmd_le_conn_update *cp = param;
+
+	if (opcode != BT_HCI_CMD_LE_CONN_UPDATE)
+		return;
+
+	if (len != sizeof(*cp)) {
+		tester_warn("Invalid LE Connection Update length %u", len);
+		tester_test_failed();
+		return;
+	}
+
+	tester_print("LE update: interval %u-%u, latency %u, timeout %u",
+			get_le16(&cp->min_interval), get_le16(&cp->max_interval),
+			get_le16(&cp->latency), get_le16(&cp->supv_timeout));
+
+	if (get_le16(&cp->min_interval) != test->expect_min ||
+			get_le16(&cp->max_interval) != test->expect_max ||
+			get_le16(&cp->latency) != test->peer_latency ||
+			get_le16(&cp->supv_timeout) != test->peer_timeout) {
+		tester_warn("Expected interval %u-%u, latency %u, timeout %u",
+				test->expect_min, test->expect_max,
+				test->peer_latency, test->peer_timeout);
+		tester_test_failed();
+		return;
+	}
+
+	interval_complete(data, INTERVAL_EVENT_UPDATE);
+}
+
+static void interval_response(uint8_t code, const void *param, uint16_t len,
+							void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct bt_l2cap_pdu_conn_param_rsp *rsp = param;
+
+	if (code != BT_L2CAP_PDU_CONN_PARAM_RSP || len != sizeof(*rsp) ||
+						get_le16(&rsp->result)) {
+		tester_warn("Connection Parameter Update was not accepted");
+		tester_test_failed();
+		return;
+	}
+
+	interval_complete(data, INTERVAL_EVENT_RESPONSE);
+}
+
+static void interval_connected(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct l2cap_data *l2data = data->test_data;
+	const struct interval_test *test = l2data->interval;
+	struct bthost *host = hciemu_client_get_host(data->hciemu);
+	struct bt_l2cap_pdu_conn_param_req req = {
+		.min_interval = cpu_to_le16(test->peer_min),
+		.max_interval = cpu_to_le16(test->peer_max),
+		.latency = cpu_to_le16(test->peer_latency),
+		.timeout = cpu_to_le16(test->peer_timeout),
+	};
+
+	if (!bthost_l2cap_req(host, handle, BT_L2CAP_PDU_CONN_PARAM_REQ,
+				&req, sizeof(req), interval_response, data))
+		tester_test_failed();
+}
+
+static void interval_loaded(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bthost *host = hciemu_client_get_host(data->hciemu);
+	struct tester_io *io;
+	int sk;
+
+	if (status) {
+		tester_warn("Could not load connection preferences");
+		tester_test_failed();
+		return;
+	}
+
+	bthost_set_connect_cb(host, interval_connected, data);
+	bthost_add_l2cap_server(host, 0x0080, NULL, NULL, NULL);
+
+	if (!hciemu_add_central_post_command_hook(data->hciemu,
+						interval_command, data)) {
+		tester_test_failed();
+		return;
+	}
+
+	sk = create_l2cap_sock(data, 0, 0, 0, BT_MODE_LE_FLOWCTL);
+
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	if (connect_l2cap_sock(data, sk, 0x0080, 0) < 0) {
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	io = tester_io_new(sk);
+	tester_io_set_close_on_unref(io, true);
+	data->io_channels = queue_new();
+	queue_push_tail(data->io_channels, io);
+}
+
+static void test_interval_preferences(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	const struct interval_test *test = l2data->interval;
+	uint8_t buf[sizeof(struct mgmt_cp_load_conn_param) +
+						sizeof(struct mgmt_conn_param)];
+	struct mgmt_cp_load_conn_param *cp = (void *) buf;
+	struct mgmt_conn_param *param = cp->params;
+
+	memset(buf, 0, sizeof(buf));
+	cp->param_count = cpu_to_le16(1);
+	memcpy(&param->addr.bdaddr, hciemu_get_client_bdaddr(data->hciemu),
+						sizeof(param->addr.bdaddr));
+	param->addr.type = BDADDR_LE_PUBLIC;
+	param->min_interval = cpu_to_le16(test->local_min);
+	param->max_interval = cpu_to_le16(test->local_max);
+	param->timeout = cpu_to_le16(600);
+
+	if (!mgmt_send(data->mgmt, MGMT_OP_LOAD_CONN_PARAM, data->mgmt_index,
+				sizeof(buf), buf, interval_loaded, data, NULL))
+		tester_test_failed();
+}
+
 static void test_l2cap_ethtool_get_ts_info(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -4438,6 +4627,28 @@ static void test_l2cap_ethtool_get_ts_info(const void *test_data)
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
+
+	test_l2cap_le("L2CAP Interval - Prefer overlap", &interval_data[0],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Fast HID fallback", &interval_data[1],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Slow idle fallback", &interval_data[2],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Exact match", &interval_data[3],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Lower overlap", &interval_data[4],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Upper overlap", &interval_data[5],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Local range contained", &interval_data[6],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Peer range contained", &interval_data[7],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Shared endpoint", &interval_data[8],
+			setup_powered_client, test_interval_preferences);
+	test_l2cap_le("L2CAP Interval - Preserve latency and timeout",
+			&interval_data[9], setup_powered_client,
+			test_interval_preferences);
 
 	test_l2cap_bredr("Basic L2CAP Socket - Success", NULL,
 					setup_powered_client, test_basic);
