@@ -36,6 +36,7 @@
 
 #include "log.h"
 #include "logind.h"
+#include "manager.h"
 #include "obexd.h"
 #include "server.h"
 
@@ -258,6 +259,8 @@ int main(int argc, char *argv[])
 {
 	GOptionContext *context;
 	GError *err = NULL;
+	DBusError dbus_err;
+	sigset_t pending;
 	guint signal;
 
 	context = g_option_context_new(NULL);
@@ -327,8 +330,45 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 * Signals are masked in setup_signalfd() before plugin_init() so
+	 * worker threads inherit the mask, and are not dispatched until the
+	 * main loop runs. Skip claiming the bus name if termination is
+	 * already pending.
+	 */
+	sigemptyset(&pending);
+
+	if (sigpending(&pending) == 0 && (sigismember(&pending, SIGINT) ||
+					sigismember(&pending, SIGTERM))) {
+		info("Terminating");
+		goto done;
+	}
+
+	/*
+	 * Request the well-known name only now that all plugins and servers
+	 * are initialised. Several of them perform blocking D-Bus round trips
+	 * during init: the ebook phonebook backend activates Evolution Data
+	 * Server and the bluetooth plugin connects to the system bus. Owning
+	 * the name earlier made clients see obexd on the bus while it could
+	 * not answer any request yet, so synchronous clients timed out.
+	 */
+	dbus_error_init(&dbus_err);
+
+	if (!g_dbus_request_name(connection, OBEXD_SERVICE, &dbus_err)) {
+		if (dbus_error_is_set(&dbus_err)) {
+			error("Failed to request name %s: %s", OBEXD_SERVICE,
+							dbus_err.message);
+			dbus_error_free(&dbus_err);
+		} else {
+			error("Failed to request name %s", OBEXD_SERVICE);
+		}
+
+		exit(EXIT_FAILURE);
+	}
+
 	g_main_loop_run(main_loop);
 
+done:
 	g_source_remove(signal);
 
 	client_manager_exit();
