@@ -1,0 +1,34 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2011-2014  Intel Corporation
+ *  Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ */
+
+#include <stdint.h>
+
+struct vendor_ocf {
+	uint16_t ocf;
+	const char *str;
+	void (*cmd_func) (uint16_t index, const void *data, uint8_t size);
+	uint8_t cmd_size;
+	bool cmd_fixed;
+	void (*rsp_func) (uint16_t index, const void *data, uint8_t size);
+	uint8_t rsp_size;
+	bool rsp_fixed;
+};
+
+struct evt_vendor {
+	uint8_t evt;
+	const char *str;
+	void (*evt_func) (struct timeval *tv, uint16_t index,
+				const void *data, uint8_t size);
+	uint8_t evt_size;
+	bool evt_fixed;
+};
+
+void event_vendor(uint16_t manufacturer, const void *data, uint8_t size);

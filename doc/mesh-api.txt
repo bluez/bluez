@@ -1,0 +1,1375 @@
+BlueZ D-Bus Mesh API description
+********************************
+
+Mesh Network Hierarchy
+======================
+Service		org.bluez.mesh
+Interface	org.bluez.mesh.Network1
+Object path	/org/bluez/mesh
+
+Methods:
+	void Join(object app_root, array{byte}[16] uuid)
+
+		This is the first method that an application has to call to
+		become a provisioned node on a mesh network. The call will
+		initiate broadcasting of Unprovisioned Device Beacon.
+
+		The app_root parameter is a D-Bus object root path of
+		the application that implements org.bluez.mesh.Application1
+		interface. The application represents a node where child mesh
+		elements have their own objects that implement
+		org.bluez.mesh.Element1 interface. The application hierarchy
+		also contains a provision agent object that implements
+		org.bluez.mesh.ProvisionAgent1 interface. The standard
+		DBus.ObjectManager interface must be available on the
+		app_root path.
+
+		The uuid parameter is a 16-byte array that contains Device UUID.
+		This UUID must be unique (at least from the daemon perspective),
+		therefore attempting to call this function using already
+		registered UUID results in an error. The composition of the UUID
+		octets must be in compliance with RFC 4122.
+
+		When provisioning finishes, the daemon will call either
+		JoinComplete or JoinFailed method on object implementing
+		org.bluez.mesh.Application1 interface.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.AlreadyExists,
+
+	void Cancel(void)
+
+		Cancels an outstanding provisioning request initiated by Join()
+		method.
+
+	object node, array{byte, array{(uint16, dict)}} configuration
+			Attach(object app_root, uint64 token)
+
+		This is the first method that an application must call to get
+		access to mesh node functionalities.
+
+		The app_root parameter is a D-Bus object root path of
+		the application that implements org.bluez.mesh.Application1
+		interface. The application represents a node where child mesh
+		elements have their own objects that implement
+		org.bluez.mesh.Element1 interface. The standard
+		DBus.ObjectManager interface must be available on the
+		app_root path.
+
+		The token parameter is a 64-bit number that has been assigned to
+		the application when it first got provisioned/joined mesh
+		network, i.e. upon receiving JoinComplete() method. The daemon
+		uses the token to verify whether the application is authorized
+		to assume the mesh node identity.
+
+		In case of success, the method call returns mesh node object
+		(see Mesh Node Hierarchy section) and current configuration
+		settings. The return value of configuration parameter is an
+		array, where each entry is a structure that contains element
+		configuration. The element configuration structure is organized
+		as follows:
+
+		byte
+
+			Element index, identifies the element to which this
+			configuration entry pertains.
+
+		array{struct}
+
+			Models array where each entry is a structure with the
+			following members:
+
+			uint16
+
+				Either a SIG Model Identifier or, if Vendor key
+				is present in model configuration dictionary, a
+				16-bit vendor-assigned Model Identifier
+
+			dict
+
+				A dictionary that contains model configuration
+				with the following keys defined:
+
+				array{uint16} Bindings
+
+					Indices of application keys bound to the
+					model
+
+				uint32 PublicationPeriod
+
+					Model publication period in milliseconds
+
+				uint16 Vendor
+
+					A 16-bit Company ID as defined by the
+					Bluetooth SIG
+
+				array{variant} Subscriptions
+
+					Addresses the model is subscribed to.
+
+					Each address is provided either as
+					uint16 for group addresses, or
+					as array{byte} for virtual labels.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotFound,
+			org.bluez.mesh.Error.AlreadyExists,
+			org.bluez.mesh.Error.Busy,
+			org.bluez.mesh.Error.Failed
+
+	void Leave(uint64 token)
+
+		This removes the configuration information about the mesh node
+		identified by the 64-bit token parameter. The token parameter
+		has been obtained as a result of successful Join() method call.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotFound
+			org.bluez.mesh.Error.Busy
+
+	void CreateNetwork(object app_root, array{byte}[16] uuid)
+
+		This is the first method that an application calls to become
+		a Provisioner node, and a Configuration Client on a newly
+		created Mesh Network.
+
+		The app_root parameter is a D-Bus object root path of the
+		application that implements org.bluez.mesh.Application1
+		interface, and a org.bluez.mesh.Provisioner1 interface. The
+		application represents a node where child mesh elements have
+		their own objects that implement org.bluez.mesh.Element1
+		interface. The application hierarchy also contains a provision
+		agent object that implements org.bluez.mesh.ProvisionAgent1
+		interface. The standard DBus.ObjectManager interface must be
+		available on the app_root path.
+
+		The uuid parameter is a 16-byte array that contains Device UUID.
+		This UUID must be unique (at least from the daemon perspective),
+		therefore attempting to call this function using already
+		registered UUID results in an error. The composition of the UUID
+		octets must be in compliance with RFC 4122.
+
+		The other information the bluetooth-meshd daemon will preserve
+		about the initial node, is to give it the initial primary
+		unicast address (0x0001), and create and assign a net_key as the
+		primary network net_index (0x000).
+
+		Upon successful processing of Create() method, the daemon
+		will call JoinComplete method on object implementing
+		org.bluez.mesh.Application1.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.AlreadyExists,
+
+	void Import(object app_root, array{byte}[16] uuid,
+				array{byte}[16] dev_key,
+				array{byte}[16] net_key, uint16 net_index,
+				dict flags, uint32 iv_index, uint16 unicast)
+
+		This method creates a local mesh node based on node
+		configuration that has been generated outside bluetooth-meshd.
+
+		The app_root parameter is a D-Bus object root path of the
+		application that implements org.bluez.mesh.Application1
+		interface.
+
+		The uuid parameter is a 16-byte array that contains Device UUID.
+		This UUID must be unique (at least from the daemon perspective),
+		therefore attempting to call this function using already
+		registered UUID results in an error. The composition of the UUID
+		octets must be in compliance with RFC 4122.
+
+		The dev_key parameter is the 16-byte value of the dev key of
+		the imported mesh node.
+
+		Remaining parameters correspond to provisioning data:
+
+		The net_key and net_index parameters describe the network (or a
+		subnet, if net_index is not 0) the imported mesh node belongs
+		to.
+
+		The flags parameter is a dictionary containing provisioning
+		flags. Supported values are:
+
+			boolean IvUpdate
+
+				When true, indicates that the network is in the
+				middle of IV Index Update procedure.
+
+			boolean KeyRefresh
+
+				When true, indicates that the specified net key
+				is in the middle of a key refresh procedure.
+
+		The iv_index parameter is the current IV Index value used by
+		the network. This value is known by the provisioner.
+
+		The unicast parameter is the primary unicast address of the
+		imported node.
+
+		Upon successful processing of Import() method, the daemon will
+		call JoinComplete method on object implementing
+		org.bluez.mesh.Application1 interface.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments,
+			org.bluez.mesh.Error.AlreadyExists,
+			org.bluez.mesh.Error.NotSupported,
+			org.bluez.mesh.Error.Failed
+
+Mesh Node Hierarchy
+===================
+Service		org.bluez.mesh
+Interface	org.bluez.mesh.Node1
+Object path	/org/bluez/mesh/node<uuid>
+		where <uuid> is the Device UUID passed to Join(),
+		CreateNetwork() or Import()
+
+Methods:
+	void Send(object element_path, uint16 destination, uint16 key_index,
+						dict options, array{byte} data)
+
+		This method is used to send a message originated by a local
+		model.
+
+		The element_path parameter is the object path of an element from
+		a collection of the application elements (see Mesh Application
+		Hierarchy section).
+
+		The destination parameter contains the destination address. This
+		destination must be a uint16 to a unicast address, or a well
+		known group address.
+
+		The key_index parameter determines which application key to use
+		for encrypting the message. The key_index must be valid for that
+		element, i.e., the application key must be bound to a model on
+		this element. Otherwise, org.bluez.mesh.Error.NotAuthorized will
+		be returned.
+
+		The options parameter is a dictionary with the following keys
+		defined:
+
+			bool ForceSegmented
+				Specifies whether to force sending of a short
+				message as one-segment payload. If not present,
+				the default setting is "false".
+
+		The data parameter is an outgoing message to be encrypted by the
+		bluetooth-meshd daemon and sent on.
+
+		Possible errors:
+			org.bluez.mesh.Error.NotAuthorized
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotFound
+
+	void DevKeySend(object element_path, uint16 destination, boolean remote,
+			uint16 net_index, dict options, array{byte} data)
+
+		This method is used to send a message originated by a local
+		model encoded with the device key of the remote node.
+
+		The element_path parameter is the object path of an element from
+		a collection of the application elements (see Mesh Application
+		Hierarchy section).
+
+		The destination parameter contains the destination address. This
+		destination must be a uint16 to a unicast address, or a well
+		known group address.
+
+		The remote parameter, if true, looks up the device key by the
+		destination address in the key database to encrypt the message.
+		If remote is true, but requested key does not exist, a NotFound
+		error will be returned. If set to false, the local node's
+		device key is used.
+
+		The net_index parameter is the subnet index of the network on
+		which the message is to be sent.
+
+		The options parameter is a dictionary with the following keys
+		defined:
+
+			bool ForceSegmented
+				Specifies whether to force sending of a short
+				message as one-segment payload. If not present,
+				the default setting is "false".
+
+		The data parameter is an outgoing message to be encrypted by the
+		meshd daemon and sent on.
+
+		Possible errors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotFound
+
+	void AddNetKey(object element_path, uint16 destination,
+			uint16 subnet_index, uint16 net_index, boolean update)
+
+		This method is used to send add or update network key originated
+		by the local configuration client to a remote configuration
+		server.
+
+		The element_path parameter is the object path of an element from
+		a collection of the application elements (see Mesh Application
+		Hierarchy section).
+
+		The destination parameter contains the destination address. This
+		destination must be a uint16 to a nodes primary unicast address.
+
+		The subnet_index parameter refers to the subnet index of the
+		network that is being added or updated. This key must exist in
+		the local key database.
+
+		The net_index parameter is the subnet index of the network on
+		which the message is to be sent.
+
+		The update parameter indicates if this is an addition or an
+		update. If true, the subnet key must be in the phase 1 state of
+		the key update procedure.
+
+		Possible errors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotFound
+
+	void AddAppKey(object element_path, uint16 destination,
+			uint16 app_index, uint16 net_index, boolean update)
+
+		This method is used to send add or update network key originated
+		by the local configuration client to a remote configuration
+		server.
+
+		The element_path parameter is the object path of an element from
+		a collection of the application elements (see Mesh Application
+		Hierarchy section).
+
+		The destination parameter contains the destination address. This
+		destination must be a uint16 to a nodes primary unicast address.
+
+		The app_index parameter refers to the application key which is
+		being added or updated. This key must exist in the local key
+		database.
+
+		The net_index parameter is the subnet index of the network on
+		which the message is to be sent.
+
+		The update parameter indicates if this is an addition or an
+		update. If true, the subnet key must be in the phase 1 state of
+		the key update procedure.
+
+		Possible errors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotFound
+
+	void Publish(object element_path, uint16 model, dict options,
+							array{byte} data)
+
+		This method is used to send a publication originated by a local
+		model. If the model does not exist, or it has no publication
+		record, the method returns org.bluez.mesh.Error.DoesNotExist
+		error.
+
+		The element_path parameter is the object path of an element from
+		a collection of the application elements (see Mesh Application
+		Hierarchy section).
+
+		The model parameter contains a model ID, as defined by the
+		Bluetooth SIG. If the options dictionary contains a "Vendor"
+		key, then this ID is defined by the specified vendor.
+
+		The options parameter is a dictionary with the following keys
+		defined:
+
+			bool ForceSegmented
+				Specifies whether to force sending of a short
+				message as one-segment payload. If not present,
+				the default setting is "false".
+
+			uint16 Vendor
+				A 16-bit Company ID as defined by the
+				Bluetooth SIG. This key should only exist when
+				publishing on a Vendor defined model.
+
+		The data parameter is an outgoing message to be encrypted by the
+		meshd daemon and sent on.
+
+		Since only one Publish record may exist per element-model, the
+		destination and key_index are obtained from the Publication
+		record cached by the daemon.
+
+		Possible errors:
+			org.bluez.mesh.Error.DoesNotExist
+			org.bluez.mesh.Error.InvalidArguments
+
+
+Properties:
+	dict Features [read-only]
+
+		The dictionary that contains information about feature support.
+		The following keys are defined:
+
+		boolean Friend
+
+			Indicates the ability to establish a friendship with a
+			Low Power node
+
+		boolean LowPower
+
+			Indicates support for operating in Low Power node mode
+
+		boolean Proxy
+
+			Indicates support for GATT proxy
+
+		boolean Relay
+			Indicates support for relaying messages
+
+	If a key is absent from the dictionary, the feature is not supported.
+	Otherwise, true means that the feature is enabled and false means that
+	the feature is disabled.
+
+	boolean Beacon [read-only]
+
+		This property indicates whether the periodic beaconing is
+		enabled (true) or disabled (false).
+
+	boolean IvUpdate [read-only]
+
+		When true, indicates that the network is in the middle of IV
+		Index Update procedure. This information is only useful for
+		provisioning.
+
+	uint32 IvIndex [read-only]
+
+		This property may be read at any time to determine the IV_Index
+		that the current network is on. This information is only useful
+		for provisioning.
+
+	uint32 SecondsSinceLastHeard [read-only]
+
+		This property may be read at any time to determine the number of
+		seconds since mesh network layer traffic was last detected on
+		this node's network.
+
+	array{uint16} Addresses [read-only]
+
+		This property contains unicast addresses of node's elements.
+
+	uint32 SequenceNumber [read-only]
+
+		This property may be read at any time to determine the
+		sequence number.
+
+Mesh Provisioning Hierarchy
+============================
+Service		org.bluez.mesh
+Interface	org.bluez.mesh.Management1
+Object path	/org/bluez/mesh/node<uuid>
+		where <uuid> is the Device UUID passed to Join(),
+		CreateNetwork() or Import()
+
+Methods:
+	void UnprovisionedScan(dict options)
+
+		This method is used by the application that supports
+		org.bluez.mesh.Provisioner1 interface to start listening
+		(scanning) for unprovisioned devices in the area.
+
+		The options parameter is a dictionary with the following keys
+		defined:
+
+		uint16 Seconds
+			Specifies number of seconds for scanning to be active.
+			If set to 0 or if this key is not present, then the
+			scanning will continue until UnprovisionedScanCancel()
+			or AddNode() methods are called. If not present, and a
+			remote server is specified, the default timeout will be
+			60 seconds.
+
+		uint16 Server
+			Specifies a remote server on which to perform scanning.
+			If not present, scanning will be local. If present,
+			the timeout must be between 1 and 60 seconds.
+
+		uint16 Subnet
+			Specifies a subnet for the remote server. If not
+			present, primary subnet will be used. If Server not
+			present, the Subnet will be ignored.
+
+		array{byte}[16] Filter
+			Specifies a specific UUID to search for. If not
+			present, all found UUIDs will be returned.
+
+		uint8 array Extended
+			Specifies variable number of Bluetooth AD types to
+			return with scan result. Only valid if a Filter has been
+			specified.
+
+		Each time a unique unprovisioned beacon is heard, the
+		ScanResult() method on the app will be called with the result.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotAuthorized
+			org.bluez.mesh.Error.Busy
+
+	void UnprovisionedScanCancel(void)
+
+		This method is used by the application that supports
+		org.bluez.mesh.Provisioner1 interface to stop listening
+		(scanning) for unprovisioned devices in the area.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotAuthorized
+
+	void AddNode(array{byte}[16] uuid, dict options)
+
+		This method is used by the application that supports
+		org.bluez.mesh.Provisioner1 interface to add the
+		unprovisioned device specified by uuid, to the Network.
+
+		The uuid parameter is a 16-byte array that contains Device UUID
+		of the unprovisioned device to be added to the network.
+
+		The options parameter is a dictionary that may contain
+		additional optional configuration info:
+
+		uint16 Server
+			Specifies a remote server to perform provisioning on. If
+			not present, provisioning will be done locally.
+
+		uint16 Subnet
+			Specifies a subnet for the remote server. If not
+			present, primary subnet will be used. If Server not
+			present Subnet will be ignored.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotAuthorized
+
+	void Reprovision(uint16 unicast, dict options)
+
+		This method is used by the application that supports
+		org.bluez.mesh.Provisioner1 interface to perform one of the
+		Node Provisioning Protocol Interface procedures with a remote
+		node to refresh its device key, unicast address, and
+		composition. Remote node being reprovisioned must have the
+		Remote Provisioning Server model.
+
+		The unicast parameter is the 16-bit primary node address of
+		the remote node being reprovisioned.
+
+		The options parameter is a dictionary that may contain
+		additional optional configuration info:
+
+		uint8 NPPI
+			Specifies the Node Provisioning Protocol Interface
+			procedure, as defined in the Mesh Profile Specification:
+				0 - Device Key Refresh Only
+				1 - Node Address Refresh
+				2 - Node Composition Refresh
+
+			If not present, procedure 0 will be used.
+
+		uint16 Subnet
+			Specifies the subnet remote node is on. If not
+			present, primary subnet will be tried.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.NotAuthorized
+
+	void CreateSubnet(uint16 net_index)
+
+		This method is used by the application to generate and add a new
+		network subnet key.
+
+		The net_index parameter is a 12-bit value (0x001-0xFFF)
+		specifying which net key to add.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.AlreadyExists
+
+	void ImportSubnet(uint16 net_index, array{byte}[16] net_key)
+
+		This method is used by the application to add a network subnet
+		key, that was originally generated by a remote Config Client.
+
+		The net_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which net key to add.
+
+		The net_key parameter is the 16-byte value of the net key being
+		imported.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.AlreadyExists
+
+	void UpdateSubnet(uint16 net_index)
+
+		This method is used by the application to generate a new network
+		subnet key, and set it's key refresh state to Phase 1.
+
+		The net_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which net key to update. Note that the subnet must
+		exist prior to updating.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.DoesNotExist
+			org.bluez.mesh.Error.Busy
+
+	void DeleteSubnet(uint16 net_index)
+
+		This method is used by the application that to delete a subnet.
+
+		The net_index parameter is a 12-bit value (0x001-0xFFF)
+		specifying which net key to delete. The primary net key (0x000)
+		may not be deleted.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+
+	void SetKeyPhase(uint16 net_index, uint8 phase)
+		This method is used to set the flooding key update phase of the
+		given subnet. When finalizing the procedure, it is important
+		to CompleteAppKeyUpdate() on all app keys that have been
+		updated during the procedure prior to setting phase 3.
+
+		The net_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which subnet phase to set.
+
+		The phase parameter is used to cycle the local key database
+		through the phases as defined by the Mesh Profile Specification.
+		Allowed values:
+			0 - Cancel Key Refresh (May only be called from Phase 1,
+				and should never be called once the new key has
+				started propagating)
+			1 - Invalid Argument (see NetKeyUpdate method)
+			2 - Go to Phase 2 (May only be called from Phase 1)
+			3 - Complete Key Refresh procedure (May only be called
+				from Phase 2)
+
+		This call affects the local bluetooth-meshd key database only.
+		It is the responsibility of the application to maintain the key
+		refresh phases per the Mesh Profile Specification.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.DoesNotExist
+
+	void CreateAppKey(uint16 net_index, uint16 app_index)
+
+		This method is used by the application to generate and add a new
+		application key.
+
+		The net_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which net key to bind the application key to.
+
+		The app_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which app key to add.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.AlreadyExists
+			org.bluez.mesh.Error.DoesNotExist
+
+	void ImportAppKey(uint16 net_index, uint16 app_index,
+						array{byte}[16] app_key)
+
+		This method is used by the application to add an application
+		key, that was originally generated by a remote Config Client.
+
+		The net_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which net key to bind the application key to.
+
+		The app_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which app key to import.
+
+		The app_key parameter is the 16-byte value of the key being
+		imported.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.AlreadyExists
+			org.bluez.mesh.Error.DoesNotExist
+
+	void UpdateAppKey(uint16 app_index)
+
+		This method is used by the application to generate a new
+		application key.
+
+		The app_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which app key to update. Note that the subnet that
+		the key is bound to must exist and be in Phase 1.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+			org.bluez.mesh.Error.DoesNotExist
+			org.bluez.mesh.Error.InProgress
+
+	void DeleteAppKey(uint16 app_index)
+
+		This method is used by the application to delete an application
+		key.
+
+		The app_index parameter is a 12-bit value (0x000-0xFFF)
+		specifying which app key to delete.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+
+	void ImportRemoteNode(uint16 primary, uint8 count,
+					array{byte}[16] device_key)
+
+		This method is used by the application to import a remote node
+		that has been provisioned by an external process.
+
+		The primary parameter specifies the unicast address of the
+		the node being imported.
+
+		The count parameter specifies the number of elements that are
+		assigned to this remote node.
+
+		The device_key parameter is the access layer key that will be
+		used to decrypt privileged messages from this remote node.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		It is an error to call this with address range overlapping
+		with local element addresses.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Failed
+			org.bluez.mesh.Error.InvalidArguments
+
+	void DeleteRemoteNode(uint16 primary, uint8 count)
+
+		This method is used by the application to delete a remote node
+		from the local device key database.
+
+		The primary parameter specifies the unicast address of the
+		the node being deleted.
+
+		The count parameter specifies the number of elements that were
+		assigned to the remote node.
+
+		This call affects the local bluetooth-meshd key database only.
+
+		It is an error to call this with address range overlapping
+		with local element addresses.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.InvalidArguments
+
+	dict ExportKeys(void)
+
+		This method is used by the application to export information
+		about network keys, application keys and device keys present
+		in the local key database.
+
+		dict
+			A dictionary that contains information for the keys
+			stored in the keyring with the following keys defined:
+
+			NetKeys:
+				array{struct} net_keys:
+
+				uint16 index
+					Subnet index
+
+				array{byte}[16] key
+
+				dict:
+					A dictionary that contains optional
+					key info with the following keys
+					defined:
+
+					uint8 Phase
+						Key Refresh phase of the subnet
+
+					array{byte}[16] OldKey
+
+					array{struct} AppKeys:
+
+						uint16 index
+
+							Application key index
+
+						array{byte}[16] key
+
+						dict:
+							A dictionary of optional
+							key info with the
+							following keys defined:
+
+							array{byte}[16] OldKey
+
+			DevKeys:
+				array{struct} dev_keys:
+
+				Device Key information for known remote
+				nodes in the configured Mesh network
+
+				uint16 unicast
+
+					Unicast address of the node's primary
+					element
+
+				array{byte}[16] key
+
+Mesh Application Hierarchy
+==========================
+Service		unique name
+Interface	org.bluez.mesh.Application1
+Object path	<app_root>
+
+An application is a collection of elements that host SIG defined and vendor
+specific models. It is expected that an application implements
+org.freedesktop.DBus.ObjectManager interface at app_root path.
+
+An example mesh application hierarchy may look like this:
+
+-> /com/example
+  |   - org.freedesktop.DBus.ObjectManager
+  |
+  -> /com/example/application
+  |   - org.bluez.mesh.Application1
+  |   - org.bluez.mesh.Attention1 (optional)
+  |   - org.bluez.mesh.Provisioner1 (optional,Provisioner)
+  |
+  -> /com/example/agent
+  |   - org.bluez.mesh.ProvisionAgent1
+  |
+  -> /com/example/ele00
+  |   - org.bluez.mesh.Element1
+  |
+  -> /com/example/ele01
+  |   - org.bluez.mesh.Element1
+  |
+  ...
+  -> /com/example/elexx
+      - org.bluez.mesh.Element1
+
+Methods:
+	void JoinComplete(uint64 token)
+
+		This method is called when the node provisioning initiated
+		by a Join() method call successfully completed.
+
+		The token parameter serves as a unique identifier of the
+		particular node. The token must be preserved by the application
+		in order to authenticate itself to the mesh daemon and attach to
+		the network as a mesh node by calling Attach() method or
+		permanently remove the identity of the mesh node by calling
+		Leave() method.
+
+		If this method returns an error, the daemon will assume that the
+		application failed to preserve the token, and will remove the
+		freshly created node.
+
+	void JoinFailed(string reason)
+
+		This method is called when the node provisioning initiated by
+		Join() has failed.
+
+		The reason parameter identifies the reason for provisioning
+		failure. The defined values are: "timeout", "bad-pdu",
+		"confirmation-failed", "out-of-resources", "decryption-error",
+		"unexpected-error", "cannot-assign-addresses".
+
+Properties:
+	uint16 CompanyID [read-only]
+
+		A 16-bit Bluetooth-assigned Company Identifier of the vendor as
+		defined by Bluetooth SIG
+
+	uint16 ProductID [read-only]
+
+		A 16-bit vendor-assigned product identifier
+
+	uint16 VersionID [read-only]
+
+		A 16-bit vendor-assigned product version identifier
+
+	uint16 CRPL [read-only, optional]
+
+		A 16-bit minimum number of replay protection list entries
+
+
+Mesh Element Hierarchy
+======================
+Service		unique name
+Interface	org.bluez.mesh.Element1
+Object path	<app_defined_element_path>
+
+Methods:
+	void MessageReceived(uint16 source, uint16 key_index,
+					variant destination, array{byte} data)
+
+		This method is called by bluetooth-meshd daemon when a message
+		arrives addressed to the application.
+
+		The source parameter is unicast address of the remote
+		node-element that sent the message.
+
+		The key_index parameter indicates which application key has been
+		used to decode the incoming message. The same key_index should
+		be used by the application when sending a response to this
+		message (in case a response is expected).
+
+		The destination parameter contains the destination address of
+		received message. Underlying variant types are:
+
+		uint16
+
+			Destination is an unicast address, or a well known
+			group address
+
+		array{byte}
+
+			Destination is a virtual address label
+
+		The data parameter is the incoming message.
+
+	void DevKeyMessageReceived(uint16 source, boolean remote,
+					uint16 net_index, array{byte} data)
+
+		This method is called by meshd daemon when a message arrives
+		addressed to the application, which was sent with the remote
+		node's device key.
+
+		The source parameter is unicast address of the remote
+		node-element that sent the message.
+
+		The remote parameter if true indicates that the device key
+		used to decrypt the message was from the sender. False
+		indicates that the local nodes device key was used, and the
+		message has permissions to modify local states.
+
+		The net_index parameter indicates what subnet the message was
+		received on, and if a response is required, the same subnet
+		must be used to send the response.
+
+		The data parameter is the incoming message.
+
+	void UpdateModelConfiguration(uint16 model_id, dict config)
+
+		This method is called by bluetooth-meshd daemon when a model's
+		configuration is updated.
+
+		The model_id parameter contains BT SIG Model Identifier or, if
+		Vendor key is present in config dictionary, a 16-bit
+		vendor-assigned Model Identifier.
+
+		The config parameter is a dictionary with the following keys
+		defined:
+
+		array{uint16} Bindings
+
+			Indices of application keys bound to the model
+
+		uint32 PublicationPeriod
+
+			Model publication period in milliseconds
+
+		uint16 Vendor
+
+			A 16-bit Bluetooth-assigned Company Identifier of the
+			vendor as defined by Bluetooth SIG
+
+		array{variant} Subscriptions
+
+			Addresses the model is subscribed to.
+
+			Each address is provided either as uint16 for group
+			addresses, or as array{byte} for virtual labels.
+
+Properties:
+	uint8 Index [read-only]
+
+		Element index. It is required that the application follows
+		sequential numbering scheme for the elements, starting with 0.
+
+	array{(uint16 id, dict options)} Models [read-only]
+
+		An array of SIG Models:
+
+			id - SIG Model Identifier
+
+			options - a dictionary that may contain additional model
+			info. The following keys are defined:
+
+				boolean Publish - indicates whether the model
+					supports publication mechanism. If not
+					present, publication is enabled.
+
+				boolean Subscribe - indicates whether the model
+					supports subscription mechanism. If not
+					present, subscriptons are enabled.
+
+		The array may be empty.
+
+
+	array{(uint16 vendor, uint16 id, dict options)} VendorModels [read-only]
+
+		An array of Vendor Models:
+
+			vendor - a 16-bit Bluetooth-assigned Company ID as
+			defined by Bluetooth SIG.
+
+			id - a 16-bit vendor-assigned Model Identifier
+
+			options - a dictionary that may contain additional model
+			info. The following keys are defined:
+
+				boolean Publish - indicates whether the model
+					supports publication mechanism
+
+				boolean Subscribe - indicates whether the model
+					supports subscription mechanism
+
+		The array may be empty.
+
+	uint16 Location [read-only, optional]
+
+		Location descriptor as defined in the GATT Bluetooth Namespace
+		Descriptors section of the Bluetooth SIG Assigned Numbers
+
+
+Mesh Attention Hierarchy
+========================
+Service		unique name
+Interface	org.bluez.mesh.Attention1
+Object path	freely definable
+
+This is an optional interface that implements health attention timer.
+
+Methods:
+	void SetTimer(uint8 element_index, uint16 time)
+
+		The element_index parameter is the element's index within the
+		node where the health server model is hosted.
+
+		The time parameter indicates how many seconds the attention
+		state shall be on.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.NotSupported
+
+	uint16 GetTimer(uint16 element)
+
+		The element parameter is the unicast address within the node
+		where the health server model is hosted.
+
+		Returns the number of seconds for how long the attention action
+		remains staying on.
+
+		PossibleErrors:
+			org.bluez.mesh.Error.NotSupported
+
+
+Mesh Provisioner Hierarchy
+============================
+Service		unique name
+Interface	org.bluez.mesh.Provisioner1
+Object path	freely definable
+
+	void ScanResult(int16 rssi, array{byte} data, dict options)
+
+		The method is called from the bluetooth-meshd daemon when a
+		unique UUID has been seen during UnprovisionedScan() for
+		unprovsioned devices.
+
+		The rssi parameter is a signed, normalized measurement of the
+		signal strength of the received unprovisioned beacon.
+
+		The data parameter is a variable length byte array, that may
+		have 1, 2 or 3 distinct fields contained in it including the 16
+		byte remote device UUID (always), a 16 bit mask of OOB
+		authentication flags (optional), and a 32 bit URI hash (if URI
+		bit set in OOB mask). Whether these fields exist or not is a
+		decision of the unprovisioned device.
+
+		The options parameter is a dictionary that may contain
+		additional optional configuration info:
+
+		uint16 Server
+			Specifies the remote server that received the
+			Unprovisioned beacon. If not present, beacon was
+			received locally.
+
+		uint8 array ExtendedData
+			If Extended data was requested during scanning, any
+			received data will be returned here.
+
+		If a beacon with a UUID that has already been reported is
+		received by the daemon, it will be silently discarded unless it
+		was received at a higher rssi power level.
+
+
+	uint16 net_index, uint16 unicast RequestProvData(uint8 count)
+
+		This method is implemented by a Provisioner capable application
+		and is called when the remote device has been fully
+		authenticated and confirmed.
+
+		The count parameter is the number of consecutive unicast
+		addresses the remote device is requesting.
+
+		Return Parameters are from the Mesh Profile Spec:
+		net_index - Subnet index of the net_key
+		unicast - Primary Unicast address of the new node
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Abort
+
+	uint16 unicast RequestReprovData(uint16 original, uint8 count)
+
+		This method is implemented by a Provisioner capable application
+		and is called when the remote node being reprovisioned has been
+		fully authenticated and confirmed. This method will only be
+		called if the NPPI-1 procedure (Node Address Refresh) is being
+		performed.
+
+		The original parameter is the current unicast address of the
+		node being reprovisioned.
+
+		The count parameter is the number of consecutive unicast
+		addresses the remote node is requesting.
+
+		Return Parameter:
+		unicast - Primary Unicast address of the new node
+
+		PossibleErrors:
+			org.bluez.mesh.Error.Abort
+
+	void AddNodeComplete(array{byte}[16] uuid, uint16 unicast, uint8 count)
+
+		This method is called when the node provisioning initiated
+		by an AddNode() method call successfully completed.
+
+		The unicast parameter is the primary address that has been
+		assigned to the new node, and the address of it's config server.
+
+		The count parameter is the number of unicast addresses assigned
+		to the new node.
+
+		The new node may now be sent messages using the credentials
+		supplied by the RequestProvData method.
+
+	void ReprovComplete(uint16 original, uint8 nppi, uint16 unicast,
+								uint8 count)
+
+		This method is called when the node Reprovisioning initiated
+		by a Reprovision() method call successfully completed.
+
+		The original parameter is the former primary address of the
+		node that has been reprovisioned.
+
+		The nppi parameter indicates which NPPI procedure was performed.
+		If procedure 1 or 2 was performed, the node is materially
+		different than it was before reprovisioning, and Composition,
+		Bindings, Publication and Subscription settings should be
+		refreshed.
+
+		The unicast parameter is the new primary address that has been
+		assigned to the node, If NPPI procedure 1 was performed this
+		value may be different from the original. If procedure 0 or 2
+		was performed, the original and new primary address should be
+		the same.
+
+		The count parameter is the number of unicast addresses assigned
+		to the node.
+
+		The node may now be sent messages using the credentials
+		supplied by the RequestReprovData method.
+
+	void AddNodeFailed(array{byte}[16] uuid, string reason)
+
+		This method is called when the node provisioning initiated by
+		AddNode() has failed. Depending on how far Provisioning
+		proceeded before failing, some cleanup of cached data may be
+		required.
+
+		The reason parameter identifies the reason for provisioning
+		failure. The defined values are: "aborted", "timeout",
+		"bad-pdu", "confirmation-failed", "out-of-resources",
+		"decryption-error", "unexpected-error",
+		"cannot-assign-addresses".
+
+	void ReprovFailed(uint16 unicast, string reason)
+
+		This method is called when node reprovisioning initiated by
+		Reprovision() has failed. If reprovisioning has failed, the
+		prior credentials of the remote node may still be valid.
+
+		The reason parameter identifies the reason for provisioning
+		failure. The defined values are: "aborted", "timeout",
+		"bad-pdu", "confirmation-failed", "out-of-resources",
+		"decryption-error", "unexpected-error",
+		"cannot-assign-addresses".
+
+Provisioning Agent Hierarchy
+============================
+Service		unique name
+Interface	org.bluez.mesh.ProvisionAgent1
+Object path	freely definable
+
+Methods:
+	array{byte} PrivateKey()
+
+		This method is called during provisioning if the Provisioner
+		has requested Out-Of-Band ECC key exchange. The Private key is
+		returned to the Daemon, and the Public Key is delivered to the
+		remote Provisioner using a method that does not involve the
+		Bluetooth Mesh system. The Private Key returned must be 32
+		octets in size, or the Provisioning procedure will fail and be
+		canceled.
+
+		This function will only be called if the Provisioner has
+		requested pre-determined keys to be exchanged Out-of-Band, and
+		the local role is Unprovisioned device.
+
+	array{byte} PublicKey()
+
+		This method is called during provisioning if the local device is
+		the Provisioner, and is requestng Out-Of-Band ECC key exchange.
+		The Public key is returned to the Daemon that is the matched
+		pair of the Private key of the remote device. The Public Key
+		returned must be 64 octets in size, or the Provisioning
+		procedure will fail and be canceled.
+
+		This function will only be called if the Provisioner has
+		requested pre-determined keys to be exchanged Out-of-Band, and
+		the local role is Provisioner.
+
+	void DisplayString(string value)
+
+		This method is called when the Daemon has something important
+		for the Agent to Display, but does not require any additional
+		input locally. For instance: "Enter "ABCDE" on remote device".
+
+	void DisplayNumeric(string type, uint32 number)
+
+		This method is called when the Daemon has something important
+		for the Agent to Display, but does not require any additional
+		input locally. For instance: "Enter 14939264 on remote device".
+
+		The type parameter indicates the display method. Allowed values
+		are:
+			"blink" - Locally blink LED
+			"beep" - Locally make a noise
+			"vibrate" - Locally vibrate
+			"out-numeric" - Display value to enter remotely
+			"push" - Request pushes on remote button
+			"twist" - Request twists on remote knob
+
+		The number parameter is the specific value represented by the
+		Prompt.
+
+	uint32 PromptNumeric(string type)
+
+		This method is called when the Daemon requests the user to
+		enter a decimal value between 1-99999999.
+
+		The type parameter indicates the input method. Allowed values
+		are:
+			"blink" - Enter times remote LED blinked
+			"beep" - Enter times remote device beeped
+			"vibrate" - Enter times remote device vibrated
+			"in-numeric" - Enter remotely displayed value
+			"push" - Push local button remotely requested times
+			"twist" - Twist local knob remotely requested times
+
+
+		This agent should prompt the user for specific input. For
+		instance: "Enter value being displayed by remote device".
+
+	array{byte}[16] PromptStatic(string type)
+
+		This method is called when the Daemon requires a 16 octet byte
+		array, as an Out-of-Band authentication.
+
+		The type parameter indicates the input method. Allowed values
+		are:
+			"static-oob" - return 16 octet array
+			"in-alpha" - return 16 octet alpha array
+
+		The Static data returned must be 16 octets in size, or the
+		Provisioning procedure will fail and be canceled. If input type
+		is "in-alpha", the printable characters should be
+		left-justified, with trailing 0x00 octets filling the remaining
+		bytes.
+
+	void Cancel()
+
+		This method gets called by the daemon to cancel any existing
+		Agent Requests. When called, any pending user input should be
+		canceled, and any display requests removed.
+
+
+Properties:
+	array{string} Capabilities [read-only]
+
+		An array of strings with the following allowed values:
+			"blink"
+			"beep"
+			"vibrate"
+			"out-numeric"
+			"out-alpha"
+			"push"
+			"twist"
+			"in-numeric"
+			"in-alpha"
+			"static-oob"
+			"public-oob"
+
+	array{string} OutOfBandInfo [read-only, optional]
+
+		Indicates availability of OOB data. An array of strings with the
+		following allowed values:
+			"other"
+			"uri"
+			"machine-code-2d"
+			"bar-code"
+			"nfc"
+			"number"
+			"string"
+			"on-box"
+			"in-box"
+			"on-paper",
+			"in-manual"
+			"on-device"
+
+	string URI [read-only, optional]
+
+		Uniform Resource Identifier points to out-of-band (OOB)
+		information (e.g., a public key)

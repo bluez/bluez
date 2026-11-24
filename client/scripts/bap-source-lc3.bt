@@ -1,0 +1,34 @@
+power on
+#
+#
+# Register a PAC Source endpoint with LC3, to act as the initiator
+# sending audio, e.g. a phone.
+#
+endpoint.register 00002bcb-0000-1000-8000-00805f9b34fb 0x06
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+# Locations: Front Left and Front Right
+3
+# Supported Context: same as the contexts bluetoothctl registers with
+0x000f
+# Context
+0x000f
+# CIG: assigned automatically
+a
+# CIS: assigned automatically
+a
+#
+#
+# After pairing, configure a remote PAC Sink endpoint with a preset:
+#
+# endpoint.config /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/pac_sink0 \
+#	/local/endpoint/ep0 16_2_1
+#
+# A stream is created per audio location, each with its own CIS in the
+# same CIG, and all of the transports have to be acquired, as the CIS
+# are only created once every CIS of the CIG is ready:
+#
+# transport.acquire /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/pac_sink0/fd0 \
+#	/org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/pac_sink0/fd1

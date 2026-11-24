@@ -1,0 +1,53 @@
+power on
+#
+#
+# Register a PAC Sink and a PAC Source endpoint with LC3, both for Front
+# Left only, e.g. a headset with a microphone in a voice call. Run on
+# both sides: the device that pairs is the initiator.
+#
+endpoint.register 00002bc9-0000-1000-8000-00805f9b34fb 0x06
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+# Locations: Front Left
+1
+# Supported Context: same as the contexts bluetoothctl registers with
+0x0fff
+# Context
+0x0fff
+# CIG: assigned automatically
+a
+# CIS: assigned automatically
+a
+endpoint.register 00002bcb-0000-1000-8000-00805f9b34fb 0x06
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+# Locations: Front Left
+1
+# Supported Context: same as the contexts bluetoothctl registers with
+0x000f
+# Context
+0x000f
+# CIG: assigned automatically
+a
+# CIS: assigned automatically
+a
+#
+#
+# With a single location, the stream of each direction uses the same
+# CIS, so the two transports are linked.
+#
+# To enable each direction on its own, as a phone may do in a voice
+# call, run bluetoothd with Testing = true on the initiator and, after
+# pairing, desynchronize the transports and acquire them one at a time:
+#
+# transport.desync /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/pac_sink0/fd0 on
+# transport.acquire /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/pac_source0/fd1
+# transport.acquire /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/pac_sink0/fd0
+#
+# bluetoothctl on the acceptor acquires each transport once it is
+# pending, i.e. once its ASE is enabled, and transport.release on the
+# initiator disables the ASE of a transport alone.

@@ -1,0 +1,24 @@
+power on
+#
+#
+# Register an A2DP Source endpoint with SBC, to act as the device
+# sending audio, e.g. a phone.
+#
+endpoint.register 0000110a-0000-1000-8000-00805f9b34fb 0x00
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+#
+#
+# The endpoint has to be registered before pairing, so the SDP record
+# is in place when the peer resolves the services, otherwise connecting
+# fails with org.bluez.Error.BREDR.ProfileUnavailable.
+#
+# Once connected, the stream is configured and a transport is created:
+#
+# [NEW] Transport /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/sep1/fd0
+#
+# Acquire it to start the stream:
+#
+# transport.acquire /org/bluez/hci0/dev_xx_xx_xx_xx_xx_xx/sep1/fd0

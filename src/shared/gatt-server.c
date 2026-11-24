@@ -1,0 +1,2016 @@
+// SPDX-License-Identifier: LGPL-2.1-or-later
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2014  Google Inc.
+ *  Copyright 2023 NXP
+ *
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <sys/uio.h>
+#include <errno.h>
+
+#include "src/shared/att.h"
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
+#include "src/shared/queue.h"
+#include "src/shared/gatt-db.h"
+#include "src/shared/gatt-server.h"
+#include "src/shared/gatt-helpers.h"
+#include "src/shared/util.h"
+#include "src/shared/timeout.h"
+
+/*
+ * TODO: This is an arbitrary limit. Come up with something reasonable or
+ * perhaps an API to set this value if there is a use case for it.
+ */
+#define DEFAULT_MAX_PREP_QUEUE_LEN 30
+
+#define MNOTIFY_TIMEOUT 0
+
+#define DBG(_server, _format, arg...) \
+	gatt_log(_server, "%s:%s() " _format, __FILE__, __func__, ## arg)
+
+struct async_read_op {
+	struct bt_att_chan *chan;
+	struct bt_gatt_server *server;
+	uint8_t opcode;
+	bool done;
+	uint16_t mtu;
+	struct iovec rsp;
+	size_t value_len;
+	struct queue *db_data;
+};
+
+struct async_write_op {
+	struct bt_att_chan *chan;
+	struct bt_gatt_server *server;
+	uint8_t opcode;
+};
+
+struct prep_write_data {
+	struct bt_gatt_server *server;
+	uint8_t *value;
+	uint16_t handle;
+	uint16_t offset;
+	uint16_t length;
+
+	bool reliable_supported;
+};
+
+static void prep_write_data_destroy(void *user_data)
+{
+	struct prep_write_data *data = user_data;
+
+	free(data->value);
+	free(data);
+}
+
+struct mnotify_data {
+	unsigned int id;
+	struct iovec pdu;
+	uint16_t len;
+};
+
+struct bt_gatt_server {
+	struct gatt_db *db;
+	struct bt_att *att;
+	int ref_count;
+	uint16_t mtu;
+	bool perms;
+
+	unsigned int mtu_id;
+	unsigned int read_by_grp_type_id;
+	unsigned int read_by_type_id;
+	unsigned int find_info_id;
+	unsigned int find_by_type_value_id;
+	unsigned int write_id;
+	unsigned int write_cmd_id;
+	unsigned int read_id;
+	unsigned int read_blob_id;
+	unsigned int read_multiple_id;
+	unsigned int read_multiple_vl_id;
+	unsigned int prep_write_id;
+	unsigned int exec_write_id;
+	unsigned int signed_write_cmd_id;
+
+	uint8_t min_enc_size;
+
+	struct queue *prep_queue;
+	unsigned int max_prep_queue_len;
+
+	bt_gatt_server_debug_func_t debug_callback;
+	bt_gatt_server_destroy_func_t debug_destroy;
+	void *debug_data;
+
+	bt_gatt_server_authorize_cb_t authorize;
+	void *authorize_data;
+
+	struct mnotify_data *mnotify;
+	int mnotify_timeout;
+};
+
+static void mnotify_free(struct bt_gatt_server *server)
+{
+	if (!server->mnotify)
+		return;
+
+	if (server->mnotify->id)
+		timeout_remove(server->mnotify->id);
+
+	free(server->mnotify->pdu.iov_base);
+	free(server->mnotify);
+	server->mnotify = NULL;
+}
+
+static void bt_gatt_server_free(struct bt_gatt_server *server)
+{
+	if (server->debug_destroy)
+		server->debug_destroy(server->debug_data);
+
+	mnotify_free(server);
+
+	bt_att_unregister(server->att, server->mtu_id);
+	bt_att_unregister(server->att, server->read_by_grp_type_id);
+	bt_att_unregister(server->att, server->read_by_type_id);
+	bt_att_unregister(server->att, server->find_info_id);
+	bt_att_unregister(server->att, server->find_by_type_value_id);
+	bt_att_unregister(server->att, server->write_id);
+	bt_att_unregister(server->att, server->write_cmd_id);
+	bt_att_unregister(server->att, server->read_id);
+	bt_att_unregister(server->att, server->read_blob_id);
+	bt_att_unregister(server->att, server->read_multiple_id);
+	bt_att_unregister(server->att, server->read_multiple_vl_id);
+	bt_att_unregister(server->att, server->prep_write_id);
+	bt_att_unregister(server->att, server->exec_write_id);
+	bt_att_unregister(server->att, server->signed_write_cmd_id);
+
+	queue_destroy(server->prep_queue, prep_write_data_destroy);
+
+	gatt_db_unref(server->db);
+	bt_att_unref(server->att);
+	free(server);
+}
+
+/* Pull a 16 or 128 bits UUID taking all the remaining data in iov */
+static bool pull_uuid_le(struct iovec *iov, bt_uuid_t *out_uuid)
+{
+	uint128_t u128;
+	uint16_t u16;
+	void *data;
+
+	switch (iov->iov_len) {
+	case 2:
+		if (!util_iov_pull_le16(iov, &u16))
+			return false;
+
+		bt_uuid16_create(out_uuid, u16);
+		return true;
+	case 16:
+		data = util_iov_pull_mem(iov, 16);
+		if (!data)
+			return false;
+
+		bswap_128(data, &u128.data);
+		bt_uuid128_create(out_uuid, u128);
+		return true;
+	default:
+		return false;
+	}
+}
+
+/* Remaining space in a response, where cap excludes the opcode */
+static size_t rsp_room(const struct iovec *rsp, size_t cap)
+{
+	return rsp->iov_len < cap ? cap - rsp->iov_len : 0;
+}
+
+static void attribute_read_cb(struct gatt_db_attribute *attrib, int err,
+					const uint8_t *value, size_t length,
+					void *user_data)
+{
+	struct iovec *iov = user_data;
+
+	iov->iov_base = (void *) value;
+	iov->iov_len = length;
+}
+
+static uint8_t check_permissions(struct bt_gatt_server *server,
+				struct gatt_db_attribute *attr, uint32_t mask);
+
+static bool encode_read_by_grp_type_rsp(struct bt_gatt_server *server,
+						struct queue *q,
+						struct bt_att *att,
+						uint16_t mtu,
+						struct iovec *rsp)
+{
+	uint16_t start_handle, end_handle;
+	struct iovec value;
+	uint8_t data_val_len = 0;
+
+	while (queue_peek_head(q)) {
+		struct gatt_db_attribute *attrib = queue_pop_head(q);
+
+		/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 3, Part F,
+		 * Section 3.4.4.9:
+		 *
+		 * If an attribute in the set of requested attributes would
+		 * cause an ATT_ERROR_RSP PDU then this attribute cannot be
+		 * included in an ATT_READ_BY_GROUP_TYPE_RSP PDU and the
+		 * attributes before this attribute shall be returned.
+		 *
+		 * So stop before a service the link does not have the
+		 * security to read, the caller reports it if it is the first
+		 * one.
+		 */
+		if (check_permissions(server, attrib, BT_ATT_PERM_READ_MASK))
+			break;
+
+		value.iov_base = NULL;
+		value.iov_len = 0;
+
+		/*
+		 * This should never be deferred to the read callback for
+		 * primary/secondary service declarations.
+		 */
+		if (!gatt_db_attribute_read(attrib, 0,
+						BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
+						att, attribute_read_cb,
+						&value) || !value.iov_len)
+			return false;
+
+		/*
+		 * Use the first attribute to determine the length of each
+		 * attribute data unit. Stop the list when a different attribute
+		 * value is seen.
+		 */
+		if (!rsp->iov_len) {
+			data_val_len = MIN(MIN((unsigned int)mtu - 6, 251),
+								value.iov_len);
+			util_iov_push_u8(rsp, data_val_len + 4);
+		} else if (value.iov_len != data_val_len)
+			break;
+
+		/* Stop if this unit would surpass the MTU */
+		if (rsp_room(rsp, mtu - 1) < (size_t)data_val_len + 4)
+			break;
+
+		gatt_db_attribute_get_service_handles(attrib, &start_handle,
+								&end_handle);
+
+		util_iov_push_le16(rsp, start_handle);
+		util_iov_push_le16(rsp, end_handle);
+		util_iov_push_mem(rsp, data_val_len, value.iov_base);
+	}
+
+	return true;
+}
+
+static void gatt_log(struct bt_gatt_server *server, const char *format, ...)
+{
+	va_list ap;
+
+	if (!server || !format || !server->debug_callback)
+		return;
+
+	va_start(ap, format);
+	util_debug_va(server->debug_callback, server->debug_data, format, ap);
+	va_end(ap);
+}
+
+static void read_by_grp_type_cb(struct bt_att_chan *chan, uint16_t mtu,
+					uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	uint16_t start, end;
+	bt_uuid_t type;
+	bt_uuid_t prim, snd;
+	struct iovec iov = { (void *)pdu, length };
+	struct iovec rsp = {};
+	uint8_t ecode = 0;
+	uint16_t ehandle = 0;
+	struct queue *q = NULL;
+
+	if (!util_iov_pull_le16(&iov, &start) ||
+			!util_iov_pull_le16(&iov, &end) ||
+			!pull_uuid_le(&iov, &type)) {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	q = queue_new();
+
+	DBG(server, "Read By Grp Type - start: 0x%04x end: 0x%04x", start, end);
+
+	if (!start || !end) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	ehandle = start;
+
+	if (start > end) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	/*
+	 * GATT defines that only the <<Primary Service>> and
+	 * <<Secondary Service>> group types can be used for the
+	 * "Read By Group Type" request (Core v4.1, Vol 3, sec 2.5.3). Return an
+	 * error if any other group type is given.
+	 */
+	bt_uuid16_create(&prim, GATT_PRIM_SVC_UUID);
+	bt_uuid16_create(&snd, GATT_SND_SVC_UUID);
+	if (bt_uuid_cmp(&type, &prim) && bt_uuid_cmp(&type, &snd)) {
+		ecode = BT_ATT_ERROR_UNSUPPORTED_GROUP_TYPE;
+		goto error;
+	}
+
+	gatt_db_read_by_group_type(server->db, start, end, type, q);
+
+	if (queue_isempty(q)) {
+		ecode = BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND;
+		goto error;
+	}
+
+	/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 3, Part F,
+	 * Section 3.4.4.9:
+	 *
+	 * If the first attribute in the set of requested attributes would
+	 * cause an ATT_ERROR_RSP PDU then no other attributes in the
+	 * requested attributes can be considered.
+	 */
+	ecode = check_permissions(server, queue_peek_head(q),
+							BT_ATT_PERM_READ_MASK);
+	if (ecode) {
+		ehandle = gatt_db_attribute_get_handle(queue_peek_head(q));
+		goto error;
+	}
+
+	rsp.iov_base = malloc(mtu);
+	if (!rsp.iov_base) {
+		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
+		goto error;
+	}
+
+	if (!encode_read_by_grp_type_rsp(server, q, server->att, mtu, &rsp)) {
+		ecode = BT_ATT_ERROR_UNLIKELY;
+		goto error;
+	}
+
+	queue_destroy(q, NULL);
+
+	bt_att_chan_send_rsp(chan, BT_ATT_OP_READ_BY_GRP_TYPE_RSP,
+					rsp.iov_base, rsp.iov_len);
+
+	free(rsp.iov_base);
+
+	return;
+
+error:
+	queue_destroy(q, NULL);
+	bt_att_chan_send_error_rsp(chan, opcode, ehandle, ecode);
+	free(rsp.iov_base);
+}
+
+static void async_read_op_destroy(struct async_read_op *op)
+{
+	bt_gatt_server_unref(op->server);
+	queue_destroy(op->db_data, NULL);
+	free(op->rsp.iov_base);
+	free(op);
+}
+
+static void process_read_by_type(struct async_read_op *op);
+
+static void read_by_type_read_complete_cb(struct gatt_db_attribute *attr,
+						int err, const uint8_t *value,
+						size_t len, void *user_data)
+{
+	struct async_read_op *op = user_data;
+	uint16_t handle;
+
+	handle = gatt_db_attribute_get_handle(attr);
+
+	/* Terminate the operation if there was an error */
+	if (err) {
+		bt_att_chan_send_error_rsp(op->chan, BT_ATT_OP_READ_BY_TYPE_REQ,
+								handle, err);
+		async_read_op_destroy(op);
+		return;
+	}
+
+	if (!op->rsp.iov_len) {
+		op->value_len = MIN(MIN((unsigned int)op->mtu - 4, 253), len);
+		util_iov_push_u8(&op->rsp, op->value_len + 2);
+	} else if (len != op->value_len) {
+		op->done = true;
+		goto done;
+	}
+
+	/* Stop if this would surpass the MTU */
+	if (rsp_room(&op->rsp, op->mtu - 1) < op->value_len + 2) {
+		op->done = true;
+		goto done;
+	}
+
+	/* Encode the current value */
+	util_iov_push_le16(&op->rsp, handle);
+	util_iov_push_mem(&op->rsp, op->value_len, value);
+
+	if (op->rsp.iov_len == (unsigned int) op->mtu - 1)
+		op->done = true;
+
+done:
+	process_read_by_type(op);
+}
+
+static bool check_min_key_size(uint8_t min_size, uint8_t size)
+{
+	if (!min_size || !size)
+		return true;
+
+	return min_size <= size;
+}
+
+static uint8_t check_permissions(struct bt_gatt_server *server,
+				struct gatt_db_attribute *attr, uint32_t mask)
+{
+	uint8_t enc_size;
+	uint32_t perm;
+	int security;
+
+	if (!server->perms)
+		return 0;
+
+	perm = gatt_db_attribute_get_permissions(attr);
+
+	if (perm && mask & BT_ATT_PERM_READ && !(perm & BT_ATT_PERM_READ))
+		return BT_ATT_ERROR_READ_NOT_PERMITTED;
+
+	if (perm && mask & BT_ATT_PERM_WRITE && !(perm & BT_ATT_PERM_WRITE))
+		return BT_ATT_ERROR_WRITE_NOT_PERMITTED;
+
+	perm &= mask;
+	if (!perm)
+		return 0;
+
+	security = bt_att_get_security(server->att, &enc_size);
+	if (security < 0)
+		return BT_ATT_ERROR_UNLIKELY;
+
+	if (perm & BT_ATT_PERM_SECURE) {
+		if (security < BT_ATT_SECURITY_FIPS)
+			return BT_ATT_ERROR_AUTHENTICATION;
+
+		if (!check_min_key_size(server->min_enc_size, enc_size))
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE;
+	}
+
+	if (perm & BT_ATT_PERM_AUTHEN) {
+		if (security < BT_ATT_SECURITY_HIGH)
+			return BT_ATT_ERROR_AUTHENTICATION;
+
+		if (!check_min_key_size(server->min_enc_size, enc_size))
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE;
+	}
+
+	/* A MIC length requirement implies the link is encrypted, see below */
+	if (perm & (BT_ATT_PERM_ENCRYPT | BT_ATT_PERM_MIC_LEN_64 |
+						BT_ATT_PERM_MIC_LEN_128)) {
+		if (security < BT_ATT_SECURITY_MEDIUM)
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION;
+
+		if (!check_min_key_size(server->min_enc_size, enc_size))
+			return BT_ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE;
+	}
+
+	/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 3, Part F,
+	 * Section 3.2.5:
+	 *
+	 * If access to a secure attribute requires an encrypted link, and
+	 * the link is encrypted with an encryption key size that is long
+	 * enough but a MIC length that is too short for the level of
+	 * security required, then an ATT_ERROR_RSP PDU shall be sent with
+	 * the Error Code parameter set to MIC Length Too Short (0x14).
+	 */
+	if (perm & (BT_ATT_PERM_READ_MIC_LEN_128 |
+					BT_ATT_PERM_WRITE_MIC_LEN_128)) {
+		if (bt_att_get_mic_len(server->att) < 0x02)
+			return BT_ATT_ERROR_MIC_LEN_TOO_SHORT;
+	} else if (perm & (BT_ATT_PERM_READ_MIC_LEN_64 |
+					BT_ATT_PERM_WRITE_MIC_LEN_64)) {
+		if (bt_att_get_mic_len(server->att) < 0x01)
+			return BT_ATT_ERROR_MIC_LEN_TOO_SHORT;
+	}
+
+	return 0;
+}
+
+static void process_read_by_type(struct async_read_op *op)
+{
+	struct bt_gatt_server *server = op->server;
+	uint8_t ecode;
+	struct gatt_db_attribute *attr;
+
+	attr = queue_pop_head(op->db_data);
+
+	if (op->done || !attr) {
+		bt_att_chan_send_rsp(op->chan, BT_ATT_OP_READ_BY_TYPE_RSP,
+					op->rsp.iov_base, op->rsp.iov_len);
+		async_read_op_destroy(op);
+		return;
+	}
+
+	ecode = check_permissions(server, attr, BT_ATT_PERM_READ_MASK);
+	if (ecode)
+		goto error;
+
+	if (gatt_db_attribute_read(attr, 0, op->opcode, server->att,
+					read_by_type_read_complete_cb, op))
+		return;
+
+	ecode = BT_ATT_ERROR_UNLIKELY;
+
+error:
+	bt_att_chan_send_error_rsp(op->chan, BT_ATT_OP_READ_BY_TYPE_REQ,
+				gatt_db_attribute_get_handle(attr), ecode);
+	async_read_op_destroy(op);
+}
+
+static void read_by_type_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	uint16_t start, end;
+	bt_uuid_t type;
+	struct iovec iov = { (void *)pdu, length };
+	uint16_t ehandle = 0;
+	uint8_t ecode;
+	struct queue *q = NULL;
+	struct async_read_op *op;
+
+	if (!util_iov_pull_le16(&iov, &start) ||
+			!util_iov_pull_le16(&iov, &end) ||
+			!pull_uuid_le(&iov, &type)) {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	q = queue_new();
+
+	DBG(server, "Read By Type - start: 0x%04x end: 0x%04x", start, end);
+
+	if (!start || !end) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	ehandle = start;
+
+	if (start > end) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	gatt_db_read_by_type(server->db, start, end, type, q);
+
+	if (queue_isempty(q)) {
+		ecode = BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND;
+		goto error;
+	}
+
+	op = new0(struct async_read_op, 1);
+	op->mtu = mtu;
+	op->rsp.iov_base = malloc(mtu);
+	if (!op->rsp.iov_base) {
+		free(op);
+		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
+		goto error;
+	}
+
+	op->chan = chan;
+	op->opcode = opcode;
+	op->server = bt_gatt_server_ref(server);
+	op->db_data = q;
+
+	process_read_by_type(op);
+
+	return;
+
+error:
+	bt_att_chan_send_error_rsp(chan, opcode, ehandle, ecode);
+	queue_destroy(q, NULL);
+}
+
+static bool encode_find_info_rsp(struct gatt_db *db, struct queue *q,
+						uint16_t mtu,
+						struct iovec *rsp)
+{
+	uint16_t handle;
+	struct gatt_db_attribute *attr;
+	const bt_uuid_t *type;
+	void *uuid;
+	int uuid_len = 0, cur_uuid_len;
+
+	while (queue_peek_head(q)) {
+		attr = queue_pop_head(q);
+		handle = gatt_db_attribute_get_handle(attr);
+		type = gatt_db_attribute_get_type(attr);
+		if (!handle || !type)
+			return false;
+
+		cur_uuid_len = bt_uuid_len(type);
+
+		if (!rsp->iov_len) {
+			switch (cur_uuid_len) {
+			case 2:
+				uuid_len = 2;
+				util_iov_push_u8(rsp, 0x01);
+				break;
+			case 4:
+			case 16:
+				uuid_len = 16;
+				util_iov_push_u8(rsp, 0x02);
+				break;
+			default:
+				return false;
+			}
+		} else if (cur_uuid_len != uuid_len)
+			break;
+
+		if (rsp_room(rsp, mtu - 1) < (size_t)uuid_len + 2)
+			break;
+
+		util_iov_push_le16(rsp, handle);
+
+		uuid = util_iov_push(rsp, uuid_len);
+		if (!uuid)
+			return false;
+
+		bt_uuid_to_le(type, uuid);
+	}
+
+	return true;
+}
+
+static void find_info_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
+					const void *pdu, uint16_t length,
+					void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	uint16_t start, end;
+	struct iovec iov = { (void *)pdu, length };
+	struct iovec rsp = {};
+	uint8_t ecode = 0;
+	uint16_t ehandle = 0;
+	struct queue *q = NULL;
+
+	if (!util_iov_pull_le16(&iov, &start) ||
+			!util_iov_pull_le16(&iov, &end) || iov.iov_len) {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	q = queue_new();
+
+	DBG(server, "Find Info - start: 0x%04x end: 0x%04x", start, end);
+
+	if (!start || !end) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	ehandle = start;
+
+	if (start > end) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	gatt_db_find_information(server->db, start, end, q);
+
+	if (queue_isempty(q)) {
+		ecode = BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND;
+		goto error;
+	}
+
+	rsp.iov_base = malloc(mtu);
+	if (!rsp.iov_base) {
+		ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
+		goto error;
+	}
+
+	if (!encode_find_info_rsp(server->db, q, mtu, &rsp)) {
+		ecode = BT_ATT_ERROR_UNLIKELY;
+		goto error;
+	}
+
+	bt_att_chan_send_rsp(chan, BT_ATT_OP_FIND_INFO_RSP, rsp.iov_base,
+								rsp.iov_len);
+
+	queue_destroy(q, NULL);
+
+	free(rsp.iov_base);
+
+	return;
+
+error:
+	bt_att_chan_send_error_rsp(chan, opcode, ehandle, ecode);
+	queue_destroy(q, NULL);
+	free(rsp.iov_base);
+
+}
+
+struct find_by_type_val_data {
+	struct iovec rsp;
+	uint16_t mtu;
+	uint8_t ecode;
+};
+
+static void find_by_type_val_att_cb(struct gatt_db_attribute *attrib,
+								void *user_data)
+{
+	uint16_t handle, end_handle;
+	struct find_by_type_val_data *data = user_data;
+
+	if (data->ecode)
+		return;
+
+	if (rsp_room(&data->rsp, data->mtu - 1) < 4)
+		return;
+
+	/*
+	 * This OP is only valid for Primary Service per the spec
+	 * page 562, so this should work.
+	 */
+	gatt_db_attribute_get_service_data(attrib, &handle, &end_handle, NULL,
+									NULL);
+
+	if (!handle || !end_handle) {
+		data->ecode = BT_ATT_ERROR_UNLIKELY;
+		return;
+	}
+
+	util_iov_push_le16(&data->rsp, handle);
+	util_iov_push_le16(&data->rsp, end_handle);
+}
+
+static void find_by_type_val_cb(struct bt_att_chan *chan, uint16_t mtu,
+					uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	uint16_t start, end, uuid16;
+	struct find_by_type_val_data data = {};
+	struct iovec iov = { (void *)pdu, length };
+	uint16_t ehandle = 0;
+	bt_uuid_t uuid;
+
+	if (!util_iov_pull_le16(&iov, &start) ||
+			!util_iov_pull_le16(&iov, &end) ||
+			!util_iov_pull_le16(&iov, &uuid16)) {
+		data.ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	data.rsp.iov_base = malloc(mtu);
+	if (!data.rsp.iov_base) {
+		data.ecode = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
+		goto error;
+	}
+
+	data.mtu = mtu;
+
+	DBG(server,
+	    "Find By Type Value - start: 0x%04x end: 0x%04x uuid: 0x%04x",
+	    start, end, uuid16);
+
+	ehandle = start;
+	if (start > end) {
+		data.ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	bt_uuid16_create(&uuid, uuid16);
+	gatt_db_find_by_type_value(server->db, start, end, &uuid,
+							iov.iov_base,
+							iov.iov_len,
+							find_by_type_val_att_cb,
+							&data);
+
+	if (!data.rsp.iov_len)
+		data.ecode = BT_ATT_ERROR_ATTRIBUTE_NOT_FOUND;
+
+	if (data.ecode)
+		goto error;
+
+	bt_att_chan_send_rsp(chan, BT_ATT_OP_FIND_BY_TYPE_RSP,
+				data.rsp.iov_base, data.rsp.iov_len);
+
+	free(data.rsp.iov_base);
+
+	return;
+
+error:
+	bt_att_chan_send_error_rsp(chan, opcode, ehandle, data.ecode);
+	free(data.rsp.iov_base);
+}
+
+static void async_write_op_destroy(struct async_write_op *op)
+{
+	bt_gatt_server_unref(op->server);
+	free(op);
+}
+
+static void write_complete_cb(struct gatt_db_attribute *attr, int err,
+								void *user_data)
+{
+	struct async_write_op *op = user_data;
+	struct bt_gatt_server *server = op->server;
+	uint16_t handle;
+
+	if (op->opcode == BT_ATT_OP_WRITE_CMD ||
+			op->opcode == BT_ATT_OP_SIGNED_WRITE_CMD) {
+		async_write_op_destroy(op);
+		return;
+	}
+
+	DBG(server, "Write Complete: err %d", err);
+
+	handle = gatt_db_attribute_get_handle(attr);
+
+	if (err)
+		bt_att_chan_send_error_rsp(op->chan, op->opcode, handle, err);
+	else
+		bt_att_chan_send_rsp(op->chan, BT_ATT_OP_WRITE_RSP, NULL, 0);
+
+	async_write_op_destroy(op);
+}
+
+static uint8_t authorize_req(struct bt_gatt_server *server,
+					uint8_t opcode, uint16_t handle)
+{
+	if (!server->authorize)
+		return 0;
+
+	return server->authorize(server->att, opcode, handle,
+						server->authorize_data);
+}
+
+static uint8_t check_length(uint16_t length, uint16_t offset)
+{
+	if (length > BT_ATT_MAX_VALUE_LEN)
+		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+
+	if (offset > BT_ATT_MAX_VALUE_LEN)
+		return BT_ATT_ERROR_INVALID_OFFSET;
+
+	if (length + offset > BT_ATT_MAX_VALUE_LEN)
+		return BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
+
+	return 0;
+}
+
+static void write_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
+			const void *pdu, uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	struct gatt_db_attribute *attr;
+	struct iovec iov = { (void *)pdu, length };
+	uint16_t handle = 0;
+	struct async_write_op *op = NULL;
+	uint8_t ecode;
+
+	if (!util_iov_pull_le16(&iov, &handle)) {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	ecode = authorize_req(server, opcode, handle);
+	if (ecode)
+		goto error;
+
+	attr = gatt_db_get_attribute(server->db, handle);
+	if (!attr) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	DBG(server, "Write %s - handle: 0x%04x",
+		(opcode == BT_ATT_OP_WRITE_REQ) ? "Req" : "Cmd", handle);
+
+	ecode = check_length(iov.iov_len, 0);
+	if (ecode)
+		goto error;
+
+	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE_MASK);
+	if (ecode)
+		goto error;
+
+	op = new0(struct async_write_op, 1);
+	op->chan = chan;
+	op->server = bt_gatt_server_ref(server);
+	op->opcode = opcode;
+
+	if (gatt_db_attribute_write(attr, 0, iov.iov_base,
+							iov.iov_len, opcode,
+							server->att,
+							write_complete_cb, op))
+		return;
+
+	async_write_op_destroy(op);
+
+	ecode = BT_ATT_ERROR_UNLIKELY;
+
+error:
+	if (opcode == BT_ATT_OP_WRITE_CMD)
+		return;
+
+	bt_att_chan_send_error_rsp(chan, opcode, handle, ecode);
+}
+
+static uint8_t get_read_rsp_opcode(uint8_t opcode)
+{
+
+	switch (opcode) {
+	case BT_ATT_OP_READ_REQ:
+		return BT_ATT_OP_READ_RSP;
+	case BT_ATT_OP_READ_BLOB_REQ:
+		return BT_ATT_OP_READ_BLOB_RSP;
+	default:
+		/*
+		 * Should never happen
+		 *
+		 * TODO: It would be nice to have a debug-mode assert macro
+		 * for development builds. This way bugs could be easily caught
+		 * during development and there would be self documenting code
+		 * that wouldn't be crash release builds.
+		 */
+		return 0;
+	}
+
+	return 0;
+}
+
+static void read_complete_cb(struct gatt_db_attribute *attr, int err,
+					const uint8_t *value, size_t len,
+					void *user_data)
+{
+	struct async_read_op *op = user_data;
+	struct bt_gatt_server *server = op->server;
+	uint8_t rsp_opcode;
+	uint16_t handle;
+
+	DBG(server, "Read Complete: err %d", err);
+
+	handle = gatt_db_attribute_get_handle(attr);
+
+	if (err) {
+		bt_att_chan_send_error_rsp(op->chan, op->opcode, handle, err);
+		async_read_op_destroy(op);
+		return;
+	}
+
+	rsp_opcode = get_read_rsp_opcode(op->opcode);
+
+	bt_att_chan_send_rsp(op->chan, rsp_opcode, len ? value : NULL,
+					MIN((unsigned int) op->mtu - 1, len));
+	async_read_op_destroy(op);
+}
+
+static void handle_read_req(struct bt_att_chan *chan,
+				struct bt_gatt_server *server, uint16_t mtu,
+				uint8_t opcode, uint16_t handle,
+				uint16_t offset)
+{
+	struct gatt_db_attribute *attr;
+	uint8_t ecode;
+	struct async_read_op *op = NULL;
+
+	ecode = authorize_req(server, opcode, handle);
+	if (ecode)
+		goto error;
+
+	attr = gatt_db_get_attribute(server->db, handle);
+	if (!attr) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	DBG(server, "Read %sReq - handle: 0x%04x",
+		opcode == BT_ATT_OP_READ_BLOB_REQ ? "Blob " : "", handle);
+
+	ecode = check_permissions(server, attr, BT_ATT_PERM_READ_MASK);
+	if (ecode)
+		goto error;
+
+	op = new0(struct async_read_op, 1);
+	op->chan = chan;
+	op->opcode = opcode;
+	op->server = bt_gatt_server_ref(server);
+	op->mtu = mtu;
+
+	if (gatt_db_attribute_read(attr, offset, opcode, server->att,
+							read_complete_cb, op))
+		return;
+
+	ecode = BT_ATT_ERROR_UNLIKELY;
+
+error:
+	if (op)
+		async_read_op_destroy(op);
+
+	bt_att_chan_send_error_rsp(chan, opcode, handle, ecode);
+}
+
+static void read_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
+			const void *pdu, uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	struct iovec iov = { (void *)pdu, length };
+	uint16_t handle;
+
+	if (!util_iov_pull_le16(&iov, &handle) || iov.iov_len) {
+		bt_att_chan_send_error_rsp(chan, opcode, 0,
+						BT_ATT_ERROR_INVALID_PDU);
+		return;
+	}
+
+	handle_read_req(chan, server, mtu, opcode, handle, 0);
+}
+
+static void read_blob_cb(struct bt_att_chan *chan, uint16_t mtu, uint8_t opcode,
+					const void *pdu, uint16_t length,
+					void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	struct iovec iov = { (void *)pdu, length };
+	uint16_t handle, offset;
+
+	if (!util_iov_pull_le16(&iov, &handle) ||
+			!util_iov_pull_le16(&iov, &offset) || iov.iov_len) {
+		bt_att_chan_send_error_rsp(chan, opcode, 0,
+						BT_ATT_ERROR_INVALID_PDU);
+		return;
+	}
+
+	handle_read_req(chan, server, mtu, opcode, handle, offset);
+}
+
+struct read_mult_data {
+	struct bt_att_chan *chan;
+	struct bt_gatt_server *server;
+	uint8_t opcode;
+	uint16_t *handles;
+	size_t cur_handle;
+	size_t num_handles;
+	struct iovec rsp;
+	size_t mtu;
+};
+
+static void read_mult_data_free(struct read_mult_data *data)
+{
+	free(data->handles);
+	free(data->rsp.iov_base);
+	free(data);
+}
+
+static void read_multiple_complete_cb(struct gatt_db_attribute *attr, int err,
+					const uint8_t *value, size_t len,
+					void *user_data)
+{
+	struct read_mult_data *data = user_data;
+	struct gatt_db_attribute *next_attr;
+	uint16_t handle = gatt_db_attribute_get_handle(attr);
+	uint8_t ecode;
+	size_t room;
+
+	if (err != 0) {
+		ecode = err;
+		goto error;
+	}
+
+	room = rsp_room(&data->rsp, data->mtu - 1);
+
+	if (data->opcode == BT_ATT_OP_READ_MULT_VL_REQ) {
+		/* The Length Value Tuple List may be truncated within the first
+		 * two octets of a tuple due to the size limits of the current
+		 * ATT_MTU, but the first two octets cannot be separated.
+		 */
+		if (room >= 2) {
+			util_iov_push_le16(&data->rsp, len);
+			room -= 2;
+		} else
+			room = 0;
+	}
+
+	if (len && room)
+		util_iov_push_mem(&data->rsp, MIN(len, room), value);
+
+	data->cur_handle++;
+
+	if (data->cur_handle == data->num_handles) {
+		bt_att_chan_send_rsp(data->chan, data->opcode + 1,
+						data->rsp.iov_base,
+						data->rsp.iov_len);
+		read_mult_data_free(data);
+		return;
+	}
+
+	handle = data->handles[data->cur_handle];
+
+	util_debug(data->server->debug_callback, data->server->debug_data,
+				"%s Req - #%zu of %zu: 0x%04x",
+				data->opcode == BT_ATT_OP_READ_MULT_REQ ?
+				"Read Multiple" :
+				"Read Multiple Variable Length",
+				data->cur_handle + 1, data->num_handles,
+				handle);
+
+	next_attr = gatt_db_get_attribute(data->server->db, handle);
+
+	if (!next_attr) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	ecode = check_permissions(data->server, next_attr,
+						BT_ATT_PERM_READ_MASK);
+	if (ecode)
+		goto error;
+
+	if (gatt_db_attribute_read(next_attr, 0, data->opcode,
+					data->server->att,
+					read_multiple_complete_cb, data))
+		return;
+
+	ecode = BT_ATT_ERROR_UNLIKELY;
+
+error:
+	bt_att_chan_send_error_rsp(data->chan, data->opcode, handle, ecode);
+	read_mult_data_free(data);
+}
+
+static struct read_mult_data *read_mult_data_new(struct bt_gatt_server *server,
+						struct bt_att_chan *chan,
+						uint16_t mtu,
+						uint8_t opcode,
+						uint16_t num_handles)
+{
+	struct read_mult_data *data;
+
+	data = new0(struct read_mult_data, 1);
+	data->chan = chan;
+	data->opcode = opcode;
+	data->handles = new0(uint16_t, num_handles);
+	data->server = server;
+	data->num_handles = num_handles;
+	data->cur_handle = 0;
+	data->mtu = mtu;
+	data->rsp.iov_base = new0(uint8_t, data->mtu - 1);
+
+	return data;
+}
+
+static void read_multiple_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	struct gatt_db_attribute *attr;
+	struct read_mult_data *data = NULL;
+	struct iovec iov = { (void *)pdu, length };
+	uint8_t ecode;
+	size_t i = 0;
+	uint16_t handle = 0;
+
+	if (length < 4) {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	data = read_mult_data_new(server, chan, mtu, opcode, length / 2);
+
+	for (i = 0; i < data->num_handles; i++) {
+		if (!util_iov_pull_le16(&iov, &data->handles[i])) {
+			ecode = BT_ATT_ERROR_INVALID_PDU;
+			goto error;
+		}
+	}
+
+	handle = data->handles[0];
+
+	DBG(server, "%s Req - %zu handles, 1st: 0x%04x",
+			data->opcode == BT_ATT_OP_READ_MULT_REQ ?
+			"Read Multiple" : "Read Multiple Variable Length",
+			data->num_handles, handle);
+
+	attr = gatt_db_get_attribute(server->db, handle);
+
+	if (!attr) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	ecode = check_permissions(data->server, attr, BT_ATT_PERM_READ_MASK);
+	if (ecode)
+		goto error;
+
+	if (gatt_db_attribute_read(attr, 0, opcode, server->att,
+					read_multiple_complete_cb, data))
+		return;
+
+	ecode = BT_ATT_ERROR_UNLIKELY;
+
+error:
+	if (data)
+		read_mult_data_free(data);
+
+	bt_att_chan_send_error_rsp(chan, opcode, handle, ecode);
+}
+
+static bool append_prep_data(struct prep_write_data *prep_data, uint16_t handle,
+					uint16_t length, uint8_t *value)
+{
+	uint8_t *val;
+	size_t len;
+
+	if (!length)
+		return true;
+
+	len = (size_t)prep_data->length + (size_t)length;
+	if (len > UINT16_MAX)
+		return false;
+
+	val = realloc(prep_data->value, len);
+	if (!val)
+		return false;
+
+	memcpy(val + prep_data->length, value, length);
+
+	prep_data->value = val;
+	prep_data->length = (uint16_t)len;
+
+	return true;
+}
+
+static bool is_reliable_write_supported(const struct bt_gatt_server  *server,
+							uint16_t handle)
+{
+	struct gatt_db_attribute *attr;
+	uint16_t ext_prop;
+
+	attr = gatt_db_get_attribute(server->db, handle);
+	if (!attr)
+		return false;
+
+	if (!gatt_db_attribute_get_char_data(attr, NULL, NULL, NULL, &ext_prop,
+									NULL))
+		return false;
+
+	return (ext_prop & BT_GATT_CHRC_EXT_PROP_RELIABLE_WRITE);
+}
+
+static bool prep_data_new(struct bt_gatt_server *server,
+					uint16_t handle, uint16_t offset,
+					uint16_t length, uint8_t *value)
+{
+	struct prep_write_data *prep_data;
+
+	prep_data = new0(struct prep_write_data, 1);
+
+	if (!append_prep_data(prep_data, handle, length, value)) {
+		prep_write_data_destroy(prep_data);
+		return false;
+	}
+
+	prep_data->server = server;
+	prep_data->handle = handle;
+	prep_data->offset = offset;
+
+	/*
+	 * Handle is the value handle. We need characteristic declaration
+	 * handle which in BlueZ is handle_value -1
+	 */
+	prep_data->reliable_supported = is_reliable_write_supported(server,
+								handle - 1);
+
+	queue_push_tail(server->prep_queue, prep_data);
+
+	return true;
+}
+
+static bool store_prep_data(struct bt_gatt_server *server,
+					uint16_t handle, uint16_t offset,
+					uint16_t length, uint8_t *value)
+{
+	struct prep_write_data *prep_data = NULL;
+
+	/*
+	 * Now lets check if prep write is a continuation of long write
+	 * If so do aggregation of data
+	 */
+	prep_data = queue_peek_tail(server->prep_queue);
+	if (prep_data && (prep_data->handle == handle) &&
+			(offset == (prep_data->length + prep_data->offset)))
+		return append_prep_data(prep_data, handle, length, value);
+
+	return prep_data_new(server, handle, offset, length, value);
+}
+
+struct prep_write_complete_data {
+	struct bt_att_chan *chan;
+	void *pdu;
+	uint16_t length;
+	struct bt_gatt_server *server;
+};
+
+static void prep_write_complete_cb(struct gatt_db_attribute *attr, int err,
+								void *user_data)
+{
+	struct prep_write_complete_data *pwcd = user_data;
+	struct iovec iov = { pwcd->pdu, pwcd->length };
+	uint16_t handle = 0;
+	uint16_t offset;
+
+	if (!util_iov_pull_le16(&iov, &handle) ||
+			!util_iov_pull_le16(&iov, &offset)) {
+		bt_att_chan_send_error_rsp(pwcd->chan, BT_ATT_OP_PREP_WRITE_REQ,
+					handle, BT_ATT_ERROR_INVALID_PDU);
+		free(pwcd->pdu);
+		free(pwcd);
+
+		return;
+	}
+
+	if (err) {
+		bt_att_chan_send_error_rsp(pwcd->chan, BT_ATT_OP_PREP_WRITE_REQ,
+								handle, err);
+		free(pwcd->pdu);
+		free(pwcd);
+
+		return;
+	}
+
+	if (!store_prep_data(pwcd->server, handle, offset, iov.iov_len,
+							iov.iov_base)) {
+		bt_att_chan_send_error_rsp(pwcd->chan, BT_ATT_OP_PREP_WRITE_REQ,
+					handle,
+					BT_ATT_ERROR_INSUFFICIENT_RESOURCES);
+		free(pwcd->pdu);
+		free(pwcd);
+
+		return;
+	}
+
+	bt_att_chan_send_rsp(pwcd->chan, BT_ATT_OP_PREP_WRITE_RSP, pwcd->pdu,
+								pwcd->length);
+
+	free(pwcd->pdu);
+	free(pwcd);
+}
+
+static void prep_write_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	uint16_t handle = 0;
+	uint16_t offset;
+	struct gatt_db_attribute *attr;
+	struct prep_write_complete_data *pwcd;
+	struct iovec iov = { (void *)pdu, length };
+	uint8_t ecode, status;
+
+	if (iov.iov_len < sizeof(handle) + sizeof(offset)) {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	if (queue_length(server->prep_queue) >= server->max_prep_queue_len) {
+		ecode = BT_ATT_ERROR_PREPARE_QUEUE_FULL;
+		goto error;
+	}
+
+	util_iov_pull_le16(&iov, &handle);
+	util_iov_pull_le16(&iov, &offset);
+
+	attr = gatt_db_get_attribute(server->db, handle);
+	if (!attr) {
+		ecode = BT_ATT_ERROR_INVALID_HANDLE;
+		goto error;
+	}
+
+	DBG(server, "Prep Write Req - handle: 0x%04x", handle);
+
+	ecode = check_length(iov.iov_len, offset);
+	if (ecode)
+		goto error;
+
+	ecode = check_permissions(server, attr, BT_ATT_PERM_WRITE_MASK);
+	if (ecode)
+		goto error;
+
+	pwcd = new0(struct prep_write_complete_data, 1);
+	pwcd->chan = chan;
+	pwcd->pdu = util_memdup(pdu, length);
+	pwcd->length = length;
+	pwcd->server = server;
+
+	status = gatt_db_attribute_write(attr, offset, NULL, 0,
+						BT_ATT_OP_PREP_WRITE_REQ,
+						server->att,
+						prep_write_complete_cb, pwcd);
+
+	if (status)
+		return;
+
+	ecode = BT_ATT_ERROR_UNLIKELY;
+
+error:
+	bt_att_chan_send_error_rsp(chan, opcode, handle, ecode);
+}
+
+struct exec_data {
+	struct bt_att_chan *chan;
+	struct bt_gatt_server *server;
+};
+
+static void exec_next_prep_write(struct exec_data *data, uint16_t ehandle,
+								int err);
+
+static void exec_write_complete_cb(struct gatt_db_attribute *attr, int err,
+								void *user_data)
+{
+	struct exec_data *data = user_data;
+	uint16_t handle = gatt_db_attribute_get_handle(attr);
+
+	exec_next_prep_write(data, handle, err);
+}
+
+static void exec_next_prep_write(struct exec_data *data, uint16_t ehandle,
+								int err)
+{
+	struct prep_write_data *next = NULL;
+	struct gatt_db_attribute *attr;
+	bool status;
+
+	if (err)
+		goto error;
+
+	next = queue_pop_head(data->server->prep_queue);
+	if (!next) {
+		bt_att_chan_send_rsp(data->chan, BT_ATT_OP_EXEC_WRITE_RSP,
+								NULL, 0);
+		free(data);
+		return;
+	}
+
+	attr = gatt_db_get_attribute(data->server->db, next->handle);
+	if (!attr) {
+		err = BT_ATT_ERROR_UNLIKELY;
+		goto error;
+	}
+
+	status = gatt_db_attribute_write(attr, next->offset,
+						next->value, next->length,
+						BT_ATT_OP_EXEC_WRITE_REQ,
+						data->server->att,
+						exec_write_complete_cb, data);
+
+	prep_write_data_destroy(next);
+
+	if (status)
+		return;
+
+	err = BT_ATT_ERROR_UNLIKELY;
+
+error:
+	queue_remove_all(data->server->prep_queue, NULL, NULL,
+						prep_write_data_destroy);
+
+	bt_att_chan_send_error_rsp(data->chan, BT_ATT_OP_EXEC_WRITE_REQ,
+								ehandle, err);
+	free(data);
+}
+
+static bool find_no_reliable_characteristic(const void *data,
+						const void *match_data)
+{
+	const struct prep_write_data *prep_data = data;
+
+	return !prep_data->reliable_supported;
+}
+
+static void exec_write_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	struct exec_data *data;
+	struct iovec iov = { (void *)pdu, length };
+	uint8_t flags;
+	uint8_t ecode;
+	bool write;
+	uint16_t ehandle = 0;
+
+	if (!util_iov_pull_u8(&iov, &flags) || iov.iov_len) {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	DBG(server, "Exec Write Req - flags: 0x%02x", flags);
+
+	if (flags == 0x00)
+		write = false;
+	else if (flags == 0x01)
+		write = true;
+	else {
+		ecode = BT_ATT_ERROR_INVALID_PDU;
+		goto error;
+	}
+
+	if (!write) {
+		queue_remove_all(server->prep_queue, NULL, NULL,
+						prep_write_data_destroy);
+		bt_att_chan_send_rsp(chan, BT_ATT_OP_EXEC_WRITE_RSP, NULL, 0);
+		return;
+	}
+
+	/* If there is more than one prep request, we are in reliable session */
+	if (queue_length(server->prep_queue) > 1) {
+		struct prep_write_data *prep_data;
+
+		prep_data = queue_find(server->prep_queue,
+					find_no_reliable_characteristic, NULL);
+		if (prep_data) {
+			ecode = BT_ATT_ERROR_REQUEST_NOT_SUPPORTED;
+			ehandle = prep_data->handle;
+			goto error;
+		}
+	}
+
+	data = new0(struct exec_data, 1);
+	data->chan = chan;
+	data->server = server;
+
+	exec_next_prep_write(data, 0, 0);
+
+	return;
+
+error:
+	queue_remove_all(server->prep_queue, NULL, NULL,
+						prep_write_data_destroy);
+	bt_att_chan_send_error_rsp(chan, opcode, ehandle, ecode);
+}
+
+static void exchange_mtu_cb(struct bt_att_chan *chan, uint16_t mtu,
+				uint8_t opcode, const void *pdu,
+				uint16_t length, void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+	struct iovec iov = { (void *)pdu, length };
+	uint8_t rsp_pdu[2];
+	struct iovec rsp = { rsp_pdu, 0 };
+	uint16_t client_rx_mtu;
+	uint16_t final_mtu;
+
+	if (!util_iov_pull_le16(&iov, &client_rx_mtu) || iov.iov_len) {
+		bt_att_chan_send_error_rsp(chan, opcode, 0,
+						BT_ATT_ERROR_INVALID_PDU);
+		return;
+	}
+
+	final_mtu = MAX(MIN(client_rx_mtu, server->mtu), BT_ATT_DEFAULT_LE_MTU);
+
+	/* Respond with the server MTU */
+	util_iov_push_le16(&rsp, server->mtu);
+	bt_att_chan_send_rsp(chan, BT_ATT_OP_MTU_RSP, rsp.iov_base,
+							rsp.iov_len);
+
+	/* Set MTU to be the minimum */
+	server->mtu = final_mtu;
+	bt_att_set_mtu(server->att, final_mtu);
+
+	DBG(server, "MTU exchange complete, with MTU: %u", final_mtu);
+}
+
+static bool gatt_server_register_att_handlers(struct bt_gatt_server *server)
+{
+	/* Exchange MTU */
+	server->mtu_id = bt_att_register(server->att, BT_ATT_OP_MTU_REQ,
+								exchange_mtu_cb,
+								server, NULL);
+	if (!server->mtu_id)
+		return false;
+
+	/* Read By Group Type */
+	server->read_by_grp_type_id = bt_att_register(server->att,
+						BT_ATT_OP_READ_BY_GRP_TYPE_REQ,
+						read_by_grp_type_cb,
+						server, NULL);
+	if (!server->read_by_grp_type_id)
+		return false;
+
+	/* Read By Type */
+	server->read_by_type_id = bt_att_register(server->att,
+						BT_ATT_OP_READ_BY_TYPE_REQ,
+						read_by_type_cb,
+						server, NULL);
+	if (!server->read_by_type_id)
+		return false;
+
+	/* Find Information */
+	server->find_info_id = bt_att_register(server->att,
+							BT_ATT_OP_FIND_INFO_REQ,
+							find_info_cb,
+							server, NULL);
+	if (!server->find_info_id)
+		return false;
+
+	/* Find By Type Value */
+	server->find_by_type_value_id = bt_att_register(server->att,
+						BT_ATT_OP_FIND_BY_TYPE_REQ,
+						find_by_type_val_cb,
+						server, NULL);
+
+	if (!server->find_by_type_value_id)
+		return false;
+
+	/* Write Request */
+	server->write_id = bt_att_register(server->att, BT_ATT_OP_WRITE_REQ,
+								write_cb,
+								server, NULL);
+	if (!server->write_id)
+		return false;
+
+	/* Write Command */
+	server->write_cmd_id = bt_att_register(server->att, BT_ATT_OP_WRITE_CMD,
+								write_cb,
+								server, NULL);
+	if (!server->write_cmd_id)
+		return false;
+
+	/* Read Request */
+	server->read_id = bt_att_register(server->att, BT_ATT_OP_READ_REQ,
+								read_cb,
+								server, NULL);
+	if (!server->read_id)
+		return false;
+
+	/* Read Blob Request */
+	server->read_blob_id = bt_att_register(server->att,
+							BT_ATT_OP_READ_BLOB_REQ,
+							read_blob_cb,
+							server, NULL);
+	if (!server->read_blob_id)
+		return false;
+
+	/* Read Multiple Request */
+	server->read_multiple_id = bt_att_register(server->att,
+							BT_ATT_OP_READ_MULT_REQ,
+							read_multiple_cb,
+							server, NULL);
+
+	if (!server->read_multiple_id)
+		return false;
+
+	/* Read Multiple Variable Length Request */
+	server->read_multiple_vl_id = bt_att_register(server->att,
+						BT_ATT_OP_READ_MULT_VL_REQ,
+						read_multiple_cb,
+						server, NULL);
+
+	if (!server->read_multiple_vl_id)
+		return false;
+
+	/* Prepare Write Request */
+	server->prep_write_id = bt_att_register(server->att,
+						BT_ATT_OP_PREP_WRITE_REQ,
+						prep_write_cb, server, NULL);
+	if (!server->prep_write_id)
+		return false;
+
+	/* Execute Write Request */
+	server->exec_write_id = bt_att_register(server->att,
+						BT_ATT_OP_EXEC_WRITE_REQ,
+						exec_write_cb, server, NULL);
+	if (!server->exec_write_id)
+		return false;
+
+	/* Signed Write Command */
+	server->signed_write_cmd_id = bt_att_register(server->att,
+						BT_ATT_OP_SIGNED_WRITE_CMD,
+						write_cb,
+						server, NULL);
+	if (!server->signed_write_cmd_id)
+		return false;
+
+	return true;
+}
+
+struct bt_gatt_server *bt_gatt_server_new(struct gatt_db *db,
+					struct bt_att *att, uint16_t mtu,
+					uint8_t min_enc_size)
+{
+	struct bt_gatt_server *server;
+
+	if (!att || !db)
+		return NULL;
+
+	server = new0(struct bt_gatt_server, 1);
+	server->db = gatt_db_ref(db);
+	server->att = bt_att_ref(att);
+	server->mtu = MAX(mtu, BT_ATT_DEFAULT_LE_MTU);
+	server->perms = true;
+	server->max_prep_queue_len = DEFAULT_MAX_PREP_QUEUE_LEN;
+	server->prep_queue = queue_new();
+	server->min_enc_size = min_enc_size;
+	server->mnotify_timeout = MNOTIFY_TIMEOUT;
+
+	if (!gatt_server_register_att_handlers(server)) {
+		bt_gatt_server_free(server);
+		return NULL;
+	}
+
+	return bt_gatt_server_ref(server);
+}
+
+uint16_t bt_gatt_server_get_mtu(struct bt_gatt_server *server)
+{
+	if (!server || !server->att)
+		return 0;
+
+	return bt_att_get_mtu(server->att);
+}
+
+struct bt_att *bt_gatt_server_get_att(struct bt_gatt_server *server)
+{
+	if (!server)
+		return NULL;
+
+	return server->att;
+}
+
+void bt_gatt_server_set_permissions(struct bt_gatt_server *server, bool value)
+{
+	if (!server)
+		return;
+
+	server->perms = value;
+}
+
+struct bt_gatt_server *bt_gatt_server_ref(struct bt_gatt_server *server)
+{
+	if (!server)
+		return NULL;
+
+	__sync_fetch_and_add(&server->ref_count, 1);
+
+	return server;
+}
+
+void bt_gatt_server_unref(struct bt_gatt_server *server)
+{
+	if (!server)
+		return;
+
+	if (__sync_sub_and_fetch(&server->ref_count, 1))
+		return;
+
+	bt_gatt_server_free(server);
+}
+
+bool bt_gatt_server_set_debug(struct bt_gatt_server *server,
+					bt_gatt_server_debug_func_t callback,
+					void *user_data,
+					bt_gatt_server_destroy_func_t destroy)
+{
+	if (!server)
+		return false;
+
+	if (server->debug_destroy)
+		server->debug_destroy(server->debug_data);
+
+	server->debug_callback = callback;
+	server->debug_destroy = destroy;
+	server->debug_data = user_data;
+
+	return true;
+}
+
+static void mnotify_timeout_remove(struct bt_gatt_server *server)
+{
+	if (!server->mnotify->id)
+		return;
+
+	timeout_remove(server->mnotify->id);
+	server->mnotify->id = 0;
+}
+
+static bool mnotify_send(void *user_data)
+{
+	struct bt_gatt_server *server = user_data;
+
+	server->mnotify->id = 0;
+
+	bt_att_send(server->att, BT_ATT_OP_HANDLE_NFY_MULT,
+			server->mnotify->pdu.iov_base,
+			server->mnotify->pdu.iov_len, NULL, NULL, NULL);
+
+	mnotify_free(server);
+
+	return false;
+}
+
+bool bt_gatt_server_set_mnotify_timeout(struct bt_gatt_server *server,
+							int timeout)
+{
+	if (!server)
+		return false;
+
+	server->mnotify_timeout = timeout;
+
+	/* Flush any pending data if Notify Multiple is being disabled */
+	if (timeout < 0 && server->mnotify) {
+		mnotify_timeout_remove(server);
+		mnotify_send(server);
+	}
+
+	return true;
+}
+
+static bool notify_append_le16(struct mnotify_data *data, uint16_t value)
+{
+	if (rsp_room(&data->pdu, data->len) < sizeof(value))
+		return false;
+
+	return util_iov_push_le16(&data->pdu, value) != NULL;
+}
+
+bool bt_gatt_server_send_notification(struct bt_gatt_server *server,
+					uint16_t handle, const uint8_t *value,
+					uint16_t length, bool multiple)
+{
+	struct mnotify_data *data = NULL;
+	bool result;
+
+	if (!server || (length && !value))
+		return false;
+
+	/* Notify Multiple disabled, send as regular notification */
+	if (server->mnotify_timeout < 0)
+		multiple = false;
+
+	if (multiple) {
+		data = server->mnotify;
+
+		/* flush buffered data if this request hits buffer size limit */
+		if (data && data->pdu.iov_len > 0 &&
+			rsp_room(&data->pdu, data->len) < (size_t)4 + length) {
+			mnotify_timeout_remove(server);
+			mnotify_send(server);
+			/* data has been freed by mnotify_send */
+			data = NULL;
+		}
+	}
+
+	if (!data) {
+		data = new0(struct mnotify_data, 1);
+		data->len = bt_att_get_mtu(server->att) - 1;
+		data->pdu.iov_base = malloc(data->len);
+		if (!data->pdu.iov_base)
+			goto error;
+	}
+
+	if (!notify_append_le16(data, handle))
+		goto error;
+
+	if (multiple) {
+		length = MIN(rsp_room(&data->pdu, data->len) - 2, length);
+		if (!notify_append_le16(data, length))
+			goto error;
+	} else {
+		length = MIN(rsp_room(&data->pdu, data->len), length);
+	}
+
+	if (length && !util_iov_push_mem(&data->pdu, length, value))
+		goto error;
+
+	if (multiple) {
+		if (!server->mnotify)
+			server->mnotify = data;
+
+		if (!server->mnotify->id)
+			server->mnotify->id = timeout_add(
+						server->mnotify_timeout,
+						mnotify_send, server, NULL);
+
+		return true;
+	}
+
+	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_NFY,
+				data->pdu.iov_base, data->pdu.iov_len, NULL,
+				NULL, NULL);
+	free(data->pdu.iov_base);
+	free(data);
+
+	return result;
+
+error:
+	if (data) {
+		free(data->pdu.iov_base);
+		free(data);
+	}
+
+	return false;
+}
+
+struct ind_data {
+	bt_gatt_server_conf_func_t callback;
+	bt_gatt_server_destroy_func_t destroy;
+	void *user_data;
+};
+
+static void destroy_ind_data(void *user_data)
+{
+	struct ind_data *data = user_data;
+
+	if (data->destroy)
+		data->destroy(data->user_data);
+
+	free(data);
+}
+
+static void conf_cb(uint8_t opcode, const void *pdu,
+					uint16_t length, void *user_data)
+{
+	struct ind_data *data = user_data;
+
+	if (data->callback)
+		data->callback(data->user_data);
+}
+
+bool bt_gatt_server_send_indication(struct bt_gatt_server *server,
+					uint16_t handle, const uint8_t *value,
+					uint16_t length,
+					bt_gatt_server_conf_func_t callback,
+					void *user_data,
+					bt_gatt_server_destroy_func_t destroy)
+{
+	uint16_t pdu_len;
+	struct iovec pdu = {};
+	struct ind_data *data;
+	bool result;
+
+	if (!server || (length && !value))
+		return false;
+
+	pdu_len = MIN(bt_att_get_mtu(server->att) - 1, length + 2);
+	pdu.iov_base = malloc(pdu_len);
+	if (!pdu.iov_base)
+		return false;
+
+	data = new0(struct ind_data, 1);
+
+	data->callback = callback;
+	data->destroy = destroy;
+	data->user_data = user_data;
+
+	util_iov_push_le16(&pdu, handle);
+	if (pdu_len > 2)
+		util_iov_push_mem(&pdu, pdu_len - 2, value);
+
+	result = !!bt_att_send(server->att, BT_ATT_OP_HANDLE_IND, pdu.iov_base,
+						pdu.iov_len, conf_cb,
+						data, destroy_ind_data);
+	if (!result)
+		destroy_ind_data(data);
+
+	free(pdu.iov_base);
+
+	return result;
+}
+
+bool bt_gatt_server_set_authorize(struct bt_gatt_server *server,
+					bt_gatt_server_authorize_cb_t cb,
+					void *user_data)
+{
+	if (!server)
+		return false;
+
+	server->authorize = cb;
+	server->authorize_data = user_data;
+
+	return true;
+}

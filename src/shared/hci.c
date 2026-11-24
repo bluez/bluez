@@ -1,0 +1,1016 @@
+// SPDX-License-Identifier: LGPL-2.1-or-later
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2012-2014  Intel Corporation. All rights reserved.
+ *
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
+#include <sys/un.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <linux/filter.h>
+
+#include "bluetooth/hci.h"
+#include "monitor/bt.h"
+#include "src/shared/mainloop.h"
+#include "src/shared/io.h"
+#include "src/shared/util.h"
+#include "src/shared/queue.h"
+#include "src/shared/timeout.h"
+#include "src/shared/hci.h"
+
+
+struct bt_hci {
+	int ref_count;
+	struct io *io;
+	bool is_stream;
+	bool writer_active;
+	uint8_t num_cmds;
+	unsigned int next_cmd_id;
+	unsigned int next_evt_id;
+	unsigned int filter_id;
+	struct queue *cmd_queue;
+	struct queue *rsp_queue;
+	struct queue *evt_list;
+	struct queue *subevt_list;
+	struct queue *data_queue;
+};
+
+struct cmd {
+	unsigned int id;
+	uint16_t opcode;
+	void *data;
+	uint8_t size;
+	bt_hci_callback_func_t callback;
+	bt_hci_destroy_func_t destroy;
+	void *user_data;
+};
+
+struct evt {
+	unsigned int id;
+	uint8_t event;
+	bt_hci_callback_func_t callback;
+	bt_hci_destroy_func_t destroy;
+	void *user_data;
+};
+
+struct data {
+	uint8_t type;
+	uint16_t handle;
+	void *data;
+	uint8_t size;
+};
+
+static void cmd_free(void *data)
+{
+	struct cmd *cmd = data;
+
+	if (cmd->destroy)
+		cmd->destroy(cmd->user_data);
+
+	free(cmd->data);
+	free(cmd);
+}
+
+static void evt_free(void *data)
+{
+	struct evt *evt = data;
+
+	if (evt->destroy)
+		evt->destroy(evt->user_data);
+
+	free(evt);
+}
+
+static void data_free(void *data)
+{
+	struct data *d = data;
+
+	free(d->data);
+	free(d);
+}
+
+static void send_command(struct bt_hci *hci, uint16_t opcode,
+						void *data, uint8_t size)
+{
+	uint8_t type = BT_H4_CMD_PKT;
+	struct bt_hci_cmd_hdr hdr;
+	struct iovec iov[3];
+	int iovcnt;
+
+	if (hci->num_cmds < 1)
+		return;
+
+	hdr.opcode = cpu_to_le16(opcode);
+	hdr.plen = size;
+
+	iov[0].iov_base = &type;
+	iov[0].iov_len  = 1;
+	iov[1].iov_base = &hdr;
+	iov[1].iov_len  = sizeof(hdr);
+
+	if (size > 0) {
+		iov[2].iov_base = data;
+		iov[2].iov_len  = size;
+		iovcnt = 3;
+	} else
+		iovcnt = 2;
+
+	if (io_send(hci->io, iov, iovcnt) < 0)
+		return;
+
+	hci->num_cmds--;
+}
+
+static void send_data(struct bt_hci *hci, uint8_t type, uint16_t handle,
+						void *data, uint16_t size)
+{
+	struct iovec iov[3];
+	struct bt_hci_acl_hdr hdr;
+
+	hdr.handle = cpu_to_le16(handle);
+	hdr.dlen = cpu_to_le16(size);
+
+	iov[0].iov_base = &type;
+	iov[0].iov_len  = 1;
+	iov[1].iov_base = &hdr;
+	iov[1].iov_len  = sizeof(hdr);
+	iov[2].iov_base = data;
+	iov[2].iov_len  = size;
+
+	io_send(hci->io, iov, 3);
+}
+
+static bool io_write_callback(struct io *io, void *user_data)
+{
+	struct bt_hci *hci = user_data;
+	struct cmd *cmd;
+	struct data *data;
+
+	if (hci->num_cmds) {
+		cmd = queue_pop_head(hci->cmd_queue);
+		if (cmd) {
+			send_command(hci, cmd->opcode, cmd->data, cmd->size);
+			queue_push_tail(hci->rsp_queue, cmd);
+		}
+	}
+
+	data = queue_pop_head(hci->data_queue);
+	if (data)
+		send_data(hci, data->type, data->handle,
+					data->data, data->size);
+
+	hci->writer_active = false;
+
+	return false;
+}
+
+static void wakeup_writer(struct bt_hci *hci)
+{
+	if (hci->writer_active)
+		return;
+
+	if (queue_isempty(hci->cmd_queue) && queue_isempty(hci->data_queue))
+		return;
+
+	if (!io_set_write_handler(hci->io, io_write_callback, hci, NULL))
+		return;
+
+	hci->writer_active = true;
+}
+
+static bool match_cmd_opcode(const void *a, const void *b)
+{
+	const struct cmd *cmd = a;
+	uint16_t opcode = PTR_TO_UINT(b);
+
+	return cmd->opcode == opcode;
+}
+
+static void process_response(struct bt_hci *hci, uint16_t opcode,
+					const void *data, size_t size)
+{
+	struct cmd *cmd;
+
+	if (opcode == BT_HCI_CMD_NOP) {
+		wakeup_writer(hci);
+		return;
+	}
+
+	cmd = queue_remove_if(hci->rsp_queue, match_cmd_opcode,
+						UINT_TO_PTR(opcode));
+	if (!cmd)
+		return;
+
+	/* Take a reference before calling the callback since that can unref
+	 * its reference destroying the instance.
+	 */
+	bt_hci_ref(hci);
+
+	if (cmd->callback)
+		cmd->callback(data, size, cmd->user_data);
+
+	cmd_free(cmd);
+
+	wakeup_writer(hci);
+
+	bt_hci_unref(hci);
+}
+
+static void process_notify(void *data, void *user_data)
+{
+	struct bt_hci_evt_hdr *hdr = user_data;
+	struct evt *evt = data;
+
+	if (evt->event == hdr->evt)
+		evt->callback(user_data + sizeof(struct bt_hci_evt_hdr),
+						hdr->plen, evt->user_data);
+}
+
+struct subevt_data {
+	uint8_t subevent;
+	const void *data;
+	uint8_t size;
+};
+
+static void process_subevt_notify(void *data, void *user_data)
+{
+	struct subevt_data *sd = user_data;
+	struct evt *evt = data;
+
+	if (evt->event == sd->subevent)
+		evt->callback(sd->data, sd->size, evt->user_data);
+}
+
+static void process_event(struct bt_hci *hci, const void *data, size_t size)
+{
+	const struct bt_hci_evt_hdr *hdr = data;
+	const struct bt_hci_evt_cmd_complete *cc;
+	const struct bt_hci_evt_cmd_status *cs;
+
+	if (size < sizeof(struct bt_hci_evt_hdr))
+		return;
+
+	data += sizeof(struct bt_hci_evt_hdr);
+	size -= sizeof(struct bt_hci_evt_hdr);
+
+	if (hdr->plen != size)
+		return;
+
+	switch (hdr->evt) {
+	case BT_HCI_EVT_CMD_COMPLETE:
+		if (size < sizeof(*cc))
+			return;
+		cc = data;
+		hci->num_cmds = cc->ncmd;
+		process_response(hci, le16_to_cpu(cc->opcode),
+						data + sizeof(*cc),
+						size - sizeof(*cc));
+		break;
+
+	case BT_HCI_EVT_CMD_STATUS:
+		if (size < sizeof(*cs))
+			return;
+		cs = data;
+		hci->num_cmds = cs->ncmd;
+		process_response(hci, le16_to_cpu(cs->opcode), &cs->status, 1);
+		break;
+
+	default:
+		queue_foreach(hci->evt_list, process_notify, (void *) hdr);
+		if (hdr->evt == BT_HCI_EVT_LE_META_EVENT && size > 0) {
+			const uint8_t *params = data;
+			struct subevt_data sd;
+
+			sd.subevent = params[0];
+			sd.data = data + 1;
+			sd.size = size - 1;
+			queue_foreach(hci->subevt_list,
+					process_subevt_notify, &sd);
+		}
+		break;
+	}
+}
+
+static bool io_read_callback(struct io *io, void *user_data)
+{
+	struct bt_hci *hci = user_data;
+	uint8_t buf[512];
+	ssize_t len;
+	int fd;
+
+	fd = io_get_fd(hci->io);
+	if (fd < 0)
+		return false;
+
+	if (hci->is_stream)
+		return false;
+
+	len = read(fd, buf, sizeof(buf));
+	if (len < 0)
+		return false;
+
+	if (len < 1)
+		return true;
+
+	switch (buf[0]) {
+	case BT_H4_EVT_PKT:
+		process_event(hci, buf + 1, len - 1);
+		break;
+	}
+
+	return true;
+}
+
+static struct bt_hci *create_hci(int fd)
+{
+	struct bt_hci *hci;
+
+	if (fd < 0)
+		return NULL;
+
+	hci = new0(struct bt_hci, 1);
+	hci->io = io_new(fd);
+	if (!hci->io) {
+		free(hci);
+		return NULL;
+	}
+
+	hci->is_stream = true;
+	hci->writer_active = false;
+	hci->num_cmds = 1;
+	hci->next_cmd_id = 1;
+	hci->next_evt_id = 1;
+
+	hci->cmd_queue = queue_new();
+	hci->rsp_queue = queue_new();
+	hci->evt_list = queue_new();
+	hci->subevt_list = queue_new();
+	hci->data_queue = queue_new();
+
+	if (!io_set_read_handler(hci->io, io_read_callback, hci, NULL)) {
+		queue_destroy(hci->evt_list, NULL);
+		queue_destroy(hci->subevt_list, NULL);
+		queue_destroy(hci->rsp_queue, NULL);
+		queue_destroy(hci->cmd_queue, NULL);
+		queue_destroy(hci->data_queue, NULL);
+		io_destroy(hci->io);
+		free(hci);
+		return NULL;
+	}
+
+	return bt_hci_ref(hci);
+}
+
+struct bt_hci *bt_hci_new(int fd)
+{
+	struct bt_hci *hci;
+
+	hci = create_hci(fd);
+	if (!hci)
+		return NULL;
+
+	return hci;
+}
+
+static int create_socket(uint16_t index, uint16_t channel)
+{
+	struct sockaddr_hci addr;
+	int fd;
+
+	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
+								BTPROTO_HCI);
+	if (fd < 0)
+		return -1;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.hci_family = AF_BLUETOOTH;
+	addr.hci_dev = index;
+	addr.hci_channel = channel;
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+struct bt_hci *bt_hci_new_user_channel(uint16_t index)
+{
+	struct bt_hci *hci;
+	int fd;
+
+	fd = create_socket(index, HCI_CHANNEL_USER);
+	if (fd < 0) {
+		printf("Unable to create user channel socket: %s(%d)\n",
+			strerror(errno), -errno);
+		return NULL;
+	}
+
+	hci = create_hci(fd);
+	if (!hci) {
+		close(fd);
+		return NULL;
+	}
+
+	hci->is_stream = false;
+
+	bt_hci_set_close_on_unref(hci, true);
+
+	return hci;
+}
+
+struct bt_hci *bt_hci_new_raw_device(uint16_t index)
+{
+	struct bt_hci *hci;
+	struct hci_filter flt;
+	int fd;
+
+	fd = create_socket(index, HCI_CHANNEL_RAW);
+	if (fd < 0)
+		return NULL;
+
+	memset(&flt, 0, sizeof(flt));
+	flt.type_mask = 1 << BT_H4_EVT_PKT;
+	flt.event_mask[0] = 0xffffffff;
+	flt.event_mask[1] = 0xffffffff;
+
+	if (setsockopt(fd, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+		close(fd);
+		return NULL;
+	}
+
+	hci = create_hci(fd);
+	if (!hci) {
+		close(fd);
+		return NULL;
+	}
+
+	hci->is_stream = false;
+
+	bt_hci_set_close_on_unref(hci, true);
+
+	return hci;
+}
+
+struct bt_hci *bt_hci_ref(struct bt_hci *hci)
+{
+	if (!hci)
+		return NULL;
+
+	__sync_fetch_and_add(&hci->ref_count, 1);
+
+	return hci;
+}
+
+void bt_hci_unref(struct bt_hci *hci)
+{
+	if (!hci)
+		return;
+
+	if (__sync_sub_and_fetch(&hci->ref_count, 1))
+		return;
+
+	if (hci->filter_id)
+		timeout_remove(hci->filter_id);
+
+	queue_destroy(hci->evt_list, evt_free);
+	queue_destroy(hci->subevt_list, evt_free);
+	queue_destroy(hci->cmd_queue, cmd_free);
+	queue_destroy(hci->rsp_queue, cmd_free);
+	queue_destroy(hci->data_queue, data_free);
+
+	io_destroy(hci->io);
+
+	free(hci);
+}
+
+bool bt_hci_set_close_on_unref(struct bt_hci *hci, bool do_close)
+{
+	if (!hci)
+		return false;
+
+	return io_set_close_on_destroy(hci->io, do_close);
+}
+
+unsigned int bt_hci_send(struct bt_hci *hci, uint16_t opcode,
+				const void *data, uint8_t size,
+				bt_hci_callback_func_t callback,
+				void *user_data, bt_hci_destroy_func_t destroy)
+{
+	struct cmd *cmd;
+
+	if (!hci)
+		return 0;
+
+	cmd = new0(struct cmd, 1);
+	cmd->opcode = opcode;
+	cmd->size = size;
+
+	if (cmd->size > 0) {
+		cmd->data = malloc(cmd->size);
+		if (!cmd->data) {
+			free(cmd);
+			return 0;
+		}
+
+		memcpy(cmd->data, data, cmd->size);
+	}
+
+	if (hci->next_cmd_id < 1)
+		hci->next_cmd_id = 1;
+
+	cmd->id = hci->next_cmd_id++;
+
+	cmd->callback = callback;
+	cmd->destroy = destroy;
+	cmd->user_data = user_data;
+
+	if (!queue_push_tail(hci->cmd_queue, cmd)) {
+		free(cmd->data);
+		free(cmd);
+		return 0;
+	}
+
+	wakeup_writer(hci);
+
+	return cmd->id;
+}
+
+static bool match_cmd_id(const void *a, const void *b)
+{
+	const struct cmd *cmd = a;
+	unsigned int id = PTR_TO_UINT(b);
+
+	return cmd->id == id;
+}
+
+bool bt_hci_cancel(struct bt_hci *hci, unsigned int id)
+{
+	struct cmd *cmd;
+
+	if (!hci || !id)
+		return false;
+
+	cmd = queue_remove_if(hci->cmd_queue, match_cmd_id, UINT_TO_PTR(id));
+	if (!cmd) {
+		cmd = queue_remove_if(hci->rsp_queue, match_cmd_id,
+							UINT_TO_PTR(id));
+		if (!cmd)
+			return false;
+	}
+
+	cmd_free(cmd);
+
+	wakeup_writer(hci);
+
+	return true;
+}
+
+bool bt_hci_flush(struct bt_hci *hci)
+{
+	if (!hci)
+		return false;
+
+	if (hci->writer_active) {
+		io_set_write_handler(hci->io, NULL, NULL, NULL);
+		hci->writer_active = false;
+	}
+
+	queue_remove_all(hci->cmd_queue, NULL, NULL, cmd_free);
+	queue_remove_all(hci->rsp_queue, NULL, NULL, cmd_free);
+	queue_remove_all(hci->data_queue, NULL, NULL, data_free);
+
+	return true;
+}
+
+static void update_evt_filter(struct bt_hci *hci)
+{
+	const struct queue_entry *entry;
+	struct sock_filter *filters;
+	struct sock_fprog fprog;
+	unsigned int evt_count, subevt_count, count, i;
+	int fd;
+
+	fd = io_get_fd(hci->io);
+	if (fd < 0)
+		return;
+
+	/* If stream-based (not a raw socket), no BPF filtering needed */
+	if (hci->is_stream)
+		return;
+
+	evt_count = queue_length(hci->evt_list);
+	subevt_count = queue_length(hci->subevt_list);
+
+	/* Filter structure:
+	 * Packet layout: [H4 type(1)][evt code(1)][plen(1)][params...]
+	 * For LE Meta: params[0] is the subevent code (offset 3 from start)
+	 *
+	 *   [0] Load byte at offset 1 (event code)
+	 *   [1] JEQ CMD_COMPLETE -> accept
+	 *   [2] JEQ CMD_STATUS -> accept
+	 *   [3] JEQ LE_META -> subevent_check (if subevts registered)
+	 *   [4..4+evt_count-1] JEQ registered_event -> accept
+	 *   [4+evt_count] reject
+	 *   -- subevent section (if subevt_count > 0) --
+	 *   [5+evt_count] Load byte at offset 3 (subevent code)
+	 *   [6+evt_count..6+evt_count+subevt_count-1] JEQ subevent -> accept
+	 *   [6+evt_count+subevt_count] reject
+	 *   -- shared accept --
+	 *   [last] accept
+	 */
+
+	/* Without subevents: 3 (defaults) + evt_count + reject + accept =
+	 *                    evt_count + 5
+	 * With subevents: 4 (defaults+LE_META) + evt_count + reject +
+	 *                 1 (load subevent) + subevt_count + reject + accept
+	 */
+	if (subevt_count)
+		count = 4 + evt_count + 1 + 1 + subevt_count + 1 + 1;
+	else
+		count = 3 + evt_count + 1 + 1;
+
+	filters = malloc(sizeof(*filters) * count);
+	if (!filters)
+		return;
+
+	i = 0;
+
+	/* Load event code byte */
+	filters[i++] = (struct sock_filter)
+		BPF_STMT(BPF_LD + BPF_B + BPF_ABS, 1);
+
+	if (subevt_count) {
+		/* accept is at index: count - 1
+		 * From instruction at index i, jump_true = (count-1) - (i+1)
+		 */
+
+		/* Check BT_HCI_EVT_CMD_COMPLETE -> accept */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_COMPLETE,
+				 count - 1 - (i + 1), 0);
+		i++;
+
+		/* Check BT_HCI_EVT_CMD_STATUS -> accept */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_STATUS,
+				 count - 1 - (i + 1), 0);
+		i++;
+
+		/* Check LE_META -> subevent section
+		 * subevent section starts at: 4 + evt_count + 1
+		 * (after the evt reject instruction)
+		 */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_LE_META_EVENT,
+				 4 + evt_count + 1 - (i + 1), 0);
+		i++;
+
+		/* Check each registered event -> accept */
+		entry = queue_get_entries(hci->evt_list);
+		while (entry) {
+			const struct evt *evt = entry->data;
+
+			filters[i] = (struct sock_filter)
+				BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+					 evt->event,
+					 count - 1 - (i + 1), 0);
+			i++;
+			entry = entry->next;
+		}
+
+		/* Reject (for non-matching events) */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_RET | BPF_K, 0);
+
+		/* Subevent section: load subevent byte at offset 3 */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_LD + BPF_B + BPF_ABS, 3);
+
+		/* Check each registered subevent -> accept */
+		entry = queue_get_entries(hci->subevt_list);
+		while (entry) {
+			const struct evt *evt = entry->data;
+
+			filters[i] = (struct sock_filter)
+				BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+					 evt->event,
+					 count - 1 - (i + 1), 0);
+			i++;
+			entry = entry->next;
+		}
+
+		/* Reject (for non-matching subevents) */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_RET | BPF_K, 0);
+	} else {
+		/* No subevents - simple filter */
+
+		/* Check BT_HCI_EVT_CMD_COMPLETE -> accept */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_COMPLETE,
+				 count - 1 - (i + 1), 0);
+		i++;
+
+		/* Check BT_HCI_EVT_CMD_STATUS -> accept */
+		filters[i] = (struct sock_filter)
+			BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+				 BT_HCI_EVT_CMD_STATUS,
+				 count - 1 - (i + 1), 0);
+		i++;
+
+		/* Check each registered event -> accept */
+		entry = queue_get_entries(hci->evt_list);
+		while (entry) {
+			const struct evt *evt = entry->data;
+
+			filters[i] = (struct sock_filter)
+				BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+					 evt->event,
+					 count - 1 - (i + 1), 0);
+			i++;
+			entry = entry->next;
+		}
+
+		/* Reject */
+		filters[i++] = (struct sock_filter)
+			BPF_STMT(BPF_RET | BPF_K, 0);
+	}
+
+	/* Accept */
+	filters[i++] = (struct sock_filter)
+		BPF_STMT(BPF_RET | BPF_K, 0x0fffffff);
+
+	fprog.len = i;
+	fprog.filter = filters;
+
+	setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog));
+
+	free(filters);
+}
+
+static bool filter_timeout(void *user_data)
+{
+	struct bt_hci *hci = user_data;
+
+	hci->filter_id = 0;
+	update_evt_filter(hci);
+
+	return false;
+}
+
+static void schedule_evt_filter(struct bt_hci *hci)
+{
+	/* Coalesce multiple filter updates into a single SO_ATTACH_FILTER call
+	 * by deferring the update to the next event loop iteration.
+	 */
+	if (hci->filter_id)
+		return;
+
+	hci->filter_id = timeout_add(0, filter_timeout, hci, NULL);
+}
+
+static bool match_evt_event(const void *a, const void *b)
+{
+	const struct evt *evt = a;
+	uint8_t event = PTR_TO_UINT(b);
+
+	return evt->event == event;
+}
+
+unsigned int bt_hci_register(struct bt_hci *hci, uint8_t event,
+				bt_hci_callback_func_t callback,
+				void *user_data, bt_hci_destroy_func_t destroy)
+{
+	struct evt *evt;
+	bool update_filter;
+
+	if (!hci)
+		return 0;
+
+	/* Check if event already has a handler registered */
+	update_filter = !queue_find(hci->evt_list, match_evt_event,
+							UINT_TO_PTR(event));
+
+	evt = new0(struct evt, 1);
+	evt->event = event;
+
+	if (hci->next_evt_id < 1)
+		hci->next_evt_id = 1;
+
+	evt->id = hci->next_evt_id++;
+
+	evt->callback = callback;
+	evt->destroy = destroy;
+	evt->user_data = user_data;
+
+	if (!queue_push_tail(hci->evt_list, evt)) {
+		free(evt);
+		return 0;
+	}
+
+	if (update_filter)
+		schedule_evt_filter(hci);
+
+	return evt->id;
+}
+
+bool bt_hci_send_data(struct bt_hci *hci, uint8_t type, uint16_t handle,
+				const void *data, uint8_t size)
+{
+	struct data *d;
+
+	if (!hci)
+		return false;
+
+	/* Check if type really reflects to a data packet */
+	switch (type) {
+	case BT_H4_ACL_PKT:
+	case BT_H4_SCO_PKT:
+	case BT_H4_ISO_PKT:
+		break;
+	default:
+		return false;
+	}
+
+	d = new0(struct data, 1);
+	d->type = type;
+	d->handle = handle;
+	d->size = size;
+
+	if (d->size > 0) {
+		d->data = util_memdup(data, d->size);
+		if (!d->data) {
+			free(d);
+			return false;
+		}
+	}
+
+	if (!queue_push_tail(hci->data_queue, d)) {
+		free(d->data);
+		free(d);
+		return false;
+	}
+
+	wakeup_writer(hci);
+
+	return true;
+}
+
+static bool match_evt_id(const void *a, const void *b)
+{
+	const struct evt *evt = a;
+	unsigned int id = PTR_TO_UINT(b);
+
+	return evt->id == id;
+}
+
+bool bt_hci_unregister(struct bt_hci *hci, unsigned int id)
+{
+	struct evt *evt;
+	uint8_t event;
+
+	if (!hci || !id)
+		return false;
+
+	evt = queue_remove_if(hci->evt_list, match_evt_id, UINT_TO_PTR(id));
+	if (!evt)
+		return false;
+
+	event = evt->event;
+	evt_free(evt);
+
+	/* Only update filter if no other handler for this event remains */
+	if (!queue_find(hci->evt_list, match_evt_event, UINT_TO_PTR(event)))
+		schedule_evt_filter(hci);
+
+	return true;
+}
+
+
+unsigned int bt_hci_register_subevent(struct bt_hci *hci,
+				uint8_t subevent,
+				bt_hci_callback_func_t callback,
+				void *user_data, bt_hci_destroy_func_t destroy)
+{
+	struct evt *evt;
+	bool update_filter;
+
+	if (!hci)
+		return 0;
+
+	/* Check if subevent already has a handler registered */
+	update_filter = !queue_find(hci->subevt_list, match_evt_event,
+						UINT_TO_PTR(subevent));
+
+	evt = new0(struct evt, 1);
+	evt->event = subevent;
+
+	if (hci->next_evt_id < 1)
+		hci->next_evt_id = 1;
+
+	evt->id = hci->next_evt_id++;
+
+	evt->callback = callback;
+	evt->destroy = destroy;
+	evt->user_data = user_data;
+
+	if (!queue_push_tail(hci->subevt_list, evt)) {
+		free(evt);
+		return 0;
+	}
+
+	if (update_filter)
+		schedule_evt_filter(hci);
+
+	return evt->id;
+}
+
+bool bt_hci_unregister_subevent(struct bt_hci *hci, unsigned int id)
+{
+	struct evt *evt;
+	uint8_t event;
+
+	if (!hci || !id)
+		return false;
+
+	evt = queue_remove_if(hci->subevt_list, match_evt_id,
+							UINT_TO_PTR(id));
+	if (!evt)
+		return false;
+
+	event = evt->event;
+	evt_free(evt);
+
+	/* Only update filter if no other handler for this subevent remains */
+	if (!queue_find(hci->subevt_list, match_evt_event,
+							UINT_TO_PTR(event)))
+		schedule_evt_filter(hci);
+
+	return true;
+}
+
+bool bt_hci_get_conn_handle(struct bt_hci *hci, const uint8_t *bdaddr,
+				uint16_t *handle)
+{
+	struct hci_conn_list_req *cl;
+	struct hci_conn_info *ci;
+	int fd, i;
+	bool found = false;
+
+	if (!hci || !bdaddr || !handle)
+		return false;
+
+	fd = io_get_fd(hci->io);
+	if (fd < 0)
+		return false;
+
+	/* Allocate buffer for connection list request */
+	cl = malloc(10 * sizeof(*ci) + sizeof(*cl));
+	if (!cl)
+		return false;
+
+	memset(cl, 0, 10 * sizeof(*ci) + sizeof(*cl));
+	cl->dev_id = 0;  /* Will be filled by ioctl */
+	cl->conn_num = 10;
+
+	/* Get connection list via ioctl */
+	if (ioctl(fd, HCIGETCONNLIST, (void *) cl) < 0) {
+		free(cl);
+		return false;
+	}
+
+	/* Search for the connection with matching bdaddr */
+	ci = cl->conn_info;
+	for (i = 0; i < cl->conn_num; i++, ci++) {
+		if (memcmp(&ci->bdaddr, bdaddr, 6) == 0) {
+			*handle = ci->handle;
+			found = true;
+			break;
+		}
+	}
+
+	free(cl);
+	return found;
+}

@@ -1,0 +1,161 @@
+# SPDX-License-Identifier: GPL-2.0
+builtin_modules += hostname
+builtin_sources += plugins/hostname.c
+
+builtin_modules += autopair
+builtin_sources += plugins/autopair.c
+
+builtin_modules += policy
+builtin_sources += plugins/policy.c
+
+builtin_sources += profiles/audio/media.h profiles/audio/media.c \
+			profiles/audio/transport.h profiles/audio/transport.c \
+			profiles/audio/player.h profiles/audio/player.c
+
+if ADMIN
+builtin_modules += admin
+builtin_sources += plugins/admin.c
+endif
+
+if NFC
+builtin_modules += neard
+builtin_sources += plugins/neard.c
+endif
+
+if A2DP
+builtin_modules += a2dp
+builtin_sources += profiles/audio/source.h profiles/audio/source.c \
+			profiles/audio/sink.h profiles/audio/sink.c \
+			profiles/audio/a2dp.h profiles/audio/a2dp.c \
+			profiles/audio/avdtp.h profiles/audio/avdtp.c \
+			profiles/audio/a2dp-codecs.h
+endif
+
+
+if AVRCP
+builtin_modules += avrcp
+builtin_sources += profiles/audio/control.h profiles/audio/control.c \
+			profiles/audio/avctp.h profiles/audio/avctp.c \
+			profiles/audio/avrcp.h profiles/audio/avrcp.c \
+			profiles/audio/avrcp-parse.h \
+			profiles/audio/avrcp-parse.c \
+			profiles/audio/avrcp-player.c
+endif
+
+if NETWORK
+builtin_modules += network
+builtin_sources += profiles/network/manager.c \
+			profiles/network/bnep.h profiles/network/bnep.c \
+			profiles/network/server.h profiles/network/server.c \
+			profiles/network/connection.h \
+			profiles/network/connection.c
+endif
+
+if HID
+builtin_modules += input
+builtin_sources += profiles/input/manager.c \
+			profiles/input/server.h profiles/input/server.c \
+			profiles/input/device.h profiles/input/device.c \
+			profiles/input/hidp_defs.h profiles/input/sixaxis.h
+endif
+
+if HOG
+builtin_modules += hog
+builtin_sources += profiles/input/hog.c \
+			profiles/input/suspend.h profiles/input/suspend-none.c
+endif
+
+builtin_modules += gap
+builtin_sources += profiles/gap/gas.c
+
+builtin_modules += scanparam
+builtin_sources += profiles/scanparam/scan.c
+
+builtin_modules += deviceinfo
+builtin_sources += profiles/deviceinfo/deviceinfo.c
+
+if MIDI
+builtin_modules += midi
+builtin_sources += profiles/midi/midi.c \
+			profiles/midi/libmidi.h \
+			profiles/midi/libmidi.c
+builtin_cppflags += $(ALSA_CFLAGS)
+builtin_ldadd += $(ALSA_LIBS)
+endif
+
+builtin_modules += battery
+builtin_sources += profiles/battery/battery.c
+
+builtin_modules += fastpair
+builtin_sources += profiles/fastpair/fastpair.c \
+			profiles/fastpair/message-stream.h \
+			profiles/fastpair/message-stream.c
+
+builtin_modules += rap
+builtin_sources += profiles/ranging/rap.c \
+		profiles/ranging/rap_hci.c
+
+if SIXAXIS
+builtin_modules += sixaxis
+builtin_sources += plugins/sixaxis.c
+builtin_ldadd += $(UDEV_LIBS)
+endif
+
+if BAP
+builtin_modules += bap
+builtin_sources += profiles/audio/bap.c
+endif
+
+if BASS
+builtin_modules += bass
+builtin_sources += profiles/audio/bass.c
+endif
+
+if MCP
+builtin_modules += mcp
+builtin_sources += profiles/audio/mcp.c
+endif
+
+if VCP
+builtin_modules += vcp
+builtin_sources += profiles/audio/vcp.h profiles/audio/vcp.c
+endif
+
+if MICP
+builtin_modules += micp
+builtin_sources += profiles/audio/micp.c
+endif
+
+if CCP
+builtin_modules += ccp
+builtin_sources += profiles/audio/ccp.c
+endif
+
+if CSIP
+builtin_modules += csip
+builtin_sources += profiles/audio/csip.c
+endif
+
+if TMAP
+builtin_modules += tmap
+builtin_sources += profiles/audio/tmap.c
+endif
+
+if GMAP
+builtin_modules += gmap
+builtin_sources += profiles/audio/gmap.c
+endif
+
+if ASHA
+builtin_modules += asha
+builtin_sources += profiles/audio/asha.h profiles/audio/asha.c
+endif
+
+if HFP
+builtin_modules += hfp
+builtin_sources += profiles/audio/telephony.h \
+			profiles/audio/telephony.c \
+			profiles/audio/hfp-hf.c \
+			profiles/audio/hfp-hf.h
+
+endif

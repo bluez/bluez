@@ -1,0 +1,23 @@
+power on
+#
+#
+# Register a Broadcast Sink endpoint with LC3 taking a single channel,
+# to act as the left side of a true wireless pair. Each side syncs to
+# the Broadcast Source on its own, with no assistant involved.
+#
+endpoint.register 00001851-0000-1000-8000-00805f9b34fb 0x06
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+# Locations: Front Left, so only the BIS carrying that channel is synced
+1
+# Supported Context: Media
+4
+#
+#
+# Scan for Broadcast Sources: the sink syncs to the periodic
+# advertising and creates a transport for the BIS matching its own
+# location.
+#
+scan on

@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
+from __future__ import absolute_import, print_function, unicode_literals
+
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+					"org.freedesktop.DBus.ObjectManager")
+
+objects = manager.GetManagedObjects()
+
+for path in objects.keys():
+	print("[ %s ]" % (path))
+
+	interfaces = objects[path]
+
+	for interface in interfaces.keys():
+		if interface in ["org.freedesktop.DBus.Introspectable",
+					"org.freedesktop.DBus.Properties"]:
+			continue
+
+		print("    %s" % (interface))
+
+		properties = interfaces[interface]
+
+		for key in properties.keys():
+			print("      %s = %s" % (key, properties[key]))

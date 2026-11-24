@@ -1,0 +1,108 @@
+name: New issue
+description: Report a bug or other problem
+labels: []
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: |
+        A clear and concise description of the bug, what you expected
+        to happen, and any other relevant details.
+      placeholder: Describe the issue...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To reproduce
+      description: Steps to reproduce the issue, if possible.
+      placeholder: |
+        1.
+        2.
+        3.
+        4.
+    validations:
+      required: false
+
+  - type: textarea
+    id: trace-file
+    attributes:
+      label: btmon trace
+      description: |
+        Drag and drop your btsnoop trace file here. If a trace is
+        attached and the privacy acknowledgment below is checked,
+        it will be automatically analyzed by
+        [btsnoop-analyzer](https://github.com/Vudentz/btsnoop-analyzer).
+
+        To capture a trace: power off the device, run `btmon -w btmon.log`,
+        reproduce the issue, then Ctrl-C btmon.
+      placeholder: Drag and drop your btmon.log file here...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: focus-area
+    attributes:
+      label: Analysis focus
+      description: >
+        If you attached a btsnoop trace, what aspect should the
+        automated analysis focus on? Select "General" to auto-detect.
+      options:
+        - General (full analysis)
+        - Connection issues
+        - Controller enumeration
+        - Pairing / Security
+        - GATT discovery
+        - Audio
+        - Audio / LE Audio
+        - Audio / A2DP
+        - Audio / HFP
+        - L2CAP channel issues
+        - Advertising / Scanning
+        - Disconnection analysis
+        - Channel Sounding
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      description: |
+        btsnoop traces contain Bluetooth MAC addresses and may contain
+        device names. By default, MAC addresses are anonymized before
+        being sent to an LLM for analysis.
+      options:
+        - label: >
+            **Skip anonymization** — Send the raw decoded trace to the
+            LLM without scrubbing MAC addresses or device names.
+          required: false
+        - label: >
+            I understand this trace will be processed by a third-party
+            LLM API and I have the right to share this data.
+          required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Other logs
+      description: |
+        Attach bluetoothd or other relevant logs.
+        Run: `journalctl -u bluetooth --boot 0 > bluetoothd.log`
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: BlueZ version, kernel version, and device information.
+      value: |
+        - BlueZ version:
+        - Kernel version:
+        - Problematic device:
+    validations:
+      required: false

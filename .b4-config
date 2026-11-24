@@ -1,0 +1,6 @@
+[b4]
+  midmask = https://lore.kernel.org/%s
+  linkmask = https://patch.msgid.link/%s
+  send-series-to = Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+  send-endpoint-web = https://lkml.kernel.org/_b4_submit
+  send-prefixes = bluez

@@ -1,0 +1,19 @@
+power on
+# Add PBP to EA so it can be later referenced as the BIS ID
+advertise.service 0x1856 0x00 0x00
+advertise on
+# Register Broadcast Sink endpoint
+endpoint.register 00001852-0000-1000-8000-00805f9b34fb 0x06
+y
+a
+3
+4
+# Configure Broadcast Source with preset 16_2_1
+endpoint.config /org/bluez/hci0/pac_bcast0 /local/endpoint/ep0 16_2_1
+1
+1
+a
+3
+0x03 0x02 0x04 0x00
+# Start Broadcast
+transport.acquire /org/bluez/hci0/pac_bcast0/fd0

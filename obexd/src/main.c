@@ -1,0 +1,390 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ *
+ *  OBEX Server
+ *
+ *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/signalfd.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <getopt.h>
+#include <syslog.h>
+#include <glib.h>
+
+#include "gdbus/gdbus.h"
+
+#include "../client/manager.h"
+
+#include "log.h"
+#include "logind.h"
+#include "manager.h"
+#include "obexd.h"
+#include "server.h"
+
+#define DEFAULT_CAP_FILE CONFIGDIR "/capability.xml"
+
+static GMainLoop *main_loop = NULL;
+static DBusConnection *connection;
+
+
+static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
+{
+	static unsigned int __terminated = 0;
+	struct signalfd_siginfo si;
+	ssize_t result;
+	int fd;
+
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
+		return FALSE;
+
+	fd = g_io_channel_unix_get_fd(channel);
+
+	result = read(fd, &si, sizeof(si));
+	if (result != sizeof(si))
+		return FALSE;
+
+	switch (si.ssi_signo) {
+	case SIGINT:
+	case SIGTERM:
+		if (__terminated == 0) {
+			info("Terminating");
+			g_main_loop_quit(main_loop);
+		}
+
+		__terminated = 1;
+		break;
+	case SIGUSR2:
+		__obex_log_enable_debug();
+		break;
+	}
+
+	return TRUE;
+}
+
+static guint setup_signalfd(void)
+{
+	GIOChannel *channel;
+	guint source;
+	sigset_t mask;
+	int fd;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGUSR2);
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
+		perror("Failed to set signal mask");
+		return 0;
+	}
+
+	fd = signalfd(-1, &mask, 0);
+	if (fd < 0) {
+		perror("Failed to create signal descriptor");
+		return 0;
+	}
+
+	channel = g_io_channel_unix_new(fd);
+
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	g_io_channel_set_buffered(channel, FALSE);
+
+	source = g_io_add_watch(channel,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				signal_handler, NULL);
+
+	g_io_channel_unref(channel);
+
+	return source;
+}
+
+static gboolean option_detach = TRUE;
+static char *option_debug = NULL;
+
+static char *option_root = NULL;
+static char *option_root_setup = NULL;
+static char *option_capability = NULL;
+static char *option_plugin = NULL;
+static char *option_noplugin = NULL;
+
+static gboolean option_autoaccept = FALSE;
+static gboolean option_symlinks = FALSE;
+static gboolean option_system_bus = FALSE;
+
+static gboolean parse_debug(const char *key, const char *value,
+				gpointer user_data, GError **error)
+{
+	if (value)
+		option_debug = g_strdup(value);
+	else
+		option_debug = g_strdup("*");
+
+	return TRUE;
+}
+
+static const GOptionEntry options[] = {
+	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_debug,
+				"Enable debug information output", "DEBUG" },
+	{ "plugin", 'p', 0, G_OPTION_ARG_STRING, &option_plugin,
+				"Specify plugins to load", "NAME,..." },
+	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
+				"Specify plugins not to load", "NAME,..." },
+	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_detach,
+				"Run with logging in foreground" },
+	{ "root", 'r', 0, G_OPTION_ARG_STRING, &option_root,
+				"Specify root folder location. Both absolute "
+				"and relative can be used, but relative paths "
+				"are assumed to be relative to user $HOME "
+				"folder. Default $XDG_CACHE_HOME", "PATH" },
+	{ "root-setup", 'S', 0, G_OPTION_ARG_STRING, &option_root_setup,
+				"Root folder setup script", "SCRIPT" },
+	{ "symlinks", 'l', 0, G_OPTION_ARG_NONE, &option_symlinks,
+				"Allow symlinks leading outside of the root "
+				"folder" },
+	{ "capability", 'c', 0, G_OPTION_ARG_STRING, &option_capability,
+				"Specify capability file, use '!' mark for "
+				"scripts", "FILE" },
+	{ "auto-accept", 'a', 0, G_OPTION_ARG_NONE, &option_autoaccept,
+				"Automatically accept push requests" },
+	{ "system-bus", 's', 0, G_OPTION_ARG_NONE, &option_system_bus,
+				"Use System bus "},
+	{ NULL },
+};
+
+gboolean obex_option_auto_accept(void)
+{
+	return option_autoaccept;
+}
+
+const char *obex_option_root_folder(void)
+{
+	return option_root;
+}
+
+gboolean obex_option_symlinks(void)
+{
+	return option_symlinks;
+}
+
+const char *obex_option_capability(void)
+{
+	return option_capability;
+}
+
+static gboolean is_dir(const char *dir)
+{
+	struct stat st;
+
+	if (stat(dir, &st) < 0) {
+		error("stat(%s): %s (%d)", dir, strerror(errno), errno);
+		return FALSE;
+	}
+
+	return S_ISDIR(st.st_mode);
+}
+
+static gboolean root_folder_setup(char *root, char *root_setup)
+{
+	int status;
+	char *argv[3] = { root_setup, root, NULL };
+
+	if (is_dir(root))
+		return TRUE;
+
+	if (root_setup == NULL)
+		return FALSE;
+
+	DBG("Setting up %s using %s", root, root_setup);
+
+	if (!g_spawn_sync(NULL, argv, NULL, 0, NULL, NULL, NULL, NULL,
+							&status, NULL)) {
+		error("Unable to execute %s", root_setup);
+		return FALSE;
+	}
+
+	if (WEXITSTATUS(status) != EXIT_SUCCESS) {
+		error("%s exited with status %d", root_setup,
+							WEXITSTATUS(status));
+		return FALSE;
+	}
+
+	return is_dir(root);
+}
+
+DBusConnection *obex_get_dbus_connection(void)
+{
+	if (connection)
+		return dbus_connection_ref(connection);
+
+	connection = dbus_bus_get(option_system_bus ?
+				DBUS_BUS_SYSTEM : DBUS_BUS_SESSION, NULL);
+
+	return connection;
+}
+
+DBusConnection *obex_setup_dbus_connection(const char *name,
+					DBusError *error)
+{
+	connection = g_dbus_setup_bus(option_system_bus ?
+				DBUS_BUS_SYSTEM : DBUS_BUS_SESSION,
+				name, error);
+
+	return connection;
+}
+
+int main(int argc, char *argv[])
+{
+	GOptionContext *context;
+	GError *err = NULL;
+	DBusError dbus_err;
+	sigset_t pending;
+	guint signal;
+
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (g_option_context_parse(context, &argc, &argv, &err) == FALSE) {
+		if (err != NULL) {
+			g_printerr("%s\n", err->message);
+			g_error_free(err);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(EXIT_FAILURE);
+	}
+
+	g_option_context_free(context);
+
+	__obex_log_init(option_debug, option_detach);
+
+	if (option_system_bus)
+		logind_set(FALSE);
+
+	DBG("Entering main loop");
+
+	main_loop = g_main_loop_new(NULL, FALSE);
+
+	signal = setup_signalfd();
+
+	if (manager_init() == FALSE) {
+		error("manager_init failed");
+		exit(EXIT_FAILURE);
+	}
+
+	if (option_root == NULL) {
+		option_root = g_build_filename(g_get_user_cache_dir(), "obexd",
+									NULL);
+		if (g_mkdir_with_parents(option_root, 0700) < 0)
+			error("Failed to create dir(%d): %s", errno,
+								option_root);
+	}
+
+	if (option_root[0] != '/') {
+		const char *home = getenv("HOME");
+		if (home) {
+			char *old_root = option_root;
+			option_root = g_strdup_printf("%s/%s", home, old_root);
+			g_free(old_root);
+		}
+	}
+
+	if (option_capability == NULL)
+		option_capability = g_strdup(DEFAULT_CAP_FILE);
+
+	plugin_init(option_plugin, option_noplugin);
+
+	if (obex_server_init() < 0) {
+		error("obex_server_init failed");
+		exit(EXIT_FAILURE);
+	}
+
+	if (!root_folder_setup(option_root, option_root_setup)) {
+		error("Unable to setup root folder %s", option_root);
+		exit(EXIT_FAILURE);
+	}
+
+	if (client_manager_init() < 0) {
+		error("client_manager_init failed");
+		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 * Signals are masked in setup_signalfd() before plugin_init() so
+	 * worker threads inherit the mask, and are not dispatched until the
+	 * main loop runs. Skip claiming the bus name if termination is
+	 * already pending.
+	 */
+	sigemptyset(&pending);
+
+	if (sigpending(&pending) == 0 && (sigismember(&pending, SIGINT) ||
+					sigismember(&pending, SIGTERM))) {
+		info("Terminating");
+		goto done;
+	}
+
+	/*
+	 * Request the well-known name only now that all plugins and servers
+	 * are initialised. Several of them perform blocking D-Bus round trips
+	 * during init: the ebook phonebook backend activates Evolution Data
+	 * Server and the bluetooth plugin connects to the system bus. Owning
+	 * the name earlier made clients see obexd on the bus while it could
+	 * not answer any request yet, so synchronous clients timed out.
+	 */
+	dbus_error_init(&dbus_err);
+
+	if (!g_dbus_request_name(connection, OBEXD_SERVICE, &dbus_err)) {
+		if (dbus_error_is_set(&dbus_err)) {
+			error("Failed to request name %s: %s", OBEXD_SERVICE,
+							dbus_err.message);
+			dbus_error_free(&dbus_err);
+		} else {
+			error("Failed to request name %s", OBEXD_SERVICE);
+		}
+
+		exit(EXIT_FAILURE);
+	}
+
+	g_main_loop_run(main_loop);
+
+done:
+	g_source_remove(signal);
+
+	client_manager_exit();
+
+	obex_server_exit();
+
+	plugin_cleanup();
+
+	manager_cleanup();
+
+	g_main_loop_unref(main_loop);
+
+	g_free(option_capability);
+	g_free(option_root);
+
+	__obex_log_cleanup();
+
+	return 0;
+}

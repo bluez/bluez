@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<record>
+<attribute id="0x0001">
+<sequence>
+<attribute id="0x0002"><uint8 value="0x01"/></attribute>
+<uint64 value="0x4141414141414141"/>
+</sequence>
+</attribute>
+</record>

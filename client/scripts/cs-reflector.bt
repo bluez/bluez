@@ -1,0 +1,22 @@
+power on
+#
+# Start advertising to be discovered by initiator
+#
+advertise on
+#
+# After the Initiator creates connection and
+# device is connected, stop advertising
+#
+# advertise off
+#
+# Set the CS Default settings Parameters for reflector
+#
+# cs.role 0x02
+# cs.sync_ant_sel 0xFF
+# cs.max_tx_power 20
+#
+# Start CS Procedure, note that in reflector role
+# we don't start the procedure, only the set default values
+# will be updated
+#
+# cs.start

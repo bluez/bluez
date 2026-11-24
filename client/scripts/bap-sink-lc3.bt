@@ -1,0 +1,32 @@
+power on
+#
+#
+# Register a PAC Sink endpoint with LC3, to act as the acceptor
+# receiving audio, e.g. a headset.
+#
+endpoint.register 00002bc9-0000-1000-8000-00805f9b34fb 0x06
+# Auto Accept: accept the configuration chosen by the peer
+y
+# Max Transports: no limit
+a
+# Locations: Front Left and Front Right
+3
+# Supported Context: same as the contexts bluetoothctl registers with
+0x0fff
+# Context
+0x0fff
+# CIG: assigned automatically
+a
+# CIS: assigned automatically
+a
+#
+#
+# With narrower Supported Contexts the Enable is rejected with Invalid
+# Metadata, as the metadata of a stream carries the Unspecified
+# context.
+#
+# Advertise and wait for the initiator to connect and configure the
+# streams. The transports do not have to be acquired for the CIS to be
+# established, as bluetoothd sets up the ISO listener on its own:
+#
+# advertise on

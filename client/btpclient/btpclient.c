@@ -1,0 +1,977 @@
+// SPDX-License-Identifier: LGPL-2.1-or-later
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2011-2017  Intel Corporation. All rights reserved.
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <getopt.h>
+#include <signal.h>
+#include <time.h>
+
+#include <ell/ell.h>
+
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
+#include "src/shared/btp.h"
+#include "btpclient.h"
+#include "ascs.h"
+#include "bap.h"
+#include "core.h"
+#include "gap.h"
+#include "gatt.h"
+
+static struct l_dbus *dbus;
+
+static struct l_queue *adapters;
+
+static char *socket_path;
+static struct btp *btp;
+
+static struct btp_agent ag;
+
+bool add_supported_command(uint8_t **commands, size_t *commands_len,
+							uint8_t command)
+{
+	size_t cmd_byte = command / 8;
+
+	if (cmd_byte >= *commands_len) {
+		size_t old_len = *commands_len;
+		size_t new_len = cmd_byte + 1;
+		uint8_t *tmp;
+
+		tmp = l_realloc(*commands, new_len);
+		if (!tmp)
+			return false;
+
+		memset(tmp + old_len, 0, new_len - old_len);
+
+		*commands = tmp;
+		*commands_len = new_len;
+	}
+
+	(*commands)[cmd_byte] |= (1U << (command % 8));
+
+	return true;
+}
+
+struct l_queue *get_adapters_list(void)
+{
+	return adapters;
+}
+
+struct btp_agent *get_agent(void)
+{
+	return &ag;
+}
+
+static bool match_dev_addr_type(const char *addr_type_str, uint8_t addr_type)
+{
+	if (addr_type == BTP_GAP_ADDR_PUBLIC && strcmp(addr_type_str, "public"))
+		return false;
+
+	if (addr_type == BTP_GAP_ADDR_RANDOM && strcmp(addr_type_str, "random"))
+		return false;
+
+	return true;
+}
+
+struct btp_adapter *find_adapter_by_proxy(struct l_dbus_proxy *proxy)
+{
+	const struct l_queue_entry *entry;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		if (adapter->proxy == proxy)
+			return adapter;
+	}
+
+	return NULL;
+}
+
+struct btp_adapter *find_adapter_by_index(uint8_t index)
+{
+	const struct l_queue_entry *entry;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		if (adapter->index == index)
+			return adapter;
+	}
+
+	return NULL;
+}
+
+struct btp_adapter *find_adapter_by_path(const char *path)
+{
+	const struct l_queue_entry *entry;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		if (!strcmp(l_dbus_proxy_get_path(adapter->proxy), path))
+			return adapter;
+	}
+
+	return NULL;
+}
+
+struct btp_device *find_device_by_address(struct btp_adapter *adapter,
+							const bdaddr_t *addr,
+							uint8_t addr_type)
+{
+	const struct l_queue_entry *entry;
+	const char *str;
+	char addr_str[18];
+
+	if (!ba2str(addr, addr_str))
+		return NULL;
+
+	for (entry = l_queue_get_entries(adapter->devices); entry;
+							entry = entry->next) {
+		struct btp_device *device = entry->data;
+
+		l_dbus_proxy_get_property(device->proxy, "Address", "s", &str);
+		if (strcmp(str, addr_str))
+			continue;
+
+		l_dbus_proxy_get_property(device->proxy, "AddressType", "s",
+									&str);
+		if (match_dev_addr_type(str, addr_type))
+			return device;
+	}
+
+	return NULL;
+}
+
+static bool match_device_paths(const void *device, const void *path)
+{
+	const struct btp_device *dev = device;
+
+	return !strcmp(l_dbus_proxy_get_path(dev->proxy), path);
+}
+
+struct btp_device *find_device_by_path(const char *path)
+{
+	const struct l_queue_entry *entry;
+	struct btp_device *device;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		device = l_queue_find(adapter->devices, match_device_paths,
+									path);
+		if (device)
+			return device;
+	}
+
+	return NULL;
+}
+
+static bool match_adapter_dev_proxy(const void *device, const void *proxy)
+{
+	const struct btp_device *d = device;
+
+	return d->proxy == proxy;
+}
+
+static bool match_adapter_dev(const void *device_a, const void *device_b)
+{
+	return device_a == device_b;
+}
+
+struct btp_adapter *find_adapter_by_device(struct btp_device *device)
+{
+	const struct l_queue_entry *entry;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		if (l_queue_find(adapter->devices, match_adapter_dev, device))
+			return adapter;
+	}
+
+	return NULL;
+}
+
+struct btp_device *find_device_by_proxy(struct l_dbus_proxy *proxy)
+{
+	const struct l_queue_entry *entry;
+	struct btp_device *device;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		device = l_queue_find(adapter->devices, match_adapter_dev_proxy,
+									proxy);
+
+		if (device)
+			return device;
+	}
+
+	return NULL;
+}
+
+static bool match_cigcisdir(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	uint32_t cigcisdir = L_PTR_TO_UINT(data);
+	uint8_t cig = cigcisdir & 0xFF;
+	uint8_t cis = (cigcisdir >> 8) & 0xFF;
+	uint8_t dir = (cigcisdir >> 16) & 0xFF;
+
+	return ase->cig_id == cig && ase->cis_id == cis && ase->dir == dir;
+}
+
+struct btp_ase *find_ase(struct btp_device *device, uint8_t cig, uint8_t cis,
+								uint8_t dir)
+{
+	uint32_t cigcisdir = cig + (cis << 8) + (dir << 16);
+
+	return l_queue_find(device->ases, match_cigcisdir,
+						L_UINT_TO_PTR(cigcisdir));
+}
+
+static bool match_uuid(const void *entry, const void *data)
+{
+	const struct btp_ase *ase = entry;
+	const bt_uuid_t *uuid = data;
+
+	return !bt_uuid_cmp(&ase->uuid, uuid);
+}
+
+struct btp_ase *find_ase_by_uuid(struct btp_device *device, char *uuid)
+{
+	bt_uuid_t u;
+
+	if (bt_string_to_uuid(&u, uuid) < 0)
+		return NULL;
+
+	return l_queue_find(device->ases, match_uuid, &u);
+}
+
+static bool match_device_service_path(const void *device, const void *path)
+{
+	const struct btp_device *dev = device;
+	const struct l_queue_entry *entry;
+
+	for (entry = l_queue_get_entries(dev->services); entry;
+							entry = entry->next) {
+		struct gatt_attribute *attribute = entry->data;
+		struct l_dbus_proxy *proxy = attribute->proxy;
+
+		if (!strcmp(l_dbus_proxy_get_path(proxy), path))
+			return true;
+	}
+
+	return false;
+}
+
+struct btp_device *find_device_by_service_path(const char *path)
+{
+	const struct l_queue_entry *entry;
+	struct btp_device *device;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		device = l_queue_find(adapter->devices,
+					match_device_service_path, path);
+		if (device)
+			return device;
+	}
+
+	return NULL;
+}
+
+static bool match_device_service_proxy(const void *device, const void *proxy)
+{
+	const struct btp_device *dev = device;
+	const struct l_queue_entry *entry;
+
+	for (entry = l_queue_get_entries(dev->services); entry;
+							entry = entry->next) {
+		struct gatt_attribute *attribute = entry->data;
+
+		if (attribute->proxy == proxy)
+			return true;
+	}
+
+	return false;
+}
+
+static struct btp_device *find_device_by_service_proxy(
+						struct l_dbus_proxy *proxy)
+{
+	const struct l_queue_entry *entry;
+	struct btp_device *device;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		device = l_queue_find(adapter->devices,
+					match_device_service_proxy, proxy);
+		if (device)
+			return device;
+	}
+
+	return NULL;
+}
+
+static bool match_device_characteristic_path(const void *device,
+							const void *path)
+{
+	const struct btp_device *dev = device;
+	const struct l_queue_entry *entry;
+
+	for (entry = l_queue_get_entries(dev->characteristics); entry;
+							entry = entry->next) {
+		struct gatt_attribute *attribute = entry->data;
+		struct l_dbus_proxy *proxy = attribute->proxy;
+
+		if (!strcmp(l_dbus_proxy_get_path(proxy), path))
+			return true;
+	}
+
+	return false;
+}
+
+static struct btp_device *find_device_by_characteristic_path(const char *path)
+{
+	const struct l_queue_entry *entry;
+	struct btp_device *device;
+
+	for (entry = l_queue_get_entries(adapters); entry;
+							entry = entry->next) {
+		struct btp_adapter *adapter = entry->data;
+
+		device = l_queue_find(adapter->devices,
+				match_device_characteristic_path, path);
+		if (device)
+			return device;
+	}
+
+	return NULL;
+}
+
+static void signal_handler(uint32_t signo, void *user_data)
+{
+	switch (signo) {
+	case SIGINT:
+	case SIGTERM:
+		l_info("Terminating");
+		l_main_quit();
+		break;
+	}
+}
+
+static void btp_device_free(struct btp_device *device)
+{
+	l_queue_destroy(device->endpoints, NULL);
+	l_queue_destroy(device->ases, l_free);
+	l_queue_destroy(device->services, l_free);
+	l_queue_destroy(device->characteristics, l_free);
+	l_queue_destroy(device->descriptors, l_free);
+	l_free(device);
+}
+
+static void btp_adapter_free(struct btp_adapter *adapter)
+{
+	l_queue_destroy(adapter->devices,
+				(l_queue_destroy_func_t)btp_device_free);
+	l_free(adapter);
+}
+
+static void extract_settings(struct l_dbus_proxy *proxy, uint32_t *current,
+						uint32_t *supported)
+{
+	bool prop;
+
+	*supported = 0;
+	*current = 0;
+
+	/* TODO not all info is available via D-Bus API */
+	*supported |=  BTP_GAP_SETTING_POWERED;
+	*supported |=  BTP_GAP_SETTING_CONNECTABLE;
+	*supported |=  BTP_GAP_SETTING_DISCOVERABLE;
+	*supported |=  BTP_GAP_SETTING_BONDABLE;
+	*supported |=  BTP_GAP_SETTING_SSP;
+	*supported |=  BTP_GAP_SETTING_BREDR;
+	*supported |=  BTP_GAP_SETTING_LE;
+	*supported |=  BTP_GAP_SETTING_ADVERTISING;
+	*supported |=  BTP_GAP_SETTING_SC;
+	*supported |=  BTP_GAP_SETTING_PRIVACY;
+	/* *supported |=  BTP_GAP_SETTING_STATIC_ADDRESS; */
+
+	/* TODO not all info is available via D-Bus API so some are assumed to
+	 * be enabled by bluetoothd or simply hardcoded until API is extended
+	 */
+	*current |=  BTP_GAP_SETTING_CONNECTABLE;
+	*current |=  BTP_GAP_SETTING_SSP;
+	*current |=  BTP_GAP_SETTING_BREDR;
+	*current |=  BTP_GAP_SETTING_LE;
+	*current |=  BTP_GAP_SETTING_PRIVACY;
+	*current |=  BTP_GAP_SETTING_SC;
+	/* *supported |=  BTP_GAP_SETTING_STATIC_ADDRESS; */
+
+	if (l_dbus_proxy_get_property(proxy, "Powered", "b", &prop) && prop)
+		*current |=  BTP_GAP_SETTING_POWERED;
+
+	if (l_dbus_proxy_get_property(proxy, "Discoverable", "b", &prop) &&
+									prop)
+		*current |=  BTP_GAP_SETTING_DISCOVERABLE;
+
+	if (l_dbus_proxy_get_property(proxy, "Pairable", "b", &prop) && prop)
+		*current |=  BTP_GAP_SETTING_BONDABLE;
+}
+
+static bool transport_get_cig_cis(struct l_dbus_message_iter *iter,
+						uint8_t *cig, uint8_t *cis)
+{
+	struct l_dbus_message_iter var;
+	const char *key;
+
+	*cig = BT_ISO_QOS_CIG_UNSET;
+	*cis = BT_ISO_QOS_CIS_UNSET;
+
+	while (l_dbus_message_iter_next_entry(iter, &key, &var)) {
+		if (!strcmp(key, "CIG")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cig))
+				return false;
+		}
+
+		if (!strcmp(key, "CIS")) {
+			if (!l_dbus_message_iter_get_variant(&var, "y", cis))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
+{
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+	const char *path = l_dbus_proxy_get_path(proxy);
+
+	l_info("Proxy added: %s (%s)", interface, path);
+
+	if (!strcmp(interface, "org.bluez.Adapter1")) {
+		struct btp_adapter *adapter;
+
+		adapter = l_new(struct btp_adapter, 1);
+		adapter->proxy = proxy;
+		adapter->index = l_queue_length(adapters);
+		adapter->devices = l_queue_new();
+
+		extract_settings(proxy, &adapter->current_settings,
+						&adapter->supported_settings);
+
+		adapter->default_settings = adapter->current_settings;
+
+		l_queue_push_tail(adapters, adapter);
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.Device1")) {
+		struct btp_adapter *adapter;
+		struct btp_device *device;
+		char *str, *str_addr, *str_addr_type;
+
+		if (!l_dbus_proxy_get_property(proxy, "Adapter", "o", &str))
+			return;
+
+		adapter = find_adapter_by_path(str);
+		if (!adapter)
+			return;
+
+		device = l_new(struct btp_device, 1);
+		device->proxy = proxy;
+		device->services = l_queue_new();
+		device->characteristics = l_queue_new();
+		device->descriptors = l_queue_new();
+		device->ases = l_queue_new();
+		device->endpoints = l_queue_new();
+
+		l_queue_push_tail(adapter->devices, device);
+
+		if (!l_dbus_proxy_get_property(proxy, "Address", "s",
+								&str_addr))
+			return;
+
+		if (!l_dbus_proxy_get_property(proxy, "AddressType", "s",
+								&str_addr_type))
+			return;
+
+		device->address_type = strcmp(str_addr_type, "public") ?
+							BTP_GAP_ADDR_RANDOM :
+							BTP_GAP_ADDR_PUBLIC;
+		if (str2ba(str_addr, &device->address) < 0)
+			return;
+
+		if (gap_is_service_registered())
+			gap_proxy_added(proxy, user_data);
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.LEAdvertisingManager1")) {
+		struct btp_adapter *adapter;
+
+		adapter = find_adapter_by_path(path);
+		if (!adapter)
+			return;
+
+		adapter->ad_proxy = proxy;
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.AgentManager1")) {
+		ag.proxy = proxy;
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.GattService1")) {
+		char *str;
+		struct btp_device *device;
+		struct gatt_attribute *attribute;
+
+		if (!l_dbus_proxy_get_property(proxy, "Device", "o", &str))
+			return;
+
+		device = find_device_by_path(str);
+		if (!device)
+			return;
+
+		attribute = l_new(struct gatt_attribute, 1);
+		attribute->proxy = proxy;
+		if (!l_dbus_proxy_get_property(proxy, "Handle", "q",
+						&attribute->handle)) {
+			l_free(attribute);
+			return;
+		}
+		if (!l_dbus_proxy_get_property(proxy, "UUID", "s", &str)) {
+			l_free(attribute);
+			return;
+		}
+		if (bt_string_to_uuid(&attribute->uuid, str)) {
+			l_free(attribute);
+			return;
+		}
+
+		l_queue_push_tail(device->services, attribute);
+	}
+
+	if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
+		struct btp_device *device;
+		struct gatt_attribute *attribute;
+		char *str;
+
+		if (!l_dbus_proxy_get_property(proxy, "Service", "o", &str))
+			return;
+
+		device = find_device_by_service_path(str);
+		if (!device)
+			return;
+
+		attribute = l_new(struct gatt_attribute, 1);
+		attribute->proxy = proxy;
+		if (!l_dbus_proxy_get_property(proxy, "Handle", "q",
+						&attribute->handle)) {
+			l_free(attribute);
+			return;
+		}
+		if (!l_dbus_proxy_get_property(proxy, "UUID", "s", &str)) {
+			l_free(attribute);
+			return;
+		}
+		if (bt_string_to_uuid(&attribute->uuid, str)) {
+			l_free(attribute);
+			return;
+		}
+
+		l_queue_push_tail(device->characteristics, attribute);
+
+		if (bap_is_service_registered())
+			bap_proxy_added(proxy, device);
+	}
+
+	if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
+		struct btp_device *device;
+		struct gatt_attribute *attribute;
+		char *str;
+
+		if (!l_dbus_proxy_get_property(proxy, "Characteristic", "o",
+									&str))
+			return;
+
+		device = find_device_by_characteristic_path(str);
+		if (!device)
+			return;
+
+		attribute = l_new(struct gatt_attribute, 1);
+		attribute->proxy = proxy;
+		if (!l_dbus_proxy_get_property(proxy, "Handle", "q",
+						&attribute->handle)) {
+			l_free(attribute);
+			return;
+		}
+		if (!l_dbus_proxy_get_property(proxy, "UUID", "s", &str)) {
+			l_free(attribute);
+			return;
+		}
+		if (bt_string_to_uuid(&attribute->uuid, str)) {
+			l_free(attribute);
+			return;
+		}
+
+		l_queue_push_tail(device->descriptors, attribute);
+	}
+
+	if (!strcmp(interface, "org.bluez.Media1")) {
+		struct btp_adapter *adapter;
+
+		adapter = find_adapter_by_path(path);
+		if (!adapter)
+			return;
+
+		adapter->media_proxy = proxy;
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.MediaEndpoint1")) {
+		char *str;
+		struct btp_device *device;
+
+		if (!l_dbus_proxy_get_property(proxy, "Device", "o", &str))
+			return;
+
+		device = find_device_by_path(str);
+		if (!device)
+			return;
+
+		l_queue_push_tail(device->endpoints, proxy);
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.MediaTransport1")) {
+		char *str;
+		struct btp_device *device;
+
+		if (!l_dbus_proxy_get_property(proxy, "Device", "o", &str))
+			return;
+
+		device = find_device_by_path(str);
+		if (!device)
+			return;
+
+		if (ascs_is_service_registered())
+			ascs_proxy_added(proxy, device);
+	}
+}
+
+static bool device_match_by_proxy(const void *a, const void *b)
+{
+	const struct btp_device *device = a;
+	const struct l_dbus_proxy *proxy = b;
+
+	return device->proxy == proxy;
+}
+
+static void proxy_removed(struct l_dbus_proxy *proxy, void *user_data)
+{
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+	const char *path = l_dbus_proxy_get_path(proxy);
+
+	l_info("Proxy removed: %s (%s)", interface, path);
+
+	if (!strcmp(interface, "org.bluez.Adapter1")) {
+		l_info("Adapter removed, terminating.");
+		l_main_quit();
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.Device1")) {
+		struct btp_adapter *adapter;
+		char *str;
+
+		if (!l_dbus_proxy_get_property(proxy, "Adapter", "o", &str))
+			return;
+
+		adapter = find_adapter_by_path(str);
+		if (!adapter)
+			return;
+
+		l_queue_remove_if(adapter->devices, device_match_by_proxy,
+									proxy);
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.GattService1")) {
+		struct btp_device *device;
+
+		device = find_device_by_service_proxy(proxy);
+		if (!device)
+			return;
+
+		l_queue_remove(device->services, proxy);
+	}
+
+	if (!strcmp(interface, "org.bluez.GattCharacteristic1")) {
+		struct btp_device *device;
+
+		device = find_device_by_service_proxy(proxy);
+		if (!device)
+			return;
+
+		l_queue_remove(device->characteristics, proxy);
+	}
+
+	if (!strcmp(interface, "org.bluez.GattDescriptor1")) {
+		struct btp_device *device;
+
+		device = find_device_by_service_proxy(proxy);
+		if (!device)
+			return;
+
+		l_queue_remove(device->descriptors, proxy);
+	}
+
+	if (!strcmp(interface, "org.bluez.Media1")) {
+		struct btp_adapter *adapter;
+
+		adapter = find_adapter_by_path(path);
+		if (!adapter)
+			return;
+
+		adapter->media_proxy = NULL;
+
+		return;
+	}
+
+	if (!strcmp(interface, "org.bluez.MediaEndpoint1")) {
+		char *str;
+		struct btp_device *device;
+
+		if (!l_dbus_proxy_get_property(proxy, "Device", "o", &str))
+			return;
+
+		device = find_device_by_path(str);
+		if (!device)
+			return;
+
+		l_queue_remove(device->endpoints, proxy);
+	}
+}
+
+static void property_changed(struct l_dbus_proxy *proxy, const char *name,
+				struct l_dbus_message *msg, void *user_data)
+{
+	const char *interface = l_dbus_proxy_get_interface(proxy);
+	const char *path = l_dbus_proxy_get_path(proxy);
+
+	l_info("Property changed: %s %s %s", name, path, interface);
+
+	if (!strcmp(interface, "org.bluez.MediaTransport1")) {
+		if (!strcmp(name, "QoS")) {
+			struct btp_device *dev;
+			const char *dev_path, *uuid;
+			uint8_t dir;
+			struct l_dbus_message_iter iter;
+			uint8_t cig = BT_ISO_QOS_CIG_UNSET;
+			uint8_t cis = BT_ISO_QOS_CIS_UNSET;
+			struct btp_ase *ase;
+
+			if (!l_dbus_proxy_get_property(proxy, "Device", "s",
+								&dev_path))
+				return;
+
+			dev = find_device_by_path(path);
+			if (!dev)
+				return;
+
+			if (!l_dbus_proxy_get_property(proxy, "UUID", "s",
+								&uuid))
+				return;
+
+			if (!bt_uuid_strcmp(uuid, PAC_SINK_UUID))
+				dir = BTP_BAP_DIR_SOURCE;
+			else
+				dir = BTP_BAP_DIR_SINK;
+
+			if (!l_dbus_message_get_arguments(msg, "a{sv}", &iter))
+				return;
+
+			if (!transport_get_cig_cis(&iter, &cig, &cis))
+				return;
+
+			ase = find_ase(dev, cig, cis, dir);
+			if (!ase)
+				return;
+
+			ase->transport_proxy = proxy;
+		}
+	}
+
+	if (gap_is_service_registered())
+		gap_property_changed(proxy, name, msg, user_data);
+
+	if (ascs_is_service_registered())
+		ascs_property_changed(proxy, name, msg, user_data);
+
+	if (bap_is_service_registered())
+		bap_property_changed(proxy, name, msg, user_data);
+}
+
+static void client_connected(struct l_dbus *dbus, void *user_data)
+{
+	l_info("D-Bus client connected");
+}
+
+static void client_disconnected(struct l_dbus *dbus, void *user_data)
+{
+	l_info("D-Bus client disconnected, terminated");
+	l_main_quit();
+}
+
+static void btp_disconnect_handler(struct btp *btp, void *user_data)
+{
+	l_info("btp disconnected");
+	l_main_quit();
+}
+
+static void client_ready(struct l_dbus_client *client, void *user_data)
+{
+	l_info("D-Bus client ready, connecting BTP");
+
+	btp = btp_new(socket_path);
+	if (!btp) {
+		l_error("Failed to connect BTP, terminating");
+		l_main_quit();
+		return;
+	}
+
+	btp_set_disconnect_handler(btp, btp_disconnect_handler, NULL, NULL);
+
+	core_register_service(btp, dbus, client);
+
+	btp_send(btp, BTP_CORE_SERVICE, BTP_EV_CORE_READY,
+					BTP_INDEX_NON_CONTROLLER, 0, NULL);
+}
+
+static void ready_callback(void *user_data)
+{
+	if (!l_dbus_object_manager_enable(dbus, "/"))
+		l_info("Unable to register the ObjectManager");
+}
+
+static void usage(void)
+{
+	l_info("btpclient - Bluetooth tester");
+	l_info("Usage:");
+	l_info("\tbtpclient [options]");
+	l_info("options:\n"
+	"\t-s, --socket <socket>  Socket to use for BTP\n"
+	"\t-q, --quiet            Don't emit any logs\n"
+	"\t-v, --version          Show version\n"
+	"\t-h, --help             Show help options");
+}
+
+static const struct option options[] = {
+	{ "socket",	1, 0, 's' },
+	{ "quiet",	0, 0, 'q' },
+	{ "version",	0, 0, 'v' },
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+int main(int argc, char *argv[])
+{
+	struct l_dbus_client *client;
+	int opt;
+
+	l_log_set_stderr();
+
+	while ((opt = getopt_long(argc, argv, "+hs:vq", options, NULL)) != -1) {
+		switch (opt) {
+		case 's':
+			socket_path = l_strdup(optarg);
+			break;
+		case 'q':
+			l_log_set_null();
+			break;
+		case 'd':
+			break;
+		case 'v':
+			l_info("%s", VERSION);
+			return EXIT_SUCCESS;
+		case 'h':
+		default:
+			usage();
+			return EXIT_SUCCESS;
+		}
+	}
+
+	if (!socket_path) {
+		l_info("Socket option is required");
+		l_info("Type --help for usage");
+		return EXIT_FAILURE;
+	}
+
+	if (!l_main_init())
+		return EXIT_FAILURE;
+
+	adapters = l_queue_new();
+
+	dbus = l_dbus_new_default(L_DBUS_SYSTEM_BUS);
+	l_dbus_set_ready_handler(dbus, ready_callback, NULL, NULL);
+	client = l_dbus_client_new(dbus, "org.bluez", "/org/bluez");
+
+	l_dbus_client_set_connect_handler(client, client_connected, NULL, NULL);
+	l_dbus_client_set_disconnect_handler(client, client_disconnected, NULL,
+									NULL);
+
+	l_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
+						property_changed, NULL, NULL);
+
+	l_dbus_client_set_ready_handler(client, client_ready, NULL, NULL);
+
+	l_main_run_with_signal(signal_handler, NULL);
+
+	l_dbus_client_destroy(client);
+	l_dbus_destroy(dbus);
+	btp_cleanup(btp);
+
+	l_queue_destroy(adapters, (l_queue_destroy_func_t)btp_adapter_free);
+
+	l_free(socket_path);
+
+	l_main_exit();
+
+	return EXIT_SUCCESS;
+}

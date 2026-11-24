@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+#include "gdbus/gdbus.h"
+
+void cs_add_submenu(void);
+void cs_remove_submenu(void);
+void cs_disconnected(void);
+
+void cs_proxy_added(GDBusProxy *proxy);
+void cs_proxy_removed(GDBusProxy *proxy);
+GDBusProxy *cs_find_proxy(const char *dev_path);
+void cs_device_disconnected(const char *dev_path);
+void cs_measurement_started(GDBusProxy *proxy);
+void cs_measurement_stopped(GDBusProxy *proxy);
+void cs_set_device_list(GList **devices);
+
+void cs_set_ranging_manager(GDBusProxy *proxy);
+void cs_set_dbus_conn(DBusConnection *conn);

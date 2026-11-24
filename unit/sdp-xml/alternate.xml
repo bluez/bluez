@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<record>
+	<attribute id="0x0004">
+		<alternate>
+			<uint32 value="0x11223344" />
+			<text value="alternate-member" />
+			<sequence>
+				<uint16 value="0x0100" />
+			</sequence>
+		</alternate>
+	</attribute>
+</record>

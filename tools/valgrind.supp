@@ -1,0 +1,34 @@
+{
+   ecb_bind
+   Memcheck:Param
+   socketcall.bind(my_addr.sa_data)
+   fun:bind
+   fun:ecb_aes_setup
+}
+{
+   cmac_bind
+   Memcheck:Param
+   socketcall.bind(my_addr.sa_data)
+   fun:bind
+   fun:cmac_aes_setup
+}
+{
+   logging_open
+   Memcheck:Param
+   socketcall.bind(my_addr.rc_bdaddr)
+   fun:bind
+   fun:logging_open
+}
+{
+   bind
+   Memcheck:Param
+   socketcall.bind(my_addr.rc_channel)
+   fun:bind
+}
+{
+   bt_log_open
+   Memcheck:Param
+   socketcall.bind(my_addr.rc_bdaddr)
+   fun:bind
+   fun:bt_log_open
+}

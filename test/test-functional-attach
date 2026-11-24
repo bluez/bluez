@@ -1,0 +1,7 @@
+#!/bin/sh
+#
+# test-functional-attach
+#
+# Start Tmux and connect to active test-functional VM hosts.
+#
+exec python3 -mpytest_bluezenv attach "$@"

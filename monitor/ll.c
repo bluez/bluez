@@ -1,0 +1,1148 @@
+// SPDX-License-Identifier: LGPL-2.1-or-later
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2011-2014  Intel Corporation
+ *  Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <inttypes.h>
+
+#include "src/shared/util.h"
+#include "display.h"
+#include "packet.h"
+#include "crc.h"
+#include "bt.h"
+#include "ll.h"
+
+#define COLOR_OPCODE		COLOR_MAGENTA
+#define COLOR_OPCODE_UNKNOWN	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_OPTIONS_BIT COLOR_WHITE_BG
+
+#define MAX_CHANNEL 16
+
+struct channel_data {
+	uint32_t access_addr;
+	uint32_t crc_init;
+};
+
+static struct channel_data channel_list[MAX_CHANNEL];
+
+static void set_crc_init(uint32_t access_addr, uint32_t crc_init)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHANNEL; i++) {
+		if (channel_list[i].access_addr == 0x00000000 ||
+				channel_list[i].access_addr == access_addr) {
+			channel_list[i].access_addr = access_addr;
+			channel_list[i].crc_init = crc_init;
+			break;
+		}
+	}
+}
+
+static uint32_t get_crc_init(uint32_t access_addr)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHANNEL; i++) {
+		if (channel_list[i].access_addr == access_addr)
+			return channel_list[i].crc_init;
+	}
+
+	return 0x00000000;
+}
+
+static void advertising_packet(const void *data, uint8_t size)
+{
+	const uint8_t *ptr = data;
+	uint8_t pdu_type, length, win_size, hop, sca;
+	bool tx_add, rx_add;
+	uint32_t access_addr, crc_init;
+	uint16_t win_offset, interval, latency, timeout;
+	const char *str;
+
+	if (size < 2) {
+		print_text(COLOR_ERROR, "packet too short");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	pdu_type = ptr[0] & 0x0f;
+	tx_add = !!(ptr[0] & 0x40);
+	rx_add = !!(ptr[0] & 0x80);
+	length = ptr[1] & 0x3f;
+
+	switch (pdu_type) {
+	case 0x00:
+		str = "ADV_IND";
+		break;
+	case 0x01:
+		str = "ADV_DIRECT_IND";
+		break;
+	case 0x02:
+		str = "ADV_NONCONN_IND";
+		break;
+	case 0x03:
+		str = "SCAN_REQ";
+		break;
+	case 0x04:
+		str = "SCAN_RSP";
+		break;
+	case 0x05:
+		str = "CONNECT_REQ";
+		break;
+	case 0x06:
+		str = "ADV_SCAN_IND";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, pdu_type);
+	print_field("TxAdd: %u", tx_add);
+	print_field("RxAdd: %u", rx_add);
+	print_field("Length: %u", length);
+
+	if (length != size - 2) {
+		print_text(COLOR_ERROR, "packet size mismatch");
+		packet_hexdump(data + 2, size - 2);
+		return;
+	}
+
+	switch (pdu_type) {
+	case 0x00:	/* ADV_IND */
+	case 0x02:	/* AVD_NONCONN_IND */
+	case 0x06:	/* ADV_SCAN_IND */
+	case 0x04:	/* SCAN_RSP */
+		if (length < 6) {
+			print_text(COLOR_ERROR, "payload too short");
+			packet_hexdump(data + 2, length);
+			return;
+		}
+
+		packet_print_addr("Advertiser address", data + 2, tx_add);
+		packet_print_ad(data + 8, length - 6);
+		break;
+
+	case 0x01:	/* ADV_DIRECT_IND */
+		if (length < 12) {
+			print_text(COLOR_ERROR, "payload too short");
+			packet_hexdump(data + 2, length);
+			return;
+		}
+
+		packet_print_addr("Advertiser address", data + 2, tx_add);
+		packet_print_addr("Initiator address", data + 8, rx_add);
+		break;
+
+	case 0x03:	/* SCAN_REQ */
+		if (length < 12) {
+			print_text(COLOR_ERROR, "payload too short");
+			packet_hexdump(data + 2, length);
+			return;
+		}
+
+		packet_print_addr("Scanner address", data + 2, tx_add);
+		packet_print_addr("Advertiser address", data + 8, rx_add);
+		break;
+
+	case 0x05:	/* CONNECT_REQ */
+		if (length < 34) {
+			print_text(COLOR_ERROR, "payload too short");
+			packet_hexdump(data + 2, length);
+			return;
+		}
+
+		packet_print_addr("Initiator address", data + 2, tx_add);
+		packet_print_addr("Advertiser address", data + 8, rx_add);
+
+		access_addr = ptr[14] | ptr[15] << 8 |
+					ptr[16] << 16 | ptr[17] << 24;
+		crc_init = ptr[18] | ptr[19] << 8 | ptr[20] << 16;
+
+		print_field("Access address: 0x%8.8x", access_addr);
+		print_field("CRC init: 0x%6.6x", crc_init);
+
+		set_crc_init(access_addr, crc24_bit_reverse(crc_init));
+
+		win_size = ptr[21];
+		win_offset = ptr[22] | ptr[23] << 8;
+		interval = ptr[24] | ptr[25] << 8;
+		latency = ptr[26] | ptr[27] << 8;
+		timeout = ptr[28] | ptr[29] << 8;
+
+		print_field("Transmit window size: %u", win_size);
+		print_field("Transmit window offset: %u", win_offset);
+		print_field("Connection interval: %u", interval);
+		print_field("Connection peripheral latency: %u", latency);
+		print_field("Connection supervision timeout: %u", timeout);
+
+		packet_print_channel_map_ll(ptr + 30);
+
+		hop = ptr[35] & 0x1f;
+		sca = (ptr[35] & 0xe0) >> 5;
+
+		switch (sca) {
+		case 0:
+			str = "251 ppm to 500 ppm";
+			break;
+		case 1:
+			str = "151 ppm to 250 ppm";
+			break;
+		case 2:
+			str = "101 ppm to 150ppm";
+			break;
+		case 3:
+			str = "76 ppm to 100 ppm";
+			break;
+		case 4:
+			str = "51 ppm to 75 ppm";
+			break;
+		case 5:
+			str = "31 ppm to 50 ppm";
+			break;
+		case 6:
+			str = "21 ppm to 30 ppm";
+			break;
+		case 7:
+			str = "0 ppm to 20 ppm";
+			break;
+		default:
+			str = "Invalid";
+			break;
+		}
+
+		print_field("Hop increment: %u", hop);
+		print_field("Sleep clock accuracy: %s (%u)", str, sca);
+		break;
+
+	default:
+		packet_hexdump(data + 2, length);
+		break;
+	}
+}
+
+static void data_packet(const void *data, uint8_t size, bool padded)
+{
+	const uint8_t *ptr = data;
+	uint8_t llid, length;
+	bool nesn, sn, md;
+	const char *str;
+
+	if (size < 2) {
+		print_text(COLOR_ERROR, "packet too short");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	llid = ptr[0] & 0x03;
+	nesn = !!(ptr[0] & 0x04);
+	sn = !!(ptr[0] & 0x08);
+	md = !!(ptr[0] & 0x10);
+	length = ptr[1] & 0x1f;
+
+	switch (llid) {
+	case 0x01:
+		if (length > 0)
+			str = "Continuation fragment of L2CAP message";
+		else
+			str = "Empty message";
+		break;
+	case 0x02:
+		str = "Start of L2CAP message";
+		break;
+	case 0x03:
+		str = "Control";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("LLID: %s (0x%2.2x)", str, llid);
+	print_field("Next expected sequence number: %u", nesn);
+	print_field("Sequence number: %u", sn);
+	print_field("More data: %u", md);
+	print_field("Length: %u", length);
+
+	switch (llid) {
+	case 0x03:
+		llcp_packet(data + 2, size - 2, padded);
+		break;
+
+	default:
+		packet_hexdump(data + 2, size - 2);
+		break;
+	}
+}
+
+void ll_packet(uint16_t frequency, const void *data, uint8_t size, bool padded)
+{
+	const struct bt_ll_hdr *hdr = data;
+	uint8_t channel = (frequency - 2402) / 2;
+	uint32_t access_addr;
+	char access_str[12];
+	const char *channel_label, *channel_color;
+	const uint8_t *pdu_data;
+	uint8_t pdu_len;
+	uint32_t pdu_crc, crc, crc_init;
+
+	if (size < sizeof(*hdr)) {
+		print_text(COLOR_ERROR, "packet missing header");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (size < sizeof(*hdr) + 3) {
+		print_text(COLOR_ERROR, "packet missing checksum");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (hdr->preamble != 0xaa && hdr->preamble != 0x55) {
+		print_text(COLOR_ERROR, "invalid preamble");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	access_addr = le32_to_cpu(hdr->access_addr);
+
+	pdu_data = data + sizeof(*hdr);
+	pdu_len = size - sizeof(*hdr) - 3;
+
+	pdu_crc = pdu_data[pdu_len + 0] | (pdu_data[pdu_len + 1] << 8) |
+						(pdu_data[pdu_len + 2] << 16);
+
+	if (access_addr == 0x8e89bed6) {
+		channel_label = "Advertising channel: ";
+		channel_color = COLOR_MAGENTA;
+	} else {
+		channel_label = "Data channel: ";
+		channel_color = COLOR_CYAN;
+	}
+
+	sprintf(access_str, "0x%8.8x", access_addr);
+
+	print_indent(6, channel_color, channel_label, access_str, COLOR_OFF,
+		" (channel %d) len %d crc 0x%6.6x", channel, pdu_len, pdu_crc);
+
+	if (access_addr == 0x8e89bed6)
+		crc_init = 0xaaaaaa;
+	else
+		crc_init = get_crc_init(access_addr);
+
+	if (crc_init) {
+		crc = crc24_calculate(crc_init, pdu_data, pdu_len);
+
+		if (crc != pdu_crc) {
+			print_text(COLOR_ERROR, "invalid checksum");
+			packet_hexdump(pdu_data, pdu_len);
+			return;
+		}
+	} else
+		print_text(COLOR_ERROR, "unknown access address");
+
+	if (access_addr == 0x8e89bed6)
+		advertising_packet(pdu_data, pdu_len);
+	else
+		data_packet(pdu_data, pdu_len, padded);
+}
+
+static void null_pdu(const void *data, uint8_t size)
+{
+}
+
+static void conn_update_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_conn_update_req *pdu = data;
+
+	print_field("Transmit window size: %u", pdu->win_size);
+	print_field("Transmit window offset: %u", le16_to_cpu(pdu->win_offset));
+	print_field("Connection interval: %u", le16_to_cpu(pdu->interval));
+	print_field("Connection peripheral latency: %u",
+						le16_to_cpu(pdu->latency));
+	print_field("Connection supervision timeout: %u",
+						le16_to_cpu(pdu->timeout));
+	print_field("Connection instant: %u", le16_to_cpu(pdu->instant));
+}
+
+static void channel_map_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_channel_map_req *pdu = data;
+
+	packet_print_channel_map_ll(pdu->map);
+	print_field("Connection instant: %u", le16_to_cpu(pdu->instant));
+}
+
+static void terminate_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_terminate_ind *pdu = data;
+
+	packet_print_error("Error code", pdu->error);
+}
+
+static void enc_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_req *pdu = data;
+
+	print_field("Rand: 0x%16.16" PRIx64, le64_to_cpu(pdu->rand));
+	print_field("EDIV: 0x%4.4x", le16_to_cpu(pdu->ediv));
+	print_field("SKD (central): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
+	print_field("IV (central): 0x%8.8x", le32_to_cpu(pdu->iv));
+}
+
+static void enc_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_rsp *pdu = data;
+
+	print_field("SKD (peripheral): 0x%16.16" PRIx64, le64_to_cpu(pdu->skd));
+	print_field("IV (peripheral): 0x%8.8x", le32_to_cpu(pdu->iv));
+}
+
+static const char *opcode_to_string(uint8_t opcode);
+
+static void unknown_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_unknown_rsp *pdu = data;
+
+	print_field("Unknown type: %s (0x%2.2x)",
+				opcode_to_string(pdu->type), pdu->type);
+}
+
+static void feature_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_req *pdu = data;
+
+	packet_print_features_ll(pdu->features);
+}
+
+static void feature_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_rsp *pdu = data;
+
+	packet_print_features_ll(pdu->features);
+}
+
+static void version_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_version_ind *pdu = data;
+
+	packet_print_version("Version", pdu->version,
+				"Subversion", le16_to_cpu(pdu->subversion));
+	packet_print_company("Company", le16_to_cpu(pdu->company));
+}
+
+static void reject_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_reject_ind *pdu = data;
+
+	packet_print_error("Error code", pdu->error);
+}
+
+static void peripheral_feature_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_peripheral_feature_req *pdu = data;
+
+	packet_print_features_ll(pdu->features);
+}
+
+static void conn_param_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_conn_param_req *pdu = data;
+
+	print_field("Interval min: %.2f msec (0x%4.4x)",
+				pdu->interval_min * 1.25, pdu->interval_min);
+	print_field("Interval max: %.2f msec (0x%4.4x)",
+				pdu->interval_max * 1.25, pdu->interval_max);
+	print_field("Latency: %d (0x%4.4x)", pdu->latency, pdu->latency);
+	print_field("Timeout: %d msec (0x%4.4x)", pdu->timeout * 10,
+								pdu->timeout);
+	print_field("Preferred periodicity: %.2f (0x%2.2x)",
+				pdu->pref_period * 1.25, pdu->pref_period);
+	print_field("Reference connection event count: %d (0x%2.2x)",
+			pdu->pref_conn_evt_count, pdu->pref_conn_evt_count);
+	print_field("Offset 0: %.2f msec (0x%2.2x)", pdu->offset_0 * 1.25,
+								pdu->offset_0);
+	print_field("Offset 1: %.2f msec (0x%2.2x)", pdu->offset_1 * 1.25,
+								pdu->offset_1);
+	print_field("Offset 2: %.2f msec (0x%2.2x)", pdu->offset_2 * 1.25,
+								pdu->offset_2);
+	print_field("Offset 3: %.2f msec (0x%2.2x)", pdu->offset_3 * 1.25,
+								pdu->offset_3);
+	print_field("Offset 4: %.2f msec (0x%2.2x)", pdu->offset_4 * 1.25,
+								pdu->offset_4);
+	print_field("Offset 5: %.2f msec (0x%2.2x)", pdu->offset_5 * 1.25,
+								pdu->offset_5);
+}
+
+static void conn_param_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_conn_param_rsp *pdu = data;
+
+	print_field("Interval min: %.2f msec (0x%4.4x)",
+				pdu->interval_min * 1.25, pdu->interval_min);
+	print_field("Interval max: %.2f msec (0x%4.4x)",
+				pdu->interval_max * 1.25, pdu->interval_max);
+	print_field("Latency: %d (0x%4.4x)", pdu->latency, pdu->latency);
+	print_field("Timeout: %d msec (0x%4.4x)", pdu->timeout * 10,
+								pdu->timeout);
+	print_field("Preferred periodicity: %.2f (0x%2.2x)",
+				pdu->pref_period * 1.25, pdu->pref_period);
+	print_field("Reference connection event count: %d (0x%2.2x)",
+			pdu->pref_conn_evt_count, pdu->pref_conn_evt_count);
+	print_field("Offset 0: %.2f msec (0x%2.2x)", pdu->offset_0 * 1.25,
+								pdu->offset_0);
+	print_field("Offset 1: %.2f msec (0x%2.2x)", pdu->offset_1 * 1.25,
+								pdu->offset_1);
+	print_field("Offset 2: %.2f msec (0x%2.2x)", pdu->offset_2 * 1.25,
+								pdu->offset_2);
+	print_field("Offset 3: %.2f msec (0x%2.2x)", pdu->offset_3 * 1.25,
+								pdu->offset_3);
+	print_field("Offset 4: %.2f msec (0x%2.2x)", pdu->offset_4 * 1.25,
+								pdu->offset_4);
+	print_field("Offset 5: %.2f msec (0x%2.2x)", pdu->offset_5 * 1.25,
+								pdu->offset_5);
+}
+
+static void reject_ind_ext(const void *data, uint8_t size)
+{
+	const struct bt_ll_reject_ind_ext *pdu = data;
+
+	print_field("Reject opcode: %u (0x%2.2x)", pdu->opcode, pdu->opcode);
+	packet_print_error("Error code", pdu->error);
+}
+
+static void length_req_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_length *pdu = data;
+
+	print_field("MaxRxOctets: %u", pdu->rx_len);
+	print_field("MaxRxTime: %u", pdu->rx_time);
+	print_field("MaxTxOctets: %u", pdu->tx_len);
+	print_field("MaxtxTime: %u", pdu->tx_time);
+}
+
+static const struct bitfield_data le_phys[] = {
+	{  0, "LE 1M"	},
+	{  1, "LE 2M"	},
+	{  2, "LE Coded"},
+	{  4, "LE HDT"	},
+	{ }
+};
+
+/* The payload window sizes of the HDT PDUs are encoded as one less than the
+ * size, print the size and the value as it is in the PDU.
+ */
+static void print_payload_window(const char *prefix, uint8_t val)
+{
+	print_field("%s: %u (0x%2.2x)", prefix, val + 1, val);
+}
+
+static void phy_req_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_phy *pdu = data;
+	uint8_t mask;
+
+	print_field("RX PHYs: 0x%2.2x", pdu->rx_phys);
+
+	mask = print_bitfield(2, pdu->rx_phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+	print_field("TX PHYs: 0x%2.2x", pdu->tx_phys);
+
+	mask = print_bitfield(2, pdu->tx_phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 6, Part B,
+	 * Section 2.4.2.22:
+	 *
+	 * Refresh shall be set to 1 to require a key refresh. If the field
+	 * is not included, then the value is 0.
+	 * MIC_Length shall be set to 1 to request that the MIC_Length on the
+	 * LE HDT PHY is 64 bits. If the field is not included, then the
+	 * value is 0 (128 bits).
+	 */
+	if (size >= sizeof(*pdu) + sizeof(struct bt_ll_phy_v2)) {
+		const struct bt_ll_phy_v2 *v2 = (const void *) (pdu + 1);
+
+		print_field("Refresh: %u", v2->flags & 0x01);
+		print_field("MIC Length: %s (%u)",
+				v2->flags & 0x02 ? "64 bits" : "128 bits",
+				(v2->flags >> 1) & 0x01);
+	}
+}
+
+static void phy_update_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_phy_update_ind *pdu = data;
+	uint8_t mask;
+
+	print_field("C_TO_P_PHY: 0x%2.2x", pdu->c_phy);
+
+	mask = print_bitfield(2, pdu->c_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("P_TO_C_PHY: 0x%2.2x", pdu->p_phy);
+
+	mask = print_bitfield(2, pdu->p_phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("Instant: 0x%4.4x", pdu->instant);
+
+	/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 6, Part B,
+	 * Section 2.4.2.23:
+	 *
+	 * Address shall be set to the Physical Channel Address for the PHY
+	 * that will be used after the instant on the ACL (with the most
+	 * significant octet set to 0x00 if the PCA is only 4 octets).
+	 * Refresh shall be set to 1 if the encryption key will be refreshed.
+	 * MIC_Length shall be set to 1 if the encryption key will be
+	 * refreshed and the new key uses a 64-bit MIC. If the MIC_Length
+	 * field is not included, then the value is 0 (128 bits).
+	 */
+	if (size >= sizeof(*pdu) + sizeof(struct bt_ll_phy_update_ind_v2)) {
+		const struct bt_ll_phy_update_ind_v2 *v2;
+
+		v2 = (const void *) (pdu + 1);
+
+		print_field("Address: %2.2x%2.2x%2.2x%2.2x%2.2x",
+				v2->address[4], v2->address[3],
+				v2->address[2], v2->address[1],
+				v2->address[0]);
+		print_field("Refresh: %u", v2->flags & 0x01);
+		print_field("MIC Length: %s (%u)",
+				v2->flags & 0x02 ? "64 bits" : "128 bits",
+				(v2->flags >> 1) & 0x01);
+	}
+}
+
+static void min_used_channels(const void *data, uint8_t size)
+{
+	const struct bt_ll_min_used_channels *pdu = data;
+	uint8_t mask;
+
+	print_field("PHYS: 0x%2.2x", pdu->phys);
+
+	mask = print_bitfield(2, pdu->phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("MinUsedChannels: 0x%2.2x", pdu->min_channels);
+}
+
+static void cte_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_cte_req *pdu = data;
+
+	print_field("MinCTELenReq: 0x%2.2x", pdu->cte & 0xf8);
+	print_field("CTETypeReq: 0x%2.2x", pdu->cte & 0x03);
+
+	switch (pdu->cte & 0x03) {
+	case 0x00:
+		print_field("  AoA Constant Tone Extension");
+		break;
+	case 0x01:
+		print_field("  AoD Constant Tone Extension with 1 μs slots");
+		break;
+	case 0x02:
+		print_field("  AoD Constant Tone Extension with 2 μs slots");
+		break;
+	}
+}
+
+static void periodic_sync_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_periodic_sync_ind *pdu = data;
+	uint8_t mask;
+
+	print_field("ID: 0x%4.4x", pdu->id);
+	print_field("SyncInfo:");
+	packet_hexdump(pdu->info, sizeof(pdu->info));
+	print_field("connEventCount: 0x%4.4x", pdu->event_count);
+	print_field("lastPaEventCounter: 0x%4.4x", pdu->last_counter);
+	print_field("SID: 0x%2.2x", pdu->adv_info & 0xf0);
+	print_field("AType: %s", pdu->adv_info & 0x08 ? "random" : "public");
+	print_field("SCA: 0x%2.2x", pdu->adv_info & 0x07);
+	print_field("PHY: 0x%2.2x", pdu->phy);
+
+	mask = print_bitfield(2, pdu->phy, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	packet_print_addr("AdvA", pdu->adv_addr, pdu->adv_info & 0x08);
+	print_field("syncConnEventCount: 0x%4.4x", pdu->sync_counter);
+}
+
+static void clock_acc_req_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_clock_acc *pdu = data;
+
+	print_field("SCA: 0x%2.2x", pdu->sca);
+}
+
+static const struct bitfield_data coded_rates[] = {
+	{ 0, "CODED S=8" },
+	{ 1, "CODED S=2" },
+	{ }
+};
+
+static const struct bitfield_data hdt_rates[] = {
+	{ 0, "HDT 2M" },
+	{ 1, "HDT 3M" },
+	{ 2, "HDT 4M" },
+	{ 3, "HDT 6M" },
+	{ 4, "HDT 7.5M" },
+	{ }
+};
+
+/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 6, Part B, Table 2.27:
+ *
+ * Bit 0: For the LE Coded PHY, indicates use of the S=8 coding (possibly among
+ * others). For the LE HDT PHY, indicates use of the HDT2 rate (possibly among
+ * others). Otherwise, the bit is ignored.
+ * Bit 1: For the LE Coded PHY, indicates use of the S=2 coding (possibly among
+ * others). For the LE HDT PHY, indicates use of the HDT3 rate (possibly among
+ * others). Otherwise, the bit is ignored.
+ * Bits 2 to 4: For the LE HDT PHY, the HDT4, HDT6 and HDT7.5 rates.
+ *
+ * So the rates are those of the PHY set in phys, as defined in Table 2.24.
+ */
+static void print_rates(const char *prefix, uint8_t phys, uint16_t rates)
+{
+	const struct bitfield_data *fields = NULL;
+
+	if (phys & BIT(4))
+		fields = hdt_rates;
+	else if (phys & BIT(2))
+		fields = coded_rates;
+
+	print_field("%s: 0x%4.4x", prefix, rates);
+
+	if (fields) {
+		uint16_t mask = print_bitfield(2, rates, fields);
+
+		if (mask)
+			print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%4.4x)", mask);
+	}
+}
+
+static void cis_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_req *cmd = data;
+	uint32_t interval;
+	uint8_t mask;
+
+	print_field("CIG ID: 0x%2.2x", cmd->cig);
+	print_field("CIS ID: 0x%2.2x", cmd->cis);
+	print_field("Central to Peripheral PHYs: 0x%2.2x", cmd->c_phys);
+
+	mask = print_bitfield(2, cmd->c_phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("Peripheral To Central PHYs: 0x%2.2x", cmd->p_phys);
+
+	mask = print_bitfield(2, cmd->p_phys, le_phys);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_field("Central to Peripheral Maximum SDU: %u", cmd->c_sdu);
+	print_field("Peripheral to Central Maximum SDU: %u", cmd->p_sdu);
+
+	memcpy(&interval, cmd->c_interval, sizeof(cmd->c_interval));
+	print_field("Central to Peripheral Interval: 0x%6.6x",
+							le32_to_cpu(interval));
+	memcpy(&interval, cmd->p_interval, sizeof(cmd->p_interval));
+	print_field("Peripheral to Central Interval: 0x%6.6x",
+							le32_to_cpu(interval));
+
+	print_field("Central to Peripheral Maximum PDU: %u", cmd->c_pdu);
+	print_field("Peripheral to Central Maximum PDU: %u", cmd->p_pdu);
+
+	print_field("Burst Number: %u us", cmd->bn);
+
+	memcpy(&interval, cmd->sub_interval, sizeof(cmd->sub_interval));
+	print_field("Sub-Interval: 0x%6.6x", le32_to_cpu(interval));
+
+	print_field("Central to Peripheral Flush Timeout: %u", cmd->c_ft);
+	print_field("Peripheral to Central Flush Timeout: %u", cmd->p_ft);
+
+	print_field("ISO Interval: 0x%4.4x", le16_to_cpu(cmd->iso_interval));
+
+	memcpy(&interval, cmd->offset_min, sizeof(cmd->offset_min));
+	print_field("CIS Offset Minimum: 0x%6.6x", le32_to_cpu(interval));
+	memcpy(&interval, cmd->offset_max, sizeof(cmd->offset_max));
+	print_field("CIS Offset Maximum: 0x%6.6x", le32_to_cpu(interval));
+
+	print_field("Connection Event Count: %u", cmd->conn_event_count);
+
+	/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 6, Part B,
+	 * Section 2.4.2.29:
+	 *
+	 * Rates_C_To_P and Rates_P_To_C are the bitmap of allowed contiguous
+	 * rates, as specified in Table 2.27, of the PHY of that direction.
+	 * Payload_Window_Size_C_To_P shall be set to one less than the size
+	 * of the payload window.
+	 * If the CIS is on the LE HDT PHY and encrypted and a 64-bit MIC is
+	 * to be used, then MIC_Length shall be set to 1. Otherwise,
+	 * MIC_Length shall be set to 0 (128 bits).
+	 * SE_Length shall be set to the time, in microseconds, that needs to
+	 * be reserved for the subevent.
+	 */
+	if (size >= sizeof(*cmd) + sizeof(struct bt_ll_cis_req_v2)) {
+		const struct bt_ll_cis_req_v2 *v2 = (const void *) (cmd + 1);
+
+		print_rates("Central to Peripheral Rates", cmd->c_phys,
+						le16_to_cpu(v2->c_rates));
+		print_rates("Peripheral To Central Rates", cmd->p_phys,
+						le16_to_cpu(v2->p_rates));
+		print_field("Config ID: %u", v2->config_id);
+		print_field("TL Group ID: %u", v2->tl_group_id & 0x1f);
+		print_payload_window("Central to Peripheral Payload Window",
+						v2->flags & 0x03);
+		print_payload_window("Peripheral to Central Payload Window",
+						(v2->flags >> 2) & 0x03);
+		print_field("MIC Length: %s (%u)",
+				v2->flags & 0x10 ? "64 bits" : "128 bits",
+				(v2->flags >> 4) & 0x01);
+		print_field("SE Length: %u us", get_le24(v2->se_length));
+	}
+}
+
+static void cis_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_rsp *rsp = data;
+	uint32_t interval;
+
+	memcpy(&interval, rsp->offset_min, sizeof(rsp->offset_min));
+	print_field("CIS Offset Minimum: 0x%6.6x", le32_to_cpu(interval));
+	memcpy(&interval, rsp->offset_max, sizeof(rsp->offset_max));
+	print_field("CIS Offset Maximum: 0x%6.6x", le32_to_cpu(interval));
+
+	print_field("Connection Event Count: %u", rsp->conn_event_count);
+}
+
+static void cis_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_ind *ind = data;
+	uint32_t interval;
+
+	print_field("CIS Access Address: 0x%4.4x", le32_to_cpu(ind->addr));
+	memcpy(&interval, ind->cis_offset, sizeof(ind->cis_offset));
+	print_field("CIS Offset: 0x%6.6x", le32_to_cpu(interval));
+
+	memcpy(&interval, ind->cig_sync_delay, sizeof(ind->cig_sync_delay));
+	print_field("CIG Synchronization Delay: 0x%6.6x",
+					le32_to_cpu(interval));
+	memcpy(&interval, ind->cis_sync_delay, sizeof(ind->cis_sync_delay));
+	print_field("CIS Synchronization Delay: %u us",
+					le32_to_cpu(interval));
+	print_field("Connection Event Count: %u", ind->conn_event_count);
+
+	/* [v2] */
+	if (size >= sizeof(*ind) + sizeof(struct bt_ll_cis_ind_v2)) {
+		const struct bt_ll_cis_ind_v2 *v2 = (const void *) (ind + 1);
+
+		print_field("PCA-H: 0x%2.2x", v2->pca_h);
+	}
+}
+
+static void cis_term_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_cis_term_ind *ind = data;
+
+	print_field("CIG ID: 0x%2.2x", ind->cig);
+	print_field("CIS ID: 0x%2.2x", ind->cis);
+	packet_print_error("Reason", ind->reason);
+}
+
+static void feature_ext_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_ext_req *req = data;
+
+	print_field("Max page: %u", req->max_page);
+	print_field("Page: %u", req->page);
+	packet_print_features_ext_ll(req->page, req->features);
+}
+
+static void feature_ext_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_ext_req *rsp = data;
+
+	print_field("Max page: %u", rsp->max_page);
+	print_field("Page: %u", rsp->page);
+	packet_print_features_ext_ll(rsp->page, rsp->features);
+}
+
+static const struct bitfield_data lqf_transports[] = {
+	{ 0, "ACL" },
+	{ 1, "CIS" },
+	{ }
+};
+
+static void hdt_lqf_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_hdt_lqf_ind *pdu = data;
+	uint8_t mask;
+
+	print_field("Transport: 0x%2.2x", pdu->transport);
+
+	mask = print_bitfield(2, pdu->transport, lqf_transports);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+}
+
+/* BLUETOOTH CORE SPECIFICATION Version 7.0 | Vol 6, Part B,
+ * Section 2.4.2.61:
+ *
+ * ACL_RX_Payload_Window_Size shall be set to one less than the value of
+ * PayloadWindowSize that will be used on the ACL connection in the direction
+ * received by the device sending this PDU. Max_CIS_TX_Payload_Window_Size and
+ * Max_CIS_RX_Payload_Window_Size shall be set to one less than the maximum
+ * payload window size that can be supported by the device on an associated CIS
+ * in the transmit and receive direction. ACL_RX_Rates shall be set to a bitmap
+ * of rates (as specified in Table 2.27) that the Controller is allowed to
+ * receive from the remote Controller on the ACL connection. A value of zero
+ * indicates all supported rates are allowed.
+ */
+static void hdt_config_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_hdt_config_req *pdu = data;
+
+	print_payload_window("ACL RX Payload Window Size", pdu->wincfg & 0x03);
+	print_payload_window("Max CIS TX Payload Window Size",
+					(pdu->wincfg >> 2) & 0x03);
+	print_payload_window("Max CIS RX Payload Window Size",
+					(pdu->wincfg >> 4) & 0x03);
+	print_rates("ACL RX Rates", BIT(4), le16_to_cpu(pdu->acl_rx_rates));
+	print_field("Max ACL RX Packet Size: %u",
+					le16_to_cpu(pdu->acl_rx_mtu));
+}
+
+static void hdt_config_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_hdt_config_rsp *pdu = data;
+
+	print_payload_window("ACL RX Payload Window Size", pdu->wincfg & 0x03);
+	print_payload_window("Max CIS TX Payload Window Size",
+					(pdu->wincfg >> 2) & 0x03);
+	print_payload_window("Max CIS RX Payload Window Size",
+					(pdu->wincfg >> 4) & 0x03);
+	print_rates("ACL RX Rates", BIT(4), le16_to_cpu(pdu->acl_rx_rates));
+	print_field("Max ACL RX Packet Size: %u",
+					le16_to_cpu(pdu->acl_rx_mtu));
+}
+
+static const struct bitfield_data ecdh_flags[] = {
+	{ 0, "Allow 64-bit MIC length" },
+	{ 1, "Opportunistic encryption" },
+	{ }
+};
+
+static void print_key_type(const char *str, uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		print_field("%s: Public key P-256 (0x00)", str);
+		break;
+	default:
+		print_field("%s: Reserved (0x%2.2x)", str, type);
+		break;
+	}
+}
+
+static void enc_ecdh_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_ecdh_req *cmd = data;
+	uint8_t mask;
+
+	print_field("Flags: 0x%2.2x", cmd->flags);
+
+	mask = print_bitfield(2, cmd->flags, ecdh_flags);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_hex_field("Rand", cmd->rand, 16);
+	print_key_type("Key Type", cmd->key_type);
+	print_hex_field("Public Key", cmd->pubkey, 64);
+}
+
+static void enc_ecdh_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_ecdh_rsp *rsp = data;
+	uint8_t mask;
+
+	print_field("Flags: 0x%2.2x", rsp->flags);
+
+	mask = print_bitfield(2, rsp->flags, ecdh_flags);
+	if (mask)
+		print_text(COLOR_UNKNOWN_OPTIONS_BIT, "  Reserved"
+							" (0x%2.2x)", mask);
+
+	print_hex_field("Rand", rsp->rand, 16);
+	print_key_type("Key Type", rsp->key_type);
+	print_hex_field("Public Key", rsp->pubkey, 64);
+}
+
+struct llcp_data {
+	uint8_t opcode;
+	const char *str;
+	void (*func) (const void *data, uint8_t size);
+	uint8_t size;
+	bool fixed;
+};
+
+#define LLCP_OP_VL(_op, _str, _func, _type) \
+	{ _op, _str, _func, sizeof(_type), false }
+
+#define LLCP_OP(_op, _str, _func, _type) \
+	{ _op, _str, _func, sizeof(_type), true }
+
+static const struct llcp_data llcp_table[] = {
+	{ 0x00, "LL_CONNECTION_UPDATE_REQ", conn_update_req,   11, true },
+	{ 0x01, "LL_CHANNEL_MAP_REQ",       channel_map_req,    7, true },
+	{ 0x02, "LL_TERMINATE_IND",         terminate_ind,      1, true },
+	{ 0x03, "LL_ENC_REQ",               enc_req,           22, true },
+	{ 0x04, "LL_ENC_RSP",               enc_rsp,           12, true },
+	{ 0x05, "LL_START_ENC_REQ",         null_pdu,           0, true },
+	{ 0x06, "LL_START_ENC_RSP",         null_pdu,           0, true },
+	{ 0x07, "LL_UNKNOWN_RSP",           unknown_rsp,        1, true },
+	{ 0x08, "LL_FEATURE_REQ",           feature_req,        8, true },
+	{ 0x09, "LL_FEATURE_RSP",           feature_rsp,        8, true },
+	{ 0x0a, "LL_PAUSE_ENC_REQ",         null_pdu,           0, true },
+	{ 0x0b, "LL_PAUSE_ENC_RSP",         null_pdu,           0, true },
+	{ 0x0c, "LL_VERSION_IND",           version_ind,        5, true },
+	{ 0x0d, "LL_REJECT_IND",            reject_ind,         1, true },
+	{ 0x0e, "LL_PERIPHERAL_FEATURE_REQ", peripheral_feature_req, 8, true },
+	{ 0x0f, "LL_CONNECTION_PARAM_REQ",  conn_param_req,    23, true },
+	{ 0x10, "LL_CONNECTION_PARAM_RSP",  conn_param_rsp,    23, true },
+	{ 0x11, "LL_REJECT_IND_EXT",        reject_ind_ext,     2, true },
+	{ 0x12, "LL_PING_REQ",              null_pdu,           0, true },
+	{ 0x13, "LL_PING_RSP",              null_pdu,           0, true },
+	{ 0x14, "LL_LENGTH_REQ",            length_req_rsp,     8, true },
+	{ 0x15, "LL_LENGTH_RSP",            length_req_rsp,     8, true },
+	{ 0x16, "LL_PHY_REQ",               phy_req_rsp,        2, false },
+	{ 0x17, "LL_PHY_RSP",               phy_req_rsp,        2, false },
+	{ 0x18, "LL_PHY_UPDATE_IND",        phy_update_ind,     4, false },
+	{ 0x19, "LL_MIN_USED_CHANNELS_IND", min_used_channels,  2, true },
+	{ 0x1a, "LL_CTE_REQ",               cte_req,            1, true },
+	{ 0x1b, "LL_CTE_RSP",               null_pdu,           0, true },
+	{ 0x1c, "LL_PERIODIC_SYNC_IND",     periodic_sync_ind, 34, true },
+	{ 0x1d, "LL_CLOCK_ACCURACY_REQ",    clock_acc_req_rsp,  1, true },
+	{ 0x1e, "LL_CLOCK_ACCURACY_RSP",    clock_acc_req_rsp,  1, true },
+	{ BT_LL_CIS_REQ, "LL_CIS_REQ",      cis_req,
+					sizeof(struct bt_ll_cis_req), false },
+	{ BT_LL_CIS_RSP, "LL_CIS_RSP",      cis_rsp,
+					sizeof(struct bt_ll_cis_rsp), true },
+	{ BT_LL_CIS_IND, "LL_CIS_IND",      cis_ind,
+					sizeof(struct bt_ll_cis_ind), false },
+	{ BT_LL_CIS_TERMINATE_IND, "LL_CIS_TERMINATE_IND", cis_term_ind,
+					sizeof(struct bt_ll_cis_term_ind),
+					true },
+	{ BT_LL_FEATURE_REQ, "LL_FEATURE_EXT_REQ", feature_ext_req,
+					sizeof(struct bt_ll_feature_ext_req),
+					true },
+	{ BT_LL_CIS_RSP, "LL_FEATURE_EXT_RSP", feature_ext_rsp,
+					sizeof(struct bt_ll_feature_ext_rsp),
+					true },
+	/* HDT LLCP commands */
+	LLCP_OP(BT_LL_HDT_LQF_REPORTING_IND, "LL_HDT_LQF_REPORTING_IND",
+					hdt_lqf_ind, struct bt_ll_hdt_lqf_ind),
+	LLCP_OP(BT_LL_HDT_CONFIG_REQ, "LL_HDT_CONFIG_REQ", hdt_config_req,
+					struct bt_ll_hdt_config_req),
+	LLCP_OP(BT_LL_HDT_CONFIG_RSP, "LL_HDT_CONFIG_RSP", hdt_config_rsp,
+					struct bt_ll_hdt_config_rsp),
+	LLCP_OP(BT_LL_ENC_ECDH_REQ, "LL_ENC_ECDH_REQ", enc_ecdh_req,
+					struct bt_ll_enc_ecdh_req),
+	LLCP_OP(BT_LL_ENC_ECDH_RSP, "LL_ENC_ECDH_RSP", enc_ecdh_rsp,
+					struct bt_ll_enc_ecdh_rsp),
+	{ }
+};
+
+static const char *opcode_to_string(uint8_t opcode)
+{
+	int i;
+
+	for (i = 0; llcp_table[i].str; i++) {
+		if (llcp_table[i].opcode == opcode)
+			return llcp_table[i].str;
+	}
+
+	return "Unknown";
+}
+
+void llcp_packet(const void *data, uint8_t size, bool padded)
+{
+	uint8_t opcode = ((const uint8_t *) data)[0];
+	const struct llcp_data *llcp_data = NULL;
+	const char *opcode_color, *opcode_str;
+	int i;
+
+	for (i = 0; llcp_table[i].str; i++) {
+		if (llcp_table[i].opcode == opcode) {
+			llcp_data = &llcp_table[i];
+			break;
+		}
+	}
+
+	if (llcp_data) {
+		if (llcp_data->func)
+			opcode_color = COLOR_OPCODE;
+		else
+			opcode_color = COLOR_OPCODE_UNKNOWN;
+		opcode_str = llcp_data->str;
+	} else {
+		opcode_color = COLOR_OPCODE_UNKNOWN;
+		opcode_str = "Unknown";
+	}
+
+	print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
+						" (0x%2.2x)", opcode);
+
+	if (!llcp_data || !llcp_data->func) {
+		packet_hexdump(data + 1, size - 1);
+		return;
+	}
+
+	if (llcp_data->fixed && !padded) {
+		if (size - 1 != llcp_data->size) {
+			print_text(COLOR_ERROR, "invalid packet size");
+			packet_hexdump(data + 1, size - 1);
+			return;
+		}
+	} else {
+		if (size - 1 < llcp_data->size) {
+			print_text(COLOR_ERROR, "too short packet");
+			packet_hexdump(data + 1, size - 1);
+			return;
+		}
+	}
+
+	llcp_data->func(data + 1, size - 1);
+}

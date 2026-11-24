@@ -1,0 +1,1 @@
+doc/coding-assistants.rst

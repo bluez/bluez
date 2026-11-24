@@ -1,0 +1,14 @@
+name: Checkpatch on PR
+
+on: [pull_request]
+
+jobs:
+  my_review:
+    name: checkpatch
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run checkpatch review
+      uses: webispy/checkpatch-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

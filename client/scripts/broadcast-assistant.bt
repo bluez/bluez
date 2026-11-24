@@ -1,0 +1,41 @@
+power on
+#
+#
+# Start scanning to discover the Scan Delegator
+#
+scan on
+#
+#
+# After the Scan Delegator device is created, stop scanning
+# and connect to the address.
+#
+# scan off
+# connect xx:xx:xx:xx:xx:xx
+#
+#
+# After the connection has been established, restart scanning
+# to detect Broadcast Sources.
+#
+# scan on
+#
+#
+# As Broadcast Sources are scanned, MediaAssistant objects are
+# created for all BISes that match the audio capabilities of the
+# Scan Delegator. Select a stream to send to the Scan Delegator
+# using the "push" command from the assistant submenu. When asked
+# to enter stream metadata, the "auto" option will keep the LTV
+# values advertised by the Broadcast Source. By entering new LTV
+# values, the default metadata will be overwritten. If the stream
+# is encrypted, a prompt will be displayed to enter the Broadcast
+# Code for decrypting.
+#
+# assistant.push /org/bluez/hci0/src_yy_yy_yy_yy_yy_yy/dev_xx_xx_xx_xx_xx_xx/bis_n
+# [Assistant] Enter Metadata (auto/value): a
+# [Assistant] Enter Broadcast Code (auto/value): Borne House
+#
+#
+# Wait for the MediaAssistant object to transition to "active"
+# state, to validate that the Scan Delegator has successfully
+# acquired the stream.
+#
+# [CHG] Assistant /org/bluez/hci0/src_yy_yy_yy_yy_yy_yy/dev_xx_xx_xx_xx_xx_xx/bis_n State: active

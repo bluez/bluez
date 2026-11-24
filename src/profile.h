@@ -1,0 +1,121 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2012  Intel Corporation. All rights reserved.
+ *
+ *
+ */
+
+#define BTD_PROFILE_PRIORITY_LOW	0
+#define BTD_PROFILE_PRIORITY_MEDIUM	1
+#define BTD_PROFILE_PRIORITY_HIGH	2
+
+#define BTD_PROFILE_BEARER_ANY		0
+#define BTD_PROFILE_BEARER_LE		1
+#define BTD_PROFILE_BEARER_BREDR	2
+
+struct btd_service;
+
+#define BTD_PROFILE_UUID_CB(func_, ...) \
+	{ \
+		.func = (func_), \
+		.count = ARRAY_SIZE(((const char *[]) { __VA_ARGS__ })), \
+		.uuids = ((const char *[]) { __VA_ARGS__ }), \
+	}
+
+struct btd_profile_uuid_cb {
+	void (*func)(struct btd_service *service);
+	unsigned int count;
+	const char **uuids;
+};
+
+struct btd_profile {
+	const char *name;
+	int priority;
+
+	/* Indicates which bearer type this profile belongs to. Some profiles
+	 * may exist in both BR/EDR and LE, in which case they should be
+	 * registered with BTD_PROFILE_BEARER_ANY.
+	 */
+	int bearer;
+
+	const char *local_uuid;
+	const char *remote_uuid;
+
+	bool auto_connect;
+	/* Some profiles are considered safe to be handled internally and also
+	 * be exposed in the GATT API. This flag give such profiles exception
+	 * from being claimed internally.
+	 */
+	bool external;
+
+	/* Indicates the profile is experimental and shall only be registered
+	 * when experimental has been enabled (see: main.conf:Experimental).
+	 */
+	bool experimental;
+
+	/* Indicates the profile for testing only and shall only be registered
+	 * when testing has been enabled (see: main.conf:Testing).
+	 */
+	bool testing;
+
+	/* Indicates the profile should be ordered after profiles providing
+	 * these remote uuids when connecting. The callback function is called
+	 * when all uuids have finished connecting (successfully or not).
+	 */
+	struct btd_profile_uuid_cb after_services;
+
+	int (*device_probe) (struct btd_service *service);
+	void (*device_remove) (struct btd_service *service);
+
+	int (*connect) (struct btd_service *service);
+	int (*disconnect) (struct btd_service *service);
+
+	int (*accept) (struct btd_service *service);
+
+	int (*adapter_probe) (struct btd_profile *p,
+						struct btd_adapter *adapter);
+	void (*adapter_remove) (struct btd_profile *p,
+						struct btd_adapter *adapter);
+};
+
+void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
+								void *data);
+
+/*
+ * Return the UUID of the local service a profile provides, for use by the
+ * admin policy allowlist. Returns NULL when the profile has no service to
+ * match against.
+ */
+const char *btd_profile_get_policy_uuid(const struct btd_profile *profile);
+
+int btd_profile_register(struct btd_profile *profile);
+void btd_profile_unregister(struct btd_profile *profile);
+
+typedef bool (*btd_profile_prop_exists)(const char *uuid,
+						struct btd_device *dev,
+						void *user_data);
+
+typedef bool (*btd_profile_prop_get)(const char *uuid,
+						struct btd_device *dev,
+						DBusMessageIter *iter,
+						void *user_data);
+
+bool btd_profile_add_custom_prop(const char *uuid, const char *type,
+					const char *name,
+					btd_profile_prop_exists exists,
+					btd_profile_prop_get get,
+					void *user_data);
+bool btd_profile_remove_custom_prop(const char *uuid, const char *name);
+
+void btd_profile_init(void);
+void btd_profile_cleanup(void);
+
+struct btd_profile *btd_profile_find_remote_uuid(const char *uuid);
+
+typedef const struct btd_profile *(*btd_profile_list_get)(void *item,
+							void *user_data);
+GSList *btd_profile_sort_list(GSList *list, btd_profile_list_get get,
+							void *user_data);

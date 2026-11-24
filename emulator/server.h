@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2011-2014  Intel Corporation
+ *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ */
+
+#include <stdint.h>
+
+enum server_type {
+	SERVER_TYPE_BREDRLE,
+	SERVER_TYPE_BREDR,
+	SERVER_TYPE_LE,
+	SERVER_TYPE_AMP,
+	SERVER_TYPE_MONITOR,
+};
+
+struct server;
+
+struct server *server_open_unix(enum server_type type, const char *path);
+struct server *server_open_tcp(enum server_type type, uint16_t port);
+void server_close(struct server *server);
+
+bool server_set_bredrle_type(struct server *server, enum btdev_type type);
+
+typedef void (*server_debug_func_t)(const char *str, void *user_data);
+typedef void (*server_destroy_func_t)(void *user_data);
+bool server_set_debug(struct server *server, server_debug_func_t callback,
+				void *user_data, server_destroy_func_t destroy);

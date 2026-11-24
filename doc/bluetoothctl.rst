@@ -1,0 +1,712 @@
+============
+bluetoothctl
+============
+
+-----------------------------------
+Bluetooth Control Command Line Tool
+-----------------------------------
+
+:Version: BlueZ
+:Copyright: Free use of this software is granted under the terms of the GNU
+            Lesser General Public Licenses (LGPL).
+:Date: March 2024
+:Manual section: 1
+:Manual group: Linux System Administration
+
+SYNOPSIS
+========
+
+**bluetoothctl** [**-a** *capability*] [**-e**] [**-m**] [**-t** *seconds*]
+[**-v**] [**-h**]
+
+DESCRIPTION
+===========
+
+**bluetoothctl(1)** interactive bluetooth control tool. The tool works with
+Bluetooth Classic (BR/EDR) and Bluetooth Low Energy (LE) controllers.
+
+The tool is menu driven but can be automated from the command line.
+Examples are given in the automation section.
+
+This tool communicates with the BlueZ daemon via D-Bus, primarily using the
+**org.bluez.Adapter(5)** and **org.bluez.Device(5)** interfaces. Each command
+documents which D-Bus interface and method/property it uses.
+
+OPTIONS
+=======
+
+-a capability, --agent capability        Register agent handler: <capability>
+-e, --endpoints                  Register Media endpoints
+-m, --monitor                    Enable monitor output
+-s file, --init-script file      Run the commands in the given script file
+-t seconds, --timeout seconds    Timeout in seconds for non-interactive mode
+-v, --version       Display version
+-h, --help          Display help
+
+
+Commands
+========
+
+list
+----
+
+List available controllers.
+
+:Usage: **> list**
+:Example Display all Bluetooth controllers available on the system:
+	| **> list**
+
+show
+----
+
+Controller information.
+
+:Usage: **> show [ctrl]**
+:Uses: **org.bluez.Adapter(5)** properties
+:[ctrl]: Bluetooth controller address
+:Example Display information for currently selected controller:
+	| **> show**
+:Example Show information for controller 00:11:22:33:44:55:
+	| **> show 00:11:22:33:44:55**
+
+select
+------
+
+Select default controller.
+
+:Usage: **> select <ctrl>**
+:<ctrl>: Bluetooth controller address
+:Example Select controller 00:11:22:33:44:55:
+	| **> select 00:11:22:33:44:55**
+
+devices
+-------
+
+List available devices, with an optional property as the filter.
+
+:Usage: **> devices [Paired/Bonded/Trusted/Connected]**
+:[Paired/Bonded/Trusted/Connected]: Filter to show only devices with specific property (optional)
+:Example List all discovered devices:
+	| **> devices**
+:Example List only paired devices:
+	| **> devices Paired**
+:Example List only bonded devices:
+	| **> devices Bonded**
+:Example List only trusted devices:
+	| **> devices Trusted**
+:Example List only currently connected devices:
+	| **> devices Connected**
+
+system-alias
+------------
+
+Set controller alias.
+
+:Usage: **> system-alias <name>**
+:Uses: **org.bluez.Adapter(5)** property **Alias**
+:<name>: New alias name for the Bluetooth controller (required)
+:Example Set controller alias with spaces (note quotes):
+	| **> system-alias "My Desktop Bluetooth"**
+:Example Set controller alias without spaces:
+	| **> system-alias MyLaptop**
+:Example Set controller alias with hyphens:
+	| **> system-alias "Home-Office-PC"**
+
+reset-alias
+-----------
+
+Reset controller alias.
+
+:Usage: **> reset-alias**
+:Uses: **org.bluez.Adapter(5)** property **Alias**
+:Example Reset controller alias to default (usually the hostname):
+	| **> reset-alias**
+
+power
+-----
+
+Set controller power.
+
+When the controller is powered off, the USB port the controller is attached to
+is put into a suspend state.
+
+:Usage: **> power <on/off>**
+:Uses: **org.bluez.Adapter(5)** property **Powered**
+:<on/off>: Power state - "on" to enable or "off" to disable the controller (required)
+:Example Turn on the Bluetooth controller:
+	| **> power on**
+:Example Turn off the Bluetooth controller:
+	| **> power off**
+
+advertise
+---------
+
+Enable/disable advertising with given type.
+
+When the controller advertises an LE device (peripheral) it will generate a
+random address for its own privacy if the controller is capable of it, it will
+use its public address if it does not support the feature (address of the
+device).
+
+A device can advertise if it initiated the connection to another advertising
+device.
+
+:Usage: **> advertise <on/off/type>**
+:Uses: **org.bluez.LEAdvertisingManager(5)** method **RegisterAdvertisement**
+:<on/off/type>: Advertising mode - "on", "off", "peripheral", or "broadcast" (required)
+:Example Enable basic LE advertising:
+	| **> advertise on**
+:Example Disable LE advertising:
+	| **> advertise off**
+:Example Advertise as peripheral device:
+	| **> advertise peripheral**
+:Example Advertise as broadcast source:
+	| **> advertise broadcast**
+
+set-alias
+---------
+
+Set device alias.
+
+:Usage: **> set-alias <alias>**
+:Uses: **org.bluez.Device(5)** property **Alias**
+:<alias>: New alias name for the device (required)
+:Example Set device alias with spaces (note quotes):
+	| **> set-alias "My Headphones"**
+:Example Set device alias without spaces:
+	| **> set-alias MyMouse**
+:Example Set device alias with hyphens:
+	| **> set-alias "Kitchen-Speaker"**
+
+scan
+----
+
+Scan for devices.
+
+For LE, scanning is an important requirement before connecting or pairing.
+
+The purpose of scanning is to find devices that are advertising with their
+discoverable flag set (either limited or general). Once you have found the
+address then you can connect or pair.
+
+:Usage: **> scan <on/off/bredr/le>**
+:Uses: **org.bluez.Adapter(5)** methods **StartDiscovery**, **StopDiscovery**
+:<on/off/bredr/le>: Scan mode - "on", "off", "bredr" for Classic, or "le" for Low Energy (required)
+:Example Start scanning for all device types (LE + Classic):
+	| **> scan on**
+:Example Stop scanning:
+	| **> scan off**
+:Example Scan for Low Energy devices only:
+	| **> scan le**
+:Example Scan for BR/EDR (Classic) devices only:
+	| **> scan bredr**
+
+pair
+----
+
+Pair with device.
+
+This will pair with a device and then trust and connect to it. If the device is
+already paired this will connect to it instead, as the bond is already in
+place: use **remove** first to pair it again.
+
+The command can either be used while the controller is in the connected or not
+connected state.
+
+If the controller is already connected then the pair command can be used without
+an arguments. If the controller is not connected, the pair command can be given
+the address of a device with an active scan report and it will initiate the
+connection before pairing.
+
+Before pairing the agent must be selected to choose the authentication
+mechanism.
+
+:Usage: **> pair [dev]**
+:Uses: **org.bluez.Device(5)** method **Pair**, or **Connect** if the device is
+	already paired
+:[dev]: Device MAC address (XX:XX:XX:XX:XX:XX) (optional, uses current device if omitted)
+:Example Pair with device using MAC address:
+	| **> pair 00:11:22:33:44:55**
+:Example Pair with another device:
+	| **> pair AA:BB:CC:DD:EE:FF**
+:Example Pair using device object path:
+	| **> pair /org/bluez/hci0/dev_00_11_22_33_44_55**
+
+pairable
+--------
+
+Set controller pairable mode.
+
+This enables/disables pairing. If pairing is disabled then the controller will
+not accept any pairing requests.
+
+:Usage: **> pairable <on/off>**
+:Uses: **org.bluez.Adapter(5)** property **Pairable**
+:<on/off>: Pairable mode - "on" to accept or "off" to reject pairing requests (required)
+:Example Enable pairing (accept pairing requests):
+	| **> pairable on**
+:Example Disable pairing (reject pairing requests):
+	| **> pairable off**
+
+discoverable
+------------
+
+Set discoverable mode.
+
+This enables/disables discoverable mode. If discoverable is disabled then the
+controller will not respond to any scan requests.
+
+In LE if discoverable if off the controller will just passively scan and not
+make scan requests to advertising devices. If on it will make the advertising
+requests.
+
+It will use a random address if supported by the controller. The length of time
+"discoverable on" is valid is determined by discoverable-timeout command.
+
+:Usage: **> discoverable <on/off>**
+:Uses: **org.bluez.Adapter(5)** property **Discoverable**
+:<on/off>: Discoverable mode - "on" to be discoverable or "off" to be non-discoverable (required)
+:Example Make controller discoverable to other devices:
+	| **> discoverable on**
+:Example Make controller non-discoverable:
+	| **> discoverable off**
+
+discoverable-timeout
+--------------------
+
+Set discoverable timeout.
+
+The time in seconds that "discoverable on" is valid.
+
+:Usage: **> discoverable-timeout [value]**
+:Uses: **org.bluez.Adapter(5)** property **DiscoverableTimeout**
+:[value]: Timeout duration in seconds for discoverable mode (0 for unlimited, optional)
+:Example Show current discoverable timeout value:
+	| **> discoverable-timeout**
+:Example Set discoverable timeout to 30 seconds:
+	| **> discoverable-timeout 30**
+:Example Set discoverable timeout to 2 minutes:
+	| **> discoverable-timeout 120**
+:Example Set discoverable timeout to 5 minutes:
+	| **> discoverable-timeout 300**
+:Example Set unlimited discoverable timeout:
+	| **> discoverable-timeout 0**
+
+agent
+-----
+
+Enable/disable agent with given capability.
+
+This chooses the local authentication mechanism of the controller. It is needed
+for pairing and allows you to choose the IO capabilities of the controller.
+
+The valid agent capabilities are: DisplayOnly, DisplayYesNo, KeyboardDisplay,
+KeyboardOnly, NoInputNoOutput.
+
+:Usage: **> agent <on/off/auto[:capability]/capability>**
+:Uses: **org.bluez.AgentManager(5)** method **RegisterAgent**
+:<on/off/auto/capability>: Agent mode - "on", "off", "auto", or capability type (DisplayOnly, DisplayYesNo, KeyboardDisplay, KeyboardOnly, NoInputNoOutput) (required)
+:Example Enable agent with default capability:
+	| **> agent on**
+:Example Enable agent answering automatically, only for test automation:
+	| **> agent auto**
+:Example Enable agent answering automatically with the given capability:
+	| **> agent auto:NoInputNoOutput**
+:Example Disable agent:
+	| **> agent off**
+:Example Enable agent that can only display pairing codes:
+	| **> agent DisplayOnly**
+:Example Enable agent that can display codes and accept/reject:
+	| **> agent DisplayYesNo**
+:Example Enable agent that can display and input pairing codes:
+	| **> agent KeyboardDisplay**
+:Example Enable agent that can only input pairing codes:
+	| **> agent KeyboardOnly**
+:Example Enable agent with no input/output (JustWorks):
+	| **> agent NoInputNoOutput**
+
+default-agent
+-------------
+
+Set current agent as the default one.
+
+After selecting the agent this will make it the default agent.
+
+:Usage: **> default-agent**
+:Uses: **org.bluez.AgentManager(5)** method **RequestDefaultAgent**
+:Example Set the current agent as default:
+	| **> default-agent**
+
+trust
+-----
+
+Trust device.
+
+:Usage: **> trust [dev]**
+:Uses: **org.bluez.Device(5)** property **Trusted**
+:[dev]: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses current device if omitted)
+:Example Trust device using MAC address:
+	| **> trust 00:11:22:33:44:55**
+:Example Trust another device:
+	| **> trust AA:BB:CC:DD:EE:FF**
+:Example Trust device using object path:
+	| **> trust /org/bluez/hci0/dev_00_11_22_33_44_55**
+
+untrust
+-------
+
+Untrust device.
+
+:Usage: **> untrust [dev]**
+:Uses: **org.bluez.Device(5)** property **Trusted**
+:[dev]: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses current device if omitted)
+:Example Remove trust from device using MAC address:
+	| **> untrust 00:11:22:33:44:55**
+:Example Remove trust from another device:
+	| **> untrust AA:BB:CC:DD:EE:FF**
+:Example Remove trust using object path:
+	| **> untrust /org/bluez/hci0/dev_00_11_22_33_44_55**
+
+block
+-----
+
+Block device.
+
+:Usage: **> block [dev]**
+:Uses: **org.bluez.Device(5)** property **Blocked**
+:[dev]: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses current device if omitted)
+:Example Block device using MAC address:
+	| **> block 00:11:22:33:44:55**
+:Example Block another device:
+	| **> block AA:BB:CC:DD:EE:FF**
+:Example Block device using object path:
+	| **> block /org/bluez/hci0/dev_00_11_22_33_44_55**
+
+unblock
+-------
+Unblock device
+
+:Usage: **> unblock [dev]**
+:Uses: **org.bluez.Device(5)** property **Blocked**
+:[dev]: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses current device if omitted)
+:Example Unblock device using MAC address:
+	| **> unblock 00:11:22:33:44:55**
+:Example Unblock another device:
+	| **> unblock AA:BB:CC:DD:EE:FF**
+:Example Unblock device using object path:
+	| **> unblock /org/bluez/hci0/dev_00_11_22_33_44_55**
+
+remove
+------
+
+Remove device.
+
+:Usage: **> remove <dev>**
+:Uses: **org.bluez.Adapter(5)** method **RemoveDevice**
+:<dev>: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (required)
+:Example Remove device using MAC address:
+	| **> remove 00:11:22:33:44:55**
+:Example Remove another device:
+	| **> remove AA:BB:CC:DD:EE:FF**
+:Example Remove device using object path:
+	| **> remove /org/bluez/hci0/dev_00_11_22_33_44_55**
+
+connect
+-------
+
+Connect device.
+
+This will initiate a connection to a device.
+
+By default this commands tries to connect all the profiles the remote device
+supports and have been flagged as auto-connectable. In case when the UUID of
+the remote service is given only that service will be connected. The UUID can
+be either a short form (16-bit UUID) or a long form (128-bit UUID). There are
+also some special values for well-known profiles like "a2dp-sink",
+"a2dp-source", "hfp-hf", "hfp-ag", "ftp" or "spp".
+
+To connect with an LE device the controller must have an active scan report of
+the device it wants to connect to.
+
+If no advertising report is received before the timeout a
+le-connection-abort-by-local error will be issued. In that case either try
+again to connect assuming the device is advertising.
+
+:Usage: **> connect <dev> [uuid]**
+:Uses: **org.bluez.Device(5)** methods **Connect**, **ConnectProfile**
+:<dev>: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (required)
+:[uuid]: Specific service UUID to connect to (16-bit, 128-bit UUID, or profile name like "a2dp-sink", "hfp-hf", etc.) (optional)
+:Example Connect to device (all supported profiles):
+	| **> connect 1C:48:F9:9D:81:5C**
+:Example Connect to HSP Headset profile:
+	| **> connect 1C:48:F9:9D:81:5C hsp-hs**
+:Example Connect to A2DP Sink profile:
+	| **> connect 1C:48:F9:9D:81:5C a2dp-sink**
+:Example Connect to A2DP Source profile:
+	| **> connect 1C:48:F9:9D:81:5C a2dp-source**
+:Example Connect to HFP Hands-Free profile:
+	| **> connect 1C:48:F9:9D:81:5C hfp-hf**
+:Example Connect to HFP Audio Gateway profile:
+	| **> connect 1C:48:F9:9D:81:5C hfp-ag**
+:Example Connect to File Transfer Profile:
+	| **> connect 1C:48:F9:9D:81:5C ftp**
+:Example Connect to Serial Port Profile:
+	| **> connect 1C:48:F9:9D:81:5C spp**
+:Example Connect using full 128-bit UUID (HSP):
+	| **> connect 1C:48:F9:9D:81:5C 00001108-0000-1000-8000-00805f9b34fb**
+:Example Connect using short 16-bit UUID (HSP):
+	| **> connect 1C:48:F9:9D:81:5C 0x1108**
+:Example Connect to A2DP profile using short UUID:
+	| **> connect 1C:48:F9:9D:81:5C 0x110E**
+
+disconnect
+----------
+
+Disconnect device.
+
+By default this commands disconnects all profiles and then terminates the
+connection. In case when the UUID of the remote service is given only that
+service will be disconnected.
+
+For LE when disconnecting from an active connection the device address is not
+needed.
+
+:Usage: **> disconnect [dev] [uuid]**
+:Uses: **org.bluez.Device(5)** methods **Disconnect**, **DisconnectProfile**
+:[dev]: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (optional, uses current device if omitted)
+:[uuid]: Specific service UUID to disconnect from (16-bit, 128-bit UUID, or profile name) (optional)
+:Example Disconnect all profiles and terminate connection:
+	| **> disconnect 1C:48:F9:9D:81:5C**
+:Example Disconnect only A2DP Sink profile:
+	| **> disconnect 1C:48:F9:9D:81:5C a2dp-sink**
+:Example Disconnect only HFP Hands-Free profile:
+	| **> disconnect 1C:48:F9:9D:81:5C hfp-hf**
+:Example Disconnect only Serial Port Profile:
+	| **> disconnect 1C:48:F9:9D:81:5C spp**
+:Example Disconnect A2DP profile using short UUID:
+	| **> disconnect 1C:48:F9:9D:81:5C 0x110E**
+:Example Disconnect HSP profile using full UUID:
+	| **> disconnect 1C:48:F9:9D:81:5C 00001108-0000-1000-8000-00805f9b34fb**
+
+info
+----
+
+Device information.
+
+:Usage: **> info [dev/set]**
+:Uses: **org.bluez.Device(5)** properties
+:[dev/set]: Device MAC address (XX:XX:XX:XX:XX:XX), object path, or DeviceSet (optional, uses current device if omitted)
+:Example Show detailed information for device:
+	| **> info 1C:48:F9:9D:81:5C**
+:Example Show information for another device:
+	| **> info 00:11:22:33:44:55**
+:Example Show device info using object path:
+	| **> info /org/bluez/hci0/dev_1C_48_F9_9D_81_5C**
+
+bearer
+------
+
+Get/Set preferred bearer.
+
+:Usage: **> bearer <dev> [last-seen/bredr/le]**
+:Uses: **org.bluez.Device(5)** property **PreferredBearer**
+:<dev>: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (required)
+:[last-seen/bredr/le]: Preferred bearer type - "last-seen", "bredr" for Classic, or "le" for Low Energy (optional)
+:Example get preferred bearer:
+	| > bearer <addr>
+        |    PreferredBearer: last-seen
+:Example set preferred bearer to LE:
+	| > bearer <addr> le
+	| [CHG] Device <addr> PreferredBearer: le
+	| Changing le succeeded
+:Example set preferred bearer to BREDR:
+	| > bearer <addr> bredr
+	| [CHG] Device <addr> PreferredBearer: bredr
+	| Changing bredr succeeded
+
+Advertise Submenu
+=================
+
+See **bluetoothctl-advertise(1)**.
+
+Monitor Submenu
+===============
+
+See **bluetoothctl-monitor(1)**
+
+Scan Submenu
+============
+
+See **bluetoothctl-scan(1)**
+
+Gatt Submenu
+============
+
+See **bluetoothctl-gatt(1)**
+
+Admin Submenu
+=============
+
+See **bluetoothctl-admin(1)**
+
+Player Submenu
+==============
+
+See **bluetoothctl-player(1)**
+
+Endpoint Submenu
+================
+
+See **bluetoothctl-endpoint(1)**
+
+Transport Submenu
+=================
+
+See **bluetoothctl-transport(1)**
+
+Management Submenu
+==================
+
+See **bluetoothctl-mgmt(1)**
+
+Assistant Submenu
+==================
+
+See **bluetoothctl-assistant(1)**
+
+LE Submenu
+==================
+
+See **bluetoothctl-le(1)**
+
+BREDR Submenu
+==================
+
+See **bluetoothctl-bredr(1)**
+
+AUTOMATION
+==========
+Two common ways to automate the tool are to use Here Docs or the program expect.
+Using Here Docs to show information about the Bluetooth controller.
+
+.. code::
+
+   bluetoothctl <<EOF
+   list
+   show
+   EOF
+
+Commands can also be read from a file with the **--init-script** option.
+The tool stays interactive after the script has been executed, which is
+useful to set up a role and then drive it by hand:
+
+.. code::
+
+   bluetoothctl --init-script client/scripts/power-on.bt
+
+Lines starting with **#** are comments, and lines are also used to answer
+the prompts of the commands, in the order the prompts appear.
+
+SCRIPTS
+=======
+
+The scripts shipped in **client/scripts** set up common roles. Scripts
+registering a media endpoint are named
+*<profile>-<role>-<codec>[-<preset>].bt*, where the preset is only part
+of the name if the script also configures the stream.
+
+Controller setup
+----------------
+
+``power-on.bt``, ``power-on-off.bt``
+	Power the controller on, or power it off and on again.
+
+``scan-on.bt``, ``scan-on-off.bt``, ``scan-le.bt``, ``scan-bredr.bt``
+	Start discovery, optionally restricted to a transport.
+
+``advertise-on.bt``, ``advertise-peripheral.bt``, ``advertise-broadcast.bt``, ``advertise-rsi.bt``
+	Start advertising with the given type.
+
+A2DP
+----
+
+``a2dp-source-sbc.bt``
+	Register a local A2DP Source endpoint (``0000110a-...``) with SBC,
+	i.e. act as the device sending audio, such as a phone.
+
+``a2dp-sink-sbc.bt``
+	Register a local A2DP Sink endpoint (``0000110b-...``) with SBC,
+	i.e. act as the device receiving audio, such as a speaker.
+
+Once connected, the stream is configured automatically and a transport
+is created, which can be acquired with **transport.acquire**.
+
+BAP unicast
+-----------
+
+``bap-source-lc3.bt``
+	Register a local PAC Source endpoint (``00002bcb-...``) with LC3,
+	i.e. act as the initiator sending audio.
+
+``bap-sink-lc3.bt``
+	Register a local PAC Sink endpoint (``00002bc9-...``) with LC3,
+	i.e. act as the acceptor receiving audio.
+
+The initiator configures a remote endpoint with **endpoint.config**,
+choosing a preset, which creates the transport:
+
+.. code::
+
+   endpoint.config /org/bluez/hci0/dev_XX_XX_XX_XX_XX_XX/pac_snk0 \
+	   /local/endpoint/ep0 16_2_1
+
+``preset-custom.bt``
+	Add a custom LC3 preset, instead of using one of the presets
+	defined by the specification.
+
+BAP broadcast
+-------------
+
+``broadcast-source.bt``, ``broadcast-source-2bis.bt``, ``broadcast-source-pbp.bt``
+	Register a Broadcast Source endpoint (``00001852-...``) with LC3,
+	configure it with the 16_2_1 preset and acquire the transport,
+	which starts the broadcast. The variants set up two BISes and the
+	Public Broadcast Profile respectively.
+
+``broadcast-sink.bt``
+	Register a Broadcast Sink endpoint (``00001851-...``) with LC3 and
+	scan, to sync to a Broadcast Source without the help of a
+	Broadcast Assistant.
+
+``scan-delegator.bt``, ``broadcast-delegator.bt``
+	Register a Broadcast Sink endpoint and advertise, to be used as
+	Scan Delegator by a Broadcast Assistant. The stream is then synced
+	using PAST, and the transport moved to broadcasting with
+	**transport.select** before it is acquired.
+
+``broadcast-assistant.bt``
+	Scan, to discover a Scan Delegator to connect to and Broadcast
+	Sources to offer it with **assistant.push**.
+
+Channel Sounding
+----------------
+
+``cs-initiator.bt``, ``cs-reflector.bt``
+	Set up the two sides of a Channel Sounding procedure.
+
+GATT
+----
+
+``gatt-batt.bt``
+	Register a Battery Service with a notifiable Battery Level
+	characteristic.
+
+RESOURCES
+=========
+
+http://www.bluez.org
+
+REPORTING BUGS
+==============
+
+linux-bluetooth@vger.kernel.org

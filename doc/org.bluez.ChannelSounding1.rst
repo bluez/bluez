@@ -1,0 +1,447 @@
+==========================
+org.bluez.ChannelSounding1
+==========================
+
+----------------------------------------------
+BlueZ D-Bus Channel Sounding API documentation
+----------------------------------------------
+
+:Version: BlueZ
+:Date: June 2026
+:Manual section: 5
+:Manual group: Linux System Administration
+
+Interface
+=========
+
+:Service:	org.bluez
+:Interface:	org.bluez.ChannelSounding1
+:Object path:	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+:Used by:	**bluetoothctl(1)**, **bluetoothctl-cs(1)**
+
+Methods
+-------
+
+void StartMeasurement(dict params)
+``````````````````````````````````
+
+Starts a Channel Sounding distance measurement procedure on the connected
+device. All configuration is supplied in a single ``a{sv}`` dictionary.
+Any key that is omitted retains its current value in the daemon.
+
+The device to measure is identified by the D-Bus object path on which
+this method is called
+(``[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX``).
+Only one measurement per device object may be active at a time. Calling
+**StartMeasurement** while a session is already active returns
+``org.bluez.Error.InProgress``.
+
+When ``role`` is Reflector (``0x02``), this method does not start a CS
+distance measurement: a Reflector never initiates a procedure locally,
+so it cannot start one via this call. Instead, all given configuration
+is applied and stored so the controller is ready to respond once a
+remote Initiator begins a procedure, and the method returns success
+without arming a local measurement session. The ``Active`` property
+only transitions to ``true`` when a remote-initiated procedure
+actually starts, which may happen well after this method returns (or
+not at all, if the remote never initiates one). Clients that watch
+``PropertiesChanged`` for ``Active`` (as **bluetoothctl-cs(1)** does)
+are notified of both the remote-initiated start and its eventual stop.
+
+For Initiator role (or Both), ``duration_secs`` and the device object
+path are the parameters that matter to start a measurement; every
+other key below is optional configuration with a usable default. For
+Reflector role, only ``role``, ``sync_ant_sel`` and ``max_tx_power``
+are required or have any effect — the remaining keys are accepted but
+otherwise unused, since no local procedure is armed.
+
+Supported dictionary keys:
+
+:uint32 duration_secs (Default: 0):
+
+	Duration in seconds before the measurement is stopped
+	automatically. A value of 0 disables the automatic timeout.
+
+:byte role (Default: 0x03):
+
+	CS role to use for the measurement.
+
+	Possible values:
+
+	:0x01: Initiator
+	:0x02: Reflector
+	:0x03: Both (Initiator and Reflector)
+
+:byte sync_ant_sel (Default: 0xFF):
+
+	CS sync antenna selection. Values 0xFE and 0xFF are reserved
+	by the Bluetooth specification.
+
+:byte max_tx_power (Default: 0x14):
+
+	Maximum TX power in dBm, treated as a signed value. Valid
+	range is -127 to +20 dBm.
+
+:byte create_context (Default: 0x01):
+
+	Controls where the CS configuration is written. Set to 0x00 to
+	write the configuration only to the local Controller. Set to
+	0x01 to write it to both the local and remote Controllers using
+	the CS Configuration procedure.
+
+:byte config_id:
+
+	CS configuration identifier.
+
+:byte main_mode_type:
+
+	Main CS mode used in the procedure.
+
+:byte sub_mode_type:
+
+	Sub-mode within the main mode. Set to 0xFF when unused.
+
+:byte main_mode_min_steps:
+
+	Minimum number of CS main mode steps per CS subevent.
+
+:byte main_mode_max_steps:
+
+	Maximum number of CS main mode steps per CS subevent.
+
+:byte main_mode_repetition:
+
+	Number of times the main mode steps are repeated in a
+	subevent.
+
+:byte mode0_steps:
+
+	Number of CS Mode 0 steps at the beginning of each subevent.
+
+:byte rtt_types:
+
+	Round Trip Time measurement types for the configuration.
+
+:byte sync_phy:
+
+	PHY used for CS sync packets.
+
+	Possible values:
+
+	:0x01: LE 1M PHY
+	:0x02: LE 2M PHY
+
+:array{byte} channel_map:
+
+	10-byte channel map bitmap. Must be exactly 10 bytes.
+
+:byte channel_map_repetition:
+
+	Number of consecutive repetitions of the channel map.
+
+:byte channel_selection_type:
+
+	Algorithm used for CS channel selection.
+
+:byte channel_shape:
+
+	Shape used in the channel selection algorithm.
+
+:byte channel_jump:
+
+	Channel jump size used in the channel selection algorithm.
+
+:byte companion_signal_enable:
+
+	Set to 1 to transmit a companion signal alongside the CS
+	tone, 0 to disable.
+
+:uint16 max_procedure_duration:
+
+	Maximum duration of a single CS measurement procedure.
+
+:uint16 min_period_between_procedures:
+
+	Minimum time between consecutive CS measurement procedures.
+
+:uint16 max_period_between_procedures:
+
+	Maximum time between consecutive CS measurement procedures.
+
+:uint16 max_procedure_count:
+
+	Maximum number of CS measurement procedures to run.
+	A value of 0 means no limit.
+
+:array{byte} min_sub_event_len:
+
+	Minimum CS subevent length as a 3-byte little-endian value.
+	Must be exactly 3 bytes.
+
+:array{byte} max_sub_event_len:
+
+	Maximum CS subevent length as a 3-byte little-endian value.
+	Must be exactly 3 bytes.
+
+:byte tone_antenna_config_selection:
+
+	Antenna configuration used for CS tone exchanges.
+
+:byte phy:
+
+	PHY used during CS procedures.
+
+	Possible values:
+
+	:0x01: LE 1M PHY
+	:0x02: LE 2M PHY
+
+:byte tx_power_delta:
+
+	Difference between remote and local TX power during CS
+	procedures. 0x80 indicates not applicable.
+
+:byte preferred_peer_antenna:
+
+	Preferred antenna to be used by the peer device.
+
+:byte snr_control_initiator:
+
+	SNR control setting for the initiator role.
+	0xFF indicates no preference.
+
+:byte snr_control_reflector:
+
+	SNR control setting for the reflector role.
+	0xFF indicates no preference.
+
+Possible errors:
+
+:org.bluez.Error.InProgress:
+:org.bluez.Error.InvalidArgs:
+:org.freedesktop.DBus.Error.Failed:
+
+Examples:
+
+:bluetoothctl set role then start:
+	| [cs] > role 0x01
+	| [cs] > main_mode_type 2
+	| [cs] > start AA:BB:CC:DD:EE:FF
+:bluetoothctl start with defaults:
+	| [cs] > start [dev_addr] [duration_secs]
+:bluetoothctl configure as Reflector (applies settings, does not start a measurement):
+	| [cs] > role 0x02
+	| [cs] > start
+
+void StopMeasurement(void)
+``````````````````````````
+
+Stops the active Channel Sounding distance measurement on this device.
+The device is identified by the D-Bus object path on which this method
+is called — no session identifier is required.
+
+Raises ``org.bluez.Error.NotConnected`` if no measurement is active.
+
+Possible errors:
+
+:org.bluez.Error.NotConnected:
+:org.freedesktop.DBus.Error.Failed:
+
+In **bluetoothctl(1)**, the device address argument may be omitted only
+when a single measurement is active; it is required when multiple
+measurements are active.
+
+Examples:
+
+:bluetoothctl stop the only active measurement:
+	| [cs] > stop
+:bluetoothctl stop a specific device when multiple are active:
+	| [cs] > stop AA:BB:CC:DD:EE:FF
+
+void SetRangingDataMode(byte mode, byte transport)
+``````````````````````````````````````````````````
+
+Selects the RAP Requester's received Ranging Data subscription after remote
+RAS discovery has completed. This is independent of the local Channel Sounding
+measurement lifecycle. Changing mode first disables all current Ranging Data
+CCCD subscriptions, then enables the selected mode.
+
+``mode`` values:
+
+:0x00: Disabled. Stop receiving Ranging Data and disable all RAS data CCCDs.
+:0x01: Real-time. Enable the Real-time Ranging Data CCCD.
+:0x02: On-demand. Enable On-demand Data, Control Point, Ready, and Overwritten
+	CCCDs.
+
+``transport`` selects the CCCD value for Real-time or On-demand mode. It is
+ignored for Disabled mode. Use ``0x01`` for notifications or ``0x02`` for
+indications. For On-demand mode, this applies to Control Point, Ready, and
+Overwritten; segmented On-demand Data always uses notifications.
+
+Raises ``org.bluez.Error.Failed`` when remote RAS discovery and Features read
+have not completed, or the selected mode is unsupported by the peer.
+
+Example:
+
+:bluetoothctl disable Real-time Ranging Data:
+	| [cs] > ranging-data-mode AA:BB:CC:DD:EE:FF disabled
+:bluetoothctl enable Real-time indications:
+	| [cs] > ranging-data-mode AA:BB:CC:DD:EE:FF realtime indicate
+:bluetoothctl enable On-demand indications:
+	| [cs] > ranging-data-mode AA:BB:CC:DD:EE:FF ondemand indicate
+
+Signals
+-------
+
+void ProcedureData(array{byte} data)
+`````````````````````````````````````
+
+Emitted when a Channel Sounding measurement procedure completes on this
+device, carrying the raw CS procedure results as reported by the
+controller. Consumers such as an external ranging estimation daemon
+subscribe to this signal to compute distance estimates.
+
+``data`` is an opaque binary blob rather than an introspectable D-Bus
+dict: every field is raw controller measurement data with no standalone
+meaning outside of the ranging algorithm that consumes it, so there is no
+debugging value in exposing it field-by-field at the D-Bus level.
+Consumers must decode it according to the fixed layout below.
+
+All multi-byte integer fields are little-endian. Signed fields are noted
+explicitly; all others are unsigned.
+
+ProcedureData blob::
+
+	u16  procedureCounter
+	u16  procedureSequence
+	s8   initiatorSelectedTxPower
+	s8   reflectorSelectedTxPower
+	u32  initiatorSubeventCount
+	<initiatorSubeventCount> x SubeventBlob
+	u8   initiatorProcedureAbortReason
+	u32  reflectorSubeventCount
+	<reflectorSubeventCount> x SubeventBlob
+	u8   reflectorProcedureAbortReason
+	ProcEnableConfigBlob
+	CsConfigParamBlob
+
+SubeventBlob::
+
+	u16  startAclConnEvtCounter
+	u16  freqComp
+	s8   refPwrLvl
+	u8   numAntPaths
+	u8   subeventAbortReason
+	u64  timestampNanos
+	u32  numSteps
+	<numSteps> x StepBlob
+
+StepBlob::
+
+	u8   stepMode                  # 0-3, selects the payload below
+	u8   stepChannel
+	<mode payload, shape per stepMode -- see Mode*Blob below>
+
+ModeZeroBlob (5 bytes, present when stepMode is 0)::
+
+	u8   packetQuality
+	u8   packetRssiDbm
+	u8   packetAntenna
+	u16  initiatorMeasuredFreqOffset
+
+ModeOneBlob (16 bytes, present when stepMode is 1)::
+
+	u8   packetQuality
+	u8   packetNadm
+	u8   packetRssiDbm
+	s16  toaTodInitiator
+	s16  todToaReflector
+	u8   packetAntenna
+	s16  packetPct1_i
+	s16  packetPct1_q
+	s16  packetPct2_i
+	s16  packetPct2_q
+
+ModeTwoBlob (1 + 5*numPaths bytes, present when stepMode is 2)::
+
+	u8   antennaPermutationIndex
+	<numPaths> x { s16 toneI, s16 toneQ }
+	<numPaths> x u8 toneQualityIndicator
+
+	# numPaths = min(numAntPaths + 1, 5), where numAntPaths comes from
+	# the enclosing SubeventBlob.
+
+ModeThreeBlob (present when stepMode is 3)::
+
+	ModeOneBlob
+	ModeTwoBlob
+
+ProcEnableConfigBlob (16 bytes)::
+
+	u8   toneAntennaConfigSelection
+	u32  subeventLenUs
+	u8   subeventsPerEvent
+	u16  subeventInterval
+	u16  eventInterval
+	u16  procedureInterval
+	u16  procedureCount
+	u16  maxProcedureLen
+
+CsConfigParamBlob (30 bytes)::
+
+	u8   modeType
+	u8   subModeType
+	u8   rttType
+	u8[10] channelMap
+	u8   minMainModeSteps
+	u8   maxMainModeSteps
+	u8   mainModeRepetition
+	u8   mode0Steps
+	u8   role
+	u8   csSyncPhyType
+	u8   channelSelectionType
+	u8   ch3cShapeType
+	u8   ch3cJump
+	u8   channelMapRepetition
+	u8   tIp1TimeUs
+	u8   tIp2TimeUs
+	u8   tFcsTimeUs
+	u8   tPmTimeUs
+	u8   tSwTimeUsSupportedByLocal
+	u8   tSwTimeUsSupportedByRemote
+	u16  bleConnInterval
+
+The total blob length is fully determined by the counts embedded in the
+blob itself (``initiatorSubeventCount``, ``reflectorSubeventCount``, each
+subevent's ``numSteps``, and each mode-two step's ``numAntPaths``) — there
+is no separate length table to consult.
+
+Properties
+----------
+
+boolean Active [readonly]
+`````````````````````````
+
+Indicates whether a CS distance measurement procedure is currently
+active on this device.
+
+Set to ``true`` when a procedure starts — either because the local
+Initiator called **StartMeasurement** successfully, or because the
+remote Initiator enabled a CS procedure on the local Reflector.
+
+Set to ``false`` when the procedure stops for any reason: the local
+application called **StopMeasurement**, the measurement duration timer
+expired, or the ACL connection was dropped.
+
+This property emits ``PropertiesChanged`` on every transition so that
+clients can track measurement state without polling.
+
+RESOURCES
+=========
+
+http://www.bluez.org
+
+REPORTING BUGS
+==============
+
+linux-bluetooth@vger.kernel.org

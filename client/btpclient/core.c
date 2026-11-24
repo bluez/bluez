@@ -1,0 +1,268 @@
+// SPDX-License-Identifier: LGPL-2.1-or-later
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2011-2017  Intel Corporation. All rights reserved.
+ *
+ */
+
+#include <ell/ell.h>
+
+#include "bluetooth/bluetooth.h"
+#include "bluetooth/uuid.h"
+#include "src/shared/btp.h"
+#include "btpclient.h"
+#include "ascs.h"
+#include "bap.h"
+#include "core.h"
+#include "gap.h"
+#include "gatt.h"
+#include "pacs.h"
+#include "vendor.h"
+
+static struct btp *btp;
+static struct l_dbus *dbus;
+
+static void btp_core_read_commands(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	const uint8_t supported_commands[] = {
+		BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
+		BTP_OP_CORE_READ_SUPPORTED_SERVICES,
+		BTP_OP_CORE_REGISTER,
+		BTP_OP_CORE_UNREGISTER,
+	};
+	uint8_t *commands = NULL;
+	size_t commands_len = 0;
+	size_t i;
+
+	if (index != BTP_INDEX_NON_CONTROLLER) {
+		btp_send_error(btp, BTP_CORE_SERVICE, index,
+						BTP_ERROR_INVALID_INDEX);
+		return;
+	}
+
+	for (i = 0; i < L_ARRAY_SIZE(supported_commands); i++) {
+		if (!add_supported_command(&commands, &commands_len,
+						supported_commands[i]))
+			goto failed;
+	}
+
+	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
+			BTP_INDEX_NON_CONTROLLER, commands_len, commands);
+
+	l_free(commands);
+
+	return;
+
+failed:
+	l_free(commands);
+	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
+}
+
+static void btp_core_read_services(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	const uint8_t supported_services[] = {
+		BTP_CORE_SERVICE,
+		BTP_GAP_SERVICE,
+		BTP_GATT_SERVICE,
+		BTP_PACS_SERVICE,
+		BTP_ASCS_SERVICE,
+		BTP_BAP_SERVICE,
+		BTP_VENDOR_SERVICE,
+	};
+	uint8_t *services = NULL;
+	size_t services_len = 0;
+	size_t i;
+
+	if (index != BTP_INDEX_NON_CONTROLLER) {
+		btp_send_error(btp, BTP_CORE_SERVICE, index,
+						BTP_ERROR_INVALID_INDEX);
+		return;
+	}
+
+	for (i = 0; i < L_ARRAY_SIZE(supported_services); i++) {
+		if (!add_supported_command(&services, &services_len,
+						supported_services[i]))
+			goto failed;
+	}
+
+	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_READ_SUPPORTED_SERVICES,
+			BTP_INDEX_NON_CONTROLLER, services_len, services);
+
+	l_free(services);
+
+	return;
+
+failed:
+	l_free(services);
+	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
+}
+
+static void btp_core_register(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	struct l_dbus_client *client = user_data;
+	const struct btp_core_register_cp  *cp = param;
+
+	if (length < sizeof(*cp))
+		goto failed;
+
+	if (index != BTP_INDEX_NON_CONTROLLER) {
+		btp_send_error(btp, BTP_CORE_SERVICE, index,
+						BTP_ERROR_INVALID_INDEX);
+		return;
+	}
+
+	switch (cp->service_id) {
+	case BTP_GAP_SERVICE:
+		if (gap_is_service_registered())
+			goto failed;
+
+		if (!gap_register_service(btp, dbus, client))
+			goto failed;
+
+		return;
+	case BTP_GATT_SERVICE:
+		if (gatt_is_service_registered())
+			goto failed;
+
+		if (!gatt_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
+	case BTP_PACS_SERVICE:
+		if (pacs_is_service_registered())
+			goto failed;
+
+		if (!pacs_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
+	case BTP_ASCS_SERVICE:
+		if (ascs_is_service_registered())
+			goto failed;
+
+		if (!ascs_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
+	case BTP_BAP_SERVICE:
+		if (bap_is_service_registered())
+			goto failed;
+
+		if (!bap_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
+	case BTP_VENDOR_SERVICE:
+		if (vendor_is_service_registered())
+			goto failed;
+
+		if (!vendor_register_service(btp, dbus, client))
+			goto failed;
+
+		break;
+	case BTP_L2CAP_SERVICE:
+	case BTP_MESH_NODE_SERVICE:
+	case BTP_CORE_SERVICE:
+	default:
+		goto failed;
+	}
+
+	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_REGISTER,
+					BTP_INDEX_NON_CONTROLLER, 0, NULL);
+	return;
+
+failed:
+	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
+}
+
+static void btp_core_unregister(uint8_t index, const void *param,
+					uint16_t length, void *user_data)
+{
+	const struct btp_core_unregister_cp  *cp = param;
+
+	if (length < sizeof(*cp))
+		goto failed;
+
+	if (index != BTP_INDEX_NON_CONTROLLER) {
+		btp_send_error(btp, BTP_CORE_SERVICE, index,
+						BTP_ERROR_INVALID_INDEX);
+		return;
+	}
+
+	switch (cp->service_id) {
+	case BTP_GAP_SERVICE:
+		if (!gap_is_service_registered())
+			goto failed;
+
+		gap_unregister_service();
+		break;
+	case BTP_GATT_SERVICE:
+		if (!gatt_is_service_registered())
+			goto failed;
+
+		gatt_unregister_service(btp);
+		break;
+	case BTP_PACS_SERVICE:
+		if (!pacs_is_service_registered())
+			goto failed;
+
+		ascs_unregister_service(btp);
+		break;
+	case BTP_ASCS_SERVICE:
+		if (!ascs_is_service_registered())
+			goto failed;
+
+		ascs_unregister_service(btp);
+		break;
+	case BTP_BAP_SERVICE:
+		if (!bap_is_service_registered())
+			goto failed;
+
+		bap_unregister_service(btp);
+		break;
+	case BTP_VENDOR_SERVICE:
+		if (!vendor_is_service_registered())
+			goto failed;
+
+		vendor_unregister_service(btp);
+		break;
+	case BTP_L2CAP_SERVICE:
+	case BTP_MESH_NODE_SERVICE:
+	case BTP_CORE_SERVICE:
+	default:
+		goto failed;
+	}
+
+	btp_send(btp, BTP_CORE_SERVICE, BTP_OP_CORE_UNREGISTER,
+					BTP_INDEX_NON_CONTROLLER, 0, NULL);
+	return;
+
+failed:
+	btp_send_error(btp, BTP_CORE_SERVICE, index, BTP_ERROR_FAIL);
+}
+
+void core_register_service(struct btp *btp_, struct l_dbus *dbus_,
+						struct l_dbus_client *client)
+{
+	btp = btp_;
+	dbus = dbus_;
+
+	btp_register(btp, BTP_CORE_SERVICE,
+					BTP_OP_CORE_READ_SUPPORTED_COMMANDS,
+					btp_core_read_commands, NULL, NULL);
+
+	btp_register(btp, BTP_CORE_SERVICE,
+					BTP_OP_CORE_READ_SUPPORTED_SERVICES,
+					btp_core_read_services, NULL, NULL);
+
+	btp_register(btp, BTP_CORE_SERVICE, BTP_OP_CORE_REGISTER,
+					btp_core_register, client, NULL);
+
+	btp_register(btp, BTP_CORE_SERVICE, BTP_OP_CORE_UNREGISTER,
+					btp_core_unregister, NULL, NULL);
+}
