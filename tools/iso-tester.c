@@ -678,6 +678,7 @@ struct iso_client_data {
 	};
 	struct bt_iso_qos qos_2;
 	int expect_err;
+	int expect_err_alt;
 	const struct iovec *send;
 	const struct iovec *recv;
 	bool server;
@@ -1417,6 +1418,7 @@ static const struct iso_client_data connect_invalid = {
 
 static const struct iso_client_data connect_reject = {
 	.qos = QOS_16_1_2,
+	.expect_err_alt = -ETIMEDOUT,
 	.expect_err = -ENOSYS
 };
 
@@ -4096,7 +4098,9 @@ static bool iso_connect(struct tester_io *io, uint32_t cond,
 		tester_print("Successfully connected");
 	}
 
-	if (err != isodata->expect_err) {
+	if (err != isodata->expect_err &&
+			(!isodata->expect_err_alt ||
+			err != isodata->expect_err_alt)) {
 		tester_warn("Expect error: %s (%d) != %s (%d)",
 				strerror(-isodata->expect_err),
 				-isodata->expect_err, strerror(-err), -err);
