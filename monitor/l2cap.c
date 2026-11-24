@@ -86,8 +86,23 @@
 #define L2CAP_SAR_START		0x01
 #define L2CAP_SAR_END		0x02
 #define L2CAP_SAR_CONTINUE	0x03
+#define L2CAP_SAR_NONE		0xff	/* S-frame, no SAR field */
 
 #define MAX_CHAN 64
+
+/* Reassembled L2CAP SDU for ERTM/Streaming mode channels using
+ * segmentation (SAR Start/Continuation/End). Tracked separately per
+ * direction since a bidirectional channel may have independent SDUs
+ * in flight each way.
+ */
+struct l2cap_sdu {
+	uint8_t *data;
+	uint16_t len;
+	uint16_t total;
+	int32_t next_seq;	/* expected TxSeq of the next fragment, or
+				 * -1 if no reassembly is in progress
+				 */
+};
 
 struct chan_data {
 	uint16_t index;
@@ -103,10 +118,20 @@ struct chan_data {
 	uint16_t sdu;
 	uint8_t  fcs;
 	int8_t   req_fcs;
+	struct l2cap_sdu sdu_rx[2];
 	struct packet_latency tx_l;
 };
 
 static struct chan_data chan_list[MAX_CHAN];
+
+static void reset_sdu_rx(struct chan_data *chan)
+{
+	free(chan->sdu_rx[0].data);
+	free(chan->sdu_rx[1].data);
+	memset(chan->sdu_rx, 0, sizeof(chan->sdu_rx));
+	chan->sdu_rx[0].next_seq = -1;
+	chan->sdu_rx[1].next_seq = -1;
+}
 
 static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 			uint16_t psm, uint8_t mode, uint8_t ctrlid)
@@ -147,6 +172,7 @@ static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 	if (n < 0)
 		return;
 
+	reset_sdu_rx(&chan_list[n]);
 	memset(&chan_list[n], 0, sizeof(chan_list[n]));
 	chan_list[n].index = frame->index;
 	chan_list[n].handle = frame->handle;
@@ -169,6 +195,8 @@ static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 	chan_list[n].req_fcs = -1;
 
 	chan_list[n].seq_num = seq_num;
+	chan_list[n].sdu_rx[0].next_seq = -1;
+	chan_list[n].sdu_rx[1].next_seq = -1;
 }
 
 static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
@@ -184,11 +212,13 @@ static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
 
 		if (frame->in) {
 			if (chan_list[i].scid == scid) {
+				reset_sdu_rx(&chan_list[i]);
 				chan_list[i].handle = 0;
 				break;
 			}
 		} else {
 			if (chan_list[i].dcid == scid) {
+				reset_sdu_rx(&chan_list[i]);
 				chan_list[i].handle = 0;
 				break;
 			}
@@ -543,8 +573,11 @@ static char *mode2str(uint8_t mode)
 	}
 }
 
-static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
+static uint8_t l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl,
+					uint16_t *sdu_len, uint16_t *txseq)
 {
+	uint8_t sar = L2CAP_SAR_NONE;
+
 	display_printf("      %s:",
 		ctrl & L2CAP_EXT_CTRL_FRAME_TYPE ? "S-frame" : "I-frame");
 
@@ -556,20 +589,18 @@ static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
 		if (ctrl & L2CAP_EXT_CTRL_POLL)
 			display_printf(" P-bit");
 	} else {
-		uint8_t sar = (ctrl & L2CAP_EXT_CTRL_SAR_MASK) >>
+		sar = (ctrl & L2CAP_EXT_CTRL_SAR_MASK) >>
 						L2CAP_EXT_CTRL_SAR_SHIFT;
 		display_printf(" %s", sar2str(sar));
 		if (sar == L2CAP_SAR_START) {
-			uint16_t len;
+			if (!l2cap_frame_get_le16(frame, sdu_len))
+				return L2CAP_SAR_NONE;
 
-			if (!l2cap_frame_get_le16(frame, &len))
-				return;
-
-			display_printf(" (len %d)", len);
+			display_printf(" (len %d)", *sdu_len);
 		}
-		display_printf(" TxSeq %d",
-			(ctrl & L2CAP_EXT_CTRL_TXSEQ_MASK) >>
-						L2CAP_EXT_CTRL_TXSEQ_SHIFT);
+		*txseq = (ctrl & L2CAP_EXT_CTRL_TXSEQ_MASK) >>
+						L2CAP_EXT_CTRL_TXSEQ_SHIFT;
+		display_printf(" TxSeq %d", *txseq);
 	}
 
 	display_printf(" ReqSeq %d", (ctrl & L2CAP_EXT_CTRL_REQSEQ_MASK) >>
@@ -577,10 +608,15 @@ static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
 
 	if (ctrl & L2CAP_EXT_CTRL_FINAL)
 		display_printf(" F-bit");
+
+	return sar;
 }
 
-static void l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl)
+static uint8_t l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl,
+					uint16_t *sdu_len, uint16_t *txseq)
 {
+	uint8_t sar = L2CAP_SAR_NONE;
+
 	display_printf("      %s:",
 			ctrl & L2CAP_CTRL_FRAME_TYPE ? "S-frame" : "I-frame");
 
@@ -592,20 +628,17 @@ static void l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl)
 		if (ctrl & L2CAP_CTRL_POLL)
 			display_printf(" P-bit");
 	} else {
-		uint8_t sar;
-
 		sar = (ctrl & L2CAP_CTRL_SAR_MASK) >> L2CAP_CTRL_SAR_SHIFT;
 		display_printf(" %s", sar2str(sar));
 		if (sar == L2CAP_SAR_START) {
-			uint16_t len;
+			if (!l2cap_frame_get_le16(frame, sdu_len))
+				return L2CAP_SAR_NONE;
 
-			if (!l2cap_frame_get_le16(frame, &len))
-				return;
-
-			display_printf(" (len %d)", len);
+			display_printf(" (len %d)", *sdu_len);
 		}
-		display_printf(" TxSeq %d", (ctrl & L2CAP_CTRL_TXSEQ_MASK) >>
-						L2CAP_CTRL_TXSEQ_SHIFT);
+		*txseq = (ctrl & L2CAP_CTRL_TXSEQ_MASK) >>
+						L2CAP_CTRL_TXSEQ_SHIFT;
+		display_printf(" TxSeq %d", *txseq);
 	}
 
 	display_printf(" ReqSeq %d", (ctrl & L2CAP_CTRL_REQSEQ_MASK) >>
@@ -613,6 +646,8 @@ static void l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl)
 
 	if (ctrl & L2CAP_CTRL_FINAL)
 		display_printf(" F-bit");
+
+	return sar;
 }
 
 #define MAX_INDEX 16
@@ -2775,6 +2810,117 @@ static void smp_packet(uint16_t index, bool in, uint16_t handle,
 	opcode_data->func(&frame);
 }
 
+/* Reassemble ERTM/Streaming mode SAR fragments (Start/Continuation/End)
+ * into a single SDU before handing it to the upper layer dissector.
+ * Returns true when frame now holds a complete payload ready for
+ * dispatch (either because sar is the end of a multi-fragment SDU, or
+ * because reassembly could not be tracked and the single fragment
+ * should be dispatched as-is). Returns false while more fragments are
+ * still expected. *owned is set to true only when frame->data was
+ * replaced by a heap-allocated reassembled SDU that the caller must
+ * free; it is left untouched (false) whenever frame->data still
+ * points into the original (borrowed) packet buffer.
+ */
+static bool l2cap_sdu_reassemble(struct chan_data *chan, bool in,
+					uint8_t sar, uint16_t sdu_len,
+					uint16_t txseq, uint16_t seq_mod,
+					struct l2cap_frame *frame, bool *owned)
+{
+	struct l2cap_sdu *sdu;
+	uint32_t len;
+	uint16_t prev_seq;
+
+	*owned = false;
+
+	if (!chan)
+		return true;
+
+	sdu = &chan->sdu_rx[in ? 1 : 0];
+
+	if (sar == L2CAP_SAR_START) {
+		if (sdu->data) {
+			print_text(COLOR_ERROR,
+				"incomplete SDU replaced by new Start segment");
+			free(sdu->data);
+		}
+
+		sdu->len = 0;
+		sdu->total = sdu_len;
+		sdu->data = malloc(sdu_len);
+
+		if (!sdu->data) {
+			sdu->total = 0;
+			sdu->next_seq = -1;
+			return true;
+		}
+
+		sdu->next_seq = (txseq + 1) % seq_mod;
+	} else {
+		if (!sdu->data) {
+			print_text(COLOR_ERROR,
+					"unexpected continuation segment");
+			return true;
+		}
+
+		prev_seq = (sdu->next_seq + seq_mod - 1) % seq_mod;
+
+		if (sdu->next_seq >= 0 && txseq == prev_seq) {
+			/* Retransmitted duplicate of the last fragment
+			 * already appended: discard it and keep waiting
+			 * for the genuine next fragment.
+			 */
+			print_text(COLOR_ERROR,
+				"duplicate segment TxSeq %u discarded",
+				txseq);
+			return false;
+		}
+
+		if (sdu->next_seq >= 0 && txseq != (uint16_t) sdu->next_seq) {
+			/* A gap means a fragment was lost (or capture
+			 * started mid-SDU): the SDU can no longer be
+			 * reassembled correctly, so discard it rather
+			 * than silently producing a corrupted payload.
+			 */
+			print_text(COLOR_ERROR,
+				"gap in reassembly (expected TxSeq %u, got"
+				" %u), discarding SDU", sdu->next_seq, txseq);
+			free(sdu->data);
+			sdu->data = NULL;
+			sdu->len = 0;
+			sdu->total = 0;
+			sdu->next_seq = -1;
+			return true;
+		}
+
+		sdu->next_seq = (txseq + 1) % seq_mod;
+	}
+
+	len = sdu->len + (uint32_t) frame->size;
+	if (len > sdu->total)
+		len = sdu->total;
+
+	if (len > sdu->len)
+		memcpy(sdu->data + sdu->len, frame->data, len - sdu->len);
+	sdu->len = len;
+
+	if (sar != L2CAP_SAR_END)
+		return false;
+
+	if (sdu->len != sdu->total)
+		print_text(COLOR_ERROR, "reassembled SDU length mismatch");
+
+	frame->data = sdu->data;
+	frame->size = sdu->len;
+	*owned = true;
+
+	sdu->data = NULL;
+	sdu->len = 0;
+	sdu->total = 0;
+	sdu->next_seq = -1;
+
+	return true;
+}
+
 void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 			uint16_t psm, const void *data, uint16_t size)
 {
@@ -2783,6 +2929,13 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 	uint32_t ctrl32 = 0;
 	uint16_t ctrl16 = 0;
 	uint8_t ext_ctrl;
+	uint8_t sar = L2CAP_SAR_UNSEGMENTED;
+	uint16_t sdu_len = 0;
+	uint16_t txseq = 0;
+	uint16_t seq_mod = 64;
+	uint16_t frag_len = size;
+	void *sdu_buf = NULL;
+	bool owned;
 
 	switch (cid) {
 	case 0x0001:
@@ -2849,7 +3002,9 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 						frame.psm, mode2str(frame.mode),
 						frame.mode, frame.chan);
 
-				l2cap_ctrl_ext_parse(&frame, ctrl32);
+				sar = l2cap_ctrl_ext_parse(&frame, ctrl32,
+							&sdu_len, &txseq);
+				seq_mod = 16384;
 			} else {
 				if (!l2cap_frame_get_le16(&frame, &ctrl16))
 					return;
@@ -2862,7 +3017,9 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 						frame.psm, mode2str(frame.mode),
 						frame.mode, frame.chan);
 
-				l2cap_ctrl_parse(&frame, ctrl16);
+				sar = l2cap_ctrl_parse(&frame, ctrl16,
+							&sdu_len, &txseq);
+				seq_mod = 64;
 			}
 
 			display_printf("\n");
@@ -2876,6 +3033,46 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 			if (chan && chan->fcs && frame.size >= 2)
 				frame.size -= 2;
 
+			/* Size of just this I-frame's own payload, before
+			 * it is possibly replaced by the full reassembled
+			 * SDU below. Used so the OBEX dissector can limit
+			 * fallback/binary hexdumps to the bytes carried by
+			 * the final fragment, instead of repeating bytes
+			 * already shown while earlier fragments (Start/
+			 * Continuation) were buffered.
+			 */
+			frag_len = frame.size;
+
+			if (sar != L2CAP_SAR_UNSEGMENTED &&
+					sar != L2CAP_SAR_NONE) {
+				if (!l2cap_sdu_reassemble(chan, frame.in, sar,
+								sdu_len, txseq,
+								seq_mod,
+								&frame,
+								&owned)) {
+					/* Still buffering (Start/Continue):
+					 * show the raw fragment payload, the
+					 * upper layer dissector only runs
+					 * once the SDU is fully reassembled.
+					 */
+					if (frame.size)
+						packet_hexdump(frame.data,
+								frame.size);
+					return;
+				}
+
+				if (owned)
+					sdu_buf = (void *) frame.data;
+			}
+
+			break;
+		}
+
+		/* S-frames (supervisory, e.g. RR/REJ) carry no SDU payload
+		 * and must not be handed to upper layer dissectors.
+		 */
+		if (sar == L2CAP_SAR_NONE) {
+			free(sdu_buf);
 			break;
 		}
 
@@ -2905,11 +3102,13 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 		default:
 			if (obex_psm(index, handle, frame.psm))
 				obex_packet(&frame, l2cap_chan_key(index, in,
-								handle, cid));
+							handle, cid), frag_len);
 			else
 				packet_hexdump(data, size);
 			break;
 		}
+
+		free(sdu_buf);
 		break;
 	}
 }

@@ -405,7 +405,7 @@ static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	}
 
 	if (obex_channel(frame->index, frame->handle, channel, NULL))
-		obex_packet(frame, channel);
+		obex_packet(frame, channel, frame->size);
 	else
 		packet_hexdump(frame->data, frame->size);
 
