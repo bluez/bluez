@@ -344,6 +344,8 @@ static const uint32_t company_ids[] = {
 static void avrcp_register_notification(struct avrcp *session, uint8_t event);
 static GList *player_list_settings(struct avrcp_player *player);
 static void avrcp_get_play_status(struct avrcp *session);
+static void set_browsed_player(struct avrcp *session,
+					struct avrcp_player *player);
 
 static void avrcp_browsing_record(sdp_record_t *record, sdp_data_t *version)
 {
@@ -2883,20 +2885,18 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 	uint16_t uid_counter, charset;
 	uint8_t status, depth, count;
 
-	if (operands == NULL)
-		return FALSE;
-
-	if (!avrcp_pull_browsing_header(&iov) ||
+	if (!operands || !avrcp_pull_browsing_header(&iov) ||
 			!util_iov_pull_u8(&iov, &status) ||
 			status != AVRCP_STATUS_SUCCESS ||
 			!util_iov_pull_be16(&iov, &uid_counter) ||
 			!util_iov_pull_be32(&iov, &items) ||
 			!util_iov_pull_be16(&iov, &charset) ||
-			!util_iov_pull_u8(&iov, &depth))
+			!util_iov_pull_u8(&iov, &depth)) {
+		player->browsed = false;
 		return FALSE;
+	}
 
 	player->uid_counter = uid_counter;
-	player->browsed = true;
 
 	folders = g_new0(char *, depth + 2);
 	folders[0] = g_strdup("/Filesystem");
@@ -2942,8 +2942,10 @@ static void avrcp_set_browsed_player(struct avrcp *session,
 	memcpy(pdu->params, &id, 2);
 	pdu->param_len = cpu_to_be16(2);
 
-	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
-				avrcp_set_browsed_player_rsp, session);
+	/* Set while the request is in flight, so that it is sent once */
+	if (!avctp_send_browsing_req(session->conn, buf, sizeof(buf),
+				avrcp_set_browsed_player_rsp, session))
+		player->browsed = true;
 }
 
 static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
@@ -3067,6 +3069,7 @@ static gboolean avrcp_set_addressed_player_rsp(struct avctp *conn, uint8_t code,
 		return FALSE;
 
 	player->addressed = true;
+	set_browsed_player(session, player);
 
 	return FALSE;
 }
@@ -3990,8 +3993,11 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 	struct avrcp_player *player = session->controller->player;
 	uint16_t id = get_be16(&pdu->params[1]);
 
-	if (player != NULL && player->id == id)
+	if (player != NULL && player->id == id) {
+		player->addressed = true;
+		set_browsed_player(session, player);
 		return;
+	}
 
 	player = find_ct_player(session, id);
 	if (player == NULL) {
