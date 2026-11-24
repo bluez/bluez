@@ -4624,6 +4624,26 @@ static void test_scc_metadata(void)
 	IOV_DATA(0x52, CP_HND, _op, 0x00), \
 	ASE_CP_RSP_TRUNCATED(_op)
 
+/* ATT: Write Request (0x12) len 5
+ *   Handle: 0x0022 Type: ASE Control Point (0x2bc6)
+ *     Data: 0f0101
+ * ATT: Write Response (0x13) len 0
+ * ATT: Handle Value Notification (0x1b) len 7
+ *   Handle: 0x0022 Type: ASE Control Point (0x2bc6)
+ *     Data: 0fff000100
+ *       Opcode: Unknown (0x0f)
+ *       Number of ASE(s): 255
+ *       ASE: #0
+ *       ASE ID: 0x00
+ *       ASE Response Code: Unsupported Opcode (0x01)
+ *       ASE Response Reason: None (0x00)
+ */
+#define SPE_CP_UNSUPPORTED(_op) \
+	IOV_DATA(0x12, CP_HND, _op, 0x01, 0x01), \
+	IOV_DATA(0x13), \
+	IOV_NULL, \
+	IOV_DATA(0x1b, CP_HND, _op, 0xff, 0x00, 0x01, 0x00)
+
 #define SPE_METADATA_TRUNCATED(_ase) \
 	IOV_DATA(0x52, CP_HND, 0x07, 0x01, _ase), \
 	ASE_CP_RSP_TRUNCATED(0x07)
@@ -4657,6 +4677,10 @@ static void test_usr_spe(void)
 	define_test("BAP/USR/SPE/BI-02-C [USR ASE Control Point zero ASEs]",
 			test_setup_server, test_server, NULL,
 			SPE_CP_ZERO_ASES(0x03));
+	define_test("BAP/USR/SPE/BLUEZ-1 [USR ASE Control Point unsupported "
+			"opcode]",
+			test_setup_server, test_server, NULL,
+			SPE_CP_UNSUPPORTED(0x0f));
 	define_test("BAP/USR/SPE/BI-03-C [USR Update Metadata truncated]",
 			test_setup_server, test_server, NULL,
 			SPE_METADATA_TRUNCATED(SRC_ID(0)));
