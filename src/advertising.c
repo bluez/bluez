@@ -489,11 +489,11 @@ static bool parse_service_data(DBusMessageIter *iter, struct bt_ad *ad)
 		if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_ARRAY)
 			goto fail;
 
-		dbus_message_iter_recurse(&value, &array);
-
-		if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_BYTE)
+		if (dbus_message_iter_get_element_type(&value) !=
+							DBUS_TYPE_BYTE)
 			goto fail;
 
+		dbus_message_iter_recurse(&value, &array);
 		dbus_message_iter_get_fixed_array(&array, &service_data, &len);
 
 		DBG("Adding ServiceData for %s", uuid_str);
