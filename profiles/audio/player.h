@@ -108,6 +108,7 @@ void media_player_change_folder_complete(struct media_player *player,
 						int ret);
 void media_player_search_complete(struct media_player *mp, int ret);
 void media_player_total_items_complete(struct media_player *mp,
+						const char *dir_path,
 						uint32_t num_of_items);
 
 void media_player_set_callbacks(struct media_player *mp,
