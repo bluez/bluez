@@ -2564,6 +2564,37 @@ static void btp_gap_device_connection_ev(struct l_dbus_proxy *proxy,
 	}
 }
 
+static void btp_security_level_changed_ev(struct l_dbus_proxy *proxy,
+							uint8_t level)
+{
+	struct btp_device *device = find_device_by_proxy(proxy);
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	struct btp_gap_sec_level_changed_ev ev;
+
+	if (!device || !adapter)
+		return;
+
+	memcpy(&ev.address, &device->address, sizeof(ev.address));
+	ev.address_type = device->address_type;
+	switch (level) {
+	case BT_SECURITY_MEDIUM:
+		ev.sec_level = BTP_GAP_SEC_LEVEL_UNAUTH_ENC;
+		break;
+	case BT_SECURITY_HIGH:
+		ev.sec_level = BTP_GAP_SEC_LEVEL_AUTH_ENC;
+		break;
+	case BT_SECURITY_FIPS:
+		ev.sec_level = BTP_GAP_SEC_LEVEL_AUTH_SC;
+		break;
+	default:
+		/* No security/encryption yet, no BTP level to report. */
+		return;
+	}
+
+	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_SEC_LEVEL_CHANGED,
+					adapter->index, sizeof(ev), &ev);
+}
+
 static void btp_identity_resolved_ev(struct l_dbus_proxy *proxy)
 {
 	struct btp_device *dev = find_device_by_proxy(proxy);
@@ -2736,6 +2767,22 @@ void gap_property_changed(struct l_dbus_proxy *proxy, const char *name,
 			 */
 			if (!prop)
 				btp_gap_device_connection_ev(proxy, prop);
+		} else if (!strcmp(name, "SecurityLevel")) {
+			uint8_t level;
+			bool resolved;
+
+			/* Postpone security level changed event after services
+			 * has been resolved.
+			 */
+			if (l_dbus_proxy_get_property(proxy,
+					"ServicesResolved", "b", &resolved) &&
+					!resolved)
+				return;
+
+			if (!l_dbus_message_get_arguments(msg, "y", &level))
+				return;
+
+			btp_security_level_changed_ev(proxy, level);
 		} else if (!strcmp(name, "AddressType")) {
 			/* Address property change came first along with address
 			 * type.
@@ -2743,12 +2790,17 @@ void gap_property_changed(struct l_dbus_proxy *proxy, const char *name,
 			btp_identity_resolved_ev(proxy);
 		} else if (!strcmp(name, "ServicesResolved")) {
 			bool prop;
+			uint8_t level;
 
 			if (!l_dbus_message_get_arguments(msg, "b", &prop))
 				return;
 
 			if (prop)
 				btp_gap_device_connection_ev(proxy, prop);
+
+			if (l_dbus_proxy_get_property(proxy,
+					"SecurityLevel", "y", &level))
+				btp_security_level_changed_ev(proxy, level);
 		}
 	}
 }
