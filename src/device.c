@@ -394,6 +394,14 @@ static GSList *find_service_with_uuid(GSList *list, char *uuid)
 	return NULL;
 }
 
+/* The GATT service of a BR/EDR device, connected while ATT runs over BR/EDR */
+static struct btd_service *gatt_bredr_service(struct btd_device *dev)
+{
+	GSList *l = find_service_with_uuid(dev->services, GATT_UUID);
+
+	return l ? l->data : NULL;
+}
+
 static const char *device_prefer_bearer_str(struct btd_device *device)
 {
 	/* Check if both BR/EDR and LE bearer are supported */
@@ -6373,6 +6381,7 @@ static void disconnect_gatt_service(gpointer data, gpointer user_data)
 static void att_disconnected_cb(int err, void *user_data)
 {
 	struct btd_device *device = user_data;
+	struct btd_service *service;
 
 	DBG("");
 
@@ -6399,6 +6408,10 @@ static void att_disconnected_cb(int err, void *user_data)
 		adapter_connect_list_add(device->adapter, device);
 
 done:
+	service = gatt_bredr_service(device);
+	if (service)
+		btd_service_disconnecting_complete(service, 0);
+
 	attio_cleanup(device);
 }
 
@@ -6774,6 +6787,14 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	gatt_client_init(dev);
 	gatt_server_init(dev, database);
 
+	/* ATT over BR/EDR, opened by either side, is the GATT service */
+	if (bt_att_get_link_type(dev->att) == BT_ATT_BREDR) {
+		struct btd_service *service = gatt_bredr_service(dev);
+
+		if (service)
+			btd_service_connecting_complete(service, 0);
+	}
+
 	/*
 	 * Remove the device from the connect_list and give the passive
 	 * scanning another chance to be restarted in case there are
@@ -6860,6 +6881,95 @@ done:
 		device->connect = NULL;
 	}
 }
+
+static void gatt_bredr_connect_cb(GIOChannel *io, GError *gerr,
+							gpointer user_data)
+{
+	struct btd_device *dev = user_data;
+	struct btd_service *service = gatt_bredr_service(dev);
+
+	g_io_channel_unref(dev->att_io);
+	dev->att_io = NULL;
+
+	if (gerr) {
+		DBG("%s", gerr->message);
+		if (service)
+			btd_service_connecting_complete(service, -EIO);
+		return;
+	}
+
+	if (!device_attach_att(dev, io) && service)
+		btd_service_connecting_complete(service, -EIO);
+}
+
+static int gatt_bredr_probe(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+
+	/* Only a device that lists the GATT service in SDP */
+	if (!btd_device_get_record(dev, GATT_UUID))
+		return -ENOTSUP;
+
+	return 0;
+}
+
+static void gatt_bredr_remove(struct btd_service *service)
+{
+}
+
+static int gatt_bredr_connect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	GError *gerr = NULL;
+	char addr[18];
+
+	/* A device has one ATT bearer, over LE or BR/EDR */
+	if (dev->att || dev->att_io)
+		return -EALREADY;
+
+	ba2str(&dev->bdaddr, addr);
+	DBG("Connection attempt to: %s", addr);
+
+	dev->att_io = bt_io_connect(gatt_bredr_connect_cb, dev, NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR,
+				btd_adapter_get_address(dev->adapter),
+				BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
+				BT_IO_OPT_PSM, BT_ATT_PSM,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_MTU, btd_opts.gatt_mtu,
+				BT_IO_OPT_INVALID);
+	if (!dev->att_io) {
+		error("ATT bt_io_connect(%s): %s", addr, gerr->message);
+		g_error_free(gerr);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int gatt_bredr_disconnect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+
+	if (!dev->att || bt_att_get_link_type(dev->att) != BT_ATT_BREDR)
+		return -ENOTCONN;
+
+	/* Clean up as on a remote disconnection, which closes the channel */
+	att_disconnected_cb(0, dev);
+
+	return 0;
+}
+
+/* GATT over BR/EDR is only connected on request, with ConnectProfile */
+static struct btd_profile gatt_bredr_profile = {
+	.name		= "gatt-bredr",
+	.bearer		= BTD_PROFILE_BEARER_BREDR,
+	.remote_uuid	= GATT_UUID,
+	.device_probe	= gatt_bredr_probe,
+	.device_remove	= gatt_bredr_remove,
+	.connect	= gatt_bredr_connect,
+	.disconnect	= gatt_bredr_disconnect,
+};
 
 int device_connect_le(struct btd_device *dev)
 {
@@ -8504,11 +8614,15 @@ void btd_device_init(void)
 	dbus_conn = btd_get_dbus_connection();
 	service_state_cb_id = btd_service_add_state_cb(
 						service_state_changed, NULL);
+
+	btd_profile_register(&gatt_bredr_profile);
 }
 
 void btd_device_cleanup(void)
 {
 	btd_service_remove_state_cb(service_state_cb_id);
+
+	btd_profile_unregister(&gatt_bredr_profile);
 }
 
 void btd_device_set_volume(struct btd_device *device, int8_t volume)
