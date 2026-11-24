@@ -4865,6 +4865,9 @@ bool bt_bap_remove_pac(struct bt_bap_pac *pac)
 	if (queue_remove_if(pac->bdb->broadcast_sources, NULL, pac))
 		goto found;
 
+	if (queue_remove_if(pac->bdb->broadcast_sinks, NULL, pac))
+		goto found;
+
 	return false;
 
 found:
