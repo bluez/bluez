@@ -1307,7 +1307,10 @@ static void test_teardown(const void *user_data)
 	bt_bap_remove_pac(data->snk);
 	bt_bap_remove_pac(data->src);
 	bt_bap_remove_pac(data->bsrc);
-	bt_bap_remove_pac(data->bsnk);
+
+	if (data->bsnk)
+		g_assert(bt_bap_remove_pac(data->bsnk));
+
 	gatt_db_unref(data->db);
 	bt_gatt_server_unref(data->server);
 	data->server = NULL;
