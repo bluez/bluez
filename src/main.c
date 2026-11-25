@@ -924,6 +924,30 @@ static bool parse_config_bool(GKeyFile *config, const char *group,
 	return true;
 }
 
+static void parse_reverse_discovery(GKeyFile *config)
+{
+	char *str = NULL;
+	bool val;
+
+	if (parse_config_bool(config, "General", "ReverseServiceDiscovery",
+								&val)) {
+		btd_opts.reverse_discovery = val ? REVERSE_DISCOVERY_ALWAYS :
+						REVERSE_DISCOVERY_NEVER;
+		return;
+	}
+
+	if (!parse_config_string(config, "General", "ReverseServiceDiscovery",
+								&str))
+		return;
+
+	if (!strcmp(str, "paired"))
+		btd_opts.reverse_discovery = REVERSE_DISCOVERY_PAIRED;
+	else
+		warn("Invalid value for ReverseServiceDiscovery: %s", str);
+
+	g_free(str);
+}
+
 static void parse_privacy(GKeyFile *config)
 {
 	char *str = NULL;
@@ -1096,8 +1120,7 @@ static void parse_general(GKeyFile *config)
 						&btd_opts.pairto,
 						0, UINT32_MAX);
 	parse_device_id(config);
-	parse_config_bool(config, "General", "ReverseServiceDiscovery",
-						&btd_opts.reverse_discovery);
+	parse_reverse_discovery(config);
 	parse_config_bool(config, "General", "NameResolving",
 						&btd_opts.name_resolv);
 	parse_config_bool(config, "General", "DebugKeys",
@@ -1473,7 +1496,7 @@ static void init_defaults(void)
 	btd_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
 	btd_opts.discovto = DEFAULT_DISCOVERABLE_TIMEOUT;
 	btd_opts.tmpto = DEFAULT_TEMPORARY_TIMEOUT;
-	btd_opts.reverse_discovery = TRUE;
+	btd_opts.reverse_discovery = REVERSE_DISCOVERY_ALWAYS;
 	btd_opts.name_resolv = TRUE;
 	btd_opts.debug_keys = FALSE;
 	btd_opts.refresh_discovery = TRUE;
