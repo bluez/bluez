@@ -404,6 +404,12 @@ static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 		print_field("%*cCredits: %d", indent, ' ', hdr->credits);
 	}
 
+	/* A credit-only UIH frame (credit-based flow control update)
+	 * carries no information payload; nothing to decode.
+	 */
+	if (!frame->size)
+		return true;
+
 	if (obex_channel(frame->index, frame->handle, channel, NULL))
 		obex_packet(frame, channel, frame->size);
 	else
@@ -434,6 +440,7 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	struct rfcomm_frame rfcomm_frame;
 	struct rfcomm_lhdr hdr;
 	const struct rfcomm_data *rfcomm_data = NULL;
+	uint32_t max_size;
 	int i;
 
 	l2cap_frame_pull(&rfcomm_frame.l2cap_frame, frame, 0);
@@ -467,8 +474,30 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	if (!l2cap_frame_get_u8(&tmp_frame, &hdr.fcs))
 		goto fail;
 
+	/* The trailing FCS byte just consumed via tmp_frame is still
+	 * included in l2cap_frame's size (tmp_frame is a separate view
+	 * over the same bytes). Drop it so the information payload
+	 * handed to uih_frame()/mcc_frame() doesn't include it.
+	 */
+	l2cap_frame->size -= 1;
+
 	/* Decoding frame type */
 	ctype = RFCOMM_GET_TYPE(hdr.control);
+
+	/* An L2CAP PDU may legally carry more than one RFCOMM frame
+	 * back-to-back; bound the information payload to this frame's
+	 * own declared length so trailing bytes belonging to the next
+	 * multiplexed frame aren't mistaken for part of it. A UIH frame
+	 * with the P/F bit set carries a leading credit octet ahead of
+	 * the information field, which isn't covered by hdr.length.
+	 */
+	if (ctype == 0xef && GET_PF(hdr.control))
+		max_size = (uint32_t) hdr.length + 1;
+	else
+		max_size = hdr.length;
+
+	if (l2cap_frame->size > max_size)
+		l2cap_frame->size = max_size;
 
 	for (i = 0; rfcomm_table[i].str; i++) {
 		if (rfcomm_table[i].frame == ctype) {
