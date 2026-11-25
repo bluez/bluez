@@ -6670,14 +6670,12 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	struct bt_att *att;
 	BtIOSecLevel sec_level;
 	uint16_t mtu;
-	uint16_t cid;
 	struct btd_gatt_database *database;
 	const bdaddr_t *dst;
 	char dstaddr[18];
 
 	bt_io_get(io, &gerr, BT_IO_OPT_SEC_LEVEL, &sec_level,
 						BT_IO_OPT_IMTU, &mtu,
-						BT_IO_OPT_CID, &cid,
 						BT_IO_OPT_INVALID);
 
 	if (gerr) {
@@ -6721,13 +6719,6 @@ bool device_attach_att(struct btd_device *dev, GIOChannel *io)
 	att = bt_att_new(g_io_channel_unix_get_fd(io), false);
 	if (!att) {
 		error("Unable to create new ATT instance");
-		return false;
-	}
-
-	if (!bt_att_set_mtu(att, cid == BT_ATT_CID ? BT_ATT_DEFAULT_LE_MTU :
-							dev->att_mtu)) {
-		error("Unable to set ATT MTU");
-		bt_att_unref(att);
 		return false;
 	}
 
