@@ -2399,6 +2399,58 @@ failed:
 	btp_send_error(btp, BTP_GAP_SERVICE, index, status);
 }
 
+static void btp_security_level_changed_ev(struct l_dbus_proxy *proxy)
+{
+	struct btp_device *device = find_device_by_proxy(proxy);
+	struct btp_adapter *adapter = find_adapter_by_device(device);
+	const char *str_addr, *str_addr_type;
+	uint8_t level, enc_type;
+	struct btp_gap_sec_level_changed_ev ev;
+
+	if (!device || !adapter)
+		return;
+
+	if (!l_dbus_proxy_get_property(proxy, "SecurityLevel", "y", &level))
+		return;
+
+	if (!l_dbus_proxy_get_property(proxy, "Address", "s", &str_addr))
+		return;
+
+	if (!l_dbus_proxy_get_property(proxy, "AddressType", "s",
+								&str_addr_type))
+		return;
+
+	str2ba(str_addr, &ev.address);
+	ev.address_type = strcmp(str_addr_type, "public") ?
+				BTP_GAP_ADDR_RANDOM : BTP_GAP_ADDR_PUBLIC;
+	switch (level) {
+	case BT_SECURITY_MEDIUM:
+		/* This level only means encryption is desired, not that it
+		 * is active yet: only report it once EncryptionType confirms
+		 * encryption is actually in use.
+		 */
+		if (!l_dbus_proxy_get_property(proxy, "EncryptionType", "y",
+								&enc_type) ||
+								!enc_type)
+			return;
+
+		ev.sec_level = BTP_GAP_SEC_LEVEL_UNAUTH_ENC;
+		break;
+	case BT_SECURITY_HIGH:
+		ev.sec_level = BTP_GAP_SEC_LEVEL_AUTH_ENC;
+		break;
+	case BT_SECURITY_FIPS:
+		ev.sec_level = BTP_GAP_SEC_LEVEL_AUTH_SC;
+		break;
+	default:
+		/* No security/encryption yet, no BTP level to report. */
+		return;
+	}
+
+	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_SEC_LEVEL_CHANGED,
+					adapter->index, sizeof(ev), &ev);
+}
+
 static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 {
 	struct btp_device *device = find_device_by_proxy(proxy);
@@ -2518,6 +2570,12 @@ static void btp_gap_device_found_ev(struct l_dbus_proxy *proxy)
 
 		btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_DEVICE_CONNECTED,
 				adapter->index, sizeof(ev_conn), &ev_conn);
+
+		/* Replay the cached security level for devices that were
+		 * already connected and secured before GAP registered or
+		 * this proxy was added.
+		 */
+		btp_security_level_changed_ev(proxy);
 	}
 }
 
@@ -2736,6 +2794,19 @@ void gap_property_changed(struct l_dbus_proxy *proxy, const char *name,
 			 */
 			if (!prop)
 				btp_gap_device_connection_ev(proxy, prop);
+		} else if (!strcmp(name, "SecurityLevel") ||
+					!strcmp(name, "EncryptionType")) {
+			bool resolved;
+
+			/* Postpone security level changed event after services
+			 * has been resolved.
+			 */
+			if (l_dbus_proxy_get_property(proxy,
+					"ServicesResolved", "b", &resolved) &&
+					!resolved)
+				return;
+
+			btp_security_level_changed_ev(proxy);
 		} else if (!strcmp(name, "AddressType")) {
 			/* Address property change came first along with address
 			 * type.
@@ -2747,8 +2818,10 @@ void gap_property_changed(struct l_dbus_proxy *proxy, const char *name,
 			if (!l_dbus_message_get_arguments(msg, "b", &prop))
 				return;
 
-			if (prop)
+			if (prop) {
 				btp_gap_device_connection_ev(proxy, prop);
+				btp_security_level_changed_ev(proxy);
+			}
 		}
 	}
 }
