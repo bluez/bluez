@@ -458,6 +458,7 @@ static guint transport_a2dp_suspend(struct media_transport *transport,
 	struct a2dp_transport *a2dp = transport->data;
 	struct media_endpoint *endpoint = transport->endpoint;
 	struct a2dp_sep *sep = media_endpoint_get_sep(endpoint);
+	struct avdtp_stream *stream;
 
 	if (owner != NULL) {
 		if (a2dp->resume_id) {
@@ -469,7 +470,17 @@ static guint transport_a2dp_suspend(struct media_transport *transport,
 									owner);
 	}
 
-	transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	/* A sink stream is left for the remote to suspend: until then it is
+	 * playing, just not acquired.
+	 */
+	stream = transport_a2dp_get_stream(transport);
+
+	if (!strcmp(media_endpoint_get_uuid(endpoint), A2DP_SINK_UUID) &&
+			avdtp_stream_get_state(stream) == AVDTP_STATE_STREAMING)
+		transport_set_state(transport, TRANSPORT_STATE_PENDING);
+	else
+		transport_set_state(transport, TRANSPORT_STATE_IDLE);
+
 	a2dp_sep_unlock(sep, a2dp->session);
 
 	return 0;
