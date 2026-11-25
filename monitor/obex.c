@@ -1018,6 +1018,36 @@ static void print_unicode_header(const char *label, const uint8_t *data,
 	print_field("%*c%s: %s", indent, ' ', label, buf);
 }
 
+/* When an OBEX PDU was reassembled from multiple L2CAP SAR fragments,
+ * the Start/Continuation fragments have already been hexdumped as raw
+ * bytes by the L2CAP layer while they were buffered. Limit hexdumps
+ * done while decoding the fully reassembled PDU to the bytes carried
+ * by the final (End) fragment, so the same bytes aren't printed twice.
+ * base is the start of the reassembled PDU and from is the byte offset
+ * (from base) where the final fragment begins, or 0 when the whole PDU
+ * came from a single, unsegmented frame.
+ */
+static void obex_hexdump(const uint8_t *base, uint16_t from,
+					const uint8_t *data, uint16_t len)
+{
+	uint32_t offset;
+
+	if (!len)
+		return;
+
+	offset = data - base;
+
+	if (offset + len <= from)
+		return;
+
+	if (offset < from) {
+		len -= from - offset;
+		data += from - offset;
+	}
+
+	packet_hexdump(data, len);
+}
+
 /* Application Parameters (Tag/Len/Value) tag tables for profiles whose
  * tag assignments are known. Tag IDs and names are taken from the
  * PBAP/MAP/BIP specifications; types indicate how to decode a tag's
@@ -1196,7 +1226,10 @@ static void obex_print_apparam_tag(enum obex_profile profile, uint8_t tag,
 
 		/* Known tag but unexpected length (or a raw-bytes type):
 		 * still show the tag's name, with a length + hexdump
-		 * instead of a decoded value.
+		 * instead of a decoded value. Application Parameters are
+		 * small labeled values (not bulk payload like Body), so
+		 * always show them in full instead of clipping to the
+		 * current SAR fragment.
 		 */
 		print_field("%*c%s: [len %d]", indent, ' ', table[i].str,
 									len);
@@ -1232,7 +1265,8 @@ static void obex_print_apparam(const uint8_t *data, uint16_t size,
 }
 
 static bool obex_print_headers(struct l2cap_frame *frame, uint8_t indent,
-							uint16_t channel)
+					uint16_t channel, const uint8_t *base,
+					uint16_t dump_from)
 {
 	while (frame->size > 0) {
 		uint8_t hdr_id;
@@ -1301,6 +1335,16 @@ static bool obex_print_headers(struct l2cap_frame *frame, uint8_t indent,
 						obex_get_profile(frame->index,
 							frame->handle,
 							channel));
+				else if (vlen && (hdr_id == OBEX_HDR_BODY ||
+						hdr_id == OBEX_HDR_BODY_END))
+					/* Body/End-of-Body can carry large,
+					 * reassembled payloads spanning
+					 * several SAR fragments already
+					 * hexdumped individually; clip to
+					 * avoid duplicating those bytes.
+					 */
+					obex_hexdump(base, dump_from, data,
+									vlen);
 				else if (vlen)
 					packet_hexdump(data, vlen);
 			}
@@ -1366,7 +1410,8 @@ static bool obex_setpath_fields(struct l2cap_frame *frame, uint8_t indent)
 	return true;
 }
 
-void obex_packet(const struct l2cap_frame *frame, uint16_t channel)
+void obex_packet(const struct l2cap_frame *frame, uint16_t channel,
+							uint16_t frag_len)
 {
 	struct l2cap_frame obex_frame;
 	struct l2cap_frame *f = &obex_frame;
@@ -1377,8 +1422,14 @@ void obex_packet(const struct l2cap_frame *frame, uint16_t channel)
 	bool is_request = false;
 	const uint8_t *trailer;
 	uint16_t trailer_len;
+	const uint8_t *dump_base;
+	uint16_t dump_from;
 
 	l2cap_frame_pull(f, frame, 0);
+
+	dump_base = frame->data;
+	dump_from = (frag_len < frame->size) ?
+					frame->size - frag_len : 0;
 
 	if (f->size < 3)
 		goto fail;
@@ -1440,7 +1491,7 @@ void obex_packet(const struct l2cap_frame *frame, uint16_t channel)
 			goto fail;
 	}
 
-	if (!obex_print_headers(f, indent, channel))
+	if (!obex_print_headers(f, indent, channel, dump_base, dump_from))
 		goto fail;
 
 	if (is_request)
@@ -1450,12 +1501,12 @@ void obex_packet(const struct l2cap_frame *frame, uint16_t channel)
 	if (trailer_len) {
 		print_field("%*cTrailing data: [len %d]", indent, ' ',
 							trailer_len);
-		packet_hexdump(trailer, trailer_len);
+		obex_hexdump(dump_base, dump_from, trailer, trailer_len);
 	}
 
 	return;
 
 fail:
 	print_text(COLOR_ERROR, "frame too short");
-	packet_hexdump(frame->data, frame->size);
+	obex_hexdump(dump_base, dump_from, frame->data, frame->size);
 }
