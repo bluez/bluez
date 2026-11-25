@@ -155,6 +155,7 @@ struct bearer_state {
 	bool svc_resolved;
 	bool initiator;
 	bool connectable;
+	uint8_t disconn_reason;
 	time_t last_seen;
 	time_t last_used;
 };
@@ -3864,6 +3865,11 @@ bool btd_device_bdaddr_type_connected(struct btd_device *dev, uint8_t type)
 	return dev->le_state.connected;
 }
 
+uint8_t btd_device_get_disconnect_reason(struct btd_device *dev, uint8_t type)
+{
+	return get_state(dev, type)->disconn_reason;
+}
+
 bool btd_device_bdaddr_type_connectable(struct btd_device *dev, uint8_t type)
 {
 	if (type == BDADDR_BREDR)
@@ -4071,6 +4077,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 
 	state->connected = false;
 	state->initiator = false;
+	state->disconn_reason = reason;
 	device->general_connect = FALSE;
 
 	device_set_svc_refreshed(device, false);

@@ -24,6 +24,7 @@
 
 #include "bluetooth/bluetooth.h"
 #include "bluetooth/hidp.h"
+#include "bluetooth/mgmt.h"
 #include "bluetooth/sdp.h"
 #include "bluetooth/sdp_lib.h"
 #include "bluetooth/uuid.h"
@@ -1374,6 +1375,26 @@ static int dev_connect(struct input_device *idev)
 	return -EIO;
 }
 
+/* The host is only expected to restore a connection that was lost, e.g.
+ * because the device went out of range. Do not page a device that terminated
+ * the link on purpose, or that the host itself disconnected: devices which can
+ * be bonded to several hosts (e.g. earbuds exposing a HID sensor) would
+ * otherwise be pulled back from the host they just switched to.
+ */
+static bool link_terminated_on_purpose(struct input_device *idev)
+{
+	uint8_t reason;
+
+	reason = btd_device_get_disconnect_reason(idev->device, BDADDR_BREDR);
+	if (reason != MGMT_DEV_DISCONN_REMOTE &&
+				reason != MGMT_DEV_DISCONN_LOCAL_HOST)
+		return false;
+
+	DBG("link terminated on purpose (reason %u), not reconnecting", reason);
+
+	return true;
+}
+
 static bool input_device_auto_reconnect(gpointer user_data)
 {
 	struct input_device *idev = user_data;
@@ -1385,6 +1406,12 @@ static bool input_device_auto_reconnect(gpointer user_data)
 	 */
 	if (device_is_temporary(idev->device) ||
 					btd_device_is_connected(idev->device))
+		goto bail;
+
+	/* The device may have come back and left again since the timer was
+	 * armed, e.g. to switch to another host.
+	 */
+	if (link_terminated_on_purpose(idev))
 		goto bail;
 
 	/* Only attempt an auto-reconnect for at most 3 minutes (6 * 30s). */
@@ -1443,8 +1470,13 @@ static void input_device_enter_reconnect_mode(struct input_device *idev)
 					btd_device_is_connected(idev->device))
 		return;
 
-	if (idev->reconnect_timer > 0)
+	if (idev->reconnect_timer > 0) {
 		timeout_remove(idev->reconnect_timer);
+		idev->reconnect_timer = 0;
+	}
+
+	if (link_terminated_on_purpose(idev))
+		return;
 
 	DBG("registering auto-reconnect");
 	idev->reconnect_attempt = 0;
