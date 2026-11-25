@@ -1912,6 +1912,14 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
 	 * encryption flag is also available.
 	 */
 	DBG("PA Sync done");
+
+	/*
+	 * A failed PA sync is reported twice. Dropping the previous watch also
+	 * closes its io, as the watch holds the last reference.
+	 */
+	if (data->io_id)
+		g_source_remove(data->io_id);
+
 	data->io_id = g_io_add_watch(io, G_IO_OUT, big_info_report_cb,
 								user_data);
 }
