@@ -51,6 +51,13 @@ static bool match_hisyncid(const void *data, const void *user_data)
 	return (memcmp(set->hisyncid, asha->hisyncid, 8) == 0);
 }
 
+static bool match_set_member(const void *data, const void *user_data)
+{
+	const struct bt_asha_set *set = data;
+
+	return set->left == user_data || set->right == user_data;
+}
+
 static struct bt_asha_set *find_asha_set(struct bt_asha *asha)
 {
 	return queue_find(asha_devices, match_hisyncid, asha);
@@ -83,9 +90,12 @@ static void update_asha_set(struct bt_asha *asha, bool connected)
 {
 	struct bt_asha_set *set;
 
-	set = queue_find(asha_devices, match_hisyncid, asha);
-
 	if (connected) {
+		if (!asha_devices)
+			asha_devices = queue_new();
+
+		set = queue_find(asha_devices, match_hisyncid, asha);
+
 		if (!set) {
 			set = new0(struct bt_asha_set, 1);
 			memcpy(set->hisyncid, asha->hisyncid, 8);
@@ -101,15 +111,24 @@ static void update_asha_set(struct bt_asha *asha, bool connected)
 			DBG("Left side registered for ASHA set");
 		}
 	} else {
+		/*
+		 * Find the set by object: the HiSyncId is cleared on reset and
+		 * a replacement for the same side shares it, so it cannot say
+		 * which slot, if any, still belongs to this object.
+		 */
+		set = queue_find(asha_devices, match_set_member, asha);
+
 		if (!set) {
-			error("Missing ASHA set");
+			DBG("ASHA object not registered in a set");
 			return;
 		}
 
-		if (asha->right_side && set->right) {
+		if (set->right == asha) {
 			set->right = NULL;
 			DBG("Right side unregistered for ASHA set");
-		} else if (!asha->right_side && set->left) {
+		}
+
+		if (set->left == asha) {
 			set->left = NULL;
 			DBG("Left side unregistered for ASHA set");
 		}
