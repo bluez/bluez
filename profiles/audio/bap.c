@@ -3958,6 +3958,8 @@ static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond,
 	struct bt_iso_qos qos;
 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
 
+	data->io_id = 0;
+
 	DBG("BIG info received, do BIG sync");
 
 	if (data->listen_io != io) {
@@ -4295,6 +4297,25 @@ static int bap_bcast_disconnect(struct btd_service *service)
 		error("BAP service not handled by profile");
 		return -EINVAL;
 	}
+
+	/*
+	 * A pending PA or BIG sync calls back with one of the setups freed
+	 * below, and a PA sync kept for them is of no use any more: close
+	 * both.
+	 */
+	if (data->io_id) {
+		g_source_remove(data->io_id);
+		data->io_id = 0;
+	}
+
+	pa_sync_release(data);
+
+	if (data->listen_io) {
+		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
+		g_io_channel_unref(data->listen_io);
+		data->listen_io = NULL;
+	}
+
 	/* Clean up broadcast sinks before detach (like unicast does) */
 	if (data->bcast_snks) {
 		bcast_snks = data->bcast_snks;
