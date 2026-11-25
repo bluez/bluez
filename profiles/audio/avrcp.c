@@ -141,6 +141,18 @@
 #define AVRCP_CT_VERSION		0x0106
 #define AVRCP_TG_VERSION		0x0106
 
+/* The events a target reports since AVRCP 1.3, and those 1.4 added */
+#define AVRCP_EVENTS_1_3 \
+	((1 << AVRCP_EVENT_STATUS_CHANGED) | \
+	(1 << AVRCP_EVENT_TRACK_CHANGED) | \
+	(1 << AVRCP_EVENT_TRACK_REACHED_END) | \
+	(1 << AVRCP_EVENT_TRACK_REACHED_START) | \
+	(1 << AVRCP_EVENT_SETTINGS_CHANGED))
+#define AVRCP_EVENTS_1_4 \
+	((1 << AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED) | \
+	(1 << AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED) | \
+	(1 << AVRCP_EVENT_VOLUME_CHANGED))
+
 #define AVRCP_SCOPE_MEDIA_PLAYER_LIST			0x00
 #define AVRCP_SCOPE_MEDIA_PLAYER_VFS			0x01
 #define AVRCP_SCOPE_SEARCH				0x02
@@ -252,6 +264,7 @@ struct avrcp {
 	bool pos_changed_supported;
 	uint8_t transaction;
 	struct pending_pdu *pending_pdu;
+	unsigned int svc_complete_id;
 };
 
 struct passthrough_handler {
@@ -1610,15 +1623,12 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 	if (len != 5)
 		goto err;
 
-	/* Check if event is supported otherwise reject */
-	if (!(session->supported_events & (1 << pdu->params[0])))
+	/* Check if event is supported otherwise reject, but a remote that
+	 * registers for the volume uses it whatever version it reports
+	 */
+	if (!(session->supported_events & (1 << pdu->params[0])) &&
+			pdu->params[0] != AVRCP_EVENT_VOLUME_CHANGED)
 		goto err;
-
-	if (!session->target) {
-		pdu->params_len = cpu_to_be16(1);
-		pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
-		return AVC_CTYPE_REJECTED;
-	}
 
 	switch (pdu->params[0]) {
 	case AVRCP_EVENT_STATUS_CHANGED:
@@ -1648,6 +1658,10 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 		len = 1;
 		break;
 	case AVRCP_EVENT_VOLUME_CHANGED:
+		/* Start at max volume if none has been set yet */
+		if (media_transport_get_a2dp_volume(dev) < 0)
+			media_transport_set_a2dp_volume(dev, 127);
+
 		volume = media_transport_get_a2dp_volume(dev);
 		if (volume < 0)
 			goto err;
@@ -1741,10 +1755,10 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-/* SetAbsoluteVolume requires at least version 1.4 and a category-2 */
+/* SetAbsoluteVolume requires a category-2 */
 static bool avrcp_volume_supported(struct avrcp_data *data)
 {
-	if (!data || data->version < 0x0104)
+	if (!data)
 		return false;
 
 	if (btd_opts.avrcp.volume_category &&
@@ -1763,11 +1777,6 @@ static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 
 	if (len != 1)
 		goto err;
-
-	if (!avrcp_volume_supported(session->target)) {
-		error("SetAbsoluteVolume not supported");
-		goto err;
-	}
 
 	volume = pdu->params[0] = pdu->params[0] & 0x7F;
 
@@ -3085,8 +3094,7 @@ static void avrcp_set_addressed_player(struct avrcp *session,
 static void set_addressed_player(struct avrcp *session,
 					struct avrcp_player *player)
 {
-	if (!player || !player->id || player->addressed ||
-				session->controller->version < 0x0104)
+	if (!player || !player->id || player->addressed)
 		return;
 
 	/* Set player as addressed */
@@ -3136,9 +3144,6 @@ static bool ct_set_setting(struct media_player *mp, const char *key,
 
 	session = player->sessions->data;
 	if (session == NULL)
-		return false;
-
-	if (session->controller->version < 0x0103)
 		return false;
 
 	set_ct_player(session, player);
@@ -4263,15 +4268,14 @@ static void session_init_browsing(struct avrcp *session)
 							destroy_browsing);
 }
 
-static struct avrcp_data *data_init(struct avrcp *session, const char *uuid)
+static struct avrcp_data *data_init(struct avrcp *session,
+					struct avrcp_data *data,
+					const char *uuid)
 {
-	struct avrcp_data *data;
 	const sdp_record_t *rec;
 	sdp_list_t *list, *protos;
 	sdp_profile_desc_t *desc;
 	int port = 0;
-
-	data = g_new0(struct avrcp_data, 1);
 
 	rec = btd_device_get_record(session->dev, uuid);
 	if (rec == NULL)
@@ -4348,13 +4352,8 @@ static void avrcp_connect_browsing(struct avrcp *session)
 
 static void target_init(struct avrcp *session)
 {
-	struct avrcp_server *server = session->server;
 	struct avrcp_data *target;
-	struct avrcp_player *player;
 	struct btd_service *service;
-
-	if (session->target != NULL)
-		return;
 
 	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
 
@@ -4363,46 +4362,22 @@ static void target_init(struct avrcp *session)
 		return;
 	}
 
-	target = data_init(session, AVRCP_REMOTE_UUID);
-	session->target = target;
+	target = data_init(session, session->target, AVRCP_REMOTE_UUID);
 
 	DBG("%p version 0x%04x", target, target->version);
 
+	/* The events of AVRCP 1.4 are RFU for an older controller */
+	if (target->version < 0x0104)
+		session->supported_events &= ~AVRCP_EVENTS_1_4;
+
 	btd_service_connecting_complete(service, 0);
 
-	player = g_slist_nth_data(server->players, 0);
-	if (player != NULL) {
+	if (target->player != NULL) {
 		int8_t init_volume;
-		target->player = player;
-		player->sessions = g_slist_prepend(player->sessions, session);
 
 		init_volume = btd_device_get_volume(session->dev);
 		media_transport_set_a2dp_volume(session->dev, init_volume);
 	}
-
-	session->supported_events |= (1 << AVRCP_EVENT_STATUS_CHANGED) |
-				(1 << AVRCP_EVENT_TRACK_CHANGED) |
-				(1 << AVRCP_EVENT_TRACK_REACHED_START) |
-				(1 << AVRCP_EVENT_TRACK_REACHED_END) |
-				(1 << AVRCP_EVENT_SETTINGS_CHANGED);
-
-	if (target->version < 0x0104)
-		return;
-
-	if (avrcp_volume_supported(target)) {
-		session->supported_events |=
-				(1 << AVRCP_EVENT_VOLUME_CHANGED);
-		/* Check if transport volume hasn't been initialized then set it
-		 * to max so it works properly if the controller attempts to
-		 * subscribe to AVRCP_EVENT_VOLUME_CHANGED.
-		 */
-		if (media_transport_get_a2dp_volume(session->dev) < 0)
-			media_transport_set_a2dp_volume(session->dev, 127);
-	}
-
-	session->supported_events |=
-				(1 << AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED) |
-				(1 << AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED);
 
 	/* Only check capabilities if controller is not supported */
 	if (session->controller == NULL)
@@ -4430,7 +4405,8 @@ static void controller_init(struct avrcp *session)
 		return;
 	}
 
-	controller = data_init(session, AVRCP_TARGET_UUID);
+	controller = data_init(session, g_new0(struct avrcp_data, 1),
+							AVRCP_TARGET_UUID);
 	session->controller = controller;
 
 	DBG("%p version 0x%04x", controller, controller->version);
@@ -4446,13 +4422,7 @@ static void controller_init(struct avrcp *session)
 			return;
 	}
 
-	if (controller->version < 0x0103)
-		return;
-
 	avrcp_get_capabilities(session);
-
-	if (controller->version < 0x0104)
-		return;
 
 	if (!(controller->features & AVRCP_FEATURE_BROWSING))
 		return;
@@ -4460,8 +4430,35 @@ static void controller_init(struct avrcp *session)
 	avrcp_connect_browsing(session);
 }
 
+static void session_svc_complete(struct btd_device *dev, int err,
+							void *user_data)
+{
+	struct avrcp *session = user_data;
+
+	session->svc_complete_id = 0;
+
+	if (btd_device_get_service(session->dev, AVRCP_TARGET_UUID) != NULL)
+		controller_init(session);
+
+	if (btd_device_get_service(session->dev, AVRCP_REMOTE_UUID) != NULL)
+		target_init(session);
+}
+
 static void session_init_control(struct avrcp *session)
 {
+	struct avrcp_player *player;
+
+	/* The remote may register for events before its records are known,
+	 * target_init() completes the target from them.
+	 */
+	session->target = g_new0(struct avrcp_data, 1);
+
+	player = g_slist_nth_data(session->server->players, 0);
+	if (player != NULL) {
+		session->target->player = player;
+		player->sessions = g_slist_prepend(player->sessions, session);
+	}
+
 	session->passthrough_id = avctp_register_passthrough_handler(
 							session->conn,
 							handle_passthrough,
@@ -4473,11 +4470,15 @@ static void session_init_control(struct avrcp *session)
 							session);
 	session->control_handlers = control_handlers;
 
-	if (btd_device_get_service(session->dev, AVRCP_TARGET_UUID) != NULL)
-		controller_init(session);
+	/* Until the remote's records are known, report the events of the
+	 * version implemented here, target_init() limits them to the
+	 * remote's version.
+	 */
+	session->supported_events = AVRCP_EVENTS_1_3 | AVRCP_EVENTS_1_4;
 
-	if (btd_device_get_service(session->dev, AVRCP_REMOTE_UUID) != NULL)
-		target_init(session);
+	session->svc_complete_id = device_wait_for_svc_complete(session->dev,
+							session_svc_complete,
+							session);
 }
 
 static void controller_destroy(struct avrcp *session)
@@ -4512,6 +4513,10 @@ static void session_destroy(struct avrcp *session, int err)
 	server->sessions = g_slist_remove(server->sessions, session);
 
 	session_abort_pending_pdu(session);
+
+	if (session->svc_complete_id)
+		device_remove_svc_complete_callback(session->dev,
+						session->svc_complete_id);
 
 	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
 	if (service != NULL) {
@@ -4829,10 +4834,8 @@ int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify)
 		return -ENOTCONN;
 
 	if (notify) {
-		if (!avrcp_volume_supported(session->target)) {
-			error("EVENT_VOLUME_CHANGED not supported");
+		if (!session->target)
 			return -ENOTSUP;
-		}
 		return avrcp_event(session, AVRCP_EVENT_VOLUME_CHANGED,
 								&volume);
 	}
