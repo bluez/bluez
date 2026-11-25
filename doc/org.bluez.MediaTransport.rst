@@ -160,6 +160,16 @@ Examples:
 
 :bluetoothctl: > transport.volume <transport> [value]
 
+boolean Mute [readwrite, optional]
+``````````````````````````````````
+
+Indicates mute state of the transport, only present for LE Audio (BAP)
+transports backed by VCS.
+
+Examples:
+
+:bluetoothctl: > transport.mute <transport> [on/off]
+
 object Endpoint [readonly, optional, experimental]
 ``````````````````````````````````````````````````
 
