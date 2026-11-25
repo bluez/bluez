@@ -350,6 +350,18 @@ bool btd_device_is_initiator(struct btd_device *dev)
 	return dev->att_io ? true : false;
 }
 
+static bool reverse_discovery(struct btd_device *dev, uint8_t bdaddr_type)
+{
+	switch (btd_opts.reverse_discovery) {
+	case REVERSE_DISCOVERY_ALWAYS:
+		return true;
+	case REVERSE_DISCOVERY_PAIRED:
+		return device_is_paired(dev, bdaddr_type);
+	default:
+		return false;
+	}
+}
+
 static GSList *find_service_with_profile(GSList *list, struct btd_profile *p)
 {
 	GSList *l;
@@ -6476,7 +6488,8 @@ static void gatt_client_init(struct btd_device *device)
 
 	gatt_client_cleanup(device);
 
-	if (!btd_device_is_initiator(device) && !btd_opts.reverse_discovery) {
+	if (!btd_device_is_initiator(device) &&
+			!reverse_discovery(device, device->bdaddr_type)) {
 		DBG("Reverse service discovery disabled: skipping GATT client");
 		return;
 	}
@@ -6974,6 +6987,12 @@ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg)
 	req = browse_request_new(device, BROWSE_GATT, msg);
 	if (!req)
 		return -EBUSY;
+
+	/* Connected without a client, as reverse discovery waited for the
+	 * device to be paired: start it on the existing link.
+	 */
+	if (!device->client && device->att)
+		gatt_client_init(device);
 
 	if (device->client) {
 		/*
@@ -7636,7 +7655,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
 	} else if (!state->svc_resolved && !state->browse &&
 			!state->discov_timer &&
 			(state->connected || !other->connected) &&
-			btd_opts.reverse_discovery) {
+			reverse_discovery(device, bdaddr_type)) {
 		/* If we are not initiators and there is no currently
 		 * active discovery or discovery timer, set discovery
 		 * timer on the bearer that was bonded. A bearer bonded
@@ -7684,7 +7703,7 @@ unsigned int device_wait_for_svc_complete(struct btd_device *dev,
 
 	dev->svc_callbacks = g_slist_prepend(dev->svc_callbacks, cb);
 
-	if (state->svc_resolved || !btd_opts.reverse_discovery)
+	if (state->svc_resolved || !reverse_discovery(dev, BDADDR_BREDR))
 		cb->idle_id = g_idle_add(svc_idle_cb, cb);
 	else {
 		if (dev->bredr_state.discov_timer > 0)

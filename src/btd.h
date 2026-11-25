@@ -48,6 +48,12 @@ enum bt_gatt_export_t {
 	BT_GATT_EXPORT_READ_WRITE,
 };
 
+enum reverse_discovery_t {
+	REVERSE_DISCOVERY_NEVER,
+	REVERSE_DISCOVERY_ALWAYS,
+	REVERSE_DISCOVERY_PAIRED,
+};
+
 struct btd_br_defaults {
 	uint16_t	page_scan_type;
 	uint16_t	page_scan_interval;
@@ -144,7 +150,7 @@ struct btd_opts {
 
 	struct btd_defaults defaults;
 
-	bool		reverse_discovery;
+	uint8_t		reverse_discovery;
 	bool		name_resolv;
 	bool		debug_keys;
 	bool		fast_conn;
