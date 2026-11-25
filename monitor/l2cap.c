@@ -100,6 +100,8 @@ struct chan_data {
 	uint8_t  ext_ctrl;
 	uint8_t  seq_num;
 	uint16_t sdu;
+	uint8_t  fcs;
+	int8_t   req_fcs;
 	struct packet_latency tx_l;
 };
 
@@ -157,6 +159,13 @@ static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 	chan_list[n].psm = psm;
 	chan_list[n].ctrlid = ctrlid;
 	chan_list[n].mode = mode;
+
+	/* 16-bit FCS is the default for ERTM/Streaming mode unless the
+	 * peer explicitly negotiates "No FCS" via the FCS configuration
+	 * option (see assign_fcs()).
+	 */
+	chan_list[n].fcs = 1;
+	chan_list[n].req_fcs = -1;
 
 	chan_list[n].seq_num = seq_num;
 }
@@ -249,6 +258,131 @@ static void assign_mode(const struct l2cap_frame *frame,
 		} else {
 			if (chan_list[i].dcid == dcid) {
 				chan_list[i].mode = mode;
+				break;
+			}
+		}
+	}
+}
+
+/* Record whether the peer negotiated "No FCS" (0x00) or "16-bit FCS"
+ * (0x01) via the FCS configuration option, so the trailing 2-byte FCS
+ * on ERTM/Streaming mode frames can be stripped before handing the
+ * payload to upper layer dissectors.
+ */
+static void assign_fcs(const struct l2cap_frame *frame,
+					uint8_t fcs, uint16_t dcid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == dcid) {
+				chan_list[i].fcs = fcs;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == dcid) {
+				chan_list[i].fcs = fcs;
+				break;
+			}
+		}
+	}
+}
+
+/* Record the FCS value requested by a Config Request, so it can be
+ * applied on a successful Config Response even if that response omits
+ * the FCS option (a successful response need not repeat accepted
+ * options).
+ */
+static void assign_req_fcs(const struct l2cap_frame *frame,
+					uint8_t fcs, uint16_t dcid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == dcid) {
+				chan_list[i].req_fcs = fcs;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == dcid) {
+				chan_list[i].req_fcs = fcs;
+				break;
+			}
+		}
+	}
+}
+
+/* Apply a previously requested FCS value on a successful Config
+ * Response, in case the response is option-free.
+ */
+static void apply_req_fcs(const struct l2cap_frame *frame, uint16_t scid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == scid) {
+				if (chan_list[i].req_fcs >= 0)
+					chan_list[i].fcs = chan_list[i].req_fcs;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == scid) {
+				if (chan_list[i].req_fcs >= 0)
+					chan_list[i].fcs = chan_list[i].req_fcs;
+				break;
+			}
+		}
+	}
+}
+
+/* Discard a pending FCS value requested by a Config Request that is
+ * then rejected with Unknown Options, so a later, unrelated
+ * successful Config Response in the same renegotiation (sent without
+ * repeating the option) doesn't apply the rejected value. Left alone
+ * on a continuation response, since the rejection there isn't final
+ * and a later fragment of the same response still carries the result
+ * that matters.
+ */
+static void discard_req_fcs(const struct l2cap_frame *frame, uint16_t scid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == scid) {
+				chan_list[i].req_fcs = -1;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == scid) {
+				chan_list[i].req_fcs = -1;
 				break;
 			}
 		}
@@ -882,6 +1016,11 @@ static void print_config_options(const struct l2cap_frame *frame,
 					get_le16(data + consumed + 9));
 			break;
 		case 0x05:
+			if (response)
+				assign_fcs(frame, data[consumed + 2], cid);
+			else
+				assign_req_fcs(frame, data[consumed + 2], cid);
+
 			switch (data[consumed + 2]) {
 			case 0x00:
 				str = "No FCS";
@@ -1188,10 +1327,20 @@ static void sig_config_rsp(const struct l2cap_frame *frame)
 	print_cid("Source", pdu->scid);
 	print_config_flags(pdu->flags);
 	print_config_result(pdu->result);
-	if (pdu->result == 0x0003)
+	if (pdu->result == 0x0003) {
+		/* Unknown Options: the rejected Config Request (and any
+		 * FCS value it proposed) won't take effect, unless this
+		 * is a non-final fragment of a continued response, in
+		 * which case the result isn't final yet.
+		 */
+		if (!(le16_to_cpu(pdu->flags) & 0x0001))
+			discard_req_fcs(frame, le16_to_cpu(pdu->scid));
 		print_unknown_options(frame, 6);
-	else
+	} else {
+		if (pdu->result == 0x0000)
+			apply_req_fcs(frame, le16_to_cpu(pdu->scid));
 		print_config_options(frame, 6, le16_to_cpu(pdu->scid), true);
+	}
 }
 
 static void sig_disconn_req(const struct l2cap_frame *frame)
@@ -2740,6 +2889,16 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 			}
 
 			display_printf("\n");
+
+			/* ERTM/Streaming mode frames carry a trailing 2-byte
+			 * FCS (unless explicitly negotiated off via the FCS
+			 * configuration option) that is not part of the
+			 * upper layer payload.
+			 */
+			chan = get_chan(&frame);
+			if (chan && chan->fcs && frame.size >= 2)
+				frame.size -= 2;
+
 			break;
 		}
 
