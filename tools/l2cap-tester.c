@@ -144,6 +144,8 @@ struct l2cap_data {
 	bool pending_rsp;
 	/* Link key type the controller reports instead of the actual one */
 	uint8_t link_key_type;
+	/* Bitmask of the incoming connections the listener refuses */
+	uint8_t refuse_mask;
 
 	bool shut_sock_wr;
 
@@ -1655,6 +1657,54 @@ static const uint8_t ecred_connect_req_2[] = {
 						0x05, 0x00, /* Credits */
 						0x41, 0x00, /* SCID #1 */
 						0x42, 0x00, /* SCID #2 */
+};
+
+/* Only some of the channels of the request are refused: the response is
+ * successful for the others, with their destination CID, and has none for
+ * the refused ones.
+ */
+static const uint8_t ecred_connect_rsp_refuse_2[] = {
+						0xa0, 0x02, /* MTU */
+						0xbc, 0x00, /* MPS */
+						0x04, 0x00, /* Credits */
+						0x04, 0x00, /* Result */
+						0x40, 0x00, /* DCID #1 */
+						0x00, 0x00, /* DCID #2 */
+};
+
+static const uint8_t ecred_connect_rsp_refuse_1[] = {
+						0xa0, 0x02, /* MTU */
+						0xbc, 0x00, /* MPS */
+						0x04, 0x00, /* Credits */
+						0x04, 0x00, /* Result */
+						0x00, 0x00, /* DCID #1 */
+						0x41, 0x00, /* DCID #2 */
+};
+
+static const struct l2cap_data ext_flowctl_server_accept_1_refuse_2_test = {
+	.server_psm = 0x0080,
+	.defer = true,
+	.refuse_mask = 0x02,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req_2,
+	.send_cmd_len = ARRAY_SIZE(ecred_connect_req_2),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp_refuse_2,
+	.expect_cmd_len = sizeof(ecred_connect_rsp_refuse_2),
+};
+
+static const struct l2cap_data ext_flowctl_server_refuse_1_accept_2_test = {
+	.server_psm = 0x0080,
+	.defer = true,
+	.refuse_mask = 0x01,
+	.mode = BT_MODE_EXT_FLOWCTL,
+	.send_cmd_code = BT_L2CAP_PDU_ECRED_CONN_REQ,
+	.send_cmd = ecred_connect_req_2,
+	.send_cmd_len = ARRAY_SIZE(ecred_connect_req_2),
+	.expect_cmd_code = BT_L2CAP_PDU_ECRED_CONN_RSP,
+	.expect_cmd = ecred_connect_rsp_refuse_1,
+	.expect_cmd_len = sizeof(ecred_connect_rsp_refuse_1),
 };
 
 static const struct l2cap_data ext_flowctl_server_accept_2_close_1_test = {
@@ -4561,6 +4611,63 @@ fail:
 	return false;
 }
 
+/* Accept the connections of the request in order, authorizing the ones the
+ * listener doesn't refuse, which are kept open, and closing without
+ * authorizing the ones it does.
+ */
+static bool ext_flowctl_accept_refuse_listen_cb(struct tester_io *io,
+					uint32_t cond, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct l2cap_data *l2data = data->test_data;
+	struct tester_io *new_io;
+	int sk, new_sk;
+	int idx = data->step++;
+
+	sk = tester_io_get_fd(io);
+
+	new_sk = accept(sk, NULL, NULL);
+	if (new_sk < 0) {
+		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
+		tester_test_failed();
+		return false;
+	}
+
+	if (l2data->refuse_mask & (1 << idx)) {
+		tester_print("Refuse sk = %d", new_sk);
+		close(new_sk);
+	} else {
+		tester_print("Authorize sk = %d", new_sk);
+
+		new_io = tester_io_new(new_sk);
+		tester_io_set_close_on_unref(new_io, true);
+
+		if (!data->io_channels)
+			data->io_channels = queue_new();
+		queue_push_tail(data->io_channels, new_io);
+
+		if (!defer_accept(data, tester_io_ref(new_io), NULL)) {
+			tester_io_unref(new_io);
+			tester_warn("Unable to accept deferred setup");
+			tester_test_failed();
+			return false;
+		}
+	}
+
+	/* The request has two channels */
+	if (data->step < 2)
+		return true;
+
+	data->io_id = 0;
+	return false;
+}
+
+static void test_ext_flowctl_server_accept_refuse(const void *test_data)
+{
+	start_test_server(test_data, send_req_new_conn,
+					ext_flowctl_accept_refuse_listen_cb);
+}
+
 static void test_ext_flowctl_server_accept_2_close_1(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -5173,6 +5280,14 @@ int main(int argc, char *argv[])
 				&ext_flowctl_server_accept_2_close_1_test,
 				setup_powered_server,
 				test_ext_flowctl_server_accept_2_close_1);
+	test_l2cap_le("L2CAP Ext-Flowctl Server - Accept 1 Refuse 1",
+				&ext_flowctl_server_accept_1_refuse_2_test,
+				setup_powered_server,
+				test_ext_flowctl_server_accept_refuse);
+	test_l2cap_le("L2CAP Ext-Flowctl Server - Refuse 1 Accept 1",
+				&ext_flowctl_server_refuse_1_accept_2_test,
+				setup_powered_server,
+				test_ext_flowctl_server_accept_refuse);
 	test_l2cap_le("L2CAP Ext-Flowctl Server - PHY",
 				&ext_flowctl_server_phy_test,
 				setup_powered_server, test_server);
