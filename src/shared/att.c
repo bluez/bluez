@@ -53,6 +53,7 @@ struct bt_att_chan {
 	bool in_req;			/* There's a pending incoming request */
 
 	uint8_t *buf;
+	uint16_t buf_len;
 	uint16_t mtu;
 };
 
@@ -1104,7 +1105,7 @@ static bool can_read_data(struct io *io, void *user_data)
 	uint8_t *pdu;
 	ssize_t bytes_read;
 
-	bytes_read = read(chan->fd, chan->buf, chan->mtu);
+	bytes_read = read(chan->fd, chan->buf, chan->buf_len);
 	if (bytes_read < 0)
 		return false;
 
@@ -1237,6 +1238,21 @@ static uint16_t io_get_mtu(int fd)
 	return 0;
 }
 
+static uint16_t io_get_imtu(int fd)
+{
+	socklen_t len;
+	struct l2cap_options l2o;
+
+	len = sizeof(l2o);
+	if (!getsockopt(fd, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len))
+		return l2o.imtu;
+
+	if (!getsockopt(fd, SOL_BLUETOOTH, BT_RCVMTU, &l2o.imtu, &len))
+		return l2o.imtu;
+
+	return 0;
+}
+
 static uint8_t io_get_type(int fd)
 {
 	struct sockaddr_l2 src;
@@ -1259,6 +1275,7 @@ static uint8_t io_get_type(int fd)
 static struct bt_att_chan *bt_att_chan_new(int fd, uint8_t type)
 {
 	struct bt_att_chan *chan;
+	uint16_t imtu;
 
 	if (fd < 0)
 		return NULL;
@@ -1283,15 +1300,24 @@ static struct bt_att_chan *bt_att_chan_new(int fd, uint8_t type)
 		/* fall through */
 	case BT_ATT_LE:
 		chan->mtu = BT_ATT_DEFAULT_LE_MTU;
+		chan->buf_len = chan->mtu;
 		break;
 	default:
+		/* The ATT_MTU of an L2CAP channel is the smaller of its two
+		 * MTUs (Core Vol 3, Part G, 5.1.1 and 5.3.1). Read up to the
+		 * incoming one, as L2CAP lets the remote send that much.
+		 */
 		chan->mtu = io_get_mtu(chan->fd);
+		imtu = io_get_imtu(chan->fd);
+		if (imtu)
+			chan->mtu = MIN(chan->mtu, imtu);
+		chan->buf_len = MAX(chan->mtu, imtu);
 	}
 
 	if (chan->mtu < BT_ATT_DEFAULT_LE_MTU)
 		goto fail;
 
-	chan->buf = malloc(chan->mtu);
+	chan->buf = malloc(chan->buf_len);
 	if (!chan->buf)
 		goto fail;
 
@@ -1487,14 +1513,17 @@ bool bt_att_set_mtu(struct bt_att *att, uint16_t mtu)
 	if (!chan)
 		return -ENOTCONN;
 
-	buf = malloc(mtu);
-	if (!buf)
-		return false;
+	if (mtu > chan->buf_len) {
+		buf = malloc(mtu);
+		if (!buf)
+			return false;
 
-	free(chan->buf);
+		free(chan->buf);
+		chan->buf = buf;
+		chan->buf_len = mtu;
+	}
 
 	chan->mtu = mtu;
-	chan->buf = buf;
 
 	if (chan->mtu > att->mtu) {
 		att->mtu = chan->mtu;

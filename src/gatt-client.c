@@ -2361,6 +2361,10 @@ void btd_gatt_client_eatt_connect(struct btd_gatt_client *client)
 	if (bt_att_get_channels(att) == btd_opts.gatt_channels)
 		return;
 
+	/* EATT channels are connected over LE only */
+	if (bt_att_get_link_type(att) == BT_ATT_BREDR)
+		return;
+
 	ba2str(device_get_address(dev), addr);
 
 	for (i = bt_att_get_channels(att); i < btd_opts.gatt_channels; i++) {
