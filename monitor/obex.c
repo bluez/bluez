@@ -269,6 +269,73 @@ void obex_remove_session(uint16_t index, uint16_t handle, uint16_t channel)
 	obex_clear_profile(index, handle, channel);
 }
 
+/* Drop every session's request/profile state for this index/handle,
+ * regardless of channel, used when the whole ACL link is going away
+ * (see obex_disconnect_handle()).
+ */
+void obex_remove_all_sessions(uint16_t index, uint16_t handle)
+{
+	int i;
+
+	for (i = 0; i < MAX_OBEX_REQ; i++) {
+		if (obex_req_list[i].index == index &&
+				obex_req_list[i].handle == handle)
+			memset(&obex_req_list[i], 0, sizeof(obex_req_list[i]));
+	}
+
+	for (i = 0; i < MAX_OBEX_PROFILE; i++) {
+		if (!obex_profile_list[i].channel)
+			continue;
+
+		if (obex_profile_list[i].index == index &&
+				obex_profile_list[i].handle == handle)
+			memset(&obex_profile_list[i], 0,
+					sizeof(obex_profile_list[i]));
+	}
+}
+
+/* RFCOMM DLCIs only use 6 bits (0-63), while channel values used for
+ * direct L2CAP OBEX sessions are either a raw dynamic CID (>= 0x0040)
+ * or an index into l2cap.c's channel table with the 0x8000 bit set
+ * (see l2cap_chan_key()), so this bound reliably tells the two apart.
+ */
+#define MAX_RFCOMM_DLCI 0x3f
+
+/* The RFCOMM multiplexer (DLCI 0) or its underlying L2CAP transport is
+ * being torn down, which takes every RFCOMM data channel multiplexed
+ * over it down with it, even though no per-channel DISC/DM is seen for
+ * each of them. Drop their request/profile state only, same as
+ * obex_remove_channel() would for a single channel, but keep the
+ * SDP-learned channel mappings so a future reconnect on the same ACL
+ * link doesn't need SDP repeated, and leave alone any unrelated direct
+ * L2CAP OBEX session sharing the same ACL handle.
+ */
+void obex_remove_rfcomm_sessions(uint16_t index, uint16_t handle)
+{
+	int i;
+
+	for (i = 0; i < MAX_OBEX_REQ; i++) {
+		if (obex_req_list[i].channel > MAX_RFCOMM_DLCI)
+			continue;
+
+		if (obex_req_list[i].index == index &&
+				obex_req_list[i].handle == handle)
+			memset(&obex_req_list[i], 0, sizeof(obex_req_list[i]));
+	}
+
+	for (i = 0; i < MAX_OBEX_PROFILE; i++) {
+		if (!obex_profile_list[i].channel ||
+				obex_profile_list[i].channel >
+							MAX_RFCOMM_DLCI)
+			continue;
+
+		if (obex_profile_list[i].index == index &&
+				obex_profile_list[i].handle == handle)
+			memset(&obex_profile_list[i], 0,
+					sizeof(obex_profile_list[i]));
+	}
+}
+
 void obex_disconnect_handle(uint16_t index, uint16_t handle)
 {
 	int i;
@@ -283,11 +350,7 @@ void obex_disconnect_handle(uint16_t index, uint16_t handle)
 						sizeof(obex_chan_list[i]));
 	}
 
-	for (i = 0; i < MAX_OBEX_REQ; i++) {
-		if (obex_req_list[i].index == index &&
-				obex_req_list[i].handle == handle)
-			memset(&obex_req_list[i], 0, sizeof(obex_req_list[i]));
-	}
+	obex_remove_all_sessions(index, handle);
 
 	for (i = 0; i < MAX_OBEX_PSM; i++) {
 		if (!obex_psm_list[i].psm)
@@ -297,16 +360,6 @@ void obex_disconnect_handle(uint16_t index, uint16_t handle)
 				obex_psm_list[i].handle == handle)
 			memset(&obex_psm_list[i], 0,
 						sizeof(obex_psm_list[i]));
-	}
-
-	for (i = 0; i < MAX_OBEX_PROFILE; i++) {
-		if (!obex_profile_list[i].channel)
-			continue;
-
-		if (obex_profile_list[i].index == index &&
-				obex_profile_list[i].handle == handle)
-			memset(&obex_profile_list[i], 0,
-					sizeof(obex_profile_list[i]));
 	}
 }
 

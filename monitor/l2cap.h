@@ -364,4 +364,6 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 
 void rfcomm_packet(const struct l2cap_frame *frame);
 
+void rfcomm_remove_handle(uint16_t index, uint16_t handle);
+
 void l2cap_dequeue_frame(struct timeval *delta, struct packet_conn_data *conn);

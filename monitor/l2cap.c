@@ -477,6 +477,19 @@ uint16_t l2cap_chan_key(uint16_t index, bool in, uint16_t handle, uint16_t cid)
 	return cid;
 }
 
+/* True if key is a l2cap_chan_key() value resolved to a chan_list[] entry
+ * (as opposed to a raw, unresolved CID) for the RFCOMM transport PSM
+ * (0x0003). The 0x8000 bit alone doesn't guarantee key was resolved, since
+ * a raw dynamic CID may also have it set; the low bits must additionally
+ * be bounds-checked against MAX_CHAN before indexing chan_list[].
+ */
+static bool is_rfcomm_chan_key(uint16_t key)
+{
+	uint16_t i = key & 0x7fff;
+
+	return (key & 0x8000) && i < MAX_CHAN && chan_list[i].psm == 0x0003;
+}
+
 static struct chan_data *get_chan(const struct l2cap_frame *frame)
 {
 	int i;
@@ -1387,6 +1400,7 @@ static void sig_config_rsp(const struct l2cap_frame *frame)
 static void sig_disconn_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_pdu_disconn_req *pdu = frame->data;
+	uint16_t scid_key, dcid_key;
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
@@ -1400,12 +1414,24 @@ static void sig_disconn_req(const struct l2cap_frame *frame)
 	 * DCID is the recipient's own CID, which matches "scid" when the
 	 * request came from the peer (frame->in) - see l2cap_chan_key().
 	 */
-	obex_remove_session(frame->index, frame->handle,
-			l2cap_chan_key(frame->index, !frame->in, frame->handle,
-						le16_to_cpu(pdu->scid)));
-	obex_remove_session(frame->index, frame->handle,
-			l2cap_chan_key(frame->index, frame->in, frame->handle,
-						le16_to_cpu(pdu->dcid)));
+	scid_key = l2cap_chan_key(frame->index, !frame->in, frame->handle,
+						le16_to_cpu(pdu->scid));
+	dcid_key = l2cap_chan_key(frame->index, frame->in, frame->handle,
+						le16_to_cpu(pdu->dcid));
+	obex_remove_session(frame->index, frame->handle, scid_key);
+	obex_remove_session(frame->index, frame->handle, dcid_key);
+
+	/* If the closing channel is the RFCOMM transport (PSM 0x0003),
+	 * the ACL link stays up but every RFCOMM data channel (DLCI)
+	 * multiplexed over it loses its L2CAP transport without a
+	 * per-channel DISC/DM of its own. Drop their OBEX session and
+	 * fragment reassembly state too, keeping the SDP-learned channel
+	 * mappings for a future reconnect.
+	 */
+	if (is_rfcomm_chan_key(scid_key) || is_rfcomm_chan_key(dcid_key)) {
+		obex_remove_rfcomm_sessions(frame->index, frame->handle);
+		rfcomm_remove_handle(frame->index, frame->handle);
+	}
 }
 
 static void sig_disconn_rsp(const struct l2cap_frame *frame)

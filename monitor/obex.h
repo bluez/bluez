@@ -110,6 +110,8 @@ bool obex_channel(uint16_t index, uint16_t handle, uint8_t channel,
 							const char **profile);
 void obex_remove_channel(uint16_t index, uint16_t handle, uint8_t channel);
 void obex_remove_session(uint16_t index, uint16_t handle, uint16_t channel);
+void obex_remove_all_sessions(uint16_t index, uint16_t handle);
+void obex_remove_rfcomm_sessions(uint16_t index, uint16_t handle);
 void obex_disconnect_handle(uint16_t index, uint16_t handle);
 
 void obex_add_psm(uint16_t index, uint16_t handle, uint16_t psm);
