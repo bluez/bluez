@@ -1623,8 +1623,11 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 	if (len != 5)
 		goto err;
 
-	/* Check if event is supported otherwise reject */
-	if (!(session->supported_events & (1 << pdu->params[0])))
+	/* Check if event is supported otherwise reject, but a remote that
+	 * registers for the volume uses it whatever version it reports
+	 */
+	if (!(session->supported_events & (1 << pdu->params[0])) &&
+			pdu->params[0] != AVRCP_EVENT_VOLUME_CHANGED)
 		goto err;
 
 	switch (pdu->params[0]) {
@@ -1752,10 +1755,10 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-/* SetAbsoluteVolume requires at least version 1.4 and a category-2 */
+/* SetAbsoluteVolume requires a category-2 */
 static bool avrcp_volume_supported(struct avrcp_data *data)
 {
-	if (!data || data->version < 0x0104)
+	if (!data)
 		return false;
 
 	if (btd_opts.avrcp.volume_category &&
@@ -1774,11 +1777,6 @@ static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 
 	if (len != 1)
 		goto err;
-
-	if (!avrcp_volume_supported(session->target)) {
-		error("SetAbsoluteVolume not supported");
-		goto err;
-	}
 
 	volume = pdu->params[0] = pdu->params[0] & 0x7F;
 
@@ -3096,8 +3094,7 @@ static void avrcp_set_addressed_player(struct avrcp *session,
 static void set_addressed_player(struct avrcp *session,
 					struct avrcp_player *player)
 {
-	if (!player || !player->id || player->addressed ||
-				session->controller->version < 0x0104)
+	if (!player || !player->id || player->addressed)
 		return;
 
 	/* Set player as addressed */
@@ -3147,9 +3144,6 @@ static bool ct_set_setting(struct media_player *mp, const char *key,
 
 	session = player->sessions->data;
 	if (session == NULL)
-		return false;
-
-	if (session->controller->version < 0x0103)
 		return false;
 
 	set_ct_player(session, player);
@@ -4385,9 +4379,6 @@ static void target_init(struct avrcp *session)
 		media_transport_set_a2dp_volume(session->dev, init_volume);
 	}
 
-	if (target->version < 0x0104)
-		return;
-
 	/* Only check capabilities if controller is not supported */
 	if (session->controller == NULL)
 		avrcp_get_capabilities(session);
@@ -4431,13 +4422,7 @@ static void controller_init(struct avrcp *session)
 			return;
 	}
 
-	if (controller->version < 0x0103)
-		return;
-
 	avrcp_get_capabilities(session);
-
-	if (controller->version < 0x0104)
-		return;
 
 	if (!(controller->features & AVRCP_FEATURE_BROWSING))
 		return;
@@ -4849,10 +4834,8 @@ int avrcp_set_volume(struct btd_device *dev, int8_t volume, bool notify)
 		return -ENOTCONN;
 
 	if (notify) {
-		if (!avrcp_volume_supported(session->target)) {
-			error("EVENT_VOLUME_CHANGED not supported");
+		if (!session->target)
 			return -ENOTSUP;
-		}
 		return avrcp_event(session, AVRCP_EVENT_VOLUME_CHANGED,
 								&volume);
 	}
