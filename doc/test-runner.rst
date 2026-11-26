@@ -17,7 +17,10 @@ OPTIONS
 :-a:--auto: Find tests and run them
 :-b/--dbus: Start D-Bus system daemon
 :-s/--dbus-session: Start D-Bus session daemon
-:-d/--daemon: Start bluetoothd
+:-d/--daemon[=mode]: Start bluetoothd, mode (default 1):
+
+    | 1: --nodetach -d [-f src/main.conf]
+    | 2: --nodetach [-f src/main.conf]
 :-m/--monitor: Start btmon
 :-l/--emulator[=num]: Start btvirt
 :-A/-audio[=path]: Start audio server
@@ -26,7 +29,10 @@ OPTIONS
 :-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
 :-H/--qemu-host-cpu: Use host CPU (requires KVM support)
-:-k/--kernel=<image>: Kernel image (bzImage) or User Mode Linux binary
+:-k/--kernel=<image>: Kernel image or source tree path:
+
+    | x86: bzImage or User Mode Linux binary
+    | arm64: Image, Image.gz, vmlinuz.efi, uImage
 :-F/--virtiofs[=<path>]: Path to virtiofsd, or no to disable virtio-fs
 :-T/--time-travel: Run a User Mode Linux kernel on simulated time, with
     btvirt as time travel calendar (default if the kernel supports it)
@@ -38,12 +44,13 @@ OPTIONS
 ARCHITECTURE
 ============
 
-**test-runner(1)** is both the launcher and the guest ``init``.  When run
-normally it builds a QEMU command line and starts QEMU, replacing itself
-with it unless it has to stay around to clean up after a ``virtiofsd`` or
-a passed-through PCIe device.  The same binary is re-executed inside the
-guest as PID 1, where it sets up the sandbox and runs the requested
-command::
+**test-runner(1)** is both the launcher and the guest ``init``, so it must
+be built for an architecture compatible with both the host and the guest
+kernel, and fails otherwise.  When run normally it builds a QEMU command
+line and starts QEMU, replacing itself with it unless it has to stay
+around to clean up after a ``virtiofsd`` or a passed-through PCIe device.
+The same binary is re-executed inside the guest as PID 1, where it sets
+up the sandbox and runs the requested command::
 
     ┌────────────────────────────────────────────────────────┐
     │ test-runner (launcher)                                 │
@@ -80,7 +87,7 @@ memory is backed by a memfd object.  Otherwise, the fallback is 9p::
 
     -fsdev local,id=fsdev-root,path=/,readonly=on,security_model=none
     -device virtio-9p-pci,fsdev=fsdev-root,mount_tag=/dev/root
-    -append "... rootfstype=9p rootflags=trans=virtio,version=9p2000.u ..."
+    -append "... rootfstype=9p root=/dev/root rootflags=trans=virtio,version=9p2000.u ..."
 
 9p passthrough is noticeably more CPU intensive, so virtio-fs is used by
 default whenever possible.
@@ -195,7 +202,8 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 
 	CONFIG_SERIAL_8250=y
 	CONFIG_SERIAL_8250_CONSOLE=y
-	CONFIG_SERIAL_8250_PCI=yCONFIG_DEBUG_KERNEL=y
+	CONFIG_SERIAL_8250_PCI=y
+	CONFIG_DEBUG_KERNEL=y
 	CONFIG_SERIAL_8250_NR_UARTS=4
 
 	CONFIG_TMPFS=y
@@ -360,6 +368,17 @@ Running shell with host controller using btproxy
 	$ tools/btproxy -u [1]
 	$ tools/test-runner -u -d -k /pathto/bzImage -- /bin/bash [2]
 
+Running bluetoothctl with host controller using btproxy for normal output
+--------------------------------------------------------------------------
+
+With -d2, bluetoothd is started without -d, so the bluetoothctl console
+is not flooded with debug output:
+
+.. code-block::
+
+	$ tools/btproxy -u [1]
+	$ tools/test-runner -u -d2 -k /pathto/bzImage -- client/bluetoothctl [2]
+
 Running shell with host controller USB-passthrough
 --------------------------------------------------
 
@@ -386,7 +405,7 @@ In addition the above kernel config option the following is required:
 	CONFIG_PCI=y
 	CONFIG_PCI_MSI=y
 	CONFIG_ACPI=y
-	CONFIG_BT_HCIBTINTEL_PCIE=y
+	CONFIG_BT_INTEL_PCIE=y
 
 IOMMU and interrupt remapping, without which vfio-pci fails to allocate
 MSI-X vectors (-ENOSPC):

@@ -55,6 +55,7 @@
 
 #define CMDLINE_MAX (2048 * 10)
 #define EXTRA_OPT_MAX 64
+#define DAEMON_MODE_MAX 3
 
 static const char *own_binary;
 static char **test_argv;
@@ -63,7 +64,7 @@ static int test_argc;
 static bool run_auto = false;
 static bool start_dbus = false;
 static bool start_dbus_session;
-static bool start_daemon = false;
+static unsigned int start_daemon;
 static bool start_monitor = false;
 static bool qemu_host_cpu = false;
 /* Simulated time with User Mode Linux: -1 if supported by the kernel */
@@ -133,10 +134,15 @@ static void strv_cleanup(struct strv *s)
 }
 
 static const char *qemu_table[] = {
+#if defined(__aarch64__)
+	"qemu-system-aarch64",
+	"/usr/bin/qemu-system-aarch64",
+#else
 	"qemu-system-x86_64",
 	"qemu-system-i386",
 	"/usr/bin/qemu-system-x86_64",
 	"/usr/bin/qemu-system-i386",
+#endif
 	NULL
 };
 
@@ -155,11 +161,16 @@ static const char *find_qemu(void)
 }
 
 static const char *kernel_table[] = {
+#if defined(__aarch64__)
+	"Image",
+	"arch/arm64/boot/Image",
+#else
 	"bzImage",
 	"arch/x86/boot/bzImage",
 	"vmlinux",
 	"arch/x86/boot/vmlinux",
 	"linux",
+#endif
 	NULL
 };
 
@@ -387,12 +398,12 @@ static void prepare_sandbox(void)
 	ioctl(STDIN_FILENO, TIOCSCTTY, 1);
 
 	for (i = 0; config_table[i]; i++) {
-		printf("Creating %s\n", config_table[i]);
+		printf("Mounting tmpfs to %s\n", config_table[i]);
 
 		if (mount("tmpfs", config_table[i], "tmpfs",
 				MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_STRICTATIME,
 				"mode=0755") < 0)
-			perror("Failed to create filesystem");
+			perror("Failed to mount filesystem");
 	}
 
 	enable_printk();
@@ -425,6 +436,9 @@ static void check_virtualization(void)
 
 	if (__get_cpuid(1, &eax, &ebx, &ecx, &edx) && (ecx & (1 << 5)))
 		printf("Found support for Virtual Machine eXtensions\n");
+#elif defined(__aarch64__)
+	if (access("/dev/kvm", R_OK | W_OK) < 0)
+		fprintf(stderr, "No access to /dev/kvm, falling back to TCG\n");
 #endif
 }
 
@@ -899,6 +913,8 @@ static int start_qemu(void)
 {
 	char cwd[PATH_MAX/2], initcmd[PATH_MAX], testargs[PATH_MAX];
 	const char *fscmdline;
+	const char *earlycon;
+	const char *noacpi;
 	char cmdline[CMDLINE_MAX];
 	char *argv_strv[EXTRA_OPT_MAX + 64];
 	struct strv _cleanup_(strv_cleanup) argv = { argv_strv,
@@ -917,7 +933,7 @@ static int start_qemu(void)
 	else
 		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
 
-	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
+	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0] ? : "");
 
 	for (i = 1; i < test_argc; i++) {
 		int len = sizeof(testargs) - pos;
@@ -933,23 +949,32 @@ static int start_qemu(void)
 	}
 
 	if (!virtiofsd)
-		fscmdline = "rootfstype=9p "
+		fscmdline = "rootfstype=9p root=/dev/root "
 				"rootflags=trans=virtio,version=9p2000.u";
 	else
 		fscmdline = "rootfstype=virtiofs root=/dev/root";
 
+#if defined(__aarch64__)
+	earlycon = "earlycon";
+	noacpi = "";
+#else
+	earlycon = "earlyprintk=serial";
+	/* PCIe passthrough requires ACPI and APIC for device enumeration
+	 * and MSI interrupts.
+	 */
+	noacpi = pcie_dev ? "" : "acpi=off pci=noacpi noapic";
+#endif
+
 	snprintf(cmdline, sizeof(cmdline),
-				"console=hvc0 earlyprintk=serial "
+				"console=hvc0 %s "
 				"no_hash_pointers=1 %s %s quiet ro init=%s "
 				"TESTHOME=%s TESTDBUS=%u TESTDAEMON=%u "
 				"TESTDBUSSESSION=%u XDG_RUNTIME_DIR=/run/user/0 "
 				"TESTMONITOR=%u TESTEMULATOR=%u TESTDEVS=%d "
 				"TESTAUTO=%u TESTAUDIO='%s' TESTARGS=\'%s\'",
+				earlycon,
 				fscmdline,
-				/* PCIe passthrough requires ACPI and APIC for
-				 * device enumeration and MSI interrupts.
-				 */
-				pcie_dev ? "" : "acpi=off pci=noacpi noapic",
+				noacpi,
 				initcmd, cwd, start_dbus, start_daemon,
 				start_dbus_session,
 				start_monitor, num_emulator, num_devs,
@@ -965,6 +990,13 @@ static int start_qemu(void)
 	strv_append(&argv, "%s", qemu_binary);
 	strv_concat(&argv, qemu_argv);
 
+#if defined(__aarch64__)
+	strv_append(&argv, "-machine");
+	strv_append(&argv, "virt,gic-version=max,accel=kvm:tcg");
+
+	strv_append(&argv, "-cpu");
+	strv_append(&argv, qemu_host_cpu ? "host" : "max");
+#else
 	/* Interrupt remapping is required to pass through a device using
 	 * MSI-X, which in turn needs the split irqchip.
 	 */
@@ -976,6 +1008,7 @@ static int start_qemu(void)
 		strv_append(&argv, "-cpu");
 		strv_append(&argv, "host");
 	}
+#endif
 
 	strv_append(&argv, "-kernel");
 	strv_append(&argv, "%s", kernel_image);
@@ -999,8 +1032,10 @@ static int start_qemu(void)
 	}
 
 	if (pcie_dev) {
+#if !defined(__aarch64__)
 		strv_append(&argv, "-device");
 		strv_append(&argv, "intel-iommu,intremap=on");
+#endif
 		strv_append(&argv, "-device");
 		strv_append(&argv, "%s", pcie_dev);
 	}
@@ -1214,7 +1249,7 @@ static int start_uml(void)
 	else
 		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
 
-	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
+	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0] ? : "");
 
 	for (i = 1; i < test_argc; i++) {
 		int len = sizeof(testargs) - pos;
@@ -1549,7 +1584,7 @@ static const char *daemon_table[] = {
 static pid_t start_bluetooth_daemon(const char *home)
 {
 	const char *daemon = NULL;
-	char *argv[6], *envp[2];
+	char *argv[6] = { NULL }, *envp[2];
 	pid_t pid;
 	struct stat st;
 	int i;
@@ -1574,15 +1609,30 @@ static pid_t start_bluetooth_daemon(const char *home)
 
 	printf("Using Bluetooth daemon %s\n", daemon);
 
-	argv[0] = (char *) daemon;
-	argv[1] = "--nodetach";
-	argv[2] = "-d";
-	argv[3] = NULL;
+	i = 0;
+	argv[i++] = (char *) daemon;
 
-	if (!stat("src/main.conf", &st)) {
-		argv[3] = "-f";
-		argv[4] = "src/main.conf";
-		argv[5] = NULL;
+	switch (start_daemon) {
+	case 1:
+		argv[i++] = "--nodetach";
+		argv[i++] = "-d";
+
+		if (!stat("src/main.conf", &st)) {
+			argv[i++] = "-f";
+			argv[i++] = "src/main.conf";
+		}
+		break;
+	case 2:
+		argv[i++] = "--nodetach";
+
+		if (!stat("src/main.conf", &st)) {
+			argv[i++] = "-f";
+			argv[i++] = "src/main.conf";
+		}
+		break;
+	default:
+		fprintf(stderr, "Invalid daemon mode %u\n", start_daemon);
+		return -1;
 	}
 
 	envp[0] = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket";
@@ -2071,7 +2121,7 @@ start_next:
 		kill(dbus_session_pid, SIGTERM);
 
 	if (emulator_pid > 0)
-		kill(dbus_pid, SIGTERM);
+		kill(emulator_pid, SIGTERM);
 
 	if (monitor_pid > 0)
 		kill(monitor_pid, SIGTERM);
@@ -2138,10 +2188,11 @@ static void run_tests(void)
 		start_dbus_session = true;
 	}
 
-	ptr = strstr(cmdline, "TESTDAEMON=1");
+	ptr = strstr(cmdline, "TESTDAEMON=");
 	if (ptr) {
-		printf("bluetoothd requested\n");
-		start_daemon = true;
+		start_daemon = strtoul(ptr + 11, NULL, 0);
+		if (start_daemon)
+			printf("bluetoothd mode %u requested\n", start_daemon);
 	}
 
 	ptr = strstr(cmdline, "TESTMONITOR=1");
@@ -2174,7 +2225,7 @@ static void run_tests(void)
 	ptr = strstr(cmdline, "TESTHOME=");
 	if (ptr) {
 		home = ptr + 4;
-		ptr = strpbrk(home + 9, " \r\n");
+		ptr = strpbrk(ptr + 9, " \r\n");
 		if (ptr)
 			*ptr = '\0';
 	}
@@ -2191,7 +2242,9 @@ static void usage(void)
 		"\t-a, --all,--auto       Find tests and run them\n"
 		"\t-b, --dbus             Start D-Bus system daemon\n"
 		"\t-s, --dbus-session     Start D-Bus session daemon\n"
-		"\t-d, --daemon           Start bluetoothd\n"
+		"\t-d, --daemon[=mode]    Start bluetoothd, mode (default 1):\n"
+		"\t                       1: --nodetach -d [-f src/main.conf]\n"
+		"\t                       2: --nodetach [-f src/main.conf]\n"
 		"\t-m, --monitor          Start btmon\n"
 		"\t-l, --emulator[=num]   Start btvirt\n"
 		"\t-A, --audio[=path]     Start audio server\n"
@@ -2200,8 +2253,9 @@ static void usage(void)
 		"\t-P, --pcie <qemu_args> Provide PCIe device\n"
 		"\t-q, --qemu <path>      QEMU binary\n"
 		"\t-H, --qemu-host-cpu    Use host CPU (requires KVM support)\n"
-		"\t-k, --kernel <image>   Kernel bzImage, User Mode Linux\n"
-		"\t                       binary or source tree path\n"
+		"\t-k, --kernel <image>   Kernel image or source tree path,\n"
+		"\t                       x86: bzImage or User Mode Linux\n"
+		"\t                       arm64: Image, Image.gz, vmlinuz.efi, uImage\n"
 		"\t-F, --virtiofs[=<path>]  Virtiofsd path or 'no'\n"
 		"\t-T, --time-travel      Run User Mode Linux on simulated\n"
 		"\t                       time, with btvirt as calendar\n"
@@ -2219,7 +2273,7 @@ static const struct option main_options[] = {
 	{ "dbus",    no_argument,       NULL, 'b' },
 	{ "dbus-session", no_argument,  NULL, 's' },
 	{ "unix",    optional_argument, NULL, 'u' },
-	{ "daemon",  no_argument,       NULL, 'd' },
+	{ "daemon",  optional_argument, NULL, 'd' },
 	{ "emulator", no_argument,      NULL, 'l' },
 	{ "monitor", no_argument,       NULL, 'm' },
 	{ "qemu",    required_argument, NULL, 'q' },
@@ -2260,7 +2314,7 @@ int main(int argc, char *argv[])
 		int opt;
 
 		opt = getopt_long(argc, argv,
-				"au::bdsl::mq:Hk:A::U:P:o:F::TRvh",
+				"au::bd::sl::mq:Hk:A::U:P:o:F::TRvh",
 				main_options, NULL);
 		if (opt < 0)
 			break;
@@ -2281,8 +2335,21 @@ int main(int argc, char *argv[])
 			start_dbus_session = true;
 			break;
 		case 'd':
-			start_dbus = true;
-			start_daemon = true;
+			start_daemon = 1;
+			if (optarg) {
+				char *endptr;
+
+				start_daemon = strtoul(optarg, &endptr, 0);
+				if (start_daemon >= DAEMON_MODE_MAX ||
+								*endptr) {
+					fprintf(stderr,
+						"Invalid daemon mode %s\n",
+						optarg);
+					return EXIT_FAILURE;
+				}
+			}
+			if (start_daemon)
+				start_dbus = true;
 			break;
 		case 'l':
 			num_emulator = optarg ? atoi(optarg) : 1;
