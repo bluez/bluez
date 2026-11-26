@@ -195,7 +195,8 @@ option (like the Bluetooth subsystem) can be enabled on top of this.
 
 	CONFIG_SERIAL_8250=y
 	CONFIG_SERIAL_8250_CONSOLE=y
-	CONFIG_SERIAL_8250_PCI=yCONFIG_DEBUG_KERNEL=y
+	CONFIG_SERIAL_8250_PCI=y
+	CONFIG_DEBUG_KERNEL=y
 	CONFIG_SERIAL_8250_NR_UARTS=4
 
 	CONFIG_TMPFS=y
@@ -386,7 +387,7 @@ In addition the above kernel config option the following is required:
 	CONFIG_PCI=y
 	CONFIG_PCI_MSI=y
 	CONFIG_ACPI=y
-	CONFIG_BT_HCIBTINTEL_PCIE=y
+	CONFIG_BT_INTEL_PCIE=y
 
 IOMMU and interrupt remapping, without which vfio-pci fails to allocate
 MSI-X vectors (-ENOSPC):
