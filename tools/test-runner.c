@@ -398,12 +398,12 @@ static void prepare_sandbox(void)
 	ioctl(STDIN_FILENO, TIOCSCTTY, 1);
 
 	for (i = 0; config_table[i]; i++) {
-		printf("Creating %s\n", config_table[i]);
+		printf("Mounting tmpfs to %s\n", config_table[i]);
 
 		if (mount("tmpfs", config_table[i], "tmpfs",
 				MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_STRICTATIME,
 				"mode=0755") < 0)
-			perror("Failed to create filesystem");
+			perror("Failed to mount filesystem");
 	}
 
 	enable_printk();
@@ -933,7 +933,7 @@ static int start_qemu(void)
 	else
 		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
 
-	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
+	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0] ? : "");
 
 	for (i = 1; i < test_argc; i++) {
 		int len = sizeof(testargs) - pos;
@@ -1249,7 +1249,7 @@ static int start_uml(void)
 	else
 		snprintf(initcmd, sizeof(initcmd), "%s/%s", cwd, own_binary);
 
-	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0]);
+	pos = snprintf(testargs, sizeof(testargs), "%s", test_argv[0] ? : "");
 
 	for (i = 1; i < test_argc; i++) {
 		int len = sizeof(testargs) - pos;
