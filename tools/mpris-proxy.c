@@ -2617,10 +2617,11 @@ static void obex_get_image(struct player *player, const char *handle)
 	const char *path;
 	char *filename;
 
-	if (!player->obex)
+	if (!obex_session || !obex_session->obex)
 		return;
 
 	path = g_dbus_proxy_get_path(obex_session->obex);
+
 	player->filename = g_strconcat(g_get_tmp_dir(), "/",
 				path + strlen(BLUEZ_OBEX_CLIENT_PATH "/"),
 				"-", handle, NULL);
@@ -2820,12 +2821,15 @@ static struct player *find_player_by_obex(const char *path)
 	for (l = players; l; l = l->next) {
 		struct player *player = l->data;
 		struct obex_session *session = player->obex;
-		const char *obex_path = NULL;
+		const char *obex_path;
 
-		if (session == NULL)
+		if (session == NULL || session->obex == NULL)
 			continue;
 
 		obex_path = g_dbus_proxy_get_path(session->obex);
+		if (obex_path == NULL)
+			continue;
+
 		if (g_str_has_prefix(path, obex_path))
 			return player;
 	}
