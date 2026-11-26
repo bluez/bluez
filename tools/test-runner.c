@@ -949,7 +949,7 @@ static int start_qemu(void)
 	}
 
 	if (!virtiofsd)
-		fscmdline = "rootfstype=9p "
+		fscmdline = "rootfstype=9p root=/dev/root "
 				"rootflags=trans=virtio,version=9p2000.u";
 	else
 		fscmdline = "rootfstype=virtiofs root=/dev/root";

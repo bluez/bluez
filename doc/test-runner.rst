@@ -87,7 +87,7 @@ memory is backed by a memfd object.  Otherwise, the fallback is 9p::
 
     -fsdev local,id=fsdev-root,path=/,readonly=on,security_model=none
     -device virtio-9p-pci,fsdev=fsdev-root,mount_tag=/dev/root
-    -append "... rootfstype=9p rootflags=trans=virtio,version=9p2000.u ..."
+    -append "... rootfstype=9p root=/dev/root rootflags=trans=virtio,version=9p2000.u ..."
 
 9p passthrough is noticeably more CPU intensive, so virtio-fs is used by
 default whenever possible.
