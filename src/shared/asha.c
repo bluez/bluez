@@ -40,6 +40,7 @@
 #define ASHA_CHRC_LE_PSM_OUT_UUID "2d410339-82b6-42aa-b34e-e2e01df8cc1a"
 
 static struct queue *asha_devices;
+static struct queue *asha_attached;
 
 static unsigned int bt_asha_status(struct bt_asha *asha, bool connected);
 
@@ -49,6 +50,41 @@ static bool match_hisyncid(const void *data, const void *user_data)
 	const struct bt_asha *asha = user_data;
 
 	return (memcmp(set->hisyncid, asha->hisyncid, 8) == 0);
+}
+
+static bool match_set_member(const void *data, const void *user_data)
+{
+	const struct bt_asha_set *set = data;
+
+	return set->left == user_data || set->right == user_data;
+}
+
+static bool match_attached_side(const void *data, const void *user_data)
+{
+	const struct bt_asha *other = data;
+	const struct bt_asha *asha = user_data;
+
+	return other->right_side == asha->right_side &&
+			!memcmp(other->hisyncid, asha->hisyncid, 8);
+}
+
+static bool match_attached_peer(const void *data, const void *user_data)
+{
+	const struct bt_asha *other = data;
+	const struct bt_asha *asha = user_data;
+
+	return other->right_side != asha->right_side &&
+			!memcmp(other->hisyncid, asha->hisyncid, 8);
+}
+
+static void remove_attached(struct bt_asha *asha)
+{
+	queue_remove(asha_attached, asha);
+
+	if (queue_isempty(asha_attached)) {
+		queue_destroy(asha_attached, NULL);
+		asha_attached = NULL;
+	}
 }
 
 static struct bt_asha_set *find_asha_set(struct bt_asha *asha)
@@ -83,9 +119,12 @@ static void update_asha_set(struct bt_asha *asha, bool connected)
 {
 	struct bt_asha_set *set;
 
-	set = queue_find(asha_devices, match_hisyncid, asha);
-
 	if (connected) {
+		if (!asha_devices)
+			asha_devices = queue_new();
+
+		set = queue_find(asha_devices, match_hisyncid, asha);
+
 		if (!set) {
 			set = new0(struct bt_asha_set, 1);
 			memcpy(set->hisyncid, asha->hisyncid, 8);
@@ -101,15 +140,24 @@ static void update_asha_set(struct bt_asha *asha, bool connected)
 			DBG("Left side registered for ASHA set");
 		}
 	} else {
+		/*
+		 * Find the set by object: the HiSyncId is cleared on reset and
+		 * a replacement for the same side shares it, so it cannot say
+		 * which slot, if any, still belongs to this object.
+		 */
+		set = queue_find(asha_devices, match_set_member, asha);
+
 		if (!set) {
-			error("Missing ASHA set");
+			DBG("ASHA object not registered in a set");
 			return;
 		}
 
-		if (asha->right_side && set->right) {
+		if (set->right == asha) {
 			set->right = NULL;
 			DBG("Right side unregistered for ASHA set");
-		} else if (!asha->right_side && set->left) {
+		}
+
+		if (set->left == asha) {
 			set->left = NULL;
 			DBG("Left side unregistered for ASHA set");
 		}
@@ -163,6 +211,8 @@ struct bt_asha *bt_asha_new(void)
 
 void bt_asha_reset(struct bt_asha *asha)
 {
+	remove_attached(asha);
+
 	if (asha->status_notify_id) {
 		bt_gatt_client_unregister_notify(asha->client,
 						asha->status_notify_id);
@@ -195,6 +245,7 @@ void bt_asha_state_reset(struct bt_asha *asha)
 
 void bt_asha_free(struct bt_asha *asha)
 {
+	remove_attached(asha);
 	update_asha_set(asha, false);
 	gatt_db_unref(asha->db);
 	bt_gatt_client_unref(asha->client);
@@ -242,6 +293,39 @@ static int asha_send_acp_without_response(struct bt_asha *asha,
 	}
 
 	return 0;
+}
+
+bool bt_asha_set_connection_interval(struct bt_asha *asha, uint16_t interval)
+{
+	struct bt_asha *other;
+	uint8_t cmd[] = {
+		0x03,		/* STATUS */
+		0x02,		/* LE connection parameter update */
+		0x00,		/* Interval, in 1.25 ms units */
+	};
+	bool success;
+
+	/*
+	 * Android's ASHA document lists only the update type for this STATUS,
+	 * but its hearing aid stack appends the new interval as one more
+	 * byte and sends it to both sides. Reject a value that does not fit
+	 * in that byte instead of truncating it.
+	 */
+	if (!asha || !asha->client || !asha->acp_handle ||
+				interval < 0x0006 || interval > UINT8_MAX)
+		return false;
+
+	cmd[2] = interval;
+	success = asha_send_acp_without_response(asha, cmd, sizeof(cmd)) == 0;
+	other = queue_find(asha_attached, match_attached_peer, asha);
+
+	/* Notify an attached peer even if it has not started streaming yet. */
+	if (other && other != asha && other->client && other->acp_handle) {
+		if (asha_send_acp_without_response(other, cmd, sizeof(cmd)) < 0)
+			success = false;
+	}
+
+	return success;
 }
 
 unsigned int bt_asha_start(struct bt_asha *asha, bt_asha_cb_t cb,
@@ -353,6 +437,13 @@ static void check_probe_done(struct bt_asha *asha)
 	if (asha->psm == 0 || memcmp(asha->hisyncid, zeroes,
 					sizeof(zeroes)) == 0)
 		return;
+
+	if (!asha_attached)
+		asha_attached = queue_new();
+
+	/* Keep attachment separate from the set of previously started aids. */
+	queue_remove_if(asha_attached, match_attached_side, asha);
+	queue_push_tail(asha_attached, asha);
 
 	if (asha->attach_cb) {
 		asha->attach_cb(asha->attach_cb_data);
