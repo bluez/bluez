@@ -4141,6 +4141,24 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	if (device->bredr_state.connected || device->le_state.connected)
 		return;
 
+	/* Security level and encryption type are only meaningful for the
+	 * current connection: reset them once both bearers are disconnected
+	 * so a later reconnect doesn't report a stale value.
+	 */
+	if (device->sec_level) {
+		device->sec_level = 0;
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE,
+						"SecurityLevel");
+	}
+
+	if (device->enc_type) {
+		device->enc_type = 0;
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE,
+						"EncryptionType");
+	}
+
 	device_update_last_seen(device, bdaddr_type, true);
 
 	g_slist_free_full(device->eir_uuids, g_free);
