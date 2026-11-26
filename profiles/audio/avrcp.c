@@ -1649,8 +1649,15 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 		break;
 	case AVRCP_EVENT_VOLUME_CHANGED:
 		volume = media_transport_get_a2dp_volume(dev);
-		if (volume < 0)
-			goto err;
+		/*
+		 * CT may RegisterNotification(VOLUME_CHANGED) before the
+		 * A2DP transport exists. Rejecting with Invalid Parameter
+		 * breaks Absolute Volume; seed max like target_init does.
+		 */
+		if (volume < 0) {
+			media_transport_set_a2dp_volume(dev, 127);
+			volume = 127;
+		}
 
 		pdu->params[1] = volume;
 		len = 2;
