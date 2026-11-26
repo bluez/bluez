@@ -26,7 +26,10 @@ OPTIONS
 :-P/--pcie=<qemu_args>: Provide PCIe device
 :-q/--qemu=<path>: QEMU binary
 :-H/--qemu-host-cpu: Use host CPU (requires KVM support)
-:-k/--kernel=<image>: Kernel image (bzImage) or User Mode Linux binary
+:-k/--kernel=<image>: Kernel image or source tree path:
+
+    | x86: bzImage or User Mode Linux binary
+    | arm64: Image, Image.gz, vmlinuz.efi, uImage
 :-F/--virtiofs[=<path>]: Path to virtiofsd, or no to disable virtio-fs
 :-T/--time-travel: Run a User Mode Linux kernel on simulated time, with
     btvirt as time travel calendar (default if the kernel supports it)
@@ -38,12 +41,13 @@ OPTIONS
 ARCHITECTURE
 ============
 
-**test-runner(1)** is both the launcher and the guest ``init``.  When run
-normally it builds a QEMU command line and starts QEMU, replacing itself
-with it unless it has to stay around to clean up after a ``virtiofsd`` or
-a passed-through PCIe device.  The same binary is re-executed inside the
-guest as PID 1, where it sets up the sandbox and runs the requested
-command::
+**test-runner(1)** is both the launcher and the guest ``init``, so it must
+be built for an architecture compatible with both the host and the guest
+kernel, and fails otherwise.  When run normally it builds a QEMU command
+line and starts QEMU, replacing itself with it unless it has to stay
+around to clean up after a ``virtiofsd`` or a passed-through PCIe device.
+The same binary is re-executed inside the guest as PID 1, where it sets
+up the sandbox and runs the requested command::
 
     ┌────────────────────────────────────────────────────────┐
     │ test-runner (launcher)                                 │
