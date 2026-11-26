@@ -2069,7 +2069,16 @@ static void map_handle_new_message(struct map_data *map,
 	if (msg)
 		g_hash_table_remove(map->messages, &event->handle);
 
-	map_msg_create(map, event->handle, event->folder, event->msg_type);
+	msg = map_msg_create(map, event->handle, event->folder,
+							event->msg_type);
+
+	if (msg) {
+		parse_datetime(msg, event->datetime);
+		parse_subject(msg, event->subject);
+		parse_sender(msg, event->sender_name);
+		if (event->priority)
+			parse_priority(msg, event->priority);
+	}
 }
 
 static void map_handle_status_changed(struct map_data *map,
