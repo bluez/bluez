@@ -1824,6 +1824,12 @@ static void reg_def_req_default_agent_reply(struct l_dbus_proxy *proxy,
 							entry = entry->next) {
 			struct btp_device *device = entry->data;
 
+			/* Force the cached security level to be resent on
+			 * (re-)registration, even if it was already reported
+			 * to a previous GAP registration.
+			 */
+			device->sec_level = 0;
+
 			btp_gap_device_found_ev(device->proxy);
 		}
 	}
@@ -2447,6 +2453,11 @@ static void btp_security_level_changed_ev(struct l_dbus_proxy *proxy)
 		return;
 	}
 
+	if (device->sec_level == ev.sec_level)
+		return;
+
+	device->sec_level = ev.sec_level;
+
 	btp_send(btp, BTP_GAP_SERVICE, BTP_EV_GAP_SEC_LEVEL_CHANGED,
 					adapter->index, sizeof(ev), &ev);
 }
@@ -2613,6 +2624,8 @@ static void btp_gap_device_connection_ev(struct l_dbus_proxy *proxy,
 					adapter->index, sizeof(ev), &ev);
 	} else {
 		struct btp_gap_device_disconnected_ev ev;
+
+		device->sec_level = 0;
 
 		str2ba(str_addr, &ev.address);
 		ev.address_type = address_type;
