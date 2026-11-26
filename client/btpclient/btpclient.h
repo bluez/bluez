@@ -30,6 +30,7 @@ struct btp_device {
 	struct l_dbus_proxy *proxy;
 	uint8_t address_type;
 	bdaddr_t address;
+	uint8_t sec_level;
 	struct l_queue *services;
 	struct l_queue *characteristics;
 	struct l_queue *descriptors;
