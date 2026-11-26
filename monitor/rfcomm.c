@@ -31,6 +31,7 @@
 #include "keys.h"
 #include "sdp.h"
 #include "rfcomm.h"
+#include "obex.h"
 
 static const char *cr_str[] = {
 	"RSP",
@@ -385,13 +386,120 @@ static inline bool mcc_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 	return true;
 }
 
+/* An OBEX PDU may be split across several RFCOMM UIH frames since the
+ * RFCOMM MTU is typically much smaller than the maximum OBEX PDU
+ * length. Information bytes are buffered per index/handle/DLCI and
+ * direction until a complete PDU (3-byte opcode+length header plus
+ * body) is available; complete PDUs are then decoded and any leftover
+ * bytes are kept for the next frame.
+ *
+ * The full DLCI (server channel plus direction bit), not just the
+ * server channel number, identifies the session: two connections to
+ * the same server channel but opened by different initiators use
+ * distinct DLCIs and must not share a reassembly buffer.
+ */
+#define MAX_OBEX_FRAG 64
+
+struct obex_frag_data {
+	uint16_t index;
+	uint16_t handle;
+	uint8_t dlci;
+	bool in;
+	uint8_t *buf;
+	uint32_t len;
+};
+
+static struct obex_frag_data obex_frag_list[MAX_OBEX_FRAG];
+
+static struct obex_frag_data *obex_frag_get(uint16_t index, uint16_t handle,
+						uint8_t dlci, bool in)
+{
+	int i, n = -1;
+
+	for (i = 0; i < MAX_OBEX_FRAG; i++) {
+		if (!obex_frag_list[i].dlci) {
+			if (n < 0)
+				n = i;
+			continue;
+		}
+
+		if (obex_frag_list[i].index == index &&
+				obex_frag_list[i].handle == handle &&
+				obex_frag_list[i].dlci == dlci &&
+				obex_frag_list[i].in == in)
+			return &obex_frag_list[i];
+	}
+
+	if (n < 0)
+		return NULL;
+
+	obex_frag_list[n].index = index;
+	obex_frag_list[n].handle = handle;
+	obex_frag_list[n].dlci = dlci;
+	obex_frag_list[n].in = in;
+	obex_frag_list[n].buf = NULL;
+	obex_frag_list[n].len = 0;
+
+	return &obex_frag_list[n];
+}
+
+static void obex_frag_reset(struct obex_frag_data *frag)
+{
+	free(frag->buf);
+	frag->buf = NULL;
+	frag->len = 0;
+}
+
+static void rfcomm_remove_channel(uint16_t index, uint16_t handle,
+							uint8_t dlci)
+{
+	int i;
+
+	for (i = 0; i < MAX_OBEX_FRAG; i++) {
+		if (obex_frag_list[i].dlci == dlci &&
+				obex_frag_list[i].index == index &&
+				obex_frag_list[i].handle == handle) {
+			obex_frag_reset(&obex_frag_list[i]);
+			memset(&obex_frag_list[i], 0,
+					sizeof(obex_frag_list[i]));
+		}
+	}
+}
+
+/* An ACL handle may be disconnected without an RFCOMM DISC/DM on each
+ * of its channels (e.g. the link is simply dropped), which would
+ * otherwise leave both directions' reassembly buffers and their slots
+ * allocated. Free every fragment buffer still tracked for this handle.
+ */
+void rfcomm_remove_handle(uint16_t index, uint16_t handle)
+{
+	int i;
+
+	for (i = 0; i < MAX_OBEX_FRAG; i++) {
+		if (!obex_frag_list[i].dlci)
+			continue;
+
+		if (obex_frag_list[i].index == index &&
+				obex_frag_list[i].handle == handle) {
+			obex_frag_reset(&obex_frag_list[i]);
+			memset(&obex_frag_list[i], 0,
+					sizeof(obex_frag_list[i]));
+		}
+	}
+}
+
 static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 {
 	uint8_t credits;
 	struct l2cap_frame *frame = &rfcomm_frame->l2cap_frame;
 	struct rfcomm_lhdr *hdr = &rfcomm_frame->hdr;
+	uint8_t channel = RFCOMM_GET_CHANNEL(hdr->address);
+	uint8_t dlci = RFCOMM_GET_DLCI(hdr->address);
+	struct obex_frag_data *frag;
+	uint8_t *buf;
+	uint32_t pos;
 
-	if (!RFCOMM_GET_CHANNEL(hdr->address))
+	if (!channel)
 		return mcc_frame(rfcomm_frame, indent);
 
 	/* fetching credits from UIH frame */
@@ -402,7 +510,89 @@ static bool uih_frame(struct rfcomm_frame *rfcomm_frame, uint8_t indent)
 		print_field("%*cCredits: %d", indent, ' ', hdr->credits);
 	}
 
-	packet_hexdump(frame->data, frame->size);
+	/* A credit-only UIH frame (credit-based flow control update)
+	 * carries no information payload; nothing to decode.
+	 */
+	if (!frame->size)
+		return true;
+
+	/* The server channel number is only used to resolve the
+	 * SDP-learned mapping; the DLCI (which also encodes which side
+	 * opened the connection) is the actual session/reassembly key,
+	 * since two connections can share a server channel number.
+	 */
+	if (!obex_channel(frame->index, frame->handle, channel, NULL)) {
+		packet_hexdump(frame->data, frame->size);
+		return true;
+	}
+
+	frag = obex_frag_get(frame->index, frame->handle, dlci, frame->in);
+	if (!frag) {
+		obex_packet(frame, dlci, frame->size);
+		return true;
+	}
+
+	buf = realloc(frag->buf, frag->len + frame->size);
+	if (!buf) {
+		obex_frag_reset(frag);
+		obex_packet(frame, dlci, frame->size);
+		return true;
+	}
+
+	memcpy(buf + frag->len, frame->data, frame->size);
+	frag->buf = buf;
+	frag->len += frame->size;
+
+	pos = 0;
+
+	while (frag->len - pos >= 3) {
+		struct l2cap_frame pdu_frame = *frame;
+		uint16_t pdu_len = get_be16(frag->buf + pos + 1);
+
+		if (pdu_len < 3) {
+			/* Malformed declared length: hand over as much of
+			 * the rest of the buffer as fits in l2cap_frame.size
+			 * (uint16_t) and let obex_packet() report the error,
+			 * rather than buffering indefinitely. Any excess
+			 * stays buffered and is retried on the next call.
+			 */
+			uint32_t remaining = frag->len - pos;
+
+			if (remaining > UINT16_MAX)
+				remaining = UINT16_MAX;
+
+			pdu_frame.data = frag->buf + pos;
+			pdu_frame.size = remaining;
+			obex_packet(&pdu_frame, dlci, pdu_frame.size);
+			pos += remaining;
+			break;
+		}
+
+		if (frag->len - pos < pdu_len)
+			break;
+
+		pdu_frame.data = frag->buf + pos;
+		pdu_frame.size = pdu_len;
+		obex_packet(&pdu_frame, dlci, pdu_len);
+
+		pos += pdu_len;
+	}
+
+	if (pos == frag->len) {
+		obex_frag_reset(frag);
+	} else {
+		/* Still waiting for more fragments: show this frame's own
+		 * payload so partial OBEX data isn't silently dropped from
+		 * the trace, mirroring the L2CAP SAR reassembly path.
+		 */
+		packet_hexdump(frame->data, frame->size);
+
+		if (pos) {
+			memmove(frag->buf, frag->buf + pos, frag->len - pos);
+			frag->len -= pos;
+		}
+	}
+
 	return true;
 }
 
@@ -428,6 +618,7 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	struct rfcomm_frame rfcomm_frame;
 	struct rfcomm_lhdr hdr;
 	const struct rfcomm_data *rfcomm_data = NULL;
+	uint32_t max_size;
 	int i;
 
 	l2cap_frame_pull(&rfcomm_frame.l2cap_frame, frame, 0);
@@ -461,8 +652,30 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	if (!l2cap_frame_get_u8(&tmp_frame, &hdr.fcs))
 		goto fail;
 
+	/* The trailing FCS byte just consumed via tmp_frame is still
+	 * included in l2cap_frame's size (tmp_frame is a separate view
+	 * over the same bytes). Drop it so the information payload
+	 * handed to uih_frame()/mcc_frame() doesn't include it.
+	 */
+	l2cap_frame->size -= 1;
+
 	/* Decoding frame type */
 	ctype = RFCOMM_GET_TYPE(hdr.control);
+
+	/* An L2CAP PDU may legally carry more than one RFCOMM frame
+	 * back-to-back; bound the information payload to this frame's
+	 * own declared length so trailing bytes belonging to the next
+	 * multiplexed frame aren't mistaken for part of it. A UIH frame
+	 * with the P/F bit set carries a leading credit octet ahead of
+	 * the information field, which isn't covered by hdr.length.
+	 */
+	if (ctype == 0xef && GET_PF(hdr.control))
+		max_size = (uint32_t) hdr.length + 1;
+	else
+		max_size = hdr.length;
+
+	if (l2cap_frame->size > max_size)
+		l2cap_frame->size = max_size;
 
 	for (i = 0; rfcomm_table[i].str; i++) {
 		if (rfcomm_table[i].frame == ctype) {
@@ -494,9 +707,36 @@ void rfcomm_packet(const struct l2cap_frame *frame)
 	print_rfcomm_hdr(&rfcomm_frame, indent);
 
 	/* UIH frame */
-	if (ctype == 0xef)
+	if (ctype == 0xef) {
 		if (!uih_frame(&rfcomm_frame, indent))
 			goto fail;
+	} else if (ctype == 0x43 || ctype == 0x0f) {
+		uint8_t dlci = RFCOMM_GET_DLCI(hdr.address);
+
+		if (!dlci) {
+			/* DISC or DM on DLCI 0: the whole RFCOMM
+			 * multiplexer is being torn down, taking every
+			 * data channel running over it down with it, even
+			 * though no per-channel DISC/DM is seen for each of
+			 * them. Drop all of their OBEX state, but keep the
+			 * SDP-learned channel mappings so a reconnect on
+			 * the same ACL link doesn't need SDP repeated.
+			 */
+			obex_remove_rfcomm_sessions(frame->index,
+								frame->handle);
+			rfcomm_remove_handle(frame->index, frame->handle);
+		} else {
+			/* DISC or DM: the RFCOMM channel is being torn
+			 * down, drop any OBEX state tracked for it so a
+			 * later renegotiation of the same DLCI isn't
+			 * misdecoded.
+			 */
+			obex_remove_channel(frame->index, frame->handle,
+									dlci);
+			rfcomm_remove_channel(frame->index, frame->handle,
+									dlci);
+		}
+	}
 
 	return;
 

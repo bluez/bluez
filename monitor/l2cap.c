@@ -35,6 +35,7 @@
 #include "rfcomm.h"
 #include "bnep.h"
 #include "att.h"
+#include "obex.h"
 
 #define L2CAP_MODE_BASIC		0x00
 #define L2CAP_MODE_RETRANS		0x01
@@ -85,8 +86,26 @@
 #define L2CAP_SAR_START		0x01
 #define L2CAP_SAR_END		0x02
 #define L2CAP_SAR_CONTINUE	0x03
+#define L2CAP_SAR_NONE		0xff	/* S-frame, no SAR field */
 
 #define MAX_CHAN 64
+
+/* Reassembled L2CAP SDU for ERTM/Streaming mode channels using
+ * segmentation (SAR Start/Continuation/End). Tracked separately per
+ * direction since a bidirectional channel may have independent SDUs
+ * in flight each way.
+ */
+struct l2cap_sdu {
+	uint8_t *data;
+	uint16_t len;
+	uint16_t total;
+	int32_t next_seq;	/* expected TxSeq of the next fragment, or
+				 * -1 if no reassembly is in progress
+				 */
+	int32_t start_seq;	/* TxSeq of the Start segment that began
+				 * the in-progress SDU, or -1 if none
+				 */
+};
 
 struct chan_data {
 	uint16_t index;
@@ -100,10 +119,22 @@ struct chan_data {
 	uint8_t  ext_ctrl;
 	uint8_t  seq_num;
 	uint16_t sdu;
+	uint8_t  fcs;
+	int8_t   req_fcs;
+	struct l2cap_sdu sdu_rx[2];
 	struct packet_latency tx_l;
 };
 
 static struct chan_data chan_list[MAX_CHAN];
+
+static void reset_sdu_rx(struct chan_data *chan)
+{
+	free(chan->sdu_rx[0].data);
+	free(chan->sdu_rx[1].data);
+	memset(chan->sdu_rx, 0, sizeof(chan->sdu_rx));
+	chan->sdu_rx[0].next_seq = -1;
+	chan->sdu_rx[1].next_seq = -1;
+}
 
 static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 			uint16_t psm, uint8_t mode, uint8_t ctrlid)
@@ -144,6 +175,7 @@ static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 	if (n < 0)
 		return;
 
+	reset_sdu_rx(&chan_list[n]);
 	memset(&chan_list[n], 0, sizeof(chan_list[n]));
 	chan_list[n].index = frame->index;
 	chan_list[n].handle = frame->handle;
@@ -158,7 +190,18 @@ static void assign_scid(const struct l2cap_frame *frame, uint16_t scid,
 	chan_list[n].ctrlid = ctrlid;
 	chan_list[n].mode = mode;
 
+	/* 16-bit FCS is the default for ERTM/Streaming mode unless the
+	 * peer explicitly negotiates "No FCS" via the FCS configuration
+	 * option (see assign_fcs()).
+	 */
+	chan_list[n].fcs = 1;
+	chan_list[n].req_fcs = -1;
+
 	chan_list[n].seq_num = seq_num;
+	chan_list[n].sdu_rx[0].next_seq = -1;
+	chan_list[n].sdu_rx[1].next_seq = -1;
+	chan_list[n].sdu_rx[0].start_seq = -1;
+	chan_list[n].sdu_rx[1].start_seq = -1;
 }
 
 static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
@@ -174,11 +217,13 @@ static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
 
 		if (frame->in) {
 			if (chan_list[i].scid == scid) {
+				reset_sdu_rx(&chan_list[i]);
 				chan_list[i].handle = 0;
 				break;
 			}
 		} else {
 			if (chan_list[i].dcid == scid) {
+				reset_sdu_rx(&chan_list[i]);
 				chan_list[i].handle = 0;
 				break;
 			}
@@ -255,6 +300,131 @@ static void assign_mode(const struct l2cap_frame *frame,
 	}
 }
 
+/* Record whether the peer negotiated "No FCS" (0x00) or "16-bit FCS"
+ * (0x01) via the FCS configuration option, so the trailing 2-byte FCS
+ * on ERTM/Streaming mode frames can be stripped before handing the
+ * payload to upper layer dissectors.
+ */
+static void assign_fcs(const struct l2cap_frame *frame,
+					uint8_t fcs, uint16_t dcid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == dcid) {
+				chan_list[i].fcs = fcs;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == dcid) {
+				chan_list[i].fcs = fcs;
+				break;
+			}
+		}
+	}
+}
+
+/* Record the FCS value requested by a Config Request, so it can be
+ * applied on a successful Config Response even if that response omits
+ * the FCS option (a successful response need not repeat accepted
+ * options).
+ */
+static void assign_req_fcs(const struct l2cap_frame *frame,
+					uint8_t fcs, uint16_t dcid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == dcid) {
+				chan_list[i].req_fcs = fcs;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == dcid) {
+				chan_list[i].req_fcs = fcs;
+				break;
+			}
+		}
+	}
+}
+
+/* Apply a previously requested FCS value on a successful Config
+ * Response, in case the response is option-free.
+ */
+static void apply_req_fcs(const struct l2cap_frame *frame, uint16_t scid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == scid) {
+				if (chan_list[i].req_fcs >= 0)
+					chan_list[i].fcs = chan_list[i].req_fcs;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == scid) {
+				if (chan_list[i].req_fcs >= 0)
+					chan_list[i].fcs = chan_list[i].req_fcs;
+				break;
+			}
+		}
+	}
+}
+
+/* Discard a pending FCS value requested by a Config Request that is
+ * then rejected with Unknown Options, so a later, unrelated
+ * successful Config Response in the same renegotiation (sent without
+ * repeating the option) doesn't apply the rejected value. Left alone
+ * on a continuation response, since the rejection there isn't final
+ * and a later fragment of the same response still carries the result
+ * that matters.
+ */
+static void discard_req_fcs(const struct l2cap_frame *frame, uint16_t scid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == scid) {
+				chan_list[i].req_fcs = -1;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == scid) {
+				chan_list[i].req_fcs = -1;
+				break;
+			}
+		}
+	}
+}
+
 static int get_chan_data_index(const struct l2cap_frame *frame)
 {
 	int i;
@@ -305,6 +475,19 @@ uint16_t l2cap_chan_key(uint16_t index, bool in, uint16_t handle, uint16_t cid)
 		return 0x8000 | i;
 
 	return cid;
+}
+
+/* True if key is a l2cap_chan_key() value resolved to a chan_list[] entry
+ * (as opposed to a raw, unresolved CID) for the RFCOMM transport PSM
+ * (0x0003). The 0x8000 bit alone doesn't guarantee key was resolved, since
+ * a raw dynamic CID may also have it set; the low bits must additionally
+ * be bounds-checked against MAX_CHAN before indexing chan_list[].
+ */
+static bool is_rfcomm_chan_key(uint16_t key)
+{
+	uint16_t i = key & 0x7fff;
+
+	return (key & 0x8000) && i < MAX_CHAN && chan_list[i].psm == 0x0003;
 }
 
 static struct chan_data *get_chan(const struct l2cap_frame *frame)
@@ -441,8 +624,11 @@ static char *mode2str(uint8_t mode)
 	}
 }
 
-static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
+static uint8_t l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl,
+					uint16_t *sdu_len, uint16_t *txseq)
 {
+	uint8_t sar = L2CAP_SAR_NONE;
+
 	display_printf("      %s:",
 		ctrl & L2CAP_EXT_CTRL_FRAME_TYPE ? "S-frame" : "I-frame");
 
@@ -454,20 +640,18 @@ static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
 		if (ctrl & L2CAP_EXT_CTRL_POLL)
 			display_printf(" P-bit");
 	} else {
-		uint8_t sar = (ctrl & L2CAP_EXT_CTRL_SAR_MASK) >>
+		sar = (ctrl & L2CAP_EXT_CTRL_SAR_MASK) >>
 						L2CAP_EXT_CTRL_SAR_SHIFT;
 		display_printf(" %s", sar2str(sar));
 		if (sar == L2CAP_SAR_START) {
-			uint16_t len;
+			if (!l2cap_frame_get_le16(frame, sdu_len))
+				return L2CAP_SAR_NONE;
 
-			if (!l2cap_frame_get_le16(frame, &len))
-				return;
-
-			display_printf(" (len %d)", len);
+			display_printf(" (len %d)", *sdu_len);
 		}
-		display_printf(" TxSeq %d",
-			(ctrl & L2CAP_EXT_CTRL_TXSEQ_MASK) >>
-						L2CAP_EXT_CTRL_TXSEQ_SHIFT);
+		*txseq = (ctrl & L2CAP_EXT_CTRL_TXSEQ_MASK) >>
+						L2CAP_EXT_CTRL_TXSEQ_SHIFT;
+		display_printf(" TxSeq %d", *txseq);
 	}
 
 	display_printf(" ReqSeq %d", (ctrl & L2CAP_EXT_CTRL_REQSEQ_MASK) >>
@@ -475,10 +659,15 @@ static void l2cap_ctrl_ext_parse(struct l2cap_frame *frame, uint32_t ctrl)
 
 	if (ctrl & L2CAP_EXT_CTRL_FINAL)
 		display_printf(" F-bit");
+
+	return sar;
 }
 
-static void l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl)
+static uint8_t l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl,
+					uint16_t *sdu_len, uint16_t *txseq)
 {
+	uint8_t sar = L2CAP_SAR_NONE;
+
 	display_printf("      %s:",
 			ctrl & L2CAP_CTRL_FRAME_TYPE ? "S-frame" : "I-frame");
 
@@ -490,20 +679,17 @@ static void l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl)
 		if (ctrl & L2CAP_CTRL_POLL)
 			display_printf(" P-bit");
 	} else {
-		uint8_t sar;
-
 		sar = (ctrl & L2CAP_CTRL_SAR_MASK) >> L2CAP_CTRL_SAR_SHIFT;
 		display_printf(" %s", sar2str(sar));
 		if (sar == L2CAP_SAR_START) {
-			uint16_t len;
+			if (!l2cap_frame_get_le16(frame, sdu_len))
+				return L2CAP_SAR_NONE;
 
-			if (!l2cap_frame_get_le16(frame, &len))
-				return;
-
-			display_printf(" (len %d)", len);
+			display_printf(" (len %d)", *sdu_len);
 		}
-		display_printf(" TxSeq %d", (ctrl & L2CAP_CTRL_TXSEQ_MASK) >>
-						L2CAP_CTRL_TXSEQ_SHIFT);
+		*txseq = (ctrl & L2CAP_CTRL_TXSEQ_MASK) >>
+						L2CAP_CTRL_TXSEQ_SHIFT;
+		display_printf(" TxSeq %d", *txseq);
 	}
 
 	display_printf(" ReqSeq %d", (ctrl & L2CAP_CTRL_REQSEQ_MASK) >>
@@ -511,6 +697,8 @@ static void l2cap_ctrl_parse(struct l2cap_frame *frame, uint32_t ctrl)
 
 	if (ctrl & L2CAP_CTRL_FINAL)
 		display_printf(" F-bit");
+
+	return sar;
 }
 
 #define MAX_INDEX 16
@@ -882,6 +1070,11 @@ static void print_config_options(const struct l2cap_frame *frame,
 					get_le16(data + consumed + 9));
 			break;
 		case 0x05:
+			if (response)
+				assign_fcs(frame, data[consumed + 2], cid);
+			else
+				assign_req_fcs(frame, data[consumed + 2], cid);
+
 			switch (data[consumed + 2]) {
 			case 0x00:
 				str = "No FCS";
@@ -1188,18 +1381,57 @@ static void sig_config_rsp(const struct l2cap_frame *frame)
 	print_cid("Source", pdu->scid);
 	print_config_flags(pdu->flags);
 	print_config_result(pdu->result);
-	if (pdu->result == 0x0003)
+	if (pdu->result == 0x0003) {
+		/* Unknown Options: the rejected Config Request (and any
+		 * FCS value it proposed) won't take effect, unless this
+		 * is a non-final fragment of a continued response, in
+		 * which case the result isn't final yet.
+		 */
+		if (!(le16_to_cpu(pdu->flags) & 0x0001))
+			discard_req_fcs(frame, le16_to_cpu(pdu->scid));
 		print_unknown_options(frame, 6);
-	else
+	} else {
+		if (pdu->result == 0x0000)
+			apply_req_fcs(frame, le16_to_cpu(pdu->scid));
 		print_config_options(frame, 6, le16_to_cpu(pdu->scid), true);
+	}
 }
 
 static void sig_disconn_req(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_pdu_disconn_req *pdu = frame->data;
+	uint16_t scid_key, dcid_key;
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
+
+	/* The channel is being torn down; drop any OBEX request state
+	 * tracked for it so a later reuse of the same CID isn't
+	 * misdecoded. Resolve both endpoints to the same
+	 * direction-independent session key used by obex_packet(). SCID is
+	 * the sender's own CID, so it matches the chan_list "scid" (local)
+	 * entry when this request came from the local host (!frame->in);
+	 * DCID is the recipient's own CID, which matches "scid" when the
+	 * request came from the peer (frame->in) - see l2cap_chan_key().
+	 */
+	scid_key = l2cap_chan_key(frame->index, !frame->in, frame->handle,
+						le16_to_cpu(pdu->scid));
+	dcid_key = l2cap_chan_key(frame->index, frame->in, frame->handle,
+						le16_to_cpu(pdu->dcid));
+	obex_remove_session(frame->index, frame->handle, scid_key);
+	obex_remove_session(frame->index, frame->handle, dcid_key);
+
+	/* If the closing channel is the RFCOMM transport (PSM 0x0003),
+	 * the ACL link stays up but every RFCOMM data channel (DLCI)
+	 * multiplexed over it loses its L2CAP transport without a
+	 * per-channel DISC/DM of its own. Drop their OBEX session and
+	 * fragment reassembly state too, keeping the SDP-learned channel
+	 * mappings for a future reconnect.
+	 */
+	if (is_rfcomm_chan_key(scid_key) || is_rfcomm_chan_key(dcid_key)) {
+		obex_remove_rfcomm_sessions(frame->index, frame->handle);
+		rfcomm_remove_handle(frame->index, frame->handle);
+	}
 }
 
 static void sig_disconn_rsp(const struct l2cap_frame *frame)
@@ -2649,6 +2881,133 @@ static void smp_packet(uint16_t index, bool in, uint16_t handle,
 	opcode_data->func(&frame);
 }
 
+/* Reassemble ERTM/Streaming mode SAR fragments (Start/Continuation/End)
+ * into a single SDU before handing it to the upper layer dissector.
+ * Returns true when frame now holds a complete payload ready for
+ * dispatch (either because sar is the end of a multi-fragment SDU, or
+ * because reassembly could not be tracked and the single fragment
+ * should be dispatched as-is). Returns false while more fragments are
+ * still expected. *owned is set to true only when frame->data was
+ * replaced by a heap-allocated reassembled SDU that the caller must
+ * free; it is left untouched (false) whenever frame->data still
+ * points into the original (borrowed) packet buffer.
+ */
+static bool l2cap_sdu_reassemble(struct chan_data *chan, bool in,
+					uint8_t sar, uint16_t sdu_len,
+					uint16_t txseq, uint16_t seq_mod,
+					struct l2cap_frame *frame, bool *owned)
+{
+	struct l2cap_sdu *sdu;
+	uint32_t len;
+	uint16_t prev_seq;
+
+	*owned = false;
+
+	if (!chan)
+		return true;
+
+	sdu = &chan->sdu_rx[in ? 1 : 0];
+
+	if (sar == L2CAP_SAR_START) {
+		if (sdu->data) {
+			if (sdu->start_seq == (int32_t) txseq) {
+				/* Retransmitted duplicate of the Start
+				 * segment that began the SDU currently
+				 * being reassembled: no data was lost,
+				 * keep buffering as before.
+				 */
+				print_text(COLOR_ERROR,
+					"duplicate Start segment TxSeq %u"
+					" discarded", txseq);
+				return false;
+			}
+
+			print_text(COLOR_ERROR,
+				"incomplete SDU replaced by new Start segment");
+			free(sdu->data);
+		}
+
+		sdu->len = 0;
+		sdu->total = sdu_len;
+		sdu->data = malloc(sdu_len);
+
+		if (!sdu->data) {
+			sdu->total = 0;
+			sdu->next_seq = -1;
+			sdu->start_seq = -1;
+			return true;
+		}
+
+		sdu->next_seq = (txseq + 1) % seq_mod;
+		sdu->start_seq = txseq;
+	} else {
+		if (!sdu->data) {
+			print_text(COLOR_ERROR,
+					"unexpected continuation segment");
+			return true;
+		}
+
+		prev_seq = (sdu->next_seq + seq_mod - 1) % seq_mod;
+
+		if (sdu->next_seq >= 0 && txseq == prev_seq) {
+			/* Retransmitted duplicate of the last fragment
+			 * already appended: discard it and keep waiting
+			 * for the genuine next fragment.
+			 */
+			print_text(COLOR_ERROR,
+				"duplicate segment TxSeq %u discarded",
+				txseq);
+			return false;
+		}
+
+		if (sdu->next_seq >= 0 && txseq != (uint16_t) sdu->next_seq) {
+			/* A gap means a fragment was lost (or capture
+			 * started mid-SDU): the SDU can no longer be
+			 * reassembled correctly, so discard it rather
+			 * than silently producing a corrupted payload.
+			 */
+			print_text(COLOR_ERROR,
+				"gap in reassembly (expected TxSeq %u, got"
+				" %u), discarding SDU", sdu->next_seq, txseq);
+			free(sdu->data);
+			sdu->data = NULL;
+			sdu->len = 0;
+			sdu->total = 0;
+			sdu->next_seq = -1;
+			sdu->start_seq = -1;
+			return true;
+		}
+
+		sdu->next_seq = (txseq + 1) % seq_mod;
+	}
+
+	len = sdu->len + (uint32_t) frame->size;
+	if (len > sdu->total)
+		len = sdu->total;
+
+	if (len > sdu->len)
+		memcpy(sdu->data + sdu->len, frame->data, len - sdu->len);
+	sdu->len = len;
+
+	if (sar != L2CAP_SAR_END)
+		return false;
+
+	if (sdu->len != sdu->total)
+		print_text(COLOR_ERROR, "reassembled SDU length mismatch");
+
+	frame->data = sdu->data;
+	frame->size = sdu->len;
+	*owned = true;
+
+	sdu->data = NULL;
+	sdu->len = 0;
+	sdu->total = 0;
+	sdu->next_seq = -1;
+	sdu->start_seq = -1;
+
+	return true;
+}
+
 void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 			uint16_t psm, const void *data, uint16_t size)
 {
@@ -2657,6 +3016,13 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 	uint32_t ctrl32 = 0;
 	uint16_t ctrl16 = 0;
 	uint8_t ext_ctrl;
+	uint8_t sar = L2CAP_SAR_UNSEGMENTED;
+	uint16_t sdu_len = 0;
+	uint16_t txseq = 0;
+	uint16_t seq_mod = 64;
+	uint16_t frag_len = size;
+	void *sdu_buf = NULL;
+	bool owned;
 
 	switch (cid) {
 	case 0x0001:
@@ -2723,7 +3089,9 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 						frame.psm, mode2str(frame.mode),
 						frame.mode, frame.chan);
 
-				l2cap_ctrl_ext_parse(&frame, ctrl32);
+				sar = l2cap_ctrl_ext_parse(&frame, ctrl32,
+							&sdu_len, &txseq);
+				seq_mod = 16384;
 			} else {
 				if (!l2cap_frame_get_le16(&frame, &ctrl16))
 					return;
@@ -2736,10 +3104,62 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 						frame.psm, mode2str(frame.mode),
 						frame.mode, frame.chan);
 
-				l2cap_ctrl_parse(&frame, ctrl16);
+				sar = l2cap_ctrl_parse(&frame, ctrl16,
+							&sdu_len, &txseq);
+				seq_mod = 64;
 			}
 
 			display_printf("\n");
+
+			/* ERTM/Streaming mode frames carry a trailing 2-byte
+			 * FCS (unless explicitly negotiated off via the FCS
+			 * configuration option) that is not part of the
+			 * upper layer payload.
+			 */
+			chan = get_chan(&frame);
+			if (chan && chan->fcs && frame.size >= 2)
+				frame.size -= 2;
+
+			/* Size of just this I-frame's own payload, before
+			 * it is possibly replaced by the full reassembled
+			 * SDU below. Used so the OBEX dissector can limit
+			 * fallback/binary hexdumps to the bytes carried by
+			 * the final fragment, instead of repeating bytes
+			 * already shown while earlier fragments (Start/
+			 * Continuation) were buffered.
+			 */
+			frag_len = frame.size;
+
+			if (sar != L2CAP_SAR_UNSEGMENTED &&
+					sar != L2CAP_SAR_NONE) {
+				if (!l2cap_sdu_reassemble(chan, frame.in, sar,
+								sdu_len, txseq,
+								seq_mod,
+								&frame,
+								&owned)) {
+					/* Still buffering (Start/Continue):
+					 * show the raw fragment payload, the
+					 * upper layer dissector only runs
+					 * once the SDU is fully reassembled.
+					 */
+					if (frame.size)
+						packet_hexdump(frame.data,
+								frame.size);
+					return;
+				}
+
+				if (owned)
+					sdu_buf = (void *) frame.data;
+			}
+
+			break;
+		}
+
+		/* S-frames (supervisory, e.g. RR/REJ) carry no SDU payload
+		 * and must not be handed to upper layer dissectors.
+		 */
+		if (sar == L2CAP_SAR_NONE) {
+			free(sdu_buf);
 			break;
 		}
 
@@ -2767,9 +3187,15 @@ void l2cap_frame(uint16_t index, bool in, uint16_t handle, uint16_t cid,
 			avdtp_packet(&frame);
 			break;
 		default:
-			packet_hexdump(data, size);
+			if (obex_psm(index, handle, frame.psm))
+				obex_packet(&frame, l2cap_chan_key(index, in,
+							handle, cid), frag_len);
+			else
+				packet_hexdump(frame.data, frame.size);
 			break;
 		}
+
+		free(sdu_buf);
 		break;
 	}
 }
