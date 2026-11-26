@@ -2174,7 +2174,7 @@ static void run_tests(void)
 	ptr = strstr(cmdline, "TESTHOME=");
 	if (ptr) {
 		home = ptr + 4;
-		ptr = strpbrk(home + 9, " \r\n");
+		ptr = strpbrk(ptr + 9, " \r\n");
 		if (ptr)
 			*ptr = '\0';
 	}
