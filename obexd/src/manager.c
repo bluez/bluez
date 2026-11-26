@@ -488,7 +488,12 @@ gboolean manager_init(void)
 
 	dbus_error_init(&err);
 
-	connection = obex_setup_dbus_connection(OBEXD_SERVICE, &err);
+	/*
+	 * Only connect here. The well-known name must not be requested until
+	 * everything is initialised (see main()), otherwise obexd is visible
+	 * on the bus while it is still unable to process any message.
+	 */
+	connection = obex_setup_dbus_connection(NULL, &err);
 	if (connection == NULL) {
 		if (dbus_error_is_set(&err) == TRUE) {
 			fprintf(stderr, "%s\n", err.message);
