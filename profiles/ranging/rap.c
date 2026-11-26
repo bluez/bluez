@@ -18,6 +18,7 @@
 #include "gdbus/gdbus.h"
 
 #include "bluetooth/bluetooth.h"
+#include "bluetooth/hci.h"
 #include "bluetooth/l2cap.h"
 #include "bluetooth/uuid.h"
 
@@ -53,6 +54,8 @@ struct cs_session {
 	struct bt_rap_le_cs_config    cfg;
 	struct bt_rap_le_cs_frequency freq;
 };
+
+#define CS_ROLE_REFLECTOR	0x02  /* Role_Enable: Reflector only */
 
 struct rap_data {
 	struct btd_device *device;
@@ -836,12 +839,21 @@ bad_type:
 		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
 					   "Set CS freq params failed");
 
-	/* Reflector never initiates a CS procedure locally: apply the
-	 * settings so the controller is ready to respond to the remote
-	 * Initiator, but do not arm a local measurement session.
+	/* Nothing is subscribed at connection time unless On-demand is
+	 * configured, so subscribe now if SetRangingDataMode() was not called.
 	 */
-	if (settings.role == 0x02)
-		return dbus_message_new_method_return(msg);
+	if (!bt_rap_ensure_ranging_data(data->rap))
+		DBG("Unable to subscribe to Ranging Data");
+
+	/* The Reflector runs the setup phase too, so that the state machine
+	 * acts on the remote Initiator's events; rap_def_settings_done_cb()
+	 * leaves Create Config to the Initiator.
+	 */
+	/* A Reflector only waits for the remote Initiator, so its duration
+	 * is ignored rather than ending the wait.
+	 */
+	if (settings.role == CS_ROLE_REFLECTOR)
+		duration_secs = 0;
 
 	if (!bt_rap_start_measurement(data->hci_sm, data->conn_handle,
 							duration_secs))
@@ -860,6 +872,24 @@ bad_type:
 	return dbus_message_new_method_return(msg);
 }
 
+/* Common end of a session, however it ends: explicit stop, duration expiry or
+ * the end of the remote procedure a Reflector was armed for.
+ */
+static void rap_end_session(struct rap_data *data)
+{
+	bt_rap_hci_set_procedure_data_cb(data->hci_sm, NULL, NULL, NULL);
+
+	/* The Requester owns the Real-time CCCD subscription. Unregister it
+	 * when the procedure ends so the peer receives the required CCCD
+	 * disable. The local procedure has already been stopped, so a failure
+	 * here (e.g. no remote RAS client) must not fail the caller.
+	 */
+	if (!bt_rap_disable_realtime_ranging(data->rap))
+		DBG("Unable to disable Real-time Ranging Data");
+
+	memset(&data->active_session, 0, sizeof(data->active_session));
+}
+
 static DBusMessage *stop_measurement(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
@@ -874,17 +904,7 @@ static DBusMessage *stop_measurement(DBusConnection *conn,
 		return g_dbus_create_error(msg, DBUS_ERROR_FAILED,
 					"Stop measurement failed");
 
-	bt_rap_hci_set_procedure_data_cb(data->hci_sm, NULL, NULL, NULL);
-
-	/* The Requester owns the Real-time CCCD subscription. Unregister it
-	 * when the procedure ends so the peer receives the required CCCD
-	 * disable. The local procedure has already been stopped, so a failure
-	 * here (e.g. no remote RAS client) must not fail the method.
-	 */
-	if (!bt_rap_disable_realtime_ranging(data->rap))
-		DBG("Unable to disable Real-time Ranging Data");
-
-	memset(&data->active_session, 0, sizeof(data->active_session));
+	rap_end_session(data);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device_get_path(data->device),
@@ -933,12 +953,31 @@ static const GDBusMethodTable cs_dbus_methods[] = {
 	{ }
 };
 
+/* The role negotiated for the current configuration decides, since the
+ * allowed-role setting can permit both. Until a configuration exists, only a
+ * Reflector-only setting makes this a Reflector session.
+ */
+static bool rap_is_reflector_session(struct rap_data *data)
+{
+	uint8_t role;
+
+	if (bt_rap_get_cs_role(data->hci_sm, &role))
+		return role == CS_REFLECTOR;
+
+	return data->active_session.settings.role == CS_ROLE_REFLECTOR;
+}
+
 static gboolean cs_property_get_active(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
 	struct rap_data *data = user_data;
-	dbus_bool_t active = data->active_session.active ||
-				bt_rap_is_procedure_active(data->hci_sm);
+	dbus_bool_t active = bt_rap_is_procedure_active(data->hci_sm);
+
+	/* A Reflector session is only armed while waiting for the peer, so
+	 * only report the procedure state for it.
+	 */
+	if (data->active_session.active && !rap_is_reflector_session(data))
+		active = true;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &active);
 	return TRUE;
@@ -958,7 +997,7 @@ static void rap_measurement_timeout_cb(void *user_data)
 {
 	struct rap_data *data = user_data;
 
-	memset(&data->active_session, 0, sizeof(data->active_session));
+	rap_end_session(data);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device_get_path(data->device),
@@ -968,6 +1007,17 @@ static void rap_measurement_timeout_cb(void *user_data)
 static void rap_proc_active_changed(bool active, void *user_data)
 {
 	struct rap_data *data = user_data;
+
+	/* A Reflector session only lasts for the remote procedure it was
+	 * armed for. End it with the procedure, so the Active=false that
+	 * follows leaves no session behind that StartMeasurement() would
+	 * refuse to replace and StopMeasurement() could not be reached for.
+	 */
+	if (!active && data->active_session.active &&
+	    rap_is_reflector_session(data)) {
+		bt_rap_stop_measurement(data->hci_sm);
+		rap_end_session(data);
+	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device_get_path(data->device),
@@ -1093,7 +1143,7 @@ static int rap_setup_reflector(struct rap_data *data)
 
 		if (att && data->adapter_data->hci) {
 			if (bt_hci_get_conn_handle(data->adapter_data->hci,
-				(const uint8_t *)bdaddr, &handle)) {
+				(const uint8_t *)bdaddr, LE_LINK, &handle)) {
 				DBG("conn handle 0x%04X for %s", handle, addr);
 				data->conn_handle = handle;
 				bt_rap_set_conn_hndl(data->hci_sm,

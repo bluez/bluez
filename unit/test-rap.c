@@ -49,6 +49,12 @@ struct test_data_ras {
 struct test_config_rap {
 	const struct iovec *setup_data;
 	const size_t setup_data_len;
+	/* Run right after attaching, before RAS Features is read */
+	void (*early)(struct bt_rap *rap);
+	/* Run once the Requester is ready; when NULL the test passes there */
+	void (*action)(struct bt_rap *rap);
+	/* Called when the ATT script is exhausted; NULL leaves it to action */
+	void (*complete)(const void *user_data);
 };
 
 struct test_data_rap {
@@ -180,6 +186,57 @@ static void gatt_notify_cb(struct gatt_db_attribute *attrib,
 		printf("%s: Failed to send notification\n", __func__);
 }
 
+static void inject_proc_enable(struct bt_rap *rap)
+{
+	struct rap_ev_cs_proc_enable_cmplt ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.conn_hdl = 0x0001;
+	ev.config_id = 0x01;
+	ev.state = 0x01;
+
+	bt_rap_hci_cs_procedure_enable_complete_callback(sizeof(ev), &ev, rap);
+}
+
+static void inject_cs_result(struct bt_rap *rap, uint16_t proc_counter)
+{
+	size_t event_size = sizeof(struct rap_ev_cs_subevent_result) +
+			    sizeof(struct cs_step_data);
+	struct rap_ev_cs_subevent_result *fake_event;
+	struct cs_mode_zero_data *mode_zero;
+
+	if (tester_use_debug())
+		tester_debug("Injecting fake CS data...");
+
+	fake_event = g_malloc0(event_size);
+
+	fake_event->conn_hdl = 0x0001;
+	fake_event->config_id = 0x01;
+	fake_event->start_acl_conn_evt_counter = 0x0000;
+	fake_event->proc_counter = proc_counter;
+	fake_event->freq_comp = 0x0000;
+	fake_event->ref_pwr_lvl = 0x00;
+	fake_event->proc_done_status = 0x00;
+	fake_event->subevt_done_status = 0x00;
+	fake_event->abort_reason = 0x00;
+	fake_event->num_ant_paths = 0x01;
+	fake_event->num_steps_reported = 0x01;
+
+	fake_event->step_data[0].step_mode = CS_MODE_ZERO;
+	fake_event->step_data[0].step_chnl = 0x00;
+	/* Mode 0: 1+1+1+4 bytes */
+	fake_event->step_data[0].step_data_length = 4;
+	mode_zero = &fake_event->step_data[0].step_mode_data.mode_zero_data;
+	mode_zero->packet_quality = 0x01;
+	mode_zero->packet_rssi_dbm = 0x02;
+	mode_zero->packet_ant = 0x03;
+	mode_zero->init_measured_freq_offset = 0x04;
+
+	bt_rap_hci_cs_subevent_result_callback(event_size, fake_event, rap);
+
+	g_free(fake_event);
+}
+
 static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 					unsigned int id, uint16_t offset,
 					const uint8_t *value, size_t len,
@@ -220,48 +277,8 @@ static void gatt_ccc_write_cb(struct gatt_db_attribute *attrib,
 	/* If notifications/indications enabled on Real-time Ranging Data CCCD,
 	 * inject fake HCI CS subevent data to trigger notifications
 	 */
-	if (handle == 0x0006 && ccc_value != 0x0000 && data->rap) {
-		size_t event_size = sizeof(struct rap_ev_cs_subevent_result) +
-				    sizeof(struct cs_step_data);
-		struct rap_ev_cs_subevent_result *fake_event;
-		struct cs_mode_zero_data *mode_zero;
-
-		if (tester_use_debug())
-			tester_debug("Injecting fake CS data...");
-
-		fake_event = g_malloc0(event_size);
-		if (!fake_event)
-			return;  /* Already sent write response */
-
-		/* Fill in the header fields */
-		fake_event->conn_hdl = 0x0001;
-		fake_event->config_id = 0x01;
-		fake_event->start_acl_conn_evt_counter = 0x0000;
-		fake_event->proc_counter = 0x0001;
-		fake_event->freq_comp = 0x0000;
-		fake_event->ref_pwr_lvl = 0x00;
-		fake_event->proc_done_status = 0x00;
-		fake_event->subevt_done_status = 0x00;
-		fake_event->abort_reason = 0x00;
-		fake_event->num_ant_paths = 0x01;
-		fake_event->num_steps_reported = 0x01;
-
-		fake_event->step_data[0].step_mode = CS_MODE_ZERO;
-		fake_event->step_data[0].step_chnl = 0x00;
-		/* Mode 0: 1+1+1+4 bytes */
-		fake_event->step_data[0].step_data_length = 4;
-mode_zero = &fake_event->step_data[0].step_mode_data.mode_zero_data;
-		mode_zero->packet_quality = 0x01;
-		mode_zero->packet_rssi_dbm = 0x02;
-		mode_zero->packet_ant = 0x03;
-		mode_zero->init_measured_freq_offset = 0x04;
-
-		/* Inject the fake event to trigger notification */
-		bt_rap_hci_cs_subevent_result_callback(event_size, fake_event,
-						       data->rap);
-
-		g_free(fake_event);
-	}
+	if (handle == 0x0006 && ccc_value != 0x0000 && data->rap)
+		inject_cs_result(data->rap, 0x0001);
 	return;
 
 done:
@@ -413,6 +430,13 @@ static void test_setup_rap(const void *user_data)
 
 static void rap_client_ready_cb(struct bt_rap *rap, void *user_data)
 {
+	struct test_data_rap *data = user_data;
+
+	if (data->cfg->action) {
+		data->cfg->action(rap);
+		return;
+	}
+
 	tester_test_passed();
 }
 
@@ -432,7 +456,7 @@ static void test_client_rap(const void *user_data)
 	io = tester_setup_io(data->iov, data->iovcnt);
 	g_assert(io);
 
-	tester_io_set_complete_func(NULL);
+	tester_io_set_complete_func(data->cfg->complete);
 
 	data->db = gatt_db_new();
 	g_assert(data->db);
@@ -445,6 +469,9 @@ static void test_client_rap(const void *user_data)
 	bt_rap_ready_register(data->rap, rap_client_ready_cb, data, NULL);
 
 	bt_rap_attach(data->rap, data->client);
+
+	if (data->cfg->early)
+		data->cfg->early(data->rap);
 }
 
 /*
@@ -1001,6 +1028,499 @@ const struct test_config_rap cfg_cggit_discovery = {
 	IOV_DATA(0x0a, 0x09, 0x00), \
 	IOV_DATA(0x0b, 0x01, 0x00)
 
+/*
+ * Requester subscription behavior (RAP v1.0 4.4)
+ *
+ * Remote handles: Real-time CCCD 0x0006, On-demand CCCD 0x0009, RAS Control
+ * Point CCCD 0x000c, Ranging Data Ready CCCD 0x000f, Ranging Data Overwritten
+ * CCCD 0x0012.
+ */
+#define ATTACH_FEATURES_REALTIME \
+	IOV_DATA(0x0a, 0x03, 0x00), \
+	IOV_DATA(0x0b, 0x01, 0x00, 0x00, 0x00)
+
+/* Abort supported, Real-time not */
+#define ATTACH_FEATURES_ONDEMAND \
+	IOV_DATA(0x0a, 0x03, 0x00), \
+	IOV_DATA(0x0b, 0x04, 0x00, 0x00, 0x00)
+
+#define WRITE_CCCD(handle, value) \
+	IOV_DATA(0x12, handle, 0x00, value, 0x00), \
+	IOV_DATA(0x13)
+
+static gboolean idle_pass_cb(gpointer user_data)
+{
+	tester_test_passed();
+	return FALSE;
+}
+
+static gboolean realtime_disable_cb(gpointer user_data)
+{
+	bt_rap_disable_realtime_ranging(user_data);
+	return FALSE;
+}
+
+/* Reading RAS Features must not subscribe by itself: nothing is written
+ * until the Upper Tester asks for Ranging Data (RAP/REQ/RRD/BV-01-C).
+ */
+static void action_idle(struct bt_rap *rap)
+{
+	g_timeout_add(300, idle_pass_cb, NULL);
+}
+
+static void action_realtime_notify(struct bt_rap *rap)
+{
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_REALTIME,
+				BT_RAP_RANGING_NOTIFY));
+	g_timeout_add(200, realtime_disable_cb, rap);
+}
+
+static void action_realtime_indicate(struct bt_rap *rap)
+{
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_REALTIME,
+				BT_RAP_RANGING_INDICATE));
+	g_timeout_add(200, realtime_disable_cb, rap);
+}
+
+/* StartMeasurement() with the peer supporting Real-time subscribes to it */
+static void action_ensure(struct bt_rap *rap)
+{
+	g_assert(bt_rap_ensure_ranging_data(rap));
+}
+
+static void action_ondemand_notify(struct bt_rap *rap)
+{
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_ONDEMAND,
+				BT_RAP_RANGING_NOTIFY));
+}
+
+static void action_ondemand_indicate(struct bt_rap *rap)
+{
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_ONDEMAND,
+				BT_RAP_RANGING_INDICATE));
+}
+
+#define RAP_REQ_RRD_NO_SUBSCRIBE \
+	ATTACH_FEATURES_REALTIME
+
+#define RAP_REQ_RRD_ROUND(value) \
+	ATTACH_FEATURES_REALTIME, \
+	WRITE_CCCD(0x06, value), \
+	WRITE_CCCD(0x06, 0x00)
+
+#define RAP_REQ_RRD_ENSURE \
+	ATTACH_FEATURES_REALTIME, \
+	WRITE_CCCD(0x06, 0x01)
+
+/* On-demand: the data characteristic follows the requested transport, the
+ * Control Point, Ranging Data Ready and Overwritten are indicated.
+ */
+#define RAP_REQ_ORD_ROUND(value) \
+	ATTACH_FEATURES_ONDEMAND, \
+	WRITE_CCCD(0x09, value), \
+	WRITE_CCCD(0x0c, 0x02), \
+	WRITE_CCCD(0x0f, 0x02), \
+	WRITE_CCCD(0x12, 0x02)
+
+/* StartMeasurement() before RAS Features was read waits for it, so the mode
+ * follows what the peer supports (Real-time here).
+ */
+static void early_ensure(struct bt_rap *rap)
+{
+	g_assert(bt_rap_ensure_ranging_data(rap));
+}
+
+/* An explicit Disabled selection is not overridden by StartMeasurement() */
+static void action_disabled_then_ensure(struct bt_rap *rap)
+{
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_DISABLED,
+				BT_RAP_RANGING_NOTIFY));
+	g_assert(bt_rap_ensure_ranging_data(rap));
+	g_timeout_add(300, idle_pass_cb, NULL);
+}
+
+static gboolean retry_ensure_cb(gpointer user_data);
+
+/* A selection that could not be made is not remembered: Real-time is not
+ * supported here, so the next start falls back to On-demand.
+ */
+static void action_failed_selection(struct bt_rap *rap)
+{
+	g_assert(!bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_REALTIME,
+				BT_RAP_RANGING_NOTIFY));
+	g_assert(bt_rap_ensure_ranging_data(rap));
+}
+
+/* One of the On-demand registrations is rejected: the next start retries
+ * that one only, without registering the others again.
+ */
+static void action_ondemand_retry(struct bt_rap *rap)
+{
+	g_assert(bt_rap_ensure_ranging_data(rap));
+	g_timeout_add(300, retry_ensure_cb, rap);
+}
+
+/* A selected mode whose subscription ended with the last measurement is
+ * subscribed again, with the selected transport, by the next start.
+ */
+static void action_selected_resubscribe(struct bt_rap *rap)
+{
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_REALTIME,
+				BT_RAP_RANGING_INDICATE));
+	g_timeout_add(200, realtime_disable_cb, rap);
+	g_timeout_add(400, retry_ensure_cb, rap);
+}
+
+static gboolean retry_ensure_cb(gpointer user_data)
+{
+	g_assert(bt_rap_ensure_ranging_data(user_data));
+	return FALSE;
+}
+
+/* The peer rejects the CCCD write: the next start has to retry it */
+static void action_ensure_retry(struct bt_rap *rap)
+{
+	g_assert(bt_rap_ensure_ranging_data(rap));
+	g_timeout_add(300, retry_ensure_cb, rap);
+}
+
+const struct test_config_rap cfg_rap_idle = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_idle,
+};
+
+const struct test_config_rap cfg_rap_early_ensure = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.early = early_ensure,
+	.action = action_idle,
+};
+
+const struct test_config_rap cfg_rap_disabled = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_disabled_then_ensure,
+};
+
+const struct test_config_rap cfg_rap_resubscribe = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_selected_resubscribe,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_failed_sel = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_failed_selection,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_od_retry = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_ondemand_retry,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_retry = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_ensure_retry,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_rt_notify = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_realtime_notify,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_rt_indicate = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_realtime_indicate,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_ensure = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_ensure,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_od_notify = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_ondemand_notify,
+	.complete = test_complete_cb,
+};
+
+const struct test_config_rap cfg_rap_od_indicate = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_ondemand_indicate,
+	.complete = test_complete_cb,
+};
+
+/*
+ * The 5 s wait for the first Real-time Ranging Data starts with the CS
+ * procedure (RAP v1.0 4.4.1.1), not with the CCCD write: the CCCD is disabled
+ * 5 s after Procedure Enable Complete, which is injected after the write.
+ */
+
+static gint64 proc_enable_time;
+
+static gboolean inject_proc_enable_cb(gpointer user_data)
+{
+	proc_enable_time = g_get_monotonic_time();
+	inject_proc_enable(user_data);
+	return FALSE;
+}
+
+static void action_realtime_timeout(struct bt_rap *rap)
+{
+	proc_enable_time = 0;
+
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_REALTIME,
+				BT_RAP_RANGING_NOTIFY));
+	g_timeout_add(300, inject_proc_enable_cb, rap);
+}
+
+static void realtime_timeout_complete(const void *user_data)
+{
+	/* Disabled no earlier than 5 s after Procedure Enable Complete */
+	if (!proc_enable_time ||
+	    g_get_monotonic_time() - proc_enable_time < 4900 * 1000)
+		tester_test_failed();
+	else
+		tester_test_passed();
+}
+
+const struct test_config_rap cfg_rap_rt_timeout = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_realtime_timeout,
+	.complete = realtime_timeout_complete,
+};
+
+/*
+ * Real-time Ranging Data enabled while a procedure is already running arms
+ * the first data timeout as well.
+ */
+static void action_realtime_midproc(struct bt_rap *rap)
+{
+	proc_enable_time = g_get_monotonic_time();
+	inject_proc_enable(rap);
+
+	g_assert(bt_rap_set_ranging_data_mode(rap,
+				BT_RAP_RANGING_DATA_REALTIME,
+				BT_RAP_RANGING_NOTIFY));
+}
+
+const struct test_config_rap cfg_rap_rt_midproc = {
+	.setup_data = cggit_setup_data,
+	.setup_data_len = ARRAY_SIZE(cggit_setup_data),
+	.action = action_realtime_midproc,
+	.complete = realtime_timeout_complete,
+};
+
+/*
+ * RAS Ranging Data Ready/Overwritten reads report the counters of the
+ * connection they are read on (RAS v1.0, 3.4 and 3.5).
+ */
+#define RAS_CONNS	2
+
+struct cnt_op {
+	int conn;
+	enum { CNT_READ, CNT_WRITE, CNT_INJECT } type;
+	uint16_t handle;
+	uint16_t value;
+};
+
+struct test_data_cnt {
+	struct test_data_ras ras;
+	struct bt_att *satt[RAS_CONNS];
+	struct bt_att *catt[RAS_CONNS];
+	struct bt_gatt_server *server[RAS_CONNS];
+	struct bt_gatt_client *client[RAS_CONNS];
+	struct gatt_db *cdb[RAS_CONNS];
+	unsigned int ready;
+	unsigned int step;
+};
+
+static struct test_data_cnt cnt_data;
+
+static const struct cnt_op cnt_ops[] = {
+	/* Fresh connections report no counter */
+	{ 0, CNT_READ, 0x000e, 0 },
+	{ 1, CNT_READ, 0x000e, 0 },
+	{ 0, CNT_READ, 0x0011, 0 },
+	{ 1, CNT_READ, 0x0011, 0 },
+	/* Connection 0 selects On-demand and two procedures complete on it,
+	 * the second one overwriting the first.
+	 */
+	{ 0, CNT_WRITE, 0x0009, 0x0001 },
+	{ 0, CNT_INJECT },
+	/* Only connection 0 sees the counters */
+	{ 0, CNT_READ, 0x000e, 2 },
+	{ 1, CNT_READ, 0x000e, 0 },
+	{ 0, CNT_READ, 0x0011, 1 },
+	{ 1, CNT_READ, 0x0011, 0 },
+};
+
+static void cnt_teardown(const void *user_data)
+{
+	struct test_data_cnt *data = (void *)user_data;
+	int i;
+
+	for (i = 0; i < RAS_CONNS; i++) {
+		bt_gatt_client_unref(data->client[i]);
+		bt_gatt_server_unref(data->server[i]);
+		bt_att_unref(data->satt[i]);
+		bt_att_unref(data->catt[i]);
+		gatt_db_unref(data->cdb[i]);
+	}
+
+	gatt_db_unref(data->ras.db);
+	bt_rap_unregister(data->ras.ras_id);
+	queue_destroy(data->ras.ccc_states, free);
+
+	tester_teardown_complete();
+}
+
+static void cnt_next(struct test_data_cnt *data);
+
+static void cnt_read_cb(bool success, uint8_t att_ecode, const uint8_t *value,
+					uint16_t length, void *user_data)
+{
+	struct test_data_cnt *data = user_data;
+	const struct cnt_op *op = &cnt_ops[data->step];
+
+	g_assert(success);
+	g_assert_cmpuint(length, ==, 2);
+	g_assert_cmpuint(get_le16(value), ==, op->value);
+
+	data->step++;
+	cnt_next(data);
+}
+
+static void cnt_write_cb(bool success, uint8_t att_ecode, void *user_data)
+{
+	struct test_data_cnt *data = user_data;
+
+	g_assert(success);
+
+	data->step++;
+	cnt_next(data);
+}
+
+static void cnt_next(struct test_data_cnt *data)
+{
+	const struct cnt_op *op;
+	uint8_t value[2];
+	struct bt_rap *rap;
+
+	if (data->step == ARRAY_SIZE(cnt_ops)) {
+		tester_test_passed();
+		return;
+	}
+
+	op = &cnt_ops[data->step];
+
+	switch (op->type) {
+	case CNT_READ:
+		g_assert(bt_gatt_client_read_value(data->client[op->conn],
+					op->handle, cnt_read_cb, data, NULL));
+		break;
+	case CNT_WRITE:
+		put_le16(op->value, value);
+		g_assert(bt_gatt_client_write_value(data->client[op->conn],
+					op->handle, value, sizeof(value),
+					cnt_write_cb, data, NULL));
+		break;
+	case CNT_INJECT:
+		rap = bt_rap_get_session(data->satt[op->conn], data->ras.db);
+		g_assert(rap);
+		inject_proc_enable(rap);
+		inject_cs_result(rap, 0x0001);
+		inject_cs_result(rap, 0x0002);
+		data->step++;
+		cnt_next(data);
+		break;
+	}
+}
+
+static void cnt_client_ready_cb(bool success, uint8_t att_ecode,
+							void *user_data)
+{
+	struct test_data_cnt *data = user_data;
+
+	g_assert(success);
+
+	if (++data->ready == RAS_CONNS)
+		cnt_next(data);
+}
+
+static void test_counters(const void *user_data)
+{
+	struct test_data_cnt *data = (void *)user_data;
+	int i;
+
+	data->ras.db = gatt_db_new();
+	g_assert(data->ras.db);
+
+	gatt_db_ccc_register(data->ras.db, gatt_ccc_read_cb, gatt_ccc_write_cb,
+					gatt_notify_cb, &data->ras);
+
+	bt_rap_add_db(data->ras.db);
+
+	data->ras.ras_id = bt_rap_register(ras_attached, ras_detached,
+								&data->ras);
+	data->ras.ccc_states = queue_new();
+
+	for (i = 0; i < RAS_CONNS; i++) {
+		int sv[2];
+
+		g_assert(socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+								sv) == 0);
+
+		data->satt[i] = bt_att_new(sv[0], false);
+		data->catt[i] = bt_att_new(sv[1], false);
+		g_assert(data->satt[i] && data->catt[i]);
+
+		bt_att_set_close_on_unref(data->satt[i], true);
+		bt_att_set_close_on_unref(data->catt[i], true);
+		bt_att_set_security(data->satt[i], BT_ATT_SECURITY_MEDIUM);
+
+		data->server[i] = bt_gatt_server_new(data->ras.db,
+						data->satt[i], 64, 0);
+		g_assert(data->server[i]);
+
+		data->cdb[i] = gatt_db_new();
+		data->client[i] = bt_gatt_client_new(data->cdb[i],
+						data->catt[i], 64, 0);
+		g_assert(data->client[i]);
+
+		bt_gatt_client_ready_register(data->client[i],
+				cnt_client_ready_cb, data, NULL);
+	}
+
+	/* Notifications go out through the first connection */
+	data->ras.server = data->server[0];
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -1079,6 +1599,76 @@ int main(int argc, char *argv[])
 				"Overwritten]",
 			test_setup_rap, test_client_rap,
 			&cfg_cggit_discovery, RAP_CL_CGGIT_CHA_BV_06_C);
+
+	/* RAP Requester Ranging Data subscriptions */
+	define_test_rap("RAP/REQ/RRD/BV-01-C [No subscription at attach]",
+			test_setup_rap, test_client_rap, &cfg_rap_idle,
+			RAP_REQ_RRD_NO_SUBSCRIBE);
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Real-time Notification]",
+			test_setup_rap, test_client_rap, &cfg_rap_rt_notify,
+			RAP_REQ_RRD_ROUND(0x01));
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Real-time Indication]",
+			test_setup_rap, test_client_rap, &cfg_rap_rt_indicate,
+			RAP_REQ_RRD_ROUND(0x02));
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Subscribe on start]",
+			test_setup_rap, test_client_rap, &cfg_rap_ensure,
+			RAP_REQ_RRD_ENSURE);
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Real-time timeout from "
+				"Procedure Enable]",
+			test_setup_rap, test_client_rap, &cfg_rap_rt_timeout,
+			ATTACH_FEATURES_REALTIME, WRITE_CCCD(0x06, 0x01),
+			WRITE_CCCD(0x06, 0x00));
+	define_test_rap("RAP/REQ/ORD/BV-01-C [On-demand Notification]",
+			test_setup_rap, test_client_rap, &cfg_rap_od_notify,
+			RAP_REQ_ORD_ROUND(0x01));
+	define_test_rap("RAP/REQ/ORD/BV-01-C [On-demand Indication]",
+			test_setup_rap, test_client_rap, &cfg_rap_od_indicate,
+			RAP_REQ_ORD_ROUND(0x02));
+	define_test_rap("RAP/REQ/ORD/BV-01-C [Subscribe on start without "
+				"Real-time support]",
+			test_setup_rap, test_client_rap, &cfg_rap_ensure,
+			RAP_REQ_ORD_ROUND(0x01));
+
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Subscribe on start before "
+				"Features read]",
+			test_setup_rap, test_client_rap, &cfg_rap_early_ensure,
+			ATTACH_FEATURES_REALTIME, WRITE_CCCD(0x06, 0x01));
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Disabled mode kept on start]",
+			test_setup_rap, test_client_rap, &cfg_rap_disabled,
+			ATTACH_FEATURES_REALTIME);
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Selected mode resubscribed]",
+			test_setup_rap, test_client_rap, &cfg_rap_resubscribe,
+			ATTACH_FEATURES_REALTIME, WRITE_CCCD(0x06, 0x02),
+			WRITE_CCCD(0x06, 0x00), WRITE_CCCD(0x06, 0x02));
+	define_test_rap("RAP/REQ/ORD/BV-01-C [Failed selection not kept]",
+			test_setup_rap, test_client_rap, &cfg_rap_failed_sel,
+			RAP_REQ_ORD_ROUND(0x01));
+	define_test_rap("RAP/REQ/ORD/BV-01-C [Retry rejected registration]",
+			test_setup_rap, test_client_rap, &cfg_rap_od_retry,
+			ATTACH_FEATURES_ONDEMAND,
+			WRITE_CCCD(0x09, 0x01),
+			IOV_DATA(0x12, 0x0c, 0x00, 0x02, 0x00),
+			IOV_DATA(0x01, 0x12, 0x0c, 0x00, 0x03),
+			WRITE_CCCD(0x0f, 0x02), WRITE_CCCD(0x12, 0x02),
+			IOV_DATA(0x0a, 0x0e, 0x00),
+			IOV_DATA(0x0b, 0x00, 0x00),
+			WRITE_CCCD(0x0c, 0x00), WRITE_CCCD(0x0c, 0x02));
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Retry after rejected CCCD]",
+			test_setup_rap, test_client_rap, &cfg_rap_retry,
+			ATTACH_FEATURES_REALTIME,
+			IOV_DATA(0x12, 0x06, 0x00, 0x01, 0x00),
+			IOV_DATA(0x01, 0x12, 0x06, 0x00, 0x03),
+			WRITE_CCCD(0x06, 0x00),
+			WRITE_CCCD(0x06, 0x01));
+	define_test_rap("RAP/REQ/RRD/BV-01-C [Real-time timeout when enabled "
+				"mid-procedure]",
+			test_setup_rap, test_client_rap, &cfg_rap_rt_midproc,
+			ATTACH_FEATURES_REALTIME, WRITE_CCCD(0x06, 0x01),
+			WRITE_CCCD(0x06, 0x00));
+
+	/* RAS Ranging Counters are per connection */
+	tester_add("RAS/SR/RCO/Ranging Counters per connection", &cnt_data,
+			NULL, test_counters, cnt_teardown);
 
 	return tester_run();
 }
