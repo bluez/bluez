@@ -120,6 +120,7 @@ static int linger = 0;
 static int reliable = 0;
 static int timestamp = 0;
 static int defer_setup = 0;
+static bool stdin_frames;
 static int priority = -1;
 static int rcvbuf = 0;
 static int32_t phy = -1;
@@ -1078,7 +1079,7 @@ static void do_send(int sk)
 	/* Without -b each frame is as large as the channel's MTU */
 	bool follow_mtu = data_size < 0;
 	uint32_t seq;
-	int i, fd, len, buflen, size, sent;
+	int i, fd, len, buflen, size, sent, burst;
 
 	syslog(LOG_INFO, "Sending ...");
 
@@ -1120,6 +1121,19 @@ static void do_send(int sk)
 		usleep(send_delay);
 
 	seq = seq_start;
+	burst = num_frames;
+
+next_burst:
+	/* With -j, a burst for each line: its number of frames, -N's without */
+	if (stdin_frames) {
+		char line[16];
+
+		if (!fgets(line, sizeof(line), stdin))
+			return;
+
+		num_frames = atoi(line) > 0 ? atoi(line) : burst;
+	}
+
 	while ((num_frames == -1) || (num_frames-- > 0)) {
 		if (follow_mtu)
 			data_size = omtu = current_omtu(sk);
@@ -1149,6 +1163,9 @@ static void do_send(int sk)
 						!(seq % (count + seq_start)))
 			usleep(send_delay);
 	}
+
+	if (stdin_frames)
+		goto next_burst;
 }
 
 static void send_mode(int sk)
@@ -1455,6 +1472,8 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm] [-J cid]\n"
 		"\t[-I imtu] [-O omtu]\n"
+		"\t[-j] send -N frames for each line on stdin (or as many as\n"
+		"\t   the line says)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-W seconds] enable deferred setup\n"
 		"\t   0: don't enable (default)\n"
@@ -1493,7 +1512,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt(argc, argv, "a:b:cde:f:g:i:mnpqrstuwxyz"
+	while ((opt = getopt(argc, argv, "a:b:cde:f:g:i:jmnpqrstuwxyz"
 		"AB:C:D:EF:GH:I:J:K:L:MN:O:P:Q:RSTUV:W:X:Y:Z:")) != EOF) {
 		switch (opt) {
 		case 'r':
@@ -1562,6 +1581,10 @@ int main(int argc, char *argv[])
 
 		case 'b':
 			data_size = atoi(optarg);
+			break;
+
+		case 'j':
+			stdin_frames = true;
 			break;
 
 		case 'i':
