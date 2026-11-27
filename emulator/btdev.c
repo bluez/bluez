@@ -266,6 +266,7 @@ struct btdev {
 	uint16_t le_pa_max_interval;
 	uint8_t  le_pa_data_len;
 	uint8_t  le_pa_data[MAX_PA_DATA_LEN];
+	uint8_t  le_pa_handle;
 	uint8_t  le_ltk[16];
 	uint8_t  hdt_def_mic_len;
 	uint8_t  hdt_def_format;
@@ -692,6 +693,8 @@ static void btdev_reset(struct btdev *btdev)
 		timeout_remove(btdev->inquiry_id);
 		btdev->inquiry_id = 0;
 	}
+
+	btdev->le_pa_enable = 0x00;
 
 	queue_remove_all(btdev->conns, NULL, NULL, conn_remove);
 	queue_remove_all(btdev->le_ext_adv, NULL, NULL, le_ext_adv_free);
@@ -5981,7 +5984,8 @@ static int cmd_remove_adv_set(struct btdev *dev, const void *data,
 		return 0;
 	}
 
-	if (ext_adv->enable) {
+	if (ext_adv->enable || (dev->le_pa_enable &&
+				dev->le_pa_handle == cmd->handle)) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 		cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_ADV_SET, &status,
 						sizeof(status));
@@ -6002,6 +6006,13 @@ static int cmd_clear_adv_sets(struct btdev *dev, const void *data,
 {
 	const struct queue_entry *entry;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	if (dev->le_pa_enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		cmd_complete(dev, BT_HCI_CMD_LE_CLEAR_ADV_SETS, &status,
+							sizeof(status));
+		return 0;
+	}
 
 	for (entry = queue_get_entries(dev->le_ext_adv); entry;
 							entry = entry->next) {
@@ -6036,6 +6047,7 @@ static int cmd_set_pa_params(struct btdev *dev, const void *data,
 		dev->le_pa_properties = le16_to_cpu(cmd->properties);
 		dev->le_pa_min_interval = cmd->min_interval;
 		dev->le_pa_max_interval = cmd->max_interval;
+		dev->le_pa_handle = cmd->handle;
 	}
 
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_PARAMS, &status,
