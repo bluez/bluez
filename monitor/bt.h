@@ -4798,6 +4798,8 @@ struct bt_hci_evt_le_big_complete_v2 {
 #define BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH	0x3e
 #define BT_HCI_ERR_UNKNOWN_ADVERTISING_ID	0x42
 #define BT_HCI_ERR_CANCELLED			0x44
+#define BT_HCI_ERR_TOO_LATE			0x46
+#define BT_HCI_ERR_TOO_EARLY			0x47
 #define BT_HCI_ERR_ENC_MODE_NOT_ACCEPTABLE	0x25
 
 struct bt_l2cap_hdr {
