@@ -2504,6 +2504,267 @@ static void cmd_hci_cmd(int argc, char **argv)
 	}
 }
 
+static void pa_params_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_add_periodic_adv_params *rp = param;
+
+	if (status != 0) {
+		error("Add Periodic Advertising Parameters failed with status "
+				"0x%02x (%s)", status, mgmt_errstr(status));
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small (%u bytes) reply", len);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print("Periodic advertising set on instance %u", rp->instance);
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_pa_params(int argc, char **argv)
+{
+	struct mgmt_cp_add_periodic_adv_params cp;
+	uint16_t index;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.instance = strtoul(argv[1], NULL, 0);
+	cp.min_interval = cpu_to_le16(strtoul(argv[2], NULL, 0));
+	cp.max_interval = cpu_to_le16(strtoul(argv[3], NULL, 0));
+
+	if (argc > 4) {
+		if (argc != 9) {
+			error("Either none or all five PAwR parameters");
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+		}
+
+		cp.num_subevents = strtoul(argv[4], NULL, 0);
+		cp.subevent_interval = strtoul(argv[5], NULL, 0);
+		cp.response_slot_delay = strtoul(argv[6], NULL, 0);
+		cp.response_slot_spacing = strtoul(argv[7], NULL, 0);
+		cp.num_response_slots = strtoul(argv[8], NULL, 0);
+	}
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send(mgmt, MGMT_OP_ADD_PERIODIC_ADV_PARAMS, index,
+			sizeof(cp), &cp, pa_params_rsp, NULL, NULL) == 0) {
+		error("Unable to send Add Periodic Advertising Parameters");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+static void pa_data_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_rp_add_periodic_adv_data *rp = param;
+
+	if (status != 0) {
+		error("Add Periodic Advertising Data failed with status "
+				"0x%02x (%s)", status, mgmt_errstr(status));
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		error("Too small (%u bytes) reply", len);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	print("Periodic advertising data set on instance %u", rp->instance);
+
+	bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void cmd_pa_data(int argc, char **argv)
+{
+	uint8_t buf[sizeof(struct mgmt_cp_add_periodic_adv_data) + 252];
+	struct mgmt_cp_add_periodic_adv_data *cp = (void *) buf;
+	long data_len = 0;
+	uint16_t index;
+
+	memset(buf, 0, sizeof(buf));
+	cp->instance = strtoul(argv[1], NULL, 0);
+
+	if (argc > 2) {
+		data_len = 252;
+		if (!str2bytearray(argv[2], cp->data, &data_len))
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	cp->data_len = data_len;
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send(mgmt, MGMT_OP_ADD_PERIODIC_ADV_DATA, index,
+			sizeof(*cp) + data_len, cp, pa_data_rsp, NULL,
+			NULL) == 0) {
+		error("Unable to send Add Periodic Advertising Data");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+}
+
+/* What pawr-serve answers the subevent data requests with */
+static struct {
+	uint8_t instance;
+	uint8_t num_subevents;
+	uint8_t num_response_slots;
+	uint8_t data[251];
+	long data_len;
+	uint8_t counter;
+} pawr;
+
+static void pawr_data_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		error("Set Periodic Advertising Subevent Data failed with "
+			"status 0x%02x (%s)", status, mgmt_errstr(status));
+}
+
+static void pawr_data_request(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
+{
+	const struct mgmt_ev_pa_subevent_data_request *ev = param;
+	uint8_t buf[sizeof(struct mgmt_cp_set_pa_subevent_data) + 253];
+	struct mgmt_cp_set_pa_subevent_data *cp = (void *) buf;
+	size_t pos = sizeof(*cp);
+	uint8_t i;
+
+	if (len < sizeof(*ev)) {
+		error("Too small (%u bytes) pa_subevent_data_request event",
+									len);
+		return;
+	}
+
+	if (ev->instance != pawr.instance)
+		return;
+
+	print("hci%u pa_subevent_data_request: instance %u start %u count %u",
+			index, ev->instance, ev->subevent_start,
+			ev->subevent_data_count);
+
+	cp->instance = ev->instance;
+	cp->num_subevents = 0;
+
+	for (i = 0; i < ev->subevent_data_count; i++) {
+		struct mgmt_pa_subevent_data *subevent = (void *) (buf + pos);
+		uint8_t data[sizeof(pawr.data)];
+		uint8_t data_len = pawr.data_len;
+
+		subevent->subevent = (ev->subevent_start + i) %
+							pawr.num_subevents;
+
+		/* Without data from the command line: manufacturer data
+		 * with the subevent and a counter.
+		 */
+		if (data_len) {
+			memcpy(data, pawr.data, data_len);
+		} else {
+			data[0] = 0x05;
+			data[1] = 0xff;
+			data[2] = 0x59;
+			data[3] = 0x00;
+			data[4] = subevent->subevent;
+			data[5] = pawr.counter++;
+			data_len = 6;
+		}
+
+		if (pos + sizeof(*subevent) + data_len > sizeof(buf))
+			break;
+
+		subevent->response_slot_start = 0;
+		subevent->response_slot_count = pawr.num_response_slots;
+		subevent->data_len = data_len;
+		memcpy(subevent->data, data, data_len);
+
+		pos += sizeof(*subevent) + data_len;
+		cp->num_subevents++;
+	}
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_PA_SUBEVENT_DATA, index, pos, buf,
+					pawr_data_rsp, NULL, NULL) == 0)
+		error("Unable to send Set Periodic Advertising Subevent Data");
+}
+
+static void pawr_response_report(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_pa_response_report *ev = param;
+	const uint8_t *ptr;
+	uint8_t i;
+
+	if (len < sizeof(*ev)) {
+		error("Too small (%u bytes) pa_response_report event", len);
+		return;
+	}
+
+	ptr = ev->responses;
+	len -= sizeof(*ev);
+
+	for (i = 0; i < ev->num_responses; i++) {
+		const struct mgmt_pa_response *rsp = (const void *) ptr;
+		char str[2 * 251 + 1];
+		uint8_t j;
+
+		if (len < sizeof(*rsp) || len < sizeof(*rsp) + rsp->data_len) {
+			error("Truncated pa_response_report event");
+			return;
+		}
+
+		for (j = 0; j < rsp->data_len; j++)
+			sprintf(str + 2 * j, "%02x", rsp->data[j]);
+		str[2 * rsp->data_len] = '\0';
+
+		print("hci%u pa_response_report: instance %u subevent %u "
+			"tx_status %u slot %u rssi %d status 0x%02x data %s",
+			index, ev->instance, ev->subevent, ev->tx_status,
+			rsp->response_slot, rsp->rssi, rsp->data_status, str);
+
+		ptr += sizeof(*rsp) + rsp->data_len;
+		len -= sizeof(*rsp) + rsp->data_len;
+	}
+}
+
+/* Runs until it is stopped */
+static void cmd_pawr_serve(int argc, char **argv)
+{
+	uint16_t index;
+
+	memset(&pawr, 0, sizeof(pawr));
+	pawr.instance = strtoul(argv[1], NULL, 0);
+	pawr.num_subevents = strtoul(argv[2], NULL, 0);
+	pawr.num_response_slots = strtoul(argv[3], NULL, 0);
+
+	if (!pawr.num_subevents) {
+		error("Invalid number of subevents");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	if (argc > 4) {
+		pawr.data_len = sizeof(pawr.data);
+		if (!str2bytearray(argv[4], pawr.data, &pawr.data_len))
+			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	index = mgmt_index;
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	mgmt_register(mgmt, MGMT_EV_PA_SUBEVENT_DATA_REQUEST, index,
+					pawr_data_request, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_PA_RESPONSE_REPORT, index,
+					pawr_response_report, NULL, NULL);
+
+	print("Serving subevent data of instance %u", pawr.instance);
+}
+
 /* Wrapper to get the index and opcode to the response callback */
 struct command_data {
 	uint16_t id;
@@ -6354,6 +6615,20 @@ static const struct bt_shell_menu mgmt_menu = {
 		cmd_conn_subrate,	"Load Connection Subrate"	},
 	{ "hci-cmd",		"<opcode> [event] [timeout] [param...]",
 		cmd_hci_cmd,	"Send HCI Command and wait for Event"	},
+	{ "pa-params",		"<instance> <min_interval> <max_interval> "
+				"[num_subevents] [subevent_interval] "
+				"[response_slot_delay] [response_slot_spacing] "
+				"[num_response_slots]",
+		cmd_pa_params,
+			"Add periodic advertising to an instance, with "
+			"responses if it has subevents"			},
+	{ "pa-data",		"<instance> [data...]",
+		cmd_pa_data,
+			"Set the periodic advertising data of an instance" },
+	{ "pawr-serve",		"<instance> <num_subevents> "
+				"<num_response_slots> [data...]",
+		cmd_pawr_serve,
+			"Answer subevent data requests, print responses" },
 	{} },
 };
 
