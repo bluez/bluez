@@ -266,6 +266,15 @@ struct btdev {
 	uint16_t le_pa_max_interval;
 	uint8_t  le_pa_data_len;
 	uint8_t  le_pa_data[MAX_PA_DATA_LEN];
+	uint8_t  le_pa_handle;
+	uint8_t  le_pa_num_subevents;
+	uint8_t  le_pa_subevent_interval;
+	uint8_t  le_pa_rsp_slot_delay;
+	uint8_t  le_pa_rsp_slot_spacing;
+	uint8_t  le_pa_num_rsp_slots;
+	bool     le_pa_data_requested;
+	uint8_t  le_pa_subevents[16];	/* Subevents which wait for data */
+	unsigned int le_pa_subevent_id;
 	uint8_t  le_ltk[16];
 	uint8_t  hdt_def_mic_len;
 	uint8_t  hdt_def_format;
@@ -692,6 +701,14 @@ static void btdev_reset(struct btdev *btdev)
 		timeout_remove(btdev->inquiry_id);
 		btdev->inquiry_id = 0;
 	}
+
+	if (btdev->le_pa_subevent_id > 0) {
+		timeout_remove(btdev->le_pa_subevent_id);
+		btdev->le_pa_subevent_id = 0;
+	}
+
+	btdev->le_pa_enable = 0x00;
+	btdev->le_pa_num_subevents = 0;
 
 	queue_remove_all(btdev->conns, NULL, NULL, conn_remove);
 	queue_remove_all(btdev->le_ext_adv, NULL, NULL, le_ext_adv_free);
@@ -5981,7 +5998,8 @@ static int cmd_remove_adv_set(struct btdev *dev, const void *data,
 		return 0;
 	}
 
-	if (ext_adv->enable) {
+	if (ext_adv->enable || (dev->le_pa_enable &&
+				dev->le_pa_handle == cmd->handle)) {
 		status = BT_HCI_ERR_COMMAND_DISALLOWED;
 		cmd_complete(dev, BT_HCI_CMD_LE_REMOVE_ADV_SET, &status,
 						sizeof(status));
@@ -6002,6 +6020,13 @@ static int cmd_clear_adv_sets(struct btdev *dev, const void *data,
 {
 	const struct queue_entry *entry;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	if (dev->le_pa_enable) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		cmd_complete(dev, BT_HCI_CMD_LE_CLEAR_ADV_SETS, &status,
+							sizeof(status));
+		return 0;
+	}
 
 	for (entry = queue_get_entries(dev->le_ext_adv); entry;
 							entry = entry->next) {
@@ -6036,11 +6061,210 @@ static int cmd_set_pa_params(struct btdev *dev, const void *data,
 		dev->le_pa_properties = le16_to_cpu(cmd->properties);
 		dev->le_pa_min_interval = cmd->min_interval;
 		dev->le_pa_max_interval = cmd->max_interval;
+		dev->le_pa_handle = cmd->handle;
+		dev->le_pa_num_subevents = 0;
 	}
 
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_PARAMS, &status,
 							sizeof(status));
 	return 0;
+}
+
+static int cmd_set_pa_params_v2(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	const struct bt_hci_cmd_le_set_pa_params_v2 *cmd = data;
+	struct bt_hci_rsp_le_set_pa_params_v2 rsp;
+	uint16_t min_interval = le16_to_cpu(cmd->min_interval);
+	uint16_t max_interval = le16_to_cpu(cmd->max_interval);
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.handle = cmd->handle;
+
+	if (!queue_find(dev->le_ext_adv, match_ext_adv_handle,
+					UINT_TO_PTR(cmd->handle))) {
+		rsp.status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
+		goto done;
+	}
+
+	if (dev->le_pa_enable) {
+		rsp.status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
+
+	/* With subevents: an interval of at least 7.5 ms, response slots
+	 * which follow the subevent packet and a train which fits the
+	 * periodic advertising interval (all in units of 1.25 ms, the
+	 * spacing in 0.125 ms).
+	 */
+	if (min_interval < 0x0006 || min_interval > max_interval ||
+			cmd->num_subevents > 0x80 ||
+			(cmd->num_subevents &&
+			(cmd->subevent_interval < 0x06 ||
+			cmd->num_subevents * cmd->subevent_interval >
+							min_interval ||
+			(cmd->num_response_slots &&
+			(!cmd->response_slot_delay ||
+			cmd->response_slot_delay >= cmd->subevent_interval ||
+			cmd->response_slot_spacing < 0x02))))) {
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	dev->le_pa_properties = le16_to_cpu(cmd->properties);
+	dev->le_pa_min_interval = cmd->min_interval;
+	dev->le_pa_max_interval = cmd->max_interval;
+	dev->le_pa_handle = cmd->handle;
+	dev->le_pa_num_subevents = cmd->num_subevents;
+	dev->le_pa_subevent_interval = cmd->subevent_interval;
+	dev->le_pa_rsp_slot_delay = cmd->response_slot_delay;
+	dev->le_pa_rsp_slot_spacing = cmd->response_slot_spacing;
+	dev->le_pa_num_rsp_slots = cmd->num_response_slots;
+
+done:
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_PARAMS_V2, &rsp, sizeof(rsp));
+
+	return 0;
+}
+
+static int cmd_set_pa_subevent_data(struct btdev *dev, const void *data,
+							uint8_t len)
+{
+	struct iovec iov = { .iov_base = (void *) data, .iov_len = len };
+	const struct bt_hci_cmd_le_set_pa_subevent_data *cmd;
+	const struct bt_hci_le_pa_subevent_data *se;
+	struct bt_hci_rsp_le_set_pa_subevent_data rsp;
+	uint8_t i;
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	cmd = util_iov_pull_mem(&iov, sizeof(*cmd));
+	if (!cmd)
+		return -EINVAL;
+
+	rsp.handle = cmd->handle;
+
+	if (!queue_find(dev->le_ext_adv, match_ext_adv_handle,
+					UINT_TO_PTR(cmd->handle))) {
+		rsp.status = BT_HCI_ERR_UNKNOWN_ADVERTISING_ID;
+		goto done;
+	}
+
+	/* Only a running train with subevents asks for data */
+	if (!dev->le_pa_enable || dev->le_pa_handle != cmd->handle ||
+						!dev->le_pa_num_subevents) {
+		rsp.status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		goto done;
+	}
+
+	if (!cmd->num_subevents || cmd->num_subevents > 0x0f) {
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	for (i = 0; i < cmd->num_subevents; i++) {
+		se = util_iov_pull_mem(&iov, sizeof(*se));
+		if (!se || !util_iov_pull(&iov, se->data_len)) {
+			rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+			goto done;
+		}
+
+		if (se->subevent >= dev->le_pa_num_subevents ||
+				se->response_slot_start +
+				se->response_slot_count >
+				dev->le_pa_num_rsp_slots) {
+			rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+			goto done;
+		}
+	}
+
+	if (iov.iov_len) {
+		rsp.status = BT_HCI_ERR_INVALID_PARAMETERS;
+		goto done;
+	}
+
+	/* Data is taken once for each subevent asked for: before the first
+	 * request it is too early, a second time it is too late.
+	 */
+	iov.iov_base = (void *) cmd->subevents;
+	iov.iov_len = len - sizeof(*cmd);
+
+	for (i = 0; i < cmd->num_subevents; i++) {
+		se = util_iov_pull_mem(&iov, sizeof(*se));
+		util_iov_pull(&iov, se->data_len);
+
+		if (!dev->le_pa_data_requested) {
+			rsp.status = BT_HCI_ERR_TOO_EARLY;
+			goto done;
+		}
+
+		if (!(dev->le_pa_subevents[se->subevent / 8] &
+						BIT(se->subevent % 8))) {
+			rsp.status = BT_HCI_ERR_TOO_LATE;
+			goto done;
+		}
+	}
+
+	iov.iov_base = (void *) cmd->subevents;
+	iov.iov_len = len - sizeof(*cmd);
+
+	for (i = 0; i < cmd->num_subevents; i++) {
+		se = util_iov_pull_mem(&iov, sizeof(*se));
+		util_iov_pull(&iov, se->data_len);
+
+		dev->le_pa_subevents[se->subevent / 8] &=
+						~BIT(se->subevent % 8);
+	}
+
+done:
+	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_SUBEVENT_DATA, &rsp,
+							sizeof(rsp));
+
+	return 0;
+}
+
+/* Ask the host for the data of all subevents, once per periodic advertising
+ * interval.
+ */
+static bool pa_subevent_data_request(void *user_data)
+{
+	struct btdev *dev = user_data;
+	struct bt_hci_evt_le_pa_subevent_data_request ev;
+	uint8_t start = 0;
+
+	if (!dev->le_pa_enable || !dev->le_pa_num_subevents) {
+		dev->le_pa_subevent_id = 0;
+		return false;
+	}
+
+	/* LE Periodic Advertising Subevent Data Request event */
+	if (!(dev->le_event_mask[4] & 0x40))
+		return true;
+
+	/* The event takes up to 15 subevents */
+	while (start < dev->le_pa_num_subevents) {
+		uint8_t count = dev->le_pa_num_subevents - start;
+		uint8_t i;
+
+		if (count > 0x0f)
+			count = 0x0f;
+
+		for (i = start; i < start + count; i++)
+			dev->le_pa_subevents[i / 8] |= BIT(i % 8);
+
+		dev->le_pa_data_requested = true;
+
+		ev.handle = dev->le_pa_handle;
+		ev.subevent_start = start;
+		ev.subevent_data_count = count;
+
+		le_meta_event(dev, BT_HCI_EVT_LE_PA_SUBEVENT_DATA_REQUEST,
+							&ev, sizeof(ev));
+
+		start += count;
+	}
+
+	return true;
 }
 
 static int cmd_set_pa_data(struct btdev *dev, const void *data,
@@ -6049,6 +6273,14 @@ static int cmd_set_pa_data(struct btdev *dev, const void *data,
 	const struct bt_hci_cmd_le_set_pa_data *cmd = data;
 	uint8_t status = BT_HCI_ERR_SUCCESS;
 	uint8_t data_len = cmd->data_len;
+
+	/* A train with subevents carries its data in the subevents */
+	if (dev->le_pa_num_subevents && dev->le_pa_handle == cmd->handle) {
+		status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_DATA, &status,
+							sizeof(status));
+		return 0;
+	}
 
 	if (data_len > MAX_PA_DATA_LEN)
 		data_len = MAX_PA_DATA_LEN;
@@ -6271,6 +6503,24 @@ static int cmd_set_pa_enable(struct btdev *dev, const void *data, uint8_t len)
 
 	cmd_complete(dev, BT_HCI_CMD_LE_SET_PA_ENABLE, &status,
 							sizeof(status));
+
+	if (dev->le_pa_subevent_id > 0) {
+		timeout_remove(dev->le_pa_subevent_id);
+		dev->le_pa_subevent_id = 0;
+	}
+
+	dev->le_pa_data_requested = false;
+	memset(dev->le_pa_subevents, 0, sizeof(dev->le_pa_subevents));
+
+	if (dev->le_pa_enable && dev->le_pa_num_subevents) {
+		/* The interval is in units of 1.25 ms */
+		unsigned int msec = le16_to_cpu(dev->le_pa_min_interval) *
+								5 / 4;
+
+		dev->le_pa_subevent_id = timeout_add(msec,
+						pa_subevent_data_request,
+						dev, NULL);
+	}
 
 	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
 		struct btdev *remote = btdev_list[i];
@@ -8350,7 +8600,10 @@ done:
 	CMD(BT_HCI_CMD_LE_READ_ALL_REMOTE_FEATURES, \
 			cmd_le_read_all_remote_features, NULL), \
 	CMD(BT_HCI_CMD_LE_SET_HOST_FEATURE_V2, \
-			cmd_set_host_feature_v2, NULL)
+			cmd_set_host_feature_v2, NULL), \
+	CMD(BT_HCI_CMD_LE_SET_PA_PARAMS_V2, cmd_set_pa_params_v2, NULL), \
+	CMD(BT_HCI_CMD_LE_SET_PA_SUBEVENT_DATA, cmd_set_pa_subevent_data, \
+			NULL)
 
 static const struct btdev_cmd cmd_le_6_0[] = {
 	CMD_COMMON_ALL,
@@ -8370,6 +8623,8 @@ static void set_le_60_commands(struct btdev *btdev)
 	btdev->commands[47] |= BIT(2);	/* LE Read All Local Features */
 	btdev->commands[47] |= BIT(3);	/* LE Read All Remote Features */
 	btdev->commands[47] |= BIT(4);	/* LE Set Host Feature V2 */
+	btdev->commands[46] |= BIT(5);	/* LE Set PA Subevent Data */
+	btdev->commands[47] |= BIT(1);	/* LE Set PA Parameters v2 */
 	btdev->cmds = cmd_le_6_0;
 }
 
@@ -9147,6 +9402,7 @@ static void set_bredrle_features(struct btdev *btdev)
 
 	if (btdev->type >= BTDEV_TYPE_BREDRLE60) {
 		btdev->version = 0x0e;
+		btdev->le_features[5] |= BIT(3); /* PAwR Advertiser */
 		btdev->le_features[7] |= BIT(7); /* LL Extended Features */
 	}
 
@@ -9368,6 +9624,9 @@ void btdev_destroy(struct btdev *btdev)
 
 	if (btdev->inquiry_id > 0)
 		timeout_remove(btdev->inquiry_id);
+
+	if (btdev->le_pa_subevent_id > 0)
+		timeout_remove(btdev->le_pa_subevent_id);
 
 	bt_crypto_unref(btdev->crypto);
 	del_btdev(btdev);
