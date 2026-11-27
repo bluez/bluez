@@ -120,6 +120,8 @@ static int linger = 0;
 static int reliable = 0;
 static int timestamp = 0;
 static int defer_setup = 0;
+static bool stdin_frames;
+static int num_chans = 1;
 static int priority = -1;
 static int rcvbuf = 0;
 static int32_t phy = -1;
@@ -535,6 +537,11 @@ static int do_connect(char *svr)
 	struct l2cap_options opts;
 	socklen_t optlen;
 	int sk, opt;
+	/* All but the last of -k channels are deferred: the kernel puts them
+	 * into the connection request of the last one (enhanced credit based
+	 * mode), and they stay open while its mode runs.
+	 */
+	bool defer = num_chans > 1;
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
@@ -654,10 +661,29 @@ static int do_connect(char *svr)
 	else
 		goto error;
 
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0 ) {
+	if (defer) {
+		opt = 1;
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_DEFER_SETUP, &opt,
+							sizeof(opt)) < 0) {
+			syslog(LOG_ERR, "Can't enable deferred setup: %s (%d)",
+							strerror(errno), errno);
+			goto error;
+		}
+
+		/* Or connect() waits for a request that is not sent yet */
+		fcntl(sk, F_SETFL, fcntl(sk, F_GETFL) | O_NONBLOCK);
+	}
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0 &&
+				!(defer && errno == EINPROGRESS)) {
 		syslog(LOG_ERR, "Can't connect: %s (%d)",
 							strerror(errno), errno);
 		goto error;
+	}
+
+	if (defer) {
+		num_chans--;
+		return do_connect(svr);
 	}
 
 	/* Get current options */
@@ -685,7 +711,7 @@ static void do_listen(void (*handler)(int sk))
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
 	socklen_t optlen;
-	int sk, nsk, opt;
+	int sk, nsk, opt, accepted = 0;
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
@@ -806,6 +832,11 @@ static void do_listen(void (*handler)(int sk))
 							strerror(errno), errno);
 			goto error;
 		}
+
+		/* The first -k channels stay open, the mode runs on the last */
+		if (++accepted < num_chans)
+			continue;
+
 		if (fork()) {
 			/* Parent */
 			close(nsk);
@@ -1059,10 +1090,26 @@ static void recv_mode(int sk)
 	}
 }
 
+/* The channel's MTU now: the peer may have reconfigured it since connection
+ * (enhanced credit based mode).
+ */
+static int current_omtu(int sk)
+{
+	uint16_t mtu;
+	socklen_t len = sizeof(mtu);
+
+	if (getsockopt(sk, SOL_BLUETOOTH, BT_SNDMTU, &mtu, &len) < 0 || !mtu)
+		return omtu;
+
+	return mtu > buffer_size ? buffer_size : mtu;
+}
+
 static void do_send(int sk)
 {
+	/* Without -b each frame is as large as the channel's MTU */
+	bool follow_mtu = data_size < 0;
 	uint32_t seq;
-	int i, fd, len, buflen, size, sent;
+	int i, fd, len, buflen, size, sent, burst;
 
 	syslog(LOG_INFO, "Sending ...");
 
@@ -1096,7 +1143,7 @@ static void do_send(int sk)
 		close(fd);
 		return;
 	} else {
-		for (i = 6; i < data_size; i++)
+		for (i = 6; i < buffer_size; i++)
 			buf[i] = 0x7f;
 	}
 
@@ -1104,7 +1151,23 @@ static void do_send(int sk)
 		usleep(send_delay);
 
 	seq = seq_start;
+	burst = num_frames;
+
+next_burst:
+	/* With -j, a burst for each line: its number of frames, -N's without */
+	if (stdin_frames) {
+		char line[16];
+
+		if (!fgets(line, sizeof(line), stdin))
+			return;
+
+		num_frames = atoi(line) > 0 ? atoi(line) : burst;
+	}
+
 	while ((num_frames == -1) || (num_frames-- > 0)) {
+		if (follow_mtu)
+			data_size = omtu = current_omtu(sk);
+
 		put_le32(seq, buf);
 		put_le16(data_size, buf + 4);
 
@@ -1130,6 +1193,9 @@ static void do_send(int sk)
 						!(seq % (count + seq_start)))
 			usleep(send_delay);
 	}
+
+	if (stdin_frames)
+		goto next_burst;
 }
 
 static void send_mode(int sk)
@@ -1436,6 +1502,10 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm] [-J cid]\n"
 		"\t[-I imtu] [-O omtu]\n"
+		"\t[-j] send -N frames for each line on stdin (or as many as\n"
+		"\t   the line says)\n"
+		"\t[-k num] num channels (ext-flowctl): connected in one\n"
+		"\t   request, or accepted; the mode runs on the last one\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-W seconds] enable deferred setup\n"
 		"\t   0: don't enable (default)\n"
@@ -1474,7 +1544,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt(argc, argv, "a:b:cde:f:g:i:mnpqrstuwxyz"
+	while ((opt = getopt(argc, argv, "a:b:cde:f:g:i:jk:mnpqrstuwxyz"
 		"AB:C:D:EF:GH:I:J:K:L:MN:O:P:Q:RSTUV:W:X:Y:Z:")) != EOF) {
 		switch (opt) {
 		case 'r':
@@ -1543,6 +1613,14 @@ int main(int argc, char *argv[])
 
 		case 'b':
 			data_size = atoi(optarg);
+			break;
+
+		case 'j':
+			stdin_frames = true;
+			break;
+
+		case 'k':
+			num_chans = atoi(optarg);
 			break;
 
 		case 'i':
