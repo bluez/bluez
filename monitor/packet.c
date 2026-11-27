@@ -18436,6 +18436,99 @@ static void mgmt_hci_cmd_sync_rsp(const void *data, uint16_t size)
 	print_hex_field("Response", data, size);
 }
 
+static void mgmt_add_periodic_adv_params_cmd(const void *data, uint16_t size)
+{
+	const struct mgmt_cp_add_periodic_adv_params *cp = data;
+	uint16_t min_interval = le16_to_cpu(cp->min_interval);
+	uint16_t max_interval = le16_to_cpu(cp->max_interval);
+
+	print_field("Instance: %u", cp->instance);
+	print_field("Min interval: %.2f msec (0x%4.4x)", min_interval * 1.25,
+								min_interval);
+	print_field("Max interval: %.2f msec (0x%4.4x)", max_interval * 1.25,
+								max_interval);
+	print_field("Num subevents: %u", cp->num_subevents);
+	print_field("Subevent interval: %.2f msec (0x%2.2x)",
+			cp->subevent_interval * 1.25, cp->subevent_interval);
+	print_field("Response slot delay: %.2f msec (0x%2.2x)",
+			cp->response_slot_delay * 1.25,
+			cp->response_slot_delay);
+	print_field("Response slot spacing: %.3f msec (0x%2.2x)",
+			cp->response_slot_spacing * 0.125,
+			cp->response_slot_spacing);
+	print_field("Num response slots: %u", cp->num_response_slots);
+}
+
+static void mgmt_instance_rsp(const void *data, uint16_t size)
+{
+	uint8_t instance = get_u8(data);
+
+	print_field("Instance: %u", instance);
+}
+
+static void mgmt_add_periodic_adv_data_cmd(const void *data, uint16_t size)
+{
+	struct iovec iov = { .iov_base = (void *) data, .iov_len = size };
+	const struct mgmt_cp_add_periodic_adv_data *cp;
+
+	cp = util_iov_pull_mem(&iov, sizeof(*cp));
+	if (!cp)
+		return;
+
+	print_field("Instance: %u", cp->instance);
+	print_field("Data length: %u", cp->data_len);
+
+	if (iov.iov_len != cp->data_len) {
+		print_text(COLOR_ERROR, "  invalid packet size");
+		print_hex_field("  Data", iov.iov_base, iov.iov_len);
+		return;
+	}
+
+	print_eir("Data", cp->data, cp->data_len, true);
+}
+
+static void mgmt_set_pa_subevent_data_cmd(const void *data, uint16_t size)
+{
+	struct iovec iov = { .iov_base = (void *) data, .iov_len = size };
+	const struct mgmt_cp_set_pa_subevent_data *cp;
+	const struct mgmt_pa_subevent_data *se;
+	uint8_t i;
+
+	cp = util_iov_pull_mem(&iov, sizeof(*cp));
+	if (!cp)
+		return;
+
+	print_field("Instance: %u", cp->instance);
+	print_field("Num subevents: %u", cp->num_subevents);
+
+	for (i = 0; i < cp->num_subevents; i++) {
+		se = util_iov_pull_mem(&iov, sizeof(*se));
+		if (!se)
+			break;
+
+		print_field("Entry %u", i);
+		print_field("  Subevent: %u (0x%2.2x)", se->subevent,
+							se->subevent);
+		print_field("  Response slot start: %u",
+						se->response_slot_start);
+		print_field("  Response slot count: %u",
+						se->response_slot_count);
+		print_field("  Data length: %u", se->data_len);
+
+		if (!util_iov_pull(&iov, se->data_len))
+			break;
+
+		print_eir("  Data", se->data, se->data_len, true);
+	}
+
+	/* Fewer entries than announced, or octets after the last one */
+	if (i < cp->num_subevents || iov.iov_len) {
+		print_text(COLOR_ERROR, "  invalid packet size");
+		if (iov.iov_len)
+			print_hex_field("  Data", iov.iov_base, iov.iov_len);
+	}
+}
+
 struct mgmt_data {
 	uint16_t opcode;
 	const char *str;
@@ -18719,6 +18812,15 @@ static const struct mgmt_data mgmt_command_table[] = {
 	{ 0x005C, "Load Connection Subrate",
 				mgmt_load_conn_subrate_cmd, 2, false,
 				mgmt_null_rsp, 0, true },
+	{ 0x005D, "Add Periodic Advertising Parameters",
+				mgmt_add_periodic_adv_params_cmd, 10, true,
+				mgmt_instance_rsp, 1, true },
+	{ 0x005E, "Add Periodic Advertising Data",
+				mgmt_add_periodic_adv_data_cmd, 2, false,
+				mgmt_instance_rsp, 1, true },
+	{ 0x005F, "Set Periodic Advertising Subevent Data",
+				mgmt_set_pa_subevent_data_cmd, 2, false,
+				mgmt_instance_rsp, 1, true },
 	{ }
 };
 
@@ -19383,6 +19485,104 @@ static void mgmt_security_level_changed_evt(const void *data, uint16_t size)
 	mgmt_tlv_list_free(tlv_list);
 }
 
+static void mgmt_pa_subevent_data_request_evt(const void *data,
+							uint16_t size)
+{
+	const struct mgmt_ev_pa_subevent_data_request *ev = data;
+
+	print_field("Instance: %u", ev->instance);
+	print_field("Subevent start: %u (0x%2.2x)", ev->subevent_start,
+							ev->subevent_start);
+	print_field("Subevent data count: %u (0x%2.2x)",
+			ev->subevent_data_count, ev->subevent_data_count);
+}
+
+static void mgmt_pa_response_report_evt(const void *data, uint16_t size)
+{
+	struct iovec iov = { .iov_base = (void *) data, .iov_len = size };
+	const struct mgmt_ev_pa_response_report *ev;
+	const struct mgmt_pa_response *rsp;
+	const char *str;
+	uint8_t i;
+
+	ev = util_iov_pull_mem(&iov, sizeof(*ev));
+	if (!ev)
+		return;
+
+	print_field("Instance: %u", ev->instance);
+	print_field("Subevent: %u (0x%2.2x)", ev->subevent, ev->subevent);
+
+	switch (ev->tx_status) {
+	case 0x00:
+		str = "Subevent was transmitted";
+		break;
+	case 0x01:
+		str = "Subevent was not transmitted";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("TX status: %s (0x%2.2x)", str, ev->tx_status);
+	print_field("Num responses: %u", ev->num_responses);
+
+	for (i = 0; i < ev->num_responses; i++) {
+		rsp = util_iov_pull_mem(&iov, sizeof(*rsp));
+		if (!rsp)
+			break;
+
+		print_field("Entry %u", i);
+
+		if (rsp->tx_power == 0x7f)
+			print_field("  TX power: not available (0x7f)");
+		else
+			print_field("  TX power: %d dBm (0x%2.2x)",
+					rsp->tx_power, (uint8_t) rsp->tx_power);
+
+		if (rsp->rssi == 0x7f)
+			print_field("  RSSI: not available (0x7f)");
+		else
+			print_field("  RSSI: %d dBm (0x%2.2x)", rsp->rssi,
+							(uint8_t) rsp->rssi);
+
+		print_field("  CTE type: 0x%2.2x", rsp->cte_type);
+		print_field("  Response slot: %u (0x%2.2x)",
+				rsp->response_slot, rsp->response_slot);
+
+		switch (rsp->data_status) {
+		case 0x00:
+			str = "Complete";
+			break;
+		case 0x01:
+			str = "Incomplete, more data to come";
+			break;
+		case 0xff:
+			str = "Failed to receive the response";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  Data status: %s (0x%2.2x)", str,
+							rsp->data_status);
+		print_field("  Data length: %u", rsp->data_len);
+
+		if (!util_iov_pull(&iov, rsp->data_len))
+			break;
+
+		print_eir("  Data", rsp->data, rsp->data_len, true);
+	}
+
+	/* Fewer responses than announced, or octets after the last one */
+	if (i < ev->num_responses || iov.iov_len) {
+		print_text(COLOR_ERROR, "  invalid packet size");
+		if (iov.iov_len)
+			print_hex_field("  Data", iov.iov_base, iov.iov_len);
+	}
+}
+
 static const struct mgmt_data mgmt_event_table[] = {
 	{ 0x0001, "Command Complete",
 			mgmt_command_complete_evt, 3, false },
@@ -19484,6 +19684,10 @@ static const struct mgmt_data mgmt_event_table[] = {
 			mgmt_conn_subrate_evt, 18, true },
 	{ 0x0034, "Security Level Changed",
 			mgmt_security_level_changed_evt, 8, false },
+	{ 0x0035, "Periodic Advertising Subevent Data Request",
+			mgmt_pa_subevent_data_request_evt, 3, true },
+	{ 0x0036, "Periodic Advertising Response Report",
+			mgmt_pa_response_report_evt, 4, false },
 	{ }
 };
 
