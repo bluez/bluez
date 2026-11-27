@@ -838,6 +838,49 @@ struct mgmt_cp_load_conn_subrate {
 	struct mgmt_conn_subrate params[];
 } __packed;
 
+#define MGMT_OP_ADD_PERIODIC_ADV_PARAMS	0x005D
+struct mgmt_cp_add_periodic_adv_params {
+	uint8_t  instance;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint8_t  num_subevents;
+	uint8_t  subevent_interval;
+	uint8_t  response_slot_delay;
+	uint8_t  response_slot_spacing;
+	uint8_t  num_response_slots;
+} __packed;
+struct mgmt_rp_add_periodic_adv_params {
+	uint8_t  instance;
+} __packed;
+
+#define MGMT_OP_ADD_PERIODIC_ADV_DATA	0x005E
+struct mgmt_cp_add_periodic_adv_data {
+	uint8_t  instance;
+	uint8_t  data_len;
+	uint8_t  data[];
+} __packed;
+struct mgmt_rp_add_periodic_adv_data {
+	uint8_t  instance;
+} __packed;
+
+struct mgmt_pa_subevent_data {
+	uint8_t  subevent;
+	uint8_t  response_slot_start;
+	uint8_t  response_slot_count;
+	uint8_t  data_len;
+	uint8_t  data[];
+} __packed;
+
+#define MGMT_OP_SET_PA_SUBEVENT_DATA	0x005F
+struct mgmt_cp_set_pa_subevent_data {
+	uint8_t  instance;
+	uint8_t  num_subevents;
+	uint8_t  subevents[];
+} __packed;
+struct mgmt_rp_set_pa_subevent_data {
+	uint8_t  instance;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -1156,6 +1199,32 @@ struct mgmt_ev_security_level_changed {
 	uint8_t	tlv_data[];
 } __packed;
 
+#define MGMT_EV_PA_SUBEVENT_DATA_REQUEST	0x0035
+struct mgmt_ev_pa_subevent_data_request {
+	uint8_t  instance;
+	uint8_t  subevent_start;
+	uint8_t  subevent_data_count;
+} __packed;
+
+struct mgmt_pa_response {
+	int8_t   tx_power;
+	int8_t   rssi;
+	uint8_t  cte_type;
+	uint8_t  response_slot;
+	uint8_t  data_status;
+	uint8_t  data_len;
+	uint8_t  data[];
+} __packed;
+
+#define MGMT_EV_PA_RESPONSE_REPORT		0x0036
+struct mgmt_ev_pa_response_report {
+	uint8_t  instance;
+	uint8_t  subevent;
+	uint8_t  tx_status;
+	uint8_t  num_responses;
+	uint8_t  responses[];
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
@@ -1250,6 +1319,9 @@ static const char *mgmt_op[] = {
 	"Mesh Send Cancel",
 	"HCI Cmd Sync",
 	"Load Connection Subrate",
+	"Add Periodic Advertising Parameters",
+	"Add Periodic Advertising Data",
+	"Set Periodic Advertising Subevent Data",
 };
 
 static const char *mgmt_ev[] = {
@@ -1306,6 +1378,8 @@ static const char *mgmt_ev[] = {
 	"Mesh Packet Complete",
 	"Connection Subrate",
 	"Security Level Changed",
+	"Periodic Advertising Subevent Data Request",
+	"Periodic Advertising Response Report",
 };
 
 static const char *mgmt_status[] = {
