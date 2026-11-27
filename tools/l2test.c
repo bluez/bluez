@@ -121,6 +121,7 @@ static int reliable = 0;
 static int timestamp = 0;
 static int defer_setup = 0;
 static bool stdin_frames;
+static int num_chans = 1;
 static int priority = -1;
 static int rcvbuf = 0;
 static int32_t phy = -1;
@@ -536,6 +537,11 @@ static int do_connect(char *svr)
 	struct l2cap_options opts;
 	socklen_t optlen;
 	int sk, opt;
+	/* All but the last of -k channels are deferred: the kernel puts them
+	 * into the connection request of the last one (enhanced credit based
+	 * mode), and they stay open while its mode runs.
+	 */
+	bool defer = num_chans > 1;
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
@@ -655,10 +661,29 @@ static int do_connect(char *svr)
 	else
 		goto error;
 
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0 ) {
+	if (defer) {
+		opt = 1;
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_DEFER_SETUP, &opt,
+							sizeof(opt)) < 0) {
+			syslog(LOG_ERR, "Can't enable deferred setup: %s (%d)",
+							strerror(errno), errno);
+			goto error;
+		}
+
+		/* Or connect() waits for a request that is not sent yet */
+		fcntl(sk, F_SETFL, fcntl(sk, F_GETFL) | O_NONBLOCK);
+	}
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0 &&
+				!(defer && errno == EINPROGRESS)) {
 		syslog(LOG_ERR, "Can't connect: %s (%d)",
 							strerror(errno), errno);
 		goto error;
+	}
+
+	if (defer) {
+		num_chans--;
+		return do_connect(svr);
 	}
 
 	/* Get current options */
@@ -686,7 +711,7 @@ static void do_listen(void (*handler)(int sk))
 	struct sockaddr_l2 addr;
 	struct l2cap_options opts;
 	socklen_t optlen;
-	int sk, nsk, opt;
+	int sk, nsk, opt, accepted = 0;
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_L2CAP);
@@ -807,6 +832,11 @@ static void do_listen(void (*handler)(int sk))
 							strerror(errno), errno);
 			goto error;
 		}
+
+		/* The first -k channels stay open, the mode runs on the last */
+		if (++accepted < num_chans)
+			continue;
+
 		if (fork()) {
 			/* Parent */
 			close(nsk);
@@ -1474,6 +1504,8 @@ static void usage(void)
 		"\t[-I imtu] [-O omtu]\n"
 		"\t[-j] send -N frames for each line on stdin (or as many as\n"
 		"\t   the line says)\n"
+		"\t[-k num] num channels (ext-flowctl): connected in one\n"
+		"\t   request, or accepted; the mode runs on the last one\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-W seconds] enable deferred setup\n"
 		"\t   0: don't enable (default)\n"
@@ -1512,7 +1544,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt = getopt(argc, argv, "a:b:cde:f:g:i:jmnpqrstuwxyz"
+	while ((opt = getopt(argc, argv, "a:b:cde:f:g:i:jk:mnpqrstuwxyz"
 		"AB:C:D:EF:GH:I:J:K:L:MN:O:P:Q:RSTUV:W:X:Y:Z:")) != EOF) {
 		switch (opt) {
 		case 'r':
@@ -1585,6 +1617,10 @@ int main(int argc, char *argv[])
 
 		case 'j':
 			stdin_frames = true;
+			break;
+
+		case 'k':
+			num_chans = atoi(optarg);
 			break;
 
 		case 'i':
