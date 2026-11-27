@@ -1059,8 +1059,24 @@ static void recv_mode(int sk)
 	}
 }
 
+/* The channel's MTU now: the peer may have reconfigured it since connection
+ * (enhanced credit based mode).
+ */
+static int current_omtu(int sk)
+{
+	uint16_t mtu;
+	socklen_t len = sizeof(mtu);
+
+	if (getsockopt(sk, SOL_BLUETOOTH, BT_SNDMTU, &mtu, &len) < 0 || !mtu)
+		return omtu;
+
+	return mtu > buffer_size ? buffer_size : mtu;
+}
+
 static void do_send(int sk)
 {
+	/* Without -b each frame is as large as the channel's MTU */
+	bool follow_mtu = data_size < 0;
 	uint32_t seq;
 	int i, fd, len, buflen, size, sent;
 
@@ -1096,7 +1112,7 @@ static void do_send(int sk)
 		close(fd);
 		return;
 	} else {
-		for (i = 6; i < data_size; i++)
+		for (i = 6; i < buffer_size; i++)
 			buf[i] = 0x7f;
 	}
 
@@ -1105,6 +1121,9 @@ static void do_send(int sk)
 
 	seq = seq_start;
 	while ((num_frames == -1) || (num_frames-- > 0)) {
+		if (follow_mtu)
+			data_size = omtu = current_omtu(sk);
+
 		put_le32(seq, buf);
 		put_le16(data_size, buf + 4);
 
