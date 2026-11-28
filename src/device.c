@@ -274,6 +274,12 @@ struct btd_device {
 	struct btd_gatt_client *client_dbus;
 
 	uint8_t prefer_bearer;
+	bool allowed_bredr;
+	bool allowed_le;
+	bool allowed_bearers_set;
+	bool bredr_supported;
+	bool le_supported;
+	uint8_t le_address_type;
 	struct bearer_state bredr_state;
 	struct bearer_state le_state;
 
@@ -332,7 +338,7 @@ static struct bearer_state *get_state(struct btd_device *dev,
 
 static bool device_connectable_known(struct btd_device *dev)
 {
-	if (dev->bredr)
+	if (dev->bredr_supported)
 		return true;
 
 	return get_state(dev, dev->bdaddr_type)->last_seen != 0;
@@ -397,7 +403,7 @@ static GSList *find_service_with_uuid(GSList *list, char *uuid)
 static const char *device_prefer_bearer_str(struct btd_device *device)
 {
 	/* Check if both BR/EDR and LE bearer are supported */
-	if (!device->bredr || !device->le)
+	if (!device->bredr_supported || !device->le_supported)
 		return NULL;
 
 	switch (device->prefer_bearer) {
@@ -410,6 +416,99 @@ static const char *device_prefer_bearer_str(struct btd_device *device)
 	case PREFER_LAST_SEEN:
 		return "last-seen";
 	}
+
+	return NULL;
+}
+
+bool btd_device_bearer_allowed(struct btd_device *device, uint8_t bdaddr_type)
+{
+	if (bdaddr_type == BDADDR_BREDR)
+		return device->bredr_supported && device->allowed_bredr &&
+				btd_opts.mode != BT_MODE_LE;
+
+	return device->le_supported && device->allowed_le &&
+				btd_opts.mode != BT_MODE_BREDR;
+}
+
+static void device_normalize_allowed_bearers(struct btd_device *device)
+{
+	device->allowed_bredr = device->bredr_supported &&
+				btd_opts.mode != BT_MODE_LE;
+	device->allowed_le = device->le_supported &&
+				btd_opts.mode != BT_MODE_BREDR;
+}
+
+static bool device_parse_allowed_bearers(struct btd_device *device,
+							const char *mode,
+							bool check_adapter_mode,
+							bool *bredr, bool *le)
+{
+	if (!bredr || !le)
+		return false;
+
+	if (!strcmp(mode, "dual")) {
+		if (!device->bredr_supported || !device->le_supported)
+			return false;
+
+		if (check_adapter_mode &&
+				(btd_opts.mode == BT_MODE_LE ||
+				btd_opts.mode == BT_MODE_BREDR))
+			return false;
+
+		*bredr = true;
+		*le = true;
+		return true;
+	}
+
+	if (!strcmp(mode, "bredr") && device->bredr_supported) {
+		if (check_adapter_mode && btd_opts.mode == BT_MODE_LE)
+			return false;
+
+		*bredr = true;
+		*le = false;
+		return true;
+	}
+
+	if (!strcmp(mode, "le") && device->le_supported) {
+		if (check_adapter_mode && btd_opts.mode == BT_MODE_BREDR)
+			return false;
+
+		*bredr = false;
+		*le = true;
+		return true;
+	}
+
+	return false;
+}
+
+static const char *device_allowed_bearers_str(struct btd_device *device)
+{
+	if (device->allowed_bredr && device->allowed_le)
+		return "dual";
+
+	if (device->allowed_bredr)
+		return "bredr";
+
+	if (device->allowed_le)
+		return "le";
+
+	return NULL;
+}
+
+static const char *device_effective_allowed_bearers_str(
+						struct btd_device *device)
+{
+	bool bredr = btd_device_bearer_allowed(device, BDADDR_BREDR);
+	bool le = btd_device_bearer_allowed(device, BDADDR_LE_PUBLIC);
+
+	if (bredr && le)
+		return "dual";
+
+	if (bredr)
+		return "bredr";
+
+	if (le)
+		return "le";
 
 	return NULL;
 }
@@ -463,10 +562,10 @@ static void update_technologies(GKeyFile *file, struct btd_device *dev)
 	size_t len = 0;
 	const char *bearer;
 
-	if (dev->bredr)
+	if (dev->bredr_supported)
 		list[len++] = "BR/EDR";
 
-	if (dev->le) {
+	if (dev->le_supported) {
 		const char *type;
 
 		if (dev->bdaddr_type == BDADDR_LE_PUBLIC)
@@ -481,6 +580,14 @@ static void update_technologies(GKeyFile *file, struct btd_device *dev)
 
 	g_key_file_set_string_list(file, "General", "SupportedTechnologies",
 								list, len);
+
+	if (dev->bredr_supported && dev->le_supported) {
+		const char *mode = device_allowed_bearers_str(dev);
+
+		if (mode)
+			g_key_file_set_string(file, "General", "AllowedBearers",
+							mode);
+	}
 
 	/* Store the PreferredBearer in case of dual-mode devices */
 	bearer = device_prefer_bearer_str(dev);
@@ -1010,7 +1117,8 @@ static gboolean property_get_address_type(const GDBusPropertyTable *property,
 	struct btd_device *device = user_data;
 	const char *str;
 
-	if (device->le && device->bdaddr_type == BDADDR_LE_RANDOM)
+	if (device->le_supported &&
+			device->le_address_type == BDADDR_LE_RANDOM)
 		str = "random";
 	else
 		str = "public";
@@ -1967,11 +2075,11 @@ int device_block(struct btd_device *device, gboolean update_only)
 	}
 
 	if (!update_only) {
-		if (device->le)
+		if (device->le_supported)
 			err = btd_adapter_block_address(device->adapter,
 							&device->bdaddr,
 							device->bdaddr_type);
-		if (!err && device->bredr)
+		if (!err && device->bredr_supported)
 			err = btd_adapter_block_address(device->adapter,
 							&device->bdaddr,
 							BDADDR_BREDR);
@@ -2001,11 +2109,11 @@ int device_unblock(struct btd_device *device, gboolean silent,
 		return 0;
 
 	if (!update_only) {
-		if (device->le)
+		if (device->le_supported)
 			err = btd_adapter_unblock_address(device->adapter,
 							&device->bdaddr,
 							device->bdaddr_type);
-		if (!err && device->bredr)
+		if (!err && device->bredr_supported)
 			err = btd_adapter_unblock_address(device->adapter,
 							&device->bdaddr,
 							BDADDR_BREDR);
@@ -2331,8 +2439,12 @@ static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 	char addr[18];
 	const char *bearer;
 
-	if (!device || !device->le)
+	if (!device || !device->le_supported)
 		return;
+
+	if (enable && !btd_device_bearer_allowed(device,
+							device->le_address_type))
+		enable = FALSE;
 
 	ba2str(&device->bdaddr, addr);
 
@@ -2489,7 +2601,9 @@ done:
 
 	if (err) {
 		/* Fallback to LE bearer if supported */
-		if (err == -EHOSTDOWN && dev->le && !dev->le_state.connected) {
+		if (err == -EHOSTDOWN &&
+				btd_device_bearer_allowed(dev, BDADDR_LE_PUBLIC) &&
+				!dev->le_state.connected) {
 			err = device_connect_le(dev);
 			if (err == 0)
 				return;
@@ -2499,7 +2613,8 @@ done:
 				btd_error_bredr_errno(dev->connect, err));
 	} else {
 		/* Start passive SDP discovery to update known services */
-		if (dev->bredr && !dev->svc_refreshed && dev->refresh_discovery)
+		if (btd_device_bearer_allowed(dev, BDADDR_BREDR) &&
+				!dev->svc_refreshed && dev->refresh_discovery)
 			device_browse_sdp(dev, NULL);
 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
 	}
@@ -2742,6 +2857,12 @@ static uint8_t select_conn_bearer(struct btd_device *dev)
 	time_t bredr_last = NVAL_TIME, le_last = NVAL_TIME;
 	time_t current = time(NULL);
 
+	if (!dev->allowed_bredr)
+		return dev->le_address_type;
+
+	if (!dev->allowed_le)
+		return BDADDR_BREDR;
+
 	/* Use preferred bearer or bonded bearer in case only one is bonded */
 	if (dev->bredr_state.prefer ||
 			(dev->bredr_state.bonded && !dev->le_state.bonded))
@@ -2769,10 +2890,10 @@ static uint8_t select_conn_bearer(struct btd_device *dev)
 	if (le_last == NVAL_TIME && bredr_last == NVAL_TIME)
 		return dev->bdaddr_type;
 
-	if (dev->bredr && (!dev->le || le_last == NVAL_TIME))
+	if (dev->bredr_supported && (!dev->le_supported || le_last == NVAL_TIME))
 		return BDADDR_BREDR;
 
-	if (dev->le && (!dev->bredr || bredr_last == NVAL_TIME))
+	if (dev->le_supported && (!dev->bredr_supported || bredr_last == NVAL_TIME))
 		return dev->bdaddr_type;
 
 	/*
@@ -2808,6 +2929,9 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services)
 		return -ENETDOWN;
 
 	bdaddr_type = select_conn_bearer(dev);
+	if (!btd_device_bearer_allowed(dev, bdaddr_type))
+		return -ENOTSUP;
+
 	if (bdaddr_type != BDADDR_BREDR) {
 		if (dev->le_state.connected)
 			return -EALREADY;
@@ -2848,6 +2972,9 @@ DBusMessage *device_connect_profiles(struct btd_device *dev,
 {
 	struct bearer_state *state = get_state(dev, bdaddr_type);
 	int err;
+
+	if (!btd_device_bearer_allowed(dev, bdaddr_type))
+		return btd_error_failed(msg, "Bearer not allowed");
 
 	DBG("%s %s, client %s", dev->path, uuid ? uuid : "(all)",
 						dbus_message_get_sender(msg));
@@ -2924,10 +3051,17 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 			bdaddr_type = dev->bdaddr_type;
 		else
 			bdaddr_type = BDADDR_BREDR;
-	} else if (dev->le_state.connected && dev->bredr)
-		bdaddr_type = BDADDR_BREDR;
-	else
+	} else if (dev->le_state.connected) {
+		if (btd_device_bearer_allowed(dev, BDADDR_BREDR))
+			bdaddr_type = BDADDR_BREDR;
+		else
+			bdaddr_type = dev->le_address_type;
+	} else {
 		bdaddr_type = select_conn_bearer(dev);
+	}
+
+	if (!btd_device_bearer_allowed(dev, bdaddr_type))
+		return btd_error_failed(msg, "Bearer not allowed");
 
 	dev->auth_failures = 0;
 
@@ -3190,7 +3324,8 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
 	if (err) {
 		/* Fallback to LE bearer if supported */
 		if (err == -EHOSTDOWN && bdaddr_type == BDADDR_BREDR &&
-				dev->le && !dev->le_state.connected) {
+				btd_device_bearer_allowed(dev, BDADDR_LE_PUBLIC) &&
+				!dev->le_state.connected) {
 			err = device_connect_le(dev);
 			if (err == 0)
 				goto done;
@@ -3432,24 +3567,21 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	enum mgmt_io_capability io_cap;
 	int err;
 
-	btd_device_set_temporary(device, false);
-
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
 
 	if (device->bonding || device->connect)
 		return btd_error_in_progress(msg);
 
-	/* Only use this selection algorithms when device is combo
-	 * chip. Otherwise, it will use the wrong bearer to establish
-	 * a connection if the device is already paired, which will
-	 * stall the pairing procedure. For example, for a BLE only
-	 * device, if the device is already paired, and upper layer
-	 * issue the pair device again, it will set bdaddr_type to
-	 * BDADDR_BREDR since LE is bonded, then it goes with BR/EDR
-	 * bearer.
-	 */
-	if (device->bredr && device->le) {
+	if (!device->allowed_bredr) {
+		bdaddr_type = device->le_address_type;
+	} else if (!device->allowed_le) {
+		bdaddr_type = BDADDR_BREDR;
+	} else if (device->bredr_supported && device->le_supported) {
+		/* Use the existing selection algorithm only for a combo device.
+		 * Otherwise pairing could select the wrong bearer for a
+		 * BLE-only or BR/EDR-only device.
+		 */
 		if (device->bredr_state.bonded)
 			bdaddr_type = device->bdaddr_type;
 		else if (device->le_state.bonded)
@@ -3460,10 +3592,15 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 		bdaddr_type = device->bdaddr_type;
 	}
 
+	if (!btd_device_bearer_allowed(device, bdaddr_type))
+		return btd_error_failed(msg, "Bearer not allowed");
+
 	state = get_state(device, bdaddr_type);
 
 	if (state->bonded)
 		return btd_error_already_exists(msg);
+
+	btd_device_set_temporary(device, false);
 
 	sender = dbus_message_get_sender(msg);
 
@@ -3693,6 +3830,118 @@ static const GDBusSignalTable device_signals[] = {
 	{ }
 };
 
+static void device_sync_bearers(struct btd_device *device);
+
+static void device_apply_allowed_bearers(struct btd_device *device,
+					bool bredr, bool le)
+{
+	device->allowed_bredr = bredr;
+	device->allowed_le = le;
+	device->allowed_bearers_set = true;
+
+	if (!bredr) {
+		device_cancel_browse(device, BDADDR_BREDR);
+		device_remove_pending_services(device, BDADDR_BREDR);
+
+		if (device->bonding &&
+				device->bonding->bdaddr_type == BDADDR_BREDR)
+			device_cancel_bonding(device, MGMT_STATUS_CANCELLED);
+
+	}
+
+	if (!le) {
+		device_cancel_browse(device, device->bdaddr_type);
+		device_remove_pending_services(device, device->bdaddr_type);
+
+		if (device->bonding &&
+				device->bonding->bdaddr_type != BDADDR_BREDR)
+			device_cancel_bonding(device, MGMT_STATUS_CANCELLED);
+	}
+
+	if (!bredr) {
+		if (device->bredr_state.connected)
+			btd_adapter_disconnect_device(device->adapter,
+						&device->bdaddr, BDADDR_BREDR);
+
+		if (le)
+			device_set_prefer_bearer(device, PREFER_LE);
+	} else if (!le) {
+		if (device->le_state.connected)
+			btd_adapter_disconnect_device(device->adapter,
+					&device->bdaddr,
+					device->le_address_type);
+
+		device_set_prefer_bearer(device, PREFER_BREDR);
+	}
+
+	device_sync_bearers(device);
+
+	if (!bredr)
+		device_set_auto_connect(device, TRUE);
+	else
+		device_set_auto_connect(device, le);
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "PreferredBearer");
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "AllowedBearers");
+	store_device_info(device);
+}
+
+static gboolean
+dev_property_get_allowed_bearers(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+	const char *bearer = device_effective_allowed_bearers_str(device);
+
+	if (!bearer)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &bearer);
+
+	return TRUE;
+}
+
+static void dev_property_set_allowed_bearers(const GDBusPropertyTable *property,
+					DBusMessageIter *value,
+					GDBusPendingPropertySet id, void *data)
+{
+	struct btd_device *device = data;
+	const char *bearer;
+	bool bredr;
+	bool le;
+
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+		return;
+	}
+
+	dbus_message_iter_get_basic(value, &bearer);
+
+	if (!device_parse_allowed_bearers(device, bearer, true, &bredr, &le)) {
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+		return;
+	}
+
+	device_apply_allowed_bearers(device, bredr, le);
+	g_dbus_pending_property_success(id);
+}
+
+static gboolean
+dev_property_allowed_bearers_exists(const GDBusPropertyTable *property,
+					void *data)
+{
+	struct btd_device *device = data;
+
+	return device->bredr_supported && device->le_supported &&
+		device_effective_allowed_bearers_str(device) != NULL;
+}
+
 static gboolean
 dev_property_get_prefer_bearer(const GDBusPropertyTable *property,
 				DBusMessageIter *iter, void *data)
@@ -3826,6 +4075,10 @@ static const GDBusPropertyTable device_properties[] = {
 				dev_property_wake_allowed_exist },
 	{ "Sets", "a{oa{sv}}", dev_property_get_set, NULL,
 				dev_property_set_exists },
+	{ "AllowedBearers", "s", dev_property_get_allowed_bearers,
+				dev_property_set_allowed_bearers,
+				dev_property_allowed_bearers_exists,
+				G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "PreferredBearer", "s", dev_property_get_prefer_bearer,
 				dev_property_set_prefer_bearer,
 				dev_property_prefer_bearer_exists,
@@ -4167,6 +4420,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
 	}
 
 	device_disconnected(device, reason);
+	device_sync_bearers(device);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
@@ -4488,28 +4742,117 @@ static void load_info(struct btd_device *device, const char *local,
 
 	for (t = techno; *t; t++) {
 		if (g_str_equal(*t, "BR/EDR"))
-			device->bredr = btd_bearer_new(device, BDADDR_BREDR);
+			device->bredr_supported = true;
 		else if (g_str_equal(*t, "LE"))
-			device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
+			device->le_supported = true;
 		else
 			error("Unknown device technology");
 	}
 
-	if (!device->le) {
-		device->bdaddr_type = BDADDR_BREDR;
-	} else {
-		str = g_key_file_get_string(key_file, "General",
-						"AddressType", NULL);
+	if (device->le_supported) {
+		device->bdaddr_type = BDADDR_LE_PUBLIC;
+		device->le_address_type = BDADDR_LE_PUBLIC;
 
-		if (str && g_str_equal(str, "public"))
+		str = g_key_file_get_string(key_file, "General",
+							"AddressType", NULL);
+
+		if (str && g_str_equal(str, "public")) {
 			device->bdaddr_type = BDADDR_LE_PUBLIC;
-		else if (str && g_str_equal(str, "static"))
+			device->le_address_type = BDADDR_LE_PUBLIC;
+		} else if (str && g_str_equal(str, "static")) {
 			device->bdaddr_type = BDADDR_LE_RANDOM;
-		else
+			device->le_address_type = BDADDR_LE_RANDOM;
+		} else if (str) {
 			error("Unknown LE device technology");
+		}
 
 		g_free(str);
+	} else {
+		device->bdaddr_type = BDADDR_BREDR;
+		device->le_address_type = BDADDR_LE_PUBLIC;
+	}
 
+	{
+		char *allowed = NULL;
+		char **legacy;
+
+		legacy = g_key_file_get_string_list(key_file, "General",
+								"AllowedBearers", NULL,
+								NULL);
+		if (legacy) {
+			bool bredr = false;
+			bool le = false;
+			bool dual = false;
+			bool invalid = false;
+
+			for (char **p = legacy; *p; p++) {
+				if (g_str_equal(*p, "dual") && !dual && !bredr && !le)
+					dual = true;
+				else if (g_str_equal(*p, "bredr") && !dual && !bredr)
+					bredr = true;
+				else if (g_str_equal(*p, "le") && !dual && !le)
+					le = true;
+				else
+					invalid = true;
+			}
+
+			if (!invalid) {
+				if (dual || (bredr && le))
+					allowed = g_strdup("dual");
+				else if (bredr)
+					allowed = g_strdup("bredr");
+				else if (le)
+					allowed = g_strdup("le");
+			}
+
+			g_strfreev(legacy);
+		} else {
+			allowed = g_key_file_get_string(key_file, "General",
+								"AllowedBearers",
+								NULL);
+		}
+
+		if (allowed) {
+			bool bredr;
+			bool le;
+
+			if (device_parse_allowed_bearers(device, allowed, true,
+									&bredr,
+									&le)) {
+				device->allowed_bredr = bredr;
+				device->allowed_le = le;
+				device->allowed_bearers_set = true;
+				g_key_file_set_string(key_file, "General",
+								"AllowedBearers", allowed);
+			} else {
+				device->allowed_bearers_set = false;
+				device_normalize_allowed_bearers(device);
+				if (device_effective_allowed_bearers_str(device))
+					g_key_file_set_string(key_file, "General",
+							"AllowedBearers",
+							device_effective_allowed_bearers_str(device));
+			}
+
+			g_free(allowed);
+		} else {
+			device->allowed_bearers_set = false;
+			device_normalize_allowed_bearers(device);
+			if (device_effective_allowed_bearers_str(device))
+				g_key_file_set_string(key_file, "General",
+								"AllowedBearers",
+								device_effective_allowed_bearers_str(device));
+		}
+	}
+
+	if (device->bredr_supported && device->allowed_bredr)
+		device->bredr = btd_bearer_new(device, BDADDR_BREDR);
+
+	if (device->le_supported && device->allowed_le)
+		device->le = btd_bearer_new(device, device->le_address_type);
+
+	if (!device->le_supported) {
+		device->bdaddr_type = BDADDR_BREDR;
+	} else {
 		device->local_csrk = load_csrk(key_file, "LocalSignatureKey");
 		device->remote_csrk = load_csrk(key_file, "RemoteSignatureKey");
 
@@ -5087,6 +5430,10 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	device->tx_power = 127;
 	device->volume = -1;
 	device->wake_id = -1U;
+	device->le_address_type = BDADDR_LE_PUBLIC;
+	device->allowed_bredr = true;
+	device->allowed_le = true;
+	device->allowed_bearers_set = false;
 
 	device->db = gatt_db_new();
 	if (!device->db) {
@@ -5179,10 +5526,18 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 
 	device->bdaddr_type = bdaddr_type;
 
-	if (bdaddr_type == BDADDR_BREDR)
-		device->bredr = btd_bearer_new(device, BDADDR_BREDR);
-	else
-		device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
+	if (bdaddr_type == BDADDR_BREDR) {
+		if (!device->allowed_bearers_set)
+			device->allowed_bredr = true;
+		device->bredr_supported = true;
+	} else {
+		if (!device->allowed_bearers_set)
+			device->allowed_le = true;
+		device->le_supported = true;
+		device->le_address_type = bdaddr_type;
+	}
+
+	device_sync_bearers(device);
 
 	storage_dir = btd_adapter_get_storage_dir(adapter);
 	str = load_cached_name(device, storage_dir, dst);
@@ -5358,8 +5713,10 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 	/* Since this function is only used for LE SMP Identity
 	 * Resolving purposes we can now assume LE is supported.
 	 */
-	if (!device->le)
-		device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
+	if (!device->allowed_bearers_set)
+		device->allowed_le = true;
+
+	device->le_supported = true;
 
 	/* Remove old address from accept/auto-connect list since its address
 	 * will be changed.
@@ -5369,6 +5726,9 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 
 	bacpy(&device->bdaddr, bdaddr);
 	device->bdaddr_type = bdaddr_type;
+	device->le_address_type = bdaddr_type;
+
+	device_sync_bearers(device);
 
 	if (device->temporary)
 		btd_device_set_temporary(device, false);
@@ -5384,30 +5744,57 @@ void device_update_addr(struct btd_device *device, const bdaddr_t *bdaddr,
 		device_set_auto_connect(device, TRUE);
 }
 
+static void device_sync_bearers(struct btd_device *device)
+{
+	if (!btd_device_bearer_allowed(device, BDADDR_BREDR) &&
+				device->bredr &&
+				!device->bredr_state.connected) {
+		btd_bearer_destroy(device->bredr);
+		device->bredr = NULL;
+	} else if (btd_device_bearer_allowed(device, BDADDR_BREDR) &&
+				!device->bredr) {
+		device->bredr = btd_bearer_new(device, BDADDR_BREDR);
+	}
+
+	if (!btd_device_bearer_allowed(device, BDADDR_LE_PUBLIC) &&
+				device->le && !device->le_state.connected) {
+		btd_bearer_destroy(device->le);
+		device->le = NULL;
+	} else if (btd_device_bearer_allowed(device, BDADDR_LE_PUBLIC) &&
+				!device->le) {
+		device->le = btd_bearer_new(device, device->le_address_type);
+	}
+}
+
 void device_set_bredr_support(struct btd_device *device)
 {
-	if (btd_opts.mode == BT_MODE_LE || device->bredr)
-		return;
+	if (!device->allowed_bearers_set)
+		device->allowed_bredr = true;
 
-	if (!device->bredr)
-		device->bredr = btd_bearer_new(device, BDADDR_BREDR);
+	device->bredr_supported = true;
+
+	device_sync_bearers(device);
 
 	if (device->le)
 		g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "PreferredBearer");
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "AllowedBearers");
 
 	store_device_info(device);
 }
 
 void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 {
-	if (btd_opts.mode == BT_MODE_BREDR || device->le)
-		return;
+	if (!device->allowed_bearers_set)
+		device->allowed_le = true;
 
-	if (!device->le)
-		device->le = btd_bearer_new(device, BDADDR_LE_PUBLIC);
-
+	device->le_supported = true;
 	device->bdaddr_type = bdaddr_type;
+	device->le_address_type = bdaddr_type;
+
+	device_sync_bearers(device);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "AddressType");
@@ -5415,6 +5802,9 @@ void device_set_le_support(struct btd_device *device, uint8_t bdaddr_type)
 	if (device->bredr)
 		g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "PreferredBearer");
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "AllowedBearers");
 
 	store_device_info(device);
 }
@@ -5469,8 +5859,10 @@ void device_merge_duplicate(struct btd_device *dev, struct btd_device *dup)
 	/* dup keeps its own bearer, which is destroyed along with it, so
 	 * dev needs a bearer of its own unless it already has one.
 	 */
-	if (!dev->bredr)
-		dev->bredr = btd_bearer_new(dev, BDADDR_BREDR);
+	if (!dev->allowed_bearers_set)
+		dev->allowed_bredr = true;
+	dev->bredr_supported = true;
+	device_sync_bearers(dev);
 
 	/* Connection state stays with dup, which owns the link and gets
 	 * its disconnection, so only the pairing state is inherited.
@@ -5770,13 +6162,13 @@ int device_addr_type_cmp(gconstpointer a, gconstpointer b)
 		return 0;
 
 	if (addr->bdaddr_type == BDADDR_BREDR) {
-		if (!dev->bredr)
+		if (!dev->bredr_supported)
 			return -1;
 
 		return cmp;
 	}
 
-	if (!dev->le)
+	if (!dev->le_supported)
 		return -1;
 
 	if (addr->bdaddr_type != dev->bdaddr_type) {
@@ -6856,6 +7248,9 @@ done:
 int device_connect_le(struct btd_device *dev)
 {
 	struct btd_adapter *adapter = dev->adapter;
+
+	if (!btd_device_bearer_allowed(dev, dev->le_address_type))
+		return -ENOTSUP;
 	BtIOSecLevel sec_level;
 	GIOChannel *io;
 	GError *gerr = NULL;
@@ -7086,6 +7481,9 @@ int device_discover_services(struct btd_device *device,
 {
 	int err;
 
+	if (!btd_device_bearer_allowed(device, bdaddr_type))
+		return -ENOTSUP;
+
 	if (bdaddr_type == BDADDR_BREDR)
 		err = device_browse_sdp(device, msg);
 	else
@@ -7113,7 +7511,7 @@ const bdaddr_t *device_get_address(struct btd_device *device)
 }
 uint8_t device_get_le_address_type(struct btd_device *device)
 {
-	return device->bdaddr_type;
+	return device->le_address_type;
 }
 
 const char *device_get_path(const struct btd_device *device)
@@ -7427,7 +7825,7 @@ bool device_is_connectable(struct btd_device *device)
 	if (!device)
 		return false;
 
-	if (device->bredr)
+	if (device->bredr_supported)
 		return true;
 
 	state = get_state(device, device->bdaddr_type);
@@ -7439,7 +7837,7 @@ static bool start_discovery_cb(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 
-	if (device->bredr)
+	if (btd_device_bearer_allowed(device, BDADDR_BREDR))
 		device_browse_sdp(device, NULL);
 	else
 		device_browse_gatt(device, NULL);

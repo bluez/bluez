@@ -293,6 +293,7 @@ Long term key) related to a remote device.
 			strings		remote in 128-bits UUID format,
 					separated by ";"
 
+  AllowedBearers	String		Allowed bearer mode for remote dual-mode device
   PreferredBearer	String		Preferred bearer for remote device
   LastUsedBearer	String		Last used bearer for remote device
 

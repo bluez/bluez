@@ -524,6 +524,27 @@ Get/Set preferred bearer.
 	| [CHG] Device <addr> PreferredBearer: bredr
 	| Changing bredr succeeded
 
+allowed-bearers
+---------------
+
+Get/Set the bearers allowed for a dual-mode device.
+
+:Usage: **> allowed-bearers <dev> [dual/bredr/le]**
+:Uses: **org.bluez.Device(5)** property **AllowedBearers**
+:<dev>: Device MAC address (XX:XX:XX:XX:XX:XX) or object path (required)
+:[dual/bredr/le]: "dual" allows BR/EDR and LE, "bredr" allows BR/EDR only, and "le" allows LE only (optional)
+:Example get allowed bearers:
+	| > allowed-bearers <addr>
+	|    AllowedBearers: dual
+:Example allow only LE:
+	| > allowed-bearers <addr> le
+	| [CHG] Device <addr> AllowedBearers: le
+	| Changing le succeeded
+:Example allow only BR/EDR:
+	| > allowed-bearers <addr> bredr
+	| [CHG] Device <addr> AllowedBearers: bredr
+	| Changing bredr succeeded
+
 Advertise Submenu
 =================
 

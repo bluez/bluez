@@ -139,6 +139,12 @@ static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
 	DBusMessage *reply;
 	int err;
 
+	if (!btd_device_bearer_allowed(device, bearer->type)) {
+		if (msg)
+			return btd_error_failed(msg, "Bearer not allowed");
+		return NULL;
+	}
+
 	if (btd_device_bdaddr_type_connected(device, bearer->type)) {
 		if (msg)
 			return btd_error_already_connected(msg);
@@ -531,6 +537,9 @@ static const GDBusMethodTable *bearer_methods(uint8_t type)
 struct btd_bearer *btd_bearer_new(struct btd_device *device, uint8_t type)
 {
 	struct btd_bearer *bearer;
+
+	if (!btd_device_bearer_allowed(device, type))
+		return NULL;
 
 	switch (btd_opts.mode) {
 	case BT_MODE_LE:
