@@ -2059,6 +2059,7 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "AdvertisingFlags");
 	print_property(proxy, "AdvertisingData");
 	print_property(proxy, "Sets");
+	print_property(proxy, "AllowedBearers");
 	print_property(proxy, "PreferredBearer");
 
 	battery_proxy = find_proxies_by_path(battery_proxies,
@@ -2637,6 +2638,36 @@ static void cmd_bearer(int argc, char *argv[])
 	str = strdup(argv[2]);
 
 	if (g_dbus_proxy_set_property_basic(proxy, "PreferredBearer",
+					DBUS_TYPE_STRING, &str,
+					generic_callback, str, free))
+		return;
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+static void cmd_allowed_bearers(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	char *str;
+
+	proxy = find_device(argc, argv);
+	if (!proxy)
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+
+	if (argc <= 2) {
+		print_property(proxy, "AllowedBearers");
+		return;
+	}
+
+	if (strcmp(argv[2], "dual") && strcmp(argv[2], "bredr") &&
+				strcmp(argv[2], "le")) {
+		bt_shell_printf("Invalid allowed bearers mode: %s\n", argv[2]);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	str = strdup(argv[2]);
+
+	if (g_dbus_proxy_set_property_basic(proxy, "AllowedBearers",
 					DBUS_TYPE_STRING, &str,
 					generic_callback, str, free))
 		return;
@@ -4161,6 +4192,8 @@ static const struct bt_shell_menu main_menu = {
 							dev_generator },
 	{ "bearer",       "<dev> [last-seen/bredr/le]", cmd_bearer,
 				"Get/Set preferred bearer", dev_generator },
+	{ "allowed-bearers", "<dev> [dual/bredr/le]", cmd_allowed_bearers,
+				"Get/Set allowed bearers", dev_generator },
 	{ } },
 };
 

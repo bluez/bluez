@@ -4949,9 +4949,9 @@ static uint8_t get_addr_type(GKeyFile *keyfile)
 	uint8_t addr_type;
 	char *type;
 
-	/* The AddressType is written to file only When dev->le is
-	 * set to true, as referenced in the update_technologies().
-	 * Therefore, When type is NULL, it default to BDADDR_BREDR.
+	/* AddressType is stored when LE support is known, as referenced in
+	 * update_technologies(). Therefore, when type is NULL, it defaults to
+	 * BDADDR_BREDR.
 	 */
 	type = g_key_file_get_string(keyfile, "General", "AddressType", NULL);
 	if (!type)
@@ -5681,6 +5681,13 @@ static void adapter_add_connection(struct btd_adapter *adapter,
 						uint8_t bdaddr_type,
 						uint32_t flags)
 {
+	if (!btd_device_bearer_allowed(device, bdaddr_type)) {
+		btd_adapter_disconnect_device(adapter,
+							device_get_address(device),
+							bdaddr_type);
+		return;
+	}
+
 	device_add_connection(device, bdaddr_type, flags);
 
 	if (g_slist_find(adapter->connections, device)) {

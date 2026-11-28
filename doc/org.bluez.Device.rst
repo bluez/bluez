@@ -457,6 +457,29 @@ which can contain the following:
 
 	Rank of the device in the Set.
 
+string AllowedBearers [readwrite, optional, experimental]
+``````````````````````````````````````````````````
+
+Restricts the bearers that can be used for this dual-mode device. Possible
+values are ``dual``, ``bredr``, and ``le``:
+
+:"dual": Allow both BR/EDR and LE.
+
+:"bredr": Allow BR/EDR only and block LE.
+
+:"le": Allow LE only and block BR/EDR.
+
+The setter rejects unsupported values, bearers disabled by the global
+``ControllerMode``, and unknown values with
+``org.bluez.Error.InvalidArguments``. Setting this property prevents the other
+bearer from being connected, including incoming connections and automatic
+connections. Changing the property disconnects bearer links that are no longer
+allowed; it does not disconnect links on an allowed bearer.
+
+The property is persisted and is only available for dual-mode devices. Invalid
+persisted values are reset to the effective mode for the supported bearers.
+Legacy persisted arrays are converted to these string values.
+
 string PreferredBearer [readwrite, optional, experimental]
 ``````````````````````````````````````````````````````````
 

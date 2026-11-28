@@ -8,6 +8,10 @@ interfaces of the device object it has for the other.
 """
 
 import logging
+import os
+import re
+import subprocess
+from pathlib import Path
 
 import dbus
 import pytest
@@ -56,6 +60,10 @@ CONN_PARAMS = ("Interval", "Latency", "SupervisionTimeout", "Subrate")
 
 # ReadRSSI is a testing method
 TESTING_CONF = LE_CONF + "Testing = true\n"
+
+ALLOWED_CONF = "[General]\nExperimental = true\n"
+LE_ALLOWED_CONF = "[General]\nControllerMode = le\nExperimental = true\n"
+BREDR_ALLOWED_CONF = "[General]\nControllerMode = bredr\nExperimental = true\n"
 
 
 class Bearers(HostPlugin, EventPluginMixin):
@@ -120,6 +128,51 @@ class Bearers(HostPlugin, EventPluginMixin):
         return None
 
     @mainloop_wrap
+    def get_device_property(self, address, name):
+        """Return a property of the remote Device1 interface."""
+        path = self._device_path(address)
+        if path is None:
+            return None
+
+        props = dbus.Interface(self.bus.get_object(BUS_NAME, path), PROPS_INTERFACE)
+        try:
+            value = props.Get(DEVICE_INTERFACE, name)
+        except dbus.exceptions.DBusException:
+            return None
+
+        return str(value)
+
+    @mainloop_wrap
+    def set_device_property(self, address, name, value):
+        """Set a Device1 property and return its D-Bus error, if any."""
+        path = self._device_path(address)
+        if path is None:
+            return "org.bluez.Error.Failed"
+
+        props = dbus.Interface(self.bus.get_object(BUS_NAME, path), PROPS_INTERFACE)
+        try:
+            props.Set(DEVICE_INTERFACE, name, dbus.String(value))
+        except dbus.exceptions.DBusException as exc:
+            return exc.get_dbus_name()
+
+        return None
+
+    @mainloop_wrap
+    def set_device_property_raw(self, address, name, value):
+        """Set a raw Device1 property and return its D-Bus error."""
+        path = self._device_path(address)
+        if path is None:
+            return "org.bluez.Error.Failed"
+
+        props = dbus.Interface(self.bus.get_object(BUS_NAME, path), PROPS_INTERFACE)
+        try:
+            props.Set(DEVICE_INTERFACE, name, value)
+        except dbus.exceptions.DBusException as exc:
+            return exc.get_dbus_name()
+
+        return None
+
+    @mainloop_wrap
     def get(self, address, interface, name):
         """
         Return a bearer property of the device with the given address, or
@@ -139,6 +192,16 @@ class Bearers(HostPlugin, EventPluginMixin):
             return bool(value)
 
         return str(value)
+
+    @mainloop_wrap
+    def call_device(self, address, method):
+        """Call a method on the remote Device1 interface."""
+        path = self._device_path(address)
+        if path is None:
+            return
+
+        device = dbus.Interface(self.bus.get_object(BUS_NAME, path), DEVICE_INTERFACE)
+        self._object_method(device, method)
 
     @mainloop_wrap
     def call(self, address, interface, method):
@@ -179,6 +242,90 @@ le_config = host_config(
 bredr_config = host_config(
     [Bluetoothd(args=ARGS), Agent(), Bearers()],
     [Bluetoothd(args=ARGS), Agent(), Bearers()],
+)
+
+allowed_config = host_config(
+    [Bluetoothd(conf=ALLOWED_CONF, args=ARGS), Agent(), Bearers()],
+    [Bluetoothd(conf=ALLOWED_CONF, args=ARGS), Agent(), Bearers()],
+)
+
+
+class RestartableBluetoothd(Bluetoothd):
+    """Bluetoothd plugin that can restart while keeping its state directory."""
+
+    def restart(self):
+        command = self.job.args
+        self.job.terminate()
+        self.job.wait()
+
+        env = os.environ.copy()
+        env["STATE_DIRECTORY"] = str(Path(self.tmpdir.name) / "state")
+        self.job = subprocess.Popen(
+            command,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=self.log_stream.stream,
+            stderr=subprocess.STDOUT,
+        )
+
+    def clear_allowed_bearers(self, address):
+        info_file = self._device_info_file(address)
+        contents = info_file.read_text(encoding="utf-8")
+        contents, count = re.subn(
+            r"^AllowedBearers=.*(?:\r?\n|$)",
+            "",
+            contents,
+            flags=re.MULTILINE,
+        )
+        if count != 1:
+            raise ValueError(f"AllowedBearers not found for {address}")
+
+        info_file.write_text(contents, encoding="utf-8")
+
+    def stored_allowed_bearers(self, address):
+        contents = self._device_info_file(address).read_text(encoding="utf-8")
+        match = re.search(
+            r"^AllowedBearers=(.*?)\r?$",
+            contents,
+            flags=re.MULTILINE,
+        )
+        return match.group(1) if match else None
+
+    def _device_info_file(self, address):
+        storage = Path(self.tmpdir.name) / "state" / "bluetooth"
+        info_files = list(storage.glob(f"*/{address.upper()}/info"))
+        if len(info_files) != 1:
+            raise FileNotFoundError(f"Device info not found for {address}")
+
+        return info_files[0]
+
+
+restartable_allowed_config = host_config(
+    [
+        RestartableBluetoothd(conf=ALLOWED_CONF, args=ARGS),
+        Agent(),
+        Bearers(),
+    ],
+    [
+        Bluetoothd(conf=ALLOWED_CONF, args=ARGS),
+        Agent(),
+        Bearers(),
+    ],
+)
+
+le_allowed_config = host_config(
+    [Bluetoothd(conf=LE_ALLOWED_CONF, args=ARGS), Agent(), Bearers()],
+    [
+        Bluetoothd(conf=LE_ALLOWED_CONF, args=ARGS),
+        LeAdvertiser(),
+        Agent(capability="NoInputNoOutput"),
+        Bearers(),
+    ],
+)
+
+bredr_allowed_config = host_config(
+    [Bluetoothd(conf=BREDR_ALLOWED_CONF, args=ARGS), Agent(), Bearers()],
+    [Bluetoothd(conf=BREDR_ALLOWED_CONF, args=ARGS), Agent(), Bearers()],
 )
 
 
@@ -416,6 +563,195 @@ def test_bearer_le_pair(hosts):
             )
 
         assert host.bearers.get(remote.bdaddr, BREDR_INTERFACE, "Paired") is None
+
+
+@le_allowed_config
+def test_bearer_allowed_bearers_le_mode(hosts):
+    host0, host1 = hosts
+
+    pair_le(host0, host1)
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "le")
+        is None
+    )
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "bredr")
+        == "org.bluez.Error.InvalidArguments"
+    )
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "dual")
+        == "org.bluez.Error.InvalidArguments"
+    )
+
+
+@bredr_allowed_config
+def test_bearer_allowed_bearers_bredr_mode(hosts):
+    host0, host1 = hosts
+
+    pair_bredr(hosts, True)
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "bredr")
+        is None
+    )
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "le")
+        == "org.bluez.Error.InvalidArguments"
+    )
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "dual")
+        == "org.bluez.Error.InvalidArguments"
+    )
+
+
+@allowed_config
+def test_bearer_allowed_bearers(hosts):
+    host0, host1 = hosts
+
+    pair_bredr(hosts, True)
+
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "dual"
+    )
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "le")
+        is None
+    )
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "le"
+    )
+    wait_until(
+        lambda: host0.bearers.get(host1.bdaddr, LE_INTERFACE, "Connected") is False
+    )
+    wait_until(
+        lambda: host0.bearers.get(host1.bdaddr, BREDR_INTERFACE, "Connected") is None
+    )
+
+    host0.bearers.call(host1.bdaddr, BREDR_INTERFACE, "Connect")
+    event = host0.bearers.expect(f"{BREDR_INTERFACE}.Connect:error")
+    assert event.error.get_dbus_name() == "org.bluez.Error.Failed"
+
+    host0.bearers.call_device(host1.bdaddr, "Connect")
+    event = host0.bearers.expect("org.bluez.Device1.Connect:error")
+    assert event.error.get_dbus_name() == "org.bluez.Error.Failed"
+
+    host0.bearers.call(host1.bdaddr, LE_INTERFACE, "Connect")
+    host0.bearers.expect(f"{LE_INTERFACE}.Connect:reply")
+    wait_until(
+        lambda: host0.bearers.get(host1.bdaddr, LE_INTERFACE, "Connected") is True
+    )
+
+    host0.bearers.call_device(host1.bdaddr, "Connect")
+    host0.bearers.expect("org.bluez.Device1.Connect:reply")
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "bredr")
+        is None
+    )
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "bredr"
+    )
+    wait_until(
+        lambda: host0.bearers.get(host1.bdaddr, BREDR_INTERFACE, "Connected") is False
+    )
+    wait_until(
+        lambda: host0.bearers.get(host1.bdaddr, LE_INTERFACE, "Connected") is None
+    )
+
+    host0.bearers.call(host1.bdaddr, LE_INTERFACE, "Connect")
+    event = host0.bearers.expect(f"{LE_INTERFACE}.Connect:error")
+    assert event.error.get_dbus_name() == "org.bluez.Error.Failed"
+
+    host0.bearers.call_device(host1.bdaddr, "Connect")
+    event = host0.bearers.expect("org.bluez.Device1.Connect:error")
+    assert event.error.get_dbus_name() == "org.bluez.Error.Failed"
+
+    host0.bearers.call(host1.bdaddr, BREDR_INTERFACE, "Connect")
+    host0.bearers.expect(f"{BREDR_INTERFACE}.Connect:reply")
+
+    wait_until(
+        lambda: host0.bearers.get(host1.bdaddr, BREDR_INTERFACE, "Connected") is True
+    )
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "dual")
+        is None
+    )
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "dual"
+    )
+
+    assert (
+        host0.bearers.set_device_property_raw(
+            host1.bdaddr, "AllowedBearers", dbus.Boolean(False)
+        )
+        == "org.bluez.Error.InvalidArguments"
+    )
+
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "invalid")
+        == "org.bluez.Error.InvalidArguments"
+    )
+    assert (
+        host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "dual"
+    )
+
+
+@restartable_allowed_config
+def test_bearer_allowed_bearers_persistence(hosts):
+    host0, host1 = hosts
+
+    pair_bredr(hosts, True)
+
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "dual"
+    )
+    assert (
+        host0.bearers.set_device_property(host1.bdaddr, "AllowedBearers", "le")
+        is None
+    )
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "le"
+    )
+    wait_until(
+        lambda: host0.bluetoothd.stored_allowed_bearers(host1.bdaddr) == "le"
+    )
+
+    host0.bluetoothd.restart()
+
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "le"
+    )
+    assert host0.bearers.get(host1.bdaddr, BREDR_INTERFACE, "Connected") is None
+    host0.bearers.call(host1.bdaddr, BREDR_INTERFACE, "Connect")
+    event = host0.bearers.expect(f"{BREDR_INTERFACE}.Connect:error")
+    assert event.error.get_dbus_name() == "org.bluez.Error.Failed"
+
+    host0.bluetoothd.clear_allowed_bearers(host1.bdaddr)
+    host0.bluetoothd.restart()
+
+    wait_until(
+        lambda: host0.bearers.get_device_property(host1.bdaddr, "AllowedBearers")
+        == "dual"
+    )
+    assert host0.bearers.get(host1.bdaddr, BREDR_INTERFACE, "Connected") is False
+    host0.bearers.call(host1.bdaddr, BREDR_INTERFACE, "Connect")
+    host0.bearers.expect(f"{BREDR_INTERFACE}.Connect:reply")
+    wait_until(
+        lambda: host0.bearers.get(host1.bdaddr, BREDR_INTERFACE, "Connected") is True
+    )
 
 
 @bredr_config

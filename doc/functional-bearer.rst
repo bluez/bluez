@@ -181,3 +181,51 @@ test_bearer_bredr_pair
 :Notes: The ACL link is terminated a short time after the profiles are
 	disconnected, so the ``Disconnected`` signal follows the reply to
 	``Disconnect``.
+
+test_bearer_allowed_bearers
+----------------------------
+
+:Setup: As for test_bearer_bredr_pair, with
+	``Experimental = true`` enabled on both hosts.
+
+:Steps:
+	1. Host0 pairs with host1 over BR/EDR.
+	2. Host0 reads ``AllowedBearers`` and sets it to ``le``, ``bredr``,
+	   and ``dual`` in turn.
+	3. Host0 attempts to set ``AllowedBearers`` to ``invalid``.
+
+:Expected:
+	1. ``Pair`` replies and both hosts have dual-mode bearer objects.
+	2. ``AllowedBearers`` reports each successfully selected mode. Selecting
+	   ``le`` removes the BR/EDR bearer interface and selecting ``bredr``
+	   removes the LE bearer interface.
+	3. The invalid value is rejected with
+	   ``org.bluez.Error.InvalidArguments`` and the previous valid mode is
+	   unchanged.
+
+test_bearer_allowed_bearers_persistence
+---------------------------------------
+
+:Setup: As above, with host0 using a restartable **bluetoothd(8)** and
+	``Experimental = true`` enabled.
+
+:Steps:
+	1. Host0 pairs with host1 over BR/EDR and sets ``AllowedBearers`` to
+	   ``le``.
+	2. Host0 restarts **bluetoothd(8)** using the same state directory.
+	3. Host0 removes the stored ``AllowedBearers`` value and restarts
+	   **bluetoothd(8)** again.
+
+:Expected:
+	1. After the first restart, ``AllowedBearers`` remains ``le``, the
+	   BR/EDR bearer interface is unavailable, and a BR/EDR connection
+	   attempt fails.
+	2. When no value is stored, ``AllowedBearers`` defaults to ``dual``,
+	   the BR/EDR bearer interface is available, and a BR/EDR connection
+	   succeeds.
+
+The same single-device policy is also tested with global LE-only and
+BR/EDR-only controller modes. A bearer is available only if it is enabled by
+both the controller mode and the device's supported bearers; this can leave
+both bearers available when the controller supports them and the device supports
+a dual-mode configuration.
